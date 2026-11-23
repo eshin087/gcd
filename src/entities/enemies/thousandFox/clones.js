@@ -1,40 +1,55 @@
-import { clamp, wrapAngle, turnToward } from '../../../core/math.js';
-import { TELL, RESULT } from '../../../combat/rules.js';
+import { wrapAngle, turnToward } from '../../../core/math.js';
+import { TELL, RESULT, dodgeOnly } from '../../../combat/rules.js';
 import { buildHero, setHeroGlyphScale, installLean } from '../../player/model.js';
 import { HeroAnimator } from '../../player/anim.js';
 import { batchRigid } from '../../../render/rigidBatch.js';
 import { perPhase } from '../duelist/realise.js';
 
-// The paper selves (ADR-147): Wen Yao's own extra bodies, as the Starless Lord's spells are his own
-// things (starlessLord/spells.js). The game still has ONE boss: this is a fixed pool owned by the fox
-// (`d.clones`), stepped from his brainFrame and posed from his afterPose. The roadmap's "boss slot as
-// an actor list" is not this.
+// The paper selves (ADR-147, reworked by ADR-151): Wen Yao's own extra bodies, as the Starless Lord's
+// spells are his own things (starlessLord/spells.js). The game still has ONE boss: this is a fixed pool
+// owned by the fox (`d.clones`), stepped from his brainFrame and posed from his afterPose.
 //
-// A self looks like him and fights like a shadow of him: it tears free round the hero, walks in, cuts in
-// turn (one at a time: the cutting TOKEN) and pops in one hit. It never blocks the hero's way (no body
-// circle), never casts a shadow (not a shadow caster), never has the steel's sweep or lit edge, never
-// holds the Pearl. The lock-on, the name tag, the boss bar and the minimap follow only the real one.
+// A SELF EXISTS ONLY INSIDE AN ATTACK (the owner, 2026-11-22: "the clones just randomly appearing as
+// sponges is boring. i want them to like appear from the air and all attack at the same time or in a
+// fast sequence"). There is no self walking about waiting for a turn. A PACK (a move's beat carries
+// `pack`, moves.js header) books every body at once: where it strikes from, when it appears (its blow's
+// impact minus the blow's windup) and when it strikes. A body appears in the air in a puff of paper,
+// already in its attack pose, falls or flies to its mark through its windup, strikes, and bursts
+// `linger` s after its blow. It can be popped at any moment it is out (one hit; a parry pops it; a heavy
+// cut cleaves the ones beside it): its blow never lands.
+//   sequence   n blows `gap` s apart, each from another side, each its own cue and its own result.
+//   together   ONE cue and ONE result: one ledger entry, one tell, one glint over the hero, one blow when
+//              they all arrive. A parry bursts every body (his posture takes popPosture x n); a held guard
+//              pays one blow; a roll out of the ring (`together.r` round where the hero stood as they
+//              locked on) clears it.
+// Every cue is told to the cue ledger as the pack is called (brain.expect: the director and the
+// fairness guard see it before it comes), shifted later as a whole by the fairness guard if it must
+// be (brain.fairDelay; no wait clears it: the pack is not called), and cued as his blows are
+// (combat:tell as a body appears, combat:flash + the white glint flashLead before its blow). A blow
+// goes through d.hitPlayer as a thrown thing (`projectile`, a guard meets it from any side: `around`).
 //
-// Its blow is told to the cue ledger (brain.expect) as its windup starts and waits on the fairness guard
-// (brain.fairDelay): two cues needing different answers are never within the guard's `sep`. It is cued
-// as his blows are (combat:tell at the windup, combat:flash + the white glint flashLead before), and it
-// goes through d.hitPlayer as a thrown thing (`projectile`): blockable, parryable, dodgeable; a parry
-// pops the self and nicks his posture without recoiling him.
+// The selves also HELP him, outside packs: the one at his side shaping the Pearl (assist), the two
+// lifting the Moon-Swallowing Pearl (lift), the twin who drives a second Pearl from the hero's other
+// side (twin), the one he trades places with (swapIn), and the bodies of the Burial he springs off
+// (the pile). Each appears in a puff and bursts when its part is done.
+//
+// Never the real one: the lock-on, the name tag, the boss bar and the minimap follow only him; only he
+// casts a shadow; a self never blocks the hero's way (no body circle).
 //
 // Surface (fox.js): new FoxClones(d) (inside his constructor: every rig is built there, so a seeded
-// fight never shifts), reset(), frame(dt), pose(dt) (after his pose: their own poses, their hurt spheres
-// pushed into d.hurtSpheres), spawn(n, why), popAt(i, x, y, z, heavy, by) → popped, popAll(by),
-// burnAll() (phase 3's change), live (count), alive(i), nearest(x, z) → i | -1, swapWith(i) (the real
-// one and self i trade places), round(atImpact) (the Thousand-Body Round), handPoint(i, out) (the
-// Pearl's thread), rootOf(i) (drawnPoint), busy (a self winding up or striking).
-// Its rigs are plain hero rigs: a hero-side double (the Paper Double reward, ADR-148) can take one later.
+// fight never shifts), reset(), frame(dt), pose(dt) (after his pose: their poses, their hurt spheres
+// pushed into d.hurtSpheres), pack(spec, o) → pack | null, packLive (a pack is out), popAt(i, x, y, z,
+// heavy, by) → popped, popWithin(x, z, r, by), popAll(by), burnAll(), live, alive(i), nearest(x, z),
+// swapIn() (a self dropped beside the hero, he trades places with it), assist(), lift(), twin(o),
+// pile() → { x, z } | null (the Burial's pile), fed (bodies that burst into the Pearl), handPoint(i, out),
+// rootOf(i), setBlows(acts) (the hidden self-moves, realised once), seat / tearSeated (the intro).
 
-const IN = 'in', STALK = 'stalk', WIND = 'wind', STRIKE = 'strike', RECOVER = 'recover', DEAD = 'dead', SEATED = 'seated';
-// (helping him: ASSIST holds the Pearl with him while he shapes it, BRACE cups its hands for him to spring off)
-const ASSIST = 'assist', BRACE = 'brace';
+const DEAD = 'dead', SEATED = 'seated', PACK = 'pack', ASSIST = 'assist', LIFT = 'lift', TWIN = 'twin', LEFT = 'left';
 const PARTS = ['clone0', 'clone1', 'clone2', 'clone3', 'clone4', 'clone5', 'clone6', 'clone7'];
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
-const SEP = 1.7; // m the selves keep apart as they stalk
+const ease = (u) => u * u * (3 - 2 * u);
+const TAU = Math.PI * 2;
+const PACKS = 3; // packs out at once at most
 
 export class FoxClones {
   constructor(d) {
@@ -45,20 +60,21 @@ export class FoxClones {
     /** the pool: one record per rig, built now and never again */
     this.list = [];
     for (let i = 0; i < n; i++) this.list.push(this._make(i));
-    // the gameplay stream (its own: no look can move it) and the look stream
+    /** the packs out (fixed records) */
+    this.packs = Array.from({ length: PACKS }, (_, i) => ({ i, on: false, bodies: [] }));
+    // the gameplay stream (its own: no look can move it)
     this._gs = 0x1f83d9ab;
-    this._ls = 0x5be0cd19;
-    this.tokenAt = 0; // the clock time the next self may begin a windup
     this.clock = 0;
-    this._flash = { source: 'dragon', attack: 'paperCut', tell: TELL.NORMAL, x: 0, y: 0, z: 0, perilous: false, flare: false };
-    this._tell = { source: 'dragon', attack: 'paperCut', tell: TELL.NORMAL, impactIn: 0.5, x: 0, z: 0, flare: false };
+    this._flash = { source: 'dragon', attack: 'pack', tell: TELL.NORMAL, x: 0, y: 0, z: 0, perilous: false, flare: false };
+    this._tell = { source: 'dragon', attack: 'pack', tell: TELL.NORMAL, impactIn: 0.5, x: 0, z: 0, flare: false };
     this._ev = { kind: 'spawn', x: 0, z: 0, by: '' };
     this._from = { x: 0, z: 0 };
     this._extra = { around: true };
     this._v = d._v.clone();
     this._frameN = 0;
-    this._clip = null; // the paperCut clip (realised once: its windup is fixed)
-    this._cut = null; // that realised move (its beat's impact / end)
+    /** the hidden self-moves, realised once: { dive, cross, upkick, slam } → { act, clip, B } */
+    this.blows = {};
+    this.stats = { packs: 0, bodies: 0, struck: 0, parried: 0, popped: 0, refused: 0 };
     this.reset();
   }
 
@@ -87,12 +103,13 @@ export class FoxClones {
     ];
     return {
       i, rig, root, pilot, anim, lean, batch, hs, mats: rig.mats,
-      alive: false, state: DEAD, t: 0, x: 0, z: 0, yaw: 0, slot: 0, handle: null,
-      W: 0, impact: 0, end: 0, flashed: false, struck: false, round: false, closed: 0, fade: 0, ox: 0, oz: 0,
+      alive: false, state: DEAD, t: 0, x: 0, y: 0, z: 0, yaw: 0, handle: null, pack: null, k: 0, blow: 'cross',
+      W: 0, at: 0, impact: 0, until: 0, flashed: false, struck: false, fade: 0, ax: 0, ay: 0, az: 0, ang: 0, r: 1.5,
+      mx: 0, mz: 0, sx: undefined, sz: 0, acc: 0,
     };
   }
 
-  /** The gameplay stream 0..1 (positions, slots; never Math.random, never the looks'). */
+  /** The gameplay stream 0..1 (sides, rolls; never Math.random, never the looks'). */
   _g() {
     this._gs = (Math.imul(this._gs, 1664525) + 1013904223) >>> 0;
     return this._gs / 4294967296;
@@ -100,9 +117,20 @@ export class FoxClones {
 
   reset() {
     for (const c of this.list) this._hide(c);
-    this.tokenAt = 0;
+    for (const P of this.packs) this._endPack(P);
     this.clock = 0;
+    this.fed = 0;
     this._gs = 0x1f83d9ab;
+    this._pileAt = null;
+  }
+
+  /** The hidden self-moves (fox.js, once): { dive, cross, upkick, slam } → realised acts. */
+  setBlows(acts) {
+    for (const k in acts) {
+      const a = acts[k];
+      if (!a) continue;
+      this.blows[k] = { act: a, clip: a.clip ?? null, B: a.beats?.[0] ?? null };
+    }
   }
 
   // ---------------------------------------------------------------- the seated intro
@@ -117,7 +145,7 @@ export class FoxClones {
       const c = this.list[k];
       const a = d.yaw + Math.PI * (0.25 + (k / Math.max(1, n - 1)) * 1.5);
       const x = d.position.x + Math.sin(a) * r, z = d.position.z + Math.cos(a) * r;
-      this._wake(c, x, z, Math.atan2(d.position.x - x, d.position.z - z) + Math.PI);
+      this._show(c, x, 0, z, Math.atan2(d.position.x - x, d.position.z - z) + Math.PI);
       c.alive = false;
       c.state = SEATED;
       c.fade = 0;
@@ -142,10 +170,31 @@ export class FoxClones {
   _hide(c) {
     c.alive = false;
     c.state = DEAD;
-    c.round = false;
     c.handle?.cancel?.();
     c.handle = null;
+    c.pack = null;
     c.root.visible = false;
+    c.y = 0;
+  }
+
+  /** A rig shown at (x, y, z) facing `yaw` (its animator reset). */
+  _show(c, x, y, z, yaw) {
+    c.alive = true;
+    c.t = 0;
+    c.x = x;
+    c.y = y;
+    c.z = z;
+    c.yaw = yaw;
+    c.fade = 0;
+    c.acc = 0;
+    c.sx = undefined;
+    c.root.position.set(x, y, z);
+    c.root.visible = true;
+    c.pilot.yaw = yaw;
+    c.root.rotation.y = yaw;
+    c.anim.reset();
+    c.anim.play('loco', 0.01);
+    c.anim.teleported?.();
   }
 
   get live() {
@@ -158,69 +207,28 @@ export class FoxClones {
     return !!this.list[i]?.alive;
   }
 
-  /** A self winding up or striking (its blow is coming). */
-  get busy() {
-    for (const c of this.list) if (c.alive && (c.state === WIND || c.state === STRIKE)) return true;
-    return false;
+  /** The selves feeding the Pearl now: the one shaping it with him, and every pack body that struck
+   *  and burst into it (pearl.js: its burst and the drive's blow grow with them). */
+  get feeding() {
+    let n = this.fed;
+    for (const c of this.list) if (c.alive && c.state === ASSIST) n++;
+    return n;
   }
 
-  /** The cap this phase. */
-  cap() {
-    return Math.min(this.list.length, perPhase(this.T.max, this.d.phase));
+  /** A pack is out (booked, or its bodies still in the air). */
+  get packLive() {
+    return this.packs.some((P) => P.on);
   }
 
-  // ---------------------------------------------------------------- spawning
-  /**
-   * Tear `n` selves off him (to the phase's cap) on a ring round the hero, at least `apart` m from each
-   * other and from him, each on ground he may stand on. `why`: 'scatter' | 'phase' | 'debug'. Returns
-   * how many tore free.
-   */
-  spawn(n, why = 'scatter') {
-    const d = this.d, p = this.game.player?.position, T = this.T;
-    if (!p || !Number.isFinite(p.x + p.z) || d.mode === 'dying' || d.mode === 'dead' || d.mode === 'sleep') return 0;
-    let made = 0;
-    const want = Math.min(Math.max(0, n | 0), this.cap() - this.live);
-    for (let k = 0; k < want; k++) {
-      const c = this.list.find((x) => !x.alive);
-      if (!c) break;
-      let ok = false, x = 0, z = 0;
-      for (let tries = 0; tries < 14 && !ok; tries++) {
-        const a = this._g() * Math.PI * 2, r = T.ring[0] + (T.ring[1] - T.ring[0]) * this._g();
-        x = p.x + Math.sin(a) * r;
-        z = p.z + Math.cos(a) * r;
-        if (!d.standable(x, z)) continue;
-        if (Math.hypot(x - d.position.x, z - d.position.z) < T.apart) continue;
-        ok = true;
-        for (const o of this.list) if (o.alive && Math.hypot(o.x - x, o.z - z) < T.apart) ok = false;
-      }
-      if (!ok) continue;
-      this._wake(c, x, z, Math.atan2(p.x - x, p.z - z));
-      made++;
-      d.fx.cloneSpawn?.(x, z);
-      this._emit('spawn', x, z, why);
-    }
-    return made;
+  /** The rigs not in use. */
+  get free() {
+    let n = 0;
+    for (const c of this.list) if (c.state === DEAD) n++;
+    return n;
   }
 
-  _wake(c, x, z, yaw) {
-    c.alive = true;
-    c.state = IN;
-    c.t = 0;
-    c.x = x;
-    c.z = z;
-    c.yaw = yaw;
-    c.round = false;
-    c.handle = null;
-    c.fade = 1;
-    c.acc = 0;
-    c.sx = undefined;
-    c.root.position.set(x, 0, z);
-    c.root.visible = true;
-    c.pilot.yaw = yaw;
-    c.root.rotation.y = yaw;
-    c.anim.reset();
-    c.anim.play('loco', 0.01);
-    c.anim.teleported?.();
+  _take() {
+    return this.list.find((c) => c.state === DEAD) ?? null;
   }
 
   _emit(kind, x, z, by) {
@@ -230,6 +238,328 @@ export class FoxClones {
     e.z = z;
     e.by = by;
     this.d.emit('dragon:clone', e);
+  }
+
+  // ---------------------------------------------------------------- the packs
+  /**
+   * Book a pack now (moves.js header: `pack`). `spec`: { n, mode, gap, form, blow, tell, from, flare,
+   * r, linger, feed }; `o`: { attack, phase, cap (n at most), shift (s the whole pack may wait at most) }.
+   * Every body's mark, its appearing time and its impact are set here and every cue is told to the
+   * ledger. Returns the pack record, or null (no rig, no hero, or the fairness guard found no slot).
+   */
+  pack(spec, o = {}) {
+    const d = this.d, T = this.T, p = this.game.player?.position;
+    if (!spec || !p || !Number.isFinite(p.x + p.z) || d.mode === 'dying' || d.mode === 'dead' || d.mode === 'sleep') return null;
+    const P = this.packs.find((x) => !x.on);
+    if (!P) return null;
+    const phase = o.phase ?? d.phase;
+    let n = Math.max(0, Math.round(perPhase(spec.n, phase) ?? 0));
+    if (o.cap != null) n = Math.min(n, o.cap);
+    n = Math.min(n, this.free);
+    if (n <= 0) return null;
+    const together = spec.mode === 'together';
+    const blow = this.blows[spec.blow] ?? this.blows.cross;
+    const W = blow?.act ? Math.max(0.42, T.blows[spec.blow] ?? 0.56) : 0.56;
+    const gap = together ? 0 : Math.max(d.T.minHitGap ?? 0.32, spec.gap ?? 0.34);
+    const tell = spec.tell ?? TELL.NORMAL;
+    const from0 = Math.max(W + 0.05, spec.from ?? W + 0.3);
+    // the fairness guard: the whole pack later by as little as clears every cue (or not at all)
+    const B = d.brain, maxShift = o.shift ?? d.T.pressure?.guard?.maxDelay ?? 0.6;
+    let shift = 0;
+    if (B?.fairDelay) {
+      for (let k = 0, m = together ? 1 : n; k < m; k++) {
+        const dl = B.fairDelay(from0 + gap * k + shift, tell, Math.max(0, maxShift - shift), o.attack ?? 'pack');
+        if (dl < 0) {
+          this.stats.refused++;
+          return null;
+        }
+        if (dl > 0) {
+          shift += dl;
+          if (B.stats) B.stats.delays++;
+        }
+      }
+    }
+    const from = from0 + shift;
+    P.on = true;
+    P.spec = spec;
+    P.mode = together ? 'together' : 'sequence';
+    P.attack = o.attack ?? 'pack';
+    P.tell = tell;
+    P.flare = !!spec.flare;
+    P.n = n;
+    P.left = n; // bodies not yet burst or popped
+    P.form = spec.form ?? 'ring';
+    P.blow = spec.blow ?? 'cross';
+    P.W = W;
+    P.r = spec.r ?? T.together.r;
+    P.linger = spec.linger ?? T.linger;
+    P.feed = !!spec.feed;
+    P.impact = this.clock + from; // the first (together: the one) impact on this clock
+    P.gap = gap;
+    P.cx = p.x;
+    P.cz = p.z;
+    P.locked = false;
+    P.flashed = false;
+    P.told = false;
+    P.hit = false;
+    P.result = null;
+    P.parried = 0;
+    P.act = o.act ?? null;
+    P.bodies.length = 0;
+    P.handle?.cancel?.();
+    P.handle = together ? B?.expect?.(from, tell, P.attack) ?? null : null;
+    // the sides they come from: round the hero, starting from a side away from him (the real one)
+    const toHim = Math.atan2(d.position.x - p.x, d.position.z - p.z);
+    const a0 = toHim + Math.PI * (0.35 + 0.3 * this._g()) * (this._g() < 0.5 ? 1 : -1);
+    const turn = this._g() < 0.5 ? 1 : -1;
+    for (let k = 0; k < n; k++) {
+      const c = this._take();
+      if (!c) break;
+      let ang, r;
+      switch (P.form) {
+        case 'sides': // left and right of the hero as he faces the real one
+          ang = toHim + (k % 2 ? -1 : 1) * Math.PI * 0.5 + (k >> 1) * 0.5;
+          r = T.ring;
+          break;
+        case 'fan': // across his front, between him and the real one
+          ang = toHim + (n > 1 ? (k / (n - 1) - 0.5) * 2.2 : 0);
+          r = T.ring;
+          break;
+        case 'above': // close in from overhead
+          ang = a0 + turn * (k / n) * TAU;
+          r = T.ring * 0.7;
+          break;
+        case 'low': // sliding in along the floor
+          ang = a0 + turn * (k / n) * TAU;
+          r = T.ring;
+          break;
+        default: // 'ring': round him, one side after another
+          ang = a0 + turn * (k / n) * TAU;
+          r = T.ring;
+      }
+      c.state = PACK;
+      c.alive = false; // (it appears at c.at)
+      c.pack = P;
+      c.k = k;
+      c.blow = P.blow;
+      c.W = W;
+      c.impact = P.impact + gap * k;
+      c.at = c.impact - W;
+      c.until = c.impact + P.linger;
+      c.ang = ang;
+      c.r = r;
+      c.flashed = false;
+      c.struck = false;
+      c.handle?.cancel?.();
+      c.handle = together ? null : B?.expect?.(c.impact - this.clock, tell, P.attack) ?? null;
+      P.bodies.push(c);
+    }
+    this.stats.packs++;
+    this.stats.bodies += P.bodies.length;
+    // the full deflect (duelist.js onParried): a long pack inside a move counts its blows as the move's
+    const F = d.T.fullDeflect;
+    if (P.act && !together && P.bodies.length >= (F?.minHits ?? 5) - 1) P.act.hits = (P.act.hits ?? 0) + P.bodies.length;
+    return P;
+  }
+
+  _endPack(P) {
+    if (!P) return;
+    P.on = false;
+    P.handle?.cancel?.();
+    P.handle = null;
+    P.bodies.length = 0;
+  }
+
+  /** Where a pack body's mark is now (round the hero, or round the locked centre of a `together`). */
+  _mark(c, P, p) {
+    if (!P.locked) {
+      P.cx = p.x;
+      P.cz = p.z;
+    }
+    c.mx = P.cx + Math.sin(c.ang) * c.r;
+    c.mz = P.cz + Math.cos(c.ang) * c.r;
+  }
+
+  /** A pack body appears (its puff in the air), already in its attack pose. */
+  _appear(c, P, p) {
+    const T = this.T;
+    this._mark(c, P, p);
+    let x, y, z;
+    if (c.blow === 'dive') {
+      // high over its mark, a little further out
+      x = P.cx + Math.sin(c.ang) * (c.r + 0.8);
+      z = P.cz + Math.cos(c.ang) * (c.r + 0.8);
+      y = T.drop.h;
+    } else {
+      const R = c.blow === 'upkick' ? T.appearR + 0.8 : T.appearR;
+      x = P.cx + Math.sin(c.ang) * R;
+      z = P.cz + Math.cos(c.ang) * R;
+      y = c.blow === 'upkick' ? 0.15 : T.hop * 0.8;
+    }
+    c.ax = x;
+    c.ay = y;
+    c.az = z;
+    this._show(c, x, y, z, Math.atan2(p.x - x, p.z - z));
+    c.state = PACK;
+    c.pack = P;
+    c.fade = 1;
+    c.anim.play('duel', 0.01, true);
+    this.d.fx.packPuff?.(x, y + 1.0, z);
+    this._emit('spawn', x, z, P.attack);
+    // its cue: a sequence body's own; a together pack's one, as its first body shows
+    if (P.mode === 'sequence' || !P.told) {
+      P.told = true;
+      const tl = this._tell;
+      tl.attack = P.attack;
+      tl.tell = P.tell;
+      tl.flare = P.flare;
+      tl.impactIn = Math.max(0.05, c.impact - this.clock);
+      tl.x = x;
+      tl.z = z;
+      this.d.emit('combat:tell', tl);
+    }
+  }
+
+  /** A pack body through its windup: to its mark (falling, leaping or sliding), its glint, its blow. */
+  _packFrame(c, P, p, dt) {
+    const T = this.T, d = this.d;
+    if (!c.alive) {
+      if (this.clock >= c.at) this._appear(c, P, p);
+      else return;
+    }
+    const left = c.impact - this.clock;
+    if (left > 0) {
+      const u = Math.min(1, Math.max(0, 1 - left / Math.max(0.05, c.W)));
+      if (u >= T.lock && !P.locked && P.mode === 'together') P.locked = true;
+      if (u < T.lock) this._mark(c, P, p);
+      const e = ease(Math.min(1, u / Math.max(0.3, T.lock + 0.1)));
+      c.x = c.ax + (c.mx - c.ax) * e;
+      c.z = c.az + (c.mz - c.az) * e;
+      if (c.blow === 'dive') c.y = c.ay * (1 - u) * (1 - u);
+      else if (c.blow === 'upkick') c.y = 0;
+      else c.y = Math.max(0, c.ay * (1 - u) + T.hop * 4 * u * (1 - u) * 0.5);
+      const tx = P.mode === 'together' ? P.cx : p.x, tz = P.mode === 'together' ? P.cz : p.z;
+      c.yaw = turnToward(c.yaw, Math.atan2(tx - c.x, tz - c.z), 14 * dt);
+      // the glint: each body's own (sequence), or one over the hero (together)
+      const lead = perPhase(d.T.flashLead, d.phase);
+      if (left <= lead && !c.flashed) {
+        c.flashed = true;
+        if (P.mode === 'sequence') this._glint(P, this._tipOf(c));
+        else if (!P.flashed) {
+          P.flashed = true;
+          const v = this._v.set(P.cx, 1.6, P.cz);
+          this._glint(P, v);
+        }
+      }
+      return;
+    }
+    if (!c.struck) {
+      c.struck = true;
+      c.y = 0;
+      if (P.mode === 'sequence') this._strikeOne(c, P, p);
+      else if (!P.hit) this._strikeTogether(P, p);
+      if (!c.alive) return;
+    }
+    if (this.clock >= c.until) this._burst(c, P);
+  }
+
+  _glint(P, v) {
+    const f = this._flash, d = this.d;
+    f.attack = P.attack;
+    f.tell = P.tell;
+    f.flare = P.flare;
+    f.perilous = dodgeOnly(P.tell);
+    f.x = v.x;
+    f.y = v.y;
+    f.z = v.z;
+    d.emit('combat:flash', f);
+    d.fx.tellFlash(P.tell, v.x, v.y, v.z, 1, P.flare);
+  }
+
+  /** A sequence body's blow: one result if the hero is in its reach and in front of it. */
+  _strikeOne(c, P, p) {
+    const d = this.d, T = this.T, pl = this.game.player;
+    c.handle = null; // (the ledger's entry expires by itself after the impact)
+    if (!pl || pl.alive === false) return;
+    const pr = pl.radius ?? 0.45, dx = p.x - c.x, dz = p.z - c.z, dist = Math.hypot(dx, dz);
+    const ang = Math.abs(wrapAngle(Math.atan2(dx, dz) - c.yaw));
+    if (dist > T.reach + pr || (dist > pr + 0.3 && ang > 1.0 + Math.asin(Math.min(1, pr / Math.max(dist, 1e-3))))) return;
+    const from = this._from;
+    from.x = c.x;
+    from.z = c.z;
+    this.stats.struck++;
+    const r = d.hitPlayer({
+      damage: T.damage, knockback: T.knockback, tell: P.tell, attack: P.attack, from, projectile: true, parryPosture: T.parryPosture,
+      flare: P.flare, extra: this._extra,
+    });
+    if (r === RESULT.PARRIED) {
+      this.stats.parried++;
+      P.parried++;
+      if (P.act && P.act === d.brain.act) P.act.parried = (P.act.parried ?? 0) + 1;
+      this._pop(c, 'parry');
+    }
+  }
+
+  /** A together pack lands: ONE result for all of them. */
+  _strikeTogether(P, p) {
+    const d = this.d, T = this.T, pl = this.game.player;
+    P.hit = true;
+    P.handle = null;
+    if (!pl || pl.alive === false) return;
+    let any = false;
+    for (const c of P.bodies) if (c.alive) any = true;
+    if (!any) return;
+    const pr = pl.radius ?? 0.45;
+    if (Math.hypot(p.x - P.cx, p.z - P.cz) > P.r + pr) return;
+    const from = this._from;
+    // (from the side the most bodies came: the knock-back pushes him out of the ring)
+    let sx = 0, sz = 0;
+    for (const c of P.bodies) if (c.alive) {
+      sx += c.x - P.cx;
+      sz += c.z - P.cz;
+    }
+    const sl = Math.hypot(sx, sz);
+    from.x = P.cx + (sl > 1e-3 ? sx / sl : Math.sin(d.yaw)) * 1.2;
+    from.z = P.cz + (sl > 1e-3 ? sz / sl : Math.cos(d.yaw)) * 1.2;
+    this.stats.struck++;
+    const TG = T.together;
+    const r = d.hitPlayer({
+      damage: P.spec.damage ?? TG.damage, knockback: TG.knockback, knockdown: dodgeOnly(P.tell), tell: P.tell, attack: P.attack, from, projectile: true,
+      parryPosture: TG.parryPosture, flare: P.flare, extra: this._extra,
+    });
+    P.result = r;
+    if (r === RESULT.PARRIED) {
+      // one parry bursts them all; each popped self adds to his posture
+      this.stats.parried++;
+      let n = 0;
+      for (const c of P.bodies) if (c.alive) n += this._pop(c, 'parry');
+      d.addPosture(T.popPosture * n);
+    }
+  }
+
+  /** A body done with its blow bursts (fed into the Pearl if its pack feeds it). */
+  _burst(c, P) {
+    const h = c.hs[0];
+    if (P?.feed && this.d.pearl?.charging) {
+      this.fed++;
+      this.d.fx.cloneBurn?.(c.x, 1.1, c.z, ...this._palm(), 0.6);
+    } else this.d.fx.clonePop?.(c.x, Number.isFinite(h.y) && h.y > 0 ? h.y : 1.1, c.z, 'burst');
+    this._emit('pop', c.x, c.z, 'burst');
+    this._leave(c, P);
+  }
+
+  _palm() {
+    const v = this._v;
+    this.d.palmPoint?.(v);
+    return [v.x, v.y, v.z];
+  }
+
+  /** A body leaves its pack (burst or popped); the pack ends with its last body. */
+  _leave(c, P) {
+    this._hide(c);
+    if (!P) return;
+    P.left--;
+    if (P.left <= 0) this._endPack(P);
   }
 
   // ---------------------------------------------------------------- popping
@@ -250,9 +580,13 @@ export class FoxClones {
     return n;
   }
 
+  /** Every self pops, and every pack still to come is called off (a break, his death, a reset). */
   popAll(by = 'all') {
     let n = 0;
-    for (const c of this.list) if (c.alive) n += this._pop(c, by);
+    for (const c of this.list) {
+      if (c.alive) n += this._pop(c, by);
+      else if (c.state === PACK) this._leave(c, c.pack);
+    }
     return n;
   }
 
@@ -260,26 +594,34 @@ export class FoxClones {
   burnAll() {
     const d = this.d, c1 = d._hs[1];
     for (const c of this.list) {
-      if (!c.alive) continue;
-      d.fx.cloneBurn?.(c.x, 1.1, c.z, c1.x, c1.y, c1.z, 1);
-      this._emit('pop', c.x, c.z, 'mantle');
-      this._hide(c);
+      if (c.state === SEATED || c.state === DEAD) continue;
+      if (c.alive) {
+        d.fx.cloneBurn?.(c.x, 1.1, c.z, c1.x, c1.y, c1.z, 1);
+        this._emit('pop', c.x, c.z, 'mantle');
+      }
+      this._leave(c, c.pack);
     }
   }
 
   _pop(c, by) {
     if (!c.alive) return 0;
-    const d = this.d;
+    const d = this.d, P = c.pack;
     const h = c.hs[0];
     d.fx.clonePop?.(c.x, Number.isFinite(h.y) && h.y > 0 ? h.y : 1.1, c.z, by);
     this._emit('pop', c.x, c.z, by);
-    // the cut it was making is gone: the ledger forgets it; the token frees up
-    if (c.state === WIND || c.state === STRIKE) this.tokenAt = Math.min(this.tokenAt, this.clock + 0.3);
-    this._hide(c);
+    this.stats.popped++;
+    // its blow is gone: the ledger forgets it (a together pack's one blow goes when no body is left)
+    c.handle?.cancel?.();
+    c.handle = null;
+    if (P?.mode === 'together' && !P.hit && !P.bodies.some((o) => o !== c && (o.alive || (o.state === PACK && !o.alive)))) {
+      P.handle?.cancel?.();
+      P.handle = null;
+    }
+    this._leave(c, P);
     return 1;
   }
 
-  // ---------------------------------------------------------------- the real one trades places
+  // ---------------------------------------------------------------- he trades places with a self
   /** The live self nearest (x, z), or -1. */
   nearest(x, z) {
     let best = -1, bd = Infinity;
@@ -294,98 +636,189 @@ export class FoxClones {
     return best;
   }
 
-  /** He and self i trade places (Changing Places, Hand to Hand): he stands where it stood, facing the
-   *  hero; it stands where he stood (a puff of paper on both). True if done. */
-  swapWith(i) {
-    const c = this.list[i], d = this.d;
-    if (!c?.alive) return false;
+  /**
+   * Changing Places, Hand to Hand: a self drops in beside the hero (a puff, `T.swapAt` m off, on a side
+   * he may stand on) and he trades places with it at once: he stands where it landed, facing the hero;
+   * it stands where he stood and bursts `swapLinger` s later. True if done.
+   */
+  swapIn() {
+    const d = this.d, p = this.game.player?.position, c = this._take();
+    if (!c || !p || !Number.isFinite(p.x + p.z)) return false;
+    const a0 = Math.atan2(d.position.x - p.x, d.position.z - p.z), r = this.T.swapAt;
+    let x = NaN, z = NaN;
+    const turn = (this._g() < 0.5 ? 1 : -1) * (1.3 + 0.8 * this._g());
+    for (const da of [turn, -turn, turn * 0.5, -turn * 0.5, Math.PI]) {
+      const tx = p.x + Math.sin(a0 + da) * r, tz = p.z + Math.cos(a0 + da) * r;
+      if (!d.standable(tx, tz)) continue;
+      x = tx;
+      z = tz;
+      break;
+    }
+    if (!Number.isFinite(x + z)) return false;
     const x0 = d.position.x, z0 = d.position.z;
-    d.position.x = c.x;
-    d.position.z = c.z;
+    d.fx.packPuff?.(x, 1.0, z);
+    d.position.x = x;
+    d.position.z = z;
     d.position.y = 0;
     d.moveBy(0, 0);
-    const p = this.game.player?.position;
-    if (p) d.yaw = Math.atan2(p.x - d.position.x, p.z - d.position.z);
+    d.yaw = Math.atan2(p.x - d.position.x, p.z - d.position.z);
     d.object3d.rotation.y = d.yaw;
     d.anim.teleported?.();
-    // the self he left: where he stood, its windup (if any) gone
-    c.handle?.cancel?.();
-    c.handle = null;
-    if (c.state === WIND || c.state === STRIKE) this.tokenAt = Math.min(this.tokenAt, this.clock + 0.3);
-    c.state = RECOVER;
-    c.t = 0;
-    c.round = false;
-    c.x = x0;
-    c.z = z0;
-    c.root.position.set(x0, 0, z0);
-    c.anim.teleported?.();
+    // the self he left: where he stood, for a moment
+    this._show(c, x0, 0, z0, Math.atan2(p.x - x0, p.z - z0));
+    c.state = LEFT;
+    c.until = this.clock + this.T.swapLinger;
+    this._emit('spawn', x0, z0, 'swap');
     d.fx.flit?.(x0, z0, d.position.x, d.position.z);
     return true;
   }
 
   // ---------------------------------------------------------------- helping him
-  /** Self i goes to his side (TUNING.pearl.assist m to his left) and holds the Pearl with him while he
-   *  shapes it (the drive); it goes back to stalking when the charge ends. */
-  assist(i, d) {
-    const c = this.list[i];
-    if (!c?.alive) return false;
-    this._release(c);
+  /** The self at his side shaping the Pearl with him (the drive): it appears at his left, holds the
+   *  Pearl with him, and bursts into it `helperLinger` s after the charge ends. Its index or -1. */
+  assist() {
+    const c = this._take(), d = this.d;
+    if (!c) return -1;
+    const { x, z } = this._side(d.T.pearl.assist, 0.2);
+    this._show(c, x, 0, z, d.yaw);
     c.state = ASSIST;
-    c.t = 0;
-    return true;
+    c.until = Infinity;
+    c.fade = 1;
+    d.fx.packPuff?.(x, 1.0, z);
+    this._emit('spawn', x, z, 'assist');
+    return c.i;
   }
 
-  /** Self i stands and cups its hands: he springs off them (Fox Descending pops it). */
-  brace(i, d) {
-    const c = this.list[i];
-    if (!c?.alive) return false;
-    this._release(c);
-    c.state = BRACE;
-    c.t = 0;
-    return true;
-  }
-
-  /** A self taken off whatever it was doing: its blow (if any) is gone from the ledger, the token freed. */
-  _release(c) {
-    c.handle?.cancel?.();
-    c.handle = null;
-    if (c.state === WIND || c.state === STRIKE) this.tokenAt = Math.min(this.tokenAt, this.clock + 0.3);
-    c.round = false;
-  }
-
-  // ---------------------------------------------------------------- the Thousand-Body Round
-  /**
-   * The Round: every live self cuts in turn, `T.round` s apart, the last one `T.round` s before his own
-   * blow lands (`hisImpactIn` s from now). Filled from the last slot back, so there is never a gap
-   * before his blow. Each cut is told to the ledger as its windup starts, and a guard meets it from
-   * any side (`around`).
-   */
-  round(hisImpactIn) {
-    const live = this.list.filter((c) => c.alive);
-    const gap = this.T.round, n = live.length;
-    // the order: round the hero, so the cuts come from one side after another
-    const p = this.game.player?.position;
-    if (p) live.sort((a, b) => Math.atan2(a.x - p.x, a.z - p.z) - Math.atan2(b.x - p.x, b.z - p.z));
-    for (let k = 0; k < n; k++) {
-      const c = live[k];
-      const at = hisImpactIn - gap * (n - k);
-      c.handle?.cancel?.();
-      c.handle = null;
-      c.round = true;
-      c.roundAt = this.clock + Math.max(this.T.windup, at); // its impact on the clones' clock
-      c.state = STALK;
-      c.t = 0;
+  /** The two selves lifting the Moon-Swallowing Pearl with him: at his sides, arms up, until `until`
+   *  (s from now) then they burst. Returns how many came. */
+  lift(until = 1.5) {
+    const d = this.d;
+    let n = 0;
+    for (const s of [1, -1]) {
+      const c = this._take();
+      if (!c) break;
+      const { x, z } = this._side(0.95 * s, -0.15);
+      this._show(c, x, 0, z, d.yaw);
+      c.state = LIFT;
+      c.side = s;
+      c.until = this.clock + until;
+      c.fade = 1;
+      d.fx.packPuff?.(x, 1.0, z);
+      this._emit('spawn', x, z, 'lift');
+      n++;
     }
-    // (no self takes the token while the Round runs: its cuts are the Round's)
-    this.tokenAt = Math.max(this.tokenAt, this.clock + hisImpactIn + 0.4);
     return n;
+  }
+
+  /**
+   * The Twin Pearls' second body: it appears across the hero from him (`dist` m from the hero, on a side
+   * it may stand on), shapes its own Pearl and drives it along its line into the hero at the same
+   * instant as his (`impactIn` s from now): no cue of its own (his red cue is the one), its own result.
+   * o: { impactIn, damage, knockback, w, dash }. Its index or -1.
+   */
+  twin(o) {
+    const d = this.d, p = this.game.player?.position, c = this._take();
+    if (!c || !p) return -1;
+    const a = Math.atan2(d.position.x - p.x, d.position.z - p.z) + Math.PI;
+    const R = Math.max(2.5, Math.hypot(d.position.x - p.x, d.position.z - p.z));
+    let x = p.x + Math.sin(a) * R, z = p.z + Math.cos(a) * R;
+    if (!d.standable(x, z)) {
+      x = p.x + Math.sin(a + 0.6) * R;
+      z = p.z + Math.cos(a + 0.6) * R;
+    }
+    this._show(c, x, 0, z, Math.atan2(p.x - x, p.z - z));
+    c.state = TWIN;
+    c.fade = 1;
+    c.impact = this.clock + Math.max(0.3, o.impactIn);
+    c.W = Math.max(0.3, o.impactIn);
+    c.until = c.impact + 0.25;
+    c.ax = x;
+    c.az = z;
+    c.struck = false;
+    c.twin = o;
+    c.handle?.cancel?.();
+    c.handle = d.brain.expect?.(o.impactIn, TELL.RED, 'twinPearl') ?? null;
+    d.fx.packPuff?.(x, 1.0, z);
+    this._emit('spawn', x, z, 'twin');
+    return c.i;
+  }
+
+  /** The twin through its charge and its drive (its own Pearl drawn at its palm). */
+  _twinFrame(c, p, dt) {
+    const d = this.d, o = c.twin, left = c.impact - this.clock;
+    if (left > 0) {
+      const u = 1 - left / c.W;
+      if (u < 0.8) {
+        c.yaw = turnToward(c.yaw, Math.atan2(p.x - c.x, p.z - c.z), 12 * dt);
+        c.lx = p.x;
+        c.lz = p.z;
+      } else {
+        // the drive: a dash along its line, stopping a metre short of where it aimed
+        const dx = c.lx - c.ax, dz = c.lz - c.az, L = Math.hypot(dx, dz) || 1;
+        const go = Math.max(0, Math.min(o.dash ?? 5, L - 1.0)), k = ease((u - 0.8) / 0.2);
+        c.x = c.ax + (dx / L) * go * k;
+        c.z = c.az + (dz / L) * go * k;
+      }
+      const P = this._palmOf(c);
+      d.fx.pearlCharge?.(P.x, P.y, P.z, Math.min(1, u / 0.8), dt);
+      return;
+    }
+    if (!c.struck) {
+      c.struck = true;
+      c.handle = null;
+      const pl = this.game.player;
+      const dx = c.lx - c.ax, dz = c.lz - c.az, L = Math.hypot(dx, dz) || 1, ux = dx / L, uz = dz / L;
+      const rx = p.x - c.x, rz = p.z - c.z, along = rx * ux + rz * uz, across = Math.abs(-rx * uz + rz * ux);
+      const pr = pl?.radius ?? 0.45;
+      const bx = c.x + ux * 1.4, bz = c.z + uz * 1.4;
+      d.fx.pearlBurst?.(bx, bz, 2.0);
+      d.game.world?.impact?.(bx, bz, 2.0, d.T.world.pearl, d._wbo ?? { kind: 'blast', by: 'boss', dx: NaN, dz: NaN, y: 1, src: -1, scar: true });
+      if (pl && pl.alive !== false && along > -0.6 && along < 2.6 + pr && across < (o.w ?? 1.3) * 0.5 + pr) {
+        const from = this._from;
+        from.x = c.x;
+        from.z = c.z;
+        d.hitPlayer({ damage: o.damage, knockback: o.knockback, knockdown: true, tell: TELL.RED, attack: 'twinPearl', from, projectile: true });
+      }
+    }
+    if (this.clock >= c.until) {
+      d.fx.clonePop?.(c.x, 1.1, c.z, 'burst');
+      this._emit('pop', c.x, c.z, 'burst');
+      this._hide(c);
+    }
+  }
+
+  /** The point `side` m to his left (negative: right) and `fwd` m ahead. */
+  _side(side, fwd) {
+    const d = this.d, lx = Math.cos(d.yaw), lz = -Math.sin(d.yaw);
+    return { x: d.position.x + lx * side + Math.sin(d.yaw) * fwd, z: d.position.z + lz * side + Math.cos(d.yaw) * fwd };
+  }
+
+  /**
+   * The Burial's pile: the bodies of a `together` pack that has struck and lies piled (its linger), or
+   * null. { x, z } its centre (the hero's spot as they locked on).
+   */
+  pile() {
+    for (const P of this.packs) {
+      if (!P.on || P.mode !== 'together' || !P.hit) continue;
+      if (P.bodies.some((c) => c.alive)) return { x: P.cx, z: P.cz };
+    }
+    return null;
+  }
+
+  /** The pile's bodies burst (he springs off them). */
+  springOff(by = 'spring') {
+    for (const P of this.packs) {
+      if (!P.on || P.mode !== 'together' || !P.hit) continue;
+      for (const c of P.bodies.slice()) if (c.alive) this._pop(c, by);
+    }
   }
 
   // ---------------------------------------------------------------- the frame
   frame(dt) {
     const d = this.d;
     this.clock += dt;
-    if (!this.list.some((c) => c.alive)) return;
+    if (!d.pearl?.charging && !this.list.some((c) => c.state === ASSIST)) this.fed = 0;
+    if (!this.list.some((c) => c.state !== DEAD && c.state !== SEATED)) return;
     const pl = this.game.player, p = pl?.position;
     // he is gone: so are they
     if (d.mode === 'dying' || d.mode === 'dead') {
@@ -394,231 +827,85 @@ export class FoxClones {
     }
     if (!p) return;
     const T = this.T;
-    const pearlFlying = !!d.pearl?.flying;
-    const free = d.mode === 'foot' || (d.mode === 'act' && !!d.brain.act?.def?.clonesFight);
     for (const c of this.list) {
-      if (!c.alive) continue;
+      if (c.state === DEAD || c.state === SEATED) continue;
       c.t += dt;
-      if (c.fade > 0) c.fade = Math.max(0, c.fade - dt / Math.max(0.05, T.in));
-      const dx = p.x - c.x, dz = p.z - c.z, dist = Math.hypot(dx, dz) || 1e-3;
+      if (c.fade > 0) c.fade = Math.max(0, c.fade - dt / 0.18);
       switch (c.state) {
-        case IN:
-          c.yaw = turnToward(c.yaw, Math.atan2(dx, dz), 10 * dt);
-          this._walk(c, 0, dt);
-          if (c.t >= T.in) {
-            c.state = STALK;
-            c.t = 0;
-          }
+        case PACK:
+          if (c.pack?.on) this._packFrame(c, c.pack, p, dt);
+          else this._hide(c);
           break;
-        case STALK: {
-          c.yaw = turnToward(c.yaw, Math.atan2(dx, dz), 9 * dt);
-          if (c.round) {
-            // the Round: in close at a run, then its cut at its slot
-            const lead = c.roundAt - this.clock;
-            this._approach(c, dx, dz, dist, 1.7, lead < T.windup + 0.6 ? 7 : 4, dt);
-            if (lead <= T.windup + 1e-4) this._startCut(c, Math.max(0.05, lead), true);
-            break;
-          }
-          this._approach(c, dx, dz, dist, T.slot, T.walk, dt);
-          // the token: one self cuts at a time
-          if (free && !pearlFlying && dist <= T.reach && this.clock >= this.tokenAt && !this.busy && pl.alive !== false) {
-            const dl = d.brain.fairDelay?.(T.windup, TELL.NORMAL, 0.4, 'paperCut') ?? 0;
-            if (dl >= 0) {
-              if (dl > 0 && d.brain.stats) d.brain.stats.delays++;
-              this._startCut(c, T.windup + dl, false);
-            } else this.tokenAt = this.clock + 0.25; // not now: ask again in a moment
-          }
-          break;
-        }
-        case WIND:
-          this._wind(c, dx, dz, dist, dt);
-          break;
-        case STRIKE:
-          if (this.clock >= c.end) {
-            c.state = RECOVER;
-            c.t = 0;
-            // (a Round's cut is its one cut: then it stalks as any self, the token resting a while)
-            if (c.round) this.tokenAt = Math.max(this.tokenAt, this.clock + perPhase(T.every, d.phase));
-            c.round = false;
-          }
+        case TWIN:
+          this._twinFrame(c, p, dt);
           break;
         case ASSIST: {
-          // at his left, facing the way he faces; back to the fight once the charge is over
-          if (!d.pearl?.charging) {
-            c.state = STALK;
-            c.t = 0;
+          // at his left, facing the way he faces; it bursts into the Pearl once the charge is over
+          if (!d.pearl?.charging && c.until === Infinity) c.until = this.clock + T.helperLinger;
+          if (this.clock >= c.until) {
+            d.fx.clonePop?.(c.x, 1.1, c.z, 'burst');
+            this._emit('pop', c.x, c.z, 'burst');
+            this._hide(c);
             break;
           }
-          const off = d.T.pearl.assist, lx = Math.cos(d.yaw), lz = -Math.sin(d.yaw);
-          const tx = d.position.x + lx * off + Math.sin(d.yaw) * 0.2, tz = d.position.z + lz * off + Math.cos(d.yaw) * 0.2;
-          const gx = tx - c.x, gz = tz - c.z, gl = Math.hypot(gx, gz);
-          if (gl > 0.05) this._step(c, (gx / gl) * Math.min(gl, 7 * dt), (gz / gl) * Math.min(gl, 7 * dt), dt);
-          else this._walk(c, 0, dt);
+          const { x, z } = this._side(d.T.pearl.assist, 0.2);
+          const k = Math.min(1, dt * 10);
+          c.x += (x - c.x) * k;
+          c.z += (z - c.z) * k;
           c.yaw = turnToward(c.yaw, d.yaw, 10 * dt);
           break;
         }
-        case BRACE: {
-          // facing him, the hands cupped; if he does not come (the move was cut short), back to the fight
-          c.yaw = turnToward(c.yaw, Math.atan2(d.position.x - c.x, d.position.z - c.z), 10 * dt);
-          this._walk(c, 0, dt);
-          if (c.t > 2.5 || (d.mode !== 'act' && c.t > 0.3)) {
-            c.state = STALK;
-            c.t = 0;
+        case LIFT: {
+          if (this.clock >= c.until || d.mode !== 'act') {
+            d.fx.clonePop?.(c.x, 1.1, c.z, 'burst');
+            this._emit('pop', c.x, c.z, 'burst');
+            this._hide(c);
+            break;
           }
+          const { x, z } = this._side(0.95 * c.side, -0.15);
+          const k = Math.min(1, dt * 10);
+          c.x += (x - c.x) * k;
+          c.z += (z - c.z) * k;
+          c.y = Math.max(0, d.position.y);
+          c.yaw = turnToward(c.yaw, d.yaw, 10 * dt);
           break;
         }
-        case RECOVER:
-          this._walk(c, 0, dt);
-          if (c.t >= T.recover) {
-            c.state = STALK;
-            c.t = 0;
+        case LEFT:
+          if (this.clock >= c.until) {
+            d.fx.clonePop?.(c.x, 1.1, c.z, 'burst');
+            this._emit('pop', c.x, c.z, 'burst');
+            this._hide(c);
           }
           break;
         default:
           break;
       }
     }
-    this._separate(dt);
   }
 
-  /** Walk toward a spot `stand` m from the hero (along the line it is on), at most `speed` m/s. */
-  _approach(c, dx, dz, dist, stand, speed, dt) {
-    const gap = dist - stand;
-    if (Math.abs(gap) < 0.08) {
-      this._walk(c, 0, dt);
-      return;
-    }
-    const s = clamp(gap, -speed * dt, speed * dt);
-    this._step(c, (dx / dist) * s, (dz / dist) * s, dt);
-  }
-
-  _walk(c, s, dt) {
-    c.pilot.groundVel.x = 0;
-    c.pilot.groundVel.z = 0;
-  }
-
-  _step(c, mx, mz, dt) {
-    const x0 = c.x, z0 = c.z;
-    c.x += mx;
-    c.z += mz;
-    // (inside his bound, out of the world's stones: d.standable's resolve)
-    const B = this.d.bound + 1.2, r = Math.hypot(c.x, c.z);
-    if (r > B) {
-      c.x *= B / r;
-      c.z *= B / r;
-    }
-    const o = this._from;
-    o.x = c.x;
-    o.z = c.z;
-    this.game.world?.resolve?.(o, 0.35, Infinity);
-    if (Number.isFinite(o.x + o.z)) {
-      c.x = o.x;
-      c.z = o.z;
-    }
-    c.pilot.groundVel.x = (c.x - x0) / Math.max(dt, 1e-4);
-    c.pilot.groundVel.z = (c.z - z0) / Math.max(dt, 1e-4);
-  }
-
-  /** The selves keep apart (and off the real one) as they stalk. */
-  _separate(dt) {
-    const L = this.list, d = this.d;
-    for (const a of L) {
-      if (!a.alive || a.state === WIND || a.state === STRIKE || a.state === ASSIST || a.state === BRACE) continue;
-      let px = 0, pz = 0;
-      for (const b of L) {
-        if (b === a || !b.alive) continue;
-        const dx = a.x - b.x, dz = a.z - b.z, dd = Math.hypot(dx, dz);
-        if (dd > 1e-3 && dd < SEP) {
-          px += (dx / dd) * (SEP - dd);
-          pz += (dz / dd) * (SEP - dd);
-        }
-      }
-      const dx = a.x - d.position.x, dz = a.z - d.position.z, dd = Math.hypot(dx, dz);
-      if (dd > 1e-3 && dd < SEP) {
-        px += (dx / dd) * (SEP - dd);
-        pz += (dz / dd) * (SEP - dd);
-      }
-      if (px || pz) {
-        // (through _step: pushed apart, a self still keeps to his ground and out of the stones)
-        const k = Math.min(1, dt * 3), vx = a.pilot.groundVel.x, vz = a.pilot.groundVel.z;
-        this._step(a, px * k, pz * k, dt);
-        a.pilot.groundVel.x = vx;
-        a.pilot.groundVel.z = vz;
-      }
-    }
-  }
-
-  /** A self's windup begins (`W` s to its impact): told to the ledger, announced. */
-  _startCut(c, W, round) {
-    const d = this.d;
-    c.state = WIND;
-    c.t = 0;
-    c.W = W;
-    c.impact = this.clock + W;
-    c.end = c.impact + (this._cut?.beats?.[0]?.A ?? 0.08);
-    c.flashed = false;
-    c.struck = false;
-    c.closed = 0;
-    c.handle?.cancel?.();
-    c.handle = d.brain.expect?.(W, TELL.NORMAL, 'paperCut') ?? null;
-    if (!round) this.tokenAt = c.impact + perPhase(this.T.every, d.phase);
-    const tl = this._tell;
-    tl.impactIn = W;
-    tl.x = c.x;
-    tl.z = c.z;
-    d.emit('combat:tell', tl);
-    c.anim.play('duel', 0.1, true);
-  }
-
-  /** Through its windup: it turns to the hero, steps in if he backed off, glints, then cuts. */
-  _wind(c, dx, dz, dist, dt) {
-    const d = this.d, T = this.T, left = c.impact - this.clock;
-    const u = 1 - left / Math.max(0.05, c.W);
-    if (u < 0.75) c.yaw = turnToward(c.yaw, Math.atan2(dx, dz), 14 * dt);
-    // the step-in (as his `close`): it arrives where its cut reaches
-    const want = dist - 1.5;
-    if (want > 0.02 && c.closed < 1.6 && left > 0) {
-      const s = Math.min(want, Math.min(want / Math.max(left, dt), 9) * dt, 1.6 - c.closed);
-      c.closed += s;
-      this._step(c, (dx / dist) * s, (dz / dist) * s, dt);
-    } else this._walk(c, 0, dt);
-    const lead = perPhase(d.T.flashLead, d.phase);
-    if (!c.flashed && left <= lead) {
-      c.flashed = true;
-      const tip = this._tipOf(c);
-      const f = this._flash;
-      f.x = tip.x;
-      f.y = tip.y;
-      f.z = tip.z;
-      d.emit('combat:flash', f);
-      d.fx.tellFlash(TELL.NORMAL, tip.x, tip.y, tip.z, 1, false);
-    }
-    if (left > 0) return;
-    // the impact: one result (the hero inside its reach), then its follow-through
-    c.state = STRIKE;
-    c.handle = null; // (the ledger's entry expires by itself after the impact)
-    const pl = this.game.player;
-    if (!pl || pl.alive === false) return;
-    const pr = pl.radius ?? 0.45, reach = 2.1 + pr;
-    const ang = Math.abs(wrapAngle(Math.atan2(dx, dz) - c.yaw));
-    if (dist > reach || (dist > pr + 0.3 && ang > 0.9 + Math.asin(Math.min(1, pr / Math.max(dist, 1e-3))))) return;
-    const from = this._from;
-    from.x = c.x;
-    from.z = c.z;
-    const r = d.hitPlayer({
-      damage: T.damage, knockback: T.knockback, tell: TELL.NORMAL, attack: 'paperCut', from, projectile: true, parryPosture: T.parryPosture,
-      extra: c.round ? this._extra : null,
-    });
-    // a parry spends it: it pops (hitPlayer nicked his posture: no recoil of the real one)
-    if (r === RESULT.PARRIED) this._pop(c, 'parry');
-  }
-
-  /** Where self c's blade tip is drawn (its rig's sword joint). */
+  /** Where self c's striking end is drawn (its fist on the sword joint; a foot for a kick). */
   _tipOf(c) {
     const v = this._v, K = this.d.kit.blade;
-    const s = c.rig.sword;
-    if (s?.matrixWorld) v.set(0, 0, K.tip).applyMatrix4(s.matrixWorld);
-    if (!Number.isFinite(v.x + v.y + v.z)) v.set(c.x, 1.3, c.z);
+    const kick = c.blow === 'dive' || c.blow === 'upkick';
+    const j = kick ? c.rig.legs?.R?.foot : c.rig.sword;
+    if (j?.matrixWorld) {
+      if (kick) v.setFromMatrixPosition(j.matrixWorld);
+      else v.set(0, 0, K.tip).applyMatrix4(j.matrixWorld);
+    }
+    if (!Number.isFinite(v.x + v.y + v.z)) v.set(c.x, c.y + 1.3, c.z);
+    return v;
+  }
+
+  /** Self c's palms (its own Pearl). */
+  _palmOf(c) {
+    const v = this._v, w = c.rig.arms?.L?.wrist, s = c.rig.sword;
+    if (w?.matrixWorld && s?.matrixWorld) {
+      v.setFromMatrixPosition(w.matrixWorld);
+      const ax = v.x, ay = v.y, az = v.z;
+      v.setFromMatrixPosition(s.matrixWorld);
+      v.set((ax * 2 + v.x) / 3, (ay * 2 + v.y) / 3 + 0.12, (az * 2 + v.z) / 3);
+    } else v.set(c.x, 1.2, c.z);
+    if (!Number.isFinite(v.x + v.y + v.z)) v.set(c.x, 1.2, c.z);
     return v;
   }
 
@@ -641,12 +928,14 @@ export class FoxClones {
 
   // ---------------------------------------------------------------- the pose (after his)
   /**
-   * Pose every live self (its clip: walking, or its cut at its time), then push its two hurt spheres
-   * (upright gameplay points, as his own) into d.hurtSpheres. Called from his afterPose: his own
-   * spheres are already there.
+   * Pose every self that is out (its blow's clip on its own clock; a helper's held pose), then push
+   * its two hurt spheres (upright gameplay points, as his own) into d.hurtSpheres. Called from his
+   * afterPose: his own spheres are already there. A pack body is posed every frame (it is out for
+   * under a second, all of it within half a second of its blow); a helper that only holds a pose,
+   * every other frame.
    */
   pose(dt) {
-    const d = this.d, H = d.hurtSpheres, L = d.lean, cam = this.game.camera?.position;
+    const d = this.d, H = d.hurtSpheres, L = d.lean, cam = this.game.camera?.position, CL = d.kit.CLIP;
     this._frameN = (this._frameN + 1) | 0;
     for (const c of this.list) {
       if (c.state === SEATED) {
@@ -655,45 +944,43 @@ export class FoxClones {
       }
       if (!c.alive) continue;
       const pl = c.pilot, root = c.root;
-      root.position.set(c.x, 0, c.z);
+      root.position.set(c.x, c.y, c.z);
       c.yaw = wrapAngle(fin(c.yaw));
       pl.yaw = c.yaw;
       root.rotation.y = c.yaw;
-      let cutting = false;
-      if (c.state === WIND || c.state === STRIKE) {
-        // its cut's clip, on its own clock: a windup the fairness guard lengthened (or a Round cut's
-        // shorter one) holds at the cock (or skips into it), as his own held blows do
-        const B = this._cut?.beats?.[0];
-        const impT = B ? B.impact : 0.62, cockT = impT * 0.7;
-        const elapsed = c.W - Math.max(0, c.impact - this.clock), h = c.W - impT;
-        let ct = elapsed - h; // (past the cock: the clip runs to its impact as authored)
-        if (h > 0 && elapsed < cockT) ct = elapsed;
-        else if (h > 0 && elapsed < cockT + h) ct = cockT;
-        pl.atk.def = this._clip;
-        pl.stateT = pl.animT = Math.max(0, ct);
-        cutting = true;
-      } else if (c.state === RECOVER && c.t < (this._cut ? this._cut.end - this._cut.beats[0].impact : 0.6)) {
-        const B = this._cut?.beats?.[0];
-        pl.atk.def = this._clip;
-        pl.stateT = pl.animT = (B ? B.impact : 0.62) + 0.08 + c.t;
-        cutting = true;
-      } else if (c.state === ASSIST || c.state === BRACE) {
-        const H = this.d.kit.CLIP?.[c.state === ASSIST ? 'orbHold' : 'brace'];
-        if (H && pl.atk.def !== H) {
-          pl.atk.def = H;
+      let full = true;
+      if (c.state === PACK || c.state === TWIN) {
+        // its blow's clip on its own clock: a windup longer than the clip's holds at the cock, a
+        // shorter one skips into it (as his own held blows do); past the impact the clip runs on
+        const bl = c.state === TWIN ? null : this.blows[c.blow];
+        const B = bl?.B, clip = c.state === TWIN ? CL?.orbHold : bl?.clip;
+        if (clip && pl.atk.def !== clip) {
+          pl.atk.def = clip;
+          c.anim.play('duel', 0.01, true);
+        }
+        if (B) {
+          const impT = B.impact, cockT = impT * (B.def?.cock ?? 0.7);
+          const elapsed = c.W - (c.impact - this.clock), h = c.W - impT;
+          let ct = elapsed - h;
+          if (h > 0 && elapsed < cockT) ct = elapsed;
+          else if (h > 0 && elapsed < cockT + h) ct = cockT;
+          // (it appears already in its attack pose: a short windup starts at the cock)
+          if (h <= 0) ct = Math.max(ct, cockT * 0.6);
+          pl.stateT = pl.animT = Math.max(0, ct);
+        } else pl.stateT = pl.animT = 0;
+      } else {
+        const want = c.state === ASSIST ? CL?.orbHold : c.state === LIFT ? CL?.liftHold ?? CL?.orbHold : null;
+        if (want && pl.atk.def !== want) {
+          pl.atk.def = want;
           c.anim.play('duel', 0.12, true);
+        } else if (!want && pl.atk.def) {
+          pl.atk.def = null;
+          c.anim.play('loco', 0.18);
         }
         pl.stateT = pl.animT = 0;
-        cutting = true;
-      } else if (pl.atk.def) {
-        pl.atk.def = null;
-        c.anim.play('loco', 0.18);
+        full = c.fade > 0 || ((c.i + this._frameN) & 1) === 0 || c.sx === undefined;
       }
-      // the cost (ADR-147): the hero's animator is ~1 ms a rig, so a self that only walks is posed
-      // every other frame (half of them one frame, half the next); one that cuts, tears free or plays
-      // the Round every frame. Between its poses its spheres move with its root.
-      c.acc = (c.acc ?? 0) + dt;
-      const full = cutting || c.round || c.fade > 0 || c.state === IN || ((c.i + this._frameN) & 1) === 0 || !(c.sx !== undefined);
+      c.acc += dt;
       const a = c.hs[0], b = c.hs[1];
       if (full) {
         c.lean.k = L.k;
@@ -713,12 +1000,10 @@ export class FoxClones {
         b.y = v.y;
         b.z = v.z;
         c.lean.on = true;
-        // (the drawn matrices: the renderer's own scene update leans them before the frame is drawn)
         root.updateMatrix();
         c.sx = c.x;
         c.sz = c.z;
-        // its materials: the glyph scale at its distance, tearing in (dissolve), no warn glow
-        if (cam) setHeroGlyphScale(c.mats, Math.hypot(cam.x - c.x, cam.y - 1.1, cam.z - c.z));
+        if (cam) setHeroGlyphScale(c.mats, Math.hypot(cam.x - c.x, cam.y - 1.1 - c.y, cam.z - c.z));
         for (const m of c.mats) {
           const u = m.uniforms;
           if (!u) continue;
@@ -757,11 +1042,5 @@ export class FoxClones {
     c.anim.update(dt);
     root.updateMatrixWorld(true);
     if (cam) setHeroGlyphScale(c.mats, Math.hypot(cam.x - c.x, cam.y - 1.1, cam.z - c.z));
-  }
-
-  /** The selves' cut, realised once (its windup is fixed: the clip is the same every time). */
-  setCut(act) {
-    this._cut = act;
-    this._clip = act?.clip ?? null;
   }
 }

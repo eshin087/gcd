@@ -847,9 +847,15 @@ export class Lab {
       });
       ob.title = 'the draw-slash: guard, then hold heavy (the Sheathed\'s reward; ?tech=draw)';
     }
-    // the Thousand-Body Fox (ADR-147): his paper selves, the Pearl, the mantle
-    if (typeof this.game.dragon?.debug?.clones === 'function') {
-      button(grid, 'Selves +2', () => this.game.dragon.debug.clones(2)).title = 'tear two paper selves off him (to the phase\'s cap)';
+    // the Thousand-Body Fox (ADR-147, ADR-151): his packs of paper selves, the Pearl, the mantle, the Howl
+    if (typeof this.game.dragon?.debug?.pack === 'function') {
+      const fd = this.game.dragon;
+      button(grid, 'Pack: Two Leaves', () => fd.debug.pack('twinFall')).title = 'two selves drop and dive-kick in turn (a pack, out of any move)';
+      button(grid, 'Pack: All at Once', () => fd.debug.pack('allAtOnce', { phase: Math.max(2, fd.phase) })).title = 'selves on every side dive at the same instant: one cue, one parry bursts all';
+      button(grid, 'Pack: Round', () => fd.debug.pack('foxRing', { phase: Math.max(2, fd.phase) })).title = 'selves drop into a ring and strike in turn';
+      button(grid, 'Pack: Kite', () => fd.debug.pack('kiteString', { phase: Math.max(2, fd.phase) })).title = 'three selves slide in low and kick upward in turn';
+      button(grid, 'Twin Pearls', () => { if (fd.phase < 2) fd.enterPhase?.(2); fd.debug.trigger('twinPearl'); }).title = 'he and a self drive two Pearls in from two sides (phase 2)';
+      if (typeof fd.debug.howl === 'function') button(grid, 'Howl', () => fd.debug.howl()).title = 'Heaven-Devouring Howl: the Nine-Tailed Fox and its beam (phase 3)';
       button(grid, 'Pop all', () => this.game.dragon.debug.popAll()).title = 'pop every paper self';
       button(grid, 'Pearl', () => this.game.dragon.debug.pearl()).title = 'the Pearl of the Hollow Moon now';
       const m = button(grid, 'Mantle', () => {

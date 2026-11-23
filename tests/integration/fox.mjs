@@ -275,7 +275,9 @@ function place(G, dist, ang = 0) {
 }
 
 const settle = (G, max = 8) => run(G, max, null, () => G.game.dragon.mode === 'foot' && ['idle', 'run'].includes(G.game.player.state) && G.game.hitstopTimer <= 0);
-const quiet = (d) => d.mode === 'foot' && !d.fx.crescentsAlive && !d.pearl.flying && !d.clones.busy;
+const quiet = (d) => d.mode === 'foot' && !d.fx.crescentsAlive && !d.pearl.flying && !d.clones.packLive;
+/** A per-phase value (tuning.js perPhase). */
+const perPhaseT = (v, ph) => (Array.isArray(v) ? v[Math.min(v.length, Math.max(1, ph)) - 1] : v);
 
 // ---- the defender bot: answers his tells from the flash (parry normal / blue, roll through red)
 function makeDefender(G, { skill = 1, early = 0.12, style = 'mixed', rng = null, world = false } = {}) {
@@ -430,29 +432,75 @@ async function scenarioData() {
   // the plan's table: windups, damage, bands, weights
   const W = (n, i = 0) => MOVES[n].beats.filter((b) => !b.feint)[i];
   assert(W('foxBite').windup === 0.5 && W('foxBite').damage === 18 && W('foxBite').dash.max === 4.5, 'Fox Bite: N 0.50, 18, a dash of up to 4.5 m');
-  assert(W('brushstrokes', 2).tell === TELL.BLUE && W('brushstrokes', 2).flare, 'Three Brushstrokes ends on a parry moment');
+  assert(W('brushstrokes', 2).tell === TELL.BLUE && W('brushstrokes', 2).flare, 'Three Paws ends on a parry moment');
   assert(W('moonLadder').lock && W('moonLadder').tell === TELL.BLUE, 'Ladder to the Moon: a blue flare that locks');
-  assert(W('sweepingBrush').tell === TELL.RED && W('sweepingBrush').knockdown, 'Sweeping Brush: red, knockdown');
+  assert(W('sweepingBrush').tell === TELL.RED && W('sweepingBrush').knockdown, 'Sweeping Tail: red, knockdown');
   assert(W('changingPlaces').swap && MOVES.changingPlaces.gapCloser, 'Changing Places trades places');
-  assert(MOVES.scatter.beats.every((b) => b.feint && b.scatter), 'Scattered Leaves: a cast, no blow');
-  assert(W('foxPearl').pearl === 'drive' && W('foxPearl').tell === TELL.RED && W('foxPearl').dash && W('foxPearl').part === 'palms', 'the Pearl: shaped in his palm and driven home on a dash (red)');
+  assert(!MOVES.scatter && !MOVES.springboard && !MOVES.paperCut, 'no ambient selves: Scattered Leaves, the old springboard and the token\'s cut are gone');
+  assert(!MOVE_NAMES.some((n) => MOVES[n].clonesFight || MOVES[n].needs || MOVES[n].beats.some((b) => b.scatter || b.round)), 'no move tears selves off to stand about (no scatter, no round slots, no clonesFight)');
+  assert(W('foxPearl').pearl === 'drive' && W('foxPearl').tell === TELL.RED && W('foxPearl').dash && W('foxPearl').part === 'palms' && W('foxPearl').pack?.feed, 'the Pearl: shaped in his palm while a pack harries (feeding it), driven home on a dash (red)');
+  assert(perPhaseT(MOVES.foxPearl.weight, 1) >= 1.8, 'the Pearl is picked more in phase 1 (weight >= 1.8)');
+  assert(W('twinPearl').twin && W('twinPearl').tell === TELL.RED, 'the Twin Pearls: a twin drives a second Pearl (one red cue)');
   assert(W('pearlRain').cast?.kind === 'pearl' && W('pearlRain').cast.selfCue && W('pearlRain').tell === TELL.RED && MOVES.pearlRain.phase === 2, 'Pearl Rain: three pearls flung (a red cast that cues itself), phase 2');
-  assert(W('springboard').spring && W('springboard').leap && W('springboard').tell === TELL.RED && MOVES.springboard.needs === 1, 'Fox Descending: off a self\'s hands into a leap (red)');
+  assert(W('buryingLeaves').spring === 'pile' && W('buryingLeaves').leap && W('buryingLeaves').tell === TELL.RED && MOVES.buryingLeaves.beats[0].pack?.mode === 'together' && MOVES.buryingLeaves.beats[0].pack.tell === TELL.RED, 'the Burial: a red together pack, then off the pile into a leap (red)');
   assert(MOVE_NAMES.every((n) => MOVES[n].beats.every((b) => b.feint || ['fistR', 'fistL', 'palms', 'footR', 'footL', 'kneeR', 'kneeL', 'elbowR', 'elbowL', 'feet', 'shoulder'].includes(b.part ?? 'fistR'))), 'bare-handed: every blow names the limb that strikes');
   assert(MOVES.relay.beats.filter((b) => b.swap).length === 2 && MOVES.relay.phase === 2, 'Hand to Hand: two swaps, phase 2');
-  assert(W('greatPearl').tell === TELL.BLACK && W('greatPearl').damage === 44 && W('greatPearl').leap, 'Moon-Swallowing Pearl: black, 44, a leap down');
-  assert(MOVES.paperCut.hidden && !MOVES.paperCut.weight.some((w) => w > 0), 'Paper Cut is hidden and never picked');
+  assert(W('greatPearl').tell === TELL.BLACK && W('greatPearl').damage === 44 && W('greatPearl').leap && W('greatPearl').lift === true, 'Moon-Swallowing Pearl: black, 44, two selves lift it, a leap down');
+  for (const n of ['paperDive', 'paperCross', 'paperUpkick', 'paperSlam']) assert(MOVES[n]?.hidden && !MOVES[n].weight.some((w) => w > 0), `${n}: a hidden self-move, never picked`);
+  assert(MOVES.riposte.copy && perPhaseT(MOVES.riposte.copy, 1) === 0 && perPhaseT(MOVES.riposte.copy, 2) > 0, 'It was a copy: his counter from phase 2');
   for (const [ph, mv] of Object.entries(TRANSITIONS)) {
     const b = MOVES[mv].beats[0];
-    assert(MOVES[mv]?.transition && MOVES[mv].phase === Number(ph) && b.tell === TELL.RED && b.windup === 1.6 && b.fixed && b.damage === 10 && b.zone.r === 6 && b.knockback === 6, `phase ${ph} begins with ${mv} (red, 1.6 s fixed, 10, ring 6, knockback 6)`);
+    assert(MOVES[mv]?.transition && MOVES[mv].phase === Number(ph) && b.tell === TELL.RED && b.windup === 1.6 && b.fixed && b.damage === 10 && b.zone.r === 6 && b.knockback === 6, `phase ${ph} begins with ${mv} (red, 1.6 s fixed, 10, ring 6, knockdown 6)`);
   }
-  // the Round's slots fit: for n selves, the first self's windup starts after the call lands
-  const { roundBeats } = await imp('src/entities/enemies/thousandFox/moves.js');
-  for (let n = 2; n <= TUNING.clones.pool; n++) {
+  // every pack's schedule (both ends of every roll, every phase it is used in): its bodies' windups,
+  // the cues of the move (his blows and the pack's) at least minHitGap apart, a red cue after a guard's
+  // at least guard.sep + margin later, every pack within the pool
+  const G0 = TUNING.pressure.guard, SEP = G0.sep + G0.margin, CL = TUNING.clones;
+  let packs = 0;
+  const askGuard = (t) => t === TELL.NORMAL || t === TELL.BLUE;
+  for (const name of MOVE_NAMES) {
+    if (!MOVES[name].beats.some((b) => b.pack)) continue;
+    for (const f of phasesOf(name)) {
+      for (const r of [0, 0.5, 0.999]) {
+        const A = realise(name, f, () => r, name === 'foxRing' ? { selves: perPhaseT(MOVES.foxRing.beats[0].pack.n, f) } : null);
+        const cues = [];
+        for (const b of A.beats) if (!b.feint) cues.push({ t: b.impact, tell: b.def.tell, who: `his ${b.hit}` });
+        for (const b of A.beats) {
+          const P = b.def.pack;
+          if (!P) continue;
+          let n = perPhaseT(P.n, f);
+          if (!(n > 0)) continue;
+          const wind = CL.blows[P.blow];
+          const call = (P.at ?? 1) >= 1 ? b.impact : b.start + (P.at ?? 1) * (b.impact - b.start);
+          if (b.def.pearl === 'drive') {
+            const left = b.impact - call - SEP - 0.06 - P.from;
+            n = Math.min(n, left < 0 ? 0 : 1 + Math.floor(left / Math.max(0.32, P.gap)));
+          }
+          const tag = `${name} P${f} r${r}`;
+          if (!(wind >= TUNING.minFirstWindup && P.from >= wind + 0.05)) assert(false, `${tag}: a body shows ${wind} s before its blow (>= ${TUNING.minFirstWindup}), the first ${P.from} s after the call`);
+          if (!(n <= CL.pool - (b.def.pearl === 'drive' ? 1 : 0))) assert(false, `${tag}: ${n} bodies fit the pool`);
+          if (P.mode === 'together') cues.push({ t: call + P.from, tell: P.tell, who: 'pack' });
+          else for (let k = 0; k < n; k++) cues.push({ t: call + P.from + P.gap * k, tell: P.tell, who: `pack ${k}` });
+          packs++;
+        }
+        cues.sort((a, b) => a.t - b.t);
+        const tag = `${name} P${f} r${r}`;
+        for (let i = 1; i < cues.length; i++) {
+          const a = cues[i - 1], c = cues[i], gap = c.t - a.t;
+          if (!(gap >= TUNING.minHitGap - 1e-6)) assert(false, `${tag}: ${a.who} → ${c.who} ${gap.toFixed(3)} s apart (>= ${TUNING.minHitGap})`);
+          if (askGuard(a.tell) !== askGuard(c.tell) && !(gap >= SEP - 1e-6)) assert(false, `${tag}: ${a.who} → ${c.who} ask different answers ${gap.toFixed(3)} s apart (>= ${SEP})`);
+        }
+      }
+    }
+  }
+  assert(packs >= 30, `${packs} pack schedules: bodies show >= ${TUNING.minFirstWindup} s before their blows, the move's cues >= ${TUNING.minHitGap} s apart, a red after a guard's >= ${SEP} s`);
+  // the Round's palm lands a gap after the last of its pack's blows, for every n
+  const { roundBeats, ROUND_PACK } = await imp('src/entities/enemies/thousandFox/moves.js');
+  for (let n = 1; n <= TUNING.clones.pool; n++) {
     const A = realise('foxRing', 2, () => 0.5, { selves: n });
     const call = A.beats[0], his = A.beats[1];
-    const firstWind = his.impact - TUNING.clones.round * n - TUNING.clones.windup;
-    assert(roundBeats(n).length === 2 && firstWind >= call.impact - 1e-6, `the Round with ${n} selves: the first self's windup starts ${(firstWind - call.impact).toFixed(2)} s after the call`);
+    const last = call.impact + ROUND_PACK.from + ROUND_PACK.gap * (n - 1);
+    assert(roundBeats(n).length === 2 && his.impact - last >= ROUND_PACK.gap - 1e-3, `the Round with ${n} selves: his palm ${(his.impact - last).toFixed(2)} s after their last blow`);
   }
   assert(TUNING.windupScale[2] >= TUNING.windupScale[1] && TUNING.recoveryScale[2] >= TUNING.recoveryScale[1], 'phase 3 winds up and recovers no faster than phase 2');
 }
@@ -464,7 +512,7 @@ async function scenarioTiming() {
   const only = process.env.ABYSS_TMOVE;
   for (const name of MOVE_NAMES) {
     const def = MOVES[name];
-    if (def.transition || def.hidden || name === 'scatter') continue;
+    if (def.transition || def.hidden || def.verdict) continue;
     if (only && name !== only) continue;
     const f = Math.max(P_OF(name), 1);
     const G = build();
@@ -473,7 +521,6 @@ async function scenarioTiming() {
     const at = def.counter ? 2.2 : Math.max(1.6, Math.min(hi - 0.4, lo + (Math.min(hi, 12) - lo) * 0.4));
     duel(G, { dist: at, form: f });
     G.game.player.debug.god = true;
-    if (def.needs || name === 'changingPlaces' || name === 'relay') { d.clones.spawn(def.needs ?? 1, 'test'); run(G, 0.6); }
     const flashes = [], contacts = [];
     G.watch = (n, e) => { if (n === 'combat:flash' && e?.source === 'dragon') flashes.push(G.game.time); };
     const h0 = G.hits.length;
@@ -491,141 +538,219 @@ async function scenarioTiming() {
     else out(`     ${name.padEnd(15)} P${f} from ${at.toFixed(1)} m: ${flashes.length} flashes, ${contacts.length} contacts, worst ${(w * 1000).toFixed(0)} ms`);
   }
   if (only) return;
-  assert(moves >= 14 && worst <= 0.09, `${moves} moves: every contact within ${(worst * 1000).toFixed(0)} ms of its flash + ${TUNING.flashLead} s, and every move lands`);
+  assert(moves >= 16 && worst <= 0.09, `${moves} moves: every contact within ${(worst * 1000).toFixed(0)} ms of its flash + ${TUNING.flashLead} s, and every move lands`);
 }
 
-// ================================================================== scenario: clones (the paper selves)
+// ================================================================== scenario: clones (the paper selves: packs)
 async function scenarioClones() {
-  out('\n== scenario CLONES (the cap, one hit pops, the cleave, the parry, the token, the guard, the break, reset) ==');
+  out('\n== scenario CLONES (packs only: booked with the ledger, one hit pops, the cleave, together is one cue and one result, the parry, the guard, the break, reset) ==');
   const C = TUNING.clones;
-  // the cap per phase
+  const sph = (d) => d.hurtSpheres.filter((h) => typeof h.part === 'string' && h.part.startsWith('clone'));
+  const ledgerN = (d) => d.brain.ledger.exp.filter((e) => e.alive).length;
+  // no self lives outside a pack (or helping him): his fight, 60 s a phase, every frame
   for (let ph = 1; ph <= 3; ph++) {
-    const G = build();
+    const G = build(SEED + ph, true);
     const d = G.game.dragon;
-    duel(G, { dist: 4, form: ph });
-    d.clones.spawn(9, 'test');
-    assert(d.clones.live === C.max[ph - 1], `phase ${ph}: at most ${C.max[ph - 1]} selves (${d.clones.live})`);
+    duel(G, { dist: 3, ai: true, form: ph });
+    G.game.player.debug.god = true;
+    G.defend = makeDefender(G);
+    let stray = 0, packs = 0, maxLive = 0;
+    const HELP = new Set(['pack', 'assist', 'lift', 'twin', 'left']);
+    G.watch = (n, e) => { if (n === 'dragon:clone' && e.kind === 'spawn' && !['assist', 'lift', 'twin', 'swap'].includes(e.by)) packs++; };
+    run(G, 60, () => {
+      G.defend.act();
+      G.game.mouseGround.set(d.position.x, 0, d.position.z);
+      for (const c of d.clones.list) if (c.alive && (!HELP.has(c.state) || (c.state === 'pack' && !c.pack?.on))) stray++;
+      maxLive = Math.max(maxLive, d.clones.live);
+    });
+    G.watch = null;
+    d.debug.setAI(false);
+    run(G, 4);
+    assert(stray === 0 && d.clones.live === 0 && !d.clones.packLive, `phase ${ph}: every self out was in a pack or helping him (${stray} strays), ${packs} pack bodies, at most ${maxLive} at once; none left after`);
   }
   const G = build();
   const { game } = G;
   const d = game.dragon, p = game.player;
   duel(G, { dist: 4, form: 3 });
   p.debug.god = true;
-  const n0 = d.clones.spawn(2, 'test');
-  fresh(G);
-  const sph = () => d.hurtSpheres.filter((h) => typeof h.part === 'string' && h.part.startsWith('clone'));
-  assert(n0 === 2 && sph().length === 4, `two selves: two hurt spheres each (${sph().length})`);
-  assert(d.bodyCircles.length === 1 && d.bodyCircles[0] === d._bc, 'no body circle of theirs: the hero walks through paper');
-  assert(d.clones.list.every((c) => !c.root.layers.isEnabled?.(1) || true) && !d.clones.list.some((c) => c.root.userData?.caster), 'not shadow casters');
-  // one hit pops: a cut on a self's sphere
-  const s0 = sph()[0], i0 = Number(s0.part.slice(5));
-  const post0 = d.posture, hp0 = d.hp;
-  const dmg = d.takeHit({ damage: 30, part: s0.part, point: { x: s0.x, y: s0.y, z: s0.z }, swing: true });
-  assert(dmg === 0 && !d.clones.alive(i0) && d.hp === hp0 && d.posture >= post0 + C.popPosture - 1e-6, `one cut pops it: 0 damage to him, +${C.popPosture} posture (${d.posture.toFixed(0)})`);
-  fresh(G);
-  assert(sph().length === 2, 'its spheres are gone');
-  // the cleave: two selves side by side, a heavy cut pops both
-  d.clones.popAll('test');
-  d.clones.spawn(2, 'test');
-  const L = liveSelves(d);
-  L[1].x = L[0].x + 1.2;
-  L[1].z = L[0].z;
-  fresh(G);
-  const pops0 = G.counts['dragon:clone'] ?? 0;
-  const a0 = sph().find((h) => h.part === `clone${L[0].i}`);
-  d.takeHit({ damage: 30, part: a0.part, point: { x: a0.x, y: a0.y, z: a0.z }, swing: true, heavy: true });
-  assert(d.clones.live === 0 && (G.counts['dragon:clone'] ?? 0) - pops0 === 2, `the cleave: a heavy cut pops the self beside it too (${C.cleaveHeavy} m)`);
-  // a parry pops it and does not recoil him
-  d.clones.popAll('test');
-  run(G, 0.3);
-  d.debug.setAI(false);
-  p.debug.teleport(0, 4);
-  d.position.set(0, 0, -6);
-  d.clones.spawn(1, 'test');
-  const c = liveSelves(d)[0];
-  c.x = 0; c.z = 2.4;
-  run(G, C.in + 0.05);
-  // a parry bot: the guard up just before its flash's impact
-  let parried = false;
-  const mode0 = d.mode;
-  G.watch = (n, e) => { if (n === 'combat:flash' && e.attack === 'paperCut') G.parryAt = game.time + TUNING.flashLead - 0.1; if (n === 'player:parry') parried = true; };
-  run(G, 5, () => {
-    p.yaw = Math.atan2(c.x - p.position.x, c.z - p.position.z);
-    game.mouseGround.set(c.x, 0, c.z);
-    if (G.parryAt && game.time >= G.parryAt) { G.input.click(1); G.parryAt = 0; }
-  }, () => !d.clones.alive(c.i));
-  G.watch = null;
-  assert(parried && !d.clones.alive(c.i) && d.mode === mode0 && d.brain.react?.kind !== 'recoil', `a parry pops it, he is not recoiled (${d.mode})`);
-  // one windup at a time, and never a self's cue within the guard's sep of a dodge cue
-  const G2 = build(SEED, true);
-  const d2 = G2.game.dragon, p2 = G2.game.player;
-  duel(G2, { dist: 3, ai: true, form: 3 });
-  p2.debug.god = true;
-  G2.defend = makeDefender(G2);
-  let maxWind = 0;
-  const fl = [];
-  G2.watch = (n, e) => { if (n === 'combat:flash' && e.source === 'dragon') fl.push([G2.game.time, e.tell, e.attack]); };
-  run(G2, 60, () => {
-    G2.defend.act();
-    G2.game.mouseGround.set(d2.position.x, 0, d2.position.z);
-    if (d2.clones.live < 3 && d2.mode === 'foot') d2.clones.spawn(2, 'test');
-    maxWind = Math.max(maxWind, d2.clones.list.filter((x) => x.alive && (x.state === 'wind') && !x.round).length);
-  });
-  G2.watch = null;
-  const cuts = fl.filter((f) => f[2] === 'paperCut').length;
-  const sep = TUNING.pressure.guard.sep;
-  let bad = 0;
-  for (const a of fl) if (a[2] === 'paperCut') for (const b of fl) if (b !== a && (b[1] === TELL.RED || b[1] === TELL.BLACK) && Math.abs(b[0] - a[0]) < sep) bad++;
-  assert(cuts >= 1 && maxWind <= 1, `in his fight: ${cuts} selves' cuts in 60 s, at most ${maxWind} winding up at once`);
-  assert(bad === 0, `no self's cue within ${sep} s of a cue asking a dodge (${bad})`);
-  // with him in footwork (his AI off) the selves keep cutting, one at a time, the token's rest apart
+  // a pack books every cue with the ledger as it is called: sequence n cues, together one
+  {
+    const l0 = ledgerN(d);
+    const P = d.debug.pack('twinFall');
+    assert(P && P.bodies.length === 2 && ledgerN(d) - l0 === 2 && d.clones.live === 0, `Two Leaves Fall: 2 bodies booked, 2 cues told to the ledger (${ledgerN(d) - l0}), none out yet`);
+    run(G, 3, null, () => !d.clones.packLive);
+    const l1 = ledgerN(d);
+    const Q = d.debug.pack('allAtOnce');
+    assert(Q && Q.bodies.length === 5 && ledgerN(d) - l1 === 1, `A Thousand at Once (phase 3): 5 bodies, ONE cue in the ledger (${ledgerN(d) - l1})`);
+    run(G, 3, null, () => !d.clones.packLive);
+  }
+  // they appear in the air, already attacking
+  {
+    d.clones.popAll('test');
+    run(G, 0.3);
+    let y0 = -1, tells = 0;
+    G.watch = (n, e) => { if (n === 'combat:tell' && e.attack === 'twinFall') tells++; };
+    d.debug.pack('twinFall');
+    run(G, 2, null, () => {
+      const c = d.clones.list.find((x) => x.alive);
+      if (c && y0 < 0) y0 = c.y;
+      return y0 >= 0;
+    });
+    G.watch = null;
+    assert(y0 >= C.drop.h - 0.3 && tells === 1, `a diving body appears ${y0.toFixed(1)} m up (drop ${C.drop.h}), its tell as it shows`);
+    run(G, 3, null, () => !d.clones.packLive);
+  }
+  // one hit pops: a cut on a body's sphere (0 damage to him, + his posture); popped, its blow never lands
+  {
+    d.clones.popAll('test');
+    run(G, 0.3);
+    const h0 = G.hits.length;
+    d.debug.pack({ n: 2, mode: 'sequence', gap: 0.5, form: 'ring', blow: 'cross', tell: TELL.NORMAL, from: 1.2 }, { attack: 'testPack' });
+    run(G, 2, null, () => d.clones.live >= 1);
+    fresh(G);
+    const s0 = sph(d)[0], i0 = Number(s0.part.slice(5));
+    const post0 = d.posture, hp0 = d.hp, l0 = ledgerN(d);
+    const dmg = d.takeHit({ damage: 30, part: s0.part, point: { x: s0.x, y: s0.y, z: s0.z }, swing: true });
+    assert(dmg === 0 && !d.clones.alive(i0) && d.hp === hp0 && d.posture >= post0 + C.popPosture - 1e-6 && ledgerN(d) === l0 - 1, `one cut pops it: 0 damage to him, +${C.popPosture} posture, its cue gone from the ledger`);
+    run(G, 3, null, () => !d.clones.packLive);
+    const mine = G.hits.slice(h0).filter((h) => h.attack === 'testPack');
+    assert(mine.length === 1, `the popped body's blow never lands; the other's does (${mine.length} contact)`);
+  }
+  // the cleave: a heavy cut pops the body beside it too
+  {
+    d.clones.popAll('test');
+    run(G, 0.3);
+    d.debug.pack({ n: 5, mode: 'together', form: 'ring', blow: 'cross', tell: TELL.NORMAL, from: 1.6 }, { attack: 'testPack' });
+    run(G, 2, null, () => d.clones.live >= 5 && d.clones.packs.some((P) => P.locked));
+    fresh(G);
+    const L = d.clones.list.filter((c) => c.alive);
+    const a0 = sph(d).find((h) => h.part === `clone${L[0].i}`);
+    const near = L.filter((c) => c !== L[0] && Math.hypot(c.x - a0.x, c.z - a0.z) <= C.cleaveHeavy).length;
+    d.takeHit({ damage: 30, part: a0.part, point: { x: a0.x, y: a0.y, z: a0.z }, swing: true, heavy: true });
+    assert(near >= 1 && near < 4 && d.clones.live === 4 - near, `the cleave: a heavy cut pops the ${near} selves within ${C.cleaveHeavy} m of it too, not the far ones (${d.clones.live} left)`);
+    d.clones.popAll('test');
+    assert(!d.clones.packLive && ledgerN(d) === 0, 'every body popped: the pack and its one cue are gone');
+  }
+  // together: ONE flash, ONE result; one parry bursts them all and pays his posture
+  const together = (GG, how) => {
+    const g = GG.game, dd = g.dragon, pp = g.player;
+    dd.clones.popAll('test');
+    run(GG, 0.4);
+    pp.debug.teleport(0, 4);
+    dd.position.set(0, 0, -6);
+    let flashes = 0, tells = 0, parryAt = 0;
+    GG.watch = (n, e) => {
+      if (n === 'combat:flash' && e.attack === 'allAtOnce') { flashes++; parryAt = g.time + TUNING.flashLead - 0.1; }
+      if (n === 'combat:tell' && e.attack === 'allAtOnce') tells++;
+    };
+    const h0 = GG.hits.length, post0 = dd.posture;
+    const P = dd.debug.pack('allAtOnce');
+    const n = P?.bodies.length ?? 0;
+    let popped = 0;
+    const w0 = GG.watch;
+    GG.watch = (nm, e) => { w0(nm, e); if (nm === 'dragon:clone' && e.kind === 'pop' && e.by === 'parry') popped++; };
+    run(GG, 3, () => {
+      if (how === 'parry' && parryAt && g.time >= parryAt) { GG.input.click(1); parryAt = 0; }
+      if (how === 'guard') GG.input.press(1);
+    }, () => !dd.clones.packLive);
+    GG.input.up(1);
+    GG.watch = null;
+    return { n, flashes, tells, popped, mine: GG.hits.slice(h0).filter((h) => h.attack === 'allAtOnce'), dpost: dd.posture - post0 };
+  };
+  {
+    const G2 = build();
+    duel(G2, { dist: 4, form: 3 });
+    G2.game.player.debug.god = true;
+    const R = together(G2, 'none');
+    assert(R.n === 5 && R.flashes === 1 && R.tells === 1 && R.mine.length === 1 && R.mine[0].r === RESULT.HIT && R.mine[0].around, `A Thousand at Once: 5 bodies, ${R.flashes} flash, ${R.tells} tell, ${R.mine.length} result (${R.mine.map((h) => h.r)}), met from any side`);
+    const P = together(G2, 'parry');
+    assert(P.mine.length === 1 && P.mine[0].r === RESULT.PARRIED && P.popped === 5 && P.dpost >= C.popPosture * 5 + C.together.parryPosture - 1e-6, `one parry bursts all five (${P.popped}) and pays his posture (+${P.dpost.toFixed(0)} >= ${C.popPosture * 5 + C.together.parryPosture})`);
+    const Q = together(G2, 'guard');
+    assert(Q.mine.length === 1 && Q.mine[0].r === RESULT.BLOCKED, `a held guard pays ONE blow (${Q.mine.map((h) => h.r)})`);
+    // a roll out of the ring as they lock on clears it
+    const g = G2.game;
+    g.dragon.clones.popAll('test');
+    run(G2, 0.4);
+    g.player.debug.teleport(0, 4);
+    const h0 = G2.hits.length;
+    const PK = g.dragon.debug.pack('allAtOnce');
+    run(G2, 3, () => {
+      if (PK.locked && !G2.rolled) { G2.rolled = true; G2.input.axis = { x: 1, y: 0 }; G2.input.tap('Space'); }
+    }, () => !g.dragon.clones.packLive);
+    G2.input.axis = { x: 0, y: 0 };
+    const mine = G2.hits.slice(h0).filter((h) => h.attack === 'allAtOnce');
+    assert(G2.rolled && mine.every((h) => h.r !== RESULT.HIT), `a roll out of the ring clears it (${mine.map((h) => h.r).join(',') || 'missed'})`);
+  }
+  // a sequence pack's blows are each their own cue, gap apart, from different sides
+  {
+    const G3 = build();
+    duel(G3, { dist: 4, form: 3 });
+    const d3 = G3.game.dragon;
+    G3.game.player.debug.god = true;
+    const fl = [];
+    G3.watch = (n, e) => { if (n === 'combat:flash' && e.attack === 'foxRing') fl.push([G3.game.time, e.x, e.z]); };
+    d3.debug.pack('foxRing');
+    run(G3, 4, null, () => !d3.clones.packLive);
+    G3.watch = null;
+    let gmin = Infinity;
+    for (let i = 1; i < fl.length; i++) gmin = Math.min(gmin, fl[i][0] - fl[i - 1][0]);
+    const p3 = G3.game.player.position, sides = new Set(fl.map((f) => Math.round(Math.atan2(f[1] - p3.x, f[2] - p3.z) / 1.0)));
+    assert(fl.length === 5 && gmin >= TUNING.minHitGap - 0.02 && sides.size >= 3, `the Round's pack: ${fl.length} flashes at least ${gmin.toFixed(2)} s apart, from ${sides.size} sides`);
+  }
+  // the whole Round parried (five selves and his palm): the full deflect
   {
     const G4 = build();
-    const d4 = G4.game.dragon;
     duel(G4, { dist: 3, form: 3 });
-    G4.game.player.debug.god = true;
-    d4.clones.spawn(5, 'test');
-    const t4 = [];
-    let w4 = 0;
-    G4.watch = (n, e) => { if (n === 'combat:flash' && e.attack === 'paperCut') t4.push(G4.game.time); };
-    run(G4, 30, () => {
-      G4.game.mouseGround.set(d4.position.x, 0, d4.position.z);
-      if (d4.clones.live < 3) d4.clones.spawn(3, 'test');
-      w4 = Math.max(w4, d4.clones.list.filter((x) => x.alive && x.state === 'wind').length);
-    });
+    const d4 = G4.game.dragon, g4 = G4.game;
+    g4.player.debug.god = true;
+    G4.defend = makeDefender(G4, { style: 'parry' });
+    let deflected = 0;
+    G4.watch = (n) => { if (n === 'dragon:deflected') deflected++; };
+    d4.debug.trigger('foxRing');
+    run(G4, 7, () => { G4.defend.act(); g4.mouseGround.set(d4.position.x, 0, d4.position.z); }, () => deflected > 0 || (d4.mode === 'foot' && !d4.clones.packLive));
     G4.watch = null;
-    let gapMin = Infinity;
-    for (let i = 1; i < t4.length; i++) gapMin = Math.min(gapMin, t4[i] - t4[i - 1]);
-    assert(t4.length >= 8 && w4 <= 1 && gapMin >= C.every[2] - 0.05, `his footwork: ${t4.length} cuts in 30 s, one winding up at a time (${w4}), at least ${gapMin.toFixed(2)} s apart (token ${C.every[2]} s)`);
+    G4.defend = null;
+    assert(deflected === 1, `the Round parried whole (5 selves + his palm): the full deflect (${deflected})`);
   }
-  // his posture break pops them all; reset clears
-  G2.defend = null;
-  const G3 = build();
-  const d3 = G3.game.dragon;
-  duel(G3, { dist: 4, form: 3 });
-  d3.clones.spawn(3, 'test');
-  const before = d3.clones.live;
-  d3.debug.postureBreak();
-  assert(before >= 1 && d3.broken && d3.clones.live === 0, `a posture break pops all (${before} → ${d3.clones.live})`);
-  d2.debug.reset();
-  d2.clones.spawn(2, 'test');
-  d2.reset();
-  fresh(G2);
-  assert(d2.clones.live === 0 && !d2.hurtSpheres.some((h) => String(h.part).startsWith('clone')) && d2.clones.list.filter((x) => x.root.visible).length === 4 && d2.clones.seated, 'reset: no live self, no sphere left; he sits among four seated selves again');
+  // his posture break pops them all and calls off what is still to come; a reset mid-pack leaves nothing
+  {
+    const G5 = build();
+    const d5 = G5.game.dragon;
+    duel(G5, { dist: 4, form: 3 });
+    d5.debug.pack('foxRing');
+    run(G5, 1.2);
+    const out0 = d5.clones.live;
+    d5.debug.postureBreak();
+    run(G5, 2);
+    assert(out0 >= 1 && d5.broken !== undefined && d5.clones.live === 0 && !d5.clones.packLive && ledgerN(d5) === 0, `a posture break pops all and calls off the rest (${out0} out → ${d5.clones.live}, packs ${d5.clones.packLive})`);
+    G5.game.flow.debug.toState('boss');
+    d5.debug.setAI(false);
+    run(G5, 0.5);
+    d5.enterPhase(3);
+    d5.debug.pack('allAtOnce');
+    run(G5, 0.9);
+    const mid = d5.clones.live;
+    d5.reset();
+    fresh(G5);
+    assert(mid >= 1 && d5.clones.live === 0 && !d5.clones.packLive && !d5.hurtSpheres.some((h) => String(h.part).startsWith('clone')) && d5.clones.list.filter((x) => x.root.visible).length === 4 && d5.clones.seated, `reset mid-pack (${mid} out): no live self, no pack, no sphere left; he sits among four seated selves again`);
+    const h0 = G5.hits.length;
+    run(G5, 2);
+    assert(G5.hits.slice(h0).filter((h) => h.attack === 'allAtOnce').length === 0, 'and the reset pack never strikes');
+  }
+  // the selves are not him: no body circle, no shadow
+  assert(d.bodyCircles.length === 1 && d.bodyCircles[0] === d._bc, 'no body circle of theirs: the hero walks through paper');
+  assert(!d.clones.list.some((c) => c.root.userData?.caster), 'not shadow casters');
 }
 
 // ================================================================== scenario: pearl
 async function scenarioPearl() {
   out('\n== scenario PEARL (the charge, the threads, the burst by live selves, a roll, a guard, the interrupt, the ledger, the world) ==');
   const T = TUNING.pearl;
-  const play = (G, { selves = 0, defend = null, hits = 0, heavy = false, dist = 6, move = 'foxPearl' } = {}) => {
+  const play = (G, { defend = null, hits = 0, heavy = false, dist = 4.5, move = 'foxPearl', form = 2, pop = false } = {}) => {
     const { game } = G;
     const d = game.dragon, p = game.player;
-    duel(G, { dist, form: 2 });
+    duel(G, { dist, form });
     p.debug.god = true;
-    if (selves) { d.clones.spawn(selves, 'test'); run(G, 0.5); }
-    // the selves hold their blades for this test: no token
-    d.clones.tokenAt = 1e9;
     const threads = [];
     const ft = d.fx.pearlThread;
     let thr = 0, frameThr = 0;
@@ -634,10 +759,13 @@ async function scenarioPearl() {
     const fb = d.fx.pearlBurst;
     d.fx.pearlBurst = (x, z, rr) => { bursts++; r = rr; return fb.call(d.fx, x, z, rr); };
     assert(d.debug.trigger(move), `${move} starts`);
-    let ledgerSaw = false, struck = 0;
+    let ledgerSaw = false, struck = 0, selves = 0, popped = 0;
     const hit0 = G.hits.length;
     run(G, 6, () => {
       if (d.pearl.charging) {
+        selves = d.pearl.selves;
+        // (pop: every harrying body cut down as it shows, the helper beside him too)
+        if (pop) for (const c of d.clones.list) if (c.alive && c.state !== 'assist') popped += d.clones.popAt(c.i, NaN, 0, NaN, false, 'cut');
         threads.push(thr - frameThr);
         frameThr = thr;
         if (!ledgerSaw) ledgerSaw = d.brain.ledger.pending?.(2, 4) ?? false;
@@ -650,35 +778,41 @@ async function scenarioPearl() {
     }, () => d.mode === 'foot' && !d.pearl.flying && !d.pearl.charging);
     d.fx.pearlThread = ft;
     d.fx.pearlBurst = fb;
+    if (process.env.DBG) out('   hits ' + JSON.stringify(G.hits.slice(hit0).map((h) => [h.t.toFixed(2), h.attack, h.r])) + ' dist ' + Math.hypot(d.position.x - p.position.x, d.position.z - p.position.z).toFixed(2) + ' stats ' + JSON.stringify(d.brain.stats));
     const mine = G.hits.slice(hit0).filter((h) => h.attack === move);
-    return { d, threads, bursts, r, mine, ledgerSaw };
+    return { d, threads, bursts, r, mine, ledgerSaw, selves, popped };
   };
-  // the burst grows with the selves alive at the bat; the threads, one per self
-  for (const n of [0, 2, 4]) {
+  // the burst grows with the selves that fed it: the one shaping it, and every harrying body that struck
+  for (const form of [1, 2]) {
     const G = build();
-    const R = play(G, { selves: n });
-    const want = Math.min(T.rMax, T.r0 + T.perClone * n);
-    const thr = Math.max(0, ...R.threads);
-    assert(R.bursts === 1 && Math.abs(R.r - want) < 1e-6 && thr === n, `${n} selves: the drive bursts r ${R.r.toFixed(2)} (want ${want.toFixed(2)}), ${thr} threads a frame`);
-    if (n) assert(R.mine.length === 0 || Math.abs(R.mine[0].damage - (T.damage + T.perCloneDamage * n) * TUNING.damageScale) < 1e-6 || R.mine[0].r !== RESULT.HIT, `${n} selves: its blow ${R.mine[0]?.damage?.toFixed?.(1) ?? '-'} (fed by them)`);
+    const R = play(G, { form });
+    const want = Math.min(T.rMax, T.r0 + T.perClone * R.selves);
+    const n = perPhaseT(MOVES.foxPearl.beats[1].pack.n, form);
+    assert(R.bursts === 1 && Math.abs(R.r - want) < 1e-6 && R.selves >= 2 && R.selves <= 1 + n, `phase ${form}: ${R.selves} selves fed it (the helper + up to ${n} that struck): the drive bursts r ${R.r.toFixed(2)} (want ${want.toFixed(2)})`);
+    assert(R.mine.length === 1 && Math.abs(R.mine[0].damage - (T.damage + T.perCloneDamage * R.selves) * TUNING.damageScale) < 1e-6, `phase ${form}: its blow ${R.mine[0]?.damage?.toFixed?.(1) ?? '-'} (fed by them)`);
+    assert(Math.max(0, ...R.threads) >= 1, 'a thread from each self out to the Pearl');
+  }
+  {
+    const G = build();
+    const R = play(G, { form: 2, pop: true });
+    assert(R.popped >= 1 && R.selves === 1, `the harrying bodies popped as they show: only the helper feeds it (${R.selves})`);
   }
   // Pearl Rain (phase 2): three pearls thrown in a row
   {
     const G = build();
-    const R = play(G, { selves: 2, move: 'pearlRain', dist: 7 });
+    const R = play(G, { move: 'pearlRain', dist: 7 });
     assert(R.bursts === T.count[1], `Pearl Rain: ${R.bursts} pearls burst (${T.count[1]})`);
   }
   // the ledger knows it from the charge (the volley: told as it is shaped)
   {
     const G = build();
-    const R = play(G, { selves: 0, move: 'pearlRain', dist: 7 });
+    const R = play(G, { move: 'pearlRain', dist: 7 });
     assert(R.ledgerSaw, 'the ledger is told of the volley\'s landing while it is shaped');
   }
   {
     const G = build();
-    const R = play(G, { selves: 0 });
+    const R = play(G, {});
     assert(R.mine.length === 1 && R.mine[0].r === RESULT.HIT && R.mine[0].tell === TELL.RED, `standing still: it hits once, red (${R.mine.map((h) => h.r).join(',')})`);
-    assert(Math.abs(R.mine[0].damage - T.damage * TUNING.damageScale) < 1e-6, `its damage with no self alive: ${R.mine[0].damage.toFixed(1)} (${T.damage} x damageScale)`);
   }
   // a guard fails; a roll dodges
   {
@@ -725,7 +859,7 @@ async function scenarioPearl() {
     game.world.impact = (...a) => { calls++; return imp0(...a); };
     const D = game.world.destructibles;
     const worn0 = D.list.filter((b) => b.wear > 0 || b.state !== 0).length;
-    const R = play(G, { selves: 0, dist: 8 });
+    const R = play(G, { dist: 8 });
     const worn1 = D.list.filter((b) => b.wear > 0 || b.state !== 0).length;
     assert(R.bursts >= 1 && calls >= R.bursts && worn1 > worn0, `world.impact on each burst (${calls}), the floor chipped (${worn0} → ${worn1} pieces worn)`);
   }
@@ -734,7 +868,6 @@ async function scenarioPearl() {
     const G = build();
     const d = G.game.dragon;
     duel(G, { dist: 6, form: 2 });
-    d.clones.spawn(4, 'test');
     d.debug.trigger('foxPearl');
     run(G, 1.0);
     const was = d.pearl.charging;
@@ -798,14 +931,14 @@ async function scenarioMantle() {
 
 // ================================================================== scenario: phase
 async function scenarioPhase() {
-  out('\n== scenario PHASE (the gates, both transitions, the selves taken back and torn off to the cap) ==');
+  out('\n== scenario PHASE (the gates, both transitions, the selves taken back) ==');
   const G = build();
   const { game } = G;
   const d = game.dragon;
   duel(G, { dist: 4, ai: true });
   game.player.debug.god = true;
   const gate = d.maxHp * TUNING.phaseAt[1];
-  d.clones.spawn(2, 'test');
+  d.debug.pack({ n: 2, mode: 'sequence', gap: 0.4, form: 'ring', blow: 'cross', tell: TELL.NORMAL, from: 2.5 }, { attack: 'testPack' });
   d.hp = gate + 20;
   d.mode = 'foot';
   d.brain.act = null;
@@ -816,7 +949,7 @@ async function scenarioPhase() {
   run(G, 1, null, () => d.brain.act?.name === 'thousandBodies');
   assert(d.brain.act?.name === 'thousandBodies' && d.phase === 2 && p2 === 1 && d.clones.live === 0, 'A Thousand Bodies: phase 2, dragon:phase2, his selves popped');
   run(G, 4, null, () => d.mode === 'foot');
-  assert(d.clones.live === TUNING.clones.max[1], `its ring goes out: selves to the cap (${d.clones.live})`);
+  assert(d.clones.live === 0 && !d.clones.packLive, `its ring goes out: no self stands about after it (${d.clones.live})`);
   assert(game.flow._text('phase2') === 'ONE BECOMES A THOUSAND', 'the level\'s phase-2 banner');
   settle(G, 8);
   const gate3 = d.maxHp * TUNING.phaseAt[2];
@@ -827,11 +960,11 @@ async function scenarioPhase() {
   let p3 = 0, burned = 0;
   G.watch = (n, e) => { if (n === 'dragon:phase3') p3++; if (n === 'dragon:clone' && e.by === 'mantle') burned++; };
   const had = d.clones.live;
-  run(G, 1, null, () => d.brain.act?.name === 'foxMantle');
-  assert(d.brain.act?.name === 'foxMantle' && d.phase === 3 && p3 === 1 && d.clones.live === 0 && burned === had, `The Fox-Fire Mantle: phase 3, his ${had} selves burn up into him`);
+  run(G, 3, null, () => d.brain.act?.name === 'foxMantle');
+  assert(d.brain.act?.name === 'foxMantle' && d.phase === 3 && p3 === 1 && d.clones.live === 0 && burned <= had, `The Fox-Fire Mantle: phase 3, the ${burned} selves out burn up into him (${d.brain.act?.name}, phase ${d.phase})`);
   run(G, 4, null, () => d.mode === 'foot');
   G.watch = null;
-  assert(d.clones.live === TUNING.clones.max[2] && d.mantleK > 0, `then five selves (${d.clones.live}) and the mantle`);
+  assert(d.clones.live === 0 && d.mantleK > 0, `then the mantle, and no self stands about (${d.clones.live})`);
   assert(game.flow._text('phase3') === 'THE FOX WEARS ITS FIRE', 'the level\'s phase-3 banner');
   const picks = new Set();
   for (let i = 0; i < 300; i++) {
@@ -1149,11 +1282,14 @@ async function scenarioTraining() {
   const G3 = build();
   duel(G3, { dist: 5, form: 2 });
   const d3 = G3.game.dragon;
-  const made = d3.debug.clones(2);
+  const made = d3.debug.pack('allAtOnce');
+  const madeN = made?.bodies.length ?? 0;
+  run(G3, 0.5);
+  const out3 = d3.clones.live;
   const popped = d3.debug.popAll();
   const pearl = d3.debug.pearl();
   run(G3, 0.2);
-  assert(made === 2 && popped === 2 && pearl && d3.brain.act?.name === 'foxPearl', 'the Lab: Selves +2, Pop all, Pearl');
+  assert(madeN === 4 && out3 >= 1 && popped === out3 && !d3.clones.packLive && pearl && d3.brain.act?.name === 'foxPearl', `the Lab: a pack (${madeN} bodies), Pop all (${popped}), Pearl`);
   d3.debug.mantle(true);
   run(G3, 1.2);
   assert(d3.mantleK > 0.9, 'the Lab: Mantle on');
@@ -1207,7 +1343,7 @@ async function scenarioLooks() {
 
 // ================================================================== scenario: cost (opt-in: the selves' CPU)
 async function scenarioCost() {
-  out('\n== scenario COST (opt-in: what five paper selves cost the frame on the CPU) ==');
+  out('\n== scenario COST (opt-in: what a pack of five paper selves costs the frame on the CPU) ==');
   const G = build();
   const d = G.game.dragon;
   duel(G, { dist: 4, form: 3 });
@@ -1215,7 +1351,9 @@ async function scenarioCost() {
   const time = (n) => { const t0 = performance.now(); for (let i = 0; i < n; i++) G.tick(DT); return (performance.now() - t0) / n; };
   time(60);
   const none = time(300);
-  d.clones.spawn(5, 'test');
+  const again = () => { if (!d.clones.packLive) d.debug.pack({ n: 5, mode: 'sequence', gap: 0.4, form: 'ring', blow: 'cross', tell: TELL.NORMAL, from: 2.4 }, { attack: 'costPack' }); };
+  const T0 = G.tick;
+  G.tick = (dt) => { again(); T0(dt); };
   time(60);
   let poseT = 0;
   const pose = d.clones.pose.bind(d.clones);
@@ -1235,7 +1373,7 @@ async function scenarioCost() {
   d.anim.update = (dt) => { const t0 = performance.now(); au(dt); ba += performance.now() - t0; };
   time(120);
   out(`     his own anim.update ${(ba / 120).toFixed(2)} ms a frame`);
-  out(`     a frame: ${none.toFixed(2)} ms with no self, ${five.toFixed(2)} ms with ${d.clones.live}; their poses ${(poseT / 300).toFixed(2)} ms a frame`);
+  out(`     a frame: ${none.toFixed(2)} ms with no self, ${five.toFixed(2)} ms with a pack of five cycling; their poses ${(poseT / 300).toFixed(2)} ms a frame`);
 }
 
 const S = {

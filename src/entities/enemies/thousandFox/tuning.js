@@ -171,22 +171,30 @@ export const TUNING = {
   // ---- Paper Blades' sword qi (Shen Hui's crescents: DuelFx.throwCrescent)
   crescent: { speed: 14, radius: 0.7, life: 2.2, chip: 0.25, minLead: 0.27 },
 
-  // ---- the paper selves (clones.js FoxClones; ADR-147): his own bodies, a fixed pool built with him
+  // ---- the paper selves (clones.js FoxClones; ADR-147, ADR-151): his own bodies, a fixed pool built with
+  // him. A self exists only inside a PACK (moves.js header `pack`): it appears in the air already
+  // attacking, strikes and bursts
   clones: {
-    pool: 5, // rigs built in his constructor (never mid-fight: the seeded fights would shift)
-    max: [2, 4, 5], // live at once per phase (the scatter's cap)
-    scatter: [2, 3, 3], // torn off by one Scattered Leaves
-    ring: [3.5, 5.5], apart: 2.2, // spawned this far round the hero, at least this far from each other
-    in: 0.45, // s of tearing free: it can be popped at once, it cannot strike yet
-    walk: 2.4, slot: 2.6, // m/s to its own slot this far from the hero
-    reach: 3.2, // a self takes the token only this close to the hero
-    every: [2.6, 1.9, 1.2], // s at least between one self's blow and the next self's windup
-    windup: 0.62, recover: 0.55, // its blow's windup (paperCut) and its recovery after
-    damage: 8, knockback: 0.5, parryPosture: 10,
+    pool: 6, // rigs built in his constructor (never mid-fight: the seeded fights would shift)
+    // the hidden self-moves' windups (moves.js paperDive / paperCross / paperUpkick / paperSlam): a body
+    // appears this long before its blow (its tell), already in its attack pose
+    blows: { dive: 0.62, cross: 0.56, upkick: 0.56, slam: 0.6 },
+    drop: { h: 4.2 }, // a diving body appears this high over its mark
+    hop: 1.2, // a leaping body's arc (m at its top)
+    ring: 1.5, // m from the hero a body strikes from
+    appearR: 3.4, // m out a leaping body appears (a sliding one 0.8 further)
+    lock: 0.75, // its mark follows the hero until this fraction of its windup (then a roll clears it)
+    linger: 0.25, // s it stays in its follow-through after its blow, then bursts
+    reach: 2.1, // a sequence body's blow reaches the hero this far (+ his radius), in front of it
+    damage: 10, knockback: 0.6, parryPosture: 10, // a sequence body's blow
+    // a together pack's one blow: its damage, its push, a parry's posture (+ popPosture x n), the ring
+    // round where the hero stood as they locked on (a roll out of it clears it)
+    together: { damage: 20, knockback: 1.6, parryPosture: 24, r: 1.7 },
     cleave: 1.4, cleaveHeavy: 2.6, // a cut that pops one pops every other self this near the hit point
     popPosture: 6, // each self popped adds this to the real one's posture
     hurt: [0.3, 0.32], // its two hurt spheres' radii (chest, pelvis)
-    round: 0.42, // the Thousand-Body Round: the selves' cuts this far apart, his own this long after the last
+    swapAt: 2.4, swapLinger: 0.3, // Changing Places: dropped in this far from the hero; the one he left bursts after
+    helperLinger: 0.3, // the self shaping the Pearl bursts into it this long after the drive
   },
   // ---- the Pearl of the Hollow Moon (pearl.js FoxPearl)
   pearl: {
