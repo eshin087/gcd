@@ -9,7 +9,7 @@ const TENSE = new Set(['bossIntro', 'boss', 'dead']);
 const LOOKAHEAD = 0.35;
 
 /** Push a param toward `value` only when it moved enough (avoids piling up automation). */
-function follow(p, value, now, tau, eps) {
+export function follow(p, value, now, tau, eps) {
   if (!p) return;
   if (p._target !== undefined && Math.abs(p._target - value) < eps) return;
   p._target = value;
@@ -24,6 +24,12 @@ export class ForestAmbience extends NodeBag {
     this.out.connect(E.ambientBus);
     this.out.gain.setValueAtTime(0, now);
     this.out.gain.linearRampToValueAtTime(1, now + 2.5);
+    // the sound of the air (audio/air.js, ?life=air) fades this bed's wind and voices by these two while
+    // it plays its own; at 1 (always, with the piece off) the bed is exactly as it was. The bonfire is not on them.
+    this.windDuck = this.gain(1);
+    this.windDuck.connect(this.out);
+    this.voiceDuck = this.gain(1);
+    this.voiceDuck.connect(this.out);
 
     // wind: two brown-noise layers through slowly wandering lowpasses, panned apart
     for (const [pan, base] of [[-0.55, 0.5], [0.55, 0.42]]) {
@@ -31,7 +37,7 @@ export class ForestAmbience extends NodeBag {
       const lp = this.filter('lowpass', 340, 0.6);
       const g = this.gain(base);
       const p = this.panner(pan);
-      n.connect(lp).connect(g).connect(p).connect(this.out);
+      n.connect(lp).connect(g).connect(p).connect(this.windDuck);
       this._lfo(rnd(0.04, 0.07), 170, lp.frequency, now);
       this._lfo(rnd(0.09, 0.14), base * 0.45, g.gain, now);
     }
@@ -39,13 +45,13 @@ export class ForestAmbience extends NodeBag {
     const w = this.noise('white', now);
     const wb = this.filter('bandpass', 760, 9);
     const wg = this.gain(0.03);
-    w.connect(wb).connect(wg).connect(this.out);
+    w.connect(wb).connect(wg).connect(this.windDuck);
     this._lfo(0.035, 260, wb.frequency, now);
     this._lfo(0.075, 0.025, wg.gain, now);
 
     // crickets: persistent oscillators, chirps are gain automation only (no per-chirp nodes)
     this.cricketBus = this.gain(1);
-    this.cricketBus.connect(this.out);
+    this.cricketBus.connect(this.voiceDuck);
     this.hush = 1;
     const pans = [-0.65, 0.5, 0.05, -0.25];
     this.crickets = [4350, 4900, 4100, 5250].map((f, i) => {
@@ -175,7 +181,7 @@ export class ForestAmbience extends NodeBag {
 
   /** Distant owl: two soft hoots, panned somewhere in the treeline. */
   _owl(t) {
-    const v = this.E._voice('amb', { bus: this.out, pan: rnd(-0.75, 0.75), gain: rnd(0.7, 1), rev: 0.55, prio: 1 });
+    const v = this.E._voice('amb', { bus: this.voiceDuck, pan: rnd(-0.75, 0.75), gain: rnd(0.7, 1), rev: 0.55, prio: 1 });
     if (!v) return;
     const f = rnd(330, 390);
     const lp = v.filter('lowpass', 1200, 0.7);
