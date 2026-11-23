@@ -2775,6 +2775,46 @@ async function scenarioStorm() {
   out(`   tiers: streak 7 tier ${t7.tier} echo ${t7.echo} · streak 15 tier ${t15.tier} echo ${t15.echo} (tiers off: ${t15off.echo}) · damage ${t7.dmg} / ${t15.dmg} / ${t15off.dmg}`);
   assert(t7.echo === 0 && t15.tier === 5 && t15.echo === 2 && t15off.echo === 0, `the cuts echo from tier 4 (streak 15: ${t15.echo} echoes a cut; 7: ${t7.echo}; tiers off: ${t15off.echo})`);
   assert(t15.hits.length === F.max && t15.dmg === t7.dmg && t15off.dmg === t7.dmg && t15.cutsT === t7.cutsT, `a streak of 15 strikes the same ${t15.hits.length} blows for the same ${t15.dmg} damage in the same time`);
+  // the burst as lines (flurryBurst.js): level 0 is today; each level lowers what it names, with the
+  // same random draws (a recorder in place of the particles and the lights; the same lines each time)
+  {
+    const { FlurryFx, fxSeed, setFxSeed } = await imp('src/entities/player/flurryFx.js');
+    const BU = await imp('src/entities/player/flurryBurst.js');
+    const rec = { n: 0, bright: 0, thin: 0 };
+    const add = { spawn: (o) => { rec.n++; const a = Number.isFinite(o.alpha) ? o.alpha : 1; rec.bright += a * (o.size ?? 0) * (o.stretch ?? 1); if ((o.size ?? 1) < 0.06) rec.thin++; return 0; } };
+    const lit = { sum: 0 };
+    const fg = { camera: null, fx: { add }, lights: { add: (o) => { lit.sum += o.intensity * o.radius; return null; } } };
+    const lines = Array.from({ length: 7 }, (_, i) => {
+      const a = (i * Math.PI) / 7;
+      return { ax: Math.sin(a) * 1.9, ay: 1.2, az: Math.cos(a) * 1.9, bx: -Math.sin(a) * 1.9, by: 1.2, bz: -Math.cos(a) * 1.9, k: 1, last: i === 6 };
+    });
+    const one = (lvl) => {
+      BU.setBurst(lvl);
+      const fx = new FlurryFx(fg, { add });
+      fx.k = DEFENSE.flurry.ground.fx;
+      rec.n = rec.bright = rec.thin = 0;
+      lit.sum = 0;
+      setFxSeed(0x1234567);
+      const s0 = fxSeed();
+      fx.artHit(0, 1.2, 0, 1, 0, 'iai');
+      fx.impact(0, 1.2, 0, 1, 0, 1);
+      fx.burst(lines, 7, 0, 1.2, 0);
+      fx.cut(0, 1.2, 0, 1, 0, 3, 7);
+      // (how many draws: step a copy of the stream from s0 until it reaches the seed now)
+      let q = s0, d = 0;
+      const s1 = fxSeed();
+      while (q !== s1 && d < 100000) { q = (Math.imul(q, 1664525) + 1013904223) >>> 0; d++; }
+      return { n: rec.n, bright: rec.bright, thin: rec.thin, light: lit.sum, draws: d, stat: { ...fx.burstStat } };
+    };
+    const lv = [0, 1, 2, 3].map(one);
+    BU.setBurst(0);
+    out(`   burst levels: ${lv.map((r, i) => `L${i} spawns ${r.n} (thin ${r.stat.thin}) bright ${r.bright.toFixed(0)} light ${r.light.toFixed(1)} draws ${r.draws}`).join(' · ')}`);
+    assert(lv[0].stat.thin === 0 && BU.burstLook() === null && BU.burstScreen().last === 1 && BU.burstScreen().cut === 1 && BU.burstScreen().dip === 1, 'level 0 is today: no thin lines, the screen pulses as they were');
+    assert(lv.every((r) => r.draws === lv[0].draws), `every level makes the same random draws (${lv.map((r) => r.draws).join(' / ')})`);
+    assert(lv.slice(1).every((r, i) => r.stat.thin > 0 && r.light < (i ? lv[i].light : lv[0].light) + 1e-9 && r.stat.light < lv[0].stat.light), `each level lowers the burst's light (${lv.map((r) => r.light.toFixed(1)).join(' > ')}) and lays the thin long lines`);
+    assert(lv[3].light === 0 && lv[3].stat.star === 0 && lv[3].stat.flare === 0, 'level 3: no pooled light, no star, no fat flare: only lines');
+    assert(BU.BURST_LOOK.levels.slice(1).every((L, i, A) => L.screen.last <= (i ? A[i - 1].screen.last : 1) && L.boss <= (i ? A[i - 1].boss : 1)), 'each level turns the screen flash and the boss\'s hurt flash down further');
+  }
   Object.assign(STREAK_FX.on, on0);
   Object.assign(STREAK_FX.k, k0);
   return G;

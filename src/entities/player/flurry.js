@@ -4,6 +4,7 @@ import { clamp, lerp, smoothstep } from '../../core/math.js';
 import { DEFENSE } from '../../combat/rules.js';
 import { streakK, streakTier } from '../../combat/streak.js';
 import { FlurryFx } from './flurryFx.js';
+import { burstLook } from './flurryBurst.js';
 
 // The flurry (ADR-091; rules: DEFENSE.flurry, docs/COMBAT.md → "The streak and the flurry"): what a
 // perfect dodge that can reach its attacker turns into. As many blows as the streak counts: FLASH
@@ -673,7 +674,9 @@ export class Flurry {
     const final = this.riposte && this.i >= this.cuts - 1; // a riposte's last cut is its last blow
     // (the counter's last cut is the counter blow: DEFENSE.flareCounter)
     const K = final && this.counter ? DEFENSE.flareCounter : null;
-    const dealt = this._damage(K ? K.damage : C.damage, K ? K.posture : C.posture, !!K, K ? 1 : 0.45, final ? 2 : 1, final ? { x: this.ox, z: this.oz } : null);
+    // (the last blow's white hurt flash: x the burst level's `boss`, flurryBurst.js)
+    const bf = final ? burstLook()?.boss ?? 1 : 1;
+    const dealt = this._damage(K ? K.damage : C.damage, K ? K.posture : C.posture, !!K, (K ? 1 : 0.45) * bf, final ? 2 : 1, final ? { x: this.ox, z: this.oz } : null);
     const k = this.n > 1 ? this.i / (this.n - 1) : 0;
     // a storm cut (0..1: how deep into the storm) kicks the camera less, its flare and sparks thinner
     const st = final ? 0 : this._storm(this.i), cs = st > 0 ? S.cam : 1;
@@ -936,7 +939,7 @@ export class Flurry {
       if (dealt > 0) P._emit('player:hitDragon', { damage: dealt, part: 'head', point: { x: T.x, y: T.y, z: T.z }, heavy: true, crit: false, kind: 'plunge' });
       P._emit('player:plungeHit', { damage: dealt, execution: false });
     } else {
-      dealt = this._damage(F.last.damage, F.last.posture, true, 1, 2, { x: this.B.x, z: this.B.z });
+      dealt = this._damage(F.last.damage, F.last.posture, true, burstLook()?.boss ?? 1, 2, { x: this.B.x, z: this.B.z });
       if (dealt > 0) P._emit('player:hitDragon', { damage: dealt, part: 'body', point: { x: T.x, y: T.y, z: T.z }, heavy: true, crit: true, kind: 'flurry' });
     }
     // the weight of the last blow: he holds the contact half as long again, the frame freezes,

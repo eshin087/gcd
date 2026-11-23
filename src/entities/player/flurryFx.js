@@ -29,16 +29,22 @@
 
 import { FIRE_KIND } from '../../render/firePalettes.js';
 import { axes } from '../../combat/clashFx.js';
+import { burstLook } from './flurryBurst.js';
 
 // cosmetic noise from this module's own stream (never Math.random: the seeded sims replay the AI's)
 let seed = 0x5f3759df;
 const rnd = () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296;
 const R = (a, b) => a + rnd() * (b - a);
+/** This module's random stream now (tests: every burst level makes the same draws). */
+export const fxSeed = () => seed;
+/** Tests: put the stream at `v`. */
+export const setFxSeed = (v) => (seed = v >>> 0);
 const fin = (v) => Number.isFinite(v);
 
 /**
  * The tiers' look (streakK('tiers') scales the number of echoes: 0 none, 0.5 half, 1 as tuned).
  *   echoes   echo lines beside every hanging cut, by tier (index = streakTier: 0..5)
+ *   rings    rings opening where the cuts cross on the last blow, by tier
  *   gap      cells across the line from a cut to its first echo (the next one the other side, ...)
  *   trim     each echo is this much shorter at each end than its cut, x its number
  *   heat     an echo's steel heat at its middle (about 0.6 a dim stroke, 1.1 a bright one), `end` at its ends
@@ -47,26 +53,32 @@ const fin = (v) => Number.isFinite(v);
  *   minY     no blob below this height (m): heat near the floor fades into it
  *   burst    the last blow: `hold` s of fx time a frame (stepped), each frame's echo offset (cells, from
  *            the cut) and heat, the rings' radii (m at a man's size; x 1.6 round the wyrm's head; 0 none)
- *            and the share of a ring's cells kept (a ring breaking up into specks)
+ *            the share of a ring's cells kept (a ring breaking up into specks) and the share of each
+ *            echo's middle that is gone (the halves fly apart: no band of strokes over the target)
  */
 export const TIER_LOOK = Object.freeze({
   echoes: Object.freeze([0, 0, 0, 0, 1, 2]),
+  rings: Object.freeze([0, 0, 0, 0, 1, 2]),
   gap: 2,
   trim: 0.12,
-  heat: 0.72,
-  end: 0.38,
+  heat: 0.55,
+  end: 0.3,
   pull: 1.2,
   px: 12,
   minY: 0.6,
   burst: Object.freeze({
     hold: 0.045,
     off: Object.freeze([2, 3, 4, 5]),
-    heat: Object.freeze([1.1, 0.85, 0.55, 0.36]),
+    heat: Object.freeze([1.1, 0.8, 0.55, 0.36]),
+    hole: Object.freeze([0.2, 0.4, 0.6, 0.8]),
     ring: Object.freeze([0, 1.0, 1.6, 2.3]),
     keep: Object.freeze([0, 1, 0.7, 0.35]),
   }),
 });
 const K_STEEL = FIRE_KIND.steel;
+const ONE2 = Object.freeze([1, 1]);
+/** The burst level's [a, b] for `key` (flurryBurst.js; today [1, 1]). */
+const lk = (L, key) => (L && Array.isArray(L[key]) ? L[key] : ONE2);
 // the blob written for every cell, reused
 const BLOB = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0.02, size: 0.3, sizeEnd: 0.3, heat: 1, heatEnd: 1, kind: K_STEEL, drag: 0, gravity: 0 };
 // the cells of one drawn frame: screen cell (i, j), its heat, its world point; the hottest wins a cell
@@ -128,6 +140,8 @@ export class FlurryFx {
     this._q = [0, 0, 0];
     // the tiers (TIER_LOOK): echo lines beside each hanging cut, written in steel
     this.echo = 0; // echo lines a cut (0: today's look)
+    this.rings = 0; // rings on the last blow
+    this._bRings = 0;
     this.tier = 0;
     this._now = 0; // fx time, and when the steel alive now dies (the one-copy frame clock)
     this._dl = -1;
@@ -141,6 +155,9 @@ export class FlurryFx {
     this._bPull = 0;
     this._bK = 1;
     this.stormClones = 0; // storm cuts' clones printed (the tests read it)
+    this._cr = 1; // the crescents' alpha (the art's, at a burst level)
+    /** The last burst's counts (tests): light intensity, bright spawns, thin lines. */
+    this.burstStat = { light: 0, thin: 0, flare: 0, star: 0 };
     /** Counts for the tests (reused): steel cells written in the last drawn frame, in all, the most. */
     this.steelStat = { last: 0, total: 0, peak: 0, frames: 0, rings: 0 };
   }
@@ -150,6 +167,8 @@ export class FlurryFx {
     this.tier = tier | 0;
     const e = TIER_LOOK.echoes[Math.max(0, Math.min(TIER_LOOK.echoes.length - 1, this.tier))] ?? 0;
     this.echo = k > 0 ? Math.max(0, Math.min(3, Math.round(e * k))) : 0;
+    const r = TIER_LOOK.rings[Math.max(0, Math.min(TIER_LOOK.rings.length - 1, this.tier))] ?? 0;
+    this.rings = k > 0 ? Math.max(0, Math.min(3, Math.round(r * k))) : 0;
   }
 
   /** The additive particles (null: none), through the pull. */
@@ -255,7 +274,7 @@ export class FlurryFx {
     if (!fx || !Number.isFinite(x + z)) return;
     const n = Math.round(14 * k);
     for (let i = 0; i < n; i++) {
-      const a = (i / n) * Math.PI * 2, sp = (5 + 4 * k) * (0.8 + 0.4 * Math.random());
+      const a = (i / n) * Math.PI * 2, sp = (5 + 4 * k) * (0.8 + 0.4 * rnd());
       fx.spawn({
         x: x + Math.cos(a) * 0.3, y: 0.1, z: z + Math.sin(a) * 0.3, vx: Math.cos(a) * sp, vz: Math.sin(a) * sp,
         life: 0.2 + 0.08 * k, size: 0.16 * (0.8 + 0.3 * k), sizeEnd: 0.05, stretch: 1.8, glyph: '|', rot: this._rot(-Math.sin(a), 0, Math.cos(a)),
@@ -287,6 +306,8 @@ export class FlurryFx {
     // the cut's heading on the screen
     const cx = dx * rx + dz * rz, cy = dx * ux + dz * uz, base = Math.atan2(cy, cx);
     k *= this.k;
+    // (the burst's level, flurryBurst.js: today null; every random draw is made at every level)
+    const L = burstLook(), sa0 = L ? (L.speed ?? 1) : 1;
     const n = Math.round(30 * k);
     for (let i = 0; i < n; i++) {
       // two fans, along the cut and against it, a few strays all round
@@ -294,14 +315,18 @@ export class FlurryFx {
       const ca = Math.cos(a), sa = Math.sin(a);
       const wx = rx * ca + ux * sa, wy = ry * ca + uy * sa, wz = rz * ca + uz * sa;
       const r0 = R(1.2, 3.2), sp = R(22, 46) * k, size = R(0.07, 0.13);
-      fx.spawn({
-        x: x + wx * r0, y: y + wy * r0, z: z + wz * r0, vx: wx * sp, vy: wy * sp, vz: wz * sp,
-        life: R(0.09, 0.17), size, sizeEnd: size * 0.3, stretch: R(14, 30), glyph: '|', rot: a - Math.PI / 2,
-        color: i % 3 ? COL.hot : COL.ice, colorEnd: COL.iceEnd, alpha: 0.85, alphaEnd: 0, drag: 2,
-      });
+      const life = R(0.09, 0.17), stretch = R(14, 30);
+      if (sa0 > 0) {
+        fx.spawn({
+          x: x + wx * r0, y: y + wy * r0, z: z + wz * r0, vx: wx * sp, vy: wy * sp, vz: wz * sp,
+          life, size, sizeEnd: size * 0.3, stretch, glyph: '|', rot: a - Math.PI / 2,
+          color: i % 3 ? COL.hot : COL.ice, colorEnd: COL.iceEnd, alpha: 0.85 * sa0, alphaEnd: 0, drag: 2,
+        });
+      }
     }
     // a hard white core for two frames, then nothing: the frame the blow lands on
-    fx.spawn({ x, y, z, life: 0.05, size: 2.2 * k, sizeEnd: 1.2 * k, glyph: '+', rot: base, color: COL.hot, colorEnd: COL.hot, alpha: 1, alphaEnd: 0.4 });
+    const st = lk(L, 'star');
+    if (st[0] > 0) fx.spawn({ x, y, z, life: 0.05, size: 2.2 * k * st[1], sizeEnd: 1.2 * k * st[1], glyph: '+', rot: base, color: COL.hot, colorEnd: COL.hot, alpha: st[0], alphaEnd: 0.4 * st[0] });
   }
 
   /** He is THERE: an upright flash of cold light at (x, y, z: his chest), streaks thrown back
@@ -378,7 +403,8 @@ export class FlurryFx {
     const vx = -dz * sg * Math.cos(tilt), vy = Math.sin(tilt), vz = dx * sg * Math.cos(tilt);
     const r = (2.3 + 0.5 * k) * this.k;
     this._crescent(fx, x - vx * r, y - vy * r, z - vz * r, dx, 0, dz, vx, vy, vz, r, Math.PI / 2 + 0.95, Math.PI / 2 - 0.95, (0.4 + 0.15 * k) * this.k, 0.22, COL.hot, hot ? COL.gold : COL.ice, 0.1 * Math.sqrt(this.k));
-    fx.spawn({ x, y, z, life: 0.09, size: 0.7 * s, sizeEnd: 0.15, glyph: '+', rot: rot + 0.785, color: COL.hot, colorEnd: c0, alpha: 1, alphaEnd: 0 });
+    const CL = burstLook()?.cut, cs = CL?.star ?? ONE2, cl = CL ? CL.light ?? 1 : 1;
+    if (cs[0] > 0) fx.spawn({ x, y, z, life: 0.09, size: 0.7 * s * cs[1], sizeEnd: 0.15 * cs[1], glyph: '+', rot: rot + 0.785, color: COL.hot, colorEnd: c0, alpha: cs[0], alphaEnd: 0 });
     const m = 8 + Math.round(6 * k);
     for (let j = 0; j < m; j++) {
       const sp = R(5, 13) * s, vx = dx * sp + R(-3, 3), vy = R(-1, 4.5), vz = dz * sp + R(-3, 3);
@@ -387,7 +413,7 @@ export class FlurryFx {
         glyph: "|'", rot: this._rot(vx, vy, vz), color: c0, colorEnd: c1, alpha: 1, alphaEnd: 0, drag: 3.5, gravity: -5,
       });
     }
-    this._light({ x, y, z, color: hot ? [1.3, 0.95, 0.45] : [0.6, 0.85, 1.4], intensity: 2.4 + 1.2 * k, radius: 5, life: 0.14, fade: 0.12 });
+    if (cl > 0) this._light({ x, y, z, color: hot ? [1.3, 0.95, 0.45] : [0.6, 0.85, 1.4], intensity: (2.4 + 1.2 * k) * cl, radius: 5, life: 0.14, fade: 0.12 });
   }
 
   /** A storm cut bites: the stroke and a thin, short crescent (its line is the look), a small star,
@@ -399,7 +425,8 @@ export class FlurryFx {
     const vx = -dz * sg * Math.cos(tilt), vy = Math.sin(tilt), vz = dx * sg * Math.cos(tilt);
     const r = 2.5 * this.k;
     this._crescent(fx, x - vx * r, y - vy * r, z - vz * r, dx, 0, dz, vx, vy, vz, r, Math.PI / 2 + 0.8, Math.PI / 2 - 0.8, 0.22 * this.k, 0.15, COL.hot, hot ? COL.gold : COL.ice, 0.08 * Math.sqrt(this.k));
-    fx.spawn({ x, y, z, life: 0.06, size: 0.4 * s, sizeEnd: 0.1, glyph: '+', rot: rot + 0.785, color: COL.hot, colorEnd: hot ? COL.gold : COL.spark, alpha: 0.9, alphaEnd: 0 });
+    const cs = burstLook()?.cut?.star ?? ONE2;
+    if (cs[0] > 0) fx.spawn({ x, y, z, life: 0.06, size: 0.4 * s * cs[1], sizeEnd: 0.1 * cs[1], glyph: '+', rot: rot + 0.785, color: COL.hot, colorEnd: hot ? COL.gold : COL.spark, alpha: 0.9 * cs[0], alphaEnd: 0 });
     for (let j = 0; j < 4; j++) {
       const sp = R(5, 12) * s, svx = dx * sp + R(-3, 3), svy = R(-1, 4), svz = dz * sp + R(-3, 3);
       fx.spawn({
@@ -418,6 +445,8 @@ export class FlurryFx {
     const fdt = game?.fxDt ?? game?.dt ?? 0.016;
     if (!fx || !(fdt > 0)) return; // (paused: nothing ages, so nothing is drawn again)
     const life = Math.max(0.02, fdt * 1.6), t = game?.realTime ?? game?.time ?? 0;
+    // (a burst level dims the soft veil round each line: where the cuts cross the veils stack into a bloom)
+    const va = burstLook()?.veil ?? 1;
     for (let li = 0; li < n; li++) {
       const L = lines[li], k = Math.min(1, Math.max(0, L.k));
       if (!(k > 0.02)) continue;
@@ -437,7 +466,7 @@ export class FlurryFx {
         const size = (L.last ? 0.13 : 0.1) * taper * Math.sqrt(this.k);
         fx.spawn({ x, y, z, life, size, sizeEnd: size, stretch: (seg / size) * 1.25, glyph: '|', rot, color: core, colorEnd: core, alpha: glim, alphaEnd: glim });
         const vs = size * 2.2;
-        fx.spawn({ x, y, z, life, size: vs, sizeEnd: vs, stretch: (seg / vs) * 1.15, glyph: '|', rot, color: veil, colorEnd: veil, alpha: 0.16 * glim, alphaEnd: 0.16 * glim });
+        if (va > 0) fx.spawn({ x, y, z, life, size: vs, sizeEnd: vs, stretch: (seg / vs) * 1.15, glyph: '|', rot, color: veil, colorEnd: veil, alpha: 0.16 * glim * va, alphaEnd: 0.16 * glim * va });
       }
     }
   }
@@ -449,7 +478,7 @@ export class FlurryFx {
     this.acc += dt * (50 + 90 * u);
     while (this.acc >= 1) {
       this.acc -= 1;
-      const a = Math.random() * Math.PI * 2, r = R(0.7, 1.4);
+      const a = rnd() * Math.PI * 2, r = R(0.7, 1.4);
       const ex = Math.cos(a) * r, ey = R(-0.8, 0.9), ez = Math.sin(a) * r;
       const life = R(0.08, 0.14);
       fx.spawn({
@@ -497,7 +526,7 @@ export class FlurryFx {
         fx.spawn({
           x: cx + (c * ux + sn * vx) * rr, y: cy + (c * uy + sn * vy) * rr, z: cz + (c * uz + sn * vz) * rr,
           life: life * (1 - 0.35 * q) * R(0.9, 1.1), size, sizeEnd: size * 0.2, stretch: (arc / size) * 1.35, glyph: '|', rot,
-          color: row ? end : core, colorEnd: end, alpha: (row ? 0.3 * (1 - 0.6 * q) : 1) * (0.35 + 0.65 * taper), alphaEnd: 0,
+          color: row ? end : core, colorEnd: end, alpha: (row ? 0.3 * (1 - 0.6 * q) : 1) * (0.35 + 0.65 * taper) * this._cr, alphaEnd: 0,
         });
       }
     }
@@ -511,9 +540,11 @@ export class FlurryFx {
     const fx = this.add;
     if (!fx || !Number.isFinite(x + y + z)) return;
     // (small cores: stacked with the burst's they bloom into a white blot over the target)
-    const s = this.k;
-    fx.spawn({ x, y, z, life: 0.08, size: 1.2 * s, sizeEnd: 0.3, glyph: '*', color: COL.hot, colorEnd: COL.ice, alpha: 1, alphaEnd: 0, rot: R(0, 3) });
-    fx.spawn({ x, y, z, life: 0.28, size: 1.2 * s, sizeEnd: 4.0 * s, glyph: '°', color: COL.ice, colorEnd: COL.iceEnd, alpha: 0.55, alphaEnd: 0 });
+    const s = this.k, L = burstLook(), st = lk(L, 'star'), ha = lk(L, 'halo'), cr = L ? L.crescent ?? 1 : 1, sh = lk(L, 'sparks'), li = lk(L, 'light');
+    const r0 = R(0, 3);
+    if (st[0] > 0) fx.spawn({ x, y, z, life: 0.08, size: 1.2 * s * st[1], sizeEnd: 0.3 * st[1], glyph: '*', color: COL.hot, colorEnd: COL.ice, alpha: st[0], alphaEnd: 0, rot: r0 });
+    if (ha[0] > 0) fx.spawn({ x, y, z, life: 0.28, size: 1.2 * s * ha[1], sizeEnd: 4.0 * s * ha[1], glyph: '°', color: COL.ice, colorEnd: COL.iceEnd, alpha: 0.55 * ha[0], alphaEnd: 0 });
+    this._cr = cr;
     const px = -dz, pz = dx; // across the cut, in the ground plane
     // a falling / rising cut's plane is tipped 40° off upright, toward the side the camera sees more
     // of: an upright plane along the view is drawn as one fat bar up the screen
@@ -525,22 +556,30 @@ export class FlurryFx {
       // the lens: two shallow arcs bowing apart on either side of the line
       for (const sg of [-1, 1]) this._crescent(fx, x + px * sg * 5.2 * s, y, z + pz * sg * 5.2 * s, -px * sg, 0, -pz * sg, dx, 0, dz, 5.7 * s, -0.62, 0.62, 0.5 * s, 0.3, COL.hot, COL.last, 0.12);
     }
+    this._cr = 1;
     // shards fanned out of it, most along the cut
     for (let i = 0; i < 18; i++) {
       const a = Math.atan2(dz, dx) + R(-1.3, 1.3) + (i % 3 === 0 ? Math.PI : 0), sp = R(4, 10), up = R(0.1, 1.1);
       const vx = Math.cos(a) * sp * Math.cos(up), vy = Math.sin(up) * sp, vz = Math.sin(a) * sp * Math.cos(up);
-      fx.spawn({
-        x, y, z, vx, vy, vz, life: R(0.35, 0.6), size: R(0.18, 0.36), sizeEnd: 0.05, stretch: 0.6,
-        glyph: 'A^V', rot: this._rot(vx, vy, vz), spin: R(-2, 2), color: COL.shard, colorEnd: COL.shardEnd, alpha: 1, alphaEnd: 0, gravity: -11, drag: 1.2,
-      });
+      const life = R(0.35, 0.6), size = R(0.18, 0.36), spin = R(-2, 2);
+      if (sh[0] > 0) {
+        fx.spawn({
+          x, y, z, vx, vy, vz, life, size: size * sh[1], sizeEnd: 0.05, stretch: 0.6,
+          glyph: 'A^V', rot: this._rot(vx, vy, vz), spin, color: COL.shard, colorEnd: COL.shardEnd, alpha: sh[0], alphaEnd: 0, gravity: -11, drag: 1.2,
+        });
+      }
     }
     const q = this._pulled(x, y, z);
-    this.pfx?.sparks?.(q[0], q[1], q[2], dx, dz, true, true);
-    this.pfx?.shockwave?.(q[0], q[1], q[2], true, true);
+    if (!L || L.pfx !== false) {
+      this.pfx?.sparks?.(q[0], q[1], q[2], dx, dz, true, true);
+      this.pfx?.shockwave?.(q[0], q[1], q[2], true, true);
+    }
     // (kept small, as the plunge's: a big light here turns the target's whole ASCII art white)
     // (and never near the floor: a light 1 m over the paving blows it out into a white disc)
-    this._light({ x, y: Math.max(2.2, y + 0.8), z, color: [0.7, 0.95, 1.5], intensity: 2.4, radius: 6.5, life: 0.26, fade: 0.22 });
-    this._light({ x, y: Math.max(2.2, y + 0.4), z, color: [1.0, 0.55, 1.5], intensity: 1.4, radius: 5, life: 0.5, fade: 0.42 });
+    if (li[0] > 0) {
+      this._light({ x, y: Math.max(2.2, y + 0.8), z, color: [0.7, 0.95, 1.5], intensity: 2.4 * li[0], radius: 6.5 * li[1], life: 0.26, fade: 0.22 });
+      this._light({ x, y: Math.max(2.2, y + 0.4), z, color: [1.0, 0.55, 1.5], intensity: 1.4 * li[0], radius: 5 * li[1], life: 0.5, fade: 0.42 });
+    }
   }
 
   /**
@@ -549,7 +588,7 @@ export class FlurryFx {
    */
   burst(lines, n, x, y, z) {
     // (the tiers: the echoes split away from their cuts, rings open where they cross: steel())
-    if (this.echo > 0 && Number.isFinite(x + y + z)) {
+    if ((this.echo > 0 || this.rings > 0) && Number.isFinite(x + y + z)) {
       this._bn = Math.min(n, this._bl.length);
       for (let i = 0; i < this._bn; i++) Object.assign(this._bl[i], lines[i]);
       this._bAge = 0;
@@ -557,12 +596,16 @@ export class FlurryFx {
       this._bAt.y = y;
       this._bAt.z = z;
       this._bEcho = this.echo;
+      this._bRings = this.rings;
       this._bPull = this.pull;
       this._bK = this.k;
     }
     const fx = this.add;
     if (!fx || !Number.isFinite(x + y + z)) return;
     const heat = Math.min(1, n / 5);
+    const BL = burstLook(), fl = lk(BL, 'flare'), sp = lk(BL, 'sparks'), sr = lk(BL, 'star'), lg = lk(BL, 'light'), TH = BL?.thin;
+    const bs = this.burstStat;
+    bs.light = bs.thin = bs.flare = bs.star = 0;
     for (let li = 0; li < n; li++) {
       const L = lines[li];
       const dx = L.bx - L.ax, dy = L.by - L.ay, dz = L.bz - L.az, len = Math.hypot(dx, dy, dz);
@@ -576,23 +619,56 @@ export class FlurryFx {
         const f = (j + 0.5) / m, taper = Math.sqrt(Math.max(0.05, Math.sin(Math.PI * f)));
         const px = L.ax + dx * f, py = L.ay + dy * f, pz = L.az + dz * f;
         // the line flares: fat and white, thinning fast
-        const size = (L.last ? 0.3 : 0.22) * taper * this.k;
-        fx.spawn({ x: px, y: py, z: pz, life: R(0.13, 0.2), size, sizeEnd: size * 0.08, stretch: (seg / size) * 1.4, glyph: '|', rot, color: COL.hot, colorEnd: c0, alpha: 1, alphaEnd: 0 });
+        const size = (L.last ? 0.3 : 0.22) * taper * this.k * fl[1], flife = R(0.13, 0.2);
+        if (fl[0] > 0) {
+          fx.spawn({ x: px, y: py, z: pz, life: flife, size, sizeEnd: size * 0.08, stretch: (seg / size) * 1.4, glyph: '|', rot, color: COL.hot, colorEnd: c0, alpha: fl[0], alphaEnd: 0 });
+          bs.flare += fl[0] * size;
+        }
         // sparks off both sides, across the line
         for (const sg of [-1, 1]) {
-          if (Math.random() > 0.55 + 0.3 * heat) continue;
-          const sp = R(3, 9) * sg * taper, al = R(-2.5, 2.5);
-          const vx = -uz * sp + ux * al, vy = R(0.5, 4) + uy * al, vz = ux * sp + uz * al;
-          fx.spawn({
-            x: px, y: py, z: pz, vx, vy, vz, life: R(0.2, 0.42), size: R(0.1, 0.17), sizeEnd: 0.03, stretch: 1.5,
-            glyph: "|'*", rot: this._rot(vx, vy, vz), color: c0, colorEnd: c1, alpha: 1, alphaEnd: 0, drag: 2.6, gravity: -7,
-          });
+          if (rnd() > 0.55 + 0.3 * heat) continue;
+          const v = R(3, 9) * sg * taper, al = R(-2.5, 2.5);
+          const vx = -uz * v + ux * al, vy = R(0.5, 4) + uy * al, vz = ux * v + uz * al;
+          const life = R(0.2, 0.42), size = R(0.1, 0.17);
+          if (sp[0] > 0) {
+            fx.spawn({
+              x: px, y: py, z: pz, vx, vy, vz, life, size: size * sp[1], sizeEnd: 0.03, stretch: 1.5,
+              glyph: "|'*", rot: this._rot(vx, vy, vz), color: c0, colorEnd: c1, alpha: sp[0], alphaEnd: 0, drag: 2.6, gravity: -7,
+            });
+          }
         }
       }
     }
     // where they cross: a star, brighter with every cut
-    fx.spawn({ x, y, z, life: 0.12, size: (1.0 + 0.8 * heat) * this.k, sizeEnd: 0.3, glyph: '*', color: COL.hot, colorEnd: COL.gold, alpha: 1, alphaEnd: 0, rot: R(0, 3), spin: 2 });
-    this._light({ x, y, z, color: [0.9, 0.9, 1.4], intensity: 1.8 + 1.4 * heat, radius: 6, life: 0.2, fade: 0.16 });
+    const r0 = R(0, 3);
+    if (sr[0] > 0) {
+      fx.spawn({ x, y, z, life: 0.12, size: (1.0 + 0.8 * heat) * this.k * sr[1], sizeEnd: 0.3 * sr[1], glyph: '*', color: COL.hot, colorEnd: COL.gold, alpha: sr[0], alphaEnd: 0, rot: r0, spin: 2 });
+      bs.star = sr[0] * sr[1];
+    }
+    if (lg[0] > 0) {
+      this._light({ x, y, z, color: [0.9, 0.9, 1.4], intensity: (1.8 + 1.4 * heat) * lg[0], radius: 6 * lg[1], life: 0.2, fade: 0.16 });
+      bs.light = (1.8 + 1.4 * heat) * lg[0];
+    }
+    // the lines (a burst level): each hanging cut flares THIN and long, snapping out past both its
+    // ends to `ext` x its length, for a few frames (no random draws: the same at every level)
+    if (TH && TH.a > 0) {
+      for (let li = 0; li < n; li++) {
+        const L = lines[li];
+        const dx = L.bx - L.ax, dy = L.by - L.ay, dz = L.bz - L.az, len = Math.hypot(dx, dy, dz);
+        if (!(len > 0.2) || !Number.isFinite(len + L.ax + L.ay + L.az)) continue;
+        const rot = this._rot(dx, dy, dz), e = (TH.ext - 1) * 0.5;
+        const m = Math.max(4, Math.ceil((len * TH.ext) / 0.5)), seg = (len * TH.ext) / m;
+        for (let j = 0; j < m; j++) {
+          const f = -e + ((j + 0.5) / m) * TH.ext, tp = Math.sqrt(Math.max(0.05, Math.sin(Math.PI * (j + 0.5) / m)));
+          const size = TH.size * this.k * tp;
+          fx.spawn({
+            x: L.ax + dx * f, y: L.ay + dy * f, z: L.az + dz * f, life: TH.life * (0.7 + 0.3 * tp), size, sizeEnd: size * 0.5, stretch: (seg / size) * 1.3, glyph: '|', rot,
+            color: L.last ? COL.last : COL.hot, colorEnd: L.last ? COL.lastVeil : COL.ice, alpha: TH.a, alphaEnd: 0,
+          });
+          bs.thin++;
+        }
+      }
+    }
   }
 
   // ------------------------------------------------------------------ the tiers: steel on the grid
@@ -636,14 +712,14 @@ export class FlurryFx {
           const L = this._bl[li];
           for (let e = 1; e <= this._bEcho; e++) {
             const off = (B.off[f] + (Math.ceil(e / 2) - 1) * TIER_LOOK.gap) * (e % 2 ? 1 : -1);
-            this._echo(game, A, L, e, off, B.heat[f], B.heat[f] * 0.5, pull, 1);
+            this._echo(game, A, L, e, off, B.heat[f], B.heat[f] * 0.5, pull, 1, B.hole[f]);
           }
         }
         // rings where the cuts crossed, one an echo, opening one inside the other
         if (B.ring[f] > 0) {
           const ra = this._bK * (this._bPull > 0 ? 1.6 : 1);
-          for (let r = 0; r < this._bEcho; r++) this._ring(game, A, this._bAt, (B.ring[f] + 0.35 * r) * ra, B.heat[f] * (1 - 0.2 * r), B.keep[f], pull);
-          this.steelStat.rings = Math.max(this.steelStat.rings, this._bEcho);
+          for (let r = 0; r < this._bRings; r++) this._ring(game, A, this._bAt, (B.ring[f] + 0.35 * r) * ra, Math.min(1.1, B.heat[f] * 1.25) * (1 - 0.15 * r), B.keep[f], pull);
+          this.steelStat.rings = Math.max(this.steelStat.rings, this._bRings);
         }
       }
       this._flush(game, F, A, life);
@@ -654,7 +730,7 @@ export class FlurryFx {
 
   /** One echo of hanging cut L (drawn `k` of its length), `off` cells across it on the screen,
    *  heat `h` at its middle and `h1` at its ends, the whole pulled `pull` m toward the camera. */
-  _echo(game, A, L, e, off, h, h1, pull, k) {
+  _echo(game, A, L, e, off, h, h1, pull, k, hole = 0) {
     k = Math.min(1, Math.max(0, k));
     if (!(k > 0.05)) return;
     const t0 = TIER_LOOK.trim * e, t1 = Math.max(t0 + 0.1, k - TIER_LOOK.trim * e);
@@ -671,18 +747,33 @@ export class FlurryFx {
     if (!Pb.ok) return;
     const dx = Pb.px - pax, dy = Pb.py - pay, l = Math.hypot(dx, dy);
     if (!(l > cw)) return;
-    // across the line on the screen, in whole cells (a mostly level line steps up / down a row, a
-    // mostly upright one sideways a column: the echo never touches its cut)
-    const flat = Math.abs(dx) >= Math.abs(dy);
-    const oi = flat ? 0 : Math.round(off), oj = flat ? Math.round(off) : 0;
-    const steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx) / cw, Math.abs(dy) / ch)));
-    for (let s = 0; s <= steps; s++) {
-      const f = s / steps;
-      const x = ax + (bx - ax) * f, y = ay + (by - ay) * f, z = az + (bz - az) * f;
-      const P = screen(game, x, y, z);
-      if (!P.ok) continue;
+    // laid on the grid as ONE clean stroke: the line's direction snapped to the nearest of the
+    // grid's four (across, up, the cell's two diagonals), one cell a step, so the field prints it as
+    // a single run of '-', '|', '/' or '' (a line between them would print as a staircase of '-'
+    // runs: a dashed ruler, not an echo). `off` cells across it (the echo never touches its cut)
+    let ang = Math.atan2(dy, dx);
+    if (ang < 0) ang += Math.PI;
+    if (ang >= Math.PI) ang -= Math.PI;
+    const dg = Math.atan2(ch, cw);
+    const cand = [0, dg, Math.PI / 2, Math.PI - dg, Math.PI];
+    let best = 0;
+    for (let c = 1; c < cand.length; c++) if (Math.abs(ang - cand[c]) < Math.abs(ang - cand[best])) best = c;
+    const dir = best % 4; // 0 across, 1 diagonal up-right, 2 up, 3 diagonal up-left
+    const di = dir === 0 || dir === 1 ? 1 : dir === 3 ? -1 : 0, dj = dir === 0 ? 0 : 1;
+    const oi = dir === 0 ? 0 : Math.round(off), oj = dir === 0 ? Math.round(off) : 0;
+    const stepPx = Math.hypot(di * cw, dj * ch), n = Math.max(1, Math.round(l / stepPx));
+    // the middle of the echo, on its cell
+    const mx = (ax + bx) * 0.5, my = (ay + by) * 0.5, mz = (az + bz) * 0.5;
+    const M = screen(game, mx, my, mz);
+    if (!M.ok) return;
+    const ci = Math.floor(M.px / cw), cj = Math.floor(M.py / ch), mpp = M.mpp, px0 = M.px, py0 = M.py;
+    for (let s = 0; s <= n; s++) {
+      const f = s / n;
+      if (hole > 0 && Math.abs(f - 0.5) < hole * 0.5) continue; // (the split: its middle is gone, the halves fly apart)
+      const q = s - n / 2, i = ci + Math.round(di * q) + oi, j = cj + Math.round(dj * q) + oj;
+      const ox = ((i + 0.5) * cw - px0) * mpp, oy = ((j + 0.5) * ch - py0) * mpp;
       const taper = Math.sqrt(Math.max(0, Math.sin(Math.PI * f)));
-      this._put(Math.floor(P.px / cw) + oi, Math.floor(P.py / ch) + oj, h1 + (h - h1) * taper, x, y, z, P);
+      this._put(i, j, h1 + (h - h1) * taper, mx + A.rx * ox + A.ux * oy, my + A.ry * ox + A.uy * oy, mz + A.rz * ox + A.uz * oy, null);
     }
   }
 
