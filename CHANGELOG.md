@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Sixty-four pieces of work since 0.4.0:
+Sixty-five pieces of work since 0.4.0:
 - **A fifth level: the Windless Grove and the Sheathed** (2026-11-22, ADR-144 – ADR-146). *Added:* a fifth
   level, `?level=grove` (the title screen lists it). **The Windless Grove**: a bamboo grove at night, a
   round clearing with a worn ring of paving, a mound planted with forty swords. **Lu Wusheng, the
@@ -21,6 +21,20 @@ Sixty-four pieces of work since 0.4.0:
   The engine gains optional beat fields (`draw`, `stopOn`, a move's `recoverOpen`) and takeHit's
   `breaksGuard`; the world's `light` pieces. He ships as the Wanderer (a slighter man in a faded indigo
   robe, a long sand scarf, dark hair in a high tail), the owner's pick of four bodies; the other options stay behind `?sheathLook=`, `?drawCut=`, `?grove=`. `tests/integration/sheath.mjs`.
+- **The letters come off where the blow lands** (2026-11-21, ADR-132; on by default, the owner's
+  pick; `?chip=0` turns it off). *Added:* bites. Every tree, stone, boulder, pillar, statue, bone and landmark piece is
+  made of bricks, the blocks of letters it is drawn with, and a blow takes the ones nearest where it
+  struck (the owner: "have the ascii pieces fall of exactly where the player or enemy boss is
+  hitting ... like minecraft/lego"): a blade cuts a notch into a trunk at the height it bit; a heavy
+  blow knocks the face of a standing stone back; a blast eats the side of a tree that faced it, where
+  before it took the tree's top. Each brick falls as its own letter from where it sat and some stay
+  lying. How much a piece takes, when it falls and what it deals are unchanged. *Changed:* the
+  hero's blade marks a piece at the blade's own height (about 0.3 m higher than before). With bites
+  on, the blade STOPS on what it does not cut through (the owner: "the sword should stop when it hits
+  it instead of going straight through it"): a freeze, a shake, sparks off stone, a moment stuck in
+  wood, then it is thrown back; a cut that fells the thing goes through. The chips fly out of the
+  struck face. On by default (the owner tried it behind `?chip=a` first); `?chip=0` or the Lab's
+  WORLD -> Bites turns it off.
 - **Cuts land with weight: the hit printed where it lands, the boss's body answers** (2026-11-22, ADR-149).
   *Added:* four new pieces on every cut that lands, each behind its own switch ("i want the hits to
   look realistic where it lands and show some kind of ascii animation to show the impact"). On a

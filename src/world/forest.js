@@ -7,6 +7,7 @@ import { CONFIG } from '../core/config.js';
 import { TAU } from '../core/math.js';
 import { buildElderWyrm, buildCinderTree, buildCinderStump, landmarkPoint, ELDER_COLLIDERS } from './landmarks.js';
 import { BREAK } from './breakTuning.js';
+import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
 
 // Procedural forest ring around a moonlit clearing: blob oaks and pines (leaf-ramp ASCII),
 // a broken standing-stone circle, boulders, flagstones, the bones of past challengers near
@@ -35,6 +36,91 @@ export function prep(geo) {
   for (const name of Object.keys(g.attributes)) if (name !== 'position') g.deleteAttribute(name);
   return g;
 }
+
+/**
+ * Cut a non-indexed geometry's triangles finer, in place, without changing its shape: a triangle
+ * whose longest edge is over `L` m is cut in two at that edge's middle, pass after pass, so the
+ * breakables' bricks (BREAK.chip: a blow takes the triangles where it struck) are about a letter cell
+ * and not a 2 m face of a trunk. Every edge longer than `L` ends up cut at its middle by both
+ * triangles that share it, so no seam opens. Every attribute is carried to the new corners (the
+ * middle of two: what the rasteriser drew there anyway; normals are made unit again). No new geometry
+ * object is made.
+ */
+export function refine(geo, L, passes = 10) {
+  if (!geo || geo.index || !(L > 0)) return geo;
+  // a thin part (a bough, a blade, a finger bone: its triangles' short edges average under
+  // BREAK.chip.thin m) is left as it is: it snaps off in the pieces it has
+  {
+    const p = geo.attributes.position?.array;
+    if (!p) return geo;
+    let sum = 0, n = 0;
+    for (let k = 0; k + 8 < p.length; k += 9) {
+      const a = Math.hypot(p[k] - p[k + 3], p[k + 1] - p[k + 4], p[k + 2] - p[k + 5]);
+      const b = Math.hypot(p[k + 3] - p[k + 6], p[k + 4] - p[k + 7], p[k + 5] - p[k + 8]);
+      const c = Math.hypot(p[k + 6] - p[k], p[k + 7] - p[k + 1], p[k + 8] - p[k + 2]);
+      sum += Math.min(a, b, c);
+      n++;
+    }
+    if (!n || sum / n < BREAK.chip.thin) return geo;
+  }
+  const names = Object.keys(geo.attributes);
+  const size = names.map((k) => geo.attributes[k].itemSize);
+  let A = names.map((k) => Array.from(geo.attributes[k].array));
+  const pi = names.indexOf('position');
+  if (pi < 0) return geo;
+  const L2 = L * L;
+  let changed = false;
+  for (let pass = 0; pass < passes; pass++) {
+    const P = A[pi], n = P.length / 3;
+    const B = names.map(() => []);
+    // a corner: vertex i of the current arrays, or the middle of i and j
+    const put = (i, j = -1) => {
+      for (let a = 0; a < A.length; a++) {
+        const k = size[a], src = A[a], dst = B[a];
+        if (j < 0) for (let c = 0; c < k; c++) dst.push(src[i * k + c]);
+        else for (let c = 0; c < k; c++) dst.push((src[i * k + c] + src[j * k + c]) * 0.5);
+      }
+    };
+    const len2 = (i, j) => (P[i * 3] - P[j * 3]) ** 2 + (P[i * 3 + 1] - P[j * 3 + 1]) ** 2 + (P[i * 3 + 2] - P[j * 3 + 2]) ** 2;
+    let split = false;
+    for (let v = 0; v + 2 < n; v += 3) {
+      const l0 = len2(v, v + 1), l1 = len2(v + 1, v + 2), l2 = len2(v + 2, v);
+      const m = Math.max(l0, l1, l2);
+      if (!(m > L2)) {
+        put(v); put(v + 1); put(v + 2);
+        continue;
+      }
+      split = true;
+      // turned so its longest edge is a - b (the first of equals: both sides of an edge see the same lengths)
+      const r = l0 === m ? 0 : l1 === m ? 1 : 2;
+      const a = v + r, b = v + ((r + 1) % 3), c = v + ((r + 2) % 3);
+      put(a); put(a, b); put(c);
+      put(a, b); put(b); put(c);
+    }
+    if (!split) break;
+    A = B;
+    changed = true;
+  }
+  if (!changed) return geo;
+  for (let a = 0; a < names.length; a++) {
+    const old = geo.attributes[names[a]], arr = new old.array.constructor(A[a]);
+    if (names[a] === 'normal') {
+      for (let i = 0; i + 2 < arr.length; i += 3) {
+        const l = Math.hypot(arr[i], arr[i + 1], arr[i + 2]) || 1;
+        arr[i] /= l; arr[i + 1] /= l; arr[i + 2] /= l;
+      }
+    }
+    const next = new THREE.BufferAttribute(arr, old.itemSize, old.normalized);
+    next.setUsage(old.usage);
+    geo.setAttribute(names[a], next);
+  }
+  geo.boundingBox = null;
+  geo.boundingSphere = null;
+  return geo;
+}
+
+/** The longest edge a brick may have when the level is built with bites on (`?chip=a`; else 0: the meshes as they were). */
+export const brickEdge = () => (lookOf('chip', 'a', 'a') !== '0' ? BREAK.chip.brick : 0);
 
 /** Displace vertices along their direction from `center` by 3D noise (watertight: position-keyed). */
 export function lumpy(geo, amp, freq, seed = 0, center = new THREE.Vector3()) {
@@ -616,7 +702,11 @@ class Runs {
     this.v = 0;
   }
 
-  add(geos, leaf = null) {
+  add(geos, leaf = null, fine = 1) {
+    // (bites on: a trunk's, a bone's faces cut to brick size x `fine`; foliage is fine enough, and
+    // what is never bitten, a stump, stays as it is: `fine` 0)
+    const L = brickEdge() * fine;
+    if (L > 0) for (let i = 0; i < geos.length; i++) if (!leaf || !leaf(i)) refine(geos[i], L);
     const parts = geos.map((g) => g.attributes.position.count);
     const r = { mesh: null, start: this.v, count: parts.reduce((a, n) => a + n, 0), parts, leaf: leaf ? geos.map((g, i) => (leaf(i) ? 1 : 0)) : null };
     this.list.push(...geos);
@@ -765,8 +855,9 @@ export function createForest(U, colliders) {
     const rad = Math.hypot(t.x, t.z), h = geosHeight(g);
     return {
       kind: t.type === 'dead' ? 'deadTree' : 'tree', mat: 'wood', look: 'range', x: t.x, z: t.z, r: 0.45 * t.s, h,
-      range: treeRuns.add(g, t.type === 'dead' ? null : (i) => i > 0),
-      colliders: c ? [c] : [], broken: { range: stumpRuns.add(buildStump(rng, t.x, t.z, t.s)), r: c ? 0.38 * t.s : 0 },
+      // (bricks: finer where the fight goes, BREAK.chip.near; twice as coarse in the deep forest)
+      range: treeRuns.add(g, t.type === 'dead' ? null : (i) => i > 0, Math.hypot(t.x, t.z) < BREAK.chip.near ? 1 : BREAK.chip.far),
+      colliders: c ? [c] : [], broken: { range: stumpRuns.add(buildStump(rng, t.x, t.z, t.s), null, 0), r: c ? 0.38 * t.s : 0 },
       leafy: t.type === 'dead' ? 0 : 0.6, lift: 1, wear: wearOf(t.type, g.length),
       // (the wall: tougher, and it falls away from the arena; BREAK.wall)
       wall: rad > WALL.from, hpK: rad > WALL.from ? WALL.hp : 1,
@@ -964,7 +1055,7 @@ export function createForest(U, colliders) {
       breakables.push({
         kind: 'cinderTrunk', mat: 'wood', look: 'range', digits: true, x: t.x, z: t.z, r: 1.8 * t.s, h: f.h,
         range: treeRuns.add(trunkGeos), colliders: [colliders.add(t.x, t.z, 3.0 * t.s, 'trunk')], soft: false,
-        broken: { range: stumpRuns.add(buildCinderStump(lr, t.x, t.z, t.yaw, t.s)), r: 2.3 * t.s },
+        broken: { range: stumpRuns.add(buildCinderStump(lr, t.x, t.z, t.yaw, t.s), null, 0), r: 2.3 * t.s },
         hp: LK.trunk, guard: boughs, topples: false, cover: true, lift: 0, wreck: false, weight: 2.2,
       });
     }

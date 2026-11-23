@@ -5,7 +5,7 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
-## 2026-11-22 — Session 75: a fifth level, the Windless Grove and the Sheathed (planned in its own chat, built by one Opus agent)
+## 2026-11-22 — Session 76: a fifth level, the Windless Grove and the Sheathed (planned in its own chat, built by one Opus agent)
 
 **What changed.** The owner asked for new level bosses on the power fantasy of famous characters, as
 originals; this one is a swordsman whose blade stays in its scabbard until one draw the hero must parry or
@@ -47,6 +47,133 @@ and rendered beside `a`; the owner then picked it: he ships as the Wanderer. It 
 
 **Next / open.** The bamboo crowds the frame at the game camera (the owner's eye); the score
 (borrowed tracks); a human on the phone through the draw; One Breath's balance bot on Shen Hui (not run).
+## 2026-11-21 / 22 — Session 75: bites, the letters come off where the blow lands
+
+**Owner:** "i want the player to be able to destory the terrain and have the ascii pieces fall of
+exactly where the player or enemy boss is hitting. can we do this to make every background object
+destrutcible like minecraft/lego?" Branch `world/chip-where-hit`. ADR-132 / Session 75 / M1.59.
+
+**What was there.** Nearly everything that stands breaks already (ADR-107, ADR-120, ADR-122), but as
+whole pieces: a blow takes structure, a tree drops its crown parts in a fixed order at three stages
+(a blast at a pine's foot took its top two tiers), a stone takes a nick, and the chips fly from one
+point. Nothing came off where the blow landed.
+
+**What changed** (`BREAK.chip`; behind `?chip=a`, the Lab's WORLD -> Bites; off ships until the owner
+picks):
+- every breakable is the BRICKS it is drawn with: its triangles, the two halves of a flat face being
+  one brick (foliage stays single). With bites on the level is built with the bitten pieces' faces
+  cut to 0.8 m (`forest.js` `refine`: the same shape and picture);
+- a blow takes the bricks nearest where it struck, as many as the share of the piece's structure it
+  took (`_hit` -> `_bite`): a blade from where its segment met the piece at the blade's own height
+  (`o.ya` / `o.yb`, new; the hero passes his blade's two ends), a blast from its own centre, so it
+  eats the side that faced it. The structure arithmetic is untouched;
+- a brick of a solid part is set back into the piece (0.42 of its thickness there, at most 0.3 m); a
+  leaf, a bough, a thin bone is folded away;
+- each brick falls as its own letter from where it sat; every third leaves a letter lying until the
+  reset; where a bite shows, the nick mark is left out and the splinter spray cut to 0.3;
+- 'range' pieces (the forest's trees, the landmarks) rewrite the triangle when their run is written
+  (`RangeBody.bite` / `_writeBits`); rigid-batch pieces (stones, boulders, pillars, statues) move it
+  in the batch's positions or fold it in its index (`MeshBricks`; `rigidBatch.js` records each
+  source's `userData.batchRun`);
+- with bites on a tree does not drop its crown parts in order; a crown part 72 % eaten drops whole; a
+  wind front's wear bites the windward crown. The range pieces' bricks are made four a frame after
+  the load (not five hundred inside a roar's half second).
+
+**Found on the way** (each from a rendered sheet or a failing check, not from reading the code):
+- The first bites were triangle-shaped (diagonals across a stone's face): the halves of a flat face
+  are one brick now.
+- A blast beside a tree ate it evenly (23 bricks on the near side, 22 on the far): the bricks were
+  counted from the point of the footprint the disc touched. Counted from the blast's own centre:
+  80 against 16, the 16 being the trunk's own.
+- Trunks and boulders were far coarser than "a letter cell": a pine's trunk is two rings of 1.3 - 2.6
+  m faces, a boulder 20 triangles, so a cut took a 1.4 m slab. Hence `refine`. Its first form
+  (every long edge cut, 0.6 m) took Cinderwood from 0.92 M drawn vertices to 1.52 M; longest-edge
+  bisection at 0.8 m, stumps and thin parts left alone, the deep forest 2.5 x coarser: 1.07 M.
+- Plain holes were wrong for solid things: the meshes are hollow, so a holed boulder opened onto
+  black ground and a trunk cut half through looked as if the tree floated; a second option that took
+  a wider patch left a standing stone's top hanging over a gap (dropped). Hence the set-back.
+- My first set-back wrote each brick's way in over its normal while the loop was still reading the
+  normals: half a stone's bricks found no wall behind them (111 of 210). The test's count showed it.
+- A patch script of mine cut three accessors out of `RangeBody` (`parts`, `visible`); the next test
+  run failed on the first line that read them, and they were put back.
+
+**The blade stops** (the owner, after the sheet: "this looks good but theres no impact or animation
+hitting the background object. it looks like im just hitting through it. it should chip at it
+realistically and the sword should stop when it hits it instead of going straight through it").
+With bites on, a cut that meets a piece it does not cut through stops on it (`player.js`
+`_bladeStops`, `BREAK.chip.stop`, `destructibles.struck`): the attack clock goes back to about where
+the edge met it, the frame freezes (wood 0.075 s, stone 0.095), the camera shakes, steel on stone
+sparks, the blade sticks in wood 0.11 s, then the duelists' bounce throws it back (0.25 / 0.45 m). A
+cut that fells or breaks the thing goes through with a 0.05 s freeze. The bitten chips are knocked
+out of the struck face toward him. Filmed (12 frames, 50 ms apart, the real swing, bites off and on):
+off, the blade sweeps through a standing stone and a dead tree to the ground; on, it stops at the
+face (a flash and sparks off the stone, splinters off the tree) and is flung back. Integration
+scenario `bladestop`: on, a light cut into a boulder and a dead tree chips each, freezes, stops the
+cut at 0.142 / 0.158 s of its 0.230 and bounces; a felling cut goes through; off, the same cuts run
+through to 0.467 s as before. The owner, on the sheet: "Keep it": the stop stays as tuned.
+
+**On by default** (the owner: "Yes, turn it on"). The call sites' default is now `a`; `?chip=0` turns
+bites off. Every test now runs with bites on; the first whole run found three things:
+- `world budget`: destructibles.update worst 73 ms. `brickSink` compared every brick with every other
+  (the Cinder Tree's trunk: 74 ms). Now a dense grid of the centres, the search capped at the depth
+  that matters (max / k), a part with no wall that near set back the most if it is closed (its
+  area-weighted normals cancel) and holed if open: the trunk 9 ms, all of Cinderwood 221 ms. A warm-up
+  a few pieces a frame still broke p99.9 (1.9 ms against 1.5: a tree costs 1 - 2 ms), so every piece's
+  bricks are made at the level's build. Then: avg 0.02 ms, p99.9 0.86, worst 1.2 - 2.1.
+- `lord` TRAINING, "Build his streak, he answers": done in 2.2 s with no flurry. Traced: the hero's
+  cuts stopped on the crater's rim slabs and a shard (2 m away, real contact within the blade's 0.24 m).
+  Moving every situation's hero clear of pieces broke four flurry situations, so it is opt-in:
+  `clear: true` on that one situation (Training `_crowded`, `CLEAR_SPOTS`).
+- `world` WEAR / PLACED: the crown parts no longer drop in stages with bites on (by design); those two
+  scenarios run with `?chip=0`, the path that still has them.
+A contact check (`touch`) first set to 0.15 m made the blade pass a dead tree it had chipped; it is
+0.25 m, the blade's own hit radius.
+
+**Every level, and the rule written down** (the owner, 2026-11-22: "is the destructible terrain
+applied to all stages as well? make sure instructions are documented for future agents to make all
+background objects destructible and follow the same rules"). Merged `main` again (#83 the throne's
+props, Tian Lei's third wave: they took Sessions 72 / 73 and M1.56 / 57, and then the impact pass took
+Session 74 / M1.58, so this is Session 75 / M1.59; ADR-132 stays). The world test `bite` now walks the level registry instead of a list of
+arenas, so a new level is checked with no change. It found two things: in Cinderwood a blow on the
+Cinder Tree's high boughs and the Elder Wyrm's fingers took structure and showed no bite (no brick
+within reach): such a blow now takes the bricks nearest it however far; and the training room
+(`?stage=lab`) lists nothing that breaks, which is kept on purpose (a measuring stage; the test
+checks it). Results: Cinderwood 664 pieces, the courtyard 162, the crater 144 (with #83's props),
+the Skybreak Ring 35, every piece with bricks and a blow on each kind biting it. The rule for future
+agents: CLAUDE.md "The world breaks, letter by letter" and ARCHITECTURE.md "Making a new object
+destructible" (a 7-step checklist).
+
+**Merged with `main`** (the same evening: PR #73 - #75 had landed, the Skybreak Ring and the hero's
+look; they took ADR-129 / 130, Sessions 69 / 70, M1.54 / 55; then PR #76, the phone, took ADR-131 / Session
+71; on 2026-11-22 Tian Lei's third wave and the throne's props took Sessions 72 / 73 and M1.56 /
+57, so this is ADR-132 / Session 75 / M1.59).
+The new level's pieces go through the same batch path: the test covers it.
+
+**Verification.** World test `bite` (15 checks: a quarter-cut takes a quarter of a tree's structure
+and 11 of the 42 bricks within 0.8 m of the blade, all of the trunk, set back toward its axis; every
+other brick where it was; 5 such cuts fell it with none of that section left; a blow on a stone's
+south face takes 32 of its 210 bricks, all on that side, set back in the batch's positions; a blast
+east of a tree: 80 bricks east, 16 west; a rib loses bricks; a floor slab does not; the reset puts
+every vertex and index back; the courtyard's 162, the crater's 111 and the Skybreak Ring's 35 pieces that
+take structure all have bricks, a blow on one of each kind bites it and the reset undoes it; off: no
+bricks). In the browser (headless Edge, the real GPU, 1280 x
+720), the same blows with bites off and on: a stone, a boulder, a dead tree, the lone pine, the Elder
+Wyrm's ribs, and the hero's own cuts at the game camera (3 cuts: 3 bricks off the stone; 6 cuts fell
+the pine, away from him). A piece before any blow looks the same built either way (the stone, the
+boulder, the dead tree side by side). `npm test` here, on a machine other sessions were loading with their own suites (93 node processes at
+the end): the first whole run, before the finer bricks and the set-back, passed (all nine tasks). The
+run on the finished code: `integ` (all five tasks), `duel` and the static checks passed, `lord` never
+reported, and `world` passed 333 checks and failed one, its wall-clock budget for
+destructibles.update. That check is the machine, not this change: alone on a quieter machine it read
+avg 0.013 ms, p99.9 0.5, worst 1.46 (budget 0.5 / 1.5 / 8), and at the end an untouched `main` failed
+it with the branch's numbers (avg 0.29 - 0.33 ms, p99.9 28 - 30 against the branch's 0.23 - 0.25, 24 -
+30). `npm run build` passes. The whole suite on a clean runner is the PR's check.
+
+**Not checked / open.** Nobody has played it. The duel arenas are checked by the test (and the courtyard
+loaded and struck once in the browser), not studied on a sheet. Not on the phone,
+and the frame cost of the extra vertices is not measured. The ground itself does not break (ADR-132
+"Not done"), nor the landmarks that were decided to stay whole. A set-back brick cannot be struck
+again (one layer), and nothing falls for want of support.
 ## 2026-11-22 — Session 74: a landed cut has weight (the impact pass)
 
 **Owner:** "how can we make the games combat more impactful and feel weight? i want the hits to look

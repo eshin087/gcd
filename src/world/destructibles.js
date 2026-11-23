@@ -8,7 +8,8 @@ import { BREAK, BLOW } from './breakTuning.js';
 import { CONFIG } from '../core/config.js';
 import { Wreckage } from './wreckage.js';
 import { Edge } from './edge.js';
-import { lumpy, carve, mul, slabGeometry, STONE } from './forest.js';
+import { lumpy, carve, mul, slabGeometry, STONE, refine, brickEdge } from './forest.js';
+import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
 
 // Breakable objects (ADR-107): the trees, stones, pillars and props of a set that blows can chip,
 // break, fell, burn, lift and throw. A set lists them in its output (`breakables`) instead of merging
@@ -114,6 +115,7 @@ const { INTACT, FALLING, BROKEN, HELD, FLYING, GONE } = STATE;
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const NONE = Object.freeze({});
+const NO_PIECES = Object.freeze([]);
 const LEAVES = 'o0O8@&';
 const DIGITS = '0123456789';
 const FLASH_LEAD = 0.3;
@@ -164,6 +166,347 @@ function segDist(px, pz, ax, az, bx, bz, out) {
   const t = l2 > 1e-9 ? clamp(((px - ax) * abx + (pz - az) * abz) / l2, 0, 1) : 0;
   out.t = t;
   return Math.hypot(ax + abx * t - px, az + abz * t - pz);
+}
+
+// ---------- bites (BREAK.chip): a piece is the bricks it is drawn with, its triangles ----------
+/** The bite look now (`?chip=`; lookSwitch.js): 'a' the bricks under a blow are knocked out (the owner's
+ *  pick, 2026-11-21: on by default, and under `?looks=old`, as a new thing keeps its pick), '0' off
+ *  (pieces only wear down and break whole). Read at each blow; a level built with it on has finer
+ *  bricks (forest.js `brickEdge`), so the Lab switches it with a reload. */
+export const chipLook = () => lookOf('chip', 'a', 'a');
+const PICK_MAX = 128;
+const PICK_D = new Float32Array(PICK_MAX), PICK_I = new Int32Array(PICK_MAX);
+let pickK = 0;
+/**
+ * The bricks nearest (px, py, pz) among `T` centres `cen` (x, y, z each): those within `reach` that
+ * are not gone yet (`bit[t]` 1; `tpart` / `shown`: nor in a part that dropped), nearest first, at most
+ * `cap`, into PICK_I. Returns how many; `pickK` = every brick within reach, gone or not (the section the
+ * blow covers). No allocation.
+ */
+function pickBricks(cen, T, bit, px, py, pz, reach, cap, tpart, shown) {
+  const r2 = reach * reach;
+  let n = 0, K = 0;
+  if (cap > PICK_MAX) cap = PICK_MAX;
+  for (let t = 0, k = 0; t < T; t++, k += 3) {
+    const ex = cen[k] - px, ey = cen[k + 1] - py, ez = cen[k + 2] - pz;
+    const d2 = ex * ex + ey * ey + ez * ez;
+    if (d2 > r2) continue;
+    K++;
+    if (bit[t] === 1 || (tpart !== null && shown[tpart[t]] === 0)) continue;
+    if (n < cap || d2 < PICK_D[n - 1]) {
+      let j = n < cap ? n++ : n - 1;
+      while (j > 0 && PICK_D[j - 1] > d2) {
+        PICK_D[j] = PICK_D[j - 1];
+        PICK_I[j] = PICK_I[j - 1];
+        j--;
+      }
+      PICK_D[j] = d2;
+      PICK_I[j] = t;
+    }
+  }
+  pickK = K;
+  return n;
+}
+/** How many of `n` picked bricks a blow takes: `share` of the section it covers, at least one. */
+const biteCount = (n, share) => (n > 0 ? Math.min(n, Math.max(1, Math.round(share * pickK))) : 0);
+
+/** Two triangles are one brick when they share their longest edge and their faces lie this flat together (the cosine between them). */
+const BRICK_FLAT = 0.9;
+/** ... and stand within this many triangles of each other in the mesh (the halves of a face are built side by side). */
+const BRICK_NEAR = 40;
+/**
+ * Triangles grouped into bricks. `P`: every triangle's three corners (9 numbers each), `T` of them;
+ * `pair(t, u)`: triangles t and u may be one brick (not foliage, the same part). Two triangles that
+ * share an edge which is the longest of both (the diagonal of a face of a trunk, a slab, a pillar)
+ * and lie nearly flat together are one brick, so a bite is block-shaped where the piece is. Returns
+ * { n, tri (2 per brick, the second -1 for a lone triangle), cen (3 per brick), nor (its unit normal, 3 per brick) }.
+ */
+function makeBricks(P, T, pair) {
+  const tri = new Int32Array(T * 2), cen = new Float32Array(T * 3), nor = new Float32Array(T * 3), area = new Float32Array(T), used = new Uint8Array(T);
+  // each triangle's longest edge: its two corners (offsets 0, 3, 6 into its 9 numbers) and its length squared
+  const ea = new Uint8Array(T), eb = new Uint8Array(T), el = new Float32Array(T);
+  const d2 = (k, a, b) => (P[k + a] - P[k + b]) ** 2 + (P[k + a + 1] - P[k + b + 1]) ** 2 + (P[k + a + 2] - P[k + b + 2]) ** 2;
+  for (let t = 0; t < T; t++) {
+    const k = t * 9, l0 = d2(k, 0, 3), l1 = d2(k, 3, 6), l2 = d2(k, 6, 0);
+    if (l0 >= l1 && l0 >= l2) { ea[t] = 0; eb[t] = 3; el[t] = l0; }
+    else if (l1 >= l2) { ea[t] = 3; eb[t] = 6; el[t] = l1; }
+    else { ea[t] = 6; eb[t] = 0; el[t] = l2; }
+  }
+  const same = (k, a, q, b) => Math.abs(P[k + a] - P[q + b]) + Math.abs(P[k + a + 1] - P[q + b + 1]) + Math.abs(P[k + a + 2] - P[q + b + 2]) < 1e-4;
+  const normal = (k, out) => {
+    const ux = P[k + 3] - P[k], uy = P[k + 4] - P[k + 1], uz = P[k + 5] - P[k + 2];
+    const vx = P[k + 6] - P[k], vy = P[k + 7] - P[k + 1], vz = P[k + 8] - P[k + 2];
+    out[0] = uy * vz - uz * vy;
+    out[1] = uz * vx - ux * vz;
+    out[2] = ux * vy - uy * vx;
+  };
+  const na = [0, 0, 0], nb = [0, 0, 0];
+  let n = 0;
+  for (let t = 0; t < T; t++) {
+    if (used[t]) continue;
+    used[t] = 1;
+    const k = t * 9;
+    let mate = -1;
+    for (let u = t + 1; u < T && u <= t + BRICK_NEAR; u++) {
+      if (used[u] || !pair(t, u)) continue;
+      // the same edge, the longest of both
+      if (Math.abs(el[u] - el[t]) > 1e-4 * (1 + el[t])) continue;
+      const q = u * 9;
+      if (!((same(k, ea[t], q, ea[u]) && same(k, eb[t], q, eb[u])) || (same(k, ea[t], q, eb[u]) && same(k, eb[t], q, ea[u])))) continue;
+      normal(k, na);
+      normal(q, nb);
+      const l = Math.hypot(na[0], na[1], na[2]) * Math.hypot(nb[0], nb[1], nb[2]);
+      if (l > 1e-14 && (na[0] * nb[0] + na[1] * nb[1] + na[2] * nb[2]) / l >= BRICK_FLAT) {
+        mate = u;
+        break;
+      }
+    }
+    let x = 0, y = 0, z = 0;
+    for (let a = 0; a < 9; a += 3) {
+      x += P[k + a];
+      y += P[k + a + 1];
+      z += P[k + a + 2];
+    }
+    normal(k, na);
+    const nl = Math.hypot(na[0], na[1], na[2]) || 1;
+    nor[n * 3] = na[0] / nl;
+    nor[n * 3 + 1] = na[1] / nl;
+    nor[n * 3 + 2] = na[2] / nl;
+    area[n] = nl * 0.5;
+    let m = 3;
+    if (mate >= 0) {
+      used[mate] = 1;
+      const q = mate * 9;
+      normal(q, nb);
+      area[n] += Math.hypot(nb[0], nb[1], nb[2]) * 0.5;
+      for (let a = 0; a < 9; a += 3) {
+        x += P[q + a];
+        y += P[q + a + 1];
+        z += P[q + a + 2];
+      }
+      m = 6;
+    }
+    cen[n * 3] = x / m;
+    cen[n * 3 + 1] = y / m;
+    cen[n * 3 + 2] = z / m;
+    tri[n * 2] = t;
+    tri[n * 2 + 1] = mate;
+    n++;
+  }
+  return { n, tri, cen, nor, area };
+}
+
+/** Brick-depth search (brickSink): the grid's cell (m) and the share of a part's area-weighted normals
+ *  left over under which it counts as closed (a trunk, a stone: they cancel; a sheet, an open cone: not). */
+const SINK_CELL = 0.5, SINK_OPEN = 0.25, SINK_CONE = 0.75;
+/**
+ * How far each brick is knocked BACK into its piece when a blow takes it (BREAK.chip.sink), and which
+ * way: a solid part (a trunk, a stone, a bone) keeps a skin there, set back, instead of a hole onto its
+ * empty inside (a boulder opened onto black; a cut trunk looked as if it floated). Per brick: the wall
+ * facing it across the part (the nearest brick of its group whose face looks back at it, along the
+ * brick's own normal or against it) is its thickness there; it is set back `k` of that, at most `max`
+ * m; under `min` (a thin part: no dent would show) it is folded away. Only walls within the depth that
+ * can matter are looked for (max / k: thicker than that, it is set back `max` anyway), through a grid
+ * of the bricks' centres; a brick with none that near is set back `max` if its part is CLOSED (its
+ * area-weighted normals cancel out: a thick trunk, a big stone) and folded away if it is open (a
+ * sheet, an open cone). `solid(i)`: brick i may be set back; `group(i)`: bricks of one part. Writes
+ * the unit way in into `B.nor` and returns the depths. Build time only (a piece's first bite or the
+ * warm-up): ~O(n), the Cinder Tree's trunk (3000 bricks) in a few ms.
+ */
+function brickSink(B, solid, group, k, max, min = 0) {
+  // (the way in is written to a copy: every brick is judged against the faces as they were built)
+  const n = B.n, C = B.cen, N = B.nor, A = B.area, dep = new Float32Array(n), inn = new Float32Array(N);
+  const G = new Int32Array(n);
+  let gMax = 0;
+  for (let i = 0; i < n; i++) gMax = Math.max(gMax, (G[i] = group(i)));
+  // is each part closed: its area-weighted normals sum to (nearly) nothing
+  const sx = new Float64Array(gMax + 1), sy = new Float64Array(gMax + 1), sz = new Float64Array(gMax + 1), sa = new Float64Array(gMax + 1);
+  for (let i = 0; i < n; i++) {
+    const g = G[i], a = A ? A[i] : 1;
+    sx[g] += N[i * 3] * a;
+    sy[g] += N[i * 3 + 1] * a;
+    sz[g] += N[i * 3 + 2] * a;
+    sa[g] += a;
+  }
+  const closed = new Uint8Array(gMax + 1);
+  for (let g = 0; g <= gMax; g++) closed[g] = sa[g] > 0 && Math.hypot(sx[g], sy[g], sz[g]) < SINK_OPEN * sa[g] ? 1 : 0;
+  // the bricks' centres in a dense grid over their bounds (counting sort: `start[c]` .. `start[c + 1]` in
+  // `items`); a cell's bricks of every group, the group checked per brick
+  let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
+  for (let i = 0; i < n; i++) {
+    const x = C[i * 3], y = C[i * 3 + 1], z = C[i * 3 + 2];
+    if (x < x0) x0 = x;
+    if (x > x1) x1 = x;
+    if (y < y0) y0 = y;
+    if (y > y1) y1 = y;
+    if (z < z0) z0 = z;
+    if (z > z1) z1 = z;
+  }
+  const nx_ = Math.max(1, Math.floor((x1 - x0) / SINK_CELL) + 1), ny_ = Math.max(1, Math.floor((y1 - y0) / SINK_CELL) + 1), nz_ = Math.max(1, Math.floor((z1 - z0) / SINK_CELL) + 1);
+  const cellOf = new Int32Array(n), start = new Int32Array(nx_ * ny_ * nz_ + 1), items = new Int32Array(n);
+  for (let i = 0; i < n; i++) {
+    const cx = Math.min(nx_ - 1, Math.floor((C[i * 3] - x0) / SINK_CELL)), cy = Math.min(ny_ - 1, Math.floor((C[i * 3 + 1] - y0) / SINK_CELL)), cz = Math.min(nz_ - 1, Math.floor((C[i * 3 + 2] - z0) / SINK_CELL));
+    start[(cellOf[i] = (cx * ny_ + cy) * nz_ + cz) + 1]++;
+  }
+  for (let c = 0; c < start.length - 1; c++) start[c + 1] += start[c];
+  {
+    const fill = start.slice(0, start.length - 1);
+    for (let i = 0; i < n; i++) items[fill[cellOf[i]]++] = i;
+  }
+  // (a wall at `along` must lie within along / SINK_CONE of the brick: the cone the test below keeps)
+  const reach = max / Math.max(1e-3, k), R = reach / SINK_CONE, ring = Math.ceil(R / SINK_CELL);
+  for (let i = 0; i < n; i++) {
+    if (!solid(i)) continue;
+    const gi = G[i];
+    const cx = C[i * 3], cy = C[i * 3 + 1], cz = C[i * 3 + 2], nx = N[i * 3], ny = N[i * 3 + 1], nz = N[i * 3 + 2];
+    const c0 = cellOf[i], ix = Math.floor(c0 / (ny_ * nz_)), iy = Math.floor(c0 / nz_) % ny_, iz = c0 % nz_;
+    // the nearest wall behind it (against its normal) and before it (a face wound the other way round)
+    let back = Infinity, fore = Infinity;
+    const ax0 = Math.max(0, ix - ring), ax1 = Math.min(nx_ - 1, ix + ring), ay0 = Math.max(0, iy - ring), ay1 = Math.min(ny_ - 1, iy + ring), az0 = Math.max(0, iz - ring), az1 = Math.min(nz_ - 1, iz + ring);
+    for (let ax = ax0; ax <= ax1; ax++) {
+      for (let ay = ay0; ay <= ay1; ay++) {
+        const row = (ax * ny_ + ay) * nz_;
+        for (let q = start[row + az0], e = start[row + az1 + 1]; q < e; q++) {
+          const j = items[q];
+          if (j === i || G[j] !== gi) continue;
+          const vx = C[j * 3] - cx, vy = C[j * 3 + 1] - cy, vz = C[j * 3 + 2] - cz;
+          const along = vx * nx + vy * ny + vz * nz, d = Math.hypot(vx, vy, vz);
+          if (d < 1e-4 || d > R || Math.abs(along) < SINK_CONE * d) continue; // (not across from it)
+          const facing = N[j * 3] * nx + N[j * 3 + 1] * ny + N[j * 3 + 2] * nz;
+          if (along < 0 && facing < -0.3 && -along < back) back = -along;
+          else if (along > 0 && facing < -0.3 && along < fore) fore = along;
+        }
+      }
+    }
+    let t = back, sign = -1;
+    if (!(back < Infinity) && fore < Infinity) {
+      t = fore;
+      sign = 1;
+    }
+    // no wall within reach: a closed part is thicker than that (set back the most), an open one is a sheet
+    if (!(t < Infinity)) {
+      if (!closed[gi]) continue;
+      t = reach;
+    }
+    // (a part too thin for a dent to show: the brick goes)
+    if (t * k < min) continue;
+    dep[i] = Math.min(max, t * k);
+    inn[i * 3] = nx * sign;
+    inn[i * 3 + 1] = ny * sign;
+    inn[i * 3 + 2] = nz * sign;
+  }
+  B.nor = inn;
+  return dep;
+}
+
+/**
+ * The bricks of a piece drawn through the rigid batch (a stone, a pillar, a statue). A brick a blow
+ * takes is set back into the piece (its triangles' corners moved in the batch's positions; BREAK.chip
+ * `sink`), or, with no wall behind it, folded away in the batch's index (its three indices set to the
+ * first: nothing is drawn of it). `reset()` puts both runs back. Centres are in the piece's own space
+ * (its base at the origin). Built once per piece (`run`: rigidBatch.js `userData.batchRun`; `parts`:
+ * the vertex counts of the geometries it was merged from, a trunk and its boughs).
+ */
+class MeshBricks {
+  constructor(src, run, parts) {
+    const g = src.geometry, pos = g.attributes.position, idx = g.index;
+    this.index = run.mesh.geometry.index;
+    this.i0 = run.i0 | 0;
+    const T = (run.ic / 3) | 0;
+    const P = new Float32Array(T * 9);
+    for (let t = 0; t < T; t++) {
+      for (let c = 0; c < 3; c++) {
+        const v = idx ? idx.getX(t * 3 + c) : t * 3 + c;
+        P[t * 9 + c * 3] = pos.getX(v);
+        P[t * 9 + c * 3 + 1] = pos.getY(v);
+        P[t * 9 + c * 3 + 2] = pos.getZ(v);
+      }
+    }
+    // (its parts: triangles of one geometry pair up and face each other; an indexed source has none)
+    const ends = [];
+    if (!idx && Array.isArray(parts) && parts.reduce((a, v) => a + v, 0) === pos.count) for (let i = 0, a = 0; i < parts.length; i++) ends.push((a += parts[i]) / 3);
+    const partOf = (t) => {
+      let p = 0;
+      while (p < ends.length - 1 && t >= ends[p]) p++;
+      return p;
+    };
+    const B = makeBricks(P, T, (t, u) => partOf(t) === partOf(u));
+    /** its bricks: how many, the triangles of each (2, the second -1), their centres, the way in, how far it is set back (0: folded) */
+    this.T = B.n;
+    this.tri = B.tri;
+    this.cen = B.cen;
+    this.saved = this.index.array.slice(this.i0, this.i0 + T * 3);
+    this.bit = new Uint8Array(B.n);
+    this.n = 0;
+    this._ur = { start: this.i0, count: T * 3 };
+    // setting a brick back moves its own corners: only where no triangle shares them (a non-indexed source)
+    const S = BREAK.chip.sink, v0 = run.v0, nv = run.n;
+    this.pos = !idx && Number.isInteger(v0) && nv === pos.count ? run.mesh.geometry.attributes.position : null;
+    this.dep = this.pos ? brickSink(B, () => true, (i) => partOf(B.tri[i * 2]), S.k, S.max, S.min) : new Float32Array(B.n);
+    this.nor = B.nor;
+    this.v0 = v0 | 0;
+    this.psaved = this.pos ? this.pos.array.slice(this.v0 * 3, (this.v0 + nv) * 3) : null;
+    this._urP = { start: this.v0 * 3, count: (nv | 0) * 3 };
+    this.moved = false;
+  }
+
+  /** Knock out `share` of the bricks within `reach` of the point (the piece's space), nearest first; each one's centre into `out` (x, y, z, 0). */
+  bite(px, py, pz, reach, share, cap, out) {
+    const n = biteCount(pickBricks(this.cen, this.T, this.bit, px, py, pz, reach, cap, null, null), share);
+    const a = this.index.array, C = this.cen, N = this.nor;
+    let folded = false, moved = false;
+    for (let i = 0; i < n; i++) {
+      const t = PICK_I[i], d = this.dep[t];
+      this.bit[t] = 1;
+      for (let j = 0; j < 2; j++) {
+        const f = this.tri[t * 2 + j];
+        if (f < 0) break;
+        if (d > 0) {
+          // set back along the way in (a non-indexed source: triangle f's corners are vertices 3f .. 3f + 2 of its run)
+          const pa = this.pos.array, k = (this.v0 + f * 3) * 3, ox = N[t * 3] * d, oy = N[t * 3 + 1] * d, oz = N[t * 3 + 2] * d;
+          for (let c = 0; c < 9; c += 3) {
+            pa[k + c] += ox;
+            pa[k + c + 1] += oy;
+            pa[k + c + 2] += oz;
+          }
+          moved = true;
+        } else {
+          const k = this.i0 + f * 3;
+          a[k + 1] = a[k + 2] = a[k];
+          folded = true;
+        }
+      }
+      out[i * 4] = C[t * 3];
+      out[i * 4 + 1] = C[t * 3 + 1];
+      out[i * 4 + 2] = C[t * 3 + 2];
+      out[i * 4 + 3] = 0;
+    }
+    this.n += n;
+    if (folded) queueRange(this.index, this._ur);
+    if (moved) {
+      this.moved = true;
+      queueRange(this.pos, this._urP);
+    }
+    return n;
+  }
+
+  /** The share of its bricks that are gone. */
+  get gone() {
+    return this.T ? this.n / this.T : 0;
+  }
+
+  reset() {
+    if (!this.n) return;
+    this.index.array.set(this.saved, this.i0);
+    this.bit.fill(0);
+    this.n = 0;
+    queueRange(this.index, this._ur);
+    if (this.moved) {
+      this.pos.array.set(this.psaved, this.v0 * 3);
+      this.moved = false;
+      queueRange(this.pos, this._urP);
+    }
+  }
 }
 
 /**
@@ -228,6 +571,111 @@ class RangeBody {
     this._urP = { start: this.start * 3, count: this.count * 3 };
     this._urN = { start: this.start * 3, count: this.count * 3 };
     this.mesh.userData.on = (this.mesh.userData.on ?? 0) + 1;
+    // bites (BREAK.chip): its triangles are its bricks (two that make a flat quad are one). `bit[i]` 1 =
+    // brick i is knocked out (its triangles folded onto their first corner). Made at its first bite:
+    // the bricks' triangles, centres and parts
+    this.tris = (this.count / 3) | 0;
+    this.nb = 0;
+    this.btri = null;
+    this.bit = null;
+    this.cen = null;
+    this.tpart = null;
+    this.pBit = null; // bricks gone per part
+    this.pN = null; // bricks per part
+    this.nBit = 0; // bricks gone
+    this.bnor = null; // the way into the piece, per brick
+    this.bdep = null; // m it is set back when taken (0: folded away)
+  }
+
+  /** The bricks' centres, parts and flags, once (its first bite). */
+  _bricks() {
+    const ends = this.ends, leaf = this.leaf;
+    const partOf = (t) => {
+      let p = 0;
+      while (p < ends.length - 1 && t * 3 >= ends[p]) p++;
+      return p;
+    };
+    // (foliage falls leaf by leaf: its triangles stay single; a trunk's, a bone's, a slab's quads are bricks)
+    const B = makeBricks(this.home, this.tris, (t, u) => {
+      const p = partOf(t);
+      return leaf[p] === 0 && partOf(u) === p;
+    });
+    this.nb = B.n;
+    this.btri = B.tri;
+    this.cen = B.cen;
+    this.bit = new Uint8Array(B.n);
+    this.tpart = new Uint8Array(B.n);
+    this.pBit = new Uint16Array(ends.length);
+    this.pN = new Uint16Array(ends.length); // bricks per part
+    for (let i = 0; i < B.n; i++) this.pN[(this.tpart[i] = partOf(B.tri[i * 2]))]++;
+    // a solid part's brick is set back into it, not opened onto its empty inside (foliage is holed)
+    const S = BREAK.chip.sink, tp = this.tpart;
+    this.bdep = brickSink(B, (i) => leaf[tp[i]] === 0, (i) => tp[i], S.k, S.max, S.min);
+    this.bnor = B.nor;
+  }
+
+  /**
+   * Knock out `share` of the bricks within `reach` of the point (world, at home), nearest first, at most
+   * `cap`; each one's centre and part into `out` (x, y, z, part). Returns how many. No write: call
+   * write() after.
+   */
+  bite(px, py, pz, reach, share, cap, out) {
+    if (!this.tris || !this._on) return 0;
+    if (!this.bit) this._bricks();
+    const n = biteCount(pickBricks(this.cen, this.nb, this.bit, px, py, pz, reach, cap, this.tpart, this.shown), share);
+    const C = this.cen;
+    for (let i = 0; i < n; i++) {
+      const t = PICK_I[i], p = this.tpart[t];
+      this.bit[t] = 1;
+      this.pBit[p]++;
+      out[i * 4] = C[t * 3];
+      out[i * 4 + 1] = C[t * 3 + 1];
+      out[i * 4 + 2] = C[t * 3 + 2];
+      out[i * 4 + 3] = p;
+    }
+    this.nBit += n;
+    return n;
+  }
+
+  /** The share of part i's bricks that are gone. */
+  partGone(i) {
+    return this.pBit && this.pN[i] > 0 ? this.pBit[i] / this.pN[i] : 0;
+  }
+
+  /** The bricks that are gone, in the mesh's positions (after the parts are written): set back into the piece, or each triangle folded onto its first corner. */
+  _writeBits(a, s) {
+    const bit = this.bit, T = this.btri, D = this.bdep, N = this.bnor, R = this.R, posed = this.posed;
+    for (let i = 0; i < this.nb; i++) {
+      if (bit[i] === 0 || !this.shown[this.tpart[i]]) continue;
+      const d = D[i];
+      let ox = 0, oy = 0, oz = 0;
+      if (d > 0) {
+        const nx = N[i * 3] * d, ny = N[i * 3 + 1] * d, nz = N[i * 3 + 2] * d;
+        if (posed) {
+          ox = R[0] * nx + R[1] * ny + R[2] * nz;
+          oy = R[3] * nx + R[4] * ny + R[5] * nz;
+          oz = R[6] * nx + R[7] * ny + R[8] * nz;
+        } else {
+          ox = nx; oy = ny; oz = nz;
+        }
+      }
+      for (let j = 0; j < 2; j++) {
+        const t = T[i * 2 + j];
+        if (t < 0) break;
+        const k = s + t * 9;
+        if (d > 0) {
+          for (let c = 0; c < 9; c += 3) {
+            a[k + c] += ox;
+            a[k + c + 1] += oy;
+            a[k + c + 2] += oz;
+          }
+        } else {
+          a[k + 3] = a[k + 6] = a[k];
+          a[k + 4] = a[k + 7] = a[k + 1];
+          a[k + 5] = a[k + 8] = a[k + 2];
+        }
+      }
+    }
   }
 
   get parts() {
@@ -264,6 +712,11 @@ class RangeBody {
 
   /** Every part back, upright, where it stood (no write). */
   home0() {
+    if (this.nBit > 0) {
+      this.bit.fill(0);
+      this.pBit.fill(0);
+      this.nBit = 0;
+    }
     this.shown.fill(1);
     this.R.set(IDENT3);
     this.t.fill(0);
@@ -369,6 +822,7 @@ class RangeBody {
       }
       v0 = v1;
     }
+    if (this.nBit > 0 && this._on) this._writeBits(a, s);
     // (uploaded at the next flushRanges(): once a frame, one range per body however often it was written)
     if (nWrite) this._nDirty = true;
     if (!this._pend) {
@@ -479,6 +933,22 @@ export class Destructibles {
     this._wq = { n: 0, id: new Int32Array(WQ), t: new Float64Array(WQ), p: new Float32Array(WQ), dx: new Float32Array(WQ), dz: new Float32Array(WQ) };
     // debris glyphs a second (BREAK.debris: a roar's front strips hundreds of crowns at once)
     this._debris = BREAK.debris.bank;
+    // bites (BREAK.chip): the bricks a blow took (x, y, z, part each), the radius of the blow being dealt,
+    // and counts since the reset (the tests' report)
+    this._bits = new Float32Array(PICK_MAX * 4);
+    this._hr = 0.6;
+    this._hc = false; // the blow is over a disc: its centre
+    this._hx = 0;
+    this._hy = 1;
+    this._hz = 0;
+    this._lit = 0;
+    this.bitten = 0;
+    /**
+     * What the last strike / sweep / stop met (the hero's blade reads it: a blade stops on what it
+     * could not cut through, BREAK.chip.stop): `held` the first piece that held (null: none), where it
+     * was struck (x, y, z), `broke` how many it broke. Reset at the start of each call.
+     */
+    this.struck = { held: null, x: 0, y: 0, z: 0, broke: 0 };
     this._carryHit = { x: 0, z: 0, piece: null };
     /** counts since the reset (the tests' wall report): wind fronts, trees they reached; carries, reached, lit */
     this.stat = { wind: 0, windTrees: 0, carry: 0, reached: 0, lit: 0 };
@@ -514,6 +984,21 @@ export class Destructibles {
     this.batch = batchRigid(U, this.pieces);
     // (the batch's draw meshes into the scene; the pieces' tree stays out of it)
     for (const m of [...this.pieces.children]) if (m.isMesh && (m.name === 'rigidBatch' || m.name === 'rigidShadow')) this.root.add(m);
+    // the bricks of the pieces drawn through the batch (BREAK.chip): their triangles in its index and
+    // positions, which a bite rewrites (a floor slab has stages of its own; a piece that only chips
+    // keeps its shape). Only in a level built with bites on: without them the batch's buffers stay
+    // static and nothing is made
+    for (const b of chipLook() !== '0' ? this.list : NO_PIECES) {
+      const run = b.ranged ? null : b.body.userData?.batchRun;
+      if (!run?.mesh?.geometry?.index || b.floor || !(b.hpMax < Infinity)) continue;
+      run.mesh.geometry.index.setUsage(THREE.DynamicDrawUsage);
+      run.mesh.geometry.attributes.position.setUsage(THREE.DynamicDrawUsage);
+      b.bricks = new MeshBricks(b.body, run, b.body.geometry.userData?.parts);
+    }
+    // every range piece's bricks now, while the level loads (Cinderwood's ~620: ~0.2 s): made in play
+    // they cost a frame a piece (a roar's front reaches the whole wall in half a second), and the frame
+    // budget has no room for that. A piece's first bite makes them if they are not there yet
+    if (chipLook() !== '0') for (const b of this.list) if (b.ranged && !b.floor && b.body.tris > 0) b.body._bricks();
     // every piece's world matrices from its static node, once (the sets stand at the world's origin:
     // nothing above the root moves); after that only a piece that moves is placed again (_place)
     this.pieces.updateMatrixWorld(true);
@@ -521,10 +1006,15 @@ export class Destructibles {
   }
 
   // ------------------------------------------------------------------ build
-  _mesh(geos, look, x, z, y = 0) {
+  _mesh(geos, look, x, z, y = 0, fine = 0) {
     for (const g of geos) g.translate(-x, -y, -z);
+    // (bites on, BREAK.chip: no face longer than a brick)
+    if (fine > 0) for (const g of geos) refine(g, fine);
+    const parts = geos.map((g) => g.attributes.position.count);
     const geo = geos.length === 1 ? geos[0] : mergeGeometries(geos);
     if (!geo) return null;
+    // (its parts, for its bricks: MeshBricks)
+    geo.userData.parts = parts;
     const m = new THREE.Mesh(geo, look === 'prop' ? this.propMat : this.gridMat);
     m.matrixAutoUpdate = false;
     return m;
@@ -539,7 +1029,8 @@ export class Destructibles {
     const size = clamp(r / 0.5, 0.6, 2.4) * clamp(h / 3, 0.5, 2);
     const hpMax = def.hp ?? M.hp * size * (Number(def.hpK) > 0 ? Number(def.hpK) : 1);
     const y0 = ranged ? 0 : Number(def.y0) || 0;
-    const body = ranged ? new RangeBody(def.range, x, z) : this._mesh(def.geos, def.look, x, z, y0);
+    // (a piece that is bitten, BREAK.chip: its faces cut to brick size; one that only chips keeps its mesh)
+    const body = ranged ? new RangeBody(def.range, x, z) : this._mesh(def.geos, def.look, x, z, y0, hpMax < Infinity && !def.floor ? brickEdge() : 0);
     if (!body) return null;
     const node = new THREE.Group();
     node.position.set(x, y0, z);
@@ -607,6 +1098,8 @@ export class Destructibles {
       burn: 0, burnLife: 0, burnt: false, flame: 0, heatT: 0, light: null, carry: 0, spreadT: 0, gen: 0,
       shake: 0, shakeAmp: 0, mark: 0, windT: -1e9,
       told: false, flashed: false,
+      // its bricks in the rigid batch's index (BREAK.chip; a range piece's are its body's)
+      bricks: null,
       // thrown
       px: 0, py: 0, pz: 0, vx: 0, vy: 0, vz: 0, ang: 0, tilt: 0, tx: 0, tz: 0, blast: 0, blastR: 0, onLand: null, flySrc: -1,
       on: false,
@@ -824,6 +1317,14 @@ export class Destructibles {
     if (!this._cells(x - r, z - r, x + r, z + r)) return 0;
     let n = 0;
     this._quiet = 0;
+    this.struck.held = null;
+    this.struck.broke = 0;
+    // (bites, BREAK.chip: a blow over a disc eats outward from its own centre)
+    this._hr = r;
+    this._hc = true;
+    this._hx = x;
+    this._hy = o.y ?? 1;
+    this._hz = z;
     const L = this.list, g = this._g, R = this._gr, ra = R.a, rb = R.b, rc = R.c, rd = R.d;
     for (let cz = rc; cz <= rd; cz++) {
       for (let cx = ra; cx <= rb; cx++) {
@@ -874,6 +1375,13 @@ export class Destructibles {
     if (!this._cells(Math.min(ax, bx) - r, Math.min(az, bz) - r, Math.max(ax, bx) + r, Math.max(az, bz) + r)) return 0;
     let n = 0;
     this._quiet = 0;
+    this.struck.held = null;
+    this.struck.broke = 0;
+    this._hr = r;
+    this._hc = false;
+    // (o.ya, o.yb: the segment's heights at its two ends, a blade's hilt and point: where on it a piece
+    // was struck is that high, so its bite, its chips and its nick sit on the blade; else o.y)
+    const ya = o.ya, yb = o.yb, tilted = ya !== undefined && yb !== undefined && Number.isFinite(ya + yb);
     const L = this.list, s = this._seg2, g = this._g, R = this._gr, ra = R.a, rb = R.b, rc = R.c, rd = R.d;
     for (let cz = rc; cz <= rd; cz++) {
       for (let cx = ra; cx <= rb; cx++) {
@@ -892,7 +1400,8 @@ export class Destructibles {
           }
           const px = ax + (bx - ax) * s.t, pz = az + (bz - az) * s.t;
           // (a floor slab under an edge drawn along it, not a blow landing on it: BREAK.floor.sweep of it)
-          if (this._hit(b, b.floor && o.down !== true ? power * BREAK.floor.sweep : power, o, px, clamp(o.y ?? 1, 0.2, b.h), pz, dx, dz)) n++;
+          const py = tilted ? ya + (yb - ya) * s.t : (o.y ?? 1);
+          if (this._hit(b, b.floor && o.down !== true ? power * BREAK.floor.sweep : power, o, px, clamp(py, 0.2, b.h), pz, dx, dz)) n++;
         }
       }
     }
@@ -905,6 +1414,10 @@ export class Destructibles {
     if (!b) return null;
     const t = this.coverT;
     this._quiet = 0;
+    this.struck.held = null;
+    this.struck.broke = 0;
+    this._hr = Math.max(r, 0.3);
+    this._hc = false;
     this._hit(b, power, o, ax + (bx - ax) * t, clamp(o.y ?? 1, 0.2, b.h), az + (bz - az) * t, bx - ax, bz - az);
     return b;
   }
@@ -983,9 +1496,14 @@ export class Destructibles {
     // (a gust is not even: each tree takes `vary` more or less of it, so a front leaves a ragged line)
     const floor = W.floor * b.hpMax, dmg = power * (b.M.take.blast ?? 1) * (1 - W.vary + 2 * W.vary * rnd());
     if (b.hp > floor && b.hpMax < Infinity) {
+      const was = b.hp;
       b.hp = Math.max(floor, b.hp - dmg);
       b.dx = dx;
       b.dz = dz;
+      // (bites, BREAK.chip: the front eats its windward crown)
+      this._hr = b.h * 0.5;
+      this._hc = false;
+      this._bite(b, b.x - dx * b.r, b.h * BREAK.chip.windY, b.z - dz * b.r, was - b.hp, dx, dz);
       this._wearTo(b, dx, dz, 'boss');
     }
     // a shudder while there is room (BREAK.wear.shakeMax), and the leaves the front tears away
@@ -1127,12 +1645,17 @@ export class Destructibles {
     // a brush that bites nothing is a shove: it shudders, no splinters, no nick, no sound (a body
     // rubbing past a stone would chip it every rehit)
     const shove = brush && dmg < BREAK.scratch;
-    if (!shove) this._chips(b, px, py, pz, dx, dz, brush ? dmg : power); // (a brush: splinters for what it bit)
-    if (dmg < BREAK.scratch || b.hpMax === Infinity || (b.hp -= this._guarded(b, dmg)) > 0) {
+    // what the blow takes of its structure; with bites on (BREAK.chip) that share of the bricks under
+    // the blow comes off it where it struck, their letters instead of the splinters
+    const took = dmg < BREAK.scratch || b.hpMax === Infinity ? 0 : this._guarded(b, dmg);
+    const bit = took > 0 ? this._bite(b, px, py, pz, Math.min(took, b.hp), dx, dz) : 0;
+    if (!shove) this._chips(b, px, py, pz, dx, dz, brush ? dmg : power, bit > 0); // (a brush: splinters for what it bit)
+    if (took === 0 || (b.hp -= took) > 0) {
       // it holds: a nick, a shudder (a floor slab: no nick; it shows cracked once it has taken enough)
       // (a range piece's shudder rewrites its vertices: at most BREAK.wear.shakeMax x quality of them
       // at once, the rest only chip; a floor slab, a range with no stages, never shudders)
-      if (!shove && !b.floor) this.world.scars?.object(b.id, px, py, pz, power, b.M);
+      // (bitten: the hole is its mark)
+      if (!shove && !b.floor && bit === 0) this.world.scars?.object(b.id, px, py, pz, power, b.M);
       if (b.floor && !b.cracked && b.crack && b.hp <= b.hpMax * BREAK.floor.crack) {
         b.cracked = true;
         b.body.visible = false;
@@ -1148,11 +1671,138 @@ export class Destructibles {
       if (!shove) this._wearTo(b, dx, dz, by);
       this._wake(b);
       if (!shove && this._loud(b)) this._emit('chip', b, px, py, pz, power, by);
+      // (the first piece that held this blow: a blade stops on it)
+      const S = this.struck;
+      if (!S.held && !shove && !b.floor) {
+        S.held = b;
+        S.x = px;
+        S.y = py;
+        S.z = pz;
+      }
       return true;
     }
+    this.struck.broke++;
     b.hy = py; // (where the blow bit: a blade cuts its stump about there, BREAK.fell)
     this._break(b, dx, dz, by, kind);
     return true;
+  }
+
+  /**
+   * A blow's bite (BREAK.chip, `?chip=a`): of the piece's bricks within the blow's reach of where it
+   * struck, the share of its structure the blow took (`lost`) is taken, nearest first: set back into a
+   * solid part, folded out of foliage and thin parts, each falling as the letter it was drawn in from
+   * where it sat. A crown part that has lost most of its bricks drops whole. Returns how many bricks
+   * went (0 with bites off, on a floor slab, on a piece with no bricks).
+   */
+  _bite(b, px, py, pz, lost, dx, dz) {
+    const look = chipLook();
+    if (look === '0' || b.floor || !(lost > 0) || !(b.hpMax < Infinity)) return 0;
+    const C = BREAK.chip, out = this._bits;
+    const share = Math.min(1, (lost / b.hpMax) * C.k);
+    const pad = C.pad;
+    // where the bricks are counted from: a blow over a disc (a blast, a slam, a landing) from its own
+    // centre, as far as it reaches into the piece, so it eats the side that faced it; a blow along a
+    // segment (a blade, a limb) from where it met the piece. A disc that only clips the footprint, with
+    // no brick inside it, bites at the point it touched
+    let n = 0;
+    if (this._hc) n = this._take(b, this._hx, this._hy, this._hz, Math.min(C.reach[2], this._hr + b.r + pad), share);
+    if (n === 0) n = this._take(b, px, py, pz, clamp(this._hr + pad, C.reach[0], C.reach[1]), share);
+    // (none that near: a blow that took structure still shows, on the bricks nearest it however far, a
+    // share of the whole piece: a ground blow under a bough, a blow on a landmark's footprint)
+    if (n === 0) n = this._take(b, px, py, pz, Infinity, share);
+    if (n > 0) {
+      const ox = b.ranged ? 0 : b.x, oy = b.ranged ? 0 : b.y0, oz = b.ranged ? 0 : b.z;
+      if (b.ranged) {
+        const B = b.body;
+        b.touched = true;
+        // a crown part mostly eaten drops whole (never the trunk: it is cut through as the tree falls)
+        for (let i = 0; i < b.order.length; i++) {
+          const p = b.order[i];
+          if (B.shown[p] === 1 && B.partGone(p) >= C.shed) this._shed(b, p, dx, dz, false);
+        }
+        B.write();
+      }
+      this.bitten += n;
+      this._drop(b, out, n, ox, oy, oz, dx, dz, lost / b.hpMax);
+    }
+    return n;
+  }
+
+  /** `share` of the piece's bricks within `reach` of a point (world), nearest first, into this._bits; how many. */
+  _take(b, x, y, z, reach, share) {
+    if (b.ranged) return b.body.bite ? b.body.bite(x, y, z, reach, share, BREAK.chip.max, this._bits) : 0;
+    return b.bricks ? b.bricks.bite(x - b.x, y - b.y0, z - b.z, reach, share, BREAK.chip.max, this._bits) : 0;
+  }
+
+  /**
+   * The bricks a bite took fall as letters from where they sat (`out`: x, y, z, part each, + the
+   * piece's base o): knocked OUT of the face they were in (away from the piece's axis, back toward the
+   * blow) as hard as the blow took (`k`: the share of its structure), then falling.
+   */
+  _drop(b, out, n, ox, oy, oz, dx, dz, k = 0.2) {
+    const solid = this.game.fx?.alpha, glow = this.game.fx?.add;
+    if (!solid) return;
+    const C = BREAK.chip, M = b.M, p = this._p, q = this.q;
+    const fx = M.sparks && glow ? glow : solid;
+    const leafOf = b.ranged ? b.body.leaf : null;
+    p.alpha = 1;
+    p.alphaEnd = 0.25;
+    p.flicker = 0;
+    for (let i = 0; i < n; i++) {
+      // (the phone budget: a share of the bricks print their fall; the level's debris budget caps a storm)
+      if (i > 0 && q < 1 && rnd() > q) continue;
+      if (this._debris < 1) break;
+      this._debris -= 1;
+      const x = out[i * 4] + ox, y = Math.max(0.15, out[i * 4 + 1] + oy), z = out[i * 4 + 2] + oz;
+      const leaf = leafOf !== null && leafOf[out[i * 4 + 3]] === 1;
+      const g = leaf ? 5 : 15;
+      const fall = Math.sqrt((2 * y) / g);
+      p.x = x;
+      p.y = y;
+      p.z = z;
+      // out of its face: away from the piece's axis, and back against the blow (a chip flies off the
+      // cut toward the one who struck it), harder for a harder blow; leaves drift
+      let nx = x - b.x, nz = z - b.z;
+      const nl = Math.hypot(nx, nz);
+      if (nl > 1e-3) {
+        nx /= nl;
+        nz /= nl;
+      } else {
+        nx = -dx;
+        nz = -dz;
+      }
+      const kick = C.out * (0.6 + 1.6 * Math.min(1, k * 3)) * (leaf ? 0.45 : 1) * (0.5 + rnd());
+      p.vx = (nx * 0.7 - dx * 0.5) * kick + (rnd() - 0.5) * 0.9;
+      p.vy = C.up * (0.4 + rnd()) * (leaf ? 0.6 : 1);
+      p.vz = (nz * 0.7 - dz * 0.5) * kick + (rnd() - 0.5) * 0.9;
+      p.life = clamp(fall + p.vy / g + 0.15 + rnd() * 0.25, 0.4, 2.2);
+      p.size = (leaf ? 0.38 : 0.36) + rnd() * 0.14;
+      p.sizeEnd = 0.24;
+      p.glyph = leaf ? LEAVES : b.digits ? DIGITS : M.chips;
+      if (leaf) {
+        p.color = SHED_LEAF;
+        p.colorEnd = SHED_LEAF_END;
+      } else if (b.mat === 'bone') {
+        p.color = SHED_BONE;
+        p.colorEnd = SHED_BONE_END;
+      } else if (b.mat === 'wood' && !b.digits) {
+        p.color = SHED_WOOD;
+        p.colorEnd = SHED_WOOD_END;
+      } else {
+        p.color = M.color;
+        p.colorEnd = M.colorEnd;
+      }
+      p.gravity = -g;
+      p.drag = leaf ? 1.2 : 0.3;
+      p.spin = (rnd() - 0.5) * (leaf ? 4 : 9);
+      p.rot = rnd() * 6.283;
+      fx.spawn(p);
+      // every few bricks one stays lying where it comes down, until the reset
+      if (++this._lit % C.litter === 0) {
+        const t = fall * 0.8;
+        this.world.scars?.rubble(x + p.vx * t, z + p.vz * t, 0.18, M, 1, leaf ? LEAVES : b.digits ? DIGITS : M.chips);
+      }
+    }
   }
 
   /** What a blow takes from a piece some of whose `guards` still stand (BREAK.guarded of it). */
@@ -1175,7 +1825,8 @@ export class Destructibles {
     if (st <= b.wear) return;
     for (let k = b.wear; k < st; k++) {
       const n = Math.min(b.order.length - 1, k < b.cut.length ? b.cut[k] : b.dropped);
-      while (b.dropped < n) this._shed(b, b.order[b.dropped++], dx, dz, false);
+      // (with bites on, BREAK.chip, a tree loses what the blows took where they struck, not its parts in order)
+      if (chipLook() === '0') while (b.dropped < n) this._shed(b, b.order[b.dropped++], dx, dz, false);
       if (k === A.length - 1 && b.topples) {
         // the last stage: it leans along the blow (and so falls on that side of its crown)
         b.leanTo = BREAK.wear.lean * (0.75 + 0.5 * rnd());
@@ -2047,11 +2698,12 @@ export class Destructibles {
 
   // ------------------------------------------------------------------ debris (glyph particles)
   /** Chips off a struck piece: they fly back off the face and to the sides. */
-  _chips(b, x, y, z, dx, dz, power) {
+  _chips(b, x, y, z, dx, dz, power, bit = false) {
     const fx = b.M.sparks ? this.game.fx?.add : this.game.fx?.alpha;
     if (!fx) return;
     const fq = this.q * (b.floor ? BREAK.floor.debris : 1);
-    const n = Math.round(clamp(3 + power * 12, 3, 18) * fq);
+    // (`bit`: its bricks fell as letters, _drop: only a few splinters with them)
+    const n = Math.round(clamp(3 + power * 12, 3, 18) * fq * (bit ? 0.3 : 1));
     const M = b.M, p = this._p;
     p.glyph = M.chips;
     p.color = M.color;
@@ -2341,6 +2993,7 @@ export class Destructibles {
       b.wear = b.dropped = 0;
       b.lean = b.leanTo = 0;
       b.quiet = false;
+      b.bricks?.reset();
       b.pivot.position.set(0, 0, 0);
       b.pivot.quaternion.identity();
       if (b.ranged && b.touched) {
@@ -2369,6 +3022,7 @@ export class Destructibles {
     this._wq.n = 0;
     const st = this.stat;
     st.wind = st.windTrees = st.carry = st.reached = st.lit = 0;
+    this.bitten = 0;
     this.wreck?.reset();
     this.edge?.refresh();
     flushRanges();

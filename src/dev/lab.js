@@ -15,6 +15,7 @@ import { IMPACT } from '../combat/impact.js';
 import { CALM_LOOK, setCalm, calmLevel } from '../combat/impactCalm.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { buildLooks } from './labLooks.js';
+import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
 
 // The Lab — a debug panel to test the boss without playing the fight (contract: docs/ARCHITECTURE.md
 // → Lab; usage: src/dev/README.md). It talks only to the actors' `debug` APIs (dragon.debug,
@@ -912,6 +913,22 @@ export class Lab {
       const n = a ? w()?.impact?.(a.x, a.z, 3, 3, { kind: 'blast', by: 'boss' }) : 0;
       this._status(`a blast 4 m ahead struck ${n ?? 0} piece(s)`, 'ok');
     }).title = 'a hard blast 4 m in front of the hero: what stands there breaks, the floor cracks';
+    // bites (BREAK.chip, on; ?chip=0 off): a blow takes the bricks of a piece where it struck. A level built
+    // with it on has finer bricks, so the switch reloads the page with the parameter
+    {
+      const on = lookOf('chip', 'a', 'a') !== '0';
+      button(grid, `Bites ${on ? 'on' : 'off'}`, () => {
+        try {
+          const u = new URL(globalThis.location.href);
+          if (on) u.searchParams.set('chip', '0');
+          else u.searchParams.set('chip', 'a');
+          u.searchParams.set('lab', '');
+          globalThis.location.assign(u.toString());
+        } catch (err) {
+          console.error('[lab] bites reload failed', err);
+        }
+      }).title = 'a blow takes the bricks (the letters) of a piece where it struck (on by default; ?chip=0 off; reloads: the level is built with finer bricks)';
+    }
     // (2026-11-16: the tree wall wears down in stages; the landmarks break in pieces)
     const nearestWall = (at) => {
       let best = null, bd = 1e9;
