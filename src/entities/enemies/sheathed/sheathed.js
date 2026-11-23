@@ -8,6 +8,7 @@ import { MOVES, MOVE_NAMES, CLIP, realise, counterMove } from './moves.js';
 import { TUNING } from './tuning.js';
 import { LINKS } from './links.js';
 import { SheathFx } from './fx.js';
+import { tintWanderer } from './look.js';
 import { LateCuts } from './lateCuts.js';
 
 // Lu Wusheng, the Sheathed (ADR-144, ADR-145; COMBAT.md → "The Sheathed"): a wandering swordsman whose
@@ -70,10 +71,15 @@ export class Sheathed extends Duelist {
   /** His sword's colours (the materials left on today's path: the blade, the scabbard, its fittings). */
   _tint(M) {
     const fill = (m, r, g, b) => m?.uniforms?.uArtFill?.value.setRGB(r, g, b);
-    // (`?sheathArt=a|b`: the body in the hero's ink-line art: its colours are the body's inks, as fills)
-    if (sheathArtNow() !== '0') {
-      const A = SHEATH_ART[sheathLookNow()];
-      for (const k of ['coat', 'lining', 'hem', 'shirt', 'pants', 'leather', 'hair', 'collar']) if (A[k]?.ink) fill(M[k], ...A[k].ink);
+    // the body in the hero's ink-line art (look.js; `?sheathArt=0` the wyrm's digits, whose colours
+    // are the art sources' inks: no uArtFill to write): the Wanderer in his palette, the other bodies
+    // their inks as fills
+    if (sheathArtNow() === 'a') {
+      if (sheathLookNow() === 'd') tintWanderer(M);
+      else {
+        const A = SHEATH_ART[sheathLookNow()];
+        for (const k of ['coat', 'lining', 'hem', 'shirt', 'pants', 'leather', 'hair', 'collar']) if (A[k]?.ink) fill(M[k], ...A[k].ink);
+      }
     }
     fill(M.trim, 0.025, 0.022, 0.024); // the black lacquer scabbard and the hilt's fittings
     fill(M.facing, 0.55, 0.52, 0.46); // its pale throat and butt cap
@@ -98,6 +104,18 @@ export class Sheathed extends Duelist {
     };
     const off = buildOffSheath(r.materials, 1);
     r.body.add(off.root);
+    // mark a's strip on the left-wrist piece: its springs join the rig's (anim.js _streamers), after
+    // the ones gear.js hung; the draw snaps them (_setSheath)
+    this._offStrip = [];
+    if (off.streamers?.length && Array.isArray(r.streamers) && Array.isArray(this.anim?.streamState)) {
+      const n = this.anim.streamState[0]?.side?.length ?? 16;
+      for (const S of off.streamers) {
+        r.streamers.push(S);
+        const st = { segs: [{ x: 0, vx: 0, z: 0, vz: 0 }, { x: 0, vx: 0, z: 0, vz: 0 }], prev: new THREE.Vector3(), vel: new THREE.Vector3(), side: new Int8Array(n) };
+        this.anim.streamState.push(st);
+        this._offStrip.push(st);
+      }
+    }
     this.sheathParts = { carry: list('sheathCarry'), drawn: list('sheathDrawn'), blade: [...list('sheathBlade'), ...list('sheathEdge')], off: off.root, offHilt: off.hilt };
     this._offDir = new THREE.Vector3(0.2, -0.45, -0.87).normalize();
     this._mouth = new THREE.Vector3();
@@ -165,6 +183,14 @@ export class Sheathed extends Duelist {
     BLADE.tip = span.tip;
     if (quiet) return;
     const state = drawn ? 'draw' : s === 'settled' ? (was === 'drawn' ? 'click' : 'settle') : 'carry';
+    // mark a: the draw snaps the strip on the scabbard (a kick to its springs: drawn only)
+    if (drawn && this._offStrip) {
+      for (const st of this._offStrip) {
+        st.segs[0].vx -= 14;
+        st.segs[1].vx -= 22;
+        st.segs[1].vz += 8;
+      }
+    }
     if (state === 'click') {
       this.stats.clicks++;
       this._onClick();
