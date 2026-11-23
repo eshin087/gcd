@@ -4512,3 +4512,40 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
 - **Consequences:** the first reward is playable now; the technique system can read `game.unlocks` and
   take One Breath into a slot later. Not measured yet: a bot that only uses One Breath on Shen Hui
   (duel.mjs `strategy`) against the mixed bot's time.
+
+## ADR-151 — The grove's bamboo is sliced in one stroke, its top off at the cut; five kinds of cane in clumps, and the back filled (2026-11-22)
+
+- **Context:** the owner: "make the bamboo in windless grove all sliceable in 1 swoop and make sure it falls the moment the sword is going through. have the bamboos more varied, beautiful and some clumped up. i want the bamboo falling to be a cool spectable as the fight happens. have way more in the back empty area as well". A stalk (ADR-145) had 0.5 of structure: a light cut (0.27)
+  left it standing, and a felled one went over whole from its base about 1.3 s later, like a tree.
+  Every stalk was one kind (one green, one radius), scattered; the clearing behind the boss was
+  nearly bare and the static wall stopped at 34 m, black beyond.
+- **Decision:**
+  1. **Sliced pieces** (a def's `slice: true`; `BREAK.slice`; destructibles.js). Any blade or blow
+     that takes anything of it (not fire, not a body brushing past) cuts it through, whatever its
+     power, at the height it bit (the blade's own height: ADR-132's `ya` / `yb`). In the frame of the
+     blow its body loses everything below the cut (`RangeBody.cutY`, `_writeCut`) and its stump is
+     cut to that height on a clean slant (`_shapeStub` with an exact height). The top slides 0.3 m
+     off the cut along the blow in 0.09 s, then goes over about its lower end as a falling body
+     (`_sliceFall`: the angle with the square of the time, kicked out along the blow, rolling about
+     its length), and comes apart in leaves and splinters where it lands. A light piece still: no
+     tell, no harm, no shake. The blade goes on through it (it broke; ADR-132's stop is for what
+     holds), so one swing cuts a whole clump: 9 - 13 stalks in the films.
+  2. **The bamboo's look** (`?bamboo=0|a|b`, read when the level is built): five kinds of cane
+     (green, jade, golden with a green stripe turning at each joint, black, dry), three thicknesses,
+     clumps that fan out from their middle (tallest there, leaning out at the rim, young shoots at
+     their foot), lone stalks, crowns of 3 - 8 sprays. Clumps behind him in the clearing (11, three
+     in four north of him, none on the camera's side), a belt of clumps 1.7 x denser behind him than
+     before him, and a static wall out to 50 m (it was 34) into the fog. `a`: kinds mixed in a clump;
+     `b`: one kind per clump. `a` ships: the owner's pick from the sheet ("a, mixed clumps"); `0` is
+     the grove before.
+- **Why this way:** the owner asked for the fall "the moment the sword is going through", so the
+  cut shows in the frame of the blow and the top moves the next frame, sliding off the cut before it
+  tips, which is what reads as a slice rather than a felling. Cutting the run of vertices at a height
+  needs no new mesh and no bone, as ADR-128's stumps did. The kinds and the clumps come from colour
+  and placement only: the cane, its rings and its leaves are the same three shapes, drawn as prop
+  art (the house style).
+- **Consequences:** the grove lists 595 - 609 stalks (366) and draws ~0.89 M vertices (0.56 M);
+  the frame cost on the phone is not measured. Lu Wusheng's re-sheathe felling and every blow of his
+  slice the stalks too. World test `slice`; `bite` treats a sliced piece as cut through, not bitten.
+- **Not done:** the cut tops do not lie on the ground (they come apart where they land, as before);
+  no sound of its own for a slice.

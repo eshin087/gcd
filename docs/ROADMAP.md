@@ -184,6 +184,14 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.63 — The grove's bamboo sliced in one stroke, in clumps (2026-11-22, `world/bamboo-slice`, ADR-151)
+- [x] One blade or blow slices a stalk where it bit; the top slides off the cut at once and goes over
+- [x] Five kinds of cane, three thicknesses, fanning clumps with shoots (`?bamboo=a|b`; `0` the old grove)
+- [x] The back filled: clumps behind him, a denser belt behind him, the wall out to 50 m
+- [x] World test `slice`
+- [x] The owner picks: `a`, mixed clumps (2026-11-22)
+- [ ] Follow-ups: frame cost on the phone; the cut tops lying a while; a slice sound
+
 ## M1.62 — A sixth level: the Windless Grove and the Sheathed (2026-11-22, `level/the-sheathed`, ADR-144 – ADR-146)
 - [x] `?level=grove`: the bamboo grove (light pieces), the Sword Grave, the paving; `?grove=a|b|c`
 - [x] Lu Wusheng, the Sheathed: three phases, the sheath on the rig, the draw's rule (parry or die, a held

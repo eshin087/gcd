@@ -4,7 +4,14 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Sixty-seven pieces of work since 0.4.0:
+Sixty-eight pieces of work since 0.4.0:
+- **The grove's bamboo falls to every stroke** (2026-11-22, ADR-151). *Changed:* in the Windless
+  Grove one swing of the sword (or one blow of his) cuts a bamboo stalk clean through where the blade
+  passed, and its top slides off the cut at once and crashes over in a burst of leaves (it took two
+  cuts, and fell whole from its foot). A swing through a clump cuts the whole clump. *Changed:* the
+  bamboo is five kinds of cane (green, jade, golden, black, dry) in clumps and lone stalks of
+  different thicknesses, with young shoots, and far more of it behind the duel; the grove runs on
+  into the fog. `?bamboo=0` is the grove as it was, `b` one kind of cane per clump.
 - **A sixth level: the Windless Grove and the Sheathed** (2026-11-22, ADR-144 – ADR-146). *Added:* a fifth
   level, `?level=grove` (the title screen lists it). **The Windless Grove**: a bamboo grove at night, a
   round clearing with a worn ring of paving, a mound planted with forty swords. **Lu Wusheng, the
