@@ -5,6 +5,36 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-22 — Session 79: the grove's bamboo sliced in one stroke, in clumps, the back filled
+
+**Owner:** "make the bamboo in windless grove all sliceable in 1 swoop and make sure it falls the moment the sword is going through. have the bamboos more varied, beautiful and some clumped up. i want the bamboo falling to be a cool spectable as the fight happens. have way more in the back empty area as well". Branch `world/bamboo-slice`. ADR-151 / Session 79 / M1.63.
+
+**What changed.**
+- Sliced pieces (`slice: true`, `BREAK.slice`, destructibles.js `_sliceFall`, `RangeBody.cutY`):
+  any blade or blow cuts a stalk through where it bit, the cut shown in the frame of the blow, the top
+  sliding off the cut then going over and bursting into leaves where it lands; the stump on that
+  slant. Not a body brushing past, not fire.
+- The grove's bamboo (`?bamboo=0|a|b`, `windlessGrove.js` `groveBamboo`, `bambooStalkOf`, `SPECIES`,
+  `BAMBOO`): five kinds of cane, three thicknesses, fanning clumps with shoots, fuller crowns; 11 clumps
+  behind him in the clearing, a denser belt behind him, the wall out to 50 m. `a` ships.
+
+**Found on the way.**
+- The cut showed a frame late (the top's run was only rewritten at the next pose): it is written in
+  the frame of the blow now (the test `slice` checked it).
+- The belt's back bias was inverted: the first build had 158 stalks toward the camera, 127 behind.
+- Filming with real-time captures dropped frames under load (identical frames, a clip that ended
+  before the canes landed): the clips are stepped one game frame per picture.
+
+**Verification.** World test `slice` (one quick cut, power 0.12, fells a stalk; cut at the blade's
+1.15 m; the stump 1.02 - 1.27 m on a slant; nothing of the top below the cut; it moves the first
+frame, slides 0.27 m along the blow, lands in 0.79 s; quiet; a brush does not slice; a boss's cut
+does, at 1.6 m; the reset). `bite` across every level. Rendered `?bamboo=0|a|b` from four views and
+filmed the hero's light and heavy swings through a clump (9 and 6 stalks cut; MP4s). `npm test`:
+see the PR.
+
+**Not checked / open.** Nobody has played it; not on the phone (0.56 M -> 0.89 M vertices drawn);
+the owner has not picked between `a` and `b` yet (`a` ships).
+
 ## 2026-11-22 — Session 78: a sixth level, the Windless Grove and the Sheathed (planned in its own chat, built by one Opus agent)
 
 **What changed.** The owner asked for new level bosses on the power fantasy of famous characters, as
