@@ -139,7 +139,13 @@ export const TUNING = {
     // five seeds x 120 s: P1 65.3 - 71.6 (68.3), P2 76.7 - 83.4 (80.2), P3 75.9 - 82.0 (79.3); P2 / P1 at
     // least 1.10 per seed, 1.175 in the mean; P3 / P2 0.93 - 1.06 per seed, 0.99 in the mean; the longest
     // gap 3.42 / 3.34 / 3.45 s; 0 conflicts; a dodge in 11 / 12 / 17 % of the cues. The margins as before)
-    meter: { ramp: [1, 1.01, 0.86], rampMean: [1, 1.13, 0.95], minRate: [60, 70, 70], maxGap: [3.9, 3.8, 4.0] },
+    // (2026-11-22, ADR-151, the selves in packs only and Heaven-Devouring Howl; the same five seeds x 120 s,
+    // the Howl summoned to burnt out and his kneel counted as activity: P1 69.8 - 72.7 (70.9), P2 78.4 -
+    // 81.1 (79.5), P3 66.6 - 71.5 (68.3); P2 / P1 at least 1.09 per seed, 1.12 in the mean; P3 / P2 0.82 -
+    // 0.91 per seed, 0.86 in the mean; the longest gap 2.88 / 3.62 / 3.62 s; 0 conflicts; a dodge in 11 /
+    // 14 / 28 % of the cues. Phase 3 asks fewer cues and more dodges: the Howl is one red cue over ~9 s and
+    // a 2.2 s kneel. The margins as before)
+    meter: { ramp: [1, 1.01, 0.76], rampMean: [1, 1.08, 0.82], minRate: [60, 70, 61], maxGap: [3.9, 4.1, 4.1] },
   },
   // a hero drinking a flask: no gap, and the moves that close distance are favoured × `weight`
   punish: { weight: 4 },
