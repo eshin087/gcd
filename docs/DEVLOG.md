@@ -40,7 +40,10 @@ them made every phase as slow as the caught recoils). One Breath reuses the hero
 hip), as the planning session's addendum asked.
 
 **The owner's picks (2026-11-22, from the sheets):** the recommended option of each: `?sheathLook=a`,
-`?drawCut=a`, `?grove=a`; the others stay behind their switches.
+`?drawCut=a`, `?grove=a`; the others stay behind their switches. The same day the owner asked for a body
+nearer the genre's wandering swordsman: `?sheathLook=d`, the Wanderer (a slighter man in a faded indigo
+robe over wide charcoal trousers, a long sand scarf, dark hair in a high tail), added as a fourth option
+and rendered beside `a`; not picked yet. It stays an original: none of the marks of any existing character.
 
 **Next / open.** The bamboo crowds the frame at the game camera (the owner's eye); the score
 (borrowed tracks); a human on the phone through the draw; One Breath's balance bot on Shen Hui (not run).
