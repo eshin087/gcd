@@ -533,6 +533,38 @@ was held while he cut. Only when the target is near: its head within 11 m on the
 duelist within 6 m. A blade lock takes precedence (a perfect parry of a `lock` blow). Parries
 inside a string only count. Damage: 28 × N.
 
+**The streak pass** (2026-11-23, ADR-167; `combat/streak.js`, `DEFENSE.flurry.storm`). Owner: "the
+longer the streak, the faster the attacks and way cooler animation and effects". Six pieces, each
+behind a switch (`?streakfx=off | all | storm,tiers,aura,counter,sound,world`; the Lab's 'streak'
+row); with a piece off the game plays as before. **Tiers:** a streak of 3 / 5 / 7 / 10 / 15 is tier
+1 / 2 / 3 / 4 / 5 (tier 3 is the full flurry). **Looks only:** the flurry still strikes at most 7
+blows for the same damage however long the streak; a streak of 15 strikes the same 7 blows for the
+same 258 damage in the same time as a streak of 7 (integ `storm`).
+- **The storm** (the owner's "Accelerating storm"). The first 3 flash cuts round the wyrm's head (2
+  on a man: `shown`) are paced as above. Each later cut takes 56 % of the time of the one before
+  (`fall`), never less than 12 % of a shown cut (`floor`), so the last land a few frames apart. A storm
+  cut has no wind-up seen (he is in the cut already); its contact freeze is its pace's share of the
+  cut's but at least 0.018 s (`stopMin`: the frame he is drawn on the target); its camera kick and
+  shake ×0.35 (`cam`), its flare and sparks ×0.45 (`fx`), its reel beat × its pace. The last shown cut,
+  the art and a riposte's last cut keep their whole weight. Every blow still lands in a frame of its
+  own, in order. A storm cut's line is the widest gap to the cuts hanging (they still cross like a
+  star: 19 - 23° from the nearest at seven). The camera holds the target, not the hero. Against the
+  wyrm, the flash cuts of 5 / 6 / 7 blows: 1.02 / 1.25 / 1.52 s → 0.97 / 1.08 / 1.18 s, the seven's
+  blows 6, 17, 16, 14, 8, 4 frames apart; 4 blows or fewer unchanged (3 or fewer on a man). A riposte
+  (all flash cuts) follows the same rule.
+- **Past seven** (`tiers`): at tier 4 every hanging cut has a fine echo line beside it, at tier 5 two;
+  on the last blow they split away and rings open where they cross. The banner names the full flurry
+  of a tier-4 / 5 streak HUNDREDFOLD FLASH / THOUSANDFOLD FLASH (SEVENFOLD below), a rule more, never
+  bigger.
+- **The last blow as lines** (`?burst=0..3`, default 2: the owner's pick; `player/flurryBurst.js`):
+  the burst's lights, flares, stars, the screen's flash and the boss's white flash turned down, the
+  hanging cuts flaring out as thin long lines. Presentation only: no timing, damage, hit-stop or hit
+  test moves. 0 is the burst as before.
+- **Between flurries** (looks and sound only): the aura on the hero from tier 1, the world's answer
+  from tier 2, the counter beside him from a streak of 2, the climbing note on every perfect defence
+  that raises the streak (STYLE.md "The streak and a single perfect defence"; ARCHITECTURE.md "The
+  streak pass").
+
 ### A foe's streak and his flurry (ADR-094, the duelists)
 Owner: "give the streak system and attacks to bosses as well ... if the boss is on a high streak, the
 player needs to parry / block the total # of attacks". Numbers: `DEFENSE.foeStreak`.
@@ -1131,6 +1163,27 @@ For every blade the hero meets (the wyrm's too; bullets keep their light clash):
   may start 0.07 s into the parry (was 0.12).
 - **A perfect parry** adds a beat of slow motion (× 0.35 for 0.36 real s, the camera 2.5 m closer:
   `game:cinematic` 'perfectParry', no gong), a gold burst and two rings, and a bright bell.
+- **A perfect parry or perfect dodge has three looks** (2026-11-23, ADR-167; `combat/perfectFx.js`
+  `PERFECT_FEEL`; `?perfect=today | sharp | cinema`, the Lab's `perfect:` button). **sharp is the
+  default** (the owner's pick); `today` is the bullet above and the Ghostep's x0.3 for 0.6 s. The look
+  is read at the moment of the parry / dodge and **no rule moves**: the windows, the guard and posture
+  given, the i-frames, the crit window, the riposte / flurry and where the hero ends up are the same in
+  every mode. Slow motion stretches real time, not game time: his recovery after a perfect parry
+  lasts 1.016 / 1.002 / 1.014 s of game time (today / sharp / cinema; 1.27 / 1.13 / 1.53 s real), and
+  seven perfect parries of Ash Rain take 6.85 / 6.20 / 6.23 s real (duel `perfectfx`, the Ash
+  Disciple). A perfectly parried bullet is today's in every mode.
+  - **sharp** parry: freeze 0.11 s (0.14), shake 0.3 (0.42), punch 2.4 m (3.6), slow motion ×0.6 for
+    0.18 real s with the camera 1.2 m closer (×0.35 / 0.36 s / 2.5 m), the white flash 0.14 (0.55);
+    the glyph clash at its least (power 0.4) with no rings, cross, light or embers; a gold mark
+    printed in the letter grid where the blades cross (STYLE.md). sharp dodge: slow motion ×0.35 for
+    0.36 s, the cool grade held 0.36 s; the afterimage stands 0.1 s, then tears along the way he left;
+    one line where he went; no blink streams.
+  - **cinema** parry: a **full** beat for a single blow, a string's last or a parry moment (unless a
+    full beat played in the last 0.9 real s): freeze 0.16 s, ×0.22 for 0.72 s, the camera 4.6 m
+    closer, the world dims (0.42) instead of a white flash; a **short** beat for a blow inside a string
+    (0.1 s, ×0.55 for 0.16 s, dim 0.16). A bigger mark, one echo ring more from streak tier 3. cinema
+    dodge: the flow's moment (×0.25 for 0.85 s, the camera 3.4 m closer, no gong), the afterimage
+    stands 0.3 s, an arrival mark round him.
 - **Duel framing:** within 6.5 m of a duelist the camera sits 6 m closer (30 m, not 36; gone 4 m
   further out; scaled for the phone's closer camera), so the blades read; the punches start there.
 - **A blow that lands on the hero** freezes the frame (0.085 s; a big one 0.13 s) with a heavier

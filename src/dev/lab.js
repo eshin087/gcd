@@ -12,6 +12,8 @@ import { WYRM_LOOKS, wyrmLookId } from '../entities/dragon/looks.js';
 import { TrainingPanel } from './trainingPanel.js';
 import { setCutStyle, cutStyle } from '../combat/cutFx.js';
 import { IMPACT } from '../combat/impact.js';
+import { STREAK_FX, setPerfectMode, perfectMode } from '../combat/streak.js';
+import { BURST_LOOK, setBurst, burstLevel } from '../entities/player/flurryBurst.js';
 import { CALM_LOOK, setCalm, calmLevel } from '../combat/impactCalm.js';
 import { sfxMode, setSfxMode } from '../audio/samples.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
@@ -1097,6 +1099,30 @@ export class Lab {
       this._syncCutBtns();
     });
     this.ui.calmBtn.title = "today's flare at the contact toned down: 0 as before, 1 the default, 2 and 3 calmer";
+    // the streak pass, piece by piece (combat/streak.js; ?streakfx=), and the look of a single perfect
+    // parry / dodge (?perfect=): cycles today / sharp / cinema
+    const stk = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'streak', stk).title = 'the streak pass, piece by piece (combat/streak.js)';
+    const stkGrid = el('div', 'lab-grid', null, stk);
+    stkGrid.style.flex = '1';
+    this.ui.streakBtns = STREAK_FX.pieces.map((s) => {
+      const b = button(stkGrid, s, () => {
+        STREAK_FX.on[s] = !STREAK_FX.on[s];
+        this._syncCutBtns();
+      });
+      return { s, el: b };
+    });
+    this.ui.perfectBtn = button(stkGrid, `perfect: ${perfectMode()}`, () => {
+      const M = STREAK_FX.perfectModes;
+      setPerfectMode(M[(M.indexOf(perfectMode()) + 1) % M.length]);
+      this._syncCutBtns();
+    });
+    this.ui.perfectBtn.title = 'the look of a single perfect parry / dodge: today, sharp or cinema';
+    this.ui.burstBtn = button(stkGrid, `burst ${burstLevel()}`, () => {
+      setBurst((Math.max(0, burstLevel()) + 1) % BURST_LOOK.levels.length);
+      this._syncCutBtns();
+    });
+    this.ui.burstBtn.title = "the flurry's last blow: 0 as before, 1 - 3 lines instead of the white burst";
     // the attack sounds (audio/samples.js; ?sfx=old): new = cues on blue / red only, recorded where loaded,
     // each boss's blade or fist through the air; old = the sounds before (a tick on every tell, all synth)
     const sfr = el('div', 'lab-row', null, body);
@@ -1213,6 +1239,9 @@ export class Lab {
     const d = this.game.dragon;
     setClass(this.ui.shudBtn, 'on', !!d && 'shudderK' in d && d.shudderK > 0);
     for (const { s, el: b } of this.ui.impactBtns ?? []) setClass(b, 'on', IMPACT.on[s] === true);
+    for (const { s, el: b } of this.ui.streakBtns ?? []) setClass(b, 'on', STREAK_FX.on[s] === true);
+    if (this.ui.perfectBtn) this.ui.perfectBtn.textContent = `perfect: ${perfectMode()}`;
+    if (this.ui.burstBtn) this.ui.burstBtn.textContent = `burst ${burstLevel()}`;
     if (this.ui.calmBtn) {
       this.ui.calmBtn.textContent = `calm ${calmLevel()}`;
       setClass(this.ui.calmBtn, 'on', calmLevel() !== 0);

@@ -19,6 +19,20 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-23',
+        title: 'Streaks that build: the flurry speeds up, the hero smoulders, the notes climb; a sharper perfect parry',
+        notes: [
+          'A long flurry speeds up: the first cuts come as before, then each one faster, until the last land almost at once. A long streak no longer means a long wait.',
+          'Past seven, a streak cannot add blows or damage, but it looks grander: at 10 and at 15 every cut left hanging gets fine echo lines, and the flurry is named HUNDREDFOLD FLASH or THOUSANDFOLD FLASH.',
+          "The flurry's last blow no longer blooms into a white blot: the hanging cuts flare out as long thin lines, so you can still see both fighters.",
+          'From a streak of 3 a faint rim of fire letters clings to your outline and grows with the streak; your blade edge lights further up and your swings leave echo lines. Lose the streak and it all goes out at once.',
+          'From a streak of 5 the ground answers each perfect defence: the grass leans and the dust lifts at your feet.',
+          'A small number beside you counts each perfect defence of a streak and fades, with a word at 3, 5, 7, 10 and 15. A broken streak shows its number struck through as it falls.',
+          'Each perfect defence in a streak rings a soft note one step higher, in the key of the music; a quiet drone joins on long streaks, and a broken streak ends on a falling note.',
+          'A perfect parry is quicker and cleaner: a gold mark where the blades cross, less slow motion, a softer flash. A perfect dodge leaves your afterimage standing for a moment before it tears away. The timing of parries and dodges is unchanged.',
+        ],
+      },
+      {
+        date: '2026-11-23',
         title: "Tian Lei's attacks move naturally, and he stops punching the air",
         notes: [
           "Tian Lei's feet stay planted while he strikes: they no longer jump or slide.",
