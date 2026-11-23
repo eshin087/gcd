@@ -40,6 +40,24 @@ The wink names (Crane Wave, Spirit Lantern, Instant Step ...) are proposed, not 
 answered the lookalike request differently on 2026-11-22 (the Sheathed's declined it): the owner to say
 which line holds.
 
+---
+
+## 2026-11-22 — CI: one run a change, a time limit, a read-only token
+
+**Owner**, after asking how the `test-and-build` check works and what it costs (the repo is private:
+Actions minutes come out of a monthly allowance): "do the 3 worth doing edits". Branch
+`build/ci-tidy`; `.github/workflows/ci.yml` only.
+
+- **No run on a push to `main`.** The protection requires this check on a branch that is up to date
+  with `main`, and merges are squash or rebase (admins included), so a merge puts on `main` the tree
+  the PR's run already tested. The second run doubled every merge's minutes (~12 each) for no new
+  information. The concurrency group is now the PR's number alone.
+- **`timeout-minutes: 25`** on the job (a run takes ~12): a hung test no longer runs to GitHub's 6 h.
+- **`permissions: contents: read`**: the job's token can no longer write to the repo.
+
+**Not changed, and why:** docs-only commits still run the whole set (skipping a required check
+leaves it unreported and blocks the merge; it would need a job that passes early). The npm cache was
+filled by `main`'s runs; a PR now fills its own on its first run (three packages: seconds).
 
 ---
 
