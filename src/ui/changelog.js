@@ -30,6 +30,17 @@ export const RELEASES = [
       },
       {
         date: '2026-11-23',
+        title: 'The living world',
+        notes: [
+          'The levels are now alive before the fight: faint wisps of tiny letters drift across on the wind, leaves and ash fall and lie, banners and paper charms stream, mist and drizzle pass, birds lift off as you run near.',
+          'Your footsteps answer the ground: prints in the ash, trodden grass, a different sound on stone, earth and grass.',
+          'Each level has its own weather and its own air. The Windless Grove is dead still. The Obsidian Throne only breathes.',
+          'It all steps back once the boss is up, and a roar sends a gust across the whole arena.',
+          'To see the levels as they were, add ?life=off to the address.',
+        ],
+      },
+      {
+        date: '2026-11-23',
         title: 'Streaks that build: the flurry speeds up, the hero smoulders, the notes climb; a sharper perfect parry',
         notes: [
           'A long flurry speeds up: the first cuts come as before, then each one faster, until the last land almost at once. A long streak no longer means a long wait.',

@@ -1,10 +1,14 @@
 import * as THREE from 'three';
 import { CONFIG } from '../core/config.js';
+import { STEPS } from './life/stepsTuning.js';
 
 // World-space burn map sampled by grass + ground shaders.
 //   R = burn (persistent char: grass shrinks to ash glyphs)
 //   G = heat (glowing embers, decays over a few seconds)
-// Dragon fire calls scorch.burnCircle(x, z, radius, burnAmount, heatAmount).
+//   B = trample (grass trodden by a foot, 0..1; the living world's steps write it, the grass lies
+//       flatter and darker by it; it stands up again over STEPS.trample.decay s)
+// Dragon fire calls scorch.burnCircle(x, z, radius, burnAmount, heatAmount); a footstep
+// scorch.trample(x, z, r, k) (max-blended, its own decay, no random draw).
 export class Scorch {
   constructor(U, game, size = 256) {
     this.game = game;
@@ -36,6 +40,63 @@ export class Scorch {
     this._dt = 0;
     this._decay = 1;
     this._step = (i) => this._cool(i); // (made once: Set.forEach with it allocates nothing per frame)
+    // the trodden grass (B): its own cells, list and decay; nothing here touches R, G or their timing
+    this.tram = new Float32Array(size * size);
+    this._tramIn = new Uint8Array(size * size);
+    this._tramList = new Int32Array(STEPS.trample.maxCells);
+    this._tramN = 0;
+  }
+
+  trampleAt(x, z) {
+    const i = this._idx(x, z);
+    return i < 0 ? 0 : this.tram[i];
+  }
+
+  /** A foot treads the grass at (x, z): a disc r m wide, k deep (0..1), max-blended into B. */
+  trample(x, z, r = 0.45, k = 1) {
+    if (!Number.isFinite(x + z + r + k) || !(r > 0) || !(k > 0)) return;
+    k = Math.min(1, k);
+    const s = this.size, cs = this.cellSize, R = r + cs * 0.7;
+    const c0x = Math.max(0, Math.floor((x - R - this.min) / cs)), c1x = Math.min(s - 1, Math.floor((x + R - this.min) / cs));
+    const c0z = Math.max(0, Math.floor((z - R - this.min) / cs)), c1z = Math.min(s - 1, Math.floor((z + R - this.min) / cs));
+    for (let cz = c0z; cz <= c1z; cz++) {
+      for (let cx = c0x; cx <= c1x; cx++) {
+        const d = Math.hypot(this.min + (cx + 0.5) * cs - x, this.min + (cz + 0.5) * cs - z);
+        if (d >= R) continue;
+        // a flat middle, a soft edge
+        const v = k * Math.min(1, 2 * (1 - d / R));
+        const i = cz * s + cx;
+        if (v <= this.tram[i]) continue;
+        if (!this._tramIn[i]) {
+          if (this._tramN >= this._tramList.length) continue; // (full: the cells already trodden stand up first)
+          this._tramIn[i] = 1;
+          this._tramList[this._tramN++] = i;
+        }
+        this.tram[i] = v;
+        this.data[i * 4 + 2] = Math.round(v * 255);
+        this.dirty = true;
+      }
+    }
+  }
+
+  /** The trodden grass stands up again (linear, STEPS.trample.decay s from fully trodden). */
+  _standUp(dt) {
+    const rate = dt / Math.max(0.1, STEPS.trample.decay), L = this._tramList;
+    for (let n = 0; n < this._tramN; ) {
+      const i = L[n];
+      const v = this.tram[i] - rate;
+      if (v <= 0) {
+        this.tram[i] = 0;
+        this._tramIn[i] = 0;
+        this.data[i * 4 + 2] = 0;
+        L[n] = L[--this._tramN];
+        continue;
+      }
+      this.tram[i] = v;
+      this.data[i * 4 + 2] = Math.round(v * 255);
+      n++;
+    }
+    this.dirty = true;
   }
 
   /** One active cell's frame: its heat decays, it chars under heat, it leaves the set when cold. */
@@ -107,6 +168,9 @@ export class Scorch {
     this.heat.fill(0);
     this.data.fill(0);
     this.active.clear();
+    this.tram.fill(0);
+    this._tramIn.fill(0);
+    this._tramN = 0;
     this.tex.needsUpdate = true;
   }
 
@@ -119,6 +183,7 @@ export class Scorch {
       this.active.forEach(this._step);
       this.dirty = true;
     }
+    if (this._tramN && dt > 0) this._standUp(dt);
     if (this.dirty) {
       this.tex.needsUpdate = true;
       this.dirty = false;

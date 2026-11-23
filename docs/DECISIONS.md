@@ -4997,3 +4997,87 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   is added to his rig (the same 90 meshes): `city pace` / `win` give the same numbers. Sheets:
   `docs/looks/halcyon/halAscii.png`, `halCapeSize.png`, `halRecommend.png`. Tests: `city.mjs herolike`.
 
+## ADR-163 — The living world: one wind per level, nine layers behind one switch, off until the owner picks (2026-11-23)
+
+- **Context:** the owner: "make the ascii world feel more alive. have natural looking ascii wind, subtle
+  falling leaves, subtle different weather effects. before we fight the boss, the player should be awed
+  at the background living ascii world. things like players footstep as you run etc." Asked, they chose
+  every piece offered (wind you can see, leaves that fall and lie, footsteps, weather that comes and
+  goes, small creatures, the sound of the air, an arrival moment, the world answering the fight) and
+  one mood per level that changes slowly. Before this the grass swayed on one sine, the trees on
+  another, smoke drifted by a constant, three levels shared one default weather, every level shared
+  one sound bed, a footstep was one noise burst on every surface, and nothing agreed with anything.
+- **Decision:**
+  1. **One wind, read by everything.** `game.world.life.wind` is the level's air: a prevailing
+     direction and breathing speed, gust FRONTS that cross the level as travelling lines, radial bursts
+     (every existing `world.gust` call lands there). The grass, the tree canopies, the fire field's
+     smoke and flames, the atmosphere's emitters, the litter, the rain, the creatures, the sound and
+     what hangs (banners, paper charms) all read that one field, CPU (`wind.at`) or GPU (`uWind`,
+     `uWindFronts`). Nothing new invents a drift of its own.
+  2. **Layers behind one switch.** `world.life` (`world/life/life.js`) builds one object per piece
+     (wind, weather, litter, steps, creatures, answer; `audio/air.js` and `game/arrival.js` read it
+     from outside). `?life=off|all|<pieces>`, `?lifeK=`; the Lab has a toggle per piece. Each layer
+     keeps its numbers in its own tuning file with a block per level.
+  3. **Off is free, and off is the default for now.** With a piece off its code spawns nothing, writes
+     no uniform that changes a pixel and makes no GPU object; the shaders run today's code in their
+     wind-off branch. Headless it is always off, so the seeded fight suites replay exactly as before.
+     The default stays off until the owner has picked a strength from films and on their phone
+     (CLAUDE.md: a change to how something looks is the owner's pick first).
+  4. **Its own random stream, and no new events.** Nothing in it calls `Math.random` (the seeded sims
+     replay it; three.js even draws object ids from it, so GPU objects made inside the frame go
+     through `life.build`). It listens to events the game already emits and adds none;
+     `player:footstep` gained one optional field.
+  5. **It steps back in the fight.** `life.calm` eases every ambient rate to 0.4 while the boss is up;
+     red and black tells make the world hold its breath (`life.hush`); nothing ambient uses a tell's
+     colours or draws over the hero. The roar's answer (a gust front from the boss) is the biggest
+     thing it ever does.
+  6. **The Windless Grove has no wind.** Its bamboo swayed on the forest's sine against the level's own
+     lines; with the wind piece on nothing there moves except what the fight moves. The Obsidian Throne
+     has nothing alive: its one show is the star's slow breath.
+  7. **Cloth stays breakable.** A hanging part is marked in its builder and carries a per-vertex hang
+     weight through the brick cutting and the rigid batch, so a banner streams in the wind, takes a
+     bite where the blade lands on the leaning cloth, and lies still once felled.
+- **Why this way:** a fixed contract with a stub per layer let seven agents build in parallel against
+  each other's interfaces and merge with no conflict; one field is what makes many quiet things read
+  as one living place (the same gust bends the grass, leans the smoke, lifts the leaves, flutters the
+  charms and is heard). Keeping it off by default costs nothing and keeps every seeded test as it was.
+- **What the first pass taught (now a STYLE rule):** built to the word "subtle", everything worked and
+  almost nothing could be seen: at the game camera a thin stroke under ~0.3 m is one pixel of ink. A
+  second pass tuned to a ten-second test (a player at the spawn, told nothing, notices the place is
+  alive) while keeping the manner natural: letters with body at 0.3 - 0.5 m, or motion, or both.
+- **Tried and cut:** the hawk's shadow on the Ring's floor (invisible at dusk); dark grit at the Throne
+  (invisible: ember-edged cinders instead); sparks at the Throne's vents (they added nothing); round
+  dots for lying ash (read as snow: flat strokes in drifts instead).
+- **Consequences:** a new level needs a block in each layer's tuning file (without one it gets the
+  quiet default). Open: the default strength (the owner's pick), the sound's level (an audition page
+  exists), the ash drifts and the Throne's glint do not read yet, a banner's moon shadow does not lean,
+  the far Throne banners (static mesh) stay rigid, and the `life` suite is the longest new CI task.
+- **Addendum (2026-11-23, the owner's verdict):** on the first preview the owner turned the wind and the
+  weather down: "wind effects need to be way subtle and not like this random wave taking over a full
+  screen, the ascii characters should also not be so big and be tiny feint and clearly many ascii
+  characters clumped up. same with the other weather effect. make it very subtle and more ascii like
+  and natural realistic." ("sound looks good": the air's sound stays as built.) What changed: the
+  front's lit BAND through the grass is gone (`grass.lift` removed; the slot is now `patch`, a gust
+  stirring loose local patches, the grass's `front` 0.24 (0.22 on Ashfall and the Ring) where it was 0.8 -
+  0.9; the canopy's `front` and `stir` 0.28 and 0.08 where they were 0.75 and 0.16); the streaks became WISPS, clumps of 64 - 96 tiny letters that ride
+  the air, stretch, curl and come apart (none on the Throne or in the Grove); the mist banks became soft
+  heaps of 160 - 220 tiny letters that roll, the veil under them removed; the drizzle, the ash, the
+  squall's embers, the snow and the devils' 150 grains print in the same letters; leaves and paper in
+  the air shrank to 0.28 - 0.36 m at alpha 0.72. Every letter of the air prints through a new
+  `LetterBatch` (`world/life/letterBatch.js`) as one cell of the house letter, the wyrm's pixel font
+  (5 x 8 px at 720p), whatever its distance. Glyph particles from the world atlas were tried for it and
+  cut (below about 0.4 m they blur to specks), and so was the fire field (its smoke is the bonfire's,
+  any heat in it hazes the world, mist printed in it came out as dark-backed slabs). **Why the
+  ten-second test was the wrong standard for this owner:** it asked whether a player told nothing would
+  NOTICE the air, and the visibility pass answered by making letters bigger and brighter and the band
+  stronger; this owner reads the air as alive when there are MANY tiny faint letters clumped into a
+  shape, not when one thing is easy to see. Visibility comes from count and clumping, never from size
+  or light (now a STYLE rule, "The living world"). What still holds from the first pass: a letter that
+  must be seen on its own (a lying leaf, a firefly, a bird) has body, 0.3 m or more.
+- **Addendum (2026-11-23, on by default):** on the round-2 preview the owner said "Looks right", then "Turn
+  it on". A page with no `?life=` now gets every piece at strength 1 (`?life=off` turns it all off);
+  headless it stays off, so the seeded suites are unchanged. The two levels that arrived from `main`
+  meanwhile (the Hall of Falling Script, Halcyon Plaza) have no tuning blocks: on them the arrival and
+  the air stand down (the arrival's DEFAULT shot does not know where their spawn is; the air's quiet
+  recipe would silence their own voices), weather, litter and creatures have nothing to draw, and the
+  wind and the steps run on their defaults. Their blocks are open (ROADMAP).

@@ -120,8 +120,67 @@ export function createSharedUniforms() {
     // between x and y (the reference's two-tone anime shading), z = how much of the step replaces
     // the smooth falloff
     uArtHeroCel: { value: new THREE.Vector3(0.3, 0.42, 0.75) },
+    // the living world's wind (world/life/wind.js writes both once a frame while the piece is on):
+    // dirX, dirZ (unit), speed (m/s), level (0..1). (0, 0, 0, 0) = the wind piece off: the grass and the
+    // trees then move exactly as they always did (WIND_GLSL, windOn())
+    uWind: { value: new THREE.Vector4(0, 0, 0, 0) },
+    // ... and its layout (WIND_FRONTS): [2i] front i (nx, nz, edge position along n, strength; 0 = none),
+    // [2i + 1] (tail m, lead m, phase, 0); [8] the sink (x, z, k, 0: the throne's draw); [9] the
+    // field's travel (x, z, 0, 0); [10] the grass's answer (lean, wave, front, patch); [11] the trees'
+    // (lean, rock, front, stir)
+    uWindFronts: { value: Array.from({ length: WIND_FRONTS_LEN }, () => new THREE.Vector4(0, 0, 0, 0)) },
   };
 }
+
+/** Front slots in uWindFronts (wind.js keeps as many) and the array's length. */
+export const WIND_SLOTS = 4;
+export const WIND_FRONTS_LEN = WIND_SLOTS * 2 + 4;
+
+/**
+ * Vertex GLSL of the living world's wind (the grass and the swaying objects; needs COMMON_GLSL's
+ * uTime). `windOn()` is false while uWind is all zero (the piece off): readers then keep their old
+ * motion exactly. `windDirAt(xz)` the prevailing direction there (toward the sink where there is
+ * one); `windFronts(xz, dir, edge)` how much front is passing there (0..~1.2), its direction, and how
+ * much of that is the leading edge (0..1).
+ */
+export const WIND_GLSL = /* glsl */ `
+#define WIND_SLOTS ${WIND_SLOTS}
+uniform vec4 uWind;
+uniform vec4 uWindFronts[${WIND_FRONTS_LEN}];
+bool windOn() { return abs(uWind.x) + abs(uWind.y) > 0.5; }
+vec2 windDirAt(vec2 xz) {
+  vec4 S = uWindFronts[WIND_SLOTS * 2];
+  if (S.z <= 0.0) return uWind.xy;
+  vec2 d = S.xy - xz;
+  float l = length(d);
+  return l > 0.5 ? d / l : vec2(0.0);
+}
+float windFronts(vec2 xz, out vec2 fdir, out float edge) {
+  float k = 0.0;
+  fdir = vec2(0.0);
+  edge = 0.0;
+  for (int i = 0; i < WIND_SLOTS; i++) {
+    vec4 A = uWindFronts[i * 2];
+    if (A.w <= 0.0) continue;
+    vec4 B = uWindFronts[i * 2 + 1];
+    float s = dot(xz, A.xy);
+    float c = A.x * xz.y - A.y * xz.x;
+    // the edge is not a ruler line: it bows and lags along its length, and its strength comes in patches
+    float e = A.z + 2.4 * sin(c * 0.07 + B.z) + 1.1 * sin(c * 0.19 + B.z * 1.7);
+    float d = e - s; // > 0: the edge has passed this point d m ago
+    if (d < -B.y || d > B.x * 5.0) continue;
+    float f = d < 0.0 ? smoothstep(-B.y, 0.0, d) : exp(-d / B.x);
+    float m = A.w * (0.62 + 0.38 * sin(c * 0.11 + B.z * 2.3));
+    k += f * m;
+    fdir += A.xy * f * m;
+    edge += m * smoothstep(-B.y, 0.0, d) * (1.0 - smoothstep(0.0, 2.5, d));
+  }
+  float l = length(fdir);
+  fdir = l > 1e-4 ? fdir / l : uWind.xy;
+  edge = clamp(edge, 0.0, 1.0);
+  return k;
+}
+`;
 
 export const COMMON_GLSL = /* glsl */ `
 #define MAX_PL ${MAX_PL}
@@ -236,6 +295,13 @@ vec2 scorchAt(vec2 xz) {
   if (uv.x <= 0.0 || uv.y <= 0.0 || uv.x >= 1.0 || uv.y >= 1.0) return vec2(0.0);
   return textureLod(uScorch, uv, 0.0).rg;
 }
+// ... with b = trample (0..1: trodden grass; world/life/steps.js writes it, the grass lies flatter by it)
+vec3 scorch3At(vec2 xz) {
+  vec2 uv = (xz - uScorchBounds.xy) / uScorchBounds.z;
+  if (uv.x <= 0.0 || uv.y <= 0.0 || uv.x >= 1.0 || uv.y >= 1.0) return vec3(0.0);
+  return textureLod(uScorch, uv, 0.0).rgb;
+}
+float trampleAt(vec2 xz) { return scorch3At(xz).z; }
 `;
 
 /** Standard vertex shader for meshes (world position + normal varyings). */

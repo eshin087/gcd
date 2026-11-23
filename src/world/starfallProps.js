@@ -4,6 +4,7 @@ import { range, hash2 } from '../core/rng.js';
 import { TAU } from '../core/math.js';
 import { prep, lumpy, carve, slabGeometry, mul } from './forest.js';
 import { facetCol, STAR_GLASS } from './landmarks.js';
+import { hangFrom, mergeHang } from './hang.js';
 
 // The ground round the Obsidian Throne's crater (world/throneHall.js): what the star's fall left
 // lying where a forest stood. Every builder returns `{ geos, r, h?, mat, cr?, ... }`: carved parts in
@@ -485,9 +486,10 @@ export function buildBanner(rng, x, z, oy, s = 1) {
         if (v < 0.05) p.setY(j, p.getY(j) + hash2(Math.round(u * 6), 3) * ch * 0.4); // the torn foot
       }
       cloth.translate(cw / 2 + 0.04 * s, top - ch / 2, 0);
-      pp.push(ink(cloth, CLOTH, 1.3, { lo: 0.6, h: ch, y0: top - ch }));
+      // (it barely stirs in the crater's draw, world/hang.js: from the bar down)
+      pp.push(hangFrom(ink(cloth, CLOTH, 1.3, { lo: 0.6, h: ch, y0: top - ch }), top, 'cloth'));
     }
-    const g = mergeGeometries(pp);
+    const g = mergeHang(pp, mergeGeometries(pp));
     if (flag) g.rotateY(range(rng, -0.4, 0.4)); // its cloth to the camera
     else g.rotateY(rng() * TAU);
     tip(g, flag ? range(rng, 0.05, 0.25) : range(rng, 0.25, 0.75), flag ? range(rng, -1, 1) : rng() * TAU);

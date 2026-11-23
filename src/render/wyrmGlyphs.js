@@ -42,6 +42,13 @@ const FONT_4X6 = {
   '/': [1, 1, 2, 4, 8, 8],
   '|': [4, 4, 4, 4, 4, 4],
   '\\': [8, 8, 4, 2, 1, 1],
+  // the air's letters (world/life/letterBatch.js: wisps, mist, rain, snow), never in the wyrm's sets
+  ',': [0, 0, 0, 0, 4, 8],
+  '`': [8, 4, 0, 0, 0, 0],
+  '~': [0, 0, 5, 10, 0, 0],
+  '=': [0, 0, 15, 0, 15, 0],
+  '*': [0, 4, 14, 4, 10, 0],
+  '+': [0, 4, 4, 14, 4, 4],
 };
 
 // The same letters as 3 x 5 bitmaps, for small screens (a phone at the LOW preset is ~393 px tall).
@@ -76,6 +83,12 @@ const FONT_3X5 = {
   '/': [1, 1, 2, 4, 4],
   '|': [2, 2, 2, 2, 2],
   '\\': [4, 4, 2, 1, 1],
+  ',': [0, 0, 0, 2, 4],
+  '`': [4, 2, 0, 0, 0],
+  '~': [0, 3, 6, 0, 0],
+  '=': [0, 7, 0, 7, 0],
+  '*': [0, 5, 2, 5, 0],
+  '+': [0, 2, 7, 2, 0],
 };
 
 // Classic 5 x 7 dot-matrix letters, for screens where a 5 x 8 cell would be too fine (~900 px tall).
@@ -106,6 +119,12 @@ const FONT_5X7 = {
   '/': bits(['00001', '00001', '00010', '00100', '01000', '10000', '10000']),
   '|': bits(['00100', '00100', '00100', '00100', '00100', '00100', '00100']),
   '\\': bits(['10000', '10000', '01000', '00100', '00010', '00001', '00001']),
+  ',': bits(['00000', '00000', '00000', '00000', '01100', '00100', '01000']),
+  '`': bits(['01000', '00100', '00000', '00000', '00000', '00000', '00000']),
+  '~': bits(['00000', '00000', '01000', '10101', '00010', '00000', '00000']),
+  '=': bits(['00000', '00000', '11111', '00000', '11111', '00000', '00000']),
+  '*': bits(['00000', '00100', '10101', '01110', '10101', '00100', '00000']),
+  '+': bits(['00000', '00100', '00100', '11111', '00100', '00100', '00000']),
 };
 
 /**
@@ -249,4 +268,43 @@ export function createWyrmArtAtlas(key = 'f4x6', s = 1) {
   tex.magFilter = THREE.NearestFilter;
   tex.needsUpdate = true;
   return { texture: tex, sets, total: glyphs.length, ink: ink / (letters * F.cw * F.ch) };
+}
+
+/**
+ * A pixel-exact atlas of any letters of font `key` at integer scale `s`, drawn as createWyrmArtAtlas
+ * draws the wyrm's (the same cell, the same soft halo): column 0 a blank, then `chars` in order (a
+ * letter the font lacks is blank). The living world's letters in the air (world/life/letterBatch.js)
+ * print with it, so a wisp or a bank of mist is made of the house letter. Returns { texture, total }.
+ */
+export function createWyrmLetterAtlas(key = 'f4x6', s = 1, chars = '') {
+  const F = WYRM_FONTS[key] ?? WYRM_FONTS.f4x6;
+  s = Math.max(1, Math.round(s) || 1);
+  const { w: gw, h: gh, top } = F;
+  const cw = F.cw * s, ch = F.ch * s, msb = 1 << (gw - 1);
+  const glyphs = [' ', ...chars].map((c) => F.glyphs[c] ?? F.glyphs[' ']);
+  const canvas = document.createElement('canvas');
+  canvas.width = glyphs.length * cw;
+  canvas.height = ch;
+  const ctx = canvas.getContext('2d');
+  const on = (rows, x, y) => y >= 0 && y < gh && x >= 0 && x < gw && (rows[y] & (msb >> x)) !== 0;
+  glyphs.forEach((rows, col) => {
+    ctx.fillStyle = 'rgba(255,255,255,0.24)';
+    for (let y = -top; y <= gh; y++) {
+      for (let x = 0; x < gw; x++) {
+        if (on(rows, x, y) || y + top >= F.ch) continue;
+        if (on(rows, x - 1, y) || on(rows, x + 1, y) || on(rows, x, y - 1) || on(rows, x, y + 1)) ctx.fillRect(col * cw + x * s, (y + top) * s, s, s);
+      }
+    }
+    ctx.fillStyle = '#fff';
+    rows.forEach((b, y) => {
+      for (let x = 0; x < gw; x++) if (b & (msb >> x)) ctx.fillRect(col * cw + x * s, (y + top) * s, s, s);
+    });
+  });
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.NoColorSpace;
+  tex.generateMipmaps = false;
+  tex.minFilter = THREE.NearestFilter;
+  tex.magFilter = THREE.NearestFilter;
+  tex.needsUpdate = true;
+  return { texture: tex, total: glyphs.length };
 }

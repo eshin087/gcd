@@ -6,6 +6,7 @@ import { SFX, bladeWhooshPeak } from './sfx.js';
 import { SampleBank, sfxMode } from './samples.js';
 import { SLOT, HEAVY, BLOWS, HERO, BEAST, blowSlot } from './sampleList.js';
 import { ForestAmbience, BreathLoop } from './ambience.js';
+import { Air } from './air.js';
 import { ChargeHum } from './charge.js';
 import { createMusic } from './music.js';
 import { FIRE_SFX, subscribeFire } from './fire.js';
@@ -391,6 +392,7 @@ export class AudioEngine {
     this.reverbIn.connect(this.reverb).connect(bus(BUS.reverb, this.mix));
 
     this.ambience = new ForestAmbience(this);
+    this.air = new Air(this); // the sound of the air (?life=air): no node until the piece is on
     this.breath = new BreathLoop(this);
     this.charge = new ChargeHum(this);
     this.tracks = new TrackBank(this);
@@ -540,6 +542,7 @@ export class AudioEngine {
     if (this.musicMode === 'victory' && now - this._musicSince > VICTORY_SETTLE) this._setMusic('ambient');
 
     this.ambience?.update(now, dt, this.game);
+    this.air?.update(now, dt, this.game);
 
     const b = this.breath;
     if (b) {

@@ -5,6 +5,128 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-23 — The living world, round 2: the air as clumps of tiny faint letters (the owner's verdict; ADR-163 addendum)
+
+**Owner** (on the preview): "wind effects need to be way subtle and not like this random wave taking over
+a full screen, the ascii characters should also not be so big and be tiny feint and clearly many ascii
+characters clumped up. same with the other weather effect. make it very subtle and more ascii like and
+natural realistic." And: "sound looks good" (the air's sound stays). Rebuilt by an agent on `life/wisp`
+(d09ae0f, e2c1735), merged into `world/living-world` (eab68e1).
+
+**Then:** on the round-2 preview the owner said "Looks right", then "Turn it on": every piece is now on
+by default (`?life=off` turns it off; headless stays off). The Hall of Falling Script and Halcyon Plaza
+(merged from `main` meanwhile) have no tuning blocks: the arrival and the air stand down there, the wind
+and the steps run on defaults (`core.newLevels`, `air.newBed`).
+
+**What changed.**
+- **The house letter for the air.** New `world/life/letterBatch.js` (`LetterBatch`): each letter a world
+  point projected to the screen and printed as one cell of the wyrm's pixel font (5 x 8 px at 720p,
+  following `pipeline.artFont`), pixel-exact, nearest-filtered, soft depth test, FX pass; written letters
+  (placed by their clump each frame) and spawned ones (move and fade by themselves). `wyrmGlyphs.js` gained
+  `createWyrmLetterAtlas(key, s, chars)` and bitmaps for `, ~ = * +` and a backtick; the wyrm's atlas is
+  unchanged.
+- **Wind.** The front's lit band is gone (`grass.lift` removed; `uWindFronts[10].w` is now `patch`: a gust
+  stirs loose local patches). Grass `front` 0.24 (Ashfall and the Ring 0.22; was 0.8 - 0.9), the canopy's
+  0.28 / stir 0.08 (was 0.75 / 0.16). The streaks became **wisps** (`wisps` replaces `streaks`): clumps of
+  64 - 96 tiny letters, 1.8 - 3 m along the air and 0.16 - 0.34 m across, alpha 0.4 at most, riding
+  `wind.at`, stretching, curling and coming apart over 5 - 8 s; a few in the breeze, more in a front; none
+  on the Throne or in the Grove. At most 10 clumps x 96 = 960 letters. Built on their own seeded stream,
+  not `life.build` (that moved `life.rand` and so the birds' and the fronts' draws). New `wind.wisped`.
+- **Weather.** Mist banks are soft heaps of 160 - 220 tiny pale letters (the Grove 110 - 150), densest at
+  the heart, each letter cycling 4 - 9 s and streaming 0.7 m along the air, so the bank rolls; at most 6
+  banks (was 12 of 36 - 46 big letters). The veil is removed. The drizzle `| \ /` by the wind's slant and
+  `' ,` (70 a second, alpha 0.22; was 160 of `|` at 0.42); the squall's embers tiny dim dots, 15 % of
+  them brighter, in an additive batch; the grey-out's ash alpha 0.42; the snow `. ' *` alpha 0.36; the
+  devils columns of 150 grains (was 64 big letters). Everything the weather draws left the shared pools
+  for its own batches (falling letters at most 700). The Throne's breath motes 0.5 → 0.3 m. The Ring's far
+  lightning unchanged.
+- **Litter** (tuning only): leaves and paper in the air 0.28 - 0.36 m (was 0.38 - 0.5), alpha 0.72; the
+  Ring's grit 0.20 - 0.26, seed 0.24 - 0.30, alpha 0.62. What lies keeps its body.
+- Tried and cut for the air: world-atlas glyph particles (below ~0.4 m they blur to specks); the fire
+  field (its smoke is the bonfire's, any heat hazes the world, mist printed as dark-backed slabs).
+
+**The lesson.** The first round's "ten-second test" (would a player told nothing notice?) pushed the air
+bigger and brighter; this owner reads the air as alive from MANY tiny faint letters in a clump, not from
+one thing that is easy to see. STYLE.md "The living world" carries it as the first rule.
+
+**Verified.** `life` suite: `wind.wisps` (9 wisps in 20 s of breeze, 10 in 5 s of a front, every letter
+in its clump, none on the hero, none in the grove, none off), `wind.budget` (at most 640 of 960 letters,
+fx.alpha +13 at most, 11 wisps at quality 0.5 against 24), `weather.bank` (197 letters, 75 in the inner
+third against 27 in the outer, all 197 back elsewhere in 9.5 s), `weather.budget` (own letters 847 at
+most, Cinderwood's mist, against 1600).
+
+**Open.** The drizzle may be too faint; the Ring's devils need luck to be in view (none on screen in the
+budget runs); the Foxfire Terrace's calm shows little; off-is-free is argued by construction (the wind-off
+branch, nothing built with the piece off), not re-filmed against `main`; `snap: 1` (letters on the art
+grid) is not filmed; the owner has not seen round 2 yet.
+
+## 2026-11-23 — The living world: one wind, nine layers, behind `?life=` (planned by Fable, built by Opus agents; ADR-163)
+
+**Owner:** "make the ascii world feel more alive. have natural looking ascii wind, subtle falling leaves,
+subtle different weather effects. before we fight the boss, the player should be awed at the background
+living ascii world. things like players footstep as you run etc. ask me any questions and offer
+suggestions for me to review. use fable to plan and opus agents to build". Asked four questions, they
+took: a fresh build (the guest agent's uncommitted `?worldLife=` prototype in `.worktrees/` left
+untouched), all four core layers, all four extras, one mood per level with slow changes.
+Branch `world/living-world`.
+
+**How it was built.** Three read-only mapping agents (render / levels / hooks). The lead wrote the core:
+the switch, `world/life/life.js` with THE CONTRACT in its header, a stub per layer with its interface
+fixed, the hooks in `world.js` / `atmosphere.js` / the Lab, and a new suite (`tests/integration/life.mjs`,
+the real LivingWorld on every level's real set). Then seven Opus agents in seven worktrees, one layer
+each, against the stubs: wind, litter, steps, weather, creatures, air (sound), moments (arrival +
+answer). All seven merged with zero conflicts and 7 failing checks, every one where two agents' pieces
+met. An integration agent connected the seams; a ninth agent made what hangs answer the wind; two of
+the first agents were resumed for a visibility pass; a docs agent wrote the reference docs.
+
+**What exists** (all off by default; `?life=all`, or the Lab's `life` rows):
+- **Wind**: per level a direction and a breathing speed; gust fronts that cross the grass as a band of
+  laid-over, lighter blades with runs of `~ = -` strokes along it; the canopy, the bonfire's flame and
+  smoke, every fire's smoke lean with it. The Windless Grove is still.
+- **Litter**: leaves, ash, paper slips, grit, cinders by level, in an own batch: they fall on the wind,
+  lie, lift in a front, under a foot, in a blow.
+- **Steps**: a surface map per level; each footfall's puff, print, sound by surface; trodden grass (the
+  scorch map's blue channel).
+- **Weather**: a director of slow spells per level (mist and drizzle, an ember squall and a grey-out,
+  the star's breath, dust devils and far lightning before the Ring's fight, a cloud over the moon,
+  still mist and snow).
+- **Creatures**: fireflies that part from the hero, birds and crows that lift off, moths, one hawk.
+- **Air**: a synthesized bed per level that follows the wind, the rain and the hush.
+- **Arrival**: from the title the camera opens over the arena (the hero in the lower third), ~3 s.
+- **Answer**: a roar is a gust front from the boss; red and black tells are a held breath; a kill is a
+  lull.
+- **Hang**: banners, paper charms and a rope lean and ripple in the same wind, and still break.
+
+**What went wrong on the way.** The first wave was built to "subtle" and could not be seen: standing at
+the spawn, everything on was nearly indistinguishable from today on every level (a thin stroke under
+~0.3 m is one pixel at the game camera). The lead's brief was the cause. The tuning pass used a
+ten-second test instead. Smaller ones: the lead's harness updated every own pool twice a frame; a roar
+was weaker than an ordinary gust until a front could be born at a point; the far thunder could never
+fire (the flash peaked at 0.13 against a 0.35 threshold); the arrival's skip would have ended at once
+on a pad that rests off-centre (the owner's machine has had one feeding input).
+
+**Verified.** `tests/integration/life.mjs`: the contract on every level (off spawns nothing, no
+`Math.random`, budgets, the phone's share, each piece alone) and a file of scenarios per piece. The
+seeded suites are untouched with life off. Films of every layer per level, checked with frame-to-frame
+motion maps (a front must show as a travelling band). Frame cost: no measurable render cost; the
+update adds ~0.2 - 0.35 ms with everything on. With the wind off the frame matches `main` to 1/255.
+
+**Not verified / open.**
+- **The owner has not picked yet**: the wind band's brightness, the overall strength (`?lifeK=`), the
+  sound's level (it sits ~10 dB under today's bed; nobody has heard it: an audition page exists in the
+  build session's scratchpad), whether the arrival's hold is wanted. Default stays off until then.
+- Does not read yet: ash drifts as piles (the paving is itself drawn in strokes), the obsidian glint,
+  moths. The mist banks and dust devils read as clusters of pale dashes: a second look is due.
+- A banner's moon shadow is still the rigid shape; the far Throne banners (static mesh) stay rigid.
+- No phone films of the weather or creatures (`&touch` left the capture helper without `__game`); no
+  film of a real wyrm roar (only the emitted event); on-device fps is the owner's to confirm.
+- Two levels in open PRs (Halcyon Plaza, the Hall of Falling Script) have no tuning blocks: they get
+  the quiet defaults.
+- The `life` suite is long (hundreds of checks on six levels); if CI's share with it runs long, split
+  it by piece as integ and lord are split.
+
+**Next.** The owner's picks from the films and the preview → the default; a second look at mist and
+devils; the sound by ear.
 ## 2026-11-23 — Session 79d: the PR review's three findings fixed (Halcyon Plaza)
 
 **What changed.** The Codex review of PR 97 (at 22b049b) found three real bugs; each got a failing test first:

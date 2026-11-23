@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { COMMON_GLSL } from '../render/shaderLib.js';
+import { COMMON_GLSL, WIND_GLSL, WIND_FRONTS_LEN } from '../render/shaderLib.js';
 import { gi, gis } from '../render/glyphs.js';
 import { mulberry32, pickWeighted, fbm2 } from '../core/rng.js';
 
@@ -65,11 +65,15 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
       uGlyphAtlas: U.uGlyphAtlas, uScorch: U.uScorch, uScorchBounds: U.uScorchBounds,
       uCamRight: U.uCamRight, uBladeUp: U.uBladeUp, uPushers: U.uPushers, uGust: U.uGust,
       uCullDist: U.uCullDist,
+      // the living world's wind (an older uniforms object without it: the wind is off)
+      uWind: U.uWind ?? { value: new THREE.Vector4(0, 0, 0, 0) },
+      uWindFronts: U.uWindFronts ?? { value: Array.from({ length: WIND_FRONTS_LEN }, () => new THREE.Vector4()) },
       uBurnt: { value: new THREE.Vector3(...burnt) },
       uAsh: { value: Math.min(1, Math.max(0, Number(ash) || 0)) },
     },
     vertexShader: /* glsl */ `
       ${COMMON_GLSL}
+      ${WIND_GLSL}
       attribute vec4 iRoot;  // x, z, height, rand
       attribute vec4 iData;  // glyph, tilt, colour var, kind (1 = flower)
       uniform vec3 uCamRight;
@@ -88,8 +92,10 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
         // cheap cull: outside the visible ellipse around the focus
         if (length(rel * vec2(0.75, 1.0)) > uCullDist) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
 
-        vec2 sc = scorchAt(root.xz);
+        vec3 sc3 = scorch3At(root.xz);
+        vec2 sc = sc3.xy;
         float burn = sc.x, heat = sc.y;
+        float trample = sc3.z;
         float flower = iData.w;
         float h = iRoot.z * mix(1.0, 0.32, burn);
         float w = h * 0.92; // square-ish quads keep glyphs at their natural proportions
@@ -107,9 +113,42 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
         float tip = position.y;
 
         // wind
-        // gentle: big slow swells, small amplitude (a busy, fast sway reads as the ground swimming)
-        float wv = sin(uTime * 1.05 + root.x * 0.22 + root.z * 0.14) + 0.35 * sin(uTime * 1.9 + root.x * 0.6 - root.z * 0.4);
-        vec3 off = uCamRight * wv * 0.04 * h + vec3(0.0, 0.0, -0.025 * h);
+        vec3 off;
+        if (!windOn()) {
+          // (the living world's wind off: exactly the old sway)
+          // gentle: big slow swells, small amplitude (a busy, fast sway reads as the ground swimming)
+          float wv = sin(uTime * 1.05 + root.x * 0.22 + root.z * 0.14) + 0.35 * sin(uTime * 1.9 + root.x * 0.6 - root.z * 0.4);
+          off = uCamRight * wv * 0.04 * h + vec3(0.0, 0.0, -0.025 * h);
+        } else {
+          // the shared wind (world/life/wind.js): the blade leans along it by the prevailing speed, in
+          // patches that travel downwind with the air; a passing front stirs it in loose patches
+          vec4 G = uWindFronts[WIND_SLOTS * 2 + 2]; // lean, wave, front, patch
+          vec2 wd = windDirAt(root.xz);
+          float spN = uWind.z / (uWind.z + 2.5);
+          vec2 p = root.xz - uWindFronts[WIND_SLOTS * 2 + 1].xy;
+          vec2 perp = vec2(-wd.y, wd.x);
+          float ps = dot(p, wd), pc = dot(p, perp);
+          float g = 0.5 + 0.3 * sin(ps * 0.23 + 1.7 * sin(pc * 0.071)) + 0.2 * sin(ps * 0.61 - pc * 0.19 + 0.8 * sin(ps * 0.11));
+          vec2 fd;
+          float edge;
+          float fk = windFronts(root.xz, fd, edge);
+          // a gust stirs the meadow in loose local patches (G.w: how far), never as a band across the
+          // view: an uneven pattern that rides the field's travel, so a patch comes and goes as it passes
+          float pt = (0.5 + 0.5 * sin(ps * 0.83 + 2.1 * sin(pc * 0.37 + ps * 0.11))) * (0.5 + 0.5 * sin(pc * 0.61 - ps * 0.29 + 1.3 * sin(ps * 0.17)));
+          fk *= mix(1.0, smoothstep(0.25, 0.75, pt), G.w);
+          vec2 bend = wd * (spN * (G.x + G.y * (g - 0.5) * 2.0)) + fd * (fk * G.z);
+          // inside a stirred patch the blades flutter, neighbours together (short waves running downwind)
+          float flutter = sin(uTime * 6.0 - ps * 1.3 + 0.6 * sin(pc * 0.9)) * 0.06 * fk;
+          bend += wd * flutter;
+          float b = min(length(bend), 0.9);
+          off = vec3(bend.x, -0.5 * b * b, bend.y) * h;
+        }
+        // trodden (the scorch map's b: world/life/steps.js): it lies flatter, every way
+        if (trample > 0.004) {
+          float a = iRoot.w * 6.2832;
+          off.xz += vec2(cos(a), sin(a)) * trample * h * 0.6;
+          off.y -= trample * h * 0.72;
+        }
         // trample / pushers (ignore airborne ones: y > 1.5)
         for (int i = 0; i < MAX_PUSH; i++) {
           vec4 P = uPushers[i];
@@ -143,6 +182,8 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
         rootC = mix(rootC, vec3(0.012, 0.011, 0.011), uAsh);
         vec3 alb = mix(rootC, tipC, tip);
         alb = mix(alb, vec3(0.014, 0.012, 0.011) * (0.6 + tip), burn);
+        // trodden blades a little darker
+        if (trample > 0.004) alb *= 1.0 - 0.7 * trample;
         float sh = shadowAtFast(vec3(root.x, 0.3, root.z));
         vec3 L = uAmbient * 1.6 + uMoonColor * 0.62 * sh + pointLights(root + vec3(0.0, 0.35, 0.0), vec3(0.0, 1.0, 0.0), 1.0);
         vec3 col = alb * L;

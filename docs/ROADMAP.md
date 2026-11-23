@@ -184,6 +184,20 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.72 — The living world (2026-11-23, `world/living-world`, ADR-163)
+- [x] One shared wind per level (`world/life/wind.js`): fronts through the grass, the canopy, smoke, flames
+- [x] Litter that falls, lies and lifts; footsteps by surface, prints, trodden grass
+- [x] Weather in slow spells per level; small creatures that mind the hero
+- [x] The sound of the air; the arrival shot; the world's answers to the fight; cloth and paper that hang
+- [x] `?life=` / `?lifeK=`, the Lab's rows, `tests/integration/life.mjs`
+- [x] Round 2, the owner's verdict: the air as clumps of many tiny faint letters (`LetterBatch`, the house letter); the grass band and the streaks gone, wisps instead
+- [x] Mist banks and dust devils a second look (soft heaps of 160 - 220 tiny letters that roll; columns of 150 grains); the weather's letters in its own batches
+- [x] The owner sees round 2 on the preview ("Looks right")
+- [x] The default goes on: every piece at strength 1 (the owner: "Turn it on"); `?life=off` turns it off
+- [ ] The drizzle may be too faint; the Ring's devils seldom in view; the Foxfire Terrace's calm shows little
+- [ ] Ash drifts, the obsidian glint, moths do not read yet
+- [ ] A banner's moon shadow leans with it; the far Throne banners
+- [ ] Tuning blocks for the Hall of Falling Script and Halcyon Plaza (today: no arrival, no weather, no litter, no creatures, their own sound bed; the wind's quiet default)
 ## M1.71 — An eighth level: Halcyon Plaza and Halcyon, the Last Saviour (2026-11-22, `claude/level-future-tyrant-afdefc`, ADR-159 – ADR-161)
 - [x] `?level=city`: a crossroads read from its streets, every piece breakable, two-stage towers, cars that
       explode (the set polls them), the city's light as heat (`setPhase`), `?city=a|b|c`; the `y0` fix

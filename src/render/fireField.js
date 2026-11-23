@@ -51,6 +51,11 @@ export class FireField {
     this.active = false; // the flame texture holds something this frame
     this._warm = 0;
     this._broken = false;
+    // the living world's wind (world/life/wind.js sets both while its piece is on, null when off):
+    // smoke and flames are pushed by the air where they are, `windK` { smoke, flame } the push per m/s
+    this.wind = null;
+    this.windK = null;
+    this._wv = { x: 0, z: 0, k: 0 };
     this._clear = new THREE.Color();
     this.cells = new THREE.Vector2(4, 4);
     // the heat / flame targets' texel size: `cells` at the finest cell the frame may step to (the
@@ -457,6 +462,19 @@ export class FireField {
         this._tintId[i] = -1;
       }
     }
+    const wind = this.wind, wk = this.windK, wv = this._wv;
+    const kSmoke = wind ? (wk?.smoke ?? 0) * dt : 0, kFlame = wind ? (wk?.flame ?? 0) * dt : 0;
+    // (flames, which can be thousands in a breath, take the air at the focus once a frame; smoke is
+    // few and takes it where each puff is)
+    let fwx = 0, fwz = 0;
+    if (wind && kFlame > 0) {
+      const f = this.U?.uFocus?.value;
+      wind.at(f?.x ?? 0, f?.z ?? 0, wv);
+      if (wv.x === wv.x && wv.z === wv.z) {
+        fwx = wv.x * kFlame;
+        fwz = wv.z * kFlame;
+      }
+    }
     let w = 0;
     for (let i = 0; i < this.count; i++) {
       const k = i * FIELDS;
@@ -469,6 +487,20 @@ export class FireField {
       d[o + 3] *= drag;
       d[o + 4] = d[o + 4] * drag + d[o + 14] * dt;
       d[o + 5] *= drag;
+      if (wind) {
+        // the air: smoke rides it, a flame leans a little (steel and the void do not)
+        const kind = d[o + 12];
+        if (kind === 0) {
+          d[o + 3] += fwx;
+          d[o + 5] += fwz;
+        } else if (kind === 1 && kSmoke > 0) {
+          wind.at(d[o], d[o + 2], wv);
+          if (wv.x === wv.x && wv.z === wv.z) {
+            d[o + 3] += wv.x * kSmoke;
+            d[o + 5] += wv.z * kSmoke;
+          }
+        }
+      }
       d[o] += d[o + 3] * dt;
       d[o + 1] += d[o + 4] * dt;
       d[o + 2] += d[o + 5] * dt;

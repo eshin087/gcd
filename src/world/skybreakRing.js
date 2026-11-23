@@ -10,6 +10,7 @@ import { buildButte, buildHoodoo, buildRingPost, buildSpike, facetCol, BADLAND, 
 import { breakableFloor } from './floor.js';
 import { createGround } from './ground.js';
 import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
+import { hangFrom } from './hang.js';
 
 // The Skybreak Ring (`?level=ring`): an open-air tournament ring on the badlands, wrecked by the fight.
 // A square platform of stone tiles 30 m across centred on the origin (the duel's centre): a kerb of
@@ -205,7 +206,8 @@ function buildBanner(rng, x, z, h) {
   }
   cloth.translate(x, h - 0.4 - L / 2, z + 0.12);
   carve(cloth, { col: facetCol(CLOTH, 1.35), ao: (px, py) => 0.75 + 0.25 * Math.min(1, py / h) });
-  out.push(cloth);
+  // (it answers the wind, world/hang.js: from the bar down)
+  out.push(hangFrom(cloth, h - 0.4, 'cloth'));
   return out;
 }
 
@@ -309,8 +311,9 @@ function buildDerrick(rng, x, z, h) {
   const rope = prep(new THREE.CylinderGeometry(0.025, 0.025, h * 0.5, 3));
   rope.translate(x + h * 0.66, h * 0.8, z);
   carve(rope, { col: mul(WOOD, 0.8), ao: 1 });
-  out.push(rope);
-  out.push(stoneBox(rng, x + h * 0.66, h * 0.4, z, 0.9, 0.7, 0.9, { col: CUT }));
+  // (the rope and its block swing as one on the boom's end, world/hang.js)
+  out.push(hangFrom(rope, h * 1.05, 'rope'));
+  out.push(hangFrom(stoneBox(rng, x + h * 0.66, h * 0.4, z, 0.9, 0.7, 0.9, { col: CUT }), h * 1.05, 'rope'));
   return out;
 }
 
@@ -828,7 +831,9 @@ function makeAmbience(braziers, { haze = false, floor = null } = {}) {
     cur.fogNear = PALETTE[0].fogNear * a + PALETTE[1].fogNear * b + PALETTE[2].fogNear * c;
     cur.fogFar = PALETTE[0].fogFar * a + PALETTE[1].fogFar * b + PALETTE[2].fogFar * c;
   };
-  const write = (U) => {
+  // far: dry lightning far off before the fight (the living world's weather, world/life/weather.js:
+  // weather.flash, ~0.1 at most): the sky's ambient and fog flicker a little toward the storm's bolt
+  const write = (U, far = 0, F = null) => {
     if (!U?.uMoonColor?.value) return;
     const f = st.flash, d = 1 - 0.75 * st.dim;
     const B = WEATHER.bolt, G = WEATHER.flareGold;
@@ -836,6 +841,14 @@ function makeAmbience(braziers, { haze = false, floor = null } = {}) {
     U.uMoonColor.value.setRGB(cur.moon[0] * d + fm[0] * f, cur.moon[1] * d + fm[1] * f, cur.moon[2] * d + fm[2] * f);
     U.uAmbient.value.setRGB(cur.ambient[0] * d + fa[0] * f, cur.ambient[1] * d + fa[1] * f, cur.ambient[2] * d + fa[2] * f);
     U.uFogColor?.value?.setRGB(cur.fogColor[0] * d + 0.02 * f, cur.fogColor[1] * d + 0.022 * f, cur.fogColor[2] * d + 0.028 * f);
+    if (far > 0 && F?.fog && F.ambient) {
+      // (the weather's far lightning, weatherTuning.js ring.bolts: the far side of the sky, a breath of ambient)
+      const a = U.uAmbient.value, c = U.uFogColor?.value;
+      a.setRGB(a.r + F.ambient[0] * far, a.g + F.ambient[1] * far, a.b + F.ambient[2] * far);
+      c?.setRGB(c.r + F.fog[0] * far, c.g + F.fog[1] * far, c.b + F.fog[2] * far);
+      const m = U.uMoonColor.value, M = F.moon;
+      if (M) m.setRGB(m.r + M[0] * far, m.g + M[1] * far, m.b + M[2] * far);
+    }
     U.uMoonDir?.value?.set(cur.dir[0], cur.dir[1], cur.dir[2]).normalize();
     if (U.uFogNear) U.uFogNear.value = cur.fogNear;
     if (U.uFogFar) U.uFogFar.value = cur.fogFar;
@@ -912,7 +925,12 @@ function makeAmbience(braziers, { haze = false, floor = null } = {}) {
       }
       st.flash = st.flash > 0.004 ? st.flash * Math.exp(-dt * B.decay) : 0;
       blend();
-      write(game.U);
+      // (the living world, world/life/: its far lightning, and its wind's way for the dust and the rain)
+      const life = game.world?.life;
+      const far = life?.on?.('weather') ? Number(life.weather?.flash) || 0 : 0;
+      const wnd = life?.on?.('wind') && life.wind?.speed > 0 && Number.isFinite(life.wind.dirX + life.wind.dirZ) ? life.wind : null;
+      const wx = wnd ? wnd.dirX : 1, wz = wnd ? wnd.dirZ : 0;
+      write(game.U, far, life?.weather?.tune?.bolts);
       // the glow round him in his golden form
       if (st.glow) {
         const G = WEATHER.glow, p = boss?.position;
@@ -959,6 +977,14 @@ function makeAmbience(braziers, { haze = false, floor = null } = {}) {
         part.vx = wind * (0.7 + 0.6 * rnd());
         part.vy = (rnd() - 0.4) * 0.3;
         part.vz = (rnd() - 0.5) * 0.4;
+        if (wnd) {
+          // the living world's wind blows: the same draw, turned to its way (upwind of the view, along it)
+          const ox = part.x - f.x, oz = part.z - f.z + 3, ax = part.vx, az = part.vz;
+          part.x = f.x + ox * wx - oz * wz;
+          part.z = f.z - 3 + ox * wz + oz * wx;
+          part.vx = ax * wx - az * wz;
+          part.vz = ax * wz + az * wx;
+        }
         part.life = 2.5 + rnd() * 3;
         part.size = 0.13 + rnd() * 0.12;
         part.sizeEnd = 0.08;
@@ -1039,9 +1065,9 @@ function makeAmbience(braziers, { haze = false, floor = null } = {}) {
           part.x = f.x + (rnd() - 0.5) * 40 - 3;
           part.z = f.z + (rnd() - 0.5) * 30 - 3;
           part.y = 5 + rnd() * 4;
-          part.vx = 3.2;
+          part.vx = wnd ? 3.2 * wx - 0.4 * wz : 3.2;
           part.vy = -14 - rnd() * 4;
-          part.vz = 0.4;
+          part.vz = wnd ? 3.2 * wz + 0.4 * wx : 0.4;
           part.life = 0.55 + rnd() * 0.2;
           part.size = 0.42;
           part.sizeEnd = 0.42;

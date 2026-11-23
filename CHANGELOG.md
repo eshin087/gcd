@@ -4,7 +4,23 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Seventy-six pieces of work since 0.4.0:
+Seventy-seven pieces of work since 0.4.0:
+- **The living world** (2026-11-23, ADR-163). *Added:* every level is alive before the fight (`?life=off` turns
+  it off; `?life=wind,litter,...` picks pieces, `?lifeK=0.25..2` its strength; the Lab's `life` rows). **One wind per level**: gusts drift across as faint wisps of tiny letters and stir
+  the grass in loose patches, and the canopy, the smoke, the flames, the leaves, the rain and the
+  banners all lean the same way. **Things fall and lie**: leaves in Cinderwood, ash in the
+  Ashfall Courtyard, paper slips at the Foxfire Terrace, grit at the Skybreak Ring, cinders at the
+  Obsidian Throne, one bamboo leaf at a time in the Windless Grove; a gust or a foot lifts them.
+  **Footsteps answer the ground**: a puff, a print, trodden grass, and a sound per surface. **Weather
+  that comes and goes**, drawn as soft clumps of many tiny faint letters: mist banks and a passing drizzle, an ember squall, the fallen star's slow breath,
+  dust devils and far lightning, a cloud over the moon, still mist. **Small creatures**: fireflies
+  that part from the hero, birds and crows that lift off, moths, a hawk. **The sound of the air**: a
+  bed per level that follows the wind. **An arrival**: from the title the camera opens over the arena.
+  **The world answers the fight**: a roar is a gust front, a great blow winding up is a held breath;
+  in the fight all of it thins. **What hangs moves**: banners, paper charms. *Changed (with the wind
+  on):* the Windless Grove's bamboo no longer sways. The Hall of Falling Script and Halcyon Plaza (added
+  meanwhile) get the wind and the footsteps but no arrival, weather, litter or creatures yet, and keep
+  their own sound. `tests/integration/life.mjs`.
 - **An eighth level: Halcyon Plaza and Halcyon, the Last Saviour** (2026-11-22, ADR-159 – ADR-161). *Added:* an eighth
   level, `?level=city` (the title screen lists it). **Halcyon Plaza**: a city that has not been built yet, at
   night in the rain, read from its streets: a plaza where an avenue meets a street, four towers, cars, lamp

@@ -22,6 +22,8 @@ wheel zoom → mouse ray (mouseGround) → gamepad.update(realDt) → touch.upda
 → 1 – 6 simulation steps (core/timestep.js), each of stepDt real seconds:
     clocks → lab.update(stepDt) → flow.update(dt, stepDt) → player.update(dt) → dragon.update(dt)
     → world.update(dt) → lights.update → fx.update (alpha, add, fire, shed, ripple, stamp)
+      (world.update: … scorch.update → life.update → atmosphere.update: the living world first, so
+       the atmosphere's smoke and embers read this frame's wind; neither while the Lab hides the world)
     (input.endFrame() after the FIRST step: the frame's presses and releases are seen once)
 → lab.postUpdate() → camera (rig, realDt) → view override → shared uniforms
 → hud.update(realDt) → audio.update(realDt) → render
@@ -84,7 +86,7 @@ ADR-120).
 | field | what |
 |---|---|
 | `THREE`, `CONFIG` | three.js namespace, `core/config.js` |
-| `renderer, scene, fxScene, camera, pipeline, U` | rendering. `U` = shared uniforms (`render/shaderLib.js`), including `U.uBoneTex` (the rigid batches' bone matrices, see Rigid batching below). `pipeline.setShadowSize(texels)` resizes the moon shadow map (`pipeline.shadowSize`; main.js `applyQuality` passes the preset's `shadow`) |
+| `renderer, scene, fxScene, camera, pipeline, U` | rendering. `U` = shared uniforms (`render/shaderLib.js`), including `U.uBoneTex` (the rigid batches' bone matrices, see Rigid batching below) and the living world's wind, `U.uWind` (vec4) and `U.uWindFronts` (vec4[12]; written by `world/life/wind.js`, all zero while its piece is off: "The living world" → The wind). `pipeline.setShadowSize(texels)` resizes the moon shadow map (`pipeline.shadowSize`; main.js `applyQuality` passes the preset's `shadow`) |
 | `events` | pub/sub: `on(name, fn)` → unsubscribe fn, `emit(name, data)` |
 | `input` | **Actions** (ADR-067, `core/bindings.js`): `act(a)`, `actPressed(a)`, `actReleased(a)` — true when any code bound to action `a` (or its virtual code `'@a'`) is down / pressed / released; `bindings` (the `Bindings` instance); the player, flow and timing trainer read only actions. Raw: `down(code)`, `pressed(code)`, `released(code)`, `mouseDown(b)`, `mousePressed(b)`, `mouseReleased(b)`, `moveAxis()` → `{x, y}` (y = up/north, from the up / down / left / right actions; keys give a unit vector, a deflected virtual stick wins with its analog length ≤ 1), `anyPressed`, `wheel`. Codes are `KeyboardEvent.code`. **Virtual sources** (touch): `setVirtual(code, down)` (code = a `KeyboardEvent.code` or `'Mouse0'`/`'Mouse1'`/`'Mouse2'`; same one-frame `pressed` / `released` edges as the real device, only on a change), `setVirtualAxis(x, y)`, `releaseVirtual()` (everything up, stick centred). Virtual holds are tracked apart from the real keys / buttons. **Gamepad source** (ADR-066): `setPad(code, down)`, `setPadAxis(x, y)`, `releasePad()` — the same semantics with their own holds (a release on one source never drops a hold on another); a deflected pad stick wins over the touch stick and the keys in `moveAxis()`. `pulse(code)`: a one-frame `pressed` edge with no hold. `kbmT`: `performance.now()` of the last real keyboard / mouse event (a mousemove only with movement). Mouse events within 1 s of a touch pointer event (browser compatibility mousedown / mouseup / mousemove) are ignored. |
 | `mouseGround` | `Vector3` — mouse ray ∩ ground plane, updated each frame (the ray from the camera without the kick's translation, `cameraRig.kickOff`); with a gamepad in use or touch controls on, their aim point (see Gamepad controls, Touch controls; shared helper `ui/aim.js` `aimWithoutCursor`) |
@@ -101,7 +103,7 @@ ADR-120).
 | `lights` | `add({x,y,z,color:[r,g,b],intensity,radius,life,fade,fadeIn,flicker})` → light (mutable `x,y,z`, `.set()`, `.kill()`) |
 | `fx.add` / `fx.alpha` | glyph particles, additive-HDR / alpha-blended. `spawn({x,y,z,vx,vy,vz,life,size,sizeEnd,glyph,color,colorEnd,alpha,alphaEnd,gravity,drag,spin,rot,flicker,stretch})`. `glyph`: char, string of chars (random pick) or atlas index. |
 | `fx.ripple` / `fx.stamp` | the impact pass (ADR-149): `fx.ripple` = `ImpactRipple` (`render/impactRipple.js`: `hit(x, y, z, o, k)`, `update(dt)`, `clear()`, `write(pipeline)`; `n`, `live`), `fx.stamp` = `{ clear }` (`combat/impactStamp.js`: `stampHit`, `stampUpdate`, `stampClear`). Both run on fx time and are cleared on a level reset (flow, `world.debug.setVisible`) |
-| `world` | `resolve(pos, radius, bound, soft = false, who = null)` circle collision (`who` 'hero': on a set with an edge the hero's ground replaces the `bound` circle; `edge` is that edge or null and `heroBound(x, z)` how far out he may stand that way: Destruction → "The edge of the open ground", ADR-125; `soft`: pass through the circles marked `soft`, the trunks and stumps of breakable wood: the wyrm's body, ADR-119); `setQuality(k)` (the destruction's phone budget 0.3 .. 1; `setGrassQuality` sets it from the preset, `QUALITY` in breakTuning.js); `setPusher(slot, x, y, z, r)` grass trample (slot 0 = player, 1–9 = dragon; y > 1.5 = airborne, ignored); `clearPushers(from, to)`; `gust(x, z, strength 0..2, radius)`; `scorch.burnCircle(x, z, r, burn 0..1, heat 0..1)`, `scorch.reset()`; `colliders.blocked(ax,az,bx,bz)`; `setGrassQuality(count)` (instanced grass blades drawn; main.js applies the quality preset); **destruction** (ADR-107, see Destruction): `impact(x, z, r, power, o)`, `ignite(x, z, r, k, grass = true)`, `restore()`, `destructibles`, `fire`, `scars` (the tests' world mocks lack them: every caller outside `src/world` guards with `?.`); `bonfire {x,z}`; `nest {x,z}`; `atmosphere.setBonfireLit(bool)`; `atmosphere.skyGlow(k 0..1)` (the sky over the clearing glows orange: warms the shared ambient and fog colours; call every frame while it should show, it eases in and out and lets go 0.2 s after the last call; Armageddon, ADR-053); Lab only: `debug.setVisible(bool)` hides / restores the environment (ground, grass, forest group = trees, stones, flagstones, nest bones, bonfire; atmosphere paused and in-flight particles in `fx.*` dropped; the exact previous `visible` flags come back; lights, scorch and colliders untouched), `debug.visible` |
+| `world` | `resolve(pos, radius, bound, soft = false, who = null)` circle collision (`who` 'hero': on a set with an edge the hero's ground replaces the `bound` circle; `edge` is that edge or null and `heroBound(x, z)` how far out he may stand that way: Destruction → "The edge of the open ground", ADR-125; `soft`: pass through the circles marked `soft`, the trunks and stumps of breakable wood: the wyrm's body, ADR-119); `setQuality(k)` (the destruction's phone budget 0.3 .. 1; `setGrassQuality` sets it from the preset, `QUALITY` in breakTuning.js); `setPusher(slot, x, y, z, r)` grass trample (slot 0 = player, 1–9 = dragon; y > 1.5 = airborne, ignored); `clearPushers(from, to)`; `gust(x, z, strength 0..2, radius)` (also `life.gust`: the living world's air takes the same push); `scorch.burnCircle(x, z, r, burn 0..1, heat 0..1)`, `scorch.reset()`; the scorch map's channels: R burn, G heat, B **trample** (`scorch.trample(x, z, r, k)` max-blended, `scorch.trampleAt(x, z)`; the living world's steps write it, the grass lies flatter and darker by it, it stands up over `STEPS.trample.decay` s; GLSL `scorch3At(xz)`, `trampleAt(xz)` in COMMON_GLSL); **`life`** (`world/life/life.js` `LivingWorld`, `?life=`; null if it failed to build: see "The living world"); `colliders.blocked(ax,az,bx,bz)`; `setGrassQuality(count)` (instanced grass blades drawn; main.js applies the quality preset); **destruction** (ADR-107, see Destruction): `impact(x, z, r, power, o)`, `ignite(x, z, r, k, grass = true)`, `restore()`, `destructibles`, `fire`, `scars` (the tests' world mocks lack them: every caller outside `src/world` guards with `?.`); `bonfire {x,z}`; `nest {x,z}`; `atmosphere` (the bonfire's flames, smoke and embers; the default night's fireflies, low mist and falling leaves, or a set's `ash` / `ambience`: with the living world on, it skips the leaves, fireflies, mist or ash a layer draws itself, `life.takes(what)`, and while the wind piece is on its smoke, embers, mist, leaves and ash drift on `life.wind.at` instead of their fixed drift; their Math.random draws are unchanged); `atmosphere.setBonfireLit(bool)`; `atmosphere.skyGlow(k 0..1)` (the sky over the clearing glows orange: warms the shared ambient and fog colours; call every frame while it should show, it eases in and out and lets go 0.2 s after the last call; Armageddon, ADR-053); Lab only: `debug.setVisible(bool)` hides / restores the environment (ground, grass, forest group = trees, stones, flagstones, nest bones, bonfire; atmosphere paused and in-flight particles in `fx.*` dropped; the exact previous `visible` flags come back; lights, scorch and colliders untouched), `debug.visible` |
 | `player`, `dragon`, `hud`, `audio`, `flow`, `lab` | the modules below. `dragon` is **the boss slot** (the wyrm in Cinderwood, the Ash Disciple in Ashfall; see Levels and the boss slot); `boss` is the same object |
 | `level`, `levels`, `pickLevel(id)` | the level this page load built (`levels/index.js` definition), every level as `{ id, name }` (the title's stage picker, the Lab's LEVEL row), and a reload into another one (`?level=<id>`, other parameters kept). Tests may leave them out: flow falls back to Cinderwood's lines |
 | `heroLook`, `heroLooks`, `pickHeroLook(id)` | the hero's outfit option (kept for later use: the owner, 2026-11-14, keeps today's look as the default; `player/gear/looks.js`): the id main.js read from `?heroLook=` (the Player wears it), every option as `{ id, name }` (the Lab's OUTFIT row), and a live switch (`player.setLook(id)`, the URL updated in place; `pickLevel` keeps the parameter). Tests may leave them out: the Player wears the default look |
@@ -2384,6 +2386,12 @@ banner ("THE CINDER WYRM'S FURY IGNITES" / "ITS HEART BURNS WHITE-HOT") and swit
 'boss2'; `flow.phase2` means phase ≥ 2.
 Touch: with `game.touch.active` the death hint reads "tap to rise again" and the "H: controls ·
 Esc: pause" log line is skipped. Screen taps reach `_dismissPressed` as a virtual LMB press.
+**The arrival** (2026-11-23, ADR-163; `flow.arrival`, `game/arrival.js`, `?life=arrival`): as the title is
+dismissed (`_startGame`, after its camera lines) the camera opens wide over the level for a few seconds
+through the flow's own eased override, then settles behind the hero; once per page load, never on a
+respawn; any move or action that is a CHANGE from the input at its start skips it. `arrival.update` runs
+after `_updateCinematic`; `_enterBossIntro`, `_resetWorld` and `_debugPrelude` call `arrival.cancel()`
+first. Off (the default): `begin()` does nothing. "The living world" → The arrival.
 
 ### Audio — `src/audio/audio.js` exports `class AudioEngine`
 ```
@@ -2475,6 +2483,14 @@ the fallback.
 - `world:impact` by kind: 'chip' `chip`, 'wear' `wear` (2026-11-16, ADR-120: a quiet leaf hiss, a dry
   crack from stage 2, a low creak for the lean; gain 0.45, `gap` 0.14 s so a roar's front sets off a
   few, not hundreds), 'burn' `sizzle`, 'burnout' `emberHiss`, any other `crash`.
+
+**The sound of the air (2026-11-23, ADR-163; `audio/air.js`, `?life=air`).** `engine.air` (`class Air`,
+built in `_build` beside `engine.ambience`, updated after it): no node until the living world's `air`
+piece is on; then a synthesized bed per level that follows the wind, the weather and the hush, taking
+over today's bed's wind and voices through `ForestAmbience.windDuck` / `voiceDuck` (two unity gains: at
+1, always with the piece off, the bed is exactly as before; the bonfire is on neither). Contract and
+numbers: "The living world" → The sound of the air. `sfx.js` `footstep` plays the ground's own sound
+when the payload carries a surface (the steps piece on), today's burst without one.
 
 **The thump (ADR-149, `audio/thump.js`: `THUMP`, `THUMP_SFX`, `class Thump`).** `engine.thump`
 (a `Thump`, no nodes of its own) runs on `player:hitDragon` after the engine's early returns (a
@@ -2608,6 +2624,14 @@ answers skip them). The runner's watch list gained `dragon:phase2`.
 **The 'impact' row** (ADR-149): one on / off toggle per piece of `IMPACT.pieces` (stamp, ripple, react,
 thump); a click flips `IMPACT.on[piece]`, read at the next hit. `_syncCutBtns` lights them.
 
+**The 'life' rows** (2026-11-23, ADR-163; WORLD, at its foot, `_buildLife`; not built where
+`world.life.enabled` is false: the training room): `life` one toggle per piece of `LIFE.pieces` (wind,
+litter, steps, weather, creatures, air, arrival, answer; a click flips `LIFE.on[piece]`, live); `life x`
+all / off (`setLife`) and quiet / natural / strong (`setLifeK` 0.6 / 1 / 1.5); then one button per
+`world.life.actions` entry, in the order the layers registered them: the wind's gust front, burst at
+hero, lull; the weather's '<spell> now' per spell of the level; the litter's leaf shower, scatter at hero;
+the steps' surface here, stamp; the creatures' startle at hero, birds return; the answer's roar's answer,
+hush 2 s; arrival (replay). A button's status line is what its `run` returned. `_syncLifeBtns` lights them.
 **The 'streak' row** (ADR-167): one on / off toggle per piece of `STREAK_FX.pieces` (storm, tiers, aura,
 counter, sound, world), a `perfect: <mode>` button that cycles today / sharp / cinema
 (`setPerfectMode`), and `burst N` that cycles the burst level 0 - 3 (`setBurst`). `_syncCutBtns` lights
@@ -3193,6 +3217,457 @@ vertices under the ground and moved by rewriting them ("Range pieces" above). De
 strip and the scars are glyph particles (a wearing crown's in the canopy's dim hue, a bone's in its own
 dull hue; destructibles.js `SHED_LEAF`, `SHED_WOOD`, `SHED_BONE`); the flames of burning wood and logs
 are heat in the fire field.
+**What hangs** (2026-11-23, ADR-163; "The living world" → What hangs): a builder's `hangFrom` mark rides in
+`geometry.userData.hang` (a static merge never sees it); `_mesh` turns it into the attribute `aHang` for a
+'prop' piece before `refine` cuts the piece to brick size (the cutting interpolates it), the rigid batch
+copies it with the other attributes, and the breakables' prop material is built with the `hang` option
+when any piece carries it. `piece.hang` (`{ top, give }`, or null); `_take` bites a leaning cloth where it is
+drawn (`_hangAt`: the lean now, null unless the piece is INTACT, upright and at home).
+
+## The living world (2026-11-23, ADR-163): one wind, and what lives in it
+Files: `src/world/life/` (`life.js` the hub, THE CONTRACT in its header; `lifeSwitch.js` the switch; one
+`<layer>.js` + `<layer>Tuning.js` per layer: wind, weather, litter, steps, creatures, answer),
+`src/world/hang.js` + `hangTuning.js` (what hangs), `src/audio/air.js` + `airTuning.js` (the sound of the
+air), `src/game/arrival.js` + `arrivalTuning.js` (the arrival). The ambient life of a level before and
+round the fight: one shared wind per level that the grass, the trees, smoke, letters in the air, hanging
+cloth and the hero's hair all read; things that fall and lie; footsteps that answer the ground; slow
+weather; small creatures; the sound of the air; a camera beat as the player arrives; the world answering
+the fight. It adds no event and draws nothing outside the glyph systems. Looks: STYLE.md "The living
+world"; the fight's side: COMBAT.md "Tell presentation".
+
+**The switch** (`lifeSwitch.js`, read once from the URL at load). `?life=off | all | <pieces>` (a comma
+list of `wind, litter, steps, weather, creatures, air, arrival, answer`; an unknown word counts as off),
+`?lifeK=0.25..2` the strength of all of it (`LIFE.k`, clamped; 1 = as tuned). A page with no `?life=` gets
+**every piece on** (the owner's pick, 2026-11-23; `lifeFromSearch(search)` is the parser); headless (no
+`location`) it is **off**, and so is `setLife()` with no spec, so the seeded suites are untouched (the
+`life` suite turns pieces on with `setLife(spec)` / `setLifeK(k)`). `LIFE = { pieces, on, k }` (the Lab
+flips `LIFE.on[piece]` live), `lifeOn(piece)`, `lifeAny()`. The training room (`?stage=lab`, level id
+'lab') has no living world: `life.enabled` is false there and every piece reads off. **The Lab**: WORLD →
+a `life` row (one toggle per piece), a `life x` row (all / off, quiet 0.6, natural 1, strong 1.5), then one
+button per `life.action` the layers registered (below); not built where `life.enabled` is false.
+
+**`game.world.life`** (`class LivingWorld`, built by world.js after the atmosphere inside a try: `null` if
+it failed). THE CONTRACT every layer and outside reader may rely on:
+| field | what |
+|---|---|
+| `on(piece)` | is the piece running in this level now: the switch, the level (`enabled`), and fewer than 3 throws from that layer |
+| `k` | the strength, `LIFE.k` (0.25..2): rates and amplitudes scale by it |
+| `quality` | `world.quality` (0.3..1, 1 when unset): COUNTS and RATES scale by it |
+| `levelId`, `set`, `t` | 'cinderwood' / 'ash' / 'starless' / 'ring' / 'fox' / 'grove' / 'lab'; the level's set (`world.forest`); seconds of living world this page load (the layers' clock) |
+| `calm` | 1 before the fight; eases to `LIFE_TUNE.fightCalm` 0.4 while `game.state` is 'bossIntro' or 'boss' (time constant `calmDown` 1.2 s; back up over `calmUp` 4 s, and only once `hush` is under `calmHush` 0.5, so the victory's lull holds first). Every ambient RATE multiplies by it |
+| `hush`, `hushFor(sec, k)` | 0..1, the world holds its breath (a great blow winds up): held for `sec` s at depth `k` (rising with a 0.25 s time constant), then let go over `hushRelease` 1.5 s. The wind, the creatures and the air go quiet by it |
+| `rand()`, `range(a, b)` | the living world's own random stream (an LCG). Never `Math.random`: the seeded sims replay it |
+| `build(fn)` | make GPU objects through this: while `fn` runs `Math.random` is swapped for `life.rand` (three.js draws a uuid for every geometry / material / mesh), so a pool built mid-fight never moves the seeded fights |
+| `focus`, `hero` | the camera's focus on the ground (`U.uFocus.value`: spawn round it); `{ x, z, vx, vz, speed, moving }` the hero this frame (`moving` above 0.8 m/s; a jump over 40 m/s counts as a teleport: velocity 0) |
+| `takes(what)` | true when a running layer draws `what` itself, so atmosphere.js skips its own: 'leaves' / 'fireflies' / 'mist' / 'ash' |
+| `gust(x, z, strength, radius)` | `world.gust()` calls it: `wind.burst` and `answer.gust` (both only while their piece is on) |
+| `action(label, run, title)` | a button on the Lab's life rows (`run` may return a status string) |
+| `wind`, `weather`, `litter`, `steps`, `creatures`, `answer` | the layers (below). One is always there, also with its piece off (its methods then do nothing and its values are the still-air defaults); one that failed to build is a frozen no-op stand-in. Outside readers still write `game.world?.life?.wind?.at(...)`: the tests' world mocks have no life |
+
+`update(dt)` (world.js, each frame the world is drawn), `clear(why)` ('reset': `world.restore()`; 'hide':
+the Lab hides the world), `setVisible(on)` (`world.debug.setVisible`; hiding also clears with 'hide').
+`LIFE_TUNE` (life.js) `{ fightCalm 0.4, calmDown 1.2, calmUp 4, hushRelease 1.5, calmHush 0.5 }`.
+
+**A layer** is a class `{ constructor(life), update(dt), clear(why), setVisible(on), takes(what) }`, built in
+the order wind, weather, litter, steps, creatures, answer, updated in that order. The rules:
+- `update(dt)` runs every frame, piece on or off: off, it returns at once and leaves NOTHING on screen
+  (a layer that was on wipes its letters, its pool and its uniforms the first frame it is off).
+- GPU objects (an own pool) are made on the first update with the piece on, never at build, and through
+  `life.build`: a level with life off builds exactly what it built before. An own pool is registered
+  with `game.pipeline.registerParticles` and updated by its owner, not by the pipeline.
+- `clear('reset')`: what is in the air goes; what lies may stay. No allocation per frame, no NaN, no throw
+  (a layer is wrapped: three throws switch it off and log it).
+- No `Math.random` (`life.rand`, or a stream seeded once from it); no new event (layers listen to the
+  catalogue's and call each other only through `life`).
+- **Off is free**: with `?life=off` nothing spawns, no uniform is written, no pixel changes (the grass and
+  tree shaders' `windOn()` is false and they run their old sway; atmosphere.js draws as before).
+
+**Per level, and a level with no block.** Each layer's tuning file has one block per level id. A level
+with no block of its own (a new one) gets: the wind `WIND_DEFAULT` (a quiet breeze, prevailing 0.8 m/s
+toward +x, breathing, no scheduled fronts and no wisps; a front sent by the arrival or the answer still
+crosses, on `WIND_DEFAULT_FRONTS`), no weather, no litter, no creatures (so `takes()` is false and the
+atmosphere keeps its own leaves, mist and fireflies), the steps' `fallback` map (slabs stone, grass, else
+earth), the answer's `DEFAULT` (Cinderwood's numbers), the air's `quiet` recipe (a low breeze; note it
+turns today's bed's wind AND voices down to 0), the arrival's `DEFAULT` shot (it looks at (0, 0) and drifts
+to (0, 10): give a new level a block with its own `look` / `end`), and nothing hangs until its builder
+marks a part with `hangFrom`.
+
+### The wind — `life.wind` (`wind.js`, `windTuning.js`)
+- `at(x, z, out)` → `out` `{ x, z, k, alarm }`: the air's velocity there (m/s), `k` 0..1 how much gust is
+  passing, `alarm` 0..1 the share of it that alarms what perches (a `quiet` front adds to `k`, not to
+  `alarm`). Pass your own record (with none a shared one comes back: read it at once). No allocation.
+  Off: all zero.
+- `front(o)` → its slot or -1: a gust front across the level. `o` `{ strength (1 = an ordinary gust, ≤ 3),
+  speed (m/s), width (its tail, m), dirX, dirZ (default: the prevailing way ± spread), from (m upwind of
+  the focus where it is born), x, z (born AT that point: the fight's own; it swells in over 0.15 s instead
+  of 0.8, its patches peak on the line through the point), quiet }`. A missing number is drawn from the
+  level's `fronts` ranges. Refused with the piece off, and in a still level (the grove) unless it is born at
+  a point. 4 slots (`WIND_SLOTS`); all busy, the one furthest along gives way.
+- `burst(x, z, strength, radius)`: a radial push from a point, an expanding ring (`WIND_BURST`: grows at
+  `grow` 1.1 × radius a second, `width` 0.45 × radius, lives `life` 1.6 s, pushes `air` 4 m/s at strength 1;
+  ≤ 4 at once, strength ≤ 3, radius ≤ 40). `life.gust` lands here. It also moves the still grove's air.
+- `lull(sec)` the air falls still (`WIND_LULL` hold 6, ease 1.2 s); `dirX`, `dirZ` (unit), `speed` (m/s),
+  `level` 0..1 (prevailing + the front at the focus, over the level's `loud` m/s: the air's sound), `gust`
+  0..1 the front passing the focus, `still` (true in the grove), `fronts`, `bursts`, `wisped` (wisps
+  born this visit: the tests).
+- **The field.** The prevailing direction wanders (`dir` ± `wander` deg on two slow sines); the speed
+  breathes between `floor` and 1 × `speed` on two sines (`periods`), held still at the bottom by `pause`
+  (the fox's sighs), made restless by `fit` (the ash). The strength `_k` = `life.k` × `weather.windK`.
+  `life.hush` takes `WIND_HUSH.speed` 0.85 × hush off the prevailing speed and stops new fronts while it
+  holds; an ambient front dies down by it, a front born at a point (a roar's) goes on. Fronts are born every
+  `fronts.every` s, the clock running at `life.calm` (fewer in the fight). A front: a line moving along its
+  direction; ahead of its edge the air rises over `lead` m, behind it decays over `tail` m; the edge bows
+  (2.4 and 1.1 m sines along it) and its strength comes in patches (0.62 – 1 along its length); born `from`
+  m upwind of the focus, gone `to` m downwind, easing in and out. The Throne has a `sink` instead: the air is
+  drawn toward (0, -21.4), fading inside 4 m of it and out to its `radius` 60 m; no fronts.
+- **The uniforms** (written once a frame while the piece is on; all zero again the frame it goes off):
+  `U.uWind` vec4 (dirX, dirZ, speed, level); `U.uWindFronts` vec4[`WIND_FRONTS_LEN` 12]: `[2i]` front i
+  (nx, nz, edge position along n, strength × env × `_k`; 0 = none), `[2i + 1]` (tail, lead, phase, 0), `[8]`
+  the sink (x, z, 1 when on, 0), `[9]` the field's travel (x, z: the grass's patches ride it downwind), `[10]`
+  the grass's answer (lean, wave, front × (0.5 + 0.5 calm): a gust's stir steps back in the fight, patch:
+  how far that stir is broken into loose local patches), `[11]` the trees' (lean, rock, front, stir). A still level still writes its direction (dir (0, 0) means
+  "off"). `shaderLib.js` exports `WIND_SLOTS` 4, `WIND_FRONTS_LEN`, and **`WIND_GLSL`** (vertex):
+  `windOn()` (false while uWind's direction is zero: the reader keeps its old motion exactly),
+  `windDirAt(xz)` (toward the sink where there is one), `windFronts(xz, out dir, out edge)` → how much front
+  passes there (0..~1.2), its direction, how much of it is the leading edge. wind.js `_frontK` is the same
+  formula on the CPU (keep the two in step; `hang.js` `hangLean` is a third copy).
+- **Who reads it.** The grass (`grass.js`, WIND_GLSL): with the wind on the blade leans along the
+  prevailing air (`lean`), in patches travelling downwind (`wave`), and is bent by a passing front
+  (`front`; the bend clamped at 0.9 of its height) and fluttered in it, the front's strength there
+  multiplied by mix(1, smoothstep(0.25, 0.75, pattern), `patch`): an uneven pattern riding the field's
+  travel, so a gust stirs loose local patches, never a band across the view. Its colour never changes
+  with the wind (the old `lift`, a lighter band behind a front's edge, is gone). The trees and anything with `aSway`
+  (`createAsciiObjectMaterial`): lean and rock along it, a front bends the bough (`front`) and stirs it
+  crosswise (`stir`). The fire field (`fire.wind`, `fire.windK` = the level's `fire` `{ smoke, flame }`;
+  set while the piece is on, null when off): each smoke puff takes the air where it is, the flames the
+  air at the focus once a frame. The atmosphere: the bonfire's smoke and embers take the air at the
+  bonfire, its mist, leaves, ash and embers the air at the focus (each still drawn from Math.random as
+  before: the count is unchanged). The weather, the litter, the creatures, hanging cloth, the hero's hair
+  (`anim.js` `HAIR_WIND` 0.06 per m/s), the Ring's dust and rain (turned to the wind's way), the air's
+  sound. The Windless Grove's bamboo (`aSway`) no longer sways while the piece is on: its speed is 0.
+- **The wisps** (`_wisps`, the wind's only letters; STYLE.md "The living world"): clumps of many tiny
+  faint letters in the house letter, printed by the wind's own `LetterBatch` (below), nothing in the
+  shared pools. The batch is made on the first update with the piece on in a level with a `wisps` block:
+  `round(max × quality)` clumps (quality clamped 0.3 – 1, at least 1) of up to `per[1]` letters each
+  (at quality 1 `max` 10 × 96 = 960 letters), its letters the tuning's `glyph` plus the four strokes
+  `- / | \`. It is built on the wisps' OWN stream (an LCG seeded from a hash of the level id; Math.random
+  is swapped for it while three.js draws the batch's uuids), not through `life.build`: building through
+  it moved `life.rand`, which the creatures and the fronts draw from, and how many wisps there are
+  must never move what the other layers draw. Births: in the breeze `rate` a second × quality × calm ×
+  min(1.5, k) × min(1.5, speed / the level's `speed`), at a point of the `view` round the focus (x ±19,
+  z -13 .. +9 m), with `calmPer` 0.65 of the letters; where a front passes (its edge within 30 m of the
+  focus, env ≥ 0.05) `gust` a second × quality × calm × min(1.5, k) × min(1.5, strength) × env, along its
+  edge and up to 1.4 tails behind it, kept with the front's patch² (fewer between its patches), `len` ×
+  `gustLen`; none within a 2 m square round the hero. A wisp: velocity eased toward `wind.at` × `carry`
+  (time constant `ease`), its axis turning to its way over 1.5 s; in over the first 0.18 of its `life`,
+  out from 0.6, × calm; `len` × (1 + `stretch` × age) along, `width` × (1 + `spread` × age) across, its axis
+  bent by a `curl` (× 0.4 – 1.2) sine of `wave` rad/m running along it. A letter: its place along
+  (triangular: dense in the middle) and across, its own `flow` m/s along the clump, its own fade in and
+  out (born at 0 – 0.3 of the wisp's life, gone at 0.5 – 1), alpha `alpha` × 0.4 – 1 × (1 - 4u²) toward
+  the ends × a slow shimmer, faded inside `heroClear` 0.6 – 1.8 m of the hero; 0.45 – 1.3 m (`y`) over
+  the ground ± `rise`. A `-` of the glyph list prints as whichever of `- / | \` runs along the wisp on
+  screen there (`uCamRight`, `uCamUp`). Off, hidden, or the level's `wisps` null: the clumps go at once.
+- **`WIND_TUNE[level]`** (`BASE` merged under each): `dir`, `wander`, `speed`, `breath { floor, periods,
+  pause, fit }`, `fronts { every, strength, speed, tail, lead, air, spread, from, to }` (null: none),
+  `sink { x, z, radius }`, `wisps { max, per, calmPer, rate, gust, life, len, gustLen, width, stretch,
+  spread, flow, curl, wave, y, rise, carry, ease, view, size, alpha, color, glyph, heroClear, snap? }`
+  (null: none; `snap` 1 puts a letter's cell on the art grid instead of the nearest pixel, unset today),
+  `grass { lean, wave, front, patch }`, `trees { lean, rock, front, stir }`, `loud`, `fire { smoke, flame }`.
+  BASE: dir 0, speed 1.4, fronts every 9 – 15 s at 7 – 8.5 m/s, tail 4.5 – 6.5, lead 0.9, air 2.2, from 40,
+  to 50; wisps max 10, per 64 – 96, rate 0.6, gust 3.2, life 5 – 8 s, len 1.8 – 3 m (gustLen 1.35), width
+  0.16 – 0.34 m, stretch 0.9, spread 0.8, flow 0.28, curl 0.3, wave 0.9, y 0.45 – 1.3, rise 0.12, carry
+  1, ease 0.9, size 0.34, alpha 0.4, color (0.62, 0.7, 0.68), glyph `-~.,'` plus a backtick and `:`; grass
+  lean 0.16, wave 0.2, front 0.24, patch 1; trees lean 0.3, rock 0.25, front 0.28, stir 0.08.
+  Cinderwood: dir -18, 1.5 m/s, a front every 8 – 14 s. Ash: dir -8, 1.6 m/s, fitful (`fit` 0.45,
+  floor 0.35), a front every 6 – 11 s at 8 – 9.5 m/s, wisps grey (rate 0.7, gust 3.4), grass front 0.22.
+  Starless: the sink, 0.45 m/s, breathing on 9 s, no fronts, no wisps, grass front 0. Ring: dir 0 (toward
+  +x), 3.2 m/s, floor 0.78, a front every 5 – 9 s at 9 – 10.5 m/s, `loud` 6, wisps dust-coloured (rate
+  0.8), grass front 0.22. Fox: dir -25, 1.3 m/s, floor 0.05 with `pause` 0.38 (sighs), a front every 11 –
+  18 s, wisps bluer (rate 0.45). Grove: `still`, speed 0, no fronts, no wisps.
+
+### The weather — `life.weather` (`weather.js`, `weatherTuning.js`)
+- `name` (the spell now: it switches half way through a cross-fade), `spell` (the one it is heading
+  for), `wet` 0..1 (rain falling), `mist` 0..1, `windK` (× the wind's strength; 1 = none), `light` (the
+  moon factor), `flash` (the Ring's far lightning, 0..about 1 × k), `bolt` 0..1 (flash against the
+  brightest a bolt reaches: the air's far thunder), `breath` 0..1 (the Throne's breath), `val` (every
+  value), `spells`, `tune`, `force(name, fade)` (start a spell now; the Lab's '<spell> now' buttons ease in
+  over `labFade` 8 s). Off: 'clear', 0, 0, 1 (flash, breath, bolt 0, light 1).
+- **The director.** Per level a list of spells, each `{ hold [s, s], fade [s, s], next [[name, weight]],
+  option?, values }`; values (`mist`, `foot`, `wet`, `windK`, `moon`, `ambient`, `fogNear`, `fogFar`,
+  `fogColor`, `embers`, `grey`, `breath`, `devils`, `bolts`, `snow`) default to 0, the factors to 1. A visit
+  starts in the level's `calm` spell at once (its first hold `firstHold` if the level has one); the next
+  is picked by weight, a spell unseen for `longing` 90 s weighing twice; values cross-fade on a smoothstep
+  over the new spell's `fade`. Its own two streams (the director's, the drawing's), each seeded once from
+  `life.rand`: the same level gives the same sequence, and the phone's counts never move it. In the fight
+  (`life.calm` under `fightCalm` 0.995, or bossIntro / boss) no new spell starts and the director heads back
+  to the calm spell over at most `fightFade` 10 s. A spell with an `option` exists only on a set built with
+  that option (the grove's snow: `?grove=c`).
+- **The light and the fog** (`moon`, `ambient`, `fogNear`, `fogFar`, `fogColor` are factors). It never
+  sets a uniform to a value of its own: each frame it takes last frame's factor off (only where the uniform
+  still holds exactly what it wrote: a value another system wrote meanwhile is that system's new base),
+  then multiplies the current base. It stands aside while `atmosphere.skyGlow` is on (that one saves and
+  restores the colours itself), in a level with `sky: false` (the Ring, whose ambience writes the light
+  every frame: it adds `weather.flash` itself, `write(U, far, bolts)`), while every factor is 1 (within
+  `idle` 1e-4), and with the piece off. Test `weather.uniforms`: off, the uniforms are bit-identical.
+- **Per level** (spells; `calm` first): Cinderwood clear (mist 0.3) ↔ mist (fog in, `fogColor` 4) →
+  drizzle (wet 0.5, windK 1.25, tiny strokes at the wind's slant). Ash ashfall → squall (windK 1.6, a
+  stream of tiny ember dots in an additive batch) or greyout (grey ash hanging, fog pulled in to 0.55 / 0.66). Starless still (20 – 36 s; the
+  first 4 – 7 s) ↔ breath (2 – 3.5 s): `set.ambience.breathe(k)` each frame (throneHall.js: the seal swells,
+  a pulse runs out along the inlay, red motes rise over the seal and round the camera, the ambient and fog
+  warm). Ring dusk ↔ gathering (windK 1.3): dust devils and far dry lightning, before the fight only
+  (`_pre` eases out over 0.6 s once the boss is up or past form 1). Fox moonlit ↔ cloud (moon 0.75,
+  ambient 0.82) ↔ groundmist (the terrace's foot, r 17 – 24). Grove still ↔ mist (pools low, no drift) ↔
+  snow (option c).
+- **What it draws.** Nothing in the shared pools any more: every letter of the weather prints in the
+  house letter in its **own batches** (`LetterBatch`, below; each made on first use through `life.build`
+  with the drawing's stream standing in for the atlas's later uuids, registered with the pipeline,
+  written by the weather each frame). The main batch (`_batch`) holds, written each frame: the mist
+  **banks** (`BANK`: at most `max` 6 × quality, each `per` 160 – 220 letters (`. , ' - : ~` and a backtick, the Grove
+  110 – 150), `rate` 1.2 banks a second in view at full mist; born in a band of the level wherever its
+  value is above the band's `veil`, now 0 everywhere: from the first breath of mist), and the Ring's
+  **dust devils** (at most 2, `letters` 150 each, a 5 – 7 m column with a 0.55 – 0.9 m funnel at the top
+  leaning downwind, alpha 0.32, the first 3 – 6 s in; its whole path kept off the ring (|x|, |z| ≥ 18) and
+  6 m from the hero); and, spawned (moving and fading by themselves, aged by the batch's `flow`), what
+  falls: the drizzle (`rate` 70; a drop is `|`, or `\` / `/` past `slant` 0.45 of its fall's on-screen
+  speed across, `ticks` 0.3 of them a `'` or `,`; alpha 0.22 → 0.1), the grey-out's ash (alpha 0.42) and
+  the snow (`. ' *`, alpha 0.36), at most `fallMax` 700 (rate × the longest life × quality × 1.15, capped).
+  The ember squall has its own ADDITIVE batch (`_emberBatch`: rate × life × quality × 1.15 letters, 26 a
+  second of `. '` dots in a dim ember red, `bright` 0.15 of them in `brightColor`). **A bank**: a soft heap,
+  each letter placed by three uniforms summed (`spread` 4.6 m along the air, 1.8 m across, × `scale` 0.75 –
+  1.15, lengthening by `grow` 0.35 over its life, its heart `rise` 0.5 m higher), a thin mist's bank
+  `thin` 0.3 of the letters at half the brightness; each letter comes and goes on its own `cycle` 4 – 9 s
+  beat (then is placed anew elsewhere in the bank) and streams `stream` 0.7 m along the air and rises
+  `lift` 0.12 m while it is there, so the bank rolls; the bank is carried by the air (eased over 2 s, its
+  axis turning over 4 s), lives 18 – 28 s, in over `fadeIn` 5 s, out over `fadeOut` 6 s, × calm, faded inside
+  `heroClear` 0.5 – 1.7 m of the hero. The old VEIL (the atmosphere's wide faint `~ -` strokes, drawn by
+  the weather while it took the mist) is gone: with the weather on, the banks are the mist. The air it
+  drifts on: `wind.at` × the level's `carry` while the wind blows, else its own `drift` × windK, nothing
+  in a still level. Every rate × quality × k × calm; spawns 2.5 m (mist) / 0.8 m (what falls, where it
+  lands) off the hero. `takes('mist')` where the level has `mist` (Cinderwood, Fox, Grove).
+
+### The air's letters — `LetterBatch` (`world/life/letterBatch.js`)
+How the wind's wisps and the weather print (STYLE.md "The living world": the air is clumps of many tiny
+faint letters). Each letter is a world point projected to the screen and printed as ONE cell of the
+house letter, the wyrm's pixel font (`render/wyrmGlyphs.js`; 5 x 8 px with the 720p font, 4 x 6 with the
+small one, 6 x 9 with the large), whatever its distance: pixel-exact, nearest-filtered, its cell's corner
+on a whole pixel (`snap` 1: on the art grid). It follows the art pass's font (`pipeline.artFont`,
+`artCell`) and rebuilds its atlas when that changes. A soft depth test against the scene (`uSoft` 0.6
+m), normal or additive blending, drawn in the FX pass (registered with `pipeline.registerParticles`;
+its `update()` is a no-op: its owner writes it).
+- `new LetterBatch(game, max, chars, { additive, spawned, snap, rand })`: `max` letters at most, `chars`
+  the letters it can print (atlas columns 1.., 0 blank), `spawned` the share of `max` kept for spawned
+  letters, `rand` the stream three.js's uuids draw from when the atlas is rebuilt (never Math.random;
+  build the batch itself through `life.build` or with Math.random swapped for an own stream).
+- `col(ch)` → the atlas column of a letter (0: blank, one it lacks).
+- Each frame: `begin()`, then `flow(dt, t)` (ages, moves and writes the SPAWNED letters), `put(x, y, z,
+  size, col, rot, color, alpha)` (one WRITTEN letter, placed by its owner this frame: how a clump
+  stretches, curls and thins as one shape; `size` and `rot` are kept for the callers' shape, the house
+  letter has one size and stands upright), `end()`. `spawn({ x, y, z, vx, vy, vz, life, col, color,
+  colorEnd, alpha, alphaEnd, drag, gravity, flicker })` → false when the spawned store is full (a
+  spawned letter fades in over the first tenth of its life). `empty()` drops everything; `count` the
+  letters drawn. No allocation per frame, no Math.random; a NaN position is skipped.
+- `wyrmGlyphs.js` `createWyrmLetterAtlas(key, s, chars)` → `{ texture, total }`: an atlas of any letters of
+  a wyrm font at integer scale, drawn as the wyrm's own (the same cell, the same soft halo). The fonts
+  gained `, ~ = * +` and a backtick for the air; the wyrm's own atlas and sets are unchanged.
+
+### The litter — `life.litter` (`litter.js`, `litterTuning.js`)
+- `scatter(x, z, r, k)` → how many letters it moved: what lies (or flies) within r is thrown outward and
+  up (`LITTER.scatter` out 5.5, up 3.2 m/s at k 1 at the centre); `count`, `lying`, `shower(n)` (the Lab's
+  'leaf shower': 60 start falling round the camera). Off: 0, no pool.
+- **Records → its own batch.** One pool (`LitterBatch`, `GlyphParticles` with a no-op update, `max` 500,
+  `uSoft` 0.2, made on the first update through `life.build`); `LITTER.max` records in a stable array (a
+  letter keeps its record from falling to lying to lifting); at most 500 × quality live. Each frame the
+  records are written straight into the instance buffers: one draw call, no spawn churn, no allocation.
+- **A letter's life**: AIR (it falls at its own speed, `fall`, carried by `wind.at` × `carry`, swings by
+  `slip` and turns) → LYING (0.16 m over the floor, or on the blade tips where the meadow is thick:
+  `grass` × the mean blade) → AIR again when the air over it is faster than its own `lift` (checked
+  round-robin every 4th frame; × (1 + `shelter` × 2) where it piles), when the hero runs through it (2.2 m/s
+  or more, within 1.05 m), or when a blow scatters it → FADE when it is recycled (it lay its `last` out, or
+  more than `lying` × quality lie: the oldest out of view first). A lying letter fades out within 0.32 –
+  0.7 m of the hero. A kind with a `ground` block lies as other letters (`ground.glyphs`, `ground.size`).
+- **The window** round the focus: x ± 22, z -19 .. +15 m. A lying letter the window leaves behind is moved to
+  the band (3 m) at its other edge, out of view; a jump of the focus over 12 m lays the ground anew; a
+  moving camera lays some ahead of it. At the start the window is laid with `lying` letters and the air
+  holds what would already be falling.
+- **`LITTER.levels[id]`**: `takes`, `rate` (letters a second × calm × quality × k), `lying`, `last`,
+  `grass`, `shelter`, `kerb`, `kinds [{ share, glyphs, ground, color, color2, size, fall, slip, flutter,
+  spin, tau, lift, carry, hop, lie, alpha, from, flat, where, source }]` (`where.at` 'rim' | 'near' | 'ash' |
+  'kerb' | 'flat'; `source` 'sky' or 'edge': tumbles in along the ground from upwind). Cinderwood leaves
+  4.5 / s, 170 lying, rim-weighted (r 8 – 28); Ash ash 18 / s lying as flat strokes in the lee of stones
+  (`where.tags`), 240 lying, 14 – 28 s; Starless ember-edged cinders 0.35 / s, 26 lying; Ring grit and seed
+  3 / s tumbling in from upwind and piling at the kerb (|x|, |z| 14.8); Fox dry leaves and paper slips
+  (`=[]` round the charm posts at r 16.5) 3 / s; Grove single leaves 0.3 / s, straight down.
+- `takes`: 'leaves' on Cinderwood, Starless, Ring, Fox, Grove (only Cinderwood, Fox and the Grove draw
+  the atmosphere's leaves: the other two run a set ambience instead); 'ash' on Ash (the ashfall's grey
+  flakes move into the litter; the embers stay with the atmosphere).
+
+### The steps — `life.steps` (`steps.js`, `stepsTuning.js`)
+- `surfaceAt(x, z)` → one of `SURFACES` 'grass' | 'earth' | 'stone' | 'ash' | 'obsidian' | 'sand' |
+  'leaf' (works with the piece off: the audio asks it), `grassAt(x, z)`, `step(x, z, o)` (`o` `{ sprint,
+  heavy, side, vx, vz, kick }`), **`footfall(x, z, o)`** (the hero's hooks: draws the step and returns the
+  surface while the piece is on, else undefined), `prints` (marks lying now). Off: nothing drawn.
+- **The map** (`STEPS.levels[id]`, else `fallback`), first answer wins: `over` shapes (Ash: ash over the
+  courtyard's square, `COURTYARD.half`; Starless: obsidian in `THRONE.R`; Ring: stone in `RING.half`), a slab
+  (inside one of the set's `slabs` outlines, joints within `joint` 0.18 m included: `slab`), `areas` (the
+  grove's earth in `GROVE.clearR`), grass (`world.fire.density` ≥ `grassMin` 0.3: `grass`), `ground`.
+  Cinderwood: stone / grass / earth; Ash: stone steps and path, ash everywhere else; Starless: obsidian,
+  the path stone, grass, earth; Ring: stone, the lake bed's plates and the badlands sand; Fox: stone /
+  grass / earth; Grove: stone, earth to the clearing's edge, leaf beyond. Classified once per 0.5 m cell
+  over 160 m (one byte, cached as asked; off the map worked out each time).
+- **A step** (`surfaces[surface]`, with `perLevel` changes; counts per step at a run / sprint / heavy
+  landing × quality × (0.5 + 0.5 calm)): grass torn blade bits on a sprint and the trample; earth a small
+  puff and a print (5 s); stone a grit puff on a sprint or landing only; sand a puff the wind carries
+  (0.8 of the air); ash a hanging puff and a print (14 s); obsidian a dim red glint (0.75 s; before the fight only: `life.calm` > 0.99); leaf a flick;
+  the grove's earth no puff. Every step also calls `litter.scatter` (r 0.5, k 0.25 × k; heavy 1.4 / 0.7),
+  and on wet ground (`weather.wet` > 0.3) a tiny splash. Puffs go to fx.alpha; prints and glints lie in
+  the steps' **own pool** (made on the first mark through `life.build`; `prints.max` 120 × quality, at
+  least 30, `uSoft` 0.08), refreshed every 0.1 s from the steps' own records (a glint every frame).
+- **The trample = the scorch map's blue channel** (`scorch.trample(x, z, r, k)` max-blended, a disc with a
+  soft edge, at most `maxCells` 2048 cells; `scorch.trampleAt(x, z)`; it stands up linearly over
+  `trample.decay` 10 s; `scorch.reset()` clears it; no random draw). A run treads r 0.7, a sprint 0.85, a
+  heavy landing 1.2 m. The grass shader reads it (`scorch3At(xz).z`, `trampleAt`): a trodden blade lies
+  flatter every way and is drawn darker (up to 0.7 × darker). scorch.js imports `STEPS` for the decay and
+  the cap.
+- **The hooks**: player.js `_footstep` (the payload gains `surface` and today's dust is skipped while the
+  piece is on), the plunge's landing and flurry.js's touchdown (heavy), the roll's landing (heavy; today's
+  dust when footfall says nothing). sfx.js `footstep` plays a recipe per surface when `o.surface` is set
+  (on its own stream, `seed`), today's sound without it, and a wet tick on wet ground.
+
+### The creatures — `life.creatures` (`creatures.js`, `creaturesTuning.js`)
+- `startle(x, z, r, k)` → how many fled: fireflies pushed out, moths scatter, perched birds take off;
+  read-only `fireflies`, `moths`, `birds` (`state` 'perched' | 'flying' | 'away'), `sparks`, `hawk`, `drawn
+  { alpha, add }` (letters this frame), `returnBirds()`. Off: nothing.
+- **Records, re-drawn each frame** as one-frame particles (as atmosphere.js drew its fireflies):
+  fireflies and sparks in fx.add, birds, moths and the hawk in fx.alpha; no own pool. Built on the first
+  update with the piece on. A record draws while its share `q` < quality × calm^1.5 (birds and the hawk
+  are not thinned). Perches come from the set's `breakables` (by `kind`, radius and height: Cinderwood
+  'tree' r 29 – 37, 8 groups of 2 – 4; Ash 'pillar', 6 groups of 1 – 3; Fox 'deadTree', 4 groups of 2 – 3);
+  a perch whose piece is no longer INTACT (`world.destructibles.list`) is left. A perched letter is drawn 3
+  m toward the camera (the particles are depth-tested: it would sit inside the crown). Moths round the
+  bonfire (and on the Ring 2 round each 'post' brazier); they scatter while the hero stands within 1.4 m
+  of the flame or the fire is out.
+- **Alarm** (`TUNE.alarm`): a hero running over 3.4 m/s within 8.5 m, any hero within 3.5 m, or
+  `wind.at(perch).alarm` over 0.85 (a quiet front never alarms). The others within 4.5 m go with it. A bird
+  flies up and out of the arena, is gone after 7 s, may come back after 30 – 60 s only to a standing perch
+  out of view, never in the fight. `clear('reset')` refills perches out of view.
+- **The hawk** (Ring only, before the fight): `-v-` (a body and two wing letters along the camera's
+  right, banked), circling r 9 m at 6.5 m, a lap in 25 s, centred 2 m south of the focus; the boss wakes:
+  it climbs away and is gone in 4 s. Its shadow is dropped (`shadowAlpha` 0).
+- `life.hush` dims fireflies by 0.85 × hush, moths and sparks 0.8, perched birds 0.6.
+- `takes('fireflies')` where the level has fireflies (Cinderwood 60, Fox 50 paler and bluer, Grove 30
+  near-still); Ash crows and 3 moths; Starless nothing (`sparks.perVent` 0); Ring the hawk and moths.
+- `CREATURES_TUNE`: `firefly`, `moth`, `birds { small, crow }`, `alarm`, `view`, `hawk`, `spark`, `levels[id]
+  { fireflies { n, r, inner, innerR, color?, hr?, runR?, wander?, windK? }, moths { n, braziers? }, birds {
+  kind, kinds, r, minH?, groups, perGroup, yK, inK, look? }, sparks { perVent }, hawk }`.
+
+### The answer — `life.answer` (`answer.js`, `answerTuning.js`)
+The world answers the fight from the catalogue's events, adding none, reaching the others through `life`
+(`wind.front`, `creatures.startle`, `litter.scatter`, `life.hushFor`). It subscribes while its piece is on
+and unsubscribes when it goes off (`_sync` each update: the Lab can flip it live).
+| event | answer (DEFAULT numbers; strengths × `life.k`, applied once by the layer that draws: the wind's fronts, `creatures.startle`; the answer applies it itself only for `litter.scatter`) |
+|---|---|
+| `dragon:roar` {strength} | a front from the boss toward the hero (strength 2.4 × s, 15 m/s, width 11; s clamped 0.3 – 2), a startle over 70 m, scatter within 12 m of the boss |
+| `dragon:wake` | a smaller front (0.8, 9 m/s, width 7), a startle over 40 m (k 0.5) |
+| `dragon:land`, `dragon:explosion`, `player:slam`, `player:plungeHit` | scatter round the point (r 4 – 12 by the event's radius), a startle (at least 12 m); the radial air comes through `world.gust` → `life.gust` → `wind.burst`, not doubled |
+| `combat:tell` red / black (not a bullet's), `combat:charge` | `hushFor` until the blow lands (`impactIn` / `dur`, clamped 0.3 – 2.5 s; depth 0.85, a charge 0.7). Normal and blue tells do nothing |
+| `dragon:phase`, `dragon:phase2` – `phase4` | a hush of 1 s, then one long front (1.3, 7 m/s, width 22) and a startle |
+| `dragon:dead`, `game:victory` | a lull: `hushFor(4, 1)` (the grove 6) |
+| `player:died` | `hushFor(2.5, 0.8)` |
+| `life.gust` ≥ 1.2 | `answer.gust`: a startle within its radius |
+
+Rate limits (`gap`, s): roar 1.5, wake 4, blow 0.25, hush 2.5, phase 4, lull 6, died 3, gust 0.3. Per level:
+Ash's roar 2.2 / 16 m/s / width 8 (scatter 11 m), Starless 1.2 / 10 / 14 (wake 0.6), Ring 1.8 / 17 / 9, Grove
+1.4 / 12 / 8 (the fight is the only air there; the lull 6 s). `answer.counts` (answers by kind), and the
+Lab's "roar's answer" and "hush 2 s".
+
+### What hangs — `world/hang.js`, `hangTuning.js`
+- A builder marks a hanging part while its geometry is still upright in its own frame: `hangFrom(geo, top,
+  kind)` (`kind` 'cloth' give 1, 'paper' 2, 'rope' -0.35: a negative give swings as one piece on its line,
+  no ripple) writes `geometry.userData.hang` (per vertex: m below the line at height `top`, its give);
+  `mergeHang(parts, merged)` after a `mergeGeometries`. The mark rides in `userData`, so a set's static
+  merges never see it (an extra attribute would break them).
+- `destructibles.js` `_mesh` turns it into the attribute **`aHang`** vec2 for a 'prop' piece (`hangAttr`,
+  zeros on the piece's other geometries) BEFORE `refine` cuts it to brick size (the cutting interpolates
+  it); the rigid batch copies it (every attribute any source has, zeros for the others); a bite folds or
+  sets back a triangle without touching it. The breakables' prop material is built with `hang:
+  HANG.shader` when any prop piece hangs (`createPropArtMaterial(U, { hang })`: `HANG_VERT_GLSL` with
+  WIND_GLSL, uniforms `uHang` (lean, half, ripple, rate) and `uHang2` (along, down, front, wobble); without
+  the option the program is the old one).
+- **The shader**: the air there (the prevailing wind and the fronts, `front` 2.4 m/s per strength) leans
+  the cloth downwind about its line, by `lean` 0.5 rad × drag² / (drag² + `half`² 2.2²) (drag = air × give;
+  breathing ± `wobble` 0.22), the drop swung so it keeps its length, and runs a crosswise ripple (`ripple`
+  0.07 m at the free edge) downwind across it, the ripple's slope turning the facets. **The upright gate**:
+  only a piece standing at home moves (its bone's up axis within smoothstep(0.985, 0.998) of vertical, its
+  base within 0.03 – 0.12 m of the ground); felled, carried or thrown it is still. Wind off: nothing added.
+- **Bites on a leaning cloth**: `piece.hang` = `hangOf(geometry)` `{ top, give }`; `_take` moves a blow
+  back to the cloth's resting shape by `hangLean` (the shader's lean on the CPU, without the ripple and
+  the wobble; null unless INTACT and upright) and moves the bricks it took back out to where they were
+  drawn, so they fall from there.
+- What hangs today: the Ring's 4 banners in each arena (cloth) and, in `?ring=b`, the derrick's rope and
+  block (rope);
+  the Foxfire Terrace's charm-post paper strips (paper); the crater's banners within 43 m (cloth:
+  starfallProps.js `buildBanner`; those merged into the static stones beyond stay still). Nothing in
+  Ashfall, Cinderwood or the Grove. The moon's shadow of a banner keeps its rigid shape (the depth
+  material has no `aHang`).
+
+### The sound of the air — `audio/air.js` (`airTuning.js`)
+`new Air(audio)` (audio.js `_build`, beside `ForestAmbience`), `air.update(now, dt, game)` (each frame after
+the ambience), `air.mix` (what plays, numbers: `out, wind, bright, gust, leaves, whistle, grit, rain, spell,
+drone, voices, oldWind, oldVoices`), `air.built`. With the piece off it makes no node and draws from no
+stream, and today's bed plays as before. On: a synthesized bed per level from `airRecipe(levelId)`
+(`AIR_TUNE.levels[id]`, else `quiet`): `wind` (brown noise through a lowpass that opens with the gusts:
+`life.wind.level` and `wind.at(hero).k`, or `idle` with the wind piece off), `leaves`, `whistle`, `grit`,
+`rain` (`weather.wet`), `drone` (the Throne, 34 Hz and a fifth), `spells` (by `weather.name`: the ash's
+'squall' a hiss of embers; or a `read` field: the Throne's `weather.breath` swells the drone), `crickets`,
+`crow` (Ash), `thunder` (the Ring: far thunder 1.5 – 5 s after a `weather.bolt` over 0.35). It takes over
+today's bed through **`ForestAmbience.windDuck` / `voiceDuck`** (two unity gains the old wind and the
+voices now pass through: the owl and the crickets on `voiceDuck`; the bonfire on neither; at 1, always
+with the piece off, the bed is exactly as before): the recipe's `old { wind, voices }` is where they settle
+(Cinderwood keeps its crickets and owl, voices 1). `life.hush` takes the voices away (and `hushWind` of the
+wind); the whole bed thins by (1 - calm) × 0.5; the tense states silence its voices. Cross-fades on
+switching (`fadeIn` 1.2, `fadeOut` 0.8 s); nodes dropped once silent. Its own LCG. `ambience.js` exports
+`follow`.
+
+### The arrival — `game/arrival.js` (`arrivalTuning.js`)
+`flow.arrival` (`new Arrival(game, flow)`): `begin()` (flow `_startGame`, after its camera lines: the
+title was dismissed; once per page load, `used`; nothing with the piece off), `update(dt)` (flow, real dt,
+after `_updateCinematic`; true while it holds), `cancel()` (first thing in `_enterBossIntro`,
+`_resetWorld`, `_debugPrelude`: let go at once), `replay()` (the Lab's 'arrival (replay)', explore only),
+`active`, `phase` ('idle' | 'hold' | 'release'), `ended` ('time' | 'input' | 'cancel'), `t`. It drives the
+flow's own eased override (`_ov.focus`, `_ovW`, `_ovZ`, `_ovLambda`): the focus eases from where the camera
+looks (the title's framing) to `look`, drifts to `end` over the `hold`, then the weight and zoom go to 0
+at `outLambda` (or `skipLambda` on a skip), never a snap. A pause holds it; any other state lets go. **The
+skip** is a CHANGE from the input at `begin()`: the move stick past 0.2 and 0.2 away from where it rested
+then (a drifting pad or a stick already held does not end it), or a press of attack, heavy, block, dodge,
+flask, lockOn, interact. `front` (`delay` s in): a QUIET `wind.front` across the shot (moves the air, does
+not alarm the birds; nothing in the grove). Numbers: Cinderwood looks at (0.8, 11.8) → (0.7, 14.8), zoom
++26 m, hold 3 s; the others alike north of their spawn; the Grove +17 m, 3.4 s, no front; the phone (`cameraRig.mobile`)
+zoom 3, weight 1.
+
+### Tests — the `life` suite (`tests/integration/life.mjs` + `tests/integration/life/<piece>.mjs`)
+`node tests/integration/life.mjs . <scenario>` (`all`, a file name, or `<file>.<name>`; in `npm test` as
+`life`). The REAL LivingWorld and Atmosphere on every level's REAL set, with the real particle pools,
+fire field, scorch map and grass density, wired as world.js does; the hero a stand-in. **`T.build(levelId,
+spec, o)`** → `{ game, world, life, set, U, level, step(sec, dt), walk(vx, vz), place(x, z), counts(), emit, own
+}` (`o` `{ k, quality, state, feet }`: `feet` brings the stand-in's feet down through `steps.footfall` every
+0.32 s while he walks); `step` runs the frame as World.update and main.js do (the living world's own pools
+are left to their owners); `counts()` → live particles per shared pool, the own pools', spawns, and
+`random` (Math.random calls made inside `life.update` / `life.gust` / the feet: Math.random is counted for
+the whole run). One file per piece (`FILES`: core, wind, weather, litter, steps, creatures, answer, air,
+arrival, hang; a missing or broken file fails the suite); after each scenario the switch goes back to off.
+**`core`** enforces the contract on every level: `off` (no own pool, takes nothing, still air, clear
+weather, nothing lying), `all` (every piece on for a minute with the hero running: no throw, no
+Math.random, Math.random handed back after the pools are built, inside the budget of +700 fx.alpha, +500
+fx.add, +400 fire, 1400 own letters; calm 1 then 0.4 in the fight; the hush holds and lets go), `alone`
+(each piece alone: no throw, no Math.random; litter without wind falls straight down; what a layer takes
+the atmosphere no longer draws), `phone` (quality 0.5 draws no more than 1), `switches` (all off mid-run:
+nothing left). The pieces' own budgets: the wind's wisps in their own batch only, at most `max` × quality ×
+`per[1]` letters (960 at quality 1), at most +25 fx.alpha over life off and fx.add untouched, one own pool,
+fewer wisps born at quality 0.5 (`wind.budget`; `wind.wisps`: a few in the breeze, more in a front, every
+letter within its clump, none on the hero, none in the grove, none off); the weather +250 alpha, +190 add,
++150 fire, 1600 own in every spell (`weather.budget`; `weather.bank`: a bank densest at its heart and
+rolling; `weather.groveStill`: the grove's banks do not drift); the litter 500 at quality 1, 250 at 0.5; the steps 60 fx.alpha and 120 prints in a 30 s sprint;
+the creatures 60 alpha and 120 add a frame × quality.
 
 ### Halcyon Plaza: explosions, raised pieces, the city's light (2026-11-22, ADR-159)
 - **A raised piece is struck at its real height.** `destructibles.js` skipped a piece when a blow passed
@@ -3242,7 +3717,9 @@ nothing yet (the Foxfire Terrace's `paperDouble`).
     it into the shared uniforms once, right after the set is built.
   - `ambience: { setup(game), update(dt, game), ... }`: atmosphere.js calls `setup` once (lights,
     its own particle batch: `game.pipeline.registerParticles`) and `update` every frame INSTEAD of
-    the fireflies / mist / leaves / ash (the bonfire's flames stay). The Obsidian Throne's also has
+    the fireflies / mist / leaves / ash (the bonfire's flames stay; so on such a set the living world's
+    `takes('leaves')` changes nothing). The Obsidian Throne's also has `breathe(k)` (the living world's
+    weather, held each frame: the star's breath; 0 without it is today's inlay exactly). The Obsidian Throne's also has
     `flare(k)`: its floor seal brightens and settles (the boss calls it; optional for callers). The
     Skybreak Ring's has `flare(k)`, `dim(k)` and `state` (below).
 - **The Obsidian Throne's set** (`world/throneHall.js`: `createThroneHall`, layout `THRONE`; ADR-112;
@@ -4379,7 +4856,9 @@ Player → hud/audio/fx/flow:
   meets the head, once per plunge; damage = what onPlunge returned; also a `player:hitDragon` with kind 'plunge' when
   it dealt damage), `player:roll {backstep}`, `player:heal {amount, flasks}`, `player:noFlask`, `player:died`,
   `player:footstep {x, z, sprint}` (a planted foot's touchdown while moving, and a dash's
-  two bounding steps), `player:lockOn {on}`,
+  two bounding steps; also the plunge's and the flurry's touchdowns. With the living world's steps piece on
+  the payload carries surface too (string, optional: grass, earth, stone, ash, obsidian, sand or leaf, what
+  the ground is under the foot); sfx plays that ground's sound by it), `player:lockOn {on}`,
   `player:lock {phase}` (the blade lock with a duelist: phase start / push / won / lost),
   `player:mikiri {attack}` (a roll into a perilous thrust stepped on the blade),
   `player:counter {attack, damage, draw}` (the flash counter, ADR-102: a trade clash in the instant the hero's cut became

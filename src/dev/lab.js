@@ -19,6 +19,7 @@ import { sfxMode, setSfxMode } from '../audio/samples.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { buildLooks } from './labLooks.js';
 import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
+import { LIFE, setLife, setLifeK } from '../world/life/lifeSwitch.js';
 
 // The Lab — a debug panel to test the boss without playing the fight (contract: docs/ARCHITECTURE.md
 // → Lab; usage: src/dev/README.md). It talks only to the actors' `debug` APIs (dragon.debug,
@@ -1026,6 +1027,71 @@ export class Lab {
       w()?.restore?.();
       this._status('the world stands again', 'ok');
     }).title = 'everything broken stands again, the fire is out, the marks are gone';
+    this._buildLife(body);
+  }
+
+  /** The living world, piece by piece (world/life/; ?life=, ?lifeK=): on / off each, its strength, and
+   *  the buttons its layers registered (life.action). */
+  _buildLife(body) {
+    const life = this.game.world?.life;
+    if (!life?.enabled) return;
+    const row = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'life', row).title = 'the living world, piece by piece (world/life/life.js; ?life=off|all|wind,litter,...)';
+    const grid = el('div', 'lab-grid c4', null, row);
+    grid.style.flex = '1';
+    const TIPS = {
+      wind: 'one shared wind: gust fronts through the grass, the trees, smoke and letters',
+      litter: 'leaves (ash, paper, grit) that fall, lie on the ground and lift again',
+      steps: 'footsteps that answer the surface',
+      weather: "the level's slow spells (mist, a drizzle, an ember squall)",
+      creatures: 'birds, moths and fireflies that mind the hero',
+      air: 'the sound of the air',
+      arrival: 'the camera opens wide over the level as the player enters (from the title only)',
+      answer: 'the world answers the fight: a roar is a gust front, the hush before a great blow',
+    };
+    this.ui.lifeBtns = LIFE.pieces.map((s) => {
+      const b = button(grid, s, () => {
+        LIFE.on[s] = !LIFE.on[s];
+        this._syncLifeBtns();
+      });
+      b.title = `${TIPS[s] ?? s} (?life=${s})`;
+      return { s, el: b };
+    });
+    const row2 = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'life x', row2).title = 'the strength of all of it (?lifeK=)';
+    const grid2 = el('div', 'lab-grid c4', null, row2);
+    grid2.style.flex = '1';
+    button(grid2, 'all / off', () => {
+      setLife(LIFE.pieces.some((s) => LIFE.on[s]) ? 'off' : 'all');
+      this._syncLifeBtns();
+    }).title = 'every piece on, or every piece off (?life=all, ?life=off)';
+    this.ui.lifeKBtns = [['quiet', 0.6], ['natural', 1], ['strong', 1.5]].map(([label, k]) => {
+      const b = button(grid2, label, () => {
+        setLifeK(k);
+        this._syncLifeBtns();
+      });
+      b.title = `?lifeK=${k}`;
+      return { k, el: b };
+    });
+    if (life.actions.length) {
+      const grid3 = el('div', 'lab-grid', null, body);
+      for (const a of life.actions) {
+        button(grid3, a.label, () => {
+          try {
+            const r = a.run();
+            this._status(typeof r === 'string' ? r : a.label, 'ok');
+          } catch (err) {
+            this._status(`${a.label}: ${err?.message ?? err}`, '');
+          }
+        }).title = a.title || a.label;
+      }
+    }
+    this._syncLifeBtns();
+  }
+
+  _syncLifeBtns() {
+    for (const { s, el: b } of this.ui.lifeBtns ?? []) setClass(b, 'on', LIFE.on[s] === true);
+    for (const { k, el: b } of this.ui.lifeKBtns ?? []) setClass(b, 'on', Math.abs(LIFE.k - k) < 0.01);
   }
 
   _buildPlayer(root) {

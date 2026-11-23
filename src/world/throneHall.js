@@ -450,23 +450,86 @@ export function createThroneHall(U, colliders) {
   }
 
   // ---- the crater's life: the vents' flames and lights, wisps, motes, the inlay
-  const st = { flare: 0, shown: -1 };
-  let glowSys = null;
+  // (breath: the living world's weather, world/life/weather.js, "the star breathes": held each frame by
+  // ambience.breathe(k), 0..1. The seal swells, a pulse of light runs out along the inlay and the cracks,
+  // and red motes rise in a slow column over the seal and over the crater round the camera. 0 without
+  // the weather: today's inlay exactly)
+  const st = { flare: 0, shown: -1, breath: 0, breathHold: 0, breathT: 0, breathOn: false, motes2: 0 };
+  const BREATH = {
+    seal: 2.4, // the seal's glyphs brighten by this at a full breath
+    wave: 4, waveW: 2.2, speed: 3, from: 1.5, // the pulse: added brightness, half-width m, m/s, from r m
+    hold: 0.3, release: 0.8,
+    column: 18, columnR: 3.4, // motes a second over the seal at a full breath, within this radius
+    wide: 10, // ... and round the camera, over the crater and its path
+    // (tiny: the house letter's size; their light, not their size, carries the breath)
+    mote: { size: 0.3, life: [5, 7], vy: [0.45, 0.85], color: [2.2, 0.24, 0.11], colorEnd: [0.5, 0.03, 0.02], glyph: "·'·." },
+  };
+  // (its own stream: the seeded sims replay Math.random, and the breath only ever runs with the weather)
+  let bseed = 0x51a7e5ed;
+  const brnd = () => (bseed = (Math.imul(bseed, 1664525) + 1013904223) >>> 0) / 4294967296;
+  const bmote = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 1, size: 0.3, sizeEnd: 0.1, glyph: '·', color: null, colorEnd: null, alpha: 1, alphaEnd: 0, drag: 0.15, flicker: 0.3 };
+  let glowSys = null, glowR = null;
+  /** The seal's swell now (a flare). */
+  const swell = () => st.flare;
   /** (Re)fill the inlay batch; the seal's glyphs at brightness 1 + 2.2 × flare. */
   const fillGlow = () => {
     if (!glowSys) return;
     glowSys.clear();
-    const k = 1 + 2.2 * st.flare;
+    const e = swell();
+    const k = 1 + 2.2 * e;
     for (const g of glow) {
-      const c = g.seal ? [g.color[0] * k, g.color[1] * k + 0.25 * st.flare, g.color[2] * k + 0.12 * st.flare] : g.color;
+      const c = g.seal ? [g.color[0] * k, g.color[1] * k + 0.25 * e, g.color[2] * k + 0.12 * e] : g.color;
       glowSys.spawn({ x: g.x, y: g.y, z: g.z, life: 1e9, size: g.size, sizeEnd: g.size, glyph: g.glyph, color: c, colorEnd: c, alpha: 1, alphaEnd: 1, rot: g.rot ?? 0, flicker: g.flicker ?? 0 });
     }
-    st.shown = st.flare;
+    st.shown = e;
+  };
+  /** The breath over the inlay: each glyph's colour (as fillGlow left it) times its swell, in place. */
+  const breatheGlow = () => {
+    if (!glowSys || glowSys.count !== glow.length) return;
+    const d = glowSys.data, e = st.flare, kf = 1 + 2.2 * e, b = st.breath;
+    const rw = BREATH.from + BREATH.speed * st.breathT, w2 = BREATH.waveW * BREATH.waveW;
+    for (let i = 0; i < glow.length; i++) {
+      const g = glow[i], c = g.color, o = i * 26;
+      let r = c[0], gg = c[1], bb = c[2];
+      if (g.seal) { r = c[0] * kf; gg = c[1] * kf + 0.25 * e; bb = c[2] * kf + 0.12 * e; }
+      const dr = glowR[i] - rw;
+      const f = 1 + b * (g.seal ? BREATH.seal : 0) + b * BREATH.wave * Math.exp(-(dr * dr) / w2);
+      d[o + 10] = d[o + 13] = r * f;
+      d[o + 11] = d[o + 14] = gg * f;
+      d[o + 12] = d[o + 15] = bb * f;
+    }
+  };
+  /** The breath's motes: a slow column over the seal and a rising over the crater round the camera. */
+  const breatheMotes = (dt, game) => {
+    const fx = game.fx?.add, f = game.U?.uFocus?.value;
+    if (!fx) return;
+    const M = BREATH.mote, b = st.breath;
+    bmote.color = M.color;
+    bmote.colorEnd = M.colorEnd;
+    st.motes2 += dt * b * (BREATH.column + BREATH.wide);
+    while (st.motes2 >= 1) {
+      st.motes2 -= 1;
+      const col = brnd() * (BREATH.column + BREATH.wide) < BREATH.column;
+      const a = brnd() * TAU, r = col ? Math.sqrt(brnd()) * BREATH.columnR : 0;
+      bmote.x = col ? S.x + Math.cos(a) * r : (f?.x ?? 0) + (brnd() - 0.5) * 30;
+      bmote.z = col ? S.z + Math.sin(a) * r : (f?.z ?? 0) + (brnd() - 0.5) * 24 - 3;
+      bmote.y = col ? 0.2 + brnd() * 0.6 : 0.2 + brnd() * 1.2;
+      bmote.vx = (brnd() - 0.5) * 0.12;
+      bmote.vz = (brnd() - 0.5) * 0.12;
+      bmote.vy = M.vy[0] + (M.vy[1] - M.vy[0]) * brnd();
+      bmote.life = M.life[0] + (M.life[1] - M.life[0]) * brnd();
+      bmote.size = M.size;
+      bmote.sizeEnd = M.size * 0.4;
+      bmote.glyph = M.glyph;
+      fx.spawn(bmote);
+    }
   };
   const ambience = {
     setup(game) {
       // the inlay: glyphs that stay where they are, in one additive batch of their own
       glowSys = new GlyphParticles(game.U, { max: glow.length, additive: true });
+      glowR = new Float32Array(glow.length);
+      for (let i = 0; i < glow.length; i++) glowR[i] = Math.hypot(glow[i].x - S.x, glow[i].z - S.z);
       game.pipeline?.registerParticles?.(glowSys);
       fillGlow();
       for (const b of fires) {
@@ -481,9 +544,30 @@ export function createThroneHall(U, colliders) {
     flare(k = 1) {
       st.flare = Math.max(st.flare, Math.min(1, Math.max(0, Number(k) || 0)));
     },
+    /** The star breathes (k 0..1): the seal swells a little and the motes rise faster while it is called
+     *  (each frame; it lets go 0.3 s after the last call). */
+    breathe(k = 0) {
+      const v = Number(k);
+      st.breath = Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0;
+      st.breathHold = BREATH.hold;
+    },
     update(dt, game) {
       if (st.flare > 0) st.flare = Math.max(0, st.flare - dt * 0.7);
-      if (Math.abs(st.flare - st.shown) > 0.03 || (st.flare === 0 && st.shown !== 0)) fillGlow();
+      if (st.breathHold > 0) st.breathHold -= dt;
+      else if (st.breath > 0) st.breath = Math.max(0, st.breath - dt * BREATH.release);
+      const e = swell();
+      if (Math.abs(e - st.shown) > 0.03 || (e === 0 && st.shown !== 0)) fillGlow();
+      if (st.breath > 0.002) {
+        st.breathT += dt;
+        st.breathOn = true;
+        breatheGlow();
+        breatheMotes(dt, game);
+      } else if (st.breathOn) {
+        // the breath is out: today's inlay exactly
+        st.breathOn = false;
+        st.breathT = 0;
+        fillGlow();
+      }
       glowSys?.update(dt, game.time);
       const fx = game.fx?.add, fire = game.fx?.fire;
       if (!fx) return;

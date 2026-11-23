@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { COMMON_GLSL, HERO_PARTS, RIGID_VERT_GLSL } from './shaderLib.js';
+import { COMMON_GLSL, HERO_PARTS, RIGID_VERT_GLSL, WIND_GLSL, WIND_FRONTS_LEN } from './shaderLib.js';
 import { gi } from './glyphs.js';
 import { LET_GO_GLSL, letGoUniforms } from './letGo.js';
 
@@ -298,10 +298,14 @@ export function createAsciiObjectMaterial(U, { fadeNearPlayer = false, side = TH
       uResolution: U.uResolution,
       uFadeOn: { value: fadeNearPlayer ? 1 : 0 },
       uBoneTex: U.uBoneTex ?? { value: null }, // rigid batches' bone matrices (RIGID_VERT_GLSL)
+      // the living world's wind (WIND_GLSL; an older uniforms object without it: the wind is off)
+      uWind: U.uWind ?? { value: new THREE.Vector4(0, 0, 0, 0) },
+      uWindFronts: U.uWindFronts ?? { value: Array.from({ length: WIND_FRONTS_LEN }, () => new THREE.Vector4()) },
     },
     vertexShader: /* glsl */ `
       ${COMMON_GLSL}
       ${RIGID_VERT_GLSL}
+      ${WIND_GLSL}
       attribute vec3 aCol;
       attribute float aFlag;
       attribute float aSway;
@@ -315,8 +319,24 @@ export function createAsciiObjectMaterial(U, { fadeNearPlayer = false, side = TH
         mat4 mm = rigidMatrix();
         vec4 wp = mm * vec4(position, 1.0);
         float s = aSway;
-        wp.x += (sin(uTime * 0.9 + wp.z * 0.15 + wp.x * 0.05) * 0.6 + sin(uTime * 2.1 + wp.x * 0.4) * 0.25) * 0.14 * s;
-        wp.z += cos(uTime * 0.7 + wp.x * 0.13) * 0.08 * s;
+        if (!windOn()) {
+          // (the living world's wind off: exactly the old sway)
+          wp.x += (sin(uTime * 0.9 + wp.z * 0.15 + wp.x * 0.05) * 0.6 + sin(uTime * 2.1 + wp.x * 0.4) * 0.25) * 0.14 * s;
+          wp.z += cos(uTime * 0.7 + wp.x * 0.13) * 0.08 * s;
+        } else if (s > 0.0) {
+          // the shared wind: lean and rock along it by its strength here; a front passing this point
+          // bends the bough further and stirs it crosswise (the upwind side of a canopy goes first)
+          vec4 Tr = uWindFronts[WIND_SLOTS * 2 + 3]; // lean, rock, front, stir
+          vec2 wd = windDirAt(wp.xz);
+          float spN = uWind.z / (uWind.z + 2.5);
+          vec2 fd;
+          float edge;
+          float fk = windFronts(wp.xz, fd, edge);
+          float rock = sin(uTime * 0.9 + wp.z * 0.15 + wp.x * 0.05) * 0.6 + sin(uTime * 2.1 + wp.x * 0.4) * 0.25;
+          float stir = sin(uTime * 3.4 + wp.y * 1.7 + wp.x * 0.9) + 0.5 * sin(uTime * 5.3 + wp.z * 1.3);
+          vec2 d = wd * (spN * (Tr.x + Tr.y * rock)) + fd * (fk * Tr.z) + vec2(-fd.y, fd.x) * (stir * fk * Tr.w);
+          wp.xz += d * s;
+        }
         vW = wp.xyz;
         vN = normalize(mat3(mm) * normal);
         vCol = aCol;
@@ -1156,6 +1176,7 @@ function scriptUniforms(U) {
  * strength, default 1), fadeNearPlayer (dither away in front of the player), side.
  */
 export function createPropArtMaterial(U, o = {}) {
+  const hang = o.hang ?? null;
   const mat = new THREE.ShaderMaterial({
     uniforms: {
       ...pickShared(U, SHARED),
@@ -1168,10 +1189,11 @@ export function createPropArtMaterial(U, o = {}) {
       uKey: { value: o.key ?? 0.5 },
       uEdge: { value: o.edge ?? 1 },
       uBoneTex: U.uBoneTex ?? { value: null }, // rigid batches' bone matrices (RIGID_VERT_GLSL)
+      ...(hang ? hangUniforms(U, hang) : {}),
       ...scriptUniforms(U),
     },
     vertexShader: /* glsl */ `
-      ${RIGID_VERT_GLSL}
+      ${RIGID_VERT_GLSL}${hang ? HANG_VERT_GLSL : ''}
       ${SCRIPT_VERT}
       attribute vec3 aCol;
       attribute float aAO;
@@ -1183,9 +1205,9 @@ export function createPropArtMaterial(U, o = {}) {
       varying float vEdge;
       void main() {
         mat4 mm = rigidMatrix();
-        vec4 wp = mm * vec4(position, 1.0);
+        vec4 wp = mm * vec4(position, 1.0);${hang ? HANG_MAIN_GLSL : ''}
         vW = wp.xyz;
-        vN = normalize(mat3(mm) * normal);
+        vN = normalize(mat3(mm) * normal);${hang ? HANG_NORMAL_GLSL : ''}
         vCol = aCol;
         vAO = aAO;
         vEdge = aEdge;
@@ -1253,8 +1275,76 @@ export function createPropArtMaterial(U, o = {}) {
     blending: THREE.NoBlending,
   });
   rigidCapable(mat, o.rigid === true);
+  if (hang) mat.defaultAttributeValues = { ...mat.defaultAttributeValues, aHang: [0, 0] };
   return mat;
 }
+
+/** The hanging pieces' uniforms (createPropArtMaterial `hang`: world/hangTuning.js HANG.shader). */
+function hangUniforms(U, h) {
+  return {
+    uTime: U.uTime,
+    uWind: U.uWind ?? { value: new THREE.Vector4(0, 0, 0, 0) },
+    uWindFronts: U.uWindFronts ?? { value: Array.from({ length: WIND_FRONTS_LEN }, () => new THREE.Vector4()) },
+    uHang: { value: new THREE.Vector4(h.lean ?? 0.5, h.half ?? 2.2, h.ripple ?? 0.07, h.rate ?? 5.5) },
+    uHang2: { value: new THREE.Vector4(h.along ?? 2.2, h.down ?? 1.6, h.front ?? 2.4, h.wobble ?? 0.22) },
+  };
+}
+
+/**
+ * What hangs answers the wind (prop art with `hang`; world/hang.js): `aHang` x = m below the line the
+ * vertex hangs from, y = its give (< 0: it swings as one piece on its line, a rope and its weight).
+ * The air there (the prevailing wind and the fronts passing, the grass's own WIND_GLSL) leans it
+ * downwind about its line (the drop swung through the lean, so it keeps its length) and runs a ripple
+ * across it crosswise, travelling downwind; both grow with the drop. Only a piece standing at home and
+ * upright moves (its bone's up axis vertical, its base on the ground): felled, carried or thrown, it
+ * is still. The wind off (windOn() false): nothing is added, the program's result is the old one.
+ */
+const HANG_VERT_GLSL = /* glsl */ `
+uniform float uTime;
+${WIND_GLSL}
+attribute vec2 aHang;
+uniform vec4 uHang;  // lean (rad), half (drag for half of it), ripple (m), rate (rad/s)
+uniform vec4 uHang2; // along (rad/m), down (rad/m), front (m/s per strength), wobble
+vec3 hangOffset(vec3 p, mat4 mm, vec3 n, inout vec3 tilt) {
+  vec3 up = mm[1].xyz;
+  float ul = length(up);
+  float gate = ul > 1e-4 ? smoothstep(0.985, 0.998, up.y / ul) : 0.0;
+  gate *= 1.0 - smoothstep(0.03, 0.12, abs(mm[3].y));
+  if (gate <= 0.0) return vec3(0.0);
+  vec2 fd;
+  float edge;
+  float fk = windFronts(p.xz, fd, edge);
+  vec2 v = windDirAt(p.xz) * uWind.z + fd * (fk * uHang2.z);
+  float s = length(v);
+  if (s < 1e-4) return vec3(0.0);
+  vec2 dir = v / s;
+  float h = aHang.x, give = abs(aHang.y);
+  // (each piece its own phase, from where it stands)
+  float ph = fract(sin(dot(mm[3].xz, vec2(12.9898, 78.233))) * 43758.5453) * 6.2832;
+  // (drag grows with the square of the air: a breath barely stirs it, a gust takes it)
+  float drag = s * give;
+  float k = drag * drag / (drag * drag + uHang.y * uHang.y);
+  float th = uHang.x * k * (1.0 + uHang2.w * (0.6 * sin(uTime * 0.83 + ph) + 0.4 * sin(uTime * 1.91 + ph * 1.7)));
+  vec3 o = vec3(dir.x * sin(th), 1.0 - cos(th), dir.y * sin(th)) * h;
+  if (aHang.y > 0.0) {
+    float arg = dot(p.xz, dir) * uHang2.x + h * uHang2.y - uTime * uHang.w * sqrt(give) + ph;
+    // (the ripple answers the air more readily than the lean: a slow draw still stirs the cloth)
+    float a = uHang.z * (h / (h + 0.35)) * (drag / (drag + uHang.y)) * (1.0 + 0.8 * edge);
+    vec3 side = vec3(-dir.y, 0.0, dir.x);
+    o += side * (a * sin(arg));
+    // the ripple's slope turns the cloth's facets (its letters change with the light: the ripple reads
+    // face on, where its offset runs toward the eye)
+    float c = a * cos(arg) * gate;
+    tilt -= dot(n, side) * (vec3(dir.x, 0.0, dir.y) * (c * uHang2.x) - vec3(0.0, c * uHang2.y, 0.0));
+  }
+  return o * gate;
+}
+`;
+const HANG_MAIN_GLSL = /* glsl */ `
+        vec3 hangTilt = vec3(0.0);
+        if (aHang.x > 0.0 && windOn()) wp.xyz += hangOffset(wp.xyz, mm, normalize(mat3(mm) * normal), hangTilt);`;
+const HANG_NORMAL_GLSL = /* glsl */ `
+        vN = normalize(vN + hangTilt);`;
 
 /**
  * Carved glyph material for rocks: crisp glyphs fixed on the stone, chosen by light (lit facets

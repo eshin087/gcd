@@ -59,6 +59,7 @@ const TASKS = [
   ['sheath', ['tests/integration/sheath.mjs', '.', 'all'], {}, 90],
   ['woke', ['tests/integration/woke.mjs', '.', 'all'], {}, 100],
   ['world', ['tests/integration/world.mjs', '.', 'all'], { ABYSS_SKIP: 'budget' }, 80],
+  ['life', ['tests/integration/life.mjs', '.', 'all'], {}, 240],
   ['integ hero + world', [INTEG, '.', INTEG_2.join(',')], {}, 70],
   ['glyphcheck', ['tests/glyphcheck.mjs', '.'], {}, 1],
   ['changelogcheck', ['tests/changelogcheck.mjs', '.'], {}, 1],

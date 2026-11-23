@@ -6,6 +6,7 @@ import { createForest } from './forest.js';
 import { createGrass, meadowDensity, meadowHeight } from './grass.js';
 import { Scorch } from './scorch.js';
 import { Atmosphere } from './atmosphere.js';
+import { LivingWorld } from './life/life.js';
 import { GroundFire } from './fire.js';
 import { Scars } from './scars.js';
 import { Destructibles } from './destructibles.js';
@@ -19,6 +20,8 @@ import { resolveOn } from './edge.js';
 //   world.heroBound(x, z)                   how far out the hero may stand in that direction (m)
 //   world.setPusher(slot, x, y, z, radius)  grass trample (slot 0 = player, 1..9 = dragon)
 //   world.gust(x, z, strength, radius)      radial wind impulse (wing beats, landings)
+//   world.life                              the living world (life/life.js; `?life=`): the shared wind, what
+//                                           falls and lies, footsteps, weather, creatures. null if it failed to build
 //   world.scorch.burnCircle(x, z, r, burn, heat)
 //   world.debug.setVisible(bool)            Lab only: hide / restore the environment (see below)
 // Destruction (ADR-107; tuning in breakTuning.js):
@@ -82,6 +85,13 @@ export class World {
     this.edge = this.destructibles.edge ?? null;
     this._impact = { kind: BLOW.BLUNT, by: 'world', dx: NaN, dz: NaN, y: undefined, src: -1 };
     this.atmosphere = new Atmosphere(game, this.forest);
+    // the living world (life/life.js): never in the way of the level's build
+    this.life = null;
+    try {
+      this.life = new LivingWorld(game, this);
+    } catch (err) {
+      console.error('[world] the living world could not be built', err);
+    }
     this.bonfire = this.forest.bonfire;
     this.nest = this.forest.nest;
     this._gust = { x: 0, z: 0, strength: 0, radius: 1 };
@@ -109,6 +119,7 @@ export class World {
       for (const o of parts) o.visible = false;
       this.forest?.ambience?.setVisible?.(false); // (a set's own glyph batch, e.g. the throne hall's inlay)
       this.scars?.setVisible(false);
+      this.life?.setVisible(false);
       this.game.fx?.alpha?.clear?.();
       this.game.fx?.add?.clear?.();
       this.game.fx?.fire?.clear?.();
@@ -121,6 +132,7 @@ export class World {
       this._hidden = null;
       this.forest?.ambience?.setVisible?.(true);
       this.scars?.setVisible(true);
+      this.life?.setVisible(true);
     }
     return this._hidden === null;
   }
@@ -167,6 +179,7 @@ export class World {
     } catch (err) {
       console.error('[world] scenes.reset', err);
     }
+    this.life?.clear('reset');
   }
 
   /**
@@ -195,6 +208,8 @@ export class World {
   gust(x, z, strength = 1, radius = 12) {
     // keep the strongest recent gust
     if (strength >= this._gust.strength * 0.6) Object.assign(this._gust, { x, z, strength, radius });
+    // (the living world's air takes the same push: letters in the air and on the ground)
+    this.life?.gust(x, z, strength, radius);
   }
 
   setGrassQuality(count) {
@@ -221,6 +236,10 @@ export class World {
     this.fire.update(dt);
     this.scars.update(this.game.fxDt ?? dt, this.game.time);
     this.scorch.update(dt);
-    if (this._hidden === null) this.atmosphere.update(dt);
+    if (this._hidden === null) {
+      // (before the atmosphere: its smoke and embers read this frame's wind)
+      this.life?.update(dt);
+      this.atmosphere.update(dt);
+    }
   }
 }

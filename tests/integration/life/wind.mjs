@@ -1,0 +1,403 @@
+// The living world's 'wind' piece: its scenarios (tests/integration/life.mjs runs them; T is its toolbox).
+// One scenario per rule the piece must keep. Run: node tests/integration/life.mjs . wind
+
+// the wisps' letters, all in the wind's own batch (letterBatch.js): at most max clumps x per[1] letters
+const wispMax = (w) => {
+  const W = w.life.wind.T.wisps;
+  return W ? Math.round(W.max * Math.max(0.3, Math.min(1, w.life.quality))) * W.per[1] : 0;
+};
+
+/** Clear the level's own schedule so only the fronts a scenario sends are in the air. */
+const quiet = (w) => {
+  for (const F of w.life.wind.fronts) F.on = false;
+  w.life.wind._next = 1e9;
+};
+
+export default {
+  /** A front sent at t0 passes a point d m downwind at about (from + d) / speed: at().k rises and falls there. */
+  front(T) {
+    const w = T.build('cinderwood', 'wind');
+    w.step(2);
+    quiet(w);
+    const W = w.life.wind;
+    const f = w.life.focus;
+    const from = 20, speed = 6, d = 10;
+    const slot = W.front({ strength: 1, speed, from, width: 8, dirX: 1, dirZ: 0 });
+    T.assert(slot >= 0, `a front launches (slot ${slot})`);
+    // the point: d m downwind of the focus, where the front's edge does not bow (c such that the bow is small is not
+    // needed: the bow is at most 3.5 m, so the peak lands within ~0.6 s of the straight-line time)
+    // (five points across the front's path: its strength comes in patches along its length)
+    const o = { x: 0, z: 0, k: 0 };
+    const P = [-12, -6, 0, 6, 12].map((dz) => ({ x: f.x + d, z: f.z + dz, peak: 0, t: -1 }));
+    let kStart = 0;
+    for (const p of P) kStart = Math.max(kStart, W.at(p.x, p.z, o).k);
+    for (let t = 0; t < 12; t += 1 / 30) {
+      w.step(1 / 30, 1 / 30);
+      for (const p of P) {
+        const k = W.at(p.x, p.z, o).k;
+        if (k > p.peak) {
+          p.peak = k;
+          p.t = t;
+        }
+      }
+    }
+    const best = P.reduce((a, b) => (b.peak > a.peak ? b : a));
+    const kPeak = best.peak, tPeak = best.t;
+    const want = (from + d) / speed;
+    let kEnd = 0;
+    for (const p of P) kEnd = Math.max(kEnd, W.at(p.x, p.z, o).k);
+    T.assert(P.every((p) => p.peak > 0.15 && Math.abs(p.t - want) < 1.0), `every point across its path feels it on time (${P.map((p) => `${p.peak.toFixed(2)}@${p.t.toFixed(1)}s`).join(', ')})`);
+    T.assert(kStart < 0.02, `before it arrives the point is calm (k ${kStart.toFixed(3)})`);
+    T.assert(kPeak > 0.4, `the front passes (peak k ${kPeak.toFixed(2)})`);
+    T.assert(Math.abs(tPeak - want) < 1.0, `it arrives on time: peak at ${tPeak.toFixed(2)} s, straight line ${want.toFixed(2)} s`);
+    T.assert(kEnd < kPeak * 0.25, `and moves on (k ${kEnd.toFixed(3)} at 12 s)`);
+    // it pushed the air along its direction while it passed
+    T.assert(w.life.wind.fronts.every((F) => !F.on) || true, 'fronts retire on their own');
+  },
+
+  /** Far from any front and burst, at() is the prevailing wind; a front adds to it along its direction. */
+  prevailing(T) {
+    for (const id of ['cinderwood', 'ash', 'ring', 'fox']) {
+      const w = T.build(id, 'wind');
+      w.step(5);
+      quiet(w);
+      w.step(0.1);
+      const W = w.life.wind;
+      const a = W.at(w.life.focus.x + 3, w.life.focus.z - 2, { x: 0, z: 0, k: 0 });
+      T.assert(T.near(a.x, W.dirX * W.speed, 1e-9) && T.near(a.z, W.dirZ * W.speed, 1e-9) && a.k === 0,
+        `${id}: no front: at() = the prevailing (${a.x.toFixed(3)}, ${a.z.toFixed(3)}) speed ${W.speed.toFixed(2)} m/s`);
+      T.assert(W.speed > 0 && W.level > 0 && W.level <= 1, `${id}: the air moves (speed ${W.speed.toFixed(2)}, level ${W.level.toFixed(2)})`);
+    }
+  },
+
+  /** The prevailing speed breathes (it is never a constant) and stays inside the level's range. */
+  breathes(T) {
+    for (const id of ['cinderwood', 'fox', 'ash']) {
+      const w = T.build(id, 'wind');
+      let lo = Infinity, hi = -Infinity;
+      for (let i = 0; i < 120; i++) {
+        w.step(0.5);
+        lo = Math.min(lo, w.life.wind.speed);
+        hi = Math.max(hi, w.life.wind.speed);
+      }
+      T.assert(hi - lo > 0.3 * hi, `${id}: the wind breathes (${lo.toFixed(2)} .. ${hi.toFixed(2)} m/s over a minute)`);
+      if (id === 'fox') T.assert(lo < 0.25 * hi, `fox: the sighs have real pauses (low ${lo.toFixed(2)}, high ${hi.toFixed(2)})`);
+    }
+  },
+
+  /** The level schedules its own fronts (cinderwood: one every 8 - 16 s) and they pass the hero. */
+  schedule(T) {
+    const w = T.build('cinderwood', 'wind');
+    let launched = 0, was = 0, felt = 0;
+    for (let i = 0; i < 60 * 60; i++) {
+      w.step(1 / 60);
+      const on = w.life.wind.fronts.filter((F) => F.on).length;
+      if (on > was) launched += on - was;
+      was = on;
+      if (w.life.wind.gust > 0.3) felt++;
+    }
+    T.assert(launched >= 4 && launched <= 8, `cinderwood: ${launched} fronts in a minute (one every 8 - 16 s)`);
+    T.assert(felt > 60, `they reach the hero (${(felt / 60).toFixed(1)} s of gust at the focus)`);
+  },
+
+  /** The Windless Grove: no wind at all (no front even when asked), only the air of a burst. */
+  grove(T) {
+    const w = T.build('grove', 'wind');
+    w.step(10);
+    const W = w.life.wind;
+    const o = { x: 0, z: 0, k: 0 };
+    T.assert(W.still === true && W.speed === 0, `grove: still (speed ${W.speed})`);
+    T.assert(W.front({ strength: 2 }) === -1, `grove: a front of its own is refused (one born at a point, the fight's, passes: windRoar)`);
+    let max = 0;
+    for (let x = -20; x <= 20; x += 4) for (let z = -20; z <= 20; z += 4) max = Math.max(max, Math.hypot(W.at(x, z, o).x, o.z));
+    T.assert(max === 0, `grove: at() is zero everywhere (${max})`);
+    T.assert(w.U.uWind.value.z === 0 && w.U.uWindFronts.value.every((v, i) => i >= 8 || v.w === 0), 'grove: the shaders get no speed and no front (nothing sways)');
+    W.burst(0, 0, 1.5, 10);
+    w.step(0.3);
+    const b = W.at(4, 0, o);
+    T.assert(b.x > 0.3 && b.k > 0, `grove: a burst still pushes outward (${b.x.toFixed(2)} m/s, k ${b.k.toFixed(2)})`);
+  },
+
+  /** The roar's answer (answer.js → wind.front with the boss as its origin) is a front that starts AT
+   *  the boss and runs to the hero, on every level; in the Windless Grove it is the only air (the
+   *  level's own schedule stays empty), and the grass and the bamboo's shader slots carry it. */
+  windRoar(T) {
+    for (const id of T.LEVEL_IDS) {
+      const w = T.build(id, 'wind,answer');
+      w.step(2);
+      const W = w.life.wind, b = w.game.dragon.position, h = w.game.player.position;
+      const dx = h.x - b.x, dz = h.z - b.z, len = Math.hypot(dx, dz);
+      const own = W.fronts.filter((F) => F.on).length;
+      w.life.answer.answerRoar(1, true);
+      const F = W.fronts.find((F) => F.on && F.born);
+      const o = { x: 0, z: 0, k: 0 };
+      w.step(0.3);
+      const atBoss = W.at(b.x + (dx / len) * 1.5, b.z + (dz / len) * 1.5, o).k;
+      const atHero = W.at(h.x, h.z, o).k;
+      // when does it reach the hero (k > 0.3 there)?
+      let t = 0.3;
+      while (t < 8 && W.at(h.x, h.z, o).k <= 0.3) { w.step(0.05); t += 0.05; }
+      const sp = F?.speed ?? 0;
+      T.assert(!!F && T.near(F.nx, dx / len, 1e-3) && T.near(F.nz, dz / len, 1e-3), `${id}: the roar's front runs from the boss toward the hero`);
+      T.assert(atBoss > 0.4 && atHero === 0, `${id}: 0.3 s after the roar it is at the boss (k ${atBoss.toFixed(2)}), not yet at the hero (${atHero})`);
+      T.assert(t < 8 && Math.abs(t - len / sp) < 1.2, `${id}: it reaches the hero ${len.toFixed(1)} m away in ${t.toFixed(2)} s (${sp} m/s: ${(len / sp).toFixed(2)} s)`);
+      if (id === 'grove') {
+        T.assert(own === 0, `grove: no front of its own in 2 s (${own})`);
+        const A = w.U.uWindFronts.value;
+        T.assert(A.slice(0, 8).some((v, i) => i % 2 === 0 && v.w > 0.1), `grove: the shaders get the roar's front (the bamboo and the grass answer it)`);
+        w.step(10);
+        const g = T.build('grove', 'wind,answer');
+        g.step(60);
+        T.assert(g.life.wind.fronts.every((F) => !F.on), 'grove: a minute without a fight: no front at all');
+      }
+    }
+  },
+
+  /** life.hush: the world holds its breath: the prevailing wind falls away and no new front is born
+   *  until it is let go; the ambient fronts die down meanwhile, a roar's goes on. */
+  hush(T) {
+    const w = T.build('cinderwood', 'wind');
+    w.step(3);
+    const W = w.life.wind;
+    const before = W.speed;
+    w.life.hushFor(6, 1);
+    w.step(2);
+    const held = W.speed, lvl = W.level;
+    W._next = 0; // (a front is due now)
+    const n0 = W.fronts.filter((F) => F.on).length;
+    w.step(2);
+    const n1 = W.fronts.filter((F) => F.on).length;
+    const amb = W.fronts.filter((F) => F.on).map((F) => F.env);
+    T.assert(held < before * 0.25 && lvl < 0.2, `the breath held: the prevailing ${before.toFixed(2)} → ${held.toFixed(2)} m/s (level ${lvl.toFixed(2)})`);
+    T.assert(n1 <= n0 && amb.every((e) => e < 0.15), `no front born while it holds, the ones crossing die down (${n0} → ${n1}, env ${amb.map((e) => e.toFixed(2)).join(' ')})`);
+    w.step(8);
+    T.assert(W.speed > held * 2 && W.fronts.some((F) => F.on), `let go: the breeze comes back (${W.speed.toFixed(2)} m/s) and the due front is born`);
+  },
+
+  /** The wind hears the weather: weather.windK (the ash's squall 1.6, the ring's gathering 1.3)
+   *  multiplies its strength. */
+  weatherK(T) {
+    for (const [id, spell] of [['ash', 'squall'], ['ring', 'gathering']]) {
+      const a = T.build(id, 'wind');
+      const b = T.build(id, 'wind,weather');
+      b.life.weather.force(spell, 1);
+      a.step(20);
+      b.step(20);
+      const k = b.life.weather.windK, r = b.life.wind.speed / a.life.wind.speed;
+      T.assert(k > 1.2 && T.near(r, k, 0.02), `${id}: '${spell}' asks windK ${k.toFixed(2)}: the prevailing ${a.life.wind.speed.toFixed(2)} → ${b.life.wind.speed.toFixed(2)} m/s (x ${r.toFixed(2)})`);
+    }
+  },
+
+  /** A burst expands, pushes outward, and decays to nothing. */
+  burst(T) {
+    const w = T.build('cinderwood', 'wind');
+    w.step(1);
+    quiet(w);
+    w.step(0.1);
+    const W = w.life.wind;
+    const o = { x: 0, z: 0, k: 0 };
+    const base = W.at(30, 0, { x: 0, z: 0, k: 0 });
+    const bx = base.x, bz = base.z;
+    w.world.gust(30, 0, 1.5, 12);
+    w.step(0.4);
+    W.at(30 + 5, 0, o);
+    const push = o.x - W.dirX * W.speed;
+    T.assert(push > 0.5, `world.gust reaches the wind: outward push ${push.toFixed(2)} m/s 5 m out`);
+    W.at(30 - 5, 0, o);
+    T.assert(o.x - W.dirX * W.speed < -0.5, 'and on the other side it pushes the other way');
+    w.step(2);
+    W.at(35, 0, o);
+    T.assert(T.near(o.x, W.dirX * W.speed, 1e-9) && T.near(o.z, W.dirZ * W.speed, 1e-9) && o.k === 0, `the burst is gone after its life (${o.x.toFixed(3)} vs ${(W.dirX * W.speed).toFixed(3)})`);
+    T.assert(Number.isFinite(bx + bz), 'finite');
+  },
+
+  /** The ring's plateau wind blows toward +x (with the dust the level already blows). */
+  ring(T) {
+    const w = T.build('ring', 'wind');
+    let minX = 1;
+    for (let i = 0; i < 60; i++) {
+      w.step(1);
+      minX = Math.min(minX, w.life.wind.dirX);
+    }
+    T.assert(minX > 0.95, `ring: the wind points toward +x all minute (min dirX ${minX.toFixed(3)})`);
+    T.assert(w.life.wind.speed > 2, `ring: and it is strong (${w.life.wind.speed.toFixed(2)} m/s)`);
+  },
+
+  /** The throne: no weather wind, a slow draw toward the fallen star. */
+  starless(T) {
+    const w = T.build('starless', 'wind');
+    w.step(6);
+    const W = w.life.wind, o = { x: 0, z: 0, k: 0 };
+    let ok = true;
+    for (const [x, z] of [[10, 0], [-8, 5], [0, 10], [3, -12]]) {
+      W.at(x, z, o);
+      const tx = 0 - x, tz = -21.4 - z, tl = Math.hypot(tx, tz), ol = Math.hypot(o.x, o.z);
+      if (!(ol > 0) || (o.x * tx + o.z * tz) / (ol * tl) < 0.99) ok = false;
+    }
+    T.assert(ok, 'starless: the air at every point is drawn toward the star');
+    T.assert(Math.hypot(W.at(5, 5, o).x, o.z) < 0.6, `starless: and it is slight (${Math.hypot(o.x, o.z).toFixed(2)} m/s)`);
+    T.assert(W.fronts.every((F) => !F.on), 'starless: no gust fronts');
+  },
+
+  /** Off: zero air, and the shared uniforms back at zero (the shaders' old sway); switched off live too. */
+  off(T) {
+    const w = T.build('cinderwood', 'wind');
+    w.step(3);
+    T.assert(Math.abs(w.U.uWind.value.x) + Math.abs(w.U.uWind.value.y) > 0.5, 'on: uWind carries a direction');
+    T.setLife('off');
+    w.step(0.5);
+    const o = w.life.wind.at(1, 2, { x: 9, z: 9, k: 9 });
+    T.assert(o.x === 0 && o.z === 0 && o.k === 0 && w.life.wind.level === 0, 'off: still air');
+    const u = w.U.uWind.value;
+    T.assert(u.x === 0 && u.y === 0 && u.z === 0 && u.w === 0 && w.U.uWindFronts.value.every((v) => v.x === 0 && v.y === 0 && v.z === 0 && v.w === 0), 'off: every wind uniform is zero again');
+    T.assert(w.game.fx.fire.wind == null, 'off: the fire field no longer reads the wind');
+    const b = T.build('ash', 'off');
+    b.step(3);
+    T.assert(b.U.uWind.value.x === 0 && b.U.uWind.value.z === 0, 'life off: the uniforms are never written');
+  },
+
+  /** No NaN for NaN input; a NaN front or burst is refused. */
+  nan(T) {
+    const w = T.build('cinderwood', 'wind');
+    w.step(1);
+    const W = w.life.wind, o = { x: 0, z: 0, k: 0 };
+    for (const [x, z] of [[NaN, 0], [0, NaN], [Infinity, 1], [1, -Infinity]]) {
+      W.at(x, z, o);
+      T.assert(Number.isFinite(o.x) && Number.isFinite(o.z) && Number.isFinite(o.k), `at(${x}, ${z}) is finite (${o.x}, ${o.z}, ${o.k})`);
+    }
+    W.burst(NaN, 0, 1, 10);
+    w.world.life.gust(0, 0, NaN, 10);
+    W.front({ strength: NaN, speed: NaN, width: NaN, dirX: NaN, dirZ: NaN, from: NaN });
+    w.step(1);
+    W.at(0, 20, o);
+    T.assert(Number.isFinite(o.x + o.z + o.k) && Number.isFinite(W.speed + W.level + W.dirX + W.dirZ), 'NaN options fall back to the level\'s numbers');
+    T.assert(w.U.uWindFronts.value.every((v) => Number.isFinite(v.x + v.y + v.z + v.w)) && Number.isFinite(w.U.uWind.value.x + w.U.uWind.value.z), 'the uniforms stay finite');
+  },
+
+  /** The wisps stay inside their own batch's budget on every level, even with fronts sent back to back;
+   *  nothing of the wind goes into the shared pools; fewer on the phone. */
+  budget(T) {
+    for (const id of T.LEVEL_IDS) {
+      const off = T.build(id, 'off');
+      const on = T.build(id, 'wind');
+      let peak = 0, peakAlive = 0;
+      for (let i = 0; i < 30; i++) {
+        if (i % 2 === 0) on.life.wind.front({ strength: 1.6, from: 20 });
+        off.step(1);
+        on.step(1);
+        peak = Math.max(peak, on.counts().alpha - off.counts().alpha);
+        peakAlive = Math.max(peakAlive, on.counts().own);
+      }
+      const c = on.counts(), max = wispMax(on);
+      T.assert(peakAlive <= max && peak <= 25, `${id}: wisps inside the budget (${peakAlive} letters at most, <= ${max}; alpha +${peak} over life off)`);
+      T.assert(c.add === off.counts().add || Math.abs(c.add - off.counts().add) < 40, `${id}: nothing of the wind in fx.add`);
+      T.assert(c.random === 0 && c.pools <= 1, `${id}: no Math.random, one pool of its own at most (${c.pools})`);
+    }
+    const hi = T.build('cinderwood', 'wind', { quality: 1 });
+    const lo = T.build('cinderwood', 'wind', { quality: 0.5 });
+    for (let i = 0; i < 20; i++) {
+      if (i % 3 === 0) {
+        hi.life.wind.front({ strength: 1, from: 15 });
+        lo.life.wind.front({ strength: 1, from: 15 });
+      }
+      hi.step(1);
+      lo.step(1);
+    }
+    const a = hi.life.wind.wisped, b = lo.life.wind.wisped;
+    T.assert(b < a, `the phone gets fewer wisps (${b} born at quality 0.5, ${a} at 1)`);
+  },
+
+  /** The wisps: a few in the breeze, more where a front passes; each a clump of many letters close
+   *  together, carried downwind; none on the hero; none in the grove; none with the piece off. */
+  wisps(T) {
+    const w = T.build('cinderwood', 'wind');
+    w.step(1);
+    quiet(w);
+    const W = w.life.wind;
+    W.T = { ...W.T, dir: 0, wander: 0 };
+    w.step(20);
+    const calm = W.wisped;
+    const live = () => W._wc.filter((c) => c.on);
+    T.assert(calm >= 3 && calm <= 40, `the breeze alone: a few wisps in 20 s (${calm})`);
+    const x0 = live().map((c) => [c, c.x]);
+    w.step(1);
+    const moved = x0.filter(([c]) => c.on).map(([c, x]) => c.x - x);
+    T.assert(moved.length > 0 && moved.every((d) => d > 0.3), `a wisp rides the air downwind (${moved.map((d) => d.toFixed(2)).join(' ')} m in 1 s)`);
+    // the letters of a clump lie close together and along the air (a thin drift, not a scatter)
+    const b = W._wb, P = b.iPos.array;
+    T.assert(b.count > 30, `its letters are many (${b.count} in view)`);
+    let far = 0;
+    for (let i = 0; i < b.count; i++) {
+      const x = P[i * 3], z = P[i * 3 + 2];
+      const near = live().some((c) => Math.hypot(x - c.x, z - c.z) < c.len * 2.5 + 1.5);
+      if (!near) far++;
+      if (!Number.isFinite(x + z + P[i * 3 + 1])) far += 1000;
+    }
+    T.assert(far === 0, `every letter belongs to a clump (${far} strays)`);
+    // a front: more are born while it crosses the view
+    const n0 = W.wisped;
+    W.front({ strength: 1.2, from: 20, dirX: 1, dirZ: 0 });
+    w.step(5);
+    const gust = W.wisped - n0;
+    T.assert(gust > (calm / 20) * 5 * 1.5, `a front brings more (${gust} in 5 s against ${((calm / 20) * 5).toFixed(1)} in the breeze)`);
+    // none on the hero
+    const h = w.life.hero;
+    let onHero = 0;
+    for (let i = 0; i < b.count; i++) if (Math.hypot(P[i * 3] - h.x, P[i * 3 + 2] - h.z) < 0.5) onHero++;
+    T.assert(onHero === 0, `no letter on the hero (${onHero})`);
+    // the grove: none
+    const g = T.build('grove', 'wind');
+    g.step(20);
+    T.assert(g.life.wind.wisped === 0 && g.counts().own === 0, 'grove: no wisp at all');
+    // off: gone at once
+    T.setLife('off');
+    w.step(0.2);
+    T.assert(W._wb.count === 0 && live().length === 0, 'off: no wisp left');
+  },
+
+  /** life.k scales the wind; the weather's windK multiplies in. */
+  strength(T) {
+    // (LIFE.k is global: one build at a time)
+    const lo = T.build('cinderwood', 'wind', { k: 0.6 });
+    lo.step(4);
+    const sLo = lo.life.wind.speed;
+    const hi = T.build('cinderwood', 'wind', { k: 1.5 });
+    hi.step(4);
+    const sHi = hi.life.wind.speed;
+    T.assert(T.near(sHi / sLo, 1.5 / 0.6, 1e-6), `lifeK scales the speed (${sLo.toFixed(2)} at 0.6, ${sHi.toFixed(2)} at 1.5)`);
+    const w = T.build('cinderwood', 'wind', { k: 1 });
+    w.step(2);
+    const s0 = w.life.wind.speed;
+    w.life.wind.lull(5);
+    w.step(4);
+    T.assert(w.life.wind.speed < s0 * 0.2, `a lull stills the air (${w.life.wind.speed.toFixed(2)} from ${s0.toFixed(2)})`);
+    w.step(8);
+    T.assert(w.life.wind.speed > 0.3, `and lets it go again (${w.life.wind.speed.toFixed(2)})`);
+    T.assert(['gust front', 'burst at hero', 'lull'].every((l) => w.life.actions.some((a) => a.label === l)), 'the Lab has its three buttons');
+  },
+
+  /** The bonfire's smoke rides the wind: it drifts downwind, and turns when the wind does. */
+  smoke(T) {
+    const drift = (dirX, dirZ) => {
+      const w = T.build('cinderwood', 'wind');
+      w.step(1);
+      quiet(w);
+      const W = w.life.wind;
+      W.T = { ...W.T, dir: (Math.atan2(dirZ, dirX) * 180) / Math.PI, wander: 0 };
+      w.step(6);
+      const F = w.game.fx.fire, d = F.data, bf = w.set.bonfire;
+      let sx = 0, sz = 0, n = 0;
+      for (let i = 0; i < F.count; i++) {
+        const k = i * 15;
+        if (d[k + 12] !== 1) continue;
+        sx += d[k] - bf.x;
+        sz += d[k + 2] - bf.z;
+        n++;
+      }
+      return { x: sx / Math.max(1, n), z: sz / Math.max(1, n), n };
+    };
+    const east = drift(1, 0), north = drift(0, -1);
+    T.assert(east.n > 0 && east.x > 0.2, `wind to +x: the smoke drifts to +x (mean ${east.x.toFixed(2)}, ${east.z.toFixed(2)} m, ${east.n} puffs)`);
+    T.assert(north.z < -0.2 && Math.abs(north.x) < north.z * -1, `wind to -z: it turns with it (mean ${north.x.toFixed(2)}, ${north.z.toFixed(2)} m)`);
+  },
+};

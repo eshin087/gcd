@@ -995,7 +995,9 @@ export class Flurry {
     }
     P.fx.plungeLand(p.x, p.z, this.d.x, this.d.z);
     P.game.shake?.(0.2);
-    P._emit('player:footstep', { x: p.x, z: p.z, sprint: true });
+    // (the living world's steps answer the touchdown: world/life/steps.js)
+    const surface = P.game.world?.life?.steps?.footfall?.(p.x, p.z, { heavy: true, sprint: true, side: 0, vx: this.d.x, vz: this.d.z });
+    P._emit('player:footstep', surface ? { x: p.x, z: p.z, sprint: true, surface } : { x: p.x, z: p.z, sprint: true });
     this._settle();
   }
 
