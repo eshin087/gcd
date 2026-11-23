@@ -286,7 +286,7 @@ Render helpers for creature modules:
     ~130° at a full stretch, and a leg that reaches straight). Tian Lei sets both in `_setup` from
     `TUNING.armSoft` (the hero's `HERO_SOFT`) and `TUNING.legSoft`.
   - **The bosses' letters** (ADR-154, ADR-155): a boss whose kit sets `letters` (today Wen Yao's `FOX_KIT`, behind
-    `?foxLetters=b`, Tian Lei's `ASC_KIT`, a getter behind `?ascLetters=a`, the owner's pick; `0` the fixed cell; and Halcyon's `HALCYON_KIT`, a getter behind `?halLetters=a`, ADR-166, waiting for the owner) has the bosses' cell `uHeroCell`, its atlas `tHeroArt` and its line width `uHeroPx.x`
+    `?foxLetters=b`, Tian Lei's `ASC_KIT`, a getter behind `?ascLetters=a`, the owner's pick; `0` the fixed cell; and Halcyon's `HALCYON_KIT`, a getter behind `?halLetters=a`, the owner's pick, ADR-166) has the bosses' cell `uHeroCell`, its atlas `tHeroArt` and its line width `uHeroPx.x`
     set each frame from HIS depth by the hero's rule: main.js sets `pipeline.bossLetters`
     (`!!game.dragon?.kit?.letters && lookOf('foxLetters', 'b') === 'b'`), `Pipeline._updateBossLetters(U.uBossScreen)`
     takes the depth 1 m above his feet and picks the cell with `_letterCell(z, cur)` (the cell choice

@@ -21,7 +21,7 @@ Seventy-five pieces of work since 0.4.0:
   hovers and trails long in a pass (the owner's pick of four steps); `?halCape=0|1|2|3` steps back to how he
   was first built. *Changed (ADR-166):* he is printed like the hero: his letters follow his size on screen
   as yours do (fewer, bigger letters from 1080p up), a quieter print, and a smaller cape (two thirds of its
-  length, past his knees); `?halLetters=0`, `?halPrint=0|b`, `?halCapeSize=0|a|c` the other options. *Fixed:* a blow at
+  length, past his knees), the owner's picks; `?halLetters=0`, `?halPrint=0|b`, `?halCapeSize=0|a|c` the other options. *Fixed:* a blow at
   a raised piece's own height reaches it (a tower's top, a sign hung on a wall), and a blow down on the street no
   longer bites one metres above it; a rest or a retry while a broken car burns no longer leaves it to blow up
   after, or unable to blow up again; See the World's slam lands (it was dodged by the get-up's grace).

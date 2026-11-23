@@ -4958,7 +4958,8 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   the hero's 8.6, 1440p 18.4 vs 8.6) and read as a shaded 3D model; and his step-3 print was lifted (a
   strong edge of light, rim x3). From the front the wide cape (halCape 2 - 3) was the biggest shape on
   screen.
-- **Decision:** three switches in `PENDING`, the recommended option the default (nothing new in `PICKED`):
+- **Decision:** three switches, the recommended option the default; the owner kept it ("Yes, keep it",
+  2026-11-23): `halLetters` a, `halPrint` a, `halCapeSize` b are in `PICKED`, out of `PENDING`:
   1. `?halLetters=0|a` (default a): his kit's `letters` getter, exactly as Tian Lei's `ascLetters`:
      `pipeline.bossLetters` gives him the hero's cell (ARCHITECTURE "The bosses' letters"). Live.
   2. `?halPrint=0|a|b` (default a): a is Tian Lei's quieter print numbers (`ASC_QUIET`): the suit x 0.85,

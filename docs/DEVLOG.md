@@ -20,6 +20,10 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
    new `y`) now skip a raised piece the blow passes under; a blow on a base still reaches its top through
    `holds`, and a broken base still drops its top. Test: `world.mjs city`.
 
+**The owner's picks.** "Yes, keep it" to the recommended look: `halLetters` a, `halPrint` a, `halCapeSize` b
+move from `PENDING` into `PICKED` (ADR-166); nothing visible changes (they were the defaults). None of Halcyon's
+switches waits now.
+
 **Why the fights moved.** The seeded fights moved with the fixes (the win 166 / 165 / 157 s -> 164 / 160 / 157;
 pace seed 7's phase 1 had a 4.65 s gap against the 4.6 s bound), so his phase-1 rest between chains came down a
 little (`chainRest` P1 0.45 - 0.75 -> 0.4 - 0.7 s): PACE 49.1 / 59.6 / 63.1, longest gaps 3.78 / 3.37 / 2.92 s.

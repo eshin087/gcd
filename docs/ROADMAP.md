@@ -195,7 +195,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] The owner's picks of his body, cape and city: `halLook` a, the blue suit and red cape; `halCape` 3, billowing; `city` a, Neon Rain (2026-11-23)
 - [x] The owner's pick of his eyes' heat: `glare` a, crimson with a white-hot core (2026-11-23)
 - [x] Printed like the hero, a smaller cape: `?halLetters`, `?halPrint`, `?halCapeSize` (ADR-166; defaults a / a / b), `halAscii.png`, `halCapeSize.png`, `halRecommend.png`
-- [ ] The owner's picks of his letters, print and cape size
+- [x] The owner's picks of his letters, print and cape size: `halLetters` a, `halPrint` a, `halCapeSize` b (2026-11-23, "Yes, keep it")
 - [ ] Cut, for later: Last Word (and its beam clash), the hydrants' spouts, his own SFX, his own score
 - [ ] A human playtest on the phone (the frame rate on the device is not measured)
 
