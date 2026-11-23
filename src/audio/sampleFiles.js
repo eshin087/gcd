@@ -4,16 +4,15 @@
 // that up with the blow's impact). A slot with no file plays its synth fallback.
 
 export const SAMPLE_FILES = {
-  'cue-blue': [{ file: 'cue-blue-1.mp3', peak_ms: 10 }, { file: 'cue-blue-2.mp3', peak_ms: 45 }],
-  'cue-red': [{ file: 'cue-red-1.mp3', peak_ms: 10 }, { file: 'cue-red-2.mp3', peak_ms: 47 }],
-  'time-blue': [{ file: 'time-blue-1.mp3', peak_ms: 7 }, { file: 'time-blue-2.mp3', peak_ms: 3 }],
-  'time-red': [{ file: 'time-red-1.mp3', peak_ms: 6 }, { file: 'time-red-2.mp3', peak_ms: 13 }],
-  'sword-light': [{ file: 'sword-light-1.mp3', peak_ms: 206 }, { file: 'sword-light-2.mp3', peak_ms: 77 }],
-  'sword-heavy': [{ file: 'sword-heavy-1.mp3', peak_ms: 75 }, { file: 'sword-heavy-2.mp3', peak_ms: 84 }],
-  'sword-thrust': [{ file: 'sword-thrust-1.mp3', peak_ms: 48 }, { file: 'sword-thrust-2.mp3', peak_ms: 40 }],
-  'sword-draw': [{ file: 'sword-draw-1.mp3', peak_ms: 248 }, { file: 'sword-draw-2.mp3', peak_ms: 205 }],
-  'fist-light': [{ file: 'fist-light-1.mp3', peak_ms: 31 }, { file: 'fist-light-2.mp3', peak_ms: 42 }],
-  'fist-heavy': [{ file: 'fist-heavy-1.mp3', peak_ms: 64 }, { file: 'fist-heavy-2.mp3', peak_ms: 79 }],
-  'beast-claw': [{ file: 'beast-claw-1.mp3', peak_ms: 77 }, { file: 'beast-claw-2.mp3', peak_ms: 92 }],
-  'beast-tail': [{ file: 'beast-tail-1.mp3', peak_ms: 110 }, { file: 'beast-tail-2.mp3', peak_ms: 346 }],
+  'cue-blue': [{ file: 'cue-blue-1.mp3', peak_ms: 4 }],
+  'cue-red': [{ file: 'cue-red-1.mp3', peak_ms: 10 }],
+  'time-red': [{ file: 'time-red-1.mp3', peak_ms: 6 }],
+  'sword-light': [{ file: 'sword-light-1.mp3', peak_ms: 206 }, { file: 'sword-light-2.mp3', peak_ms: 77 }, { file: 'sword-light-3.mp3', peak_ms: 60 }],
+  'sword-heavy': [{ file: 'sword-heavy-1.mp3', peak_ms: 99 }, { file: 'sword-heavy-2.mp3', peak_ms: 84 }, { file: 'sword-heavy-3.mp3', peak_ms: 75 }],
+  'sword-thrust': [{ file: 'sword-thrust-1.mp3', peak_ms: 48 }, { file: 'sword-thrust-2.mp3', peak_ms: 42 }, { file: 'sword-thrust-3.mp3', peak_ms: 39 }],
+  'sword-draw': [{ file: 'sword-draw-1.mp3', peak_ms: 166 }, { file: 'sword-draw-2.mp3', peak_ms: 205 }, { file: 'sword-draw-3.mp3', peak_ms: 139 }],
+  'fist-light': [{ file: 'fist-light-1.mp3', peak_ms: 31 }, { file: 'fist-light-2.mp3', peak_ms: 42 }, { file: 'fist-light-3.mp3', peak_ms: 38 }],
+  'fist-heavy': [{ file: 'fist-heavy-1.mp3', peak_ms: 64 }, { file: 'fist-heavy-2.mp3', peak_ms: 79 }, { file: 'fist-heavy-3.mp3', peak_ms: 77 }],
+  'beast-claw': [{ file: 'beast-claw-1.mp3', peak_ms: 100 }],
+  'beast-tail': [{ file: 'beast-tail-1.mp3', peak_ms: 110 }],
 };

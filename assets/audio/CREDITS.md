@@ -33,27 +33,26 @@ encodes them into `assets/audio/sfx/` (the game plays its synth sounds for any s
 
 | Plays as | Sound (OpenGameArt) | Posted by | Licence | File |
 |---|---|---|---|---|
-| Blue warning (a parry blow: its windup starts) | [4 Metal Dings/Rings](https://opengameart.org/content/4-metal-dingsrings) (ding.4.ogg) | StarNinjas | CC0 1.0 | `sfx/cue-blue-1.mp3` |
-| Blue warning (a parry blow: its windup starts) | [Metal Impact Sounds](https://opengameart.org/content/metal-impact-sounds) (bing1.wav) | BMacZero | CC0 1.0 | `sfx/cue-blue-2.mp3` |
+| Blue warning (a parry blow: its windup starts) | [Fantasy Weapons and Apparel SFX Library](https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library) (sword-knife-clash-35.wav) | Vehicle | CC0 1.0 | `sfx/cue-blue-1.mp3` |
 | Red warning (a dodge blow: its windup starts) | [Muffled Distant Explosion](https://opengameart.org/content/muffled-distant-explosion) (NenadSimic - Muffled Distant Explosion.wav) | NenadSimic | CC0 1.0 | `sfx/cue-red-1.mp3` |
-| Red warning (a dodge blow: its windup starts) | [Metal Impact Sounds](https://opengameart.org/content/metal-impact-sounds) (bong1.wav) | BMacZero | CC0 1.0 | `sfx/cue-red-2.mp3` |
-| Blue timing (just before a parry blow lands) | [Metal Impact Sounds](https://opengameart.org/content/metal-impact-sounds) (clink3.wav) | BMacZero | CC0 1.0 | `sfx/time-blue-1.mp3` |
-| Blue timing (just before a parry blow lands) | [Metal Impact Sounds](https://opengameart.org/content/metal-impact-sounds) (clink2.wav) | BMacZero | CC0 1.0 | `sfx/time-blue-2.mp3` |
 | Red timing (just before a dodge blow lands) | [Muffled Distant Explosion](https://opengameart.org/content/muffled-distant-explosion) (NenadSimic - Muffled Distant Explosion.wav) | NenadSimic | CC0 1.0 | `sfx/time-red-1.mp3` |
-| Red timing (just before a dodge blow lands) | [150 Combat Sound Effects](https://opengameart.org/content/150-combat-sound-effects) (impact_punch_heavy_002_48kHz_16bit_0.46s_565485a1_s02.wav) | untamedpixels | CC0 1.0 | `sfx/time-red-2.mp3` |
 | A sword cut through the air | [Medieval sound effects - Weapon Textures](https://opengameart.org/content/medieval-sound-effects-weapon-textures) (Katana Swing.wav) | MedicineStorm | CC0 1.0 | `sfx/sword-light-1.mp3` |
 | A sword cut through the air | [Medieval sound effects - Weapon Textures](https://opengameart.org/content/medieval-sound-effects-weapon-textures) (Katana Swing.wav) | MedicineStorm | CC0 1.0 | `sfx/sword-light-2.mp3` |
+| A sword cut through the air | [Swish - bamboo stick weapon swhoshes](https://opengameart.org/content/swish-bamboo-stick-weapon-swhoshes) (swosh-22.flac) | qubodup | CC0 1.0 | `sfx/sword-light-3.mp3` |
 | A heavy sword cut | [Medieval sound effects - Weapon Textures](https://opengameart.org/content/medieval-sound-effects-weapon-textures) (Axe Swing.wav) | MedicineStorm | CC0 1.0 | `sfx/sword-heavy-1.mp3` |
 | A heavy sword cut | [Medieval sound effects - Weapon Textures](https://opengameart.org/content/medieval-sound-effects-weapon-textures) (Axe Swing.wav) | MedicineStorm | CC0 1.0 | `sfx/sword-heavy-2.mp3` |
+| A heavy sword cut | [Medieval sound effects - Weapon Textures](https://opengameart.org/content/medieval-sound-effects-weapon-textures) (Axe Swing.wav) | MedicineStorm | CC0 1.0 | `sfx/sword-heavy-3.mp3` |
 | A sword thrust | [Swish - bamboo stick weapon swhoshes](https://opengameart.org/content/swish-bamboo-stick-weapon-swhoshes) (swosh-12.flac) | qubodup | CC0 1.0 | `sfx/sword-thrust-1.mp3` |
-| A sword thrust | [Fantasy Sound Effects (Tinysized SFX)](https://opengameart.org/content/fantasy-sound-effects-tinysized-sfx) (tube-plastic-whoosh-01.wav) | Vehicle | CC0 1.0 | `sfx/sword-thrust-2.mp3` |
-| A draw (the Sheathed) | [Medieval sound effects - Weapon Textures](https://opengameart.org/content/medieval-sound-effects-weapon-textures) (Katana Draw Fast.wav) | MedicineStorm | CC0 1.0 | `sfx/sword-draw-1.mp3` |
+| A sword thrust | [Swish - bamboo stick weapon swhoshes](https://opengameart.org/content/swish-bamboo-stick-weapon-swhoshes) (swosh-08.flac) | qubodup | CC0 1.0 | `sfx/sword-thrust-2.mp3` |
+| A sword thrust | [Battle Sound Effects](https://opengameart.org/content/battle-sound-effects) (swish_2.wav) | Ogrebane | CC0 1.0 | `sfx/sword-thrust-3.mp3` |
+| A draw (the Sheathed) | [RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) (sword-unsheathe.wav) | artisticdude | CC0 1.0 | `sfx/sword-draw-1.mp3` |
 | A draw (the Sheathed) | [Medieval sound effects - Weapon Textures](https://opengameart.org/content/medieval-sound-effects-weapon-textures) (Katana Draw Fast.wav) | MedicineStorm | CC0 1.0 | `sfx/sword-draw-2.mp3` |
+| A draw (the Sheathed) | [Medieval sound effects - Weapon Textures](https://opengameart.org/content/medieval-sound-effects-weapon-textures) (Sabre Draw Fast.wav) | MedicineStorm | CC0 1.0 | `sfx/sword-draw-3.mp3` |
 | A fist through the air | [RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) (swing.wav) | artisticdude | CC0 1.0 | `sfx/fist-light-1.mp3` |
 | A fist through the air | [Swishes Sound Pack](https://opengameart.org/content/swishes-sound-pack) (swish-4.wav) | artisticdude | CC0 1.0 | `sfx/fist-light-2.mp3` |
+| A fist through the air | [Swishes Sound Pack](https://opengameart.org/content/swishes-sound-pack) (swish-1.wav) | artisticdude | CC0 1.0 | `sfx/fist-light-3.mp3` |
 | A heavy fist or a kick | [Swish - bamboo stick weapon swhoshes](https://opengameart.org/content/swish-bamboo-stick-weapon-swhoshes) (swosh-36.flac) | qubodup | CC0 1.0 | `sfx/fist-heavy-1.mp3` |
 | A heavy fist or a kick | [Swish - bamboo stick weapon swhoshes](https://opengameart.org/content/swish-bamboo-stick-weapon-swhoshes) (swosh-35.flac) | qubodup | CC0 1.0 | `sfx/fist-heavy-2.mp3` |
-| The wyrm's claws | [3 Melee sounds](https://opengameart.org/content/3-melee-sounds) (animal melee sound.wav) | remaxim | CC0 1.0 | `sfx/beast-claw-1.mp3` |
-| The wyrm's claws | [Swish - bamboo stick weapon swhoshes](https://opengameart.org/content/swish-bamboo-stick-weapon-swhoshes) (swosh-36.flac) | qubodup | CC0 1.0 | `sfx/beast-claw-2.mp3` |
+| A heavy fist or a kick | [Wind, hit, time morph](https://opengameart.org/content/wind-hit-time-morph) (qubodup-megaswosh2.wav) | qubodup | CC0 1.0 | `sfx/fist-heavy-3.mp3` |
+| The wyrm's claws | [Medieval sound effects - Weapon Textures](https://opengameart.org/content/medieval-sound-effects-weapon-textures) (Axe Swing.wav) | MedicineStorm | CC0 1.0 | `sfx/beast-claw-1.mp3` |
 | The wyrm's tail / body sweeps | [Wind, hit, time morph](https://opengameart.org/content/wind-hit-time-morph) (qubodup-megaswosh2.wav) | qubodup | CC0 1.0 | `sfx/beast-tail-1.mp3` |
-| The wyrm's tail / body sweeps | [Dragon Flap](https://opengameart.org/content/dragon-flap-0) (dragonflap.wav) | VishwaJai | CC0 1.0 | `sfx/beast-tail-2.mp3` |
