@@ -61,6 +61,43 @@ see the PR.
 
 **Not checked / open.** Nobody has played it; not on the phone (0.56 M -> 0.89 M vertices drawn);
 the owner picked `a`, mixed clumps, from the sheet.
+## 2026-11-22 — Session 79: the Sheathed, easy to see (ADR-151; one Opus agent from the planning session's brief)
+
+**Goal.** The owner on the live grove: "its hard to see the new boss character. make it look detailed like the
+main character". Their answers: the hero's ink-line art (not bigger letters), the homage carried by the
+silhouette, a mark of his own, his motion and his lines; three palettes to pick from.
+
+**What changed.**
+- The print (`sheathed/look.js`, new): `?sheathArt=a` in `PICKED` (the prototype's `?sheathArt=a`, from the
+  local branch `enemies/sheathed-letters`, is the base), `0` the wyrm's digits. `SHEATH_TONE` a / b / c,
+  `SHEATH_LIFT` (rim × 3, scarf and mark × 3.6), `tintWanderer`. His hair on `shirt`: the `hair` part's
+  shared ink lines are the hero's gold, and they drew an orange outline round his dark hair.
+- The silhouette (`gear.js`): `ROBE_TAILS` (a loose robe to mid-thigh, open at both sides, over the
+  trousers), the high tail 0.46 → 0.60 m and thicker with a pale tie, the scarf's turns 7 / 4.5 → 8.5 / 6 cm
+  and its ends 6 → 8 cm, its tails `out` 0.14 → 0.03 with `inMax` (they stood off his back), pale wrist
+  bindings. Mark a: `STRIP` on both scabbard pieces (the left-wrist piece's springs appended to the rig's in
+  `_setup`; the draw kicks them). Mark b: a white streak on `facing`.
+- Motion (`poses.js`, `moves.js` draw()): the carry (head bowed 0.12, left thumb in the sash), the breath
+  (k 0.8 → 0.65, period 3.4 → 4.6 s), `SHEATH_RUN` and his own `duelLoco` (sink 8 cm, pitch 0.16 at a run),
+  the settle: a head-only key at 0.4 × grip, then the settle key eased in. Timings untouched.
+- Lines (`levels/grove.js`) and eight labels (`moves.js`); Training's mikiri text, COMBAT.md's table.
+- `sheath.mjs` LOOK: the default print and palette, the scabbard darkest, the hair off the gold part, the
+  mark's springs, ADR-126's hand audit through One Breath (0.166 m worst outside the cut), every option.
+
+**Measured** (headless Edge on the GPU; the mean luma 0 - 255 of his pixels / of the floor behind him; p90):
+1280 x 720: digits (as live) 41.6 / 16.1, p90 132; the prototype 22.2 / 16.3, p90 88; now 31.9 / 16.2, p90
+118 (b 34.6, c 31.2); the hero 24.5 / 20.0, p90 105. Phone camera (17 m): now 47.2 / 16.5, the hero 39.2 /
+21.7. The digits are brighter on average but read as a column of numbers; the ink-line print reads as a
+figure with its parts. The drawn blade's pixels: mean 105, p90 185, against his figure's mean 32, p90 108 -
+114. ADR-126 audit (filmed): One Breath's worst hand step outside the cut 0.096 m (main 0.085), the cut's one
+frame 1.0 m on both; the run 0.112 m (main 0.08), no planted foot sliding.
+
+**Sheets for the owner** (not committed): `sheets-owner/` in the worktree: the print before / after, the
+palettes, the mark, the draw and run film strips (before = main).
+
+**Open.** The owner's picks of the palette and the mark. Not checked on a real phone. The model viewer draws
+him alone, so its tiles have no hero beside him (the game-camera tiles do). The mark at the game camera is a
+couple of letters at rest; it reads when it trails.
 
 ## 2026-11-22 — Session 78: a sixth level, the Windless Grove and the Sheathed (planned in its own chat, built by one Opus agent)
 

@@ -1035,6 +1035,9 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?grove=` | the Windless Grove's light and ground (ADR-145; read when the level is built) | - | a moonlit night with mist | grey dawn fog | first snow: pale litter, frost on the stalks | **a** |
 | `?sheathLook=` | Lu Wusheng's body (read when his rig is built) | - | Mourning White: undyed hemp, a white brow band with two trailing tails, hair in a knot | Reed Cloak: a shaggy straw rain cape, a cloth over the lower face | One Sleeve: a dark robe off the sword arm, the bare arm bound in cord, short grey hair; `d` the Wanderer (added 2026-11-22 at the owner's ask, an option): a slighter man (drawn 7 % smaller) in a faded indigo robe over wide charcoal trousers, a long sand scarf with trailing tails, dark hair in a high tail | **d** |
 | `?drawCut=` | the Sheathed's draw (ADR-145) | - | one white line | the line and an afterimage of him where he stood | - | **a** |
+| `?sheathArt=` | Lu Wusheng's print (ADR-151; read when his rig is built) | the wyrm's digits (`toDragonLook`, as he shipped) | the hero's ink-line art, lifted to read on the grove's floor | - | - | **a** (the owner's pick, 2026-11-22) |
+| `?sheathTone=` | the Wanderer's palette in the ink-line art (ADR-151) | - | indigo and sand: a faded indigo robe, charcoal trousers, a sand scarf | pale and cold: a bone-white robe, slate trousers, a blue-grey scarf | moss and rust: a moss-green robe, dark brown trousers, a rust scarf | not picked yet (a drawn) |
+| `?sheathMark=` | a mark of his own (ADR-151; the Wanderer only) | none | a long torn strip of unbleached cloth tied below the scabbard's mouth: it trails when he moves, snaps on the draw | a white streak from the left temple through the high tail | - | not picked yet (a drawn) |
 
 How a look is chosen (`lookOf(name, def, pick)`): a look forced live by `setLook` (the Lab, the tests,
 the film rig); else the URL's own parameter (`?sky=b`); else, under **`?looks=old`**, `0` for every
@@ -1245,9 +1248,22 @@ art path at 720p he is still about 12 letter rows; b survives it by its colour, 
   earth (sector slabs in six rings), a stele, two stone lanterns, mossy boulders, a ruined pavilion (posts
   and a fallen thatch roof). Night: a cold low moon, pale green-grey fog; the default fireflies, mist and
   leaves. `?grove=b` grey dawn fog, `c` first snow.
-- **His figure** goes through the wyrm's art path (`toDragonLook` with `SHEATH_ART[look]`); his sword stays on
-  today's material. Mourning White (a) is the recommended body: the black lacquer scabbard (`trim`) the
-  darkest thing on him, its throat and butt cap pale (`facing`), the bare blade pale steel (`armor`, `bevel`).
+- **His figure** is printed in the hero's ink-line art (ADR-151, `?sheathArt=a`, the owner's pick: the way
+  the hero and Shen Hui are drawn; `?sheathArt=0` keeps the wyrm's digits he shipped in, `toDragonLook` with
+  `SHEATH_ART[look]`). The Wanderer (body d) takes his palette from `sheathed/look.js` `SHEATH_TONE`
+  (`?sheathTone=a|b|c`) and a lift (`SHEATH_LIFT`: the screen-left rim × 3, the scarf and the mark × 3.6): his
+  fills sit about twice the prototype's, which printed him as dark as the grove's floor. Measured at
+  1280 x 720 (the mean luma of his pixels / the floor behind him): 31.9 / 16.2 (the hero 24.4 / 20.1, the
+  prototype 22.2 / 16.3); on the phone camera 46.7 / 16.4. His hair is printed on the `shirt` part, not
+  `hair` (whose ink lines are the hero's gold: a gold line round dark hair read as light hair at 30 m). The
+  black lacquer scabbard (`trim`, 0.025) stays the darkest fill on him, the drawn blade the brightest
+  pixels (`armor`, `bevel`; mean luma 105 against his figure's 32). The silhouette, sharpened for the
+  ink-line art, where the outline is what reads: a robe that falls loose to mid-thigh over the wide pleated
+  trousers, open at both sides (`ROBE_TAILS`), never a short top tucked into them; a long high tail with a
+  pale tie; the scarf's turns deeper and its ends wider, its tails close down his back when he is still;
+  pale bindings at the wrists as at the shins. His mark (`?sheathMark=`): a: a torn strip of unbleached cloth
+  (`piping`) tied below the scabbard's mouth, on springs on both scabbard pieces, snapped by the draw; b: a
+  white streak (`facing`) from the left temple through the tail.
 - **The draw in the fire field** (`SheathFx`): the stillness is a pinpoint of pale steel at the scabbard's
   mouth growing into a short thread (white, not a colour); the click is the blue FLARE at the mouth; the cut
   is ONE white-hot inked line (`_ink`, heat 1.8 cooling to 0.3 over 0.5 s) from the mouth to the blade's end
