@@ -4635,3 +4635,34 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   note; one line in ROADMAP M2.
 - **Consequences:** the fight is built and tuned with a / a / a; a pick changes only colours, the gear and
   the set's light.
+
+## ADR-164 — Halcyon's cape and colours read at game size: `?halCape=0|1|2|3` (2026-11-23)
+
+- **Context:** the owner asked to "fix the look": at true size (he is ~40 px tall at 1280 x 720) the sheets
+  did not read as a blue suit, a big red cape and a gold belt. Measured (pixels round him at 1280 x 720 that
+  print red / blue / gold, look a): facing the camera 24 / 494 / 0, side-on 115 / 432 / 2, from behind
+  199 / 164 / 0, in a pass 332 / 603 / 2. Three causes, all confirmed: facing the camera (most of the
+  fight) the cape hung hidden behind his body and the two outer sheets were edge-on; what showed of it was
+  its inside, the `lining` part, which prints dim (a 0.24 fill read near black); the cool moonlit rim
+  (`uArtRim` x3 on the cape) and the cloth parts' lavender ink turned its red pink; the gold `trim` part's
+  white ink lines printed the 5 cm belt cream, under one letter.
+- **Decision:** one switch of graded steps of one idea (the wyrm lesson: steps, not redraws), read when his
+  rig is built: 0 as he was built; 1 the colours (`look.js` HAL_BRIGHT: the cape a clean red inside and
+  out, its lining lit past 1 because that part prints dim, no moonlit rim on the red, a brighter blue suit,
+  a gold drawn in the `hair` part whose ink lines are gold, and bigger: belt, buckle, clasps, cuffs, boot
+  tops; b navy and gold with the cape's gold lining lit, c black and chrome with a crimson cape); 2 + the
+  shape (`gear.js` CAPE_SHAPE: the same five sheets wider, spread off the shoulders' tops so the cape shows
+  past his arms on both sides and frames him from the front, longer, flaring a little more); 3 + it never
+  hangs still: a new optional streamer field `breeze` ([extra out, rate], `player/anim.js`: a slow swell
+  of the flare while the wearer is near still, gone by 4 m/s; no other streamer has it) and a longer
+  trail in a pass (`lag` 0.95, `max` 1.7). Default 3 (`HAL_CAPE_STEP`), recommended: it is the only step
+  where the cape reads from every side at true size, also on the phone; in `PENDING` and the Lab's LOOKS
+  rows, not in `PICKED`. No emblem, letter or symbol; the hero's ink-line art throughout.
+- **Consequences:** after (step 3, look a): facing the camera 237 / 463 / 23, side-on 339 / 415 / 37, from
+  behind 1262 / 163 / 0, in a pass 368 / 993 / 12; b's gold lining 244 gold pixels facing the camera, c
+  black and chrome against a crimson cape: three figures. No new object on his rig (the same five sheets,
+  joints and meshes; the gold moved part, not count), so the seeded fights did not move (`city pace`,
+  `win` green before the whole suite). Not changed: his eyes' beam (`glare`), the fight's data. The sheets:
+  `docs/looks/halcyon/halCape.png` and the three `halLook_*` re-rendered with step 3 (the old ones kept as
+  `halLook_*_before`). Not solved: the cloth parts' lavender ink still tints the lining's lines pink at a
+  grazing angle (the per-part ink is shared by every rig on the page).

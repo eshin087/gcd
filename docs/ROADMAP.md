@@ -191,7 +191,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
       Fly-By, Curbside, Through the Tower, Blink of an Eye, Applause, See the World, Meteor, The Falling
       Sky, Monument, the moments; `?halLook=a|b|c`, `?glare=a|b|c`
 - [x] Lab, Training, `tests/integration/city.mjs`; the look sheets in `docs/looks/halcyon/`
-- [ ] The owner's picks from the sheets: his body, his eyes' heat, the city's light
+- [x] His cape and colours read at game size: `?halCape=0|1|2|3` (ADR-164; default 3), `halCape.png`
+- [ ] The owner's picks from the sheets: his body, his cape step, his eyes' heat, the city's light
 - [ ] Cut, for later: Last Word (and its beam clash), the hydrants' spouts, his own SFX, his own score
 - [ ] A human playtest on the phone (the frame rate on the device is not measured)
 ## M1.63 — The grove's bamboo sliced in one stroke, in clumps (2026-11-22, `world/bamboo-slice`, ADR-151)

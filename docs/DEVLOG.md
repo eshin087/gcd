@@ -5,6 +5,34 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-23 — Session 79b: Halcyon's cape and colours read at game size (`?halCape=`, ADR-164)
+
+**What changed.** The owner looked at the sheets and said "Yes, fix the look": at true size (~40 px tall at
+1280 x 720) Halcyon did not read as a blue suit, a big red cape and a gold belt. Measured first (pixels
+round him that print red / blue / gold, look a, facing the camera): 24 / 494 / 0. Causes: from the front the
+cape hung hidden behind him, its outer sheets edge-on, and what showed was its inside, the `lining` part,
+which prints near black at a 0.24 fill; the moonlit rim (x3) and the cloth parts' lavender ink turned the
+red pink; the gold's white ink lines printed a 5 cm belt cream. Now `?halCape=0|1|2|3`, graded steps of one
+idea: 1 the colours (the lining lit past 1, no rim on the red, a brighter blue, the gold drawn in the `hair`
+part with its gold lines, and bigger), 2 the cape wider and spread off the shoulders' tops so it frames him
+from the front, 3 a billow while he hovers (a new optional streamer field, `breeze`, in `player/anim.js`)
+and a longer trail in a pass. Default 3. b: navy and gold with the cape's gold lining lit; c: black and
+chrome, a crimson cape.
+
+**Why.** It is the only step where the cape reads from every side at true size, the phone included; the
+same five sheets and meshes, so no seeded fight moved.
+
+**Verified.** After (step 3, a): camera 237 / 463 / 23, side 339 / 415 / 37, behind 1262 / 163 / 0, pass
+368 / 993 / 12 (before: 24 / 494 / 0, 115 / 432 / 2, 199 / 164 / 0, 332 / 603 / 2). `city.mjs` pace, win and
+looks (each step builds five sheets, the same 90 meshes) green; the whole `npm test` and `npm run build`
+(see the PR). Headless Edge at 1280 x 720 and the phone preset (852 x 393, touch): `docs/looks/halcyon/halCape.png`,
+the `halLook_*` sheets re-rendered with step 3 (the old ones kept as `halLook_*_before`).
+
+**Open / next.** The owner picks a step (and still `halLook`, `glare`, `city`). The lining's ink lines still
+tint pink at a grazing angle (the per-part ink is shared by every rig). The beam was not touched.
+
+---
+
 ## 2026-11-22 — Session 79: a seventh level, Halcyon Plaza and Halcyon, the Last Saviour (planned in its own chat, built by one Opus agent)
 
 **What changed.** The owner asked for an evil caped strongman from the future, two well-known characters named as the reference
