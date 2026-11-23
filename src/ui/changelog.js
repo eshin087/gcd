@@ -18,6 +18,17 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-23',
+        title: 'The living world',
+        notes: [
+          'The levels can now be alive before the fight: wind crosses the grass in gusts you can see, leaves and ash fall and lie, banners and paper charms stream, mist and drizzle pass, birds lift off as you run near.',
+          'Your footsteps answer the ground: prints in the ash, trodden grass, a different sound on stone, earth and grass.',
+          'Each level has its own weather and its own air. The Windless Grove is dead still. The Obsidian Throne only breathes.',
+          'It all steps back once the boss is up, and a roar sends a gust across the whole arena.',
+          'It is switched off for now while its strength is being chosen. To try it, add ?life=all to the address.',
+        ],
+      },
+      {
         date: '2026-11-22',
         title: "The grove's bamboo falls to every stroke",
         notes: [
