@@ -1,10 +1,10 @@
 import { lookOf } from '../duelist/lookSwitch.js';
 import { isDragonLook, setFill } from '../ashDisciple/bodyArt.js';
-import { FOX_INK, DAO_INK } from './bodyArt.js';
+import { FOX_INK } from './bodyArt.js';
 
 // Wen Yao's look options (duelist/lookSwitch.js; never in PICKED: the owner picks from the sheets):
-//   ?foxLook=a|b|c|d   a the Shrine Fox (the fight is built with it), b the Charm-Bearer, c the Fox
-//                      Captain, d outfit a in the ink-line art the other human bosses ship in. Read when
+//   ?foxLook=a|b|c|d   a the Shrine Fox (the fight is built with it), b the Wild Fox, c the Pelt
+//                      Brawler, d outfit a in the ink-line art the other human bosses ship in. Read when
 //                      a rig is built (gear.js); a, b and c are drawn through the wyrm's art path
 //                      (bodyArt.js FOX_ART), d through the hero's (bodyArt.js FOX_INK).
 //   ?foxfire=a|b|c     the foxfire's colour (fx.js): a jade, b the wyrm's orange, c moon-white
@@ -25,7 +25,7 @@ export function foxLookNow() {
 const PAPER = [0.62, 0.6, 0.55];
 /** How far toward it (the share of PAPER in each part's colour), and the floor of light the art path
  *  gives the paler self everywhere (uWLight.w: the shadowed side of a sheet of paper is not black). */
-export const PALE = { mix: 0.3, floor: 0.08, steel: 0.6 };
+export const PALE = { mix: 0.3, floor: 0.08 };
 
 const mixTo = (c, t) => [c[0] + (PAPER[0] - c[0]) * t, c[1] + (PAPER[1] - c[1]) * t, c[2] + (PAPER[2] - c[2]) * t];
 const rgbOf = (m) => {
@@ -36,24 +36,16 @@ const rgbOf = (m) => {
 /**
  * His colours on a rig's own material instances, once after the rig is built (the class's _tint for
  * him, _tintSelf for each paper self). The art path's colours are its sources' inks (bodyArt.js
- * FOX_ART, set when the rig was converted): nothing to write but the dao's ink-line fills. Option d
- * writes the ink-line fills. `pale` (?clones=b): every part a step toward paper and a little light
- * in its shadows, the dao duller; the tones keep their order (the mask still the brightest), so the
+ * FOX_ART, set when the rig was converted): nothing to write. Option d writes the ink-line fills. `pale` (?clones=b): every part a step toward paper and a little light
+ * in its shadows; the tones keep their order (the mask still the brightest), so the
  * self reads as a paler copy of him, not as someone else.
  */
 export function tintFox(M, { pale = false } = {}) {
   if (!M) return;
   const art = isDragonLook(M);
   if (!art) for (const k in FOX_INK) setFill(M[k], ...FOX_INK[k]);
-  // the dao (today's material on every option)
-  const sk = pale ? PALE.steel : 1;
-  for (const k in DAO_INK) {
-    const c = DAO_INK[k];
-    M[k]?.uniforms?.uArtFill?.value.setRGB(c[0] * sk, c[1] * sk, c[2] * sk);
-  }
   if (!pale) return;
   for (const k in M) {
-    if (k in DAO_INK) continue;
     const m = M[k], c = rgbOf(m);
     if (!c) continue;
     setFill(m, ...mixTo(c, PALE.mix));
