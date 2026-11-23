@@ -1150,10 +1150,11 @@ async function scenarioTraining() {
 
 // ================================================================== scenario: looks
 async function scenarioLooks() {
-  out('\n== scenario LOOKS (each ?halLook= / ?halCape= / ?glare= / ?city= builds; only ?halCape= is in PICKED) ==');
+  out('\n== scenario LOOKS (each ?halLook= / ?halCape= / ?glare= / ?city= builds; ?halLook= and ?halCape= are in PICKED) ==');
   const LS = await imp('src/entities/enemies/duelist/lookSwitch.js');
   const PICK = LS.PICKED ?? {};
-  assert(!('halLook' in PICK) && !('glare' in PICK) && !('city' in PICK) && ['halLook', 'glare', 'city'].every((k) => LS.PENDING.includes(k)), 'his switches wait for the owner (PENDING, not PICKED)');
+  assert(PICK.halLook === 'a' && !LS.PENDING.includes('halLook'), '?halLook= is the owner\'s pick, a (PICKED, not PENDING; 2026-11-23)');
+  assert(!('glare' in PICK) && !('city' in PICK) && ['glare', 'city'].every((k) => LS.PENDING.includes(k)), 'his eyes\' heat and the city wait for the owner (PENDING, not PICKED)');
   const { isDragonLook } = await imp('src/entities/enemies/ashDisciple/bodyArt.js');
   for (const v of ['a', 'b', 'c']) {
     LS.setLook('halLook', v);
