@@ -623,6 +623,12 @@ export class Weather {
       const up = this._range(E.upwind), side = mid + (this._fr() - 0.5) * 2 * E.band;
       const x = f.x - dx * up - dz * side, z = f.z - 3 - dz * up + dx * side;
       const w = this._air(x, z, E.carry, E.drift);
+      // (a squall carries them across the whole yard: never slower than `min` along the wind)
+      const ws = Math.hypot(w.x, w.z);
+      if (E.min && ws < E.min) {
+        w.x = ws > 1e-3 ? (w.x / ws) * E.min : dx * E.min;
+        w.z = ws > 1e-3 ? (w.z / ws) * E.min : dz * E.min;
+      }
       const q = this._resetRec();
       q.x = x; q.y = this._range(E.y); q.z = z;
       q.vx = w.x * (0.75 + 0.5 * this._fr()); q.vz = w.z * (0.75 + 0.5 * this._fr());
@@ -660,7 +666,7 @@ export class Weather {
       if (perMin > 0.05) for (const o of this._devils) if (!o.on) { d = o; break; }
       if (d) {
         const life = this._range(D.life, this._dr), K = D.keepOut;
-        for (let tries = 0; tries < 6; tries++) {
+        for (let tries = 0; tries < (D.tries ?? 6); tries++) {
           const up = this._range(D.upwind, this._dr), side = (D.south ?? 0) + (this._dr() - 0.5) * 2 * D.across;
           const x0 = f.x - dx * up - dz * side, z0 = f.z - dz * up + dx * side;
           // its whole path must stay off the ring (and its kerb)
@@ -668,6 +674,8 @@ export class Weather {
           for (let s = 0; s <= 10 && ok; s++) {
             const t = (s / 10) * life, x = x0 + dx * sp * t, z = z0 + dz * sp * t;
             if (Math.abs(x) < K && Math.abs(z) < K) ok = false;
+            // (and it never crosses the hero: it would hide him)
+            else if (Math.hypot(x - f.x, z - f.z) < (D.heroGap ?? 0)) ok = false;
           }
           if (!ok) continue;
           d.on = true; d.x = x0; d.z = z0; d.vx = dx * sp; d.vz = dz * sp; d.age = 0; d.life = life; d.acc = 0;
