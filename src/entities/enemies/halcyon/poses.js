@@ -1,0 +1,71 @@
+import { DIM } from '../../player/model.js';
+import { P, to3 } from '../../player/anim.js';
+import { createDuelPoses } from '../duelist/poses.js';
+import { GUARDS } from '../ascendant/poses.js';
+
+// Halcyon's stance and the pose functions built round it (duelist/poses.js: the clip format). He fights
+// bare-handed (Tian Lei's way: the hands keyed, the engine's blade channel only turns the right fist)
+// and he never stands: between his moves he HOVERS (flight.js holds his root at TUNING.fly.hover). His
+// footwork pose is not a gait: the legs hang, one knee drawn up, the toes pointed down; he leans into
+// the way he glides and the cape streams; in phase 1 the arms are folded (contempt), from phase 2 the
+// fists are down and open (pilot.armsK, flight.js).
+
+const ANK = DIM.ankle;
+
+/** His guard: upright, chin up, the fists low (the clips start from and return to it). */
+export const GUARD = Object.freeze({
+  ...GUARDS[2],
+  bY: -0.02, pitch: -0.04, yaw: -0.12, hdX: -0.06, hdY: 0.1,
+  rH: [-0.04, -0.42, 0.12], rP: [-0.9, -0.3, -0.3], lH: [0.04, -0.4, 0.14], lP: [0.9, -0.3, -0.3],
+  rF: [-0.12, ANK, -0.04], lF: [0.13, ANK, 0.06],
+});
+
+const K = createDuelPoses(GUARD, { breath: { k: 0.8, period: 3.6 } });
+export const { duelStance, compileClip, completeBeat, evalClip, duelClip } = K;
+
+/** The arms folded across the chest (phase 1's footwork, the wait). */
+export const FOLDED = Object.freeze({ rH: [0.2, -0.12, 0.17], rP: [-0.9, -0.3, -0.4], lH: [-0.2, -0.08, 0.19], lP: [0.9, -0.3, -0.4] });
+
+/**
+ * The hover (his footwork): the duelist's footwork pose for the body, then the legs hung under him (one
+ * knee drawn up), a lean into the glide (A.player.groundVel in his own axes) and the arms folded by
+ * A.player.armsK (1 phase 1, 0 later).
+ */
+export function hoverLoco(p, A) {
+  K.duelLoco(p, A);
+  const pl = A.player ?? {};
+  const t = A.time ?? 0;
+  // the legs: the right knee drawn up, the left hanging straight, the toes pointed
+  to3(p, P.rF, -0.1, ANK + 0.34, 0.12, 1);
+  to3(p, P.lF, 0.12, ANK - 0.02 + 0.02 * Math.sin(t * 1.3), -0.06, 1);
+  to3(p, P.rK, -0.1, 0.4, 1, 1);
+  to3(p, P.lK, 0.1, 0, 1, 1);
+  p[P.footFlat] = 0.2;
+  p[P.rFy] = -0.12;
+  p[P.lFy] = 0.1;
+  // the lean into the glide: forward / back and to the side, from his velocity in his own axes
+  const v = pl.groundVel ?? { x: 0, z: 0 }, yaw = pl.yaw ?? 0;
+  const fwd = v.x * Math.sin(yaw) + v.z * Math.cos(yaw), side = v.x * Math.cos(yaw) - v.z * Math.sin(yaw);
+  const k = Math.min(1, Math.hypot(fwd, side) / 10);
+  p[P.pitch] += Math.max(-0.25, Math.min(0.45, fwd * 0.045)) * (0.4 + 0.6 * k);
+  p[P.roll] += Math.max(-0.3, Math.min(0.3, -side * 0.03));
+  p[P.bodyY] = -0.02;
+  // the arms folded (phase 1), or down and open
+  const f = Math.max(0, Math.min(1, pl.armsK ?? 1));
+  if (f > 0) {
+    to3(p, P.rH, ...FOLDED.rH, f);
+    to3(p, P.rP, ...FOLDED.rP, f);
+    to3(p, P.lH, ...FOLDED.lH, f);
+    to3(p, P.lP, ...FOLDED.lP, f);
+  }
+  // a fast glide: the arms swept back along the body (the flier's line)
+  const g = Math.max(0, Math.min(1, (Math.abs(fwd) - 6) / 6)) * (1 - f * 0.5);
+  if (g > 0) {
+    to3(p, P.rH, -0.1, -0.36, -0.3, g);
+    to3(p, P.lH, 0.1, -0.36, -0.3, g);
+    p[P.pitch] += 0.25 * g;
+  }
+}
+
+/** The pose table HeroAnimator takes for him. */
+export const HAL_POSES = Object.freeze({ loco: hoverLoco, duel: K.POSES.duel });
