@@ -1744,6 +1744,165 @@ async function scenarioBeamWorld() {
   assert(r2.top && r2.len > 26 && top1.state !== s1, 'the great beam reaches a butte past its 26 m and takes the top off');
   void floorBad;
 }
+
+
+
+
+/**
+ * INSTANT (the fourth wave): Instant Wave. The sign (two fingers to the brow), gone, BESIDE the hero ~4 m
+ * off to a side (never behind), both hands cupped at the hip with the light between the palms, one red
+ * cue >= 0.8 s after the arrival; standing it lands, a roll at the cue goes through it, a held guard pays
+ * no health. And the cupped-hands option (`?ascBeamPose=cup`) gives every beam the cup.
+ */
+async function scenarioInstant() {
+  out('\n== scenario INSTANT (Instant Wave: the sign, beside the hero, the cupped hands, a fair red cue; ?ascBeamPose=cup) ==');
+  const { BEAM_TUNING: BT } = await imp('src/entities/enemies/ascendant/tuningBeam.js');
+  const IN = BT.instant, lead = TUNING.flashLead;
+  const G = build();
+  duel(G, { dist: 9, form: 3 });
+  const { game, input } = G;
+  const d = game.dragon, p = game.player;
+  const v = new THREE.Vector3(), w = new THREE.Vector3();
+  /** One Instant Wave on a hero `dist` m off; `answer(info)` every frame. Samples the body through it. */
+  const play = (dist = 9, answer = null, god = false) => {
+    let snapT = null;
+    const sg = d.fx.signSnap;
+    const S = { snapT: null, arrive: null, x0: null, cupGap: 9, cupY: -9, chestY: 0, thrustFwd: -9, browMin: 9, bearing: null, sep: null, charge: 0, chargeBefore: 0 };
+    const bc = d.fx.beamCharge, cc = d.fx.cupCharge;
+    d.fx.beamCharge = (...a) => { if (snapT === null) S.chargeBefore++; return bc?.apply(d.fx, a); };
+    d.fx.cupCharge = (...a) => { if (snapT === null) S.chargeBefore++; else S.charge++; return cc?.apply(d.fx, a); };
+    d.fx.signSnap = (...a) => { snapT = game.time; return sg?.apply(d.fx, a); };
+    const r = beamPlay(G, 'instantWave', { dist, form: 3, god, max: 8, step: (I) => {
+      const a = d.brain.act;
+      if (S.x0 === null) S.x0 = { x: d.position.x, z: d.position.z };
+      if (a?.name === 'instantWave') {
+        const b = a.beats[0], u = (a.t - b.start) / (b.impact - b.start);
+        if (u > 0.2 && u < IN.signAt - 0.02) {
+          const h = d.tellPoint('fistR', v), hd = w.set(0, 0.16, 0.09).applyMatrix4(d.rig.head.matrixWorld);
+          S.browMin = Math.min(S.browMin, Math.hypot(h.x - hd.x, h.y - hd.y, h.z - hd.z));
+        }
+        if (snapT !== null && S.arrive === null) {
+          S.snapT = snapT;
+          S.arrive = { t: game.time, x: d.position.x, z: d.position.z };
+          S.sep = Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z);
+          const ang = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z) - p.yaw;
+          S.bearing = Math.atan2(Math.sin(ang), Math.cos(ang));
+        }
+        // the cup: both hands together, low (at the hip), between the arrival and the cock
+        if (u > IN.signAt + 0.25 && u < 0.88) {
+          const R = d.tellPoint('fistR', v), L = d.tellPoint('fistL', w), H = d._hs;
+          S.n = (S.n ?? 0) + 1;
+          S.gapSum = (S.gapSum ?? 0) + Math.hypot(R.x - L.x, R.y - L.y, R.z - L.z);
+          S.hipSum = (S.hipSum ?? 0) + (R.y + L.y) / 2 - H[2].y;
+          S.headSum = (S.headSum ?? 0) + H[0].y - (R.y + L.y) / 2;
+          S.cupGap = S.gapSum / S.n;
+          S.cupY = S.hipSum / S.n;
+          S.chestY = S.headSum / S.n;
+        }
+        // the thrust: both palms out ahead of him along his facing
+        if (u > 1.05 && u < 1.6) {
+          const M = d.tellPoint('palms', v), fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
+          S.thrustFwd = Math.max(S.thrustFwd, (M.x - d.position.x) * fx + (M.z - d.position.z) * fz);
+        }
+      }
+      answer?.(I, S);
+    } });
+    d.fx.signSnap = sg;
+    d.fx.beamCharge = bc;
+    d.fx.cupCharge = cc;
+    return { ...r, S };
+  };
+  const tFmt = (t) => (t === null || t === undefined ? '-' : `${(t * 1000).toFixed(0)} ms`);
+  // 1. standing: the sign, gone, beside him; one red cue at the cupped palms, >= 0.8 s after the arrival
+  const st = play(9);
+  const S = st.S, f0 = st.flashes[0], c0 = st.hits.find((h) => h.r !== RESULT.IGNORED);
+  assert(st.started && S.arrive && S.browMin < 0.2 && S.chargeBefore === 0 && S.charge > 20, `Instant Wave: the sign (the hand ${S.browMin.toFixed(2)} m off his brow), gone at the snap; no light gathers before he arrives, then the cupped hands' charge (${S.chargeBefore} / ${S.charge} frames)`);
+  assert(S.sep > IN.r - 0.8 && S.sep < IN.r + 0.8 && Math.abs(S.bearing) > 0.6 && Math.abs(S.bearing) < 2.0, `he arrives ${S.sep?.toFixed(2)} m from the hero, at his side (${S.bearing?.toFixed(2)} rad off his facing: not before, not behind)`);
+  assert(st.flashes.length === 1 && f0.tell === TELL.RED && f0.t - S.arrive.t >= 0.8 - lead - 1e-6, `one red cue (${st.flashes.length}), ${tFmt(f0?.t - S.arrive.t)} after the arrival`);
+  assert(c0 && c0.r === RESULT.HIT && c0.t - S.arrive.t >= 0.8 - 1e-6 && Math.abs(c0.t - f0.t - lead) < 0.09 && st.states.has('knockdown'), `standing, it lands ${tFmt(c0?.t - S.arrive.t)} after he arrived (>= 800), ${tFmt(c0?.t - f0?.t)} after its cue; knocked down`);
+  const palm = f0 ? Math.hypot(f0.x - S.arrive.x, f0.z - S.arrive.z) : 9;
+  assert(S.cupGap < 0.22 && Math.abs(S.cupY) < 0.25 && S.chestY > 0.5 && S.thrustFwd > 0.35 && palm < 1.3, `the cupped hands: ${S.cupGap.toFixed(2)} m apart, ${S.cupY.toFixed(2)} m off his hip's height (${S.chestY.toFixed(2)} m under his head); thrust ${S.thrustFwd.toFixed(2)} m out; the cue between the palms (${palm.toFixed(2)} m off his root)`);
+  // 2. a roll at the cue goes through it; a sprint off the line from the cue (reported)
+  const rl = play(9, (I) => { if (I.flashT !== null && !I.rolled && game.time >= I.flashT + lead - 0.18) { I.rolled = true; input.tap('Space'); } });
+  assert(!rl.hits.some((h) => h.r === RESULT.HIT), `a roll at the cue goes through it (${rl.hits.map((h) => h.r).join(' ') || 'untouched'})`);
+  const off = play(9, (I) => {
+    if (I.flashT === null) return;
+    const B = d.ki.beams.B, fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
+    // (away from the line he aims down, across it)
+    const ox = p.position.x - d.position.x, oz = p.position.z - d.position.z, sd = Math.sign(-ox * fz + oz * fx) || 1;
+    input.axis = { x: sd * -fz, y: -(sd * fx) };
+    input.hold('ShiftLeft');
+    void B;
+  });
+  out(`     a sprint off the line from the cue: ${off.hits.map((h) => `${h.r} @${tFmt(h.t - off.flashT)}`).join(' ') || 'clear'}`);
+  // 3. a held guard: blocked, no health
+  const bl = play(9, () => input.press(1));
+  const blh = bl.hits.filter((h) => h.r !== RESULT.IGNORED);
+  assert(blh[0]?.r === RESULT.BLOCKED && bl.lost === 0, `a held guard: ${blh[0]?.r}, ${bl.lost} HP lost`);
+  // 4. both sides of the hero, never behind; from near and far in its band
+  const sides = new Set(), bears = [];
+  for (const [dist, seed] of [[4, 1], [7, 2], [12, 3], [9, 4], [6, 5], [10, 6]]) {
+    Math.random = mulberry32(seed * 101);
+    const r = play(dist, null, true);
+    if (r.S.bearing !== null) { sides.add(Math.sign(r.S.bearing)); bears.push(r.S.bearing); }
+  }
+  assert(sides.size === 2 && bears.length === 6 && bears.every((b) => Math.abs(b) > 0.6 && Math.abs(b) < 2.0), `both of the hero's sides drawn, never behind or before him (${bears.map((b) => b.toFixed(2)).join(' ')})`);
+  assert(!G.payload.size, `no non-finite payloads (${[...G.payload].join(', ')})`);
+  // 5. the option: ?ascBeamPose=cup gives every beam the cupped hands (moves/kiBeam.js built under that
+  // URL); with no parameter today's palm thrust (Instant Wave alone cupped)
+  const LS = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const { X } = await imp('src/entities/enemies/ascendant/moves.js');
+  const beamsOf = (M) => Object.values(M).flatMap((m) => m.beats.flatMap((b) => (Array.isArray(b.pick) ? b.pick : [b]))).filter((b) => b.beam);
+  const today = beamsOf(MOVES ? Object.fromEntries(Object.entries(MOVES).filter(([, m]) => m.ki?.startsWith?.('beam'))) : {});
+  assert(today.length >= 6 && today.every((b) => !!b.beam.cup === (b.beam.kind === 'instant')), `no parameter: the beams as shipped (${today.filter((b) => b.beam.cup).length} cupped: Instant Wave's)`);
+  LS.readLookUrl('?ascBeamPose=cup');
+  try {
+    const mod = await import(pathToFileURL(`${ROOT}/src/entities/enemies/ascendant/moves/kiBeam.js`).href + '?cup');
+    const M = mod.beamMoves(X), cupped = beamsOf(M);
+    const gap = (k) => Math.hypot(k.rH[0] - 0.178 - (k.lH[0] + 0.178), k.rH[1] - k.lH[1], k.rH[2] - k.lH[2]);
+    const gathers = cupped.map((b) => b.keys.find(([u]) => u > 0.4 && u < 0.95)?.[1]).filter(Boolean);
+    assert(mod.BEAM_POSE === 'cup' && cupped.length === today.length && cupped.every((b) => b.beam.cup && b.part === 'palms') && M.heavenTide.clashPose !== MOVES.heavenTide.clashPose, `?ascBeamPose=cup: all ${cupped.length} beam beats cupped (the charge, the cue and the beam at the palms), the clash pose cupped too`);
+    assert(gathers.length === cupped.length && gathers.every((k) => gap(k) < 0.2), `... each gathered with the hands together (key gaps ${gathers.map((k) => gap(k).toFixed(2)).join(' ')} m)`);
+    for (const n of ['risingTide', 'tideSweep', 'twinTide', 'heavenTide']) {
+      const a = M[n].beats.map((b) => [b.windup, b.zone.r, b.zone.w, b.tell, b.damage].join()), o = MOVES[n].beats.map((b) => [b.windup, b.zone.r, b.zone.w, b.tell, b.damage].join());
+      if (a.join('|') !== o.join('|')) assert(false, `${n}: the same timings, zones, tells and damage under the cup`);
+    }
+  } finally {
+    LS.readLookUrl('');
+  }
+}
+
+/** ORBC (the fourth wave): Heaven's Lantern under `?ascOrb=c` (the great gathered sphere): the same
+ *  timings and answers as the shipped orb (the look is fx.js's, live; the arms' keys are build-time). */
+async function scenarioOrbC() {
+  out('\n== scenario ORBC (Heaven\'s Lantern as the great gathered sphere, ?ascOrb=c: same timings, same answers) ==');
+  const LS = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const LA = TUNING.shots.lantern;
+  LS.setLook('ascOrb', 'c');
+  try {
+    const G = build();
+    duel(G, { dist: 9, form: 2 });
+    const d = G.game.dragon, fire = G.game.fx.fire;
+    let peak = 0;
+    const peakStep = () => { peak = Math.max(peak, fire.count ?? fire.alive ?? 0); };
+    assert(d.fx.look('ascOrb') === 'c', `the orb drawn as option ${d.fx.look('ascOrb')}`);
+    const st = lanternPlay(G, { step: peakStep });
+    const c0 = st.hits.find((h) => h.r !== RESULT.IGNORED), f0 = st.flashes.filter((f) => f.attack === 'skyLantern');
+    assert(f0.length === 1 && f0[0].tell === TELL.BLUE && c0?.r === RESULT.HIT && Math.abs(c0.t - f0[0].t - TUNING.flashLead) < 0.09 && st.top >= LA.lift - 0.2, `stood in: one blue cue on the sphere, it lands ${c0 ? ((c0.t - f0[0]?.t) * 1000).toFixed(0) : '-'} ms after (${c0?.r})`);
+    const rl = lanternPlay(G, { answer: 'roll', step: peakStep });
+    assert(!rl.hits.some((h) => h.r === RESULT.HIT) && rl.d.lanternPassed === 1, `a roll: it passes (${rl.hits.map((h) => h.r).join(' ') || 'no contact'})`);
+    const bl = lanternPlay(G, { answer: 'block', step: peakStep });
+    assert(bl.hits[0]?.r === RESULT.BLOCKED && bl.lost === 0, `a held guard: ${bl.hits[0]?.r}, ${bl.lost} HP lost`);
+    const won = lanternPlay(G, { answer: 'perfect', mash: 4, step: peakStep });
+    assert(won.lock && won.d.pushWon === 1 && won.d.lanternReturns === 1, `THE PUSH won: it flies back into him (${won.dealt.toFixed(0)} damage)`);
+    const lost = lanternPlay(G, { answer: 'perfect', mash: 0, step: peakStep });
+    assert(lost.lock && lost.d.pushLost === 1, 'THE PUSH lost: it bursts on the hero');
+    out(`     the fire field's peak through these: ${peak} blobs (of 6000)`);
+    assert(peak < 3000 && !G.payload.size, `the sphere within the field's budget (${peak}), no non-finite payloads`);
+  } finally {
+    LS.setLook('ascOrb', null);
+  }
+}
 //
 // --- strings
 /**
@@ -2171,6 +2330,74 @@ async function scenarioRipostes() {
   }, () => d.mode === 'foot' && game.time > 0.5);
   const hits = G.hits.slice(h0).filter((h) => h.attack === 'riposteBolt');
   assert(back > TUNING.sign.hop * 0.8 && hits.length === 1 && hits[0].tell === TELL.BLUE, `riposteBolt: back ${back.toFixed(2)} m before the bolt, thrown from ${boltAt.toFixed(1)} m; it lands (${hits.map((h) => `${h.tell}:${h.r}`).join(' ')})`);
+}
+// --- body
+/**
+ * BODY (the look agent, BRIEF 4): the homage outfits `?ascLook=h | g | v` build and dress by form
+ * (hidden / shown pieces, the gold hair, teal eyes, the wristbands keep their colour), fight a few
+ * seconds without a NaN, and no switch leaves the default figure (a) changed.
+ */
+async function scenarioBody() {
+  out('\n== scenario BODY (the outfits behind ?ascLook=: h / g / v dressed by form; the default untouched) ==');
+  const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const { ascLookNow, HOMAGE_LOOKS } = await imp('src/entities/enemies/ascendant/look.js');
+  const visibleMeshes = (root) => {
+    let n = 0;
+    root.traverse((o) => {
+      if (!o.isMesh) return;
+      for (let p = o; p; p = p.parent) if (p.visible === false) return;
+      n++;
+    });
+    return n;
+  };
+  const fillOf = (m) => m?.uniforms?.uArtFill?.value.toArray().map((x) => +x.toFixed(3));
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const shape = (G) => {
+    const d = G.game.dragon, D = d.rig.root.userData.dress;
+    let m = 0;
+    d.rig.root.traverse((o) => { if (o.isMesh) m++; });
+    return { look: D?.look, meshes: m, switched: D?.at.length ?? 0 };
+  };
+  setLook('ascLook', null);
+  const base = shape(build());
+  assert(ascLookNow().id === 'h' && base.look === 'h', `no switch: the owner's pick, outfit h, the orange gi (${base.meshes} meshes, ${base.switched} switched by form)`);
+  setLook('ascLook', 'a');
+  const old = shape(build());
+  assert(old.look === 'a' && old.meshes > 0, `?ascLook=a: the tunic as it shipped before (${old.meshes} meshes, ${old.switched} switched by form)`);
+  setLook('ascLook', null);
+  assert(same(HOMAGE_LOOKS, ['h', 'g', 'v']), 'the homage options are h, g, v');
+  for (const o of HOMAGE_LOOKS) {
+    setLook('ascLook', o);
+    const G = build();
+    const d = G.game.dragon, M = d.rig.materials, D = d.rig.root.userData.dress;
+    const s = shape(G);
+    const rows = [];
+    const eye1 = fillOf(M.eye), hem1 = fillOf(M.hem);
+    let ok = s.look === o && ascLookNow().homage === true;
+    for (const f of [1, 2, 3]) {
+      if (d.phase !== f) d.debug.setForm(f);
+      run(G, 0.5);
+      const goldOn = D.at.filter((e) => (e.m.material === M.hair || e.m.material === M.hairTip) && e.m.visible).length;
+      const eye = fillOf(M.eye);
+      rows.push(`f${f}: ${visibleMeshes(d.rig.root)} visible, gold hair ${goldOn}`);
+      ok &&= D.phase === f && (f === 1 ? goldOn === 0 : goldOn > 0);
+      ok &&= same(fillOf(M.hem), hem1); // the wristbands / gloves keep their colour
+      ok &&= f === 1 ? same(eye, eye1) : eye[1] > 0.8 && eye[2] > 0.7; // teal from form 2
+    }
+    // back to form 1: the eyes given back, the form-1 pieces shown
+    d.debug.setForm(1);
+    run(G, 0.3);
+    ok &&= same(fillOf(M.eye), eye1) && D.at.every((e) => e.m.visible === (e.from <= 1 && e.to >= 1));
+    // g: the torn top (form 3) and the whole top and left sleeve (forms 1 - 2)
+    if (o === 'g') ok &&= D.at.some((e) => e.from === 3 && e.to === 3 && e.m.material === M.coat) && D.at.filter((e) => e.from === 1 && e.to === 2 && e.m.material === M.coat).length >= 2;
+    // a few seconds of his AI with the outfit on (no NaN: G.tick checks)
+    d.debug.setAI(true);
+    run(G, 4);
+    assert(ok, `?ascLook=${o}: ${s.meshes} meshes (${s.switched} switched by form); ${rows.join(' · ')}; eyes teal in forms 2 - 3, the bands keep their colour`);
+  }
+  setLook('ascLook', null);
+  const after = shape(build());
+  assert(after.look === 'h' && after.meshes === base.meshes && after.switched === base.switched, `switched back: the pick, outfit h, as before (${after.meshes} meshes)`);
 }
 //
 //
@@ -2851,12 +3078,16 @@ const S = {
   beams: scenarioBeams,
   clash: scenarioClash,
   beamworld: scenarioBeamWorld,
+  instant: scenarioInstant,
+  orbc: scenarioOrbC,
   // --- strings
   motion: scenarioMotion,
   strings: scenarioStrings,
   sign: scenarioSign,
   catch: scenarioCatch,
   ripostes: scenarioRipostes,
+  // --- body
+  body: scenarioBody,
   //
   //
   // --- terrain

@@ -5,6 +5,43 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-22 — Session 76: Tian Lei as a recognizable homage (the orange gi, the instant beam)
+
+**Owner:** "make the boss look as recognizable its the referenced character and use its signature moves
+that people will easily recognize ... ascii looking versions of these iconic characters with different
+names to avoid copyright issue and to show its a homage". Branch `enemies/ascendant-homage` (on PR
+#81's tip). ADR-150 / Session 76 / M1.60. The lead said once that a new name does not cover a
+character's design and the game is public; the owner's call.
+
+**How.** `BRIEF4.md` (the scratchpad), two Opus agents in their own worktrees: **look** (three bodies
+behind `?ascLook=`) and **moves** (the cupped-hands beam, the instant beam, the pale gathered sphere,
+wink names proposed). Every look an option; the owner picked from rendered sheets.
+
+**What changed.**
+- **The body: the orange gi** (`h`, the owner's pick): an orange gi over a blue undershirt, blue
+  wristbands, sash and boots, black spikes; gold spikes standing up in form 2, longer and sharper in
+  form 3; the eyes teal in forms 2 - 3. `g` (a purple gi; form 3 the swept-up gold hair with one lock
+  over the brow) and `v` (a blue bodysuit, white armour, a flame of hair) stay behind the switch with
+  `a` (the tunic, the old default), `c` and `d`.
+- **Instant Wave** (form 3, new, the default game): the sign, he is 4 m to the hero's side, both hands
+  cupped at his hip, a red point-blank beam 0.94 s after the arrival (12 x 1.6 m, lit 0.5 s, 24).
+- **Options, not picked yet:** `?ascBeamPose=cup` (every beam out of cupped hands at the hip) and
+  `?ascOrb=c` (Heaven's Lantern as a pale sphere as large as its hit, gathered arms straight up).
+
+**Verification.** `asc.mjs . all` green (the `body`, `instant`, `orbc` scenarios new); PACE over ten
+seeds F1 80.6 / F2 84.2 / F3 96.3 cues a minute (means), longest gaps 2.53 / 3.25 / 2.75 s, 0
+conflicts; `duel.mjs . fxlooks`; glyphcheck. Filmed at 1280 x 720 in the real level (sheets
+`look4-*`, `moves4-*` in the scratchpad's rig).
+
+**Not checked / open.** Nobody has played it. At the game camera the gi's colours carry the body; in
+forms 2 - 3 the gold hair melts into the gold aura (all bodies alike there). The cupped hands are a few
+letters at 40 px: the light at the hip is what reads. The sphere is near white (the field has no blue).
+The wink names (Crane Wave, Spirit Lantern, Instant Step ...) are proposed, not applied. Two sessions
+answered the lookalike request differently on 2026-11-22 (the Sheathed's declined it): the owner to say
+which line holds.
+
+---
+
 ## 2026-11-22 — CI: one run a change, a time limit, a read-only token
 
 **Owner**, after asking how the `test-and-build` check works and what it costs (the repo is private:

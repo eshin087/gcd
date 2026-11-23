@@ -21,6 +21,8 @@ const PURSUE = [
   // (the third wave: the sign, he is gone, and the blow from behind)
   far('signStep', [0, 0.4, 0.3]),
   far('threeSigns', f3(0.4)),
+  // (the fourth wave: the sign, and beside the hero a beam point blank)
+  far('instantWave', f3(0.3)),
   far('cometHeel', [0.3, 0.3, 0.3]),
   far('meteorStep', [0.5, 0.4, 0.35]),
   // (or he answers the distance from where he stands: a beam down the line, the floor torn up at him)
@@ -36,6 +38,7 @@ const PURSUE = [
   away('vanishStep', [0, 0.4, 0.4]),
   away('signStep', [0, 0.4, 0.3]),
   away('threeSigns', f3(0.4)),
+  away('instantWave', f3(0.3)),
   mid('tiger', [0.4, 0.35, 0]),
   mid('piercingPalm', [0.5, 0.35, 0.3]),
   mid('meteorStep', [0.35, 0.3, 0.3]),
@@ -93,6 +96,8 @@ export const LINKS = {
   risingTide: AFTER_BEAM,
   tideSweep: AFTER_BEAM,
   twinTide: AFTER_BEAM,
+  // (the fourth wave: Instant Wave ends point blank beside where the hero was: the chase as a beam's)
+  instantWave: AFTER_BEAM,
   // (the great beam ends in the clash, his reel or the hero thrown 12 m: no link; Thunder Gates and
   // Blast Dance are strings in reach: as his melee)
   thunderGates: melee(),

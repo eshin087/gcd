@@ -184,6 +184,15 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.60 — Tian Lei as a recognizable homage (2026-11-22, `enemies/ascendant-homage`, ADR-150)
+- [x] Three homage bodies behind `?ascLook=`; the owner picked the orange gi (`h`)
+- [x] Instant Wave (form 3): the sign, beside the hero, a cupped-hands beam
+- [x] Options: every beam out of cupped hands (`?ascBeamPose=cup`), the pale gathered sphere (`?ascOrb=c`)
+- [ ] The owner picks the beam pose and the orb
+- [ ] The wink names for his techniques (proposed: Crane Wave, Spirit Lantern, Instant Step ...)
+- [ ] The gold hair apart from the gold aura in forms 2 - 3 (an aura option)
+- [ ] One line for lookalike requests across sessions
+
 ## M1.59 — Bites: the letters come off where the blow lands (2026-11-21, `world/chip-where-hit`, ADR-132)
 - [x] Every breakable as bricks (its triangles; the halves of a flat face pair up), taken where a blow struck
 - [x] The share of structure a blow took = the share of the bricks under it; a blast eats the facing side
