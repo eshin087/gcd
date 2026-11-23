@@ -193,7 +193,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Lab, Training, `tests/integration/city.mjs`; the look sheets in `docs/looks/halcyon/`
 - [x] His cape and colours read at game size: `?halCape=0|1|2|3` (ADR-164; default 3), `halCape.png`
 - [x] The owner's picks of his body, cape and city: `halLook` a, the blue suit and red cape; `halCape` 3, billowing; `city` a, Neon Rain (2026-11-23)
-- [ ] The owner's pick from the sheets: his eyes' heat (`glare`)
+- [x] The owner's pick of his eyes' heat: `glare` a, crimson with a white-hot core (2026-11-23)
 - [ ] Cut, for later: Last Word (and its beam clash), the hydrants' spouts, his own SFX, his own score
 - [ ] A human playtest on the phone (the frame rate on the device is not measured)
 

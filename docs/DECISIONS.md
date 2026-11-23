@@ -4920,7 +4920,7 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   `halLook_*_before`). Not solved: the cloth parts' lavender ink still tints the lining's lines pink at a
   grazing angle (the per-part ink is shared by every rig on the page).
 - **The owner's picks (2026-11-23):** his body, `halLook` a (the deep blue suit and red cape), from the
-  `halLook_*` sheets drawn with step 3; the city, `city` a, Neon Rain, from `city.png`; and the cape, step 3,
-  "billowing", from `halCape.png`. `halLook: 'a'`, `city: 'a'`
-  and `halCape: '3'` moved from `PENDING` into `PICKED`; the defaults they already drew, so nothing visible
-  changed. ADR-161's `glare` still waits.
+  `halLook_*` sheets drawn with step 3; the city, `city` a, Neon Rain, from `city.png`; his eyes' heat,
+  `glare` a, crimson with a white-hot core, from `glare.png`; and the cape, step 3, "billowing", from
+  `halCape.png`. `halLook: 'a'`, `city: 'a'`, `glare: 'a'` and `halCape: '3'` moved from `PENDING` into
+  `PICKED`; the defaults they already drew, so nothing visible changed. None of his switches waits now.

@@ -29,10 +29,10 @@ looks (each step builds five sheets, the same 90 meshes) green; the whole `npm t
 the `halLook_*` sheets re-rendered with step 3 (the old ones kept as `halLook_*_before`).
 
 **The owner's picks (2026-11-23).** The cape, step 3, "billowing"; the body, `halLook` a (the deep blue
-suit and red cape); the city, `city` a, Neon Rain: `halCape: '3'`, `halLook: 'a'` and `city: 'a'` are in `lookSwitch` PICKED and out of PENDING (the
+suit and red cape); the city, `city` a, Neon Rain; his eyes' heat, `glare` a: `halCape: '3'`, `halLook: 'a'`, `city: 'a'` and `glare: 'a'` are in `lookSwitch` PICKED and out of PENDING (the
 defaults they already drew; nothing visible changes).
 
-**Open / next.** The owner still picks `glare`. The lining's ink lines still
+**Open / next.** Every look is picked. The lining's ink lines still
 tint pink at a grazing angle (the per-part ink is shared by every rig). The beam was not touched.
 
 ---
