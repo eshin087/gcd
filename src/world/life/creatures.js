@@ -31,6 +31,8 @@ const FIGHT = new Set(['bossIntro', 'boss']);
 const PERCHED = 'perched', FLYING = 'flying', AWAY = 'away';
 const TAU = Math.PI * 2;
 const NONE = Object.freeze([]);
+// (the game camera's view down: CONFIG.camera.pitch, 58 degrees; used when the camera is not there)
+const SIN_PITCH = Math.sin((58 * Math.PI) / 180), COS_PITCH = Math.cos((58 * Math.PI) / 180);
 
 export class Creatures {
   constructor(life) {
@@ -147,7 +149,9 @@ export class Creatures {
   /** The perches of a level: canopy or pillar tops of the set's breakables, picked once. */
   _perch(o, set) {
     const life = this.life, A = TUNE.alarm;
-    const B = o.kind === 'crow' ? TUNE.birds.crow : TUNE.birds.small;
+    const B0 = o.kind === 'crow' ? TUNE.birds.crow : TUNE.birds.small;
+    // (a level may dress its birds: `look` overrides the kind's numbers there)
+    const B = o.look ? Object.freeze({ ...B0, ...o.look }) : B0;
     const cand = [];
     for (const d of set.breakables ?? NONE) {
       if (!d || !o.kinds.includes(d.kind) || !Number.isFinite(d.x + d.z + d.h)) continue;
@@ -282,6 +286,21 @@ export class Creatures {
     }
   }
 
+  /** As _emit, moved `front` m toward the camera along its view of the point: the same place on screen,
+   *  but in front of the crown or pillar it sits on (the particles are depth-tested against the scene). */
+  _emitFront(pool, x, y, z, front, glyph, size, r, g, b, alpha, dt) {
+    if (!pool) return;
+    const cam = this.life.game?.camera?.position;
+    let dx = 0, dy = SIN_PITCH, dz = COS_PITCH;
+    if (cam && Number.isFinite(cam.x + cam.y + cam.z)) {
+      dx = cam.x - x; dy = cam.y - y; dz = cam.z - z;
+      const l = Math.hypot(dx, dy, dz) || 1;
+      dx /= l; dy /= l; dz /= l;
+    }
+    const f = front || 0;
+    this._emit(pool, x + dx * f, y + dy * f, z + dz * f, glyph, size, r, g, b, alpha, dt);
+  }
+
   _fireflies(dt, keep, pool) {
     if (!this.fireflies.length) return;
     const life = this.life, F = TUNE.firefly, O = this._ff, h = life.hero, k = life.k;
@@ -367,7 +386,7 @@ export class Creatures {
           }
         }
         if (b.state === PERCHED) {
-          if (pool) this._emit(pool, b.px, b.py, b.pz, this._g[b.crow ? 'crow' : 'small'].rest, B.size, B.restColor[0] * dim, B.restColor[1] * dim, B.restColor[2] * dim, B.restAlpha, dt);
+          if (pool) this._emitFront(pool, b.px, b.py, b.pz, B.front, this._g[b.crow ? 'crow' : 'small'].rest, B.size, B.restColor[0] * dim, B.restColor[1] * dim, B.restColor[2] * dim, B.restAlpha, dt);
           continue;
         }
       }
@@ -375,7 +394,7 @@ export class Creatures {
         b.t += dt;
         if (b.t < 0) {
           // (waiting its turn in the flock: still on the perch)
-          if (pool) this._emit(pool, b.px, b.py, b.pz, this._g[b.crow ? 'crow' : 'small'].rest, B.size, B.restColor[0], B.restColor[1], B.restColor[2], B.restAlpha, dt);
+          if (pool) this._emitFront(pool, b.px, b.py, b.pz, B.front, this._g[b.crow ? 'crow' : 'small'].rest, B.size, B.restColor[0], B.restColor[1], B.restColor[2], B.restAlpha, dt);
           continue;
         }
         // rising fast and away; the climb eases as it gets going
@@ -390,7 +409,7 @@ export class Creatures {
         if (!pool) continue;
         const gl = this._g[b.crow ? 'crow' : 'small'].wings[Math.floor(b.t * b.beat + b.p) & 1];
         const fade = Math.min(1, (B.flight - b.t) / 1.2);
-        this._emit(pool, b.x, b.y, b.z, gl, B.size, B.flyColor[0], B.flyColor[1], B.flyColor[2], B.flyAlpha * fade * dim, dt);
+        this._emitFront(pool, b.x, b.y, b.z, B.front, gl, B.flySize ?? B.size, B.flyColor[0], B.flyColor[1], B.flyColor[2], B.flyAlpha * fade * dim, dt);
         continue;
       }
       // away: back to its perch after a while, where the camera does not look; never in the fight
@@ -413,8 +432,11 @@ export class Creatures {
     let dx = b.px - cx, dz = b.pz - cz;
     const d = Math.hypot(dx, dz);
     if (d < 1e-3) { dx = b.px; dz = b.pz; }
-    // away from the cause, a little spread, and outward rather than over the clearing
-    const a = Math.atan2(dz, dx) + life.range(-0.5, 0.5);
+    // away from the cause and out of the arena (into the forest, off the ruins), a little spread: it
+    // leaves the frame up and away instead of crossing the ground the fight is read on
+    const rad = Math.hypot(b.px, b.pz) || 1;
+    const ux = dx / (Math.hypot(dx, dz) || 1) + B.out * (b.px / rad), uz = dz / (Math.hypot(dx, dz) || 1) + B.out * (b.pz / rad);
+    const a = Math.atan2(uz, ux) + life.range(-B.spread, B.spread);
     const s = life.range(B.speed[0], B.speed[1]) * life.k;
     b.vx = Math.cos(a) * s;
     b.vz = Math.sin(a) * s;
