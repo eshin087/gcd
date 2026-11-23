@@ -4149,6 +4149,84 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   (only the jars, `lift` 1). The jars', lanterns' and
   roof's break and burn use their materials' defaults. Option `c` uses 6 of the 13 builders; the
   others are kept for `a`, `b` and `m`.
+## ADR-149 — The weight of a landed cut: four pieces behind switches on one hit record, reactions drawn only, picks per kind of body (2026-11-22)
+
+- **Context:** the owner: "how can we make the games combat more impactful and feel weight? i want
+  the hits to look realistic where it lands and show some kind of ascii animation to show the impact.
+  think of ideas to suggest using fable and once we approve, use opus to implement it". A landed cut
+  already froze the frame, shook and punched the camera, kicked the picture along the blade, flared
+  the blade, drew a slash line with sparks (STYLE.md "A cut that lands") and shuddered a
+  duelist. Nine ideas were proposed (A a stamp, B a ripple, C wounds that stay, D a reaction by where
+  it lands, E a spray along the blade, F the ground answers, G the same care when the hero is hit,
+  H the sound's weight, I an impact frame); the owner: "Build first batch" (A, B, D, H).
+- **Decision:**
+  1. **Four pieces, each behind its own switch, on one shared core** (`combat/impact.js`): `IMPACT.on`
+     (read at the moment of each hit), `IMPACT.k` (strength), `impactK(piece, who)`; `?impact=off |
+     all | a comma list`, the Lab's 'impact' row. Each piece keeps its numbers in its own file. With
+     every piece off nothing is drawn, sounded or moved that was not before; each piece's scenario
+     checks that.
+  2. **One hit record at the drawn contact.** `PlayerFx.contact` builds `o` (tier, cut, edge, hilt,
+     crit, power, low, target) once and hands it to the stamp (`stampHit`) and the ripple
+     (`game.fx.ripple.hit`) before `cutBurst`, inside one try / catch. The reactions read the boss's
+     own `takeHit(o)` (point, cut, part, heavy, crit, swing); the thump reads `player:hitDragon`.
+     No new event.
+  3. **The stamp is written into the letter grid** in the fire field's `steel`, one blob per cell,
+     snapped to cell centres, stepped (each frame held 0.04 s of fx time), its cells inked on black,
+     never over the hero (STYLE.md "A cut that lands"). Not glyph sprites: the house rule.
+  4. **The ripple is a term of the ASCII pass** on boss cells only (the wyrm's art grid, the human
+     bosses' ink-line grid), fed by up to 4 world-space hits projected each frame with the final
+     camera (`Pipeline.setRipple`, uniforms `uRipN`, `uRipA/B/C`, `uRip`, `uRip2`). Contrast travels,
+     the average brightness does not rise (STYLE.md "Text effects").
+  5. **Reactions are drawn only.** A duelist's `hitReact` turns his joints after `_gameplayPoints()`
+     and is taken off before the animator runs; the wyrm's `react` goes on as the last line of
+     `_step` and comes off as its first. Hurt spheres, hit stun, shove, guard, AI, attack spheres and
+     every move's clock run on the plain body (tests: identical on and off). `dragon.drawnPoint(v)`
+     maps the wyrm's struck sphere to the drawn body, so the cut's effects land on what is seen.
+  6. **The thump** is a sub voice on the sfx bus and its own gain node on the music path
+     (`musicBus -> thumpDip -> musicDip -> mix`), so its dip multiplies with the timing flash's dip
+     and the pause duck instead of fighting them; never the cue bus.
+  7. **The owner's picks per kind of body** (`IMPACT.by`, on top of `k`), from same-take clips and the
+     lead's recommendation ("Your recommendation"): the stamp on the human bosses only (`by.stamp`
+     duelist 1, wyrm 0), over today's slash line; a human boss's reaction x1.5, the wyrm's x1
+     (`by.react`); the ripple and the thump at x1.
+- **Turned down or left:** the ripple's round 1 (a ring that re-rolled and lifted the letters, a small
+  shove along the cut) read only when two frames were diffed; it stays as the `subtle` preset, not
+  drawn. The stamp on the wyrm: a light cut showed 2 - 3 cells, the slam and the cleave almost none,
+  under its bright digits and the hero in front of the contact. `?stamp=instead` (the stamp in place
+  of the slash line) and `?stampInk=0` are kept as options. The thump's knock under the light chain's
+  sweep / point (`THUMP.knock`, 0). The second batch (C, E, F, G) and I were not built.
+- **Consequences:**
+  - *Today's effects hide the new pieces.* The white blade flare covers frames 0 to +4 of every hit
+    (the charged cleave's about 6 frames of the whole crop), the swing arc crosses the contact at
+    about +6 to +11, the slash streaks stack on the stamp's first frames, and the jolt, the camera
+    punch and the wyrm's flinch move the picture more than the reactions do. The owner accepted a
+    before / after with the flare and the arc toned down as the next step.
+  - *Calm at the contact* (the same PR, after that before / after): measured one effect off at a
+    time, the largest hiders are the struck boss's own white hurt flash (on the wyrm the whole
+    struck body goes white through the freeze) and the hero's steel lit by the strike (x(1 + 4.2)
+    on a light, x(1 + 4.6) heavy, held through the freeze); the hit's own flare and the cut's core
+    are negligible. `combat/impactCalm.js` scales those existing effects together in levels 0 - 3
+    (0 = as before), read at the hit; it draws the same random numbers at every level, never removes
+    the slash line, and leaves a missed swing, steel on steel and bloom alone. Three levels were
+    filmed same-take on the Ash Disciple and the wyrm; the lead recommended 2, the owner picked 1
+    (`CALM_DEFAULT`: blade steel x0.7 (the hit's own flare x0.6), the boss's white hurt flash x0.75, sparks / motes alpha x0.65, the cut's pooled light x0.5, its core alpha x0.6, the slash line alpha x0.9, the cleave's fan alpha x0.6, the swing arc alpha x0.5 only within 0.6 - 1.6 m of a fresh contact for the freeze + 0.12 s). The stamp still does not read on the wyrm at any level, so
+    `IMPACT.by.stamp.wyrm` stays 0.
+  - *The thump adds little on heavy blows*: they already carry almost all their energy below 100 Hz,
+    and the master compressor (threshold -14 dB, ratio 4) pulls the whole mix down 8 - 12 dB on each,
+    tells included. Measured on offline renders: +0.2 dB below 100 Hz on the slam, about 0 on the
+    cleave, +0.7 on the execution; +2 dB (cleave) / +4.5 dB (crit) of 160 - 400 Hz body, the part a
+    phone plays. Nobody has listened in the game.
+  - *The drawn wyrm and its hurt spheres part for a moment*: while a reaction is drawn the spheres
+    stay at their simulated places, up to about 1 m off the drawn body for 0.2 - 0.5 s; phase 3's
+    fire comes off the simulated points. Its legs are mostly out of reach (the body sphere is struck
+    first) and its head only when it is down, so the leg and head reactions are seldom seen.
+  - *The stamp's ink takes a tint slot*: it is one fire-field tint zone (id 800001) of the field's
+    2, shared with the tells' dyed flares; a flare and a stamp in the same frame compete, the older
+    zone gives way.
+  - At x1.5 a duelist's heavy thrust moves a drawn point 0.085 m between two frames once (the duel
+    scenario's bound, 0.06 m, is for x1; it pins strength 1). No piece makes a THREE object per hit
+    or draws from `Math.random`.
+
 
 ## ADR-132 — Bites: a piece is the bricks it is drawn with, and a blow takes them where it struck (2026-11-21)
 

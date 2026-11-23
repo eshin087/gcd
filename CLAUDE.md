@@ -38,7 +38,8 @@ Cinderwood); the title screen and the Lab pick one too. Kept for later use (ADR-
 `?wyrmFace=old` gives the wyrm the face it had before the drake (ADR-124), `skull|loong|demon` (ADR-120)
 and `tyrant|viper|revenant` (ADR-124) the heads the owner passed on. The owner's picks with the options turned down behind them: `?wyrmLook=0|a|b` (c: the
 wyrm's lean build; 0 = the wyrm before; ADR-123), `?zoomArt=a|c` (b: the letters
-follow the zoom) and `?ablaze=off|a|c` (b: the wyrm's phase 3 fire). Bites (a blow knocks the bricks, the letters, out of
+follow the zoom) and `?ablaze=off|a|c` (b: the wyrm's phase 3 fire). The impact pass's pieces (ADR-149): `?impact=off|all|stamp,ripple,react,thump` (default all; Lab: the 'impact' row), and
+`?calm=0..3` the light at the contact (default 1; 0 = as before; Lab: the row's `calm` button). Bites (a blow knocks the bricks, the letters, out of
 a piece where it struck, and the hero's blade stops on what it does not cut through) are on: `?chip=0`
 turns them off (ADR-132).
 The duelists' look switches (`?kindle=`, `?qi=`, `?ashLook=`, `?lordLook=`, `?floor=` ...; ADR-122): no
