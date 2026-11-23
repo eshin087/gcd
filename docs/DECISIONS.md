@@ -4567,3 +4567,58 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   up-to-date rule (two green PRs can still break `main` together) and free runners only.
 - **Consequences:** a run takes ~4 minutes (PR #92: 4 min 19 s); a PR shows six checks. The floor is
   the longest task (lord fxlooks ~230 s); re-measure `est` when a suite grows a lot.
+
+## ADR-151 — Wen Yao reworked: drawn like the hero, his selves only in packs out of the air, a big Pearl, the Nine-Tailed Fox's beam (2026-11-22)
+
+- **Context:** the owner played the Thousand-Body Fox (ADR-147) and asked, word for word: "its hard to see
+  the new boss character. make it look detailed like the main character so we can distinctly tell [whose homage
+  he is]. also make the moves more [like that hero's], like [his palm orb] and other signature moves. the
+  clones just randomly appearing as sponges is boring. i want them to like appear from the air and all
+  attack at the same time or in a fast sequence forcing the player to dodge or parry. make it also summon
+  the fox demon to do a ultimate beam that is scary and epic." Planned by Fable, built by Opus (a lead and
+  two agents: the body; the fox and its beam).
+- **Decision (the homage line does not move):** he stays an ORIGINAL in the spirit of a famous ninja-clone
+  hero (ADR-147). The homage goes through what nobody owns: a spiky-haired young fighter in a short bright
+  jacket with a long scarf, an orb driven in by the palm with a copy of himself shaping it, copies that drop
+  in and gang up, a nine-tailed fox of fire (folklore) firing a beam from its jaws. Kept out, in every look
+  option and every string: the orange jumpsuit with black or blue shoulders, a forehead plate, whisker
+  marks, any emblem, blond spiky hair (his crest is russet; its gold outline was moved off the hair parts
+  because it read as blond), hand seals, and every name from that series. The owner was told this once.
+- **Decision (he is hard to see):** he and his selves are drawn in the hero's INK-LINE art, not the wyrm's
+  art path: `?foxLook=h1` (a big russet crest with pale tips, a short open amber jacket, a long vermilion
+  scarf) the default, h2 and h3 rendered beside it, the art-path outfits kept behind the switch. His letters
+  follow his size on screen as the hero's do (`kit.letters`, `?foxLetters=b`): a small additive change to
+  the pipeline (`_letterCell`, `_updateBossLetters`) that leaves every boss without the flag drawn exactly
+  as before.
+- **Decision (the selves):** the ambient mode is gone (Scattered Leaves, the cutting token, stalking). A self
+  exists only inside a PACK, data on a move's beat (`pack: { n, mode, gap, form, blow, tell, from, ... }`):
+  `FoxClones.pack` books every body as it is called (its mark, the time it appears = its blow's impact minus
+  its windup, its impact) and tells every cue to the cue ledger up front, so the director and the fairness
+  guard see the whole pack before its first cue; the fairness guard may shift the pack as a whole, or refuse
+  it. A body appears in the air in a puff already attacking, strikes, and bursts. `together` is ONE cue and
+  ONE result (one parry bursts them all; a held guard pays one blow: defensive play is never punished);
+  `sequence` is n cues from n sides. Pack moves: Two Leaves Fall (phase 1: one pack move keeps the first
+  phase learnable), the Thousand-Body Round, A Thousand at Once, the Burial (replaces the springboard), the
+  Kite String, a harrying pack through the Pearl's charge whose strikers feed it. The pool grows 5 → 6.
+- **Decision (signature moves):** the palm Pearl is big (about 0.9 m) and unmistakable: pale blue-white
+  (`FIRE_PALETTES.pearl`), spiral arms, a drilling drive, a spiral burst, a quiet synth whirr; the Twin
+  Pearls (one red cue, two lines); the Moon-Swallowing Pearl giant and lifted by two selves; "It was a
+  copy" (his counter from phase 2, half the time: the struck body bursts as paper and he drops in behind
+  the hero, the same cue). Phase 3's fire is its own kind (`?foxFire3`, the wyrm's orange-red), apart from
+  the orb's colour. The Moon Wheel was cut (first in the plan's cut order).
+- **Decision (the ultimate):** Heaven-Devouring Howl. The Nine-Tailed Fox is a creature, so a BODY in the
+  wyrm's art path (CLAUDE.md), built in his constructor on a quiet Math.random (the seeded fights do not
+  shift), hidden until summoned, standing side-on to the camera with its head drawn large (a fox seen from
+  the front and above prints as a lump). The move is a flit and ONE red beat (`selfHit`, `sustain`: the
+  ledger holds the lit window as one interval): the line fixed at the cue; lit 2.4 s; a sweep toward the
+  hero's side, one way, so rolling back through it is safe; three ticks at most; a held guard pays guard,
+  never health, and slides; the world breaks along it; then he kneels open 2.2 s. From 12 s into phase 3,
+  32 s apart, forced once under 18 %. The camera holds the hero and the fox's head (`cameraRig.hold`: an
+  additive, inert-unless-called pull-back, since the cinematic is capped at 3 s and the phone's extra zoom
+  at 3 m).
+- **Consequences:** phase 3 asks fewer cues a minute than phase 2 (68 against 80; 28 % of them dodges): the
+  pressure meter is re-measured and says so. A full pack costs 9 draw calls a rig (73 → 118 with five out)
+  and about 1 ms of poses a frame in node; the Howl 9 draw calls and at most ~1500 of the fire field's 6000
+  blobs. Every look is behind a switch in `PENDING` for the owner's pick (`foxLook`, `foxLetters`,
+  `foxfire`, `foxFire3`, `foxSpirit`, `clones`). Not settled: the fox at the game camera reads only when you
+  look for it, and on the phone the Howl pulls the camera far back.
