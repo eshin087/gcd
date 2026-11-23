@@ -4,7 +4,21 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Seventy-eight pieces of work since 0.4.0:
+Seventy-nine pieces of work since 0.4.0:
+- **Combat sounds, round two: real steel on the parry, picked by ear** (2026-11-23, ADR-172). *Changed:* the owner compared 37 combat sounds on a picker
+  page (the original synth, what played then, two sounds designed from scratch and up to two CC0
+  recordings each, every sound placed in eleven scripted fight moments) and picked. Now recorded: the
+  parry (a Norse sword on a katana), the blue / perfect parry (a spear on a katana), getting hurt (a body
+  punch), two blades clashing (a sword meeting a katana), the slam (a distant boom), the plunge's dive and
+  landing (a slowed swoosh, a heavy punch). Designed for ABYSS: your cut landing on the wyrm (a scale clack),
+  the blade layer of a light and of a heavy cut (a dry slice, a deep cleaving bite), the flurry's flash cut
+  and coil (a razor flick, a held breath fitted to the coil), the boss holding your strike (a lacquered
+  wood guard). Back to the original synth: the blue warning, the hero's heavy cut and execution thrust.
+  Kept: block, guard break, dodge, Ghostep, roll, a cut on a human boss, the flurry burst, his deflect, the
+  red cues, the bosses' blows, the wyrm's sweeps. The deflect chain no longer climbs with a bell: three
+  heavier versions behind `?chain=a|b|c` (the Lab's chain row; the owner's pick pending, `a` by default).
+  Every new sound matches the loudness of the one it replaces (measured through the real engine);
+  `?sfx=old` still plays the originals. Credits: `assets/audio/CREDITS.md` "Combat sounds".
 - **Xin Yi reworked: drawn like the hero, kicks and flurries, a wall kick, bullets that never lock you** (2026-11-23, ADR-168 – ADR-170). *Changed:* Xin Yi, the One Who Woke, is printed
   like the hero: his letters follow his size on screen, a quieter edge that fades with distance, simpler
   glasses, collar and shirt, a coat that moves in every phase (`?oneLetters=a|0`, `?onePrint=a|b|0`, b one

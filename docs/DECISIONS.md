@@ -5229,3 +5229,23 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
 - **Consequences:** `woke.mjs herolike` (the cells on five screens, the quiet print's numbers, 0 = main's table,
   the coat inside its swing). Left: 3 - 6 cm of hanging cloth still meets the legs in strides (a shin push on
   the coat's lower segment would need `anim.js`); the clamp could move into `anim.js` as per-panel limits.
+
+## ADR-172 — Combat sounds, round two: the combat core picked by ear against the originals, sounds designed as well as found (2026-11-23)
+
+- **Context:** after ADR-165 (attack sounds), ~85 sounds were still the original synth. The owner wanted to
+  compare them with new options, hear when each plays, and be free to keep an original; they also allowed
+  sounds made for the game instead of only found ones.
+- **Decision:** a picker per round, one group at a time (this round: the combat core, 25 slots, plus last
+  round's 11 against their originals). The originals are rendered through the real engine (OfflineAudioContext
+  in headless Edge) so the comparison and every loudness match are true; each slot offers the original, two
+  sounds designed from scratch and up to two CC0 recordings; scripted moments timed from the tuning show when
+  each sound plays. Picks ship through the sample system of ADR-165 (`sampleList.js` slots, generated
+  `sampleFiles.js`, `build-sfx.py` with recorded and designed manifests; designed files are credited "made for
+  ABYSS"); the synth recipe stays the fallback and `?sfx=old` the way back. Each new sound is set to the
+  in-game loudness of the sound it replaces, measured through the engine. The deflect chain stops climbing in
+  pitch with a bell: it grows in weight (`parryChain.js`, three versions behind `?chain=`).
+- **Consequences:** a slot changes by a line in `scripts/audio/sfx-picks.json` and a rerun of `build-sfx.py`.
+  The next rounds (the wyrm, the boss specials, the world and menus) reuse the renderer, the designer and the
+  picker. The streak's climb note and the other parry uses (mikiri, counter, blade lock, the flare) still play
+  the old climbing parry: left for the owner's call.
+

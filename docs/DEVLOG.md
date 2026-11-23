@@ -5,6 +5,48 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-23 — Session 88: combat sounds, round two (planned by Fable, built by Opus agents, picked by ear)
+
+**Owner:** "what are the remaining original sounds left ... lets do a new round of selection. i want to make
+sure the sounds sound good, fits the moment ... you can also create your own sounds ... some of the original
+sounds were good and i might revert back to it, so give me a full comparison and also help me understand when
+the sound occurs during the picker." Of ~85 original synth sounds in seven groups they chose the combat core
+(37 slots, with last round's 11 for comparison) and a picker with both a "when" line per sound and scripted
+moments.
+
+**How.** Four agents: one rendered every slot's original and current sound through the REAL engine
+(headless Edge, an OfflineAudioContext swapped in for `unlock()`, the full master chain) and timed 11 fight
+moments from the tuning (a blue blow parried, a red one dodged, a string blocked, hit, guard broken, the
+combo, the slam, the flurry, the plunge, a deflect chain, a clash); one designed two candidates per slot by
+synthesis (modal steel, shaped noise, stick-slip scrapes; deterministic, `scripts-b/design.py`); one cut up
+to two CC0 recordings per slot from OpenGameArt (real sword-on-sword takes from StillNorthMedia's Weapon
+impacts for the steel); one built the picker (https://claude.ai/artifact/8Bpvu18GCoRcKTiesZHF8m: per sound the original, the
+current, d1 / d2, r1 / r2, none; a WHEN line; moments with a timeline and "with my picks" / "as now" /
+"original"; every option level-matched to the slot's in-game loudness).
+
+**Picks, built in** (`sampleList.js` slots, `build-sfx.py` with `--designed`, credits "Combat sounds"): see the
+CHANGELOG entry. Each new sound measured through the real engine within 0.25 dB of its target loudness. The
+plunge dive's loudest point lands on the landing (0.1475 s after the event; the landing at 0.146 s); the
+flurry coil starts `406 ms - dur` into its file so its top lands on the strike. A perfect parry is now the
+spear-on-katana take plus #100's perfect layer (the high crack and bell, kept as it was) and the streak note.
+
+**The deflect chain.** The owner rejected every option: "make it sound more serious and cool. current sounds
+like its for kids". The old chain climbed 2 semitones a parry with a bell. Three versions on the new parry
+(`audio/parryChain.js`, `?chain=a|b|c`, Lab row): a (weight: an octave shadow and a sub that grow, no climb),
+b (doubled strike, half a semitone a step), c (a low ring that lengthens). Put on the picker for the owner.
+
+**Found and left.** The streak's guqin climb note (#100) still rises under every parry; other parry uses
+(mikiri, counter, blade lock won, a boss deflected, the blue flare's timing ring, the flare counter) still
+play the old climbing synth parry with its bell; a flaring blue blow rings a parry at its timing cue and at
+the parry; the hero's combo swing pitch steps up, up, back down. Each is a small change if the owner wants it.
+
+**Tests.** integ / duel `sfx` extended (every event's slot, the synth fallback, `?sfx=old`, the chain
+switch). `npm test`: 21 of 21. No seeded check moved (new code draws only from the audio's own streams).
+
+**Next.** The owner's chain pick; their listen in a fight on the PR's preview (and the phone); the open items above.
+
+---
+
 ## 2026-11-23 — The life suite's phone check made deterministic (a flaky test, no game change)
 
 **Why.** `life.mjs core.phone` asserted per level "no more spawns on the phone (sum at quality 0.5 <= sum at 1
