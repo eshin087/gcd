@@ -8,6 +8,10 @@ import { AIR_TUNE, airRecipe } from './airTuning.js';
 // while it falls (life.weather.wet), a spell may colour it (the ember squall's hiss, the star's breath),
 // far thunder follows the dry lightning (life.weather.flash, when the weather has one), and the night
 // voices stop when the world holds its breath (life.hush) or the boss is up. No recorded samples.
+// What it reads of the weather (world/life/weather.js): `wet`, `name` ('squall' colours the ash's air
+// with embers; a spell's `read` field names a number to follow instead, the starless 'breath' reads
+// `weather.breath` 0..1), and `bolt` (0..1, the far lightning's flash against its brightest; `flash`
+// when a weather has no bolt) for the far thunder.
 // The recipes and every number: airTuning.js.
 //
 //   new Air(audio)                 built with the audio engine (audio.js `_build`, next to the old bed)
@@ -374,7 +378,8 @@ export class Air {
 
     // far thunder after the dry lightning (only where the weather says it flashed)
     if (this.thunderGain) {
-      const flash = weatherOn ? clamp(fin(weather.flash), 0, 1) : 0;
+      // (weather.bolt: the flash against its brightest, 0..1; weather.flash is the sky's own light, ~0.1)
+      const flash = weatherOn ? clamp(fin(weather.bolt ?? weather.flash), 0, 1) : 0;
       if (flash > 0.35 && this._flash <= 0.35 && now > this._thunderUntil + R.thunder.gap) this._thunder(now);
       this._flash = flash;
     }

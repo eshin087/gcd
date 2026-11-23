@@ -25,7 +25,7 @@ export default {
       const before = T.build(id, 'off');
       before.step(20);
       const off = before.counts();
-      const w = T.build(id, 'all');
+      const w = T.build(id, 'all', { feet: true });
       w.walk(2.5, -3);
       w.step(10);
       w.walk(-3, 1);
@@ -36,7 +36,10 @@ export default {
       const c = w.counts();
       const errs = Object.entries(w.life._errs).filter(([, n]) => n > 0).map(([k, n]) => `${k} x${n}`);
       T.assert(errs.length === 0, `${id}: no layer threw${errs.length ? ` (${errs.join(', ')})` : ''}`);
-      T.assert(c.random === 0, `${id}: the living world draws nothing from Math.random (${c.random} calls inside life.update / life.gust in 60 s)`);
+      T.assert(c.random === 0, `${id}: the living world draws nothing from Math.random (${c.random} calls inside life.update / life.gust / the feet in 60 s)`);
+      // (the prints' pool is made on the first print: none on grass and stone, so not on every level)
+      T.assert(c.pools >= 1, `${id}: the own pools were made inside the counted frames (${c.pools}: litter${w.life.steps.pool ? ', prints' : ''})`);
+      T.assert(Math.random === T.countingRandom, `${id}: Math.random is the test's own again after the pools were built`);
       T.assert(c.alpha - off.alpha <= BUDGET.alpha && c.add - off.add <= BUDGET.add && c.fire - off.fire <= BUDGET.fire && c.own <= BUDGET.own,
         `${id}: inside the budget: +${c.alpha - off.alpha} alpha (<= ${BUDGET.alpha}), +${c.add - off.add} add (<= ${BUDGET.add}), +${c.fire - off.fire} fire (<= ${BUDGET.fire}), ${c.own} own (<= ${BUDGET.own})`);
       T.assert(T.near(w.life.calm, 1, 0.02), `${id}: calm is 1 before the fight (${w.life.calm.toFixed(2)})`);

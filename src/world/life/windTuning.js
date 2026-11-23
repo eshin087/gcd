@@ -101,3 +101,7 @@ export const WIND_LULL = Object.freeze({ hold: 6, ease: 1.2 });
 
 /** a radial burst (life.gust): the ring's speed (radius per s), how long it lives, the air it pushes */
 export const WIND_BURST = Object.freeze({ life: 1.6, grow: 1.1, width: 0.45, air: 4 });
+
+/** life.hush (the world holds its breath): the prevailing speed falls by `speed` x hush, and no new
+ *  front is born while it holds (the fronts already crossing go on: a roar's is the blow itself) */
+export const WIND_HUSH = Object.freeze({ speed: 0.85 });

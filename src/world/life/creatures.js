@@ -30,6 +30,11 @@ import { gi } from '../../render/glyphs.js';
 const FIGHT = new Set(['bossIntro', 'boss']);
 const PERCHED = 'perched', FLYING = 'flying', AWAY = 'away';
 const TAU = Math.PI * 2;
+/** how much alarming gust wind.at() reported (its `alarm`; `k` from a wind without one) */
+const alarmAt = (w) => {
+  const a = w ? (w.alarm ?? w.k) : 0;
+  return Number.isFinite(a) ? a : 0;
+};
 const NONE = Object.freeze([]);
 // (the game camera's view down: CONFIG.camera.pitch, 58 degrees; used when the camera is not there)
 const SIN_PITCH = Math.sin((58 * Math.PI) / 180), COS_PITCH = Math.cos((58 * Math.PI) / 180);
@@ -380,7 +385,8 @@ export class Creatures {
         } else {
           const d = Math.hypot(h.x - b.px, h.z - b.pz);
           if (d < A.close || (run && d < A.r)) this._flock(b, h.x, h.z);
-          else if (A.gust < 1 && (life.wind?.at?.(b.px, b.pz, this._w)?.k ?? 0) > A.gust) {
+          // (a gust that alarms: wind.at's `alarm`, not a quiet front such as the arrival's)
+          else if (A.gust < 1 && alarmAt(life.wind?.at?.(b.px, b.pz, this._w)) > A.gust) {
             const w = this._w;
             this._flock(b, b.px - (w.x || 1), b.pz - (w.z || 0));
           }

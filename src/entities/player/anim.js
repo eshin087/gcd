@@ -2769,6 +2769,9 @@ const PAULDRON_FOLLOW = 0.35; // how much of the sword arm's swing the shoulder 
 const UPDRAFT_COAT = 0.3, UPDRAFT_STRIP = 0.35, UPDRAFT_HAIR = 0.12;
 // hair blow-back: rad per m/s of the tips' own along-ground speed (head axes): ~20° at the sprint
 const HAIR_DRAG = 0.06;
+/** the living world's wind on the locks: m/s of air → tip displacement (as HAIR_DRAG does his own speed) */
+const HAIR_WIND = 0.06;
+const _hw = new THREE.Vector3(), _hwRec = { x: 0, z: 0, k: 0, alarm: 0 };
 
 // hair cluster springs (rotation vector, head space)
 const HAIR_K = 170, HAIR_C = 13, HAIR_MAX = 0.4;
@@ -4707,6 +4710,15 @@ export class HeroAnimator {
     r.head.getWorldQuaternion(_q1);
     _qInv.copy(_q1).invert();
     _g.set(0, -1, 0).applyQuaternion(_qInv); // gravity in head space
+    // the living world's wind at the hero (world/life/wind.js), in head space: it blows the locks as his
+    // own motion does. With the piece off (or no living world) it is zero: today's hair exactly
+    _hw.set(0, 0, 0);
+    const life = this.player?.game?.world?.life;
+    const pp = this.player?.position;
+    if (pp && life?.on?.('wind')) {
+      const a = life.wind?.at?.(pp.x, pp.z, _hwRec);
+      if (a && Number.isFinite(a.x + a.z)) _hw.set(a.x * HAIR_WIND, 0, a.z * HAIR_WIND).applyQuaternion(_qInv);
+    }
     for (let i = 0; i < HAIR_CLUSTERS.length; i++) {
       const C = HAIR_CLUSTERS[i], S = this.hairState[i], j = r.hair[C.name];
       if (!j) continue;
@@ -4722,9 +4734,9 @@ export class HeroAnimator {
       _d.set(C.tip[0], C.tip[1], C.tip[2]).normalize();
       // desired tip displacement: against the motion + sag relative to upright. The along-ground
       // drag blows the locks back ~20° at the sprint (the sheet's), ~13° at the run
-      const wx = -_v.x * HAIR_DRAG + _g.x * 0.25;
-      const wy = -_v.y * 0.03 + (_g.y + 1) * 0.25 + UPDRAFT_HAIR * this.updraft;
-      const wz = -_v.z * HAIR_DRAG + _g.z * 0.25;
+      const wx = -_v.x * HAIR_DRAG + _g.x * 0.25 + _hw.x;
+      const wy = -_v.y * 0.03 + (_g.y + 1) * 0.25 + UPDRAFT_HAIR * this.updraft + _hw.y;
+      const wz = -_v.z * HAIR_DRAG + _g.z * 0.25 + _hw.z;
       // rotation vector moving the tip by w: d × w
       _axis.set(_d.y * wz - _d.z * wy, _d.z * wx - _d.x * wz, _d.x * wy - _d.y * wx);
       // a breeze through the locks (stronger standing still): two slow sways per cluster

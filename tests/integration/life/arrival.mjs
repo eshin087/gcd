@@ -151,21 +151,79 @@ export default {
     T.assert(!!lab, "the 'arrival (replay)' button is on the Lab's life row");
   },
 
-  /** A gust front crosses the level as the shot opens (the creatures are left alone); none in the Windless Grove. */
+  /** A gust front crosses the level as the shot opens, through the REAL wind (the creatures are left
+   *  alone: it is a quiet front, the birds on the tree line stay); none in the Windless Grove. */
   async front(T) {
     for (const id of T.LEVEL_IDS) {
       const { w, flow, A, tick } = await rig(T, id, 'arrival,wind,creatures');
+      const W = w.life.wind;
+      // (only the arrival's front: the level's own schedule is held back for this test)
+      W._next = 1e9;
       const fronts = [], startles = [];
-      w.life.wind.front = (o) => { fronts.push(o); };
-      w.life.creatures.startle = (...a) => { startles.push(a); return 0; };
+      const front = W.front.bind(W);
+      W.front = (o) => { fronts.push(o); return front(o); };
+      const startle = w.life.creatures.startle.bind(w.life.creatures);
+      w.life.creatures.startle = (...a) => { startles.push(a); return startle(...a); };
+      const perched = () => (w.life.creatures.birds ?? []).filter((b) => b.state === 'perched').length;
       flow.start();
       A.begin();
-      tick(3.5);
+      tick(0.1);
+      const p0 = perched();
+      // the front crosses the whole level (it is born upwind of the shot, ~9 m/s): watch the air at the perches
+      let k = 0, alarm = 0;
+      const probe = { x: 0, z: 0, k: 0 };
+      for (let s = 0; s < 12 * 4; s++) {
+        tick(0.25);
+        for (const b of w.life.creatures.birds ?? []) {
+          W.at(b.px, b.pz, probe);
+          k = Math.max(k, probe.k);
+          alarm = Math.max(alarm, probe.alarm);
+        }
+        for (let x = -30; x <= 30; x += 10) for (let z = -30; z <= 30; z += 10) {
+          W.at(x, z, probe);
+          k = Math.max(k, probe.k);
+          alarm = Math.max(alarm, probe.alarm);
+        }
+      }
       const want = id === 'grove' ? 0 : 1;
-      T.assert(fronts.length === want && startles.length === 0, `${id}: ${want ? 'one front crosses the level' : 'no front: the grove holds its breath'}, the birds left be (${fronts.length} / ${startles.length})`);
-      T.assert(fronts.every((o) => [o.strength, o.speed, o.width].every(Number.isFinite)), `${id}: the front's numbers are finite`);
+      const live = W.fronts.filter((F) => F.on || F.quiet).length;
+      T.assert(fronts.length === want && startles.length === 0, `${id}: ${want ? 'one front crosses the level' : 'no front: the grove holds its breath'}, nothing startled (${fronts.length} / ${startles.length})`);
+      T.assert(fronts.every((o) => o.quiet === true && [o.strength, o.speed, o.width].every(Number.isFinite)), `${id}: the front's numbers are finite and it is quiet`);
+      if (want) T.assert(k > 0.3 && alarm === 0, `${id}: the real wind carries it (k up to ${k.toFixed(2)}) and it alarms nothing (alarm ${alarm})`);
+      else T.assert(k === 0 && live === 0, `${id}: the air never moved (k ${k})`);
+      T.assert(perched() === p0, `${id}: the birds stay on the tree line (${p0} perched → ${perched()})`);
       T.assert(w.counts().random === 0, `${id}: no Math.random`);
     }
+  },
+
+  /** The skip needs a CHANGE from the input at begin(): a pad whose stick rests off centre (a drift, a
+   *  held stick) does not end the beat; pushing it further, or another way, does. */
+  async drift(T) {
+    for (const rest of [{ x: 0.35, y: 0 }, { x: 0, y: -0.6 }, { x: 0.9, y: 0.4 }]) {
+      const { flow, A, input, tick } = await rig(T);
+      input.axis = { ...rest };
+      tick(0.5);
+      flow.start();
+      A.begin();
+      tick(2);
+      T.assert(A.phase === 'hold' && A.ended === null, `a stick resting at (${rest.x}, ${rest.y}) from before begin(): still holding 2 s in (${A.phase})`);
+      // a little drift on top of it is not a move either
+      input.axis = { x: rest.x + 0.08, y: rest.y - 0.08 };
+      tick(0.2);
+      T.assert(A.phase === 'hold', `a 0.1 drift from the rest: still holding (${A.phase})`);
+      // pushed the other way: a move
+      input.axis = { x: -rest.x - 0.3, y: -rest.y };
+      tick(1 / FPS);
+      T.assert(A.phase === 'release' && A.ended === 'input', `pushed away from its rest: the beat ends (${A.phase}, ${A.ended})`);
+    }
+    // a stick at rest, centred: the usual move ends it (the skip scenario covers presses)
+    const { flow, A, input, tick } = await rig(T);
+    flow.start();
+    A.begin();
+    tick(0.5);
+    input.axis = { x: 0.15, y: 0.1 };
+    tick(0.2);
+    T.assert(A.phase === 'hold', `a centred stick nudged 0.18: still holding (${A.phase})`);
   },
 
   /** The phone: its extra zoom is capped, so the shot leans all the way instead. */

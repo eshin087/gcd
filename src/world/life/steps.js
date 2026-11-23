@@ -317,7 +317,8 @@ export class Steps {
     if (!g?.U) return null;
     const max = Math.max(30, Math.round(STEPS.prints.max * Math.max(0.3, Math.min(1, this.life.quality))));
     this._max = max;
-    this.pool = new GlyphParticles(g.U, { max, additive: false });
+    // (life.build: three.js's uuids draw from the living world's stream, never Math.random)
+    this.pool = this.life.build ? this.life.build(() => new GlyphParticles(g.U, { max, additive: false })) : new GlyphParticles(g.U, { max, additive: false });
     if (this.pool.uniforms?.uSoft) this.pool.uniforms.uSoft.value = STEPS.prints.soft;
     g.pipeline?.registerParticles?.(this.pool);
     this.pool.mesh.visible = this._visible;

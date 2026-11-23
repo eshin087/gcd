@@ -78,13 +78,13 @@ export const LITTER = deepFreeze({
         {
           share: 0.45, glyphs: "~()c,", color: [0.17, 0.27, 0.13], color2: [0.12, 0.18, 0.09],
           size: [0.27, 0.35], ground: { glyphs: 'ce()v', size: [0.26, 0.34] }, fall: [0.6, 0.95], slip: 0.55, flutter: [1.6, 2.8], spin: 2.4, tau: 0.55,
-          lift: [2.6, 4.4], carry: 0.85, hop: 1.4, lie: 0.7, alpha: 0.85, from: [4.5, 8],
+          lift: [2.75, 4.3], carry: 0.85, hop: 1.4, lie: 0.7, alpha: 0.85, from: [4.5, 8],
           where: { at: 'rim', lo: 0.12, r0: 10, r1: 30 }, source: 'sky',
         },
         {
           share: 0.55, glyphs: "~()c'", color: [0.3, 0.21, 0.1], color2: [0.22, 0.15, 0.08],
           size: [0.27, 0.35], ground: { glyphs: 'ce()s', size: [0.26, 0.34] }, fall: [0.65, 1.0], slip: 0.5, flutter: [1.8, 3], spin: 2.8, tau: 0.5,
-          lift: [2.4, 4.0], carry: 0.85, hop: 1.4, lie: 0.8, alpha: 0.85, from: [4.5, 8],
+          lift: [2.65, 4.1], carry: 0.85, hop: 1.4, lie: 0.8, alpha: 0.85, from: [4.5, 8],
           where: { at: 'rim', lo: 0.12, r0: 10, r1: 30 }, source: 'sky',
         },
       ],
@@ -123,7 +123,7 @@ export const LITTER = deepFreeze({
         {
           share: 1, glyphs: ".·", color: [0.17, 0.05, 0.04], color2: [0.09, 0.03, 0.03],
           size: [0.16, 0.22], ground: { glyphs: 'o.:', size: [0.2, 0.26] }, fall: [0.4, 0.7], slip: 0.12, flutter: [0.8, 1.6], spin: 1.2, tau: 0.6,
-          lift: [2.2, 4.0], carry: 0.9, hop: 0.6, lie: 0.6, alpha: 0.8, from: [3, 6],
+          lift: [0.8, 1.5], carry: 0.9, hop: 0.6, lie: 0.6, alpha: 0.8, from: [3, 6],
           where: { at: 'flat', r: 15, out: 0.55 }, source: 'sky',
         },
       ],
@@ -192,7 +192,7 @@ export const LITTER = deepFreeze({
         {
           share: 1, glyphs: "/\\()", color: [0.13, 0.22, 0.1], color2: [0.18, 0.2, 0.1],
           size: [0.3, 0.38], ground: { glyphs: '()<>', size: [0.3, 0.38] }, fall: [0.45, 0.6], slip: 0, flutter: [1.0, 1.6], spin: 1.8, tau: 0.6,
-          lift: [2.6, 4.4], carry: 1, hop: 1.1, lie: 0.55, alpha: 0.85, from: [6, 9],
+          lift: [1.4, 2.4], carry: 1, hop: 1.1, lie: 0.55, alpha: 0.85, from: [6, 9],
           where: { at: 'rim', lo: 0.35, r0: 5, r1: 15 }, source: 'sky',
         },
       ],

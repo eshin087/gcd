@@ -12,7 +12,12 @@ import { WEATHER_TUNE } from './weatherTuning.js';
 //   weather.light    the moonlight factor now (1 = untouched)
 //   weather.spell    the spell the director is heading for (name changes to it half way in)
 //   weather.force(name, fade)   start a spell now (the Lab's buttons; fade in s, default the spell's own)
-// With the piece off: 'clear', 0, 0, 1 (and flash 0, light 1).
+//   (added for the air's sound, audio/air.js)
+//   weather.breath   0..1: how far the star's breath is in now (the Obsidian Throne's 'breath' spell)
+//   weather.bolt     0..1: the dry lightning's flash against its brightest (weather.flash / bolts.peak max):
+//                    far thunder follows a bolt above ~0.35
+//   (the spell names the air colours by: 'squall' (ash, embers), 'breath' (starless))
+// With the piece off: 'clear', 0, 0, 1 (and flash 0, light 1, breath 0, bolt 0).
 //
 // THE DIRECTOR. Per level a list of spells (weatherTuning.js), each with a hold, a fade and what may
 // follow. A visit starts in the level's calm spell (the same every attempt: the director has its own
@@ -51,6 +56,8 @@ export class Weather {
     this.flash = 0;
     this.light = 1;
     this.spell = 'clear';
+    this.breath = 0;
+    this.bolt = 0;
     const T = life.enabled ? WEATHER_TUNE[life.levelId] : null;
     this.tune = T && T.spells && T.spells[T.calm] ? T : null;
     this._live = false;
@@ -253,6 +260,7 @@ export class Weather {
     this.wet = clamp01(v[P.wet]);
     this.mist = clamp01(v[P.mist]);
     this.windK = Number.isFinite(v[P.windK]) ? v[P.windK] : 1;
+    this.breath = clamp01(v[P.breath]);
     this._applySky();
     // before the fight (the Ring's devils and far lightning): eases out fast once the boss is up
     const g = L.game;
@@ -272,6 +280,7 @@ export class Weather {
     if (T.embers) this._embers(dt, fx.add, v[P.embers], rk);
     if (T.devils) this._devilsUpdate(dt, fx.alpha, v[P.devils] * this._pre, L.quality * L.k);
     if (T.bolts) this._bolts(dt, v[P.bolts] * this._pre);
+    this.bolt = T.bolts ? clamp01(this.flash / Math.max(1e-3, T.bolts.peak[1])) : 0;
     if (T.breath) L.set?.ambience?.breathe?.(clamp01(v[P.breath] * (T.breath.k ?? 1) * L.k));
   }
 
@@ -280,7 +289,7 @@ export class Weather {
     this._live = false;
     this._restore();
     this.name = 'clear';
-    this.wet = this.mist = this.flash = 0;
+    this.wet = this.mist = this.flash = this.breath = this.bolt = 0;
     this.windK = this.light = 1;
     for (const d of this._devils) d.on = false;
     this.life.set?.ambience?.breathe?.(0);
@@ -291,7 +300,7 @@ export class Weather {
   clear(why) {
     // what is in the air goes with the shared pools; the devils and a flash go now
     for (const d of this._devils) d.on = false;
-    this.flash = 0;
+    this.flash = this.bolt = 0;
     if (why === 'hide') this._restore();
   }
 

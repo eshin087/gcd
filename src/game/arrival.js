@@ -11,6 +11,8 @@ import { arrivalTuning } from './arrivalTuning.js';
 //   arrival.replay()         the Lab's 'arrival (replay)': the beat again, from explore
 //   arrival.active           true from begin() until the camera has settled behind the hero
 //   arrival.phase            'idle' | 'hold' | 'release'
+// The skip is a CHANGE from the input at begin(): the stick pushed away from where it rested then (a
+// drifting pad, or a stick already held off centre, does not end it), or a press of an action.
 // With the piece off (`!game.world?.life?.on('arrival')`): begin() does nothing.
 //
 // It drives the flow's own eased override (flow._ov / _ovW / _ovZ / _ovLambda; main.js lerps the
@@ -20,6 +22,8 @@ import { arrivalTuning } from './arrivalTuning.js';
 // Numbers: arrivalTuning.js.
 
 const SKIP_ACTIONS = ['attack', 'heavy', 'block', 'dodge', 'flask', 'lockOn', 'interact'];
+/** how far the move stick must be pushed (and moved from its rest at begin()) to skip */
+const SKIP_MOVE = 0.2;
 
 const num = (v, d) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
 const smooth = (u) => (u <= 0 ? 0 : u >= 1 ? 1 : u * u * (3 - 2 * u));
@@ -40,6 +44,8 @@ export class Arrival {
     this._fx = 0;
     this._fz = 0;
     this._frontIn = -1;
+    this._ax0 = 0;
+    this._ay0 = 0;
   }
 
   get on() {
@@ -76,6 +82,9 @@ export class Arrival {
     this._fx = on ? num(ov.focus.x, num(p?.x, 0)) : num(p?.x, 0);
     this._fz = on ? num(ov.focus.z, num(p?.z, 0)) : num(p?.z, 0);
     this._frontIn = T.front ? Math.max(0, num(T.front.delay, 0)) : -1;
+    // the stick as it rests now: a skip is a CHANGE from it (a pad that drifts, or a stick already held
+    // off centre, never ends the beat by itself)
+    this._sampleAxis();
     this._apply(0);
     return true;
   }
@@ -106,13 +115,29 @@ export class Arrival {
     f._ovLambda = lambda;
   }
 
-  /** Did the player move, attack or dodge this frame? */
+  /** The move stick now, as the rest the skip compares against. */
+  _sampleAxis() {
+    this._ax0 = this._ay0 = 0;
+    try {
+      const m = this.game?.input?.moveAxis?.();
+      this._ax0 = num(m?.x, 0);
+      this._ay0 = num(m?.y, 0);
+    } catch {
+      /* no input: the rest is the centre */
+    }
+  }
+
+  /** Did the player move, attack or dodge this frame? A move is the stick pushed away from where it
+   *  rested at begin() (SKIP_MOVE); an attack or a dodge is a press (an edge: a held button is not one). */
   _input() {
     const inp = this.game?.input;
     if (!inp || inp.enabled === false || this.flow?.swallowInput) return false;
     try {
       const m = inp.moveAxis?.();
-      if (m && (Math.abs(num(m.x, 0)) > 0.2 || Math.abs(num(m.y, 0)) > 0.2)) return true;
+      if (m) {
+        const x = num(m.x, 0), y = num(m.y, 0);
+        if (Math.hypot(x, y) > SKIP_MOVE && Math.hypot(x - this._ax0, y - this._ay0) > SKIP_MOVE) return true;
+      }
       for (const a of SKIP_ACTIONS) if (inp.actPressed?.(a)) return true;
     } catch {
       return false;
@@ -161,7 +186,8 @@ export class Arrival {
   _front() {
     const L = this.game?.world?.life, F = this.T?.front;
     if (!F || !L?.on?.('wind')) return;
-    const o = { strength: num(F.strength, 1) * num(L.k, 1), speed: F.speed, width: F.width };
+    // (quiet: it moves the air, it does not alarm the birds on the tree line)
+    const o = { strength: num(F.strength, 1) * num(L.k, 1), speed: F.speed, width: F.width, quiet: true };
     if (Number.isFinite(F.dirX) && Number.isFinite(F.dirZ)) {
       o.dirX = F.dirX;
       o.dirZ = F.dirZ;

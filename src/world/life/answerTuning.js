@@ -16,7 +16,7 @@
 
 const DEFAULT = {
   gap: { roar: 1.5, wake: 4, blow: 0.25, hush: 2.5, phase: 4, lull: 6, died: 3, gust: 0.3 },
-  roar: { front: { strength: 1.6, speed: 15, width: 9 }, startleR: 70, startleK: 1, scatterR: 9, scatterK: 1 },
+  roar: { front: { strength: 2, speed: 15, width: 9 }, startleR: 70, startleK: 1, scatterR: 9, scatterK: 1 },
   wake: { front: { strength: 0.8, speed: 9, width: 7 }, startleR: 40, startleK: 0.5, scatterR: 0, scatterK: 0 },
   blow: { scatterR: 4, scatterK: 0.8, startleR: 12, startleK: 0.7, radiusK: 1.3, maxR: 12 },
   hush: { minSec: 0.3, maxSec: 2.5, k: 0.85, chargeK: 0.7 },

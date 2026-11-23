@@ -26,6 +26,8 @@ import * as AnswerM from './answer.js';
 //                         air's sound go quiet by it; set with life.hushFor(sec, k).
 //   life.rand() / life.range(a, b)   the living world's own random stream. NEVER Math.random (the
 //                         seeded sims replay it).
+//   life.build(fn)        make GPU objects (an own pool, a mesh) through this: three.js's uuids then draw
+//                         from life.rand, not Math.random
 //   life.focus            the camera's focus on the ground (U.uFocus.value): spawn round it
 //   life.hero             { x, z, vx, vz, speed, moving }: the hero on the ground this frame
 //   life.takes(what)      true when an enabled layer draws `what` itself, so atmosphere.js skips its own:
@@ -139,6 +141,21 @@ export class LivingWorld {
 
   range(a, b) {
     return a + (b - a) * this.rand();
+  }
+
+  /**
+   * Make GPU objects (a pool, a mesh) inside the living world: three.js draws a uuid from Math.random
+   * for every geometry / material / mesh, so while `fn` runs those draws come from life.rand instead
+   * and the seeded fights' Math.random is never moved. Returns what fn returns; a throw is passed on.
+   */
+  build(fn) {
+    const mr = Math.random;
+    Math.random = () => this.rand();
+    try {
+      return fn();
+    } finally {
+      Math.random = mr;
+    }
   }
 
   /** The world holds its breath for `sec` s (k: how deeply, 0..1). */

@@ -275,7 +275,8 @@ export default {
         for (let k = 0; k < 6; k++) {
           const dir = k % 2 ? 1 : -1;
           peak = Math.max(peak, sprint(w, 5, 1.5 * dir, -7 * dir, {}, probe));
-          own = Math.max(own, w.counts().own);
+          // (the steps' own pool: the prints; the litter's pool is the litter's budget)
+          own = Math.max(own, w.counts().prints);
         }
         return { w, peak, own, spawned: probe.spawned, prints: w.life.steps.prints };
       };

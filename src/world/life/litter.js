@@ -97,20 +97,14 @@ export class Litter {
       s: FREE, k: 0, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, ph: 0, fq: 1, sa: 0, sp: 0, rot: 0, size: 0.2, g: 0,
       cr: 0, cg: 0, cb: 0, fall: 1, lift: 3, pile: 0, b: 1, a: 0, fa: 0, age: 0, last: 100, gy: 0.05,
     }));
-    // three.js draws a uuid from Math.random for every geometry / material / mesh: while the pool is
-    // made (inside life.update), those draws come from the living world's own stream, so the seeded
-    // fights' Math.random is never moved
-    const mr = Math.random;
+    // (life.build: three.js's uuids draw from the living world's stream, never Math.random)
     try {
-      Math.random = () => this.life.rand();
-      this.pool = new LitterBatch(this.life.game.U, { max: LITTER.max, additive: false });
+      this.pool = this.life.build(() => new LitterBatch(this.life.game.U, { max: LITTER.max, additive: false }));
       this.pool.uniforms.uSoft.value = LITTER.soft;
       this.pool.mesh.visible = this._visible;
       this.life.game.pipeline?.registerParticles?.(this.pool);
     } catch {
       this.pool = null; // (no GPU: the letters still live, they are only not drawn)
-    } finally {
-      Math.random = mr;
     }
   }
 

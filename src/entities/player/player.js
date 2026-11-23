@@ -2563,7 +2563,14 @@ export class Player {
     const v = (R.dist / R.dur) * (0.6 + 0.8 * (1 - u));
     this.want.x = this.rollDir.x * v;
     this.want.z = this.rollDir.z * v;
-    if (t >= R.landAt && this._once(1) && !this.rollBack) this.fx.dust(this.position.x, this.position.z, 7, 0.8);
+    if (t >= R.landAt && this._once(1) && !this.rollBack) {
+      // the living world's steps answer the roll's landing like a heavy step (world/life/steps.js); with
+      // the piece off (or no living world) it is today's dust exactly
+      const o = (this._rollStepO ??= { heavy: true, sprint: true, side: 0, vx: 0, vz: 0 });
+      o.vx = this.rollDir.x;
+      o.vz = this.rollDir.z;
+      if (!this.game.world?.life?.steps?.footfall?.(this.position.x, this.position.z, o)) this.fx.dust(this.position.x, this.position.z, 7, 0.8);
+    }
     if (t >= R.attackAfter && this._tryAction(t >= R.rollAfter, true, false)) return;
     if (t >= R.moveAfter && (this.intent.len > 0.1 || this.rmb.held)) {
       if (this.rmb.held) this._startBlock(0.1);

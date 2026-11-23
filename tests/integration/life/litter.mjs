@@ -45,6 +45,75 @@ function fakeWind(w, vx, vz, k = 1) {
 }
 
 export default {
+  /** Against the REAL wind (not a faked gust): the level's own wind lifts a few letters as a front
+   *  passes (not a carpet), a roar's front lifts most of what lies in its path, the ring's grit keeps
+   *  tumbling, and nothing moves in the Windless Grove until the fight moves its air. */
+  realWind(T) {
+    for (const id of T.LEVEL_IDS) {
+      // the air: its fastest without a front, inside one, and a roar's
+      const w = T.build(id, 'wind');
+      const W = w.life.wind, p = { x: 0, z: 0, k: 0 };
+      let calm = 0, front = 0;
+      for (let i = 0; i < 240; i++) {
+        w.step(0.25);
+        const f = w.game.player.position;
+        W.at(f.x, f.z, p);
+        if (p.k < 0.02) calm = Math.max(calm, Math.hypot(p.x, p.z));
+        for (let x = -20; x <= 20; x += 2) for (let z = -16; z <= 12; z += 2) {
+          W.at(f.x + x, f.z + z, p);
+          if (p.k > 0.3) front = Math.max(front, Math.hypot(p.x, p.z));
+        }
+      }
+      // what the level's own wind lifts in 60 s (the hero stands still)
+      const l = T.build(id, 'wind,litter');
+      const L = l.life.litter;
+      l.step(1);
+      const prev = new Map();
+      let lifts = 0, lying = 0, air = 0, n = 0;
+      for (let i = 0; i < 60 * 30; i++) {
+        l.step(1 / 30);
+        for (const f of L.leaves ?? []) {
+          if (prev.get(f) === LYING && f.s === AIR) lifts++;
+          prev.set(f, f.s);
+        }
+        lying += L.lying;
+        air += L.count - L.lying;
+        n++;
+      }
+      lying /= n;
+      air /= n;
+      // a roar's front (the answer's, from the boss toward the hero) over what lies in its path, past
+      // the roar's own scatter at the boss
+      const q = T.build(id, 'wind,litter,answer');
+      const Q = q.life.litter;
+      q.step(3);
+      const b = q.game.dragon.position, h = q.game.player.position;
+      const dx = h.x - b.x, dz = h.z - b.z, len = Math.hypot(dx, dz) || 1;
+      const inPath = (f) => {
+        const s = ((f.x - b.x) * dx + (f.z - b.z) * dz) / len, c = Math.abs(((f.x - b.x) * dz - (f.z - b.z) * dx) / len);
+        return s > 0 && s < len && c < 8 && Math.hypot(f.x - b.x, f.z - b.z) > 12;
+      };
+      const path = Q.leaves.filter((f) => f.s === LYING && inPath(f));
+      q.life.answer.answerRoar(1, true);
+      let roar = 0;
+      const lifted = new Set();
+      for (let i = 0; i < 120; i++) {
+        q.step(1 / 30);
+        for (let u = 0; u <= 1; u += 0.05) { q.life.wind.at(b.x + dx * u, b.z + dz * u, p); roar = Math.max(roar, Math.hypot(p.x, p.z)); }
+        for (const f of path) if (f.s === AIR) lifted.add(f);
+      }
+      const share = lifted.size / Math.max(1, path.length);
+      T.out(`  ${id}: air ${calm.toFixed(2)} m/s without a front, ${front.toFixed(2)} inside one, ${roar.toFixed(2)} in a roar's; ${lifts} lifts in 60 s (mean ${lying.toFixed(0)} lying, ${air.toFixed(0)} in the air); a roar lifts ${lifted.size} / ${path.length} in its path`);
+      if (id === 'cinderwood' || id === 'fox') {
+        T.assert(lifts >= 15 && lifts <= lying * 0.8, `${id}: the fronts lift a few leaves (${lifts} lifts in 60 s against ${lying.toFixed(0)} lying: not none, not a carpet)`);
+      }
+      if (id === 'ash') T.assert(lifts >= 60, `${id}: the fitful gusts drag the ash (${lifts} lifts in 60 s)`);
+      if (id === 'ring') T.assert(air >= 40 && lying < 60, `${id}: the grit keeps tumbling (${air.toFixed(0)} in the air, ${lying.toFixed(0)} lying)`);
+      if (id === 'starless' || id === 'grove') T.assert(lifts === 0, `${id}: nothing lifts by itself (${lifts})`);
+      if (path.length >= 5) T.assert(share >= (id === 'starless' ? 0.4 : 0.6), `${id}: a roar's front lifts most of what lies in its path (${lifted.size} / ${path.length})`);
+    }
+  },
+
   /** A letter dropped from h lands in about h / its fall speed, then lies still for 20 s of still air. */
   landsAndStays(T) {
     for (const id of ['cinderwood', 'ash', 'fox']) {

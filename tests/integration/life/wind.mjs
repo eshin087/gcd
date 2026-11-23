@@ -103,7 +103,7 @@ export default {
     const W = w.life.wind;
     const o = { x: 0, z: 0, k: 0 };
     T.assert(W.still === true && W.speed === 0, `grove: still (speed ${W.speed})`);
-    T.assert(W.front({ strength: 2 }) === -1, 'grove: a front is refused');
+    T.assert(W.front({ strength: 2 }) === -1, `grove: a front of its own is refused (one born at a point, the fight's, passes: windRoar)`);
     let max = 0;
     for (let x = -20; x <= 20; x += 4) for (let z = -20; z <= 20; z += 4) max = Math.max(max, Math.hypot(W.at(x, z, o).x, o.z));
     T.assert(max === 0, `grove: at() is zero everywhere (${max})`);
@@ -112,6 +112,62 @@ export default {
     w.step(0.3);
     const b = W.at(4, 0, o);
     T.assert(b.x > 0.3 && b.k > 0, `grove: a burst still pushes outward (${b.x.toFixed(2)} m/s, k ${b.k.toFixed(2)})`);
+  },
+
+  /** The roar's answer (answer.js → wind.front with the boss as its origin) is a front that starts AT
+   *  the boss and runs to the hero, on every level; in the Windless Grove it is the only air (the
+   *  level's own schedule stays empty), and the grass and the bamboo's shader slots carry it. */
+  windRoar(T) {
+    for (const id of T.LEVEL_IDS) {
+      const w = T.build(id, 'wind,answer');
+      w.step(2);
+      const W = w.life.wind, b = w.game.dragon.position, h = w.game.player.position;
+      const dx = h.x - b.x, dz = h.z - b.z, len = Math.hypot(dx, dz);
+      const own = W.fronts.filter((F) => F.on).length;
+      w.life.answer.answerRoar(1, true);
+      const F = W.fronts.find((F) => F.on && F.born);
+      const o = { x: 0, z: 0, k: 0 };
+      w.step(0.3);
+      const atBoss = W.at(b.x + (dx / len) * 1.5, b.z + (dz / len) * 1.5, o).k;
+      const atHero = W.at(h.x, h.z, o).k;
+      // when does it reach the hero (k > 0.3 there)?
+      let t = 0.3;
+      while (t < 8 && W.at(h.x, h.z, o).k <= 0.3) { w.step(0.05); t += 0.05; }
+      const sp = F?.speed ?? 0;
+      T.assert(!!F && T.near(F.nx, dx / len, 1e-3) && T.near(F.nz, dz / len, 1e-3), `${id}: the roar's front runs from the boss toward the hero`);
+      T.assert(atBoss > 0.4 && atHero === 0, `${id}: 0.3 s after the roar it is at the boss (k ${atBoss.toFixed(2)}), not yet at the hero (${atHero})`);
+      T.assert(t < 8 && Math.abs(t - len / sp) < 1.2, `${id}: it reaches the hero ${len.toFixed(1)} m away in ${t.toFixed(2)} s (${sp} m/s: ${(len / sp).toFixed(2)} s)`);
+      if (id === 'grove') {
+        T.assert(own === 0, `grove: no front of its own in 2 s (${own})`);
+        const A = w.U.uWindFronts.value;
+        T.assert(A.slice(0, 8).some((v, i) => i % 2 === 0 && v.w > 0.1), `grove: the shaders get the roar's front (the bamboo and the grass answer it)`);
+        w.step(10);
+        const g = T.build('grove', 'wind,answer');
+        g.step(60);
+        T.assert(g.life.wind.fronts.every((F) => !F.on), 'grove: a minute without a fight: no front at all');
+      }
+    }
+  },
+
+  /** life.hush: the world holds its breath: the prevailing wind falls away and no new front is born
+   *  until it is let go; the ambient fronts die down meanwhile, a roar's goes on. */
+  hush(T) {
+    const w = T.build('cinderwood', 'wind');
+    w.step(3);
+    const W = w.life.wind;
+    const before = W.speed;
+    w.life.hushFor(6, 1);
+    w.step(2);
+    const held = W.speed, lvl = W.level;
+    W._next = 0; // (a front is due now)
+    const n0 = W.fronts.filter((F) => F.on).length;
+    w.step(2);
+    const n1 = W.fronts.filter((F) => F.on).length;
+    const amb = W.fronts.filter((F) => F.on).map((F) => F.env);
+    T.assert(held < before * 0.25 && lvl < 0.2, `the breath held: the prevailing ${before.toFixed(2)} → ${held.toFixed(2)} m/s (level ${lvl.toFixed(2)})`);
+    T.assert(n1 <= n0 && amb.every((e) => e < 0.15), `no front born while it holds, the ones crossing die down (${n0} → ${n1}, env ${amb.map((e) => e.toFixed(2)).join(' ')})`);
+    w.step(8);
+    T.assert(W.speed > held * 2 && W.fronts.some((F) => F.on), `let go: the breeze comes back (${W.speed.toFixed(2)} m/s) and the due front is born`);
   },
 
   /** A burst expands, pushes outward, and decays to nothing. */

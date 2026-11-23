@@ -6,7 +6,9 @@
 /** Spies on what the answer calls; returns the call lists. */
 function spy(w) {
   const L = w.life, c = { front: [], startle: [], scatter: [], hush: [], burst: [] };
-  L.wind.front = (o) => { c.front.push(o); };
+  // (the wind's own schedule calls front() with no options: only the answer's fronts are counted)
+  const front = L.wind.front.bind(L.wind);
+  L.wind.front = (o) => { if (o) c.front.push(o); else front(o); };
   L.wind.burst = (...a) => { c.burst.push(a); };
   L.creatures.startle = (...a) => { c.startle.push(a); return 0; };
   L.litter.scatter = (...a) => { c.scatter.push(a); return 0; };

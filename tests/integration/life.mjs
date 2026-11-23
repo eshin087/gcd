@@ -39,7 +39,8 @@ const near = (a, b, eps = 1e-6) => Number.isFinite(a) && Number.isFinite(b) && M
 // Math.random is counted: nothing of the living world may draw from it (the seeded sims replay it)
 const realRandom = Math.random;
 let randomCalls = 0;
-Math.random = () => { randomCalls++; return realRandom(); };
+const countingRandom = () => { randomCalls++; return realRandom(); };
+Math.random = countingRandom;
 
 const WORLD0 = JSON.parse(JSON.stringify(CONFIG.world));
 const LEVEL_IDS = LEVELS.map((L) => L.id);
@@ -51,7 +52,8 @@ const LEVEL_IDS = LEVELS.map((L) => L.id);
  * Returns { game, world, life, set, U, level, step(sec, dt), walk(vx, vz), place(x, z), counts(), emit }.
  *   step(sec)      runs the frame: life, atmosphere, the pools (as World.update and main.js do)
  *   walk(vx, vz)   the hero moves at that velocity from now on (m/s); place(x, z) teleports him
- *   counts()       { alpha, add, fire, own, pools, spawned: { alpha, add, fire }, random }: live particles per
+ *   o.feet         the stand-in's feet come down while he walks (steps.footfall, as player.js does)
+ *   counts()       { alpha, add, fire, own, pools, litter, prints, spawned: { alpha, add, fire }, random }: live particles per
  *                  shared pool; `own` / `pools`: the living world's own pools (registered with the pipeline
  *                  after the set's); spawns since the build; `random`: Math.random calls made inside
  *                  life.update and life.gust (must stay 0)
@@ -124,6 +126,9 @@ function build(levelId = 'cinderwood', spec = 'all', o = {}) {
   const ownBase = own.length;
   world.life = new LivingWorld(game, world);
   const life = world.life;
+  // o.feet: the stand-in's feet come down as player.js's _footstep does (steps.footfall every ~0.32 s
+  // while he moves), counted with the rest (the steps' pool is made on the first one)
+  let footT = 0, side = 1;
   const step = (sec, dt = 1 / 60) => {
     for (let t = 0; t < sec - 1e-9; t += dt) {
       game.time += dt;
@@ -133,6 +138,12 @@ function build(levelId = 'cinderwood', spec = 'all', o = {}) {
       U.uTime.value = game.time;
       U.uFocus.value.copy(game.player.position);
       const r0 = randomCalls;
+      if (o.feet && Math.hypot(vel.x, vel.z) > 0.8 && (footT -= dt) <= 0) {
+        footT = 0.32;
+        side = -side;
+        const p = game.player.position;
+        life.steps?.footfall?.(p.x, p.z, { sprint: Math.hypot(vel.x, vel.z) > 6, side, vx: vel.x, vz: vel.z });
+      }
       life.update(dt);
       lifeRandom += randomCalls - r0;
       world.atmosphere.update(dt);
@@ -141,12 +152,15 @@ function build(levelId = 'cinderwood', spec = 'all', o = {}) {
       game.fx.alpha.update(dt, game.time);
       game.fx.add.update(dt, game.time);
       game.fx.fire.update(dt);
-      for (const p of own) p.update?.(dt, game.time);
+      // (the living world's own pools are updated by their owners, as in the game: the pipeline only
+      // draws what registerParticles hands it)
     }
   };
   const counts = () => ({
     alpha: game.fx.alpha.count, add: game.fx.add.count, fire: game.fx.fire.count,
     own: own.slice(ownBase).reduce((n, p) => n + (p.count ?? 0), 0), pools: own.length - ownBase,
+    // (each own pool by its owner: litter / steps)
+    litter: life.litter?.pool?.count ?? 0, prints: life.steps?.pool?.count ?? 0,
     spawned: { ...spawned }, random: lifeRandom,
   });
   return {
@@ -157,7 +171,7 @@ function build(levelId = 'cinderwood', spec = 'all', o = {}) {
   };
 }
 
-const T = { THREE, CONFIG, LEVELS, LEVEL_IDS, LIFE, LIFE_PIECES, LIFE_TUNE, setLife, setLifeK, build, assert, out, near, imp, ROOT };
+const T = { THREE, CONFIG, LEVELS, LEVEL_IDS, LIFE, LIFE_PIECES, LIFE_TUNE, setLife, setLifeK, build, assert, out, near, imp, ROOT, countingRandom };
 
 // one file per piece (its owner's): a missing or broken file fails the suite
 const FILES = ['core', 'wind', 'weather', 'litter', 'steps', 'creatures', 'answer', 'air', 'arrival'];

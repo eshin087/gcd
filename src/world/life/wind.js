@@ -1,4 +1,4 @@
-import { WIND_TUNE, WIND_DEFAULT, WIND_LULL, WIND_BURST } from './windTuning.js';
+import { WIND_TUNE, WIND_DEFAULT, WIND_LULL, WIND_BURST, WIND_HUSH } from './windTuning.js';
 import { WIND_SLOTS } from '../../render/shaderLib.js';
 
 // THE WIND (piece 'wind'): one shared wind per level, the air every other layer reads.
@@ -56,7 +56,7 @@ export class Wind {
     this._wrote = false;
     this._k = 1; // life.k x the weather's windK: every amplitude scales by it
     this.fronts = Array.from({ length: WIND_SLOTS }, () => ({
-      on: false, nx: 1, nz: 0, pos: 0, end: 0, speed: 0, strength: 0, tail: 8, lead: 2, phase: 0, env: 0, air: 0,
+      on: false, nx: 1, nz: 0, pos: 0, end: 0, speed: 0, strength: 0, tail: 8, lead: 2, phase: 0, env: 0, air: 0, quiet: false, ease: 0.8, born: false,
     }));
     this.bursts = Array.from({ length: 4 }, () => ({ on: false, x: 0, z: 0, s: 0, r: 1, age: 0 }));
     // the streaks: a reused spawn record, and when each live one dies (to keep inside `max`)
@@ -85,6 +85,7 @@ export class Wind {
     out.x = 0;
     out.z = 0;
     out.k = 0;
+    out.alarm = 0;
     if (!this._on() || !Number.isFinite(x) || !Number.isFinite(z)) return out;
     if (!this.still) {
       const S = this.T.sink;
@@ -100,17 +101,20 @@ export class Wind {
         out.x = this.dirX * this.speed;
         out.z = this.dirZ * this.speed;
       }
-      let k = 0;
-      for (const F of this.fronts) {
-        if (!F.on) continue;
-        const f = this._frontK(F, x, z);
-        if (f <= 0) continue;
-        out.x += F.nx * f * F.air;
-        out.z += F.nz * f * F.air;
-        k += f;
-      }
-      out.k = Math.min(1, k);
     }
+    // the fronts (in the still grove only the fight's: a front sent from a point)
+    let k = 0, al = 0;
+    for (const F of this.fronts) {
+      if (!F.on) continue;
+      const f = this._frontK(F, x, z);
+      if (f <= 0) continue;
+      out.x += F.nx * f * F.air;
+      out.z += F.nz * f * F.air;
+      k += f;
+      if (!F.quiet) al += f;
+    }
+    out.k = Math.min(1, k);
+    out.alarm = Math.min(1, al);
     // bursts: an expanding ring of air pushing outward (also in the still grove)
     for (const B of this.bursts) {
       if (!B.on) continue;
@@ -125,6 +129,7 @@ export class Wind {
       out.x += (dx / d) * f * WIND_BURST.air;
       out.z += (dz / d) * f * WIND_BURST.air;
       out.k = Math.min(1, out.k + f * 0.6);
+      out.alarm = Math.min(1, out.alarm + f * 0.6);
     }
     return out;
   }
@@ -142,7 +147,10 @@ export class Wind {
 
   /** Send a gust front across the level. Returns its slot, or -1 (the piece off, a still level, no slot). */
   front(o = {}) {
-    if (!this._on() || this.still) return -1;
+    if (!this._on() || !o) return -1;
+    // a front born at a point (the fight's: a roar from the boss) starts there; the still grove lets only those pass
+    const ox = Number(o.x), oz = Number(o.z), born = Number.isFinite(ox) && Number.isFinite(oz);
+    if (this.still && !born) return -1;
     const T = this.T, FT = T.fronts ?? WIND_DEFAULT_FRONTS;
     let F = null, slot = -1;
     for (let i = 0; i < this.fronts.length; i++) {
@@ -183,11 +191,19 @@ export class Wind {
     F.lead = FT.lead;
     F.air = FT.air;
     F.phase = L.range(0, TAU);
+    // a front born at a point is strongest along the line it runs from that point (its patches, as in
+    // _frontK: 0.62 + 0.38 sin(c 0.11 + 2.3 phase), peak where the line through the point runs)
+    if (born) F.phase = (Math.PI / 2 - (F.nx * oz - F.nz * ox) * 0.11) / 2.3;
     const f = L.focus, from = Number.isFinite(Number(o.from)) ? Number(o.from) : FT.from;
     const s0 = (Number.isFinite(f.x) ? f.x : 0) * F.nx + (Number.isFinite(f.z) ? f.z : 0) * F.nz;
-    F.pos = s0 - from;
-    F.end = s0 + FT.to;
+    F.pos = born ? ox * F.nx + oz * F.nz : s0 - from;
+    F.end = Math.max(s0, F.pos) + FT.to;
+    // (born at a point it swells in fast: it is the blow's own air, not a gust from far upwind)
     F.env = 0;
+    F.ease = born ? WIND_BORN_EASE : 0.8;
+    F.born = born;
+    // a quiet front (the arrival's) moves the air but does not alarm what perches (out.alarm)
+    F.quiet = o.quiet === true;
     F.on = true;
     return slot;
   }
@@ -240,14 +256,17 @@ export class Wind {
     this._lullK += (lw - this._lullK) * (1 - Math.exp(-dt / WIND_LULL.ease));
     const wk = L.weather?.windK;
     const k = (this._k = L.k * (Number.isFinite(wk) ? Math.max(0, wk) : 1));
-    this.speed = this.still ? 0 : T.speed * (B.floor + (1 - B.floor) * raw) * k * (1 - this._lullK);
+    // the world holding its breath (life.hush: a great blow winds up, the victory's lull) stills the air
+    const hush = Math.max(0, Math.min(1, Number.isFinite(L.hush) ? L.hush : 0));
+    this.speed = this.still ? 0 : T.speed * (B.floor + (1 - B.floor) * raw) * k * (1 - this._lullK) * (1 - WIND_HUSH.speed * hush);
     this._ox += this.dirX * this.speed * dt;
     this._oz += this.dirZ * this.speed * dt;
     // fronts: born on a schedule (fewer while the boss is up), carried across, eased in and out
     const FT = T.fronts;
     if (FT && !this.still) {
-      this._next -= dt * L.calm * (1 - this._lullK);
-      if (this._next <= 0) {
+      this._next -= dt * L.calm * (1 - this._lullK) * (1 - hush);
+      // (none is born while the world holds its breath: a due one waits for the breath to be let go)
+      if (this._next <= 0 && hush < 0.05) {
         this._next = L.range(FT.every[0], FT.every[1]);
         this.front();
       }
@@ -258,8 +277,9 @@ export class Wind {
       if (!F.on) continue;
       F.pos += F.speed * dt;
       const left = F.end - F.pos;
-      const want = left < 12 ? Math.max(0, left / 12) : 1;
-      F.env += (want - F.env) * (1 - Math.exp(-dt / 0.8));
+      // (an ambient front dies down while the world holds its breath; the fight's own goes on)
+      const want = (left < 12 ? Math.max(0, left / 12) : 1) * (F.born ? 1 : 1 - hush);
+      F.env += (want - F.env) * (1 - Math.exp(-dt / (F.ease || 0.8)));
       if (left <= 0 && F.env < 0.02) {
         F.on = false;
         F.env = 0;
@@ -273,7 +293,7 @@ export class Wind {
       b.age += dt;
       if (b.age >= WIND_BURST.life) b.on = false;
     }
-    const front0 = FT?.air ?? 0;
+    const front0 = FT?.air ?? WIND_DEFAULT_FRONTS.air;
     this.level = Math.min(1, (this.speed + gust * front0) / T.loud);
     this._write();
     this._streaks(dt);
@@ -401,5 +421,8 @@ export class Wind {
     return false;
   }
 }
+
+/** s a front born at a point (a roar's) takes to swell in */
+const WIND_BORN_EASE = 0.15;
 
 const WIND_DEFAULT_FRONTS = Object.freeze({ every: [10, 16], strength: [0.7, 1], speed: [5, 6], tail: [8, 12], lead: 2, air: 2, spread: 10, from: 45, to: 60 });

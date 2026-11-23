@@ -183,6 +183,40 @@ export default {
     T.assert(c.E.air.mix.out < 0.8 && calm.out > 0.98, `fox: the fight thins the bed (${calm.out.toFixed(2)} → ${c.E.air.mix.out.toFixed(2)})`);
   },
 
+  /** The air hears the REAL weather: the ash's squall colours it with embers, the star's breath swells
+   *  the drone (weather.breath), the Ring's dry lightning is followed by far thunder (weather.bolt). */
+  async weather(T) {
+    const a = await withAudio(T, 'ash', 'weather,air');
+    a.frames(120);
+    const calm = a.E.air.mix.spell;
+    a.life.weather.force('squall', 2);
+    a.frames(60 * 8);
+    T.assert(a.life.weather.name === 'squall' && calm < 1e-3 && a.E.air.mix.spell > 0.02, `ash: the squall is heard (weather '${a.life.weather.name}', spell ${calm.toFixed(3)} → ${a.E.air.mix.spell.toFixed(3)})`);
+    const s = await withAudio(T, 'starless', 'weather,air');
+    s.frames(120);
+    const d0 = s.E.air.mix.drone;
+    s.life.weather.force('breath', 1);
+    let br = 0, sw = 0;
+    for (let i = 0; i < 60 * 4; i++) {
+      s.frame();
+      br = Math.max(br, s.life.weather.breath);
+      sw = Math.max(sw, s.E.air.mix.spell);
+    }
+    T.assert(br > 0.9 && sw > 0.01 && s.E.air.mix.drone > d0, `starless: the star's breath (weather.breath up to ${br.toFixed(2)}) swells the air (spell ${sw.toFixed(3)}, drone ${d0.toFixed(3)} → ${s.E.air.mix.drone.toFixed(3)})`);
+    const r = await withAudio(T, 'ring', 'weather,air');
+    r.life.weather.force('gathering', 1);
+    let bolts = 0, thunders = 0, prev = 0, until = r.E.air._thunderUntil, top = 0;
+    for (let i = 0; i < 60 * 90; i++) {
+      r.frame();
+      const b = r.life.weather.bolt;
+      if (b > 0.35 && prev <= 0.35) bolts++;
+      prev = b;
+      top = Math.max(top, r.life.weather.flash);
+      if (r.E.air._thunderUntil !== until) { thunders++; until = r.E.air._thunderUntil; }
+    }
+    T.assert(bolts >= 2 && thunders >= 1 && thunders <= bolts, `ring: dry lightning (${bolts} bolts in 90 s, flash up to ${top.toFixed(3)}) is followed by far thunder (${thunders})`);
+  },
+
   /** Switching the piece in the Lab cross-fades both ways and drops the nodes once silent. */
   async switches(T) {
     const a = await withAudio(T, 'cinderwood', 'all');
