@@ -38,6 +38,7 @@ const TASKS = [
   ['duel', ['tests/integration/duel.mjs', '.', 'all'], {}],
   ['sheath', ['tests/integration/sheath.mjs', '.', 'all'], {}],
   ['world', ['tests/integration/world.mjs', '.', 'all'], { ABYSS_SKIP: 'budget' }],
+  ['life', ['tests/integration/life.mjs', '.', 'all'], {}],
   ['glyphcheck', ['tests/glyphcheck.mjs', '.'], {}],
   ['changelogcheck', ['tests/changelogcheck.mjs', '.'], {}],
 ];

@@ -11,6 +11,7 @@ import { TAU } from '../core/math.js';
 // washed the whole view brown)
 const GLOW_AMBIENT = [0.085, 0.027, 0.006]; // added to U.uAmbient at full glow
 const GLOW_FOG = [0.011, 0.0032, 0.0007]; // added to U.uFogColor
+const NONE = Object.freeze([]);
 export class Atmosphere {
   constructor(game, forest) {
     this.game = game;
@@ -140,8 +141,11 @@ export class Atmosphere {
       return;
     }
 
+    // (the living world, world/life/life.js: a layer that draws one of these itself takes it over)
+    const life = this.game.world?.life;
+
     // fireflies: re-emitted each frame at their wandering positions (life = 1 frame-ish)
-    for (const f of this.fireflies) {
+    for (const f of life?.takes('fireflies') ? NONE : this.fireflies) {
       const t = this.t * f.s + f.p;
       f.x += Math.sin(t * 0.7) * dt * 0.6;
       f.z += Math.cos(t * 0.53 + 1.3) * dt * 0.6;
@@ -156,7 +160,7 @@ export class Atmosphere {
 
     // low mist: faint, wide tilde strokes drifting along the forest edge
     const focus = this.game.U.uFocus.value;
-    this.mistAcc = (this.mistAcc ?? 0) + dt * 3.2;
+    this.mistAcc = life?.takes('mist') ? 0 : (this.mistAcc ?? 0) + dt * 3.2;
     while (this.mistAcc >= 1) {
       this.mistAcc -= 1;
       const a = Math.random() * TAU, r = range(Math.random, 24, 44);
@@ -173,7 +177,7 @@ export class Atmosphere {
     }
 
     // leaves drifting down near the camera focus, under the canopy ring
-    this.leafAcc += dt * 2.2;
+    this.leafAcc = life?.takes('leaves') ? 0 : this.leafAcc + dt * 2.2;
     while (this.leafAcc >= 1) {
       this.leafAcc -= 1;
       const a = Math.random() * TAU, r = range(Math.random, 26, 40);
@@ -193,7 +197,7 @@ export class Atmosphere {
    *  dim ember drifting with them (the sect still smoulders). */
   _ashFall(dt, fxA, fxB) {
     const focus = this.game.U.uFocus.value;
-    this.ashAcc += dt * 26;
+    this.ashAcc = this.game.world?.life?.takes('ash') ? 0 : this.ashAcc + dt * 26;
     while (this.ashAcc >= 1) {
       this.ashAcc -= 1;
       const x = focus.x + (Math.random() - 0.5) * 46, z = focus.z + (Math.random() - 0.5) * 34 - 4;
