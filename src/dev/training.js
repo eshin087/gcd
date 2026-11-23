@@ -109,7 +109,7 @@ add('PARRY & RIPOSTE', [
   { id: 'lock', name: 'Blade lock', boss: 'duel', role: 'lock', answer: 'perfect', mash: true, desc: 'A perfect parry of his heavy blow locks the blades: mash attack to win the push.', expect: ['player:lock'] },
   { id: 'trade', name: 'Trade clash', boss: 'duel', role: 'single', answer: 'trade', dist: 2.2, desc: 'Your cut meets his blow in the air: both blades thrown back, nobody hurt. Pressed at the last instant it is the flash counter: the cut goes through him.', expect: ['combat:clash'] },
   { id: 'mikiri', name: 'Mikiri', boss: 'ash', role: 'mikiri', answer: 'mikiri', dist: 3.2, desc: 'A roll INTO his perilous thrust: you step on his blade.', expect: ['player:mikiri'] },
-  { id: 'mikiriSheath', name: 'Mikiri', boss: 'sheathed', role: 'mikiri', answer: 'mikiri', dist: 4.0, desc: 'A roll INTO Tapping Stone: you step on the scabbard.', expect: ['player:mikiri'] },
+  { id: 'mikiriSheath', name: 'Mikiri', boss: 'sheathed', role: 'mikiri', answer: 'mikiri', dist: 4.0, desc: 'A roll INTO The Walking Staff: you step on the scabbard.', expect: ['player:mikiri'] },
   // the Sheathed's draw (ADR-144): parry it, or a held guard is knocked open, or roll through it
   { id: 'drawParry', name: 'One Breath · parry the draw', boss: 'sheathed', move: 'oneBreath', answer: 'parry', dist: 4.5, desc: 'The settle, the stillness, the click (the blue flare at the scabbard), the cut: parry on the click. He is caught with the blade out.', expect: ['player:parry'] },
   { id: 'drawGuard', name: 'One Breath · hold the guard', boss: 'sheathed', move: 'oneBreath', answer: 'block', dist: 4.5, desc: 'A held guard keeps you alive: no health lost, but the whole guard meter is gone and the guard is knocked open.', expect: ['player:guardOpen'] },

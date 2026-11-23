@@ -4056,9 +4056,18 @@ A `Duelist` with `SHEATHED_KIT`; COMBAT.md → "The Sheathed" has the fight. The
 MOVES, MOVE_NAMES, CLIP, realise, transitions { 2: 'thumbWidth', 3: 'heldBreath' }, counterMove (phase < 3
 'answer', else 'answerDraw'), streakMove () => 'leaves', loadout SHEATH_LOADOUT, poses SHEATH_POSES, blade
 (MUTABLE: the live span by sheath state, gear.js BLADE_SPAN), OPEN ['caught'], REACT { caught } }`. Files:
-tuning.js, moves.js, poses.js (his stance: the sheathed sword hanging low in his right hand; `lsw` the
-scabbard at his left hip), gear.js (`sheath.*` items, `SHEATH_ART` per body, `buildOffSheath`, `SWORD_DIMS`),
-links.js, fx.js (`SheathFx extends DuelFx`), lateCuts.js (`LateCuts`).
+tuning.js, moves.js, poses.js (his stance: the sheathed sword hanging low in his right hand, the left thumb in
+the sash; `lsw` the scabbard at his left hip; `SHEATH_RUN` / `SHEATH_BREATH` (createDuelPoses opt.run /
+opt.breath) and his own `duelLoco`, the duelist's sunk and pitched forward at a run; ADR-152), gear.js
+(`sheath.*` items, `SHEATH_ART` per body (the wyrm's digits, `?sheathArt=0`), `buildOffSheath` → `{ root, hilt,
+streamers }`, `SWORD_DIMS`, `STRIP` (mark a), `ROBE_TAILS`), look.js (ADR-152: `sheathLookNow`, `sheathArtNow` ('0' | '1' | '2' | '3' | 'a'), `sheathDigits`, `sheathTuned`,
+`SHEATH_STEP`, `wandererDigits(base)` (the art sources of prints 1 and 2), `SHEATH_FLAT` (print 3 folds those
+materials' aPart to 0 in `_setup`),
+`sheathToneNow`, `sheathMarkNow` (all read when his rig is built), `SHEATH_TONE`, `SHEATH_MARK`, `SHEATH_LIFT`,
+`tintWanderer(M)`: the Wanderer's fills and rim in the ink-line art, called by `_tint`), links.js, fx.js
+(`SheathFx extends DuelFx`), lateCuts.js (`LateCuts`). Mark a's strip on the left-wrist piece: `_setup` appends
+its two springs to `rig.streamers` and the animator's `streamState` (`_offStrip`); a change to 'drawn' kicks
+them (the snap). Drawn only: no gameplay reads them.
 ```
 name = 'LU WUSHENG, THE SHEATHED';  kind = 'duelist'
 sheath: 'carry' | 'settled' | 'drawn'   // the sheath on the rig (below); 'dragon:sheath {state}' on a change

@@ -4568,6 +4568,61 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
 - **Consequences:** a run takes ~4 minutes (PR #92: 4 min 19 s); a PR shows six checks. The floor is
   the longest task (lord fxlooks ~230 s); re-measure `est` when a suite grows a lot.
 
+## ADR-152 — Lu Wusheng readable: the hero's ink-line print, lifted; three palettes and a mark to pick; a wanderer's motion and names (2026-11-22)
+
+- **Context:** the owner on the live Windless Grove: "its hard to see the new boss character. make it look
+  detailed like the main character". At the game camera he was a thin dark column of the wyrm's digits about
+  40 px tall beside a drawn hero. The owner's answers (2026-11-22): print him in the hero's ink-line art (not
+  bigger letters: the shared renderer stays as it is); the homage to the genre's wandering swordsman rests on
+  his silhouette type, a mark of his own, how he moves, and his lines and names; three palettes rendered to
+  pick from. He stays an original.
+- **Decision:**
+  - The print: `?sheathArt=a` (the hero's ink-line art, as the hero and Shen Hui are drawn) is in `PICKED`;
+    `?sheathArt=0` keeps the wyrm's digits. The prototype printed him as dark as the grove's floor: the
+    Wanderer's fills sit about twice as high and the screen-left rim × 3 (× 3.6 on the scarf and the mark)
+    (`sheathed/look.js` `SHEATH_TONE`, `SHEATH_LIFT`, `tintWanderer`). His hair moves off the `hair` part,
+    whose shared ink lines are the hero's gold (a gold line round dark hair read as light hair at 30 m),
+    onto `shirt`. The scabbard keeps the darkest fill, the drawn blade the brightest pixels.
+  - Three palettes, `?sheathTone=a|b|c` (indigo and sand, pale and cold, moss and rust; dark hair in all),
+    and a mark, `?sheathMark=a|b|0` (a torn strip of unbleached cloth tied below the scabbard's mouth, on
+    springs on both scabbard pieces, snapped by the draw; a white streak through the hair and its tail;
+    none): Lab rows marked `awaiting`, not in `PICKED`; the fight draws a / a until the owner picks.
+  - The silhouette, sharpened where the outline is what reads: the robe falls loose to mid-thigh over the
+    wide pleated trousers, open at both sides (a robe worn loose and long, never a short top tucked into
+    the trousers); a longer, thicker high tail with a pale tie; the scarf's turns deeper and its ends wider,
+    its tails hanging close down his back when he is still (`out` 0.14 → 0.03), trailing at a run; pale wrist bindings.
+  - Motion (poses and keys only): a quiet carry (the head a little bowed, the left thumb in the sash), a
+    slower, smaller breath, a low run with the sheathed sword held back at the hip (opt.run; his own
+    `duelLoco` sinks and pitches the duelist's run), and a settle that turns sharp (in every draw beat the
+    head comes round first, then the body drops into the stance at speed). No tell, windup, hold, flash,
+    zone, damage, cooldown or root motion changed; `sheath.mjs` passes with its thresholds as they were.
+  - Lines and names: the level's lines and eight move labels play up a wanderer sworn not to draw (ids
+    unchanged), original wording.
+  - Steered off the famous character: no scar of any shape, no red, orange or pink hair (the gold hair line
+    that tinted his outline was moved off), no reversed-edge sword, and not that character's outfit: a long
+    loose travelling robe over the trousers, not a short top tucked in, with a scarf that character never
+    wears; no palette is that outfit's colour scheme.
+- **Consequences:** he reads at 1280 x 720 (the mean luma of his pixels 31.9 against the floor's 16.1; the
+  hero 25.2 against 20.1; the prototype 22.2 against 16.3) and on the phone camera (45.4 against 16.5). The
+  digits print had a higher mean (40.0) but read as a block of numbers, not a figure: luma alone is not the
+  measure, so the sheets show both. `tests/integration/sheath.mjs` gains LOOK (the print, the options, the
+  mark's springs, ADR-126's hand audit through One Breath). The mark's strip on the left-wrist piece hangs its
+  springs on the animator after the rig is built (sheathed.js `_setup`), a light coupling to anim.js's
+  `streamState` shape. Open: the owner's picks of the palette and the mark; a look on a real phone.
+
+- **Addendum (2026-11-23): five steps between the digits and the ink-line art.** The owner picked palette a, then
+  found the ink-line print too detailed at fight distance: "reads as a 3D model" (smooth shaded cloth, clean
+  outlines) and body flaws the digits hid. `?sheathArt=` now holds five steps: 0 the digits as shipped, 1 the
+  digits in his palette with a stroke outline, 2 the digits lit and outlined harder, 3 the ink-line art with
+  every cloth piece folded into one (no interior lines), no glints and half the rim, a the ink-line art. Data
+  only: the wyrm's art sources (`light`, `strokeEdge`, `rimInk`) and per-rig uniforms; no renderer or shared
+  material changed. Prints 1 - a wear a reworked body (full sleeves, one roll of scarf, plain gaiters, no wrist
+  bands); 0 keeps him as he shipped. `sheathArt` stays `a` in `PICKED` and its Lab row is `awaiting` again (the
+  picks test now lets a picked switch wait for a new pick). The author would pick 2 (DEVLOG 2026-11-23).
+- **The pick (2026-11-23): step 2.** The owner picked 2, the digits in his palette, lit and outlined harder:
+  `sheathArt: '2'` in `PICKED`, the Lab row no longer `awaiting`. 0, 1, 3 and a stay behind the switch. Known
+  limits of 2 at fight distance: his digits are larger than the hero's letters, only his lit side prints (he
+  reads narrower than the hero), the face does not read. The mark (`?sheathMark=`) is still not picked.
 ## ADR-154 — Wen Yao reworked: drawn like the hero, his selves only in packs out of the air, a big Pearl, the Nine-Tailed Fox's beam (2026-11-22)
 
 - **Context:** the owner played the Thousand-Body Fox (ADR-147) and asked, word for word: "its hard to see

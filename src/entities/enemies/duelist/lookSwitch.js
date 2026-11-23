@@ -49,6 +49,9 @@ export const PICKED = Object.freeze({
   grove: 'a', // the grove's light: a moonlit mist (the owner's pick)
   sheathLook: 'd', // his body: the Wanderer (the owner's pick, 2026-11-22, over a, mourning white)
   drawCut: 'a', // the draw's cut: one white line (the owner's pick)
+  sheathArt: '2', // his print: the digits in his colours, lit and outlined (the owner's pick, 2026-11-23, of five steps; a, the ink-line art, read as a 3D model; ADR-152)
+  sheathTone: 'a', // his palette: indigo and sand (the owner's pick, 2026-11-23, of three)
+  // (sheathMark: rendered for the owner, not picked yet: its Lab row is 'awaiting')
 });
 
 /** Switches the owner has not picked yet (their rendered options wait for the owner): in the Lab's LOOKS
