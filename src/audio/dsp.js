@@ -4,8 +4,14 @@ import { clamp } from '../core/math.js';
 // reverb impulse, waveshaper curves and AudioParam envelope helpers. Buffers/curves are built
 // once and shared; envelope helpers never receive non-finite numbers from callers.
 
-export const rnd = (a, b) => a + Math.random() * (b - a);
-export const pick = (arr) => arr[(Math.random() * arr.length) | 0];
+// The audio's own random stream (0..1) for everything a sound draws as it plays, never Math.random: the
+// headless sims seed Math.random and replay the fighters' rolls from it, so a sound that drew from it (or
+// stopped drawing) moved every fight after it. (The noise tables and the reverb impulse, built once at
+// unlock, still draw a fixed count from Math.random: no play moves that.)
+let aseed = 0x9e3779b9;
+export const arand = () => (aseed = (Math.imul(aseed, 1664525) + 1013904223) >>> 0) / 4294967296;
+export const rnd = (a, b) => a + arand() * (b - a);
+export const pick = (arr) => arr[(arand() * arr.length) | 0];
 export const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
 /** `v` if it is a finite number, else the fallback. */
 export const num = (v, d) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
@@ -90,8 +96,8 @@ export function createImpulse(ctx, seconds = 2.8) {
       decay *= step;
     }
     for (let r = 0; r < 7; r++) {
-      const at = pre + Math.floor(sr * rnd(0.004, 0.075));
-      if (at < len) d[at] += (Math.random() < 0.5 ? -1 : 1) * rnd(0.12, 0.35) * (1 - r / 9);
+      const at = pre + Math.floor(sr * (0.004 + Math.random() * 0.071));
+      if (at < len) d[at] += (Math.random() < 0.5 ? -1 : 1) * (0.12 + Math.random() * 0.23) * (1 - r / 9);
     }
   }
   return buf;
@@ -158,12 +164,12 @@ export function glide(p, t, from, to, dur) {
 /** Random crackle spikes on a gain param (use a dedicated GainNode). `fade` 0..1 tapers them. */
 export function spikes(p, t, dur, count, amp, tauMin = 0.003, tauMax = 0.012, fade = 0) {
   const times = [];
-  for (let i = 0; i < count; i++) times.push(t + Math.random() * dur);
+  for (let i = 0; i < count; i++) times.push(t + arand() * dur);
   times.sort((a, b) => a - b);
   p.setValueAtTime(0, t);
   for (const tt of times) {
     const life = (tt - t) / dur;
-    const a = amp * Math.pow(Math.random(), 1.8) * (1 - fade * life);
+    const a = amp * Math.pow(arand(), 1.8) * (1 - fade * life);
     p.setValueAtTime(Math.max(a, 0), tt);
     p.setTargetAtTime(0, tt + 0.0008, rnd(tauMin, tauMax));
   }

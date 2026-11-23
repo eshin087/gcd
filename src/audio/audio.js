@@ -1,6 +1,6 @@
 import { clamp } from '../core/math.js';
 import { DEFENSE } from '../combat/rules.js';
-import { createNoiseBuffers, createImpulse, limiterCurve, holdAt, num } from './dsp.js';
+import { createNoiseBuffers, createImpulse, limiterCurve, holdAt, num, arand } from './dsp.js';
 import { Voice } from './voice.js';
 import { SFX } from './sfx.js';
 import { ForestAmbience, BreathLoop } from './ambience.js';
@@ -884,7 +884,7 @@ export class AudioEngine {
       const max = num(this.game.dragon?.maxHp, 0);
       const frac = max > 0 ? num(d.damage, 0) / max : 0;
       // played in update(): takeHit emits stagger/death right after hurt, which cancel it
-      if (frac > 0.035 || Math.random() < 0.25) this._painPending = true;
+      if (frac > 0.035 || arand() < 0.25) this._painPending = true;
     });
     on('dragon:stagger', () => {
       this._staggerAt = this.ctx.currentTime;

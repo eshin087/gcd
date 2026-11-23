@@ -1,5 +1,5 @@
 import { clamp } from '../core/math.js';
-import { env, perc, glide, spikes, rnd, mtof, num } from './dsp.js';
+import { env, perc, glide, spikes, rnd, mtof, num, arand } from './dsp.js';
 
 // One-shot sound recipes, played through AudioEngine.play(name, opts).
 // Each entry: { prio, rev, gap, falloff, bus, gain, play(v, t, o, E) }
@@ -1450,7 +1450,7 @@ export const SFX = {
       const bp = swish(v, t, 'pink', 'bandpass', 200, 0.8, [[0, 0], [0.5, 0.32], [2.0, 0]]);
       env(bp.frequency, t, [[0, 200], [0.7, 1500], [2.0, 400]]);
       for (let i = 0; i < 10; i++) {
-        ping(v, t + 0.25 + Math.random() * 1.6, 'sine', rnd(3000, 6500), rnd(0.025, 0.06), 0.14);
+        ping(v, t + 0.25 + arand() * 1.6, 'sine', rnd(3000, 6500), rnd(0.025, 0.06), 0.14);
       }
       for (const m of [45, 52, 57]) {
         const s = v.osc('sine', mtof(m), t, t + 2.65);
