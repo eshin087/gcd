@@ -38,6 +38,11 @@ export const TUNE = {
   maxFlasks: 5,
   roll: { dur: 0.6, dist: 4.2, iframes: [0.04, 0.4], attackAfter: 0.42, rollAfter: 0.5, moveAfter: 0.52, landAt: 0.48 },
   backstep: { dur: 0.4, dist: 1.6, iframes: [0.03, 0.22], attackAfter: 0.28, rollAfter: 0.32, moveAfter: 0.34, landAt: 0.3 },
+  // THE LONG SECOND (ADR-158; Xin Yi's reward, game.unlocks 'longSecond', ?tech=lean): guard held, then
+  // dodge with no direction: he leans back in place under the blow (no travel: he stays in reach),
+  // i-frames longer than the backstep's, free to cut after attackAfter; a perfect one slows time
+  // `slowmo` s (the Ghostep's 0.6) and leaves `ghosts` afterimages
+  lean: { dur: 0.42, dist: 0, iframes: [0.03, 0.34], attackAfter: 0.24, rollAfter: 0.36, moveAfter: 0.36, landAt: 0.3, slowmo: 0.9, ghosts: 3 },
   heal: { dur: 0.85, at: 0.5, amount: 70 },
   staggerDur: 0.4,
   knockdownDur: 1.3,
@@ -238,6 +243,7 @@ export class Player {
     this.assist = { target: null, t: 0 };
     this.ghostFx = 0; // 1 → 0 after a Ghostep: dissolve-in + cold tint
     this.rollBack = false;
+    this.rollLean = false; // (a backstep that is the Long Second: TUNE.lean)
     this.rollDir = { x: 0, z: -1 };
     this.healApplied = false;
     this.burnT = 0;
@@ -377,7 +383,7 @@ export class Player {
     if (this.state === 'lock') return true; // blades locked
     if (this.iframeT > 0) return true; // Ghostep / the plunge's landing
     if (this.state === 'roll') {
-      const R = this.rollBack ? TUNE.backstep : TUNE.roll;
+      const R = this._rollTune();
       return this.stateT >= R.iframes[0] && this.stateT <= R.iframes[1];
     }
     if (this.state === 'knockdown') return this.stateT >= TUNE.knockdownDur - TUNE.getUpIframes;
@@ -507,7 +513,7 @@ export class Player {
         return RESULT.BLOCKED;
       }
       if (blockable) {
-        this._block(dmg, tell, attack, chip, nx, nz);
+        this._block(dmg, tell, attack, chip, nx, nz, hit.guardCost);
         return RESULT.BLOCKED;
       }
       this._streakEnd();
@@ -652,6 +658,7 @@ export class Player {
     this.deadDown = false;
     this.downFrom = 0;
     this.rollBack = false;
+    this.rollLean = false;
     this.healApplied = false;
     this.buf.action = null;
     this.hb.held = false;
@@ -1626,7 +1633,9 @@ export class Player {
     return true;
   }
 
-  _block(dmg, tell, attack, chip, nx, nz) {
+  /** `guardCost` (optional, a hit's own: Xin Yi's Iron Rain, ADR-156): what the block costs the meter
+   *  instead of GUARD.cost's (a stream of small shots must not empty it: GUARD.costMin is 8 a blow). */
+  _block(dmg, tell, attack, chip, nx, nz, guardCost) {
     const g = this.game;
     // a blow costs guard and no HP (GUARD); a contact stream (the breath's ticks, a bullet) is no
     // blow: it keeps its HP chip and leaves the meter alone
@@ -1635,7 +1644,7 @@ export class Player {
     let open = false;
     if (chip) this._damage(taken);
     else if (!this.debug.god) {
-      const cost = clamp(dmg * (GUARD.cost[tell] ?? GUARD.cost.normal), GUARD.costMin, GUARD.costMax);
+      const cost = Number.isFinite(guardCost) && guardCost >= 0 ? guardCost : clamp(dmg * (GUARD.cost[tell] ?? GUARD.cost.normal), GUARD.costMin, GUARD.costMax);
       this.guard = Math.max(0, fin(this.guard) - cost);
       this.guardWait = Math.max(this.guardWait, GUARD.regenDelay);
       open = this.guard <= 0;
@@ -1741,6 +1750,8 @@ export class Player {
    *  TUNE.ghostepMaxRange). */
   _ghostep(attacker, attack, tell, teleport = true, crit = DEFENSE.ghostep.critWindow) {
     const g = this.game, p = this.position;
+    // (the Long Second's perfect lean, ADR-158: a longer slow-mo and three afterimages where he leaned)
+    const lean = this.rollLean && this.state === 'roll';
     const ox = p.x, oz = p.z;
     // the way he was going (the afterimage of the sharp / cinema looks tears along it when he stays)
     const wx = this.state === 'roll' ? this.rollDir.x : fin(this.vel.x), wz = this.state === 'roll' ? this.rollDir.z : fin(this.vel.z);
@@ -1787,8 +1798,10 @@ export class Player {
     }
     this.anim.kickCoat(1);
     this.fx.ghostep(this._ghostSegs, nSegs, ox, oz, p.x, p.z, PM?.F ? { feel: PM, wx, wz } : undefined);
-    if (PM?.F) this._slowmo(PM.F.slow?.time ?? PM.F.beat?.dur ?? DEFENSE.ghostep.slowmoTime, PM.mode);
+    if (lean) this._slowmo(TUNE.lean.slowmo);
+    else if (PM?.F) this._slowmo(PM.F.slow?.time ?? PM.F.beat?.dur ?? DEFENSE.ghostep.slowmoTime, PM.mode);
     else this._slowmo(DEFENSE.ghostep.slowmoTime);
+    if (lean) for (let i = 1; i < TUNE.lean.ghosts; i++) this.fx.ghostep(this._ghostSegs, nSegs, ox, oz, p.x, p.z);
     g.shake?.(0.15);
     g.world?.setPusher?.(0, p.x, 0, p.z, TUNE.pusher);
     // (`feel`: the look's mode, for the screen: flow.js)
@@ -2535,9 +2548,17 @@ export class Player {
   }
 
   // --- roll --------------------------------------------------------------
+  /** The numbers of the roll under way: the roll, the backstep, or the Long Second's lean. */
+  _rollTune() {
+    return this.rollLean ? TUNE.lean : this.rollBack ? TUNE.backstep : TUNE.roll;
+  }
+
   _startRoll() {
     const I = this.intent;
     const back = I.len <= 0.1;
+    // THE LONG SECOND (ADR-158): from a held guard, no direction: the lean in place
+    const lean = back && (this.state === 'block' || this.rmb.held) && !!this.game.unlocks?.has?.('longSecond');
+    this.rollLean = lean;
     if (back) {
       this.rollDir.x = -Math.sin(this.yaw);
       this.rollDir.z = -Math.cos(this.yaw);
@@ -2556,15 +2577,15 @@ export class Player {
     this.want.z = this.rollDir.z * along;
     this.atk = null;
     this.chargeK = 0;
-    this._enter('roll', back ? 'backstep' : 'roll', 0.05);
+    this._enter('roll', lean ? 'lean' : back ? 'backstep' : 'roll', 0.05);
     if (!back) this.anim.kickCoat(TUNE.rollCoatKick);
-    this._emit('player:roll', { backstep: back });
-    this.fx.dust(this.position.x, this.position.z, back ? 5 : 9, back ? 0.7 : 1);
+    this._emit('player:roll', { backstep: back, lean });
+    if (!lean) this.fx.dust(this.position.x, this.position.z, back ? 5 : 9, back ? 0.7 : 1);
     return true;
   }
 
   _tickRoll() {
-    const R = this.rollBack ? TUNE.backstep : TUNE.roll;
+    const R = this._rollTune();
     const t = this.stateT;
     const u = clamp(t / R.dur, 0, 1);
     // fast out of the gate, settling at the end; integrates to exactly R.dist

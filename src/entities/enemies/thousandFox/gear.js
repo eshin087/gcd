@@ -31,6 +31,15 @@ import { foxLookNow } from './look.js';
 //   c  the Pelt Brawler: a quilted russet jerkin, a fox's head on his left shoulder with its pelt as a
 //      half cape (a streamer), the mask pushed up on the brow like a crest, a short split skirt.
 //   d  outfit a in the ink-line art.
+// The h outfits (the INK-LINE art, drawn like the hero: the default since the owner could not see him;
+// built for a figure ~34 px tall at the game camera, so colour and silhouette carry them):
+//   h  (h1, h2) a big upswept crest of russet hair with pale tips, standing a third of the head's height
+//      above the skull; a short open jacket with short sleeves and squared shoulders over a dark shirt,
+//      cut to the hip; dark trousers; pale wraps on forearms, fists and shins; a long scarf wound round
+//      the neck, its two broad tails streaming behind him; a dark belt with a fox-tail charm (a russet
+//      brush, a pale tip) at the left hip. No mask (the face stays bare).
+//   h3 the same head, scarf and charm; a long sleeveless coat to the knee, open down the front, its
+//      skirt on the coat springs, over a dark long-sleeved shirt.
 // Every outfit: bare, wrapped forearms and fists.
 //
 // Built for the art path (docs/STYLE.md "The house style"): low-poly parts with FLAT facets (facet()),
@@ -42,6 +51,10 @@ import { foxLookNow } from './look.js';
 //   coat the robe / jacket / jerkin · lining their insides · pants trousers · piping the wraps
 //   facing the vermilion sash, cords and scarf · shirt shoes, the undershirt, darks · hair · skin
 //   eye the mask's slits, nose and ear insides · leather belts and straps.
+// The h outfits (bodyArt.js FOX_INK.h1 - h3; nine materials, nine draw calls a rig): welt the russet
+// crest and the charm's brush · hem the pale wraps, the crest's tips and the charm's tip · coat the
+// jacket / long coat · lining its inside · shirt the shirt, the belt, the shoes · pants · facing the
+// scarf · skin · eye.
 
 const YSP = 1.035, YPV = 0.955, YCH = 1.225; // REST.spine / pelvis / chest (heroDims.js REST)
 const ySp = (h) => h - YSP, yPv = (h) => h - YPV, yCh = (h) => h - YCH;
@@ -316,9 +329,18 @@ const PALM_TURN = 2.1;
 function armsFor(ctx, look) {
   const { arms, sword, M, DIM, BODY, mesh } = ctx;
   const [ua0, ua1] = BODY.upperArm, [fa0, fa1] = BODY.foreArm, HK = BODY.hand;
+  const H = look === 'h' || look === 'h3';
+  const wrapM = H ? M.hem : M.piping; // (the h outfits' wraps are the pale `hem`: it keeps its fill far away)
   for (const side of [-1, 1]) {
     const { upper, fore } = arms[side < 0 ? 'R' : 'L'];
-    if (look === 'a') {
+    if (H) {
+      // h: the jacket's short sleeve, full, to above the elbow (the amber reaches down the arm);
+      // h3: the dark shirt's sleeve to the elbow (the coat is sleeveless)
+      const L = look === 'h' ? DIM.upperArm - 0.035 : DIM.upperArm + 0.01;
+      const g = facet(limb({ length: L, r0: ua0 + 0.03, r1: ua1 + (look === 'h' ? 0.034 : 0.008), bulge: 0.014, radial: 8, rings: 3 }));
+      mesh(upper, g, look === 'h' ? M.coat : M.shirt);
+      if (look === 'h') mesh(upper, g, M.lining);
+    } else if (look === 'a') {
       // the robe's sleeve tied back: gathered in a puff over the upper arm, bound above the elbow
       mesh(upper, facet(limb({ length: DIM.upperArm - 0.03, r0: ua0 + 0.026, r1: ua1 + 0.032, bulge: 0.02, radial: 8, rings: 3 })), M.coat);
       mesh(upper, facet(bandGeometry(ua1 + 0.03, ua1 + 0.03, 0.022, 8).translate(0, -DIM.upperArm + 0.045, 0)), M.facing);
@@ -334,7 +356,7 @@ function armsFor(ctx, look) {
     const y0 = -0.1, y1 = -DIM.foreArm + 0.04;
     const wr = [wraps(y0, y1, 5, fa0, fa1)];
     if (side < 0) wr.push(facet(ellipsoidGeometry(0.036 * HK, 0.04 * HK, 0.04 * HK, { widthSegs: 8, heightSegs: 5 }).translate(0, -DIM.foreArm + 0.02, 0.004)));
-    mesh(fore, mergeGeometries(wr), M.piping);
+    mesh(fore, mergeGeometries(wr), wrapM);
   }
   // the right fist on the sword joint, its knuckles wrapped (Tian Lei's, ascendant/gear.js)
   {
@@ -344,7 +366,7 @@ function armsFor(ctx, look) {
     mesh(sword, mergeGeometries([
       sub(facet(bandGeometry(kx, ky + 0.002, 0.03, 10).rotateX(Math.PI / 2).translate(0, 0, -0.024)), 0),
       sub(facet(bandGeometry(kx + 0.002, ky + 0.004, 0.028, 10).rotateX(Math.PI / 2).translate(0, 0, 0.028)), 1),
-    ]), M.piping);
+    ]), wrapM);
   }
   // the free hand: open (the Pearl's hand), the grip, the sword fingers (never shown: no seals)
   const hand = buildFreeHand(ctx);
@@ -354,19 +376,20 @@ function armsFor(ctx, look) {
 
 // ================================================================ legs
 function legsFor({ pelvis, legs, M, DIM, BODY, mesh }, look) {
+  const wrapM = look === 'h' || look === 'h3' ? M.hem : M.piping;
   {
     const [hx, hy, hz] = BODY.hips.r;
-    const w = look === 'b' ? 0.022 : 0.012;
+    const w = look === 'b' || look === 'h' ? 0.022 : 0.012;
     mesh(pelvis, facet(orient.up(ellipsoidGeometry(hx + w, hz + w, hy + w, { widthSegs: 10, heightSegs: 6 })).translate(...BODY.hips.c)), M.pants);
   }
   const [th0, th1] = BODY.thigh, [sh0, sh1] = BODY.shin;
   // loose trousers (b: looser, the knee full), pale wraps from under the knee to the ankle
-  const full = look === 'b' ? 0.012 : 0;
+  const full = look === 'b' || look === 'h' ? 0.012 : 0;
   for (const side of [-1, 1]) {
     const { thigh, shin, foot } = legs[side < 0 ? 'R' : 'L'];
     mesh(thigh, facet(limb({ length: DIM.thigh, r0: th0 + 0.016 + full, r1: th1 + 0.02 + full * 1.5, bulge: 0.014 + full, radial: 8, rings: 3 })), M.pants);
     mesh(shin, facet(limb({ length: 0.12, r0: th1 + 0.02 + full * 1.5, r1: sh0 + 0.012 + full, radial: 8, rings: 1 })), M.pants);
-    mesh(shin, wraps(-0.11, -DIM.shin + 0.05, 5, sh0, sh1), M.piping);
+    mesh(shin, wraps(-0.11, -DIM.shin + 0.05, 5, sh0, sh1), wrapM);
     const F = BODY.foot;
     mesh(foot, facet(ellipsoidGeometry(F.r[0] * 0.92, F.r[1] * 0.85, F.r[2] * 0.95, { widthSegs: 8, heightSegs: 5 }).translate(F.c[0], F.c[1] - 0.004, F.c[2])), M.shirt);
   }
@@ -437,8 +460,108 @@ function waistC(ctx) {
   return { coat };
 }
 
+// ================================================================ the h outfits (ink-line)
+/** The h crest: points swept up and back from the brow, flaring out at the crown and over the ears,
+ *  each [x, y, z] base, [rx, rz] lean, length, width (head space, before BODY.headScale). The crown's
+ *  points reach ~0.1 m above the skull (about a third of the head's height): at the game camera the
+ *  head must read as a big russet crest, not as a dot. */
+const CREST = [
+  // the brow: three tall points, swept up and back
+  [0, 0.25, 0.07, -0.3, 0, 0.14, 0.052],
+  [0.052, 0.245, 0.055, -0.42, -0.42, 0.13, 0.046],
+  [-0.052, 0.245, 0.055, -0.42, 0.42, 0.13, 0.046],
+  // the crown
+  [0, 0.27, -0.005, -0.72, 0, 0.15, 0.055],
+  [0.068, 0.25, -0.012, -0.72, -0.68, 0.135, 0.048],
+  [-0.068, 0.25, -0.012, -0.72, 0.68, 0.135, 0.048],
+  // over the ears, flaring out
+  [0.092, 0.2, -0.03, -1.05, -1.2, 0.115, 0.042],
+  [-0.092, 0.2, -0.03, -1.05, 1.2, 0.115, 0.042],
+  // the back of the head, swept down to the nape
+  [0, 0.23, -0.085, -1.5, 0, 0.13, 0.05],
+  [0.055, 0.19, -0.09, -1.85, -0.5, 0.105, 0.042],
+  [-0.055, 0.19, -0.09, -1.85, 0.5, 0.105, 0.042],
+];
+
+/** The h head: no mask; a cap of hair over the skull and the crest, each point's upper half pale.
+ *  (The crest is the `welt` part and its tips the `hem`, not the hair parts: the hair parts' ink lines
+ *  and silhouette are gold for every boss (model.js HERO_INK, Tian Lei's gold hair), and a gold outline
+ *  round a russet crest read as blond spikes at the game camera.) */
+function headH({ head, M, mesh }) {
+  const mass = [facet(ellipsoidGeometry(0.096, 0.102, 0.104, { widthSegs: 9, heightSegs: 6 }).translate(0, 0.168, -0.02))];
+  const tips = [];
+  for (const [x, y, z, rx, rz, L, w] of CREST) {
+    // a kite standing on its base (yPos doubles its upper half: the point is L long, the lower half
+    // sinks into the cap) and, along the same axis, a smaller kite over its upper half: the pale tip
+    mass.push(facet(place(kiteGeometry(w, L * 0.5, w * 0.7, { yPos: 2.0 }), x, y, z, rx, 0, rz)));
+    tips.push(facet(place(kiteGeometry(w * 0.46, L * 0.16, w * 0.36, { yPos: 1.9 }).translate(0, L * 0.68, 0), x, y, z, rx, 0, rz)));
+  }
+  mesh(head, mergeGeometries(mass), M.welt);
+  mesh(head, mergeGeometries(tips), M.hem);
+}
+
+/** The jacket's (h) or the long coat's (h3) body: an open front (`gap`), from `y0` (world idle
+ *  height) up to a collar standing at the back of the neck. */
+function jacketRings(BODY, y0, grow, gap) {
+  const rings = [{ y: ySp(y0), rx: BODY.shell[0].rx + grow + 0.012, rz: BODY.shell[0].rz + grow + 0.028, gap: gap + 0.03 }];
+  for (const r of BODY.shell.slice(0, 6)) rings.push({ ...r, rx: r.rx + grow, rz: r.rz + grow, gap, y: ySp(r.y) });
+  rings.push({ y: ySp(1.535), rx: 0.11, rz: 0.1, gap: gap * 0.8 }, { y: ySp(1.59), rx: 0.106, rz: 0.098, gap: gap * 0.95 });
+  return rings;
+}
+
+function chestH({ spine, chest, M, BODY, mesh }, look) {
+  // the dark shirt
+  mesh(spine, facet(shellGeometry(bodyRings(BODY, 0.006, [{ y: 1.53, rx: 0.064, rz: 0.062 }]), { sub: 1, cols: 12 })), M.shirt);
+  // the jacket (h: short, to the hip, flaring a little there; h3: the long coat's body, its skirt on
+  // the coat springs below the belt, waistH), its inside the lining
+  const v = facet(shellGeometry(jacketRings(BODY, look === 'h' ? 0.985 : 1.06, 0.03, look === 'h' ? 0.065 : 0.075), { sub: 1, cols: 12 }));
+  mesh(spine, v, M.coat);
+  mesh(spine, v, M.lining);
+  // the jacket's shoulders, squared and standing a little proud of the arm (h3: the coat's, narrower)
+  const k = look === 'h' ? 1 : 0.8;
+  mesh(chest, mergeGeometries([1, -1].map((s) => facet(kite(0.075 * k, 0.032, 0.085 * k, [s * 0.165, yCh(1.47), -0.005], [0, 0, -s * 0.22])))), M.coat);
+}
+
+/** The scarf: wound twice round the neck, a knot at the back, two long broad tails that stream
+ *  behind him (the facing). */
+function backH(ctx) {
+  const { chest, M, mesh } = ctx;
+  mesh(chest, mergeGeometries([
+    // (bulky: from the front and the side the wound scarf is a red collar the jacket stands in)
+    sub(facet(bandGeometry(0.118, 0.112, 0.07, 10).translate(0, yCh(1.525), -0.004)), 0),
+    sub(facet(bandGeometry(0.142, 0.134, 0.06, 10).rotateX(0.22).translate(0, yCh(1.48), -0.012)), 1),
+    sub(facet(kite(0.07, 0.05, 0.045, [0.02, yCh(1.5), -0.15])), 0),
+  ]), M.facing);
+  // (the tails hang from outside the jacket's back: the shell stands ~0.15 m behind the spine)
+  const L = [0.42, 0.56];
+  const { s0, s1 } = tails(ctx, chest, [0.02, yCh(1.49), -0.17], M.facing, L, 0.095, 0.013);
+  return { streamers: [{ segs: [s0, s1], len: L, out: 0.24, lag: 1.0, max: 2.2, inMax: [0.2, 0.6], w: [0.19, 0.18, 0.15], wrap: 0.25 }] };
+}
+
+/** The long coat's skirt (h3): to the knee, open at the front (the vermilion lining shows), slit at
+ *  the sides. COAT_PANELS' fields (gear/wanderer.js). */
+const H3_PANELS = [
+  { az: 0.78, w: [0.2, 0.24, 0.28], len: [0.24, 0.28], strips: [], fork: [], out: 0.008, flare: 0.12, skew: 0.5 },
+  { az: -0.78, w: [0.2, 0.24, 0.28], len: [0.24, 0.28], strips: [], fork: [], out: 0.008, flare: 0.12, skew: -0.5 },
+  { az: 2.4, w: [0.22, 0.27, 0.3], len: [0.24, 0.3], strips: [], fork: [], out: 0.006, flare: 0.16, skew: -0.4 },
+  { az: -2.4, w: [0.22, 0.27, 0.3], len: [0.24, 0.3], strips: [], fork: [], out: 0.006, flare: 0.16, skew: 0.4 },
+];
+
+/** The belt and the fox-tail charm at his left hip (a russet brush, a pale tip); h3 the coat's skirt. */
+function waistH(ctx, look) {
+  const { pelvis, spine, M, BODY, mesh } = ctx;
+  const coat = look === 'h3' ? skirt(ctx, H3_PANELS) : [];
+  const W = BODY.shell[0];
+  mesh(spine, facet(bandGeometry(W.rx + 0.034, W.rz + 0.034, 0.05, 12).translate(0, ySp(1.1), 0)), M.shirt);
+  const x = look === 'h3' ? 0.19 : 0.175;
+  mesh(pelvis, facet(kite(0.052, 0.1, 0.042, [x, yPv(0.985), 0.05], [0.1, 0, 0.16], { yPos: 0.8 })), M.welt);
+  mesh(pelvis, facet(kite(0.03, 0.04, 0.026, [x - 0.018, yPv(0.875), 0.05], [0.1, 0, 0.16])), M.hem);
+  return { coat };
+}
+
 // ================================================================ the items
-/** Each item's build: the first one turns the rig to the art path (a, b, c), then builds `fn[look]`. */
+/** Each item's build: the first one turns the rig to the art path (a, b, c), then builds `fn[look]`
+ *  (the figure: look.js foxLookNow().base). */
 function opted(fn) {
   return (ctx) => {
     const L = foxLookNow();
@@ -457,14 +580,14 @@ export const FOX_ITEMS = [
     get shadowsFace() {
       return foxLookNow().base === 'a';
     },
-    build: opted({ a: headA, b: headB, c: headC }),
+    build: opted({ a: headA, b: headB, c: headC, h: headH, h3: headH }),
   },
-  { id: 'fox.chest', slot: 'chest', name: 'Fighter\'s Jacket', build: opted({ a: chestA, b: chestB, c: chestC }) },
+  { id: 'fox.chest', slot: 'chest', name: 'Fighter\'s Jacket', build: opted({ a: chestA, b: chestB, c: chestC, h: chestH, h3: chestH }) },
   { id: 'fox.shoulders', slot: 'shoulders', name: 'Fox Pelt', build: opted({ c: shouldersC }) },
   { id: 'fox.arms', slot: 'arms', name: 'Wrapped Fists', build: opted(armsFor) },
   { id: 'fox.legs', slot: 'legs', name: 'Wrapped Trousers', build: opted(legsFor) },
-  { id: 'fox.waist', slot: 'waist', name: 'Vermilion Sash', build: opted({ a: waistA, b: waistB, c: waistC }) },
-  { id: 'fox.back', slot: 'back', name: 'Streaming Scarf', build: opted({ b: backB }) },
+  { id: 'fox.waist', slot: 'waist', name: 'Vermilion Sash', build: opted({ a: waistA, b: waistB, c: waistC, h: waistH, h3: waistH }) },
+  { id: 'fox.back', slot: 'back', name: 'Streaming Scarf', build: opted({ b: backB, h: backH, h3: backH }) },
 ];
 for (const item of FOX_ITEMS) registerItem(item);
 

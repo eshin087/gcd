@@ -10,6 +10,7 @@ import {
 import { toDragonLook } from '../ashDisciple/bodyArt.js';
 import { ASC_ART } from './bodyArt.js';
 import { ascLookNow, dressOf, at } from './look.js';
+import { lookOf } from '../duelist/lookSwitch.js';
 
 // Tian Lei's gear: a bare-handed fighter on the hero's skeleton (built by the same buildHero(U,
 // loadout), driven by the same animator), no weapon. Three outfits for the owner to pick from
@@ -208,6 +209,9 @@ function hairH(form) {
       spike(0, 1.35, { u: 1, b: 0.35 }, 0.15, 0.046),
       spike(Math.PI, 0.7, { b: 1, u: 0.4 }, 0.16, 0.046)];
   }
+  const hairOpt = lookOf('ascHair', '0', 'a');
+  if (hairOpt === 'a') return goldCrown(form);
+  if (hairOpt === 'b') return goldRisen(form);
   const big = form === 3, k = big ? 1.3 : 1;
   const sharp = { taper: big ? 1.4 : 1.2, curl: big ? 0.02 : 0.05 };
   const one = [[0.35, 0.85, 0.22], [0.85, 0.85, 0.25], [1.35, 0.7, 0.26], [1.85, 0.6, 0.24], [2.4, 0.65, 0.22], [2.9, 0.75, 0.2]]
@@ -217,6 +221,41 @@ function hairH(form) {
   const L = [...both(one), spike(0, 1.25, { u: 1, b: 0.2 }, 0.25 * k, 0.044, sharp), spike(Math.PI, 0.9, { u: 1, b: 0.5 }, 0.22 * k, 0.044, sharp)];
   if (!big) L.push(...both([spike(0.18, 0.58, { u: -1, f: 0.5, s: 0.2 }, 0.08, 0.026, FRINGE)]));
   return L;
+}
+
+// The gold hair of forms 2 - 3 shorter and nearer a head of hair (`?ascHair=`, ADR-155; read when his
+// rig is built; '0' = hairH's tall crown as it shipped). Both keep about the head's own height above
+// the scalp (the shipped crown stood one and a half heads tall in form 2, two in form 3), and form 3
+// is form 2 stiffer, not taller: sharper tips, a few more spikes, one lock over the brow for two.
+/** The brow's locks: two short bangs (form 2), one longer lock hanging over the brow (form 3). */
+const bangs = (form) => (form === 3
+  ? [spike(0.14, 0.8, { u: -0.95, f: 0.7, s: -0.15 }, 0.115, 0.042, { bend: FWD, curl: 0.3, taper: 0.9 })]
+  : both([spike(0.2, 0.6, { u: -1, f: 0.5, s: 0.25 }, 0.075, 0.028, FRINGE)]));
+// a  a short crown: the shipped layout at about 60 % of its length, a little broader and leaning
+//    further back, so the gold is one mass that flares up from the head
+function goldCrown(form) {
+  const big = form === 3, k = big ? 1.1 : 1;
+  const sharp = { taper: big ? 1.4 : 1.15, curl: big ? 0.02 : 0.05 };
+  const one = [[0.35, 0.85, 0.13], [0.85, 0.85, 0.145], [1.35, 0.7, 0.15], [1.85, 0.6, 0.14], [2.4, 0.65, 0.13], [2.9, 0.75, 0.12]]
+    .map(([az, el, L]) => spike(az, el, { o: 0.5, u: 1, b: 0.35 }, L * k, 0.05, sharp));
+  one.push(spike(1.5, 0.25, { s: 0.7, u: 1, b: 0.2 }, 0.1 * k, 0.04, sharp));
+  if (big) one.push(spike(0.6, 1.2, { o: 0.2, u: 1, b: 0.2 }, 0.15, 0.05, sharp), spike(2.1, 1.0, { o: 0.3, u: 1, b: 0.4 }, 0.145, 0.05, sharp));
+  return [...both(one), spike(0, 1.25, { u: 1, b: 0.3 }, 0.15 * k, 0.05, sharp), spike(Math.PI, 0.9, { u: 1, b: 0.6 }, 0.14 * k, 0.05, sharp), ...bangs(form)];
+}
+// b  his own hair risen: form 1's spikes, each where it grows, turned up and back (the same head of
+//    hair standing on end, not a new crown); form 3 a little longer and sharper
+function goldRisen(form) {
+  const big = form === 3, k = big ? 0.95 : 0.85;
+  const o = { taper: big ? 1.35 : 1.1, curl: big ? 0.03 : 0.07 };
+  const one = [
+    spike(0.4, 1.15, { u: 1, s: 0.3, b: 0.25 }, 0.17 * k, 0.048, o),
+    spike(1.05, 0.75, { s: 0.55, u: 1, b: 0.15 }, 0.19 * k, 0.05, o),
+    spike(1.45, 0.35, { s: 0.7, u: 0.85, b: 0.25 }, 0.2 * k, 0.05, o),
+    spike(1.8, 0.05, { s: 0.6, u: 0.6, b: 0.5 }, 0.16 * k, 0.044, o),
+    spike(2.35, 0.55, { b: 0.8, s: 0.35, u: 0.85 }, 0.17 * k, 0.048, o),
+    spike(2.85, 0.15, { b: 1, s: 0.2, u: 0.5 }, 0.15 * k, 0.046, o),
+  ];
+  return [...both(one), spike(0, 1.35, { u: 1, b: 0.4 }, 0.17 * k, 0.05, o), spike(Math.PI, 0.7, { b: 0.9, u: 0.8 }, 0.16 * k, 0.048, o), ...bangs(form)];
 }
 
 // g  the son in purple: black spikes and a single lock on the brow (1); gold, the spikes up, two
@@ -274,7 +313,7 @@ function hairV(form) {
     spike(Math.PI, 0.75, { u: 1, b: 0.55 }, H * 0.6, 0.05, o)];
 }
 
-const HAIR = { a: hairA, c: hairC, h: hairH, g: hairG, v: hairV };
+const HAIR = { a: hairA, c: hairC, h: hairH, g: hairG, v: hairV, k: hairH };
 /** The homage outfits (built by their own functions below; a, c and d are untouched by them). */
 const HOMAGE = new Set(['h', 'g', 'v']);
 
@@ -347,7 +386,7 @@ function buildHead(ctx) {
     streamers.push({ segs: [s0, s1], len: [L0, L1], out: 0.08, lag: 0.7, max: 1.6 });
   }
   // form 3: a light in his eyes (the homage outfits: the eyes themselves turn teal, look.js)
-  if (!HOMAGE.has(look)) {
+  if (!HOMAGE.has(look) && look !== 'k') {
     const eyes = mergeGeometries([0.032, -0.032].map((ex) => ellipsoidGeometry(0.016, 0.008, 0.006, { widthSegs: 8, heightSegs: 4 }).translate(ex, 0.128, 0.098)));
     put(eyes, M.flask, 3, 3);
   }
@@ -531,7 +570,7 @@ function wraps(y0, y1, n, r) {
 }
 
 /** WRAP[look]: where the wraps reach up the forearm (fore space, m below the elbow). */
-const WRAP_TOP = { a: -0.15, c: -0.13 };
+const WRAP_TOP = { a: -0.15, c: -0.13, k: -0.13 };
 
 /** Bare arms, wrapped forearms and fists (the right fist on the sword joint, FIST). */
 function buildArms(ctx) {
@@ -598,7 +637,7 @@ function buildLegs(ctx) {
     mesh(thigh, foldLines(limb({ length: DIM.thigh, r0: th0 + 0.022, r1: th1 + 0.03, bulge: 0.028 }), (x, y, z) => 0.5 + 0.6 * Math.sin(Math.atan2(x, z) * 3 + y * 9 + side)), M.pants);
     mesh(shin, foldLines(limb({ length: -wrapTop + 0.03, r0: th1 + 0.03, r1: sh0 + 0.026, bulge: 0.012 }), (x, y, z) => 0.5 + 0.6 * Math.sin(Math.atan2(x, z) * 3 - y * 12)), M.pants);
     mesh(shin, wraps(wrapTop, -DIM.shin + 0.05, look === 'c' ? 9 : 6, (t) => lerp(look === 'c' ? sh0 + 0.004 : sh0 - 0.004, sh1, t) + 0.006), M.hem);
-    if (look === 'a') {
+    if (look === 'a' || look === 'k') {
       // soft boots: the foot and a short cuff at the ankle
       mesh(foot, mergeGeometries([
         ellipsoidGeometry(F.r[0] * 0.95, F.r[1] * 0.9, F.r[2] * 0.95, { widthSegs: 10, heightSegs: 6 }).translate(F.c[0], F.c[1] - 0.004, F.c[2]),
@@ -721,7 +760,7 @@ function chestGi(ctx, look) {
   const lower = rings.filter((r) => r.y <= ySp(1.3) + 1e-6), upper = rings.filter((r) => r.y >= ySp(1.3) - 1e-6);
   mesh(spine, foldLines(shellGeometry(lower, { sub: 3, cols: 28 }), crossFold), M.coat);
   const keep = [];
-  if (look === 'h') {
+  if (look === 'h' || look === 'k') {
     // the undershirt under the V
     const inner = armholes(0.004).filter((r) => r.y >= ySp(1.3) - 1e-6);
     mesh(spine, shellGeometry(inner, { sub: 3, cols: 28 }), M.facing);
@@ -849,7 +888,8 @@ const SKIRT_GI = [
 function waistHomage(ctx, look) {
   if (look === 'v') return {};
   const { coat } = panelSkirt(ctx, SKIRT_GI, { seed: 500 });
-  return { coat, streamers: sash(ctx, { tails: [0.17, 0.19], w: 0.07 }), keep: [] };
+  // (k: the sash's tails longer, the knot's ends to mid-thigh)
+  return { coat, streamers: sash(ctx, { tails: look === 'k' ? [0.27, 0.3] : [0.17, 0.19], w: 0.07 }), keep: [] };
 }
 
 // ================================================================= the items
@@ -860,11 +900,12 @@ function opted(build) {
     return build(ctx);
   };
 }
-const CHEST = { a: chestA, c: chestC, h: (ctx) => chestGi(ctx, 'h'), g: (ctx) => chestGi(ctx, 'g'), v: chestV };
-/** The homage outfits take their own builds for a slot; a, c and d keep theirs. */
-const homage = (own, build) => (ctx) => {
+const CHEST = { a: chestA, c: chestC, h: (ctx) => chestGi(ctx, 'h'), g: (ctx) => chestGi(ctx, 'g'), v: chestV, k: (ctx) => chestGi(ctx, 'k') };
+/** The homage outfits take their own builds for a slot; a, c and d keep theirs. k (the gi with
+ *  wraps, ADR-155) takes the gi's waist (`kOwn`) and outfit a's wrapped arms and legs. */
+const homage = (own, build, kOwn = false) => (ctx) => {
   const look = ascLookNow().base;
-  return HOMAGE.has(look) ? own(ctx, look) : build(ctx);
+  return HOMAGE.has(look) || (kOwn && look === 'k') ? own(ctx, look) : build(ctx);
 };
 
 /** The set (registered into the hero's gear registry on import: gear/index.js registerItem). */
@@ -873,7 +914,7 @@ export const ASC_ITEMS = [
   { id: 'asc.chest', slot: 'chest', name: 'Fighter\'s Tunic', build: opted((ctx) => CHEST[ascLookNow().base](ctx)) },
   { id: 'asc.arms', slot: 'arms', name: 'Wrapped Fists', build: opted(homage(armsHomage, buildArms)) },
   { id: 'asc.legs', slot: 'legs', name: 'Gathered Trousers', build: opted(homage(legsHomage, buildLegs)) },
-  { id: 'asc.waist', slot: 'waist', name: 'Sash and Skirt', build: opted(homage(waistHomage, buildWaist)) },
+  { id: 'asc.waist', slot: 'waist', name: 'Sash and Skirt', build: opted(homage(waistHomage, buildWaist, true)) },
 ];
 for (const item of ASC_ITEMS) registerItem(item);
 

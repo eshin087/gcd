@@ -33,8 +33,10 @@ export const LOOK_SWITCHES = Object.freeze([
   //
   //
   // --- ring: Tian Lei's body (his outfit, his hair by form)
-  ['ascLook', ['a', 'c', 'd', 'h', 'g', 'v'], 'a', 'h', true, ['ring'], 'Tian Lei\'s body: a tunic, c monk, d = a in the dragon look; homages h orange gi, g purple gi, v blue suit (a reload)'],
-  ['ascLift', ['0', 'a'], 'a', 'a', true, ['ring'], 'Tian Lei\'s figure lifted off the floor: 0 as the body shipped (a reload)'],
+  ['ascLook', ['a', 'c', 'd', 'h', 'g', 'v', 'e', 'r', 'w'], 'a', 'e', true, ['ring'], 'Tian Lei\'s body: a tunic, c monk, d = a in the dragon look; homages h orange gi, g purple gi, v blue suit; the gi with wraps e ember, r crimson, w bone (a reload)'],
+  ['ascLetters', ['0', 'a'], '0', 'a', false, ['ring'], 'Tian Lei\'s letters: 0 the bosses\' fine cell, a they follow his size as the hero\'s do'],
+  ['ascHair', ['0', 'a', 'b'], '0', 'b', true, ['ring'], 'Tian Lei\'s gold hair (forms 2 - 3): 0 the tall crown, a a short crown, b his own hair risen (a reload)'],
+  ['ascLift', ['0', 'a', 'b'], 'a', 'b', true, ['ring'], 'Tian Lei\'s print: 0 as the body shipped, a lifted off the floor, b the hero\'s quieter print (a reload)'],
   //
   // --- ring: Tian Lei's effects (the aura, the beam, the blasts, the transformation)
   ['ascAura', ['a', 'b', 'c'], 'a', 'a', false, ['ring'], 'Tian Lei\'s aura (forms 2 and 3)'],
@@ -44,13 +46,24 @@ export const LOOK_SWITCHES = Object.freeze([
   //
   //
   // --- fox: Wen Yao (ADR-147; every one read when his rigs or his effects are built: a reload)
-  ['foxLook', ['a', 'b', 'c', 'd'], 'b', 'b', true, ['fox'], 'Wen Yao\'s body: a shrine fox, b wild fox (the default), c pelt brawler, d = a in ink-line (a reload)'],
-  ['foxfire', ['a', 'b', 'c'], 'a', 'a', true, ['fox'], 'the foxfire: a jade, b the wyrm\'s orange, c moon-white (a reload)'],
+  ['foxLook', ['a', 'b', 'c', 'd', 'h1', 'h2', 'h3'], 'h1', 'h1', true, ['fox'], 'Wen Yao\'s body: ink-line like the hero, h1 the wild fox (the default: amber jacket, vermilion scarf), h2 vermilion jacket and black scarf, h3 a long pale coat; through the art path a shrine fox, b wild fox, c pelt brawler; d = a in ink-line (a reload)'],
+  ['foxLetters', ['a', 'b'], 'b', 'b', false, ['fox'], 'Wen Yao\'s letters: a a fixed cell (as the other bosses), b they follow his size on screen as the hero\'s do (the default; read every frame: live)'],
+  ['foxfire', ['a', 'b', 'c'], 'c', 'c', true, ['fox'], "the Pearl's colour: a jade, b the wyrm's orange, c pale blue-white (the default; a reload)"],
   ['clones', ['a', 'b'], 'a', 'a', true, ['fox'], 'the paper selves: a as him, b a step paler (a reload)'],
+  ['foxFire3', ['a', 'b'], 'a', 'a', true, ['fox'], 'phase 3\'s fire (the mantle, the Nine-Tailed Fox, its beam): a the wyrm\'s orange-red, b jade (a reload)'],
+  ['foxSpirit', ['a', 'b'], 'a', 'a', true, ['fox'], 'the Nine-Tailed Fox: a a body in the wyrm\'s letters wreathed in fire, b fire and ink lines only (a reload)'],
   // --- grove: the Windless Grove and the Sheathed (ADR-145; the owner's picks, 2026-11-22: a / a / a)
   ['grove', ['a', 'b', 'c'], 'a', 'a', true, ['grove'], 'the grove: a moonlit mist, b grey dawn, c first snow (a reload)'],
   ['sheathLook', ['a', 'b', 'c', 'd'], 'a', 'a', true, ['grove'], 'Lu Wusheng\'s body: a mourning white, b reed cloak, c one sleeve, d the wanderer (a reload)'],
   ['drawCut', ['a', 'b'], 'a', 'a', false, ['grove'], 'the draw\'s cut: a one white line, b with an afterimage'],
+  // --- code: the Hall of Falling Script and Xin Yi (ADR-156, ADR-157; pending: the owner picks from the sheets)
+  ['oneLook', ['a', 'b', 'c'], 'a', 'a', true, ['code'], 'Xin Yi\'s body: a the long coat, b the cassock, c the grey coat (a reload)'],
+  ['hall', ['a', 'b'], 'a', 'a', true, ['code'], 'the hall: a pale marble, green-black inlay; b dark basalt, jade-lit edges (a reload)'],
+  ['script', ['a', 'b', 'c'], 'a', 'a', true, ['code'], 'the script wave: a a shimmer and the full turn, b nothing until the Source, c strong from the start (a reload)'],
+  // --- grove: Lu Wusheng readable (ADR-152): the palette picked; the print's five steps and the mark wait for the owner
+  ['sheathArt', ['0', '1', '2', '3', 'a'], '0', '2', true, ['grove'], 'Lu Wusheng\'s print, five steps: 0 the wyrm\'s digits as shipped, 1 digits in his colours, 2 digits lit and outlined, 3 ink-line flattened, a the hero\'s ink-line art (a reload)'],
+  ['sheathTone', ['a', 'b', 'c'], 'a', 'a', true, ['grove'], 'the Wanderer\'s palette: a indigo and sand, b pale and cold, c moss and rust (a reload)'],
+  ['sheathMark', ['a', 'b', '0'], 'a', 'a', true, ['grove'], 'his mark: a a torn strip on the scabbard, b a white streak in the hair, 0 none (a reload)', 'awaiting'],
 ]);
 
 const NAMES = LOOK_SWITCHES.map((s) => s[0]);

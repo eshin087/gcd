@@ -180,7 +180,7 @@ bosses.
   |---|---|---|---|
   | The Cinder Wyrm | Bite; Hesitant maw's held bite; Claw combo's lunging bite; Wing buffet's second wing; **Wing rend's lunging bite\***, **Sky hammer's wing slam\***, **Cinder rake's overhead\***, **Cataclysm's wing slam\***, **the Tail bat\*** (the boulder; ADR-119) | every red blow it had (tail, stomp, charge, pounce, leap, the fire flights); **the tail whips\*** (Pivot lash, Rear guard, Cinder rake, Cataclysm), **Rear guard's tail slam\***, **Furnace maw's wing slam\***, the flying combos' blows\*, the ground tongues\*, the ambient cinders\*, a thrown tree or boulder\* (ADR-119) | **Black maw**: the head rears and holds 1.5 s + 0.15 - 0.6 s, then the snap: 44, range 3.5 - 6.5 m off its chest, cooldown 14 s |
   | Shen Hui | Falling Ash; Falling Star; Swallow Flicks' thrust; Crane Spins' chop; Swallow's Return; **Severing Wind*** (one long step from 3.6 - 10 m and a level two-handed cut, 26) | Piercing Ash, Lotus Sweep, Ember Whirl's last, Heaven-Splitting Fall, Hundred Petals' last; **Twin Embers*** (a dashing cut, then the low sweep 0.92 s later: dodge, dodge; 22 and 24) | **Black Tide**: the jian drawn back low, 1.45 s + 0.1 - 0.5 s, then a dashing cleave up to 7.5 m: 38, knocked down, cooldown 12 s |
-  | Wen Yao (ADR-147) | Three Paws' palm; Ladder to the Moon (a perfect parry locks); Hand to Hand's uppercut; the Thousand-Body Round's own palm | Sweeping Tail; the Pearl driven home; Pearl Rain; Fox Descending; Burning Tail; Fox-Fire Pounce; both transitions | **Moon-Swallowing Pearl** (phase 3): the Pearl grown dark over his head, 1.5 s + 0.1 - 0.5 s, then a leap down on the hero: 44, ring 3.4 m, knocked down, cooldown 14 s |
+  | Wen Yao (ADR-147, ADR-154) | Three Paws' palm; Ladder to the Moon (a perfect parry locks); Hand to Hand's uppercut; the Thousand-Body Round's own palm; A Thousand at Once (one cue for every self) | Sweeping Tail; the Pearl driven home; the Twin Pearls; Pearl Rain; the Burial (the pile and his fists); the Kite String's heel; Burning Tail; Fox-Fire Pounce; Heaven-Devouring Howl's beam; both transitions | **Moon-Swallowing Pearl** (phase 3): the Pearl grown dark over his head, 1.5 s + 0.1 - 0.5 s, then a leap down on the hero: 44, ring 3.4 m, knocked down, cooldown 14 s |
   | The Starless Lord | Falling Star; Scissor; Grasp and Sever's chop; **Severance*** (a long step and a two-handed chop, 26; every form) | his red blows and spells as before; **Red Meridian*** (a dashing level cut, then the blade round at the ankles; every form) | **Nightfall**: the same charge and cleave, 36; every form, cooldown 12 s |
 
 - Checked by `npm test`: duel FLARE (the rules; nothing shows before a red cue; a parried Falling Ash
@@ -1596,6 +1596,13 @@ Ghostep, his flurry, hit stun, the director and the fairness guard are as writte
 duelists' pressure and the fairness guard*, below), with these differences. Code: ARCHITECTURE.md
 "Tian Lei, the Last Ascendant"; the moveset the owner approved: the lead's `MOVES.md`.
 
+**He never strikes the air** (2026-11-23, ADR-162; the owner: "make the boss also stop attacking empty
+air if the player moves out of the distance"). Step or run out of what a blow can still reach while he
+winds it up and he breaks it off before its flash (no flash, no hit: a flash is always a blow) and comes
+after you: a far / away link, his dash, his blink. A hero backing away is chased with a longer step-in
+and dash from form 2. Staying in reach changes nothing: the blow lands as before, and every answer
+(parry, block, roll) is as it was.
+
 **Three forms, three bars, a deathblow each** (the Lord's structure):
 | Form | Who he is | Guard | Windup × | Recovery × | Footwork |
 |---|---|---|---|---|---|
@@ -1964,57 +1971,99 @@ limb that strikes is what the hero's parry meets (as Tian Lei's).
 
 ### His moves (N white, B blue, R red, K black; windups at phase 1)
 
+Reworked 2026-11-22 (ADR-154): his selves fight only in PACKS, the Pearl is big, and phase 3 has the Howl.
+
 | Move | From | Beats | Band (m) · cooldown · weight |
 |---|---|---|---|
 | Fox Bite | 1 | N 0.50, 18, a cross after a dash of up to 4.5 m | 2.4 – 6.5 · 2.5 · [1.4, 0.9, 0.4] |
 | Three Paws | 1 | N 0.46 jab, 13 · N 0.34 cross, 13 · B+flare 0.42 palm, 20 | 0 – 3.6 · 3.5 · [2.6, 2.0, 1.4] |
 | Ladder to the Moon | 1 | B+flare 0.56, 24: a leap and both fists brought down; a perfect parry locks | 0 – 4.4 · 3 · [1.4, 1.0, 0.5] |
 | Sweeping Tail | 1 | R 0.62, 22, a leg swept round at the ankles (ring 2.2), knockdown | 0 – 3.0 · 6 · [1.0, 0.8, 0.4] |
-| Changing Places | 1 | N 0.60, 18: as the windup starts he trades places with the self nearest the hero (none: a flit to the hero's side), a roundhouse | 3 – 12 · 5 · [1.6, 2.2, 2.0] |
-| Scattered Leaves | 1 | no blow: paper charms flung from his sleeves, 2 / 3 / 3 selves tear free (to the cap) | 0 – 14 · 9 · [1.5, 1.8, 1.6] |
-| Pearl of the Hollow Moon | 1 | a step back; the Pearl shaped in his open palm (1.6 / 1.47 / 1.47 s; a self at his side holding it with him, a thread from every other); a dash of up to 5 m and the Pearl DRIVEN into the hero: R, a line 2.5 x 1.3, 26 + 3 per live self, knockdown; its burst r 2.0 + 0.35 per self (3.4 at most) | 0 – 9 · 10 · [1.3, 1.1, 0.9] |
-| The Fox's Answer | counter | B 0.46, 18, a palm | |
+| Changing Places | 1 | N 0.60, 18: as the windup starts a self drops in beside the hero (2.4 m off, a side he may stand on) and he trades places with it (the one he left bursts 0.3 s later; no room: a flit), a roundhouse | 3 – 12 · 5 · [1.6, 2.2, 2.0] |
+| **Two Leaves Fall** | 1 | a pack: two selves drop out of the air left and right of the hero and dive-kick 0.36 s apart (N, N, 10 each) | 0 – 9 · 7 · [1.5, 1.0, 0.7] |
+| Pearl of the Hollow Moon | 1 | a step back; the Pearl shaped in his open palm (1.6 s, fixed; a self at his side shaping it with him) while a pack harries the hero (1 / 2 / 2 selves, N, 0.34 s apart, the last at least 0.42 s before the drive); a dash of up to 5 m and the Pearl DRIVEN into the hero: R, a line 2.5 x 1.3, 26 + 3 per self that fed it, knockdown; its burst r 2.0 + 0.35 per self (3.4 at most). A harrying self that strikes bursts INTO the Pearl (it feeds it); one popped or parried does not | 0 – 9 · 9 · [1.8, 1.1, 0.9] |
+| The Fox's Answer | counter | B 0.46, 18, a palm. From phase 2, half the time **"It was a copy"**: the body the hero struck bursts as paper and he drops in 2.2 m behind the hero for it (same tell, same windup; a raised guard meets it from any side) | |
 | Paper Rain | counter | his flurry: a cross, then a roundhouse, a hook, an uppercut, each from another side | |
 | Hand to Hand | 2 | N 0.46 jab, 12 · N 0.36 hook, 12 (a swap first) · N 0.36 knee, 12 · B+flare 0.44 uppercut, 20 (a swap first) | 0 – 4.0 · 6 · [0, 2.6, 2.4] |
-| Fox Descending | 2 | he runs at the self nearest him, springs off its cupped hands (it tears) and comes down on the hero with both fists: R 0.95, 26, ring 2.6, knockdown; needs a self | 3 – 11 · 9 · [0, 1.6, 1.6] |
-| The Thousand-Body Round | 2 | every live self strikes in turn 0.42 s apart (N, 8; a guard meets them from any side), then his own B+flare palm, 22, 0.42 s after the last; needs 2 selves | 0 – 6 · 12 · [0, 1.6, 1.8] |
+| **The Burial** | 2 | a pack: 3 / 4 selves dive onto the hero's spot together (ONE red cue, ring 3.0, 24, knockdown) and lie piled 0.6 s; he runs to the pile and springs off it (it bursts) and comes down with both fists 1.5 s after them: R 2.37 s (fixed), 26, ring 2.6, knockdown. A heavy cut on the pile pops it: he leaps from where he stands | 0 – 11 · 10 · [0, 1.3, 1.3] |
+| **The Thousand-Body Round** | 2 | a pack: 4 / 5 selves drop into a ring round the hero and strike in turn 0.36 s apart from as many sides (N, 10; a guard meets them from any side), then his own palm from above, B+flare (a perfect parry locks), 22, 0.36 s after the last. Every blow parried (selves and palm) is the full deflect | 0 – 6 · 12 · [0, 1.5, 1.6] |
+| **A Thousand at Once** | 2 | a pack: 4 / 5 selves appear in the air on every side and dive at the same instant: ONE B+flare cue, one result (20; one parry bursts them all, his posture + 6 a self + 24; a held guard pays one blow); a roll out of the ring (1.7 m round where the hero stood as they locked on) clears it | 0 – 9 · 10 · [0, 1.4, 1.4] |
+| **The Kite String** | 2 | a pack: three selves slide in low from three sides and kick upward 0.34 s apart (N, N, N), then he drops from above with his heel: R, 26, 0.5 s after the last, ring 2.6, knockdown | 0 – 8 · 9 · [0, 1.2, 1.2] |
+| **The Twin Pearls** | 2 | a step back; he and a self across the hero each shape a Pearl and drive it in at the same instant: ONE red cue, two lines crossing on the hero (26 each) | 2.5 – 9 · 12 · [0, 0.9, 0.8] |
 | Pearl Rain | 2 | a step back, three pearls shaped and flung across the hero's line (R, cued on the pearl, the burst as the Pearl's) | 3 – 12 · 11 · [0, 1.0, 0.9] |
 | Burning Tail | 3 | N 0.46 cross, 14 · R 0.60, 24, the fox spirit's tails swept round (ring 3.6), knockdown | 0 – 4 · 7 · [0, 0, 2.2] |
 | Fox-Fire Pounce | 3 | R 0.66, 28, both claws driven down along a line 2.4 x 1.2 after a leap of up to 9 m; the ground there catches | 4 – 10 · 8 · [0, 0, 1.6] |
-| Moon-Swallowing Pearl | 3 | K 1.5 s + 0.1 – 0.5 s, 44, ring 3.4 where he leaps down with the Pearl grown huge and dark over his head, knockdown | 2.4 – 9 · 14 · [0, 0, 0.9] |
-| Paper Punch (hidden) | | N 0.62, 8, a cross: a paper self's blow, never picked by him | |
+| Moon-Swallowing Pearl | 3 | K 1.5 s + 0.1 – 0.5 s, 44, ring 3.4 where he leaps down with the Pearl grown huge (2.2 m) and dark over his head, two selves lifting it with him until he leaps, knockdown | 2.4 – 9 · 14 · [0, 0, 0.9] |
+| **Heaven-Devouring Howl** | 3 | see "The Howl" below: the Nine-Tailed Fox's beam, R, 30 + 3 ticks of 12 at most, then he kneels open 2.2 s | from 12 s into phase 3, 32 s apart; forced once under 18 % |
+| Paper Dive / Cross / Kite / Slam (hidden) | | the selves' blows (a dive kick from 4.2 m up 0.62 s, a leaping cross 0.56, a low slide and an upward kick 0.56, both fists down 0.6), never picked by him | |
 
-### The paper selves
+Gone (ADR-154): Scattered Leaves (selves torn off to stand about), the cutting token, Fox Descending's
+springboard off a standing self (the Burial is its pack), Paper Punch.
 
-- **They look like him** and walk at the hero; up to 2 / 4 / 5 by phase. They tear free on a ring
-  3.5 – 5.5 m round the hero (0.45 s tearing: they can be popped at once, they cannot strike yet).
-- **One hit pops one**, and every other self within 1.4 m of the hit point (2.6 m for a heavy cut);
-  each popped self adds 6 to the real one's posture. His own Pearl's bursts and the black pearl tear
-  them too; his posture break pops them all at once (the payoff); a phase change takes them back.
-- **They fight as a pack:** one strikes at a time (a token: only within 3.2 m of the hero, while he is in
-  footwork or in a move that lets them fight, never with a pearl in the air, 2.6 / 1.9 / 1.2 s after
-  the last self's blow at the soonest), white (8), cued as his own blows and under the fairness guard
-  (never within 0.3 s of a cue that asks the other answer). Block it, parry it (it pops; he is not
-  recoiled), or roll. In the Round they all strike in turn round the hero; in the drive one holds the
-  Pearl with him; in Fox Descending one throws him.
+### The paper selves: packs
+
+- **A self exists only inside a pack** (`pack` on a move's beat; clones.js `FoxClones.pack`). No self
+  walks about. The pack books every body as it is called: where it strikes from (its `form` round the
+  hero: ring, fan, sides, above, low), when it appears (its blow's impact minus the blow's windup) and
+  when it strikes, and tells every cue to the cue ledger up front (`brain.expect`). The fairness guard
+  may shift the whole pack later (`brain.fairDelay`); if no wait clears it, the pack is not called.
+- **A body appears in the air in a puff of paper, already attacking** (its tell as it shows), falls or
+  flies to its mark through its windup (the mark follows the hero until 0.75 of it: then a roll clears
+  it), the white glint 0.3 s before its blow, strikes, and bursts 0.25 s after.
+- **sequence**: n blows `gap` apart (>= 0.32 s), each its own cue and result, each from another side; a
+  guard meets them from any side. **together**: ONE cue, ONE result: one ledger entry, one tell, one glint
+  over the hero, one blow when they all land. A parry bursts every body (his posture + 6 a self + the
+  pack's parry posture); a held guard pays ONE blow's guard (defensive play is never punished); a roll
+  out of the ring clears it.
+- **One hit pops one**, and every other self within 1.4 m of the hit point (2.6 m for a heavy cut); each
+  adds 6 to the real one's posture; popped, its blow never lands (its ledger entry goes). His own bursts
+  tear them too; his posture break pops them all and calls off every pack still to come; a phase change
+  takes them back; a reset leaves none.
+- **The rules hold for every pack** (`fox.mjs data`): a body shows at least 0.42 s before its blow, the
+  move's cues (his and the pack's) at least 0.32 s apart, a red cue after a guard's at least 0.36 s
+  later.
 - **The real one is always findable:** the lock-on, the boss bar, the name tag and the minimap follow
-  only him; only he casts a shadow; only he holds the Pearl (the threads end in his palm); in phase 3
-  only he wears the fox spirit. The selves have no body: the hero walks through paper.
+  only him; only he casts a shadow; and now a self is only ever out inside an attack.
 
 ### The Pearl
 
-Shaped in his open palm after a step back; through the charge his guard is down (blows land), a self
-at his side holds it with him and a thread runs to it from every other self. **Starve it**: each self
-popped makes the drive's blow and burst smaller and weaker. **Interrupt it**: two blows on him while he
-shapes it (one heavy) burst it in his hand: he reels (+90 posture). **Dodge it**: at the end of the
-charge he dashes in (up to 5 m) and drives it home: red, the flare on his palms 0.3 s before: roll
-through or out of the line. A guard does not hold it. **Pearl Rain** (phase 2) throws three instead, in
-a row across the hero's line, 3.4 m apart; they land together 0.5 – 0.8 s later (the fairness guard may
-add 0.4 s, or they come apart in the air, harmless), cued red on the middle pearl.
+Shaped in his open palm after a step back: about 0.9 m across at the end of the charge, a pale
+blue-white orb with turning spiral arms and a self at his side shaping it with him; his guard is down
+through it (blows land). **Starve it**: the selves that drop in to harry the hero burst into it when
+they strike: pop or parry them and the drive's blow and burst stay small. **Interrupt it**: two blows on
+him while he shapes it (one heavy) burst it in his hand: he reels (+90 posture). **Dodge it**: at the end
+of the charge he dashes in (up to 5 m) and drives it home: red, the flare on his palms 0.3 s before: roll
+through or out of the line. A guard does not hold it. **The Twin Pearls** (phase 2): a self across the
+hero drives a second at the same instant: one red cue, two lines. **Pearl Rain** (phase 2) throws three
+in a row across the hero's line. The Moon-Swallowing Pearl (phase 3) is a giant black orb two selves lift
+with him.
+
+### The Howl (phase 3, `foxVerdict`; beam.js, tuningBeam.js)
+
+Heaven-Devouring Howl. He flits 10 m from the hero, away from him through the middle (11.5 m from the
+middle at most; not the far rim: the hero and the fox's head then share one frame near the fight's own
+camera distance); both palms on the paving, a ring of script burns out round him and the Nine-Tailed Fox
+rises out of a pool of fire behind him (a creature body, side-on to the camera, its head the subject);
+the terrace's light drops (to 0.72 through the charge) and the camera leans toward the fox so the hero
+and the fox's head and ears stay in frame (on a phone it pulls back 4 m at most and only the hero is
+sure to stay in frame). ONE red beat whose windup is the summoning and the charge (2.4 +
+1.4 s, fixed; the darkness of a charged blow, his body darkens): a dark sun gathers at the jaws; the line
+(26 x 3.6 m from him across the terrace) is FIXED at the red cue, its ground heating; the red flare at the
+jaws 0.3 s before it fires. Lit 2.4 s (`sustain`, `selfHit`: the cue ledger holds the whole lit window as
+one interval). First contact 30, knockdown, thrown along it; then a tick of 12 every 0.18 s, three ticks
+at most (blocked or not), the last throwing the hero clear of its side. From 0.5 s lit it sweeps toward
+the side the hero is on at 34°/s, 80° at most, ONE way: rolling back through it is safe (the move's best
+moment). A held guard facing it pays 14 guard a tick, never health, and slides 2.4 m along it
+(`player.streamBlock`; a full guard ends at about 77 of 100). It pops every self in its strip and breaks
+the world along it every 0.2 s (`destructibles.sweep` 1.6, a trench of `world.impact` 1.2, fire past the
+kerb; the landmarks only chip). Then the fox goes up in embers and he kneels 2.2 s, his guard down all of
+it (+60 posture): the reward. From 12 s into phase 3, at least 32 s apart; forced once the first time his
+bar falls under 18 %.
 
 ### The Nine-Tailed Fox (phase 3)
 
-His selves burn up into him and the fox spirit wakes round him: a fox's head over his, its ears, and
+His selves burn up into him and the fox spirit wakes round him in phase 3's fire (the wyrm's orange-red by
+default, `?foxFire3`): a fox's head over his, its ears, and
 its tails, one as it wakes and all nine as his bar runs out (`d.tails`). Where he stands the grass
 catches (the paving has little to burn); Burning Tail throws its flame 1 m past its 3.6 m ring and the
 pounce lights the end of its line, so when the fight comes to the rim the charm posts outside it catch
@@ -2025,12 +2074,16 @@ floor as the courtyard's; the great fox and the spirit gate only chip, and the g
 
 ### The numbers measured (`fox.mjs`)
 
-The pace (a steady defender in god mode, the hero roaming 2.5 - 9 m; his selves' blows count), five seeds
-x 120 s, bare-handed: 68.3 / 80.2 / 79.3 cues a minute by phase (P1 65.3 - 71.6, P2 76.7 - 83.4, P3 75.9 -
-82.0), 0 conflicting cues, a dodge asked by 11 / 12 / 17 % of them, the longest gap 3.4 / 3.3 / 3.5 s.
-Phase 3 is not busier than phase 2: it asks more dodges (`TUNING.pressure.meter`). The fencing bot (god mode, parries every white and blue cue,
-rolls every red one, cuts in his openings and at the selves in reach) wins through three phases in
-34 - 45 s on three seeds (Shen Hui's same bot: 36 s), cutting down 2 - 8 selves on the way.
+The pace (a steady defender in god mode, the hero roaming 2.5 - 9 m; the packs' blows count; the Howl,
+summoned to burnt out, and his kneel count as activity), five seeds x 120 s (2026-11-22, ADR-154): 70.9 /
+79.5 / 68.3 cues a minute by phase (P1 69.8 - 72.7, P2 78.4 - 81.1, P3 66.6 - 71.5), 0 conflicting cues, a
+dodge asked by 11 / 14 / 28 % of them, the longest gap 2.9 / 3.6 / 3.6 s. Phase 3 asks fewer cues and more
+dodges: the Howl is one red cue over about 9 s and a 2.2 s kneel (`TUNING.pressure.meter`). The fencing bot
+(god mode, parries every white and blue cue, rolls every red one, cuts in his openings) wins through three
+phases on three seeds in 44 - 48 s (`fox.mjs win`). The cost of a full pack (five selves out, 1280x720, RTX 4090): 73 →
+118 draw calls (9 a rig); in node his frame 1.6 → 3.6 ms with a pack of five cycling (their poses ~1 ms).
+The Howl (second pass): 72 → 81 draw calls with the fox risen and the beam lit, the fire field's peak about 1600
+blobs in the browser and 2350 headless with the hero standing in the beam (asserted under 3000).
 
 ## The Sheathed (2026-11-22, ADR-144 – ADR-146; `?level=grove`)
 Lu Wusheng, a wandering swordsman, kneels before a mound of swords in the Windless Grove. His blade
@@ -2066,18 +2119,22 @@ the engine's cue: a dry tick and a short high ring, the blue flare through the s
 the RE-SHEATHE (1.15 s: the follow-through held, a flick, the blade laid on the left hand, slid home, the
 click, the sword passed back to the right hand). The grove falls on that click, not on the cut.
 
-**His moves** (windups at phase 1's scale; N white, B heavy, B* blue flare, R red, K black):
+**His moves** (windups at phase 1's scale; N white, B heavy, B* blue flare, R red, K black). The names (ADR-152)
+are a wanderer's who has sworn not to draw: what he does with the scabbard knocks, warns and walks on; the
+draws are the vow giving way (the ids are unchanged). His look and motion changed with ADR-152 (the ink-line
+print, a quiet carry, a low run, a settle that turns sharp: the head first, the body at speed); no timing,
+tell, zone or damage did:
 
 | Move | Phase | Tell | Windup s | Damage | Notes |
 |---|---|---|---|---|---|
-| Knocking at the Gate | 1 | N | 0.46 | 12 | pommel check |
-| The Lintel Falls | 1 | B | 0.6 | 22 | two-handed scabbard overhead |
+| A Knock, Not a Cut | 1 | N | 0.46 | 12 | pommel check |
+| Still in Its Sleep | 1 | B | 0.6 | 22 | two-handed scabbard overhead |
 | Three Refusals | 1 (2: +B) | N N N (B) | 0.46 / 0.34 / 0.34 (0.42) | 11 / 11 / 12 (20) | the deflect chain |
-| Cutting Reeds | 1 | R | 0.64 | 22 | the scabbard at the ankles; knockdown |
-| Shutting the Door | 1 | B | 0.52 | 18 | shoulder check, knockback 3.4: it makes a draw's range |
-| Crossing the Ford | 1 | N N N | 0.5 / 0.36 / 0.36 | 12 / 10 / 14 | glide, kick, the butt |
-| Tapping Stone | 1 | R, mikiri | 0.68 | 26 | the scabbard's butt like a spear |
-| Answering Knock | counter | N, B | 0.46 / 0.4 | 14 / 20 | out of a deflect |
+| Sweeping the Road | 1 | R | 0.64 | 22 | the scabbard at the ankles; knockdown |
+| Go Back Down the Road | 1 | B | 0.52 | 18 | shoulder check, knockback 3.4: it makes a draw's range |
+| Three Steps of a Long Road | 1 | N N N | 0.5 / 0.36 / 0.36 | 12 / 10 / 14 | glide, kick, the butt |
+| The Walking Staff | 1 | R, mikiri | 0.68 | 26 | the scabbard's butt like a spear |
+| A Knock in Reply | counter | N, B | 0.46 / 0.4 | 14 / 20 | out of a deflect |
 | **One Breath** | 1 | **B* draw** | 1.1 + 0.15 - 0.75 | lethal | a blink of up to 4.5 m, a 5.2 m line; cooldown 11 / 8 / 6 s |
 | Lightless Draw | 1 | K | 1.45 + 0.1 - 0.5 | 38 | the charged blow; the bare blade; never lethal |
 | Ten Thousand Leaves | flurry | N each | | 9 | his answer to a streak of guards |
@@ -2087,7 +2144,7 @@ click, the sword passed back to the right hand). The grove falls on that click, 
 | The Hand That Does Not Draw | 2 | feint, N | 0.75, 0.46 | 14 | the stance, no click, no flare |
 | The Blade Goes Home | 2 | B*, B | as One Breath, + 0.62 | lethal / 18 | the second cut only past a dodge |
 | A Thumb's Width | to 2 | R | 1.7 | 10 | ring 6, knockback 6 |
-| Answering Draw | counter, 3 | N, B* | 0.46 / 0.9 | 14 / lethal | |
+| The Vow Gives Way | counter, 3 | N, B* | 0.46 / 0.9 | 14 / lethal | |
 | Three Autumns | 3 | B* B* B* | 1.0 / 0.78 / 0.78 | lethal each | from three sides; re-sheathed in motion |
 | The Sound Arrives Late | 3 | R x3 (x4) | a hazard | 24 each | lines across the ground cut one by one, each cued, told to the ledger, placed by the fairness guard |
 | The Held Breath | to 3 | R | 1.6 | 10 | ring 6.5, knockdown; on its click every stalk within 9 m falls |
@@ -2100,6 +2157,84 @@ phase 3 dipped under its phase 2 (0.93), the mean's ramp is 1.09. Slower than Sh
 66 s, block-only 49 / 57 s; the block-only bot is never killed by a draw, mortal too. TIMING: every contact
 within 0 ms of its flash + 0.3 s. Not measured: a human on the phone; the draw's read at the phone's camera
 was judged from stills only.
+## The One Who Woke (2026-11-22, ADR-156 – ADR-158; `?level=code`)
+
+Xin Yi, a BARE-HANDED fighter in a long black coat (wokenOne/): a recognizable homage to the hero of the
+source film, under his own name and his own moves (the owner's answers, 2026-11-22). TWO BARS, THREE
+PHASES: bar 1 (3400) holds phase 1 (the Sparring Hall: one hand, the left behind his back) and phase 2 (the
+Pillared Hall: two guns) behind the gate at half; bar 1 empty breaks him and the deathblow is THE FALL; he
+RISES with bar 2 (2600) full into phase 3 (the Source: both hands, no guns, flight). Tian Lei's numbers for
+the duel (posture by the Sekiro rule, the guard, the trade, hit stun, the execution, the moments) except:
+`flashLead` 0.26, first windups at least 0.42 s (authored 0.46 and scaled by `windupScale` [1, 0.96, 0.92]),
+hits 0.32 s apart at least, `pressure.guard.sep` 0.4 (he throws things). Harder is more pressure, never more
+damage. His blows are Tian Lei's strike builders; the limb that strikes is what the hero's parry meets.
+
+### His moves (N white, B blue, B* blue flare: a parry moment, R red, K black; windups at phase 1)
+
+| Move | Ph | Beats | Band (m) · cooldown · weight |
+|---|---|---|---|
+| The First Lesson | 1 | THE BECKON (a feint, 0.7 s: the open hand, palm up, the fingers curling twice: its sign), then N 0.46 / 0.34 / 0.34 / 0.36 (9 9 9 10) and B* 0.5 (20). All five parried: the full deflect | 0 – 3.4 · 7 · [2.2, 1.2, 0.9] |
+| Idle Hand | 1 | N 0.46, 10 · N 0.34, 11, his head turned away | 0 – 3.2 · 3.5 · [2.0, 1.2, 0.8] |
+| Brushing Dust | 1 | B 0.55, 20, a palm shove, knockback 3.4 | 0 – 2.8 · 5 · [1.2, 0.8, 0.5] |
+| Climbing the Stair | 1 | N 0.48, 10 · N 0.36, 11 · B 0.42, 18: three kicks, each higher | 0 – 3.6 · 6 · [1.6, 1.0, 0.8] |
+| Low Wind | 1 | R 0.64, 22, a sweep at the ankles (ring 2.2), knockdown | 0 – 3.0 · 6 · [1.0, 0.8, 0.6] |
+| Borrowed Wall | 1 | B* 0.9, 22: two steps up the nearest upright by his path (a bite where he kicks off), then a flying kick (a line, in the air); no piece in reach: a plain flying kick | 5 – 11 · 7 · [1.0, 0.8, 0.6] |
+| Answer (counter) | 1/2/3 | N 0.46, 12 · B 0.4, 18 (phase 2: an elbow and a point-blank shot) | |
+| Hundred Hands (his flurry) | 1/2/3 | four blows N 8 (phase 3: each later one from another side) | |
+| Iron Rain | 2 | N 0.8: ONE cue for the stream, then 11 shots of 5 from alternating hands over 1.5 s while he strafes round the hero at 7 – 10 m; B 0.42: the last shot big (14), returnable | 4 – 13 · 7 · [0, 2.2, 0] |
+| Two Thunders | 2 | B 0.7, 16 · B 0.55, 16: two heavy shots, returnable | 3 – 13 · 6 · [0, 1.6, 0] |
+| Close Iron | 2 | N 0.46 elbow, 10 · N 0.34 pistol-whip, 10 · B* 0.5, 20, the point-blank shot | 0 – 3.2 · 5 · [0, 1.8, 0] |
+| Turning Wheel | 2 | R 0.7, 20: a cartwheel 2.4 m to his left, firing low along a line 9 x 1.4 | 2 – 9 · 7 · [0, 1.0, 0] |
+| (the reload) | 2 | after three ranged moves: both guns thrown away, two more from the coat, 0.6 s, his guard down | |
+| The Still Hand | 3 | the raised flat palm (the counter stance: 0.45 s, held 0.2 – 0.4); a cut into it is CAUGHT and answered B* 0.46, 22, the one-inch push (`lock`). Waited out: his guard down 0.6 s | 0 – 3.2 · 9 · [0, 0, 1.2] |
+| Pushing Hands | 3 | B 0.6, 16 · B 0.5, 16: two palm bolts in the code's green, returnable | 3 – 13 · 5 · [0, 0, 1.6] |
+| Return to Sender | 3 | only with three bolts hanging: B* 0.9, 24, ONE cue, one result | anywhere · 1 |
+| Unwriting | 3 | R 0.7: bricks torn out of up to three code pillars within 12 m, held over them, thrown 0.55 s apart (20 each, the red flare on each piece); no code pillar near: never | 3 – 13 · 9 · [0, 0, 1.0] |
+| A Thousand Hands | 3 | N 0.46, then five N 0.32 apart (8 each), SKIPPED FRAMES after the third (he tears into a column of digits and prints again at the hero's other side), B* 0.5, 20 | 0 – 3.4 · 6 · [0, 0, 1.8] |
+| Leaving the Floor | 3 | R 0.8, 14, a burst ring 4 m (knockback 5) as he goes straight up; he hangs at 5 m; then the Falling Fist (R 1.1 fixed, the spot fixed at 0.7: the dive, a crater 3.2 m, 30, knockdown; then THE FRONT: a ring from 3 to 11 m at 14 m/s that heaves the floor and strikes the hero ONCE as it reaches him, R, 18, cued `flashLead` before) or the Low Pass (R 0.9 fixed, the line fixed at 0.7: one flat pass 14 x 1.8, 24; the uprights on it swept) | 0 – 12 · 10 · [0, 0, 1.1] |
+| The Dive Within | 3 | K 1.5 + 0.1 – 0.5, 44: the hall's letters stream into his chest, a flat flying lunge up to 9 m | 2 – 9 · 14 · [0, 0, 0.7] |
+| A Hundred Iron Seeds | → 2 | R, fixed 2.0 s, ring 6, 12, knockback 7: he throws the coat open; the hall rewrites itself whole | |
+| The Rising | → 3 | R, fixed 2.3 s, ring 6.5, 12, knockback 7; then the Still Hand held 1.5 s (a cut is caught on his palm) | |
+
+### The rules that make his tricks openings
+- **The Lean** (phases 1 – 2): his guard's reactions are slips and back-leans with one afterimage. It is the
+  engine's guard, nothing more.
+- **Cover** (phase 2): a pillar between him and the hero stops a shot and loses its letters where it struck
+  (0.25 a shot: a pillar's face goes in about two volleys, the pillar in about four). A held guard through a
+  whole Iron Rain pays guard only (4 a shot, 9 for the big one: 53 at most), never health.
+- **The Bend** (phase 2): a perfectly parried heavy shot that comes back at him, or a heavy cut on its way
+  (the engine's evade, at most once in 6 s): time slows for everyone (0.3 for 0.7 s), he arches back, the
+  shot or the cut passes over him. It costs him posture (50 / 16), he has no guard for 1.0 s and the first
+  cut crits (x 1.5). He cannot bend twice: a second returned shot or heavy cut inside that second lands in
+  full (a returned shot: 50). Heavy, then a light, is a sure hit.
+- **The stop** (phase 3): a returned bolt hangs before his raised palm (rooted 0.5 s: a cut lands in full;
+  + 25 posture each). Up to three hang; unsent after 4 s they drop as loose digits. Three: Return to Sender,
+  one blue flare: a parry bursts them all and pays his posture 20 each plus the counter; a held guard pays
+  ONE blow's guard; a roll clears it.
+- **The fall and the rising**: bar 1 empty is no death. For 2.2 s he lies on his back and nothing hurts him;
+  the hero is free to move (and to drink). The rising's ring, then 1.5 s of the Still Hand: a cut at him is
+  CAUGHT. A reset or the hero's death at any point leaves nothing behind (the scene, the light, time, music).
+- **Deja vu** (phases 2 – 3): after The First Lesson, Climbing the Stair, Close Iron or A Thousand Hands ends
+  on its own, a link back to it (0.3 in phase 2, 0.45 in phase 3: mirrored left for right): the hall
+  stutters and he replays the string exactly as he threw it (the same holds and picks). Never after a
+  string parried into a recoil.
+- **Fairness**: every shot, bolt and brick asks the fairness guard before it flies (it hangs a moment or
+  goes uncued and harmless); everything in the air is in the cue ledger.
+
+### The Long Second (his reward, ADR-158)
+Learned on his death. From a held guard, DODGE with no direction: the hero leans back in place (no travel,
+i-frames 0.03 – 0.34 s against the backstep's 0.03 – 0.22, free to cut after 0.24 s). A perfect one slows
+time 0.9 s (the Ghostep's 0.6) and leaves three afterimages; white and heavy blows give a streak pip and no
+crit window, red and black the flurry (ADR-102). `?tech=lean`; the Lab's toggle.
+
+### The numbers measured (`woke.mjs`)
+PACE (a steady defender in god mode, the hero roaming 2.5 – 9 m, the real set), three seeds x 60 s a phase:
+67.2 / 106.3 / 82.9 cues a minute by phase (P1 65.1 – 71.1, P2 94.2 – 116.3, P3 76.3 – 93.0), 0 conflicting cues,
+a dodge asked by 7 / 5 / 21 % of them, the longest gap 3.29 / 2.29 / 2.62 s, the fire field's peak about 1030
+blobs (of 6000) in phase 3. Phase 2 reads the busiest because each of Iron Rain's eleven shots is a cue. WIN: the
+fencing bot (god mode) wins through both bars in 84 s (seed 4242: phase 2 at 27 s, the rising at 53 s).
+STRATEGY (opt-in, god mode, seeds 4242 and 7): mixed 75 – 84 s, parry 95 – 96 s, block-only 89 – 122 s (mortal: alive, it wins), the Long Second bot (every cue answered with the lean) 138 s, dodge-only 142 – 164 s: neither dodging nor leaning is the fastest way through. On the Sheathed with the Long Second learned (sheath.mjs `lean`): mixed 33, parry 42, dodge 64, lean 82 s.
+
 ## The duelists' pressure and the fairness guard (2026-11-16, ADR-122)
 The human bosses run one engine (`enemies/duelist/`: `brain.js`, `director.js`, `ledger.js`;
 ARCHITECTURE.md "Duelists"), so the same rules keep them attacking and keep them fair. The owner's
@@ -2251,6 +2386,9 @@ stands again when the fight resets (a death, a rest at the bonfire, the Lab's Re
   he gives a step (stone a bigger one), and can swing again after about 0.3 s, as after a duelist's
   deflection. A cut that fells or breaks the thing goes through it. So a swing that meets a pillar or
   a tree before it reaches the boss stops there: stand clear of cover to cut.
+- **Bamboo is sliced in one stroke** (ADR-151): in the Windless Grove any blade or blow cuts a stalk
+  through where it passed; its top slides off the cut at once and goes over, quietly (no tell, no
+  harm). The blade goes on through, so one swing cuts a clump.
 - **The wyrm's body meets the world** (ADR-119; it replaced ADR-107's trample round its root, which
   never reached a trunk). Every frame its head, neck, body, tail, wings and legs sweep what they pass
   through, harder the faster they move and the heavier the part. A walk or a turn is a **brush**: it

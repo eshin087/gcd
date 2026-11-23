@@ -3404,7 +3404,7 @@ async function scenarioFxLooks() {
     const row = Object.fromEntries(LOOK_SWITCHES.map((s) => [s[0], s]));
     const bad = Object.entries(PICKED).filter(([k, v]) => !row[k] || !row[k][1].includes(v));
     // (a row marked as awaiting the owner's pick, its 8th field, draws its call site's default until then)
-    const waiting = LOOK_SWITCHES.filter((s) => s[7] === 'awaiting').length;
+    const waiting = LOOK_SWITCHES.filter((s) => s[7] === 'awaiting' && pickedOf(s[0]) == null).length; // (a picked switch may wait for a new pick: it draws the old one)
     const missing = LOOK_SWITCHES.filter((s) => pickedOf(s[0]) == null && s[7] !== 'awaiting').map((s) => s[0]);
     assert(Object.isFrozen(PICKED) && !bad.length && !missing.length && Object.keys(PICKED).length === LOOK_SWITCHES.length - waiting, `PICKED: ${Object.keys(PICKED).length} switches, each a real switch of the Lab with a real option (${bad.map(([k, v]) => `${k}=${v}`).join(', ') || 'ok'}; not picked: ${missing.join(', ') || 'none'})`);
     const owner = { kindle: 'a', ashp3: 'a', qi: 'a', flit: 'a', burn: 'a', toll: 'a', star: 'a', sky: 'a', ignite: 'a', void: 'a', presence: 'a', great: 'a', floor: 'a', ashLook: 'b', lordLook: 'b' };
@@ -4278,7 +4278,14 @@ const SCENARIOS = {
 };
 const runs = [];
 const OPT_IN = new Set(['probe', 'strategy', 'bots', 'ranged', 'answer']); // run only when named
-for (const [name, fn] of Object.entries(SCENARIOS)) if (SCEN === name || (SCEN === 'all' && !OPT_IN.has(name))) runs.push(await fn());
+// `all`, one scenario or a comma list; ABYSS_SKIP (a comma list) leaves scenarios out of `all`
+// (tests/run.mjs runs the long ones as processes of their own, so a new scenario lands in `all`)
+const SKIP = new Set((process.env.ABYSS_SKIP ?? '').split(',').map((s) => s.trim()).filter(Boolean));
+for (const k of SKIP) if (!SCENARIOS[k]) { out(`unknown scenario in ABYSS_SKIP: ${k}`); process.exit(2); }
+const WANT = SCEN === 'all' ? [] : SCEN.split(',');
+for (const k of WANT) if (!SCENARIOS[k]) { out(`unknown scenario '${k}' (${Object.keys(SCENARIOS).join(' | ')} | all)`); process.exit(2); }
+if (SCEN === 'all' && SKIP.size) out(`\n(not run here, ABYSS_SKIP: ${[...SKIP].join(', ')})`);
+for (const [name, fn] of Object.entries(SCENARIOS)) if (WANT.includes(name) || (SCEN === 'all' && !OPT_IN.has(name) && !SKIP.has(name))) runs.push(await fn());
 if (!runs.length) { out(`unknown scenario '${SCEN}' (${Object.keys(SCENARIOS).join(' | ')} | all)`); process.exit(2); }
 
 out('');

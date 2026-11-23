@@ -88,7 +88,7 @@ ADR-120).
 | `events` | pub/sub: `on(name, fn)` → unsubscribe fn, `emit(name, data)` |
 | `input` | **Actions** (ADR-067, `core/bindings.js`): `act(a)`, `actPressed(a)`, `actReleased(a)` — true when any code bound to action `a` (or its virtual code `'@a'`) is down / pressed / released; `bindings` (the `Bindings` instance); the player, flow and timing trainer read only actions. Raw: `down(code)`, `pressed(code)`, `released(code)`, `mouseDown(b)`, `mousePressed(b)`, `mouseReleased(b)`, `moveAxis()` → `{x, y}` (y = up/north, from the up / down / left / right actions; keys give a unit vector, a deflected virtual stick wins with its analog length ≤ 1), `anyPressed`, `wheel`. Codes are `KeyboardEvent.code`. **Virtual sources** (touch): `setVirtual(code, down)` (code = a `KeyboardEvent.code` or `'Mouse0'`/`'Mouse1'`/`'Mouse2'`; same one-frame `pressed` / `released` edges as the real device, only on a change), `setVirtualAxis(x, y)`, `releaseVirtual()` (everything up, stick centred). Virtual holds are tracked apart from the real keys / buttons. **Gamepad source** (ADR-066): `setPad(code, down)`, `setPadAxis(x, y)`, `releasePad()` — the same semantics with their own holds (a release on one source never drops a hold on another); a deflected pad stick wins over the touch stick and the keys in `moveAxis()`. `pulse(code)`: a one-frame `pressed` edge with no hold. `kbmT`: `performance.now()` of the last real keyboard / mouse event (a mousemove only with movement). Mouse events within 1 s of a touch pointer event (browser compatibility mousedown / mouseup / mousemove) are ignored. |
 | `mouseGround` | `Vector3` — mouse ray ∩ ground plane, updated each frame (the ray from the camera without the kick's translation, `cameraRig.kickOff`); with a gamepad in use or touch controls on, their aim point (see Gamepad controls, Touch controls; shared helper `ui/aim.js` `aimWithoutCursor`) |
-| `cameraRig` | `addTrauma(0..1)`, `extraZoom`, `focus`, `zoom(steps)` (2.5 m per step, clamped to the profile), `targetDistance`; `wheelDistance` (2026-11-16, ADR-120: the player's own zoom, `targetDistance` eased at 4/s without the framing, the cinematics and the punches the game adds; every update writes `camera.userData.zoomRatio` = `wheelDistance / defaultDistance` and `camera.userData.zoomArtOff` = `mobile`: what the letters follow, see "The letters follow the zoom"); distance profile `setMobile(bool, portrait = false)` / `mobile` / `portrait` / `lead`, `defaultDistance`, `minDistance`, `maxDistance`, `maxExtraZoom` (desktop: `CONFIG.camera.distance/min/max`, unlimited extra zoom; phone: `mobileDistance` 20 / `mobileMinDistance` 14 / `mobileMaxDistance` 34, extra zoom (lock-on, boss framing, title / intro shots) capped at `mobileMaxExtraZoom` 3 m). `setMobile` resets the zoom to the profile default; a phone held upright (`portrait`) stands `CONFIG.camera.portraitDistance` (1.2) × further back and looks `portraitLead` (1.5 m) south of the focus, so the hero stands above the middle of the screen (ADR-097). `fovFor(aspect)` (exported by `core/cameraRig.js`, applied by main.js on every resize): the vertical field of view, `CONFIG.camera.fov` in landscape, opened in a window taller than wide until the view is as wide as a square window's (`portraitMaxFov` 68 at most). `punch(m)`: the zoom punch (`game.punch`). `kick(dx, dy, dz, m)`: the directional kick (`game.kick`): `kickX` / `kickY` (m along the screen's right / up axes; the camera and its look point move together, so the view direction and the figures' lean are unchanged) and their velocities `kickVX` / `kickVY`, a damped spring (`KICK`: ω 30, ζ 0.55, ≤ 0.5 m per axis) stepped in real time after the frame's offset is drawn (the kick's frame shows the whole throw); `kickOff` (Vector3): the world translation the kick put on the camera this frame (0 without one; main.js takes it off the mouse ray, so `mouseGround` and the aim never wobble with a landed cut); `snap()` zeroes it and the punch. `cine = { zoom, x, z, w }`: flow.cinematic's pull-in (zoom m added to the distance at the desktop distance, scaled by `defaultDistance / CONFIG.camera.distance` on the phone like the punch; negative = closer; the follow focus leans toward (x, z) by w; all 0 when no moment runs). **Keep-in-view** (`FIT` in `core/cameraRig.js`): `keep(x, y, z, r = 1, must = false)` asks for a world sphere to stay on screen this frame (≤ 16 per frame; non-finite input is ignored). After the usual follow / distance damping the rig projects the subjects with the real camera and eases a ground-plane pan (`fitX` / `fitZ`, ≤ 30 m) and extra distance (`fitZoom`: ≤ 6 m to fit every subject, ≤ 12 m for `must` ones; phone 1.5 / 3 m) until they sit inside the NDC box (\|x\| 0.9, top 0.86, bottom 0.78). `must` subjects (the hero) are never cropped to fit the others. Damped (5/s, 12/s while a must subject is off the box), eased back to 0 with no requests, reset by `snap()`. `focus` = the damped follow focus + the pan. |
+| `cameraRig` | `addTrauma(0..1)`, `extraZoom`, `focus`, `zoom(steps)` (2.5 m per step, clamped to the profile), `targetDistance`; `wheelDistance` (2026-11-16, ADR-120: the player's own zoom, `targetDistance` eased at 4/s without the framing, the cinematics and the punches the game adds; every update writes `camera.userData.zoomRatio` = `wheelDistance / defaultDistance` and `camera.userData.zoomArtOff` = `mobile`: what the letters follow, see "The letters follow the zoom"); distance profile `setMobile(bool, portrait = false)` / `mobile` / `portrait` / `lead`, `defaultDistance`, `minDistance`, `maxDistance`, `maxExtraZoom` (desktop: `CONFIG.camera.distance/min/max`, unlimited extra zoom; phone: `mobileDistance` 20 / `mobileMinDistance` 14 / `mobileMaxDistance` 34, extra zoom (lock-on, boss framing, title / intro shots) capped at `mobileMaxExtraZoom` 3 m). `setMobile` resets the zoom to the profile default; a phone held upright (`portrait`) stands `CONFIG.camera.portraitDistance` (1.2) × further back and looks `portraitLead` (1.5 m) south of the focus, so the hero stands above the middle of the screen (ADR-097). `fovFor(aspect)` (exported by `core/cameraRig.js`, applied by main.js on every resize): the vertical field of view, `CONFIG.camera.fov` in landscape, opened in a window taller than wide until the view is as wide as a square window's (`portraitMaxFov` 68 at most). `punch(m)`: the zoom punch (`game.punch`). `kick(dx, dy, dz, m)`: the directional kick (`game.kick`): `kickX` / `kickY` (m along the screen's right / up axes; the camera and its look point move together, so the view direction and the figures' lean are unchanged) and their velocities `kickVX` / `kickVY`, a damped spring (`KICK`: ω 30, ζ 0.55, ≤ 0.5 m per axis) stepped in real time after the frame's offset is drawn (the kick's frame shows the whole throw); `kickOff` (Vector3): the world translation the kick put on the camera this frame (0 without one; main.js takes it off the mouse ray, so `mouseGround` and the aim never wobble with a landed cut); `snap()` zeroes it and the punch. `cine = { zoom, x, z, w }`: flow.cinematic's pull-in (zoom m added to the distance at the desktop distance, scaled by `defaultDistance / CONFIG.camera.distance` on the phone like the punch; negative = closer; the follow focus leans toward (x, z) by w; all 0 when no moment runs). **Keep-in-view** (`FIT` in `core/cameraRig.js`): `keep(x, y, z, r = 1, must = false)` asks for a world sphere to stay on screen this frame (≤ 16 per frame; non-finite input is ignored). After the usual follow / distance damping the rig projects the subjects with the real camera and eases a ground-plane pan (`fitX` / `fitZ`, ≤ 30 m) and extra distance (`fitZoom`: ≤ 6 m to fit every subject, ≤ 12 m for `must` ones; phone 1.5 / 3 m) until they sit inside the NDC box (\|x\| 0.9, top 0.86, bottom 0.78). `must` subjects (the hero) are never cropped to fit the others. Damped (5/s, 12/s while a must subject is off the box), eased back to 0 with no requests, reset by `snap()`. `focus` = the damped follow focus + the pan. **Hold** (ADR-154, the fox's Howl): `hold(m, x, z, w)` asks for `m` desktop metres of pull-back this frame (scaled for the phone like a cinematic; eased in at 4/s, out at 2.5/s; `held` the eased value) and, with a finite (x, z) and w > 0, leans the follow focus w toward that point (`holdLean`; the strongest ask of the frame wins); inert unless called, so it can hold a framing longer than `flow.cinematic` (3 s) and past the phone's `maxExtraZoom`. |
 | `touch` | touch controls (`ui/touch.js`, below): `active`, `phone`, `portrait`, `autoAim`, `setActive(bool)`, `update(realDt)` |
 | `gamepad` | gamepad controls (`ui/gamepad.js`, below): `active`, `connected`, `layout` (`'xbox'`/`'ps'`), `autoAim`, `focus`, `label(token)`, `rumble([ms, strong, weak])`, `update(realDt)` |
 | `shake(a)` | camera trauma (0.15 light hit … 0.7 huge slam) |
@@ -281,6 +281,20 @@ Render helpers for creature modules:
     `heroArtCell(px)`, run for him (`gSelf`, `gCell` = `uSelfCell`, `gLine` = `uSelfPx`), then for
     the bosses (`uHeroCell`, `uHeroPx.x`); `isWho` is the window of the one being drawn. The whole
     pass reads its textures at level 0 by name (`textureLod`; none has mip levels).
+  - **A boss's arms and legs** (ADR-162): `HeroAnimator.armSoft` / `legSoft` (`[where the reach starts
+    to give, the most it opens]` as fractions of the limb's length; null = as always: `ARM_SOFT`, an elbow of
+    ~130° at a full stretch, and a leg that reaches straight). Tian Lei sets both in `_setup` from
+    `TUNING.armSoft` (the hero's `HERO_SOFT`) and `TUNING.legSoft`.
+  - **The bosses' letters** (ADR-154, ADR-155): a boss whose kit sets `letters` (today Wen Yao's `FOX_KIT`, behind
+    `?foxLetters=b`, and Tian Lei's `ASC_KIT`, a getter behind `?ascLetters=a`, the owner's pick; `0` the fixed cell) has the bosses' cell `uHeroCell`, its atlas `tHeroArt` and its line width `uHeroPx.x`
+    set each frame from HIS depth by the hero's rule: main.js sets `pipeline.bossLetters`
+    (`!!game.dragon?.kit?.letters && lookOf('foxLetters', 'b') === 'b'`), `Pipeline._updateBossLetters(U.uBossScreen)`
+    takes the depth 1 m above his feet and picks the cell with `_letterCell(z, cur)` (the cell choice
+    `_updateHeroLetters` uses, pulled out of it: `CONFIG.render.heroLetters`, `HERO_CELLS`, the slack, the
+    near / close fade back to the fixed cell), reusing the hero's atlas cache. Off, those uniforms are
+    exactly what `setSize` gives (it records `_heroPx`), so a boss without the flag is drawn as before; one
+    grid serves every boss pixel, so his paper selves share his cell. (`foxLetters` is read for every boss that sets `letters`: it
+    stays 'b' on Tian Lei's level, which never sets it.)
     Ink lines are drawn per pixel by the pass, not from glyphs. `U.uArtHeroCel` (vec3: step from
     shadow to lit between x and y, z = share of the step) cel-shades the art source;
     `U.uHeroPartRim[20]` (vec4: tint × gain) is each part's silhouette ink; fill style + 8 = a
@@ -2712,9 +2726,11 @@ off where it lands. For a new object, a new set or a new level:
    a blow on one of each kind bites it, the reset puts them back). Run `node
    tests/integration/world.mjs . bite`; look at it in the browser (`?level=<id>`; `?chip=0` is the
    game without bites, for a before / after).
+   A set whose scenes morph (ADR-157: `scenes`, the Hall of Falling Script) tags each piece of a scene
+   `scene: '<id>'`; `bite` visits every scene of such a set.
 7. **Leaving something whole is a decision**, the owner's, written in DECISIONS.md: the bonfires (a
    checkpoint), the sect gate, the bell (it only rings: `hp: Infinity`), the throne and its dais, the
-   fallen star and the seal, and the training room (`?stage=lab`, ADR-099: a measuring stage, its tiles,
+   fallen star and the seal, the Hall of Falling Script's bonfire, and the training room (`?stage=lab`, ADR-099: a measuring stage, its tiles,
    walls and pylons stand outside the fight; the test checks it lists nothing). Floor slabs break as
    slabs (`floor: true`: whole, cracked, broken; never bitten), the ground itself does not break yet
    (ADR-132 "Not done").
@@ -2724,6 +2740,7 @@ off where it lands. For a new object, a new set or a new level:
 |---|---|
 | `kind` | 'tree', 'deadTree', 'stone', 'boulder', 'pillar', 'lantern', 'stele', 'bell', 'flagstone', 'bone', 'helm', 'sword', 'elderRib', 'elderSpine', 'cinderBough', 'cinderTrunk', 'nestRib', 'nestSkull', … (free; boss AI and tests read it) |
 | `mat` | 'wood', 'stone', 'metal' or 'bone' (structure, what bites it, its debris and sound) |
+| `scene` | (a set with `scenes`, ADR-157) the scene it stands in; out of the world in the others (`present`) |
 | `look` | 'grid' (geometries with `paint()` attributes: the screen grid), 'prop' (`carve()` attributes: prop art) or 'range' (its body is a run of vertices in a static mesh of the set, drawn by the set's own material: the flagstones; since 2026-11-16 every tree of Cinderwood, the Cinder Tree's boughs and trunk, the Elder Wyrm's bones and the nest's ribcage and skull) |
 | `x, z, r, h` | its base (world), footprint radius, height (`geosHeight(geos)`) |
 | `geos` | its geometries in WORLD space, as the builders return them (the system moves them to the base) |
@@ -2751,6 +2768,7 @@ off where it lands. For a new object, a new set or a new level:
 | `fallOff`, `fallT` | m out from its base where a felled piece starts to land (its strip starts there), s it falls |
 | `blocks` | how many big carved blocks of wreckage it leaves (a statue's) instead of a rubble pile |
 | `cy` | (a crater's hanging stone) its height in the air, exact (ADR-122; the Lord's effects read it) |
+| `slice` | true: one blade or blow cuts it through at the height it bit (ADR-151, `BREAK.slice`; the grove's bamboo): its body loses what is below the cut in the frame of the blow (`RangeBody.cutY`), its stump is cut to that height on a slant, its top slides off the cut and goes over about its lower end (`_sliceFall`). Not by fire or a body brushing past. A range piece only |
 
 A set draws its stumps, rubble and any breakables it adds from an rng stream of its own, so the rest of
 its layout does not move. Budget: each breakable that is not a 'range' piece is 1–2 bones of the rigid
@@ -3087,7 +3105,7 @@ are heat in the fire field.
 
 ## Levels and the boss slot (2026-11-12, ADR-058, ADR-060; the Starless level: ADR-068 – ADR-070; the Skybreak Ring: 2026-11-21, ADR-129; the Foxfire Terrace: ADR-147)
 `src/levels/index.js`: `LEVELS` (Cinderwood `cinderwood`, Ashfall `ash`, the Obsidian Throne
-`starless`, the Skybreak Ring `ring`, the Foxfire Terrace `fox`, the Windless Grove `grove`), `DEFAULT_LEVEL`,
+`starless`, the Skybreak Ring `ring`, the Foxfire Terrace `fox`, the Windless Grove `grove`, the Hall of Falling Script `code`), `DEFAULT_LEVEL`,
 `withStage(level, search)` (`?stage=lab`: the same level on the training
 room, `world/trainingRoom.js` `createTrainingRoom` / `ROOM_WORLD`; main.js wraps the level with it
 before `applyLevel`; ADR-099), `getLevel(id)` (id or alias, case-insensitive), `levelFromSearch(search)` (`?level=`; unknown → the
@@ -3274,6 +3292,18 @@ data and a subclass with a few hooks.
   (`sector` / `line` / `ring`; `hitPlayer` gets `beat`), a `release` or a `cast` (the actor's, at the
   impact; a string never stops for want of reach on one). `def.manual` / `def.counter` / a weight of
   0 keep a move out of the AI's pick; `def.gapCloser` is favoured against a hero who drinks.
+  **The pursuit** (ADR-162; opt-in, `TUNING.pressure.pursue`, today Tian Lei's; a kit without it
+  behaves exactly as before; the full field list is brain.js's header): through each real melee beat's
+  windup, from `after` s up to its glint, the hero is led to the impact (`_lead`) and set against what
+  the beat can still reach (`_reachLeft`: the zone, the step-in left, the dash not yet spent); beyond it
+  by `margin` m (`_outOfReach`) the move breaks off with no glint and no hit (a glint is always a blow;
+  its `combat:tell` may already have been announced, as a fairness-guard feint's) and he chases: a
+  `far` / `away` link, else footwork after `gap` s. `brain.stats.stops` counts them, `brain.runner` (the
+  hero's habit of running) weighs the moves that reach anywhere; `forecast(s)` = the hero's speed away.
+  While the hero backs away (> `away` m/s) a beat's step-in is x `closeK` and a dash's cap x `dashK`
+  (per phase); a leap lands `leapLead` s and an actor's blink `blinkLead` s ahead of where the hero is
+  going (`blinkKeep`: never in front of him); director.js weighs a move whose first blow cannot reach
+  where the hero will be x `miss`. Not a counter, a flurry, a stance, a draw or a transformation.
 - `realise.js`: `makeRealise({ TUNING, MOVES, compileClip, completeBeat })` → `realise(name, phase, rnd, opts)` (`opts.count`:
   a `streak` move, his flurry, plays that many beats); `perPhase`. The POSE keys of a beat past its
   impact (u 1..2) run on the beat's follow, `b.F` s (ADR-126: 72 % of the time to the next beat's
@@ -3667,7 +3697,8 @@ strikes, beams) and moves on the ring's tiles. The kit: `{ id: 'ascendant', TUNI
 CLIP, realise, transitions: { 2: 'ascend2', 3: 'ascend3' }, counterMove(form) → one of the form's
 `COUNTER_LISTS` (moves.js; riposte / riposte2 / riposte3 and the third wave's, drawn on the AI's stream),
 streakMove(form) → streakFlurry / 2 / 3, maxPhase: 3, loadout: ASC_LOADOUT, poses, blade: FIST,
-scale: TUNING.scale, dress: dressAscendant }` (`poses`: `loco` = his form's footwork plus the dash's lean
+scale: TUNING.scale, dress: dressAscendant, letters }` (`letters`: a getter, `?ascLetters=a`: his ink-line
+letters follow his size, "The bosses' letters"; ADR-155) (`poses`: `loco` = his form's footwork plus the dash's lean
 by `pilot.dashK`; `duel` = his form's clip plus the feet planner's offsets). The boss slot's surface, plus:
 ```
 kind = 'duelist';  name = 'TIAN LEI, THE LAST ASCENDANT';  phase 1..3 = his FORM;  execRange = 3.4
@@ -3882,10 +3913,13 @@ reads them first, `ASC_WORLD` the fallback), `damageScale` 1.1, `execution`, `wa
 before his limbs take over). Built by `buildHero(U, ASC_LOADOUT)`, the hero's skeleton, the hero's ink-line
 art. Every piece that changes with his form is kept out of the static merge and registered with the forms
 it shows in (`look.js` `at(D, m, from, to)` on the rig's `userData.dress`). `look.js`: `ascLookNow()` →
-`{ base: 'a' | 'c', art, id }` (`?ascLook=`, read when the rig is built; d = outfit a through the wyrm's art
-path, `bodyArt.js` `ASC_ART`), `ASC_TINT` (per outfit, his material instances' fills), `ASC_LIFT` (`fill`
-multipliers per part and `rim` × 3.2 on `rimOn`: his figure lifted off the floor; `?ascLift=0` = as the
-body shipped), `tintAscendant(M)` (the class's `_tint`: the fills, the lift, the light's ink),
+`{ base: 'a' | 'c' | 'h' | 'g' | 'v' | 'k', tint, art, id, homage }` (`?ascLook=`, read when the rig is
+built; d = outfit a through the wyrm's art path, `bodyArt.js` `ASC_ART`; `KUNG_LOOKS` e / r / w = base `k`,
+the gi with wraps, tinted e / r / w, ADR-155), `ASC_TINT` (per `tint`, his material instances' fills),
+`ASC_LIFT` (`fill` multipliers per part and `rim` × 3.2 on `rimOn`: his figure lifted off the floor;
+`?ascLift=0` = as the body shipped) and `ASC_QUIET` (`?ascLift=b`, the owner's pick: the hero's quieter
+print, the skin × 0.62, rim × 1.5), `ascLettersOn()` (the kit's `letters`), `tintAscendant(M)` (the
+class's `_tint`: the fills, the lift, the light's ink),
 `dressAscendant(d, dt)` (the kit's `dress`: on a change of `d.dressPhase` it flips the pieces' `visible`
 flags and writes the gold hair's, the wraps' and the light's colours; then the gold breathes, a few
 uniforms a frame; no allocation). His materials: `coat` / `lining` the tunic, `leather` the sash, `hem` the
@@ -3937,71 +3971,103 @@ parry on the way out turns it home at once; at its turn it asks `brain.fairDelay
 T.shots.disc.homeWait, 'disc')` (a longer hang, or home uncued and harmless). Added fields: `size,
 returnable, returned, curve, hang, through, tx, tz, leg, path, form, seed, hitKind`.
 
-### The Thousand-Body Fox — `src/entities/enemies/thousandFox/fox.js` exports `class ThousandFox` (ADR-147)
-Wen Yao, a masked BARE-HANDED fighter on the duelist engine (2026-11-22: the owner's "a fist fighter, no
+### The Thousand-Body Fox — `src/entities/enemies/thousandFox/fox.js` exports `class ThousandFox` (ADR-147, ADR-154)
+Wen Yao, a BARE-HANDED fighter on the duelist engine (2026-11-22: the owner's "a fist fighter, no
 sword"): one health bar, three phases (`phaseAt` [1, 0.66,
 0.33]); `FOX_KIT` (`id` 'thousandFox', `transitions` { 2: 'thousandBodies', 3: 'foxMantle' },
-`counterMove` 'riposte', `streakMove` 'streakFlurry'). No change to `duelist/*.js`: everything is a hook.
+`counterMove` 'riposte', `streakMove` 'streakFlurry', `letters: true`: his ink-line letters follow his
+size, see "The bosses' letters" below). No change to `duelist/*.js`: everything is a hook.
 - **Files:** `fox.js` (the class, `FoxBrain`), `moves.js` (the moves as data in the Ash format; his own beat
-  fields `swap`, `scatter`, `round`, `pearl: 'charge' | 'great'`, `mantle: 'tail' | 'pounce'` and move
-  fields `clonesFight`, `needs`, `densityAs`, `hidden`: its header), `tuning.js` (Shen Hui's blocks plus
-  `clones`, `pearl`, `mantle`, `world`, `crescent`), `poses.js` (`GUARD`, `FOX_POSES`), `links.js`,
-  `clones.js` (`FoxClones`), `pearl.js` (`FoxPearl`), `fx.js` (`FoxFx extends DuelFx`), `gear.js`
-  (`FOX_LOADOUT`: no weapon; `FOX_FIST` = kit.blade, the right fist on the sword joint), `look.js` (`FOX_LOOKS`, `foxLook(name)`, `tintFox(M, { pale })`, `dressFox`).
+  fields `swap`, `pack`, `spring: 'pile'`, `twin`, `lift`, `pearl: 'drive' | 'charge' | 'great'`, `mantle:
+  'tail' | 'pounce'`, `verdict` and move fields `densityAs`, `hidden`, `copy`, `verdict`: its header;
+  `ROUND_PACK`, `PEARL_PACK`, `roundBeats(n)`), `tuning.js` (Shen Hui's blocks plus `clones`, `pearl`,
+  `mantle`, `world`, `crescent`, `verdict`), `tuningBeam.js` (`VERDICT`: the Howl), `poses.js` (`GUARD`,
+  `FOX_POSES`), `links.js`, `clones.js` (`FoxClones`), `pearl.js` (`FoxPearl`), `beam.js` (`FoxHowl`),
+  `spirit.js` (`FoxSpirit`: the Nine-Tailed Fox), `fx.js` (`FoxFx extends DuelFx`), `fxBeam.js` (the
+  Howl's draw helpers), `gear.js` (`FOX_LOADOUT`: no weapon; `FOX_FIST` = kit.blade, the right fist on
+  the sword joint), `bodyArt.js` (`FOX_ART` for the art-path outfits a - c, `FOX_INK` / `FOX_INK_RIM` per
+  ink-line outfit d, h1 - h3), `look.js` (`FOX_LOOKS`, `foxLook(name)`, `foxLookNow()`, `tintFox(M, {
+  pale })`, `dressFox`).
 - **Bare hands (Tian Lei's way, ascendant.js, copied in fox.js):** his blows are Tian Lei's exported strike
   builders (`ascendant/moves.js` `X.punch / kick / elbow / strikeKeys`, authored round the same left-lead
   stance) and his reaction clips Tian Lei's `CLIPS`, compiled round his own `GUARD` (Tian Lei's loose
   second guard, the lead hand open, palm up). The engine's "blade" (hilt → tip: the parry, the trade, the
   lock, the trails) is the STRIKING LIMB of the moment: `_strikePart()` (the beat's `part`: fistR, fistL,
-  palms, footR / L, kneeR / L, elbowR / L, feet), `_limbSeg(part, a, b)`, `tellPoint(part)`,
-  `_drawnPoints()`, `_poseAt(t)`; `palmPoint(out)` (over the open lead palm: the Pearl's spot).
-- **The class:** `d.clones` (FoxClones), `d.pearl` (FoxPearl), `d.mantleK` (0..1, the mantle grown in),
-  `d.tails` (phase 3's fox spirit: 1 as it wakes, `T.mantle.tails` 9 as his bar runs out; 3 when the Lab
-  forces the mantle),
-  `debug.clones(n)` (tear n selves off now, to the cap), `debug.popAll()`, `debug.pearl()` (the Pearl
-  now), `debug.mantle(on)` (on / off / null = by phase), `debug.liveClones()`. Hooks used: `_setup` (the
-  pool and the Lab's API, inside the base constructor), `_tint` / `_tintSelf`, `_makeFx`, `_makeBrain`,
-  `reset` (he sits among four seated selves), `guarding` (down through the Pearl's charge), `weigh` (the
-  Round needs two selves, no scatter at the cap, `densityAs`), `onActStart` (the Round tears its selves
-  if too few; a transition pops them, phase 3's burns them into him; the Pearl begins), `beatMotion`
-  (the trade of places, the springboard off a self, the self that helps shape the drive, the scatter,
-  the Round's call), `onImpact` (the transitions tear selves to the cap; the drive's burst; the tail, the
-  pounce and the black pearl on the world), `onCast` (Pearl Rain's throw), `hitPlayer` (the drive's blow
-  grows with the selves that fed it), `brainFrame` (the intro's tearing, the selves, the pearls, the mantle's
-  `world.ignite`), `afterPose` (the Pearl over the blade, the black pearl, the mantle, the selves'
-  poses and spheres), `takeHit` (a 'cloneN' part pops; a cut while he charges counts toward the
-  interrupt), `_break` (every self pops), `drawnPoint` (about the nearest body's root).
-- **`FoxBrain extends DuelBrain`:** `_reach(b)` is Infinity for a `swap` beat (he arrives through a
-  self); `startAct('foxRing')` passes `opts.selves` (the live count) to the kit's `realise`, which
-  realises the Round for that count (`roundBeats(n)`: the call, then his blow `0.42 n + 0.68` s later).
-- **`FoxClones`** (`d.clones`): `list` (the pool: `{ i, rig, root, pilot, anim, lean, hs: [2 spheres],
-  alive, state 'in' | 'stalk' | 'wind' | 'strike' | 'recover' | 'seated' | 'dead', x, z, yaw, handle,
-  round }`), `live`, `alive(i)`, `busy`, `cap()`, `spawn(n, why)` (a ring 3.5 – 5.5 m round the hero,
-  `apart` 2.2 m, `d.standable`; its own seeded stream), `popAt(i, x, y, z, heavy, by)`, `popWithin(x,
-  z, r, by)`, `popAll(by)`, `burnAll()`, `nearest(x, z)`, `swapWith(i)`, `round(hisImpactIn)`,
-  `seat(n)` / `tearSeated(t)` / `seated` (the intro), `assist(i, d)` (state 'assist': holds the Pearl
-  with him, at his left), `brace(i, d)` (state 'brace': cups its hands for his spring), `handPoint(i, out)`
-  (the Pearl's thread),
-  `setCut(act)` (the realised `paperCut`), `frame(dt)`, `pose(dt)`. Its rigs are plain hero rigs
-  (`buildHero(U, FOX_LOADOUT)`, their own `HeroAnimator`, `installLean`, `batchRigid`), not shadow
-  casters; a hero-side double can take one (ADR-148).
+  palms, footR / L, kneeR / L, elbowR / L, feet), `_limbSeg(part, a, b)`, `tellPoint(part)` (during the
+  Howl: the fox's jaws, `howl.cuePoint`), `_drawnPoints()`, `_poseAt(t)`; `palmPoint(out)` (over the open
+  lead palm: the Pearl's spot).
+- **The class:** `d.clones` (FoxClones), `d.pearl` (FoxPearl), `d.howl` (FoxHowl), `d.mantleK` (0..1,
+  the mantle grown in), `d.tails` (phase 3's fox spirit: 1 as it wakes, `T.mantle.tails` 9 as his bar
+  runs out; 3 when the Lab forces the mantle), `debug.pack(spec | moveName, o)` (a pack called now, out of
+  any move: a move's pack by its name, or a spec), `debug.popAll()`, `debug.pearl()` (the Pearl now),
+  `debug.mantle(on)` (on / off / null = by phase), `debug.liveClones()`, `debug.howl()` /
+  `debug.howlState()` (beam.js). Hooks used: `_setup` (the pool, the Howl and its fox, the Lab's API,
+  inside the base constructor), `_tint` / `_tintSelf`, `_makeFx`, `_makeBrain`, `reset` (he sits among
+  four seated selves), `guarding` (down through the Pearl's charge), `weigh` (a pack move with no pack
+  this phase: 0; another pack still out: x 0.15; the Howl by `howl.weigh`; `densityAs`), `onActStart` (a
+  transition pops the selves, phase 3's burns them into him; the Pearl begins; the counter rolls "It was a
+  copy" (`def.copy` per phase); the Howl's `onActStart`), `beatMotion` (a beat's `pack` called at its
+  `at`, the Pearl's harrying pack capped clear of the drive; the copy's burst and drop behind the hero;
+  the run to the Burial's pile and the spring off it; the helper shaping the drive; the twin; the lifters;
+  the swap; a `verdict` beat → `howl.beatMotion`), `onImpact` (the drive's burst; the tail, the pounce and
+  the black pearl on the world; a `verdict` beat → `howl.onImpact`), `onSustain` (the Howl's ticks),
+  `onCast` (Pearl Rain's throw), `hitPlayer` (the drive's blow grows with the selves that fed it; a copy's
+  counter is met by a guard from any side), `brainFrame` (the intro's tearing, the selves, the pearls, the
+  Howl, the mantle's `world.ignite`), `afterPose` (the Pearl, the black pearl, the mantle, the selves'
+  poses and spheres, the Howl's drawing), `takeHit` (a 'cloneN' part pops; a cut while he charges counts
+  toward the interrupt), `_break` (every self pops, every pack is called off), `drawnPoint` (about the
+  nearest body's root, a self's height included).
+- **`FoxBrain extends DuelBrain`:** `_reach(b)` is Infinity for a `swap` beat; `_choose` takes
+  `howl.forced()` first (the Howl forced once under `verdict.forceAt`); `startAct('foxRing')` passes
+  `opts.selves` (the phase's `ROUND_PACK.n`) to the kit's `realise`, which realises the Round for that n
+  (`roundBeats(n)`: the call, then his palm `gap` after the pack's last blow).
+- **`FoxClones`** (`d.clones`; ADR-154): a self exists only inside a PACK or helping him. `list` (the
+  pool, `T.clones.pool` 6 rigs: `{ i, rig, root, pilot, anim, lean, hs: [2 spheres], alive, state 'pack' |
+  'assist' | 'lifting' | 'twin' | 'swapped' | 'seated' | 'dead', x, y, z, yaw, pack, blow, W, at, impact,
+  until, handle }`), `packs` (three records), `pack(spec, { attack, phase, act, cap, shift })` → the pack
+  or null (books every body: its mark round the hero by `form`, its appearing time = impact − its blow's
+  windup, its impact; tells every cue to the ledger up front, `brain.expect`: one per body for
+  `sequence`, ONE for `together`; shifted as a whole by `brain.fairDelay`, or refused; a `sequence` of
+  `fullDeflect.minHits - 1` or more inside a move adds its blows to the move's `hits`), `packLive`, `live`,
+  `alive(i)`, `free`, `feeding` (the selves feeding the Pearl: the helper + `fed`, the harrying bodies that
+  struck and burst into it), `popAt(i, x, y, z, heavy, by)`, `popWithin(x, z, r, by)`, `popAll(by)` (also
+  calls off the bodies not yet out), `burnAll()`, `nearest(x, z)`, `swapIn()` (a self dropped beside the
+  hero, he trades places with it), `assist()`, `lift(until)`, `twin({ impactIn, damage, knockback, w,
+  dash })`, `pile()` / `springOff(by)` (the Burial), `seat(n)` / `tearSeated(t)` / `seated` (the intro),
+  `handPoint(i, out)` (the Pearl's thread; none from the twin), `setBlows({ dive, cross, upkick, slam })`
+  (the hidden self-moves `paperDive` / `paperCross` / `paperUpkick` / `paperSlam`, realised once),
+  `frame(dt)`, `pose(dt)` (a pack body every frame: it is out under a second; a helper every other),
+  `stats`. A body's blow goes through `d.hitPlayer({ projectile: true, extra: { around: true } })`. Its
+  rigs are plain hero rigs (`buildHero(U, FOX_LOADOUT)`, their own `HeroAnimator`, `installLean`,
+  `batchRigid`), not shadow casters; a hero-side double can take one (ADR-148).
 - **`FoxPearl`** (`d.pearl`): `kind` ('drive' | 'charge': the volley), `charging`, `flying`, `u` (the charge
-  0..1), `selves` (the selves feeding it), `shots` (three), `begin(act)`, `charge(b, u, dt)`, `struck(heavy)`
+  0..1), `selves` (`clones.feeding`), `shots` (three), `begin(act)`, `charge(b, u, dt)`, `struck(heavy)`
   → burst in his hand?, `interrupt()`, `cancel()`, `drive(b, s, act)` (the drive's burst), `bat(b, s, act)`
-  (Pearl Rain's throw),
-  `frame(dt)`; counts `landed`, `interrupts` (tests).
+  (Pearl Rain's throw), `frame(dt)`; counts `landed`, `interrupts` (tests).
+- **`FoxHowl`** (`d.howl`, beam.js; ADR-154): Heaven-Devouring Howl. Routed from fox.js for every beat or
+  move with `verdict` (the contract in its header): `weigh`, `forced`, `onActStart`, `beatMotion`,
+  `onImpact`, `onSustain`, `frame(dt)`, `pose(dt)`, `reset()`; `busy`, `phase` ('off' | the move's stage),
+  `B` (the beam: origin, direction, lit), `stats`, `cuePoint(out)`. The move: a feint `flit` beat, then ONE
+  red `beam` beat (`selfHit`, `sustain`) whose windup is the summoning and the charge; its recovery is the
+  kneel (`recoverOpen: 1`). Its fox: `spirit.js` `FoxSpirit` (built in his constructor on a quiet
+  Math.random, hidden; six art-path materials, batched; `place`, `show`, `frame(dt, state)`, `jawPoint`,
+  `P` the points fxBeam.js draws from). The terrace's light: `world/foxTerrace.js` the set's `light`
+  (`dim(k)`, `update(dt, game)`, `reset(game)`, `state`; stepped by the Howl). The camera: `cameraRig.hold(m, x, z, w)`
+  (see the table above) and `cameraRig.keep` for the hero and the fox's head.
 - **`FoxFx`** (`d.fx`): the surface in its header (`pearlCharge`, `pearlThread`, `pearlFly`,
-  `pearlMark`, `pearlBurst`, `pearlFizzle`, `greatPearl`, `greatBurst`, `cloneSpawn`, `clonePop`,
-  `cloneBurn`, `mantle`, `tailSweep`, `pounceLand`), `sweep()` overridden (a bare-handed blow's short
-  trail), and `phaseBurst(3, x, z)` (the mantle's change: a
-  front of foxfire and a column; not the Ash Disciple's ash wind); `look` (`?foxfire=`), `FOX` (the kind
-  foxfire is drawn as: K_VOID swapped, or K_FIRE for look b), `L` (the look's non-heat colours). Its
-  constructor swaps the void slot's palette (`FIRE_PALETTES.foxfire` / `.moon`). Audio: `audio.js` plays
-  `sfx.js` `paperTear` on `dragon:clone` (softer for a spawn or `by: 'mantle'`). FoxFx reads `d._part`, `d.tails`, `d.mantleK`,
-  `d.pearl.kind` / `flying` (the drive's burst is drawn as a blast along his line).
+  `pearlMark`, `pearlBurst`, `pearlFizzle`, `greatPearl`, `greatBurst`, `cloneSpawn`, `packPuff`,
+  `clonePop`, `cloneBurn`, `mantle`, `tailSweep`, `pounceLand`), `sweep()` overridden (a bare-handed blow's
+  short trail), and `phaseBurst(3, x, z)` (the mantle's change: a front of phase 3's fire and a column);
+  `look` (`?foxfire=`, the orb's colour), `FOX` (the kind the orb is drawn as: K_VOID with
+  `FIRE_PALETTES.pearl` / `foxfire` swapped in, K_FIRE for b, K_STEEL when phase 3 takes the void slot),
+  `L` (the orb's non-heat colours), `look3` / `FIRE3` / `_front3` / `L3` (`?foxFire3=`: phase 3's fire,
+  K_FIRE orange-red by default, b jade on the void slot). Audio: `audio.js` plays `sfx.js` `paperTear` on
+  `dragon:clone` (softer for a spawn or `by: 'mantle'`) and `pearlWhirr` on `dragon:windup` of `foxPearl` /
+  `twinPearl`. FoxFx reads `d._part`, `d.tails`, `d.mantleK`, `d.pearl.kind` / `flying`.
 - **Look switches waiting for the owner:** `duelist/lookSwitch.js` `PENDING` (`foxLook`, `foxfire`,
-  `clones`): Lab LOOKS rows, deliberately not in `PICKED` (each draws its call site's default, `a`);
-  duel.mjs FXLOOKS leaves them out of the picks' checks. A pick moves a switch from `PENDING` to `PICKED`.
+  `clones`, `foxLetters`, `foxFire3`, `foxSpirit`): Lab LOOKS rows, deliberately not in `PICKED` (each
+  draws its call site's default: `FOX_LOOKS`); duel.mjs FXLOOKS leaves them out of the picks' checks. A
+  pick moves a switch from `PENDING` to `PICKED`.
 - **The world** (`TUNING.world`, POWER): the blade's blows through the engine's `_worldBlow`; a pearl's
   burst 1.4, the black pearl 2.0, the pounce 1.0 (+ `world.ignite` 0.8), the tail 0.9; the mantle
   `world.ignite(x, z, 1.5, 0.5)` every 0.6 s; the tail's sweep `world.ignite` out to its ring + 1 m (0.8),
@@ -4014,9 +4080,18 @@ A `Duelist` with `SHEATHED_KIT`; COMBAT.md → "The Sheathed" has the fight. The
 MOVES, MOVE_NAMES, CLIP, realise, transitions { 2: 'thumbWidth', 3: 'heldBreath' }, counterMove (phase < 3
 'answer', else 'answerDraw'), streakMove () => 'leaves', loadout SHEATH_LOADOUT, poses SHEATH_POSES, blade
 (MUTABLE: the live span by sheath state, gear.js BLADE_SPAN), OPEN ['caught'], REACT { caught } }`. Files:
-tuning.js, moves.js, poses.js (his stance: the sheathed sword hanging low in his right hand; `lsw` the
-scabbard at his left hip), gear.js (`sheath.*` items, `SHEATH_ART` per body, `buildOffSheath`, `SWORD_DIMS`),
-links.js, fx.js (`SheathFx extends DuelFx`), lateCuts.js (`LateCuts`).
+tuning.js, moves.js, poses.js (his stance: the sheathed sword hanging low in his right hand, the left thumb in
+the sash; `lsw` the scabbard at his left hip; `SHEATH_RUN` / `SHEATH_BREATH` (createDuelPoses opt.run /
+opt.breath) and his own `duelLoco`, the duelist's sunk and pitched forward at a run; ADR-152), gear.js
+(`sheath.*` items, `SHEATH_ART` per body (the wyrm's digits, `?sheathArt=0`), `buildOffSheath` → `{ root, hilt,
+streamers }`, `SWORD_DIMS`, `STRIP` (mark a), `ROBE_TAILS`), look.js (ADR-152: `sheathLookNow`, `sheathArtNow` ('0' | '1' | '2' | '3' | 'a'), `sheathDigits`, `sheathTuned`,
+`SHEATH_STEP`, `wandererDigits(base)` (the art sources of prints 1 and 2), `SHEATH_FLAT` (print 3 folds those
+materials' aPart to 0 in `_setup`),
+`sheathToneNow`, `sheathMarkNow` (all read when his rig is built), `SHEATH_TONE`, `SHEATH_MARK`, `SHEATH_LIFT`,
+`tintWanderer(M)`: the Wanderer's fills and rim in the ink-line art, called by `_tint`), links.js, fx.js
+(`SheathFx extends DuelFx`), lateCuts.js (`LateCuts`). Mark a's strip on the left-wrist piece: `_setup` appends
+its two springs to `rig.streamers` and the animator's `streamState` (`_offStrip`); a change to 'drawn' kicks
+them (the snap). Drawn only: no gameplay reads them.
 ```
 name = 'LU WUSHENG, THE SHEATHED';  kind = 'duelist'
 sheath: 'carry' | 'settled' | 'drawn'   // the sheath on the rig (below); 'dragon:sheath {state}' on a change
@@ -4066,6 +4141,73 @@ flagstone (world/floor.js), stele, lantern, boulder, post (light). Returns creat
 **Destruction's `light` def field** (ADR-145; destructibles.js): the record's `lightPiece`; its topple is
 `quiet` whoever felled it and its landing does only the crumble and a soft `crash` (weight x 0.25): no ground
 marks, gust, shake, domino sweep or blow on anyone. (The record's own `light` is a burning piece's point light.)
+### Xin Yi, the One Who Woke — `src/entities/enemies/wokenOne/wokenOne.js` exports `class WokenOne` (ADR-156 – ADR-158)
+A `Duelist` with `WOKEN_KIT`; COMBAT.md → "The One Who Woke" has the fight. The kit: `{ id: 'wokenOne', TUNING,
+MOVES, MOVE_NAMES, CLIP, realise, transitions { 2: 'ironSeeds', 3: 'rising' }, counterMove (answer / answer2 /
+answer3 by phase), streakMove (hundredHands / 2 / 3), maxPhase 3, loadout ONE_LOADOUT, poses (per phase:
+poses.js phasePoses), blade ONE_FIST, REACT { bend, stop }, OPEN ['bend'] }`. Files: tuning.js, moves.js
+(Tian Lei's exported strike builders; MOVES_P1, the phase-1 copy with the left hand behind his back in every
+key; CLIPS_BY_PHASE; `realise` with deja vu's REPLAY), poses.js (three guards), links.js, iron.js (`IronMoves`,
+phase 2's guns), source.js (`SourceMoves`, phase 3), fx.js (`WokenFx extends AscFx`: LordFx's pool of thrown
+things, the code palette in the void slot), gear.js, look.js (the body's).
+```
+name = 'XIN YI, THE ONE WHO WOKE';  kind = 'duelist'
+lives { total: 2, left }           // bar 1 = phases 1 - 2 (TUNING.hp, the gate at phaseAt[1]); bar 2 = phase 3 (hp2)
+cameraPull                         // m the camera eases back (main.js updateCameraFocus): flight keeps both in frame
+iron                               // IronMoves: weigh (the reload after reload.after ranged moves), begin, onImpact,
+                                   //   onCast ('shot'), onSustain (Iron Rain's ticks), motion (the strafe, the wheel)
+source                             // SourceMoves: held[] (the stop), sent(r), canUnwrite(), front { live, r, ... },
+                                   //   fist { x, z } (the Falling Fist's spot), draw(dt)
+bend(why, force) → bool            // THE BEND (phase 2): 'shot' | 'cut'; false: he cannot (bent already, cooling)
+onShotReturned(s)                  // AscFx: a returned shot reached him (phase 2: the Bend, else it lands: bend.returned)
+handPoint(left, out)               // the hand as drawn (a muzzle, a bolt's start)
+victoryNote()                      // 'YOU LEARNED THE LONG SECOND' after the fight that granted it
+debug.setPhase(n) / setForm(n), phase3() (the fall and the rising), bendNow(why), fallAndRise(), scene(id),
+  dejavu(name), hold(n), held(), flight('fist' | 'pass')
+```
+**Two bars, three phases.** `phaseAt` [1, 0.5, 0]: the engine's gate stops bar 1 at half (phase 2's
+transition `ironSeeds`); phase 2 has no gate, so bar 1 empty calls `_onHpZero`, which BREAKS him (Tian Lei's
+way). `onExecute` on bar 1 is THE FALL: `_changing` (takeHit returns 0), `_fall`, `startReact('executed')`
+(the clip: flat on his back for fall.lie s), `pendingPhase` 3, flow.cinematic slowmo, scenes.hold,
+`dragon:fall`. The rising (`rising`, a transition) starts the morph to the Source from his body and the script
+wave to 1 (onActStart); `enterPhase(3)` makes bar 2 full; at its ring `_palmT` = rising.palm s: a cut is
+caught on the raised palm (`_palmCatch`: `dragon:guard {caught}`, the blade thrown back). The deathblow on bar
+2 kills him (`_die`: the Long Second granted, the hall's `hall` scene back).
+**The Lean** is his ward clips (moves.js CLIPS ward / wardR / wardHigh: slips) and one `fx.afterimages` each.
+**Deja vu**: a LINKS entry with `dejavu` (links.js: the first of each replayable string, `force`, phase 2 to
+itself, phase 3 to its mirrored copy `<name>M`, `mirrorOf`, `manual`). `WokenBrain._startNext` sets `REPLAY`
+(moves.js) to the first pass's draws (`A.draws`), so the realiser draws the same holds and picks, and
+`_dejavuNext`; `onActStart` stutters the set (`scenes.stutter`, `scenes.script(1, pulse)`) and emits
+`dragon:dejavu`.
+**Optional engine fields this boss added** (other kits unchanged): a beat's `noWorld` (brain.js `_worldBlow`:
+no world blow of the brain's own: Iron Rain's lit line, Return to Sender's ring); a hit's `guardCost`
+(player.js `_block`: what a block costs the meter instead of GUARD.cost; Iron Rain's shots); a boss's
+`cameraPull` (main.js).
+**The set** (world/scriptHall.js, ADR-157): `createScriptHall`, `HALL` (layout), `SCENES`, `SLOTS`; returns
+createForest's shape + `scenes` (below) + `ambience` (the falling script: atmosphere.js runs it).
+
+**Scenes: a set that morphs** (ADR-157; world/scriptHall.js is the only one). A set may return
+`scenes { ids, now, k, to(id, { x, z, speed }), snap(id), reset(), update(dt), hold(sec), stutter(sec),
+script(k, sec) }`; `ids[0]` is the home scene. A breakable def with `scene: '<id>'` stands only in that scene
+(destructibles.js: the record's `scene`, `absent`); a def without one is in every scene. `Destructibles`
+reads `set.scenes.ids[0]` as `sceneHome`; at its build and at every `reset()` the pieces of the other scenes
+are put out of the world. `present(b, on)`: off, the piece is hidden with its stub and cracks, its colliders
+out, its fire out, its state GONE (so every query skips it: strike, sweep, stop, coverAt, nearest, floorNear,
+ignite, bites); on, it is back whole (`_restore`, the per-piece half of the reset). `sceneNow` is the scene
+shown (the set's scenes set it). `world.restore()` calls `scenes.reset()` after the destructibles' reset. A set
+without `scenes` behaves exactly as before. `world:scene {id, x, z}` as a morph starts.
+The Hall's own surface (world/scriptHall.js; nothing else reads it): a piece's `scene` is its HOME tag for the
+destructibles' reset; membership is the set's, `scenes.member(b, id)`, with two optional def fields: `within:
+[ids]` (the scenes a piece stands in: the first four watchers stand in the hall and the dojo) and `later: true`
+(only once the hall has been left since the reset, `scenes.left`: the four more watchers, tagged `scene:
+'hall2'` so the reset puts them out). `scenes.morphing`, `base`, `light` (SCENE_LIGHT eased over a morph),
+`burst(b)` (a piece's letting go: digits sampled from its own triangles at build, `def.shed`). Exports:
+`HALL` (+ `wall`, `panel`, `morph.width`), `SCENES`, `SLOTS`, `SCRIPT_LOOKS`, `WATCHERS`, `SCENE_LIGHT`,
+`RAIN`. A morph also sinks the wreckage inside its front (wreckage.js `e.sink`) and mends cracked or broken
+slabs under it (`present` off and on). materials.js: `SCRIPT_GLSL`, `SCRIPT_GRID` (the art pass's letter
+cell and anchor, pointed at by the ambience: the prop wave runs down its columns), `scriptUniforms(U)`;
+prop-art and carved materials read `uScript` / `uScriptF` behind a strength test.
+
 ## Event catalogue (exact names — producers → consumers)
 Player → hud/audio/fx/flow:
 - `player:attack {kind:'light'|'heavy'|'slam'|'cleave'|'thrust', combo, charge, name}` (swing starts; combo 1–5 = the chain hit, slam = hit 5, the sprint slash and the roll cut report 1; heavy = a heavy branch, combo 0–4 = the light it followed (ADR-115; the Earthbreaker after the fourth is kind slam); cleave = the charge's release, thrust = the execution against a duelist; name = the attack's data name, combat.js),
@@ -4143,9 +4285,15 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   `dragon:streak {count, ready}` (a duelist's streak of guards changed; ready = his flurry may come), `dragon:flurry {count}`
   (his flurry starts: that many blows), `dragon:flurryEnd {count, answered}` (decided: every blow parried or blocked, or one missed),
   `dragon:clone {kind, x, z, by}` (the Thousand-Body Fox: a paper self tears free, kind 'spawn', or pops, kind 'pop'; by =
-  what did it: scatter / phase / round / debug, or cut / parry / pearl / break / phase / mantle / death; audio a paper tear),
+  what did it: a pack's move name, assist / lift / twin / swap, or cut / parry / burst / pearl / beam / spring / copy / break / phase / mantle / death; audio a paper tear),
   `dragon:sheath {state}` (the Sheathed's sheath changed, ADR-145: settle = the hand on the hilt, draw = the blade out,
   click = it went home (the grove falls), carry; audio: the breath, the click),
+  Xin Yi, the One Who Woke (ADR-156; audio plays each, the HUD feed none): `dragon:shot {attack, heavy}` (a gun fires),
+  `dragon:reload` (both guns thrown away), `dragon:bend {why}` (THE BEND: why 'shot' or 'cut'), `dragon:stop {held}` (a
+  returned bolt hangs before his palm; held = how many now), `dragon:sent {count, result}` (Return to Sender answered),
+  `dragon:unwrite {count}` (bricks torn out of the code pillars), `dragon:dejavu {name}` (the hall stutters: the string
+  replays), `dragon:fall {x, z, lie}` (THE FALL: bar 1 empty and the deathblow; he lies lie s), `dragon:stillHand {dur}`
+  (the rising's ring went out: the Still Hand held dur s),
   `dragon:posture {posture, max}`, `dragon:postureBreak`, `dragon:stagger` (ordinary stagger only), `dragon:phase2`,
   `dragon:phase3`, `dragon:phase4` (a duelist's later phases: the Starless Lord's blade forms), `dragon:phase {n}` (the wyrm: with phase 2 and 3, on the transition roar), `dragon:plunged {execution}`
   (contract 2: every plunge that lands, even during a transition or the killing one),
@@ -4203,6 +4351,8 @@ World → audio (destruction, ADR-107; see "Destruction" above):
   down and ground behind it has opened. x, z: the end of the lane that opened furthest; reach: how far from the
   centre the hero's ground goes there, m; lanes: lanes open in all; first: nothing was open before. One reused
   payload. The HUD feed says it once a fight, on first)
+- `world:scene {id, x, z}` (ADR-157, the Hall of Falling Script: the set's scenes.to began a morph to scene id
+  from x, z; audio a falling run of ticks)
 - A piece a boss felled emits combat:tell / combat:flash with source 'world', attack 'fallingDebris', tell 'red'
   and hazard: true (be out from under it; audio plays the hazard cue)
 

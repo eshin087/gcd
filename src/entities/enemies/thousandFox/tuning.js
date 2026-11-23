@@ -1,4 +1,5 @@
 import { DUEL_WORLD } from '../duelist/worldTuning.js';
+import { VERDICT } from './tuningBeam.js';
 
 // Wen Yao, the Thousand-Body Fox's numbers (ADR-147; COMBAT.md → "The Thousand-Body Fox"). Copied block
 // for block from Shen Hui's (ashDisciple/tuning.js: the comments there say why each number is what it
@@ -138,7 +139,13 @@ export const TUNING = {
     // five seeds x 120 s: P1 65.3 - 71.6 (68.3), P2 76.7 - 83.4 (80.2), P3 75.9 - 82.0 (79.3); P2 / P1 at
     // least 1.10 per seed, 1.175 in the mean; P3 / P2 0.93 - 1.06 per seed, 0.99 in the mean; the longest
     // gap 3.42 / 3.34 / 3.45 s; 0 conflicts; a dodge in 11 / 12 / 17 % of the cues. The margins as before)
-    meter: { ramp: [1, 1.01, 0.86], rampMean: [1, 1.13, 0.95], minRate: [60, 70, 70], maxGap: [3.9, 3.8, 4.0] },
+    // (2026-11-22, ADR-154, the selves in packs only and Heaven-Devouring Howl; the same five seeds x 120 s,
+    // the Howl summoned to burnt out and his kneel counted as activity: P1 69.8 - 72.7 (70.9), P2 78.4 -
+    // 81.1 (79.5), P3 66.6 - 71.5 (68.3); P2 / P1 at least 1.09 per seed, 1.12 in the mean; P3 / P2 0.82 -
+    // 0.91 per seed, 0.86 in the mean; the longest gap 2.88 / 3.62 / 3.62 s; 0 conflicts; a dodge in 11 /
+    // 14 / 28 % of the cues. Phase 3 asks fewer cues and more dodges: the Howl is one red cue over ~9 s and
+    // a 2.2 s kneel. The margins as before)
+    meter: { ramp: [1, 1.01, 0.76], rampMean: [1, 1.08, 0.82], minRate: [60, 70, 61], maxGap: [3.9, 4.1, 4.1] },
   },
   // a hero drinking a flask: no gap, and the moves that close distance are favoured × `weight`
   punish: { weight: 4 },
@@ -170,22 +177,30 @@ export const TUNING = {
   // ---- Paper Blades' sword qi (Shen Hui's crescents: DuelFx.throwCrescent)
   crescent: { speed: 14, radius: 0.7, life: 2.2, chip: 0.25, minLead: 0.27 },
 
-  // ---- the paper selves (clones.js FoxClones; ADR-147): his own bodies, a fixed pool built with him
+  // ---- the paper selves (clones.js FoxClones; ADR-147, ADR-154): his own bodies, a fixed pool built with
+  // him. A self exists only inside a PACK (moves.js header `pack`): it appears in the air already
+  // attacking, strikes and bursts
   clones: {
-    pool: 5, // rigs built in his constructor (never mid-fight: the seeded fights would shift)
-    max: [2, 4, 5], // live at once per phase (the scatter's cap)
-    scatter: [2, 3, 3], // torn off by one Scattered Leaves
-    ring: [3.5, 5.5], apart: 2.2, // spawned this far round the hero, at least this far from each other
-    in: 0.45, // s of tearing free: it can be popped at once, it cannot strike yet
-    walk: 2.4, slot: 2.6, // m/s to its own slot this far from the hero
-    reach: 3.2, // a self takes the token only this close to the hero
-    every: [2.6, 1.9, 1.2], // s at least between one self's blow and the next self's windup
-    windup: 0.62, recover: 0.55, // its blow's windup (paperCut) and its recovery after
-    damage: 8, knockback: 0.5, parryPosture: 10,
+    pool: 6, // rigs built in his constructor (never mid-fight: the seeded fights would shift)
+    // the hidden self-moves' windups (moves.js paperDive / paperCross / paperUpkick / paperSlam): a body
+    // appears this long before its blow (its tell), already in its attack pose
+    blows: { dive: 0.62, cross: 0.56, upkick: 0.56, slam: 0.6 },
+    drop: { h: 4.2 }, // a diving body appears this high over its mark
+    hop: 1.2, // a leaping body's arc (m at its top)
+    ring: 1.5, // m from the hero a body strikes from
+    appearR: 3.4, // m out a leaping body appears (a sliding one 0.8 further)
+    lock: 0.75, // its mark follows the hero until this fraction of its windup (then a roll clears it)
+    linger: 0.25, // s it stays in its follow-through after its blow, then bursts
+    reach: 2.1, // a sequence body's blow reaches the hero this far (+ his radius), in front of it
+    damage: 10, knockback: 0.6, parryPosture: 10, // a sequence body's blow
+    // a together pack's one blow: its damage, its push, a parry's posture (+ popPosture x n), the ring
+    // round where the hero stood as they locked on (a roll out of it clears it)
+    together: { damage: 20, knockback: 1.6, parryPosture: 24, r: 1.7 },
     cleave: 1.4, cleaveHeavy: 2.6, // a cut that pops one pops every other self this near the hit point
     popPosture: 6, // each self popped adds this to the real one's posture
     hurt: [0.3, 0.32], // its two hurt spheres' radii (chest, pelvis)
-    round: 0.42, // the Thousand-Body Round: the selves' cuts this far apart, his own this long after the last
+    swapAt: 2.4, swapLinger: 0.3, // Changing Places: dropped in this far from the hero; the one he left bursts after
+    helperLinger: 0.3, // the self shaping the Pearl bursts into it this long after the drive
   },
   // ---- the Pearl of the Hollow Moon (pearl.js FoxPearl)
   pearl: {
@@ -210,6 +225,9 @@ export const TUNING = {
   mantle: { grow: 1.0, tails: 9, ignite: { every: 0.6, r: 1.5, k: 0.5 }, tail: { reach: 1.0, k: 0.8 } },
   // ---- what his blows do to the world (POWER: 1 fells a tree; DUEL_WORLD's fields for the blade)
   world: { ...DUEL_WORLD, pearl: 1.4, greatPearl: 2.0, pounce: 1.0, tail: 0.9, pounceFire: 0.8 },
+
+  // ---- Heaven-Devouring Howl (phase 3): the Nine-Tailed Fox and its beam (tuningBeam.js; beam.js)
+  verdict: VERDICT,
 
   // ---- the intro: he wakes when the hero steps onto the terrace or comes this close (flow also checks)
   wakeRadius: 9,

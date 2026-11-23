@@ -47,6 +47,9 @@ import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
 //   y0        the height its node stands at (the upper half of a colossus: it falls from its cut, coming
 //             down to the ground as it goes over); `fallOff` m out from its base it lands; `fallT` s it falls
 //   blocks    how many big blocks of wreckage it leaves (a statue's), instead of a rubble pile
+//   scene     (a set with `scenes`, ADR-157) the scene it stands in; absent from the others (present)
+//   slice     true: one blade or blow cuts it through where it bit (a bamboo stalk; BREAK.slice): its top
+//             slides off the cut at once and goes over from there, its stump cut on that slant
 //   light     true: a light piece (a bamboo stalk, a planted sword; ADR-145): whoever fells it, its fall
 //             is quiet (no combat:tell / flash, no blow on the hero, no ground mark, no domino sweep, no
 //             camera shake, a soft crash), so a duelist's cue ledger never sees it
@@ -67,7 +70,9 @@ import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
 //   topple(obj, dx, dz, by)               fell it that way
 //   reserve(obj, sec)                     incidental blows (o.incidental: a body walking) leave it alone
 //   setQuality(k)                         the phone budget (0.3 .. 1): debris, flames, wreckage, fires
-//   reset()                               everything stands again
+//   present(obj, on)                      (scenes, ADR-157) a piece out of the world or back, whole
+//   sceneHome / sceneNow                  (scenes) the first scene's id / the one shown (the set's scenes set it)
+//   reset()                               everything stands again (on a set with scenes: the first scene's)
 //   o = { kind: BLOW.*, by: 'player' | 'boss' | 'world', dx, dz (the blow's way), y (its height), src (one id per swing),
 //         falloff: 0..1 (strike: the blast x 1 - falloff at its rim), brush: true (a body walking: BREAK.brush),
 //         only: 'wood' | ... (just that material), spare: a piece to leave alone, incidental: true (skip reserved pieces),
@@ -114,6 +119,8 @@ export const STATE = Object.freeze({ INTACT: 0, FALLING: 1, BROKEN: 2, HELD: 3, 
 const { INTACT, FALLING, BROKEN, HELD, FLYING, GONE } = STATE;
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+/** Eased 0..1 (smoothstep of a 0..1 argument). */
+const smooth01 = (t) => t * t * (3 - 2 * t);
 const NONE = Object.freeze({});
 const NO_PIECES = Object.freeze([]);
 const LEAVES = 'o0O8@&';
@@ -583,6 +590,8 @@ class RangeBody {
     this.pBit = null; // bricks gone per part
     this.pN = null; // bricks per part
     this.nBit = 0; // bricks gone
+    /** a cut through it (a sliced stalk, BREAK.slice): its triangles below this height (at home) are folded away */
+    this.cutY = 0;
     this.bnor = null; // the way into the piece, per brick
     this.bdep = null; // m it is set back when taken (0: folded away)
   }
@@ -678,6 +687,19 @@ class RangeBody {
     }
   }
 
+  /** A sliced stalk's top (BREAK.slice): its triangles whose centre (at home) lies below `cutY` folded to a point. */
+  _writeCut(a, s) {
+    const H = this.home, y = this.cutY;
+    for (let t = 0; t < this.tris; t++) {
+      const h = t * 9;
+      if (H[h + 1] + H[h + 4] + H[h + 7] >= 3 * y) continue;
+      const k = s + h;
+      a[k + 3] = a[k + 6] = a[k];
+      a[k + 4] = a[k + 7] = a[k + 1];
+      a[k + 5] = a[k + 8] = a[k + 2];
+    }
+  }
+
   get parts() {
     return this.ends.length;
   }
@@ -712,6 +734,7 @@ class RangeBody {
 
   /** Every part back, upright, where it stood (no write). */
   home0() {
+    this.cutY = 0;
     if (this.nBit > 0) {
       this.bit.fill(0);
       this.pBit.fill(0);
@@ -823,6 +846,7 @@ class RangeBody {
       v0 = v1;
     }
     if (this.nBit > 0 && this._on) this._writeBits(a, s);
+    if (this.cutY > 0 && this._on) this._writeCut(a, s);
     // (uploaded at the next flushRanges(): once a frame, one range per body however often it was written)
     if (nWrite) this._nDirty = true;
     if (!this._pend) {
@@ -954,6 +978,10 @@ export class Destructibles {
     this.stat = { wind: 0, windTrees: 0, carry: 0, reached: 0, lit: 0 };
     /** the edge of the open ground (edge.js, ADR-125): null on a set without one */
     this.edge = null;
+    /** scenes (ADR-157; a set with `scenes`): the first scene (what the reset shows) and the one shown
+     *  now; a piece whose def names another scene is out of the world (present). null: no scenes */
+    this.sceneHome = typeof set?.scenes?.ids?.[0] === 'string' ? set.scenes.ids[0] : null;
+    this.sceneNow = this.sceneHome;
 
     const defs = Array.isArray(set?.breakables) ? set.breakables : [];
     if (!defs.length) return;
@@ -1002,6 +1030,8 @@ export class Destructibles {
     // every piece's world matrices from its static node, once (the sets stand at the world's origin:
     // nothing above the root moves); after that only a piece that moves is placed again (_place)
     this.pieces.updateMatrixWorld(true);
+    // (a set with scenes: only the first scene's pieces stand at the start)
+    if (this.sceneHome !== null) for (const b of this.list) if (b.scene !== null && b.scene !== this.sceneHome) this._absent(b);
     flushRanges();
   }
 
@@ -1067,7 +1097,9 @@ export class Destructibles {
     const W = def.wear && ranged && body.parts > 1 ? def.wear : null;
     const order = W && Array.isArray(W.order) ? W.order.filter((i) => i > 0 && i < body.parts) : [];
     const o = {
-      id: this.list.length, def, kind: def.kind ?? 'thing', mat: BREAK.mats[def.mat] ? def.mat : 'stone', M,
+      id: this.list.length, def, kind: def.kind ?? 'thing',
+      // the scene it belongs to (ADR-157: a set with `scenes`), null: every scene; absent: out of the world
+      scene: typeof def.scene === 'string' ? def.scene : null, absent: false, mat: BREAK.mats[def.mat] ? def.mat : 'stone', M,
       x, z, r, h, weight: def.weight ?? clamp(size, 0.5, 2.2),
       hp: hpMax, hpMax, state: INTACT,
       node, pivot, body, stub, crack, cracked: false, held: null,
@@ -1089,6 +1121,8 @@ export class Destructibles {
       lean: 0, leanTo: 0, ldx: 0, ldz: 1, touched: false, quiet: false,
       // a light piece (a bamboo stalk, a planted sword; ADR-145): its fall is quiet whoever felled it
       lightPiece: def.light === true,
+      // sliced (BREAK.slice): any blade or blow cuts it through where it bit; `cutY` the height of the cut
+      slice: def.slice === true, cutY: 0,
       // a tree of the wall (beyond BREAK.wall.from): it falls mostly away from the arena
       wall: def.wall === true,
       // pieces that must be down before this one takes more than chips (the Cinder Tree's boughs guard its trunk)
@@ -1647,8 +1681,11 @@ export class Destructibles {
     const shove = brush && dmg < BREAK.scratch;
     // what the blow takes of its structure; with bites on (BREAK.chip) that share of the bricks under
     // the blow comes off it where it struck, their letters instead of the splinters
-    const took = dmg < BREAK.scratch || b.hpMax === Infinity ? 0 : this._guarded(b, dmg);
-    const bit = took > 0 ? this._bite(b, px, py, pz, Math.min(took, b.hp), dx, dz) : 0;
+    let took = dmg < BREAK.scratch || b.hpMax === Infinity ? 0 : this._guarded(b, dmg);
+    // (a sliced piece, a bamboo stalk: a blade or a blow cuts it through, whatever its power)
+    const sliced = b.slice && took > 0 && !brush && kind !== BLOW.FIRE;
+    if (sliced) took = b.hp;
+    const bit = took > 0 && !sliced ? this._bite(b, px, py, pz, Math.min(took, b.hp), dx, dz) : 0;
     if (!shove) this._chips(b, px, py, pz, dx, dz, brush ? dmg : power, bit > 0); // (a brush: splinters for what it bit)
     if (took === 0 || (b.hp -= took) > 0) {
       // it holds: a nick, a shudder (a floor slab: no nick; it shows cracked once it has taken enough)
@@ -1948,14 +1985,14 @@ export class Destructibles {
    * blade: about where it bit), its top on a slanted plane along (dx, dz) with splinters standing out of
    * it, pushed over a little toward the fall; burnt through, low and black.
    */
-  _shapeStub(b, kind, dx, dz) {
+  _shapeStub(b, kind, dx, dz, exact = 0, exactSlant = NaN) {
     const S = b.stub;
     if (!S?.reshape) return;
     const F = BREAK.fell, P = F[kind] ?? F.blunt;
     let k = vin(P.h);
-    let slant = vin(P.slant);
+    let slant = Number.isFinite(exactSlant) ? exactSlant : vin(P.slant);
     let ux = dx, uz = dz;
-    if (kind === BLOW.CUT && vr() < 0.5) slant = -slant; // (a blade's cut slants either way across it)
+    if (kind === BLOW.CUT && !Number.isFinite(exactSlant) && vr() < 0.5) slant = -slant; // (a blade's cut slants either way across it)
     if (kind === BLOW.BLAST || kind === BLOW.FIRE) {
       const a = vr() * 6.283;
       ux = Math.cos(a);
@@ -1967,7 +2004,8 @@ export class Destructibles {
       let top = 0.05;
       for (let i = 1; i < O.length; i += 3) if (O[i] > top) top = O[i];
       // (a blade: the height it bit at, within reason)
-      if (kind === BLOW.CUT && hy > 0) k = clamp((hy / top) * (0.85 + 0.3 * vr()), 0.8, 1.5);
+      if (exact > 0) k = exact / top;
+      else if (kind === BLOW.CUT && hy > 0) k = clamp((hy / top) * (0.85 + 0.3 * vr()), 0.8, 1.5);
       const cut = top * k, nl = 1 / Math.hypot(slant, 1);
       for (let v = 0; v < O.length; v += 3) {
         const ox = O[v], oy = O[v + 1], oz = O[v + 2];
@@ -2044,10 +2082,26 @@ export class Destructibles {
     b.dx = dx;
     b.dz = dz;
     if (wood) this._shapeStub(b, kind, dx, dz);
+    // sliced (BREAK.slice): cut through where the blow bit; the stump keeps that height on a clean slant,
+    // the top comes off the cut (_sliceFall)
+    b.cutY = 0;
+    if (b.slice && b.ranged && kind !== BLOW.FIRE && Number.isFinite(b.hy)) {
+      const SL = BREAK.slice;
+      b.cutY = clamp(b.hy, SL.low, Math.max(SL.low, b.h - SL.top));
+      b.body.cutY = b.cutY;
+      b.touched = true;
+      b.body.write(); // (the cut shows in the frame of the blow, not the next)
+      turn(dx, dz, (vr() - 0.5) * 2 * SL.spread, this._way);
+      dx = b.dx = this._way.dx;
+      dz = b.dz = this._way.dz;
+      b.spin = (vr() - 0.5) * 2 * SL.spin;
+      this._shapeStub(b, BLOW.CUT, dx, dz, b.cutY, vin(SL.slant) * (vr() < 0.5 ? -1 : 1));
+    }
     if ((b.topples || force) && kind !== BLOW.FIRE) {
       b.state = FALLING;
       b.t = 0;
       b.T = b.fallT > 0 ? b.fallT : clamp(BREAK.topple.time * Math.sqrt(b.h / 5), 0.55, 1.5);
+      if (b.cutY > 0) b.T = clamp(BREAK.slice.fall * Math.sqrt(b.h - b.cutY), 0.45, 1.4);
       b.told = b.flashed = false;
       b.mark = 0;
       // a piece whose fall cannot reach the hero's ground tells nothing and marks nothing (the wall's
@@ -2526,7 +2580,34 @@ export class Destructibles {
   }
 
   // ------------------------------------------------------------------ falling over
+  /**
+   * A sliced top's fall (BREAK.slice): it slides off the cut the moment the blade is through (`slide` m
+   * down the cut's slope, along the blow, in `slideT` s), then goes over about its lower end as a body
+   * falls (the angle grows with the square of the time), kicked out along the blow, its lower end coming
+   * down to the ground, rolling a little about its own length. Lands (_land) when it lies flat.
+   */
+  _sliceFall(b, dt) {
+    const SL = BREAK.slice;
+    b.t += dt;
+    const u = Math.min(1, b.t / b.T), cy = b.cutY;
+    const sl = SL.slide * smooth01(Math.min(1, b.t / SL.slideT));
+    const q = b.pivot.quaternion;
+    q.setFromAxisAngle(this._axis.set(b.dz, 0, -b.dx), (Math.PI / 2 - 0.05) * u * u);
+    if (b.spin) q.multiply(this._q.setFromAxisAngle(this._axis.set(0, 1, 0), b.spin * u));
+    // about the cut: its lower end (0, cy, 0) stays where the slide and the kick carry it
+    const v = this._v.set(0, cy, 0).applyQuaternion(q);
+    const out = sl + SL.kick * u * u, drop = cy * u * u + sl * SL.sink;
+    b.pivot.position.set(-v.x + b.dx * out, cy - v.y - drop, -v.z + b.dz * out);
+    this._place(b);
+    this._pose(b);
+    if (u >= 1) this._land(b);
+  }
+
   _fall(b, dt) {
+    if (b.cutY > 0 && b.ranged) {
+      this._sliceFall(b, dt);
+      return;
+    }
     b.t += dt;
     const u = Math.min(1, b.t / b.T);
     b.pivot.quaternion.setFromAxisAngle(this._axis.set(b.dz, 0, -b.dx), (Math.PI / 2 - 0.06) * Math.pow(u, 2.4));
@@ -2965,52 +3046,103 @@ export class Destructibles {
     flushRanges();
   }
 
-  /** Everything stands again (the fight's reset: flow.js, the Lab). */
-  reset() {
+  /** One piece stands again, whole, as the reset leaves it (its colliders back). */
+  _restore(b) {
     const C = this.world.colliders;
-    for (const b of this.list) {
-      this._stopBurn(b);
-      if (b.stubCollider) C?.remove?.(b.stubCollider);
-      for (const c of b.colliders) C?.restore?.(c);
-      b.state = INTACT;
-      b.hp = b.hpMax;
-      b.burnt = false;
-      b.carry = 0;
-      b.spare = 0;
-      b.shake = 0;
-      b.windT = -1e9;
-      b.src = -1;
-      b.srcT = -1e9;
-      b.onLand = null;
-      b.on = false;
-      if (b.held) {
-        b.held.visible = false;
-        this.pieces.add(b.held);
-        b.held = null;
-      }
-      b.cracked = false;
-      if (b.crack) b.crack.visible = false;
-      b.wear = b.dropped = 0;
-      b.lean = b.leanTo = 0;
-      b.quiet = false;
-      b.bricks?.reset();
-      b.pivot.position.set(0, 0, 0);
-      b.pivot.quaternion.identity();
-      if (b.ranged && b.touched) {
-        // (only what was touched is rewritten: the forest is one mesh of ~600k vertices)
-        b.body.home0();
-        if (b.body.visible) b.body.write();
-        else b.body.visible = true;
-        b.touched = false;
-      } else b.body.visible = true;
-      if (b.stub) {
-        b.stub.unshape?.(); // (cut as it was felled: back to the stump it was built as)
-        b.stub.visible = false;
-      }
-      // (a lifted slab leaves the graph again; every other piece's matrices are put back)
-      if (b.floor && b.node.parent) this.pieces.remove(b.node);
-      else this._place(b);
+    this._stopBurn(b);
+    if (b.stubCollider) C?.remove?.(b.stubCollider);
+    for (const c of b.colliders) C?.restore?.(c);
+    b.state = INTACT;
+    b.hp = b.hpMax;
+    b.burnt = false;
+    b.carry = 0;
+    b.spare = 0;
+    b.shake = 0;
+    b.windT = -1e9;
+    b.src = -1;
+    b.srcT = -1e9;
+    b.onLand = null;
+    b.on = false;
+    if (b.held) {
+      b.held.visible = false;
+      this.pieces.add(b.held);
+      b.held = null;
     }
+    b.cracked = false;
+    if (b.crack) b.crack.visible = false;
+    b.wear = b.dropped = 0;
+    b.lean = b.leanTo = 0;
+    b.quiet = false;
+    b.bricks?.reset();
+    b.pivot.position.set(0, 0, 0);
+    b.pivot.quaternion.identity();
+    if (b.ranged && b.touched) {
+      // (only what was touched is rewritten: the forest is one mesh of ~600k vertices)
+      b.body.home0();
+      if (b.body.visible) b.body.write();
+      else b.body.visible = true;
+      b.touched = false;
+    } else b.body.visible = true;
+    if (b.stub) {
+      b.stub.unshape?.(); // (cut as it was felled: back to the stump it was built as)
+      b.stub.visible = false;
+    }
+    // (a lifted slab leaves the graph again; every other piece's matrices are put back)
+    if (b.floor && b.node.parent) this.pieces.remove(b.node);
+    else this._place(b);
+  }
+
+  /**
+   * Scenes (ADR-157; a set with `scenes`, world/scriptHall.js): piece `b` is put out of the world
+   * (`on` false: hidden with its stub and cracks, its colliders out, its fire out, GONE to every query:
+   * strike, sweep, stop, coverAt, nearest, floorNear, ignite, bites) or back in it, whole (`on` true: as
+   * the reset leaves it, its colliders back). A set without scenes never calls it. Returns true if it
+   * changed. `absent` on the piece says which.
+   */
+  present(b, on) {
+    if (!b || !!on === !b.absent) return false;
+    if (on) {
+      b.absent = false;
+      this._restore(b);
+    } else this._absent(b);
+    flushRanges();
+    return true;
+  }
+
+  _absent(b) {
+    const C = this.world.colliders;
+    b.absent = true;
+    this._stopBurn(b);
+    if (b.stubCollider) C?.remove?.(b.stubCollider);
+    for (const c of b.colliders) C?.remove?.(c);
+    this.world.scars?.drop?.(b.id);
+    if (b.held) {
+      b.held.visible = false;
+      this.pieces.add(b.held);
+      b.held = null;
+    }
+    b.state = GONE;
+    b.hp = 0;
+    b.shake = 0;
+    b.burn = 0;
+    b.onLand = null;
+    b.body.visible = false;
+    if (b.stub) b.stub.visible = false;
+    if (b.crack) b.crack.visible = false;
+    b.cracked = false;
+    if (b.floor && b.node.parent) this.pieces.remove(b.node);
+    else this._place(b);
+  }
+
+  /** Everything stands again (the fight's reset: flow.js, the Lab). On a set with scenes (ADR-157)
+   *  the pieces of every scene but the first are put out of the world again (present). */
+  reset() {
+    for (const b of this.list) {
+      b.absent = false;
+      this._restore(b);
+    }
+    this.sceneNow = this.sceneHome;
+    if (this.sceneHome !== null) for (const b of this.list) if (b.scene !== null && b.scene !== this.sceneHome) this._absent(b);
     this._rShake = 0;
     this.active.length = 0;
     this._burningN = 0;

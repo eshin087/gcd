@@ -269,6 +269,17 @@ export const BREAK = Object.freeze({
       stick: Object.freeze({ wood: 0.11, hard: 0 }), push: Object.freeze({ wood: 0.25, hard: 0.45 }),
       through: 0.05, minH: 0.6, touch: 0.25,
     }), out: 1.6, up: 1.4, litter: 3, shed: 0.72, windY: 0.7 }),
+  /**
+   * SLICED pieces (a def's `slice: true`: the Windless Grove's bamboo; the owner: "make the bamboo all
+   * sliceable in 1 swoop and make sure it falls the moment the sword is going through"): any blade or
+   * blow that takes anything of it (not fire, not a body brushing past) cuts it through at the height
+   * it bit, `low` m above the ground at least and `top` m under its top at most. Its stump keeps that
+   * height on a clean slant (`slant` rise per m across, either way). Its top slides `slide` m off the
+   * cut along the blow in `slideT` s (and sinks `sink` of that), then goes over about its lower end in
+   * `fall` x sqrt(its length) s, kicked `kick` m out along the blow, turned up to `spread` rad off it
+   * and rolling up to `spin` rad about its length, and comes apart where it lands.
+   */
+  slice: Object.freeze({ low: 0.25, top: 1.2, slant: Object.freeze([1.0, 1.8]), slide: 0.3, slideT: 0.09, sink: 0.6, fall: 0.3, kick: 0.9, spread: 0.35, spin: 0.9 }),
   /** debris glyphs (a stage's burst, the wind's leaves) a second over the level, banking `bank` (x quality) */
   debris: Object.freeze({ perSec: 1500, bank: 900 }),
   /** a piece some of whose `guards` stand (the Cinder Tree's trunk under its boughs) takes this share of a blow */

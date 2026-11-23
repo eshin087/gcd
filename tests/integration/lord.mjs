@@ -2,7 +2,7 @@
 // Player, StarlessLord, Hud, GameFlow, AudioEngine and Lab (+ real LightPool, GlyphParticles,
 // CameraRig, Events) wired like src/main.js for `?level=starless`; the world is a light mock on the
 // real Colliders, filled by the real set (the crater: world/throneHall.js). A bot drives the input.
-// usage: node lord.mjs <repoRoot> [scenario]   (env: ABYSS_SEED=n reseeds the AI)
+// usage: node lord.mjs <repoRoot> [scenario | a,b,c]   (env: ABYSS_SEED=n reseeds the AI; ABYSS_SKIP=a,b leaves those out of `all`)
 //   scenario: level | data | timing | forms | spells | bounds | flow | win | all
 // (the spells scenario also covers the Crushing Dark, the Rift, the Dark Star, Parting Light and the glide)
 import fs from 'node:fs';
@@ -2246,8 +2246,13 @@ const S = {
   fxlooks: scenarioFxlooks,
 };
 const OPT_IN = { strategy: scenarioStrategy, probe: scenarioProbe, defend: scenarioDefend }; // run only when named
-if (OPT_IN[SCEN]) S[SCEN] = OPT_IN[SCEN];
-const list = SCEN === 'all' ? Object.keys(S) : [SCEN];
+// `all`, one scenario or a comma list; ABYSS_SKIP (a comma list) leaves scenarios out of `all`
+// (tests/run.mjs runs the long ones as processes of their own, so a new scenario lands in `all`)
+const SKIP = new Set((process.env.ABYSS_SKIP ?? '').split(',').map((s) => s.trim()).filter(Boolean));
+for (const k of SKIP) if (!S[k]) { out(`unknown scenario in ABYSS_SKIP: ${k}`); process.exit(2); }
+for (const k of SCEN.split(',')) if (OPT_IN[k]) S[k] = OPT_IN[k];
+const list = SCEN === 'all' ? Object.keys(S).filter((k) => !SKIP.has(k)) : SCEN.split(',');
+if (SCEN === 'all' && SKIP.size) out(`\n(not run here, ABYSS_SKIP: ${[...SKIP].join(', ')})`);
 for (const k of list) {
   if (!S[k]) { out(`unknown scenario ${k}`); process.exit(2); }
   await S[k]();
