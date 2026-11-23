@@ -77,6 +77,7 @@ export class Creatures {
     const F = TUNE.firefly, M = TUNE.moth;
     this._g = {
       firefly: gi(F.glyph), moth: M.glyphs.map(gi), hawk: gi(TUNE.hawk.glyph), hawkFlap: gi(TUNE.hawk.flap),
+      wing: gi(TUNE.hawk.wing), wingL: gi(TUNE.hawk.wingUpL), wingR: gi(TUNE.hawk.wingUpR),
       shadow: gi(TUNE.hawk.shadow), spark: gi(TUNE.spark.glyph),
       small: { rest: gi(TUNE.birds.small.perched), wings: TUNE.birds.small.wings.map(gi) },
       crow: { rest: gi(TUNE.birds.crow.perched), wings: TUNE.birds.crow.wings.map(gi) },
@@ -268,7 +269,9 @@ export class Creatures {
     const fx = life.game?.fx;
     const draw = this.visible;
     // (counts thin with the phone's budget and the fight's calm: a record draws while q < keep)
-    const keep = Math.max(0, Math.min(1, life.quality)) * Math.max(0, Math.min(1, life.calm));
+    // (the fight thins them more than its calm: calm^1.5, so the ground the fight is read on clears)
+    const cm = Math.max(0, Math.min(1, life.calm));
+    const keep = Math.max(0, Math.min(1, life.quality)) * cm * Math.sqrt(cm);
     this._fireflies(dt, keep, draw ? fx?.add : null);
     this._moths(dt, keep, draw ? fx?.alpha : null);
     this._birds(dt, draw ? fx?.alpha : null);
@@ -520,8 +523,17 @@ export class Creatures {
     }
     if (!pool) return;
     const fade = k.leaving ? Math.max(0, 1 - k.gone / H.leave) : 1;
-    const gl = k.flap > 0 && (Math.floor(k.flap * H.flapRate * 2) & 1) ? this._g.hawkFlap : this._g.hawk;
-    this._emit(pool, k.x, k.y, k.z, gl, H.size, H.color[0], H.color[1], H.color[2], H.alpha * fade, dt);
+    const up = k.flap > 0 && (Math.floor(k.flap * H.flapRate * 2) & 1);
+    const a = H.alpha * fade, c = H.color;
+    this._emit(pool, k.x, k.y, k.z, up ? this._g.hawkFlap : this._g.hawk, H.size, c[0], c[1], c[2], a, dt);
+    // the wings: a letter either side along the camera's right, the far one a little higher (banked)
+    const R = life.game?.U?.uCamRight?.value, Up = life.game?.U?.uCamUp?.value;
+    const rx = R?.x ?? 1, ry = R?.y ?? 0, rz = R?.z ?? 0, ux = Up?.x ?? 0, uy = Up?.y ?? 1, uz = Up?.z ?? 0;
+    const s = H.span, bk = H.bank * s;
+    const gl = up ? this._g.wingL : this._g.wing, gr = up ? this._g.wingR : this._g.wing;
+    this._emit(pool, k.x - rx * s + ux * bk, k.y - ry * s + uy * bk, k.z - rz * s + uz * bk, gl, H.size, c[0], c[1], c[2], a, dt);
+    this._emit(pool, k.x + rx * s - ux * bk, k.y + ry * s - uy * bk, k.z + rz * s - uz * bk, gr, H.size, c[0], c[1], c[2], a, dt);
+    if (!(H.shadowAlpha > 0)) return;
     // its shadow on the floor, offset along the light (at most maxOff m)
     const sky = life.set?.sky?.moonDir;
     let ox = 0, oz = 0;

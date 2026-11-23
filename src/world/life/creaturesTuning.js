@@ -7,12 +7,13 @@
 
 const FIREFLY = Object.freeze({
   glyph: '·',
-  size: 0.2,
+  /** a soft glowing dot the eye can follow (0.2 was one pixel at the game camera) */
+  size: 0.55,
   /** the colour at full blink (HDR: a firefly is the one bright thing) */
   color: [1.6, 2.4, 0.6],
   /** the blink: max(0, sin(t * rate))^pow; a letter below `min` is not drawn */
   blinkRate: 1.9,
-  blinkPow: 3,
+  blinkPow: 2,
   min: 0.05,
   /** its own wander (m/s) and how fast it eases back to where it lives (1/s) */
   wander: 0.6,
@@ -37,13 +38,13 @@ const FIREFLY = Object.freeze({
 
 const MOTH = Object.freeze({
   /** the two letters a moth flips between as it beats (the brief: ' , v) */
-  glyphs: ["'", 'v'],
-  /** beats per second (a range: each moth its own) */
-  beat: [7, 11],
-  size: 0.22,
-  /** pale, drawn slightly warm by the fire (the grass round a bonfire is lit: a darker moth is lost in it) */
-  color: [0.78, 0.64, 0.46],
-  alpha: 0.8,
+  glyphs: ['v', '^'],
+  /** beats per second (a range: each moth its own; slow enough to be seen as a flutter on film) */
+  beat: [4, 6],
+  size: 0.36,
+  /** pale, lit warm by the fire (the grass round a bonfire is lit: a darker moth is lost in it) */
+  color: [1.15, 0.92, 0.62],
+  alpha: 0.9,
   /** loose orbits round the flame: radius m, height m above the ground, angular speed rad/s */
   r: [0.6, 1.6],
   y: [0.8, 2.0],
@@ -71,25 +72,25 @@ const SMALL_BIRD = Object.freeze({
   /** drawn this many m toward the camera from where it is (the same place on screen): the particles are
    *  depth-tested against the scene, and a bird on a crown's face is otherwise inside the crown */
   front: 3,
-  /** in the air: the two wing letters and their beat (per s) */
+  /** in the air: the two wing letters and their beat (per s: slow enough to read as a flap) */
   wings: ['v', '^'],
-  /** a little bigger in the air: wings open (still about one letter cell) */
-  flySize: 0.42,
-  beat: [6, 9],
-  /** near black: in the air it is seen against the lit crowns (a dark letter beating across them) */
-  flyColor: [0.012, 0.014, 0.016],
+  /** bigger in the air: wings open */
+  flySize: 0.62,
+  beat: [3.5, 5],
+  /** their backs catch the moon: a pale grey flock rising over the dark crowns (black was lost on them) */
+  flyColor: [0.34, 0.36, 0.42],
   flyAlpha: 0.95,
   /** the take-off: horizontal m/s, away from the cause plus `out` times outward from the arena's centre
    *  (into the forest: it leaves the frame up and away, never across the fight's ground), spread +-rad */
-  speed: [4.5, 6.5],
+  speed: [3, 4.2],
   out: 0.7,
-  spread: 0.35,
-  /** m/s up at the start (it eases off): steep, so it clears the crown it sat on and shows over it */
-  climb: [5.5, 7.5],
+  spread: 0.45,
+  /** m/s up at the start (it eases off): it clears the crown and stays in the frame a while */
+  climb: [2.8, 3.8],
   /** each bird of a flock goes up to this many s after the first */
-  stagger: 0.35,
+  stagger: 0.45,
   /** s in the air before it counts as gone (well out of the frame by then) */
-  flight: 5,
+  flight: 7,
   /** s away before it may come back to its perch (out of view) */
   away: [30, 60],
 });
@@ -101,12 +102,12 @@ const CROW = Object.freeze({
   restColor: [0.022, 0.022, 0.026],
   restAlpha: 0.9,
   wings: ['v', '~'],
-  flySize: 0.52,
-  beat: [3.2, 4.6],
+  flySize: 0.66,
+  beat: [2.6, 3.6],
   /** in the air over the dark ash a black letter is lost: its back catches the moon, a dull grey sheen */
-  flyColor: [0.12, 0.125, 0.15],
-  speed: [4, 5.5],
-  climb: [4, 5.5],
+  flyColor: [0.26, 0.27, 0.31],
+  speed: [3, 4.2],
+  climb: [2.6, 3.4],
   stagger: 0.5,
 });
 
@@ -129,16 +130,25 @@ const ALARM = Object.freeze({
 const VIEW = Object.freeze({ x: 26, north: 22, south: 14 });
 
 const HAWK = Object.freeze({
+  /** a dark shape with a wingspan: a body letter and a wing letter either side (`-v-` gliding; the wings
+   *  flick up when it beats, a back-slash and a slash), banked into its turn */
   glyph: 'v',
-  flap: '^',
+  flap: 'v',
+  wing: '-',
+  wingUpL: String.fromCharCode(92), // (a back-slash)
+  wingUpR: '/',
+  /** m from the body to a wing letter (along the camera's right), and the bank (rad) into the turn */
+  span: 0.36,
+  bank: 0.28,
   /** a few beats now and then; mostly it glides */
-  flapEvery: [5, 9],
+  flapEvery: [4, 7],
   flapBeats: 3,
-  flapRate: 5,
-  size: 0.42,
-  /** a dull warm grey: the ring's floor at dusk is darker than a black letter shows on */
-  color: [0.22, 0.17, 0.12],
-  alpha: 0.9,
+  flapRate: 3,
+  size: 0.58,
+  /** a dusky brown a little lighter than the floor: the wingspan, not the colour, says what it is (a
+   *  black shape was lost on the dark floor, a pale one read as a stray bright letter) */
+  color: [0.15, 0.125, 0.1],
+  alpha: 0.95,
   /** the circle: radius m, height m, s a lap. The game camera looks down at 58 degrees from 36 m: a
    *  thing high up shows farther north than its ground point, so the circle is centred `south` m south of
    *  the camera's focus (eased toward it over `follow` s) and this height keeps the whole lap in frame */
@@ -147,11 +157,11 @@ const HAWK = Object.freeze({
   lap: 25,
   south: 2,
   follow: 14,
-  /** the shadow on the floor under it: a small dark letter, offset along the light, at most `maxOff` m */
+  /** its shadow on the floor (dropped: a dark letter on the dark floor never read; shadowAlpha 0) */
   shadow: 'v',
   shadowSize: 0.3,
   shadowColor: [0.015, 0.011, 0.008],
-  shadowAlpha: 0.55,
+  shadowAlpha: 0,
   maxOff: 3,
   /** the fight starts: it climbs away at these m/s, and is gone after `leave` s */
   leaveSpeed: 7,
@@ -183,7 +193,7 @@ export const CREATURES_TUNE = Object.freeze({
   levels: Object.freeze({
     cinderwood: Object.freeze({
       // as before (70 at r 22 - 46), and some inside the clearing's rim
-      fireflies: { n: 58, r: [22, 46], inner: 14, innerR: [14, 27] },
+      fireflies: { n: 60, r: [22, 46], inner: 24, innerR: [12, 27] },
       moths: { n: 4 },
       // small birds on the tree wall: perches on the canopies of trees at r 31 - 38
       birds: { kind: 'small', kinds: ['tree'], r: [29, 37], groups: 8, perGroup: [2, 4], yK: 0.7, inK: 1.15 },
@@ -207,7 +217,7 @@ export const CREATURES_TUNE = Object.freeze({
       fireflies: { n: 50, r: [18, 44], inner: 8, innerR: [15, 22], color: [0.9, 1.7, 2.3], hr: 7, runR: 9 },
       moths: { n: 4 },
       // (no crowns here: in the air they show against the dark grass, so their backs catch the moon)
-      birds: { kind: 'small', kinds: ['deadTree'], r: [15, 34], groups: 4, perGroup: [2, 3], yK: 0.85, inK: 0.2, look: { flyColor: [0.14, 0.15, 0.18] } },
+      birds: { kind: 'small', kinds: ['deadTree'], r: [15, 34], groups: 4, perGroup: [2, 3], yK: 0.85, inK: 0.2, look: { flyColor: [0.3, 0.32, 0.38] } },
     }),
     grove: Object.freeze({
       // they hang almost still, fewer

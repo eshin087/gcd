@@ -833,7 +833,7 @@ function makeAmbience(braziers, { haze = false, floor = null } = {}) {
   };
   // far: dry lightning far off before the fight (the living world's weather, world/life/weather.js:
   // weather.flash, ~0.1 at most): the sky's ambient and fog flicker a little toward the storm's bolt
-  const write = (U, far = 0) => {
+  const write = (U, far = 0, F = null) => {
     if (!U?.uMoonColor?.value) return;
     const f = st.flash, d = 1 - 0.75 * st.dim;
     const B = WEATHER.bolt, G = WEATHER.flareGold;
@@ -841,10 +841,13 @@ function makeAmbience(braziers, { haze = false, floor = null } = {}) {
     U.uMoonColor.value.setRGB(cur.moon[0] * d + fm[0] * f, cur.moon[1] * d + fm[1] * f, cur.moon[2] * d + fm[2] * f);
     U.uAmbient.value.setRGB(cur.ambient[0] * d + fa[0] * f, cur.ambient[1] * d + fa[1] * f, cur.ambient[2] * d + fa[2] * f);
     U.uFogColor?.value?.setRGB(cur.fogColor[0] * d + 0.02 * f, cur.fogColor[1] * d + 0.022 * f, cur.fogColor[2] * d + 0.028 * f);
-    if (far > 0) {
+    if (far > 0 && F?.fog && F.ambient) {
+      // (the weather's far lightning, weatherTuning.js ring.bolts: the far side of the sky, a breath of ambient)
       const a = U.uAmbient.value, c = U.uFogColor?.value;
-      a.setRGB(a.r + B.ambient[0] * far, a.g + B.ambient[1] * far, a.b + B.ambient[2] * far);
-      c?.setRGB(c.r + 0.02 * far, c.g + 0.022 * far, c.b + 0.028 * far);
+      a.setRGB(a.r + F.ambient[0] * far, a.g + F.ambient[1] * far, a.b + F.ambient[2] * far);
+      c?.setRGB(c.r + F.fog[0] * far, c.g + F.fog[1] * far, c.b + F.fog[2] * far);
+      const m = U.uMoonColor.value, M = F.moon;
+      if (M) m.setRGB(m.r + M[0] * far, m.g + M[1] * far, m.b + M[2] * far);
     }
     U.uMoonDir?.value?.set(cur.dir[0], cur.dir[1], cur.dir[2]).normalize();
     if (U.uFogNear) U.uFogNear.value = cur.fogNear;
@@ -927,7 +930,7 @@ function makeAmbience(braziers, { haze = false, floor = null } = {}) {
       const far = life?.on?.('weather') ? Number(life.weather?.flash) || 0 : 0;
       const wnd = life?.on?.('wind') && life.wind?.speed > 0 && Number.isFinite(life.wind.dirX + life.wind.dirZ) ? life.wind : null;
       const wx = wnd ? wnd.dirX : 1, wz = wnd ? wnd.dirZ : 0;
-      write(game.U, far);
+      write(game.U, far, life?.weather?.tune?.bolts);
       // the glow round him in his golden form
       if (st.glow) {
         const G = WEATHER.glow, p = boss?.position;

@@ -1,4 +1,12 @@
 import { WEATHER_TUNE } from './weatherTuning.js';
+import { GlyphParticles } from '../../render/particles.js';
+import { gi } from '../../render/glyphs.js';
+
+/** The weather's own letters (mist banks, dust devils): written into the buffers each frame by this
+ *  module (soft in and out, carried by the wind every frame); its own update must not age them. */
+class WeatherBatch extends GlyphParticles {
+  update() {}
+}
 
 // THE WEATHER (piece 'weather'): a level's slow spells, one mood per level that breathes.
 //
@@ -45,6 +53,7 @@ const SKY = ['moon', 'ambient', 'fogNear', 'fogFar', 'fogColor'].map((p) => P[p]
 
 const smooth = (u) => u * u * (3 - 2 * u);
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+const smoothE = (u) => smooth(clamp01(u));
 
 export class Weather {
   constructor(life) {
@@ -93,8 +102,9 @@ export class Weather {
     this._ds = (Math.floor(life.rand() * 4294967296) ^ 0x9e3779b9) >>> 0;
     this._fs = (Math.floor(life.rand() * 4294967296) ^ 0x7f4a7c15) >>> 0;
     this._start();
-    for (let i = 0; i < (this.tune.devils?.max ?? 0); i++) this._devils.push({ on: false, x: 0, z: 0, vx: 0, vz: 0, age: 0, life: 1, acc: 0, h: 4, r: 1, ph: 0 });
-    this._bolt.next = this._wait(this.val[P.bolts]);
+    for (let i = 0; i < (this.tune.devils?.max ?? 0); i++) this._devils.push({ i, on: false, x: 0, z: 0, vx: 0, vz: 0, dx: 1, dz: 0, age: 0, life: 1, acc: 0, h: 4, r: 1, ph: 0 });
+    this._bolt.next = this.tune.bolts?.first ? this._range(this.tune.bolts.first, this._dr) : this._wait(this.val[P.bolts]);
+    if (this.tune.devils?.first) this._devilT = this._range(this.tune.devils.first, this._dr);
     this._acc = { mist: 0, foot: 0, rain: 0, embers: 0, grey: 0, snow: 0 };
     this._pre = 1;
     for (const name of Object.keys(this.spells)) {
@@ -127,7 +137,7 @@ export class Weather {
     this._cur = s;
     this._u = 1;
     this._fade = 1;
-    this._hold = this._range(s.hold, this._dr);
+    this._hold = this._range(this.tune.firstHold ?? s.hold, this._dr);
     this.name = this.spell = s.name;
     s.seen = this.life.t;
   }
@@ -179,7 +189,8 @@ export class Weather {
     const L = this.life;
     const fight = L.calm < WEATHER_TUNE.fightCalm || FIGHT.has(L.game?.state);
     const calm = this.spells[this.tune.calm];
-    if (fight && this._cur !== calm) this._go(calm);
+    // (the fight clears the air sooner than a spell would go by itself: at most `fightFade` s)
+    if (fight && this._cur !== calm) this._go(calm, Math.min(WEATHER_TUNE.fightFade ?? 12, this._range(calm.fade, this._dr)));
     if (this._u < 1) {
       this._u = Math.min(1, this._u + dt / this._fade);
     } else if (!fight) {
@@ -273,6 +284,7 @@ export class Weather {
     const T = this.tune;
     // what the drawing scales by: the phone, the strength, the fight
     const rk = L.quality * L.k * L.calm;
+    if (T.mist?.bank || T.devils) this._batch();
     if (T.mist) this._mist(dt, fx.alpha, rk);
     if (T.rain) this._fall(dt, fx.alpha, T.rain, 'rain', this.wet, rk);
     if (T.grey) this._fall(dt, fx.alpha, T.grey, 'grey', v[P.grey], rk);
@@ -280,6 +292,7 @@ export class Weather {
     if (T.embers) this._embers(dt, fx.add, v[P.embers], rk);
     if (T.devils) this._devilsUpdate(dt, fx.alpha, v[P.devils] * this._pre, L.quality * L.k);
     if (T.bolts) this._bolts(dt, v[P.bolts] * this._pre);
+    if (this._bp) this._drawBatch(dt);
     this.bolt = T.bolts ? clamp01(this.flash / Math.max(1e-3, T.bolts.peak[1])) : 0;
     if (T.breath) L.set?.ambience?.breathe?.(clamp01(v[P.breath] * (T.breath.k ?? 1) * L.k));
   }
@@ -292,19 +305,32 @@ export class Weather {
     this.wet = this.mist = this.flash = this.breath = this.bolt = 0;
     this.windK = this.light = 1;
     for (const d of this._devils) d.on = false;
+    this._emptyBatch();
     this.life.set?.ambience?.breathe?.(0);
     if (this.tune) this._start();
     this.name = 'clear';
   }
 
+  /** Nothing of the weather's own letters stays (the piece off, the world hidden, a reset). */
+  _emptyBatch() {
+    for (const b of this._banks ?? []) b.on = false;
+    const pool = this._bp;
+    if (!pool) return;
+    pool.count = 0;
+    pool.geometry.instanceCount = 0;
+  }
+
   clear(why) {
-    // what is in the air goes with the shared pools; the devils and a flash go now
+    // what is in the air goes with the shared pools; the devils, the banks and a flash go now
     for (const d of this._devils) d.on = false;
+    this._emptyBatch();
     this.flash = this.bolt = 0;
     if (why === 'hide') this._restore();
   }
 
   setVisible(on) {
+    this._visible = !!on;
+    if (this._bp?.mesh) this._bp.mesh.visible = !!on;
     if (!on) {
       for (const d of this._devils) d.on = false;
       this.flash = 0;
@@ -374,9 +400,9 @@ export class Weather {
       }
       if (M.bank) {
         this._bankAcc[i] += dt * M.bank.rate * bank * rk;
-        let n = Math.min(3, Math.floor(this._bankAcc[i]));
+        let n = Math.min(2, Math.floor(this._bankAcc[i]));
         this._bankAcc[i] -= Math.floor(this._bankAcc[i]);
-        while (n-- > 0) this._bank(pool, M, B);
+        while (n-- > 0) this._bank(M, B);
       }
     }
   }
@@ -424,31 +450,117 @@ export class Weather {
     pool.spawn(q);
   }
 
-  /** A bank: a loose cluster of small letters drifting together. */
-  _bank(pool, M, B) {
-    const K = M.bank, p = this._mistAt(M, B, B.r[0], B.r[1], this._p);
+  /** A bank is born: a loose cluster of letters in a free slot of the weather's own batch. */
+  _bank(M, B) {
+    const K = M.bank;
+    let bank = null;
+    for (const o of this._banks) if (!o.on) { bank = o; break; }
+    if (!bank) return;
+    const p = this._mistAt(M, B, B.r[0], B.r[1], this._p);
     if (!(p.x === p.x)) return;
     const w = this._air(p.x, p.z, M.carry, M.drift);
-    const vx = w.x * (0.8 + 0.4 * this._fr()), vz = w.z * (0.8 + 0.4 * this._fr());
-    const life = this._range(K.life);
-    let n = Math.round(this._range(K.per));
-    while (n-- > 0) {
-      // (an ellipse, denser at its heart)
+    bank.on = true;
+    bank.x = p.x; bank.z = p.z; bank.vx = w.x; bank.vz = w.z;
+    bank.y = this._range(B.y);
+    bank.age = 0;
+    bank.life = this._range(K.life);
+    bank.n = Math.min(this._bankPer, Math.round(this._range(K.per)));
+    bank.k = 1;
+    const L0 = bank.i * this._bankPer;
+    for (let j = 0; j < bank.n; j++) {
+      // (an ellipse, denser at its heart; a little higher in the middle)
       const a = this._fr() * TAU, r = Math.sqrt(this._fr());
-      const q = this._resetRec();
-      q.x = p.x + Math.cos(a) * r * K.spread[0];
-      q.z = p.z + Math.sin(a) * r * K.spread[1];
-      q.y = this._range(B.y);
-      q.vx = vx + (this._fr() - 0.5) * K.wobble;
-      q.vz = vz + (this._fr() - 0.5) * K.wobble;
-      q.vy = (this._fr() - 0.5) * 0.04;
-      q.life = life * (0.75 + 0.25 * this._fr());
-      q.size = K.sizeStart; q.sizeEnd = this._range(K.size);
-      q.glyph = K.glyph;
-      q.color = q.colorEnd = K.color;
-      q.alpha = K.alpha; q.alphaEnd = 0;
-      pool.spawn(q);
+      const l = this._ml[L0 + j];
+      l.ox = Math.cos(a) * r * K.spread[0];
+      l.oz = Math.sin(a) * r * K.spread[1];
+      l.oy = (1 - r) * K.rise * this._fr();
+      l.g = this._mg[Math.floor(this._fr() * this._mg.length)];
+      l.size = this._range(K.size);
+      l.ph = this._fr() * TAU;
+      l.a = 0.55 + 0.45 * this._fr() * (1 - 0.5 * r);
     }
+  }
+
+  /** The weather's own batch, made on first use (life.build: no Math.random). */
+  _batch() {
+    if (this._bp !== undefined) return this._bp;
+    this._bp = null;
+    const T = this.tune, q = Math.max(0.3, Math.min(1, this.life.quality));
+    const K = T.mist?.bank, D = T.devils;
+    this._bankPer = K ? K.per[1] : 0;
+    const nb = K ? Math.max(1, Math.round(K.max * q)) : 0;
+    this._banks = [];
+    this._ml = [];
+    for (let i = 0; i < nb; i++) this._banks.push({ i, on: false, x: 0, y: 1, z: 0, vx: 0, vz: 0, age: 0, life: 1, n: 0, k: 1 });
+    for (let i = 0; i < nb * this._bankPer; i++) this._ml.push({ ox: 0, oy: 0, oz: 0, g: 0, size: 0.4, ph: 0, a: 1 });
+    this._mg = K ? [...K.glyph].map((c) => gi(c)) : [];
+    this._dg = D ? [...D.glyph].map((c) => gi(c)) : [];
+    this._dl = [];
+    for (let i = 0; D && i < D.max * D.letters; i++) this._dl.push({ u: 0, a: 0, w: 1, r: 1, g: 0, size: 0.4 });
+    for (const d of this._devils) if (d.on) this._devilLetters(d);
+    const max = nb * this._bankPer + (D ? D.max * D.letters : 0);
+    if (!(max > 0)) return null;
+    try {
+      this._bp = this.life.build(() => new WeatherBatch(this.life.game.U, { max, additive: false }));
+      this._bp.mesh.visible = this._visible !== false;
+      this.life.game.pipeline?.registerParticles?.(this._bp);
+    } catch {
+      this._bp = null;
+    }
+    return this._bp;
+  }
+
+  /** One letter into the batch (n: the cursor). */
+  _putL(n, x, y, z, size, g, rot, c, a) {
+    const pool = this._bp;
+    if (!pool || n >= pool.max) return n;
+    const P = pool.iPos.array, D = pool.iData.array, C = pool.iColor.array;
+    P[n * 3] = x; P[n * 3 + 1] = y; P[n * 3 + 2] = z;
+    D[n * 4] = size; D[n * 4 + 1] = g; D[n * 4 + 2] = rot; D[n * 4 + 3] = 0;
+    C[n * 4] = c[0]; C[n * 4 + 1] = c[1]; C[n * 4 + 2] = c[2]; C[n * 4 + 3] = a;
+    return n + 1;
+  }
+
+  /** The batch this frame: the mist banks (carried by the air each frame, soft in and out, clear of the
+   *  hero) and the dust devils (twisting columns). */
+  _drawBatch(dt) {
+    const pool = this._bp;
+    if (!pool) return;
+    const L = this.life, T = this.tune, H = L.hero, t = L.t;
+    let n = 0;
+    const K = T.mist?.bank, M = T.mist;
+    if (K) {
+      const hc = K.heroClear;
+      for (const b of this._banks) {
+        if (!b.on) continue;
+        b.age += dt;
+        if (b.age >= b.life) { b.on = false; continue; }
+        // the air carries it (eased: a bank is slow to turn)
+        const w = this._air(b.x, b.z, M.carry, M.drift);
+        const e = 1 - Math.exp(-dt / 2);
+        b.vx += (w.x - b.vx) * e;
+        b.vz += (w.z - b.vz) * e;
+        b.x += b.vx * dt;
+        b.z += b.vz * dt;
+        const env = smoothE(b.age / K.fadeIn) * smoothE((b.life - b.age) / K.fadeOut) * L.calm;
+        if (!(env > 0.01)) continue;
+        const L0 = b.i * this._bankPer;
+        for (let j = 0; j < b.n; j++) {
+          const l = this._ml[L0 + j];
+          const x = b.x + l.ox + Math.sin(t * 0.31 + l.ph) * K.wobble;
+          const z = b.z + l.oz + Math.cos(t * 0.23 + l.ph * 1.3) * K.wobble * 0.6;
+          let a = K.alpha * l.a * env * (0.8 + 0.2 * Math.sin(t * 0.6 + l.ph));
+          const dx = x - H.x, dz = z - H.z, d = Math.sqrt(dx * dx + dz * dz);
+          if (d < hc[1]) a *= smoothE((d - hc[0]) / (hc[1] - hc[0]));
+          if (!(a > 0.01)) continue;
+          n = this._putL(n, x, b.y + l.oy, z, l.size, l.g, 0, K.color, a);
+        }
+      }
+    }
+    if (T.devils) n = this._drawDevils(n);
+    pool.count = n;
+    pool.geometry.instanceCount = n;
+    pool.iPos.needsUpdate = pool.iData.needsUpdate = pool.iColor.needsUpdate = true;
   }
 
   /** Things that fall over the view: the drizzle, the grey-out's ash, the snow. */
@@ -512,6 +624,12 @@ export class Weather {
       const up = this._range(E.upwind), side = mid + (this._fr() - 0.5) * 2 * E.band;
       const x = f.x - dx * up - dz * side, z = f.z - 3 - dz * up + dx * side;
       const w = this._air(x, z, E.carry, E.drift);
+      // (a squall carries them across the whole yard: never slower than `min` along the wind)
+      const ws = Math.hypot(w.x, w.z);
+      if (E.min && ws < E.min) {
+        w.x = ws > 1e-3 ? (w.x / ws) * E.min : dx * E.min;
+        w.z = ws > 1e-3 ? (w.z / ws) * E.min : dz * E.min;
+      }
       const q = this._resetRec();
       q.x = x; q.y = this._range(E.y); q.z = z;
       q.vx = w.x * (0.75 + 0.5 * this._fr()); q.vz = w.z * (0.75 + 0.5 * this._fr());
@@ -531,7 +649,8 @@ export class Weather {
   /** Waiting time to the next event at `perMin` a minute (an exponential gap, from the director's stream). */
   _wait(perMin) {
     if (!(perMin > 0.01)) return 30;
-    return Math.min(120, -Math.log(1 - this._dr() * 0.999) * 60 / perMin);
+    // (an even spread round the mean: an exponential's long tail left minutes with nothing)
+    return (60 / perMin) * (0.4 + 1.2 * this._dr());
   }
 
   /** Dust devils crossing the badlands with the wind, never onto the ring. */
@@ -548,24 +667,26 @@ export class Weather {
       if (perMin > 0.05) for (const o of this._devils) if (!o.on) { d = o; break; }
       if (d) {
         const life = this._range(D.life, this._dr), K = D.keepOut;
-        for (let tries = 0; tries < 6; tries++) {
-          const up = this._range(D.upwind, this._dr), side = (this._dr() - 0.5) * 2 * D.across;
+        for (let tries = 0; tries < (D.tries ?? 6); tries++) {
+          const up = this._range(D.upwind, this._dr), side = (D.south ?? 0) + (this._dr() - 0.5) * 2 * D.across;
           const x0 = f.x - dx * up - dz * side, z0 = f.z - dz * up + dx * side;
           // its whole path must stay off the ring (and its kerb)
           let ok = true;
           for (let s = 0; s <= 10 && ok; s++) {
             const t = (s / 10) * life, x = x0 + dx * sp * t, z = z0 + dz * sp * t;
             if (Math.abs(x) < K && Math.abs(z) < K) ok = false;
+            // (and it never crosses the hero: it would hide him)
+            else if (Math.hypot(x - L.hero.x, z - L.hero.z) < (D.heroGap ?? 0)) ok = false;
           }
           if (!ok) continue;
           d.on = true; d.x = x0; d.z = z0; d.vx = dx * sp; d.vz = dz * sp; d.age = 0; d.life = life; d.acc = 0;
           d.h = this._range(D.height, this._dr); d.r = this._range(D.radius, this._dr); d.ph = this._dr() * TAU;
+          d.dx = dx; d.dz = dz;
+          if (this._dl) this._devilLetters(d);
           break;
         }
       }
     }
-    if (!pool) return;
-    const gy = L.set?.groundY ?? 0;
     for (const d of this._devils) {
       if (!d.on) continue;
       d.age += dt;
@@ -577,30 +698,48 @@ export class Weather {
       const wob = Math.sin(d.age * 0.7 + d.ph) * 0.4;
       d.x += (d.vx - dz * wob) * dt;
       d.z += (d.vz + dx * wob) * dt;
-      // it gathers and falls apart (and stands down with the fight)
-      const env = Math.sin(Math.PI * d.age / d.life) * (this._pre > 0 ? 1 : 0);
-      d.acc += dt * D.rate * env * rk;
-      let n = Math.min(10, Math.floor(d.acc));
-      d.acc -= Math.floor(d.acc);
-      while (n-- > 0) {
-        const h = d.h * Math.pow(this._fr(), 0.8);
-        const a = this._fr() * TAU, r = d.r * (0.5 + 0.5 * this._fr()) * (0.6 + 0.6 * h / d.h);
-        const c = Math.cos(a), s = Math.sin(a);
-        const q = this._resetRec();
-        q.x = d.x + c * r; q.y = gy + 0.1 + h; q.z = d.z + s * r;
-        // round the column, rising, carried with it
-        q.vx = -s * D.swirl + d.vx; q.vz = c * D.swirl + d.vz;
-        q.vy = this._range(D.rise);
-        q.drag = 0.6;
-        q.life = this._range(D.partLife);
-        q.size = this._range(D.size); q.sizeEnd = q.size * 0.6;
-        q.glyph = D.glyph;
-        q.color = D.color; q.colorEnd = D.colorEnd;
-        q.alpha = D.alpha * (0.7 + 0.3 * env); q.alphaEnd = 0;
-        q.spin = (this._fr() - 0.5) * 3;
-        pool.spawn(q);
+      d.dx = dx;
+      d.dz = dz;
+    }
+  }
+
+  /** A devil's letters are born with it: each its height, angle and turn. */
+  _devilLetters(d) {
+    const D = this.tune.devils, j0 = d.i * D.letters;
+    for (let j = 0; j < D.letters; j++) {
+      const l = this._dl[j0 + j];
+      l.u = this._fr();
+      l.a = this._fr() * TAU;
+      l.w = D.swirl * (0.7 + 0.6 * this._fr());
+      l.r = 0.75 + 0.5 * this._fr();
+      l.g = this._dg[Math.floor(this._fr() * this._dg.length)];
+      l.size = this._range(D.size);
+    }
+  }
+
+  /** The devils into the batch: twisting columns of pale dust letters, a funnel leaning downwind, soft
+   *  as they gather and fall apart, gone with the fight. */
+  _drawDevils(n) {
+    const D = this.tune.devils, L = this.life, gy = L.set?.groundY ?? 0;
+    for (const d of this._devils) {
+      if (!d.on) continue;
+      const env = smoothE(d.age / D.fadeIn) * smoothE((d.life - d.age) / D.fadeOut) * this._pre;
+      if (!(env > 0.01)) continue;
+      const j0 = d.i * D.letters;
+      for (let j = 0; j < D.letters; j++) {
+        const l = this._dl[j0 + j];
+        const u = (l.u + d.age * D.rise / d.h) % 1;
+        const a = l.a + d.age * l.w * (1.6 - 0.8 * u);
+        const r = (d.r * 0.35 + d.r * Math.pow(u, 1.3)) * l.r;
+        const lean = u * d.h * D.lean;
+        const x = d.x + Math.cos(a) * r + (d.dx ?? 1) * lean;
+        const z = d.z + Math.sin(a) * r * 0.8 + (d.dz ?? 0) * lean;
+        const al = D.alpha * env * smoothE(u / 0.08) * Math.pow(1 - u, 0.5);
+        if (!(al > 0.01)) continue;
+        n = this._putL(n, x, gy + 0.15 + u * d.h, z, l.size, l.g, 0, D.color, al);
       }
     }
+    return n;
   }
 
   /** Dry lightning far off: a flash for a frame or two (weather.flash; the Ring's ambience shows it). */
@@ -610,18 +749,21 @@ export class Weather {
     if (b.next <= 0) {
       b.next = this._wait(perMin);
       if (perMin > 0.05 && this._preNow) {
-        this.flash = Math.max(this.flash, this._range(B.peak, this._dr) * this.life.k);
+        b.want = Math.max(b.want ?? 0, this._range(B.peak, this._dr) * this.life.k);
         b.again = this._dr() < B.double ? this._range(B.gap, this._dr) : -1;
       }
     }
     if (b.again > 0) {
       b.again -= dt;
-      if (b.again <= 0) this.flash = Math.max(this.flash, this._range(B.peak, this._dr) * 0.7 * this.life.k);
+      if (b.again <= 0) b.want = Math.max(b.want ?? 0, this._range(B.peak, this._dr) * 0.7 * this.life.k);
     }
-    this.flash = this.flash > 0.002 ? this.flash * Math.exp(-dt * B.decay) : 0;
+    // a soft rise (B.rise /s) toward what the bolt wants, and a slower fall
+    b.want = (b.want ?? 0) > 0.002 ? b.want * Math.exp(-dt * B.decay) : 0;
+    this.flash += (b.want - this.flash) * (1 - Math.exp(-dt * (B.rise ?? 30)));
+    if (this.flash < 0.002 && b.want === 0) this.flash = 0;
     // (the fight's own storm takes over the sky: not a flicker of ours in it)
     if (!this._preNow) {
-      this.flash = 0;
+      this.flash = b.want = 0;
       b.again = -1;
     }
   }

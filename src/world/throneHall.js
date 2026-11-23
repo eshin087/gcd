@@ -450,13 +450,26 @@ export function createThroneHall(U, colliders) {
   }
 
   // ---- the crater's life: the vents' flames and lights, wisps, motes, the inlay
-  // (breath: the living world's weather, world/life/weather.js, "the star breathes": a slow small swell
-  // of the seal held each frame by ambience.breathe(k); 0 without it)
-  const st = { flare: 0, shown: -1, breath: 0, breathHold: 0 };
-  const BREATH = { seal: 0.16, motes: 0.7, rise: 1.6, step: 0.006, hold: 0.3, release: 0.8 };
-  let glowSys = null;
-  /** The seal's swell now: a flare, plus the breath (a fraction of a flare). */
-  const swell = () => st.flare + BREATH.seal * st.breath;
+  // (breath: the living world's weather, world/life/weather.js, "the star breathes": held each frame by
+  // ambience.breathe(k), 0..1. The seal swells, a pulse of light runs out along the inlay and the cracks,
+  // and red motes rise in a slow column over the seal and over the crater round the camera. 0 without
+  // the weather: today's inlay exactly)
+  const st = { flare: 0, shown: -1, breath: 0, breathHold: 0, breathT: 0, breathOn: false, motes2: 0 };
+  const BREATH = {
+    seal: 2.4, // the seal's glyphs brighten by this at a full breath
+    wave: 4, waveW: 2.2, speed: 3, from: 1.5, // the pulse: added brightness, half-width m, m/s, from r m
+    hold: 0.3, release: 0.8,
+    column: 14, columnR: 3.4, // motes a second over the seal at a full breath, within this radius
+    wide: 8, // ... and round the camera, over the crater and its path
+    mote: { size: 0.5, life: [5, 7], vy: [0.45, 0.85], color: [2.6, 0.28, 0.13], colorEnd: [0.5, 0.03, 0.02], glyph: "·'·" },
+  };
+  // (its own stream: the seeded sims replay Math.random, and the breath only ever runs with the weather)
+  let bseed = 0x51a7e5ed;
+  const brnd = () => (bseed = (Math.imul(bseed, 1664525) + 1013904223) >>> 0) / 4294967296;
+  const bmote = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 1, size: 0.3, sizeEnd: 0.1, glyph: '·', color: null, colorEnd: null, alpha: 1, alphaEnd: 0, drag: 0.15, flicker: 0.3 };
+  let glowSys = null, glowR = null;
+  /** The seal's swell now (a flare). */
+  const swell = () => st.flare;
   /** (Re)fill the inlay batch; the seal's glyphs at brightness 1 + 2.2 × flare. */
   const fillGlow = () => {
     if (!glowSys) return;
@@ -469,10 +482,53 @@ export function createThroneHall(U, colliders) {
     }
     st.shown = e;
   };
+  /** The breath over the inlay: each glyph's colour (as fillGlow left it) times its swell, in place. */
+  const breatheGlow = () => {
+    if (!glowSys || glowSys.count !== glow.length) return;
+    const d = glowSys.data, e = st.flare, kf = 1 + 2.2 * e, b = st.breath;
+    const rw = BREATH.from + BREATH.speed * st.breathT, w2 = BREATH.waveW * BREATH.waveW;
+    for (let i = 0; i < glow.length; i++) {
+      const g = glow[i], c = g.color, o = i * 26;
+      let r = c[0], gg = c[1], bb = c[2];
+      if (g.seal) { r = c[0] * kf; gg = c[1] * kf + 0.25 * e; bb = c[2] * kf + 0.12 * e; }
+      const dr = glowR[i] - rw;
+      const f = 1 + b * (g.seal ? BREATH.seal : 0) + b * BREATH.wave * Math.exp(-(dr * dr) / w2);
+      d[o + 10] = d[o + 13] = r * f;
+      d[o + 11] = d[o + 14] = gg * f;
+      d[o + 12] = d[o + 15] = bb * f;
+    }
+  };
+  /** The breath's motes: a slow column over the seal and a rising over the crater round the camera. */
+  const breatheMotes = (dt, game) => {
+    const fx = game.fx?.add, f = game.U?.uFocus?.value;
+    if (!fx) return;
+    const M = BREATH.mote, b = st.breath;
+    bmote.color = M.color;
+    bmote.colorEnd = M.colorEnd;
+    st.motes2 += dt * b * (BREATH.column + BREATH.wide);
+    while (st.motes2 >= 1) {
+      st.motes2 -= 1;
+      const col = brnd() * (BREATH.column + BREATH.wide) < BREATH.column;
+      const a = brnd() * TAU, r = col ? Math.sqrt(brnd()) * BREATH.columnR : 0;
+      bmote.x = col ? S.x + Math.cos(a) * r : (f?.x ?? 0) + (brnd() - 0.5) * 30;
+      bmote.z = col ? S.z + Math.sin(a) * r : (f?.z ?? 0) + (brnd() - 0.5) * 24 - 3;
+      bmote.y = col ? 0.2 + brnd() * 0.6 : 0.2 + brnd() * 1.2;
+      bmote.vx = (brnd() - 0.5) * 0.12;
+      bmote.vz = (brnd() - 0.5) * 0.12;
+      bmote.vy = M.vy[0] + (M.vy[1] - M.vy[0]) * brnd();
+      bmote.life = M.life[0] + (M.life[1] - M.life[0]) * brnd();
+      bmote.size = M.size;
+      bmote.sizeEnd = M.size * 0.4;
+      bmote.glyph = M.glyph;
+      fx.spawn(bmote);
+    }
+  };
   const ambience = {
     setup(game) {
       // the inlay: glyphs that stay where they are, in one additive batch of their own
       glowSys = new GlyphParticles(game.U, { max: glow.length, additive: true });
+      glowR = new Float32Array(glow.length);
+      for (let i = 0; i < glow.length; i++) glowR[i] = Math.hypot(glow[i].x - S.x, glow[i].z - S.z);
       game.pipeline?.registerParticles?.(glowSys);
       fillGlow();
       for (const b of fires) {
@@ -499,7 +555,18 @@ export function createThroneHall(U, colliders) {
       if (st.breathHold > 0) st.breathHold -= dt;
       else if (st.breath > 0) st.breath = Math.max(0, st.breath - dt * BREATH.release);
       const e = swell();
-      if (Math.abs(e - st.shown) > (st.breath > 0 ? BREATH.step : 0.03) || (e === 0 && st.shown !== 0)) fillGlow();
+      if (Math.abs(e - st.shown) > 0.03 || (e === 0 && st.shown !== 0)) fillGlow();
+      if (st.breath > 0.002) {
+        st.breathT += dt;
+        st.breathOn = true;
+        breatheGlow();
+        breatheMotes(dt, game);
+      } else if (st.breathOn) {
+        // the breath is out: today's inlay exactly
+        st.breathOn = false;
+        st.breathT = 0;
+        fillGlow();
+      }
       glowSys?.update(dt, game.time);
       const fx = game.fx?.add, fire = game.fx?.fire;
       if (!fx) return;
@@ -559,13 +626,11 @@ export function createThroneHall(U, colliders) {
       }
       // red motes rising slowly over the crater's floor
       const f = game.U.uFocus.value;
-      // (the breath: more of them, rising faster; with no breath exactly today's)
-      const br = st.breath;
-      acc(st, 'motes', dt, br > 0 ? 9 * (1 + BREATH.motes * br) : 9, () => {
+      acc(st, 'motes', dt, 9, () => {
         const x = f.x + (Math.random() - 0.5) * 30, z = f.z + (Math.random() - 0.5) * 24 - 3;
         if (Math.hypot(x, z) > R + 1) return;
         fx.spawn({
-          x, y: 0.2 + Math.random() * 1.5, z, vx: (Math.random() - 0.5) * 0.15, vy: (br > 0 ? 1 + BREATH.rise * br : 1) * (0.25 + Math.random() * 0.3), vz: (Math.random() - 0.5) * 0.15,
+          x, y: 0.2 + Math.random() * 1.5, z, vx: (Math.random() - 0.5) * 0.15, vy: 0.25 + Math.random() * 0.3, vz: (Math.random() - 0.5) * 0.15,
           life: 4 + Math.random() * 4, size: 0.11, sizeEnd: 0.04, glyph: ".'·", color: [1.8, 0.16, 0.08], colorEnd: [0.4, 0.02, 0.02],
           alpha: 1, alphaEnd: 0, drag: 0.2, flicker: 0.5,
         });

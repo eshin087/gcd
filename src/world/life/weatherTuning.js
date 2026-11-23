@@ -32,11 +32,14 @@ const VEIL = Object.freeze({
   rate: 3.2, r: [24, 44], y: [0.3, 1.2], life: [9, 14], size: [2.2, 4.2], sizeEnd: 4.8, alpha: 0.07,
   color: [0.2, 0.24, 0.3], glyph: MIST_GLYPH, view: [34, 26],
 });
-/** a bank of mist: a loose cluster of small letters that drift together, each one opening out of
- *  nothing and fading as it grows (the house style's small letters, not one big stroke) */
+/** a bank of mist: a loose cluster of letters (`~ - =`, 0.4 - 0.6 m) that drifts as one with the air,
+ *  comes in and goes out softly over seconds, and keeps clear of the hero. Drawn in the weather's own
+ *  batch (weather.js WeatherBatch): `max` banks at once (x quality), `per` letters each.
+ *  rate: banks born a second in view at full mist */
 const BANK = Object.freeze({
-  rate: 1.7, per: [10, 14], spread: [2.8, 1.2], size: [0.65, 0.85], sizeStart: 0.3, alpha: 0.55,
-  life: [7, 11], color: [0.36, 0.4, 0.48], glyph: "~-~-.'", wobble: 0.12,
+  max: 12, rate: 1.4, per: [36, 46], spread: [4.2, 1.8], rise: 0.45, size: [0.5, 0.75], alpha: 0.52,
+  life: [16, 24], fadeIn: 4, fadeOut: 5, color: [0.5, 0.55, 0.64], glyph: '~-=~-~', wobble: 0.25,
+  heroClear: [0.5, 1.7],
 });
 
 export const WEATHER_TUNE = Object.freeze({
@@ -48,10 +51,14 @@ export const WEATHER_TUNE = Object.freeze({
   idle: 1e-4,
   /** below this `life.calm` counts as the fight: no new spell, back to the calm one */
   fightCalm: 0.995,
+  /** s: the most a spell takes to clear once the fight starts */
+  fightFade: 10,
   /** s: a spell not seen for this long weighs twice its weight when the director picks what follows */
   longing: 90,
+  // (a level may carry `firstHold: [s, s]`: the calm spell's first hold of a visit, shorter, so the
+  //  level shows what it does within the first seconds)
   /** spawns are kept this far (m) from the hero */
-  heroGap: { mist: 4, fall: 0.8 },
+  heroGap: { mist: 2.5, fall: 0.8 },
 
   cinderwood: {
     calm: 'clear',
@@ -64,7 +71,7 @@ export const WEATHER_TUNE = Object.freeze({
     // line (r > 30) than in the clearing
     mist: {
       veil: VEIL, bank: BANK,
-      bands: [{ key: 'mist', r: [14, 46], inner: [18, 32], innerK: 0.3, y: [0.9, 1.9], veil: 0.3 }],
+      bands: [{ key: 'mist', r: [12, 46], inner: [16, 30], innerK: 0.25, y: [0.9, 1.3], veil: 0.3 }],
       /** m/s: the drift when there is no wind to carry it (today's), and how much of the wind it takes */
       drift: [0.45, 0], carry: 0.4, view: [18, 15, -1],
     },
@@ -85,9 +92,9 @@ export const WEATHER_TUNE = Object.freeze({
     },
     // glowing embers lifted off the ruins and carried across the yard in a loose stream
     embers: {
-      rate: 18, upwind: [10, 22], band: 5, wander: [8, 0.11], y: [0.2, 1.1], carry: 1.5, drift: [1.6, 0],
-      rise: [0.2, 0.7], gravity: -0.06, drag: 0.08, life: [6, 9], size: 0.42, sizeEnd: 0.16,
-      color: [2.4, 0.75, 0.15], colorEnd: [0.5, 0.07, 0.01], flicker: 0.35, glyph: "·'·.",
+      rate: 15, upwind: [4, 20], band: 6, wander: [6, 0.11], y: [0.3, 1.6], carry: 1.6, drift: [2.6, 0], min: 2.8,
+      rise: [0.3, 0.8], gravity: -0.05, drag: 0.04, life: [10, 13], size: 0.6, sizeEnd: 0.26,
+      color: [3.2, 1.0, 0.2], colorEnd: [0.7, 0.1, 0.02], flicker: 0.3, glyph: "··'",
     },
     // the grey-out: more ash hanging in the air (fine, slow)
     grey: {
@@ -98,9 +105,12 @@ export const WEATHER_TUNE = Object.freeze({
 
   starless: {
     calm: 'still',
+    // (the first breath comes soon: a player standing at the spawn sees the crater breathe once)
+    firstHold: [4, 7],
     spells: {
-      still: { hold: [20, 36], fade: [7, 10], next: [['breath', 1]] },
-      breath: { hold: [1.5, 3], fade: [4, 6], next: [['still', 1]], breath: 1 },
+      still: { hold: [20, 36], fade: [8, 11], next: [['breath', 1]] },
+      // the crater's dark warms with it (a breath of red in the fog and the ambient)
+      breath: { hold: [2, 3.5], fade: [5, 7], next: [['still', 1]], breath: 1, ambient: 1.5, fogColor: 4.5, moon: 1.15 },
     },
     // the set's ambience does the drawing (throneHall.js: ambience.breathe(k)): k = breath × this
     breath: { k: 1 },
@@ -116,12 +126,15 @@ export const WEATHER_TUNE = Object.freeze({
     },
     // a loose rising column of the level's dust, crossing the badlands with the wind, never onto the ring
     devils: {
-      max: 2, keepOut: 18, upwind: [14, 24], across: 16, life: [9, 14], speed: 1.5, carry: 0.9,
-      rate: 42, height: [3, 5], radius: [0.9, 1.5], swirl: 2.4, rise: [0.9, 1.8], partLife: [0.8, 1.4],
-      size: [0.32, 0.5], color: [0.44, 0.35, 0.27], colorEnd: [0.16, 0.12, 0.09], alpha: 0.75, glyph: ".,'`~",
+      max: 2, first: [3, 6], keepOut: 18, upwind: [14, 22], across: 10, south: 3, heroGap: 6, tries: 10, life: [10, 15], speed: 1.5, carry: 0.9,
+      // the column: `letters` pale dust letters turning round it (rad/s), rising (m/s) and wrapping, a
+      // funnel `radius` wide at the top, leaning downwind; soft as it gathers and falls apart
+      letters: 64, height: [6, 8], radius: [1.6, 2.4], swirl: 2.2, rise: 1.1, lean: 0.14, fadeIn: 2, fadeOut: 3,
+      size: [0.4, 0.6], color: [0.66, 0.56, 0.43], alpha: 0.7, glyph: "~-=,'`~",
     },
-    // dry lightning far off: weather.flash, a very faint flicker of the sky (skybreakRing.js adds it)
-    bolts: { peak: [0.07, 0.13], decay: 16, double: 0.4, gap: [0.08, 0.16] },
+    // dry lightning far off: weather.flash (0..1), a soft brightening of the far side of the sky (the fog:
+    // the horizon side of the frame) and a breath of the ambient; skybreakRing.js adds it
+    bolts: { first: [2, 5], peak: [0.6, 1], rise: 20, decay: 2.6, double: 0.4, gap: [0.12, 0.22], fog: [0.17, 0.17, 0.21], ambient: [0.1, 0.105, 0.14], moon: [0.22, 0.24, 0.32] },
   },
 
   fox: {
@@ -157,8 +170,8 @@ export const WEATHER_TUNE = Object.freeze({
     },
     // option c: snow straight down, slow, sparse
     snow: {
-      option: 'c', rate: 9, area: [36, 28], y: [5, 9], fall: [0.5, 0.75], carry: 0, drift: [0, 0],
-      size: 0.2, color: [0.55, 0.57, 0.63], alpha: 0.8, alphaEnd: 0.6, glyph: "·.'", spin: 1.2,
+      option: 'c', rate: 16, area: [36, 28], y: [5, 9], fall: [0.55, 0.8], carry: 0, drift: [0, 0],
+      size: 0.42, color: [0.78, 0.8, 0.88], alpha: 0.85, alphaEnd: 0.7, glyph: "*·*.", spin: 1.2,
     },
   },
 });
