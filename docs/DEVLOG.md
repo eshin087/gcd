@@ -5,7 +5,7 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
-## 2026-11-23 — Session 79, round 2: the Sheathed between the digits and the ink-line art (ADR-152 addendum)
+## 2026-11-23 — Session 80, round 2: the Sheathed between the digits and the ink-line art (ADR-152 addendum)
 
 **Why.** The owner picked palette a, then looked at the ink-line Sheathed in the game: "too detailed and his flaws
 from the non ascii look is hurting. find a right balance". At fight distance he read as a 3D model (smooth shaded
@@ -95,7 +95,7 @@ see the PR.
 **Not checked / open.** Nobody has played it; not on the phone (0.56 M -> 0.89 M vertices drawn);
 the owner picked `a`, mixed clumps, from the sheet.
 
-## 2026-11-22 — Session 79: the Sheathed, easy to see (ADR-152; one Opus agent from the planning session's brief)
+## 2026-11-22 — Session 80: the Sheathed, easy to see (ADR-152; one Opus agent from the planning session's brief)
 
 **Goal.** The owner on the live grove: "its hard to see the new boss character. make it look detailed like the
 main character". Their answers: the hero's ink-line art (not bigger letters), the homage carried by the
