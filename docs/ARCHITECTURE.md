@@ -2751,6 +2751,7 @@ off where it lands. For a new object, a new set or a new level:
 | `fallOff`, `fallT` | m out from its base where a felled piece starts to land (its strip starts there), s it falls |
 | `blocks` | how many big carved blocks of wreckage it leaves (a statue's) instead of a rubble pile |
 | `cy` | (a crater's hanging stone) its height in the air, exact (ADR-122; the Lord's effects read it) |
+| `slice` | true: one blade or blow cuts it through at the height it bit (ADR-151, `BREAK.slice`; the grove's bamboo): its body loses what is below the cut in the frame of the blow (`RangeBody.cutY`), its stump is cut to that height on a slant, its top slides off the cut and goes over about its lower end (`_sliceFall`). Not by fire or a body brushing past. A range piece only |
 
 A set draws its stumps, rubble and any breakables it adds from an rng stream of its own, so the rest of
 its layout does not move. Budget: each breakable that is not a 'range' piece is 1–2 bones of the rigid

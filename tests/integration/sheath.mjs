@@ -307,7 +307,7 @@ async function scenarioLevel() {
   assert(d instanceof Sheathed && d.kind === 'duelist' && d.name === TUNING.name && d.kit.id === 'sheathed', `the boss is his own duelist: ${d.name}`);
   assert(d.mode === 'sleep' && d.brain.clip === d.brain.C.meditate && d.sheath === 'carry' && Math.cos(d.yaw - GROVE.wait.yaw) > 0.999, 'he waits kneeling (meditate) facing the grave, the sword sheathed');
   const B = SET.set.breakables, kinds = (k) => B.filter((b) => b.kind === k);
-  assert(kinds('bamboo').length >= 200 && kinds('bamboo').length <= 400 && kinds('bamboo').every((b) => b.light && b.look === 'range'), `the bamboo: ${kinds('bamboo').length} light range pieces (<= 400)`);
+  assert(kinds('bamboo').length >= 200 && kinds('bamboo').length <= 720 && kinds('bamboo').every((b) => b.light && b.look === 'range'), `the bamboo: ${kinds('bamboo').length} light range pieces (<= 720: ADR-151 filled the back; a standing range piece costs nothing a frame)`);
   assert(kinds('graveSword').length >= 30 && kinds('graveSword').every((b) => b.light), `the Sword Grave: ${kinds('graveSword').length} light planted swords`);
   assert(kinds('paving').length >= 80 && kinds('stele').length === 1 && kinds('lantern').length === 2 && kinds('boulder').length >= 4 && kinds('post').length === 4, `the paving (${kinds('paving').length} slabs), the stele, two lanterns, ${kinds('boulder').length} boulders, the pavilion's four posts`);
   run(G, 0.3);

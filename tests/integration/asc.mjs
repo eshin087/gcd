@@ -3099,7 +3099,12 @@ const S = {
 };
 // --- tune (opt-in: run only when named)
 const OPT_IN = { picks: scenarioPicks, probe: scenarioProbe, defend: scenarioDefend };
-const list = SCEN === 'all' ? Object.keys(S) : SCEN.split(',');
+// ABYSS_SKIP (a comma list) leaves scenarios out of `all` (tests/run.mjs runs the long ones as
+// processes of their own, so a new scenario lands in `all`)
+const SKIP = new Set((process.env.ABYSS_SKIP ?? '').split(',').map((s) => s.trim()).filter(Boolean));
+for (const k of SKIP) if (!S[k]) { out(`unknown scenario in ABYSS_SKIP: ${k}`); process.exit(2); }
+const list = SCEN === 'all' ? Object.keys(S).filter((k) => !SKIP.has(k)) : SCEN.split(',');
+if (SCEN === 'all' && SKIP.size) out(`\n(not run here, ABYSS_SKIP: ${[...SKIP].join(', ')})`);
 for (const k of list) {
   if (OPT_IN[k]) S[k] = OPT_IN[k];
   if (!S[k]) { out(`unknown scenario ${k}`); process.exit(2); }

@@ -1,8 +1,13 @@
 name: CI
 
-# Pull requests only. `main` is protected (this check required, the branch up to date, squash or
-# rebase merges, admins included), so a merge puts on `main` exactly the tree this run tested: a
-# second run on the push to `main` re-checked a known result and doubled the minutes of every merge.
+# Pull requests only. `main` is protected (the check `test-and-build` required, the branch up to date,
+# squash or rebase merges, admins included), so a merge puts on `main` exactly the tree this run
+# tested: a second run on the push to `main` re-checked a known result and doubled every merge.
+#
+# The tests run as four parallel jobs, each on its own 4-core runner (`tests/run.mjs --shard I/4`
+# deals every task to one of them), beside the build; `test-and-build` waits for them all and is the
+# one result branch protection reads (ADR-153). A PR that only changes docs (docs/, *.md, .claude/)
+# skips the tests and the build, and `test-and-build` passes at once.
 on:
   pull_request:
 
@@ -11,15 +16,39 @@ concurrency:
   group: ci-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
-# The job only reads the code: its token gets no write access to the repo.
+# The jobs only read the code: their token gets no write access to the repo.
 permissions:
   contents: read
 
 jobs:
-  test-and-build:
+  changes:
     runs-on: ubuntu-latest
-    # A normal run takes about 12 minutes; a hung test stops here, not at GitHub's 6 hour default.
-    timeout-minutes: 25
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      # The checkout is the PR merged into its base: HEAD^1 is the base, so this lists the PR's own
+      # changes. Anything outside the docs (tests/ and .github/ included) runs everything.
+      - id: diff
+        run: |
+          files=$(git diff --name-only HEAD^1 HEAD -- . ':(exclude)docs' ':(exclude)*.md' ':(exclude).claude')
+          if [ -n "$files" ]; then echo "code=true" >> "$GITHUB_OUTPUT"; else echo "code=false" >> "$GITHUB_OUTPUT"; echo "docs only: tests and build skipped"; fi
+
+  tests:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    name: tests ${{ matrix.shard }}
+    runs-on: ubuntu-latest
+    # A share takes about 6 minutes; a hung test stops here, not at GitHub's 6 hour default.
+    timeout-minutes: 20
+    strategy:
+      # every share runs to the end, so one red run shows every failure
+      fail-fast: false
+      matrix:
+        shard: ['1/4', '2/4', '3/4', '4/4']
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -27,5 +56,35 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm test
+      - run: node tests/run.mjs . --shard ${{ matrix.shard }}
+
+  build:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
       - run: npm run build
+
+  # The required check. Green when every share and the build passed, or when the PR is docs only.
+  test-and-build:
+    needs: [changes, tests, build]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - env:
+          CHANGES: ${{ needs.changes.result }}
+          CODE: ${{ needs.changes.outputs.code }}
+          TESTS: ${{ needs.tests.result }}
+          BUILD: ${{ needs.build.result }}
+        run: |
+          echo "changes: $CHANGES (code: $CODE) · tests: $TESTS · build: $BUILD"
+          [ "$CHANGES" = success ] || exit 1
+          if [ "$CODE" = true ]; then [ "$TESTS" = success ] && [ "$BUILD" = success ] || exit 1; fi

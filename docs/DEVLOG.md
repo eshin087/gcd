@@ -5,6 +5,63 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-23 — CI in four parallel jobs; docs-only PRs skip the tests (ADR-153)
+
+**Owner**, after asking why every PR's check takes ~12 minutes when their other games deployed at once:
+"lets go with your previous recommended changes" (the parallel jobs and the docs-only skip; the
+up-to-date rule kept, no paid runners). Branch `build/ci-parallel`, PR #92.
+
+**Why it was slow.** Setup and build take ~10 s; `npm test` is ~50 minutes of headless boss fights (the
+Starless Lord alone ~640 s), run four at a time on one 4-core runner: 12-15 minutes a run. The repo is
+now **public** (the 2026-11-22 CI entry below says private), so standard runners cost nothing.
+
+- `tests/run.mjs --shard I/N` runs one of N shares, dealt from each task's `est` (its seconds in a CI
+  share), longest first, each to the lightest share: every task in exactly one share, a new task dealt
+  by itself. `--list` prints the shares.
+- lord runs as three tasks: `fxlooks` (it replays SPELLS and TERRAIN under four looks: about half the
+  suite), `pace`, and the rest. lord.mjs, duel.mjs and asc.mjs take a comma list and `ABYSS_SKIP`.
+- ci.yml: `changes` (is anything outside docs/, *.md, .claude/ changed?), four `tests I/4` jobs
+  (fail-fast off), `build`, and `test-and-build`, which waits for them and is still the one required
+  check (no protection change). Docs only: tests and build skip, `test-and-build` passes in seconds.
+
+**Measured** (PR #92's first run): 4 min 19 s from push to green, was 12-15 min. Longest tasks: lord
+fxlooks 228 s, integ 214 s, duel 174 s. The same checks run; none is dropped.
+
+**Next, if it is wanted faster:** fxlooks's four replays could run as separate processes (each against
+the '0' replay), and integ's rest could move more scenarios out; the floor today is ~4 minutes.
+
+---
+
+## 2026-11-22 — Session 79: the grove's bamboo sliced in one stroke, in clumps, the back filled
+
+**Owner:** "make the bamboo in windless grove all sliceable in 1 swoop and make sure it falls the moment the sword is going through. have the bamboos more varied, beautiful and some clumped up. i want the bamboo falling to be a cool spectable as the fight happens. have way more in the back empty area as well". Branch `world/bamboo-slice`. ADR-151 / Session 79 / M1.63.
+
+**What changed.**
+- Sliced pieces (`slice: true`, `BREAK.slice`, destructibles.js `_sliceFall`, `RangeBody.cutY`):
+  any blade or blow cuts a stalk through where it bit, the cut shown in the frame of the blow, the top
+  sliding off the cut then going over and bursting into leaves where it lands; the stump on that
+  slant. Not a body brushing past, not fire.
+- The grove's bamboo (`?bamboo=0|a|b`, `windlessGrove.js` `groveBamboo`, `bambooStalkOf`, `SPECIES`,
+  `BAMBOO`): five kinds of cane, three thicknesses, fanning clumps with shoots, fuller crowns; 11 clumps
+  behind him in the clearing, a denser belt behind him, the wall out to 50 m. `a` ships.
+
+**Found on the way.**
+- The cut showed a frame late (the top's run was only rewritten at the next pose): it is written in
+  the frame of the blow now (the test `slice` checked it).
+- The belt's back bias was inverted: the first build had 158 stalks toward the camera, 127 behind.
+- Filming with real-time captures dropped frames under load (identical frames, a clip that ended
+  before the canes landed): the clips are stepped one game frame per picture.
+
+**Verification.** World test `slice` (one quick cut, power 0.12, fells a stalk; cut at the blade's
+1.15 m; the stump 1.02 - 1.27 m on a slant; nothing of the top below the cut; it moves the first
+frame, slides 0.27 m along the blow, lands in 0.79 s; quiet; a brush does not slice; a boss's cut
+does, at 1.6 m; the reset). `bite` across every level. Rendered `?bamboo=0|a|b` from four views and
+filmed the hero's light and heavy swings through a clump (9 and 6 stalks cut; MP4s). `npm test`:
+see the PR.
+
+**Not checked / open.** Nobody has played it; not on the phone (0.56 M -> 0.89 M vertices drawn);
+the owner picked `a`, mixed clumps, from the sheet.
+
 ## 2026-11-22 — Session 78: a sixth level, the Windless Grove and the Sheathed (planned in its own chat, built by one Opus agent)
 
 **What changed.** The owner asked for new level bosses on the power fantasy of famous characters, as
