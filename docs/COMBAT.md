@@ -2150,6 +2150,84 @@ phase 3 dipped under its phase 2 (0.93), the mean's ramp is 1.09. Slower than Sh
 66 s, block-only 49 / 57 s; the block-only bot is never killed by a draw, mortal too. TIMING: every contact
 within 0 ms of its flash + 0.3 s. Not measured: a human on the phone; the draw's read at the phone's camera
 was judged from stills only.
+## The One Who Woke (2026-11-22, ADR-156 – ADR-158; `?level=code`)
+
+Xin Yi, a BARE-HANDED fighter in a long black coat (wokenOne/): a recognizable homage to the hero of the
+source film, under his own name and his own moves (the owner's answers, 2026-11-22). TWO BARS, THREE
+PHASES: bar 1 (3400) holds phase 1 (the Sparring Hall: one hand, the left behind his back) and phase 2 (the
+Pillared Hall: two guns) behind the gate at half; bar 1 empty breaks him and the deathblow is THE FALL; he
+RISES with bar 2 (2600) full into phase 3 (the Source: both hands, no guns, flight). Tian Lei's numbers for
+the duel (posture by the Sekiro rule, the guard, the trade, hit stun, the execution, the moments) except:
+`flashLead` 0.26, first windups at least 0.42 s (authored 0.46 and scaled by `windupScale` [1, 0.96, 0.92]),
+hits 0.32 s apart at least, `pressure.guard.sep` 0.4 (he throws things). Harder is more pressure, never more
+damage. His blows are Tian Lei's strike builders; the limb that strikes is what the hero's parry meets.
+
+### His moves (N white, B blue, B* blue flare: a parry moment, R red, K black; windups at phase 1)
+
+| Move | Ph | Beats | Band (m) · cooldown · weight |
+|---|---|---|---|
+| The First Lesson | 1 | THE BECKON (a feint, 0.7 s: the open hand, palm up, the fingers curling twice: its sign), then N 0.46 / 0.34 / 0.34 / 0.36 (9 9 9 10) and B* 0.5 (20). All five parried: the full deflect | 0 – 3.4 · 7 · [2.2, 1.2, 0.9] |
+| Idle Hand | 1 | N 0.46, 10 · N 0.34, 11, his head turned away | 0 – 3.2 · 3.5 · [2.0, 1.2, 0.8] |
+| Brushing Dust | 1 | B 0.55, 20, a palm shove, knockback 3.4 | 0 – 2.8 · 5 · [1.2, 0.8, 0.5] |
+| Climbing the Stair | 1 | N 0.48, 10 · N 0.36, 11 · B 0.42, 18: three kicks, each higher | 0 – 3.6 · 6 · [1.6, 1.0, 0.8] |
+| Low Wind | 1 | R 0.64, 22, a sweep at the ankles (ring 2.2), knockdown | 0 – 3.0 · 6 · [1.0, 0.8, 0.6] |
+| Borrowed Wall | 1 | B* 0.9, 22: two steps up the nearest upright by his path (a bite where he kicks off), then a flying kick (a line, in the air); no piece in reach: a plain flying kick | 5 – 11 · 7 · [1.0, 0.8, 0.6] |
+| Answer (counter) | 1/2/3 | N 0.46, 12 · B 0.4, 18 (phase 2: an elbow and a point-blank shot) | |
+| Hundred Hands (his flurry) | 1/2/3 | four blows N 8 (phase 3: each later one from another side) | |
+| Iron Rain | 2 | N 0.8: ONE cue for the stream, then 11 shots of 5 from alternating hands over 1.5 s while he strafes round the hero at 7 – 10 m; B 0.42: the last shot big (14), returnable | 4 – 13 · 7 · [0, 2.2, 0] |
+| Two Thunders | 2 | B 0.7, 16 · B 0.55, 16: two heavy shots, returnable | 3 – 13 · 6 · [0, 1.6, 0] |
+| Close Iron | 2 | N 0.46 elbow, 10 · N 0.34 pistol-whip, 10 · B* 0.5, 20, the point-blank shot | 0 – 3.2 · 5 · [0, 1.8, 0] |
+| Turning Wheel | 2 | R 0.7, 20: a cartwheel 2.4 m to his left, firing low along a line 9 x 1.4 | 2 – 9 · 7 · [0, 1.0, 0] |
+| (the reload) | 2 | after three ranged moves: both guns thrown away, two more from the coat, 0.6 s, his guard down | |
+| The Still Hand | 3 | the raised flat palm (the counter stance: 0.45 s, held 0.2 – 0.4); a cut into it is CAUGHT and answered B* 0.46, 22, the one-inch push (`lock`). Waited out: his guard down 0.6 s | 0 – 3.2 · 9 · [0, 0, 1.2] |
+| Pushing Hands | 3 | B 0.6, 16 · B 0.5, 16: two palm bolts in the code's green, returnable | 3 – 13 · 5 · [0, 0, 1.6] |
+| Return to Sender | 3 | only with three bolts hanging: B* 0.9, 24, ONE cue, one result | anywhere · 1 |
+| Unwriting | 3 | R 0.7: bricks torn out of up to three code pillars within 12 m, held over them, thrown 0.55 s apart (20 each, the red flare on each piece); no code pillar near: never | 3 – 13 · 9 · [0, 0, 1.0] |
+| A Thousand Hands | 3 | N 0.46, then five N 0.32 apart (8 each), SKIPPED FRAMES after the third (he tears into a column of digits and prints again at the hero's other side), B* 0.5, 20 | 0 – 3.4 · 6 · [0, 0, 1.8] |
+| Leaving the Floor | 3 | R 0.8, 14, a burst ring 4 m (knockback 5) as he goes straight up; he hangs at 5 m; then the Falling Fist (R 1.1 fixed, the spot fixed at 0.7: the dive, a crater 3.2 m, 30, knockdown; then THE FRONT: a ring from 3 to 11 m at 14 m/s that heaves the floor and strikes the hero ONCE as it reaches him, R, 18, cued `flashLead` before) or the Low Pass (R 0.9 fixed, the line fixed at 0.7: one flat pass 14 x 1.8, 24; the uprights on it swept) | 0 – 12 · 10 · [0, 0, 1.1] |
+| The Dive Within | 3 | K 1.5 + 0.1 – 0.5, 44: the hall's letters stream into his chest, a flat flying lunge up to 9 m | 2 – 9 · 14 · [0, 0, 0.7] |
+| A Hundred Iron Seeds | → 2 | R, fixed 2.0 s, ring 6, 12, knockback 7: he throws the coat open; the hall rewrites itself whole | |
+| The Rising | → 3 | R, fixed 2.3 s, ring 6.5, 12, knockback 7; then the Still Hand held 1.5 s (a cut is caught on his palm) | |
+
+### The rules that make his tricks openings
+- **The Lean** (phases 1 – 2): his guard's reactions are slips and back-leans with one afterimage. It is the
+  engine's guard, nothing more.
+- **Cover** (phase 2): a pillar between him and the hero stops a shot and loses its letters where it struck
+  (0.25 a shot: a pillar's face goes in about two volleys, the pillar in about four). A held guard through a
+  whole Iron Rain pays guard only (4 a shot, 9 for the big one: 53 at most), never health.
+- **The Bend** (phase 2): a perfectly parried heavy shot that comes back at him, or a heavy cut on its way
+  (the engine's evade, at most once in 6 s): time slows for everyone (0.3 for 0.7 s), he arches back, the
+  shot or the cut passes over him. It costs him posture (50 / 16), he has no guard for 1.0 s and the first
+  cut crits (x 1.5). He cannot bend twice: a second returned shot or heavy cut inside that second lands in
+  full (a returned shot: 50). Heavy, then a light, is a sure hit.
+- **The stop** (phase 3): a returned bolt hangs before his raised palm (rooted 0.5 s: a cut lands in full;
+  + 25 posture each). Up to three hang; unsent after 4 s they drop as loose digits. Three: Return to Sender,
+  one blue flare: a parry bursts them all and pays his posture 20 each plus the counter; a held guard pays
+  ONE blow's guard; a roll clears it.
+- **The fall and the rising**: bar 1 empty is no death. For 2.2 s he lies on his back and nothing hurts him;
+  the hero is free to move (and to drink). The rising's ring, then 1.5 s of the Still Hand: a cut at him is
+  CAUGHT. A reset or the hero's death at any point leaves nothing behind (the scene, the light, time, music).
+- **Deja vu** (phases 2 – 3): after The First Lesson, Climbing the Stair, Close Iron or A Thousand Hands ends
+  on its own, a link back to it (0.3 in phase 2, 0.45 in phase 3: mirrored left for right): the hall
+  stutters and he replays the string exactly as he threw it (the same holds and picks). Never after a
+  string parried into a recoil.
+- **Fairness**: every shot, bolt and brick asks the fairness guard before it flies (it hangs a moment or
+  goes uncued and harmless); everything in the air is in the cue ledger.
+
+### The Long Second (his reward, ADR-158)
+Learned on his death. From a held guard, DODGE with no direction: the hero leans back in place (no travel,
+i-frames 0.03 – 0.34 s against the backstep's 0.03 – 0.22, free to cut after 0.24 s). A perfect one slows
+time 0.9 s (the Ghostep's 0.6) and leaves three afterimages; white and heavy blows give a streak pip and no
+crit window, red and black the flurry (ADR-102). `?tech=lean`; the Lab's toggle.
+
+### The numbers measured (`woke.mjs`)
+PACE (a steady defender in god mode, the hero roaming 2.5 – 9 m, the real set), three seeds x 60 s a phase:
+67.2 / 106.3 / 82.9 cues a minute by phase (P1 65.1 – 71.1, P2 94.2 – 116.3, P3 76.3 – 93.0), 0 conflicting cues,
+a dodge asked by 7 / 5 / 21 % of them, the longest gap 3.29 / 2.29 / 2.62 s, the fire field's peak about 1030
+blobs (of 6000) in phase 3. Phase 2 reads the busiest because each of Iron Rain's eleven shots is a cue. WIN: the
+fencing bot (god mode) wins through both bars in 84 s (seed 4242: phase 2 at 27 s, the rising at 53 s).
+STRATEGY (opt-in, god mode, seeds 4242 and 7): mixed 75 – 84 s, parry 95 – 96 s, block-only 89 – 122 s (mortal: alive, it wins), the Long Second bot (every cue answered with the lean) 138 s, dodge-only 142 – 164 s: neither dodging nor leaning is the fastest way through. On the Sheathed with the Long Second learned (sheath.mjs `lean`): mixed 33, parry 42, dodge 64, lean 82 s.
+
 ## The duelists' pressure and the fairness guard (2026-11-16, ADR-122)
 The human bosses run one engine (`enemies/duelist/`: `brain.js`, `director.js`, `ledger.js`;
 ARCHITECTURE.md "Duelists"), so the same rules keep them attacking and keep them fair. The owner's

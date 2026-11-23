@@ -1780,6 +1780,19 @@ function backstepPose(p, A) {
   swordFromEntry(p, A, SWORD_ENTRY);
 }
 
+/** The Long Second (ADR-158): he leans back in place under the blow, the guard kept, the feet planted;
+ *  the lean comes in over 0.08 s, holds and gives back by 0.42 s. */
+function leanPose(p, A) {
+  const t = A.t;
+  guard(p, A);
+  const k = smoothstep(0, 0.08, t) * (1 - smoothstep(0.3, 0.42, t));
+  p[P.spX] -= 0.55 * k;
+  p[P.hdX] -= 0.22 * k;
+  p[P.bodyY] -= 0.08 * k;
+  p[P.bodyZ] -= 0.1 * k;
+  swordFromEntry(p, A, SWORD_ENTRY);
+}
+
 /** Drink: legs keep walking (slowly), the free hand raises the flask, head tips back. */
 function healPose(p, A) {
   loco(p, A);
@@ -2547,6 +2560,7 @@ const POSES = {
   guardBreak: guardBreakPose,
   roll: rollPose,
   backstep: backstepPose,
+  lean: leanPose,
   heal: healPose,
   stagger: staggerPose,
   knockdown: knockdownPose,

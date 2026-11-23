@@ -4,7 +4,29 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Seventy pieces of work since 0.4.0:
+Seventy-one pieces of work since 0.4.0:
+- **A seventh level: the Hall of Falling Script and the One Who Woke** (2026-11-22, ADR-156 – ADR-158).
+  *Added:* `?level=code` (the title screen lists it). **The Hall of Falling Script**: one hall on ten slots
+  whose scenes rewrite themselves into one another behind a front that runs out from him (`scenes`): the
+  Pillared Hall (stone pillars, walls, lift doors), the Sparring Hall (wooden posts, paper screens, racks), the
+  Source (columns of code in the dark); identical men in dark suits stand along the walls and watch (struck,
+  one bursts into digits). Everything breaks but the bonfire. "More extra ASCII" inside the game's letter
+  systems: his effects in a green code palette (cues keep their colours), the falling script down the walls,
+  the script wave in every prop's and the floor's own letters (`?script=`). **Xin Yi, the One Who Woke**: a
+  homage to the hero of a famous film under his own name: a long black coat, small dark glasses. Two bars,
+  three phases: one hand behind his back (The First Lesson's beckon is its sign), then two guns (Iron Rain
+  strafing round you: a pillar takes the shots, a held guard pays guard only; Two Thunders, Close Iron, the
+  reload), then THE FALL (his first bar empty and the deathblow: he lies, time slows) and THE RISING into the
+  Source (the Still Hand, Pushing Hands, Return to Sender, Unwriting, A Thousand Hands with skipped frames,
+  Leaving the Floor and the Falling Fist's front, the Low Pass, the Dive Within). THE BEND: a heavy shot sent
+  back bends him under it, time slowed, open a second with a crit, never twice in a row. THE STOP: in the
+  Source he holds what you send back in the air and sends three back as one blow. DEJA VU: the hall stutters
+  and he replays a string exactly. **The Long Second**, the second learned technique: guard, then dodge with
+  no direction: a lean in place under the blow (`?tech=lean`). *Changed:* optional engine fields (a beat's
+  `noWorld`, a hit's `guardCost`, a boss's `cameraPull`), destructibles' `present` and a set's `scenes`;
+  the other levels play and draw as before. Kept behind switches for the owner's pick: his body
+  (`?oneLook=a|b|c`), the hall (`?hall=a|b`), the wave (`?script=a|b|c`). The level borrows music.
+  `tests/integration/woke.mjs`.
 - **Wen Yao reworked: copies out of the air, the big Pearl, the Nine-Tailed Fox** (2026-11-22, ADR-154). *Changed:* Wen Yao,
   the Thousand-Body Fox, is drawn as the hero is, in dense bright letters: a big russet crest with pale tips,
   a short open amber jacket, dark trousers, pale wraps, a long vermilion scarf; his letters follow his size

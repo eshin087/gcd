@@ -797,6 +797,18 @@ function makeDefender(G, { skill = 1, early = 0.12, style = 'mixed', rng = null 
       for (let i = pend.length - 1; i >= 0; i--) if (pend[i].done || pend[i].at < t - 0.4) pend.splice(i, 1);
       for (const e of pend) {
         const left = e.at - t - DT;
+        // (the Long Second's bot, ADR-158: every cue answered by the lean, from a held guard, no direction)
+        if (style === 'lean') {
+          if (!e.done && left <= 0.1) {
+            e.done = true;
+            input.press(1);
+            input.axis = { x: 0, y: 0 };
+            input.tap('Space');
+            guardUntil = t + 0.45;
+            stats.dodgeTry++;
+          }
+          continue;
+        }
         if (style === 'block') {
           if (e.tell === TELL.RED || e.tell === TELL.BLACK) {
             if (left <= 0.12) {
@@ -832,7 +844,7 @@ function makeDefender(G, { skill = 1, early = 0.12, style = 'mixed', rng = null 
           stats.parryTry++;
         }
       }
-      if (style === 'block') {
+      if (style === 'block' || style === 'lean') {
         if (guardUntil > t) input.press(1);
         else if (guardUntil > 0) { guardUntil = -1; input.up(1); }
       }
@@ -861,9 +873,11 @@ function fencer(G, mortal = false) {
 }
 
 /** One whole fight: { won, died, secs, phase, hits } */
-function fight(seed, style, { mortal = false, skill = 1, max = 420 } = {}) {
+function fight(seed, style, { mortal = false, skill = 1, max = 420, lean = null } = {}) {
   const G = build(seed);
   const { game } = G;
+  // (the Long Second learned: ADR-158's balance check, scenario LEAN)
+  if (lean) game.unlocks = new lean.Unlocks(null, '?tech=lean');
   duel(G, { dist: 4, ai: true });
   G.defend = makeDefender(G, { skill, style, rng: mulberry32(seed * 3 + 1) });
   const d = game.dragon, p = game.player;
@@ -906,6 +920,24 @@ async function scenarioStrategy() {
     out(`     block mortal seed ${seed}: ${r.died ? `died at ${r.secs.toFixed(0)} s (${r.killer})` : `alive after ${r.secs.toFixed(0)} s`}, draws landed ${r.drawHits}`);
     assert(r.drawHits === 0, `block-only mortal seed ${seed}: never killed by a draw (${r.killer ?? 'alive'})`);
   }
+}
+
+// ================================================================== scenario: lean (opt-in; ADR-158)
+async function scenarioLean() {
+  out('\n== scenario LEAN (opt-in: the Long Second learned; the bots on him, the lean bot must not be the fastest) ==');
+  const U = await imp('src/game/unlocks.js');
+  const seeds = (process.env.ABYSS_SSEEDS ?? '4242,7').split(',').map(Number);
+  const res = {};
+  for (const style of ['mixed', 'parry', 'dodge', 'lean']) {
+    for (const seed of seeds) {
+      const r = fight(seed, style, { max: 420, lean: U });
+      (res[style] ??= []).push(r);
+      out(`     ${style.padEnd(5)} seed ${String(seed).padEnd(4)} ${r.won ? 'WON ' : 'time'} ${r.secs.toFixed(0).padStart(3)} s  phase ${r.phase}  hits taken ${String(r.hits).padStart(3)}  perfect dodges ${String(r.perfect).padStart(2)}  breaks ${r.breaks}`);
+    }
+  }
+  const avg = (k) => res[k].reduce((a, r) => a + r.secs, 0) / res[k].length;
+  out(`     means: ${Object.keys(res).map((k) => `${k} ${avg(k).toFixed(0)} s`).join(' · ')}`);
+  assert(avg('lean') > Math.min(avg('mixed'), avg('parry')), 'the Long Second does not make leaning the fastest way through (ADR-158)');
 }
 
 // ================================================================== scenario: pace (duel.mjs PACE, his own meter)
@@ -1226,7 +1258,7 @@ async function scenarioLook() {
 }
 
 const S = { level: scenarioLevel, rules: scenarioRules, draw: scenarioDraw, honor: scenarioHonor, sheath: scenarioSheath, world: scenarioWorld, timing: scenarioTiming, phases: scenarioPhases, late: scenarioLate, pace: scenarioPace, training: scenarioTraining, reward: scenarioReward, win: scenarioWin, look: scenarioLook };
-const OPT_IN = { strategy: scenarioStrategy };
+const OPT_IN = { strategy: scenarioStrategy, lean: scenarioLean };
 const list = SCEN === 'all' ? Object.keys(S) : SCEN.split(',');
 for (const k of list) {
   if (OPT_IN[k]) S[k] = OPT_IN[k];

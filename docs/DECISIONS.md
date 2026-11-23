@@ -4513,6 +4513,75 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   take One Breath into a slot later. Not measured yet: a bot that only uses One Breath on Shen Hui
   (duel.mjs `strategy`) against the mixed bot's time.
 
+## ADR-156 — Xin Yi, the One Who Woke: a recognizable homage on the duelist engine; two bars, the Lean, the Bend and the stop as openings, deja vu (2026-11-22)
+
+- **Context:** the owner asked for a boss in the spirit of the hero of the source film (a famous action
+  film of the late nineties: written here as "the source film", never its name), planned by a Fable session
+  that asked four questions (2026-11-22): the look RECOGNIZABLE (a long black high-collared coat whose tails
+  flare, small dark glasses, short dark hair, pale face and hands, two handguns in phase 2); the set a
+  pillared hall that morphs into two or three scenes; four moments not to be cut (the fall and the rising;
+  shots and pillars; flight and the falling fist; deja vu and skipped frames); the suited men watchers only.
+  The homage line of the merged homages (ADR-150): a new name for the man and every move, none of the
+  source's names, title, lines or logo anywhere in the game or its code, every look behind a switch.
+- **Decision:** `WokenOne extends Duelist` (wokenOne/), bare-handed with Tian Lei's exported strike builders,
+  his limb-as-blade code copied, `WokenFx extends AscFx` (the plan said LordFx: AscFx IS LordFx's pool of
+  thrown things plus the blasts that cover stops and the perfect parry returns, which the guns and the bolts
+  need; its gold is swapped for the CODE palette). TWO BARS, THREE PHASES: bar 1 (3400) holds phase 1 and
+  phase 2 behind the engine's gate at half; bar 1 empty breaks him (Tian Lei's `_onHpZero`) and the
+  deathblow is THE FALL (flat on his back, slow time, the script still, `_changing`), then the transition
+  `rising` with bar 2 (2600) full, ending in the Still Hand held 1.5 s. PHASE 1 keeps the left hand behind
+  his back in every key (a realiser of its own over a one-handed copy of the moves). THE LEAN is only the
+  look of his guard (slip clips, one afterimage): no new way to waste a cut. THE BEND (phase 2) and THE
+  STOP (phase 3) are openings, never walls: a returned shot or the engine's heavy-blow evade bends him at a
+  posture cost, open 1 s with a crit; a second one inside that second lands; the melee Bend once in 6 s;
+  a returned bolt hangs before his palm (rooted, posture), three are sent back as ONE blow of the brain's
+  (one blue flare, one result). DEJA VU is a link back to the same string (`force`), realised with the
+  first pass's draws (`REPLAY`) and, in phase 3, mirrored (a `manual` copy); the set stutters at the link.
+  Optional engine fields, other kits unchanged: a beat's `noWorld`, a hit's `guardCost` (Iron Rain: a held
+  guard pays guard, never health, 55 at most a volley), a boss's `cameraPull` (flight keeps both in frame).
+  Every thrown thing asks the fairness guard (`fairThrow`: it hangs a moment, or goes uncued and harmless).
+- **Consequences:** a fifth duelist kit with no change to what the others do. The plan's aliases lost
+  'hall' (the Obsidian Throne's). The phase banners do not decode (the plan's first cut). Phase 2 counts
+  every one of Iron Rain's eleven shots as a cue, so the pace meter reads phase 2 as busy as phase 3
+  (COMBAT.md "The One Who Woke" → measured).
+
+## ADR-157 — The Hall of Falling Script: one arena whose scenes morph, the script wave in the prop and floor letters, watchers (2026-11-22)
+
+- **Context:** the owner: "pillared hall but since this is the matrix, have everything more extra ascii and
+  have the stage morph 2-3 variations seamlessly to different scenes". A level is never torn down (one per
+  page load), and the owner turned down a terminal post-process and one character grid over the frame
+  (STYLE.md "Tried and turned down").
+- **Decision:** one set built once with three scenes on the same ten slots (`hall` the Pillared Hall, `dojo`
+  the Sparring Hall, `source` the Source); every breakable of a scene carries `scene: '<id>'` and only one
+  scene's pieces stand at a time. The smallest scene-aware surface in destructibles.js: `present(b, on)` (out
+  of the world: hidden, colliders out, state GONE so every query skips it; back: whole), `sceneHome` /
+  `sceneNow`, a reset that puts the other scenes out again; `world.restore` calls the set's `scenes.reset()`.
+  A morph (`scenes.to`) runs a front out from him: each piece it crosses lets go as digits and the new
+  scene's prints in; it runs only inside his transitions (the beckon, A Hundred Iron Seeds, the rising, his
+  death). "More extra ASCII" is four layers inside the existing letter systems: the code palette in the fire
+  field, the falling script (one glyph batch of the set's ambience), THE SCRIPT WAVE (uniforms `uScript` /
+  `uScriptF` read by the prop-art and the floor's materials: digits brightening in waves down each column
+  inside a prop's own letters; at strength 0 the frame is exactly today's, and no other level sets it), and
+  things coming apart as letters. The watchers are static prop-art figures that never act and burst into
+  digits when struck. The bonfire is the only piece left whole.
+- **Consequences:** a set without `scenes` behaves exactly as before (the world suite's `bite` walks each
+  scene of a set that has them). The script wave is the one shared-render change; its cost is measured on
+  the phone preset (COMBAT / DEVLOG). The look of the hall (`?hall=`), of the wave (`?script=`) and of him
+  (`?oneLook=`) wait for the owner's pick (lookSwitch.js PENDING).
+
+## ADR-158 — The Long Second: the second learned technique, a lean in place from a held guard (2026-11-22)
+
+- **Context:** ADR-059's fixed rewards; ADR-146 shipped the first (One Breath) on the smallest store
+  (`game/unlocks.js`). The plan gives Xin Yi's: the hero leans back under the blow instead of stepping away.
+- **Decision:** `longSecond` in the store (`?tech=lean`), granted on his death (`victoryNote` 'YOU LEARNED THE
+  LONG SECOND'). The gesture needs no new button: from a held guard, DODGE with no direction (today a
+  backstep) is the lean once learned; with a direction held the roll is the roll, and One Breath keeps
+  "guard, then hold heavy". `TUNE.lean` beside the backstep's: no travel (he stays in reach), i-frames 0.03 -
+  0.34 s (the backstep's 0.22), free to cut after 0.24 s; a perfect one slows time 0.9 s (the Ghostep's 0.6)
+  and leaves three afterimages; everything else is a dodge by ADR-102 (white and heavy: a streak pip and no
+  crit window; red and black: the flurry). Its own pose (anim.js `leanPose`).
+- **Consequences:** the strategy bots, with a bot that answers every cue with the lean, are the check that
+  leaning is not the fastest way through (woke.mjs STRATEGY); if it becomes so, its i-frames shorten first.
 ## ADR-151 — The grove's bamboo is sliced in one stroke, its top off at the cut; five kinds of cane in clumps, and the back filled (2026-11-22)
 
 - **Context:** the owner: "make the bamboo in windless grove all sliceable in 1 swoop and make sure it falls the moment the sword is going through. have the bamboos more varied, beautiful and some clumped up. i want the bamboo falling to be a cool spectable as the fight happens. have way more in the back empty area as well". A stalk (ADR-145) had 0.5 of structure: a light cut (0.27)

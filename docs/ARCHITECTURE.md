@@ -2721,9 +2721,11 @@ off where it lands. For a new object, a new set or a new level:
    a blow on one of each kind bites it, the reset puts them back). Run `node
    tests/integration/world.mjs . bite`; look at it in the browser (`?level=<id>`; `?chip=0` is the
    game without bites, for a before / after).
+   A set whose scenes morph (ADR-157: `scenes`, the Hall of Falling Script) tags each piece of a scene
+   `scene: '<id>'`; `bite` visits every scene of such a set.
 7. **Leaving something whole is a decision**, the owner's, written in DECISIONS.md: the bonfires (a
    checkpoint), the sect gate, the bell (it only rings: `hp: Infinity`), the throne and its dais, the
-   fallen star and the seal, and the training room (`?stage=lab`, ADR-099: a measuring stage, its tiles,
+   fallen star and the seal, the Hall of Falling Script's bonfire, and the training room (`?stage=lab`, ADR-099: a measuring stage, its tiles,
    walls and pylons stand outside the fight; the test checks it lists nothing). Floor slabs break as
    slabs (`floor: true`: whole, cracked, broken; never bitten), the ground itself does not break yet
    (ADR-132 "Not done").
@@ -2733,6 +2735,7 @@ off where it lands. For a new object, a new set or a new level:
 |---|---|
 | `kind` | 'tree', 'deadTree', 'stone', 'boulder', 'pillar', 'lantern', 'stele', 'bell', 'flagstone', 'bone', 'helm', 'sword', 'elderRib', 'elderSpine', 'cinderBough', 'cinderTrunk', 'nestRib', 'nestSkull', … (free; boss AI and tests read it) |
 | `mat` | 'wood', 'stone', 'metal' or 'bone' (structure, what bites it, its debris and sound) |
+| `scene` | (a set with `scenes`, ADR-157) the scene it stands in; out of the world in the others (`present`) |
 | `look` | 'grid' (geometries with `paint()` attributes: the screen grid), 'prop' (`carve()` attributes: prop art) or 'range' (its body is a run of vertices in a static mesh of the set, drawn by the set's own material: the flagstones; since 2026-11-16 every tree of Cinderwood, the Cinder Tree's boughs and trunk, the Elder Wyrm's bones and the nest's ribcage and skull) |
 | `x, z, r, h` | its base (world), footprint radius, height (`geosHeight(geos)`) |
 | `geos` | its geometries in WORLD space, as the builders return them (the system moves them to the base) |
@@ -3097,7 +3100,7 @@ are heat in the fire field.
 
 ## Levels and the boss slot (2026-11-12, ADR-058, ADR-060; the Starless level: ADR-068 – ADR-070; the Skybreak Ring: 2026-11-21, ADR-129; the Foxfire Terrace: ADR-147)
 `src/levels/index.js`: `LEVELS` (Cinderwood `cinderwood`, Ashfall `ash`, the Obsidian Throne
-`starless`, the Skybreak Ring `ring`, the Foxfire Terrace `fox`, the Windless Grove `grove`), `DEFAULT_LEVEL`,
+`starless`, the Skybreak Ring `ring`, the Foxfire Terrace `fox`, the Windless Grove `grove`, the Hall of Falling Script `code`), `DEFAULT_LEVEL`,
 `withStage(level, search)` (`?stage=lab`: the same level on the training
 room, `world/trainingRoom.js` `createTrainingRoom` / `ROOM_WORLD`; main.js wraps the level with it
 before `applyLevel`; ADR-099), `getLevel(id)` (id or alias, case-insensitive), `levelFromSearch(search)` (`?level=`; unknown → the
@@ -4117,6 +4120,73 @@ flagstone (world/floor.js), stele, lantern, boulder, post (light). Returns creat
 **Destruction's `light` def field** (ADR-145; destructibles.js): the record's `lightPiece`; its topple is
 `quiet` whoever felled it and its landing does only the crumble and a soft `crash` (weight x 0.25): no ground
 marks, gust, shake, domino sweep or blow on anyone. (The record's own `light` is a burning piece's point light.)
+### Xin Yi, the One Who Woke — `src/entities/enemies/wokenOne/wokenOne.js` exports `class WokenOne` (ADR-156 – ADR-158)
+A `Duelist` with `WOKEN_KIT`; COMBAT.md → "The One Who Woke" has the fight. The kit: `{ id: 'wokenOne', TUNING,
+MOVES, MOVE_NAMES, CLIP, realise, transitions { 2: 'ironSeeds', 3: 'rising' }, counterMove (answer / answer2 /
+answer3 by phase), streakMove (hundredHands / 2 / 3), maxPhase 3, loadout ONE_LOADOUT, poses (per phase:
+poses.js phasePoses), blade ONE_FIST, REACT { bend, stop }, OPEN ['bend'] }`. Files: tuning.js, moves.js
+(Tian Lei's exported strike builders; MOVES_P1, the phase-1 copy with the left hand behind his back in every
+key; CLIPS_BY_PHASE; `realise` with deja vu's REPLAY), poses.js (three guards), links.js, iron.js (`IronMoves`,
+phase 2's guns), source.js (`SourceMoves`, phase 3), fx.js (`WokenFx extends AscFx`: LordFx's pool of thrown
+things, the code palette in the void slot), gear.js, look.js (the body's).
+```
+name = 'XIN YI, THE ONE WHO WOKE';  kind = 'duelist'
+lives { total: 2, left }           // bar 1 = phases 1 - 2 (TUNING.hp, the gate at phaseAt[1]); bar 2 = phase 3 (hp2)
+cameraPull                         // m the camera eases back (main.js updateCameraFocus): flight keeps both in frame
+iron                               // IronMoves: weigh (the reload after reload.after ranged moves), begin, onImpact,
+                                   //   onCast ('shot'), onSustain (Iron Rain's ticks), motion (the strafe, the wheel)
+source                             // SourceMoves: held[] (the stop), sent(r), canUnwrite(), front { live, r, ... },
+                                   //   fist { x, z } (the Falling Fist's spot), draw(dt)
+bend(why, force) → bool            // THE BEND (phase 2): 'shot' | 'cut'; false: he cannot (bent already, cooling)
+onShotReturned(s)                  // AscFx: a returned shot reached him (phase 2: the Bend, else it lands: bend.returned)
+handPoint(left, out)               // the hand as drawn (a muzzle, a bolt's start)
+victoryNote()                      // 'YOU LEARNED THE LONG SECOND' after the fight that granted it
+debug.setPhase(n) / setForm(n), phase3() (the fall and the rising), bendNow(why), fallAndRise(), scene(id),
+  dejavu(name), hold(n), held(), flight('fist' | 'pass')
+```
+**Two bars, three phases.** `phaseAt` [1, 0.5, 0]: the engine's gate stops bar 1 at half (phase 2's
+transition `ironSeeds`); phase 2 has no gate, so bar 1 empty calls `_onHpZero`, which BREAKS him (Tian Lei's
+way). `onExecute` on bar 1 is THE FALL: `_changing` (takeHit returns 0), `_fall`, `startReact('executed')`
+(the clip: flat on his back for fall.lie s), `pendingPhase` 3, flow.cinematic slowmo, scenes.hold,
+`dragon:fall`. The rising (`rising`, a transition) starts the morph to the Source from his body and the script
+wave to 1 (onActStart); `enterPhase(3)` makes bar 2 full; at its ring `_palmT` = rising.palm s: a cut is
+caught on the raised palm (`_palmCatch`: `dragon:guard {caught}`, the blade thrown back). The deathblow on bar
+2 kills him (`_die`: the Long Second granted, the hall's `hall` scene back).
+**The Lean** is his ward clips (moves.js CLIPS ward / wardR / wardHigh: slips) and one `fx.afterimages` each.
+**Deja vu**: a LINKS entry with `dejavu` (links.js: the first of each replayable string, `force`, phase 2 to
+itself, phase 3 to its mirrored copy `<name>M`, `mirrorOf`, `manual`). `WokenBrain._startNext` sets `REPLAY`
+(moves.js) to the first pass's draws (`A.draws`), so the realiser draws the same holds and picks, and
+`_dejavuNext`; `onActStart` stutters the set (`scenes.stutter`, `scenes.script(1, pulse)`) and emits
+`dragon:dejavu`.
+**Optional engine fields this boss added** (other kits unchanged): a beat's `noWorld` (brain.js `_worldBlow`:
+no world blow of the brain's own: Iron Rain's lit line, Return to Sender's ring); a hit's `guardCost`
+(player.js `_block`: what a block costs the meter instead of GUARD.cost; Iron Rain's shots); a boss's
+`cameraPull` (main.js).
+**The set** (world/scriptHall.js, ADR-157): `createScriptHall`, `HALL` (layout), `SCENES`, `SLOTS`; returns
+createForest's shape + `scenes` (below) + `ambience` (the falling script: atmosphere.js runs it).
+
+**Scenes: a set that morphs** (ADR-157; world/scriptHall.js is the only one). A set may return
+`scenes { ids, now, k, to(id, { x, z, speed }), snap(id), reset(), update(dt), hold(sec), stutter(sec),
+script(k, sec) }`; `ids[0]` is the home scene. A breakable def with `scene: '<id>'` stands only in that scene
+(destructibles.js: the record's `scene`, `absent`); a def without one is in every scene. `Destructibles`
+reads `set.scenes.ids[0]` as `sceneHome`; at its build and at every `reset()` the pieces of the other scenes
+are put out of the world. `present(b, on)`: off, the piece is hidden with its stub and cracks, its colliders
+out, its fire out, its state GONE (so every query skips it: strike, sweep, stop, coverAt, nearest, floorNear,
+ignite, bites); on, it is back whole (`_restore`, the per-piece half of the reset). `sceneNow` is the scene
+shown (the set's scenes set it). `world.restore()` calls `scenes.reset()` after the destructibles' reset. A set
+without `scenes` behaves exactly as before. `world:scene {id, x, z}` as a morph starts.
+The Hall's own surface (world/scriptHall.js; nothing else reads it): a piece's `scene` is its HOME tag for the
+destructibles' reset; membership is the set's, `scenes.member(b, id)`, with two optional def fields: `within:
+[ids]` (the scenes a piece stands in: the first four watchers stand in the hall and the dojo) and `later: true`
+(only once the hall has been left since the reset, `scenes.left`: the four more watchers, tagged `scene:
+'hall2'` so the reset puts them out). `scenes.morphing`, `base`, `light` (SCENE_LIGHT eased over a morph),
+`burst(b)` (a piece's letting go: digits sampled from its own triangles at build, `def.shed`). Exports:
+`HALL` (+ `wall`, `panel`, `morph.width`), `SCENES`, `SLOTS`, `SCRIPT_LOOKS`, `WATCHERS`, `SCENE_LIGHT`,
+`RAIN`. A morph also sinks the wreckage inside its front (wreckage.js `e.sink`) and mends cracked or broken
+slabs under it (`present` off and on). materials.js: `SCRIPT_GLSL`, `SCRIPT_GRID` (the art pass's letter
+cell and anchor, pointed at by the ambience: the prop wave runs down its columns), `scriptUniforms(U)`;
+prop-art and carved materials read `uScript` / `uScriptF` behind a strength test.
+
 ## Event catalogue (exact names — producers → consumers)
 Player → hud/audio/fx/flow:
 - `player:attack {kind:'light'|'heavy'|'slam'|'cleave'|'thrust', combo, charge, name}` (swing starts; combo 1–5 = the chain hit, slam = hit 5, the sprint slash and the roll cut report 1; heavy = a heavy branch, combo 0–4 = the light it followed (ADR-115; the Earthbreaker after the fourth is kind slam); cleave = the charge's release, thrust = the execution against a duelist; name = the attack's data name, combat.js),
@@ -4197,6 +4267,12 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   what did it: a pack's move name, assist / lift / twin / swap, or cut / parry / burst / pearl / beam / spring / copy / break / phase / mantle / death; audio a paper tear),
   `dragon:sheath {state}` (the Sheathed's sheath changed, ADR-145: settle = the hand on the hilt, draw = the blade out,
   click = it went home (the grove falls), carry; audio: the breath, the click),
+  Xin Yi, the One Who Woke (ADR-156; audio plays each, the HUD feed none): `dragon:shot {attack, heavy}` (a gun fires),
+  `dragon:reload` (both guns thrown away), `dragon:bend {why}` (THE BEND: why 'shot' or 'cut'), `dragon:stop {held}` (a
+  returned bolt hangs before his palm; held = how many now), `dragon:sent {count, result}` (Return to Sender answered),
+  `dragon:unwrite {count}` (bricks torn out of the code pillars), `dragon:dejavu {name}` (the hall stutters: the string
+  replays), `dragon:fall {x, z, lie}` (THE FALL: bar 1 empty and the deathblow; he lies lie s), `dragon:stillHand {dur}`
+  (the rising's ring went out: the Still Hand held dur s),
   `dragon:posture {posture, max}`, `dragon:postureBreak`, `dragon:stagger` (ordinary stagger only), `dragon:phase2`,
   `dragon:phase3`, `dragon:phase4` (a duelist's later phases: the Starless Lord's blade forms), `dragon:phase {n}` (the wyrm: with phase 2 and 3, on the transition roar), `dragon:plunged {execution}`
   (contract 2: every plunge that lands, even during a transition or the killing one),
@@ -4254,6 +4330,8 @@ World → audio (destruction, ADR-107; see "Destruction" above):
   down and ground behind it has opened. x, z: the end of the lane that opened furthest; reach: how far from the
   centre the hero's ground goes there, m; lanes: lanes open in all; first: nothing was open before. One reused
   payload. The HUD feed says it once a fight, on first)
+- `world:scene {id, x, z}` (ADR-157, the Hall of Falling Script: the set's scenes.to began a morph to scene id
+  from x, z; audio a falling run of ticks)
 - A piece a boss felled emits combat:tell / combat:flash with source 'world', attack 'fallingDebris', tell 'red'
   and hazard: true (be out from under it; audio plays the hazard cue)
 

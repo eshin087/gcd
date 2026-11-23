@@ -54,6 +54,10 @@ export const LOOK_SWITCHES = Object.freeze([
   ['grove', ['a', 'b', 'c'], 'a', 'a', true, ['grove'], 'the grove: a moonlit mist, b grey dawn, c first snow (a reload)'],
   ['sheathLook', ['a', 'b', 'c', 'd'], 'a', 'a', true, ['grove'], 'Lu Wusheng\'s body: a mourning white, b reed cloak, c one sleeve, d the wanderer (a reload)'],
   ['drawCut', ['a', 'b'], 'a', 'a', false, ['grove'], 'the draw\'s cut: a one white line, b with an afterimage'],
+  // --- code: the Hall of Falling Script and Xin Yi (ADR-156, ADR-157; pending: the owner picks from the sheets)
+  ['oneLook', ['a', 'b', 'c'], 'a', 'a', true, ['code'], 'Xin Yi\'s body: a the long coat, b the cassock, c the grey coat (a reload)'],
+  ['hall', ['a', 'b'], 'a', 'a', true, ['code'], 'the hall: a pale marble, green-black inlay; b dark basalt, jade-lit edges (a reload)'],
+  ['script', ['a', 'b', 'c'], 'a', 'a', true, ['code'], 'the script wave: a a shimmer and the full turn, b nothing until the Source, c strong from the start (a reload)'],
   // --- grove: Lu Wusheng readable (ADR-152): the palette picked; the print's five steps and the mark wait for the owner
   ['sheathArt', ['0', '1', '2', '3', 'a'], '0', '2', true, ['grove'], 'Lu Wusheng\'s print, five steps: 0 the wyrm\'s digits as shipped, 1 digits in his colours, 2 digits lit and outlined, 3 ink-line flattened, a the hero\'s ink-line art (a reload)'],
   ['sheathTone', ['a', 'b', 'c'], 'a', 'a', true, ['grove'], 'the Wanderer\'s palette: a indigo and sand, b pale and cold, c moss and rust (a reload)'],
