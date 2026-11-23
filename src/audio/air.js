@@ -84,8 +84,15 @@ export class Air {
     this.recipe = R;
     this.levelId = id;
     const m = this.mix;
-    m.out = 0;
+    for (const k in m) m[k] = 0;
     m.oldWind = m.oldVoices = 1;
+    // at the page's first sound (the context is new and the old bed still fading in) there is nothing to
+    // cross-fade from: start on the recipe, so the old wind is not heard for a moment first
+    if (now < 3) {
+      m.oldWind = R.old?.wind ?? 0;
+      m.oldVoices = R.old?.voices ?? 0;
+      this._old(now, m.oldWind, m.oldVoices, 0.05);
+    }
     this._gust = this._lvl = this._hush = this._wet = 0;
     this._tense = 1;
     this._swayPh = this.range(0, TAU);

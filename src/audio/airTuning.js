@@ -47,52 +47,52 @@ export const AIR_TUNE = Object.freeze({
     // a moonlit forest clearing: today's forest (its crickets and owl stay), the wind now the world's
     cinderwood: Object.freeze({
       old: { wind: 0, voices: 1 },
-      wind: { gain: 0.16, base: 0.3, level: 0.55, gust: 0.75, idle: 0.3, sway: [0.25, 11], lp: [260, 820], hp: 0, q: 0.6, rate: [0.85, 1.05], pan: 0.55 },
-      leaves: { gain: 0.035, bp: 2600, q: 0.7 },
-      rain: { gain: 0.05, hp: 380, lp: 2300 },
+      wind: { gain: 0.28, base: 0.3, level: 0.55, gust: 0.75, idle: 0.3, sway: [0.25, 11], lp: [260, 820], hp: 0, q: 0.6, rate: [0.85, 1.05], pan: 0.55 },
+      leaves: { gain: 0.06, bp: 2600, q: 0.7 },
+      rain: { gain: 0.11, hp: 380, lp: 2300 },
       hushWind: 0.35,
     }),
     // a burned sword sect: a dry hollow wind over stone, thinner and higher, a faint whistle in gusts
     ash: Object.freeze({
       old: { wind: 0, voices: 0 },
-      wind: { gain: 0.11, base: 0.3, level: 0.5, gust: 0.8, idle: 0.35, sway: [0.35, 7], lp: [420, 1250], hp: 160, q: 0.9, rate: [1.0, 1.2], pan: 0.6 },
-      whistle: { gain: 0.012, f: 1350, rise: 0.18, q: 14 },
-      grit: { gain: 0.006, hp: 3800, level: 0.2 },
-      spells: { squall: { kind: 'embers', gain: 0.03 } },
-      crow: { every: [55, 120], f: 470, gain: 0.018, caws: [1, 3] },
+      wind: { gain: 0.2, base: 0.3, level: 0.5, gust: 0.8, idle: 0.35, sway: [0.35, 7], lp: [420, 1250], hp: 160, q: 0.9, rate: [1.0, 1.2], pan: 0.6 },
+      whistle: { gain: 0.02, f: 1350, rise: 0.18, q: 14 },
+      grit: { gain: 0.01, hp: 3800, level: 0.2 },
+      spells: { squall: { kind: 'embers', gain: 0.06 } },
+      crow: { every: [55, 120], f: 470, gain: 0.03, caws: [1, 3] },
       hushWind: 0.4,
     }),
     // the crater of a fallen star: no wind at all; a drone that breathes with the star, and near-silence
     starless: Object.freeze({
       old: { wind: 0, voices: 0 },
-      drone: { f: 34, fifth: 51.4, gain: 0.07, sway: [0.3, 14] },
-      spells: { breath: { kind: 'swell', gain: 0.09, read: 'breath' } },
+      drone: { f: 34, fifth: 51.4, gain: 0.018, sway: [0.3, 14] },
+      spells: { breath: { kind: 'swell', gain: 0.03, read: 'breath' } },
       hushWind: 0.6,
     }),
     // a tournament ring on high badlands: a strong steady plateau wind, grit in the gusts, far thunder
     ring: Object.freeze({
       old: { wind: 0, voices: 0 },
-      wind: { gain: 0.14, base: 0.55, level: 0.4, gust: 0.55, idle: 0.6, sway: [0.12, 13], lp: [330, 1100], hp: 40, q: 0.7, rate: [0.9, 1.1], pan: 0.7 },
-      grit: { gain: 0.01, hp: 3200, level: 0.15 },
-      thunder: { gain: 0.16, delay: [1.5, 5], len: [3.5, 6.5], lp: 120, gap: 5 },
+      wind: { gain: 0.24, base: 0.55, level: 0.4, gust: 0.55, idle: 0.6, sway: [0.12, 13], lp: [330, 1100], hp: 40, q: 0.7, rate: [0.9, 1.1], pan: 0.7 },
+      grit: { gain: 0.016, hp: 3200, level: 0.15 },
+      thunder: { gain: 0.45, delay: [1.5, 5], len: [3.5, 6.5], lp: 120, gap: 5 },
       hushWind: 0.3,
     }),
     // a moonlit hill shrine: a soft breeze in sighs; crickets farther off than the forest's; no chime
     fox: Object.freeze({
       old: { wind: 0, voices: 0 },
-      wind: { gain: 0.13, base: 0.2, level: 0.55, gust: 0.7, idle: 0.3, sway: [0.6, 9], lp: [240, 700], hp: 0, q: 0.6, rate: [0.85, 1.0], pan: 0.5 },
-      leaves: { gain: 0.025, bp: 3200, q: 0.8 },
-      rain: { gain: 0.045, hp: 380, lp: 2200 },
-      crickets: { voices: [[4150, -0.55, 0.012], [4600, 0.6, 0.009]], period: [0.5, 0.8], pulses: 2, on: [3, 10], off: [3, 9], rev: 0.6 },
+      wind: { gain: 0.23, base: 0.2, level: 0.55, gust: 0.7, idle: 0.3, sway: [0.6, 9], lp: [240, 700], hp: 0, q: 0.6, rate: [0.85, 1.0], pan: 0.5 },
+      leaves: { gain: 0.045, bp: 3200, q: 0.8 },
+      rain: { gain: 0.1, hp: 380, lp: 2200 },
+      crickets: { voices: [[4150, -0.55, 0.018], [4600, 0.6, 0.014]], period: [0.5, 0.8], pulses: 2, on: [3, 10], off: [3, 9], rev: 0.6 },
       hushWind: 0.35,
     }),
     // bamboo at night, the grove holds its breath: no wind of its own (only a blow's air), one cricket,
     // the bonfire. The silence is the level.
     grove: Object.freeze({
       old: { wind: 0, voices: 0 },
-      wind: { gain: 0.16, base: 0, level: 0, gust: 1, idle: 0, sway: [0, 10], lp: [220, 700], hp: 0, q: 0.6, rate: [0.85, 1.0], pan: 0.5 },
-      rain: { gain: 0.04, hp: 400, lp: 2000 },
-      crickets: { voices: [[3900, 0.25, 0.02]], period: [0.85, 1.2], pulses: 2, on: [5, 14], off: [4, 11], rev: 0.25 },
+      wind: { gain: 0.24, base: 0, level: 0, gust: 1, idle: 0, sway: [0, 10], lp: [220, 700], hp: 0, q: 0.6, rate: [0.85, 1.0], pan: 0.5 },
+      rain: { gain: 0.08, hp: 400, lp: 2000 },
+      crickets: { voices: [[3900, 0.25, 0.03]], period: [0.85, 1.2], pulses: 2, on: [5, 14], off: [4, 11], rev: 0.25 },
       hushWind: 1,
     }),
   }),
@@ -100,7 +100,7 @@ export const AIR_TUNE = Object.freeze({
   /** a level with no block of its own: a low breeze, nothing else */
   quiet: Object.freeze({
     old: { wind: 0, voices: 0 },
-    wind: { gain: 0.1, base: 0.3, level: 0.4, gust: 0.6, idle: 0.3, sway: [0.2, 11], lp: [240, 700], hp: 0, q: 0.6, rate: [0.9, 1.0], pan: 0.5 },
+    wind: { gain: 0.18, base: 0.3, level: 0.4, gust: 0.6, idle: 0.3, sway: [0.2, 11], lp: [240, 700], hp: 0, q: 0.6, rate: [0.9, 1.0], pan: 0.5 },
     hushWind: 0.4,
   }),
 });
