@@ -12,7 +12,7 @@ import { setFill } from '../ashDisciple/bodyArt.js';
 //            b   the idol: a navy suit, gold shoulder pieces of his own shape, white gloves, a cape with
 //                a bright lining, blond slick hair.
 //            c   tomorrow's tyrant: black and chrome, a crimson cape, white hair.
-//   ?glare=a|b|c   his eyes' heat (fx.js): a crimson with a white-hot steel core, b crimson alone, c the
+//   ?glare=a|b|c   his eyes' heat (fx.js; the owner picked a, 2026-11-23): a crimson with a white-hot steel core, b crimson alone, c the
 //                  engine's orange fire with a steel core.
 //   ?halCape=0|1|2|3   how his cape and colours read at game size (the look pass of 2026-11-23: at
 //                  ~40 px tall the cape hung hidden behind him from the front, its red printed pink under
