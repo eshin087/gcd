@@ -14,6 +14,7 @@ import {
   carved, landmarkPoint, frustum, limb, facetCol, buildGreatFox, buildSpiritGate, GREAT_FOX_COLLIDERS, SPIRIT_GATE_COLLIDERS,
 } from './landmarks.js';
 import { breakableFloor } from './floor.js';
+import { hangFrom } from './hang.js';
 
 // The Foxfire Terrace (levels/foxfire.js; ADR-147): a moonlit hill shrine. South to north (the player
 // walks north, -z): the bonfire on its landing, a path of flagstones up the slope between dead trees,
@@ -254,7 +255,8 @@ function buildCharmPost(rng, x, z, yaw) {
       p.setX(i, p.getX(i) + (k % 2 ? 0.035 : 0));
     }
     s.translate(sx, H - 0.38 - L / 2, 0.15);
-    parts.push([s, facetCol(PAPER, range(rng, 0.85, 1.1))]);
+    // (paper: it flutters in the breeze from the bar, world/hang.js)
+    parts.push([hangFrom(s, H - 0.38, 'paper'), facetCol(PAPER, range(rng, 0.85, 1.1))]);
   }
   const geos = [];
   for (const [g, col] of parts) {

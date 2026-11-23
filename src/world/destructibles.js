@@ -10,6 +10,8 @@ import { Wreckage } from './wreckage.js';
 import { Edge } from './edge.js';
 import { lumpy, carve, mul, slabGeometry, STONE, refine, brickEdge } from './forest.js';
 import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
+import { hangs, hangAttr, hangOf, hangLean } from './hang.js';
+import { HANG } from './hangTuning.js';
 
 // Breakable objects (ADR-107): the trees, stones, pillars and props of a set that blows can chip,
 // break, fell, burn, lift and throw. A set lists them in its output (`breakables`) instead of merging
@@ -936,6 +938,7 @@ export class Destructibles {
     // bites (BREAK.chip): the bricks a blow took (x, y, z, part each), the radius of the blow being dealt,
     // and counts since the reset (the tests' report)
     this._bits = new Float32Array(PICK_MAX * 4);
+    this._hangV = { x: 0, y: 0, z: 0 };
     this._hr = 0.6;
     this._hc = false; // the blow is over a disc: its centre
     this._hx = 0;
@@ -959,7 +962,9 @@ export class Destructibles {
     if (!defs.length) return;
     const U = game.U;
     this.gridMat = createAsciiObjectMaterial(U, { fadeNearPlayer: true, side: THREE.DoubleSide, rigid: true });
-    this.propMat = createPropArtMaterial(U, { fadeNearPlayer: true, gain: set.stoneMaterial?.uniforms?.uGain?.value ?? 1, rigid: true });
+    // (a set with something hanging, world/hang.js: its prop art answers the wind)
+    const hang = defs.some((d) => d?.look === 'prop' && hangs(d.geos)) ? HANG.shader : null;
+    this.propMat = createPropArtMaterial(U, { fadeNearPlayer: true, gain: set.stoneMaterial?.uniforms?.uGain?.value ?? 1, rigid: true, hang });
     for (const def of defs) this._build(def);
     // (a piece's `guard`: the definitions of the pieces that must go first)
     const byDef = new Map(this.list.map((o) => [o.def, o]));
@@ -1008,6 +1013,8 @@ export class Destructibles {
   // ------------------------------------------------------------------ build
   _mesh(geos, look, x, z, y = 0, fine = 0) {
     for (const g of geos) g.translate(-x, -y, -z);
+    // (what hangs, world/hang.js: its mark into the attribute, before the cutting interpolates it)
+    if (look === 'prop') hangAttr(geos);
     // (bites on, BREAK.chip: no face longer than a brick)
     if (fine > 0) for (const g of geos) refine(g, fine);
     const parts = geos.map((g) => g.attributes.position.count);
@@ -1100,6 +1107,8 @@ export class Destructibles {
       told: false, flashed: false,
       // its bricks in the rigid batch's index (BREAK.chip; a range piece's are its body's)
       bricks: null,
+      // what of it hangs in the wind (world/hang.js: { top, give } in its own space), or null
+      hang: ranged ? null : hangOf(body.geometry),
       // thrown
       px: 0, py: 0, pz: 0, vx: 0, vy: 0, vz: 0, ang: 0, tilt: 0, tx: 0, tz: 0, blast: 0, blastR: 0, onLand: null, flySrc: -1,
       on: false,
@@ -1731,7 +1740,36 @@ export class Destructibles {
   /** `share` of the piece's bricks within `reach` of a point (world), nearest first, into this._bits; how many. */
   _take(b, x, y, z, reach, share) {
     if (b.ranged) return b.body.bite ? b.body.bite(x, y, z, reach, share, BREAK.chip.max, this._bits) : 0;
-    return b.bricks ? b.bricks.bite(x - b.x, y - b.y0, z - b.z, reach, share, BREAK.chip.max, this._bits) : 0;
+    if (!b.bricks) return 0;
+    // what hangs is drawn where the wind has it (world/hang.js): the blow is taken back to the bricks'
+    // rest, and what it took falls from where it was drawn (nothing moves while the wind is off)
+    const H = b.hang ? this._hangAt(b) : null;
+    let px = x - b.x, py = y - b.y0, pz = z - b.z;
+    if (H) {
+      const d = Math.max(0, b.hang.top - py);
+      px -= H.x * d;
+      py -= H.y * d;
+      pz -= H.z * d;
+    }
+    const n = b.bricks.bite(px, py, pz, reach, share, BREAK.chip.max, this._bits);
+    if (H) {
+      const out = this._bits;
+      for (let i = 0; i < n; i++) {
+        const d = Math.max(0, b.hang.top - out[i * 4 + 1]);
+        out[i * 4] += H.x * d;
+        out[i * 4 + 1] += H.y * d;
+        out[i * 4 + 2] += H.z * d;
+      }
+    }
+    return n;
+  }
+
+  /** A hanging piece's lean now, per metre of drop (world/hang.js hangLean), or null: still (not standing at home upright, or no wind). */
+  _hangAt(b) {
+    const e = b.body.matrixWorld.elements, ul = Math.hypot(e[4], e[5], e[6]);
+    if (b.state !== INTACT || !(ul > 1e-4) || e[5] / ul < 0.985 || Math.abs(e[13]) > 0.03) return null;
+    const H = hangLean(this.game.U, b.x, b.z, b.hang.give, this._hangV);
+    return H.x === 0 && H.z === 0 ? null : H;
   }
 
   /**
