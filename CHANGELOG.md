@@ -22,7 +22,11 @@ Sixty-nine pieces of work since 0.4.0:
   held back at the hip, a settle that turns sharp (poses only: no timing, tell or damage changed). New lines
   for the grove and eight move names (ids unchanged). *Added:* three palettes, `?sheathTone=a|b|c`, and a
   mark of his own, `?sheathMark=a|b|0` (a torn strip on the scabbard that snaps on the draw; a white streak
-  in the hair), both waiting for the owner's pick (the fight draws a and a). `sheath.mjs` LOOK.
+  in the hair); the owner picked palette a. The owner then found the ink-line print too detailed at fight
+  distance: `?sheathArt=0|1|2|3|a` renders five graded steps from the digits to the ink-line art (1 and 2
+  the digits in his colours with a stroke outline, 3 the ink-line art flattened), and prints 1 - a wear
+  a reworked body that hides the mesh at his size (full sleeves, one roll of scarf, plain gaiters). The
+  print waits for the owner's pick (a drawn). `sheath.mjs` LOOK.
 - **A sixth level: the Windless Grove and the Sheathed** (2026-11-22, ADR-144 – ADR-146). *Added:* a fifth
   level, `?level=grove` (the title screen lists it). **The Windless Grove**: a bamboo grove at night, a
   round clearing with a worn ring of paving, a mound planted with forty swords. **Lu Wusheng, the

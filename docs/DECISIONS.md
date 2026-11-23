@@ -4609,3 +4609,13 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   mark's springs, ADR-126's hand audit through One Breath). The mark's strip on the left-wrist piece hangs its
   springs on the animator after the rig is built (sheathed.js `_setup`), a light coupling to anim.js's
   `streamState` shape. Open: the owner's picks of the palette and the mark; a look on a real phone.
+
+- **Addendum (2026-11-23): five steps between the digits and the ink-line art.** The owner picked palette a, then
+  found the ink-line print too detailed at fight distance: "reads as a 3D model" (smooth shaded cloth, clean
+  outlines) and body flaws the digits hid. `?sheathArt=` now holds five steps: 0 the digits as shipped, 1 the
+  digits in his palette with a stroke outline, 2 the digits lit and outlined harder, 3 the ink-line art with
+  every cloth piece folded into one (no interior lines), no glints and half the rim, a the ink-line art. Data
+  only: the wyrm's art sources (`light`, `strokeEdge`, `rimInk`) and per-rig uniforms; no renderer or shared
+  material changed. Prints 1 - a wear a reworked body (full sleeves, one roll of scarf, plain gaiters, no wrist
+  bands); 0 keeps him as he shipped. `sheathArt` stays `a` in `PICKED` and its Lab row is `awaiting` again (the
+  picks test now lets a picked switch wait for a new pick). The author would pick 2 (DEVLOG 2026-11-23).

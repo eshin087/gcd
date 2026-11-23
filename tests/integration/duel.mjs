@@ -3209,7 +3209,7 @@ async function scenarioFxLooks() {
     const row = Object.fromEntries(LOOK_SWITCHES.map((s) => [s[0], s]));
     const bad = Object.entries(PICKED).filter(([k, v]) => !row[k] || !row[k][1].includes(v));
     // (a row marked as awaiting the owner's pick, its 8th field, draws its call site's default until then)
-    const waiting = LOOK_SWITCHES.filter((s) => s[7] === 'awaiting').length;
+    const waiting = LOOK_SWITCHES.filter((s) => s[7] === 'awaiting' && pickedOf(s[0]) == null).length; // (a picked switch may wait for a new pick: it draws the old one)
     const missing = LOOK_SWITCHES.filter((s) => pickedOf(s[0]) == null && s[7] !== 'awaiting').map((s) => s[0]);
     assert(Object.isFrozen(PICKED) && !bad.length && !missing.length && Object.keys(PICKED).length === LOOK_SWITCHES.length - waiting, `PICKED: ${Object.keys(PICKED).length} switches, each a real switch of the Lab with a real option (${bad.map(([k, v]) => `${k}=${v}`).join(', ') || 'ok'}; not picked: ${missing.join(', ') || 'none'})`);
     const owner = { kindle: 'a', ashp3: 'a', qi: 'a', flit: 'a', burn: 'a', toll: 'a', star: 'a', sky: 'a', ignite: 'a', void: 'a', presence: 'a', great: 'a', floor: 'a', ashLook: 'b', lordLook: 'b' };

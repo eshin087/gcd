@@ -1202,7 +1202,20 @@ async function scenarioLook() {
   }
   // the options, each on a rig built anew (read when his rig is built)
   const opt = (k, v, fn) => { setLook(k, v); try { const G = build(); fn(G.game.dragon, G.game.dragon.rig.materials); } finally { setLook(k, null); } };
-  opt('sheathArt', '0', (d, M) => assert(!!M.coat.uniforms.uWInk && !M.coat.uniforms.uArtFill, '?sheathArt=0: the wyrm\'s digits, as he shipped'));
+  const { SHEATH_STEP } = await imp('src/entities/enemies/sheathed/look.js');
+  let coat0 = 0;
+  opt('sheathArt', '0', (d, M) => { coat0 = d.rig.coat.length; assert(!!M.coat.uniforms.uWInk && !M.coat.uniforms.uArtFill && !meshesOf(d, M.piping).length && !d._offStrip?.length, '?sheathArt=0: the wyrm\'s digits and his body as he shipped (no mark)'); });
+  for (const st of ['1', '2']) {
+    opt('sheathArt', st, (d, M) => {
+      const c = M.coat.uniforms.uWInk?.value, want = SHEATH_TONE.a.coat.map((x) => x * SHEATH_STEP[st].ink);
+      assert(!!c && same([c.r, c.g, c.b].map((x) => +x.toFixed(3)), want) && d.rig.coat.length === coat0 + 4 && d._offStrip?.length === 2, `?sheathArt=${st}: the digits in his palette (robe ink ${c ? [c.r, c.g, c.b].map((x) => x.toFixed(2)) : '?'}), his reworked body (${d.rig.coat.length} cloth panels), the mark`);
+    });
+  }
+  opt('sheathArt', '3', (d, M) => {
+    let lines = 0;
+    d.rig.root.traverse((o) => { if (o.isMesh && o.material === M.coat) lines += o.geometry.attributes.aPart?.array.some((x) => x > 0) ? 1 : 0; });
+    assert(!M.coat.uniforms.uWInk && !!M.coat.uniforms.uArtFill && lines === 0 && M.coat.uniforms.uArtSpec.value.x === 0, `?sheathArt=3: the ink-line art, flat (robe meshes with inner lines: ${lines})`);
+  });
   for (const t of ['b', 'c']) opt('sheathTone', t, (d, M) => assert(same(fillOf(M.coat), SHEATH_TONE[t].coat) && same(fillOf(M.pants), SHEATH_TONE[t].pants), `?sheathTone=${t}: its robe and trousers`));
   opt('sheathMark', 'b', (d, M) => assert(meshesOf(d, M.piping).length === 0 && !d._offStrip?.length && d.rig.streamers.length === d.anim.streamState.length, '?sheathMark=b: no strip (the streak instead)'));
   opt('sheathMark', '0', (d, M) => assert(meshesOf(d, M.piping).length === 0 && !d._offStrip?.length, '?sheathMark=0: no mark'));

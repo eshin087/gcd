@@ -5,6 +5,39 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-23 — Session 79, round 2: the Sheathed between the digits and the ink-line art (ADR-152 addendum)
+
+**Why.** The owner picked palette a, then looked at the ink-line Sheathed in the game: "too detailed and his flaws
+from the non ascii look is hurting. find a right balance". At fight distance he read as a 3D model (smooth shaded
+cloth, clean outlines) and body flaws showed that the digits had hidden. They asked for three steps between the
+two prints, to pick from.
+
+**What changed.**
+- `?sheathArt=0|1|2|3|a` (look.js `SHEATH_STEP`, `wandererDigits`, `sheathTuned`, `sheathDigits`): 1 and 2 are the
+  wyrm's digits with the palette's inks (x 0.42 / 0.5; trousers x 0.72 and wraps x 0.8, since neutral greys print
+  near white), the art source's light floor 0.03 / 0.1 and a stroke outline reaching in to fresnel 0.3 / 0.12 in a
+  paler ink; 3 is the ink-line art with the cloth's aPart folded to 0 in `_setup` (no fold or crease lines), no
+  glints, no fold shading, half the rim. 0 is the digits and his body as on main (no mark, the old tail and scarf).
+- His body in prints 1 - a: full sleeves (no thin stiff arm, no gap at the side), one deep roll of scarf instead of
+  two turns, plain gaiters instead of six shin bands, no wrist bands. Gameplay untouched.
+- `sheathTone: 'a'` in `PICKED` (the owner's pick); `sheathArt` stays `a`, its Lab row `awaiting` again; duel.mjs's
+  picks check lets a picked switch wait for a new pick. `sheath.mjs` LOOK covers every print.
+
+**Measured** (the camera pinned at its default distance; his pixels / the floor; hero about 25 / 21): 720p 0 45.8 /
+16.9, 1 32.3 / 16.9, 2 43.4 / 17.0, 3 35.2 / 16.9, a 35.3 / 16.9; phone 0 44.3, 1 33.9, 2 45.6, 3 29.0, a 27.2 (floor 16.4).
+
+**Sheet:** `sheets-owner/sheet_balance.png` (five rows; carry, run, settle, 0.25 s after the cut at 2 - 3x and the whole
+frame, 720p then phone; the hero in every tile).
+
+**The author's pick: 2.** It reads as letters first (digits on a dark body, a stroke outline), it is brighter than the
+hero, and the robe (blue), the trousers (grey) and the scarf (sand) stay apart. Where each fails: 0 thin and colourless;
+1 dim on the phone (33.9) and the digits cover only his lit side, so he is narrower than the hero; 2 still narrow, the
+face does not read, the strip is one pale stroke; 3 at fight distance hardly differs from a (the interior lines were
+few letters wide already), so it still reads as a drawn figure; a the owner's complaint.
+
+**Not checked.** A real phone. The close look for clipping was done in films at a 7 m camera for the draw and the run
+only; nothing clipped there that shows at fight distance.
+
 ## 2026-11-23 — CI in four parallel jobs; docs-only PRs skip the tests (ADR-153)
 
 **Owner**, after asking why every PR's check takes ~12 minutes when their other games deployed at once:

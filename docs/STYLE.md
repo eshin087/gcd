@@ -1035,7 +1035,7 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?grove=` | the Windless Grove's light and ground (ADR-145; read when the level is built) | - | a moonlit night with mist | grey dawn fog | first snow: pale litter, frost on the stalks | **a** |
 | `?sheathLook=` | Lu Wusheng's body (read when his rig is built) | - | Mourning White: undyed hemp, a white brow band with two trailing tails, hair in a knot | Reed Cloak: a shaggy straw rain cape, a cloth over the lower face | One Sleeve: a dark robe off the sword arm, the bare arm bound in cord, short grey hair; `d` the Wanderer (added 2026-11-22 at the owner's ask, an option): a slighter man (drawn 7 % smaller) in a faded indigo robe over wide charcoal trousers, a long sand scarf with trailing tails, dark hair in a high tail | **d** |
 | `?drawCut=` | the Sheathed's draw (ADR-145) | - | one white line | the line and an afterimage of him where he stood | - | **a** |
-| `?sheathArt=` | Lu Wusheng's print (ADR-152; read when his rig is built) | the wyrm's digits (`toDragonLook`, as he shipped) | the hero's ink-line art, lifted to read on the grove's floor | - | - | **a** (the owner's pick, 2026-11-22) |
+| `?sheathArt=` | Lu Wusheng's print, five graded steps (ADR-152; read when his rig is built; `1` - `a` wear his reworked body) | the wyrm's digits and his body as he shipped | `a` the hero's ink-line art, lifted; `1` the digits in his palette with a stroke outline; `2` the digits lit and outlined harder | `3` the ink-line art flattened: no fold or crease lines, no glints, half the rim | - | not picked yet: the owner asked for steps between `0` and `a` (2026-11-23); `a` drawn |
 | `?sheathTone=` | the Wanderer's palette in the ink-line art (ADR-152) | - | indigo and sand: a faded indigo robe, charcoal trousers, a sand scarf | pale and cold: a bone-white robe, slate trousers, a blue-grey scarf | moss and rust: a moss-green robe, dark brown trousers, a rust scarf | **a** |
 | `?sheathMark=` | a mark of his own (ADR-152; the Wanderer only) | none | a long torn strip of unbleached cloth tied below the scabbard's mouth: it trails when he moves, snaps on the draw | a white streak from the left temple through the high tail | - | not picked yet (a drawn) |
 
@@ -1248,6 +1248,16 @@ art path at 720p he is still about 12 letter rows; b survives it by its colour, 
   earth (sector slabs in six rings), a stele, two stone lanterns, mossy boulders, a ruined pavilion (posts
   and a fallen thatch roof). Night: a cold low moon, pale green-grey fog; the default fireflies, mist and
   leaves. `?grove=b` grey dawn fog, `c` first snow.
+- **His print, five steps (2026-11-23).** The owner found the ink-line print TOO detailed at fight distance ("reads as a 3D
+  model": smooth shaded cloth, clean outlines; body flaws the digits hid) and asked for steps between it and the
+  digits: `?sheathArt=0` the digits as he shipped (his old body), `1` the digits in his palette (`SHEATH_STEP` ink x
+  0.42, the trousers and wraps a step darker, a stroke outline reaching in to fresnel 0.3 in a paler ink), `2` the
+  digits lit and outlined harder (ink x 0.5, a light floor of 0.1, strokes to 0.12 in a near-white ink), `3` the
+  ink-line art flattened (every cloth piece one piece: no fold or crease lines; no glints or fold shading; half the
+  rim), `a` the ink-line art below. Prints `1` - `a` wear his reworked body (`sheathTuned`): full sleeves (no thin
+  stiff arm, no gap at the side), the long robe, one deep roll of scarf, plain gaiters, no wrist bands. `a` draws
+  until the owner picks. Measured at 1280 x 720 (his pixels / the floor): 0 45.8 / 16.9, 1 32.3 / 16.9, 2 43.4 / 17.0,
+  3 35.2 / 16.9, a 35.3 / 16.9 (the hero about 25 / 21).
 - **His figure** is printed in the hero's ink-line art (ADR-152, `?sheathArt=a`, the owner's pick: the way
   the hero and Shen Hui are drawn; `?sheathArt=0` keeps the wyrm's digits he shipped in, `toDragonLook` with
   `SHEATH_ART[look]`). The Wanderer (body d) takes his palette from `sheathed/look.js` `SHEATH_TONE`
