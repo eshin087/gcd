@@ -1,9 +1,12 @@
+import * as THREE from 'three';
 import { Duelist, HERO_SCALE } from '../duelist/duelist.js';
+import { GUARD_KINDS } from '../duelist/guard.js';
+import { DIM } from '../../player/model.js';
 import { DuelBrain } from '../duelist/brain.js';
 import { perPhase } from '../duelist/realise.js';
 import { densityOf } from '../duelist/director.js';
 import { TELL } from '../../../combat/rules.js';
-import { FOX_LOADOUT, FOX_BLADE } from './gear.js';
+import { FOX_LOADOUT, FOX_FIST } from './gear.js';
 import { FOX_POSES } from './poses.js';
 import { MOVES, MOVE_NAMES, CLIP, TRANSITIONS, realise } from './moves.js';
 import { TUNING } from './tuning.js';
@@ -41,7 +44,8 @@ export const FOX_KIT = Object.freeze({
   streakMove: () => 'streakFlurry',
   loadout: FOX_LOADOUT,
   poses: FOX_POSES,
-  blade: FOX_BLADE,
+  // (bare-handed: the right fist on the sword joint; fox.js makes the striking limb the engine's blade)
+  blade: FOX_FIST,
   dress: (d, dt) => dressFox(d, dt),
 });
 
@@ -61,6 +65,9 @@ class FoxBrain extends DuelBrain {
 }
 
 const CRESCENT_POOL = 12;
+const _a = new THREE.Vector3(), _b = new THREE.Vector3();
+/** The beat a move is in at its time t (its windup or its active frames), or null. */
+const beatNow = (a) => (a ? a.beats.find((b) => a.t < b.end + 1e-6) ?? null : null);
 
 export class ThousandFox extends Duelist {
   constructor(game) {
@@ -113,6 +120,7 @@ export class ThousandFox extends Duelist {
     (this.pearl ??= new FoxPearl(this)).reset();
     this.clones?.reset();
     this.mantleK = 0;
+    this.tails = 0;
     this._igniteT = 0;
     this._mantleForced = null;
     super.reset();
@@ -157,7 +165,7 @@ export class ThousandFox extends Duelist {
       if ((def.phase ?? 2) >= 3) C?.burnAll();
       else C?.popAll('phase');
     }
-    if (A.beats.some((b) => b.def.pearl === 'charge')) this.pearl.begin(A);
+    if (A.beats.some((b) => b.def.pearl === 'charge' || b.def.pearl === 'drive')) this.pearl.begin(A);
     return true;
   }
 
@@ -165,6 +173,28 @@ export class ThousandFox extends Duelist {
    *  Round's call at their impact. */
   beatMotion(b, u, s, dt) {
     const D = b.def, C = this.clones;
+    // the springboard (Fox Descending): to the self nearest him, then off its hands into the leap
+    if (D.spring) {
+      if (b._spring === undefined) {
+        b._spring = C.nearest(this.position.x, this.position.z);
+        if (b._spring >= 0) C.brace(b._spring, this);
+      }
+      const c = b._spring >= 0 ? C.list[b._spring] : null;
+      const from = D.leap?.from ?? 0.3;
+      if (c?.alive && u < from) {
+        const k = Math.min(1, dt / Math.max(0.05, (from - u) * b.W));
+        this.moveBy((c.x - this.position.x) * k, (c.z - this.position.z) * k);
+      } else if (c?.alive && !b._sprung) {
+        b._sprung = true;
+        C.popAt(c.i, c.x, 1, c.z, false, 'spring');
+      }
+    }
+    // the drive: a self at his side helps shape the Pearl
+    if (D.pearl === 'drive' && !b._assist && u < 0.6) {
+      b._assist = true;
+      const i = C.nearest(this.position.x, this.position.z);
+      if (i >= 0) C.assist(i, this);
+    }
     if (D.swap && !b._swapped) {
       b._swapped = true;
       const p = s?.p;
@@ -212,6 +242,8 @@ export class ThousandFox extends Duelist {
       W?.ignite?.(x, z, 1.8, WT.pounceFire);
       W?.ignite?.(this.position.x + fx * L, this.position.z + fz * L, 1.8, WT.pounceFire);
       this.fx.pounceLand?.(x, z, 1.8);
+    } else if (D.pearl === 'drive') {
+      this.pearl.drive(b, s, a);
     } else if (D.pearl === 'great') {
       const r = D.zone?.r ?? 3.4;
       W?.impact?.(this.position.x, this.position.z, r, WT.greatPearl, o);
@@ -254,6 +286,9 @@ export class ThousandFox extends Duelist {
     // the mantle (phase 3): grows in over T.mantle.grow s after the change; where he stands, catches
     const M = this.T.mantle;
     const want = this._mantleForced ?? (this.phase >= 3 && this.mode !== 'dying' && this.mode !== 'dead' && this.mantleK > 0 ? 1 : 0);
+    // the fox spirit's tails (FoxFx.mantle reads d.tails): one as the mantle wakes, nine as his bar runs out
+    const gate = this.maxHp * (this.T.phaseAt[2] ?? 0.33);
+    this.tails = this.phase >= 3 ? Math.max(1, Math.min(M.tails, 1 + Math.round((M.tails - 1) * (1 - this.hp / Math.max(1, gate))))) : want > 0 ? 3 : 0;
     if (want > 0) this.mantleK = Math.min(1, Math.max(this.mantleK, 0.001) + dt / Math.max(0.1, M.grow));
     else this.mantleK = Math.max(0, this.mantleK - dt * 2);
     if (this.mantleK > 0.3 && this.mode !== 'sleep') {
@@ -273,7 +308,7 @@ export class ThousandFox extends Duelist {
       for (const b of a.beats) {
         if (!b.def.pearl || b.feint || a.t < b.start || a.t >= b.impact) continue;
         const u = (a.t - b.start) / Math.max(0.05, b.impact - b.start);
-        if (b.def.pearl === 'charge') this.pearl.charge(b, u, dt);
+        if (b.def.pearl === 'charge' || b.def.pearl === 'drive') this.pearl.charge(b, u, dt);
         else if (b.def.pearl === 'great') {
           const h = this._hs[0];
           this.fx.greatPearl?.(h.x, h.y + 0.9, h.z, u, dt);
@@ -307,6 +342,119 @@ export class ThousandFox extends Duelist {
     const dmg = super.takeHit(o);
     if (charging && dmg > 0 && this.pearl.charging && this.mode === 'act') this.pearl.struck(!!o.heavy);
     return dmg;
+  }
+
+  /** A blow at the hero: the drive's grows with the selves that fed it (pearl.js drive). */
+  hitPlayer(o) {
+    if (o?.beat?.def?.pearl === 'drive') {
+      const P = this.T.pearl, n = this.pearl?.selves ?? 0;
+      o = { ...o, damage: o.damage + P.perCloneDamage * n, extra: { ...(o.extra ?? null), plunge: false } };
+    }
+    return super.hitPlayer(o);
+  }
+
+  // ---------------------------------------------------------------- his limbs (bare hands; Tian Lei's way)
+  /** The limb his "blade" is now: the striking part of the beat under way, the blocking forearm of a
+   *  guard, else the right fist. */
+  _strikePart() {
+    const br = this.brain;
+    if (this.mode === 'act') {
+      const b = beatNow(br.act);
+      if (b && !br.act.def.transition) return b.def.part ?? 'fistR';
+    } else if (this.mode === 'react' && GUARD_KINDS.has(br.react?.kind)) return br.react.kind === 'wardR' ? 'fistR' : 'fistL';
+    else if (this.mode === 'foot' && br.wardK > 0.5) return 'fistL';
+    return 'fistR';
+  }
+
+  /** Limb `part` as drawn now: a (its root) → b (its end), world space (ascendant.js _limbSeg). */
+  _limbSeg(part, a, b) {
+    const r = this.rig, A = r.arms, L = r.legs;
+    const at = (j, v) => v.setFromMatrixPosition(j.matrixWorld);
+    switch (part) {
+      case 'fistL':
+        at(A.L.fore, a);
+        b.set(0, -DIM.foreArm - 0.06, 0).applyMatrix4(A.L.fore.matrixWorld);
+        break;
+      case 'footR':
+      case 'footL': {
+        const S = L[part === 'footR' ? 'R' : 'L'];
+        at(S.shin, a);
+        at(S.foot, b);
+        break;
+      }
+      case 'kneeR':
+      case 'kneeL': {
+        const S = L[part === 'kneeR' ? 'R' : 'L'];
+        at(S.thigh, a);
+        at(S.shin, b);
+        break;
+      }
+      case 'elbowR':
+      case 'elbowL': {
+        const S = A[part === 'elbowR' ? 'R' : 'L'];
+        at(S.upper, a);
+        at(S.fore, b);
+        break;
+      }
+      case 'feet':
+        a.set(this.position.x, 0.25, this.position.z);
+        b.set(this.position.x, 0.6, this.position.z);
+        break;
+      default: {
+        at(A.R.fore, a);
+        at(r.sword, b);
+        const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z, l = Math.hypot(dx, dy, dz) || 1;
+        b.x += (dx / l) * 0.05;
+        b.y += (dy / l) * 0.05;
+        b.z += (dz / l) * 0.05;
+      }
+    }
+    return b;
+  }
+
+  /** Where a beat's glint pops: the end of the limb that strikes (both hands' middle for `palms`). */
+  tellPoint(part, out) {
+    if (!this._ptsOk) return super.tellPoint(part === 'feet' ? 'feet' : 'tip', out);
+    if (part === 'palms') {
+      this._limbSeg('fistR', _a, out);
+      this._limbSeg('fistL', _a, _b);
+      return out.set((out.x + _b.x) * 0.5, (out.y + _b.y) * 0.5, (out.z + _b.z) * 0.5);
+    }
+    if (part === 'feet') return super.tellPoint('feet', out);
+    this._limbSeg(part ?? 'fistR', _a, out);
+    if (!Number.isFinite(out.x + out.y + out.z)) out.set(this.position.x, 1.3, this.position.z);
+    return out;
+  }
+
+  /** Drawn points for FX: the striking limb's root and end (the engine's hilt and tip). */
+  _drawnPoints() {
+    this._tipPrev.copy(this._tip);
+    this._hiltPrev.copy(this._hilt);
+    const part = this._strikePart();
+    this._part = part;
+    this._limbSeg(part, this._hilt, this._tip);
+    const ok = Number.isFinite(this._tip.x + this._tip.y + this._tip.z) && Number.isFinite(this._hilt.x + this._hilt.y + this._hilt.z);
+    if (!ok || !this._tipOk || part !== this._partPrev) {
+      this._tipPrev.copy(this._tip);
+      this._hiltPrev.copy(this._hilt);
+    }
+    this._partPrev = part;
+    this._tipOk = ok;
+    this._ptsOk = ok;
+  }
+
+  /** Posed at clip time t now (parryContact steps the pose back along the strike): the striking limb. */
+  _poseAt(t) {
+    super._poseAt(t);
+    this._limbSeg(this._part ?? 'fistR', this._hilt, this._tip);
+  }
+
+  /** The Pearl's spot: over his lead palm (the open hand it is shaped in). */
+  palmPoint(out) {
+    if (!this._ptsOk) return out.set(this.position.x, 1.2, this.position.z);
+    this._limbSeg('fistL', _a, out);
+    this._limbSeg('fistR', _a, _b);
+    return out.set((out.x * 2 + _b.x) / 3, (out.y * 2 + _b.y) / 3 + 0.12, (out.z * 2 + _b.z) / 3);
   }
 
   /** His posture breaks: every self pops at once (the payoff), and a Pearl in his hand comes apart. */

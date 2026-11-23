@@ -184,7 +184,7 @@ const foxClose = (T, near = 2.2) => {
 };
 add('THE THOUSAND-BODY FOX', [
   { id: 'foxPop', name: 'Pop the copies · parry them', boss: 'fox', dist: 4, answer: 'parry', desc: 'Two paper selves tear free round you and cut in turn. Parry each cut: a parried self pops (his posture takes it).', go: (T) => T.d.debug.clones(2), until: (T) => T.t > 1 && !(T.d.clones?.live > 0) && T.heroFree(), max: 16, expect: ['dragon:clone', 'player:parry'] },
-  { id: 'foxPearlBurst', name: 'The Pearl · burst it in his hand', boss: 'fox', dist: 2.6, answer: 'none', desc: 'He steps back and draws the Pearl over his blade: his guard is down. Close in and cut him twice while it charges: it bursts in his hand and he reels.', go: (T) => T.d.debug.trigger('foxPearl'), tick: (T) => { if (T.d.pearl?.charging) { foxClose(T); T.at(0.9, () => T.tap('@attack')); T.at(1.3, () => T.tap('@attack')); T.at(1.7, () => T.tap('@attack')); } else T._axis(0, 0); }, until: (T) => T.t > 1 && !T.moving() && T.heroFree(), max: 10, expect: ['dragon:stagger'] },
+  { id: 'foxPearlBurst', name: 'The Pearl · burst it in his hand', boss: 'fox', dist: 2.6, answer: 'none', desc: 'He steps back and shapes the Pearl in his palm: his guard is down. Close in and cut him twice while it charges: it bursts in his hand and he reels.', go: (T) => T.d.debug.trigger('foxPearl'), tick: (T) => { if (T.d.pearl?.charging) { foxClose(T); T.at(0.9, () => T.tap('@attack')); T.at(1.3, () => T.tap('@attack')); T.at(1.7, () => T.tap('@attack')); } else T._axis(0, 0); }, until: (T) => T.t > 1 && !T.moving() && T.heroFree(), max: 10, expect: ['dragon:stagger'] },
 ]);
 
 add('BOSS STATES', [

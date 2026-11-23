@@ -196,6 +196,8 @@ export const TUNING = {
     time: [0.5, 0.8], per: 24, lead: 0.2, // flight: time[0] + distance / per (time[1] at most), aimed lead s ahead
     maxDelay: 0.4, // the fairness guard may lengthen its flight this much (else it comes apart uncued)
     interrupt: { hits: 2, heavy: 1, posture: 90, react: 'reeling' }, // cuts on him while he charges burst it in his hand
+    driveMax: 5, // the drive (Pearl of the Hollow Moon): the dash into the hero at the end of the charge, m at most
+    assist: 0.85, // a self at his side helps shape it: this far to his left
     knockback: 2.4,
   },
   // ---- the Fox-Fire Mantle (phase 3): what it sets alight where he stands
@@ -203,7 +205,9 @@ export const TUNING = {
   // bound, 12.2 m, and the terrace's charm posts stand at 16.5 m: the tail's sweep throws its flame
   // `tail.reach` m past the cut and the pounce lights the far end of its line, so the posts catch when
   // the fight comes to the rim)
-  mantle: { grow: 1.0, ignite: { every: 0.6, r: 1.5, k: 0.5 }, tail: { reach: 1.0, k: 0.8 } },
+  // `tails`: the fox spirit grows one tail as the mantle wakes and all nine as his bar runs out (d.tails;
+  // the nine-tailed fox of the old tales)
+  mantle: { grow: 1.0, tails: 9, ignite: { every: 0.6, r: 1.5, k: 0.5 }, tail: { reach: 1.0, k: 0.8 } },
   // ---- what his blows do to the world (POWER: 1 fells a tree; DUEL_WORLD's fields for the blade)
   world: { ...DUEL_WORLD, pearl: 1.4, greatPearl: 2.0, pounce: 1.0, tail: 0.9, pounceFire: 0.8 },
 

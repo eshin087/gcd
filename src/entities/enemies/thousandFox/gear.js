@@ -534,5 +534,9 @@ export const FOX_LOADOUT = Object.freeze({
   legs: 'fox.legs',
   waist: 'fox.waist',
   back: null,
-  weapon: 'fox.dao',
+  weapon: null, // (bare-handed, ADR-147: the right fist hangs on the sword joint, FOX_FIST)
 });
+
+/** His "blade": the right fist, as a short segment along the sword joint's +Z (duelist.js kit.blade;
+ *  Tian Lei's FIST): from the little finger's side of the fist to past the knuckles, metres. */
+export const FOX_FIST = Object.freeze({ guard: -0.06, tip: 0.075 });

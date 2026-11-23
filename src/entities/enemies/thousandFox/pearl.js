@@ -57,13 +57,15 @@ export class FoxPearl {
     this.attack = 'foxPearl';
     for (const s of this.shots) s.live = false;
     this.landed = 0; // (tests: pearls that burst since the last reset)
+    this.kind = '';
     this.interrupts = 0;
   }
 
   /** The move starts (onActStart): the charge is ahead; tell the ledger where it will roughly land. */
   begin(act) {
-    const b = act.beats.find((x) => x.def.pearl === 'charge');
+    const b = act.beats.find((x) => x.def.pearl === 'charge' || x.def.pearl === 'drive');
     if (!b) return;
+    this.kind = b.def.pearl;
     this.charging = true;
     this.hits = 0;
     this.heavy = 0;
@@ -72,8 +74,31 @@ export class FoxPearl {
     this.beat = b;
     this.attack = act.name;
     this.handle?.cancel?.();
-    // (the estimate: the bat at the beat's impact, then a mid flight; retimed at the bat)
-    this.handle = this.d.brain.expect?.(b.impact + this.T.time[0] + 0.15, TELL.RED, act.name) ?? null;
+    // (the volley's estimate: the throw at the beat's impact, then a mid flight; retimed at the throw.
+    // The drive is a blow of his body: the engine tells the ledger of it as of any blow)
+    this.handle = this.kind === 'charge' ? this.d.brain.expect?.(b.impact + this.T.time[0] + 0.15, TELL.RED, act.name) ?? null : null;
+  }
+
+  /**
+   * The drive lands (fox.js onImpact, the drive's beat): the Pearl bursts against the hero. The blow
+   * itself is the engine's zone (red; its damage grown by the selves that fed it: fox.js hitPlayer);
+   * here its burst, sized by the same selves: it pops the selves it reaches and hits the world.
+   */
+  drive(b, s, a) {
+    const d = this.d, T = this.T;
+    if (!this.charging) return;
+    this.charging = false;
+    this.landed++;
+    const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
+    const x = d.position.x + fx * 1.4, z = d.position.z + fz * 1.4;
+    const r = Math.min(T.rMax, T.r0 + T.perClone * this.selves);
+    this.radius = r;
+    d.fx.pearlBurst?.(x, z, r);
+    d.game.shake?.(0.34);
+    d.clones?.popWithin(x, z, r, 'pearl');
+    const W = d.game.world, o = this._blow;
+    o.src = W?.destructibles?.swing?.() ?? -1;
+    W?.impact?.(x, z, r, d.T.world.pearl, o);
   }
 
   /** Every frame of the charge beat (fox.js beatMotion): the Pearl over the tip, the threads. */
@@ -81,11 +106,12 @@ export class FoxPearl {
     const d = this.d;
     if (!this.charging || b !== this.beat) return;
     this.u = clamp(u, 0, 1);
-    // its spot: a little past the blade's tip, up
-    const t = d._tip, h = d._hilt, P = this._v;
+    // its spot: over his open lead palm (fox.js palmPoint); the selves alive now feed it (the drive's
+    // blow and burst are sized by them as it lands)
+    const P = this._v;
     if (!d._tipOk) return;
-    const ex = t.x - h.x, ey = t.y - h.y, ez = t.z - h.z, l = Math.hypot(ex, ey, ez) || 1;
-    P.set(t.x + (ex / l) * 0.18, t.y + (ey / l) * 0.18 + 0.12, t.z + (ez / l) * 0.18);
+    d.palmPoint(P);
+    this.selves = d.clones?.live ?? 0;
     d.fx.pearlCharge?.(P.x, P.y, P.z, this.u, dt);
     const C = d.clones, W = this._w;
     if (C) for (let i = 0; i < C.list.length; i++) if (C.handPoint(i, W)) d.fx.pearlThread?.(W.x, W.y, W.z, P.x, P.y, P.z, dt);

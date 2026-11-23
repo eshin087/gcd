@@ -435,7 +435,10 @@ async function scenarioData() {
   assert(W('sweepingBrush').tell === TELL.RED && W('sweepingBrush').knockdown, 'Sweeping Brush: red, knockdown');
   assert(W('changingPlaces').swap && MOVES.changingPlaces.gapCloser, 'Changing Places trades places');
   assert(MOVES.scatter.beats.every((b) => b.feint && b.scatter), 'Scattered Leaves: a cast, no blow');
-  assert(W('foxPearl').cast?.kind === 'pearl' && W('foxPearl').cast.selfCue && W('foxPearl').tell === TELL.RED, 'the Pearl: a red cast that cues itself');
+  assert(W('foxPearl').pearl === 'drive' && W('foxPearl').tell === TELL.RED && W('foxPearl').dash && W('foxPearl').part === 'palms', 'the Pearl: shaped in his palm and driven home on a dash (red)');
+  assert(W('pearlRain').cast?.kind === 'pearl' && W('pearlRain').cast.selfCue && W('pearlRain').tell === TELL.RED && MOVES.pearlRain.phase === 2, 'Pearl Rain: three pearls flung (a red cast that cues itself), phase 2');
+  assert(W('springboard').spring && W('springboard').leap && W('springboard').tell === TELL.RED && MOVES.springboard.needs === 1, 'Fox Descending: off a self\'s hands into a leap (red)');
+  assert(MOVE_NAMES.every((n) => MOVES[n].beats.every((b) => b.feint || ['fistR', 'fistL', 'palms', 'footR', 'footL', 'kneeR', 'kneeL', 'elbowR', 'elbowL', 'feet', 'shoulder'].includes(b.part ?? 'fistR'))), 'bare-handed: every blow names the limb that strikes');
   assert(MOVES.relay.beats.filter((b) => b.swap).length === 2 && MOVES.relay.phase === 2, 'Hand to Hand: two swaps, phase 2');
   assert(W('greatPearl').tell === TELL.BLACK && W('greatPearl').damage === 44 && W('greatPearl').leap, 'Moon-Swallowing Pearl: black, 44, a leap down');
   assert(MOVES.paperCut.hidden && !MOVES.paperCut.weight.some((w) => w > 0), 'Paper Cut is hidden and never picked');
@@ -615,7 +618,7 @@ async function scenarioClones() {
 async function scenarioPearl() {
   out('\n== scenario PEARL (the charge, the threads, the burst by live selves, a roll, a guard, the interrupt, the ledger, the world) ==');
   const T = TUNING.pearl;
-  const play = (G, { selves = 0, defend = null, hits = 0, heavy = false, dist = 6 } = {}) => {
+  const play = (G, { selves = 0, defend = null, hits = 0, heavy = false, dist = 6, move = 'foxPearl' } = {}) => {
     const { game } = G;
     const d = game.dragon, p = game.player;
     duel(G, { dist, form: 2 });
@@ -630,7 +633,7 @@ async function scenarioPearl() {
     let bursts = 0, r = 0;
     const fb = d.fx.pearlBurst;
     d.fx.pearlBurst = (x, z, rr) => { bursts++; r = rr; return fb.call(d.fx, x, z, rr); };
-    assert(d.debug.trigger('foxPearl'), 'the Pearl starts');
+    assert(d.debug.trigger(move), `${move} starts`);
     let ledgerSaw = false, struck = 0;
     const hit0 = G.hits.length;
     run(G, 6, () => {
@@ -647,7 +650,7 @@ async function scenarioPearl() {
     }, () => d.mode === 'foot' && !d.pearl.flying && !d.pearl.charging);
     d.fx.pearlThread = ft;
     d.fx.pearlBurst = fb;
-    const mine = G.hits.slice(hit0).filter((h) => h.attack === 'foxPearl');
+    const mine = G.hits.slice(hit0).filter((h) => h.attack === move);
     return { d, threads, bursts, r, mine, ledgerSaw };
   };
   // the burst grows with the selves alive at the bat; the threads, one per self
@@ -656,13 +659,24 @@ async function scenarioPearl() {
     const R = play(G, { selves: n });
     const want = Math.min(T.rMax, T.r0 + T.perClone * n);
     const thr = Math.max(0, ...R.threads);
-    assert(R.bursts === T.count[1] && Math.abs(R.r - want) < 1e-6 && thr === n, `${n} selves: ${R.bursts} pearls burst r ${R.r.toFixed(2)} (want ${want.toFixed(2)}), ${thr} threads a frame`);
+    assert(R.bursts === 1 && Math.abs(R.r - want) < 1e-6 && thr === n, `${n} selves: the drive bursts r ${R.r.toFixed(2)} (want ${want.toFixed(2)}), ${thr} threads a frame`);
+    if (n) assert(R.mine.length === 0 || Math.abs(R.mine[0].damage - (T.damage + T.perCloneDamage * n) * TUNING.damageScale) < 1e-6 || R.mine[0].r !== RESULT.HIT, `${n} selves: its blow ${R.mine[0]?.damage?.toFixed?.(1) ?? '-'} (fed by them)`);
   }
-  // the ledger knows it from the charge
+  // Pearl Rain (phase 2): three pearls thrown in a row
+  {
+    const G = build();
+    const R = play(G, { selves: 2, move: 'pearlRain', dist: 7 });
+    assert(R.bursts === T.count[1], `Pearl Rain: ${R.bursts} pearls burst (${T.count[1]})`);
+  }
+  // the ledger knows it from the charge (the volley: told as it is shaped)
+  {
+    const G = build();
+    const R = play(G, { selves: 0, move: 'pearlRain', dist: 7 });
+    assert(R.ledgerSaw, 'the ledger is told of the volley\'s landing while it is shaped');
+  }
   {
     const G = build();
     const R = play(G, { selves: 0 });
-    assert(R.ledgerSaw, 'the ledger is told of its landing while it charges');
     assert(R.mine.length === 1 && R.mine[0].r === RESULT.HIT && R.mine[0].tell === TELL.RED, `standing still: it hits once, red (${R.mine.map((h) => h.r).join(',')})`);
     assert(Math.abs(R.mine[0].damage - T.damage * TUNING.damageScale) < 1e-6, `its damage with no self alive: ${R.mine[0].damage.toFixed(1)} (${T.damage} x damageScale)`);
   }
@@ -730,12 +744,13 @@ async function scenarioPearl() {
     G.game.flow.debug.toState('boss');
     d.debug.setAI(false);
     run(G, 0.5);
-    d.debug.trigger('foxPearl');
+    d.enterPhase(2); // (Pearl Rain is phase 2's; the reset put him back in phase 1)
+    d.debug.trigger('pearlRain');
     run(G, 3, null, () => d.pearl.flying);
     const fl = d.pearl.flying;
     d.debug.reset();
     run(G, 1);
-    assert(fl && !d.pearl.flying && G.hits.filter((h) => h.attack === 'foxPearl').length === 0, 'a reset with pearls in the air: they are gone and hit nothing');
+    assert(fl && !d.pearl.flying && G.hits.filter((h) => h.attack === 'pearlRain').length === 0, 'a reset with pearls in the air: they are gone and hit nothing');
   }
 }
 

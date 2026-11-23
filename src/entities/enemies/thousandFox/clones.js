@@ -30,6 +30,8 @@ import { perPhase } from '../duelist/realise.js';
 // Its rigs are plain hero rigs: a hero-side double (the Paper Double reward, ADR-148) can take one later.
 
 const IN = 'in', STALK = 'stalk', WIND = 'wind', STRIKE = 'strike', RECOVER = 'recover', DEAD = 'dead', SEATED = 'seated';
+// (helping him: ASSIST holds the Pearl with him while he shapes it, BRACE cups its hands for him to spring off)
+const ASSIST = 'assist', BRACE = 'brace';
 const PARTS = ['clone0', 'clone1', 'clone2', 'clone3', 'clone4', 'clone5', 'clone6', 'clone7'];
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
 const SEP = 1.7; // m the selves keep apart as they stalk
@@ -321,6 +323,36 @@ export class FoxClones {
     return true;
   }
 
+  // ---------------------------------------------------------------- helping him
+  /** Self i goes to his side (TUNING.pearl.assist m to his left) and holds the Pearl with him while he
+   *  shapes it (the drive); it goes back to stalking when the charge ends. */
+  assist(i, d) {
+    const c = this.list[i];
+    if (!c?.alive) return false;
+    this._release(c);
+    c.state = ASSIST;
+    c.t = 0;
+    return true;
+  }
+
+  /** Self i stands and cups its hands: he springs off them (Fox Descending pops it). */
+  brace(i, d) {
+    const c = this.list[i];
+    if (!c?.alive) return false;
+    this._release(c);
+    c.state = BRACE;
+    c.t = 0;
+    return true;
+  }
+
+  /** A self taken off whatever it was doing: its blow (if any) is gone from the ledger, the token freed. */
+  _release(c) {
+    c.handle?.cancel?.();
+    c.handle = null;
+    if (c.state === WIND || c.state === STRIKE) this.tokenAt = Math.min(this.tokenAt, this.clock + 0.3);
+    c.round = false;
+  }
+
   // ---------------------------------------------------------------- the Thousand-Body Round
   /**
    * The Round: every live self cuts in turn, `T.round` s apart, the last one `T.round` s before his own
@@ -410,6 +442,31 @@ export class FoxClones {
             c.round = false;
           }
           break;
+        case ASSIST: {
+          // at his left, facing the way he faces; back to the fight once the charge is over
+          if (!d.pearl?.charging) {
+            c.state = STALK;
+            c.t = 0;
+            break;
+          }
+          const off = d.T.pearl.assist, lx = Math.cos(d.yaw), lz = -Math.sin(d.yaw);
+          const tx = d.position.x + lx * off + Math.sin(d.yaw) * 0.2, tz = d.position.z + lz * off + Math.cos(d.yaw) * 0.2;
+          const gx = tx - c.x, gz = tz - c.z, gl = Math.hypot(gx, gz);
+          if (gl > 0.05) this._step(c, (gx / gl) * Math.min(gl, 7 * dt), (gz / gl) * Math.min(gl, 7 * dt), dt);
+          else this._walk(c, 0, dt);
+          c.yaw = turnToward(c.yaw, d.yaw, 10 * dt);
+          break;
+        }
+        case BRACE: {
+          // facing him, the hands cupped; if he does not come (the move was cut short), back to the fight
+          c.yaw = turnToward(c.yaw, Math.atan2(d.position.x - c.x, d.position.z - c.z), 10 * dt);
+          this._walk(c, 0, dt);
+          if (c.t > 2.5 || (d.mode !== 'act' && c.t > 0.3)) {
+            c.state = STALK;
+            c.t = 0;
+          }
+          break;
+        }
         case RECOVER:
           this._walk(c, 0, dt);
           if (c.t >= T.recover) {
@@ -466,7 +523,7 @@ export class FoxClones {
   _separate(dt) {
     const L = this.list, d = this.d;
     for (const a of L) {
-      if (!a.alive || a.state === WIND || a.state === STRIKE) continue;
+      if (!a.alive || a.state === WIND || a.state === STRIKE || a.state === ASSIST || a.state === BRACE) continue;
       let px = 0, pz = 0;
       for (const b of L) {
         if (b === a || !b.alive) continue;
@@ -619,6 +676,14 @@ export class FoxClones {
         const B = this._cut?.beats?.[0];
         pl.atk.def = this._clip;
         pl.stateT = pl.animT = (B ? B.impact : 0.62) + 0.08 + c.t;
+        cutting = true;
+      } else if (c.state === ASSIST || c.state === BRACE) {
+        const H = this.d.kit.CLIP?.[c.state === ASSIST ? 'orbHold' : 'brace'];
+        if (H && pl.atk.def !== H) {
+          pl.atk.def = H;
+          c.anim.play('duel', 0.12, true);
+        }
+        pl.stateT = pl.animT = 0;
         cutting = true;
       } else if (pl.atk.def) {
         pl.atk.def = null;
