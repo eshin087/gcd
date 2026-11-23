@@ -3,7 +3,7 @@
 // Events) wired like src/main.js for `?level=ash`; the world is a light mock on the real Colliders
 // with the courtyard's ring of pillars. A bot drives the input.
 // usage: node duel.mjs <repoRoot> [scenario]   (env: ABYSS_SEED=n reseeds the AI)
-//   scenario: levels | data | timing | terrain | guard | clash | trade | deflect | ghostep | execute | phase | flow | win | all
+//   scenario: levels | data | timing | terrain | guard | clash | trade | deflect | ghostep | execute | phase | flow | win | sfx | all
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { ui, AUDIO, resetWindow } from './shim.mjs';
@@ -4243,6 +4243,124 @@ async function scenarioReact() {
   return { counts: {}, payload: new Set() };
 }
 
+// ================================================================== scenario: sfx
+async function scenarioSfx() {
+  out('\n== scenario SFX (the attack sounds: one blow through the air per real blow, before its impact; cues only on blue / red; ?sfx=old) ==');
+  const SMP = await imp('src/audio/samples.js');
+  const { ATTACK_SOUND, beatSound } = await imp('src/entities/enemies/duelist/attackSound.js');
+  // every boss's data: the weapon its TUNING declares, every blow classified (or left out: a cast, a pure throw, a burst)
+  const BOSSES = [
+    ['ashDisciple', 'sword'], ['starlessLord', 'sword'], ['sheathed', 'sword'], ['ascendant', 'fist'], ['thousandFox', 'fist'],
+  ];
+  for (const [dir, weapon] of BOSSES) {
+    const { MOVES: MV } = await imp(`src/entities/enemies/${dir}/moves.js`);
+    const { TUNING: T } = await imp(`src/entities/enemies/${dir}/tuning.js`);
+    const seen = { cut: 0, thrust: 0, kick: 0, draw: 0, light: 0, heavy: 0, none: 0 };
+    let wrong = 0;
+    for (const mv of Object.values(MV)) for (const raw of mv.beats) for (const b of raw.pick ?? [raw]) {
+      if (b.feint) continue;
+      const s = beatSound(T.weapon, b);
+      if (!s) { seen.none++; continue; }
+      if (s.weapon !== weapon) wrong++;
+      seen[s.shape]++;
+      seen[s.weight]++;
+      // (a beat that only throws or casts, or a burst, has no blow of its own)
+      if (b.cast || b.burst || (b.release && !b.zone)) wrong++;
+    }
+    assert(T.weapon === weapon && !wrong && seen.light + seen.heavy > 0,
+      `${dir}: TUNING.weapon '${T.weapon}', every blow ${weapon} (${JSON.stringify(seen)})`);
+  }
+  {
+    const z = { kind: 'sector', r: 2 };
+    const c = (def) => { const s = beatSound('sword', def); return s && `${s.weight}/${s.shape}`; };
+    const f = (def) => { const s = beatSound('fist', def); return s && `${s.weight}/${s.shape}`; };
+    const checks = [
+      [c({ tell: 'normal', damage: 12, zone: z }), 'light/cut'],
+      [c({ tell: 'normal', damage: 12, zone: { kind: 'line', r: 3 } }), 'light/thrust'],
+      [c({ tell: 'blue', damage: ATTACK_SOUND.heavyDamage, zone: z }), 'heavy/cut'],
+      [c({ tell: 'black', damage: 1, zone: z }), 'heavy/cut'],
+      [c({ tell: 'red', damage: 1, knockdown: true, zone: { kind: 'ring', r: 3 }, part: 'feet' }), 'heavy/cut'],
+      [c({ tell: 'red', damage: 1, zone: z, part: 'feet' }), 'light/kick'],
+      [c({ tell: 'blue', damage: 110, zone: { kind: 'line', r: 9 }, draw: true, selfHit: true }), 'heavy/draw'],
+      [f({ tell: 'normal', damage: 9, zone: z, part: 'fistR' }), 'light/cut'],
+      [f({ tell: 'normal', damage: 9, zone: z, part: 'kneeR' }), 'light/kick'],
+      [c({ tell: 'normal', damage: 9, zone: z, whoosh: { shape: 'thrust', weight: 'heavy' } }), 'heavy/thrust'],
+      [c({ tell: 'normal', damage: 9, zone: z, whoosh: false }), null],
+      [c({ tell: 'normal', damage: 9, zone: z, cast: { kind: 'x' } }), null],
+      [f({ tell: 'red', damage: 20, zone: { kind: 'ring', r: 4 }, part: 'feet', burst: true }), null],
+      [c({ tell: 'red', damage: 20, zone: { kind: 'line', r: 4 }, selfHit: true }), null],
+    ];
+    const bad = checks.filter(([g, w]) => g !== w).map(([g, w]) => `${g} != ${w}`);
+    assert(!bad.length, `beatSound derives weight / shape from the beat's data, overrides and exclusions ${JSON.stringify(bad)}`);
+  }
+
+  const G = build();
+  duel(G, { dist: 3 });
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  p.debug.god = true;
+  const sounds = [];
+  const play0 = game.audio.play;
+  game.audio.play = function (name, o) { sounds.push([name, o?.delay]); return play0.call(this, name, o); };
+  if (!game.audio.ctx) game.audio.unlock();
+  assert(game.audio.ctx && !game.audio.samples?.loaded, 'audio unlocked, no recorded file loaded headless (every sound is its synth fallback)');
+  const probe = (name) => {
+    const def = MOVES[name];
+    settle(G);
+    d.yaw = 0;
+    d.position.set(0, 0, -2);
+    place(G, (def.band[0] + Math.min(def.band[1], 9)) / 2);
+    run(G, 0.1);
+    const ev = { atk: [], flash: [], tell: [], hits: [], sounds: [] };
+    const s0 = sounds.length;
+    G.watch = (n, e) => {
+      if (n === 'dragon:attack' && e?.name === name) ev.atk.push({ ...e, t: game.time });
+      else if (n === 'combat:flash' && e?.attack === name) ev.flash.push({ tell: e.tell, t: game.time });
+      else if (n === 'combat:tell' && e?.attack === name) ev.tell.push(e.tell);
+    };
+    const h0 = G.hits.length;
+    const ok = d.debug.trigger(name);
+    run(G, 9, (GG) => { GG.game.mouseGround.set(d.position.x, 0, d.position.z); }, () => d.mode === 'foot' && !d.fx.crescentsAlive);
+    G.watch = null;
+    ev.hits = G.hits.slice(h0).filter((h) => h.attack === name).map((h) => h.t);
+    ev.sounds = sounds.slice(s0);
+    ev.ok = ok;
+    return ev;
+  };
+  const n = (ev, s) => ev.sounds.filter(([x]) => x === s).length;
+  const lead = ATTACK_SOUND.lead;
+  try {
+    for (const name of ['plumThrust', 'fallingAsh', 'lotus', 'glideKick', 'mirrorFeint']) {
+      const ev = probe(name);
+      const beats = MOVES[name].beats.flatMap((b) => b.pick ?? [b]);
+      const feints = beats.filter((b) => b.feint).length;
+      const payOk = ev.atk.every((e) => e.weapon === 'sword' && (e.weight === 'light' || e.weight === 'heavy')
+        && ['cut', 'thrust', 'kick', 'draw'].includes(e.shape) && e.impactIn > 0 && e.impactIn <= lead + 0.02 && Number.isFinite(e.x + e.z));
+      // each contact has its blow's sound before it (lead s at most, never after)
+      const before = ev.hits.every((t) => ev.atk.some((e) => e.t <= t + 1e-6 && t - e.t <= lead + DT * 2));
+      const blue = ev.tell.filter((t) => t === 'blue').length, red = ev.tell.filter((t) => t === 'red' || t === 'black').length;
+      const loud = ev.flash.filter((f) => f.tell !== 'normal').length;
+      out(`     ${name.padEnd(12)} ${ev.atk.length} blows (${ev.atk.map((e) => `${e.weight}/${e.shape}`).join(' ')}), ${ev.flash.length} flashes, ${ev.hits.length} contacts, feints ${feints}; plays: tellTick ${n(ev, 'tellTick')} tellBlue ${n(ev, 'tellBlue')} tellRed ${n(ev, 'tellRed')} flash ${n(ev, 'flash')} bladeWhoosh ${n(ev, 'bladeWhoosh')}`);
+      assert(ev.ok && ev.atk.length === ev.flash.length && ev.atk.length > 0 && payOk && before,
+        `${name}: one dragon:attack per glinted blow (${ev.atk.length} / ${ev.flash.length}; a feint none), sword, impactIn within ${lead} s, before each contact`);
+      assert(n(ev, 'tellTick') === 0 && n(ev, 'flash') === loud && n(ev, 'tellBlue') === blue && n(ev, 'tellRed') === red,
+        `${name}: cues only on blue / red (tellTick 0, flash ${n(ev, 'flash')} = ${loud} blue/red flashes, tellBlue ${blue}, tellRed ${red})`);
+      const wh = ev.sounds.filter(([x]) => x === 'bladeWhoosh');
+      assert(wh.length >= 1 && wh.length <= ev.atk.length && wh.every(([, dl]) => Number.isFinite(dl) && dl >= 0 && dl < lead),
+        `${name}: the blade through the air plays (synth fallback, ${wh.length}), started to peak on the impact (delays ${wh.map(([, dl]) => dl?.toFixed(2)).join(' ')} s)`);
+    }
+    // ?sfx=old: the tick on a normal tell, the ping on a normal flash, no blade sound
+    SMP.setSfxMode('old');
+    const ev = probe('plumThrust');
+    assert(n(ev, 'tellTick') >= 1 && n(ev, 'flash') >= 1 && n(ev, 'bladeWhoosh') === 0,
+      `?sfx=old: today's sounds (tellTick ${n(ev, 'tellTick')}, flash ${n(ev, 'flash')}, bladeWhoosh ${n(ev, 'bladeWhoosh')})`);
+  } finally {
+    SMP.setSfxMode('new');
+    game.audio.play = play0;
+  }
+  return G;
+}
+
 const SCENARIOS = {
   motion: scenarioMotion,
   react: scenarioReact,
@@ -4280,6 +4398,7 @@ const SCENARIOS = {
   win: scenarioWin,
   pace: scenarioPace,
   cutfx: scenarioCutFx,
+  sfx: scenarioSfx,
 };
 const runs = [];
 const OPT_IN = new Set(['probe', 'strategy', 'bots', 'ranged', 'answer']); // run only when named

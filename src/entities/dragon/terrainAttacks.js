@@ -163,6 +163,7 @@ function makeThrow(name, wood) {
     start(d, a) {
       a.none = a.list[0][0] === 'search';
       a.piece = a.none ? null : _jaws.piece;
+      a.dur0 = a.list[0][1]; // (the lunge as planned: it may wait for a back-off, J.backMax)
       reservePiece(d, a);
       a.tall = !!a.piece && a.piece.h >= BREAK.topple.minH;
       a.held = false;
@@ -268,7 +269,17 @@ function makeThrow(name, wood) {
         const left = Math.max(0.05, a.dur - a.t);
         if (ang < 1.1) {
           if (dist > J.stand + 0.3) d.moveForward(Math.min(J.fetchSpeed, Math.max(3, (dist - J.stand) / left)), dt);
-          else if (dist < J.near + 0.2) d.moveForward(-Math.min(6, Math.max(1.5, (J.near + 0.7 - dist) / left)), dt);
+          else if (dist < J.near + 0.2) {
+            // a piece at its feet (the plan reckons the lunge at fetchSpeed; it backs off slower): if it
+            // cannot be back where the jaws reach by the bite, the lunge waits (by up to J.backMax s; the
+            // landing is re-timed every frame until the release, so the flash still comes on time)
+            const need = (J.near - 1.4 - dist) / J.back;
+            if (need > left && a.t + need <= a.dur0 + J.backMax) {
+              a.dur = a.t + need;
+              a.list[a.i][1] = a.dur;
+            }
+            d.moveForward(-Math.min(J.back, Math.max(1.5, (J.near + 0.7 - dist) / Math.max(0.05, a.dur - a.t))), dt);
+          }
         }
         pose.head = d.rootPt(pose.headTarget, 0, 2.9, 5.0);
         pose.headRate = 9;

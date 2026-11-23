@@ -4820,6 +4820,29 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   code: the strings' feet 910 - 1146, elbows 128 - 131°, palms 0.35 - 0.40 m in, the knee 731) and
   `pursuit` (a hero who rolls out of a windup gets no glint and no hit and is chased; a hero who stays is hit as before; a sprinter is caught by the dash; Sign Step still lands behind a runner) and the opt-in whiff meter (0 swings at air a minute for every bot).
 
+## ADR-165 — Attack sounds: a cue only for blue and red, every blow sounds like its weapon, recorded and picked by ear (2026-11-22)
+
+- **Context:** every attack played a synthesised cue: a tick as a white windup started and a ping before
+  it landed, a rising bell for blue, a brass stab for red. The owner found the blue / red sounds tacky
+  and did not want the player to rely on sound for everything. A human boss's blow made no sound at all
+  until it landed. Recorded effects had been tried once (PR #55, 129 sounds over everything) and turned
+  down as noisy (ADR-117).
+- **Decision:** sound marks only what needs a different answer. A white blow has no cue; blue and red
+  (and black) keep two, a warning at the windup (`combat:tell`) and a timing sound before the impact
+  (`combat:flash`), as in-world recordings (steel for blue, a drum for red). Every blow sounds like its
+  weapon as it travels: the duelist engine announces each real blow with `dragon:attack` and a
+  classification from the beat data (`weapon` per boss in its tuning, `weight` from damage / knockdown /
+  black, `shape` cut / thrust / kick / draw), and the audio lines the clip's loudest moment up with the
+  impact. The recordings are a small set of slots (12), loaded after unlock, synth fallback per slot,
+  their own random stream; the owner picks every file by ear on an audition page; `?sfx=old` keeps the
+  sounds before. Hazards and bullets keep their cues.
+- **Consequences:** the fight reads by eye first and by ear only for parry / dodge; a string of blows
+  sounds like a fight, rate-limited (0.09 s between boss blows) so it does not turn into the noise of PR
+  #55. New bosses need only a `weapon` in their tuning. The CC0 material has no real punch or creature
+  swipe: the fist and wyrm slots are swishes, some slowed, and may be replaced. The blue timing sound
+  stays today's synth ping: the owner heard three rounds of candidates and kept it (`time-blue` has no
+  file; a pick later is a line in `scripts/audio/sfx-picks.json` and a rerun of `build-sfx.py`).
+
 ## ADR-167 — The streak pass: six pieces behind switches on the streak's tiers, looks only past seven, an accelerating storm, a perfect parry's look read at the moment, the burst as lines (2026-11-23)
 
 - **Context:** the owner: "i want to enhance the perfect parry / dodge effects and especially the streak combo hits. right now when the streak is really long, the animation to show the full streak is a bit long and doesn't look epic and cool. the longer the streak, the faster the attacks and way cooler animation and effects. think of cool subtle and epic stunning effects for players to love having a streak and seeing the longer and longer combos. use fable to plan it out and have opus do the work. ask me any questions". The flurry (ADR-091, ADR-094, ADR-101) struck N = the streak blows, 7 at most, and took about 2 s round the wyrm's head and 2.9 s on a man at seven; past seven nothing changed; a single perfect parry / dodge had one look. Asked, the owner chose an "Accelerating storm", "Looks only, in tiers" past seven, all four between-flurry pieces (the hero and blade, a counter moment, a climbing sound, the world), and two perfect looks to compare.

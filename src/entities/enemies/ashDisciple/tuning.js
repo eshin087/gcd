@@ -12,6 +12,7 @@ export const TUNING = {
 
   // ---- tells (rules: COMBAT.md; checked by the duel tests). PBZ-boss speed (owner, 2026-11-12):
   // openers ~0.46–0.6 s, a string's hits ~0.34 s apart, the flash the timing cue
+  weapon: 'sword', // what his blows sound like through the air (duelist/attackSound.js: dragon:attack)
   flashLead: 0.3, // the glint this long before every impact
   minFirstWindup: 0.42, // a move's first real hit, every phase
   minHitGap: 0.32, // impact to impact inside a move (>= flashLead: each flash after the hit before it)
