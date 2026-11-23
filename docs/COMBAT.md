@@ -2329,6 +2329,9 @@ stands again when the fight resets (a death, a rest at the bonfire, the Lab's Re
   he gives a step (stone a bigger one), and can swing again after about 0.3 s, as after a duelist's
   deflection. A cut that fells or breaks the thing goes through it. So a swing that meets a pillar or
   a tree before it reaches the boss stops there: stand clear of cover to cut.
+- **Bamboo is sliced in one stroke** (ADR-151): in the Windless Grove any blade or blow cuts a stalk
+  through where it passed; its top slides off the cut at once and goes over, quietly (no tell, no
+  harm). The blade goes on through, so one swing cuts a clump.
 - **The wyrm's body meets the world** (ADR-119; it replaced ADR-107's trample round its root, which
   never reached a trunk). Every frame its head, neck, body, tail, wings and legs sweep what they pass
   through, harder the faster they move and the heavier the part. A walk or a turn is a **brush**: it

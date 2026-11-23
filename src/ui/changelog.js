@@ -33,6 +33,14 @@ export const RELEASES = [
       },
       {
         date: '2026-11-22',
+        title: "The grove's bamboo falls to every stroke",
+        notes: [
+          'In the Windless Grove one swing cuts a bamboo stalk clean through where your blade passes, and the top slides off and crashes down in a burst of leaves. Swing through a clump and the whole clump comes down.',
+          'The grove is fuller and more varied: green, jade, golden, black and dry canes, in clumps and lone stalks, and it runs on far behind the duel.',
+        ],
+      },
+      {
+        date: '2026-11-22',
         title: 'A sixth level: the Windless Grove and the Sheathed',
         notes: [
           'A new level, the Windless Grove: a bamboo grove at night, a clearing, and a mound of planted swords. Pick it on the title screen.',

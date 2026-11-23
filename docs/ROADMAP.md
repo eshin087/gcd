@@ -184,7 +184,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
-## M1.63 — A seventh level: the Hall of Falling Script and Xin Yi, the One Who Woke (2026-11-22, `claude/level-code-one-784481`, ADR-156 – ADR-158)
+## M1.64 — A seventh level: the Hall of Falling Script and Xin Yi, the One Who Woke (2026-11-22, `claude/level-code-one-784481`, ADR-156 – ADR-158)
 - [x] `?level=code`: one hall, three scenes on the same ten slots that morph behind a front (`scenes`,
       destructibles `present`), the watchers, the falling script, the script wave in the prop and floor letters
 - [x] Xin Yi: two bars, three phases (one hand, two guns, the Source), the fall and the rising, the Lean,
@@ -194,6 +194,13 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [ ] The owner's picks from the sheets: his body (`?oneLook=`), the hall (`?hall=`), the script wave (`?script=`)
 - [ ] On the iPhone: the frame rate, how the black coat reads, how the shots read at the phone camera
 - [ ] His own score (borrowed tracks until an audition page); the phase banners that decode (cut)
+## M1.63 — The grove's bamboo sliced in one stroke, in clumps (2026-11-22, `world/bamboo-slice`, ADR-151)
+- [x] One blade or blow slices a stalk where it bit; the top slides off the cut at once and goes over
+- [x] Five kinds of cane, three thicknesses, fanning clumps with shoots (`?bamboo=a|b`; `0` the old grove)
+- [x] The back filled: clumps behind him, a denser belt behind him, the wall out to 50 m
+- [x] World test `slice`
+- [x] The owner picks: `a`, mixed clumps (2026-11-22)
+- [ ] Follow-ups: frame cost on the phone; the cut tops lying a while; a slice sound
 
 ## M1.62 — A sixth level: the Windless Grove and the Sheathed (2026-11-22, `level/the-sheathed`, ADR-144 – ADR-146)
 - [x] `?level=grove`: the bamboo grove (light pieces), the Sword Grave, the paving; `?grove=a|b|c`

@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Sixty-eight pieces of work since 0.4.0:
+Sixty-nine pieces of work since 0.4.0:
 - **A seventh level: the Hall of Falling Script and the One Who Woke** (2026-11-22, ADR-156 – ADR-158).
   *Added:* `?level=code` (the title screen lists it). **The Hall of Falling Script**: one hall on ten slots
   whose scenes rewrite themselves into one another behind a front that runs out from him (`scenes`): the
@@ -27,6 +27,13 @@ Sixty-eight pieces of work since 0.4.0:
   the other levels play and draw as before. Kept behind switches for the owner's pick: his body
   (`?oneLook=a|b|c`), the hall (`?hall=a|b`), the wave (`?script=a|b|c`). The level borrows music.
   `tests/integration/woke.mjs`.
+- **The grove's bamboo falls to every stroke** (2026-11-22, ADR-151). *Changed:* in the Windless
+  Grove one swing of the sword (or one blow of his) cuts a bamboo stalk clean through where the blade
+  passed, and its top slides off the cut at once and crashes over in a burst of leaves (it took two
+  cuts, and fell whole from its foot). A swing through a clump cuts the whole clump. *Changed:* the
+  bamboo is five kinds of cane (green, jade, golden, black, dry) in clumps and lone stalks of
+  different thicknesses, with young shoots, and far more of it behind the duel; the grove runs on
+  into the fog. `?bamboo=0` is the grove as it was, `b` one kind of cane per clump.
 - **A sixth level: the Windless Grove and the Sheathed** (2026-11-22, ADR-144 – ADR-146). *Added:* a fifth
   level, `?level=grove` (the title screen lists it). **The Windless Grove**: a bamboo grove at night, a
   round clearing with a worn ring of paving, a mound planted with forty swords. **Lu Wusheng, the
@@ -882,6 +889,10 @@ Sixty-eight pieces of work since 0.4.0:
   thuds onto its side, the head slaps down last and the wings crumple).
 
 ### Changed
+- **CI runs the tests as four parallel jobs** (2026-11-23, ADR-153, PR #92): `tests/run.mjs --shard I/N`
+  deals the tasks to N shares; the Starless Lord suite runs in three parts; a PR's check takes ~4
+  minutes (was 12-15). A PR that only changes docs/, *.md or .claude/ skips the tests and the build.
+  lord.mjs, duel.mjs and asc.mjs take a comma list of scenarios and `ABYSS_SKIP`.
 - **`npm test` runs its suites side by side** (2026-11-15): `tests/run.mjs` starts the four
   integration suites and the two static checks as separate processes, with `integ` in five parts
   (its TIMING scenario in three), and prints each task's output whole and a summary of times. The

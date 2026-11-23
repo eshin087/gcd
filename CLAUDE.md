@@ -31,7 +31,8 @@ Read this file first, every session.
 ```bash
 npm run dev      # http://localhost:5173 (zero-dependency static server, no build step)
 npm test         # headless integration sims (real game modules, mocked DOM/WebGL) + glyph check,
-                 # side by side (tests/run.mjs; --serial or --jobs N after `npm test --`)
+                 # side by side (tests/run.mjs; --serial or --jobs N after `npm test --`;
+                 #  --shard I/N one of CI's parallel shares, --list shows the shares; ADR-153)
                  # (one suite: node tests/integration/lord.mjs . <scenario>, also integ.mjs / duel.mjs / world.mjs / asc.mjs / fox.mjs;
                  #  `duel.mjs . pace` / `lord.mjs . pace`: the duelists' pressure meter, ABYSS_PSEEDS / ABYSS_PSECS;
                  #  woke.mjs: Xin Yi, `woke.mjs . strategy` opt-in)
@@ -47,7 +48,8 @@ wyrm's lean build; 0 = the wyrm before; ADR-123), `?zoomArt=a|c` (b: the letters
 follow the zoom) and `?ablaze=off|a|c` (b: the wyrm's phase 3 fire). The impact pass's pieces (ADR-149): `?impact=off|all|stamp,ripple,react,thump` (default all; Lab: the 'impact' row), and
 `?calm=0..3` the light at the contact (default 1; 0 = as before; Lab: the row's `calm` button). Bites (a blow knocks the bricks, the letters, out of
 a piece where it struck, and the hero's blade stops on what it does not cut through) are on: `?chip=0`
-turns them off (ADR-132).
+turns them off (ADR-132). The grove's bamboo: `?bamboo=0|b` (a, the owner's pick: five kinds of cane mixed in clumps;
+0 = the grove before; ADR-151).
 The duelists' look switches (`?kindle=`, `?qi=`, `?ashLook=`, `?lordLook=`, `?floor=` ...; ADR-122): no
 parameter draws the owner's picks, `?looks=old` the looks before that pass, one switch its option
 (Lab: LOOKS); the table is STYLE.md → "The look switches". In the dev server: append `?lab` to the URL (or press **F1**) for the **Lab** — trigger any boss
@@ -118,7 +120,8 @@ In Claude Code the preview config is `.claude/launch.json` (`abyss-dev`).
   prefixes: `render`, `world`, `player`, `dragon`, `enemies`, `level`, `combat`, `ui`, `flow`, `audio`,
   `lab`, `docs`, `build`, `test`.
 - **Every change goes through a PR — `main` is protected** (no direct pushes, even for admins;
-  required check `test-and-build` = `npm test` + `npm run build` on an up-to-date branch; linear
+  required check `test-and-build` = `npm test` (four parallel `tests I/4` jobs) + `npm run build` on
+  an up-to-date branch, passed at once for a docs-only PR (docs/, *.md, .claude/; ADR-153); linear
   history, squash/rebase merge, branches auto-delete). Flow: branch → push → `gh pr create` → CI +
   Vercel preview deployment on the PR → squash-merge → Vercel deploys `main` to production
   (gcdabyss.vercel.app). Never bypass the protection. The squash commit takes the PR's title and
