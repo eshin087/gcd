@@ -358,8 +358,126 @@ async function scenarioSmoke() {
   }
 }
 
+// ================================================================== scenario: scenes (the set's helper)
+async function scenarioScenes() {
+  out('\n== scenario SCENES (the hall, the dojo, the Source on the same slots; the morph) ==');
+  const { STATE } = await imp('src/world/destructibles.js');
+  const { BLOW } = await imp('src/world/breakTuning.js');
+  const G = build(SEED, true);
+  const { game } = G;
+  const W = game.world, D = W.destructibles, S = W.forest.scenes, U = game.U;
+  run(G, 0.2);
+  const of = (kind) => D.list.filter((b) => b.kind === kind);
+  const standing = (kind) => of(kind).filter((b) => !b.absent && b.state === STATE.INTACT);
+  const inWorld = (b) => b.colliders.every((c) => W.colliders.circles.includes(c));
+  const nonFloor = () => D.list.filter((b) => !b.floor && !b.absent).length;
+  assert(S.now === 'hall' && standing('pillar').length === 10 && of('post').every((b) => b.absent) && of('codePillar').every((b) => b.absent) && standing('watcher').length === 4,
+    `at the start the Pillared Hall stands (10 pillars, 4 watchers; the posts and the code are out of the world); ${nonFloor()} pieces besides the floor stand (<= 200)`);
+  // a slab broken under the dojo's front: whole again after it
+  const slab = D.floor.find((b) => Math.hypot(b.x - 3, b.z - 3) < 1.5);
+  D.strike(slab.x, slab.z, 0.6, 5, { kind: BLOW.BLUNT, by: 'boss', y: 0.1, src: D.swing() });
+  const slabBroke = slab.state !== STATE.INTACT || slab.cracked;
+  // the hero stands dead on a slot (a post prints there)
+  const p = game.player, slot = { x: 7.5, z: 0 };
+  p.debug.teleport(slot.x, slot.z);
+  p.position.set(slot.x, 0, slot.z);
+  let t = 0;
+  const ok = S.to('dojo', { x: 0, z: -9 });
+  while (S.morphing && t < 4) {
+    G.tick(DT);
+    t += DT;
+  }
+  const post = of('post').find((b) => Math.hypot(b.x - slot.x, b.z - slot.z) < 0.1);
+  const pd = Math.hypot(p.position.x - slot.x, p.position.z - slot.z);
+  assert(ok && S.now === 'dojo' && t <= 1.8 + 1e-6, `to('dojo') from (0, -9): the morph ends in ${t.toFixed(2)} s (<= 1.8)`);
+  assert(of('pillar').every((b) => b.absent && b.state === STATE.GONE && !inWorld(b) && b.colliders.every((c) => !W.colliders.circles.includes(c))) && standing('post').length === 10 && of('post').every(inWorld),
+    'after it every pillar is out of the world (its circles too), every post stands whole with its colliders');
+  assert(pd >= post.colliders[0].r + p.radius - 0.02, `the hero standing where a post printed is pushed out of it (${pd.toFixed(2)} m from its centre)`);
+  assert(!slabBroke || (slab.state === STATE.INTACT && !slab.cracked), `the slab broken under the front is whole again (${slabBroke ? 'it was broken' : 'it held'})`);
+  // the old scene's pieces are nothing to the world now
+  const bench = of('bench')[0];
+  const n0 = D.strike(bench.x, bench.z, 0.4, 1, { kind: BLOW.BLUNT, by: 'boss', y: 0.6, src: D.swing() }); // (over the floor's slabs)
+  const cov = D.coverAt(slot.x, slot.z - 3, slot.x, slot.z + 3, 0.1);
+  const near = D.nearest(slot.x, slot.z, { maxDist: 4, kind: 'pillar' });
+  const stopped = D.stop(-7.5, -8, -7.5, -2, 0.1, 0.25, { kind: BLOW.CUT, by: 'boss', y: 1.2, src: D.swing() });
+  assert(n0 === 0 && !cov && !near && (!stopped || stopped.kind !== 'pillar'), `an absent pillar or bench: strike ${n0}, coverAt ${cov?.kind ?? 'none'}, nearest pillar ${near?.kind ?? 'none'}, stop ${stopped?.kind ?? 'none'} (a post is no cover)`);
+  assert(standing('watcher').length === 4, `the dojo has the hall's 4 watchers (${standing('watcher').length})`);
+  // a watcher struck bursts into green digits and stays gone until the next morph
+  const w = standing('watcher')[0];
+  const spawns0 = G.counters.spawns;
+  D.strike(w.x, w.z, 0.5, 1, { kind: BLOW.CUT, by: 'player', y: 1.2, src: D.swing() });
+  run(G, 0.3);
+  assert(w.state !== STATE.INTACT && G.counters.spawns - spawns0 >= 10, `a watcher struck goes (${G.counters.spawns - spawns0} digits)`);
+  // phase 2: back to the hall, whole: eight watchers now
+  t = 0;
+  S.to('hall', { x: 0, z: 0 });
+  while (S.morphing && t < 4) {
+    G.tick(DT);
+    t += DT;
+  }
+  assert(standing('pillar').length === 10 && standing('watcher').length === 8 && w.state === STATE.INTACT && t <= 1.8 + 1e-6,
+    `to('hall') again: 10 pillars whole, ${standing('watcher').length} watchers (8; the struck one stands again), in ${t.toFixed(2)} s`);
+  assert(D.coverAt(slot.x, slot.z - 3, slot.x, slot.z + 3, 0.1)?.kind === 'pillar', 'a pillar is cover again');
+  // the Source
+  t = 0;
+  S.to('source', { x: 0, z: 0 });
+  while (S.morphing && t < 4) {
+    G.tick(DT);
+    t += DT;
+  }
+  assert(standing('codePillar').length === 10 && standing('watcher').length === 12 && of('wall').every((b) => b.absent) && U.uScript.value.x > 0.9,
+    `to('source'): 10 columns of code, 12 watchers, no walls, the script wave at ${U.uScript.value.x.toFixed(2)}; ${nonFloor()} pieces besides the floor`);
+  const rain = W.forest.ambience.rain;
+  assert(rain.count > 0 && rain.count <= rain.budget && rain.budget <= 320, `the falling script: ${rain.count} digits (budget ${rain.budget})`);
+  // a morph cut short by another: the first ends at once
+  S.to('dojo', { x: 0, z: 0 });
+  G.tick(DT);
+  S.to('hall', { x: 0, z: 0 });
+  t = 0;
+  while (S.morphing && t < 4) {
+    G.tick(DT);
+    t += DT;
+  }
+  assert(standing('pillar').length === 10 && of('post').every((b) => b.absent) && of('codePillar').every((b) => b.absent), 'a morph cut short by another: only the last scene stands');
+  // the reset: the home scene, its light and its script (world.js restore: the breakables, then the scenes)
+  S.to('source', { x: 0, z: 0 });
+  run(G, 0.4);
+  W.restore();
+  S.reset();
+  run(G, 0.1);
+  assert(S.now === 'hall' && !S.morphing && standing('pillar').length === 10 && of('codePillar').every((b) => b.absent) && standing('watcher').length === 4 && Math.abs(U.uScript.value.x - S.base.hall) < 1e-3 && U.uScript.value.w === 0,
+    `world.restore + scenes.reset mid-morph: the hall with its 4 watchers, the script at rest (${U.uScript.value.x.toFixed(2)})`);
+  // deja vu: the stutter shifts, then nothing
+  S.stutter(0.12);
+  G.tick(DT);
+  const sh = U.uScriptF.value.z;
+  run(G, 0.2);
+  assert(sh !== 0 && U.uScriptF.value.z === 0, `the stutter shifts the letters (${sh}) and lets go`);
+  // no other level ever sets the script wave
+  const { Colliders } = await imp('src/world/colliders.js');
+  const { createSharedUniforms: mk } = await imp('src/render/shaderLib.js');
+  const others = LEVELS.filter((L) => L.id !== 'code');
+  const set0 = [];
+  const e0 = errors.length;
+  for (const L of others) {
+    const U2 = mk();
+    const set = L.buildSet(U2, new Colliders());
+    try {
+      const g2 = { ...game, U: U2, world: { ...W, forest: set, destructibles: null } };
+      set.ambience?.setup?.(g2);
+      for (let i = 0; i < 5; i++) set.ambience?.update?.(DT, g2);
+    } catch {
+      // (another set's weather on this harness: what is read is the uniform)
+    }
+    if (U2.uScript.value.x !== 0 || U2.uScript.value.w !== 0 || U2.uScriptF.value.y !== 0 || U2.uScriptF.value.z !== 0) set0.push(L.id);
+  }
+  errors.length = e0; // (the other sets' weather on a harness built for this level may complain)
+  assert(!set0.length, `uScript is 0 on every other level (${others.map((L) => L.id).join(', ')})${set0.length ? ': set on ' + set0.join(', ') : ''}`);
+}
+
 const S = {
   smoke: scenarioSmoke,
+  scenes: scenarioScenes,
 };
 const OPT_IN = new Set(['smoke', 'cost', 'strategy']);
 const list = SCEN === 'all' ? Object.keys(S).filter((k) => !OPT_IN.has(k)) : SCEN.split(',');
