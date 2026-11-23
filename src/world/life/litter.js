@@ -85,9 +85,10 @@ export class Litter {
     const T = this.T;
     this.kinds = T.kinds.map((K) => {
       const glyphs = [...K.glyphs].map((c) => gi(c));
+      const lie = K.ground?.glyphs ? [...K.ground.glyphs].map((c) => gi(c)) : glyphs;
       const W = K.where ?? { at: 'flat' };
       const base = W.at === 'rim' || W.at === 'near' ? (W.lo ?? 0) : W.at === 'ash' || W.at === 'kerb' ? W.base / (W.base + W.pile) : W.at === 'flat' ? Math.min(1, W.out ?? 1) : 1;
-      return { K, glyphs, W, base, grid: new Float32Array(GRID_N * GRID_N).fill(NaN), pts: this._points(W) };
+      return { K, glyphs, lie, W, base, grid: new Float32Array(GRID_N * GRID_N).fill(NaN), pts: this._points(W) };
     });
     let share = 0;
     for (const k of this.kinds) share += k.K.share ?? 1;
@@ -332,6 +333,11 @@ export class Litter {
     const w = this._weight(kd, x, z);
     f.pile = Math.max(f.pile, kd.base < 1 ? Math.max(0, (w - kd.base) / (1 - kd.base)) : 0);
     f.rot += K.spin > 0 ? 0.6 * Math.sin(f.ph) : 0;
+    // (it lies as one of its ground letters)
+    if (K.ground) {
+      f.g = kd.lie[Math.floor(L.rand() * kd.lie.length)] ?? f.g;
+      f.size = L.range(K.ground.size[0], K.ground.size[1]);
+    }
   }
 
   /** A letter starts falling from the sky (or tumbling in along the ground from upwind). */
@@ -391,6 +397,11 @@ export class Litter {
 
   /** Off the ground: the air (or a foot, or a blow) takes it, with this velocity. */
   _lift(f, vx, vy, vz) {
+    const kd = this.kinds[f.k], K = kd.K;
+    if (K.ground) {
+      f.g = kd.glyphs[Math.floor(this.life.rand() * kd.glyphs.length)] ?? f.g;
+      f.size = this.life.range(K.size[0], K.size[1]);
+    }
     f.s = AIR;
     f.vx = vx;
     f.vy = vy;
