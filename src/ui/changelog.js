@@ -19,6 +19,20 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-22',
+        title: 'A seventh level: the Hall of Falling Script and the One Who Woke',
+        notes: [
+          'A new level, the Hall of Falling Script: a pillared hall written in falling green letters. Pick it on the title screen.',
+          'Its boss is Xin Yi, the One Who Woke, a man in a long black coat and small dark glasses. He fights with one hand behind his back, then with two guns, then with nothing at all.',
+          'He beckons, and the hall rewrites itself around him: a wooden sparring hall, the pillared hall again, and in the end a black void of falling code. Every pillar, post and screen breaks.',
+          'In the pillared hall, stand behind a pillar: it takes his shots and loses its letters where they hit. A held guard against his stream of shots costs guard, never health.',
+          'Parry a big shot perfectly and it flies back: he bends under it, time slows, and for a second he is open. He cannot do it twice in a row.',
+          'Empty his first bar and he falls. He rises in the void with a second bar, stops what you send back in the air, tears bricks out of the code and drops on you from above: roll through the shockwave.',
+          'Sometimes the hall stutters, as if a moment repeated: he is about to throw the same string again, exactly as before.',
+          'Beat him and you learn the Long Second: hold guard and dodge with no direction to lean back under a blow and stay in reach.',
+        ],
+      },
+      {
+        date: '2026-11-22',
         title: 'A sixth level: the Windless Grove and the Sheathed',
         notes: [
           'A new level, the Windless Grove: a bamboo grove at night, a clearing, and a mound of planted swords. Pick it on the title screen.',

@@ -184,6 +184,17 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.63 — A seventh level: the Hall of Falling Script and Xin Yi, the One Who Woke (2026-11-22, `claude/level-code-one-784481`, ADR-156 – ADR-158)
+- [x] `?level=code`: one hall, three scenes on the same ten slots that morph behind a front (`scenes`,
+      destructibles `present`), the watchers, the falling script, the script wave in the prop and floor letters
+- [x] Xin Yi: two bars, three phases (one hand, two guns, the Source), the fall and the rising, the Lean,
+      the Bend, the stop and Return to Sender, flight and the Falling Fist's front, deja vu, skipped frames
+- [x] The Long Second, the second learned technique (guard, then dodge with no direction)
+- [x] Lab, Training (five lessons), `tests/integration/woke.mjs` (and an opt-in LEAN check on the Sheathed)
+- [ ] The owner's picks from the sheets: his body (`?oneLook=`), the hall (`?hall=`), the script wave (`?script=`)
+- [ ] On the iPhone: the frame rate, how the black coat reads, how the shots read at the phone camera
+- [ ] His own score (borrowed tracks until an audition page); the phase banners that decode (cut)
+
 ## M1.62 — A sixth level: the Windless Grove and the Sheathed (2026-11-22, `level/the-sheathed`, ADR-144 – ADR-146)
 - [x] `?level=grove`: the bamboo grove (light pieces), the Sword Grave, the paving; `?grove=a|b|c`
 - [x] Lu Wusheng, the Sheathed: three phases, the sheath on the rig, the draw's rule (parry or die, a held
@@ -835,7 +846,7 @@ Spec: `docs/specs/ash-disciple.md`.
 ## M2 — The boss rush's foundations (revised 2026-11-12, ADR-059)
 - [ ] Techniques: a slot system, a meter filled by parries and perfect dodges, an equip screen; the
       Ash Disciple's technique first (the next PR). The store it can read exists: `game/unlocks.js` (ADR-146)
-- [~] Fixed rewards per boss: the first, One Breath (the Sheathed's draw-slash, ADR-146), ships; the rest (techniques, weapons, abilities, elements); weapons of other lengths
+- [~] Fixed rewards per boss: the first, One Breath (the Sheathed's draw-slash, ADR-146), and the second, the Long Second (Xin Yi's lean, ADR-158), ship; the rest (techniques, weapons, abilities, elements); weapons of other lengths
   - [ ] The Thousand-Body Fox's Paper Double (a decoy the foe strikes instead of the hero): recorded on the level, not usable (ADR-148); needs the technique slot, a button on every input, a target indirection in every boss's AI
       (the animator, the hit segment and the blade FX read `DIM`)
 - [ ] A hub that links the levels (the bonfire), and a boss-rush mode (refights back to back, a timer)
