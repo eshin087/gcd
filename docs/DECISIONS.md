@@ -4549,3 +4549,21 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   slice the stalks too. World test `slice`; `bite` treats a sliced piece as cut through, not bitten.
 - **Not done:** the cut tops do not lie on the ground (they come apart where they land, as before);
   no sound of its own for a slice.
+
+## ADR-153 — CI: the tests in four parallel jobs behind one required check; docs-only PRs skip them (2026-11-23)
+
+- **Context:** `test-and-build` took 12-15 minutes a PR: ~50 minutes of headless fights four at a time
+  on one 4-core runner, and `main` requires it on an up-to-date branch, so a PR behind `main` paid it
+  twice. The repo is public: GitHub's standard runners cost nothing. Docs-only PRs ran it all too.
+- **Decision:** `tests/run.mjs --shard I/N` deals every task to one of N shares by its estimated CI
+  seconds (longest first, to the lightest share); ci.yml runs four shares as a matrix beside a build
+  job, and a gate job named `test-and-build` (the name protection requires) passes only when all of
+  them did. A `changes` job reads the PR's own diff (the merge commit against its first parent); with
+  nothing outside docs/, *.md, .claude/ the tests and the build skip and the gate passes. lord's
+  longest scenarios run as tasks of their own (`ABYSS_SKIP`, as integ and world did).
+- **Why this way:** a required check that is skipped is never reported and blocks the merge, so the
+  skip lives inside the workflow and the gate always reports. Dealing by estimate keeps one list of
+  tasks (a new suite cannot be left out of CI); a wrong estimate only unbalances the shares. Kept: the
+  up-to-date rule (two green PRs can still break `main` together) and free runners only.
+- **Consequences:** a run takes ~4 minutes (PR #92: 4 min 19 s); a PR shows six checks. The floor is
+  the longest task (lord fxlooks ~230 s); re-measure `est` when a suite grows a lot.
