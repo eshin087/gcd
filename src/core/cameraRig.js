@@ -78,6 +78,10 @@ export class CameraRig {
     // `held` eases toward the frame's largest request, back to 0 when nobody asks. Not capped on the phone
     this.held = 0;
     this._holdWant = 0;
+    // ... and, with it, the follow focus leaned `w` (0..1) toward (x, z) (eased the same way)
+    this.holdLean = { x: 0, z: 0, w: 0 };
+    this._holdLean = { x: 0, z: 0, w: 0 };
+    this._holdFocus = new THREE.Vector3();
     // a zoom punch (punch()): metres the camera sits closer right now, springing back
     this.punchZ = 0;
     // a directional kick (kick()): the camera's offset along the screen's right (kickX) and up (kickY)
@@ -194,8 +198,17 @@ export class CameraRig {
    * Hold the camera `m` metres further back this frame (desktop metres: scaled for the phone's closer
    * camera like a cinematic's zoom). The largest request of a frame wins; it eases in and out (HOLD),
    * and lets go when nobody asks. A module framing something big for seconds (thousandFox/beam.js).
+   * `x, z, w`: the follow focus is also leaned `w` (0..1) toward (x, z) while it holds.
    */
-  hold(m) {
+  hold(m, x = NaN, z = NaN, w = 0) {
+    if (Number.isFinite(x + z + w) && w > 0) {
+      const L = this._holdLean;
+      if (w >= L.w) {
+        L.x = x;
+        L.z = z;
+        L.w = Math.min(1, w);
+      }
+    }
     if (!(m > 0) || !Number.isFinite(m)) return;
     this._holdWant = Math.max(this._holdWant, m);
   }
@@ -218,10 +231,23 @@ export class CameraRig {
       desiredFocus.x += (C.x - desiredFocus.x) * Math.min(1, C.w);
       desiredFocus.z += (C.z - desiredFocus.z) * Math.min(1, C.w);
     }
-    // the held pull-back: toward this frame's request (0 without one)
+    // the held pull-back: toward this frame's request (0 without one); its lean of the focus
     this.held = damp(this.held, this._holdWant, this._holdWant > this.held ? HOLD.lambda : HOLD.out, dt);
     if (!Number.isFinite(this.held) || (this._holdWant <= 0 && this.held < 1e-3)) this.held = 0;
     this._holdWant = 0;
+    const HL = this.holdLean, HW = this._holdLean;
+    if (HW.w > 0) {
+      HL.x = HL.w > 0.01 ? damp(HL.x, HW.x, HOLD.lambda, dt) : HW.x;
+      HL.z = HL.w > 0.01 ? damp(HL.z, HW.z, HOLD.lambda, dt) : HW.z;
+    }
+    HL.w = damp(HL.w, HW.w, HW.w > HL.w ? HOLD.lambda : HOLD.out, dt);
+    if (!Number.isFinite(HL.x + HL.z + HL.w) || (HW.w <= 0 && HL.w < 1e-3)) HL.w = 0;
+    HW.w = 0;
+    if (HL.w > 0) {
+      desiredFocus = this._holdFocus.copy(desiredFocus);
+      desiredFocus.x += (HL.x - desiredFocus.x) * HL.w;
+      desiredFocus.z += (HL.z - desiredFocus.z) * HL.w;
+    }
     const b = this._base;
     b.x = damp(b.x, desiredFocus.x, c.followLambda, dt);
     b.y = damp(b.y, desiredFocus.y, c.followLambda, dt);

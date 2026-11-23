@@ -39,35 +39,36 @@ import { foxLook } from './look.js';
 //   mode                       'a' | 'b'
 
 const TAILS = 9;
-const TAIL_SEGS = 6;
-// a tail's radius at each joint, base to tip (a fox's brush: thick in the middle, a fine tip)
-const TAIL_R = [0.34, 0.58, 0.72, 0.7, 0.56, 0.34, 0.08];
-const NECK_LEN = 3.0;
+const TAIL_SEGS = 7;
+// a tail's radius at each joint, base to tip: a plume (slim at the root, full in the middle, a fine tip)
+const TAIL_R = [0.22, 0.4, 0.56, 0.64, 0.62, 0.52, 0.34, 0.1];
+const NECK_LEN = 2.4;
 const SINK = 13; // m under the floor it starts its rise from
 // drawn taller than built (the camera looks down at 58 degrees and squashes anything upright: the
-// landmarks' rule) and the head drawn larger than life (at the game camera the head is the fox)
-// It also LEANS BACK `TILT` rad (its top away from the camera, about the world's east-west axis: the
-// camera is fixed, looking north): its side then faces the camera, as the landmarks are turned to it
-const TALL = 1.15, HEAD_SCALE = 2.0, TILT = 0.5;
-const HEAD_LOCAL = new THREE.Vector3(0, 0.2, 0.2);
-const JAW_LOCAL = new THREE.Vector3(0, -0.28, 3.1); // in front of the open jaws (head space)
-const NOSE_LOCAL = new THREE.Vector3(0, 0.0, 2.6);
-// the head's profile (head space, x = 0 plane): back of the skull, over the brow, down the muzzle to the
-// nose, back along the lower jaw (jaw space for those), the throat
-const OUTLINE_HEAD = [[0, 0.4, -0.95], [0, 0.95, -0.35], [0, 0.95, 0.35], [0, 0.6, 0.9], [0, 0.22, 1.9], [0, 0.0, 2.6], [0, -0.2, 2.45]];
-const OUTLINE_JAW = [[0, -0.18, 2.1], [0, -0.32, 1.2], [0, -0.3, 0.2]];
-const OUTLINE_TAIL = [[0, -0.6, -0.6], [0, -0.3, -1.0]]; // (head space) under the skull, to the neck
+// landmarks' rule) and the head drawn larger than life (at the game camera the head IS the fox). It
+// also LEANS BACK `TILT` rad (its top away from the camera, about the world's east-west axis: the camera
+// is fixed, looking north): its side then faces the camera more, as the landmarks are turned to it
+const TALL = 1.1, HEAD_SCALE = 2.3, TILT = 0.32;
+const HEAD_LOCAL = new THREE.Vector3(0, 0.15, 0.1);
+const JAW_LOCAL = new THREE.Vector3(0, -0.45, 2.75); // in front of the open jaws (head space)
+const NOSE_LOCAL = new THREE.Vector3(0, 0.12, 2.5);
+const EAR_LEN = 1.95;
+// the head's profile (head space, x = 0 plane; ?foxSpirit=b's ink): under the skull, its back, the ear's
+// back root, (the ear: ear space), its front root, the brow, the muzzle to the nose, the upper lip back to
+// the hinge; then the lower jaw (jaw space): hinge, chin, under the jaw, its root
+const OUTLINE_HEAD = [[0, -0.35, -0.62], [0, 0.18, -0.95], [0, 0.62, -0.66], [0, 0.86, 0.02], [0, 0.6, 0.6], [0, 0.3, 1.5], [0, 0.12, 2.5], [0, -0.12, 2.42], [0, -0.2, 1.4], [0, -0.3, 0.35]];
+const OUTLINE_JAW = [[0, 0, 0], [0, -0.1, 1.9], [0, -0.34, 0.55], [0, -0.3, -0.15]];
 
 // the art sources (render/materials.js wyrmFeatures). Charcoal-rust hide lit from below by its fire
 const HIDE = {
   key: [-0.5, 0.9, 1.0], envSat: 0.3, gap: [0.12, 3.5],
-  ink: [0.2, 0.085, 0.055], light: [1.0, 0.5, 1.2, 0.03], strokes: 'axis', strokeEdge: 0.3,
+  ink: [0.13, 0.1, 0.095], light: [1.0, 0.55, 1.5, 0.03], strokes: 'axis', strokeEdge: 0.3,
   vein: [1.4, 0.3, 0.05, 0.9], glow: [0.5, 0.02], vary: 0.6,
 };
 // the head: the same hide a step brighter where it catches the light (it stands out of the body)
-const HEAD = { ...HIDE, ink: [0.3, 0.13, 0.075], light: [1.15, 0.55, 1.4, 0.05] };
+const HEAD = { ...HIDE, ink: [0.16, 0.12, 0.11], light: [1.2, 0.6, 1.8, 0.04] };
 // the tails: burning (their fire veins glow), the body stays dark
-const TAIL = { ...HIDE, ink: [0.26, 0.1, 0.05], vein: [2.4, 0.55, 0.07, 0.7], glow: [0.9, 0.12] };
+const TAIL = { ...HIDE, ink: [0.42, 0.15, 0.05], light: [1.0, 0.5, 1.0, 0.05], vein: [2.4, 0.55, 0.07, 0.7], glow: [0.9, 0.14] };
 // the fox's pale marks: the muzzle's underside, the cheek ruffs, the tail tips (they say fox)
 const PALE = { key: [-0.5, 0.9, 1.0], envSat: 0.3, ink: [0.62, 0.55, 0.46], light: [1.0, 0.5, 0.9, 0.06], strokes: 'axis', strokeEdge: 0.3 };
 const EYE = { ink: [1.0, 0.92, 0.75], light: [0.3, 0, 0, 0.12], glow: [0, 1.5] };
@@ -107,7 +108,7 @@ export class FoxSpirit {
       jaw: new THREE.Vector3(), nose: new THREE.Vector3(), head: new THREE.Vector3(), neck: new THREE.Vector3(), chest: new THREE.Vector3(),
       eye: [new THREE.Vector3(), new THREE.Vector3()], ear: [new THREE.Vector3(), new THREE.Vector3()], paw: [new THREE.Vector3(), new THREE.Vector3()],
       tails: Array.from({ length: TAILS }, () => Array.from({ length: TAIL_SEGS + 1 }, () => new THREE.Vector3())),
-      outline: Array.from({ length: OUTLINE_HEAD.length + OUTLINE_JAW.length + OUTLINE_TAIL.length }, () => new THREE.Vector3()),
+      outline: Array.from({ length: OUTLINE_HEAD.length + OUTLINE_JAW.length }, () => new THREE.Vector3()),
       k: 0,
     };
     this.st = { rise: 0, rear: 0, jaw: 0, turn: 0, fade: 0 };
@@ -135,8 +136,10 @@ export class FoxSpirit {
       m.name = `foxSpirit:${name}`;
       return m;
     };
+    // (its body and head: charcoal, only a little of the fire under them; the tails are the fire)
+    const dimUnder = [fire.under[0], fire.under[1], fire.under[2], fire.under[3] * 0.35];
     this.mats = art
-      ? { hide: mat({ ...HIDE, under: fire.under, emit: fire.emit }, 'hide'), head: mat({ ...HEAD, under: fire.under, emit: fire.emit }, 'head'), tail: mat({ ...TAIL, under: fire.under, emit: fire.emit }, 'tail'), eye: mat({ ...EYE, ink: fire.eye, emit: fire.eye }, 'eye'), fang: mat(FANG, 'fang'), pale: mat({ ...PALE, under: fire.under, emit: fire.emit }, 'pale') }
+      ? { hide: mat({ ...HIDE, under: dimUnder, emit: fire.emit }, 'hide'), head: mat({ ...HEAD, under: dimUnder, emit: fire.emit }, 'head'), tail: mat({ ...TAIL, under: fire.under, emit: fire.emit }, 'tail'), eye: mat({ ...EYE, ink: fire.eye, emit: fire.eye }, 'eye'), fang: mat(FANG, 'fang'), pale: mat({ ...PALE, under: fire.under, emit: fire.emit }, 'pale') }
       : null;
     const add = (parent, geo, m, x = 0, y = 0, z = 0) => {
       if (!art) return null;
@@ -155,113 +158,120 @@ export class FoxSpirit {
     this._burn = [];
     const burn = (o, at) => this._burn.push({ o, at });
 
-    // ---- the body: the deep chest leaning up to the shoulders, the haunch sunk in the fire behind
+    // ---- the body: a deep chest leaning up to the shoulders, a PALE throat and breast at its front (the
+    // head and the tails separate from the body by it), the haunch sunk in the fire behind
     const body = (this.body = group(root));
     burn(body, 0.82);
-    const chest = add(body, ellipsoidGeometry(1.75, 2.15, 2.7, { widthSegs: 8, heightSegs: 6 }), 'hide', 0, 3.3, -0.3);
-    if (chest) chest.rotation.x = -0.55;
-    add(body, ellipsoidGeometry(1.95, 1.8, 2.5, { widthSegs: 8, heightSegs: 6 }), 'hide', 0, 0.7, -3.3);
-    // the ruff at the throat: tufts thrown forward and down
-    for (let i = 0; i < 3; i++) {
-      const tf = group(body, (i - 1) * 0.7, 4.25 - Math.abs(i - 1) * 0.3, 1.55);
-      tf.quaternion.setFromUnitVectors(Z, this._v.set((i - 1) * 0.35, -0.75, 0.6).normalize());
-      add(tf, hornGeometry(1.5, 0.5, { radial: 4 }), 'hide');
-    }
+    const chest = add(body, ellipsoidGeometry(1.45, 1.9, 2.3, { widthSegs: 8, heightSegs: 6 }), 'hide', 0, 2.9, -0.3);
+    if (chest) chest.rotation.x = -0.6;
+    const breast = add(body, ellipsoidGeometry(1.05, 1.55, 1.0, { widthSegs: 8, heightSegs: 6 }), 'pale', 0, 3.2, 1.25);
+    if (breast) breast.rotation.x = -0.45;
+    add(body, ellipsoidGeometry(1.6, 1.5, 2.0, { widthSegs: 8, heightSegs: 6 }), 'hide', 0, 0.5, -2.8);
     // ---- the forelegs, planted (a bend at the elbow) and the paws
     this.paws = [];
     for (const sx of [-1, 1]) {
-      const sh = new THREE.Vector3(sx * 1.05, 3.9, 1.0), el = new THREE.Vector3(sx * 1.2, 1.9, 1.55), pw = new THREE.Vector3(sx * 1.15, 0.25, 2.5);
-      for (const [a, b, r0, r1] of [[sh, el, 0.62, 0.42], [el, pw, 0.42, 0.32]]) {
+      const sh = new THREE.Vector3(sx * 0.9, 3.3, 0.9), el = new THREE.Vector3(sx * 1.0, 1.6, 1.4), pw = new THREE.Vector3(sx * 0.95, 0.22, 2.2);
+      for (const [a, b, r0, r1] of [[sh, el, 0.52, 0.36], [el, pw, 0.36, 0.28]]) {
         const lg = group(body, a.x, a.y, a.z);
         const dv = this._v.copy(b).sub(a), L = dv.length();
         lg.quaternion.setFromUnitVectors(Z, dv.normalize());
         add(lg, limbGeometry({ length: L, r0, r1, radial: 6, rings: 2, capSegs: 1 }), 'hide');
       }
       const paw = group(body, pw.x, pw.y, pw.z + 0.2);
-      add(paw, ellipsoidGeometry(0.5, 0.3, 0.75, { widthSegs: 6, heightSegs: 4 }), 'hide');
+      add(paw, ellipsoidGeometry(0.42, 0.26, 0.65, { widthSegs: 6, heightSegs: 4 }), 'hide');
       this.paws.push(paw);
     }
-    // ---- the neck (rises up and forward from the shoulders) and the head on it
-    const neck = (this.neck = group(body, 0, 4.4, 0.9));
+    // ---- the neck (rises up and forward from the shoulders, its front pale) and the head on it
+    const neck = (this.neck = group(body, 0, 3.9, 0.9));
     burn(neck, 0.62);
-    this._neckRest = -1.05; // rad about x: up and forward
+    this._neckRest = -0.96; // rad about x: up and forward
     neck.rotation.order = 'YXZ';
-    add(neck, limbGeometry({ length: NECK_LEN, r0: 1.15, r1: 0.85, radial: 7, rings: 2, capSegs: 1 }), 'hide');
+    add(neck, limbGeometry({ length: NECK_LEN, r0: 1.0, r1: 0.8, radial: 7, rings: 2, capSegs: 1 }), 'hide');
+    const throat = add(neck, ellipsoidGeometry(0.7, 0.55, 1.3, { widthSegs: 7, heightSegs: 5 }), 'pale', 0, -0.5, 1.25);
+    if (throat) throat.rotation.x = 0.1;
     const head = (this.head = group(neck, 0, 0, NECK_LEN));
     head.scale.setScalar(HEAD_SCALE);
     head.rotation.order = 'XYZ'; // (pitch in the neck's frame first, then the yaw: no roll when it turns)
     // (the head's own frame is level: undo the neck's tilt so +z is the muzzle)
-    this._headRest = 1.05;
-    add(head, ellipsoidGeometry(0.95, 0.85, 0.95, { widthSegs: 8, heightSegs: 6 }), 'head', 0, 0.2, 0);
-    // the brow ridge over the eyes (the long wedge that says fox in profile)
-    add(head, hornGeometry(1.3, 0.62, { radial: 4 }), 'head', 0, 0.48, 0.1);
-    // the upper jaw: a long four-sided wedge, flattened
-    const up = add(head, hornGeometry(2.2, 0.6, { radial: 5 }), 'head', 0, 0.06, 0.45);
-    if (up) up.scale.set(1, 0.62, 1);
-    // the lower jaw hangs from a hinge under the skull and opens
-    const jaw = (this.jaw = group(head, 0, -0.26, 0.3));
-    const lo = add(jaw, hornGeometry(1.95, 0.44, { radial: 4 }), 'pale', 0, -0.06, 0.1);
-    if (lo) lo.scale.set(0.9, 0.5, 1);
-    // the maw: the fire inside the open mouth (the eyes' white-hot glow): a bright wedge between the
-    // dark jaws when they part, the open mouth read at a glance
-    const maw = add(head, hornGeometry(2.0, 0.42, { radial: 4 }), 'eye', 0, -0.2, 0.35);
-    if (maw) maw.scale.set(0.8, 0.5, 1);
+    this._headRest = 0.96;
+    // the skull, the brow's long slope, the muzzle: one clean wedge in profile
+    add(head, ellipsoidGeometry(0.82, 0.78, 0.92, { widthSegs: 8, heightSegs: 6 }), 'head', 0, 0.15, -0.05);
+    const brow = add(head, hornGeometry(1.4, 0.55, { radial: 4 }), 'head', 0, 0.42, 0.1);
+    if (brow) brow.scale.set(1, 0.6, 1);
+    const up = add(head, hornGeometry(2.15, 0.52, { radial: 5 }), 'head', 0, 0.04, 0.4);
+    if (up) {
+      up.scale.set(0.95, 0.62, 1);
+      up.rotation.x = 0.06;
+    }
+    // the lower jaw hangs from a hinge under the skull and opens WIDE (pale: it reads against the dark)
+    const jaw = (this.jaw = group(head, 0, -0.3, 0.35));
+    const lo = add(jaw, hornGeometry(1.9, 0.4, { radial: 4 }), 'pale', 0, -0.08, 0.0);
+    if (lo) lo.scale.set(0.85, 0.45, 1);
+    // the maw: the fire inside the open mouth (the white-hot glow of the eyes), a bright wedge between
+    // the jaws when they part: the open mouth read at a glance
+    const maw = add(head, hornGeometry(1.95, 0.4, { radial: 4 }), 'eye', 0, -0.24, 0.35);
+    if (maw) maw.scale.set(0.7, 0.42, 1);
     // fangs: two long ones up front, a pair behind, and two from the lower jaw
     for (const sx of [-1, 1]) {
-      for (const [z, L] of [[2.05, 0.62], [1.35, 0.42]]) {
-        const f = group(head, sx * 0.24, -0.08, z);
+      for (const [z, L] of [[1.95, 0.6], [1.3, 0.4]]) {
+        const f = group(head, sx * 0.22, -0.1, z);
         f.rotation.x = Math.PI / 2 + 0.15;
-        add(f, hornGeometry(L, 0.11, { radial: 4 }), 'fang');
+        add(f, hornGeometry(L, 0.1, { radial: 4 }), 'fang');
       }
-      const f2 = group(jaw, sx * 0.2, 0.0, 1.6);
+      const f2 = group(jaw, sx * 0.18, 0.0, 1.5);
       f2.rotation.x = -Math.PI / 2 - 0.1;
-      add(f2, hornGeometry(0.4, 0.1, { radial: 4 }), 'fang');
+      add(f2, hornGeometry(0.38, 0.09, { radial: 4 }), 'fang');
     }
-    // ears: tall, pointed, raked back and out
+    // ears: tall, broad, pointed, raked back (flattened side to side: their broad face to the camera),
+    // pale inside
     this.ears = [];
     for (const sx of [-1, 1]) {
-      const e = group(head, sx * 0.48, 0.78, -0.25);
-      e.quaternion.setFromUnitVectors(Z, this._v.set(sx * 0.32, 0.92, -0.32).normalize());
-      add(e, hornGeometry(1.75, 0.5, { radial: 4 }), 'head');
+      const e = group(head, sx * 0.36, 0.66, -0.3);
+      e.quaternion.setFromUnitVectors(Z, this._v.set(sx * 0.18, 0.95, -0.28).normalize());
+      const em = add(e, hornGeometry(EAR_LEN, 0.62, { radial: 4 }), 'head');
+      if (em) em.scale.set(0.5, 1.15, 1);
+      const ei = add(e, hornGeometry(EAR_LEN * 0.7, 0.32, { radial: 4 }), 'pale', sx * 0.12, 0, 0.1);
+      if (ei) ei.scale.set(0.4, 1.0, 1);
       this.ears.push(e);
     }
-    // eye slits: thin, slanted, white-hot
+    // eye slits: long, slanted, white-hot
     this.eyes = [];
     for (const sx of [-1, 1]) {
-      const e = group(head, sx * 0.74, 0.4, 0.58);
-      e.rotation.set(0.1, sx * 0.25, sx * -0.38);
-      add(e, ellipsoidGeometry(0.1, 0.07, 0.42, { widthSegs: 6, heightSegs: 3 }), 'eye');
+      const e = group(head, sx * 0.7, 0.36, 0.5);
+      e.rotation.set(0.12, sx * 0.25, sx * -0.42);
+      add(e, ellipsoidGeometry(0.13, 0.1, 0.48, { widthSegs: 6, heightSegs: 3 }), 'eye');
       this.eyes.push(e);
     }
-    // cheek ruffs: spikes of fur swept back from the jaw's hinge
+    // cheek ruffs: pale spikes of fur swept back from the hinge of the jaw
     for (const sx of [-1, 1]) {
-      const c = group(head, sx * 0.78, -0.18, -0.15);
-      c.quaternion.setFromUnitVectors(Z, this._v.set(sx * 0.5, -0.35, -0.8).normalize());
-      add(c, hornGeometry(1.4, 0.4, { radial: 4 }), 'pale');
+      const c = group(head, sx * 0.7, -0.22, -0.2);
+      c.quaternion.setFromUnitVectors(Z, this._v.set(sx * 0.45, -0.4, -0.8).normalize());
+      add(c, hornGeometry(1.25, 0.38, { radial: 4 }), 'pale');
     }
-    // ---- nine tails: chains from the rump, fanned up and back in its profile's plane
-    const base = (this.tailBase = group(body, 0, 1.0, -4.2));
+    // ---- nine tails: separate S-curved plumes from the rump, fanned up and back in the plane of its
+    // profile, a gap between each; each tipped pale (and with fire: fxBeam.js spiritFire)
+    const base = (this.tailBase = group(body, 0, 0.9, -3.5));
     this.tails = [];
     const L = (this.S.tails ?? 14) / TAIL_SEGS;
     this._tailL = L;
     for (let i = 0; i < TAILS; i++) {
       const f = i / (TAILS - 1); // 0 the lowest, back; 1 the highest, up over the back
-      const e = (6 + 62 * f) * (Math.PI / 180), lat = (i % 2 ? 1 : -1) * (0.08 + 0.05 * Math.abs(i - 4));
-      const root0 = group(base, (i - 4) * 0.12, 0, 0);
+      const e = (0 + 86 * f) * (Math.PI / 180), lat = (i - 4) * 0.05;
+      const root0 = group(base, (i - 4) * 0.1, 0, 0);
       root0.quaternion.setFromUnitVectors(Z, this._v.set(lat, Math.sin(e), -Math.cos(e)).normalize());
       const segs = [];
       let parent = root0;
       for (let k = 0; k < TAIL_SEGS; k++) {
         const sg = group(parent, 0, 0, k === 0 ? 0 : L);
         sg.rotation.order = 'XYZ';
-        add(sg, limbGeometry({ length: L, r0: TAIL_R[k], r1: TAIL_R[k + 1], radial: 6, rings: 2, capSegs: 1 }), k === TAIL_SEGS - 1 ? 'pale' : 'tail');
+        add(sg, limbGeometry({ length: L, r0: TAIL_R[k], r1: TAIL_R[k + 1], radial: 6, rings: 2, capSegs: 1 }), k >= TAIL_SEGS - 1 ? 'pale' : 'tail');
         segs.push(sg);
         burn(sg, 0.5 * (1 - k / TAIL_SEGS) * (0.7 + 0.3 * ((i * 0.37) % 1)));
         parent = sg;
       }
       const tip = group(parent, 0, 0, L);
-      // (the curl: tips flare out from the fan's middle, like flames)
-      this.tails.push({ segs, tip, curl: (f - 0.45) * 0.16, ph: i * 1.31 });
+      // (the S: the first half bends one way, the second the other, alternating tail to tail)
+      this.tails.push({ segs, tip, s: (i % 2 ? 1 : -1) * 0.2, ph: i * 1.31 });
     }
     root.scale.set(1, TALL, 1);
     root.rotation.order = 'XYZ';
@@ -351,17 +361,18 @@ export class FoxSpirit {
     const up = Math.max(0, rear), down = Math.max(0, -rear);
     // (neck: up straightens it, down leans it forward; the head undoes that and adds its own pitch:
     // reared, the muzzle up 0.55 rad; thrust, down 0.85 rad at the line under it)
-    const nUp = 0.32 * up, nDown = 0.35 * down;
+    const nUp = 0.28 * up, nDown = 0.3 * down;
     this.neck.rotation.set(this._neckRest - nUp + nDown + 0.03 * br, turn * 0.4, 0);
     this.head.rotation.set(this._headRest + nUp - nDown - 0.55 * up + 0.85 * down, turn * 0.6, 0);
-    this.jaw.rotation.set(1.0 * jaw + 0.04 * Math.sin(t * 9) * jaw, 0, 0);
-    for (let i = 0; i < 2; i++) this.ears[i].rotation.z = (i ? 1 : -1) * 0.08 * Math.sin(t * 1.3 + i);
-    // the tails sway as flames do: a slow wave running out along each, each on its own beat
+    this.jaw.rotation.set(1.15 * jaw + 0.04 * Math.sin(t * 9) * jaw, 0, 0);
+    // the tails sway as flames do: an S along each (one way, then the other), a slow wave running out
+    // along it, each on its own beat
     for (let i = 0; i < this.tails.length; i++) {
       const T = this.tails[i];
-      for (let k = 0; k < T.segs.length; k++) {
+      for (let k = 1; k < T.segs.length; k++) {
         const w = Math.sin(t * 1.7 + T.ph - k * 0.7), w2 = Math.sin(t * 1.1 + T.ph * 1.7 - k * 0.5);
-        T.segs[k].rotation.set(k === 0 ? 0 : T.curl * k * -0.6 + 0.1 * w * (0.4 + k * 0.15), k === 0 ? 0 : 0.06 * w2 * k * 0.4, 0);
+        const S = T.s * (k < T.segs.length / 2 ? 1 : -1.1);
+        T.segs[k].rotation.set(S + 0.08 * w * (0.4 + k * 0.15), 0.05 * w2 * k * 0.3, 0);
       }
     }
     // going up in embers: the tails' tips first, then the head, the body last
@@ -381,11 +392,11 @@ export class FoxSpirit {
     h.localToWorld(P.head.copy(HEAD_LOCAL));
     for (let i = 0; i < 2; i++) {
       this.eyes[i].localToWorld(P.eye[i].set(0, 0, 0));
-      this.ears[i].localToWorld(P.ear[i].set(0, 0, 1.75));
+      this.ears[i].localToWorld(P.ear[i].set(0, 0, EAR_LEN));
       this.paws[i].localToWorld(P.paw[i].set(0, 0, 0));
     }
     this.neck.localToWorld(P.neck.set(0, 0, 0));
-    this.body.localToWorld(P.chest.set(0, 3.3, 0.6));
+    this.body.localToWorld(P.chest.set(0, 3.0, 0.6));
     for (let i = 0; i < this.tails.length; i++) {
       const T = this.tails[i], out = P.tails[i];
       for (let k = 0; k < T.segs.length; k++) T.segs[k].localToWorld(out[k].set(0, 0, 0));
@@ -394,7 +405,6 @@ export class FoxSpirit {
     let n = 0;
     for (const q of OUTLINE_HEAD) h.localToWorld(P.outline[n++].set(q[0], q[1], q[2]));
     for (const q of OUTLINE_JAW) j.localToWorld(P.outline[n++].set(q[0], q[1], q[2]));
-    for (const q of OUTLINE_TAIL) h.localToWorld(P.outline[n++].set(q[0], q[1], q[2]));
     P.k = ease(this.st.rise) * (1 - this.st.fade);
   }
 }

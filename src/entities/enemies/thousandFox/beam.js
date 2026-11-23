@@ -36,8 +36,8 @@ import { summonRing, darkSun, beamMark, beamBody, spiritFire, spiritEnd } from '
 //   B                         the line: { fixed, ox, oz (him: its root), yaw, dx, dz, len, w, t, swept,
 //                             sign, taken, first } (the tests read it)
 //
-// HOW IT PLAYS. The flit (a feint beat): at T.flitAt of it he is gone and at the rim point farthest from
-// the hero, facing the centre. The beam beat's windup (fixed, T.summon + T.charge s): the fox is placed
+// HOW IT PLAYS. The flit (a feint beat): at T.flitAt of it he is gone and T.away m from the hero, away
+// from him through the middle (T.rim from the middle at most), facing him. The beam beat's windup (fixed, T.summon + T.charge s): the fox is placed
 // behind him SIDE-ON to the camera (its body faces east or west, whichever the line runs toward; only its
 // head turns to the line) and rises out of a pool of fire; the ring of script burns out round his palms;
 // the terrace's light drops; the darkness of a charged blow (`combat:charge` once: the screen's edge
@@ -318,7 +318,7 @@ export class FoxHowl {
       // jaws wide; the last of it the head comes down at the line
       const S = T.spirit, kr = sat(ks / Math.max(0.1, S.rise));
       st.rise = ease(kr);
-      st.rear = ks < 1 ? 0.6 * ease(sat((ks - S.rise * 0.7) / 0.3)) : 0.6 + 0.4 * ease(sat(uc / 0.5)) - 1.9 * ease(sat((uc - 0.8) / 0.2));
+      st.rear = ks < 1 ? 0.4 * ease(sat((ks - S.rise * 0.7) / 0.3)) : 0.4 - 0.1 * ease(sat(uc / 0.5)) - 1.3 * ease(sat((uc - 0.8) / 0.2));
       st.jaw = ks < 1 ? 0.7 * sat((ks - S.rise) / 0.15) * (1 - 0.5 * sat((ks - S.rise - 0.15) / 0.1)) + 0.35 * sat((ks - 0.9) / 0.1) : 0.7 + 0.3 * sat(uc / 0.3);
       st.fade = 0;
       this._aimHead(B.fixed ? B.yaw : d.yaw);
@@ -334,7 +334,8 @@ export class FoxHowl {
     }
     this.spirit.frame(dt, st);
     this._hold(1);
-    this.game.world?.forest?.light?.dim?.(st.rise * T.dim);
+    // the light drops as it rises, and on down as the dark sun gathers (all of it while it burns)
+    this.game.world?.forest?.light?.dim?.(t < bt.impact ? T.dim * (0.55 * st.rise + 0.45 * ease(uc)) : T.dim);
   }
 
   /** The beam, lit: the first contact, the sweep, the world, the selves. */
@@ -407,7 +408,7 @@ export class FoxHowl {
       d.addPosture?.(T.kneelPosture);
     }
     if (this.spirit.visible) {
-      st.rear = this._endRear + (1 - this._endRear) * ease(sat(e / thrown));
+      st.rear = this._endRear + (0.8 - this._endRear) * ease(sat(e / thrown));
       st.jaw = 0.6;
       st.fade = sat((e - thrown) / life);
       if (st.fade > 0 && !this._endBurst) {
@@ -432,33 +433,44 @@ export class FoxHowl {
   }
 
   // ---------------------------------------------------------------- the pieces
-  /** The flit: to the rim point farthest from the hero (inside his bound), facing the centre. */
+  /** The flit: `T.away` m from the hero, away from him through the terrace's middle (toward the rim
+   *  point farthest from him), never past `T.rim` from the middle (inside his bound); facing the hero.
+   *  (Not all the way to the far rim: the fox, its head and the hero then fit one frame at about the
+   *  fight's own distance, and the head is the size of a subject, not a corner.) */
   _flit(s) {
     const d = this.d, T = this.T, p = s?.p ?? this.game.player?.position;
-    const x0 = d.position.x, z0 = d.position.z;
-    let ax = -(p?.x ?? 0), az = -(p?.z ?? 1);
+    const x0 = d.position.x, z0 = d.position.z, px = fin(p?.x), pz = fin(p?.z);
+    let ax = -px, az = -pz;
     let l = Math.hypot(ax, az);
-    // (the hero at the centre: away from where the hero faces, else north)
+    // (the hero at the middle: away from where the hero faces, else north)
     if (l < 0.5) {
       const py = this.game.player?.yaw;
       ax = Number.isFinite(py) ? -Math.sin(py) : 0;
       az = Number.isFinite(py) ? -Math.cos(py) : -1;
       l = Math.hypot(ax, az) || 1;
     }
-    const R = Math.min(T.rim, d.bound - 0.3);
-    let a = Math.atan2(ax / l, az / l);
-    // (a spot he may stand on: the nearest one round the rim)
+    const R = Math.min(T.rim, d.bound - 0.3), D = T.away ?? 10;
+    const a0 = Math.atan2(ax / l, az / l);
+    let tx = px + Math.sin(a0) * D, tz = pz + Math.cos(a0) * D;
+    // (a spot he may stand on: turned round the hero a little if this one is taken)
     for (const da of [0, 0.25, -0.25, 0.5, -0.5, 0.8, -0.8]) {
-      if (!d.standable || d.standable(Math.sin(a + da) * R, Math.cos(a + da) * R)) {
-        a += da;
+      let x = px + Math.sin(a0 + da) * D, z = pz + Math.cos(a0 + da) * D;
+      const r = Math.hypot(x, z);
+      if (r > R) {
+        x *= R / r;
+        z *= R / r;
+      }
+      if (!d.standable || d.standable(x, z)) {
+        tx = x;
+        tz = z;
         break;
       }
     }
-    d.position.x = Math.sin(a) * R;
-    d.position.z = Math.cos(a) * R;
+    d.position.x = tx;
+    d.position.z = tz;
     d.position.y = 0;
     d.moveBy(0, 0);
-    d.yaw = Math.atan2(-d.position.x, -d.position.z);
+    d.yaw = Math.atan2(px - d.position.x, pz - d.position.z);
     if (d.object3d) d.object3d.rotation.y = d.yaw;
     d.anim?.teleported?.();
     d.fx?.flit?.(x0, z0, d.position.x, d.position.z);
@@ -659,13 +671,22 @@ export class FoxHowl {
     if (!rig || !p || !H || !(k > 0.01)) return;
     const C = this.T.camera;
     if (Number.isFinite(H.x + H.y + H.z) && H.y > 0) {
+      // (on a phone the pull-back is capped in its own metres, C.phone: the hero stays readable; the
+      // frame then holds the hero and the head, and the tails run off it)
+      const phone = !!rig.mobile, cap = phone ? C.phone / Math.max(0.1, fin(rig.defaultDistance, 20) / CONFIG.camera.distance) : C.maxZoom;
       const z = this._pairZoom(p, H, C.margin);
-      rig.hold?.(Math.min(C.maxZoom, z) * ease(sat(k)));
+      // (the focus leaned toward the fox: half way from the hero to its head and chest)
+      const Ch0 = this.spirit.P.chest, fxm = (H.x + Ch0.x) * 0.5, fzm = (H.z + Ch0.z) * 0.5;
+      rig.hold?.(Math.min(cap, z) * ease(sat(k)), fxm, fzm, (phone ? C.leanPhone : C.lean) * ease(sat(k)));
       rig.keep?.(p.x, fin(p.y) + 1.0, p.z, 1.4, true);
-      rig.keep?.(H.x, H.y, H.z, 2.4, true);
+      // (on a phone only the hero is a must: what does not fit of the fox is cropped, never the hero)
+      rig.keep?.(H.x, H.y, H.z, phone ? 1.6 : 2.4, !phone);
+      // (and its ears' tips: the head whole, not cut at the frame's top)
+      const E = this.spirit.P.ear[0];
+      if (!phone && Number.isFinite(E.x + E.y + E.z) && E.y > 0) rig.keep?.(E.x, E.y, E.z, 0.8, true);
       // (its chest too, when it fits: the fox, not only its head)
       const Ch = this.spirit.P.chest;
-      if (Ch.y > 0) rig.keep?.(Ch.x, Ch.y, Ch.z, 3, false);
+      if (!phone && Ch.y > 0) rig.keep?.(Ch.x, Ch.y, Ch.z, 3, false);
     }
   }
 
@@ -676,7 +697,8 @@ export class FoxHowl {
     const asp = Number.isFinite(cam?.aspect) && cam.aspect > 0.2 ? cam.aspect : 16 / 9;
     const pitch = fin(rig.pitch, CONFIG.camera.pitch), sp = Math.sin(pitch), cp = Math.cos(pitch);
     // (screen-up of a point: cos(pitch) y - sin(pitch) z; the hero's chest and the head's top)
-    const upP = cp * 1.2 - sp * p.z, upH = cp * (H.y + 1.6) - sp * H.z;
+    const E = this.spirit.P.ear[0], eu = Number.isFinite(E?.y + E?.z) ? cp * (E.y + 0.6) - sp * E.z : -Infinity;
+    const upP = cp * 1.2 - sp * p.z, upH = Math.max(cp * (H.y + 1.6) - sp * H.z, eu);
     const hx = Math.abs(H.x - p.x) / 2 + m, hy = Math.abs(upH - upP) / 2 + m;
     const need = Math.max(hx / (tanV * asp * 0.86), hy / (tanV * 0.8));
     const base = fin(rig.targetDistance, CONFIG.camera.distance);
