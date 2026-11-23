@@ -32,7 +32,7 @@ const BASE = {
   fronts: { every: [9, 15], strength: [0.9, 1.2], speed: [7, 8.5], tail: [4.5, 6.5], lead: 0.9, air: 2.2, spread: 10, from: 40, to: 50 },
   sink: null,
   // runs of strokes along a front's edge (`edge` of them) and in its wake, turned to the wind on screen
-  streaks: { rate: 40, max: 200, run: [2, 4], gap: 0.62, edge: 0.6, y: [0.75, 1.3], life: [1.1, 1.9], size: [0.8, 1.0], color: [0.42, 0.5, 0.47], alpha: 0.6, glyph: '~~=-' },
+  streaks: { rate: 32, max: 200, run: [2, 4], gap: 0.62, edge: 0.6, y: [0.75, 1.3], life: [1.1, 1.9], size: [0.8, 1.0], color: [0.42, 0.5, 0.47], alpha: 0.52, glyph: '~~=-' },
   grass: { lean: 0.16, wave: 0.2, front: 0.9, lift: 0.95 },
   trees: { lean: 0.3, rock: 0.25, front: 0.75, stir: 0.16 },
   loud: 4,
@@ -62,7 +62,7 @@ export const WIND_TUNE = Object.freeze({
     dir: -8, wander: 14, speed: 1.6,
     breath: { floor: 0.35, periods: [7, 17], fit: 0.45 },
     fronts: { every: [6, 11], strength: [0.8, 1.25], speed: [8, 9.5], tail: [3.5, 5.5], lead: 0.8, spread: 16 },
-    streaks: { rate: 30, color: [0.36, 0.35, 0.33], glyph: '~-=-' },
+    streaks: { rate: 26, color: [0.5, 0.49, 0.46], glyph: '~-=-' },
     grass: { lean: 0.12, wave: 0.24, front: 0.8 },
   }),
   /** the crater of the fallen star: no weather wind, a slow draw of the air toward the star, breathing */
@@ -80,7 +80,7 @@ export const WIND_TUNE = Object.freeze({
     dir: 0, wander: 5, speed: 3.2,
     breath: { floor: 0.78, periods: [14, 37] },
     fronts: { every: [5, 9], strength: [0.8, 1.1], speed: [9, 10.5], tail: [5, 8], lead: 1.0, air: 2.6, spread: 6 },
-    streaks: { rate: 34, color: [0.42, 0.34, 0.25], glyph: '~-=-' },
+    streaks: { rate: 30, color: [0.56, 0.47, 0.35], glyph: '~-=-' },
     grass: { lean: 0.2, wave: 0.16, front: 0.8 },
     loud: 6,
   }),
@@ -89,7 +89,7 @@ export const WIND_TUNE = Object.freeze({
     dir: -25, wander: 10, speed: 1.3,
     breath: { floor: 0.05, periods: [10, 23], pause: 0.38 },
     fronts: { every: [11, 18], strength: [0.8, 1.05], speed: [6.5, 7.5], tail: [5, 7] },
-    streaks: { rate: 20, color: [0.3, 0.32, 0.36] },
+    streaks: { rate: 22, color: [0.44, 0.47, 0.52] },
   }),
   /** the Windless Grove: none. The grove holds its breath (wind.still) */
   grove: level({ speed: 0, wander: 0, fronts: null, still: true, streaks: { rate: 0, max: 0 } }),

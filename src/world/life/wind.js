@@ -327,7 +327,9 @@ export class Wind {
     A[WIND_SLOTS * 2]?.set(S?.x ?? 0, S?.z ?? 0, S && !this.still ? 1 : 0, 0);
     A[WIND_SLOTS * 2 + 1]?.set(this._ox, this._oz, 0, 0);
     const G = T.grass, R = T.trees;
-    A[WIND_SLOTS * 2 + 2]?.set(G.lean, G.wave, G.front, G.lift);
+    // (while the boss is up the band steps back: a lighter sweep across the floor must not compete with a tell)
+    const calm = Math.max(0, Math.min(1, Number.isFinite(this.life.calm) ? this.life.calm : 1));
+    A[WIND_SLOTS * 2 + 2]?.set(G.lean, G.wave, G.front * (0.5 + 0.5 * calm), G.lift * calm);
     A[WIND_SLOTS * 2 + 3]?.set(R.lean, R.rock, R.front, R.stir);
   }
 
