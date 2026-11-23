@@ -113,7 +113,7 @@ function scorchedGame(real) {
 // inherited helpers they call (_shock, arc, lightning ...) never draw from the stream game code reads
 const ASC_DRAW = [
   'formAura', 'limbTrail', 'muzzle', 'beamCharge', 'beam', 'beamSplash', 'beamClash', 'beamSplit', 'vanish', 'dashGhost', 'auraBurst',
-  'transformGather', 'transformNova', 'crater', 'updateShots', 'signSnap', 'stanceGlow', 'lanternGather', 'lanternClash', 'lanternBurst',
+  'transformGather', 'transformNova', 'crater', 'updateShots', 'signSnap', 'stanceGlow', 'lanternGather', 'lanternClash', 'lanternBurst', 'cupCharge',
 ];
 
 export class AscFx extends LordFx {
@@ -494,6 +494,39 @@ export class AscFx extends LordFx {
   beamCharge(x, y, z, u, dt, form = 1) {
     if (!this.fire || !Number.isFinite(x + y + z + u) || !(dt >= 0)) return;
     drawBeamCharge(this, x, y, z, clamp01(u), dt, form);
+  }
+
+  /** The cupped hands' charge (the fourth wave: `?ascBeamPose=cup` and Instant Wave; u 0..1 every
+   *  frame): the beam's charge (motes, threads, the floor lit) and on it a BALL of light held between the
+   *  palms at the hip, growing to ~0.9 m across: a gold body filled to its edge, a rim turning, a small
+   *  white heart, sparks crackling between the palms late. What reads of the technique at the game
+   *  camera (the hands themselves are a few letters). ~60 - 110 blobs. */
+  cupCharge(x, y, z, u, dt, form = 1) {
+    if (!this.fire || !Number.isFinite(x + y + z + u) || !(dt >= 0)) return;
+    u = clamp01(u);
+    drawBeamCharge(this, x, y, z, u, dt, form);
+    const life = this._frame();
+    if (!(life > 0)) return;
+    const A = this._axes(), P = this._toCamera(x, y, z), t = this._now(), R = 0.14 + 0.32 * u * (1 + 0.06 * Math.sin(t * 23));
+    const at = (ox, oy, sz, h, kind) => this._blob(P.x + A.rx * ox + A.ux * oy, P.y + A.ry * ox + A.uy * oy, P.z + A.rz * ox + A.uz * oy, 0, 0, 0, life, sz, sz, h, h, kind);
+    for (let i = 0; i < 12; i++) {
+      const rr = R * 0.8 * Math.sqrt((i + 0.5) / 12), a = i * 2.39996 - t * 4;
+      at(Math.cos(a) * rr, Math.sin(a) * rr, R * 0.7, 0.45 + 0.3 * u, K_VOID);
+    }
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * TAU + t * (3 + 5 * u);
+      at(Math.cos(a) * R, Math.sin(a) * R, 0.2, (0.35 + 0.3 * u) * (0.7 + 0.3 * Math.max(0, Math.cos(a * 2))), K_VOID);
+    }
+    at(0, 0, R * 0.55, 0.55 + 0.45 * u, K_STEEL);
+    if (u > 0.55 && this.lr() < dt * 10) {
+      const a = this.lr() * TAU, o = this._rec(x, y, z, this.lrand(0.12, 0.22), 0.12, 0.03, "'+.", form >= 3 ? STORM : WHITE, GOLD_END);
+      o.vx = Math.cos(a) * 2.5;
+      o.vy = this.lrand(-0.5, 1.5);
+      o.vz = Math.sin(a) * 2.5;
+      o.drag = 4;
+      this._spawn(this.add, o);
+    }
+    this._keep('cupCharge', x, y, z, L_GOLD, 0.8 + 2.2 * u, 3.5 + 2.5 * u, 0.15);
   }
 
   /** The lit beam this frame: muzzle a → end b, `w` m wide (1.4 - 3.4), `k` 0..1 its strength (it
@@ -1402,17 +1435,24 @@ export class AscFx extends LordFx {
       const n = Math.min(60, Math.max(12, Math.round(R * 26)));
       for (let i = 0; i < n; i++) {
         const u = Math.sqrt((i + 0.5) / n), rr = R * 0.84 * u, a = i * 2.39996 + t * 0.8;
-        at(Math.cos(a) * rr, Math.sin(a) * rr, R * 0.62, (0.15 + 0.1 * (1 - u)) * kc, K_STEEL);
+        at(Math.cos(a) * rr, Math.sin(a) * rr, R * 0.62, (0.09 + 0.08 * (1 - u)) * kc, K_STEEL);
       }
       const m = Math.min(40, Math.max(10, Math.round(R * 18)));
       for (let i = 0; i < m; i++) {
-        const a = (i / m) * TAU + t * 0.35, rr = R * (0.95 + 0.04 * hash(seed + i * 1.7)), lit = 0.6 + 0.4 * Math.max(0, Math.cos(a - 2.2));
-        at(Math.cos(a) * rr, Math.sin(a) * rr, R * 0.26, 0.34 * lit * kc, K_STEEL);
+        const a = (i / m) * TAU + t * 0.35, rr = R * (0.95 + 0.04 * hash(seed + i * 1.7)), lit = 0.5 + 0.5 * Math.max(0, Math.cos(a - 2.2));
+        at(Math.cos(a) * rr, Math.sin(a) * rr, R * 0.26, 0.32 * lit * kc, K_STEEL);
       }
       // the heart: brighter toward the middle, breathing a little
       const br = 1 + 0.08 * Math.sin(t * 4.2 + seed);
-      at(0, 0, R * 0.5, 0.32 * kc, K_STEEL);
-      at(0, 0, R * 0.24 * br, 0.82 * k, K_STEEL);
+      at(0, 0, R * 0.5, 0.26 * kc, K_STEEL);
+      at(0, 0, R * 0.24 * br, 0.72 * k, K_STEEL);
+      // its cool tint: a few blue-white letters riding on it (one-cell glyphs, a frame or two each)
+      const nb = Math.round(Math.min(10, 2 + R * 4));
+      for (let i = 0; i < nb; i++) {
+        const a = this.lr() * TAU, rr = R * Math.sqrt(this.lr()) * 0.92;
+        const o = this._rec(x + A.rx * Math.cos(a) * rr + A.ux * Math.sin(a) * rr, y + A.ry * Math.cos(a) * rr + A.uy * Math.sin(a) * rr, z + A.rz * Math.cos(a) * rr + A.uz * Math.sin(a) * rr, 0.09, 0.15, 0.13, ".'+", ORB_C, ORB_C);
+        this._spawn(this.add, o);
+      }
       return;
     }
     if (look('ascOrb') === 'b') {

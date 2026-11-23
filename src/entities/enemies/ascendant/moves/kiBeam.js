@@ -65,11 +65,11 @@ export function beamMoves(X) {
   // drawn: turned away, sunk wide, both hands cupped together at the right hip (the light between the
   // palms), the elbows back, the eyes on the hero over the lead shoulder
   const CUP_GATHER = {
-    yaw: -0.8, bY: -0.32, pitch: 0.08, hip: -0.14, spY: -0.12, roll: 0.03,
-    rH: [0.09, -0.44, 0.1], rP: [-0.9, -0.2, -0.7], lH: [-0.34, -0.42, 0.14], lP: [0.5, -0.4, -0.8], ...LOW,
+    yaw: -0.85, bY: -0.34, pitch: 0.1, hip: -0.14, spY: -0.12, roll: 0.03,
+    rH: [0.09, -0.44, 0.06], rP: [-0.9, -0.2, -0.7], lH: [-0.34, -0.42, 0.1], lP: [0.5, -0.4, -0.8], ...LOW,
   };
   // tightened before it goes: drawn a little further back and down
-  const CUP_COCKED = { ...CUP_GATHER, yaw: -0.88, bY: -0.35, rH: [0.09, -0.45, 0.06], lH: [-0.34, -0.43, 0.1] };
+  const CUP_COCKED = { ...CUP_GATHER, yaw: -0.92, bY: -0.37, rH: [0.09, -0.45, 0.02], lH: [-0.34, -0.43, 0.06] };
   // the thrust: the hips turned square, both palms driven out together, wrists touching, at the chest
   const CUP_THRUST = {
     yaw: 0.0, bY: -0.32, bZ: 0.22, pitch: 0.12, hip: 0, spY: 0,

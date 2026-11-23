@@ -38,6 +38,12 @@ import { drawSight } from './fxBeam.js';
 //                          back to frame both. lockEnd(won): won = the beam split past the hero
 //                          (fx.beamSplit), 2 x a won lock's posture, he reels T.beam.clash.reel s; lost =
 //                          40, knockdown, thrown 12 m along the beam. A plain parry of the head = a block.
+//   THE CUPPED HANDS       (the fourth wave) a beat whose `beam.cup` is set (?ascBeamPose=cup; Instant
+//                          Wave always): the charge (fx.cupCharge: a ball of light), the sighting thread
+//                          and the beam's origin are drawn at 'palms', between the two hands.
+//   OUT OF THE SIGN        (Instant Wave) a beam beat with `blink: { sign, signAt, at, r }`: nothing
+//                          gathers and no thread runs before he has vanished and arrived; the charge's u
+//                          runs from the arrival (signAt + 0.02) to 0.92 of the windup.
 // Fairness: the beat's `sustain` makes the cue ledger hold the whole lit window as one interval; `busy`
 // is true while a beam is lit, held in the clash or fading (the weather must not call a strike then).
 // Look randomness: the fx's own streams (fx.lr()); game rolls (the sweep's side when the hero stands on
@@ -151,7 +157,9 @@ export class BeamMoves {
       if (K?.sign && !b._blinked) return;
       // the light gathering in the drawn-back palm (the cupped hands: between the palms)
       const p = d.tellPoint(bm.cup ? 'palms' : bm.side === 'L' ? 'fistL' : 'fistR', this._v);
-      d.fx.beamCharge?.(p.x, p.y, p.z, clamp((u - u0) / (0.92 - u0), 0, 1), dt, form);
+      const uc = clamp((u - u0) / (0.92 - u0), 0, 1);
+      if (bm.cup && d.fx.cupCharge) d.fx.cupCharge(p.x, p.y, p.z, uc, dt, form);
+      else d.fx.beamCharge?.(p.x, p.y, p.z, uc, dt, form);
       if (great) {
         d.fx.transformGather?.(d.position.x, d.position.z, clamp(u, 0, 1), dt, form);
         this.game.world?.forest?.ambience?.dim?.(clamp(u * 1.15, 0, 1) * C.dim);

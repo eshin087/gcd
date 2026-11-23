@@ -1747,6 +1747,7 @@ async function scenarioBeamWorld() {
 
 
 
+
 /**
  * INSTANT (the fourth wave): Instant Wave. The sign (two fingers to the brow), gone, BESIDE the hero ~4 m
  * off to a side (never behind), both hands cupped at the hip with the light between the palms, one red
@@ -1767,8 +1768,9 @@ async function scenarioInstant() {
     let snapT = null;
     const sg = d.fx.signSnap;
     const S = { snapT: null, arrive: null, x0: null, cupGap: 9, cupY: -9, chestY: 0, thrustFwd: -9, browMin: 9, bearing: null, sep: null, charge: 0, chargeBefore: 0 };
-    const bc = d.fx.beamCharge;
-    d.fx.beamCharge = (...a) => { if (snapT === null) S.chargeBefore++; else S.charge++; return bc?.apply(d.fx, a); };
+    const bc = d.fx.beamCharge, cc = d.fx.cupCharge;
+    d.fx.beamCharge = (...a) => { if (snapT === null) S.chargeBefore++; return bc?.apply(d.fx, a); };
+    d.fx.cupCharge = (...a) => { if (snapT === null) S.chargeBefore++; else S.charge++; return cc?.apply(d.fx, a); };
     d.fx.signSnap = (...a) => { snapT = game.time; return sg?.apply(d.fx, a); };
     const r = beamPlay(G, 'instantWave', { dist, form: 3, god, max: 8, step: (I) => {
       const a = d.brain.act;
@@ -1807,13 +1809,14 @@ async function scenarioInstant() {
     } });
     d.fx.signSnap = sg;
     d.fx.beamCharge = bc;
+    d.fx.cupCharge = cc;
     return { ...r, S };
   };
   const tFmt = (t) => (t === null || t === undefined ? '-' : `${(t * 1000).toFixed(0)} ms`);
   // 1. standing: the sign, gone, beside him; one red cue at the cupped palms, >= 0.8 s after the arrival
   const st = play(9);
   const S = st.S, f0 = st.flashes[0], c0 = st.hits.find((h) => h.r !== RESULT.IGNORED);
-  assert(st.started && S.arrive && S.browMin < 0.2 && S.chargeBefore === 0 && S.charge > 20, `Instant Wave: the sign (the hand ${S.browMin.toFixed(2)} m off his brow), gone at the snap; no light gathers before he arrives (${S.chargeBefore} / ${S.charge} frames)`);
+  assert(st.started && S.arrive && S.browMin < 0.2 && S.chargeBefore === 0 && S.charge > 20, `Instant Wave: the sign (the hand ${S.browMin.toFixed(2)} m off his brow), gone at the snap; no light gathers before he arrives, then the cupped hands' charge (${S.chargeBefore} / ${S.charge} frames)`);
   assert(S.sep > IN.r - 0.8 && S.sep < IN.r + 0.8 && Math.abs(S.bearing) > 0.6 && Math.abs(S.bearing) < 2.0, `he arrives ${S.sep?.toFixed(2)} m from the hero, at his side (${S.bearing?.toFixed(2)} rad off his facing: not before, not behind)`);
   assert(st.flashes.length === 1 && f0.tell === TELL.RED && f0.t - S.arrive.t >= 0.8 - lead - 1e-6, `one red cue (${st.flashes.length}), ${tFmt(f0?.t - S.arrive.t)} after the arrival`);
   assert(c0 && c0.r === RESULT.HIT && c0.t - S.arrive.t >= 0.8 - 1e-6 && Math.abs(c0.t - f0.t - lead) < 0.09 && st.states.has('knockdown'), `standing, it lands ${tFmt(c0?.t - S.arrive.t)} after he arrived (>= 800), ${tFmt(c0?.t - f0?.t)} after its cue; knocked down`);
