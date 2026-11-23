@@ -4,6 +4,7 @@ import { perPhase } from './realise.js';
 import { GUARD_TRAVEL, GUARD_KINDS } from './guard.js';
 import { DUEL_WORLD } from './worldTuning.js';
 import { CueLedger, throwsAt, glaiveHome } from './ledger.js';
+import { ATTACK_SOUND, beatSound } from './attackSound.js';
 import { answerOf, DODGE, prepareChoose, directWeight, booked, linkFor, linkUsable } from './director.js';
 
 // ---------------------------------------------------------------------------------------------------
@@ -205,6 +206,8 @@ export class DuelBrain {
     this.open = new Set([...OPEN, ...(K.OPEN ?? [])]);
     this.aiEnabled = true;
     this._ld = { dx: 0, dz: 0, dist: 0, ang: 0 };
+    /** the dragon:attack payload (reused: listeners read it at once) */
+    this._atk = { name: '', weapon: 'sword', weight: 'light', shape: 'cut', tell: TELL.NORMAL, impactIn: 0, x: 0, z: 0 };
     /** the impacts he knows are coming (ledger.js) */
     this.ledger = new CueLedger(this);
     this.reset();
@@ -1192,6 +1195,25 @@ export class DuelBrain {
           d.warn = TELL_STYLE[b.def.tell].warn.spike;
         }
         if (FLOOR && b.def.ring) d.fx.ringPulse(d.position.x, d.position.z, b.def.ring);
+      }
+      // the blow through the air (dragon:attack, attackSound.js): once per real blow, `lead` s before
+      // its impact and never before its glint (a hold or the honor gate may still move the impact until
+      // then). Reads only: no RNG, no timing.
+      if (!b.sounded && b.flashed && !a.def.transition && t >= b.impact - ATTACK_SOUND.lead) {
+        b.sounded = true;
+        const snd = beatSound(this.T.weapon, b.def);
+        if (snd) {
+          const e = this._atk;
+          e.name = a.name;
+          e.weapon = snd.weapon;
+          e.weight = snd.weight;
+          e.shape = snd.shape;
+          e.tell = b.def.tell ?? TELL.NORMAL;
+          e.impactIn = Math.max(0, b.impact - t);
+          e.x = d.position.x;
+          e.z = d.position.z;
+          d.emit('dragon:attack', e);
+        }
       }
     }
     if (FLOOR && cur && !cur.feint && cur.def.ring && t < cur.impact) {

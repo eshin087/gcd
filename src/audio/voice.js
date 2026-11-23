@@ -1,5 +1,5 @@
 import { clamp } from '../core/math.js';
-import { distortionCurve } from './dsp.js';
+import { distortionCurve, arand } from './dsp.js';
 
 // Node bookkeeping. Everything a sound creates is registered here so it can be stopped and
 // disconnected in one go (WebAudio nodes otherwise linger in the graph).
@@ -69,7 +69,7 @@ export class NodeBag {
   }
 
   /** Looping noise from the shared tables, started at a random offset (`off` 0..1: that offset from
-   *  the caller's own stream instead of Math.random, for sounds the seeded sims must not feel). */
+   *  the caller's own stream instead of the audio stream (dsp.js arand)). */
   noise(kind, t0, t1 = null, rate = 1, off = null) {
     const buf = this.E.noise[kind] || this.E.noise.white;
     const s = this.ctx.createBufferSource();
@@ -77,7 +77,7 @@ export class NodeBag {
     s.loop = true;
     s.playbackRate.value = rate;
     // (typeof: `null >= 0` is true in JS, and every existing caller would start at offset 0)
-    s.start(t0, (typeof off === 'number' && off >= 0 && off < 1 ? off : Math.random()) * buf.duration * 0.9);
+    s.start(t0, (typeof off === 'number' && off >= 0 && off < 1 ? off : arand()) * buf.duration * 0.9);
     if (t1 !== null) {
       s.stop(t1);
       this.until(t1);

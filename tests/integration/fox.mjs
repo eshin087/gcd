@@ -966,8 +966,12 @@ async function scenarioPhase() {
   G.watch = null;
   assert(d.clones.live === 0 && d.mantleK > 0, `then the mantle, and no self stands about (${d.clones.live})`);
   assert(game.flow._text('phase3') === 'THE FOX WEARS ITS FIRE', 'the level\'s phase-3 banner');
+  // (a sample, not one roll: the director weighs the Moon-Swallowing Pearl at about 1 % of a pick at 6 m
+  // here (14 s cooldown, the sameCat / density factors), so 300 rounds missed it about one seed in 30;
+  // the sounds' own random stream (ADR-165) moved this seed onto such a miss. 3000 rounds: a miss
+  // about once in 10^14.)
   const picks = new Set();
-  for (let i = 0; i < 300; i++) {
+  for (let i = 0; i < 3000; i++) {
     d.brain.cooldowns = {};
     d.brain.last = [null, null];
     for (const dist of [2, 6]) { const n = d.brain._choose(dist); if (n) picks.add(n); }

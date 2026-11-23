@@ -28,6 +28,10 @@ export const TERRAIN = {
     fetch: 20, // it will go this far (root to piece) for one: a lunge, then the bite (no trot)
     fetchSpeed: 24, // m/s of that lunge, at most (the charge runs at 33)
     fetchTime: 0.5, // the longest the lunge may take: past it, the move is not picked (the Lab: x1.6)
+    // a piece at its feet: it backs off this fast at most (m/s), and the lunge waits for it by up to
+    // backMax s (else it would come to the bite too close, call the throw off, and its tell would have
+    // no blow)
+    back: 6, backMax: 0.8,
     turn: 6.5, // rad/s it whips round toward the piece as it lunges
     clear: 2.6, // a piece the hero stands this close to is left alone (he would be in the jaws)
     grip: [0.6, 2.4], // where on a trunk the jaws close: m above its foot (at most 0.38 of its height)
