@@ -63,9 +63,9 @@ export const STREAK_WORLD = {
   rise: [0, 0, 0, 0, 4, 7], // loose letters rising round him (tiers 4 - 5)
   // the floors (level id → bits): grass motes, the courtyard's ash, stone grit
   ground: {
-    grass: { glyph: ".,'`", color: [0.2, 0.28, 0.15], end: [0.06, 0.09, 0.05] },
-    ash: { glyph: '.,`', color: [0.36, 0.3, 0.27], end: [0.1, 0.08, 0.07] },
-    grit: { glyph: '.,:', color: [0.3, 0.3, 0.33], end: [0.08, 0.08, 0.1] },
+    grass: { glyph: ".,'`", color: [0.34, 0.48, 0.25], end: [0.08, 0.12, 0.06] },
+    ash: { glyph: '.,`', color: [0.6, 0.52, 0.47], end: [0.14, 0.11, 0.1] },
+    grit: { glyph: '.,:', color: [0.52, 0.52, 0.56], end: [0.1, 0.1, 0.12] },
   },
   floor: { cinderwood: 'grass', grove: 'grass', ash: 'ash', starless: 'grit', ring: 'grit', fox: 'grit', lab: 'grit' },
 };
@@ -142,7 +142,7 @@ export class StreakFx {
         fx.spawn({
           x: p.x + Math.cos(a) * r, y: R(0.04, 0.12), z: p.z + Math.sin(a) * r,
           vx: Math.cos(a) * sp, vy: R(0.5, 1.1), vz: Math.sin(a) * sp,
-          life: R(0.45, 0.8), size: R(0.2, 0.26), sizeEnd: 0.16,
+          life: R(0.45, 0.8), size: R(0.26, 0.32), sizeEnd: 0.2,
           glyph: fl.glyph, color: fl.color, colorEnd: fl.end, alpha: 0.8, alphaEnd: 0, drag: 2.6, gravity: -1.2,
         });
       }
