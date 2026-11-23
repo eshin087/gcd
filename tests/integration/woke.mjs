@@ -1596,6 +1596,72 @@ async function scenarioNolock() {
     // (a roll after the glint leaves the burst's fixed aim: its slugs miss him, or meet his i-frames)
     const ok = how === 'dodge' ? !after.some((h) => h.r === RESULT.HIT) : after.length > 0 && !after.some((h) => h.r === RESULT.HIT) && after.some((h) => h.r === want);
     assert(!!first && ok, `hit by burst 1, then ${how}: burst 2 is ${how === 'dodge' ? 'dodged (missed or i-frames)' : want}`);
+  }  // (the review of PR #101) a burst whose first slug was blocked or dodged: its later slugs must flinch, not
+  // stagger: the guard let go after slug 1; a roll straight back along the line of fire whose i-frames end
+  // inside the burst. Both keep >= 0.25 s free before the next hurt, and no second stagger in a burst
+  for (const how of ['letgo', 'rollback']) {
+    const G = build();
+    const { game, input } = G;
+    duel(G, { dist: 8, form: 2 });
+    const d = game.dragon, p = game.player;
+    p.debug.god = false;
+    p.hp = p.maxHp;
+    const glints = [];
+    G.watch = (n, e) => {
+      if (n === 'combat:flash' && e?.source === 'dragon' && e?.attack === 'ironRain') glints.push(game.time);
+    };
+    d.debug.trigger('ironRain');
+    const h0 = G.hits.length;
+    const stag = [];
+    let prev = false, done = false;
+    const RI = 0.4; // (player.js TUNE.roll.iframes[1]: the roll's i-frames end 0.4 s in)
+    run(G, 4, () => {
+      input.axis = { x: 0, y: 0 };
+      game.mouseGround.set(d.position.x, 0, d.position.z);
+      p.hp = Math.max(p.hp, 60);
+      const st = p.state === 'stagger';
+      if (st && !prev) stag.push([game.time, Infinity]);
+      if (!st && prev) stag[stag.length - 1][1] = game.time;
+      prev = st;
+      // burst 1 lands flashLead after its glint (the beat's own)
+      const g = glints[0];
+      if (g === undefined || done) return;
+      const arrive = g + TUNING.flashLead;
+      if (how === 'letgo') {
+        if (game.time < arrive + 0.03) input.buttons[1] = true;
+        else {
+          input.up(1);
+          done = true;
+        }
+      }
+      if (how === 'rollback' && game.time >= arrive + 0.06 - RI) {
+        // straight back along the line of fire: the i-frames end 0.06 s after slug 1, slugs 2 - 3 still to come
+        const dx = p.position.x - d.position.x, dz = p.position.z - d.position.z, l = Math.hypot(dx, dz) || 1;
+        input.axis = { x: dx / l, y: -dz / l };
+        input.tap('Space');
+        done = true;
+      }
+    }, () => quiet(d) && game.time > 1);
+    input.up(1);
+    G.watch = null;
+    const hits = G.hits.slice(h0).filter((h) => h.r === RESULT.HIT);
+    // no second stagger inside a burst: staggers that start within 0.3 s of each other
+    let twice = 0;
+    for (let i = 1; i < stag.length; i++) if (stag[i][0] - stag[i - 1][0] < 0.3) twice++;
+    // free time: from each stagger's end to the next hit that is not of the same burst
+    let free = Infinity;
+    for (const [s0, s1] of stag) {
+      const next = hits.find((h) => h.t > s1 + 1e-6 && h.t - s0 > 0.3);
+      if (next) free = Math.min(free, next.t - s1);
+    }
+    const r1 = G.hits.slice(h0).filter((h) => h.attack === 'ironRain').slice(0, 4).map((h) => h.r);
+    out(`     ${how}: burst 1 ${JSON.stringify(r1)} · ${hits.length} hits · staggers ${stag.length} (${stag.map(([a, b]) => (b - a).toFixed(2)).join(', ')} s) · least free ${Number.isFinite(free) ? free.toFixed(2) : '-'} s`);
+    assert(hits.length > 0, `${how}: a later slug of a burst still lands (the case is real)`);
+    assert(twice === 0, `${how}: never a second stagger inside a burst`);
+    // (a slug's stagger: one that starts on a slug's hit; the heavy last shot is a blue blow of its own)
+    const slugStag = stag.filter(([a]) => hits.some((h) => Math.abs(h.t - a) < 0.02 && h.damage < TUNING.ironRain.last));
+    assert(slugStag.length > 0 && slugStag.every(([a, b]) => b - a <= TUNING.ironRain.stun + 0.05), `${how}: every slug's stagger is the short flinch (${slugStag.length}, <= ${TUNING.ironRain.stun} s)`);
+    assert(!Number.isFinite(free) || free >= 0.25, `${how}: >= 0.25 s free before the next hurt (${Number.isFinite(free) ? free.toFixed(2) : '-'} s)`);
   }
 }
 

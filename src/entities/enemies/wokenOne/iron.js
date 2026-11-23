@@ -11,7 +11,7 @@ import { turnToward } from '../../../core/math.js';
 //             before the others: the slugs themselves are `quiet`) and ONE result (slugHit): the first slug
 //             that finds the hero decides the burst; its aim is FIXED at the burst's glint, led by the
 //             hero's speed then (a roll or a turn after it is clean). A hit FLINCHES him `stun` s (player.js
-//             hit.stun: the buffer kept, no second stagger inside it); the burst's other slugs are chip. A
+//             hit.stun: the buffer kept, no second stagger inside it); every slug carries it, so no slug of a burst staggers twice. A
 //             parry turns the burst (its slugs within `parryKeep` s spark off the blade). A held guard pays
 //             `guardCost` a slug (12 a burst), never health. Cover in its way stops a slug (fx:
 //             destructibles.stop, TUNING.world.shot of a pillar's letters each)
@@ -45,7 +45,7 @@ export class IronMoves {
     this.burst = null; // the last burst fired: { k, res, at } (slugHit)
     this._aim0 = null; // the first burst's aim, fixed at the beat's glint
     this._hitT = -1e9; // d.time a bullet of his last HIT the hero (TUNING.shotMercy)
-    this.stats = { bursts: 0, slugs: 0, burstHits: 0, burstParried: 0, burstBlocked: 0, burstDodged: 0, chip: 0, spared: 0 };
+    this.stats = { bursts: 0, slugs: 0, burstHits: 0, burstParried: 0, burstBlocked: 0, burstDodged: 0, chip: 0, spared: 0, lateHits: 0 };
     this.reloading = false;
     this.wheel = null;
   }
@@ -168,7 +168,7 @@ export class IronMoves {
       const due = T0 + R.j * I.gap;
       if (R.t + 1e-6 < due) break;
       if (R.j === 0) {
-        this.burst = { k: R.k, res: null, at: -1e9 };
+        this.burst = { k: R.k, res: null, at: -1e9, landed: false };
         this.stats.bursts++;
         if (R.k > 0 && R.glinted < R.k) R.aim = this._aimNow(); // (it leaves before its glint: fixed now)
       }
@@ -194,24 +194,27 @@ export class IronMoves {
       if (c) d.fx.guard?.(c.x, c.y, c.z, { heavy: false, deflect: true });
       return RESULT.PARRIED;
     }
-    if (B.res === RESULT.HIT) {
-      // the burst's other slugs: chip, no stagger
-      this.stats.chip++;
-      const r = call({ ...o, knockback: 0, extra: { ...(o.extra ?? null), perfect: false } });
-      if (r === RESULT.HIT) this._hitT = now;
-      return r;
-    }
-    if (B.res !== null && B.res !== RESULT.PARRIED) return call(o);
+    // EVERY slug is a FLINCH (`stun` / `mercy`), whatever the burst's result so far: a guard let go after a
+    // blocked first slug, or a roll whose i-frames end inside the burst, never gives a full stagger. The
+    // burst staggers at most once: a slug that lands inside the flinch (stun + mercy, longer than a burst)
+    // hurts without staggering (player.js shotStunT). Its knock-back stays, so a raised guard pays guard,
+    // never health (a no-knock-back hit is a stream, which chips health through a block)
     const r = call({ ...o, extra: { ...(o.extra ?? null), stun: I.stun, mercy: I.mercy } });
     if (r === RESULT.IGNORED) return r;
-    B.res = r === RESULT.CLASHED ? RESULT.PARRIED : r === RESULT.PERFECT ? RESULT.DODGED : r;
-    B.at = now;
-    if (B.res === RESULT.HIT) {
-      this.stats.burstHits++;
+    if (r === RESULT.HIT) {
+      if (B.landed) this.stats.chip++;
+      B.landed = true;
       this._hitT = now;
-    } else if (B.res === RESULT.PARRIED) this.stats.burstParried++;
-    else if (B.res === RESULT.BLOCKED) this.stats.burstBlocked++;
-    else if (B.res === RESULT.DODGED) this.stats.burstDodged++;
+    }
+    if (B.res === null || B.res === RESULT.PARRIED) {
+      // THE ONE RESULT: the first slug that finds him (or the first after a parry's sparks ran out)
+      B.res = r === RESULT.CLASHED ? RESULT.PARRIED : r === RESULT.PERFECT ? RESULT.DODGED : r;
+      B.at = now;
+      if (B.res === RESULT.HIT) this.stats.burstHits++;
+      else if (B.res === RESULT.PARRIED) this.stats.burstParried++;
+      else if (B.res === RESULT.BLOCKED) this.stats.burstBlocked++;
+      else if (B.res === RESULT.DODGED) this.stats.burstDodged++;
+    } else if (r === RESULT.HIT) this.stats.lateHits++;
     return r;
   }
 

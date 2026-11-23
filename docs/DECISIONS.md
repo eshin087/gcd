@@ -5179,15 +5179,20 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   2. The aim is fixed at the burst's glint (or as it leaves, if earlier), led by the hero's speed then; the
      slugs `keepAim` (a fairness hang does not re-aim them): a roll or a turn after the glint is clean.
   3. A hit: the first slug that lands is a 0.18 s FLINCH (player.js `hit.stun`: a shorter stagger that keeps
-     the input buffer; `hit.mercy` 0.1 s more in which no `stun` hit staggers again); the burst's other slugs
-     are chip. A parry turns the burst (its slugs spark off the blade for 0.3 s); a held guard pays 4 a slug
+     the input buffer; `hit.mercy` 0.1 s more in which no `stun` hit staggers again); EVERY slug carries it,
+     whatever the burst's result so far (a guard let go after a blocked first slug, a roll whose i-frames end
+     inside the burst: the review of the PR found those gave a full 0.4 s stagger and 0.05 - 0.12 s free), so a
+     burst staggers at most once and its other slugs hurt without staggering; each slug keeps its knock-back, so
+     a raised guard pays guard, never health, and every slug that lands starts `shotMercy`. A parry turns the burst (its slugs spark off the blade for 0.3 s); a held guard pays 4 a slug
      (12 a burst, 36 a volley, 9 the heavy one), never health.
   4. Every other shot of his is harmless inside `shotMercy` 0.45 s of a bullet that hit him (iron.js `shotHit`).
   5. Iron in the Air uses the same burst (one, `bursts: 1`).
 - **Numbers:** `woke.mjs nolock`: a hero who stands unguarded through Iron
   Rain takes 3 flinches (one a burst) and the heavy shot, never a second stagger from a bullet; the least free time
   between two of his hits after a bullet 0.32 s (>= 0.25); hit by burst 1, then guard / parry / roll: burst 2
-  blocked / parried / dodged. Each burst lands 7 - 10 ms from its glint + 0.26 s (`timing`). A held guard through a
+  blocked / parried / dodged; the guard let go after a blocked slug 1, and a roll straight back whose i-frames
+  end inside the burst: every slug's stagger the 0.18 s flinch, 0.42 / 0.37 s free before the next hurt (the
+  old code: 0.49 - 0.50 s staggers, 0.12 / 0.05 s free). Each burst lands 7 - 10 ms from its glint + 0.26 s (`timing`). A held guard through a
   whole volley pays 45 guard, no health (`cover`). Before: one slug locked the hero through all eleven and the
   heavy shot.
 - **Why not** a separate stagger state: the hero's own stagger with a shorter length and a kept buffer is the

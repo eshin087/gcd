@@ -4809,7 +4809,7 @@ pressure: tuning.js `GEARED.now` and getters on `TUNING.idleGap`, `TUNING.chain`
 clock (`_rainStep`), a glint at the muzzle `glint` s before each later burst (`combat:flash {bullet, burst}`), the
 aim fixed there (`_aimNow`); the slugs are `quiet` (no cue of their own) and `keepAim` (ascendant/fx.js: a hang does
 not re-aim them). `hitPlayer` routes a slug to `iron.slugHit` (the burst's ONE result: the first slug that finds
-the hero gets `stun` / `mercy`; after a hit the rest are chip; after a parry they spark off for `parryKeep` s) and
+the hero decides it; every slug carries `stun` / `mercy`, so a burst staggers at most once; after a parry they spark off for `parryKeep` s) and
 any other projectile to `iron.shotHit` (harmless inside `shotMercy` s of a bullet that hit him).
 **Optional engine fields the rework added** (inert for every other attacker): a hit's `stun` and `mercy`
 (player.js `_takeHit`: a stagger of `stun` s that keeps the input buffer; while `shotStunT` runs (stun + mercy) a

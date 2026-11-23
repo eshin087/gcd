@@ -2304,7 +2304,8 @@ damage. His blows are Tian Lei's strike builders; the limb that strikes is what 
 - **THE BULLETS' RULE** (phase 2; `woke.mjs nolock` proves it): after any bullet of his hits the hero, the hero
   can act (guard, parry, roll) for at least 0.25 s before the next thing of his that can hurt him arrives, and a
   bullet never re-staggers a hero who is flinching from a bullet. A burst's first slug that lands is a 0.18 s
-  flinch that keeps the input buffer (a press during it fires as it ends); the burst's other slugs are chip. A
+  flinch that keeps the input buffer (a press during it fires as it ends); every slug carries that flinch whatever the burst's
+  result so far (a guard let go, a roll that ends inside it), so a burst staggers at most once. A
   parry on a burst turns it (its slugs spark off for 0.3 s); a held guard pays 4 a slug (12 a burst, 36 a
   volley, 9 the heavy shot), never health; a roll or a turn after the glint leaves the burst's fixed aim. Every
   other shot of his (the heavy shots, the point-blank one, the bolts) is harmless inside 0.45 s
