@@ -10,6 +10,7 @@ import { buildButte, buildHoodoo, buildRingPost, buildSpike, facetCol, BADLAND, 
 import { breakableFloor } from './floor.js';
 import { createGround } from './ground.js';
 import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
+import { hangFrom } from './hang.js';
 
 // The Skybreak Ring (`?level=ring`): an open-air tournament ring on the badlands, wrecked by the fight.
 // A square platform of stone tiles 30 m across centred on the origin (the duel's centre): a kerb of
@@ -205,7 +206,8 @@ function buildBanner(rng, x, z, h) {
   }
   cloth.translate(x, h - 0.4 - L / 2, z + 0.12);
   carve(cloth, { col: facetCol(CLOTH, 1.35), ao: (px, py) => 0.75 + 0.25 * Math.min(1, py / h) });
-  out.push(cloth);
+  // (it answers the wind, world/hang.js: from the bar down)
+  out.push(hangFrom(cloth, h - 0.4, 'cloth'));
   return out;
 }
 
@@ -309,8 +311,9 @@ function buildDerrick(rng, x, z, h) {
   const rope = prep(new THREE.CylinderGeometry(0.025, 0.025, h * 0.5, 3));
   rope.translate(x + h * 0.66, h * 0.8, z);
   carve(rope, { col: mul(WOOD, 0.8), ao: 1 });
-  out.push(rope);
-  out.push(stoneBox(rng, x + h * 0.66, h * 0.4, z, 0.9, 0.7, 0.9, { col: CUT }));
+  // (the rope and its block swing as one on the boom's end, world/hang.js)
+  out.push(hangFrom(rope, h * 1.05, 'rope'));
+  out.push(hangFrom(stoneBox(rng, x + h * 0.66, h * 0.4, z, 0.9, 0.7, 0.9, { col: CUT }), h * 1.05, 'rope'));
   return out;
 }
 
