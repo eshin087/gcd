@@ -4124,6 +4124,17 @@ out, its fire out, its state GONE (so every query skips it: strike, sweep, stop,
 ignite, bites); on, it is back whole (`_restore`, the per-piece half of the reset). `sceneNow` is the scene
 shown (the set's scenes set it). `world.restore()` calls `scenes.reset()` after the destructibles' reset. A set
 without `scenes` behaves exactly as before. `world:scene {id, x, z}` as a morph starts.
+The Hall's own surface (world/scriptHall.js; nothing else reads it): a piece's `scene` is its HOME tag for the
+destructibles' reset; membership is the set's, `scenes.member(b, id)`, with two optional def fields: `within:
+[ids]` (the scenes a piece stands in: the first four watchers stand in the hall and the dojo) and `later: true`
+(only once the hall has been left since the reset, `scenes.left`: the four more watchers, tagged `scene:
+'hall2'` so the reset puts them out). `scenes.morphing`, `base`, `light` (SCENE_LIGHT eased over a morph),
+`burst(b)` (a piece's letting go: digits sampled from its own triangles at build, `def.shed`). Exports:
+`HALL` (+ `wall`, `panel`, `morph.width`), `SCENES`, `SLOTS`, `SCRIPT_LOOKS`, `WATCHERS`, `SCENE_LIGHT`,
+`RAIN`. A morph also sinks the wreckage inside its front (wreckage.js `e.sink`) and mends cracked or broken
+slabs under it (`present` off and on). materials.js: `SCRIPT_GLSL`, `SCRIPT_GRID` (the art pass's letter
+cell and anchor, pointed at by the ambience: the prop wave runs down its columns), `scriptUniforms(U)`;
+prop-art and carved materials read `uScript` / `uScriptF` behind a strength test.
 
 ## Event catalogue (exact names — producers → consumers)
 Player → hud/audio/fx/flow:

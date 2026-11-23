@@ -5,6 +5,58 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-23 — Session 82: a seventh level, the Hall of Falling Script and Xin Yi, the One Who Woke (planned by Fable, built by Opus: a lead and three agents)
+
+**Owner** (to the planning session): two more homage bosses, planned by Fable and built by Opus, "lets do
+neo ... come up with iconic moves, effects, moments to make this a cool battle". The planning session asked
+four questions (the look recognizable; a pillared hall whose stage morphs 2 - 3 times; the four moments not to
+cut; the suited men watchers only); its plan (`code-one-plan.md` in the shared notes) was built as written
+(ADR-156 – ADR-158; the session numbers 80 and 81 were taken by open PRs).
+
+**How it was built.** The lead landed the contracts and a working core first (af4ed3b: the level, the scenes
+contract and `destructibles.present`, `uScript`, the code palette, the boss on the duelist engine with every
+mechanic, a stub set and stub body/effects), then three Opus agents in their own worktrees at once: the set
+(`scriptHall.js` rewritten keeping the contract, the watchers, the falling script, the script wave in
+materials.js, world.mjs `bite` per scene), the body (`gear.js`, `look.js`, the oneLook sheets), the effects
+(`fx.js`, the synth sounds, the borrowed score). Meanwhile the lead did the reward, the Lab, Training, the
+suite's scenarios, pace and strategy, the docs; then merged, re-measured and re-shot the body's sheets in the
+real light. (The effects agent could not write into its worktree: the harness kept it to the lead's; it worked
+in a clone in the scratchpad and the lead fetched its branch from there.)
+
+**What exists.** `?level=code` (`levels/scripthall.js`; aliases one / script / scripthall / woke / xinyi:
+the plan's `hall` was already the Obsidian Throne's), `world/scriptHall.js` (rung 1 of the plan's ladder: the
+full swap; three scenes, 397 breakables, morphs of 1.25 - 1.63 s), `enemies/wokenOne/` (wokenOne.js, moves.js,
+tuning.js, poses.js, links.js, iron.js, source.js, fx.js, gear.js, look.js), the Long Second (player.js
+`TUNE.lean`, anim.js `leanPose`, unlocks `longSecond` / `?tech=lean`), `tests/integration/woke.mjs` (21
+scenarios in `npm test`; opt-in smoke, strategy) and sheath.mjs's opt-in `lean`.
+
+**Decisions where the plan was open** (ADRs and COMBAT have the rest): `WokenFx extends AscFx` rather than
+LordFx (AscFx is LordFx's pool plus the blasts that cover stops and the perfect parry returns); phase 1's left
+hand behind his back is a realiser of its own over a one-handed copy of the moves; Iron Rain is one sustained
+beat (one cue for the stream, the ledger sees one guard window) whose ticks fire the shots; Return to Sender is
+one blow of the brain's over a 30 m ring (one cue, one result) with `noWorld`; the stop catches a returned bolt
+by parking AscFx's blast in its `push` phase; Unwriting's bricks are the Lord's torn stones (they hang clear
+of their own pillar: cover stopped them at once); the fall's rising starts as the fall's clip ends (no stand-up
+between); every thrown thing asks `brain.fairDelay` (`fairThrow`); deja vu replays through the realiser's
+recorded draws. The watchers' 4 / 8 / 12 is the set's `within` / `later`, not a fourth scene. The trade
+clash in Training now stands clear of the pieces (`clear: true`): the hall's posts could stop the hero's blade.
+
+**Measured.** PACE (real set, three seeds x 60 s): 67 / 106 / 83 cues a minute, 0 conflicts, dodge 7 / 5 / 21 %
+(phase 2 counts each of Iron Rain's eleven shots). WIN: 84 s (seed 4242). STRATEGY: mixed 75 – 84, parry 95 –
+96, block-only 89 – 122 (mortal: alive and wins), the Long Second bot 138, dodge-only 142 – 164 s; on the
+Sheathed with the Long Second: mixed 33, parry 42, dodge 64, lean 82 s. TIMING: every contact within 43 ms of
+its flash + 0.26 s. Draw calls 68 - 73 in every scene and moment at 1280x720 and 852x393 (the Foxfire Terrace:
+76 on the phone); the fire field's peak about 1030 of 6000 (phase 3); the falling script 320 (140 on LOW).
+Frame times on the RTX 4090 headless only; on-device fps is the owner's.
+
+**Not done / cut.** The phase banners do not decode (the plan's first cut). The morph prints in with the front's
+ring only (no print-in effect). The bit-identical frame at strength 0 is by construction, not a GPU readback.
+
+**Next / open.** The owner's picks from the sheets (`?oneLook=`, `?hall=`, `?script=`); the iPhone: the frame
+rate, the black coat, the shots at the phone camera; his own score.
+
+---
+
 ## 2026-11-22 — Session 78: a sixth level, the Windless Grove and the Sheathed (planned in its own chat, built by one Opus agent)
 
 **What changed.** The owner asked for new level bosses on the power fantasy of famous characters, as

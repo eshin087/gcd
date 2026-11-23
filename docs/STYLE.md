@@ -1034,6 +1034,9 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?grove=` | the Windless Grove's light and ground (ADR-145; read when the level is built) | - | a moonlit night with mist | grey dawn fog | first snow: pale litter, frost on the stalks | **a** |
 | `?sheathLook=` | Lu Wusheng's body (read when his rig is built) | - | Mourning White: undyed hemp, a white brow band with two trailing tails, hair in a knot | Reed Cloak: a shaggy straw rain cape, a cloth over the lower face | One Sleeve: a dark robe off the sword arm, the bare arm bound in cord, short grey hair; `d` the Wanderer (added 2026-11-22 at the owner's ask, an option): a slighter man (drawn 7 % smaller) in a faded indigo robe over wide charcoal trousers, a long sand scarf with trailing tails, dark hair in a high tail | **d** |
 | `?drawCut=` | the Sheathed's draw (ADR-145) | - | one white line | the line and an afterimage of him where he stood | - | **a** |
+| `?oneLook=` | Xin Yi's body (ADR-156; read when his rig is built) | - | the Long Coat: black, closed in phase 1, open from phase 2 (the tails fly) | the Cassock: buttoned to the neck, narrow, floor-length, bright buttons | the Grey Coat: a's cut in dark blue-grey with a white-jade edge | not picked yet (a drawn) |
+| `?hall=` | the Hall of Falling Script (ADR-157; read when the set is built) | - | pale marble, green-black inlay | dark basalt, jade-lit edges | - | not picked yet (a drawn) |
+| `?script=` | the script wave's strength by scene (ADR-157) | - | a shimmer (0.2) and the full turn in the Source | nothing until the Source | strong (0.5) from the start | not picked yet (a drawn) |
 
 How a look is chosen (`lookOf(name, def, pick)`): a look forced live by `setLook` (the Lab, the tests,
 the film rig); else the URL's own parameter (`?sky=b`); else, under **`?looks=old`**, `0` for every
@@ -1043,8 +1046,8 @@ before this pass); the things that are new in this pass (`kindle`, `ashp3`, `bur
 reachable as `?presence=0`); else the owner's pick (the `PICKED` table); else the author's default. **`?looks=new`** (every
 proposal at once, the way the owner played them on the preview) now draws the same as no parameter.
 **The Lab's LOOKS section** (`?lab`, only in the Ashfall Courtyard, the Obsidian Throne, the Skybreak
-Ring, the Foxfire Terrace and the Windless Grove) has a row of buttons per switch: a switch read at draw time flips live, one read at build time
-(`ashLook`, `lordLook`, `floor`, `outskirts`, `ring`, `ascLook`, `ascLift`, `foxLook`, `foxfire`, `clones`) reloads the page with its parameter; "as
+Ring, the Foxfire Terrace, the Windless Grove and the Hall of Falling Script) has a row of buttons per switch: a switch read at draw time flips live, one read at build time
+(`ashLook`, `lordLook`, `floor`, `outskirts`, `ring`, `ascLook`, `ascLift`, `foxLook`, `foxfire`, `clones`, `oneLook`, `hall`, `script`) reloads the page with its parameter; "as
 shipped" clears every look parameter (the picks), "before this pass" reloads with `?looks=old`; there is
 no "all proposals" button any more. Older switches of the same kind: `?flare=` (ADR-118), the wyrm's
 `?ring=` and `?breath=` (ADR-119). **The Skybreak Ring's five** (ADR-129) are things new to the game, so
@@ -1254,6 +1257,44 @@ art path at 720p he is still about 12 letter rows; b survives it by its colour, 
   click, when the grove falls. A scabbard blow's trail is dull wood (`woodSweep`), never steel. The hanging
   cuts of phase 3 are lines of low heat on the ground, brightening toward their cut, then one white-hot line
   at waist height.
+### The Hall of Falling Script and Xin Yi (2026-11-22, ADR-156, ADR-157; `world/scriptHall.js`, `enemies/wokenOne/`, `?level=code`)
+"More extra ASCII" (the owner) is four layers INSIDE the game's letter systems: none of it is a pass over the
+frame (a terminal post-process and one character grid over the frame were turned down: "Tried and turned
+down"), and none of it touches the hero, the boss or the HUD.
+- **The code palette in the fire field** (`FIRE_PALETTES.code`, swapped into the void slot by `WokenFx` as
+  Tian Lei's gold is): a dark green rim, a jade body, a pale mint-white heart, no red; it boils fast and hardly
+  climbs. Every effect of his prints in it (the shots and their trails, the bolts, the Bend's rings, the stop's
+  stilled air, the afterimages, the transitions' rings, the front). Gold, violet and white glyphs and lights of
+  the inherited draws turn green ONLY inside his own drawing methods; **tells keep their colours** (the white
+  cross, the blue star, the red, the black eclipse): nothing green is ever a cue.
+- **The falling script** (the set's ambience, one additive glyph batch, 320 at most, 140 on LOW): columns of
+  one-cell digits falling down the walls' and the screens' faces near the camera's focus, a bright head and a
+  dimming tail, out of step; in the Source all round the floor in the dark. `hold(sec)` freezes it (the stir,
+  the fall).
+- **The script wave** (`uScript` / `uScriptF`, materials.js `SCRIPT_GLSL`, read by the prop-art material and
+  the carved floor's): inside every prop's own letters the source brightens in waves falling down the art
+  pass's own letter columns (`SCRIPT_GRID`) and the hue eases to green, so the letters re-roll as a wave passes;
+  on the floor the lattice's columns re-roll into digits. A front (the morph's ring) at full strength; deja vu's
+  stutter shifts every prop's letters a cell sideways and back. Strength per scene by `?script=` (a 0.2 / 0.2 /
+  1 for hall / dojo / Source; b 0 / 0 / 1; c 0.5 / 0.5 / 1). At strength 0 the same arithmetic runs as before
+  (the whole addition behind the strength), and no other level sets it.
+- **Things come apart as letters**: a piece of a scene lets go as a burst of one-cell digits in its own dim
+  hue as the morph's front crosses it; a struck watcher bursts green; an unsent bolt drops as loose digits;
+  the reload's guns clatter away as digits. Debris of the set's own pieces keeps their hue (a breaking stone
+  never flashes green or white).
+- **The set** (prop art throughout): the Pillared Hall (square pillars, wall panels, two lift doors, the entry
+  arch, benches, planters; cold grey with a green cast), the Sparring Hall (wooden posts with arms, paper
+  screens, racks, a low dais; two warm lamps), the Source (the ten slots as columns of stacked green blocks in
+  the dark, no walls); identical suited watchers along the walls (12 in green code round the Source). `?hall=a`
+  pale marble (a dark body: a pale albedo printed white) with green-black inlay; `b` dark basalt with jade
+  chamfers.
+- **His figure** (`wokenOne/gear.js`, `look.js`): the hero's skeleton and INK-LINE art (Tian Lei's way: the
+  Fox's wyrm-art figure was hard to see). A black coat on a dark level is drawn by what rings it: dim
+  green-black fills (near-black printed as an empty outline), the silhouette pale jade at every distance (his
+  rows of the per-part ink tables, written by `dressOne`), a pale face and hands, the glasses a dark band with
+  one bright cell. At ~40 px the homage is the silhouette: the long coat to the ankles with split tails that
+  stream behind him when he runs (from phase 2), the high collar. `?oneLook=a` the Long Coat, `b` the Cassock,
+  `c` the Grey Coat.
 ### The Training Room (2026-11-15, ADR-099; `world/trainingRoom.js`, `?stage=lab`)
 A lab stage for any boss: a dark dojo of light (the owner's pick of three looks: "Holo", over a
 pale "Grid" and a starry "Void"). Great 2 m tiles of near-black glass in a two-shade checker (carved
