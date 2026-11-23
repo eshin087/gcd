@@ -130,15 +130,15 @@ export const TUNING = {
     // before its glint (`margin` m past what it can still reach, the hero led to its impact; from
     // `after` s into its windup) and he chases (a `far` / `away` link, else `gap` s, then his dash /
     // blink). A hero backing away (> `away` m/s) is chased with closeK x the step-in and dashK x a
-    // dash's length, by form (the Challenger chases less: harder forms mean more pressure; at 1.6 / 1.5
-    // in form 1 too, PACE's form 1 came out level with form 2). A leap lands `leapLead` s and a blink
+    // dash's length, by form (the Challenger chases no harder than before: harder forms mean more pressure;
+    // at 1.25 (the helper's) or 1.6 / 1.5 in form 1 too, PACE's form 1 came out level with form 2). A leap lands `leapLead` s and a blink
     // arrives `blinkLead` s ahead of where the hero is going (never more than the blink's own distance
     // less `blinkKeep` m: still behind / beside him, never in front of a hero running away). A move
     // that cannot reach where he will be at its first blow (led `lead` s at most) weighs x `miss` (0: it
     // is not picked, nor linked). A hero who keeps running from his blows is READ: each break-off (+1,
     // `habitMax` at most, falling `habitDecay` a second) weighs the moves that reach wherever he goes
     // (blinks, leaps, ki, beams, long dashes) x (1 + `habit` x it).
-    pursue: { margin: 0.5, after: 0.06, gap: 0.06, closeK: [1.25, 1.6, 1.6], dashK: [1.25, 1.5, 1.5], away: 1.2, leapLead: 0.35, blinkLead: 0.4, blinkKeep: 0.6, miss: 0, lead: 0.6, habit: 0.6, habitMax: 3, habitDecay: 0.1 },
+    pursue: { margin: 0.5, after: 0.06, gap: 0.06, closeK: [1.0, 1.6, 1.6], dashK: [1.0, 1.5, 1.5], away: 1.2, leapLead: 0.35, blinkLead: 0.4, blinkKeep: 0.6, miss: 0, lead: 0.6, habit: 0.6, habitMax: 3, habitDecay: 0.1 },
     // what tests/integration/asc.mjs PACE asserts (the tuning pass, set from the WORST of ten seeds
     // 4242 7 99 1337 2024 11 23 555 808 31337 x 120 s a form, with a margin): cues a minute F1 79.7 /
     // 83.3 / 86.8, F2 83.9 / 88.2 / 92.8, F3 88.3 / 101.4 / 108.8 (min / mean / max); form over form
@@ -146,7 +146,12 @@ export const TUNING = {
     // dodge 13 / 23 / 39 %; 0 conflicts. (Before the pass: 85.5 / 91.7 / 106.7, dodge 10 / 17 / 26 %,
     // F3's longest gap 3.94 s on seed 1337.) rampMean is checked on the suite's three seeds (4242 7 99):
     // there F2 / F1 x1.067, F3 / F2 x1.077.
-    meter: { ramp: [1, 0.96, 0.98], rampMean: [1, 1.02, 1.05], minRate: [76, 80, 85], maxGap: [4.0, 3.8, 3.6] },
+    // Re-pinned 2026-11-23 (ADR-162: he breaks off a blow the hero has left, and a swing at air was a cue;
+    // form 1 chases no harder than before, closeK / dashK 1.0), the same ten seeds: F1 75.3 / 79.3 / 85.0,
+    // F2 78.5 / 84.6 / 91.3, F3 81.4 / 93.2 / 101.2; form over form x1.067 / x1.10 in the mean, x0.973 /
+    // x0.928 on the worst seed; longest gap 2.45 / 2.59 / 2.70 s; 0 conflicts. The suite's three seeds:
+    // F2 / F1 x1.065, F3 / F2 x1.213. (Before: minRate [76, 80, 85], ramp [1, 0.96, 0.98].)
+    meter: { ramp: [1, 0.95, 0.91], rampMean: [1, 1.02, 1.05], minRate: [74, 77, 80], maxGap: [4.0, 3.8, 3.6] },
   },
   punish: { weight: 4 },
 
