@@ -6,9 +6,12 @@ import { clamp, damp } from '../core/math.js';
 // Ghostep slow-mo adds a short cool pulse: a little desaturation with the warm grade pulled out;
 // it only ever adds on top of the other targets and releases back to them on its own.
 // A parry's white flash (flashPulse) lifts uExposure for a few frames over its base value.
+// A perfect parry's cinema beat dims the world instead (dimPulse): uExposure lowered while it holds,
+// so the lines printed hotter than the scene (the mark, the steel) still stand out: lines, not light.
 
 const approach = (v, target, step) => (v < target ? Math.min(target, v + step) : Math.max(target, v - step));
 const finite = (v, d = 0) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
+const DIM_EXPOSURE = 0.6; // dimPulse(1): the scene's exposure x 0.4
 
 export class ScreenGrade {
   constructor(game) {
@@ -30,6 +33,9 @@ export class ScreenGrade {
     this.flash = 0; // a parry's white flash 0..1.5 (uExposure × 1 + 0.9 flash), decays in ~0.2 s
     this.baseExposure = null; // uExposure as the pipeline set it (read once)
     this.ghostHold = 0;
+    this.dim = 0; // the cinema beat's dim 0..1 (uExposure x 1 - DIM_EXPOSURE x dim)
+    this.dimHold = 0;
+    this.dimTarget = 0;
     this.t = 0;
   }
 
@@ -74,6 +80,12 @@ export class ScreenGrade {
     this._write();
   }
 
+  /** The world dims to `k` (0..1) in a few frames, holds `hold` s, then comes back (~0.25 s). */
+  dimPulse(k = 0.4, hold = 0.4) {
+    this.dimTarget = Math.max(this.dimHold > 0 ? this.dimTarget : 0, clamp(finite(k, 0.4), 0, 1));
+    this.dimHold = Math.max(this.dimHold, clamp(finite(hold, 0.4), 0, 3));
+  }
+
   /** Instantly drop all effects (used while the screen is fully black). */
   resetInstant() {
     this.flash = 0;
@@ -82,6 +94,7 @@ export class ScreenGrade {
     this.dipT = 0;
     this.ghost = 0;
     this.ghostHold = 0;
+    this.dim = this.dimHold = this.dimTarget = 0;
   }
 
   update(dt) {
@@ -93,6 +106,10 @@ export class ScreenGrade {
     this.desat = approach(this.desat, this.desatTarget, this.desatSpeed * dt);
     this.warm = damp(this.warm, this.warmTarget, 1.4, dt);
     if (this.dipT > 0) this.dipT = Math.max(0, this.dipT - dt);
+    if (this.dimHold > 0) {
+      this.dimHold = Math.max(0, this.dimHold - dt);
+      this.dim = Math.min(this.dimTarget, this.dim + dt / 0.06); // (in over ~4 frames)
+    } else if (this.dim > 0) this.dim = Math.max(0, this.dim - dt / 0.25);
     if (this.ghostHold > 0) {
       this.ghostHold = Math.max(0, this.ghostHold - dt);
       this.ghost = Math.min(1, this.ghost + dt / 0.08); // fast attack
@@ -115,7 +132,7 @@ export class ScreenGrade {
     if (u.uWarm) u.uWarm.value = clamp(this.warm * (1 - 0.85 * g), 0, 1);
     if (u.uExposure) {
       if (this.baseExposure === null) this.baseExposure = finite(u.uExposure.value, 1);
-      u.uExposure.value = this.baseExposure * (1 + 0.9 * this.flash);
+      u.uExposure.value = this.baseExposure * (1 + 0.9 * this.flash) * (1 - DIM_EXPOSURE * this.dim);
     }
   }
 }
