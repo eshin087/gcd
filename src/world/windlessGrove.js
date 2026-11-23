@@ -156,12 +156,114 @@ function bambooStalk(rng, x, z, h, L, { r = 0.055, lean = null } = {}) {
   return parts;
 }
 
+/**
+ * The bamboo's look (`?bamboo=0|a|b`, read when the set is built; the owner: "have the bamboos more
+ * varied, beautiful and some clumped up ... have way more in the back empty area"): '0' the grove as it
+ * was (one kind of cane, scattered); 'a' five kinds of cane mixed through clumps that fan out from
+ * their middle (the tallest in it, young shoots at its foot), thick and thin canes, fuller crowns, and
+ * the back filled: clumps behind him in the clearing, a deeper belt and a wall that runs on into the
+ * fog; 'b' the same with every clump of ONE kind, so the golden and the black groves read as blocks.
+ */
+export const bambooLook = () => {
+  const o = lookOf('bamboo', 'a');
+  return o === '0' || o === 'b' ? o : 'a';
+};
+
+/**
+ * The kinds of cane (colours linear, before the arena's light): `cane` its skin, `node` its rings,
+ * `leaf` its sprays, `stripe` a green stripe down one side of each length (golden bamboo), `dry` fewer
+ * and paler leaves, `r` its radius range (m), `joint` m between rings, `share` how common it is.
+ */
+const SPECIES = Object.freeze({
+  green: { cane: [0.15, 0.24, 0.1], node: [0.22, 0.29, 0.13], leaf: [0.09, 0.2, 0.08], r: [0.045, 0.075], joint: [0.45, 0.6], share: 0.42 },
+  jade: { cane: [0.21, 0.33, 0.13], node: [0.27, 0.36, 0.16], leaf: [0.12, 0.25, 0.1], r: [0.035, 0.06], joint: [0.38, 0.5], share: 0.22 },
+  gold: { cane: [0.34, 0.28, 0.09], node: [0.4, 0.33, 0.12], leaf: [0.13, 0.22, 0.08], stripe: [0.12, 0.22, 0.08], r: [0.05, 0.08], joint: [0.42, 0.55], share: 0.14 },
+  black: { cane: [0.06, 0.05, 0.065], node: [0.13, 0.11, 0.1], leaf: [0.07, 0.15, 0.07], r: [0.04, 0.065], joint: [0.4, 0.52], share: 0.12 },
+  dry: { cane: [0.26, 0.24, 0.16], node: [0.31, 0.28, 0.19], leaf: [0.2, 0.2, 0.11], dry: true, r: [0.04, 0.065], joint: [0.45, 0.6], share: 0.1 },
+});
+const SPECIES_KEYS = Object.keys(SPECIES);
+/** A kind of cane at random by its share. */
+const pickSpecies = (rng) => {
+  let u = rng();
+  for (const k of SPECIES_KEYS) if ((u -= SPECIES[k].share) <= 0) return k;
+  return 'green';
+};
+
+/**
+ * A stalk of one kind (look a / b): like bambooStalk, with its kind's colours (a golden cane's green
+ * stripe down one side), radius and joints, a cane that thins and bows, crowns of 3 - 8 sprays from
+ * its upper joints (2 - 3 on a dry cane; a young shoot: a few leaves near its tip). `far`: a stalk of
+ * the static wall far out (fewer segments and sprays). Returns [cane, ...sprays], world space.
+ */
+function bambooStalkOf(rng, x, z, h, L, sp, { r = null, lean = null, shoot = false, far = false } = {}) {
+  const S = SPECIES[sp], parts = [];
+  const rad = r ?? range(rng, S.r[0], S.r[1]);
+  const lx = lean ? lean[0] : range(rng, -0.04, 0.04), lz = lean ? lean[1] : range(rng, -0.04, 0.04);
+  const bow = range(rng, 0.35, 0.9);
+  const bend = (y) => (y / h) * (y / h) * bow;
+  const segs = Math.max(4, Math.round(h * (far ? 0.7 : 1.4)));
+  const cane = prep(new THREE.CylinderGeometry(rad * (shoot ? 0.85 : 0.62), rad, h, 5, segs));
+  cane.translate(0, h / 2, 0);
+  const joint = range(rng, S.joint[0], S.joint[1]) * (shoot ? 0.6 : 1), ph = rng() * joint;
+  const off = (y) => [lx * y + lx * bend(y) * 3, lz * y + lz * bend(y) * 3];
+  const pos = cane.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const y = pos.getY(i);
+    const j = Math.abs(((y + ph) % joint) - joint * 0.5) < joint * 0.09 ? 1.35 : 1;
+    const [ox, oz] = off(y);
+    pos.setXYZ(i, pos.getX(i) * j + ox, y, pos.getZ(i) * j + oz);
+  }
+  const seed = x * 3.1 + z * 7.3, side = rng() * TAU;
+  const frost = (c) => c.map((v, i) => v + L.frost * (i === 2 ? 0.2 : 0.17));
+  // (the arena's own light on it: the default night keeps the colours as they are)
+  const tint = (c) => [c[0] * L.stalk[0] / 0.17, c[1] * L.stalk[1] / 0.25, c[2] * L.stalk[2] / 0.12];
+  paint(cane, {
+    col: (px, py, pz) => {
+      const ring = Math.abs(((py + ph) % joint) - joint * 0.5) < joint * 0.09;
+      let c = ring ? S.node : S.cane;
+      if (S.stripe && !ring) {
+        // the golden cane's green stripe: down one side, turning a quarter at every joint
+        const turnK = Math.floor((py + ph) / joint);
+        const a = Math.atan2(pz - z - off(py)[1], px - x - off(py)[0]);
+        if (Math.cos(a - side - turnK * 1.57) > 0.55) c = S.stripe;
+      }
+      return mul(tint(c), 0.72 + 0.56 * hash2(py * 3 + seed, seed));
+    },
+    flag: FLAG.ART_PROP,
+    sway: (px, py) => 0.15 * (py / h),
+    ao: (px, py) => 0.5 + 0.65 * Math.min(1, py / (h * 0.6)),
+  });
+  parts.push(cane);
+  const n = shoot ? 2 : far ? 2 + Math.floor(rng() * 2) : S.dry ? 2 + Math.floor(rng() * 2) : 4 + Math.floor(rng() * 5);
+  for (let k = 0; k < n; k++) {
+    const y = h * (shoot ? range(rng, 0.75, 0.95) : range(rng, 0.5, 0.98));
+    const a = rng() * TAU, len = (shoot ? range(rng, 0.35, 0.6) : range(rng, 0.7, 1.6)) * (S.dry ? 0.75 : 1);
+    const wide = range(rng, 0.22, 0.36);
+    const g = prep(new THREE.ConeGeometry(wide, len, 4, 1, true));
+    g.scale(1, 1, 0.3);
+    g.translate(0, -len / 2, 0);
+    g.rotateZ(Math.PI / 2 + range(rng, 0.25, 0.8)); // out and drooping
+    g.rotateY(a);
+    const [cx, cz] = off(y);
+    g.translate(cx, y, cz);
+    paint(g, {
+      col: (px, py, pz) => frost(mul(tint(S.leaf), 0.66 + 0.7 * fbm2(px * 2 + seed, pz * 2 + py, 2))),
+      flag: FLAG.ART_PROP,
+      sway: 0.7,
+      ao: (px, py, pz, nx, ny) => 0.6 + 0.5 * Math.max(0, ny),
+    });
+    parts.push(g);
+  }
+  for (const g of parts) g.translate(x, 0, z);
+  return parts;
+}
+
 /** A bamboo stump: a short cane (its top is cut where the blow bit: destructibles.js _shapeStub). */
-function bambooStump(rng, x, z, L, r = 0.055) {
+function bambooStump(rng, x, z, L, r = 0.055, col = null) {
   const h = 1.3;
   const g = prep(new THREE.CylinderGeometry(r * 0.9, r, h, 5, 4));
   g.translate(0, h / 2, 0);
-  paint(g, { col: mul(L.stalk, 0.9), flag: FLAG.ART_PROP, sway: 0, ao: (px, py) => 0.55 + 0.4 * Math.min(1, py / h) });
+  paint(g, { col: mul(col ?? L.stalk, 0.9), flag: FLAG.ART_PROP, sway: 0, ao: (px, py) => 0.55 + 0.4 * Math.min(1, py / h) });
   g.translate(x, 0, z);
   return [g];
 }
@@ -239,6 +341,109 @@ function ringSlab(rng, r0, r1, a0, a1) {
   const g = slabGeometry(pts, { top: range(rng, 0.03, 0.045), inset: 0.05, drop: 0.035 });
   const cx = pts.reduce((s, p) => s + p[0], 0) / pts.length, cz = pts.reduce((s, p) => s + p[1], 0) / pts.length;
   return { geo: g, outline: pts, x: cx, z: cz, r: Math.max(0.35, Math.hypot(pts[0][0] - pts[3][0], pts[0][1] - pts[3][1]) * 0.5) };
+}
+
+/** Numbers of the new bamboo (look a / b). */
+const BAMBOO = Object.freeze({
+  // clumps inside the clearing: how many, stalks each, their spread (m), the young shoots at a clump's foot
+  inner: { clumps: 11, back: 0.75, stalks: [4, 9], spread: [0.35, 1.0], shoots: [1, 3], h: [6, 11] },
+  // the belt (breakable): clumps and lone stalks between beltR; `backK`: how much denser behind him (north)
+  belt: { clumps: 62, stalks: [5, 12], spread: [0.4, 1.3], lone: 120, h: [6.5, 12.5], backK: 1.7 },
+  // the static wall: from wallR[0] out to `out` m, how many stalks
+  wall: { out: 50, n: 1150, h: [7, 13] },
+  // a stalk's thickness: thin / mid / thick (x its kind's radius) and their shares
+  thick: [[0.75, 0.35], [1, 0.45], [1.45, 0.2]],
+});
+
+/**
+ * The new bamboo of looks a / b: clumps that fan out from their middle (tallest there, leaning out
+ * at the rim, young shoots at their foot) and lone stalks, of five kinds of cane; denser behind him
+ * (north: the top of the frame) than toward the camera; a static wall out to BAMBOO.wall.out m.
+ * Every stalk inside the wall is a sliced light piece (destructibles.js `slice`, `light`).
+ */
+function groveBamboo(rng, br, L, look, ctx) {
+  const { C, bf, stalkAt, clearOf, onPath, nearProp, bamboo, stumps, breakables, colliders, propGeos } = ctx;
+  const B = BAMBOO;
+  const thickness = () => {
+    let u = rng();
+    for (const [k, w] of B.thick) if ((u -= w) <= 0) return k;
+    return 1;
+  };
+  const piece = (x, z, h, sp, { lean = null, shoot = false, inner = false } = {}) => {
+    const S = SPECIES[sp], r = range(rng, S.r[0], S.r[1]) * (shoot ? 1.1 : thickness());
+    const geos = bambooStalkOf(rng, x, z, h, L, sp, { r, lean, shoot });
+    stalkAt.push([x, z]);
+    const c = inner || shoot ? null : colliders.add(x, z, Math.max(0.1, r * 1.8), 'trunk');
+    breakables.push({
+      kind: 'bamboo', species: sp, mat: 'wood', look: 'range', light: true, slice: true, x, z, r: Math.max(0.12, r * 2.4), h,
+      range: bamboo.add(geos, (i) => i > 0), colliders: c ? [c] : [], broken: { range: stumps.add(bambooStump(br, x, z, L, r, S.cane)), r: 0 },
+      leafy: S.dry ? 0.25 : 0.5, lift: 0, hp: 0.5, cover: false, topples: true, wreck: false,
+    });
+  };
+  /** A clump round (cx, cz): `n` stalks, tallest in the middle, leaning out at its rim; shoots at its foot. */
+  const clump = (cx, cz, n, spread, hr, inner, shoots = 0) => {
+    const sp0 = pickSpecies(rng);
+    const hTop = range(rng, hr[0], hr[1]);
+    for (let k = 0; k < n; k++) {
+      const a = rng() * TAU, d = spread * Math.sqrt(rng());
+      const x = cx + Math.sin(a) * d, z = cz + Math.cos(a) * d;
+      if (onPath(x, z) || nearProp(x, z) || !clearOf(x, z, 0.24)) continue;
+      const out = d / Math.max(0.01, spread);
+      const sp = look === 'b' || rng() < 0.6 ? sp0 : pickSpecies(rng);
+      const lean = [Math.sin(a) * (0.02 + 0.1 * out), Math.cos(a) * (0.02 + 0.1 * out)];
+      piece(x, z, hTop * (1 - 0.32 * out) * range(rng, 0.88, 1.06), sp, { lean, inner });
+    }
+    for (let k = 0; k < shoots; k++) {
+      const a = rng() * TAU, d = spread * range(rng, 0.6, 1.25);
+      const x = cx + Math.sin(a) * d, z = cz + Math.cos(a) * d;
+      if (onPath(x, z) || nearProp(x, z) || !clearOf(x, z, 0.2)) continue;
+      piece(x, z, range(rng, 1.2, 3.2), sp0, { shoot: true, inner: true });
+    }
+  };
+  // ---- clumps inside the clearing: most of them behind him (north), a few to the sides; never in the
+  // camera's way at the south edge
+  for (let i = 0, made = 0; i < 4000 && made < B.inner.clumps; i++) {
+    const back = rng() < B.inner.back;
+    const a = back ? range(rng, -1.25, 1.25) + Math.PI : rng() * TAU;
+    const r = range(rng, C.innerR[0], C.innerR[1]);
+    const x = Math.sin(a) * r, z = Math.cos(a) * r;
+    if (z > 4 || onPath(x, z) || nearProp(x, z) || !clearOf(x, z, 2.4)) continue;
+    clump(x, z, Math.round(range(rng, B.inner.stalks[0], B.inner.stalks[1])), range(rng, B.inner.spread[0], B.inner.spread[1]), B.inner.h, true, Math.round(range(rng, B.inner.shoots[0], B.inner.shoots[1])));
+    made++;
+  }
+  // ---- the belt: clumps and lone stalks, denser behind him
+  const beltSpot = () => {
+    // (north, z < 0, is `backK` times as likely as south)
+    for (;;) {
+      const a = rng() * TAU;
+      if (Math.cos(a) < 0 && rng() > 1 / B.belt.backK) continue; // (south: thinned)
+      const r = C.beltR[0] + Math.pow(rng(), 0.9) * (C.beltR[1] - C.beltR[0]);
+      return [Math.sin(a) * r, -Math.cos(a) * r];
+    }
+  };
+  for (let i = 0, made = 0; i < 6000 && made < B.belt.clumps; i++) {
+    const [x, z] = beltSpot();
+    if (onPath(x, z) || nearProp(x, z) || !clearOf(x, z, 1.6)) continue;
+    clump(x, z, Math.round(range(rng, B.belt.stalks[0], B.belt.stalks[1])), range(rng, B.belt.spread[0], B.belt.spread[1]), B.belt.h, false, Math.round(range(rng, 0, 2)));
+    made++;
+  }
+  for (let i = 0, made = 0; i < 20000 && made < B.belt.lone; i++) {
+    const [x, z] = beltSpot();
+    if (onPath(x, z) || nearProp(x, z) || !clearOf(x, z, 1.0)) continue;
+    piece(x, z, range(rng, B.belt.h[0], B.belt.h[1]), pickSpecies(rng));
+    made++;
+  }
+  // ---- the static wall beyond, out into the fog (merged; not breakable)
+  for (let i = 0, made = 0; i < 40000 && made < B.wall.n; i++) {
+    const a = rng() * TAU, r = C.wallR[0] + Math.pow(rng(), 1.1) * (B.wall.out - C.wallR[0]);
+    const x = Math.sin(a) * r, z = Math.cos(a) * r;
+    if (onPath(x, z) || Math.hypot(x - bf.x, z - bf.z) < 4 || !clearOf(x, z, r < 34 ? 1.2 : 1.6)) continue;
+    stalkAt.push([x, z]);
+    const sp = pickSpecies(rng);
+    propGeos.push(...bambooStalkOf(rng, x, z, range(rng, B.wall.h[0], B.wall.h[1]), L, sp, { far: r > 34 }));
+    if (r < 26) colliders.add(x, z, 0.14, 'trunk');
+    made++;
+  }
 }
 
 export function createWindlessGrove(U, colliders) {
@@ -369,6 +574,7 @@ export function createWindlessGrove(U, colliders) {
   }
 
   // ---- the bamboo
+  const look = bambooLook();
   const stalkAt = [];
   const clearOf = (x, z, d) => !stalkAt.some((t) => Math.hypot(t[0] - x, t[1] - z) < d);
   const onPath = (x, z) => z > C.entryZ - 2 && z < bf.z + 3 && Math.abs(x - pathX(z)) < 2.4;
@@ -380,13 +586,16 @@ export function createWindlessGrove(U, colliders) {
     stalkAt.push([x, z]);
     const c = inner ? null : colliders.add(x, z, 0.12, 'trunk');
     breakables.push({
-      kind: 'bamboo', mat: 'wood', look: 'range', light: true, x, z, r: 0.14, h,
+      kind: 'bamboo', mat: 'wood', look: 'range', light: true, slice: true, x, z, r: 0.14, h,
       range: bamboo.add(geos, (i) => i > 0), colliders: c ? [c] : [], broken: { range: stumps.add(bambooStump(br, x, z, L)), r: 0 },
       leafy: 0.5, lift: 0, hp: 0.5, cover: false, topples: true, wreck: false,
     });
   };
+  if (look !== '0') {
+    groveBamboo(rng, br, L, look, { C, bf, stalkAt, clearOf, onPath, nearProp, bamboo, stumps, breakables, colliders, propGeos });
+  }
   // lone stalks and clumps of two or three inside the clearing (no cover, no collider)
-  for (let i = 0; i < 2000 && stalkAt.length < 34; i++) {
+  for (let i = 0; look === '0' && i < 2000 && stalkAt.length < 34; i++) {
     const a = rng() * TAU, r = range(rng, C.innerR[0], C.innerR[1]);
     const x = Math.sin(a) * r, z = Math.cos(a) * r;
     if (onPath(x, z) || nearProp(x, z) || !clearOf(x, z, 2.6)) continue;
@@ -399,7 +608,7 @@ export function createWindlessGrove(U, colliders) {
   // the dense belt (breakable)
   const BELT_MAX = 330;
   let belt = 0;
-  for (let i = 0; i < 20000 && belt < BELT_MAX; i++) {
+  for (let i = 0; look === '0' && i < 20000 && belt < BELT_MAX; i++) {
     const a = rng() * TAU, r = C.beltR[0] + Math.pow(rng(), 0.9) * (C.beltR[1] - C.beltR[0]);
     const x = Math.sin(a) * r, z = Math.cos(a) * r;
     if (onPath(x, z) || nearProp(x, z) || !clearOf(x, z, 1.25)) continue;
@@ -408,7 +617,7 @@ export function createWindlessGrove(U, colliders) {
   }
   // the static wall beyond (merged, not breakable)
   const wallGeos = [];
-  for (let i = 0; i < 30000 && wallGeos.length < 520 * 4; i++) {
+  for (let i = 0; look === '0' && i < 30000 && wallGeos.length < 520 * 4; i++) {
     const a = rng() * TAU, r = C.wallR[0] + Math.pow(rng(), 1.2) * (C.wallR[1] - C.wallR[0]);
     const x = Math.sin(a) * r, z = Math.cos(a) * r;
     if (onPath(x, z) || Math.hypot(x - bf.x, z - bf.z) < 4 || !clearOf(x, z, 1.5)) continue;
