@@ -841,8 +841,9 @@ async function scenarioFlow() {
   let holds = 0;
   run(G, 4, () => { holds = Math.max(holds, S.holdT ?? 0); }, () => d.mode === 'foot');
   assert(d.mode === 'foot' && S.now === 'dojo', 'he looks over his shoulder, turns, BECKONS: the room rewrote into the Sparring Hall');
+  run(G, 2, null, () => !S.morphing && S.k >= 1); // (the front finishes crossing the hall)
   const pos = game.world.destructibles.list.filter((b) => b.scene && !b.absent);
-  assert(pos.length > 0 && pos.every((b) => b.scene === 'dojo' || b.scene === 'dojo4' || b.scene?.startsWith?.('dojo')), `only the Sparring Hall's pieces stand (${pos.length})`);
+  assert(pos.length > 0 && pos.every((b) => (S.member ? S.member(b, 'dojo') : b.scene === 'dojo')), `only the Sparring Hall's pieces stand (${pos.length})`);
   d.debug.setAI(false);
   d.brain.forcePhase(2);
   run(G, 4, null, () => d.phase === 2 && d.mode !== 'act');

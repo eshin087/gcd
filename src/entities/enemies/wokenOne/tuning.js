@@ -135,7 +135,7 @@ export const TUNING = {
   // drawn as a short bright slug and its trail; cover stops it and takes `world.shot` (a pillar's face is
   // gone in about two volleys, the pillar down in about four)
   shot: { speed: 30, radius: 0.32, size: 0.55, range: 24 },
-  heavyShot: { speed: 24, radius: 0.45, size: 1.0, range: 24 },
+  heavyShot: { speed: 24, radius: 0.45, size: 1.25, range: 24 }, // (size > 1.2: AscFx's big blast, world.bigBlast on cover)
   // Iron Rain: he strafes round the hero at `strafe` m, running up across pillars on his way, firing
   // from alternating hands: `count` shots of `damage` over `dur` s, then the last big one (returnable).
   // A held guard pays `guardCost` a shot (the hero's GUARD.costMin is 8: 55 at most for a whole volley)
@@ -149,7 +149,7 @@ export const TUNING = {
   // THE STOP (phase 3): a returned bolt hangs before his raised palm (rooted `root` s, + `posture` each);
   // up to `max` hang; Return to Sender sends them; unsent after `life` s they drop as loose digits
   stop: { max: 3, root: 0.5, posture: 25, life: 4, sendPosture: 20 },
-  bolt: { speed: 22, radius: 0.5, size: 0.9, range: 24 },
+  bolt: { speed: 22, radius: 0.5, size: 1.25, range: 24 }, // (size > 1.2: world.bigBlast on cover)
   // Unwriting: bricks torn out of up to `count` code pillars within `near` m, thrown `gap` s apart
   unwriting: { count: 3, near: 12, gap: 0.55, first: 0.7, speed: 17, damage: 20 },
 

@@ -110,7 +110,7 @@ add('PARRY & RIPOSTE', [
   { id: 'deflectLong', name: 'Deflect a long string', boss: 'any', streak: 0, role: 'long', answer: 'parry', desc: 'A long string parried blow for blow: watch the streak climb and the riposte at the end.', expect: ['player:parry'] },
   { id: 'blockString', name: 'Block a string', boss: 'any', role: 'string', answer: 'block', desc: 'The guard held through a string: chip damage, pushback, no riposte.', expect: ['player:block'] },
   { id: 'lock', name: 'Blade lock', boss: 'duel', role: 'lock', answer: 'perfect', mash: true, desc: 'A perfect parry of his heavy blow locks the blades: mash attack to win the push.', expect: ['player:lock'] },
-  { id: 'trade', name: 'Trade clash', boss: 'duel', role: 'single', answer: 'trade', dist: 2.2, desc: 'Your cut meets his blow in the air: both blades thrown back, nobody hurt. Pressed at the last instant it is the flash counter: the cut goes through him.', expect: ['combat:clash'] },
+  { id: 'trade', name: 'Trade clash', boss: 'duel', role: 'single', answer: 'trade', dist: 2.2, clear: true, desc: 'Your cut meets his blow in the air: both blades thrown back, nobody hurt. Pressed at the last instant it is the flash counter: the cut goes through him.', expect: ['combat:clash'] },
   { id: 'mikiri', name: 'Mikiri', boss: 'ash', role: 'mikiri', answer: 'mikiri', dist: 3.2, desc: 'A roll INTO his perilous thrust: you step on his blade.', expect: ['player:mikiri'] },
   { id: 'mikiriSheath', name: 'Mikiri', boss: 'sheathed', role: 'mikiri', answer: 'mikiri', dist: 4.0, desc: 'A roll INTO Tapping Stone: you step on the scabbard.', expect: ['player:mikiri'] },
   // the Sheathed's draw (ADR-144): parry it, or a held guard is knocked open, or roll through it
