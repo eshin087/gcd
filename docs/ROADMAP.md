@@ -184,7 +184,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
-## M1.64 — A seventh level: Halcyon Plaza and Halcyon, the Last Saviour (2026-11-22, `claude/level-future-tyrant-afdefc`, ADR-159 – ADR-161)
+## M1.69 — An eighth level: Halcyon Plaza and Halcyon, the Last Saviour (2026-11-22, `claude/level-future-tyrant-afdefc`, ADR-159 – ADR-161)
 - [x] `?level=city`: a crossroads read from its streets, every piece breakable, two-stage towers, cars that
       explode (the set polls them), the city's light as heat (`setPhase`), `?city=a|b|c`; the `y0` fix
 - [x] Halcyon: flight in reach, the crash, his eyes (The Stare, Red Glare, Scorched Avenue, Crossed Glare),
@@ -195,6 +195,42 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [ ] The owner's picks from the sheets: his body, his cape step, his eyes' heat, the city's light
 - [ ] Cut, for later: Last Word (and its beam clash), the hydrants' spouts, his own SFX, his own score
 - [ ] A human playtest on the phone (the frame rate on the device is not measured)
+
+## M1.68 — Tian Lei's blows audited; he stops attacking the air (2026-11-23, `enemies/ascendant-ascii`, ADR-162)
+- [x] A motion audit of every move and of a real fight (opt-in `asc.mjs audit` / `auditfight`)
+- [x] Feet that stay planted, arms that open, palms that stop at the hero, a steady roundhouse knee
+- [x] He breaks off a blow you ran out of and chases you (`pressure.pursue`): 0 swings at air
+- [x] His tracking turn kept as it is (the owner: "Leave it"); the still charges left too
+- [ ] Played, and on the phone
+
+## M1.66 — Tian Lei printed like the hero (2026-11-23, `enemies/ascendant-ascii`, ADR-155)
+- [x] His letters follow his size on screen as the hero's do (`?ascLetters=a`)
+- [x] The hero's quieter print (`?ascLift=b`)
+- [x] The gold hair of forms 2 - 3 his own hair risen, not a tall crown (`?ascHair=b`)
+- [x] A gi in ember with wraps, not the orange and blue (`?ascLook=e`; r, w kept)
+- [ ] Checked on the owner's phone
+## M1.65 — A seventh level: the Hall of Falling Script and Xin Yi, the One Who Woke (2026-11-22, `claude/level-code-one-784481`, ADR-156 – ADR-158)
+- [x] `?level=code`: one hall, three scenes on the same ten slots that morph behind a front (`scenes`,
+      destructibles `present`), the watchers, the falling script, the script wave in the prop and floor letters
+- [x] Xin Yi: two bars, three phases (one hand, two guns, the Source), the fall and the rising, the Lean,
+      the Bend, the stop and Return to Sender, flight and the Falling Fist's front, deja vu, skipped frames
+- [x] The Long Second, the second learned technique (guard, then dodge with no direction)
+- [x] Lab, Training (five lessons), `tests/integration/woke.mjs` (and an opt-in LEAN check on the Sheathed)
+- [ ] The owner's picks from the sheets: his body (`?oneLook=`), the hall (`?hall=`), the script wave (`?script=`)
+- [ ] On the iPhone: the frame rate, how the black coat reads, how the shots read at the phone camera
+- [ ] His own score (borrowed tracks until an audition page); the phase banners that decode (cut)
+## M1.64 — Wen Yao reworked: drawn like the hero, packs out of the air, the big Pearl, the Nine-Tailed Fox's beam (2026-11-22, `claude/fox-rework-ca0b58`, ADR-154)
+- [x] He is drawn in the hero's ink-line art: `?foxLook=h1` the default (russet crest, amber jacket, vermilion scarf), h2 / h3 rendered; his letters follow his size (`?foxLetters`, `kit.letters`)
+- [x] The selves only fight in packs: no ambient mode (no scatter, no token); `pack` on a beat, `FoxClones.pack`, booked with the cue ledger; `together` (one cue, one result) and `sequence`
+- [x] Pack moves: Two Leaves Fall, the Thousand-Body Round reworked, A Thousand at Once, the Burial, the Kite String, the Pearl's harrying pack (strikers feed it); Changing Places drops its self in
+- [x] The signature moves: the big spiral Pearl (pale blue-white, 0.9 m), the Twin Pearls, the giant Moon-Swallowing Pearl lifted by two selves, "It was a copy"
+- [x] Heaven-Devouring Howl (phase 3): the Nine-Tailed Fox (a creature body in the art path), the dark sun, a beam that rakes the terrace and breaks the world, the kneel; the camera holds both
+- [x] Phase 3's fire its own kind (`?foxFire3`); the pool 5 → 6 rigs; Training (three new situations), the Lab's pack and Howl buttons; `fox.mjs` data / clones / beam / pace
+- [ ] Follow-ups:
+  - [ ] The owner's picks: `?foxLook=` (h1 h2 h3), `?foxLetters=`, `?foxfire=`, `?foxFire3=`, `?foxSpirit=`, `?clones=` (sheets in `docs/looks/fox/`)
+  - [ ] The Nine-Tailed Fox at the game camera reads only when looked for (its head sits at the frame's corner, ~100 px): a bigger head, fewer tails or a pale throat if the owner wants it scarier
+  - [ ] The phone: the Howl pulls the camera back to ~55 m to hold the hero and the fox's head; the frame rate with a pack of five out; both on the owner's iPhone
+  - [ ] The Moon Wheel (phase 3, a thrown Pearl that opens into a dome of cutting wind): cut first by the plan's order, not built
 ## M1.63 — The grove's bamboo sliced in one stroke, in clumps (2026-11-22, `world/bamboo-slice`, ADR-151)
 - [x] One blade or blow slices a stalk where it bit; the top slides off the cut at once and goes over
 - [x] Five kinds of cane, three thicknesses, fanning clumps with shoots (`?bamboo=a|b`; `0` the old grove)
@@ -209,7 +245,11 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
       guard never hurt, the honor gate), the grove falling on the click, the hanging cuts
 - [x] One Breath, the first fixed reward (`game/unlocks.js`): guard + hold heavy, the draw counter
 - [x] Lab, Training, `tests/integration/sheath.mjs`
-- [ ] The owner's picks from the sheets: his body, the cut, the grove's light
+- [x] The owner's picks from the sheets: his body (d, the Wanderer), the cut, the grove's light
+- [x] Readable (ADR-152): the hero's ink-line print (the owner's pick), lifted; his silhouette, motion, lines and names
+- [x] The palette: a, indigo and sand (the owner's pick)
+- [x] The print: step 2, the digits in his colours, lit and outlined (the owner's pick of five, `?sheathArt=`)
+- [ ] The owner's pick of the mark from the ADR-152 sheet (`?sheathMark=`)
 - [ ] His own score (borrowed tracks until an audition page)
 - [ ] A human playtest of the draw on the phone; One Breath's balance bot on Shen Hui
 ## M1.61 — A fifth level: the Foxfire Terrace and Wen Yao, the Thousand-Body Fox (2026-11-21, `claude/thousand-body-fox-33750d`, ADR-147, ADR-148)
@@ -224,10 +264,10 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] The look options rendered (body a - d, foxfire a - c, selves a / b); the fight built with each one's a
 - [x] `tests/integration/fox.mjs` in `npm test`; the Lab (FIGHT buttons, LOOKS rows) and Training know him (two situations of his own)
 - [ ] Follow-ups:
-  - [ ] The owner's picks: `?foxLook=`, `?foxfire=`, `?clones=` (from the sheets in `docs/looks/fox/`)
+  - [x] The owner's picks: superseded by the rework (M1.62): he is redrawn, and the picks wait there
   - [ ] The owner plays the preview on the phone: the selves' readability at 852 x 393, the frame rate with five out
   - [ ] The level's own score (it borrows three tracks)
-  - [ ] Phase 3 asks more (twice the dodges) but is not busier than phase 2 (79.3 against 80.2 cues a minute, bare-handed)
+  - [ ] Phase 3 asks more (twice the dodges) but is not busier than phase 2 (79.3 against 80.2 cues a minute, bare-handed; after the rework 68.3 against 79.5: the Howl)
 
 ## M1.60 — Tian Lei as a recognizable homage (2026-11-22, `enemies/ascendant-homage`, ADR-150)
 - [x] Three homage bodies behind `?ascLook=`; the owner picked the orange gi (`h`)
@@ -854,7 +894,7 @@ Spec: `docs/specs/ash-disciple.md`.
 ## M2 — The boss rush's foundations (revised 2026-11-12, ADR-059)
 - [ ] Techniques: a slot system, a meter filled by parries and perfect dodges, an equip screen; the
       Ash Disciple's technique first (the next PR). The store it can read exists: `game/unlocks.js` (ADR-146)
-- [~] Fixed rewards per boss: the first, One Breath (the Sheathed's draw-slash, ADR-146), ships; the rest (techniques, weapons, abilities, elements); weapons of other lengths
+- [~] Fixed rewards per boss: the first, One Breath (the Sheathed's draw-slash, ADR-146), and the second, the Long Second (Xin Yi's lean, ADR-158), ship; the rest (techniques, weapons, abilities, elements); weapons of other lengths
   - [ ] Halcyon's reward: the owner has not chosen one yet (ADR-161)
   - [ ] The Thousand-Body Fox's Paper Double (a decoy the foe strikes instead of the hero): recorded on the level, not usable (ADR-148); needs the technique slot, a button on every input, a target indirection in every boss's AI
       (the animator, the hit segment and the blade FX read `DIM`)

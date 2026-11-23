@@ -1780,6 +1780,19 @@ function backstepPose(p, A) {
   swordFromEntry(p, A, SWORD_ENTRY);
 }
 
+/** The Long Second (ADR-158): he leans back in place under the blow, the guard kept, the feet planted;
+ *  the lean comes in over 0.08 s, holds and gives back by 0.42 s. */
+function leanPose(p, A) {
+  const t = A.t;
+  guard(p, A);
+  const k = smoothstep(0, 0.08, t) * (1 - smoothstep(0.3, 0.42, t));
+  p[P.spX] -= 0.55 * k;
+  p[P.hdX] -= 0.22 * k;
+  p[P.bodyY] -= 0.08 * k;
+  p[P.bodyZ] -= 0.1 * k;
+  swordFromEntry(p, A, SWORD_ENTRY);
+}
+
 /** Drink: legs keep walking (slowly), the free hand raises the flask, head tips back. */
 function healPose(p, A) {
   loco(p, A);
@@ -2547,6 +2560,7 @@ const POSES = {
   guardBreak: guardBreakPose,
   roll: rollPose,
   backstep: backstepPose,
+  lean: leanPose,
   heal: healPose,
   stagger: staggerPose,
   knockdown: knockdownPose,
@@ -2794,6 +2808,12 @@ export class HeroAnimator {
   constructor(rig, player, poses = null, opts = {}) {
     // (before reset(): it poses the rig once)
     this.freeHand = !!(opts?.freeHand && rig.arms?.L?.wrist);
+    /** [where the arm's reach starts to give, the most it opens] as fractions of its length, or null
+     *  for ARM_SOFT (an elbow of ~130° at a full stretch; the hero's arms take HERO_SOFT). A boss whose
+     *  blows are his fists sets it (ADR-162). */
+    this.armSoft = Array.isArray(opts?.armSoft) ? opts.armSoft : null;
+    /** ... and the legs' (null: a leg reaches straight, as always; ADR-162). */
+    this.legSoft = Array.isArray(opts?.legSoft) ? opts.legSoft : null;
     this.wristL = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, tx: 0, ty: 0, tz: 0, ok: false, clamped: false };
     this.handFX = { fingers: false, fist: false };
     this.lkState = { prev: new THREE.Vector3(), ok: false, k: 1 };
@@ -3959,7 +3979,9 @@ export class HeroAnimator {
       // (the hero's arms open further, HERO_SOFT; his sword arm in a two-handed grip keeps the old
       // reach: the free hand has to follow the grip, and it cannot follow a fully stretched sword arm)
       const hs = this.freeHand ? (holdsSword ? 1 - clamp(fin(p[P.twoHand], 0), 0, 1) : 1) : 0;
-      const s0 = lerp(ARM_SOFT[0], HERO_SOFT[0], hs), s1 = lerp(ARM_SOFT[1], HERO_SOFT[1], hs);
+      // (a boss whose blows are his arms may open them as the hero does: `armSoft`, ADR-162)
+      const AS = this.armSoft ?? ARM_SOFT;
+      const s0 = lerp(AS[0], HERO_SOFT[0], hs), s1 = lerp(AS[1], HERO_SOFT[1], hs);
       const L = DIM.upperArm + DIM.foreArm, d0 = s0 * L;
       _v.subVectors(_T, _S);
       const d = _v.length();
@@ -4096,6 +4118,17 @@ export class HeroAnimator {
     _v.subVectors(_T, _S);
     const dl = _v.length();
     if (dl < LEG_NEAR && dl > 1e-4) _T.copy(_S).addScaledVector(_v, LEG_NEAR / dl);
+    // (`legSoft`, a boss who kicks: the last of the leg's reach is compressed as the arm's is, so a kick
+    // at full stretch keeps a little bend: at a straight leg the knee's side is undefined and it flipped
+    // from frame to frame, ADR-162)
+    const LS = this.legSoft;
+    if (LS) {
+      const L = DIM.thigh + DIM.shin, d0 = LS[0] * L;
+      if (dl > d0) {
+        const span = (LS[1] - LS[0]) * L;
+        _T.copy(_S).addScaledVector(_v, (d0 + span * (1 - Math.exp(-(dl - d0) / span))) / dl);
+      }
+    }
     _pole.set(p[ki], p[ki + 1], p[ki + 2]).applyQuaternion(_qBP);
     let beta = solveTwoBone(_S, _T, _pole, DIM.thigh, DIM.shin, -1, leg.thigh.quaternion, _end);
     // … and a knee never sinks into the ground

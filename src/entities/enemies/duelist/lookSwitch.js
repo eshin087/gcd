@@ -39,22 +39,27 @@ export const PICKED = Object.freeze({
   floor: 'a', // a broken floor slab: rubble on printed earth (the owner's pick)
   // the Skybreak Ring and Tian Lei, the Last Ascendant
   ring: 'a', // the arena: the ring on the flats (the owner's pick)
-  ascLook: 'h', // his body: the orange gi (the owner's pick, 2026-11-22; was a, the tunic and the topknot)
+  ascLook: 'e', // his body: the gi with wraps in ember, a burnt red (the owner's pick, 2026-11-23, ADR-155; was h, the orange gi)
+  ascLetters: 'a', // his letters: the hero's size (the owner's pick, 2026-11-23, ADR-155; was 0, the bosses' fine cell)
+  ascHair: 'b', // his gold hair (forms 2 - 3): his own hair risen (the owner's pick, 2026-11-23, ADR-155; was 0, the tall crown)
   ascAura: 'a', // his aura: a tall flame, hollow behind him (the owner's pick)
   ascBeam: 'a', // his beam: the column (the owner's pick)
-  ascLift: 'a', // his figure lifted off the floor: a lighter fill, a stronger edge of light (the owner's pick)
+  ascLift: 'b', // his print: the hero's quieter one (the owner's pick, 2026-11-23, ADR-155; was a, lifted: a lighter fill, a stronger edge of light)
   ascOrb: 'a', // Heaven's Lantern, the great orb: a sun (b a lantern, c the pale gathered sphere; the owner has not chosen yet, 2026-11-22)
   ascBeamPose: '0', // his beams: the palm thrust (cup: both hands cupped at the hip; the owner has not chosen yet, 2026-11-22)
   // the Windless Grove and Lu Wusheng, the Sheathed (the owner, 2026-11-22: "keep the recommended")
   grove: 'a', // the grove's light: a moonlit mist (the owner's pick)
   sheathLook: 'd', // his body: the Wanderer (the owner's pick, 2026-11-22, over a, mourning white)
   drawCut: 'a', // the draw's cut: one white line (the owner's pick)
+  sheathArt: '2', // his print: the digits in his colours, lit and outlined (the owner's pick, 2026-11-23, of five steps; a, the ink-line art, read as a 3D model; ADR-152)
+  sheathTone: 'a', // his palette: indigo and sand (the owner's pick, 2026-11-23, of three)
+  // (sheathMark: rendered for the owner, not picked yet: its Lab row is 'awaiting')
 });
 
 /** Switches the owner has not picked yet (their rendered options wait for the owner): in the Lab's LOOKS
  *  rows, deliberately NOT in PICKED; each draws its call site's default until picked. When the
  *  owner picks, the switch moves from here into PICKED. */
-export const PENDING = Object.freeze(['foxLook', 'foxfire', 'clones', 'halLook', 'glare', 'city', 'halCape']); // Wen Yao (ADR-147); Halcyon and his city (ADR-161; halCape: ADR-164)
+export const PENDING = Object.freeze(['foxLook', 'foxfire', 'clones', 'foxLetters', 'foxFire3', 'foxSpirit', 'oneLook', 'hall', 'script', 'halLook', 'glare', 'city', 'halCape']); // Wen Yao (ADR-147, ADR-154); Xin Yi and his hall (ADR-156, ADR-157); Halcyon and his city (ADR-161; halCape: ADR-164)
 
 const fromUrl = new Map();
 const forced = new Map();

@@ -5,6 +5,7 @@ import { STARLESS } from './starless.js';
 import { SKYBREAK } from './skybreak.js';
 import { WINDLESS } from './grove.js';
 import { FOXFIRE } from './foxfire.js';
+import { SCRIPTHALL } from './scripthall.js';
 import { HALCYON } from './halcyon.js';
 import { createTrainingRoom, ROOM_WORLD } from '../world/trainingRoom.js';
 
@@ -19,7 +20,7 @@ import { createTrainingRoom, ROOM_WORLD } from '../world/trainingRoom.js';
 //   text               the flow's lines: arrive[], stir, phase2, phase3, victory, fallen, restReset,
 //                      phase4, again, rise (GameFlow falls back to Cinderwood's)
 
-export const LEVELS = Object.freeze([CINDERWOOD, ASHFALL, STARLESS, SKYBREAK, FOXFIRE, WINDLESS, HALCYON]);
+export const LEVELS = Object.freeze([CINDERWOOD, ASHFALL, STARLESS, SKYBREAK, FOXFIRE, WINDLESS, SCRIPTHALL, HALCYON]);
 export const DEFAULT_LEVEL = CINDERWOOD;
 
 /** The level with this id or alias (case-insensitive), or null. */

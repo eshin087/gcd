@@ -3,9 +3,9 @@
 // `abyss.unlocks.v1`, a JSON list of ids); a storage argument for tests (as Bindings takes one).
 // `?tech=draw` turns One Breath on without the kill, `?tech=none` off (this page load only).
 //   has(id) · grant(id) → true when it is new · all() → [ids] · clear()
-// Ids: 'oneBreath' (the Sheathed's draw-slash).
+// Ids: 'oneBreath' (the Sheathed's draw-slash), 'longSecond' (Xin Yi's lean; ADR-158: ?tech=lean).
 export const UNLOCK_KEY = 'abyss.unlocks.v1';
-const TECH = { draw: 'oneBreath' };
+const TECH = { draw: 'oneBreath', lean: 'longSecond' };
 
 export class Unlocks {
   /** storage: a localStorage-like object, or null (nothing saved); search: the URL's query (?tech=). */

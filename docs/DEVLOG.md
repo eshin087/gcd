@@ -33,7 +33,7 @@ tint pink at a grazing angle (the per-part ink is shared by every rig). The beam
 
 ---
 
-## 2026-11-22 — Session 79: a seventh level, Halcyon Plaza and Halcyon, the Last Saviour (planned in its own chat, built by one Opus agent)
+## 2026-11-22 — Session 79: an eighth level, Halcyon Plaza and Halcyon, the Last Saviour (planned in its own chat, built by one Opus agent)
 
 **What changed.** The owner asked for an evil caped strongman from the future, two well-known characters named as the reference
 ("laser eyes, flying around a lot with super speed and power" in an ASCII city his moves tear down. Built from
@@ -62,6 +62,213 @@ Throne's is borrowed). The screens' "face" reads as a pale rectangle at the game
 and shoulders. Not checked: the frame rate on the owner's iPhone, a human playtest of the flight rule and
 the crash's timing, the carry's look up close. The bar (14000) was sized for the fencing bot; a human may
 find it long.
+
+---
+
+## 2026-11-23 — Session 84: Tian Lei's blows audited; he stops attacking the air
+
+**Owner:** "ok looks good but i noticed a lot of the attack animations and attacks look unnatural. audit it and fix it to improve it. make the boss also stop attacking empty air if the player moves out of the distance". Branch `enemies/ascendant-ascii` (on PR #96's look pass). ADR-162 / Session 84 / M1.68.
+
+**How.** Measured before touching anything: `asc.mjs audit` (opt-in; every move, the hero still and
+circling, joints frame by frame: jolts, the facing's turn, sliding feet, joints, the blow against the
+hero) and `auditfight` (opt-in; his AI against a defending bot, 30 s a form). Filmed the worst moves
+(close side view, solid and ASCII) against the committed build. The whiff fix went to a helper agent in
+its own worktree (`enemies/ascendant-reach`), porting the unfinished pursuit from the stale epic pass
+(`asc5/ai`, never committed), merged here.
+
+**What changed.** Feet that stay planted (`_planFeet` + the pose hook), arms that open (anim.js `armSoft`,
+the hero's numbers), legs that keep a bend (`legSoft`), palm dashes that stop at the palm's reach (`PALM`),
+a roundhouse knee that points up. The pursuit (`pressure.pursue`, duelist brain.js / director.js, opt-in; Tian Lei's tuning): a blow the hero has run out of is broken off before its glint and he chases; form 1 chases no harder than before; PACE's floors re-pinned (a swing at air was a cue).
+
+**Measured.** A real fight against a defender: frames with a visible pop 87 -> 23, the worst 1966 -> 715.
+Every move: total jolt 47 316 -> 23 677. Punches land at 149 - 155° (was ~130°). Swings at air a minute (whiff meter, 3 seeds x 90 s, forms 1 / 2 / 3): flee 18.2 / 18.1 / 9.5 -> 0 / 0 / 0, retreat 1.9 / 4.3 / 2.7 -> 0, kite 1.9 / 0 / 0.5 -> 0, roam 0 / 0.2 / 0.2 -> 0. PACE on ten seeds: F1 75.3 / 79.3 / 85.0, F2 78.5 / 84.6 / 91.3, F3 81.4 / 93.2 / 101.2 (min / mean / max; form 3's mean was ~96).
+
+**Found on the way.** Two audit artifacts that looked like defects: the drawn figure leans toward the
+camera along z (measure reach with the hero EAST of him, as MOTION does), and hit-stops are freeze-frames
+(a window that spans one reports the whole freeze as one frame's jolt: "strike -> stagger" was not real).
+
+**Not checked / open.** Nobody has played it; not on the phone. His tracking turn (up to ~900°/s at a
+circling hero) was offered as a choice and the owner kept it ("Leave it"); the still charges of the
+beams were left too (see ADR-162). The stale epic pass on
+`enemies/ascendant-epic` / `asc5/*` (new moves, blue beams, the champion's ring, its own letter grid) is
+still unmerged and now conflicts with PR #96 and this work.
+
+---
+
+## 2026-11-23 — Session 83: Tian Lei printed like the hero; the hair risen, not tall; a gi in ember
+
+**Owner:** "the skybreak ring, the character is too detailed and is showing its flaws in 3d. make it more
+ascii like, like the main character, to hide its flaws. also make the phase 2 and 3 golden hair not be so
+long and more natural iconic looking. also change the character's color and cloth a bit to not make it
+look too obvious its goku". Branch `enemies/ascendant-ascii`. ADR-155 / Session 83 / M1.66.
+
+**How.** Each ask built as options behind switches, rendered (1440p game camera with the hero beside
+him, close-ups from four sides, the phone) on three sheets; the owner picked the recommended option of
+each: letters B (the hero's letter size + the hero's quieter print), hair B (his own hair risen), outfit E
+(ember).
+
+**What changed.**
+- **His letters follow his size** (`?ascLetters=a`): the kit's `letters`; at 1080p / 1440p / 4K he is on
+  the hero's 6 / 8 / 12 px cells, not the bosses' 4 / 4 / 8. The renderer code (`_letterCell`,
+  `_updateBossLetters`, `pipeline.bossLetters` in main.js) is PR #94's (Wen Yao's rework, open), taken
+  word for word: I had written my own version first, found #94 doing the same, and swapped mine out so
+  the two PRs agree (mine also snapped his ink lines to the font pixel; dropped, see ADR-155).
+- **The hero's quieter print** (`?ascLift=b`, `ASC_QUIET`).
+- **The gold hair** (`?ascHair=b`, `goldRisen`; `a` a short crown kept): about his dark hair's height,
+  form 3 no taller than form 2, one lock over the brow in form 3.
+- **The gi with wraps** (`?ascLook=e | r | w`, base `k`): e ember ships; r crimson over charcoal, w bone
+  kept. A storm-blue gi was dropped: it read as the hero's own colour.
+- Lab LOOKS: the new rows, `ascLook`'s new options.
+
+**Verification.** `asc.mjs . body,herolike` green (his cell = the hero's at phone / 720p / 1080p / 1440p /
+4K / 24 m / 54 m; the fixed cell with the switch off; the gold's height; the gis). Rendered with no URL
+parameters at 1440p beside the shipped look (sheet `AFTER` in the session's scratchpad). `npm test`: see
+the PR.
+
+**Not checked / open.** Not on a real phone (there the letters were already the hero's size: only the
+print, hair and gi change). The orange gi and the tall crown stay behind their switches. When PR #94
+merges, `pipeline.js` / `main.js` should merge clean (the same lines); the docs' "The bosses' letters"
+paragraph will need one pass to name both bosses.
+
+---
+
+## 2026-11-23 — Session 82: a seventh level, the Hall of Falling Script and Xin Yi, the One Who Woke (planned by Fable, built by Opus: a lead and three agents)
+
+**Owner** (to the planning session): two more homage bosses, planned by Fable and built by Opus, "lets do
+neo ... come up with iconic moves, effects, moments to make this a cool battle". The planning session asked
+four questions (the look recognizable; a pillared hall whose stage morphs 2 - 3 times; the four moments not to
+cut; the suited men watchers only); its plan (`code-one-plan.md` in the shared notes) was built as written
+(ADR-156 – ADR-158; the session numbers 80 and 81 were taken by open PRs).
+
+**How it was built.** The lead landed the contracts and a working core first (af4ed3b: the level, the scenes
+contract and `destructibles.present`, `uScript`, the code palette, the boss on the duelist engine with every
+mechanic, a stub set and stub body/effects), then three Opus agents in their own worktrees at once: the set
+(`scriptHall.js` rewritten keeping the contract, the watchers, the falling script, the script wave in
+materials.js, world.mjs `bite` per scene), the body (`gear.js`, `look.js`, the oneLook sheets), the effects
+(`fx.js`, the synth sounds, the borrowed score). Meanwhile the lead did the reward, the Lab, Training, the
+suite's scenarios, pace and strategy, the docs; then merged, re-measured and re-shot the body's sheets in the
+real light. (The effects agent could not write into its worktree: the harness kept it to the lead's; it worked
+in a clone in the scratchpad and the lead fetched its branch from there.)
+
+**What exists.** `?level=code` (`levels/scripthall.js`; aliases one / script / scripthall / woke / xinyi:
+the plan's `hall` was already the Obsidian Throne's), `world/scriptHall.js` (rung 1 of the plan's ladder: the
+full swap; three scenes, 397 breakables, morphs of 1.25 - 1.63 s), `enemies/wokenOne/` (wokenOne.js, moves.js,
+tuning.js, poses.js, links.js, iron.js, source.js, fx.js, gear.js, look.js), the Long Second (player.js
+`TUNE.lean`, anim.js `leanPose`, unlocks `longSecond` / `?tech=lean`), `tests/integration/woke.mjs` (21
+scenarios in `npm test`; opt-in smoke, strategy) and sheath.mjs's opt-in `lean`.
+
+**Decisions where the plan was open** (ADRs and COMBAT have the rest): `WokenFx extends AscFx` rather than
+LordFx (AscFx is LordFx's pool plus the blasts that cover stops and the perfect parry returns); phase 1's left
+hand behind his back is a realiser of its own over a one-handed copy of the moves; Iron Rain is one sustained
+beat (one cue for the stream, the ledger sees one guard window) whose ticks fire the shots; Return to Sender is
+one blow of the brain's over a 30 m ring (one cue, one result) with `noWorld`; the stop catches a returned bolt
+by parking AscFx's blast in its `push` phase; Unwriting's bricks are the Lord's torn stones (they hang clear
+of their own pillar: cover stopped them at once); the fall's rising starts as the fall's clip ends (no stand-up
+between); every thrown thing asks `brain.fairDelay` (`fairThrow`); deja vu replays through the realiser's
+recorded draws. The watchers' 4 / 8 / 12 is the set's `within` / `later`, not a fourth scene. The trade
+clash in Training now stands clear of the pieces (`clear: true`): the hall's posts could stop the hero's blade.
+
+**Measured.** PACE (real set, three seeds x 60 s): 67 / 106 / 83 cues a minute, 0 conflicts, dodge 7 / 5 / 21 %
+(phase 2 counts each of Iron Rain's eleven shots). WIN: 84 s (seed 4242). STRATEGY: mixed 75 – 84, parry 95 –
+96, block-only 89 – 122 (mortal: alive and wins), the Long Second bot 138, dodge-only 142 – 164 s; on the
+Sheathed with the Long Second: mixed 33, parry 42, dodge 64, lean 82 s. TIMING: every contact within 43 ms of
+its flash + 0.26 s. Draw calls 68 - 73 in every scene and moment at 1280x720 and 852x393 (the Foxfire Terrace:
+76 on the phone); the fire field's peak about 1030 of 6000 (phase 3); the falling script 320 (140 on LOW).
+Frame times on the RTX 4090 headless only; on-device fps is the owner's.
+
+**Not done / cut.** The phase banners do not decode (the plan's first cut). The morph prints in with the front's
+ring only (no print-in effect). The bit-identical frame at strength 0 is by construction, not a GPU readback.
+
+**Next / open.** The owner's picks from the sheets (`?oneLook=`, `?hall=`, `?script=`); the iPhone: the frame
+rate, the black coat, the shots at the phone camera; his own score.
+
+---
+## 2026-11-23 — Session 81: Wen Yao reworked: drawn like the hero, packs out of the air, the big Pearl, the Nine-Tailed Fox's beam (planned by Fable, built by Opus: a lead and two agents)
+
+**What changed.** The owner played the Thousand-Body Fox and asked for four things (ADR-154 quotes them):
+he is hard to see; the clones are boring sponges that stand about; the moves should be signature moves
+(the palm orb); and he should summon a fox for an ultimate beam. Built from the planning session's plan,
+the lead landing the contracts first (af30eab) and two agents in their own worktrees:
+- **The body (agent):** `?foxLook=h1` (the default) in the hero's ink-line art: a big russet crest with
+  pale tips, a short open amber jacket, dark trousers, pale wraps, a long vermilion scarf; h2 / h3
+  rendered; his letters follow his size (`kit.letters`, `pipeline._updateBossLetters`, `?foxLetters`).
+- **The packs (lead):** clones.js rewritten: no ambient selves; `pack` on a beat; FoxClones.pack books the
+  bodies and the ledger; together / sequence; Two Leaves Fall, the Round, A Thousand at Once, the Burial,
+  the Kite String, the Pearl's harrying pack; the pool 5 → 6.
+- **The signature moves (lead):** the big spiral Pearl (pale blue-white `FIRE_PALETTES.pearl`, spiral arms,
+  a drilling drive, a spiral burst, a synth whirr), the Twin Pearls, the giant Moon-Swallowing Pearl lifted
+  by two selves, "It was a copy"; phase 3's fire its own kind (`?foxFire3`).
+- **The Howl (agent):** beam.js / spirit.js / fxBeam.js / tuningBeam.js: the Nine-Tailed Fox as a body in
+  the art path, the dark sun, the beam, the world along it, the kneel; `cameraRig.hold`, the terrace's
+  `light.dim`.
+- Training: "A Thousand at Once · one parry", "The Round · parry the chain", "Heaven-Devouring Howl · roll
+  through it" (Pop the copies is gone); the Lab: pack buttons, Twin Pearls, Howl, LOOKS rows.
+
+**Decisions.** ADR-154. Where the plan was open: the Pearl's harrying pack is 1 / 2 / 2 (three do not fit
+before the drive with the red cue 0.36 s clear); a pack riding on a blow of his is named `<move>Pack`; the
+Howl is one red beat whose windup is the summoning (the "black" of the summoning is a charge's darkness,
+not a second blow); the fox's head is drawn at 2x and the body always side-on to the camera; the h
+outfits' crest uses `welt` (the hair parts' gold outline read as blond). The Moon Wheel was cut.
+
+**Verification.** `npm test` green (every suite); `fox.mjs` `data` checks every pack's schedule, `clones`
+is rewritten for packs, `beam` is new, `pace` re-measured on five seeds x 120 s (70.9 / 79.5 / 68.3 cues a
+minute, 0 conflicts), `win` and `training` pass. Rendered at the game camera in headless Edge: the sheets in
+`docs/looks/fox/` (body-720 / -1440 / -phone, letters, packs, packs-phone, clones-ab, pearl, mantle, howl,
+howl-phone, howl-fox-720). Measured: a full pack 73 → 118 draw calls (1280x720), the Howl 75 → 84 and a fire
+field peak of ~1300 - 1500 blobs.
+
+**Second pass on the Howl** (the owner: "yes, fix the fox"; the reviewer: the fox read as a fan of
+feathers, the beam as a thin streak). The head is the subject (drawn 2.3x, a clean profile wedge, broad
+ears, a jaw that opens wide over a white-hot maw, a pale throat; the body charcoal so the head separates);
+nine separate S-curved tails with bright tips; he summons it `away` 10 m from the hero through the middle
+(not the far rim) and `cameraRig.hold(m, x, z, w)` leans toward it: the desktop camera stays at 36 - 41 m
+(was ~60) with the head well inside the frame from every side. The beam fills its 3.6 m strip (a bulb at
+the jaws, a five-line core, a boiling body, the floor lit and charred, a scar that lingers). The dark sun
+is ~2.3 m with motes from the whole arena and the light dropping further. On the phone the pull-back is
+capped: the hero is 51 % of his duel-camera height during the Howl (was 24 %), short of the 70 % asked;
+the head crops at the top when the hero stands north or south of it. 72 → 81 draw calls, the fire field's
+peak ~1600 (2350 headless). Sheets: howl.png / howl-phone.png (before / after), howl-fox-720.png.
+
+**Open / next.** The owner's picks (six switches in PENDING). The fox at the game camera reads only when
+looked for; on the phone the Howl pulls the camera back to ~55 m. Neither checked on the owner's iPhone.
+Phase 3 is now less busy than phase 2 (by design of the Howl; the meter says so). The Moon Wheel.
+## 2026-11-23 — Session 80, round 2: the Sheathed between the digits and the ink-line art (ADR-152 addendum)
+
+**Why.** The owner picked palette a, then looked at the ink-line Sheathed in the game: "too detailed and his flaws
+from the non ascii look is hurting. find a right balance". At fight distance he read as a 3D model (smooth shaded
+cloth, clean outlines) and body flaws showed that the digits had hidden. They asked for three steps between the
+two prints, to pick from.
+
+**What changed.**
+- `?sheathArt=0|1|2|3|a` (look.js `SHEATH_STEP`, `wandererDigits`, `sheathTuned`, `sheathDigits`): 1 and 2 are the
+  wyrm's digits with the palette's inks (x 0.42 / 0.5; trousers x 0.72 and wraps x 0.8, since neutral greys print
+  near white), the art source's light floor 0.03 / 0.1 and a stroke outline reaching in to fresnel 0.3 / 0.12 in a
+  paler ink; 3 is the ink-line art with the cloth's aPart folded to 0 in `_setup` (no fold or crease lines), no
+  glints, no fold shading, half the rim. 0 is the digits and his body as on main (no mark, the old tail and scarf).
+- His body in prints 1 - a: full sleeves (no thin stiff arm, no gap at the side), one deep roll of scarf instead of
+  two turns, plain gaiters instead of six shin bands, no wrist bands. Gameplay untouched.
+- `sheathTone: 'a'` in `PICKED` (the owner's pick); `sheathArt` stays `a`, its Lab row `awaiting` again; duel.mjs's
+  picks check lets a picked switch wait for a new pick. `sheath.mjs` LOOK covers every print.
+
+**The pick.** The owner picked step 2 from the sheet (2026-11-23): `sheathArt: '2'` in `PICKED`, the Lab row not
+`awaiting`, `sheath.mjs` LOOK checks 2 as the default and `a` as an option (the palettes by the digits' ink). Open:
+the mark (`?sheathMark=`), a real phone, his digits larger than the hero's letters.
+
+**Measured** on main's grove with its new bamboo (rebased; the camera pinned at its default distance; his pixels /
+the floor under him; the hero about 25 / 16): 720p 0 37.0 / 20.3, 1 26.5 / 20.2, 2 36.1 / 20.3, 3 31.2 / 20.1, a
+35.1 / 20.2; phone 0 34.1, 1 26.9, 2 39.5, 3 26.8, a 27.9 (the floor about 19.7; the hero about 27 / 16.3).
+
+**Sheet:** `sheets-owner/sheet_balance.png` (five rows; carry, run, settle, 0.25 s after the cut at 2 - 3x and the whole
+frame, 720p then phone; the hero in every tile).
+
+**The author's pick: 2.** It reads as letters first (digits on a dark body, a stroke outline), it is brighter than the
+hero, and the robe (blue), the trousers (grey) and the scarf (sand) stay apart. Where each fails: 0 thin and colourless;
+1 barely above the floor (26.5 against 20.2: weaker than the hero), and the digits cover only his lit side, so he is narrower than the hero; 2 still narrow, the
+face does not read, the strip is one pale stroke; 3 at fight distance hardly differs from a (the interior lines were
+few letters wide already), so it still reads as a drawn figure; a the owner's complaint.
+
+**Not checked.** A real phone. The close look for clipping was done in films at a 7 m camera for the draw and the run
+only; nothing clipped there that shows at fight distance.
 
 ---
 
@@ -121,6 +328,49 @@ see the PR.
 
 **Not checked / open.** Nobody has played it; not on the phone (0.56 M -> 0.89 M vertices drawn);
 the owner picked `a`, mixed clumps, from the sheet.
+
+## 2026-11-22 — Session 80: the Sheathed, easy to see (ADR-152; one Opus agent from the planning session's brief)
+
+**Goal.** The owner on the live grove: "its hard to see the new boss character. make it look detailed like the
+main character". Their answers: the hero's ink-line art (not bigger letters), the homage carried by the
+silhouette, a mark of his own, his motion and his lines; three palettes to pick from.
+
+**What changed.**
+- The print (`sheathed/look.js`, new): `?sheathArt=a` in `PICKED` (the prototype's `?sheathArt=a`, from the
+  local branch `enemies/sheathed-letters`, is the base), `0` the wyrm's digits. `SHEATH_TONE` a / b / c,
+  `SHEATH_LIFT` (rim × 3, scarf and mark × 3.6), `tintWanderer`. His hair on `shirt`: the `hair` part's
+  shared ink lines are the hero's gold, and they drew an orange outline round his dark hair.
+- The silhouette (`gear.js`): `ROBE_TAILS` (a loose robe to mid-thigh, open at both sides, over the
+  trousers), the high tail 0.46 → 0.60 m and thicker with a pale tie, the scarf's turns 7 / 4.5 → 8.5 / 6 cm
+  and its ends 6 → 8 cm, its tails `out` 0.14 → 0.03 (they stood off his back), pale wrist
+  bindings. Mark a: `STRIP` on both scabbard pieces (the left-wrist piece's springs appended to the rig's in
+  `_setup`; the draw kicks them). Mark b: a white streak on `facing`.
+- Motion (`poses.js`, `moves.js` draw()): the carry (head bowed 0.12, left thumb in the sash), the breath
+  (k 0.8 → 0.65, period 3.4 → 4.6 s), `SHEATH_RUN` and his own `duelLoco` (sink 8 cm, pitch 0.16 at a run),
+  the settle: a head-only key at 0.4 × grip, then the settle key eased in. Timings untouched.
+- Lines (`levels/grove.js`) and eight labels (`moves.js`); Training's mikiri text, COMBAT.md's table.
+- `sheath.mjs` LOOK: the default print and palette, the scabbard darkest, the hair off the gold part, the
+  mark's springs, ADR-126's hand audit through One Breath (0.166 m worst outside the cut), every option.
+
+**Measured** (headless Edge on the GPU; the mean luma 0 - 255 of his pixels / of the floor behind him; p90):
+1280 x 720: digits (as live) 40.0 / 16.3, p90 128; the prototype 22.2 / 16.3, p90 88; now 31.9 / 16.1, p90
+116 (b 33.4, c 31.9); the hero 25.2 / 20.1, p90 105. Phone camera (17 m): now 45.4 / 16.5 (digits 49.1), the
+hero 39.7 / 21.6. The digits are brighter on average but read as a column of numbers; the ink-line print reads as a
+figure with its parts. The drawn blade's pixels: mean 105, p90 185, against his figure's mean 32, p90 108 -
+114. ADR-126 audit (filmed): One Breath's worst hand step outside the cut 0.183 m, the same as main (0.183), the
+cut's one frame 1.0 m on both; the run 0.112 m (main 0.08), no planted foot sliding. `sheath.mjs` LOOK: 0.166 m.
+The scarf's tails: at rest 0.04 rad off hanging, at a run 0.87 rad (they trail; an `inMax` tried first held
+them against his back and was dropped).
+
+**Sheets for the owner** (not committed): `sheets-owner/` in the worktree: the print before / after, the
+palettes, the mark, the draw and run film strips (before = main).
+
+**ADR number.** 152, not the next free number on `main` (151): a parallel session's grove bamboo work
+claims 151 (`?bamboo=`), so this skips it to avoid a clash at merge.
+
+**Open.** The owner's picks of the palette and the mark. Not checked on a real phone. The model viewer draws
+him alone, so its tiles have no hero beside him (the game-camera tiles do). The mark at the game camera is a
+couple of letters at rest; it reads when it trails.
 
 ## 2026-11-22 — Session 78: a sixth level, the Windless Grove and the Sheathed (planned in its own chat, built by one Opus agent)
 

@@ -846,10 +846,20 @@ export class Lab {
         ob.textContent = `One Breath ${U.toggle('oneBreath', !U.has('oneBreath')) ? 'on' : 'off'}`;
       });
       ob.title = 'the draw-slash: guard, then hold heavy (the Sheathed\'s reward; ?tech=draw)';
+      const ls = button(grid, `Long Second ${U.has('longSecond') ? 'on' : 'off'}`, () => {
+        ls.textContent = `Long Second ${U.toggle('longSecond', !U.has('longSecond')) ? 'on' : 'off'}`;
+      });
+      ls.title = 'the lean: guard, then dodge with no direction (Xin Yi\'s reward; ?tech=lean)';
     }
-    // the Thousand-Body Fox (ADR-147): his paper selves, the Pearl, the mantle
-    if (typeof this.game.dragon?.debug?.clones === 'function') {
-      button(grid, 'Selves +2', () => this.game.dragon.debug.clones(2)).title = 'tear two paper selves off him (to the phase\'s cap)';
+    // the Thousand-Body Fox (ADR-147, ADR-154): his packs of paper selves, the Pearl, the mantle, the Howl
+    if (typeof this.game.dragon?.debug?.pack === 'function') {
+      const fd = this.game.dragon;
+      button(grid, 'Pack: Two Leaves', () => fd.debug.pack('twinFall')).title = 'two selves drop and dive-kick in turn (a pack, out of any move)';
+      button(grid, 'Pack: All at Once', () => fd.debug.pack('allAtOnce', { phase: Math.max(2, fd.phase) })).title = 'selves on every side dive at the same instant: one cue, one parry bursts all';
+      button(grid, 'Pack: Round', () => fd.debug.pack('foxRing', { phase: Math.max(2, fd.phase) })).title = 'selves drop into a ring and strike in turn';
+      button(grid, 'Pack: Kite', () => fd.debug.pack('kiteString', { phase: Math.max(2, fd.phase) })).title = 'three selves slide in low and kick upward in turn';
+      button(grid, 'Twin Pearls', () => { if (fd.phase < 2) fd.enterPhase?.(2); fd.debug.trigger('twinPearl'); }).title = 'he and a self drive two Pearls in from two sides (phase 2)';
+      if (typeof fd.debug.howl === 'function') button(grid, 'Howl', () => fd.debug.howl()).title = 'Heaven-Devouring Howl: the Nine-Tailed Fox and its beam (phase 3)';
       button(grid, 'Pop all', () => this.game.dragon.debug.popAll()).title = 'pop every paper self';
       button(grid, 'Pearl', () => this.game.dragon.debug.pearl()).title = 'the Pearl of the Hollow Moon now';
       const m = button(grid, 'Mantle', () => {
@@ -857,6 +867,15 @@ export class Lab {
         m.classList?.toggle?.('on', !!on);
       });
       m.title = 'the Fox-Fire Mantle on / off (phase 3 wears it by itself)';
+    }
+    // Xin Yi, the One Who Woke (ADR-156): the Bend, the fall and the rising, the stop, the scenes, deja vu
+    if (typeof this.game.dragon?.debug?.bendNow === 'function') {
+      const W = this.game.dragon.debug;
+      button(grid, 'Bend now', () => W.bendNow('shot')).title = 'THE BEND now (phase 2: a returned shot\'s; open 1 s, the first cut crits)';
+      button(grid, 'Fall + rise', () => W.fallAndRise()).title = 'bar 1 emptied and the deathblow: THE FALL, then the rising into the Source';
+      button(grid, 'Hold 3', () => W.hold(3)).title = 'three bolts hanging before his palm (phase 3: Return to Sender comes)';
+      button(grid, 'Deja vu', () => W.dejavu('lesson')).title = 'the hall stutters and The First Lesson replays';
+      for (const id of ['hall', 'dojo', 'source']) button(grid, `Scene ${id}`, () => W.scene(id)).title = `the hall rewrites itself into the ${id} scene from where he stands (the morph)`;
     }
     // Halcyon (ADR-160): his passes, the tower, the falling sky, the statue, the carry, the cars, the city's light
     if (typeof this.game.dragon?.debug?.fallingSky === 'function') {

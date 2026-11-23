@@ -64,6 +64,14 @@ export function createSharedUniforms() {
     uGlyphAtlas: { value: null },
     uScorch: { value: null },
     uScorchBounds: { value: new THREE.Vector4(-80, -80, 160, 0) },
+    // THE SCRIPT WAVE (ADR-157; the Hall of Falling Script only: no other level sets it): inside every
+    // prop's own letters (prop art) and the floor's, digits brighten in waves falling down the screen's
+    // columns, the hue eased toward green. x = strength 0..1 (0: the frame is exactly as without it),
+    // y, z = a front's centre (world x, z), w = the front's radius (m; <= 0: no front)
+    uScript: { value: new THREE.Vector4(0, 0, 0, 0) },
+    // ... x = the front's width (m), y = the front's own strength 0..1, z = the stutter's sideways shift
+    // in letter cells (deja vu: -1..1), w = unused
+    uScriptF: { value: new THREE.Vector4(2, 0, 0, 0) },
     uPushers: { value: Array.from({ length: MAX_PUSH }, () => new THREE.Vector4(0, 0, 0, 0)) },
     uGust: { value: new THREE.Vector4(0, 0, 0, 1) }, // x, z, strength, radius (radial wind)
     uPlayerScreen: { value: new THREE.Vector4(0.5, 0.5, 1e9, 0) }, // uv x, uv y, view depth, unused

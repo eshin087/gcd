@@ -337,6 +337,16 @@ export class AudioEngine {
     this.musicBus.gain.setTargetAtTime(BUS.music * (on ? 0.3 : 1), this.ctx.currentTime, on ? 0.12 : 0.3);
   }
 
+  /** THE FALL (Xin Yi): the music drops to silence while he lies, and comes back `lie` s later (on its
+   *  own: a reset or a death in between leaves nothing held). */
+  _fallDuck(lie) {
+    if (!this.ctx || !this.musicBus || this._ducked) return;
+    const now = this.ctx.currentTime, g = this.musicBus.gain;
+    holdAt(g, now);
+    g.setTargetAtTime(BUS.music * 0.02, now, 0.08);
+    g.setTargetAtTime(BUS.music, now + clamp(num(lie, 2.2), 0.3, 5), 0.6);
+  }
+
   /** Ghostep: low-pass + duck the world mix for `hold` real seconds, then release. */
   _slowDuck(hold) {
     if (!this.ctx || !this.slowLp || !this.slowGain) return;
@@ -840,6 +850,22 @@ export class AudioEngine {
     // the fox's paper selves (ADR-147): a dry, quiet paper tear as one pops, a softer one as one tears
     // free (or burns into him at his change)
     on('dragon:clone', (d) => this.play('paperTear', { x: d?.x, z: d?.z, soft: d?.kind === 'spawn' || d?.by === 'mantle' }));
+    // Xin Yi, the One Who Woke (ADR-156): the guns, the Bend, the stop, deja vu, the hall rewriting
+    // itself, the fall (the music drops to silence while he lies)
+    on('dragon:shot', (d) => this.play('ironShot', this._atDragon({ heavy: !!d.heavy })));
+    on('dragon:bend', () => this.play('bendWhoosh', this._atDragon()));
+    on('dragon:stop', () => this.play('stopHum', this._atDragon()));
+    on('dragon:sent', () => this.play('codeBurst', this._atDragon()));
+    on('dragon:reload', () => this.play('gunClatter', this._atDragon()));
+    on('dragon:unwrite', () => this.play('morphTicks', this._atDragon({ short: true })));
+    on('dragon:dejavu', () => this.play('dejaBlip'));
+    on('dragon:stillHand', (d) => this.play('stillHum', this._atDragon({ dur: num(d.dur, 1.5) })));
+    on('world:scene', (d) => this.play('morphTicks', { x: num(d.x, 0), z: num(d.z, 0) }));
+    on('dragon:fall', (d) => this._fallDuck(num(d.lie, 2.2)));
+    // the fox's Pearl (ADR-154): a quiet rising whirr as he shapes it (the drive, the Twin Pearls)
+    on('dragon:windup', (d) => {
+      if (d?.name === 'foxPearl' || d?.name === 'twinPearl') this.play('pearlWhirr', this._atDragon());
+    });
     // Halcyon Plaza (ADR-159, ADR-160; the existing synth sounds): a car goes up, his body through the
     // street, the clap's ring of force
     on('world:blast', (d) => this.play('explosion', d));

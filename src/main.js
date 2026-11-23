@@ -25,6 +25,7 @@ import { AudioEngine } from './audio/audio.js';
 import { GameFlow } from './game/flow.js';
 import { Lab } from './dev/lab.js';
 import { Unlocks } from './game/unlocks.js';
+import { lookOf } from './entities/enemies/duelist/lookSwitch.js';
 
 // Boot + main loop. Builds the shared `game` context every module receives (see ARCHITECTURE.md).
 
@@ -208,6 +209,9 @@ async function boot() {
       const k = 1 - clamp((dist - DC.within) / Math.max(0.5, DC.fade ?? 4), 0, 1);
       zoomOut += DC.zoom * k * (game.cameraRig.defaultDistance / CONFIG.camera.distance);
     }
+    // (a boss that leaves the floor asks the camera back so both stay in frame: Xin Yi's flight, ADR-156)
+    const pull = d?.cameraPull;
+    if (Number.isFinite(pull) && pull > 0) zoomOut += pull;
     game.cameraRig.extraZoom = damp(game.cameraRig.extraZoom, zoomOut, 2.5, dt);
     game.cameraRig.update(dt, focus);
   };
@@ -255,6 +259,9 @@ async function boot() {
       tmp.project(camera);
       if (Number.isFinite(tmp.x + tmp.y)) U.uBossScreen.value.set(tmp.x * 0.5 + 0.5, tmp.y * 0.5 + 0.5, bd, 1);
     } else U.uBossScreen.value.w = 0;
+    // a boss in ink-line art whose kit asks for it (`kit.letters`: Wen Yao) has his letters follow his
+    // size as the hero's do (render/pipeline.js _updateBossLetters); ?foxLetters=a keeps the fixed cell
+    pipeline.bossLetters = !!game.dragon?.kit?.letters && lookOf('foxLetters', 'b') === 'b';
   };
 
   // --- loop

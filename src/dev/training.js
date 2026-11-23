@@ -16,7 +16,7 @@ import { TUNING as WYRM, SCALE as WYRM_SCALE } from '../entities/dragon/tuning.j
 // every situation through `run(id)` (tests: integ / duel / lord TRAINING).
 //
 // A situation: { id, cat, name, desc, boss (kinds it applies to: 'wyrm' | 'duel' | 'ash' | 'lord' |
-//   'asc' (Tian Lei) | 'fox' (Wen Yao) | 'halcyon' (Halcyon) | 'any'), dist (m from the boss; omit = the boss's default), ang (rad off his facing), side (put the
+//   'asc' (Tian Lei) | 'fox' (Wen Yao) | 'woke' (Xin Yi) | 'halcyon' (Halcyon) | 'any'), dist (m from the boss; omit = the boss's default), ang (rad off his facing), side (put the
 //   hero beside him, for the camera), streak (the hero's, set before), foe (his streak), art (pin the
 //   flurry's art), hp (the hero's), god (default true), answer (mode, or (i, T) → mode for blow i),
 //   go(T) (start it), tick(T, dt) (every frame while it runs), until(T) (done; default: the boss's
@@ -54,6 +54,9 @@ const ROLES = {
   grove: { single: 'knock', string: 'refusals', long: 'fordSteps', red: 'reedCutter', mikiri: 'tapStone' },
   // Wen Yao (the Foxfire Terrace): no perilous thrust (no mikiri situation for him)
   fox: { single: 'foxBite', string: 'brushstrokes', long: 'streakFlurry', red: 'sweepingBrush', lock: 'moonLadder' },
+  // Xin Yi (the Hall of Falling Script): no perilous thrust; his lock is the Still Hand's push, which
+  // only comes out of a caught cut (no lock situation for him)
+  code: { single: 'brushOff', string: 'stairKick', long: 'lesson', red: 'lowWind' },
   // Halcyon (Halcyon Plaza): no blade lock, no perilous thrust; his red is Meteor (a beam is no fixed
   // contact for a perfect dodge), his ranged role The Stare (ADR-160)
   city: { single: 'backhand', string: 'meetAndGreet', long: 'streakFlurry', red: 'meteor', ranged: 'stare' },
@@ -66,7 +69,7 @@ export function bossKinds(game) {
   if (typeof d?.debug?.flurry === 'function') {
     k.add('duel');
     // (a three-bar boss is not the Lord: Tian Lei has his own kind, the Lord's situations need the crater)
-    k.add(d?.kit?.id === 'ascendant' ? 'asc' : d?.kit?.id === 'sheathed' ? 'sheathed' : d?.kit?.id === 'thousandFox' ? 'fox' : d?.kit?.id === 'halcyon' ? 'halcyon' : d?.lives ? 'lord' : 'ash');
+    k.add(d?.kit?.id === 'ascendant' ? 'asc' : d?.kit?.id === 'sheathed' ? 'sheathed' : d?.kit?.id === 'thousandFox' ? 'fox' : d?.kit?.id === 'wokenOne' ? 'woke' : d?.kit?.id === 'halcyon' ? 'halcyon' : d?.lives ? 'lord' : 'ash');
   }
   return k;
 }
@@ -110,9 +113,9 @@ add('PARRY & RIPOSTE', [
   { id: 'deflectLong', name: 'Deflect a long string', boss: 'any', streak: 0, role: 'long', answer: 'parry', desc: 'A long string parried blow for blow: watch the streak climb and the riposte at the end.', expect: ['player:parry'] },
   { id: 'blockString', name: 'Block a string', boss: 'any', role: 'string', answer: 'block', desc: 'The guard held through a string: chip damage, pushback, no riposte.', expect: ['player:block'] },
   { id: 'lock', name: 'Blade lock', boss: 'duel', role: 'lock', answer: 'perfect', mash: true, desc: 'A perfect parry of his heavy blow locks the blades: mash attack to win the push.', expect: ['player:lock'] },
-  { id: 'trade', name: 'Trade clash', boss: 'duel', role: 'single', answer: 'trade', dist: 2.2, desc: 'Your cut meets his blow in the air: both blades thrown back, nobody hurt. Pressed at the last instant it is the flash counter: the cut goes through him.', expect: ['combat:clash'] },
+  { id: 'trade', name: 'Trade clash', boss: 'duel', role: 'single', answer: 'trade', dist: 2.2, clear: true, desc: 'Your cut meets his blow in the air: both blades thrown back, nobody hurt. Pressed at the last instant it is the flash counter: the cut goes through him.', expect: ['combat:clash'] },
   { id: 'mikiri', name: 'Mikiri', boss: 'ash', role: 'mikiri', answer: 'mikiri', dist: 3.2, desc: 'A roll INTO his perilous thrust: you step on his blade.', expect: ['player:mikiri'] },
-  { id: 'mikiriSheath', name: 'Mikiri', boss: 'sheathed', role: 'mikiri', answer: 'mikiri', dist: 4.0, desc: 'A roll INTO Tapping Stone: you step on the scabbard.', expect: ['player:mikiri'] },
+  { id: 'mikiriSheath', name: 'Mikiri', boss: 'sheathed', role: 'mikiri', answer: 'mikiri', dist: 4.0, desc: 'A roll INTO The Walking Staff: you step on the scabbard.', expect: ['player:mikiri'] },
   // the Sheathed's draw (ADR-144): parry it, or a held guard is knocked open, or roll through it
   { id: 'drawParry', name: 'One Breath · parry the draw', boss: 'sheathed', move: 'oneBreath', answer: 'parry', dist: 4.5, desc: 'The settle, the stillness, the click (the blue flare at the scabbard), the cut: parry on the click. He is caught with the blade out.', expect: ['player:parry'] },
   { id: 'drawGuard', name: 'One Breath · hold the guard', boss: 'sheathed', move: 'oneBreath', answer: 'block', dist: 4.5, desc: 'A held guard keeps you alive: no health lost, but the whole guard meter is gone and the guard is knocked open.', expect: ['player:guardOpen'] },
@@ -186,7 +189,7 @@ const duelChange = (T, n) => {
   return d.debug[`phase${n}`]?.();
 };
 
-// The Thousand-Body Fox (ADR-147): his paper selves and the Pearl
+// The Thousand-Body Fox (ADR-147, ADR-154): his packs of paper selves, the Pearl
 /** Walk the hero at him while he is further than `near` m (the Pearl's backstep takes him out of reach). */
 const foxClose = (T, near = 2.2) => {
   const d = T.d, p = T.p;
@@ -196,8 +199,47 @@ const foxClose = (T, near = 2.2) => {
   else T._axis(0, 0);
 };
 add('THE THOUSAND-BODY FOX', [
-  { id: 'foxPop', name: 'Pop the copies · parry them', boss: 'fox', dist: 4, answer: 'parry', desc: 'Two paper selves tear free round you and cut in turn. Parry each cut: a parried self pops (his posture takes it).', go: (T) => T.d.debug.clones(2), until: (T) => T.t > 1 && !(T.d.clones?.live > 0) && T.heroFree(), max: 16, expect: ['dragon:clone', 'player:parry'] },
-  { id: 'foxPearlBurst', name: 'The Pearl · burst it in his hand', boss: 'fox', dist: 2.6, answer: 'none', desc: 'He steps back and shapes the Pearl in his palm: his guard is down. Close in and cut him twice while it charges: it bursts in his hand and he reels.', go: (T) => T.d.debug.trigger('foxPearl'), tick: (T) => { if (T.d.pearl?.charging) { foxClose(T); T.at(0.9, () => T.tap('@attack')); T.at(1.3, () => T.tap('@attack')); T.at(1.7, () => T.tap('@attack')); } else T._axis(0, 0); }, until: (T) => T.t > 1 && !T.moving() && T.heroFree(), max: 10, expect: ['dragon:stagger'] },
+  { id: 'foxAll', name: 'A Thousand at Once · one parry', boss: 'fox', dist: 4, answer: 'parry', desc: 'Selves appear in the air on every side and dive at the same instant: one blue cue. One parry bursts them all (his posture takes it).', go: (T) => T.d.debug.pack({ n: 4, mode: 'together', form: 'ring', blow: 'dive', tell: 'blue', flare: true, from: 1.0 }, { attack: 'allAtOnce' }), until: (T) => T.t > 1 && !T.d.clones?.packLive && T.heroFree(), max: 10, expect: ['dragon:clone', 'player:parry'] },
+  { id: 'foxRound', name: 'The Round · parry the chain', boss: 'fox', dist: 3, answer: 'parry', desc: 'Selves drop into a ring round you and strike in turn, then his own palm from above. Parry every blow: the whole Round parried is the full deflect, he reels.', go: (T) => { if (T.d.phase < 2) T.d.enterPhase?.(2); T.d.debug.trigger('foxRing'); }, until: (T) => T.t > 1.5 && !T.d.clones?.packLive && !T.moving() && T.heroFree(), max: 12, expect: ['dragon:clone', 'player:parry'] },
+  { id: 'foxHowl', name: 'Heaven-Devouring Howl · roll through it', boss: 'fox', dist: 6, answer: 'dodge', god: true, desc: 'He leaves for the rim and summons the Nine-Tailed Fox; a dark sun gathers at its jaws and the red cue flashes there: roll through the beam as it fires (it sweeps toward your side, one way only). Then he kneels open.', go: (T) => T.d.debug.howl?.(), until: (T) => T.t > 2 && !T.d.howl?.busy && !T.moving() && T.heroFree(), max: 16, expect: ['combat:flash'] },
+  { id: 'foxPearlBurst', name: 'The Pearl · burst it in his hand', boss: 'fox', dist: 2.6, answer: 'none', desc: 'He steps back and shapes the Pearl in his palm: his guard is down (the selves that drop in to harry you are popped here). Close in and cut him twice while it charges: it bursts in his hand and he reels.', go: (T) => T.d.debug.trigger('foxPearl'), tick: (T) => { for (const c of T.d.clones?.list ?? []) if (c.alive && c.state === 'pack') T.d.clones.popAt(c.i, NaN, 0, NaN, false, 'cut'); if (T.d.pearl?.charging) { foxClose(T); if (T.d.pearl.u > 0.15 && T.d.pearl.u < 0.92) T.every(0.3, 99, () => T.tap('@attack'), 'foxCut'); } else T._axis(0, 0); }, until: (T) => T.t > 1 && !T.moving() && T.heroFree(), max: 10, expect: ['dragon:stagger'] },
+]);
+
+// Xin Yi, the One Who Woke (ADR-156): his five lessons. His shots and the front cue themselves (bullet /
+// hazard flashes, which the toolbar's answer leaves alone): those two lessons answer them here.
+/** A perfect parry as each heavy shot of his is about to meet the hero (its own flight). */
+const wokeShot = (T) => {
+  const p = T.p;
+  if (!p) return;
+  for (const s of T.d.fx?.shots ?? []) {
+    if (!s.alive || s.done || s.returned || !s.heavy || s._tp) continue;
+    const dist = Math.hypot(p.position.x - s.x, p.position.z - s.z) - (s.radius ?? 0.4) - (p.radius ?? 0.45);
+    if (dist / Math.max(1, s.speed) <= 0.05) {
+      s._tp = true;
+      T.tap('@block', 0.05);
+    }
+  }
+};
+/** A roll at the Falling Fist's cue, and again as its front is cued on the hero. */
+const wokeFront = (T) => {
+  const a = T.d.brain?.act, F = T.d.source?.front;
+  const b = a?.beats?.find((x) => x.def.fist);
+  if (b && !b._tr && a.t >= b.flash + 0.14) {
+    b._tr = true;
+    T._answer('dodge');
+  }
+  if (F?.live && F.flashed && !F._tr) {
+    F._tr = true;
+    T.later(0.12, () => T._answer('dodge'));
+  }
+};
+// Xin Yi, the One Who Woke (ADR-156): his five lessons
+add('THE ONE WHO WOKE', [
+  { id: 'wokeLesson', name: 'The First Lesson · parry all five', boss: 'woke', move: 'lesson', phase: 1, answer: 'parry', dist: 2.4, desc: 'The beckon is its sign: the long string comes. One hand, feet planted, five blows; the last is the blue flare. Parry all five: the full deflect.', expect: ['player:parry'] },
+  { id: 'wokeRain', name: 'Iron Rain · use the pillar', boss: 'woke', move: 'ironRain', phase: 2, answer: 'none', dist: 8, pieces: true, desc: 'He strafes round you firing from both hands. A pillar between you takes the shots (each takes its letters off); a held guard pays guard, never health.', go: (T) => { const W = T.game.world?.destructibles, pl = W?.list?.find((b) => b.kind === 'pillar' && !b.absent && b.state === 0); if (pl) { T.p.debug.teleport(pl.x - 1.2, pl.z); T.d.position.set(pl.x + 7, 0, pl.z); } T.d.debug.trigger('ironRain'); }, expect: [] },
+  { id: 'wokeThunder', name: 'Two Thunders · send one back', boss: 'woke', answer: 'none', go: (T) => { if (T.d.phase !== 2) T.d.debug.setPhase(2); T.d.position.set(0, 0, -7); T.d.yaw = 0; T.p.debug.teleport(0, -1); T.d.debug.trigger('twoThunders'); }, tick: wokeShot, desc: 'Two heavy shots. A perfect parry sends one back: he bends under it (time slows), open for a second; the first cut crits. Send both: he cannot bend twice.', expect: ['player:parry'] },
+  { id: 'wokeStill', name: 'The Still Hand · wait it out', boss: 'woke', move: 'stillHand', phase: 3, answer: 'none', dist: 2.2, desc: 'The raised flat palm: a cut into it is caught and answered by a one-inch push. Wait it out instead: his guard stays down.', expect: [] },
+  { id: 'wokeFist', name: 'The Falling Fist · roll the front', boss: 'woke', phase: 3, answer: 'none', dist: 5, desc: 'He leaves the floor and dives on where you stood: roll out of the crater, then roll through the front as it reaches you.', go: (T) => { if (T.d.source) T.d.source.front._tr = false; T.d.debug.flight?.('fist'); }, tick: wokeFront, until: (T) => T.t > 4 && !T.moving() && T.heroFree() && !T.d.source?.front?.live, max: 12, expect: ['player:perfectDodge'] },
 ]);
 
 add('BOSS STATES', [

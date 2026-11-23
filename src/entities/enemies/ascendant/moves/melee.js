@@ -40,6 +40,9 @@ export function meleeMoves(X) {
   const ST = TUNING.stance, SG = TUNING.sign;
   /** A dash on a beat: from `from` of the windup to the impact, stopping `stop` m short, `max` m at most. */
   const dash = (max, from = 0.6, stop = 1.0) => ({ dash: { from, to: 1.0, stop, max }, close: 0 });
+  /** Where a palm thrust's dash stops (m from the hero): the palm's lunge reaches ~1.35 m, so a dash to
+   *  1.0 m drove the palm through his chest (ADR-162: 0.4 m inside him once the arms opened) */
+  const PALM = 1.35;
   const blink = (behind = 2.0) => ({ blink: { behind }, close: 1.0, track: 0.8 });
   /**
    * A beat out of THE SIGN: the strike `beat` (built with its cock >= 0.72) re-keyed with the sign before
@@ -139,7 +142,7 @@ export function meleeMoves(X) {
         punch('jab', N, 0.34, 9, { step: 'L' }),
         punch('cross', N, 0.34, 9),
         punch('jab', N, 0.34, 9, { step: 'L' }),
-        { ...punch('palm', B, 0.44, 20, { flare: true, lock: true }), ...dash(2.4) },
+        { ...punch('palm', B, 0.44, 20, { flare: true, lock: true }), ...dash(2.4, 0.6, PALM) },
       ],
     },
     /** Tiger Descends: a dashing elbow, a back-fist, and the axe kick that breaks the floor (red). */
@@ -173,7 +176,7 @@ export function meleeMoves(X) {
     /** Piercing Palm: a deep coil, then a palm driven home on a lunge. Red, a perilous thrust: roll INTO it. */
     piercingPalm: {
       label: 'Piercing Palm', phase: 1, weight: [2.4, 1.5, 1.0], cooldown: 6, band: [1.6, 6], recovery: 0.6, gapCloser: true,
-      beats: [{ ...punch('palm', R, 0.64, 26, { cock: 0.8, mikiri: true, knockback: 2.5 }), zone: { kind: 'line', r: 2.4, w: 0.7 }, ...dash(2.8, 0.84, 0.8), track: 0.7 }],
+      beats: [{ ...punch('palm', R, 0.64, 26, { cock: 0.8, mikiri: true, knockback: 2.5 }), zone: { kind: 'line', r: 2.4, w: 0.7 }, ...dash(2.8, 0.84, PALM), track: 0.7 }],
     },
     /** Mountain-Splitting Fist: the CHARGED blow. The fist drawn back while the power gathers on it, a
      *  held beat that is never the same, then one long dashing cross. Black: dodge it. */
@@ -269,7 +272,7 @@ export function meleeMoves(X) {
         punch('uppercut', B, 0.56, 20, { knockback: 11, knockdown: true, launch: true }),
         punch('hammer', R, 0.66, 26, { blink: { land: true, side: 1.6 }, zone: { kind: 'ring', r: 3.0 }, ring: 3.0, knockdown: true, knockback: 2.6, close: 0, track: 0.5 }),
         { tell: R, windup: 0.6, active: 0.14, damage: 20, knockback: 6, zone: { kind: 'ring', r: 4.4 }, ring: 4.4, part: 'feet', close: 0, track: 0.3, keys: burstKeys(0.7), burst: true },
-        { ...punch('palm', B, 0.5, 22, { flare: true }), zone: { kind: 'line', r: RE.line, w: RE.lineW }, ...dash(5, 0.55, 0.9) },
+        { ...punch('palm', B, 0.5, 22, { flare: true }), zone: { kind: 'line', r: RE.line, w: RE.lineW }, ...dash(5, 0.55, PALM) },
       ],
     },
     /** Mirage: three FEINTS, each out of a blink to another side of you (a shape of him left at each:
@@ -324,7 +327,7 @@ export function meleeMoves(X) {
       beats: [
         stance(STANCE.still),
         punch('cross', N, 0.46, 14, { track: 0.7 }),
-        { ...punch('palm', B, 0.4, 22, { lock: true }), ...dash(2.4) },
+        { ...punch('palm', B, 0.4, 22, { lock: true }), ...dash(2.4, 0.6, PALM) },
       ],
     },
     /** Golden Mirror (form 2): the lead palm open before him: a cut into it is caught, he is gone and
@@ -351,11 +354,11 @@ export function meleeMoves(X) {
     // ============================================================ counters (out of his guard)
     riposte: {
       label: 'Riposte', phase: 1, weight: 0, counter: true, cooldown: 0, band: [0, 5], recovery: 0.55,
-      beats: [punch('cross', N, 0.46, 14, { track: 0.7 }), { ...punch('palm', B, 0.36, 20), ...dash(2.4) }],
+      beats: [punch('cross', N, 0.46, 14, { track: 0.7 }), { ...punch('palm', B, 0.36, 20), ...dash(2.4, 0.6, PALM) }],
     },
     riposte2: {
       label: 'Riposte (golden)', phase: 2, weight: 0, counter: true, cooldown: 0, band: [0, 5], recovery: 0.55,
-      beats: [punch('hook', N, 0.46, 13, { track: 0.7 }), punch('jab', N, 0.34, 13), { ...punch('palm', B, 0.36, 20), ...dash(2.4) }],
+      beats: [punch('hook', N, 0.46, 13, { track: 0.7 }), punch('jab', N, 0.34, 13), { ...punch('palm', B, 0.36, 20), ...dash(2.4, 0.6, PALM) }],
     },
     riposte3: {
       label: 'Riposte (thunder)', phase: 3, weight: 0, counter: true, cooldown: 0, band: [0, 5], recovery: 0.55,

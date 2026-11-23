@@ -19,7 +19,7 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-22',
-        title: 'A seventh level: Halcyon Plaza and Halcyon, the Last Saviour',
+        title: 'An eighth level: Halcyon Plaza and Halcyon, the Last Saviour',
         notes: [
           'A new level, Halcyon Plaza: a city of rain and neon that has not been built yet. Pick it on the title screen.',
           'Its boss is Halcyon, the Last Saviour: a flying strongman in a caped suit, with red light for eyes. He hovers within reach of your sword.',
@@ -29,11 +29,63 @@ export const RELEASES = [
         ],
       },
       {
+        date: '2026-11-23',
+        title: "Tian Lei's attacks move naturally, and he stops punching the air",
+        notes: [
+          "Tian Lei's feet stay planted while he strikes: they no longer jump or slide.",
+          'His punches land with the arm extended, and his palm thrusts stop at your body instead of going through it.',
+          "Step or run out of his reach while he winds up and he stops the blow before it flashes and comes after you, instead of punching the air.",
+        ],
+      },
+      {
+        date: '2026-11-23',
+        title: 'Tian Lei drawn like the hero, with shorter gold hair and a new gi',
+        notes: [
+          'Tian Lei is drawn in the same size of letters as you are, and in darker, quieter letters: on a large screen he no longer looks like a detailed 3D model beside you.',
+          'His gold hair in his second and third forms is his own spiky hair standing up, not a tall crown.',
+          'He wears a burnt-red gi with black, and cloth wraps on his arms and legs.',
+        ],
+      },
+      {
+        date: '2026-11-22',
+        title: 'A seventh level: the Hall of Falling Script and the One Who Woke',
+        notes: [
+          'A new level, the Hall of Falling Script: a pillared hall written in falling green letters. Pick it on the title screen.',
+          'Its boss is Xin Yi, the One Who Woke, a man in a long black coat and small dark glasses. He fights with one hand behind his back, then with two guns, then with nothing at all.',
+          'He beckons, and the hall rewrites itself around him: a wooden sparring hall, the pillared hall again, and in the end a black void of falling code. Every pillar, post and screen breaks.',
+          'In the pillared hall, stand behind a pillar: it takes his shots and loses its letters where they hit. A held guard against his stream of shots costs guard, never health.',
+          'Parry a big shot perfectly and it flies back: he bends under it, time slows, and for a second he is open. He cannot do it twice in a row.',
+          'Empty his first bar and he falls. He rises in the void with a second bar, stops what you send back in the air, tears bricks out of the code and drops on you from above: roll through the shockwave.',
+          'Sometimes the hall stutters, as if a moment repeated: he is about to throw the same string again, exactly as before.',
+          'Beat him and you learn the Long Second: hold guard and dodge with no direction to lean back under a blow and stay in reach.',
+        ],
+      },
+      {
+        date: '2026-11-23',
+        title: 'Wen Yao reworked: copies out of the air, the big Pearl, the Nine-Tailed Fox',
+        notes: [
+          'Wen Yao, the Thousand-Body Fox, is now drawn as brightly as you are: a russet crest, an amber jacket and a long red scarf.',
+          'His copies no longer stand about. They appear in the air already striking, all at once or one after another from every side. When they come together it is one cue: one parry bursts them all.',
+          'The Pearl in his palm is big now, a spinning blue-white orb. Pop the copies that harry you while he shapes it, or they feed it.',
+          'In his last phase he summons the Nine-Tailed Fox. When the red flash shows at its jaws, roll; the beam sweeps toward you one way only, so roll back through it. Then he kneels, open.',
+        ],
+      },
+      {
         date: '2026-11-22',
         title: "The grove's bamboo falls to every stroke",
         notes: [
           'In the Windless Grove one swing cuts a bamboo stalk clean through where your blade passes, and the top slides off and crashes down in a burst of leaves. Swing through a clump and the whole clump comes down.',
           'The grove is fuller and more varied: green, jade, golden, black and dry canes, in clumps and lone stalks, and it runs on far behind the duel.',
+        ],
+      },
+      {
+        date: '2026-11-22',
+        title: 'The Sheathed, easy to see',
+        notes: [
+          'Lu Wusheng is now printed in digits of his own colours, lit and outlined so he stands out from the grove floor: an indigo robe, grey trousers and a sand scarf.',
+          'He looks more like a wanderer: a long loose robe over wide trousers, a long scarf, a high tail, and a torn strip of cloth tied to his scabbard that trails as he moves and snaps when he draws.',
+          'He moves like one: a quiet stance with his hand at his sash, a low run with the sword held back, and a sudden turn into the draw.',
+          'New lines and move names for a man who has sworn not to draw.',
         ],
       },
       {

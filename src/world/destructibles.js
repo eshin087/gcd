@@ -47,6 +47,7 @@ import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
 //   y0        the height its node stands at (the upper half of a colossus: it falls from its cut, coming
 //             down to the ground as it goes over); `fallOff` m out from its base it lands; `fallT` s it falls
 //   blocks    how many big blocks of wreckage it leaves (a statue's), instead of a rubble pile
+//   scene     (a set with `scenes`, ADR-157) the scene it stands in; absent from the others (present)
 //   slice     true: one blade or blow cuts it through where it bit (a bamboo stalk; BREAK.slice): its top
 //             slides off the cut at once and goes over from there, its stump cut on that slant
 //   light     true: a light piece (a bamboo stalk, a planted sword; ADR-145): whoever fells it, its fall
@@ -69,7 +70,9 @@ import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
 //   topple(obj, dx, dz, by)               fell it that way
 //   reserve(obj, sec)                     incidental blows (o.incidental: a body walking) leave it alone
 //   setQuality(k)                         the phone budget (0.3 .. 1): debris, flames, wreckage, fires
-//   reset()                               everything stands again
+//   present(obj, on)                      (scenes, ADR-157) a piece out of the world or back, whole
+//   sceneHome / sceneNow                  (scenes) the first scene's id / the one shown (the set's scenes set it)
+//   reset()                               everything stands again (on a set with scenes: the first scene's)
 //   o = { kind: BLOW.*, by: 'player' | 'boss' | 'world', dx, dz (the blow's way), y (its height), src (one id per swing),
 //         falloff: 0..1 (strike: the blast x 1 - falloff at its rim), brush: true (a body walking: BREAK.brush),
 //         only: 'wood' | ... (just that material), spare: a piece to leave alone, incidental: true (skip reserved pieces),
@@ -975,6 +978,10 @@ export class Destructibles {
     this.stat = { wind: 0, windTrees: 0, carry: 0, reached: 0, lit: 0 };
     /** the edge of the open ground (edge.js, ADR-125): null on a set without one */
     this.edge = null;
+    /** scenes (ADR-157; a set with `scenes`): the first scene (what the reset shows) and the one shown
+     *  now; a piece whose def names another scene is out of the world (present). null: no scenes */
+    this.sceneHome = typeof set?.scenes?.ids?.[0] === 'string' ? set.scenes.ids[0] : null;
+    this.sceneNow = this.sceneHome;
 
     const defs = Array.isArray(set?.breakables) ? set.breakables : [];
     if (!defs.length) return;
@@ -1023,6 +1030,8 @@ export class Destructibles {
     // every piece's world matrices from its static node, once (the sets stand at the world's origin:
     // nothing above the root moves); after that only a piece that moves is placed again (_place)
     this.pieces.updateMatrixWorld(true);
+    // (a set with scenes: only the first scene's pieces stand at the start)
+    if (this.sceneHome !== null) for (const b of this.list) if (b.scene !== null && b.scene !== this.sceneHome) this._absent(b);
     flushRanges();
   }
 
@@ -1088,7 +1097,9 @@ export class Destructibles {
     const W = def.wear && ranged && body.parts > 1 ? def.wear : null;
     const order = W && Array.isArray(W.order) ? W.order.filter((i) => i > 0 && i < body.parts) : [];
     const o = {
-      id: this.list.length, def, kind: def.kind ?? 'thing', mat: BREAK.mats[def.mat] ? def.mat : 'stone', M,
+      id: this.list.length, def, kind: def.kind ?? 'thing',
+      // the scene it belongs to (ADR-157: a set with `scenes`), null: every scene; absent: out of the world
+      scene: typeof def.scene === 'string' ? def.scene : null, absent: false, mat: BREAK.mats[def.mat] ? def.mat : 'stone', M,
       x, z, r, h, weight: def.weight ?? clamp(size, 0.5, 2.2),
       hp: hpMax, hpMax, state: INTACT,
       node, pivot, body, stub, crack, cracked: false, held: null,
@@ -3035,52 +3046,103 @@ export class Destructibles {
     flushRanges();
   }
 
-  /** Everything stands again (the fight's reset: flow.js, the Lab). */
-  reset() {
+  /** One piece stands again, whole, as the reset leaves it (its colliders back). */
+  _restore(b) {
     const C = this.world.colliders;
-    for (const b of this.list) {
-      this._stopBurn(b);
-      if (b.stubCollider) C?.remove?.(b.stubCollider);
-      for (const c of b.colliders) C?.restore?.(c);
-      b.state = INTACT;
-      b.hp = b.hpMax;
-      b.burnt = false;
-      b.carry = 0;
-      b.spare = 0;
-      b.shake = 0;
-      b.windT = -1e9;
-      b.src = -1;
-      b.srcT = -1e9;
-      b.onLand = null;
-      b.on = false;
-      if (b.held) {
-        b.held.visible = false;
-        this.pieces.add(b.held);
-        b.held = null;
-      }
-      b.cracked = false;
-      if (b.crack) b.crack.visible = false;
-      b.wear = b.dropped = 0;
-      b.lean = b.leanTo = 0;
-      b.quiet = false;
-      b.bricks?.reset();
-      b.pivot.position.set(0, 0, 0);
-      b.pivot.quaternion.identity();
-      if (b.ranged && b.touched) {
-        // (only what was touched is rewritten: the forest is one mesh of ~600k vertices)
-        b.body.home0();
-        if (b.body.visible) b.body.write();
-        else b.body.visible = true;
-        b.touched = false;
-      } else b.body.visible = true;
-      if (b.stub) {
-        b.stub.unshape?.(); // (cut as it was felled: back to the stump it was built as)
-        b.stub.visible = false;
-      }
-      // (a lifted slab leaves the graph again; every other piece's matrices are put back)
-      if (b.floor && b.node.parent) this.pieces.remove(b.node);
-      else this._place(b);
+    this._stopBurn(b);
+    if (b.stubCollider) C?.remove?.(b.stubCollider);
+    for (const c of b.colliders) C?.restore?.(c);
+    b.state = INTACT;
+    b.hp = b.hpMax;
+    b.burnt = false;
+    b.carry = 0;
+    b.spare = 0;
+    b.shake = 0;
+    b.windT = -1e9;
+    b.src = -1;
+    b.srcT = -1e9;
+    b.onLand = null;
+    b.on = false;
+    if (b.held) {
+      b.held.visible = false;
+      this.pieces.add(b.held);
+      b.held = null;
     }
+    b.cracked = false;
+    if (b.crack) b.crack.visible = false;
+    b.wear = b.dropped = 0;
+    b.lean = b.leanTo = 0;
+    b.quiet = false;
+    b.bricks?.reset();
+    b.pivot.position.set(0, 0, 0);
+    b.pivot.quaternion.identity();
+    if (b.ranged && b.touched) {
+      // (only what was touched is rewritten: the forest is one mesh of ~600k vertices)
+      b.body.home0();
+      if (b.body.visible) b.body.write();
+      else b.body.visible = true;
+      b.touched = false;
+    } else b.body.visible = true;
+    if (b.stub) {
+      b.stub.unshape?.(); // (cut as it was felled: back to the stump it was built as)
+      b.stub.visible = false;
+    }
+    // (a lifted slab leaves the graph again; every other piece's matrices are put back)
+    if (b.floor && b.node.parent) this.pieces.remove(b.node);
+    else this._place(b);
+  }
+
+  /**
+   * Scenes (ADR-157; a set with `scenes`, world/scriptHall.js): piece `b` is put out of the world
+   * (`on` false: hidden with its stub and cracks, its colliders out, its fire out, GONE to every query:
+   * strike, sweep, stop, coverAt, nearest, floorNear, ignite, bites) or back in it, whole (`on` true: as
+   * the reset leaves it, its colliders back). A set without scenes never calls it. Returns true if it
+   * changed. `absent` on the piece says which.
+   */
+  present(b, on) {
+    if (!b || !!on === !b.absent) return false;
+    if (on) {
+      b.absent = false;
+      this._restore(b);
+    } else this._absent(b);
+    flushRanges();
+    return true;
+  }
+
+  _absent(b) {
+    const C = this.world.colliders;
+    b.absent = true;
+    this._stopBurn(b);
+    if (b.stubCollider) C?.remove?.(b.stubCollider);
+    for (const c of b.colliders) C?.remove?.(c);
+    this.world.scars?.drop?.(b.id);
+    if (b.held) {
+      b.held.visible = false;
+      this.pieces.add(b.held);
+      b.held = null;
+    }
+    b.state = GONE;
+    b.hp = 0;
+    b.shake = 0;
+    b.burn = 0;
+    b.onLand = null;
+    b.body.visible = false;
+    if (b.stub) b.stub.visible = false;
+    if (b.crack) b.crack.visible = false;
+    b.cracked = false;
+    if (b.floor && b.node.parent) this.pieces.remove(b.node);
+    else this._place(b);
+  }
+
+  /** Everything stands again (the fight's reset: flow.js, the Lab). On a set with scenes (ADR-157)
+   *  the pieces of every scene but the first are put out of the world again (present). */
+  reset() {
+    for (const b of this.list) {
+      b.absent = false;
+      this._restore(b);
+    }
+    this.sceneNow = this.sceneHome;
+    if (this.sceneHome !== null) for (const b of this.list) if (b.scene !== null && b.scene !== this.sceneHome) this._absent(b);
     this._rShake = 0;
     this.active.length = 0;
     this._burningN = 0;

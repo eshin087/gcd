@@ -1232,3 +1232,61 @@ export function buildSpiritGate(rng, x, z, yaw = 0, s = 1, { tall = 1.1 } = {}) 
 }
 /** The spirit gate's columns in local space ([lx, lz, r]). */
 export const SPIRIT_GATE_COLLIDERS = [[-2.4, 0, 0.42], [2.4, 0, 0.42]];
+// ---------------------------------------------------------------- the Hall of Falling Script
+/** A watcher's colours (the dark suit, the white shirt, the dark tie, the pale face, the dark glasses, the hair). */
+export const WATCHER_SUIT = Object.freeze({ suit: [0.03, 0.031, 0.036], shirt: [0.42, 0.42, 0.4], tie: [0.012, 0.012, 0.016], skin: [0.34, 0.28, 0.24], glass: [0.006, 0.006, 0.008], hair: [0.02, 0.018, 0.017] });
+/** ... and the same man drawn as green code (the Source). */
+export const WATCHER_CODE = Object.freeze({ suit: [0.008, 0.045, 0.018], shirt: [0.06, 0.38, 0.14], tie: [0.004, 0.02, 0.008], skin: [0.04, 0.22, 0.09], glass: [0.002, 0.012, 0.005], hair: [0.004, 0.025, 0.01] });
+
+/**
+ * A watcher (ADR-157): a man in a dark suit, a white shirt and a dark tie, dark glasses, standing still
+ * with his hands at his sides. Low-poly, a few flat-sided masses (the silhouette is the suit's: square
+ * shoulders, a narrow head, two legs), carved for prop art (carve() attributes: the breakables' prop
+ * batch). ~1.85 m. Faces +z. `col`: WATCHER_SUIT or WATCHER_CODE. Returns its geometries (world space).
+ */
+export function buildWatcher(rng, x, z, yaw = 0, col = WATCHER_SUIT) {
+  const parts = [];
+  const add = (g, c, k = 1) => parts.push([g, mul(c, k)]);
+  // the legs and shoes
+  for (const sx of [-1, 1]) {
+    add(frustum(0.06, 0.86, 0.078, 0.085, 0.095, 0.1, 4, Math.PI / 4).translate(sx * 0.1, 0, 0), col.suit, 0.9);
+    const shoe = prep(new THREE.BoxGeometry(0.12, 0.08, 0.26));
+    shoe.translate(sx * 0.1, 0.04, 0.04);
+    add(shoe, col.glass, 1.5);
+  }
+  // the jacket: a block from the hips to the square shoulders
+  add(frustum(0.84, 0.66, 0.21, 0.13, 0.27, 0.14, 4, Math.PI / 4), col.suit, 1.1);
+  // the white shirt and the dark tie down the chest
+  const shirt = prep(new THREE.BoxGeometry(0.13, 0.3, 0.03));
+  shirt.translate(0, 1.33, 0.135);
+  add(shirt, col.shirt);
+  const tie = prep(new THREE.BoxGeometry(0.045, 0.28, 0.03));
+  tie.translate(0, 1.32, 0.155);
+  add(tie, col.tie);
+  // the arms hanging, the hands
+  for (const sx of [-1, 1]) {
+    add(limb(new THREE.Vector3(sx * 0.29, 1.46, 0), new THREE.Vector3(sx * 0.31, 0.9, 0.03), 0.065, 0.055, 5), col.suit, 1.2);
+    const hand = prep(new THREE.IcosahedronGeometry(0.055, 0));
+    hand.translate(sx * 0.31, 0.85, 0.03);
+    add(hand, col.skin);
+  }
+  // the neck, the head, the hair, the glasses
+  add(limb(new THREE.Vector3(0, 1.48, 0), new THREE.Vector3(0, 1.58, 0.01), 0.05, 0.05, 5), col.skin, 0.8);
+  const head = prep(new THREE.IcosahedronGeometry(0.11, 0));
+  head.scale(0.88, 1.12, 0.98);
+  head.translate(0, 1.68, 0.01);
+  add(head, col.skin, 1.05);
+  add(frustum(1.71, 0.11, 0.1, 0.1, 0.075, 0.08, 6).translate(0, 0, -0.01), col.hair);
+  const glasses = prep(new THREE.BoxGeometry(0.21, 0.045, 0.05));
+  glasses.translate(0, 1.69, 0.095);
+  add(glasses, col.glass);
+  const out = [];
+  for (const [g, c] of parts) {
+    g.rotateY(yaw);
+    g.translate(x, 0, z);
+    carve(g, { col: (px, py, pz, nx, ny, nz) => mul(c, 0.85 + 0.3 * hash2(Math.round(nx * 5) + 3.1, Math.round(nz * 5) + Math.round(ny * 5) * 7)), ao: caught(0.65, 1.25) });
+    out.push(g);
+  }
+  void rng;
+  return out;
+}

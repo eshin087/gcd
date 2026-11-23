@@ -111,7 +111,7 @@ export class FoxPearl {
     const P = this._v;
     if (!d._tipOk) return;
     d.palmPoint(P);
-    this.selves = d.clones?.live ?? 0;
+    this.selves = d.clones?.feeding ?? 0;
     d.fx.pearlCharge?.(P.x, P.y, P.z, this.u, dt);
     const C = d.clones, W = this._w;
     if (C) for (let i = 0; i < C.list.length; i++) if (C.handPoint(i, W)) d.fx.pearlThread?.(W.x, W.y, W.z, P.x, P.y, P.z, dt);
@@ -185,7 +185,7 @@ export class FoxPearl {
     this.n = n;
     const lx = cx - d.position.x, lz = cz - d.position.z, ll = Math.hypot(lx, lz) || 1;
     const px = -lz / ll, pz = lx / ll;
-    this.selves = d.clones?.live ?? 0;
+    this.selves = d.clones?.feeding ?? 0;
     this.damage = T.damage + T.perCloneDamage * this.selves;
     this.radius = Math.min(T.rMax, T.r0 + T.perClone * this.selves);
     this.kb = b.def.knockback ?? 2.4;
