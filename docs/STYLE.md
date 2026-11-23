@@ -1308,7 +1308,7 @@ what is at his feet; a blow throws it.
 
 **Prints and the trodden grass.** A step on earth or ash leaves a print: a dim stretched `0` lying on the
 floor (earth 0.2 m, gone in 5 s; ash 0.3 m, darker than the ash, filling in over 14 s), turned to the way
-he walked. The obsidian answers with a dim red glint (`'`, `*` or a backtick, 0.26 m, 0.75 s), never dust. Grass is TRODDEN (the
+he walked. The obsidian answers with a dim red glint (`'`, `*` or a backtick, 0.26 m, 0.75 s; before the fight only, so no red sits beside a red tell), never dust. Grass is TRODDEN (the
 scorch map's blue): a run leaves a trail about 1.3 m wide where the blades lie flatter and darker (up to
 0.7 darker), standing up over 10 s; a narrower trail was lost among the blades. Puffs: earth small and
 low, sand a pale puff the wind carries off, ash a soft grey puff that hangs and sinks, stone a grit puff on

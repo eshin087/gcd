@@ -3343,7 +3343,7 @@ marks a part with `hangFrom`.
 - **A step** (`surfaces[surface]`, with `perLevel` changes; counts per step at a run / sprint / heavy
   landing × quality × (0.5 + 0.5 calm)): grass torn blade bits on a sprint and the trample; earth a small
   puff and a print (5 s); stone a grit puff on a sprint or landing only; sand a puff the wind carries
-  (0.8 of the air); ash a hanging puff and a print (14 s); obsidian a dim red glint (0.75 s); leaf a flick;
+  (0.8 of the air); ash a hanging puff and a print (14 s); obsidian a dim red glint (0.75 s; before the fight only: `life.calm` > 0.99); leaf a flick;
   the grove's earth no puff. Every step also calls `litter.scatter` (r 0.5, k 0.25 × k; heavy 1.4 / 0.7),
   and on wet ground (`weather.wet` > 0.3) a tiny splash. Puffs go to fx.alpha; prints and glints lie in
   the steps' **own pool** (made on the first mark through `life.build`; `prints.max` 120 × quality, at
@@ -3390,7 +3390,7 @@ marks a part with `hangFrom`.
 The world answers the fight from the catalogue's events, adding none, reaching the others through `life`
 (`wind.front`, `creatures.startle`, `litter.scatter`, `life.hushFor`). It subscribes while its piece is on
 and unsubscribes when it goes off (`_sync` each update: the Lab can flip it live).
-| event | answer (DEFAULT numbers; strengths × `life.k`) |
+| event | answer (DEFAULT numbers; strengths × `life.k`, applied once by the layer that draws: the wind's fronts, `creatures.startle`; the answer applies it itself only for `litter.scatter`) |
 |---|---|
 | `dragon:roar` {strength} | a front from the boss toward the hero (strength 2.4 × s, 15 m/s, width 11; s clamped 0.3 – 2), a startle over 70 m, scatter within 12 m of the boss |
 | `dragon:wake` | a smaller front (0.8, 9 m/s, width 7), a startle over 40 m (k 0.5) |

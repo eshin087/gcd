@@ -297,9 +297,9 @@ hazard the ground heats up from its spawn     its edge shows, the heat flares, a
   breath** until the blow lands (`life.hushFor`, 0.3 - 2.5 s, at most once per 2.5 s): the wind drops, no
   new front is born, the creatures dim, the night's voices stop; normal and blue tells do nothing.
   Ambient life never draws over the hero (what lies fades out under his feet, mist and streaks keep off
-  him) and keeps to each level's own dim hues; the reds it has are small and dim (the crater's cinders,
-  the obsidian's step glint) or clear once the fight starts (the Throne's breath goes with the weather's
-  spell, within its 10 s).
+  him) and keeps to each level's own dim hues; the reds it has are small and dim (the crater's cinders)
+  or stop once the fight starts (the obsidian's step glint is drawn only before it, while `life.calm`
+  is 1; the Throne's breath goes with the weather's spell, within its 10 s).
 
 ## Contract (summary — full signatures in ARCHITECTURE.md)
 - Attacker → defender: `defender.takeHit({ damage, from, knockback, knockdown, kind, burn, tell,
