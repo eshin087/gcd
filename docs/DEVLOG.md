@@ -33,7 +33,7 @@ filmed the hero's light and heavy swings through a clump (9 and 6 stalks cut; MP
 see the PR.
 
 **Not checked / open.** Nobody has played it; not on the phone (0.56 M -> 0.89 M vertices drawn);
-the owner has not picked between `a` and `b` yet (`a` ships).
+the owner picked `a`, mixed clumps, from the sheet.
 
 ## 2026-11-22 — Session 78: a sixth level, the Windless Grove and the Sheathed (planned in its own chat, built by one Opus agent)
 

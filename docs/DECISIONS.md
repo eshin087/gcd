@@ -4536,7 +4536,8 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
      their foot), lone stalks, crowns of 3 - 8 sprays. Clumps behind him in the clearing (11, three
      in four north of him, none on the camera's side), a belt of clumps 1.7 x denser behind him than
      before him, and a static wall out to 50 m (it was 34) into the fog. `a`: kinds mixed in a clump;
-     `b`: one kind per clump. `a` ships; `0` is the grove before.
+     `b`: one kind per clump. `a` ships: the owner's pick from the sheet ("a, mixed clumps"); `0` is
+     the grove before.
 - **Why this way:** the owner asked for the fall "the moment the sword is going through", so the
   cut shows in the frame of the blow and the top moves the next frame, sliding off the cut before it
   tips, which is what reads as a slice rather than a felling. Cutting the run of vertices at a height

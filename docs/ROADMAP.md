@@ -189,7 +189,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Five kinds of cane, three thicknesses, fanning clumps with shoots (`?bamboo=a|b`; `0` the old grove)
 - [x] The back filled: clumps behind him, a denser belt behind him, the wall out to 50 m
 - [x] World test `slice`
-- [ ] The owner picks `a` or `b`
+- [x] The owner picks: `a`, mixed clumps (2026-11-22)
 - [ ] Follow-ups: frame cost on the phone; the cut tops lying a while; a slice sound
 
 ## M1.62 — A sixth level: the Windless Grove and the Sheathed (2026-11-22, `level/the-sheathed`, ADR-144 – ADR-146)

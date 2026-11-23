@@ -44,7 +44,7 @@ wyrm's lean build; 0 = the wyrm before; ADR-123), `?zoomArt=a|c` (b: the letters
 follow the zoom) and `?ablaze=off|a|c` (b: the wyrm's phase 3 fire). The impact pass's pieces (ADR-149): `?impact=off|all|stamp,ripple,react,thump` (default all; Lab: the 'impact' row), and
 `?calm=0..3` the light at the contact (default 1; 0 = as before; Lab: the row's `calm` button). Bites (a blow knocks the bricks, the letters, out of
 a piece where it struck, and the hero's blade stops on what it does not cut through) are on: `?chip=0`
-turns them off (ADR-132). The grove's bamboo: `?bamboo=0|b` (a ships: five kinds of cane in clumps;
+turns them off (ADR-132). The grove's bamboo: `?bamboo=0|b` (a, the owner's pick: five kinds of cane mixed in clumps;
 0 = the grove before; ADR-151).
 The duelists' look switches (`?kindle=`, `?qi=`, `?ashLook=`, `?lordLook=`, `?floor=` ...; ADR-122): no
 parameter draws the owner's picks, `?looks=old` the looks before that pass, one switch its option
