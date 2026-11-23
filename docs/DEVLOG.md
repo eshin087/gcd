@@ -28,7 +28,8 @@ camera along z (measure reach with the hero EAST of him, as MOTION does), and hi
 (a window that spans one reports the whole freeze as one frame's jolt: "strike -> stagger" was not real).
 
 **Not checked / open.** Nobody has played it; not on the phone. His tracking turn (up to ~900°/s at a
-circling hero) and the still charges of the beams were left (see ADR-162). The stale epic pass on
+circling hero) was offered as a choice and the owner kept it ("Leave it"); the still charges of the
+beams were left too (see ADR-162). The stale epic pass on
 `enemies/ascendant-epic` / `asc5/*` (new moves, blue beams, the champion's ring, its own letter grid) is
 still unmerged and now conflicts with PR #96 and this work.
 
