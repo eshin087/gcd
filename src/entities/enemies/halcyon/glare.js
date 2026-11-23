@@ -517,7 +517,10 @@ export class Glare {
       o.spare = undefined;
       if (c && c.state === 0) {
         o.src = D.swing?.() ?? -1;
+        const y = o.y;
+        o.y = Math.min(c.y0 + c.h * 0.7, Math.max(yb, c.y0 + 0.3)); // (it meets the cover on its face)
         D.strike(B.ex, B.ez, 0.3, W.cover, o);
+        o.y = y;
       }
     }
     if (c) {

@@ -792,7 +792,7 @@ export class Lab {
    *  reload. Only in a duelist's level; collapsed by default (it is long). */
   _buildLooks(root) {
     const id = this.game.level?.id;
-    if (id !== 'ash' && id !== 'starless' && id !== 'ring' && id !== 'fox' && id !== 'grove') return;
+    if (id !== 'ash' && id !== 'starless' && id !== 'ring' && id !== 'fox' && id !== 'grove' && id !== 'city') return;
     if (this.prefs.collapsed && !('looks' in this.prefs.collapsed)) this.prefs.collapsed.looks = true;
     const { body } = this._section(root, 'looks', 'LOOKS');
     this.ui.looksSync = buildLooks(body, id, (t) => this._status(t, 'ok'));
@@ -857,6 +857,18 @@ export class Lab {
         m.classList?.toggle?.('on', !!on);
       });
       m.title = 'the Fox-Fire Mantle on / off (phase 3 wears it by itself)';
+    }
+    // Halcyon (ADR-154): his passes, the tower, the falling sky, the statue, the carry, the cars, the city's light
+    if (typeof this.game.dragon?.debug?.fallingSky === 'function') {
+      const D = () => this.game.dragon.debug;
+      button(grid, 'Pass', () => D().pass()).title = 'Fly-By now (two passes in phase 2, three in phase 3)';
+      button(grid, 'Tower', () => D().tower()).title = 'Through the Tower now (a standing tower top)';
+      button(grid, 'Falling sky', () => D().fallingSky()).title = 'The Falling Sky now (a standing tower top)';
+      button(grid, 'Statue', () => D().statue()).title = 'Monument now: the arm of his statue torn off and swung';
+      button(grid, 'Carry', () => D().carry()).title = 'See the World now (the grab and the carry)';
+      button(grid, 'Explode', () => D().explode(1)).title = 'the car nearest the hero breaks (by the hero): its fuse, then it goes up';
+      button(grid, 'Crash', () => D().crash()).title = 'THE CRASH now: thrown off his line into the first cover on it';
+      for (const n of [1, 2, 3]) button(grid, `City ${n}`, () => D().cityPhase(n)).title = `the city's light as in his phase ${n} (1 neon, 2 crimson screens, 3 dark)`;
     }
     const row = el('div', 'lab-row', null, body);
     el('span', 'lab-lbl', 'HP', row);

@@ -202,7 +202,8 @@ export const MOVES = {
   },
   /** Meteor: a dive from nine metres; a crater; he is stuck in it a moment. */
   meteor: {
-    label: 'Meteor', phase: 2, weight: [0, 1.0, 0.9], cooldown: 10, band: [3, 12], recovery: 1.0, cat: 'closer', grounded: true, gapCloser: true,
+    // (phase 1 with no weight there: the AI takes it from phase 2; the Lab and Training may call it at once)
+    label: 'Meteor', phase: 1, weight: [0, 1.0, 0.9], cooldown: 10, band: [3, 12], recovery: 1.0, cat: 'closer', grounded: true, gapCloser: true,
     beats: [{ tell: R, windup: 1.05, active: 0.12, damage: 26, knockback: 4, knockdown: true, zone: { kind: 'ring', r: 4 }, ring: 4, part: 'palms', close: 0, track: 0.9, cock: 0.8, air: true, halDive: true, leap: { from: 0.12, lock: 0.78, apex: TUNING.meteor.from }, keys: [[0.4, DIVE_TOP], [0.85, DIVE_TOP], [1.0, { ...DIVE_HIT, e: 'i' }], [2.0, DIVE_HIT]] }],
   },
   /** The Smile Drops (the phase-2 transition): on one knee, a hand to his lip, the screens to static,

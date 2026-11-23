@@ -16,7 +16,7 @@ import { TUNING as WYRM, SCALE as WYRM_SCALE } from '../entities/dragon/tuning.j
 // every situation through `run(id)` (tests: integ / duel / lord TRAINING).
 //
 // A situation: { id, cat, name, desc, boss (kinds it applies to: 'wyrm' | 'duel' | 'ash' | 'lord' |
-//   'asc' (Tian Lei) | 'fox' (Wen Yao) | 'any'), dist (m from the boss; omit = the boss's default), ang (rad off his facing), side (put the
+//   'asc' (Tian Lei) | 'fox' (Wen Yao) | 'halcyon' (Halcyon) | 'any'), dist (m from the boss; omit = the boss's default), ang (rad off his facing), side (put the
 //   hero beside him, for the camera), streak (the hero's, set before), foe (his streak), art (pin the
 //   flurry's art), hp (the hero's), god (default true), answer (mode, or (i, T) → mode for blow i),
 //   go(T) (start it), tick(T, dt) (every frame while it runs), until(T) (done; default: the boss's
@@ -54,6 +54,9 @@ const ROLES = {
   grove: { single: 'knock', string: 'refusals', long: 'fordSteps', red: 'reedCutter', mikiri: 'tapStone' },
   // Wen Yao (the Foxfire Terrace): no perilous thrust (no mikiri situation for him)
   fox: { single: 'foxBite', string: 'brushstrokes', long: 'streakFlurry', red: 'sweepingBrush', lock: 'moonLadder' },
+  // Halcyon (Halcyon Plaza): no blade lock, no perilous thrust; his red is Meteor (a beam is no fixed
+  // contact for a perfect dodge), his ranged role The Stare (ADR-154)
+  city: { single: 'backhand', string: 'meetAndGreet', long: 'streakFlurry', red: 'meteor', ranged: 'stare' },
 };
 
 export function bossKinds(game) {
@@ -63,7 +66,7 @@ export function bossKinds(game) {
   if (typeof d?.debug?.flurry === 'function') {
     k.add('duel');
     // (a three-bar boss is not the Lord: Tian Lei has his own kind, the Lord's situations need the crater)
-    k.add(d?.kit?.id === 'ascendant' ? 'asc' : d?.kit?.id === 'sheathed' ? 'sheathed' : d?.kit?.id === 'thousandFox' ? 'fox' : d?.lives ? 'lord' : 'ash');
+    k.add(d?.kit?.id === 'ascendant' ? 'asc' : d?.kit?.id === 'sheathed' ? 'sheathed' : d?.kit?.id === 'thousandFox' ? 'fox' : d?.kit?.id === 'halcyon' ? 'halcyon' : d?.lives ? 'lord' : 'ash');
   }
   return k;
 }
@@ -203,6 +206,7 @@ add('BOSS STATES', [
   { id: 'phase2', name: 'Phase 2', boss: 'any', desc: 'The second phase begins (its transition).', go: (T) => T.d.debug.phase2(), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: [] },
   { id: 'phase3', name: 'Phase 3', boss: 'wyrm', desc: 'The third phase: the wyrm burns white-hot.', go: (T) => T.d.debug.phase3(), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: [] },
   { id: 'phase3a', name: 'Phase 3', boss: 'ash', desc: 'His third phase: ash on the wind (its change).', go: (T) => duelChange(T, 3), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: ['dragon:phase3'] },
+  { id: 'phase3h', name: 'No One Is Watching', boss: 'halcyon', desc: 'His third phase: he burns out every screen; the city goes dark.', go: (T) => duelChange(T, 3), until: (T) => T.t > 1 && !T.moving(), max: 14, expect: ['dragon:phase3'] },
   { id: 'phase3f', name: 'The Fox-Fire Mantle', boss: 'fox', desc: 'His third phase: his selves burn up into him and the mantle lights.', go: (T) => duelChange(T, 3), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: ['dragon:phase3'] },
   { id: 'phase3l', name: 'Form 3', boss: 'lord', desc: 'His third blade form ignites.', go: (T) => duelChange(T, 3), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: ['dragon:phase3'] },
   { id: 'form2a', name: 'Golden Ascension', boss: 'asc', desc: 'His second form: the transformation.', go: (T) => duelChange(T, 2), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: ['dragon:phase2'] },
@@ -350,7 +354,7 @@ export class Training {
     const id = this.game.level?.id;
     if (ROLES[id]) return ROLES[id];
     const k = bossKinds(this.game);
-    return (k.has('wyrm') ? ROLES.cinderwood : k.has('asc') ? ROLES.ring : k.has('fox') ? ROLES.fox : k.has('lord') ? ROLES.starless : k.has('ash') ? ROLES.ash : null) ?? {};
+    return (k.has('wyrm') ? ROLES.cinderwood : k.has('asc') ? ROLES.ring : k.has('fox') ? ROLES.fox : k.has('halcyon') ? ROLES.city : k.has('lord') ? ROLES.starless : k.has('ash') ? ROLES.ash : null) ?? {};
   }
 
   find(id) {

@@ -51,6 +51,10 @@ export const LOOK_SWITCHES = Object.freeze([
   ['grove', ['a', 'b', 'c'], 'a', 'a', true, ['grove'], 'the grove: a moonlit mist, b grey dawn, c first snow (a reload)'],
   ['sheathLook', ['a', 'b', 'c', 'd'], 'a', 'a', true, ['grove'], 'Lu Wusheng\'s body: a mourning white, b reed cloak, c one sleeve, d the wanderer (a reload)'],
   ['drawCut', ['a', 'b'], 'a', 'a', false, ['grove'], 'the draw\'s cut: a one white line, b with an afterimage'],
+  // --- city: Halcyon Plaza and Halcyon (ADR-155; every one waits for the owner, read when built: a reload)
+  ['halLook', ['a', 'b', 'c'], 'a', 'a', true, ['city'], 'Halcyon\'s body: a blue suit and red cape, b the idol, c tomorrow\'s tyrant (a reload)'],
+  ['glare', ['a', 'b', 'c'], 'a', 'a', true, ['city'], 'his eyes\' heat: a crimson, white core; b crimson alone; c orange fire (a reload)'],
+  ['city', ['a', 'b', 'c'], 'a', 'a', true, ['city'], 'the city: a neon rain, b golden hour, c lockdown (a reload)'],
 ]);
 
 const NAMES = LOOK_SWITCHES.map((s) => s[0]);
