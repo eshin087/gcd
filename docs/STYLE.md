@@ -1031,6 +1031,9 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?foxLook=` | Wen Yao's body, bare-handed (ADR-147; read when his rigs are built) | - | the Shrine Fox: the bone mask, a short robe with its sleeves tied back, the fur stole, the sash | the Wild Fox: an amber sleeveless jacket, a streaming vermilion scarf, a wild crest of dark red-brown hair, a kitsune half-mask at the temple | the Pelt Brawler: a quilted jerkin, a fox's head on one shoulder; `d` = a in the ink-line art | not picked yet (b drawn) |
 | `?foxfire=` | the foxfire: the Pearl, the mantle (read when his effects are built) | - | jade (a palette swapped into the void slot) | the wyrm's orange fire | moon-white | not picked yet (a) |
 | `?clones=` | his paper selves (read when their rigs are built) | - | identical to him | a step paler | - | not picked yet (a) |
+| `?grove=` | the Windless Grove's light and ground (ADR-145; read when the level is built) | - | a moonlit night with mist | grey dawn fog | first snow: pale litter, frost on the stalks | **a** |
+| `?sheathLook=` | Lu Wusheng's body (read when his rig is built) | - | Mourning White: undyed hemp, a white brow band with two trailing tails, hair in a knot | Reed Cloak: a shaggy straw rain cape, a cloth over the lower face | One Sleeve: a dark robe off the sword arm, the bare arm bound in cord, short grey hair; `d` the Wanderer (added 2026-11-22 at the owner's ask, an option): a slighter man (drawn 7 % smaller) in a faded indigo robe over wide charcoal trousers, a long sand scarf with trailing tails, dark hair in a high tail | **d** |
+| `?drawCut=` | the Sheathed's draw (ADR-145) | - | one white line | the line and an afterimage of him where he stood | - | **a** |
 
 How a look is chosen (`lookOf(name, def, pick)`): a look forced live by `setLook` (the Lab, the tests,
 the film rig); else the URL's own parameter (`?sky=b`); else, under **`?looks=old`**, `0` for every
@@ -1040,7 +1043,7 @@ before this pass); the things that are new in this pass (`kindle`, `ashp3`, `bur
 reachable as `?presence=0`); else the owner's pick (the `PICKED` table); else the author's default. **`?looks=new`** (every
 proposal at once, the way the owner played them on the preview) now draws the same as no parameter.
 **The Lab's LOOKS section** (`?lab`, only in the Ashfall Courtyard, the Obsidian Throne, the Skybreak
-Ring and the Foxfire Terrace) has a row of buttons per switch: a switch read at draw time flips live, one read at build time
+Ring, the Foxfire Terrace and the Windless Grove) has a row of buttons per switch: a switch read at draw time flips live, one read at build time
 (`ashLook`, `lordLook`, `floor`, `outskirts`, `ring`, `ascLook`, `ascLift`, `foxLook`, `foxfire`, `clones`) reloads the page with its parameter; "as
 shipped" clears every look parameter (the picks), "before this pass" reloads with `?looks=old`; there is
 no "all proposals" button any more. Older switches of the same kind: `?flare=` (ADR-118), the wyrm's
@@ -1232,6 +1235,25 @@ art path at 720p he is still about 12 letter rows; b survives it by its colour, 
 - **Sound:** a short dry quiet paper tear on `dragon:clone` (softer for a spawn), synth, its jitter on
   sfx.js's own stream (never `Math.random`: a pop must not shift the seeded suite).
 
+### The Windless Grove and the Sheathed (2026-11-22, ADR-145; `world/windlessGrove.js`, `enemies/sheathed/`)
+- **The grove.** Bamboo is drawn through the prop art path (`paint(.., { flag: FLAG.ART_PROP })` on the screen
+  grid): thin jointed canes 6 - 11 m tall (a ring at every joint, a bow toward the top), narrow drooping leaf
+  sprays near the top; lone stalks and clumps in the clearing, a dense breakable belt round it, a static wall
+  beyond. The Sword Grave: a low carved mound, forty plain blades planted at angles, the great sword
+  (`landmarks.js` `buildGreatSword`, dulled) in the middle. A worn round of paving in the middle of packed
+  earth (sector slabs in six rings), a stele, two stone lanterns, mossy boulders, a ruined pavilion (posts
+  and a fallen thatch roof). Night: a cold low moon, pale green-grey fog; the default fireflies, mist and
+  leaves. `?grove=b` grey dawn fog, `c` first snow.
+- **His figure** goes through the wyrm's art path (`toDragonLook` with `SHEATH_ART[look]`); his sword stays on
+  today's material. Mourning White (a) is the recommended body: the black lacquer scabbard (`trim`) the
+  darkest thing on him, its throat and butt cap pale (`facing`), the bare blade pale steel (`armor`, `bevel`).
+- **The draw in the fire field** (`SheathFx`): the stillness is a pinpoint of pale steel at the scabbard's
+  mouth growing into a short thread (white, not a colour); the click is the blue FLARE at the mouth; the cut
+  is ONE white-hot inked line (`_ink`, heat 1.8 cooling to 0.3 over 0.5 s) from the mouth to the blade's end
+  and a thinner pale wake (0.5) for 10 m more; a hair-thin pale line hangs where the wake passed until the
+  click, when the grove falls. A scabbard blow's trail is dull wood (`woodSweep`), never steel. The hanging
+  cuts of phase 3 are lines of low heat on the ground, brightening toward their cut, then one white-hot line
+  at waist height.
 ### The Training Room (2026-11-15, ADR-099; `world/trainingRoom.js`, `?stage=lab`)
 A lab stage for any boss: a dark dojo of light (the owner's pick of three looks: "Holo", over a
 pale "Grid" and a starry "Void"). Great 2 m tiles of near-black glass in a two-shade checker (carved

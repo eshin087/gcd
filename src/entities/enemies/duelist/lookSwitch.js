@@ -45,6 +45,10 @@ export const PICKED = Object.freeze({
   ascLift: 'a', // his figure lifted off the floor: a lighter fill, a stronger edge of light (the owner's pick)
   ascOrb: 'a', // Heaven's Lantern, the great orb: a sun (b a lantern, c the pale gathered sphere; the owner has not chosen yet, 2026-11-22)
   ascBeamPose: '0', // his beams: the palm thrust (cup: both hands cupped at the hip; the owner has not chosen yet, 2026-11-22)
+  // the Windless Grove and Lu Wusheng, the Sheathed (the owner, 2026-11-22: "keep the recommended")
+  grove: 'a', // the grove's light: a moonlit mist (the owner's pick)
+  sheathLook: 'd', // his body: the Wanderer (the owner's pick, 2026-11-22, over a, mourning white)
+  drawCut: 'a', // the draw's cut: one white line (the owner's pick)
 });
 
 /** Switches the owner has not picked yet (their rendered options wait for the owner): in the Lab's LOOKS

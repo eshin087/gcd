@@ -792,7 +792,7 @@ export class Lab {
    *  reload. Only in a duelist's level; collapsed by default (it is long). */
   _buildLooks(root) {
     const id = this.game.level?.id;
-    if (id !== 'ash' && id !== 'starless' && id !== 'ring' && id !== 'fox') return;
+    if (id !== 'ash' && id !== 'starless' && id !== 'ring' && id !== 'fox' && id !== 'grove') return;
     if (this.prefs.collapsed && !('looks' in this.prefs.collapsed)) this.prefs.collapsed.looks = true;
     const { body } = this._section(root, 'looks', 'LOOKS');
     this.ui.looksSync = buildLooks(body, id, (t) => this._status(t, 'ok'));
@@ -829,6 +829,23 @@ export class Lab {
         b.textContent = `Ablaze ${d.ablaze(L[(L.indexOf(d.ablaze()) + 1) % L.length])}`;
       });
       b.title = 'phase 3 sets the wyrm on fire: its strength (?ablaze=off|a|b|c)';
+    }
+    // the Sheathed (ADR-144): his draw lethal or not; his sheath's state
+    if (typeof this.game.dragon?.debug?.lethal === 'function') {
+      const d = this.game.dragon.debug;
+      const b = button(grid, `Lethal draw ${d.lethal() ? 'on' : 'off'}`, () => {
+        b.textContent = `Lethal draw ${d.lethal(!d.lethal()) ? 'on' : 'off'}`;
+      });
+      b.title = 'an unanswered draw kills (on) or deals TUNING.draw.damage (off)';
+      button(grid, 'Sheath?', () => this._status(`sheath: ${d.sheath?.()}`, 'ok')).title = 'his sheath now: carry / settled / drawn';
+    }
+    // the hero's One Breath (ADR-146; game/unlocks.js): learned or not
+    const U = this.game.unlocks;
+    if (U) {
+      const ob = button(grid, `One Breath ${U.has('oneBreath') ? 'on' : 'off'}`, () => {
+        ob.textContent = `One Breath ${U.toggle('oneBreath', !U.has('oneBreath')) ? 'on' : 'off'}`;
+      });
+      ob.title = 'the draw-slash: guard, then hold heavy (the Sheathed\'s reward; ?tech=draw)';
     }
     // the Thousand-Body Fox (ADR-147): his paper selves, the Pearl, the mantle
     if (typeof this.game.dragon?.debug?.clones === 'function') {

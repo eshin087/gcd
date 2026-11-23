@@ -4,7 +4,23 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Sixty-six pieces of work since 0.4.0:
+Sixty-seven pieces of work since 0.4.0:
+- **A sixth level: the Windless Grove and the Sheathed** (2026-11-22, ADR-144 – ADR-146). *Added:* a fifth
+  level, `?level=grove` (the title screen lists it). **The Windless Grove**: a bamboo grove at night, a
+  round clearing with a worn ring of paving, a mound planted with forty swords. **Lu Wusheng, the
+  Sheathed**: a wandering swordsman whose blade stays in its scabbard. Everything he does with it sheathed
+  is blunt (the scabbard, the pommel, a shoulder, a foot); his draw is one blink-fast cut. He settles, goes
+  still, a click and the blue flare at the scabbard's mouth: parry it, or roll through it; a held guard
+  keeps you alive but is knocked open; nothing else lives. He never draws on a hero who is down or whose
+  guard is broken, and a chain of draws goes on only past a dodge. Three phases: the Sheath (one draw),
+  A Thumb's Width (draws from three stances, a draw that crosses the whole ground), the Held Breath (three
+  draws in a row from three sides, cuts that hang in the air and land on the click). The bamboo falls on the
+  click of the sword going home, never on anyone. **The first fixed reward: One Breath.** Beat him and the
+  hero learns a draw-slash: guard, then hold heavy (on touch: slide from block onto heavy); release to cut
+  five metres in a blink; released just before a foe's white or heavy blow lands, it beats the blow aside.
+  The engine gains optional beat fields (`draw`, `stopOn`, a move's `recoverOpen`) and takeHit's
+  `breaksGuard`; the world's `light` pieces. He ships as the Wanderer (a slighter man in a faded indigo
+  robe, a long sand scarf, dark hair in a high tail), the owner's pick of four bodies; the other options stay behind `?sheathLook=`, `?drawCut=`, `?grove=`. `tests/integration/sheath.mjs`.
 - **A fifth level: the Foxfire Terrace and Wen Yao, the Thousand-Body Fox** (2026-11-21, ADR-147, ADR-148).
   *Added:* a fifth level, `?level=fox` (the title screen lists it). **The Foxfire Terrace**: a round
   terrace on a moonlit hill shrine, stone lanterns and seated stone foxes on its rim, wooden charm posts

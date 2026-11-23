@@ -227,6 +227,30 @@ export const SFX = {
     },
   },
 
+  /** The Sheathed's click (ADR-145): a thumb pushes the guard: a dry wooden tick and a short high
+   *  ring of steel. `loud` 1 at the draw's cue, softer as the blade goes home. */
+  sheathClick: {
+    prio: 5, rev: 0.22, gap: 0.08, bus: 'cue',
+    play(v, t, o) {
+      const k = clamp(num(o.loud, 1), 0.2, 1);
+      burst(v, t, 'white', 'bandpass', 3200, 6, 0.55 * k, 0.018, 0.001);
+      burst(v, t + 0.002, 'brown', 'bandpass', 900, 3, 0.35 * k, 0.03, 0.001);
+      for (const [f, a, d] of [[3520, 0.11, 0.32], [5274, 0.06, 0.22], [7040, 0.035, 0.14]]) ping(v, t + 0.006, 'sine', f, a * k, d);
+    },
+  },
+  /** The stillness: a low breath drawn in through the settle that cuts out to silence. */
+  sheathBreath: {
+    prio: 3, rev: 0.3, gap: 0.5,
+    play(v, t) {
+      const f = swish(v, t, 'pink', 'bandpass', 420, 1.4, [[0, 0], [0.25, 0.22], [0.55, 0.16], [0.6, 0]]);
+      env(f.frequency, t, [[0, 300], [0.5, 620], [0.6, 640]]);
+      const s = v.osc('sine', 72, t, t + 0.62);
+      const g = v.gain(0);
+      env(g.gain, t, [[0, 0], [0.3, 0.12], [0.55, 0.1], [0.58, 0]]);
+      s.connect(g).connect(v.out);
+    },
+  },
+
   hit: {
     prio: 3, rev: 0.12, gap: 0.04,
     play(v, t, o) {

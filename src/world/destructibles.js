@@ -47,6 +47,9 @@ import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
 //   y0        the height its node stands at (the upper half of a colossus: it falls from its cut, coming
 //             down to the ground as it goes over); `fallOff` m out from its base it lands; `fallT` s it falls
 //   blocks    how many big blocks of wreckage it leaves (a statue's), instead of a rubble pile
+//   light     true: a light piece (a bamboo stalk, a planted sword; ADR-145): whoever fells it, its fall
+//             is quiet (no combat:tell / flash, no blow on the hero, no ground mark, no domino sweep, no
+//             camera shake, a soft crash), so a duelist's cue ledger never sees it
 //
 // The API (world.destructibles; every caller guards it with `?.`: the tests' world mocks lack it):
 //   strike(x, z, r, power, o)             a blow / blast over a disc → how many it struck
@@ -1084,6 +1087,8 @@ export class Destructibles {
       // `wear` the stage it is at (0 whole .. 3 leaning); the lean, and its way
       order: Int16Array.from(order), cut: Int16Array.from(W && Array.isArray(W.cut) ? W.cut : []), wear: 0, dropped: 0,
       lean: 0, leanTo: 0, ldx: 0, ldz: 1, touched: false, quiet: false,
+      // a light piece (a bamboo stalk, a planted sword; ADR-145): its fall is quiet whoever felled it
+      lightPiece: def.light === true,
       // a tree of the wall (beyond BREAK.wall.from): it falls mostly away from the arena
       wall: def.wall === true,
       // pieces that must be down before this one takes more than chips (the Cinder Tree's boughs guard its trunk)
@@ -2051,9 +2056,10 @@ export class Destructibles {
       // (fallOff: a colossus's upper half lands that much further out)
       const reach = b.fallOff + b.h + pad;
       // (his ground: the level's circle, or what the wall's fallen trees have opened of it: edge.js)
-      b.quiet = this.edge
-        ? !this.edge.reaches(b.x, b.z, b.x + dx * reach, b.z + dz * reach, pad)
-        : segDist(0, 0, b.x, b.z, b.x + dx * reach, b.z + dz * reach, this._seg) > hb + pad;
+      // (a light piece: never a blow, never told; ADR-145)
+      b.quiet = b.lightPiece || (this.edge
+        ?!this.edge.reaches(b.x, b.z, b.x + dx * reach, b.z + dz * reach, pad)
+        : segDist(0, 0, b.x, b.z, b.x + dx * reach, b.z + dz * reach, this._seg) > hb + pad);
       this._wake(b);
       this._burst(b, b.x, 0.4, b.z, dx, dz, 10, 0.4);
       this._emit('topple', b, b.x, 0.5, b.z, b.weight, by);
@@ -2075,7 +2081,7 @@ export class Destructibles {
       // (2026-11-16: a broken skeleton left nothing lying)
       // (the landmarks list `wreck: false` against logs and rubble; their bones still leave a heap)
       else if (b.mat === 'bone' && b.h >= 0.4) this._boneHeap(b, 0, 0, 0);
-      if (!b.floor) this.game.shake?.(clamp(0.12 + 0.12 * b.weight, 0.1, 0.4));
+      if (!b.floor && !b.lightPiece) this.game.shake?.(clamp(0.12 + 0.12 * b.weight, 0.1, 0.4));
       // (a slab breaking under someone's feet: a hop of grit and chunks off it, besides its crumble)
       else this._burst(b, b.x, 0.08, b.z, dx, dz, BREAK.floor.grit, 0.3);
       if (loud) this._emit('break', b, b.x, b.h * 0.5, b.z, b.weight, by);
@@ -2628,6 +2634,12 @@ export class Destructibles {
       this.wreck?.rubble(b.x + dx * len * 0.35, b.z + dz * len * 0.35, Math.max(0.45, b.r * 0.8), b.M);
       this.wreck?.rubble(b.x + dx * len * 0.75, b.z + dz * len * 0.75, Math.max(0.4, b.r * 0.65), b.M);
     } else if (b.mat === 'bone') this._boneHeap(b, dx, dz, len);
+    if (b.lightPiece) {
+      // a light piece (ADR-145): it lies where it fell, and that is all: no ground mark, no gust, no
+      // shake, no domino sweep, no blow on anyone; a soft sound
+      this._emit('crash', b, b.x + dx * (off + len * 0.5), 0.4, b.z + dz * (off + len * 0.5), b.weight * 0.25, b.by);
+      return;
+    }
     const sc = this.world.scars;
     sc?.ground(b.x + dx * (off + len * 0.4), b.z + dz * (off + len * 0.4), 0.5 + 0.35 * b.weight, dx, dz);
     sc?.ground(b.x + dx * (off + len * 0.85), b.z + dz * (off + len * 0.85), 0.45 + 0.25 * b.weight, dx, dz);

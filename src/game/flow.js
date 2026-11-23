@@ -772,6 +772,9 @@ export class GameFlow {
     this._ovLambda = 1;
     this.cameraOverride = this._ov;
     this._log(this._text('fallen'), 'lore');
+    // (a boss's fixed reward, ADR-146: the Sheathed's 'YOU LEARNED ONE BREATH')
+    const note = this._try(() => g.dragon?.victoryNote?.(), 'victoryNote');
+    if (typeof note === 'string' && note) this._log(note, 'lore');
   }
 
   _victory(rdt) {

@@ -19,6 +19,17 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-22',
+        title: 'A sixth level: the Windless Grove and the Sheathed',
+        notes: [
+          'A new level, the Windless Grove: a bamboo grove at night, a clearing, and a mound of planted swords. Pick it on the title screen.',
+          'Its boss is Lu Wusheng, the Sheathed. His sword stays in its scabbard: everything else he does is blunt. Then he goes still, there is a click and a blue flash at the scabbard, and he draws.',
+          'Parry the draw or roll through it. A held guard keeps you alive but is knocked open. Anything else is death.',
+          'He never draws on you while you are down or your guard is broken.',
+          'Beat him and you learn One Breath: guard, then hold heavy, and release to cut five metres in a blink. Released just before a blow lands, it beats the blow aside.',
+        ],
+      },
+      {
+        date: '2026-11-22',
         title: 'Tian Lei in the orange gi, and the instant beam',
         notes: [
           'Tian Lei now fights in an orange gi with spiky black hair that turns gold when he transforms.',

@@ -7,7 +7,7 @@ import { TELL, RESULT, DEFENSE, GUARD, tellDefaults, facingDelta, dodgeOnly, tel
 import { buildHero, setHeroGlyphScale, installLean, tintHero, LEAN, PLAYER_SCALE, BLADE_BASE, HERO_INK, DIM } from './model.js';
 import { HERO_LOOKS, DEFAULT_LOOK, LOOK_IDS, getLook } from './gear/looks.js';
 import { HeroAnimator, ROLL_SLIDE } from './anim.js';
-import { LIGHT, HEAVY, heavyAfter, SPRINT_ATK, ROLL_ATK, THRUST, CLEAVE, CHARGE, REACH, HIT_FEEL, feel, chargeStats, bandHit, SwordSweep } from './combat.js';
+import { LIGHT, HEAVY, heavyAfter, SPRINT_ATK, ROLL_ATK, THRUST, CLEAVE, ONE_BREATH, CHARGE, REACH, HIT_FEEL, feel, chargeStats, bandHit, SwordSweep } from './combat.js';
 import { PlayerFx, EDGE_GLINT } from './fx.js';
 import { DEFAULT_LOADOUT, swordFromUrl } from './gear/index.js';
 import { CLASH, clashBurst, clashGrind, closestOnSegments } from '../../combat/clashFx.js';
@@ -500,6 +500,12 @@ export class Player {
     // (e) block / (f) guard break
     // (`hit.around`: a foe's flurry comes from every side in turn: a raised guard meets it from any)
     if (this.blocking && (hit.around || this._inArc(DEFENSE.blockArc, hasFrom, fx, fz, hasAtk ? ap : null))) {
+      // (`breaksGuard`, ADR-144: the Sheathed's draw met on a HELD guard: no health lost, the whole
+      // meter gone and the guard knocked open, as a black blow does to a guard)
+      if (hit.breaksGuard && blockable) {
+        this._guardOpen(attack, nx, nz, true);
+        return RESULT.BLOCKED;
+      }
       if (blockable) {
         this._block(dmg, tell, attack, chip, nx, nz);
         return RESULT.BLOCKED;
@@ -884,6 +890,8 @@ export class Player {
     if (inp.actPressed('heavy')) {
       L.held = true;
       L.t = 0;
+      // (One Breath, ADR-146: a heavy press that begins with the guard up, or within 0.2 s of lowering it)
+      L.guard = Rb.held || this.time - Rb.upT <= 0.2;
       this._buffer('heavy');
     } else if (L.held) {
       L.t += dt;
@@ -1060,6 +1068,9 @@ export class Player {
         break;
       case 'charge':
         this._tickCharge(dt);
+        break;
+      case 'iai':
+        this._tickDraw(dt);
         break;
       case 'roll':
         this._tickRoll();
@@ -1500,7 +1511,9 @@ export class Player {
     const crush = heavy && fin(a?.poise) >= fin(att?.T?.guard?.crushPoise, Infinity);
     // the flash counter (DEFENSE.counter): his blow arrived as the cut only just became a cut
     const K = DEFENSE.counter;
-    const counter = !!o.late && !crush && !!a && !a.hit && a.t <= a.def.windup + K.window && typeof att?.onCounter === 'function';
+    // (One Breath's draw counter, ADR-146: anywhere in its short cut, for its own damage and posture, no crit window)
+    const drawK = !!a?.def?.drawCounter;
+    const counter = (!!o.late || drawK) && !crush && !!a && (drawK || !a.hit) && a.t <= a.def.windup + (drawK ? a.def.active : K.window) && typeof att?.onCounter === 'function';
     if (a) a.traded = true;
     this.tradeT = this.time;
     this._streakUp(); // two cuts met: it counts in the streak
@@ -1555,13 +1568,13 @@ export class Player {
       a.hit = true;
       let dealt = 0;
       try {
-        dealt = fin(att.onCounter({ point: { x: cv.x, y: Math.max(0.75, cv.y), z: cv.z }, dir: { x: -nx, z: -nz }, attack: o.attack ?? null }), 0);
+        dealt = fin(att.onCounter({ point: { x: cv.x, y: Math.max(0.75, cv.y), z: cv.z }, dir: { x: -nx, z: -nz }, attack: o.attack ?? null, ...(drawK ? { damage: a.def.damage, posture: a.def.counterPosture } : null) }), 0);
       } catch (err) {
         console.error('[player] attacker.onCounter failed', err);
       }
-      this.critTimer = Math.max(fin(this.critTimer), DEFENSE.ghostep.critWindow);
+      if (!drawK) this.critTimer = Math.max(fin(this.critTimer), DEFENSE.ghostep.critWindow);
       this.bladeFlare = Math.max(this.bladeFlare, TUNE.bladeFlare.hit[1]);
-      this._emit('player:counter', { attack: o.attack ?? null, damage: dealt });
+      this._emit('player:counter', { attack: o.attack ?? null, damage: dealt, draw: drawK });
     } else if (!crush) this._bounce(att, TUNE.tradePush);
     return { heavy, crush, counter };
   }
@@ -2592,6 +2605,8 @@ export class Player {
   }
 
   _startCharge() {
+    // (One Breath, once learned: a press begun from the guard takes the draw stance instead; locked, as before)
+    if (this.hb.guard && this.game.unlocks?.has?.('oneBreath')) return this._startDraw();
     this.atk = null;
     if (this.buf.action === 'light' || this.buf.action === 'heavy') this.buf.action = null;
     this.chargeK = chargeStats(this.hb.t).k;
@@ -2629,6 +2644,53 @@ export class Player {
     this.want.z = I.z * sp;
     const moveYaw = I.len > 0.1 ? Math.atan2(I.x, I.z) : this.yaw;
     this.yaw = dampAngle(this.yaw, this._aimYaw(moveYaw), TUNE.turnRate, dt);
+  }
+
+  /** One Breath's stance (ADR-146): the iai's coil at the right hip (the flurry's 'coil' pose); he cannot
+   *  move or guard in it, a roll takes him out of it, releasing HEAVY cuts. */
+  _startDraw() {
+    this.atk = null;
+    if (this.buf.action === 'light' || this.buf.action === 'heavy') this.buf.action = null;
+    this.chargeK = 0;
+    this.drawT = 0;
+    const F = this.flurryAnim;
+    if (F) {
+      F.pose = 'coil';
+      F.k = 0;
+      F.u = 0;
+      F.air = false;
+    }
+    this._enter('iai', 'flurry', 0.14);
+    this._emit('player:draw', { phase: 'stance' });
+    return true;
+  }
+
+  _tickDraw(dt) {
+    const L = this.hb, F = this.flurryAnim;
+    this.drawT = fin(this.drawT) + dt;
+    if (F) {
+      F.pose = 'coil';
+      F.k = clamp(this.drawT / 0.3, 0, 1);
+    }
+    this.want.x = this.want.z = 0;
+    this.yaw = dampAngle(this.yaw, this._aimYaw(this.yaw), TUNE.turnRate, dt);
+    if (!this.control) {
+      this._toLoco(0.14);
+      return;
+    }
+    if (this.buf.action === 'roll') {
+      this.buf.action = null;
+      this._startRoll();
+      return;
+    }
+    if (!L.held) {
+      // the cut: a blink step along his aim, drawn as one line
+      const D = ONE_BREATH;
+      this._startHeavy(D, { k: 1, damage: D.damage, poise: D.poise, travel: D.travel });
+      this.getChestPos(this._v, true);
+      this.flurry?.fx?.pass?.(this._v.x + Math.sin(this.yaw) * D.travel * 0.5, this._v.y, this._v.z + Math.cos(this.yaw) * D.travel * 0.5, Math.sin(this.yaw), Math.cos(this.yaw));
+      this._emit('player:draw', { phase: 'cut' });
+    }
   }
 
   /** Release the charge: the dashing cleave, whose travel, damage and posture grow with the charge. */

@@ -3208,8 +3208,10 @@ async function scenarioFxLooks() {
     assert(PENDING.every((n) => LOOK_SWITCHES_ALL.some((s) => s[0] === n) && pickedOf(n) == null), `pending switches (${PENDING.join(', ') || 'none'}) are Lab rows and not in PICKED`);
     const row = Object.fromEntries(LOOK_SWITCHES.map((s) => [s[0], s]));
     const bad = Object.entries(PICKED).filter(([k, v]) => !row[k] || !row[k][1].includes(v));
-    const missing = LOOK_SWITCHES.filter((s) => pickedOf(s[0]) == null).map((s) => s[0]);
-    assert(Object.isFrozen(PICKED) && !bad.length && !missing.length && Object.keys(PICKED).length === LOOK_SWITCHES.length, `PICKED: ${Object.keys(PICKED).length} switches, each a real switch of the Lab with a real option (${bad.map(([k, v]) => `${k}=${v}`).join(', ') || 'ok'}; not picked: ${missing.join(', ') || 'none'})`);
+    // (a row marked as awaiting the owner's pick, its 8th field, draws its call site's default until then)
+    const waiting = LOOK_SWITCHES.filter((s) => s[7] === 'awaiting').length;
+    const missing = LOOK_SWITCHES.filter((s) => pickedOf(s[0]) == null && s[7] !== 'awaiting').map((s) => s[0]);
+    assert(Object.isFrozen(PICKED) && !bad.length && !missing.length && Object.keys(PICKED).length === LOOK_SWITCHES.length - waiting, `PICKED: ${Object.keys(PICKED).length} switches, each a real switch of the Lab with a real option (${bad.map(([k, v]) => `${k}=${v}`).join(', ') || 'ok'}; not picked: ${missing.join(', ') || 'none'})`);
     const owner = { kindle: 'a', ashp3: 'a', qi: 'a', flit: 'a', burn: 'a', toll: 'a', star: 'a', sky: 'a', ignite: 'a', void: 'a', presence: 'a', great: 'a', floor: 'a', ashLook: 'b', lordLook: 'b' };
     assert(JSON.stringify(Object.keys(owner).sort().map((k) => `${k}=${PICKED[k]}`)) === JSON.stringify(Object.keys(owner).sort().map((k) => `${k}=${owner[k]}`)), 'the table is the owner\'s answer of 2026-11-16: every author\'s pick (a), the bodies b');
     const at = (search) => {
@@ -3219,8 +3221,8 @@ async function scenarioFxLooks() {
       return o;
     };
     const none = at(''), old = at('?looks=old'), neu = at('?looks=new'), one = at('?looks=old&star=b'), url = at('?qi=c');
-    const wantOld = Object.fromEntries(LOOK_SWITCHES.map((s) => [s[0], s[2] === '0' ? '0' : PICKED[s[0]]]));
-    assert(JSON.stringify(none) === JSON.stringify(Object.fromEntries(LOOK_SWITCHES.map((s) => [s[0], PICKED[s[0]]]))) && JSON.stringify(neu) === JSON.stringify(none), `with nothing set (and under ?looks=new) every call site draws the pick: ${JSON.stringify(none)}`);
+    const wantOld = Object.fromEntries(LOOK_SWITCHES.map((s) => [s[0], s[2] === '0' ? '0' : PICKED[s[0]] ?? s[2]]));
+    assert(JSON.stringify(none) === JSON.stringify(Object.fromEntries(LOOK_SWITCHES.map((s) => [s[0], PICKED[s[0]] ?? s[2]]))) && JSON.stringify(neu) === JSON.stringify(none), `with nothing set (and under ?looks=new) every call site draws the pick: ${JSON.stringify(none)}`);
     assert(JSON.stringify(old) === JSON.stringify(wantOld) && !allOld(), `?looks=old: every redraw '0' (what main drew), a new thing its pick: ${JSON.stringify(old)}`);
     assert(one.star === 'b' && one.qi === '0' && url.qi === 'c' && url.star === 'a', `the URL's own parameter beats ?looks=old and the pick (?looks=old&star=b: star ${one.star}, qi ${one.qi}; ?qi=c: qi ${url.qi})`);
     setLook('qi', 'b');

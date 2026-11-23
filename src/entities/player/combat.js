@@ -237,6 +237,21 @@ export const THRUST = {
   anim: { kind: 'thrust' },
 };
 
+/** ONE BREATH (ADR-146): the Sheathed's reward, the hero's draw-slash. Guard, then hold HEAVY: the
+ *  draw stance (the iai's coil at the right hip: anim.js flurryPose 'coil'); release: a blink step of
+ *  `travel` m along his aim through the dashing heavy's machinery (player.js _startHeavy), `damage`, a
+ *  short recovery. Released at most `counter` s before a foe's white or blue blade blow lands, the cut
+ *  beats it aside as the flash counter does (his string ends, he reels) for `damage` and
+ *  `counterPosture`, and no crit window (player.js _trade, `drawCounter`). Locked until the Sheathed falls
+ *  (game.unlocks 'oneBreath'; ?tech=draw). */
+export const ONE_BREATH = {
+  name: 'oneBreath', kind: 'cleave', combo: 1, heavy: true, dash: true, drawCounter: true,
+  damage: 46, poise: 30, travel: 5, counter: 0.12, counterPosture: 40,
+  windup: 0.04, active: 0.1, recovery: 0.55, lunge: 0, reach: 2.4,
+  hitstop: 0.12, shake: 0.35, bite: 1.2, contact: 'cleave', punch: [1.2, 1.6], kick: [0.12, 0.18],
+  anim: { kind: 'clip', clip: 'drawCut', feet: 'dash', dashW: true },
+};
+
 export const CHARGE = {
   hold: 0.3, // s the HEAVY button must be held before a press becomes a charge (shorter = a heavy on release)
   full: 1.2, // s of hold for full damage

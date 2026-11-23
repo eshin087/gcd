@@ -160,7 +160,7 @@ for (const f of world) {
       console.log(`BAD prop art: FLAG.ART_PROP ${F.ART_PROP} must sit inside isProp (${lo}, ${hi}), above the creatures' window (< 0.55) and below FLAG.LEAF ${F.LEAF}`);
     }
   }
-  for (const f of ['src/world/forest.js', 'src/world/courtyard.js', 'src/world/throneHall.js', 'src/world/skybreakRing.js']) {
+  for (const f of ['src/world/forest.js', 'src/world/courtyard.js', 'src/world/throneHall.js', 'src/world/skybreakRing.js', 'src/world/windlessGrove.js']) {
     checked++;
     if (!/const stoneMat = createPropArtMaterial\(/.test(fs.readFileSync(path.join(root, f), 'utf8'))) {
       bad++;

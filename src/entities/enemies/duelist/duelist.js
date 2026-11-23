@@ -552,7 +552,8 @@ export class Duelist {
     this._lastParry = this.time; // (hitPlayer's onClashed for this same blow: already answered)
     const K = DEFENSE.counter;
     this.jolt = Math.max(this.jolt, 1);
-    const dealt = this.takeHit({ damage: K.damage, part: 'body', point: o.point, dir: o.dir, heavy: true, crit: true, exact: true, posture: K.posture, flash: 1, reel: 1 });
+    // (o.damage / o.posture: a counter of its own, the hero's One Breath: ADR-146)
+    const dealt = this.takeHit({ damage: fin(o.damage, K.damage), part: 'body', point: o.point, dir: o.dir, heavy: true, crit: true, exact: true, posture: fin(o.posture, K.posture), flash: 1, reel: 1 });
     if (this.mode === 'dying' || this.mode === 'dead' || this.broken) return fin(dealt);
     this.emit('dragon:stagger');
     this._cinematic('counter');

@@ -184,6 +184,15 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.62 — A sixth level: the Windless Grove and the Sheathed (2026-11-22, `level/the-sheathed`, ADR-144 – ADR-146)
+- [x] `?level=grove`: the bamboo grove (light pieces), the Sword Grave, the paving; `?grove=a|b|c`
+- [x] Lu Wusheng, the Sheathed: three phases, the sheath on the rig, the draw's rule (parry or die, a held
+      guard never hurt, the honor gate), the grove falling on the click, the hanging cuts
+- [x] One Breath, the first fixed reward (`game/unlocks.js`): guard + hold heavy, the draw counter
+- [x] Lab, Training, `tests/integration/sheath.mjs`
+- [ ] The owner's picks from the sheets: his body, the cut, the grove's light
+- [ ] His own score (borrowed tracks until an audition page)
+- [ ] A human playtest of the draw on the phone; One Breath's balance bot on Shen Hui
 ## M1.61 — A fifth level: the Foxfire Terrace and Wen Yao, the Thousand-Body Fox (2026-11-21, `claude/thousand-body-fox-33750d`, ADR-147, ADR-148)
 - [x] An original in the spirit of a ninja-clone hero: his own name, mask, outfit and move names, none of that series' look
 - [x] The level (`?level=fox`) and its set: a round paved terrace, lanterns, stone foxes, charm posts that burn, a great stone fox and a spirit gate
@@ -825,8 +834,8 @@ Spec: `docs/specs/ash-disciple.md`.
 
 ## M2 — The boss rush's foundations (revised 2026-11-12, ADR-059)
 - [ ] Techniques: a slot system, a meter filled by parries and perfect dodges, an equip screen; the
-      Ash Disciple's technique first (the next PR)
-- [ ] Fixed rewards per boss (techniques, weapons, abilities, elements); weapons of other lengths
+      Ash Disciple's technique first (the next PR). The store it can read exists: `game/unlocks.js` (ADR-146)
+- [~] Fixed rewards per boss: the first, One Breath (the Sheathed's draw-slash, ADR-146), ships; the rest (techniques, weapons, abilities, elements); weapons of other lengths
   - [ ] The Thousand-Body Fox's Paper Double (a decoy the foe strikes instead of the hero): recorded on the level, not usable (ADR-148); needs the technique slot, a button on every input, a target indirection in every boss's AI
       (the animator, the hit segment and the blade FX read `DIM`)
 - [ ] A hub that links the levels (the bonfire), and a boss-rush mode (refights back to back, a timer)

@@ -34,6 +34,7 @@ const { createCourtyard } = await imp('src/world/courtyard.js');
 const { createThroneHall } = await imp('src/world/throneHall.js');
 const { createFoxTerrace, TERRACE } = await imp('src/world/foxTerrace.js');
 const { createSkybreakRing, BUTTE, RING } = await imp('src/world/skybreakRing.js');
+const { createWindlessGrove } = await imp('src/world/windlessGrove.js');
 // (every level the game can load, and the training room: the bite scenario walks them all, so a new
 // level is checked without being named here)
 const { LEVELS } = await imp('src/levels/index.js');
@@ -176,14 +177,14 @@ function wyrm() {
 const S = {
   // ---------------------------------------------------------------- the sets list their breakables
   sets() {
-    for (const [name, make, kinds] of [['forest', createForest, ['tree', 'deadTree', 'stone', 'boulder', 'flagstone', 'bone']], ['courtyard', createCourtyard, ['pillar', 'lantern']], ['throne', createThroneHall, ['shard', 'slab', 'hover', 'swords', 'banner', 'cairn', 'cart']], ['ring a', ringSet('a'), ['tile', 'post', 'butte', 'butteTop', 'banner', 'mud', 'hoodoo']], ['ring b', ringSet('b'), ['tile', 'post', 'butte', 'butteTop', 'terrace', 'banner']], ['ring c', ringSet('c'), ['tile', 'post', 'butte', 'butteTop', 'spire', 'cairn']]]) {
+    for (const [name, make, kinds] of [['forest', createForest, ['tree', 'deadTree', 'stone', 'boulder', 'flagstone', 'bone']], ['courtyard', createCourtyard, ['pillar', 'lantern']], ['throne', createThroneHall, ['shard', 'slab', 'hover', 'swords', 'banner', 'cairn', 'cart']], ['ring a', ringSet('a'), ['tile', 'post', 'butte', 'butteTop', 'banner', 'mud', 'hoodoo']], ['ring b', ringSet('b'), ['tile', 'post', 'butte', 'butteTop', 'terrace', 'banner']], ['ring c', ringSet('c'), ['tile', 'post', 'butte', 'butteTop', 'spire', 'cairn']], ['grove', createWindlessGrove, ['bamboo', 'graveSword', 'paving', 'flagstone', 'stele', 'lantern', 'boulder', 'post']]]) {
       const { D, set, colliders, U } = build(make);
       const L = D.list;
       // (Cinderwood: 664 since every tree of the wall and the landmarks break, 2026-11-16; 183 on 2026-11-15,
       // 80 before. The duelists' arenas break everything but their landmarks since 2026-11-16: the
       // courtyard 78 → 456 (293 of them its floor's slabs), the crater 36 → 222 (105 of its floor's plates); 255 on 2026-11-22, its felled trunks
       // swapped for the challengers' graves, banners and carts round it)
-      const [lo, hi] = { forest: [20, 760], courtyard: [380, 520], throne: [180, 280], 'ring a': [1, 5000], 'ring b': [1, 5000], 'ring c': [1, 5000], terrace: [300, 520] }[name];
+      const [lo, hi] = { forest: [20, 760], courtyard: [380, 520], throne: [180, 280], 'ring a': [1, 5000], 'ring b': [1, 5000], 'ring c': [1, 5000], terrace: [300, 520], grove: [420, 620] }[name];
       assert(L.length >= lo && L.length <= hi, `${name}: ${L.length} breakables (${lo}..${hi})`);
       for (const k of kinds) assert(L.some((b) => b.kind === k), `${name}: has a breakable ${k}`);
       if (name === 'forest') {
