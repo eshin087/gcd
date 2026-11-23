@@ -4284,7 +4284,7 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   three bodies behind `?sheathLook=a|b|c`, the cut behind `?drawCut=a|b`. The owner's picks (2026-11-22,
   from the sheets: "keep the recommended"): `a` for the body, the cut and the grove's light; the others
   stay behind their switches. A fourth body, `d` the Wanderer, was added the same day at the owner's ask
-  (an option, not the pick).
+  and then picked over `a`: he ships as the Wanderer.
 
 ## ADR-146 — One Breath: the first fixed reward, on the smallest store the technique system can read (2026-11-22)
 

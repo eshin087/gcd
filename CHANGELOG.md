@@ -19,8 +19,8 @@ Sixty-four pieces of work since 0.4.0:
   hero learns a draw-slash: guard, then hold heavy (on touch: slide from block onto heavy); release to cut
   five metres in a blink; released just before a foe's white or heavy blow lands, it beats the blow aside.
   The engine gains optional beat fields (`draw`, `stopOn`, a move's `recoverOpen`) and takeHit's
-  `breaksGuard`; the world's `light` pieces. The owner picked the recommended body, cut and light;
-  the other options stay behind `?sheathLook=`, `?drawCut=`, `?grove=`. `tests/integration/sheath.mjs`.
+  `breaksGuard`; the world's `light` pieces. He ships as the Wanderer (a slighter man in a faded indigo
+  robe, a long sand scarf, dark hair in a high tail), the owner's pick of four bodies; the other options stay behind `?sheathLook=`, `?drawCut=`, `?grove=`. `tests/integration/sheath.mjs`.
 - **Cuts land with weight: the hit printed where it lands, the boss's body answers** (2026-11-22, ADR-149).
   *Added:* four new pieces on every cut that lands, each behind its own switch ("i want the hits to
   look realistic where it lands and show some kind of ascii animation to show the impact"). On a
