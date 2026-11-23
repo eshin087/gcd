@@ -134,11 +134,11 @@ export const TUNING = {
     // black pearl, the Pearl): it asks more instead, 15 % of its cues a dodge against phase 2's 8 %. The
     // margins as Shen Hui's: about 8 % under the worst seed's ramp, 4 % under the mean's, 8 % under the
     // slowest seed's rate, half a second over the longest gap.
-    // (the finished level, the same five seeds: P1 65.2 - 69.0 (66.8), P2 82.0 - 86.0 (85.0), P3 76.9 -
-    // 87.4 (81.9); P3 / P2 0.90 - 1.07 per seed, 0.96 in the mean, 0.935 on one three-seed run; longest
-    // gap 4.10 / 2.86 / 3.44 s; 0 conflicts. Phase 3's floors widened to that: its ramp is in what it
-    // asks, not its rate)
-    meter: { ramp: [1, 1.08, 0.84], rampMean: [1, 1.22, 0.9], minRate: [58, 74, 70], maxGap: [4.3, 3.4, 3.8] },
+    // (2026-11-22, bare-handed: Tian Lei's strike builders, the drive, Fox Descending, Pearl Rain; the same
+    // five seeds x 120 s: P1 65.3 - 71.6 (68.3), P2 76.7 - 83.4 (80.2), P3 75.9 - 82.0 (79.3); P2 / P1 at
+    // least 1.10 per seed, 1.175 in the mean; P3 / P2 0.93 - 1.06 per seed, 0.99 in the mean; the longest
+    // gap 3.42 / 3.34 / 3.45 s; 0 conflicts; a dodge in 11 / 12 / 17 % of the cues. The margins as before)
+    meter: { ramp: [1, 1.01, 0.86], rampMean: [1, 1.13, 0.95], minRate: [60, 70, 70], maxGap: [3.9, 3.8, 4.0] },
   },
   // a hero drinking a flask: no gap, and the moves that close distance are favoured × `weight`
   punish: { weight: 4 },
