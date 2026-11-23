@@ -657,6 +657,20 @@ export class WokenOne extends Duelist {
     return out;
   }
 
+  /**
+   * The fairness guard on a thing he throws (brain.fairDelay): `flight` s from now it would meet the hero
+   * needing the answer `tell` asks. Returns the s it should hang before it flies (0: now), or -1: no wait
+   * clears it, it goes uncued and harmless (the caller marks it done). Counted in brain.stats.
+   */
+  fairThrow(flight, tell, source) {
+    const br = this.brain;
+    if (!br?.fairDelay || !Number.isFinite(flight)) return 0;
+    const w = br.fairDelay(Math.max(0, flight), tell, this.T.pressure?.guard?.maxDelay ?? 0.6, source);
+    if (w > 0) br.stats.delays++;
+    else if (w < 0) br.stats.fizzles++;
+    return w;
+  }
+
   /** The right / left hand as drawn (a muzzle, a bolt's start; fx). */
   handPoint(left, out) {
     const h = left ? this._handL : this._hand;

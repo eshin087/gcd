@@ -81,14 +81,14 @@ export const TUNING = {
     backstep: { dist: 2.0, time: 0.34 },
     strafeSwitch: [0.9, 2.0],
   },
-  idleGap: [[0.12, 0.32], [0.06, 0.16], [0.04, 0.13]],
+  idleGap: [[0.12, 0.32], [0.06, 0.16], [0.03, 0.1]],
   openingGap: [[0.14, 0.4], [0.1, 0.32], [0.08, 0.26]],
-  chain: [0.55, 0.65, 0.7],
+  chain: [0.55, 0.65, 0.75],
   // the director (duelist/brain.js header, director.js): he throws things, so guard.sep is 0.4 (the Lord's
   // and Tian Lei's)
   pressure: {
     chainDepth: [4, 5, 6],
-    chainRest: [[0.45, 0.75], [0.3, 0.5], [0.25, 0.45]],
+    chainRest: [[0.45, 0.75], [0.3, 0.5], [0.2, 0.35]],
     linkCut: 0.5,
     chainCut: 0.5,
     near: 3.3, far: 6, front: 0.9, behind: 2.2, away: 1.2,
@@ -102,8 +102,13 @@ export const TUNING = {
     mixed: 0.1,
     holdGap: 5,
     guard: { sep: 0.4, margin: 0.06, maxHold: 0.5, maxDelay: 0.9, horizon: 0.8, pad: 0.18 },
-    // what tests/integration/woke.mjs PACE asserts (filled from the measured numbers: see COMBAT.md)
-    meter: { ramp: [1, 0.95, 0.95], rampMean: [1, 1.0, 1.0], minRate: [40, 45, 45], maxGap: [4.5, 4.5, 4.5] },
+    // what tests/integration/woke.mjs PACE asserts (measured 2026-11-22, three seeds 4242 7 99 x 60 s a phase,
+    // the WORST seed with a margin): cues a minute P1 68.5 / 71.2 / 74.3, P2 90.8 / 96.3 / 102.5, P3 79.3 / 84.9 /
+    // 89.5 (min / mean / max); longest gap 2.78 / 2.63 / 2.55 s; dodge 5 / 5 / 16 %; 0 conflicts; the fire field's
+    // peak 199 / 482 / 953 blobs. Phase 3 reads fewer cues than phase 2 because each of Iron Rain's eleven shots
+    // is a cue of its own (the stream is one guard in the ledger): phase 3 asks three times the dodges and
+    // leaves the floor; P3 >= 0.82 x P2 on each seed, 0.85 in the mean
+    meter: { ramp: [1, 1.15, 0.82], rampMean: [1, 1.25, 0.85], minRate: [62, 82, 72], maxGap: [3.4, 3.3, 3.3] },
   },
   punish: { weight: 4 },
 

@@ -183,11 +183,14 @@ export class SourceMoves {
       z = d.position.z;
     }
     const dx = p.x - x, dz = p.z - z, l = Math.hypot(dx, dz) || 1;
-    const sh = d.fx.throwShot?.({
+    // (the fairness guard: it hangs a moment in his palm's air, or goes uncued and harmless)
+    const w = d.fairThrow(Math.max(0, l - C.radius - 0.45) / C.speed, TELL.BLUE, a?.name ?? 'pushingHands');
+    const sh = d.fx.throwShot?.({ delay: w > 0 ? w : 0,
       kind: 'blast', x, y: clamp(y, 1.0, 1.4), z, dx: dx / l, dz: dz / l, speed: C.speed, radius: C.radius, size: C.size, range: C.range,
       tell: TELL.BLUE, damage: D.damage ?? 16, knockback: 1.4, attack: a?.name ?? 'pushingHands', returnable: true, hitKind: 'thrown',
     });
     if (sh) {
+      if (w < 0) sh.done = true;
       sh.bolt = true;
       d.fx.muzzle?.(x, y, z, dx / l, dz / l, 0.7, 3);
     }

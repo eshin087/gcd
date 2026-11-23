@@ -130,11 +130,14 @@ export class IronMoves {
     const dist = Math.hypot(p.x - x, p.z - z), lead = Math.min(0.3, dist / C.speed) * 0.5;
     const tx = p.x + fin(v?.x) * lead, tz = p.z + fin(v?.z) * lead;
     const dx = tx - x, dz = tz - z, l = Math.hypot(dx, dz) || 1;
-    const s = d.fx.throwShot?.({
+    // (the fairness guard: it hangs a moment at the muzzle, or goes uncued and harmless)
+    const w = d.fairThrow(Math.max(0, dist - C.radius - 0.45) / C.speed, tell, a?.name ?? 'shot');
+    const s = d.fx.throwShot?.({ delay: w > 0 ? w : 0,
       kind: 'blast', x, y: Math.max(0.9, Math.min(1.4, y)), z, dx: dx / l, dz: dz / l, speed: C.speed, radius: C.radius, size: C.size, range: C.range,
       tell, damage, knockback: heavy ? 1.6 : 0.4, attack: a?.name ?? (heavy ? 'twoThunders' : 'ironRain'), returnable: heavy, hitKind: 'shot',
     });
     if (s) {
+      if (w < 0) s.done = true;
       s.iron = true;
       s.heavy = heavy;
       if (this.rain && !heavy) this.rain.shots++;
