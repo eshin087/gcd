@@ -29,7 +29,7 @@ export const RELEASES = [
         date: '2026-11-22',
         title: 'The Sheathed, easy to see',
         notes: [
-          'Lu Wusheng is now drawn in the same ink-line art as your hero, lit so he stands out from the grove floor: his robe, trousers, scarf, hair and face each read as their own shape.',
+          'Lu Wusheng is now printed in digits of his own colours, lit and outlined so he stands out from the grove floor: an indigo robe, grey trousers and a sand scarf.',
           'He looks more like a wanderer: a long loose robe over wide trousers, a long scarf, a high tail, and a torn strip of cloth tied to his scabbard that trails as he moves and snaps when he draws.',
           'He moves like one: a quiet stance with his hand at his sash, a low run with the sword held back, and a sudden turn into the draw.',
           'New lines and move names for a man who has sworn not to draw.',
