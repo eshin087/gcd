@@ -18,7 +18,8 @@ Seventy-four pieces of work since 0.4.0:
   reward yet. Look options for the owner: `?halLook=a|b|c`, `?glare=a|b|c`, `?city=a|b|c`. *Changed (ADR-164):*
   his cape and colours read at game size: from the front a wide red cape frames him (it hung hidden behind
   him), a clean red inside and out, a brighter blue suit, a gold belt that prints gold; it billows while he
-  hovers and trails long in a pass; `?halCape=0|1|2|3` steps back to how he was first built. *Fixed:* a blow at
+  hovers and trails long in a pass (the owner's pick of four steps); `?halCape=0|1|2|3` steps back to how he
+  was first built. *Fixed:* a blow at
   a raised piece's own height reaches it (a tower's top, a sign hung on a wall).
 - **Tian Lei's attacks move naturally, and he stops punching the air** (2026-11-23, ADR-162). *Fixed:* his feet no longer jump or slide while he
   strikes (a planted foot snapped up to 0.7 m in a frame at the blows of his strings, and swivelled when he
