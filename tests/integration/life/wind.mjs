@@ -1,7 +1,11 @@
 // The living world's 'wind' piece: its scenarios (tests/integration/life.mjs runs them; T is its toolbox).
 // One scenario per rule the piece must keep. Run: node tests/integration/life.mjs . wind
 
-const STREAK_MAX = 200; // the wind's own letters in fx.alpha (raised from 80 in the visibility pass)
+// the wisps' letters, all in the wind's own batch (letterBatch.js): at most max clumps x per[1] letters
+const wispMax = (w) => {
+  const W = w.life.wind.T.wisps;
+  return W ? Math.round(W.max * Math.max(0.3, Math.min(1, w.life.quality))) * W.per[1] : 0;
+};
 
 /** Clear the level's own schedule so only the fronts a scenario sends are in the air. */
 const quiet = (w) => {
@@ -270,7 +274,8 @@ export default {
     T.assert(w.U.uWindFronts.value.every((v) => Number.isFinite(v.x + v.y + v.z + v.w)) && Number.isFinite(w.U.uWind.value.x + w.U.uWind.value.z), 'the uniforms stay finite');
   },
 
-  /** The streaks stay inside the budget on every level, even with fronts sent back to back, and fewer on the phone. */
+  /** The wisps stay inside their own batch's budget on every level, even with fronts sent back to back;
+   *  nothing of the wind goes into the shared pools; fewer on the phone. */
   budget(T) {
     for (const id of T.LEVEL_IDS) {
       const off = T.build(id, 'off');
@@ -281,17 +286,15 @@ export default {
         off.step(1);
         on.step(1);
         peak = Math.max(peak, on.counts().alpha - off.counts().alpha);
-        const t = on.life.wind._t;
-        peakAlive = Math.max(peakAlive, on.life.wind._streakDie.reduce((n, d) => n + (d > t ? 1 : 0), 0));
+        peakAlive = Math.max(peakAlive, on.counts().own);
       }
-      const c = on.counts();
-      T.assert(peakAlive <= STREAK_MAX && peak <= STREAK_MAX + 25, `${id}: streaks inside the budget (${peakAlive} alive at most, alpha +${peak} over life off; <= ${STREAK_MAX})`);
+      const c = on.counts(), max = wispMax(on);
+      T.assert(peakAlive <= max && peak <= 25, `${id}: wisps inside the budget (${peakAlive} letters at most, <= ${max}; alpha +${peak} over life off)`);
       T.assert(c.add === off.counts().add || Math.abs(c.add - off.counts().add) < 40, `${id}: nothing of the wind in fx.add`);
-      T.assert(c.random === 0 && c.own === 0, `${id}: no Math.random, no pool of its own`);
+      T.assert(c.random === 0 && c.pools <= 1, `${id}: no Math.random, one pool of its own at most (${c.pools})`);
     }
     const hi = T.build('cinderwood', 'wind', { quality: 1 });
     const lo = T.build('cinderwood', 'wind', { quality: 0.5 });
-    let a = 0, b = 0;
     for (let i = 0; i < 20; i++) {
       if (i % 3 === 0) {
         hi.life.wind.front({ strength: 1, from: 15 });
@@ -300,9 +303,56 @@ export default {
       hi.step(1);
       lo.step(1);
     }
-    a = hi.counts().spawned.alpha;
-    b = lo.counts().spawned.alpha;
-    T.assert(b < a, `the phone gets fewer streaks (${b} spawns at quality 0.5, ${a} at 1)`);
+    const a = hi.life.wind.wisped, b = lo.life.wind.wisped;
+    T.assert(b < a, `the phone gets fewer wisps (${b} born at quality 0.5, ${a} at 1)`);
+  },
+
+  /** The wisps: a few in the breeze, more where a front passes; each a clump of many letters close
+   *  together, carried downwind; none on the hero; none in the grove; none with the piece off. */
+  wisps(T) {
+    const w = T.build('cinderwood', 'wind');
+    w.step(1);
+    quiet(w);
+    const W = w.life.wind;
+    W.T = { ...W.T, dir: 0, wander: 0 };
+    w.step(20);
+    const calm = W.wisped;
+    const live = () => W._wc.filter((c) => c.on);
+    T.assert(calm >= 3 && calm <= 40, `the breeze alone: a few wisps in 20 s (${calm})`);
+    const x0 = live().map((c) => [c, c.x]);
+    w.step(1);
+    const moved = x0.filter(([c]) => c.on).map(([c, x]) => c.x - x);
+    T.assert(moved.length > 0 && moved.every((d) => d > 0.3), `a wisp rides the air downwind (${moved.map((d) => d.toFixed(2)).join(' ')} m in 1 s)`);
+    // the letters of a clump lie close together and along the air (a thin drift, not a scatter)
+    const b = W._wb, P = b.iPos.array;
+    T.assert(b.count > 30, `its letters are many (${b.count} in view)`);
+    let far = 0;
+    for (let i = 0; i < b.count; i++) {
+      const x = P[i * 3], z = P[i * 3 + 2];
+      const near = live().some((c) => Math.hypot(x - c.x, z - c.z) < c.len * 2.5 + 1.5);
+      if (!near) far++;
+      if (!Number.isFinite(x + z + P[i * 3 + 1])) far += 1000;
+    }
+    T.assert(far === 0, `every letter belongs to a clump (${far} strays)`);
+    // a front: more are born while it crosses the view
+    const n0 = W.wisped;
+    W.front({ strength: 1.2, from: 20, dirX: 1, dirZ: 0 });
+    w.step(5);
+    const gust = W.wisped - n0;
+    T.assert(gust > (calm / 20) * 5 * 1.5, `a front brings more (${gust} in 5 s against ${((calm / 20) * 5).toFixed(1)} in the breeze)`);
+    // none on the hero
+    const h = w.life.hero;
+    let onHero = 0;
+    for (let i = 0; i < b.count; i++) if (Math.hypot(P[i * 3] - h.x, P[i * 3 + 2] - h.z) < 0.5) onHero++;
+    T.assert(onHero === 0, `no letter on the hero (${onHero})`);
+    // the grove: none
+    const g = T.build('grove', 'wind');
+    g.step(20);
+    T.assert(g.life.wind.wisped === 0 && g.counts().own === 0, 'grove: no wisp at all');
+    // off: gone at once
+    T.setLife('off');
+    w.step(0.2);
+    T.assert(W._wb.count === 0 && live().length === 0, 'off: no wisp left');
   },
 
   /** life.k scales the wind; the weather's windK multiplies in. */
