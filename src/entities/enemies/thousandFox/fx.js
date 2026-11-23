@@ -1,6 +1,7 @@
 import { DuelFx, K_STEEL, K_VOID, K_SMOKE, K_FIRE } from '../duelist/fx.js';
 import { FIRE_PALETTES } from '../../../render/firePalettes.js';
 import { lookOf } from '../duelist/lookSwitch.js';
+import { TELL } from '../../../combat/rules.js';
 
 // Wen Yao's effects (ADR-147; STYLE.md "The fox's effects"). All of it is heat in the fire field (small
 // letters; many small cool blobs, at least 0.7 m up, never one big hot one) and glyph particles of one
@@ -15,22 +16,23 @@ import { lookOf } from '../duelist/lookSwitch.js';
 //
 // THE SURFACE (fox.js, clones.js and pearl.js call these; positions are world metres; a method with `dt`
 // is called every frame while its thing lasts, the others once). The names and arguments are fixed.
-//   pearlCharge(x, y, z, u, dt)           the Pearl over the blade's tip, u 0..1 through the charge
+//   pearlCharge(x, y, z, u, dt)           the Pearl in his open lead palm, u 0..1 through the charge
 //   pearlThread(ax, ay, az, bx, by, bz, dt)   a crisp thread from a self's hand (a) to the Pearl (b)
 //   pearlFly(x, y, z, dt)                 a batted pearl in flight
 //   pearlMark(x, z, r, k, dt)             the ground it will burst on heating, k 0..1 to the burst
-//   pearlBurst(x, z, r)                   it bursts (once)
+//   pearlBurst(x, z, r)                   it bursts (once; driven by his palm: a blast along his line first)
 //   pearlFizzle(x, y, z)                  it comes apart (in his hand, or uncued in the air)
 //   greatPearl(x, y, z, u, dt)            the Moon-Swallowing Pearl going dark over his head
 //   greatBurst(x, z, r)                   where he lands with it
 //   cloneSpawn(x, z)                      a paper self tears free here
 //   clonePop(x, y, z, by)                 a paper self pops (pale one-cell paper slips, a little smoke)
 //   cloneBurn(x, y, z, tx, ty, tz, k)     phase 3's change: a self burns up and streams into him
-//   mantle(d, dt, k)                      the Fox-Fire Mantle, k 0..1 as it grows in
+//   mantle(d, dt, k)                      the nine-tailed fox spirit, k 0..1 as it grows in (d.tails tails)
 //   tailSweep(x, z, r)                    Burning Brush's tail goes round (once)
 //   pounceLand(x, z, r)                   the pounce lands (once)
-// Also his: phaseBurst(3, x, z) (the mantle's change: a front of foxfire and a column of it, not the Ash
-// Disciple's ash on the wind), update (the tail's sweep and the column run on, the kept lights go out).
+// Also his: phaseBurst(3, x, z) (the change: a roar of foxfire, not the Ash Disciple's ash on the wind),
+// sweep (his bare hands: a fist's or a foot's short trail, not a blade's arc), update (the tails' sweep
+// and the column run on, the kept lights go out).
 //
 // COST (the fire field holds 6000 blobs; his phase 3 stays under ~1500): the mantle ~90 alive, a thread
 // one blob per letter cell it crosses, a pearl in flight ~25, a burst ~150 - 250 (its shock front), a
@@ -70,6 +72,7 @@ const SLIPS = "--=~'"; // one-cell paper slips (one char picked per slip, then i
 const SPECK = ".,:'"; // the hazard's ground specks (one char per point: a fixed pick, so no re-roll)
 // the brush tail: a short chain from his hips (nodes), its profile (blob size per node), the segment
 const TAIL_N = 7;
+const TAILS = 9; // the most tails the fox spirit grows (TUNING.mantle.tails)
 const TAIL_SIZE = [0.26, 0.38, 0.5, 0.6, 0.64, 0.58, 0.42];
 const TAIL_SEG = 0.26;
 
@@ -90,7 +93,8 @@ export class FoxFx extends DuelFx {
     this._tb = { x: 0, y: 0, z: 0 }; // _toCam's result
     this._q = d._v.clone(); // scratch for drawnPoint
     this._lights = new Map(); // key -> { L, t }: lights kept alive by being asked for every frame
-    this._tail = new Float32Array(TAIL_N * 3);
+    this._tail = new Float32Array(TAILS * TAIL_N * 3);
+    this._tailN = 0;
     this._tailT = -1; // the clock of the tail's last frame (a gap: it starts again where it hangs)
     this._chargeAcc2 = 0;
     this._flyAcc = 0;
@@ -233,47 +237,64 @@ export class FoxFx extends DuelFx {
 
   // ---------------------------------------------------------------- the Pearl
   /**
-   * Every frame of the charge: the Pearl over the blade's tip (pulled toward the camera, so the blade
-   * it sits on does not dim it). A small dense ball of many small blobs round a white-hot point, two
-   * arms of heat that wind inward (fixed points on a spiral that turns: the arms run in), motes drawn
-   * in from round it; it grows with `u`. ~30 blobs.
+   * Every frame of the charge: the Pearl shaped in his open lead palm (fox.js palmPoint; pulled toward
+   * the camera, so the hand it sits in does not dim it). A dense SPINNING sphere of foxfire: points on
+   * its surface turning round a tilted axis (they wrap round its rim: it spins), a hot core inside, a
+   * crisp steel point at its heart; wind spiralling round it (crisp arcs on the letter grid that turn
+   * fast round it and tighten as it fills); motes drawn in. It grows with `u`. ~45 blobs a frame.
    */
   pearlCharge(x, y, z, u, dt) {
     if (!this.fire || !Number.isFinite(x + y + z + u) || !(dt > 0)) return;
     u = Math.max(0, Math.min(1, u));
-    const P = this._toCamera(x, y, z), px = P.x, py = P.y, pz = P.z, A = this._axes(), F = this.FOX;
-    const t = this.game.time ?? 0, r = 0.08 + 0.16 * u;
+    const P = this._toCamera(x, y, z), px = P.x, py = P.y, pz = P.z, A = this._axes(), B = this._toCam(), F = this.FOX;
+    const t = this.game.time ?? 0, r = 0.12 + 0.2 * u;
     const life = this._frame();
     if (life > 0) {
-      this._blob(px, py, pz, 0, 0, 0, life, 0.24 + 0.16 * u, 0.24 + 0.16 * u, 0.7 + 0.25 * u, 0.7 + 0.25 * u, F);
-      for (let i = 0; i < 5; i++) {
-        const a = t * 4 + (i / 5) * TAU, ca = Math.cos(a) * r * 0.6, sa = Math.sin(a) * r * 0.6;
-        this._dot(px + A.rx * ca + A.ux * sa, py + A.ry * ca + A.uy * sa, pz + A.rz * ca + A.uz * sa, 0.2 + 0.1 * u, 0.36 + 0.14 * u, F);
+      // the core: dense, jade digits with a mint heart (never a white disc: the heat is spread on many)
+      this._blob(px, py, pz, 0, 0, 0, life, r * 1.4, r * 1.4, 0.66 + 0.24 * u, 0.66 + 0.24 * u, F);
+      // its surface: three bands of points turning round an axis tilted toward the camera; a point on
+      // the far side is drawn dimmer (the sphere's own body hides it)
+      const spin = t * (7 + 6 * u), tilt = 0.5;
+      for (let band = 0; band < 3; band++) {
+        const lat = (band - 1) * 0.62, cl = Math.cos(lat), sl = Math.sin(lat), m = band === 1 ? 7 : 5;
+        for (let i = 0; i < m; i++) {
+          const lon = spin + (i / m) * TAU + band * 0.7;
+          // a unit sphere point (axis = the screen's up, tipped toward the camera by `tilt`)
+          const sx = Math.cos(lon) * cl, sz = Math.sin(lon) * cl, sy = sl;
+          const uy = sy * Math.cos(tilt) - sz * Math.sin(tilt), uz = sy * Math.sin(tilt) + sz * Math.cos(tilt);
+          const front = 0.55 + 0.45 * uz;
+          const ox = sx * r, oy = uy * r, oz = uz * r;
+          this._dot(px + A.rx * ox + A.ux * oy + B.x * oz, py + A.ry * ox + A.uy * oy + B.y * oz, pz + A.rz * ox + A.uz * oy + B.z * oz, 0.16 + 0.08 * u, (0.36 + 0.24 * u) * front, F);
+        }
       }
-      // the heart: a crisp point (steel: a white digit when it is hot)
-      this._dot(px, py, pz, 0.1, 0.45 + 0.3 * u, K_STEEL);
-      // the two arms, winding in
-      const reach = 0.3 + 0.5 * u, hk = 0.55 + 0.45 * u;
-      for (let arm = 0; arm < 2; arm++) for (let j = 1; j <= 7; j++) {
-        const s = j / 7, a = t * 6.5 + arm * Math.PI + s * 3.4, rr = r + s * reach;
-        const ca = Math.cos(a) * rr, sa = Math.sin(a) * rr;
-        this._dot(px + A.rx * ca + A.ux * sa, py + A.ry * ca + A.uy * sa, pz + A.rz * ca + A.uz * sa, 0.22 + 0.08 * (1 - s), (0.78 - 0.36 * s) * hk, F);
+      // the wind round it: three crisp arcs turning fast, closing in as it fills
+      const W = r * (2.1 - 0.5 * u) + 0.12, hk = 0.55 + 0.3 * u;
+      for (let q = 0; q < 3; q++) {
+        const a0 = -t * (9 + 5 * u) + (q / 3) * TAU, span = 1.5;
+        let lx = 0, ly = 0;
+        for (let j = 0; j <= 4; j++) {
+          const a = a0 + (j / 4) * span, rr = W * (1 - 0.18 * (j / 4));
+          const ex = Math.cos(a) * rr, ey = Math.sin(a) * rr * 0.8;
+          if (j > 0) this._ink(px + A.rx * lx + A.ux * ly, py + A.ry * lx + A.uy * ly, pz + A.rz * lx + A.uz * ly, px + A.rx * ex + A.ux * ey, py + A.ry * ex + A.uy * ey, pz + A.rz * ex + A.uz * ey, 0, hk * (0.5 + 0.09 * j), 0, hk * (0.5 + 0.09 * (j + 1)), 1);
+          lx = ex;
+          ly = ey;
+        }
       }
     }
-    // motes drawn in from round it
-    this._chargeAcc2 += dt * (16 + 34 * u);
+    // motes drawn in from round it, turning as they come (born tangential: they curl in)
+    this._chargeAcc2 += dt * (18 + 36 * u);
     let g = 0;
     while (this._chargeAcc2 >= 1 && g++ < 6) {
       this._chargeAcc2 -= 1;
-      const a = this.kr() * TAU, R = this.krand(0.7, 1.2) * (0.7 + 0.5 * u), lf = this.krand(0.2, 0.3);
+      const a = this.kr() * TAU, R = this.krand(0.6, 1.0) * (0.7 + 0.5 * u), lf = this.krand(0.2, 0.3);
       const ca = Math.cos(a), sa = Math.sin(a);
       const dx = A.rx * ca + A.ux * sa, dy = A.ry * ca + A.uy * sa, dz = A.rz * ca + A.uz * sa;
-      this._blob(px + dx * R, py + dy * R, pz + dz * R, (-dx * R) / lf, (-dy * R) / lf, (-dz * R) / lf, lf, 0.2, 0.12, 0.28, 0.5, F);
+      const tx = -A.rx * sa + A.ux * ca, ty = -A.ry * sa + A.uy * ca, tz = -A.rz * sa + A.uz * ca, ts = (R * 0.3) / lf;
+      this._blob(px + dx * R, py + dy * R, pz + dz * R, (-dx * R) / lf + tx * ts, (-dy * R) / lf + ty * ts, (-dz * R) / lf + tz * ts, lf, 0.2, 0.12, 0.3, 0.5, F);
     }
     if (this._chargeAcc2 > 6) this._chargeAcc2 = 0;
     this._keep('pearl', px, Math.max(0.9, py), pz, 0.7 + 1.3 * u, 2.5 + 2 * u, 0.15);
   }
-
   /** Every frame of the charge, per live self: a crisp thread of steel on the letter grid from its hand
    *  to the Pearl (dim at the hand, bright at the Pearl), and two beads of foxfire running along it to
    *  the Pearl (the self feeds it). One blob per letter cell it crosses, + 2. */
@@ -281,9 +302,9 @@ export class FoxFx extends DuelFx {
     if (!this.fire || !Number.isFinite(ax + ay + az + bx + by + bz)) return;
     // (stopped short of the Pearl: five threads meeting in one cell would print a white-hot knot)
     const dx = bx - ax, dy = by - ay, dz = bz - az, l = Math.hypot(dx, dy, dz);
-    if (!(l > 0.3)) return;
-    const e = 1 - 0.22 / l;
-    this._ink(ax, ay, az, ax + dx * e, ay + dy * e, az + dz * e, 0, 0.36, 0, 0.7);
+    if (!(l > 0.6)) return;
+    const e = 1 - 0.42 / l;
+    this._ink(ax, ay, az, ax + dx * e, ay + dy * e, az + dz * e, 0, 0.34, 0, 0.58);
     const t = this.game.time ?? 0, ph = hash(Math.round(ax * 4), Math.round(az * 4));
     for (let q = 0; q < 2; q++) {
       const s = (t * 1.3 + ph + q * 0.5) % 1;
@@ -393,15 +414,45 @@ export class FoxFx extends DuelFx {
    *  ~150 - 250 blobs. */
   pearlBurst(x, z, r) {
     if (!this.fire || !Number.isFinite(x + z + r)) return;
-    const F = this.FOX;
-    this.shock(x, z, Math.max(1, r * 1.05), this._opt(1.05, 0.9, this._front, 0, false));
-    for (let i = 0; i < 22; i++) {
+    const F = this.FOX, Pd = this.d?.pearl;
+    // the drive (pearl.js drive: driven into the hero by his palm): a short blast along his line first,
+    // the ring a moment after it
+    const drive = Pd?.kind === 'drive' && !Pd.flying;
+    if (drive) this._driveBlast(x, z, r);
+    this.shock(x, z, Math.max(1, r * 1.05), this._opt(1.05, 0.9, this._front, drive ? 0.07 : 0, false));
+    // (driven: fewer, and no blinking heart: the blast is already there, and heat piled on one spot prints a white disc)
+    for (let i = 0, m = drive ? 12 : 22; i < m; i++) {
       const a = this.kr() * TAU, sp = this.krand(2, 5), up = this.krand(-0.5, 2.5);
       this._blob(x + Math.cos(a) * 0.15, this.krand(0.85, 1.2), z + Math.sin(a) * 0.15, Math.cos(a) * sp, up, Math.sin(a) * sp, this.krand(0.25, 0.4), 0.36, 0.7, 0.5, 0, F, 3.5, 1);
     }
-    for (let i = 0; i < 6; i++) this._blob(x + this.krand(-0.2, 0.2), this.krand(0.9, 1.2), z + this.krand(-0.2, 0.2), 0, this.krand(0.5, 1.5), 0, this.krand(0.14, 0.22), 0.45, 1.0, 0.45, 0, F, 2);
+    if (!drive) for (let i = 0; i < 6; i++) this._blob(x + this.krand(-0.2, 0.2), this.krand(0.9, 1.2), z + this.krand(-0.2, 0.2), 0, this.krand(0.5, 1.5), 0, this.krand(0.14, 0.22), 0.45, 1.0, 0.45, 0, F, 2);
     this._sparks(x, 1.0, z, 10, 2.5, 6);
     this._light({ x, y: 1.3, z, color: this.L.light, intensity: 3.5, radius: r + 4, life: 0.35, fade: 0.3 });
+  }
+
+  /** The drive's blast (once): heat thrown along his facing out of his palm past the contact, three
+   *  crisp streaks along the line (brightest at the far end), sparks. ~40 blobs. */
+  _driveBlast(x, z, r) {
+    const d = this.d, F = this.FOX, yaw = fin(d?.yaw, 0), fx = Math.sin(yaw), fz = Math.cos(yaw), sx = -fz, sz = fx;
+    const x0 = x - fx * 0.5, z0 = z - fz * 0.5, L = r + 0.6;
+    for (let i = 0; i < 28; i++) {
+      const sp = this.krand(5, 11), lat = this.krand(-1.6, 1.6);
+      const along = this.krand(-0.2, 0.9);
+      this._blob(x0 + fx * along + sx * this.krand(-0.2, 0.2), this.krand(0.9, 1.4), z0 + fz * along + sz * this.krand(-0.2, 0.2), fx * sp + sx * lat, this.krand(-0.3, 1.0), fz * sp + sz * lat, this.krand(0.2, 0.32), 0.34, 0.62, 0.42, 0, F, 4, 0.5);
+    }
+    for (let q = -1; q <= 1; q++) {
+      const y = 1.15 + 0.22 * q, o = 0.22 * q;
+      this._ink(x0 + sx * o, y, z0 + sz * o, x0 + fx * L + sx * o * 1.6, y + 0.05, z0 + fz * L + sz * o * 1.6, 0.15, 0.25, 0, q === 0 ? 1.05 : 0.8);
+    }
+    for (let i = 0; i < 8; i++) {
+      const sp = this.krand(4, 9), lat = this.krand(-2, 2);
+      const o = this._rec(x0, 1.15, z0, this.krand(0.25, 0.45), this.krand(0.14, 0.2), 0.04, "*'.", this.L.spark, this.L.sparkEnd);
+      o.vx = fx * sp + sx * lat;
+      o.vy = this.krand(0, 2);
+      o.vz = fz * sp + sz * lat;
+      o.drag = 3;
+      this._spawn(this.add, o);
+    }
   }
 
   /** A pearl comes apart (burst in his hand, or uncued in the air): its foxfire drifts off and dims, a
@@ -420,7 +471,7 @@ export class FoxFx extends DuelFx {
   /**
    * Every frame of the black blow's windup: the Moon-Swallowing Pearl over his head going dark. A disc
    * of dark (steel at a low heat: the engine's black charge dyes it black; pale while it is small), a
-   * corona of foxfire round it that thickens, motes of foxfire drawn in. ~40 blobs.
+   * corona of foxfire round it that thickens, motes of foxfire drawn in. ~30 blobs (it draws on the\n   * costliest frame of his fight: the engine's black charge and flare).
    */
   greatPearl(x, y, z, u, dt) {
     if (!this.fire || !Number.isFinite(x + y + z + u) || !(dt > 0)) return;
@@ -431,38 +482,35 @@ export class FoxFx extends DuelFx {
     if (life > 0) {
       // the disc: a moon going dark (pale and small at first, dark and wide at the end)
       this._blob(px, py, pz, 0, 0, 0, life, kn, kn, 1.05 - 0.45 * u, 1.05 - 0.45 * u, K_STEEL);
-      const rr = kn * 0.46, n = Math.max(10, Math.round(14 + 14 * u));
+      const rr = kn * 0.46, n = Math.max(10, Math.round(12 + 10 * u));
       for (let i = 0; i < n; i++) {
         const a = (i / n) * TAU + t * 1.5, fl = 0.7 + 0.3 * hash(i, Math.floor(t * 12));
         const ca = Math.cos(a) * rr, sa = Math.sin(a) * rr;
         this._dot(px + A.rx * ca + A.ux * sa, py + A.ry * ca + A.uy * sa, pz + A.rz * ca + A.uz * sa, 0.26, (0.32 + 0.3 * u) * fl, F);
       }
     }
-    this._greatAcc += dt * (24 + 40 * u);
+    this._greatAcc += dt * (16 + 28 * u);
     let g = 0;
     while (this._greatAcc >= 1 && g++ < 6) {
       this._greatAcc -= 1;
       const a = this.kr() * TAU, R = this.krand(1.0, 1.9) * (0.7 + 0.4 * u), lf = this.krand(0.24, 0.36);
       const ca = Math.cos(a), sa = Math.sin(a);
       const dx = A.rx * ca + A.ux * sa, dy = A.ry * ca + A.uy * sa, dz = A.rz * ca + A.uz * sa;
-      for (let j = 0; j < 2; j++) {
-        const q = R * (1 + 0.12 * j);
-        this._blob(px + dx * q, py + dy * q, pz + dz * q, (-dx * q) / lf, (-dy * q) / lf, (-dz * q) / lf, lf, 0.24, 0.14, 0.32 * (1 - 0.3 * j), 0.45, F);
-      }
+      this._blob(px + dx * R, py + dy * R, pz + dz * R, (-dx * R) / lf, (-dy * R) / lf, (-dz * R) / lf, lf, 0.26, 0.14, 0.34, 0.45, F);
     }
     if (this._greatAcc > 6) this._greatAcc = 0;
     this._keep('great', px, Math.max(1, py), pz, 1.2 + 1.6 * u, 4 + 2 * u, 0.25);
   }
 
   /** He lands with the black pearl: a strong ragged front of foxfire, a column of foxfire thrown up,
-   *  sparks, a light. ~170 blobs. */
+   *  sparks, a light. ~120 blobs. */
   greatBurst(x, z, r) {
     if (!this.fire || !Number.isFinite(x + z + r)) return;
     const F = this.FOX;
     // (no crisp ripple and a short column: it lands with the engine's black flare, the costliest frame
     // of his fight, ~1500 blobs before this)
-    this.shock(x, z, Math.max(1.5, r * 1.1), this._opt(1.6, 1, this._front, 0, false));
-    for (let i = 0; i < 20; i++) {
+    this.shock(x, z, Math.max(1.5, r * 1.05), this._opt(1.35, 0.9, this._front, 0, false));
+    for (let i = 0; i < 12; i++) {
       const a = this.kr() * TAU, rr = this.krand(0, 0.7);
       this._blob(x + Math.cos(a) * rr, this.krand(0.8, 1.3), z + Math.sin(a) * rr, Math.cos(a) * this.krand(0.3, 1.5), this.krand(3, 7), Math.sin(a) * this.krand(0.3, 1.5), this.krand(0.35, 0.65), 0.5, 0.9, 0.42, 0, F, 1.6, 1.5);
     }
@@ -498,13 +546,14 @@ export class FoxFx extends DuelFx {
   clonePop(x, y, z, by) {
     if (!Number.isFinite(x + y + z)) return;
     const Y = Math.max(0.9, y), many = by === 'pearl' || by === 'break' || by === 'all' || by === 'death' || by === 'phase';
-    const n = many ? 16 : 24;
+    // (the springboard: he springs off its hands, and it is thrown UP: a fountain of paper)
+    const up = by === 'spring', n = up ? 30 : many ? 16 : 24;
     for (let i = 0; i < n; i++) {
       // (every other slip in the additive pool: pale paper must read on the night paving at 30 m)
-      const a = this.kr() * TAU, sp = this.krand(1.8, 5.2), lit = i & 1;
+      const a = this.kr() * TAU, sp = up ? this.krand(0.4, 1.8) : this.krand(1.8, 5.2), lit = i & 1;
       const o = this._rec(x + Math.cos(a) * 0.15, Y + this.krand(-0.55, 0.55), z + Math.sin(a) * 0.15, this.krand(0.8, 1.4), this.krand(0.2, 0.27), 0.16, SLIPS, lit ? PAPER_LIT : PAPER, PAPER_END);
       o.vx = Math.cos(a) * sp;
-      o.vy = this.krand(0.8, 3.4);
+      o.vy = up ? this.krand(3, 6.5) : this.krand(0.8, 3.4);
       o.vz = Math.sin(a) * sp;
       o.drag = 2.4;
       o.gravity = -2.4; // (it settles slowly: paper, not grit)
@@ -516,19 +565,20 @@ export class FoxFx extends DuelFx {
     }
     // the burst: short pale strokes thrown out of it (torn edges), gone in a moment
     const A0 = this._axes();
-    for (let i = 0; i < 10; i++) {
-      const a = (i / 10) * TAU + this.krand(-0.25, 0.25), ca = Math.cos(a), sa = Math.sin(a), sp = this.krand(4, 7);
+    // (many at once, by his own blast or a break: no torn edges, less smoke; the paper carries it)
+    for (let i = 0, m = many ? 0 : 10; i < m; i++) {
+      const a = up ? Math.PI / 2 + this.krand(-1.0, 1.0) : (i / 10) * TAU + this.krand(-0.25, 0.25), ca = Math.cos(a), sa = Math.sin(a), sp = this.krand(4, 7) * (up ? 1.3 : 1);
       const dx = A0.rx * ca + A0.ux * sa, dy = A0.ry * ca + A0.uy * sa, dz = A0.rz * ca + A0.uz * sa;
       this._blob(x + dx * 0.2, Y + 0.1 + dy * 0.2, z + dz * 0.2, dx * sp, dy * sp, dz * sp, this.krand(0.16, 0.26), 0.26, 0.18, 0.6, 0, K_STEEL, 6);
     }
     // the tear: one crisp stroke across the chest, gone at once
     const A = this._axes(), s = this.kr() < 0.5 ? 1 : -1;
     this._ink(x - A.rx * 0.3, Y + 0.28 * s, z - A.rz * 0.3, x + A.rx * 0.3, Y - 0.28 * s, z + A.rz * 0.3, 0.13, 0.95, 0, 0.95);
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0, m = many ? 3 : 6; i < m; i++) {
       const a = this.kr() * TAU;
       this._blob(x + Math.cos(a) * 0.2, this.krand(0.8, 1.7), z + Math.sin(a) * 0.2, Math.cos(a) * 0.7, this.krand(0.2, 0.7), Math.sin(a) * 0.7, this.krand(0.5, 0.8), 0.6, 1.5, 0.58, 0, K_SMOKE, 1.5, 0.4);
     }
-    for (let i = 0; i < 5; i++) this._blob(x + this.krand(-0.2, 0.2), this.krand(1.0, 1.7), z + this.krand(-0.2, 0.2), this.krand(-0.3, 0.3), this.krand(1.5, 2.6), this.krand(-0.3, 0.3), this.krand(0.3, 0.5), 0.3, 0.15, 0.36, 0, this.FOX, 1, 0.5);
+    for (let i = 0, m = many ? 2 : 5; i < m; i++) this._blob(x + this.krand(-0.2, 0.2), this.krand(1.0, 1.7), z + this.krand(-0.2, 0.2), this.krand(-0.3, 0.3), this.krand(1.5, 2.6), this.krand(-0.3, 0.3), this.krand(0.3, 0.5), 0.3, 0.15, 0.36, 0, this.FOX, 1, 0.5);
   }
 
   /** Phase 3's change, per self (once): it burns up where it stands (foxfire climbing it, burnt slips
@@ -561,12 +611,17 @@ export class FoxFx extends DuelFx {
 
   // ---------------------------------------------------------------- the Fox-Fire Mantle
   /**
-   * Every frame of phase 3 (k 0..1 as it grows in): a fox's head and pelt of foxfire round him. Spawned
-   * BEHIND him as the camera sees him (the field's depth fade hides heat his body covers: it wreathes
-   * his outline and never covers him): a pelt of cool licks round his shoulders and back; two tongues
-   * over his head as ears (spread on screen, so they read from every side); a short muzzle over the
-   * mask along his facing; ONE brush tail on a short lagging chain from his hips (it trails his turns,
-   * sways, and swings round with Burning Brush's sweep), its tip pale. ~90 blobs alive.
+   * Every frame of phase 3 (k 0..1 as it grows in): the nine-tailed fox of folklore as a spirit of
+   * foxfire round him. Spawned BEHIND him as the camera sees him (the field's depth fade hides heat his
+   * body covers: it wreathes his outline and never covers him):
+   *   - a fox's head over his: two tall ears (spread on screen, so they read from every side), a ruff
+   *     at each cheek, a muzzle reaching out along his facing over the mask;
+   *   - a mane of cool licks round his shoulders and back (low: the ears stand clear over his head);
+   *   - `d.tails` tails (1..9: fox.js grows them as his bar runs out) fanning out behind his hips,
+   *     each a short lagging chain (a turn trails, they sway each on its own beat, the outer ones rise
+   *     higher: a fan), each with a pale tip; they swing round with Burning Brush's sweep. The more
+   *     tails, the thinner each (one blob budget for all of them).
+   * ~90 blobs alive with one tail, ~200 with nine.
    */
   mantle(d, dt, k) {
     if (!d?.position || !this.fire || !(dt > 0) || !(k > 0)) return;
@@ -579,108 +634,145 @@ export class FoxFx extends DuelFx {
     const hs = d._hs;
     if (!this._drawn(d, hs?.[0], H) || !this._drawn(d, hs?.[1], C) || !this._drawn(d, hs?.[2], Pv)) return;
     const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
+    const n = Math.max(1, Math.min(TAILS, Math.round(fin(d.tails, 1))));
     const life = this._frame();
-    // the pelt: cool licks round his shoulders and back, behind him
-    this._peltAcc += dt * 78 * k;
+    // (a black blow under way: the engine's charge and flare are the costliest frames of his fight, so the
+    // spirit holds its shape but stops shedding licks until it lands)
+    const shed = this._blackAct(d) ? 0 : 1;
+    // the mane: cool licks round his shoulders and back, behind him (widest at the shoulders; it licks
+    // out sideways and only a little up, so the ears stand clear over his head)
+    this._peltAcc += dt * 64 * k * shed;
     let g = 0;
     while (this._peltAcc >= 1 && g++ < 6) {
       this._peltAcc -= 1;
-      // (a mane: widest at the shoulders, narrowing to the hips; it licks out sideways and only a
-      // little up, so the ears stand clear over his head)
       const u = this.kr() * 0.55, s = (this.kr() < 0.5 ? -1 : 1) * this.krand(0.22, 0.6 - 0.3 * u), back = 0.45 + 0.2 * u;
       const bx = C.x + (Pv.x - C.x) * u, by = C.y + 0.18 + (Pv.y - C.y - 0.18) * u, bz = C.z + (Pv.z - C.z) * u;
       this._blob(bx + A.rx * s - B.x * back, Math.max(0.75, by + this.krand(-0.1, 0.12)), bz + A.rz * s - B.z * back, A.rx * s * 1.1, this.krand(0.2, 0.7), A.rz * s * 1.1, this.krand(0.35, 0.55), 0.56 * k + 0.12, 0.26, this.krand(0.26, 0.34) * k, 0.05, F, 1.2, 0.4);
     }
     if (this._peltAcc > 6) this._peltAcc = 0;
     if (life > 0) {
-      // the ears: two tongues standing over his head, spread on screen
+      // the fox's head over his: the ears
       for (let e = -1; e <= 1; e += 2) {
-        const b0x = H.x + A.rx * 0.12 * e - B.x * 0.2, b0y = H.y + 0.1, b0z = H.z + A.rz * 0.12 * e - B.z * 0.2;
+        const b0x = H.x + A.rx * 0.13 * e - B.x * 0.22, b0y = H.y + 0.1, b0z = H.z + A.rz * 0.13 * e - B.z * 0.22;
         const fl = 0.035 * Math.sin(t * 7 + e * 1.3);
-        const b1x = H.x + A.rx * (0.3 + fl) * e - B.x * 0.2, b1y = H.y + 0.1 + 0.62 * k, b1z = H.z + A.rz * (0.3 + fl) * e - B.z * 0.2;
+        const b1x = H.x + A.rx * (0.32 + fl) * e - B.x * 0.22, b1y = H.y + 0.1 + 0.72 * k, b1z = H.z + A.rz * (0.32 + fl) * e - B.z * 0.22;
         for (let j = 0; j < 6; j++) {
           const s = j / 5;
-          this._blob(b0x + (b1x - b0x) * s, b0y + (b1y - b0y) * s, b0z + (b1z - b0z) * s, 0, 0, 0, life, 0.28 - 0.14 * s, 0.28 - 0.14 * s, (0.85 - 0.25 * s) * k, (0.85 - 0.25 * s) * k, F);
+          this._blob(b0x + (b1x - b0x) * s, b0y + (b1y - b0y) * s, b0z + (b1z - b0z) * s, 0, 0, 0, life, 0.3 - 0.15 * s, 0.3 - 0.15 * s, (0.85 - 0.25 * s) * k, (0.85 - 0.25 * s) * k, F);
+        }
+        // the ruff at the cheek: a tuft swept back and out
+        for (let j = 0; j < 3; j++) {
+          const s = j / 2, o = 0.24 + 0.16 * s;
+          this._blob(H.x + A.rx * o * e - B.x * 0.25 - fx * 0.1 * s, H.y - 0.12 - 0.1 * s, H.z + A.rz * o * e - B.z * 0.25 - fz * 0.1 * s, 0, 0, 0, life, 0.26 - 0.06 * s, 0.26 - 0.06 * s, (0.55 - 0.15 * s) * k, (0.55 - 0.15 * s) * k, F);
         }
       }
-      // the muzzle: over the mask, along his facing, a little down
-      for (let j = 0; j < 4; j++) {
-        const s = j / 3, f = 0.1 + 0.36 * s * k;
-        this._blob(H.x + fx * f, H.y - 0.06 * s, H.z + fz * f, 0, 0, 0, life, 0.28 - 0.1 * s, 0.28 - 0.1 * s, (0.34 - 0.08 * s) * k, (0.34 - 0.08 * s) * k, F);
+      // the muzzle: over the mask, along his facing, a little down, to a point
+      for (let j = 0; j < 5; j++) {
+        const s = j / 4, f = 0.1 + 0.5 * s * k;
+        this._blob(H.x + fx * f, H.y - 0.02 - 0.1 * s, H.z + fz * f, 0, 0, 0, life, 0.3 - 0.14 * s, 0.3 - 0.14 * s, (0.4 - 0.12 * s) * k, (0.4 - 0.12 * s) * k, F);
       }
     }
     // tongues licking up off the ear tips
-    this._earAcc += dt * 18 * k;
+    this._earAcc += dt * 18 * k * shed;
     while (this._earAcc >= 1) {
       this._earAcc -= 1;
       const e = this.kr() < 0.5 ? -1 : 1;
-      this._blob(H.x + A.rx * 0.3 * e - B.x * 0.2, H.y + 0.1 + 0.62 * k, H.z + A.rz * 0.3 * e - B.z * 0.2, A.rx * 0.2 * e, this.krand(1.5, 2.5), A.rz * 0.2 * e, this.krand(0.2, 0.32), 0.24, 0.1, 0.26 * k, 0, F, 0.8, 1);
+      this._blob(H.x + A.rx * 0.32 * e - B.x * 0.22, H.y + 0.1 + 0.72 * k, H.z + A.rz * 0.32 * e - B.z * 0.22, A.rx * 0.2 * e, this.krand(1.5, 2.5), A.rz * 0.2 * e, this.krand(0.2, 0.32), 0.24, 0.1, 0.26 * k, 0, F, 0.8, 1);
     }
-    // the tail
-    this._tailFrame(d, Pv, fx, fz, dt, k, t, life);
-    this._keep('mantle', x, 1.4, z, 1.3 * k, 5.5, 0.18);
+    // the tails
+    this._tailsFrame(d, Pv, fx, fz, dt, k, t, life, n, shed);
+    this._keep('mantle', x, 1.4, z, (1.2 + 0.08 * n) * k, 5.5 + 0.2 * n, 0.18);
   }
 
-  /** The brush tail: a chain of TAIL_N nodes from his hips; each lags the one before (a turn trails),
-   *  it sways, it curls up toward its end; during the sweep it swings round with it. */
-  _tailFrame(d, Pv, fx, fz, dt, k, t, life) {
+  /** Is a black blow (the engine's charge and flare) under way in his move? */
+  _blackAct(d) {
+    const bs = d?.mode === 'act' ? d.brain?.act?.beats : null;
+    if (!bs) return false;
+    for (let i = 0; i < bs.length; i++) if (bs[i].def?.tell === TELL.BLACK && !bs[i].feint) return true;
+    return false;
+  }
+  /** The tails: `n` chains of TAIL_N nodes from his hips, fanned across his back (the outer ones lifted
+   *  higher), each lagging the node before it (a turn trails), each swaying on its own beat; during
+   *  the sweep they swing round with it. */
+  _tailsFrame(d, Pv, fx, fz, dt, k, t, life, n, shed = 1) {
     const N = this._tail, F = this.FOX;
-    // where it hangs from: the small of his back
-    let bx = -fx, bz = -fz;
-    if (this._sw.alive) {
-      // Burning Brush: it points the way the sweep is going round
-      bx = Math.sin(this._sw.a);
-      bz = Math.cos(this._sw.a);
-    }
-    const sx = -bz, sz = bx; // across it
-    const rx = Pv.x + bx * 0.22, ry = Math.max(0.8, Pv.y + 0.1), rz = Pv.z + bz * 0.22;
-    const fresh = !(this._tailT >= 0) || Math.abs(t - this._tailT) > 0.25;
+    const fresh = !(this._tailT >= 0) || Math.abs(t - this._tailT) > 0.25 || n !== this._tailN;
     this._tailT = t;
-    for (let i = 0; i < TAIL_N; i++) {
-      const th = -0.4 + 0.15 * i, len = TAIL_SEG * i * (0.55 + 0.45 * k), sw = 0.16 * Math.sin(t * 2.3 - i * 0.7) * (i / TAIL_N);
-      const tx = rx + bx * Math.cos(th) * len + sx * sw, ty = ry + Math.sin(th) * len * 0.9, tz = rz + bz * Math.cos(th) * len + sz * sw;
-      const j = i * 3;
-      if (fresh || i === 0) {
-        N[j] = tx;
-        N[j + 1] = ty;
-        N[j + 2] = tz;
-      } else {
-        const a = 1 - Math.exp(-(this._sw.alive ? 22 : 15 - 1.6 * i) * dt);
-        N[j] += (tx - N[j]) * a;
-        N[j + 1] += (ty - N[j + 1]) * a;
-        N[j + 2] += (tz - N[j + 2]) * a;
-        // (never further from the node before than a segment and a half: it lags, it does not stretch)
-        const px = N[j - 3], py = N[j - 2], pz = N[j - 1], dx = N[j] - px, dy = N[j + 1] - py, dz = N[j + 2] - pz, l = Math.hypot(dx, dy, dz), M = TAIL_SEG * 1.5;
-        if (l > M) {
-          N[j] = px + (dx / l) * M;
-          N[j + 1] = py + (dy / l) * M;
-          N[j + 2] = pz + (dz / l) * M;
+    this._tailN = n;
+    // where they hang from: the small of his back (Burning Brush: the way the sweep is going round)
+    let a0 = Math.atan2(-fx, -fz);
+    if (this._sw.alive) a0 = this._sw.a;
+    const ry = Math.max(0.8, Pv.y + 0.1);
+    // (the tails radiate from his hips over a half-wheel behind him: from out at one side, up, to out at
+    // the other, each leaning back from him; so they part from every side the camera sees them from)
+    const thin = n <= 2 ? 1 : n <= 5 ? 0.82 : 0.68, lean = n === 1 ? 0.3 : 0.95, cl = Math.cos(lean), sl = Math.sin(lean);
+    let bx = Math.sin(a0), bz = Math.cos(a0), sx = -bz, sz = bx;
+    if (n > 1 && !this._sw.alive) {
+      // (many tails fan out across the SCREEN, as the ears do: behind him and away from the camera, the
+      // half-wheel laid in the camera's plane, so the fan reads whichever way he faces)
+      const A = this._axes(), B = this._toCam();
+      const wx = bx * 0.5 - B.x, wz = bz * 0.5 - B.z, wl = Math.hypot(wx, wz) || 1;
+      bx = wx / wl;
+      bz = wz / wl;
+      const al = Math.hypot(A.rx, A.rz) || 1;
+      sx = A.rx / al;
+      sz = A.rz / al;
+    }
+    for (let q = 0; q < n; q++) {
+      const psi = n === 1 ? Math.PI / 2 : 0.3 + (Math.PI - 0.6) * (q / (n - 1));
+      // its own direction: back, and out round the half-wheel (side, up)
+      const ox = sx * Math.cos(psi) * sl, oy = Math.sin(psi) * sl, oz = sz * Math.cos(psi) * sl;
+      const dxq = bx * cl + ox, dyq = oy, dzq = bz * cl + oz;
+      const rx = Pv.x + bx * 0.2, rz = Pv.z + bz * 0.2;
+      const beat = q * 1.7, len0 = n === 1 ? 1 : 0.9;
+      for (let i = 0; i < TAIL_N; i++) {
+        // along its direction, curling up toward the tip (a brush), swaying across on its own beat
+        const len = TAIL_SEG * i * (0.55 + 0.45 * k) * len0, curl = 0.035 * i * i, sw = 0.15 * Math.sin(t * 2.3 - i * 0.7 + beat) * (i / TAIL_N);
+        const tx = rx + dxq * len + sx * sw, ty = ry + (n === 1 ? -0.12 * len : 0) + dyq * len + curl, tz = rz + dzq * len + sz * sw;
+        const j = (q * TAIL_N + i) * 3;
+        if (fresh || i === 0) {
+          N[j] = tx;
+          N[j + 1] = ty;
+          N[j + 2] = tz;
+        } else {
+          const a = 1 - Math.exp(-(this._sw.alive ? 22 : 15 - 1.6 * i - 0.3 * q) * dt);
+          N[j] += (tx - N[j]) * a;
+          N[j + 1] += (ty - N[j + 1]) * a;
+          N[j + 2] += (tz - N[j + 2]) * a;
+          // (never further from the node before than a segment and a half: it lags, it does not stretch)
+          const px = N[j - 3], py = N[j - 2], pz = N[j - 1], dx = N[j] - px, dy = N[j + 1] - py, dz = N[j + 2] - pz, l = Math.hypot(dx, dy, dz), M = TAIL_SEG * 1.5;
+          if (l > M) {
+            N[j] = px + (dx / l) * M;
+            N[j + 1] = py + (dy / l) * M;
+            N[j + 2] = pz + (dz / l) * M;
+          }
+        }
+        if (!Number.isFinite(N[j] + N[j + 1] + N[j + 2])) {
+          N[j] = tx;
+          N[j + 1] = ty;
+          N[j + 2] = tz;
         }
       }
-      if (!Number.isFinite(N[j] + N[j + 1] + N[j + 2])) {
-        N[j] = tx;
-        N[j + 1] = ty;
-        N[j + 2] = tz;
+      if (life > 0) {
+        // (with many tails the roots are left out: nine roots in one place would print a white knot)
+        for (let i = n > 5 ? 3 : n > 3 ? 2 : 1; i < TAIL_N; i++) {
+          const j = (q * TAIL_N + i) * 3, s = TAIL_SIZE[i] * (0.6 + 0.4 * k) * thin, h = (n > 3 ? 0.45 + 0.4 * (i / TAIL_N) : 0.7 + 0.12 * (i / TAIL_N)) * k * (0.5 + 0.5 * thin);
+          this._blob(N[j], Math.max(0.75, N[j + 1]), N[j + 2], 0, 0, 0, life, s, s, h, h, F);
+        }
+        // its pale tip
+        const j = (q * TAIL_N + TAIL_N - 1) * 3;
+        this._blob(N[j], Math.max(0.75, N[j + 1]), N[j + 2], 0, 0, 0, life, 0.2, 0.2, 0.55 * k, 0.55 * k, K_STEEL);
       }
     }
-    if (life > 0) {
-      for (let i = 1; i < TAIL_N; i++) {
-        const j = i * 3, s = TAIL_SIZE[i] * (0.6 + 0.4 * k);
-        this._blob(N[j], Math.max(0.75, N[j + 1]), N[j + 2], 0, 0, 0, life, s, s, (0.7 + 0.12 * (i / TAIL_N)) * k, (0.7 + 0.12 * (i / TAIL_N)) * k, F);
-      }
-      // its pale tip
-      const j = (TAIL_N - 1) * 3;
-      this._blob(N[j], Math.max(0.75, N[j + 1]), N[j + 2], 0, 0, 0, life, 0.2, 0.2, 0.55 * k, 0.55 * k, K_STEEL);
-    }
-    // the brush's licks rising off its upper half
-    this._tailAcc += dt * 22 * k;
+    // the brushes' licks rising off their upper halves (one budget for all the tails)
+    this._tailAcc += dt * (18 + 3 * n) * k * shed;
     let g = 0;
-    while (this._tailAcc >= 1 && g++ < 4) {
+    while (this._tailAcc >= 1 && g++ < 5) {
       this._tailAcc -= 1;
-      const j = (3 + Math.floor(this.kr() * (TAIL_N - 3))) * 3;
-      this._blob(N[j] + this.krand(-0.12, 0.12), Math.max(0.75, N[j + 1] + this.krand(-0.1, 0.1)), N[j + 2] + this.krand(-0.12, 0.12), 0, this.krand(1, 2), 0, this.krand(0.3, 0.5), 0.42, 0.2, 0.3 * k, 0, F, 1, 1);
+      const q = Math.floor(this.kr() * n), j = (q * TAIL_N + 3 + Math.floor(this.kr() * (TAIL_N - 3))) * 3;
+      this._blob(N[j] + this.krand(-0.12, 0.12), Math.max(0.75, N[j + 1] + this.krand(-0.1, 0.1)), N[j + 2] + this.krand(-0.12, 0.12), 0, this.krand(1, 2), 0, this.krand(0.3, 0.5), 0.4 * thin, 0.18, 0.3 * k, 0, F, 1, 1);
     }
-    if (this._tailAcc > 4) this._tailAcc = 0;
+    if (this._tailAcc > 5) this._tailAcc = 0;
   }
 
   /** Burning Brush's tail goes round (once): a front of foxfire out to its ring, and a sweep of it run
@@ -737,16 +829,25 @@ export class FoxFx extends DuelFx {
 
   // ---------------------------------------------------------------- the change
   /**
-   * The phase change lands (fox.js onImpact; his transition's ring). Phase 3, the Fox-Fire Mantle: a
-   * strong front of foxfire out to the ring (no crisp echo: at this size a steel ripple prints as an even
-   * white polygon), a column of foxfire climbing round him for
-   * a second (update), a light. Not the Ash Disciple's ash on the wind. Other phases: the duelists'.
+   * The phase change lands (fox.js onImpact; his transition's ring). Phase 3, the nine-tailed fox wakes:
+   * A ROAR OF FOXFIRE. Three ragged fronts of foxfire one after another (the roar's waves; no crisp
+   * echo: at this size a steel ripple prints as an even white polygon), a gout of foxfire thrown out of
+   * the fox's head along his facing, a column climbing round him for a second (update), sparks, a light.
+   * Not the Ash Disciple's ash on the wind. Other phases: the duelists'. ~450 blobs at its peak.
    */
   phaseBurst(n, x, z) {
     if (n !== 3) return super.phaseBurst(n, x, z);
     if (!Number.isFinite(x + z)) return;
-    const r = fin(this.d?.T?.transition?.ringRadius, 6);
+    const d = this.d, r = fin(d?.T?.transition?.ringRadius, 6), F = this.FOX;
     this.shock(x, z, r, this._opt(1.3, 1, this._front, 0, false));
+    this.shock(x, z, r * 0.75, this._opt(0.7, 0.8, this._front, 0.16, false));
+    this.shock(x, z, r * 0.5, this._opt(0.45, 0.7, this._front, 0.32, false));
+    // the roar's breath: out of the fox's head, along his facing, widening
+    const yaw = fin(d?.yaw, 0), fx = Math.sin(yaw), fz = Math.cos(yaw), sx = -fz, sz = fx, hy = Math.max(1.4, fin(d?._hs?.[0]?.y, 1.5) * 1.1);
+    for (let i = 0; i < 34; i++) {
+      const sp = this.krand(5, 10), lat = this.krand(-1, 1) * sp * 0.45;
+      this._blob(x + fx * 0.3, hy + this.krand(-0.15, 0.15), z + fz * 0.3, fx * sp + sx * lat, this.krand(-0.8, 1.2), fz * sp + sz * lat, this.krand(0.3, 0.5), 0.36, 0.9, 0.5, 0, F, 2.6, 0.8);
+    }
     const Cm = this._colm;
     Cm.alive = true;
     Cm.x = x;
@@ -755,9 +856,32 @@ export class FoxFx extends DuelFx {
     Cm.T = 1.0;
     Cm.acc = 0;
     this._sparks(x, 1.1, z, 20, 2, 7, 3);
+    this.game.world?.gust?.(x, z, 1.6, r * 2);
     this._light({ x, y: 1.5, z, color: this.L.light, intensity: 4.5, radius: r * 1.6, life: 0.7, fade: 0.6 });
   }
 
+  // ---------------------------------------------------------------- his bare hands
+  /**
+   * A blow's trail (the engine calls this through every strike: his striking limb is its "blade", root
+   * pa → a, end pb → b): the path of the fist or the foot, written on the letter grid (a short crisp
+   * streak, not a blade's arc), the air it crossed in faint pale strokes; with the mantle lit (phase 3)
+   * foxfire licks off the path instead. A kick also kicks up a little dust. ~6 - 14 blobs a frame.
+   */
+  sweep(pa, pb, a, b) {
+    if (!this.fire || !Number.isFinite(pb.x + pb.y + pb.z + b.x + b.y + b.z)) return;
+    const dx = b.x - pb.x, dy = b.y - pb.y, dz = b.z - pb.z, st = Math.hypot(dx, dy, dz);
+    if (!(st > 0.04 && st < 4)) return; // (a still limb leaves nothing; a teleport: nothing either)
+    const d = this.d, part = String(d?._part ?? ''), leg = part.startsWith('foot') || part.startsWith('knee') || part === 'feet';
+    const lit = fin(d?.mantleK, 0) > 0.3;
+    this._ink(pb.x, pb.y, pb.z, b.x, b.y, b.z, this.lrand(0.12, 0.17), 0.45, 0, 0.95, 1);
+    const n = Math.min(6, Math.max(1, Math.ceil(st / 0.12)));
+    for (let i = 1; i <= n; i++) {
+      const u = i / n, x = pb.x + dx * u, y = pb.y + dy * u, z = pb.z + dz * u;
+      if (lit) this._blob(x, Math.max(0.75, y), z, this.lrand(-0.2, 0.2), this.lrand(0.2, 0.7), this.lrand(-0.2, 0.2), this.lrand(0.16, 0.26), 0.36, 0.2, 0.42, 0, this.FOX, 1.5, 1.2);
+      else this._blob(x, y, z, 0, 0, 0, this.lrand(0.1, 0.15), 0.4, 0.34, 0.09, 0, K_STEEL);
+    }
+    if (leg && b.y < 0.7 && this.lr() < 0.35) this._blob(b.x, this.lrand(0.75, 0.9), b.z, dx * 2, this.lrand(0.2, 0.5), dz * 2, this.lrand(0.4, 0.7), 0.4, 1.0, 0.42, 0, K_SMOKE, 2.4, 0.3);
+  }
   _columnRun(dt) {
     const Cm = this._colm;
     if (!(dt > 0)) return;
