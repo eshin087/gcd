@@ -151,6 +151,7 @@ export class Litter {
         const C = this.life.world?.colliders?.circles ?? [];
         for (const c of C) {
           if (!(c.r <= W.maxR) || Math.hypot(c.x, c.z) > W.within) continue;
+          if (W.tags && !W.tags.includes(c.tag)) continue;
           for (const [lx, lz] of W.lee) {
             const px = c.x + lx * (c.r + W.gap), pz = c.z + lz * (c.r + W.gap);
             const d = Math.hypot(x - px, z - pz);
@@ -327,6 +328,8 @@ export class Litter {
     const w = this._weight(kd, x, z);
     f.pile = Math.max(f.pile, kd.base < 1 ? Math.max(0, (w - kd.base) / (1 - kd.base)) : 0);
     f.rot += K.spin > 0 ? 0.6 * Math.sin(f.ph) : 0;
+    // (a kind that lies flat, the ash, lies along the screen's horizontal, give or take `flat` rad)
+    if (K.flat > 0) f.rot = (L.rand() * 2 - 1) * K.flat;
     // (it lies as one of its ground letters)
     if (K.ground) {
       f.g = kd.lie[Math.floor(L.rand() * kd.lie.length)] ?? f.g;
@@ -548,7 +551,7 @@ export class Litter {
           else if (f.x > B.x1) x1 = B.x0 + band;
           if (f.z < B.z0) z0 = B.z1 - band;
           else if (f.z > B.z1) z1 = B.z0 + band;
-          if (this._place(this.kinds[f.k], x0, x1, z0, z1, 6)) {
+          if (this._place(this.kinds[f.k], x0, x1, z0, z1, 16)) {
             const age = f.age, last = f.last;
             this._dress(f, f.k);
             this._lie(f, this._pick.x, this._pick.z);
@@ -699,7 +702,7 @@ export class Litter {
             else x1 = B.x0 + bd;
           } else if (vz > 0) z0 = B.z1 - bd;
           else z1 = B.z0 + bd;
-          if (!this._place(this.kinds[ki], x0, x1, z0, z1, 8)) continue;
+          if (!this._place(this.kinds[ki], x0, x1, z0, z1, 16)) continue;
           this._dress(f, ki);
           this._lie(f, this._pick.x, this._pick.z);
           f.age = this.life.range(0, f.last * 0.8);

@@ -117,8 +117,8 @@ export default {
     w.step(8);
     const a1 = w.life.steps.pool.iColor.array[3];
     T.assert(w.life.steps.prints === 1 && a1 < a0, `ash: the print fills in (alpha ${a0.toFixed(2)} -> ${a1.toFixed(2)} at 8 s)`);
-    w.step(4.5);
-    T.assert(w.life.steps.prints === 0 && w.counts().own === 0, `ash: gone after ~12 s (${w.life.steps.prints})`);
+    w.step(6.5);
+    T.assert(w.life.steps.prints === 0 && w.counts().own === 0, `ash: gone after ~14 s (${w.life.steps.prints})`);
     // earth: ~5 s
     const c = T.build('cinderwood', 'steps');
     c.life.steps.step(0, 25.5, { side: -1, vx: 4.6, vz: 0 });
@@ -162,13 +162,13 @@ export default {
     // (burnCircle's jitter draws from Math.random: copy the cell over so the two start equal)
     ref.world.scorch.heat.set(sc.heat);
     ref.world.scorch.burn.set(sc.burn);
-    w.step(3);
-    ref.step(3);
+    w.step(5);
+    ref.step(5);
     T.assert(T.near(sc.heat[i], ref.world.scorch.heat[i], 1e-6) && T.near(sc.burn[i], ref.world.scorch.burn[i], 1e-6), `the heat decays as before (${sc.heat[i].toFixed(4)} vs ${ref.world.scorch.heat[i].toFixed(4)})`);
     const mid = sc.trampleAt(0, 15);
-    T.assert(mid > 0.2 && mid < 0.7, `half stood up after 3 s (${mid.toFixed(2)})`);
-    w.step(4);
-    T.assert(sc.trampleAt(0, 15) === 0 && sc.data[j * 4 + 2] === 0 && sc._tramN === 0, `stood up after ~6 s (${sc.trampleAt(0, 15)})`);
+    T.assert(mid > 0.2 && mid < 0.7, `half stood up after 5 s (${mid.toFixed(2)})`);
+    w.step(6);
+    T.assert(sc.trampleAt(0, 15) === 0 && sc.data[j * 4 + 2] === 0 && sc._tramN === 0, `stood up after ~10 s (${sc.trampleAt(0, 15)})`);
     // a heavy landing treads wider; reset clears it
     w.life.steps.step(0, 15, { heavy: true });
     T.assert(sc.trampleAt(1, 15) > 0.5, `a heavy landing treads ~1.2 m (${sc.trampleAt(1, 15).toFixed(2)} at 1 m)`);
@@ -239,9 +239,9 @@ export default {
     ob.life.steps.step(3, 3, { sprint: true });
     ob.life.steps.step(3.5, 3, { heavy: true });
     const g0 = ob.life.steps.prints;
-    T.assert(ob.counts().spawned.alpha === oa && g0 >= 2 && g0 <= 5, `obsidian: no dust, a glint or two (${g0} marks, +${ob.counts().spawned.alpha - oa} dust)`);
-    ob.step(0.32);
-    T.assert(ob.life.steps.prints === 0 && ob.counts().own === 0, `obsidian: the glint is gone in 0.32 s (${ob.life.steps.prints})`);
+    T.assert(ob.counts().spawned.alpha === oa && g0 >= 2 && g0 <= 8, `obsidian: no dust, a glint or two (${g0} marks, +${ob.counts().spawned.alpha - oa} dust)`);
+    ob.step(0.8);
+    T.assert(ob.life.steps.prints === 0 && ob.counts().own === 0, `obsidian: the glint is gone in 0.8 s (${ob.life.steps.prints})`);
     // sand: the puff goes downwind
     const w = T.build('ring', 'steps,wind');
     w.step(0.5);
@@ -264,7 +264,7 @@ export default {
 
   /** The trail through the meadow (the hero's feet, as player.js brings them down): the grass is trodden
    *  where he ran (the scorch map's blue, which the grass shader reads with the wind on or off), it
-   *  stands up again within ~6 s, and with the steps off there is no trail at all. */
+   *  stands up again within ~10 s, and with the steps off there is no trail at all. */
   trail(T) {
     const trail = (spec) => {
       const w = T.build('cinderwood', spec, { feet: true });
@@ -279,15 +279,15 @@ export default {
         if (v > 0.05) n++;
         max = Math.max(max, v);
       }
-      w.step(3);
+      w.step(5);
       const mid = sc._tramN;
-      w.step(4);
+      w.step(6);
       return { n, max, mid, end: sc._tramN };
     };
     const on = trail('steps'), both = trail('steps,wind'), off = trail('wind');
     T.assert(on.n >= 8 && on.max > 0.5, `steps on, wind off: a trail of trodden cells along the run (${on.n} of 65 probes, deepest ${on.max.toFixed(2)})`);
     T.assert(both.n >= 8, `steps and wind on: the same trail (${both.n})`);
-    T.assert(on.mid > 0 && on.end === 0, `it stands up again (${on.mid} cells still trodden 3 s after, ${on.end} at 7 s)`);
+    T.assert(on.mid > 0 && on.end === 0, `it stands up again (${on.mid} cells still trodden 5 s after, ${on.end} at 11 s)`);
     T.assert(off.n === 0 && off.max === 0, `steps off: no trail (${off.n})`);
   },
 

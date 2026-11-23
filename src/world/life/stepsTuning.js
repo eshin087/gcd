@@ -53,10 +53,11 @@ export const STEPS = freeze({
   /** the trodden grass (scorch.trample: the scorch map's blue channel) */
   trample: {
     /** s for a fully trodden blade to stand up again (linear) */
-    decay: 6,
-    /** a step's disc (m) and how deeply it treads (0..1); a sprint; a heavy landing */
-    r: 0.45, k: 0.85,
-    rSprint: 0.6, kSprint: 1,
+    decay: 10,
+    /** a step's disc (m) and how deeply it treads (0..1); a sprint; a heavy landing (a run leaves a
+     *  trail ~1.3 m wide: a narrower one is lost among the blades at the game camera) */
+    r: 0.7, k: 1,
+    rSprint: 0.85, kSprint: 1,
     rHeavy: 1.2, kHeavy: 1,
     /** at most this many cells trodden at once (the oldest stand up first when full) */
     maxCells: 2048,
@@ -94,17 +95,17 @@ export const STEPS = freeze({
     sand: {
       // dry clay and grit: a puff on every step that the wind carries off (`wind`: the share of the
       // air's velocity it takes)
-      puff: { run: 1, sprint: 2, heavy: 5, glyph: '.,:', color: [0.3, 0.24, 0.16], colorEnd: [0.13, 0.1, 0.07], y: [0.18, 0.35], size: [0.17, 0.25], sizeEnd: [0.34, 0.48], up: [0.2, 0.5], out: [0.25, 0.7], life: [0.9, 1.4], gravity: -0.2, drag: 0.9, alpha: 0.65, wind: 0.8 },
+      puff: { run: 1, sprint: 2, heavy: 5, glyph: '.,:', color: [0.55, 0.46, 0.33], colorEnd: [0.3, 0.25, 0.18], y: [0.18, 0.35], size: [0.22, 0.3], sizeEnd: [0.42, 0.56], up: [0.2, 0.5], out: [0.25, 0.7], life: [0.9, 1.4], gravity: -0.2, drag: 0.9, alpha: 0.65, wind: 0.8 },
     },
     ash: {
       // a soft grey puff every step: it hangs a moment, then sinks; and a print that fills in
       puff: { run: 2.5, sprint: 3.5, heavy: 8, glyph: '.,:', color: [0.22, 0.215, 0.21], colorEnd: [0.1, 0.098, 0.095], y: [0.2, 0.4], size: [0.2, 0.28], sizeEnd: [0.36, 0.5], up: [0.25, 0.6], out: [0.3, 0.8], life: [0.8, 1.2], gravity: -0.35, drag: 3.2, alpha: 0.7, wind: 0.3 },
-      print: { life: 12, glyph: '0', size: 0.26, stretch: 0.35, color: [0.12, 0.12, 0.125], alpha: 0.85, hold: 1.6 },
+      print: { life: 14, glyph: '0', size: 0.3, stretch: 0.35, color: [0.09, 0.09, 0.095], alpha: 0.95, hold: 2.2 },
     },
     obsidian: {
-      // no dust: a faint dim red glint, one or two letters, gone in 0.3 s
+      // no dust: a dim red glint, one or two letters, gone in under a second
       // (a mark of the prints' batch: it lies on the floor)
-      glint: { run: 1, sprint: 1.5, heavy: 3, glyph: "'", color: [0.5, 0.08, 0.05], size: 0.18, life: 0.3, alpha: 0.75, hold: 1 },
+      glint: { run: 1.5, sprint: 2, heavy: 4, glyph: "'`*", color: [1.25, 0.24, 0.09], size: 0.26, life: 0.75, alpha: 0.9, hold: 0.6 },
     },
     leaf: {
       // a fallen leaf or two flicked aside (the litter's own leaves are asked to scatter too)

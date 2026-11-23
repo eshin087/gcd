@@ -1,7 +1,7 @@
 // The living world's 'wind' piece: its scenarios (tests/integration/life.mjs runs them; T is its toolbox).
 // One scenario per rule the piece must keep. Run: node tests/integration/life.mjs . wind
 
-const STREAK_MAX = 80; // BRIEF: the wind's own letters in fx.alpha
+const STREAK_MAX = 200; // the wind's own letters in fx.alpha (raised from 80 in the visibility pass)
 
 /** Clear the level's own schedule so only the fronts a scenario sends are in the air. */
 const quiet = (w) => {

@@ -345,61 +345,82 @@ export class Wind {
     if (fire && fire.wind === this) fire.wind = null;
   }
 
-  /** A few short strokes riding each front low over the ground, round the camera's focus. */
+  /** "Wind drawn in letters": short runs of strokes riding each front low over the ground, round the
+   *  camera's focus: most along its leading edge (at its speed), the rest in its wake (slower), each
+   *  run turned to the wind's direction on screen. */
   _streaks(dt) {
     const S = this.T.streaks, L = this.life, fx = L.game?.fx?.alpha;
     if (!fx || !(S.rate > 0) || !(S.max > 0) || this._hidden) return;
     const t = this._t, die = this._streakDie, f = L.focus;
     const fxF = Number.isFinite(f.x) ? f.x : 0, fzF = Number.isFinite(f.z) ? f.z : 0;
     const rate = S.rate * L.quality * L.calm * Math.min(1.5, L.k);
+    const U = L.game?.U, R = U?.uCamRight?.value, Up = U?.uCamUp?.value;
     for (const F of this.fronts) {
       if (!F.on || F.env < 0.05) continue;
       // only while its edge is near the view
       const sF = fxF * F.nx + fzF * F.nz;
-      if (Math.abs(F.pos - sF) > 32) continue;
-      this._streakAcc += dt * rate * F.strength * F.env;
+      if (Math.abs(F.pos - sF) > 30) continue;
+      // the run's turn on screen: the wind's direction in the camera's plane
+      let rot = 0;
+      if (R && Up) {
+        const dr = F.nx * R.x + F.nz * R.z, du = F.nx * Up.x + F.nz * Up.z;
+        if (Math.abs(dr) + Math.abs(du) > 1e-4) rot = Math.atan2(du, dr);
+      }
+      this._streakAcc += dt * rate * Math.min(1.5, F.strength) * F.env;
       while (this._streakAcc >= 1) {
         this._streakAcc -= 1;
-        let slot = -1;
-        for (let i = 0; i < die.length; i++) {
-          if (die[i] <= t) {
-            slot = i;
-            break;
-          }
-        }
-        if (slot < 0) {
-          this._streakAcc = 0;
-          break;
-        }
-        // a point on the edge, in view, just behind it
-        const c = (fxF * F.nz * -1 + fzF * F.nx) + L.range(-24, 24);
-        const e = F.pos + 2.4 * Math.sin(c * 0.07 + F.phase) + 1.1 * Math.sin(c * 0.19 + F.phase * 1.7) - L.range(0, 2.5);
+        // a point in view on the edge (or in the wake behind it)
+        const onEdge = L.rand() < S.edge;
+        const c = (fxF * F.nz * -1 + fzF * F.nx) + L.range(-16, 14);
+        const back = onEdge ? L.range(0, 1.2) : L.range(1.5, F.tail * 1.2);
+        const e = F.pos + 2.4 * Math.sin(c * 0.07 + F.phase) + 1.1 * Math.sin(c * 0.19 + F.phase * 1.7) - back;
         // (x, z) from (s = e, c): s = x nx + z nz, c = nx z - nz x
         const x = e * F.nx - c * F.nz, z = e * F.nz + c * F.nx;
-        if (Math.abs(x - fxF) > 26 || Math.abs(z - fzF) > 20) continue;
+        if (Math.abs(x - fxF) > 21 || z - fzF < -12 || z - fzF > 10) continue;
         // where the front is weak (a patch between gusts) fewer ride it
         const patch = 0.62 + 0.38 * Math.sin(c * 0.11 + F.phase * 2.3);
-        if (L.rand() > patch) continue;
+        if (L.rand() > patch * patch) continue;
         // and never over the hero
         const h = L.hero;
-        if (Math.abs(x - h.x) < 1.4 && Math.abs(z - h.z) < 1.4) continue;
+        if (Math.abs(x - h.x) < 1.6 && Math.abs(z - h.z) < 1.6) continue;
         const r = this._streak, life = L.range(S.life[0], S.life[1]);
-        const v = F.speed * L.range(0.85, 1.1);
-        r.x = x;
-        r.y = L.range(0.12, 0.55);
-        r.z = z;
-        r.vx = F.nx * v;
-        r.vy = L.range(-0.05, 0.12);
-        r.vz = F.nz * v;
-        r.life = life;
-        r.size = r.sizeEnd = L.range(S.size[0], S.size[1]);
-        r.glyph = S.glyph;
-        r.color[0] = r.colorEnd[0] = S.color[0];
-        r.color[1] = r.colorEnd[1] = S.color[1];
-        r.color[2] = r.colorEnd[2] = S.color[2];
-        r.alpha = S.alpha * F.env;
-        r.rot = L.range(-0.12, 0.12);
-        if (fx.spawn(r) >= 0) die[slot] = t + life;
+        const v = F.speed * (onEdge ? L.range(0.92, 1.04) : L.range(0.55, 0.8));
+        const n = Math.round(L.range(S.run[0], S.run[1] + 0.49));
+        const size = L.range(S.size[0], S.size[1]);
+        const y = L.range(S.y[0], S.y[1]);
+        const vy = L.range(-0.04, 0.1);
+        const tone = L.range(0.85, 1.1) * F.env;
+        for (let j = 0; j < n; j++) {
+          let slot = -1;
+          for (let i = 0; i < die.length; i++) {
+            if (die[i] <= t) {
+              slot = i;
+              break;
+            }
+          }
+          if (slot < 0) {
+            this._streakAcc = 0;
+            return;
+          }
+          const off = -j * S.gap * (1 + 0.25 * L.rand());
+          r.x = x + F.nx * off;
+          r.y = y + L.range(-0.03, 0.03);
+          r.z = z + F.nz * off;
+          r.vx = F.nx * v;
+          r.vy = vy;
+          r.vz = F.nz * v;
+          // (the run's tail goes a little sooner: it reads as drawn, then wiped, along the wind)
+          r.life = life * (1 - 0.12 * j);
+          r.size = size * 0.75;
+          r.sizeEnd = size * 1.05;
+          r.glyph = S.glyph;
+          r.color[0] = r.colorEnd[0] = S.color[0] * tone;
+          r.color[1] = r.colorEnd[1] = S.color[1] * tone;
+          r.color[2] = r.colorEnd[2] = S.color[2] * tone;
+          r.alpha = S.alpha * (j === 0 ? 1 : 0.85);
+          r.rot = rot + L.range(-0.08, 0.08);
+          if (fx.spawn(r) >= 0) die[slot] = t + r.life;
+        }
       }
     }
   }
