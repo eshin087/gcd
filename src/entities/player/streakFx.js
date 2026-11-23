@@ -10,8 +10,20 @@
 //   - the WAKE: when he moves fast (a roll, a sprint, a dash) he leaves sparse copies of his own
 //     letters behind him (the afterimage's fine digits, fainter and shorter at low tiers);
 //   - at tiers 4 - 5 a few of his coat's letters LIFT OFF and trail behind him (one cell each).
+//   - the FIRE (round 2, the owner: "a cool faint fiery aura very subtle but cool"; the main read):
+//     faint heat in the fire field round him (game.fx.fire, STYLE.md "The fire field"), in the game's
+//     own small letters: many small COOL blobs (the red-stroke / dim-digit band, never the yellow or
+//     white core) rising off his shoulders, back and blade, laid a little BEHIND him as the camera
+//     sees him so it wreathes him without covering him. Tier 1 a few wisps at his back and blade;
+//     tier 3 a thin wreath round him; tier 5 a dim aura with tongues rising about a body-length, and
+//     the blade burning faintly along its swings. Two colours for the owner (STREAK_FIRE.look,
+//     `?auraFire=a|b`): (a) the field's own fire, (b) a cold steel-blue fire (the `steel` kind, dyed
+//     by a tint zone round him while a tint slot is free). Rate-born (no per-frame copies to stack in
+//     slow motion), capped per frame and under a field governor. It steps aside through the flurry
+//     and the plunge (their own look).
 // When the streak is LOST (player:streak lost >= 2) it all goes in one readable instant: the edge
-// line snaps dark and breaks into falling strokes, and his letters drop off him to the ground.
+// line snaps dark and breaks into falling strokes, his letters drop off him to the ground, and his
+// fire collapses: every blob of it still alive turns to a short puff of smoke letters at once.
 //
 // WORLD: at tier >= 2 each perfect defence (every count the streak goes up by one) is answered by
 // the ground round him for a moment: a short radial lean of the grass (world.gust: weaker than any
@@ -24,6 +36,7 @@
 // the hero's materials and the arc get exactly today's values). Its own random stream (ADR-122).
 
 import { streakTier, streakK } from '../../combat/streak.js';
+import { DIM } from './model.js';
 
 let sseed = 0x6a09e667;
 const rnd = () => (sseed = (Math.imul(sseed, 1664525) + 1013904223) >>> 0) / 4294967296;
@@ -52,6 +65,48 @@ export const STREAK_AURA = {
   cell: 0.13, // m: one letter (his afterimage's cell)
   // the hero's cold steel, a little whiter at the top tiers (no new hue per tier)
   col: [1.2, 1.75, 2.6], colTop: [1.9, 2.35, 3.0], dim: [0.42, 0.68, 1.3], end: [0.12, 0.25, 0.75], dark: [0.05, 0.07, 0.12],
+};
+
+const urlFire = (() => {
+  try {
+    const v = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('auraFire') : null;
+    return v === 'b' ? 'b' : v === 'a' ? 'a' : null;
+  } catch {
+    return null;
+  }
+})();
+
+/**
+ * The fire round him per tier (index 0 = none). `look` 'a' the field's fire, 'b' cold steel-blue.
+ *   rate   blobs / s off his body (`blade`: the share of them off the steel)
+ *   heat   each blob's heat at birth (it cools to 0): kept in the red-stroke / dim-digit band
+ *   size   m across; life [min, max] s; rise [vy min, vy max] m/s, `lift` the upward pull (gravity)
+ *   reach  'back' (tiers 1 - 2: his back half and the blade only) or 'all' (round his whole outline)
+ *   trail  blobs a swing frame along the steel while he cuts (tiers 4 - 5)
+ *   behind m the blob is laid away from the camera (it wreathes him, never covers him)
+ *   cap    blobs a frame at most; field: the field's count over which the aura thins out [from, to]
+ */
+export const STREAK_FIRE = {
+  look: urlFire ?? 'a',
+  rate: [0, 10, 16, 28, 38, 52],
+  blade: [0, 0.45, 0.35, 0.3, 0.3, 0.3],
+  heat: [0, 0.34, 0.35, 0.37, 0.39, 0.41], // (under ~0.3 the field prints nothing: fewer blobs, not cooler ones, make it faint)
+  steelHeat: 1.4, // (b): the steel kind prints dimmer and only above ~0.4: its heat this much higher
+  out: 0.2, // m a body point is pushed out sideways on the screen (the wreath stands round his outline)
+  size: [0, 0.28, 0.3, 0.33, 0.36, 0.4],
+  life: [[0, 0], [0.22, 0.36], [0.26, 0.42], [0.3, 0.5], [0.36, 0.62], [0.42, 0.8]],
+  rise: [0.5, 1.2],
+  lift: 1.3,
+  reach: [null, 'back', 'back', 'all', 'all', 'all'],
+  trail: [0, 0, 0, 0, 2, 3],
+  trailHeat: 0.24,
+  behind: 0.18,
+  cap: 8,
+  field: [3800, 5200],
+  // (b) the tint zone that dyes the steel kind round him (radii in m of the world at his depth)
+  tint: { id: 735101, rgb: [0.75, 1.35, 2.4], k: 0.95, rx: 0.55, ry: 1.25 },
+  smoke: 0.18, // the loss: every live blob of his turns to smoke this long
+  mark: 0.917, // (his blobs' drag: how the loss finds them in the field)
 };
 
 /** The world's answer per tier (0 below tier 2). */
@@ -94,6 +149,13 @@ export class StreakFx {
     this.bodyT = 1;
     this.bodyN = 0;
     this._cells = new Set();
+    this.fireAcc = 0;
+    this.fireN = 0; // blobs this frame (tests)
+    this.firePeak = 0; // the most in one frame
+    this.fireHeat = 0; // heat written this frame (tests: monotone by tier)
+    this.doused = 0;
+    this._fb = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0.3, size: 0.3, sizeEnd: 0.1, heat: 0.2, heatEnd: 0, kind: 'fire', drag: STREAK_FIRE.mark, gravity: 1 };
+    this._b0 = { x: 0, y: 0, z: 0 }; // where he stood when his body was sampled
     this._off = [];
     const ev = game?.events;
     if (ev?.on) {
@@ -170,8 +232,10 @@ export class StreakFx {
     const tLost = Math.max(this.tier, streakTier(lost));
     const wasEdge = this.edge, wasA = this.edgeA;
     this.edge = this.edgeA = this.bladeLine = this.echoes = this.echoA = 0;
+    this.fireAcc = 0;
     if (!(k > 0)) return;
     this.losses++;
+    this._douse();
     const g = this.game, P = g.player, add = g.fx?.add, A = STREAK_AURA;
     if (!add || !P) return;
     // the edge line breaks into a few strokes that fall away
@@ -211,6 +275,12 @@ export class StreakFx {
     if (now || this.bodyT >= 0.1) {
       this.bodyT = 0;
       this.bodyN = P._sampleBody() | 0;
+      const q = P.position;
+      if (q) {
+        this._b0.x = q.x;
+        this._b0.y = q.y;
+        this._b0.z = q.z;
+      }
     }
     return this.bodyN > 0 ? P._ghostPts : null;
   }
@@ -223,6 +293,8 @@ export class StreakFx {
     this.bodyT += dt;
     if (!(k > 0) || !P || this.tier <= 0) {
       this.vis = 0;
+      this.fireN = 0;
+      this.fireHeat = 0;
       this.edge = this.edgeA = this.bladeLine = this.echoes = this.echoA = 0;
       return;
     }
@@ -240,7 +312,10 @@ export class StreakFx {
     this.bladeLine = away ? 0 : A.line[t] * kk * v;
     this.echoes = Math.min(4, Math.round(A.echoes[t] * (kk >= 1.25 ? 1.5 : kk < 0.75 ? 0.5 : 1)));
     this.echoA = A.echoA[t] * kk;
+    this.fireN = 0;
+    this.fireHeat = 0;
     if (away) return;
+    this._fire(dt, t, kk);
     // the edge line on the steel (fx.bladeHalo with no halo dots)
     if (this.edge > 0.01) P.fx?.bladeHalo?.(dt, 0, P.bladeFar ?? 1, this.edge, this.edgeA, t / (A.edge.length - 1));
     // the wake: copies of his letters behind him on a fast move
@@ -319,10 +394,143 @@ export class StreakFx {
     });
   }
 
+  // ------------------------------------------------------------------ the fire
+  /** The faint fire round him this frame (tier t, strength kk). Rate-born, capped, never throws. */
+  _fire(dt, t, kk) {
+    const F = STREAK_FIRE, f = this.game.fx?.fire, P = this.game.player;
+    if (!f || typeof f.spawn !== 'function' || !P?.position) return;
+    const gov = 1 - Math.min(1, Math.max(0, ((f.count | 0) - F.field[0]) / (F.field[1] - F.field[0])));
+    if (!(gov > 0.02)) return;
+    const steel = F.look === 'b';
+    const C = this.game.camera?.matrixWorld?.elements;
+    // the camera's back axis (C[8..10] points at the viewer): his fire is laid away from it
+    const bx = C ? -C[8] * F.behind : 0, by = C ? -C[9] * F.behind : 0, bz = C ? -C[10] * F.behind : 0;
+    const v = this.vis, heat = F.heat[t] * Math.min(1.25, kk) * (0.6 + 0.4 * v) * (steel ? F.steelHeat : 1), size = F.size[t] * (0.85 + 0.15 * Math.min(1.5, kk));
+    const L = F.life[t], q = P.position;
+    this.fireAcc += dt * F.rate[t] * kk * gov * v;
+    let n = Math.min(F.cap, Math.floor(this.fireAcc));
+    this.fireAcc -= n;
+    if (this.fireAcc > 4) this.fireAcc = 4;
+    const pts = n > 0 ? this._body() : null, np = this.bodyN;
+    const e = P.rig?.sword?.matrixWorld?.elements;
+    const z0 = DIM.forte, z1 = DIM.drawnTip ?? DIM.steelTip;
+    const b = this._fb;
+    b.kind = steel ? 'steel' : 'fire';
+    const back = F.reach[t] === 'back';
+    const ox = q.x - this._b0.x, oy = q.y - this._b0.y, oz = q.z - this._b0.z;
+    while (n-- > 0) {
+      let x = NaN, y = NaN, z = NaN;
+      if (e && rnd() < F.blade[t]) {
+        const zz = z0 + rnd() * (z1 - z0);
+        x = e[8] * zz + e[12];
+        y = e[9] * zz + e[13];
+        z = e[10] * zz + e[14];
+      } else if (pts && np > 8) {
+        // a point on him (sampled up to 0.1 s ago, carried along with him), shoulders and up weighted;
+        // the back half only at tiers 1 - 2
+        for (let tries = 0; tries < 6; tries++) {
+          const j = Math.floor(rnd() * np) * 3;
+          const px = pts[j] + ox, py = pts[j + 1] + oy, pz = pts[j + 2] + oz, h = py - q.y;
+          if (h < 0.45 || (h < 0.9 && rnd() < 0.6)) continue;
+          if (back && C && (px - q.x) * C[8] + (pz - q.z) * C[10] > 0) continue;
+          // pushed out sideways ON THE SCREEN (the camera's right axis), to the side of him it is on:
+          // behind him the body would hide it, so the wreath stands just past his outline
+          const sx = C ? (px - q.x) * C[0] + (pz - q.z) * C[2] : 0, w = (sx < 0 ? -1 : 1) * F.out * (0.6 + 0.8 * rnd());
+          x = px + (C ? C[0] * w : 0);
+          y = py;
+          z = pz + (C ? C[2] * w : 0);
+          break;
+        }
+      }
+      if (!Number.isFinite(x + y + z)) continue;
+      b.x = x + bx + (rnd() - 0.5) * 0.12;
+      b.y = Math.max(0.75, y + by);
+      b.z = z + bz + (rnd() - 0.5) * 0.12;
+      b.vx = (rnd() - 0.5) * 0.3;
+      b.vy = F.rise[0] + rnd() * (F.rise[1] - F.rise[0]);
+      b.vz = (rnd() - 0.5) * 0.3;
+      b.life = L[0] + rnd() * (L[1] - L[0]);
+      b.size = size * (0.8 + 0.4 * rnd());
+      b.sizeEnd = b.size * 0.4;
+      b.heat = heat;
+      b.heatEnd = 0;
+      b.gravity = F.lift;
+      if (f.spawn(b) >= 0) {
+        this.fireN++;
+        this.fireHeat += heat;
+      }
+    }
+    // tiers 4 - 5: the blade burns faintly along its swings
+    const tr = F.trail[t], a = P.atk, st = P.state;
+    if (tr > 0 && e && a?.def && (st === 'attack' || st === 'heavy') && !a.pending && a.t >= a.def.windup - 0.04 && a.t <= a.def.windup + a.def.active + 0.08) {
+      for (let i = 0; i < tr; i++) {
+        const zz = z0 + ((i + rnd()) / tr) * (z1 - z0);
+        b.x = e[8] * zz + e[12] + bx;
+        b.y = Math.max(0.75, e[9] * zz + e[13] + by);
+        b.z = e[10] * zz + e[14] + bz;
+        b.vx = b.vz = 0;
+        b.vy = 0.3;
+        b.life = 0.22 + 0.1 * rnd();
+        b.size = size;
+        b.sizeEnd = size * 0.5;
+        b.heat = F.trailHeat * Math.min(1.25, kk) * (steel ? F.steelHeat : 1);
+        b.heatEnd = 0;
+        b.gravity = 0.6;
+        if (f.spawn(b) >= 0) {
+          this.fireN++;
+          this.fireHeat += b.heat;
+        }
+      }
+    }
+    this.firePeak = Math.max(this.firePeak, this.fireN);
+    // (b): the steel round him dyed cold blue, while a tint slot is free (the duelists' come first)
+    if (steel && typeof f.tint === 'function') this._tint(f, P);
+  }
+
+  _tint(f, P) {
+    const T = STREAK_FIRE.tint, ids = f._tintId, ts = f._tintT;
+    if (ids && ts) {
+      let free = false;
+      for (let i = 0; i < ids.length; i++) if (ids[i] === T.id || !(ts[i] > 0)) free = true;
+      if (!free) return;
+    }
+    const cam = this.game.camera, p = this.game.pipeline, m = cam?.matrixWorldInverse?.elements, pe = cam?.projectionMatrix?.elements;
+    const W = p?.width, H = p?.height, q = P.position;
+    if (!m || !pe || !(W > 8) || !(H > 8) || !q) return;
+    const x = q.x, y = q.y + 1.2, z = q.z;
+    const vx = m[0] * x + m[4] * y + m[8] * z + m[12], vy = m[1] * x + m[5] * y + m[9] * z + m[13], vz = -(m[2] * x + m[6] * y + m[10] * z + m[14]);
+    if (!(vz > 0.2) || !(pe[5] > 0)) return;
+    const ppm = (H * pe[5]) / (2 * vz), px = (((vx * pe[0]) / vz) * 0.5 + 0.5) * W, py = (((vy * pe[5]) / vz) * 0.5 + 0.5) * H;
+    if (!Number.isFinite(ppm + px + py)) return;
+    f.tint(T.id, px, py, T.rx * 2 * ppm, T.ry * 2 * ppm, T.rgb, T.k * Math.min(1, this.vis), 0, 0.06);
+  }
+
+  /** The loss: every blob of his fire still alive turns to a short puff of smoke at once. */
+  _douse() {
+    const f = this.game.fx?.fire, d = f?.data, n = f?.count | 0;
+    if (!d || !(n > 0)) return;
+    const W = Math.round(d.length / Math.max(1, f.max | 0)) || 15, M = STREAK_FIRE.mark, sm = STREAK_FIRE.smoke;
+    let c = 0;
+    for (let i = 0; i < n; i++) {
+      const k = i * W;
+      if (Math.abs(d[k + 13] - M) > 1e-4) continue; // (his: the drag mark)
+      d[k + 12] = 1; // smoke
+      d[k + 6] = 0;
+      d[k + 7] = sm;
+      d[k + 4] = Math.min(d[k + 4], 0.2);
+      d[k + 10] = Math.min(0.5, d[k + 10] * 1.4);
+      d[k + 11] = 0;
+      d[k + 14] = -0.4;
+      c++;
+    }
+    this.doused = c;
+  }
+
   /** Drop everything it draws (a level reset). */
   clear() {
     this.tier = this.count = 0;
     this.vis = this.tickT = this.shedAcc = 0;
     this.edge = this.edgeA = this.bladeLine = this.echoes = this.echoA = 0;
+    this.fireAcc = this.fireN = this.fireHeat = 0;
   }
 }

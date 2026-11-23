@@ -4962,7 +4962,7 @@ async function scenarioWyrmLook() {
 async function scenarioStreakFx() {
   out('\n== scenario STREAKFX (the streak on the hero and in the world: off = today, monotone by tier, the loss, the ground answers) ==');
   const SKM = await imp('src/combat/streak.js');
-  const { StreakFx, STREAK_AURA, STREAK_WORLD } = await imp('src/entities/player/streakFx.js');
+  const { StreakFx, STREAK_AURA, STREAK_WORLD, STREAK_FIRE } = await imp('src/entities/player/streakFx.js');
   const F = SKM.STREAK_FX, on0 = { ...F.on }, k0 = { ...F.k };
   const setOn = (aura, world) => { for (const p of F.pieces) F.on[p] = false; F.on.aura = !!aura; F.on.world = !!world; };
   // the hero's look this frame: the blade's uniforms and every part table entry it writes
@@ -4985,6 +4985,8 @@ async function scenarioStreakFx() {
     let nSp = 0, inFx = false, echoes = 0;
     game.fx.add.spawn = (o) => { if (inFx) nSp++; return spawn(o); };
     game.fx.alpha.spawn = (o) => { if (inFx) nSp++; return spawnA(o); };
+    const spawnF = game.fx.fire.spawn.bind(game.fx.fire);
+    game.fx.fire.spawn = (o) => { if (inFx) nSp++; return spawnF(o); };
     for (let i = 0; i < 70; i++) {
       if (i === 5) game.player._buffer('light');
       if (i === 30) game.player._buffer('roll');
@@ -5024,15 +5026,22 @@ async function scenarioStreakFx() {
       tick(5);
       p.debug.streak(n);
       tick(40);
-      row.push({ n, tier: sfx.tier, edge: sfx.edge, a: sfx.edgeA, line: sfx.bladeLine, echo: sfx.echoes, ink: look(game).slice(2).reduce((s, v) => s + v, 0) });
+      // the fire: the heat written over 2 s of standing, the most blobs in one frame
+      let fh = 0, peak = 0;
+      for (let i = 0; i < 120; i++) { tick(1); fh += sfx.fireHeat; peak = Math.max(peak, sfx.fireN); }
+      row.push({ n, tier: sfx.tier, edge: sfx.edge, a: sfx.edgeA, line: sfx.bladeLine, echo: sfx.echoes, ink: look(game).slice(2).reduce((s, v) => s + v, 0), fh, peak });
     }
-    out('     tiers', row.map((r) => `${r.n}:t${r.tier} edge ${r.edge.toFixed(2)} a ${r.a.toFixed(2)} line ${r.line.toFixed(2)} echo ${r.echo}`).join(' | '));
+    out('     tiers', row.map((r) => `${r.n}:t${r.tier} edge ${r.edge.toFixed(2)} a ${r.a.toFixed(2)} line ${r.line.toFixed(2)} echo ${r.echo} fire ${r.fh.toFixed(1)} peak ${r.peak}`).join(' | '));
     let mono = true, strict = true;
     for (let i = 1; i < row.length; i++) {
+      if (!(row[i].fh > row[i - 1].fh)) strict = false;
       for (const k of ['edge', 'a', 'line', 'echo', 'ink']) if (!(row[i][k] >= row[i - 1][k] - 1e-9)) mono = false;
       if (!(row[i].edge > row[i - 1].edge) || !(row[i].line > row[i - 1].line)) strict = false;
     }
-    assert(row[0].edge === 0 && row[0].line === 0 && row[0].echo === 0, 'aura: nothing below the first tier');
+    assert(row[0].edge === 0 && row[0].line === 0 && row[0].echo === 0 && row[0].fh === 0, 'aura: nothing below the first tier (no fire either)');
+    const capF = STREAK_FIRE.cap + Math.max(...STREAK_FIRE.trail);
+    const per = row[5].fh / Math.max(1, row[5].fh / (STREAK_FIRE.heat[5] * 1.25) | 0);
+    assert(row.every((r) => r.peak <= capF) && per <= STREAK_FIRE.heat[5] * 1.26 && STREAK_FIRE.heat.every((h) => h < 0.45), `aura fire: the heat written grows with every tier, at most ${capF} blobs a frame, each blob in the cool band (tier 5: ${row[5].fh.toFixed(1)} over 2 s, peak ${row[5].peak})`);
     assert(mono && strict, 'aura: the edge, its alpha, the blade lines\' lift and the echoes grow with the tier (the edge and the lift strictly)');
     assert(row[5].edge === 1 && row[5].echo === STREAK_AURA.echoes[5], `aura: tier 5 lights the whole edge and draws ${STREAK_AURA.echoes[5]} echo lines`);
     // a swing at tier 5 draws its echo lines (more arc spawns than at tier 0 for the same swing)
@@ -5060,6 +5069,14 @@ async function scenarioStreakFx() {
     game.fx.add.spawn = spawn;
     assert(p.streak === 0, `the hurt ends the streak (${hit})`);
     assert(sfx.edge === 0 && sfx.bladeLine === 0 && sfx.echoes === 0 && sfx.losses === loss0 + 1, 'the loss: the edge, the lines\' lift and the echoes are dark in the same frame');
+    {
+      const F = game.fx.fire, fd = F.data, W = fd.length / F.max;
+      let live = 0;
+      for (let i = 0; i < F.count; i++) if (Math.abs(fd[i * W + 13] - STREAK_FIRE.mark) < 1e-4 && fd[i * W + 12] !== 1) live++;
+      assert(sfx.doused > 0 && live === 0, `the loss puts his fire out at once (${sfx.doused} blobs turned to smoke, ${live} still burning)`);
+      sfx.update(DT);
+      assert(sfx.fireN === 0, 'no fire after the loss');
+    }
     const D = STREAK_AURA.drop;
     assert(lostSp > 0 && lostSp <= D.max + D.strokes + 40, `the loss drops a bounded number of letters (${lostSp} spawns with the hurt's own)`);
     tick(Math.round(0.7 / DT));
