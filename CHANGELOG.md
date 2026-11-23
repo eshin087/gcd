@@ -18,6 +18,9 @@ Seventy-four pieces of work since 0.4.0:
   owner by ear on an audition page (credits in `assets/audio/CREDITS.md`). `?sfx=old` (and the Lab's sfx
   row) brings back the sounds before, exactly. The duelist engine announces each real blow with
   `dragon:attack {name, weapon, weight, shape, tell, impactIn, x, z}`.
+  *Fixed* (found when the sounds stopped drawing from the fights' random numbers): the Cinder Wyrm could
+  pick a tree at its very feet for a throw, back off too slowly, then call the throw off after its red
+  warning (a warning with no blow); the lunge now waits for the back-off.
 - **Tian Lei's attacks move naturally, and he stops punching the air** (2026-11-23, ADR-162). *Fixed:* his feet no longer jump or slide while he
   strikes (a planted foot snapped up to 0.7 m in a frame at the blows of his strings, and swivelled when he
   turned); his punches land with the arm extended (every one landed with the elbow bent at ~130°); his

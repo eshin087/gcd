@@ -38,9 +38,17 @@ played no cue; 4 blue and 7 red tells played the recordings; 22 blows played 22 
 12, heavy 5, thrust 3, a kick on fist-heavy 2); the hero's cuts drew sword-light. All 23 files load.
 Nobody but the owner can hear them: levels in the mix are not checked by ear.
 
-**Tests.** duel `sfx` and integ `sfx` scenarios added. A full run on the branch had 3 failures in seeded
-pace / count checks (fox PHASE: five selves; integ LAB: fireBrand one flash per tell; integ PRESSURE:
-seed 1337 phase 2 at 46.8 cues a minute, under 48): each passes alone, on the branch and on main.
+**Tests.** duel `sfx` and integ `sfx` scenarios added. Untouched main plus only the random-stream commit
+failed three seeded checks with the same numbers (no fighter had changed: the fights rolled a different
+sequence): fox PHASE (five selves), integ LAB (fireBrand: one flash per tell) and integ PRESSURE (seed 1337
+phase 2 at 46.8 cues a minute, under 48). One was a real edge case the new sequence exposed, fixed in the
+game: the wyrm's throw lunge (`terrainAttacks.js`: a tree at its feet, it backed off at 6 m/s while the
+plan reckoned 24, came to the bite too close and aborted after its red tell; the lunge now waits up to
+`jaws.backMax` 0.8 s). The fox's selves were reworked on main meanwhile (packs): the fox check moved with
+them. Two were test bands: PRESSURE's per-phase cue-rate floor holds over the mean of its three seeds;
+BREACH's standoff band counts where the wyrm's share of the gap ends (main itself failed the old +6 m
+band on 2 of 5 seeds) and its reset check reads the wall at `world.restore()`. Open: BREACH's 60 %
+cue-rate condition would fail on seed 2026 (and on main's 1337); only 4242 runs.
 
 **Next.** The owner's pick of the blue timing sound; their listen in a fight on the PR's preview (and on
 the phone); the mix (cue and blow levels against the music) by their ear.
