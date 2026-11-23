@@ -3,6 +3,11 @@
 
 const AIR = 1, LYING = 2;
 
+/** The levels with a litter block (litterTuning.js): a level without one has no litter (the layer stands
+ *  down, `takes` nothing, makes no pool) and is checked by `noBlock` instead. */
+const { LITTER } = await import(new URL('../../../src/world/life/litterTuning.js', import.meta.url).href);
+const WITH = (T) => T.LEVEL_IDS.filter((id) => !!LITTER.levels[id]);
+
 /** A level with the litter on, nothing falling (rate 0) and nothing lying yet: a clean floor to test on. */
 function bare(T, id, spec = 'litter', o = {}) {
   const w = T.build(id, spec, o);
@@ -49,7 +54,7 @@ export default {
    *  passes (not a carpet), a roar's front lifts most of what lies in its path, the ring's grit keeps
    *  tumbling, and nothing moves in the Windless Grove until the fight moves its air. */
   realWind(T) {
-    for (const id of T.LEVEL_IDS) {
+    for (const id of WITH(T)) {
       // the air: its fastest without a front, inside one, and a roar's
       const w = T.build(id, 'wind');
       const W = w.life.wind, p = { x: 0, z: 0, k: 0 };
@@ -227,7 +232,7 @@ export default {
 
   /** The pool never exceeds its cap on any level at quality 1, holds fewer at 0.5; the budget. */
   budget(T) {
-    for (const id of T.LEVEL_IDS) {
+    for (const id of WITH(T)) {
       const peak = { 1: 0, 0.5: 0 };
       for (const q of [1, 0.5]) {
         const w = T.build(id, 'wind,litter', { quality: q });
@@ -280,7 +285,7 @@ export default {
 
   /** Off leaves the pool empty; switching it off mid-run takes every letter away. */
   off(T) {
-    for (const id of T.LEVEL_IDS) {
+    for (const id of WITH(T)) {
       const w = T.build(id, 'wind,steps');
       w.step(5);
       const c = w.counts();
@@ -303,7 +308,7 @@ export default {
   /** What each level takes from the atmosphere. */
   takes(T) {
     const want = { cinderwood: 'leaves', ash: 'ash', starless: 'leaves', ring: 'leaves', fox: 'leaves', grove: 'leaves' };
-    for (const id of T.LEVEL_IDS) {
+    for (const id of WITH(T)) {
       const w = T.build(id, 'litter');
       w.step(0.1);
       T.assert(w.life.takes(want[id]) === true, `${id}: the litter takes '${want[id]}'`);
@@ -348,5 +353,22 @@ export default {
     T.assert(kerb > mid * 3, `ring: grit lies thicker against the east kerb (${kerb.toFixed(2)}/m2) than mid-ring (${mid.toFixed(2)}/m2)`);
     const moving = L.leaves.filter((f) => f.s === AIR && f.y < 0.6).length;
     T.assert(moving > 3, `ring: some grit is tumbling along the ground (${moving})`);
+  },
+
+  /** A level with no litter block (one added after the layer was tuned) gets no litter: no pool, no
+   *  letters, nothing taken from the atmosphere, and nothing throws. */
+  noBlock(T) {
+    const ids = T.LEVEL_IDS.filter((id) => !LITTER.levels[id]);
+    if (!ids.length) {
+      T.out('ok   every level has a litter block');
+      return;
+    }
+    for (const id of ids) {
+      const w = T.build(id, 'all');
+      w.walk(2, -2);
+      w.step(20);
+      const L = w.life.litter;
+      T.assert(L.count === 0 && !L.pool && L.takes('leaves') === false && L.takes('ash') === false && L.scatter(0, 0, 5, 1) === 0, `${id}: no litter block → no litter, no pool, nothing taken (count ${L.count})`);
+    }
   },
 };
