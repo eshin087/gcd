@@ -18,6 +18,24 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-23',
+        title: "Tian Lei's attacks move naturally, and he stops punching the air",
+        notes: [
+          "Tian Lei's feet stay planted while he strikes: they no longer jump or slide.",
+          'His punches land with the arm extended, and his palm thrusts stop at your body instead of going through it.',
+          "Step or run out of his reach while he winds up and he stops the blow before it flashes and comes after you, instead of punching the air.",
+        ],
+      },
+      {
+        date: '2026-11-23',
+        title: 'Tian Lei drawn like the hero, with shorter gold hair and a new gi',
+        notes: [
+          'Tian Lei is drawn in the same size of letters as you are, and in darker, quieter letters: on a large screen he no longer looks like a detailed 3D model beside you.',
+          'His gold hair in his second and third forms is his own spiky hair standing up, not a tall crown.',
+          'He wears a burnt-red gi with black, and cloth wraps on his arms and legs.',
+        ],
+      },
+      {
         date: '2026-11-22',
         title: 'A seventh level: the Hall of Falling Script and the One Who Woke',
         notes: [

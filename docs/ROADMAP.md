@@ -184,6 +184,19 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.68 — Tian Lei's blows audited; he stops attacking the air (2026-11-23, `enemies/ascendant-ascii`, ADR-162)
+- [x] A motion audit of every move and of a real fight (opt-in `asc.mjs audit` / `auditfight`)
+- [x] Feet that stay planted, arms that open, palms that stop at the hero, a steady roundhouse knee
+- [x] He breaks off a blow you ran out of and chases you (`pressure.pursue`): 0 swings at air
+- [x] His tracking turn kept as it is (the owner: "Leave it"); the still charges left too
+- [ ] Played, and on the phone
+
+## M1.66 — Tian Lei printed like the hero (2026-11-23, `enemies/ascendant-ascii`, ADR-155)
+- [x] His letters follow his size on screen as the hero's do (`?ascLetters=a`)
+- [x] The hero's quieter print (`?ascLift=b`)
+- [x] The gold hair of forms 2 - 3 his own hair risen, not a tall crown (`?ascHair=b`)
+- [x] A gi in ember with wraps, not the orange and blue (`?ascLook=e`; r, w kept)
+- [ ] Checked on the owner's phone
 ## M1.65 — A seventh level: the Hall of Falling Script and Xin Yi, the One Who Woke (2026-11-22, `claude/level-code-one-784481`, ADR-156 – ADR-158)
 - [x] `?level=code`: one hall, three scenes on the same ten slots that morph behind a front (`scenes`,
       destructibles `present`), the watchers, the falling script, the script wave in the prop and floor letters

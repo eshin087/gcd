@@ -5,6 +5,73 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-23 — Session 84: Tian Lei's blows audited; he stops attacking the air
+
+**Owner:** "ok looks good but i noticed a lot of the attack animations and attacks look unnatural. audit it and fix it to improve it. make the boss also stop attacking empty air if the player moves out of the distance". Branch `enemies/ascendant-ascii` (on PR #96's look pass). ADR-162 / Session 84 / M1.68.
+
+**How.** Measured before touching anything: `asc.mjs audit` (opt-in; every move, the hero still and
+circling, joints frame by frame: jolts, the facing's turn, sliding feet, joints, the blow against the
+hero) and `auditfight` (opt-in; his AI against a defending bot, 30 s a form). Filmed the worst moves
+(close side view, solid and ASCII) against the committed build. The whiff fix went to a helper agent in
+its own worktree (`enemies/ascendant-reach`), porting the unfinished pursuit from the stale epic pass
+(`asc5/ai`, never committed), merged here.
+
+**What changed.** Feet that stay planted (`_planFeet` + the pose hook), arms that open (anim.js `armSoft`,
+the hero's numbers), legs that keep a bend (`legSoft`), palm dashes that stop at the palm's reach (`PALM`),
+a roundhouse knee that points up. The pursuit (`pressure.pursue`, duelist brain.js / director.js, opt-in; Tian Lei's tuning): a blow the hero has run out of is broken off before its glint and he chases; form 1 chases no harder than before; PACE's floors re-pinned (a swing at air was a cue).
+
+**Measured.** A real fight against a defender: frames with a visible pop 87 -> 23, the worst 1966 -> 715.
+Every move: total jolt 47 316 -> 23 677. Punches land at 149 - 155° (was ~130°). Swings at air a minute (whiff meter, 3 seeds x 90 s, forms 1 / 2 / 3): flee 18.2 / 18.1 / 9.5 -> 0 / 0 / 0, retreat 1.9 / 4.3 / 2.7 -> 0, kite 1.9 / 0 / 0.5 -> 0, roam 0 / 0.2 / 0.2 -> 0. PACE on ten seeds: F1 75.3 / 79.3 / 85.0, F2 78.5 / 84.6 / 91.3, F3 81.4 / 93.2 / 101.2 (min / mean / max; form 3's mean was ~96).
+
+**Found on the way.** Two audit artifacts that looked like defects: the drawn figure leans toward the
+camera along z (measure reach with the hero EAST of him, as MOTION does), and hit-stops are freeze-frames
+(a window that spans one reports the whole freeze as one frame's jolt: "strike -> stagger" was not real).
+
+**Not checked / open.** Nobody has played it; not on the phone. His tracking turn (up to ~900°/s at a
+circling hero) was offered as a choice and the owner kept it ("Leave it"); the still charges of the
+beams were left too (see ADR-162). The stale epic pass on
+`enemies/ascendant-epic` / `asc5/*` (new moves, blue beams, the champion's ring, its own letter grid) is
+still unmerged and now conflicts with PR #96 and this work.
+
+---
+
+## 2026-11-23 — Session 83: Tian Lei printed like the hero; the hair risen, not tall; a gi in ember
+
+**Owner:** "the skybreak ring, the character is too detailed and is showing its flaws in 3d. make it more
+ascii like, like the main character, to hide its flaws. also make the phase 2 and 3 golden hair not be so
+long and more natural iconic looking. also change the character's color and cloth a bit to not make it
+look too obvious its goku". Branch `enemies/ascendant-ascii`. ADR-155 / Session 83 / M1.66.
+
+**How.** Each ask built as options behind switches, rendered (1440p game camera with the hero beside
+him, close-ups from four sides, the phone) on three sheets; the owner picked the recommended option of
+each: letters B (the hero's letter size + the hero's quieter print), hair B (his own hair risen), outfit E
+(ember).
+
+**What changed.**
+- **His letters follow his size** (`?ascLetters=a`): the kit's `letters`; at 1080p / 1440p / 4K he is on
+  the hero's 6 / 8 / 12 px cells, not the bosses' 4 / 4 / 8. The renderer code (`_letterCell`,
+  `_updateBossLetters`, `pipeline.bossLetters` in main.js) is PR #94's (Wen Yao's rework, open), taken
+  word for word: I had written my own version first, found #94 doing the same, and swapped mine out so
+  the two PRs agree (mine also snapped his ink lines to the font pixel; dropped, see ADR-155).
+- **The hero's quieter print** (`?ascLift=b`, `ASC_QUIET`).
+- **The gold hair** (`?ascHair=b`, `goldRisen`; `a` a short crown kept): about his dark hair's height,
+  form 3 no taller than form 2, one lock over the brow in form 3.
+- **The gi with wraps** (`?ascLook=e | r | w`, base `k`): e ember ships; r crimson over charcoal, w bone
+  kept. A storm-blue gi was dropped: it read as the hero's own colour.
+- Lab LOOKS: the new rows, `ascLook`'s new options.
+
+**Verification.** `asc.mjs . body,herolike` green (his cell = the hero's at phone / 720p / 1080p / 1440p /
+4K / 24 m / 54 m; the fixed cell with the switch off; the gold's height; the gis). Rendered with no URL
+parameters at 1440p beside the shipped look (sheet `AFTER` in the session's scratchpad). `npm test`: see
+the PR.
+
+**Not checked / open.** Not on a real phone (there the letters were already the hero's size: only the
+print, hair and gi change). The orange gi and the tall crown stay behind their switches. When PR #94
+merges, `pipeline.js` / `main.js` should merge clean (the same lines); the docs' "The bosses' letters"
+paragraph will need one pass to name both bosses.
+
+---
+
 ## 2026-11-23 — Session 82: a seventh level, the Hall of Falling Script and Xin Yi, the One Who Woke (planned by Fable, built by Opus: a lead and three agents)
 
 **Owner** (to the planning session): two more homage bosses, planned by Fable and built by Opus, "lets do
@@ -142,6 +209,8 @@ few letters wide already), so it still reads as a drawn figure; a the owner's co
 
 **Not checked.** A real phone. The close look for clipping was done in films at a 7 m camera for the draw and the run
 only; nothing clipped there that shows at fight distance.
+
+---
 
 ## 2026-11-23 — CI in four parallel jobs; docs-only PRs skip the tests (ADR-153)
 

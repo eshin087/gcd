@@ -4,7 +4,20 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Seventy-one pieces of work since 0.4.0:
+Seventy-three pieces of work since 0.4.0:
+- **Tian Lei's attacks move naturally, and he stops punching the air** (2026-11-23, ADR-162). *Fixed:* his feet no longer jump or slide while he
+  strikes (a planted foot snapped up to 0.7 m in a frame at the blows of his strings, and swivelled when he
+  turned); his punches land with the arm extended (every one landed with the elbow bent at ~130°); his
+  palm thrusts stop at your body instead of passing through it; his roundhouse knee no longer flickers.
+  *Changed:* when you step or run out of reach while he winds up a blow, he breaks it off before its flash and comes after you instead of punching the air (a fleeing hero drew up to 18 swings at air a minute).
+- **Tian Lei drawn like the hero, with shorter gold hair and a new gi** (2026-11-23, ADR-155). *Changed:* on larger screens Tian Lei is drawn in the
+  same size of letters as the hero (they follow his size on screen; before, he had twice the hero's
+  letters across him from 1080p up), in the hero's quieter print: darker letters, the skin held down, a
+  softer edge of light. *Changed:* his gold hair in forms 2 and 3 is his own spiky hair risen, about as
+  tall as his black hair, not a tall crown; form 3 is sharper with one lock over the brow, no taller.
+  *Changed:* he wears a burnt-red gi with black where the blue was, cloth wraps on his forearms and shins
+  and soft boots. `?ascLetters=0`, `?ascLift=a`, `?ascHair=0` / `a`, `?ascLook=h` / `r` / `w` keep the
+  other looks.
 - **A seventh level: the Hall of Falling Script and the One Who Woke** (2026-11-22, ADR-156 – ADR-158).
   *Added:* `?level=code` (the title screen lists it). **The Hall of Falling Script**: one hall on ten slots
   whose scenes rewrite themselves into one another behind a front that runs out from him (`scenes`): the

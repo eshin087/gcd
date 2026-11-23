@@ -1397,9 +1397,11 @@ async function scenarioLooks() {
     assert(u.uHeroPx.value.x >= 1 && u.tHeroArt.value != null, 'after a resize his cell is written again');
     // the gate (main.js): only a kit that asks has it, and ?foxLetters=a turns it off
     const kits = await Promise.all([
-      ['ascendant/ascendant.js', 'ASC_KIT'], ['ashDisciple/disciple.js', 'ASH_KIT'], ['sheathed/sheathed.js', 'SHEATHED_KIT'], ['starlessLord/lord.js', 'LORD_KIT'],
+      ['ashDisciple/disciple.js', 'ASH_KIT'], ['sheathed/sheathed.js', 'SHEATHED_KIT'], ['starlessLord/lord.js', 'LORD_KIT'],
     ].map(async ([f, k]) => (await imp(`src/entities/enemies/${f}`))[k]));
-    assert(kits.every((k) => k && !k.letters) && game.dragon.kit.letters === true, 'only his kit asks for letters that follow his size (Tian Lei, Shen Hui, Lu Wusheng, Varr Nihil: no)');
+    // (Tian Lei's kit asks too, ADR-155: a getter on his `?ascLetters=a`, the owner's pick)
+    const tian = (await imp('src/entities/enemies/ascendant/ascendant.js')).ASC_KIT;
+    assert(kits.every((k) => k && !k.letters) && game.dragon.kit.letters === true && tian.letters === true, 'only his kit and Tian Lei\'s ask for letters that follow their size (Shen Hui, Lu Wusheng, Varr Nihil: no)');
     const main = fs.readFileSync(`${ROOT}/src/main.js`, 'utf8');
     assert(/pipeline\.bossLetters\s*=\s*!!game\.dragon\?\.kit\?\.letters\s*&&\s*lookOf\('foxLetters', 'b'\) === 'b'/.test(main), 'main.js sets the pipeline\'s bossLetters from the kit and ?foxLetters each frame');
     LS.setLook('foxLetters', 'a');

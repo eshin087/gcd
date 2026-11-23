@@ -281,15 +281,20 @@ Render helpers for creature modules:
     `heroArtCell(px)`, run for him (`gSelf`, `gCell` = `uSelfCell`, `gLine` = `uSelfPx`), then for
     the bosses (`uHeroCell`, `uHeroPx.x`); `isWho` is the window of the one being drawn. The whole
     pass reads its textures at level 0 by name (`textureLod`; none has mip levels).
-  - **The bosses' letters** (ADR-154): a boss whose kit sets `letters` (today Wen Yao's `FOX_KIT`, behind
-    `?foxLetters=b`) has the bosses' cell `uHeroCell`, its atlas `tHeroArt` and its line width `uHeroPx.x`
+  - **A boss's arms and legs** (ADR-162): `HeroAnimator.armSoft` / `legSoft` (`[where the reach starts
+    to give, the most it opens]` as fractions of the limb's length; null = as always: `ARM_SOFT`, an elbow of
+    ~130° at a full stretch, and a leg that reaches straight). Tian Lei sets both in `_setup` from
+    `TUNING.armSoft` (the hero's `HERO_SOFT`) and `TUNING.legSoft`.
+  - **The bosses' letters** (ADR-154, ADR-155): a boss whose kit sets `letters` (today Wen Yao's `FOX_KIT`, behind
+    `?foxLetters=b`, and Tian Lei's `ASC_KIT`, a getter behind `?ascLetters=a`, the owner's pick; `0` the fixed cell) has the bosses' cell `uHeroCell`, its atlas `tHeroArt` and its line width `uHeroPx.x`
     set each frame from HIS depth by the hero's rule: main.js sets `pipeline.bossLetters`
     (`!!game.dragon?.kit?.letters && lookOf('foxLetters', 'b') === 'b'`), `Pipeline._updateBossLetters(U.uBossScreen)`
     takes the depth 1 m above his feet and picks the cell with `_letterCell(z, cur)` (the cell choice
     `_updateHeroLetters` uses, pulled out of it: `CONFIG.render.heroLetters`, `HERO_CELLS`, the slack, the
     near / close fade back to the fixed cell), reusing the hero's atlas cache. Off, those uniforms are
     exactly what `setSize` gives (it records `_heroPx`), so a boss without the flag is drawn as before; one
-    grid serves every boss pixel, so his paper selves share his cell.
+    grid serves every boss pixel, so his paper selves share his cell. (`foxLetters` is read for every boss that sets `letters`: it
+    stays 'b' on Tian Lei's level, which never sets it.)
     Ink lines are drawn per pixel by the pass, not from glyphs. `U.uArtHeroCel` (vec3: step from
     shadow to lit between x and y, z = share of the step) cel-shades the art source;
     `U.uHeroPartRim[20]` (vec4: tint × gain) is each part's silhouette ink; fill style + 8 = a
@@ -3287,6 +3292,18 @@ data and a subclass with a few hooks.
   (`sector` / `line` / `ring`; `hitPlayer` gets `beat`), a `release` or a `cast` (the actor's, at the
   impact; a string never stops for want of reach on one). `def.manual` / `def.counter` / a weight of
   0 keep a move out of the AI's pick; `def.gapCloser` is favoured against a hero who drinks.
+  **The pursuit** (ADR-162; opt-in, `TUNING.pressure.pursue`, today Tian Lei's; a kit without it
+  behaves exactly as before; the full field list is brain.js's header): through each real melee beat's
+  windup, from `after` s up to its glint, the hero is led to the impact (`_lead`) and set against what
+  the beat can still reach (`_reachLeft`: the zone, the step-in left, the dash not yet spent); beyond it
+  by `margin` m (`_outOfReach`) the move breaks off with no glint and no hit (a glint is always a blow;
+  its `combat:tell` may already have been announced, as a fairness-guard feint's) and he chases: a
+  `far` / `away` link, else footwork after `gap` s. `brain.stats.stops` counts them, `brain.runner` (the
+  hero's habit of running) weighs the moves that reach anywhere; `forecast(s)` = the hero's speed away.
+  While the hero backs away (> `away` m/s) a beat's step-in is x `closeK` and a dash's cap x `dashK`
+  (per phase); a leap lands `leapLead` s and an actor's blink `blinkLead` s ahead of where the hero is
+  going (`blinkKeep`: never in front of him); director.js weighs a move whose first blow cannot reach
+  where the hero will be x `miss`. Not a counter, a flurry, a stance, a draw or a transformation.
 - `realise.js`: `makeRealise({ TUNING, MOVES, compileClip, completeBeat })` → `realise(name, phase, rnd, opts)` (`opts.count`:
   a `streak` move, his flurry, plays that many beats); `perPhase`. The POSE keys of a beat past its
   impact (u 1..2) run on the beat's follow, `b.F` s (ADR-126: 72 % of the time to the next beat's
@@ -3680,7 +3697,8 @@ strikes, beams) and moves on the ring's tiles. The kit: `{ id: 'ascendant', TUNI
 CLIP, realise, transitions: { 2: 'ascend2', 3: 'ascend3' }, counterMove(form) → one of the form's
 `COUNTER_LISTS` (moves.js; riposte / riposte2 / riposte3 and the third wave's, drawn on the AI's stream),
 streakMove(form) → streakFlurry / 2 / 3, maxPhase: 3, loadout: ASC_LOADOUT, poses, blade: FIST,
-scale: TUNING.scale, dress: dressAscendant }` (`poses`: `loco` = his form's footwork plus the dash's lean
+scale: TUNING.scale, dress: dressAscendant, letters }` (`letters`: a getter, `?ascLetters=a`: his ink-line
+letters follow his size, "The bosses' letters"; ADR-155) (`poses`: `loco` = his form's footwork plus the dash's lean
 by `pilot.dashK`; `duel` = his form's clip plus the feet planner's offsets). The boss slot's surface, plus:
 ```
 kind = 'duelist';  name = 'TIAN LEI, THE LAST ASCENDANT';  phase 1..3 = his FORM;  execRange = 3.4
@@ -3895,10 +3913,13 @@ reads them first, `ASC_WORLD` the fallback), `damageScale` 1.1, `execution`, `wa
 before his limbs take over). Built by `buildHero(U, ASC_LOADOUT)`, the hero's skeleton, the hero's ink-line
 art. Every piece that changes with his form is kept out of the static merge and registered with the forms
 it shows in (`look.js` `at(D, m, from, to)` on the rig's `userData.dress`). `look.js`: `ascLookNow()` →
-`{ base: 'a' | 'c', art, id }` (`?ascLook=`, read when the rig is built; d = outfit a through the wyrm's art
-path, `bodyArt.js` `ASC_ART`), `ASC_TINT` (per outfit, his material instances' fills), `ASC_LIFT` (`fill`
-multipliers per part and `rim` × 3.2 on `rimOn`: his figure lifted off the floor; `?ascLift=0` = as the
-body shipped), `tintAscendant(M)` (the class's `_tint`: the fills, the lift, the light's ink),
+`{ base: 'a' | 'c' | 'h' | 'g' | 'v' | 'k', tint, art, id, homage }` (`?ascLook=`, read when the rig is
+built; d = outfit a through the wyrm's art path, `bodyArt.js` `ASC_ART`; `KUNG_LOOKS` e / r / w = base `k`,
+the gi with wraps, tinted e / r / w, ADR-155), `ASC_TINT` (per `tint`, his material instances' fills),
+`ASC_LIFT` (`fill` multipliers per part and `rim` × 3.2 on `rimOn`: his figure lifted off the floor;
+`?ascLift=0` = as the body shipped) and `ASC_QUIET` (`?ascLift=b`, the owner's pick: the hero's quieter
+print, the skin × 0.62, rim × 1.5), `ascLettersOn()` (the kit's `letters`), `tintAscendant(M)` (the
+class's `_tint`: the fills, the lift, the light's ink),
 `dressAscendant(d, dt)` (the kit's `dress`: on a change of `d.dressPhase` it flips the pieces' `visible`
 flags and writes the gold hair's, the wraps' and the light's colours; then the gold breathes, a few
 uniforms a frame; no allocation). His materials: `coat` / `lining` the tunic, `leather` the sash, `hem` the

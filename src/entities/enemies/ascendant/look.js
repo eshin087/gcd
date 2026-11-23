@@ -23,14 +23,30 @@ import { setFill } from '../ashDisciple/bodyArt.js';
  *  son in a purple gi, v the prince in a blue bodysuit and white armour. Options only: the default is
  *  the owner's pick (`PICKED.ascLook`). */
 export const HOMAGE_LOOKS = ['h', 'g', 'v'];
+/** The fighter's gi less plainly his source (ADR-155): outfit h's cut with wrapped forearms and shins,
+ *  soft boots, a dark undershirt and longer sash tails, in one of three colourings (`?ascLook=e | r |
+ *  w`, built as base `k`): e ember (the gi a burnt red, black for the blue), r crimson over charcoal, w
+ *  bone (an unbleached gi, black and charcoal). */
+export const KUNG_LOOKS = ['e', 'r', 'w'];
 
 /** The option chosen (`?ascLook=`, read when his rig is built): { base: 'a' | 'c' | 'h' | 'g' | 'v'
- *  (the outfit), art: true for d (outfit a in the dragon look), homage: true for h / g / v }. */
+ *  | 'k' (the outfit), tint (its colours: ASC_TINT), art: true for d (outfit a in the dragon look),
+ *  homage: true for h / g / v and k's colourings }. */
 export function ascLookNow() {
   const o = lookOf('ascLook', 'a', 'a');
-  if (o === 'd') return { base: 'a', art: true, id: 'd' };
-  if (HOMAGE_LOOKS.includes(o)) return { base: o, art: false, id: o, homage: true };
-  return { base: o === 'c' ? 'c' : 'a', art: false, id: o === 'c' ? 'c' : 'a' }; // (the bare-chested outfit b is not offered)
+  if (o === 'd') return { base: 'a', tint: 'a', art: true, id: 'd' };
+  if (KUNG_LOOKS.includes(o)) return { base: 'k', tint: o, art: false, id: o, homage: true };
+  if (HOMAGE_LOOKS.includes(o)) return { base: o, tint: o, art: false, id: o, homage: true };
+  const b = o === 'c' ? 'c' : 'a'; // (the bare-chested outfit b is not offered)
+  return { base: b, tint: b, art: false, id: b };
+}
+
+/** His letters follow his size on screen as the hero's do (`?ascLetters=a`, the owner's pick; live):
+ *  his kit's `letters` (ARCHITECTURE "The bosses' letters": main.js → pipeline.bossLetters). '0' the
+ *  bosses' fixed fine cell he shipped with. (A bolder size, 0.144 m a letter, was rendered and not
+ *  picked: ADR-155.) */
+export function ascLettersOn() {
+  return lookOf('ascLetters', '0', 'a') === 'a';
 }
 
 /** The dressing record on his rig (gear.js registers the switched pieces in it). */
@@ -74,6 +90,24 @@ export const ASC_TINT = {
     pants: [0.08, 0.17, 0.62], lining: [0.03, 0.05, 0.16], armor: [0.82, 0.82, 0.8], piping: [0.85, 0.62, 0.16],
     hem: [0.86, 0.86, 0.84], collar: [0.82, 0.82, 0.8], shirt: [0.035, 0.03, 0.035], skin: [0.85, 0.57, 0.4],
   },
+  // k (ADR-155), the gi's cut with wraps: `coat` the top, `pants` the trousers, `facing` the undershirt,
+  // `leather` the sash, `hem` the wraps, `collar` the soft boots
+  // e ember: a burnt red gi, a black undershirt, sash and boots, off-white wraps
+  e: {
+    coat: [0.5, 0.11, 0.03], lining: [0.15, 0.035, 0.01], pants: [0.52, 0.12, 0.035], facing: [0.035, 0.03, 0.03],
+    leather: [0.04, 0.035, 0.035], hem: [0.6, 0.56, 0.48], collar: [0.045, 0.04, 0.04], shirt: [0.035, 0.03, 0.035], skin: [0.85, 0.57, 0.4],
+  },
+  // r crimson over charcoal: a crimson top, charcoal trousers, a black undershirt and sash, off-white wraps
+  r: {
+    coat: [0.55, 0.045, 0.04], lining: [0.16, 0.015, 0.015], pants: [0.17, 0.16, 0.19], facing: [0.03, 0.028, 0.03],
+    leather: [0.035, 0.03, 0.03], hem: [0.6, 0.57, 0.5], collar: [0.04, 0.035, 0.035], shirt: [0.035, 0.03, 0.035], skin: [0.85, 0.57, 0.4],
+  },
+  // w bone: an unbleached gi, a black undershirt, sash and boots, charcoal wraps (the dark hero's
+  //   opposite: a pale figure on the dark floor)
+  w: {
+    coat: [0.5, 0.47, 0.4], lining: [0.16, 0.15, 0.13], pants: [0.46, 0.43, 0.37], facing: [0.03, 0.028, 0.03],
+    leather: [0.035, 0.03, 0.03], hem: [0.12, 0.115, 0.12], collar: [0.04, 0.035, 0.035], shirt: [0.035, 0.03, 0.035], skin: [0.85, 0.57, 0.4],
+  },
 };
 /** The homage outfits' eyes in forms 2 - 3 (the eyes themselves, M.eye: teal). */
 const TEAL_EYE = [0.12, 0.95, 0.85];
@@ -98,22 +132,31 @@ export const ASC_LIFT = {
   rimOn: ['coat', 'lining', 'pants', 'skin', 'leather', 'shirt', 'collar', 'hem'],
   rim: 3.2,
 };
+/** ... or the hero's quieter print (`?ascLift=b`, ADR-155): the figure a field of darker letters
+ *  that carries his colours, the pale skin held down most (it printed as a lit, shaded 3D shape), a
+ *  softer edge of light. */
+export const ASC_QUIET = {
+  fill: { coat: 0.85, pants: 0.85, skin: 0.62, leather: 1.2, shirt: 1.4, lining: 1.0, hem: 0.75, facing: 0.9 },
+  rimOn: ASC_LIFT.rimOn,
+  rim: 1.5,
+};
 
 /** His colours (the class's _tint): the outfit's form-1 fills on HIS material instances (the
  *  ink-line art's uArtFill; in the dragon look, option d, the art source's ink holds the colours and
  *  this finds no uArtFill: nothing to do). */
 export function tintAscendant(M) {
   if (!M) return;
-  const T = ASC_TINT[ascLookNow().base] ?? ASC_TINT.a;
+  const T = ASC_TINT[ascLookNow().tint] ?? ASC_TINT.a;
   for (const k in T) M[k]?.uniforms?.uArtFill?.value.setRGB(T[k][0], T[k][1], T[k][2]);
   // the figure on the ring's floor (dim at the game camera, form 1 above all): his fill a little
   // lighter and an edge of light along his silhouette (this rig's per-instance rim, ASC_LIFT)
   // (?ascLift=0: the figure as the body agent shipped it, for the owner's before / after)
-  const lift = lookOf('ascLift', 'a', 'a') !== '0';
-  if (lift) for (const k in ASC_LIFT.fill) M[k]?.uniforms?.uArtFill?.value.multiplyScalar(ASC_LIFT.fill[k]);
-  if (lift) for (const k of ASC_LIFT.rimOn) {
+  // (?ascLift=b: the hero's quieter print instead, ASC_QUIET; ADR-155)
+  const lo = lookOf('ascLift', 'a', 'a'), lift = lo !== '0', LIFT = lo === 'b' ? ASC_QUIET : ASC_LIFT;
+  if (lift) for (const k in LIFT.fill) M[k]?.uniforms?.uArtFill?.value.multiplyScalar(LIFT.fill[k]);
+  if (lift) for (const k of LIFT.rimOn) {
     const u = M[k]?.uniforms?.uArtRim;
-    if (u) u.value *= ASC_LIFT.rim;
+    if (u) u.value *= LIFT.rim;
   }
   // the light: gold letters with a hot core (the `flask` part's ink lines are amber for every rig)
   const fu = M.flask?.uniforms;
@@ -142,7 +185,7 @@ export function dressAscendant(d, dt) {
   if (!D.base) {
     D.base = { hem: rgbOf(M.hem), eye: rgbOf(M.eye) }; // (form 1's wraps and eyes, to give back in the Lab)
     D.art = !!M.hair?.uniforms?.uWInk;
-    D.homage = HOMAGE_LOOKS.includes(D.look);
+    D.homage = HOMAGE_LOOKS.includes(D.look) || D.look === 'k';
   }
   // (dressPhase: the form he SHOWS, which changes at a transformation's nova, not at its start)
   const n = Math.min(3, Math.max(1, (d.dressPhase ?? d.phase) | 0));
