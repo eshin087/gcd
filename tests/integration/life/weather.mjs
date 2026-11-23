@@ -11,7 +11,9 @@ const sky = (U) => [
   U.uFogNear.value, U.uFogFar.value,
 ];
 const same = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
-const BUDGET = { alpha: 250, add: 190, fire: 150, own: 600 };
+// (own: the weather's own batches, where all its letters print now in the house letter: the mist's
+//  banks of many tiny letters, the devils' grains, what falls, the embers; letterBatch.js)
+const BUDGET = { alpha: 250, add: 190, fire: 150, own: 1600 };
 const WEATHER_LEVELS = (T) => T.LEVEL_IDS.filter((id) => WEATHER_TUNE[id]);
 
 export default {
@@ -205,15 +207,8 @@ export default {
     const w = T.build('grove', 'weather,wind');
     w.life.weather.force('mist', 2);
     w.step(30);
-    const P = w.game.fx.alpha, d = P.data, M = w.life.weather.tune.mist, W = w.life.weather;
+    const W = w.life.weather;
     let n = 0, fast = 0;
-    for (let i = 0; i < P.count; i++) {
-      const k = i * 26;
-      // (the veil's wide strokes, by their colour)
-      if (!(Math.abs(d[k + 10] - M.veil.color[0]) < 1e-6 && Math.abs(d[k + 11] - M.veil.color[1]) < 1e-6)) continue;
-      n++;
-      if (Math.hypot(d[k + 3], d[k + 5]) > 0.04) fast++;
-    }
     // (the banks: the weather's own batch; a bank drifts as one with the air, and there is none)
     for (const b of W._banks ?? []) {
       if (!b.on) continue;
@@ -221,5 +216,35 @@ export default {
     }
     n += W._bp?.count ?? 0;
     T.assert(n > 40 && fast === 0, `grove: ${n} letters of mist, ${fast} drifting`);
+  },
+
+  /** A bank of mist is a soft heap of many tiny letters: densest at its heart, thinning to single
+   *  letters at its edge, every one within its bank; and it rolls (its letters come and go). */
+  bank(T) {
+    const w = T.build('cinderwood', 'weather,wind');
+    w.life.weather.force('mist', 2);
+    w.step(40);
+    const W = w.life.weather, b = W._banks.find((o) => o.on && o.age > 6 && o.life - o.age > 6);
+    T.assert(!!b, 'a bank is up in the mist');
+    if (!b) return;
+    const K = W.tune.mist.bank, L0 = b.i * W._bankPer;
+    // where its letters are now, in the bank's own frame (each letter's offset, as drawn)
+    let inner = 0, outer = 0;
+    const lit0 = [];
+    for (let j = 0; j < b.n; j++) {
+      const l = W._ml[L0 + j];
+      const r = Math.hypot(l.ox / K.spread[0], l.oz / K.spread[1]);
+      if (r < 0.35) inner++;
+      else if (r > 0.65) outer++;
+      lit0.push(l.t0);
+    }
+    T.assert(b.n >= K.per[0] && inner > outer * 1.5, `many letters, densest at the heart (${b.n}: ${inner} in the inner third, ${outer} in the outer)`);
+    w.step(K.cycle[1] + 0.5);
+    const moved = b.on ? lit0.filter((t0, j) => W._ml[L0 + j].t0 !== t0).length : b.n;
+    T.assert(moved > b.n * 0.8, `it rolls: ${moved} of ${b.n} letters came back elsewhere in ${K.cycle[1] + 0.5} s`);
+    const B = W._bp;
+    let bad = 0;
+    for (let i = 0; i < B.count * 3; i++) if (!Number.isFinite(B.iPos.array[i])) bad++;
+    T.assert(bad === 0, 'no NaN in the batch');
   },
 };

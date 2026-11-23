@@ -1,12 +1,5 @@
 import { WEATHER_TUNE } from './weatherTuning.js';
-import { GlyphParticles } from '../../render/particles.js';
-import { gi } from '../../render/glyphs.js';
-
-/** The weather's own letters (mist banks, dust devils): written into the buffers each frame by this
- *  module (soft in and out, carried by the wind every frame); its own update must not age them. */
-class WeatherBatch extends GlyphParticles {
-  update() {}
-}
+import { LetterBatch } from './letterBatch.js';
 
 // THE WEATHER (piece 'weather'): a level's slow spells, one mood per level that breathes.
 //
@@ -44,6 +37,8 @@ class WeatherBatch extends GlyphParticles {
 // whenever the piece is off. So with the piece off the uniforms are never touched.
 
 const TAU = Math.PI * 2;
+/** the strokes a drop prints as: straight down, falling right (the wind toward +x), falling left */
+const FALL_STROKES = '|\\/';
 const FIGHT = new Set(['bossIntro', 'boss']);
 /** the values a spell carries (weatherTuning.js); the factors default to 1, the rest to 0 */
 const PARAMS = ['mist', 'foot', 'wet', 'windK', 'moon', 'ambient', 'fogNear', 'fogFar', 'fogColor', 'embers', 'grey', 'breath', 'devils', 'bolts', 'snow'];
@@ -284,15 +279,21 @@ export class Weather {
     const T = this.tune;
     // what the drawing scales by: the phone, the strength, the fight
     const rk = L.quality * L.k * L.calm;
-    if (T.mist?.bank || T.devils) this._batch();
-    if (T.mist) this._mist(dt, fx.alpha, rk);
-    if (T.rain) this._fall(dt, fx.alpha, T.rain, 'rain', this.wet, rk);
-    if (T.grey) this._fall(dt, fx.alpha, T.grey, 'grey', v[P.grey], rk);
-    if (T.snow) this._fall(dt, fx.alpha, T.snow, 'snow', v[P.snow], rk);
-    if (T.embers) this._embers(dt, fx.add, v[P.embers], rk);
-    if (T.devils) this._devilsUpdate(dt, fx.alpha, v[P.devils] * this._pre, L.quality * L.k);
+    // (every letter of the weather prints in the house letter, in its own batches: letterBatch.js)
+    const bp = this._batch(), eb = T.embers ? this._emberBatch() : null;
+    if (T.mist) this._mist(dt, bp, rk);
+    if (T.rain) this._fall(dt, bp, T.rain, 'rain', this.wet, rk);
+    if (T.grey) this._fall(dt, bp, T.grey, 'grey', v[P.grey], rk);
+    if (T.snow) this._fall(dt, bp, T.snow, 'snow', v[P.snow], rk);
+    if (T.embers) this._embers(dt, eb, v[P.embers], rk);
+    if (T.devils) this._devilsUpdate(dt, bp, v[P.devils] * this._pre, L.quality * L.k);
     if (T.bolts) this._bolts(dt, v[P.bolts] * this._pre);
     if (this._bp) this._drawBatch(dt);
+    if (this._eb) {
+      this._eb.begin();
+      this._eb.flow(dt, L.t);
+      this._eb.end();
+    }
     this.bolt = T.bolts ? clamp01(this.flash / Math.max(1e-3, T.bolts.peak[1])) : 0;
     if (T.breath) L.set?.ambience?.breathe?.(clamp01(v[P.breath] * (T.breath.k ?? 1) * L.k));
   }
@@ -314,10 +315,8 @@ export class Weather {
   /** Nothing of the weather's own letters stays (the piece off, the world hidden, a reset). */
   _emptyBatch() {
     for (const b of this._banks ?? []) b.on = false;
-    const pool = this._bp;
-    if (!pool) return;
-    pool.count = 0;
-    pool.geometry.instanceCount = 0;
+    this._bp?.empty();
+    this._eb?.empty();
   }
 
   clear(why) {
@@ -331,6 +330,7 @@ export class Weather {
   setVisible(on) {
     this._visible = !!on;
     if (this._bp?.mesh) this._bp.mesh.visible = !!on;
+    if (this._eb?.mesh) this._eb.mesh.visible = !!on;
     if (!on) {
       for (const d of this._devils) d.on = false;
       this.flash = 0;
@@ -350,7 +350,7 @@ export class Weather {
     r.life = 1; r.size = 0.2; r.sizeEnd = 0.2;
     r.color = r.colorEnd = null;
     r.alpha = 1; r.alphaEnd = 0; r.glyph = '.';
-    r.rot = r.spin = r.drag = r.gravity = r.flicker = r.stretch = 0;
+    r.rot = r.spin = r.drag = r.gravity = r.flicker = r.stretch = r.col = 0;
     return r;
   }
 
@@ -377,55 +377,36 @@ export class Weather {
     return dx * dx + dz * dz < r * r;
   }
 
-  /** The low mist: bands of wide faint strokes round the level, drifting with the air. */
+  /** The low mist: banks of many tiny pale letters round the level, drifting with the air. */
   _mist(dt, pool, rk) {
     const M = this.tune.mist, v = this.val;
     if (!pool) return;
     const bands = M.bands;
-    if (!this._veilAcc) {
-      this._veilAcc = new Float64Array(bands.length);
-      this._bankAcc = new Float64Array(bands.length);
-    }
+    if (!this._bankAcc) this._bankAcc = new Float64Array(bands.length);
     for (let i = 0; i < bands.length; i++) {
       const B = bands[i];
       const k = clamp01((v[P[B.key]] ?? 0) * (B.k ?? 1));
-      // today's veil, full once the value reaches the band's `veil`; banks above it
-      const veil = B.veil > 0 ? Math.min(1, k / B.veil) : 0;
-      const bank = B.veil < 1 ? clamp01((k - B.veil) / (1 - B.veil)) : 0;
-      if (M.veil) {
-        this._veilAcc[i] += dt * M.veil.rate * veil * rk;
-        let n = Math.min(4, Math.floor(this._veilAcc[i]));
-        this._veilAcc[i] -= Math.floor(this._veilAcc[i]);
-        while (n-- > 0) this._veil(pool, M, B);
-      }
+      // banks above the band's `veil` (0: from the first breath of mist)
+      const veil = clamp01(B.veil ?? 0);
+      const bank = veil < 1 ? clamp01((k - veil) / (1 - veil)) : 0;
       if (M.bank) {
         this._bankAcc[i] += dt * M.bank.rate * bank * rk;
         let n = Math.min(2, Math.floor(this._bankAcc[i]));
         this._bankAcc[i] -= Math.floor(this._bankAcc[i]);
-        while (n-- > 0) this._bank(M, B);
+        while (n-- > 0) this._bank(M, B, k);
       }
     }
   }
 
   /** A point of a mist band in view (or NaN): round the level, thinner in the clearing, off the hero. */
-  _mistAt(M, B, r0, r1, out, ring) {
+  _mistAt(M, B, r0, r1, out) {
     const f = this.life.focus;
     out.x = NaN;
-    let x, z, r;
-    if (ring) {
-      // (today's veil: a ring round the level, kept if it falls near the view)
-      const a = this._fr() * TAU;
-      r = r0 + (r1 - r0) * this._fr();
-      x = Math.cos(a) * r;
-      z = Math.sin(a) * r;
-      if (Math.abs(x - f.x) > ring[0] || Math.abs(z - f.z) > ring[1]) return out;
-    } else {
-      // (a bank: a point of the view, kept if it is in the band)
-      x = f.x + (this._fr() - 0.5) * 2 * M.view[0];
-      z = f.z + M.view[2] + (this._fr() - 0.5) * 2 * M.view[1];
-      r = Math.hypot(x, z);
-      if (r < r0 || r > r1) return out;
-    }
+    // (a point of the view, kept if it is in the band)
+    const x = f.x + (this._fr() - 0.5) * 2 * M.view[0];
+    const z = f.z + M.view[2] + (this._fr() - 0.5) * 2 * M.view[1];
+    const r = Math.hypot(x, z);
+    if (r < r0 || r > r1) return out;
     if (B.inner && this._fr() > (B.innerK + (1 - B.innerK) * clamp01((r - B.inner[0]) / (B.inner[1] - B.inner[0])))) return out;
     if (this._nearHero(x, z, WEATHER_TUNE.heroGap.mist)) return out;
     out.x = x;
@@ -433,25 +414,9 @@ export class Weather {
     return out;
   }
 
-  /** Today's veil: one wide, very faint stroke (the atmosphere's mist, drawn here while it is ours). */
-  _veil(pool, M, B) {
-    const V = M.veil, p = this._mistAt(M, B, V.r[0], V.r[1], this._p, V.view);
-    if (!(p.x === p.x)) return;
-    const w = this._air(p.x, p.z, M.carry, M.drift);
-    const q = this._resetRec();
-    q.x = p.x; q.y = this._range(V.y); q.z = p.z;
-    q.vx = w.x * (0.8 + 0.5 * this._fr()); q.vz = w.z + (this._fr() - 0.5) * (M.drift[0] || M.carry ? 0.15 : 0.02);
-    q.life = this._range(V.life);
-    q.size = this._range(V.size); q.sizeEnd = V.sizeEnd;
-    q.glyph = V.glyph;
-    q.color = q.colorEnd = V.color;
-    q.alpha = V.alpha; q.alphaEnd = 0;
-    q.rot = (this._fr() - 0.5) * 0.15;
-    pool.spawn(q);
-  }
-
-  /** A bank is born: a loose cluster of letters in a free slot of the weather's own batch. */
-  _bank(M, B) {
+  /** A bank is born: a soft low cloud of many tiny pale letters in a free slot of the weather's own
+   *  batch, densest in its middle and thinning to single letters at its edges. */
+  _bank(M, B, k = 1) {
     const K = M.bank;
     let bank = null;
     for (const o of this._banks) if (!o.on) { bank = o; break; }
@@ -461,24 +426,38 @@ export class Weather {
     const w = this._air(p.x, p.z, M.carry, M.drift);
     bank.on = true;
     bank.x = p.x; bank.z = p.z; bank.vx = w.x; bank.vz = w.z;
+    const ws = Math.hypot(w.x, w.z);
+    bank.nx = ws > 1e-3 ? w.x / ws : 1;
+    bank.nz = ws > 1e-3 ? w.z / ws : 0;
     bank.y = this._range(B.y);
     bank.age = 0;
     bank.life = this._range(K.life);
-    bank.n = Math.min(this._bankPer, Math.round(this._range(K.per)));
-    bank.k = 1;
+    // (a thin mist makes thin banks: fewer letters, fainter; a thick one full ones)
+    bank.n = Math.min(this._bankPer, Math.round(this._range(K.per) * (K.thin + (1 - K.thin) * k)));
+    bank.a = 0.5 + 0.5 * k;
+    bank.k = this._range(K.scale ?? [1, 1]);
     const L0 = bank.i * this._bankPer;
     for (let j = 0; j < bank.n; j++) {
-      // (an ellipse, denser at its heart; a little higher in the middle)
-      const a = this._fr() * TAU, r = Math.sqrt(this._fr());
       const l = this._ml[L0 + j];
-      l.ox = Math.cos(a) * r * K.spread[0];
-      l.oz = Math.sin(a) * r * K.spread[1];
-      l.oy = (1 - r) * K.rise * this._fr();
-      l.g = this._mg[Math.floor(this._fr() * this._mg.length)];
-      l.size = this._range(K.size);
-      l.ph = this._fr() * TAU;
-      l.a = 0.55 + 0.45 * this._fr() * (1 - 0.5 * r);
+      this._mistLetter(K, l);
+      // (each letter is part way through its own coming and going: a bank never starts in step)
+      l.t0 = this.life.t - this._fr() * l.per;
     }
+  }
+
+  /** A mist letter (re)placed in its bank: where (a soft heap: densest in the middle), which letter,
+   *  how long it stays before it goes and comes back elsewhere. */
+  _mistLetter(K, l) {
+    const g = () => (this._fr() + this._fr() + this._fr() - 1.5) / 1.5;
+    l.ox = g() * K.spread[0];
+    l.oz = g() * K.spread[1];
+    const r = Math.min(1, Math.hypot(l.ox / K.spread[0], l.oz / K.spread[1]));
+    l.oy = (1 - r) * K.rise * this._fr();
+    l.g = this._mg[Math.floor(this._fr() * this._mg.length)];
+    l.size = this._range(K.size);
+    l.ph = this._fr() * TAU;
+    l.per = this._range(K.cycle);
+    l.a = (0.5 + 0.5 * this._fr()) * (1 - 0.55 * r);
   }
 
   /** The weather's own batch, made on first use (life.build: no Math.random). */
@@ -491,23 +470,51 @@ export class Weather {
     const nb = K ? Math.max(1, Math.round(K.max * q)) : 0;
     this._banks = [];
     this._ml = [];
-    for (let i = 0; i < nb; i++) this._banks.push({ i, on: false, x: 0, y: 1, z: 0, vx: 0, vz: 0, age: 0, life: 1, n: 0, k: 1 });
-    for (let i = 0; i < nb * this._bankPer; i++) this._ml.push({ ox: 0, oy: 0, oz: 0, g: 0, size: 0.4, ph: 0, a: 1 });
-    this._mg = K ? [...K.glyph].map((c) => gi(c)) : [];
-    this._dg = D ? [...D.glyph].map((c) => gi(c)) : [];
+    for (let i = 0; i < nb; i++) this._banks.push({ i, on: false, x: 0, y: 1, z: 0, vx: 0, vz: 0, nx: 1, nz: 0, age: 0, life: 1, n: 0, k: 1, a: 1 });
+    for (let i = 0; i < nb * this._bankPer; i++) this._ml.push({ ox: 0, oy: 0, oz: 0, g: 0, size: 0.4, ph: 0, a: 1, t0: 0, per: 8 });
     this._dl = [];
     for (let i = 0; D && i < D.max * D.letters; i++) this._dl.push({ u: 0, a: 0, w: 1, r: 1, g: 0, size: 0.4 });
-    for (const d of this._devils) if (d.on) this._devilLetters(d);
-    const max = nb * this._bankPer + (D ? D.max * D.letters : 0);
-    if (!(max > 0)) return null;
+    // what falls (the drizzle, the grey-out's ash, the snow) moves and fades by itself in the same batch
+    let fall = 0;
+    const chars = new Set([...(K?.glyph ?? ''), ...(D?.glyph ?? ''), ...FALL_STROKES]);
+    for (const F of [T.rain, T.grey, T.snow]) {
+      if (!F) continue;
+      for (const c of F.glyph) chars.add(c);
+      fall += Math.ceil(F.rate * (F.life ? F.life[1] : F.y[1] / F.fall[0]) * q * 1.15);
+    }
+    fall = Math.min(WEATHER_TUNE.fallMax, fall);
+    const max = nb * this._bankPer + (D ? D.max * D.letters : 0) + fall;
+    if (!(max > 0) || !this.life.game?.U) return null;
     try {
-      this._bp = this.life.build(() => new WeatherBatch(this.life.game.U, { max, additive: false }));
+      this._bp = this.life.build(() => new LetterBatch(this.life.game, max, [...chars].join(''), { spawned: fall, rand: () => this._fr() }));
       this._bp.mesh.visible = this._visible !== false;
       this.life.game.pipeline?.registerParticles?.(this._bp);
+      this._mg = K ? [...K.glyph].map((c) => this._bp.col(c)) : [];
+      this._dg = D ? [...D.glyph].map((c) => this._bp.col(c)) : [];
+      this._fs3 = [...FALL_STROKES].map((c) => this._bp.col(c));
+      for (const d of this._devils) if (d.on) this._devilLetters(d);
     } catch {
       this._bp = null;
     }
     return this._bp;
+  }
+
+  /** The ember squall's own batch (additive: an ember glows), made on first use. */
+  _emberBatch() {
+    if (this._eb !== undefined) return this._eb;
+    this._eb = null;
+    const E = this.tune.embers, q = Math.max(0.3, Math.min(1, this.life.quality));
+    const max = Math.ceil(E.rate * E.life[1] * q * 1.15);
+    if (!(max > 0) || !this.life.game?.U) return null;
+    try {
+      this._eb = this.life.build(() => new LetterBatch(this.life.game, max, E.glyph, { additive: true, spawned: max, rand: () => this._fr() }));
+      this._eb.mesh.visible = this._visible !== false;
+      this.life.game.pipeline?.registerParticles?.(this._eb);
+      this._eg = [...E.glyph].map((c) => this._eb.col(c));
+    } catch {
+      this._eb = null;
+    }
+    return this._eb;
   }
 
   /** One letter into the batch (n: the cursor). */
@@ -527,40 +534,62 @@ export class Weather {
     const pool = this._bp;
     if (!pool) return;
     const L = this.life, T = this.tune, H = L.hero, t = L.t;
-    let n = 0;
+    // what falls first (it ages by itself), then the written letters
+    pool.begin();
+    pool.flow(dt, t);
+    let n = pool.n;
     const K = T.mist?.bank, M = T.mist;
     if (K) {
-      const hc = K.heroClear;
+      const hc = K.heroClear, turn = 1 - Math.exp(-dt / 4);
       for (const b of this._banks) {
         if (!b.on) continue;
         b.age += dt;
         if (b.age >= b.life) { b.on = false; continue; }
-        // the air carries it (eased: a bank is slow to turn)
+        // the air carries it (eased: a bank is slow to turn), and it lies along the air
         const w = this._air(b.x, b.z, M.carry, M.drift);
         const e = 1 - Math.exp(-dt / 2);
         b.vx += (w.x - b.vx) * e;
         b.vz += (w.z - b.vz) * e;
         b.x += b.vx * dt;
         b.z += b.vz * dt;
+        const sp = Math.hypot(b.vx, b.vz);
+        if (sp > 0.03) {
+          b.nx += (b.vx / sp - b.nx) * turn;
+          b.nz += (b.vz / sp - b.nz) * turn;
+          const nn = Math.hypot(b.nx, b.nz) || 1;
+          b.nx /= nn;
+          b.nz /= nn;
+        }
         const env = smoothE(b.age / K.fadeIn) * smoothE((b.life - b.age) / K.fadeOut) * L.calm;
         if (!(env > 0.01)) continue;
+        // it spreads along the air as it goes (a bank thins rather than ends)
+        const grow = b.k * (1 + K.grow * (b.age / b.life));
+        const nx = b.nx, nz = b.nz;
         const L0 = b.i * this._bankPer;
         for (let j = 0; j < b.n; j++) {
           const l = this._ml[L0 + j];
-          const x = b.x + l.ox + Math.sin(t * 0.31 + l.ph) * K.wobble;
-          const z = b.z + l.oz + Math.cos(t * 0.23 + l.ph * 1.3) * K.wobble * 0.6;
-          let a = K.alpha * l.a * env * (0.8 + 0.2 * Math.sin(t * 0.6 + l.ph));
+          // each letter comes and goes on its own beat; gone, it comes back elsewhere in the bank
+          let u = (t - l.t0) / l.per;
+          if (u >= 1) {
+            this._mistLetter(K, l);
+            l.t0 = t;
+            u = 0;
+          }
+          // (and while it is there it streams slowly through the bank along the air: the bank rolls)
+          const ax = l.ox * grow + (u - 0.5) * K.stream, az = l.oz * b.k;
+          const x = b.x + nx * ax - nz * az + Math.sin(t * 0.31 + l.ph) * K.wobble;
+          const z = b.z + nz * ax + nx * az + Math.cos(t * 0.23 + l.ph * 1.3) * K.wobble * 0.6;
+          let a = K.alpha * b.a * l.a * env * smoothE(u / 0.25) * smoothE((1 - u) / 0.3);
           const dx = x - H.x, dz = z - H.z, d = Math.sqrt(dx * dx + dz * dz);
           if (d < hc[1]) a *= smoothE((d - hc[0]) / (hc[1] - hc[0]));
           if (!(a > 0.01)) continue;
-          n = this._putL(n, x, b.y + l.oy, z, l.size, l.g, 0, K.color, a);
+          n = this._putL(n, x, b.y + l.oy + u * K.lift, z, l.size, l.g, 0, K.color, a);
         }
       }
     }
     if (T.devils) n = this._drawDevils(n);
-    pool.count = n;
-    pool.geometry.instanceCount = n;
-    pool.iPos.needsUpdate = pool.iData.needsUpdate = pool.iColor.needsUpdate = true;
+    pool.n = n;
+    pool.end();
   }
 
   /** Things that fall over the view: the drizzle, the grey-out's ash, the snow. */
@@ -587,19 +616,18 @@ export class Weather {
       q.x = x; q.y = gy + y; q.z = z;
       q.vx = w.x; q.vy = -fall; q.vz = w.z;
       q.life = F.life ? Math.min(t, this._range(F.life)) : t;
-      q.size = q.sizeEnd = F.size;
-      q.glyph = F.glyph;
       q.color = F.color;
       q.colorEnd = F.colorEnd ?? F.color;
       q.alpha = F.alpha;
       q.alphaEnd = F.alphaEnd ?? 0;
-      if (F.stretch) {
-        // a streak along its fall as the camera sees it (58 degrees down: a fall shows at ~0.53, z at ~0.85)
-        q.stretch = F.stretch;
-        q.rot = Math.atan2(w.x, fall * 0.53 + w.z * 0.85);
+      if (F.slant) {
+        // a drop: the stroke that runs along its fall as the camera sees it (58 degrees down: a fall
+        // shows at ~0.53 of its speed, the air across at 1): | straight down, \ or / in a slanting wind
+        const k = w.x / (fall * 0.53 + 1e-3);
+        q.col = k > F.slant ? this._fs3[1] : k < -F.slant ? this._fs3[2] : this._fs3[0];
+        if (this._fr() < (F.ticks ?? 0)) q.col = pool.col(F.glyph[Math.floor(this._fr() * F.glyph.length)]);
       } else {
-        q.spin = (this._fr() - 0.5) * (F.spin ?? 0);
-        q.rot = this._fr() * TAU;
+        q.col = pool.col(F.glyph[Math.floor(this._fr() * F.glyph.length)]);
       }
       pool.spawn(q);
     }
@@ -637,9 +665,10 @@ export class Weather {
       q.gravity = E.gravity;
       q.drag = E.drag;
       q.life = this._range(E.life);
-      q.size = E.size; q.sizeEnd = E.sizeEnd;
-      q.glyph = E.glyph;
-      q.color = E.color; q.colorEnd = E.colorEnd;
+      q.col = this._eg[Math.floor(this._fr() * this._eg.length)];
+      // (most are dim; a few glow brighter)
+      q.color = E.bright && this._fr() < E.bright ? E.brightColor : E.color;
+      q.colorEnd = E.colorEnd;
       q.alpha = 1; q.alphaEnd = 0;
       q.flicker = E.flicker;
       pool.spawn(q);

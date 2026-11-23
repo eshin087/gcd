@@ -118,7 +118,7 @@ export function createSharedUniforms() {
     uWind: { value: new THREE.Vector4(0, 0, 0, 0) },
     // ... and its layout (WIND_FRONTS): [2i] front i (nx, nz, edge position along n, strength; 0 = none),
     // [2i + 1] (tail m, lead m, phase, 0); [8] the sink (x, z, k, 0: the throne's draw); [9] the
-    // field's travel (x, z, 0, 0); [10] the grass's answer (lean, wave, front, lift); [11] the trees'
+    // field's travel (x, z, 0, 0); [10] the grass's answer (lean, wave, front, patch); [11] the trees'
     // (lean, rock, front, stir)
     uWindFronts: { value: Array.from({ length: WIND_FRONTS_LEN }, () => new THREE.Vector4(0, 0, 0, 0)) },
   };

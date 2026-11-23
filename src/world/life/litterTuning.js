@@ -78,14 +78,14 @@ export const LITTER = deepFreeze({
       kinds: [
         {
           share: 0.45, glyphs: "()cec", color: [0.3, 0.44, 0.2], color2: [0.22, 0.33, 0.15],
-          size: [0.38, 0.48], ground: { glyphs: 'ce()v', size: [0.36, 0.44] }, fall: [0.42, 0.65], slip: 0.85, flutter: [1.4, 2.4], spin: 2.4, tau: 0.6,
-          lift: [2.25, 3.5], carry: 1, hop: 1.5, lie: 0.85, alpha: 0.9, from: [4.5, 8],
+          size: [0.28, 0.34], ground: { glyphs: 'ce()v', size: [0.36, 0.44] }, fall: [0.42, 0.65], slip: 0.85, flutter: [1.4, 2.4], spin: 2.4, tau: 0.6,
+          lift: [2.25, 3.5], carry: 1, hop: 1.5, lie: 0.85, alpha: 0.72, from: [4.5, 8],
           where: { at: 'rim', lo: 0.25, r0: 8, r1: 28 }, source: 'sky',
         },
         {
           share: 0.55, glyphs: "()cec", color: [0.42, 0.31, 0.16], color2: [0.32, 0.24, 0.12],
-          size: [0.38, 0.48], ground: { glyphs: 'ce()s', size: [0.36, 0.44] }, fall: [0.45, 0.7], slip: 0.8, flutter: [1.5, 2.6], spin: 2.8, tau: 0.55,
-          lift: [2.15, 3.4], carry: 1, hop: 1.5, lie: 0.85, alpha: 0.9, from: [4.5, 8],
+          size: [0.28, 0.34], ground: { glyphs: 'ce()s', size: [0.36, 0.44] }, fall: [0.45, 0.7], slip: 0.8, flutter: [1.5, 2.6], spin: 2.8, tau: 0.55,
+          lift: [2.15, 3.4], carry: 1, hop: 1.5, lie: 0.85, alpha: 0.72, from: [4.5, 8],
           where: { at: 'rim', lo: 0.25, r0: 8, r1: 28 }, source: 'sky',
         },
       ],
@@ -146,14 +146,14 @@ export const LITTER = deepFreeze({
       kinds: [
         {
           share: 0.7, glyphs: "o:co", color: [0.54, 0.45, 0.32], color2: [0.44, 0.36, 0.25],
-          size: [0.26, 0.34], fall: [2.2, 3.2], slip: 0.1, flutter: [2, 4], spin: 5, tau: 0.18,
-          lift: [0.8, 2.6], carry: 0.6, hop: 1.1, lie: 0.75, alpha: 0.8, from: [0.05, 0.15],
+          size: [0.2, 0.26], fall: [2.2, 3.2], slip: 0.1, flutter: [2, 4], spin: 5, tau: 0.18,
+          lift: [0.8, 2.6], carry: 0.6, hop: 1.1, lie: 0.75, alpha: 0.62, from: [0.05, 0.15],
           where: { at: 'kerb', base: 0.25, pile: 3, depth: 1.4, half: 15 }, source: 'edge',
         },
         {
           share: 0.3, glyphs: "v(~", color: [0.58, 0.52, 0.34], color2: [0.48, 0.42, 0.27],
-          size: [0.3, 0.38], fall: [1.1, 1.6], slip: 0.2, flutter: [2, 3.5], spin: 4, tau: 0.25,
-          lift: [1.0, 2.8], carry: 0.7, hop: 1.3, lie: 0.7, alpha: 0.8, from: [0.05, 0.2],
+          size: [0.24, 0.3], fall: [1.1, 1.6], slip: 0.2, flutter: [2, 3.5], spin: 4, tau: 0.25,
+          lift: [1.0, 2.8], carry: 0.7, hop: 1.3, lie: 0.7, alpha: 0.62, from: [0.05, 0.2],
           where: { at: 'kerb', base: 0.25, pile: 3, depth: 1.4, half: 15 }, source: 'edge',
         },
       ],
@@ -170,14 +170,14 @@ export const LITTER = deepFreeze({
       kinds: [
         {
           share: 0.78, glyphs: "()cec", color: [0.42, 0.33, 0.2], color2: [0.32, 0.27, 0.2],
-          size: [0.38, 0.46], ground: { glyphs: 'ce()s', size: [0.36, 0.44] }, fall: [0.45, 0.7], slip: 0.8, flutter: [1.4, 2.4], spin: 2.6, tau: 0.55,
-          lift: [1.8, 3.2], carry: 1, hop: 1.4, lie: 0.8, alpha: 0.9, from: [4, 7],
+          size: [0.28, 0.34], ground: { glyphs: 'ce()s', size: [0.36, 0.44] }, fall: [0.45, 0.7], slip: 0.8, flutter: [1.4, 2.4], spin: 2.6, tau: 0.55,
+          lift: [1.8, 3.2], carry: 1, hop: 1.4, lie: 0.8, alpha: 0.72, from: [4, 7],
           where: { at: 'rim', lo: 0.3, r0: 8, r1: 18 }, source: 'sky',
         },
         {
           share: 0.22, glyphs: '=[]', color: [0.56, 0.53, 0.45], color2: [0.46, 0.43, 0.36],
-          size: [0.4, 0.48], ground: { glyphs: '=[]', size: [0.4, 0.48] }, fall: [0.4, 0.6], slip: 0.9, flutter: [1.3, 2.2], spin: 3.2, tau: 0.6,
-          lift: [1.6, 2.8], carry: 1, hop: 1.5, lie: 0.75, alpha: 0.85, from: [1.6, 3],
+          size: [0.3, 0.36], ground: { glyphs: '=[]', size: [0.4, 0.48] }, fall: [0.4, 0.6], slip: 0.9, flutter: [1.3, 2.2], spin: 3.2, tau: 0.6,
+          lift: [1.6, 2.8], carry: 1, hop: 1.5, lie: 0.75, alpha: 0.72, from: [1.6, 3],
           where: { at: 'near', r: 16.5, angles: [24, -24, 60, -60, 130, -130, 160, -160], spread: 2.6, lo: 0.04 },
           source: 'sky',
         },
@@ -195,8 +195,8 @@ export const LITTER = deepFreeze({
       kinds: [
         {
           share: 1, glyphs: "/\\()", color: [0.3, 0.44, 0.2], color2: [0.36, 0.4, 0.2],
-          size: [0.42, 0.5], ground: { glyphs: '()<>', size: [0.4, 0.48] }, fall: [0.45, 0.6], slip: 0, flutter: [1.0, 1.6], spin: 1.8, tau: 0.6,
-          lift: [1.4, 2.4], carry: 1, hop: 1.1, lie: 0.7, alpha: 0.85, from: [6, 9],
+          size: [0.3, 0.36], ground: { glyphs: '()<>', size: [0.4, 0.48] }, fall: [0.45, 0.6], slip: 0, flutter: [1.0, 1.6], spin: 1.8, tau: 0.6,
+          lift: [1.4, 2.4], carry: 1, hop: 1.1, lie: 0.7, alpha: 0.72, from: [6, 9],
           where: { at: 'rim', lo: 0.35, r0: 5, r1: 15 }, source: 'sky',
         },
       ],

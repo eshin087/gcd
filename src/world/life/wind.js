@@ -1,5 +1,6 @@
 import { WIND_TUNE, WIND_DEFAULT, WIND_LULL, WIND_BURST, WIND_HUSH } from './windTuning.js';
 import { WIND_SLOTS } from '../../render/shaderLib.js';
+import { LetterBatch } from './letterBatch.js';
 
 // THE WIND (piece 'wind'): one shared wind per level, the air every other layer reads.
 //
@@ -18,6 +19,7 @@ import { WIND_SLOTS } from '../../render/shaderLib.js';
 //                         there except where a burst passes
 //   (added) wind.lull(sec)   the air falls still for `sec` s (the Lab's 'lull'; the answer layer's hush)
 //   (added) wind.gust        0..1: how much front is passing the camera's focus now
+//   (added) wind.wisped      wisps born this visit (the tests)
 // With the piece off: at() gives zero, level 0, and nothing is drawn or written.
 //
 // The shaders read it from the shared uniforms `uWind` (dirX, dirZ, speed, level) and `uWindFronts`
@@ -59,13 +61,17 @@ export class Wind {
       on: false, nx: 1, nz: 0, pos: 0, end: 0, speed: 0, strength: 0, tail: 8, lead: 2, phase: 0, env: 0, air: 0, quiet: false, ease: 0.8, born: false,
     }));
     this.bursts = Array.from({ length: 4 }, () => ({ on: false, x: 0, z: 0, s: 0, r: 1, age: 0 }));
-    // the streaks: a reused spawn record, and when each live one dies (to keep inside `max`)
-    this._streak = {
-      x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 1, size: 0.22, sizeEnd: 0.22, glyph: '-',
-      color: [0.15, 0.18, 0.19], colorEnd: [0.15, 0.18, 0.19], alpha: 0.38, alphaEnd: 0, rot: 0, drag: 0,
-    };
-    this._streakDie = new Float32Array(Math.max(1, T.streaks.max | 0));
-    this._streakAcc = 0;
+    // the wisps (wind.js _wisps): clumps of tiny faint letters riding the air, drawn in an own batch
+    // made on the first update with the piece on; their own random stream (seeded from the level: how
+    // many there are never moves what the other layers draw)
+    this._wc = [];
+    this._wl = null;
+    this._wb = undefined;
+    this._wAcc = 0;
+    this._wgAcc = 0;
+    this._ws = 0;
+    /** wisps born this visit (the tests) */
+    this.wisped = 0;
     this._w = { x: 0, z: 0, k: 0 };
 
     life.action('gust front', () => this.front({ strength: 1.15 }), 'send a gust front across the level');
@@ -296,7 +302,7 @@ export class Wind {
     const front0 = FT?.air ?? WIND_DEFAULT_FRONTS.air;
     this.level = Math.min(1, (this.speed + gust * front0) / T.loud);
     this._write();
-    this._streaks(dt);
+    this._wisps(dt);
     // the fire field's smoke and flames ride the air (render/fireField.js reads `wind`)
     const fire = L.game?.fx?.fire;
     if (fire && fire.wind !== this) {
@@ -327,9 +333,9 @@ export class Wind {
     A[WIND_SLOTS * 2]?.set(S?.x ?? 0, S?.z ?? 0, S && !this.still ? 1 : 0, 0);
     A[WIND_SLOTS * 2 + 1]?.set(this._ox, this._oz, 0, 0);
     const G = T.grass, R = T.trees;
-    // (while the boss is up the band steps back: a lighter sweep across the floor must not compete with a tell)
+    // (while the boss is up a gust's stir steps back further: nothing on the floor competes with a tell)
     const calm = Math.max(0, Math.min(1, Number.isFinite(this.life.calm) ? this.life.calm : 1));
-    A[WIND_SLOTS * 2 + 2]?.set(G.lean, G.wave, G.front * (0.5 + 0.5 * calm), G.lift * calm);
+    A[WIND_SLOTS * 2 + 2]?.set(G.lean, G.wave, G.front * (0.5 + 0.5 * calm), G.patch);
     A[WIND_SLOTS * 2 + 3]?.set(R.lean, R.rock, R.front, R.stir);
   }
 
@@ -342,89 +348,228 @@ export class Wind {
     this.speed = this.level = this.gust = 0;
     for (const F of this.fronts) F.on = false;
     for (const b of this.bursts) b.on = false;
-    this._streakDie.fill(0);
+    this._wispsGo();
     const fire = this.life.game?.fx?.fire;
     if (fire && fire.wind === this) fire.wind = null;
   }
 
-  /** "Wind drawn in letters": short runs of strokes riding each front low over the ground, round the
-   *  camera's focus: most along its leading edge (at its speed), the rest in its wake (slower), each
-   *  run turned to the wind's direction on screen. */
-  _streaks(dt) {
-    const S = this.T.streaks, L = this.life, fx = L.game?.fx?.alpha;
-    if (!fx || !(S.rate > 0) || !(S.max > 0) || this._hidden) return;
-    const t = this._t, die = this._streakDie, f = L.focus;
-    const fxF = Number.isFinite(f.x) ? f.x : 0, fzF = Number.isFinite(f.z) ? f.z : 0;
-    const rate = S.rate * L.quality * L.calm * Math.min(1.5, L.k);
-    const U = L.game?.U, R = U?.uCamRight?.value, Up = U?.uCamUp?.value;
-    for (const F of this.fronts) {
-      if (!F.on || F.env < 0.05) continue;
-      // only while its edge is near the view
-      const sF = fxF * F.nx + fzF * F.nz;
-      if (Math.abs(F.pos - sF) > 30) continue;
-      // the run's turn on screen: the wind's direction in the camera's plane
-      let rot = 0;
-      if (R && Up) {
-        const dr = F.nx * R.x + F.nz * R.z, du = F.nx * Up.x + F.nz * Up.z;
-        if (Math.abs(dr) + Math.abs(du) > 1e-4) rot = Math.atan2(du, dr);
+  /** The wisps' own stream (an LCG seeded once from life.rand). */
+  _wr() {
+    this._ws = (Math.imul(this._ws, 1664525) + 1013904223) >>> 0;
+    return this._ws / 4294967296;
+  }
+
+  _wrange(a, b) {
+    return a + (b - a) * this._wr();
+  }
+
+  /** The wisps' batch and records, made on first use (life.build: no Math.random). */
+  _wispBatch() {
+    if (this._wb !== undefined) return this._wb;
+    this._wb = null;
+    const W = this.T.wisps, L = this.life;
+    if (!W || !(W.max > 0) || !L.game?.U) return null;
+    // (seeded from the level, not from life.rand: the wisps must not move what the other layers draw)
+    let h = 0x51ed270b;
+    for (const ch of String(L.levelId)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
+    this._ws = h;
+    const q = Math.max(0.3, Math.min(1, L.quality));
+    const nc = Math.max(1, Math.round(W.max * q)), per = W.per[1] | 0;
+    for (let i = 0; i < nc; i++) {
+      this._wc.push({ i, on: false, x: 0, y: 0, z: 0, vx: 0, vz: 0, nx: 1, nz: 0, age: 0, life: 1, len: 1, wid: 0.3, n: 0, ph: 0, curl: 0, tone: 1 });
+    }
+    this._wper = per;
+    this._wl = new Float32Array(nc * per * WL);
+    // the letters: the tuning's, and the four strokes a '-' turns into along the wisp on screen
+    const chars = [...new Set([...W.glyph, ...STROKES])].join('');
+    try {
+      // (built on the wisps' own stream, not through life.build: three.js's uuids must not move life.rand,
+      //  which the other layers draw from)
+      const rand = () => this._wr(), mr = Math.random;
+      Math.random = rand;
+      try {
+        this._wb = new LetterBatch(L.game, nc * per, chars, { snap: W.snap ?? 0, rand });
+      } finally {
+        Math.random = mr;
       }
-      this._streakAcc += dt * rate * Math.min(1.5, F.strength) * F.env;
-      while (this._streakAcc >= 1) {
-        this._streakAcc -= 1;
-        // a point in view on the edge (or in the wake behind it)
-        const onEdge = L.rand() < S.edge;
-        const c = (fxF * F.nz * -1 + fzF * F.nx) + L.range(-16, 14);
-        const back = onEdge ? L.range(0, 1.2) : L.range(1.5, F.tail * 1.2);
-        const e = F.pos + 2.4 * Math.sin(c * 0.07 + F.phase) + 1.1 * Math.sin(c * 0.19 + F.phase * 1.7) - back;
-        // (x, z) from (s = e, c): s = x nx + z nz, c = nx z - nz x
-        const x = e * F.nx - c * F.nz, z = e * F.nz + c * F.nx;
-        if (Math.abs(x - fxF) > 21 || z - fzF < -12 || z - fzF > 10) continue;
-        // where the front is weak (a patch between gusts) fewer ride it
-        const patch = 0.62 + 0.38 * Math.sin(c * 0.11 + F.phase * 2.3);
-        if (L.rand() > patch * patch) continue;
-        // and never over the hero
-        const h = L.hero;
-        if (Math.abs(x - h.x) < 1.6 && Math.abs(z - h.z) < 1.6) continue;
-        const r = this._streak, life = L.range(S.life[0], S.life[1]);
-        const v = F.speed * (onEdge ? L.range(0.92, 1.04) : L.range(0.55, 0.8));
-        const n = Math.round(L.range(S.run[0], S.run[1] + 0.49));
-        const size = L.range(S.size[0], S.size[1]);
-        const y = L.range(S.y[0], S.y[1]);
-        const vy = L.range(-0.04, 0.1);
-        const tone = L.range(0.85, 1.1) * F.env;
-        for (let j = 0; j < n; j++) {
-          let slot = -1;
-          for (let i = 0; i < die.length; i++) {
-            if (die[i] <= t) {
-              slot = i;
-              break;
-            }
-          }
-          if (slot < 0) {
-            this._streakAcc = 0;
-            return;
-          }
-          const off = -j * S.gap * (1 + 0.25 * L.rand());
-          r.x = x + F.nx * off;
-          r.y = y + L.range(-0.03, 0.03);
-          r.z = z + F.nz * off;
-          r.vx = F.nx * v;
-          r.vy = vy;
-          r.vz = F.nz * v;
-          // (the run's tail goes a little sooner: it reads as drawn, then wiped, along the wind)
-          r.life = life * (1 - 0.12 * j);
-          r.size = size * 0.75;
-          r.sizeEnd = size * 1.05;
-          r.glyph = S.glyph;
-          r.color[0] = r.colorEnd[0] = S.color[0] * tone;
-          r.color[1] = r.colorEnd[1] = S.color[1] * tone;
-          r.color[2] = r.colorEnd[2] = S.color[2] * tone;
-          r.alpha = S.alpha * (j === 0 ? 1 : 0.85);
-          r.rot = rot + L.range(-0.08, 0.08);
-          if (fx.spawn(r) >= 0) die[slot] = t + r.life;
-        }
+      this._wg = [...W.glyph].map((c) => (c === '-' ? -1 : this._wb.col(c)));
+      this._wst = [...STROKES].map((c) => this._wb.col(c));
+      this._wb.mesh.visible = !this._hidden;
+      L.game.pipeline?.registerParticles?.(this._wb);
+    } catch {
+      this._wb = null;
+    }
+    return this._wb;
+  }
+
+  /** Nothing of the wisps stays (the piece off, the world hidden). */
+  _wispsGo() {
+    for (const c of this._wc) c.on = false;
+    this._wb?.empty?.();
+    this._wAcc = this._wgAcc = 0;
+  }
+
+  /** A wisp is born at (x, z): a thin drift of letters along the air there. `gust`: a front's (longer). */
+  _wispBorn(x, z, gust) {
+    const W = this.T.wisps;
+    let c = null;
+    for (const o of this._wc) {
+      if (!o.on) {
+        c = o;
+        break;
       }
     }
+    if (!c) return;
+    this.wisped++;
+    const a = this.at(x, z, this._w);
+    const s = Math.hypot(a.x, a.z);
+    c.nx = s > 1e-3 ? a.x / s : this.dirX;
+    c.nz = s > 1e-3 ? a.z / s : this.dirZ;
+    c.vx = a.x * W.carry;
+    c.vz = a.z * W.carry;
+    c.on = true;
+    c.x = x;
+    c.z = z;
+    c.y = this._wrange(W.y[0], W.y[1]);
+    c.age = 0;
+    c.life = this._wrange(W.life[0], W.life[1]);
+    c.len = this._wrange(W.len[0], W.len[1]) * (gust ? W.gustLen : 1);
+    c.wid = this._wrange(W.width[0], W.width[1]);
+    c.n = Math.min(this._wper, Math.round(this._wrange(W.per[0], W.per[1]) * (gust ? 1 : W.calmPer)));
+    c.ph = this._wr() * TAU;
+    c.curl = W.curl * this._wrange(0.4, 1.2);
+    c.tone = this._wrange(0.8, 1.12);
+    const l = this._wl, g = this._wg;
+    for (let j = 0, o = c.i * this._wper * WL; j < c.n; j++, o += WL) {
+      // along: thicker in the middle, thinning to single letters at both ends; across: a soft spread
+      l[o] = 0.5 * (this._wr() + this._wr()) - 0.5;
+      l[o + 1] = (this._wr() + this._wr() + this._wr() - 1.5) / 1.5;
+      l[o + 2] = this._wrange(-1, 1);
+      // each letter flows at its own pace inside the clump (the clump stretches and comes apart)
+      l[o + 3] = this._wrange(-1, 1) * W.flow;
+      l[o + 4] = this._wr() * TAU;
+      // when it fades in and out of the clump (fractions of the clump's life): nothing pops
+      l[o + 5] = this._wrange(0, 0.3);
+      l[o + 6] = this._wrange(0.5, 1);
+      l[o + 7] = g[Math.floor(this._wr() * g.length)] ?? 0;
+      l[o + 8] = this._wrange(0.4, 1);
+    }
+  }
+
+  /** "Wind drawn in letters": WISPS, thin elongated drifts of many tiny faint letters that ride the air
+   *  low over the ground. A few in view in the prevailing breeze; more where a front passes (born in
+   *  its band, then carried by the air at their own point, so they slow as it moves on). Each wisp
+   *  stretches, curls and thins as it goes; each letter has its own slight path inside it and fades in
+   *  and out on its own, so the clump never pops and is never gridded. */
+  _wisps(dt) {
+    const W = this.T.wisps, L = this.life;
+    if (!W || !(W.max > 0) || this._hidden) {
+      if (this._wb) this._wispsGo();
+      return;
+    }
+    const b = this._wispBatch();
+    if (!b) return;
+    const f = L.focus, H = L.hero;
+    const fx = Number.isFinite(f.x) ? f.x : 0, fz = Number.isFinite(f.z) ? f.z : 0;
+    const rk = L.quality * L.calm * Math.min(1.5, L.k);
+    const V = W.view;
+    // the prevailing breeze: a few, by how hard it blows now
+    const sN = this.T.speed > 0 ? Math.min(1.5, this.speed / this.T.speed) : 0;
+    this._wAcc += dt * W.rate * rk * sN;
+    for (let tries = 0; this._wAcc >= 1 && tries < 4; tries++) {
+      this._wAcc -= 1;
+      const x = fx + this._wrange(-V[0], V[0]), z = fz + this._wrange(V[1], V[2]);
+      if (Math.abs(x - H.x) < 2 && Math.abs(z - H.z) < 2) continue;
+      this._wispBorn(x, z, false);
+    }
+    if (this._wAcc > 1) this._wAcc = 1;
+    // a front: more, born in its band where it passes the view
+    for (const F of this.fronts) {
+      if (!F.on || F.env < 0.05) continue;
+      const sF = fx * F.nx + fz * F.nz;
+      if (Math.abs(F.pos - sF) > 30) continue;
+      this._wgAcc += dt * W.gust * rk * Math.min(1.5, F.strength) * F.env;
+      for (let tries = 0; this._wgAcc >= 1 && tries < 4; tries++) {
+        this._wgAcc -= 1;
+        const c = (fz * F.nx - fx * F.nz) + this._wrange(-18, 16);
+        const back = this._wrange(-1, F.tail * 1.4);
+        const e = F.pos + 2.4 * Math.sin(c * 0.07 + F.phase) + 1.1 * Math.sin(c * 0.19 + F.phase * 1.7) - back;
+        const x = e * F.nx - c * F.nz, z = e * F.nz + c * F.nx;
+        if (Math.abs(x - fx) > V[0] + 2 || z - fz < V[1] || z - fz > V[2]) continue;
+        // where the front is weak (between its patches) fewer are born
+        const patch = 0.62 + 0.38 * Math.sin(c * 0.11 + F.phase * 2.3);
+        if (this._wr() > patch * patch) continue;
+        if (Math.abs(x - H.x) < 2 && Math.abs(z - H.z) < 2) continue;
+        this._wispBorn(x, z, true);
+      }
+      if (this._wgAcc > 1) this._wgAcc = 1;
+    }
+    // the letters this frame
+    const U = L.game?.U, R = U?.uCamRight?.value, Up = U?.uCamUp?.value;
+    const gy = L.set?.groundY ?? 0, l = this._wl, per = this._wper, col = this._wcol ?? (this._wcol = [0, 0, 0]);
+    const hc = W.heroClear, ease = 1 - Math.exp(-dt / W.ease), turn = 1 - Math.exp(-dt / 1.5);
+    b.begin();
+    for (const c of this._wc) {
+      if (!c.on) continue;
+      c.age += dt;
+      if (c.age >= c.life) {
+        c.on = false;
+        continue;
+      }
+      // the air carries it (eased: a wisp is slow to answer), and it turns with the air
+      const a = this.at(c.x, c.z, this._w);
+      c.vx += (a.x * W.carry - c.vx) * ease;
+      c.vz += (a.z * W.carry - c.vz) * ease;
+      c.x += c.vx * dt;
+      c.z += c.vz * dt;
+      const sp = Math.hypot(c.vx, c.vz);
+      if (sp > 0.05) {
+        c.nx += (c.vx / sp - c.nx) * turn;
+        c.nz += (c.vz / sp - c.nz) * turn;
+        const n = Math.hypot(c.nx, c.nz) || 1;
+        c.nx /= n;
+        c.nz /= n;
+      }
+      const tt = c.age / c.life;
+      const env = smooth(0, 0.18, tt) * (1 - smooth(0.6, 1, tt)) * L.calm;
+      if (!(env > 0.01)) continue;
+      // it stretches and widens as it goes, and its axis bends in a slow wave
+      const len = c.len * (1 + W.stretch * tt), wid = c.wid * (1 + W.spread * tt);
+      const nx = c.nx, nz = c.nz, px = -nz, pz = nx, t = c.age, st = this._wst;
+      // (the screen's right and up of its axis and of its side: a stroke lies along the wisp there)
+      const ar = R ? nx * R.x + nz * R.z : 1, au = Up ? nx * Up.x + nz * Up.z : 0;
+      const sr = R ? px * R.x + pz * R.z : 0, su = Up ? px * Up.x + pz * Up.z : 1;
+      col[0] = W.color[0] * c.tone;
+      col[1] = W.color[1] * c.tone;
+      col[2] = W.color[2] * c.tone;
+      for (let j = 0, o = c.i * per * WL; j < c.n; j++, o += WL) {
+        const born = l[o + 5], die = l[o + 6];
+        if (tt < born || tt > die) continue;
+        const u = l[o], ph = l[o + 4];
+        const along = u * len + l[o + 3] * t;
+        const arg = along * W.wave + c.ph + t * 0.8;
+        const across = l[o + 1] * wid + c.curl * Math.sin(arg) + 0.05 * Math.sin(t * 1.9 + ph);
+        const x = c.x + nx * along + px * across, z = c.z + nz * along + pz * across;
+        // the ends thin out; each letter fades in and out on its own
+        const end = 1 - Math.min(1, 4 * u * u);
+        let al = W.alpha * l[o + 8] * env * end * smooth(born, born + 0.12, tt) * (1 - smooth(die - 0.15, die, tt));
+        // (a slow shimmer: letters come and go a little as it flows)
+        al *= 0.75 + 0.25 * Math.sin(t * 2.3 + ph * 3.1);
+        const dx = x - H.x, dz = z - H.z, d = Math.sqrt(dx * dx + dz * dz);
+        if (d < hc[1]) al *= smooth(hc[0], hc[1], d);
+        if (!(al > 0.01)) continue;
+        // a stroke ('-') is the one of - / | \ that runs along the wisp where it is on screen
+        let g = l[o + 7];
+        if (g < 0) {
+          const sl = c.curl * W.wave * Math.cos(arg);
+          const dr = ar + sr * sl, du = au + su * sl;
+          const k = du / (Math.abs(dr) + 1e-4) * (dr < 0 ? -1 : 1);
+          g = k > 2.414 || k < -2.414 ? st[2] : k > 0.414 ? st[1] : k < -0.414 ? st[3] : st[0];
+        }
+        b.put(x, gy + c.y + l[o + 2] * W.rise + 0.06 * Math.sin(t * 1.3 + ph), z, W.size, g, 0, col, al);
+      }
+    }
+    b.end();
   }
 
   clear(why) {
@@ -432,12 +577,13 @@ export class Wind {
     for (const b of this.bursts) b.on = false;
     if (why === 'hide') {
       for (const F of this.fronts) F.on = false;
-      this._streakDie.fill(0);
+      this._wispsGo();
     }
   }
 
   setVisible(on) {
     this._hidden = !on;
+    if (this._wb?.mesh) this._wb.mesh.visible = !!on;
   }
 
   takes() {
@@ -447,5 +593,11 @@ export class Wind {
 
 /** s a front born at a point (a roar's) takes to swell in */
 const WIND_BORN_EASE = 0.15;
+
+/** the strokes a '-' of a wisp turns into, by its direction on screen: along, rising, upright, falling */
+const STROKES = '-/|\\';
+
+/** fields of one wisp letter: u (along, -0.5..0.5), v (across), w (height), flow (m/s), phase, born, die, glyph, alpha */
+const WL = 9;
 
 const WIND_DEFAULT_FRONTS = Object.freeze({ every: [10, 16], strength: [0.7, 1], speed: [5, 6], tail: [8, 12], lead: 2, air: 2, spread: 10, from: 45, to: 60 });

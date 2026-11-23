@@ -114,7 +114,6 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
 
         // wind
         vec3 off;
-        float lift = 0.0;
         if (!windOn()) {
           // (the living world's wind off: exactly the old sway)
           // gentle: big slow swells, small amplitude (a busy, fast sway reads as the ground swimming)
@@ -122,8 +121,8 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
           off = uCamRight * wv * 0.04 * h + vec3(0.0, 0.0, -0.025 * h);
         } else {
           // the shared wind (world/life/wind.js): the blade leans along it by the prevailing speed, in
-          // patches that travel downwind with the air; a passing front lays it over in a moving band
-          vec4 G = uWindFronts[WIND_SLOTS * 2 + 2]; // lean, wave, front, lift
+          // patches that travel downwind with the air; a passing front stirs it in loose patches
+          vec4 G = uWindFronts[WIND_SLOTS * 2 + 2]; // lean, wave, front, patch
           vec2 wd = windDirAt(root.xz);
           float spN = uWind.z / (uWind.z + 2.5);
           vec2 p = root.xz - uWindFronts[WIND_SLOTS * 2 + 1].xy;
@@ -133,15 +132,16 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
           vec2 fd;
           float edge;
           float fk = windFronts(root.xz, fd, edge);
+          // a gust stirs the meadow in loose local patches (G.w: how far), never as a band across the
+          // view: an uneven pattern that rides the field's travel, so a patch comes and goes as it passes
+          float pt = (0.5 + 0.5 * sin(ps * 0.83 + 2.1 * sin(pc * 0.37 + ps * 0.11))) * (0.5 + 0.5 * sin(pc * 0.61 - ps * 0.29 + 1.3 * sin(ps * 0.17)));
+          fk *= mix(1.0, smoothstep(0.25, 0.75, pt), G.w);
           vec2 bend = wd * (spN * (G.x + G.y * (g - 0.5) * 2.0)) + fd * (fk * G.z);
-          // inside a front the blades flutter, neighbours together (short waves running downwind)
+          // inside a stirred patch the blades flutter, neighbours together (short waves running downwind)
           float flutter = sin(uTime * 6.0 - ps * 1.3 + 0.6 * sin(pc * 0.9)) * 0.06 * fk;
           bend += wd * flutter;
           float b = min(length(bend), 0.9);
           off = vec3(bend.x, -0.5 * b * b, bend.y) * h;
-          // a laid-over blade shows its flat to the light: the front's band is a shade lighter, most
-          // just behind its edge
-          lift = G.w * min(1.0, fk * 0.55 + edge * 0.8);
         }
         // trodden (the scorch map's b: world/life/steps.js): it lies flatter, every way
         if (trample > 0.004) {
@@ -182,8 +182,7 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
         rootC = mix(rootC, vec3(0.012, 0.011, 0.011), uAsh);
         vec3 alb = mix(rootC, tipC, tip);
         alb = mix(alb, vec3(0.014, 0.012, 0.011) * (0.6 + tip), burn);
-        // light catching the bent blades on a front's leading edge; trodden blades a little darker
-        if (lift > 0.0) alb *= 1.0 + lift * (0.35 + 0.65 * tip);
+        // trodden blades a little darker
         if (trample > 0.004) alb *= 1.0 - 0.7 * trample;
         float sh = shadowAtFast(vec3(root.x, 0.3, root.z));
         vec3 L = uAmbient * 1.6 + uMoonColor * 0.62 * sh + pointLights(root + vec3(0.0, 0.35, 0.0), vec3(0.0, 1.0, 0.0), 1.0);
