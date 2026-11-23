@@ -5,6 +5,55 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-23 — Session 81: Wen Yao reworked: drawn like the hero, packs out of the air, the big Pearl, the Nine-Tailed Fox's beam (planned by Fable, built by Opus: a lead and two agents)
+
+**What changed.** The owner played the Thousand-Body Fox and asked for four things (ADR-154 quotes them):
+he is hard to see; the clones are boring sponges that stand about; the moves should be signature moves
+(the palm orb); and he should summon a fox for an ultimate beam. Built from the planning session's plan,
+the lead landing the contracts first (af30eab) and two agents in their own worktrees:
+- **The body (agent):** `?foxLook=h1` (the default) in the hero's ink-line art: a big russet crest with
+  pale tips, a short open amber jacket, dark trousers, pale wraps, a long vermilion scarf; h2 / h3
+  rendered; his letters follow his size (`kit.letters`, `pipeline._updateBossLetters`, `?foxLetters`).
+- **The packs (lead):** clones.js rewritten: no ambient selves; `pack` on a beat; FoxClones.pack books the
+  bodies and the ledger; together / sequence; Two Leaves Fall, the Round, A Thousand at Once, the Burial,
+  the Kite String, the Pearl's harrying pack; the pool 5 → 6.
+- **The signature moves (lead):** the big spiral Pearl (pale blue-white `FIRE_PALETTES.pearl`, spiral arms,
+  a drilling drive, a spiral burst, a synth whirr), the Twin Pearls, the giant Moon-Swallowing Pearl lifted
+  by two selves, "It was a copy"; phase 3's fire its own kind (`?foxFire3`).
+- **The Howl (agent):** beam.js / spirit.js / fxBeam.js / tuningBeam.js: the Nine-Tailed Fox as a body in
+  the art path, the dark sun, the beam, the world along it, the kneel; `cameraRig.hold`, the terrace's
+  `light.dim`.
+- Training: "A Thousand at Once · one parry", "The Round · parry the chain", "Heaven-Devouring Howl · roll
+  through it" (Pop the copies is gone); the Lab: pack buttons, Twin Pearls, Howl, LOOKS rows.
+
+**Decisions.** ADR-154. Where the plan was open: the Pearl's harrying pack is 1 / 2 / 2 (three do not fit
+before the drive with the red cue 0.36 s clear); a pack riding on a blow of his is named `<move>Pack`; the
+Howl is one red beat whose windup is the summoning (the "black" of the summoning is a charge's darkness,
+not a second blow); the fox's head is drawn at 2x and the body always side-on to the camera; the h
+outfits' crest uses `welt` (the hair parts' gold outline read as blond). The Moon Wheel was cut.
+
+**Verification.** `npm test` green (every suite); `fox.mjs` `data` checks every pack's schedule, `clones`
+is rewritten for packs, `beam` is new, `pace` re-measured on five seeds x 120 s (70.9 / 79.5 / 68.3 cues a
+minute, 0 conflicts), `win` and `training` pass. Rendered at the game camera in headless Edge: the sheets in
+`docs/looks/fox/` (body-720 / -1440 / -phone, letters, packs, packs-phone, clones-ab, pearl, mantle, howl,
+howl-phone, howl-fox-720). Measured: a full pack 73 → 118 draw calls (1280x720), the Howl 75 → 84 and a fire
+field peak of ~1300 - 1500 blobs.
+
+**Second pass on the Howl** (the owner: "yes, fix the fox"; the reviewer: the fox read as a fan of
+feathers, the beam as a thin streak). The head is the subject (drawn 2.3x, a clean profile wedge, broad
+ears, a jaw that opens wide over a white-hot maw, a pale throat; the body charcoal so the head separates);
+nine separate S-curved tails with bright tips; he summons it `away` 10 m from the hero through the middle
+(not the far rim) and `cameraRig.hold(m, x, z, w)` leans toward it: the desktop camera stays at 36 - 41 m
+(was ~60) with the head well inside the frame from every side. The beam fills its 3.6 m strip (a bulb at
+the jaws, a five-line core, a boiling body, the floor lit and charred, a scar that lingers). The dark sun
+is ~2.3 m with motes from the whole arena and the light dropping further. On the phone the pull-back is
+capped: the hero is 51 % of his duel-camera height during the Howl (was 24 %), short of the 70 % asked;
+the head crops at the top when the hero stands north or south of it. 72 → 81 draw calls, the fire field's
+peak ~1600 (2350 headless). Sheets: howl.png / howl-phone.png (before / after), howl-fox-720.png.
+
+**Open / next.** The owner's picks (six switches in PENDING). The fox at the game camera reads only when
+looked for; on the phone the Howl pulls the camera back to ~55 m. Neither checked on the owner's iPhone.
+Phase 3 is now less busy than phase 2 (by design of the Howl; the meter says so). The Moon Wheel.
 ## 2026-11-23 — Session 80, round 2: the Sheathed between the digits and the ink-line art (ADR-152 addendum)
 
 **Why.** The owner picked palette a, then looked at the ink-line Sheathed in the game: "too detailed and his flaws

@@ -1170,6 +1170,36 @@ export const SFX = {
     },
   },
 
+  /**
+   * The fox's Pearl (ADR-154): a quiet whirr that rises as he shapes it in his palm (~1.9 s: the
+   * backstep and the charge). Two detuned triangles climbing from a low hum to a high spin, their level
+   * fluttered faster and faster (the spin), through a lowpass that opens; it cuts off at the drive.
+   * Quiet on purpose (the owner finds loud SFX "too noisy"); no noise, no random: nothing the seeded
+   * sims could feel.
+   */
+  pearlWhirr: {
+    prio: 3, rev: 0.12, gap: 0.5, falloff: 0.6, gain: 0.22,
+    play(v, t) {
+      const D = 1.9;
+      const lp = v.filter('lowpass', 500, 0.9);
+      env(lp.frequency, t, [[0, 500], [D, 3800]]);
+      const g = v.gain(0);
+      env(g.gain, t, [[0, 0], [0.25, 0.25], [D - 0.15, 0.5], [D, 0]]);
+      // the flutter: a fast tremolo whose rate climbs (the orb spinning up)
+      const trem = v.gain(0.6);
+      const lfo = v.osc('sine', 9, t, t + D + 0.05);
+      env(lfo.frequency, t, [[0, 9], [D, 38]]);
+      const depth = v.gain(0.4);
+      lfo.connect(depth).connect(trem.gain);
+      for (const det of [-9, 9]) {
+        const o = v.osc('triangle', 150, t, t + D + 0.05, det);
+        env(o.frequency, t, [[0, 150], [D * 0.7, 420], [D, 760]]);
+        o.connect(trem);
+      }
+      trem.connect(lp).connect(g).connect(v.out);
+    },
+  },
+
   wear: {
     prio: 2, rev: 0.16, gap: 0.14, falloff: 0.7, gain: 0.45,
     play(v, t, o) {

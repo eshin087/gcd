@@ -47,6 +47,12 @@ export const FIRE_PALETTES = {
     stops: [[0.22, 0.26, 0.4], [0.6, 0.68, 0.92], [1.2, 1.3, 1.6], [2.0, 2.1, 2.4], [3.0, 3.05, 3.2]],
     hdr: 0.55, fill: 0.06, back: [0.5, 0.8], lick: 0.5, erode: 0.85, boil: 9, warp: 0.8, haze: [0.7, 0.78, 1.0],
   },
+  // PEARL (?foxfire=c, the default since ADR-154): moon's step bluer, so the palm Pearl reads as a pale
+  // blue-white orb and not a plain white light: a deep blue rim, sky-blue digits, a near-white heart
+  pearl: {
+    stops: [[0.08, 0.2, 0.62], [0.24, 0.55, 1.5], [0.6, 1.1, 2.3], [1.3, 1.9, 2.9], [2.6, 2.9, 3.3]],
+    hdr: 0.55, fill: 0.06, back: [0.5, 0.8], lick: 0.45, erode: 0.8, boil: 10, warp: 0.8, haze: [0.5, 0.72, 1.0],
+  },
   steel: {
     stops: [[0.5, 0.5, 0.6], [1.2, 1.2, 1.32], [1.9, 1.88, 1.85], [2.7, 2.65, 2.55], [3.5, 3.4, 3.2]],
     hdr: 0.6, fill: 0.06, back: [0.3, 0.55], lick: 0, erode: 0, boil: 12, warp: 0,

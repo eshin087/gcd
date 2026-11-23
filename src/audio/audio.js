@@ -840,6 +840,10 @@ export class AudioEngine {
     // the fox's paper selves (ADR-147): a dry, quiet paper tear as one pops, a softer one as one tears
     // free (or burns into him at his change)
     on('dragon:clone', (d) => this.play('paperTear', { x: d?.x, z: d?.z, soft: d?.kind === 'spawn' || d?.by === 'mantle' }));
+    // the fox's Pearl (ADR-154): a quiet rising whirr as he shapes it (the drive, the Twin Pearls)
+    on('dragon:windup', (d) => {
+      if (d?.name === 'foxPearl' || d?.name === 'twinPearl') this.play('pearlWhirr', this._atDragon());
+    });
     // the world breaks (ADR-107): a blow on wood / stone / metal, something coming down, fire catching
     on('world:impact', (d) => {
       const o = { x: d.x, z: d.z, mat: d.mat, power: num(d.power, 0.5) };

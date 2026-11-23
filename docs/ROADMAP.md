@@ -184,6 +184,18 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.64 — Wen Yao reworked: drawn like the hero, packs out of the air, the big Pearl, the Nine-Tailed Fox's beam (2026-11-22, `claude/fox-rework-ca0b58`, ADR-154)
+- [x] He is drawn in the hero's ink-line art: `?foxLook=h1` the default (russet crest, amber jacket, vermilion scarf), h2 / h3 rendered; his letters follow his size (`?foxLetters`, `kit.letters`)
+- [x] The selves only fight in packs: no ambient mode (no scatter, no token); `pack` on a beat, `FoxClones.pack`, booked with the cue ledger; `together` (one cue, one result) and `sequence`
+- [x] Pack moves: Two Leaves Fall, the Thousand-Body Round reworked, A Thousand at Once, the Burial, the Kite String, the Pearl's harrying pack (strikers feed it); Changing Places drops its self in
+- [x] The signature moves: the big spiral Pearl (pale blue-white, 0.9 m), the Twin Pearls, the giant Moon-Swallowing Pearl lifted by two selves, "It was a copy"
+- [x] Heaven-Devouring Howl (phase 3): the Nine-Tailed Fox (a creature body in the art path), the dark sun, a beam that rakes the terrace and breaks the world, the kneel; the camera holds both
+- [x] Phase 3's fire its own kind (`?foxFire3`); the pool 5 → 6 rigs; Training (three new situations), the Lab's pack and Howl buttons; `fox.mjs` data / clones / beam / pace
+- [ ] Follow-ups:
+  - [ ] The owner's picks: `?foxLook=` (h1 h2 h3), `?foxLetters=`, `?foxfire=`, `?foxFire3=`, `?foxSpirit=`, `?clones=` (sheets in `docs/looks/fox/`)
+  - [ ] The Nine-Tailed Fox at the game camera reads only when looked for (its head sits at the frame's corner, ~100 px): a bigger head, fewer tails or a pale throat if the owner wants it scarier
+  - [ ] The phone: the Howl pulls the camera back to ~55 m to hold the hero and the fox's head; the frame rate with a pack of five out; both on the owner's iPhone
+  - [ ] The Moon Wheel (phase 3, a thrown Pearl that opens into a dome of cutting wind): cut first by the plan's order, not built
 ## M1.63 — The grove's bamboo sliced in one stroke, in clumps (2026-11-22, `world/bamboo-slice`, ADR-151)
 - [x] One blade or blow slices a stalk where it bit; the top slides off the cut at once and goes over
 - [x] Five kinds of cane, three thicknesses, fanning clumps with shoots (`?bamboo=a|b`; `0` the old grove)
@@ -217,10 +229,10 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] The look options rendered (body a - d, foxfire a - c, selves a / b); the fight built with each one's a
 - [x] `tests/integration/fox.mjs` in `npm test`; the Lab (FIGHT buttons, LOOKS rows) and Training know him (two situations of his own)
 - [ ] Follow-ups:
-  - [ ] The owner's picks: `?foxLook=`, `?foxfire=`, `?clones=` (from the sheets in `docs/looks/fox/`)
+  - [x] The owner's picks: superseded by the rework (M1.62): he is redrawn, and the picks wait there
   - [ ] The owner plays the preview on the phone: the selves' readability at 852 x 393, the frame rate with five out
   - [ ] The level's own score (it borrows three tracks)
-  - [ ] Phase 3 asks more (twice the dodges) but is not busier than phase 2 (79.3 against 80.2 cues a minute, bare-handed)
+  - [ ] Phase 3 asks more (twice the dodges) but is not busier than phase 2 (79.3 against 80.2 cues a minute, bare-handed; after the rework 68.3 against 79.5: the Howl)
 
 ## M1.60 — Tian Lei as a recognizable homage (2026-11-22, `enemies/ascendant-homage`, ADR-150)
 - [x] Three homage bodies behind `?ascLook=`; the owner picked the orange gi (`h`)
