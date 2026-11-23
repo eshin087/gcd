@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { DIM } from '../../player/model.js';
-import { Duelist } from '../duelist/duelist.js';
+import { Duelist, HERO_SCALE } from '../duelist/duelist.js';
 import { RESULT } from '../../../combat/rules.js';
-import { SHEATH_LOADOUT, BLADE_SPAN, buildOffSheath } from './gear.js';
+import { SHEATH_LOADOUT, BLADE_SPAN, buildOffSheath, sheathLookNow } from './gear.js';
 import { SHEATH_POSES } from './poses.js';
 import { MOVES, MOVE_NAMES, CLIP, realise, counterMove } from './moves.js';
 import { TUNING } from './tuning.js';
@@ -47,6 +47,10 @@ export const SHEATHED_KIT = Object.freeze({
   blade: BLADE,
   OPEN: ['caught'],
   REACT: { caught: { travel: -0.7 } },
+  // (body d, the Wanderer, is a slighter man: drawn 7 % smaller; visual only. 0: the engine's default)
+  get scale() {
+    return sheathLookNow() === 'd' ? HERO_SCALE * 0.93 : 0;
+  },
 });
 
 const _v = new THREE.Vector3(), _w = new THREE.Vector3(), _bx = new THREE.Vector3(), _by = new THREE.Vector3(), _bz = new THREE.Vector3(), _m4 = new THREE.Matrix4();

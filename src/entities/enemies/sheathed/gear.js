@@ -17,15 +17,18 @@ import { lookOf } from '../duelist/lookSwitch.js';
 //   b  Reed Cloak: a shaggy straw rain cape over dark travelling clothes, a cloth over the lower face;
 //      a bulky bristling top on thin legs
 //   c  One Sleeve: a dark robe worn off the sword arm, the bare arm bound with cord, short grey hair
+//   d  The Wanderer (the owner's ask, 2026-11-22: nearer the genre's wandering swordsman; an option,
+//      not the pick): a slighter man in a faded indigo travelling robe over wide charcoal trousers, a
+//      long sand-coloured scarf whose tails trail, dark hair bound in a high tail
 // Materials: `coat` / `lining` the robe, `hem` the white band and its tails (a) / the wraps, `shirt` the
 // cords, shoes and the face cloth, `pants` the trousers, `leather` the straw cape (b) / the arm cord (c),
 // `hair` his hair, `skin`; the sword: `armor` / `bevel` the blade and its edge, `trim` the black lacquer
 // scabbard and the hilt, `facing` its pale throat and butt cap.
 
-/** The body this page builds ('a' | 'b' | 'c'). */
+/** The body this page builds ('a' | 'b' | 'c' | 'd'). */
 export function sheathLookNow() {
   const o = lookOf('sheathLook', 'a');
-  return o === 'b' || o === 'c' ? o : 'a';
+  return o === 'b' || o === 'c' || o === 'd' ? o : 'a';
 }
 
 const cloth = (ink, o = {}) => ({ ...ART_CLOTH, light: [1.2, 0.8, 0.4, 0.02], ink, ...o });
@@ -78,6 +81,28 @@ export const SHEATH_ART = {
     eye: { ...ART_SKIN, ink: [0.08, 0.07, 0.06] },
     ...SWORD,
   },
+  d: {
+    default: cloth([0.1, 0.1, 0.11]),
+    coat: cloth([0.17, 0.22, 0.34]), // the faded indigo travelling robe
+    lining: cloth([0.07, 0.08, 0.12]),
+    hem: cloth([0.42, 0.42, 0.4]), // the shin wraps
+    shirt: cloth([0.06, 0.06, 0.065]), // cords, shoes
+    pants: cloth([0.13, 0.14, 0.165]), // the wide charcoal trousers
+    leather: cloth([0.52, 0.42, 0.24], { strokeEdge: 0.28 }), // the sand scarf
+    hair: cloth([0.075, 0.055, 0.045]), // dark hair
+    hairTip: cloth([0.1, 0.075, 0.06]),
+    collar: cloth([0.17, 0.22, 0.34]),
+    skin: SKIN,
+    eye: { ...ART_SKIN, ink: [0.08, 0.07, 0.06] },
+    ...SWORD,
+  },
+};
+
+/** A sheet's twin seen from its other side: mirrored in x (the winding flips with it). */
+const mirrored = (g) => {
+  const m = g.clone().scale(-1, 1, 1);
+  m.computeVertexNormals();
+  return m;
 };
 
 /** Each item's build turns the rig to the dragon look first (once per rig: toDragonLook). */
@@ -110,6 +135,16 @@ function buildHead(ctx) {
       mesh(s1, foldLines(tatterStrip(L1, 0.03, { fork: true, curl: 0.18, seed: seed + 5 }), ribbonCrease(0.03, 1.1)), M.hem);
       streamers.push({ segs: [s0, s1], len: [L0, L1], out: 0.04, lag: 1.1, max: 2.2 });
     }
+  } else if (look === 'd') {
+    // the high tail: the hair bound at the back of the crown, falling to the shoulders on a spring
+    mesh(head, sub(bandGeometry(0.03, 0.03, 0.024, 12).translate(0, 0.25, -0.078), 1), M.shirt);
+    const base = joint(head, 0, 0.252, -0.088);
+    const s0 = joint(base);
+    const L0 = 0.22, L1 = 0.24;
+    mesh(s0, sub(limb({ length: L0, r0: 0.034, r1: 0.026, bulge: 0.006 }), 0), M.hair);
+    const s1 = joint(s0, 0, -L0, 0);
+    mesh(s1, sub(limb({ length: L1, r0: 0.026, r1: 0.007, bulge: 0.004 }), 1), M.hair);
+    streamers.push({ segs: [s0, s1], len: [L0, L1], out: 0.14, lag: 0.9, max: 2.0 });
   } else if (look === 'b') {
     // the cloth over the lower face, knotted behind
     mesh(head, sub(bandGeometry(0.096, 0.112, 0.07, 24), 0), M.shirt, 0, 0.085, 0.006);
@@ -127,7 +162,7 @@ function buildHead(ctx) {
 }
 
 // ================================================================= the robe (chest)
-function buildRobe({ spine, chest, M, BODY, REST, mesh }) {
+function buildRobe({ spine, chest, M, BODY, REST, mesh, joint }) {
   const look = sheathLookNow();
   const ySp = (h) => h - REST.spine, yCh = (h) => h - REST.chest;
   const SHELL = BODY.shell, top = SHELL[SHELL.length - 1];
@@ -153,6 +188,29 @@ function buildRobe({ spine, chest, M, BODY, REST, mesh }) {
   // the sash: a plain cord (a, c) / a dark band (b)
   const W = SHELL[1];
   mesh(spine, bandGeometry(W.rx + 0.022, W.rz + 0.022, look === 'b' ? 0.09 : 0.04, 32), M.shirt, 0, ySp(1.19), W.cz ?? 0);
+  if (look !== 'd') return null;
+  // d: the long scarf: two loose turns round the neck, two tails down the back on springs (they trail)
+  mesh(chest, mergeGeometries([
+    sub(bandGeometry(0.118, 0.11, 0.07, 24).translate(0, yCh(1.505), 0.004), 1),
+    sub(bandGeometry(0.128, 0.118, 0.045, 24).translate(0.004, yCh(1.47), 0.008), 0),
+  ]), M.leather);
+  // one end thrown forward over his left shoulder, lying on the chest
+  mesh(chest, foldLines(tatterStrip(0.24, 0.06, { fork: true, curl: 0.08, seed: 867 }), ribbonCrease(0.06, 0.8)), M.leather, 0.07, yCh(1.47), 0.128);
+  const streamers = [];
+  for (const [sx, L0, L1, seed] of [[0.02, 0.34, 0.36, 871], [0.085, 0.3, 0.3, 883]]) {
+    const base = joint(chest, sx, yCh(1.5), -0.172);
+    const s0 = joint(base);
+    // (each strip twice, the second mirrored: a strip is one-sided, and these are seen from behind)
+    const g0 = foldLines(tatterStrip(L0, 0.062, { tip: false, curl: 0.1, seed }), ribbonCrease(0.062, 0.7));
+    mesh(s0, g0, M.leather);
+    mesh(s0, mirrored(g0), M.leather);
+    const s1 = joint(s0, 0, -L0, 0);
+    const g1 = foldLines(tatterStrip(L1, 0.056, { fork: true, curl: 0.16, seed: seed + 5 }), ribbonCrease(0.056, 1.1));
+    mesh(s1, g1, M.leather);
+    mesh(s1, mirrored(g1), M.leather);
+    streamers.push({ segs: [s0, s1], len: [L0, L1], out: 0.14, lag: 1.1, max: 2.2 });
+  }
+  return { streamers };
 }
 
 // ================================================================= the arms
@@ -244,6 +302,8 @@ function buildRobeSkirt({ pelvis, M, DIM, mesh, joint }) {
   const coat = [];
   // (b: the cape covers the top; the travelling clothes' skirt shorter)
   const short = sheathLookNow() === 'b' ? 0.7 : 1;
+  // (d: the pleated skirt is his wide trousers: their charcoal, not the robe's indigo)
+  const skirtM = sheathLookNow() === 'd' ? M.pants : M.coat;
   ROBE_PANELS.forEach((P, i) => {
     const sa = Math.sin(P.az), ca = Math.cos(P.az);
     const R0 = 1 / Math.hypot(sa / DIM.coatR, ca / (DIM.coatR * 0.69)) + P.out * 0.5;
@@ -260,12 +320,12 @@ function buildRobeSkirt({ pelvis, M, DIM, mesh, joint }) {
       return 0.5 + 0.6 * Math.sin(Math.PI * 2 * nF * s + fph + Math.PI) - 0.9 * Math.max(0, 1 - d / 0.12);
     };
     const g0 = foldLines(skirtSheet(L0, P.w[0], P.w[1], R0, 0.25, 0, 51 + i, [0.003, 0.012, nF, fph], 0, 1, sk, w0), pleat(0));
-    mesh(s0, g0, M.coat);
+    mesh(s0, g0, skirtM);
     mesh(s0, g0, M.lining);
     const s1 = joint(s0, 0, -L0, 0);
     const R1 = R0 + 0.25 * L0;
     const g1 = foldLines(skirtSheet(L1, P.w[1], P.w[2], R1, 0.25, 0.008, 71 + i, [0.012, 0.024, nF, fph], 0, 1, sk, w0), pleat(L0));
-    mesh(s1, g1, M.coat);
+    mesh(s1, g1, skirtM);
     mesh(s1, g1, M.lining);
     coat.push({ anchor, segs: [s0, s1], def: P, strips: [], len: [L0, L1], r0: R0 });
   });
