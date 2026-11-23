@@ -117,7 +117,7 @@ const LOOKS = Object.freeze({
   }),
   b: Object.freeze({
     stone: [0.05, 0.054, 0.06], inlay: [0.03, 0.034, 0.04], edge: [0.05, 0.3, 0.17],
-    paving: [0.05, 0.054, 0.058], joint: [0.05, 0.3, 0.17], jointEdge: 1,
+    paving: [0.05, 0.054, 0.058], joint: [0.04, 0.22, 0.125], jointEdge: 1,
     metal: [0.08, 0.09, 0.1],
   }),
 });
@@ -1069,7 +1069,7 @@ function makeAmbience(scenes) {
       c.len = RAIN.lenSource[0] + Math.floor(rnd() * (RAIN.lenSource[1] - RAIN.lenSource[0] + 1));
     }
     c.speed = RAIN.speed[0] + rnd() * (RAIN.speed[1] - RAIN.speed[0]);
-    c.head = c.top + rnd() * 0.6;
+    c.head = c.top + rnd() * 1.6; // (columns that start together still fall out of step)
     for (let i = 0; i < c.len; i++) c.g[i] = digit();
     c.on = true;
     return true;
@@ -1137,7 +1137,7 @@ function makeAmbience(scenes) {
           c.head -= c.speed * dt;
           if (c.head + c.len * RAIN.cell < c.bot) {
             c.on = false;
-            c.wait = 0.2 + rnd() * 1.4;
+            c.wait = 0.1 + rnd() * 2.2;
             continue;
           }
           // the letters re-roll: the head often, the tail now and then
