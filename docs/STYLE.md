@@ -607,6 +607,19 @@ one art cell, pixel-snapped, from the wyrm's own atlas: never a scaled sprite.**
   they fall, lie on the grass and fade. A detail, not a spectacle.
 - **The breath's charge rises:** during the windup the glow fills from the belly up the throat to
   the maw (it used to light all at once).
+- **The impact ripple** (2026-11-22, ADR-149; `render/impactRipple.js`, the ASCII pass): a landed cut's
+  pressure wave runs out through the struck boss's own letters. At its front the cells are pushed
+  outward (3.6 - 5.5 px on the wyrm's cell, a finer grid in proportion) and back at rest behind it,
+  a share of them re-roll, and on the wyrm up to 70 % of the front's strongest cells print a stroke
+  lying along it (the outline's strokes). The rules it was found by:
+  - **Nothing in the first cells round the contact** (2.5 cells, a 2-cell ramp): the cut's flare and
+    core speak there.
+  - **Contrast, not lift.** A thin bright front with a trough up to 60 % darker right behind it: the
+    contrast travels and the body's average brightness does not rise. Round 1 (re-roll and lift, a
+    shove along the cut) was calm and read only when two frames were diffed.
+  - **Boss cells only:** the wyrm's art grid and the human bosses' ink-line grid; never the hero,
+    props, floor, grass or HUD. Cells far nearer or farther than the contact (a 6 m window) take
+    none. Whole pixels only.
 
 ### Fire, hazards and the plunge (2026-11-09)
 (Since ADR-113 the bodies of fire below are heat in the fire field, above; what this section says
@@ -874,8 +887,18 @@ signal the field has no kind for); sparks, peeling embers and motes are glyph pa
   from his casting hand. Nothing is drawn where it will land (ADR-122; until then a red ring, drawn
   strong from the moment it left him): the cue is the flare on the flying piece. A floor plate in his
   hands is a chunk about 0.85 m across (a crater plate's 1.2 x), never the whole plate.
-- **Outside** the forest lies flat, every trunk pointing away from the crater (the dead trees' own
-  screen-grid look, laid down); far out a few still stand.
+- **Outside** (2026-11-22, ADR-133; `world/starfallProps.js`): what those who came for him left round
+  the crater, in the prop art path (the dragon look): graves of swords stuck in the earth (a red
+  tassel on one), spears with a torn red banner, wanderers' cairns (flat stones, a plank marker, a
+  straw hat, a sword), wrecked carts on their sides, a few steles on stone turtles, split boulders.
+  Every copy is built afresh (its size, lean, how broken, how many parts). Faces (an inscription, a
+  banner's cloth) turn to the camera within ~35 degrees; what fell lies along the blast's way out,
+  turned off it, so the ring is not a starburst; every piece rests on a face, a little sunk in. On the
+  near side of the path (z > 6) nothing is taller than 3 m. Until then the forest lay flat there,
+  every trunk pointing away from the crater (the dead trees' own screen-grid look); the owner called
+  it "incorrect and not realistic". `?outskirts=0` draws it again; `a` the shrine the star fell on
+  (stone lanterns, steles, broken pillars, a thrown roof, jars), `b` the star's own debris (its rock
+  in furrows, heaved ground, glass splinters, split boulders), `m` all of them.
 - **A blade of light** is three things: a thin mesh in the hero-art pass (red fill, red-white ink
   lines), a row of additive strokes re-drawn along it every frame (red, with a hotter core stroke on
   every second one), and one red point light that follows it and lights the floor round him. The
@@ -994,13 +1017,16 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?presence=` | forms 2 and 3: a quiet presence | off | the off blade's light and embers; the staff's ends trailing | - | - | **a** |
 | `?great=` | Starless Night's waves | - | the dark tide (a violet wall, a red seam on its front) | the sky's edge (standing white strokes, lightning off it) | the floor answers (dust and chips along a red seam; the costliest: fire field peak 4942 of 6000) | **a** |
 | `?floor=` | a broken floor slab (both arenas; read when the level is built) | - | rubble on printed earth | heaved into a low mound of brighter shards | - | **a** |
+| `?chip=` | bites: a blow takes the bricks of a piece where it struck (every level; read when the level is built and at each blow; ADR-132; Lab: WORLD -> Bites) | pieces wear down in stages and break whole | the bricks under the blow fall as their letters; a solid piece keeps a skin there, set back | - | - | **a** |
 | `?ashLook=` | Shen Hui's body (read when his rig is built) | today's figure | the dragon look (the wyrm's art path) | today's figure dressed by phase | both | **b** |
 | `?lordLook=` | Varr Nihil's body (read when his rig is built) | today's figure | the dragon look | today's figure dressed by form | both | **b** |
+| `?outskirts=` | what lies round the Obsidian Throne's crater (ADR-133; read when the level is built; `m` all of them) | the felled forest | the shrine the star fell on | the star's debris | those who came for him | **c** |
 | `?ring=` | the Skybreak Ring's arena (ADR-129; read when the level is built) | - | the flats: a dry lake bed, banners, a drum, a gong, a judges' dais | the quarry: terraces of cut stone round the ring | the crown: the ring on a butte's top, the badlands 40 m below | **a** |
 | `?ascLook=` | Tian Lei's body (read when his rig is built) | - | the tunic and the topknot | set aside, not offered (a bare-chested look too close to a franchise's) | the wandering monk and the braid; `d` = a through the wyrm's art path | **a** |
 | `?ascLift=` | Tian Lei's figure lifted off the ring's floor (read when his rig is built) | as the body shipped | a lighter fill, a stronger edge of light | - | - | **a** |
 | `?ascAura=` | Tian Lei's aura (forms 2 and 3) | - | a tall flame, hollow behind him, a wheel of light on the floor | a tight sheath with streamers off the shoulders | a broad low blaze over a wide spinning wheel | **a** |
 | `?ascBeam=` | Tian Lei's beam | - | a column | a braid: two strands winding round a thinner core | - | **a** |
+| `?ascOrb=` | Heaven's Lantern, Tian Lei's great orb (the third wave, 2026-11-22) | - | a sun: a round ball of gold heat, a pale heart, letters orbiting it | a lantern: a bright rim round a dim heart that pulses, trailing motes | - | a (the author's; not yet picked) |
 | `?foxLook=` | Wen Yao's body, bare-handed (ADR-147; read when his rigs are built) | - | the Shrine Fox: the bone mask, a short robe with its sleeves tied back, the fur stole, the sash | the Wild Fox: an amber sleeveless jacket, a streaming vermilion scarf, a wild crest of dark red-brown hair, a kitsune half-mask at the temple | the Pelt Brawler: a quilted jerkin, a fox's head on one shoulder; `d` = a in the ink-line art | not picked yet (b drawn) |
 | `?foxfire=` | the foxfire: the Pearl, the mantle (read when his effects are built) | - | jade (a palette swapped into the void slot) | the wyrm's orange fire | moon-white | not picked yet (a) |
 | `?clones=` | his paper selves (read when their rigs are built) | - | identical to him | a step paler | - | not picked yet (a) |
@@ -1014,7 +1040,7 @@ reachable as `?presence=0`); else the owner's pick (the `PICKED` table); else th
 proposal at once, the way the owner played them on the preview) now draws the same as no parameter.
 **The Lab's LOOKS section** (`?lab`, only in the Ashfall Courtyard, the Obsidian Throne, the Skybreak
 Ring and the Foxfire Terrace) has a row of buttons per switch: a switch read at draw time flips live, one read at build time
-(`ashLook`, `lordLook`, `floor`, `ring`, `ascLook`, `ascLift`, `foxLook`, `foxfire`, `clones`) reloads the page with its parameter; "as
+(`ashLook`, `lordLook`, `floor`, `outskirts`, `ring`, `ascLook`, `ascLift`, `foxLook`, `foxfire`, `clones`) reloads the page with its parameter; "as
 shipped" clears every look parameter (the picks), "before this pass" reloads with `?looks=old`; there is
 no "all proposals" button any more. Older switches of the same kind: `?flare=` (ADR-118), the wyrm's
 `?ring=` and `?breath=` (ADR-119). **The Skybreak Ring's five** (ADR-129) are things new to the game, so
@@ -1271,3 +1297,31 @@ the body.
   only (`lean.ox / oz`); the Lab's 'shudder' toggle turns it off. A sword cut's only (`takeHit`'s
   `swing`: not the Lord's own returned bolt); his blade's sweep trail pauses while it runs (the
   flicker would draw zig-zag strokes).
+- **The stamp** (2026-11-22, ADR-149; `combat/impactStamp.js`): the hit printed IN the letter grid at
+  the drawn contact, in the fire field's `steel`, so it is made of the same small letters as the
+  bodies. A slit that grows, opens at its heart and splits into two thin lines a cell apart, then a
+  few specks (light, sweep, cleave; the cleave longer, growing with the charge, with a cross); an
+  entry mark and two rings for a thrust; a plus, an eight-point star and a ring that breaks up for
+  the slam; a puncture and two rings for the execution. A crit x1.2 with the cross, cold blue. Human
+  bosses only (the owner's pick: on the wyrm it does not read). The rules it was found by:
+  - **Snap to cells.** One 12 px blob of steel per letter cell, centred on the cell, every offset a
+    whole number of cells, re-snapped every frame through the shake. A blob 4 px off a cell centre
+    keeps about 13 % of its heat: a soft line between two rows of cells all but vanishes.
+  - **Rings are hexagons.** A run of `-` along the top and bottom, the sides one cell a step on the
+    diagonal. A small soft circle on a 5 x 8 grid prints as a jumble of strokes.
+  - **Stepped, not faded.** Each frame is held 0.04 s of fx time (it plays through the freeze),
+    then the next replaces it. Calm: thin lines, one to three hot cells a frame.
+  - **Ink on black.** Its cells print on black (a fire-field tint zone, `dark` 1), so it reads over a
+    lit figure. **Never over the hero:** no cell inside an ellipse round his figure on screen; he
+    stands in front of the wound. No cell below 0.7 m (heat by the floor fades into it).
+  - The anchor is the contact pulled 2.5 m toward the camera (the field's soft depth fade dimmed heat
+    on or inside the body to nothing; 1 m was enough on a man, not on the wyrm).
+  - `?stamp=instead` draws it in place of the slash line and its cross (the sparks stay); the
+    default draws both.
+- **Calm at the contact** (2026-11-22, ADR-149; `combat/impactCalm.js`): the light at the contact is
+  dimmed at the hit, level 1 by default (the owner's pick; `?calm=0` = as before, 2 and 3 calmer):
+  the struck boss's white hurt flash and the hero's lit steel are what bleached the contact, not
+  the cut's core. The arc is dimmed only near a fresh contact and only for the swing that landed.
+- **The body answers** (ADR-149): the reaction's first pose shows in the frame the freeze holds, small
+  enough that the struck surface stays 0.01 - 0.07 m from the drawn cut (`snapM` 0.06 on a duelist),
+  so the cut, the stamp and the spray stay on the body; the swing to the peak comes after the freeze.

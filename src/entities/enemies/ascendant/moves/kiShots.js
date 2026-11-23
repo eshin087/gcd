@@ -13,6 +13,9 @@
 //   'volley'  Heaven's Volley: the rise (a `cast` beat lifting him: the strikes are called through its
 //             active frames) and the dive (an `air` ring beat whose landing spot ShotMoves steers)
 //   'cage'    a `cast` beat: Storm Cage (eight orbs round the hero, each flying in on its turn)
+//   'lantern' a `cast` beat: Heaven's Lantern (the great orb gathered, thrown; a perfect parry: THE PUSH)
+//   'barrage' a `cast` beat: Raining Suns (sixteen small blasts poured down from the air; then a
+//             returnable `release` thrown down: release.air / yTo)
 // The beam's kinds (starting with 'beam') are the beam agent's (moves/kiBeam.js).
 //
 // His technique (the lead's call): a blast is a palm drawn back at the ribs, the lead hand held out
@@ -86,6 +89,29 @@ export function shotMoves(X) {
   const RISE = { yaw: 0, bY: -0.08, pitch: -0.18, spX: -0.1, hdX: -0.3, rH: [-0.36, 0.42, 0.1], lH: [0.36, 0.42, 0.1], rP: [-0.7, 0.5, -0.3], lP: [0.7, 0.5, -0.3], rF: [-0.12, 0.08, -0.05], lF: [0.12, 0.12, 0.05], rK: [-0.2, 0.4, 1], lK: [0.2, 0.4, 1], flat: 0.2 };
   const DIVE_C = { yaw: 0, bY: -0.1, pitch: -0.2, rH: [0.16, 0.52, 0.1], lH: [-0.16, 0.52, 0.1], rP: [-0.7, 0.5, -0.4], lP: [0.7, 0.5, -0.4], rF: [-0.14, 0.2, -0.1], lF: [0.14, 0.25, 0.1], rK: [-0.3, 0.6, 1], lK: [0.3, 0.6, 1], flat: 0.2 };
   const DIVE_H = { yaw: 0, bY: -0.46, pitch: 0.42, spX: 0.2, hdX: 0.3, rH: [0.14, -0.22, 0.46], lH: [-0.14, -0.22, 0.46], rP: [-0.7, -0.2, -0.3], lP: [0.7, -0.2, -0.3], ...LOW };
+  // ---- Heaven's Lantern: he rises, both arms raised and the palms turned up (the orb gathers over
+  // them); then both arms swept down together (the throw); he drops and lands low
+  const TUCK = { rF: [-0.12, 0.08, -0.05], lF: [0.12, 0.12, 0.05], rK: [-0.2, 0.4, 1], lK: [0.2, 0.4, 1], flat: 0.2 };
+  const RAISE = { yaw: 0, bY: -0.04, pitch: -0.14, spX: -0.1, hdX: -0.4, rH: [-0.14, 0.62, 0.12], lH: [0.14, 0.62, 0.12], rP: [-0.6, 0.6, -0.2], lP: [0.6, 0.6, -0.2], ...TUCK };
+  const RAISE2 = { ...RAISE, pitch: -0.2, hdX: -0.5, rH: [-0.2, 0.66, 0.06], lH: [0.2, 0.66, 0.06] };
+  const THROW = { yaw: 0, bY: -0.3, pitch: 0.36, spX: 0.18, hdX: 0.12, rH: [0.12, -0.12, 0.5], lH: [-0.12, -0.12, 0.5], rP: [-0.7, -0.2, -0.3], lP: [0.7, -0.2, -0.3], ...TUCK };
+  const LAND = { yaw: 0, bY: -0.42, pitch: 0.3, spX: 0.12, hdX: 0.2, rH: [0.16, -0.18, 0.34], lH: [-0.16, -0.18, 0.34], rP: [-0.8, -0.5, -0.3], lP: [0.8, -0.5, -0.3], ...LOW };
+  /** THE PUSH: both palms thrust out and held against the orb (his clip through the lock at range). */
+  const PUSH = F({ ...BOTH.hit, bY: -0.36, bZ: 0.2, pitch: 0.16, rH: [0.14, 0.06, 0.56], lH: [-0.14, 0.06, 0.56] });
+  // ---- Raining Suns: up and hanging, the legs tucked; the palms thrust down at the hero in turn
+  const HANG_R = { yaw: 0.25, bY: -0.1, pitch: 0.3, spX: 0.14, hdX: 0.25, rH: [0.06, -0.06, 0.58], lH: [-0.02, 0.06, 0.14], rP: [-0.8, -0.3, -0.2], lP: [0.8, -0.6, -0.1], ...TUCK };
+  const HANG_L = { ...X.mirror(HANG_R), ...TUCK };
+  const sunsKeys = () => {
+    const n = T.barrage.count, keys = [[0.3, F({ ...BOTH.coil })], [0.75, F({ ...RAISE, rH: [-0.3, 0.5, 0.2], lH: [0.3, 0.5, 0.2] })], [1.0, { ...F(HANG_R), e: 'i' }]];
+    for (let i = 1; i < n; i++) {
+      const u = 1 + i / n, p = i % 2 === 0 ? HANG_R : HANG_L;
+      keys.push([u - 0.4 / n, F({ ...p, rH: [0.06, 0.04, 0.24], lH: [-0.06, 0.04, 0.24] })]);
+      keys.push([u, { ...F(p), e: 'i' }]);
+    }
+    keys.push([2.0, F(HANG_R)]);
+    return keys;
+  };
+  const LA = T.lantern, BA = T.barrage;
 
   const M = {
     /** Spirit Shot: the palm drawn back, the lead hand sighting; a blast at 24 m/s (a parry; a PERFECT
@@ -175,6 +201,41 @@ export function shotMoves(X) {
       label: 'Storm Cage', phase: 3, weight: [0, 0, 1.0], cooldown: 14, band: [0, 16], recovery: 0.6, cat: 'hazard', ki: 'cage',
       recoveryKeys: [[0.2, F(BOTH.hit)]],
       beats: [{ tell: R, windup: 1.0, fixed: true, active: 0.1, damage: T.cage.damage, knockback: T.cage.knockback, knockdown: true, cast: { kind: 'cage', selfCue: true }, part: 'palms', close: 0, track: 0.6, hazard: true, keys: strikeKeys({ coil: BOTH.coil, hit: BOTH.hit, cock: 0.75 }) }],
+    },
+    /** Heaven's Lantern (forms 2 - 3): he rises 2.5 m, both arms raised, and gathers the great orb over
+     *  his palms (1.8 s; the ring's light dims); both arms swept down, it is thrown at where the hero
+     *  will be (blue: it cues itself; a parry or a block is safe, a roll passes it). A PERFECT parry
+     *  starts THE PUSH: a lock at range; won, it flies back into him; lost, it bursts on the hero. */
+    skyLantern: {
+      label: "Heaven's Lantern", phase: 2, weight: [0, 1.0, 0.8], cooldown: 28, band: [4, 16], recovery: LA.recovery, cat: 'hazard', ki: 'lantern',
+      recoveryKeys: [[0.3, F(LAND)], [1.0, F({ ...X.HANDS, bY: -0.12, ...OR })]],
+      pushPose: PUSH,
+      beats: [{
+        tell: B, windup: LA.windup, fixed: true, active: 0.45, damage: LA.damage, knockback: LA.knockback, knockdown: true,
+        cast: { kind: 'lantern', selfCue: true }, part: 'palms', close: 0, track: 0.6, air: true, hazard: true,
+        // (up through the first third of the gather, held there; down to the floor through the active frames)
+        lift: [[0, 0], [0.32, LA.lift], [1.0, LA.lift], [1.1, LA.lift], [2.0, 0]],
+        keys: [[0.18, F({ ...BOTH.coil })], [0.5, F(RAISE)], [0.9, F(RAISE2)], [1.0, { ...F(THROW), e: 'i' }], [1.6, F(THROW)], [2.0, F(LAND)]],
+      }],
+    },
+    /** Raining Suns (forms 2 - 3): he leaps 3 m and hangs, pouring sixteen small blasts down at the hero
+     *  in 2.2 s (the palms in turn; each aimed where he is, each cueing itself: block or parry them);
+     *  then a returnable blast thrown down from the air, and he drops. */
+    rainingSuns: {
+      label: 'Raining Suns', phase: 2, weight: [0, 1.2, 1.0], cooldown: 14, band: [4, 15], recovery: 0.6, cat: 'ranged', ki: 'barrage',
+      recoveryKeys: [[0.35, F(LAND)], [1.0, F({ ...X.HANDS, bY: -0.12, ...OR })]],
+      beats: [
+        {
+          tell: N, windup: 0.7, fixed: true, active: BA.dur, damage: BA.damage, knockback: 0.8, cast: { kind: 'barrage', selfCue: true }, part: 'palms', close: 0, track: 0.6, air: true,
+          lift: [[0, 0], [0.6, BA.lift], [1.0, BA.lift], [2.0, BA.lift]], keys: sunsKeys(),
+        },
+        {
+          ...blast(B, 0.5, BA.fin.damage, { release: { speed: BA.fin.speed, size: BA.fin.size, radius: BA.fin.radius, returnable: true, air: true, yTo: BA.yTo } }),
+          active: 0.4, air: true, knockback: 1.6, part: 'palms', track: 0.9,
+          lift: [[0, BA.lift], [1.0, BA.lift], [1.2, BA.lift], [2.0, 0]],
+          keys: [[0.3, F({ ...BOTH.coil, ...TUCK, pitch: 0.1 })], [0.92, F({ ...BOTH.coil, ...TUCK, pitch: 0.06, rH: [0.06, 0.1, 0.0], lH: [-0.06, 0.1, 0.0] })], [1.0, { ...F({ ...BOTH.hit, ...TUCK, pitch: 0.4, rH: [0.12, -0.08, 0.56], lH: [-0.12, -0.08, 0.56] }), e: 'i' }], [1.5, F({ ...THROW })], [2.0, F(LAND)]],
+        },
+      ],
     },
   };
   return M;

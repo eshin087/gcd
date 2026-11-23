@@ -2,7 +2,7 @@
 // Scorch, GroundFire, Scars and Destructibles on the REAL sets (the forest, the courtyard), wired
 // like src/world/world.js; the hero and the boss are small stand-ins that record what lands on them.
 // usage: node world.mjs <repoRoot> [scenario]
-//   scenario: sets | floor | terrace | colossus | chip | fell | cover | fire | throw | reset | grid | body | wreck | spread | wear | wall | reach | landmarks | edge | budget | placed | all
+//   scenario: sets | floor | terrace | colossus | chip | fell | cover | fire | throw | reset | grid | body | wreck | spread | wear | wall | reach | landmarks | edge | budget | bite | placed | all
 // (body / budget run the REAL Dragon on the REAL forest: its body against the world, ARCHITECTURE.md
 // "Destruction" → "The wyrm's body")
 import { pathToFileURL } from 'node:url';
@@ -34,6 +34,10 @@ const { createCourtyard } = await imp('src/world/courtyard.js');
 const { createThroneHall } = await imp('src/world/throneHall.js');
 const { createFoxTerrace, TERRACE } = await imp('src/world/foxTerrace.js');
 const { createSkybreakRing, BUTTE, RING } = await imp('src/world/skybreakRing.js');
+// (every level the game can load, and the training room: the bite scenario walks them all, so a new
+// level is checked without being named here)
+const { LEVELS } = await imp('src/levels/index.js');
+const { createTrainingRoom } = await imp('src/world/trainingRoom.js');
 /** The Skybreak Ring's set as arena `o` (?ring=a|b|c: read when the set is built). */
 const ringSet = (o) => (U, c) => {
   setLook('ring', o);
@@ -172,12 +176,13 @@ function wyrm() {
 const S = {
   // ---------------------------------------------------------------- the sets list their breakables
   sets() {
-    for (const [name, make, kinds] of [['forest', createForest, ['tree', 'deadTree', 'stone', 'boulder', 'flagstone', 'bone']], ['courtyard', createCourtyard, ['pillar', 'lantern']], ['throne', createThroneHall, ['shard', 'slab', 'hover']], ['ring a', ringSet('a'), ['tile', 'post', 'butte', 'butteTop', 'banner', 'mud', 'hoodoo']], ['ring b', ringSet('b'), ['tile', 'post', 'butte', 'butteTop', 'terrace', 'banner']], ['ring c', ringSet('c'), ['tile', 'post', 'butte', 'butteTop', 'spire', 'cairn']], ['terrace', createFoxTerrace, ['lantern', 'foxStatue', 'charmPost', 'greatFox', 'spiritGate', 'deadTree', 'boulder', 'flagstone']]]) {
+    for (const [name, make, kinds] of [['forest', createForest, ['tree', 'deadTree', 'stone', 'boulder', 'flagstone', 'bone']], ['courtyard', createCourtyard, ['pillar', 'lantern']], ['throne', createThroneHall, ['shard', 'slab', 'hover', 'swords', 'banner', 'cairn', 'cart']], ['ring a', ringSet('a'), ['tile', 'post', 'butte', 'butteTop', 'banner', 'mud', 'hoodoo']], ['ring b', ringSet('b'), ['tile', 'post', 'butte', 'butteTop', 'terrace', 'banner']], ['ring c', ringSet('c'), ['tile', 'post', 'butte', 'butteTop', 'spire', 'cairn']]]) {
       const { D, set, colliders, U } = build(make);
       const L = D.list;
       // (Cinderwood: 664 since every tree of the wall and the landmarks break, 2026-11-16; 183 on 2026-11-15,
       // 80 before. The duelists' arenas break everything but their landmarks since 2026-11-16: the
-      // courtyard 78 → 456 (293 of them its floor's slabs), the crater 36 → 222 (105 of its floor's plates))
+      // courtyard 78 → 456 (293 of them its floor's slabs), the crater 36 → 222 (105 of its floor's plates); 255 on 2026-11-22, its felled trunks
+      // swapped for the challengers' graves, banners and carts round it)
       const [lo, hi] = { forest: [20, 760], courtyard: [380, 520], throne: [180, 280], 'ring a': [1, 5000], 'ring b': [1, 5000], 'ring c': [1, 5000], terrace: [300, 520] }[name];
       assert(L.length >= lo && L.length <= hi, `${name}: ${L.length} breakables (${lo}..${hi})`);
       for (const k of kinds) assert(L.some((b) => b.kind === k), `${name}: has a breakable ${k}`);
@@ -1421,6 +1426,154 @@ const S = {
 
   // ---------------------------------------------------------------- a piece draws where it is (its matrices are placed, not auto-updated)
   // (last: it draws on the destructibles' cosmetic stream, which the scenarios after it would see)
+  // ---------------------------------------------------------------- bites (BREAK.chip, ?chip=a): a blow takes the bricks where it struck
+  bite() {
+    const C = BREAK.chip;
+    setLook('chip', 'a');
+    try {
+      const { D, log, step } = build();
+      const folded = (a, k) => a[k] === a[k + 3] && a[k] === a[k + 6] && a[k + 1] === a[k + 4] && a[k + 1] === a[k + 7] && a[k + 2] === a[k + 5] && a[k + 2] === a[k + 8];
+      // ---- a tree of the forest (a run of the trees' mesh): a blade at 1.1 m, from the south
+      const t = D.list.filter((b) => b.kind === 'tree' && b.body.parts > 1 && b.order.length > 0).sort((p, q) => Math.hypot(p.x, p.z) - Math.hypot(q.x, q.z))[0];
+      const B = t.body, pos = B.geometry.attributes.position.array, s0 = B.start * 3;
+      const before = pos.slice(s0, s0 + B.count * 3);
+      const cut = (y = 1.1, k = 0.25) => D.sweep(t.x, t.z + t.r + 1, t.x, t.z + 0.1, 0.55, (k * t.hpMax) / BREAK.mats.wood.take.cut, { kind: BLOW.CUT, by: 'player', dx: 0, dz: -1, y: y - 0.3, ya: y, yb: y, src: D.swing() });
+      const hp0 = t.hp;
+      assert(cut() === 1 && near(t.hp, hp0 - 0.25 * t.hpMax, 1e-6), `a cut worth a quarter of a tree's structure takes a quarter of it (${(t.hp / t.hpMax).toFixed(2)} left): the blows' arithmetic is unchanged`);
+      const reach = Math.min(C.reach[1], Math.max(C.reach[0], 0.55 + C.pad));
+      let n = 0, far = 0, section = 0, bad = 0, trunk = 0, set = 0;
+      for (let i = 0; i < B.nb; i++) {
+        const d = Math.hypot(B.cen[i * 3] - t.x, B.cen[i * 3 + 1] - 1.1, B.cen[i * 3 + 2] - (t.z + 0.1));
+        if (d <= reach) section++;
+        if (!B.bit[i]) continue;
+        n++;
+        if (B.tpart[i] === 0) trunk++;
+        far = Math.max(far, d);
+        // (a trunk's brick is set back into it by its depth along the way in; a leaf is folded away)
+        for (let j = 0; j < 2; j++) {
+          const f = B.btri[i * 2 + j];
+          if (f < 0) continue;
+          const k = f * 9, dep = B.bdep[i];
+          if (dep > 0) {
+            if (!near(pos[s0 + k] - before[k], B.bnor[i * 3] * dep, 1e-5) || !near(pos[s0 + k + 7] - before[k + 7], B.bnor[i * 3 + 1] * dep, 1e-5)) bad++;
+            set++;
+            // the way in points at the trunk's axis
+            if ((B.cen[i * 3] - t.x) * B.bnor[i * 3] + (B.cen[i * 3 + 2] - t.z) * B.bnor[i * 3 + 2] > 0) bad++;
+          } else if (!folded(pos, s0 + k)) bad++;
+        }
+      }
+      assert(n >= 1 && n === Math.max(1, Math.round(0.25 * section)) && far <= reach + 1e-6 && bad === 0 && D.bitten === n, `it knocks out ${n} of the ${section} bricks within ${reach.toFixed(2)} m of where the blade met it (a quarter, nearest first: the farthest ${far.toFixed(2)} m; ${trunk} of the trunk), ${set} triangle(s) set back into the trunk toward its axis`);
+      let kept = 0;
+      for (let i = 0; i < B.nb; i++) {
+        if (B.bit[i]) continue;
+        const k = B.btri[i * 2] * 9;
+        if (pos[s0 + k] === before[k] && pos[s0 + k + 4] === before[k + 4] && pos[s0 + k + 8] === before[k + 8]) kept++;
+      }
+      assert(kept === B.nb - n && B.nb < B.tris, `every other brick is where it was (${kept}); its ${B.tris} triangles are ${B.nb} bricks (a trunk's quads pair up, foliage stays single)`);
+      assert(t.dropped === 0 && B.shown.every((v) => v === 1), 'with bites on a tree does not drop its crown parts in order: it loses what the blows took');
+      // ... cut on until it falls: the section under the blade is gone as its structure runs out
+      let cuts = 1;
+      while (t.state === STATE.INTACT && cuts < 8) {
+        step(0.25);
+        cut();
+        cuts++;
+      }
+      let left = 0;
+      for (let i = 0; i < B.nb; i++) if (!B.bit[i] && B.tpart[i] === 0 && Math.hypot(B.cen[i * 3] - t.x, B.cen[i * 3 + 1] - 1.1, B.cen[i * 3 + 2] - (t.z + 0.1)) <= reach) left++;
+      assert(t.state !== STATE.INTACT && cuts >= 4 && cuts <= 5 && left <= 1, `${cuts} such cuts fell it, and the trunk is cut through where they bit (${left} brick(s) of that section left)`);
+      assert(log.filter((e) => e.n === 'world:impact' && e.kind === 'wear' && e.id === t.id).length >= 2, 'its stages are still told (world:impact wear)');
+      // ---- a piece of the rigid batch: a standing stone, struck on its south face
+      const s = D.list.find((b) => b.kind === 'stone' && b.bricks && b.topples);
+      const K = s.bricks, idx = K.index.array, saved = idx.slice(K.i0, K.i0 + K.saved.length);
+      D.strike(s.x, s.z + s.r + 0.3, 0.6, 0.3 * s.hpMax, { kind: BLOW.BLUNT, by: 'boss', y: 1.2, src: D.swing() });
+      let sn = 0, sFar = 0, sBad = 0, south = 0, sSet = 0;
+      for (let i = 0; i < K.T; i++) {
+        if (!K.bit[i]) continue;
+        sn++;
+        if (K.cen[i * 3 + 2] > 0) south++;
+        sFar = Math.max(sFar, Math.hypot(K.cen[i * 3], K.cen[i * 3 + 1] - 1.2, K.cen[i * 3 + 2] - (s.r + 0.3)));
+        for (let j = 0; j < 2; j++) {
+          const f = K.tri[i * 2 + j];
+          if (f < 0) continue;
+          if (K.dep[i] > 0) {
+            // set back into the stone by its depth, the way in (toward its axis, or down from its top)
+            const k = (K.v0 + f * 3) * 3;
+            for (let c = 0; c < 3; c++) if (!near(K.pos.array[k + c] - K.psaved[f * 9 + c], K.nor[i * 3 + c] * K.dep[i], 1e-5)) sBad++;
+            if (K.cen[i * 3] * K.nor[i * 3] + (K.cen[i * 3 + 1] - s.h / 2) * K.nor[i * 3 + 1] + K.cen[i * 3 + 2] * K.nor[i * 3 + 2] > 0) sBad++;
+            sSet++;
+          } else if (!(idx[K.i0 + f * 3] === idx[K.i0 + f * 3 + 1] && idx[K.i0 + f * 3] === idx[K.i0 + f * 3 + 2])) sBad++;
+        }
+      }
+      assert(sn >= 1 && sn === K.n && sBad === 0 && south >= sn * 0.9 && sFar <= 0.6 + s.r + C.pad + 1e-6 && s.state === STATE.INTACT, `a blow on a standing stone's south face takes ${sn} of its ${K.T} bricks (${south} on that side; all within ${sFar.toFixed(2)} m of the blow's centre): ${sSet} triangle(s) set back into the stone in the batch's positions`);
+      // ---- a blast eats the side that faced it
+      const o = D.list.filter((b) => b.kind === 'tree' && b.state === STATE.INTACT && b !== t && b.body.parts > 3 && b.h > 5).sort((p, q) => Math.hypot(p.x, p.z) - Math.hypot(q.x, q.z))[0];
+      D.strike(o.x + 3, o.z, 4.5, 0.5 * o.hpMax, { kind: BLOW.BLAST, by: 'boss', y: 1, src: D.swing() });
+      let east = 0, west = 0;
+      for (let i = 0; i < o.body.nb; i++) if (o.body.bit[i]) o.body.cen[i * 3] > o.x ? east++ : west++;
+      assert(east + west >= 4 && east > west * 1.5, `a blast east of a tree eats its east side (${east} bricks there, ${west} on the far side: the trunk's own)`);
+      // ---- a landmark's bone (prop art)
+      const rib = D.list.find((b) => b.kind === 'elderRib');
+      D.strike(rib.x, rib.z, 1.2, 0.3 * rib.hpMax, { kind: BLOW.BLUNT, by: 'boss', y: 1.5, src: D.swing() });
+      assert(rib.body.nBit >= 1 && rib.state === STATE.INTACT, `a rib of the Elder Wyrm loses ${rib.body.nBit} brick(s) to a blow`);
+      // ---- a floor slab and a piece that only chips keep their own rules
+      const flag = D.list.find((b) => b.floor);
+      const fb = D.bitten;
+      if (flag) D.strike(flag.x, flag.z, 0.5, 0.4, { kind: BLOW.BLUNT, by: 'boss', y: 0.1, src: D.swing() });
+      assert(D.bitten === fb, 'a floor slab is not bitten (it cracks and breaks as a slab)');
+      // ---- the reset
+      step(2.5);
+      D.reset();
+      let diff = 0;
+      for (let k = 0; k < before.length; k++) if (pos[s0 + k] !== before[k]) diff++;
+      let idiff = 0;
+      for (let k = 0; k < saved.length; k++) if (idx[K.i0 + k] !== saved[k]) idiff++;
+      for (let k = 0; k < K.psaved.length; k++) if (K.pos.array[K.v0 * 3 + k] !== K.psaved[k]) idiff++;
+      assert(diff === 0 && idiff === 0 && B.nBit === 0 && K.n === 0 && D.bitten === 0 && o.body.nBit === 0, 'the reset: every brick is back (the tree vertex for vertex, the stone index for index and vertex for vertex)');
+      // ---- EVERY level (the level registry, so a new one is covered without being named here) and the
+      // training room: it lists breakables; every piece in it that takes structure has bricks; a blow
+      // on one of each kind bites it; the reset undoes it. (Cinderwood is the forest above, again here)
+      const sets = LEVELS.map((L) => [L.name, L.buildSet]);
+      // (the training room, ?stage=lab, ADR-099, is the one stage left whole on purpose: a measuring stage
+      // of tiles, low walls and corner pylons, outside the fight; nothing of it is listed to break)
+      const room = createTrainingRoom(createSharedUniforms(), new Colliders());
+      assert(!(room.breakables?.length > 0), 'the training room lists no breakables (a measuring stage, whole on purpose: ARCHITECTURE.md "Destruction")');
+      assert(sets.length >= 4 && sets.every(([, make]) => typeof make === 'function'), `the levels to check: ${sets.map(([n]) => n).join(', ')}`);
+      for (const [name, make] of sets) {
+        const A = build(make), L = A.D.list;
+        const able = L.filter((b) => !b.floor && b.hpMax < Infinity);
+        if (!able.length) {
+          assert(false, `${name}: no breakable piece that takes structure (a level lists its background objects in its set's \`breakables\`: ARCHITECTURE.md "Destruction")`);
+          continue;
+        }
+        const none = able.filter((b) => !(b.ranged ? b.body.tris > 0 : b.bricks?.T > 0));
+        const kinds = [...new Set(able.map((b) => b.kind))];
+        let bitten = 0, set = 0, folded = 0, missed = [];
+        for (const kind of kinds) {
+          const b = able.find((x) => x.kind === kind && x.state === STATE.INTACT && !(x.top && x.top.state === STATE.INTACT));
+          if (!b) continue;
+          const n0 = A.D.bitten;
+          A.D.strike(b.x + b.r, b.z, 0.7, 0.3 * b.hpMax + 0.2, { kind: BLOW.BLUNT, by: 'boss', y: Math.min(1.2, b.y0 + b.h * 0.5), src: A.D.swing() });
+          if (A.D.bitten === n0) missed.push(kind);
+          bitten += A.D.bitten - n0;
+          const K = b.bricks;
+          if (K) for (let i = 0; i < K.T; i++) if (K.bit[i]) K.dep[i] > 0 ? set++ : folded++;
+        }
+        A.step(0.5);
+        A.D.reset();
+        const left = L.filter((b) => (b.bricks?.n ?? 0) > 0 || (b.ranged && b.body.nBit > 0)).length;
+        assert(none.length === 0 && missed.length === 0 && bitten > 0 && left === 0, `${name}: all ${able.length} pieces that take structure have bricks; a blow on one of each of its ${kinds.length} kinds took ${bitten} (${set} set back, ${folded} folded${missed.length ? '; none from ' + missed.join(', ') : ''}); the reset puts them back`);
+      }
+      // ---- off (the default): nothing is bitten
+      setLook('chip', '0');
+      const t2 = D.list.find((b) => b.kind === 'tree' && b.state === STATE.INTACT && b.body.parts > 1);
+      D.strike(t2.x, t2.z + 0.3, 0.6, 0.3 * t2.hpMax, { kind: BLOW.CUT, by: 'player', y: 1, src: D.swing() });
+      assert(D.bitten === 0 && !(t2.body.nBit > 0) && t2.hp < t2.hpMax, 'with bites off (?chip=0) a blow takes structure and no bricks');
+    } finally {
+      setLook('chip', null);
+      reseedBreaks();
+    }
+  },
+
   placed() {
     // (2026-11-16: the pieces are a tree outside the scene, their nodes do not auto-update; destructibles
     // `_place` puts a piece's world matrices right when it moves. The batch draws each body from its
@@ -1635,15 +1788,21 @@ function near0(a, b, eps = 1e-6) {
 // `budget` on its own, after the parallel suites: its frame times are wall-clock)
 const skip = new Set((process.env.ABYSS_SKIP ?? '').split(',').map((s) => s.trim()).filter(Boolean));
 for (const n of skip) if (!S[n]) { out(`unknown scenario in ABYSS_SKIP: ${n}`); process.exit(2); }
+const BITES_OFF = new Set(['wear', 'placed']);
 const names = SCEN === 'all' ? Object.keys(S).filter((n) => !skip.has(n)) : SCEN.split(',');
 for (const n of names) {
   if (!S[n]) { out(`unknown scenario ${n}`); process.exit(2); }
   out(`\n== WORLD ${n.toUpperCase()}`);
+  // (bites are on by default, ADR-132: a tree then loses what the blows took, not its crown parts in
+  // stages. These scenarios check the stages, which is what ?chip=0 plays; `bite` checks the bites)
+  if (BITES_OFF.has(n)) setLook('chip', '0');
   try {
     S[n]();
   } catch (err) {
     fails++;
     out('FAIL', `${n} threw: ${err?.stack ?? err}`);
+  } finally {
+    if (BITES_OFF.has(n)) setLook('chip', null);
   }
 }
 if (errors.length) { fails++; out('FAIL console errors:\n  ' + errors.slice(0, 8).join('\n  ')); }

@@ -8,6 +8,7 @@ import { ChargeHum } from './charge.js';
 import { createMusic } from './music.js';
 import { FIRE_SFX, subscribeFire } from './fire.js';
 import { TrackBank, TrackLoop } from './tracks.js';
+import { THUMP_SFX, Thump } from './thump.js';
 
 // WebAudio engine: every sound effect is synthesised at runtime; the music is recorded tracks per level
 // and boss phase (tracks.js; ADR-117) over a synthesised fallback score (music.js).
@@ -15,7 +16,7 @@ import { TrackBank, TrackLoop } from './tracks.js';
 // also unlocks itself on the first pointer/key gesture). Every method is a no-op before that.
 //
 // Graph:
-//   sfx / music(→ dip) / ambient buses ─┐
+//   sfx / music(→ thump dip → dip) / ambient buses ─┐
 //   reverb return (2.8 s hall) ─────────┴→ mix → Ghostep LPF+gain → pause-duck LPF → master
 //   cue bus (tells, timing flash, Ghostep: never Ghostep-ducked) ──→ pause-duck LPF ─┘
 //   ui bus (blips, never ducked) ─────────────────────────────────→ master → compressor → limiter → out
@@ -87,6 +88,8 @@ export class AudioEngine {
     this.breath = null;
     this.charge = null; // heavy-attack charge hum (built with the graph)
     this.tracks = null; // recorded music (built with the graph; ADR-117)
+    this.thump = new Thump(this); // the impact pass's low end + music dip (thump.js; no nodes of its own)
+    this.thumpDip = null; // its gain on the music path (built with the graph; 1 when idle)
     this._musicPhase = 0; // the boss phase whose track is playing (0: not a boss mode)
     this._phaseHint = 1; // the latest phase a dragon:phase* event announced (the wyrm sets its own number later)
     this._fading = []; // layers crossfading out
@@ -161,7 +164,7 @@ export class AudioEngine {
       this.ctx = null;
       this._failed = true;
       this.master = this.duck = this.sfxBus = this.musicBus = this.ambientBus = this.uiBus = null;
-      this.cueBus = this.slowLp = this.slowGain = this.musicDip = null;
+      this.cueBus = this.slowLp = this.slowGain = this.musicDip = this.thumpDip = null;
       this.reverbIn = this.ambience = this.breath = this.charge = this.music = this.tracks = null;
       this._fading.length = 0;
       for (const l of this._poolLists) l.length = 0;
@@ -190,7 +193,7 @@ export class AudioEngine {
     const ctx = this.ctx;
     if (!ctx || ctx.state === 'closed' || typeof name !== 'string') return false;
     let o = opts && typeof opts === 'object' ? opts : EMPTY;
-    let def = SFX[name] ?? FIRE_SFX[name];
+    let def = SFX[name] ?? FIRE_SFX[name] ?? THUMP_SFX[name];
     if (!def && ALIASES[name]) {
       const [n, extra] = ALIASES[name];
       name = n;
@@ -288,7 +291,8 @@ export class AudioEngine {
     };
     this.sfxBus = bus(BUS.sfx, this.mix);
     this.musicDip = bus(1, this.mix);
-    this.musicBus = bus(BUS.music, this.musicDip);
+    this.thumpDip = bus(1, this.musicDip); // a heavy blow's short dip (thump.js); multiplies with the rest
+    this.musicBus = bus(BUS.music, this.thumpDip);
     this.ambientBus = bus(BUS.ambient, this.mix);
     this.cueBus = bus(BUS.cue, this.duck);
     this.uiBus = bus(BUS.ui, this.master);
@@ -667,6 +671,8 @@ export class AudioEngine {
       if (d.shards) return;
       this._cutN = (this._cutN + 1) | 0;
       this.play('cut', { weight: d.weight ?? (d.heavy ? 'slam' : 'light'), combo: d.combo, crit: d.crit, alt: this._cutN & 1, x, z });
+      // the impact pass: the sub under a heavy blow and the music's dip (thump.js; off: nothing at all)
+      this.thump?.onHit(d);
     });
     // the plunge: the dive's rush, then the blade into the skull
     on('player:plunge', (d) => this.play('plungeDive', { exec: !!d.execution }));

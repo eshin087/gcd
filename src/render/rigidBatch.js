@@ -279,6 +279,7 @@ class RigidBatchSet {
     const rigid = new Float32Array(verts);
     const index = verts > 65535 ? new Uint32Array(indices) : new Uint16Array(indices);
     const slots = new Uint16Array(sources.length);
+    const runs = [];
     let v0 = 0, i0 = 0;
     for (let s = 0; s < sources.length; s++) {
       const m = sources[s], g = m.geometry, n = g.attributes.position.count;
@@ -303,6 +304,7 @@ class RigidBatchSet {
           index[i0 + j + 2] = t;
         }
       }
+      runs.push(i0, ic, v0, n);
       v0 += n;
       i0 += ic;
     }
@@ -317,6 +319,10 @@ class RigidBatchSet {
     mesh.renderOrder = first.renderOrder;
     mesh.layers.mask = 1; // the world pass only; the set's shadow mesh casts for it
     this.root.add(mesh);
+    // where each source sits in the batch (`userData.batchRun` { mesh, i0, ic, v0, n }: its run of the
+    // index and of the vertices): the breakables move and fold single triangles there
+    // (world/destructibles.js MeshBricks)
+    for (let s = 0; s < sources.length; s++) sources[s].userData.batchRun = { mesh, i0: runs[s * 4], ic: runs[s * 4 + 1], v0: runs[s * 4 + 2], n: runs[s * 4 + 3] };
 
     const batch = { mesh, root: this.root, slots, sources };
     reg.batches.push(batch);

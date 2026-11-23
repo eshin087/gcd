@@ -39,7 +39,10 @@ Cinderwood); the title screen and the Lab pick one too. Kept for later use (ADR-
 `?wyrmFace=old` gives the wyrm the face it had before the drake (ADR-124), `skull|loong|demon` (ADR-120)
 and `tyrant|viper|revenant` (ADR-124) the heads the owner passed on. The owner's picks with the options turned down behind them: `?wyrmLook=0|a|b` (c: the
 wyrm's lean build; 0 = the wyrm before; ADR-123), `?zoomArt=a|c` (b: the letters
-follow the zoom) and `?ablaze=off|a|c` (b: the wyrm's phase 3 fire).
+follow the zoom) and `?ablaze=off|a|c` (b: the wyrm's phase 3 fire). The impact pass's pieces (ADR-149): `?impact=off|all|stamp,ripple,react,thump` (default all; Lab: the 'impact' row), and
+`?calm=0..3` the light at the contact (default 1; 0 = as before; Lab: the row's `calm` button). Bites (a blow knocks the bricks, the letters, out of
+a piece where it struck, and the hero's blade stops on what it does not cut through) are on: `?chip=0`
+turns them off (ADR-132).
 The duelists' look switches (`?kindle=`, `?qi=`, `?ashLook=`, `?lordLook=`, `?floor=` ...; ADR-122): no
 parameter draws the owner's picks, `?looks=old` the looks before that pass, one switch its option
 (Lab: LOOKS); the table is STYLE.md → "The look switches". In the dev server: append `?lab` to the URL (or press **F1**) for the **Lab** — trigger any boss
@@ -72,11 +75,27 @@ In Claude Code the preview config is `.claude/launch.json` (`abyss-dev`).
 - **ASCII look is a feature.** Anything visible must go through the glyph systems described in
   `docs/STYLE.md` (the art pass, screen-grid ASCII, carved floors, the fire field, glyph particles). No plain shaded
   meshes. Only glyphs in the world atlas may be passed to `gi()` / materials / particles — `npm test` checks.
-- **The world breaks (ADR-107).** Anything new that stands in a level and could be hit is listed in
-  its set's `breakables` (not merged into the static meshes), and anything new that hits (a blow, a
-  projectile, fire) calls the world: `world.impact`, `world.ignite`, `world.destructibles.strike /
-  sweep / stop`, guarded with `?.`. Its power goes in the fighter's tuning. See
-  `docs/ARCHITECTURE.md` → "Destruction" and `docs/COMBAT.md` → "The world breaks".
+- **The world breaks, letter by letter (ADR-107, ADR-132).** Every background object in every level
+  is destructible, and a hit knocks its letters off exactly where it lands ("bites"); the hero's blade
+  stops on what it does not cut through. Follow the checklist in `docs/ARCHITECTURE.md` → "Destruction"
+  → "Making a new object destructible". In short:
+  - Anything new that stands in a level and could be hit is listed in its set's `breakables` (not
+    merged into the static meshes), with a finite `hp`, a `mat` and a footprint `r` that matches what
+    is drawn (the blade stops at that circle).
+  - Build it from non-indexed triangle geometry through one of the two drawing paths (`look: 'range'`
+    in a set's merged mesh, or `'prop'` / `'grid'` through the breakables' rigid batch). Bites are made
+    from its triangles; do not pre-split it into cubes, and do not hand-shrink its triangles (the
+    level is cut to brick size at build time).
+  - Anything new that hits (a blow, a projectile, fire) calls the world: `world.impact`,
+    `world.ignite`, `world.destructibles.strike / sweep / stop`, guarded with `?.`. Pass the blow's
+    real height (`y`, or a blade's `ya` / `yb`) so the bite lands where it struck. Its power goes in the
+    fighter's tuning.
+  - A new level is covered by the world test `bite` with no change (it walks the level registry): it
+    fails if a level lists no breakables, or a piece gets no bricks. Only an object the owner decided
+    stays whole is left out of `breakables`, and the decision is written down (today: the bonfires,
+    the sect gate, the bell (it only rings), the throne and its dais, the fallen star, the seal, and
+    the whole training room).
+  See also `docs/COMBAT.md` → "The world breaks".
 - **Combat must be readable.** Every enemy attack declares a tell type (`normal` / `blue` parry /
   `red` perfect-dodge) and a windup long enough to react to. See `docs/COMBAT.md`.
 - **Never freeze the frame.** Per-frame code must not throw; `main.js` isolates module errors, but

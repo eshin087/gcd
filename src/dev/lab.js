@@ -11,8 +11,11 @@ import { WYRM_FACES, wyrmFace } from '../entities/dragon/heads.js';
 import { WYRM_LOOKS, wyrmLookId } from '../entities/dragon/looks.js';
 import { TrainingPanel } from './trainingPanel.js';
 import { setCutStyle, cutStyle } from '../combat/cutFx.js';
+import { IMPACT } from '../combat/impact.js';
+import { CALM_LOOK, setCalm, calmLevel } from '../combat/impactCalm.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { buildLooks } from './labLooks.js';
+import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
 
 // The Lab — a debug panel to test the boss without playing the fight (contract: docs/ARCHITECTURE.md
 // → Lab; usage: src/dev/README.md). It talks only to the actors' `debug` APIs (dragon.debug,
@@ -904,6 +907,22 @@ export class Lab {
       const n = a ? w()?.impact?.(a.x, a.z, 3, 3, { kind: 'blast', by: 'boss' }) : 0;
       this._status(`a blast 4 m ahead struck ${n ?? 0} piece(s)`, 'ok');
     }).title = 'a hard blast 4 m in front of the hero: what stands there breaks, the floor cracks';
+    // bites (BREAK.chip, on; ?chip=0 off): a blow takes the bricks of a piece where it struck. A level built
+    // with it on has finer bricks, so the switch reloads the page with the parameter
+    {
+      const on = lookOf('chip', 'a', 'a') !== '0';
+      button(grid, `Bites ${on ? 'on' : 'off'}`, () => {
+        try {
+          const u = new URL(globalThis.location.href);
+          if (on) u.searchParams.set('chip', '0');
+          else u.searchParams.set('chip', 'a');
+          u.searchParams.set('lab', '');
+          globalThis.location.assign(u.toString());
+        } catch (err) {
+          console.error('[lab] bites reload failed', err);
+        }
+      }).title = 'a blow takes the bricks (the letters) of a piece where it struck (on by default; ?chip=0 off; reloads: the level is built with finer bricks)';
+    }
     // (2026-11-16: the tree wall wears down in stages; the landmarks break in pieces)
     const nearestWall = (at) => {
       let best = null, bd = 1e9;
@@ -1016,6 +1035,31 @@ export class Lab {
       this._syncCutBtns();
     });
     this.ui.shudBtn.title = 'a struck duelist flickers along the cut through the freeze (on / off)';
+    // the weight of a landed cut, piece by piece (combat/impact.js; ?impact=): on / off each
+    const imp = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'impact', imp).title = 'the weight of a landed cut, piece by piece (combat/impact.js)';
+    const impGrid = el('div', 'lab-grid', null, imp);
+    impGrid.style.flex = '1';
+    const IMPACT_TIPS = {
+      stamp: 'the hit as a short ASCII animation printed at the contact',
+      ripple: 'the letters of the struck body take the blow',
+      react: 'the body answers by where it was hit',
+      thump: 'the low end of a heavy hit, a short dip of the music',
+    };
+    this.ui.impactBtns = IMPACT.pieces.map((s) => {
+      const b = button(impGrid, s, () => {
+        IMPACT.on[s] = !IMPACT.on[s];
+        this._syncCutBtns();
+      });
+      b.title = IMPACT_TIPS[s] ?? s;
+      return { s, el: b };
+    });
+    // calm at the contact (combat/impactCalm.js; ?calm=): cycles 0 (as before) … 3
+    this.ui.calmBtn = button(impGrid, `calm ${calmLevel()}`, () => {
+      setCalm((Math.max(0, calmLevel()) + 1) % CALM_LOOK.levels.length);
+      this._syncCutBtns();
+    });
+    this.ui.calmBtn.title = "today's flare at the contact toned down: 0 as before, 1 the default, 2 and 3 calmer";
     // the sword looks (gear/moonblade.js; the owner's pick, ?sword=): equip one (a rebuild: build-time
     // cost, Lab only)
     const swr = el('div', 'lab-row', null, body);
@@ -1114,6 +1158,11 @@ export class Lab {
     for (const { s, el: b } of this.ui.cutBtns ?? []) setClass(b, 'on', cutStyle() === s);
     const d = this.game.dragon;
     setClass(this.ui.shudBtn, 'on', !!d && 'shudderK' in d && d.shudderK > 0);
+    for (const { s, el: b } of this.ui.impactBtns ?? []) setClass(b, 'on', IMPACT.on[s] === true);
+    if (this.ui.calmBtn) {
+      this.ui.calmBtn.textContent = `calm ${calmLevel()}`;
+      setClass(this.ui.calmBtn, 'on', calmLevel() !== 0);
+    }
     const w = this.game.player?.loadout?.weapon;
     for (const { k, el: b } of this.ui.swordBtns ?? []) setClass(b, 'on', w === SWORD_PARAM[k]);
   }

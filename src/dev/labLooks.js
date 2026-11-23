@@ -25,6 +25,7 @@ export const LOOK_SWITCHES = Object.freeze([
   ['presence', ['0', 'a'], 'a', 'a', false, ['starless'], 'forms 2 and 3: a quiet presence'],
   ['great', ['a', 'b', 'c'], 'a', 'a', false, ['starless'], 'Starless Night\'s waves'],
   ['lordLook', ['0', 'a', 'b', 'c'], '0', 'b', true, ['starless'], 'Varr Nihil\'s body (a reload)'],
+  ['outskirts', ['0', 'a', 'b', 'c', 'm'], '0', 'c', true, ['starless'], 'round the crater: 0 felled trees, a shrine, b star debris, c challengers, m all (a reload)'],
   ['floor', ['a', 'b'], 'a', 'a', true, ['ash', 'starless'], 'a broken floor slab (a reload)'],
   // The Skybreak Ring's switches. Each group's rows go directly under its own heading line.
   // --- ring: the set (the arena, its buttes, its light)
@@ -38,6 +39,7 @@ export const LOOK_SWITCHES = Object.freeze([
   // --- ring: Tian Lei's effects (the aura, the beam, the blasts, the transformation)
   ['ascAura', ['a', 'b', 'c'], 'a', 'a', false, ['ring'], 'Tian Lei\'s aura (forms 2 and 3)'],
   ['ascBeam', ['a', 'b'], 'a', 'a', false, ['ring'], 'Tian Lei\'s beam'],
+  ['ascOrb', ['a', 'b'], 'a', 'a', false, ['ring'], 'Heaven\'s Lantern, the great orb: a a sun, b a lantern'],
   //
   //
   // --- fox: Wen Yao (ADR-147; every one read when his rigs or his effects are built: a reload)

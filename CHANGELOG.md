@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Sixty-one pieces of work since 0.4.0:
+Sixty-five pieces of work since 0.4.0:
 - **A fifth level: the Foxfire Terrace and Wen Yao, the Thousand-Body Fox** (2026-11-21, ADR-147, ADR-148).
   *Added:* a fifth level, `?level=fox` (the title screen lists it). **The Foxfire Terrace**: a round
   terrace on a moonlit hill shrine, stone lanterns and seated stone foxes on its rim, wooden charm posts
@@ -25,6 +25,68 @@ Sixty-one pieces of work since 0.4.0:
   before. Kept behind switches for the owner's pick: his looks (`?foxLook=`), the foxfire's colour
   (`?foxfire=`), paler copies (`?clones=b`). Recorded, not yet usable: his reward, the Paper Double. The
   level borrows music for now. Nobody has played it yet: his numbers are first guesses from bots.
+- **The letters come off where the blow lands** (2026-11-21, ADR-132; on by default, the owner's
+  pick; `?chip=0` turns it off). *Added:* bites. Every tree, stone, boulder, pillar, statue, bone and landmark piece is
+  made of bricks, the blocks of letters it is drawn with, and a blow takes the ones nearest where it
+  struck (the owner: "have the ascii pieces fall of exactly where the player or enemy boss is
+  hitting ... like minecraft/lego"): a blade cuts a notch into a trunk at the height it bit; a heavy
+  blow knocks the face of a standing stone back; a blast eats the side of a tree that faced it, where
+  before it took the tree's top. Each brick falls as its own letter from where it sat and some stay
+  lying. How much a piece takes, when it falls and what it deals are unchanged. *Changed:* the
+  hero's blade marks a piece at the blade's own height (about 0.3 m higher than before). With bites
+  on, the blade STOPS on what it does not cut through (the owner: "the sword should stop when it hits
+  it instead of going straight through it"): a freeze, a shake, sparks off stone, a moment stuck in
+  wood, then it is thrown back; a cut that fells the thing goes through. The chips fly out of the
+  struck face. On by default (the owner tried it behind `?chip=a` first); `?chip=0` or the Lab's
+  WORLD -> Bites turns it off.
+Sixty-two pieces of work since 0.4.0:
+Sixty-three pieces of work since 0.4.0:
+- **Cuts land with weight: the hit printed where it lands, the boss's body answers** (2026-11-22, ADR-149).
+  *Added:* four new pieces on every cut that lands, each behind its own switch ("i want the hits to
+  look realistic where it lands and show some kind of ascii animation to show the impact"). On a
+  human boss the hit is printed into his letters where the blade meets him: a short stepped
+  animation (about a sixth of a second) shaped by the attack, a slit that opens and splits for a cut,
+  rings round a thrust, a star for the slam, on black so it reads over him, never over the hero. A
+  pressure wave runs out through the struck boss's letters from the contact: a thin bright front with
+  a darker trough behind it, the letters pushed outward as it passes; small for a light cut, across
+  the wyrm or a man head to feet for a slam, a cleave or the execution. The struck body answers where
+  it was hit: a duelist's head snaps along the blade, his torso twists with the cut (a thrust folds
+  him), a struck leg buckles; the wyrm's snout snaps away and the neck carries it, a body cut shoves
+  the trunk and lashes the tail, a wing jerks and folds. A heavy blow (the slam, the cleave, the
+  execution, a heavy branch's cut, the flurry's last blow, a crit) adds a low sub under the hit, and
+  the music (never the tells) dips for a moment. *Changed:* nothing else: the reactions are drawn
+  only (no hurt sphere, hit stun, shove, guard or timing moved), and with every piece off the game
+  draws, sounds and plays as before. The owner's picks: the stamp on the human bosses only, a human
+  boss's reaction drawn at x1.5, the wyrm's at x1. `?impact=off` (or a list: `?impact=stamp,react`)
+  and the Lab's 'impact' row switch the pieces; `?stamp=instead` draws the stamp in place of the
+  slash line (an option). *Changed:* the light at the moment a cut lands is a little calmer (the
+  owner's pick of three levels): the struck boss's white flash, the blade's lit steel, the sparks and
+  the swing arc where it crosses the contact are dimmed, so the new pieces show; `?calm=0` draws it
+  as before, `?calm=2` / `3` calmer.
+- **Round the Obsidian Throne, what the challengers left** (2026-11-22, ADR-133). *Changed:* the
+- **Tian Lei's third wave: the sign, the counter stances, the great orb and the barrage** (2026-11-22,
+  ADR-135). *Added:* in the Skybreak Ring, **the sign**: from his second form, Tian Lei raises two
+  fingers to his brow, a snap of light, and he is gone and behind you (or at your left, your right and
+  then behind you in Thunder Ascension's Three Signs), the blow still to come: when the hand goes up,
+  turn. **Counter stances**, one a form: he stands with his palms open and light drawn into them. Cut
+  into it and he CATCHES your blade, throws it back and punishes at once; wait, and the stance ends on
+  nothing with his guard down. **Heaven's Lantern** (forms 2 and 3): he rises and gathers a great orb
+  of gold over his hands, the ring's light draining to it, and throws it at where you will be. A parry
+  or a block is safe and a roll passes it; a PERFECT parry stops it on your blade and starts THE PUSH:
+  mash attack to throw it back into him for a huge blow that leaves him reeling, or lose and be thrown.
+  **Raining Suns** (forms 2 and 3): he leaps and pours sixteen small blasts down round you, then a
+  bigger one a perfect parry returns. Three more ripostes out of his guard. *Changed (the engine, for
+  him):* a boss's beat can be a counter stance and a vanish can wait for its sign; the other bosses are
+  unchanged. Kept behind a switch for the owner's pick: the orb's look (`?ascOrb=a` a sun, `b` a
+  lantern). Nobody has played it yet.
+  felled forest round the Obsidian Throne's crater (the same straight log again and again, laid in a
+  starburst) is gone. In its place lies what those who came for the Starless Lord left behind: graves
+  of swords stuck in the earth, spears with a torn red banner, wanderers' cairns with a straw hat and
+  a sword, wrecked carts on their sides, a few steles on stone turtles and split boulders, each one
+  built differently, all in the dragon look. Faces turn toward the camera, what fell lies the way the
+  blast threw it, and nothing tall stands between the camera and the duel. About 70 of them within
+  reach break where they stand and the wooden ones burn (stone leaves rubble). The owner's pick of three rendered options
+  (`?outskirts=a` a shrine, `b` the star's debris, `m` all of them, `0` the felled forest).
 - **On a phone: the health bars no longer overlap, and two new ways to hold the controls** (2026-11-21, ADR-131).
   *Fixed:* on a phone in landscape the hero's HP row ran into the boss's bar (Safari gives an iPhone
   about 734 px of width: the hero's row ended at 242 px, the boss's began at 217). The top row is now

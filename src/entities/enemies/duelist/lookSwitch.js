@@ -34,6 +34,7 @@ export const PICKED = Object.freeze({
   presence: 'a', // forms 2 and 3: a quiet presence (the owner's pick)
   great: 'a', // Starless Night's waves: the dark tide (the owner's pick)
   lordLook: 'b', // his body: today's figure dressed by form (the owner's pick)
+  outskirts: 'c', // round the Obsidian Throne's crater: those who came for him (the owner's pick, 2026-11-22)
   // both arenas
   floor: 'a', // a broken floor slab: rubble on printed earth (the owner's pick)
   // the Skybreak Ring and Tian Lei, the Last Ascendant
@@ -42,6 +43,7 @@ export const PICKED = Object.freeze({
   ascAura: 'a', // his aura: a tall flame, hollow behind him (the owner's pick)
   ascBeam: 'a', // his beam: the column (the owner's pick)
   ascLift: 'a', // his figure lifted off the floor: a lighter fill, a stronger edge of light (the owner's pick)
+  ascOrb: 'a', // Heaven's Lantern, the great orb: a sun (the author's pick; the owner has not chosen yet, 2026-11-22)
 });
 
 /** Switches the owner has not picked yet (their rendered options wait for the owner): in the Lab's LOOKS
