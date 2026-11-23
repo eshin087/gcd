@@ -184,6 +184,13 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.65 — Tian Lei printed like the hero (2026-11-23, `enemies/ascendant-ascii`, ADR-155)
+- [x] His letters follow his size on screen as the hero's do (`?ascLetters=a`)
+- [x] The hero's quieter print (`?ascLift=b`)
+- [x] The gold hair of forms 2 - 3 his own hair risen, not a tall crown (`?ascHair=b`)
+- [x] A gi in ember with wraps, not the orange and blue (`?ascLook=e`; r, w kept)
+- [ ] Checked on the owner's phone
+
 ## M1.63 — The grove's bamboo sliced in one stroke, in clumps (2026-11-22, `world/bamboo-slice`, ADR-151)
 - [x] One blade or blow slices a stalk where it bit; the top slides off the cut at once and goes over
 - [x] Five kinds of cane, three thicknesses, fanning clumps with shoots (`?bamboo=a|b`; `0` the old grove)

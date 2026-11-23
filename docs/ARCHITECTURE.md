@@ -281,6 +281,17 @@ Render helpers for creature modules:
     `heroArtCell(px)`, run for him (`gSelf`, `gCell` = `uSelfCell`, `gLine` = `uSelfPx`), then for
     the bosses (`uHeroCell`, `uHeroPx.x`); `isWho` is the window of the one being drawn. The whole
     pass reads its textures at level 0 by name (`textureLod`; none has mip levels).
+  - **The bosses' letters** (ADR-155): a boss whose kit sets `letters` (today Tian Lei's `ASC_KIT`, a
+    getter: `?ascLetters=a`, the owner's pick; `0` the fixed cell) has the bosses' cell `uHeroCell`, its
+    atlas `tHeroArt` and its line width `uHeroPx.x` set each frame from HIS depth by the hero's rule:
+    main.js sets `pipeline.bossLetters` (`!!game.dragon?.kit?.letters && lookOf('foxLetters', 'b') ===
+    'b'`; `foxLetters` is Wen Yao's switch in the fox rework, absent here: 'b'),
+    `Pipeline._updateBossLetters(U.uBossScreen)` takes the depth 1 m above his feet and picks the cell
+    with `_letterCell(z, cur)` (the cell choice `_updateHeroLetters` uses, pulled out of it:
+    `CONFIG.render.heroLetters`, `HERO_CELLS`, the slack, the near / close fade back to the fixed cell),
+    reusing the hero's atlas cache. Off, those uniforms are exactly what `setSize` gives (it records
+    `_heroPx`), so a boss without the flag is drawn as before; one grid serves every boss pixel. (The same
+    code as the fox rework's, PR #94, word for word, so the two branches agree.)
     Ink lines are drawn per pixel by the pass, not from glyphs. `U.uArtHeroCel` (vec3: step from
     shadow to lit between x and y, z = share of the step) cel-shades the art source;
     `U.uHeroPartRim[20]` (vec4: tint × gain) is each part's silhouette ink; fill style + 8 = a
@@ -3668,7 +3679,8 @@ strikes, beams) and moves on the ring's tiles. The kit: `{ id: 'ascendant', TUNI
 CLIP, realise, transitions: { 2: 'ascend2', 3: 'ascend3' }, counterMove(form) → one of the form's
 `COUNTER_LISTS` (moves.js; riposte / riposte2 / riposte3 and the third wave's, drawn on the AI's stream),
 streakMove(form) → streakFlurry / 2 / 3, maxPhase: 3, loadout: ASC_LOADOUT, poses, blade: FIST,
-scale: TUNING.scale, dress: dressAscendant }` (`poses`: `loco` = his form's footwork plus the dash's lean
+scale: TUNING.scale, dress: dressAscendant, letters }` (`letters`: a getter, `?ascLetters=a`: his ink-line
+letters follow his size, "The bosses' letters"; ADR-155) (`poses`: `loco` = his form's footwork plus the dash's lean
 by `pilot.dashK`; `duel` = his form's clip plus the feet planner's offsets). The boss slot's surface, plus:
 ```
 kind = 'duelist';  name = 'TIAN LEI, THE LAST ASCENDANT';  phase 1..3 = his FORM;  execRange = 3.4
@@ -3883,10 +3895,13 @@ reads them first, `ASC_WORLD` the fallback), `damageScale` 1.1, `execution`, `wa
 before his limbs take over). Built by `buildHero(U, ASC_LOADOUT)`, the hero's skeleton, the hero's ink-line
 art. Every piece that changes with his form is kept out of the static merge and registered with the forms
 it shows in (`look.js` `at(D, m, from, to)` on the rig's `userData.dress`). `look.js`: `ascLookNow()` →
-`{ base: 'a' | 'c', art, id }` (`?ascLook=`, read when the rig is built; d = outfit a through the wyrm's art
-path, `bodyArt.js` `ASC_ART`), `ASC_TINT` (per outfit, his material instances' fills), `ASC_LIFT` (`fill`
-multipliers per part and `rim` × 3.2 on `rimOn`: his figure lifted off the floor; `?ascLift=0` = as the
-body shipped), `tintAscendant(M)` (the class's `_tint`: the fills, the lift, the light's ink),
+`{ base: 'a' | 'c' | 'h' | 'g' | 'v' | 'k', tint, art, id, homage }` (`?ascLook=`, read when the rig is
+built; d = outfit a through the wyrm's art path, `bodyArt.js` `ASC_ART`; `KUNG_LOOKS` e / r / w = base `k`,
+the gi with wraps, tinted e / r / w, ADR-155), `ASC_TINT` (per `tint`, his material instances' fills),
+`ASC_LIFT` (`fill` multipliers per part and `rim` × 3.2 on `rimOn`: his figure lifted off the floor;
+`?ascLift=0` = as the body shipped) and `ASC_QUIET` (`?ascLift=b`, the owner's pick: the hero's quieter
+print, the skin × 0.62, rim × 1.5), `ascLettersOn()` (the kit's `letters`), `tintAscendant(M)` (the
+class's `_tint`: the fills, the lift, the light's ink),
 `dressAscendant(d, dt)` (the kit's `dress`: on a change of `d.dressPhase` it flips the pieces' `visible`
 flags and writes the gold hair's, the wraps' and the light's colours; then the gold breathes, a few
 uniforms a frame; no allocation). His materials: `coat` / `lining` the tunic, `leather` the sash, `hem` the

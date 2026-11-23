@@ -1022,8 +1022,10 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?lordLook=` | Varr Nihil's body (read when his rig is built) | today's figure | the dragon look | today's figure dressed by form | both | **b** |
 | `?outskirts=` | what lies round the Obsidian Throne's crater (ADR-133; read when the level is built; `m` all of them) | the felled forest | the shrine the star fell on | the star's debris | those who came for him | **c** |
 | `?ring=` | the Skybreak Ring's arena (ADR-129; read when the level is built) | - | the flats: a dry lake bed, banners, a drum, a gong, a judges' dais | the quarry: terraces of cut stone round the ring | the crown: the ring on a butte's top, the badlands 40 m below | **a** |
-| `?ascLook=` | Tian Lei's body (read when his rig is built) | - | the tunic and the topknot | set aside, not offered (a bare-chested look too close to a franchise's) | the wandering monk and the braid; `d` = a through the wyrm's art path; the homages (2026-11-22, ADR-150): `h` an orange gi over blue, blue wristbands, sash and boots, black spikes turning gold; `g` a purple gi and red sash, form 3 the swept-up gold hair with one lock over the brow and a torn sleeve; `v` a blue bodysuit, white chest armour, gloves and boots, a tall flame of hair | **h** (2026-11-22; was a) |
-| `?ascLift=` | Tian Lei's figure lifted off the ring's floor (read when his rig is built) | as the body shipped | a lighter fill, a stronger edge of light | - | - | **a** |
+| `?ascLook=` | Tian Lei's body (read when his rig is built) | - | the tunic and the topknot | set aside, not offered (a bare-chested look too close to a franchise's) | the wandering monk and the braid; `d` = a through the wyrm's art path; the homages (2026-11-22, ADR-150): `h` an orange gi over blue, blue wristbands, sash and boots, black spikes turning gold; `g` a purple gi and red sash, form 3 the swept-up gold hair with one lock over the brow and a torn sleeve; `v` a blue bodysuit, white chest armour, gloves and boots, a tall flame of hair; the gi with wraps (2026-11-23, ADR-155: h's cut, wrapped forearms and shins, soft boots, a dark undershirt, longer sash tails): `e` ember, a burnt-red gi, black for the blue, off-white wraps; `r` a crimson top over charcoal trousers; `w` bone, an unbleached gi, black sash, charcoal wraps | **e** (2026-11-23; was h, before that a) |
+| `?ascLift=` | Tian Lei's print (read when his rig is built) | as the body shipped | lifted: a lighter fill, a stronger edge of light | the hero's quieter print (ADR-155): darker letters, the pale skin held down, a softer edge (`ASC_QUIET`) | - | **b** (2026-11-23; was a) |
+| `?ascLetters=` | Tian Lei's letters (live) | the bosses' fixed fine cell (4 px below 4K) | they follow his size on screen as the hero's do (ADR-155; the kit's `letters`) | - (rendered, not kept: bolder, 0.144 m a letter) | - | **a** (2026-11-23) |
+| `?ascHair=` | Tian Lei's gold hair, forms 2 - 3 (read when his rig is built) | the tall crown (one and a half heads above the scalp in form 2, two in form 3) | a short crown: the same layout at ~60 % | his own form-1 spikes risen, flame-shaped, about his own hair's height; form 3 sharper with one lock over the brow, no taller (ADR-155) | - | **b** (2026-11-23)
 | `?ascAura=` | Tian Lei's aura (forms 2 and 3) | - | a tall flame, hollow behind him, a wheel of light on the floor | a tight sheath with streamers off the shoulders | a broad low blaze over a wide spinning wheel | **a** |
 | `?ascBeam=` | Tian Lei's beam | - | a column | a braid: two strands winding round a thinner core | - | **a** |
 | `?ascOrb=` | Heaven's Lantern, Tian Lei's great orb (the third wave, 2026-11-22) | - | a sun: a round ball of gold heat, a pale heart, letters orbiting it | a lantern: a bright rim round a dim heart that pulses, trailing motes | `c` the pale gathered sphere: steel-kind heat (near white), drawn as large as its hit, both arms straight up in the gather (a reload for the pose) | a (the author's; not yet picked) |
@@ -1045,7 +1047,7 @@ reachable as `?presence=0`); else the owner's pick (the `PICKED` table); else th
 proposal at once, the way the owner played them on the preview) now draws the same as no parameter.
 **The Lab's LOOKS section** (`?lab`, only in the Ashfall Courtyard, the Obsidian Throne, the Skybreak
 Ring, the Foxfire Terrace and the Windless Grove) has a row of buttons per switch: a switch read at draw time flips live, one read at build time
-(`ashLook`, `lordLook`, `floor`, `outskirts`, `ring`, `ascLook`, `ascLift`, `foxLook`, `foxfire`, `clones`) reloads the page with its parameter; "as
+(`ashLook`, `lordLook`, `floor`, `outskirts`, `ring`, `ascLook`, `ascLift`, `ascHair`, `foxLook`, `foxfire`, `clones`) reloads the page with its parameter; "as
 shipped" clears every look parameter (the picks), "before this pass" reloads with `?looks=old`; there is
 no "all proposals" button any more. Older switches of the same kind: `?flare=` (ADR-118), the wyrm's
 `?ring=` and `?breath=` (ADR-119). **The Skybreak Ring's five** (ADR-129) are things new to the game, so
@@ -1129,6 +1131,17 @@ no red-orange glow (that read as fire).
   game camera, form 1 above all, so his instances' fills are lighter (the tunic × 1.4, the trousers
   × 1.5, the skin × 1.2, the sash × 1.8, the dark hair × 1.6) and the cool edge of light along his
   silhouette is × 3.2. It helps a little: the fighters are still small in the frame.
+- **Printed like the hero** (2026-11-23, ADR-155; the owner: "the character is too detailed and is showing
+  its flaws in 3d. make it more ascii like, like the main character, to hide its flaws"). His letters
+  follow his size on screen as the hero's do (`?ascLetters=a`; ARCHITECTURE "The bosses' letters"): at
+  1080p and up he had twice the hero's letters across him, which drew his limbs as shaded tubes; now
+  both are 6 px at 1080p, 8 at 1440p, 12 at 4K (the phone and 720p were already the same 4 px). His
+  print is the hero's quieter one (`?ascLift=b`, `ASC_QUIET`): the cloth a little darker, the pale skin
+  held down most (it printed as a lit 3D shape), the edge of light × 1.5 (was × 3.2). The gold hair of
+  forms 2 - 3 is his own hair risen (`?ascHair=b`), about as tall as his dark form-1 spikes, not a crown
+  one and a half heads tall, and form 3 is no taller than form 2. He wears the gi with wraps in ember
+  (`?ascLook=e`): the gi's cut, a burnt red with black where the blue was, cloth wraps on the forearms
+  and shins, soft boots: still a martial artist's gi, not his source's colours.
 
 ### Tian Lei's effects (2026-11-21, ADR-129; `ascendant/fx.js` `AscFx`, `fxBeam.js`)
 Everything that strikes, glows or bursts is gold heat in the fire field, in the small letters; dust,

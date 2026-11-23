@@ -4,7 +4,15 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Sixty-eight pieces of work since 0.4.0:
+Sixty-nine pieces of work since 0.4.0:
+- **Tian Lei drawn like the hero, with shorter gold hair and a new gi** (2026-11-23, ADR-155). *Changed:* on larger screens Tian Lei is drawn in the
+  same size of letters as the hero (they follow his size on screen; before, he had twice the hero's
+  letters across him from 1080p up), in the hero's quieter print: darker letters, the skin held down, a
+  softer edge of light. *Changed:* his gold hair in forms 2 and 3 is his own spiky hair risen, about as
+  tall as his black hair, not a tall crown; form 3 is sharper with one lock over the brow, no taller.
+  *Changed:* he wears a burnt-red gi with black where the blue was, cloth wraps on his forearms and shins
+  and soft boots. `?ascLetters=0`, `?ascLift=a`, `?ascHair=0` / `a`, `?ascLook=h` / `r` / `w` keep the
+  other looks.
 - **The grove's bamboo falls to every stroke** (2026-11-22, ADR-151). *Changed:* in the Windless
   Grove one swing of the sword (or one blow of his) cuts a bamboo stalk clean through where the blade
   passed, and its top slides off the cut at once and crashes over in a burst of leaves (it took two

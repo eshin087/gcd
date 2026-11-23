@@ -4567,3 +4567,39 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   up-to-date rule (two green PRs can still break `main` together) and free runners only.
 - **Consequences:** a run takes ~4 minutes (PR #92: 4 min 19 s); a PR shows six checks. The floor is
   the longest task (lord fxlooks ~230 s); re-measure `est` when a suite grows a lot.
+
+## ADR-155 — Tian Lei printed like the hero: his letters follow his size, the hero's quieter print, his own hair risen, a gi in ember with wraps (2026-11-23)
+
+- **Context:** the owner: "the skybreak ring, the character is too detailed and is showing its flaws in 3d.
+  make it more ascii like, like the main character, to hide its flaws. also make the phase 2 and 3 golden
+  hair not be so long and more natural iconic looking. also change the character's color and cloth a bit to
+  not make it look too obvious its goku". The human bosses are drawn on a fixed 4 px cell (8 at 4K); the
+  hero's cell follows his size (ADR-130), so from 1080p up Tian Lei had about twice the hero's letters
+  across him, and the extra letters drew his limbs and shoulders as shaded 3D tubes. His print was lifted
+  for the ring's floor (`ASC_LIFT`, ADR-129): bright skin, a strong rim. The form 2 - 3 hair stood one and a
+  half to two heads above the scalp.
+- **Decision** (three rendered sheets, the owner picked the recommended option of each):
+  1. **His letters follow his size** (`?ascLetters=a`): his kit's `letters` (a getter on the switch) turns
+     on the bosses' letters (ARCHITECTURE "The bosses' letters"): `uHeroCell` from his depth by the
+     hero's rule. The renderer code is the fox rework's (PR #94, ADR-154 there), taken word for word, so
+     the two branches add the same lines; only the kit flag is his.
+  2. **The hero's quieter print** (`?ascLift=b`, `ASC_QUIET`): the cloth × 0.85, the skin × 0.62, the
+     rim × 1.5 (lifted: × 1.4 / 1.2 / 3.2).
+  3. **His own hair risen** (`?ascHair=b`, `goldRisen`): form 1's spikes, each where it grows, turned up
+     and back; about his dark hair's height; form 3 sharper, one lock over the brow, no taller. Measured:
+     the gold's top 0.15 / 0.27 m above the dark hair's (forms 2 / 3) before, -0.02 / 0.01 m now.
+  4. **The gi with wraps in ember** (`?ascLook=e`, base `k`): the orange gi's cut, a burnt-red gi with
+     black where the blue was (undershirt, sash, boots), off-white cloth wraps on the forearms and shins
+     (outfit a's arms and legs) instead of wristbands and tall boots, longer sash tails.
+- **Options kept** (Lab LOOKS rows): `?ascLetters=0`, `?ascLift=a` / `0`, `?ascHair=0` / `a` (a short
+  crown), `?ascLook=r` (crimson top over charcoal) / `w` (an unbleached gi) / `h` (the orange gi).
+- **Not kept:** a bolder letter (0.144 m) and a storm-blue gi (it read as the hero's own blue-grey cloak:
+  the two fighters must stay apart at a glance).
+- **Why not** the hero's own part tables (`uSelfPart*`) for him: they are the player's alone (his pixel
+  window); a quieter print from his own fills gets most of the way without a second set. **Why not** the
+  ink lines per font pixel for him as for the hero: the fox rework's code does not, and the two bosses
+  should not differ; at the 42 m camera on 1440p his lines are one pixel either way.
+- **Consequences:** on the phone and at 720p nothing changes in his letters (both were 4 px already): the
+  print, the hair and the gi carry the change there. Every other boss is drawn as before (`bossLetters`
+  false). Tests: `asc.mjs` `herolike` (the cells beside the hero's on five screens, the fixed cell when
+  off, the quieter print, the hair's height, the three gis without blue), `body` (the default is e).

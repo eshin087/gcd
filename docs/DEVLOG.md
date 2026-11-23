@@ -5,6 +5,43 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-23 — Session 81: Tian Lei printed like the hero; the hair risen, not tall; a gi in ember
+
+**Owner:** "the skybreak ring, the character is too detailed and is showing its flaws in 3d. make it more
+ascii like, like the main character, to hide its flaws. also make the phase 2 and 3 golden hair not be so
+long and more natural iconic looking. also change the character's color and cloth a bit to not make it
+look too obvious its goku". Branch `enemies/ascendant-ascii`. ADR-155 / Session 81 / M1.65.
+
+**How.** Each ask built as options behind switches, rendered (1440p game camera with the hero beside
+him, close-ups from four sides, the phone) on three sheets; the owner picked the recommended option of
+each: letters B (the hero's letter size + the hero's quieter print), hair B (his own hair risen), outfit E
+(ember).
+
+**What changed.**
+- **His letters follow his size** (`?ascLetters=a`): the kit's `letters`; at 1080p / 1440p / 4K he is on
+  the hero's 6 / 8 / 12 px cells, not the bosses' 4 / 4 / 8. The renderer code (`_letterCell`,
+  `_updateBossLetters`, `pipeline.bossLetters` in main.js) is PR #94's (Wen Yao's rework, open), taken
+  word for word: I had written my own version first, found #94 doing the same, and swapped mine out so
+  the two PRs agree (mine also snapped his ink lines to the font pixel; dropped, see ADR-155).
+- **The hero's quieter print** (`?ascLift=b`, `ASC_QUIET`).
+- **The gold hair** (`?ascHair=b`, `goldRisen`; `a` a short crown kept): about his dark hair's height,
+  form 3 no taller than form 2, one lock over the brow in form 3.
+- **The gi with wraps** (`?ascLook=e | r | w`, base `k`): e ember ships; r crimson over charcoal, w bone
+  kept. A storm-blue gi was dropped: it read as the hero's own colour.
+- Lab LOOKS: the new rows, `ascLook`'s new options.
+
+**Verification.** `asc.mjs . body,herolike` green (his cell = the hero's at phone / 720p / 1080p / 1440p /
+4K / 24 m / 54 m; the fixed cell with the switch off; the gold's height; the gis). Rendered with no URL
+parameters at 1440p beside the shipped look (sheet `AFTER` in the session's scratchpad). `npm test`: see
+the PR.
+
+**Not checked / open.** Not on a real phone (there the letters were already the hero's size: only the
+print, hair and gi change). The orange gi and the tall crown stay behind their switches. When PR #94
+merges, `pipeline.js` / `main.js` should merge clean (the same lines); the docs' "The bosses' letters"
+paragraph will need one pass to name both bosses.
+
+---
+
 ## 2026-11-23 — CI in four parallel jobs; docs-only PRs skip the tests (ADR-153)
 
 **Owner**, after asking why every PR's check takes ~12 minutes when their other games deployed at once:
