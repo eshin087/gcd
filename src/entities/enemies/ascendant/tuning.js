@@ -125,6 +125,20 @@ export const TUNING = {
     mixed: 0.1,
     holdGap: 5,
     guard: { sep: 0.4, margin: 0.06, maxHold: 0.5, maxDelay: 0.9, horizon: 0.8, pad: 0.18 },
+    // THE PURSUIT (duelist/brain.js header; the owner: "make the boss also stop attacking empty air if
+    // the player moves out of the distance"): a blow the hero has run out of the reach of breaks off
+    // before its glint (`margin` m past what it can still reach, the hero led to its impact; from
+    // `after` s into its windup) and he chases (a `far` / `away` link, else `gap` s, then his dash /
+    // blink). A hero backing away (> `away` m/s) is chased with closeK x the step-in and dashK x a
+    // dash's length, by form (the Challenger chases less: harder forms mean more pressure; at 1.6 / 1.5
+    // in form 1 too, PACE's form 1 came out level with form 2). A leap lands `leapLead` s and a blink
+    // arrives `blinkLead` s ahead of where the hero is going (never more than the blink's own distance
+    // less `blinkKeep` m: still behind / beside him, never in front of a hero running away). A move
+    // that cannot reach where he will be at its first blow (led `lead` s at most) weighs x `miss` (0: it
+    // is not picked, nor linked). A hero who keeps running from his blows is READ: each break-off (+1,
+    // `habitMax` at most, falling `habitDecay` a second) weighs the moves that reach wherever he goes
+    // (blinks, leaps, ki, beams, long dashes) x (1 + `habit` x it).
+    pursue: { margin: 0.5, after: 0.06, gap: 0.06, closeK: [1.25, 1.6, 1.6], dashK: [1.25, 1.5, 1.5], away: 1.2, leapLead: 0.35, blinkLead: 0.4, blinkKeep: 0.6, miss: 0, lead: 0.6, habit: 0.6, habitMax: 3, habitDecay: 0.1 },
     // what tests/integration/asc.mjs PACE asserts (the tuning pass, set from the WORST of ten seeds
     // 4242 7 99 1337 2024 11 23 555 808 31337 x 120 s a form, with a margin): cues a minute F1 79.7 /
     // 83.3 / 86.8, F2 83.9 / 88.2 / 92.8, F3 88.3 / 101.4 / 108.8 (min / mean / max); form over form
