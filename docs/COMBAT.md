@@ -1159,6 +1159,28 @@ For every blade the hero meets (the wyrm's too; bullets keep their light clash):
   is instant, so the cut and his spray move with him: they sit on the body the freeze holds. A slam
   that lands only through its ground shards draws no cut: no flare, no `cut` layer (the body's hit
   only). A strike his guard turns gets none of it: the guard draws its own clash.
+- **Calm at the contact** (2026-11-22, ADR-149; `combat/impactCalm.js`, `?calm=0..3`, default 1, the
+  owner's pick): today's light at a landed cut, dimmed at the moment of the hit so the stamp and the
+  ripple show: blade steel x0.7 (the hit's own flare x0.6), the boss's white hurt flash x0.75, sparks / motes alpha x0.65, the cut's pooled light x0.5, its core alpha x0.6, the slash line alpha x0.9, the cleave's fan alpha x0.6, the swing arc alpha x0.5 only within 0.6 - 1.6 m of a fresh contact for the freeze + 0.12 s. Level 0 = as before; 2 and 3 dim further. The
+  steel is lit x(1 + 4.2) by a light strike and x(1 + 4.6) by a heavy one, held through the freeze;
+  the hit's own flare adds only +0.5 / +0.75 (the "x1.62 / x1.95" above). No timing, damage,
+  hit-stop, camera or hit test moves; a missed swing and steel on steel are untouched.
+- **The impact pass** (2026-11-22, ADR-149; `combat/impact.js`): four more pieces on a cut that lands,
+  presentation only (no damage, posture, hit stun, shove, guard or timing moved; each piece off =
+  as before). *The stamp*: the hit printed in the letter grid at the drawn contact, about 0.16 s
+  (the execution 0.2 s), a shape per contact tier (STYLE.md "A cut that lands"). *The ripple*: a
+  pressure wave through the struck boss's letters, reach 9 - 12 cells for a light, sweep or point,
+  17 - 19 on a man and 36 - 45 on the wyrm for a slam, cleave or execution (crit x1.15, a full charge
+  +25 %; STYLE.md "Text effects"). *The reaction*, drawn only, by where the drawn contact lies: a
+  duelist's head tips along the blade, his torso twists (a thrust, the point or the execution,
+  folds him), a struck leg buckles and he drops 6.5 cm (heavy x1.55, crit x1.12, a flurry's cut x0.7,
+  the Starless Lord x0.82; a guarded strike, a trade clash and his own returned bolt get none); the
+  wyrm's struck part answers (head, neck, body, leg, wing, tail; light x0.4, heavy x1, crit x1.25),
+  in combat, staggered and airborne, not asleep or dying. *The thump*: a sub under the slam (1), the
+  cleave (1.1), the execution (1.2), a heavy branch's sweep or point (0.7), the flurry's last blow
+  and any crit (at least 0.55), and on a heavy blow a 4.5 dB dip of the music only (the tells keep
+  their level). **The owner's picks** (`IMPACT.by`): the stamp on the human bosses only; a human
+  boss's reaction x1.5, the wyrm's x1; the ripple and the thump x1.
 
 **Moves** (`moves.js`, ADR-122; generated from the data by the tuning pass's `gen-moves.mjs` on
 2026-11-16; `node tests/integration/duel.mjs . moves` checks every new one). Tells N normal, B blue
@@ -1610,6 +1632,25 @@ duelists' pressure and the fairness guard*, below), with these differences. Code
   was and a streak to where he is; **a "launch"** (the hero has no air state) is a knock-back of 11 m
   with a knockdown, and his next blow blinks to where the hero's slide ends (Sky Hammer, Heaven and
   Earth).
+- **THE SIGN** (the third wave, 2026-11-22; forms 2 and 3): before the first vanish of a string he
+  STANDS for it: two fingers of his right hand raised to his brow, the other hand loose at his hip, the
+  eyes on you (the first 0.36 s of a 0.72 s windup); a snap of light at the hand the moment he goes,
+  the streak, and he is behind you (Sign Step, Vanishing Step, Storm Waltz, Mirage's first feint,
+  riposte3) or at your left, your right and then behind you (Three Signs: a cross, a round kick, the
+  red axe kick) with the rest of the windup and the glint still to come. The sign is the read: when the
+  hand goes up, turn. A blow out of a vanish meets a guard from any side; the later vanishes of a string
+  are quick, without the sign (the chain of afterimages).
+- **THE COUNTER STANCE** (the third wave; one a form): Still Water (form 1: sunk, one palm high and one
+  low), Golden Mirror (form 2: upright, the lead palm open at the face), Thunder Mirror (form 3: square,
+  the arms low, the hands open). He stands in it 0.45 s + 0.2 - 0.4 s, light drawn INTO his open palms,
+  no glint. **A cut into it is CAUGHT**: no damage, no posture, your blade thrown back (the bounce), and
+  his punish comes at once (Still Water: a cross and a palm on a dash, a lock; Golden Mirror: a vanish
+  behind you, the launching uppercut and the hammer where you land; Thunder Mirror: a bolt point-blank,
+  then a signed vanish and the axe kick). **Wait it out and he is open**: the stance ends on nothing
+  and his guard is down 0.6 s. The read: open palms with light drawn in = do not cut; his fists up = his
+  guard. His ripostes out of a deflect are drawn from two a form (Riposte or a knee and a round kick;
+  the golden Riposte or a vanish behind you; the thunder Riposte or a hop back and a bolt a perfect
+  parry returns).
 
 **Bare hands.** His "blade" (what the hero's parry, the trade, the blade lock and the trails meet) is
 the STRIKING LIMB of the moment: the forearm of a punch, the shin of a kick, the thigh of a knee, the
@@ -1632,6 +1673,8 @@ a guard from any side** (as the Lord's).
 | **A bolt** (Thunder Gates, Lightning Lance; form 3) | blue | the hand raised by the ear, then the arm flung out, two fingers down a 17 × 1.7 m line of lightning | parry; a **perfect parry throws it back: 50 damage, 34 posture**; block; roll |
 | **Heaven's Volley** (form 2) | red, red | he rises 4 m, arms spread; six strikes called 0.42 s apart round where you are heading (each a red ring r 2.2 m for 0.95 s, then the bolt: 22, knockdown), then the dive onto you (a ring 2.8 m, 26, knockdown, a crater); about 4.5 s in all. Nothing lands on him up there, and a strike rolled through perfectly is a plain dodge (no counter) | leave each ring or roll as it lands; roll the dive |
 | **Storm Cage** (form 3) | red | eight orbs in a ring of 5 m round you, open on the side away from him; after 0.7 s they fly in one at a time 0.4 s apart at 12 m/s (20, knockdown, r 1.3 m), each cueing itself as it comes | roll out through the gap, or roll each at its cue |
+| **Heaven's Lantern** (forms 2, 3; the third wave, 2026-11-22) | blue | he rises 2.5 m, both arms raised, and gathers a great orb over his palms for 1.8 s (motes drawn up off the whole ring, its light dimmed a third); both arms swept down, it is thrown at where you will be 0.3 s on, no homing: 10 m/s, a hit 2 m round it, falling from 3.6 m to chest height where you stand and on to the floor past you; it cues itself 0.26 s before it reaches you (26, knockdown, thrown 6 m); nothing else of his starts while it is out, and the weather stands down; at its range it bursts on the floor (a crater r 4) | **a parry or a block is safe** (it bursts on the guard: a crater at your feet, no second hit); a roll passes it; **a PERFECT parry starts THE PUSH** (below) |
+| **Raining Suns** (forms 2, 3; the third wave) | normal, then blue | he leaps 3 m and hangs; sixteen small blasts poured down from his palms in turn in 2.2 s (8 each, 17 m/s, falling onto where you are as each is thrown; every third one on you, the others 1.7 - 2.6 m to your sides, pocking the floor), each cueing itself (one may wait 0.12 s or be skipped: the fairness guard); then the finisher, a returnable blast thrown down from the air (22), and he drops | block or parry them (a guard held through the whole pour and the finisher is not worn through); a **perfect parry of the finisher returns it: 50 damage, 34 posture**; or run: a blast lands where you were |
 | **Thunderfall** (form 3, weather) | red | in his moves' pauses a strike is called near where you are heading every 3.2 s with his bar full, down to 1.8 s with it empty, at most 2 live: a red ring r 2.1 m for 1.1 s, then the bolt (22, knockdown). Never in your opening, never while a beam of his is lit | leave the ring or roll as it lands |
 | **Rising Tide** (form 1) | red | a palm thrust and a beam 16 × 1.6 m lit 0.7 s. He aims through the 1.1 s windup; at 76 % of it (at its cue) the line is FIXED and a thin thread of light runs along it from his lead hand. First contact 22, knockdown, thrown 5 m along it; then 8 every 0.18 s on a hero still in it | **be off the line at the cue**: a sprint or a roll clears it, standing or running (4.6 m/s) does not; a held guard facing him pays guard only and is pushed along it |
 | **Rising Tide, sweeping** (forms 2, 3) | red | 20 × 2 m lit 1.1 s; once lit it is dragged up to 40° toward the side you are on at 36°/s (first contact 24, ticks 8) | at range the answer is the ROLL through it (its edge moves 5 – 10 m/s at 8 – 16 m: faster than the hero's sprint, 7.2) |
@@ -1653,6 +1696,13 @@ the beam grinding on the blade. **Won:** the beam splits past the hero and dies,
 won lock's (2 × 110 before the Sekiro factor), the blade lock's cinematic, he REELS for 4 s (the hero
 needs ~2.3 s to cross 17 m to him). **Lost:** the beam breaks through: 40 damage, knockdown, thrown 12 m
 along it. The clash is never mandatory: leaving the line is always an answer.
+
+**THE PUSH** (the third wave, 2026-11-22). A PERFECT parry of Heaven's Lantern's orb stops it on the
+blade: the same blade lock at range (start 0.5, +0.085 a press, -0.3 / s, 2.6 s, won at the end if at
+least 0.55; the camera frames the pair), his two palms held out, the orb grinding on the blade and
+sliding toward him as the meter climbs. **Won:** the orb flies back into him: 120 damage, 220 posture
+(before the Sekiro factor), and he REELS 3 s. **Lost:** it bursts on the hero: 40, knockdown, thrown 10 m,
+a crater where he stood. Never mandatory: a plain parry, a block or a roll is always an answer.
 
 **He uses the ring** (`terrain.js`, numbers `TUNING.terrain`; ADR-107's rules, the Lord's recipe).
 Moves on the ring's tiles, chosen only while the floor has tiles for them (his AI weighs them 0 when
@@ -1698,6 +1748,7 @@ weights per form [1 / 2 / 3] (- = not in that form); `cat` is the director's cat
 | **Comet Heel** `cometHeel` | 1, 2, 3 (2.2 / 1 / 0.8) · 3.5–13 · 9 · area | R 1.1 (28) [ring 2.8 m, knockdown, leap apex 3.8 m] |
 | **Piercing Palm** `piercingPalm` | 1, 2, 3 (2.4 / 1.5 / 1) · 1.6–6 · 6 · closer | R 0.64 (26) [line 2.4 x 0.7 m, MIKIRI, dash <=2.8 m] |
 | **Mountain-Splitting Fist** `splitFist` | 1 (1.5 / - / -) · 2.4–9 · 10 · closer | K 1.45 (36) [knockdown, fixed, hold 0.1-0.5, dash <=7.5 m] |
+| **Still Water** `stillWater` | 1, 2 (0.8 / 0.4 / -) · 0–3.2 · 10 · single | STANCE 0.45 + hold 0.2-0.4 [COUNTER STANCE (a cut into it is caught; nothing: open 0.6 s)] · N 0.46 (14) · B 0.4 (22) [line 2.2 x 0.8 m, lock, dash <=2.4 m] |
 | **Spirit Shot** `spiritShot` | 1, 2 (1.5 / 0.9 / -) · 5–16 · 5 · ranged (ki `blast`) | B 0.74 (22) [release blast (returnable)] · B 0.5 (20) [release blast (returnable), 50 %] |
 | **Scatter** `scatter` | 1, 2 (1.2 / 0.8 / -) · 4–13 · 7 · ranged (ki `blast`) | N 0.6 (12) [release blast x3] |
 | **Rising Tide** `risingTide` | 1 (1.6 / - / -) · 4–15 · 11 · hazard (ki `beam`) | R 1.1 (22) [beam rising, line 16 x 1.6 m, knockdown, thrown 5 m, lit 0.7 s, ticks 8 every 0.18 s] |
@@ -1708,14 +1759,18 @@ weights per form [1 / 2 / 3] (- = not in that form); `cat` is the director's cat
 | Move | Forms (weight per form) · band m · cooldown s · cat | Hits (tell windup (damage) [extras]; `one of { a / b }`) |
 |---|---|---|
 | **Golden Gates** `goldenGates` | 2, 3 (- / 2.6 / 1.4) · 0–3.8 · 6 · string | N 0.48 (12) · N 0.34 (12) · N 0.36 (13) · B 0.5 (20) [line 2.2 x 0.8 m, lock, blink behind 2 m] · N 0.36 (12) · N 0.34 (12) · one of { R 0.62 (24) [ring 2.8 m, knockdown] / B 0.56 (22) [FLARE] } |
-| **Vanishing Step** `vanishStep` | 2, 3 (- / 2 / 1.2) · 0–12 · 8 · string | N 0.72 (14) [blink behind 2 m] · N 0.58 (14) [blink behind 2 m] · B 0.66 (24) [line 2.2 x 0.8 m, lock, blink behind 2.1 m] |
+| **Vanishing Step** `vanishStep` | 2, 3 (- / 2 / 1.2) · 0–12 · 8 · string | N 0.72 (14) [dash <=1.6 m, the SIGN, then a vanish behind 2 m] · N 0.58 (14) [blink behind 2 m] · B 0.66 (24) [line 2.2 x 0.8 m, lock, blink behind 2.1 m] |
 | **Aura Burst** `auraBurst` | 2, 3 (- / 1.8 / 0.9) · 0–3 · 9 · area | R 0.7 (20) [ring 4.5 m, thrown 7 m, aura burst] |
 | **Sunbreaker** `sunbreaker` | 2 (- / 1.1 / -) · 3–12 · 12 · closer | K 1.5 (36) [knockdown, fixed, hold 0.1-0.5, dash <=12 m] |
 | **Sky Hammer** `skyHammer` | 2, 3 (- / 2 / 1) · 0–3.6 · 10 · string | N 0.48 (12) · B 0.58 (20) [knockdown, thrown 11 m] · R 0.7 (26) [ring 3 m, knockdown, blink to where you land] |
+| **Sign Step** `signStep` | 2, 3 (- / 1.6 / 0.9) · 0–14 · 8 · string | N 0.8 (14) [dash <=1.6 m, the SIGN, then a vanish behind 2 m] · N 0.4 (13) [sector 1.25 m, 0.4 m ahead] · B 0.5 (22) [line 2.2 x 0.8 m, lock] |
+| **Golden Mirror** `goldenMirror` | 2, 3 (- / 0.7 / 0.4) · 0–3.2 · 13 · single | STANCE 0.45 + hold 0.2-0.4 [COUNTER STANCE (a cut into it is caught; nothing: open 0.6 s)] · B 0.56 (20) [knockdown, thrown 11 m, blink behind 2 m] · R 0.7 (26) [ring 3 m, knockdown, blink to where you land] |
 | **Blast Dance** `blastDance` | 2 (- / 1.3 / -) · 0–4 · 8 · string | N 0.48 (12) · N 0.36 (12) · N 0.42 (12) [release blast, line 2.6 x 0.8 m (a palm in reach)] · N 0.36 (12) · N 0.34 (12) · B 0.5 (20) [release blast (returnable), line 2.6 x 0.8 m (a palm in reach)] |
 | **Golden Rain** `goldenRain` | 2, 3 (- / 1.1 / 0.8) · 6–16 · 12 · ranged (ki `rain`) | N 0.7 (9 each) [cast rain x10] |
 | **Sun Wheel** `sunWheel` | 2, 3 (- / 1.3 / 0.8) · 4–13 · 10 · ranged (ki `disc`) | R 0.7 (18) [cast disc] |
 | **Heaven's Volley** `skyVolley` | 2 (- / 0.8 / -) · 4–16 · 16 · hazard (ki `volley`) | R 0.9 (22) [cast volley x6, knockdown, in the air] · R 0.8 (26) [ring 2.8 m, knockdown, fixed, in the air, the dive] |
+| **Heaven's Lantern** `skyLantern` | 2, 3 (- / 1 / 0.8) · 4–16 · 28 · hazard (ki `lantern`) | B 1.8 (26) [cast lantern, knockdown, thrown 6 m, in the air] |
+| **Raining Suns** `rainingSuns` | 2, 3 (- / 1.2 / 1) · 4–15 · 14 · ranged (ki `barrage`) | N 0.7 (8 each) [cast barrage x16, in the air] · B 0.5 (22) [release blast (returnable), in the air] |
 | **Rising Tide, sweeping** `tideSweep` | 2, 3 (- / 1.3 / 0.7) · 5–16 · 13 · hazard (ki `beamSweep`) | R 1.2 (24) [beam sweep, line 20 x 2 m, knockdown, thrown 5 m, lit 1.1 s, ticks 8 every 0.18 s] |
 | **Ring Breaker** `ringBreaker` | 2, 3 (- / 1.3 / 1.2) · 3.5–14 · 10 · terrain (terrain `ringBreaker`) | R 0.9 (22) [cast ringBreaker, knockdown] |
 | **Stone Storm** `stoneStorm` | 2, 3 (- / 1.6 / 1.6) · 4–15 · 11 · terrain (terrain `stoneStorm`) | N 0.95 (14) [cast stormThrow x3] · R 1.5 (26) [cast stormGreat, knockdown] |
@@ -1724,11 +1779,13 @@ weights per form [1 / 2 / 3] (- = not in that form); `cat` is the director's cat
 
 | Move | Forms (weight per form) · band m · cooldown s · cat | Hits (tell windup (damage) [extras]; `one of { a / b }`) |
 |---|---|---|
-| **Storm Waltz** `stormWaltz` | 3 (- / - / 2.4) · 0–12 · 8 · string | N 0.6 (13) [blink behind 2 m] · N 0.54 (13) [blink behind 2 m] · N 0.54 (13) [blink behind 2 m] · N 0.54 (13) [blink behind 2 m] · N 0.54 (13) [blink behind 2 m] · B 0.6 (24) [line 2.2 x 0.8 m, lock, blink behind 2.1 m] |
+| **Storm Waltz** `stormWaltz` | 3 (- / - / 2.4) · 0–12 · 8 · string | N 0.72 (13) [dash <=1.6 m, the SIGN, then a vanish behind 2 m] · N 0.54 (13) [blink behind 2 m] · N 0.54 (13) [blink behind 2 m] · N 0.54 (13) [blink behind 2 m] · N 0.54 (13) [blink behind 2 m] · B 0.6 (24) [line 2.2 x 0.8 m, lock, blink behind 2.1 m] |
 | **Thousand Hands** `thousand` | 3 (- / - / 2.6) · 0–3.2 · 9 · string | N 0.5 (9) · N 0.34 (9) · N 0.34 (9) · N 0.34 (9) · N 0.34 (9) · N 0.34 (9) · N 0.34 (9) · N 0.34 (9) · N 0.34 (9) · R 0.6 (24) [ring 3.2 m, knockdown] |
 | **Heaven and Earth** `heavenEarth` | 3 (- / - / 1.8) · 0–3.6 · 11 · string | B 0.56 (20) [knockdown, thrown 11 m] · R 0.66 (26) [ring 3 m, knockdown, blink to where you land] · R 0.6 (20) [ring 4.4 m, thrown 6 m, aura burst] · B 0.5 (22) [line 2.2 x 0.8 m, FLARE, dash <=5 m] |
-| **Mirage** `mirage` | 3 (- / - / 1.6) · 2–10 · 9 · string | FEINT 0.5 [blink to your side (-1.4 rad)] · FEINT 0.5 [blink to your side (1.4 rad)] · FEINT 0.5 [blink to your side (0.2 rad)] · R 0.66 (26) [line 2.2 x 0.8 m, knockdown, blink behind 2 m] |
+| **Mirage** `mirage` | 3 (- / - / 1.6) · 2–10 · 9 · string | FEINT 0.72 [the SIGN, then a vanish to your side (-1.4 rad)] · FEINT 0.5 [blink to your side (1.4 rad)] · FEINT 0.5 [blink to your side (0.2 rad)] · R 0.66 (26) [line 2.2 x 0.8 m, knockdown, blink behind 2 m] |
 | **Heavenfall** `heavenfall` | 3 (- / - / 1.1) · 3–13 · 14 · area | K 1.5 (36) [ring 3.4 m, knockdown, fixed, leap apex 4.5 m, quake 3.4-14 m at 9 m/s (22)] |
+| **Three Signs** `threeSigns` | 3 (- / - / 1.8) · 0–14 · 9 · string | N 0.8 (13) [dash <=1.6 m, the SIGN, then a vanish to your side (1.5 rad)] · N 0.7 (13) [dash <=1.6 m, the SIGN, then a vanish to your side (-1.5 rad)] · R 0.72 (24) [ring 2.6 m, knockdown, dash <=1.6 m, the SIGN, then a vanish behind 2 m] |
+| **Thunder Mirror** `thunderMirror` | 3 (- / - / 1.2) · 0–3.2 · 11 · single | STANCE 0.45 + hold 0.2-0.4 [COUNTER STANCE (a cut into it is caught; nothing: open 0.6 s)] · B 0.48 (20) [bolt, line 17 x 1.7 m] · R 0.72 (24) [ring 2.6 m, knockdown, dash <=1.6 m, the SIGN, then a vanish behind 2 m] |
 | **Thunder Gates** `thunderGates` | 3 (- / - / 2) · 0–4 · 6 · string | N 0.48 (12) · N 0.34 (12) · B 0.44 (18) [bolt, line 17 x 1.7 m] · N 0.36 (12) · N 0.34 (12) · B 0.44 (18) [bolt, line 17 x 1.7 m] · N 0.36 (13) · N 0.34 (13) [sector 1.25 m, 0.4 m ahead] · B 0.56 (22) [lock, FLARE] |
 | **Lightning Lance** `lance` | 3 (- / - / 1.3) · 4–16 · 8 · spell (ki `bolt`) | B 0.78 (20) [bolt, line 17 x 1.7 m] · B 0.46 (20) [bolt, line 17 x 1.7 m] · B 0.46 (20) [bolt, line 17 x 1.7 m] · B 0.46 (24) [bolt, line 17 x 1.7 m] |
 | **Storm Cage** `stormCage` | 3 (- / - / 1) · 0–16 · 14 · hazard (ki `cage`) | R 1 (20) [cast cage x8, knockdown] |
@@ -1740,15 +1797,18 @@ weights per form [1 / 2 / 3] (- = not in that form); `cat` is the director's cat
 | Move | Hits |
 |---|---|
 | **Riposte** `riposte` | N 0.46 (14) · B 0.36 (20) [line 2.2 x 0.8 m, dash <=2.4 m] |
+| **Riposte (knee)** `riposteKnee` | N 0.46 (13) [sector 1.25 m, 0.4 m ahead] · N 0.36 (14) |
 | **Riposte (golden)** `riposte2` | N 0.46 (13) · N 0.34 (13) · B 0.36 (20) [line 2.2 x 0.8 m, dash <=2.4 m] |
-| **Riposte (thunder)** `riposte3` | N 0.48 (14) [blink behind 2 m] · B 0.36 (22) [line 2.2 x 0.8 m] |
+| **Riposte (vanish)** `riposteVanish` | N 0.5 (13) [blink behind 2 m] · B 0.36 (20) [line 2.2 x 0.8 m] |
+| **Riposte (thunder)** `riposte3` | N 0.72 (14) [dash <=1.6 m, the SIGN, then a vanish behind 2 m] · B 0.36 (22) [line 2.2 x 0.8 m] |
+| **Riposte (bolt)** `riposteBolt` | B 0.5 (20) [bolt, line 17 x 1.7 m] |
 | **Thousand Shadows** `streakFlurry` | N 0.62 (12) · N 0.48 (12) [flit] · N 0.48 (12) [flit] · N 0.48 (12) [flit] |
 | **Thousand Shadows (2)** `streakFlurry2` | N 0.62 (12) · N 0.48 (12) [sector 1.25 m, 0.95 m ahead, flit] · N 0.48 (12) [flit] · N 0.48 (12) [flit] |
 | **Thousand Shadows (3)** `streakFlurry3` | N 0.62 (12) · N 0.48 (12) [flit] · N 0.48 (12) [flit] · N 0.48 (12) [flit] |
 | **Golden Ascension** `ascend2` | R 2.3 (12) [ring 6.5 m, thrown 7 m, fixed] |
 | **Thunder Ascension** `ascend3` | R 2.3 (12) [ring 6.5 m, thrown 7 m, fixed] |
 
-The form's pool (weights summed, share by category; generated): form 1 12 moves, 33 % string, 32 % closer, 11 % ranged, 9 % area, 8 % terrain, 7 % hazard; form 2 20 moves, 37 % string, 15 % ranged, 15 % terrain, 14 % closer, 10 % area, 8 % hazard; form 3 22 moves, 49 % string, 15 % hazard, 10 % area, 10 % terrain, 7 % closer, 6 % ranged, 5 % spell.
+The form's pool (weights summed, share by category; generated): form 1 13 moves, 32 % string, 31 % closer, 11 % ranged, 9 % area, 7 % terrain, 7 % hazard, 3 % single; form 2 25 moves, 36 % string, 17 % ranged, 13 % terrain, 12 % closer, 10 % hazard, 9 % area, 3 % single; form 3 28 moves, 48 % string, 15 % hazard, 8 % area, 8 % terrain, 7 % ranged, 6 % closer, 5 % single, 4 % spell.
 (Generated by `docs-gen-moves.mjs` from `ascendant/moves.js` MOVES; damage before `damageScale` 1.1; windups × 1 / 0.93 / 0.86 by form for beats that are not `fixed`.)
 <!-- asc:moves:end -->
 

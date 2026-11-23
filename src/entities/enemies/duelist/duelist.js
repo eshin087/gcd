@@ -10,6 +10,9 @@ import { perPhase } from './realise.js';
 import { DuelBrain } from './brain.js';
 import { DuelFx } from './fx.js';
 import { closestOnSegments } from '../../../combat/clashFx.js';
+import { impactK } from '../../../combat/impact.js';
+import { calmBossFlash } from '../../../combat/impactCalm.js';
+import { HitReact } from './react.js';
 
 // A duelist: a human boss on the hero's skeleton and animator (the Ash Disciple; the Starless Lord).
 // It fills a level's boss slot (game.dragon === game.boss) and offers the Dragon contract's surface
@@ -133,6 +136,9 @@ export class Duelist {
     this.drawScale = kit.scale > 0 ? kit.scale : HERO_SCALE;
     this.pilot.drawScale = this.drawScale;
     this.lean = installLean(this.object3d, this.drawScale);
+    // the body answers where it was hit (the impact pass's `react`: react.js): a drawn layer over the
+    // pose, as the shudder; gameplay points never see it
+    this.hitReact = new HitReact(this);
     this.fx = this._makeFx();
     this.brain = this._makeBrain();
 
@@ -260,6 +266,15 @@ export class Duelist {
     if (this.mode === 'sleep') this.startIntro();
     const G = this.T.guard;
     const heavy = !!o.heavy;
+    // a counter stance (a beat marked `stance`, brain.catching): a sword cut that reaches him in it is
+    // CAUGHT, whatever side it came from
+    if (!o.exact && !this.broken) {
+      const cb = this.brain.catching?.();
+      if (cb) {
+        this._catch(cb, heavy, o.point);
+        return 0;
+      }
+    }
     let crushed = false;
     if (!o.exact && this.guarding && !this.broken && this._fromFront()) {
       if (heavy && fin(o.poise) >= G.crushPoise) crushed = true;
@@ -276,7 +291,7 @@ export class Duelist {
     const dmg = o.exact ? Math.max(1, Math.round(raw)) : Math.max(1, Math.round(raw * P[part] * (broken ? this.T.posture.breakCritMult : 1)));
     const crit = !!o.crit || broken;
     this._applyDamage(dmg);
-    this.flash = Math.max(this.flash, Math.min(heavy || crit ? 1 : 0.8, fin(o.flash, 1)));
+    this.flash = Math.max(this.flash, calmBossFlash(Math.min(heavy || crit ? 1 : 0.8, fin(o.flash, 1))));
     let dx = fin(o.dir?.x, NaN), dz = fin(o.dir?.z, NaN);
     if (!Number.isFinite(dx + dz) || dx * dx + dz * dz < 1e-6) {
       const p = this.game.player?.position;
@@ -320,11 +335,38 @@ export class Duelist {
     // side every quarter second read as him jumping about. He jolts, and reels where he is)
     if (this.mode !== 'broken' && this.position.y < 0.2 && !(reel > 0)) this.moveBy((dx / l) * hs.push, (dz / l) * hs.push);
     const pt = o.point;
+    let hurt = null;
     if (pt && Number.isFinite(pt.x + pt.y + pt.z)) {
       // (his spray starts on him where he is drawn after the shove: the cut moved with him)
       const hx = pt.x + fin(this.position.x - px0, 0), hz = pt.z + fin(this.position.z - pz0, 0);
       this.fx.hitSpark(hx, pt.y, hz, sx, sz, heavy || crit);
-      this._lastHurtPt.set(hx, pt.y, hz);
+      hurt = this._lastHurtPt.set(hx, pt.y, hz);
+    }
+    // the body answers where it was hit (react.js; a sword's cut only, never his own returned bolt).
+    // Drawn only, from the hit's own tick: impactK('react') 0 leaves him as he always moved
+    if (o.swing || reel > 0) {
+      const kR = impactK('react', 'duelist');
+      if (kR > 0) {
+        const mx = fin(this.position.x - px0, 0), mz = fin(this.position.z - pz0, 0);
+        const R = this._reactHit ?? (this._reactHit = { k: 0, part: 'body', point: null, cut: { x: 0, z: 0 }, dir: { x: 0, z: 0 }, thrust: NaN, heavy: false, crit: false, reel: 0, skid: 0, moved: { x: 0, z: 0 } });
+        R.k = kR;
+        R.part = part;
+        R.point = hurt;
+        R.cut.x = sx;
+        R.cut.z = sz;
+        R.dir.x = dx / l;
+        R.dir.z = dz / l;
+        // (a thrust: the hero's attack that landed it, a `point` or the execution's thrust)
+        const pd = o.swing ? this.game.player?.atk?.def : null;
+        R.thrust = pd ? (pd.contact === 'point' || pd.contact === 'execute' || pd.kind === 'thrust' ? 1 : 0) : NaN;
+        R.heavy = heavy || crushed;
+        R.crit = crit;
+        R.reel = reel;
+        R.skid = Math.hypot(mx, mz);
+        R.moved.x = mx;
+        R.moved.z = mz;
+        this.hitReact.hit(R);
+      }
     }
     this.emit('dragon:hurt', { damage: dmg, part, hp: this.hp, crit });
     if (this.hp <= 0) {
@@ -383,6 +425,12 @@ export class Duelist {
       return dmg;
     }
     this.brain.startReact('executed');
+    // the execution's thrust folds him round the point (react.js): run in along the hero's facing
+    const kR = impactK('react', 'duelist'), p = this.game.player;
+    if (kR > 0 && p?.position) {
+      const ex = this.position.x - p.position.x, ez = this.position.z - p.position.z, el = Math.hypot(ex, ez);
+      if (el > 1e-4) this.hitReact.hit({ k: kR, part: 'body', point: null, cut: { x: ex / el, z: ez / el }, dir: { x: ex / el, z: ez / el }, thrust: 1, heavy: true, crit: true, reel: 0, skid: 0 });
+    }
     return dmg;
   }
 
@@ -632,6 +680,7 @@ export class Duelist {
     pl.stateT = pl.animT = Math.max(0, t);
     pl.yaw = this.yaw;
     this.object3d.rotation.y = this.yaw;
+    this.hitReact.restore(); // (the plain body: the blades' meeting is found on it; _animate re-applies)
     this.lean.on = false;
     this.anim.update(0);
     this.lean.on = true;
@@ -681,6 +730,7 @@ export class Duelist {
     this.warn = 0;
     this._shud.t = 0;
     this.lean.ox = this.lean.oz = 0;
+    this.hitReact.reset();
     this.object3d.visible = true;
     this.fx.reset();
     // (the animator first: its reset goes back to the walking clip, and the brain's then starts the
@@ -862,6 +912,34 @@ export class Duelist {
     }
   }
 
+  /**
+   * The hero's cut is CAUGHT in his counter stance (a beat marked `stance`; brain.js): no damage, no
+   * posture, the hero's blade thrown back (the bounce, as a deflect's), and the move jumps to its
+   * punish (brain.onCaught). Drawn as a deflect on the crossing, called "CAUGHT" (dragon:guard).
+   */
+  _catch(b, heavy, point) {
+    const G = this.T.guard, p = this.game.player;
+    this.brain.onCaught(b);
+    const h = this._hilt, t = this._tip;
+    let x = (h.x + t.x) * 0.5, y = (h.y + t.y) * 0.5, z = (h.z + t.z) * 0.5;
+    if ((!Number.isFinite(x + y + z) || !this._tipOk) && point) {
+      x = point.x;
+      y = point.y;
+      z = point.z;
+    }
+    if (Number.isFinite(x + y + z)) this.fx.guard(x, y, z, { heavy, deflect: true });
+    this.emit('dragon:guard', { heavy, deflect: true, caught: true });
+    this.hitstop(G.deflectStop ?? 0.1, 0.03);
+    this.game.shake?.(0.34);
+    this.game.punch?.(2.4);
+    this.jolt = Math.max(this.jolt, 0.2);
+    try {
+      p?.onGuarded?.({ deflect: true, heavy, attacker: this, caught: true });
+    } catch (err) {
+      console.error('[duelist] player.onGuarded failed', err);
+    }
+  }
+
   /** Which ward meets the hero's strike: 'wardHigh' for a blow from above (the finisher, a blade well
    *  over his chest), else the side of him the hero's blade is on ('ward' his left, 'wardR'). */
   _wardFor(p) {
@@ -927,6 +1005,7 @@ export class Duelist {
   // ---------------------------------------------------------------- frame
   _animate(dt) {
     const pl = this.pilot, b = this.brain;
+    this.hitReact.restore(); // (last frame's drawn reaction off the joints: the animator poses the body)
     this.jolt = Math.max(0, this.jolt - dt * this.T.hitStun.joltDecay);
     pl.recoil = this.jolt;
     pl.yaw = this.yaw;
@@ -943,6 +1022,8 @@ export class Duelist {
     this.lean.on = false;
     this.anim.update(dt);
     this._gameplayPoints();
+    // the body answering a hit (react.js): over the upright pose, after every gameplay point
+    this.hitReact.apply(dt);
     this.lean.on = true;
     this.object3d.updateMatrixWorld(true);
     this._drawnPoints();

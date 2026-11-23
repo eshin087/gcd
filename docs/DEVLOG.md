@@ -5,7 +5,7 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
-## 2026-11-22 — Session 72: a fifth level, the Windless Grove and the Sheathed (planned in its own chat, built by one Opus agent)
+## 2026-11-22 — Session 75: a fifth level, the Windless Grove and the Sheathed (planned in its own chat, built by one Opus agent)
 
 **What changed.** The owner asked for new level bosses on the power fantasy of famous characters, as
 originals; this one is a swordsman whose blade stays in its scabbard until one draw the hero must parry or
@@ -44,6 +44,247 @@ hip), as the planning session's addendum asked.
 
 **Next / open.** The bamboo crowds the frame at the game camera (the owner's eye); the score
 (borrowed tracks); a human on the phone through the draw; One Breath's balance bot on Shen Hui (not run).
+## 2026-11-22 — Session 74: a landed cut has weight (the impact pass)
+
+**Owner:** "how can we make the games combat more impactful and feel weight? i want the hits to look
+realistic where it lands and show some kind of ascii animation to show the impact. think of ideas to
+suggest using fable and once we approve, use opus to implement it". Branch `combat/impact-weight`.
+ADR-149 / Session 74 / M1.58.
+
+**Proposed and picked.** Nine ideas: A the hit stamped in the letters, B a ripple through the struck
+body, C wounds that stay, D the body reacts by where it is hit, E a spray along the blade, F the
+ground answers heavy blows, G the same care when the hero is hit, H the sound's weight, I an impact
+frame. The owner: "Build first batch" (A, B, D, H). After the side-by-side clips and the lead's
+recommendation: "Your recommendation".
+
+**How it was built.** The lead (Fable) wrote the plan and a core of switches and stubs; five Opus
+agents built the pieces in parallel worktrees on it (the stamp, the ripple, the duelists' reaction,
+the wyrm's reaction, the thump). The ripple was sent back for a second round: round one read only
+when two frames were diffed. A sixth Opus agent filmed same-take before / after clips and sheets for
+the owner (12). The merge had one conflict class: two scenarios inserted at the same spot of
+`integ.mjs`.
+
+**What changed.**
+- The core, `combat/impact.js`: `IMPACT` (`pieces`, `on`, `k`, and `by`, the owner's scale per kind
+  of struck body), `impactOn(piece)`, `impactK(piece, who)`. `?impact=off | all | stamp,ripple,...`;
+  the Lab's 'impact' row (four toggles). `PlayerFx.contact` hands the stamp and the ripple one
+  record at the drawn contact (tier, cut, edge, hilt, crit, power, low, target); the reactions read
+  `takeHit`'s own record, the thump `player:hitDragon`. With every piece off the game draws, sounds
+  and plays as before (each piece's scenario checks it).
+- **The stamp** (`combat/impactStamp.js`, a branch in `cutFx.js`): the hit as a stepped animation
+  written into the letter grid in the fire field's `steel`. One 12 px blob per letter cell, snapped
+  to cell centres; each frame held 0.04 s of fx time (it runs through the freeze); 4 frames, about
+  0.16 s (the execution 5, 0.2 s). Shapes by tier: a slit that opens and splits (light, sweep,
+  cleave; the cleave adds a cross and grows with the charge), a pierce with rings (point), a star
+  (slam), a puncture with two rings (execute). Rings are flat hexagons cell by cell. The anchor is
+  the contact pulled 2.5 m toward the camera (at 1 m the wyrm's contact sat inside its body and
+  nothing printed). Its cells print on black (one fire-field tint zone); no cell over the hero.
+  `?stamp=instead` draws it in place of today's slash line (an option).
+- **The ripple** (`render/impactRipple.js`, the ASCII pass): a pressure wave from the contact through
+  the struck boss's letters, up to 4 at once, riding with the boss, projected each frame with the
+  final camera. Round 2 (`wave`): nothing in the first 2.5 cells; a thin bright front, a trough up
+  to 60 % darker behind it; letters pushed outward 3.6 - 5.5 px and back; strokes along the front on
+  the wyrm. Reach 9 - 12 cells for a light cut, 36 - 45 on the wyrm and 17 - 19 on a man for a slam,
+  a cleave or the execution. Boss cells only.
+- **The reaction, the human bosses** (`duelist/react.js`, `reactTuning.js`): a drawn layer over the
+  pose, like the shudder. The head tips along the blade (back for a thrust), the torso twists (a
+  thrust folds him), a struck leg buckles and he drops 6.5 cm with the feet planted. Heavy x1.55,
+  crit x1.12, a flurry's cuts x0.7, the Starless Lord x0.82; a heavy blow that shoves him kicks up a
+  little dust at his feet. Hurt spheres, hit stun, shove, guard, AI and the move's clock never see
+  it (the test: on and off identical).
+- **The reaction, the Cinder Wyrm** (`dragon/react.js`, `tuningReact.js`): the head snaps away and the
+  neck carries it, a neck cut whips, a body cut shoves the trunk and lashes the tail, a leg buckles,
+  a wing jerks and folds, a tail lashes to the tip. Light x0.4, heavy x1, crit x1.25. Put on after
+  `_step` and taken off before the next one: AI, rig, hurt spheres and attacks run on the plain joints
+  (the test: identical over 90 ticks). `dragon.drawnPoint(v)` puts the cut's effects on the drawn,
+  reacting body. The old flinch stays under it.
+- **The thump** (`audio/thump.js`): a sub voice (a sine and its octave gliding 70 -> 38 Hz, a soft
+  clip, a 420 Hz low-pass) under the slam, the cleave, the execution, a heavy sweep or point, the
+  flurry's last blow and any crit; a light cut gets none. A heavy blow dips the music only
+  (`thumpDip`, never the cue bus) by 4.5 dB for about a fifth of a second; one dip per 0.5 s, a blow
+  inside a holding dip extends it, so a chain cannot pump.
+
+**What the work found.**
+- *Today's effects hide the new pieces.* The white blade flare covers frames 0 to +4 of every hit (a
+  charged cleave about 6 frames of the whole crop); the swing arc sweeps through the contact at about
+  +6 to +11, when the stamp shows its split lines and ring; the slash streaks stack on its first
+  frames; the jolt, the camera punch and the wyrm's flinch move the picture more than the reactions
+  do at the game camera.
+- *The stamp does not read on the wyrm.* A light cut shows 2 - 3 cells; slam and cleave are nearly
+  invisible under its bright digits and the hero standing in front of the contact.
+- *The reactions are small at the game camera.* A duelist at x1: 3 - 4 px for a light body cut, about
+  9 px for a heavy head cut, 2 - 5 px for a leg, on a figure about 40 px tall ("barely reads", the
+  filming agent). The wyrm at x1: 4 px for a light chest cut, about 13 px heavy, about 11 px for a
+  side cut to the head.
+- *The thump adds little.* Heavy blows already carry almost all their energy below 100 Hz, and the
+  master compressor (threshold -14 dB, ratio 4) pulls the whole mix down 8 - 12 dB on each, the cue
+  bus too. On offline renders at x1 the sub adds +0.2 dB below 100 Hz on the slam, about 0 on the
+  cleave, +0.7 on the execution; what changes is +2 dB (cleave) / +4.5 dB (crit) between 160 and
+  400 Hz, which a phone plays. Nobody has listened to it in the game yet; an audition page went to
+  the owner.
+
+**The owner's picks** (the lead's recommendation, taken): the stamp at medium, over today's slash
+line, on the human bosses only (`IMPACT.by.stamp.wyrm` 0); the ripple at its default; the reactions
+x1.5 on the human bosses, x1 on the wyrm; the thump at x1. Next, a before / after with today's
+contact flare and swing arc toned down (accepted, and done in the same PR: below).
+
+**Calm at the contact** (the follow-up, in this PR). An Opus agent measured what hides the new
+pieces by switching today's effects off one at a time on a frozen take: the struck boss's white
+hurt flash (the wyrm's whole struck body goes white) and the hero's steel lit by the strike are
+the big ones; the hit's own blade flare (+0.5 / +0.75) and the cut's core are negligible, so
+COMBAT.md's "x1.62 / x1.95" was not what you see. `combat/impactCalm.js` dims those together in
+levels 0 - 3 (0 = as before), read at the hit, the same random draws at every level, the slash
+line kept, a missed swing and steel on steel untouched; one line each in `dragon.js` and
+`duelist.js` takes the hurt flash through `calmBossFlash`. Clips: today / 1 / 2 / 3 on the Ash
+Disciple and the wyrm with every piece on, and today vs 2 at the play framing. The lead
+recommended 2; the owner, given the clips and the two preview links: "lets go with calmer 1". Level 1 is the
+default (`CALM_DEFAULT`; `?calm=0` draws the contact as before; the Lab's 'impact' row has a
+`calm N` button that cycles it). Level 1 is the gentlest: the halo round the contact shrinks, the
+stamp's first frames show a little more, nothing is lost. The stamp still does not read on the
+wyrm at 2 or 3, so it stays off there.
+
+**Verification.** New scenarios: integ `stamp`, `ripple`, `wyrmreact`, `thump`; duel `react`. The
+stamp's and the duelists' react scenarios pin their piece at strength 1. `npm test`: all 12 suites passed on the final branch (with `origin/main` #76 merged in and the picks applied; 312 s), and `npm run build` built. The `world budget` timing check failed in every agent's run while six suites ran at once, and fails the same way on the base commit under that load. The pieces
+were filmed in the browser side by side at the game camera (the agents' and the filming agent's
+captures).
+
+**Not checked / open.**
+- Nobody has played it. Not looked at on a phone: the ripple's first version compiled and drew on the
+  LOW / touch path, the second was not checked there.
+- Not filmed: the execution and crits for the stamp and the ripple, a flurry and Tian Lei for the
+  reactions.
+- At x1.5 a heavy thrust's reaction moves a point 0.085 m between two frames once (the duel test's
+  0.06 m bound is for x1).
+- While the wyrm's reaction is drawn its hurt spheres stay where the simulation has them, up to about
+  1 m off the drawn body for 0.2 - 0.5 s; phase 3's fire comes off the simulated points.
+- For the owner: the game's existing low end is pure sine (silent on small speakers), and the
+  compressor flattens every heavy hit, tells included.
+- Rig lesson for captures: with the AI off a duelist keeps his guard up and turns every cut (a guarded
+  hit returns before `PlayerFx.contact`); on a fresh duelist level the flow sat in 'title'. Enter the
+  fight and drop his guard first.
+
+**Next.** The second batch if the owner wants it: C, E, F, G, I. Calm at the contact on the phone and
+on crits, the execution, the Lord and Tian Lei.
+
+## 2026-11-22 — Session 73: round the Obsidian Throne, what the challengers left
+
+**Owner:** "the trees and background stuff on the obsidian throne is all incorrect and not realistic.
+replace the trees with more unique random breakable stuff and make sure it looks good and in the
+right angles". Branch `level/throne-props`. ADR-133 / Session 73 / M1.57 (#76 and the open #77
+both took ADR-131 and Session 71; this skips past them).
+
+**What was wrong.** Round the crater the forest lay felled: every trunk the same straight log, laid
+exactly radial in a starburst, in the screen grid's tree letters (not the dragon look the crater's
+own plates and shards are drawn in). From the game camera it read as a ring of matching sticks.
+
+**What changed.**
+- `world/starfallProps.js` (new): 13 builders in the prop art path (`carve()`, a tone per facet),
+  each piece built afresh from the rng (size, lean, state, parts): stone lanterns (standing, leaning,
+  thrown), steles on turtles (some snapped), broken pillars with their drums, a thrown shrine roof,
+  wine jars, split boulders, the star's rock in its furrows, heaved earth, glass splinters, graves of
+  swords, spears with a torn banner, wanderers' cairns, wrecked carts. Faces turn to the camera;
+  what fell lies along the blast's way out, turned off it; everything rests on a face.
+- `world/throneHall.js`: the felled-forest loop is behind `?outskirts=0`; otherwise 125 spots on a
+  stream of their own (the layout's `rng` is untouched: the trees were its last user), a bag of kinds
+  by the option's weights. Within 43 m of the seal each piece is a breakable (stone leaves rubble),
+  beyond it merges into the static stones; none topples. Nothing over 3 m on the near side of the path (a banner
+  there becomes a cairn): the duel stays in view. The `add()` helper skips an empty mesh.
+- `lookSwitch.js` `PICKED.outskirts = 'c'`, a Lab LOOKS row (build time: a reload).
+- Tests: `world.mjs` sets (the throne lists swords, banner, cairn, cart), `lord.mjs` level (`metal`
+  is a material of the crater's pieces; the counts).
+- **The fairness guard, a gap it had on main** (`brain.worldClash`, asked by `destructibles.js` at a
+  felled piece's flash): the new objects shifted the seeded sims (three.js uuids come from the seeded
+  `Math.random`) and `lord.mjs` pace seed 4242 form 2 met a void push told at 109.68 s and a rim shard
+  his crescent felled at 110.07 s, their flashes 0.25 s apart (main passes the seed on its own
+  sequence). The push's hold could not clear it, so now the piece lands uncued and harmless when a
+  blow of his already cued needs the other answer near its landing. `ABYSS_PDBG=1` showed the order.
+
+**Options, rendered for the owner** (in-game sheets, kept locally and not committed: on the
+path, both sides of the crater and pulled back, and a close-up of each piece): A the shrine the star
+fell on, B the star's own debris, C those who came for him, MIX. **The owner picked C.** The others stay
+behind the switch.
+
+**Verification.** `npm test` (all suites), `npm run build`. Headless Edge captures of the default
+(no parameter) at the game camera: C drawn, the near side low. The throne: 255 breakables (222
+before), 365 bones of 1023.
+
+**Open / next.**
+- The owner plays it. The pieces never topple (`topples: false`): with them toppling, the Lord's
+  crescents felled banners onto the hero mid-move (`lord.mjs` pace, seed 4242: a void push and a
+  falling banner within 0.3 s). His terrain moves use the rim's pieces as before.
+- The jars, lanterns and roof (options a / m) were not tuned for burning or lifting beyond defaults.
+
+---
+
+## 2026-11-22 — Session 72: Tian Lei's third wave: the sign, the counter stances, the great orb, the barrage
+
+**Owner:** "implement more iconic dbfz moves like spirit bomb, teleport attacks with the dragon ball
+teleportation animation, flurry of projectiles like vegeta, etc. i want more counter moves as well".
+Branch `enemies/ascendant-moves` (from main 9333ce7, after #73 and #75). ADR-135 / Session 72 / M1.56.
+As with the level (ADR-129): the FEEL of each, built as originals; nothing of the franchise's names or
+look.
+
+**How.** The lead read the merged kit, wrote `BRIEF3.md` (the scratchpad), added the engine contracts
+first (one commit: the counter stance, the sign, several counters a form), then ran two Opus agents in
+their own worktrees from that commit: **ki** (`kiShots.js`, `moves/kiShots.js`, `tuningShots.js`, fx:
+the orb and the barrage) and **sign** (`moves/melee.js`, `links.js`, `tuning.js`: the sign and its
+moves, the three counter stances, the ripostes). Each filmed its moves in the real level and ran the
+suite; the lead merged both, applied their "needs" lists, tuned the pace meter, regenerated the move
+tables and wrote the history.
+
+**What changed.**
+- **The engine** (`duelist/brain.js`, `duelist.js`; optional, the other bosses unchanged): a beat
+  marked `stance` on a feint with a bait hold is a **counter stance**: from 30 % of its windup a sword
+  cut that reaches him is CAUGHT (no damage, no posture, the hero's blade thrown back as by a deflect,
+  `dragon:guard { caught }`, the HUD's "CAUGHT") and the move jumps to the beat's end, so the punish
+  after it starts at once; a stance nobody cut into ends the move at its impact and leaves him open
+  0.6 s with his guard down. `brain.catching()`, `onCaught`, `_stanceMiss`, stats `caught` /
+  `stanceMiss`. A blink marked `sign` vanishes at u 0.5 of the windup, not 0.1, and a close-in waits
+  for the vanish. The kit's `counterMove(form)` draws from `COUNTER_LISTS`.
+- **Tian Lei's moves** (`moves/melee.js`, `moves/kiShots.js`; the tables in COMBAT.md are generated):
+  - **THE SIGN**: two fingers to the brow, the snap of light at the hand (`fx.signSnap`), the vanish,
+    the blow from behind. **Sign Step** (form 2: a hook from behind, a knee, a palm that locks) and
+    **Three Signs** (form 3: a cross from the left, a round kick from the right, the red axe kick from
+    behind, each out of its own sign); the sign retrofitted onto the first vanish of Vanishing Step,
+    Storm Waltz, Mirage and the thunder Riposte (their first windups raised to 0.72 s).
+  - **Three counter stances**, one a form, light drawn into the open palms (`fx.stanceGlow`): **Still
+    Water** (a cross, then a palm on a dash that locks), **Golden Mirror** (a vanish behind, the
+    launching uppercut, the hammer where the hero lands), **Thunder Mirror** (a bolt point-blank, a
+    signed vanish and the axe kick).
+  - **Three more ripostes** out of a deflect (a knee and a round kick; a vanish behind, a hook and a
+    palm; a hop back and a bolt a perfect parry returns), drawn with the old three.
+  - **Heaven's Lantern** (forms 2 - 3): he rises 2.5 m and gathers the great orb for 1.8 s (the ring's
+    light dims to it), then throws it, 10 m/s, 2 m round, falling onto where the hero will be (no
+    homing); blue: a parry or a block is safe, a roll passes it, and a PERFECT parry starts **THE PUSH**
+    (the lock at range: won, it flies back into him for 120 and 220 posture and he reels 3 s; lost, 40,
+    knockdown, thrown 10 m). Two looks for the owner: `?ascOrb=a` a sun (the default), `b` a lantern.
+  - **Raining Suns** (forms 2 - 3): he leaps 3 m and pours sixteen small blasts down in 2.2 s (every
+    third one on the hero, the rest to his sides, pocking the floor; a held guard is not worn through),
+    then a returnable finisher from the air.
+- Links, weights and cooldowns for all of it; Training 'ascSign', 'ascCatch', 'ascCatchWait',
+  'ascLantern', 'ascSuns' (105 situations); the Lab's LOOKS row `ascOrb`; scenarios `sign`, `catch`,
+  `ripostes`, `lantern`, `suns` and the engine scenario's catch (a synthetic stance) in `asc.mjs`; the
+  timing scenario cuts into a stance; the pace meter counts a stance while it is catching and the
+  orb's gather as busy (as a black blow's charge).
+
+**Decisions on the way.** The sign agent shortened the stance's hold from the brief's 0.7 - 1.0 s to
+0.2 - 0.4 s and lowered the stances' weights for the pace meter's gaps; the lead then made the meter
+count the catching window as busy (it is a decision for the hero, as a charge is) rather than push
+the weights further down. The ki agent put only every third blast of the barrage on the hero: all
+sixteen on a held guard wore it through (GUARD.costMin 8 x 16 and the finisher), and the owner's rule
+is that a block is always an answer.
+
+**Verification.** `asc.mjs . all` green on the merged branch (DATA 292 realisations, forms 13 / 25 /
+28 moves); PACE over ten seeds: see the figures in COMBAT.md's Tian Lei section and the PR; 0
+conflicts throughout. `glyphcheck`, `changelogcheck`, `duel.mjs` (the engine changed). Filmed in the
+real level at 1280 x 720 (the agents' sheets: `ki3-lantern.jpg`, `ki3-suns.jpg`, `sign3-sign.jpg`,
+`sign3-catch.jpg` in the scratchpad's rig), the push on the phone preset.
+
+**Not checked / open.** Nobody has played it. The owner has not picked the orb's look. At the game
+camera the hand at the brow is a few cells under the aura: the snap and the streak carry the sign. The
+orb is drawn smaller (about 3.2 m) than its hit (2 m round, 2.5 m reach across). The push's crater and
+camera are not tuned. Not filmed on a real phone.
+
 ## 2026-11-21 — Session 71: the phone: bars that do not overlap, and two ways to free the right thumb
 
 **Owner**, playing on the iPhone: "the boss hp and main character hp ui is overlapping. i'm also

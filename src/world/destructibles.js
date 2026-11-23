@@ -1904,10 +1904,15 @@ export class Destructibles {
       }
       if (!b.flashed && b.T - b.t <= FLASH_LEAD) {
         b.flashed = true;
-        const f = this._flash;
-        f.x = mx;
-        f.z = mz;
-        ev?.emit?.('combat:flash', f);
+        // (the boss's fairness guard: a blow of his already cued that needs the other answer near its
+        // landing: it lands uncued and harmless, never two answers at once)
+        if (this.game.boss?.brain?.worldClash?.(b.T - b.t, TELL.RED)) b.quiet = true;
+        else {
+          const f = this._flash;
+          f.x = mx;
+          f.z = mz;
+          ev?.emit?.('combat:flash', f);
+        }
       }
       const fx = this.game.fx?.add;
       b.mark -= dt;

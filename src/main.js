@@ -12,6 +12,8 @@ import { LightPool } from './render/lights.js';
 import { GlyphParticles } from './render/particles.js';
 import { FireField } from './render/fireField.js';
 import { ShedDigits } from './render/shedDigits.js';
+import { ImpactRipple } from './render/impactRipple.js';
+import { stampUpdate, stampClear } from './combat/impactStamp.js';
 import { World } from './world/world.js';
 import { Player } from './entities/player/player.js';
 import { LEVELS, levelFromSearch, applyLevel, levelUrl, withStage } from './levels/index.js';
@@ -119,6 +121,8 @@ async function boot() {
   pipeline.registerParticles(game.fx.add);
   pipeline.registerFire(game.fx.fire);
   game.fx.shed = new ShedDigits(game); // a struck or dissolving body sheds its letters (shedDigits.js)
+  game.fx.ripple = new ImpactRipple(game); // a struck body's letters take the blow (impactRipple.js)
+  game.fx.stamp = { clear: () => stampClear(game) }; // the hit printed at the contact (impactStamp.js)
 
   game.world = new World(game);
   // what the hero has learned (ADR-146: One Breath, the Sheathed's reward; ?tech=draw|none)
@@ -317,6 +321,8 @@ async function boot() {
     game.fx.add.update(fxDt, game.time);
     game.fx.fire.update(fxDt);
     game.fx.shed.update(fxDt);
+    game.fx.ripple.update(fxDt);
+    stampUpdate(game, fxDt);
   };
 
   const steps = { n: 1, dt: 0 };

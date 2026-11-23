@@ -21,7 +21,7 @@ the plunge, three phases, fire hazards, keep-in-view camera, and now the bullet 
 wheel zoom → mouse ray (mouseGround) → gamepad.update(realDt) → touch.update(realDt)
 → 1 – 6 simulation steps (core/timestep.js), each of stepDt real seconds:
     clocks → lab.update(stepDt) → flow.update(dt, stepDt) → player.update(dt) → dragon.update(dt)
-    → world.update(dt) → lights.update → fx.update (alpha, add, fire, shed)
+    → world.update(dt) → lights.update → fx.update (alpha, add, fire, shed, ripple, stamp)
     (input.endFrame() after the FIRST step: the frame's presses and releases are seen once)
 → lab.postUpdate() → camera (rig, realDt) → view override → shared uniforms
 → hud.update(realDt) → audio.update(realDt) → render
@@ -64,6 +64,8 @@ scene.updateMatrixWorld()            once for both scene passes (scene.matrixWor
                                      minus what the scene shows of him, the rest back into sceneRT (ADR-106)
 → the fire field                    heat blobs → a heat buffer → a flame texture, one texel per art cell
                                      (render/fireField.js, ADR-113; skipped while it holds no blob)
+→ the impact ripple                `ripple.write(pipeline)` in `_updateAsciiCamera`: its live hits
+                                     projected with the final camera into `uRip*` (ADR-149)
 → ASCII pass → FX pass (fxScene: the fire field's letters first, then the glyph particles) → bloom → final grade
 → updateZoomArt()                    picks the zoom ladder step the NEXT frame draws at (?zoomArt; ADR-120)
 ```
@@ -98,6 +100,7 @@ ADR-120).
 | `viewOverride` | `null` or `{ pos, target, focus? }` — camera override applied by main.js after the rig (see Frame order). Only the Lab model viewer writes it. |
 | `lights` | `add({x,y,z,color:[r,g,b],intensity,radius,life,fade,fadeIn,flicker})` → light (mutable `x,y,z`, `.set()`, `.kill()`) |
 | `fx.add` / `fx.alpha` | glyph particles, additive-HDR / alpha-blended. `spawn({x,y,z,vx,vy,vz,life,size,sizeEnd,glyph,color,colorEnd,alpha,alphaEnd,gravity,drag,spin,rot,flicker,stretch})`. `glyph`: char, string of chars (random pick) or atlas index. |
+| `fx.ripple` / `fx.stamp` | the impact pass (ADR-149): `fx.ripple` = `ImpactRipple` (`render/impactRipple.js`: `hit(x, y, z, o, k)`, `update(dt)`, `clear()`, `write(pipeline)`; `n`, `live`), `fx.stamp` = `{ clear }` (`combat/impactStamp.js`: `stampHit`, `stampUpdate`, `stampClear`). Both run on fx time and are cleared on a level reset (flow, `world.debug.setVisible`) |
 | `world` | `resolve(pos, radius, bound, soft = false, who = null)` circle collision (`who` 'hero': on a set with an edge the hero's ground replaces the `bound` circle; `edge` is that edge or null and `heroBound(x, z)` how far out he may stand that way: Destruction → "The edge of the open ground", ADR-125; `soft`: pass through the circles marked `soft`, the trunks and stumps of breakable wood: the wyrm's body, ADR-119); `setQuality(k)` (the destruction's phone budget 0.3 .. 1; `setGrassQuality` sets it from the preset, `QUALITY` in breakTuning.js); `setPusher(slot, x, y, z, r)` grass trample (slot 0 = player, 1–9 = dragon; y > 1.5 = airborne, ignored); `clearPushers(from, to)`; `gust(x, z, strength 0..2, radius)`; `scorch.burnCircle(x, z, r, burn 0..1, heat 0..1)`, `scorch.reset()`; `colliders.blocked(ax,az,bx,bz)`; `setGrassQuality(count)` (instanced grass blades drawn; main.js applies the quality preset); **destruction** (ADR-107, see Destruction): `impact(x, z, r, power, o)`, `ignite(x, z, r, k, grass = true)`, `restore()`, `destructibles`, `fire`, `scars` (the tests' world mocks lack them: every caller outside `src/world` guards with `?.`); `bonfire {x,z}`; `nest {x,z}`; `atmosphere.setBonfireLit(bool)`; `atmosphere.skyGlow(k 0..1)` (the sky over the clearing glows orange: warms the shared ambient and fog colours; call every frame while it should show, it eases in and out and lets go 0.2 s after the last call; Armageddon, ADR-053); Lab only: `debug.setVisible(bool)` hides / restores the environment (ground, grass, forest group = trees, stones, flagstones, nest bones, bonfire; atmosphere paused and in-flight particles in `fx.*` dropped; the exact previous `visible` flags come back; lights, scorch and colliders untouched), `debug.visible` |
 | `player`, `dragon`, `hud`, `audio`, `flow`, `lab` | the modules below. `dragon` is **the boss slot** (the wyrm in Cinderwood, the Ash Disciple in Ashfall; see Levels and the boss slot); `boss` is the same object |
 | `level`, `levels`, `pickLevel(id)` | the level this page load built (`levels/index.js` definition), every level as `{ id, name }` (the title's stage picker, the Lab's LEVEL row), and a reload into another one (`?level=<id>`, other parameters kept). Tests may leave them out: flow falls back to Cinderwood's lines |
@@ -440,6 +443,11 @@ Render helpers for creature modules:
   lump })` (a tapering slab: the rim's plates, the crown), `starCleft(rng, x, z)` (inlay glyphs for
   the set's glow batch), `facetCol(col, k)` (a `carve()` colour: one tone a facet), `STAR_GLASS`,
   `STAR_COLLIDERS`. These are built with `carve()` attributes already and need no `carved()`.
+  `world/starfallProps.js` (ADR-133): what lies round the crater. `buildOutskirt(kind, rng, x, z, oy,
+  s)` -> `{ kind, geos, r, cr, mat, h, lift? }` (carved parts in world space; `oy` the yaw pointing out
+  of the crater) for 13 kinds (`lantern`, `stele`, `pillar`, `roof`, `jars`, `boulder`, `ejecta`,
+  `heave`, `splinters`, `swords`, `banner`, `cairn`, `cart`); `OUTSKIRTS` (option -> kind weights,
+  `?outskirts=`), `kindBag(rng, weights, n)` (a shuffled bag of kinds in their shares).
   `landmarkPoint(x, z, yaw, s, lx, lz)` maps a builder's local point to the world;
   `ELDER_COLLIDERS`, `GATE_COLLIDERS`, `COLOSSUS_COLLIDERS`, `CAULDRON_COLLIDERS` are `[lx, lz, r]`
   lists the set adds; `COLOSSUS_FALLEN_HEAD` and `GATE_FOOTPRINT` (the gate's own space: it stands
@@ -519,6 +527,30 @@ Render helpers for creature modules:
     inside `uGlow`), `U.uWyrmHeat` (xyz the front, w the rule's weight) and `U.uWyrmHeatFrom` (xyz the
     origin, w the front's strength); data `HEAT_RISE` (`dragon.js`), `WYRM_HEAT` (`materials.js`).
     Anything that reads a wyrm material's `uGlow` expecting the charge must add `uGlowRise`.
+  - *The impact stamp* (`combat/impactStamp.js`, ADR-149): a landed cut written into the fire field
+    in `steel` (`STAMP_LOOK`, the last stamp's counts in `STAMP_LAST`, `STAMP_GLYPHS` empty: no
+    particles). `stampHit(game, x, y, z, o, k)` (from `PlayerFx.contact`), `stampUpdate(game, dt)`
+    (main.js, fx time, after the shed digits), `stampClear(game)`; `setStampMode('over' | 'instead')`
+    / `stampMode()` (`?stamp=instead`), `setStampInk(bool)` (`?stampInk=0`); `takeStampReplace()`
+    (cutFx asks once per cut whether to drop its slash line). 4 stamps pooled, one copy of the blobs
+    alive per frame; its ink is the fire-field tint zone id 800001 (`FireField.tint`, `dark` 1).
+  - *Calm at the contact* (`combat/impactCalm.js` exports `CALM_LOOK`, `CALM_DEFAULT` 1, `setCalm`,
+    `calmLevel`, `calmLook`, `calmA`, `calmS`, `calmBossFlash`; ADR-149): `PlayerFx.contact`
+    snapshots the level (`_calmAt`) and opens the arc's calm zone; `player._updateMaterials` reads
+    `fx.calmBlade(w)` / `fx.calmFlare(v)` for the steel's gain; cutFx, `fx.edgeFlash`,
+    `fx.cleaveImpact` and `fx.trail` read `calmA` / `calmS`; `dragon.takeHit` and `duelist.takeHit`
+    take their hurt flash through `calmBossFlash`. Level 0 draws exactly what it did before.
+  - *The impact ripple* (`render/impactRipple.js` exports `RIPPLE`, `class ImpactRipple`; `game.fx.ripple`;
+    ADR-149): `RIPPLE.slots` 4 live hits kept in world space (an offset from `o.target.position`),
+    presets `wave` (drawn) and `subtle`. `Pipeline.setRipple(r)` (the constructor calls it; null
+    zeroes `uRipN`); `write(pipeline)` runs in `update` and again in `_updateAsciiCamera`, right
+    before the ASCII pass. Uniforms: `uRipN` (live hits; 0 = the pass reads nothing), per hit
+    `uRipA[i]` (contact px x, y, the front's radius in cells, its weight), `uRipB[i]` (the shove px
+    along the cut x, y, the front's half-width in cells, the contact's view depth m), `uRipC[i]` (the
+    outward push px, the quiet hole and its ramp in cells); `uRip` (roll, bright, depth window m,
+    lift), `uRip2` (trough, its lag, stroke share). The pass's `rippleCell(cpx, dz, cw)` sets
+    `gRip` / `gRipS` per boss cell: the wyrm's art grid and the hero-art path's boss half only (never
+    `gSelf`, props, floor, grass); a write that throws zeroes `uRipN` and drops the ripple.
 - `createCarvedGlyphMaterial(U, opts)` (`render/materials.js`) — **carved glyphs, for FLOORS only**
   since ADR-100 (flagstones, paving, the crater's plates; upright objects use prop art above). Glyph cells sit on a world-fixed lattice in
   a plane facing the default camera (`viewPitch`), so they are upright, equal-sized and never
@@ -1221,6 +1253,17 @@ a 0.22-0.3 m two-frame core, a ring on heavy blows, one small light; per-tier nu
 `CUT_LOOK`, the last burst's counts in `CUT_LAST`, the look switch `setCutStyle('gash' | 'fan')` /
 `cutStyle()` (the Lab's 'cut' row; `?cutfx=fan`). `cleaveImpact(..., bare)`: bare = the fan only
 (contact draws the ring and the light). `sparks()` stays for the plunge.
+
+**The impact pass** (`combat/impact.js`, ADR-149): `IMPACT = { pieces: ['stamp', 'ripple', 'react',
+'thump'], on, k, by }`; `impactOn(piece)`; `impactK(piece, who)` = `k` × `by[piece][who]` (`who`
+'duelist' | 'wyrm', omitted: no `by`), 0 while the piece is off. `on` comes from `?impact=` (absent,
+empty or 'all': every piece; any list: only the pieces named; 'off': none) and the Lab's 'impact'
+row flips it live. With it, `contact`'s record also carries `target` (`game.dragon`), and before
+`cutBurst` it calls `stampHit(game, x, y, z, o, impactK('stamp', target.kind === 'duelist' ?
+'duelist' : 'wyrm'))` and `game.fx.ripple.hit(x, y, z, o, impactK('ripple'))`, inside one try /
+catch (a throw is logged, the cut still draws). `cutBurst` calls `takeStampReplace()` once and drops
+its slash line and cross when the stamp just drew in 'instead' mode.
+
 `edgeGlint(sw, z0, z1, far, crit, realDt, ridge)`: a small cold '+' (and '|' strokes behind it)
 running up the LEADING edge of the steel from sword-space height z0 to z1 this frame (`leadSide(sw,
 e)`: the blade's mid travel against its X axis; the ridge under `EDGE_GLINT.ridge`, or always with
@@ -1338,6 +1381,8 @@ hazards: Hazards                        // the fire hazards (hazards.js, contrac
 bullets: Bullets                        // the bullet field + the ground tongues (bullets.js, ADR-039): see "Bullets" below
 terrain: Terrain                        // the piece in its jaws or in the air (terrain.js, ADR-110): see "Terrain moves" below
 ablaze: Ablaze                          // phase 3: it sets itself on fire (ablaze.js, ADR-120): see "The wyrm ablaze" below
+react: WyrmReact                        // the impact pass (react.js, tuningReact.js, ADR-149): the drawn body
+                                        // answers where it was hit; see "The drawn reaction" below
 crashing: boolean                       // true while a plunge stops a flight: that action's end() must not land it elsewhere
 isTargetable(): boolean                 // false while sleeping/dying/dead
 lockPoint(out): Vector3                  // chest/neck base, for lock-on + camera
@@ -1374,6 +1419,8 @@ enterPhase(n)                           // the transition roars call it at their
 hitstop(sec, scale)                     // game.hitstop that won't crush a running Ghostep slow-mo
 reset()                                 // back to sleeping at the nest, full HP/posture, phase 1, FX/lights/hazards cleared
 update(dt)
+drawnPoint(v): Vector3                  // a hurt sphere's exact point → where it is drawn, in place
+                                        // (identity unless a reaction is drawn: react.drawnPoint)
 debug: {                                // used by the Lab (generic shape every future enemy implements)
   abilities(): Array<{ name, label, tell, phase }>,   // every ATTACKS entry (46: 8 singles, 17 strings, 11 fire
                                         // attacks and flights, 6 bullet patterns, 3 terrain moves and 'roar', the
@@ -1388,6 +1435,15 @@ debug: {                                // used by the Lab (generic shape every 
   ablaze(look?): string                 // the wyrm only: phase 3's fire 'off'|'a'|'b'|'c' (sets it when given; returns the one in use)
 }
 ```
+**The drawn reaction (ADR-149, `dragon/react.js` `WyrmReact`, numbers `tuningReact.js` `REACT`).**
+`takeHit` calls `react.hit(o, part)` (guarded) after the hit spark; nothing happens while sleeping,
+dying or dead, or at `impactK('react', 'wyrm')` 0. `_step` order: `react.restore()` first (last
+step's rotations off the joints), the whole step (AI, rig, hurt spheres, attacks, the eye glints read
+`react.eyes(rig.pt.eyes)`), `react.apply(dt)` last. So what reads the joints inside the step sees the
+plain body; the renderer and the rigid batch's bone texture see the reaction. `react.clear()` on
+`reset()`. Up to `pool` 6 reactions at once; no Object3D, no random numbers, no allocation per frame.
+While one is drawn the hurt spheres can sit up to about 1 m off the drawn body for 0.2 - 0.5 s.
+
 **Attacks and selection** (`attacks.js` `ATTACKS`: the singles, the strings, `roar` and, spread in,
 `FIRE` from `fireAttacks.js`, `BULLET_HELL` from `bulletAttacks.js` and `TERRAIN_MOVES` from
 `terrainAttacks.js`; their numbers are `TUNING.attacks`, into which `tuningFire.js` `FIRE_ATTACKS`,
@@ -2260,9 +2316,10 @@ Esc: pause" log line is skipped. Screen taps reach `_dismissPressed` as a virtua
 constructor(game)          // subscribes to events; AudioContext created lazily
 unlock()                   // call on first user gesture (flow does this on title dismiss)
 update(realDt)
-play(name, opts)           // one-shot SFX by name (sfx.js SFX, then fire.js FIRE_SFX)
+play(name, opts)           // one-shot SFX by name (sfx.js SFX, then fire.js FIRE_SFX, then thump.js THUMP_SFX)
 setMusic(mode)             // 'none'|'ambient'|'boss'|'boss2'|'victory'|'death'
 toggleMute(); muted: boolean;  setVolume(0..1)
+thump: Thump;  thumpDip: GainNode|null // the impact pass (thump.js): the sub voice + the music's dip node
 ```
 **Recorded music (ADR-117).** The sound effects stay synthesised. The background music is recorded:
 each level's exploring track and one track per boss phase, all CC0 from OpenGameArt, picked by the
@@ -2320,6 +2377,15 @@ the fallback.
   crack from stage 2, a low creak for the lean; gain 0.45, `gap` 0.14 s so a roar's front sets off a
   few, not hundreds), 'burn' `sizzle`, 'burnout' `emberHiss`, any other `crash`.
 
+**The thump (ADR-149, `audio/thump.js`: `THUMP`, `THUMP_SFX`, `class Thump`).** `engine.thump`
+(a `Thump`, no nodes of its own) runs on `player:hitDragon` after the engine's early returns (a
+guarded strike, the plunge, a shards-only slam, a flurry's flash cuts): `onHit(d)` plays `sub`
+(`play('sub', { k })`, the sfx bus; `THUMP_SFX` is looked up after `SFX` and `FIRE_SFX`) at
+`strength(d) × impactK('thump')`, and on a `heavy` blow `dip(k)` on `engine.thumpDip`. The graph:
+`musicBus → thumpDip → musicDip → mix` (`thumpDip` is 1 when idle; never on the cue bus). One dip per
+`dipGap` 0.5 s; a blow inside a holding dip extends it to at most `dipMax` 0.45 s after it began.
+Counters `subs`, `dips`, `extends` (tests).
+
 **A flurry's blow on a duelist (ADR-101).** `takeHit({ ..., exact, reel, away })`: `reel` 1 (a flash
 cut) flinches him where he stands whatever he was doing (`brain.startReact('flinch')`, travel 0) and
 does not shove him; `reel` 2 (the last blow) staggers him and `away` ({ x, z }: where the hero is
@@ -2367,8 +2433,9 @@ switch of the duelists' second pass (`LOOK_SWITCHES`: name, options, default, pi
 label). A switch read at draw time flips live through `setLook`; one read at build time (`ashLook`,
 `lordLook`, `floor`) reloads the page with its parameter. The Skybreak Ring's rows (ADR-129), each group
 under its own heading comment: `ring` a / b / c (the arena; a reload), `ascLook` a / c / d (his body; a
-reload), `ascLift` 0 / a (his figure lifted off the floor; a reload), `ascAura` a / b / c and `ascBeam`
-a / b (live); all picked 'a' (STYLE.md "The look switches"). "as shipped" clears every look parameter (the
+reload), `ascLift` 0 / a (his figure lifted off the floor; a reload), `ascAura` a / b / c, `ascBeam`
+a / b and `ascOrb` a / b (the great orb, the third wave; live); all picked 'a' (STYLE.md "The look
+switches"). "as shipped" clears every look parameter (the
 owner's picks), "before this pass" reloads with `?looks=old` ("all proposals" is gone: `?looks=new` now
 equals the default). A later phase's or form's move, and the
 phase / form buttons, play from any phase (the Lab skips there first, without playing the change).
@@ -2436,6 +2503,9 @@ two transformations), `ascClash` (the great beam's head parried perfectly: the c
 the ki / terrain ones start their move in its own form (`debug.setForm`, then `debug.trigger`) and act on
 the beat's own clock, not on the flash (a beam's and a thrown slab's cues are hazards: the runner's
 answers skip them). The runner's watch list gained `dragon:phase2`.
+
+**The 'impact' row** (ADR-149): one on / off toggle per piece of `IMPACT.pieces` (stamp, ripple, react,
+thump); a click flips `IMPACT.on[piece]`, read at the next hit. `_syncCutBtns` lights them.
 
 ### Bindings — `src/core/bindings.js` (ADR-067)
 ```
@@ -2649,8 +2719,13 @@ Wyrm's 36 bones: 18 ribs, 10 runs of the spine, the hip, the mast, the fingers, 
 skull, the jaw, 2 horns; the Cinder Tree's 5 boughs and trunk; it was 183 on 2026-11-15) and takes 228
 bones, 409 with the wyrm; the courtyard 456 (it was 78: flagstone 293, pillar 30, lintel 1, lantern 4,
 stele 1, bell 1, stump 32, deadTree 80, boulder 9, cauldron 1, colossus 4: two colossi of two pieces) in
-443 bones; the throne 222 (it was 36: plate 81, flagstone 24, shard 25, slab 27, rubble 20, vent 4, log
-35, hover 6) in 299 (ADR-120's bigger log and char pools are built in every set: +42 bones in each arena).
+443 bones; the throne 255 (it was 36, then 222 with 35 logs: plate 81, flagstone 24, shard 25, slab 27,
+rubble 20, vent 4, hover 6, and since 2026-11-22 (ADR-133) what lies round the crater within 43 m of the
+seal: cairn 21, swords 16, boulder 10, cart 9, banner 7, stele 5) in 365 (ADR-120's bigger log and char
+pools are built in every set: +42 bones in each arena). `throneHall.js` places them on a stream of its
+own (`CONFIG.seed + 14312`): 125 spots 3.8 m apart off the path and the dais, a bag of kinds by
+weight; beyond 43 m they merge into the set's stones. Stone (cairn, boulder, stele) leaves rubble;
+`swords` are `mat: 'metal'`, the banner and the cart wood (they burn); none topples (`topples: false`).
 **Every tree of Cinderwood breaks**, out to the forest's edge (74 m; it was those within 42 m), and the
 Elder Wyrm's skeleton, the Cinder Tree and the nest break in pieces (ADR-120 reverses ADR-119's "they
 stay whole"); the bonfire stays whole. In `forest.js` the trees and the Cinder Tree are runs of the
@@ -3010,7 +3085,7 @@ A level: `{ id, aliases, name, sub, world, buildSet(U, colliders), createBoss(ga
   `onParried(info)`, `reset()`, `update(dt)`, `debug` (the Lab's generic shape). Optional
   `drawnPoint(v)` (+ `drawScale`): maps an upright gameplay point (a hurt sphere's centre) to where it
   is drawn (the lean, the drawn size, a drawn-only offset), in place; the hero's landed cut is drawn
-  where his drawn blade meets those drawn spheres (absent: identity, the wyrm). A plunge target adds
+  where his drawn blade meets those drawn spheres (absent: identity; the wyrm offers one since ADR-149: its drawn reaction). A plunge target adds
   `plungePoint` / `onPlunge` (the wyrm); a **duelist** (`kind: 'duelist'`) instead offers
   `onExecute({ damage })` and `execRange` (the execution thrust, Player below) and gets no creature
   voice (audio.js gates roars, pain and recoil yelps on `kind`). A boss with **several health bars**
@@ -3045,6 +3120,13 @@ data and a subclass with a few hooks.
   flicker is no swing). His hit spray flies along `takeHit`'s `cut` (the shove keeps `dir`) and
   starts at `point` moved by his own shove (the shove is instant: the hero moves the drawn cut the
   same way, so both sit on the body the freeze holds).
+  **The body answers where it was hit** (ADR-149; `react.js` `class HitReact`, numbers `reactTuning.js`
+  `REACT`): `d.hitReact.hit(R)` from `takeHit` for a sword cut only (`o.swing || reel > 0`, at
+  `impactK('react', 'duelist')` > 0; R = { k, part, point, cut, dir, thrust, heavy, crit, reel, skid,
+  moved }) and from `onExecute` (a heavy thrust fold). `_animate` order: `hitReact.restore()` →
+  jolt, pilot → `anim.update` → `_gameplayPoints()` → `hitReact.apply(dt)` → lean on →
+  `updateMatrixWorld` → `_drawnPoints()`; `reset()` calls `hitReact.reset()`, `_poseAt` restores it
+  before posing. Gameplay points never see it; up to 3 slots add.
 - `brain.js` `class DuelBrain(d)`: the mind and timeline (modes sleep, intro, foot, act, react, broken,
   dying), all data from `d.kit`. Phases are generic: when a gate is hit it starts
   `kit.transitions[phase]` and emits `dragon:phase<n>`; `forcePhase(n)` for the Lab. Beats: a zone hit
@@ -3124,6 +3206,10 @@ data and a subclass with a few hooks.
     CALLS lands at least `guard.sep + margin` from every known impact needing the other answer (the running
     move's beats included): 0 now is clear, -1 nothing up to `max` clears it (do not call it). Count a
     delay with `stats.delays++`.
+  - `worldClash(landsIn, tell)` → true when a blow of his already cued needs the other answer within
+    `guard.sep` of a falling piece's landing (`landsIn` s from now): `world/destructibles.js` asks it at
+    the felled piece's flash, and on true the piece lands uncued and harmless (`quiet`; a fizzle;
+    ADR-133: a blow told before the piece began to fall and that no hold could clear).
   - `stats` `{ picks, links, chains, cuts, rests, holds, holdTime, feints, toldFeints, delays, fizzles, floors,
     seeks }`; `guardLog`: a ring of 64 `{ t, kind: 'feint' | 'toldFeint' | 'fade' | 'uncalled', what, with }`
     (what the guard stepped in for; `ABYSS_PGUARD=1` prints the tally); `ledger` (the `CueLedger`).
@@ -3192,6 +3278,16 @@ data and a subclass with a few hooks.
     `player.startBladeLock` (the lock at range: the beam clash, which also passes `camera`).
   - `_tradeNow` (the trade clash from `takeHit`) ignores a beat marked `selfHit` or `sustain` (a beam's head,
     a stream held lit is no blow of his body to trade with).
+  - `stance: { from = 0.3, open = 0.6 }` (the third wave, 2026-11-22) on a FEINT beat with a bait `hold`:
+    THE COUNTER STANCE. From `from` of the windup to the impact `brain.catching()` returns the beat;
+    `duelist.takeHit` (before the guard, for any cut that is not `exact`) then CATCHES the cut:
+    `duelist._catch` deals no damage and no posture, draws the deflect's sparks on the crossing, emits
+    `dragon:guard { heavy, deflect: true, caught: true }` (HUD "CAUGHT"), bounces the hero
+    (`player.onGuarded({ deflect, caught })`) and calls `brain.onCaught(beat)`, which marks it and
+    `skipTo(beat.end)`: the beats after it (the punish) start at once. A stance nothing was cut into by
+    its impact ends the move there (`_stanceMiss`: `_toFoot(open)`, `raiseT` held at `open`, so his
+    guard stays down: the reward for waiting). `brain.stats.caught` / `stanceMiss`. The actor draws the
+    stance (Tian Lei: `fx.stanceGlow` from `afterPose` while catching).
   - `ledger.js` `discPath(s, p, reach, H, out)`: a thrown disc still going out (`s.kind 'disc'`, `phase
     'fly'`) flies on a curve (`curve` rad/s) to `range` m of path, hangs `hang` s, then comes home
     THROUGH where the hero stands at the turn (`through`, the default) or to the hand `H`; writes into
@@ -3427,8 +3523,9 @@ ignites and he leaps to the seal; a skipped intro puts him where the leap lands.
 A `Duelist` with `ASC_KIT`; COMBAT.md → "Tian Lei, the Last Ascendant" has the fight. Bare-handed: no
 weapon, three forms with a bar each (the Lord's `lives` structure), ki (blasts, a disc, bolts, called
 strikes, beams) and moves on the ring's tiles. The kit: `{ id: 'ascendant', TUNING, MOVES, MOVE_NAMES,
-CLIP, realise, transitions: { 2: 'ascend2', 3: 'ascend3' }, counterMove(form) → riposte / riposte2 /
-riposte3, streakMove(form) → streakFlurry / 2 / 3, maxPhase: 3, loadout: ASC_LOADOUT, poses, blade: FIST,
+CLIP, realise, transitions: { 2: 'ascend2', 3: 'ascend3' }, counterMove(form) → one of the form's
+`COUNTER_LISTS` (moves.js; riposte / riposte2 / riposte3 and the third wave's, drawn on the AI's stream),
+streakMove(form) → streakFlurry / 2 / 3, maxPhase: 3, loadout: ASC_LOADOUT, poses, blade: FIST,
 scale: TUNING.scale, dress: dressAscendant }` (`poses`: `loco` = his form's footwork plus the dash's lean
 by `pilot.dashK`; `duel` = his form's clip plus the feet planner's offsets). The boss slot's surface, plus:
 ```
@@ -3508,7 +3605,17 @@ transformation's windup, the stars of a break. `brainFrame` also counts how long
 (within 2.6 m): past 4 s a `burst` move (Aura Burst) weighs × 3.
 
 **The moves are data** (`moves.js`: `MOVES = { ...meleeMoves(X), ...kiMoves(X), ...terrainMoves(X) }`,
-`MOVE_NAMES`, `STREAKS`, `TRANSITIONS`, `COUNTERS`, `CLIPS` / `CLIPS_BY_FORM` / `CLIP`, `realise`). A move
+`MOVE_NAMES`, `STREAKS`, `TRANSITIONS`, `COUNTERS` (each form's first counter) and `COUNTER_LISTS` (every
+counter of each form, the third wave: `[['riposte', 'riposteKnee'], ['riposte2', 'riposteVanish'],
+['riposte3', 'riposteBolt']]`), `CLIPS` / `CLIPS_BY_FORM` / `CLIP`, `realise`). **The third wave's data**
+(2026-11-22; `moves/melee.js`): `signKeys(X, { coil, hit, after, keys, cock = 0.76, left })` prepends the
+SIGN (the hand rising at u 0.18, two fingers at the brow at u 0.5) to a strike's keys, for a beat with
+`blink: { ..., sign: true }`; a sign beat carries `close: 0` and a short `dash` into reach after the
+arrival (`TUNING.sign`: behind 2 m, a side at 1.5 rad / 2.2 m, a step of 1.6 m from u 0.55, a riposte's
+hop back 1.5 m). A counter stance is a feint beat `{ tell N, windup 0.45 fixed, hold [0.2, 0.4], stance:
+{ from 0.3, open 0.6 }, part 'palms' }` (`TUNING.stance`) followed by its punish beats (Still Water,
+Golden Mirror, Thunder Mirror; `cat 'single'`). Thunder Mirror's and riposteBolt's bolt is a `ki: 'bolt'`
+line beat built in melee.js. A move
 file is a function `(X) => ({ name: move })` of the frozen builders object `X` (no import of moves.js: no
 cycle): `moves/melee.js`, `moves/ki.js` (joins `moves/kiShots.js` and `moves/kiBeam.js`),
 `moves/terrain.js`. `X = { TELL: { N, B, R, K }, TUNING, W, F, mirror, strikeKeys, follow, rotXZ, punch,
@@ -3536,7 +3643,10 @@ reads `sweep`). **The blink** (`beatMotion`, once at u 0.1 of the windup; then a
 `{ behind: m }` (behind the hero by his facing, else to one side, then the other), `{ land: true, side }`
 (beside where the hero's knock-back will end, on the side he came from: `_slideEnd`), `{ edge: true, pad }`
 (at the ring's edge farthest from the hero, `pad` 1.2 m inside his bound: the great beam), `{ at: rad, r }`
-(at a side of the hero: `at` rad round from his facing, 0 before him, PI behind; Mirage).
+(at a side of the hero: `at` rad round from his facing, 0 before him, PI behind; Mirage). **The sign**
+(the third wave): `sign: true` on any of them delays the vanish to u 0.5 of the windup (`signAt`); the
+beat's keys up to there show two fingers raised to his brow (`moves/melee.js` `signKeys`), and the moment
+he goes `fx.signSnap` flashes at the right hand (`tellPoint('fistR')`), then the usual `vanish`.
 
 **`ShotMoves`** (`kiShots.js`, `d.ki.shots`; numbers `TUNING.shots`, `tuningShots.js`): `begin` (false for
 a second disc, rain or volley while one runs), `weigh`, `onRelease` (the blasts leave the striking palm:
@@ -3549,7 +3659,22 @@ volley's strikes, the weather Thunderfall in form 3 (at most 2 live; never while
 reactions, a break or a transformation), the corner bolts), `busy`, `reset`, `stats`. Public:
 `returned(s)` (a returned blast reached him: 50 damage, 34 posture, `dragon:returned` kind 2), `discBack(s)`
 (the disc caught), `corners()` (ascend3's four bolts on `RING.corners`, 0.12 s apart: a called strike with
-its cue on a hero standing within 2.4 m of one, else a harmless bolt). Its game rolls come from its own
+its cue on a hero standing within 2.4 m of one, else a harmless bolt). **The third wave** (2026-11-22):
+`cast.kind` 'lantern' (Heaven's Lantern: `begin` tells the ledger the orb's arrival and retimes it through
+the gather, `motion` draws `fx.lanternGather` over his palms and dims the ring, `onCast` throws one
+'blast' record with `lantern: true` (size 4.5, radius 2, speed 10, `y` 3.6 falling to `yTo` 1.3 at the
+hero: `fx._flyBlast`'s linear fall), aimed `lead` s ahead of the hero, never homing; `lanternMet(s, r)`
+(fx.js calls it with the hero's RESULT): a block or a plain parry bursts it on the guard (`lanternBurst`
+'guard', a crater), a roll lets it pass to burst on the floor, a PERFECT parry starts THE PUSH
+(`_startPush`: `brain.startLock` at range with `T.lantern.push`, the orb held on the blade and drawn by
+`fx.lanternClash`); `lockEnd(won)`: won = `s.returned = true` (fx.js's return path flies it into his
+chest: `returned(s)` deals `returnDamage` 120 / `returnPosture` 220 and he reels `reel` 3 s), lost = 40,
+knockdown, thrown 10 m, a crater; `lanternOut` (the class weighs every other move 0 while it is out, and
+the weather stands down) and 'barrage' (Raining Suns: `_startRain` generalised with options `aim 'hero'`,
+`air`, `yTo`, `lead`, `scatter`, `direct`, `side`: sixteen blasts poured from the alternating palms 3 m
+up, falling onto the hero, every `direct`-th on him; then a `release` with `air` / `yTo`, the finisher).
+Blast records gained `yTo` / `y0` / `yLen` (a fall over the flight) and `lantern`; every old blast flies
+as before. Its game rolls come from its own
 seeded stream (`rand`, reseeded at each reset). What is planned but not yet thrown or called is told to
 the ledger (`brain.expect`), and each throw or call asks `brain.fairDelay` first.
 
@@ -3645,6 +3770,8 @@ beamSplash(x, y, z, k, dt, form = 1)        where the beam ends on something (th
 beamClash(x, y, z, dx, dz, k, dt, form = 3) the head grinding on the hero's blade; k the lock's meter
 beamSplit(x, y, z, dx, dz, len, form = 3)   the clash won: the beam split round the blade (once, or every frame)
 vanish(d, x0, z0, x1, z1, form = 1)         the blink: the shape he leaves, the streak, a puff at each end
+signSnap(x, y, z, form = 1)                 the sign's snap at the fingers on his brow as he goes (once)
+stanceGlow(d, dt, form = 1)                 a counter stance: light drawn into both open palms (every frame catching)
 dashGhost(d, form = 1)                      the afterimage a dash leaves
 auraBurst(x, z, r, form = 2)                a shock ring out of his body to r m (Aura Burst, a landing)
 crater(x, z, r, k = 1)                      a heavy blow on the floor: dust, chips, lit cracks (draws only)
@@ -3797,7 +3924,7 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   `dragon:bite`, `dragon:hurt {damage, part, hp, crit}`, `dragon:parried {attack, tell, hit, last, bullet, perfect}` (hit = 0-based
   index in its string, last = the string's last hit or a single attack: only then a recoil; bullet: true = a
   deflected bullet, hit 0, last false: posture only, the wyrm is not interrupted and audio stays silent; perfect:
-  true = the bullet is returned), `dragon:returned {kind, damage, x, y, z}` (a perfectly parried bullet's return
+  true = the bullet is returned), `dragon:returned {kind, damage, x, y, z, lantern}` (a perfectly parried bullet's return; lantern true = Heaven's Lantern's orb pushed back into him
   lands on the head: kind 0 ember (1 was the wisp, removed in ADR-119), damage dealt, x/y/z the head; audio plays its hit, the HUD its number,
   flow counts it in the run stats like a sword hit),
   `dragon:streak {count, ready}` (a duelist's streak of guards changed; ready = his flurry may come), `dragon:flurry {count}`
@@ -3808,9 +3935,10 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   `dragon:phase3`, `dragon:phase4` (a duelist's later phases: the Starless Lord's blade forms), `dragon:phase {n}` (the wyrm: with phase 2 and 3, on the transition roar), `dragon:plunged {execution}`
   (contract 2: every plunge that lands, even during a transition or the killing one),
   `dragon:death`, `dragon:dead`,
-  `dragon:guard {heavy, deflect}` (a duelist's guard turned the hero's strike: no damage, guard posture; HUD
+  `dragon:guard {heavy, deflect, caught}` (a duelist's guard turned the hero's strike: no damage, guard posture; HUD
   "GUARDED", audio a dry clack; deflect = he beat it away and the hero bounces: HUD "DEFLECTED", a harsh falling
-  clang, a flicker of the frame), `dragon:deflected {count}` (every real hit of a long string parried:
+  clang, a flicker of the frame; caught = the cut was caught in a counter stance (a beat marked stance): no
+  posture either, HUD "CAUGHT", his punish follows at once), `dragon:deflected {count}` (every real hit of a long string parried:
   the full deflect; HUD "PERFECT DEFLECT"),
   `dragon:spell {name, x, z, part}` (a fire attack's signature moment: the strafe's pass, the dive, the barrage's
   rise, a spell's cast / the nova's charge start, a bullet pattern's cast (cinderSpit, emberRain, fireLanes among

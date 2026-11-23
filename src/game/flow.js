@@ -863,6 +863,8 @@ export class GameFlow {
       g.fx?.add?.clear?.();
       g.fx?.fire?.clear?.();
       g.fx?.shed?.clear?.();
+      g.fx?.ripple?.clear?.();
+      g.fx?.stamp?.clear?.();
       g.fx?.alpha?.clear?.();
     }, 'fx.clear');
     this._try(() => g.world?.atmosphere?.setBonfireLit?.(true), 'setBonfireLit');

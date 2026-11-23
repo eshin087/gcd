@@ -10,6 +10,8 @@ import { prep, lumpy, carve, slabGeometry, mul, SLAB_LOOK, buildDeadTree, buildF
 import { buildSpike, buildFallenStar, starCleft, facetCol, STAR_GLASS, STAR_COLLIDERS } from './landmarks.js';
 import { breakableFloor } from './floor.js';
 import { STONE } from './forest.js';
+import { OUTSKIRTS, kindBag, buildOutskirt } from './starfallProps.js';
+import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
 
 // The Obsidian Throne: STARFALL (the Starless Lord's level; the owner's pick "A" of three rendered
 // open arenas, 2026-11-15, ADR-112; before it a walled hall, ADR-069). The crater where he fell out
@@ -62,6 +64,9 @@ export const THRONE = {
 const SIN_PITCH = Math.sin(CONFIG.camera.pitch);
 /** The trunks thrown down this close to the seal are breakables (2026-11-16): the hero reaches them. */
 const NEAR_LOGS = 32;
+/** What lies round the crater (world/starfallProps.js): how many pieces, how far apart at least, and
+ *  out to where they break (the hero's ground ends 40 m from the seal). */
+const OUT_N = 125, OUT_GAP = 3.8, OUT_REACH = 43, OUT_NEAR_H = 3;
 /** The path's flagstones (forest.js buildFlagstone's colour). */
 const flagCol = (px, py, pz) => mul(STONE, 0.6 + 0.4 * fbm2(px * 2, pz * 2, 2));
 const OBS = [0.075, 0.078, 0.105]; // obsidian
@@ -353,28 +358,60 @@ export function createThroneHall(U, colliders) {
   propGeos.push(...buildBonfire(rng, BF.x, BF.z));
   colliders.add(BF.x, BF.z, 0.75, 'bonfire');
   bare.push({ x: BF.x, z: BF.z, r: 2.4 });
-  // ---- the forest thrown flat: every trunk points away from the crater; far out some still stand
   const clear = (x, z) => Math.hypot(x, z) > R + 4.5 && !(z > 0 && z < BF.z + 4 && Math.abs(x) < 4.4) && !(Math.abs(x) < 9 && z < L.daisZ && z > T.z - 12);
-  for (let i = 0, n = 0; i < 8000 && n < 110; i++) {
-    const a = rng() * TAU, r = R + 5 + Math.pow(rng(), 1.2) * 34, x = Math.cos(a) * r, z = Math.sin(a) * r;
-    if (!clear(x, z) || treeSpots.some((t) => Math.hypot(t.x - x, t.z - z) < 3.4)) continue;
-    const s = range(rng, 0.85, 1.35), flat = r < R + 24 || rng() < 0.3;
-    if (flat) {
-      const yaw = Math.atan2(x, z) + range(rng, -0.22, 0.22);
-      const g = fallenTree(rng, x, z, s, yaw);
-      // (a log is not walked through: two circles along it, where the hero can get to)
-      const cs = r < 38 ? [1.1, 3.3].map((f) => colliders.add(x + Math.sin(yaw) * f * s, z + Math.cos(yaw) * f * s, 0.36 * s, 'trunk')) : [];
-      // the trunks thrown down nearest the crater break and burn (2026-11-16): it lies, it does not fall
-      if (r < NEAR_LOGS) {
-        const mx = x + Math.sin(yaw) * 2.2 * s, mz = z + Math.cos(yaw) * 2.2 * s;
-        breakables.push({ kind: 'log', mat: 'wood', look: 'grid', x: mx, z: mz, r: 1.6 * s, h: 0.7 * s, geos: g, colliders: cs, topples: false, cover: false, lift: 1, wreck: false });
-      } else treeGeos.push(...g);
-    } else {
-      treeGeos.push(...buildDeadTree(rng, x, z, s));
-      if (r < 46) colliders.add(x, z, 0.42 * s, 'trunk');
+  const outskirts = lookOf('outskirts', '0', 'c');
+  if (OUTSKIRTS[outskirts]) {
+    // ---- what the star's fall left lying round the crater (world/starfallProps.js), on a stream of its
+    // own: spots first (none on the path, none behind the throne), then a shuffled bag of kinds
+    const or = mulberry32(CONFIG.seed + 14312), spots = [];
+    for (let i = 0; i < 9000 && spots.length < OUT_N; i++) {
+      const a = or() * TAU, r = R + 4.8 + Math.pow(or(), 1.1) * 38, x = Math.cos(a) * r, z = Math.sin(a) * r;
+      if (!clear(x, z) || spots.some((t) => Math.hypot(t.x - x, t.z - z) < OUT_GAP)) continue;
+      spots.push({ x, z, r });
     }
-    treeSpots.push({ x, z, r: 2.4 * s });
-    n++;
+    const bag = kindBag(or, OUTSKIRTS[outskirts], spots.length);
+    spots.forEach((p, i) => {
+      let b = buildOutskirt(bag[i], or, p.x, p.z, Math.atan2(p.x, p.z), range(or, 0.85, 1.2));
+      // nothing tall on the near side, between the camera and the duel: a banner there is a grave instead
+      if (p.z > 6 && geosHeight(b.geos) > OUT_NEAR_H) b = buildOutskirt('cairn', or, p.x, p.z, Math.atan2(p.x, p.z), range(or, 0.85, 1.1));
+      if (p.r < OUT_REACH) {
+        // within the hero's reach it breaks where it stands: stone leaves its rubble, wood and steel
+        // nothing standing. It never topples (a grave of swords or a cart is no trunk to fell; and the
+        // Lord's fight keeps the pieces it was tuned with to bring down on the hero: the rim's shards)
+        const stone = b.mat === 'stone';
+        breakables.push({
+          kind: b.kind, mat: b.mat, look: 'prop', x: p.x, z: p.z, r: b.r, h: geosHeight(b.geos), geos: b.geos, topples: false,
+          colliders: b.cr > 0 ? [colliders.add(p.x, p.z, b.cr, 'stone')] : [], lift: b.lift ?? 0,
+          ...(stone ? { broken: { geos: buildRubble(br, p.x, p.z, Math.min(1, b.r * 0.6), { col: mul(STONE, 0.9), h: range(br, 0.25, 0.5) }), look: 'prop', r: 0 } } : {}),
+        });
+      } else {
+        stoneGeos.push(...b.geos);
+        if (p.r < 46) colliders.add(p.x, p.z, b.cr, 'stone');
+      }
+    });
+  } else {
+    // ---- the forest thrown flat: every trunk points away from the crater; far out some still stand
+    for (let i = 0, n = 0; i < 8000 && n < 110; i++) {
+      const a = rng() * TAU, r = R + 5 + Math.pow(rng(), 1.2) * 34, x = Math.cos(a) * r, z = Math.sin(a) * r;
+      if (!clear(x, z) || treeSpots.some((t) => Math.hypot(t.x - x, t.z - z) < 3.4)) continue;
+      const s = range(rng, 0.85, 1.35), flat = r < R + 24 || rng() < 0.3;
+      if (flat) {
+        const yaw = Math.atan2(x, z) + range(rng, -0.22, 0.22);
+        const g = fallenTree(rng, x, z, s, yaw);
+        // (a log is not walked through: two circles along it, where the hero can get to)
+        const cs = r < 38 ? [1.1, 3.3].map((f) => colliders.add(x + Math.sin(yaw) * f * s, z + Math.cos(yaw) * f * s, 0.36 * s, 'trunk')) : [];
+        // the trunks thrown down nearest the crater break and burn (2026-11-16): it lies, it does not fall
+        if (r < NEAR_LOGS) {
+          const mx = x + Math.sin(yaw) * 2.2 * s, mz = z + Math.cos(yaw) * 2.2 * s;
+          breakables.push({ kind: 'log', mat: 'wood', look: 'grid', x: mx, z: mz, r: 1.6 * s, h: 0.7 * s, geos: g, colliders: cs, topples: false, cover: false, lift: 1, wreck: false });
+        } else treeGeos.push(...g);
+      } else {
+        treeGeos.push(...buildDeadTree(rng, x, z, s));
+        if (r < 46) colliders.add(x, z, 0.42 * s, 'trunk');
+      }
+      treeSpots.push({ x, z, r: 2.4 * s });
+      n++;
+    }
   }
   // ---- the south lip: two knee-high stones either side of the path mark where the floor begins
   for (const sx of [-1, 1]) {
@@ -395,6 +432,7 @@ export function createThroneHall(U, colliders) {
     ...SLAB_LOOK, gain: 1.55, lumScale: 2.2, edge: 0.42, inkFloor: 0.03, crackAmount: 0.3, topGlyphs: ['.   ', '. . ', '.:. ', ':.;.', ';:=.', '=;%:'], viewPitch: CONFIG.camera.pitch,
   });
   const add = (geos, m, name) => {
+    if (!geos.length) return; // (no trees round the crater but under ?outskirts=0)
     const mesh = new THREE.Mesh(mergeGeometries(geos), m);
     mesh.name = name;
     group.add(mesh);

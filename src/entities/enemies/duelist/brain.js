@@ -26,6 +26,10 @@ import { answerOf, DODGE, prepareChoose, directWeight, booked, linkFor, linkUsab
 //       (>= pressure.guard.sep + margin s) of every known impact needing the other answer, the
 //       running move's beats included: 0 = now is clear, -1 = no wait up to `max` clears it (call it
 //       later or not at all). Count a delay you made with brain.stats.delays++.
+//   brain.worldClash(landsIn, tell) → bool
+//       A felled piece of the world asks at its flash (world/destructibles.js): true = a blow of his
+//       already cued needs the other answer within pressure.guard.sep of its landing; it then lands
+//       uncued and harmless (counted in stats.fizzles).
 //   brain.stats  { picks, links, chains, cuts, rests, holds, holdTime, feints, toldFeints, delays, fizzles, floors, seeks }
 //       picks: AI picks · links: moves started from a LINKS entry · chains: moves started by the old
 //       flow roll (`chain`) · cuts: of those, started before the recovery's end (`cut`) · rests:
@@ -66,6 +70,14 @@ import { answerOf, DODGE, prepareChoose, directWeight, booked, linkFor, linkUsab
 //                          and calls d.onImpact, but gives no zone result and no world blow of its own.
 //   T.airFall { g }        (TUNING) a reaction / break / death that starts in the air drops him to the
 //                          floor at `g` m/s² instead of snapping the root to y = 0.
+//   stance: { from, open } (Tian Lei's third wave, 2026-11-22) on a FEINT beat with a bait `hold`: THE
+//                          COUNTER STANCE. From `from` (0.3) of the windup to the impact he is catching
+//                          (brain.catching() → the beat): a sword cut that reaches him is CAUGHT
+//                          (duelist.takeHit: no damage, the hero's blade thrown back as by a deflect,
+//                          `dragon:guard { deflect, caught }`) and the move jumps to the beat's end
+//                          (onCaught), so the beats after it, the punish, start at once. Nothing caught
+//                          by the impact: the move ENDS there (its later beats never play) and he stands
+//                          open `open` s (0.6) with his guard down. brain.stats.caught / stanceMiss.
 // startLock(o) takes overrides of TUNING.lock (`dist`: the lock at range, player.startBladeLock).
 //
 // THE SHEATHED'S FIELDS (ADR-144; a beat or a move without them behaves exactly as before):
@@ -187,7 +199,7 @@ export class DuelBrain {
     this.seek = null;
     this.seekNext = 0;
     this._phaseSeen = 0;
-    this.stats = { picks: 0, links: 0, chains: 0, cuts: 0, rests: 0, holds: 0, holdTime: 0, feints: 0, toldFeints: 0, delays: 0, fizzles: 0, floors: 0, seeks: 0 };
+    this.stats = { picks: 0, links: 0, chains: 0, cuts: 0, rests: 0, holds: 0, holdTime: 0, feints: 0, toldFeints: 0, delays: 0, fizzles: 0, floors: 0, seeks: 0, caught: 0, stanceMiss: 0 };
     this.guardLog = Array.from({ length: 64 }, () => ({ t: -1, kind: '', what: '', with: '' }));
     this._gi = 0;
     this.ledger?.reset();
@@ -487,6 +499,21 @@ export class DuelBrain {
   }
 
   /**
+   * A falling piece of the world asks at its flash (world/destructibles.js, `landsIn` s before it
+   * lands): does a blow of his already cued need the other answer within `sep` of its landing? Then it
+   * lands uncued and harmless (true), as a thrown piece the guard could not clear does. (A blow told
+   * before the piece began to fall is held at its own cue if a hold clears it; when none does, both
+   * cues went out within 0.3 s: lord.mjs pace, seed 4242 form 2, a void push and a felled shard.)
+   */
+  worldClash(landsIn, tell) {
+    const G = this.P?.guard;
+    if (!G || !Number.isFinite(landsIn)) return false;
+    if (!this.ledger.conflict(this.ledger.now + landsIn, answerOf(tell), G.sep ?? 0.3, true)) return false;
+    this.stats.fizzles++;
+    return true;
+  }
+
+  /**
    * The world warns of a falling piece landing at `at` (ledger time) needing `ans` (a felled pillar,
    * a wrenched shard: no one can move it). What of his is in flight, not cued yet, and would land
    * within sep + margin + pad of it needing the other answer gives way: a crescent / push / fissure
@@ -704,6 +731,39 @@ export class DuelBrain {
     if (!a || !(t > a.t)) return;
     this.clipT += t - a.t;
     a.t = t;
+  }
+
+  /** The counter stance he is in now (a beat marked `stance`, inside its catching window), else null. */
+  catching() {
+    const a = this.act;
+    if (this.d.mode !== 'act' || !a) return null;
+    const t = a.t;
+    for (const b of a.beats) {
+      const C = b.def.stance;
+      if (!C || b.caught || b.catchOver) continue;
+      if (t >= b.impact) return null;
+      const from = b.start + clamp(fin(C.from, 0.3), 0, 1) * (b.impact - b.start);
+      return t >= from ? b : null;
+    }
+    return null;
+  }
+
+  /** A cut was caught in stance beat `b` (duelist.takeHit): the move jumps to the beat's end, so the
+   *  punish after it starts now. */
+  onCaught(b) {
+    if (!b || b.caught) return;
+    b.caught = true;
+    this.stats.caught++;
+    this.skipTo(b.end);
+  }
+
+  /** The stance caught nothing by its impact: the move ends here, and he is open `open` s. */
+  _stanceMiss(a, b) {
+    const open = Math.max(0, fin(b.def.stance?.open, 0.6));
+    this.stats.stanceMiss++;
+    this._toFoot(open);
+    this.raiseT = Math.max(this.raiseT, open);
+    this.wardK = 0;
   }
 
   /** The hero is parrying this blow (duelist.parryContact): the pose shown is held `off` s back on
@@ -1139,6 +1199,13 @@ export class DuelBrain {
     if (!cur && this.aiEnabled && !a.def.transition && this.guardUp() && this._evade(s)) return;
     // the hits: the zone through the active frames, one result per beat
     for (const b of a.beats) {
+      // a counter stance that caught nothing by its impact: the move ends there (the beats after it
+      // were its punish), and he is open
+      if (b.def.stance && !b.caught && !b.catchOver && t >= b.impact) {
+        b.catchOver = true;
+        this._stanceMiss(a, b);
+        return;
+      }
       if (b.feint || b.done || t < b.impact) continue;
       if (!b.struck) {
         b.struck = true; // the impact's first frame: the actor's own FX (a bolt, a shock ring)
@@ -1322,7 +1389,8 @@ export class DuelBrain {
     const x0 = d.position.x, z0 = d.position.z;
     // close-in: through the windup he steps in toward the hero (at most b.close m), arriving at the
     // impact where the zone reaches him: a cut is never thrown at air, and the lunge reads as the tell
-    if (b.close > 0 && L && u >= 0.15 && t < b.impact && !this.leap) {
+    // (not before a SIGN's vanish: he stands for the sign, and closes from where he arrives)
+    if (b.close > 0 && L && u >= 0.15 && t < b.impact && !this.leap && !(D.blink?.sign && !b._blinked)) {
       const gap = L.dist - this._ideal(D.zone);
       const budget = b.close - (b.closed ?? 0);
       if (gap > 0.02 && budget > 0) {

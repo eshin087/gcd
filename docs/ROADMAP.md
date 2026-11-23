@@ -184,7 +184,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
-## M1.56 — A fifth level: the Windless Grove and the Sheathed (2026-11-22, `level/the-sheathed`, ADR-144 – ADR-146)
+## M1.59 — A fifth level: the Windless Grove and the Sheathed (2026-11-22, `level/the-sheathed`, ADR-144 – ADR-146)
 - [x] `?level=grove`: the bamboo grove (light pieces), the Sword Grave, the paving; `?grove=a|b|c`
 - [x] Lu Wusheng, the Sheathed: three phases, the sheath on the rig, the draw's rule (parry or die, a held
       guard never hurt, the honor gate), the grove falling on the click, the hanging cuts
@@ -193,6 +193,57 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [ ] The owner's picks from the sheets: his body, the cut, the grove's light
 - [ ] His own score (borrowed tracks until an audition page)
 - [ ] A human playtest of the draw on the phone; One Breath's balance bot on Shen Hui
+## M1.58 — A landed cut has weight: the impact pass (2026-11-22, `combat/impact-weight`, ADR-149)
+- [x] Nine ideas proposed; the owner built the first batch (the stamp, the ripple, the reaction by
+      where it lands, the sound's weight)
+- [x] The core: `combat/impact.js` switches (`?impact=`, the Lab's 'impact' row), one hit record at
+      the drawn contact; every piece off = the game as before
+- [x] The stamp: the hit printed in the letter grid, stepped, a shape per tier, ink on black, never
+      over the hero
+- [x] The ripple: a pressure wave through the struck boss's letters (round 2; round 1 did not read)
+- [x] The reaction, drawn only: the human bosses (head, body, leg; a thrust folds) and the wyrm
+      (head, neck, body, leg, wing, tail)
+- [x] The thump: a sub under heavy blows, a short dip of the music (never the cue bus)
+- [x] Same-take clips for the owner; the picks: the stamp on the human bosses only, a human boss's
+      reaction x1.5, the wyrm's x1, the ripple and the thump x1
+- [x] Tests: integ `stamp`, `ripple`, `wyrmreact`, `thump`; duel `react`
+- [ ] Follow-ups:
+  - [x] Calm at the contact: today's flare toned down in graded levels (`?calm=0..3`); the owner
+        picked level 1, now the default (`combat/impactCalm.js`; integ `calm`)
+  - [ ] Calm at the contact on the phone, on crits, the execution, the Lord and Tian Lei
+  - [ ] C: wounds that stay
+  - [ ] E: a spray along the blade
+  - [ ] F: the ground answers heavy blows
+  - [ ] G: the same care when the hero is hit
+  - [ ] I: an impact frame
+  - [ ] A real phone: the ripple's second version on the LOW / touch path, the frame rate
+  - [ ] A human plays it; the thump heard on speakers and on a phone
+  - [ ] Not filmed yet: the execution and crits (stamp, ripple), a flurry and Tian Lei (reactions)
+## M1.57 — Round the Obsidian Throne, what the challengers left (2026-11-22, `level/throne-props`, ADR-133)
+- [x] The felled forest's identical logs in a starburst replaced: 13 kinds of piece in the prop art
+      path, each built afresh, faced to the camera, lying along the blast's way out
+- [x] Four options rendered in game for the owner (a shrine / the star's debris / the challengers /
+      all); the owner picked the challengers (`?outskirts=c`), the rest behind the switch
+- [x] Within 43 m they break where they stand (stone leaves rubble; banners and carts burn; none
+      topples, so the Lord's fight is as tuned); nothing tall on the near side
+- [x] The fairness guard: a felled piece that would land near a blow of his already cued, needing
+      the other answer, lands uncued and harmless (`brain.worldClash`; a gap main had too)
+- [ ] The owner plays it
+- [ ] Their own break / burn tuning (today the material defaults)
+
+## M1.56 — Tian Lei's third wave: the sign, the counter stances, the great orb, the barrage (2026-11-22, `enemies/ascendant-moves`, ADR-135)
+- [x] The engine: a counter stance as a beat (`stance`), the sign before a vanish, several counters a form
+- [x] The sign: Sign Step, Three Signs; the first vanish of Vanishing Step, Storm Waltz, Mirage and the thunder Riposte
+- [x] Three counter stances (Still Water, Golden Mirror, Thunder Mirror) and three more ripostes
+- [x] Heaven's Lantern and THE PUSH; Raining Suns and its returnable finisher
+- [x] Training situations, Lab row, test scenarios; the move tables regenerated; PACE green over ten seeds, 0 conflicts
+- [ ] Follow-ups:
+  - [ ] The owner plays it: the stances' hold (0.2 - 0.4 s) and the open window, the orb's speed, the barrage's spread
+  - [ ] The owner picks the orb's look (`?ascOrb=a|b`)
+  - [ ] The sign's hand at the game camera (a few cells under the aura): a brighter hand, or the camera closer for the sign
+  - [ ] The orb drawn as large as its hit; the push's crater and camera tuned
+  - [ ] A real phone: the push's touch block, the barrage's cues
+
 ## M1.55 — The hero looks the same on every screen (2026-11-21, `player/hero-look-everywhere`, ADR-130)
 - [x] His letter cell follows his size: 0.115 m at his depth on every screen and camera distance
       (the owner's reference picture: 9 letters across the cloak); the lines step with the letters
