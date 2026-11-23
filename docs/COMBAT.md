@@ -264,13 +264,22 @@ hazard the ground heats up from its spawn     its edge shows, the heat flares, a
   strokes opening round it (0.28 s) — still white, never blue.
 - **The sounds (2026-11-22; owner: "it should only have the sound played for red/blue attacks").**
   Only a blue and a red / black blow have cues: a warning as the windup starts and a timing sound
-  just before it lands, recorded in-world one-shots (`cue-blue` / `cue-red`, `time-blue` /
-  `time-red`; the synth sting / ping until they load). Every boss blow, normal ones included, makes
+  just before it lands: the red ones recorded (`cue-red` / `time-red`), the blue ones the synth sting
+  and ping (the owner's pick, 2026-11-23). Every boss blow, normal ones included, makes
   its own sound through the air, its loudest moment on the impact: a sword boss's blade (light, heavy,
   thrust, the Sheathed's draw), a bare-handed boss's fist or kick, the wyrm's claws and tail; the
-  hero's own blade is pitched a little above theirs. Hazards and bullets keep their cues.
+  hero's own light cut is pitched a little above theirs (his heavy cut and thrust are the synth's).
+  Hazards and bullets keep their cues.
   `?sfx=old` restores the sounds before (a tick on every tell, the ping on every flash, all synth).
   ARCHITECTURE.md → Audio, "The attack sounds".
+- **The combat core's sounds (2026-11-23, round 2).** The parry of a blade is a recorded steel clash
+  (an ordinary blow; a bigger one for a blue blow and a perfect parry, which keeps its crack and high bell
+  and the streak's note); the deflect chain no longer climbs in pitch with a bell: it builds weight
+  (`?chain=a|b|c`). A blow on you, your cut on the wyrm, the blade's bite on a landed cut (light / heavy),
+  the slam, the flurry's cuts (still a step higher each) and its coil (its top on the strike), the
+  plunge's dive (its loudest moment on the landing) and hit, the clash and the boss's guard are recorded
+  or designed one-shots at the synth's level; the block, the guard break, the dodge, the Ghostep, the
+  roll, a duelist's cloth, the flurry's burst and the boss's deflect keep their synth.
 - **One design for every boss (ADR-113).** The three cues are drawn by `DuelFx.tellFlash(tell, x, y,
   z, k)` in the fire field (data: `TELL_GLINT`, `TELL_BLAZE` in `enemies/duelist/fx.js`); the wyrm
   draws its own through the same code at 1.5x. The red cue is a ragged blaze of red letters thrown
