@@ -190,7 +190,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Phase 1 in two gears (one hand, then both at 83 %: an opening); the flurry burst (one cue, one result); spin, tornado, butterfly, flash, cartwheel, bicycle, drop heel and flying-knee strikes; eight new strings
 - [x] Borrowed Wall off the upright at the hero's side (or the floor): a flying side kick or a drop heel, used often
 - [x] The bullets' rule: Iron Rain in bursts of three, one cue and one result each; a hit is a 0.18 s flinch; Iron in the Air
-- [ ] The owner's picks from the sheets: `?oneLetters`, `?onePrint` (and still `?oneLook`, `?hall`, `?script`)
+- [x] The owner's pick from the sheets: `?oneLetters=a`, `?onePrint=a` ("Print a", 2026-11-23)
+- [ ] Still to pick: `?oneLook`, `?hall`, `?script`
 - [ ] On the iPhone: how he reads in letters, the bursts and the wall kick at the phone camera, the frame rate
 - [ ] Cut, for later: phase 3's Falling Leaves, the pillar run inside Iron Rain, `doubleWall`
 ## M1.72 — The living world (2026-11-23, `world/living-world`, ADR-163)

@@ -8,7 +8,7 @@ Seventy-eight pieces of work since 0.4.0:
 - **Xin Yi reworked: drawn like the hero, kicks and flurries, a wall kick, bullets that never lock you** (2026-11-23, ADR-168 – ADR-170). *Changed:* Xin Yi, the One Who Woke, is printed
   like the hero: his letters follow his size on screen, a quieter edge that fades with distance, simpler
   glasses, collar and shirt, a coat that moves in every phase (`?oneLetters=a|0`, `?onePrint=a|b|0`, b one
-  letter size bolder on a phone; not picked yet). Phase 1 runs in two gears: one hand, then both once his bar
+  letter size bolder on a phone; the owner picked a). Phase 1 runs in two gears: one hand, then both once his bar
   is at 83 % (he flips back and the second hand comes out, an opening). *Added:* the flurry burst: a blur of 6 -
   8 blows under ONE glint that one parry, one held guard (a little guard, no health) or one roll answers whole;
   spin back kicks, tornado and butterfly kicks, a flash kick, a no-hand cartwheel kick, bicycle kicks hanging in

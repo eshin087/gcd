@@ -1778,8 +1778,8 @@ async function scenarioHeroLike() {
   const LOOK = await imp('src/entities/enemies/wokenOne/look.js');
   const { Pipeline, HERO_CELLS, BOSS_BIAS_H } = await imp('src/render/pipeline.js');
   const { HERO_INK, heroPartValues } = await imp('src/entities/player/model.js');
-  assert(['oneLetters', 'onePrint'].every((n) => PENDING.includes(n) && pickedOf(n) == null) && LOOK.oneLettersOn() && LOOK.onePrintNow() === 'a',
-    'oneLetters and onePrint wait for the owner (PENDING, not PICKED); they draw a by default');
+  assert(['oneLetters', 'onePrint'].every((n) => !PENDING.includes(n) && pickedOf(n) === 'a') && LOOK.oneLettersOn() && LOOK.onePrintNow() === 'a',
+    'oneLetters and onePrint are the owner pick, a (PICKED, not PENDING; 2026-11-23: "Print a"); they draw a by default');
   const G = build();
   const d = G.game.dragon, kit = d.kit;
   const on = {}, bias = {};

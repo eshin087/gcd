@@ -28,7 +28,9 @@ import { setFill } from '../ashDisciple/bodyArt.js';
 // written there (the Starless Lord's precedent: lord.js writes part 19 for his level), again on every
 // phase change, so a rig built later from HERO_INK cannot leave him in the hero's lavender.
 
-export const ONE_LOOKS = Object.freeze({ oneLook: 'a', oneLetters: 'a', onePrint: 'a' });
+// (oneLetters and onePrint are redraws: their call-site default is '0', as he shipped, so `?looks=old` shows
+// it; the owner's pick, a, comes from lookSwitch.js PICKED, 2026-11-23, ADR-170)
+export const ONE_LOOKS = Object.freeze({ oneLook: 'a', oneLetters: '0', onePrint: '0' });
 export const oneLook = (name = 'oneLook') => lookOf(name, ONE_LOOKS[name] ?? 'a');
 /** The outfit chosen ('a' | 'b' | 'c'; anything else draws a), read when his rig is built. */
 export function oneLookNow() {

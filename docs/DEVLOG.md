@@ -10,7 +10,7 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 **What.** The owner played the merged fight (Session 82) and asked for more ASCII, faster combos, acrobatic
 kicks, air attacks, a wall kick, flurries (phase 1 above all) and bullets that never stun-lock. Fable planned it
 with four questions (the owner took each recommended answer); this session built it (ADR-168 – ADR-170):
-- **The look** (a helper; `?oneLetters`, `?onePrint` a / b / 0, not picked yet): his letters follow his size,
+- **The look** (a helper; `?oneLetters`, `?onePrint` a / b / 0; the owner picked a, "Print a"): his letters follow his size,
   the hero's quiet print, simpler glasses / collar / shirt, a coat that moves from phase 1 and is clamped for
   flips; b is one letter size bolder on a phone (`kit.letterBias`).
 - **Motion** (a helper): ADR-162's kit for him: soft arms and legs, the feet planner lifted into
@@ -29,7 +29,7 @@ with four questions (the owner took each recommended answer); this session built
 
 **Numbers.** PACE cues a minute by STAGE: phase 1 gear 1 85.2, gear 2 87.3, phase 2 74.9, phase 3 76.7 (seed means) (main: phase 1 65.1 - 71.1, mean 67.2); the longest gap 2.42 / 2.39 / 2.23 / 3.32 s (main's phase 1: 3.29); dodges 13 / 10 / 7 / 21 % of cues (main's phase 1: 7 %); 0 conflicting cues; phases 2 - 3 at 0.86 - 0.88 of gear 2. Pinned from the worst seed with a margin (`pressure.meter`: minRate 70 / 78 / 65 / 62, maxGap 3.3 / 3.0 / 3.5 / 3.9). Short of the plan's targets, said plainly: gear 2's 95 - 105 (a burst counts one cue), 15 - 25 % dodges in phase 1 (13 % / 10 %). STRATEGY (god mode, seeds 4242 and 7): mixed 72 s, parry 106, block-only 75, lean 112, dodge-only 111: dodging and leaning are not the fastest. The mortal block-only bot survives and wins (61 - 89 s): no health through a block. WIN: the fencing bot wins through both bars in 66 s (84 before). The motion audit: elbows at contact 130 -> 152 deg (mean), feet sliding 198.5 -> 64.7 m, 0 swings at air (was 2 - 7 a minute), every string's worst jolt 310 - 473 mm/f2 (main 353 - 653). NOLOCK: `woke.mjs nolock`: a hero who stands unguarded through Iron Rain takes 3 flinches (one a burst) and the heavy shot, never a second stagger from a bullet; the least free time between two of his hits after a bullet 0.32 s (>= 0.25); hit by burst 1, then guard / parry / roll: burst 2 blocked / parried / dodged. Each burst lands 7 - 10 ms from its glint + 0.26 s (`timing`). A held guard through a whole volley pays 45 guard, no health (`cover`). Before: one slug locked the hero through all eleven and the heavy shot.
 
-**Open.** The owner's picks (`oneLetters`, `onePrint`, still `oneLook`, `hall`, `script`); the iPhone (how he
+**Open.** The owner's picks still open: `oneLook`, `hall`, `script` (`oneLetters` and `onePrint`: a, picked); the iPhone (how he
 reads in letters, the bursts at the phone camera, fps). Gear 2 measures under the plan's 95 - 105 cues a minute:
 a burst of 7 - 8 blows is ONE cue by the owner's choice. Cut (the plan's cut order): phase 3's Falling Leaves,
 the pillar run inside Iron Rain, `doubleWall`, the footwork clips (back handspring, cartwheel side-switch,

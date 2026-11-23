@@ -5209,8 +5209,11 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   letters across him from 1080p up), with a LIFTED print (ink gains 1.6: his jade silhouette at full light at
   any distance, inner seams, a lifted skin fill, a glowing glint) and small modelled parts (the glasses' arms
   and bridge, two collar faces, lapel facings): a lit line drawing of a 3D model. The owner saw it as too
-  detailed on the iPhone and the desktop. Built by a helper agent; the owner picks from the sheets.
-- **Decision:** two switches, built with a (`lookSwitch.js` PENDING, Lab LOOKS rows):
+  detailed on the iPhone and the desktop. Built by a helper agent; the owner picked from the sheets.
+- **The owner's pick (2026-11-23, from the before | a | b sheets at 1280x720, 2560x1440, 852x393 and 734x343):**
+  "Print a": both switches ship at a (`lookSwitch.js` PICKED; their call-site default is '0', as he shipped,
+  so `?looks=old` shows it); b and 0 stay behind the switches and in the Lab's LOOKS rows.
+- **Decision:** two switches, built with a (Lab LOOKS rows):
   1. `?oneLetters=a|0`: `WOKEN_KIT.letters`, Tian Lei's getter (ADR-155): his cell follows his size (cells
      his / the hero's: 4/4 at 1280x720, 6/6 at 1920x1080, 8/8 at 2560x1440, 4/4 on 852x393 and 734x343).
   2. `?onePrint=a|b|0`: a = every ink / rim gain <= 1.5 (the edge fades with distance), the jade edge at 0.55 of
