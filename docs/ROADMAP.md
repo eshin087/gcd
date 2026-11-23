@@ -875,3 +875,4 @@ Spec: `docs/specs/ash-disciple.md`.
       about 600k of the ~690k triangles a frame
 - [ ] Dissolve-aware shadow material for dying creatures
 - [ ] TypeScript or JSDoc types for the contracts once the API stabilises
+
