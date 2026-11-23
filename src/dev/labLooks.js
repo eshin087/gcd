@@ -55,6 +55,10 @@ export const LOOK_SWITCHES = Object.freeze([
   ['oneLook', ['a', 'b', 'c'], 'a', 'a', true, ['code'], 'Xin Yi\'s body: a the long coat, b the cassock, c the grey coat (a reload)'],
   ['hall', ['a', 'b'], 'a', 'a', true, ['code'], 'the hall: a pale marble, green-black inlay; b dark basalt, jade-lit edges (a reload)'],
   ['script', ['a', 'b', 'c'], 'a', 'a', true, ['code'], 'the script wave: a a shimmer and the full turn, b nothing until the Source, c strong from the start (a reload)'],
+  // --- grove: Lu Wusheng readable (ADR-152): the palette picked; the print's five steps and the mark wait for the owner
+  ['sheathArt', ['0', '1', '2', '3', 'a'], '0', '2', true, ['grove'], 'Lu Wusheng\'s print, five steps: 0 the wyrm\'s digits as shipped, 1 digits in his colours, 2 digits lit and outlined, 3 ink-line flattened, a the hero\'s ink-line art (a reload)'],
+  ['sheathTone', ['a', 'b', 'c'], 'a', 'a', true, ['grove'], 'the Wanderer\'s palette: a indigo and sand, b pale and cold, c moss and rust (a reload)'],
+  ['sheathMark', ['a', 'b', '0'], 'a', 'a', true, ['grove'], 'his mark: a a torn strip on the scabbard, b a white streak in the hair, 0 none (a reload)', 'awaiting'],
 ]);
 
 const NAMES = LOOK_SWITCHES.map((s) => s[0]);

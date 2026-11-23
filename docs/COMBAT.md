@@ -2066,18 +2066,22 @@ the engine's cue: a dry tick and a short high ring, the blue flare through the s
 the RE-SHEATHE (1.15 s: the follow-through held, a flick, the blade laid on the left hand, slid home, the
 click, the sword passed back to the right hand). The grove falls on that click, not on the cut.
 
-**His moves** (windups at phase 1's scale; N white, B heavy, B* blue flare, R red, K black):
+**His moves** (windups at phase 1's scale; N white, B heavy, B* blue flare, R red, K black). The names (ADR-152)
+are a wanderer's who has sworn not to draw: what he does with the scabbard knocks, warns and walks on; the
+draws are the vow giving way (the ids are unchanged). His look and motion changed with ADR-152 (the ink-line
+print, a quiet carry, a low run, a settle that turns sharp: the head first, the body at speed); no timing,
+tell, zone or damage did:
 
 | Move | Phase | Tell | Windup s | Damage | Notes |
 |---|---|---|---|---|---|
-| Knocking at the Gate | 1 | N | 0.46 | 12 | pommel check |
-| The Lintel Falls | 1 | B | 0.6 | 22 | two-handed scabbard overhead |
+| A Knock, Not a Cut | 1 | N | 0.46 | 12 | pommel check |
+| Still in Its Sleep | 1 | B | 0.6 | 22 | two-handed scabbard overhead |
 | Three Refusals | 1 (2: +B) | N N N (B) | 0.46 / 0.34 / 0.34 (0.42) | 11 / 11 / 12 (20) | the deflect chain |
-| Cutting Reeds | 1 | R | 0.64 | 22 | the scabbard at the ankles; knockdown |
-| Shutting the Door | 1 | B | 0.52 | 18 | shoulder check, knockback 3.4: it makes a draw's range |
-| Crossing the Ford | 1 | N N N | 0.5 / 0.36 / 0.36 | 12 / 10 / 14 | glide, kick, the butt |
-| Tapping Stone | 1 | R, mikiri | 0.68 | 26 | the scabbard's butt like a spear |
-| Answering Knock | counter | N, B | 0.46 / 0.4 | 14 / 20 | out of a deflect |
+| Sweeping the Road | 1 | R | 0.64 | 22 | the scabbard at the ankles; knockdown |
+| Go Back Down the Road | 1 | B | 0.52 | 18 | shoulder check, knockback 3.4: it makes a draw's range |
+| Three Steps of a Long Road | 1 | N N N | 0.5 / 0.36 / 0.36 | 12 / 10 / 14 | glide, kick, the butt |
+| The Walking Staff | 1 | R, mikiri | 0.68 | 26 | the scabbard's butt like a spear |
+| A Knock in Reply | counter | N, B | 0.46 / 0.4 | 14 / 20 | out of a deflect |
 | **One Breath** | 1 | **B* draw** | 1.1 + 0.15 - 0.75 | lethal | a blink of up to 4.5 m, a 5.2 m line; cooldown 11 / 8 / 6 s |
 | Lightless Draw | 1 | K | 1.45 + 0.1 - 0.5 | 38 | the charged blow; the bare blade; never lethal |
 | Ten Thousand Leaves | flurry | N each | | 9 | his answer to a streak of guards |
@@ -2087,7 +2091,7 @@ click, the sword passed back to the right hand). The grove falls on that click, 
 | The Hand That Does Not Draw | 2 | feint, N | 0.75, 0.46 | 14 | the stance, no click, no flare |
 | The Blade Goes Home | 2 | B*, B | as One Breath, + 0.62 | lethal / 18 | the second cut only past a dodge |
 | A Thumb's Width | to 2 | R | 1.7 | 10 | ring 6, knockback 6 |
-| Answering Draw | counter, 3 | N, B* | 0.46 / 0.9 | 14 / lethal | |
+| The Vow Gives Way | counter, 3 | N, B* | 0.46 / 0.9 | 14 / lethal | |
 | Three Autumns | 3 | B* B* B* | 1.0 / 0.78 / 0.78 | lethal each | from three sides; re-sheathed in motion |
 | The Sound Arrives Late | 3 | R x3 (x4) | a hazard | 24 each | lines across the ground cut one by one, each cued, told to the ledger, placed by the fairness guard |
 | The Held Breath | to 3 | R | 1.6 | 10 | ring 6.5, knockdown; on its click every stalk within 9 m falls |

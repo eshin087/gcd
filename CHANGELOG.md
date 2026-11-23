@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Sixty-nine pieces of work since 0.4.0:
+Seventy pieces of work since 0.4.0:
 - **A seventh level: the Hall of Falling Script and the One Who Woke** (2026-11-22, ADR-156 – ADR-158).
   *Added:* `?level=code` (the title screen lists it). **The Hall of Falling Script**: one hall on ten slots
   whose scenes rewrite themselves into one another behind a front that runs out from him (`scenes`): the
@@ -34,6 +34,21 @@ Sixty-nine pieces of work since 0.4.0:
   bamboo is five kinds of cane (green, jade, golden, black, dry) in clumps and lone stalks of
   different thicknesses, with young shoots, and far more of it behind the duel; the grove runs on
   into the fog. `?bamboo=0` is the grove as it was, `b` one kind of cane per clump.
+- **The Sheathed, easy to see** (2026-11-22, ADR-152). *Changed:* Lu Wusheng is printed in the hero's
+  ink-line art (the owner's pick; `?sheathArt=0` keeps the wyrm's digits he shipped in), lifted to read on
+  the grove's floor: at 1280 x 720 the mean of his pixels is 31.9 against the floor's 16.1 (the hero 25.2
+  against 20.1), and robe, trousers, scarf, hair and skin are shapes of their own. His silhouette is
+  sharpened for the outline: a loose robe to mid-thigh over the wide pleated trousers, a longer high tail
+  with a pale tie, a deeper scarf whose tails hang close when he is still, pale wrist bindings. He moves as
+  a wanderer: a quiet carry with his thumb in the sash and a slow breath, a low run with the sheathed sword
+  held back at the hip, a settle that turns sharp (poses only: no timing, tell or damage changed). New lines
+  for the grove and eight move names (ids unchanged). *Added:* three palettes, `?sheathTone=a|b|c`, and a
+  mark of his own, `?sheathMark=a|b|0` (a torn strip on the scabbard that snaps on the draw; a white streak
+  in the hair); the owner picked palette a. The owner then found the ink-line print too detailed at fight
+  distance: `?sheathArt=0|1|2|3|a` renders five graded steps from the digits to the ink-line art (1 and 2
+  the digits in his colours with a stroke outline, 3 the ink-line art flattened), and prints 1 - a wear
+  a reworked body that hides the mesh at his size (full sleeves, one roll of scarf, plain gaiters). The
+  owner picked step 2 (the digits in his colours, lit and outlined), which is what the game now draws. `sheath.mjs` LOOK.
 - **A sixth level: the Windless Grove and the Sheathed** (2026-11-22, ADR-144 – ADR-146). *Added:* a fifth
   level, `?level=grove` (the title screen lists it). **The Windless Grove**: a bamboo grove at night, a
   round clearing with a worn ring of paving, a mound planted with forty swords. **Lu Wusheng, the
