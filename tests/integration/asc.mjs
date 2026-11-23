@@ -2172,6 +2172,70 @@ async function scenarioRipostes() {
   const hits = G.hits.slice(h0).filter((h) => h.attack === 'riposteBolt');
   assert(back > TUNING.sign.hop * 0.8 && hits.length === 1 && hits[0].tell === TELL.BLUE, `riposteBolt: back ${back.toFixed(2)} m before the bolt, thrown from ${boltAt.toFixed(1)} m; it lands (${hits.map((h) => `${h.tell}:${h.r}`).join(' ')})`);
 }
+// --- body
+/**
+ * BODY (the look agent, BRIEF 4): the homage outfits `?ascLook=h | g | v` build and dress by form
+ * (hidden / shown pieces, the gold hair, teal eyes, the wristbands keep their colour), fight a few
+ * seconds without a NaN, and no switch leaves the default figure (a) changed.
+ */
+async function scenarioBody() {
+  out('\n== scenario BODY (the outfits behind ?ascLook=: h / g / v dressed by form; the default untouched) ==');
+  const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const { ascLookNow, HOMAGE_LOOKS } = await imp('src/entities/enemies/ascendant/look.js');
+  const visibleMeshes = (root) => {
+    let n = 0;
+    root.traverse((o) => {
+      if (!o.isMesh) return;
+      for (let p = o; p; p = p.parent) if (p.visible === false) return;
+      n++;
+    });
+    return n;
+  };
+  const fillOf = (m) => m?.uniforms?.uArtFill?.value.toArray().map((x) => +x.toFixed(3));
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const shape = (G) => {
+    const d = G.game.dragon, D = d.rig.root.userData.dress;
+    let m = 0;
+    d.rig.root.traverse((o) => { if (o.isMesh) m++; });
+    return { look: D?.look, meshes: m, switched: D?.at.length ?? 0 };
+  };
+  setLook('ascLook', null);
+  const base = shape(build());
+  assert(ascLookNow().id === 'a' && base.look === 'a', `no switch: the owner's pick, outfit a (${base.meshes} meshes, ${base.switched} switched by form)`);
+  assert(same(HOMAGE_LOOKS, ['h', 'g', 'v']), 'the homage options are h, g, v');
+  for (const o of HOMAGE_LOOKS) {
+    setLook('ascLook', o);
+    const G = build();
+    const d = G.game.dragon, M = d.rig.materials, D = d.rig.root.userData.dress;
+    const s = shape(G);
+    const rows = [];
+    const eye1 = fillOf(M.eye), hem1 = fillOf(M.hem);
+    let ok = s.look === o && ascLookNow().homage === true;
+    for (const f of [1, 2, 3]) {
+      if (d.phase !== f) d.debug.setForm(f);
+      run(G, 0.5);
+      const goldOn = D.at.filter((e) => (e.m.material === M.hair || e.m.material === M.hairTip) && e.m.visible).length;
+      const eye = fillOf(M.eye);
+      rows.push(`f${f}: ${visibleMeshes(d.rig.root)} visible, gold hair ${goldOn}`);
+      ok &&= D.phase === f && (f === 1 ? goldOn === 0 : goldOn > 0);
+      ok &&= same(fillOf(M.hem), hem1); // the wristbands / gloves keep their colour
+      ok &&= f === 1 ? same(eye, eye1) : eye[1] > 0.8 && eye[2] > 0.7; // teal from form 2
+    }
+    // back to form 1: the eyes given back, the form-1 pieces shown
+    d.debug.setForm(1);
+    run(G, 0.3);
+    ok &&= same(fillOf(M.eye), eye1) && D.at.every((e) => e.m.visible === (e.from <= 1 && e.to >= 1));
+    // g: the torn top (form 3) and the whole top and left sleeve (forms 1 - 2)
+    if (o === 'g') ok &&= D.at.some((e) => e.from === 3 && e.to === 3 && e.m.material === M.coat) && D.at.filter((e) => e.from === 1 && e.to === 2 && e.m.material === M.coat).length >= 2;
+    // a few seconds of his AI with the outfit on (no NaN: G.tick checks)
+    d.debug.setAI(true);
+    run(G, 4);
+    assert(ok, `?ascLook=${o}: ${s.meshes} meshes (${s.switched} switched by form); ${rows.join(' · ')}; eyes teal in forms 2 - 3, the bands keep their colour`);
+  }
+  setLook('ascLook', null);
+  const after = shape(build());
+  assert(after.look === 'a' && after.meshes === base.meshes && after.switched === base.switched, `switched back: outfit a as before (${after.meshes} meshes)`);
+}
 //
 //
 // --- terrain
@@ -2857,6 +2921,8 @@ const S = {
   sign: scenarioSign,
   catch: scenarioCatch,
   ripostes: scenarioRipostes,
+  // --- body
+  body: scenarioBody,
   //
   //
   // --- terrain

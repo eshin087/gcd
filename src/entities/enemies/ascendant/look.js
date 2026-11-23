@@ -19,11 +19,17 @@ import { setFill } from '../ashDisciple/bodyArt.js';
 // a flask on him) and his own `hair` / `hairTip` instances: no new material, so no new draw call
 // beyond the switched meshes themselves. Per frame otherwise: four uniforms (the glow breathing).
 
-/** The option chosen (`?ascLook=`, read when his rig is built): { base: 'a' | 'c' (the outfit),
- *  art: true for d (outfit a in the dragon look) }. */
+/** The homage outfits (BRIEF 4; gear.js "the homage outfits"): h the fighter in an orange gi, g the
+ *  son in a purple gi, v the prince in a blue bodysuit and white armour. Options only: the default is
+ *  the owner's pick (`PICKED.ascLook`). */
+export const HOMAGE_LOOKS = ['h', 'g', 'v'];
+
+/** The option chosen (`?ascLook=`, read when his rig is built): { base: 'a' | 'c' | 'h' | 'g' | 'v'
+ *  (the outfit), art: true for d (outfit a in the dragon look), homage: true for h / g / v }. */
 export function ascLookNow() {
   const o = lookOf('ascLook', 'a', 'a');
   if (o === 'd') return { base: 'a', art: true, id: 'd' };
+  if (HOMAGE_LOOKS.includes(o)) return { base: o, art: false, id: o, homage: true };
   return { base: o === 'c' ? 'c' : 'a', art: false, id: o === 'c' ? 'c' : 'a' }; // (the bare-chested outfit b is not offered)
 }
 
@@ -53,7 +59,24 @@ export const ASC_TINT = {
     trim: [0.3, 0.16, 0.07], pants: [0.38, 0.38, 0.42], hem: [0.68, 0.65, 0.58], collar: [0.06, 0.05, 0.05],
     shirt: [0.035, 0.03, 0.035], skin: [0.85, 0.57, 0.4],
   },
+  // h: an orange gi, the blue of the undershirt, wristbands, sash and boots
+  h: {
+    coat: [0.78, 0.29, 0.035], lining: [0.25, 0.08, 0.02], pants: [0.9, 0.34, 0.045], facing: [0.08, 0.16, 0.6],
+    leather: [0.05, 0.1, 0.36], hem: [0.08, 0.16, 0.58], collar: [0.07, 0.14, 0.52], shirt: [0.035, 0.03, 0.035], skin: [0.85, 0.57, 0.4],
+  },
+  // g: a purple gi, a red sash, white wristbands, brown boots
+  g: {
+    coat: [0.36, 0.12, 0.52], lining: [0.1, 0.03, 0.14], pants: [0.42, 0.14, 0.6], leather: [0.42, 0.05, 0.04],
+    hem: [0.82, 0.82, 0.8], collar: [0.24, 0.14, 0.07], shirt: [0.035, 0.03, 0.035], skin: [0.85, 0.57, 0.4],
+  },
+  // v: a blue bodysuit, white armour, gloves and boots, gold at the belly and the toes
+  v: {
+    pants: [0.08, 0.17, 0.62], lining: [0.03, 0.05, 0.16], armor: [0.82, 0.82, 0.8], piping: [0.85, 0.62, 0.16],
+    hem: [0.86, 0.86, 0.84], collar: [0.82, 0.82, 0.8], shirt: [0.035, 0.03, 0.035], skin: [0.85, 0.57, 0.4],
+  },
 };
+/** The homage outfits' eyes in forms 2 - 3 (the eyes themselves, M.eye: teal). */
+const TEAL_EYE = [0.12, 0.95, 0.85];
 
 /** By form: the gold hair (fill, its tips, the letters' ink and how much they light themselves),
  *  the wraps (`hem`), the light (`flask`: fill, ink, emissive, glow). */
@@ -117,8 +140,9 @@ export function dressAscendant(d, dt) {
   if (!D || D.kind !== 'asc') return;
   const M = d.rig.materials;
   if (!D.base) {
-    D.base = { hem: rgbOf(M.hem) }; // (form 1's wraps, to give back in the Lab)
+    D.base = { hem: rgbOf(M.hem), eye: rgbOf(M.eye) }; // (form 1's wraps and eyes, to give back in the Lab)
     D.art = !!M.hair?.uniforms?.uWInk;
+    D.homage = HOMAGE_LOOKS.includes(D.look);
   }
   // (dressPhase: the form he SHOWS, which changes at a transformation's nova, not at its start)
   const n = Math.min(3, Math.max(1, (d.dressPhase ?? d.phase) | 0));
@@ -136,7 +160,9 @@ export function dressAscendant(d, dt) {
         u?.uInk?.value.setRGB(...F.ink);
         if (u?.uArtGlowK) u.uArtGlowK.value = F.glowK;
       }
-      setFill(M.hem, ...F.hem);
+      // (the homage outfits keep their wristbands' colour; their eyes turn teal)
+      if (D.homage) setFill(M.eye, ...TEAL_EYE);
+      else setFill(M.hem, ...F.hem);
       setFill(M.flask, ...F.flask);
       const fu = M.flask?.uniforms;
       if (fu) {
@@ -144,7 +170,10 @@ export function dressAscendant(d, dt) {
         fu.uEmissive?.value.setRGB(...F.fEm);
         if (fu.uGlowMask) fu.uGlowMask.value = 1;
       }
-    } else if (D.base.hem) setFill(M.hem, ...D.base.hem);
+    } else {
+      if (D.base.hem) setFill(M.hem, ...D.base.hem);
+      if (D.homage && D.base.eye) setFill(M.eye, ...D.base.eye);
+    }
   }
   // the gold breathes: slow in form 2, a faster, harder flicker in form 3 (the storm in him)
   const F = FORM[n];
