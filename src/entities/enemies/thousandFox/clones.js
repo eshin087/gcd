@@ -69,6 +69,8 @@ export class FoxClones {
     this._flash = { source: 'dragon', attack: 'pack', tell: TELL.NORMAL, x: 0, y: 0, z: 0, perilous: false, flare: false };
     this._tell = { source: 'dragon', attack: 'pack', tell: TELL.NORMAL, impactIn: 0.5, x: 0, z: 0, flare: false };
     this._ev = { kind: 'spawn', x: 0, z: 0, by: '' };
+    /** the dragon:attack payload of a pack body's blow (reused: listeners read it at once) */
+    this._atk = { name: 'pack', weapon: 'fist', weight: 'light', shape: 'cut', tell: TELL.NORMAL, impactIn: 0, x: 0, z: 0, clone: true };
     this._from = { x: 0, z: 0 };
     this._extra = { around: true };
     this._v = d._v.clone();
@@ -445,11 +447,11 @@ export class FoxClones {
       const lead = perPhase(d.T.flashLead, d.phase);
       if (left <= lead && !c.flashed) {
         c.flashed = true;
-        if (P.mode === 'sequence') this._glint(P, this._tipOf(c));
+        if (P.mode === 'sequence') this._glint(P, this._tipOf(c), c);
         else if (!P.flashed) {
           P.flashed = true;
           const v = this._v.set(P.cx, 1.6, P.cz);
-          this._glint(P, v);
+          this._glint(P, v, c);
         }
       }
       return;
@@ -464,7 +466,7 @@ export class FoxClones {
     if (this.clock >= c.until) this._burst(c, P);
   }
 
-  _glint(P, v) {
+  _glint(P, v, c) {
     const f = this._flash, d = this.d;
     f.attack = P.attack;
     f.tell = P.tell;
@@ -475,6 +477,19 @@ export class FoxClones {
     f.z = v.z;
     d.emit('combat:flash', f);
     d.fx.tellFlash(P.tell, v.x, v.y, v.z, 1, P.flare);
+    // its blow through the air, as his own (duelist/attackSound.js: dragon:attack at the glint, once per
+    // body in a sequence, once over the hero for a pack that lands together)
+    if (c) {
+      const e = this._atk, kick = c.blow === 'dive' || c.blow === 'upkick';
+      e.name = P.attack;
+      e.weight = kick || P.tell !== TELL.NORMAL ? 'heavy' : 'light';
+      e.shape = kick ? 'kick' : 'cut';
+      e.tell = P.tell;
+      e.impactIn = Math.max(0, c.impact - this.clock);
+      e.x = P.mode === 'together' ? P.cx : c.x;
+      e.z = P.mode === 'together' ? P.cz : c.z;
+      d.emit('dragon:attack', e);
+    }
   }
 
   /** A sequence body's blow: one result if the hero is in its reach and in front of it. */
