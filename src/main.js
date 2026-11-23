@@ -13,6 +13,7 @@ import { GlyphParticles } from './render/particles.js';
 import { FireField } from './render/fireField.js';
 import { ShedDigits } from './render/shedDigits.js';
 import { ImpactRipple } from './render/impactRipple.js';
+import { StreakFx } from './entities/player/streakFx.js';
 import { stampUpdate, stampClear } from './combat/impactStamp.js';
 import { World } from './world/world.js';
 import { Player } from './entities/player/player.js';
@@ -129,6 +130,7 @@ async function boot() {
   game.unlocks = new Unlocks();
   game.audio = new AudioEngine(game);
   game.player = new Player(game);
+  game.fx.streak = new StreakFx(game); // the streak on the hero and in the world (player/streakFx.js)
   pipeline.setSeenThrough(game.player.object3d); // he prints through what covers him (ADR-106)
   // the boss slot (ARCHITECTURE.md → Levels): the wyrm or the level's own boss; game.boss is the same
   game.dragon = level.createBoss(game);
@@ -322,6 +324,7 @@ async function boot() {
     game.fx.fire.update(fxDt);
     game.fx.shed.update(fxDt);
     game.fx.ripple.update(fxDt);
+    game.fx.streak?.update(fxDt);
     stampUpdate(game, fxDt);
   };
 
