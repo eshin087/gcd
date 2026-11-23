@@ -43,7 +43,8 @@ export const PICKED = Object.freeze({
   ascAura: 'a', // his aura: a tall flame, hollow behind him (the owner's pick)
   ascBeam: 'a', // his beam: the column (the owner's pick)
   ascLift: 'a', // his figure lifted off the floor: a lighter fill, a stronger edge of light (the owner's pick)
-  ascOrb: 'a', // Heaven's Lantern, the great orb: a sun (the author's pick; the owner has not chosen yet, 2026-11-22)
+  ascOrb: 'a', // Heaven's Lantern, the great orb: a sun (b a lantern, c the pale gathered sphere; the owner has not chosen yet, 2026-11-22)
+  ascBeamPose: '0', // his beams: the palm thrust (cup: both hands cupped at the hip; the owner has not chosen yet, 2026-11-22)
 });
 
 const fromUrl = new Map();
