@@ -5,6 +5,30 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-22 — Notes for a guest agent (`GEMINI.md`)
+
+**Owner:** "i'm going to have gemini neon try making changes to this game to test its ability. will
+we able to make separate prs to rollback any changes it makes? make an MD file with the most
+important notes". Branch `docs/gemini-notes`; `GEMINI.md` only, plus this note.
+
+- **Yes, one revert PR per change**, as long as each change is one squash-merged PR: that is one
+  commit on `main`, and `gh pr revert <number>` (or the PR page's Revert button) opens the revert,
+  which goes through `test-and-build` like any other PR.
+- **`GEMINI.md`** (repo root; Gemini CLI loads that name by itself) points at `CLAUDE.md` as the
+  handbook and adds what it lacks: a reading order for the docs, where to work (its own clone or
+  worktree, never `.claude/worktrees/`), the rules that keep a change revertable (a `gemini/` branch
+  prefix, one task a PR, no PR built on another, a "Rollback" section in each description, new
+  behaviour behind a switch, the owner merges), what a revert does not undo (what the game keeps in
+  the browser's `localStorage`, tags and versions, GitHub / Vercel settings, other agents' branches),
+  the traps that were only in session notes (ADR numbers claimed by open PRs, the seeded tests, the
+  event catalogue's backticks, beat field names) and the owner's past taste calls.
+
+**Open:** the file's "state of the repo" paragraph and its `01132fd` baseline are dated; refresh
+them if the trial starts much later. Two calls in it are the agent's and the owner's to change: the
+owner merges (not Gemini), and the file's name.
+
+---
+
 ## 2026-11-22 — CI: one run a change, a time limit, a read-only token
 
 **Owner**, after asking how the `test-and-build` check works and what it costs (the repo is private:
