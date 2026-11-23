@@ -26,6 +26,18 @@
 // by life.quality, life.k and life.calm. Colours are linear and dim (the level's own hue).
 
 const MIST_GLYPH = '~-';
+/** the atmosphere's own low mist as it is today (atmosphere.js): wide, very faint strokes in a ring round
+ *  the level; the weather draws it in place of the atmosphere (takes('mist')) while a band's value is up */
+const VEIL = Object.freeze({
+  rate: 3.2, r: [24, 44], y: [0.3, 1.2], life: [9, 14], size: [2.2, 4.2], sizeEnd: 4.8, alpha: 0.07,
+  color: [0.2, 0.24, 0.3], glyph: MIST_GLYPH, view: [34, 26],
+});
+/** a bank of mist: a loose cluster of small letters that drift together, each one opening out of
+ *  nothing and fading as it grows (the house style's small letters, not one big stroke) */
+const BANK = Object.freeze({
+  rate: 1.7, per: [10, 14], spread: [2.8, 1.2], size: [0.65, 0.85], sizeStart: 0.3, alpha: 0.55,
+  life: [7, 11], color: [0.36, 0.4, 0.48], glyph: "~-~-.'", wobble: 0.12,
+});
 
 export const WEATHER_TUNE = Object.freeze({
   /** a spell fades this fast when the Lab forces it (s) */
@@ -45,21 +57,21 @@ export const WEATHER_TUNE = Object.freeze({
     calm: 'clear',
     spells: {
       clear: { hold: [55, 95], fade: [35, 50], next: [['mist', 3], ['drizzle', 1]], mist: 0.3 },
-      mist: { hold: [40, 75], fade: [30, 45], next: [['clear', 3], ['drizzle', 2]], mist: 1, fogNear: 0.88, fogFar: 0.9, moon: 0.94 },
-      drizzle: { hold: [30, 55], fade: [25, 35], next: [['clear', 1]], mist: 0.55, wet: 0.5, windK: 1.25, moon: 0.84, ambient: 0.92, fogNear: 0.92, fogFar: 0.94 },
+      mist: { hold: [40, 75], fade: [30, 45], next: [['clear', 3], ['drizzle', 2]], mist: 1, fogNear: 0.82, fogFar: 0.95, fogColor: 4, moon: 0.94 },
+      drizzle: { hold: [30, 55], fade: [25, 35], next: [['clear', 1]], mist: 0.55, wet: 0.5, windK: 1.25, moon: 0.84, ambient: 0.92, fogNear: 0.9, fogFar: 0.96, fogColor: 2.5 },
     },
-    // the low mist: wide faint strokes; thicker in the tree line (r > 30) than in the clearing
+    // the low mist: today's faint veil, and as it thickens banks of small letters, more in the tree
+    // line (r > 30) than in the clearing
     mist: {
-      bands: [{ key: 'mist', r: [14, 46], inner: [20, 32], innerK: 0.25, y: [0.25, 1.2] }],
-      rate: 10.5, life: [9, 14], size: [2.2, 4.2], sizeEnd: 4.8, alpha: 0.075,
-      color: [0.2, 0.24, 0.3], glyph: MIST_GLYPH,
+      veil: VEIL, bank: BANK,
+      bands: [{ key: 'mist', r: [14, 46], inner: [18, 32], innerK: 0.3, y: [0.9, 1.9], veil: 0.3 }],
       /** m/s: the drift when there is no wind to carry it (today's), and how much of the wind it takes */
-      drift: [0.45, 0], carry: 0.4, view: [34, 26],
+      drift: [0.45, 0], carry: 0.4, view: [18, 15, -1],
     },
     // a thin rain: short dim strokes falling at the wind's slant
     rain: {
-      rate: 210, area: [44, 32], y: [4.5, 8], fall: [7.5, 9.5], carry: 0.8, drift: [0.9, 0],
-      size: 0.24, stretch: 1.1, color: [0.3, 0.34, 0.42], alpha: 0.36, alphaEnd: 0.18, glyph: '|',
+      rate: 160, area: [36, 28], y: [4.5, 8], fall: [7.5, 9.5], carry: 0.8, drift: [0.9, 0],
+      size: 0.38, stretch: 1.3, color: [0.4, 0.44, 0.54], alpha: 0.42, alphaEnd: 0.2, glyph: '|',
     },
   },
 
@@ -73,14 +85,14 @@ export const WEATHER_TUNE = Object.freeze({
     },
     // glowing embers lifted off the ruins and carried across the yard in a loose stream
     embers: {
-      rate: 20, upwind: [12, 20], band: 5, wander: [8, 0.11], y: [0.2, 1.1], carry: 1.5, drift: [1.6, 0],
-      rise: [0.25, 0.8], gravity: -0.08, drag: 0.08, life: [4, 7], size: 0.1, sizeEnd: 0.04,
-      color: [1.5, 0.46, 0.09], colorEnd: [0.35, 0.05, 0.01], flicker: 0.5, glyph: ".'·",
+      rate: 18, upwind: [10, 22], band: 5, wander: [8, 0.11], y: [0.2, 1.1], carry: 1.5, drift: [1.6, 0],
+      rise: [0.2, 0.7], gravity: -0.06, drag: 0.08, life: [6, 9], size: 0.42, sizeEnd: 0.16,
+      color: [2.4, 0.75, 0.15], colorEnd: [0.5, 0.07, 0.01], flicker: 0.35, glyph: "·'·.",
     },
     // the grey-out: more ash hanging in the air (fine, slow)
     grey: {
       rate: 13, area: [46, 34], y: [1, 7], fall: [0.3, 0.55], carry: 0.25, drift: [0.35, 0], life: [8, 11],
-      size: 0.13, color: [0.27, 0.26, 0.25], colorEnd: [0.15, 0.15, 0.15], alpha: 0.6, glyph: ".,'`",
+      size: 0.16, color: [0.34, 0.33, 0.31], colorEnd: [0.16, 0.15, 0.15], alpha: 0.8, glyph: ".,'`",
     },
   },
 
@@ -105,8 +117,8 @@ export const WEATHER_TUNE = Object.freeze({
     // a loose rising column of the level's dust, crossing the badlands with the wind, never onto the ring
     devils: {
       max: 2, keepOut: 18, upwind: [14, 24], across: 16, life: [9, 14], speed: 1.5, carry: 0.9,
-      rate: 30, height: [3, 5], radius: [0.9, 1.5], swirl: 2.4, rise: [0.9, 1.8], partLife: [0.8, 1.4],
-      size: [0.12, 0.22], color: [0.3, 0.24, 0.19], colorEnd: [0.12, 0.09, 0.07], alpha: 0.55, glyph: ".,'`",
+      rate: 42, height: [3, 5], radius: [0.9, 1.5], swirl: 2.4, rise: [0.9, 1.8], partLife: [0.8, 1.4],
+      size: [0.32, 0.5], color: [0.44, 0.35, 0.27], colorEnd: [0.16, 0.12, 0.09], alpha: 0.75, glyph: ".,'`~",
     },
     // dry lightning far off: weather.flash, a very faint flicker of the sky (skybreakRing.js adds it)
     bolts: { peak: [0.07, 0.13], decay: 16, double: 0.4, gap: [0.08, 0.16] },
@@ -117,16 +129,16 @@ export const WEATHER_TUNE = Object.freeze({
     spells: {
       moonlit: { hold: [50, 90], fade: [25, 40], next: [['cloud', 3], ['groundmist', 2]], mist: 0.3 },
       cloud: { hold: [8, 20], fade: [20, 35], next: [['moonlit', 1]], mist: 0.3, moon: 0.75, ambient: 0.82 },
-      groundmist: { hold: [45, 80], fade: [30, 45], next: [['moonlit', 1]], mist: 0.3, foot: 1, fogNear: 0.92 },
+      groundmist: { hold: [45, 80], fade: [30, 45], next: [['moonlit', 1]], mist: 0.3, foot: 1, fogNear: 0.9, fogColor: 2.5 },
     },
     mist: {
+      veil: VEIL, bank: { ...BANK, color: [0.34, 0.38, 0.48] },
       bands: [
-        { key: 'mist', r: [24, 44], y: [0.3, 1.2] },
+        { key: 'mist', r: [24, 44], y: [0.6, 1.5], veil: 0.3 },
         // the terrace's foot, never on the paving (r 14) nor its steps
-        { key: 'foot', r: [17, 24], y: [0.15, 0.8], k: 0.9 },
+        { key: 'foot', r: [17, 24], y: [0.45, 1.2], veil: 0 },
       ],
-      rate: 10.5, life: [9, 14], size: [2.2, 4.2], sizeEnd: 4.8, alpha: 0.075,
-      color: [0.19, 0.22, 0.3], glyph: MIST_GLYPH, drift: [0.4, 0], carry: 0.35, view: [34, 26],
+      drift: [0.4, 0], carry: 0.35, view: [18, 15, -1],
     },
   },
 
@@ -134,19 +146,19 @@ export const WEATHER_TUNE = Object.freeze({
     calm: 'still',
     spells: {
       still: { hold: [50, 85], fade: [35, 50], next: [['mist', 3], ['snow', 2]], mist: 0.3, snow: 0.3 },
-      mist: { hold: [50, 80], fade: [35, 50], next: [['still', 1]], mist: 1, snow: 0.3, fogNear: 0.85, fogFar: 0.92 },
+      mist: { hold: [50, 80], fade: [35, 50], next: [['still', 1]], mist: 1, snow: 0.3, fogNear: 0.85, fogFar: 0.94, fogColor: 3 },
       snow: { hold: [60, 100], fade: [30, 40], next: [['still', 1]], option: 'c', mist: 0.3, snow: 1, moon: 0.94 },
     },
     // the mist pools low between the canes and does not drift (no wind here)
     mist: {
-      bands: [{ key: 'mist', r: [6.5, 24], y: [0.05, 0.55] }],
-      rate: 8, life: [10, 15], size: [2, 3.6], sizeEnd: 4.2, alpha: 0.075,
-      color: [0.17, 0.22, 0.2], glyph: MIST_GLYPH, drift: [0, 0], carry: 0, wobble: 0.06, view: [34, 26],
+      veil: VEIL, bank: { ...BANK, color: [0.32, 0.4, 0.38], spread: [2.2, 1.4], wobble: 0.05 },
+      bands: [{ key: 'mist', r: [6.5, 24], y: [0.2, 0.8], veil: 0.3 }],
+      drift: [0, 0], carry: 0, view: [18, 15, -1],
     },
     // option c: snow straight down, slow, sparse
     snow: {
-      option: 'c', rate: 11, area: [44, 32], y: [5, 9], fall: [0.5, 0.75], carry: 0, drift: [0, 0],
-      size: 0.13, color: [0.46, 0.48, 0.54], alpha: 0.75, alphaEnd: 0.6, glyph: "·.'", spin: 1.2,
+      option: 'c', rate: 9, area: [36, 28], y: [5, 9], fall: [0.5, 0.75], carry: 0, drift: [0, 0],
+      size: 0.2, color: [0.55, 0.57, 0.63], alpha: 0.8, alphaEnd: 0.6, glyph: "·.'", spin: 1.2,
     },
   },
 });

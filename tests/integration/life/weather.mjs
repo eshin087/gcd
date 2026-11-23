@@ -204,15 +204,18 @@ export default {
     const w = T.build('grove', 'weather,wind');
     w.life.weather.force('mist', 2);
     w.step(30);
-    const P = w.game.fx.alpha, d = P.data;
+    const P = w.game.fx.alpha, d = P.data, M = w.life.weather.tune.mist;
     let n = 0, fast = 0;
     for (let i = 0; i < P.count; i++) {
       const k = i * 26;
-      const sz = d[k + 8];
-      if (sz < 1.8) continue; // (a mist stroke: wide)
+      // (the mist's letters: the veil's wide strokes and the banks' letters, by their colour)
+      const veil = Math.abs(d[k + 10] - M.veil.color[0]) < 1e-6 && Math.abs(d[k + 11] - M.veil.color[1]) < 1e-6;
+      const bank = Math.abs(d[k + 10] - M.bank.color[0]) < 1e-6 && Math.abs(d[k + 11] - M.bank.color[1]) < 1e-6;
+      if (!veil && !bank) continue;
       n++;
-      if (Math.hypot(d[k + 3], d[k + 5]) > 0.06) fast++;
+      // (a bank's letters stir by its wobble, at most 0.025 m/s; no wind carries them)
+      if (Math.hypot(d[k + 3], d[k + 5]) > 0.04) fast++;
     }
-    T.assert(n > 20 && fast === 0, `grove: ${n} strokes of mist, ${fast} drifting`);
+    T.assert(n > 40 && fast === 0, `grove: ${n} letters of mist, ${fast} drifting`);
   },
 };

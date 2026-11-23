@@ -63,6 +63,7 @@ export class Weather {
     this._sky = { on: false, base: new Float64Array(11), mine: new Float64Array(11) };
     // the scratch records (no allocation per frame)
     this._w = { x: 0, z: 0, k: 0 };
+    this._p = { x: 0, z: 0 };
     this._rec = {};
     this._resetRec();
     this._devils = [];
@@ -343,37 +344,101 @@ export class Weather {
 
   /** The low mist: bands of wide faint strokes round the level, drifting with the air. */
   _mist(dt, pool, rk) {
-    const M = this.tune.mist, f = this.life.focus, v = this.val;
+    const M = this.tune.mist, v = this.val;
     if (!pool) return;
-    for (const B of M.bands) {
-      const k = (v[P[B.key]] ?? 0) * (B.k ?? 1);
-      const acc = this._acc[B.key] = (this._acc[B.key] ?? 0) + dt * M.rate * k * rk;
-      if (acc < 1) continue;
-      let n = Math.min(8, Math.floor(acc));
-      this._acc[B.key] = acc - Math.floor(acc);
-      while (n-- > 0) {
-        const a = this._fr() * TAU, r = this._range(B.r);
-        const x = Math.cos(a) * r, z = Math.sin(a) * r;
-        if (Math.abs(x - f.x) > M.view[0] || Math.abs(z - f.z) > M.view[1]) continue;
-        // thinner in the clearing than in the tree line
-        if (B.inner && this._fr() > (B.innerK + (1 - B.innerK) * clamp01((r - B.inner[0]) / (B.inner[1] - B.inner[0])))) continue;
-        if (this._nearHero(x, z, WEATHER_TUNE.heroGap.mist)) continue;
-        const w = this._air(x, z, M.carry, M.drift);
-        const q = this._resetRec();
-        const wob = M.wobble ?? 0.15;
-        q.x = x; q.y = this._range(B.y); q.z = z;
-        q.vx = w.x * (0.8 + 0.4 * this._fr()) + (this._fr() - 0.5) * wob;
-        q.vz = w.z * (0.8 + 0.4 * this._fr()) + (this._fr() - 0.5) * wob;
-        q.life = this._range(M.life);
-        q.size = this._range(M.size);
-        q.sizeEnd = M.sizeEnd;
-        q.glyph = M.glyph;
-        q.color = q.colorEnd = M.color;
-        q.alpha = M.alpha;
-        q.alphaEnd = 0;
-        q.rot = (this._fr() - 0.5) * 0.15;
-        pool.spawn(q);
+    const bands = M.bands;
+    if (!this._veilAcc) {
+      this._veilAcc = new Float64Array(bands.length);
+      this._bankAcc = new Float64Array(bands.length);
+    }
+    for (let i = 0; i < bands.length; i++) {
+      const B = bands[i];
+      const k = clamp01((v[P[B.key]] ?? 0) * (B.k ?? 1));
+      // today's veil, full once the value reaches the band's `veil`; banks above it
+      const veil = B.veil > 0 ? Math.min(1, k / B.veil) : 0;
+      const bank = B.veil < 1 ? clamp01((k - B.veil) / (1 - B.veil)) : 0;
+      if (M.veil) {
+        this._veilAcc[i] += dt * M.veil.rate * veil * rk;
+        let n = Math.min(4, Math.floor(this._veilAcc[i]));
+        this._veilAcc[i] -= Math.floor(this._veilAcc[i]);
+        while (n-- > 0) this._veil(pool, M, B);
       }
+      if (M.bank) {
+        this._bankAcc[i] += dt * M.bank.rate * bank * rk;
+        let n = Math.min(3, Math.floor(this._bankAcc[i]));
+        this._bankAcc[i] -= Math.floor(this._bankAcc[i]);
+        while (n-- > 0) this._bank(pool, M, B);
+      }
+    }
+  }
+
+  /** A point of a mist band in view (or NaN): round the level, thinner in the clearing, off the hero. */
+  _mistAt(M, B, r0, r1, out, ring) {
+    const f = this.life.focus;
+    out.x = NaN;
+    let x, z, r;
+    if (ring) {
+      // (today's veil: a ring round the level, kept if it falls near the view)
+      const a = this._fr() * TAU;
+      r = r0 + (r1 - r0) * this._fr();
+      x = Math.cos(a) * r;
+      z = Math.sin(a) * r;
+      if (Math.abs(x - f.x) > ring[0] || Math.abs(z - f.z) > ring[1]) return out;
+    } else {
+      // (a bank: a point of the view, kept if it is in the band)
+      x = f.x + (this._fr() - 0.5) * 2 * M.view[0];
+      z = f.z + M.view[2] + (this._fr() - 0.5) * 2 * M.view[1];
+      r = Math.hypot(x, z);
+      if (r < r0 || r > r1) return out;
+    }
+    if (B.inner && this._fr() > (B.innerK + (1 - B.innerK) * clamp01((r - B.inner[0]) / (B.inner[1] - B.inner[0])))) return out;
+    if (this._nearHero(x, z, WEATHER_TUNE.heroGap.mist)) return out;
+    out.x = x;
+    out.z = z;
+    return out;
+  }
+
+  /** Today's veil: one wide, very faint stroke (the atmosphere's mist, drawn here while it is ours). */
+  _veil(pool, M, B) {
+    const V = M.veil, p = this._mistAt(M, B, V.r[0], V.r[1], this._p, V.view);
+    if (!(p.x === p.x)) return;
+    const w = this._air(p.x, p.z, M.carry, M.drift);
+    const q = this._resetRec();
+    q.x = p.x; q.y = this._range(V.y); q.z = p.z;
+    q.vx = w.x * (0.8 + 0.5 * this._fr()); q.vz = w.z + (this._fr() - 0.5) * (M.drift[0] || M.carry ? 0.15 : 0.02);
+    q.life = this._range(V.life);
+    q.size = this._range(V.size); q.sizeEnd = V.sizeEnd;
+    q.glyph = V.glyph;
+    q.color = q.colorEnd = V.color;
+    q.alpha = V.alpha; q.alphaEnd = 0;
+    q.rot = (this._fr() - 0.5) * 0.15;
+    pool.spawn(q);
+  }
+
+  /** A bank: a loose cluster of small letters drifting together. */
+  _bank(pool, M, B) {
+    const K = M.bank, p = this._mistAt(M, B, B.r[0], B.r[1], this._p);
+    if (!(p.x === p.x)) return;
+    const w = this._air(p.x, p.z, M.carry, M.drift);
+    const vx = w.x * (0.8 + 0.4 * this._fr()), vz = w.z * (0.8 + 0.4 * this._fr());
+    const life = this._range(K.life);
+    let n = Math.round(this._range(K.per));
+    while (n-- > 0) {
+      // (an ellipse, denser at its heart)
+      const a = this._fr() * TAU, r = Math.sqrt(this._fr());
+      const q = this._resetRec();
+      q.x = p.x + Math.cos(a) * r * K.spread[0];
+      q.z = p.z + Math.sin(a) * r * K.spread[1];
+      q.y = this._range(B.y);
+      q.vx = vx + (this._fr() - 0.5) * K.wobble;
+      q.vz = vz + (this._fr() - 0.5) * K.wobble;
+      q.vy = (this._fr() - 0.5) * 0.04;
+      q.life = life * (0.75 + 0.25 * this._fr());
+      q.size = K.sizeStart; q.sizeEnd = this._range(K.size);
+      q.glyph = K.glyph;
+      q.color = q.colorEnd = K.color;
+      q.alpha = K.alpha; q.alphaEnd = 0;
+      pool.spawn(q);
     }
   }
 
