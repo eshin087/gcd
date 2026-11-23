@@ -262,6 +262,35 @@ export default {
     T.assert(lf.d >= 1, `grove leaf floor: a leaf flicked (${lf.d})`);
   },
 
+  /** The trail through the meadow (the hero's feet, as player.js brings them down): the grass is trodden
+   *  where he ran (the scorch map's blue, which the grass shader reads with the wind on or off), it
+   *  stands up again within ~6 s, and with the steps off there is no trail at all. */
+  trail(T) {
+    const trail = (spec) => {
+      const w = T.build('cinderwood', spec, { feet: true });
+      w.place(-8, 16);
+      w.walk(5, 0);
+      w.step(3.2);
+      w.walk(0, 0);
+      const sc = w.world.scorch;
+      let n = 0, max = 0;
+      for (let x = -8; x <= 8; x += 0.25) {
+        const v = sc.trampleAt(x, 16);
+        if (v > 0.05) n++;
+        max = Math.max(max, v);
+      }
+      w.step(3);
+      const mid = sc._tramN;
+      w.step(4);
+      return { n, max, mid, end: sc._tramN };
+    };
+    const on = trail('steps'), both = trail('steps,wind'), off = trail('wind');
+    T.assert(on.n >= 8 && on.max > 0.5, `steps on, wind off: a trail of trodden cells along the run (${on.n} of 65 probes, deepest ${on.max.toFixed(2)})`);
+    T.assert(both.n >= 8, `steps and wind on: the same trail (${both.n})`);
+    T.assert(on.mid > 0 && on.end === 0, `it stands up again (${on.mid} cells still trodden 3 s after, ${on.end} at 7 s)`);
+    T.assert(off.n === 0 && off.max === 0, `steps off: no trail (${off.n})`);
+  },
+
   /** A 30 s sprint on every level: inside the steps' budget (fx.alpha 60, own 120), no NaN, no Math.random. */
   budget(T) {
     for (const id of T.LEVEL_IDS) {

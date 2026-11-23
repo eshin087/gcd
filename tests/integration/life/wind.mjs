@@ -170,6 +170,20 @@ export default {
     T.assert(W.speed > held * 2 && W.fronts.some((F) => F.on), `let go: the breeze comes back (${W.speed.toFixed(2)} m/s) and the due front is born`);
   },
 
+  /** The wind hears the weather: weather.windK (the ash's squall 1.6, the ring's gathering 1.3)
+   *  multiplies its strength. */
+  weatherK(T) {
+    for (const [id, spell] of [['ash', 'squall'], ['ring', 'gathering']]) {
+      const a = T.build(id, 'wind');
+      const b = T.build(id, 'wind,weather');
+      b.life.weather.force(spell, 1);
+      a.step(20);
+      b.step(20);
+      const k = b.life.weather.windK, r = b.life.wind.speed / a.life.wind.speed;
+      T.assert(k > 1.2 && T.near(r, k, 0.02), `${id}: '${spell}' asks windK ${k.toFixed(2)}: the prevailing ${a.life.wind.speed.toFixed(2)} → ${b.life.wind.speed.toFixed(2)} m/s (x ${r.toFixed(2)})`);
+    }
+  },
+
   /** A burst expands, pushes outward, and decays to nothing. */
   burst(T) {
     const w = T.build('cinderwood', 'wind');
