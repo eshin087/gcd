@@ -8,7 +8,7 @@ import { MOVES, MOVE_NAMES, CLIP, realise, counterMove } from './moves.js';
 import { TUNING } from './tuning.js';
 import { LINKS } from './links.js';
 import { SheathFx } from './fx.js';
-import { tintWanderer } from './look.js';
+import { tintWanderer, sheathDigits, SHEATH_STEP, SHEATH_FLAT } from './look.js';
 import { LateCuts } from './lateCuts.js';
 
 // Lu Wusheng, the Sheathed (ADR-144, ADR-145; COMBAT.md → "The Sheathed"): a wandering swordsman whose
@@ -71,10 +71,10 @@ export class Sheathed extends Duelist {
   /** His sword's colours (the materials left on today's path: the blade, the scabbard, its fittings). */
   _tint(M) {
     const fill = (m, r, g, b) => m?.uniforms?.uArtFill?.value.setRGB(r, g, b);
-    // the body in the hero's ink-line art (look.js; `?sheathArt=0` the wyrm's digits, whose colours
-    // are the art sources' inks: no uArtFill to write): the Wanderer in his palette, the other bodies
-    // their inks as fills
-    if (sheathArtNow() === 'a') {
+    // the body in the hero's ink-line art (look.js, prints 3 and a; in the wyrm's digits, 0 - 2, the
+    // colours are the art sources' inks: no uArtFill to write): the Wanderer in his palette, the other
+    // bodies their inks as fills
+    if (!sheathDigits()) {
       if (sheathLookNow() === 'd') tintWanderer(M);
       else {
         const A = SHEATH_ART[sheathLookNow()];
@@ -104,6 +104,18 @@ export class Sheathed extends Duelist {
     };
     const off = buildOffSheath(r.materials, 1);
     r.body.add(off.root);
+    // print 3 (flat): every cloth piece one piece (its fold and band sub-pieces folded into one, aPart
+    // 0): the art pass draws no crease line inside it, only the outline and the part edges
+    if (SHEATH_STEP[sheathArtNow()]?.flat && sheathLookNow() === 'd') {
+      const flat = new Set(SHEATH_FLAT.map((k) => r.materials[k]).filter(Boolean));
+      r.root.traverse((o) => {
+        const a = o.isMesh && flat.has(o.material) ? o.geometry?.attributes?.aPart : null;
+        if (a) {
+          a.array.fill(0);
+          a.needsUpdate = true;
+        }
+      });
+    }
     // mark a's strip on the left-wrist piece: its springs join the rig's (anim.js _streamers), after
     // the ones gear.js hung; the draw snaps them (_setSheath)
     this._offStrip = [];

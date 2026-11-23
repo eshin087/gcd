@@ -4,7 +4,7 @@ import { registerItem } from '../../player/gear/index.js';
 import { shellGeometry, skirtSheet, sheetOffset, tatterStrip, bandGeometry, boxGeometry, mergeGeometries, sub, foldLines, ribbonCrease, lerp, limb, gripFist, looseHand, partGeometry } from '../../player/heroGeo.js';
 import { toDragonLook, ART_CLOTH, ART_SKIN, ART_KEEP } from '../ashDisciple/bodyArt.js';
 import { ROBE_PANELS } from '../ashDisciple/gear.js'; // (the robe skirt's cut: Shen Hui's panels)
-import { sheathArtNow, sheathMarkNow, sheathLookNow } from './look.js';
+import { sheathArtNow, sheathMarkNow, sheathLookNow, sheathDigits, sheathTuned, wandererDigits } from './look.js';
 
 export { sheathArtNow, sheathLookNow };
 
@@ -101,11 +101,14 @@ const mirrored = (g) => {
   return m;
 };
 
-/** Under the wyrm's digits (`?sheathArt=0`) each item's build turns the rig to the dragon look first
- *  (once per rig: toDragonLook); in the ink-line art (the default, look.js) the rig keeps the hero's
- *  materials and sheathed.js _tint fills them. */
+/** Under the wyrm's digits (`?sheathArt=0|1|2`, look.js) each item's build turns the rig to the dragon
+ *  look first (once per rig: toDragonLook; 1 and 2 with the Wanderer's palette, `wandererDigits`); in
+ *  the ink-line art (3, a) the rig keeps the hero's materials and sheathed.js _tint fills them. */
 const opted = (build) => (ctx) => {
-  if (sheathArtNow() === '0') toDragonLook(ctx, SHEATH_ART[sheathLookNow()]);
+  if (sheathDigits()) {
+    const look = sheathLookNow();
+    toDragonLook(ctx, look === 'd' && sheathArtNow() !== '0' ? wandererDigits(SHEATH_ART.d) : SHEATH_ART[look]);
+  }
   return build(ctx);
 };
 
@@ -116,7 +119,7 @@ function buildHead(ctx) {
   const look = sheathLookNow();
   const streamers = [];
   // (d in the ink-line art: the hair on the `shirt` part, see the high tail below)
-  const art = sheathArtNow() === 'a', hairM = art && look === 'd' ? M.shirt : M.hair;
+  const art = !sheathDigits(), hairM = art && look === 'd' ? M.shirt : M.hair;
   mesh(head, partGeometry('hair.cap'), hairM);
   if (look === 'a') {
     // the knot: the hair bound up at the crown
@@ -141,16 +144,20 @@ function buildHead(ctx) {
     // ink-line art, where the outline is what reads). In the ink-line art the hair is printed on the
     // `shirt` part: the `hair` part's lines are the hero's gold, and a gold line round dark hair read
     // as light hair at the game camera
-    mesh(head, mergeGeometries([
-      sub(bandGeometry(0.034, 0.034, 0.03, 12).translate(0, 0.258, -0.074), 1),
-      sub(bandGeometry(0.03, 0.03, 0.012, 12).translate(0, 0.238, -0.07), 0),
-    ]), M.hem);
-    const base = joint(head, 0, 0.262, -0.086);
+    // (print 0: the tail as he shipped, shorter, its tie dark)
+    const tuned = sheathTuned();
+    if (tuned) {
+      mesh(head, mergeGeometries([
+        sub(bandGeometry(0.034, 0.034, 0.03, 12).translate(0, 0.258, -0.074), 1),
+        sub(bandGeometry(0.03, 0.03, 0.012, 12).translate(0, 0.238, -0.07), 0),
+      ]), M.hem);
+    } else mesh(head, sub(bandGeometry(0.03, 0.03, 0.024, 12).translate(0, 0.25, -0.078), 1), M.shirt);
+    const base = tuned ? joint(head, 0, 0.262, -0.086) : joint(head, 0, 0.252, -0.088);
     const s0 = joint(base);
-    const L0 = 0.27, L1 = 0.33;
-    mesh(s0, sub(limb({ length: L0, r0: 0.04, r1: 0.03, bulge: 0.008 }), 0), hairM);
+    const L0 = tuned ? 0.27 : 0.22, L1 = tuned ? 0.33 : 0.24;
+    mesh(s0, sub(limb(tuned ? { length: L0, r0: 0.04, r1: 0.03, bulge: 0.008 } : { length: L0, r0: 0.034, r1: 0.026, bulge: 0.006 }), 0), hairM);
     const s1 = joint(s0, 0, -L0, 0);
-    mesh(s1, sub(limb({ length: L1, r0: 0.03, r1: 0.008, bulge: 0.006 }), 1), hairM);
+    mesh(s1, sub(limb(tuned ? { length: L1, r0: 0.03, r1: 0.008, bulge: 0.006 } : { length: L1, r0: 0.026, r1: 0.007, bulge: 0.004 }), 1), hairM);
     // (mark b: a white streak from the left temple back over the crown and down the tail)
     if (sheathMarkNow() === 'b') {
       const sM = art ? M.facing : M.hem, dots = [];
@@ -165,7 +172,7 @@ function buildHead(ctx) {
       mesh(s0, sub(limb({ length: L0, r0: 0.024, r1: 0.02, radial: 6 }).translate(0.022, 0, 0.012), 0), sM);
       mesh(s1, sub(limb({ length: L1 * 0.85, r0: 0.02, r1: 0.006, radial: 6 }).translate(0.016, 0, 0.01), 1), sM);
     }
-    streamers.push({ segs: [s0, s1], len: [L0, L1], out: 0.1, lag: 0.9, max: 2.0 });
+    streamers.push({ segs: [s0, s1], len: [L0, L1], out: tuned ? 0.1 : 0.14, lag: 0.9, max: 2.0 });
   } else if (look === 'b') {
     // the cloth over the lower face, knotted behind
     mesh(head, sub(bandGeometry(0.096, 0.112, 0.07, 24), 0), M.shirt, 0, 0.085, 0.006);
@@ -211,29 +218,35 @@ function buildRobe({ spine, chest, M, BODY, REST, mesh, joint }) {
   mesh(spine, bandGeometry(W.rx + 0.022, W.rz + 0.022, look === 'b' ? 0.09 : 0.04, 32), M.shirt, 0, ySp(1.19), W.cz ?? 0);
   if (look !== 'd') return null;
   // d: the long scarf: two loose turns round the neck, two tails down the back on springs (they trail)
-  // (ADR-152: the turns deeper and the ends wider than they shipped: at the game camera a 6 cm strip
-  // was one letter wide and the scarf did not read as a shape)
-  mesh(chest, mergeGeometries([
-    sub(bandGeometry(0.122, 0.114, 0.085, 24).translate(0, yCh(1.51), 0.004), 1),
-    sub(bandGeometry(0.134, 0.124, 0.06, 24).translate(0.004, yCh(1.462), 0.01), 0),
-  ]), M.leather);
+  // (ADR-152, prints 1 - a: the two turns one deep roll and the ends wider than they shipped: at the
+  // game camera a 6 cm strip was one letter wide, and two thin turns read as noise; print 0: as shipped)
+  const tuned = sheathTuned();
+  if (tuned) mesh(chest, sub(bandGeometry(0.132, 0.122, 0.12, 24).translate(0.002, yCh(1.488), 0.008), 1), M.leather);
+  else {
+    mesh(chest, mergeGeometries([
+      sub(bandGeometry(0.118, 0.11, 0.07, 24).translate(0, yCh(1.505), 0.004), 1),
+      sub(bandGeometry(0.128, 0.118, 0.045, 24).translate(0.004, yCh(1.47), 0.008), 0),
+    ]), M.leather);
+  }
   // one end thrown forward over his left shoulder, lying on the chest
-  mesh(chest, foldLines(tatterStrip(0.32, 0.085, { fork: true, curl: 0.08, seed: 867 }), ribbonCrease(0.085, 0.8)), M.leather, 0.07, yCh(1.47), 0.13);
+  if (tuned) mesh(chest, foldLines(tatterStrip(0.32, 0.085, { fork: true, curl: 0.08, seed: 867 }), ribbonCrease(0.085, 0.8)), M.leather, 0.07, yCh(1.47), 0.13);
+  else mesh(chest, foldLines(tatterStrip(0.24, 0.06, { fork: true, curl: 0.08, seed: 867 }), ribbonCrease(0.06, 0.8)), M.leather, 0.07, yCh(1.47), 0.128);
   const streamers = [];
   // (ADR-152: the tails hang close down his back when he is still, `out` small (it was 0.14: they stood
   // off his back like a pole); a run and the draw still stream them out behind)
   for (const [sx, L0, L1, seed] of [[0.02, 0.34, 0.36, 871], [0.085, 0.3, 0.3, 883]]) {
-    const base = joint(chest, sx, yCh(1.5), -0.15);
+    const base = joint(chest, sx, yCh(1.5), tuned ? -0.15 : -0.172);
     const s0 = joint(base);
+    const w0 = tuned ? 0.08 : 0.062, w1 = tuned ? 0.072 : 0.056;
     // (each strip twice, the second mirrored: a strip is one-sided, and these are seen from behind)
-    const g0 = foldLines(tatterStrip(L0, 0.08, { tip: false, curl: 0.1, seed }), ribbonCrease(0.08, 0.7));
+    const g0 = foldLines(tatterStrip(L0, w0, { tip: false, curl: 0.1, seed }), ribbonCrease(w0, 0.7));
     mesh(s0, g0, M.leather);
     mesh(s0, mirrored(g0), M.leather);
     const s1 = joint(s0, 0, -L0, 0);
-    const g1 = foldLines(tatterStrip(L1, 0.072, { fork: true, curl: 0.16, seed: seed + 5 }), ribbonCrease(0.072, 1.1));
+    const g1 = foldLines(tatterStrip(L1, w1, { fork: true, curl: 0.16, seed: seed + 5 }), ribbonCrease(w1, 1.1));
     mesh(s1, g1, M.leather);
     mesh(s1, mirrored(g1), M.leather);
-    streamers.push({ segs: [s0, s1], len: [L0, L1], out: 0.03, lag: 1.1, max: 2.2 });
+    streamers.push({ segs: [s0, s1], len: [L0, L1], out: tuned ? 0.03 : 0.14, lag: 1.1, max: 2.2 });
   }
   return { streamers };
 }
@@ -250,21 +263,25 @@ function buildSleeves({ arms, sword, M, DIM, BODY, mesh }) {
     const R = side < 0;
     const { upper, fore } = arms[R ? 'R' : 'L'];
     const bare = R && look === 'c';
+    // (ADR-152, the Wanderer in prints 1 - a: full sleeves, wide at the shoulder and wider at the
+    // wrist, no bindings: at his size a thin arm read as a stiff stick and the bands as noise)
+    const full = sheathTuned();
+    const eu = bare ? 0 : full ? 0.03 : 0.008, el = bare ? 0 : full ? 0.034 : 0.01;
     mesh(upper, mergeGeometries([
-      sub(limb({ length: DIM.upperArm, r0: ua0 + (bare ? 0 : 0.008), r1: ua1 + (bare ? 0 : 0.01), bulge: 0.012 }), 1),
-      sub(ellipsoidGeometry(ua1 + 0.012, ua1 + 0.01, ua1 + 0.014, { widthSegs: 10, heightSegs: 6 }).translate(0, -DIM.upperArm, -0.004), 1),
+      sub(limb({ length: DIM.upperArm, r0: ua0 + eu, r1: ua1 + el, bulge: full ? 0.016 : 0.012 }), 1),
+      sub(ellipsoidGeometry(ua1 + el + 0.002, ua1 + el, ua1 + el + 0.004, { widthSegs: 10, heightSegs: 6 }).translate(0, -DIM.upperArm, -0.004), 1),
     ]), bare ? M.skin : M.coat);
-    // the forearm: a sleeve bound at the wrist (a, b), the bare arm (c's right)
-    mesh(fore, sub(limb({ length: DIM.foreArm - 0.06, r0: fa0 + (bare ? 0 : 0.014), r1: fa1 + (bare ? 0 : 0.006), bulge: bare ? 0.004 : 0.012 }), 1), bare ? M.skin : M.coat);
+    // the forearm: a sleeve bound at the wrist (a, b), the bare arm (c's right), d's wide sleeve
+    if (full) mesh(fore, sub(limb({ length: DIM.foreArm - 0.045, r0: fa0 + 0.034, r1: fa1 + 0.05, bulge: 0.006 }), 1), M.coat);
+    else mesh(fore, sub(limb({ length: DIM.foreArm - 0.06, r0: fa0 + (bare ? 0 : 0.014), r1: fa1 + (bare ? 0 : 0.006), bulge: bare ? 0.004 : 0.012 }), 1), bare ? M.skin : M.coat);
     // the binding at the wrist (cord wraps); c: the bare arm bound with cord from the elbow down
     const wraps = [];
-    const n = bare ? 6 : look === 'd' ? 4 : 3, y0 = bare ? -0.06 : -DIM.foreArm + (look === 'd' ? 0.2 : 0.16), y1 = -DIM.foreArm + 0.06;
+    const n = full ? 0 : bare ? 6 : 3, y0 = bare ? -0.06 : -DIM.foreArm + 0.16, y1 = -DIM.foreArm + 0.06;
     for (let i = 0; i < n; i++) {
       const t = i / Math.max(1, n - 1), y = lerp(y0, y1, t), r = lerp(fa0, fa1, Math.min(1, -y / DIM.foreArm)) + (bare ? 0.004 : 0.012);
       wraps.push(sub(limbGeometry({ length: 0.018, r0: r, r1: r, radial: 10, rings: 1 }).rotateX(Math.PI / 2).translate(0, y, 0), i & 1));
     }
-    // (d: the wrist bindings pale, as the shin wraps: bound sleeves that read in the ink-line art)
-    mesh(fore, mergeGeometries(wraps), bare ? M.leather : look === 'd' ? M.hem : M.shirt);
+    if (wraps.length) mesh(fore, mergeGeometries(wraps), bare ? M.leather : M.shirt);
     if (!R) {
       const H = looseHand(DIM.foreArm - 0.03, side, HK);
       mesh(fore, mergeGeometries([H.palm, H.fingers, H.tips, H.thumb]), M.skin);
@@ -312,6 +329,13 @@ function buildLegs({ pelvis, legs, M, DIM, BODY, mesh }) {
     const { thigh, shin, foot } = legs[side < 0 ? 'R' : 'L'];
     mesh(thigh, limb({ length: DIM.thigh, r0: th0 + 0.014, r1: th1 + 0.016, bulge: 0.016 }), M.pants);
     mesh(shin, sub(limb({ length: 0.12, r0: th1 + 0.014, r1: sh0 + 0.012 }), 1), M.pants);
+    // (ADR-152, prints 1 - a: one plain gaiter, not six bands: the bands read as noise at his size)
+    if (sheathTuned()) {
+      mesh(shin, sub(limb({ length: DIM.shin - 0.14, r0: sh0 + 0.016, r1: sh1 + 0.012, bulge: 0.006 }).translate(0, -0.1, 0), 1), M.hem);
+      const F = BODY.foot;
+      mesh(foot, ellipsoidGeometry(F.r[0] * 0.92, F.r[1] * 0.85, F.r[2] * 0.95, { widthSegs: 10, heightSegs: 6 }).translate(F.c[0], F.c[1] - 0.004, F.c[2]), M.shirt);
+      continue;
+    }
     const wraps = [];
     const n = 6, y0 = -0.11, y1 = -DIM.shin + 0.05;
     for (let i = 0; i < n; i++) {
@@ -355,7 +379,7 @@ function buildRobeSkirt({ pelvis, M, DIM, mesh, joint }) {
     mesh(s1, g1, M.lining);
     coat.push({ anchor, segs: [s0, s1], def: P, strips: [], len: [L0, L1], r0: R0 });
   });
-  if (sheathLookNow() === 'd') robeTails({ pelvis, M, DIM, mesh, joint, coat });
+  if (sheathTuned()) robeTails({ pelvis, M, DIM, mesh, joint, coat });
   return { coat };
 }
 
@@ -438,7 +462,7 @@ function bladeGeo() {
  *  one. `at` the joint it hangs on, `z` along the scabbard. Returns the streamers (two). */
 export const STRIP = Object.freeze({ len: [0.26, 0.38], short: [0.12, 0.16], w: 0.055, out: 0.32 });
 function stripOn({ at, z, M, mesh, joint }) {
-  const sM = sheathArtNow() === 'a' ? M.piping : M.hem;
+  const sM = sheathDigits() ? M.hem : M.piping;
   const r = SWORD_DIMS.sheathR + 0.006;
   const meshes = [
     mesh(at, sub(limbGeometry({ length: 0.03, r0: r, r1: r, radial: 8, rings: 1 }).translate(0, 0, z - 0.015), 1), sM),
