@@ -2360,7 +2360,7 @@ async function scenarioBody() {
   };
   setLook('ascLook', null);
   const base = shape(build());
-  assert(ascLookNow().id === 'h' && base.look === 'h', `no switch: the owner's pick, outfit h, the orange gi (${base.meshes} meshes, ${base.switched} switched by form)`);
+  assert(ascLookNow().id === 'e' && base.look === 'k', `no switch: the owner's pick, e, the gi with wraps in ember (${base.meshes} meshes, ${base.switched} switched by form)`);
   setLook('ascLook', 'a');
   const old = shape(build());
   assert(old.look === 'a' && old.meshes > 0, `?ascLook=a: the tunic as it shipped before (${old.meshes} meshes, ${old.switched} switched by form)`);
@@ -2397,7 +2397,113 @@ async function scenarioBody() {
   }
   setLook('ascLook', null);
   const after = shape(build());
-  assert(after.look === 'h' && after.meshes === base.meshes && after.switched === base.switched, `switched back: the pick, outfit h, as before (${after.meshes} meshes)`);
+  assert(after.look === 'k' && after.meshes === base.meshes && after.switched === base.switched, `switched back: the pick, e, as before (${after.meshes} meshes)`);
+}
+
+/**
+ * HEROLIKE (ADR-155): Tian Lei printed like the hero. His letters follow his size on screen by the
+ * hero's rule (his kit's letters -> pipeline.bossLetters -> the bosses' grid), the hero's quieter
+ * print; his gold hair (forms 2 - 3) his own hair risen, no taller in form 3; the gi with wraps in
+ * three colourings, no blue on it.
+ */
+async function scenarioHeroLike() {
+  out("\n== scenario HEROLIKE (his letters follow his size like the hero's; the hair risen, not tall; the gi with wraps) ==");
+  const { setLook, pickedOf } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const LOOK = await imp('src/entities/enemies/ascendant/look.js');
+  const { Pipeline } = await imp('src/render/pipeline.js');
+  const L = CONFIG.render.heroLetters;
+  // the picks
+  assert(pickedOf('ascLetters') === 'a' && pickedOf('ascHair') === 'b' && pickedOf('ascLook') === 'e' && pickedOf('ascLift') === 'b', "the owner's picks (2026-11-23): letters a, hair b, outfit e, print b");
+  const G = build();
+  const d = G.game.dragon;
+  const kit = d.kit, on = {};
+  for (const o of ['0', 'a']) { setLook('ascLetters', o); on[o] = !!kit.letters; }
+  setLook('ascLetters', null);
+  assert(kit.letters === true && on.a === true && on['0'] === false, `his kit asks for letters that follow his size (the pick a: ${kit.letters}); ?ascLetters=0 the fixed cell (${on['0']}), live`);
+  // the pipeline (a mock renderer): the bosses' grid (ARCHITECTURE "The bosses' letters")
+  const U = G.game.U, cam = G.game.camera;
+  const renderer = {
+    extensions: { has: () => true }, autoClear: true, _dpr: 1,
+    setRenderTarget() {}, setClearColor() {}, getClearColor() {}, getClearAlpha: () => 0, clear() {}, render() {},
+    setPixelRatio(x) { this._dpr = x; }, getPixelRatio() { return this._dpr; }, setSize() {},
+  };
+  const pipe = new Pipeline(renderer, G.game.scene, G.game.fxScene, cam, U);
+  cam.fov = CONFIG.camera.fov;
+  cam.updateProjectionMatrix();
+  cam.updateMatrixWorld(true);
+  const u = pipe.asciiMat.uniforms, ps = new THREE.Vector4();
+  // the hero and him at the same depth (the pass takes his 1 m above his root, as the hero's)
+  const cellsAt = (H, D, letters) => {
+    pipe.setSize(Math.round((H * 16) / 9), H, 1);
+    pipe.bossLetters = letters;
+    U.uBossScreen.value.set(0.4, 0.5, D + cam.matrixWorld.elements[9], 1);
+    ps.set(0.6, 0.5, D, 0);
+    for (let i = 0; i < 3; i++) { pipe._updateHeroLetters(ps); pipe._updateBossLetters(U.uBossScreen.value); }
+    return [u.uHeroCell.value.x, pipe.selfCell.x];
+  };
+  const rows = [];
+  for (const [name, H, D] of [['phone', 393, 20], ['720p', 720, 36], ['1080p', 1080, 36], ['1440p', 1440, 36], ['4K', 2160, 36], ['1440p 24 m', 1440, 24], ['1440p 54 m', 1440, 54]]) {
+    const [b, h] = cellsAt(H, D, kit.letters);
+    rows.push(`${name} ${b}/${h}`);
+    assert(b === h && u.tHeroArt.value === pipe._selfArt.get(b)?.texture && u.uHeroPx.value.x === Math.max(1, Math.round(b / 4 - 0.01)),
+      `${name} at ${D} m: his cell ${b} px is the hero's ${h} px, its atlas and a ${u.uHeroPx.value.x} px font pixel`);
+    const [b0] = cellsAt(H, D, false);
+    assert(b0 === pipe.heroCell.x && u.tHeroArt.value === pipe.heroArt.texture && u.uHeroPx.value.x === Math.max(1, Math.floor(H / 1080)),
+      `${name}: with ?ascLetters=0 (as every boss whose kit does not ask) the fixed ${b0} px cell as before`);
+  }
+  out("   his / the hero's cell: " + rows.join('; '));
+  // the print: the hero's quieter one (the fills lower than the lifted ones, the rim softer)
+  const fill = (look) => {
+    setLook('ascLift', look);
+    const g = build();
+    setLook('ascLift', null);
+    const M = g.game.dragon.rig.materials;
+    return { skin: M.skin.uniforms.uArtFill.value.r, coat: M.coat.uniforms.uArtFill.value.r, rim: M.coat.uniforms.uArtRim.value };
+  };
+  const qa = fill('a'), qb = fill('b');
+  assert(qb.skin < qa.skin * 0.6 && qb.coat < qa.coat && qb.rim < qa.rim * 0.6, `the quieter print: skin ${qb.skin.toFixed(2)} (lifted ${qa.skin.toFixed(2)}), coat ${qb.coat.toFixed(2)} (${qa.coat.toFixed(2)}), rim ${qb.rim.toFixed(2)} (${qa.rim.toFixed(2)})`);
+  // the hair: how far the gold rises above his dark form-1 hair's top, per form (world m, at rest)
+  const rise = (opt) => {
+    setLook('ascHair', opt);
+    const g = build();
+    setLook('ascHair', null);
+    const dd = g.game.dragon, M = dd.rig.materials, D = dd.rig.root.userData.dress;
+    dd.rig.root.updateMatrixWorld(true);
+    const top = (f, mats) => {
+      let y = -Infinity;
+      for (const e of D.at) if (e.from <= f && e.to >= f && mats.includes(e.m.material)) y = Math.max(y, new THREE.Box3().setFromObject(e.m).max.y);
+      return y;
+    };
+    const dark = top(1, [M.shirt]);
+    return { dark, f2: top(2, [M.hair, M.hairTip]) - dark, f3: top(3, [M.hair, M.hairTip]) - dark };
+  };
+  const h0 = rise('0'), hb = rise('b'), ha = rise('a');
+  out(`   the gold above his dark hair: tall crown ${h0.f2.toFixed(2)} / ${h0.f3.toFixed(2)} m, short crown ${ha.f2.toFixed(2)} / ${ha.f3.toFixed(2)}, risen ${hb.f2.toFixed(2)} / ${hb.f3.toFixed(2)} (forms 2 / 3)`);
+  assert(hb.f2 < h0.f2 - 0.08 && hb.f3 < h0.f3 - 0.15 && ha.f2 < h0.f2 - 0.08, 'the risen hair (and the short crown) stand well below the tall crown');
+  assert(hb.f3 - hb.f2 < 0.05 && hb.f2 < 0.12, `form 3 no taller than form 2 by more than 5 cm, both near his own hair's height (${hb.f2.toFixed(2)} / ${hb.f3.toFixed(2)} m above it)`);
+  // the gi with wraps: e / r / w build, dress by form, no blue on the cloth; outfit a's wraps
+  for (const o of LOOK.KUNG_LOOKS) {
+    setLook('ascLook', o);
+    const g = build();
+    const dd = g.game.dragon, M = dd.rig.materials, D = dd.rig.root.userData.dress;
+    const blue = ['coat', 'pants', 'hem', 'leather', 'collar', 'facing'].filter((k) => {
+      const c = M[k]?.uniforms?.uArtFill?.value;
+      return c && c.b > c.r * 1.2 && c.b > 0.1;
+    });
+    let wraps = 0;
+    dd.rig.root.traverse((x) => { if (x.isMesh && x.material === M.hem) wraps++; });
+    let ok = D.look === 'k' && LOOK.ascLookNow().tint === o && !blue.length && wraps >= 4;
+    for (const f of [1, 2, 3]) {
+      if (dd.phase !== f) dd.debug.setForm(f);
+      run(g, 0.4);
+      const gold = D.at.filter((e) => (e.m.material === M.hair || e.m.material === M.hairTip) && e.m.visible).length;
+      ok &&= f === 1 ? gold === 0 : gold > 0;
+    }
+    dd.debug.setAI(true);
+    run(g, 3);
+    assert(ok, `?ascLook=${o}: the gi with wraps (${wraps} wrapped pieces), no blue cloth (${blue.join(', ') || 'none'}), the gold hair from form 2`);
+  }
+  setLook('ascLook', null);
 }
 //
 //
@@ -3088,6 +3194,7 @@ const S = {
   ripostes: scenarioRipostes,
   // --- body
   body: scenarioBody,
+  herolike: scenarioHeroLike,
   //
   //
   // --- terrain
