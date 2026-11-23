@@ -1137,6 +1137,39 @@ export const SFX = {
    * snapped, it leans). Quiet on purpose (the owner finds loud SFX "too noisy"): a rustle of leaves and a
    * dry crack, a low creak for the lean. A roar's front sets off hundreds: `gap` keeps it to a few.
    */
+  /**
+   * dragon:clone (the Thousand-Body Fox's paper selves, ADR-147): a short, dry, quiet paper tear. A rip
+   * is a quick run of tiny grains through a band that climbs, over a soft breath of the sheet. `soft`
+   * (a self tearing free, one burning into him): shorter, higher, half as loud. Quiet on purpose (the
+   * owner finds loud SFX "too noisy"); `gap` keeps a burst of five pops to one or two tears. Its jitter
+   * comes from the cut layer's stream (crnd), never Math.random: the seeded sims replay the AI from it.
+   */
+  paperTear: {
+    prio: 2, rev: 0.03, gap: 0.06, falloff: 0.8, gain: 0.32,
+    play(v, t, o) {
+      const soft = !!o.soft, D = soft ? 0.09 : 0.15, a = soft ? 0.5 : 1;
+      // the rip: grains through a band that climbs
+      const n = v.noise('white', t, t + D + 0.05, 1, crnd());
+      const bp = v.filter('bandpass', soft ? 3000 : 2200, 1.3);
+      env(bp.frequency, t, [[0, soft ? 3000 : 2200], [D, soft ? 5600 : 4600]]);
+      const g = v.gain(0);
+      g.gain.setValueAtTime(0, t);
+      const grains = soft ? 8 : 15;
+      for (let i = 0; i < grains; i++) {
+        const tt = t + (D * (i + 0.6 * crnd())) / grains, u = i / grains;
+        g.gain.setValueAtTime(a * (0.35 + 0.65 * crnd()) * (u < 0.2 ? 0.5 + 2.5 * u : 1 - 0.5 * u), tt);
+        g.gain.setTargetAtTime(0, tt + 0.0006, 0.003 + 0.004 * crnd());
+      }
+      n.connect(bp).connect(g).connect(v.out);
+      // the sheet's breath under it
+      const b = v.noise('pink', t, t + D + 0.08, 1, crnd());
+      const lp = v.filter('lowpass', 1100, 0.7);
+      const bg = v.gain(0);
+      perc(bg.gain, t, 0.12 * a, 0.004, D * 0.8);
+      b.connect(lp).connect(bg).connect(v.out);
+    },
+  },
+
   wear: {
     prio: 2, rev: 0.16, gap: 0.14, falloff: 0.7, gain: 0.45,
     play(v, t, o) {

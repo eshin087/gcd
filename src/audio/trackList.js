@@ -58,6 +58,15 @@ export const SCORE = {
         T('cinder-p3', { xfade: 3 }),
       ],
     },
+    // The Foxfire Terrace borrows too (ADR-147) until the owner auditions a score of its own.
+    fox: {
+      explore: T('cinder-explore', { xfade: 3 }),
+      phases: [
+        T('ash-p2', { loopFrom: 14.8 }),
+        T('cinder-p2', { xfade: 0.1 }),
+        T('starless-p3', { xfade: 0.5 }),
+      ],
+    },
     // The Windless Grove borrows too, until the owner picks its score (one track per phase).
     grove: {
       explore: T('cinder-explore', { xfade: 3 }),

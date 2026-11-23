@@ -184,7 +184,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
-## M1.60 — A fifth level: the Windless Grove and the Sheathed (2026-11-22, `level/the-sheathed`, ADR-144 – ADR-146)
+## M1.62 — A sixth level: the Windless Grove and the Sheathed (2026-11-22, `level/the-sheathed`, ADR-144 – ADR-146)
 - [x] `?level=grove`: the bamboo grove (light pieces), the Sword Grave, the paving; `?grove=a|b|c`
 - [x] Lu Wusheng, the Sheathed: three phases, the sheath on the rig, the draw's rule (parry or die, a held
       guard never hurt, the honor gate), the grove falling on the click, the hanging cuts
@@ -193,6 +193,32 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [ ] The owner's picks from the sheets: his body, the cut, the grove's light
 - [ ] His own score (borrowed tracks until an audition page)
 - [ ] A human playtest of the draw on the phone; One Breath's balance bot on Shen Hui
+## M1.61 — A fifth level: the Foxfire Terrace and Wen Yao, the Thousand-Body Fox (2026-11-21, `claude/thousand-body-fox-33750d`, ADR-147, ADR-148)
+- [x] An original in the spirit of a ninja-clone hero: his own name, mask, outfit and move names, none of that series' look
+- [x] The level (`?level=fox`) and its set: a round paved terrace, lanterns, stone foxes, charm posts that burn, a great stone fox and a spirit gate
+- [x] Wen Yao on the duelist engine (no engine change): three phases, nineteen moves as data, links, the seated intro
+- [x] The owner's turn (2026-11-22): a bare-handed fist fighter (Tian Lei's strike builders), the homage pushed through what nobody owns (the pack, the palm-driven Pearl, the nine-tailed fox)
+- [x] The paper selves: his own bodies (a pool of five built with him), pop in one hit, the cleave, one cut at a time under the fairness guard
+- [x] The Pearl: shaped in his palm with a self's help, fed by the selves, starved by popping them, interrupted by two blows, driven home on a dash; Pearl Rain throws three from phase 2; Fox Descending off a self's hands
+- [x] The Nine-Tailed Fox (phase 3): one tail to nine as his bar runs out, fire on the world, the tail, the pounce, the black pearl
+- [x] Foxfire as a palette of the fire field; the rigid batch's bone texture grows when a level needs it
+- [x] The look options rendered (body a - d, foxfire a - c, selves a / b); the fight built with each one's a
+- [x] `tests/integration/fox.mjs` in `npm test`; the Lab (FIGHT buttons, LOOKS rows) and Training know him (two situations of his own)
+- [ ] Follow-ups:
+  - [ ] The owner's picks: `?foxLook=`, `?foxfire=`, `?clones=` (from the sheets in `docs/looks/fox/`)
+  - [ ] The owner plays the preview on the phone: the selves' readability at 852 x 393, the frame rate with five out
+  - [ ] The level's own score (it borrows three tracks)
+  - [ ] Phase 3 asks more (twice the dodges) but is not busier than phase 2 (79.3 against 80.2 cues a minute, bare-handed)
+
+## M1.60 — Tian Lei as a recognizable homage (2026-11-22, `enemies/ascendant-homage`, ADR-150)
+- [x] Three homage bodies behind `?ascLook=`; the owner picked the orange gi (`h`)
+- [x] Instant Wave (form 3): the sign, beside the hero, a cupped-hands beam
+- [x] Options: every beam out of cupped hands (`?ascBeamPose=cup`), the pale gathered sphere (`?ascOrb=c`)
+- [ ] The owner picks the beam pose and the orb
+- [ ] The wink names for his techniques (proposed: Crane Wave, Spirit Lantern, Instant Step ...)
+- [ ] The gold hair apart from the gold aura in forms 2 - 3 (an aura option)
+- [ ] One line for lookalike requests across sessions
+
 ## M1.59 — Bites: the letters come off where the blow lands (2026-11-21, `world/chip-where-hit`, ADR-132)
 - [x] Every breakable as bricks (its triangles; the halves of a flat face pair up), taken where a blow struck
 - [x] The share of structure a blow took = the share of the bricks under it; a blast eats the facing side
@@ -810,6 +836,7 @@ Spec: `docs/specs/ash-disciple.md`.
 - [ ] Techniques: a slot system, a meter filled by parries and perfect dodges, an equip screen; the
       Ash Disciple's technique first (the next PR). The store it can read exists: `game/unlocks.js` (ADR-146)
 - [~] Fixed rewards per boss: the first, One Breath (the Sheathed's draw-slash, ADR-146), ships; the rest (techniques, weapons, abilities, elements); weapons of other lengths
+  - [ ] The Thousand-Body Fox's Paper Double (a decoy the foe strikes instead of the hero): recorded on the level, not usable (ADR-148); needs the technique slot, a button on every input, a target indirection in every boss's AI
       (the animator, the hit segment and the blade FX read `DIM`)
 - [ ] A hub that links the levels (the bonfire), and a boss-rush mode (refights back to back, a timer)
 - [ ] More duelists from the roster (The Moth, The Bell-Warden, The Calligrapher, The Iron Abbot)

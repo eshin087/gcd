@@ -31,7 +31,7 @@ import { THUMP_SFX, Thump } from './thump.js';
 //            plungeDive{exec} plungeHit{exec}
 //   dragon   roar{strength,pitch} wake dragonStep{heavy} wingFlap{strength} takeoff land bite
 //            windup{name} dragonSwipe dragonPain dragonRecoil{tell} postureBreak{roar}
-//            fireball explosion{radius} stagger phase2{roar} dragonDeath emberHiss
+//            fireball explosion{radius} stagger phase2{roar} dragonDeath emberHiss paperTear{soft}
 //   world/ui bonfire victory area retry blip{kind: select|start|pause|resume|error}
 //   aliases  ui click select confirm start pause resume back cancel error → blip variants
 //
@@ -837,6 +837,9 @@ export class AudioEngine {
     on('dragon:breathEnd', () => this.breath?.stop());
     on('dragon:fireball', (d) => this.play('fireball', d));
     on('dragon:explosion', (d) => this.play('explosion', d));
+    // the fox's paper selves (ADR-147): a dry, quiet paper tear as one pops, a softer one as one tears
+    // free (or burns into him at his change)
+    on('dragon:clone', (d) => this.play('paperTear', { x: d?.x, z: d?.z, soft: d?.kind === 'spawn' || d?.by === 'mantle' }));
     // the world breaks (ADR-107): a blow on wood / stone / metal, something coming down, fire catching
     on('world:impact', (d) => {
       const o = { x: d.x, z: d.z, mat: d.mat, power: num(d.power, 0.5) };

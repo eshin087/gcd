@@ -16,7 +16,7 @@ import { TUNING as WYRM, SCALE as WYRM_SCALE } from '../entities/dragon/tuning.j
 // every situation through `run(id)` (tests: integ / duel / lord TRAINING).
 //
 // A situation: { id, cat, name, desc, boss (kinds it applies to: 'wyrm' | 'duel' | 'ash' | 'lord' |
-//   'asc' (Tian Lei) | 'any'), dist (m from the boss; omit = the boss's default), ang (rad off his facing), side (put the
+//   'asc' (Tian Lei) | 'fox' (Wen Yao) | 'any'), dist (m from the boss; omit = the boss's default), ang (rad off his facing), side (put the
 //   hero beside him, for the camera), streak (the hero's, set before), foe (his streak), art (pin the
 //   flurry's art), hp (the hero's), god (default true), answer (mode, or (i, T) → mode for blow i),
 //   go(T) (start it), tick(T, dt) (every frame while it runs), until(T) (done; default: the boss's
@@ -52,6 +52,8 @@ const ROLES = {
   ring: { single: 'meteorStep', string: 'gates', long: 'hundred', red: 'cometHeel', lock: 'hundred', mikiri: 'piercingPalm' },
   // the Sheathed (the Windless Grove): no blade lock (a scabbard does not lock)
   grove: { single: 'knock', string: 'refusals', long: 'fordSteps', red: 'reedCutter', mikiri: 'tapStone' },
+  // Wen Yao (the Foxfire Terrace): no perilous thrust (no mikiri situation for him)
+  fox: { single: 'foxBite', string: 'brushstrokes', long: 'streakFlurry', red: 'sweepingBrush', lock: 'moonLadder' },
 };
 
 export function bossKinds(game) {
@@ -61,7 +63,7 @@ export function bossKinds(game) {
   if (typeof d?.debug?.flurry === 'function') {
     k.add('duel');
     // (a three-bar boss is not the Lord: Tian Lei has his own kind, the Lord's situations need the crater)
-    k.add(d?.kit?.id === 'ascendant' ? 'asc' : d?.kit?.id === 'sheathed' ? 'sheathed' : d?.lives ? 'lord' : 'ash');
+    k.add(d?.kit?.id === 'ascendant' ? 'asc' : d?.kit?.id === 'sheathed' ? 'sheathed' : d?.kit?.id === 'thousandFox' ? 'fox' : d?.lives ? 'lord' : 'ash');
   }
   return k;
 }
@@ -181,12 +183,27 @@ const duelChange = (T, n) => {
   return d.debug[`phase${n}`]?.();
 };
 
+// The Thousand-Body Fox (ADR-147): his paper selves and the Pearl
+/** Walk the hero at him while he is further than `near` m (the Pearl's backstep takes him out of reach). */
+const foxClose = (T, near = 2.2) => {
+  const d = T.d, p = T.p;
+  if (!d || !p) return;
+  const dx = d.position.x - p.position.x, dz = d.position.z - p.position.z, l = Math.hypot(dx, dz) || 1;
+  if (l > near) T._axis(dx / l, -dz / l);
+  else T._axis(0, 0);
+};
+add('THE THOUSAND-BODY FOX', [
+  { id: 'foxPop', name: 'Pop the copies · parry them', boss: 'fox', dist: 4, answer: 'parry', desc: 'Two paper selves tear free round you and cut in turn. Parry each cut: a parried self pops (his posture takes it).', go: (T) => T.d.debug.clones(2), until: (T) => T.t > 1 && !(T.d.clones?.live > 0) && T.heroFree(), max: 16, expect: ['dragon:clone', 'player:parry'] },
+  { id: 'foxPearlBurst', name: 'The Pearl · burst it in his hand', boss: 'fox', dist: 2.6, answer: 'none', desc: 'He steps back and shapes the Pearl in his palm: his guard is down. Close in and cut him twice while it charges: it bursts in his hand and he reels.', go: (T) => T.d.debug.trigger('foxPearl'), tick: (T) => { if (T.d.pearl?.charging) { foxClose(T); T.at(0.9, () => T.tap('@attack')); T.at(1.3, () => T.tap('@attack')); T.at(1.7, () => T.tap('@attack')); } else T._axis(0, 0); }, until: (T) => T.t > 1 && !T.moving() && T.heroFree(), max: 10, expect: ['dragon:stagger'] },
+]);
+
 add('BOSS STATES', [
   { id: 'stagger', name: 'Stagger', boss: 'any', desc: 'His stagger.', go: (T) => T.d.debug.stagger(), until: (T) => T.t > 1.2 && !T.moving(), expect: [] },
   { id: 'break', name: 'Posture break', boss: 'any', desc: 'His posture breaks: open to crits.', go: (T) => T.d.debug.postureBreak(), until: (T) => T.t > 3.6, expect: ['dragon:postureBreak'] },
   { id: 'phase2', name: 'Phase 2', boss: 'any', desc: 'The second phase begins (its transition).', go: (T) => T.d.debug.phase2(), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: [] },
   { id: 'phase3', name: 'Phase 3', boss: 'wyrm', desc: 'The third phase: the wyrm burns white-hot.', go: (T) => T.d.debug.phase3(), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: [] },
   { id: 'phase3a', name: 'Phase 3', boss: 'ash', desc: 'His third phase: ash on the wind (its change).', go: (T) => duelChange(T, 3), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: ['dragon:phase3'] },
+  { id: 'phase3f', name: 'The Fox-Fire Mantle', boss: 'fox', desc: 'His third phase: his selves burn up into him and the mantle lights.', go: (T) => duelChange(T, 3), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: ['dragon:phase3'] },
   { id: 'phase3l', name: 'Form 3', boss: 'lord', desc: 'His third blade form ignites.', go: (T) => duelChange(T, 3), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: ['dragon:phase3'] },
   { id: 'form2a', name: 'Golden Ascension', boss: 'asc', desc: 'His second form: the transformation.', go: (T) => duelChange(T, 2), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: ['dragon:phase2'] },
   { id: 'form3a', name: 'Thunder Ascension', boss: 'asc', desc: 'His third form: the transformation.', go: (T) => duelChange(T, 3), until: (T) => T.t > 1 && !T.moving(), max: 10, expect: ['dragon:phase3'] },
@@ -333,7 +350,7 @@ export class Training {
     const id = this.game.level?.id;
     if (ROLES[id]) return ROLES[id];
     const k = bossKinds(this.game);
-    return (k.has('wyrm') ? ROLES.cinderwood : k.has('asc') ? ROLES.ring : k.has('lord') ? ROLES.starless : k.has('ash') ? ROLES.ash : null) ?? {};
+    return (k.has('wyrm') ? ROLES.cinderwood : k.has('asc') ? ROLES.ring : k.has('fox') ? ROLES.fox : k.has('lord') ? ROLES.starless : k.has('ash') ? ROLES.ash : null) ?? {};
   }
 
   find(id) {
@@ -455,6 +472,8 @@ export class Training {
     } catch (err) {
       console.error('[training] world.restore failed', err);
     }
+    // (a boss's own things left in the field by the last situation: the fox's paper selves, his pearls)
+    d?.debug?.tidy?.();
     d?.debug?.setAI?.(!!s.ai);
     if (p?.debug) {
       p.debug.god = s.god !== false;
@@ -630,7 +649,7 @@ export class Training {
     const watch = (n) => ev.on(n, (e) => this._event(n, e));
     for (const n of ['player:parry', 'player:block', 'player:perfectDodge', 'player:flurry', 'player:flurryEnd', 'player:hurt', 'player:streak',
       'player:guardBreak', 'player:guardOpen', 'player:lock', 'player:mikiri', 'player:died', 'player:attack', 'player:charge', 'player:plungeHit', 'combat:clash',
-      'dragon:flurry', 'dragon:flurryEnd', 'dragon:postureBreak', 'dragon:phase2', 'dragon:phase3', 'dragon:phase4', 'dragon:guard', 'combat:flash']) watch(n);
+      'dragon:flurry', 'dragon:flurryEnd', 'dragon:postureBreak', 'dragon:phase2', 'dragon:phase3', 'dragon:phase4', 'dragon:guard', 'dragon:stagger', 'dragon:clone', 'combat:flash']) watch(n);
   }
 
   _event(n, e) {

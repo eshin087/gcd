@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CONFIG } from '../core/config.js';
-import { LAYER_CASTER, LAYER_CASTER_RIGID, RIGID_TEX, RIGID_MAX } from './shaderLib.js';
+import { LAYER_CASTER, LAYER_CASTER_RIGID, RIGID_TEX, RIGID_ROWS_MAX, RIGID_MAX } from './shaderLib.js';
 
 // Rigid batching: an actor built from many small rigid meshes (the hero: ~140, the wyrm: ~180)
 // is drawn with ONE draw call per material in the world pass and ONE draw call in the moon shadow
@@ -53,10 +53,12 @@ export function isRigidSource(o) {
 
 /** The bone registry behind `U.uBoneTex`: slots, the matrix texture and the live batches. */
 class RigidBones {
-  constructor() {
-    this.data = new Float32Array(RIGID_TEX * RIGID_TEX * 4);
+  constructor(U = null) {
+    this.U = U;
+    this.rows = RIGID_TEX;
+    this.data = new Float32Array(RIGID_TEX * this.rows * 4);
     this.data[0] = this.data[5] = this.data[10] = this.data[15] = 1; // slot 0 (never read)
-    this.texture = new THREE.DataTexture(this.data, RIGID_TEX, RIGID_TEX, THREE.RGBAFormat, THREE.FloatType);
+    this.texture = new THREE.DataTexture(this.data, RIGID_TEX, this.rows, THREE.RGBAFormat, THREE.FloatType);
     this.texture.name = 'rigidBones';
     this.texture.needsUpdate = true;
     this.free = []; // released slots, reused first
@@ -73,9 +75,27 @@ class RigidBones {
     return this.top - 1 - this.free.length;
   }
 
-  /** Slots still available. */
+  /** Slots still available in the texture as it is now. */
   get room() {
-    return RIGID_MAX - this.top + this.free.length;
+    return (RIGID_TEX * this.rows) / 4 - this.top + this.free.length;
+  }
+
+  /** The texture grown to `rows` rows (at most RIGID_ROWS_MAX; the slots and matrices kept): a new
+   *  texture in the shared uniform (every material holds that uniform object). False at the most. */
+  _grow(rows = RIGID_ROWS_MAX) {
+    rows = Math.min(RIGID_ROWS_MAX, rows);
+    if (rows <= this.rows) return false;
+    const data = new Float32Array(RIGID_TEX * rows * 4);
+    data.set(this.data);
+    const tex = new THREE.DataTexture(data, RIGID_TEX, rows, THREE.RGBAFormat, THREE.FloatType);
+    tex.name = 'rigidBones';
+    tex.needsUpdate = true;
+    this.texture.dispose();
+    this.data = data;
+    this.rows = rows;
+    this.texture = tex;
+    if (this.U?.uBoneTex) this.U.uBoneTex.value = tex;
+    return true;
   }
 
   _alloc() {
@@ -144,7 +164,7 @@ const REGISTRIES = new WeakMap();
 export function rigidBones(U) {
   let reg = REGISTRIES.get(U);
   if (!reg) {
-    reg = new RigidBones();
+    reg = new RigidBones(U);
     REGISTRIES.set(U, reg);
     if (U.uBoneTex) U.uBoneTex.value = reg.texture;
     else U.uBoneTex = { value: reg.texture };
@@ -242,6 +262,7 @@ class RigidBatchSet {
       sources.push(m);
     }
     if (!sources.length) return;
+    if (sources.length > reg.room) reg._grow();
     if (sources.length > reg.room) {
       if (!reg._warned) console.warn(`rigidBatch: out of bone slots (${RIGID_MAX}); some meshes stay unbatched`);
       reg._warned = true;

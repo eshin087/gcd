@@ -792,7 +792,7 @@ export class Lab {
    *  reload. Only in a duelist's level; collapsed by default (it is long). */
   _buildLooks(root) {
     const id = this.game.level?.id;
-    if (id !== 'ash' && id !== 'starless' && id !== 'ring' && id !== 'grove') return;
+    if (id !== 'ash' && id !== 'starless' && id !== 'ring' && id !== 'fox' && id !== 'grove') return;
     if (this.prefs.collapsed && !('looks' in this.prefs.collapsed)) this.prefs.collapsed.looks = true;
     const { body } = this._section(root, 'looks', 'LOOKS');
     this.ui.looksSync = buildLooks(body, id, (t) => this._status(t, 'ok'));
@@ -846,6 +846,17 @@ export class Lab {
         ob.textContent = `One Breath ${U.toggle('oneBreath', !U.has('oneBreath')) ? 'on' : 'off'}`;
       });
       ob.title = 'the draw-slash: guard, then hold heavy (the Sheathed\'s reward; ?tech=draw)';
+    }
+    // the Thousand-Body Fox (ADR-147): his paper selves, the Pearl, the mantle
+    if (typeof this.game.dragon?.debug?.clones === 'function') {
+      button(grid, 'Selves +2', () => this.game.dragon.debug.clones(2)).title = 'tear two paper selves off him (to the phase\'s cap)';
+      button(grid, 'Pop all', () => this.game.dragon.debug.popAll()).title = 'pop every paper self';
+      button(grid, 'Pearl', () => this.game.dragon.debug.pearl()).title = 'the Pearl of the Hollow Moon now';
+      const m = button(grid, 'Mantle', () => {
+        const on = this.game.dragon.debug.mantle(!this.game.dragon._mantleForced);
+        m.classList?.toggle?.('on', !!on);
+      });
+      m.title = 'the Fox-Fire Mantle on / off (phase 3 wears it by itself)';
     }
     const row = el('div', 'lab-row', null, body);
     el('span', 'lab-lbl', 'HP', row);

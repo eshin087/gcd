@@ -3957,6 +3957,24 @@ ADR-092).
   form 1 from one side. Not checked: a real phone (frame rate, the touch block in the clash). The dodge
   share is 13 / 23 / 40 % against a target of 15 / 25 / 35.
 
+## ADR-150 — Tian Lei as a recognizable homage: the orange gi by default, the instant beam, the signature options behind switches (2026-11-22)
+
+- **Context:** ADR-129 and ADR-135 kept Tian Lei an original in the spirit of the owner's source. The
+  owner reversed that: recognizable ASCII homages of the iconic characters under new names. The lead
+  said once that a new name covers the name, not the design, and that the game is public; the owner
+  decided.
+- **Decision:** three homage bodies behind `?ascLook=` (`h` an orange gi, `g` a purple gi, `v` a blue
+  bodysuit and white armour), built on his own rig and art path and dressed by form; the owner picked
+  `h`, now the default (`a`, the tunic, stays behind the switch). A new form 3 move, Instant Wave (the
+  sign, a vanish to the hero's side, a cupped-hands beam point-blank with a fair red cue). Two
+  options not yet picked: `?ascBeamPose=cup` (every beam out of cupped hands) and `?ascOrb=c` (the
+  pale gathered sphere). New names only in everything that ships; the source's names appear nowhere.
+- **Why not** recolour the aura so the gold hair stands apart in forms 2 - 3: the aura is shared by every
+  body and the owner picked it (ADR-129); offered as its own option later.
+- **Consequences:** the default body changes for everyone; `?ascLook=a` gives the old one. Form 3 has one
+  more red beam (its dodge share 37 → 40 % over ten seeds). Every homage look must be judged at 40 px:
+  colour carries it, detail (a lock of hair, the eyes) does not.
+
 ## ADR-135 — Tian Lei's third wave: the counter stance as an engine beat, the sign before a vanish, the great orb pushed back (2026-11-22)
 
 - **Context:** the owner asked for the fighting game's iconic moves on Tian Lei: "spirit bomb,
@@ -4317,6 +4335,105 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   of a batch piece (it keeps the whole shape). A second layer (a set-back brick struck again) and a
   support rule (what hangs over nothing falls) are not there. The frame cost of the extra vertices
   was not measured on a phone.
+
+## ADR-147 — A fifth level: the Foxfire Terrace and Wen Yao, the Thousand-Body Fox: paper selves that are his own bodies, a Pearl fed by them, a mantle of fire (2026-11-21)
+
+- **Context:** the owner asked for level bosses built on the power fantasy of famous characters, as
+  ORIGINALS, and picked two to make now, each planned by Fable and built by Opus ("plan out #1, #2 in
+  separate chats with fable and instruct opus 5.5 high to build it out"). This is #1: a duelist who
+  fills the arena with clones that pop in one hit while the real one charges a spiralling orb, whose
+  last phase wears a fox-spirit cloak of fire. It is in the spirit of a famous ninja-clone hero and
+  must not be him.
+- **An original, not the franchise.** His own name (WEN YAO, THE THOUSAND-BODY FOX), his own move names
+  in the plain wuxia style of the others, a kitsune's fox mask. None of that character's protected
+  signature design or words: no orange jumpsuit with black shoulders, no headband with a metal plate,
+  no whisker marks, no swirl emblem, no spiky blond hair, no hand seals, no technique names of that
+  series; selves that TEAR off him as paper rather than smoke clones.
+- **The owner's turn, 2026-11-22:** "make the boss look as recognizable [as] the referenced character and
+  use its signature moves ... with different names", then "as similar without causing copyright issue
+  ... a fist fighter". A recognisable copy of a character's design is a copy whatever it is called, so
+  the homage was pushed through what nobody owns: he fights BARE-HANDED (his dao removed; Tian Lei's
+  strike builders and limb-as-blade), the selves fight as a PACK (the Round; one holds the Pearl with
+  him; one throws him: Fox Descending), the orb is shaped in his OPEN PALM and DRIVEN into the hero (a
+  common anime trope; the thrown volley kept as Pearl Rain), and phase 3 is the NINE-TAILED FOX of the
+  old tales (the spirit grows from one tail to nine as his bar runs out), a loud bright figure on
+  offer among the looks.
+- **Decision, the selves are the boss's own bodies, not an actor list.** The roadmap's "boss slot as an
+  actor list" is not done and this does not do it: the game still has one boss. `FoxClones`
+  (`thousandFox/clones.js`) is a fixed pool of five hero rigs built in his constructor (never mid-fight:
+  three.js draws a uuid from `Math.random` per object, so a rig built mid-fight would shift every seeded
+  fight), stepped from his `brainFrame` and posed from his `afterPose`, as the Starless Lord's spells are
+  his own things. A self has no body circle (the hero walks through paper and is never boxed in), is not
+  a shadow caster, and pushes two hurt spheres marked `clone0` .. `clone4` into his `hurtSpheres`;
+  `ThousandFox.takeHit` sees the part, pops it and every other self within `cleave` m of the hit point
+  (2.6 m for a heavy cut), adds `popPosture` to the real one's posture each, and returns 0 (no number,
+  no call-out: the HUD skips a 0). `drawnPoint` scales and leans a sphere about the NEAREST body's root.
+- **Decision, the real one is always findable.** The selves are a crowd to cut through, not a shell
+  game (`CLAUDE.md`: readable combat): the lock-on, the name tag, the boss bar and the minimap only
+  follow him (nothing changed there); only he holds the Pearl and its threads end in his hand; only he
+  casts a shadow; only his blade is steel (the sweep trail, the lit edge); in phase 3 only he wears the
+  mantle.
+- **Decision, a self fights by the duelists' fairness rules.** One cut at a time (a token: the next
+  self winds up `every` s after the last blow at the soonest, only within 3.2 m of the hero, only while
+  he is in footwork or in a move marked `clonesFight`, never with a pearl in the air). Its windup is
+  told to the cue ledger (`brain.expect`) and lengthened, or put off, by `brain.fairDelay`, so two cues
+  that need different answers are never within the guard's `sep`; it is cued as his blows are
+  (`combat:tell`, then `combat:flash` and the white glint `flashLead` before it lands, source 'dragon',
+  attack 'paperCut') and it lands through `d.hitPlayer` as a thrown thing (`projectile`): blockable,
+  parryable, dodgeable; a parry pops it and nicks his posture without recoiling him. Their cuts count
+  in his pressure meter like his own.
+- **Decision, the Pearl is fed and can be starved.** Drawn out over the blade (1.6 / 1.47 / 1.47 s; his
+  guard down), a thread to it from every live self; two cuts on him (one heavy) burst it in his hand
+  (he reels, +90 posture); batted at the hero's led spot it is red and bursts in a ring of
+  2.0 + 0.35 m per live self (3.4 at most) for 26 + 3 per self (× his damageScale); three pearls in a
+  row from phase 2. Its landing is told to the ledger from the start of the charge and retimed at the
+  bat; the fairness guard may lengthen its flight by 0.4 s, else it comes apart in the air, uncued and
+  harmless (the kicked lantern's rule). The ground it will burst on heats from the bat (a hazard's
+  mark, ADR-052). It pops every self it reaches and hits the world (`world.impact`).
+- **Decision, the mantle sets the hill alight.** Phase 3's mantle is heat in the fire field round him
+  (FoxFx); every 0.6 s `world.ignite` where he stands. Fire never spreads in this game (the owner's rule,
+  ADR-107), and he keeps within 12.2 m while the charm posts stand at 16.5 m, so the tail's sweep throws
+  its flame 1 m past its 3.6 m ring and the pounce lights the end of its line: the posts catch when the
+  fight comes to the rim. The tail's sweep and the pounce also hit the world.
+- **The set** (`world/foxTerrace.js`): the courtyard's floor clipped to a circle, a lighter kerb, ten
+  lanterns, six stone foxes and two landmarks turned to show their profiles to the camera (a fox seen
+  from the front and above prints as a lump), charm posts of wood, 445 breakables, 380 bones; built on
+  a quiet `Math.random` so a set that grows does not reshuffle the seeded fights.
+- **The looks wait for the owner:** his body `?foxLook=a|b|c|d` (a, the Shrine Fox through the art path,
+  is what the fight is built with; d the same outfit in ink-line art), `?foxfire=a|b|c`, `?clones=a|b`,
+  rendered on sheets in `docs/looks/fox/`. They are listed in `lookSwitch.js` `PENDING`, not `PICKED`.
+- **Decision, foxfire is a palette, not a kind** (as the Skybreak Ring's gold, ADR-129): this level
+  swaps the fire field's void slot (`FIRE_PALETTES.foxfire`, jade). `?foxfire=b` draws it as the
+  wyrm's orange fire, `?foxfire=c` moon-white.
+- **No change to the duelist engine.** Everything is a hook of the kit (`_setup`, `_tint`, `_makeFx`,
+  `_makeBrain` (a `FoxBrain` that counts a trade of places in a string's reach and realises the Round
+  for the selves alive), `brainFrame`, `afterPose`, `beatMotion`, `onImpact`, `onCast`, `onRelease`,
+  `weigh`, `onActStart`, `takeHit`, `_break`, `drawnPoint`, the `guarding` getter, `reset`). One render
+  change: the rigid batcher's bone texture grows from 64 to 128 rows (1024 → 2048 matrices) the first
+  time a batch would not fit (`RIGID_ROWS_MAX`; the shader reads only the width): six human rigs, the
+  hero and the set did not fit in 1024. A level that fits never grows and is drawn as before.
+- **Consequences:** a sixth through eleventh hero rig in the scene (each ~one draw call per material
+  after batching: measured in DEVLOG Session 77); the selves' animators run every frame (the first
+  fallback, if a phone needs it, is every other frame, then `clones.max` [2, 3, 4]). Music is borrowed
+  until the owner auditions a score. Tests: `tests/integration/fox.mjs` (in `npm test`).
+
+## ADR-148 — The Thousand-Body Fox's reward, the Paper Double, is recorded, not usable yet (2026-11-21)
+
+- **Context:** every boss gives a fixed reward (ADR-059, ROADMAP M2). The fox's is the Paper Double: a
+  decoy the foe strikes instead of the hero.
+- **Decision:** it does NOT ship as a working ability. The level carries it as data, `reward: { id:
+  'paperDouble', name: 'Paper Double', line, usable: false }` (the `{ id, name, line }` shape of the
+  shared rewards store a parallel build adds, so the second of the two to merge only rebases; no store
+  and no grant are written here), named in ARCHITECTURE's level contract as the level's fixed reward,
+  with a line under ROADMAP M2 "Fixed rewards per boss". No in-fight UI promises it.
+- **Why:** (1) there is no technique slot, meter, input or equip screen yet (ROADMAP M2's first item),
+  and a decoy needs a button on keyboard, pad and the phone's touch layout, which is the owner's call;
+  (2) every boss's AI reads `game.player` directly: a decoy needs a target indirection in the wyrm's AI
+  and in the duelist brain, shared code that the parallel boss builds are also changing.
+- **Consequences:** the selves' body pool (`FoxClones`: a hero rig, its own animator, two hurt
+  spheres, a walk and a cut) is written so a hero-side double can reuse it. When the reward plumbing
+  lands (a shared rewards store is being built beside this, for another boss), `usable` flips and the
+  double is built on it.
 
 ## ADR-144 — The draw's rule: parry or die, a held guard never hurt, no draw on a hero who cannot answer (2026-11-22)
 

@@ -33,15 +33,20 @@ export const LOOK_SWITCHES = Object.freeze([
   //
   //
   // --- ring: Tian Lei's body (his outfit, his hair by form)
-  ['ascLook', ['a', 'c', 'd'], 'a', 'a', true, ['ring'], 'Tian Lei\'s body: a tunic, c monk, d = a in the dragon look (a reload)'],
+  ['ascLook', ['a', 'c', 'd', 'h', 'g', 'v'], 'a', 'h', true, ['ring'], 'Tian Lei\'s body: a tunic, c monk, d = a in the dragon look; homages h orange gi, g purple gi, v blue suit (a reload)'],
   ['ascLift', ['0', 'a'], 'a', 'a', true, ['ring'], 'Tian Lei\'s figure lifted off the floor: 0 as the body shipped (a reload)'],
   //
   // --- ring: Tian Lei's effects (the aura, the beam, the blasts, the transformation)
   ['ascAura', ['a', 'b', 'c'], 'a', 'a', false, ['ring'], 'Tian Lei\'s aura (forms 2 and 3)'],
   ['ascBeam', ['a', 'b'], 'a', 'a', false, ['ring'], 'Tian Lei\'s beam'],
-  ['ascOrb', ['a', 'b'], 'a', 'a', false, ['ring'], 'Heaven\'s Lantern, the great orb: a a sun, b a lantern'],
+  ['ascOrb', ['a', 'b', 'c'], 'a', 'a', false, ['ring'], 'Heaven\'s Lantern, the great orb: a a sun, b a lantern, c the pale gathered sphere (its arms-up gather on a reload)'],
+  ['ascBeamPose', ['0', 'cup'], '0', '0', true, ['ring'], 'Tian Lei\'s beams: 0 the palm thrust, cup both hands cupped at the hip (a reload)'],
   //
   //
+  // --- fox: Wen Yao (ADR-147; every one read when his rigs or his effects are built: a reload)
+  ['foxLook', ['a', 'b', 'c', 'd'], 'b', 'b', true, ['fox'], 'Wen Yao\'s body: a shrine fox, b wild fox (the default), c pelt brawler, d = a in ink-line (a reload)'],
+  ['foxfire', ['a', 'b', 'c'], 'a', 'a', true, ['fox'], 'the foxfire: a jade, b the wyrm\'s orange, c moon-white (a reload)'],
+  ['clones', ['a', 'b'], 'a', 'a', true, ['fox'], 'the paper selves: a as him, b a step paler (a reload)'],
   // --- grove: the Windless Grove and the Sheathed (ADR-145; the owner's picks, 2026-11-22: a / a / a)
   ['grove', ['a', 'b', 'c'], 'a', 'a', true, ['grove'], 'the grove: a moonlit mist, b grey dawn, c first snow (a reload)'],
   ['sheathLook', ['a', 'b', 'c', 'd'], 'a', 'a', true, ['grove'], 'Lu Wusheng\'s body: a mourning white, b reed cloak, c one sleeve, d the wanderer (a reload)'],

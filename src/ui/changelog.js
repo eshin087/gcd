@@ -19,13 +19,21 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-22',
-        title: 'A fifth level: the Windless Grove and the Sheathed',
+        title: 'A sixth level: the Windless Grove and the Sheathed',
         notes: [
           'A new level, the Windless Grove: a bamboo grove at night, a clearing, and a mound of planted swords. Pick it on the title screen.',
           'Its boss is Lu Wusheng, the Sheathed. His sword stays in its scabbard: everything else he does is blunt. Then he goes still, there is a click and a blue flash at the scabbard, and he draws.',
           'Parry the draw or roll through it. A held guard keeps you alive but is knocked open. Anything else is death.',
           'He never draws on you while you are down or your guard is broken.',
           'Beat him and you learn One Breath: guard, then hold heavy, and release to cut five metres in a blink. Released just before a blow lands, it beats the blow aside.',
+        ],
+      },
+      {
+        date: '2026-11-22',
+        title: 'Tian Lei in the orange gi, and the instant beam',
+        notes: [
+          'Tian Lei now fights in an orange gi with spiky black hair that turns gold when he transforms.',
+          'In his third form he can touch two fingers to his brow, appear right beside you and fire a beam point-blank. Watch for the red flash and roll out of the line.',
         ],
       },
       {
@@ -67,6 +75,17 @@ export const RELEASES = [
           'Trees, stones, pillars, statues and bones lose their letters exactly where a blow lands, yours or the boss\'s.',
           'A blade cuts a notch into a trunk, a heavy blow knocks the face of a stone in, a blast eats the side that faced it. The pieces fly out of the cut.',
           'Your sword stops on what it cannot cut through: it bites into wood and rings off stone with sparks, then is thrown back. A blow that fells the thing goes through.',
+        ],
+      },
+      {
+        date: '2026-11-21',
+        title: 'A fifth level: the Foxfire Terrace and Wen Yao, the Thousand-Body Fox',
+        notes: [
+          'A new level, the Foxfire Terrace: a round terrace on a moonlit hill shrine, ringed by stone lanterns, stone foxes and paper charms. Pick it on the title screen.',
+          'Its boss is Wen Yao, the Thousand-Body Fox, a masked bare-handed fighter who tears paper copies of himself off his body. They strike as a pack with the same white cue as his blows, and one cut pops a copy.',
+          'The real one is always the one you are locked on to: the only one with a shadow, a steel blade and, later, the fire.',
+          'He shapes a spinning pearl in his open palm, a copy holding it with him and every other copy feeding it, then dashes in and drives it into you. Pop copies to make it weaker, hit him twice while he shapes it to burst it in his hand, or roll.',
+          'In his second phase he trades places with his copies, springs off their hands at you, and they all strike in turn around you. In the last a nine-tailed fox of fire wakes around him, one more tail as his health runs out.',
         ],
       },
       {

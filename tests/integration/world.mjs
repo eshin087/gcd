@@ -2,7 +2,7 @@
 // Scorch, GroundFire, Scars and Destructibles on the REAL sets (the forest, the courtyard), wired
 // like src/world/world.js; the hero and the boss are small stand-ins that record what lands on them.
 // usage: node world.mjs <repoRoot> [scenario]
-//   scenario: sets | floor | colossus | chip | fell | cover | fire | throw | reset | grid | body | wreck | spread | wear | wall | reach | landmarks | edge | budget | bite | placed | all
+//   scenario: sets | floor | terrace | colossus | chip | fell | cover | fire | throw | reset | grid | body | wreck | spread | wear | wall | reach | landmarks | edge | budget | bite | placed | all
 // (body / budget run the REAL Dragon on the REAL forest: its body against the world, ARCHITECTURE.md
 // "Destruction" → "The wyrm's body")
 import { pathToFileURL } from 'node:url';
@@ -32,6 +32,7 @@ const { ELDER_COLLIDERS } = await imp('src/world/landmarks.js');
 const ELDER_N = ELDER_COLLIDERS.length;
 const { createCourtyard } = await imp('src/world/courtyard.js');
 const { createThroneHall } = await imp('src/world/throneHall.js');
+const { createFoxTerrace, TERRACE } = await imp('src/world/foxTerrace.js');
 const { createSkybreakRing, BUTTE, RING } = await imp('src/world/skybreakRing.js');
 const { createWindlessGrove } = await imp('src/world/windlessGrove.js');
 // (every level the game can load, and the training room: the bite scenario walks them all, so a new
@@ -183,7 +184,7 @@ const S = {
       // 80 before. The duelists' arenas break everything but their landmarks since 2026-11-16: the
       // courtyard 78 → 456 (293 of them its floor's slabs), the crater 36 → 222 (105 of its floor's plates); 255 on 2026-11-22, its felled trunks
       // swapped for the challengers' graves, banners and carts round it)
-      const [lo, hi] = { forest: [20, 760], courtyard: [380, 520], throne: [180, 280], 'ring a': [1, 5000], 'ring b': [1, 5000], 'ring c': [1, 5000], grove: [420, 620] }[name];
+      const [lo, hi] = { forest: [20, 760], courtyard: [380, 520], throne: [180, 280], 'ring a': [1, 5000], 'ring b': [1, 5000], 'ring c': [1, 5000], terrace: [300, 520], grove: [420, 620] }[name];
       assert(L.length >= lo && L.length <= hi, `${name}: ${L.length} breakables (${lo}..${hi})`);
       for (const k of kinds) assert(L.some((b) => b.kind === k), `${name}: has a breakable ${k}`);
       if (name === 'forest') {
@@ -1709,6 +1710,75 @@ const S = {
     assert(back && fwrong() === 0 && scene(), 'restored: the trees stand whole where they stood, every rigid piece drawn where it stood, nothing joined the scene');
   },
 
+  // (last: it draws from the destructibles' own stream, and the scenarios before it are as on main)
+  // ---------------------------------------------------------------- the Foxfire Terrace: its round floor, its rim, what burns, what only chips (world/foxTerrace.js)
+  terrace() {
+    const W = build(createFoxTerrace);
+    const { D, set, colliders, step, U } = W;
+    const R = TERRACE.r, RK = R + TERRACE.kerb;
+    const F = D.floor, L = D.list;
+    // the paving: cut to the round, every slab breakable, the disc paved
+    const ring = set.slabs.filter((s) => Math.hypot(s.x, s.z) < RK + 0.2);
+    let area = 0;
+    for (const s of ring) {
+      let a = 0;
+      for (let k = 0; k < s.outline.length; k++) {
+        const p = s.outline[k], q = s.outline[(k + 1) % s.outline.length];
+        a += (p[0] * q[1] - q[0] * p[1]) / 2;
+      }
+      area += Math.abs(a);
+    }
+    const out = Math.max(...ring.flatMap((s) => s.outline.map(([x, z]) => Math.hypot(x, z))));
+    assert(F.length >= 250 && ring.length >= 220 && area > 0.75 * Math.PI * RK * RK && out < RK + 0.05 && F.every((b) => b.def.look === 'range' && !b.colliders.length), `the terrace: ${ring.length} slabs and kerb stones within r ${RK} (none past ${out.toFixed(2)} m), ${((100 * area) / (Math.PI * RK * RK)).toFixed(0)} % of the disc paved; ${F.length} floor pieces in all with the steps and the path, each a range piece`);
+    const near = [];
+    assert(D.floorNear(0, 0, 6, near, { max: 40 }) >= 30, `${near.length} slabs within 6 m of the centre for his terrain moves (floorNear)`);
+    // the rim: ten lanterns, six stone foxes, eight charm posts; the two landmarks
+    const by = (k) => L.filter((b) => b.kind === k);
+    const lan = by('lantern'), fox = by('foxStatue'), post = by('charmPost');
+    const rOf = (b) => Math.hypot(b.x, b.z);
+    assert(lan.length === TERRACE.lanterns && lan.every((b) => Math.abs(rOf(b) - TERRACE.lanternR) < 0.05 && b.def.look === 'prop'), `${lan.length} stone lanterns on the rim (r ${TERRACE.lanternR}, prop art)`);
+    assert(fox.length === TERRACE.statues && fox.every((b) => Math.abs(rOf(b) - TERRACE.statueR) < 0.05 && !b.topples && b.lift === 0 && b.stub && b.def.look === 'prop'), `${fox.length} seated stone foxes on plinths (r ${TERRACE.statueR}): they do not topple, nobody lifts them, a plinth is left`);
+    assert(post.length === TERRACE.posts && post.every((b) => Math.abs(rOf(b) - TERRACE.postR) < 0.05 && b.mat === 'wood' && b.burns && b.def.look === 'prop' && b.colliders.every((c) => c.soft)), `${post.length} charm posts outside the rim (r ${TERRACE.postR}): wood that burns, drawn in prop art, soft colliders`);
+    const marks = [...by('greatFox'), ...by('spiritGate')];
+    assert(marks.length === 2 && marks.every((b) => b.hpMax === Infinity && !b.topples && b.colliders.length >= 1 && b.x * TERRACE.greatFox.x !== 0 && b.z < 0), 'the great fox (west) and the spirit gate (east): in the northern half, they only chip (hp Infinity), on colliders');
+    // nothing tall on the near side of the ring (ADR-112's rule)
+    const tall = L.filter((b) => !b.floor && b.z > 6 && b.y0 + b.h > 3.2 && rOf(b) < TERRACE.postR + 1.5);
+    assert(tall.length === 0, `nothing over 3.2 m stands on the terrace's near side (${tall.map((b) => `${b.kind} ${b.x.toFixed(0)},${b.z.toFixed(0)}`).join(' ')})`);
+    // the way up: from the spawn to the middle, no collider in the way (a hero 0.45 m wide)
+    const sp = { x: TERRACE.bonfire.x + 0.6, z: TERRACE.bonfire.z - 1.7 };
+    const block = colliders.circles.filter((c) => {
+      const dx = -sp.x, dz = -sp.z, t = Math.max(0, Math.min(1, ((c.x - sp.x) * dx + (c.z - sp.z) * dz) / (dx * dx + dz * dz)));
+      return Math.hypot(sp.x + dx * t - c.x, sp.z + dz * t - c.z) < c.r + 0.45;
+    });
+    assert(block.length === 0, `the way from the spawn (${sp.x}, ${sp.z}) up the path to the middle is clear (${block.map((c) => `${c.tag} ${c.x.toFixed(1)},${c.z.toFixed(1)}`).join(' ')})`);
+    // a stone fox breaks to its plinth
+    const f = fox[0];
+    D.strike(f.x, f.z, 0.8, 20, { kind: BLOW.BLUNT, by: 'boss', src: D.swing() });
+    step(0.5);
+    assert(f.state === STATE.BROKEN && !f.body.visible && f.stub.visible && colliders.circles.includes(f.stubCollider), 'a heavy blow breaks a stone fox: its body goes, its plinth (and a collider) stays');
+    // a charm post catches and burns through
+    const p = post[0];
+    assert(D.ignite(p.x, p.z, 0.8, 1) >= 1 && p.burn > 0, 'fire lands on a charm post: it catches (wood with prop art burns as the dead trees do)');
+    let t = 0;
+    while (p.state === STATE.INTACT && t < 60) {
+      step(0.5);
+      t += 0.5;
+    }
+    assert(p.state === STATE.BROKEN && p.burnt && p.stub.visible, `it burns through in ${t.toFixed(1)} s and leaves its snapped foot`);
+    // the landmarks only chip
+    for (const m of marks) D.strike(m.x, m.z, 1.5, 30, { kind: BLOW.BLAST, by: 'boss', src: D.swing() });
+    step(0.5);
+    assert(marks.every((m) => m.state === STATE.INTACT && m.body.visible), 'a blast of 30 on each landmark: they stand (they chip, they do not fall)');
+    D.reset();
+    assert(L.every((b) => b.state === STATE.INTACT), 'the reset: everything stands again');
+    // the budget: no more bones than the courtyard's (443 measured on 2026-11-22), the set's own draw meshes
+    const bones = rigidBones(U).count;
+    let tris = 0;
+    set.group.traverse((o) => { if (o.isMesh && o.visible) tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; });
+    const meshes = [];
+    set.group.traverse((o) => { if (o.isMesh && o.visible) meshes.push(o.name); });
+    assert(bones <= 443, `${bones} bones (the courtyard's 443 or fewer); ${meshes.length} draw meshes with the set alone (${meshes.join(', ')}), ${Math.round(tris)} triangles`);
+  },
 };
 const near = (a, b, eps) => Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) <= eps;
 function near0(a, b, eps = 1e-6) {

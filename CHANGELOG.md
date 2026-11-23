@@ -4,8 +4,8 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Sixty-five pieces of work since 0.4.0:
-- **A fifth level: the Windless Grove and the Sheathed** (2026-11-22, ADR-144 – ADR-146). *Added:* a fifth
+Sixty-seven pieces of work since 0.4.0:
+- **A sixth level: the Windless Grove and the Sheathed** (2026-11-22, ADR-144 – ADR-146). *Added:* a fifth
   level, `?level=grove` (the title screen lists it). **The Windless Grove**: a bamboo grove at night, a
   round clearing with a worn ring of paving, a mound planted with forty swords. **Lu Wusheng, the
   Sheathed**: a wandering swordsman whose blade stays in its scabbard. Everything he does with it sheathed
@@ -21,6 +21,33 @@ Sixty-five pieces of work since 0.4.0:
   The engine gains optional beat fields (`draw`, `stopOn`, a move's `recoverOpen`) and takeHit's
   `breaksGuard`; the world's `light` pieces. He ships as the Wanderer (a slighter man in a faded indigo
   robe, a long sand scarf, dark hair in a high tail), the owner's pick of four bodies; the other options stay behind `?sheathLook=`, `?drawCut=`, `?grove=`. `tests/integration/sheath.mjs`.
+- **A fifth level: the Foxfire Terrace and Wen Yao, the Thousand-Body Fox** (2026-11-21, ADR-147, ADR-148).
+  *Added:* a fifth level, `?level=fox` (the title screen lists it). **The Foxfire Terrace**: a round
+  terrace on a moonlit hill shrine, stone lanterns and seated stone foxes on its rim, wooden charm posts
+  hung with paper round it, a great stone fox and a spirit gate. **Wen Yao, the Thousand-Body Fox**: a
+  masked bare-handed fighter who tears paper copies of himself off his body. They walk at you and strike
+  as a pack, one at a time, with the same white cue as his own blows; a single cut pops one (a heavy cut
+  pops the one beside it too; a parry pops it). The real one is always the one you are locked on to, the
+  only one with a shadow, the one who holds the Pearl. He shapes the Pearl of the Hollow Moon in his open
+  palm, a copy holding it with him and every other copy feeding it a thread, then dashes in and drives it
+  into you: red, stronger for every copy still standing. Pop copies to starve it, hit him twice while he
+  shapes it to burst it in his hand, or roll. Phase 2 (four copies): he trades places with a copy
+  mid-string, springs off a copy's hands at you, every copy strikes in turn round you before his own
+  blow, three pearls thrown at once. Phase 3: the copies burn up into him and a nine-tailed fox of fire
+  wakes round him, one more tail as his health runs out; a tail sweep, a long pounce, a black pearl he
+  leaps down with; the charm posts and the hill's grass catch. Asleep he sits among four copies that tear
+  into paper as he rises. His own test suite; the Lab and Training know him. *Changed:* the bone texture
+  of the batched bodies grows when a level has more bodies than it holds; the other levels are drawn as
+  before. Kept behind switches for the owner's pick: his looks (`?foxLook=`), the foxfire's colour
+  (`?foxfire=`), paler copies (`?clones=b`). Recorded, not yet usable: his reward, the Paper Double. The
+  level borrows music for now. Nobody has played it yet: his numbers are first guesses from bots.
+- **Tian Lei in the orange gi, and the instant beam** (2026-11-22, ADR-150). *Changed:* Tian Lei, the
+  Last Ascendant, now fights in an orange gi over blue with black spiky hair that stands up gold when
+  he transforms: a homage to a famous fighter, under his own name. *Added:* **Instant Wave** in his
+  third form: two fingers to his brow, he appears right beside you, hands cupped at his hip, and fires
+  a beam point-blank (a red cue; roll or run off the line). Kept behind switches: his old tunic and two
+  more homage outfits (`?ascLook=a|g|v`), every beam out of cupped hands (`?ascBeamPose=cup`), the
+  great orb as a pale gathered sphere (`?ascOrb=c`).
 - **The letters come off where the blow lands** (2026-11-21, ADR-132; on by default, the owner's
   pick; `?chip=0` turns it off). *Added:* bites. Every tree, stone, boulder, pillar, statue, bone and landmark piece is
   made of bricks, the blocks of letters it is drawn with, and a blow takes the ones nearest where it
