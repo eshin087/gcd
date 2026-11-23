@@ -1256,8 +1256,8 @@ art path at 720p he is still about 12 letter rows; b survives it by its colour, 
   ink-line art flattened (every cloth piece one piece: no fold or crease lines; no glints or fold shading; half the
   rim), `a` the ink-line art below. Prints `1` - `a` wear his reworked body (`sheathTuned`): full sleeves (no thin
   stiff arm, no gap at the side), the long robe, one deep roll of scarf, plain gaiters, no wrist bands. `a` draws
-  until the owner picks. Measured at 1280 x 720 (his pixels / the floor): 0 45.8 / 16.9, 1 32.3 / 16.9, 2 43.4 / 17.0,
-  3 35.2 / 16.9, a 35.3 / 16.9 (the hero about 25 / 21).
+  until the owner picks. Measured at 1280 x 720 on the grove with its new bamboo (his pixels / the floor): 0 37.0 / 20.3,
+  1 26.5 / 20.2, 2 36.1 / 20.3, 3 31.2 / 20.1, a 35.1 / 20.2 (the hero about 25 / 16).
 - **His figure** is printed in the hero's ink-line art (ADR-152, `?sheathArt=a`, the owner's pick: the way
   the hero and Shen Hui are drawn; `?sheathArt=0` keeps the wyrm's digits he shipped in, `toDragonLook` with
   `SHEATH_ART[look]`). The Wanderer (body d) takes his palette from `sheathed/look.js` `SHEATH_TONE`

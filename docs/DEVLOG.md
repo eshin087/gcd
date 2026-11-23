@@ -23,15 +23,16 @@ two prints, to pick from.
 - `sheathTone: 'a'` in `PICKED` (the owner's pick); `sheathArt` stays `a`, its Lab row `awaiting` again; duel.mjs's
   picks check lets a picked switch wait for a new pick. `sheath.mjs` LOOK covers every print.
 
-**Measured** (the camera pinned at its default distance; his pixels / the floor; hero about 25 / 21): 720p 0 45.8 /
-16.9, 1 32.3 / 16.9, 2 43.4 / 17.0, 3 35.2 / 16.9, a 35.3 / 16.9; phone 0 44.3, 1 33.9, 2 45.6, 3 29.0, a 27.2 (floor 16.4).
+**Measured** on main's grove with its new bamboo (rebased; the camera pinned at its default distance; his pixels /
+the floor under him; the hero about 25 / 16): 720p 0 37.0 / 20.3, 1 26.5 / 20.2, 2 36.1 / 20.3, 3 31.2 / 20.1, a
+35.1 / 20.2; phone 0 34.1, 1 26.9, 2 39.5, 3 26.8, a 27.9 (the floor about 19.7; the hero about 27 / 16.3).
 
 **Sheet:** `sheets-owner/sheet_balance.png` (five rows; carry, run, settle, 0.25 s after the cut at 2 - 3x and the whole
 frame, 720p then phone; the hero in every tile).
 
 **The author's pick: 2.** It reads as letters first (digits on a dark body, a stroke outline), it is brighter than the
 hero, and the robe (blue), the trousers (grey) and the scarf (sand) stay apart. Where each fails: 0 thin and colourless;
-1 dim on the phone (33.9) and the digits cover only his lit side, so he is narrower than the hero; 2 still narrow, the
+1 barely above the floor (26.5 against 20.2: weaker than the hero), and the digits cover only his lit side, so he is narrower than the hero; 2 still narrow, the
 face does not read, the strip is one pale stroke; 3 at fight distance hardly differs from a (the interior lines were
 few letters wide already), so it still reads as a drawn figure; a the owner's complaint.
 
