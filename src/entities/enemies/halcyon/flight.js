@@ -4,7 +4,7 @@ import { TELL, RESULT } from '../../../combat/rules.js';
 import { perPhase } from '../duelist/realise.js';
 import { TUNE as HERO_TUNE } from '../../player/player.js';
 
-// Halcyon's flight (ADR-154): the rule that keeps a sword fight fair, the pass, the crash, the carry.
+// Halcyon's flight (ADR-160): the rule that keeps a sword fight fair, the pass, the crash, the carry.
 //
 // THE RULE. In footwork he HOVERS at T.fly.hover (0.5 m: the engine tests zones and body circles up to
 // 0.6 m), every hurt sphere in sword reach. He is out of reach (above T.fly.reach) only INSIDE a move

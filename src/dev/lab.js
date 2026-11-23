@@ -858,7 +858,7 @@ export class Lab {
       });
       m.title = 'the Fox-Fire Mantle on / off (phase 3 wears it by itself)';
     }
-    // Halcyon (ADR-154): his passes, the tower, the falling sky, the statue, the carry, the cars, the city's light
+    // Halcyon (ADR-160): his passes, the tower, the falling sky, the statue, the carry, the cars, the city's light
     if (typeof this.game.dragon?.debug?.fallingSky === 'function') {
       const D = () => this.game.dragon.debug;
       button(grid, 'Pass', () => D().pass()).title = 'Fly-By now (two passes in phase 2, three in phase 3)';

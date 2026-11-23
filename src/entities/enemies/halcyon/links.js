@@ -1,7 +1,7 @@
 // Halcyon's combo links (duelist/brain.js header, director.js linkFor; the Fox's format). When a move ends
 // on its own, the first entry whose `when` holds (near < 3.3 m, mid < 6 m, far beyond; away: backing off;
 // guarding), whose `chance` roll passes ([phase 1, 2, 3]) and whose target is usable starts straight out
-// of it at `cut` of the recovery. Short chains only in phase 1 (ADR-154); in phase 3 Fly-By links into The
+// of it at `cut` of the recovery. Short chains only in phase 1 (ADR-160); in phase 3 Fly-By links into The
 // Stare (the pass carries him past you; the eyes follow).
 
 const far = (to, chance, o) => ({ to, when: 'far', chance, ...o });

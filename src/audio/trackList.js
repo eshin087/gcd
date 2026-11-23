@@ -76,6 +76,15 @@ export const SCORE = {
         T('starless-p3', { xfade: 0.5 }),
       ],
     },
+    // Halcyon Plaza borrows the Obsidian Throne's score (ADR-159) until the owner picks its own by ear.
+    city: {
+      explore: T('starless-explore', { xfade: 3 }),
+      phases: [
+        T('starless-p2', { xfade: 1.5 }),
+        T('starless-p3', { xfade: 0.5 }),
+        T('starless-p4'),
+      ],
+    },
   },
   victory: T('victory', { loop: false }), // Victory Fanfare Short, cynicmusic
   death: T('death', { loop: false }), // Death of a Ninja (Game Over), Joth

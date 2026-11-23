@@ -10,7 +10,7 @@ import { prep, carve, mul, slabGeometry, SLAB_LOOK, buildBonfire, buildRubble, g
 import { breakableFloor } from './floor.js';
 import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
 
-// Halcyon Plaza (levels/halcyon.js; ADR-153): a city that has not been built yet, read from its streets.
+// Halcyon Plaza (levels/halcyon.js; ADR-159): a city that has not been built yet, read from its streets.
 // The game camera looks down at 58 degrees from the south: the sky and the skyline are never on screen,
 // so the city is its road paint, the cars seen from above, the south faces of the towers, the signs and
 // the screens. A crossroads: a round plaza of asphalt (r 15) where a north-south avenue meets an
@@ -23,7 +23,7 @@ import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
 // lamp posts, the signs, the shop signs on the towers (raised: `y0`), the screens, the statue of HIM
 // (the body `holds` its head; the raised arm is its own piece he can tear off), four two-stage towers
 // (a base that `holds` its top), the block fronts behind them, the street furniture. Only the flat
-// silhouettes past PLAZA.staticR are merged into a static mesh: never on a path a blow takes (ADR-153).
+// silhouettes past PLAZA.staticR are merged into a static mesh: never on a path a blow takes (ADR-159).
 //
 // THE LIGHT (STYLE.md "The city's light"; four kinds of heat in the fire field, each on purpose):
 //   steel  the neon tubes and the screens (a pale rectangle of heat with his head and shoulders left dark)
@@ -490,7 +490,7 @@ function buildPlaza(U, colliders) {
   colliders.add(bf.x, bf.z, 0.75, 'bonfire');
   bare.push({ x: bf.x, z: bf.z, r: 2.4 });
 
-  // ---- the four towers: the base holds the top (a two-stage piece: ADR-153)
+  // ---- the four towers: the base holds the top (a two-stage piece: ADR-159)
   PLAZA.towers.forEach((T, k) => {
     const base = buildTowerBase(L, T, k);
     const topGeos = buildTowerTop(L, T, k);
@@ -530,7 +530,7 @@ function buildPlaza(U, colliders) {
     breakables.push({ kind: 'blockFront', mat: 'stone', look: 'range', x, z, r: rr, h, range: fronts.add(geos), colliders: [c], hp: CITY.front.hp, topples: false, cover: true, lift: 0, wreck: false });
   });
 
-  // ---- the flat silhouettes past the fight (static: never on a blow's path; ADR-153)
+  // ---- the flat silhouettes past the fight (static: never on a blow's path; ADR-159)
   for (let k = 0; k < 28; k++) {
     const a = (k / 28) * TAU + range(rng, -0.05, 0.05), rr = range(rng, PLAZA.staticR + 2, PLAZA.staticR + 14);
     const p = at(a, rr);
@@ -670,7 +670,7 @@ function buildPlaza(U, colliders) {
     // no grass in the city: a few tufts in the construction lot's earth only
     grass: { density: (x, z) => (Math.abs(x - PLAZA.site.x) < 7 && Math.abs(z - PLAZA.site.z) < 6 ? 0.25 : 0), height: 0.4, ash: 0.3 },
     ambience,
-    /** The city's light by the boss's phase (ADR-153; the boss calls it, the reset too). */
+    /** The city's light by the boss's phase (ADR-159; the boss calls it, the reset too). */
     setPhase: (n) => ambience.setPhase(n),
     /** A car-sized blast at (x, z) now (a thrown car landing): the explosion, its hurt, its fire. */
     boom: (x, z, by = 'boss') => ambience.boom(x, z, by),

@@ -1,4 +1,4 @@
-// Halcyon Plaza and Halcyon, the Last Saviour, headless (ADR-153 - ADR-155): the REAL Player, Halcyon,
+// Halcyon Plaza and Halcyon, the Last Saviour, headless (ADR-159 - ADR-161): the REAL Player, Halcyon,
 // Hud, GameFlow, AudioEngine and Lab (+ real LightPool, GlyphParticles, FireField, CameraRig, Events)
 // wired like src/main.js for `?level=city`; the world is a light mock on the real Colliders, filled by
 // the level's set (world/halcyonPlaza.js), or the real set with its breakables and its ambience (the
@@ -372,7 +372,7 @@ async function scenarioLevels() {
   assert(['?level=city', '?lab&level=CITY', '?level=halcyon', '?level=plaza', '?level=neon', '?level=saviour', '?level=tomorrow'].every((q) => levelFromSearch(q) === LVL), '?level=city / halcyon / plaza / neon / saviour / tomorrow pick the level (case-insensitive)');
   for (const k of ['arrive', 'stir', 'phase2', 'phase3', 'victory', 'fallen', 'restReset', 'again', 'rise']) assert(!!LVL.text[k], `the level has its ${k} line`);
   assert(LVL.name === 'Halcyon Plaza' && LVL.text.victory === 'THE SAVIOUR FALLS' && LVL.text.phase2 === 'THE SMILE DROPS' && LVL.text.phase3 === 'NO ONE IS WATCHING', `${LVL.name}: ${LVL.sub}`);
-  assert(LVL.reward === undefined, 'no reward ships (the owner has not chosen one: ADR-155)');
+  assert(LVL.reward === undefined, 'no reward ships (the owner has not chosen one: ADR-161)');
   assert(CONFIG.world.dragonBound === 13.5 && CONFIG.world.arenaRadius === PLAZA.r && CONFIG.world.bossTriggerZ === PLAZA.entryZ, 'applyLevel merged the plaza layout into CONFIG.world');
   const G = build();
   const d = G.game.dragon;

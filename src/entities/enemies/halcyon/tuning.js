@@ -2,7 +2,7 @@ import { PLAYER_SCALE } from '../../player/model.js';
 import { DUEL_WORLD } from '../duelist/worldTuning.js';
 import { BEAM_TUNING } from '../ascendant/tuningBeam.js';
 
-// Halcyon, the Last Saviour's numbers (ADR-154; COMBAT.md → "Halcyon"). Started from Tian Lei's (the
+// Halcyon, the Last Saviour's numbers (ADR-160; COMBAT.md → "Halcyon"). Started from Tian Lei's (the
 // closest relative: a bare-handed fighter with beams and thrown terrain; ascendant/tuning.js says why
 // each shared number is what it is) and the Thousand-Body Fox's one-bar structure; changed where he is
 // someone else: one bar, three phases, flight, his eyes, the city.
@@ -53,7 +53,7 @@ export const TUNING = {
   move: {
     walk: 3.4, run: 8.5, sprint: 12, // (gliding: faster than the hero's 7.2 m/s sprint; kiting does not work)
     turn: [9, 10, 11], trackTurn: [14, 16, 17],
-    band: [1.6, 2.8], // he hovers this close: within sword reach (the flight rule, ADR-154)
+    band: [1.6, 2.8], // he hovers this close: within sword reach (the flight rule, ADR-160)
     sprintAt: 5, near: 1.1, backChance: 0.3, backstep: { dist: 2.2, time: 0.32 }, strafeSwitch: [0.7, 1.6],
   },
   idleGap: [[0.1, 0.3], [0.06, 0.2], [0.04, 0.14]],
@@ -88,7 +88,7 @@ export const TUNING = {
   // struck out of the air he drops (brain.js T.airFall)
   airFall: { g: 26 },
 
-  // ---- FLIGHT (flight.js; ADR-154's rule: every hurt sphere in sword reach between moves)
+  // ---- FLIGHT (flight.js; ADR-160's rule: every hurt sphere in sword reach between moves)
   fly: {
     hover: 0.5, // m off the floor in footwork (the engine tests zones and body circles only up to 0.6 m)
     ease: 6, // 1/s toward the hover height

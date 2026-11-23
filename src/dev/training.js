@@ -55,7 +55,7 @@ const ROLES = {
   // Wen Yao (the Foxfire Terrace): no perilous thrust (no mikiri situation for him)
   fox: { single: 'foxBite', string: 'brushstrokes', long: 'streakFlurry', red: 'sweepingBrush', lock: 'moonLadder' },
   // Halcyon (Halcyon Plaza): no blade lock, no perilous thrust; his red is Meteor (a beam is no fixed
-  // contact for a perfect dodge), his ranged role The Stare (ADR-154)
+  // contact for a perfect dodge), his ranged role The Stare (ADR-160)
   city: { single: 'backhand', string: 'meetAndGreet', long: 'streakFlurry', red: 'meteor', ranged: 'stare' },
 };
 

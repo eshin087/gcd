@@ -4,7 +4,7 @@ import { TUNING } from './tuning.js';
 import { makeRealise } from '../duelist/realise.js';
 import { X as ASC, CLIPS as ASC_CLIPS } from '../ascendant/moves.js';
 
-// Halcyon's moves and reaction clips, as data (ADR-154; COMBAT.md → "Halcyon"). Every name is his own
+// Halcyon's moves and reaction clips, as data (ADR-160; COMBAT.md → "Halcyon"). Every name is his own
 // (the line on the homage). He fights BARE-HANDED: his blows are Tian Lei's exported strike builders
 // (ascendant/moves.js X: punch, kick, strikeKeys), as the Thousand-Body Fox's are; `part` names the
 // striking limb (halcyon.js: the engine's "blade" is that limb; 'eyes' for his eyes' beats). The MOVE /
@@ -23,7 +23,7 @@ import { X as ASC, CLIPS as ASC_CLIPS } from '../ascendant/moves.js';
 //   halArm: 'tear' | 'swing' | 'throw'   Monument (terrain.js): his statue's arm (a lamp post without it)
 //   halBlink: { at, r }   a vanish to a side of the hero at u 0.12 of the windup (Blink of an Eye)
 //   halCrash: true        a parry (a flying blow) or a perfect dodge (a red flying blow) THROWS HIM OFF HIS
-//                         LINE into the first cover on it (flight.js crash; ADR-154: the reward loop)
+//                         LINE into the first cover on it (flight.js crash; ADR-160: the reward loop)
 //   halMoment: '<name>'   a scripted moment's beat (the transitions: halcyon.js)
 // On a MOVE: `grounded` (his recovery is spent on the floor, not at hover), `once` (Through the Tower,
 // The Falling Sky: they need a standing tower top: halcyon.js weigh), `cat` (director.js), `hidden`.

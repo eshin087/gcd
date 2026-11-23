@@ -16,7 +16,7 @@ import { Glare } from './glare.js';
 import { Flight } from './flight.js';
 import { Terrain } from './terrain.js';
 
-// Halcyon, the Last Saviour: the boss of Halcyon Plaza (`?level=city`; ADR-154). An evil flying strongman
+// Halcyon, the Last Saviour: the boss of Halcyon Plaza (`?level=city`; ADR-160). An evil flying strongman
 // from a future that has not happened yet, in a caped armoured suit, on the shared duelist engine
 // (duelist/duelist.js: the body, the contract, the guard, posture, the duel's moments; brain.js: the
 // mind and timeline). One health bar, three phases (66 %: THE SMILE DROPS, the screens turn his crimson;

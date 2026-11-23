@@ -2,7 +2,7 @@ import { lookOf } from '../duelist/lookSwitch.js';
 import { setFill } from '../ashDisciple/bodyArt.js';
 
 // Halcyon's look options (duelist/lookSwitch.js PENDING; never in PICKED: the owner picks from the
-// sheets, docs/looks/halcyon/; ADR-155). Every option is drawn in the hero's INK-LINE art, dense and
+// sheets, docs/looks/halcyon/; ADR-161). Every option is drawn in the hero's INK-LINE art, dense and
 // bright (the owner, of the bosses they kept: "make it look detailed like the main character").
 //   ?halLook=a   the owner's answer (2026-11-22, "Recognizable"; the fight is built with it): a deep blue
 //                armoured suit, a long red cape, a gold belt and gold trim at the wrists and the boots,

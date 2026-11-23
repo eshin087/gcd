@@ -3,7 +3,7 @@ import { clamp, wrapAngle, turnToward } from '../../../core/math.js';
 import { TELL, RESULT, DEFENSE, GUARD, facingDelta } from '../../../combat/rules.js';
 import { perPhase } from '../duelist/realise.js';
 
-// Halcyon's eyes (ADR-154; COMBAT.md → "Halcyon"): heat from two points at his eyes. Tian Lei's beam
+// Halcyon's eyes (ADR-160; COMBAT.md → "Halcyon"): heat from two points at his eyes. Tian Lei's beam
 // (ascendant/kiBeam.js) is the reference: the same body (HalFx.beam), the same rules for a held guard (it
 // pays guard, never health: Player.streamBlock), the same cap on what a stream takes. The tell is ON HIM:
 // two crimson points kindle at his eyes through the windup (d.eyesK; HalFx.eyes) and his head comes down.
@@ -17,7 +17,7 @@ import { perPhase } from '../duelist/realise.js';
 //           of the windup and lit at the impact. Guard: guard, never health. Parry: the beam turns off the
 //           blade and rakes the set beside the hero. PERFECT parry: it goes back into his eyes (50, 34
 //           posture, he drops and reels; `dragon:returned`). His first Stare's tail whips across his own
-//           statue's neck: the head comes off (once a fight; ADR-154's moment).
+//           statue's neck: the head comes off (once a fight; ADR-160's moment).
 //   sweep   Red Glare (red): level at y 1.15, LIT AT THE CUE, swept so it crosses the hero's bearing (fixed
 //           at the cue) at the impact, `flashLead` later; on through its arc. One hit (24, knockdown) on a
 //           hero in its strip from the impact on. Safe: rolled through, behind cover, inside `safe` m.

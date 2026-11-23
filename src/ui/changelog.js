@@ -19,6 +19,17 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-22',
+        title: 'A seventh level: Halcyon Plaza and Halcyon, the Last Saviour',
+        notes: [
+          'A new level, Halcyon Plaza: a city of rain and neon that has not been built yet. Pick it on the title screen.',
+          'Its boss is Halcyon, the Last Saviour: a flying strongman in a caped suit, with red light for eyes. He hovers within reach of your sword.',
+          'Parry his pass and he crashes through the nearest storefront or car. Perfectly parry his stare and it goes back into his eyes. Parry a thrown car and you cut it in two.',
+          'Everything in the city breaks, and the cars explode: one you broke hurts him too.',
+          'At two thirds the smile drops and every screen turns red. At one third he puts the city out and starts dropping buildings.',
+        ],
+      },
+      {
+        date: '2026-11-22',
         title: "The grove's bamboo falls to every stroke",
         notes: [
           'In the Windless Grove one swing cuts a bamboo stalk clean through where your blade passes, and the top slides off and crashes down in a burst of leaves. Swing through a clump and the whole clump comes down.',

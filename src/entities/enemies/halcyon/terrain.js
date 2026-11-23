@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { clamp, turnToward } from '../../../core/math.js';
 import { TELL, RESULT } from '../../../combat/rules.js';
 
-// What Halcyon does with his city (ADR-154): pieces of the set lifted, carried, thrown and torn down
+// What Halcyon does with his city (ADR-160): pieces of the set lifted, carried, thrown and torn down
 // (world/destructibles.js take / carry / throwTo / topple; ascendant/terrain.js is the reference).
 //   Curbside (halCurb)       he lands by the nearest car (no car: a road barrier, a lamp post, a slab of the
 //                            road), lifts it one-handed and throws it (blue, cued on the car flashLead before

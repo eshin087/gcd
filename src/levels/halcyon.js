@@ -2,9 +2,9 @@ import { createHalcyonPlaza, PLAZA } from '../world/halcyonPlaza.js';
 import { Halcyon } from '../entities/enemies/halcyon/halcyon.js';
 
 // Halcyon Plaza: a city that has not been built yet (the Abyss keeps every age it has swallowed, the ones
-// that have not happened yet too), and Halcyon, the Last Saviour, who owns it (ADR-153, ADR-154). The
+// that have not happened yet too), and Halcyon, the Last Saviour, who owns it (ADR-159, ADR-160). The
 // plaza is centred on the origin; the bonfire waits in the south alley's mouth. No reward yet: the owner
-// has not chosen one (ADR-155).
+// has not chosen one (ADR-161).
 const P = PLAZA;
 
 export const HALCYON = Object.freeze({

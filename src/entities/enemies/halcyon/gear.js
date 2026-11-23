@@ -9,7 +9,7 @@ import { halLookNow, dressOf, at } from './look.js';
 
 // Halcyon's gear: the hero's skeleton (buildHero), no weapon (bare-handed: the right fist on the sword
 // joint), drawn in the hero's ink-line art. Three outfits (`?halLook=a|b|c`, look.js; read when his rig
-// is built). No letter, shield or symbol anywhere on him (ADR-154, the line on the homage): what reads is
+// is built). No letter, shield or symbol anywhere on him (ADR-160, the line on the homage): what reads is
 // the colour and the shape: the suit, the cape, the belt, the eyes.
 //
 // His material instances (look.js tintHalcyon writes the colours): `pants` = the suit (torso, arms,
