@@ -192,6 +192,10 @@ export class Pipeline {
     this._selfArt = new Map(); // cell px -> atlas
     /** One letter cell of the hero in metres at his depth (CONFIG.render.heroLetters.size; the Lab / captures set it live). */
     this.heroLetter = CONFIG.render.heroLetters?.size ?? 0;
+    // ... and a boss's whose kit asks for it (`bossLetters`, set each frame by main.js: _updateBossLetters)
+    this.bossLetters = false;
+    this.bossCell = new THREE.Vector2(0, 0);
+    this._bossOn = false;
     this.asciiMat = new THREE.ShaderMaterial({
       uniforms: {
         tScene: { value: this.sceneRT.texture },
@@ -1423,27 +1427,8 @@ export class Pipeline {
    */
   _updateHeroLetters(ps) {
     const u = this.asciiMat.uniforms, L = CONFIG.render.heroLetters ?? {};
-    const min = this.heroCell.x;
-    let cell = min;
     const ok = ps && Number.isFinite(ps.x + ps.y + ps.z) && ps.z > 0.5;
-    if (ok && this.heroLetter > 0) {
-      const near = L.near ?? 20, close = Math.min(L.close ?? 6, near - 0.01);
-      const ppm = (0.5 * this.height * this.camera.projectionMatrix.elements[5]) / Math.max(ps.z, near);
-      let t = Math.min(1, Math.max(0, (ps.z - close) / (near - close)));
-      t = t * t * (3 - 2 * t);
-      const want = Math.log(min) + (Math.log(Math.max(min, ppm * this.heroLetter)) - Math.log(min)) * t;
-      // the step nearest in log size; the one drawn now is kept until the wanted size is `hyst`
-      // past the midpoint to the next
-      let best = min, bd = Infinity;
-      for (const c of HERO_CELLS) {
-        if (c < min) continue;
-        const d = Math.abs(Math.log(c) - want);
-        if (d < bd) { bd = d; best = c; }
-      }
-      const cur = this.selfCell.x;
-      const keep = cur >= min && HERO_CELLS.includes(cur) && Math.abs(Math.log(cur) - want) < bd + 2 * (L.hyst ?? 0.06);
-      cell = keep ? cur : best;
-    }
+    const cell = ok ? this._letterCell(ps.z, this.selfCell.x) : this.heroCell.x;
     if (cell !== this.selfCell.x || !u.tSelfArt.value) {
       let art = this._selfArt.get(cell);
       if (!art) this._selfArt.set(cell, (art = createPixelArtAtlas(cell / 4)));
@@ -1457,6 +1442,73 @@ export class Pipeline {
       const rPx = (HERO_BOX_R * 0.5 * this.height * this.camera.projectionMatrix.elements[5]) / ps.z;
       b.set(ps.x * this.width, ps.y * this.height, rPx + 2 * cell, 1);
     } else b.w = 0;
+  }
+
+  /**
+   * The letter cell (px) of a figure at view depth `z` (m) whose cell drawn now is `cur`: the rule
+   * of _updateHeroLetters (one cell is `heroLetter` metres at that depth, back to the fixed bosses'
+   * cell from `near` m in to `close` m, a step along HERO_CELLS with `hyst` of slack, never below the
+   * fixed cell). The hero's and a boss's that follows his size (_updateBossLetters).
+   */
+  _letterCell(z, cur) {
+    const L = CONFIG.render.heroLetters ?? {};
+    const min = this.heroCell.x;
+    if (!(this.heroLetter > 0) || !(Number.isFinite(z) && z > 0.5)) return min;
+    const near = L.near ?? 20, close = Math.min(L.close ?? 6, near - 0.01);
+    const ppm = (0.5 * this.height * this.camera.projectionMatrix.elements[5]) / Math.max(z, near);
+    let t = Math.min(1, Math.max(0, (z - close) / (near - close)));
+    t = t * t * (3 - 2 * t);
+    const want = Math.log(min) + (Math.log(Math.max(min, ppm * this.heroLetter)) - Math.log(min)) * t;
+    // the step nearest in log size; the one drawn now is kept until the wanted size is `hyst`
+    // past the midpoint to the next
+    let best = min, bd = Infinity;
+    for (const c of HERO_CELLS) {
+      if (c < min) continue;
+      const d = Math.abs(Math.log(c) - want);
+      if (d < bd) { bd = d; best = c; }
+    }
+    const keep = cur >= min && HERO_CELLS.includes(cur) && Math.abs(Math.log(cur) - want) < bd + 2 * (L.hyst ?? 0.06);
+    return keep ? cur : best;
+  }
+
+  /**
+   * A boss's letters follow his size as the hero's do, when `bossLetters` is set (main.js, from the
+   * boss's kit: `kit.letters`, Wen Yao; ?foxLetters=a turns it off): the bosses' ink-line cell
+   * (uHeroCell, its atlas tHeroArt, its line width uHeroPx.x) from his view depth (`bs` =
+   * U.uBossScreen) by _letterCell, the hero's rule. His paper selves share it (one grid for every
+   * boss pixel). Off, the uniforms are exactly what setSize gives (the fixed cell): a level whose boss
+   * does not ask is drawn as before. The atlases are the hero's (_selfArt): no allocation once a cell's
+   * atlas exists.
+   */
+  _updateBossLetters(bs) {
+    const u = this.asciiMat.uniforms;
+    if (!this.bossLetters) {
+      if (this._bossOn) {
+        this._bossOn = false;
+        u.uHeroCell.value = this.heroCell;
+        if (this.heroArt) u.tHeroArt.value = this.heroArt.texture;
+        u.uHeroPx.value.x = this._heroPx ?? 1;
+      }
+      return;
+    }
+    this._bossOn = true;
+    const cur = this.bossCell.x;
+    const seen = bs && bs.w > 0.5 && Number.isFinite(bs.x + bs.y + bs.z) && bs.z > 0.5;
+    // his depth 1 m above his feet, where the hero's is taken (U.uBossScreen is his root's: the depth
+    // along the view of a point 1 m up is the root's plus the view direction's y, -matrixWorld[9]);
+    // a hidden boss keeps the cell he had
+    const z = seen ? bs.z - this.camera.matrixWorld.elements[9] : NaN;
+    const cell = seen ? this._letterCell(z, cur) : Math.max(cur, this.heroCell.x);
+    let art = this._selfArt.get(cell);
+    if (!art) this._selfArt.set(cell, (art = createPixelArtAtlas(cell / 4)));
+    const px = Math.max(1, Math.round(cell / 4 - (CONFIG.render.heroLetters?.thin ?? 0.01)));
+    // (compared every frame: setSize writes the fixed cell's atlas and line width back)
+    if (cell !== cur || u.uHeroCell.value !== this.bossCell || u.tHeroArt.value !== art.texture || u.uHeroPx.value.x !== px) {
+      this.bossCell.set(cell, cell);
+      u.uHeroCell.value = this.bossCell;
+      u.tHeroArt.value = art.texture;
+      u.uHeroPx.value.x = px;
+    }
   }
 
   /** Camera-dependent uniforms of the ASCII pass (world reconstruction for stone outlines). */
@@ -1477,6 +1529,7 @@ export class Pipeline {
       h.set(ps.x, ps.y, rPx, k * k * (3 - 2 * k));
     } else h.w = 0;
     this._updateHeroLetters(ps);
+    this._updateBossLetters(this.U.uBossScreen?.value);
     // the impact ripple's live hits, projected with the camera that draws this frame (setRipple)
     if (this.ripple) {
       try {
@@ -1739,6 +1792,7 @@ export class Pipeline {
       this.asciiMat.uniforms.uHeroCols.value = this.heroArt.cols;
     }
     this.asciiMat.uniforms.uHeroPx.value.x = hs; // the ink lines are one font pixel wide
+    this._heroPx = hs; // (_updateBossLetters gives it back when a boss's letters stop following his size)
   }
 
   /** Resize the moon shadow map to `size` × `size` texels (quality presets; main.js applyQuality). */

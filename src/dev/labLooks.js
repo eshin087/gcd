@@ -44,7 +44,8 @@ export const LOOK_SWITCHES = Object.freeze([
   //
   //
   // --- fox: Wen Yao (ADR-147; every one read when his rigs or his effects are built: a reload)
-  ['foxLook', ['a', 'b', 'c', 'd'], 'b', 'b', true, ['fox'], 'Wen Yao\'s body: a shrine fox, b wild fox (the default), c pelt brawler, d = a in ink-line (a reload)'],
+  ['foxLook', ['a', 'b', 'c', 'd', 'h1', 'h2', 'h3'], 'h1', 'h1', true, ['fox'], 'Wen Yao\'s body: ink-line like the hero, h1 the wild fox (the default: amber jacket, vermilion scarf), h2 vermilion jacket and black scarf, h3 a long pale coat; through the art path a shrine fox, b wild fox, c pelt brawler; d = a in ink-line (a reload)'],
+  ['foxLetters', ['a', 'b'], 'b', 'b', false, ['fox'], 'Wen Yao\'s letters: a a fixed cell (as the other bosses), b they follow his size on screen as the hero\'s do (the default; read every frame: live)'],
   ['foxfire', ['a', 'b', 'c'], 'a', 'a', true, ['fox'], 'the foxfire: a jade, b the wyrm\'s orange, c moon-white (a reload)'],
   ['clones', ['a', 'b'], 'a', 'a', true, ['fox'], 'the paper selves: a as him, b a step paler (a reload)'],
   // --- grove: the Windless Grove and the Sheathed (ADR-145; the owner's picks, 2026-11-22: a / a / a)

@@ -1300,32 +1300,108 @@ async function scenarioTraining() {
 
 // ================================================================== scenario: looks
 async function scenarioLooks() {
-  out('\n== scenario LOOKS (each ?foxLook= builds; the selves; the default rig is on the art path) ==');
+  out('\n== scenario LOOKS (each ?foxLook= builds; the default h1 is ink-line, bright, with its selves; his letters follow his size and no other boss\'s do) ==');
   const LS = await imp('src/entities/enemies/duelist/lookSwitch.js');
   const PICK = LS.PICKED ?? {};
-  assert(!('foxLook' in PICK) && !('foxfire' in PICK) && !('clones' in PICK), 'his switches are not in PICKED (the owner has not picked)');
-  for (const v of ['a', 'b', 'c', 'd']) {
+  assert(!('foxLook' in PICK) && !('foxfire' in PICK) && !('clones' in PICK) && !('foxLetters' in PICK), 'his switches are not in PICKED (the owner has not picked)');
+  const { isDragonLook } = await imp('src/entities/enemies/ashDisciple/bodyArt.js');
+  const { FOX_INK } = await imp('src/entities/enemies/thousandFox/bodyArt.js');
+  const { foxLookNow } = await imp('src/entities/enemies/thousandFox/look.js');
+  const selvesOf = (d) => d.clones?.list ?? [];
+  /** The materials his rig draws with (each one a draw call of the rigid batch). */
+  // (not the rigid batch's shadow mesh: its proxy material is never drawn in the world pass)
+  const matsOf = (d) => { const s = new Set(); d.rig.root.traverse((o) => { if (o.isMesh && o.visible !== false && o.material?.uniforms) s.add(o.material); }); return s.size; };
+  const INK = new Set(['d', 'h1', 'h2', 'h3']);
+  for (const v of ['a', 'b', 'c', 'd', 'h1', 'h2', 'h3']) {
     LS.setLook('foxLook', v);
-    let ok = true, meshes = 0;
+    let ok = true, meshes = 0, mats = 0, art = null;
     try {
       const G = build();
       const d = G.game.dragon;
       d.rig.root.traverse((o) => { if (o.isMesh) meshes++; });
+      mats = matsOf(d);
+      art = isDragonLook(d.rig.materials) && selvesOf(d).every((c) => isDragonLook(c.rig.materials));
+      if (!INK.has(v)) art = art === true;
+      else art = !isDragonLook(d.rig.materials) && selvesOf(d).every((c) => !isDragonLook(c.rig.materials));
       run(G, 0.3);
     } catch (e) { ok = false; out(`     ${v}: ${e.message}`); }
-    assert(ok && meshes > 20, `?foxLook=${v} builds (${meshes} meshes)`);
+    assert(ok && meshes > 20 && meshes <= 70, `?foxLook=${v} builds (${meshes} meshes, ${mats} materials)`);
+    assert(art, `?foxLook=${v}: he and his selves are drawn ${INK.has(v) ? 'in the ink-line art' : 'through the wyrm\'s art path (FLAG.ART)'}`);
   }
+  LS.setLook('foxLook', 'zz');
+  assert(foxLookNow().id === 'h1', 'an unknown ?foxLook= draws the default (h1)');
   LS.setLook('foxLook', null);
-  // the default rig (a) is drawn through the wyrm's art path; d is the ink-line art
-  const { isDragonLook } = await imp('src/entities/enemies/ashDisciple/bodyArt.js');
+  // the default: h1, the ink-line Wild Fox, his fills written on him and on every self
   {
     const G = build();
     const d = G.game.dragon;
-    assert(isDragonLook(d.rig.materials) && d.clones.list.every((c) => isDragonLook(c.rig.materials)), 'the default figure (a) and its selves are on the art path (FLAG.ART)');
-    LS.setLook('foxLook', 'd');
-    const G2 = build();
-    assert(!isDragonLook(G2.game.dragon.rig.materials), '?foxLook=d is the ink-line art');
-    LS.setLook('foxLook', null);
+    const L = foxLookNow();
+    assert(L.id === 'h1' && !L.art, `the default ?foxLook= is h1, the ink-line art (${L.id})`);
+    const fillOf = (M, k) => M[k]?.uniforms?.uArtFill?.value?.toArray().map((x) => +x.toFixed(3));
+    const want = FOX_INK.h1.coat.map((x) => +x.toFixed(3));
+    const rigs = [d.rig, ...selvesOf(d).map((c) => c.rig)];
+    assert(rigs.every((r) => JSON.stringify(fillOf(r.materials, 'coat')) === JSON.stringify(want)), `his jacket and every self's are the h1 amber (${JSON.stringify(want)})`);
+    // bright: the jacket and the scarf are saturated fills past 1 (the pass lifts those, ADR-130's dark cloth does not)
+    const lit = (c) => Math.max(...c) > 1 && (Math.max(...c) - Math.min(...c)) / Math.max(...c) > 0.6;
+    assert(lit(FOX_INK.h1.coat) && lit(FOX_INK.h1.facing), 'h1: the jacket and the scarf are bright saturated fills');
+    // lean: every rig of him (him and the pool) draws with at most ten materials
+    assert(matsOf(d) <= 10, `h1 draws with ${matsOf(d)} materials a rig (<= 10)`);
+  }
+  // his letters follow his size (?foxLetters=b, the default): the bosses' ink-line cell is set from
+  // his depth by the hero's rule; off, and for any other boss, the uniforms are setSize's own
+  {
+    const { Pipeline } = await imp('src/render/pipeline.js');
+    const G = build();
+    const { game } = G;
+    const renderer = {
+      extensions: { has: () => true }, autoClear: true, _dpr: 1,
+      setRenderTarget() {}, setClearColor() {}, getClearColor() {}, getClearAlpha: () => 0, clear() {}, render() {},
+      setPixelRatio(dp) { this._dpr = dp; }, getPixelRatio() { return this._dpr; }, setSize() {},
+    };
+    const cam = game.camera;
+    const pipe = new Pipeline(renderer, game.scene, game.fxScene ?? new THREE.Scene(), cam, game.U);
+    cam.fov = CONFIG.camera.fov;
+    cam.updateProjectionMatrix();
+    pipe.setSize(2560, 1440, 1);
+    const u = pipe.asciiMat.uniforms, bs = game.U.uBossScreen.value, ps = new THREE.Vector4();
+    const base = { cell: u.uHeroCell.value, x: pipe.heroCell.x, art: u.tHeroArt.value, px: u.uHeroPx.value.x };
+    const frame = (n = 3) => { for (let i = 0; i < n; i++) pipe._updateBossLetters(bs); };
+    const same = () => u.uHeroCell.value === pipe.heroCell && u.uHeroCell.value.x === base.x && u.tHeroArt.value === base.art && u.uHeroPx.value.x === base.px;
+    bs.set(0.5, 0.5, 30, 1);
+    pipe.bossLetters = false;
+    frame();
+    assert(same(), `off (a boss whose kit does not ask): the bosses' cell, atlas and line width are setSize's (${base.x} px)`);
+    pipe.bossLetters = true;
+    frame();
+    ps.set(0.5, 0.5, 30, 0);
+    pipe.selfCell.set(0, 0);
+    for (let i = 0; i < 3; i++) pipe._updateHeroLetters(ps);
+    const boss = u.uHeroCell.value.x, hero = pipe.selfCell.x;
+    assert(boss === hero && boss > base.x && u.tHeroArt.value !== base.art && u.uHeroPx.value.x >= base.px, `on, at 1440p and 30 m his cell is the hero's at that depth (${boss} px = ${hero} px > the fixed ${base.x} px)`);
+    bs.set(0.5, 0.5, 4, 1);
+    frame(6);
+    assert(u.uHeroCell.value.x === base.x, `on, close up (4 m) his cell goes back to the fixed one (${u.uHeroCell.value.x} px)`);
+    bs.set(0.5, 0.5, NaN, 1);
+    frame();
+    assert(Number.isFinite(u.uHeroCell.value.x) && u.uHeroCell.value.x >= base.x, 'a NaN depth keeps a finite cell');
+    pipe.bossLetters = false;
+    frame();
+    assert(same(), 'turned off, every uniform is given back exactly');
+    pipe.setSize(1280, 720, 1);
+    pipe.bossLetters = true;
+    bs.set(0.5, 0.5, 30, 1);
+    frame();
+    assert(u.uHeroPx.value.x >= 1 && u.tHeroArt.value != null, 'after a resize his cell is written again');
+    // the gate (main.js): only a kit that asks has it, and ?foxLetters=a turns it off
+    const kits = await Promise.all([
+      ['ascendant/ascendant.js', 'ASC_KIT'], ['ashDisciple/disciple.js', 'ASH_KIT'], ['sheathed/sheathed.js', 'SHEATHED_KIT'], ['starlessLord/lord.js', 'LORD_KIT'],
+    ].map(async ([f, k]) => (await imp(`src/entities/enemies/${f}`))[k]));
+    assert(kits.every((k) => k && !k.letters) && game.dragon.kit.letters === true, 'only his kit asks for letters that follow his size (Tian Lei, Shen Hui, Lu Wusheng, Varr Nihil: no)');
+    const main = fs.readFileSync(`${ROOT}/src/main.js`, 'utf8');
+    assert(/pipeline\.bossLetters\s*=\s*!!game\.dragon\?\.kit\?\.letters\s*&&\s*lookOf\('foxLetters', 'b'\) === 'b'/.test(main), 'main.js sets the pipeline\'s bossLetters from the kit and ?foxLetters each frame');
+    LS.setLook('foxLetters', 'a');
+    assert(LS.lookOf('foxLetters', 'b') === 'a', '?foxLetters=a reads off');
+    LS.setLook('foxLetters', null);
   }
   for (const v of ['a', 'b']) {
     LS.setLook('clones', v);
