@@ -116,8 +116,9 @@ const ALARM = Object.freeze({
   run: 3.4,
   r: 8.5,
   close: 3.5,
-  /** a gust passing the perch: life.wind.at(...).k above this */
-  gust: 0.55,
+  /** a gust passing the perch: life.wind.at(...).alarm above this (an ordinary front's strongest
+   *  patches; at 0.55 nearly every front emptied half the tree line: measured against the real wind) */
+  gust: 0.85,
   /** the others perched within this many m of a bird that goes take off with it */
   flock: 4.5,
   /** how far apart the birds of one perch sit (m) */

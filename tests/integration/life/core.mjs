@@ -59,6 +59,37 @@ export default {
     }
   },
 
+  /** Each piece stands alone (the others off) on every level: no throw, no NaN, no Math.random; the
+   *  litter without the wind falls straight down; with every piece on, what a layer takes over the
+   *  atmosphere draws no more (nothing is drawn twice). */
+  alone(T) {
+    for (const id of T.LEVEL_IDS) {
+      for (const piece of ['wind', 'weather', 'litter', 'steps', 'creatures', 'answer']) {
+        const w = T.build(id, piece, { feet: true });
+        w.walk(3, -2);
+        w.step(8);
+        w.world.gust(w.game.player.position.x, w.game.player.position.z, 1.6, 12);
+        w.emit('dragon:roar', { strength: 1 });
+        w.walk(0, 0);
+        w.step(6);
+        const errs = Object.entries(w.life._errs).filter(([, n]) => n > 0).map(([k, n]) => `${k} x${n}`);
+        T.assert(!errs.length && w.counts().random === 0, `${id} [${piece} alone]: stands (${errs.join(', ') || 'no throw'}, ${w.counts().random} Math.random)`);
+        if (piece === 'litter' && w.life.litter.leaves) {
+          let n = 0, side = 0;
+          for (const f of w.life.litter.leaves) if (f.s === 1 && f.y > 1) { n++; side += Math.hypot(f.vx, f.vz); }
+          T.assert(n === 0 || side / n < 0.8, `${id} [litter, no wind]: what falls comes straight down (mean sideways ${(side / Math.max(1, n)).toFixed(2)} m/s over ${n})`);
+        }
+      }
+      // every piece on: the atmosphere's own leaves / mist / ash / fireflies stop where a layer took them
+      const a = T.build(id, 'all');
+      a.step(10);
+      const A = a.world.atmosphere, took = [];
+      for (const what of ['leaves', 'mist', 'ash', 'fireflies']) if (a.life.takes(what)) took.push(what);
+      const acc = { leaves: A.leafAcc, mist: A.mistAcc, ash: A.ashAcc };
+      T.assert(took.every((w) => w === 'fireflies' || !acc[w]), `${id}: the atmosphere stopped drawing what the living world took (${took.join(', ') || 'nothing'}; acc ${JSON.stringify(acc)})`);
+    }
+  },
+
   /** The phone's budget: at quality 0.5 the living world holds fewer letters than at 1. */
   phone(T) {
     for (const id of T.LEVEL_IDS) {

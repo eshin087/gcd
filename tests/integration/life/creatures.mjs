@@ -83,6 +83,43 @@ export default {
     }
   },
 
+  /** Against the REAL wind and answer: an ordinary gust front lifts a group or two off the tree line
+   *  as it passes (wind.at(perch).alarm over CREATURES_TUNE.alarm.gust), a quiet front (the arrival's)
+   *  lifts none, a roar empties it. */
+  gusts(T) {
+    for (const id of ['cinderwood', 'ash', 'fox']) {
+      const run = (send) => {
+        const w = T.build(id, 'wind,creatures,answer');
+        const W = w.life.wind;
+        for (const F of W.fronts) F.on = false;
+        W._next = 1e9; // (only the front this scenario sends)
+        w.step(0.5);
+        const B = w.life.creatures.birds;
+        const p0 = B.filter((b) => b.state === 'perched').length;
+        send(w);
+        let alarm = 0, k = 0;
+        const o = { x: 0, z: 0, k: 0 };
+        for (let i = 0; i < 18 * 4; i++) {
+          w.step(0.25);
+          for (const b of B) {
+            W.at(b.px, b.pz, o);
+            alarm = Math.max(alarm, o.alarm);
+            k = Math.max(k, o.k);
+          }
+        }
+        return { p0, up: p0 - B.filter((b) => b.state === 'perched').length, alarm, k };
+      };
+      const g = run((w) => w.life.wind.front({ strength: 1.1 }));
+      const m = run((w) => w.life.wind.front({ strength: 0.75 }));
+      const q = run((w) => w.life.wind.front({ strength: 1.1, quiet: true }));
+      const r = run((w) => w.life.answer.answerRoar(1, true));
+      T.assert(g.alarm > 0.85 && g.up >= 1 && g.up < g.p0, `${id}: a gust front lifts some off the tree line (${g.up} of ${g.p0}; alarm at the perches up to ${g.alarm.toFixed(2)})`);
+      T.assert(m.up <= g.up, `${id}: a weak front (0.75) lifts no more (${m.up}; alarm up to ${m.alarm.toFixed(2)})`);
+      T.assert(q.k > 0.55 && q.alarm === 0 && q.up === 0, `${id}: the same front made quiet (the arrival's) lifts none (k ${q.k.toFixed(2)}, alarm ${q.alarm}, ${q.up} up)`);
+      T.assert(r.up >= r.p0 * 0.9, `${id}: a roar empties the tree line (${r.up} of ${r.p0})`);
+    }
+  },
+
   /** startle returns how many fled; its birds stay gone at least 20 s, and come back out of view. */
   startle(T) {
     const w = T.build('cinderwood', 'creatures');
