@@ -4959,6 +4959,160 @@ async function scenarioWyrmLook() {
   return G;
 }
 
+async function scenarioStreakFx() {
+  out('\n== scenario STREAKFX (the streak on the hero and in the world: off = today, monotone by tier, the loss, the ground answers) ==');
+  const SKM = await imp('src/combat/streak.js');
+  const { StreakFx, STREAK_AURA, STREAK_WORLD } = await imp('src/entities/player/streakFx.js');
+  const F = SKM.STREAK_FX, on0 = { ...F.on }, k0 = { ...F.k };
+  const setOn = (aura, world) => { for (const p of F.pieces) F.on[p] = false; F.on.aura = !!aura; F.on.world = !!world; };
+  // the hero's look this frame: the blade's uniforms and every part table entry it writes
+  const look = (game) => {
+    const p = game.player, bu = p.rig.materials.blade.uniforms, U = game.U, o = [bu.uInkGlow.value, bu.uGlow.value];
+    for (const k of ['uSelfPartInk', 'uSelfPartRim', 'uSelfPartFill']) for (const v of U[k]?.value ?? []) o.push(v.x, v.y, v.z, v.w);
+    return o;
+  };
+  /** A scripted swing at streak 15 (`withFx`: a StreakFx built and updated as main.js does). */
+  const swing = (withFx) => {
+    const G = build();
+    const { game } = G;
+    const sfx = withFx ? new StreakFx(game) : null;
+    if (sfx) game.fx.streak = sfx;
+    fightSetup(G);
+    place(G, 4.5);
+    game.player.debug.god = true;
+    game.player.debug.streak(15);
+    const frames = [], spawn = game.fx.add.spawn.bind(game.fx.add), spawnA = game.fx.alpha.spawn.bind(game.fx.alpha);
+    let nSp = 0, inFx = false, echoes = 0;
+    game.fx.add.spawn = (o) => { if (inFx) nSp++; return spawn(o); };
+    game.fx.alpha.spawn = (o) => { if (inFx) nSp++; return spawnA(o); };
+    for (let i = 0; i < 70; i++) {
+      if (i === 5) game.player._buffer('light');
+      if (i === 30) game.player._buffer('roll');
+      G.tick(DT);
+      inFx = true;
+      sfx?.update(DT);
+      inFx = false;
+      echoes += (sfx?.echoes | 0) + (sfx?.edge > 0 ? 1 : 0) + (sfx?.bladeLine > 0 ? 1 : 0);
+      frames.push(look(game).join(','));
+    }
+    return { frames, nSp, echoes, sfx, G };
+  };
+  try {
+    // (1) both pieces off: exactly today (the blade's uniforms and the arc's / any spawns of a scripted swing)
+    setOn(false, false);
+    const base = swing(false), off = swing(true);
+    const same = base.frames.every((f, i) => f === off.frames[i]);
+    assert(same && base.frames.length === 70, `aura + world off: the blade's uniforms of a swing at streak 15 are today's, frame by frame (${same})`);
+    // (the arc's own spawn count is not compared across two builds: fx.js's cosmetic stream runs on
+    // from one build to the next; what the streak adds to it is: no echo, no edge, no spawn of its own)
+    assert(off.nSp === 0 && off.echoes === 0 && off.sfx.n === 0 && off.sfx.losses === 0, `aura + world off: the streak draws nothing and gives the arc no echo (${off.nSp} spawns, ${off.echoes} echo / edge frames)`);
+    // (2) on: monotone by tier (the edge, its alpha, the line lift, the echoes; the blade's ink line at rest)
+    setOn(true, true);
+    for (const p of ['aura', 'world']) F.k[p] = 1;
+    const G = build();
+    const { game } = G;
+    const sfx = new StreakFx(game);
+    game.fx.streak = sfx;
+    fightSetup(G);
+    place(G, 6);
+    const p = game.player;
+    p.debug.god = true;
+    const tick = (n) => { for (let i = 0; i < n; i++) { G.tick(DT); sfx.update(DT); } };
+    const row = [];
+    for (const n of [0, 3, 5, 7, 10, 15]) {
+      p.debug.streak(0);
+      tick(5);
+      p.debug.streak(n);
+      tick(40);
+      row.push({ n, tier: sfx.tier, edge: sfx.edge, a: sfx.edgeA, line: sfx.bladeLine, echo: sfx.echoes, ink: look(game).slice(2).reduce((s, v) => s + v, 0) });
+    }
+    out('     tiers', row.map((r) => `${r.n}:t${r.tier} edge ${r.edge.toFixed(2)} a ${r.a.toFixed(2)} line ${r.line.toFixed(2)} echo ${r.echo}`).join(' | '));
+    let mono = true, strict = true;
+    for (let i = 1; i < row.length; i++) {
+      for (const k of ['edge', 'a', 'line', 'echo', 'ink']) if (!(row[i][k] >= row[i - 1][k] - 1e-9)) mono = false;
+      if (!(row[i].edge > row[i - 1].edge) || !(row[i].line > row[i - 1].line)) strict = false;
+    }
+    assert(row[0].edge === 0 && row[0].line === 0 && row[0].echo === 0, 'aura: nothing below the first tier');
+    assert(mono && strict, 'aura: the edge, its alpha, the blade lines\' lift and the echoes grow with the tier (the edge and the lift strictly)');
+    assert(row[5].edge === 1 && row[5].echo === STREAK_AURA.echoes[5], `aura: tier 5 lights the whole edge and draws ${STREAK_AURA.echoes[5]} echo lines`);
+    // a swing at tier 5 draws its echo lines (more arc spawns than at tier 0 for the same swing)
+    const arcSpawns = (n) => {
+      p.debug.streak(0); tick(5); p.debug.streak(n); tick(40);
+      place(G, 6);
+      const spawn = game.fx.add.spawn.bind(game.fx.add);
+      let c = 0;
+      game.fx.add.spawn = (o) => { if (o.glyph === '|') c++; return spawn(o); };
+      p._buffer('light');
+      tick(30);
+      game.fx.add.spawn = spawn;
+      return c;
+    };
+    const s0 = arcSpawns(0), s5 = arcSpawns(15);
+    assert(s5 > s0, `aura: a swing at tier 5 leaves more line strokes than at tier 0 (the edge line + the echoes: ${s0} -> ${s5})`);
+    // (3) the loss: the line snaps dark at once, the dropped letters are gone in a bounded time
+    p.debug.streak(12);
+    tick(40);
+    const nAdd0 = game.fx.add.count, loss0 = sfx.losses;
+    const spawn = game.fx.add.spawn.bind(game.fx.add);
+    let lostSp = 0;
+    game.fx.add.spawn = (o) => { lostSp++; return spawn(o); };
+    const hit = p.takeHit({ tell: 'normal', attack: 'test', damage: 10, from: { x: p.position.x + 2, z: p.position.z }, knockback: 1 });
+    game.fx.add.spawn = spawn;
+    assert(p.streak === 0, `the hurt ends the streak (${hit})`);
+    assert(sfx.edge === 0 && sfx.bladeLine === 0 && sfx.echoes === 0 && sfx.losses === loss0 + 1, 'the loss: the edge, the lines\' lift and the echoes are dark in the same frame');
+    const D = STREAK_AURA.drop;
+    assert(lostSp > 0 && lostSp <= D.max + D.strokes + 40, `the loss drops a bounded number of letters (${lostSp} spawns with the hurt's own)`);
+    tick(Math.round(0.7 / DT));
+    assert(game.fx.add.count <= nAdd0 + 10, `the dropped letters are gone within 0.7 s (${nAdd0} -> ${game.fx.add.count})`);
+    // a short streak (lost < 2) drops nothing
+    p.debug.streak(1); tick(5);
+    const l0 = sfx.losses;
+    p.debug.streak(0); tick(2);
+    assert(sfx.losses === l0, 'a streak of one ends without the drop');
+    // (4) the world: a gust and a bounded ring per perfect defence, none below tier 2
+    const gusts = [], wg = game.world.gust.bind(game.world);
+    game.world.gust = (x, z, s, r) => { gusts.push([s, r]); return wg(x, z, s, r); };
+    const perDef = (n) => {
+      p.debug.streak(n); tick(10);
+      const g0 = gusts.length;
+      let c = 0;
+      const sa = game.fx.alpha.spawn.bind(game.fx.alpha), sd = game.fx.add.spawn.bind(game.fx.add);
+      game.fx.alpha.spawn = (o) => { c++; return sa(o); };
+      game.fx.add.spawn = (o) => { c++; return sd(o); };
+      p.debug.streak(n + 1); // one more perfect defence
+      game.fx.alpha.spawn = sa;
+      game.fx.add.spawn = sd;
+      tick(10);
+      return { gust: gusts.length - g0, c, s: gusts[gusts.length - 1]?.[0] ?? 0 };
+    };
+    const w1 = perDef(3), w2 = perDef(5), w5 = perDef(15);
+    assert(w1.gust === 0 && w1.c === 0, `world: nothing at tier 1 (${w1.gust} gusts, ${w1.c} spawns)`);
+    const cap = STREAK_WORLD.ring[5] + STREAK_WORLD.rise[5];
+    assert(w2.gust === 1 && w2.c > 0 && w2.c <= cap && w5.gust === 1 && w5.c > w2.c && w5.c <= cap, `world: one gust and a bounded ring per perfect defence (tier 2: ${w2.c}, tier 5: ${w5.c} spawns <= ${cap})`);
+    assert(w5.s > w2.s && w5.s < 1.2, `world: the gust grows with the tier and stays under the wyrm's weakest (${w2.s} -> ${w5.s})`);
+    // (5) nothing throws without a world, a fire field, a camera or a player
+    let threw = null;
+    try {
+      const bare = new StreakFx({ events: game.events, fx: {}, player: null });
+      bare.update(DT);
+      game.fx.streak = null;
+      const lean = new StreakFx({ events: { on: () => () => {} }, fx: { add: game.fx.add }, player: p, camera: null, world: null });
+      lean.count = 14; lean._onStreak({ count: 15, lost: 0 });
+      for (let i = 0; i < 10; i++) lean.update(DT);
+      lean._onStreak({ count: 0, lost: 15 });
+      lean.update(DT);
+      lean.clear();
+      bare.update(NaN);
+    } catch (err) { threw = err; }
+    assert(!threw, `no world / fire field / camera / player: nothing throws (${threw?.message ?? 'ok'})`);
+    assert(!G.errorCounts.size, `no module errors (${[...G.errorCounts.keys()].join(',')})`);
+    return G;
+  } finally {
+    Object.assign(F.on, on0);
+    Object.assign(F.k, k0);
+  }
+}
+
 async function scenarioHeroLife() {
   out('\n== scenario HEROLIFE (one hand through the chain, two on the heavy blows, the cross ward, the cloak vs the charged blade, idle actions) ==');
   // the blade's flare as it was before the calm (combat/impactCalm.js level 0): these bounds measure
@@ -11584,6 +11738,7 @@ const SCENARIOS = {
   wyrmface: scenarioWyrmFace,
   wyrmlook: scenarioWyrmLook,
   herolife: scenarioHeroLife,
+  streakfx: scenarioStreakFx,
   herohand: scenarioHeroHand,
   heroweight: scenarioHeroWeight,
   heroarms: scenarioHeroArms,

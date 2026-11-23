@@ -3708,7 +3708,10 @@ export class Player {
       const cb = this.fx.calmBlade?.(this.bladeFlare / F.hit[0]) ?? 1, cf = this.fx.calmFlare?.(this.bladeFlare) ?? this.bladeFlare;
       const g = !this.alive || (cb === 1 && cf === this.bladeFlare) ? g0 : 1 + ((heavyLit ? F.strike[1] : F.strike[0]) * this.bladeHot + cf) * cb;
       if (Number.isFinite(g)) {
-        const U = this.game.U, BL = TUNE.bladeLook, lk = (1 + F.line * (g - 1)) * BL.line, rl = B.rimLine ?? B.line;
+        // the streak (player/streakFx.js `bladeLine`, the aura piece): the steel's ink and rim lines held
+        // a little lit at rest, more at each tier; its flats stay dark (0 = today, exactly)
+        const sl = this.game.fx?.streak?.bladeLine, sk = sl > 0 && Number.isFinite(sl) ? 1 + sl / Math.max(1, g) : 1;
+        const U = this.game.U, BL = TUNE.bladeLook, lk = (1 + F.line * (g - 1)) * BL.line * sk, rl = B.rimLine ?? B.line;
         const pf = U?.uSelfPartFill?.value?.[P], pi = U?.uSelfPartInk?.value?.[P], pr = U?.uSelfPartRim?.value?.[P];
         if (pf) {
           pf.x = (B.fillGain ?? 1) * g * BL.fill;
