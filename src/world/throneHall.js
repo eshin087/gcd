@@ -450,18 +450,24 @@ export function createThroneHall(U, colliders) {
   }
 
   // ---- the crater's life: the vents' flames and lights, wisps, motes, the inlay
-  const st = { flare: 0, shown: -1 };
+  // (breath: the living world's weather, world/life/weather.js, "the star breathes": a slow small swell
+  // of the seal held each frame by ambience.breathe(k); 0 without it)
+  const st = { flare: 0, shown: -1, breath: 0, breathHold: 0 };
+  const BREATH = { seal: 0.16, motes: 0.7, rise: 1.6, step: 0.006, hold: 0.3, release: 0.8 };
   let glowSys = null;
+  /** The seal's swell now: a flare, plus the breath (a fraction of a flare). */
+  const swell = () => st.flare + BREATH.seal * st.breath;
   /** (Re)fill the inlay batch; the seal's glyphs at brightness 1 + 2.2 × flare. */
   const fillGlow = () => {
     if (!glowSys) return;
     glowSys.clear();
-    const k = 1 + 2.2 * st.flare;
+    const e = swell();
+    const k = 1 + 2.2 * e;
     for (const g of glow) {
-      const c = g.seal ? [g.color[0] * k, g.color[1] * k + 0.25 * st.flare, g.color[2] * k + 0.12 * st.flare] : g.color;
+      const c = g.seal ? [g.color[0] * k, g.color[1] * k + 0.25 * e, g.color[2] * k + 0.12 * e] : g.color;
       glowSys.spawn({ x: g.x, y: g.y, z: g.z, life: 1e9, size: g.size, sizeEnd: g.size, glyph: g.glyph, color: c, colorEnd: c, alpha: 1, alphaEnd: 1, rot: g.rot ?? 0, flicker: g.flicker ?? 0 });
     }
-    st.shown = st.flare;
+    st.shown = e;
   };
   const ambience = {
     setup(game) {
@@ -481,9 +487,19 @@ export function createThroneHall(U, colliders) {
     flare(k = 1) {
       st.flare = Math.max(st.flare, Math.min(1, Math.max(0, Number(k) || 0)));
     },
+    /** The star breathes (k 0..1): the seal swells a little and the motes rise faster while it is called
+     *  (each frame; it lets go 0.3 s after the last call). */
+    breathe(k = 0) {
+      const v = Number(k);
+      st.breath = Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0;
+      st.breathHold = BREATH.hold;
+    },
     update(dt, game) {
       if (st.flare > 0) st.flare = Math.max(0, st.flare - dt * 0.7);
-      if (Math.abs(st.flare - st.shown) > 0.03 || (st.flare === 0 && st.shown !== 0)) fillGlow();
+      if (st.breathHold > 0) st.breathHold -= dt;
+      else if (st.breath > 0) st.breath = Math.max(0, st.breath - dt * BREATH.release);
+      const e = swell();
+      if (Math.abs(e - st.shown) > (st.breath > 0 ? BREATH.step : 0.03) || (e === 0 && st.shown !== 0)) fillGlow();
       glowSys?.update(dt, game.time);
       const fx = game.fx?.add, fire = game.fx?.fire;
       if (!fx) return;
@@ -543,11 +559,13 @@ export function createThroneHall(U, colliders) {
       }
       // red motes rising slowly over the crater's floor
       const f = game.U.uFocus.value;
-      acc(st, 'motes', dt, 9, () => {
+      // (the breath: more of them, rising faster; with no breath exactly today's)
+      const br = st.breath;
+      acc(st, 'motes', dt, br > 0 ? 9 * (1 + BREATH.motes * br) : 9, () => {
         const x = f.x + (Math.random() - 0.5) * 30, z = f.z + (Math.random() - 0.5) * 24 - 3;
         if (Math.hypot(x, z) > R + 1) return;
         fx.spawn({
-          x, y: 0.2 + Math.random() * 1.5, z, vx: (Math.random() - 0.5) * 0.15, vy: 0.25 + Math.random() * 0.3, vz: (Math.random() - 0.5) * 0.15,
+          x, y: 0.2 + Math.random() * 1.5, z, vx: (Math.random() - 0.5) * 0.15, vy: (br > 0 ? 1 + BREATH.rise * br : 1) * (0.25 + Math.random() * 0.3), vz: (Math.random() - 0.5) * 0.15,
           life: 4 + Math.random() * 4, size: 0.11, sizeEnd: 0.04, glyph: ".'·", color: [1.8, 0.16, 0.08], colorEnd: [0.4, 0.02, 0.02],
           alpha: 1, alphaEnd: 0, drag: 0.2, flicker: 0.5,
         });
