@@ -5,6 +5,28 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-23 — Session 79c: Halcyon printed like the hero, a smaller cape (ADR-166)
+
+**What changed.** The owner picked his look (halLook a, halCape 3, glare a, city a), then: "make his cape smaller,
+make him look more ascii like to look like the main character ascii look more ascii made up". Tian Lei's answer
+(ADR-155) as the model, three switches in PENDING: `?halLetters=a` (his kit's `letters`: the hero's cell, so from
+1080p up his letters are as big as the hero's: 9.2 letters down him at 1080p and 1440p where he had 13.8 / 18.4,
+the hero 8.6), `?halPrint=a` (Tian Lei's quieter print numbers; the cape's red and the gold keep their light;
+b halfway), `?halCapeSize=b` (the cape x 0.65: 1.00 m long, the hem 0.52 m wide; a x 0.8, c x 0.5).
+
+**Why.** The bosses' fixed 4 px cell drew him in twice the hero's letters on a large screen (a shaded 3D model),
+and the step-3 cape was the biggest shape on screen from the front. The flare's angle is kept: its spread from the
+front shrinks with the cape's length.
+
+**Verified.** `city.mjs` pace and win give the same numbers as before (no object added), `looks` and the new
+`herolike`; the whole `npm test` and `npm run build` (see the PR). Headless Edge at 1280 x 720, 1920 x 1080,
+2560 x 1440 and the phone preset: `docs/looks/halcyon/halAscii.png`, `halCapeSize.png`, `halRecommend.png`.
+Red / blue / gold facing the camera at 1280 x 720 (letters a, cape b): print 0 123 / 471 / 30, a 112 / 474 / 35.
+
+**Open / next.** The owner picks the three. On the phone and at 720p the cell does not change (both 4 px).
+
+---
+
 ## 2026-11-23 — Session 79b: Halcyon's cape and colours read at game size (`?halCape=`, ADR-164)
 
 **What changed.** The owner looked at the sheets and said "Yes, fix the look": at true size (~40 px tall at

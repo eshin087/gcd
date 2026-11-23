@@ -4924,3 +4924,33 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   `glare` a, crimson with a white-hot core, from `glare.png`; and the cape, step 3, "billowing", from
   `halCape.png`. `halLook: 'a'`, `city: 'a'`, `glare: 'a'` and `halCape: '3'` moved from `PENDING` into
   `PICKED`; the defaults they already drew, so nothing visible changed. None of his switches waits now.
+
+## ADR-166 — Halcyon printed like the hero, a smaller cape: `?halLetters`, `?halPrint`, `?halCapeSize` (2026-11-23)
+
+- **Context:** after picking his look (halLook a, halCape 3, glare a, city a), the owner: "make his cape
+  smaller, make him look more ascii like to look like the main character ascii look more ascii made up".
+  Nearly the words of ADR-155 for Tian Lei, and the same cause: the human bosses print on the fixed 4 px
+  cell (8 at 4K) while the hero's cell follows his size (ADR-130), so from 1080p up Halcyon had more
+  letters down him than the hero (measured, letters down 1.85 m at the fight's distance: 1080p 13.8 vs
+  the hero's 8.6, 1440p 18.4 vs 8.6) and read as a shaded 3D model; and his step-3 print was lifted (a
+  strong edge of light, rim x3). From the front the wide cape (halCape 2 - 3) was the biggest shape on
+  screen.
+- **Decision:** three switches in `PENDING`, the recommended option the default (nothing new in `PICKED`):
+  1. `?halLetters=0|a` (default a): his kit's `letters` getter, exactly as Tian Lei's `ascLetters`:
+     `pipeline.bossLetters` gives him the hero's cell (ARCHITECTURE "The bosses' letters"). Live.
+  2. `?halPrint=0|a|b` (default a): a is Tian Lei's quieter print numbers (`ASC_QUIET`): the suit x 0.85,
+     the skin x 0.62, the suit's rim x 1.5 instead of x 3; the cape's red and the gold keep their light
+     (lining x 0.9, the gold x 1); b halfway (x 0.92, skin x 0.8, rim x 2.2). Both keep the blue suit, red
+     cape and gold belt at true size (red / blue / gold pixels facing the camera at 1280 x 720 with the
+     cape b: print 0 123 / 471 / 30, a 112 / 474 / 35, b 118 / 470 / 30).
+  3. `?halCapeSize=0|a|b|c` (default b): the cape's sheets' length and width x 1 / 0.8 / 0.65 / 0.5 (the
+     root's width by the square root, so it still pins across the shoulders), the flare's angle, the
+     colours and the billow kept: the spread from the front shrinks with the length, so the flare needs
+     no scale of its own. b: 1.00 m long (was 1.54), its widest hem 0.52 m (was 0.80); it still frames him
+     from the front and hangs past his knees; c (0.77 m) shows little of it from the front.
+- **Consequences:** letters down him / the hero, before -> after: 720p 9.2 / 8.6 -> same (both 4 px),
+  1080p 13.8 / 8.6 -> 9.2 / 8.6 (6 px), 1440p 18.4 / 8.6 -> 9.2 / 8.6 (8 px), 4K 8 px -> 12 px, the phone
+  9.8 / 9.2 -> same (4 px): on the phone and at 720p the print and the cape carry the change. No object
+  is added to his rig (the same 90 meshes): `city pace` / `win` give the same numbers. Sheets:
+  `docs/looks/halcyon/halAscii.png`, `halCapeSize.png`, `halRecommend.png`. Tests: `city.mjs herolike`.
+

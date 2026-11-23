@@ -19,7 +19,9 @@ Seventy-four pieces of work since 0.4.0:
   his cape and colours read at game size: from the front a wide red cape frames him (it hung hidden behind
   him), a clean red inside and out, a brighter blue suit, a gold belt that prints gold; it billows while he
   hovers and trails long in a pass (the owner's pick of four steps); `?halCape=0|1|2|3` steps back to how he
-  was first built. *Fixed:* a blow at
+  was first built. *Changed (ADR-166):* he is printed like the hero: his letters follow his size on screen
+  as yours do (fewer, bigger letters from 1080p up), a quieter print, and a smaller cape (two thirds of its
+  length, past his knees); `?halLetters=0`, `?halPrint=0|b`, `?halCapeSize=0|a|c` the other options. *Fixed:* a blow at
   a raised piece's own height reaches it (a tower's top, a sign hung on a wall).
 - **Tian Lei's attacks move naturally, and he stops punching the air** (2026-11-23, ADR-162). *Fixed:* his feet no longer jump or slide while he
   strikes (a planted foot snapped up to 0.7 m in a frame at the blows of his strings, and swivelled when he
