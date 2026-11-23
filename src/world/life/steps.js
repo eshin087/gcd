@@ -259,7 +259,8 @@ export class Steps {
     }
     // what lies underfoot is moved (the litter's)
     const S = STEPS.scatter;
-    L.litter?.scatter?.(x, z, heavy ? S.rHeavy : S.r, (heavy ? S.kHeavy : S.k) * L.k);
+    // (through life._call: a slip of the litter's is the litter's, not the steps')
+    if (L._call) L._call('litter', 'scatter', x, z, heavy ? S.rHeavy : S.r, (heavy ? S.kHeavy : S.k) * L.k);
     // wet ground
     const wet = L.weather?.wet;
     if (Number.isFinite(wet) && wet > STEPS.splash.min) this._burst(STEPS.splash, mode, q * Math.min(1, wet), x, z, 0);
@@ -276,7 +277,7 @@ export class Steps {
     if (n <= 0) return;
     let wx = 0, wz = 0;
     if (windK > 0) {
-      const w = L.wind?.at?.(x, z, this._w);
+      const w = L._call ? L._call('wind', 'at', x, z, this._w) : null;
       if (w && Number.isFinite(w.x + w.z)) {
         wx = w.x * windK;
         wz = w.z * windK;
