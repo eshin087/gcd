@@ -1001,7 +1001,7 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?ascLift=` | Tian Lei's figure lifted off the ring's floor (read when his rig is built) | as the body shipped | a lighter fill, a stronger edge of light | - | - | **a** |
 | `?ascAura=` | Tian Lei's aura (forms 2 and 3) | - | a tall flame, hollow behind him, a wheel of light on the floor | a tight sheath with streamers off the shoulders | a broad low blaze over a wide spinning wheel | **a** |
 | `?ascBeam=` | Tian Lei's beam | - | a column | a braid: two strands winding round a thinner core | - | **a** |
-| `?foxLook=` | Wen Yao's body (ADR-147; read when his rigs are built) | - | the Shrine Fox: a bone fox mask, a charcoal-indigo short robe, a pale fur mantle, a vermilion sash (the art path) | the Charm-Bearer: bare-headed, white hair, a half mask, a rope belt of paper strips | the Fox Captain: a light cuirass, a fox's head pauldron, the mask pushed up as a crest; `d` = a in the ink-line art the other human bosses ship in | not picked yet (a) |
+| `?foxLook=` | Wen Yao's body, bare-handed (ADR-147; read when his rigs are built) | - | the Shrine Fox: the bone mask, a short robe with its sleeves tied back, the fur stole, the sash | the Wild Fox: an amber sleeveless jacket, a streaming vermilion scarf, a wild crest of dark red-brown hair, a kitsune half-mask at the temple | the Pelt Brawler: a quilted jerkin, a fox's head on one shoulder; `d` = a in the ink-line art | not picked yet (b drawn) |
 | `?foxfire=` | the foxfire: the Pearl, the mantle (read when his effects are built) | - | jade (a palette swapped into the void slot) | the wyrm's orange fire | moon-white | not picked yet (a) |
 | `?clones=` | his paper selves (read when their rigs are built) | - | identical to him | a step paler | - | not picked yet (a) |
 
@@ -1150,42 +1150,58 @@ across the terrace): seen from the front and above, a fox prints as a lump; a fl
 gate) faces the camera. The gate's dull red is the strongest hue in the set, dulled once; the charm
 posts' paper strips are faint at 30 m.
 
-### Wen Yao's figure (2026-11-21, ADR-147; `thousandFox/gear.js`, `bodyArt.js`, `look.js`)
-Built as flat facets with a few tones far apart, brightest first: the bone mask (drawn 1.2x, over the
-crown too: the camera sees the top of his head more than his face), the wraps, the fur, the vermilion
-sash, the robe darkest. The big dark cloth (robe, trousers, linings) has a low gain and a soft key
-(`dark()`), so the flared skirt does not print as bright as the fur. `?foxLook=a|b|c` go through the
-wyrm's art path (`toDragonLook(ctx, FOX_ART[look])`), `d` is outfit a in the ink-line art; one item per
-slot (`fox.head` ... `fox.dao`) builds the outfit the switch picks. The dao: a broad single edge with a
-clipped point and a slight curve, on today's blade material. 53 / 38 / 58 / 53 meshes a rig (a b c d;
-Shen Hui's 82): his rig is built six times. `?clones=b` mixes every part of a self 30 % toward paper
-with a light floor (`look.js` `PALE`). The open free hand is turned palm up in the gear (`PALM_TURN`).
-The art options still read as a small figure of digits at 720p (about 12 letter rows): d reads
-clearest beside Shen Hui. The owner picks.
+### Wen Yao's figure (2026-11-21, bare-handed 2026-11-22, ADR-147; `thousandFox/gear.js`, `bodyArt.js`, `look.js`)
+A bare-handed fist fighter: the right fist on the sword joint with its knuckles wrapped (Tian Lei's),
+the forearms bare and wrapped, the left hand open, palm up (`PALM_TURN`). Flat facets with a few tones
+far apart; the big dark cloth on a low gain and a soft key (`dark()`), the bright colours on `loud()`.
+`?foxLook=`: **b, the Wild Fox (the default the fight draws; the owner's pick still open)**: a short
+sleeveless burnt-amber jacket with a stand collar over a dark undershirt, near-black trousers, wrapped
+shins, an untamed crest of dark red-brown hair swept up and back, a kitsune half-mask pushed to the
+side of the head, a long vermilion scarf streaming behind (the `fox.back` item), a fox-tail charm at
+the hip: the loud figure the homage asks for, and none of the character's protected signature (no
+black shoulders, no forehead plate, no whisker marks, no emblem, the hair not blond; amber prints near
+orange at the game camera: a vermilion jacket and an amber scarf is a one-line swap in `bodyArt.js`).
+a, the Shrine Fox: the bone mask over face and crown, a shorter robe, the sleeves tied back by a
+vermilion cord across the back, the fur stole, the sash. c, the Pelt Brawler: a quilted russet jerkin
+laced in vermilion, a fox's head on the left shoulder with its pelt cape, the mask on the brow. d: a in
+the ink-line art. 37 / 49 / 50 / 49 meshes a rig (b a c d; Shen Hui's 82): his rig is built six times.
+`?clones=b` mixes every part of a self 30 % toward paper with a light floor (`look.js` `PALE`). In the
+art path at 720p he is still about 12 letter rows; b survives it by its colour, d reads clearest.
 
-### The fox's effects (2026-11-21, ADR-147; `thousandFox/fx.js` `FoxFx`)
+### The fox's effects (2026-11-21, bare-handed 2026-11-22, ADR-147; `thousandFox/fx.js` `FoxFx`)
 - **Foxfire is a palette** swapped into the fire field's void slot (`FIRE_PALETTES.foxfire`, jade: dark
   green strokes, jade digits, a mint heart, not white; `?foxfire=c` `moon`; `?foxfire=b` draws as the
   wyrm's `fire` kind with no swap). Both palettes lick 0.5 and erode 0.85, so the Pearl stays a ball
-  and the mantle's ears and tail keep their shape. The inherited draws' Void violet (a light, a spark)
-  is turned to the look's colour (`_light`, `_spawn`), as AscFx does for gold: the black cue's sparks
-  are jade on this level (the black dye itself is the engine's).
-- **The Pearl:** a dense ball with two arms of heat winding in; a steel thread from each self's hand
-  that stops 0.22 m short of it (five ends in one cell printed a white blob), two beads of foxfire
-  running in along each. Its mark: ADR-052's ground specks in foxfire colours, a rim of `·` and a low
-  ring once it has cued. The engine's red flare on the bat outshines the Pearl in flight for its life.
-- **The selves:** a pop is 24 one-cell paper slips (16 when many go at once; half in the additive
-  pool so they read on the paving at 30 m), torn-edge steel strokes, smoke, a wisp of foxfire; a spawn
-  a tear of paper; phase 3's change burns them into him.
-- **The mantle** (phase 3): heat spawned BEHIND him as the camera sees him (it wreathes, it does not
-  cover him), kept low so two tongues stand clear as ears, a muzzle over the mask, ONE brush tail on a
-  seven-node lagging chain from his hips with a pale tip; it swings round with Burning Brush. At the
-  720p camera it reads as a jade wreath more than a fox's head: an option, as drawn, for the owner.
+  and the fox spirit's ears and tails keep their shape. The inherited draws' Void violet (a light, a
+  spark) is turned to the look's colour (`_light`, `_spawn`), as AscFx does for gold: the black cue's
+  sparks are jade on this level (the black dye itself is the engine's).
+- **The Pearl in his palm:** a dense SPINNING sphere at `d.palmPoint()` (its surface points turning round
+  a tilted axis about a jade core), three crisp arcs of wind turning round it and closing in as it
+  fills, motes curling in; the selves' steel threads (the assisting self's too) stop 0.42 m short of it
+  (five ends in one cell printed a white knot), beads of foxfire running in. **The drive:** a short blast
+  along his facing (heat thrown out, three crisp streaks, sparks), the ring 0.07 s later, no heart (heat
+  piled on one spot printed a white disc). **Pearl Rain** keeps the flight, ADR-052's ground specks in
+  foxfire colours, the rim of `·` once it has cued, and the burst. At the game camera the orb is a few
+  letters with a ring of wind strokes: it reads at 3x.
+- **The nine-tailed fox** (phase 3, `mantle(d, dt, k)`): a fox's head over his (tall ears, cheek ruffs, a
+  muzzle over his face), a mane, and `d.tails` tails, each a lagging chain with a pale tip, fanned over
+  a half-wheel laid in the CAMERA's plane (as the ears are spread: a fan laid in the scene merged into
+  one blob seen edge on). The tails share one budget (thinner and cooler as they multiply, their roots
+  left out from four up) and swing round with Burning Tail's sweep. Through a black blow the spirit
+  stops shedding licks (the engine's charge is the cue). The change (`phaseBurst(3)`): a roar of
+  foxfire, three ragged fronts, a gout out of the fox's head along his facing, a column, a gust through
+  the grass. It reads as a fan of jade flame more than nine separate tails.
+- **His blows' trail** (`sweep()` overridden): a short crisp streak along the fist's or the foot's path, a
+  faint pale wash, foxfire licks when the spirit is lit, dust off a low kick; no blade arc.
+- **The selves:** a pop is 24 one-cell paper slips (16 when many go at once; half in the additive pool so
+  they read on the paving at 30 m), torn-edge steel strokes, smoke, a wisp of foxfire; a spawn a tear of
+  paper; the springboard's self tears UPWARD (30 slips) as he springs off it; phase 3's change burns
+  them into him.
 - **No steel echo ring** on a duelist's shock front: at his size it printed as an even white polygon.
   The foxfire front's scorch keeps 10 % of its heat (no orange glow under jade).
-- **Cost:** the field's peak in a seeded phase-3 fight 1514 of 6000 blobs, on the Moon-Swallowing
-  Pearl's frame (with his own effects off the same frame read 1481: mostly the engine's black cue);
-  about 210 on average; the mantle ~100, a pearl burst ~176, the change ~350.
+- **Cost:** the field's worst case in a staged phase 3 (nine tails, five selves, every move in turn)
+  1596 of 6000 blobs, on the Moon-Swallowing Pearl, where the engine's black charge and flare alone take
+  about 1500; the volley 1020, the drive 676.
 - **Sound:** a short dry quiet paper tear on `dragon:clone` (softer for a spawn), synth, its jitter on
   sfx.js's own stream (never `Math.random`: a pop must not shift the seeded suite).
 

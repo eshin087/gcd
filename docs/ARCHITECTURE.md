@@ -3736,11 +3736,13 @@ sword"): one health bar, three phases (`phaseAt` [1, 0.66,
   `frame(dt)`; counts `landed`, `interrupts` (tests).
 - **`FoxFx`** (`d.fx`): the surface in its header (`pearlCharge`, `pearlThread`, `pearlFly`,
   `pearlMark`, `pearlBurst`, `pearlFizzle`, `greatPearl`, `greatBurst`, `cloneSpawn`, `clonePop`,
-  `cloneBurn`, `mantle`, `tailSweep`, `pounceLand`), and `phaseBurst(3, x, z)` (the mantle's change: a
+  `cloneBurn`, `mantle`, `tailSweep`, `pounceLand`), `sweep()` overridden (a bare-handed blow's short
+  trail), and `phaseBurst(3, x, z)` (the mantle's change: a
   front of foxfire and a column; not the Ash Disciple's ash wind); `look` (`?foxfire=`), `FOX` (the kind
   foxfire is drawn as: K_VOID swapped, or K_FIRE for look b), `L` (the look's non-heat colours). Its
   constructor swaps the void slot's palette (`FIRE_PALETTES.foxfire` / `.moon`). Audio: `audio.js` plays
-  `sfx.js` `paperTear` on `dragon:clone` (softer for a spawn or `by: 'mantle'`).
+  `sfx.js` `paperTear` on `dragon:clone` (softer for a spawn or `by: 'mantle'`). FoxFx reads `d._part`, `d.tails`, `d.mantleK`,
+  `d.pearl.kind` / `flying` (the drive's burst is drawn as a blast along his line).
 - **Look switches waiting for the owner:** `duelist/lookSwitch.js` `PENDING` (`foxLook`, `foxfire`,
   `clones`): Lab LOOKS rows, deliberately not in `PICKED` (each draws its call site's default, `a`);
   duel.mjs FXLOOKS leaves them out of the picks' checks. A pick moves a switch from `PENDING` to `PICKED`.
