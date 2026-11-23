@@ -1514,7 +1514,7 @@ export class DuelBrain {
   _worldBlow(b) {
     const d = this.d, w = d.game.world, z = b.def.zone;
     const W = w?.destructibles;
-    if (!W?.strike || !z || b.def.bolt || b.def.pull || b.def.grip || (d.position.y > 0.6 && !b.def.air)) return;
+    if (!W?.strike || !z || b.def.bolt || b.def.pull || b.def.grip || b.def.noWorld || (d.position.y > 0.6 && !b.def.air)) return;
     const WT = this.T.world ?? DUEL_WORLD;
     const heavy = z.kind === 'ring' || !!b.def.ring || !!b.def.knockdown;
     const power = ((b.def.damage ?? 12) / (WT.per ?? DUEL_WORLD.per)) * (b.def.tell === TELL.RED ? WT.red ?? DUEL_WORLD.red : 1);

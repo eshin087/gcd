@@ -507,7 +507,7 @@ export class Player {
         return RESULT.BLOCKED;
       }
       if (blockable) {
-        this._block(dmg, tell, attack, chip, nx, nz);
+        this._block(dmg, tell, attack, chip, nx, nz, hit.guardCost);
         return RESULT.BLOCKED;
       }
       this._streakEnd();
@@ -1620,7 +1620,9 @@ export class Player {
     return true;
   }
 
-  _block(dmg, tell, attack, chip, nx, nz) {
+  /** `guardCost` (optional, a hit's own: Xin Yi's Iron Rain, ADR-156): what the block costs the meter
+   *  instead of GUARD.cost's (a stream of small shots must not empty it: GUARD.costMin is 8 a blow). */
+  _block(dmg, tell, attack, chip, nx, nz, guardCost) {
     const g = this.game;
     // a blow costs guard and no HP (GUARD); a contact stream (the breath's ticks, a bullet) is no
     // blow: it keeps its HP chip and leaves the meter alone
@@ -1629,7 +1631,7 @@ export class Player {
     let open = false;
     if (chip) this._damage(taken);
     else if (!this.debug.god) {
-      const cost = clamp(dmg * (GUARD.cost[tell] ?? GUARD.cost.normal), GUARD.costMin, GUARD.costMax);
+      const cost = Number.isFinite(guardCost) && guardCost >= 0 ? guardCost : clamp(dmg * (GUARD.cost[tell] ?? GUARD.cost.normal), GUARD.costMin, GUARD.costMax);
       this.guard = Math.max(0, fin(this.guard) - cost);
       this.guardWait = Math.max(this.guardWait, GUARD.regenDelay);
       open = this.guard <= 0;
