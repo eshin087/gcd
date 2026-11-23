@@ -50,6 +50,8 @@ follow the zoom) and `?ablaze=off|a|c` (b: the wyrm's phase 3 fire). The impact 
 a piece where it struck, and the hero's blade stops on what it does not cut through) are on: `?chip=0`
 turns them off (ADR-132). The grove's bamboo: `?bamboo=0|b` (a, the owner's pick: five kinds of cane mixed in clumps;
 0 = the grove before; ADR-151).
+The attack sounds (cues only on blue / red blows, recorded where loaded; every boss's blade or fist
+through the air): `?sfx=old` plays the sounds before (a tick on every tell, all synth; Lab: the 'sfx' row).
 The duelists' look switches (`?kindle=`, `?qi=`, `?ashLook=`, `?lordLook=`, `?floor=` ...; ADR-122): no
 parameter draws the owner's picks, `?looks=old` the looks before that pass, one switch its option
 (Lab: LOOKS); the table is STYLE.md → "The look switches". In the dev server: append `?lab` to the URL (or press **F1**) for the **Lab** — trigger any boss

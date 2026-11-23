@@ -4,7 +4,7 @@
 // the real Colliders. A bot drives the input: it moves, attacks, blocks, parries and dodges.
 // usage: node integ.mjs <repoRoot> [scenario]   (env: ABYSS_SEED=n reseeds the AI, ABYSS_TRACE=1 logs combat events)
 //   scenario: gate | hero | batch | breath | parry | block | reach | red | plunge | flurry | deflect | lab | strings | plungeReact | terrain |
-//             timing | fire | music | thump | herolook | wyrmface | wyrmlook | herolife | herohand | heroweight | heroarms | herostance | looks | win | die | touch | pad | remap | all (default all)
+//             timing | fire | music | thump | sfx | herolook | wyrmface | wyrmlook | herolife | herohand | heroweight | heroarms | herostance | looks | win | die | touch | pad | remap | all (default all)
 //             or a comma list of them (hero,looks,...)
 //   (timing: ABYSS_TM=name,name... probes only those attacks; ABYSS_TMV=1 prints its per-placement map;
 //    ABYSS_TM_SHARD=k/n probes every n-th attack of the list, starting at the k-th: n runs cover it all)
@@ -10598,6 +10598,123 @@ async function scenarioZoomArt() {
   return G;
 }
 
+// ================================================================== scenario: sfx
+async function scenarioSfx() {
+  out('\n== scenario SFX (the attack sounds: cues only on blue / red, recorded where loaded, the synth until then; hazards / bullets as before; ?sfx=old) ==');
+  const SMP = await imp('src/audio/samples.js');
+  const { SAMPLE_FILES } = await imp('src/audio/sampleFiles.js');
+  const { SLOT, BEAST, blowSlot } = await imp('src/audio/sampleList.js');
+  const G = build();
+  const { game, input } = G;
+  input.tap('Space');
+  G.tick(DT);
+  const A = game.audio, ctx = AUDIO.ctx, ev = game.events;
+  assert(ctx && A.samples && A.samples.total === 0 && !A.samples.has('cue-blue'), 'the sample bank is built with the graph and loads nothing headless (no fetch): every slot plays its synth');
+  const played = [];
+  const play0 = A.play;
+  A.play = function (n, o) { played.push(n); return play0.call(this, n, o); };
+  const at = { source: 'dragon', attack: 'swipe', impactIn: 0.6, x: 2, y: 1, z: 3 };
+  const step = (n, d) => { played.length = 0; ctx.currentTime += 0.5; ev.emit(n, d); return played.slice(); };
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const cues = () => ({
+    tellN: step('combat:tell', { ...at, tell: 'normal' }),
+    tellB: step('combat:tell', { ...at, tell: 'blue' }),
+    tellR: step('combat:tell', { ...at, tell: 'red' }),
+    tellK: step('combat:tell', { ...at, tell: 'black' }),
+    tellH: step('combat:tell', { ...at, tell: 'red', hazard: true }),
+    tellX: step('combat:tell', { ...at, tell: 'normal', hazard: true, bullet: true }),
+    flashN: step('combat:flash', { ...at, tell: 'normal' }),
+    flashB: step('combat:flash', { ...at, tell: 'blue', flare: true }),
+    flashR: step('combat:flash', { ...at, tell: 'red' }),
+    flashH: step('combat:flash', { ...at, tell: 'red', hazard: true }),
+    flashX: step('combat:flash', { ...at, tell: 'normal', hazard: true, bullet: true }),
+    swipe: step('dragon:attack', { name: 'swipe' }),
+    ball: step('dragon:attack', { name: 'fireball' }),
+    swing: step('player:attack', { kind: 'light', combo: 2, charge: 0, name: 'light1' }),
+  });
+  try {
+    const nw = cues();
+    out(`     new: ${JSON.stringify(nw)}`);
+    assert(nw.tellN.length === 0 && nw.flashN.length === 0, 'a normal tell and a normal flash play nothing');
+    assert(same(nw.tellB, ['tellBlue']) && same(nw.tellR, ['tellRed']) && same(nw.tellK, ['tellRed']), 'blue / red / black tells: their warning (the synth fallback headless)');
+    assert(same(nw.flashB, ['flash', 'parry']) && same(nw.flashR, ['flash']), 'blue / red flashes: their timing sound (a blue flare keeps its parry ring)');
+    assert(same(nw.tellH, ['hazardTell']) && nw.tellX.length === 0 && same(nw.flashH, ['flash']) && same(nw.flashX, ['flash']), 'hazards and bullets: their cues as before');
+    assert(same(nw.swipe, ['dragonSwipe']) && nw.ball.length === 0 && same(nw.swing, ['swing']), "the wyrm's swipe and the hero's swing: today's synth until a file loads; a fire attack keeps its own sound");
+    // ?sfx=old: today's sounds exactly
+    SMP.setSfxMode('old');
+    const od = cues();
+    assert(same(od.tellN, ['tellTick']) && same(od.flashN, ['flash']) && same(od.tellB, ['tellBlue']) && same(od.flashB, ['flash', 'parry']),
+      `?sfx=old: the tick on a normal tell, the ping on a normal flash (${JSON.stringify(od.tellN)} ${JSON.stringify(od.flashN)})`);
+    played.length = 0;
+    ev.emit('dragon:attack', { name: 'x', weapon: 'sword', weight: 'light', shape: 'cut', tell: 'normal', impactIn: 0.3, x: 1, z: 1 });
+    assert(!played.length, '?sfx=old: no sound of a duelist blade (a blow with a weapon is never the wyrm swipe)');
+    SMP.setSfxMode('new');
+
+    // the recorded path, with files injected into the bank (as if loaded): no synth, a buffer in a voice,
+    // never the same file twice in a row, the blow's peak on its impact
+    const mk = (n, ms) => ({ buf: ctx.createBuffer(1, Math.floor(44100 * 0.4), 44100), off: 0.002, peak: ms / 1000, n });
+    const files = { 'cue-blue': 3, 'time-red': 1, 'sword-light': 2, 'beast-tail': 1 };
+    const keep = {};
+    for (const [slot, k] of Object.entries(files)) {
+      keep[slot] = SAMPLE_FILES[slot];
+      SAMPLE_FILES[slot] = Array.from({ length: k }, (_, i) => ({ file: `${slot}-${i + 1}.mp3`, peak_ms: 100 + 10 * i }));
+      SAMPLE_FILES[slot].forEach((f, i) => A.samples.recs.set(f.file, mk(i, f.peak_ms)));
+    }
+    A.samples.loaded = 7;
+    let srcs = 0;
+    const cbs = ctx.createBufferSource;
+    const starts = [];
+    ctx.createBufferSource = function () { const s = cbs.call(this); srcs++; const st = s.start?.bind(s); s.start = (t, off) => { starts.push([t, s.buffer]); return st?.(t, off); }; return s; };
+    try {
+      const b = step('combat:tell', { ...at, tell: 'blue' });
+      const n0 = srcs;
+      assert(b.length === 0 && n0 >= 1, `a loaded cue-blue plays the recording, not tellBlue (${JSON.stringify(b)}, ${n0} buffer sources)`);
+      const picks = [];
+      for (let i = 0; i < 12; i++) { ctx.currentTime += 0.5; ev.emit('combat:tell', { ...at, tell: 'blue' }); picks.push(A.samples.last.get('cue-blue')); }
+      assert(picks.every((k, i) => i === 0 || k !== picks[i - 1]) && new Set(picks).size === 3, `a slot never plays the same file twice in a row (${picks.join('')})`);
+      const r = step('combat:flash', { ...at, tell: 'red' });
+      assert(r.length === 0, `a loaded time-red plays the recording, not the flash ping (${JSON.stringify(r)})`);
+      const c = step('combat:flash', { ...at, tell: 'blue' });
+      assert(same(c, ['flash']), 'a slot with no file (time-blue) falls back to the synth');
+      // a duelist blow: sword-light, its loudest moment on the impact (impactIn 0.3 s, peak 0.10 / 0.11 s)
+      starts.length = 0;
+      const t0 = ctx.currentTime + 0.5;
+      const w = step('dragon:attack', { name: 'cut', weapon: 'sword', weight: 'light', shape: 'cut', tell: 'normal', impactIn: 0.3, x: 1, z: 1 });
+      const st = starts[0]?.[0] ?? NaN;
+      const lead = SLOT['sword-light'].lead;
+      const peakAt = st + (A.samples.recs.get(`sword-light-${A.samples.last.get('sword-light') + 1}.mp3`)?.peak ?? NaN) / 1;
+      assert(w.length === 0 && Math.abs(peakAt - (t0 + 0.3 - lead)) < 0.02, `a loaded sword-light plays for a sword cut, its peak on the impact (peak at +${(peakAt - t0).toFixed(3)} s, impact +0.300, lead ${lead})`);
+      // a flurry: two blows inside BLOWS.gap are one sound
+      const before = srcs;
+      ev.emit('dragon:attack', { name: 'cut', weapon: 'sword', weight: 'light', shape: 'cut', tell: 'normal', impactIn: 0.32, x: 1, z: 1 });
+      assert(srcs === before, 'a second blow landing within BLOWS.gap of the last adds no sound');
+      // a slot not loaded (fist-light): the synth whoosh
+      const f = step('dragon:attack', { name: 'jab', weapon: 'fist', weight: 'light', shape: 'cut', tell: 'normal', impactIn: 0.3, x: 1, z: 1 });
+      assert(same(f, ['bladeWhoosh']) && blowSlot('fist', 'light', 'kick') === 'fist-heavy', `a slot with no file (fist-light) plays the quiet synth whoosh (${JSON.stringify(f)}); a kick is fist-heavy`);
+      const tl = step('dragon:attack', { name: BEAST.tail[0] });
+      const cl = step('dragon:attack', { name: BEAST.claw[0] });
+      assert(tl.length === 0 && same(cl, ['dragonSwipe']), `the wyrm's ${BEAST.tail[0]} plays beast-tail (loaded); ${BEAST.claw[0]} (beast-claw not loaded) the synth swipe`);
+      const sw = step('player:attack', { kind: 'light', combo: 1, charge: 0, name: 'light1' });
+      assert(sw.length === 0, "the hero's swing plays sword-light when it is loaded");
+      SMP.setSfxMode('old');
+      const o2 = step('combat:tell', { ...at, tell: 'blue' });
+      const o3 = step('player:attack', { kind: 'light', combo: 1, charge: 0, name: 'light1' });
+      assert(same(o2, ['tellBlue']) && same(o3, ['swing']), '?sfx=old ignores loaded files: all synth');
+    } finally {
+      SMP.setSfxMode('new');
+      ctx.createBufferSource = cbs;
+      for (const [slot, l] of Object.entries(keep)) { if (l === undefined) delete SAMPLE_FILES[slot]; else SAMPLE_FILES[slot] = l; }
+      A.samples.recs.clear();
+      A.samples.last.clear();
+      A.samples.loaded = 0;
+    }
+  } finally {
+    SMP.setSfxMode('new');
+    A.play = play0;
+  }
+  return G;
+}
+
 async function scenarioThump() {
   out('\n== scenario THUMP (the impact pass: a sub under a heavy blow, one short music dip; audio/thump.js) ==');
   const { IMPACT } = await imp('src/combat/impact.js');
@@ -11441,6 +11558,7 @@ const SCENARIOS = {
   looks: scenarioLooks,
   music: scenarioMusic,
   thump: scenarioThump,
+  sfx: scenarioSfx,
   flight: scenarioFlight,
   tongues: scenarioTongues,
   fxlooks: scenarioFxLooks,
