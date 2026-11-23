@@ -9,6 +9,7 @@ import { createMusic } from './music.js';
 import { FIRE_SFX, subscribeFire } from './fire.js';
 import { TrackBank, TrackLoop } from './tracks.js';
 import { THUMP_SFX, Thump } from './thump.js';
+import { StreakSound, perfectSound } from './streakSound.js';
 
 // WebAudio engine: every sound effect is synthesised at runtime; the music is recorded tracks per level
 // and boss phase (tracks.js; ADR-117) over a synthesised fallback score (music.js).
@@ -90,6 +91,7 @@ export class AudioEngine {
     this.tracks = null; // recorded music (built with the graph; ADR-117)
     this.thump = new Thump(this); // the impact pass's low end + music dip (thump.js; no nodes of its own)
     this.thumpDip = null; // its gain on the music path (built with the graph; 1 when idle)
+    this.streakSound = new StreakSound(this); // the streak pass's climb, loss and layer (streakSound.js; builds nothing until it plays)
     this._musicPhase = 0; // the boss phase whose track is playing (0: not a boss mode)
     this._phaseHint = 1; // the latest phase a dragon:phase* event announced (the wyrm sets its own number later)
     this._fading = []; // layers crossfading out
@@ -415,6 +417,7 @@ export class AudioEngine {
       if (this._ghostFrame !== this._frame && !(sinceGhost >= 0 && sinceGhost < GHOST_QUIET)) this.play('dodge');
     }
     this.charge?.update(now, dt, this.game);
+    this.streakSound?.tick(now);
 
     // the boss's phase moved without a music call (a phase number set after its event): follow it
     if ((this.musicMode === 'boss' || this.musicMode === 'boss2') && this._bossPhase(this.musicMode) !== this._musicPhase) {
@@ -552,7 +555,8 @@ export class AudioEngine {
     if (now >= this._ghostAt && now - this._ghostAt < GHOST_DEDUPE) return;
     this._ghostAt = now;
     this.charge?.stop(0.05);
-    const slow = num(DEFENSE.ghostep?.slowmoTime, 0.6);
+    // a single perfect dodge per perfectMode() (sharp: no long slow motion; cinema: a deeper beat)
+    const slow = num(DEFENSE.ghostep?.slowmoTime, 0.6) * (perfectSound()?.slow ?? 1);
     this.play('ghostep', { slow });
     this._slowDuck(slow);
   }
@@ -692,7 +696,8 @@ export class AudioEngine {
       if (num(d.strikes, 1) >= 2) this._slowDuck(num(d.dur, 0.6));
     });
     on('player:flurryHit', (d) => {
-      if (!d.last) this.play('flurryCut', { n: num(d.n, 1) });
+      // (the streak's sound: the ring on the scale, a fast run merged into one sweep; off: null)
+      if (!d.last) this.play('flurryCut', this.streakSound?.flurryCut(d) ?? { n: num(d.n, 1) });
     });
     // a duelist answers a streak of guards with his own flurry: a low gong under its first tell
     on('dragon:flurry', () => this.play('gong'));
@@ -714,7 +719,7 @@ export class AudioEngine {
     on('player:flurryArt', (d) => this.play('flurryCoil', { dur: num(d.dur, 0.2) }));
     on('player:flurryEnd', (d) => {
       this._slowOpen();
-      if (num(d.strikes, 1) >= 2) this.play('flurryBurst', { n: num(d.strikes, 2) - 1 });
+      if (num(d.strikes, 1) >= 2) this.play('flurryBurst', this.streakSound?.burst(d) ?? { n: num(d.strikes, 2) - 1 });
     });
     on('player:hurt', (d) => {
       // (a hit that interrupts a charge is caught by the charge hum's player-state poll)
@@ -755,8 +760,14 @@ export class AudioEngine {
     on('player:parry', (d) => {
       this.charge?.stop(0.05);
       // a deflect chain (parries in rhythm) rings higher with every blow met
-      this.play('parry', { tell: d.tell, chain: d.chain, perfect: !!(d.light && d.perfect), melee: !d.light, perfectMelee: !d.light && !!d.perfect });
+      // (the streak's sound on: the chain climbs the track's scale; a perfect one's ring per perfectMode())
+      const pm = !d.light && d.perfect ? perfectSound() : null;
+      this.play('parry', { tell: d.tell, chain: d.chain, perfect: !!(d.light && d.perfect), melee: !d.light, perfectMelee: !d.light && !!d.perfect, tune: d.light ? null : this.streakSound?.parryTune() ?? null, ring: pm ? pm.ring : 1 });
+      if (!d.light) this.streakSound?.onDefence('parry');
     });
+    // the streak (player:streak { count, lost }): the climb waits for the defence that raised it (same
+    // call stack); a loss of 2+ answers; the layer follows the tier (streakSound.js)
+    on('player:streak', (d) => this.streakSound?.onStreak(d));
     // the duel's moments (a duelist; the Ash Disciple): steel on steel, heavier as they land
     on('player:lock', (d) => {
       if (d.phase === 'start') this.play('block', { tell: 'blue', damage: 0 });
@@ -764,7 +775,10 @@ export class AudioEngine {
       else if (d.phase === 'won') this.play('parry', { tell: 'blue', chain: 6 });
       else this.play('block', { tell: 'blue', damage: 10 });
     });
-    on('player:mikiri', () => this.play('parry', { tell: 'blue', chain: 5 }));
+    on('player:mikiri', () => {
+      this.play('parry', { tell: 'blue', chain: 5 });
+      this.streakSound?.onDefence('mikiri');
+    });
     on('player:counter', () => this.play('parry', { tell: 'blue', chain: 7, perfect: true }));
     // a deep gong under the slow motion (the blade lock's camera push-in has its own clash and no slow-mo)
     on('game:cinematic', (e) => { if (e?.kind !== 'lock' && e?.kind !== 'perfectParry' && e?.kind !== 'flurry') this.play('gong'); });
@@ -778,12 +792,16 @@ export class AudioEngine {
       this.charge?.stop(0.05);
       this.play('guardBreak');
     });
-    on('player:perfectDodge', () => this._ghostep());
+    on('player:perfectDodge', () => {
+      this._ghostep();
+      this.streakSound?.onDefence('dodge');
+    });
     on('player:ghostep', () => this._ghostep());
 
     // attack tells (any attacker): the player's reaction cues
     on('combat:tell', (d) => {
       if (d.bullet) return; // a bullet's cue is its combat:flash ping alone (dozens per pattern)
+      this.streakSound?.onTell(); // (the streak's climb dips under every tell)
       const o = this._atEvent(d);
       if (d.hazard) this.play('hazardTell', o); // a fire hazard's own tell (meteors, pillars): no brass sting
       else if (d.tell === 'blue') this.play('tellBlue', o);
@@ -795,6 +813,7 @@ export class AudioEngine {
     });
     on('combat:flash', (d) => {
       const o = this._atEvent(d);
+      if (!d.bullet) this.streakSound?.onTell();
       // (the black flare cracks like the red one; a blue flare is the crystal ping, louder: a moment)
       o.tell = d.tell === 'black' ? 'red' : d.tell === 'blue' || d.tell === 'red' ? d.tell : 'normal';
       if (this.play('flash', o) && !d.bullet) this._dipMusic();
@@ -826,6 +845,7 @@ export class AudioEngine {
     on('combat:clash', (d) => {
       this.charge?.stop(0.05);
       this.play('trade', { heavy: !!d?.heavy });
+      this.streakSound?.onDefence('clash');
     });
     // his guard: a dry clack when he holds the strike, a harsh falling clang when he beats it away
     on('dragon:guard', (d) => this.play(d?.deflect ? 'deflected' : 'guard', { heavy: !!d?.heavy }));
