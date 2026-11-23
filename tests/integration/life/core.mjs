@@ -93,10 +93,24 @@ export default {
   /** The phone's budget: at quality 0.5 the living world holds fewer letters than at 1. */
   phone(T) {
     for (const id of T.LEVEL_IDS) {
-      const hi = T.build(id, 'all', { quality: 1 });
+      // (the creatures re-draw every live letter into the shared pools each frame, one spawn a letter a
+      // frame, and their birds do not scale with quality: which crows a gust happened to lift moves the
+      // spawn count by thousands either way. They are measured live, below)
+      const spec = 'wind,weather,litter,steps,answer';
+      const hi = T.build(id, spec, { quality: 1 });
       hi.step(45);
-      const lo = T.build(id, 'all', { quality: 0.5 });
+      const lo = T.build(id, spec, { quality: 0.5 });
       lo.step(45);
+      const ch = T.build(id, 'creatures', { quality: 1 }), cl = T.build(id, 'creatures', { quality: 0.5 });
+      let dh = 0, dl = 0;
+      for (let i = 0; i < 45; i++) {
+        ch.step(1);
+        cl.step(1);
+        const a = ch.life.creatures.drawn ?? {}, b = cl.life.creatures.drawn ?? {};
+        dh += (a.alpha ?? 0) + (a.add ?? 0);
+        dl += (b.alpha ?? 0) + (b.add ?? 0);
+      }
+      T.assert(dl <= dh, `${id}: the creatures draw no more letters on the phone (${dl} at 0.5, ${dh} at 1, summed over 45 samples)`);
       const a = hi.counts(), b = lo.counts();
       const sum = (c) => c.spawned.alpha + c.spawned.add + c.spawned.fire;
       // (a set's own ambience draws from Math.random: a few spawns either way are its noise)

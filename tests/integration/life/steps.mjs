@@ -340,6 +340,6 @@ export default {
     T.assert(got[0].surface === 'ash' && !('surface' in got[1]), `on: surface '${got[0].surface}'; off: no surface field`);
     // the real hooks call footfall with these names
     const src = await import('node:fs').then((fs) => fs.readFileSync(`${T.ROOT}/src/entities/player/player.js`, 'utf8') + fs.readFileSync(`${T.ROOT}/src/entities/player/flurry.js`, 'utf8'));
-    T.assert((src.match(/steps\?\.footfall\?\.\(/g) ?? []).length === 3, 'the three footstep emits ask the steps (_footstep, the plunge landing, the flurry touchdown)');
+    T.assert((src.match(/steps\?\.footfall\?\.\(/g) ?? []).length === 4, 'the hero’s four landings ask the steps (_footstep, the plunge landing, the flurry touchdown, the roll’s landing)');
   },
 };
