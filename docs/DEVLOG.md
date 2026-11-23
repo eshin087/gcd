@@ -5,6 +5,76 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-23 — The living world: one wind, nine layers, behind `?life=` (planned by Fable, built by Opus agents; ADR-163)
+
+**Owner:** "make the ascii world feel more alive. have natural looking ascii wind, subtle falling leaves,
+subtle different weather effects. before we fight the boss, the player should be awed at the background
+living ascii world. things like players footstep as you run etc. ask me any questions and offer
+suggestions for me to review. use fable to plan and opus agents to build". Asked four questions, they
+took: a fresh build (the guest agent's uncommitted `?worldLife=` prototype in `.worktrees/` left
+untouched), all four core layers, all four extras, one mood per level with slow changes.
+Branch `world/living-world`.
+
+**How it was built.** Three read-only mapping agents (render / levels / hooks). The lead wrote the core:
+the switch, `world/life/life.js` with THE CONTRACT in its header, a stub per layer with its interface
+fixed, the hooks in `world.js` / `atmosphere.js` / the Lab, and a new suite (`tests/integration/life.mjs`,
+the real LivingWorld on every level's real set). Then seven Opus agents in seven worktrees, one layer
+each, against the stubs: wind, litter, steps, weather, creatures, air (sound), moments (arrival +
+answer). All seven merged with zero conflicts and 7 failing checks, every one where two agents' pieces
+met. An integration agent connected the seams; a ninth agent made what hangs answer the wind; two of
+the first agents were resumed for a visibility pass; a docs agent wrote the reference docs.
+
+**What exists** (all off by default; `?life=all`, or the Lab's `life` rows):
+- **Wind**: per level a direction and a breathing speed; gust fronts that cross the grass as a band of
+  laid-over, lighter blades with runs of `~ = -` strokes along it; the canopy, the bonfire's flame and
+  smoke, every fire's smoke lean with it. The Windless Grove is still.
+- **Litter**: leaves, ash, paper slips, grit, cinders by level, in an own batch: they fall on the wind,
+  lie, lift in a front, under a foot, in a blow.
+- **Steps**: a surface map per level; each footfall's puff, print, sound by surface; trodden grass (the
+  scorch map's blue channel).
+- **Weather**: a director of slow spells per level (mist and drizzle, an ember squall and a grey-out,
+  the star's breath, dust devils and far lightning before the Ring's fight, a cloud over the moon,
+  still mist and snow).
+- **Creatures**: fireflies that part from the hero, birds and crows that lift off, moths, one hawk.
+- **Air**: a synthesized bed per level that follows the wind, the rain and the hush.
+- **Arrival**: from the title the camera opens over the arena (the hero in the lower third), ~3 s.
+- **Answer**: a roar is a gust front from the boss; red and black tells are a held breath; a kill is a
+  lull.
+- **Hang**: banners, paper charms and a rope lean and ripple in the same wind, and still break.
+
+**What went wrong on the way.** The first wave was built to "subtle" and could not be seen: standing at
+the spawn, everything on was nearly indistinguishable from today on every level (a thin stroke under
+~0.3 m is one pixel at the game camera). The lead's brief was the cause. The tuning pass used a
+ten-second test instead. Smaller ones: the lead's harness updated every own pool twice a frame; a roar
+was weaker than an ordinary gust until a front could be born at a point; the far thunder could never
+fire (the flash peaked at 0.13 against a 0.35 threshold); the arrival's skip would have ended at once
+on a pad that rests off-centre (the owner's machine has had one feeding input).
+
+**Verified.** `tests/integration/life.mjs`: the contract on every level (off spawns nothing, no
+`Math.random`, budgets, the phone's share, each piece alone) and a file of scenarios per piece. The
+seeded suites are untouched with life off. Films of every layer per level, checked with frame-to-frame
+motion maps (a front must show as a travelling band). Frame cost: no measurable render cost; the
+update adds ~0.2 - 0.35 ms with everything on. With the wind off the frame matches `main` to 1/255.
+
+**Not verified / open.**
+- **The owner has not picked yet**: the wind band's brightness, the overall strength (`?lifeK=`), the
+  sound's level (it sits ~10 dB under today's bed; nobody has heard it: an audition page exists in the
+  build session's scratchpad), whether the arrival's hold is wanted. Default stays off until then.
+- Does not read yet: ash drifts as piles (the paving is itself drawn in strokes), the obsidian glint,
+  moths. The mist banks and dust devils read as clusters of pale dashes: a second look is due.
+- A banner's moon shadow is still the rigid shape; the far Throne banners (static mesh) stay rigid.
+- No phone films of the weather or creatures (`&touch` left the capture helper without `__game`); no
+  film of a real wyrm roar (only the emitted event); on-device fps is the owner's to confirm.
+- Two levels in open PRs (Halcyon Plaza, the Hall of Falling Script) have no tuning blocks: they get
+  the quiet defaults.
+- The `life` suite is long (hundreds of checks on six levels); if CI's share with it runs long, split
+  it by piece as integ and lord are split.
+
+**Next.** The owner's picks from the films and the preview → the default; a second look at mist and
+devils; the sound by ear.
+
+---
+
 ## 2026-11-23 — CI in four parallel jobs; docs-only PRs skip the tests (ADR-153)
 
 **Owner**, after asking why every PR's check takes ~12 minutes when their other games deployed at once:

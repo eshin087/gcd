@@ -4,7 +4,23 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Sixty-eight pieces of work since 0.4.0:
+Sixty-nine pieces of work since 0.4.0:
+- **The living world** (2026-11-23, ADR-163). *Added, off by default:* a level that is alive before the fight,
+  behind `?life=all` (or the Lab's `life` rows; `?life=wind,litter,...` picks pieces, `?lifeK=0.25..2`
+  its strength). **One wind per level**: gust fronts cross the grass as a band of laid-over blades
+  with runs of `~ = -` letters along it, and the canopy, the smoke, the flames, the leaves, the rain
+  and the banners all lean the same way. **Things fall and lie**: leaves in Cinderwood, ash in the
+  Ashfall Courtyard, paper slips at the Foxfire Terrace, grit at the Skybreak Ring, cinders at the
+  Obsidian Throne, one bamboo leaf at a time in the Windless Grove; a gust or a foot lifts them.
+  **Footsteps answer the ground**: a puff, a print, trodden grass, and a sound per surface. **Weather
+  that comes and goes**: mist and a passing drizzle, an ember squall, the fallen star's slow breath,
+  dust devils and far lightning, a cloud over the moon, still mist. **Small creatures**: fireflies
+  that part from the hero, birds and crows that lift off, moths, a hawk. **The sound of the air**: a
+  bed per level that follows the wind. **An arrival**: from the title the camera opens over the arena.
+  **The world answers the fight**: a roar is a gust front, a great blow winding up is a held breath;
+  in the fight all of it thins. **What hangs moves**: banners, paper charms. *Changed (with the wind
+  on):* the Windless Grove's bamboo no longer sways. It is off until its strength has been picked;
+  with it off nothing changes. `tests/integration/life.mjs`.
 - **The grove's bamboo falls to every stroke** (2026-11-22, ADR-151). *Changed:* in the Windless
   Grove one swing of the sword (or one blow of his) cuts a bamboo stalk clean through where the blade
   passed, and its top slides off the cut at once and crashes over in a burst of leaves (it took two

@@ -184,6 +184,17 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.64 — The living world (2026-11-23, `world/living-world`, ADR-163)
+- [x] One shared wind per level (`world/life/wind.js`): fronts through the grass, the canopy, smoke, flames
+- [x] Litter that falls, lies and lifts; footsteps by surface, prints, trodden grass
+- [x] Weather in slow spells per level; small creatures that mind the hero
+- [x] The sound of the air; the arrival shot; the world's answers to the fight; cloth and paper that hang
+- [x] `?life=` / `?lifeK=`, the Lab's rows, `tests/integration/life.mjs`
+- [ ] The owner picks the strength → the default goes on (today: off)
+- [ ] Mist banks and dust devils a second look; ash drifts, the obsidian glint, moths do not read yet
+- [ ] A banner's moon shadow leans with it; the far Throne banners
+- [ ] Tuning blocks for levels added after this (they get the quiet default)
+
 ## M1.63 — The grove's bamboo sliced in one stroke, in clumps (2026-11-22, `world/bamboo-slice`, ADR-151)
 - [x] One blade or blow slices a stalk where it bit; the top slides off the cut at once and goes over
 - [x] Five kinds of cane, three thicknesses, fanning clumps with shoots (`?bamboo=a|b`; `0` the old grove)

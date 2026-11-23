@@ -4567,3 +4567,59 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   up-to-date rule (two green PRs can still break `main` together) and free runners only.
 - **Consequences:** a run takes ~4 minutes (PR #92: 4 min 19 s); a PR shows six checks. The floor is
   the longest task (lord fxlooks ~230 s); re-measure `est` when a suite grows a lot.
+
+## ADR-163 — The living world: one wind per level, nine layers behind one switch, off until the owner picks (2026-11-23)
+
+- **Context:** the owner: "make the ascii world feel more alive. have natural looking ascii wind, subtle
+  falling leaves, subtle different weather effects. before we fight the boss, the player should be awed
+  at the background living ascii world. things like players footstep as you run etc." Asked, they chose
+  every piece offered (wind you can see, leaves that fall and lie, footsteps, weather that comes and
+  goes, small creatures, the sound of the air, an arrival moment, the world answering the fight) and
+  one mood per level that changes slowly. Before this the grass swayed on one sine, the trees on
+  another, smoke drifted by a constant, three levels shared one default weather, every level shared
+  one sound bed, a footstep was one noise burst on every surface, and nothing agreed with anything.
+- **Decision:**
+  1. **One wind, read by everything.** `game.world.life.wind` is the level's air: a prevailing
+     direction and breathing speed, gust FRONTS that cross the level as travelling lines, radial bursts
+     (every existing `world.gust` call lands there). The grass, the tree canopies, the fire field's
+     smoke and flames, the atmosphere's emitters, the litter, the rain, the creatures, the sound and
+     what hangs (banners, paper charms) all read that one field, CPU (`wind.at`) or GPU (`uWind`,
+     `uWindFronts`). Nothing new invents a drift of its own.
+  2. **Layers behind one switch.** `world.life` (`world/life/life.js`) builds one object per piece
+     (wind, weather, litter, steps, creatures, answer; `audio/air.js` and `game/arrival.js` read it
+     from outside). `?life=off|all|<pieces>`, `?lifeK=`; the Lab has a toggle per piece. Each layer
+     keeps its numbers in its own tuning file with a block per level.
+  3. **Off is free, and off is the default for now.** With a piece off its code spawns nothing, writes
+     no uniform that changes a pixel and makes no GPU object; the shaders run today's code in their
+     wind-off branch. Headless it is always off, so the seeded fight suites replay exactly as before.
+     The default stays off until the owner has picked a strength from films and on their phone
+     (CLAUDE.md: a change to how something looks is the owner's pick first).
+  4. **Its own random stream, and no new events.** Nothing in it calls `Math.random` (the seeded sims
+     replay it; three.js even draws object ids from it, so GPU objects made inside the frame go
+     through `life.build`). It listens to events the game already emits and adds none;
+     `player:footstep` gained one optional field.
+  5. **It steps back in the fight.** `life.calm` eases every ambient rate to 0.4 while the boss is up;
+     red and black tells make the world hold its breath (`life.hush`); nothing ambient uses a tell's
+     colours or draws over the hero. The roar's answer (a gust front from the boss) is the biggest
+     thing it ever does.
+  6. **The Windless Grove has no wind.** Its bamboo swayed on the forest's sine against the level's own
+     lines; with the wind piece on nothing there moves except what the fight moves. The Obsidian Throne
+     has nothing alive: its one show is the star's slow breath.
+  7. **Cloth stays breakable.** A hanging part is marked in its builder and carries a per-vertex hang
+     weight through the brick cutting and the rigid batch, so a banner streams in the wind, takes a
+     bite where the blade lands on the leaning cloth, and lies still once felled.
+- **Why this way:** a fixed contract with a stub per layer let seven agents build in parallel against
+  each other's interfaces and merge with no conflict; one field is what makes many quiet things read
+  as one living place (the same gust bends the grass, leans the smoke, lifts the leaves, flutters the
+  charms and is heard). Keeping it off by default costs nothing and keeps every seeded test as it was.
+- **What the first pass taught (now a STYLE rule):** built to the word "subtle", everything worked and
+  almost nothing could be seen: at the game camera a thin stroke under ~0.3 m is one pixel of ink. A
+  second pass tuned to a ten-second test (a player at the spawn, told nothing, notices the place is
+  alive) while keeping the manner natural: letters with body at 0.3 - 0.5 m, or motion, or both.
+- **Tried and cut:** the hawk's shadow on the Ring's floor (invisible at dusk); dark grit at the Throne
+  (invisible: ember-edged cinders instead); sparks at the Throne's vents (they added nothing); round
+  dots for lying ash (read as snow: flat strokes in drifts instead).
+- **Consequences:** a new level needs a block in each layer's tuning file (without one it gets the
+  quiet default). Open: the default strength (the owner's pick), the sound's level (an audition page
+  exists), the ash drifts and the Throne's glint do not read yet, a banner's moon shadow does not lean,
+  the far Throne banners (static mesh) stay rigid, and the `life` suite is the longest new CI task.
