@@ -49,6 +49,12 @@ them. Two were test bands: PRESSURE's per-phase cue-rate floor holds over the me
 BREACH's standoff band counts where the wyrm's share of the gap ends (main itself failed the old +6 m
 band on 2 of 5 seeds) and its reset check reads the wall at `world.restore()`. Open: BREACH's 60 %
 cue-rate condition would fail on seed 2026 (and on main's 1337); only 4242 runs.
+After the rebase onto the reworked Wen Yao and Tian Lei, two more single-sample checks moved the same way
+(main plus only the random-stream commit fails them too): fox PHASE's "phase-3 moves join the pool" took
+300 rounds and missed the Moon-Swallowing Pearl (about 1 % of a pick at 6 m): now 3000 rounds; asc
+PURSUIT's Aura Burst chase asked for 1.5 m closer, but the move he rolls after breaking off sets the gap
+(Tiger Descends runs into the hero, Golden Gates stops at a fist's reach): now he closes in and that
+move's blows reach the hero. Neither was a game bug.
 
 **Next.** The owner's pick of the blue timing sound; their listen in a fight on the PR's preview (and on
 the phone); the mix (cue and blow levels against the music) by their ear.
