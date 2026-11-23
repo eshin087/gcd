@@ -64,6 +64,8 @@ export const LIFE_TUNE = Object.freeze({
   calmUp: 4,
   /** s for `hush` to fall away once its hold is over */
   hushRelease: 1.5,
+  /** `calm` rises again only while `hush` is below this (the victory's lull holds the world still first) */
+  calmHush: 0.5,
 });
 
 const FIGHT = new Set(['bossIntro', 'boss']);
@@ -108,6 +110,8 @@ export class LivingWorld {
       this[name] = layer ?? NO_LAYER;
       if (layer) this.layers.push([name, layer]);
     }
+    // (the arrival is the flow's, game/arrival.js: the Lab replays it from here)
+    if (this.enabled) this.action('arrival (replay)', () => game?.flow?.arrival?.replay?.(), 'the camera opens wide over the level again, as on entering it');
   }
 
   /** Is the piece running in this level now? */
@@ -162,6 +166,8 @@ export class LivingWorld {
   gust(x, z, strength = 1, radius = 12) {
     if (!this.enabled || !Number.isFinite(x + z + strength + radius)) return;
     if (this.on('wind')) this._call('wind', 'burst', x, z, strength, radius);
+    // a strong burst startles what lives in its radius (the answer's, rate-limited there)
+    if (this.on('answer')) this._call('answer', 'gust', x, z, strength, radius);
   }
 
   /** A button on the Lab's 'life' row. */
@@ -209,7 +215,8 @@ export class LivingWorld {
     // calm: the ambient life thins while the boss is up
     const want = FIGHT.has(this.game?.state) ? LIFE_TUNE.fightCalm : 1;
     const tau = want < this.calm ? LIFE_TUNE.calmDown : LIFE_TUNE.calmUp;
-    this.calm += (want - this.calm) * (1 - Math.exp(-dt / tau));
+    // (the life comes back only once a held breath is let go: after the victory's lull, not through it)
+    if (want < this.calm || this.hush < LIFE_TUNE.calmHush) this.calm += (want - this.calm) * (1 - Math.exp(-dt / tau));
     // hush: held, then let go
     if (this._hushHold > 0) {
       this._hushHold -= dt;
