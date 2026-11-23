@@ -1,6 +1,6 @@
 import { DuelFx, K_STEEL, K_VOID, K_SMOKE, K_FIRE } from '../duelist/fx.js';
 import { FIRE_PALETTES } from '../../../render/firePalettes.js';
-import { lookOf } from '../duelist/lookSwitch.js';
+import { foxLook } from './look.js';
 import { TELL } from '../../../combat/rules.js';
 
 // Wen Yao's effects (ADR-147; STYLE.md "The fox's effects"). All of it is heat in the fire field (small
@@ -79,9 +79,9 @@ const TAIL_SEG = 0.26;
 export class FoxFx extends DuelFx {
   constructor(d) {
     super(d);
-    const q = lookOf('foxfire', 'a');
+    const q = foxLook('foxfire');
     this.look = q === 'b' || q === 'c' ? q : 'a';
-    const pal = this.look === 'c' ? FIRE_PALETTES.moon : this.look === 'b' ? null : FIRE_PALETTES.foxfire;
+    const pal = this.look === 'c' ? FIRE_PALETTES.pearl : this.look === 'b' ? null : FIRE_PALETTES.foxfire;
     if (pal) this.game.fx?.fire?.setPalette?.('void', pal);
     /** the kind foxfire is drawn as (K_VOID with a palette swapped in; the wyrm's fire for look b) */
     this.FOX = this.look === 'b' ? K_FIRE : K_VOID;
@@ -90,7 +90,7 @@ export class FoxFx extends DuelFx {
     // PHASE 3'S FIRE (?foxFire3=): the mantle, the bodies wreathed in it, the Nine-Tailed Fox and its
     // beam. a the wyrm's orange-red fire (the default), b jade (the void slot turned to foxfire: an orb
     // drawn on that slot in another colour moves to the steel kind, pale white)
-    const q3 = lookOf('foxFire3', 'a');
+    const q3 = foxLook('foxFire3');
     this.look3 = q3 === 'b' ? 'b' : 'a';
     /** the kind phase 3's fire is drawn as */
     this.FIRE3 = K_FIRE;
@@ -261,12 +261,13 @@ export class FoxFx extends DuelFx {
     if (!this.fire || !Number.isFinite(x + y + z + u) || !(dt > 0)) return;
     u = Math.max(0, Math.min(1, u));
     const P = this._toCamera(x, y, z), px = P.x, py = P.y, pz = P.z, A = this._axes(), B = this._toCam(), F = this.FOX;
-    const t = this.game.time ?? 0, r = 0.14 + 0.32 * u;
+    const t = this.game.time ?? 0, r = 0.2 + 0.42 * u;
     const life = this._frame();
     if (life > 0) {
       // the body: a dense ball of the orb's heat, a white core inside it
-      this._blob(px, py, pz, 0, 0, 0, life, r * 1.7, r * 1.7, 0.56 + 0.2 * u, 0.56 + 0.2 * u, F);
-      this._blob(px, py, pz, 0, 0, 0, life, r * 0.75, r * 0.75, 0.85 + 0.25 * u, 0.85 + 0.25 * u, K_STEEL);
+      // (the body cool and wide, so it prints as blue digits with a rim, not one white disc; the heart small)
+      this._blob(px, py, pz, 0, 0, 0, life, r * 2.2, r * 2.2, 0.5 + 0.12 * u, 0.5 + 0.12 * u, F);
+      this._blob(px, py, pz, 0, 0, 0, life, r * 0.45, r * 0.45, 0.7 + 0.2 * u, 0.7 + 0.2 * u, K_STEEL);
       // its surface: three bands of points turning round an axis tilted toward the camera; a point on
       // the far side is drawn dimmer (the sphere's own body hides it)
       const spin = t * (7 + 6 * u), tilt = 0.5;
@@ -278,11 +279,11 @@ export class FoxFx extends DuelFx {
           const uy = sy * Math.cos(tilt) - sz * Math.sin(tilt), uz = sy * Math.sin(tilt) + sz * Math.cos(tilt);
           const front = 0.55 + 0.45 * uz;
           const ox = sx * r, oy = uy * r, oz = uz * r;
-          this._dot(px + A.rx * ox + A.ux * oy + B.x * oz, py + A.ry * ox + A.uy * oy + B.y * oz, pz + A.rz * ox + A.uz * oy + B.z * oz, 0.16 + 0.1 * u, (0.4 + 0.3 * u) * front, F);
+          this._dot(px + A.rx * ox + A.ux * oy + B.x * oz, py + A.ry * ox + A.uy * oy + B.y * oz, pz + A.rz * ox + A.uz * oy + B.z * oz, 0.14 + 0.06 * u, (0.3 + 0.2 * u) * front, F);
         }
       }
       // the spiral arms: three crisp strokes winding from past its rim in to its heart, turning fast
-      const R0 = r * 1.45, hk = 0.6 + 0.45 * u, turn = -t * (8 + 7 * u);
+      const R0 = r * 1.5, hk = 0.75 + 0.45 * u, turn = -t * (8 + 7 * u);
       for (let q = 0; q < 3; q++) {
         const a0 = turn + (q / 3) * TAU;
         let lx = 0, ly = 0;
@@ -301,7 +302,7 @@ export class FoxFx extends DuelFx {
         let lx = 0, ly = 0;
         for (let j = 0; j <= 4; j++) {
           const a = a0 + (j / 4) * span, ex = Math.cos(a) * W, ey = Math.sin(a) * W * 0.8;
-          if (j > 0) this._ink(px + A.rx * lx + A.ux * ly, py + A.ry * lx + A.uy * ly, pz + A.rz * lx + A.uz * ly, px + A.rx * ex + A.ux * ey, py + A.ry * ex + A.uy * ey, pz + A.rz * ex + A.uz * ey, 0, wk, 0, wk, 1);
+          if (j > 0) this._ink(px + A.rx * lx + A.ux * ly, py + A.ry * lx + A.uy * ly, pz + A.rz * lx + A.uz * ly, px + A.rx * ex + A.ux * ey, py + A.ry * ex + A.uy * ey, pz + A.rz * ex + A.uz * ey, 0, wk + 0.2, 0, wk + 0.2, 1, F);
           lx = ex;
           ly = ey;
         }
@@ -319,7 +320,8 @@ export class FoxFx extends DuelFx {
       this._blob(px + dx * R, py + dy * R, pz + dz * R, (-dx * R) / lf + tx * ts, (-dy * R) / lf + ty * ts, (-dz * R) / lf + tz * ts, lf, 0.18, 0.1, 0.32, 0.55, F);
     }
     if (this._chargeAcc2 > 8) this._chargeAcc2 = 0;
-    this._keep('pearl', px, Math.max(0.9, py), pz, 0.9 + 1.8 * u, 3 + 2.5 * u, 0.15);
+    // (a soft light: a strong one blooms the whole Pearl and his body into one white glare)
+    this._keep('pearl', px, Math.max(0.9, py), pz, 0.45 + 0.6 * u, 2.5 + 2 * u, 0.15);
   }
   /** Every frame of the charge, per live self: a crisp thread of steel on the letter grid from its hand
    *  to the Pearl (dim at the hand, bright at the Pearl), and two beads of foxfire running along it to

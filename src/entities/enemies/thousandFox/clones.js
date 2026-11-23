@@ -912,7 +912,8 @@ export class FoxClones {
   /** Self i's free hand (the Pearl's thread starts there), into `out`. */
   handPoint(i, out) {
     const c = this.list[i];
-    if (!c?.alive) return null;
+    // (the twin shapes its own Pearl: no thread of its runs to his)
+    if (!c?.alive || c.state === TWIN) return null;
     const w = c.rig.arms?.L?.wrist;
     if (w?.getWorldPosition) w.getWorldPosition(out);
     else out.set(c.x, 1.2, c.z);
