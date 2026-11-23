@@ -72,6 +72,303 @@ update adds ~0.2 - 0.35 ms with everything on. With the wind off the frame match
 
 **Next.** The owner's picks from the films and the preview → the default; a second look at mist and
 devils; the sound by ear.
+## 2026-11-23 — Session 86: the streak pass: a flurry that accelerates, the streak on the hero, in the HUD and in the sound, a sharper perfect parry (planned by Fable, built by Opus agents)
+
+**Owner:** "i want to enhance the perfect parry / dodge effects and especially the streak combo hits. right now when the streak is really long, the animation to show the full streak is a bit long and doesn't look epic and cool. the longer the streak, the faster the attacks and way cooler animation and effects. think of cool subtle and epic stunning effects for players to love having a streak and seeing the longer and longer combos. use fable to plan it out and have opus do the work. ask me any questions". Branch `combat/streak-epic`. ADR-167 / Session 86 / M1.70.
+
+**Asked and answered.** Four questions. The flurry: "Accelerating storm". Past seven: "Looks only, in tiers" (the flurry's blows and damage stay capped at seven). Between flurries, all four: "Hero and blade change", "Streak counter moment", "Sound climbs", "World reacts". A single perfect parry / dodge: "show me both 2 options to compare" (sharp and cinema). After the first round of the aura: "heros streak look also looks almost not visible? i want like a cool faint fiery aura very subtle but cool". And: "i'm not understanding the parry and dodge changes" (answered with one comparison picture).
+
+**How it was built.** Fable led. A read-only mapping agent first, then the lead's core (32a66cd): `combat/streak.js` (the switches, the tiers, the perfect look's mode), stubs for `player/streakFx.js` and `combat/perfectFx.js`, the wiring in main.js, the resets, the Lab's 'streak' row. Then five Opus agents, each in its own worktree on that core: the flurry (storm + tiers), the perfect looks, the aura (aura + world), the HUD (counter + tier names), the sound. A session restart stopped all five mid-work; each was resumed in its worktree. Two pieces were sent back: the flurry once (round 2: its last blow bloomed into a white blot over both fighters), the aura twice (round 2: the owner's fiery aura; round 3: that fire as a rim, because round 2's loose blobs read as stacks floating near him). The clips went to the owner on a picks page (an Artifact); the owner pasted the picks back. The merges: no code conflicts between the pieces; one with main, in `player.js` `_ghostep` (main's Long Second `lean` kept beside the new look's path).
+
+**What was built.** Every piece is behind `?streakfx=off | all | a comma list` (storm, tiers, aura, counter, sound, world; default all) and the Lab's 'streak' row; with a piece off it draws, sounds and times as before (each scenario checks it). The tiers: `STREAK_TIERS` [3, 5, 7, 10, 15] give tier 1 - 5; tier 3 is the full flurry.
+- **The storm** (`player/flurry.js`, `DEFENSE.flurry.storm`): the first 3 flash cuts round the wyrm's head (2 on a man) are paced as before; each later cut takes 0.56 of the time of the one before (`fall`), never under 0.12 of a shown cut (`floor`). A storm cut has no wind-up seen, a contact freeze of at least 0.018 s (`stopMin`: he is drawn on the target as it lands), the camera's kick and shake x0.35, its flare and sparks x0.45; the last shown cut, the art and a riposte's last cut keep their whole weight. When a beat is shorter than a frame the frame runs on through it, so every blow still lands in a frame of its own, in order. A storm cut's line is the widest gap of 24 candidates (the star stays); its speed clone is printed on the contact; the camera holds the target instead of chasing him.
+- **The tiers** (`player/flurryFx.js` `TIER_LOOK`, `ui/hud.js` `FLURRY_TIER_NAMES`): looks only. At tier 4 every hanging cut has one fine echo line beside it in the fire field's `steel`, at tier 5 two; on the last blow they split away in stepped frames and rings open where they cross. The banner says HUNDREDFOLD FLASH (tier 4) / THOUSANDFOLD FLASH (tier 5) with a thin rule more, never bigger. A streak of 15 strikes the same 7 blows for the same 258 damage in the same time as a streak of 7 (asserted).
+- **The burst as lines** (round 2, `player/flurryBurst.js`, `?burst=0..3`): each level turns down together the burst's and the art's pooled lights, the fat flare strokes, sparks and shards, the stars, the art's halo and crescent, the speed lines, the hero's spark star and shockwave, the struck boss's white flash on the last blow, the veil and the storm cuts' centre; and every hanging cut flares out as a thin long line (1.35 / 1.6 / 1.85 x the cut). `flow.js` scales the flurry's screen flashes and dip by `burstScreen()`. Level 0 is today; every level makes the same random draws (`flurryFx.js` has its own seeded stream now, `fxSeed` / `setFxSeed`, no `Math.random`).
+- **A single perfect parry / dodge** (`combat/perfectFx.js` `PERFECT_FEEL`, `?perfect=today | sharp | cinema`): sharp is short and clean (less slow motion, the flash at a quarter, a gold mark printed in the letter grid where the blades cross, the dodge's afterimage standing a moment then tearing along the way he left, one line where he went); cinema is a longer beat for a single blow or a string's last (deeper slow motion, the camera closer, the world dims instead of a white flash; a short beat inside a string). Read at the moment; no rule moves.
+- **The aura and the world** (`player/streakFx.js` `StreakFx`, `game.fx.streak`): round 1, "the steel remembers" (kept, under the fire): a line of light up the blade's edge by tier (34 - 100 %), 1 - 3 echo lines inside each swing's arc, a wake of his letters on a roll / sprint / dash, coat letters lifting at tiers 4 - 5. Round 3, the fire: a rim of faint heat (0.17) one blob a letter cell just outside his silhouette, so the fire field prints a thin line of dim red strokes that hugs him; the tiers change only how much of the rim is lit (0.36 - 0.92), from how high (55 % of his height at tier 1, his back side only at tiers 1 - 2, the whole figure at tier 5), the tongues (1 - 2 cells) and a burning trail on the swings at tiers 4 - 5. Nothing on the boss's side, never over him. The loss: the edge snaps dark and breaks into falling strokes, letters drop off him, every live blob turns to smoke in the same frame. The world, from tier 2: a gust of the grass (0.34 - 0.62, under the wyrm's weakest), 7 - 13 bits of the floor's own kind at his feet, letters rising at tiers 4 - 5; at most 20 spawns a defence. `?auraFire=b` (a cold steel-blue rim) is kept, not picked.
+- **The counter** (`ui/streakCounter.js`, `hud.streakUi`): a small number at the hero's chest, on his side clear of the boss, on every rise of the streak from 2: it pops over 0.066 s, holds, fades (about 0.9 s; up to about 1.4 s at tier 5 with a word). Its style steps up by tier (an underline at tiers 2 - 3, strokes either side at 4, pale gold at 5). The first time a streak reaches a tier it carries a word: TRIPLE, FIVEFOLD, SEVENFOLD, HUNDREDFOLD, THOUSANDFOLD. A lost streak (2+) shows its number struck through in red, falling apart. It hands over to the flurry's own cut count. With the counter on, GHOSTEP and RIPOSTE drop their xN (DEFLECT xN keeps its string count), and the flurry's count ticks in place while cuts come within 0.2 s.
+- **The sound** (`audio/streakSound.js` `StreakSound`, `engine.streakSound`): each perfect defence that raises the streak plays a guqin-harmonic note one step up a minor pentatonic in the key of the playing track (`TRACK_KEYS`, measured from each track's chroma), two octaves by streak 11, then held and brighter; a tier reached doubles the note once. Its own bus, at most 3 voices, ducked to x0.4 (about -8 dB) for 0.22 s under every tell and timing flash. A lost streak of 2+: its last note falls a fourth, a muted pluck. From tier 2 a quiet drone on the track's tonic and fifth joins the music bus (0.03 - 0.06 by tier) and fades in about a second on the loss. The parry's deflect chain and the flurry's cuts move onto the same scale; cuts closer than 0.1 s merge into one rising sweep. A perfect parry's ring and the Ghostep's slow sound follow the perfect look (sharp x0.55 / x0.45, cinema x1.6 / x1.35).
+
+**The owner's picks** (pasted from the picks page; the defaults since 78286ac): perfect parry / dodge: sharp; counter look: A lines; counter at low streaks: no pick (kept as built, shown from 2); names at 10 / 15: HUNDREDFOLD / THOUSANDFOLD FLASH (of three sets); sound: B, the guqin harmonic on a minor pentatonic (A a singing bowl on a natural minor and C dry steel were the others); the flurry's last blow: level 2; the fiery aura: as built.
+
+**What the work found.**
+- *What made the burst a blot.* The flurry agent took one effect away at a time on the last blow (bright pixels in a box over 11 frames, Shen Hui / the wyrm): the screen flash -29.9k / -30.2k, the pooled lights -27.1k / -1.8k, sparks and shards -20.0k / -21.8k, the fat flare strokes -13.4k / -53.9k, the art's crescent -10.7k / -12.3k. Totals: today 144.9k / 192.1k; levels 1 / 2 / 3 79.9k / 37.4k / 28.3k and 122.2k / 70.4k / 52.3k. Not re-measured by the docs pass.
+- *The aura did not read, then it scattered.* Round 1 (lines on the steel and a wake of letters) was "almost not visible" at the game camera. Round 2's fire (loose rising blobs) read as stacks of letters floating near him, not as him burning. Round 3 hugs the outline: the rim is found each frame by projecting his body points into the fire field's letter cells, closing the gaps and flood-filling the outside. Its heat sits at 0.17 because the field's erosion tears heat under about 0.15 away.
+- *The storm.* Against the wyrm (integ `storm`), the flash cuts of N = 5 / 6 / 7 take 1.02 / 1.25 / 1.52 s before and 0.97 / 1.08 / 1.18 s now; the seven's blows land 6, 17, 16, 14, 8, 4 frames apart (were 6, 17, 16, 16, 14, 12); N = 4 or fewer is unchanged round the head (3 or fewer on a man). Against Shen Hui the flurry agent measured N = 4 / 5 / 6 / 7 1.08 / 1.42 / 1.77 / 2.10 s before, 0.98 / 1.10 / 1.18 / 1.27 s now (the whole flurry of seven 2.88 -> 2.05 s).
+- *The perfect looks leave the rules alone.* On the Ash Disciple (duel `perfectfx`): his recovery after a perfect parry lasts 1.016 / 1.002 / 1.014 s of game time (today / sharp / cinema), 1.27 / 1.13 / 1.53 s of real time; seven perfect parries of Ash Rain take 6.85 / 6.20 / 6.23 s real. The crit window and the i-frames are the same in every mode.
+- *The sound.* Offline renders only: a climb note about -30 dBFS RMS (12 dB under a parry); a run of 16 parries moves the mix RMS by +0.2 dB at most; the blue / red tells unchanged with a climb note on top; the tier-5 drone adds +0.3 to +0.8 dB.
+- *The wyrm's pace meter and seed luck.* A test fight replays its seed's Math.random, and a seed replays a different fight when the scenarios before it change: seed 1337 read 66.5 -> 70.7 cues a minute inside `all` (x1.06, under the x1.12 the meter asked per seed) and 60.0 -> 77.0 alone; over ten seeds alone every one ramps at least x1.21 (main x1.31). `TUNING.pressure.meter` now asks x1.12 of the seeds' mean and x1.05 of each seed (`rampSeed`), the duelists' rule (ADR-122). No pressure number changed.
+
+**Verification.** New scenarios: integ `storm`, `streakfx`, `streakhud`, `streaksound`; duel `perfectfx`. Duel `impact` measures the parry at `?perfect=today` (the look it was written for). The docs pass re-ran integ `storm,streakfx,streakhud,streaksound` and duel `perfectfx,impact`: all passed, and the numbers above marked as test numbers are from those runs. The lead's last `npm test` on the branch with main merged: all 17 suites passed. The picks were made from clips and stills (headless captures), not from play.
+
+**Not checked / open.**
+- Nobody has played it. The sound has never been heard in the game (offline renders and an audition page only). The phone was not checked on a device (the counter was captured at phone sizes, landscape and upright).
+- The tier rings on the burst do not read under what is left of its glow; the echo strokes do.
+- On Cinderwood the fire field barely prints near the hero in headless captures (a plain test blob at heat 0.6 printed about one frame in two): field-wide, cause not found, outside the aura's files. To check on the real page.
+- The aura steps aside while the hero's cold cast after a Ghostep is above half (`ghostFx` > 0.5, about 0.16 s of game time, longer in real time under the slow motion), so it blinks off after every perfect dodge; a one-line change would keep it.
+- The counter at streaks 2 - 4 is small and easy to miss on a busy floor (the owner made no pick: kept).
+- On the wyrm's bite every perfect look whites out for about 0.2 s: today's blue light of a parry moment (`flareParry`), not changed by this pass (the perfect agent's finding).
+
+---
+## 2026-11-23 — Session 85: attack sounds (planned by Fable, built by Opus agents, picked by ear)
+
+**What changed.** The owner: the blue / red attack sounds were tacky, and the warning should be more
+natural instead of making the player rely on sound for everything: a cue only for red and blue attacks,
+and every other attack the natural sound of the weapon (a sword boss's blade, a fist fighter's fist).
+Their answers before the work: keep both blue / red sounds (the warning at the windup and the timing
+sound), in-world sounds, new sounds for the sword bosses, the bare-handed bosses, the wyrm and the hero's
+own sword, an audition page first and then a listen in a real fight.
+- Cues (audio.js): `combat:tell` plays `cue-blue` / `cue-red` (+ the music dip) only for blue / red /
+  black; `combat:flash` plays `time-blue` / `time-red` only for those; a normal tell or flash is silent.
+  Hazards and bullets keep their cues exactly. Until a recording loads the synth recipes play, so a blue
+  or red blow is never silent.
+- Blows: the duelist engine emits `dragon:attack` once per real blow (no feint, cast, pure throw, burst
+  or phase change), 0.3 s before its impact and never before its glint (`duelist/attackSound.js`
+  classifies weapon / weight / shape from the beat data; `weapon` declared once in each boss's tuning; a
+  fox's paper self sends the same at its glint). The audio plays `sword-light / -heavy / -thrust / -draw`
+  or `fist-light / -heavy` with the clip's `peak_ms` lined up on the impact, spatialised on the sfx bus;
+  the wyrm's swipe plays `beast-claw` / `beast-tail` by name; the hero's swing the sword slots pitched up.
+- `samples.js` / `sampleList.js` (slots as data) / `sampleFiles.js` (generated): the one-shot runtime cut
+  down from the closed PR #55 (its own LCG: no Math.random draws, the seeded sims stay put).
+- `scripts/audio/build-sfx.py`: the picks + the sourcing manifest -> `assets/audio/sfx/*.mp3`
+  (23 files, about 90 KB), `sampleFiles.js` and the credits table. `?sfx=old` and a Lab row: as before.
+- Sourcing: 98 CC0 candidates from 25 OpenGameArt pages, licences checked per page and per pack; an
+  audition page (https://claude.ai/artifact/VYVdpfmycGiZeTecunB2Gb) with today's synth as a reference row
+  and a "hear it in a fight" sequence. The owner picked 11 of 12 slots; for the blue timing sound they
+  said none of these twice (round 2: six short strikes from the same sword recordings as their blue
+  warning; round 3: a blade shing, a wood tak, a muted bell, a choked gong, a glass tick) and then kept
+  today's synth ping: `time-blue` has no recording, so `combat:flash` plays the synth recipe for blue.
+
+**Measured / verified.** In the dev server (Ash Disciple, AI on, 20 s): 12 normal tells and flashes
+played no cue; 4 blue and 7 red tells played the recordings; 22 blows played 22 blow sounds (sword light
+12, heavy 5, thrust 3, a kick on fist-heavy 2); the hero's cuts drew sword-light. All 23 files load.
+Nobody but the owner can hear them: levels in the mix are not checked by ear.
+
+**Tests.** duel `sfx` and integ `sfx` scenarios added. Untouched main plus only the random-stream commit
+failed three seeded checks with the same numbers (no fighter had changed: the fights rolled a different
+sequence): fox PHASE (five selves), integ LAB (fireBrand: one flash per tell) and integ PRESSURE (seed 1337
+phase 2 at 46.8 cues a minute, under 48). One was a real edge case the new sequence exposed, fixed in the
+game: the wyrm's throw lunge (`terrainAttacks.js`: a tree at its feet, it backed off at 6 m/s while the
+plan reckoned 24, came to the bite too close and aborted after its red tell; the lunge now waits up to
+`jaws.backMax` 0.8 s). The fox's selves were reworked on main meanwhile (packs): the fox check moved with
+them. Two were test bands: PRESSURE's per-phase cue-rate floor holds over the mean of its three seeds;
+BREACH's standoff band counts where the wyrm's share of the gap ends (main itself failed the old +6 m
+band on 2 of 5 seeds) and its reset check reads the wall at `world.restore()`. Open: BREACH's 60 %
+cue-rate condition would fail on seed 2026 (and on main's 1337); only 4242 runs.
+After the rebase onto the reworked Wen Yao and Tian Lei, two more single-sample checks moved the same way
+(main plus only the random-stream commit fails them too): fox PHASE's "phase-3 moves join the pool" took
+300 rounds and missed the Moon-Swallowing Pearl (about 1 % of a pick at 6 m): now 3000 rounds; asc
+PURSUIT's Aura Burst chase asked for 1.5 m closer, but the move he rolls after breaking off sets the gap
+(Tiger Descends runs into the hero, Golden Gates stops at a fist's reach): now he closes in and that
+move's blows reach the hero. Neither was a game bug.
+
+**Next.** The owner's listen in a fight on the PR's preview (and on
+the phone); the mix (cue and blow levels against the music) by their ear.
+
+## 2026-11-23 — Session 84: Tian Lei's blows audited; he stops attacking the air
+
+**Owner:** "ok looks good but i noticed a lot of the attack animations and attacks look unnatural. audit it and fix it to improve it. make the boss also stop attacking empty air if the player moves out of the distance". Branch `enemies/ascendant-ascii` (on PR #96's look pass). ADR-162 / Session 84 / M1.68.
+
+**How.** Measured before touching anything: `asc.mjs audit` (opt-in; every move, the hero still and
+circling, joints frame by frame: jolts, the facing's turn, sliding feet, joints, the blow against the
+hero) and `auditfight` (opt-in; his AI against a defending bot, 30 s a form). Filmed the worst moves
+(close side view, solid and ASCII) against the committed build. The whiff fix went to a helper agent in
+its own worktree (`enemies/ascendant-reach`), porting the unfinished pursuit from the stale epic pass
+(`asc5/ai`, never committed), merged here.
+
+**What changed.** Feet that stay planted (`_planFeet` + the pose hook), arms that open (anim.js `armSoft`,
+the hero's numbers), legs that keep a bend (`legSoft`), palm dashes that stop at the palm's reach (`PALM`),
+a roundhouse knee that points up. The pursuit (`pressure.pursue`, duelist brain.js / director.js, opt-in; Tian Lei's tuning): a blow the hero has run out of is broken off before its glint and he chases; form 1 chases no harder than before; PACE's floors re-pinned (a swing at air was a cue).
+
+**Measured.** A real fight against a defender: frames with a visible pop 87 -> 23, the worst 1966 -> 715.
+Every move: total jolt 47 316 -> 23 677. Punches land at 149 - 155° (was ~130°). Swings at air a minute (whiff meter, 3 seeds x 90 s, forms 1 / 2 / 3): flee 18.2 / 18.1 / 9.5 -> 0 / 0 / 0, retreat 1.9 / 4.3 / 2.7 -> 0, kite 1.9 / 0 / 0.5 -> 0, roam 0 / 0.2 / 0.2 -> 0. PACE on ten seeds: F1 75.3 / 79.3 / 85.0, F2 78.5 / 84.6 / 91.3, F3 81.4 / 93.2 / 101.2 (min / mean / max; form 3's mean was ~96).
+
+**Found on the way.** Two audit artifacts that looked like defects: the drawn figure leans toward the
+camera along z (measure reach with the hero EAST of him, as MOTION does), and hit-stops are freeze-frames
+(a window that spans one reports the whole freeze as one frame's jolt: "strike -> stagger" was not real).
+
+**Not checked / open.** Nobody has played it; not on the phone. His tracking turn (up to ~900°/s at a
+circling hero) was offered as a choice and the owner kept it ("Leave it"); the still charges of the
+beams were left too (see ADR-162). The stale epic pass on
+`enemies/ascendant-epic` / `asc5/*` (new moves, blue beams, the champion's ring, its own letter grid) is
+still unmerged and now conflicts with PR #96 and this work.
+
+---
+
+## 2026-11-23 — Session 83: Tian Lei printed like the hero; the hair risen, not tall; a gi in ember
+
+**Owner:** "the skybreak ring, the character is too detailed and is showing its flaws in 3d. make it more
+ascii like, like the main character, to hide its flaws. also make the phase 2 and 3 golden hair not be so
+long and more natural iconic looking. also change the character's color and cloth a bit to not make it
+look too obvious its goku". Branch `enemies/ascendant-ascii`. ADR-155 / Session 83 / M1.66.
+
+**How.** Each ask built as options behind switches, rendered (1440p game camera with the hero beside
+him, close-ups from four sides, the phone) on three sheets; the owner picked the recommended option of
+each: letters B (the hero's letter size + the hero's quieter print), hair B (his own hair risen), outfit E
+(ember).
+
+**What changed.**
+- **His letters follow his size** (`?ascLetters=a`): the kit's `letters`; at 1080p / 1440p / 4K he is on
+  the hero's 6 / 8 / 12 px cells, not the bosses' 4 / 4 / 8. The renderer code (`_letterCell`,
+  `_updateBossLetters`, `pipeline.bossLetters` in main.js) is PR #94's (Wen Yao's rework, open), taken
+  word for word: I had written my own version first, found #94 doing the same, and swapped mine out so
+  the two PRs agree (mine also snapped his ink lines to the font pixel; dropped, see ADR-155).
+- **The hero's quieter print** (`?ascLift=b`, `ASC_QUIET`).
+- **The gold hair** (`?ascHair=b`, `goldRisen`; `a` a short crown kept): about his dark hair's height,
+  form 3 no taller than form 2, one lock over the brow in form 3.
+- **The gi with wraps** (`?ascLook=e | r | w`, base `k`): e ember ships; r crimson over charcoal, w bone
+  kept. A storm-blue gi was dropped: it read as the hero's own colour.
+- Lab LOOKS: the new rows, `ascLook`'s new options.
+
+**Verification.** `asc.mjs . body,herolike` green (his cell = the hero's at phone / 720p / 1080p / 1440p /
+4K / 24 m / 54 m; the fixed cell with the switch off; the gold's height; the gis). Rendered with no URL
+parameters at 1440p beside the shipped look (sheet `AFTER` in the session's scratchpad). `npm test`: see
+the PR.
+
+**Not checked / open.** Not on a real phone (there the letters were already the hero's size: only the
+print, hair and gi change). The orange gi and the tall crown stay behind their switches. When PR #94
+merges, `pipeline.js` / `main.js` should merge clean (the same lines); the docs' "The bosses' letters"
+paragraph will need one pass to name both bosses.
+
+---
+
+## 2026-11-23 — Session 82: a seventh level, the Hall of Falling Script and Xin Yi, the One Who Woke (planned by Fable, built by Opus: a lead and three agents)
+
+**Owner** (to the planning session): two more homage bosses, planned by Fable and built by Opus, "lets do
+neo ... come up with iconic moves, effects, moments to make this a cool battle". The planning session asked
+four questions (the look recognizable; a pillared hall whose stage morphs 2 - 3 times; the four moments not to
+cut; the suited men watchers only); its plan (`code-one-plan.md` in the shared notes) was built as written
+(ADR-156 – ADR-158; the session numbers 80 and 81 were taken by open PRs).
+
+**How it was built.** The lead landed the contracts and a working core first (af4ed3b: the level, the scenes
+contract and `destructibles.present`, `uScript`, the code palette, the boss on the duelist engine with every
+mechanic, a stub set and stub body/effects), then three Opus agents in their own worktrees at once: the set
+(`scriptHall.js` rewritten keeping the contract, the watchers, the falling script, the script wave in
+materials.js, world.mjs `bite` per scene), the body (`gear.js`, `look.js`, the oneLook sheets), the effects
+(`fx.js`, the synth sounds, the borrowed score). Meanwhile the lead did the reward, the Lab, Training, the
+suite's scenarios, pace and strategy, the docs; then merged, re-measured and re-shot the body's sheets in the
+real light. (The effects agent could not write into its worktree: the harness kept it to the lead's; it worked
+in a clone in the scratchpad and the lead fetched its branch from there.)
+
+**What exists.** `?level=code` (`levels/scripthall.js`; aliases one / script / scripthall / woke / xinyi:
+the plan's `hall` was already the Obsidian Throne's), `world/scriptHall.js` (rung 1 of the plan's ladder: the
+full swap; three scenes, 397 breakables, morphs of 1.25 - 1.63 s), `enemies/wokenOne/` (wokenOne.js, moves.js,
+tuning.js, poses.js, links.js, iron.js, source.js, fx.js, gear.js, look.js), the Long Second (player.js
+`TUNE.lean`, anim.js `leanPose`, unlocks `longSecond` / `?tech=lean`), `tests/integration/woke.mjs` (21
+scenarios in `npm test`; opt-in smoke, strategy) and sheath.mjs's opt-in `lean`.
+
+**Decisions where the plan was open** (ADRs and COMBAT have the rest): `WokenFx extends AscFx` rather than
+LordFx (AscFx is LordFx's pool plus the blasts that cover stops and the perfect parry returns); phase 1's left
+hand behind his back is a realiser of its own over a one-handed copy of the moves; Iron Rain is one sustained
+beat (one cue for the stream, the ledger sees one guard window) whose ticks fire the shots; Return to Sender is
+one blow of the brain's over a 30 m ring (one cue, one result) with `noWorld`; the stop catches a returned bolt
+by parking AscFx's blast in its `push` phase; Unwriting's bricks are the Lord's torn stones (they hang clear
+of their own pillar: cover stopped them at once); the fall's rising starts as the fall's clip ends (no stand-up
+between); every thrown thing asks `brain.fairDelay` (`fairThrow`); deja vu replays through the realiser's
+recorded draws. The watchers' 4 / 8 / 12 is the set's `within` / `later`, not a fourth scene. The trade
+clash in Training now stands clear of the pieces (`clear: true`): the hall's posts could stop the hero's blade.
+
+**Measured.** PACE (real set, three seeds x 60 s): 67 / 106 / 83 cues a minute, 0 conflicts, dodge 7 / 5 / 21 %
+(phase 2 counts each of Iron Rain's eleven shots). WIN: 84 s (seed 4242). STRATEGY: mixed 75 – 84, parry 95 –
+96, block-only 89 – 122 (mortal: alive and wins), the Long Second bot 138, dodge-only 142 – 164 s; on the
+Sheathed with the Long Second: mixed 33, parry 42, dodge 64, lean 82 s. TIMING: every contact within 43 ms of
+its flash + 0.26 s. Draw calls 68 - 73 in every scene and moment at 1280x720 and 852x393 (the Foxfire Terrace:
+76 on the phone); the fire field's peak about 1030 of 6000 (phase 3); the falling script 320 (140 on LOW).
+Frame times on the RTX 4090 headless only; on-device fps is the owner's.
+
+**Not done / cut.** The phase banners do not decode (the plan's first cut). The morph prints in with the front's
+ring only (no print-in effect). The bit-identical frame at strength 0 is by construction, not a GPU readback.
+
+**Next / open.** The owner's picks from the sheets (`?oneLook=`, `?hall=`, `?script=`); the iPhone: the frame
+rate, the black coat, the shots at the phone camera; his own score.
+
+---
+## 2026-11-23 — Session 81: Wen Yao reworked: drawn like the hero, packs out of the air, the big Pearl, the Nine-Tailed Fox's beam (planned by Fable, built by Opus: a lead and two agents)
+
+**What changed.** The owner played the Thousand-Body Fox and asked for four things (ADR-154 quotes them):
+he is hard to see; the clones are boring sponges that stand about; the moves should be signature moves
+(the palm orb); and he should summon a fox for an ultimate beam. Built from the planning session's plan,
+the lead landing the contracts first (af30eab) and two agents in their own worktrees:
+- **The body (agent):** `?foxLook=h1` (the default) in the hero's ink-line art: a big russet crest with
+  pale tips, a short open amber jacket, dark trousers, pale wraps, a long vermilion scarf; h2 / h3
+  rendered; his letters follow his size (`kit.letters`, `pipeline._updateBossLetters`, `?foxLetters`).
+- **The packs (lead):** clones.js rewritten: no ambient selves; `pack` on a beat; FoxClones.pack books the
+  bodies and the ledger; together / sequence; Two Leaves Fall, the Round, A Thousand at Once, the Burial,
+  the Kite String, the Pearl's harrying pack; the pool 5 → 6.
+- **The signature moves (lead):** the big spiral Pearl (pale blue-white `FIRE_PALETTES.pearl`, spiral arms,
+  a drilling drive, a spiral burst, a synth whirr), the Twin Pearls, the giant Moon-Swallowing Pearl lifted
+  by two selves, "It was a copy"; phase 3's fire its own kind (`?foxFire3`).
+- **The Howl (agent):** beam.js / spirit.js / fxBeam.js / tuningBeam.js: the Nine-Tailed Fox as a body in
+  the art path, the dark sun, the beam, the world along it, the kneel; `cameraRig.hold`, the terrace's
+  `light.dim`.
+- Training: "A Thousand at Once · one parry", "The Round · parry the chain", "Heaven-Devouring Howl · roll
+  through it" (Pop the copies is gone); the Lab: pack buttons, Twin Pearls, Howl, LOOKS rows.
+
+**Decisions.** ADR-154. Where the plan was open: the Pearl's harrying pack is 1 / 2 / 2 (three do not fit
+before the drive with the red cue 0.36 s clear); a pack riding on a blow of his is named `<move>Pack`; the
+Howl is one red beat whose windup is the summoning (the "black" of the summoning is a charge's darkness,
+not a second blow); the fox's head is drawn at 2x and the body always side-on to the camera; the h
+outfits' crest uses `welt` (the hair parts' gold outline read as blond). The Moon Wheel was cut.
+
+**Verification.** `npm test` green (every suite); `fox.mjs` `data` checks every pack's schedule, `clones`
+is rewritten for packs, `beam` is new, `pace` re-measured on five seeds x 120 s (70.9 / 79.5 / 68.3 cues a
+minute, 0 conflicts), `win` and `training` pass. Rendered at the game camera in headless Edge: the sheets in
+`docs/looks/fox/` (body-720 / -1440 / -phone, letters, packs, packs-phone, clones-ab, pearl, mantle, howl,
+howl-phone, howl-fox-720). Measured: a full pack 73 → 118 draw calls (1280x720), the Howl 75 → 84 and a fire
+field peak of ~1300 - 1500 blobs.
+
+**Second pass on the Howl** (the owner: "yes, fix the fox"; the reviewer: the fox read as a fan of
+feathers, the beam as a thin streak). The head is the subject (drawn 2.3x, a clean profile wedge, broad
+ears, a jaw that opens wide over a white-hot maw, a pale throat; the body charcoal so the head separates);
+nine separate S-curved tails with bright tips; he summons it `away` 10 m from the hero through the middle
+(not the far rim) and `cameraRig.hold(m, x, z, w)` leans toward it: the desktop camera stays at 36 - 41 m
+(was ~60) with the head well inside the frame from every side. The beam fills its 3.6 m strip (a bulb at
+the jaws, a five-line core, a boiling body, the floor lit and charred, a scar that lingers). The dark sun
+is ~2.3 m with motes from the whole arena and the light dropping further. On the phone the pull-back is
+capped: the hero is 51 % of his duel-camera height during the Howl (was 24 %), short of the 70 % asked;
+the head crops at the top when the hero stands north or south of it. 72 → 81 draw calls, the fire field's
+peak ~1600 (2350 headless). Sheets: howl.png / howl-phone.png (before / after), howl-fox-720.png.
+
+**Open / next.** The owner's picks (six switches in PENDING). The fox at the game camera reads only when
+looked for; on the phone the Howl pulls the camera back to ~55 m. Neither checked on the owner's iPhone.
+Phase 3 is now less busy than phase 2 (by design of the Howl; the meter says so). The Moon Wheel.
+## 2026-11-23 — Session 80, round 2: the Sheathed between the digits and the ink-line art (ADR-152 addendum)
+
+**Why.** The owner picked palette a, then looked at the ink-line Sheathed in the game: "too detailed and his flaws
+from the non ascii look is hurting. find a right balance". At fight distance he read as a 3D model (smooth shaded
+cloth, clean outlines) and body flaws showed that the digits had hidden. They asked for three steps between the
+two prints, to pick from.
+
+**What changed.**
+- `?sheathArt=0|1|2|3|a` (look.js `SHEATH_STEP`, `wandererDigits`, `sheathTuned`, `sheathDigits`): 1 and 2 are the
+  wyrm's digits with the palette's inks (x 0.42 / 0.5; trousers x 0.72 and wraps x 0.8, since neutral greys print
+  near white), the art source's light floor 0.03 / 0.1 and a stroke outline reaching in to fresnel 0.3 / 0.12 in a
+  paler ink; 3 is the ink-line art with the cloth's aPart folded to 0 in `_setup` (no fold or crease lines), no
+  glints, no fold shading, half the rim. 0 is the digits and his body as on main (no mark, the old tail and scarf).
+- His body in prints 1 - a: full sleeves (no thin stiff arm, no gap at the side), one deep roll of scarf instead of
+  two turns, plain gaiters instead of six shin bands, no wrist bands. Gameplay untouched.
+- `sheathTone: 'a'` in `PICKED` (the owner's pick); `sheathArt` stays `a`, its Lab row `awaiting` again; duel.mjs's
+  picks check lets a picked switch wait for a new pick. `sheath.mjs` LOOK covers every print.
+
+**The pick.** The owner picked step 2 from the sheet (2026-11-23): `sheathArt: '2'` in `PICKED`, the Lab row not
+`awaiting`, `sheath.mjs` LOOK checks 2 as the default and `a` as an option (the palettes by the digits' ink). Open:
+the mark (`?sheathMark=`), a real phone, his digits larger than the hero's letters.
+
+**Measured** on main's grove with its new bamboo (rebased; the camera pinned at its default distance; his pixels /
+the floor under him; the hero about 25 / 16): 720p 0 37.0 / 20.3, 1 26.5 / 20.2, 2 36.1 / 20.3, 3 31.2 / 20.1, a
+35.1 / 20.2; phone 0 34.1, 1 26.9, 2 39.5, 3 26.8, a 27.9 (the floor about 19.7; the hero about 27 / 16.3).
+
+**Sheet:** `sheets-owner/sheet_balance.png` (five rows; carry, run, settle, 0.25 s after the cut at 2 - 3x and the whole
+frame, 720p then phone; the hero in every tile).
+
+**The author's pick: 2.** It reads as letters first (digits on a dark body, a stroke outline), it is brighter than the
+hero, and the robe (blue), the trousers (grey) and the scarf (sand) stay apart. Where each fails: 0 thin and colourless;
+1 barely above the floor (26.5 against 20.2: weaker than the hero), and the digits cover only his lit side, so he is narrower than the hero; 2 still narrow, the
+face does not read, the strip is one pale stroke; 3 at fight distance hardly differs from a (the interior lines were
+few letters wide already), so it still reads as a drawn figure; a the owner's complaint.
+
+**Not checked.** A real phone. The close look for clipping was done in films at a 7 m camera for the draw and the run
+only; nothing clipped there that shows at fight distance.
 
 ---
 
@@ -131,6 +428,49 @@ see the PR.
 
 **Not checked / open.** Nobody has played it; not on the phone (0.56 M -> 0.89 M vertices drawn);
 the owner picked `a`, mixed clumps, from the sheet.
+
+## 2026-11-22 — Session 80: the Sheathed, easy to see (ADR-152; one Opus agent from the planning session's brief)
+
+**Goal.** The owner on the live grove: "its hard to see the new boss character. make it look detailed like the
+main character". Their answers: the hero's ink-line art (not bigger letters), the homage carried by the
+silhouette, a mark of his own, his motion and his lines; three palettes to pick from.
+
+**What changed.**
+- The print (`sheathed/look.js`, new): `?sheathArt=a` in `PICKED` (the prototype's `?sheathArt=a`, from the
+  local branch `enemies/sheathed-letters`, is the base), `0` the wyrm's digits. `SHEATH_TONE` a / b / c,
+  `SHEATH_LIFT` (rim × 3, scarf and mark × 3.6), `tintWanderer`. His hair on `shirt`: the `hair` part's
+  shared ink lines are the hero's gold, and they drew an orange outline round his dark hair.
+- The silhouette (`gear.js`): `ROBE_TAILS` (a loose robe to mid-thigh, open at both sides, over the
+  trousers), the high tail 0.46 → 0.60 m and thicker with a pale tie, the scarf's turns 7 / 4.5 → 8.5 / 6 cm
+  and its ends 6 → 8 cm, its tails `out` 0.14 → 0.03 (they stood off his back), pale wrist
+  bindings. Mark a: `STRIP` on both scabbard pieces (the left-wrist piece's springs appended to the rig's in
+  `_setup`; the draw kicks them). Mark b: a white streak on `facing`.
+- Motion (`poses.js`, `moves.js` draw()): the carry (head bowed 0.12, left thumb in the sash), the breath
+  (k 0.8 → 0.65, period 3.4 → 4.6 s), `SHEATH_RUN` and his own `duelLoco` (sink 8 cm, pitch 0.16 at a run),
+  the settle: a head-only key at 0.4 × grip, then the settle key eased in. Timings untouched.
+- Lines (`levels/grove.js`) and eight labels (`moves.js`); Training's mikiri text, COMBAT.md's table.
+- `sheath.mjs` LOOK: the default print and palette, the scabbard darkest, the hair off the gold part, the
+  mark's springs, ADR-126's hand audit through One Breath (0.166 m worst outside the cut), every option.
+
+**Measured** (headless Edge on the GPU; the mean luma 0 - 255 of his pixels / of the floor behind him; p90):
+1280 x 720: digits (as live) 40.0 / 16.3, p90 128; the prototype 22.2 / 16.3, p90 88; now 31.9 / 16.1, p90
+116 (b 33.4, c 31.9); the hero 25.2 / 20.1, p90 105. Phone camera (17 m): now 45.4 / 16.5 (digits 49.1), the
+hero 39.7 / 21.6. The digits are brighter on average but read as a column of numbers; the ink-line print reads as a
+figure with its parts. The drawn blade's pixels: mean 105, p90 185, against his figure's mean 32, p90 108 -
+114. ADR-126 audit (filmed): One Breath's worst hand step outside the cut 0.183 m, the same as main (0.183), the
+cut's one frame 1.0 m on both; the run 0.112 m (main 0.08), no planted foot sliding. `sheath.mjs` LOOK: 0.166 m.
+The scarf's tails: at rest 0.04 rad off hanging, at a run 0.87 rad (they trail; an `inMax` tried first held
+them against his back and was dropped).
+
+**Sheets for the owner** (not committed): `sheets-owner/` in the worktree: the print before / after, the
+palettes, the mark, the draw and run film strips (before = main).
+
+**ADR number.** 152, not the next free number on `main` (151): a parallel session's grove bamboo work
+claims 151 (`?bamboo=`), so this skips it to avoid a clash at merge.
+
+**Open.** The owner's picks of the palette and the mark. Not checked on a real phone. The model viewer draws
+him alone, so its tiles have no hero beside him (the game-camera tiles do). The mark at the game camera is a
+couple of letters at rest; it reads when it trails.
 
 ## 2026-11-22 — Session 78: a sixth level, the Windless Grove and the Sheathed (planned in its own chat, built by one Opus agent)
 

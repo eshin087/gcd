@@ -115,6 +115,13 @@ export function prepareChoose(br, dist) {
     br.seek = null;
   }
   br.forceCat = null;
+  // (pressure.pursue: the hero's speed away from him and how far past his bound he stands, read once a
+  // pick: the forecast below)
+  if (P.pursue) {
+    const s = br._sense();
+    br._away = br.forecast(s);
+    br._beyond = s ? Math.hypot(s.p.x, s.p.z) - (d.bound ?? Infinity) : 0;
+  }
   const after = perPhase(P.floorAfter ?? 0, ph), force = P.floorForce ?? 0;
   if (!(after > 0) || !(force > 0)) return;
   let worst = null, worstAbs = after * force;
@@ -169,6 +176,11 @@ export function directWeight(br, name, def, w, dist) {
     if (abs > after) w *= (P.floorBoost ?? 1) * Math.min(3, abs / after);
   }
   if (br.forceCat && cat !== br.forceCat) w *= 0.02;
+  if (P.pursue) {
+    if (!reaches(br, def, dist, br._away ?? 0, br._beyond ?? 0)) w *= P.pursue.miss ?? 1;
+    // (a hero who has been running from his blows: the moves that reach wherever he goes weigh more)
+    else if (br.runner > 0 && P.pursue.habit > 0 && longReach(br, def)) w *= 1 + P.pursue.habit * br.runner;
+  }
   if (P.farDist > 0 && dist > P.farDist && (cat === 'closer' || def.gapCloser)) w *= P.closerBoost ?? 1;
   const L = br.ledger;
   if (cat === 'hazard' && L.liveHazards() >= perPhase(P.maxLive ?? 99, ph)) w *= 0.05;
@@ -178,6 +190,58 @@ export function directWeight(br, name, def, w, dist) {
     if (((ans & GUARD) && L.pending(DODGE, H)) || ((ans & DODGE) && L.pending(GUARD, H))) w *= mixed;
   }
   return w;
+}
+
+// ================================================================== the forecast (pressure.pursue)
+const _first = new WeakMap();
+/** A move's first real blow as authored (a `pick`: the first alternative): { b, at } with `at` its
+ *  impact from the move's start at form ph's windup scale (feints before it and the bait holds' middle
+ *  included). Cached per definition and form. */
+function firstBlow(br, def, ph) {
+  let m = _first.get(def);
+  if (!m) _first.set(def, (m = {}));
+  if (m[ph]) return m[ph];
+  const ws = perPhase(br.T.windupScale ?? 1, ph);
+  let at = 0, b = null;
+  for (const raw of def.beats ?? []) {
+    const x = Array.isArray(raw.pick) ? raw.pick[0] : raw;
+    at += (x.windup ?? 0.5) * (x.fixed ? 1 : ws) + (Array.isArray(x.hold) ? (x.hold[0] + x.hold[1]) / 2 : 0);
+    if (!x.feint) {
+      b = x;
+      break;
+    }
+    at += x.active ?? 0.1;
+  }
+  return (m[ph] = { b, at });
+}
+
+/**
+ * Can move `def`'s first blow reach the hero where he will be at its impact (he is `dist` m off and
+ * moving away at `away` m/s, led by min(its first impact, pursue.lead) s; `beyond`: how far past the
+ * circle he keeps to the hero stands)? A blow whose reach is wherever he is (a blink, a leap, a thrown
+ * or called thing, a beam) always can, inside the bound; otherwise its zone, the step-in
+ * (TUNING.close.first) and its dash (x closeK / dashK when he is backing away). True without a pursuit.
+ */
+export function reaches(br, def, dist, away, beyond = 0) {
+  const PU = br.P?.pursue;
+  if (!PU) return true;
+  const { b, at } = firstBlow(br, def, br.d.phase);
+  if (!b || b.release || b.cast || b.selfHit || !b.zone) return true;
+  const z = b.zone, pr = br.d.game.player?.radius ?? 0.45, m = PU.margin ?? 0.5, run = Math.max(0, away) * Math.min(at, PU.lead ?? 0.6);
+  const own = z.r + Math.max(0, z.fwd || 0) + pr;
+  // (past his bound by more than the blow's own reach: no step, dash, blink or leap gets there)
+  if (beyond + run > own + m) return false;
+  if (b.blink || b.leap || !(away > 0)) return true;
+  const chase = away > (PU.away ?? 1.2), ph = br.d.phase;
+  const close = (b.close ?? (b.dash ? 0 : br.T.close?.first ?? 0)) * (chase ? perPhase(PU.closeK ?? 1, ph) : 1);
+  return dist + run <= own + close + (b.dash?.max ?? 0) * (chase ? perPhase(PU.dashK ?? 1, ph) : 1) + m;
+}
+
+/** Does a move's first blow reach wherever the hero goes (a blink, a leap, a thrown or called thing, a
+ *  beam, a dash of 4 m or more)? */
+export function longReach(br, def) {
+  const { b } = firstBlow(br, def, br.d.phase);
+  return !!b && !!(b.blink || b.leap || b.release || b.cast || b.selfHit || (b.dash?.max ?? 0) >= 4);
 }
 
 const _density = new WeakMap();
@@ -259,9 +323,11 @@ export function linkUsable(br, L, s) {
   if (!L.force && (br.cooldowns[L.to] ?? 0) > 0) return false;
   if (L.band !== false && (s.dist < def.band[0] || s.dist > def.band[1])) return false;
   if (d.weigh && !(d.weigh(L.to, def, 1, s.dist) > 0)) return false;
+  // (pressure.pursue: no link into a move whose first blow could not reach where the hero is going)
+  const P = br.P;
+  if (P?.pursue && !reaches(br, def, s.dist, br.forecast(s), Math.hypot(s.p.x, s.p.z) - (d.bound ?? Infinity))) return false;
   // (the mixed-answers rule: no link into a move asking a guard while a dodge is due, or the other
   // way round; the pick only damps such a move, a link is not taken)
-  const P = br.P;
   if ((P?.mixed ?? 1) < 1) {
     const ans = answersOf(def), H = P.guard?.horizon ?? 1.4, Lg = br.ledger;
     if (((ans & GUARD) && Lg.pending(DODGE, H)) || ((ans & DODGE) && Lg.pending(GUARD, H))) return false;

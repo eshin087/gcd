@@ -1103,6 +1103,65 @@ export const CARVED_DEFAULTS = {
 const CARVED_LEVELS = 6;
 
 /**
+ * THE SCRIPT WAVE (ADR-157; shaderLib.js uScript / uScriptF: only the Hall of Falling Script sets them).
+ * Inside a prop's own silhouette (prop art) and on the floor (carved), the letters brighten in waves
+ * that fall down each screen column of letters, the hue eased toward green with the strength; a
+ * front (a ring round uScript.yz, radius uScript.w, width uScriptF.x) at uScriptF.y; uScriptF.z shifts
+ * every letter that many cells sideways (deja vu's stutter). The whole of it is behind `uScript.x > 0 ||
+ * uScriptF.y > 0` (and the shift behind uScriptF.z != 0): at 0 the shaders draw exactly what they did.
+ *
+ * `SCRIPT_GRID`: the prop letters' cell (px) and their grid's anchor (px), so a wave runs down a
+ * column of letters and not across two. Shared by every prop material; the set that sets the wave
+ * points its values at the pipeline's own vectors (pipeline.artCell, asciiMat uPropAnchor).
+ */
+export const SCRIPT_GRID = Object.freeze({ cell: { value: new THREE.Vector2(5, 8) }, anchor: { value: new THREE.Vector2(0, 0) } });
+/** GLSL (after COMMON_GLSL): the strength at a world point, and one column's wave at a cell. */
+const SCRIPT_GLSL = /* glsl */ `
+uniform vec4 uScript;
+uniform vec4 uScriptF;
+const vec3 SCRIPT_GREEN = vec3(0.1, 1.0, 0.36);
+float scriptK(vec3 wp) {
+  float k = uScript.x;
+  if (uScript.w > 0.0 && uScriptF.y > 0.0) {
+    float d = abs(length(wp.xz - uScript.yz) - uScript.w);
+    k = max(k, uScriptF.y * (1.0 - smoothstep(0.0, max(uScriptF.x, 0.01), d)));
+  }
+  return k;
+}
+// the wave at letter cell c (x: its column, y: its row, counted up the screen): x = the trail's
+// light (1 at the head, falling off up the column), y = 1 on the head cell, z = the pass (a whole
+// number that changes each time a head goes by: a letter re-rolls on it)
+vec3 scriptWaveAt(vec2 c) {
+  float hc = hash12(vec2(c.x, 7.13));
+  float speed = 7.0 + 9.0 * hc;
+  float period = 16.0 + 26.0 * fract(hc * 13.7);
+  float s = (c.y + uTime * speed) / period + hc * 5.3;
+  float ph = fract(s) * period;
+  float trail = 3.0 + 6.0 * fract(hc * 31.1);
+  return vec3(exp(-ph / trail), step(ph, 1.0), floor(s));
+}
+`;
+/** GLSL (vertex): what the stutter's sideways shift needs. */
+const SCRIPT_VERT = /* glsl */ `
+uniform vec4 uScriptF;
+uniform vec2 uScriptCell;
+uniform vec2 uResolution;
+`;
+/** GLSL (vertex, after gl_Position): every letter `uScriptF.z` cells sideways (deja vu). */
+const SCRIPT_SHIFT = /* glsl */ `
+if (uScriptF.z != 0.0) gl_Position.x += uScriptF.z * uScriptCell.x * 2.0 / max(uResolution.x, 1.0) * gl_Position.w;
+`;
+/** The script wave's uniforms for a material (the shared ones; the set writes them). */
+function scriptUniforms(U) {
+  return {
+    uScript: U.uScript ?? { value: new THREE.Vector4() },
+    uScriptF: U.uScriptF ?? { value: new THREE.Vector4(2, 0, 0, 0) },
+    uScriptCell: SCRIPT_GRID.cell,
+    uScriptAnchor: SCRIPT_GRID.anchor,
+  };
+}
+
+/**
  * Prop art source (FLAG.ART_PROP, ADR-100): the smooth lit image of a background object, which the
  * art pass prints in the wyrm's fine letters (a dark body, brighter letters where a face or an edge
  * catches the light, an outline of stroke glyphs). For static stone / metal / bone geometry baked in
@@ -1131,9 +1190,11 @@ export function createPropArtMaterial(U, o = {}) {
       uEdge: { value: o.edge ?? 1 },
       uBoneTex: U.uBoneTex ?? { value: null }, // rigid batches' bone matrices (RIGID_VERT_GLSL)
       ...(hang ? hangUniforms(U, hang) : {}),
+      ...scriptUniforms(U),
     },
     vertexShader: /* glsl */ `
       ${RIGID_VERT_GLSL}${hang ? HANG_VERT_GLSL : ''}
+      ${SCRIPT_VERT}
       attribute vec3 aCol;
       attribute float aAO;
       attribute float aEdge;
@@ -1151,10 +1212,14 @@ export function createPropArtMaterial(U, o = {}) {
         vAO = aAO;
         vEdge = aEdge;
         gl_Position = projectionMatrix * viewMatrix * wp;
+        ${SCRIPT_SHIFT}
       }
     `,
     fragmentShader: /* glsl */ `
       ${COMMON_GLSL}
+      ${SCRIPT_GLSL}
+      uniform vec2 uScriptCell;
+      uniform vec2 uScriptAnchor;
       uniform vec4 uPlayerScreen;
       uniform vec2 uResolution;
       uniform vec3 uCamRight;
@@ -1193,6 +1258,15 @@ export function createPropArtMaterial(U, o = {}) {
         float low = 1.0 - smoothstep(0.3, 1.4, vW.y);
         col *= 1.0 - sc.x * 0.55 * low;
         col += vec3(1.0, 0.28, 0.04) * sc.y * sc.y * low * 0.3;
+        if (uScript.x > 0.0 || uScriptF.y > 0.0) {
+          // THE SCRIPT WAVE (SCRIPT_GLSL): the letter cell this pixel prints in, its column's wave
+          float k = scriptK(vW);
+          vec3 w = scriptWaveAt(floor((gl_FragCoord.xy - uScriptAnchor) / max(uScriptCell, vec2(1.0))));
+          float L = luma(col);
+          col = mix(col, SCRIPT_GREEN * (L * 1.5 + 0.004), min(k, 1.0) * 0.85);
+          col *= 1.0 + k * (2.4 * w.x + 2.6 * w.y);
+          col += SCRIPT_GREEN * k * (0.012 * w.x + 0.03 * w.y);
+        }
         col = applyFog(col, vW);
         gl_FragColor = vec4(col, ${FLAG.ART_PROP.toFixed(2)});
       }
@@ -1336,8 +1410,10 @@ export function createCarvedGlyphMaterial(U, o = {}) {
       uCrack: { value: o.crackAmount ?? 1 },
       uEdge: { value: o.edge ?? 0 },
       uGlyphZoom: { value: o.glyphZoom ?? 0.72 },
+      ...scriptUniforms(U),
     },
     vertexShader: /* glsl */ `
+      ${SCRIPT_VERT}
       attribute vec3 aCol;
       attribute float aAO;
       attribute float aMoss;
@@ -1360,10 +1436,12 @@ export function createCarvedGlyphMaterial(U, o = {}) {
         vInk = aInk;
         vEdge = aEdge;
         gl_Position = projectionMatrix * viewMatrix * wp;
+        ${SCRIPT_SHIFT}
       }
     `,
     fragmentShader: /* glsl */ `
       ${COMMON_GLSL}
+      ${SCRIPT_GLSL}
       #define CG_LEVELS ${CARVED_LEVELS}
       uniform vec4 uPlayerScreen;
       uniform vec2 uResolution;
@@ -1470,6 +1548,17 @@ export function createCarvedGlyphMaterial(U, o = {}) {
           }
         }
 
+        float sk = 0.0;
+        vec3 sw = vec3(0.0);
+        if (uScript.x > 0.0 || uScriptF.y > 0.0) {
+          // THE SCRIPT WAVE (SCRIPT_GLSL) down the lattice's columns: where it runs, a cell re-rolls
+          // its letter into a digit each time a head goes by, the ink eased toward green
+          sk = scriptK(vW);
+          sw = scriptWaveAt(cell);
+          // (digits 1 - 7 and 9 sit together in the atlas: CHARS)
+          if (sw.x > 1.0 - 0.75 * min(sk, 1.0)) idx = ${gi('1')}.0 + floor(hash12(cell + sw.z * 1.7) * 7.99);
+          ink = mix(ink, SCRIPT_GREEN * (luma(ink) + 0.05), min(sk, 1.0) * 0.8) * (1.0 + sk * (1.2 * sw.x + 1.8 * sw.y));
+        }
         float m = 0.0;
         if (idx >= 0.0) {
           // small sideways nudge per cell: glyphs never sit in perfect typeset columns
@@ -1487,6 +1576,7 @@ export function createCarvedGlyphMaterial(U, o = {}) {
         float low = 1.0 - smoothstep(0.3, 1.4, vW.y);
         col *= 1.0 - sc.x * 0.55 * low;
         col += vec3(1.0, 0.28, 0.04) * sc.y * sc.y * low * (0.08 + 0.5 * m);
+        if (sk > 0.0) col = mix(col, SCRIPT_GREEN * luma(col) * 1.4, min(sk, 1.0) * 0.6);
         col = applyFog(col, vW);
         gl_FragColor = vec4(col, 0.0);
       }

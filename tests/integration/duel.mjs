@@ -3,7 +3,7 @@
 // Events) wired like src/main.js for `?level=ash`; the world is a light mock on the real Colliders
 // with the courtyard's ring of pillars. A bot drives the input.
 // usage: node duel.mjs <repoRoot> [scenario]   (env: ABYSS_SEED=n reseeds the AI)
-//   scenario: levels | data | timing | terrain | guard | clash | trade | deflect | ghostep | execute | phase | flow | win | all
+//   scenario: levels | data | timing | terrain | guard | clash | trade | deflect | ghostep | execute | phase | flow | win | sfx | all
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { ui, AUDIO, resetWindow } from './shim.mjs';
@@ -1314,6 +1314,201 @@ async function scenarioGhostep() {
   return G;
 }
 
+// ================================================================== scenario: perfectfx (the streak pass)
+// A single perfect parry / perfect dodge in its three looks (combat/perfectFx.js, ?perfect=): `today`
+// draws and times exactly as before; `sharp` prints its mark in the fire field (finite, never below
+// 0.7 m, it ends) with no more slow motion than today; `cinema` gives its long beat to a single / last
+// blow only. The rules do not move: his recovery after a parried last blow lasts the same GAME time in
+// every mode, and a seven-cut string parried perfectly is not slower to play in `sharp` than today.
+async function scenarioPerfectFx() {
+  out('\n== scenario PERFECTFX (a perfect parry / dodge in three looks: today | sharp | cinema; the rules unmoved) ==');
+  const PFX = await imp('src/combat/perfectFx.js');
+  const STK = await imp('src/combat/streak.js');
+  const MODES = ['today', 'sharp', 'cinema'];
+  const R = {};
+  // (his posture kept empty: seven perfect parries would break it and end the string early)
+  const press = (lead) => (left) => {
+    G0.game.dragon.posture = 0;
+    if (left > lead) return false;
+    G0.input.up(1);
+    G0.input.click(1);
+    return true;
+  };
+  let G0 = null;
+  for (const mode of MODES) {
+    STK.setPerfectMode(mode);
+    PFX.perfectClear();
+    const G = (G0 = build());
+    duel(G, { dist: 2.0 });
+    const { game, input } = G;
+    const d = game.dragon, p = game.player;
+    p.debug.god = true;
+    p.debug.noRiposte = true;
+    const r = (R[mode] = { mode });
+    // 1) a single perfect parry (Plum Thrust, pressed 0.04 s before the blow)
+    run(G, 0.4);
+    home(G);
+    place(G, 2.0);
+    run(G, 0.3);
+    const n0 = PFX.PERFECT_LAST.n, q0 = G.hits.length;
+    let cine = null;
+    const seen = [];
+    G.watch = (n, e) => {
+      if (n === 'game:cinematic') {
+        seen.push(e?.kind);
+        const c = game.flow.cine;
+        cine = c ? { slowmo: c.slowmo, dur: c.dur, zoom: c.zoom } : null;
+      }
+    };
+    answerMove(G, 'plumThrust', press(0.04), 3);
+    G.watch = null;
+    const ph = G.hits.slice(q0).find((h) => h.r === RESULT.PARRIED);
+    r.stop = ph?.stop ?? 0;
+    r.flash = ph?.flash ?? 0;
+    r.cine = cine;
+    r.seen = seen.slice();
+    r.marks = PFX.PERFECT_LAST.n - n0;
+    r.mark = { ...PFX.PERFECT_LAST };
+    run(G, 1.2);
+    r.ended = PFX.PERFECT_LAST.ended && !PFX.perfectBusy();
+    // 2) the punish window: Plum Thrust parried perfectly, game AND real time from the parry to his
+    // footwork (his recovery is the hero's opening)
+    settle(G, 8);
+    home(G);
+    place(G, 2.0);
+    run(G, 0.3);
+    let gt0 = null, rt0 = null;
+    G.watch = (n, e) => {
+      if (n === 'player:parry' && e?.perfect) {
+        gt0 = game.time;
+        rt0 = game.realTime;
+      }
+    };
+    answerMove(G, 'plumThrust', press(0.04), 4);
+    G.watch = null;
+    r.punishGame = gt0 == null ? NaN : game.time - gt0;
+    r.punishReal = rt0 == null ? NaN : game.realTime - rt0;
+    // 3) the seven-cut string (Ash Rain), every blow parried perfectly: its real time, the beats
+    settle(G, 8);
+    home(G);
+    place(G, 2.0);
+    run(G, 0.3);
+    const beats = [];
+    let perf = 0;
+    const rs = game.realTime, gs = game.time;
+    G.watch = (n, e) => {
+      if (n === 'player:parry') {
+        if (e?.perfect) perf++;
+        beats.push(e?.beat || '-');
+      }
+    };
+    const h0 = G.hits.length;
+    // (its fourth blow is marked `lock`: a perfect parry of it crosses the blades, a moment of its
+    // own; unmarked for this measurement, so all seven blows are parried)
+    const locks = MOVES.ashRain.beats.map((bt) => bt.lock);
+    for (const bt of MOVES.ashRain.beats) bt.lock = false;
+    answerMove(G, 'ashRain', press(0.04), 12);
+    MOVES.ashRain.beats.forEach((bt, i) => (bt.lock = locks[i]));
+    G.watch = null;
+    if (process.env.ABYSS_TRACE) out('     ashRain', G.hits.slice(h0).map((h) => `${h.r}/${h.tell}@${h.t.toFixed(2)}`).join(' '), d.mode, d.brain.react?.kind, d.posture, d.maxPosture, d.broken);
+    r.stringReal = game.realTime - rs;
+    r.stringGame = game.time - gs;
+    r.perf = perf;
+    r.beats = beats.join('');
+    // 4) a perfect dodge of a white blow (Plum Thrust): the Ghostep's slow motion (real s), and the rules
+    settle(G, 8);
+    home(G);
+    place(G, 3.0);
+    run(G, 0.3);
+    const l0 = PFX.PERFECT_LAST.lineN, a0 = PFX.PERFECT_LAST.arriveN;
+    let flashT = null, rolled = false, dodged = false, slowReal = 0, crit = NaN, ifr = NaN, low = Infinity, after = 0;
+    G.watch = (n, e) => {
+      if (n === 'combat:flash' && e?.attack === 'plumThrust' && flashT === null) flashT = game.time;
+      if (n === 'player:ghostep') {
+        dodged = true;
+        crit = p.critTimer;
+        ifr = p.iframeT;
+      }
+    };
+    d.debug.trigger('plumThrust');
+    run(G, 3, () => {
+      input.axis = { x: 0, y: 0 };
+      if (flashT !== null && !rolled && game.time >= flashT + TUNING.flashLead - 0.1) {
+        rolled = true;
+        input.axis = { x: 1, y: 0 };
+        input.tap('Space');
+      }
+      if (dodged) after++;
+      if (dodged && game.timeScale * (game.hitstopTimer > 0 ? game.hitstopScale : 1) < 0.9) slowReal += DT;
+      if (dodged && Number.isFinite(PFX.PERFECT_LAST.lowY)) low = Math.min(low, PFX.PERFECT_LAST.lowY);
+    }, () => after > 2 && game.timeScale > 0.99 && game.hitstopTimer <= 0);
+    G.watch = null;
+    r.dodged = dodged;
+    r.slowReal = slowReal;
+    r.crit = crit;
+    r.ifr = ifr;
+    r.ghost = PFX.PERFECT_LAST.ghost;
+    run(G, 1);
+    r.tear = PFX.PERFECT_LAST.tear;
+    r.lines = PFX.PERFECT_LAST.lineN - l0;
+    r.arrives = PFX.PERFECT_LAST.arriveN - a0;
+    r.dodgeLow = low;
+    out(`   ${mode.padEnd(6)} parry: freeze ${r.stop.toFixed(3)} s, flash ${r.flash.toFixed(2)}, slow x${r.cine?.slowmo ?? '-'} for ${r.cine?.dur ?? '-'} s, zoom ${r.cine?.zoom ?? '-'} · mark ${r.marks ? `${r.mark.kind} ${r.mark.frames} frames, ${r.mark.blobs} blobs (peak ${r.mark.peak}), lowest ${r.mark.lowY.toFixed(2)} m, ended ${r.ended}` : 'none'}`);
+    out(`          punish window: ${r.punishGame.toFixed(3)} s game (${r.punishReal.toFixed(3)} s real) · Ash Rain: ${r.perf}/7 perfect [${r.beats}] in ${r.stringReal.toFixed(2)} s real (${r.stringGame.toFixed(2)} s game)`);
+    out(`          dodge: slow motion ${r.slowReal.toFixed(2)} s real, crit ${r.crit} s, i-frames ${Number(r.ifr).toFixed(3)} s · afterimage ${r.ghost} cells, ${r.tear} torn, ${r.lines} line(s), ${r.arrives} arrival(s)`);
+  }
+  STK.setPerfectMode('today');
+  const T = R.today, S = R.sharp, C = R.cinema;
+  // today, exactly as before
+  assert(T.marks === 0 && T.seen.includes('perfectParry') && T.stop >= 0.13 && T.flash > 0.4 && T.cine?.slowmo === 0.35 && T.cine?.dur === 0.36, `today: no mark, freeze ${T.stop.toFixed(3)} s, flash ${T.flash.toFixed(2)}, slow x${T.cine?.slowmo} for ${T.cine?.dur} s (TUNE.perfectParry)`);
+  assert(T.dodged && Math.abs(T.slowReal - DEFENSE.ghostep.slowmoTime) < 0.05 && T.lines === 0 && T.arrives === 0, `today: the Ghostep's slow motion is ${T.slowReal.toFixed(2)} s (DEFENSE.ghostep ${DEFENSE.ghostep.slowmoTime}), no line, no arrival`);
+  // sharp: its mark, shorter
+  const SF = PFX.PERFECT_FEEL.sharp;
+  assert(S.marks === 1 && S.mark.kind === 'parry' && S.mark.blobs > 0 && S.mark.lowY >= 0.7 - 1e-6 && S.ended, `sharp: the mark prints in the fire field (${S.mark.blobs} blobs, ${S.mark.frames} frames, lowest ${S.mark.lowY.toFixed(2)} m) and ends`);
+  assert(S.seen.includes('perfectParry') && S.cine.dur * (1 - S.cine.slowmo) <= T.cine.dur * (1 - T.cine.slowmo) + 1e-9 && S.cine.slowmo >= T.cine.slowmo && S.flash < T.flash && Math.abs(S.stop - SF.parry.stop) < 0.01, `sharp: no more slow motion than today (x${S.cine.slowmo} for ${S.cine.dur} s against x${T.cine.slowmo} for ${T.cine.dur} s), the flash ${S.flash.toFixed(2)} (< ${T.flash.toFixed(2)}), freeze ${S.stop.toFixed(3)} s`);
+  assert(S.dodged && S.slowReal <= T.slowReal + 1e-6 && S.ghost > 50 && S.tear === S.ghost && S.lines === 1 && S.arrives === 0 && !(S.dodgeLow < 0.7 - 1e-6), `sharp: the dodge's slow motion ${S.slowReal.toFixed(2)} s (<= ${T.slowReal.toFixed(2)}), the afterimage stands and tears (${S.tear}/${S.ghost} letters), one line`);
+  // cinema: the long beat for a single / last blow only
+  const CF = PFX.PERFECT_FEEL.cinema.parry;
+  assert(C.marks === 1 && C.mark.beat === 'full' && C.cine?.dur === CF.full.beat.dur && C.cine?.slowmo === CF.full.beat.slowmo && C.flash < 0.05 && C.mark.lowY >= 0.7 - 1e-6 && C.ended, `cinema: a single blow gets the full beat (x${C.cine?.slowmo} for ${C.cine?.dur} s), no white flash (${C.flash.toFixed(2)}), the mark ends`);
+  assert(C.perf === 7 && /^(short){6}full$/.test(C.beats), `cinema: inside the seven-cut string the beats are short, the last is full [${C.beats}]`);
+  assert(C.dodged && C.ghost > 50 && C.tear === C.ghost && C.lines === 1 && C.arrives === 1, `cinema: the dodge's afterimage tears, its line and the arrival mark (${C.lines}, ${C.arrives})`);
+  // the rules: the same game-time punish window, the same crit window and i-frames; sharp's string no slower
+  for (const M of [S, C]) assert(Math.abs(M.punishGame - T.punishGame) <= 2 * DT && Math.abs(M.crit - T.crit) < 1e-9 && Math.abs(M.ifr - T.ifr) < 1e-9, `${M.mode}: his recovery after the parry lasts ${M.punishGame.toFixed(3)} s of game time (today ${T.punishGame.toFixed(3)}; real ${M.punishReal.toFixed(2)} against ${T.punishReal.toFixed(2)}); crit ${M.crit}, i-frames the same`);
+  assert(S.perf === 7 && T.perf === 7 && S.stringReal <= T.stringReal + 1e-6 && Math.abs(S.stringGame - T.stringGame) < 0.1, `seven perfect parries of Ash Rain take ${S.stringReal.toFixed(2)} s real in sharp, ${T.stringReal.toFixed(2)} s today (${C.stringReal.toFixed(2)} s cinema)`);
+  // it holds up repeated every 0.3 s, and nothing throws without a fire field
+  STK.setPerfectMode('sharp');
+  PFX.perfectClear();
+  const G = build();
+  duel(G, { dist: 2.0 });
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  let peak = 0;
+  for (let i = 0; i < 10; i++) {
+    PFX.perfectParryMark(game, (p.position.x + d.position.x) / 2, 1.2, (p.position.z + d.position.z) / 2, { mode: i & 1 ? 'cinema' : 'sharp', beat: 'full', streak: 12 });
+    run(G, 0.3, () => { peak = Math.max(peak, game.fx.fire.count); });
+  }
+  run(G, 1);
+  assert(peak < 400 && !PFX.perfectBusy() && PFX.PERFECT_LAST.echo === 2, `a mark every 0.3 s: at most ${peak} blobs alive at once, all gone after; at streak tier ${STK.streakTier(12)} cinema's ring has ${PFX.PERFECT_LAST.echo} echoes`);
+  assert(PFX.perfectBeat('cinema', true, 100) === 'full' && PFX.perfectBeat('cinema', true, 100.3) === 'short' && PFX.perfectBeat('cinema', true, 101.5) === 'full' && PFX.perfectBeat('sharp', true, 105) === '', 'cinema: a second last-blow parry within the gap gets the short beat');
+  const fire = game.fx.fire;
+  game.fx.fire = null;
+  let threw = null;
+  try {
+    PFX.perfectParryMark(game, 0, 1, 0, { mode: 'cinema' });
+    PFX.perfectDodgeLine(game, 0, 1, 0, 2, 1, 0, 'sharp');
+    PFX.perfectArrive(game, 0, 1, 0, 'cinema');
+    for (let i = 0; i < 12; i++) PFX.perfectUpdate(game, DT, DT);
+    p.fx.parry(p.position.x, 1.2, p.position.z, false, 1, 0, 1, { perfect: true, feel: p.fx.perfectMoment('parry', true, 3, 'cinema') });
+  } catch (e) {
+    threw = e;
+  }
+  game.fx.fire = fire;
+  STK.setPerfectMode('today');
+  PFX.perfectClear();
+  assert(!threw && errors.length === 0, `nothing throws without a fire field (${threw?.message ?? 'ok'}), no console errors`);
+  return G;
+}
+
 // ================================================================== scenario: streak (ADR-094)
 // The shared streak (parries and clashes count in it), the riposte a parried last blow is answered
 // with, his own streak of guards and the flurry it brings.
@@ -1967,6 +2162,10 @@ async function scenarioPressure() {
 // ================================================================== scenario: impact
 async function scenarioImpact() {
   out('\n== scenario IMPACT (hit stun both ways, the parry layered) ==');
+  // the parry's own numbers as they were before the streak pass (?perfect=today): the `perfectfx`
+  // scenario measures the sharp / cinema looks
+  const STKX = await imp('src/combat/streak.js');
+  STKX.setPerfectMode('today');
   const G = build();
   duel(G, { dist: 2.4 });
   const { game, input } = G;
@@ -2027,6 +2226,7 @@ async function scenarioImpact() {
     else assert(stop >= 0.045 && stop <= 0.09 && flash > 0.1 && !seen.includes('perfectParry'), `a parry inside a string: a short freeze ${stop.toFixed(3)} s, a flash ${flash.toFixed(2)}, no slow motion`);
     settle(G);
   }
+  STKX.setPerfectMode(STKX.PERFECT_DEFAULT);
   return G;
 }
 
@@ -3209,7 +3409,7 @@ async function scenarioFxLooks() {
     const row = Object.fromEntries(LOOK_SWITCHES.map((s) => [s[0], s]));
     const bad = Object.entries(PICKED).filter(([k, v]) => !row[k] || !row[k][1].includes(v));
     // (a row marked as awaiting the owner's pick, its 8th field, draws its call site's default until then)
-    const waiting = LOOK_SWITCHES.filter((s) => s[7] === 'awaiting').length;
+    const waiting = LOOK_SWITCHES.filter((s) => s[7] === 'awaiting' && pickedOf(s[0]) == null).length; // (a picked switch may wait for a new pick: it draws the old one)
     const missing = LOOK_SWITCHES.filter((s) => pickedOf(s[0]) == null && s[7] !== 'awaiting').map((s) => s[0]);
     assert(Object.isFrozen(PICKED) && !bad.length && !missing.length && Object.keys(PICKED).length === LOOK_SWITCHES.length - waiting, `PICKED: ${Object.keys(PICKED).length} switches, each a real switch of the Lab with a real option (${bad.map(([k, v]) => `${k}=${v}`).join(', ') || 'ok'}; not picked: ${missing.join(', ') || 'none'})`);
     const owner = { kindle: 'a', ashp3: 'a', qi: 'a', flit: 'a', burn: 'a', toll: 'a', star: 'a', sky: 'a', ignite: 'a', void: 'a', presence: 'a', great: 'a', floor: 'a', ashLook: 'b', lordLook: 'b' };
@@ -4043,6 +4243,124 @@ async function scenarioReact() {
   return { counts: {}, payload: new Set() };
 }
 
+// ================================================================== scenario: sfx
+async function scenarioSfx() {
+  out('\n== scenario SFX (the attack sounds: one blow through the air per real blow, before its impact; cues only on blue / red; ?sfx=old) ==');
+  const SMP = await imp('src/audio/samples.js');
+  const { ATTACK_SOUND, beatSound } = await imp('src/entities/enemies/duelist/attackSound.js');
+  // every boss's data: the weapon its TUNING declares, every blow classified (or left out: a cast, a pure throw, a burst)
+  const BOSSES = [
+    ['ashDisciple', 'sword'], ['starlessLord', 'sword'], ['sheathed', 'sword'], ['ascendant', 'fist'], ['thousandFox', 'fist'],
+  ];
+  for (const [dir, weapon] of BOSSES) {
+    const { MOVES: MV } = await imp(`src/entities/enemies/${dir}/moves.js`);
+    const { TUNING: T } = await imp(`src/entities/enemies/${dir}/tuning.js`);
+    const seen = { cut: 0, thrust: 0, kick: 0, draw: 0, light: 0, heavy: 0, none: 0 };
+    let wrong = 0;
+    for (const mv of Object.values(MV)) for (const raw of mv.beats) for (const b of raw.pick ?? [raw]) {
+      if (b.feint) continue;
+      const s = beatSound(T.weapon, b);
+      if (!s) { seen.none++; continue; }
+      if (s.weapon !== weapon) wrong++;
+      seen[s.shape]++;
+      seen[s.weight]++;
+      // (a beat that only throws or casts, or a burst, has no blow of its own)
+      if (b.cast || b.burst || (b.release && !b.zone)) wrong++;
+    }
+    assert(T.weapon === weapon && !wrong && seen.light + seen.heavy > 0,
+      `${dir}: TUNING.weapon '${T.weapon}', every blow ${weapon} (${JSON.stringify(seen)})`);
+  }
+  {
+    const z = { kind: 'sector', r: 2 };
+    const c = (def) => { const s = beatSound('sword', def); return s && `${s.weight}/${s.shape}`; };
+    const f = (def) => { const s = beatSound('fist', def); return s && `${s.weight}/${s.shape}`; };
+    const checks = [
+      [c({ tell: 'normal', damage: 12, zone: z }), 'light/cut'],
+      [c({ tell: 'normal', damage: 12, zone: { kind: 'line', r: 3 } }), 'light/thrust'],
+      [c({ tell: 'blue', damage: ATTACK_SOUND.heavyDamage, zone: z }), 'heavy/cut'],
+      [c({ tell: 'black', damage: 1, zone: z }), 'heavy/cut'],
+      [c({ tell: 'red', damage: 1, knockdown: true, zone: { kind: 'ring', r: 3 }, part: 'feet' }), 'heavy/cut'],
+      [c({ tell: 'red', damage: 1, zone: z, part: 'feet' }), 'light/kick'],
+      [c({ tell: 'blue', damage: 110, zone: { kind: 'line', r: 9 }, draw: true, selfHit: true }), 'heavy/draw'],
+      [f({ tell: 'normal', damage: 9, zone: z, part: 'fistR' }), 'light/cut'],
+      [f({ tell: 'normal', damage: 9, zone: z, part: 'kneeR' }), 'light/kick'],
+      [c({ tell: 'normal', damage: 9, zone: z, whoosh: { shape: 'thrust', weight: 'heavy' } }), 'heavy/thrust'],
+      [c({ tell: 'normal', damage: 9, zone: z, whoosh: false }), null],
+      [c({ tell: 'normal', damage: 9, zone: z, cast: { kind: 'x' } }), null],
+      [f({ tell: 'red', damage: 20, zone: { kind: 'ring', r: 4 }, part: 'feet', burst: true }), null],
+      [c({ tell: 'red', damage: 20, zone: { kind: 'line', r: 4 }, selfHit: true }), null],
+    ];
+    const bad = checks.filter(([g, w]) => g !== w).map(([g, w]) => `${g} != ${w}`);
+    assert(!bad.length, `beatSound derives weight / shape from the beat's data, overrides and exclusions ${JSON.stringify(bad)}`);
+  }
+
+  const G = build();
+  duel(G, { dist: 3 });
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  p.debug.god = true;
+  const sounds = [];
+  const play0 = game.audio.play;
+  game.audio.play = function (name, o) { sounds.push([name, o?.delay]); return play0.call(this, name, o); };
+  if (!game.audio.ctx) game.audio.unlock();
+  assert(game.audio.ctx && !game.audio.samples?.loaded, 'audio unlocked, no recorded file loaded headless (every sound is its synth fallback)');
+  const probe = (name) => {
+    const def = MOVES[name];
+    settle(G);
+    d.yaw = 0;
+    d.position.set(0, 0, -2);
+    place(G, (def.band[0] + Math.min(def.band[1], 9)) / 2);
+    run(G, 0.1);
+    const ev = { atk: [], flash: [], tell: [], hits: [], sounds: [] };
+    const s0 = sounds.length;
+    G.watch = (n, e) => {
+      if (n === 'dragon:attack' && e?.name === name) ev.atk.push({ ...e, t: game.time });
+      else if (n === 'combat:flash' && e?.attack === name) ev.flash.push({ tell: e.tell, t: game.time });
+      else if (n === 'combat:tell' && e?.attack === name) ev.tell.push(e.tell);
+    };
+    const h0 = G.hits.length;
+    const ok = d.debug.trigger(name);
+    run(G, 9, (GG) => { GG.game.mouseGround.set(d.position.x, 0, d.position.z); }, () => d.mode === 'foot' && !d.fx.crescentsAlive);
+    G.watch = null;
+    ev.hits = G.hits.slice(h0).filter((h) => h.attack === name).map((h) => h.t);
+    ev.sounds = sounds.slice(s0);
+    ev.ok = ok;
+    return ev;
+  };
+  const n = (ev, s) => ev.sounds.filter(([x]) => x === s).length;
+  const lead = ATTACK_SOUND.lead;
+  try {
+    for (const name of ['plumThrust', 'fallingAsh', 'lotus', 'glideKick', 'mirrorFeint']) {
+      const ev = probe(name);
+      const beats = MOVES[name].beats.flatMap((b) => b.pick ?? [b]);
+      const feints = beats.filter((b) => b.feint).length;
+      const payOk = ev.atk.every((e) => e.weapon === 'sword' && (e.weight === 'light' || e.weight === 'heavy')
+        && ['cut', 'thrust', 'kick', 'draw'].includes(e.shape) && e.impactIn > 0 && e.impactIn <= lead + 0.02 && Number.isFinite(e.x + e.z));
+      // each contact has its blow's sound before it (lead s at most, never after)
+      const before = ev.hits.every((t) => ev.atk.some((e) => e.t <= t + 1e-6 && t - e.t <= lead + DT * 2));
+      const blue = ev.tell.filter((t) => t === 'blue').length, red = ev.tell.filter((t) => t === 'red' || t === 'black').length;
+      const loud = ev.flash.filter((f) => f.tell !== 'normal').length;
+      out(`     ${name.padEnd(12)} ${ev.atk.length} blows (${ev.atk.map((e) => `${e.weight}/${e.shape}`).join(' ')}), ${ev.flash.length} flashes, ${ev.hits.length} contacts, feints ${feints}; plays: tellTick ${n(ev, 'tellTick')} tellBlue ${n(ev, 'tellBlue')} tellRed ${n(ev, 'tellRed')} flash ${n(ev, 'flash')} bladeWhoosh ${n(ev, 'bladeWhoosh')}`);
+      assert(ev.ok && ev.atk.length === ev.flash.length && ev.atk.length > 0 && payOk && before,
+        `${name}: one dragon:attack per glinted blow (${ev.atk.length} / ${ev.flash.length}; a feint none), sword, impactIn within ${lead} s, before each contact`);
+      assert(n(ev, 'tellTick') === 0 && n(ev, 'flash') === loud && n(ev, 'tellBlue') === blue && n(ev, 'tellRed') === red,
+        `${name}: cues only on blue / red (tellTick 0, flash ${n(ev, 'flash')} = ${loud} blue/red flashes, tellBlue ${blue}, tellRed ${red})`);
+      const wh = ev.sounds.filter(([x]) => x === 'bladeWhoosh');
+      assert(wh.length >= 1 && wh.length <= ev.atk.length && wh.every(([, dl]) => Number.isFinite(dl) && dl >= 0 && dl < lead),
+        `${name}: the blade through the air plays (synth fallback, ${wh.length}), started to peak on the impact (delays ${wh.map(([, dl]) => dl?.toFixed(2)).join(' ')} s)`);
+    }
+    // ?sfx=old: the tick on a normal tell, the ping on a normal flash, no blade sound
+    SMP.setSfxMode('old');
+    const ev = probe('plumThrust');
+    assert(n(ev, 'tellTick') >= 1 && n(ev, 'flash') >= 1 && n(ev, 'bladeWhoosh') === 0,
+      `?sfx=old: today's sounds (tellTick ${n(ev, 'tellTick')}, flash ${n(ev, 'flash')}, bladeWhoosh ${n(ev, 'bladeWhoosh')})`);
+  } finally {
+    SMP.setSfxMode('new');
+    game.audio.play = play0;
+  }
+  return G;
+}
+
 const SCENARIOS = {
   motion: scenarioMotion,
   react: scenarioReact,
@@ -4071,6 +4389,7 @@ const SCENARIOS = {
   trade: scenarioTrade,
   deflect: scenarioDeflect,
   ghostep: scenarioGhostep,
+  perfectfx: scenarioPerfectFx,
   streak: scenarioStreak,
   training: scenarioTraining,
   execute: scenarioExecute,
@@ -4079,6 +4398,7 @@ const SCENARIOS = {
   win: scenarioWin,
   pace: scenarioPace,
   cutfx: scenarioCutFx,
+  sfx: scenarioSfx,
 };
 const runs = [];
 const OPT_IN = new Set(['probe', 'strategy', 'bots', 'ranged', 'answer']); // run only when named

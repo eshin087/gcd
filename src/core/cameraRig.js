@@ -28,6 +28,8 @@ const FIT = {
   near: 2, // m: a subject closer to the camera plane than this is clamped (never divides by ~0)
 };
 
+// a held pull-back (hold()): eased in and out at `lambda` 1/s
+const HOLD = { lambda: 4, out: 2.5 }; // (in at `lambda` 1/s, back out at `out`)
 // the zoom punch (punch()): at most `max` m closer, easing back at `lambda` 1/s
 const PUNCH = { max: 6, lambda: 11 };
 // the directional kick (kick()): a damped spring (omega rad/s, zeta: one ~12 % overshoot, settled in
@@ -71,6 +73,15 @@ export class CameraRig {
     // a cinematic moment (flow.cinematic): `zoom` m added to the distance (negative = in close) and
     // the follow focus leaned `w` (0..1) toward (x, z); flow eases them in and out
     this.cine = { zoom: 0, x: 0, z: 0, w: 0 };
+    // a held pull-back (hold()): metres of distance (desktop metres, scaled for the phone like a
+    // cinematic's) a module asks for every frame it needs it (the Howl's fox and the hero both in frame);
+    // `held` eases toward the frame's largest request, back to 0 when nobody asks. Not capped on the phone
+    this.held = 0;
+    this._holdWant = 0;
+    // ... and, with it, the follow focus leaned `w` (0..1) toward (x, z) (eased the same way)
+    this.holdLean = { x: 0, z: 0, w: 0 };
+    this._holdLean = { x: 0, z: 0, w: 0 };
+    this._holdFocus = new THREE.Vector3();
     // a zoom punch (punch()): metres the camera sits closer right now, springing back
     this.punchZ = 0;
     // a directional kick (kick()): the camera's offset along the screen's right (kickX) and up (kickY)
@@ -183,12 +194,32 @@ export class CameraRig {
     s.must = !!must;
   }
 
+  /**
+   * Hold the camera `m` metres further back this frame (desktop metres: scaled for the phone's closer
+   * camera like a cinematic's zoom). The largest request of a frame wins; it eases in and out (HOLD),
+   * and lets go when nobody asks. A module framing something big for seconds (thousandFox/beam.js).
+   * `x, z, w`: the follow focus is also leaned `w` (0..1) toward (x, z) while it holds.
+   */
+  hold(m, x = NaN, z = NaN, w = 0) {
+    if (Number.isFinite(x + z + w) && w > 0) {
+      const L = this._holdLean;
+      if (w >= L.w) {
+        L.x = x;
+        L.z = z;
+        L.w = Math.min(1, w);
+      }
+    }
+    if (!(m > 0) || !Number.isFinite(m)) return;
+    this._holdWant = Math.max(this._holdWant, m);
+  }
+
   _extra() {
     const e = Number.isFinite(this.extraZoom) ? this.extraZoom : 0;
     // a cinematic's zoom is given at the desktop distance: scaled for the phone's closer camera like
     // the punch (unscaled, a duel's -9 m moment took the phone's 20 m camera in to ~9 m: knees only)
     const k = Number.isFinite(this.cine.zoom) ? this.cine.zoom * (this.defaultDistance / CONFIG.camera.distance) : 0;
-    return Math.min(e, this.maxExtraZoom) + k;
+    const h = this.held > 0 ? this.held * (this.defaultDistance / CONFIG.camera.distance) : 0;
+    return Math.min(e, this.maxExtraZoom) + k + h;
   }
 
   update(dt, desiredFocus) {
@@ -199,6 +230,23 @@ export class CameraRig {
       desiredFocus = this._cineFocus.copy(desiredFocus);
       desiredFocus.x += (C.x - desiredFocus.x) * Math.min(1, C.w);
       desiredFocus.z += (C.z - desiredFocus.z) * Math.min(1, C.w);
+    }
+    // the held pull-back: toward this frame's request (0 without one); its lean of the focus
+    this.held = damp(this.held, this._holdWant, this._holdWant > this.held ? HOLD.lambda : HOLD.out, dt);
+    if (!Number.isFinite(this.held) || (this._holdWant <= 0 && this.held < 1e-3)) this.held = 0;
+    this._holdWant = 0;
+    const HL = this.holdLean, HW = this._holdLean;
+    if (HW.w > 0) {
+      HL.x = HL.w > 0.01 ? damp(HL.x, HW.x, HOLD.lambda, dt) : HW.x;
+      HL.z = HL.w > 0.01 ? damp(HL.z, HW.z, HOLD.lambda, dt) : HW.z;
+    }
+    HL.w = damp(HL.w, HW.w, HW.w > HL.w ? HOLD.lambda : HOLD.out, dt);
+    if (!Number.isFinite(HL.x + HL.z + HL.w) || (HW.w <= 0 && HL.w < 1e-3)) HL.w = 0;
+    HW.w = 0;
+    if (HL.w > 0) {
+      desiredFocus = this._holdFocus.copy(desiredFocus);
+      desiredFocus.x += (HL.x - desiredFocus.x) * HL.w;
+      desiredFocus.z += (HL.z - desiredFocus.z) * HL.w;
     }
     const b = this._base;
     b.x = damp(b.x, desiredFocus.x, c.followLambda, dt);

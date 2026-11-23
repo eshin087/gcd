@@ -4513,6 +4513,75 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   take One Breath into a slot later. Not measured yet: a bot that only uses One Breath on Shen Hui
   (duel.mjs `strategy`) against the mixed bot's time.
 
+## ADR-156 — Xin Yi, the One Who Woke: a recognizable homage on the duelist engine; two bars, the Lean, the Bend and the stop as openings, deja vu (2026-11-22)
+
+- **Context:** the owner asked for a boss in the spirit of the hero of the source film (a famous action
+  film of the late nineties: written here as "the source film", never its name), planned by a Fable session
+  that asked four questions (2026-11-22): the look RECOGNIZABLE (a long black high-collared coat whose tails
+  flare, small dark glasses, short dark hair, pale face and hands, two handguns in phase 2); the set a
+  pillared hall that morphs into two or three scenes; four moments not to be cut (the fall and the rising;
+  shots and pillars; flight and the falling fist; deja vu and skipped frames); the suited men watchers only.
+  The homage line of the merged homages (ADR-150): a new name for the man and every move, none of the
+  source's names, title, lines or logo anywhere in the game or its code, every look behind a switch.
+- **Decision:** `WokenOne extends Duelist` (wokenOne/), bare-handed with Tian Lei's exported strike builders,
+  his limb-as-blade code copied, `WokenFx extends AscFx` (the plan said LordFx: AscFx IS LordFx's pool of
+  thrown things plus the blasts that cover stops and the perfect parry returns, which the guns and the bolts
+  need; its gold is swapped for the CODE palette). TWO BARS, THREE PHASES: bar 1 (3400) holds phase 1 and
+  phase 2 behind the engine's gate at half; bar 1 empty breaks him (Tian Lei's `_onHpZero`) and the
+  deathblow is THE FALL (flat on his back, slow time, the script still, `_changing`), then the transition
+  `rising` with bar 2 (2600) full, ending in the Still Hand held 1.5 s. PHASE 1 keeps the left hand behind
+  his back in every key (a realiser of its own over a one-handed copy of the moves). THE LEAN is only the
+  look of his guard (slip clips, one afterimage): no new way to waste a cut. THE BEND (phase 2) and THE
+  STOP (phase 3) are openings, never walls: a returned shot or the engine's heavy-blow evade bends him at a
+  posture cost, open 1 s with a crit; a second one inside that second lands; the melee Bend once in 6 s;
+  a returned bolt hangs before his palm (rooted, posture), three are sent back as ONE blow of the brain's
+  (one blue flare, one result). DEJA VU is a link back to the same string (`force`), realised with the
+  first pass's draws (`REPLAY`) and, in phase 3, mirrored (a `manual` copy); the set stutters at the link.
+  Optional engine fields, other kits unchanged: a beat's `noWorld`, a hit's `guardCost` (Iron Rain: a held
+  guard pays guard, never health, 55 at most a volley), a boss's `cameraPull` (flight keeps both in frame).
+  Every thrown thing asks the fairness guard (`fairThrow`: it hangs a moment, or goes uncued and harmless).
+- **Consequences:** a fifth duelist kit with no change to what the others do. The plan's aliases lost
+  'hall' (the Obsidian Throne's). The phase banners do not decode (the plan's first cut). Phase 2 counts
+  every one of Iron Rain's eleven shots as a cue, so the pace meter reads phase 2 as busy as phase 3
+  (COMBAT.md "The One Who Woke" → measured).
+
+## ADR-157 — The Hall of Falling Script: one arena whose scenes morph, the script wave in the prop and floor letters, watchers (2026-11-22)
+
+- **Context:** the owner: "pillared hall but since this is the matrix, have everything more extra ascii and
+  have the stage morph 2-3 variations seamlessly to different scenes". A level is never torn down (one per
+  page load), and the owner turned down a terminal post-process and one character grid over the frame
+  (STYLE.md "Tried and turned down").
+- **Decision:** one set built once with three scenes on the same ten slots (`hall` the Pillared Hall, `dojo`
+  the Sparring Hall, `source` the Source); every breakable of a scene carries `scene: '<id>'` and only one
+  scene's pieces stand at a time. The smallest scene-aware surface in destructibles.js: `present(b, on)` (out
+  of the world: hidden, colliders out, state GONE so every query skips it; back: whole), `sceneHome` /
+  `sceneNow`, a reset that puts the other scenes out again; `world.restore` calls the set's `scenes.reset()`.
+  A morph (`scenes.to`) runs a front out from him: each piece it crosses lets go as digits and the new
+  scene's prints in; it runs only inside his transitions (the beckon, A Hundred Iron Seeds, the rising, his
+  death). "More extra ASCII" is four layers inside the existing letter systems: the code palette in the fire
+  field, the falling script (one glyph batch of the set's ambience), THE SCRIPT WAVE (uniforms `uScript` /
+  `uScriptF` read by the prop-art and the floor's materials: digits brightening in waves down each column
+  inside a prop's own letters; at strength 0 the frame is exactly today's, and no other level sets it), and
+  things coming apart as letters. The watchers are static prop-art figures that never act and burst into
+  digits when struck. The bonfire is the only piece left whole.
+- **Consequences:** a set without `scenes` behaves exactly as before (the world suite's `bite` walks each
+  scene of a set that has them). The script wave is the one shared-render change; its cost is measured on
+  the phone preset (COMBAT / DEVLOG). The look of the hall (`?hall=`), of the wave (`?script=`) and of him
+  (`?oneLook=`) wait for the owner's pick (lookSwitch.js PENDING).
+
+## ADR-158 — The Long Second: the second learned technique, a lean in place from a held guard (2026-11-22)
+
+- **Context:** ADR-059's fixed rewards; ADR-146 shipped the first (One Breath) on the smallest store
+  (`game/unlocks.js`). The plan gives Xin Yi's: the hero leans back under the blow instead of stepping away.
+- **Decision:** `longSecond` in the store (`?tech=lean`), granted on his death (`victoryNote` 'YOU LEARNED THE
+  LONG SECOND'). The gesture needs no new button: from a held guard, DODGE with no direction (today a
+  backstep) is the lean once learned; with a direction held the roll is the roll, and One Breath keeps
+  "guard, then hold heavy". `TUNE.lean` beside the backstep's: no travel (he stays in reach), i-frames 0.03 -
+  0.34 s (the backstep's 0.22), free to cut after 0.24 s; a perfect one slows time 0.9 s (the Ghostep's 0.6)
+  and leaves three afterimages; everything else is a dodge by ADR-102 (white and heavy: a streak pip and no
+  crit window; red and black: the flurry). Its own pose (anim.js `leanPose`).
+- **Consequences:** the strategy bots, with a bot that answers every cue with the lean, are the check that
+  leaning is not the fastest way through (woke.mjs STRATEGY); if it becomes so, its i-frames shorten first.
 ## ADR-151 — The grove's bamboo is sliced in one stroke, its top off at the cut; five kinds of cane in clumps, and the back filled (2026-11-22)
 
 - **Context:** the owner: "make the bamboo in windless grove all sliceable in 1 swoop and make sure it falls the moment the sword is going through. have the bamboos more varied, beautiful and some clumped up. i want the bamboo falling to be a cool spectable as the fight happens. have way more in the back empty area as well". A stalk (ADR-145) had 0.5 of structure: a light cut (0.27)
@@ -4568,6 +4637,230 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
 - **Consequences:** a run takes ~4 minutes (PR #92: 4 min 19 s); a PR shows six checks. The floor is
   the longest task (lord fxlooks ~230 s); re-measure `est` when a suite grows a lot.
 
+## ADR-152 — Lu Wusheng readable: the hero's ink-line print, lifted; three palettes and a mark to pick; a wanderer's motion and names (2026-11-22)
+
+- **Context:** the owner on the live Windless Grove: "its hard to see the new boss character. make it look
+  detailed like the main character". At the game camera he was a thin dark column of the wyrm's digits about
+  40 px tall beside a drawn hero. The owner's answers (2026-11-22): print him in the hero's ink-line art (not
+  bigger letters: the shared renderer stays as it is); the homage to the genre's wandering swordsman rests on
+  his silhouette type, a mark of his own, how he moves, and his lines and names; three palettes rendered to
+  pick from. He stays an original.
+- **Decision:**
+  - The print: `?sheathArt=a` (the hero's ink-line art, as the hero and Shen Hui are drawn) is in `PICKED`;
+    `?sheathArt=0` keeps the wyrm's digits. The prototype printed him as dark as the grove's floor: the
+    Wanderer's fills sit about twice as high and the screen-left rim × 3 (× 3.6 on the scarf and the mark)
+    (`sheathed/look.js` `SHEATH_TONE`, `SHEATH_LIFT`, `tintWanderer`). His hair moves off the `hair` part,
+    whose shared ink lines are the hero's gold (a gold line round dark hair read as light hair at 30 m),
+    onto `shirt`. The scabbard keeps the darkest fill, the drawn blade the brightest pixels.
+  - Three palettes, `?sheathTone=a|b|c` (indigo and sand, pale and cold, moss and rust; dark hair in all),
+    and a mark, `?sheathMark=a|b|0` (a torn strip of unbleached cloth tied below the scabbard's mouth, on
+    springs on both scabbard pieces, snapped by the draw; a white streak through the hair and its tail;
+    none): Lab rows marked `awaiting`, not in `PICKED`; the fight draws a / a until the owner picks.
+  - The silhouette, sharpened where the outline is what reads: the robe falls loose to mid-thigh over the
+    wide pleated trousers, open at both sides (a robe worn loose and long, never a short top tucked into
+    the trousers); a longer, thicker high tail with a pale tie; the scarf's turns deeper and its ends wider,
+    its tails hanging close down his back when he is still (`out` 0.14 → 0.03), trailing at a run; pale wrist bindings.
+  - Motion (poses and keys only): a quiet carry (the head a little bowed, the left thumb in the sash), a
+    slower, smaller breath, a low run with the sheathed sword held back at the hip (opt.run; his own
+    `duelLoco` sinks and pitches the duelist's run), and a settle that turns sharp (in every draw beat the
+    head comes round first, then the body drops into the stance at speed). No tell, windup, hold, flash,
+    zone, damage, cooldown or root motion changed; `sheath.mjs` passes with its thresholds as they were.
+  - Lines and names: the level's lines and eight move labels play up a wanderer sworn not to draw (ids
+    unchanged), original wording.
+  - Steered off the famous character: no scar of any shape, no red, orange or pink hair (the gold hair line
+    that tinted his outline was moved off), no reversed-edge sword, and not that character's outfit: a long
+    loose travelling robe over the trousers, not a short top tucked in, with a scarf that character never
+    wears; no palette is that outfit's colour scheme.
+- **Consequences:** he reads at 1280 x 720 (the mean luma of his pixels 31.9 against the floor's 16.1; the
+  hero 25.2 against 20.1; the prototype 22.2 against 16.3) and on the phone camera (45.4 against 16.5). The
+  digits print had a higher mean (40.0) but read as a block of numbers, not a figure: luma alone is not the
+  measure, so the sheets show both. `tests/integration/sheath.mjs` gains LOOK (the print, the options, the
+  mark's springs, ADR-126's hand audit through One Breath). The mark's strip on the left-wrist piece hangs its
+  springs on the animator after the rig is built (sheathed.js `_setup`), a light coupling to anim.js's
+  `streamState` shape. Open: the owner's picks of the palette and the mark; a look on a real phone.
+
+- **Addendum (2026-11-23): five steps between the digits and the ink-line art.** The owner picked palette a, then
+  found the ink-line print too detailed at fight distance: "reads as a 3D model" (smooth shaded cloth, clean
+  outlines) and body flaws the digits hid. `?sheathArt=` now holds five steps: 0 the digits as shipped, 1 the
+  digits in his palette with a stroke outline, 2 the digits lit and outlined harder, 3 the ink-line art with
+  every cloth piece folded into one (no interior lines), no glints and half the rim, a the ink-line art. Data
+  only: the wyrm's art sources (`light`, `strokeEdge`, `rimInk`) and per-rig uniforms; no renderer or shared
+  material changed. Prints 1 - a wear a reworked body (full sleeves, one roll of scarf, plain gaiters, no wrist
+  bands); 0 keeps him as he shipped. `sheathArt` stays `a` in `PICKED` and its Lab row is `awaiting` again (the
+  picks test now lets a picked switch wait for a new pick). The author would pick 2 (DEVLOG 2026-11-23).
+- **The pick (2026-11-23): step 2.** The owner picked 2, the digits in his palette, lit and outlined harder:
+  `sheathArt: '2'` in `PICKED`, the Lab row no longer `awaiting`. 0, 1, 3 and a stay behind the switch. Known
+  limits of 2 at fight distance: his digits are larger than the hero's letters, only his lit side prints (he
+  reads narrower than the hero), the face does not read. The mark (`?sheathMark=`) is still not picked.
+## ADR-154 — Wen Yao reworked: drawn like the hero, his selves only in packs out of the air, a big Pearl, the Nine-Tailed Fox's beam (2026-11-22)
+
+- **Context:** the owner played the Thousand-Body Fox (ADR-147) and asked, word for word: "its hard to see
+  the new boss character. make it look detailed like the main character so we can distinctly tell [whose homage
+  he is]. also make the moves more [like that hero's], like [his palm orb] and other signature moves. the
+  clones just randomly appearing as sponges is boring. i want them to like appear from the air and all
+  attack at the same time or in a fast sequence forcing the player to dodge or parry. make it also summon
+  the fox demon to do a ultimate beam that is scary and epic." Planned by Fable, built by Opus (a lead and
+  two agents: the body; the fox and its beam).
+- **Decision (the homage line does not move):** he stays an ORIGINAL in the spirit of a famous ninja-clone
+  hero (ADR-147). The homage goes through what nobody owns: a spiky-haired young fighter in a short bright
+  jacket with a long scarf, an orb driven in by the palm with a copy of himself shaping it, copies that drop
+  in and gang up, a nine-tailed fox of fire (folklore) firing a beam from its jaws. Kept out, in every look
+  option and every string: the orange jumpsuit with black or blue shoulders, a forehead plate, whisker
+  marks, any emblem, blond spiky hair (his crest is russet; its gold outline was moved off the hair parts
+  because it read as blond), hand seals, and every name from that series. The owner was told this once.
+- **Decision (he is hard to see):** he and his selves are drawn in the hero's INK-LINE art, not the wyrm's
+  art path: `?foxLook=h1` (a big russet crest with pale tips, a short open amber jacket, a long vermilion
+  scarf) the default, h2 and h3 rendered beside it, the art-path outfits kept behind the switch. His letters
+  follow his size on screen as the hero's do (`kit.letters`, `?foxLetters=b`): a small additive change to
+  the pipeline (`_letterCell`, `_updateBossLetters`) that leaves every boss without the flag drawn exactly
+  as before.
+- **Decision (the selves):** the ambient mode is gone (Scattered Leaves, the cutting token, stalking). A self
+  exists only inside a PACK, data on a move's beat (`pack: { n, mode, gap, form, blow, tell, from, ... }`):
+  `FoxClones.pack` books every body as it is called (its mark, the time it appears = its blow's impact minus
+  its windup, its impact) and tells every cue to the cue ledger up front, so the director and the fairness
+  guard see the whole pack before its first cue; the fairness guard may shift the pack as a whole, or refuse
+  it. A body appears in the air in a puff already attacking, strikes, and bursts. `together` is ONE cue and
+  ONE result (one parry bursts them all; a held guard pays one blow: defensive play is never punished);
+  `sequence` is n cues from n sides. Pack moves: Two Leaves Fall (phase 1: one pack move keeps the first
+  phase learnable), the Thousand-Body Round, A Thousand at Once, the Burial (replaces the springboard), the
+  Kite String, a harrying pack through the Pearl's charge whose strikers feed it. The pool grows 5 → 6.
+- **Decision (signature moves):** the palm Pearl is big (about 0.9 m) and unmistakable: pale blue-white
+  (`FIRE_PALETTES.pearl`), spiral arms, a drilling drive, a spiral burst, a quiet synth whirr; the Twin
+  Pearls (one red cue, two lines); the Moon-Swallowing Pearl giant and lifted by two selves; "It was a
+  copy" (his counter from phase 2, half the time: the struck body bursts as paper and he drops in behind
+  the hero, the same cue). Phase 3's fire is its own kind (`?foxFire3`, the wyrm's orange-red), apart from
+  the orb's colour. The Moon Wheel was cut (first in the plan's cut order).
+- **Decision (the ultimate):** Heaven-Devouring Howl. The Nine-Tailed Fox is a creature, so a BODY in the
+  wyrm's art path (CLAUDE.md), built in his constructor on a quiet Math.random (the seeded fights do not
+  shift), hidden until summoned, standing side-on to the camera with its head drawn large (a fox seen from
+  the front and above prints as a lump). The move is a flit and ONE red beat (`selfHit`, `sustain`: the
+  ledger holds the lit window as one interval): the line fixed at the cue; lit 2.4 s; a sweep toward the
+  hero's side, one way, so rolling back through it is safe; three ticks at most; a held guard pays guard,
+  never health, and slides; the world breaks along it; then he kneels open 2.2 s. (Second pass, the owner's
+  "yes, fix the fox": he summons it 10 m from the hero through the middle, not at the far rim, so the camera
+  frames the hero and the fox's head at 36 - 41 m instead of ~60; its head is drawn 2.3x in profile with a
+  pale throat, its nine tails are separate plumes, the beam fills its 3.6 m strip.) From 12 s into phase 3,
+  32 s apart, forced once under 18 %. The camera holds the hero and the fox's head (`cameraRig.hold`: an
+  additive, inert-unless-called pull-back, since the cinematic is capped at 3 s and the phone's extra zoom
+  at 3 m).
+- **Consequences:** phase 3 asks fewer cues a minute than phase 2 (68 against 80; 28 % of them dodges): the
+  pressure meter is re-measured and says so. A full pack costs 9 draw calls a rig (73 → 118 with five out)
+  and about 1 ms of poses a frame in node; the Howl 9 draw calls and at most ~1500 of the fire field's 6000
+  blobs. Every look is behind a switch in `PENDING` for the owner's pick (`foxLook`, `foxLetters`,
+  `foxfire`, `foxFire3`, `foxSpirit`, `clones`). Not settled: the fox at the game camera reads only when you
+  look for it, and on the phone the Howl pulls the camera far back.
+
+## ADR-155 — Tian Lei printed like the hero: his letters follow his size, the hero's quieter print, his own hair risen, a gi in ember with wraps (2026-11-23)
+
+- **Context:** the owner: "the skybreak ring, the character is too detailed and is showing its flaws in 3d.
+  make it more ascii like, like the main character, to hide its flaws. also make the phase 2 and 3 golden
+  hair not be so long and more natural iconic looking. also change the character's color and cloth a bit to
+  not make it look too obvious its goku". The human bosses are drawn on a fixed 4 px cell (8 at 4K); the
+  hero's cell follows his size (ADR-130), so from 1080p up Tian Lei had about twice the hero's letters
+  across him, and the extra letters drew his limbs and shoulders as shaded 3D tubes. His print was lifted
+  for the ring's floor (`ASC_LIFT`, ADR-129): bright skin, a strong rim. The form 2 - 3 hair stood one and a
+  half to two heads above the scalp.
+- **Decision** (three rendered sheets, the owner picked the recommended option of each):
+  1. **His letters follow his size** (`?ascLetters=a`): his kit's `letters` (a getter on the switch) turns
+     on the bosses' letters (ARCHITECTURE "The bosses' letters"): `uHeroCell` from his depth by the
+     hero's rule. The renderer code is the fox rework's (PR #94, ADR-154 there), taken word for word, so
+     the two branches add the same lines; only the kit flag is his.
+  2. **The hero's quieter print** (`?ascLift=b`, `ASC_QUIET`): the cloth × 0.85, the skin × 0.62, the
+     rim × 1.5 (lifted: × 1.4 / 1.2 / 3.2).
+  3. **His own hair risen** (`?ascHair=b`, `goldRisen`): form 1's spikes, each where it grows, turned up
+     and back; about his dark hair's height; form 3 sharper, one lock over the brow, no taller. Measured:
+     the gold's top 0.15 / 0.27 m above the dark hair's (forms 2 / 3) before, -0.02 / 0.01 m now.
+  4. **The gi with wraps in ember** (`?ascLook=e`, base `k`): the orange gi's cut, a burnt-red gi with
+     black where the blue was (undershirt, sash, boots), off-white cloth wraps on the forearms and shins
+     (outfit a's arms and legs) instead of wristbands and tall boots, longer sash tails.
+- **Options kept** (Lab LOOKS rows): `?ascLetters=0`, `?ascLift=a` / `0`, `?ascHair=0` / `a` (a short
+  crown), `?ascLook=r` (crimson top over charcoal) / `w` (an unbleached gi) / `h` (the orange gi).
+- **Not kept:** a bolder letter (0.144 m) and a storm-blue gi (it read as the hero's own blue-grey cloak:
+  the two fighters must stay apart at a glance).
+- **Why not** the hero's own part tables (`uSelfPart*`) for him: they are the player's alone (his pixel
+  window); a quieter print from his own fills gets most of the way without a second set. **Why not** the
+  ink lines per font pixel for him as for the hero: the fox rework's code does not, and the two bosses
+  should not differ; at the 42 m camera on 1440p his lines are one pixel either way.
+- **Consequences:** on the phone and at 720p nothing changes in his letters (both were 4 px already): the
+  print, the hair and the gi carry the change there. Every other boss is drawn as before (`bossLetters`
+  false). Tests: `asc.mjs` `herolike` (the cells beside the hero's on five screens, the fixed cell when
+  off, the quieter print, the hair's height, the three gis without blue), `body` (the default is e).
+
+## ADR-162 — Tian Lei's blows audited and fixed: feet that stay planted, arms that open, palms that stop at the hero; he breaks off a blow the hero has left (2026-11-23)
+
+- **Context:** the owner: "ok looks good but i noticed a lot of the attack animations and attacks look unnatural. audit it and fix it to improve it. make the boss also stop attacking empty air if the player moves out of the distance". Asked vaguely, so measured first: an opt-in audit (`asc.mjs audit`: every
+  move run with the hero still in front of him and circling him, his joints tracked frame by frame in his
+  own frame and in the world round his root; `auditfight`: 30 s a form of his AI against a defending bot,
+  the worst jolts with what he was doing) and film of the worst moves.
+- **Found and fixed (motion):**
+  1. **Feet that jumped.** `Ascendant._planFeet` holds a planted foot in the world while the close-in step
+     moves his root; the pose hook dropped that offset the moment the keys lifted the foot above ankle
+     + 8 cm, and the keyed height flickered across that line: a foot jumped up to 0.7 m in a frame at the
+     strikes of every punching string (jolts 900 - 1966 mm a frame²). The offset now goes smoothly (a
+     weight eased at 14/s, the offset fading in the air), the planner answers his TURNS as well as his
+     travel (a planted foot no longer swivels with him), and both feet may step when one lags past 1.6x
+     the reach.
+  2. **Arms that never opened.** The shared arm solver's soft reach (`ARM_SOFT`) left every punch landing
+     with the elbow at ~130°, a crooked arm at every contact (the hero had the same complaint in Session 30
+     and has `HERO_SOFT`). The animator takes an opt-in `armSoft`; Tian Lei uses the hero's numbers (149 -
+     155° at contact). `legSoft` likewise for the legs (his kicks keep a little bend).
+  3. **Palms through the hero.** A palm thrust on a dash stopped 0.8 - 1.0 m from the hero while the palm's
+     lunge reaches ~1.35 m: it ended 0.37 - 0.44 m inside him. Those dashes stop at `PALM` (1.35 m).
+  4. **The roundhouse's knee flipped side to side**: its knee was keyed toward the target, and the leg
+     crossed that direction as it swung round. The knee points up and over now (the chamber's).
+- **Found and fixed (the empty air):** the engine stopped a string for want of reach only once, at the start of each LATER blow's windup; the first blow was never checked, and a hero who stepped or ran away during a windup still had a blow thrown at the air (a whiff meter, opt-in `asc.mjs whiff`: a fleeing hero drew 18 swings at air a minute in form 1, 60 % of his melee swings). The pursuit (`pressure.pursue`, opt-in in the duelist engine; ported by a helper agent from the stale epic pass's uncommitted `asc5/ai` work and finished): through each real melee beat's windup up to its glint the hero is led to the impact and set against what the blow can still reach; past it by 0.5 m he breaks off (no glint, no hit: a glint is always followed by a blow) and chases (a far / away link, else footwork). A hero backing away is chased with a longer step-in and dash in forms 2 - 3 (form 1 as before: with it, form 1 came out as busy as form 2); a blink arrives where the hero is going but never in front of him (`blinkKeep`); a move that cannot reach where he will be is not picked; a hero who keeps running is read (moves that reach anywhere weigh more). Swings at air: 0 a minute for every bot and form (roam, retreat, flee, kite). A blow at air was a cue, so PACE's floors were re-pinned from the same ten seeds (minRate 74 / 77 / 80, ramp 0.95 / 0.91; the means still climb form over form, x1.067 / x1.10; 0 conflicts)
+- **Why not** slow his tracking turn (up to ~900°/s when the hero circles him in a windup): it is a
+  difficulty lever (a sidestep would answer more blows), not a pose; asked, the owner kept it as it is
+  ("Leave it", 2026-11-23). **Why not** a
+  tremble through the long held windups (the beams' charges stand still up to 1.1 s): at the game camera
+  a few centimetres do not show and a shimmer of letters would; left as it is.
+- **Consequences:** frames of a real fight with a visible pop (a jolt over 300 mm a frame²) 87 -> 23 (the
+  worst 1966 -> 715, the sweep kick shooting out); the per-move total 47 316 -> 23 677. `armSoft` /
+  `legSoft` are opt-in: the other rigs are drawn as before. Tests: `asc.mjs` `motionfix` (fails on the old
+  code: the strings' feet 910 - 1146, elbows 128 - 131°, palms 0.35 - 0.40 m in, the knee 731) and
+  `pursuit` (a hero who rolls out of a windup gets no glint and no hit and is chased; a hero who stays is hit as before; a sprinter is caught by the dash; Sign Step still lands behind a runner) and the opt-in whiff meter (0 swings at air a minute for every bot).
+
+## ADR-165 — Attack sounds: a cue only for blue and red, every blow sounds like its weapon, recorded and picked by ear (2026-11-22)
+
+- **Context:** every attack played a synthesised cue: a tick as a white windup started and a ping before
+  it landed, a rising bell for blue, a brass stab for red. The owner found the blue / red sounds tacky
+  and did not want the player to rely on sound for everything. A human boss's blow made no sound at all
+  until it landed. Recorded effects had been tried once (PR #55, 129 sounds over everything) and turned
+  down as noisy (ADR-117).
+- **Decision:** sound marks only what needs a different answer. A white blow has no cue; blue and red
+  (and black) keep two, a warning at the windup (`combat:tell`) and a timing sound before the impact
+  (`combat:flash`), as in-world recordings (steel for blue, a drum for red). Every blow sounds like its
+  weapon as it travels: the duelist engine announces each real blow with `dragon:attack` and a
+  classification from the beat data (`weapon` per boss in its tuning, `weight` from damage / knockdown /
+  black, `shape` cut / thrust / kick / draw), and the audio lines the clip's loudest moment up with the
+  impact. The recordings are a small set of slots (12), loaded after unlock, synth fallback per slot,
+  their own random stream; the owner picks every file by ear on an audition page; `?sfx=old` keeps the
+  sounds before. Hazards and bullets keep their cues.
+- **Consequences:** the fight reads by eye first and by ear only for parry / dodge; a string of blows
+  sounds like a fight, rate-limited (0.09 s between boss blows) so it does not turn into the noise of PR
+  #55. New bosses need only a `weapon` in their tuning. The CC0 material has no real punch or creature
+  swipe: the fist and wyrm slots are swishes, some slowed, and may be replaced. The blue timing sound
+  stays today's synth ping: the owner heard three rounds of candidates and kept it (`time-blue` has no
+  file; a pick later is a line in `scripts/audio/sfx-picks.json` and a rerun of `build-sfx.py`).
+
+## ADR-167 — The streak pass: six pieces behind switches on the streak's tiers, looks only past seven, an accelerating storm, a perfect parry's look read at the moment, the burst as lines (2026-11-23)
+
+- **Context:** the owner: "i want to enhance the perfect parry / dodge effects and especially the streak combo hits. right now when the streak is really long, the animation to show the full streak is a bit long and doesn't look epic and cool. the longer the streak, the faster the attacks and way cooler animation and effects. think of cool subtle and epic stunning effects for players to love having a streak and seeing the longer and longer combos. use fable to plan it out and have opus do the work. ask me any questions". The flurry (ADR-091, ADR-094, ADR-101) struck N = the streak blows, 7 at most, and took about 2 s round the wyrm's head and 2.9 s on a man at seven; past seven nothing changed; a single perfect parry / dodge had one look. Asked, the owner chose an "Accelerating storm", "Looks only, in tiers" past seven, all four between-flurry pieces (the hero and blade, a counter moment, a climbing sound, the world), and two perfect looks to compare.
+- **Decision:**
+  1. **Six pieces behind switches on one core** (`combat/streak.js`): `STREAK_FX.on` / `k` for storm, tiers, aura, counter, sound, world (`?streakfx=off | all | a comma list`, the Lab's 'streak' row), `streakK(piece)` (0 = off), read at the moment each piece acts. With a piece off it draws, sounds and times as before; each piece's scenario checks that.
+  2. **Tiers, not counts.** `STREAK_TIERS` [3, 5, 7, 10, 15] give `streakTier(n)` 0 - 5, read anywhere, never stored. Every piece grades by tier (one idea a piece, more of it each tier), so a streak reads in a few steps instead of a new effect per count.
+  3. **Looks only past seven.** `DEFENSE.flurry.max` (7) stays the cap of blows and of damage; tiers 4 - 5 change looks (echo lines on the hanging cuts, the banner's name and rules, the aura's coverage, the sound). Asserted: a streak of 15 strikes the same 7 blows for the same damage in the same time as a streak of 7.
+  4. **The storm's pacing rule** (`DEFENSE.flurry.storm`): the first `shown` cuts (3 round a head, 2 on a man) are paced as before; each later cut takes `fall` (0.56, ^ the piece's strength) of the one before, never below `floor` (0.12) of a shown cut. A storm cut has no wind-up seen and a contact freeze of at least `stopMin` (0.018 s); when its beats are shorter than a frame, the frame runs on through them, so every blow lands in a frame of its own, in order, with the hero drawn at the contact. Its weight (camera x`cam` 0.35, flare and sparks x`fx` 0.45) is scaled; the last shown cut, the art and a riposte's last cut keep their whole weight. The camera holds the target through the storm.
+  5. **A single perfect parry / dodge has three looks, read at the moment, the rules unchanged** (`combat/perfectFx.js` `PERFECT_FEEL`; `?perfect=today | sharp | cinema`; `perfectMode()` defaults to `PERFECT_DEFAULT` 'sharp'). The look changes the freeze, shake, punch, slow motion, flash / dim and the marks; the windows, guard, posture, i-frames, crit window, riposte / flurry and where the hero ends up do not. Slow motion changes real time, not game time (duel `perfectfx`: the punish window 1.016 / 1.002 / 1.014 s of game time). The mark is written in the fire field's `steel` like the impact stamp (ADR-149): one blob a cell, hexagon rings, stepped frames held in REAL time (so a mark does not stretch in the slow motion it sits in), ink on black, never over the hero. Cinema's full beat is gated (a string's inner blows get a short beat; no two full beats within 0.9 real s) so a string of perfect parries does not crawl. `flow.cinematic` gained `ease`, `back` and `quiet`; `ScreenGrade` gained `dimPulse`.
+  6. **The burst as lines** (`player/flurryBurst.js`, `?burst=0..3`): the last blow's lights, flares, stars, halo, flashes and the boss's white flash are turned down together and the hanging cuts flare out as thin long lines; level 0 is today, every level makes the same random draws (the flurry's effects have their own seeded stream). Presentation only.
+  7. **The aura is a rim in the fire field** (`player/streakFx.js`): one blob a letter cell just outside the hero's projected silhouette at a fixed low heat (0.17); the tiers change coverage, never heat; nothing on the boss's side, never over him; the loss turns it all to smoke in one frame. Round 1's lines on the steel stay under it.
+  8. **The owner's picks are the defaults** (from the picks page): sharp; the counter's `lines` look; HUNDREDFOLD / THOUSANDFOLD FLASH; the guqin harmonic on a minor pentatonic; burst level 2; the aura as built.
+- **Turned down:** **cinema** as the default perfect look (kept behind `?perfect=cinema`: a long beat on every single blow); **steel-blue fire** for the aura (`?auraFire=b`, kept); **the round-1 aura as the main read** (lines on the steel and a wake of letters: "almost not visible" at the game camera; kept under the fire); round 2's loose rising fire (read as floating stacks of letters, not as him burning); the counter's `brackets` and `ticks` looks (kept behind `?streakCount=`); the sound's singing bowl on a natural minor and its dry steel.
+- **Consequences:**
+  - The pace of a long flurry: against the wyrm the seven's flash cuts take 1.18 s (were 1.52); a flurry of 4 or fewer is unchanged round a head (3 or fewer on a man). Against Shen Hui the flurry agent measured the whole seven 2.88 -> 2.05 s.
+  - Payloads grew (no new event): `player:flurry` gains `streak` (the streak it answers, past the cap), `tier`, `storm` (bool) and `at` (the planned contacts, real s); `player:flurryHit` gains `gap` (real s since the blow before) and `storm` (0 a shown cut, 1, 2, ... into the storm); `player:parry` gains `feel` and `beat`; `player:perfectDodge` gains `feel`.
+  - Open: the tier rings on the burst do not read under its remaining glow; on Cinderwood the fire field barely prints near the hero in headless captures (field-wide, cause not found); the aura blinks off for the Ghostep's cold cast after every perfect dodge; nobody has played it, heard the sound in the game, or seen it on the phone.
+  - **The wyrm's pace meter is per seed and in the mean** (`TUNING.pressure.meter.rampSeed` 1.05, `ramp` 1.12 over the seeds' mean): a test seed replays a different fight whenever the scenarios before it change (seed 1337: x1.06 inside `all`, x1.28 alone), so a per-seed ramp of x1.12 failed on seed luck, not on the wyrm. The duelists already had this rule (ADR-122). No pressure number changed.
 ## ADR-163 — The living world: one wind per level, nine layers behind one switch, off until the owner picks (2026-11-23)
 
 - **Context:** the owner: "make the ascii world feel more alive. have natural looking ascii wind, subtle

@@ -1,26 +1,41 @@
 import { lookOf } from '../duelist/lookSwitch.js';
 import { isDragonLook, setFill } from '../ashDisciple/bodyArt.js';
-import { FOX_INK } from './bodyArt.js';
+import { FOX_INK, FOX_INK_RIM } from './bodyArt.js';
 
 // Wen Yao's look options (duelist/lookSwitch.js; never in PICKED: the owner picks from the sheets):
-//   ?foxLook=a|b|c|d   a the Shrine Fox (the fight is built with it), b the Wild Fox, c the Pelt
-//                      Brawler, d outfit a in the ink-line art the other human bosses ship in. Read when
-//                      a rig is built (gear.js); a, b and c are drawn through the wyrm's art path
-//                      (bodyArt.js FOX_ART), d through the hero's (bodyArt.js FOX_INK).
+//   ?foxLook=h1|h2|h3|a|b|c|d   his body. In the hero's INK-LINE art (bodyArt.js FOX_INK), drawn as dense
+//                      and bright as the hero: h1 the Wild Fox, bright (the default: a russet crest with
+//                      pale tips, a short amber jacket, a long vermilion scarf), h2 the same figure in a
+//                      vermilion jacket and a black scarf, h3 a long sleeveless pale coat lined in
+//                      vermilion; d the Shrine Fox (a). Through the wyrm's art path (bodyArt.js FOX_ART;
+//                      the figures the fight shipped with, PR #84): a the Shrine Fox, b the Wild Fox, c the
+//                      Pelt Brawler. Read when a rig is built (gear.js).
 //   ?foxfire=a|b|c     the foxfire's colour (fx.js): a jade, b the wyrm's orange, c moon-white
 //   ?clones=a|b        the paper selves: a identical to him, b a step paler (tintFox `pale`)
-// (foxLook's default is b, the Wild Fox: the owner asked for the homage to be as recognisable as it can
-// be without copying the character, 2026-11-22; still the owner's pick: lookSwitch.js PENDING)
-export const FOX_LOOKS = Object.freeze({ foxLook: 'b', foxfire: 'a', clones: 'a' });
+//   ?foxLetters=a|b    his ink-line letters: a a fixed cell (as the other bosses), b they follow his size
+//                      on screen as the hero's do (FOX_KIT.letters, render/pipeline.js)
+//   ?foxFire3=a|b      phase 3's fire (the mantle, the Nine-Tailed Fox, its beam): a the wyrm's orange-red,
+//                      b jade (fx.js FIRE3)
+//   ?foxSpirit=a|b     the Nine-Tailed Fox: a a body in the wyrm's art path wreathed in fire, b fire and
+//                      ink lines only (spirit.js, fxBeam.js)
+// (foxLook's default is h1: the owner could not see him in the art path, "make it look detailed like the
+// main character", 2026-11-22; still the owner's pick: lookSwitch.js PENDING)
+export const FOX_LOOKS = Object.freeze({ foxLook: 'h1', foxfire: 'c', clones: 'a', foxLetters: 'b', foxFire3: 'a', foxSpirit: 'a' });
 export const foxLook = (name) => lookOf(name, FOX_LOOKS[name] ?? 'a');
 
-/** The outfit a rig is built in: { id: the option, base: the outfit 'a' | 'b' | 'c', art: drawn in
- *  the wyrm's art path (false: option d, the ink-line art) }. An unknown value draws a. */
+/** The ink-line outfits of the h family: the figure each builds (gear.js: 'h' the short jacket, 'h3'
+ *  the long coat). */
+const H_BASE = { h1: 'h', h2: 'h', h3: 'h3' };
+
+/** The outfit a rig is built in: { id: the option, base: the figure gear.js builds ('a' | 'b' | 'c' |
+ *  'h' | 'h3'), art: drawn in the wyrm's art path (false: the ink-line art, d and the h outfits) }. An
+ *  unknown value draws the default (h1). */
 export function foxLookNow() {
   const o = foxLook('foxLook');
   if (o === 'd') return { id: 'd', base: 'a', art: false };
-  if (o === 'b' || o === 'c') return { id: o, base: o, art: true };
-  return { id: 'a', base: 'a', art: true };
+  if (o === 'a' || o === 'b' || o === 'c') return { id: o, base: o, art: true };
+  const id = H_BASE[o] ? o : 'h1';
+  return { id, base: H_BASE[id], art: false };
 }
 
 /** What a paper self drawn a step paler (?clones=b) is mixed toward: paper, a warm off-white. */
@@ -38,14 +53,25 @@ const rgbOf = (m) => {
 /**
  * His colours on a rig's own material instances, once after the rig is built (the class's _tint for
  * him, _tintSelf for each paper self). The art path's colours are its sources' inks (bodyArt.js
- * FOX_ART, set when the rig was converted): nothing to write. Option d writes the ink-line fills. `pale` (?clones=b): every part a step toward paper and a little light
- * in its shadows; the tones keep their order (the mask still the brightest), so the
- * self reads as a paler copy of him, not as someone else.
+ * FOX_ART, set when the rig was converted): nothing to write. The ink-line outfits write their fills
+ * (bodyArt.js FOX_INK[option]) and the h outfits their edge of light (FOX_INK_RIM). `pale`
+ * (?clones=b): every part a step toward paper and a little light in its shadows; the tones keep their
+ * order, so the self reads as a paler copy of him, not as someone else.
  */
 export function tintFox(M, { pale = false } = {}) {
   if (!M) return;
   const art = isDragonLook(M);
-  if (!art) for (const k in FOX_INK) setFill(M[k], ...FOX_INK[k]);
+  if (!art) {
+    const L = foxLookNow();
+    const T = FOX_INK[L.id] ?? FOX_INK.d;
+    for (const k in T) setFill(M[k], ...T[k]);
+    if (L.base[0] === 'h') {
+      for (const k of FOX_INK_RIM.on) {
+        const u = M[k]?.uniforms?.uArtRim;
+        if (u) u.value *= FOX_INK_RIM.k;
+      }
+    }
+  }
   if (!pale) return;
   for (const k in M) {
     const m = M[k], c = rgbOf(m);

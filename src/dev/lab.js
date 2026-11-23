@@ -12,7 +12,10 @@ import { WYRM_LOOKS, wyrmLookId } from '../entities/dragon/looks.js';
 import { TrainingPanel } from './trainingPanel.js';
 import { setCutStyle, cutStyle } from '../combat/cutFx.js';
 import { IMPACT } from '../combat/impact.js';
+import { STREAK_FX, setPerfectMode, perfectMode } from '../combat/streak.js';
+import { BURST_LOOK, setBurst, burstLevel } from '../entities/player/flurryBurst.js';
 import { CALM_LOOK, setCalm, calmLevel } from '../combat/impactCalm.js';
+import { sfxMode, setSfxMode } from '../audio/samples.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { buildLooks } from './labLooks.js';
 import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
@@ -847,10 +850,20 @@ export class Lab {
         ob.textContent = `One Breath ${U.toggle('oneBreath', !U.has('oneBreath')) ? 'on' : 'off'}`;
       });
       ob.title = 'the draw-slash: guard, then hold heavy (the Sheathed\'s reward; ?tech=draw)';
+      const ls = button(grid, `Long Second ${U.has('longSecond') ? 'on' : 'off'}`, () => {
+        ls.textContent = `Long Second ${U.toggle('longSecond', !U.has('longSecond')) ? 'on' : 'off'}`;
+      });
+      ls.title = 'the lean: guard, then dodge with no direction (Xin Yi\'s reward; ?tech=lean)';
     }
-    // the Thousand-Body Fox (ADR-147): his paper selves, the Pearl, the mantle
-    if (typeof this.game.dragon?.debug?.clones === 'function') {
-      button(grid, 'Selves +2', () => this.game.dragon.debug.clones(2)).title = 'tear two paper selves off him (to the phase\'s cap)';
+    // the Thousand-Body Fox (ADR-147, ADR-154): his packs of paper selves, the Pearl, the mantle, the Howl
+    if (typeof this.game.dragon?.debug?.pack === 'function') {
+      const fd = this.game.dragon;
+      button(grid, 'Pack: Two Leaves', () => fd.debug.pack('twinFall')).title = 'two selves drop and dive-kick in turn (a pack, out of any move)';
+      button(grid, 'Pack: All at Once', () => fd.debug.pack('allAtOnce', { phase: Math.max(2, fd.phase) })).title = 'selves on every side dive at the same instant: one cue, one parry bursts all';
+      button(grid, 'Pack: Round', () => fd.debug.pack('foxRing', { phase: Math.max(2, fd.phase) })).title = 'selves drop into a ring and strike in turn';
+      button(grid, 'Pack: Kite', () => fd.debug.pack('kiteString', { phase: Math.max(2, fd.phase) })).title = 'three selves slide in low and kick upward in turn';
+      button(grid, 'Twin Pearls', () => { if (fd.phase < 2) fd.enterPhase?.(2); fd.debug.trigger('twinPearl'); }).title = 'he and a self drive two Pearls in from two sides (phase 2)';
+      if (typeof fd.debug.howl === 'function') button(grid, 'Howl', () => fd.debug.howl()).title = 'Heaven-Devouring Howl: the Nine-Tailed Fox and its beam (phase 3)';
       button(grid, 'Pop all', () => this.game.dragon.debug.popAll()).title = 'pop every paper self';
       button(grid, 'Pearl', () => this.game.dragon.debug.pearl()).title = 'the Pearl of the Hollow Moon now';
       const m = button(grid, 'Mantle', () => {
@@ -858,6 +871,15 @@ export class Lab {
         m.classList?.toggle?.('on', !!on);
       });
       m.title = 'the Fox-Fire Mantle on / off (phase 3 wears it by itself)';
+    }
+    // Xin Yi, the One Who Woke (ADR-156): the Bend, the fall and the rising, the stop, the scenes, deja vu
+    if (typeof this.game.dragon?.debug?.bendNow === 'function') {
+      const W = this.game.dragon.debug;
+      button(grid, 'Bend now', () => W.bendNow('shot')).title = 'THE BEND now (phase 2: a returned shot\'s; open 1 s, the first cut crits)';
+      button(grid, 'Fall + rise', () => W.fallAndRise()).title = 'bar 1 emptied and the deathblow: THE FALL, then the rising into the Source';
+      button(grid, 'Hold 3', () => W.hold(3)).title = 'three bolts hanging before his palm (phase 3: Return to Sender comes)';
+      button(grid, 'Deja vu', () => W.dejavu('lesson')).title = 'the hall stutters and The First Lesson replays';
+      for (const id of ['hall', 'dojo', 'source']) button(grid, `Scene ${id}`, () => W.scene(id)).title = `the hall rewrites itself into the ${id} scene from where he stands (the morph)`;
     }
     const row = el('div', 'lab-row', null, body);
     el('span', 'lab-lbl', 'HP', row);
@@ -1143,6 +1165,47 @@ export class Lab {
       this._syncCutBtns();
     });
     this.ui.calmBtn.title = "today's flare at the contact toned down: 0 as before, 1 the default, 2 and 3 calmer";
+    // the streak pass, piece by piece (combat/streak.js; ?streakfx=), and the look of a single perfect
+    // parry / dodge (?perfect=): cycles today / sharp / cinema
+    const stk = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'streak', stk).title = 'the streak pass, piece by piece (combat/streak.js)';
+    const stkGrid = el('div', 'lab-grid', null, stk);
+    stkGrid.style.flex = '1';
+    this.ui.streakBtns = STREAK_FX.pieces.map((s) => {
+      const b = button(stkGrid, s, () => {
+        STREAK_FX.on[s] = !STREAK_FX.on[s];
+        this._syncCutBtns();
+      });
+      return { s, el: b };
+    });
+    this.ui.perfectBtn = button(stkGrid, `perfect: ${perfectMode()}`, () => {
+      const M = STREAK_FX.perfectModes;
+      setPerfectMode(M[(M.indexOf(perfectMode()) + 1) % M.length]);
+      this._syncCutBtns();
+    });
+    this.ui.perfectBtn.title = 'the look of a single perfect parry / dodge: today, sharp or cinema';
+    this.ui.burstBtn = button(stkGrid, `burst ${burstLevel()}`, () => {
+      setBurst((Math.max(0, burstLevel()) + 1) % BURST_LOOK.levels.length);
+      this._syncCutBtns();
+    });
+    this.ui.burstBtn.title = "the flurry's last blow: 0 as before, 1 - 3 lines instead of the white burst";
+    // the attack sounds (audio/samples.js; ?sfx=old): new = cues on blue / red only, recorded where loaded,
+    // each boss's blade or fist through the air; old = the sounds before (a tick on every tell, all synth)
+    const sfr = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'sfx', sfr).title = 'the attack sounds and the blue / red cues (?sfx=old: as before)';
+    const sfGrid = el('div', 'lab-grid', null, sfr);
+    sfGrid.style.flex = '1';
+    this.ui.sfxBtns = ['new', 'old'].map((m) => {
+      const b = button(sfGrid, m, () => {
+        setSfxMode(m);
+        this._syncCutBtns();
+      });
+      b.title = m === 'new'
+        ? 'cues on blue / red blows only (recorded where loaded), a boss blade or fist sounds through the air'
+        : 'as before: a tick on every tell, the flash ping on every blow, all synth, no boss swing sound';
+      return { m, el: b };
+    });
+    this.ui.sfxNote = el('span', 'lab-note', '', sfGrid);
     // the sword looks (gear/moonblade.js; the owner's pick, ?sword=): equip one (a rebuild: build-time
     // cost, Lab only)
     const swr = el('div', 'lab-row', null, body);
@@ -1242,12 +1305,18 @@ export class Lab {
     const d = this.game.dragon;
     setClass(this.ui.shudBtn, 'on', !!d && 'shudderK' in d && d.shudderK > 0);
     for (const { s, el: b } of this.ui.impactBtns ?? []) setClass(b, 'on', IMPACT.on[s] === true);
+    for (const { s, el: b } of this.ui.streakBtns ?? []) setClass(b, 'on', STREAK_FX.on[s] === true);
+    if (this.ui.perfectBtn) this.ui.perfectBtn.textContent = `perfect: ${perfectMode()}`;
+    if (this.ui.burstBtn) this.ui.burstBtn.textContent = `burst ${burstLevel()}`;
     if (this.ui.calmBtn) {
       this.ui.calmBtn.textContent = `calm ${calmLevel()}`;
       setClass(this.ui.calmBtn, 'on', calmLevel() !== 0);
     }
     const w = this.game.player?.loadout?.weapon;
     for (const { k, el: b } of this.ui.swordBtns ?? []) setClass(b, 'on', w === SWORD_PARAM[k]);
+    for (const { m, el: b } of this.ui.sfxBtns ?? []) setClass(b, 'on', sfxMode() === m);
+    const bank = this.game.audio?.samples;
+    if (this.ui.sfxNote) setText(this.ui.sfxNote, bank ? `${bank.loaded}/${bank.total} files${bank.failed ? `, ${bank.failed} failed` : ''}` : 'no audio yet');
   }
 
   /** A flurry of `n` blows on the boss now (player.debug.flurry). */

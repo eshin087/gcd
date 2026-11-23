@@ -1,5 +1,6 @@
 import { clamp } from '../core/math.js';
-import { env, perc, glide, spikes, rnd, mtof, num } from './dsp.js';
+import { env, perc, glide, spikes, rnd, mtof, num, arand } from './dsp.js';
+import { tuneParry } from './streakSound.js';
 
 // One-shot sound recipes, played through AudioEngine.play(name, opts).
 // Each entry: { prio, rev, gap, falloff, bus, gain, play(v, t, o, E) }
@@ -189,6 +190,32 @@ function thump(v, t, from, to, slide, a, decay) {
   perc(hg.gain, t, a * 0.22, 0.003, decay * 0.5);
   h.connect(hg).connect(v.out);
 }
+
+// A boss's blow through the air when its recorded clip is not there (bladeWhoosh): its own noise stream
+// (the seeded sims replay the AI's Math.random; this sound must not draw from it).
+let wseed = 0x510e527f;
+const wrnd = () => (wseed = (Math.imul(wseed, 1664525) + 1013904223) >>> 0) / 4294967296;
+/** Filtered noise with a piecewise-linear gain envelope, rate and offset from wrnd → v.out. */
+function wswish(v, t, kind, type, freq, q, pts) {
+  const D = pts[pts.length - 1][0];
+  const n = v.noise(kind, t, t + D + 0.02, 0.92 + 0.16 * wrnd(), wrnd());
+  const f = v.filter(type, freq, q);
+  const g = v.gain(0);
+  env(g.gain, t, pts);
+  n.connect(f).connect(g).connect(v.out);
+  return f;
+}
+/** bladeWhoosh's length (s) for its opts (weapon / weight / shape). */
+function bladeDur(o) {
+  const heavy = o.weight === 'heavy';
+  if (o.weapon === 'fist') return o.shape === 'kick' ? 0.3 : heavy ? 0.26 : 0.17;
+  if (o.shape === 'draw') return 0.2;
+  if (o.shape === 'thrust') return heavy ? 0.36 : 0.3;
+  return heavy ? 0.38 : 0.24;
+}
+const BLADE_PEAK = 0.42; // of its length: where bladeWhoosh is loudest
+/** s from bladeWhoosh's start to its loudest moment (audio.js lines it up with the impact). */
+export const bladeWhooshPeak = (o) => bladeDur(o || {}) * BLADE_PEAK;
 
 // --- catalogue ----------------------------------------------------------------------------
 
@@ -596,7 +623,12 @@ export const SFX = {
       const ch = clamp(Math.round(num(o.chain, 1)), 1, 8);
       const up = Math.pow(2, ((ch - 1) * 2) / 12) * (pf ? 1.5 : 1); // +2 semitones per deflect; perfect: +a fifth
       // struck steel: inharmonic partials, instant attack, ringing decay (+ a detuned twin = beating)
-      const f0 = (big ? 740 : 880) * up * rnd(0.98, 1.02);
+      const base = big ? 740 : 880, jit = rnd(0.98, 1.02);
+      // the streak's sound on (streakSound.js): the chain climbs the scale of the playing track instead
+      // of whole tones (a quarter of the jitter, so it stays in tune)
+      const f0 = o.tune ? tuneParry(o.tune, base, ch) * (pf ? 1.5 : 1) * (1 + (jit - 1) * 0.25) : base * up * jit;
+      // a single perfect parry's ring per perfectMode() (sharp: tighter, cinema: a longer tail; today: 1)
+      const rk = num(o.ring, 1);
       for (const [r, a, d] of [[1, 0.2, 0.7], [1.006, 0.1, 0.8], [2.32, 0.15, 0.55], [3.7, 0.11, 0.4], [5.1, 0.08, 0.3], [6.9, 0.05, 0.22]]) {
         ping(v, t, 'sine', f0 * r, a * k, d * len, 0.001);
       }
@@ -612,9 +644,9 @@ export const SFX = {
       }
       if (o.perfectMelee) {
         // perfect: a sharper crack and a high bright bell that rings through the slow motion
-        burst(v, t, 'white', 'highpass', 5200, 1.2, 0.45, 0.03, 0.0004);
-        ping(v, t + 0.003, 'sine', f0 * 3, 0.08, 1.3, 0.001);
-        ping(v, t + 0.003, 'triangle', f0 * 4.5, 0.035, 0.9, 0.001);
+        burst(v, t, 'white', 'highpass', 5200, 1.2, 0.45, 0.03 * Math.min(1, rk), 0.0004);
+        ping(v, t + 0.003, 'sine', f0 * 3, 0.08, 1.3 * rk, 0.001);
+        ping(v, t + 0.003, 'triangle', f0 * 4.5, 0.035, 0.9 * rk, 0.001);
       }
       if (ch >= 2) {
         // the chain's ring: a high bell on the clang's pitch, longer and brighter as it climbs
@@ -631,7 +663,8 @@ export const SFX = {
       }
       // sparkle ring: quick ascending glints
       const notes = big ? [88, 91, 95, 100, 103] : [91, 95, 100];
-      notes.forEach((m, i) => ping(v, t + 0.04 + i * 0.035, 'sine', mtof(m) * up, 0.05 * k, 0.35, 0.002));
+      // (tuned: the glints are the scale's next notes above the clang's octave)
+      notes.forEach((m, i) => ping(v, t + 0.04 + i * 0.035, 'sine', o.tune ? tuneParry(o.tune, f0 * 2, i + (big ? 0 : 1) + 1) : mtof(m) * up, 0.05 * k, 0.35, 0.002));
       if (big) {
         // deflect: a crystalline shimmer blooming over the clang + rising air
         for (const det of [0, 7]) {
@@ -815,13 +848,16 @@ export const SFX = {
     prio: 6, rev: 0.3, gap: 0.03, bus: 'cue',
     play(v, t, o) {
       const n = clamp(num(o.n, 1), 1, 8), k = (n - 1) / 7;
-      const up = Math.pow(2, (2 * (n - 1)) / 12);
-      const bp = swish(v, t, 'white', 'bandpass', 2600, 1.4, [[0, 0], [0.012, 0.5], [0.07, 0.16], [0.11, 0]]);
+      // the streak's sound on (streakSound.js): opts.f = the ring on the scale; opts.fast = a cut of the
+      // storm's merged run (the sweep voice carries the ring: here only a lighter swish and bite, no thump)
+      const up = o.f > 0 ? o.f / 1568 : Math.pow(2, (2 * (n - 1)) / 12);
+      const fast = !!o.fast, sk = fast ? 0.55 : 1, ring = fast ? 0.2 : 1;
+      const bp = swish(v, t, 'white', 'bandpass', 2600, 1.4, [[0, 0], [0.012, 0.5 * sk], [0.07, 0.16 * sk], [fast ? 0.08 : 0.11, 0]]);
       glide(bp.frequency, t, 2600, 7200, 0.07);
-      burst(v, t + 0.012, 'white', 'highpass', 5200, 0.7, 0.28, 0.05, 0.001);
-      thump(v, t + 0.012, 170, 60, 0.07, 0.45, 0.1);
+      burst(v, t + 0.012, 'white', 'highpass', 5200, 0.7, 0.28 * sk, fast ? 0.035 : 0.05, 0.001);
+      if (!fast) thump(v, t + 0.012, 170, 60, 0.07, 0.45, 0.1);
       for (const [f, a, d] of [[1568, 0.15, 0.3], [2349, 0.09, 0.22], [3951, 0.05, 0.16]]) {
-        ping(v, t + 0.012, 'sine', f * up * rnd(0.995, 1.005), a * (0.8 + 0.4 * k), d);
+        ping(v, t + 0.012, 'sine', f * up * rnd(0.995, 1.005), a * (0.8 + 0.4 * k) * ring, fast ? d * 0.5 : d);
       }
     },
   },
@@ -857,10 +893,23 @@ export const SFX = {
       burst(v, t, 'white', 'highpass', 3800, 0.7, 0.45, 0.16, 0.001);
       thump(v, t, 140, 38, 0.2, 0.85, 0.4);
       const steps = [0, 3, 7, 10, 12, 15, 19];
+      // the streak's sound on (streakSound.js): opts.f = the run's root in the track's key; opts.tier
+      // grows the chord: a longer ring from tier 3, a low root under it, the fifth below, the top octave
+      const R = o.f > 0 ? o.f : 880, tier = clamp(Math.round(num(o.tier, 0)), 0, 5), dk = 1 + 0.18 * Math.max(0, tier - 2);
       for (let i = 0; i < n; i++) {
-        const f = 880 * Math.pow(2, steps[i] / 12) * rnd(0.995, 1.005), at = t + 0.012 + i * 0.03;
-        ping(v, at, 'sine', f, 0.1, 0.55);
-        ping(v, at, 'sine', f * 2.01, 0.035, 0.3);
+        const f = R * Math.pow(2, steps[i] / 12) * rnd(0.995, 1.005), at = t + 0.012 + i * 0.03;
+        ping(v, at, 'sine', f, 0.1, 0.55 * dk);
+        ping(v, at, 'sine', f * 2.01, 0.035, 0.3 * dk);
+      }
+      if (o.f > 0 && tier >= 3) {
+        const at = t + 0.012 + n * 0.03, kk = clamp(num(o.k, 1), 0, 2);
+        ping(v, t + 0.012, 'sine', R / 2, 0.09 * kk, 0.9 * dk);
+        ping(v, t + 0.012, 'triangle', R / 2, 0.025 * kk, 0.5 * dk);
+        if (tier >= 4) ping(v, at, 'sine', R * 0.75, 0.06 * kk, 0.8 * dk);
+        if (tier >= 5) {
+          ping(v, at + 0.03, 'sine', R * 4, 0.04 * kk, 0.9 * dk);
+          ping(v, at + 0.03, 'sine', R * 3, 0.045 * kk, 1.0 * dk);
+        }
       }
     },
   },
@@ -1100,6 +1149,33 @@ export const SFX = {
     },
   },
 
+  /**
+   * A duelist's blow through the air when its recorded clip is not there (dragon:attack; audio.js):
+   * quieter than the hero's swing and lower. opts.weapon 'sword' | 'fist', weight 'light' | 'heavy',
+   * shape 'cut' | 'thrust' | 'kick' | 'draw'. A sword: the swing's band sweep (a draw: short and high,
+   * a thrust: a long rising hiss); a fist / kick: a dull low rush of air.
+   */
+  bladeWhoosh: {
+    prio: 3, rev: 0.1, falloff: 0.8, gain: 0.55,
+    play(v, t, o) {
+      const heavy = o.weight === 'heavy';
+      const D = bladeDur(o);
+      const pk = D * BLADE_PEAK;
+      if (o.weapon === 'fist') {
+        const lo = heavy || o.shape === 'kick' ? 160 : 240;
+        const hi = (heavy || o.shape === 'kick' ? 900 : 1400) * (0.94 + 0.12 * wrnd());
+        const lp = wswish(v, t, 'pink', 'lowpass', lo, 1.2, [[0, 0], [pk, heavy ? 0.7 : 0.55], [D, 0]]);
+        env(lp.frequency, t, [[0, lo], [pk, hi], [D, lo]]);
+        return;
+      }
+      const draw = o.shape === 'draw', thrust = o.shape === 'thrust';
+      const lo = draw ? 1400 : heavy ? 260 : 480;
+      const hi = (draw ? 6200 : thrust ? 2600 : heavy ? 1250 : 2300) * (0.94 + 0.12 * wrnd());
+      const bp = wswish(v, t, 'white', 'bandpass', lo, heavy ? 1.1 : 1.5, [[0, 0], [pk, heavy ? 0.7 : 0.55], [D, 0]]);
+      env(bp.frequency, t, [[0, lo], [pk, hi], [D, thrust ? hi * 0.8 : lo * 1.3]]);
+    },
+  },
+
   /** Generic heavy limb/tail whoosh for dragon:attack names without a dedicated sound. */
   dragonSwipe: {
     prio: 3, rev: 0.12, gap: 0.2, falloff: 0.8,
@@ -1221,6 +1297,159 @@ export const SFX = {
       const bg = v.gain(0);
       perc(bg.gain, t, 0.12 * a, 0.004, D * 0.8);
       b.connect(lp).connect(bg).connect(v.out);
+    },
+  },
+
+  // ===== Xin Yi, the One Who Woke (ADR-156): quiet synth, dry; noise offsets from the cut's own
+  // stream (crnd), never Math.random (the seeded sims must not feel them) =====
+  /** A gun shot: a dry tick over a low thump (`heavy`: deeper and a little louder). */
+  ironShot: {
+    prio: 3, rev: 0.06, gap: 0.05, falloff: 0.8, gain: 0.42,
+    play(v, t, o) {
+      const heavy = !!o.heavy;
+      const n = v.noise('white', t, t + 0.04, 1, crnd());
+      const hp = v.filter('bandpass', heavy ? 3400 : 4600, 2.5);
+      const g = v.gain(0);
+      perc(g.gain, t, heavy ? 0.55 : 0.45, 0.001, heavy ? 0.02 : 0.012);
+      n.connect(hp).connect(g).connect(v.out);
+      thump(v, t + 0.002, heavy ? 100 : 130, heavy ? 36 : 52, heavy ? 0.09 : 0.06, heavy ? 0.6 : 0.42, heavy ? 0.2 : 0.11);
+    },
+  },
+  /** THE BEND: a falling whoosh, the air going slow round him. */
+  bendWhoosh: {
+    prio: 4, rev: 0.32, gap: 0.3, gain: 0.5,
+    play(v, t) {
+      const D = 0.75;
+      const n = v.noise('pink', t, t + D + 0.05, 1, crnd());
+      const bp = v.filter('bandpass', 2400, 1.6);
+      env(bp.frequency, t, [[0, 2600], [D * 0.4, 900], [D, 260]]);
+      const g = v.gain(0);
+      env(g.gain, t, [[0, 0], [0.08, 0.5], [D * 0.5, 0.3], [D, 0]]);
+      n.connect(bp).connect(g).connect(v.out);
+      const s = v.osc('sine', 180, t, t + D + 0.05);
+      glide(s.frequency, t, 180, 55, D);
+      const sg = v.gain(0);
+      env(sg.gain, t, [[0, 0], [0.1, 0.14], [D, 0]]);
+      s.connect(sg).connect(v.out);
+    },
+  },
+  /** THE STOP: a hum rising under a held bolt, cut to silence the moment it stops. */
+  stopHum: {
+    prio: 4, rev: 0, gap: 0.1, falloff: 0.8, gain: 0.45,
+    play(v, t) {
+      const D = 0.34;
+      const s = v.osc('sine', 140, t, t + D + 0.01);
+      glide(s.frequency, t, 140, 430, D);
+      const q = v.osc('triangle', 280, t, t + D + 0.01);
+      glide(q.frequency, t, 280, 860, D);
+      const g = v.gain(0);
+      env(g.gain, t, [[0, 0], [D * 0.9, 0.3], [D, 0.32]]);
+      g.gain.setValueAtTime(0, t + D); // (cut: no tail)
+      const qg = v.gain(0.25);
+      s.connect(g);
+      q.connect(qg).connect(g);
+      g.connect(v.out);
+    },
+  },
+  /** The Still Hand held after the rising: a low tone that holds, then lets go. */
+  stillHum: {
+    prio: 3, rev: 0.2, gap: 0.5, gain: 0.35,
+    play(v, t, o) {
+      const D = clamp(num(o.dur, 1.5), 0.4, 3);
+      for (const [f, a] of [[110, 0.2], [220, 0.08], [331, 0.04]]) {
+        const s = v.osc('sine', f, t, t + D + 0.3);
+        const g = v.gain(0);
+        env(g.gain, t, [[0, 0], [0.15, a], [D, a * 0.8], [D + 0.3, 0]]);
+        s.connect(g).connect(v.out);
+      }
+    },
+  },
+  /** DEJA VU: the hall stutters: a two-note blip, the same note twice, the second a hair late. */
+  dejaBlip: {
+    prio: 4, rev: 0.1, gap: 0.3, gain: 0.5,
+    play(v, t) {
+      for (const dt of [0, 0.075]) {
+        const s = v.osc('square', 988, t + dt, t + dt + 0.06);
+        const lp = v.filter('lowpass', 2400, 0.8);
+        const g = v.gain(0);
+        perc(g.gain, t + dt, 0.12, 0.002, 0.045);
+        s.connect(lp).connect(g).connect(v.out);
+      }
+    },
+  },
+  /** The hall rewrites itself (a scene's morph): a falling run of dry ticks, slowing. */
+  morphTicks: {
+    prio: 2, rev: 0.25, gap: 0.6, falloff: 0.5, gain: 0.32,
+    play(v, t, o) {
+      const N = o.short ? 6 : 16, D = o.short ? 0.35 : 1.1;
+      for (let i = 0; i < N; i++) {
+        const u = i / (N - 1), tt = t + D * Math.pow(u, 1.4);
+        const n = v.noise('white', tt, tt + 0.03, 1, crnd());
+        const bp = v.filter('bandpass', 5200 - 4200 * u, 5);
+        const g = v.gain(0);
+        perc(g.gain, tt, 0.5 * (1 - 0.5 * u) * (0.7 + 0.3 * crnd()), 0.001, 0.014);
+        n.connect(bp).connect(g).connect(v.out);
+      }
+    },
+  },
+  /** Return to Sender met / bolts burst: a crackle of ticks over a soft thump. */
+  codeBurst: {
+    prio: 3, rev: 0.15, gap: 0.15, falloff: 0.8, gain: 0.4,
+    play(v, t) {
+      const n = v.noise('white', t, t + 0.16, 1, crnd());
+      const bp = v.filter('bandpass', 3800, 1.4);
+      const g = v.gain(0);
+      g.gain.setValueAtTime(0, t);
+      for (let i = 0; i < 9; i++) {
+        const tt = t + 0.014 * i + 0.006 * crnd();
+        g.gain.setValueAtTime(0.4 * (1 - i / 10), tt);
+        g.gain.setTargetAtTime(0, tt + 0.001, 0.004);
+      }
+      n.connect(bp).connect(g).connect(v.out);
+      thump(v, t, 110, 45, 0.1, 0.4, 0.18);
+    },
+  },
+  /** The reload: both guns thrown down, a few hard ticks of metal on the floor. */
+  gunClatter: {
+    prio: 2, rev: 0.12, gap: 0.3, falloff: 0.8, gain: 0.36,
+    play(v, t) {
+      for (const [dt, f, a] of [[0.18, 2900, 0.5], [0.24, 2300, 0.35], [0.31, 3400, 0.4], [0.4, 2600, 0.22], [0.47, 3100, 0.15]]) {
+        const n = v.noise('white', t + dt, t + dt + 0.05, 1, crnd());
+        const bp = v.filter('bandpass', f, 7);
+        const g = v.gain(0);
+        perc(g.gain, t + dt, a, 0.001, 0.035);
+        n.connect(bp).connect(g).connect(v.out);
+        ping(v, t + dt, 'triangle', f * 0.5, a * 0.12, 0.06);
+      }
+    },
+  },
+  /**
+   * The fox's Pearl (ADR-154): a quiet whirr that rises as he shapes it in his palm (~1.9 s: the
+   * backstep and the charge). Two detuned triangles climbing from a low hum to a high spin, their level
+   * fluttered faster and faster (the spin), through a lowpass that opens; it cuts off at the drive.
+   * Quiet on purpose (the owner finds loud SFX "too noisy"); no noise, no random: nothing the seeded
+   * sims could feel.
+   */
+  pearlWhirr: {
+    prio: 3, rev: 0.12, gap: 0.5, falloff: 0.6, gain: 0.22,
+    play(v, t) {
+      const D = 1.9;
+      const lp = v.filter('lowpass', 500, 0.9);
+      env(lp.frequency, t, [[0, 500], [D, 3800]]);
+      const g = v.gain(0);
+      env(g.gain, t, [[0, 0], [0.25, 0.25], [D - 0.15, 0.5], [D, 0]]);
+      // the flutter: a fast tremolo whose rate climbs (the orb spinning up)
+      const trem = v.gain(0.6);
+      const lfo = v.osc('sine', 9, t, t + D + 0.05);
+      env(lfo.frequency, t, [[0, 9], [D, 38]]);
+      const depth = v.gain(0.4);
+      lfo.connect(depth).connect(trem.gain);
+      for (const det of [-9, 9]) {
+        const o = v.osc('triangle', 150, t, t + D + 0.05, det);
+        env(o.frequency, t, [[0, 150], [D * 0.7, 420], [D, 760]]);
+        o.connect(trem);
+      }
+      trem.connect(lp).connect(g).connect(v.out);
     },
   },
 
@@ -1351,7 +1580,7 @@ export const SFX = {
       const bp = swish(v, t, 'pink', 'bandpass', 200, 0.8, [[0, 0], [0.5, 0.32], [2.0, 0]]);
       env(bp.frequency, t, [[0, 200], [0.7, 1500], [2.0, 400]]);
       for (let i = 0; i < 10; i++) {
-        ping(v, t + 0.25 + Math.random() * 1.6, 'sine', rnd(3000, 6500), rnd(0.025, 0.06), 0.14);
+        ping(v, t + 0.25 + arand() * 1.6, 'sine', rnd(3000, 6500), rnd(0.025, 0.06), 0.14);
       }
       for (const m of [45, 52, 57]) {
         const s = v.osc('sine', mtof(m), t, t + 2.65);

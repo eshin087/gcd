@@ -4,16 +4,16 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Sixty-nine pieces of work since 0.4.0:
+Seventy-six pieces of work since 0.4.0:
 - **The living world** (2026-11-23, ADR-163). *Added, off by default:* a level that is alive before the fight,
   behind `?life=all` (or the Lab's `life` rows; `?life=wind,litter,...` picks pieces, `?lifeK=0.25..2`
-  its strength). **One wind per level**: gust fronts cross the grass as a band of laid-over blades
-  with runs of `~ = -` letters along it, and the canopy, the smoke, the flames, the leaves, the rain
-  and the banners all lean the same way. **Things fall and lie**: leaves in Cinderwood, ash in the
+  its strength). **One wind per level**: gusts drift across as faint wisps of tiny letters and stir
+  the grass in loose patches, and the canopy, the smoke, the flames, the leaves, the rain and the
+  banners all lean the same way. **Things fall and lie**: leaves in Cinderwood, ash in the
   Ashfall Courtyard, paper slips at the Foxfire Terrace, grit at the Skybreak Ring, cinders at the
   Obsidian Throne, one bamboo leaf at a time in the Windless Grove; a gust or a foot lifts them.
   **Footsteps answer the ground**: a puff, a print, trodden grass, and a sound per surface. **Weather
-  that comes and goes**: mist and a passing drizzle, an ember squall, the fallen star's slow breath,
+  that comes and goes**, drawn as soft clumps of many tiny faint letters: mist banks and a passing drizzle, an ember squall, the fallen star's slow breath,
   dust devils and far lightning, a cloud over the moon, still mist. **Small creatures**: fireflies
   that part from the hero, birds and crows that lift off, moths, a hawk. **The sound of the air**: a
   bed per level that follows the wind. **An arrival**: from the title the camera opens over the arena.
@@ -21,6 +21,102 @@ Sixty-nine pieces of work since 0.4.0:
   in the fight all of it thins. **What hangs moves**: banners, paper charms. *Changed (with the wind
   on):* the Windless Grove's bamboo no longer sways. It is off until its strength has been picked;
   with it off nothing changes. `tests/integration/life.mjs`.
+- **Streaks that build: the flurry speeds up, the hero smoulders, the notes climb; a sharper perfect parry** (2026-11-23, ADR-167).
+  *Added:* a long streak of perfect defences now builds, in looks and sound only ("the longer the
+  streak, the faster the attacks and way cooler animation and effects"). **The flurry accelerates:**
+  its first cuts are as before, then each one comes faster until the last land a few frames apart
+  (seven blows' cuts against the wyrm 1.52 -> 1.18 s; on Shen Hui the whole flurry 2.9 -> 2.1 s), every
+  blow still in its own frame, the hero drawn on each. **Past seven,** the flurry still strikes seven
+  blows for the same damage, but at a streak of 10 each hanging cut gets a fine echo line (two at 15)
+  that splits away on the last blow, and the banner says HUNDREDFOLD FLASH / THOUSANDFOLD FLASH. **On
+  the hero,** from a streak of 3: a faint rim of fire letters just outside his figure that covers more
+  of him at each tier, his blade's edge lit further up, echo lines in his swings, a wake of his letters
+  when he rolls or runs; a lost streak puts it all out in one frame. **In the world,** from a streak of
+  5: the grass leans and the floor's grit lifts at his feet on every perfect defence. **A counter:** a
+  small number beside the hero ticks up on every perfect defence from 2 and fades, with a word the
+  first time a streak reaches 3, 5, 7, 10 and 15 (TRIPLE ... THOUSANDFOLD); a lost streak's number is
+  struck through and falls. **The sound:** every perfect defence in a streak rings a soft note one step
+  higher in the key of the playing music, a quiet drone joins from a streak of 5, a lost streak's last
+  note falls. *Changed:* **a single perfect parry** is short and clean (the owner's pick of three
+  looks): a gold mark printed in the letters where the blades cross, less slow motion (x0.6 for 0.18 s,
+  was x0.35 for 0.36 s), a frame flash at a quarter of before; **a perfect dodge** leaves the afterimage
+  standing a moment before it tears away along the way he left, with less slow motion (0.36 s, was
+  0.6 s). The parry window, the i-frames, the crit window and the punish window in game time are
+  unchanged. *Changed:* **the flurry's last blow** no longer blooms into a white blot over both
+  fighters: the lights and the flash are turned down and the hanging cuts flare out as long thin lines
+  (level 2 of four, the owner's pick). With the GHOSTEP / RIPOSTE call-outs the streak's number now
+  lives beside the hero (DEFLECT xN keeps its count). The old looks: `?perfect=today`, `?burst=0`,
+  `?streakfx=off` (or a list: `?streakfx=storm,counter`), `?streakCount=brackets|ticks`,
+  `?auraFire=b`; the Lab's 'streak' row switches the pieces live.
+- **Attack sounds: cues only for blue and red, every blow sounds like its weapon** (2026-11-22, ADR-165). *Changed:* a normal (white) attack makes no cue sound any more:
+  no tick as its windup starts and no ping before it lands (the white glint stays). A **blue** attack
+  rings a sword left ringing as its windup starts; a **red** (or black) one opens on a log drum and its
+  distant boom, and the same drum, cut short, marks the moment to dodge. The blue timing sound stays
+  today's synth ping (the owner heard three rounds of recordings and kept it). *Added:* every
+  human boss's blow now sounds as it travels, timed so its loudest moment lands on the hit: a sword
+  boss's cut, heavy cut, thrust or draw, a bare-handed boss's jab or full-body blow (a kick counts as
+  heavy); the Cinder Wyrm's claws and tail sweeps; the hero's own sword uses the same takes, pitched a
+  little higher. Three takes per slot rotate with a small pitch change so a string does not repeat one
+  sound, and two boss blows never start within 0.09 s. All recorded, CC0 from OpenGameArt, picked by the
+  owner by ear on an audition page (credits in `assets/audio/CREDITS.md`). `?sfx=old` (and the Lab's sfx
+  row) brings back the sounds before, exactly. The duelist engine announces each real blow with
+  `dragon:attack {name, weapon, weight, shape, tell, impactIn, x, z}`.
+  *Fixed* (found when the sounds stopped drawing from the fights' random numbers): the Cinder Wyrm could
+  pick a tree at its very feet for a throw, back off too slowly, then call the throw off after its red
+  warning (a warning with no blow); the lunge now waits for the back-off.
+- **Tian Lei's attacks move naturally, and he stops punching the air** (2026-11-23, ADR-162). *Fixed:* his feet no longer jump or slide while he
+  strikes (a planted foot snapped up to 0.7 m in a frame at the blows of his strings, and swivelled when he
+  turned); his punches land with the arm extended (every one landed with the elbow bent at ~130°); his
+  palm thrusts stop at your body instead of passing through it; his roundhouse knee no longer flickers.
+  *Changed:* when you step or run out of reach while he winds up a blow, he breaks it off before its flash and comes after you instead of punching the air (a fleeing hero drew up to 18 swings at air a minute).
+- **Tian Lei drawn like the hero, with shorter gold hair and a new gi** (2026-11-23, ADR-155). *Changed:* on larger screens Tian Lei is drawn in the
+  same size of letters as the hero (they follow his size on screen; before, he had twice the hero's
+  letters across him from 1080p up), in the hero's quieter print: darker letters, the skin held down, a
+  softer edge of light. *Changed:* his gold hair in forms 2 and 3 is his own spiky hair risen, about as
+  tall as his black hair, not a tall crown; form 3 is sharper with one lock over the brow, no taller.
+  *Changed:* he wears a burnt-red gi with black where the blue was, cloth wraps on his forearms and shins
+  and soft boots. `?ascLetters=0`, `?ascLift=a`, `?ascHair=0` / `a`, `?ascLook=h` / `r` / `w` keep the
+  other looks.
+- **A seventh level: the Hall of Falling Script and the One Who Woke** (2026-11-22, ADR-156 – ADR-158).
+  *Added:* `?level=code` (the title screen lists it). **The Hall of Falling Script**: one hall on ten slots
+  whose scenes rewrite themselves into one another behind a front that runs out from him (`scenes`): the
+  Pillared Hall (stone pillars, walls, lift doors), the Sparring Hall (wooden posts, paper screens, racks), the
+  Source (columns of code in the dark); identical men in dark suits stand along the walls and watch (struck,
+  one bursts into digits). Everything breaks but the bonfire. "More extra ASCII" inside the game's letter
+  systems: his effects in a green code palette (cues keep their colours), the falling script down the walls,
+  the script wave in every prop's and the floor's own letters (`?script=`). **Xin Yi, the One Who Woke**: a
+  homage to the hero of a famous film under his own name: a long black coat, small dark glasses. Two bars,
+  three phases: one hand behind his back (The First Lesson's beckon is its sign), then two guns (Iron Rain
+  strafing round you: a pillar takes the shots, a held guard pays guard only; Two Thunders, Close Iron, the
+  reload), then THE FALL (his first bar empty and the deathblow: he lies, time slows) and THE RISING into the
+  Source (the Still Hand, Pushing Hands, Return to Sender, Unwriting, A Thousand Hands with skipped frames,
+  Leaving the Floor and the Falling Fist's front, the Low Pass, the Dive Within). THE BEND: a heavy shot sent
+  back bends him under it, time slowed, open a second with a crit, never twice in a row. THE STOP: in the
+  Source he holds what you send back in the air and sends three back as one blow. DEJA VU: the hall stutters
+  and he replays a string exactly. **The Long Second**, the second learned technique: guard, then dodge with
+  no direction: a lean in place under the blow (`?tech=lean`). *Changed:* optional engine fields (a beat's
+  `noWorld`, a hit's `guardCost`, a boss's `cameraPull`), destructibles' `present` and a set's `scenes`;
+  the other levels play and draw as before. Kept behind switches for the owner's pick: his body
+  (`?oneLook=a|b|c`), the hall (`?hall=a|b`), the wave (`?script=a|b|c`). The level borrows music.
+  `tests/integration/woke.mjs`.
+- **Wen Yao reworked: copies out of the air, the big Pearl, the Nine-Tailed Fox** (2026-11-22, ADR-154). *Changed:* Wen Yao,
+  the Thousand-Body Fox, is drawn as the hero is, in dense bright letters: a big russet crest with pale tips,
+  a short open amber jacket, dark trousers, pale wraps, a long vermilion scarf; his letters follow his size
+  on screen as the hero's do. His paper copies no longer stand about waiting their turn: a copy only exists
+  inside an attack. They appear in the air in a puff, already striking, and burst after their blow: all at
+  once (one cue: one parry bursts them all; a held guard takes one blow; a roll out of the ring clears it)
+  or one after another from every side. New: Two Leaves Fall, A Thousand at Once, the Burial (they bury
+  your spot, then he springs off the pile), the Kite String, the Round reworked, copies that harry you while
+  he shapes the Pearl (each that strikes feeds it). The Pearl is big: a pale blue-white orb with turning
+  spiral arms, a copy at his side shaping it, a quiet rising whirr; the Twin Pearls (a copy drives a second
+  from your other side, one red cue); the Moon-Swallowing Pearl giant, lifted by two copies; sometimes the
+  body you struck was a copy and he is behind you. *Added:* phase 3's **Heaven-Devouring Howl**: he leaves
+  for the rim and summons the Nine-Tailed Fox, a dark sun gathers at its jaws, the red cue, and a beam rakes
+  the terrace, sweeping toward you one way only (roll back through it), breaking what stands in it; then he
+  kneels open. Phase 3's fire is orange-red. Training: three situations of his own; the Lab: pack and Howl
+  buttons. Every look waits for the owner's pick behind a switch (`?foxLook=h1|h2|h3`, `?foxLetters=`,
+  `?foxfire=`, `?foxFire3=`, `?foxSpirit=`, `?clones=`). *Removed:* Scattered Leaves, the copies' cutting
+  turn, Fox Descending's springboard off a standing copy.
 - **The grove's bamboo falls to every stroke** (2026-11-22, ADR-151). *Changed:* in the Windless
   Grove one swing of the sword (or one blow of his) cuts a bamboo stalk clean through where the blade
   passed, and its top slides off the cut at once and crashes over in a burst of leaves (it took two
@@ -28,6 +124,21 @@ Sixty-nine pieces of work since 0.4.0:
   bamboo is five kinds of cane (green, jade, golden, black, dry) in clumps and lone stalks of
   different thicknesses, with young shoots, and far more of it behind the duel; the grove runs on
   into the fog. `?bamboo=0` is the grove as it was, `b` one kind of cane per clump.
+- **The Sheathed, easy to see** (2026-11-22, ADR-152). *Changed:* Lu Wusheng is printed in the hero's
+  ink-line art (the owner's pick; `?sheathArt=0` keeps the wyrm's digits he shipped in), lifted to read on
+  the grove's floor: at 1280 x 720 the mean of his pixels is 31.9 against the floor's 16.1 (the hero 25.2
+  against 20.1), and robe, trousers, scarf, hair and skin are shapes of their own. His silhouette is
+  sharpened for the outline: a loose robe to mid-thigh over the wide pleated trousers, a longer high tail
+  with a pale tie, a deeper scarf whose tails hang close when he is still, pale wrist bindings. He moves as
+  a wanderer: a quiet carry with his thumb in the sash and a slow breath, a low run with the sheathed sword
+  held back at the hip, a settle that turns sharp (poses only: no timing, tell or damage changed). New lines
+  for the grove and eight move names (ids unchanged). *Added:* three palettes, `?sheathTone=a|b|c`, and a
+  mark of his own, `?sheathMark=a|b|0` (a torn strip on the scabbard that snaps on the draw; a white streak
+  in the hair); the owner picked palette a. The owner then found the ink-line print too detailed at fight
+  distance: `?sheathArt=0|1|2|3|a` renders five graded steps from the digits to the ink-line art (1 and 2
+  the digits in his colours with a stroke outline, 3 the ink-line art flattened), and prints 1 - a wear
+  a reworked body that hides the mesh at his size (full sleeves, one roll of scarf, plain gaiters). The
+  owner picked step 2 (the digits in his colours, lit and outlined), which is what the game now draws. `sheath.mjs` LOOK.
 - **A sixth level: the Windless Grove and the Sheathed** (2026-11-22, ADR-144 – ADR-146). *Added:* a fifth
   level, `?level=grove` (the title screen lists it). **The Windless Grove**: a bamboo grove at night, a
   round clearing with a worn ring of paving, a mound planted with forty swords. **Lu Wusheng, the

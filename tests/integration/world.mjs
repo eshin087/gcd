@@ -35,6 +35,7 @@ const { createThroneHall } = await imp('src/world/throneHall.js');
 const { createFoxTerrace, TERRACE } = await imp('src/world/foxTerrace.js');
 const { createSkybreakRing, BUTTE, RING } = await imp('src/world/skybreakRing.js');
 const { createWindlessGrove } = await imp('src/world/windlessGrove.js');
+const { createScriptHall } = await imp('src/world/scriptHall.js');
 // (every level the game can load, and the training room: the bite scenario walks them all, so a new
 // level is checked without being named here)
 const { LEVELS } = await imp('src/levels/index.js');
@@ -177,14 +178,14 @@ function wyrm() {
 const S = {
   // ---------------------------------------------------------------- the sets list their breakables
   sets() {
-    for (const [name, make, kinds] of [['forest', createForest, ['tree', 'deadTree', 'stone', 'boulder', 'flagstone', 'bone']], ['courtyard', createCourtyard, ['pillar', 'lantern']], ['throne', createThroneHall, ['shard', 'slab', 'hover', 'swords', 'banner', 'cairn', 'cart']], ['ring a', ringSet('a'), ['tile', 'post', 'butte', 'butteTop', 'banner', 'mud', 'hoodoo']], ['ring b', ringSet('b'), ['tile', 'post', 'butte', 'butteTop', 'terrace', 'banner']], ['ring c', ringSet('c'), ['tile', 'post', 'butte', 'butteTop', 'spire', 'cairn']], ['grove', createWindlessGrove, ['bamboo', 'graveSword', 'paving', 'flagstone', 'stele', 'lantern', 'boulder', 'post']]]) {
+    for (const [name, make, kinds] of [['forest', createForest, ['tree', 'deadTree', 'stone', 'boulder', 'flagstone', 'bone']], ['courtyard', createCourtyard, ['pillar', 'lantern']], ['throne', createThroneHall, ['shard', 'slab', 'hover', 'swords', 'banner', 'cairn', 'cart']], ['ring a', ringSet('a'), ['tile', 'post', 'butte', 'butteTop', 'banner', 'mud', 'hoodoo']], ['ring b', ringSet('b'), ['tile', 'post', 'butte', 'butteTop', 'terrace', 'banner']], ['ring c', ringSet('c'), ['tile', 'post', 'butte', 'butteTop', 'spire', 'cairn']], ['grove', createWindlessGrove, ['bamboo', 'graveSword', 'paving', 'flagstone', 'stele', 'lantern', 'boulder', 'post']], ['script hall', createScriptHall, ['tile', 'step', 'flagstone', 'pillar', 'wall', 'liftDoor', 'gate', 'bench', 'planter', 'watcher', 'post', 'screen', 'rack', 'dais', 'codePillar']]]) {
       const { D, set, colliders, U } = build(make);
       const L = D.list;
       // (Cinderwood: 664 since every tree of the wall and the landmarks break, 2026-11-16; 183 on 2026-11-15,
       // 80 before. The duelists' arenas break everything but their landmarks since 2026-11-16: the
       // courtyard 78 → 456 (293 of them its floor's slabs), the crater 36 → 222 (105 of its floor's plates); 255 on 2026-11-22, its felled trunks
       // swapped for the challengers' graves, banners and carts round it)
-      const [lo, hi] = { forest: [20, 760], courtyard: [380, 520], throne: [180, 280], 'ring a': [1, 5000], 'ring b': [1, 5000], 'ring c': [1, 5000], terrace: [300, 520], grove: [420, 900] }[name]; // (the grove: 788 since ADR-151's clumps, 2026-11-22; 536 before)
+      const [lo, hi] = { forest: [20, 760], courtyard: [380, 520], throne: [180, 280], 'ring a': [1, 5000], 'ring b': [1, 5000], 'ring c': [1, 5000], terrace: [300, 520], grove: [420, 900], 'script hall': [300, 520] }[name];
       assert(L.length >= lo && L.length <= hi, `${name}: ${L.length} breakables (${lo}..${hi})`);
       for (const k of kinds) assert(L.some((b) => b.kind === k), `${name}: has a breakable ${k}`);
       if (name === 'forest') {
@@ -197,8 +198,10 @@ const S = {
         assert(trees.every((b) => b.ranged && b.body.parts >= 2 && b.order.length >= 1) && trees.filter((b) => b.wall).length >= 440, `forest: a tree is a range piece in parts that wears down; ${trees.filter((b) => b.wall).length} of them are the wall's (beyond ${BREAK.wall.from} m)`);
         assert(L.every((b) => b.mat !== 'wood' || b.def.soft === false || b.colliders.every((c) => c.soft === true)), 'forest: the trunks of breakable wood are soft colliders (the wyrm ploughs through them; not the Cinder Tree\'s)');
       }
-      assert(L.every((b) => Number.isFinite(b.x + b.z + b.r + b.h) && b.r > 0 && b.h > 0 && b.hp > 0), `${name}: every breakable has a footprint, a height and structure`);
-      assert(L.every((b) => b.colliders.every((c) => colliders.circles.includes(c))), `${name}: their colliders are the world's own circles`);
+      // (a set whose scenes morph, ADR-157: a piece of another scene than the first is out of the world,
+      // its structure 0 and its circles out of the world's until its scene comes)
+      assert(L.every((b) => Number.isFinite(b.x + b.z + b.r + b.h) && b.r > 0 && b.h > 0 && b.hpMax > 0 && (b.absent || b.hp > 0)), `${name}: every breakable has a footprint, a height and structure`);
+      assert(L.every((b) => b.colliders.every((c) => colliders.circles.includes(c) === !b.absent)), `${name}: their colliders are the world's own circles${L.some((b) => b.absent) ? ` (none of the ${L.filter((b) => b.absent).length} pieces of the other scenes)` : ''}`);
       // (a floor slab or flagstone, a 'range' piece, is no scene node until a boss lifts it: 2026-11-16, the scene graph's per-frame cost)
       assert(L.every((b) => (b.def.look === 'range' ? !b.node.parent : b.node.parent === D.pieces) && b.body.geometry.attributes.position.count > 0), `${name}: each has its own node and body (a floor slab's node joins the pieces' tree only when lifted)`);
       // nothing standing costs the scene graph a frame: the pieces are a tree outside the scene (the
@@ -1603,21 +1606,41 @@ const S = {
         const none = able.filter((b) => !(b.ranged ? b.body.tris > 0 : b.bricks?.T > 0));
         const kinds = [...new Set(able.map((b) => b.kind))];
         let bitten = 0, set = 0, folded = 0, missed = [];
-        for (const kind of kinds) {
-          const b = able.find((x) => x.kind === kind && x.state === STATE.INTACT && !(x.top && x.top.state === STATE.INTACT));
-          if (!b) continue;
-          const n0 = A.D.bitten;
-          A.D.strike(b.x + b.r, b.z, 0.7, 0.3 * b.hpMax + 0.2, { kind: BLOW.BLUNT, by: 'boss', y: Math.min(1.2, b.y0 + b.h * 0.5), src: A.D.swing() });
-          // (a sliced piece, bamboo, is cut through, not bitten: BREAK.slice)
-          if (b.slice ? b.state === STATE.INTACT : A.D.bitten === n0) missed.push(kind);
-          bitten += A.D.bitten - n0;
-          const K = b.bricks;
-          if (K) for (let i = 0; i < K.T; i++) if (K.bit[i]) K.dep[i] > 0 ? set++ : folded++;
+        // (a set whose scenes morph, ADR-157: each scene is visited in turn, snapped, and a blow lands on
+        // one of each kind standing in it; a set without scenes is one visit)
+        const SC = A.set.scenes;
+        if (SC) A.set.ambience?.setup?.(A.game);
+        const visits = SC ? SC.ids : [null];
+        const struck = new Set();
+        for (const id of visits) {
+          if (id) {
+            SC.snap(id);
+            // (the watchers of a hall that has been left: the snap to any other scene above makes it so)
+            if (id === SC.ids[0] && SC.ids.length > 1) {
+              SC.snap(SC.ids[1]);
+              SC.snap(id);
+            }
+          }
+          for (const kind of kinds) {
+            if (struck.has(kind)) continue;
+            const b = able.find((x) => x.kind === kind && x.state === STATE.INTACT && !x.absent && !(x.top && x.top.state === STATE.INTACT));
+            if (!b) continue;
+            struck.add(kind);
+            const n0 = A.D.bitten;
+            A.D.strike(b.x + b.r, b.z, 0.7, 0.3 * b.hpMax + 0.2, { kind: BLOW.BLUNT, by: 'boss', y: Math.min(1.2, b.y0 + b.h * 0.5), src: A.D.swing() });
+            // (a sliced piece, bamboo, is cut through, not bitten: BREAK.slice)
+            if (b.slice ? b.state === STATE.INTACT : A.D.bitten === n0) missed.push(kind);
+            bitten += A.D.bitten - n0;
+            const K = b.bricks;
+            if (K) for (let i = 0; i < K.T; i++) if (K.bit[i]) K.dep[i] > 0 ? set++ : folded++;
+          }
         }
+        const unstruck = kinds.filter((k) => !struck.has(k));
         A.step(0.5);
         A.D.reset();
+        SC?.reset?.();
         const left = L.filter((b) => (b.bricks?.n ?? 0) > 0 || (b.ranged && b.body.nBit > 0)).length;
-        assert(none.length === 0 && missed.length === 0 && bitten > 0 && left === 0, `${name}: all ${able.length} pieces that take structure have bricks; a blow on one of each of its ${kinds.length} kinds took ${bitten} (${set} set back, ${folded} folded${missed.length ? '; none from ' + missed.join(', ') : ''}); the reset puts them back`);
+        assert(none.length === 0 && missed.length === 0 && unstruck.length === 0 && bitten > 0 && left === 0, `${name}: all ${able.length} pieces that take structure have bricks; a blow on one of each of its ${kinds.length} kinds${SC ? ` (in each of its ${visits.length} scenes)` : ''} took ${bitten} (${set} set back, ${folded} folded${missed.length ? '; none from ' + missed.join(', ') : ''}${unstruck.length ? '; none standing: ' + unstruck.join(', ') : ''}); the reset puts them back`);
       }
       // ---- off (the default): nothing is bitten
       setLook('chip', '0');

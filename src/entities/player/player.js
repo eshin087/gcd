@@ -38,6 +38,11 @@ export const TUNE = {
   maxFlasks: 5,
   roll: { dur: 0.6, dist: 4.2, iframes: [0.04, 0.4], attackAfter: 0.42, rollAfter: 0.5, moveAfter: 0.52, landAt: 0.48 },
   backstep: { dur: 0.4, dist: 1.6, iframes: [0.03, 0.22], attackAfter: 0.28, rollAfter: 0.32, moveAfter: 0.34, landAt: 0.3 },
+  // THE LONG SECOND (ADR-158; Xin Yi's reward, game.unlocks 'longSecond', ?tech=lean): guard held, then
+  // dodge with no direction: he leans back in place under the blow (no travel: he stays in reach),
+  // i-frames longer than the backstep's, free to cut after attackAfter; a perfect one slows time
+  // `slowmo` s (the Ghostep's 0.6) and leaves `ghosts` afterimages
+  lean: { dur: 0.42, dist: 0, iframes: [0.03, 0.34], attackAfter: 0.24, rollAfter: 0.36, moveAfter: 0.36, landAt: 0.3, slowmo: 0.9, ghosts: 3 },
   heal: { dur: 0.85, at: 0.5, amount: 70 },
   staggerDur: 0.4,
   knockdownDur: 1.3,
@@ -238,6 +243,7 @@ export class Player {
     this.assist = { target: null, t: 0 };
     this.ghostFx = 0; // 1 → 0 after a Ghostep: dissolve-in + cold tint
     this.rollBack = false;
+    this.rollLean = false; // (a backstep that is the Long Second: TUNE.lean)
     this.rollDir = { x: 0, z: -1 };
     this.healApplied = false;
     this.burnT = 0;
@@ -377,7 +383,7 @@ export class Player {
     if (this.state === 'lock') return true; // blades locked
     if (this.iframeT > 0) return true; // Ghostep / the plunge's landing
     if (this.state === 'roll') {
-      const R = this.rollBack ? TUNE.backstep : TUNE.roll;
+      const R = this._rollTune();
       return this.stateT >= R.iframes[0] && this.stateT <= R.iframes[1];
     }
     if (this.state === 'knockdown') return this.stateT >= TUNE.knockdownDur - TUNE.getUpIframes;
@@ -507,7 +513,7 @@ export class Player {
         return RESULT.BLOCKED;
       }
       if (blockable) {
-        this._block(dmg, tell, attack, chip, nx, nz);
+        this._block(dmg, tell, attack, chip, nx, nz, hit.guardCost);
         return RESULT.BLOCKED;
       }
       this._streakEnd();
@@ -652,6 +658,7 @@ export class Player {
     this.deadDown = false;
     this.downFrom = 0;
     this.rollBack = false;
+    this.rollLean = false;
     this.healApplied = false;
     this.buf.action = null;
     this.hb.held = false;
@@ -1262,7 +1269,11 @@ export class Player {
     // a parry MOMENT (a blue flare blow, ADR-118): the blow is beaten aside in a blue burst and the
     // hero answers by himself (the counter: _tickRiposte), wherever in a string it came
     const moment = !light && !!hit?.flare && tell === TELL.BLUE;
-    this.fx.parry(cv.x, cv.y, cv.z, big, D.n, -nx, -nz, { e1, e2, spray, perfect: !!perfect && !light, light, ring: light ? 0 : perfect || big ? 2 : last ? 1 : 0, met });
+    // a perfect parry of a blow has three looks (combat/perfectFx.js PERFECT_FEEL, the mode read now:
+    // today | sharp | cinema); `PM.T` null = today's numbers below. Nothing of the rules moves
+    // (a parry moment ends his string: it counts as its last blow for cinema's full beat)
+    const PM = perfect && !light ? this.fx.perfectMoment?.('parry', last || moment, fin(this.streak) + 1) : null, PT = PM?.T ?? null;
+    this.fx.parry(cv.x, cv.y, cv.z, big, D.n, -nx, -nz, { e1, e2, spray, perfect: !!perfect && !light, light, ring: light ? 0 : perfect || big ? 2 : last ? 1 : 0, met, feel: PM });
     if (moment) this.fx.flareParry?.(cv.x, cv.y, cv.z, -nx, -nz);
     if (ret) this.fx.perfectParry?.(cv.x, cv.y, cv.z, -nx, -nz);
     if (light) {
@@ -1273,12 +1284,12 @@ export class Player {
       // exchange turns), a camera kick and punch; perfect: a beat of slow motion on top (the blade
       // lock's own moment replaces it when he locks)
       const S = TUNE.parryStop, Pn = TUNE.parryPunch;
-      this._hitstop(perfect ? S.perfect : big ? Math.max(S.blue, last ? S.last : 0) : last ? S.last : D.n > 1 ? S.chain : S.normal, 0.02);
-      g.shake?.(Math.min(0.5, (perfect ? 0.42 : big ? 0.36 : 0.3) + 0.03 * (D.n - 1)));
-      g.punch?.(perfect ? Pn.perfect : last ? Pn.last : big ? Pn.blue : Pn.normal);
+      this._hitstop(perfect ? (PT ? PT.stop : S.perfect) : big ? Math.max(S.blue, last ? S.last : 0) : last ? S.last : D.n > 1 ? S.chain : S.normal, 0.02);
+      g.shake?.(Math.min(0.5, (perfect ? (PT ? PT.shake : 0.42) : big ? 0.36 : 0.3) + 0.03 * (D.n - 1)));
+      g.punch?.(perfect ? (PT ? PT.punch : Pn.perfect) : last ? Pn.last : big ? Pn.blue : Pn.normal);
       if (perfect) {
-        const P = TUNE.perfectParry;
-        g.flow?.cinematic?.({ x: cv.x, z: cv.z, slowmo: P.slowmo, dur: P.dur, zoom: P.zoom, weight: P.weight, kind: 'perfectParry' });
+        const P = PT ? PT.beat : TUNE.perfectParry;
+        g.flow?.cinematic?.({ x: cv.x, z: cv.z, slowmo: P.slowmo, dur: P.dur, zoom: P.zoom, weight: P.weight, ease: P.ease, back: P.back, kind: 'perfectParry' });
       }
     }
     // every parry gives guard back at once (GUARD.parry)
@@ -1296,7 +1307,9 @@ export class Player {
       R.attack = attack;
       R.tell = tell;
     }
-    this._emit('player:parry', { tell, attack, chain: D.n, light, perfect: !!perfect, last, flare: moment });
+    // (`feel` / `beat`: the perfect parry's look, PERFECT_FEEL's mode and cinema's 'full' | 'short'; the
+    // screen reads them: flow.js)
+    this._emit('player:parry', { tell, attack, chain: D.n, light, perfect: !!perfect, last, flare: moment, feel: PM?.mode ?? 'today', beat: PM?.beat ?? '' });
   }
 
   /** The riposte a parried last blow asked for: starts as the parry's freeze ends, if the hero is
@@ -1620,7 +1633,9 @@ export class Player {
     return true;
   }
 
-  _block(dmg, tell, attack, chip, nx, nz) {
+  /** `guardCost` (optional, a hit's own: Xin Yi's Iron Rain, ADR-156): what the block costs the meter
+   *  instead of GUARD.cost's (a stream of small shots must not empty it: GUARD.costMin is 8 a blow). */
+  _block(dmg, tell, attack, chip, nx, nz, guardCost) {
     const g = this.game;
     // a blow costs guard and no HP (GUARD); a contact stream (the breath's ticks, a bullet) is no
     // blow: it keeps its HP chip and leaves the meter alone
@@ -1629,7 +1644,7 @@ export class Player {
     let open = false;
     if (chip) this._damage(taken);
     else if (!this.debug.god) {
-      const cost = clamp(dmg * (GUARD.cost[tell] ?? GUARD.cost.normal), GUARD.costMin, GUARD.costMax);
+      const cost = Number.isFinite(guardCost) && guardCost >= 0 ? guardCost : clamp(dmg * (GUARD.cost[tell] ?? GUARD.cost.normal), GUARD.costMin, GUARD.costMax);
       this.guard = Math.max(0, fin(this.guard) - cost);
       this.guardWait = Math.max(this.guardWait, GUARD.regenDelay);
       open = this.guard <= 0;
@@ -1735,7 +1750,12 @@ export class Player {
    *  TUNE.ghostepMaxRange). */
   _ghostep(attacker, attack, tell, teleport = true, crit = DEFENSE.ghostep.critWindow) {
     const g = this.game, p = this.position;
+    // (the Long Second's perfect lean, ADR-158: a longer slow-mo and three afterimages where he leaned)
+    const lean = this.rollLean && this.state === 'roll';
     const ox = p.x, oz = p.z;
+    // the way he was going (the afterimage of the sharp / cinema looks tears along it when he stays)
+    const wx = this.state === 'roll' ? this.rollDir.x : fin(this.vel.x), wz = this.state === 'roll' ? this.rollDir.z : fin(this.vel.z);
+    const PM = this.fx.perfectMoment?.('dodge') ?? null; // (combat/perfectFx.js: today | sharp | cinema)
     const nSegs = this._sampleGhost();
     const ap = attacker?.position;
     const hasAtk = !!ap && Number.isFinite(ap.x) && Number.isFinite(ap.z);
@@ -1777,11 +1797,15 @@ export class Player {
       this.sweep.valid = false;
     }
     this.anim.kickCoat(1);
-    this.fx.ghostep(this._ghostSegs, nSegs, ox, oz, p.x, p.z);
-    this._slowmo(DEFENSE.ghostep.slowmoTime);
+    this.fx.ghostep(this._ghostSegs, nSegs, ox, oz, p.x, p.z, PM?.F ? { feel: PM, wx, wz } : undefined);
+    if (lean) this._slowmo(TUNE.lean.slowmo);
+    else if (PM?.F) this._slowmo(PM.F.slow?.time ?? PM.F.beat?.dur ?? DEFENSE.ghostep.slowmoTime, PM.mode);
+    else this._slowmo(DEFENSE.ghostep.slowmoTime);
+    if (lean) for (let i = 1; i < TUNE.lean.ghosts; i++) this.fx.ghostep(this._ghostSegs, nSegs, ox, oz, p.x, p.z);
     g.shake?.(0.15);
     g.world?.setPusher?.(0, p.x, 0, p.z, TUNE.pusher);
-    this._emit('player:perfectDodge', { attack, tell, streak: this.streak });
+    // (`feel`: the look's mode, for the screen: flow.js)
+    this._emit('player:perfectDodge', { attack, tell, streak: this.streak, feel: PM?.mode ?? 'today' });
     this._emit('player:ghostep', { x: p.x, z: p.z });
   }
 
@@ -2513,7 +2537,8 @@ export class Player {
     if (!this.alive || this.state === 'plunge' || this.state === 'flurry' || this.state === 'lock') return false;
     const kind = this.flurry.reach(d, true);
     if (!kind) return false;
-    const n = clamp(Math.round(fin(Number(strikes), 3)), 1, DEFENSE.flurry.max);
+    // (a streak past the cap of blows: the flurry strikes DEFENSE.flurry.max, the tiers read the rest)
+    const n = clamp(Math.round(fin(Number(strikes), 3)), 1, 99);
     this._debugStreak(n);
     const pin = this.debug.flurryArt;
     if (typeof art === 'string') this.debug.flurryArt = art;
@@ -2527,9 +2552,17 @@ export class Player {
   }
 
   // --- roll --------------------------------------------------------------
+  /** The numbers of the roll under way: the roll, the backstep, or the Long Second's lean. */
+  _rollTune() {
+    return this.rollLean ? TUNE.lean : this.rollBack ? TUNE.backstep : TUNE.roll;
+  }
+
   _startRoll() {
     const I = this.intent;
     const back = I.len <= 0.1;
+    // THE LONG SECOND (ADR-158): from a held guard, no direction: the lean in place
+    const lean = back && (this.state === 'block' || this.rmb.held) && !!this.game.unlocks?.has?.('longSecond');
+    this.rollLean = lean;
     if (back) {
       this.rollDir.x = -Math.sin(this.yaw);
       this.rollDir.z = -Math.cos(this.yaw);
@@ -2548,15 +2581,15 @@ export class Player {
     this.want.z = this.rollDir.z * along;
     this.atk = null;
     this.chargeK = 0;
-    this._enter('roll', back ? 'backstep' : 'roll', 0.05);
+    this._enter('roll', lean ? 'lean' : back ? 'backstep' : 'roll', 0.05);
     if (!back) this.anim.kickCoat(TUNE.rollCoatKick);
-    this._emit('player:roll', { backstep: back });
-    this.fx.dust(this.position.x, this.position.z, back ? 5 : 9, back ? 0.7 : 1);
+    this._emit('player:roll', { backstep: back, lean });
+    if (!lean) this.fx.dust(this.position.x, this.position.z, back ? 5 : 9, back ? 0.7 : 1);
     return true;
   }
 
   _tickRoll() {
-    const R = this.rollBack ? TUNE.backstep : TUNE.roll;
+    const R = this._rollTune();
     const t = this.stateT;
     const u = clamp(t / R.dur, 0, 1);
     // fast out of the gate, settling at the end; integrates to exactly R.dist
@@ -2963,14 +2996,27 @@ export class Player {
    * a freeze already running (the leap slam freezes on landing, then strikes) would turn the whole
    * slow-mo into a freeze: wait for that freeze to end instead (update() fires the pending one).
    */
-  _slowmo(sec) {
+  _slowmo(sec, mode) {
     const g = this.game;
-    if (fin(g.hitstopTimer) > 0 && fin(g.hitstopScale, 1) < DEFENSE.ghostep.slowmoScale) {
+    // the perfect dodge's look (combat/perfectFx.js PERFECT_FEEL[mode].dodge; a pending one keeps
+    // its mode): `slow` a hitstop slow motion of its own scale, `beat` the flow's cinematic moment
+    // (its own time scale and the camera in: no long hitstop to merge with the next cut's freeze)
+    const m = mode ?? (this._slowmoMode && sec === this.slowmoPending ? this._slowmoMode : null);
+    this._slowmoMode = null;
+    const D = m ? this.fx.perfectMoment?.('dodge', true, 0, m)?.F ?? null : null;
+    if (D?.beat) {
+      this.slowmoPending = 0;
+      const B = D.beat, p = this.position;
+      if (g.flow?.cinematic?.({ x: p.x, z: p.z, slowmo: B.slowmo, dur: B.dur, zoom: B.zoom, weight: B.weight, ease: B.ease, back: B.back, kind: 'ghostep', quiet: true })) return;
+    }
+    const scale = D?.slow ? D.slow.scale : DEFENSE.ghostep.slowmoScale;
+    if (fin(g.hitstopTimer) > 0 && fin(g.hitstopScale, 1) < scale) {
       this.slowmoPending = sec;
+      if (D) this._slowmoMode = m;
       return;
     }
     this.slowmoPending = 0;
-    g.hitstop?.(sec, DEFENSE.ghostep.slowmoScale);
+    g.hitstop?.(sec, scale);
   }
 
   // ------------------------------------------------------------------ movement
@@ -3727,7 +3773,10 @@ export class Player {
       const cb = this.fx.calmBlade?.(this.bladeFlare / F.hit[0]) ?? 1, cf = this.fx.calmFlare?.(this.bladeFlare) ?? this.bladeFlare;
       const g = !this.alive || (cb === 1 && cf === this.bladeFlare) ? g0 : 1 + ((heavyLit ? F.strike[1] : F.strike[0]) * this.bladeHot + cf) * cb;
       if (Number.isFinite(g)) {
-        const U = this.game.U, BL = TUNE.bladeLook, lk = (1 + F.line * (g - 1)) * BL.line, rl = B.rimLine ?? B.line;
+        // the streak (player/streakFx.js `bladeLine`, the aura piece): the steel's ink and rim lines held
+        // a little lit at rest, more at each tier; its flats stay dark (0 = today, exactly)
+        const sl = this.game.fx?.streak?.bladeLine, sk = sl > 0 && Number.isFinite(sl) ? 1 + sl / Math.max(1, g) : 1;
+        const U = this.game.U, BL = TUNE.bladeLook, lk = (1 + F.line * (g - 1)) * BL.line * sk, rl = B.rimLine ?? B.line;
         const pf = U?.uSelfPartFill?.value?.[P], pi = U?.uSelfPartInk?.value?.[P], pr = U?.uSelfPartRim?.value?.[P];
         if (pf) {
           pf.x = (B.fillGain ?? 1) * g * BL.fill;

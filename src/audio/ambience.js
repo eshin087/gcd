@@ -1,6 +1,6 @@
 import { clamp } from '../core/math.js';
 import { NodeBag } from './voice.js';
-import { env, holdAt, rnd } from './dsp.js';
+import { env, holdAt, rnd, arand } from './dsp.js';
 
 // Persistent sound beds: the night-forest ambience (always on after unlock) and the dragon's
 // sustained fire-breath loop. Both are long-lived graphs driven from AudioEngine.update().
@@ -170,12 +170,12 @@ export class ForestAmbience extends NodeBag {
     let guard = 0;
     while (this.crackleNext < now + 0.25 && guard++ < 16) {
       const tt = this.crackleNext;
-      const big = Math.random() < 0.08;
-      const a = big ? rnd(0.5, 0.9) : 0.35 * Math.pow(Math.random(), 1.6);
+      const big = arand() < 0.08;
+      const a = big ? rnd(0.5, 0.9) : 0.35 * Math.pow(arand(), 1.6);
       this.crackleBp.frequency.setValueAtTime(big ? rnd(900, 1600) : rnd(1800, 4800), tt);
       this.crackle.gain.setValueAtTime(a, tt);
       this.crackle.gain.setTargetAtTime(0, tt + 0.0008, big ? rnd(0.01, 0.025) : rnd(0.002, 0.008));
-      this.crackleNext += -Math.log(1 - Math.random()) / 11;
+      this.crackleNext += -Math.log(1 - arand()) / 11;
     }
   }
 
@@ -317,7 +317,7 @@ export class BreathLoop {
       const tt = b.crackleNext;
       b.cg.gain.setValueAtTime(rnd(0.1, 0.55), tt);
       b.cg.gain.setTargetAtTime(0, tt + 0.0008, rnd(0.003, 0.012));
-      b.crackleNext += -Math.log(1 - Math.random()) / 26;
+      b.crackleNext += -Math.log(1 - arand()) / 26;
     }
   }
 }

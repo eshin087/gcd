@@ -271,8 +271,11 @@ const KICK = {
   // the hip turned over, the shin swung round level at the ribs
   round: {
     part: 'footR',
-    coil: { yaw: 0.4, bY: -0.14, roll: -0.08, rF: [-0.36, 0.5, 0.0], rK: [-0.8, 0.4, 0.4], lF: [0.12, 0.08], lFy: 0.9, ...HANDS },
-    hit: { yaw: 1.2, roll: -0.35, bY: -0.14, rF: [0.06, 1.0, 0.78], rK: [-0.7, 0.3, 0.6], lF: [0.12, 0.04], lFy: 1.6, rH: [0.04, 0.0, 0.1], lH: [0.06, 0.12, 0.28] },
+    // (the knee points up and over through the whole kick, the chamber's: a knee keyed toward the target
+    // was crossed by the leg as it swung from his side to his front, and it flipped from frame to frame,
+    // ADR-162)
+    coil: { yaw: 0.4, bY: -0.14, roll: -0.08, rF: [-0.36, 0.5, 0.0], rK: [-0.6, 0.7, 0.4], lF: [0.12, 0.08], lFy: 0.9, ...HANDS },
+    hit: { yaw: 1.2, roll: -0.35, bY: -0.14, rF: [0.06, 1.0, 0.78], rK: [-0.4, 0.85, 0.35], lF: [0.12, 0.04], lFy: 1.6, rH: [0.04, 0.0, 0.1], lH: [0.06, 0.12, 0.28] },
     z: () => ({ kind: 'sector', r: RE.kick, ang: 0.85 }),
   },
   // the leg raised straight up over his head, the heel brought down like an axe

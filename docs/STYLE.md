@@ -1022,14 +1022,19 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?lordLook=` | Varr Nihil's body (read when his rig is built) | today's figure | the dragon look | today's figure dressed by form | both | **b** |
 | `?outskirts=` | what lies round the Obsidian Throne's crater (ADR-133; read when the level is built; `m` all of them) | the felled forest | the shrine the star fell on | the star's debris | those who came for him | **c** |
 | `?ring=` | the Skybreak Ring's arena (ADR-129; read when the level is built) | - | the flats: a dry lake bed, banners, a drum, a gong, a judges' dais | the quarry: terraces of cut stone round the ring | the crown: the ring on a butte's top, the badlands 40 m below | **a** |
-| `?ascLook=` | Tian Lei's body (read when his rig is built) | - | the tunic and the topknot | set aside, not offered (a bare-chested look too close to a franchise's) | the wandering monk and the braid; `d` = a through the wyrm's art path; the homages (2026-11-22, ADR-150): `h` an orange gi over blue, blue wristbands, sash and boots, black spikes turning gold; `g` a purple gi and red sash, form 3 the swept-up gold hair with one lock over the brow and a torn sleeve; `v` a blue bodysuit, white chest armour, gloves and boots, a tall flame of hair | **h** (2026-11-22; was a) |
-| `?ascLift=` | Tian Lei's figure lifted off the ring's floor (read when his rig is built) | as the body shipped | a lighter fill, a stronger edge of light | - | - | **a** |
+| `?ascLook=` | Tian Lei's body (read when his rig is built) | - | the tunic and the topknot | set aside, not offered (a bare-chested look too close to a franchise's) | the wandering monk and the braid; `d` = a through the wyrm's art path; the homages (2026-11-22, ADR-150): `h` an orange gi over blue, blue wristbands, sash and boots, black spikes turning gold; `g` a purple gi and red sash, form 3 the swept-up gold hair with one lock over the brow and a torn sleeve; `v` a blue bodysuit, white chest armour, gloves and boots, a tall flame of hair; the gi with wraps (2026-11-23, ADR-155: h's cut, wrapped forearms and shins, soft boots, a dark undershirt, longer sash tails): `e` ember, a burnt-red gi, black for the blue, off-white wraps; `r` a crimson top over charcoal trousers; `w` bone, an unbleached gi, black sash, charcoal wraps | **e** (2026-11-23; was h, before that a) |
+| `?ascLift=` | Tian Lei's print (read when his rig is built) | as the body shipped | lifted: a lighter fill, a stronger edge of light | the hero's quieter print (ADR-155): darker letters, the pale skin held down, a softer edge (`ASC_QUIET`) | - | **b** (2026-11-23; was a) |
+| `?ascLetters=` | Tian Lei's letters (live) | the bosses' fixed fine cell (4 px below 4K) | they follow his size on screen as the hero's do (ADR-155; the kit's `letters`) | - (rendered, not kept: bolder, 0.144 m a letter) | - | **a** (2026-11-23) |
+| `?ascHair=` | Tian Lei's gold hair, forms 2 - 3 (read when his rig is built) | the tall crown (one and a half heads above the scalp in form 2, two in form 3) | a short crown: the same layout at ~60 % | his own form-1 spikes risen, flame-shaped, about his own hair's height; form 3 sharper with one lock over the brow, no taller (ADR-155) | - | **b** (2026-11-23)
 | `?ascAura=` | Tian Lei's aura (forms 2 and 3) | - | a tall flame, hollow behind him, a wheel of light on the floor | a tight sheath with streamers off the shoulders | a broad low blaze over a wide spinning wheel | **a** |
 | `?ascBeam=` | Tian Lei's beam | - | a column | a braid: two strands winding round a thinner core | - | **a** |
 | `?ascOrb=` | Heaven's Lantern, Tian Lei's great orb (the third wave, 2026-11-22) | - | a sun: a round ball of gold heat, a pale heart, letters orbiting it | a lantern: a bright rim round a dim heart that pulses, trailing motes | `c` the pale gathered sphere: steel-kind heat (near white), drawn as large as its hit, both arms straight up in the gather (a reload for the pose) | a (the author's; not yet picked) |
 | `?ascBeamPose=` | Tian Lei's beams (2026-11-22, ADR-150; read when the moves are built) | the palm thrust | - | - | `cup`: both hands cupped at the hip, a ball of light between the palms (`fx.cupCharge`), both palms thrust together; the clash held with both cupped hands | 0 (not yet picked) |
-| `?foxLook=` | Wen Yao's body, bare-handed (ADR-147; read when his rigs are built) | - | the Shrine Fox: the bone mask, a short robe with its sleeves tied back, the fur stole, the sash | the Wild Fox: an amber sleeveless jacket, a streaming vermilion scarf, a wild crest of dark red-brown hair, a kitsune half-mask at the temple | the Pelt Brawler: a quilted jerkin, a fox's head on one shoulder; `d` = a in the ink-line art | not picked yet (b drawn) |
-| `?foxfire=` | the foxfire: the Pearl, the mantle (read when his effects are built) | - | jade (a palette swapped into the void slot) | the wyrm's orange fire | moon-white | not picked yet (a) |
+| `?foxLook=` | Wen Yao's body, bare-handed (ADR-147, ADR-154; read when his rigs are built) | - | the Shrine Fox (art path): the bone mask, a short robe with its sleeves tied back, the fur stole, the sash | the Wild Fox (art path): an amber sleeveless jacket, a vermilion scarf, a dark red-brown crest, a half-mask at the temple | the Pelt Brawler (art path); `d` = a in the ink-line art; **`h1`** (the default) the Wild Fox in the hero's INK-LINE art, bright: a big russet crest with pale tips, a short open amber jacket, dark trousers, pale wraps, a long vermilion scarf; `h2` a vermilion jacket, a black scarf; `h3` a long pale coat lined in vermilion | not picked yet (h1 drawn) |
+| `?foxLetters=` | his ink-line letters (ADR-154; live) | - | a fixed cell, as every boss's | b (the default): they follow his size on screen as the hero's do (`kit.letters`) | - | not picked yet (b) |
+| `?foxfire=` | the Pearl's colour: the orb, its threads, Pearl Rain (read when his effects are built) | - | jade (a palette swapped into the void slot) | the wyrm's orange fire | **pale blue-white** (`FIRE_PALETTES.pearl`, the default since ADR-154) | not picked yet (c) |
+| `?foxFire3=` | phase 3's fire: the mantle, the tail, the pounce, the selves burning up, the Nine-Tailed Fox and its beam (ADR-154) | - | **the wyrm's orange-red** (`K_FIRE`, the default) | jade (the void slot turned to foxfire; an orb on that slot moves to the steel kind) | - | not picked yet (a) |
+| `?foxSpirit=` | the Nine-Tailed Fox (ADR-154; read when it is built) | - | **a body in the wyrm's art path** wreathed in fire (the default) | fire-field heat and ink lines only, no mesh | - | not picked yet (a) |
 | `?clones=` | his paper selves (read when their rigs are built) | - | identical to him | a step paler | - | not picked yet (a) |
 | `?bamboo=` | the Windless Grove's bamboo (ADR-151; read when the level is built) | one kind of cane, scattered | five kinds of cane mixed in fanning clumps, shoots, fuller crowns, the back filled, the wall to 50 m | the same, one kind of cane per clump | - | **a** (the owner's pick, 2026-11-22) |
 | `?grove=` | the Windless Grove's light and ground (ADR-145; read when the level is built) | - | a moonlit night with mist | grey dawn fog | first snow: pale litter, frost on the stalks | **a** |
@@ -1037,6 +1042,12 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?drawCut=` | the Sheathed's draw (ADR-145) | - | one white line | the line and an afterimage of him where he stood | - | **a** |
 | `?life=` | the living world (ADR-163; every level; read at load, the Lab's `life` row flips a piece live): `off`, `all`, or a comma list of `wind, litter, steps, weather, creatures, air, arrival, answer` | `off`: today's world, untouched | - | - | - | **off** for now (the owner picks from the films) |
 | `?lifeK=` | the living world's strength, 0.25 - 2 (rates and amplitudes; Lab: `life x` quiet 0.6, natural 1, strong 1.5) | 1 (as tuned) | - | - | - | 1 |
+| `?oneLook=` | Xin Yi's body (ADR-156; read when his rig is built) | - | the Long Coat: black, closed in phase 1, open from phase 2 (the tails fly) | the Cassock: buttoned to the neck, narrow, floor-length, bright buttons | the Grey Coat: a's cut in dark blue-grey with a white-jade edge | not picked yet (a drawn) |
+| `?hall=` | the Hall of Falling Script (ADR-157; read when the set is built) | - | pale marble, green-black inlay | dark basalt, jade-lit edges | - | not picked yet (a drawn) |
+| `?script=` | the script wave's strength by scene (ADR-157) | - | a shimmer (0.2) and the full turn in the Source | nothing until the Source | strong (0.5) from the start | not picked yet (a drawn) |
+| `?sheathArt=` | Lu Wusheng's print, five graded steps (ADR-152; read when his rig is built; `1` - `a` wear his reworked body) | the wyrm's digits and his body as he shipped | `2` the digits in his palette, lit and outlined harder; `1` the same, dimmer | `3` the ink-line art flattened: no fold or crease lines, no glints, half the rim; `a` the hero's ink-line art, lifted | - | **2** (the owner's pick, 2026-11-23, of five; `a`, the pick before, read as a 3D model at fight distance) |
+| `?sheathTone=` | the Wanderer's palette in the ink-line art (ADR-152) | - | indigo and sand: a faded indigo robe, charcoal trousers, a sand scarf | pale and cold: a bone-white robe, slate trousers, a blue-grey scarf | moss and rust: a moss-green robe, dark brown trousers, a rust scarf | **a** |
+| `?sheathMark=` | a mark of his own (ADR-152; the Wanderer only) | none | a long torn strip of unbleached cloth tied below the scabbard's mouth: it trails when he moves, snaps on the draw | a white streak from the left temple through the high tail | - | not picked yet (a drawn) |
 
 How a look is chosen (`lookOf(name, def, pick)`): a look forced live by `setLook` (the Lab, the tests,
 the film rig); else the URL's own parameter (`?sky=b`); else, under **`?looks=old`**, `0` for every
@@ -1046,8 +1057,10 @@ before this pass); the things that are new in this pass (`kindle`, `ashp3`, `bur
 reachable as `?presence=0`); else the owner's pick (the `PICKED` table); else the author's default. **`?looks=new`** (every
 proposal at once, the way the owner played them on the preview) now draws the same as no parameter.
 **The Lab's LOOKS section** (`?lab`, only in the Ashfall Courtyard, the Obsidian Throne, the Skybreak
+Ring, the Foxfire Terrace, the Windless Grove and the Hall of Falling Script) has a row of buttons per switch: a switch read at draw time flips live, one read at build time
+(`ashLook`, `lordLook`, `floor`, `outskirts`, `ring`, `ascLook`, `ascLift`, `foxLook`, `foxfire`, `clones`, `oneLook`, `hall`, `script`) reloads the page with its parameter; "as
 Ring, the Foxfire Terrace and the Windless Grove) has a row of buttons per switch: a switch read at draw time flips live, one read at build time
-(`ashLook`, `lordLook`, `floor`, `outskirts`, `ring`, `ascLook`, `ascLift`, `foxLook`, `foxfire`, `clones`) reloads the page with its parameter; "as
+(`ashLook`, `lordLook`, `floor`, `outskirts`, `ring`, `ascLook`, `ascLift`, `ascHair`, `foxLook`, `foxfire`, `clones`, `foxFire3`, `foxSpirit`) reloads the page with its parameter; "as
 shipped" clears every look parameter (the picks), "before this pass" reloads with `?looks=old`; there is
 no "all proposals" button any more. Older switches of the same kind: `?flare=` (ADR-118), the wyrm's
 `?ring=` and `?breath=` (ADR-119). **The Skybreak Ring's five** (ADR-129) are things new to the game, so
@@ -1131,6 +1144,17 @@ no red-orange glow (that read as fire).
   game camera, form 1 above all, so his instances' fills are lighter (the tunic × 1.4, the trousers
   × 1.5, the skin × 1.2, the sash × 1.8, the dark hair × 1.6) and the cool edge of light along his
   silhouette is × 3.2. It helps a little: the fighters are still small in the frame.
+- **Printed like the hero** (2026-11-23, ADR-155; the owner: "the character is too detailed and is showing
+  its flaws in 3d. make it more ascii like, like the main character, to hide its flaws"). His letters
+  follow his size on screen as the hero's do (`?ascLetters=a`; ARCHITECTURE "The bosses' letters"): at
+  1080p and up he had twice the hero's letters across him, which drew his limbs as shaded tubes; now
+  both are 6 px at 1080p, 8 at 1440p, 12 at 4K (the phone and 720p were already the same 4 px). His
+  print is the hero's quieter one (`?ascLift=b`, `ASC_QUIET`): the cloth a little darker, the pale skin
+  held down most (it printed as a lit 3D shape), the edge of light × 1.5 (was × 3.2). The gold hair of
+  forms 2 - 3 is his own hair risen (`?ascHair=b`), about as tall as his dark form-1 spikes, not a crown
+  one and a half heads tall, and form 3 is no taller than form 2. He wears the gi with wraps in ember
+  (`?ascLook=e`): the gi's cut, a burnt red with black where the blue was, cloth wraps on the forearms
+  and shins, soft boots: still a martial artist's gi, not his source's colours.
 
 ### Tian Lei's effects (2026-11-21, ADR-129; `ascendant/fx.js` `AscFx`, `fxBeam.js`)
 Everything that strikes, glows or bursts is gold heat in the fire field, in the small letters; dust,
@@ -1183,7 +1207,22 @@ across the terrace): seen from the front and above, a fox prints as a lump; a fl
 gate) faces the camera. The gate's dull red is the strongest hue in the set, dulled once; the charm
 posts' paper strips are faint at 30 m.
 
-### Wen Yao's figure (2026-11-21, bare-handed 2026-11-22, ADR-147; `thousandFox/gear.js`, `bodyArt.js`, `look.js`)
+### Wen Yao's figure (2026-11-21, bare-handed 2026-11-22, ADR-147; redrawn ADR-154; `thousandFox/gear.js`, `bodyArt.js`, `look.js`)
+**Since ADR-154 he is drawn in the hero's INK-LINE art, not the wyrm's** (the owner: "its hard to see the new
+boss character. make it look detailed like the main character"): in the art path he printed as a thin
+dark figure with a few orange digits beside a hero who is a dense body of letters. `?foxLook=h1` (the
+default): the Wild Fox, bright: a big upswept crest of russet hair with pale tips (a third of the head's
+height over the skull, so it reads at 34 px), a short open amber jacket with short sleeves over a dark
+shirt, dark trousers, pale wraps on the forearms and shins, a long vermilion scarf (a bulky red collar
+from the front, its tails streaming level behind him when he moves), the fox-tail charm; no mask. `h2`:
+a vermilion jacket, a black scarf. `h3`: a long sleeveless cream coat lined in vermilion (its skirt rides
+the coat springs). Ink-line lessons: only saturated fills past 1 print bright (the jacket is
+`[1.22, 0.52, 0.045]`, the scarf `[1.3, 0.08, 0.03]`); a pale grey fill prints mid-grey (h3's coat is a
+warm cream); the hair parts draw GOLD ink lines for every boss (`HERO_INK`), and a gold outline round a
+russet crest read as blond spikes, so his crest is the `welt` part and its tips `hem`. Nine materials a
+rig (the art path's b: twelve): 76 → 73 draw calls on the level. His letters follow his size on screen
+(`?foxLetters=b`; ARCHITECTURE "The bosses' letters"). The art-path outfits a - c and d stay behind the
+switch; what follows describes them.
 A bare-handed fist fighter: the right fist on the sword joint with its knuckles wrapped (Tian Lei's),
 the forearms bare and wrapped, the left hand open, palm up (`PALM_TURN`). Flat facets with a few tones
 far apart; the big dark cloth on a low gain and a soft key (`dark()`), the bright colours on `loud()`.
@@ -1208,14 +1247,46 @@ art path at 720p he is still about 12 letter rows; b survives it by its colour, 
   and the fox spirit's ears and tails keep their shape. The inherited draws' Void violet (a light, a
   spark) is turned to the look's colour (`_light`, `_spawn`), as AscFx does for gold: the black cue's
   sparks are jade on this level (the black dye itself is the engine's).
-- **The Pearl in his palm:** a dense SPINNING sphere at `d.palmPoint()` (its surface points turning round
-  a tilted axis about a jade core), three crisp arcs of wind turning round it and closing in as it
-  fills, motes curling in; the selves' steel threads (the assisting self's too) stop 0.42 m short of it
-  (five ends in one cell printed a white knot), beads of foxfire running in. **The drive:** a short blast
-  along his facing (heat thrown out, three crisp streaks, sparks), the ring 0.07 s later, no heart (heat
-  piled on one spot printed a white disc). **Pearl Rain** keeps the flight, ADR-052's ground specks in
-  foxfire colours, the rim of `·` once it has cued, and the burst. At the game camera the orb is a few
-  letters with a ring of wind strokes: it reads at 3x.
+- **The Pearl in his palm** (redrawn ADR-154: "The palm orb is small at the game camera"): about 0.9 m
+  across at the end of the charge, a ball of pale blue-white heat (`FIRE_PALETTES.pearl`, moon a step
+  bluer: a white light bloomed it into a glare, so its light is soft) with a small white heart, its
+  surface points turning round a tilted axis, three crisp SPIRAL ARMS of ink winding from past its rim in
+  to its heart, two wide arcs of wind turning the other way, threads of light pulled in from the air,
+  curling as they come; the self at his side shaping it with him, the threads from the selves (not the
+  twin's: it shapes its own) stopping short of it. **The drive:** a short blast along his facing and a
+  DRILL, two ink strokes winding round his line (a helix); the burst is a SPIRAL (every blob thrown out
+  turning the same way round, three arms of ink winding out over the floor). **Pearl Rain** keeps the
+  flight, ADR-052's ground specks, the rim of `·` once it has cued, and the burst. **The Moon-Swallowing
+  Pearl** is giant (about 2.2 m) and rises over his head as two selves lift it with him. Sound: a quiet
+  rising synth whirr (`sfx.js` `pearlWhirr`) as he shapes it.
+- **Phase 3's fire** (`?foxFire3`, ADR-154): the mantle, Burning Tail's sweep, the pounce, the change's roar
+  and the selves burning up into him are drawn in `FIRE3` (the wyrm's orange-red by default), the same
+  fire as the Nine-Tailed Fox and its beam; the Pearl keeps the orb's colour.
+- **A pack body appearing** (`packPuff`): a puff of smoke round it in the air, ten one-cell paper slips
+  thrown out of it, a crisp ring of ink opening on the screen's plane, a wisp of the orb's fire (~22 blobs:
+  five come at once in a Round).
+- **The Nine-Tailed Fox** (Heaven-Devouring Howl; `spirit.js`, `fxBeam.js`): a creature, so a body in the
+  wyrm's art path (`?foxSpirit=a`): low-poly, flat facets. THE HEAD IS THE SUBJECT (the second pass, the
+  reviewer: "a fan of feathers, not a fox"): drawn 2.3x, a clean wedge in profile (skull, the brow's long
+  slope, a long muzzle), broad pointed ears pale inside, a lower jaw that opens wide over a white-hot maw,
+  long white-hot eye slits, pale fangs; the head and body charcoal (little of its fire's light on them)
+  with a PALE throat and breast, so the head separates from the tails. Nine separate S-curved plumes
+  fanned low and back behind it, a gap between each, burning (glowing veins), each tipped pale and with a
+  bright blob of fire: the tails are the fire, the body is not. It stands SIDE-ON to the camera (facing
+  east or west, whichever the line runs toward) and leans back toward it (a fox seen from the front and
+  above prints as a lump: the terrace's lesson), drawn 1.1x tall; only the head turns (30° at most). He
+  summons it 10 m from the hero (not at the far rim) and the camera leans toward it and keeps the ears'
+  tips: at 1280x720 the head is ~250 px long and whole in the frame from every side. It goes up in
+  embers from the tail tips to the body. `?foxSpirit=b`: the same head as an outline of steel ink, the
+  tails as lines and heat, the body as heat only. The summoning's ring of script: two circles inked on the
+  floor, one-cell glyphs of script between them. The dark sun (~2.3 m across): a black-dyed steel disc
+  with a thick ragged rim of fire, pulled toward the camera, motes streaming in from the whole arena;
+  the light drops to 0.72. The strip's mark: hazard specks heating. The beam: a bulb of light at the
+  jaws, a five-line core (white-hot middle) on the letter grid, a body of heat five rows across its whole
+  3.6 m whose edge boils, a white flash its first 0.15 s, a fountain where it meets the floor, the floor
+  lit and charred and a scar of low heat that lingers a moment. COST: the fire field's peak through the
+  Howl ~1600 blobs in the browser (2350 headless, the hero standing in it) of 6000; 72 → 81 draw calls
+  with the fox risen and the beam lit (six materials, batched, no shadow).
 - **The nine-tailed fox** (phase 3, `mantle(d, dt, k)`): a fox's head over his (tall ears, cheek ruffs, a
   muzzle over his face), a mane, and `d.tails` tails, each a lagging chain with a pale tip, fanned over
   a half-wheel laid in the CAMERA's plane (as the ears are spread: a fan laid in the scene merged into
@@ -1226,7 +1297,7 @@ art path at 720p he is still about 12 letter rows; b survives it by its colour, 
   the grass. It reads as a fan of jade flame more than nine separate tails.
 - **His blows' trail** (`sweep()` overridden): a short crisp streak along the fist's or the foot's path, a
   faint pale wash, foxfire licks when the spirit is lit, dust off a low kick; no blade arc.
-- **The selves:** a pop is 24 one-cell paper slips (16 when many go at once; half in the additive pool so
+- **The selves** (packs since ADR-154; a spawn is `packPuff`, in the air): a pop is 24 one-cell paper slips (16 when many go at once; half in the additive pool so
   they read on the paving at 30 m), torn-edge steel strokes, smoke, a wisp of foxfire; a spawn a tear of
   paper; the springboard's self tears UPWARD (30 slips) as he springs off it; phase 3's change burns
   them into him.
@@ -1251,9 +1322,32 @@ art path at 720p he is still about 12 letter rows; b survives it by its colour, 
   `?grove=b` grey dawn fog, `c` first snow. The canes sway as the trees always have; while the living
   world's wind piece is on they stand dead still (the grove has no wind of its own: only the air of a
   blow, a roar's front or a burst, moves them).
-- **His figure** goes through the wyrm's art path (`toDragonLook` with `SHEATH_ART[look]`); his sword stays on
-  today's material. Mourning White (a) is the recommended body: the black lacquer scabbard (`trim`) the
-  darkest thing on him, its throat and butt cap pale (`facing`), the bare blade pale steel (`armor`, `bevel`).
+- **His print, five steps (2026-11-23).** The owner found the ink-line print TOO detailed at fight distance ("reads as a 3D
+  model": smooth shaded cloth, clean outlines; body flaws the digits hid) and asked for steps between it and the
+  digits: `?sheathArt=0` the digits as he shipped (his old body), `1` the digits in his palette (`SHEATH_STEP` ink x
+  0.42, the trousers and wraps a step darker, a stroke outline reaching in to fresnel 0.3 in a paler ink), `2` the
+  digits lit and outlined harder (ink x 0.5, a light floor of 0.1, strokes to 0.12 in a near-white ink), `3` the
+  ink-line art flattened (every cloth piece one piece: no fold or crease lines; no glints or fold shading; half the
+  rim), `a` the ink-line art below. Prints `1` - `a` wear his reworked body (`sheathTuned`): full sleeves (no thin
+  stiff arm, no gap at the side), the long robe, one deep roll of scarf, plain gaiters, no wrist bands. The owner
+  picked `2` (2026-11-23); it is in `PICKED`. Measured at 1280 x 720 on the grove with its new bamboo (his pixels / the floor): 0 37.0 / 20.3,
+  1 26.5 / 20.2, 2 36.1 / 20.3, 3 31.2 / 20.1, a 35.1 / 20.2 (the hero about 25 / 16).
+- **His figure in print `a`** (the owner's pick before `2`; kept behind the switch) is printed in the hero's ink-line art (ADR-152, `?sheathArt=a`: the way
+  the hero and Shen Hui are drawn; `?sheathArt=0` keeps the wyrm's digits he shipped in, `toDragonLook` with
+  `SHEATH_ART[look]`). The Wanderer (body d) takes his palette from `sheathed/look.js` `SHEATH_TONE`
+  (`?sheathTone=a|b|c`) and a lift (`SHEATH_LIFT`: the screen-left rim × 3, the scarf and the mark × 3.6): his
+  fills sit about twice the prototype's, which printed him as dark as the grove's floor. Measured at
+  1280 x 720 (the mean luma of his pixels / the floor behind him): 31.9 / 16.1 (the hero 25.2 / 20.1, the
+  prototype 22.2 / 16.3); on the phone camera 45.4 / 16.5. His hair is printed on the `shirt` part, not
+  `hair` (whose ink lines are the hero's gold: a gold line round dark hair read as light hair at 30 m). The
+  black lacquer scabbard (`trim`, 0.025) stays the darkest fill on him, the drawn blade the brightest
+  pixels (`armor`, `bevel`; mean luma 105 against his figure's 32). The silhouette, sharpened for the
+  ink-line art, where the outline is what reads: a robe that falls loose to mid-thigh over the wide pleated
+  trousers, open at both sides (`ROBE_TAILS`), never a short top tucked into them; a long high tail with a
+  pale tie; the scarf's turns deeper and its ends wider, its tails close down his back when he is still;
+  pale bindings at the wrists as at the shins. His mark (`?sheathMark=`): a: a torn strip of unbleached cloth
+  (`piping`) tied below the scabbard's mouth, on springs on both scabbard pieces, snapped by the draw; b: a
+  white streak (`facing`) from the left temple through the tail.
 - **The draw in the fire field** (`SheathFx`): the stillness is a pinpoint of pale steel at the scabbard's
   mouth growing into a short thread (white, not a colour); the click is the blue FLARE at the mouth; the cut
   is ONE white-hot inked line (`_ink`, heat 1.8 cooling to 0.3 over 0.5 s) from the mouth to the blade's end
@@ -1354,6 +1448,44 @@ mist banks letters of their own. Still faint after it (open): the obsidian glint
 flicker, the moths, the ash's drifts against the paving's own strokes, the roar's answer at the game
 camera on Ashfall and in the Grove.
 
+### The Hall of Falling Script and Xin Yi (2026-11-22, ADR-156, ADR-157; `world/scriptHall.js`, `enemies/wokenOne/`, `?level=code`)
+"More extra ASCII" (the owner) is four layers INSIDE the game's letter systems: none of it is a pass over the
+frame (a terminal post-process and one character grid over the frame were turned down: "Tried and turned
+down"), and none of it touches the hero, the boss or the HUD.
+- **The code palette in the fire field** (`FIRE_PALETTES.code`, swapped into the void slot by `WokenFx` as
+  Tian Lei's gold is): a dark green rim, a jade body, a pale mint-white heart, no red; it boils fast and hardly
+  climbs. Every effect of his prints in it (the shots and their trails, the bolts, the Bend's rings, the stop's
+  stilled air, the afterimages, the transitions' rings, the front). Gold, violet and white glyphs and lights of
+  the inherited draws turn green ONLY inside his own drawing methods; **tells keep their colours** (the white
+  cross, the blue star, the red, the black eclipse): nothing green is ever a cue.
+- **The falling script** (the set's ambience, one additive glyph batch, 320 at most, 140 on LOW): columns of
+  one-cell digits falling down the walls' and the screens' faces near the camera's focus, a bright head and a
+  dimming tail, out of step; in the Source all round the floor in the dark. `hold(sec)` freezes it (the stir,
+  the fall).
+- **The script wave** (`uScript` / `uScriptF`, materials.js `SCRIPT_GLSL`, read by the prop-art material and
+  the carved floor's): inside every prop's own letters the source brightens in waves falling down the art
+  pass's own letter columns (`SCRIPT_GRID`) and the hue eases to green, so the letters re-roll as a wave passes;
+  on the floor the lattice's columns re-roll into digits. A front (the morph's ring) at full strength; deja vu's
+  stutter shifts every prop's letters a cell sideways and back. Strength per scene by `?script=` (a 0.2 / 0.2 /
+  1 for hall / dojo / Source; b 0 / 0 / 1; c 0.5 / 0.5 / 1). At strength 0 the same arithmetic runs as before
+  (the whole addition behind the strength), and no other level sets it.
+- **Things come apart as letters**: a piece of a scene lets go as a burst of one-cell digits in its own dim
+  hue as the morph's front crosses it; a struck watcher bursts green; an unsent bolt drops as loose digits;
+  the reload's guns clatter away as digits. Debris of the set's own pieces keeps their hue (a breaking stone
+  never flashes green or white).
+- **The set** (prop art throughout): the Pillared Hall (square pillars, wall panels, two lift doors, the entry
+  arch, benches, planters; cold grey with a green cast), the Sparring Hall (wooden posts with arms, paper
+  screens, racks, a low dais; two warm lamps), the Source (the ten slots as columns of stacked green blocks in
+  the dark, no walls); identical suited watchers along the walls (12 in green code round the Source). `?hall=a`
+  pale marble (a dark body: a pale albedo printed white) with green-black inlay; `b` dark basalt with jade
+  chamfers.
+- **His figure** (`wokenOne/gear.js`, `look.js`): the hero's skeleton and INK-LINE art (Tian Lei's way: the
+  Fox's wyrm-art figure was hard to see). A black coat on a dark level is drawn by what rings it: dim
+  green-black fills (near-black printed as an empty outline), the silhouette pale jade at every distance (his
+  rows of the per-part ink tables, written by `dressOne`), a pale face and hands, the glasses a dark band with
+  one bright cell. At ~40 px the homage is the silhouette: the long coat to the ankles with split tails that
+  stream behind him when he runs (from phase 2), the high collar. `?oneLook=a` the Long Coat, `b` the Cassock,
+  `c` the Grey Coat.
 ### The Training Room (2026-11-15, ADR-099; `world/trainingRoom.js`, `?stage=lab`)
 A lab stage for any boss: a dark dojo of light (the owner's pick of three looks: "Holo", over a
 pale "Grid" and a starry "Void"). Great 2 m tiles of near-black glass in a two-shade checker (carved
@@ -1448,3 +1580,53 @@ the body.
 - **The body answers** (ADR-149): the reaction's first pose shows in the frame the freeze holds, small
   enough that the struck surface stays 0.01 - 0.07 m from the drawn cut (`snapM` 0.06 on a duelist),
   so the cut, the stamp and the spray stay on the body; the swing to the peak comes after the freeze.
+
+### The streak and a single perfect defence (2026-11-23, ADR-167; `combat/perfectFx.js`, `player/flurryFx.js`, `player/flurryBurst.js`, `player/streakFx.js`, `ui/streakCounter.js`)
+The rule of the pass: **lines, not light**, and one idea a piece that grows by tier (a streak of 3 /
+5 / 7 / 10 / 15), never a new effect per count. Everything that marks a moment is written in the fire
+field's letters the way the impact stamp is (above): snapped to cells, hexagon rings, stepped frames,
+ink on black, never over the hero.
+- **The perfect marks** (sharp, the default; cinema): a perfect parry prints a short gold cross along
+  the two blades round a hot heart, which snaps to a hexagon ring and breaks into specks (sharp: 5
+  frames, about 50 blobs; cinema bigger, 9 frames, an echo ring). Each frame is held 0.04 s of REAL
+  time (cinema 0.065 s), so a mark does not stretch in the slow motion round it. Tint zone 800101,
+  gold on black; no cell below 0.7 m. A perfect dodge: the afterimage (his fine digits) stands still,
+  one digit to a cell, for 0.1 s (cinema 0.3 s), then tears into its letters along the way he left;
+  one clean line of cold steel from where he was to where he is (4 frames; cinema 5); cinema adds an
+  arrival ring round his chest. The old blink streams are not drawn in these looks.
+- **The burst levels** (`?burst=0..3`, the owner's 2): 0 the white bloom as before; 1 the lights and
+  blooms halved, thin long lines on top; 2 lines first, the target and the hero visible through it; 3
+  only lines, a blink of darkness round the star. Each hanging cut flares out thin to 1.35 / 1.6 /
+  1.85 × its length for a few frames. The same level calms a storm cut's centre (on the wyrm the
+  storm's centres stacked into a bloom).
+- **The storm and the tiers' echoes:** a storm cut's arrival, bite and vanish are thinner the deeper
+  into the storm, its afterimage the light one, its speed clone printed on the contact. At tier 4 every
+  hanging cut gets one fine echo line two cells beside it in `steel` (heat 0.55, shorter at the ends),
+  at tier 5 two, one each side; on the last blow they step away from their cuts in held frames and
+  rings open where the cuts cross (the rings do not read yet under the burst).
+- **The steel remembers** (aura, round 1): an edge line of the hero's cold steel up the blade from the
+  forte (34 % of it at tier 1, the whole edge at 5), the blade's ink and rim lines held a little lit
+  at rest (the flats stay dark, ADR-130), 1 - 3 fine echo lines inside a swing's arc, a wake of his
+  own digits when he rolls, sprints or dashes, a few coat letters lifting at tiers 4 - 5. No new hue
+  per tier: a little whiter at the top.
+- **The fire rim** (aura, round 3; the owner: "a cool faint fiery aura very subtle but cool"): each
+  frame his body is projected into the fire field's cells, the outline closed and the outside
+  flood-filled; the rim is the outside cells touching him, one cell-sized blob each at heat 0.17, so
+  the field prints a thin line of dim red strokes that hugs his figure (below about 0.15 the field's
+  erosion tears it away). Each cell breathes on its own hash. The tiers change only coverage: the
+  share of rim cells lit 0.36 / 0.5 / 0.66 / 0.8 / 0.92, the rim from 55 / 45 / 30 / 12 / 0 % of his
+  height, tiers 1 - 2 on his back side only, tongues of 1 cell (tiers 2 - 3) or 2 (4 - 5) breaking off
+  the top, a faint burning trail along the swings at 4 - 5. Never on the boss's side of him, never
+  over him. The loss: every live blob turns to a puff of smoke in one frame, the edge line snaps dark
+  and falls as strokes, his letters drop to the ground (6 + 7 a tier, 44 at most).
+- **The world** (from tier 2): a short radial lean of the grass (weaker than any of the wyrm's
+  gusts), a ring of the floor's own bits at his feet (grass motes, the courtyard's ash, stone grit by
+  level), letters rising slowly at tiers 4 - 5. Calm and brief: no red, nothing on the ground that
+  stays, nothing that looks like a warning.
+- **The counter** (HUD, `?streakCount=lines`, the owner's pick): a small number in the HUD's font at
+  the hero's chest, on his side clear of the boss: plain and dim at tiers 0 - 1, brighter with a thin
+  underline at 2 - 3, thin strokes either side at 4, pale gold with longer strokes at 5 (13 - 17 px).
+  It pops in about four frames with no overshoot and fades; never a glow, never a shake. A tier's word
+  (TRIPLE ... THOUSANDFOLD) sits under it once, in small spaced gold capitals. A lost streak: grey,
+  struck through in red, the digits parting as they fall. The flurry's banner at tiers 4 - 5 gains
+  thin gold rules, never size.

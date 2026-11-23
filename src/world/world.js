@@ -29,7 +29,8 @@ import { resolveOn } from './edge.js';
 //                                           a hard one cracks the floor; o.fire: it also sets alight
 //   world.ignite(x, z, r, k, grass = true)  fire lands: grass (unless grass = false) and wood catch
 //   world.destructibles / .fire / .scars    the systems behind them (destructibles.js, fire.js, scars.js)
-//   world.restore()                         everything stands and is unburnt again (the fight's reset)
+//   world.restore()                         everything stands and is unburnt again (the fight's reset;
+//                                           a set with `scenes`: its first scene again, ADR-157)
 //   world.setQuality(k)                     the phone budget, 0.3 .. 1 (setGrassQuality sets it from the preset)
 export const PUSHER_SLOTS = MAX_PUSH;
 
@@ -124,6 +125,7 @@ export class World {
       this.game.fx?.fire?.clear?.();
       this.game.fx?.shed?.clear?.();
       this.game.fx?.ripple?.clear?.();
+      this.game.fx?.streak?.clear?.();
       this.game.fx?.stamp?.clear?.();
     } else if (on && this._hidden !== null) {
       for (const [o, v] of this._hidden) o.visible = v;
@@ -171,6 +173,12 @@ export class World {
     this.fire.reset();
     this.scars.reset();
     this.destructibles.reset();
+    // (a set whose scenes morph, ADR-157: back to its first scene, its light and its script)
+    try {
+      this.forest?.scenes?.reset?.();
+    } catch (err) {
+      console.error('[world] scenes.reset', err);
+    }
     this.life?.clear('reset');
   }
 

@@ -67,6 +67,8 @@ export function screenAngle(A, x, y, z) {
  *   o.ring    0 none, 1 a thin ring, 2 a second, wider one
  *   o.embers  false: no falling embers (the lock's grind brings its own)
  *   o.light   false: no light
+ *   o.cross   false: no cross of glyph strokes along the edges (the perfect parry's sharp / cinema
+ *             looks print it in the letter grid instead: combat/perfectFx.js)
  */
 export function clashBurst(game, x, y, z, o = {}) {
   const add = game?.fx?.add;
@@ -99,7 +101,7 @@ export function clashBurst(game, x, y, z, o = {}) {
   let apart = Math.abs(cross[0] - cross[1]) % Math.PI;
   if (apart > Math.PI / 2) apart = Math.PI - apart;
   if (apart < 0.35) cross[1] = cross[0] + 1.1;
-  for (const a of cross) {
+  for (const a of o.cross === false ? [] : cross) {
     const d = dir(a);
     for (let j = -3; j <= 3; j++) {
       if (!j) continue;

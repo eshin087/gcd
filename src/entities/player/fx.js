@@ -5,6 +5,8 @@ import { cutBurst } from '../../combat/cutFx.js';
 import { impactK } from '../../combat/impact.js';
 import { stampHit } from '../../combat/impactStamp.js';
 import { calmLook, calmA, calmS } from '../../combat/impactCalm.js';
+import { perfectMode } from '../../combat/streak.js';
+import { perfectFeel, perfectBeat, perfectParryMark, perfectDodgeLine, perfectArrive, perfectGhost } from '../../combat/perfectFx.js';
 
 // Glyph-particle effects owned by the Wanderer: cyan slash arcs (the light swings, the slam, the
 // cleave and its impact), the thrust's long streak, the slam's crystal-shard burst, the violet gem's glow + glints, impact
@@ -150,6 +152,8 @@ function arcPoint(t, f, o) {
   o[2] = ARC.az + ARC.dz * t + z * len;
 }
 const TRAIL_NONE = [];
+const ECHO_COL = [0.5, 0.8, 1.25]; // the echo lines' steel (under the bloom: fine lines, no glow)
+const ECHO_STEP = 0.075; // the streak's echo lines (trail): this share of the reach apart, inward from the edge
 // calm at the contact: the arc's factors at one stroke (PlayerFx._arcCalm; reused)
 const CALM_ARC = { a: 1, s: 1, k: 0 };
 // the halftone dot fields sit on a world lattice so their dots line up like the panel's grid
@@ -173,6 +177,9 @@ const alongRot = (dx, dy, dz) => {
 /** The blade halo's dots sit this far off the blade's axis (m, sword space): beside both edges of
  *  the slimmer moon blades too (it was 0.06-0.12). */
 export const HALO_X = [0.055, 0.11];
+/** The streak's edge line (bladeHalo `edge`): its cold steel, whiter at the top tiers; a reused spawn. */
+const STREAK_EDGE = { off: 0.07, lift: 0.6, lo: [0.55, 0.85, 1.25], hi: [0.85, 1.05, 1.35], c: [0.55, 0.85, 1.25] }; // (kept under the bloom: a line, not a glow)
+STREAK_EDGE.o = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0.016, size: 0.1, sizeEnd: 0.1, glyph: '|', stretch: 1, rot: 0, color: STREAK_EDGE.c, colorEnd: STREAK_EDGE.c, alpha: 1, alphaEnd: 1 };
 
 const SPRAY = new THREE.Vector3(); // parry(): the default spray (back toward the blow and up)
 // the parry shockwave's rings (shockwave): bright, but not so hot that bloom swallows the duel
@@ -180,6 +187,7 @@ const RING = { white: [1.5, 1.55, 1.75], warm: [1.6, 1.3, 0.8], gold: [2.0, 1.45
 
 // (the characters an afterimage is made of: fine digits, as the wyrm is printed)
 const GHOST_DIGITS = '0123456789';
+const GHOST_STAND = [0.3, 0.5, 0.95]; // the sharp / cinema afterimage standing still: dimmer than COL.ghostDim
 const GHOST_CELL = 0.13; // m: an afterimage's character cell (about the cell his coat is printed in)
 
 export class PlayerFx {
@@ -275,6 +283,9 @@ export class PlayerFx {
     const core = T.core, veil = T.veil, end = T.end;
     const linger = cleave ? 1.7 : heavy ? 1.3 : 1;
     const rows = thrust ? TRAIL_NONE : S.veil;
+    // the streak's echo lines (player/streakFx.js `echoes`; 0 = none, today): fine lines inside the
+    // edge, ECHO_STEP of the reach apart, fainter inward, hanging longer than the edge
+    const SK = this.game.fx?.streak, nEcho = thrust ? 0 : Math.min(4, SK?.echoes | 0), echoA = nEcho > 0 ? Math.min(1, Number(SK.echoA) || 0) : 0;
     for (let s = 1; s <= nSub; s++) {
       const t = s / nSub, t0 = (s - 1) / nSub;
       // the edge
@@ -292,6 +303,21 @@ export class PlayerFx {
           life: R(S.life[0], S.life[1]) * linger, size, sizeEnd: size * 0.15,
           glyph: '|', rot: alongRot(dx, dy, dz), stretch: Math.min(30, (step / size) * 1.7),
           color: hot ? COL.arcGlint : core, colorEnd: end, alpha: (bite ? 1 : 0.45 + 0.55 * turn) * K.a, alphaEnd: 0, drag: 2,
+        });
+      }
+      for (let j = 1; j <= nEcho && echoA > 0; j++) {
+        const f = at - ECHO_STEP * j;
+        if (!(f > 0.12)) break;
+        arcPoint(t, f, ARC_P);
+        arcPoint(t0, f, ARC_Q);
+        const ex = ARC_P[0] - ARC_Q[0], ey = ARC_P[1] - ARC_Q[1], ez = ARC_P[2] - ARC_Q[2], es = Math.hypot(ex, ey, ez);
+        if (!(es > 0.01)) continue;
+        const size = S.edge * 0.8 * (heavy ? 1.2 : 1);
+        fx.spawn({
+          x: (ARC_P[0] + ARC_Q[0]) / 2, y: (ARC_P[1] + ARC_Q[1]) / 2, z: (ARC_P[2] + ARC_Q[2]) / 2,
+          life: S.life[1] * linger * (1 + 0.3 * j), size, sizeEnd: size * 0.2,
+          glyph: '|', rot: alongRot(ex, ey, ez), stretch: Math.min(30, (es / size) * 1.7),
+          color: ECHO_COL, colorEnd: end, alpha: (echoA / (0.6 + 0.4 * j)) * (0.4 + 0.6 * turn), alphaEnd: 0, drag: 2,
         });
       }
       // the veil
@@ -707,6 +733,14 @@ export class PlayerFx {
     const n = Math.max(1, Math.min(6, Number.isFinite(chain) ? chain : 1));
     const fdx = Number.isFinite(dx) ? dx : 0, fdz = Number.isFinite(dz) ? dz : 0;
     const spray = o?.spray ?? (fdx || fdz ? SPRAY.set(fdx * 0.7, 0.6, fdz * 0.7) : null);
+    // a perfect parry in the sharp / cinema look (o.feel: perfectMoment's): the gold clash smaller,
+    // no rings or cross of glyphs, and the mark printed in the letter grid at the crossing
+    const PF = o?.perfect && !o?.light ? o?.feel?.F : null;
+    if (PF) {
+      clashBurst(this.game, x, y, z, { pal: CLASH.perfect, power: (1 + 0.12 * (n - 1)) * PF.clash.power, spray, e1: o?.e1 ?? null, e2: o?.e2 ?? null, ring: PF.clash.ring, cross: PF.clash.cross, light: PF.clash.light, embers: PF.clash.embers });
+      perfectParryMark(this.game, x, y, z, { e1: o?.e1 ?? null, e2: o?.e2 ?? null, mode: o.feel.mode, beat: o.feel.beat, streak: o.feel.streak });
+      return;
+    }
     clashBurst(this.game, x, y, z, {
       pal: o?.perfect ? CLASH.perfect : blue ? CLASH.blue : CLASH.parry,
       power: (o?.light ? 0.55 : 1) * (1 + 0.12 * (n - 1)) * (o?.perfect ? 1.25 : 1),
@@ -882,12 +916,16 @@ export class PlayerFx {
    * flat [ax, ay, az, bx, by, bz, ...] world segments sampled before the blink), a streak to the
    * new spot, and a reappear burst.
    */
-  ghostep(segs, nSegs, ox, oz, nx, nz) {
+  ghostep(segs, nSegs, ox, oz, nx, nz, o = undefined) {
     const fx = this.add;
     if (!fx) return;
     const sx = nx - ox, sz = nz - oz;
     const dist = Math.hypot(sx, sz);
     const ok = dist > 0.3 && Number.isFinite(dist);
+    if (o?.feel?.F) {
+      this._ghostepFeel(fx, segs, nSegs, ox, oz, nx, nz, ok ? sx / dist : NaN, ok ? sz / dist : NaN, o);
+      return;
+    }
     this._afterimage(fx, segs, nSegs, ok ? { dx: sx / dist, dz: sz / dist } : null);
     this.blinkStream(fx, nx, 1.1, nz);
     this.blinkIn(fx, nx, 1.1, nz);
@@ -923,6 +961,54 @@ export class PlayerFx {
   }
 
   /**
+   * The Ghostep in the sharp / cinema look (combat/perfectFx.js PERFECT_FEEL[mode].dodge; o.feel:
+   * perfectMoment's, o.wx / o.wz the way he was going): the afterimage stands as a clear figure, then
+   * tears into its letters along the way he left (ux, uz: toward where he is; NaN when he stayed: the
+   * way he was going); ONE clean line in the letter grid from where he was to where he is (when he
+   * stayed: the last `line.min` m of the way he came, ending on him); cinema adds the arrival mark
+   * round him. Today's streams to and onto him, the ground streak, the motes and the big '|' core are
+   * not drawn; a smaller light.
+   */
+  _ghostepFeel(fx, segs, nSegs, ox, oz, nx, nz, ux, uz, o) {
+    const D = o.feel.F, mode = o.feel.mode, g = this.game, y = 1.1;
+    let dx = ux, dz = uz;
+    const moved = Number.isFinite(dx + dz);
+    if (!moved) {
+      const l = Math.hypot(Number(o.wx) || 0, Number(o.wz) || 0);
+      dx = l > 1e-3 ? o.wx / l : 0;
+      dz = l > 1e-3 ? o.wz / l : 0;
+    }
+    this._afterimage(fx, segs, nSegs, { dx, dz, feel: D });
+    if (moved) perfectDodgeLine(g, ox, y, oz, nx, y, nz, mode);
+    else if (dx || dz) perfectDodgeLine(g, nx - dx * D.line.min, y, nz - dz * D.line.min, nx, y, nz, mode);
+    if (D.arrive) perfectArrive(g, nx, y, nz, mode);
+    if (D.blink) {
+      this.blinkStream(fx, nx, y, nz);
+      this.blinkIn(fx, nx, y, nz);
+    }
+    this._light({ x: nx, y, z: nz, color: [0.55, 0.75, 1.3], intensity: 1.8, radius: 5, life: 0.3, fade: 0.28, fadeIn: 0.02 });
+  }
+
+  /**
+   * The look of a perfect parry / dodge NOW (combat/streak.js perfectMode(), or `mode`): a record
+   * reused per kind: mode ('today' when its feel is null), F (PERFECT_FEEL[mode][kind] or null), and
+   * for a parry beat (cinema: 'full' for a single blow / a string's last blow, else 'short') and T (the
+   * numbers of the freeze, shake, punch and slow motion: cinema's full / short, sharp's own; null =
+   * today's). `streak`: the count the moment makes (the mark's echo reads its tier).
+   */
+  perfectMoment(kind, last = true, streak = 0, mode = perfectMode()) {
+    const all = this._pm ?? (this._pm = {});
+    const R = all[kind] ?? (all[kind] = { kind, mode: 'today', F: null, T: null, beat: '', streak: 0 });
+    const feel = perfectFeel(mode);
+    R.mode = feel ? mode : 'today';
+    R.F = feel?.[kind] ?? null;
+    R.streak = Number.isFinite(streak) ? streak : 0;
+    R.beat = kind === 'parry' && R.F ? perfectBeat(R.mode, last, this.game.realTime) : '';
+    R.T = kind === 'parry' && R.F ? (R.beat ? R.F[R.beat] : R.F) : null;
+    return R;
+  }
+
+  /**
    * The afterimage (ADR-101): the hero as he stood, drawn in fine digits where he was, cold
    * blue-white, falling apart from the feet up. Its points are his body's own (`this.body`,
    * `this.bodyN`: player.js _sampleBody, taken with the pose's `segs`); without them (no meshes: a
@@ -944,6 +1030,9 @@ export class PlayerFx {
     let y0 = Infinity;
     for (let i = 0; i < n; i++) y0 = Math.min(y0, pts[i * 3 + 1]);
     const lifeK = light ? 0.7 : 1;
+    const feel = o?.feel ?? null; // sharp / cinema: the cells go to perfectGhost (stand, then tear)
+    let nG = 0;
+    const GP = feel ? this._ghostPos ?? (this._ghostPos = new Float32Array(480 * 3)) : null;
     // one character to a cell of a GHOST_CELL grid ON THE SCREEN, as he is printed himself: a point
     // that falls in a cell already taken is dropped (characters on top of one another bloom into a
     // white blot), and each is moved onto its cell, so they stand in rows and columns
@@ -959,6 +1048,15 @@ export class PlayerFx {
       cells.add(key);
       const mx = cx * GHOST_CELL - sx, my = cy * GHOST_CELL - sy;
       const x = px + rx * mx + ux * my, y = py + ry * mx + uy * my, z = pz + rz * mx + uz * my;
+      if (GP) {
+        if (nG < 480) {
+          GP[nG * 3] = x;
+          GP[nG * 3 + 1] = y;
+          GP[nG * 3 + 2] = z;
+          nG++;
+        }
+        continue;
+      }
       const h = Math.min(1, Math.max(0, (y - y0) / 1.8)); // 0 his feet … 1 his head
       // (it drifts a little the way he left, and rises)
       fx.spawn({
@@ -967,6 +1065,7 @@ export class PlayerFx {
         color: i % 11 === 0 ? COL.ghost : COL.ghostDim, colorEnd: COL.ghostEnd, alpha: 0.9, alphaEnd: 0, drag: 1.2, flicker: 0.3,
       });
     }
+    if (GP && nG) perfectGhost(this.game, GP, nG, dx, 0, dz, feel.ghost, GHOST_STAND, COL.ghostDim, COL.ghostEnd, GHOST_CELL * 1.25);
   }
 
   /**
@@ -1262,13 +1361,44 @@ export class PlayerFx {
    * edge wave). k = strength 0..2 (dim at idle, brighter through strikes and the charge); far
    * 0..1 = close-up … game camera (the dots grow so they still print at 36 m). The blade plane
    * comes from the sword's own matrix.
+   * `edge` (the streak, player/streakFx.js; 0 = none, today): a fine steady line of light along the
+   * blade's edge from the forte up `edge` of the steel (0..1), at alpha `edgeA`, `top` 0..1 whitening
+   * it a little at the top tiers. One stretched stroke a frame, re-spawned on the steel (no velocity).
+   * With k = 0 only the edge line is drawn.
    */
-  bladeHalo(dt, k, far = 1) {
+  bladeHalo(dt, k, far = 1, edge = 0, edgeA = 0, top = 0) {
     const fx = this.add;
     const sw = this.rig?.sword;
-    if (!fx || !sw || !(k > 0)) return;
+    if (!fx || !sw || !(k > 0 || edge > 0)) return;
     const e = sw.matrixWorld.elements;
     const tip = DIM.drawnTip ?? DIM.steelTip; // the drawn point (model.js), not anim's grass-clamp point
+    if (edge > 0) {
+      // the edge line: from the forte up the leading (+X) edge, on the bevel (EDGE_GLINT.inset)
+      const z0 = DIM.forte, z1 = z0 + (tip - 0.02 - z0) * Math.min(1, edge), zc = (z0 + z1) * 0.5;
+      // (just off the steel, past its leading edge: on the steel it vanished into the lit blade the
+      // game camera draws; a hair of dark between keeps the blade's own line and its direction)
+      const xx = hwAt(zc) + STREAK_EDGE.off * (0.4 + 0.6 * far);
+      // (drawn STREAK_EDGE.lift m toward the camera: the particles' soft depth test fades a stroke that
+      // lies on the steel's own depth to nothing)
+      const cz = CAM, lf = STREAK_EDGE.lift;
+      const x = e[0] * xx + e[8] * zc + e[12] + (cz ? cz[8] * lf : 0), y = e[1] * xx + e[9] * zc + e[13] + (cz ? cz[9] * lf : 0), z = e[2] * xx + e[10] * zc + e[14] + (cz ? cz[10] * lf : 0);
+      const dl = Math.hypot(e[8], e[9], e[10]) || 1, len = (z1 - z0) * dl;
+      const size = 0.075 * (1 + 0.6 * far);
+      if (Number.isFinite(x + y + z + len) && len > 0.01 && y > 0.02) {
+        const c = STREAK_EDGE, w = Math.min(1, Math.max(0, top));
+        c.c[0] = c.lo[0] + (c.hi[0] - c.lo[0]) * w;
+        c.c[1] = c.lo[1] + (c.hi[1] - c.lo[1]) * w;
+        c.c[2] = c.lo[2] + (c.hi[2] - c.lo[2]) * w;
+        // (it is uploaded at the next frame's particle update, drawn that frame and gone at the one after:
+        // one stroke on screen at a time, riding the steel a frame behind, as the edge glint does)
+        const o = c.o;
+        o.x = x; o.y = y; o.z = z; o.life = dt * 1.5; o.size = o.sizeEnd = size;
+        o.stretch = Math.min(30, len / size); o.rot = alongRot(e[8] / dl, e[9] / dl, e[10] / dl);
+        o.alpha = o.alphaEnd = Math.min(1, edgeA);
+        fx.spawn(o);
+      }
+      if (!(k > 0)) return;
+    }
     // the edge-wave: a short bright streak laid along the blade at the drawn point (it sat 0.06–0.26 m
     // past it, × HERO_SCALE: a dash floating off the sword, left behind by every roll and swing)
     this.tipAcc += dt * 14;

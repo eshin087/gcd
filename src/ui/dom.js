@@ -151,6 +151,7 @@ export const CONTROLS = [
   // (a fixed reward: shown once learned; game/unlocks.js, ADR-146)
   ['@heavy', 'guard, then hold heavy: One Breath, the draw · release to cut', null, 'oneBreath'],
   ['@dodge', 'dodge · perfect dodge = Ghostep'],
+  ['@dodge', 'guard, then dodge with no direction: the Long Second, a lean in place', null, 'longSecond'],
   ['@sprint', 'sprint (a stick click: until you let go)', 'pad'],
   ['@sprint', 'sprint', 'kb'],
   ['@flask', 'drink flask'],
@@ -187,6 +188,7 @@ export const TOUCH_CONTROLS = [
   ['BLOCK', 'hold: block · tap: parry'],
   ['BLOCK→HEAVY', 'slide from block onto heavy, hold: One Breath', 'oneBreath'],
   ['DODGE', 'roll · perfect dodge = Ghostep'],
+  ['BLOCK→DODGE', 'slide from block onto dodge: the Long Second, a lean in place', 'longSecond'],
   ['SLIDE', 'between the four tiles without lifting'],
   ['FLASK', 'drink flask'],
   ['LOCK', 'lock-on (attacks auto-aim anyway)'],

@@ -218,7 +218,11 @@ export const TUNING = {
     // (tuning pass, 2026-11-15, five seeds 1337 7 4242 99 2026: P1 30.7 - 36.7, P2 53.2 - 63.4, P3 71.6 -
     // 86.0 cues a minute, P3 / P2 x1.15 - 1.62, P2 / P1 x1.55 - 1.88; longest gaps P1 4.4, P2 3.6, P3 3.2 s.
     // Was maxGap [8, 7, 5] and no floor on the rate)
-    meter: { ramp: 1.12, maxGap: [5.5, 5, 4.5], minRate: [28, 48, 64] },
+    // ramp: each phase busier than the one before in the seeds' MEAN; rampSeed: per seed (the duelists'
+    // rule, ADR-122). The same seed replays a different fight whenever the scenarios before it change
+    // (2026-11-23, the streak pass: seed 1337 read 66.5 -> 70.7 inside `all`, x1.06, and 60.0 -> 77.0
+    // alone; over ten seeds alone every one ramps at least x1.21, main x1.31)
+    meter: { ramp: 1.12, rampSeed: 1.05, maxGap: [5.5, 5, 4.5], minRate: [28, 48, 64] },
   },
   // the wyrm's heat per phase: crack glow (glowTarget) and body embers per second (phase 3 burns
   // white-hot)

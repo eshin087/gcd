@@ -4,6 +4,7 @@ import { perPhase } from './realise.js';
 import { GUARD_TRAVEL, GUARD_KINDS } from './guard.js';
 import { DUEL_WORLD } from './worldTuning.js';
 import { CueLedger, throwsAt, glaiveHome } from './ledger.js';
+import { ATTACK_SOUND, beatSound } from './attackSound.js';
 import { answerOf, DODGE, prepareChoose, directWeight, booked, linkFor, linkUsable } from './director.js';
 
 // ---------------------------------------------------------------------------------------------------
@@ -79,6 +80,34 @@ import { answerOf, DODGE, prepareChoose, directWeight, booked, linkFor, linkUsab
 //                          by the impact: the move ENDS there (its later beats never play) and he stands
 //                          open `open` s (0.6) with his guard down. brain.stats.caught / stanceMiss.
 // startLock(o) takes overrides of TUNING.lock (`dist`: the lock at range, player.startBladeLock).
+//
+// THE PURSUIT (Tian Lei's, 2026-11-23; the owner: "make the boss also stop attacking empty air if the
+// player moves out of the distance"; a kit without `pressure.pursue` behaves exactly as before).
+// TUNING.pressure.pursue: { margin, after, gap, closeK, dashK, away, leapLead, blinkLead, blinkKeep, miss,
+// lead, habit, habitMax, habitDecay }
+//   - the reach watch: through each real melee beat's windup, from `after` s past its start up to its
+//     glint (never after it: a glint is always a blow), the hero is led to the impact (his own movement,
+//     _lead) and set against what the beat can still reach (_reachLeft: the zone, the step-in left, the
+//     dash not yet spent); beyond it by `margin` m he BREAKS OFF (no glint, no hit: an unthrown blow, as
+//     a feint) and chases: a `far` / `away` link of the move, else footwork after a `gap` s breather
+//     (his dash and his closing blink run in it). brain.stats.stops counts them. Not a counter, a
+//     flurry, a counter stance, a draw, a transformation, nor a blow out of a leap / a thrown thing, nor
+//     one out of a blink before he has blinked (their reach is wherever the hero is); a hero led past
+//     the circle he keeps to (d.bound) by more than the blow's own reach is out of reach of any of them.
+//   - the chase: while the hero is backing away (his speed away over `away` m/s) a beat's step-in
+//     budget is x `closeK` and a dash's length cap x `dashK` (each one number or one per phase; the
+//     dash's timing as authored).
+//   - a leap lands where the hero is GOING: its landing spot leads him by up to `leapLead` s (until its
+//     `lock`, as before); the actor's blink may lead him by `blinkLead` s, never past `blinkKeep` m short
+//     of its own distance (Tian Lei's ascendant.js beatMotion: still behind / beside the hero).
+//   - the pick reads the hero's feet (director.js reaches): a move whose first blow could not reach
+//     where he will be at its impact (his speed away x min(its first impact, `lead`) s) weighs x `miss`,
+//     and is never a link.
+//   - his read of a hero who runs: every break-off adds 1 to brain.runner (at most `habitMax`, falling
+//     `habitDecay` a second); while it is up, a move whose first blow reaches wherever the hero goes (a
+//     blink, a leap, a thrown or called thing, a beam, a dash of 4 m or more) weighs x (1 + `habit` x
+//     runner).
+//   brain.forecast(s) is the director's view (the hero's speed away, m/s).
 //
 // THE SHEATHED'S FIELDS (ADR-144; a beat or a move without them behaves exactly as before):
 //   draw: true             a draw (always blue with the flare, `fixed`): its combat:tell waits for its cue
@@ -177,6 +206,8 @@ export class DuelBrain {
     this.open = new Set([...OPEN, ...(K.OPEN ?? [])]);
     this.aiEnabled = true;
     this._ld = { dx: 0, dz: 0, dist: 0, ang: 0 };
+    /** the dragon:attack payload (reused: listeners read it at once) */
+    this._atk = { name: '', weapon: 'sword', weight: 'light', shape: 'cut', tell: TELL.NORMAL, impactIn: 0, x: 0, z: 0 };
     /** the impacts he knows are coming (ledger.js) */
     this.ledger = new CueLedger(this);
     this.reset();
@@ -191,6 +222,7 @@ export class DuelBrain {
   reset() {
     this.clock = 0;
     this.chainN = 0; // moves in a row with no footwork between (links and the flow)
+    this.runner = 0; // (pressure.pursue) how much the hero has run from his blows lately: + 1 a break-off
     this.catRun = 0;
     this.lastCat = null;
     this.catSeen = {};
@@ -199,7 +231,7 @@ export class DuelBrain {
     this.seek = null;
     this.seekNext = 0;
     this._phaseSeen = 0;
-    this.stats = { picks: 0, links: 0, chains: 0, cuts: 0, rests: 0, holds: 0, holdTime: 0, feints: 0, toldFeints: 0, delays: 0, fizzles: 0, floors: 0, seeks: 0, caught: 0, stanceMiss: 0 };
+    this.stats = { picks: 0, links: 0, chains: 0, cuts: 0, rests: 0, holds: 0, holdTime: 0, feints: 0, toldFeints: 0, delays: 0, fizzles: 0, floors: 0, seeks: 0, caught: 0, stanceMiss: 0, stops: 0 };
     this.guardLog = Array.from({ length: 64 }, () => ({ t: -1, kind: '', what: '', with: '' }));
     this._gi = 0;
     this.ledger?.reset();
@@ -303,6 +335,7 @@ export class DuelBrain {
       this._glaiveTurn();
     }
     if (this.raiseT > 0) this.raiseT -= dt;
+    if (this.runner > 0) this.runner = Math.max(0, this.runner - dt * (this.P?.pursue?.habitDecay ?? 0.1));
     if (this.backCool > 0) this.backCool -= dt;
     if (this.sideCool > 0) this.sideCool -= dt;
     for (const k in this.cooldowns) if (this.cooldowns[k] > 0) this.cooldowns[k] -= dt;
@@ -1163,6 +1196,25 @@ export class DuelBrain {
         }
         if (FLOOR && b.def.ring) d.fx.ringPulse(d.position.x, d.position.z, b.def.ring);
       }
+      // the blow through the air (dragon:attack, attackSound.js): once per real blow, `lead` s before
+      // its impact and never before its glint (a hold or the honor gate may still move the impact until
+      // then). Reads only: no RNG, no timing.
+      if (!b.sounded && b.flashed && !a.def.transition && t >= b.impact - ATTACK_SOUND.lead) {
+        b.sounded = true;
+        const snd = beatSound(this.T.weapon, b.def);
+        if (snd) {
+          const e = this._atk;
+          e.name = a.name;
+          e.weapon = snd.weapon;
+          e.weight = snd.weight;
+          e.shape = snd.shape;
+          e.tell = b.def.tell ?? TELL.NORMAL;
+          e.impactIn = Math.max(0, b.impact - t);
+          e.x = d.position.x;
+          e.z = d.position.z;
+          d.emit('dragon:attack', e);
+        }
+      }
     }
     if (FLOOR && cur && !cur.feint && cur.def.ring && t < cur.impact) {
       // (TELL_STYLE.red.floor: the red ground warning of an area, from the windup start to the impact)
@@ -1193,6 +1245,14 @@ export class DuelBrain {
         this._toFoot(0);
         return;
       }
+    }
+    // (pressure.pursue: the reach watch, through the windup up to the glint; see the header)
+    if (cur && s && this.P?.pursue && this.aiEnabled && this._outOfReach(a, cur, t, s)) {
+      this.stats.stops++;
+      this.runner = Math.min(this.P.pursue.habitMax ?? 3, this.runner + 1);
+      if (this._linkNow(a, s, true)) return;
+      this._toFoot(this.P.pursue.gap ?? 0);
+      return;
     }
     if (cur) this._motion(cur, t, dt, s);
     // the late part of his recovery (his guard is back): he may break it off to step out of a heavy blow
@@ -1392,7 +1452,8 @@ export class DuelBrain {
     // (not before a SIGN's vanish: he stands for the sign, and closes from where he arrives)
     if (b.close > 0 && L && u >= 0.15 && t < b.impact && !this.leap && !(D.blink?.sign && !b._blinked)) {
       const gap = L.dist - this._ideal(D.zone);
-      const budget = b.close - (b.closed ?? 0);
+      // (pressure.pursue: a hero backing away is chased with closeK x the step-in)
+      const budget = b.close * (this._chasing(s) ? perPhase(this.P.pursue.closeK ?? 1, d.phase) : 1) - (b.closed ?? 0);
       if (gap > 0.02 && budget > 0) {
         const step = Math.min(Math.min(gap / left, this.T.close.speed) * dt, budget, gap);
         b.closed = (b.closed ?? 0) + step;
@@ -1414,7 +1475,9 @@ export class DuelBrain {
         const ax = L ? L.dx : fx, az = L ? L.dz : fz, dist = L ? L.dist : 0;
         const l = Math.hypot(ax, az) || 1;
         if (s) d.yaw = Math.atan2(ax, az);
-        b._dash = { x: d.position.x, z: d.position.z, dx: ax / l, dz: az / l, len: clamp(dist - D.dash.stop, 0, D.dash.max), done: 0 };
+        // (pressure.pursue: a hero backing away: the length cap x dashK)
+        const cap = D.dash.max * (this._chasing(s) ? perPhase(this.P.pursue.dashK ?? 1, d.phase) : 1);
+        b._dash = { x: d.position.x, z: d.position.z, dx: ax / l, dz: az / l, len: clamp(dist - D.dash.stop, 0, cap), done: 0 };
       }
       const k = ease(clamp((u - D.dash.from) / Math.max(1e-4, D.dash.to - D.dash.from), 0, 1));
       const want = b._dash.len * k, step = want - b._dash.done;
@@ -1442,6 +1505,49 @@ export class DuelBrain {
     return (z?.r ?? 2) + Math.max(0, z?.fwd || 0) + pr + (b.close ?? 0) + (b.def.dash?.max ?? 0);
   }
 
+  // ---------------------------------------------------------------- the pursuit (pressure.pursue)
+  /** The hero's speed away from him (m/s; negative: coming in). */
+  forecast(s = this._sense()) {
+    return s ? (s.vx * s.dx + s.vz * s.dz) / (s.dist || 1) : 0;
+  }
+
+  /** Is he chasing a hero who backs away (faster than pressure.pursue.away m/s)? */
+  _chasing(s) {
+    const PU = this.P?.pursue;
+    return !!PU && !!s && this.forecast(s) > (PU.away ?? 1.2);
+  }
+
+  /** What beat b can still reach at time t (m from his root): the zone, the step-in left (at the
+   *  close-in speed, in the time left), the dash not yet spent; Infinity for a blow whose reach is
+   *  wherever the hero is (a leap, a thrown thing, a blink before he has blinked). */
+  _reachLeft(b, t, s) {
+    const D = b.def;
+    if (D.leap || (D.release && !b.cut) || D.cast) return Infinity;
+    // (a blink: wherever the hero is until he has gone; from where he arrives, the blow's own reach)
+    if (D.blink ? !b._blinked : !Number.isFinite(this._reach(b))) return Infinity;
+    const z = D.zone, pr = this.d.game.player?.radius ?? 0.45, PU = this.P?.pursue ?? {};
+    const chase = this._chasing(s), left = Math.max(0, b.impact - t), ph = this.d.phase;
+    const close = Math.min(Math.max(0, (b.close ?? 0) * (chase ? perPhase(PU.closeK ?? 1, ph) : 1) - (b.closed ?? 0)), this.T.close.speed * left);
+    let dash = 0;
+    if (D.dash) dash = b._dash ? Math.max(0, b._dash.len - b._dash.done) : D.dash.max * (chase ? perPhase(PU.dashK ?? 1, ph) : 1);
+    return (z?.r ?? 2) + Math.max(0, z?.fwd || 0) + pr + close + dash;
+  }
+
+  /** The reach watch (pressure.pursue): beat b of move a, before its glint, with the hero led to its
+   *  impact beyond what it can still reach by `margin` m. */
+  _outOfReach(a, b, t, s) {
+    const PU = this.P.pursue, D = b.def;
+    if (b.feint || b.flashed || D.stance || D.draw || a.def.transition || a.def.counter || a.streak) return false;
+    if (t < b.start + (PU.after ?? 0.06) || t >= b.flash) return false;
+    if (!D.zone || D.release || D.cast || D.selfHit) return false;
+    const L = this._lead(s, b.impact - t), d = this.d, z = D.zone, m = PU.margin ?? 0.5;
+    // (he keeps to his bound: a hero led past it by more than the zone's own reach is out of reach of
+    // any step, dash, blink or leap of his)
+    const beyond = Math.hypot(d.position.x + L.dx, d.position.z + L.dz) - (d.bound ?? Infinity);
+    if (beyond > z.r + Math.max(0, z.fwd || 0) + (d.game.player?.radius ?? 0.45) + m) return true;
+    return L.dist > this._reachLeft(b, t, s) + m;
+  }
+
   /** Heaven-Splitting Fall: the ring follows the hero until `lock`, he comes down on it at u = 1. */
   _leap(b, u, s) {
     const d = this.d, L = b.def.leap;
@@ -1452,9 +1558,9 @@ export class DuelBrain {
     }
     const J = this.leap;
     if (s && u < L.lock) {
-      // the landing spot follows the hero, inside his bound
-      const B = d.bound;
-      let tx = s.p.x, tz = s.p.z;
+      // the landing spot follows the hero, inside his bound (pressure.pursue.leapLead: where he is going)
+      const B = d.bound, ll = this.P?.pursue?.leapLead ?? 0, k = ll > 0 ? Math.min(ll, Math.max(0, b.impact - (this.act?.t ?? b.impact))) : 0;
+      let tx = s.p.x + s.vx * k, tz = s.p.z + s.vz * k;
       const r = Math.hypot(tx, tz);
       if (r > B) {
         tx *= B / r;
@@ -1514,7 +1620,7 @@ export class DuelBrain {
   _worldBlow(b) {
     const d = this.d, w = d.game.world, z = b.def.zone;
     const W = w?.destructibles;
-    if (!W?.strike || !z || b.def.bolt || b.def.pull || b.def.grip || (d.position.y > 0.6 && !b.def.air)) return;
+    if (!W?.strike || !z || b.def.bolt || b.def.pull || b.def.grip || b.def.noWorld || (d.position.y > 0.6 && !b.def.air)) return;
     const WT = this.T.world ?? DUEL_WORLD;
     const heavy = z.kind === 'ring' || !!b.def.ring || !!b.def.knockdown;
     const power = ((b.def.damage ?? 12) / (WT.per ?? DUEL_WORLD.per)) * (b.def.tell === TELL.RED ? WT.red ?? DUEL_WORLD.red : 1);

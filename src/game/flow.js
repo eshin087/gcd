@@ -2,10 +2,12 @@ import * as THREE from 'three';
 import { CONFIG } from '../core/config.js';
 import { clamp, damp, lerp } from '../core/math.js';
 import { DEFENSE } from '../combat/rules.js';
+import { PERFECT_FEEL, perfectUpdate, perfectClear } from '../combat/perfectFx.js';
 import { ScreenGrade } from './grade.js';
 import { RunStats } from './stats.js';
 import { MoveLog, prettyMove } from './telemetry.js';
 import { Arrival } from './arrival.js';
+import { burstScreen } from '../entities/player/flurryBurst.js';
 
 // Game flow: owns game.state and every transition
 //   title → explore → bossIntro → boss → dead | victory   (+ paused from explore/bossIntro/boss)
@@ -162,6 +164,15 @@ export class GameFlow {
       this.stats.parries++;
       // a blade met: a white flash of the frame on the clash (inside a string: a flicker; where the
       // exchange turns, a heavy blow or a perfect parry: brighter); a deflected bullet: none
+      // (a perfect parry in the sharp / cinema look, combat/perfectFx.js: its own flash, and cinema's
+      // world dims for the beat instead)
+      const PF = d?.perfect && !d?.light ? PERFECT_FEEL[d?.feel]?.parry : null;
+      if (PF) {
+        const T = d?.beat && PF[d.beat] ? PF[d.beat] : PF;
+        if (PF.flash > 0) this.grade.flashPulse(PF.flash);
+        if (T.dim > 0) this.grade.dimPulse(T.dim, T.dimHold);
+        return;
+      }
       if (!d?.light) this.grade.flashPulse(d?.perfect ? 0.55 : d?.tell === 'blue' ? 0.3 : d?.last === false ? 0.12 : 0.22);
     });
     // two cuts meet (the trade clash): a bright flicker
@@ -173,12 +184,14 @@ export class GameFlow {
     ev?.on('player:block', () => this.stats.blocks++);
     ev?.on('player:guardBreak', () => this.stats.guardBreaks++);
     // a perfect dodge and its Ghostep blink normally arrive together: count / pulse once
-    const ghostep = () => {
+    // (the sharp / cinema looks, combat/perfectFx.js: the cool grade holds for their own time; the
+    // perfect dodge arrives first and says its look)
+    const ghostep = (d) => {
       const now = finite(this.game.realTime);
       if (now - this._ghostAt < 0.4) return;
       this._ghostAt = now;
       this.stats.perfectDodges++;
-      this.grade.ghostPulse(DEFENSE.ghostep.slowmoTime);
+      this.grade.ghostPulse(PERFECT_FEEL[d?.feel]?.dodge?.pulse ?? DEFENSE.ghostep.slowmoTime);
     };
     ev?.on('player:perfectDodge', ghostep);
     ev?.on('player:ghostep', ghostep);
@@ -188,13 +201,15 @@ export class GameFlow {
       if (finite(d?.strikes) >= 2) this.grade.ghostPulse(finite(d?.dur, 0.6));
     });
     ev?.on('player:flurryHit', (d) => {
+      // the burst level (player/flurryBurst.js; ?burst=): 1 / 1 / 1 at level 0, as before
+      const B = burstScreen();
       if (!d?.last) {
-        this.grade.flashPulse(Math.min(0.32, 0.14 + 0.03 * finite(d?.n))); // every cut a little brighter
+        if (B.cut > 0) this.grade.flashPulse(Math.min(0.32, 0.14 + 0.03 * finite(d?.n)) * B.cut); // every cut a little brighter
         return;
       }
       // the last blow's impact frame: the screen dips dark for a blink, then flashes
-      this.grade.dip(0.42, 0.1);
-      this.grade.flashPulse(0.5 + Math.min(0.4, 0.06 * finite(d?.of)));
+      this.grade.dip(Math.min(0.95, 0.42 * B.dip), 0.1);
+      if (B.last > 0) this.grade.flashPulse((0.5 + Math.min(0.4, 0.06 * finite(d?.of))) * B.last);
     });
     ev?.on('player:streak', (d) => {
       this.stats.bestStreak = Math.max(this.stats.bestStreak, finite(d?.count));
@@ -228,6 +243,8 @@ export class GameFlow {
     } catch (err) {
       this._report('update', err);
     }
+    // the perfect parry's / dodge's marks (combat/perfectFx.js: drawn before the fire field's update)
+    perfectUpdate(g, dt, realDt);
     // always keep time + screen grade coherent, even after an error
     g.timeScale = g.state === 'paused' ? 0 : clamp(Math.min(this.slowmo, this.cineScale), 0.05, 1);
     try {
@@ -299,16 +316,21 @@ export class GameFlow {
    * toward (x, z). The slow-mo drops in at once and eases back over the last third; the camera eases
    * in over the first fifth and out over the last two fifths. The slow-mo is the flow's own time
    * scale (cineScale), not a hitstop: an actor's short freeze (hitstop, min-merged) would otherwise
-   * stretch over the whole moment. A newer moment replaces a running one. Emits 'game:cinematic'.
+   * stretch over the whole moment. A newer moment replaces a running one. Emits 'game:cinematic'
+   * (not with `quiet`: the perfect dodge's cinema look, which must not ring the moment's gong).
+   * Optional: `ease` [in, out] the shares of dur the camera eases in / out over (default [0.2, 0.4]:
+   * cinema's [0.3, 0.3] pushes in and settles), `back` the share the slow motion eases back over
+   * (default 0.34).
    */
   cinematic(o = {}) {
     const x = finite(o.x, NaN), z = finite(o.z, NaN);
     if (!Number.isFinite(x + z) || !PLAY.has(this.game.state)) return false;
     const dur = clamp(finite(o.dur, 0.8), 0.1, 3);
     const slowmo = clamp(finite(o.slowmo, 0.3), 0.05, 1);
-    this.cine = { t: 0, dur, x, z, slowmo, zoom: finite(o.zoom, -9), weight: clamp(finite(o.weight, 0.6), 0, 1) };
+    const ein = clamp(finite(o.ease?.[0], 0.2), 0.02, 0.9), eout = clamp(finite(o.ease?.[1], 0.4), 0.02, 0.9);
+    this.cine = { t: 0, dur, x, z, slowmo, zoom: finite(o.zoom, -9), weight: clamp(finite(o.weight, 0.6), 0, 1), ein, eout, back: clamp(finite(o.back, 0.34), 0.02, 1) };
     this.cineScale = slowmo;
-    this.game.events?.emit('game:cinematic', { kind: String(o.kind ?? 'moment') });
+    if (!o.quiet) this.game.events?.emit('game:cinematic', { kind: String(o.kind ?? 'moment') });
     return true;
   }
 
@@ -321,12 +343,12 @@ export class GameFlow {
     }
     C.t += rdt;
     const u = C.t / C.dur;
-    this.cineScale = u >= 1 ? 1 : C.slowmo + (1 - C.slowmo) * Math.max(0, (u - 0.66) / 0.34);
+    this.cineScale = u >= 1 ? 1 : C.slowmo + (1 - C.slowmo) * Math.max(0, (u - (1 - C.back)) / C.back);
     if (!rig?.cine) {
       if (u >= 1) this.cine = null;
       return;
     }
-    const k = u >= 1 ? 0 : Math.min(1, u / 0.2) * Math.min(1, (1 - u) / 0.4);
+    const k = u >= 1 ? 0 : Math.min(1, u / C.ein) * Math.min(1, (1 - u) / C.eout);
     rig.cine.x = C.x;
     rig.cine.z = C.z;
     rig.cine.w = C.weight * k;
@@ -871,7 +893,9 @@ export class GameFlow {
       g.fx?.fire?.clear?.();
       g.fx?.shed?.clear?.();
       g.fx?.ripple?.clear?.();
+      g.fx?.streak?.clear?.();
       g.fx?.stamp?.clear?.();
+      perfectClear();
       g.fx?.alpha?.clear?.();
     }, 'fx.clear');
     this._try(() => g.world?.atmosphere?.setBonfireLit?.(true), 'setBonfireLit');

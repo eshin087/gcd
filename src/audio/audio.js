@@ -1,8 +1,10 @@
 import { clamp } from '../core/math.js';
 import { DEFENSE } from '../combat/rules.js';
-import { createNoiseBuffers, createImpulse, limiterCurve, holdAt, num } from './dsp.js';
+import { createNoiseBuffers, createImpulse, limiterCurve, holdAt, num, arand } from './dsp.js';
 import { Voice } from './voice.js';
-import { SFX } from './sfx.js';
+import { SFX, bladeWhooshPeak } from './sfx.js';
+import { SampleBank, sfxMode } from './samples.js';
+import { SLOT, HEAVY, BLOWS, HERO, BEAST, blowSlot } from './sampleList.js';
 import { ForestAmbience, BreathLoop } from './ambience.js';
 import { Air } from './air.js';
 import { ChargeHum } from './charge.js';
@@ -10,9 +12,12 @@ import { createMusic } from './music.js';
 import { FIRE_SFX, subscribeFire } from './fire.js';
 import { TrackBank, TrackLoop } from './tracks.js';
 import { THUMP_SFX, Thump } from './thump.js';
+import { StreakSound, perfectSound } from './streakSound.js';
 
-// WebAudio engine: every sound effect is synthesised at runtime; the music is recorded tracks per level
-// and boss phase (tracks.js; ADR-117) over a synthesised fallback score (music.js).
+// WebAudio engine: the sound effects are synthesised at runtime, except the attack sounds and the blue /
+// red cues, which are recorded one-shots over the synth (samples.js, sampleList.js; `?sfx=old`: all synth,
+// as before); the music is recorded tracks per level and boss phase (tracks.js; ADR-117) over a
+// synthesised fallback score (music.js).
 // The AudioContext is created lazily by unlock() (flow calls it on title dismiss; the engine
 // also unlocks itself on the first pointer/key gesture). Every method is a no-op before that.
 //
@@ -25,13 +30,16 @@ import { THUMP_SFX, Thump } from './thump.js';
 //
 // play(name, opts) one-shots — opts.x/opts.z spatialise against the player (pan by Δx,
 // full level within 8 m, ≈ −12 dB at 35 m), opts.gain, opts.pan, opts.delay (s):
-//   player   swing{heavy,combo,thrust} slam hit{heavy,crit,part} hurt{damage,kind} sizzle roll
+//   player   swing{heavy,combo,thrust} (recorded sword-* when loaded) slam hit{heavy,crit,part} hurt{damage,kind} sizzle roll
 //            footstep{sprint} heal noFlask lockOn{on} dodge gong
 //   combat   tellBlue tellRed tellTick flash{tell} parry{tell,chain} block{tell} guardBreak
+//            (recorded cue-blue / cue-red / time-blue / time-red over tellBlue / tellRed / flash; normal
+//            tells and flashes silent unless ?sfx=old)
+//   duelist  bladeWhoosh{weapon,weight,shape} (the recorded sword-* / fist-* when loaded; dragon:attack)
 //            ghostep{slow}   (+ the sustained charge hum: player:charge → release/interrupt)
 //            plungeDive{exec} plungeHit{exec}
 //   dragon   roar{strength,pitch} wake dragonStep{heavy} wingFlap{strength} takeoff land bite
-//            windup{name} dragonSwipe dragonPain dragonRecoil{tell} postureBreak{roar}
+//            windup{name} dragonSwipe (recorded beast-claw / beast-tail by name) dragonPain dragonRecoil{tell} postureBreak{roar}
 //            fireball explosion{radius} stagger phase2{roar} dragonDeath emberHiss paperTear{soft}
 //   world/ui bonfire victory area retry blip{kind: select|start|pause|resume|error}
 //   aliases  ui click select confirm start pause resume back cancel error → blip variants
@@ -63,6 +71,8 @@ const GRUNT_GAP = 0.5; // s: rapid fire-contact ticks only grunt this often (siz
 const DUCK_HZ = 650;
 const EMPTY = Object.freeze({});
 const RX_OWN_SOUND = /breath|fire|flame|ball|bite|roar|inferno|blaze|meteor|strafe|dive|barrage|erupt|nova/i;
+// the wyrm's claw / tail attacks by name (sampleList.js BEAST) → their recorded slot
+const BEAST_SLOT = new Map([...BEAST.claw.map((n) => [n, 'beast-claw']), ...BEAST.tail.map((n) => [n, 'beast-tail'])]);
 
 const ALIASES = {
   ui: ['blip', { kind: 'select' }],
@@ -91,6 +101,10 @@ export class AudioEngine {
     this.tracks = null; // recorded music (built with the graph; ADR-117)
     this.thump = new Thump(this); // the impact pass's low end + music dip (thump.js; no nodes of its own)
     this.thumpDip = null; // its gain on the music path (built with the graph; 1 when idle)
+    this.streakSound = new StreakSound(this); // the streak pass's climb, loss and layer (streakSound.js; builds nothing until it plays)
+    this.samples = null; // the recorded attack sounds and blue / red cues (built with the graph; samples.js)
+    this._blowAt = -10; // ctx time the last boss blow's sound starts (BLOWS.gap)
+    this._smp = { x: undefined, z: undefined, impactIn: 0 }; // reused opts for a blow's sample
     this._musicPhase = 0; // the boss phase whose track is playing (0: not a boss mode)
     this._phaseHint = 1; // the latest phase a dragon:phase* event announced (the wyrm sets its own number later)
     this._fading = []; // layers crossfading out
@@ -166,7 +180,7 @@ export class AudioEngine {
       this._failed = true;
       this.master = this.duck = this.sfxBus = this.musicBus = this.ambientBus = this.uiBus = null;
       this.cueBus = this.slowLp = this.slowGain = this.musicDip = this.thumpDip = null;
-      this.reverbIn = this.ambience = this.breath = this.charge = this.music = this.tracks = null;
+      this.reverbIn = this.ambience = this.breath = this.charge = this.music = this.tracks = this.samples = null;
       this._fading.length = 0;
       for (const l of this._poolLists) l.length = 0;
       return;
@@ -226,6 +240,80 @@ export class AudioEngine {
       return false;
     }
     return true;
+  }
+
+  /**
+   * A recorded one-shot of `slot` (sampleList.js). False when the slot has nothing ready (no file, not
+   * loaded, failed, no fetch, `?sfx=old`): the caller plays its synth recipe. True when it is handled,
+   * played or dropped (the slot's `gap`, BLOWS.gap for a boss's blow, a full voice pool).
+   *   o        x / z (spatialised at that point), impactIn (game s to the blow's impact: an `align` slot
+   *            puts the clip's loudest moment there, less its `lead`)
+   *   gainMul, rateMul   on top of the slot's own
+   *   who      'hero' (the hero's own swing: HERO's prio / rev / gap) | 'blow' (a boss's blow: BLOWS.gap
+   *            across every blow slot) | undefined
+   */
+  _sample(slot, o, gainMul = 1, rateMul = 1, who) {
+    const ctx = this.ctx, bank = this.samples, C = SLOT[slot];
+    if (!ctx || ctx.state === 'closed' || !bank || !C || sfxMode() === 'old') return false;
+    const r = bank.pick(slot);
+    if (!r) return false;
+    const now = ctx.currentTime;
+    const hero = who === 'hero';
+    const key = hero ? 'smp:hero' : slot;
+    const gap = hero ? HERO.gap : C.gap;
+    const last = this._last.get(key);
+    if (last !== undefined && now >= last && now - last < gap) return true;
+    const rate = Math.max(0.25, C.rate * rateMul * (1 + (bank.rand() * 2 - 1) * C.jitter));
+    let delay = 0;
+    if (C.align && o) delay = Math.max(0, num(o.impactIn, 0) / this._timeScale() - r.peak / rate - C.lead);
+    const at = now + delay;
+    // (a boss's blows together: a flurry's next one inside BLOWS.gap of the last is left out)
+    if (who === 'blow') {
+      if (Math.abs(at - this._blowAt) < BLOWS.gap) return true;
+      this._blowAt = at;
+    }
+    let pan = 0;
+    let gain = Math.max(0, gainMul) * C.gain * (hero ? HERO.gain : 1);
+    if (o && o.x !== undefined && o.z !== undefined) {
+      const sp = this._spatial(o.x, o.z, C.falloff);
+      pan = sp.pan;
+      gain *= sp.gain;
+    }
+    const bus = C.bus === 'cue' ? this.cueBus || this.sfxBus : this.sfxBus;
+    const v = this._voice('sfx', { bus, pan, gain, rev: hero ? HERO.rev : C.rev, prio: hero ? HERO.prio : C.prio });
+    if (!v) return true;
+    this._last.set(key, now);
+    try {
+      this.samples.start(v, at + 0.006, r, 1, rate);
+    } catch (err) {
+      v.kill(now);
+      this._warn(`sample:${slot}`, err);
+    }
+    return true;
+  }
+
+  /** Game seconds per real second now (Ghostep's slow-mo, the Lab's time scale): a blow's impactIn in real s. */
+  _timeScale() {
+    const g = this.game;
+    return clamp(num(g?.timeScale, 1) * num(g?.debugTimeScale, 1), 0.05, 4);
+  }
+
+  /** A duelist's blow through the air (dragon:attack from duelist/brain.js, a fox's paper self): its
+   *  recorded slot, else the quiet synth whoosh; either way its loudest moment on the impact. */
+  _blow(d) {
+    const slot = blowSlot(d.weapon, d.weight, d.shape);
+    const heavy = d.weight === 'heavy' && !slot.endsWith('-heavy');
+    const o = this._smp;
+    o.x = num(d.x, NaN);
+    o.z = num(d.z, NaN);
+    if (!Number.isFinite(o.x) || !Number.isFinite(o.z)) o.x = o.z = undefined;
+    o.impactIn = num(d.impactIn, 0);
+    if (this._sample(slot, o, heavy ? HEAVY.gain : 1, heavy ? HEAVY.rate : 1, 'blow')) return;
+    // the fallback: bladeWhoosh, started so its own peak lands on the impact (BLOWS.gap as the samples)
+    const now = this.ctx.currentTime;
+    const delay = Math.max(0, o.impactIn / this._timeScale() - bladeWhooshPeak(d));
+    if (Math.abs(now + delay - this._blowAt) < BLOWS.gap) return;
+    if (this.play('bladeWhoosh', { weapon: d.weapon, weight: d.weight, shape: d.shape, x: o.x, z: o.z, delay })) this._blowAt = now + delay;
   }
 
   /** 'none' | 'ambient' | 'boss' | 'boss2' | 'victory' | 'death' (1.5 s crossfade). */
@@ -309,6 +397,8 @@ export class AudioEngine {
     this.charge = new ChargeHum(this);
     this.tracks = new TrackBank(this);
     this.tracks.load();
+    this.samples = new SampleBank(this);
+    this.samples.load();
 
     this._applyMaster(0.35);
     if (this._ducked) this._duck(true);
@@ -337,6 +427,16 @@ export class AudioEngine {
   _stillDuck(on) {
     if (!this.ctx || !this.musicBus || this._ducked) return;
     this.musicBus.gain.setTargetAtTime(BUS.music * (on ? 0.3 : 1), this.ctx.currentTime, on ? 0.12 : 0.3);
+  }
+
+  /** THE FALL (Xin Yi): the music drops to silence while he lies, and comes back `lie` s later (on its
+   *  own: a reset or a death in between leaves nothing held). */
+  _fallDuck(lie) {
+    if (!this.ctx || !this.musicBus || this._ducked) return;
+    const now = this.ctx.currentTime, g = this.musicBus.gain;
+    holdAt(g, now);
+    g.setTargetAtTime(BUS.music * 0.02, now, 0.08);
+    g.setTargetAtTime(BUS.music, now + clamp(num(lie, 2.2), 0.3, 5), 0.6);
   }
 
   /** Ghostep: low-pass + duck the world mix for `hold` real seconds, then release. */
@@ -417,6 +517,7 @@ export class AudioEngine {
       if (this._ghostFrame !== this._frame && !(sinceGhost >= 0 && sinceGhost < GHOST_QUIET)) this.play('dodge');
     }
     this.charge?.update(now, dt, this.game);
+    this.streakSound?.tick(now);
 
     // the boss's phase moved without a music call (a phase number set after its event): follow it
     if ((this.musicMode === 'boss' || this.musicMode === 'boss2') && this._bossPhase(this.musicMode) !== this._musicPhase) {
@@ -555,7 +656,8 @@ export class AudioEngine {
     if (now >= this._ghostAt && now - this._ghostAt < GHOST_DEDUPE) return;
     this._ghostAt = now;
     this.charge?.stop(0.05);
-    const slow = num(DEFENSE.ghostep?.slowmoTime, 0.6);
+    // a single perfect dodge per perfectMode() (sharp: no long slow motion; cinema: a deeper beat)
+    const slow = num(DEFENSE.ghostep?.slowmoTime, 0.6) * (perfectSound()?.slow ?? 1);
     this.play('ghostep', { slow });
     this._slowDuck(slow);
   }
@@ -660,7 +762,10 @@ export class AudioEngine {
       // execution's thrust swing heavy, the thrust as a long rising hiss
       const heavy = d.kind === 'thrust' || d.kind === 'cleave' || d.kind === 'slam' || d.kind === 'heavy';
       if (this.charge?.active) this.charge.stop(heavy ? 0.05 : 0.08);
-      this.play('swing', { heavy, combo: d.combo, thrust: d.kind === 'thrust' });
+      // the recorded blade when it is there (pitched above the bosses', rising up the combo), else the synth
+      const slot = d.kind === 'thrust' ? 'sword-thrust' : heavy ? 'sword-heavy' : 'sword-light';
+      const step = (num(d.combo, 0) | 0) % 3;
+      if (!this._sample(slot, null, 1, HERO.rate * (1 + step * HERO.combo), 'hero')) this.play('swing', { heavy, combo: d.combo, thrust: d.kind === 'thrust' });
     });
     on('player:slam', (d) => this.play('slam', { x: d.x, z: d.z }));
     on('player:charge', (d) => this.charge?.start(d));
@@ -695,7 +800,8 @@ export class AudioEngine {
       if (num(d.strikes, 1) >= 2) this._slowDuck(num(d.dur, 0.6));
     });
     on('player:flurryHit', (d) => {
-      if (!d.last) this.play('flurryCut', { n: num(d.n, 1) });
+      // (the streak's sound: the ring on the scale, a fast run merged into one sweep; off: null)
+      if (!d.last) this.play('flurryCut', this.streakSound?.flurryCut(d) ?? { n: num(d.n, 1) });
     });
     // a duelist answers a streak of guards with his own flurry: a low gong under its first tell
     on('dragon:flurry', () => this.play('gong'));
@@ -717,7 +823,7 @@ export class AudioEngine {
     on('player:flurryArt', (d) => this.play('flurryCoil', { dur: num(d.dur, 0.2) }));
     on('player:flurryEnd', (d) => {
       this._slowOpen();
-      if (num(d.strikes, 1) >= 2) this.play('flurryBurst', { n: num(d.strikes, 2) - 1 });
+      if (num(d.strikes, 1) >= 2) this.play('flurryBurst', this.streakSound?.burst(d) ?? { n: num(d.strikes, 2) - 1 });
     });
     on('player:hurt', (d) => {
       // (a hit that interrupts a charge is caught by the charge hum's player-state poll)
@@ -758,8 +864,14 @@ export class AudioEngine {
     on('player:parry', (d) => {
       this.charge?.stop(0.05);
       // a deflect chain (parries in rhythm) rings higher with every blow met
-      this.play('parry', { tell: d.tell, chain: d.chain, perfect: !!(d.light && d.perfect), melee: !d.light, perfectMelee: !d.light && !!d.perfect });
+      // (the streak's sound on: the chain climbs the track's scale; a perfect one's ring per perfectMode())
+      const pm = !d.light && d.perfect ? perfectSound() : null;
+      this.play('parry', { tell: d.tell, chain: d.chain, perfect: !!(d.light && d.perfect), melee: !d.light, perfectMelee: !d.light && !!d.perfect, tune: d.light ? null : this.streakSound?.parryTune() ?? null, ring: pm ? pm.ring : 1 });
+      if (!d.light) this.streakSound?.onDefence('parry');
     });
+    // the streak (player:streak { count, lost }): the climb waits for the defence that raised it (same
+    // call stack); a loss of 2+ answers; the layer follows the tier (streakSound.js)
+    on('player:streak', (d) => this.streakSound?.onStreak(d));
     // the duel's moments (a duelist; the Ash Disciple): steel on steel, heavier as they land
     on('player:lock', (d) => {
       if (d.phase === 'start') this.play('block', { tell: 'blue', damage: 0 });
@@ -767,7 +879,10 @@ export class AudioEngine {
       else if (d.phase === 'won') this.play('parry', { tell: 'blue', chain: 6 });
       else this.play('block', { tell: 'blue', damage: 10 });
     });
-    on('player:mikiri', () => this.play('parry', { tell: 'blue', chain: 5 }));
+    on('player:mikiri', () => {
+      this.play('parry', { tell: 'blue', chain: 5 });
+      this.streakSound?.onDefence('mikiri');
+    });
     on('player:counter', () => this.play('parry', { tell: 'blue', chain: 7, perfect: true }));
     // a deep gong under the slow motion (the blade lock's camera push-in has its own clash and no slow-mo)
     on('game:cinematic', (e) => { if (e?.kind !== 'lock' && e?.kind !== 'perfectParry' && e?.kind !== 'flurry') this.play('gong'); });
@@ -781,26 +896,43 @@ export class AudioEngine {
       this.charge?.stop(0.05);
       this.play('guardBreak');
     });
-    on('player:perfectDodge', () => this._ghostep());
+    on('player:perfectDodge', () => {
+      this._ghostep();
+      this.streakSound?.onDefence('dodge');
+    });
     on('player:ghostep', () => this._ghostep());
 
     // attack tells (any attacker): the player's reaction cues
+    // Only a blue or a red (black) blow has cues: a warning as its windup starts and a timing sound just
+    // before it lands, recorded (cue-* / time-*, sampleList.js) or the synth recipe until they load. An
+    // ordinary blow has none: its white glint and its own sound through the air (dragon:attack) tell it.
+    // Hazards and bullets keep their cues as they were. `?sfx=old`: a tick on every tell and the flash's
+    // ping on every blow, as before.
     on('combat:tell', (d) => {
       if (d.bullet) return; // a bullet's cue is its combat:flash ping alone (dozens per pattern)
+      this.streakSound?.onTell(); // (the streak's climb dips under every tell)
       const o = this._atEvent(d);
+      const old = sfxMode() === 'old';
       if (d.hazard) this.play('hazardTell', o); // a fire hazard's own tell (meteors, pillars): no brass sting
-      else if (d.tell === 'blue') this.play('tellBlue', o);
-      else if (d.tell === 'red' || d.tell === 'black') {
+      else if (d.tell === 'blue') {
+        if (old || !this._sample('cue-blue', o)) this.play('tellBlue', o);
+      } else if (d.tell === 'red' || d.tell === 'black') {
         // (a black, charged, blow opens on the same low sting: its long charge is the rest of it)
-        this.play('tellRed', o);
+        if (old || !this._sample('cue-red', o)) this.play('tellRed', o);
         this._dipMusic();
-      } else this.play('tellTick', o);
+      } else if (old) this.play('tellTick', o);
     });
     on('combat:flash', (d) => {
       const o = this._atEvent(d);
+      if (!d.bullet) this.streakSound?.onTell();
       // (the black flare cracks like the red one; a blue flare is the crystal ping, louder: a moment)
       o.tell = d.tell === 'black' ? 'red' : d.tell === 'blue' || d.tell === 'red' ? d.tell : 'normal';
-      if (this.play('flash', o) && !d.bullet) this._dipMusic();
+      if (sfxMode() === 'old' || d.bullet || d.hazard) {
+        if (this.play('flash', o) && !d.bullet) this._dipMusic();
+      } else if (o.tell !== 'normal') {
+        // (the white glint of an ordinary blow is visual alone)
+        if (this._sample(o.tell === 'red' ? 'time-red' : 'time-blue', o) || this.play('flash', o)) this._dipMusic();
+      }
       if (d.flare && d.tell === 'blue') this.play('parry', { tell: 'blue', chain: 3 });
     });
     // the counter blow (a parried blue flare blow answered by the hero, ADR-118)
@@ -823,12 +955,25 @@ export class AudioEngine {
     on('dragon:roar', (d) => beast() && this.play('roar', this._atDragon({ strength: d.strength })));
     on('dragon:windup', (d) => beast() && this.play('windup', this._atDragon({ name: d.name })));
     on('dragon:attack', (d) => {
-      if (beast() && !RX_OWN_SOUND.test(String(d.name || ''))) this.play('dragonSwipe', this._atDragon());
+      // a duelist's blow (duelist/brain.js; a fox's paper self): its weapon through the air
+      // (told by its weapon: the wyrm's carries none; `?sfx=old`: a duelist's blade had no sound)
+      if (d.weapon) {
+        if (sfxMode() !== 'old') this._blow(d);
+        return;
+      }
+      if (!beast()) return;
+      const name = String(d.name || '');
+      if (RX_OWN_SOUND.test(name)) return;
+      // the wyrm: a claw or a tail / body sweep recorded (sampleList.js BEAST), else the synth swipe
+      const slot = sfxMode() === 'old' ? undefined : BEAST_SLOT.get(name);
+      const o = this._atDragon();
+      if (!slot || !this._sample(slot, o)) this.play('dragonSwipe', o);
     });
     // two cuts meet (the trade clash)
     on('combat:clash', (d) => {
       this.charge?.stop(0.05);
       this.play('trade', { heavy: !!d?.heavy });
+      this.streakSound?.onDefence('clash');
     });
     // his guard: a dry clack when he holds the strike, a harsh falling clang when he beats it away
     on('dragon:guard', (d) => this.play(d?.deflect ? 'deflected' : 'guard', { heavy: !!d?.heavy }));
@@ -843,6 +988,22 @@ export class AudioEngine {
     // the fox's paper selves (ADR-147): a dry, quiet paper tear as one pops, a softer one as one tears
     // free (or burns into him at his change)
     on('dragon:clone', (d) => this.play('paperTear', { x: d?.x, z: d?.z, soft: d?.kind === 'spawn' || d?.by === 'mantle' }));
+    // Xin Yi, the One Who Woke (ADR-156): the guns, the Bend, the stop, deja vu, the hall rewriting
+    // itself, the fall (the music drops to silence while he lies)
+    on('dragon:shot', (d) => this.play('ironShot', this._atDragon({ heavy: !!d.heavy })));
+    on('dragon:bend', () => this.play('bendWhoosh', this._atDragon()));
+    on('dragon:stop', () => this.play('stopHum', this._atDragon()));
+    on('dragon:sent', () => this.play('codeBurst', this._atDragon()));
+    on('dragon:reload', () => this.play('gunClatter', this._atDragon()));
+    on('dragon:unwrite', () => this.play('morphTicks', this._atDragon({ short: true })));
+    on('dragon:dejavu', () => this.play('dejaBlip'));
+    on('dragon:stillHand', (d) => this.play('stillHum', this._atDragon({ dur: num(d.dur, 1.5) })));
+    on('world:scene', (d) => this.play('morphTicks', { x: num(d.x, 0), z: num(d.z, 0) }));
+    on('dragon:fall', (d) => this._fallDuck(num(d.lie, 2.2)));
+    // the fox's Pearl (ADR-154): a quiet rising whirr as he shapes it (the drive, the Twin Pearls)
+    on('dragon:windup', (d) => {
+      if (d?.name === 'foxPearl' || d?.name === 'twinPearl') this.play('pearlWhirr', this._atDragon());
+    });
     // the world breaks (ADR-107): a blow on wood / stone / metal, something coming down, fire catching
     on('world:impact', (d) => {
       const o = { x: d.x, z: d.z, mat: d.mat, power: num(d.power, 0.5) };
@@ -861,7 +1022,7 @@ export class AudioEngine {
       const max = num(this.game.dragon?.maxHp, 0);
       const frac = max > 0 ? num(d.damage, 0) / max : 0;
       // played in update(): takeHit emits stagger/death right after hurt, which cancel it
-      if (frac > 0.035 || Math.random() < 0.25) this._painPending = true;
+      if (frac > 0.035 || arand() < 0.25) this._painPending = true;
     });
     on('dragon:stagger', () => {
       this._staggerAt = this.ctx.currentTime;
