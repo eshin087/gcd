@@ -13,6 +13,7 @@ import { TrainingPanel } from './trainingPanel.js';
 import { setCutStyle, cutStyle } from '../combat/cutFx.js';
 import { IMPACT } from '../combat/impact.js';
 import { STREAK_FX, setPerfectMode, perfectMode } from '../combat/streak.js';
+import { BURST_LOOK, setBurst, burstLevel } from '../entities/player/flurryBurst.js';
 import { CALM_LOOK, setCalm, calmLevel } from '../combat/impactCalm.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { buildLooks } from './labLooks.js';
@@ -1097,6 +1098,11 @@ export class Lab {
       this._syncCutBtns();
     });
     this.ui.perfectBtn.title = 'the look of a single perfect parry / dodge: today, sharp or cinema';
+    this.ui.burstBtn = button(stkGrid, `burst ${burstLevel()}`, () => {
+      setBurst((Math.max(0, burstLevel()) + 1) % BURST_LOOK.levels.length);
+      this._syncCutBtns();
+    });
+    this.ui.burstBtn.title = "the flurry's last blow: 0 as before, 1 - 3 lines instead of the white burst";
     // the sword looks (gear/moonblade.js; the owner's pick, ?sword=): equip one (a rebuild: build-time
     // cost, Lab only)
     const swr = el('div', 'lab-row', null, body);
@@ -1198,6 +1204,7 @@ export class Lab {
     for (const { s, el: b } of this.ui.impactBtns ?? []) setClass(b, 'on', IMPACT.on[s] === true);
     for (const { s, el: b } of this.ui.streakBtns ?? []) setClass(b, 'on', STREAK_FX.on[s] === true);
     if (this.ui.perfectBtn) this.ui.perfectBtn.textContent = `perfect: ${perfectMode()}`;
+    if (this.ui.burstBtn) this.ui.burstBtn.textContent = `burst ${burstLevel()}`;
     if (this.ui.calmBtn) {
       this.ui.calmBtn.textContent = `calm ${calmLevel()}`;
       setClass(this.ui.calmBtn, 'on', calmLevel() !== 0);

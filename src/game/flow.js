@@ -6,6 +6,7 @@ import { PERFECT_FEEL, perfectUpdate, perfectClear } from '../combat/perfectFx.j
 import { ScreenGrade } from './grade.js';
 import { RunStats } from './stats.js';
 import { MoveLog, prettyMove } from './telemetry.js';
+import { burstScreen } from '../entities/player/flurryBurst.js';
 
 // Game flow: owns game.state and every transition
 //   title → explore → bossIntro → boss → dead | victory   (+ paused from explore/bossIntro/boss)
@@ -197,13 +198,15 @@ export class GameFlow {
       if (finite(d?.strikes) >= 2) this.grade.ghostPulse(finite(d?.dur, 0.6));
     });
     ev?.on('player:flurryHit', (d) => {
+      // the burst level (player/flurryBurst.js; ?burst=): 1 / 1 / 1 at level 0, as before
+      const B = burstScreen();
       if (!d?.last) {
-        this.grade.flashPulse(Math.min(0.32, 0.14 + 0.03 * finite(d?.n))); // every cut a little brighter
+        if (B.cut > 0) this.grade.flashPulse(Math.min(0.32, 0.14 + 0.03 * finite(d?.n)) * B.cut); // every cut a little brighter
         return;
       }
       // the last blow's impact frame: the screen dips dark for a blink, then flashes
-      this.grade.dip(0.42, 0.1);
-      this.grade.flashPulse(0.5 + Math.min(0.4, 0.06 * finite(d?.of)));
+      this.grade.dip(Math.min(0.95, 0.42 * B.dip), 0.1);
+      if (B.last > 0) this.grade.flashPulse((0.5 + Math.min(0.4, 0.06 * finite(d?.of))) * B.last);
     });
     ev?.on('player:streak', (d) => {
       this.stats.bestStreak = Math.max(this.stats.bestStreak, finite(d?.count));
