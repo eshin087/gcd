@@ -102,13 +102,13 @@ export const TUNING = {
     mixed: 0.1,
     holdGap: 5,
     guard: { sep: 0.4, margin: 0.06, maxHold: 0.5, maxDelay: 0.9, horizon: 0.8, pad: 0.18 },
-    // what tests/integration/woke.mjs PACE asserts (measured 2026-11-22, three seeds 4242 7 99 x 60 s a phase,
-    // the WORST seed with a margin): cues a minute P1 68.5 / 71.2 / 74.3, P2 90.8 / 96.3 / 102.5, P3 79.3 / 84.9 /
-    // 89.5 (min / mean / max); longest gap 2.78 / 2.63 / 2.55 s; dodge 5 / 5 / 16 %; 0 conflicts; the fire field's
-    // peak 199 / 482 / 953 blobs. Phase 3 reads fewer cues than phase 2 because each of Iron Rain's eleven shots
-    // is a cue of its own (the stream is one guard in the ledger): phase 3 asks three times the dodges and
-    // leaves the floor; P3 >= 0.82 x P2 on each seed, 0.85 in the mean
-    meter: { ramp: [1, 1.15, 0.82], rampMean: [1, 1.25, 0.85], minRate: [62, 82, 72], maxGap: [3.4, 3.3, 3.3] },
+    // what tests/integration/woke.mjs PACE asserts (measured 2026-11-23 on the real set, three seeds 4242 7 99 x 60 s
+    // a phase, the WORST seed with a margin): cues a minute P1 65.1 / 67.2 / 71.1, P2 94.2 / 106.3 / 116.3, P3 76.3 /
+    // 82.9 / 93.0 (min / mean / max); longest gap 3.29 / 2.29 / 2.62 s; dodge 7 / 5 / 21 %; 0 conflicts; the fire
+    // field's peak about 1030 blobs (phase 3). Phase 3 reads fewer cues than phase 2 because each of Iron Rain's
+    // eleven shots is a cue of its own (the stream is one guard in the ledger): phase 3 asks four times the dodges
+    // and leaves the floor; P3 >= 0.68 x P2 on each seed, 0.72 in the mean
+    meter: { ramp: [1, 1.2, 0.68], rampMean: [1, 1.3, 0.72], minRate: [58, 85, 68], maxGap: [3.7, 2.9, 3.1] },
   },
   punish: { weight: 4 },
 

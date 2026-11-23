@@ -2171,10 +2171,10 @@ time 0.9 s (the Ghostep's 0.6) and leaves three afterimages; white and heavy blo
 crit window, red and black the flurry (ADR-102). `?tech=lean`; the Lab's toggle.
 
 ### The numbers measured (`woke.mjs`)
-PACE (a steady defender in god mode, the hero roaming 2.5 – 9 m), three seeds x 60 s a phase: 71.2 / 96.3 /
-84.9 cues a minute by phase (P1 68.5 – 74.3, P2 90.8 – 102.5, P3 79.3 – 89.5), 0 conflicting cues, a dodge
-asked by 5 / 5 / 16 % of them, the longest gap 2.78 / 2.63 / 2.55 s, the fire field's peak 199 / 482 / 953
-blobs (of 6000). Phase 2 reads the busiest because each of Iron Rain's eleven shots is a cue. WIN: the
+PACE (a steady defender in god mode, the hero roaming 2.5 – 9 m, the real set), three seeds x 60 s a phase:
+67.2 / 106.3 / 82.9 cues a minute by phase (P1 65.1 – 71.1, P2 94.2 – 116.3, P3 76.3 – 93.0), 0 conflicting cues,
+a dodge asked by 7 / 5 / 21 % of them, the longest gap 3.29 / 2.29 / 2.62 s, the fire field's peak about 1030
+blobs (of 6000) in phase 3. Phase 2 reads the busiest because each of Iron Rain's eleven shots is a cue. WIN: the
 fencing bot (god mode) wins through both bars in 84 s (seed 4242: phase 2 at 27 s, the rising at 53 s).
 STRATEGY (opt-in, god mode, seeds 4242 and 7): mixed 75 – 84 s, parry 95 – 96 s, block-only 89 – 122 s (mortal: alive, it wins), the Long Second bot (every cue answered with the lean) 138 s, dodge-only 142 – 164 s: neither dodging nor leaning is the fastest way through. On the Sheathed with the Long Second learned (sheath.mjs `lean`): mixed 33, parry 42, dodge 64, lean 82 s.
 
