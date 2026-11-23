@@ -150,6 +150,8 @@ function arcPoint(t, f, o) {
   o[2] = ARC.az + ARC.dz * t + z * len;
 }
 const TRAIL_NONE = [];
+const ECHO_COL = [0.5, 0.8, 1.25]; // the echo lines' steel (under the bloom: fine lines, no glow)
+const ECHO_STEP = 0.075; // the streak's echo lines (trail): this share of the reach apart, inward from the edge
 // calm at the contact: the arc's factors at one stroke (PlayerFx._arcCalm; reused)
 const CALM_ARC = { a: 1, s: 1, k: 0 };
 // the halftone dot fields sit on a world lattice so their dots line up like the panel's grid
@@ -173,6 +175,9 @@ const alongRot = (dx, dy, dz) => {
 /** The blade halo's dots sit this far off the blade's axis (m, sword space): beside both edges of
  *  the slimmer moon blades too (it was 0.06-0.12). */
 export const HALO_X = [0.055, 0.11];
+/** The streak's edge line (bladeHalo `edge`): its cold steel, whiter at the top tiers; a reused spawn. */
+const STREAK_EDGE = { off: 0.07, lift: 0.6, lo: [0.55, 0.85, 1.25], hi: [0.85, 1.05, 1.35], c: [0.55, 0.85, 1.25] }; // (kept under the bloom: a line, not a glow)
+STREAK_EDGE.o = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0.016, size: 0.1, sizeEnd: 0.1, glyph: '|', stretch: 1, rot: 0, color: STREAK_EDGE.c, colorEnd: STREAK_EDGE.c, alpha: 1, alphaEnd: 1 };
 
 const SPRAY = new THREE.Vector3(); // parry(): the default spray (back toward the blow and up)
 // the parry shockwave's rings (shockwave): bright, but not so hot that bloom swallows the duel
@@ -275,6 +280,9 @@ export class PlayerFx {
     const core = T.core, veil = T.veil, end = T.end;
     const linger = cleave ? 1.7 : heavy ? 1.3 : 1;
     const rows = thrust ? TRAIL_NONE : S.veil;
+    // the streak's echo lines (player/streakFx.js `echoes`; 0 = none, today): fine lines inside the
+    // edge, ECHO_STEP of the reach apart, fainter inward, hanging longer than the edge
+    const SK = this.game.fx?.streak, nEcho = thrust ? 0 : Math.min(4, SK?.echoes | 0), echoA = nEcho > 0 ? Math.min(1, Number(SK.echoA) || 0) : 0;
     for (let s = 1; s <= nSub; s++) {
       const t = s / nSub, t0 = (s - 1) / nSub;
       // the edge
@@ -292,6 +300,21 @@ export class PlayerFx {
           life: R(S.life[0], S.life[1]) * linger, size, sizeEnd: size * 0.15,
           glyph: '|', rot: alongRot(dx, dy, dz), stretch: Math.min(30, (step / size) * 1.7),
           color: hot ? COL.arcGlint : core, colorEnd: end, alpha: (bite ? 1 : 0.45 + 0.55 * turn) * K.a, alphaEnd: 0, drag: 2,
+        });
+      }
+      for (let j = 1; j <= nEcho && echoA > 0; j++) {
+        const f = at - ECHO_STEP * j;
+        if (!(f > 0.12)) break;
+        arcPoint(t, f, ARC_P);
+        arcPoint(t0, f, ARC_Q);
+        const ex = ARC_P[0] - ARC_Q[0], ey = ARC_P[1] - ARC_Q[1], ez = ARC_P[2] - ARC_Q[2], es = Math.hypot(ex, ey, ez);
+        if (!(es > 0.01)) continue;
+        const size = S.edge * 0.8 * (heavy ? 1.2 : 1);
+        fx.spawn({
+          x: (ARC_P[0] + ARC_Q[0]) / 2, y: (ARC_P[1] + ARC_Q[1]) / 2, z: (ARC_P[2] + ARC_Q[2]) / 2,
+          life: S.life[1] * linger * (1 + 0.3 * j), size, sizeEnd: size * 0.2,
+          glyph: '|', rot: alongRot(ex, ey, ez), stretch: Math.min(30, (es / size) * 1.7),
+          color: ECHO_COL, colorEnd: end, alpha: (echoA / (0.6 + 0.4 * j)) * (0.4 + 0.6 * turn), alphaEnd: 0, drag: 2,
         });
       }
       // the veil
@@ -1262,13 +1285,44 @@ export class PlayerFx {
    * edge wave). k = strength 0..2 (dim at idle, brighter through strikes and the charge); far
    * 0..1 = close-up … game camera (the dots grow so they still print at 36 m). The blade plane
    * comes from the sword's own matrix.
+   * `edge` (the streak, player/streakFx.js; 0 = none, today): a fine steady line of light along the
+   * blade's edge from the forte up `edge` of the steel (0..1), at alpha `edgeA`, `top` 0..1 whitening
+   * it a little at the top tiers. One stretched stroke a frame, re-spawned on the steel (no velocity).
+   * With k = 0 only the edge line is drawn.
    */
-  bladeHalo(dt, k, far = 1) {
+  bladeHalo(dt, k, far = 1, edge = 0, edgeA = 0, top = 0) {
     const fx = this.add;
     const sw = this.rig?.sword;
-    if (!fx || !sw || !(k > 0)) return;
+    if (!fx || !sw || !(k > 0 || edge > 0)) return;
     const e = sw.matrixWorld.elements;
     const tip = DIM.drawnTip ?? DIM.steelTip; // the drawn point (model.js), not anim's grass-clamp point
+    if (edge > 0) {
+      // the edge line: from the forte up the leading (+X) edge, on the bevel (EDGE_GLINT.inset)
+      const z0 = DIM.forte, z1 = z0 + (tip - 0.02 - z0) * Math.min(1, edge), zc = (z0 + z1) * 0.5;
+      // (just off the steel, past its leading edge: on the steel it vanished into the lit blade the
+      // game camera draws; a hair of dark between keeps the blade's own line and its direction)
+      const xx = hwAt(zc) + STREAK_EDGE.off * (0.4 + 0.6 * far);
+      // (drawn STREAK_EDGE.lift m toward the camera: the particles' soft depth test fades a stroke that
+      // lies on the steel's own depth to nothing)
+      const cz = CAM, lf = STREAK_EDGE.lift;
+      const x = e[0] * xx + e[8] * zc + e[12] + (cz ? cz[8] * lf : 0), y = e[1] * xx + e[9] * zc + e[13] + (cz ? cz[9] * lf : 0), z = e[2] * xx + e[10] * zc + e[14] + (cz ? cz[10] * lf : 0);
+      const dl = Math.hypot(e[8], e[9], e[10]) || 1, len = (z1 - z0) * dl;
+      const size = 0.075 * (1 + 0.6 * far);
+      if (Number.isFinite(x + y + z + len) && len > 0.01 && y > 0.02) {
+        const c = STREAK_EDGE, w = Math.min(1, Math.max(0, top));
+        c.c[0] = c.lo[0] + (c.hi[0] - c.lo[0]) * w;
+        c.c[1] = c.lo[1] + (c.hi[1] - c.lo[1]) * w;
+        c.c[2] = c.lo[2] + (c.hi[2] - c.lo[2]) * w;
+        // (it is uploaded at the next frame's particle update, drawn that frame and gone at the one after:
+        // one stroke on screen at a time, riding the steel a frame behind, as the edge glint does)
+        const o = c.o;
+        o.x = x; o.y = y; o.z = z; o.life = dt * 1.5; o.size = o.sizeEnd = size;
+        o.stretch = Math.min(30, len / size); o.rot = alongRot(e[8] / dl, e[9] / dl, e[10] / dl);
+        o.alpha = o.alphaEnd = Math.min(1, edgeA);
+        fx.spawn(o);
+      }
+      if (!(k > 0)) return;
+    }
     // the edge-wave: a short bright streak laid along the blade at the drawn point (it sat 0.06–0.26 m
     // past it, × HERO_SCALE: a dash floating off the sword, left behind by every roll and swing)
     this.tipAcc += dt * 14;
