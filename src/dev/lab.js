@@ -880,6 +880,13 @@ export class Lab {
       button(grid, 'Hold 3', () => W.hold(3)).title = 'three bolts hanging before his palm (phase 3: Return to Sender comes)';
       button(grid, 'Deja vu', () => W.dejavu('lesson')).title = 'the hall stutters and The First Lesson replays';
       for (const id of ['hall', 'dojo', 'source']) button(grid, `Scene ${id}`, () => W.scene(id)).title = `the hall rewrites itself into the ${id} scene from where he stands (the morph)`;
+      // the rework (ADR-168, ADR-169): gear 2, Borrowed Wall's two blows (every move of his is in the move list)
+      if (typeof W.setGear === 'function') {
+        button(grid, 'Gear 2', () => W.setGear(2)).title = 'phase 1: the second hand comes out now (the opening, then both hands)';
+        button(grid, 'Gear 1', () => W.setGear(1)).title = 'phase 1: back to one hand (the left behind his back)';
+        button(grid, 'Wall kick', () => W.wall('kick')).title = 'Borrowed Wall: the flying side kick off the upright at your side (blue flare: parry)';
+        button(grid, 'Wall heel', () => W.wall('heel')).title = 'Borrowed Wall: the drop heel off the upright onto where you stood (red: roll)';
+      }
     }
     // Halcyon (ADR-160): his passes, the tower, the falling sky, the statue, the carry, the cars, the city's light
     if (typeof this.game.dragon?.debug?.fallingSky === 'function') {

@@ -4,7 +4,20 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Seventy-seven pieces of work since 0.4.0:
+Seventy-eight pieces of work since 0.4.0:
+- **Xin Yi reworked: drawn like the hero, kicks and flurries, a wall kick, bullets that never lock you** (2026-11-23, ADR-168 – ADR-170). *Changed:* Xin Yi, the One Who Woke, is printed
+  like the hero: his letters follow his size on screen, a quieter edge that fades with distance, simpler
+  glasses, collar and shirt, a coat that moves in every phase (`?oneLetters=a|0`, `?onePrint=a|b|0`, b one
+  letter size bolder on a phone; not picked yet). Phase 1 runs in two gears: one hand, then both once his bar
+  is at 83 % (he flips back and the second hand comes out, an opening). *Added:* the flurry burst: a blur of 6 -
+  8 blows under ONE glint that one parry, one held guard (a little guard, no health) or one roll answers whole;
+  spin back kicks, tornado and butterfly kicks, a flash kick, a no-hand cartwheel kick, bicycle kicks hanging in
+  the air, drop heels, flying knees; new strings (Three Steps on Air, The Sky Turns Twice, Crane Crossing Water,
+  Moon Over the Shoulder, Rain on One Roof; with both hands A Hundred Hands, The Long Lesson, Storm Step) and
+  Iron in the Air; Borrowed Wall reworked and used often: he runs up the upright at your side and springs at you
+  with a flying side kick (parry) or a drop heel (roll). *Fixed:* his bullets no longer stun-lock: Iron Rain
+  fires three bursts of three, each under one glint and one result; a hit is a short flinch that keeps your
+  input, and you always have time to guard, parry or roll before the next.
 - **The living world** (2026-11-23, ADR-163). *Added:* every level is alive before the fight (`?life=off` turns
   it off; `?life=wind,litter,...` picks pieces, `?lifeK=0.25..2` its strength; the Lab's `life` rows). **One wind per level**: gusts drift across as faint wisps of tiny letters and stir
   the grass in loose patches, and the canopy, the smoke, the flames, the leaves, the rain and the

@@ -1315,6 +1315,20 @@ export const SFX = {
       thump(v, t + 0.002, heavy ? 100 : 130, heavy ? 36 : 52, heavy ? 0.09 : 0.06, heavy ? 0.6 : 0.42, heavy ? 0.2 : 0.11);
     },
   },
+  /** A flurry burst's blow (the rework, ADR-168): a soft dry tick over a small thud, a little higher on
+   *  every other blow (the hands alternate). */
+  burstPatter: {
+    prio: 2, rev: 0.04, gap: 0.04, falloff: 0.8, gain: 0.3,
+    play(v, t, o) {
+      const hi = (o.i | 0) % 2 === 1;
+      const n = v.noise('white', t, t + 0.03, 1, crnd());
+      const bp = v.filter('bandpass', hi ? 2600 : 2000, 2.2);
+      const g = v.gain(0);
+      perc(g.gain, t, 0.32, 0.001, 0.018);
+      n.connect(bp).connect(g).connect(v.out);
+      thump(v, t + 0.001, hi ? 150 : 120, 60, 0.04, 0.3, 0.06);
+    },
+  },
   /** THE BEND: a falling whoosh, the air going slow round him. */
   bendWhoosh: {
     prio: 4, rev: 0.32, gap: 0.3, gain: 0.5,

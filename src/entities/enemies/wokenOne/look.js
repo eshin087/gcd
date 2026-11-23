@@ -28,17 +28,40 @@ import { setFill } from '../ashDisciple/bodyArt.js';
 // written there (the Starless Lord's precedent: lord.js writes part 19 for his level), again on every
 // phase change, so a rig built later from HERO_INK cannot leave him in the hero's lavender.
 
-export const ONE_LOOKS = Object.freeze({ oneLook: 'a' });
+export const ONE_LOOKS = Object.freeze({ oneLook: 'a', oneLetters: 'a', onePrint: 'a' });
 export const oneLook = (name = 'oneLook') => lookOf(name, ONE_LOOKS[name] ?? 'a');
 /** The outfit chosen ('a' | 'b' | 'c'; anything else draws a), read when his rig is built. */
 export function oneLookNow() {
   const o = oneLook();
   return o === 'b' || o === 'c' ? o : 'a';
 }
+/** His letters follow his size on screen as the hero's do (`?oneLetters=a`, the default, ADR-170; read live):
+ *  his kit's `letters` (ARCHITECTURE "The bosses' letters": main.js -> pipeline.bossLetters), Tian
+ *  Lei's rule (ADR-155). '0' the bosses' fixed fine cell he shipped with (from 1080p up about twice the
+ *  hero's letters across him). */
+export function oneLettersOn() {
+  return oneLook('oneLetters') !== '0';
+}
+/** His print (`?onePrint=a|b|0`, ADR-170; read when his rig is built, the ink also on every phase change):
+ *  a the hero's quiet print (QUIET below: an edge that fades with distance as the hero's does, no seams
+ *  at the game camera, the face at the hero's levels, plain bright cells that do not glow), simpler
+ *  small shapes (gear.js) and a coat that stirs from phase 1 (COAT_DRESS); b a, and one letter cell
+ *  bolder than the hero's rule on a small screen (his kit's `letterBias`: a phone, where the rule rests
+ *  on the fixed cell and a changes his print but not his letter count); '0' the lifted print, the
+ *  shapes and the still phase-1 coat he shipped with. */
+export function onePrintNow() {
+  const o = oneLook('onePrint');
+  return o === '0' || o === 'b' ? o : 'a';
+}
+/** His letter cell's bias (kit.letterBias: steps along the hero's cells; pipeline.js
+ *  _updateBossLetters applies it only where the hero's rule rests on its floor cell: a small screen). */
+export function oneLetterBias() {
+  return onePrintNow() === 'b' ? 1 : 0;
+}
 
 /** The dressing record on his rig (gear.js registers the switched pieces in it). */
 export function dressOf(root, look = 'a') {
-  return (root.userData.dress ??= { kind: 'one', look, phase: 0, at: [], guns: [], fronts: [], panels: [], inked: false, reload: false });
+  return (root.userData.dress ??= { kind: 'one', look, print: onePrintNow(), phase: 0, at: [], guns: [], fronts: [], panels: [], inked: false, reload: false });
 }
 /** Show mesh `m` from phase `from` to phase `to` (hidden until then; phase 1 is the build's state). */
 export function at(D, m, from, to = 9) {
@@ -83,12 +106,14 @@ const RIM = { coat: 0.5, collar: 0.5, pants: 0.5, armor: 0.6, hair: 0.6, hairTip
 // Per part id: the inner ink line [r, g, b, gain], the silhouette's ink [r, g, b, gain], and the pass's
 // [fill gain, stroke style, far line, far fill] (model.js heroPartValues). An ink gain over 1.5 keeps the
 // silhouette at full light at the game camera (pipeline.js: `step(pInk.a, 1.5)`): the coat's edge is the
-// one thing that must read there; its inner seams fade (far line low).
+// one thing that must read there; its inner seams fade (far line low). That is the lifted print he
+// shipped with (`?onePrint=0`); the quiet one (a, b) is quietTable below.
 const JADE = [0.62, 1.0, 0.84], WHITE_JADE = [0.86, 1.0, 0.94];
-function inkTable(look, phase) {
+const line = (c, s, a) => [c[0] * s, c[1] * s, c[2] * s, a];
+function inkTable(look, phase, print = onePrintNow()) {
+  if (print !== '0') return quietTable(look, phase);
   const rim = look === 'c' ? WHITE_JADE : JADE;
   const k = phase >= 3 ? 1.35 : 1; // phase 3: the coat's edge brighter
-  const line = (c, s, a) => [c[0] * s, c[1] * s, c[2] * s, a];
   return {
     // 6 the coat and its collar: jade seams up close, a jade silhouette that holds at any distance
     6: { ink: line(rim, 0.36, 1.6), rim: line(rim, 0.95 * k, 1.0), fill: [1, 0, 0.12, 1.0] },
@@ -110,11 +135,38 @@ function inkTable(look, phase) {
   };
 }
 
+/** The quiet print (`?onePrint=a|b`): the hero's rules for his own cloth (model.js HERO_INK), in his
+ *  jade. Every ink gain at or under 1.5, so the silhouette fades with distance as the hero's does (to
+ *  uHeroLod.w of its light at the game camera); the jade edge at `rim` of the lifted one's; far line 0
+ *  (no seams at the game camera: a field of letters there; the ink lines come back up close); the face
+ *  and hands at the hero's skin numbers (HERO_SKIN = HERO_INK.skin's), their fill held down by
+ *  `skinFill` (tintOne); the bright cells (the glint, the muzzles, the Cassock's buttons) plain letters
+ *  under the bloom threshold. Phase 3's edge `p3` times the quiet one (the lifted print's ratio). */
+export const QUIET = Object.freeze({ rim: 0.55, ink: 1.0, p3: 1.35, skinFill: 0.62 });
+export const HERO_SKIN = Object.freeze({ gain: 2.2, far: 0.6, line: 0.75, rim: 0.85 });
+function quietTable(look, phase) {
+  const rim = look === 'c' ? WHITE_JADE : JADE;
+  const e = QUIET.rim * (phase >= 3 ? QUIET.p3 : 1), a = QUIET.ink;
+  return {
+    6: { ink: line(rim, 0.42, a), rim: line(rim, 0.95 * e, 1.0), fill: [1, 0, 0, 1.0] },
+    4: { ink: line(rim, 0.36, a), rim: line(rim, 0.8 * e, 1.0), fill: [1, 0, 0, 0.9] },
+    5: { ink: line(rim, 0.36, a), rim: line(rim, 0.7 * e, 1.0), fill: [1, 0, 0, 0.6] },
+    12: { ink: line(rim, 0.4, a), rim: line(rim, 0.8 * e, 1.0), fill: [1, 0, 0, 0.8] },
+    3: { ink: line(rim, 0.3, a), rim: line(rim, 0.6 * e, 1.0), fill: [1, 0, 0, 0.5] },
+    11: { ink: line(rim, 0.4, a), rim: line(rim, 0.85 * e, 1.0), fill: [1.0, 8, 0, 0.8] },
+    1: { ink: [0.75, 0.85, 0.8, HERO_SKIN.line], rim: [0.85, 0.95, 0.9, HERO_SKIN.rim], fill: [HERO_SKIN.gain, 4, 0, HERO_SKIN.far] },
+    2: { ink: [0.2, 0.3, 0.26, 0.8], rim: [0.25, 0.35, 0.3, 0.8], fill: [1, 0, 0, 1] },
+    19: { ink: [0.75, 1.0, 0.88, 1.0], rim: [0.75, 1.0, 0.88, 1.0], fill: [1, 2, 0, 1.0] },
+  };
+}
+/** The table his parts are written with (tests, the Lab). */
+export const oneInkTable = (look, phase, print) => inkTable(look, phase, print);
+
 /** Write his parts' ink into the shared per-part tables (the boss rigs' only: the player reads his own). */
-function writeInk(U, look, phase) {
+function writeInk(U, look, phase, print) {
   const I = U?.uHeroPartInk?.value, R = U?.uHeroPartRim?.value, F = U?.uHeroPartFill?.value;
   if (!I || !R || !F) return false;
-  const T = inkTable(look, phase);
+  const T = inkTable(look, phase, print);
   for (const p in T) {
     const t = T[p];
     I[p]?.set(t.ink[0], t.ink[1], t.ink[2], t.ink[3]);
@@ -133,23 +185,38 @@ export function tintOne(M) {
     const u = M[k]?.uniforms?.uArtRim;
     if (u) u.value *= RIM[k];
   }
-  // the bright cells glow in jade-white (the flask part's own ink is amber for every rig)
+  const quiet = onePrintNow() !== '0';
+  // (the quiet print: the face and hands held down as Tian Lei's were, ADR-155: lit, they printed as a
+  // shaded 3D face; they stay the palest thing on him)
+  if (quiet) M.skin?.uniforms?.uArtFill?.value.multiplyScalar(QUIET.skinFill);
+  // the bright cells glow in jade-white (the flask part's own ink is amber for every rig); in the quiet
+  // print they are plain bright letters (no glow, nothing over the bloom threshold)
   const fu = M.flask?.uniforms;
   if (fu) {
-    if (fu.uGlowMask) fu.uGlowMask.value = 1;
+    if (fu.uGlowMask) fu.uGlowMask.value = quiet ? 0 : 1;
     fu.uInk?.value.setRGB(0.8, 1.2, 1.0);
     fu.uEmissive?.value.setRGB(0.7, 1.3, 1.0);
-    if (fu.uGlow) fu.uGlow.value = 0.6;
+    if (fu.uGlow) fu.uGlow.value = quiet ? 0 : 0.6;
+    if (quiet && fu.uArtGlowK) fu.uArtGlowK.value = 0;
   }
 }
 
 /** By phase: the coat's stir (anim.js reads a panel's `flare`, `breeze`, `idleFlare` every frame) and
- *  whether the front stands open. Per outfit: the Cassock never opens and barely stirs. */
+ *  whether the front stands open. Per outfit: the Cassock never opens and barely stirs. `front` scales
+ *  the front panels' stir (the closed front stays closed). That is the coat he shipped with (still in
+ *  phase 1: `?onePrint=0`); COAT_QUIET (a, b) stirs in every phase. */
 const COAT_DRESS = {
   a: [null, { open: false, flare: 0.06, breeze: 0.0, idle: 0.0, tail: 0.1 }, { open: true, flare: 0.1, breeze: 0.04, idle: 0.04, tail: 0.22 }, { open: true, flare: 0.12, breeze: 0.06, idle: 0.06, tail: 0.27 }],
   b: [null, { open: false, flare: 0.04, breeze: 0.0, idle: 0.0, tail: 0.06 }, { open: false, flare: 0.06, breeze: 0.02, idle: 0.02, tail: 0.12 }, { open: false, flare: 0.08, breeze: 0.03, idle: 0.03, tail: 0.16 }],
 };
 COAT_DRESS.c = COAT_DRESS.a;
+/** ... the quiet print's: the tails and the side panels stir and flare from phase 1 (a still coat was
+ *  half of why he looked stiff); the closed front barely (`front`), so it never parts before phase 2. */
+const COAT_QUIET = {
+  a: [null, { open: false, flare: 0.07, breeze: 0.03, idle: 0.03, tail: 0.16, front: 0.35 }, ...COAT_DRESS.a.slice(2)],
+  b: [null, { open: false, flare: 0.05, breeze: 0.015, idle: 0.015, tail: 0.09, front: 0.35 }, ...COAT_DRESS.b.slice(2)],
+};
+COAT_QUIET.c = COAT_QUIET.a;
 
 const fin = (x, d = 0) => (Number.isFinite(x) ? x : d);
 /** How long into his reload the guns are gone (s: thrown away, the next pair not yet drawn). */
@@ -166,6 +233,42 @@ function turnFront(F, az) {
   C.r0 = r0;
 }
 
+/** The quiet print's coat: how far a panel may swing in all (its two segments together, rad, from
+ *  hanging straight down along the hips; anim.js _coat's own limits allow 2.5 out and 0.9 in). He flips
+ *  and cartwheels: upside down the springs threw a panel over 120 degrees out, back across his chest and
+ *  arms, and a strong inward swing put the hem through his legs. Out to `out` the tails lag and fly; past
+ *  it they would stand out straight. (The springs move the cloth smoothly, so a hard stop at the limit
+ *  does not pop.) */
+export const COAT_SWING = Object.freeze({ out: 0.87, in: 0.35 }); // (50 deg out: at 75 the flips read as a crown of planks)
+
+/** After the animator (dress runs after _animate in the same frame): hold each panel inside COAT_SWING,
+ *  the spring's state too (so it does not wind up against the limit). */
+function clampCoat(d) {
+  const st = d.anim?.coatState, coat = d.rig?.coat;
+  if (!st || !coat) return;
+  for (let i = 0; i < coat.length; i++) {
+    const s = st[i], C = coat[i];
+    if (!s || !C?.segs) continue;
+    const a = s[0], b = s[1], tot = a.x + b.x;
+    const want = tot < -COAT_SWING.out ? -COAT_SWING.out : tot > COAT_SWING.in ? COAT_SWING.in : tot;
+    if (want === tot || !Number.isFinite(tot) || Math.abs(tot) < 1e-6) continue;
+    // both segments scaled alike (the panel keeps its curve), their swing toward the limit stopped
+    const k = want / tot;
+    a.x *= k;
+    b.x *= k;
+    if (tot < 0) {
+      if (a.vx < 0) a.vx = 0;
+      if (b.vx < 0) b.vx = 0;
+    } else {
+      if (a.vx > 0) a.vx = 0;
+      if (b.vx > 0) b.vx = 0;
+    }
+    C.segs[0].rotation.x = a.x;
+    C.segs[1].rotation.x = b.x;
+    C.segs[0].updateMatrixWorld(true);
+  }
+}
+
 /**
  * Once a frame (the actor's): show the dressing of his phase. A phase change flips the pieces'
  * `visible` flags, opens or closes the coat's front and sets its stir, and writes his ink; otherwise
@@ -175,19 +278,22 @@ export function dressOne(d, dt) {
   const D = d?.rig?.root?.userData?.dress;
   if (!D || D.kind !== 'one') return;
   const n = Math.min(3, Math.max(1, fin(d.dressPhase ?? d.phase, 1) | 0));
-  if (!D.inked || n !== D.phase) D.inked = writeInk(d.game?.U, D.look, n);
+  if (!D.inked || n !== D.phase) D.inked = writeInk(d.game?.U, D.look, n, D.print);
   if (n !== D.phase) {
     D.phase = n;
     for (const e of D.at) e.m.visible = n >= e.from && n <= e.to;
-    const S = (COAT_DRESS[D.look] ?? COAT_DRESS.a)[n];
+    const TAB = D.print === '0' ? COAT_DRESS : COAT_QUIET;
+    const S = (TAB[D.look] ?? TAB.a)[n];
+    const fk = S.front ?? 1;
     for (const F of D.fronts) turnFront(F, S.open ? F.open : F.closed);
     for (const P of D.panels) {
       P.def.flare = P.tail ? S.tail : P.front ? S.flare * 0.6 : S.flare;
-      P.def.breeze = S.breeze * (P.tail ? 1.6 : 1);
-      P.def.idleFlare = S.idle * (P.tail ? 1.4 : P.front ? 0.3 : 1);
+      P.def.breeze = S.breeze * (P.tail ? 1.6 : P.front ? fk : 1);
+      P.def.idleFlare = S.idle * (P.tail ? 1.4 : P.front ? 0.3 * fk : 1);
     }
     D.reload = !D.reload; // (re-read the guns below)
   }
+  if (D.print !== '0') clampCoat(d);
   // the guns: phase 2 only; gone from the start of his reload until he draws the next pair
   const empty = !!d.iron?.reloading && fin(d.brain?.act?.t, 1) < RELOAD_EMPTY;
   if (empty !== D.reload) {

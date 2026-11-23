@@ -1008,6 +1008,7 @@ export class AscFx extends LordFx {
     s.y0 = s.y;
     s.yLen = Math.max(0.5, fin(o.yLen, s.range));
     s.lantern = !!o.lantern;
+    s.keepAim = s.quiet = s.slug = false; // (Xin Yi's burst slugs set them after the throw: wokenOne/iron.js)
     s.lid = 0;
     if (s.returned) {
       s.phase = 'fly';
@@ -1057,6 +1058,8 @@ export class AscFx extends LordFx {
     if (!pp || s.done || p.alive === false) return null;
     const rx = pp.x - s.x, rz = pp.z - s.z;
     const along = rx * s.dx + rz * s.dz, across = Math.abs(-rx * s.dz + rz * s.dx);
+    // (a quiet shot: a burst's slug whose one cue was the burst's glint, Xin Yi's iron, ADR-169: counted as cued, no flash of its own)
+    if (s.quiet && s.flashed < 0) s.flashed = Math.max(0, s.age);
     const reach = s.radius + (p.radius ?? 0.45), half = s.radius + 0.5;
     if (across < half && along > 0 && s.flashed < 0 && (along - reach) / Math.max(0.1, speed) + Math.max(0, s.wait ?? 0) <= lead) {
       s.flashed = s.age;
@@ -1066,7 +1069,7 @@ export class AscFx extends LordFx {
     if (!(across < half && Math.abs(along) <= reach)) return null;
     s.done = true;
     const cued = s.flashed >= 0 ? s.age - s.flashed : 0;
-    if (s.flashed < 0 || cued < 0.2) return 'fizzle'; // announced too late (fairness): it only fizzles
+    if (!s.quiet && (s.flashed < 0 || cued < 0.2)) return 'fizzle'; // announced too late (fairness): it only fizzles (a quiet slug: its burst's glint was its cue)
     const red = s.tell === TELL.RED;
     const r = d.hitPlayer({
       damage: s.damage, knockback: s.kb, knockdown: red, kind: s.hitKind, tell: s.tell, attack: s.attack, from: { x: s.x - s.dx, z: s.z - s.dz },
@@ -1089,7 +1092,7 @@ export class AscFx extends LordFx {
         // (an orb of a group, Storm Cage's, that leaves while the hero lies knocked down passes over him:
         // the tuning pass's string-lock rule; the worst second was a palm, an orb and the aura on him)
         if (s.group && p?.state === 'knockdown') s.done = true;
-        if (pp) {
+        if (pp && !s.keepAim) {
           const dx = pp.x - s.x, dz = pp.z - s.z, l = Math.hypot(dx, dz) || 1;
           s.dx = dx / l;
           s.dz = dz / l;

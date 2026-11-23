@@ -20,13 +20,19 @@ export const TUNING = {
   bound: 16,
 
   // ---- tells (COMBAT.md; tests/integration/woke.mjs DATA). The floors every blow keeps
+  weapon: 'fist', // what his blows sound like through the air (duelist/attackSound.js: dragon:attack; his guns' shots sound on their own)
   flashLead: 0.26,
   minFirstWindup: 0.42,
   minHitGap: 0.32,
   windupScale: [1, 0.96, 0.92], // (the first windups are authored >= 0.46 s: x 0.92 keeps them over minFirstWindup)
-  recoveryScale: [0.9, 0.82, 0.76],
+  recoveryScale: [0.8, 0.82, 0.76],
   close: { first: 3.0, next: 1.5, speed: 13 },
   reach: { fist: 1.7, kick: 2.1, line: 2.2, lineW: 0.8 },
+  // ADR-162's kit, as Tian Lei's (his use of it: ADR-168): his arms open as the hero's do at the end of a blow (anim.js `armSoft`: the
+  // bosses' shared soft reach left every punch landing with the elbow at ~130°) and his kicks keep a little
+  // bend at full stretch (`legSoft`)
+  armSoft: [0.93, 0.99],
+  legSoft: [0.9, 0.985],
 
   // ---- posture (the Sekiro rule, as Tian Lei's: hard to move while the bar is full)
   posture: {
@@ -81,14 +87,11 @@ export const TUNING = {
     backstep: { dist: 2.0, time: 0.34 },
     strafeSwitch: [0.9, 2.0],
   },
-  idleGap: [[0.12, 0.32], [0.06, 0.16], [0.03, 0.1]],
+  // (idleGap, chain, pressure.chainDepth and pressure.chainRest are per GEAR in phase 1: GEARED, below)
   openingGap: [[0.14, 0.4], [0.1, 0.32], [0.08, 0.26]],
-  chain: [0.55, 0.65, 0.75],
   // the director (duelist/brain.js header, director.js): he throws things, so guard.sep is 0.4 (the Lord's
   // and Tian Lei's)
   pressure: {
-    chainDepth: [4, 5, 6],
-    chainRest: [[0.45, 0.75], [0.3, 0.5], [0.2, 0.35]],
     linkCut: 0.5,
     chainCut: 0.5,
     near: 3.3, far: 6, front: 0.9, behind: 2.2, away: 1.2,
@@ -97,18 +100,23 @@ export const TUNING = {
     seek: { max: 2.5, every: 9 },
     farDist: 6, closerBoost: 1.8,
     maxLive: [1, 2, 2],
-    bias: { string: [1.3, 1.0, 1.1], closer: [1, 1, 1.1], area: [1.1, 1.0, 1.0], hazard: [1.2, 1.2, 1.0], terrain: [1, 1, 1.3], ranged: [1, 1.5, 1.2], spell: [1, 1, 1.2], single: [1, 1, 1.0] },
+    bias: { string: [1.5, 1.0, 1.1], flurry: [1.1, 1.1, 1.1], closer: [1.2, 1, 1.1], area: [1.1, 1.0, 1.0], hazard: [1.2, 1.2, 1.0], terrain: [1, 1, 1.3], ranged: [1, 1.5, 1.2], spell: [1, 1, 1.2], single: [1, 1, 1.0] },
     density: [0.6, 0.7, 0.8],
     mixed: 0.1,
     holdGap: 5,
     guard: { sep: 0.4, margin: 0.06, maxHold: 0.5, maxDelay: 0.9, horizon: 0.8, pad: 0.18 },
-    // what tests/integration/woke.mjs PACE asserts (measured 2026-11-23 on the real set, three seeds 4242 7 99 x 60 s
-    // a phase, the WORST seed with a margin): cues a minute P1 65.1 / 67.2 / 71.1, P2 94.2 / 106.3 / 116.3, P3 76.3 /
-    // 82.9 / 93.0 (min / mean / max); longest gap 3.29 / 2.29 / 2.62 s; dodge 7 / 5 / 21 %; 0 conflicts; the fire
-    // field's peak about 1030 blobs (phase 3). Phase 3 reads fewer cues than phase 2 because each of Iron Rain's
-    // eleven shots is a cue of its own (the stream is one guard in the ledger): phase 3 asks four times the dodges
-    // and leaves the floor; P3 >= 0.68 x P2 on each seed, 0.72 in the mean
-    meter: { ramp: [1, 1.2, 0.68], rampMean: [1, 1.3, 0.72], minRate: [58, 85, 68], maxGap: [3.7, 2.9, 3.1] },
+    // THE PURSUIT (duelist/brain.js header; Tian Lei's block, ADR-162; his: ADR-168): a blow the hero has run out of the reach
+    // of breaks off before its glint (no swing at air; a glint is always followed by a blow) and he chases; a
+    // hero backing away is chased with closeK x the step-in and dashK x a dash's length, by phase
+    pursue: { margin: 0.5, after: 0.06, gap: 0.06, closeK: [1.0, 1.6, 1.6], dashK: [1.0, 1.5, 1.5], away: 1.2, leapLead: 0.35, blinkLead: 0.4, blinkKeep: 0.6, miss: 0, lead: 0.6, habit: 0.6, habitMax: 3, habitDecay: 0.1 },
+    // what tests/integration/woke.mjs PACE asserts, per STAGE [phase 1 gear 1, phase 1 gear 2, phase 2, phase 3]
+    // (the rework, ADR-168; measured 2026-11-23 on the real set, three seeds 4242 7 99 x 60 s a stage, the WORST
+    // seed with a margin): cues a minute (seed means) 85.2 / 87.3 / 74.9 /
+    //  76.7; longest gap 2.42 / 2.39 / 2.23 / 3.32 s; dodge 13 / 10 / 7 / 21 %; 0 conflicts; the
+    // fire field's peak about 1380 blobs (phase 3). A flurry burst of 6 - 8 blows is ONE cue (the owner's choice),
+    // and so is a burst of three bullets: gear 2 counts below the plan's 95 - 105 though its strings run at the
+    // 0.32 s floor. Main before the rework: 67.2 / 106.3 / 82.9 by phase (each of Iron Rain's 11 shots a cue)
+    meter: { rampMean: [1, 1.0, 0.82, 0.82], minRate: [70, 78, 65, 62], maxGap: [3.3, 3.0, 3.5, 3.9], dodge: [0.05, 0.3] },
   },
   punish: { weight: 4 },
 
@@ -136,10 +144,17 @@ export const TUNING = {
   // gone in about two volleys, the pillar down in about four)
   shot: { speed: 30, radius: 0.32, size: 0.55, range: 24 },
   heavyShot: { speed: 24, radius: 0.45, size: 1.25, range: 24 }, // (size > 1.2: AscFx's big blast, world.bigBlast on cover)
-  // Iron Rain: he strafes round the hero at `strafe` m, running up across pillars on his way, firing
-  // from alternating hands: `count` shots of `damage` over `dur` s, then the last big one (returnable).
-  // A held guard pays `guardCost` a shot (the hero's GUARD.costMin is 8: 55 at most for a whole volley)
-  ironRain: { dur: 1.5, count: 11, damage: 5, last: 14, strafe: [7, 10], speed: 6.5, guardCost: 4, lastCost: 9 },
+  // Iron Rain (THE BULLETS' RULE, ADR-169; iron.js): he strafes round the hero at `strafe` m firing from
+  // alternating hands: `bursts` bursts of `per` slugs of `damage`, `gap` s apart inside a burst, `rest` s
+  // from a burst's last slug to the next one's first; then the last big one (returnable). Each burst ONE
+  // cue (a glint `glint` s before it; its aim fixed there) and ONE result: a hit flinches the hero `stun`
+  // s (the buffer kept; `mercy` s more in which no bullet staggers him again), the burst's other slugs
+  // are chip; a parry turns the burst (slugs within `parryKeep` s of it spark off). A held guard pays
+  // `guardCost` a slug (12 a burst, 36 a volley) and `lastCost` for the big one, never health
+  ironRain: { bursts: 3, per: 3, gap: 0.09, rest: 0.5, glint: 0.26, damage: 3, last: 14, strafe: [7, 10], speed: 6.5, guardCost: 4, lastCost: 9, stun: 0.18, mercy: 0.1, parryKeep: 0.3 },
+  // every other shot of his (the heavy shots, the point-blank one, the bolts): inside this many s of a
+  // bullet of his that HIT the hero, it goes harmless (iron.js shotHit; the bullets' rule)
+  shotMercy: 0.45,
   // the reload: after `after` ranged moves he throws both guns away and takes two more from the coat
   reload: { after: 3, dur: 0.6 },
   // THE BEND (phase 2): a returned shot or the engine's heavy-blow evade. Time slows for everyone; he
@@ -175,4 +190,42 @@ export const TUNING = {
 
   // ---- he stands with his back turned until the hero steps onto the floor
   wakeRadius: 9,
+
+  // ---- THE REWORK (ADR-168): phase 1's two gears, the flurry burst, Borrowed Wall
+  // GEAR 2: bar 1 at or under `at` of its full (about a third into phase 1), between two moves (never
+  // inside a string) he flips back and the left hand comes out: the move `secondHand` (`open` s, his
+  // guard down). The pressure numbers of each gear: `gears` (read through GEARED, below)
+  gear2: { at: 0.83, open: 0.9 },
+  // THE FLURRY BURST (flurry.js): a parry of it costs him this much posture on top of the parry's own
+  // (a heavy deflect)
+  burst: { parryPosture: 20 },
+  // BORROWED WALL (wokenOne.js _wallPick / _wallRun): the uprights within `seek` m of him; the one he
+  // reaches inside `reachT` s at `speed` m/s whose line of flight comes at the hero most from the SIDE;
+  // `up` m up its face by `springAt` of the windup; the long hang (time at `slow` for `slowDur` s at the
+  // arc's top) only when the hero stands in the kick's line, at most once in `slowEvery` s
+  wall: { seek: 9, reachT: 0.4, speed: 9.5, up: 1.8, springAt: 0.62, runTo: 0.4, slow: 0.45, slowDur: 0.18, slowEvery: 12 },
 };
+
+// ---- the gears' pressure (phase 1 only; the per-phase arrays stay three long): GEARED.now is set by
+// wokenOne.js as the gear changes, and the arrays below are read through getters, so the brain (which
+// reads TUNING.pressure.chainDepth[phase - 1] and the like) sees gear 2's numbers in phase 1 once it is on
+export const GEARED = { now: 1 };
+const GEAR_P = {
+  // [gear 1, gear 2] of phase 1's value; phases 2 and 3 after them
+  idleGap: [[0.04, 0.14], [0.02, 0.1]],
+  chain: [0.7, 0.85],
+  chainDepth: [5, 7],
+  chainRest: [[0.3, 0.5], [0.15, 0.3]],
+};
+const P23 = {
+  // (phase 2: a burst of bullets is ONE cue now, so its pressure went up to keep pace with gear 2)
+  idleGap: [[0.02, 0.08], [0.02, 0.08]],
+  chain: [0.82, 0.82],
+  chainDepth: [7, 7],
+  chainRest: [[0.15, 0.3], [0.15, 0.3]],
+};
+const geared = (k) => () => [GEAR_P[k][GEARED.now >= 2 ? 1 : 0], ...P23[k]];
+Object.defineProperty(TUNING, 'idleGap', { get: geared('idleGap'), enumerable: true });
+Object.defineProperty(TUNING, 'chain', { get: geared('chain'), enumerable: true });
+Object.defineProperty(TUNING.pressure, 'chainDepth', { get: geared('chainDepth'), enumerable: true });
+Object.defineProperty(TUNING.pressure, 'chainRest', { get: geared('chainRest'), enumerable: true });

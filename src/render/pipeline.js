@@ -50,6 +50,9 @@ const IS_HERO_GLSL =
  * letter's strokes are 1 and 2 px wide; at a quarter step they smear.
  */
 export const HERO_CELLS = [4, 6, 8, 10, 12, 16, 20, 24, 32];
+/** A boss's letterBias (kit.letterBias) applies on a frame under this many pixels tall (a phone in
+ *  landscape: 393, 343; at 720p and up the hero's rule already sizes the letters). */
+export const BOSS_BIAS_H = 540;
 /**
  * Make an object (and children) cast moon shadows. Works before or after rigid batching
  * (rigidBatch.js): a batched source keeps its layer mask without being drawn, and its actor's
@@ -194,6 +197,8 @@ export class Pipeline {
     this.heroLetter = CONFIG.render.heroLetters?.size ?? 0;
     // ... and a boss's whose kit asks for it (`bossLetters`, set each frame by main.js: _updateBossLetters)
     this.bossLetters = false;
+    // ... that many cells bolder on a small frame (the kit's `letterBias`, main.js; 0 = none)
+    this.bossLetterBias = 0;
     this.bossCell = new THREE.Vector2(0, 0);
     this._bossOn = false;
     this.asciiMat = new THREE.ShaderMaterial({
@@ -1498,7 +1503,14 @@ export class Pipeline {
     // along the view of a point 1 m up is the root's plus the view direction's y, -matrixWorld[9]);
     // a hidden boss keeps the cell he had
     const z = seen ? bs.z - this.camera.matrixWorld.elements[9] : NaN;
-    const cell = seen ? this._letterCell(z, cur) : Math.max(cur, this.heroCell.x);
+    // (the rule's own cell, kept apart from a bias: its hysteresis runs on it)
+    const base = this._bossBase || cur;
+    let cell = seen ? this._letterCell(z, base) : Math.max(base, this.heroCell.x);
+    this._bossBase = cell;
+    // a kit's letterBias (main.js: bossLetterBias): that many steps along HERO_CELLS bolder, on a small
+    // frame only (under BOSS_BIAS_H px tall: a phone, where the rule rests on the fixed cell)
+    const bias = this.bossLetterBias | 0;
+    if (bias && this.height < BOSS_BIAS_H) cell = HERO_CELLS[Math.min(HERO_CELLS.length - 1, Math.max(0, HERO_CELLS.indexOf(cell) + bias))] ?? cell;
     let art = this._selfArt.get(cell);
     if (!art) this._selfArt.set(cell, (art = createPixelArtAtlas(cell / 4)));
     const px = Math.max(1, Math.round(cell / 4 - (CONFIG.render.heroLetters?.thin ?? 0.01)));

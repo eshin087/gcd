@@ -184,6 +184,15 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.73 — Xin Yi reworked: drawn like the hero, kicks and flurries, a wall kick, bullets that never lock (2026-11-23, `claude/xinyi-rework-4b1d8a`, ADR-168 – ADR-170)
+- [x] Printed like the hero: his letters follow his size (`?oneLetters`), the quiet print and simpler shapes (`?onePrint` a / b / 0), the coat moving in every phase and clamped for flips
+- [x] ADR-162's kit for him: soft arms and legs, the shared feet planner (`duelist/feetPlan.js`), palms that stop at the hero, no swings at air; the audit before and after
+- [x] Phase 1 in two gears (one hand, then both at 83 %: an opening); the flurry burst (one cue, one result); spin, tornado, butterfly, flash, cartwheel, bicycle, drop heel and flying-knee strikes; eight new strings
+- [x] Borrowed Wall off the upright at the hero's side (or the floor): a flying side kick or a drop heel, used often
+- [x] The bullets' rule: Iron Rain in bursts of three, one cue and one result each; a hit is a 0.18 s flinch; Iron in the Air
+- [ ] The owner's picks from the sheets: `?oneLetters`, `?onePrint` (and still `?oneLook`, `?hall`, `?script`)
+- [ ] On the iPhone: how he reads in letters, the bursts and the wall kick at the phone camera, the frame rate
+- [ ] Cut, for later: phase 3's Falling Leaves, the pillar run inside Iron Rain, `doubleWall`
 ## M1.72 — The living world (2026-11-23, `world/living-world`, ADR-163)
 - [x] One shared wind per level (`world/life/wind.js`): fronts through the grass, the canopy, smoke, flames
 - [x] Litter that falls, lies and lifts; footsteps by surface, prints, trodden grass

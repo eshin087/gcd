@@ -287,8 +287,12 @@ Render helpers for creature modules:
     to give, the most it opens]` as fractions of the limb's length; null = as always: `ARM_SOFT`, an elbow of
     ~130° at a full stretch, and a leg that reaches straight). Tian Lei sets both in `_setup` from
     `TUNING.armSoft` (the hero's `HERO_SOFT`) and `TUNING.legSoft`.
-  - **The bosses' letters** (ADR-154, ADR-155): a boss whose kit sets `letters` (today Wen Yao's `FOX_KIT`, behind
-    `?foxLetters=b`, Tian Lei's `ASC_KIT`, a getter behind `?ascLetters=a`, the owner's pick; `0` the fixed cell; and Halcyon's `HALCYON_KIT`, a getter behind `?halLetters=a`, the owner's pick, ADR-166) has the bosses' cell `uHeroCell`, its atlas `tHeroArt` and its line width `uHeroPx.x`
+  - **The bosses' letters** (ADR-154, ADR-155, ADR-170): a boss whose kit sets `letters` (today Wen Yao's `FOX_KIT`, behind
+    `?foxLetters=b`, Tian Lei's `ASC_KIT`, a getter behind `?ascLetters=a`, the owner's pick; `0` the fixed cell; Halcyon's
+    `HALCYON_KIT`, a getter behind `?halLetters=a`, the owner's pick, ADR-166; and Xin Yi's `WOKEN_KIT`, the same getter
+    behind `?oneLetters=a`; a kit's optional `letterBias` (Xin Yi's `?onePrint=b`) steps his cell that many `HERO_CELLS`
+    bolder on a frame under `BOSS_BIAS_H` (540) px tall: main.js `pipeline.bossLetterBias`, `_updateBossLetters` keeps
+    the rule's own cell in `_bossBase`; undefined = 0) has the bosses' cell `uHeroCell`, its atlas `tHeroArt` and its line width `uHeroPx.x`
     set each frame from HIS depth by the hero's rule: main.js sets `pipeline.bossLetters`
     (`!!game.dragon?.kit?.letters && lookOf('foxLetters', 'b') === 'b'`), `Pipeline._updateBossLetters(U.uBossScreen)`
     takes the depth 1 m above his feet and picks the cell with `_letterCell(z, cur)` (the cell choice
@@ -4734,8 +4738,8 @@ marks, gust, shake, domino sweep or blow on anyone. (The record's own `light` is
 ### Xin Yi, the One Who Woke — `src/entities/enemies/wokenOne/wokenOne.js` exports `class WokenOne` (ADR-156 – ADR-158)
 A `Duelist` with `WOKEN_KIT`; COMBAT.md → "The One Who Woke" has the fight. The kit: `{ id: 'wokenOne', TUNING,
 MOVES, MOVE_NAMES, CLIP, realise, transitions { 2: 'ironSeeds', 3: 'rising' }, counterMove (answer / answer2 /
-answer3 by phase), streakMove (hundredHands / 2 / 3), maxPhase 3, loadout ONE_LOADOUT, poses (per phase:
-poses.js phasePoses), blade ONE_FIST, REACT { bend, stop }, OPEN ['bend'] }`. Files: tuning.js, moves.js
+answer3 by phase), streakMove (streakHands / 2 / 3), maxPhase 3, loadout ONE_LOADOUT, poses (per phase, and
+phase 1's gear 2: poses.js posesOf(pilot.pset)), blade ONE_FIST, REACT { bend, stop }, OPEN ['bend'] }`. Files: tuning.js, moves.js
 (Tian Lei's exported strike builders; MOVES_P1, the phase-1 copy with the left hand behind his back in every
 key; CLIPS_BY_PHASE; `realise` with deja vu's REPLAY), poses.js (three guards), links.js, iron.js (`IronMoves`,
 phase 2's guns), source.js (`SourceMoves`, phase 3), fx.js (`WokenFx extends AscFx`: LordFx's pool of thrown
@@ -4752,8 +4756,11 @@ bend(why, force) → bool            // THE BEND (phase 2): 'shot' | 'cut'; fals
 onShotReturned(s)                  // AscFx: a returned shot reached him (phase 2: the Bend, else it lands: bend.returned)
 handPoint(left, out)               // the hand as drawn (a muzzle, a bolt's start)
 victoryNote()                      // 'YOU LEARNED THE LONG SECOND' after the fight that granted it
+gear                               // phase 1's gear: 1 one hand, 2 both (ADR-168; tuning.js GEARED.now follows it)
+flurry                             // FlurryMoves (flurry.js): the burst now { b, a, i, n, res, cost, cap }, stats
 debug.setPhase(n) / setForm(n), phase3() (the fall and the rising), bendNow(why), fallAndRise(), scene(id),
-  dejavu(name), hold(n), held(), flight('fist' | 'pass')
+  dejavu(name), hold(n), held(), flight('fist' | 'pass'), setGear(g, snap) (gear 2 through its opening unless
+  snap), wall('kick' | 'heel') (Borrowed Wall with its blow chosen)
 ```
 **Two bars, three phases.** `phaseAt` [1, 0.5, 0]: the engine's gate stops bar 1 at half (phase 2's
 transition `ironSeeds`); phase 2 has no gate, so bar 1 empty calls `_onHpZero`, which BREAKS him (Tian Lei's
@@ -4773,6 +4780,41 @@ itself, phase 3 to its mirrored copy `<name>M`, `mirrorOf`, `manual`). `WokenBra
 no world blow of the brain's own: Iron Rain's lit line, Return to Sender's ring); a hit's `guardCost`
 (player.js `_block`: what a block costs the meter instead of GUARD.cost; Iron Rain's shots); a boss's
 `cameraPull` (main.js).
+**The rework (ADR-168 – ADR-170).** New files: `strikes.js` (his acrobatic strike builders: spinBack,
+spinFist, tornado, butterfly, flash, aerial, bicycle, dropHeel, flyKnee, and `burstKeys`; a flying foot is keyed
+in BODY space, `rFb` / `lFb`, and turned into model space through the key's own body rotation, so a turn or a flip
+carries the legs), `flurry.js` (`FlurryMoves`). His own beat / move fields (the brain ignores them):
+- `flurry: { n, dur, cap, kind }` (on a beat with `sustain` + `selfHit`): THE FLURRY BURST. One cue, one windup,
+  one glint, one lit interval in the ledger; `n` blows drawn over `dur` s (`dragon:burst` each); the first blow
+  that finds the hero decides the ONE result (flurry.js header): parried (the burst turned, + `burst.parryPosture`),
+  blocked (at most `cap` guard, never health: `player.streamBlock`), dodged, or hit (one stagger, then chip under
+  minStaggerDamage with no knock-back, a push out of reach). A burst in his streak flurry settles the streak
+  (`onStreakBlow`). At most one burst a move; `cat: 'flurry'` is its own category in the director.
+- `wall: true` + `wallBlow: 'kick' | 'heel'` (Borrowed Wall, a `pick` of the two): `_wallPick` (onActStart, from the
+  REALISED beats) chooses the upright (`destructibles.list`: standing, h > 1.6, within `wall.seek` m, reached by
+  `wall.runTo` of the windup at `wall.speed`) whose line of flight crosses the hero's facing most, else a floor
+  spot 3.2 m to the hero's side; `_wallRun` (beatMotion) drives his root through the whole beat (the run, up the
+  face, THE SPRING: a bite on the upright, `dragon:wallKick`, the target fixed; the arc; the landing); its reach is
+  wherever the hero is (`WokenBrain._reach` Infinity). The long hang: `flow.cinematic` slowmo `wall.slow` for
+  `wall.slowDur` s, at most once in `wall.slowEvery` s, only with the hero in the kick's line.
+- `bursts` (on an `iron: 'rain'` beat: how many bursts; Iron in the Air's 1), `gear: 2` (a move only in gear 2),
+  `twoHand` (a phase-1 move realised two-handed even in gear 1: `secondHand`), `secondHand` (gear 2's opening beat).
+**The gears** (phase 1): `d.gear` 1 → 2 when bar 1 is at or under `gear2.at` and he is between two moves
+(`_betweenMoves`: his footwork, or a move's recovery; `_gearUp`: the move `secondHand`, `gear2.open` s, `recoverOpen` 1 and `guarding` false through it;
+`dragon:gear {gear}`; the level's `text.gear2` as a banner). Gear 2 realises phase 1 with `MOVES` (two-handed)
+round `GEAR2_GUARD` (moves.js REALISE_G2, CLIPS_GEAR2, poses.js GEAR2_POSES: `pilot.pset` 4). The per-gear
+pressure: tuning.js `GEARED.now` and getters on `TUNING.idleGap`, `TUNING.chain`, `pressure.chainDepth`,
+`pressure.chainRest` (phase 1's element per gear; the arrays stay three long, so the brain reads them as ever).
+**The bullets' rule** (ADR-169; iron.js header): Iron Rain fires `ironRain.bursts` bursts of `per` slugs on its own
+clock (`_rainStep`), a glint at the muzzle `glint` s before each later burst (`combat:flash {bullet, burst}`), the
+aim fixed there (`_aimNow`); the slugs are `quiet` (no cue of their own) and `keepAim` (ascendant/fx.js: a hang does
+not re-aim them). `hitPlayer` routes a slug to `iron.slugHit` (the burst's ONE result: the first slug that finds
+the hero gets `stun` / `mercy`; after a hit the rest are chip; after a parry they spark off for `parryKeep` s) and
+any other projectile to `iron.shotHit` (harmless inside `shotMercy` s of a bullet that hit him).
+**Optional engine fields the rework added** (inert for every other attacker): a hit's `stun` and `mercy`
+(player.js `_takeHit`: a stagger of `stun` s that keeps the input buffer; while `shotStunT` runs (stun + mercy) a
+hit carrying `stun` hurts but never staggers again); a thrown shot's `quiet` and `keepAim` (ascendant/fx.js
+`_shotMeets` / `_flyBlast`).
 **The set** (world/scriptHall.js, ADR-157): `createScriptHall`, `HALL` (layout), `SCENES`, `SLOTS`; returns
 createForest's shape + `scenes` (below) + `ambience` (the falling script: atmosphere.js runs it).
 
@@ -4920,7 +4962,10 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   returned bolt hangs before his palm; held = how many now), `dragon:sent {count, result}` (Return to Sender answered),
   `dragon:unwrite {count}` (bricks torn out of the code pillars), `dragon:dejavu {name}` (the hall stutters: the string
   replays), `dragon:fall {x, z, lie}` (THE FALL: bar 1 empty and the deathblow; he lies lie s), `dragon:stillHand {dur}`
-  (the rising's ring went out: the Still Hand held dur s),
+  (the rising's ring went out: the Still Hand held dur s), `dragon:burst {i, n, kind, x, z}` (a blow of a flurry burst
+  is drawn, ADR-168; audio a soft patter), `dragon:gear {gear}` (phase 1's second hand comes out; audio a short hum;
+  the banner is the level's text.gear2), `dragon:wallKick {x, z, wall, blow}` (Borrowed Wall's spring: off an
+  upright, or the floor; audio a landing thump),
   `dragon:posture {posture, max}`, `dragon:postureBreak`, `dragon:stagger` (ordinary stagger only), `dragon:phase2`,
   `dragon:phase3`, `dragon:phase4` (a duelist's later phases: the Starless Lord's blade forms), `dragon:phase {n}` (the wyrm: with phase 2 and 3, on the transition roar), `dragon:plunged {execution}`
   (contract 2: every plunge that lands, even during a transition or the killing one),

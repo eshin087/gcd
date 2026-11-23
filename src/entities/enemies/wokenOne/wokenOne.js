@@ -5,14 +5,16 @@ import { DIM } from '../../player/model.js';
 import { Duelist } from '../duelist/duelist.js';
 import { DuelBrain } from '../duelist/brain.js';
 import { GUARD_KINDS } from '../duelist/guard.js';
+import { planFeet, feetPose } from '../duelist/feetPlan.js';
 import { ONE_LOADOUT, ONE_FIST } from './gear.js';
-import { tintOne, dressOne } from './look.js';
+import { tintOne, dressOne, oneLettersOn, oneLetterBias } from './look.js';
 import { WokenFx } from './fx.js';
-import { phasePoses } from './poses.js';
-import { MOVES, MOVE_NAMES, CLIP, CLIPS_BY_PHASE, TRANSITIONS, COUNTERS, STREAKS, REPLAY, INTRO_BECKON, realise } from './moves.js';
-import { TUNING } from './tuning.js';
+import { posesOf } from './poses.js';
+import { MOVES, MOVE_NAMES, CLIP, CLIPS_BY_PHASE, CLIPS_GEAR2, TRANSITIONS, COUNTERS, STREAKS, REPLAY, INTRO_BECKON, realise } from './moves.js';
+import { TUNING, GEARED } from './tuning.js';
 import { LINKS } from './links.js';
 import { IronMoves } from './iron.js';
+import { FlurryMoves } from './flurry.js';
 import { SourceMoves } from './source.js';
 
 // Xin Yi, the One Who Woke: the boss of the Hall of Falling Script (`?level=code`; ADR-156). A duelist on
@@ -34,11 +36,21 @@ import { SourceMoves } from './source.js';
 //     slows, he arches back, the shot / the cut passes over him; posture; open `bend.open` s and the first
 //     cut crits; a second in that window lands in full.
 //   - DEJA VU: a link marked `dejavu` stutters the hall and replays the string as realised the first time.
+//   - THE REWORK (ADR-168, ADR-169): phase 1 in two GEARS (d.gear: one hand, then both once bar 1 is at
+//     or under TUNING.gear2.at: the move `secondHand` between two moves, `dragon:gear`); THE FLURRY BURST
+//     (flurry.js: a beat's `flurry`, one cue and one result for 6 - 8 drawn blows); BORROWED WALL off the
+//     upright that brings him at the hero from the side (_wallPick / _wallRun); the bullets' rule (iron.js
+//     slugHit / shotHit: a bullet never locks the hero).
 
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
+// (the pose set: the phase's, or phase 1's gear 2: pilot.pset 4)
 const POSES = Object.freeze({
-  loco: (p, A) => phasePoses(A.player?.form ?? 1).duelLoco(p, A),
-  duel: (p, A) => phasePoses(A.player?.form ?? 1).duelClip(p, A),
+  loco: (p, A) => posesOf(A.player?.pset ?? A.player?.form ?? 1).duelLoco(p, A),
+  duel: (p, A) => {
+    posesOf(A.player?.pset ?? A.player?.form ?? 1).duelClip(p, A);
+    // (his feet stay planted while a move carries him: the planner's offsets, duelist/feetPlan.js; ADR-162, ADR-168)
+    feetPose(p, A);
+  },
 });
 /** The beat a move is in at its time t (its windup or its active frames), or null. */
 const beatNow = (a) => (a ? a.beats.find((b) => a.t < b.end + 1e-6) ?? null : null);
@@ -59,6 +71,16 @@ export const WOKEN_KIT = Object.freeze({
   // (the Bend and the stop: held where he stands; the Bend leaves him open)
   REACT: Object.freeze({ bend: { travel: -0.3 }, stop: { travel: 0 } }),
   OPEN: Object.freeze(['bend']),
+  // his ink-line letters follow his size on screen as the hero's do (ARCHITECTURE "The bosses'
+  // letters"; `?oneLetters=0` the fixed cell he shipped with: read live, as Tian Lei's, ADR-155; ADR-170)
+  get letters() {
+    return oneLettersOn();
+  },
+  // ... and `?onePrint=b` draws them one cell bolder where the hero's rule rests on its floor cell
+  // (a small screen: pipeline.js _updateBossLetters; 0 for every other boss, which has none)
+  get letterBias() {
+    return oneLetterBias();
+  },
 });
 
 const _a = new THREE.Vector3(), _b = new THREE.Vector3();
@@ -67,13 +89,14 @@ const _a = new THREE.Vector3(), _b = new THREE.Vector3();
  *  and deja vu's replay. */
 class WokenBrain extends DuelBrain {
   get C() {
+    if ((this.d.phase | 0) <= 1 && this.d.gear >= 2) return CLIPS_GEAR2;
     return CLIPS_BY_PHASE[clamp(this.d.phase | 0, 1, CLIPS_BY_PHASE.length) - 1];
   }
   set C(v) {} // (the base constructor assigns the kit's set: his is per phase)
 
   /** A sent volley reaches wherever the hero is; so does a beat out of the hover (the fist, the pass). */
   _reach(b) {
-    if (b.def.send || b.def.fist || b.def.pass) return Infinity;
+    if (b.def.send || b.def.fist || b.def.pass || b.def.wall) return Infinity; // (Borrowed Wall: he goes to where the hero is)
     return super._reach(b);
   }
 
@@ -124,6 +147,12 @@ export class WokenOne extends Duelist {
 
   /** His state and the Lab's API (before batching and the first reset). */
   _setup() {
+    // ADR-162's kit (Tian Lei's; his use of it: ADR-168): his arms open as the hero's do at the end of a blow, his kicks keep a
+    // little bend (TUNING.armSoft / legSoft); his feet: the planner (_animate)
+    if (this.anim) {
+      this.anim.armSoft = TUNING.armSoft;
+      this.anim.legSoft = TUNING.legSoft;
+    }
     this._changing = false; // the fall and the rising until its ring: nothing lands on him
     this._part = 'fistR';
     this._partPrev = '';
@@ -150,6 +179,30 @@ export class WokenOne extends Duelist {
       return true;
     };
     dbg.setForm = (n) => dbg.setPhase(n); // (the Lab and Training skip to a phase through it)
+    /** Lab: phase 1's gear now (1: one hand; 2: both hands, through the opening `secondHand` unless `snap`). */
+    dbg.setGear = (g = 2, snap = false) => {
+      if (d.mode === 'sleep' || d.mode === 'intro') d.brain.startFight();
+      if (d.phase !== 1) dbg.setPhase(1);
+      if (g < 2) {
+        d._setGear(1);
+        return true;
+      }
+      if (d.gear >= 2) return true;
+      if (snap) {
+        d._setGear(2);
+        return true;
+      }
+      return d._gearUp(true);
+    };
+    /** Lab, Training: Borrowed Wall with its blow chosen ('kick' | 'heel'). */
+    dbg.wall = (which = 'kick') => {
+      if (d.mode === 'sleep' || d.mode === 'intro') d.brain.startFight();
+      REPLAY.name = 'wallStep';
+      REPLAY.draws = [which === 'heel' ? 0.99 : 0.01];
+      const ok = d.brain.trigger('wallStep');
+      REPLAY.name = REPLAY.draws = null;
+      return ok;
+    };
     // (the Lab's phase buttons play the change: Phase 2 is A Hundred Iron Seeds (the engine's forcePhase),
     // Phase 3 is the fall and the rising)
     dbg.phase3 = () => (d.phase >= 3 ? false : dbg.fallAndRise());
@@ -217,9 +270,11 @@ export class WokenOne extends Duelist {
     return this._learned ? 'YOU LEARNED THE LONG SECOND' : null;
   }
 
-  /** His guard: down while bent, through the reload, while he hangs in the air or lies. */
+  /** His guard: down while bent, through the reload, while he hangs in the air or lies, through the
+   *  second hand coming out (gear 2's opening). */
   get guarding() {
     if (this._bendT > 0 || this.iron?.reloading || this._fall || this.position.y > 0.6) return false;
+    if (this.mode === 'act' && this.brain.act?.name === 'secondHand') return false;
     return super.guarding;
   }
 
@@ -242,14 +297,46 @@ export class WokenOne extends Duelist {
     this._beckoned = false;
     this._learned = false;
     this._slow = 0;
+    this._wallSlowT = -1e9; // (the long hang: at most once in TUNING.wall.slowEvery s)
+    this.gear = 1;
+    GEARED.now = 1;
     super.reset();
     (this.iron ??= new IronMoves(this)).reset();
     (this.source ??= new SourceMoves(this)).reset();
+    (this.flurry ??= new FlurryMoves(this)).reset();
+  }
+
+  // ---------------------------------------------------------------- the gears (ADR-168)
+  /** Set phase 1's gear (and what the brain reads through tuning.js GEARED). */
+  _setGear(g) {
+    this.gear = g >= 2 ? 2 : 1;
+    GEARED.now = this.gear;
+  }
+
+  /** Between two moves: in his footwork, or in the recovery of a move (not a transition), no phase pending. */
+  _betweenMoves() {
+    if (this.brain.pendingPhase || this.broken) return false;
+    if (this.mode === 'foot') return true;
+    const a = this.brain.act;
+    return this.mode === 'act' && !!a && !a.def.transition && a.name !== 'secondHand' && a.t >= a.recoveryStart;
+  }
+
+  /** Gear 2 now: the opening `secondHand` (his guard down `gear2.open` s), the second hand comes out. */
+  _gearUp(force = false) {
+    if (this.gear >= 2 || this.phase !== 1) return false;
+    if (!force && !this._betweenMoves()) return false;
+    if (!this.brain.startAct('secondHand', 1)) return false;
+    this._setGear(2);
+    this.emit('dragon:gear', { gear: 2 });
+    const line = this.game.flow?._text?.('gear2');
+    if (line && this.game.state === 'boss') this.game.hud?.banner?.(line, 'phase');
+    return true;
   }
 
   /** Phase n begins (its transition's start): phase 3 is bar 2, full. */
   enterPhase(n) {
     super.enterPhase(n);
+    if (this.phase === 1 && this.hp >= this.maxHp) this._setGear(1);
     if (this.phase >= 3) {
       this.maxHp = this.T.hp2;
       this.hp = this.maxHp;
@@ -331,7 +418,9 @@ export class WokenOne extends Duelist {
       this._die();
       return dmg;
     }
-    if (this.hp > 0) return super.onExecute(o);
+    // (a deathblow on a break that would empty bar 1 is THE FALL too, never his death in phase 1 - 2)
+    if (this.hp > fin(o.damage, this.T.execution.damage)) return super.onExecute(o);
+    this.hp = 0;
     // THE FALL
     const dmg = Math.max(1, Math.round(fin(o.damage, this.T.execution.damage)));
     this.flash = 1;
@@ -446,6 +535,9 @@ export class WokenOne extends Duelist {
 
   // ---------------------------------------------------------------- the moves' hooks
   weigh(name, def, w, dist) {
+    // the gears (phase 1): gear 2's moves wait for it; gear 1's lighter once it is on
+    if (def.gear === 2 && (this.phase !== 1 || this.gear < 2)) return 0;
+    if (this.phase === 1 && this.gear >= 2 && def.phase === 1 && !def.gear) w *= 0.55;
     if (def.needs === 'held3' && (this.source?.held.length ?? 0) < this.T.stop.max) return 0;
     if (this.source?.held.length >= this.T.stop.max && !def.transition && def.needs !== 'held3') w *= 0.15; // (three hang: he sends them)
     if (def.unwrite || def.beats?.some((b) => b.unwrite)) {
@@ -479,19 +571,60 @@ export class WokenOne extends Duelist {
     this.iron?.begin(A);
     this.source?.begin(A);
     // Borrowed Wall: the upright he will run up (the nearest by his path), if one is in reach
-    if (def.beats.some((b) => b.wall)) this._wallPick(A);
+    if (A.beats.some((b) => b.def.wall)) this._wallPick(A);
     return true;
   }
 
-  /** Borrowed Wall: the nearest standing upright within 4 m of his path to the hero, or none. */
+  /**
+   * BORROWED WALL (the rework, ADR-168): among the standing uprights within wall.seek m, the one he reaches
+   * by wall.runTo of the windup at wall.speed whose line of flight (from its face toward the hero, out of
+   * his bound never) comes at the hero most from the SIDE of the hero's facing. None in reach: the same
+   * off the floor, from a spot beside the hero. A.wall = { b (or null: the floor), x, z (where he springs
+   * from), ... }; _wallRun drives his root through the whole beat.
+   */
   _wallPick(A) {
     A.wall = null;
-    const W = this.game.world?.destructibles, p = this.game.player?.position;
-    if (!W?.nearest || !p) return;
-    const mx = (this.position.x + p.x) / 2, mz = (this.position.z + p.z) / 2;
-    const b = W.nearest(this.position.x, this.position.z, { maxDist: 4.5 }) ?? W.nearest(mx, mz, { maxDist: 3 });
-    if (!b || b.floor || !(b.h > 1.6)) return;
-    A.wall = { b, kicked: false };
+    const p = this.game.player?.position;
+    if (!p) return;
+    const WT = this.T.wall, W = this.game.world?.destructibles, me = this.position, R = this.T.radius;
+    const bound = (this.bound ?? this.T.bound) - 0.6;
+    const hy = fin(this.game.player?.yaw), hx = Math.sin(hy), hz = Math.cos(hy);
+    const beat = A.beats.find((b) => b.def.wall);
+    const reach = WT.speed * Math.max(0.2, WT.runTo * (beat?.W ?? 1.05));
+    let best = null, bs = -Infinity;
+    for (const b of W?.list ?? []) {
+      if (!b || b.state !== 0 || b.absent || b.floor || !(b.h > 1.6) || !(b.r > 0)) continue;
+      if (Math.hypot(b.x - me.x, b.z - me.z) > WT.seek) continue;
+      let nx = p.x - b.x, nz = p.z - b.z;
+      const nl = Math.hypot(nx, nz);
+      if (nl < 2.2 || nl > 9.5) continue;
+      nx /= nl;
+      nz /= nl;
+      const off = b.r + R + 0.15, x = b.x + nx * off, z = b.z + nz * off;
+      if (Math.hypot(x, z) > bound) continue;
+      const run = Math.hypot(x - me.x, z - me.z);
+      if (run > reach) continue;
+      // (from the side: the flight comes across the screen (the game camera looks north: east / west) and
+      // across the hero's facing; a short run and a mid-length flight help)
+      const side = 0.7 * Math.abs(nx) + 0.3 * Math.abs(nx * hz - nz * hx);
+      const score = side + 0.25 * (1 - run / reach) - 0.05 * Math.abs(nl - 5);
+      if (score > bs) {
+        bs = score;
+        best = { b, x, z };
+      }
+    }
+    if (!best) {
+      // the floor: a spot 3.2 m east or west of the hero (across the screen), on the side nearer Xin Yi
+      const sx = 1, sz = 0, sgn = me.x - p.x >= 0 ? 1 : -1;
+      let x = p.x + sx * sgn * 3.2, z = p.z + sz * sgn * 3.2;
+      const l = Math.hypot(x, z);
+      if (l > bound) {
+        x *= bound / l;
+        z *= bound / l;
+      }
+      best = { b: null, x, z };
+    }
+    A.wall = { ...best, sx: me.x, sz: me.z, kicked: false, tx: p.x, tz: p.z, dx: 0, dz: 1, y0: 0, yHit: 0, slow: false };
   }
 
   onImpact(b, s, a) {
@@ -506,6 +639,7 @@ export class WokenOne extends Duelist {
       }
       return;
     }
+    if (this.flurry?.onImpact(b, s, a)) return;
     if (this.iron?.onImpact(b, s, a)) return;
     if (this.source?.onImpact(b, s, a)) return;
     if (D.zone?.kind === 'ring' && (D.knockdown || D.tell === TELL.RED)) {
@@ -520,41 +654,111 @@ export class WokenOne extends Duelist {
   }
 
   onSustain(b, s, a, k) {
+    this.flurry?.onSustain(b, s, a, k);
     this.iron?.onSustain(b, s, a, k);
   }
 
   /** A beat's own motion: Borrowed Wall's run up the upright; the guns' strafe; the dive; the pass. */
   beatMotion(b, u, s, dt) {
     const a = this.brain.act;
-    if (b.def.wall && a?.wall && u < 0.45) this._wallRun(a.wall, u, dt);
+    if (b.def.wall && a?.wall) this._wallRun(a.wall, b, u, dt);
     this.iron?.motion(b, u, s, dt);
     this.source?.motion(b, u, s, dt);
   }
 
-  /** Borrowed Wall: to the upright's side facing the hero, up it (the beat's `lift`), the kick-off's bite. */
-  _wallRun(Wl, u, dt) {
-    const B = Wl.b, p = this.game.player?.position;
-    if (!B || B.state !== 0 || B.absent) return;
-    const tx = B.x + (p ? Math.sign(p.x - B.x) * 0 : 0), tz = B.z;
-    const dx = tx - this.position.x, dz = tz - this.position.z, l = Math.hypot(dx, dz);
-    const want = B.r + this.T.radius + 0.1;
-    if (l > want) {
-      const step = Math.min(l - want, 9 * dt);
-      this.moveBy((dx / l) * step, (dz / l) * step);
-      this.yaw = Math.atan2(dx, dz);
+  /**
+   * Borrowed Wall, every frame of its beat: the run to the spring spot (to wall.runTo), two steps up the
+   * upright's face (to wall.springAt, wall.up m up; off the floor: a crouch), THE SPRING (the kick-off's
+   * bite on the upright, a thump; the target fixed here), the flat arc to the hero, the blow in the air,
+   * the landing through the active frames. Horizontal moves go through moveBy (the colliders hold him).
+   */
+  _wallRun(Wl, b, u, dt) {
+    const WT = this.T.wall, p = this.game.player?.position, D = b.def;
+    const heel = D.wallBlow === 'heel';
+    const B = Wl.b && Wl.b.state === 0 && !Wl.b.absent ? Wl.b : null;
+    const pos = this.position;
+    const ease = (k) => k * k * (3 - 2 * k);
+    if (u < WT.runTo) {
+      // the run: there by runTo
+      const k = ease(clamp(u / WT.runTo, 0, 1));
+      const wx = Wl.sx + (Wl.x - Wl.sx) * k, wz = Wl.sz + (Wl.z - Wl.sz) * k;
+      const dx = wx - pos.x, dz = wz - pos.z;
+      if (Math.hypot(dx, dz) > 1e-4) {
+        this.moveBy(dx, dz);
+        this.yaw = turnToward(this.yaw, Math.atan2(Wl.x - Wl.sx, Wl.z - Wl.sz), 18 * dt);
+      }
+      pos.y = 0;
+      return;
     }
-    if (u >= 0.4 && !Wl.kicked) {
+    if (u < WT.springAt) {
+      // up the face (facing it), or crouched on the floor (facing the hero)
+      const k = clamp((u - WT.runTo) / (WT.springAt - WT.runTo), 0, 1);
+      if (B) this.yaw = turnToward(this.yaw, Math.atan2(B.x - pos.x, B.z - pos.z), 16 * dt);
+      else if (p) this.yaw = turnToward(this.yaw, Math.atan2(p.x - pos.x, p.z - pos.z), 16 * dt);
+      pos.y = B ? WT.up * ease(k) : 0;
+      return;
+    }
+    if (!Wl.kicked) {
+      // THE SPRING: the target fixed here
       Wl.kicked = true;
-      const W = this.game.world?.destructibles;
-      W?.strike?.(B.x, B.z, B.r + 0.3, this.T.world.kickOff, { kind: 'blunt', by: 'boss', y: 1.3, dx: -dx / (l || 1), dz: -dz / (l || 1), src: W.swing?.() ?? -1 });
+      Wl.y0 = pos.y;
+      Wl.fx = pos.x;
+      Wl.fz = pos.z;
+      Wl.tx = p?.x ?? pos.x + Math.sin(this.yaw) * 3;
+      Wl.tz = p?.z ?? pos.z + Math.cos(this.yaw) * 3;
+      const ddx = Wl.tx - pos.x, ddz = Wl.tz - pos.z, l = Math.hypot(ddx, ddz) || 1;
+      Wl.dx = ddx / l;
+      Wl.dz = ddz / l;
+      // where the blow lands from: the kick stops 1.4 m short of him, the heel comes down on the spot
+      const stop = heel ? 1.15 : 1.4; // (the heel lands beside the fixed spot: never inside the hero's body)
+      Wl.hx = Wl.tx - Wl.dx * Math.min(stop, l);
+      Wl.hz = Wl.tz - Wl.dz * Math.min(stop, l);
+      Wl.yHit = heel ? 0 : 0.55;
+      if (B) {
+        const W = this.game.world?.destructibles;
+        W?.strike?.(B.x, B.z, B.r + 0.3, this.T.world.kickOff, { kind: 'blunt', by: 'boss', y: Math.max(0.6, Wl.y0), dx: -Wl.dx, dz: -Wl.dz, src: W.swing?.() ?? -1 });
+      }
+      this.fx.crater?.(pos.x, pos.z, 0.5, 0.25);
+      this.game.shake?.(0.1);
+      this.emit('dragon:wallKick', { x: pos.x, z: pos.z, wall: !!B, blow: heel ? 'heel' : 'kick' });
+      // THE LONG HANG: the hero in the kick's line at the spring, at most once in wall.slowEvery s
+      if (!heel && p && fin(this.time) - this._wallSlowT >= WT.slowEvery) {
+        const along = (p.x - pos.x) * Wl.dx + (p.z - pos.z) * Wl.dz, across = Math.abs(-(p.x - pos.x) * Wl.dz + (p.z - pos.z) * Wl.dx);
+        if (along > 0 && across < 0.9) {
+          this._wallSlowT = fin(this.time);
+          Wl.slow = true;
+        }
+      }
     }
+    if (u <= 1) {
+      // the flight: a flat arc from the spring to where the blow lands (the heel goes up to 2.6 m first)
+      const k = clamp((u - WT.springAt) / (1 - WT.springAt), 0, 1), e = ease(k);
+      const wx = Wl.fx + (Wl.hx - Wl.fx) * e, wz = Wl.fz + (Wl.hz - Wl.fz) * e;
+      this.moveBy(wx - pos.x, wz - pos.z);
+      const top = heel ? 2.6 : Math.max(Wl.y0, 0.9) + 0.35;
+      pos.y = Math.max(0, k < 0.55 ? Wl.y0 + (top - Wl.y0) * ease(k / 0.55) : top + (Wl.yHit - top) * ease((k - 0.55) / 0.45));
+      this.yaw = turnToward(this.yaw, Math.atan2(Wl.dx, Wl.dz), 20 * dt);
+      if (Wl.slow && k > 0.45) {
+        Wl.slow = false;
+        this.game.flow?.cinematic?.({ x: pos.x, z: pos.z, zoom: -3, weight: 0.25, slowmo: WT.slow, dur: WT.slowDur, kind: 'wall' });
+      }
+      return;
+    }
+    // the landing through the active frames
+    pos.y = Math.max(0, Wl.yHit * (1 - clamp(u - 1, 0, 1)));
   }
 
   hitPlayer(o) {
     const D = o.beat?.def;
     if (D?.flit) o = { ...o, extra: { ...(o.extra ?? null), around: true } };
-    if (o.attack === 'ironRain' && o.projectile) o = { ...o, extra: { ...(o.extra ?? null), guardCost: o.damage >= this.T.ironRain.last ? this.T.ironRain.lastCost : this.T.ironRain.guardCost } };
-    const r = super.hitPlayer(o);
+    const rain = o.attack === 'ironRain' || o.attack === 'ironLeap';
+    if (rain && o.projectile) o = { ...o, extra: { ...(o.extra ?? null), guardCost: o.damage >= this.T.ironRain.last ? this.T.ironRain.lastCost : this.T.ironRain.guardCost } };
+    // THE BULLETS' RULE (ADR-169, iron.js): a slug of a burst is its burst's one result; any other shot
+    // inside TUNING.shotMercy of a bullet that hit him goes harmless
+    const call = (q) => super.hitPlayer(q);
+    let r;
+    if (o.projectile && this.iron) r = rain && o.damage < this.T.ironRain.last ? this.iron.slugHit(o, call) : this.iron.shotHit(o, call);
+    else r = call(o);
     if (D?.send) this.source?.sent(r);
     return r;
   }
@@ -593,6 +797,10 @@ export class WokenOne extends Duelist {
     }
     this.iron.frame(dt);
     this.source.frame(dt, rdt);
+    this.flurry.frame(dt);
+    // GEAR 2: bar 1 at or under gear2.at, between two moves (never inside a string: in his footwork, or in a
+    // move's recovery, which a link or the flow roll would otherwise run straight on from)
+    if (this.phase === 1 && this.gear < 2 && this.brain.aiEnabled && this.hp > 0 && this.hp <= this.maxHp * this.T.gear2.at && this._betweenMoves()) this._gearUp(true);
   }
 
   // ---------------------------------------------------------------- his limbs (Tian Lei's: ascendant.js)
@@ -712,6 +920,8 @@ export class WokenOne extends Duelist {
 
   _animate(dt) {
     this.pilot.form = this.phase;
+    this.pilot.pset = this.phase === 1 && this.gear >= 2 ? 4 : this.phase;
+    planFeet(this, dt);
     super._animate(dt);
   }
 

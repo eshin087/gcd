@@ -2252,35 +2252,70 @@ damage. His blows are Tian Lei's strike builders; the limb that strikes is what 
 
 | Move | Ph | Beats | Band (m) · cooldown · weight |
 |---|---|---|---|
-| The First Lesson | 1 | THE BECKON (a feint, 0.7 s: the open hand, palm up, the fingers curling twice: its sign), then N 0.46 / 0.34 / 0.34 / 0.36 (9 9 9 10) and B* 0.5 (20). All five parried: the full deflect | 0 – 3.4 · 7 · [2.2, 1.2, 0.9] |
-| Idle Hand | 1 | N 0.46, 10 · N 0.34, 11, his head turned away | 0 – 3.2 · 3.5 · [2.0, 1.2, 0.8] |
-| Brushing Dust | 1 | B 0.55, 20, a palm shove, knockback 3.4 | 0 – 2.8 · 5 · [1.2, 0.8, 0.5] |
-| Climbing the Stair | 1 | N 0.48, 10 · N 0.36, 11 · B 0.42, 18: three kicks, each higher | 0 – 3.6 · 6 · [1.6, 1.0, 0.8] |
-| Low Wind | 1 | R 0.64, 22, a sweep at the ankles (ring 2.2), knockdown | 0 – 3.0 · 6 · [1.0, 0.8, 0.6] |
-| Borrowed Wall | 1 | B* 0.9, 22: two steps up the nearest upright by his path (a bite where he kicks off), then a flying kick (a line, in the air); no piece in reach: a plain flying kick | 5 – 11 · 7 · [1.0, 0.8, 0.6] |
-| Answer (counter) | 1/2/3 | N 0.46, 12 · B 0.4, 18 (phase 2: an elbow and a point-blank shot) | |
-| Hundred Hands (his flurry) | 1/2/3 | four blows N 8 (phase 3: each later one from another side) | |
-| Iron Rain | 2 | N 0.8: ONE cue for the stream, then 11 shots of 5 from alternating hands over 1.5 s while he strafes round the hero at 7 – 10 m; B 0.42: the last shot big (14), returnable | 4 – 13 · 7 · [0, 2.2, 0] |
+| The First Lesson | 1 | THE BECKON (a feint, 0.5 s: the open hand, palm up, the fingers curling twice: its sign), then N cross 0.46 / backfist 0.34 / front kick 0.34 / spin back kick 0.36 (9 9 10 10) and B* palm 0.5 (20). All five parried: the full deflect | 0 – 3.4 · 6 · [2.2, 1.2, 0.9] |
+| Idle Hand | 1 | N 0.46, 10 · N 0.34, 10, his head turned away · N 0.36, 10, the spinning backfist · R 0.5, 20, the drop heel | 0 – 3.2 · 4 · [1.8, 1.2, 0.8] |
+| Brushing Dust | 1 | B 0.55, 20, a palm shove, knockback 3.4 (links into Borrowed Wall or the Crane) | 0 – 2.8 · 5 · [1.2, 0.8, 0.5] |
+| Climbing the Stair | 1 | N front 0.46 · N round 0.34 · N high round, the other leg, 0.34 (10 each) · B* spin back kick 0.42, 20 | 0 – 3.6 · 5 · [1.8, 1.0, 0.8] |
+| Three Steps on Air | 1 | a hop, and he HANGS 0.6 m up: three bicycle snaps N 0.5 / 0.34 / 0.34 (9 each), then the drop heel R 0.55, 20 (a ring 2.2) | 0 – 3.2 · 7 · [2.4, 0.6, 0.6] |
+| The Sky Turns Twice | 1 | N 0.5 tornado kick · N 0.4 tornado the other way (10 each) · R 0.55 the drop heel, 20 (a sweep after the spins did not read at its contact) | 0 – 3.4 · 7 · [2.4, 0.6, 0.6] |
+| Crane Crossing Water | 1 | N 0.5 / 0.42 two butterfly kicks that carry him in (10 each) · B* 0.46 the flying side kick on a dash, 20 | 2.5 – 6 · 7 · [1.3, 0.6, 0.5] |
+| Moon Over the Shoulder | 1 | N 0.46 the flash kick (a back flip, the toe under the chin; he lands 2.4 m back), 10 · at once B* 0.5 the flying knee on a dash, 20 | 0 – 2.2 · 7 · [1.2, 0.6, 0.6] |
+| Rain on One Roof | 1 | a FLURRY BURST of the right hand alone N 0.5 (7 blows over 0.7 s, 16 in all, the guard's cap 30) · B* 0.45 the palm, 20 | 0 – 3.0 · 7 · [1.4, 0.5, 0.5] |
+| Low Wind | 1 | R 0.64, 22, a sweep at the ankles (ring 2.2), knockdown | 0 – 3.0 · 6 · [2.0, 1.2, 0.6] |
+| Borrowed Wall | 1 | the run to the upright that brings him at you from the SIDE, two steps up its face, THE SPRING (a bite on the upright), then (drawn at the realise, seen from the spring) B* 1.05 the flying side kick, 22 (a line 2.6 x 0.9) or R 1.05 the drop heel, 22 (up to 2.6 m, down on the spot fixed at the spring: a ring 2.4, knockdown); no upright in reach: the same off the floor beside you | 3.5 – 12 · 5 · [1.8, 0.9, 0.7] |
+| A Hundred Hands (gear 2) | 1 | a FLURRY BURST of both hands N 0.5 (8 over 0.75 s, 17) · N hook 0.34 · N elbow 0.32 (9 each) · B* 0.42 both palms, 20 | 0 – 3.0 · 6 · [1.8, 0.8, 0.6] |
+| The Long Lesson (gear 2) | 1 | N cross 0.46, hook 0.32, elbow 0.32, cartwheel kick 0.36, tornado 0.36, backfist 0.32 (9 – 10) · B* spin back kick 0.42, 20: the full-deflect string | 0 – 3.2 · 8 · [2.2, 0.6, 0.6] |
+| Storm Step (gear 2) | 1 | N 0.5 the flying knee on a 5 m dash · N cross 0.34 · a burst N 0.42 (7 over 0.7 s, 16) · N tornado 0.36 · R 0.5 the drop heel, 20 | 2.5 – 6.5 · 7 · [1.6, 0.5, 0.5] |
+| The Second Hand (gear 2's opening) | 1 | never picked: bar 1 at or under 0.83, between two moves: he flips back, the left hand comes out, a shake of the wrist, the two-handed guard; 0.9 s, his guard down all through | |
+| Answer (counter) | 1/2/3 | N 0.46 spin back kick, 12 · B 0.4 palm, 18 (phase 2: an elbow and a point-blank shot) | |
+| Rain of Hands (his streak flurry) | 1/2/3 | phase 1: a burst of the right hand, a tornado kick, a palm; phases 2 – 3: four blows N 8 (phase 3: each later one from another side) | |
+| Iron Rain | 2 | N 0.8: THREE BURSTS of three slugs (0.09 s apart inside a burst, 0.5 s between bursts, 3 each) while he strafes round the hero at 7 – 10 m: each burst ONE cue (the beat's glint, then a glint at the muzzle 0.26 s before each next burst, the aim fixed there) and ONE result; B 0.62: the last shot big (14), returnable | 4 – 13 · 7 · [0, 2.2, 0] |
+| Iron in the Air | 2 | N 0.62: he leaps sideways, flat in the air, and fires ONE burst · B 0.5: lands in a slide, the heavy shot (14), returnable | 4 – 12 · 7 · [0, 1.4, 0] |
 | Two Thunders | 2 | B 0.7, 16 · B 0.55, 16: two heavy shots, returnable | 3 – 13 · 6 · [0, 1.6, 0] |
-| Close Iron | 2 | N 0.46 elbow, 10 · N 0.34 pistol-whip, 10 · B* 0.5, 20, the point-blank shot | 0 – 3.2 · 5 · [0, 1.8, 0] |
+| Close Iron | 2 | N 0.46 elbow, 10 · N 0.34 pistol-whip, 10 · N 0.36 spin back kick, 10 · B* 0.5, 20, the point-blank shot | 0 – 3.2 · 5 · [0, 1.8, 0] |
 | Turning Wheel | 2 | R 0.7, 20: a cartwheel 2.4 m to his left, firing low along a line 9 x 1.4 | 2 – 9 · 7 · [0, 1.0, 0] |
 | (the reload) | 2 | after three ranged moves: both guns thrown away, two more from the coat, 0.6 s, his guard down | |
 | The Still Hand | 3 | the raised flat palm (the counter stance: 0.45 s, held 0.2 – 0.4); a cut into it is CAUGHT and answered B* 0.46, 22, the one-inch push (`lock`). Waited out: his guard down 0.6 s | 0 – 3.2 · 9 · [0, 0, 1.2] |
 | Pushing Hands | 3 | B 0.6, 16 · B 0.5, 16: two palm bolts in the code's green, returnable | 3 – 13 · 5 · [0, 0, 1.6] |
 | Return to Sender | 3 | only with three bolts hanging: B* 0.9, 24, ONE cue, one result | anywhere · 1 |
 | Unwriting | 3 | R 0.7: bricks torn out of up to three code pillars within 12 m, held over them, thrown 0.55 s apart (20 each, the red flare on each piece); no code pillar near: never | 3 – 13 · 9 · [0, 0, 1.0] |
-| A Thousand Hands | 3 | N 0.46, then five N 0.32 apart (8 each), SKIPPED FRAMES after the third (he tears into a column of digits and prints again at the hero's other side), B* 0.5, 20 | 0 – 3.4 · 6 · [0, 0, 1.8] |
+| A Thousand Hands | 3 | N 0.46 cross, 8 · a burst N 0.46 (8 over 0.75 s, 16) · SKIPPED FRAMES (he tears into a column of digits and prints again at the hero's other side) N 0.46 hook · N 0.32 cross · N 0.34 round kick (8 each) · B* 0.5, 20 | 0 – 3.4 · 6 · [0, 0, 1.8] |
 | Leaving the Floor | 3 | R 0.8, 14, a burst ring 4 m (knockback 5) as he goes straight up; he hangs at 5 m; then the Falling Fist (R 1.1 fixed, the spot fixed at 0.7: the dive, a crater 3.2 m, 30, knockdown; then THE FRONT: a ring from 3 to 11 m at 14 m/s that heaves the floor and strikes the hero ONCE as it reaches him, R, 18, cued `flashLead` before) or the Low Pass (R 0.9 fixed, the line fixed at 0.7: one flat pass 14 x 1.8, 24; the uprights on it swept) | 0 – 12 · 10 · [0, 0, 1.1] |
 | The Dive Within | 3 | K 1.5 + 0.1 – 0.5, 44: the hall's letters stream into his chest, a flat flying lunge up to 9 m | 2 – 9 · 14 · [0, 0, 0.7] |
 | A Hundred Iron Seeds | → 2 | R, fixed 2.0 s, ring 6, 12, knockback 7: he throws the coat open; the hall rewrites itself whole | |
 | The Rising | → 3 | R, fixed 2.3 s, ring 6.5, 12, knockback 7; then the Still Hand held 1.5 s (a cut is caught on his palm) | |
+
+### The rework (2026-11-23, ADR-168 – ADR-170): the rules it adds
+- **Phase 1 in two gears.** Gear 1: one hand (the left behind his back), the feet do the work. When bar 1 is at
+  or under 0.83 (about a third into phase 1) and the move he is in has reached its recovery (never inside a
+  string; a link or the flow roll would otherwise run straight on), the
+  second hand comes out: a 0.9 s opening with his guard down, no ring, no invulnerability, then both hands.
+  Gear 2 is denser (chainDepth 7, chain 0.85, rests 0.15 – 0.3 s) and adds A Hundred Hands, The Long Lesson
+  and Storm Step; gear 1's moves stay, lighter (x 0.55).
+- **THE FLURRY BURST** (`flurry: { n, dur, cap }`; flurry.js). One cue (its own tell), one windup of at least
+  0.42 s, one glint; from its impact `n` blows are drawn over `dur` s. The hero's answer is decided ONCE, by the
+  first blow that finds him: a parry turns the whole burst (sparks on the blade each blow; + 20 posture to him
+  as a heavy deflect); a held guard blocks it all for at most `cap` guard (30) and no health; a roll through
+  that blow dodges all of it; a hit is ONE stagger, then chip that never re-staggers, the burst's damage in
+  all, and a push out of his reach by its end. At most one burst a move; a burst is its own category for the
+  director (never two back to back).
+- **Borrowed Wall** reads from the spring: a flying side kick (blue flare: parry; parried, he is thrown back
+  off the blade and open) or a drop heel (red: roll). The kick-off bites the upright.
+- **THE BULLETS' RULE** (phase 2; `woke.mjs nolock` proves it): after any bullet of his hits the hero, the hero
+  can act (guard, parry, roll) for at least 0.25 s before the next thing of his that can hurt him arrives, and a
+  bullet never re-staggers a hero who is flinching from a bullet. A burst's first slug that lands is a 0.18 s
+  flinch that keeps the input buffer (a press during it fires as it ends); the burst's other slugs are chip. A
+  parry on a burst turns it (its slugs spark off for 0.3 s); a held guard pays 4 a slug (12 a burst, 36 a
+  volley, 9 the heavy shot), never health; a roll or a turn after the glint leaves the burst's fixed aim. Every
+  other shot of his (the heavy shots, the point-blank one, the bolts) is harmless inside 0.45 s
+  (`shotMercy`) of a bullet that hit him.
 
 ### The rules that make his tricks openings
 - **The Lean** (phases 1 – 2): his guard's reactions are slips and back-leans with one afterimage. It is the
   engine's guard, nothing more.
 - **Cover** (phase 2): a pillar between him and the hero stops a shot and loses its letters where it struck
   (0.25 a shot: a pillar's face goes in about two volleys, the pillar in about four). A held guard through a
-  whole Iron Rain pays guard only (4 a shot, 9 for the big one: 53 at most), never health.
+  whole Iron Rain pays guard only (4 a slug, 9 for the big one: 45 at most), never health.
 - **The Bend** (phase 2): a perfectly parried heavy shot that comes back at him, or a heavy cut on its way
   (the engine's evade, at most once in 6 s): time slows for everyone (0.3 for 0.7 s), he arches back, the
   shot or the cut passes over him. It costs him posture (50 / 16), he has no guard for 1.0 s and the first
@@ -2290,7 +2325,7 @@ damage. His blows are Tian Lei's strike builders; the limb that strikes is what 
   + 25 posture each). Up to three hang; unsent after 4 s they drop as loose digits. Three: Return to Sender,
   one blue flare: a parry bursts them all and pays his posture 20 each plus the counter; a held guard pays
   ONE blow's guard; a roll clears it.
-- **The fall and the rising**: bar 1 empty is no death. For 2.2 s he lies on his back and nothing hurts him;
+- **The fall and the rising**: bar 1 empty is no death (a deathblow on a break that would empty it is THE FALL too). For 2.2 s he lies on his back and nothing hurts him;
   the hero is free to move (and to drink). The rising's ring, then 1.5 s of the Still Hand: a cut at him is
   CAUGHT. A reset or the hero's death at any point leaves nothing behind (the scene, the light, time, music).
 - **Deja vu** (phases 2 – 3): after The First Lesson, Climbing the Stair, Close Iron or A Thousand Hands ends
@@ -2307,7 +2342,9 @@ time 0.9 s (the Ghostep's 0.6) and leaves three afterimages; white and heavy blo
 crit window, red and black the flurry (ADR-102). `?tech=lean`; the Lab's toggle.
 
 ### The numbers measured (`woke.mjs`)
-PACE (a steady defender in god mode, the hero roaming 2.5 – 9 m, the real set), three seeds x 60 s a phase:
+**The rework (ADR-168 – ADR-170):** PACE cues a minute by STAGE: phase 1 gear 1 85.2, gear 2 87.3, phase 2 74.9, phase 3 76.7 (seed means) (main: phase 1 65.1 - 71.1, mean 67.2); the longest gap 2.42 / 2.39 / 2.23 / 3.32 s (main's phase 1: 3.29); dodges 13 / 10 / 7 / 21 % of cues (main's phase 1: 7 %); 0 conflicting cues; phases 2 - 3 at 0.86 - 0.88 of gear 2. Pinned from the worst seed with a margin (`pressure.meter`: minRate 70 / 78 / 65 / 62, maxGap 3.3 / 3.0 / 3.5 / 3.9). Short of the plan's targets, said plainly: gear 2's 95 - 105 (a burst counts one cue), 15 - 25 % dodges in phase 1 (13 % / 10 %). STRATEGY (god mode, seeds 4242 and 7): mixed 72 s, parry 106, block-only 75, lean 112, dodge-only 111: dodging and leaning are not the fastest. The mortal block-only bot survives and wins (61 - 89 s): no health through a block. WIN: the fencing bot wins through both bars in 66 s (84 before). NOLOCK: `woke.mjs nolock`: a hero who stands unguarded through Iron Rain takes 3 flinches (one a burst) and the heavy shot, never a second stagger from a bullet; the least free time between two of his hits after a bullet 0.32 s (>= 0.25); hit by burst 1, then guard / parry / roll: burst 2 blocked / parried / dodged. Each burst lands 7 - 10 ms from its glint + 0.26 s (`timing`). A held guard through a whole volley pays 45 guard, no health (`cover`). Before: one slug locked the hero through all eleven and the heavy shot.
+
+**Before the rework (ADR-156):** PACE (a steady defender in god mode, the hero roaming 2.5 – 9 m, the real set), three seeds x 60 s a phase:
 67.2 / 106.3 / 82.9 cues a minute by phase (P1 65.1 – 71.1, P2 94.2 – 116.3, P3 76.3 – 93.0), 0 conflicting cues,
 a dodge asked by 7 / 5 / 21 % of them, the longest gap 3.29 / 2.29 / 2.62 s, the fire field's peak about 1030
 blobs (of 6000) in phase 3. Phase 2 reads the busiest because each of Iron Rain's eleven shots is a cue. WIN: the

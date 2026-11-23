@@ -264,6 +264,9 @@ async function boot() {
     // a boss in ink-line art whose kit asks for it (`kit.letters`: Wen Yao) has his letters follow his
     // size as the hero's do (render/pipeline.js _updateBossLetters); ?foxLetters=a keeps the fixed cell
     pipeline.bossLetters = !!game.dragon?.kit?.letters && lookOf('foxLetters', 'b') === 'b';
+    // ... and a kit may ask for them a cell or two bolder on a small frame (`kit.letterBias`: Xin Yi's
+    // ?onePrint=b; undefined = 0)
+    pipeline.bossLetterBias = game.dragon?.kit?.letterBias | 0;
   };
 
   // --- loop
