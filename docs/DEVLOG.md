@@ -72,6 +72,46 @@ paragraph will need one pass to name both bosses.
 
 ---
 
+## 2026-11-23 — Session 80, round 2: the Sheathed between the digits and the ink-line art (ADR-152 addendum)
+
+**Why.** The owner picked palette a, then looked at the ink-line Sheathed in the game: "too detailed and his flaws
+from the non ascii look is hurting. find a right balance". At fight distance he read as a 3D model (smooth shaded
+cloth, clean outlines) and body flaws showed that the digits had hidden. They asked for three steps between the
+two prints, to pick from.
+
+**What changed.**
+- `?sheathArt=0|1|2|3|a` (look.js `SHEATH_STEP`, `wandererDigits`, `sheathTuned`, `sheathDigits`): 1 and 2 are the
+  wyrm's digits with the palette's inks (x 0.42 / 0.5; trousers x 0.72 and wraps x 0.8, since neutral greys print
+  near white), the art source's light floor 0.03 / 0.1 and a stroke outline reaching in to fresnel 0.3 / 0.12 in a
+  paler ink; 3 is the ink-line art with the cloth's aPart folded to 0 in `_setup` (no fold or crease lines), no
+  glints, no fold shading, half the rim. 0 is the digits and his body as on main (no mark, the old tail and scarf).
+- His body in prints 1 - a: full sleeves (no thin stiff arm, no gap at the side), one deep roll of scarf instead of
+  two turns, plain gaiters instead of six shin bands, no wrist bands. Gameplay untouched.
+- `sheathTone: 'a'` in `PICKED` (the owner's pick); `sheathArt` stays `a`, its Lab row `awaiting` again; duel.mjs's
+  picks check lets a picked switch wait for a new pick. `sheath.mjs` LOOK covers every print.
+
+**The pick.** The owner picked step 2 from the sheet (2026-11-23): `sheathArt: '2'` in `PICKED`, the Lab row not
+`awaiting`, `sheath.mjs` LOOK checks 2 as the default and `a` as an option (the palettes by the digits' ink). Open:
+the mark (`?sheathMark=`), a real phone, his digits larger than the hero's letters.
+
+**Measured** on main's grove with its new bamboo (rebased; the camera pinned at its default distance; his pixels /
+the floor under him; the hero about 25 / 16): 720p 0 37.0 / 20.3, 1 26.5 / 20.2, 2 36.1 / 20.3, 3 31.2 / 20.1, a
+35.1 / 20.2; phone 0 34.1, 1 26.9, 2 39.5, 3 26.8, a 27.9 (the floor about 19.7; the hero about 27 / 16.3).
+
+**Sheet:** `sheets-owner/sheet_balance.png` (five rows; carry, run, settle, 0.25 s after the cut at 2 - 3x and the whole
+frame, 720p then phone; the hero in every tile).
+
+**The author's pick: 2.** It reads as letters first (digits on a dark body, a stroke outline), it is brighter than the
+hero, and the robe (blue), the trousers (grey) and the scarf (sand) stay apart. Where each fails: 0 thin and colourless;
+1 barely above the floor (26.5 against 20.2: weaker than the hero), and the digits cover only his lit side, so he is narrower than the hero; 2 still narrow, the
+face does not read, the strip is one pale stroke; 3 at fight distance hardly differs from a (the interior lines were
+few letters wide already), so it still reads as a drawn figure; a the owner's complaint.
+
+**Not checked.** A real phone. The close look for clipping was done in films at a 7 m camera for the draw and the run
+only; nothing clipped there that shows at fight distance.
+
+---
+
 ## 2026-11-23 — CI in four parallel jobs; docs-only PRs skip the tests (ADR-153)
 
 **Owner**, after asking why every PR's check takes ~12 minutes when their other games deployed at once:
@@ -128,6 +168,49 @@ see the PR.
 
 **Not checked / open.** Nobody has played it; not on the phone (0.56 M -> 0.89 M vertices drawn);
 the owner picked `a`, mixed clumps, from the sheet.
+
+## 2026-11-22 — Session 80: the Sheathed, easy to see (ADR-152; one Opus agent from the planning session's brief)
+
+**Goal.** The owner on the live grove: "its hard to see the new boss character. make it look detailed like the
+main character". Their answers: the hero's ink-line art (not bigger letters), the homage carried by the
+silhouette, a mark of his own, his motion and his lines; three palettes to pick from.
+
+**What changed.**
+- The print (`sheathed/look.js`, new): `?sheathArt=a` in `PICKED` (the prototype's `?sheathArt=a`, from the
+  local branch `enemies/sheathed-letters`, is the base), `0` the wyrm's digits. `SHEATH_TONE` a / b / c,
+  `SHEATH_LIFT` (rim × 3, scarf and mark × 3.6), `tintWanderer`. His hair on `shirt`: the `hair` part's
+  shared ink lines are the hero's gold, and they drew an orange outline round his dark hair.
+- The silhouette (`gear.js`): `ROBE_TAILS` (a loose robe to mid-thigh, open at both sides, over the
+  trousers), the high tail 0.46 → 0.60 m and thicker with a pale tie, the scarf's turns 7 / 4.5 → 8.5 / 6 cm
+  and its ends 6 → 8 cm, its tails `out` 0.14 → 0.03 (they stood off his back), pale wrist
+  bindings. Mark a: `STRIP` on both scabbard pieces (the left-wrist piece's springs appended to the rig's in
+  `_setup`; the draw kicks them). Mark b: a white streak on `facing`.
+- Motion (`poses.js`, `moves.js` draw()): the carry (head bowed 0.12, left thumb in the sash), the breath
+  (k 0.8 → 0.65, period 3.4 → 4.6 s), `SHEATH_RUN` and his own `duelLoco` (sink 8 cm, pitch 0.16 at a run),
+  the settle: a head-only key at 0.4 × grip, then the settle key eased in. Timings untouched.
+- Lines (`levels/grove.js`) and eight labels (`moves.js`); Training's mikiri text, COMBAT.md's table.
+- `sheath.mjs` LOOK: the default print and palette, the scabbard darkest, the hair off the gold part, the
+  mark's springs, ADR-126's hand audit through One Breath (0.166 m worst outside the cut), every option.
+
+**Measured** (headless Edge on the GPU; the mean luma 0 - 255 of his pixels / of the floor behind him; p90):
+1280 x 720: digits (as live) 40.0 / 16.3, p90 128; the prototype 22.2 / 16.3, p90 88; now 31.9 / 16.1, p90
+116 (b 33.4, c 31.9); the hero 25.2 / 20.1, p90 105. Phone camera (17 m): now 45.4 / 16.5 (digits 49.1), the
+hero 39.7 / 21.6. The digits are brighter on average but read as a column of numbers; the ink-line print reads as a
+figure with its parts. The drawn blade's pixels: mean 105, p90 185, against his figure's mean 32, p90 108 -
+114. ADR-126 audit (filmed): One Breath's worst hand step outside the cut 0.183 m, the same as main (0.183), the
+cut's one frame 1.0 m on both; the run 0.112 m (main 0.08), no planted foot sliding. `sheath.mjs` LOOK: 0.166 m.
+The scarf's tails: at rest 0.04 rad off hanging, at a run 0.87 rad (they trail; an `inMax` tried first held
+them against his back and was dropped).
+
+**Sheets for the owner** (not committed): `sheets-owner/` in the worktree: the print before / after, the
+palettes, the mark, the draw and run film strips (before = main).
+
+**ADR number.** 152, not the next free number on `main` (151): a parallel session's grove bamboo work
+claims 151 (`?bamboo=`), so this skips it to avoid a clash at merge.
+
+**Open.** The owner's picks of the palette and the mark. Not checked on a real phone. The model viewer draws
+him alone, so its tiles have no hero beside him (the game-camera tiles do). The mark at the game camera is a
+couple of letters at rest; it reads when it trails.
 
 ## 2026-11-22 — Session 78: a sixth level, the Windless Grove and the Sheathed (planned in its own chat, built by one Opus agent)
 
