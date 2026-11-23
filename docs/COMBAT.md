@@ -2066,9 +2066,9 @@ the engine's cue: a dry tick and a short high ring, the blue flare through the s
 the RE-SHEATHE (1.15 s: the follow-through held, a flick, the blade laid on the left hand, slid home, the
 click, the sword passed back to the right hand). The grove falls on that click, not on the cut.
 
-**His moves** (windups at phase 1's scale; N white, B heavy, B* blue flare, R red, K black). The names (ADR-151)
+**His moves** (windups at phase 1's scale; N white, B heavy, B* blue flare, R red, K black). The names (ADR-152)
 are a wanderer's who has sworn not to draw: what he does with the scabbard knocks, warns and walks on; the
-draws are the vow giving way (the ids are unchanged). His look and motion changed with ADR-151 (the ink-line
+draws are the vow giving way (the ids are unchanged). His look and motion changed with ADR-152 (the ink-line
 print, a quiet carry, a low run, a settle that turns sharp: the head first, the body at speed); no timing,
 tell, zone or damage did:
 

@@ -199,8 +199,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] One Breath, the first fixed reward (`game/unlocks.js`): guard + hold heavy, the draw counter
 - [x] Lab, Training, `tests/integration/sheath.mjs`
 - [x] The owner's picks from the sheets: his body (d, the Wanderer), the cut, the grove's light
-- [x] Readable (ADR-151): the hero's ink-line print (the owner's pick), lifted; his silhouette, motion, lines and names
-- [ ] The owner's picks from the ADR-151 sheets: the palette (`?sheathTone=`), the mark (`?sheathMark=`)
+- [x] Readable (ADR-152): the hero's ink-line print (the owner's pick), lifted; his silhouette, motion, lines and names
+- [ ] The owner's picks from the ADR-152 sheets: the palette (`?sheathTone=`), the mark (`?sheathMark=`)
 - [ ] His own score (borrowed tracks until an audition page)
 - [ ] A human playtest of the draw on the phone; One Breath's balance bot on Shen Hui
 ## M1.61 — A fifth level: the Foxfire Terrace and Wen Yao, the Thousand-Body Fox (2026-11-21, `claude/thousand-body-fox-33750d`, ADR-147, ADR-148)

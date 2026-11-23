@@ -12,10 +12,10 @@ Sixty-nine pieces of work since 0.4.0:
   bamboo is five kinds of cane (green, jade, golden, black, dry) in clumps and lone stalks of
   different thicknesses, with young shoots, and far more of it behind the duel; the grove runs on
   into the fog. `?bamboo=0` is the grove as it was, `b` one kind of cane per clump.
-- **The Sheathed, easy to see** (2026-11-22, ADR-151). *Changed:* Lu Wusheng is printed in the hero's
+- **The Sheathed, easy to see** (2026-11-22, ADR-152). *Changed:* Lu Wusheng is printed in the hero's
   ink-line art (the owner's pick; `?sheathArt=0` keeps the wyrm's digits he shipped in), lifted to read on
-  the grove's floor: at 1280 x 720 the mean of his pixels is 31.9 against the floor's 16.2 (the hero 24.5
-  against 20.0), and robe, trousers, scarf, hair and skin are shapes of their own. His silhouette is
+  the grove's floor: at 1280 x 720 the mean of his pixels is 31.9 against the floor's 16.1 (the hero 25.2
+  against 20.1), and robe, trousers, scarf, hair and skin are shapes of their own. His silhouette is
   sharpened for the outline: a loose robe to mid-thigh over the wide pleated trousers, a longer high tail
   with a pale tie, a deeper scarf whose tails hang close when he is still, pale wrist bindings. He moves as
   a wanderer: a quiet carry with his thumb in the sash and a slow breath, a low run with the sheathed sword

@@ -1164,7 +1164,7 @@ async function scenarioTraining() {
   assert(L.length >= 20 && !bad.length && ['drawParry', 'drawGuard', 'drawRoll'].every((id) => L.some((s) => s.id === id)), `every situation plays out (${L.length - bad.length} of ${L.length}${bad.length ? `; not: ${bad.join(', ')}` : ''}), the three draw situations among them`);
 }
 
-// ================================================================== scenario: look (ADR-151: the print, the palettes, the mark, the motion)
+// ================================================================== scenario: look (ADR-152: the print, the palettes, the mark, the motion)
 async function scenarioLook() {
   out('\n== scenario LOOK (the ink-line print by default, the digits behind ?sheathArt=0, the palettes, the mark, his hands and feet) ==');
   const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');

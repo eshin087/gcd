@@ -4567,7 +4567,8 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   up-to-date rule (two green PRs can still break `main` together) and free runners only.
 - **Consequences:** a run takes ~4 minutes (PR #92: 4 min 19 s); a PR shows six checks. The floor is
   the longest task (lord fxlooks ~230 s); re-measure `est` when a suite grows a lot.
-## ADR-151 — Lu Wusheng readable: the hero's ink-line print, lifted; three palettes and a mark to pick; a wanderer's motion and names (2026-11-22)
+
+## ADR-152 — Lu Wusheng readable: the hero's ink-line print, lifted; three palettes and a mark to pick; a wanderer's motion and names (2026-11-22)
 
 - **Context:** the owner on the live Windless Grove: "its hard to see the new boss character. make it look
   detailed like the main character". At the game camera he was a thin dark column of the wyrm's digits about
@@ -4589,7 +4590,7 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   - The silhouette, sharpened where the outline is what reads: the robe falls loose to mid-thigh over the
     wide pleated trousers, open at both sides (a robe worn loose and long, never a short top tucked into
     the trousers); a longer, thicker high tail with a pale tie; the scarf's turns deeper and its ends wider,
-    its tails hanging close down his back when he is still (`out` 0.03, `inMax`); pale wrist bindings.
+    its tails hanging close down his back when he is still (`out` 0.14 → 0.03), trailing at a run; pale wrist bindings.
   - Motion (poses and keys only): a quiet carry (the head a little bowed, the left thumb in the sash), a
     slower, smaller breath, a low run with the sheathed sword held back at the hip (opt.run; his own
     `duelLoco` sinks and pitches the duelist's run), and a settle that turns sharp (in every draw beat the
@@ -4601,9 +4602,9 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
     that tinted his outline was moved off), no reversed-edge sword, and not that character's outfit: a long
     loose travelling robe over the trousers, not a short top tucked in, with a scarf that character never
     wears; no palette is that outfit's colour scheme.
-- **Consequences:** he reads at 1280 x 720 (the mean luma of his pixels 31.9 against the floor's 16.2; the
-  hero 24.5 against 20.0; the prototype 22.2 against 16.3) and on the phone camera (47.2 against 16.5). The
-  digits print had a higher mean (41.6) but read as a block of numbers, not a figure: luma alone is not the
+- **Consequences:** he reads at 1280 x 720 (the mean luma of his pixels 31.9 against the floor's 16.1; the
+  hero 25.2 against 20.1; the prototype 22.2 against 16.3) and on the phone camera (45.4 against 16.5). The
+  digits print had a higher mean (40.0) but read as a block of numbers, not a figure: luma alone is not the
   measure, so the sheets show both. `tests/integration/sheath.mjs` gains LOOK (the print, the options, the
   mark's springs, ADR-126's hand audit through One Breath). The mark's strip on the left-wrist piece hangs its
   springs on the animator after the rig is built (sheathed.js `_setup`), a light coupling to anim.js's

@@ -61,7 +61,8 @@ see the PR.
 
 **Not checked / open.** Nobody has played it; not on the phone (0.56 M -> 0.89 M vertices drawn);
 the owner picked `a`, mixed clumps, from the sheet.
-## 2026-11-22 — Session 79: the Sheathed, easy to see (ADR-151; one Opus agent from the planning session's brief)
+
+## 2026-11-22 — Session 79: the Sheathed, easy to see (ADR-152; one Opus agent from the planning session's brief)
 
 **Goal.** The owner on the live grove: "its hard to see the new boss character. make it look detailed like the
 main character". Their answers: the hero's ink-line art (not bigger letters), the homage carried by the
@@ -74,7 +75,7 @@ silhouette, a mark of his own, his motion and his lines; three palettes to pick 
   shared ink lines are the hero's gold, and they drew an orange outline round his dark hair.
 - The silhouette (`gear.js`): `ROBE_TAILS` (a loose robe to mid-thigh, open at both sides, over the
   trousers), the high tail 0.46 → 0.60 m and thicker with a pale tie, the scarf's turns 7 / 4.5 → 8.5 / 6 cm
-  and its ends 6 → 8 cm, its tails `out` 0.14 → 0.03 with `inMax` (they stood off his back), pale wrist
+  and its ends 6 → 8 cm, its tails `out` 0.14 → 0.03 (they stood off his back), pale wrist
   bindings. Mark a: `STRIP` on both scabbard pieces (the left-wrist piece's springs appended to the rig's in
   `_setup`; the draw kicks them). Mark b: a white streak on `facing`.
 - Motion (`poses.js`, `moves.js` draw()): the carry (head bowed 0.12, left thumb in the sash), the breath
@@ -85,15 +86,20 @@ silhouette, a mark of his own, his motion and his lines; three palettes to pick 
   mark's springs, ADR-126's hand audit through One Breath (0.166 m worst outside the cut), every option.
 
 **Measured** (headless Edge on the GPU; the mean luma 0 - 255 of his pixels / of the floor behind him; p90):
-1280 x 720: digits (as live) 41.6 / 16.1, p90 132; the prototype 22.2 / 16.3, p90 88; now 31.9 / 16.2, p90
-118 (b 34.6, c 31.2); the hero 24.5 / 20.0, p90 105. Phone camera (17 m): now 47.2 / 16.5, the hero 39.2 /
-21.7. The digits are brighter on average but read as a column of numbers; the ink-line print reads as a
+1280 x 720: digits (as live) 40.0 / 16.3, p90 128; the prototype 22.2 / 16.3, p90 88; now 31.9 / 16.1, p90
+116 (b 33.4, c 31.9); the hero 25.2 / 20.1, p90 105. Phone camera (17 m): now 45.4 / 16.5 (digits 49.1), the
+hero 39.7 / 21.6. The digits are brighter on average but read as a column of numbers; the ink-line print reads as a
 figure with its parts. The drawn blade's pixels: mean 105, p90 185, against his figure's mean 32, p90 108 -
-114. ADR-126 audit (filmed): One Breath's worst hand step outside the cut 0.096 m (main 0.085), the cut's one
-frame 1.0 m on both; the run 0.112 m (main 0.08), no planted foot sliding.
+114. ADR-126 audit (filmed): One Breath's worst hand step outside the cut 0.183 m, the same as main (0.183), the
+cut's one frame 1.0 m on both; the run 0.112 m (main 0.08), no planted foot sliding. `sheath.mjs` LOOK: 0.166 m.
+The scarf's tails: at rest 0.04 rad off hanging, at a run 0.87 rad (they trail; an `inMax` tried first held
+them against his back and was dropped).
 
 **Sheets for the owner** (not committed): `sheets-owner/` in the worktree: the print before / after, the
 palettes, the mark, the draw and run film strips (before = main).
+
+**ADR number.** 152, not the next free number on `main` (151): a parallel session's grove bamboo work
+claims 151 (`?bamboo=`), so this skips it to avoid a clash at merge.
 
 **Open.** The owner's picks of the palette and the mark. Not checked on a real phone. The model viewer draws
 him alone, so its tiles have no hero beside him (the game-camera tiles do). The mark at the game camera is a
