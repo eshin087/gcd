@@ -1,4 +1,5 @@
 import { el, num } from './dom.js';
+import { streakK } from '../combat/streak.js';
 
 // Short combat call-outs: world-anchored pop-ups over the player's head (PARRY / DEFLECT /
 // GHOSTEP / GUARD BROKEN / BLOCK, "DEFLECT ×N" for a deflect chain, EXECUTION, RETURN for a
@@ -10,6 +11,10 @@ import { el, num } from './dom.js';
 // player:plungeHit { execution } (the hud wires the rest). The streak of perfect dodges: the
 // GHOSTEP call-out counts ("GHOSTEP ×4", bigger with every one), and a flurry's cuts count up in
 // one place over its target ("×3").
+// With the streak counter on (the streak pass's 'counter', ui/streakCounter.js) the streak's number
+// lives beside the hero, so the words over his head keep their word and drop their count: GHOSTEP,
+// RIPOSTE and DEFLECT pop without "×N" (one number near the hero, not two). The flurry's cut counter
+// then ticks without popping again while its cuts come faster than its pop (the accelerating storm).
 
 const HEAD_UP = 3.0; // m above the player's feet (just over the name tag)
 const KINDS = {
@@ -48,6 +53,7 @@ const KINDS = {
 };
 const NUM = { life: 0.95, rise: 34 };
 const COUNT = { life: 0.9, rise: 10 }; // a flurry's cut counter over its target
+const COUNT_TICK = 0.2; // s: (counter on) a cut landing while the last pop is younger ticks the number, no new pop
 const CALL_POOL = 6;
 const NUM_POOL = 12;
 const STACK_GAP = 0.32; // s: call-outs younger than this push a new one up
@@ -64,6 +70,7 @@ class Item {
     this.active = false;
     this.kind = null;
     this.age = 0;
+    this.popT = 0; // s since the last pop (the age, unless a count ticked in place)
     this.life = 1;
     this.rise = 20;
     this.pop = 1.2;
@@ -178,7 +185,7 @@ export class Callouts {
     it.pop = Math.min(2, k.pop + 0.1 * (n - 2));
     it.jx = 0;
     it.head = true;
-    it.span.textContent = `${k.text} ×${n}`;
+    it.span.textContent = streakK('counter') > 0 ? k.text : `${k.text} ×${n}`;
     it.node.className = `ab-call on k-${k.cls}`;
     it.streak.style.display = 'none';
     this._start(it);
@@ -189,7 +196,7 @@ export class Callouts {
   ghostep(streak) {
     const n = Math.round(num(streak));
     this.call('ghostep');
-    if (!(n >= 2)) return;
+    if (!(n >= 2) || streakK('counter') > 0) return;
     const it = this.calls.find((c) => c.active && c.kind === 'ghostep' && c.age === 0);
     if (!it) return;
     it.span.textContent = `${KINDS.ghostep.text} ×${n}`;
@@ -201,7 +208,7 @@ export class Callouts {
   riposte(strikes) {
     const n = Math.round(num(strikes));
     this.call('riposte');
-    if (!(n >= 2)) return;
+    if (!(n >= 2) || streakK('counter') > 0) return;
     const it = this.calls.find((c) => c.active && c.kind === 'riposte' && c.age === 0);
     if (!it) return;
     it.span.textContent = `${KINDS.riposte.text} ×${n}`;
@@ -213,7 +220,18 @@ export class Callouts {
     const k = Math.round(num(n));
     const x = num(point?.x, NaN), y = num(point?.y, NaN), z = num(point?.z, NaN);
     if (!(k >= 1) || !Number.isFinite(x + y + z)) return;
-    const it = this.nums.find((c) => c.active && c.kind === 'count') ?? this._take(this.nums);
+    const live = this.nums.find((c) => c.active && c.kind === 'count');
+    if (live && live.popT < COUNT_TICK && streakK('counter') > 0) {
+      // the storm's last cuts: the number ticks where it is, the pop it is in carries on
+      live.life = live.age + COUNT.life;
+      live.pop = Math.min(2.4, 1.5 + 0.12 * k);
+      live.x = x;
+      live.y = y + 1.5;
+      live.z = z;
+      live.span.textContent = `×${k}`;
+      return;
+    }
+    const it = live ?? this._take(this.nums);
     it.kind = 'count';
     it.life = COUNT.life;
     it.rise = COUNT.rise;
@@ -261,8 +279,8 @@ export class Callouts {
   }
 
   /** Mid-screen small banner (e.g. "POSTURE BROKEN"). */
-  banner(text, sub = '') {
-    this.mini.show(text, sub);
+  banner(text, sub = '', tier = 0) {
+    this.mini.show(text, sub, tier);
   }
 
   clear() {
@@ -280,6 +298,7 @@ export class Callouts {
   _start(it) {
     it.active = true;
     it.age = 0;
+    it.popT = 0;
     it._tr = '';
     it._op = -1;
     it._st = '';
@@ -293,6 +312,7 @@ export class Callouts {
       for (const it of pool) {
         if (!it.active) continue;
         it.age += dt;
+        it.popT += dt;
         if (it.age >= it.life) {
           it.hide();
           continue;
@@ -306,7 +326,7 @@ export class Callouts {
         }
         const u = it.age / it.life;
         // pop: grow from 0.6 with an overshoot bump (~pop at the middle), settle to 1 at 0.2 s
-        const k = clamp01(it.age / 0.2);
+        const k = clamp01(it.popT / 0.2);
         const s = k < 1 ? 0.6 + 0.4 * k + (it.pop - 1) * Math.sin(k * Math.PI) : 1;
         const rise = it.rise * easeOut(u) + it.lift;
         const tr = `translate3d(${(p.x + it.jx).toFixed(1)}px, ${(p.y - rise).toFixed(1)}px, 0) scale(${s.toFixed(3)})`;
@@ -346,8 +366,13 @@ class MiniBanner {
     this._tr = '';
   }
 
-  show(text, sub = '') {
-    this.txt.textContent = String(text ?? '');
+  /** tier (the streak pass's 'tiers'): 4 and 5 add a thin rule or two, never size. */
+  show(text, sub = '', tier = 0) {
+    const t = Math.round(num(tier));
+    const name = String(text ?? '');
+    if (t >= 5 && !this.over) this.over = this.root.insertBefore(el('div', 'over'), this.txt);
+    this.root.className = `ab-mini${t >= 4 ? ` t${Math.min(5, t)}` : ''}${t >= 4 && name.length > 15 ? ' long' : ''}`;
+    this.txt.textContent = name;
     this.sub.textContent = String(sub ?? '');
     this.t = 0;
     this._op = -1;
