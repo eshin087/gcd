@@ -1,5 +1,6 @@
 import { GlyphParticles } from '../../render/particles.js';
 import { gi } from '../../render/glyphs.js';
+import { meadowHeight } from '../grass.js';
 import { LITTER } from './litterTuning.js';
 
 // THE LITTER (piece 'litter'): what falls and lies: leaves, ash, paper slips, grit, by level
@@ -32,6 +33,7 @@ const TAU = Math.PI * 2;
 const GRID = 1; // m a weight cell
 const GRID_HALF = 80;
 const GRID_N = (GRID_HALF * 2) / GRID;
+const HALF = () => 0.5; // (the grass's mean blade)
 const smooth = (a, b, x) => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
@@ -48,6 +50,8 @@ export class Litter {
     this.count = 0;
     this.lying = 0;
     this.T = life.enabled ? (LITTER.levels[life.levelId] ?? null) : null;
+    const gh = life.set?.grass?.height;
+    this._grassH = Number.isFinite(gh) ? gh : 1;
     this.pool = null;
     this.leaves = null;
     this.kinds = null;
@@ -178,10 +182,14 @@ export class Litter {
     }
   }
 
-  /** How high a letter lies at (x, z): over the floor, or on the grass where it grows. */
+  /** How high a letter lies at (x, z): over the floor, or on the blades' tips where the grass is thick
+   *  (lower, the pool's soft depth test hides it among the blades). */
   _groundY(x, z) {
     const d = this.life.world?.fire?.density?.(x, z);
-    return 0.05 + (Number.isFinite(d) ? Math.max(0, Math.min(1, d)) : 0) * (this.T.grass ?? 0);
+    const y0 = LITTER.floor;
+    if (!(d > 0.15) || !(this.T.grass > 0)) return y0;
+    const h = meadowHeight(x, z, HALF) * this._grassH;
+    return y0 + this.T.grass * (Number.isFinite(h) ? h : 0) * smooth(0.15, 0.65, d);
   }
 
   /** Is (x, z) inside something that stands (a stone, a trunk, a pillar)? */

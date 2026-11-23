@@ -56,7 +56,7 @@ export default {
       while (f.s === AIR && t < 60) { w.step(0.05); t += 0.05; }
       T.assert(f.s === LYING, `${id}: the letter landed (after ${t.toFixed(1)} s)`);
       T.assert(t > expect * 0.6 && t < expect * 1.5 + 1, `${id}: it fell in ${t.toFixed(1)} s (its fall speed says ~${expect.toFixed(1)} s)`);
-      T.assert(f.y < 0.35 && f.y >= 0.04, `${id}: it lies just over the floor (y ${f.y.toFixed(2)})`);
+      T.assert(f.y < 0.9 && f.y >= 0.04, `${id}: it lies on the floor or the grass (y ${f.y.toFixed(2)})`);
       const x = f.x, z = f.z;
       f.last = 1e9; // (ash melts into the floor in 10 - 22 s by design: this is about the air)
       w.step(20);
@@ -119,7 +119,7 @@ export default {
       const dz = near.map((f) => Math.abs(f.z - 10)).reduce((a, b) => Math.max(a, b), 0);
       const top = Math.max(...near.map((f) => f.y));
       T.assert(dz < 3.5, `${id}: kicked low and aside, not flung (furthest ${dz.toFixed(2)} m off the path)`);
-      T.assert(top < 0.4, `${id}: (they came down: highest now ${top.toFixed(2)} m)`);
+      T.assert(top < 1, `${id}: (they came down: highest now ${top.toFixed(2)} m)`);
     }
   },
 

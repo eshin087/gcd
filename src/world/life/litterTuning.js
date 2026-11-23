@@ -7,7 +7,7 @@
 //   lying      how many letters lie in the window at once (x life.quality): the pre-seed, and the
 //              count past which the oldest go (faded, the ones out of view first)
 //   last       [min, max] s a lying letter lasts before it is recycled (faded out)
-//   grass      m a letter lies above the floor where the grass is full (it lies ON the grass)
+//   grass      where the grass is thick a letter lies on the blades: this share of their mean height
 //   kinds      what falls: each { share, glyphs, color, color2, size, fall, slip, flutter, spin, lift,
 //              carry, hop, lie, alpha, from, where, source }
 //     share     the kind's part of what falls and lies
@@ -38,8 +38,11 @@ export const LITTER = Object.freeze({
   window: { x: 22, zN: 19, zS: 15 },
   /** the band (m) inside the window's edge where letters arrive when the window moves */
   band: 3,
+  /** m a lying letter floats over the floor: above the paving's slabs (their tops stand 0.03 - 0.1 m),
+   *  or the pool's depth test buries it */
+  floor: 0.16,
   /** the pool's soft depth (m): a letter on the floor is hidden by what stands in front of it */
-  soft: 0.14,
+  soft: 0.2,
   /** lying letters fade out under the hero's feet: fully hidden inside [0], fully seen beyond [1] (m) */
   heroClear: [0.32, 0.7],
   /** the hero's feet: at this speed (m/s) or more he kicks what lies within r */
@@ -59,21 +62,21 @@ export const LITTER = Object.freeze({
     // the clearing's rim, thinning toward the middle; they lie on the grass and the flagstones
     cinderwood: {
       takes: ['leaves'],
-      rate: 1.6,
+      rate: 2.4,
       lying: 150,
       last: [80, 160],
-      grass: 0.22,
+      grass: 0.95,
       kinds: [
         {
-          share: 0.6, glyphs: ",`'~", color: [0.15, 0.25, 0.12], color2: [0.1, 0.16, 0.08],
-          size: [0.18, 0.25], fall: [0.6, 0.95], slip: 0.55, flutter: [1.6, 2.8], spin: 2.4, tau: 0.55,
-          lift: [2.6, 4.4], carry: 0.85, hop: 1.4, lie: 0.55, alpha: 0.85, from: [4.5, 8],
+          share: 0.45, glyphs: ",`'~", color: [0.17, 0.27, 0.13], color2: [0.12, 0.18, 0.09],
+          size: [0.2, 0.27], fall: [0.6, 0.95], slip: 0.55, flutter: [1.6, 2.8], spin: 2.4, tau: 0.55,
+          lift: [2.6, 4.4], carry: 0.85, hop: 1.4, lie: 0.7, alpha: 0.85, from: [4.5, 8],
           where: { at: 'rim', lo: 0.12, r0: 10, r1: 30 }, source: 'sky',
         },
         {
-          share: 0.4, glyphs: ",'~.", color: [0.24, 0.17, 0.09], color2: [0.16, 0.11, 0.06],
-          size: [0.17, 0.24], fall: [0.65, 1.0], slip: 0.5, flutter: [1.8, 3], spin: 2.8, tau: 0.5,
-          lift: [2.4, 4.0], carry: 0.85, hop: 1.4, lie: 0.5, alpha: 0.85, from: [4.5, 8],
+          share: 0.55, glyphs: ",'~.", color: [0.3, 0.21, 0.1], color2: [0.22, 0.15, 0.08],
+          size: [0.2, 0.27], fall: [0.65, 1.0], slip: 0.5, flutter: [1.8, 3], spin: 2.8, tau: 0.5,
+          lift: [2.4, 4.0], carry: 0.85, hop: 1.4, lie: 0.8, alpha: 0.85, from: [4.5, 8],
           where: { at: 'rim', lo: 0.12, r0: 10, r1: 30 }, source: 'sky',
         },
       ],
@@ -87,13 +90,13 @@ export const LITTER = Object.freeze({
       rate: 26,
       lying: 230,
       last: [10, 22],
-      grass: 0.04,
+      grass: 0.9,
       shelter: 0.6,
       kinds: [
         {
           share: 1, glyphs: ".,'`", color: [0.38, 0.37, 0.35], color2: [0.29, 0.28, 0.27],
           size: [0.12, 0.22], fall: [0.55, 0.9], slip: 0.3, flutter: [1.2, 2.4], spin: 1.5, tau: 0.45,
-          lift: [1.9, 3.6], carry: 0.9, hop: 0.9, lie: 0.5, alpha: 0.85, from: [4, 9],
+          lift: [1.9, 3.6], carry: 0.9, hop: 0.9, lie: 0.8, alpha: 0.85, from: [4, 9],
           where: { at: 'ash', base: 1, pile: 2.2, reach: 1.6, gap: 0.45, lee: [[1, 0], [0, -1]], within: 40, maxR: 3.5 },
           source: 'sky',
         },
@@ -107,7 +110,7 @@ export const LITTER = Object.freeze({
       rate: 0.5,
       lying: 45,
       last: [90, 180],
-      grass: 0.03,
+      grass: 0.9,
       kinds: [
         {
           share: 1, glyphs: ".,·", color: [0.17, 0.05, 0.04], color2: [0.09, 0.03, 0.03],
@@ -125,7 +128,7 @@ export const LITTER = Object.freeze({
       rate: 3,
       lying: 110,
       last: [40, 90],
-      grass: 0.03,
+      grass: 0.9,
       kerb: 14.8,
       shelter: 1.5,
       kinds: [
@@ -151,7 +154,7 @@ export const LITTER = Object.freeze({
       rate: 1.2,
       lying: 120,
       last: [80, 160],
-      grass: 0.2,
+      grass: 0.95,
       kinds: [
         {
           share: 0.78, glyphs: ",'~`", color: [0.22, 0.17, 0.11], color2: [0.15, 0.13, 0.11],
@@ -176,7 +179,7 @@ export const LITTER = Object.freeze({
       rate: 0.3,
       lying: 70,
       last: [140, 260],
-      grass: 0.03,
+      grass: 0.9,
       kinds: [
         {
           share: 1, glyphs: "-~`'", color: [0.13, 0.22, 0.1], color2: [0.18, 0.2, 0.1],
