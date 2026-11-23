@@ -354,12 +354,66 @@ export const SFX = {
     },
   },
 
+  // a step: today's burst; with the living world's steps on (`o.surface`, world/life/steps.js) the
+  // ground's own sound, as quiet (prio 0: never the loudest thing), varied a little per step from
+  // its own stream (`seed`: not Math.random), and a soft wet tick on wet ground
   footstep: {
     prio: 0, rev: 0.02, gap: 0.07,
-    play(v, t, o) {
-      const k = o.sprint ? 1.6 : 1;
-      burst(v, t, 'white', 'bandpass', rnd(2600, 4200), 0.8, 0.1 * k, rnd(0.05, 0.08), 0.006);
-      burst(v, t, 'brown', 'lowpass', 220, 0.7, 0.14 * k, 0.05);
+    seed: 0x6d2b79f5,
+    play(v, t, o, E) {
+      const S = o.surface;
+      if (!S) {
+        const k = o.sprint ? 1.6 : 1;
+        burst(v, t, 'white', 'bandpass', rnd(2600, 4200), 0.8, 0.1 * k, rnd(0.05, 0.08), 0.006);
+        burst(v, t, 'brown', 'lowpass', 220, 0.7, 0.14 * k, 0.05);
+        return;
+      }
+      const F = SFX.footstep;
+      const r = (a, b) => a + (b - a) * ((F.seed = (Math.imul(F.seed, 1664525) + 1013904223) >>> 0) / 4294967296);
+      const k = (o.sprint ? 1.5 : 1) * r(0.85, 1.1);
+      if (S === 'grass') {
+        // a soft brush: band-passed pink noise, a slow attack (no click), a faint body under it
+        burst(v, t, 'pink', 'bandpass', r(850, 1350), 0.9, 0.09 * k, r(0.08, 0.11), 0.014);
+        burst(v, t, 'brown', 'lowpass', 180, 0.7, 0.06 * k, 0.05, 0.01);
+      } else if (S === 'earth') {
+        // a dull thud
+        burst(v, t, 'brown', 'lowpass', r(140, 180), 0.8, 0.2 * k, 0.06, 0.004);
+        thump(v, t, r(85, 100), 50, 0.05, 0.06 * k, 0.06);
+        burst(v, t, 'pink', 'lowpass', 650, 0.6, 0.03 * k, 0.05, 0.006);
+      } else if (S === 'stone' || S === 'obsidian') {
+        // a short dry tap; obsidian a touch glassier (higher, narrower, a faint ring)
+        const glass = S === 'obsidian';
+        burst(v, t, 'white', 'bandpass', glass ? r(4200, 5200) : r(2300, 3200), glass ? 3 : 1.6, 0.1 * k, glass ? 0.035 : 0.03, 0.002);
+        burst(v, t, 'brown', 'lowpass', glass ? 240 : 260, 0.7, 0.1 * k, 0.035);
+        if (glass) ping(v, t + 0.002, 'sine', r(2600, 3100), 0.012 * k, 0.06);
+      } else if (S === 'sand') {
+        // a gritty scuff
+        burst(v, t, 'white', 'bandpass', r(3000, 4500), 0.6, 0.07 * k, r(0.07, 0.1), 0.01);
+        burst(v, t, 'pink', 'bandpass', r(800, 1000), 0.7, 0.06 * k, 0.07, 0.008);
+        burst(v, t, 'brown', 'lowpass', 200, 0.7, 0.08 * k, 0.04);
+      } else if (S === 'ash') {
+        // a muffled puff, a faint stone tap under it (the paving under the ash)
+        burst(v, t, 'pink', 'lowpass', r(600, 800), 0.5, 0.1 * k, r(0.09, 0.12), 0.012);
+        burst(v, t, 'white', 'bandpass', r(2400, 2900), 1.4, 0.03 * k, 0.025, 0.002);
+        burst(v, t, 'brown', 'lowpass', 200, 0.7, 0.1 * k, 0.05);
+      } else if (S === 'leaf') {
+        // a small crackle: three tiny dry ticks over a brush
+        for (let i = 0; i < 3; i++) burst(v, t + i * r(0.008, 0.02), 'white', 'bandpass', r(4200, 6000), 2, 0.035 * k, 0.012, 0.001);
+        burst(v, t, 'pink', 'bandpass', r(1300, 1700), 0.8, 0.05 * k, 0.06, 0.008);
+        burst(v, t, 'brown', 'lowpass', 200, 0.7, 0.08 * k, 0.04);
+      } else {
+        burst(v, t, 'brown', 'lowpass', 220, 0.7, 0.14 * k, 0.05);
+      }
+      // wet ground: a soft wet tick
+      const wet = E?.game?.world?.life?.weather?.wet;
+      if (Number.isFinite(wet) && wet > 0.3) {
+        const s = v.osc('sine', 1400, t, t + 0.06);
+        glide(s.frequency, t, r(1300, 1600), 650, 0.03);
+        const g = v.gain(0);
+        perc(g.gain, t, 0.018 * Math.min(1, wet) * k, 0.002, 0.03);
+        s.connect(g).connect(v.out);
+        burst(v, t + 0.004, 'white', 'bandpass', r(1600, 2000), 3, 0.025 * Math.min(1, wet) * k, 0.02);
+      }
     },
   },
 
