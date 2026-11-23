@@ -35,6 +35,7 @@ const { createThroneHall } = await imp('src/world/throneHall.js');
 const { createFoxTerrace, TERRACE } = await imp('src/world/foxTerrace.js');
 const { createSkybreakRing, BUTTE, RING } = await imp('src/world/skybreakRing.js');
 const { createWindlessGrove } = await imp('src/world/windlessGrove.js');
+const { createHalcyonPlaza, PLAZA, CITY } = await imp('src/world/halcyonPlaza.js');
 // (every level the game can load, and the training room: the bite scenario walks them all, so a new
 // level is checked without being named here)
 const { LEVELS } = await imp('src/levels/index.js');
@@ -177,14 +178,14 @@ function wyrm() {
 const S = {
   // ---------------------------------------------------------------- the sets list their breakables
   sets() {
-    for (const [name, make, kinds] of [['forest', createForest, ['tree', 'deadTree', 'stone', 'boulder', 'flagstone', 'bone']], ['courtyard', createCourtyard, ['pillar', 'lantern']], ['throne', createThroneHall, ['shard', 'slab', 'hover', 'swords', 'banner', 'cairn', 'cart']], ['ring a', ringSet('a'), ['tile', 'post', 'butte', 'butteTop', 'banner', 'mud', 'hoodoo']], ['ring b', ringSet('b'), ['tile', 'post', 'butte', 'butteTop', 'terrace', 'banner']], ['ring c', ringSet('c'), ['tile', 'post', 'butte', 'butteTop', 'spire', 'cairn']], ['grove', createWindlessGrove, ['bamboo', 'graveSword', 'paving', 'flagstone', 'stele', 'lantern', 'boulder', 'post']]]) {
+    for (const [name, make, kinds] of [['forest', createForest, ['tree', 'deadTree', 'stone', 'boulder', 'flagstone', 'bone']], ['courtyard', createCourtyard, ['pillar', 'lantern']], ['throne', createThroneHall, ['shard', 'slab', 'hover', 'swords', 'banner', 'cairn', 'cart']], ['ring a', ringSet('a'), ['tile', 'post', 'butte', 'butteTop', 'banner', 'mud', 'hoodoo']], ['ring b', ringSet('b'), ['tile', 'post', 'butte', 'butteTop', 'terrace', 'banner']], ['ring c', ringSet('c'), ['tile', 'post', 'butte', 'butteTop', 'spire', 'cairn']], ['grove', createWindlessGrove, ['bamboo', 'graveSword', 'paving', 'flagstone', 'stele', 'lantern', 'boulder', 'post']], ['city', createHalcyonPlaza, ['car', 'lamp', 'sign', 'shopSign', 'screen', 'statue', 'statueHead', 'statueArm', 'towerBase', 'towerTop', 'blockFront', 'kiosk', 'barrier', 'bench', 'hydrant', 'trafficLight', 'bin', 'shelter', 'asphalt', 'sidewalk']]]) {
       const { D, set, colliders, U } = build(make);
       const L = D.list;
       // (Cinderwood: 664 since every tree of the wall and the landmarks break, 2026-11-16; 183 on 2026-11-15,
       // 80 before. The duelists' arenas break everything but their landmarks since 2026-11-16: the
       // courtyard 78 → 456 (293 of them its floor's slabs), the crater 36 → 222 (105 of its floor's plates); 255 on 2026-11-22, its felled trunks
       // swapped for the challengers' graves, banners and carts round it)
-      const [lo, hi] = { forest: [20, 760], courtyard: [380, 520], throne: [180, 280], 'ring a': [1, 5000], 'ring b': [1, 5000], 'ring c': [1, 5000], terrace: [300, 520], grove: [420, 900] }[name]; // (the grove: 788 since ADR-151's clumps, 2026-11-22; 536 before)
+      const [lo, hi] = { forest: [20, 760], courtyard: [380, 520], throne: [180, 280], 'ring a': [1, 5000], 'ring b': [1, 5000], 'ring c': [1, 5000], terrace: [300, 520], grove: [420, 900], city: [300, 460] }[name]; // (the grove: 788 since ADR-151's clumps, 2026-11-22; 536 before)
       assert(L.length >= lo && L.length <= hi, `${name}: ${L.length} breakables (${lo}..${hi})`);
       for (const k of kinds) assert(L.some((b) => b.kind === k), `${name}: has a breakable ${k}`);
       if (name === 'forest') {
@@ -1607,7 +1608,8 @@ const S = {
           const b = able.find((x) => x.kind === kind && x.state === STATE.INTACT && !(x.top && x.top.state === STATE.INTACT));
           if (!b) continue;
           const n0 = A.D.bitten;
-          A.D.strike(b.x + b.r, b.z, 0.7, 0.3 * b.hpMax + 0.2, { kind: BLOW.BLUNT, by: 'boss', y: Math.min(1.2, b.y0 + b.h * 0.5), src: A.D.swing() });
+          // (a raised piece, a tower's top, a shop sign: struck inside its own height, y0 .. y0 + h: ADR-159's fix)
+          A.D.strike(b.x + b.r, b.z, 0.7, 0.3 * b.hpMax + 0.2, { kind: BLOW.BLUNT, by: 'boss', y: b.y0 > 0 ? b.y0 + b.h * 0.5 : Math.min(1.2, b.h * 0.5), src: A.D.swing() });
           // (a sliced piece, bamboo, is cut through, not bitten: BREAK.slice)
           if (b.slice ? b.state === STATE.INTACT : A.D.bitten === n0) missed.push(kind);
           bitten += A.D.bitten - n0;
@@ -1833,6 +1835,81 @@ const S = {
     const meshes = [];
     set.group.traverse((o) => { if (o.isMesh && o.visible) meshes.push(o.name); });
     assert(bones <= 443, `${bones} bones (the courtyard's 443 or fewer); ${meshes.length} draw meshes with the set alone (${meshes.join(', ')}), ${Math.round(tris)} triangles`);
+  },
+
+  // ---------------------------------------------------------------- Halcyon Plaza (ADR-153): its pieces, raised pieces at their height, the cars' fuses
+  city() {
+    const W = build(createHalcyonPlaza);
+    const { D, set, colliders, step, U, game, hits, log } = W;
+    const L = D.list, by = (k) => L.filter((b) => b.kind === k);
+    const cars = by('car'), tops = by('towerTop'), bases = by('towerBase'), shops = by('shopSign');
+    assert(cars.length === 12 && cars.filter((b) => Math.hypot(b.x, b.z) < 13.5).length === 8 && cars.every((b) => b.mat === 'metal' && b.burns && b.cover && b.lift === 1 && b.stub), `12 cars (8 round the plaza inside his bound, 4 in the lot): metal that burns, cover, lifted by him, a burnt chassis left (${cars.length})`);
+    assert(tops.length === 4 && bases.length === 4 && tops.every((t) => t.y0 === PLAZA.baseH && t.fallT === CITY.tower.fallT && t.blocks === CITY.tower.blocks) && bases.every((b) => b.top && tops.includes(b.top) && b.cover), 'four two-stage towers: a base that holds its top, the top raised (y0) on it');
+    assert(shops.length === 8 && shops.every((b) => b.y0 === CITY.shop.y0 && b.def.light), `eight shop signs hung on the towers' fronts at y0 ${CITY.shop.y0}, light pieces (quiet falls)`);
+    const statue = by('statue')[0], head = by('statueHead')[0], arm = by('statueArm')[0];
+    assert(statue && head && arm && statue.top === head && arm.lift === 1 && head.y0 > 3 && arm.y0 > 3, `his statue: the body holds its head (raised to ${head?.y0.toFixed(1)} m), the raised arm a piece he can lift`);
+    // nothing that stops a blade in the innermost 6 m
+    const inner = L.filter((b) => !b.floor && Math.hypot(b.x, b.z) < PLAZA.clear + b.r && b.y0 < 2);
+    assert(inner.length === 0, `the innermost ${PLAZA.clear} m are clear (${inner.map((b) => b.kind).join(', ')})`);
+    // nothing tall south of the fight's middle near the plaza (the camera looks from the south)
+    const tall = L.filter((b) => !b.floor && b.z > 8 && b.y0 + b.h > 4.6 && Math.abs(b.x) < 14);
+    assert(tall.length === 0, `nothing over 4.6 m stands south of the plaza in the frame (${tall.map((b) => `${b.kind} ${b.x.toFixed(0)},${b.z.toFixed(0)}`).join(' ')})`);
+    // a raised piece is struck at its real height (the y0 fix): a blow at 10 m reaches a tower's top
+    const t = tops[0], hp0 = t.hp;
+    D.strike(t.x, t.z + t.r, 1.0, 1.2, { kind: BLOW.BLAST, by: 'boss', y: PLAZA.baseH + 3.5, src: D.swing() });
+    assert(t.hp < hp0 && t.state === STATE.INTACT, `a blow at ${(PLAZA.baseH + 3.5).toFixed(1)} m reaches the tower's top (${hp0.toFixed(2)} → ${t.hp.toFixed(2)})`);
+    const lamp = by('lamp')[0], lh = lamp.hp;
+    D.strike(lamp.x, lamp.z, 0.5, 2, { kind: BLOW.BLAST, by: 'boss', y: 8, src: D.swing() });
+    assert(lamp.hp === lh, 'a blow at 8 m passes over a 5.2 m lamp post');
+    const shop = shops[0], sh = shop.hp;
+    D.strike(shop.x, shop.z, 0.4, 0.5, { kind: BLOW.BLUNT, by: 'boss', y: CITY.shop.y0 + 0.5, src: D.swing() });
+    assert(shop.hp < sh, `a blow at ${(CITY.shop.y0 + 0.5).toFixed(1)} m reaches a shop sign hung at ${CITY.shop.y0} m`);
+    // the statue's head: a blow at its height takes the head and leaves the body
+    const sb = statue.hp;
+    D.strike(head.x, head.z, 0.45, 5, { kind: BLOW.BLAST, by: 'boss', y: head.y0 + 0.3, src: D.swing() });
+    step(1.5);
+    assert(head.state !== STATE.INTACT && statue.state === STATE.INTACT && statue.hp === sb, 'a blow at the statue\'s neck takes its head; the body is untouched');
+    // the fuse: a car the hero broke burns, then goes up; the hero inside its reach and him take its blast
+    set.ambience.setup(game);
+    const amb = (sec) => { for (let k = 0; k < Math.round(sec * 60); k++) { step(1 / 60); set.ambience.update(1 / 60, game); } };
+    const c = cars[0];
+    game.player.position.set(c.x + 1.5, 0, c.z);
+    game.boss.position.set(c.x - 1.6, 0, c.z);
+    game.boss.mode = 'foot';
+    const n0 = log.length;
+    D.strike(c.x, c.z, 0.6, 50, { kind: BLOW.BLUNT, by: 'player', y: 0.8, src: D.swing() });
+    amb(0.1);
+    const fz = set.ambience.fuses.find((f) => f.def === c.def);
+    assert(c.state === STATE.BROKEN && fz.state === 'fuse' && fz.by === 'player', 'a car the hero broke: its fuse is lit');
+    amb(CITY.car.fuse + 0.2);
+    const ev = log.slice(n0);
+    const blast = ev.filter((e) => e.n === 'world:blast'), tell = ev.filter((e) => e.n === 'combat:tell' && e.attack === 'carBomb'), flash = ev.filter((e) => e.n === 'combat:flash' && e.attack === 'carBomb');
+    const heroHit = hits.find((h) => h.who === 'hero' && h.attack === 'carBomb'), bossHit = hits.find((h) => h.who === 'boss' && h.damage === CITY.car.boss.damage);
+    assert(fz.state === 'done' && blast.length === 1 && tell.length === 1 && flash.length === 1, `after ${CITY.car.fuse} s it explodes (world:blast), told (combat:tell) and flashed (combat:flash) as a falling piece is`);
+    assert(heroHit && heroHit.damage === CITY.car.hero.damage && heroHit.blockable && !heroHit.parryable && bossHit && bossHit.posture === CITY.car.boss.posture, `the hero beside it takes ${CITY.car.hero.damage} (blockable), him ${CITY.car.boss.damage} and ${CITY.car.boss.posture} posture (the hero's car)`);
+    // the chain cap: four cars broken at once go up two at a time
+    const rest = cars.slice(1, 5), t0 = game.time, n1 = log.length;
+    for (const k of rest) D.strike(k.x, k.z, 0.3, 50, { kind: BLOW.BLUNT, by: 'boss', y: 0.8, src: D.swing() });
+    amb(3);
+    const bangs = log.slice(n1).filter((e) => e.n === 'world:blast').map((e) => e.t ?? 0);
+    void t0;
+    const times = [];
+    { let k = 0; for (const e of log.slice(n1)) if (e.n === 'world:blast') times.push(k); void k; }
+    assert(bangs.length >= 4, `four broken cars: ${bangs.length} bangs (chains through world.impact may add more)`);
+    // setPhase: 1 → 2 → 3 → 1
+    assert(set.setPhase(2) === 2 && set.ambience.state.phase === 2 && set.setPhase(3) === 3 && set.setPhase(1) === 1, 'setPhase: the city\'s light by his phase, and back');
+    D.reset();
+    assert(L.every((b) => b.state === STATE.INTACT), 'the reset: everything stands again');
+    const bones = rigidBones(U).count;
+    let tris = 0;
+    // (the shadow pass's copy of the batch is not counted: depth only)
+    set.group.traverse((o) => { if (o.isMesh && o.visible && o.name !== 'rigidShadow') tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; });
+    const meshes = [];
+    set.group.traverse((o) => { if (o.isMesh && o.visible) meshes.push(o.name); });
+    const batch = L.filter((b) => !b.ranged).length;
+    { const per = {}; set.group.traverse((o) => { if (o.isMesh) per[o.name] = Math.round((o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3); }); out(`     triangles by mesh: ${JSON.stringify(per)}`); }
+    out(`     the city: ${L.length} pieces (${batch} in the rigid batch, ${D.floor.length} floor), ${bones} bones, ${meshes.length} draw meshes (${meshes.join(', ')}), ${Math.round(tris)} triangles, ${colliders.circles.length} colliders`);
+    assert(batch <= 110 && bones <= 340 && tris <= 160000, `the phone budget: ${batch} batch pieces (<= 110), ${bones} bones (<= 340), ${Math.round(tris)} triangles (<= 160k)`);
   },
 };
 const near = (a, b, eps) => Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) <= eps;

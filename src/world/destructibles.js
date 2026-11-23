@@ -1358,7 +1358,7 @@ export class Destructibles {
           const ox = b.x - x, oz = b.z - z;
           const d = Math.hypot(ox, oz);
           if (d > r + b.r) continue;
-          if (o.y !== undefined && o.y - r > b.h) continue; // it passed over
+          if (o.y !== undefined && o.y - r > b.y0 + b.h) continue; // it passed over (a raised piece: its top is y0 + h; no floor to it: blows on a base reach its top through `holds`)
           // the blow's way: as given, else out from its centre
           let dx = o.dx, dz = o.dz;
           if (!Number.isFinite(dx + dz) || dx * dx + dz * dz < 1e-6) {
@@ -1374,7 +1374,7 @@ export class Destructibles {
             const F = BREAK.floor;
             if (d > F.core) pw *= 1 - (1 - F.rim) * Math.min(1, (d - F.core) / Math.max(0.05, r + b.r - F.core));
           }
-          if (this._hit(b, pw, o, b.x - ox * kk, clamp(o.y ?? 1, 0.2, b.h), b.z - oz * kk, dx, dz)) n++;
+          if (this._hit(b, pw, o, b.x - ox * kk, clamp(o.y ?? 1, b.y0 + 0.2, b.y0 + b.h), b.z - oz * kk, dx, dz)) n++;
         }
       }
     }
@@ -1415,7 +1415,7 @@ export class Destructibles {
           // (a brush passes over a flat stone: BREAK.brushFlat)
           if (b.h < BREAK.brushFlat && o.brush === true && b.mat === 'stone') continue;
           if (segDist(b.x, b.z, ax, az, bx, bz, s) > r + b.r) continue;
-          if (o.y !== undefined && o.y - r > b.h) continue;
+          if (o.y !== undefined && o.y - r > b.y0 + b.h) continue;
           let dx = o.dx, dz = o.dz;
           if (!Number.isFinite(dx + dz) || dx * dx + dz * dz < 1e-6) {
             dx = bx - ax;
@@ -1424,7 +1424,7 @@ export class Destructibles {
           const px = ax + (bx - ax) * s.t, pz = az + (bz - az) * s.t;
           // (a floor slab under an edge drawn along it, not a blow landing on it: BREAK.floor.sweep of it)
           const py = tilted ? ya + (yb - ya) * s.t : (o.y ?? 1);
-          if (this._hit(b, b.floor && o.down !== true ? power * BREAK.floor.sweep : power, o, px, clamp(py, 0.2, b.h), pz, dx, dz)) n++;
+          if (this._hit(b, b.floor && o.down !== true ? power * BREAK.floor.sweep : power, o, px, clamp(py, b.y0 + 0.2, b.y0 + b.h), pz, dx, dz)) n++;
         }
       }
     }
@@ -1441,7 +1441,7 @@ export class Destructibles {
     this.struck.broke = 0;
     this._hr = Math.max(r, 0.3);
     this._hc = false;
-    this._hit(b, power, o, ax + (bx - ax) * t, clamp(o.y ?? 1, 0.2, b.h), az + (bz - az) * t, bx - ax, bz - az);
+    this._hit(b, power, o, ax + (bx - ax) * t, clamp(o.y ?? 1, b.y0 + 0.2, b.y0 + b.h), az + (bz - az) * t, bx - ax, bz - az);
     return b;
   }
 
