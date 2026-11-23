@@ -4612,7 +4612,10 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   the front and above prints as a lump). The move is a flit and ONE red beat (`selfHit`, `sustain`: the
   ledger holds the lit window as one interval): the line fixed at the cue; lit 2.4 s; a sweep toward the
   hero's side, one way, so rolling back through it is safe; three ticks at most; a held guard pays guard,
-  never health, and slides; the world breaks along it; then he kneels open 2.2 s. From 12 s into phase 3,
+  never health, and slides; the world breaks along it; then he kneels open 2.2 s. (Second pass, the owner's
+  "yes, fix the fox": he summons it 10 m from the hero through the middle, not at the far rim, so the camera
+  frames the hero and the fox's head at 36 - 41 m instead of ~60; its head is drawn 2.3x in profile with a
+  pale throat, its nine tails are separate plumes, the beam fills its 3.6 m strip.) From 12 s into phase 3,
   32 s apart, forced once under 18 %. The camera holds the hero and the fox's head (`cameraRig.hold`: an
   additive, inert-unless-called pull-back, since the cinematic is capped at 3 s and the phone's extra zoom
   at 3 m).

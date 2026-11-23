@@ -2072,7 +2072,8 @@ dodges: the Howl is one red cue over about 9 s and a 2.2 s kneel (`TUNING.pressu
 (god mode, parries every white and blue cue, rolls every red one, cuts in his openings) wins through three
 phases on three seeds in 44 - 48 s (`fox.mjs win`). The cost of a full pack (five selves out, 1280x720, RTX 4090): 73 →
 118 draw calls (9 a rig); in node his frame 1.6 → 3.6 ms with a pack of five cycling (their poses ~1 ms).
-The Howl: 75 → 84 draw calls with the fox risen and the beam lit, the fire field's peak 1300 - 1500 blobs.
+The Howl (second pass): 72 → 81 draw calls with the fox risen and the beam lit, the fire field's peak about 1600
+blobs in the browser and 2350 headless with the hero standing in the beam (asserted under 3000).
 
 ## The Sheathed (2026-11-22, ADR-144 – ADR-146; `?level=grove`)
 Lu Wusheng, a wandering swordsman, kneels before a mound of swords in the Windless Grove. His blade

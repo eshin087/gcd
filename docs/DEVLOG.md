@@ -39,6 +39,18 @@ minute, 0 conflicts), `win` and `training` pass. Rendered at the game camera in 
 howl-phone, howl-fox-720). Measured: a full pack 73 → 118 draw calls (1280x720), the Howl 75 → 84 and a fire
 field peak of ~1300 - 1500 blobs.
 
+**Second pass on the Howl** (the owner: "yes, fix the fox"; the reviewer: the fox read as a fan of
+feathers, the beam as a thin streak). The head is the subject (drawn 2.3x, a clean profile wedge, broad
+ears, a jaw that opens wide over a white-hot maw, a pale throat; the body charcoal so the head separates);
+nine separate S-curved tails with bright tips; he summons it `away` 10 m from the hero through the middle
+(not the far rim) and `cameraRig.hold(m, x, z, w)` leans toward it: the desktop camera stays at 36 - 41 m
+(was ~60) with the head well inside the frame from every side. The beam fills its 3.6 m strip (a bulb at
+the jaws, a five-line core, a boiling body, the floor lit and charred, a scar that lingers). The dark sun
+is ~2.3 m with motes from the whole arena and the light dropping further. On the phone the pull-back is
+capped: the hero is 51 % of his duel-camera height during the Howl (was 24 %), short of the 70 % asked;
+the head crops at the top when the hero stands north or south of it. 72 → 81 draw calls, the fire field's
+peak ~1600 (2350 headless). Sheets: howl.png / howl-phone.png (before / after), howl-fox-720.png.
+
 **Open / next.** The owner's picks (six switches in PENDING). The fox at the game camera reads only when
 looked for; on the phone the Howl pulls the camera back to ~55 m. Neither checked on the owner's iPhone.
 Phase 3 is now less busy than phase 2 (by design of the Howl; the meter says so). The Moon Wheel.
