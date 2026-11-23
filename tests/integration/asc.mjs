@@ -3027,6 +3027,116 @@ async function scenarioWhiff() {
   return whiffTable(rows);
 }
 
+/**
+ * One staged move with his AI on (the reach watch is his AI's): `name` triggered in `form` with the hero
+ * `dist` m before him (the boss at `at`, facing +z), `hero(G, a, t)` steering the hero each frame
+ * (a: the move while it runs). `pursue: false`: the kit without TUNING.pressure.pursue (as before).
+ * Returns the move's glints and results, the break-offs, the hero's distance at the break-off and the
+ * closest the boss came in the `after` s that followed.
+ */
+function chaseCase(name, { form = 1, dist = 2.4, at = [0, -2], hero = null, pursue = true, after = 1.5 } = {}) {
+  const PU = TUNING.pressure.pursue;
+  if (!pursue) delete TUNING.pressure.pursue;
+  try {
+    const G = build(SEED, true);
+    const { game } = G;
+    const d = game.dragon, p = game.player;
+    duel(G, { dist, form });
+    p.debug.god = true;
+    p.debug.noRiposte = true;
+    d.position.set(at[0], 0, at[1]);
+    d.yaw = 0;
+    place(G, dist);
+    run(G, 0.05);
+    const flashes = [], h0 = G.hits.length, s0 = d.brain.stats.stops ?? 0;
+    G.watch = (n, e) => { if (n === 'combat:flash' && e?.attack === name) flashes.push({ t: game.time, tell: e.tell }); };
+    const hp = d.hitPlayer.bind(d);
+    d.hitPlayer = (o) => { const r = hp(o); if (o?.beat && r !== RESULT.IGNORED) o.beat._contact = true; return r; };
+    d.debug.trigger(name);
+    d.debug.setAI(true);
+    const A = d.brain.act;
+    let stopAt = null, stopDist = 0, closest = Infinity, t0 = game.time, airAt = 0;
+    const gap = () => Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z);
+    run(G, 6, () => {
+      // (a swing at air: a real melee beat of the move that ended with no contact)
+      for (const b of A.beats) if (b.done && !b._seenW && meleeBeat(b)) { b._seenW = true; if (!b._contact && !b.cover) airAt++; }
+      hero?.(G, d.brain.act === A ? A : null, game.time - t0);
+      if (stopAt === null && (d.brain.stats.stops ?? 0) > s0) { stopAt = game.time - t0; stopDist = gap(); }
+      if (stopAt !== null) closest = Math.min(closest, gap());
+    }, () => stopAt !== null ? game.time - t0 > stopAt + after : d.brain.act !== A && game.time - t0 > 0.5);
+    G.watch = null;
+    G.input.release('ShiftLeft');
+    G.input.up(1);
+    G.input.axis = { x: 0, y: 0 };
+    const hits = G.hits.slice(h0).filter((h) => h.attack === name);
+    d.hitPlayer = hp;
+    return { G, d, p, A, flashes, hits, stops: (d.brain.stats.stops ?? 0) - s0, stopAt, stopDist, closest, air: airAt };
+  } finally {
+    if (!pursue) TUNING.pressure.pursue = PU;
+  }
+}
+
+/** The hero's input toward a direction (world x, z), sprinting or not. */
+const steer = (G, wx, wz, sprint = false) => {
+  if (sprint) G.input.hold('ShiftLeft'); else G.input.release('ShiftLeft');
+  G.input.axis = { x: wx, y: -wz };
+};
+
+async function scenarioPursuit() {
+  out('\n== scenario PURSUIT (a blow the hero ran out of the reach of breaks off before its glint, and he chases) ==');
+  const PU = TUNING.pressure.pursue, pf = (v, ph) => (Array.isArray(v) ? v[Math.min(v.length, ph) - 1] : v);
+  const forms = [1, 2, 3];
+  assert(PU && PU.margin > 0 && PU.after > 0 && forms.every((f) => pf(PU.closeK, f) >= 1 && pf(PU.dashK, f) >= 1 && pf(PU.closeK, f) >= pf(PU.closeK, f - 1 || 1)),
+    `TUNING.pressure.pursue: break off ${PU?.margin} m past what a blow can still reach; the chase by form x${forms.map((f) => pf(PU.closeK, f)).join(' / ')} step-in, x${forms.map((f) => pf(PU.dashK, f)).join(' / ')} dash, never less in a later form`);
+  // 1. Aura Burst (form 2: a ring of 4.5 m round him, no step-in): the hero rolls out of it and runs on
+  // before its cue: no glint, no hit; he breaks off and chases. Without the pursuit he throws it at air.
+  const rollOut = (G, a, t) => {
+    if (t < 0.12) return;
+    const p = G.game.player, d = G.game.dragon, dx = p.position.x - d.position.x, dz = p.position.z - d.position.z, l = Math.hypot(dx, dz) || 1;
+    if (t < 0.6) steer(G, dx / l, dz / l, true);
+    if (t > 0.12 && t < 0.15) G.input.tap('Space');
+    if (t >= 0.6) steer(G, 0, 0);
+  };
+  const burst = chaseCase('auraBurst', { form: 2, dist: 2.2, hero: rollOut });
+  const burst0 = chaseCase('auraBurst', { form: 2, dist: 2.2, hero: rollOut, pursue: false });
+  out(`     Aura Burst rolled out of: broken off at ${burst.stopAt?.toFixed(2)} s with the hero ${burst.stopDist.toFixed(1)} m off, the closest he came in 1.5 s ${burst.closest.toFixed(1)} m; without the pursuit: ${burst0.flashes.length} glint, ${burst0.air} swing at air`);
+  assert(burst.stops === 1 && !burst.flashes.length && !burst.hits.length && burst.closest < burst.stopDist - 1.5,
+    `Aura Burst, the hero rolls out before its cue: broken off (${burst.stops}), no glint (${burst.flashes.length}), no hit (${burst.hits.length}), and he chases: ${burst.stopDist.toFixed(1)} → ${burst.closest.toFixed(1)} m`);
+  assert(burst0.stops === 0 && burst0.flashes.length === 1 && burst0.air === 1, `without TUNING.pressure.pursue (as before): the burst is thrown at air (${burst0.flashes.length} glint, ${burst0.air} at air)`);
+  // 2. ... and a hero who stays in it is hit as before
+  const stay = chaseCase('auraBurst', { form: 2, dist: 2.2 });
+  assert(stay.stops === 0 && stay.flashes.length === 1 && stay.hits.length === 1 && stay.hits[0].r === RESULT.HIT, `Aura Burst, the hero stays: the glint and the blow as before (${stay.flashes.length} glint, ${stay.hits.map((h) => h.r).join(' ') || 'no hit'})`);
+  // 3. a string in reach: Eight Gates against a hero who guards where he stands: every blow, no break-off
+  const guard = (G) => G.input.press(1);
+  const gates = chaseCase('gates', { form: 1, dist: 2.0, hero: guard });
+  const real = gates.A.beats.filter((b) => !b.feint).length;
+  assert(gates.stops === 0 && gates.flashes.length === real && gates.hits.length === real, `Eight Gates on a hero who guards in reach: ${gates.flashes.length} glints and ${gates.hits.length} blows of ${real}, ${gates.stops} broken off`);
+  // 4. the chase: Tiger Descends' first blow (a dash of 4 m; form 2) on a hero sprinting straight away
+  // from 4.5 m: his dash runs x dashK and the blow reaches him; without the pursuit it falls short
+  const runAway = (G) => {
+    const p = G.game.player, d = G.game.dragon, dx = p.position.x - d.position.x, dz = p.position.z - d.position.z, l = Math.hypot(dx, dz) || 1;
+    steer(G, dx / l, dz / l, true);
+  };
+  const tiger = chaseCase('tiger', { form: 2, dist: 4.5, hero: runAway, at: [0, -9] });
+  const tiger0 = chaseCase('tiger', { form: 2, dist: 4.5, hero: runAway, at: [0, -9], pursue: false });
+  const first = (r) => (r.A.beats[0]._contact ? 'reaches him' : r.A.beats[0].done ? 'at air' : 'not thrown');
+  out(`     Tiger Descends' first blow on a sprinter: ${first(tiger)} (${tiger.flashes.length} glints, ${tiger.hits.length} blows, ${tiger.air} at air, ${tiger.stops} broken off); without the pursuit: ${first(tiger0)} (${tiger0.flashes.length} glints, ${tiger0.hits.length} blows, ${tiger0.air} at air)`);
+  assert(tiger.A.beats[0]._contact && tiger.stops === 0 && tiger.air === 0, `Tiger Descends' first blow on a hero sprinting away from 4.5 m: the dash runs on (x${pf(PU.dashK, 2)}) and reaches him (${tiger.hits.map((h) => h.r).join(' ') || 'no hit'}), nothing at air (${tiger.air})`);
+  // 5. off the ring: the hero sprints out past the circle he keeps to in Eight Gates' first windup: no
+  // step or dash of his gets there; broken off, no glint
+  const off = chaseCase('gates', { form: 1, dist: 2.4, at: [0, 11.6], hero: runAway });
+  assert(off.stops === 1 && !off.flashes.length && !off.hits.length, `Eight Gates on a hero who runs off the ring (his bound ${off.d.bound.toFixed(1)} m): broken off (${off.stops}), no glint (${off.flashes.length}), no hit`);
+  // 6. out of a blink: the reach watch starts where he arrives. Sky Hammer (form 2): the hero launched
+  // 11 m, the blink to where he lands, the hammer still lands on him; Sign Step (form 2) on a hero who
+  // sprints away from the sign: the vanish leads him (blinkLead) and every blow reaches him or is
+  // broken off before its glint, none at air
+  const hammer = chaseCase('skyHammer', { form: 2, dist: 1.8 });
+  assert(hammer.stops === 0 && hammer.flashes.length === 3 && hammer.hits.length === 3 && hammer.air === 0, `Sky Hammer with his AI on: the launch, the blink to where the hero lands, the hammer on him (${hammer.flashes.length} glints, ${hammer.hits.map((h) => h.r).join(' ')}, ${hammer.stops} broken off)`);
+  const sign = chaseCase('signStep', { form: 2, dist: 5, hero: runAway });
+  out(`     Sign Step on a sprinter: ${sign.flashes.length} glints, ${sign.hits.map((h) => h.r).join(' ') || 'no blow'}, ${sign.air} at air, ${sign.stops} broken off`);
+  assert(sign.air === 0 && sign.flashes.length === sign.hits.length && sign.hits.length + sign.stops >= 1, `Sign Step on a hero who sprints away: every glint is a blow on him (${sign.flashes.length} glints, ${sign.hits.length} blows), none at air (${sign.air})`);
+}
+
 // --- tune
 // The tuning pass's meters (opt-in, reported, not asserted): PACE's summary over the seeds, the pick
 // table (how often each move is picked per form at fixed hero distances), and the Lord suite's mortal
@@ -3348,6 +3458,8 @@ const S = {
   wear: scenarioWear,
   // --- integ
   integ: scenarioInteg,
+  // --- pursuit
+  pursuit: scenarioPursuit,
 };
 // --- tune (opt-in: run only when named)
 const OPT_IN = { picks: scenarioPicks, probe: scenarioProbe, defend: scenarioDefend, whiff: scenarioWhiff };
