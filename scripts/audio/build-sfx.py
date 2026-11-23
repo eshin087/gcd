@@ -17,7 +17,11 @@ the slot's target, the peak kept under -1 dBFS), encoded as mono MP3 to assets/a
 (n from 1, in pick order). It then writes src/audio/sampleFiles.js (each file and its peak_ms: ms from
 the first audible sample to the loudest 5 ms, which the audio lines up with a blow's impact) and the
 "Attack sounds" table of assets/audio/CREDITS.md (the music table above it is kept as it is).
-A clip whose licence_check does not say CC0 is refused.
+A clip whose licences_listed / licence_check do not say CC0 is refused. The manifest may also be
+{ "slots": { "<slot>": [entry, ...] } } (each slot's candidates, best first).
+
+A provisional picks file (the first `n` candidates of every slot the game has) for testing:
+    python scripts/audio/build-sfx.py --manifest <manifest.json> --first 2 --write-picks <picks.json>
 """
 import argparse, glob, json, os, subprocess, sys, tempfile, wave
 
@@ -57,10 +61,21 @@ def run(cmd):
 def load_manifest(path):
     with open(path, encoding='utf-8') as f:
         m = json.load(f)
-    items = m.get('entries', m) if isinstance(m, dict) else m
-    if isinstance(items, dict):
-        items = [dict(v, file=v.get('file', k)) for k, v in items.items()]
+    if isinstance(m, dict) and isinstance(m.get('slots'), dict):
+        # { slots: { <slot>: [entry, ...] } } (each slot's candidates, best first)
+        items = [dict(e, slot=e.get('slot', slot)) for slot, l in m['slots'].items() for e in l if isinstance(e, dict)]
+    else:
+        items = m.get('entries', m) if isinstance(m, dict) else m
+        if isinstance(items, dict):
+            items = [dict(v, file=v.get('file', k)) for k, v in items.items()]
     return {e['file']: e for e in items if isinstance(e, dict) and e.get('file')}
+
+
+def is_cc0(e):
+    listed = e.get('licences_listed') or []
+    if isinstance(listed, str):
+        listed = [listed]
+    return any('cc0' in str(x).lower() for x in listed) or 'cc0' in str(e.get('licence_check', '')).lower()
 
 
 def resolve(entry, cand, slot):
@@ -132,8 +147,8 @@ def build_slot(slot, picks, man, cand):
         e = man.get(name)
         if e is None:
             raise KeyError(f'{slot}: {name} is not in the manifest')
-        if 'cc0' not in str(e.get('licence_check', '')).lower():
-            raise ValueError(f'{slot}: {name}: licence_check does not say CC0 ({e.get("licence_check")!r})')
+        if not is_cc0(e):
+            raise ValueError(f'{slot}: {name}: neither licences_listed nor licence_check says CC0')
         a = trim(decode(resolve(e, cand, slot)))
         g = 10 ** ((target + nudge - db(loud(a))) / 20)
         pk = float(np.max(np.abs(a))) * g
@@ -186,7 +201,7 @@ def write_credits(built):
         for x in built.get(slot, []):
             e = x['src']
             page = e.get('source_page', '')
-            title = e.get('source_title') or page.rstrip('/').rsplit('/', 1)[-1]
+            title = e.get('page_title') or e.get('source_title') or page.rstrip('/').rsplit('/', 1)[-1]
             sound = f'[{md(title)}]({page})' if page else md(title)
             if e.get('source_file'):
                 sound += f" ({md(os.path.basename(str(e['source_file'])))})"
@@ -211,14 +226,29 @@ def write_credits(built):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--picks', required=True)
+    ap.add_argument('--picks')
+    ap.add_argument('--first', type=int, default=0, help='no --picks: take the first N candidates of each slot')
+    ap.add_argument('--write-picks', default=None, help='with --first: also save those picks as a picks file')
     ap.add_argument('--manifest', required=True)
     ap.add_argument('--cand', default=None)
     a = ap.parse_args()
     man = load_manifest(a.manifest)
     cand = a.cand or os.path.dirname(os.path.abspath(a.manifest))
-    with open(a.picks, encoding='utf-8') as f:
-        picks = json.load(f)
+    if a.picks:
+        with open(a.picks, encoding='utf-8') as f:
+            picks = json.load(f)
+    elif a.first > 0:
+        picks = {}
+        for e in man.values():
+            sl = e.get('slot')
+            if sl in SLOTS and len(picks.setdefault(sl, [])) < a.first:
+                picks[sl].append(e['file'])
+        if a.write_picks:
+            with open(a.write_picks, 'w', encoding='utf-8', newline='\n') as f:
+                json.dump({sl: picks[sl] for sl in SLOTS if sl in picks}, f, indent=2)
+                f.write('\n')
+    else:
+        sys.exit('--picks or --first N')
     bad = [s for s in picks if s not in SLOTS]
     if bad:
         sys.exit(f'unknown slots: {bad}')
