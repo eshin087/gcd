@@ -29,7 +29,12 @@
 //     source    'sky' (falls from above) | 'edge' (tumbles in along the ground from upwind)
 //   kerb       (ring) a tumbling letter that reaches this |x| or |z| from inside stops against it
 //   shelter    how much harder a letter is to lift where it piles (x the weight above 1)
-export const LITTER = Object.freeze({
+const deepFreeze = (o) => {
+  for (const v of Object.values(o)) if (v && typeof v === 'object') deepFreeze(v);
+  return Object.freeze(o);
+};
+
+export const LITTER = deepFreeze({
   /** the own pool at quality 1 */
   max: 500,
   /** the window round life.focus the litter keeps to (m): x either side, z north (zN) and south (zS);

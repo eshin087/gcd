@@ -490,7 +490,7 @@ export class Litter {
       this._seed(this._target());
       this._seedAir(B);
     }
-    const mx = Number.isFinite(this._fx) ? B.fx - this._fx : 0, mz = Number.isFinite(this._fz) ? B.fz - this._fz : 0;
+    const mx = !jump ? B.fx - this._fx : 0, mz = !jump ? B.fz - this._fz : 0;
     const moved = Math.hypot(mx, mz);
     this._fx = B.fx;
     this._fz = B.fz;
