@@ -934,9 +934,15 @@ async function scenarioPressure() {
   out(`   mean  P1 ${mean(1, 'perMin').toFixed(1)} · P2 ${mean(2, 'perMin').toFixed(1)} · P3 ${mean(3, 'perMin').toFixed(1)} cues/min; longest gap P1 ${Math.max(...rows.filter((r) => r.ph === 1).map((r) => r.gapMax)).toFixed(2)} · P2 ${Math.max(...rows.filter((r) => r.ph === 2).map((r) => r.gapMax)).toFixed(2)} · P3 ${Math.max(...rows.filter((r) => r.ph === 3).map((r) => r.gapMax)).toFixed(2)} s`);
   if (!P) { out('   (no TUNING.pressure: measured only, nothing asserted)'); return lastG; }
   const A = P.meter;
+  // the seeds' mean: each phase busier than the one before by A.ramp (per seed: A.rampSeed, below)
+  if (A.rampSeed) {
+    const mean = [1, 2, 3].map((ph) => { const xs = rows.filter((x) => x.ph === ph); return xs.reduce((a, x) => a + x.perMin, 0) / Math.max(1, xs.length); });
+    assert(mean[1] >= mean[0] * A.ramp && mean[2] >= mean[1] * A.ramp, `the seeds' mean: each phase busier than the last by x${A.ramp} (cues/min ${mean.map((v) => v.toFixed(1)).join(' < ')})`);
+  }
   for (const seed of SEEDS) {
     const r = [1, 2, 3].map((ph) => rows.find((x) => x.seed === seed && x.ph === ph));
-    assert(r[1].perMin >= r[0].perMin * A.ramp && r[2].perMin >= r[1].perMin * A.ramp, `seed ${seed}: each phase busier than the last by x${A.ramp} (cues/min ${r.map((x) => x.perMin.toFixed(1)).join(' < ')})`);
+    const RS = A.rampSeed ?? A.ramp;
+    assert(r[1].perMin >= r[0].perMin * RS && r[2].perMin >= r[1].perMin * RS, `seed ${seed}: each phase busier than the last by x${RS} (cues/min ${r.map((x) => x.perMin.toFixed(1)).join(' < ')})`);
     for (const x of r) {
       assert(x.gapMax <= perPhase(A.maxGap, x.ph), `seed ${seed} P${x.ph}: longest gap between cues ${x.gapMax.toFixed(2)} s <= ${perPhase(A.maxGap, x.ph)} s`);
       if (A.minRate) assert(x.perMin >= perPhase(A.minRate, x.ph), `seed ${seed} P${x.ph}: ${x.perMin.toFixed(1)} cues a minute >= ${perPhase(A.minRate, x.ph)}`);
