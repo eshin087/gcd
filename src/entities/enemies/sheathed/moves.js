@@ -94,8 +94,11 @@ function draw({ windup, hold = [0.15, 0.75], zone, dash = null, end = CUT_END, e
     zone, part: 'hilt', close: 0, track, noSweep: true, follow: 0.24,
     ...(dash ? { dash } : {}),
     stopOn: ['blocked', 'hit'],
+    // the settle turns sharp (ADR-152): the head comes round to the hero first, then the body drops
+    // into the stance at speed (ease-in) out of the quiet carry; the timings are the beat's own
     keys: [
-      [DRAW.grip, { ...settle }],
+      [DRAW.grip * 0.4, { e: 'i', hdY: settle.hdY, hdX: settle.hdX }],
+      [DRAW.grip, { ...settle, e: 'i' }],
       [cock, ck],
       [1.0, { ...end, e: 'h' }],
       [1.6, { ...(end2 ?? end), e: 'o' }],
@@ -192,14 +195,14 @@ const flickKeys = (from = [-1.0, 0.9], to = [0.9, -0.6], cock = 0.7) => slashKey
 // ---------------------------------------------------------------- the moves
 export const MOVES = {
   // ======================================================== phase 1: the Sheath
-  /** Knocking at the Gate: a short check with the pommel. */
+  /** A Knock, Not a Cut: a short check with the pommel (he answers a sword with a knock). */
   knock: {
-    label: 'Knocking at the Gate', phase: 1, weight: [2.0, 1.8, 2.4], cooldown: 2.5, band: [0, 2.6], recovery: 0.42,
+    label: 'A Knock, Not a Cut', phase: 1, weight: [2.0, 1.8, 2.4], cooldown: 2.5, band: [0, 2.6], recovery: 0.42,
     beats: [blow('thrust', N, 0.46, 12, { zone: { kind: 'line', r: 1.7, w: 0.7 }, dash: { from: 0.7, to: 1.0, stop: 1.0, max: 1.6 }, close: 0 })],
   },
-  /** The Lintel Falls: the sheathed sword raised two-handed and brought down like a beam. */
+  /** Still in Its Sleep: the sheathed sword raised two-handed and brought down like a beam. */
   lintel: {
-    label: 'The Lintel Falls', phase: 1, weight: [1.5, 1.0, 0.6], cooldown: 3.5, band: [0, 3.6], recovery: 0.55,
+    label: 'Still in Its Sleep', phase: 1, weight: [1.5, 1.0, 0.6], cooldown: 3.5, band: [0, 3.6], recovery: 0.55,
     beats: [blow('over', B, 0.6, 22, { cock: 0.72 })],
     recoveryKeys: [[0.5, { ...CHOP, two: 0.4, bY: -0.24, sw: [-0.3, -0.6] }]],
   },
@@ -213,35 +216,35 @@ export const MOVES = {
     label: 'Three Refusals', phase: 2, weight: [0, 2.6, 3.6], cooldown: 4, band: [0, 3.4], recovery: 0.6, cat: 'string',
     beats: [blow('up', N, 0.46, 11), blow('back', N, 0.34, 11), blow('thrust', N, 0.34, 12), blow('over', B, 0.42, 20)],
   },
-  /** Cutting Reeds: the scabbard swept round at the ankles. Red: roll through it. */
+  /** Sweeping the Road: the scabbard swept round at the ankles, as a traveller clears his path. Red: roll through it. */
   reedCutter: {
-    label: 'Cutting Reeds', phase: 1, weight: [1.2, 0.9, 0.6], cooldown: 6, band: [0, 3.2], recovery: 0.6,
+    label: 'Sweeping the Road', phase: 1, weight: [1.2, 0.9, 0.6], cooldown: 6, band: [0, 3.2], recovery: 0.6,
     beats: [{ tell: R, windup: 0.64, active: 0.22, damage: 22, knockback: 2.5, knockdown: true, zone: { kind: 'ring', r: 2.9 }, ring: 2.9, part: 'feet', track: 0.6, close: 1.2, keys: sweepKeys(0.62) }],
     recoveryKeys: [[0.4, { ...CROUCH, bY: -0.36, yaw: 0.7, arm: 1, ext: 0.8, sw: [-0.9, -0.5] }]],
   },
-  /** Shutting the Door: a shoulder check that throws the hero back to a draw's distance. */
+  /** Go Back Down the Road: a shoulder check that throws the hero back to a draw's distance (his last warning). */
   shutDoor: {
-    label: 'Shutting the Door', phase: 1, weight: [1.6, 1.4, 1.0], cooldown: 5, band: [0, 5.2], recovery: 0.5,
+    label: 'Go Back Down the Road', phase: 1, weight: [1.6, 1.4, 1.0], cooldown: 5, band: [0, 5.2], recovery: 0.5,
     beats: [{
       tell: B, windup: 0.52, active: 0.1, damage: 18, knockback: 3.4, zone: { kind: 'sector', r: 1.8, ang: 0.8 }, part: 'feet', noSweep: true,
       dash: { from: 0.6, to: 1.0, stop: 0.9, max: 4.2 }, close: 0, track: 0.6,
       keys: [[0.4, { ...SHOULDER_COIL }], [0.8, { ...SHOULDER_COIL, bY: -0.4 }], [1.0, { ...SHOULDER_HIT, e: 'i' }], [1.6, { ...SHOULDER_HIT, e: 'o' }], [2.0, { ...SHOULDER_HIT, bZ: 0.2 }]],
     }],
   },
-  /** Crossing the Ford: a glide in, a kick, the scabbard's butt: a string that moves. */
+  /** Three Steps of a Long Road: a glide in, a kick, the scabbard's butt: a string that moves. */
   fordSteps: {
-    label: 'Crossing the Ford', phase: 1, weight: [1.8, 2.0, 3.0], cooldown: 6, band: [2.5, 7.5], recovery: 0.6, cat: 'string',
+    label: 'Three Steps of a Long Road', phase: 1, weight: [1.8, 2.0, 3.0], cooldown: 6, band: [2.5, 7.5], recovery: 0.6, cat: 'string',
     beats: [glide(N, 0.5, 12, 5), kick(N, 0.36, 10, { knockback: 1.2 }), blow('thrust', N, 0.36, 14, { dash: { from: 0.6, to: 1.0, stop: 1.0, max: 2.4 }, close: 0 })],
   },
-  /** Tapping Stone: the scabbard's butt driven like a spear from range. Red; a roll into it steps on it. */
+  /** The Walking Staff: the scabbard's butt driven like a spear from range (the sword he walks with). Red; a roll into it steps on it. */
   tapStone: {
-    label: 'Tapping Stone', phase: 1, weight: [1.1, 0.9, 0.6], cooldown: 6, band: [3.0, 8.5], recovery: 0.6,
+    label: 'The Walking Staff', phase: 1, weight: [1.1, 0.9, 0.6], cooldown: 6, band: [3.0, 8.5], recovery: 0.6,
     beats: [{ tell: R, windup: 0.68, active: 0.12, damage: 26, knockback: 2.5, zone: { kind: 'line', r: 2.1, w: 0.7 }, part: 'tip', mikiri: true, dash: { from: 0.84, to: 1.0, stop: 0.8, max: 6 }, close: 0, track: 0.82, keys: perilKeys() }],
     recoveryKeys: [[0.45, { ...PERIL_LUNGE, bY: -0.26, rH: [0.04, -0.1, 0.45] }]],
   },
-  /** Answering Knock: his counter out of a deflect. */
+  /** A Knock in Reply: his counter out of a deflect. */
   answer: {
-    label: 'Answering Knock', phase: 1, weight: [0, 0, 0], counter: true, cooldown: 0, band: [0, 5], recovery: 0.5,
+    label: 'A Knock in Reply', phase: 1, weight: [0, 0, 0], counter: true, cooldown: 0, band: [0, 5], recovery: 0.5,
     beats: [blow('up', N, 0.46, 14, { track: 0.7 }), blow('thrust', B, 0.4, 20)],
   },
 
@@ -336,9 +339,9 @@ export const MOVES = {
   },
 
   // ======================================================== phase 3: the Held Breath
-  /** Answering Draw: phase 3's counter: a check, then a draw. */
+  /** The Vow Gives Way: phase 3's counter: a check, then a draw. */
   answerDraw: {
-    label: 'Answering Draw', phase: 3, weight: [0, 0, 0], counter: true, cooldown: 0, band: [0, 5], recovery: 1.15, recoverOpen: 1,
+    label: 'The Vow Gives Way', phase: 3, weight: [0, 0, 0], counter: true, cooldown: 0, band: [0, 5], recovery: 1.15, recoverOpen: 1,
     beats: [blow('up', N, 0.46, 14, { track: 0.7 }), draw({ windup: 0.9, hold: [0.08, 0.3], zone: { kind: 'line', r: 4.2, w: 1.3 }, dash: { from: 0.99, to: 1.0, stop: 1.4, max: 2.5 } })],
     recoveryKeys: resheatheKeys(CUT_END2),
   },

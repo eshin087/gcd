@@ -4,7 +4,7 @@
 // (`real`) the set built anew with its breakables. A bot drives the input. Modelled on asc.mjs.
 // usage: node sheath.mjs <repoRoot> [scenario]   (env: ABYSS_SEED=n reseeds the AI; ABYSS_PSEEDS /
 //   ABYSS_PSECS for PACE; ABYSS_TUNE='{...}' deep-merges into TUNING)
-//   scenario: level | rules | draw | honor | sheath | world | phases | late | pace | win | strategy | reward | all
+//   scenario: level | rules | draw | honor | sheath | world | phases | late | pace | win | strategy | reward | look | all
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { ui, AUDIO, resetWindow } from './shim.mjs';
@@ -370,7 +370,7 @@ async function scenarioRules() {
   }
   assert(TUNING.windupScale.every((w, i) => i === 0 || w <= TUNING.windupScale[i - 1]) && TUNING.damageScale === 1, 'harder means more pressure, never more damage');
   // a mikiri in phase 1
-  assert(MOVE_NAMES.some((n) => weightIn(MOVES[n], 1) > 0 && flat(n).some((b) => b.mikiri)), 'phase 1 has a perilous thrust (Tapping Stone)');
+  assert(MOVE_NAMES.some((n) => weightIn(MOVES[n], 1) > 0 && flat(n).some((b) => b.mikiri)), 'phase 1 has a perilous thrust (The Walking Staff)');
 }
 
 // ================================================================== scenario: draw (the rule, ADR-144)
@@ -1164,7 +1164,68 @@ async function scenarioTraining() {
   assert(L.length >= 20 && !bad.length && ['drawParry', 'drawGuard', 'drawRoll'].every((id) => L.some((s) => s.id === id)), `every situation plays out (${L.length - bad.length} of ${L.length}${bad.length ? `; not: ${bad.join(', ')}` : ''}), the three draw situations among them`);
 }
 
-const S = { level: scenarioLevel, rules: scenarioRules, draw: scenarioDraw, honor: scenarioHonor, sheath: scenarioSheath, world: scenarioWorld, timing: scenarioTiming, phases: scenarioPhases, late: scenarioLate, pace: scenarioPace, training: scenarioTraining, reward: scenarioReward, win: scenarioWin };
+// ================================================================== scenario: look (ADR-152: the print, the palettes, the mark, the motion)
+async function scenarioLook() {
+  out('\n== scenario LOOK (print 2 by default: the digits in his colours; the five steps, the palettes, the mark, his hands and feet) ==');
+  const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const { SHEATH_TONE, SHEATH_MARK, SHEATH_STEP } = await imp('src/entities/enemies/sheathed/look.js');
+  const fillOf = (m) => { const c = m?.uniforms?.uArtFill?.value; return c ? [c.r, c.g, c.b].map((x) => +x.toFixed(3)) : null; };
+  const same = (a, b) => !!a && !!b && a.every((x, i) => Math.abs(x - b[i]) < 1e-3);
+  const meshesOf = (d, mat) => { const o = []; d.rig.root.traverse((m) => { if (m.isMesh && m.material === mat) o.push(m); }); return o; };
+  // the shipped print: step 2 (the digits in palette a, lit and outlined), mark a
+  {
+    const G = build();
+    const d = G.game.dragon, M = d.rig.materials;
+    { const c = M.coat.uniforms.uWInk?.value, want = SHEATH_TONE.a.coat.map((x) => x * SHEATH_STEP['2'].ink);
+      assert(!!c && !M.coat.uniforms.uArtFill && same([c.r, c.g, c.b].map((x) => +x.toFixed(3)), want), `print 2 by default: the digits in palette a (robe ink ${c ? [c.r, c.g, c.b].map((x) => x.toFixed(2)) : '?'})`); }
+    assert(d._offStrip?.length === 2 && d.rig.streamers.length === d.anim.streamState.length, `mark a by default: the strip's springs on the hip piece (${d._offStrip?.length})`);
+    // ADR-126's audit through One Breath (the cut's one frame is the draw itself): no hand jumps
+    const p = G.game.player;
+    duel(G, { dist: 4.5 });
+    p.debug.god = true;
+    const hR = new THREE.Vector3(), hL = new THREE.Vector3(), pR = new THREE.Vector3(), pL = new THREE.Vector3(), root = new THREE.Vector3();
+    const hand = (side, v) => { const f = d.rig.arms[side].fore; f.updateWorldMatrix(true, false); return v.set(0, -0.27, 0).applyMatrix4(f.matrixWorld); };
+    let worst = 0, first = true, was = d.sheath, nan = 0;
+    d.debug.trigger('oneBreath');
+    run(G, 4, () => {
+      hand('R', hR); hand('L', hL);
+      if (!Number.isFinite(hR.x + hR.y + hR.z + hL.x + hL.y + hL.z)) nan++;
+      const dx = d.position.x - root.x, dz = d.position.z - root.z;
+      if (!first && !(d.sheath === 'drawn' && was !== 'drawn')) {
+        worst = Math.max(worst, Math.hypot(hR.x - pR.x - dx, hR.y - pR.y, hR.z - pR.z - dz), Math.hypot(hL.x - pL.x - dx, hL.y - pL.y, hL.z - pL.z - dz));
+      }
+      first = false; was = d.sheath; pR.copy(hR); pL.copy(hL); root.copy(d.position);
+    }, () => d.mode === 'foot' && d.sheath === 'carry');
+    assert(worst < 0.3 && !nan, `One Breath: no hand moves over 0.3 m in a frame outside the cut (${worst.toFixed(3)} m)`);
+  }
+  // the options, each on a rig built anew (read when his rig is built)
+  const opt = (k, v, fn) => { setLook(k, v); try { const G = build(); fn(G.game.dragon, G.game.dragon.rig.materials); } finally { setLook(k, null); } };
+  let coat0 = 0;
+  opt('sheathArt', '0', (d, M) => { coat0 = d.rig.coat.length; assert(!!M.coat.uniforms.uWInk && !M.coat.uniforms.uArtFill && !meshesOf(d, M.piping).length && !d._offStrip?.length, '?sheathArt=0: the wyrm\'s digits and his body as he shipped (no mark)'); });
+  for (const st of ['1', '2']) {
+    opt('sheathArt', st, (d, M) => {
+      const c = M.coat.uniforms.uWInk?.value, want = SHEATH_TONE.a.coat.map((x) => x * SHEATH_STEP[st].ink);
+      assert(!!c && same([c.r, c.g, c.b].map((x) => +x.toFixed(3)), want) && d.rig.coat.length === coat0 + 4 && d._offStrip?.length === 2, `?sheathArt=${st}: the digits in his palette (robe ink ${c ? [c.r, c.g, c.b].map((x) => x.toFixed(2)) : '?'}), his reworked body (${d.rig.coat.length} cloth panels), the mark`);
+    });
+  }
+  opt('sheathArt', 'a', (d, M) => {
+    assert(!M.coat.uniforms.uWInk && same(fillOf(M.coat), SHEATH_TONE.a.coat) && same(fillOf(M.leather), SHEATH_TONE.a.leather), `?sheathArt=a: the ink-line print, palette a (robe ${fillOf(M.coat)}, scarf ${fillOf(M.leather)})`);
+    assert(fillOf(M.trim).every((x) => x < 0.04) && Object.values(SHEATH_TONE.a).every((c) => Math.max(...c) > 0.04), 'the scabbard the darkest fill on him');
+    assert(meshesOf(d, M.hair).length === 0 && meshesOf(d, M.shirt).length > 0, 'his hair off the gold-lined `hair` part');
+    const strips = meshesOf(d, M.piping);
+    assert(strips.length > 0 && same(fillOf(M.piping), SHEATH_MARK.strip) && d._offStrip?.length === 2 && d.rig.streamers.length === d.anim.streamState.length, `mark a: the strip on both scabbard pieces (${strips.length} meshes, ${d._offStrip?.length} springs on the hip piece)`);
+  });
+  opt('sheathArt', '3', (d, M) => {
+    let lines = 0;
+    d.rig.root.traverse((o) => { if (o.isMesh && o.material === M.coat) lines += o.geometry.attributes.aPart?.array.some((x) => x > 0) ? 1 : 0; });
+    assert(!M.coat.uniforms.uWInk && !!M.coat.uniforms.uArtFill && lines === 0 && M.coat.uniforms.uArtSpec.value.x === 0, `?sheathArt=3: the ink-line art, flat (robe meshes with inner lines: ${lines})`);
+  });
+  for (const t of ['b', 'c']) opt('sheathTone', t, (d, M) => { const c = M.coat.uniforms.uWInk?.value; assert(!!c && same([c.r, c.g, c.b].map((x) => +x.toFixed(3)), SHEATH_TONE[t].coat.map((x) => x * SHEATH_STEP['2'].ink)), `?sheathTone=${t}: its robe (the digits' ink)`); });
+  opt('sheathMark', 'b', (d, M) => assert(meshesOf(d, M.piping).length === 0 && !d._offStrip?.length && d.rig.streamers.length === d.anim.streamState.length, '?sheathMark=b: no strip (the streak instead)'));
+  opt('sheathMark', '0', (d, M) => assert(meshesOf(d, M.piping).length === 0 && !d._offStrip?.length, '?sheathMark=0: no mark'));
+}
+
+const S = { level: scenarioLevel, rules: scenarioRules, draw: scenarioDraw, honor: scenarioHonor, sheath: scenarioSheath, world: scenarioWorld, timing: scenarioTiming, phases: scenarioPhases, late: scenarioLate, pace: scenarioPace, training: scenarioTraining, reward: scenarioReward, win: scenarioWin, look: scenarioLook };
 const OPT_IN = { strategy: scenarioStrategy };
 const list = SCEN === 'all' ? Object.keys(S) : SCEN.split(',');
 for (const k of list) {
