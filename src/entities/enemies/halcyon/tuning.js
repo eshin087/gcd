@@ -21,7 +21,7 @@ export const TUNING = {
   minFirstWindup: 0.45,
   minHitGap: 0.34,
   windupScale: [1, 0.93, 0.86],
-  recoveryScale: [0.95, 0.88, 0.82],
+  recoveryScale: [0.95, 0.88, 0.78],
   close: { first: 3.2, next: 1.6, speed: 14 },
   // (the strike builders' reach: ascendant/moves.js reads ITS tuning's; these are his for his own zones)
   reach: { fist: 1.7, kick: 2.1, line: 2.2, lineW: 0.8 },
@@ -56,12 +56,12 @@ export const TUNING = {
     band: [1.6, 2.8], // he hovers this close: within sword reach (the flight rule, ADR-160)
     sprintAt: 5, near: 1.1, backChance: 0.3, backstep: { dist: 2.2, time: 0.32 }, strafeSwitch: [0.7, 1.6],
   },
-  idleGap: [[0.1, 0.3], [0.06, 0.2], [0.04, 0.14]],
+  idleGap: [[0.1, 0.3], [0.06, 0.2], [0.03, 0.1]],
   openingGap: [[0.12, 0.38], [0.08, 0.26], [0.08, 0.26]],
   chain: [0.55, 0.68, 0.78],
   pressure: {
-    chainDepth: [4, 5, 6],
-    chainRest: [[0.45, 0.75], [0.25, 0.45], [0.18, 0.36]],
+    chainDepth: [4, 5, 7],
+    chainRest: [[0.45, 0.75], [0.25, 0.45], [0.12, 0.28]],
     linkCut: 0.5, chainCut: 0.5,
     near: 3.3, far: 6, front: 0.9, behind: 2.2, away: 1.2,
     maxRun: [2, 3, 3], overRun: 0.1, sameCat: 0.7,
@@ -70,12 +70,16 @@ export const TUNING = {
     farDist: 6, closerBoost: 1.8,
     maxLive: [1, 2, 2],
     bias: { string: [1.5, 1.6, 1.6] },
-    density: [1, 1.4, 1.6],
+    density: [1, 1.4, 1.9],
     mixed: 0.1,
     holdGap: 5,
     guard: { sep: 0.3, margin: 0.06, maxHold: 0.5, maxDelay: 0.9, horizon: 1.4, pad: 0.12 },
     // what tests/integration/city.mjs PACE asserts (the steady defender in god mode, the hero roaming
-    // 2.5 - 9 m on the real plaza). Set from the first measure, 2026-11-22 (COMBAT.md "Halcyon")
+    // 2.5 - 9 m on the real plaza). Set from the first measure, 2026-11-22 (COMBAT.md "Halcyon").
+    // 2026-11-23: phase 3 ran at x0.90 of phase 2 (its long beam moves); with its weights, recoveries,
+    // density, chains and gaps above it runs at x1.04 in the mean (x1.03 - 1.07 per seed): phase 3
+    // must never be the slower one
+    // (P1 48.1, P2 61.2, P3 63.9 cues a minute; seeds 4242, 7, 99 x 120 s)
     meter: { ramp: [1, 0.95, 0.85], rampMean: [1, 1.0, 0.9], minRate: [42, 46, 46], maxGap: [4.6, 4.4, 4.4] },
   },
   punish: { weight: 4 },

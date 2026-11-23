@@ -101,7 +101,7 @@ export const MOVES = {
   // ================================================================ phase 1: THE IDOL (he smiles)
   /** Meet and Greet: a floating jab, a slap, a straight right (the flare: a parry moment). */
   meetAndGreet: {
-    label: 'Meet and Greet', phase: 1, weight: [2.4, 1.6, 1.1], cooldown: 3, band: [0, 3.6], recovery: 0.55, cat: 'string',
+    label: 'Meet and Greet', phase: 1, weight: [2.4, 1.6, 1.6], cooldown: 3, band: [0, 3.6], recovery: 0.55, cat: 'string',
     beats: [punch('jab', N, 0.53, 13), punch('backfist', N, 0.36, 13), punch('cross', B, 0.42, 20, { flare: true })],
   },
   /** Backhand: one blow with a bait hold that sends the hero flying through whatever stands behind him. */
@@ -121,12 +121,12 @@ export const MOVES = {
   },
   /** The Stare: two crimson points kindle, his head comes down: a beam from his eyes (blue first contact). */
   stare: {
-    label: 'The Stare', phase: 1, weight: [1.5, 1.0, 0.8], cooldown: 7, band: [2.5, 14], recovery: 0.6, cat: 'ranged',
+    label: 'The Stare', phase: 1, weight: [1.5, 1.0, 0.45], cooldown: 7, band: [2.5, 14], recovery: 0.6, cat: 'ranged',
     beats: [glareBeat('stare', B)],
   },
   /** Red Glare: lit at the cue, swept level at the waist across the plaza (red: roll, cover, or be close). */
   redGlare: {
-    label: 'Red Glare', phase: 1, weight: [1.2, 1.1, 0.9], cooldown: 8, band: [2.4, 16], recovery: 0.65, cat: 'ranged',
+    label: 'Red Glare', phase: 1, weight: [1.2, 1.1, 0.5], cooldown: 8, band: [2.4, 16], recovery: 0.65, cat: 'ranged',
     beats: [glareBeat('sweep', R)],
   },
   /** Fly-By: he backs off down the street and comes through at chest height (a parry: the crash). */
@@ -175,7 +175,7 @@ export const MOVES = {
   },
   /** Blink of an Eye: he is gone and at another side of you, three times, then the red. */
   blink: {
-    label: 'Blink of an Eye', phase: 2, weight: [0, 1.6, 1.4], cooldown: 7, band: [0, 8], recovery: 0.6, cat: 'string',
+    label: 'Blink of an Eye', phase: 2, weight: [0, 1.6, 1.8], cooldown: 7, band: [0, 8], recovery: 0.6, cat: 'string',
     beats: [
       { ...punch('jab', N, 0.62, 12), halBlink: { at: 1.4, r: 1.9, slow: true }, close: 1.0, track: 0.8 },
       { ...punch('hook', N, 0.42, 12), halBlink: { at: -1.4, r: 1.9 }, close: 1.0, track: 0.8 },
@@ -240,7 +240,7 @@ export const MOVES = {
   },
   /** Crossed Glare: two sweeps from opposite sides, 0.9 s apart (red, red: two rolls). */
   crossedGlare: {
-    label: 'Crossed Glare', phase: 3, weight: [0, 0, 1.0], cooldown: 11, band: [2.4, 16], recovery: 0.7, cat: 'ranged',
+    label: 'Crossed Glare', phase: 3, weight: [0, 0, 0.8], cooldown: 11, band: [2.4, 16], recovery: 0.7, cat: 'ranged',
     beats: [glareBeat('sweep', R), glareBeat('sweep', R, { windup: 0.9, keys: holdKeys(GLARE_R, GLARE_L, 0.6), extra: { sweepSide: -1 } })],
   },
   /** No One Is Watching (the phase-3 transition): he burns out every screen still standing, the neon dies;
