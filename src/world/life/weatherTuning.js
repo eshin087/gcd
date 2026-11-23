@@ -37,7 +37,7 @@ const VEIL = Object.freeze({
  *  batch (weather.js WeatherBatch): `max` banks at once (x quality), `per` letters each.
  *  rate: banks born a second in view at full mist */
 const BANK = Object.freeze({
-  max: 12, rate: 1.4, per: [36, 46], spread: [4.2, 1.8], rise: 0.45, size: [0.5, 0.75], alpha: 0.44,
+  max: 12, rate: 1.4, per: [36, 46], spread: [4.2, 1.8], rise: 0.45, size: [0.5, 0.75], alpha: 0.52,
   life: [16, 24], fadeIn: 4, fadeOut: 5, color: [0.5, 0.55, 0.64], glyph: '~-=~-~', wobble: 0.25,
   heroClear: [0.5, 1.7],
 });
@@ -51,6 +51,8 @@ export const WEATHER_TUNE = Object.freeze({
   idle: 1e-4,
   /** below this `life.calm` counts as the fight: no new spell, back to the calm one */
   fightCalm: 0.995,
+  /** s: the most a spell takes to clear once the fight starts */
+  fightFade: 10,
   /** s: a spell not seen for this long weighs twice its weight when the director picks what follows */
   longing: 90,
   // (a level may carry `firstHold: [s, s]`: the calm spell's first hold of a visit, shorter, so the

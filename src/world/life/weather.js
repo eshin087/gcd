@@ -189,7 +189,8 @@ export class Weather {
     const L = this.life;
     const fight = L.calm < WEATHER_TUNE.fightCalm || FIGHT.has(L.game?.state);
     const calm = this.spells[this.tune.calm];
-    if (fight && this._cur !== calm) this._go(calm);
+    // (the fight clears the air sooner than a spell would go by itself: at most `fightFade` s)
+    if (fight && this._cur !== calm) this._go(calm, Math.min(WEATHER_TUNE.fightFade ?? 12, this._range(calm.fade, this._dr)));
     if (this._u < 1) {
       this._u = Math.min(1, this._u + dt / this._fade);
     } else if (!fight) {
