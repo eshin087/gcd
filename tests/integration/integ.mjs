@@ -5019,7 +5019,12 @@ async function scenarioStreakFx() {
     place(G, 6);
     const p = game.player;
     p.debug.god = true;
-    const tick = (n) => { for (let i = 0; i < n; i++) { G.tick(DT); sfx.update(DT); } };
+    // (the rim projects him to the screen: a frame's size and letter cell, the camera's matrices as the renderer keeps them)
+    Object.assign(game.pipeline, { width: 1280, height: 720, artCell: { x: 5, y: 8 } });
+    game.camera.aspect = 16 / 9;
+    game.camera.updateProjectionMatrix();
+    const camSync = () => { game.camera.updateMatrixWorld(); game.camera.matrixWorldInverse.copy(game.camera.matrixWorld).invert(); };
+    const tick = (n) => { for (let i = 0; i < n; i++) { G.tick(DT); camSync(); sfx.update(DT); } };
     const row = [];
     for (const n of [0, 3, 5, 7, 10, 15]) {
       p.debug.streak(0);
@@ -5027,9 +5032,9 @@ async function scenarioStreakFx() {
       p.debug.streak(n);
       tick(40);
       // the fire: the heat written over 2 s of standing, the most blobs in one frame
-      let fh = 0, peak = 0;
-      for (let i = 0; i < 120; i++) { tick(1); fh += sfx.fireHeat; peak = Math.max(peak, sfx.fireN); }
-      row.push({ n, tier: sfx.tier, edge: sfx.edge, a: sfx.edgeA, line: sfx.bladeLine, echo: sfx.echoes, ink: look(game).slice(2).reduce((s, v) => s + v, 0), fh, peak });
+      let fh = 0, peak = 0, lit = 0, cells = 0;
+      for (let i = 0; i < 120; i++) { tick(1); fh += sfx.fireHeat; peak = Math.max(peak, sfx.fireN); lit += sfx.rimLit / 120; cells += sfx.rimCells / 120; }
+      row.push({ n, tier: sfx.tier, edge: sfx.edge, a: sfx.edgeA, line: sfx.bladeLine, echo: sfx.echoes, ink: look(game).slice(2).reduce((s, v) => s + v, 0), fh, peak, lit: lit.toFixed(1), cells: cells.toFixed(1) });
     }
     out('     tiers', row.map((r) => `${r.n}:t${r.tier} edge ${r.edge.toFixed(2)} a ${r.a.toFixed(2)} line ${r.line.toFixed(2)} echo ${r.echo} fire ${r.fh.toFixed(1)} peak ${r.peak}`).join(' | '));
     let mono = true, strict = true;
@@ -5039,9 +5044,12 @@ async function scenarioStreakFx() {
       if (!(row[i].edge > row[i - 1].edge) || !(row[i].line > row[i - 1].line)) strict = false;
     }
     assert(row[0].edge === 0 && row[0].line === 0 && row[0].echo === 0 && row[0].fh === 0, 'aura: nothing below the first tier (no fire either)');
-    const capF = STREAK_FIRE.cap + Math.max(...STREAK_FIRE.trail);
-    const per = row[5].fh / Math.max(1, row[5].fh / (STREAK_FIRE.heat[5] * 1.25) | 0);
-    assert(row.every((r) => r.peak <= capF) && per <= STREAK_FIRE.heat[5] * 1.26 && STREAK_FIRE.heat.every((h) => h < 0.45), `aura fire: the heat written grows with every tier, at most ${capF} blobs a frame, each blob in the cool band (tier 5: ${row[5].fh.toFixed(1)} over 2 s, peak ${row[5].peak})`);
+    const rimMax = Math.max(...row.map((r) => r.peak));
+    assert(rimMax > 0 && rimMax <= 160 && STREAK_FIRE.heat * 1.0 < 0.3, `aura fire: the rim's heat written grows with every tier (coverage, not brightness: every blob at ${STREAK_FIRE.heat}), at most ${rimMax} blobs a frame (tier 5: ${row[5].fh.toFixed(1)} over 2 s)`);
+    out('     rim', row.map((r) => `${r.n}: ${r.lit}/${r.cells} cells lit`).join(' | '));
+    let litUp = true;
+    for (let i = 2; i < row.length; i++) if (!(+row[i].lit >= +row[i - 1].lit - 0.5)) litUp = false;
+    assert(litUp && +row[5].lit / +row[5].cells > 0.6 && +row[1].lit / Math.max(1, +row[1].cells) < 0.3, `aura rim: the share of his outline lit grows with the tier (tier 1 ${row[1].lit}/${row[1].cells}, tier 5 ${row[5].lit}/${row[5].cells})`);
     assert(mono && strict, 'aura: the edge, its alpha, the blade lines\' lift and the echoes grow with the tier (the edge and the lift strictly)');
     assert(row[5].edge === 1 && row[5].echo === STREAK_AURA.echoes[5], `aura: tier 5 lights the whole edge and draws ${STREAK_AURA.echoes[5]} echo lines`);
     // a swing at tier 5 draws its echo lines (more arc spawns than at tier 0 for the same swing)

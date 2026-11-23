@@ -11,16 +11,16 @@
 //     letters behind him (the afterimage's fine digits, fainter and shorter at low tiers);
 //   - at tiers 4 - 5 a few of his coat's letters LIFT OFF and trail behind him (one cell each).
 //   - the FIRE (round 2, the owner: "a cool faint fiery aura very subtle but cool"; the main read):
-//     faint heat in the fire field round him (game.fx.fire, STYLE.md "The fire field"), in the game's
-//     own small letters: many small COOL blobs (the red-stroke / dim-digit band, never the yellow or
-//     white core) rising off his shoulders, back and blade, laid a little BEHIND him as the camera
-//     sees him so it wreathes him without covering him. Tier 1 a few wisps at his back and blade;
-//     tier 3 a thin wreath round him; tier 5 a dim aura with tongues rising about a body-length, and
-//     the blade burning faintly along its swings. Two colours for the owner (STREAK_FIRE.look,
-//     `?auraFire=a|b`): (a) the field's own fire, (b) a cold steel-blue fire (the `steel` kind, dyed
-//     by a tint zone round him while a tint slot is free). Rate-born (no per-frame copies to stack in
-//     slow motion), capped per frame and under a field governor. It steps aside through the flurry
-//     and the plunge (their own look).
+//     a RIM of faint heat in the fire field (game.fx.fire, STYLE.md "The fire field") just outside
+//     his silhouette, one blob a letter cell, so the field prints a thin continuous line of dim red
+//     strokes that hugs him (round 3: loose rising blobs read as stacks floating near him, not as
+//     him smouldering). It breathes (each cell its own beat) and short tongues climb off its top and
+//     break away. Tier 1 a broken rim on his back and shoulders; tier 3 the whole upper body and the
+//     blade's back edge; tier 5 the whole figure, tongues of 2 - 3 cells, the blade burning faintly
+//     along its swings. The heat never rises with the tier, only the coverage. Its cells lie
+//     outside his silhouette (it never covers him), never on the boss's side past his body; one copy a
+//     frame. `?auraFire=b` keeps a cold steel-blue try (the steel kind in a tint zone; not taken).
+//     It steps aside through the flurry and the plunge (their own look).
 // When the streak is LOST (player:streak lost >= 2) it all goes in one readable instant: the edge
 // line snaps dark and breaks into falling strokes, his letters drop off him to the ground, and his
 // fire collapses: every blob of it still alive turns to a short puff of smoke letters at once.
@@ -77,36 +77,54 @@ const urlFire = (() => {
 })();
 
 /**
- * The fire round him per tier (index 0 = none). `look` 'a' the field's fire, 'b' cold steel-blue.
- *   rate   blobs / s off his body (`blade`: the share of them off the steel)
- *   heat   each blob's heat at birth (it cools to 0): kept in the red-stroke / dim-digit band
- *   size   m across; life [min, max] s; rise [vy min, vy max] m/s, `lift` the upward pull (gravity)
- *   reach  'back' (tiers 1 - 2: his back half and the blade only) or 'all' (round his whole outline)
- *   trail  blobs a swing frame along the steel while he cuts (tiers 4 - 5)
- *   behind m the blob is laid away from the camera (it wreathes him, never covers him)
- *   cap    blobs a frame at most; field: the field's count over which the aura thins out [from, to]
+ * The fire round him: a RIM of the fire field's letters just outside his silhouette (per tier,
+ * index 0 = none; `look` 'a' the field's fire, 'b' cold steel-blue). Tiers change the COVERAGE and
+ * the TONGUES, never the heat: it stays in the dim-red band.
+ *   heat    one blob a rim cell (snapped to the cell's centre, about one cell across: `px` frame px
+ *           at a 5 x 8 px cell): the red strokes printed under ~0.24, dim digits above
+ *   cover   share of the rim's cells lit at once (each cell its own beat, `beat` re-rolls a second)
+ *   minH    the rim starts this share of his height up (tier 1: shoulders and up)
+ *   back    tier 1 - 2: only the side of him away from where he faces
+ *   blade   tier 3+: the blade's back edge is part of his silhouette (never on the boss's side)
+ *   tongue  cells a tongue climbs off the top of the rim (above `tongueH` of his height), at most;
+ *           tongueP the chance a top cell has one, tongueRate tongues a second (each breaks off late)
+ *   trail   cells along the steel while he cuts (tiers 4 - 5)
+ *   behind  m the rim is moved along its ray (negative: toward the camera)
+ *   field   the field's count over which it thins out [from, to] (the wyrm's and the duelists' fire first)
  */
 export const STREAK_FIRE = {
   look: urlFire ?? 'a',
-  rate: [0, 10, 16, 28, 38, 52],
-  blade: [0, 0.45, 0.35, 0.3, 0.3, 0.3],
-  heat: [0, 0.34, 0.35, 0.37, 0.39, 0.41], // (under ~0.3 the field prints nothing: fewer blobs, not cooler ones, make it faint)
-  steelHeat: 1.4, // (b): the steel kind prints dimmer and only above ~0.4: its heat this much higher
-  out: 0.2, // m a body point is pushed out sideways on the screen (the wreath stands round his outline)
-  size: [0, 0.28, 0.3, 0.33, 0.36, 0.4],
-  life: [[0, 0], [0.22, 0.36], [0.26, 0.42], [0.3, 0.5], [0.36, 0.62], [0.42, 0.8]],
-  rise: [0.5, 1.2],
-  lift: 1.3,
-  reach: [null, 'back', 'back', 'all', 'all', 'all'],
+  heat: 0.17, // (the flame pass's erosion cuts up to 0.12 off the cool rim: under ~0.15 it is torn away)
+  steelHeat: 1.6, // (b): the steel kind prints dimmer: its heat this much higher
+  px: 12,
+  cover: [0, 0.36, 0.5, 0.66, 0.8, 0.92],
+  minH: [0, 0.55, 0.45, 0.3, 0.12, 0],
+  back: [false, true, true, false, false, false],
+  blade: [false, false, false, true, true, true],
+  beat: 4,
+  tongue: [0, 0, 1, 1, 2, 2],
+  tongueP: [0, 0, 0.12, 0.2, 0.28, 0.36],
+  tongueH: 0.6,
+  tongueRate: 2.2,
   trail: [0, 0, 0, 0, 2, 3],
-  trailHeat: 0.24,
-  behind: 0.18,
-  cap: 8,
+  behind: 0, // (its cells lie outside his silhouette: it covers nothing of him wherever it sits in depth)
+  minY: 0.15,
+  core: 0.42, // m round his axis that counts as his body's width (the boss side is cut there)
   field: [3800, 5200],
   // (b) the tint zone that dyes the steel kind round him (radii in m of the world at his depth)
   tint: { id: 735101, rgb: [0.75, 1.35, 2.4], k: 0.95, rx: 0.55, ry: 1.25 },
   smoke: 0.18, // the loss: every live blob of his turns to smoke this long
   mark: 0.917, // (his blobs' drag: how the loss finds them in the field)
+};
+
+/** The rim's scratch (reused every frame: no allocation). */
+const RIM = { N: 64, mask: new Uint8Array(64 * 64), out: new Uint8Array(64 * 64), queue: new Int32Array(64 * 64), pi: new Int32Array(480), pj: new Int32Array(480), px: 0, py: 0, mpp: 0.025 };
+/** 0..1 from three integers (the rim's own hash: no random stream read). */
+const hash2 = (a, b, c) => {
+  let h = Math.imul(a | 0, 0x27d4eb2d) ^ Math.imul(b | 0, 0x165667b1) ^ Math.imul(c | 0, 0x9e3779b9);
+  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 };
 
 /** The world's answer per tier (0 below tier 2). */
@@ -154,6 +172,10 @@ export class StreakFx {
     this.firePeak = 0; // the most in one frame
     this.fireHeat = 0; // heat written this frame (tests: monotone by tier)
     this.doused = 0;
+    this.fxNow = 0; // the rim's one-copy frame clock (fx time) and when its copies die
+    this.deadline = -1;
+    this.rimCells = 0; // his outline's cells last frame and how many were lit (tests, the report)
+    this.rimLit = 0;
     this._fb = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0.3, size: 0.3, sizeEnd: 0.1, heat: 0.2, heatEnd: 0, kind: 'fire', drag: STREAK_FIRE.mark, gravity: 1 };
     this._b0 = { x: 0, y: 0, z: 0 }; // where he stood when his body was sampled
     this._off = [];
@@ -394,92 +416,201 @@ export class StreakFx {
     });
   }
 
-  // ------------------------------------------------------------------ the fire
-  /** The faint fire round him this frame (tier t, strength kk). Rate-born, capped, never throws. */
+  // ------------------------------------------------------------------ the fire: a rim round him
+  /**
+   * The faint fire round him this frame (tier t, strength kk): a RIM. His body's points (and the
+   * blade's from tier 3) are projected to the screen and binned into the fire field's letter cells;
+   * the cells just OUTSIDE his silhouette (reached from the box's border, so never a hole inside him)
+   * each get ONE small blob at the cell's centre, a thin continuous line of dim red strokes that hugs
+   * him; it lies outside his silhouette, so it never covers him. Cells breathe (each its own beat:
+   * a seeded hash on the cell and the time), and from the TOP of the rim short tongues of 1 - 3 cells
+   * climb and break off. Tiers change the coverage and the tongues, not the heat. One copy alive per
+   * frame (the stamp's frame clock: held heat never stacks in slow motion). Never throws.
+   */
   _fire(dt, t, kk) {
     const F = STREAK_FIRE, f = this.game.fx?.fire, P = this.game.player;
     if (!f || typeof f.spawn !== 'function' || !P?.position) return;
     const gov = 1 - Math.min(1, Math.max(0, ((f.count | 0) - F.field[0]) / (F.field[1] - F.field[0])));
+    // the one-copy frame clock: fx time, a copy lives past the next frame and is replaced then
+    this.fxNow += dt;
+    if (this.fxNow + dt < this.deadline) return;
+    const life = Math.max(0.021, dt * 1.6);
+    this.deadline = this.fxNow + life;
     if (!(gov > 0.02)) return;
     const steel = F.look === 'b';
-    const C = this.game.camera?.matrixWorld?.elements;
-    // the camera's back axis (C[8..10] points at the viewer): his fire is laid away from it
-    const bx = C ? -C[8] * F.behind : 0, by = C ? -C[9] * F.behind : 0, bz = C ? -C[10] * F.behind : 0;
-    const v = this.vis, heat = F.heat[t] * Math.min(1.25, kk) * (0.6 + 0.4 * v) * (steel ? F.steelHeat : 1), size = F.size[t] * (0.85 + 0.15 * Math.min(1.5, kk));
-    const L = F.life[t], q = P.position;
-    this.fireAcc += dt * F.rate[t] * kk * gov * v;
-    let n = Math.min(F.cap, Math.floor(this.fireAcc));
-    this.fireAcc -= n;
-    if (this.fireAcc > 4) this.fireAcc = 4;
-    const pts = n > 0 ? this._body() : null, np = this.bodyN;
-    const e = P.rig?.sword?.matrixWorld?.elements;
-    const z0 = DIM.forte, z1 = DIM.drawnTip ?? DIM.steelTip;
-    const b = this._fb;
-    b.kind = steel ? 'steel' : 'fire';
-    const back = F.reach[t] === 'back';
-    const ox = q.x - this._b0.x, oy = q.y - this._b0.y, oz = q.z - this._b0.z;
-    while (n-- > 0) {
-      let x = NaN, y = NaN, z = NaN;
-      if (e && rnd() < F.blade[t]) {
-        const zz = z0 + rnd() * (z1 - z0);
-        x = e[8] * zz + e[12];
-        y = e[9] * zz + e[13];
-        z = e[10] * zz + e[14];
-      } else if (pts && np > 8) {
-        // a point on him (sampled up to 0.1 s ago, carried along with him), shoulders and up weighted;
-        // the back half only at tiers 1 - 2
-        for (let tries = 0; tries < 6; tries++) {
-          const j = Math.floor(rnd() * np) * 3;
-          const px = pts[j] + ox, py = pts[j + 1] + oy, pz = pts[j + 2] + oz, h = py - q.y;
-          if (h < 0.45 || (h < 0.9 && rnd() < 0.6)) continue;
-          if (back && C && (px - q.x) * C[8] + (pz - q.z) * C[10] > 0) continue;
-          // pushed out sideways ON THE SCREEN (the camera's right axis), to the side of him it is on:
-          // behind him the body would hide it, so the wreath stands just past his outline
-          const sx = C ? (px - q.x) * C[0] + (pz - q.z) * C[2] : 0, w = (sx < 0 ? -1 : 1) * F.out * (0.6 + 0.8 * rnd());
-          x = px + (C ? C[0] * w : 0);
-          y = py;
-          z = pz + (C ? C[2] * w : 0);
-          break;
-        }
+    const g = this.game, cam = g.camera, pl = g.pipeline, q = P.position;
+    const m = cam?.matrixWorldInverse?.elements, pe = cam?.projectionMatrix?.elements, cp = cam?.matrixWorld?.elements;
+    const W = pl?.width, H = pl?.height;
+    if (!m || !pe || !cp || !(W > 8) || !(H > 8) || !(pe[5] > 0)) return;
+    const cw = pl?.artCell?.x > 0 ? pl.artCell.x : 5, ch = pl?.artCell?.y > 0 ? pl.artCell.y : 8;
+    const pts = this._body(true), np = this.bodyN;
+    if (!pts || np < 12) return;
+    // his points into screen cells (absolute cell indices), his box
+    const G = RIM, N = G.N;
+    let i0 = 1e9, i1 = -1e9, j0 = 1e9, j1 = -1e9, bi0 = 1e9, bi1 = -1e9, n = 0;
+    const PI = G.pi, PJ = G.pj;
+    const proj = (x, y, z) => {
+      const vx = m[0] * x + m[4] * y + m[8] * z + m[12], vy = m[1] * x + m[5] * y + m[9] * z + m[13], vz = -(m[2] * x + m[6] * y + m[10] * z + m[14]);
+      if (!(vz > 0.2)) return false;
+      const px = (((vx * pe[0]) / vz) * 0.5 + 0.5) * W, py = (((vy * pe[5]) / vz) * 0.5 + 0.5) * H;
+      if (!Number.isFinite(px + py)) return false;
+      G.px = px;
+      G.py = py;
+      G.mpp = (2 * vz) / (H * pe[5]);
+      return true;
+    };
+    for (let k = 0; k < np && n < PI.length; k++) {
+      if (!proj(pts[k * 3], pts[k * 3 + 1], pts[k * 3 + 2])) continue;
+      const ci = Math.floor(G.px / cw), cj = Math.floor(G.py / ch);
+      PI[n] = ci;
+      PJ[n] = cj;
+      n++;
+      // (his body's width on the screen from the points near his axis: the sword and an arm held out
+      // do not widen it, so the rim never reaches out along them toward the boss)
+      const hx = pts[k * 3] - q.x, hz = pts[k * 3 + 2] - q.z;
+      if (hx * hx + hz * hz < F.core * F.core) {
+        if (ci < bi0) bi0 = ci;
+        if (ci > bi1) bi1 = ci;
       }
-      if (!Number.isFinite(x + y + z)) continue;
-      b.x = x + bx + (rnd() - 0.5) * 0.12;
-      b.y = Math.max(0.75, y + by);
-      b.z = z + bz + (rnd() - 0.5) * 0.12;
-      b.vx = (rnd() - 0.5) * 0.3;
-      b.vy = F.rise[0] + rnd() * (F.rise[1] - F.rise[0]);
-      b.vz = (rnd() - 0.5) * 0.3;
-      b.life = L[0] + rnd() * (L[1] - L[0]);
-      b.size = size * (0.8 + 0.4 * rnd());
-      b.sizeEnd = b.size * 0.4;
-      b.heat = heat;
-      b.heatEnd = 0;
-      b.gravity = F.lift;
-      if (f.spawn(b) >= 0) {
-        this.fireN++;
-        this.fireHeat += heat;
+      if (cj < j0) j0 = cj;
+      if (cj > j1) j1 = cj;
+    }
+    const body = n;
+    // the blade (tier 3 and up): its back edge is part of the rim
+    const e = P.rig?.sword?.matrixWorld?.elements, z0 = DIM.forte, z1 = DIM.drawnTip ?? DIM.steelTip;
+    if (F.blade[t] && e) {
+      for (let s = 0; s <= 8 && n < PI.length; s++) {
+        const zz = z0 + ((z1 - z0) * s) / 8;
+        if (!proj(e[8] * zz + e[12], e[9] * zz + e[13], e[10] * zz + e[14])) continue;
+        PI[n] = Math.floor(G.px / cw);
+        PJ[n] = Math.floor(G.py / ch);
+        n++;
       }
     }
-    // tiers 4 - 5: the blade burns faintly along its swings
+    if (body < 12 || !(bi1 >= bi0)) return;
+    i0 = bi0;
+    i1 = bi1;
+    for (let k = body; k < n; k++) {
+      if (PI[k] < i0) i0 = PI[k];
+      if (PI[k] > i1) i1 = PI[k];
+      if (PJ[k] < j0) j0 = PJ[k];
+      if (PJ[k] > j1) j1 = PJ[k];
+    }
+    // the grid: his box and a margin (tongues climb above it)
+    const gi0 = i0 - 2, gj0 = j0 - 2, gw = i1 - i0 + 5, gh = j1 - j0 + 5 + F.tongue[5];
+    if (!(gw > 2) || !(gh > 2) || gw > N || gh > N) return;
+    const M = G.mask, O = G.out, Q = G.queue;
+    M.fill(0, 0, gw * gh);
+    O.fill(0, 0, gw * gh);
+    for (let k = 0; k < n; k++) M[(PJ[k] - gj0) * gw + (PI[k] - gi0)] = 1;
+    // close the sparse points into a body: a cell with filled cells on both sides (across, up and
+    // down) is filled
+    for (let j = 1; j < gh - 1; j++) {
+      for (let i = 1; i < gw - 1; i++) {
+        const c = j * gw + i;
+        if (M[c]) continue;
+        if ((M[c - 1] && M[c + 1]) || (M[c - gw] && M[c + gw])) M[c] = 2;
+      }
+    }
+    // the outside: flood from the box's border over empty cells
+    let qh = 0, qt = 0;
+    for (let k = 0; k < 2 * (gw + gh); k++) {
+      const c = k < gw ? k : k < 2 * gw ? (gh - 1) * gw + (k - gw) : k < 2 * gw + gh ? (k - 2 * gw) * gw : (k - 2 * gw - gh) * gw + gw - 1;
+      if (!M[c] && !O[c]) { O[c] = 1; Q[qt++] = c; }
+    }
+    while (qh < qt) {
+      const c = Q[qh++], i = c % gw, j = (c - i) / gw;
+      if (i > 0 && !M[c - 1] && !O[c - 1]) { O[c - 1] = 1; Q[qt++] = c - 1; }
+      if (i < gw - 1 && !M[c + 1] && !O[c + 1]) { O[c + 1] = 1; Q[qt++] = c + 1; }
+      if (j > 0 && !M[c - gw] && !O[c - gw]) { O[c - gw] = 1; Q[qt++] = c - gw; }
+      if (j < gh - 1 && !M[c + gw] && !O[c + gw]) { O[c + gw] = 1; Q[qt++] = c + gw; }
+    }
+    // where he faces on the screen, where the boss is (nothing of it between him and the boss)
+    const yaw = Number(P.yaw) || 0;
+    const fwd = Math.sin(yaw) * cp[0] + Math.cos(yaw) * cp[2];
+    let bossSide = 0;
+    const bp = g.boss?.position ?? g.dragon?.position;
+    if (bp && proj(bp.x, (bp.y ?? 0) + 1, bp.z) && proj(q.x, q.y + 1, q.z)) {
+      const hx = G.px;
+      proj(bp.x, (bp.y ?? 0) + 1, bp.z);
+      bossSide = G.px > hx ? 1 : -1;
+    }
+    if (!proj(q.x, q.y + 1.1, q.z)) return;
+    const ax = G.px, ay = G.py, mpp = G.mpp;
+    const ac = (bi0 + bi1 + 1) * 0.5 * cw; // his body's middle on the screen (px)
+    const camX = cp[12], camY = cp[13], camZ = cp[14];
+    const cover = F.cover[t] * Math.min(1.2, kk), minH = F.minH[t], back = F.back[t];
+    const tongue = F.tongue[t], tp = F.tongueP[t] * Math.min(1.2, kk);
+    const heat = F.heat * (steel ? F.steelHeat : 1), clock = this.fxNow;
+    const size = F.px * (cw / 5) * mpp;
+    const b = this._fb;
+    b.kind = steel ? 'steel' : 'fire';
+    b.vx = b.vy = b.vz = 0;
+    b.life = life;
+    b.size = b.sizeEnd = size;
+    b.gravity = 0;
+    let lit = 0, rim = 0;
+    const put = (ci, cj, h) => {
+      // the cell's centre at his depth, then pulled away from the camera along its ray
+      const ox = ((ci + 0.5) * cw - ax) * mpp, oy = ((cj + 0.5) * ch - ay) * mpp;
+      // (the rendering camera's own right / up axes: its matrix's columns)
+      let x = q.x + cp[0] * ox + cp[4] * oy, y = q.y + 1.1 + cp[1] * ox + cp[5] * oy, z = q.z + cp[2] * ox + cp[6] * oy;
+      const dx = x - camX, dy = y - camY, dz = z - camZ, dl = Math.hypot(dx, dy, dz) || 1;
+      x += (dx / dl) * F.behind;
+      y += (dy / dl) * F.behind;
+      z += (dz / dl) * F.behind;
+      if (!(y > F.minY) || !Number.isFinite(x + y + z)) return;
+      b.x = x;
+      b.y = y;
+      b.z = z;
+      b.heat = b.heatEnd = h;
+      if (f.spawn(b) >= 0) {
+        this.fireN++;
+        this.fireHeat += h;
+      }
+    };
+    const span = Math.max(1, j1 - j0);
+    for (let j = 1; j < gh - 1; j++) {
+      for (let i = 1; i < gw - 1; i++) {
+        const c = j * gw + i;
+        if (!O[c] || !(M[c - 1] || M[c + 1] || M[c - gw] || M[c + gw])) continue;
+        const ci = i + gi0, cj = j + gj0;
+        // nothing on the boss's side past his body
+        if (bossSide > 0 && ci > bi1 + 1) continue;
+        if (bossSide < 0 && ci < bi0 - 1) continue;
+        rim++;
+        const hrel = (cj - j0) / span;
+        if (hrel < minH) continue;
+        if (back && ((ci + 0.5) * cw - ac) * fwd > 0) continue;
+        // its own beat: lit while its hash is under the coverage
+        const beat = Math.floor(clock * F.beat + hash2(ci, cj, 7) * 4);
+        if (hash2(ci, cj, beat) >= cover) continue;
+        lit++;
+        put(ci, cj, heat);
+        // a tongue off the top: the cell above is outside him and nothing of him is over it
+        if (tongue > 0 && hrel > F.tongueH && !M[c + gw]) {
+          const slot = Math.floor(clock * F.tongueRate + hash2(ci, 3, 11) * 3);
+          if (hash2(ci, slot, 13) < tp) {
+            const L = 1 + Math.floor(hash2(ci, slot, 17) * tongue);
+            const ph = clock * F.tongueRate + hash2(ci, 3, 11) * 3 - slot; // 0..1 through the slot
+            const lift = ph > 0.6 ? 1 : 0; // late in its life the tongue breaks off the rim
+            for (let k = 1; k <= L; k++) put(ci, cj + k + lift, heat * (1 - (0.25 * k) / L));
+          }
+        }
+      }
+    }
+    this.rimCells = rim;
+    this.rimLit = lit;
+    // tiers 4 - 5: the blade burns faintly along its swings (one cell each, behind him)
     const tr = F.trail[t], a = P.atk, st = P.state;
     if (tr > 0 && e && a?.def && (st === 'attack' || st === 'heavy') && !a.pending && a.t >= a.def.windup - 0.04 && a.t <= a.def.windup + a.def.active + 0.08) {
-      for (let i = 0; i < tr; i++) {
-        const zz = z0 + ((i + rnd()) / tr) * (z1 - z0);
-        b.x = e[8] * zz + e[12] + bx;
-        b.y = Math.max(0.75, e[9] * zz + e[13] + by);
-        b.z = e[10] * zz + e[14] + bz;
-        b.vx = b.vz = 0;
-        b.vy = 0.3;
-        b.life = 0.22 + 0.1 * rnd();
-        b.size = size;
-        b.sizeEnd = size * 0.5;
-        b.heat = F.trailHeat * Math.min(1.25, kk) * (steel ? F.steelHeat : 1);
-        b.heatEnd = 0;
-        b.gravity = 0.6;
-        if (f.spawn(b) >= 0) {
-          this.fireN++;
-          this.fireHeat += b.heat;
-        }
+      for (let s = 0; s < tr; s++) {
+        const zz = z0 + ((s + 0.5) / tr) * (z1 - z0);
+        if (!proj(e[8] * zz + e[12], e[9] * zz + e[13], e[10] * zz + e[14])) continue;
+        const ci = Math.floor(G.px / cw), cj = Math.floor(G.py / ch);
+        if (bossSide > 0 && ci > bi1 + 1) continue;
+        if (bossSide < 0 && ci < bi0 - 1) continue;
+        put(ci, cj, heat);
       }
     }
     this.firePeak = Math.max(this.firePeak, this.fireN);
