@@ -124,7 +124,7 @@ export const ASC_KIT = Object.freeze({
   },
 });
 
-const _a = new THREE.Vector3(), _b = new THREE.Vector3();
+const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _lp = new THREE.Vector3();
 
 /** His mind: the duelist's, with each form's reaction clips, the dash and the closing blink. */
 class AscBrain extends DuelBrain {
@@ -709,6 +709,15 @@ export class Ascendant extends Duelist {
         this.fx.signSnap?.(h.x, h.y, h.z, this.phase);
       }
       const pl = this.game.player;
+      // (pressure.pursue.blinkLead: he arrives where the hero WILL be at the blow, by the hero's own
+      // movement: a hero who runs from a vanish is met, not trailed; never so far ahead that he lands
+      // in FRONT of a hero running from him: the lead is at most the blink's own distance less
+      // `blinkKeep` m, so he still arrives behind / beside him, as the sign promises)
+      const PU = this.T.pressure?.pursue, bl = PU?.blinkLead ?? 0, at = this.brain.act?.t;
+      const v = Math.hypot(fin(s.vx), fin(s.vz)), r0 = Number.isFinite(K.at) ? fin(K.r, 2.2) : fin(K.behind, 2);
+      const kMax = v > 1e-3 ? Math.max(0, r0 - fin(PU?.blinkKeep, 0.6)) / v : bl;
+      const k = bl > 0 && Number.isFinite(at) ? Math.min(bl, kMax, Math.max(0, b.impact - at)) : 0;
+      const q = k > 0 ? _lp.set(s.p.x + fin(s.vx) * k, 0, s.p.z + fin(s.vz) * k) : s.p;
       let tx, tz;
       if (K.edge) {
         const B = this.bound - fin(K.pad, 1.2), l = Math.hypot(s.p.x, s.p.z);
@@ -728,27 +737,27 @@ export class Ascendant extends Duelist {
       } else if (Number.isFinite(K.at)) {
         // at a side of the hero: `at` rad round from where he faces (0 before him, PI behind), `r` m off
         const yaw = fin(pl?.yaw, wrapAngle(s.ang + Math.PI)) + K.at, r = fin(K.r, 2.2);
-        tx = s.p.x + Math.sin(yaw) * r;
-        tz = s.p.z + Math.cos(yaw) * r;
+        tx = q.x + Math.sin(yaw) * r;
+        tz = q.z + Math.cos(yaw) * r;
         if (!this.standable(tx, tz)) {
-          tx = s.p.x - Math.sin(yaw) * r;
-          tz = s.p.z - Math.cos(yaw) * r;
+          tx = q.x - Math.sin(yaw) * r;
+          tz = q.z - Math.cos(yaw) * r;
         }
       } else {
         const yaw = fin(pl?.yaw, wrapAngle(s.ang + Math.PI)), r = fin(K.behind, 2);
-        tx = s.p.x - Math.sin(yaw) * r;
-        tz = s.p.z - Math.cos(yaw) * r;
+        tx = q.x - Math.sin(yaw) * r;
+        tz = q.z - Math.cos(yaw) * r;
         if (!this.standable(tx, tz)) {
           // no room behind him: to one side, else the other
-          tx = s.p.x + Math.cos(yaw) * r;
-          tz = s.p.z - Math.sin(yaw) * r;
+          tx = q.x + Math.cos(yaw) * r;
+          tz = q.z - Math.sin(yaw) * r;
           if (!this.standable(tx, tz)) {
-            tx = s.p.x - Math.cos(yaw) * r;
-            tz = s.p.z + Math.sin(yaw) * r;
+            tx = q.x - Math.cos(yaw) * r;
+            tz = q.z + Math.sin(yaw) * r;
           }
         }
       }
-      this.blinkTo(tx, tz, K.edge ? s.p : this._slideOrHero(K, s));
+      this.blinkTo(tx, tz, K.edge ? s.p : K.land ? this._slideOrHero(K, s) : q);
     }
     this._route(b, this.brain.act)?.motion(b, u, s, dt);
   }
