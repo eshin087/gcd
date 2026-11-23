@@ -459,9 +459,9 @@ export function createThroneHall(U, colliders) {
     seal: 2.4, // the seal's glyphs brighten by this at a full breath
     wave: 4, waveW: 2.2, speed: 3, from: 1.5, // the pulse: added brightness, half-width m, m/s, from r m
     hold: 0.3, release: 0.8,
-    column: 22, columnR: 3.4, // motes a second over the seal at a full breath, within this radius
-    wide: 14, // ... and round the camera, over the crater and its path
-    mote: { size: 0.5, life: [6, 9], vy: [0.45, 0.85], color: [2.6, 0.28, 0.13], colorEnd: [0.5, 0.03, 0.02], glyph: "·'·" },
+    column: 14, columnR: 3.4, // motes a second over the seal at a full breath, within this radius
+    wide: 8, // ... and round the camera, over the crater and its path
+    mote: { size: 0.5, life: [5, 7], vy: [0.45, 0.85], color: [2.6, 0.28, 0.13], colorEnd: [0.5, 0.03, 0.02], glyph: "·'·" },
   };
   // (its own stream: the seeded sims replay Math.random, and the breath only ever runs with the weather)
   let bseed = 0x51a7e5ed;
