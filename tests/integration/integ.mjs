@@ -4,7 +4,7 @@
 // the real Colliders. A bot drives the input: it moves, attacks, blocks, parries and dodges.
 // usage: node integ.mjs <repoRoot> [scenario]   (env: ABYSS_SEED=n reseeds the AI, ABYSS_TRACE=1 logs combat events)
 //   scenario: gate | hero | batch | breath | parry | block | reach | red | plunge | flurry | deflect | lab | strings | plungeReact | terrain |
-//             timing | fire | music | herolook | wyrmface | wyrmlook | herolife | herohand | heroweight | heroarms | herostance | looks | win | die | touch | pad | remap | all (default all)
+//             timing | fire | music | thump | herolook | wyrmface | wyrmlook | herolife | herohand | heroweight | heroarms | herostance | looks | win | die | touch | pad | remap | all (default all)
 //             or a comma list of them (hero,looks,...)
 //   (timing: ABYSS_TM=name,name... probes only those attacks; ABYSS_TMV=1 prints its per-placement map;
 //    ABYSS_TM_SHARD=k/n probes every n-th attack of the list, starting at the k-th: n runs cover it all)
@@ -4961,6 +4961,11 @@ async function scenarioWyrmLook() {
 
 async function scenarioHeroLife() {
   out('\n== scenario HEROLIFE (one hand through the chain, two on the heavy blows, the cross ward, the cloak vs the charged blade, idle actions) ==');
+  // the blade's flare as it was before the calm (combat/impactCalm.js level 0): these bounds measure
+  // the flare itself; the `calm` scenario measures what each level dims
+  const CALMX = await imp('src/combat/impactCalm.js');
+  const calm0 = CALMX.calmLevel();
+  CALMX.setCalm(0);
   const { DIM: HD } = await imp('src/entities/player/model.js');
   const G = build();
   const { game, input } = G;
@@ -5940,6 +5945,7 @@ async function scenarioHeroLife() {
     assert(sunk < 0.02, `no knee or elbow sinks into the grass through the reactions and both deaths (deepest ${(sunk * 100).toFixed(1)} cm: ${sunkAt || 'none'})`);
     p.lean.on = true;
   }
+  CALMX.setCalm(calm0);
   return G;
 }
 
@@ -10592,6 +10598,798 @@ async function scenarioZoomArt() {
   return G;
 }
 
+async function scenarioThump() {
+  out('\n== scenario THUMP (the impact pass: a sub under a heavy blow, one short music dip; audio/thump.js) ==');
+  const { IMPACT } = await imp('src/combat/impact.js');
+  const { Thump } = await imp('src/audio/thump.js');
+  const G = build();
+  const { game, input } = G;
+  input.tap('Space');
+  G.tick(DT);
+  const A = game.audio, ctx = AUDIO.ctx, Th = A.thump;
+  assert(ctx && A.thumpDip && Th && A.musicBus.outs.has(A.thumpDip) && A.thumpDip.outs.has(A.musicDip), 'the dip is its own gain on the music path (musicBus -> thumpDip -> musicDip), built with the graph');
+  assert(A.thumpDip.gain.value === 1 && !A.cueBus.outs.has(A.thumpDip), 'idle at 1; the cue bus does not run through it');
+  const e0 = errors.length;
+  const on0 = IMPACT.on.thump, k0 = IMPACT.k.thump;
+  IMPACT.on.thump = true;
+  IMPACT.k.thump = 1;
+  // spies: what the engine plays, what is scheduled on the dip, how many nodes a hit builds
+  const played = [];
+  const play0 = A.play;
+  A.play = function (n, o) { played.push(n); return play0.call(this, n, o); };
+  let sched = 0, nodes = 0;
+  const gp = A.thumpDip.gain;
+  const PM = ['setTargetAtTime', 'setValueAtTime', 'linearRampToValueAtTime', 'exponentialRampToValueAtTime', 'cancelScheduledValues'];
+  for (const m of PM) { const f = gp[m]; gp[m] = function (...a) { sched++; return f.apply(this, a); }; }
+  const CM = ['createGain', 'createOscillator', 'createBiquadFilter', 'createWaveShaper', 'createBufferSource', 'createStereoPanner'];
+  for (const m of CM) { const f = ctx[m]; ctx[m] = function (...a) { nodes++; return f.apply(this, a); }; }
+  const wait = (s) => { ctx.currentTime += s; A.update(Math.min(s, 0.1)); };
+  const hit = (o) => {
+    played.length = 0; sched = 0; nodes = 0;
+    game.events.emit('player:hitDragon', { damage: 50, part: 'body', point: { x: 0, y: 1, z: 0 }, combo: 1, crit: false, heavy: false, weight: 'light', kind: o.heavy ? 'slam' : 'light', ...o });
+    return { subs: played.filter((n) => n === 'sub').length, sched, nodes };
+  };
+  wait(1);
+  let d0 = Th.dips;
+  const slam = hit({ heavy: true, weight: 'slam' });
+  assert(slam.subs === 1 && Th.dips === d0 + 1 && slam.sched > 0, `a heavy slam: the sub plays and one music dip is scheduled (subs ${slam.subs}, dips +${Th.dips - d0}, ${slam.sched} gain events)`);
+  wait(1);
+  for (const [w, label] of [['cleave', 'the cleave'], ['execute', 'the execution']]) {
+    d0 = Th.dips;
+    const r = hit({ heavy: true, crit: w === 'execute', weight: w });
+    assert(r.subs === 1 && Th.dips === d0 + 1, `${label}: the sub and a dip (${r.subs}, +${Th.dips - d0})`);
+    wait(1);
+  }
+  const light = hit({});
+  assert(light.subs === 0 && light.sched === 0, `a light cut: no sub, no dip (${light.subs}, ${light.sched})`);
+  wait(1);
+  const crit = hit({ crit: true });
+  assert(crit.subs === 1 && crit.sched === 0, `a crit light cut: the sub (smaller), no dip (${crit.subs}, ${crit.sched})`);
+  wait(1);
+  for (const [o, label] of [
+    [{ heavy: true, weight: 'slam', guarded: true, damage: 0 }, 'a guarded strike'],
+    [{ heavy: true, weight: null, shards: true }, "the slam's ground shards"],
+    [{ heavy: true, crit: true, kind: 'plunge' }, 'the plunge'],
+    [{ crit: true, kind: 'flurry' }, "a flurry's flash cut"],
+  ]) {
+    const r = hit(o);
+    assert(r.subs === 0 && r.sched === 0, `${label}: keeps its own sound, no sub, no dip (${r.subs}, ${r.sched})`);
+    wait(1);
+  }
+  // a flurry's last blow lands heavy: it thumps
+  d0 = Th.dips;
+  const last = hit({ heavy: true, crit: true, kind: 'flurry', weight: undefined });
+  assert(last.subs === 1 && Th.dips === d0 + 1, `a flurry's last blow: the sub and a dip (${last.subs}, +${Th.dips - d0})`);
+  wait(1);
+  // never pumps: ten heavy blows in a second begin at most one dip per gap; the rest only extend it
+  d0 = Th.dips;
+  const x0 = Th.extends;
+  let subs10 = 0;
+  for (let i = 0; i < 10; i++) { subs10 += hit({ heavy: true, weight: 'cleave' }).subs; wait(0.1); }
+  const dips10 = Th.dips - d0;
+  assert(dips10 >= 1 && dips10 <= 2 && subs10 === 10, `ten heavy blows in a second: ${dips10} dips (at most 2), ${Th.extends - x0} extended, ${subs10} subs`);
+  wait(1);
+  // off: no new node, nothing scheduled, the hit sounds exactly as before
+  const keep = A.thump;
+  A.thump = null;
+  const base = hit({ heavy: true, weight: 'slam' });
+  A.thump = keep;
+  wait(1);
+  IMPACT.on.thump = false;
+  const off = hit({ heavy: true, weight: 'slam' });
+  wait(1);
+  IMPACT.on.thump = true;
+  IMPACT.k.thump = 0;
+  const zero = hit({ heavy: true, weight: 'slam' });
+  wait(1);
+  IMPACT.k.thump = 1;
+  const on = hit({ heavy: true, weight: 'slam' });
+  wait(1);
+  assert(off.subs === 0 && off.sched === 0 && off.nodes === base.nodes && zero.subs === 0 && zero.sched === 0 && zero.nodes === base.nodes, `the piece off (or at 0): no sub, no gain scheduled, the same ${base.nodes} nodes as the hit without the piece (off ${off.nodes}, k=0 ${zero.nodes})`);
+  assert(on.nodes > base.nodes, `on: the sub's own nodes on top (${on.nodes} vs ${base.nodes})`);
+  // no AudioContext: nothing throws, nothing plays
+  const c = A.ctx;
+  A.ctx = null;
+  const none = hit({ heavy: true, weight: 'slam' });
+  A.ctx = c;
+  let threw = false;
+  try {
+    const T2 = new Thump({ ctx: null, play: () => true });
+    T2.onHit({ heavy: true, weight: 'slam' });
+    T2.dip(1);
+  } catch { threw = true; }
+  assert(!threw && none.subs === 0, 'without an AudioContext nothing throws and nothing plays');
+  for (const m of PM) delete gp[m];
+  for (const m of CM) delete ctx[m];
+  A.play = play0;
+  IMPACT.on.thump = on0;
+  IMPACT.k.thump = k0;
+  assert(errors.length === e0, `no errors through the thump checks (${errors.length - e0})`);
+  return G;
+}
+
+async function scenarioStamp() {
+  out('\n== scenario STAMP (the hit printed in the letter grid: on, off, instead, LOW, a light chain) ==');
+  const S = await imp('src/combat/impactStamp.js');
+  const { IMPACT } = await imp('src/combat/impact.js');
+  const { CUT_LAST } = await imp('src/combat/cutFx.js');
+  const { FIRE_KIND } = await imp('src/render/firePalettes.js');
+  const G = build();
+  const { game } = G;
+  fightSetup(G);
+  const p = game.player, F = game.fx.fire, L = S.STAMP_LOOK;
+  const on0 = { ...IMPACT.on }, k0 = { ...IMPACT.k }, q0 = game.settings.quality;
+  // the piece itself is tested at strength 1 on this body (the owner's pick prints no stamp on the wyrm)
+  const byWyrm0 = IMPACT.by.stamp.wyrm;
+  IMPACT.by.stamp.wyrm = 1;
+  const spawn0 = F.spawn;
+  let steel = [];
+  F.spawn = (o) => {
+    if (o.kind === FIRE_KIND.steel || o.kind === 'steel') steel.push({ x: o.x, y: o.y, z: o.z, size: o.size, heat: o.heat, life: o.life });
+    return spawn0(o);
+  };
+  const pt = { x: 0, y: 1.2, z: 0 };
+  const C = { x: 0, y: 1.2, z: 0, f: 0.3, cx: 1, cy: -0.3, cz: 0, gx: 1, gz: 0, ex: 0.2, ey: 0.1, ez: 1 };
+  const only = (piece) => { for (const k of IMPACT.pieces) { IMPACT.on[k] = k === piece; IMPACT.k[k] = 1; } };
+  // one landed cut and the stamp's whole life after it (fx time at 60 Hz, then 0.6 x through a freeze)
+  const hit = (tier, crit = false, k = 0) => {
+    S.stampClear(game);
+    steel = [];
+    const n0 = S.STAMP_LAST.n;
+    game.fxDt = 1 / 60;
+    p.fx.contact(pt, tier, C, crit, k);
+    const cut = { ...CUT_LAST };
+    const perFrame = [steel.length];
+    for (let i = 0; i < 40; i++) {
+      const b = steel.length;
+      game.fxDt = i < 6 ? 0.01 : 1 / 60;
+      F.update(game.fxDt);
+      S.stampUpdate(game, game.fxDt);
+      perFrame.push(steel.length - b);
+    }
+    return { drawn: S.STAMP_LAST.n - n0, last: { ...S.STAMP_LAST }, blobs: steel.slice(), perFrame, cut };
+  };
+  const BUDGET = { light: 12, sweep: 14, point: 16, slam: 24, cleave: 30, execute: 34 }; // most cells in one drawn frame
+  const rows = [], bad = [];
+  try {
+    game.settings.quality = 2;
+    only('stamp');
+    S.setStampMode('over');
+    for (const [tier, k] of [['light', 0], ['sweep', 0], ['point', 0], ['slam', 0], ['cleave', 0], ['cleave', 1], ['execute', 0]]) {
+      for (const crit of [false, true]) {
+        const r = hit(tier, crit, k), tag = `${tier}${k ? ' k1' : ''}${crit ? ' crit' : ''}`;
+        const fr = L.frames[L.tier[tier].shape];
+        if (r.drawn !== 1 || !(r.last.blobs > 0) || r.last.frames !== fr) bad.push(`${tag}: drawn ${r.drawn}, ${r.last.blobs} blobs, ${r.last.frames}/${fr} frames`);
+        if (!r.blobs.every((b) => [b.x, b.y, b.z, b.size, b.heat, b.life].every(Number.isFinite))) bad.push(`${tag}: a blob not finite`);
+        if (r.blobs.some((b) => b.y < L.minY)) bad.push(`${tag}: a blob below ${L.minY} m (${Math.min(...r.blobs.map((b) => b.y)).toFixed(2)})`);
+        if (r.blobs.some((b) => b.heat > 1.3)) bad.push(`${tag}: a cell hotter than 1.3 (a white blot)`);
+        if (r.last.peak > BUDGET[tier] * (crit ? 1.5 : 1)) bad.push(`${tag}: ${r.last.peak} cells in a frame > ${BUDGET[tier]}`);
+        if (r.perFrame.slice(-8).some((n) => n > 0)) bad.push(`${tag}: still writing 0.5 s on`);
+        if (!(r.cut.slash > 0)) bad.push(`${tag}: the cut's line is gone with the stamp 'over' it`);
+        if (!crit) rows.push(`${tag} ${r.last.blobs}/${r.last.peak}`);
+      }
+    }
+    out(`   stamp: blobs written / most in one frame per tier: ${rows.join(' · ')}`);
+    assert(bad.length === 0, `on: every tier writes steel in its own stepped frames, finite, never below ${L.minY} m, no cell past 1.3, within its budget, and ends${bad.length ? ': ' + bad.slice(0, 4).join('; ') : ''}`);
+    // a crit is larger
+    const lc = hit('light', true), ln = hit('light', false);
+    assert(lc.last.blobs > ln.last.blobs, `a crit's stamp is larger (${lc.last.blobs} blobs vs ${ln.last.blobs})`);
+    // LOW: fewer blobs, one frame fewer
+    game.settings.quality = 0;
+    const sl = hit('slam'), xl = hit('execute');
+    game.settings.quality = 2;
+    const sh = hit('slam'), xh = hit('execute');
+    assert(sl.last.blobs < sh.last.blobs && xl.last.blobs < xh.last.blobs && sl.last.frames === sh.last.frames - 1, `LOW writes less: slam ${sl.last.blobs} < ${sh.last.blobs}, execute ${xl.last.blobs} < ${xh.last.blobs}, ${sl.last.frames} frames`);
+    // a light chain: three cuts in a second never stack into a blot
+    S.stampClear(game);
+    steel = [];
+    let worst = 0;
+    for (let c = 0; c < 3; c++) {
+      game.fxDt = 1 / 60;
+      p.fx.contact(pt, 'light', C, false, 0);
+      for (let i = 0; i < 20; i++) {
+        const b = steel.length;
+        game.fxDt = 1 / 60;
+        F.update(game.fxDt);
+        S.stampUpdate(game, game.fxDt);
+        worst = Math.max(worst, steel.length - b);
+      }
+    }
+    assert(worst <= BUDGET.light, `a light chain (3 cuts in a second): at most ${worst} cells written in a frame (one stamp's worth, <= ${BUDGET.light})`);
+    // 'instead': the cut's line and cross go, the sparks, the core, the motes stay
+    only(null);
+    const off = hit('slam');
+    only('stamp');
+    S.setStampMode('instead');
+    const ins = hit('slam');
+    S.setStampMode('over');
+    const c0 = off.cut, c1 = ins.cut;
+    assert(c1.slash === 0 && c1.tick === 0 && c0.slash > 0 && c1.sparks === c0.sparks && c1.core === c0.core && c1.motes === c0.motes && c1.ring === c0.ring && ins.last.blobs > 0, `'instead': no slash line (${c1.slash}) or cross (${c1.tick}); sparks ${c1.sparks}/${c0.sparks}, core ${c1.core}, motes ${c1.motes}/${c0.motes}, ring ${c1.ring}/${c0.ring} as without the stamp`);
+    // OFF: the switch, then k = 0: nothing written, the cut as without the piece
+    only(null);
+    const n0 = S.STAMP_LAST.n;
+    const a = hit('slam'), b = hit('light');
+    IMPACT.on.stamp = true;
+    IMPACT.k.stamp = 0;
+    const z = hit('cleave', false, 1);
+    const kz = S.stampHit(game, 0, 1.2, 0, { tier: 'light', cut: { x: 1, y: 0, z: 0 }, edge: { x: 0, y: 0, z: 1 } }, 0);
+    assert(S.STAMP_LAST.n === n0 && a.blobs.length + b.blobs.length + z.blobs.length === 0 && kz === 0 && a.cut.slash > 0 && a.cut.tick > 0 && b.cut.slash > 0, `off (the switch, or k 0): no stamp drawn (${S.STAMP_LAST.n - n0}), no steel written (${a.blobs.length + b.blobs.length + z.blobs.length}); the cut's line and cross as they were (slam ${a.cut.slash} + ${a.cut.tick})`);
+    // never throws: no fire field, no game, NaN in
+    let threw = null;
+    try {
+      S.stampUpdate({}, 1 / 60);
+      S.stampUpdate(null, 1 / 60);
+      S.stampUpdate({ fx: {} }, NaN);
+      S.stampClear({});
+      S.stampClear(null);
+      S.stampHit({}, 0, 1, 0, { tier: 'light' }, 1);
+      S.stampHit(game, NaN, 1, 0, { tier: 'light' }, 1);
+      S.stampHit(game, 0, 1, 0, null, 1);
+      S.stampHit(game, 0, 1, 0, { tier: 'nonsense', cut: { x: NaN, y: NaN, z: NaN }, edge: null }, 1);
+      for (let i = 0; i < 12; i++) S.stampUpdate(game, 1 / 60);
+    } catch (e) {
+      threw = e;
+    }
+    assert(!threw && steel.every((s) => [s.x, s.y, s.z].every(Number.isFinite)), `no fire field, no game, NaN or an unknown tier: nothing throws, nothing NaN is written${threw ? ' (' + threw.message + ')' : ''}`);
+    assert(Array.isArray(S.STAMP_GLYPHS) && S.STAMP_GLYPHS.length === 0, 'the stamp spawns no glyph particles (it is written in the fire field only)');
+  } finally {
+    F.spawn = spawn0;
+    Object.assign(IMPACT.on, on0);
+    Object.assign(IMPACT.k, k0);
+    IMPACT.by.stamp.wyrm = byWyrm0;
+    game.settings.quality = q0;
+    S.setStampMode('over');
+    S.stampClear(game);
+  }
+  return G;
+}
+
+async function scenarioWyrmReact() {
+  out('\n== scenario WYRMREACT (the wyrm answers where it is hit: part, contact, cut, weight; drawn only) ==');
+  const { IMPACT } = await imp('src/combat/impact.js');
+  const { ATTACKS } = await imp('src/entities/dragon/attacks.js');
+  const on0 = IMPACT.on.react, k0 = IMPACT.k.react;
+  const setK = (k) => { IMPACT.on.react = true; IMPACT.k.react = k; };
+  const finiteAll = (d) => { for (const o of d.react.J) { const e = o.matrixWorld.elements; for (let i = 12; i < 15; i++) if (!Number.isFinite(e[i])) return false; } for (const v of d.react.sphOff) if (!Number.isFinite(v)) return false; return true; };
+  const off = (d, i) => { const O = d.react.sphOff; return d.react.applied ? [O[i * 3], O[i * 3 + 1], O[i * 3 + 2]] : [0, 0, 0]; };
+  const len = (v) => Math.hypot(v[0], v[1], v[2]);
+  // a blow on sphere i: the contact on its surface on the side the blade comes from, the blade across the body
+  const blow = (d, i, heavy, cutSide = 1) => {
+    const h = d._hurtPool[i];
+    const cx = Math.cos(d.yaw) * cutSide, cz = -Math.sin(d.yaw) * cutSide; // the wyrm's own side axis
+    return { damage: 4, part: h.part, point: { x: h.x - cx * h.r * 0.9, y: h.y, z: h.z - cz * h.r * 0.9 }, cut: { x: cx, z: cz }, dir: { x: cx, z: cz }, heavy, crit: false };
+  };
+  try {
+    // ---- 0) on or off, the same fight: two builds, the same script (a bite's windup struck on the head,
+    // then a light cut on the chest); every tick the hurt spheres, the bite's clock and its spheres and
+    // the joints the step runs on are compared, number for number
+    const script = (k) => {
+      setK(k);
+      const G0 = build();
+      fightSetup(G0);
+      const d0 = G0.game.dragon;
+      G0.game.player.debug.god = true;
+      settle(G0);
+      place(G0, 6);
+      d0.brain.startAction(ATTACKS.bite);
+      run(G0, 0.3, { passive: true });
+      const rec = [];
+      let applied = 0;
+      for (let f = 0; f < 90; f++) {
+        if (f === 0) d0.takeHit(blow(d0, 0, true));
+        if (f === 15) d0.takeHit(blow(d0, 4, false));
+        G0.tick(DT);
+        if (d0.react.applied) applied++;
+        const R0 = d0.react, row = [d0.brain.action?.name ?? '-', d0.brain.action?.t ?? -1, d0._atkN];
+        for (const h of d0._hurtPool) row.push(h.x, h.y, h.z);
+        for (let i = 0; i < d0._atkN; i++) { const b = d0._atkBoxes[i]; row.push(b.x, b.y, b.z, b.r); }
+        R0.J.forEach((o, j) => { const q = R0.applied ? R0.saved.subarray(j * 4, j * 4 + 4) : [o.quaternion.x, o.quaternion.y, o.quaternion.z, o.quaternion.w]; row.push(...q); });
+        const hp = R0.applied ? R0.savedHips : d0.model.hips.position;
+        row.push(hp.x, hp.y, hp.z);
+        rec.push(row);
+      }
+      return { rec, applied, hits: G0.hits.length };
+    };
+    const A0 = script(0), A1 = script(1);
+    let diff = -1;
+    for (let f = 0; f < A0.rec.length && diff < 0; f++) {
+      const a = A0.rec[f], b = A1.rec[f];
+      if (a.length !== b.length || a.some((v, i) => !Object.is(v, b[i]))) diff = f;
+    }
+    out(`   on / off: ${A0.rec.length} ticks compared · drawn reaction on ${A1.applied} ticks (off: ${A0.applied}) · bite clock ${A0.rec[20][1].toFixed?.(3)} / ${A1.rec[20][1].toFixed?.(3)} · first difference ${diff < 0 ? 'none' : `tick ${diff}`}`);
+    assert(A0.applied === 0, 'with the piece off nothing is ever put on the joints');
+    assert(A1.applied > 20, `with it on the reaction is drawn (${A1.applied} ticks)`);
+    assert(diff < 0 && A0.hits === A1.hits, 'on or off: the same hurt spheres, the same bite (its clock, its spheres), the same joints under the step, every tick');
+
+    // ---- 1) per part: the struck part moves along the cut in the hit's own tick, and comes back
+    setK(1);
+    const G = build();
+    const { game } = G;
+    fightSetup(G);
+    const d = game.dragon, p = game.player;
+    p.debug.god = true;
+    settle(G);
+    const CASES = [['head', 0], ['neck', 2], ['chest', 4], ['hips', 6], ['tail', 8], ['wing', 11], ['foreleg', 15], ['hindleg', 17]];
+    const res = {};
+    for (const [name, i] of CASES) {
+      for (const heavy of [false, true]) {
+        settle(G);
+        d.hp = d.maxHp;
+        const o = blow(d, i, heavy);
+        d.takeHit(o);
+        G.tick(DT);
+        const v0 = off(d, i);
+        let peak = len(v0), peakAt = 0, back = -1, maxOther = 0, fin = finiteAll(d);
+        for (let j = 0; j < d._hurtPool.length; j++) if (d._hurtPool[j].part !== d._hurtPool[i].part) maxOther = Math.max(maxOther, len(off(d, j)));
+        const series = [peak];
+        for (let f = 1; f < 150; f++) {
+          G.tick(DT);
+          const m = len(off(d, i));
+          series.push(m);
+          if (!finiteAll(d)) fin = false;
+          if (m > peak) { peak = m; peakAt = f; }
+        }
+        for (let f = series.length - 1; f >= 0; f--) if (series[f] > 0.05 * peak) { back = f + 1; break; }
+        const along = (v0[0] * o.cut.x + v0[2] * o.cut.z) / (len(v0) || 1);
+        const r = (res[`${name}${heavy ? 'H' : 'L'}`] = { m0: len(v0), along, peak, peakAt, back, maxOther, fin, kind: d.react.last.kind, live: d.react.live, v0 });
+        out(`   ${name.padEnd(8)} ${heavy ? 'heavy' : 'light'}: ${r.kind} · first tick ${r.m0.toFixed(3)} m (along the cut ${along.toFixed(2)}, down ${(-v0[1]).toFixed(3)}) · peak ${peak.toFixed(3)} m @ f${peakAt} · back within 5 % by f${back} (${(back * DT).toFixed(2)} s) · other parts ≤ ${maxOther.toFixed(3)} m · finite ${fin}`);
+      }
+    }
+    for (const [name] of CASES) {
+      const L = res[`${name}L`], H = res[`${name}H`];
+      assert(L.fin && H.fin, `${name}: every drawn joint and sphere finite`);
+      assert(L.m0 > 0.03 && H.m0 > L.m0 * 1.5, `${name}: moves in the hit's own tick, a heavy blow more (${L.m0.toFixed(3)} → ${H.m0.toFixed(3)} m)`);
+      assert(L.along > 0.3 && H.along > 0.3, `${name}: along the blade's travel (${L.along.toFixed(2)}, ${H.along.toFixed(2)})`);
+      // (a heavy blow's neck follow-through runs a little longer than a part's own snap)
+      const lim = name === 'head' ? 1.0 : 0.6;
+      assert(L.back > 0 && L.back * DT < lim && H.back * DT < 1.0, `${name}: back within 5 % in ${(L.back * DT).toFixed(2)} / ${(H.back * DT).toFixed(2)} s`);
+    }
+    // a light cut on the head moves the head, not the trunk; a light cut on a leg not the head
+    assert(res.headL.maxOther < res.headL.m0 && res.hindlegL.v0 && res.tailL.maxOther < res.tailL.m0, `the struck part moves most (head hit: others ≤ ${res.headL.maxOther.toFixed(3)} m; tail hit: others ≤ ${res.tailL.maxOther.toFixed(3)} m)`);
+    // three light cuts in a second on the chest stay small gives (no build-up)
+    settle(G);
+    let peak3 = 0;
+    for (let n = 0; n < 3; n++) {
+      d.takeHit(blow(d, 4, false));
+      for (let f = 0; f < 20; f++) { G.tick(DT); peak3 = Math.max(peak3, len(off(d, 4))); }
+    }
+    assert(peak3 < res.chestL.peak * 1.25, `three light cuts in 1 s: the chest moves at most ${peak3.toFixed(3)} m (one light cut ${res.chestL.peak.toFixed(3)} m)`);
+    run(G, 2.5, { passive: true });
+    assert(!d.react.live && !d.react.applied, 'every reaction over and off the joints 2.5 s later');
+
+    // ---- 2) states: phase 3 (ablaze), in the air, staggered: sane and finite; asleep: no reaction
+    const stateHit = (label, i) => {
+      d.hp = d.maxHp;
+      d.takeHit(blow(d, i, true));
+      G.tick(DT);
+      const m = len(off(d, i));
+      let fin = finiteAll(d);
+      for (let f = 0; f < 40; f++) { G.tick(DT); if (!finiteAll(d)) fin = false; }
+      out(`   ${label}: ${d.state}, ${d.react.last.kind} · moved ${m.toFixed(3)} m, finite ${fin}`);
+      return { m, fin };
+    };
+    settle(G);
+    d.enterPhase(3);
+    settle(G);
+    const r3 = stateHit('phase 3', 0);
+    assert(r3.m > 0.05 && r3.fin && d.phase === 3, `phase 3 (ablaze): the head answers, finite (${r3.m.toFixed(3)} m)`);
+    place(G, 10);
+    d.brain.startAction(ATTACKS.leap);
+    run(G, 3, { passive: true }, () => d.state === 'airborne' && d.rig.s.alt > 4);
+    const ra = stateHit('airborne', 11);
+    assert(ra.fin, `in the air: finite (${ra.m.toFixed(3)} m)`);
+    settle(G);
+    assert(d.debug.postureBreak() === true, 'posture break');
+    run(G, 0.6, { passive: true });
+    const rs = stateHit('staggered', 4);
+    assert(rs.m > 0.05 && rs.fin, `staggered: the chest answers, finite (${rs.m.toFixed(3)} m)`);
+    return G;
+  } finally {
+    IMPACT.on.react = on0;
+    IMPACT.k.react = k0;
+  }
+}
+
+async function scenarioRipple() {
+  out('\n== scenario RIPPLE (impact: a landed cut\'s ring through the struck body\'s letters; slots, uniforms, the switch) ==');
+  const { Pipeline } = await imp('src/render/pipeline.js');
+  const { ImpactRipple, RIPPLE } = await imp('src/render/impactRipple.js');
+  const { IMPACT, impactK } = await imp('src/combat/impact.js');
+  const G = build();
+  const { game } = G;
+  const U = game.U, cam = game.camera;
+  const renderer = {
+    extensions: { has: () => true }, autoClear: true, _dpr: 1,
+    setRenderTarget() {}, setClearColor() {}, getClearColor() {}, getClearAlpha: () => 0, clear() {}, render() {},
+    setPixelRatio(d) { this._dpr = d; }, getPixelRatio() { return this._dpr; }, setSize() {},
+  };
+  const pipe = new Pipeline(renderer, game.scene, game.fxScene, cam, U);
+  pipe.setSize(1280, 720, 1);
+  const P58 = CONFIG.camera.pitch;
+  cam.position.set(0, Math.sin(P58) * 36, Math.cos(P58) * 36);
+  cam.lookAt(0, 0, 0);
+  cam.updateMatrixWorld();
+  const pipe0 = game.pipeline, rip0 = game.fx.ripple, on0 = IMPACT.on.ripple, k0 = IMPACT.k.ripple;
+  game.pipeline = pipe;
+  const A = pipe.asciiMat.uniforms;
+  try {
+    const R = new ImpactRipple(game);
+    assert(pipe.ripple === R && A.uRipN.value === 0 && A.uRipA.value.length === RIPPLE.slots && A.uRipB.value.length === RIPPLE.slots,
+      `the ripple hands itself to the pipeline; ${RIPPLE.slots} slots of uniforms, none live`);
+    assert(/rippleCell/.test(pipe.asciiMat.fragmentShader) && /uniform vec4 uRipA\[/.test(pipe.asciiMat.fragmentShader), 'the ASCII pass declares the ripple (rippleCell, uRipA[])');
+    const boss = { position: new THREE.Vector3(0, 0, 0) };
+    const o = { tier: 'light', cut: { x: 1, y: 0, z: 0 }, crit: false, power: 0, target: boss };
+    // the switch: on (as tuned) in the headless sims (no URL)
+    assert(impactK('ripple') === 1, `impactK('ripple') = ${impactK('ripple')} with no URL`);
+    R.hit(0, 1, 0, o, 1);
+    const a = A.uRipA.value[0], b = A.uRipB.value[0];
+    const fin4 = (v) => v.toArray().every(Number.isFinite);
+    assert(R.live === 1 && A.uRipN.value === 1 && fin4(a) && fin4(b), `a hit fills a slot and its uniforms (A ${a.toArray().map((v) => v.toFixed(2))}, B ${b.toArray().map((v) => v.toFixed(2))})`);
+    assert(a.x > 0 && a.x < 1280 && a.y > 0 && a.y < 720 && Math.abs(a.x - 640) < 2, `... the contact projected on screen (${a.x.toFixed(1)}, ${a.y.toFixed(1)} px)`);
+    assert(b.x > 0.5 && Math.abs(b.y) < 1e-6 && b.w > 30 && b.w < 40 && a.w > 0 && a.z === 0, `... the shove along the cut on screen (${b.x.toFixed(2)} px right), the contact's view depth ${b.w.toFixed(1)} m, the front at the contact`);
+    const WV = RIPPLE.presets[RIPPLE.preset], LT = WV.tiers.light, c0 = A.uRipC.value[0];
+    assert(fin4(c0) && c0.x > 2 && c0.y === WV.hole && A.uRip2.value.x === WV.pass.trough && A.uRip.value.y === WV.pass.bright,
+      `the ${RIPPLE.preset} preset: an outward push of ${c0.x.toFixed(1)} px, quiet ${c0.y} cells round the contact, the pass terms (trough ${A.uRip2.value.x}, stroke ${A.uRip2.value.z})`);
+    // it ages on fx time: the front runs out, its weight falls; it rides with the boss
+    R.update(LT.dur * 0.5);
+    const r1 = a.z, w1 = a.w, x1 = a.x;
+    assert(r1 > 1 && r1 < LT.reach[0] && w1 < LT.gain, `half-way: the front ${r1.toFixed(2)} cells out (reach ${LT.reach[0]}), weight ${w1.toFixed(2)}`);
+    boss.position.x = 2;
+    R.update(0);
+    assert(a.x > x1 + 10, `the boss shoved 2 m: the contact rides with him (${x1.toFixed(1)} -> ${a.x.toFixed(1)} px)`);
+    boss.position.x = 0;
+    pipe.render(); // the pass projects again right before it draws (mocked GL: must not throw)
+    assert(A.uRipN.value === 1, 'pipeline.render projects the live hit again');
+    R.update(LT.dur);
+    assert(R.live === 0 && A.uRipN.value === 0, 'its life over: the slot frees, uRipN 0 (the pass reads nothing)');
+    // a heavier tier reaches farther and lives longer; a human boss (a kit) gets his own reach
+    const heavy = { ...o, tier: 'cleave', power: 1, crit: true };
+    R.hit(0, 1, 0, heavy, 1);
+    const sc = R.slots.find((s) => s.on);
+    assert(sc.reach > LT.reach[0] * 1.8 && sc.dur > LT.dur && sc.push > LT.push, `a charged, critical cleave: reach ${sc.reach.toFixed(1)} cells, ${sc.dur.toFixed(2)} s, push ${sc.push.toFixed(1)} px`);
+    const bigReach = sc.reach;
+    R.clear();
+    R.hit(0, 1, 0, { ...heavy, target: { position: boss.position, kit: {} } }, 1);
+    const sm = R.slots.find((s) => s.on);
+    assert(sm.reach < bigReach && Math.abs(sm.reach - WV.tiers.cleave.reach[1] * RIPPLE.crit * (1 + RIPPLE.power)) < 1e-6, `... on a human boss the front runs ${sm.reach.toFixed(1)} of his cells (head to feet)`);
+    R.clear();
+    // round 1's numbers stay reachable (the 'subtle' preset): no push, no trough, no strokes
+    const Rs = new ImpactRipple(game, { preset: 'subtle' });
+    Rs.hit(0, 1, 0, o, 1);
+    assert(A.uRipC.value[0].x === 0 && A.uRip2.value.x === 0 && A.uRip2.value.z === 0 && A.uRipA.value[0].w === RIPPLE.presets.subtle.tiers.light.gain,
+      "the 'subtle' preset (round 1) writes no push, no trough, no strokes");
+    Rs.clear();
+    pipe.setRipple(R);
+    // more hits than slots: the oldest is replaced, nothing throws
+    let threw = null;
+    try { for (let i = 0; i < RIPPLE.slots * 2 + 1; i++) { R.hit(i * 0.1, 1, 0, o, 1); R.update(0.001); } } catch (e) { threw = e; }
+    const seqs = R.slots.map((s) => s.seq).sort((x, y) => x - y);
+    assert(!threw && R.live === RIPPLE.slots && A.uRipN.value === RIPPLE.slots && seqs[0] === R._seq - RIPPLE.slots + 1, `${RIPPLE.slots * 2 + 1} hits in a row: ${R.live} live, the newest kept (${seqs.join(',')})`);
+    // bad input: no throw, no NaN
+    try {
+      R.hit(NaN, 1, 0, o, 1);
+      R.hit(0, 1, 0, { tier: 'nope', cut: { x: NaN, y: 0, z: 0 }, target: null }, 1);
+      R.hit(0, 1, 0, null, 1);
+      R.update(NaN);
+      R.update(-1);
+    } catch (e) { threw = e; }
+    assert(!threw && A.uRipA.value.every(fin4) && A.uRipB.value.every(fin4), 'NaN contact / unknown tier / no cut / no record / NaN dt: no throw, every uniform finite');
+    R.clear();
+    assert(R.live === 0 && A.uRipN.value === 0, 'clear: nothing live');
+    // through the real contact (PlayerFx.contact) with the switch on and off
+    game.fx.ripple = R;
+    const n0 = R.n;
+    const pt = new THREE.Vector3(0, 1, 0);
+    game.player.fx.contact(pt, 'light', null, false, 0);
+    const nOn = R.n - n0;
+    R.clear();
+    IMPACT.on.ripple = false;
+    game.player.fx.contact(pt, 'light', null, false, 0);
+    const nOff = R.n - n0 - nOn;
+    IMPACT.on.ripple = true;
+    IMPACT.k.ripple = 0;
+    game.player.fx.contact(pt, 'light', null, false, 0);
+    const nK0 = R.n - n0 - nOn - nOff;
+    R.hit(0, 1, 0, o, 0);
+    assert(nOn === 1 && nOff === 0 && nK0 === 0 && R.live === 0 && A.uRipN.value === 0,
+      `a landed cut draws one ripple when on (${nOn}); off: ${nOff}, k 0: ${nK0}, hit(k 0): nothing live, uRipN ${A.uRipN.value}`);
+  } finally {
+    IMPACT.on.ripple = on0;
+    IMPACT.k.ripple = k0;
+    game.pipeline = pipe0;
+    if (rip0) game.fx.ripple = rip0; else delete game.fx.ripple;
+  }
+  return G;
+}
+
+async function scenarioCalm() {
+  out('\n== scenario CALM (calm at the contact: level 0 is today; each level dims what it names; a whiff is the same at every level) ==');
+  const CALM = await imp('src/combat/impactCalm.js');
+  const { CUT_LOOK } = await imp('src/combat/cutFx.js');
+  const { EDGE_GLINT } = await imp('src/entities/player/fx.js');
+  const { HERO_INK } = await imp('src/entities/player/model.js');
+  const { TUNE } = await imp('src/entities/player/player.js');
+  const lv0 = CALM.calmLevel();
+  const NL = CALM.CALM_LOOK.levels.length;
+  // fresh module instances: each starts its own random stream at its seed, so two of them fed the same
+  // input at two levels must draw the same randoms (positions, velocities, lives, angles, glyphs)
+  let fid = 0;
+  const freshCut = () => import(`${pathToFileURL(`${ROOT}/src/combat/cutFx.js`).href}?calm${++fid}`);
+  const freshFx = () => import(`${pathToFileURL(`${ROOT}/src/entities/player/fx.js`).href}?calm${++fid}`);
+  // (not `stretch`: the arc's is its step over its size, and the size is what a level thins)
+  const RAND = ['x', 'y', 'z', 'vx', 'vy', 'vz', 'life', 'rot', 'glyph', 'drag', 'gravity', 'flicker'];
+  const sameDraws = (a, b) => a.length === b.length && a.every((o, i) => RAND.every((k) => Object.is(o[k], b[i][k])));
+  const sameAll = (a, b) => a.length === b.length && a.every((o, i) => JSON.stringify(o) === JSON.stringify(b[i]));
+  const heat = (o) => (o.alpha ?? 1) * (o.size ?? 0.4) * (o.color ? o.color[0] + o.color[1] + o.color[2] : 3);
+  const sum = (a, f = heat) => a.reduce((s, o) => s + f(o), 0);
+  const G = build();
+  const { game, input } = G;
+  fightSetup(G);
+  const d = game.dragon, p = game.player;
+  const fxa = game.fx.add, spawn0 = fxa.spawn, lp = game.lights, ladd0 = lp.add;
+  let made = [], lights = [];
+  const snap = (o) => ({ ...o, color: o.color ? [...o.color] : o.color, colorEnd: o.colorEnd ? [...o.colorEnd] : o.colorEnd });
+  try {
+    fxa.spawn = (o) => { made.push(snap(o)); return -1; };
+    lp.add = (o) => { lights.push({ ...o }); return null; };
+    const F = { x: 0, y: 1.2, z: 0 };
+    const o = (tier, crit, k = 0) => ({ tier, cut: { x: 1, y: -0.3, z: 0 }, edge: { x: 0.2, y: 0.1, z: 1 }, hilt: null, crit, power: k, low: false, target: null });
+    const burst = (mod, lv, tier, crit, k) => {
+      CALM.setCalm(lv);
+      made = [];
+      lights = [];
+      mod.cutBurst(game, F.x, F.y, F.z, o(tier, crit, k));
+      return { made, lights, last: { ...mod.CUT_LAST } };
+    };
+    // ---- 1) the cut (cutFx): level 0 = today's values; every level the same draws; lower, level by level
+    const bad = [], rows = [];
+    for (const [tier, crit, k] of [['light', false, 0], ['sweep', false, 0], ['point', false, 0], ['slam', false, 0], ['cleave', false, 1], ['execute', true, 1], ['light', true, 0]]) {
+      const per = [];
+      for (let lv = 0; lv < NL; lv++) per.push(burst(await freshCut(), lv, tier, crit, k));
+      const T = CUT_LOOK.tier[tier], P = crit ? CUT_LOOK.pal.crit : CUT_LOOK.pal.cut, L0 = per[0], tag = `${tier}${crit ? ' crit' : ''}`;
+      const sl = (r, key) => { const c = r.last; const at = { slash: 0, tick: c.slash, sparks: c.slash + c.tick, core: c.slash + c.tick + c.sparks, motes: c.slash + c.tick + c.sparks + c.core, puff: c.slash + c.tick + c.sparks + c.core + c.motes, ring: c.slash + c.tick + c.sparks + c.core + c.motes + c.puff }[key]; return r.made.slice(at, at + c[key]); };
+      // today's values at level 0 (CUT_LOOK, untouched)
+      const core0 = sl(L0, 'core')[0];
+      const coreSize = Math.min(CUT_LOOK.crit.coreMax, T.core + (crit ? CUT_LOOK.crit.core : 0));
+      if (!(core0 && core0.alpha === 1 && core0.size === coreSize && core0.sizeEnd === 0.1)) bad.push(`${tag}: level 0's core is not today's (${core0?.alpha}, ${core0?.size})`);
+      if (!(L0.lights.length === 1 && L0.lights[0].intensity === T.light[0] * (crit ? CUT_LOOK.crit.light : 1) && L0.lights[0].radius === T.light[1])) bad.push(`${tag}: level 0's light is not today's`);
+      if (!sl(L0, 'sparks').every((s) => s.alpha === 1 && s.color.every((v, i) => v === P.spark[i]))) bad.push(`${tag}: level 0's sparks are not today's`);
+      if (!sl(L0, 'slash').every((s) => [P.slash, P.hot].some((c) => c.every((v, i) => v === s.color[i])))) bad.push(`${tag}: level 0's slash colours are not today's`);
+      for (let lv = 1; lv < NL; lv++) {
+        const A = per[lv - 1], B = per[lv];
+        const cnt = ['slash', 'tick', 'sparks', 'core', 'motes', 'puff', 'ring'].every((key) => A.last[key] === B.last[key]);
+        if (!cnt || !sameDraws(A.made, B.made)) bad.push(`${tag}: level ${lv} spawns or draws differently from level ${lv - 1}`);
+        for (const key of ['core', 'sparks', 'slash', 'ring']) {
+          const a = sum(sl(A, key)), b = sum(sl(B, key));
+          if (b > a + 1e-9) bad.push(`${tag}: ${key} brighter at level ${lv} (${b.toFixed(3)} > ${a.toFixed(3)})`);
+        }
+        const la = A.lights.reduce((s, l) => s + l.intensity * l.radius, 0), lb = B.lights.reduce((s, l) => s + l.intensity * l.radius, 0);
+        if (lb > la + 1e-9) bad.push(`${tag}: the light brighter at level ${lv}`);
+      }
+      const L3 = per[NL - 1];
+      const drop = (key) => 1 - sum(sl(L3, key)) / Math.max(1e-9, sum(sl(L0, key)));
+      if (!(drop('core') > 0.5 && drop('sparks') > 0.3 && L3.lights.length === 0)) bad.push(`${tag}: level ${NL - 1} keeps the core / the sparks / the light (core -${(drop('core') * 100).toFixed(0)} %, sparks -${(drop('sparks') * 100).toFixed(0)} %)`);
+      if (sl(L3, 'slash').length !== sl(L0, 'slash').length || drop('slash') > 0.8) bad.push(`${tag}: level ${NL - 1} loses the cut's line (it is the lines that carry the hit)`);
+      rows.push(`${tag} core -${(drop('core') * 100).toFixed(0)}% sparks -${(drop('sparks') * 100).toFixed(0)}% line -${(drop('slash') * 100).toFixed(0)}%`);
+    }
+    out(`   the cut at level ${NL - 1} against today: ${rows.join(' · ')}`);
+    assert(!bad.length, `the cut: level 0 draws today's values; every level the same spawns and the same random draws; each level dims the core, sparks, line, ring and light, never brightens (${bad.slice(0, 4).join('; ') || 'all'})`);
+
+    // ---- 2) the hero's own (fx.js): the steel's gain, the edge strokes, the cleave's fan, the arc
+    const V = (x, y, z) => new THREE.Vector3(x, y, z);
+    // a swing whose arc edge crosses the contact F this frame (pa, pb: last frame's blade; a, b: now)
+    const swing = { valid: true, pa: V(-0.6, 1.0, 0.3), pb: V(-3.6, 1.6, 3.2), a: V(0.2, 1.0, 0.4), b: V(2.6, 1.5, 3.4) };
+    const fxRun = async (lv, hit, after = 0) => {
+      const M = await freshFx();
+      const f = new M.PlayerFx(game, p.rig);
+      CALM.setCalm(lv);
+      made = [];
+      p.atk = null;
+      game.realTime = 100;
+      game.hitstopTimer = 0.06;
+      if (hit) f._calmAt(F, 'light');
+      const blade = [f.calmBlade(1), f.calmBlade(0.5), f.calmBlade(0), f.calmFlare(0.5), f.calmFlare(0.75)];
+      game.realTime = 100 + after;
+      const m0 = made.length;
+      f.trail(swing.pa, swing.pb, swing.a, swing.b, 'light', false, false, true);
+      const arc = made.slice(m0);
+      const m1 = made.length;
+      f.edgeFlash(p.sweep?.valid ? p.sweep : swing, 0.5, false, false, false, 0.1);
+      const edge = made.slice(m1);
+      const m2 = made.length;
+      f.cleaveImpact(F.x, F.y, F.z, 1, 0, 1, false, true);
+      const fan = made.slice(m2);
+      return { blade, arc, edge, fan };
+    };
+    const H = [], W = [], X = [];
+    for (let lv = 0; lv < NL; lv++) {
+      H.push(await fxRun(lv, true));
+      W.push(await fxRun(lv, false)); // a whiff: no contact
+      X.push(await fxRun(lv, true, 1.0)); // a contact a second ago: the zone has closed
+    }
+    const AX = (await imp('src/combat/clashFx.js')).axes(game);
+    const near = (s) => { const dx = s.x - F.x, dy = s.y - F.y, dz = s.z - F.z, sx = dx * AX.rx + dy * AX.ry + dz * AX.rz, sy = dx * AX.ux + dy * AX.uy + dz * AX.uz; return Math.hypot(sx, sy); };
+    const bad2 = [];
+    const FL = EDGE_GLINT.flash;
+    if (!(H[0].blade[0] === 1 && H[0].blade[1] === 1 && H[0].blade[3] === 0.5 && H[0].blade[4] === 0.75)) bad2.push(`level 0's steel is not today's (${H[0].blade.join(', ')})`);
+    if (!(H[0].edge.length > 0 && H[0].edge.every((s) => s.alpha === FL.alpha))) bad2.push("level 0's edge strokes are not today's");
+    if (!H[0].arc.some((s) => near(s) < 0.4)) bad2.push('the test swing does not cross the contact');
+    for (let lv = 1; lv < NL; lv++) {
+      const A = H[lv - 1], B = H[lv];
+      if (!(B.blade[0] < A.blade[0] && B.blade[1] <= A.blade[1] && B.blade[2] === 1 && B.blade[3] <= A.blade[3])) bad2.push(`level ${lv}: the steel's gain does not fall (${B.blade.map((v) => v.toFixed(2)).join(', ')})`);
+      if (!(B.edge.length === A.edge.length && sum(B.edge) < sum(A.edge))) bad2.push(`level ${lv}: the edge strokes do not dim`);
+      if (!(sameDraws(A.fan, B.fan) && sum(B.fan) < sum(A.fan))) bad2.push(`level ${lv}: the cleave's fan draws differently or does not dim`);
+      if (!sameDraws(A.arc, B.arc)) bad2.push(`level ${lv}: the arc draws differently`);
+      const nA = sum(A.arc.filter((s) => near(s) < 0.4)), nB = sum(B.arc.filter((s) => near(s) < 0.4));
+      if (!(nB < nA)) bad2.push(`level ${lv}: the arc is not dimmer where it crosses the contact (${nB.toFixed(3)} vs ${nA.toFixed(3)})`);
+      // past this level's outer radius the arc is today's (stroke for stroke against level 0)
+      const r1 = CALM.CALM_LOOK.levels[lv].arc.r[1] + 0.01, far = (r) => r.arc.filter((s) => near(s) > r1);
+      if ((lv === 1 && !far(H[0]).length) || !sameAll(far(H[0]), far(B))) bad2.push(`level ${lv}: the arc changed past ${r1.toFixed(2)} m from the contact (${far(H[0]).length} strokes there)`);
+      if (!sameAll(W[0].arc, W[lv].arc) || !sameAll(W[0].edge, W[lv].edge)) bad2.push(`level ${lv}: a whiff's arc is not today's`);
+      if (!sameAll(X[0].arc, X[lv].arc)) bad2.push(`level ${lv}: the arc still dimmed a second after the contact`);
+    }
+    out(`   the hero's: steel gain x${H.map((h) => h.blade[0].toFixed(2)).join(' / ')} (held), edge ${H.map((h) => sum(h.edge).toFixed(2)).join(' / ')}, the arc at the contact ${H.map((h) => sum(h.arc.filter((s) => near(s) < 0.4)).toFixed(2)).join(' / ')}, cleave fan ${H.map((h) => sum(h.fan).toFixed(1)).join(' / ')}`);
+    assert(!bad2.length, `the hero's: level 0 is today's; the steel, the edge strokes, the cleave's fan and the arc where it crosses the contact dim level by level with the same draws; far off the contact, a whiff and a closed zone are today's (${bad2.slice(0, 4).join('; ') || 'all'})`);
+  } finally {
+    fxa.spawn = spawn0;
+    lp.add = ladd0;
+    p.atk = null;
+  }
+
+  // ---- 3) a real fight, level 0 against level 2: the same hit (frame, damage, freeze, camera); the
+  // steel dimmer on the contact frame only; a whiff's steel the same, frame by frame
+  const fight = (lv) => {
+    CALM.setCalm(lv);
+    const G2 = build();
+    const { game: g2, input: in2 } = G2;
+    fightSetup(G2);
+    const d2 = g2.dragon, p2 = g2.player, PF = g2.U.uSelfPartFill.value[HERO_INK.bladeTip.part];
+    p2.debug.god = true;
+    settle(G2);
+    const fx0 = Math.sin(d2.yaw), fz0 = Math.cos(d2.yaw);
+    const c = d2.hurtSpheres.filter((h) => h.part === 'body').reduce((a, h) => ((h.x - d2.position.x) * fx0 + (h.z - d2.position.z) * fz0 > (a.x - d2.position.x) * fx0 + (a.z - d2.position.z) * fz0 ? h : a));
+    p2.debug.teleport(c.x + fx0 * (c.r + 1), c.z + fz0 * (c.r + 1));
+    p2.yaw = Math.atan2(c.x - p2.position.x, c.z - p2.position.z);
+    aimAt(G2);
+    run(G2, 0.3, { passive: true });
+    let ev = null, at = -1, threw = null;
+    const rec = [];
+    G2.watch = (n, e) => { if (n === 'player:hitDragon' && !e.guarded && !ev) ev = e; };
+    p2.anim.forceVariant = 0;
+    in2.click(0);
+    try {
+      for (let i = 0; i < 90; i++) {
+        G2.tick(DT);
+        if (ev && at < 0) at = i;
+        rec.push([PF.x, g2.hitstopTimer, g2.camera.position.x, g2.camera.position.y, g2.camera.position.z, d2.hp, p2.state]);
+      }
+      // a whiff 30 m off
+      run(G2, 1.0, { passive: true });
+      p2.debug.teleport(d2.position.x + 30, d2.position.z + 30);
+      run(G2, 0.5, { passive: true });
+      in2.click(0);
+      for (let i = 0; i < 40; i++) { G2.tick(DT); rec.push(['w', PF.x, p2.state]); }
+    } catch (e) {
+      threw = e;
+    }
+    p2.anim.forceVariant = null;
+    G2.watch = null;
+    return { ev, at, rec, threw, errors: G2.errors?.length ?? 0 };
+  };
+  const R0 = fight(0), R2 = fight(2);
+  CALM.setCalm(lv0);
+  const gameplay = (r) => r.rec.map((row) => (row[0] === 'w' ? [row[2]] : row.slice(1)));
+  const steel = (r, i) => r.rec[i][0];
+  const whiff = (r) => r.rec.filter((row) => row[0] === 'w').map((row) => row[1]);
+  const lit0 = R0.at >= 0 ? steel(R0, R0.at) : NaN, lit2 = R2.at >= 0 ? steel(R2, R2.at) : NaN;
+  out(`   a landed light on the wyrm: frame ${R0.at} / ${R2.at}, damage ${R0.ev?.damage} / ${R2.ev?.damage}; the steel's fill on the contact frame ${lit0.toFixed?.(2)} (today) / ${lit2.toFixed?.(2)} (calm 2); a whiff's steel ${whiff(R0).every((v, i) => v === whiff(R2)[i]) ? 'the same' : 'DIFFERENT'} over ${whiff(R0).length} frames`);
+  assert(!R0.threw && !R2.threw, `nothing throws in a fight at level 0 or 2${R0.threw || R2.threw ? ': ' + (R0.threw || R2.threw).message : ''}`);
+  assert(!!R0.ev && !!R2.ev && R0.at === R2.at && R0.ev.damage === R2.ev.damage && JSON.stringify(gameplay(R0)) === JSON.stringify(gameplay(R2)), 'calm or not: the same hit on the same frame, the same damage, freeze, camera and states, frame by frame');
+  assert(lit2 < lit0 && R0.rec.slice(R0.at + 30, 90).every((row, i) => row[0] === R2.rec[R0.at + 30 + i][0]), `the steel is dimmer on the contact frame at level 2 (${lit2.toFixed?.(2)} < ${lit0.toFixed?.(2)}) and as today once the flare has cooled`);
+  assert(whiff(R0).length === 40 && whiff(R0).every((v, i) => v === whiff(R2)[i]), "a whiff's steel is today's, frame by frame, at level 2");
+
+  // ---- 4) the switch: bad input never throws, never leaves a level that is not one
+  let threw = null;
+  try {
+    CALM.setCalm('x');
+    const a = CALM.calmLevel();
+    CALM.setCalm(NaN);
+    const b = CALM.calmLevel();
+    CALM.setCalm(99);
+    const c = CALM.calmLevel();
+    CALM.setCalm({ arc: { a: NaN } });
+    const look = CALM.calmLook();
+    assert(a === CALM.CALM_DEFAULT && b === CALM.CALM_DEFAULT && c === CALM.CALM_DEFAULT && look?.arc && CALM.calmA(null, 'core') === 1 && CALM.calmS({ core: [NaN, NaN] }, 'core') === 1, 'setCalm: junk -> the default level; a custom level is taken; a missing or NaN factor reads as 1');
+    const M = await freshFx();
+    const f = new M.PlayerFx(game, p.rig);
+    f._calmAt({ x: NaN, y: 0, z: 0 }, 'light');
+    f._calmAt(null, 'light');
+    CALM.setCalm(3);
+    f._calmAt({ x: 0, y: 1.2, z: 0 }, 'slam');
+    const k = f._arcCalm(NaN, 0, 0), bb = f.calmBlade(NaN), ff = f.calmFlare(NaN);
+    assert([k.a, k.s, bb].every(Number.isFinite) && Number.isNaN(ff) === true, 'NaN in: the arc factors and the steel gain stay finite');
+  } catch (e) {
+    threw = e;
+  } finally {
+    CALM.setCalm(lv0);
+  }
+  assert(!threw, `the switch and its readers never throw${threw ? ': ' + threw.message : ''}`);
+  return G;
+}
+
+// ================================================================ BLADESTOP (bites on, ?chip=a; ADR-132)
+// The hero's real swing into a piece of the world: with bites on the blade STOPS on what it does not cut
+// through (the frame freezes, it is held, then thrown back: the bounce), and passes through what it
+// breaks; with bites off it passes through everything, as before.
+async function scenarioBladeStop() {
+  out('\n== scenario BLADESTOP (bites on: the blade stops on a piece it cannot cut through; off: it passes through) ==');
+  const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const ST = BREAK.chip.stop;
+  /** One light swing at `kind` (the hand-built field's dead tree or boulder) from 1 m east of it. */
+  const swing = (G, kind, low = false) => {
+    const { game } = G;
+    const p = game.player, D = game.world.destructibles;
+    game.world.restore();
+    const b = D.list.find((x) => x.kind === kind && x.state === PIECE.INTACT && Math.hypot(x.x, x.z) < 20);
+    if (low) b.hp = 0.02; // (one cut fells it)
+    game.dragon.position.set(-b.x * 0.2, 0, 26);
+    run(G, 0.3, { passive: true });
+    p.debug.teleport(b.x + b.r + 1.0, b.z);
+    p.yaw = -Math.PI / 2;
+    const aim = () => game.mouseGround.set(b.x, 0, b.z);
+    aim();
+    G.tick(DT);
+    const hp0 = b.hp;
+    const rec = { states: new Set(), maxT: 0, froze: false, end: 0, bounceAt: -1, sparks: 0 };
+    const add0 = game.fx?.add?.count ?? 0;
+    p._buffer('light');
+    for (let i = 0; i < 90; i++) {
+      aim();
+      G.tick(DT);
+      rec.states.add(p.state);
+      if (p.atk && (p.state === 'attack' || p.state === 'heavy')) {
+        rec.maxT = Math.max(rec.maxT, p.atk.t);
+        rec.end = p.atk.def.windup + p.atk.def.active;
+      }
+      if (game.hitstopTimer > 0) rec.froze = true;
+      if (p.state === 'bounce' && rec.bounceAt < 0) rec.bounceAt = i;
+    }
+    rec.took = hp0 - b.hp;
+    rec.piece = b;
+    rec.state = b.state;
+    rec.dist = Math.hypot(p.position.x - b.x, p.position.z - b.z);
+    return rec;
+  };
+  let last = null;
+  for (const look of ['a', '0']) {
+    setLook('chip', look);
+    try {
+      const G = (last = build({ terrain: 'field' }));
+      fightSetup(G);
+      const on = look === 'a';
+      for (const kind of ['boulder', 'deadTree']) {
+        const r = swing(G, kind);
+        const name = kind === 'boulder' ? 'a boulder' : 'a dead tree';
+        if (on) {
+          assert(r.took > 0 && r.state === PIECE.INTACT && r.states.has('bounce') && r.froze && r.maxT < r.end - 1e-3,
+            `bites on: a light cut into ${name} chips it (${r.took.toFixed(3)} taken), freezes the frame, the blade stops at ${r.maxT.toFixed(3)} s of the cut's ${r.end.toFixed(3)} and is thrown back (bounce); he ends ${r.dist.toFixed(2)} m from it`);
+        } else {
+          assert(r.took > 0 && !r.states.has('bounce') && r.maxT >= r.end, `bites off: the same cut into ${name} takes ${r.took.toFixed(3)} and the blade carries through (the cut runs to ${r.maxT.toFixed(3)} s, past ${r.end.toFixed(3)}), as before`);
+        }
+      }
+      if (on) {
+        const r = swing(G, 'deadTree', true);
+        assert(r.state !== PIECE.INTACT && !r.states.has('bounce') && r.maxT >= r.end, `bites on: a cut that fells the tree goes through it (no bounce; the cut runs to ${r.maxT.toFixed(3)} s)`);
+        const s0 = ST.freeze.wood;
+        assert(s0 > 0 && ST.freeze.hard >= s0 && ST.push.hard >= ST.push.wood, 'stone rings harder than wood (BREAK.chip.stop: a longer freeze, a bigger push)');
+      }
+    } finally {
+      setLook('chip', null);
+    }
+  }
+  return last;
+}
+
 const SCENARIOS = {
   timestep: scenarioTimestep,
   strategy: scenarioStrategy,
@@ -10599,6 +11397,7 @@ const SCENARIOS = {
   hero: scenarioHero,
   batch: scenarioBatch,
   seen: scenarioSeen,
+  ripple: scenarioRipple,
   zoomart: scenarioZoomArt,
   heroletters: scenarioHeroLetters,
   breath: scenarioBreath,
@@ -10612,16 +11411,20 @@ const SCENARIOS = {
   flurry: scenarioFlurry,
   riposte: scenarioRiposte,
   flare: scenarioFlare,
+  stamp: scenarioStamp,
+  calm: scenarioCalm,
   training: scenarioTraining,
   deflect: scenarioDeflect,
   lab: scenarioLab,
   bullets: scenarioBullets,
   strings: scenarioStrings,
   plungeReact: scenarioPlungeReact,
+  wyrmreact: scenarioWyrmReact,
   timing: scenarioTiming,
   fire: scenarioFire,
   ablaze: scenarioAblaze,
   terrain: scenarioTerrain,
+  bladestop: scenarioBladeStop,
   win: scenarioWin,
   die: scenarioDie,
   touch: scenarioTouch,
@@ -10637,6 +11440,7 @@ const SCENARIOS = {
   herostance: scenarioHeroStance,
   looks: scenarioLooks,
   music: scenarioMusic,
+  thump: scenarioThump,
   flight: scenarioFlight,
   tongues: scenarioTongues,
   fxlooks: scenarioFxLooks,

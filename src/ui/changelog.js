@@ -27,6 +27,18 @@ export const RELEASES = [
       },
       {
         date: '2026-11-22',
+        title: 'Cuts land with weight: the hit printed where it lands, the boss\'s body answers',
+        notes: [
+          'When your cut lands on a human boss, the hit prints itself into his letters for a moment: a slit that opens for a cut, rings round a thrust, a star for the slam.',
+          'A wave runs out through the boss\'s letters from where the blade struck. A light cut sends a small one; a slam, a charged cleave or the execution sends one across the whole body.',
+          'The boss\'s body answers where you hit it: a head cut snaps the head aside, a body cut twists him, a leg cut buckles the knee. The Cinder Wyrm\'s head, neck, body, wings and tail each answer their own way.',
+          'Heavy blows land with a deeper thump, and the music ducks for a moment under them.',
+          'The white glare where your blade meets the boss is a little softer, so you can see all of this happen.',
+          'None of it changes the fight: hits, timing and the bosses\' moves are as they were.',
+        ],
+      },
+      {
+        date: '2026-11-22',
         title: "Tian Lei's third wave: the sign, the counter stances, the great orb and the barrage",
         notes: [
           'In the Skybreak Ring, Tian Lei now raises two fingers to his brow before he vanishes: a snap of light, and he is behind you with the blow still coming. When the hand goes up, turn.',
@@ -43,6 +55,15 @@ export const RELEASES = [
           'The fallen trees round the Obsidian Throne are gone. In their place lies what earlier challengers left behind: swords planted as graves, spears with a torn banner, cairns with a straw hat, wrecked carts, old steles and split boulders.',
           'Every piece is different, and they lie the way the star\'s fall threw them, not in a neat ring.',
           'Most of them break when the fight reaches them, and the wooden ones burn.',
+        ],
+      },
+      {
+        date: '2026-11-21',
+        title: 'The letters come off where the blow lands',
+        notes: [
+          'Trees, stones, pillars, statues and bones lose their letters exactly where a blow lands, yours or the boss\'s.',
+          'A blade cuts a notch into a trunk, a heavy blow knocks the face of a stone in, a blast eats the side that faced it. The pieces fly out of the cut.',
+          'Your sword stops on what it cannot cut through: it bites into wood and rings off stone with sparks, then is thrown back. A blow that fells the thing goes through.',
         ],
       },
       {

@@ -21,7 +21,7 @@ the plunge, three phases, fire hazards, keep-in-view camera, and now the bullet 
 wheel zoom → mouse ray (mouseGround) → gamepad.update(realDt) → touch.update(realDt)
 → 1 – 6 simulation steps (core/timestep.js), each of stepDt real seconds:
     clocks → lab.update(stepDt) → flow.update(dt, stepDt) → player.update(dt) → dragon.update(dt)
-    → world.update(dt) → lights.update → fx.update (alpha, add, fire, shed)
+    → world.update(dt) → lights.update → fx.update (alpha, add, fire, shed, ripple, stamp)
     (input.endFrame() after the FIRST step: the frame's presses and releases are seen once)
 → lab.postUpdate() → camera (rig, realDt) → view override → shared uniforms
 → hud.update(realDt) → audio.update(realDt) → render
@@ -64,6 +64,8 @@ scene.updateMatrixWorld()            once for both scene passes (scene.matrixWor
                                      minus what the scene shows of him, the rest back into sceneRT (ADR-106)
 → the fire field                    heat blobs → a heat buffer → a flame texture, one texel per art cell
                                      (render/fireField.js, ADR-113; skipped while it holds no blob)
+→ the impact ripple                `ripple.write(pipeline)` in `_updateAsciiCamera`: its live hits
+                                     projected with the final camera into `uRip*` (ADR-149)
 → ASCII pass → FX pass (fxScene: the fire field's letters first, then the glyph particles) → bloom → final grade
 → updateZoomArt()                    picks the zoom ladder step the NEXT frame draws at (?zoomArt; ADR-120)
 ```
@@ -98,6 +100,7 @@ ADR-120).
 | `viewOverride` | `null` or `{ pos, target, focus? }` — camera override applied by main.js after the rig (see Frame order). Only the Lab model viewer writes it. |
 | `lights` | `add({x,y,z,color:[r,g,b],intensity,radius,life,fade,fadeIn,flicker})` → light (mutable `x,y,z`, `.set()`, `.kill()`) |
 | `fx.add` / `fx.alpha` | glyph particles, additive-HDR / alpha-blended. `spawn({x,y,z,vx,vy,vz,life,size,sizeEnd,glyph,color,colorEnd,alpha,alphaEnd,gravity,drag,spin,rot,flicker,stretch})`. `glyph`: char, string of chars (random pick) or atlas index. |
+| `fx.ripple` / `fx.stamp` | the impact pass (ADR-149): `fx.ripple` = `ImpactRipple` (`render/impactRipple.js`: `hit(x, y, z, o, k)`, `update(dt)`, `clear()`, `write(pipeline)`; `n`, `live`), `fx.stamp` = `{ clear }` (`combat/impactStamp.js`: `stampHit`, `stampUpdate`, `stampClear`). Both run on fx time and are cleared on a level reset (flow, `world.debug.setVisible`) |
 | `world` | `resolve(pos, radius, bound, soft = false, who = null)` circle collision (`who` 'hero': on a set with an edge the hero's ground replaces the `bound` circle; `edge` is that edge or null and `heroBound(x, z)` how far out he may stand that way: Destruction → "The edge of the open ground", ADR-125; `soft`: pass through the circles marked `soft`, the trunks and stumps of breakable wood: the wyrm's body, ADR-119); `setQuality(k)` (the destruction's phone budget 0.3 .. 1; `setGrassQuality` sets it from the preset, `QUALITY` in breakTuning.js); `setPusher(slot, x, y, z, r)` grass trample (slot 0 = player, 1–9 = dragon; y > 1.5 = airborne, ignored); `clearPushers(from, to)`; `gust(x, z, strength 0..2, radius)`; `scorch.burnCircle(x, z, r, burn 0..1, heat 0..1)`, `scorch.reset()`; `colliders.blocked(ax,az,bx,bz)`; `setGrassQuality(count)` (instanced grass blades drawn; main.js applies the quality preset); **destruction** (ADR-107, see Destruction): `impact(x, z, r, power, o)`, `ignite(x, z, r, k, grass = true)`, `restore()`, `destructibles`, `fire`, `scars` (the tests' world mocks lack them: every caller outside `src/world` guards with `?.`); `bonfire {x,z}`; `nest {x,z}`; `atmosphere.setBonfireLit(bool)`; `atmosphere.skyGlow(k 0..1)` (the sky over the clearing glows orange: warms the shared ambient and fog colours; call every frame while it should show, it eases in and out and lets go 0.2 s after the last call; Armageddon, ADR-053); Lab only: `debug.setVisible(bool)` hides / restores the environment (ground, grass, forest group = trees, stones, flagstones, nest bones, bonfire; atmosphere paused and in-flight particles in `fx.*` dropped; the exact previous `visible` flags come back; lights, scorch and colliders untouched), `debug.visible` |
 | `player`, `dragon`, `hud`, `audio`, `flow`, `lab` | the modules below. `dragon` is **the boss slot** (the wyrm in Cinderwood, the Ash Disciple in Ashfall; see Levels and the boss slot); `boss` is the same object |
 | `level`, `levels`, `pickLevel(id)` | the level this page load built (`levels/index.js` definition), every level as `{ id, name }` (the title's stage picker, the Lab's LEVEL row), and a reload into another one (`?level=<id>`, other parameters kept). Tests may leave them out: flow falls back to Cinderwood's lines |
@@ -524,6 +527,30 @@ Render helpers for creature modules:
     inside `uGlow`), `U.uWyrmHeat` (xyz the front, w the rule's weight) and `U.uWyrmHeatFrom` (xyz the
     origin, w the front's strength); data `HEAT_RISE` (`dragon.js`), `WYRM_HEAT` (`materials.js`).
     Anything that reads a wyrm material's `uGlow` expecting the charge must add `uGlowRise`.
+  - *The impact stamp* (`combat/impactStamp.js`, ADR-149): a landed cut written into the fire field
+    in `steel` (`STAMP_LOOK`, the last stamp's counts in `STAMP_LAST`, `STAMP_GLYPHS` empty: no
+    particles). `stampHit(game, x, y, z, o, k)` (from `PlayerFx.contact`), `stampUpdate(game, dt)`
+    (main.js, fx time, after the shed digits), `stampClear(game)`; `setStampMode('over' | 'instead')`
+    / `stampMode()` (`?stamp=instead`), `setStampInk(bool)` (`?stampInk=0`); `takeStampReplace()`
+    (cutFx asks once per cut whether to drop its slash line). 4 stamps pooled, one copy of the blobs
+    alive per frame; its ink is the fire-field tint zone id 800001 (`FireField.tint`, `dark` 1).
+  - *Calm at the contact* (`combat/impactCalm.js` exports `CALM_LOOK`, `CALM_DEFAULT` 1, `setCalm`,
+    `calmLevel`, `calmLook`, `calmA`, `calmS`, `calmBossFlash`; ADR-149): `PlayerFx.contact`
+    snapshots the level (`_calmAt`) and opens the arc's calm zone; `player._updateMaterials` reads
+    `fx.calmBlade(w)` / `fx.calmFlare(v)` for the steel's gain; cutFx, `fx.edgeFlash`,
+    `fx.cleaveImpact` and `fx.trail` read `calmA` / `calmS`; `dragon.takeHit` and `duelist.takeHit`
+    take their hurt flash through `calmBossFlash`. Level 0 draws exactly what it did before.
+  - *The impact ripple* (`render/impactRipple.js` exports `RIPPLE`, `class ImpactRipple`; `game.fx.ripple`;
+    ADR-149): `RIPPLE.slots` 4 live hits kept in world space (an offset from `o.target.position`),
+    presets `wave` (drawn) and `subtle`. `Pipeline.setRipple(r)` (the constructor calls it; null
+    zeroes `uRipN`); `write(pipeline)` runs in `update` and again in `_updateAsciiCamera`, right
+    before the ASCII pass. Uniforms: `uRipN` (live hits; 0 = the pass reads nothing), per hit
+    `uRipA[i]` (contact px x, y, the front's radius in cells, its weight), `uRipB[i]` (the shove px
+    along the cut x, y, the front's half-width in cells, the contact's view depth m), `uRipC[i]` (the
+    outward push px, the quiet hole and its ramp in cells); `uRip` (roll, bright, depth window m,
+    lift), `uRip2` (trough, its lag, stroke share). The pass's `rippleCell(cpx, dz, cw)` sets
+    `gRip` / `gRipS` per boss cell: the wyrm's art grid and the hero-art path's boss half only (never
+    `gSelf`, props, floor, grass); a write that throws zeroes `uRipN` and drops the ripple.
 - `createCarvedGlyphMaterial(U, opts)` (`render/materials.js`) — **carved glyphs, for FLOORS only**
   since ADR-100 (flagstones, paving, the crater's plates; upright objects use prop art above). Glyph cells sit on a world-fixed lattice in
   a plane facing the default camera (`viewPitch`), so they are upright, equal-sized and never
@@ -586,7 +613,9 @@ Render helpers for creature modules:
     `onAfterRender`, `userData.noBatch = true`, and meshes added to an actor after its
     `batchRigid` call. A source's geometry and material must not be swapped or edited after the
     build (rebuild the set instead); mirroring (a negative scale above a source) is baked into the
-    batch's winding at build time.
+    batch's winding at build time. Each batched source gets `userData.batchRun` `{ mesh, i0, ic, v0, n }`:
+    its run of its batch's index and of its vertices (the breakables move and fold single triangles
+    there: "Bites", below; nothing else may write there).
   - `CONFIG.render.batch` (default `true`; `false` when the page URL has `?nobatch`, read once in
     `core/config.js`): with it off `batchRigid` returns an empty set and every mesh is drawn as
     before — an A/B switch for frame rate and image checks.
@@ -1214,6 +1243,17 @@ a 0.22-0.3 m two-frame core, a ring on heavy blows, one small light; per-tier nu
 `CUT_LOOK`, the last burst's counts in `CUT_LAST`, the look switch `setCutStyle('gash' | 'fan')` /
 `cutStyle()` (the Lab's 'cut' row; `?cutfx=fan`). `cleaveImpact(..., bare)`: bare = the fan only
 (contact draws the ring and the light). `sparks()` stays for the plunge.
+
+**The impact pass** (`combat/impact.js`, ADR-149): `IMPACT = { pieces: ['stamp', 'ripple', 'react',
+'thump'], on, k, by }`; `impactOn(piece)`; `impactK(piece, who)` = `k` × `by[piece][who]` (`who`
+'duelist' | 'wyrm', omitted: no `by`), 0 while the piece is off. `on` comes from `?impact=` (absent,
+empty or 'all': every piece; any list: only the pieces named; 'off': none) and the Lab's 'impact'
+row flips it live. With it, `contact`'s record also carries `target` (`game.dragon`), and before
+`cutBurst` it calls `stampHit(game, x, y, z, o, impactK('stamp', target.kind === 'duelist' ?
+'duelist' : 'wyrm'))` and `game.fx.ripple.hit(x, y, z, o, impactK('ripple'))`, inside one try /
+catch (a throw is logged, the cut still draws). `cutBurst` calls `takeStampReplace()` once and drops
+its slash line and cross when the stamp just drew in 'instead' mode.
+
 `edgeGlint(sw, z0, z1, far, crit, realDt, ridge)`: a small cold '+' (and '|' strokes behind it)
 running up the LEADING edge of the steel from sword-space height z0 to z1 this frame (`leadSide(sw,
 e)`: the blade's mid travel against its X axis; the ridge under `EDGE_GLINT.ridge`, or always with
@@ -1331,6 +1371,8 @@ hazards: Hazards                        // the fire hazards (hazards.js, contrac
 bullets: Bullets                        // the bullet field + the ground tongues (bullets.js, ADR-039): see "Bullets" below
 terrain: Terrain                        // the piece in its jaws or in the air (terrain.js, ADR-110): see "Terrain moves" below
 ablaze: Ablaze                          // phase 3: it sets itself on fire (ablaze.js, ADR-120): see "The wyrm ablaze" below
+react: WyrmReact                        // the impact pass (react.js, tuningReact.js, ADR-149): the drawn body
+                                        // answers where it was hit; see "The drawn reaction" below
 crashing: boolean                       // true while a plunge stops a flight: that action's end() must not land it elsewhere
 isTargetable(): boolean                 // false while sleeping/dying/dead
 lockPoint(out): Vector3                  // chest/neck base, for lock-on + camera
@@ -1367,6 +1409,8 @@ enterPhase(n)                           // the transition roars call it at their
 hitstop(sec, scale)                     // game.hitstop that won't crush a running Ghostep slow-mo
 reset()                                 // back to sleeping at the nest, full HP/posture, phase 1, FX/lights/hazards cleared
 update(dt)
+drawnPoint(v): Vector3                  // a hurt sphere's exact point → where it is drawn, in place
+                                        // (identity unless a reaction is drawn: react.drawnPoint)
 debug: {                                // used by the Lab (generic shape every future enemy implements)
   abilities(): Array<{ name, label, tell, phase }>,   // every ATTACKS entry (46: 8 singles, 17 strings, 11 fire
                                         // attacks and flights, 6 bullet patterns, 3 terrain moves and 'roar', the
@@ -1381,6 +1425,15 @@ debug: {                                // used by the Lab (generic shape every 
   ablaze(look?): string                 // the wyrm only: phase 3's fire 'off'|'a'|'b'|'c' (sets it when given; returns the one in use)
 }
 ```
+**The drawn reaction (ADR-149, `dragon/react.js` `WyrmReact`, numbers `tuningReact.js` `REACT`).**
+`takeHit` calls `react.hit(o, part)` (guarded) after the hit spark; nothing happens while sleeping,
+dying or dead, or at `impactK('react', 'wyrm')` 0. `_step` order: `react.restore()` first (last
+step's rotations off the joints), the whole step (AI, rig, hurt spheres, attacks, the eye glints read
+`react.eyes(rig.pt.eyes)`), `react.apply(dt)` last. So what reads the joints inside the step sees the
+plain body; the renderer and the rigid batch's bone texture see the reaction. `react.clear()` on
+`reset()`. Up to `pool` 6 reactions at once; no Object3D, no random numbers, no allocation per frame.
+While one is drawn the hurt spheres can sit up to about 1 m off the drawn body for 0.2 - 0.5 s.
+
 **Attacks and selection** (`attacks.js` `ATTACKS`: the singles, the strings, `roar` and, spread in,
 `FIRE` from `fireAttacks.js`, `BULLET_HELL` from `bulletAttacks.js` and `TERRAIN_MOVES` from
 `terrainAttacks.js`; their numbers are `TUNING.attacks`, into which `tuningFire.js` `FIRE_ATTACKS`,
@@ -2253,9 +2306,10 @@ Esc: pause" log line is skipped. Screen taps reach `_dismissPressed` as a virtua
 constructor(game)          // subscribes to events; AudioContext created lazily
 unlock()                   // call on first user gesture (flow does this on title dismiss)
 update(realDt)
-play(name, opts)           // one-shot SFX by name (sfx.js SFX, then fire.js FIRE_SFX)
+play(name, opts)           // one-shot SFX by name (sfx.js SFX, then fire.js FIRE_SFX, then thump.js THUMP_SFX)
 setMusic(mode)             // 'none'|'ambient'|'boss'|'boss2'|'victory'|'death'
 toggleMute(); muted: boolean;  setVolume(0..1)
+thump: Thump;  thumpDip: GainNode|null // the impact pass (thump.js): the sub voice + the music's dip node
 ```
 **Recorded music (ADR-117).** The sound effects stay synthesised. The background music is recorded:
 each level's exploring track and one track per boss phase, all CC0 from OpenGameArt, picked by the
@@ -2312,6 +2366,15 @@ the fallback.
 - `world:impact` by kind: 'chip' `chip`, 'wear' `wear` (2026-11-16, ADR-120: a quiet leaf hiss, a dry
   crack from stage 2, a low creak for the lean; gain 0.45, `gap` 0.14 s so a roar's front sets off a
   few, not hundreds), 'burn' `sizzle`, 'burnout' `emberHiss`, any other `crash`.
+
+**The thump (ADR-149, `audio/thump.js`: `THUMP`, `THUMP_SFX`, `class Thump`).** `engine.thump`
+(a `Thump`, no nodes of its own) runs on `player:hitDragon` after the engine's early returns (a
+guarded strike, the plunge, a shards-only slam, a flurry's flash cuts): `onHit(d)` plays `sub`
+(`play('sub', { k })`, the sfx bus; `THUMP_SFX` is looked up after `SFX` and `FIRE_SFX`) at
+`strength(d) × impactK('thump')`, and on a `heavy` blow `dip(k)` on `engine.thumpDip`. The graph:
+`musicBus → thumpDip → musicDip → mix` (`thumpDip` is 1 when idle; never on the cue bus). One dip per
+`dipGap` 0.5 s; a blow inside a holding dip extends it to at most `dipMax` 0.45 s after it began.
+Counters `subs`, `dips`, `extends` (tests).
 
 **A flurry's blow on a duelist (ADR-101).** `takeHit({ ..., exact, reel, away })`: `reel` 1 (a flash
 cut) flinches him where he stands whatever he was doing (`brain.startReact('flinch')`, travel 0) and
@@ -2430,6 +2493,9 @@ two transformations), `ascClash` (the great beam's head parried perfectly: the c
 the ki / terrain ones start their move in its own form (`debug.setForm`, then `debug.trigger`) and act on
 the beat's own clock, not on the flash (a beam's and a thrown slab's cues are hazards: the runner's
 answers skip them). The runner's watch list gained `dragon:phase2`.
+
+**The 'impact' row** (ADR-149): one on / off toggle per piece of `IMPACT.pieces` (stamp, ripple, react,
+thump); a click flips `IMPACT.on[piece]`, read at the next hit. `_syncCutBtns` lights them.
 
 ### Bindings — `src/core/bindings.js` (ADR-067)
 ```
@@ -2601,6 +2667,46 @@ piece's structure, but at least `brushMin` 0.4 of itself (a body that keeps push
 in a couple of seconds; a turn only shakes it), once per `brushRehit` 0.3 s, and a flat stone (a
 flagstone, lower than `brushFlat` 0.3 m) takes nothing from it.
 
+**Making a new object destructible** (the rule for every level, ADR-107 / ADR-132; CLAUDE.md "The
+world breaks"). Every background object in a level breaks, and since ADR-132 a hit takes its letters
+off where it lands. For a new object, a new set or a new level:
+1. **List it.** Push a definition into the set's `breakables` (the table below) instead of merging it
+   into the static meshes. Give it `kind` (free; AI and tests read it), `mat` ('wood' | 'stone' |
+   'metal' | 'bone': what bites it, its debris, its sound), its base `x, z`, a footprint `r` that
+   matches what is drawn (the hero's blade stops at that circle, `BREAK.chip.stop.touch`), `h`
+   (`geosHeight(geos)`) and colliders if it blocks. Leave `hp` to the default (material x size) or give
+   a finite number; `hp: Infinity` means it only chips and is never bitten (the bronze bell).
+2. **Draw it on one of the two breakable paths.** `look: 'range'`: its body is a run of a set's merged
+   mesh (`forest.js` `Runs.add(geos, leaf?, fine?)`; the trees, the landmarks), cheapest for many
+   pieces. `look: 'prop'` (prop art, the house style) or `'grid'`: its `geos` go through the
+   breakables' rigid batch (stones, pillars, statues, arena props). Either way it is NON-INDEXED
+   triangle geometry (`prep()`), in world space, with the material's attributes (`carve()` / `paint()`).
+   Its bricks are made from those triangles: no cube grids, no hand-made fragments. With bites on, the
+   level is cut to brick size when it is built (`refine`, `BREAK.chip.brick` 0.8 m), parts that are
+   already thin are left alone, and every piece's bricks are made at load (a piece of 4000 triangles
+   costs ~10 ms there, nothing in play).
+3. **Say which parts are foliage.** For a range piece, `Runs.add(geos, leaf)` marks foliage parts:
+   foliage is holed brick by brick; a solid part (trunk, stone, bone) keeps a skin, set back where it
+   was struck. A closed solid needs nothing more; an open sheet (a wing membrane, a cloth) is holed.
+4. **Give it a stump or rubble if it falls.** `broken` (what is left standing), `topples`, `wreck`, as
+   the table below. A tall piece the hero fells lands on whoever is under it (red tell from a boss).
+5. **Hit the world from anything new that hits**, with the blow's real height (`o.y`; a blade's
+   segment: `o.ya` / `o.yb`), its way (`dx, dz`), its kind (`BLOW.CUT / BLUNT / BLAST / FIRE`) and one
+   `src` per swing. `strike` (a disc: it eats the side that faces the blast), `sweep` (a segment: it
+   bites where the segment met the piece), `stop` (a projectile). `destructibles.struck` says what the
+   last call met.
+6. **Test it.** The world test `bite` walks the level registry (`src/levels/index.js` `LEVELS`): a new
+   level is checked with no change (it lists breakables, every piece that takes structure has bricks,
+   a blow on one of each kind bites it, the reset puts them back). Run `node
+   tests/integration/world.mjs . bite`; look at it in the browser (`?level=<id>`; `?chip=0` is the
+   game without bites, for a before / after).
+7. **Leaving something whole is a decision**, the owner's, written in DECISIONS.md: the bonfires (a
+   checkpoint), the sect gate, the bell (it only rings: `hp: Infinity`), the throne and its dais, the
+   fallen star and the seal, and the training room (`?stage=lab`, ADR-099: a measuring stage, its tiles,
+   walls and pylons stand outside the fight; the test checks it lists nothing). Floor slabs break as
+   slabs (`floor: true`: whole, cracked, broken; never bitten), the ground itself does not break yet
+   (ADR-132 "Not done").
+
 **A set's `breakables`** (built in the set builder; `forest.js` and `courtyard.js` are the examples). One entry:
 | field | what |
 |---|---|
@@ -2686,10 +2792,12 @@ stones is a breakable 'vent' and the vent flares as it breaks.
   `sweep(ax, az, bx, bz, r, power, o)`: along a segment (a blade's edge, a dash, a body part's step).
   `sweepRec(w, o)`: the same with the segment in a reused record `{ ax, az, bx, bz, r, power }` (no
   numbers boxed per call: the wyrm's body sweeps a dozen spheres a frame).
-  `o = { kind, by, dx, dz, y, src, only, falloff, brush, spare, incidental, down }`: kind = `BLOW.CUT / BLUNT /
+  `o = { kind, by, dx, dz, y, ya, yb, src, only, falloff, brush, spare, incidental, down }`: kind = `BLOW.CUT / BLUNT /
   BLAST / FIRE`; by = 'player', 'boss' or 'world'; dx, dz = the blow's way (a piece falls along it;
   default: out from the disc's centre, or along the segment); y = its height (a blow above a low piece
-  passes over); src = one id per swing from `swing()` (a piece takes a blow once per id; without it,
+  passes over); ya, yb = a `sweep`'s heights at its two ends (a blade's hilt and point: a piece is
+  struck at the blade's own height there: its bite, its chips, its nick, a felled tree's stump; without
+  them, at `y`); src = one id per swing from `swing()` (a piece takes a blow once per id; without it,
   once per `BREAK.rehit` 0.18 s); only = just that material ('wood': the wings' wind); falloff 0..1 =
   `strike` is weaker toward its rim (× 1 − falloff there; `TUNING.world.falloff` 0.6 for the wyrm's
   ground blows); brush = a body walking (above); spare = one piece to leave alone; incidental = skip
@@ -2763,6 +2871,72 @@ frame); the rest only chip. **The wall** (`BREAK.wall`): a tree beyond `from` 32
 structure of a tree its size, falls with at least `out` 0.55 of its way pointing out of the arena (a
 leaning one the way it leans, which was turned outward when it leaned), and where it lands strikes the
 trees behind at `domino` 1.4 × its weight (0.7 elsewhere).
+
+**Bites** (2026-11-21, ADR-132; `BREAK.chip`; the look switch `?chip=`, `chipLook()`: on (`a`) by
+default since the owner's pick the same day, `?chip=0` turns them off). A piece is the BRICKS it is drawn with: its triangles, two that
+share their longest edge and lie flat together (cosine >= 0.9: the halves of a face of a trunk, a
+pillar, a stone) being one brick; foliage stays single triangles. A blow that takes structure from a
+piece (`_hit` -> `_bite`) takes bricks from it where it struck: of the bricks within the blow's reach
+of the point (a `sweep` / `stop`: where the segment met the piece, reach = the blow's radius + `pad`
+0.25, between 0.55 and 3.2 m; a `strike`: the disc's own centre at `o.y`, reach = its radius + the
+piece's + `pad`, so a blast eats the side that faced it) the share of the piece's structure the blow
+took, nearest first, at least one, at most `max` 96. The blows' arithmetic is untouched: structure,
+stages (`wear` events), the lean, the fall. So a notch grows where a blade keeps biting and its
+section is used up as the piece's structure runs out.
+- **Set back, or holed** (`brickSink`, `BREAK.chip.sink`). A brick of a solid part is not removed: it
+  is moved INTO the piece along its own normal, 0.42 of the part's thickness there (the nearest brick
+  of the same part whose face looks back at it), at most 0.3 m, so the piece keeps a skin and never
+  opens onto its hollow inside. Foliage, a face with no wall behind it and a part too thin for a dent
+  to show (set back under 0.07 m: a bough, a thin bone) lose the brick outright (its triangles
+  folded to a point).
+- **Finer bricks, built in** (`forest.js` `refine(geo, L)`, `brickEdge()`): a level built with bites
+  on cuts every bitten piece's faces until no edge is over `brick` 0.8 m (longest-edge bisection, in
+  place, every attribute carried to the new corners: the same shape and the same picture, more
+  triangles). Not cut: foliage, stumps, a part whose triangles are already narrower than `thin` 0.12
+  m on average; the forest's trees beyond `near` 48 m are cut `far` 2.5 x as coarse. Cinderwood: 0.92
+  M vertices drawn -> 1.07 M (the trees' mesh 524 k -> 648 k). So the switch is read when the level is
+  built (the Lab's Bites button reloads the page), and at each blow.
+- Every piece's bricks are made when the level is built (Cinderwood's ~620 range pieces: ~0.2 s in
+  Node; the depth search walks a dense grid of the bricks' centres, `brickSink`, ~O(n): the Cinder
+  Tree's trunk, 3000 bricks, in ~9 ms). Made in play they cost a frame a piece, and a roar's front
+  reaches the whole wall in half a second.
+- A 'range' piece: `RangeBody.bite(x, y, z, reach, share, cap, out)` (world, at home; its bricks are
+  made at the build, or at its first bite: `nb`, `btri`, `cen`, `tpart`,
+  `bit`, `pBit`, `pN`, `nBit`, `bnor` the way in, `bdep` how far), then `write()` sets back or folds
+  each taken brick after the parts are written (so it stays so while the piece shudders, leans,
+  falls, is carried); `home0()` clears them. `partGone(i)` -> share. With bites on a tree no longer
+  drops its crown parts in order; a crown part that has lost `shed` 0.72 of its bricks drops whole
+  (`_shed`). A wind front's wear (`_windHit`) bites the windward crown at `windY` 0.7 of the height.
+- A piece of the rigid batch: `MeshBricks` (`piece.bricks`, built with the pieces from the source's
+  `userData.batchRun` and the vertex counts of the geometries it was merged from, its parts): a
+  set-back brick's corners are moved in the batch's positions, a folded one's three indices set to
+  the first (both buffers `DynamicDrawUsage`, uploaded by range); `reset()` copies its runs back. Only
+  made in a level built with bites on (without them the batch's buffers stay static, as before), and
+  not with `?nobatch` (those pieces then only chip). The shadow mesh keeps the whole shape.
+- Each brick falls as one letter of what it was drawn in (`_drop`: a leaf, a splinter, a digit for
+  prop art; the leaves' and wood's dim hues) from its own centre, from the debris budget; every
+  `litter` 3rd leaves a mark lying under it (`scars.rubble`) until the reset; the splinter spray of
+  `_chips` is cut to 0.3 and the nick (`scars.object`) is left out (the bite is the mark).
+- Not bitten: floor slabs (their own cracked and broken looks), pieces that only chip (`hp`
+  Infinity), wreckage. A blow that took structure but has no brick within reach (a ground blow under a
+  bough, a blow on a landmark's footprint) takes the share from the bricks nearest it, however far. `destructibles.bitten`: bricks taken since the reset. World test `bite`.
+- The bricks a bite takes are knocked OUT of their face (`_drop`: away from the piece's axis and back
+  against the blow, harder for a blow that took more), then fall.
+- **The blade stops** (`BREAK.chip.stop`; player.js `_cutWorld` / `_bladeStops`; only with bites on).
+  `destructibles.struck` `{ held, x, y, z, broke }`: what the last `strike` / `sweep` / `stop` met (the
+  first piece that held the blow and where, how many it broke; reset at each call). A cut of the hero's
+  (not the execution) that meets a piece it does not cut through, `minH` 0.6 m or taller, stops there:
+  the attack clock goes back to the middle of that frame's travel, the frame freezes (`freeze` wood
+  0.075 s, stone / metal / bone 0.095), the camera shakes (`shake` 0.14 / 0.2, x 1.3 for a heavy),
+  steel on stone or metal throws sparks (`fx.sparks`); only on contact (`_bladeTouches`: the steel
+  within `touch` 0.25 m of the piece's footprint, the blade's own hit radius); `_tickAttack` holds the pose through the freeze
+  and `stick` (wood 0.11 s, the blade in the cut; stone 0) and then throws the blade back (`_bounce`,
+  `push` 0.25 / 0.45 m away from the piece; an attack again after `TUNE.bounceAttack`). No
+  `player:bounced` (that is a duelist's deflection: the feed and the pad read it). A cut that breaks or
+  fells what it meets goes through, with a `through` 0.05 s freeze. Integration scenario `bladestop`.
+  Training: a situation marked `clear` (built on the hero's own strikes: `foeBuild`) puts him where no
+  standing piece is within his sword's reach (`_crowded`: 2.6 m), turning round the boss, else
+  bringing the boss in toward the arena's middle (`CLEAR_SPOTS`).
 
 **The edge of the open ground** (`world/edge.js` `class Edge`, numbers `BREAK.edge`; 2026-11-21, ADR-125).
 Where the hero and the boss may go follows what still stands of a set's wall. A set asks for it by
@@ -3009,7 +3183,7 @@ A level: `{ id, aliases, name, sub, world, buildSet(U, colliders), createBoss(ga
   `onParried(info)`, `reset()`, `update(dt)`, `debug` (the Lab's generic shape). Optional
   `drawnPoint(v)` (+ `drawScale`): maps an upright gameplay point (a hurt sphere's centre) to where it
   is drawn (the lean, the drawn size, a drawn-only offset), in place; the hero's landed cut is drawn
-  where his drawn blade meets those drawn spheres (absent: identity, the wyrm). A plunge target adds
+  where his drawn blade meets those drawn spheres (absent: identity; the wyrm offers one since ADR-149: its drawn reaction). A plunge target adds
   `plungePoint` / `onPlunge` (the wyrm); a **duelist** (`kind: 'duelist'`) instead offers
   `onExecute({ damage })` and `execRange` (the execution thrust, Player below) and gets no creature
   voice (audio.js gates roars, pain and recoil yelps on `kind`). A boss with **several health bars**
@@ -3044,6 +3218,13 @@ data and a subclass with a few hooks.
   flicker is no swing). His hit spray flies along `takeHit`'s `cut` (the shove keeps `dir`) and
   starts at `point` moved by his own shove (the shove is instant: the hero moves the drawn cut the
   same way, so both sit on the body the freeze holds).
+  **The body answers where it was hit** (ADR-149; `react.js` `class HitReact`, numbers `reactTuning.js`
+  `REACT`): `d.hitReact.hit(R)` from `takeHit` for a sword cut only (`o.swing || reel > 0`, at
+  `impactK('react', 'duelist')` > 0; R = { k, part, point, cut, dir, thrust, heavy, crit, reel, skid,
+  moved }) and from `onExecute` (a heavy thrust fold). `_animate` order: `hitReact.restore()` →
+  jolt, pilot → `anim.update` → `_gameplayPoints()` → `hitReact.apply(dt)` → lean on →
+  `updateMatrixWorld` → `_drawnPoints()`; `reset()` calls `hitReact.reset()`, `_poseAt` restores it
+  before posing. Gameplay points never see it; up to 3 slots add.
 - `brain.js` `class DuelBrain(d)`: the mind and timeline (modes sleep, intro, foot, act, react, broken,
   dying), all data from `d.kit`. Phases are generic: when a gate is hit it starts
   `kit.transitions[phase]` and emits `dragon:phase<n>`; `forcePhase(n)` for the Lab. Beats: a zone hit

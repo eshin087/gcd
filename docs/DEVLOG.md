@@ -40,7 +40,257 @@ The wink names (Crane Wave, Spirit Lantern, Instant Step ...) are proposed, not 
 answered the lookalike request differently on 2026-11-22 (the Sheathed's declined it): the owner to say
 which line holds.
 
+
 ---
+
+## 2026-11-21 / 22 — Session 75: bites, the letters come off where the blow lands
+
+**Owner:** "i want the player to be able to destory the terrain and have the ascii pieces fall of
+exactly where the player or enemy boss is hitting. can we do this to make every background object
+destrutcible like minecraft/lego?" Branch `world/chip-where-hit`. ADR-132 / Session 75 / M1.59.
+
+**What was there.** Nearly everything that stands breaks already (ADR-107, ADR-120, ADR-122), but as
+whole pieces: a blow takes structure, a tree drops its crown parts in a fixed order at three stages
+(a blast at a pine's foot took its top two tiers), a stone takes a nick, and the chips fly from one
+point. Nothing came off where the blow landed.
+
+**What changed** (`BREAK.chip`; behind `?chip=a`, the Lab's WORLD -> Bites; off ships until the owner
+picks):
+- every breakable is the BRICKS it is drawn with: its triangles, the two halves of a flat face being
+  one brick (foliage stays single). With bites on the level is built with the bitten pieces' faces
+  cut to 0.8 m (`forest.js` `refine`: the same shape and picture);
+- a blow takes the bricks nearest where it struck, as many as the share of the piece's structure it
+  took (`_hit` -> `_bite`): a blade from where its segment met the piece at the blade's own height
+  (`o.ya` / `o.yb`, new; the hero passes his blade's two ends), a blast from its own centre, so it
+  eats the side that faced it. The structure arithmetic is untouched;
+- a brick of a solid part is set back into the piece (0.42 of its thickness there, at most 0.3 m); a
+  leaf, a bough, a thin bone is folded away;
+- each brick falls as its own letter from where it sat; every third leaves a letter lying until the
+  reset; where a bite shows, the nick mark is left out and the splinter spray cut to 0.3;
+- 'range' pieces (the forest's trees, the landmarks) rewrite the triangle when their run is written
+  (`RangeBody.bite` / `_writeBits`); rigid-batch pieces (stones, boulders, pillars, statues) move it
+  in the batch's positions or fold it in its index (`MeshBricks`; `rigidBatch.js` records each
+  source's `userData.batchRun`);
+- with bites on a tree does not drop its crown parts in order; a crown part 72 % eaten drops whole; a
+  wind front's wear bites the windward crown. The range pieces' bricks are made four a frame after
+  the load (not five hundred inside a roar's half second).
+
+**Found on the way** (each from a rendered sheet or a failing check, not from reading the code):
+- The first bites were triangle-shaped (diagonals across a stone's face): the halves of a flat face
+  are one brick now.
+- A blast beside a tree ate it evenly (23 bricks on the near side, 22 on the far): the bricks were
+  counted from the point of the footprint the disc touched. Counted from the blast's own centre:
+  80 against 16, the 16 being the trunk's own.
+- Trunks and boulders were far coarser than "a letter cell": a pine's trunk is two rings of 1.3 - 2.6
+  m faces, a boulder 20 triangles, so a cut took a 1.4 m slab. Hence `refine`. Its first form
+  (every long edge cut, 0.6 m) took Cinderwood from 0.92 M drawn vertices to 1.52 M; longest-edge
+  bisection at 0.8 m, stumps and thin parts left alone, the deep forest 2.5 x coarser: 1.07 M.
+- Plain holes were wrong for solid things: the meshes are hollow, so a holed boulder opened onto
+  black ground and a trunk cut half through looked as if the tree floated; a second option that took
+  a wider patch left a standing stone's top hanging over a gap (dropped). Hence the set-back.
+- My first set-back wrote each brick's way in over its normal while the loop was still reading the
+  normals: half a stone's bricks found no wall behind them (111 of 210). The test's count showed it.
+- A patch script of mine cut three accessors out of `RangeBody` (`parts`, `visible`); the next test
+  run failed on the first line that read them, and they were put back.
+
+**The blade stops** (the owner, after the sheet: "this looks good but theres no impact or animation
+hitting the background object. it looks like im just hitting through it. it should chip at it
+realistically and the sword should stop when it hits it instead of going straight through it").
+With bites on, a cut that meets a piece it does not cut through stops on it (`player.js`
+`_bladeStops`, `BREAK.chip.stop`, `destructibles.struck`): the attack clock goes back to about where
+the edge met it, the frame freezes (wood 0.075 s, stone 0.095), the camera shakes, steel on stone
+sparks, the blade sticks in wood 0.11 s, then the duelists' bounce throws it back (0.25 / 0.45 m). A
+cut that fells or breaks the thing goes through with a 0.05 s freeze. The bitten chips are knocked
+out of the struck face toward him. Filmed (12 frames, 50 ms apart, the real swing, bites off and on):
+off, the blade sweeps through a standing stone and a dead tree to the ground; on, it stops at the
+face (a flash and sparks off the stone, splinters off the tree) and is flung back. Integration
+scenario `bladestop`: on, a light cut into a boulder and a dead tree chips each, freezes, stops the
+cut at 0.142 / 0.158 s of its 0.230 and bounces; a felling cut goes through; off, the same cuts run
+through to 0.467 s as before. The owner, on the sheet: "Keep it": the stop stays as tuned.
+
+**On by default** (the owner: "Yes, turn it on"). The call sites' default is now `a`; `?chip=0` turns
+bites off. Every test now runs with bites on; the first whole run found three things:
+- `world budget`: destructibles.update worst 73 ms. `brickSink` compared every brick with every other
+  (the Cinder Tree's trunk: 74 ms). Now a dense grid of the centres, the search capped at the depth
+  that matters (max / k), a part with no wall that near set back the most if it is closed (its
+  area-weighted normals cancel) and holed if open: the trunk 9 ms, all of Cinderwood 221 ms. A warm-up
+  a few pieces a frame still broke p99.9 (1.9 ms against 1.5: a tree costs 1 - 2 ms), so every piece's
+  bricks are made at the level's build. Then: avg 0.02 ms, p99.9 0.86, worst 1.2 - 2.1.
+- `lord` TRAINING, "Build his streak, he answers": done in 2.2 s with no flurry. Traced: the hero's
+  cuts stopped on the crater's rim slabs and a shard (2 m away, real contact within the blade's 0.24 m).
+  Moving every situation's hero clear of pieces broke four flurry situations, so it is opt-in:
+  `clear: true` on that one situation (Training `_crowded`, `CLEAR_SPOTS`).
+- `world` WEAR / PLACED: the crown parts no longer drop in stages with bites on (by design); those two
+  scenarios run with `?chip=0`, the path that still has them.
+A contact check (`touch`) first set to 0.15 m made the blade pass a dead tree it had chipped; it is
+0.25 m, the blade's own hit radius.
+
+**Every level, and the rule written down** (the owner, 2026-11-22: "is the destructible terrain
+applied to all stages as well? make sure instructions are documented for future agents to make all
+background objects destructible and follow the same rules"). Merged `main` again (#83 the throne's
+props, Tian Lei's third wave: they took Sessions 72 / 73 and M1.56 / 57, and then the impact pass took
+Session 74 / M1.58, so this is Session 75 / M1.59; ADR-132 stays). The world test `bite` now walks the level registry instead of a list of
+arenas, so a new level is checked with no change. It found two things: in Cinderwood a blow on the
+Cinder Tree's high boughs and the Elder Wyrm's fingers took structure and showed no bite (no brick
+within reach): such a blow now takes the bricks nearest it however far; and the training room
+(`?stage=lab`) lists nothing that breaks, which is kept on purpose (a measuring stage; the test
+checks it). Results: Cinderwood 664 pieces, the courtyard 162, the crater 144 (with #83's props),
+the Skybreak Ring 35, every piece with bricks and a blow on each kind biting it. The rule for future
+agents: CLAUDE.md "The world breaks, letter by letter" and ARCHITECTURE.md "Making a new object
+destructible" (a 7-step checklist).
+
+**Merged with `main`** (the same evening: PR #73 - #75 had landed, the Skybreak Ring and the hero's
+look; they took ADR-129 / 130, Sessions 69 / 70, M1.54 / 55; then PR #76, the phone, took ADR-131 / Session
+71; on 2026-11-22 Tian Lei's third wave and the throne's props took Sessions 72 / 73 and M1.56 /
+57, so this is ADR-132 / Session 75 / M1.59).
+The new level's pieces go through the same batch path: the test covers it.
+
+**Verification.** World test `bite` (15 checks: a quarter-cut takes a quarter of a tree's structure
+and 11 of the 42 bricks within 0.8 m of the blade, all of the trunk, set back toward its axis; every
+other brick where it was; 5 such cuts fell it with none of that section left; a blow on a stone's
+south face takes 32 of its 210 bricks, all on that side, set back in the batch's positions; a blast
+east of a tree: 80 bricks east, 16 west; a rib loses bricks; a floor slab does not; the reset puts
+every vertex and index back; the courtyard's 162, the crater's 111 and the Skybreak Ring's 35 pieces that
+take structure all have bricks, a blow on one of each kind bites it and the reset undoes it; off: no
+bricks). In the browser (headless Edge, the real GPU, 1280 x
+720), the same blows with bites off and on: a stone, a boulder, a dead tree, the lone pine, the Elder
+Wyrm's ribs, and the hero's own cuts at the game camera (3 cuts: 3 bricks off the stone; 6 cuts fell
+the pine, away from him). A piece before any blow looks the same built either way (the stone, the
+boulder, the dead tree side by side). `npm test` here, on a machine other sessions were loading with their own suites (93 node processes at
+the end): the first whole run, before the finer bricks and the set-back, passed (all nine tasks). The
+run on the finished code: `integ` (all five tasks), `duel` and the static checks passed, `lord` never
+reported, and `world` passed 333 checks and failed one, its wall-clock budget for
+destructibles.update. That check is the machine, not this change: alone on a quieter machine it read
+avg 0.013 ms, p99.9 0.5, worst 1.46 (budget 0.5 / 1.5 / 8), and at the end an untouched `main` failed
+it with the branch's numbers (avg 0.29 - 0.33 ms, p99.9 28 - 30 against the branch's 0.23 - 0.25, 24 -
+30). `npm run build` passes. The whole suite on a clean runner is the PR's check.
+
+**Not checked / open.** Nobody has played it. The duel arenas are checked by the test (and the courtyard
+loaded and struck once in the browser), not studied on a sheet. Not on the phone,
+and the frame cost of the extra vertices is not measured. The ground itself does not break (ADR-132
+"Not done"), nor the landmarks that were decided to stay whole. A set-back brick cannot be struck
+again (one layer), and nothing falls for want of support.
+## 2026-11-22 — Session 74: a landed cut has weight (the impact pass)
+
+**Owner:** "how can we make the games combat more impactful and feel weight? i want the hits to look
+realistic where it lands and show some kind of ascii animation to show the impact. think of ideas to
+suggest using fable and once we approve, use opus to implement it". Branch `combat/impact-weight`.
+ADR-149 / Session 74 / M1.58.
+
+**Proposed and picked.** Nine ideas: A the hit stamped in the letters, B a ripple through the struck
+body, C wounds that stay, D the body reacts by where it is hit, E a spray along the blade, F the
+ground answers heavy blows, G the same care when the hero is hit, H the sound's weight, I an impact
+frame. The owner: "Build first batch" (A, B, D, H). After the side-by-side clips and the lead's
+recommendation: "Your recommendation".
+
+**How it was built.** The lead (Fable) wrote the plan and a core of switches and stubs; five Opus
+agents built the pieces in parallel worktrees on it (the stamp, the ripple, the duelists' reaction,
+the wyrm's reaction, the thump). The ripple was sent back for a second round: round one read only
+when two frames were diffed. A sixth Opus agent filmed same-take before / after clips and sheets for
+the owner (12). The merge had one conflict class: two scenarios inserted at the same spot of
+`integ.mjs`.
+
+**What changed.**
+- The core, `combat/impact.js`: `IMPACT` (`pieces`, `on`, `k`, and `by`, the owner's scale per kind
+  of struck body), `impactOn(piece)`, `impactK(piece, who)`. `?impact=off | all | stamp,ripple,...`;
+  the Lab's 'impact' row (four toggles). `PlayerFx.contact` hands the stamp and the ripple one
+  record at the drawn contact (tier, cut, edge, hilt, crit, power, low, target); the reactions read
+  `takeHit`'s own record, the thump `player:hitDragon`. With every piece off the game draws, sounds
+  and plays as before (each piece's scenario checks it).
+- **The stamp** (`combat/impactStamp.js`, a branch in `cutFx.js`): the hit as a stepped animation
+  written into the letter grid in the fire field's `steel`. One 12 px blob per letter cell, snapped
+  to cell centres; each frame held 0.04 s of fx time (it runs through the freeze); 4 frames, about
+  0.16 s (the execution 5, 0.2 s). Shapes by tier: a slit that opens and splits (light, sweep,
+  cleave; the cleave adds a cross and grows with the charge), a pierce with rings (point), a star
+  (slam), a puncture with two rings (execute). Rings are flat hexagons cell by cell. The anchor is
+  the contact pulled 2.5 m toward the camera (at 1 m the wyrm's contact sat inside its body and
+  nothing printed). Its cells print on black (one fire-field tint zone); no cell over the hero.
+  `?stamp=instead` draws it in place of today's slash line (an option).
+- **The ripple** (`render/impactRipple.js`, the ASCII pass): a pressure wave from the contact through
+  the struck boss's letters, up to 4 at once, riding with the boss, projected each frame with the
+  final camera. Round 2 (`wave`): nothing in the first 2.5 cells; a thin bright front, a trough up
+  to 60 % darker behind it; letters pushed outward 3.6 - 5.5 px and back; strokes along the front on
+  the wyrm. Reach 9 - 12 cells for a light cut, 36 - 45 on the wyrm and 17 - 19 on a man for a slam,
+  a cleave or the execution. Boss cells only.
+- **The reaction, the human bosses** (`duelist/react.js`, `reactTuning.js`): a drawn layer over the
+  pose, like the shudder. The head tips along the blade (back for a thrust), the torso twists (a
+  thrust folds him), a struck leg buckles and he drops 6.5 cm with the feet planted. Heavy x1.55,
+  crit x1.12, a flurry's cuts x0.7, the Starless Lord x0.82; a heavy blow that shoves him kicks up a
+  little dust at his feet. Hurt spheres, hit stun, shove, guard, AI and the move's clock never see
+  it (the test: on and off identical).
+- **The reaction, the Cinder Wyrm** (`dragon/react.js`, `tuningReact.js`): the head snaps away and the
+  neck carries it, a neck cut whips, a body cut shoves the trunk and lashes the tail, a leg buckles,
+  a wing jerks and folds, a tail lashes to the tip. Light x0.4, heavy x1, crit x1.25. Put on after
+  `_step` and taken off before the next one: AI, rig, hurt spheres and attacks run on the plain joints
+  (the test: identical over 90 ticks). `dragon.drawnPoint(v)` puts the cut's effects on the drawn,
+  reacting body. The old flinch stays under it.
+- **The thump** (`audio/thump.js`): a sub voice (a sine and its octave gliding 70 -> 38 Hz, a soft
+  clip, a 420 Hz low-pass) under the slam, the cleave, the execution, a heavy sweep or point, the
+  flurry's last blow and any crit; a light cut gets none. A heavy blow dips the music only
+  (`thumpDip`, never the cue bus) by 4.5 dB for about a fifth of a second; one dip per 0.5 s, a blow
+  inside a holding dip extends it, so a chain cannot pump.
+
+**What the work found.**
+- *Today's effects hide the new pieces.* The white blade flare covers frames 0 to +4 of every hit (a
+  charged cleave about 6 frames of the whole crop); the swing arc sweeps through the contact at about
+  +6 to +11, when the stamp shows its split lines and ring; the slash streaks stack on its first
+  frames; the jolt, the camera punch and the wyrm's flinch move the picture more than the reactions
+  do at the game camera.
+- *The stamp does not read on the wyrm.* A light cut shows 2 - 3 cells; slam and cleave are nearly
+  invisible under its bright digits and the hero standing in front of the contact.
+- *The reactions are small at the game camera.* A duelist at x1: 3 - 4 px for a light body cut, about
+  9 px for a heavy head cut, 2 - 5 px for a leg, on a figure about 40 px tall ("barely reads", the
+  filming agent). The wyrm at x1: 4 px for a light chest cut, about 13 px heavy, about 11 px for a
+  side cut to the head.
+- *The thump adds little.* Heavy blows already carry almost all their energy below 100 Hz, and the
+  master compressor (threshold -14 dB, ratio 4) pulls the whole mix down 8 - 12 dB on each, the cue
+  bus too. On offline renders at x1 the sub adds +0.2 dB below 100 Hz on the slam, about 0 on the
+  cleave, +0.7 on the execution; what changes is +2 dB (cleave) / +4.5 dB (crit) between 160 and
+  400 Hz, which a phone plays. Nobody has listened to it in the game yet; an audition page went to
+  the owner.
+
+**The owner's picks** (the lead's recommendation, taken): the stamp at medium, over today's slash
+line, on the human bosses only (`IMPACT.by.stamp.wyrm` 0); the ripple at its default; the reactions
+x1.5 on the human bosses, x1 on the wyrm; the thump at x1. Next, a before / after with today's
+contact flare and swing arc toned down (accepted, and done in the same PR: below).
+
+**Calm at the contact** (the follow-up, in this PR). An Opus agent measured what hides the new
+pieces by switching today's effects off one at a time on a frozen take: the struck boss's white
+hurt flash (the wyrm's whole struck body goes white) and the hero's steel lit by the strike are
+the big ones; the hit's own blade flare (+0.5 / +0.75) and the cut's core are negligible, so
+COMBAT.md's "x1.62 / x1.95" was not what you see. `combat/impactCalm.js` dims those together in
+levels 0 - 3 (0 = as before), read at the hit, the same random draws at every level, the slash
+line kept, a missed swing and steel on steel untouched; one line each in `dragon.js` and
+`duelist.js` takes the hurt flash through `calmBossFlash`. Clips: today / 1 / 2 / 3 on the Ash
+Disciple and the wyrm with every piece on, and today vs 2 at the play framing. The lead
+recommended 2; the owner, given the clips and the two preview links: "lets go with calmer 1". Level 1 is the
+default (`CALM_DEFAULT`; `?calm=0` draws the contact as before; the Lab's 'impact' row has a
+`calm N` button that cycles it). Level 1 is the gentlest: the halo round the contact shrinks, the
+stamp's first frames show a little more, nothing is lost. The stamp still does not read on the
+wyrm at 2 or 3, so it stays off there.
+
+**Verification.** New scenarios: integ `stamp`, `ripple`, `wyrmreact`, `thump`; duel `react`. The
+stamp's and the duelists' react scenarios pin their piece at strength 1. `npm test`: all 12 suites passed on the final branch (with `origin/main` #76 merged in and the picks applied; 312 s), and `npm run build` built. The `world budget` timing check failed in every agent's run while six suites ran at once, and fails the same way on the base commit under that load. The pieces
+were filmed in the browser side by side at the game camera (the agents' and the filming agent's
+captures).
+
+**Not checked / open.**
+- Nobody has played it. Not looked at on a phone: the ripple's first version compiled and drew on the
+  LOW / touch path, the second was not checked there.
+- Not filmed: the execution and crits for the stamp and the ripple, a flurry and Tian Lei for the
+  reactions.
+- At x1.5 a heavy thrust's reaction moves a point 0.085 m between two frames once (the duel test's
+  0.06 m bound is for x1).
+- While the wyrm's reaction is drawn its hurt spheres stay where the simulation has them, up to about
+  1 m off the drawn body for 0.2 - 0.5 s; phase 3's fire comes off the simulated points.
+- For the owner: the game's existing low end is pure sine (silent on small speakers), and the
+  compressor flattens every heavy hit, tells included.
+- Rig lesson for captures: with the AI off a duelist keeps his guard up and turns every cut (a guarded
+  hit returns before `PlayerFx.contact`); on a fresh duelist level the flow sat in 'title'. Enter the
+  fight and drop his guard first.
+
+**Next.** The second batch if the owner wants it: C, E, F, G, I. Calm at the contact on the phone and
+on crits, the execution, the Lord and Tian Lei.
 
 ## 2026-11-22 — Session 73: round the Obsidian Throne, what the challengers left
 
