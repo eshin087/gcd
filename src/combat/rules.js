@@ -168,6 +168,15 @@ export const DEFENSE = Object.freeze({
     // scales the cut's flare, crescent and burst to a man's size.
     ground: { reach: 2.3, side: 0.55, hang: 0.035, dash: 0.12, hitAt: 0.4, hitPos: 0.42, hold: 0.085, rush: 0.75, line: 1.9, zoom: -4, kick: 0.45, shake: 0.65, fx: 0.62 },
     turn: [0.55, 0.95],
+    // THE STORM (the streak pass, streakK('storm'); 0 = the pace above, exactly): the first `shown`
+    // cuts are paced as above (seen, the pass, the held finish, the full weight beat), then each cut
+    // takes `fall` of the time of the one before (x `fall` ^ k at the piece's strength k), never less
+    // than `floor` of a shown cut, until the last land a few frames apart: a storm of crossing lines.
+    // A storm cut: no wind-up seen (he is already in the cut), the freeze on its contact `stop` x its
+    // pace but at least `stopMin` s (the frame he is drawn on the target), the reel beat x its pace,
+    // the camera's kick and shake x `cam`, its flare and sparks x `fx`. The last shown cut and the art
+    // keep their whole weight. A riposte is all flash cuts: the same rule.
+    storm: { shown: { air: 3, ground: 2 }, fall: 0.56, floor: 0.12, stopMin: 0.018, cam: 0.35, fx: 0.45 },
     last: { damage: 60, posture: 22 },
     keepStreak: 0,
   },
