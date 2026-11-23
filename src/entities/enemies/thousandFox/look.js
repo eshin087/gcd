@@ -9,9 +9,15 @@ import { FOX_INK } from './bodyArt.js';
 //                      (bodyArt.js FOX_ART), d through the hero's (bodyArt.js FOX_INK).
 //   ?foxfire=a|b|c     the foxfire's colour (fx.js): a jade, b the wyrm's orange, c moon-white
 //   ?clones=a|b        the paper selves: a identical to him, b a step paler (tintFox `pale`)
+//   ?foxLetters=a|b    his ink-line letters: a a fixed cell (as the other bosses), b they follow his size
+//                      on screen as the hero's do (FOX_KIT.letters, render/pipeline.js)
+//   ?foxFire3=a|b      phase 3's fire (the mantle, the Nine-Tailed Fox, its beam): a the wyrm's orange-red,
+//                      b jade (fx.js FIRE3)
+//   ?foxSpirit=a|b     the Nine-Tailed Fox: a a body in the wyrm's art path wreathed in fire, b fire and
+//                      ink lines only (spirit.js, fxBeam.js)
 // (foxLook's default is b, the Wild Fox: the owner asked for the homage to be as recognisable as it can
 // be without copying the character, 2026-11-22; still the owner's pick: lookSwitch.js PENDING)
-export const FOX_LOOKS = Object.freeze({ foxLook: 'b', foxfire: 'a', clones: 'a' });
+export const FOX_LOOKS = Object.freeze({ foxLook: 'b', foxfire: 'c', clones: 'a', foxLetters: 'b', foxFire3: 'a', foxSpirit: 'a' });
 export const foxLook = (name) => lookOf(name, FOX_LOOKS[name] ?? 'a');
 
 /** The outfit a rig is built in: { id: the option, base: the outfit 'a' | 'b' | 'c', art: drawn in

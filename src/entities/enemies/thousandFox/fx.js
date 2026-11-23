@@ -87,6 +87,18 @@ export class FoxFx extends DuelFx {
     this.FOX = this.look === 'b' ? K_FIRE : K_VOID;
     /** the same, as a shock front's kind */
     this._front = this.look === 'b' ? 'fire' : 'void';
+    // PHASE 3'S FIRE (?foxFire3=): the mantle, the bodies wreathed in it, the Nine-Tailed Fox and its
+    // beam. a the wyrm's orange-red fire (the default), b jade (the void slot turned to foxfire: an orb
+    // drawn on that slot in another colour moves to the steel kind, pale white)
+    const q3 = lookOf('foxFire3', 'a');
+    this.look3 = q3 === 'b' ? 'b' : 'a';
+    /** the kind phase 3's fire is drawn as */
+    this.FIRE3 = K_FIRE;
+    if (this.look3 === 'b') {
+      if (this.look !== 'a' && this.FOX === K_VOID) this.FOX = K_STEEL;
+      this.game.fx?.fire?.setPalette?.('void', FIRE_PALETTES.foxfire);
+      this.FIRE3 = K_VOID;
+    }
     this.L = LOOKS[this.look];
     this._ks = 0x7f4a7c15;
     this._col = [0, 0, 0]; // scratch colour (the pools copy it at spawn)

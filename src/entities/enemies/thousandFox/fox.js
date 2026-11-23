@@ -15,6 +15,7 @@ import { tintFox, dressFox, foxLook } from './look.js';
 import { FoxClones } from './clones.js';
 import { FoxPearl } from './pearl.js';
 import { FoxFx } from './fx.js';
+import { FoxHowl } from './beam.js';
 
 // Wen Yao, the Thousand-Body Fox: the boss of the Foxfire Terrace (`?level=fox`; ADR-147). A masked dao
 // swordsman on the shared duelist engine (duelist/duelist.js: the body, the contract, the guard, posture,
@@ -47,6 +48,9 @@ export const FOX_KIT = Object.freeze({
   // (bare-handed: the right fist on the sword joint; fox.js makes the striking limb the engine's blade)
   blade: FOX_FIST,
   dress: (d, dt) => dressFox(d, dt),
+  // his ink-line letters follow his size on screen as the hero's do (render/pipeline.js: the bosses'
+  // cell set from U.uBossScreen's depth by _updateHeroLetters' rule; ?foxLetters=a turns it off)
+  letters: true,
 });
 
 /** His mind: the duelist's, with the trade of places counted in a string's reach and the Round
@@ -56,6 +60,13 @@ class FoxBrain extends DuelBrain {
   _reach(b) {
     if (b.def.swap) return Infinity;
     return super._reach(b);
+  }
+
+  /** The Howl, forced once (beam.js forced): instead of the AI's pick. */
+  _choose(dist, punish = false) {
+    const f = this.d.howl?.forced?.();
+    if (f) return f;
+    return super._choose(dist, punish);
   }
 
   startAct(name, phase = this.d.phase, opts = null) {
@@ -97,6 +108,8 @@ export class ThousandFox extends Duelist {
   _setup() {
     this.clones = new FoxClones(this);
     this.clones.setCut(PAPER_CUT());
+    // the Howl: the Nine-Tailed Fox is built now, hidden (beam.js FoxHowl, spirit.js)
+    this.howl = new FoxHowl(this);
     const dbg = this.debug, d = this;
     dbg.clones = (n = 2) => {
       if (d.mode === 'sleep' || d.mode === 'intro') d.brain.startFight();
@@ -119,6 +132,7 @@ export class ThousandFox extends Duelist {
   reset() {
     (this.pearl ??= new FoxPearl(this)).reset();
     this.clones?.reset();
+    this.howl?.reset();
     this.mantleK = 0;
     this.tails = 0;
     this._igniteT = 0;
@@ -143,6 +157,7 @@ export class ThousandFox extends Duelist {
    *  blow of its own is weighed as a move of `densityAs` cues a second (director.js densityOf). */
   weigh(name, def, w) {
     const C = this.clones;
+    if (def.verdict) w = this.howl?.weigh(name, def, w) ?? 0;
     if (def.needs && (C?.live ?? 0) < def.needs) return 0;
     if (MOVES[name]?.beats?.some((b) => b.scatter) && C && C.live >= C.cap()) return 0;
     if (def.densityAs > 0) {
@@ -156,6 +171,7 @@ export class ThousandFox extends Duelist {
    *  takes the selves back, the Pearl begins its charge. */
   onActStart(A) {
     const C = this.clones, def = A.def;
+    if (def.verdict && this.howl && !this.howl.onActStart(A)) return false;
     if (def.needs && C && C.live < def.needs) {
       C.spawn(def.needs - C.live, 'round');
       if (C.live < def.needs) return false;
@@ -173,6 +189,7 @@ export class ThousandFox extends Duelist {
    *  Round's call at their impact. */
   beatMotion(b, u, s, dt) {
     const D = b.def, C = this.clones;
+    if (D.verdict) return this.howl?.beatMotion(b, u, s, dt);
     // the springboard (Fox Descending): to the self nearest him, then off its hands into the leap
     if (D.spring) {
       if (b._spring === undefined) {
@@ -216,6 +233,7 @@ export class ThousandFox extends Duelist {
 
   onImpact(b, s, a) {
     const D = b.def, W = this.game.world, WT = this.T.world;
+    if (D.verdict) return this.howl?.onImpact(b, s, a);
     // a transition's ring goes out: the selves tear free to the cap; phase 3's mantle lights
     if (a?.def?.transition) {
       const ph = a.def.phase ?? 2;
@@ -252,6 +270,11 @@ export class ThousandFox extends Duelist {
     }
   }
 
+  /** A `sustain` beat's ticks: the Howl's beam (beam.js). */
+  onSustain(b, s, a, k) {
+    if (b.def.verdict) this.howl?.onSustain(b, s, a, k);
+  }
+
   onCast(b, s, a) {
     if (b.def.cast?.kind === 'pearl') this.pearl.bat(b, s, a);
   }
@@ -283,6 +306,7 @@ export class ThousandFox extends Duelist {
     if (this.clones.seated && this.mode !== 'sleep') this.clones.tearSeated(this.mode === 'intro' ? this.brain.modeT : Infinity);
     this.clones.frame(dt);
     P.frame(dt);
+    this.howl?.frame(dt);
     // the mantle (phase 3): grows in over T.mantle.grow s after the change; where he stands, catches
     const M = this.T.mantle;
     const want = this._mantleForced ?? (this.phase >= 3 && this.mode !== 'dying' && this.mode !== 'dead' && this.mantleK > 0 ? 1 : 0);
@@ -318,6 +342,7 @@ export class ThousandFox extends Duelist {
     }
     if (this.mantleK > 0 && this.mode !== 'dead') this.fx.mantle?.(this, dt, this.mantleK);
     if (this.mode !== 'dead') this.clones.pose(dt);
+    this.howl?.pose(dt);
   }
 
   /**

@@ -240,6 +240,15 @@ export const MOVES = {
     }],
   },
 
+  /** Heaven-Devouring Howl (phase 3; beam.js, tuningBeam.js): he leaves for the rim, summons the
+   *  Nine-Tailed Fox, and its beam rakes the terrace (black on the summoning, red on the beam: roll
+   *  through it); then he kneels open. Every beat is the Howl's (`verdict`: beam.js routes it).
+   *  PLACEHOLDER (contracts commit): the spirit agent writes its beats and weight. */
+  foxVerdict: {
+    label: 'Heaven-Devouring Howl', phase: 3, weight: [0, 0, 1.0], verdict: true, cooldown: 0, band: [0, 99], recovery: 0.6, cat: 'ranged',
+    beats: [{ feint: true, verdict: 'flit', windup: 0.5, active: 0.05, close: 0, track: 0, keys: callKeys() }],
+  },
+
   /** The Nine-Tailed Fox: the phase-3 transition. His selves burn up into him and the fox spirit wakes
    *  round him; the ring of force (red); then selves to the cap. */
   foxMantle: {

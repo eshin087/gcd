@@ -1,4 +1,5 @@
 import { DUEL_WORLD } from '../duelist/worldTuning.js';
+import { VERDICT } from './tuningBeam.js';
 
 // Wen Yao, the Thousand-Body Fox's numbers (ADR-147; COMBAT.md → "The Thousand-Body Fox"). Copied block
 // for block from Shen Hui's (ashDisciple/tuning.js: the comments there say why each number is what it
@@ -210,6 +211,9 @@ export const TUNING = {
   mantle: { grow: 1.0, tails: 9, ignite: { every: 0.6, r: 1.5, k: 0.5 }, tail: { reach: 1.0, k: 0.8 } },
   // ---- what his blows do to the world (POWER: 1 fells a tree; DUEL_WORLD's fields for the blade)
   world: { ...DUEL_WORLD, pearl: 1.4, greatPearl: 2.0, pounce: 1.0, tail: 0.9, pounceFire: 0.8 },
+
+  // ---- Heaven-Devouring Howl (phase 3): the Nine-Tailed Fox and its beam (tuningBeam.js; beam.js)
+  verdict: VERDICT,
 
   // ---- the intro: he wakes when the hero steps onto the terrace or comes this close (flow also checks)
   wakeRadius: 9,
