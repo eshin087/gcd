@@ -1150,7 +1150,7 @@ async function scenarioTraining() {
 
 // ================================================================== scenario: looks
 async function scenarioLooks() {
-  out('\n== scenario LOOKS (each ?halLook= / ?glare= / ?city= builds; none is in PICKED) ==');
+  out('\n== scenario LOOKS (each ?halLook= / ?halCape= / ?glare= / ?city= builds; none is in PICKED) ==');
   const LS = await imp('src/entities/enemies/duelist/lookSwitch.js');
   const PICK = LS.PICKED ?? {};
   assert(!('halLook' in PICK) && !('glare' in PICK) && !('city' in PICK) && ['halLook', 'glare', 'city'].every((k) => LS.PENDING.includes(k)), 'his switches wait for the owner (PENDING, not PICKED)');
@@ -1168,6 +1168,35 @@ async function scenarioLooks() {
     assert(ok && meshes > 20 && ink, `?halLook=${v} builds in the ink-line art (${meshes} meshes)`);
   }
   LS.setLook('halLook', null);
+  // ?halCape= (ADR-164): every step builds the same five sheets (no new object on his rig: the seeded
+  // fights stay put); 1 and up brighten the cape, 2 and up widen it, 3 alone billows
+  {
+    const { HAL_CAPE_STEP } = await imp('src/entities/enemies/halcyon/look.js');
+    const { HAL_CAPE } = await imp('src/entities/enemies/halcyon/gear.js');
+    assert(!('halCape' in PICK) && LS.PENDING.includes('halCape'), '?halCape= waits for the owner (PENDING, not PICKED)');
+    const seen = {};
+    for (const v of ['0', '1', '2', '3']) {
+      LS.setLook('halCape', v);
+      let ok = true, meshes = 0, S = [], red = 0;
+      try {
+        const G = build();
+        const d = G.game.dragon;
+        d.rig.root.traverse((o) => { if (o.isMesh) meshes++; });
+        S = d.rig.streamers ?? [];
+        red = d.rig.materials.lining.uniforms.uArtFill.value.r;
+        run(G, 0.5);
+        ok = Number.isFinite(d.position.x) && S.every((st) => st.segs.every((j) => Number.isFinite(j.rotation.x + j.rotation.z)));
+      } catch (e) { ok = false; out(`     halCape ${v}: ${e.message}`); }
+      const w = Math.max(...S.map((st) => st.w?.[2] ?? 0));
+      seen[v] = { meshes, w, red };
+      const shape = v < '2' ? w === Math.max(...HAL_CAPE.map((d) => d.w[2])) : w > Math.max(...HAL_CAPE.map((d) => d.w[2]));
+      const breeze = v === '3' ? S.every((st) => Array.isArray(st.breeze)) : S.every((st) => !st.breeze);
+      assert(ok && S.length === 5 && shape && breeze, `?halCape=${v} builds five sheets (widest hem ${w.toFixed(2)} m, lining red ${red.toFixed(2)}, ${meshes} meshes, billow ${v === '3'})`);
+    }
+    assert(seen['0'].meshes === seen['3'].meshes && seen['1'].red > seen['0'].red, `the steps keep his mesh count (${seen['0'].meshes} / ${seen['3'].meshes}) and from 1 on light the cape's inside`);
+    LS.setLook('halCape', null);
+    assert(String(HAL_CAPE_STEP) === LS.lookOf('halCape', HAL_CAPE_STEP), `no ?halCape= draws step ${HAL_CAPE_STEP}`);
+  }
   for (const v of ['a', 'b', 'c']) {
     LS.setLook('glare', v);
     const G = build();

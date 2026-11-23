@@ -53,6 +53,7 @@ export const LOOK_SWITCHES = Object.freeze([
   ['drawCut', ['a', 'b'], 'a', 'a', false, ['grove'], 'the draw\'s cut: a one white line, b with an afterimage'],
   // --- city: Halcyon Plaza and Halcyon (ADR-161; every one waits for the owner, read when built: a reload)
   ['halLook', ['a', 'b', 'c'], 'a', 'a', true, ['city'], 'Halcyon\'s body: a blue suit and red cape, b the idol, c tomorrow\'s tyrant (a reload)'],
+  ['halCape', ['0', '1', '2', '3'], '3', '3', true, ['city'], 'his cape and colours at game size: 0 as first built, 1 brighter, 2 + a wide flared cape, 3 + its billow and a long trail (a reload)'],
   ['glare', ['a', 'b', 'c'], 'a', 'a', true, ['city'], 'his eyes\' heat: a crimson, white core; b crimson alone; c orange fire (a reload)'],
   ['city', ['a', 'b', 'c'], 'a', 'a', true, ['city'], 'the city: a neon rain, b golden hour, c lockdown (a reload)'],
 ]);

@@ -4501,7 +4501,11 @@ export class HeroAnimator {
       const ph = this.time * (3 + 5 * Math.min(1, sp / 5)) + i * 2.1;
       // a ribbon's own outward flare (model.js: the cape), lifted by a charge most on the sword side
       const right = Math.max(0, ox * _d.x + oz * _d.z);
-      const so = (S.out ?? STREAM_OUT) + this.updraft * UPDRAFT_STREAM[0] * lerp(UPDRAFT_STREAM[1], 1, right);
+      // … and its own billow (`breeze`: [extra out, rate]; a streamer without it is untouched): a slow
+      // swell of the flare while the wearer is near still, gone at a run (Halcyon's cape hovering)
+      const bz = S.breeze;
+      const bw = bz ? 1 - Math.min(1, sp / 4) : 0;
+      const so = (S.out ?? STREAM_OUT) + this.updraft * UPDRAFT_STREAM[0] * lerp(UPDRAFT_STREAM[1], 1, right) + (bz ? bz[0] * bw * (0.5 + 0.5 * Math.sin(this.time * bz[1] + i * 1.3)) : 0);
       // a sheet's own weight: `lag` < 1 trails less (the heavy cloak hangs ~40° back at a run, where
       // a light ribbon streams out level)
       const lg = S.lag ?? 1;
@@ -4517,7 +4521,7 @@ export class HeroAnimator {
       for (let s = 0; s < 2; s++) {
         const c = st.segs[s], j = S.segs[s];
         const lag = STREAM_LAG[s] * lg * (1 + 0.08 * sp);
-        const wob = (0.08 + 0.12 * Math.min(1, sp / 4)) * Math.sin(ph + s * 1.4);
+        const wob = (0.08 + 0.12 * Math.min(1, sp / 4) + 0.1 * bw) * Math.sin(ph + s * 1.4);
         _v.set(ox * so - vel.x * lag - oz * wob, -1 - vel.y * lag * 0.5 + Math.abs(wob) * 0.5, oz * so - vel.z * lag + ox * wob);
         _v.normalize().applyQuaternion(_qInv2.copy(_q0).invert());
         if (tumble > 0) {

@@ -5,7 +5,7 @@ import {
   shellGeometry, skirtSheet, tatterStrip, bandGeometry, boxGeometry, mergeGeometries, sub, foldLines, ribbonCrease, lerp, limb,
   gripFist, orient, orientTo, clumpGeometry, partGeometry,
 } from '../../player/heroGeo.js';
-import { halLookNow, dressOf, at } from './look.js';
+import { halLookNow, halCapeNow, dressOf, at } from './look.js';
 
 // Halcyon's gear: the hero's skeleton (buildHero), no weapon (bare-handed: the right fist on the sword
 // joint), drawn in the hero's ink-line art. Three outfits (`?halLook=a|b|c`, look.js; read when his rig
@@ -14,12 +14,20 @@ import { halLookNow, dressOf, at } from './look.js';
 //
 // His material instances (look.js tintHalcyon writes the colours): `pants` = the suit (torso, arms,
 // legs), `armor` = the plates over it (the chest, the forearms, the shins; b's shoulder pieces), `piping`
-// = the neon seams along the plates, `trim` = the gold (the belt, the cuffs, the boot tops, the clasps),
+// = the neon seams along the plates, `trim` = the gold (the belt, the cuffs, the boot tops, the clasps;
+// `hair` from ?halCape=1 on, goldOf),
 // `collar` = the boots, `coat` / `lining` / `hem` = the cape outside / inside / its lower edge, `shirt` =
 // his slick hair, `welt` = the gloves (b white), `skin` = the face, `flask` = his eyes' light.
 // The cape: five long sheets on the streamer springs (the Starless Lord's cape is the model), the
 // biggest shape on him in flight; from phase 3 three of its sheets lose their lower edge and tatters
 // hang there instead (look.js dressHalcyon, `at`).
+
+/** The gold (the belt, the clasps, the cuffs, the boot tops): from ?halCape=1 on, a and b draw it in
+ *  the `hair` part, whose ink lines are gold (the `trim` part's are white: at game size its few cells
+ *  printed cream); c's chrome stays `trim`. */
+const goldOf = (M) => (halCapeNow() >= 1 && halLookNow() !== 'c' ? M.hair : M.trim);
+/** ... and from ?halCape=1 on it is drawn bigger: at ~40 px tall a 5 cm belt was under one letter. */
+const goldK = () => (halCapeNow() >= 1 ? 1 : 0);
 
 const ySp = (h) => h - 1.035; // world idle height → spine space
 const yPv = (h) => h - 0.955; // → pelvis space
@@ -106,14 +114,15 @@ function buildChest(ctx) {
   mesh(chest, sub(bandGeometry(0.068, 0.062, 0.05, 20).translate(0, yCh(1.53), -0.004), 1), M.armor);
   // the clasps where the cape pins: a plain gold disc at each shoulder's front (b: the idol's shoulder pieces)
   const clasps = [];
-  for (const s of [-1, 1]) clasps.push(sub(ellipsoidGeometry(0.032, 0.032, 0.012, { widthSegs: 10, heightSegs: 5 }).rotateX(Math.PI / 2).translate(s * 0.14, yCh(1.47), 0.1), s > 0 ? 1 : 0));
-  mesh(chest, mergeGeometries(clasps), M.trim);
+  const cr = 0.032 + 0.012 * goldK();
+  for (const s of [-1, 1]) clasps.push(sub(ellipsoidGeometry(cr, cr, 0.012, { widthSegs: 10, heightSegs: 5 }).rotateX(Math.PI / 2).translate(s * 0.14, yCh(1.47), 0.1), s > 0 ? 1 : 0));
+  mesh(chest, mergeGeometries(clasps), goldOf(M));
   if (look === 'b') {
     // gold shoulder pieces of his own shape: a swept plate over each shoulder, three stepped edges
     for (const s of [-1, 1]) {
       const parts = [];
       for (let k = 0; k < 3; k++) parts.push(sub(boxGeometry(0.13 - k * 0.02, 0.016, 0.16 - k * 0.025, s * (0.17 + k * 0.016), yCh(1.5) - k * 0.03, -0.005, 0, 0, s * (-0.35 - k * 0.12)), k & 1));
-      mesh(chest, mergeGeometries(parts), M.trim);
+      mesh(chest, mergeGeometries(parts), goldOf(M));
     }
   }
   return { keep: [] };
@@ -142,7 +151,8 @@ function buildArms(ctx) {
     mesh(fore, boxGeometry(0.006, 0.13, 0.006, 0, -0.15, fa0 + 0.02), M.piping);
     // the gold cuff at the wrist
     const y1 = -DIM.foreArm + 0.04;
-    mesh(fore, limb({ length: 0.045, r0: fa1 + 0.018, r1: fa1 + 0.014, radial: 12, rings: 1, capSegs: 1 }).translate(0, y1 + 0.045, 0), M.trim);
+    const cl = 0.045 + 0.03 * goldK();
+    mesh(fore, limb({ length: cl, r0: fa1 + 0.018, r1: fa1 + 0.014, radial: 12, rings: 1, capSegs: 1 }).translate(0, y1 + cl, 0), goldOf(M));
   }
   // the right fist on the sword joint, the left hand free
   {
@@ -173,7 +183,8 @@ function buildLegs(ctx) {
       sub(limb({ length: shaft, r0: t + 0.016, r1: sh1 + 0.014, radial: 12, rings: 3, capSegs: 1 }).translate(0, bootTop, 0), 0),
       sub(limb({ length: 0.1, r0: t + 0.026, r1: t + 0.02, radial: 12, rings: 1, capSegs: 1 }).translate(0, bootTop - 0.02, 0.006), 1),
     ]), M.collar);
-    mesh(shin, limb({ length: 0.022, r0: t + 0.03, r1: t + 0.028, radial: 12, rings: 1, capSegs: 1 }).translate(0, bootTop + 0.012, 0), M.trim);
+    const bl = 0.022 + 0.02 * goldK();
+    mesh(shin, limb({ length: bl, r0: t + 0.03, r1: t + 0.028, radial: 12, rings: 1, capSegs: 1 }).translate(0, bootTop + 0.012 + bl - 0.022, 0), goldOf(M));
     mesh(foot, ellipsoidGeometry(F.r[0] * 1.0, F.r[1] * 0.95, F.r[2] * 1.02, { widthSegs: 10, heightSegs: 6 }).translate(F.c[0], F.c[1] - 0.002, F.c[2] + 0.006), M.collar);
   }
   return {};
@@ -183,9 +194,10 @@ function buildLegs(ctx) {
 function buildWaist(ctx) {
   const { pelvis, M, mesh } = ctx;
   const W = SHELL[0];
-  mesh(pelvis, sub(bandGeometry(W.rx + 0.022, W.rz + 0.022, 0.05, 28).translate(0, yPv(1.075), 0.002), 0), M.trim);
+  const k = goldK(), bh = 0.05 + 0.035 * k;
+  mesh(pelvis, sub(bandGeometry(W.rx + 0.022 + 0.006 * k, W.rz + 0.022 + 0.006 * k, bh, 28).translate(0, yPv(1.075), 0.002), 0), goldOf(M));
   // the buckle: a plain oval, nothing on it
-  mesh(pelvis, sub(ellipsoidGeometry(0.04, 0.03, 0.012, { widthSegs: 10, heightSegs: 5 }).rotateX(Math.PI / 2).translate(0, yPv(1.075), W.rz + 0.03), 1), M.trim);
+  mesh(pelvis, sub(ellipsoidGeometry(0.04 + 0.015 * k, 0.03 + 0.015 * k, 0.012, { widthSegs: 10, heightSegs: 5 }).rotateX(Math.PI / 2).translate(0, yPv(1.075), W.rz + 0.03 + 0.006 * k), 1), goldOf(M));
   return {};
 }
 
@@ -199,6 +211,34 @@ export const HAL_CAPE = [
   { at: [-0.2, 0.2, -0.085], ry: Math.PI + 1.05, w: [0.14, 0.27, 0.42], len: [0.58, 0.64], out: 0.32, wrap: 0.24, seed: 59 },
 ];
 const CAPE_LAG = 0.7, CAPE_MAX = 1.55;
+/**
+ * ?halCape=2 and 3 (look.js): the cape that frames him. From the front (the boss faces the camera most
+ * of the fight) the sheets above hung hidden behind his body, the outer two edge-on; here the three back
+ * sheets are wider and the outer two hang off the shoulders' tops, turned only a little, so its red
+ * shows past his arms on both sides; longer, and flaring out more (`out`). Step 3 adds the billow
+ * (`breeze`: [extra out, its rate] while he hovers, player/anim.js) and a longer trail in a pass (`lag`,
+ * `max`). The same five sheets and joints: one more object on his rig would shift every seeded fight.
+ */
+const CAPE_SHAPE = {
+  2: {
+    lag: 0.7, max: 1.55, breeze: null,
+    sheets: [
+      { at: [0, 0.205, -0.15], ry: Math.PI, w: [0.24, 0.48, 0.8], len: [0.64, 0.78], out: 0.2, wrap: 0.32, seed: 5 },
+      { at: [0.15, 0.21, -0.13], ry: Math.PI - 0.32, w: [0.2, 0.44, 0.76], len: [0.64, 0.76], out: 0.24, wrap: 0.3, seed: 19 },
+      { at: [-0.15, 0.21, -0.13], ry: Math.PI + 0.32, w: [0.2, 0.44, 0.76], len: [0.64, 0.76], out: 0.24, wrap: 0.3, seed: 31 },
+      { at: [0.24, 0.215, -0.07], ry: Math.PI - 0.7, w: [0.16, 0.38, 0.66], len: [0.6, 0.72], out: 0.28, wrap: 0.26, seed: 43 },
+      { at: [-0.24, 0.215, -0.07], ry: Math.PI + 0.7, w: [0.16, 0.38, 0.66], len: [0.6, 0.72], out: 0.28, wrap: 0.26, seed: 59 },
+    ],
+  },
+};
+CAPE_SHAPE[3] = {
+  lag: 0.95, max: 1.7, breeze: [0.16, 1.6],
+  sheets: CAPE_SHAPE[2].sheets.map((d) => ({ ...d, len: [d.len[0] + 0.04, d.len[1] + 0.08] })),
+};
+/** The cape his rig is built with (look.js halCapeNow): { sheets, lag, max, breeze }. */
+export function capeShape(step = halCapeNow()) {
+  return CAPE_SHAPE[step] ?? { sheets: HAL_CAPE, lag: CAPE_LAG, max: CAPE_MAX, breeze: null };
+}
 /** The sheets whose lower edge is torn away in phase 3 (tatters hang in its place). */
 const TORN = new Set([0, 3, 4]);
 
@@ -206,7 +246,8 @@ function buildCape(ctx) {
   const { chest, M, mesh, joint, root } = ctx;
   const D = dressOf(root);
   const streamers = [], keep = [];
-  HAL_CAPE.forEach((d, i) => {
+  const C = capeShape();
+  C.sheets.forEach((d, i) => {
     const base = joint(chest, ...d.at);
     base.rotation.y = d.ry;
     const [w0, w1, w2] = d.w, [L0, L1] = d.len;
@@ -241,7 +282,9 @@ function buildCape(ctx) {
         keep.push(t);
       }
     }
-    streamers.push({ segs: [s0, s1], len: d.len, out: d.out, lag: CAPE_LAG, max: CAPE_MAX, w: d.w, arm: 0 });
+    const S = { segs: [s0, s1], len: d.len, out: d.out, lag: C.lag, max: C.max, w: d.w, arm: 0 };
+    if (C.breeze) S.breeze = C.breeze;
+    streamers.push(S);
   });
   return { streamers, keep };
 }
