@@ -3653,18 +3653,24 @@ zoom 3, weight 1.
 `life`). The REAL LivingWorld and Atmosphere on every level's REAL set, with the real particle pools,
 fire field, scorch map and grass density, wired as world.js does; the hero a stand-in. **`T.build(levelId,
 spec, o)`** → `{ game, world, life, set, U, level, step(sec, dt), walk(vx, vz), place(x, z), counts(), emit, own
-}` (`o` `{ k, quality, state, feet }`: `feet` brings the stand-in's feet down through `steps.footfall` every
+}` (`o` `{ k, quality, state, feet, seed }`: `feet` brings the stand-in's feet down through `steps.footfall` every
 0.32 s while he walks); `step` runs the frame as World.update and main.js do (the living world's own pools
-are left to their owners); `counts()` → live particles per shared pool, the own pools', spawns, and
+are left to their owners); `counts()` → live particles per shared pool, the own pools', spawns
+(`spawned`: everyone's; `lifeSpawned`: those made inside `life.update` / `life.gust` / the feet), and
 `random` (Math.random calls made inside `life.update` / `life.gust` / the feet: Math.random is counted for
-the whole run). One file per piece (`FILES`: core, wind, weather, litter, steps, creatures, answer, air,
+the whole run). Math.random is SEEDED: every `build` restarts it from the level's seed (`o.seed` overrides),
+so a set's ambience (the fireflies, embers, ash: they draw from Math.random) is the same on every run and
+in two builds of one level; unseeded, the fireflies alone moved the shared pools' spawns by ~1000 in 73 000
+run to run (the `phone` check failed about one run in a hundred). One file per piece (`FILES`: core, wind, weather, litter, steps, creatures, answer, air,
 arrival, hang; a missing or broken file fails the suite); after each scenario the switch goes back to off.
 **`core`** enforces the contract on every level: `off` (no own pool, takes nothing, still air, clear
 weather, nothing lying), `all` (every piece on for a minute with the hero running: no throw, no
 Math.random, Math.random handed back after the pools are built, inside the budget of +700 fx.alpha, +500
 fx.add, +400 fire, 1400 own letters; calm 1 then 0.4 in the fight; the hush holds and lets go), `alone`
 (each piece alone: no throw, no Math.random; litter without wind falls straight down; what a layer takes
-the atmosphere no longer draws), `phone` (quality 0.5 draws no more than 1), `switches` (all off mid-run:
+the atmosphere no longer draws), `phone` (quality 0.5 draws no more than 1: the creatures' letters and
+the living world's own pools' letters, each summed over 45 samples; its spawns into the shared pools; all
+spawns, the set's ambience with them; no tolerance, the numbers are seeded), `switches` (all off mid-run:
 nothing left). The pieces' own budgets: the wind's wisps in their own batch only, at most `max` × quality ×
 `per[1]` letters (960 at quality 1), at most +25 fx.alpha over life off and fx.add untouched, one own pool,
 fewer wisps born at quality 0.5 (`wind.budget`; `wind.wisps`: a few in the breeze, more in a front, every

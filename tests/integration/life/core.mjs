@@ -96,11 +96,18 @@ export default {
       // (the creatures re-draw every live letter into the shared pools each frame, one spawn a letter a
       // frame, and their birds do not scale with quality: which crows a gust happened to lift moves the
       // spawn count by thousands either way. They are measured live, below)
+      // (both builds start Math.random from the level's seed: the set's own ambience, the fireflies and
+      // embers, comes out the same at both qualities and on every run; only the living world differs)
       const spec = 'wind,weather,litter,steps,answer';
       const hi = T.build(id, spec, { quality: 1 });
-      hi.step(45);
       const lo = T.build(id, spec, { quality: 0.5 });
-      lo.step(45);
+      let oh = 0, ol = 0;
+      for (let i = 0; i < 45; i++) {
+        hi.step(1);
+        lo.step(1);
+        oh += hi.counts().own;
+        ol += lo.counts().own;
+      }
       const ch = T.build(id, 'creatures', { quality: 1 }), cl = T.build(id, 'creatures', { quality: 0.5 });
       let dh = 0, dl = 0;
       for (let i = 0; i < 45; i++) {
@@ -112,9 +119,10 @@ export default {
       }
       T.assert(dl <= dh, `${id}: the creatures draw no more letters on the phone (${dl} at 0.5, ${dh} at 1, summed over 45 samples)`);
       const a = hi.counts(), b = lo.counts();
-      const sum = (c) => c.spawned.alpha + c.spawned.add + c.spawned.fire;
-      // (a set's own ambience draws from Math.random: a few spawns either way are its noise)
-      T.assert(sum(b) <= sum(a) * 1.01 + 20, `${id}: no more spawns on the phone (${sum(b)} at 0.5, ${sum(a)} at 1)`);
+      const sum = (s) => s.alpha + s.add + s.fire;
+      T.assert(ol <= oh, `${id}: the living world's own pools hold no more letters on the phone (${ol} at 0.5, ${oh} at 1, summed over 45 samples)`);
+      T.assert(sum(b.lifeSpawned) <= sum(a.lifeSpawned), `${id}: the living world spawns no more into the shared pools on the phone (${sum(b.lifeSpawned)} at 0.5, ${sum(a.lifeSpawned)} at 1)`);
+      T.assert(sum(b.spawned) <= sum(a.spawned), `${id}: no more spawns on the phone, the set's ambience with them (${sum(b.spawned)} at 0.5, ${sum(a.spawned)} at 1)`);
     }
   },
 
