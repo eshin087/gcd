@@ -24,8 +24,8 @@ import { STEPS } from './stepsTuning.js';
 //   earth     a small low dust puff and a print (~5 s)
 //   stone     a tiny grit puff on a sprint or a landing only
 //   sand      a puff on every step that the wind carries off
-//   ash       a soft grey puff that hangs, then sinks; a print that fills in (~12 s)
-//   obsidian  no dust: a faint dim red glint, gone in 0.3 s
+//   ash       a soft grey puff that hangs, then sinks; a print that fills in (~14 s)
+//   obsidian  no dust: a dim red glint, gone in 0.75 s (before the fight only)
 //   leaf      a leaf or two flicked aside
 // Every step also asks the litter to move what lies underfoot, and on wet ground (weather.wet) adds a
 // tiny splash. Prints lie in an own pool (made on the first step with the piece on), refreshed ten
@@ -235,7 +235,8 @@ export class Steps {
 
     if (A.bits) this._burst(A.bits, mode, q, x, z, 0);
     if (A.puff) this._burst(A.puff, mode, q * (heavy ? 1 : 1 + 0.6 * kick), x, z, A.puff.wind ?? 0);
-    if (A.glint) {
+    if (A.glint && L.calm > 0.99) {
+      // (before the fight only: a red tick at the hero's feet must not sit beside a red tell)
       // (a glint lies ON the floor: it is a mark of the prints' batch, whose depth fade is low)
       const want = (A.glint[mode] ?? 0) * q;
       let n = Math.floor(want);

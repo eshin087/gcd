@@ -187,7 +187,7 @@ export class Arrival {
     const L = this.game?.world?.life, F = this.T?.front;
     if (!F || !L?.on?.('wind')) return;
     // (quiet: it moves the air, it does not alarm the birds on the tree line)
-    const o = { strength: num(F.strength, 1) * num(L.k, 1), speed: F.speed, width: F.width, quiet: true };
+    const o = { strength: num(F.strength, 1), speed: F.speed, width: F.width, quiet: true };
     if (Number.isFinite(F.dirX) && Number.isFinite(F.dirZ)) {
       o.dirX = F.dirX;
       o.dirZ = F.dirZ;

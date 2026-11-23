@@ -109,12 +109,13 @@ export class Answer {
       dx = num(L.wind?.dirX, 1);
       dz = num(L.wind?.dirZ, 0);
     }
-    // (x, z: where it starts; a wind that sends fronts only from the level's edge may ignore them)
-    L._call?.('wind', 'front', { strength: o.strength * k * L.k, speed: o.speed, width: o.width, dirX: dx, dirZ: dz, x, z });
+    // (x, z: where it starts. life.k is NOT applied here: the wind scales every front by it, and
+    //  creatures.startle scales its own; the litter's scatter does not, so _scatter applies it)
+    L._call?.('wind', 'front', { strength: o.strength * k, speed: o.speed, width: o.width, dirX: dx, dirZ: dz, x, z });
   }
 
   _startle(x, z, r, k) {
-    if (r > 0 && k > 0) this.life._call?.('creatures', 'startle', x, z, r, k * this.life.k);
+    if (r > 0 && k > 0) this.life._call?.('creatures', 'startle', x, z, r, k);
   }
 
   _scatter(x, z, r, k) {

@@ -37,12 +37,12 @@ export default {
     T.assert(c.startle.length === 1 && c.startle[0][2] >= 50, `roar: everything alive in the arena flees (r ${c.startle[0]?.[2]})`);
     T.assert(c.scatter.length === 1 && T.near(c.scatter[0][0], b.x) && c.scatter[0][2] > 4, `roar: what lies near the boss is thrown (r ${c.scatter[0]?.[2]})`);
     T.assert(c.hush.length === 0, 'roar: no hush (it is the blow, not its windup)');
-    // the strength scales it, and life.k with it
+    // the roar's strength scales the front it asks for (life.k is the wind's to apply, once)
     const w2 = T.build('cinderwood', 'answer', { k: 0.5 });
     const c2 = spy(w2);
     w2.step(0.5);
     w2.emit('dragon:roar', { strength: 0.6 });
-    T.assert(c2.front[0]?.strength < f.strength * 0.4, `roar: a duelist's shout at lifeK 0.5 is a smaller front (${c2.front[0]?.strength?.toFixed(2)} vs ${f.strength.toFixed(2)})`);
+    T.assert(c2.front[0]?.strength < f.strength * 0.7 && c2.front[0]?.strength > f.strength * 0.5, `roar: a duelist's shout asks for a smaller front, lifeK not applied twice (${c2.front[0]?.strength?.toFixed(2)} vs ${f.strength.toFixed(2)})`);
   },
 
   /** dragon:wake: the level notices him: a first, smaller front. */

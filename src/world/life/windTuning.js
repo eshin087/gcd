@@ -51,7 +51,7 @@ const level = (o) => Object.freeze({
 });
 
 export const WIND_TUNE = Object.freeze({
-  /** a moonlit clearing: a night breeze in slow breaths; a front every 8 - 16 s crosses the meadow */
+  /** a moonlit clearing: a night breeze in slow breaths; a front every 8 - 14 s crosses the meadow */
   cinderwood: level({
     dir: -18, speed: 1.5,
     breath: { floor: 0.5, periods: [12, 31] },
@@ -105,5 +105,5 @@ export const WIND_LULL = Object.freeze({ hold: 6, ease: 1.2 });
 export const WIND_BURST = Object.freeze({ life: 1.6, grow: 1.1, width: 0.45, air: 4 });
 
 /** life.hush (the world holds its breath): the prevailing speed falls by `speed` x hush, and no new
- *  front is born while it holds (the fronts already crossing go on: a roar's is the blow itself) */
+ *  front is born while it holds (the level's own fronts already crossing fade by it; a front born at a point, a roar's, goes on: it is the blow itself) */
 export const WIND_HUSH = Object.freeze({ speed: 0.85 });

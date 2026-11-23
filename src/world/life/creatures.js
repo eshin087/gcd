@@ -22,8 +22,8 @@ import { gi } from '../../render/glyphs.js';
 // living world's own stream, life.rand), nothing outside the living world without `?.`.
 //
 // Per level: Cinderwood: fireflies (they take over atmosphere.js's), small birds on the tree wall, moths
-// round the bonfire. Ashfall: crows on the pillars, a few moths. The Obsidian Throne: nothing alive, a
-// few dim sparks orbiting the vents. The Skybreak Ring: one hawk circling high before the fight, moths
+// round the bonfire. Ashfall: crows on the pillars, a few moths. The Obsidian Throne: nothing alive (sparks
+// at the vents were tried and cut: creaturesTuning `sparks.perVent` 0). The Skybreak Ring: one hawk circling high before the fight, moths
 // at the bonfire and the braziers. The Foxfire Terrace: foxfire (paler, bluer fireflies that keep wider),
 // birds on the dead trees, moths. The Windless Grove: fireflies hanging almost still, moths.
 
