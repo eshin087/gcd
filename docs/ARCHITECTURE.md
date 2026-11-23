@@ -637,6 +637,7 @@ Render helpers for creature modules:
     printed through his cover (see "The hero seen through what covers him" above).
 - `gi(ch)`, `gis(str)` (`render/glyphs.js`).
 - `game.pipeline.finalMat.uniforms` — `uHurt` (red edge 0..1), `uFade` (black 0..1), `uDesat` (0..1), `uWarm` (boss grade 0..1), `uExposure`, `uBloom`. **Owned by the HUD/flow module** (game/grade.js `ScreenGrade`: `hurtPulse`, `ghostPulse`, `dip`, `fadeTo`, `desatTo`, and `flashPulse(k)`: a white flash, `uExposure` × (1 + 0.9 k) over its base, gone in ~0.2 s; flow fires it on every `player:parry` of a blade).
+- `game/grade.js` `ScreenGrade.dimPulse(k = 0.4, hold = 0.4)` (ADR-167): the world dims to k (`uExposure` × (1 − 0.6 k)) over ~4 frames, holds `hold` s, comes back over ~0.25 s; the perfect parry's cinema beat uses it in place of the white flash (lines printed hotter than the scene still stand out). `resetInstant` clears it.
 
 ## Module contracts
 
@@ -1279,6 +1280,59 @@ row flips it live. With it, `contact`'s record also carries `target` (`game.drag
 'duelist' : 'wyrm'))` and `game.fx.ripple.hit(x, y, z, o, impactK('ripple'))`, inside one try /
 catch (a throw is logged, the cut still draws). `cutBurst` calls `takeStampReplace()` once and drops
 its slash line and cross when the stamp just drew in 'instead' mode.
+
+**The streak pass** (`combat/streak.js`, ADR-167). `STREAK_FX = { pieces: ['storm', 'tiers', 'aura',
+'counter', 'sound', 'world'], on, k, perfectModes, perfect }`; `streakK(piece)` = `k[piece]` while on,
+else 0 (`?streakfx=` absent, empty or 'all': every piece; a list: those named; 'off': none; the Lab's
+'streak' row flips `on` live). `STREAK_TIERS` [3, 5, 7, 10, 15], `streakTier(n)` 0 - 5, `streakHeat(n)`
+0..1. `PERFECT_DEFAULT` 'sharp', `perfectMode()` / `setPerfectMode(m)` (`?perfect=today | sharp |
+cinema`). Nothing stores a tier: each piece reads it at the moment.
+- *The storm* (`DEFENSE.flurry.storm`; `flurry.js`): `start` reads `streakN` (the streak, past the cap of
+  blows), `tier`, `stormK` = `streakK('storm')` once. `_stormStep(i)` (0 a shown cut, then 1, 2, ...),
+  `_pace(i)`, `_stop(i)`, `_cutTime(i)`, `_plannedHits()`. A storm cut's beats may be shorter than a
+  frame: `update` runs on through them (at most 8 steps) until a blow lands or a cut's finish is
+  reached, so each blow lands in a frame of its own; `_cloneAt` prints its speed clone in `draw` once
+  he is posed on the contact; `_stormAngle` picks its line (24 candidates); `camera()` keeps the target
+  and the ring of the cuts, not him. `FlurryFx.setTier(tier, k)` sets `echo` (`TIER_LOOK.echoes`);
+  `steel(game, lines, n)` draws the echoes and, on the burst, their split and rings in the fire field;
+  `streak(a, b, up, dx, dz)` lays a storm cut's run; `cut`, `appear`, `vanish` take `st` (0..1, how deep
+  into the storm). `flurryFx.js` draws on its own seeded stream (`fxSeed()`, `setFxSeed(v)`), never
+  `Math.random`.
+- *The burst* (`player/flurryBurst.js`): `BURST_LOOK.levels` (null = today, then 1 - 3), `BURST_DEFAULT`
+  2, `setBurst(n)` (0..3, or a custom level object: `burstLevel()` -1), `burstLevel()`, `burstLook()`
+  (null at 0), `burstScreen()` ({ cut, last, dip }; all 1 at 0), `pair(L, key)`. Read at the blow by
+  `FlurryFx` (lights, flares, sparks, stars, halo, speed lines, crescent, veil, the thin long lines,
+  `pfx`: the hero's own spark star and shockwave) and `flurry.js` (the boss's hurt flash on the last
+  blow, x `boss`); `game/flow.js` multiplies the flurry's `flashPulse` and `dip` by `burstScreen()`.
+- *A single perfect parry / dodge* (`combat/perfectFx.js`): `PERFECT_FEEL` (today null; sharp; cinema,
+  with `full` / `short` beats, `gap` 0.9 s, `echoTier` 3), `perfectFeel(mode)`, `perfectBeat(mode, last,
+  realTime)`, `MARK_LOOK` (tint zone id 800101), `PERFECT_LAST` (tests), `PERFECT_GLYPHS`;
+  `perfectParryMark(game, x, y, z, o)`, `perfectDodgeLine(game, x0, y0, z0, x1, y1, z1, mode)`,
+  `perfectArrive(game, x, y, z, mode)`, `perfectGhost(...)`; `perfectUpdate(game, dt, realDt)` (from
+  `flow.update`, before the fire field's update), `perfectClear()` (the flow's fx clear),
+  `perfectBusy()`. `PlayerFx.perfectMoment(kind, last, streak, mode)` returns the moment's record
+  ({ mode, F, T, beat, streak }); `player._parry` takes the freeze, shake, punch and the cinematic from
+  `T` (null = today's numbers) and passes it to `fx.parry(..., { feel })`, which calls `clashBurst` with
+  `o.cross === false` (`clashFx.js`: no glyph cross; the mark draws it) and prints the mark;
+  `player._ghostep` passes `{ feel, wx, wz }` to `fx.ghostep` (`_ghostepFeel`: the standing afterimage,
+  its tear, the line) and calls `_slowmo(sec, mode)`: sharp a hitstop slow motion of its own scale,
+  cinema `flow.cinematic({ ..., quiet: true })`.
+- *The aura and the world* (`player/streakFx.js` `class StreakFx`, `game.fx.streak`, built in main.js
+  after the player, `update(fxDt)` after the ripple, `clear()` with the other fx): listens to
+  `player:streak`; exposes per frame `edge`, `edgeA`, `bladeLine`, `echoes`, `echoA` (0 = today).
+  `player._updateMaterials` lifts the blade's ink / rim lines by `bladeLine`; `fx.trail` draws `echoes`
+  echo lines inside a swing's arc; `fx.bladeHalo(dt, k, far, edge, edgeA, top)` draws the edge line.
+  The fire rim writes `fire` blobs into `game.fx.fire` (`STREAK_FIRE`: heat 0.17, `cover`, `minH`,
+  `back`, `blade`, `tongue`, `trail` per tier; thinned from 3800 field blobs); `?auraFire=b` dyes the
+  `steel` kind in tint zone 735101. `STREAK_AURA`, `STREAK_FIRE`, `STREAK_WORLD` (gust, ring, rise per
+  tier; `floor` by level id) are exported. It steps aside while the hero is in `flurry` or `plunge`,
+  dead, or while `player.ghostFx` > 0.5. Its own seeded stream.
+- *Payload fields added* (no new event): the flurry's start event gains `streak`, `tier`, `storm`
+  (true when its later cuts are a storm) and `at` (the real s from now each flash cut is planned to
+  land); each flurry blow's event gains `gap` (real s since the blow before) and `storm` (0 a shown
+  cut, else how deep into the storm); the parry event gains `feel` (the perfect look's mode, 'today'
+  when not perfect or a bullet) and `beat` (cinema's 'full' | 'short', else ''); the perfect dodge
+  event gains `feel`. `player.debug.flurry(strikes)` takes a streak up to 99 (7 blows still).
 
 `edgeGlint(sw, z0, z1, far, crit, realDt, ridge)`: a small cold '+' (and '|' strokes behind it)
 running up the LEADING edge of the steel from sword-space height z0 to z1 this frame (`leadSide(sw,
@@ -2284,6 +2338,8 @@ phase gate (`dragon.phaseAt` after the first, read at construction: 66 % and 33 
 `p2` (orange) / `p3` (white-hot) style from `dragon.phase`; the minimap's wyrm dot follows the same
 three colours.
 
+**The streak counter** (`ui/streakCounter.js` `class StreakCounter`, `COUNTER`, `TIER_WORDS`, `COUNTER_LOOKS`; ADR-167): `hud.streakUi`, built in the call-outs' layer; `onStreak(d)` (from `player:streak`: a rise to 2 or more shows the number, a loss of 2 or more shows it struck), `handoff()` (on `player:flurry`), `clear()` (with the call-outs: title, death, retry), `update(realDt)`; `shown` ({ n, tier, word, lost }; tests). Its DOM is built on the first number. `?streakCount=lines | brackets | ticks` (default lines). With `streakK('counter')` > 0 `Callouts.ghostep` / `riposte` drop their ×N, and `Callouts.count` ticks a live count in place while its pop is younger than 0.2 s. `Callouts.banner(text, sub, tier)` passes `tier` to `MiniBanner.show(text, sub, tier)`: 4 and 5 add thin rules (classes `t4` / `t5`, `long` for a long name), never size. `hud.js` exports `FLURRY_TIER_NAMES` ({ 4: 'HUNDREDFOLD FLASH', 5: 'THOUSANDFOLD FLASH' }): a full flurry's banner takes it from the streak's tier (read on `player:flurry`) while `streakK('tiers')` > 0.
+
 ### Flow — `src/game/flow.js` exports `class GameFlow`
 **Move telemetry** (ADR-108, `game/telemetry.js` `MoveLog`): `flow.moves` logs every `combat:answer` per boss move:
 `attempt` (a Map id → { seen, hit, blocked, parried, perfectParry, clashed, dodged, perfectDodge, damage, kills },
@@ -2308,6 +2364,8 @@ cinematic({ x, z, zoom = -9, weight = 0.6, slowmo = 0.3, dur = 0.8, kind }): boo
                                        // moment replaces a running one. Emits 'game:cinematic {kind}'. False outside play.
 cine, cineScale                        // the running moment (null) and its time scale this frame (1)
 ```
+**The streak pass** (ADR-167): `cinematic` also takes `ease` ([in, out]: the shares of `dur` the camera eases in / out over; default [0.2, 0.4]), `back` (the share the slow motion eases back over; default 0.34) and `quiet` (no `game:cinematic`: the perfect dodge's cinema look, which must not ring the moment's gong). A perfect parry of a blade in the sharp / cinema look takes its own flash (`PERFECT_FEEL[feel].parry.flash`) and cinema's `grade.dimPulse` instead of the 0.55 flash; a perfect dodge's cool grade holds `PERFECT_FEEL[feel].dodge.pulse`. `update` calls `perfectUpdate(game, dt, realDt)` each frame; the fx clear calls `perfectClear()` and `game.fx.streak.clear()`. The flurry's screen flashes and its dip are scaled by `burstScreen()` (above).
+
 Owns `game.state`, title → explore → bossIntro → boss → dead/victory, pause (Esc), bonfire rest (E),
 retry after death (respawn at bonfire, `dragon.reset()`, `world.scorch.reset()`), F2 quality,
 M mute, H help, F3 fps. Boss framing (`boss` state, `TUNE.bossCam`): the override focuses on the
@@ -2426,6 +2484,8 @@ guarded strike, the plunge, a shards-only slam, a flurry's flash cuts): `onHit(d
 `musicBus → thumpDip → musicDip → mix` (`thumpDip` is 1 when idle; never on the cue bus). One dip per
 `dipGap` 0.5 s; a blow inside a holding dip extends it to at most `dipMax` 0.45 s after it began.
 Counters `subs`, `dips`, `extends` (tests).
+
+**The streak, heard (ADR-167, `audio/streakSound.js`: `STREAK_SOUND`, `SCALES`, `TIMBRES`, `TRACK_KEYS`, `degreeSemis`, `perfectSound`, `tuneParry`, `class StreakSound`).** `engine.streakSound` builds nothing until it plays, and nothing at `streakK('sound')` 0. `onStreak(d)` (`player:streak`) holds a raise until `onDefence(kind)` (from `player:parry` of a blade, `player:perfectDodge`, `combat:clash`, `player:mikiri`) plays its climb note in the same call stack; `onTell()` (every `combat:tell` but a bullet's, every `combat:flash` but a bullet's) ducks its bus; `tick(now)` from `update`. Its own bus to the pause duck, at most 3 voices; the drone on `musicBus`. `flurryCut(d)` / `burst(d)` return the opts of `play('flurryCut' | 'flurryBurst')` (null when off); `parryTune()` gives `sfx.js` `parry` a `tune` (the chain on the scale); `perfectSound()` gives the perfect parry's `ring` and the Ghostep's `slow` factor for `perfectMode()`. The recipes it changes draw the same random numbers as before.
 
 **A flurry's blow on a duelist (ADR-101).** `takeHit({ ..., exact, reel, away })`: `reel` 1 (a flash
 cut) flinches him where he stands whatever he was doing (`brain.startReact('flinch')`, travel 0) and
@@ -2547,6 +2607,11 @@ answers skip them). The runner's watch list gained `dragon:phase2`.
 
 **The 'impact' row** (ADR-149): one on / off toggle per piece of `IMPACT.pieces` (stamp, ripple, react,
 thump); a click flips `IMPACT.on[piece]`, read at the next hit. `_syncCutBtns` lights them.
+
+**The 'streak' row** (ADR-167): one on / off toggle per piece of `STREAK_FX.pieces` (storm, tiers, aura,
+counter, sound, world), a `perfect: <mode>` button that cycles today / sharp / cinema
+(`setPerfectMode`), and `burst N` that cycles the burst level 0 - 3 (`setBurst`). `_syncCutBtns` lights
+and labels them.
 
 ### Bindings — `src/core/bindings.js` (ADR-067)
 ```

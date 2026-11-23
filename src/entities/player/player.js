@@ -1269,7 +1269,11 @@ export class Player {
     // a parry MOMENT (a blue flare blow, ADR-118): the blow is beaten aside in a blue burst and the
     // hero answers by himself (the counter: _tickRiposte), wherever in a string it came
     const moment = !light && !!hit?.flare && tell === TELL.BLUE;
-    this.fx.parry(cv.x, cv.y, cv.z, big, D.n, -nx, -nz, { e1, e2, spray, perfect: !!perfect && !light, light, ring: light ? 0 : perfect || big ? 2 : last ? 1 : 0, met });
+    // a perfect parry of a blow has three looks (combat/perfectFx.js PERFECT_FEEL, the mode read now:
+    // today | sharp | cinema); `PM.T` null = today's numbers below. Nothing of the rules moves
+    // (a parry moment ends his string: it counts as its last blow for cinema's full beat)
+    const PM = perfect && !light ? this.fx.perfectMoment?.('parry', last || moment, fin(this.streak) + 1) : null, PT = PM?.T ?? null;
+    this.fx.parry(cv.x, cv.y, cv.z, big, D.n, -nx, -nz, { e1, e2, spray, perfect: !!perfect && !light, light, ring: light ? 0 : perfect || big ? 2 : last ? 1 : 0, met, feel: PM });
     if (moment) this.fx.flareParry?.(cv.x, cv.y, cv.z, -nx, -nz);
     if (ret) this.fx.perfectParry?.(cv.x, cv.y, cv.z, -nx, -nz);
     if (light) {
@@ -1280,12 +1284,12 @@ export class Player {
       // exchange turns), a camera kick and punch; perfect: a beat of slow motion on top (the blade
       // lock's own moment replaces it when he locks)
       const S = TUNE.parryStop, Pn = TUNE.parryPunch;
-      this._hitstop(perfect ? S.perfect : big ? Math.max(S.blue, last ? S.last : 0) : last ? S.last : D.n > 1 ? S.chain : S.normal, 0.02);
-      g.shake?.(Math.min(0.5, (perfect ? 0.42 : big ? 0.36 : 0.3) + 0.03 * (D.n - 1)));
-      g.punch?.(perfect ? Pn.perfect : last ? Pn.last : big ? Pn.blue : Pn.normal);
+      this._hitstop(perfect ? (PT ? PT.stop : S.perfect) : big ? Math.max(S.blue, last ? S.last : 0) : last ? S.last : D.n > 1 ? S.chain : S.normal, 0.02);
+      g.shake?.(Math.min(0.5, (perfect ? (PT ? PT.shake : 0.42) : big ? 0.36 : 0.3) + 0.03 * (D.n - 1)));
+      g.punch?.(perfect ? (PT ? PT.punch : Pn.perfect) : last ? Pn.last : big ? Pn.blue : Pn.normal);
       if (perfect) {
-        const P = TUNE.perfectParry;
-        g.flow?.cinematic?.({ x: cv.x, z: cv.z, slowmo: P.slowmo, dur: P.dur, zoom: P.zoom, weight: P.weight, kind: 'perfectParry' });
+        const P = PT ? PT.beat : TUNE.perfectParry;
+        g.flow?.cinematic?.({ x: cv.x, z: cv.z, slowmo: P.slowmo, dur: P.dur, zoom: P.zoom, weight: P.weight, ease: P.ease, back: P.back, kind: 'perfectParry' });
       }
     }
     // every parry gives guard back at once (GUARD.parry)
@@ -1303,7 +1307,9 @@ export class Player {
       R.attack = attack;
       R.tell = tell;
     }
-    this._emit('player:parry', { tell, attack, chain: D.n, light, perfect: !!perfect, last, flare: moment });
+    // (`feel` / `beat`: the perfect parry's look, PERFECT_FEEL's mode and cinema's 'full' | 'short'; the
+    // screen reads them: flow.js)
+    this._emit('player:parry', { tell, attack, chain: D.n, light, perfect: !!perfect, last, flare: moment, feel: PM?.mode ?? 'today', beat: PM?.beat ?? '' });
   }
 
   /** The riposte a parried last blow asked for: starts as the parry's freeze ends, if the hero is
@@ -1747,6 +1753,9 @@ export class Player {
     // (the Long Second's perfect lean, ADR-158: a longer slow-mo and three afterimages where he leaned)
     const lean = this.rollLean && this.state === 'roll';
     const ox = p.x, oz = p.z;
+    // the way he was going (the afterimage of the sharp / cinema looks tears along it when he stays)
+    const wx = this.state === 'roll' ? this.rollDir.x : fin(this.vel.x), wz = this.state === 'roll' ? this.rollDir.z : fin(this.vel.z);
+    const PM = this.fx.perfectMoment?.('dodge') ?? null; // (combat/perfectFx.js: today | sharp | cinema)
     const nSegs = this._sampleGhost();
     const ap = attacker?.position;
     const hasAtk = !!ap && Number.isFinite(ap.x) && Number.isFinite(ap.z);
@@ -1788,12 +1797,15 @@ export class Player {
       this.sweep.valid = false;
     }
     this.anim.kickCoat(1);
-    this.fx.ghostep(this._ghostSegs, nSegs, ox, oz, p.x, p.z);
-    this._slowmo(lean ? TUNE.lean.slowmo : DEFENSE.ghostep.slowmoTime);
+    this.fx.ghostep(this._ghostSegs, nSegs, ox, oz, p.x, p.z, PM?.F ? { feel: PM, wx, wz } : undefined);
+    if (lean) this._slowmo(TUNE.lean.slowmo);
+    else if (PM?.F) this._slowmo(PM.F.slow?.time ?? PM.F.beat?.dur ?? DEFENSE.ghostep.slowmoTime, PM.mode);
+    else this._slowmo(DEFENSE.ghostep.slowmoTime);
     if (lean) for (let i = 1; i < TUNE.lean.ghosts; i++) this.fx.ghostep(this._ghostSegs, nSegs, ox, oz, p.x, p.z);
     g.shake?.(0.15);
     g.world?.setPusher?.(0, p.x, 0, p.z, TUNE.pusher);
-    this._emit('player:perfectDodge', { attack, tell, streak: this.streak });
+    // (`feel`: the look's mode, for the screen: flow.js)
+    this._emit('player:perfectDodge', { attack, tell, streak: this.streak, feel: PM?.mode ?? 'today' });
     this._emit('player:ghostep', { x: p.x, z: p.z });
   }
 
@@ -2521,7 +2533,8 @@ export class Player {
     if (!this.alive || this.state === 'plunge' || this.state === 'flurry' || this.state === 'lock') return false;
     const kind = this.flurry.reach(d, true);
     if (!kind) return false;
-    const n = clamp(Math.round(fin(Number(strikes), 3)), 1, DEFENSE.flurry.max);
+    // (a streak past the cap of blows: the flurry strikes DEFENSE.flurry.max, the tiers read the rest)
+    const n = clamp(Math.round(fin(Number(strikes), 3)), 1, 99);
     this._debugStreak(n);
     const pin = this.debug.flurryArt;
     if (typeof art === 'string') this.debug.flurryArt = art;
@@ -2972,14 +2985,27 @@ export class Player {
    * a freeze already running (the leap slam freezes on landing, then strikes) would turn the whole
    * slow-mo into a freeze: wait for that freeze to end instead (update() fires the pending one).
    */
-  _slowmo(sec) {
+  _slowmo(sec, mode) {
     const g = this.game;
-    if (fin(g.hitstopTimer) > 0 && fin(g.hitstopScale, 1) < DEFENSE.ghostep.slowmoScale) {
+    // the perfect dodge's look (combat/perfectFx.js PERFECT_FEEL[mode].dodge; a pending one keeps
+    // its mode): `slow` a hitstop slow motion of its own scale, `beat` the flow's cinematic moment
+    // (its own time scale and the camera in: no long hitstop to merge with the next cut's freeze)
+    const m = mode ?? (this._slowmoMode && sec === this.slowmoPending ? this._slowmoMode : null);
+    this._slowmoMode = null;
+    const D = m ? this.fx.perfectMoment?.('dodge', true, 0, m)?.F ?? null : null;
+    if (D?.beat) {
+      this.slowmoPending = 0;
+      const B = D.beat, p = this.position;
+      if (g.flow?.cinematic?.({ x: p.x, z: p.z, slowmo: B.slowmo, dur: B.dur, zoom: B.zoom, weight: B.weight, ease: B.ease, back: B.back, kind: 'ghostep', quiet: true })) return;
+    }
+    const scale = D?.slow ? D.slow.scale : DEFENSE.ghostep.slowmoScale;
+    if (fin(g.hitstopTimer) > 0 && fin(g.hitstopScale, 1) < scale) {
       this.slowmoPending = sec;
+      if (D) this._slowmoMode = m;
       return;
     }
     this.slowmoPending = 0;
-    g.hitstop?.(sec, DEFENSE.ghostep.slowmoScale);
+    g.hitstop?.(sec, scale);
   }
 
   // ------------------------------------------------------------------ movement
@@ -3728,7 +3754,10 @@ export class Player {
       const cb = this.fx.calmBlade?.(this.bladeFlare / F.hit[0]) ?? 1, cf = this.fx.calmFlare?.(this.bladeFlare) ?? this.bladeFlare;
       const g = !this.alive || (cb === 1 && cf === this.bladeFlare) ? g0 : 1 + ((heavyLit ? F.strike[1] : F.strike[0]) * this.bladeHot + cf) * cb;
       if (Number.isFinite(g)) {
-        const U = this.game.U, BL = TUNE.bladeLook, lk = (1 + F.line * (g - 1)) * BL.line, rl = B.rimLine ?? B.line;
+        // the streak (player/streakFx.js `bladeLine`, the aura piece): the steel's ink and rim lines held
+        // a little lit at rest, more at each tier; its flats stay dark (0 = today, exactly)
+        const sl = this.game.fx?.streak?.bladeLine, sk = sl > 0 && Number.isFinite(sl) ? 1 + sl / Math.max(1, g) : 1;
+        const U = this.game.U, BL = TUNE.bladeLook, lk = (1 + F.line * (g - 1)) * BL.line * sk, rl = B.rimLine ?? B.line;
         const pf = U?.uSelfPartFill?.value?.[P], pi = U?.uSelfPartInk?.value?.[P], pr = U?.uSelfPartRim?.value?.[P];
         if (pf) {
           pf.x = (B.fillGain ?? 1) * g * BL.fill;

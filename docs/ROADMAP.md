@@ -184,7 +184,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
-## M1.69 — An eighth level: Halcyon Plaza and Halcyon, the Last Saviour (2026-11-22, `claude/level-future-tyrant-afdefc`, ADR-159 – ADR-161)
+## M1.71 — An eighth level: Halcyon Plaza and Halcyon, the Last Saviour (2026-11-22, `claude/level-future-tyrant-afdefc`, ADR-159 – ADR-161)
 - [x] `?level=city`: a crossroads read from its streets, every piece breakable, two-stage towers, cars that
       explode (the set polls them), the city's light as heat (`setPhase`), `?city=a|b|c`; the `y0` fix
 - [x] Halcyon: flight in reach, the crash, his eyes (The Stare, Red Glare, Scorched Avenue, Crossed Glare),
@@ -198,6 +198,23 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] The owner's picks of his letters, print and cape size: `halLetters` a, `halPrint` a, `halCapeSize` b (2026-11-23, "Yes, keep it")
 - [ ] Cut, for later: Last Word (and its beam clash), the hydrants' spouts, his own SFX, his own score
 - [ ] A human playtest on the phone (the frame rate on the device is not measured)
+
+## M1.70 — The streak pass: an accelerating flurry, the streak on the hero, in the HUD and in the sound, a sharper perfect parry (2026-11-23, `combat/streak-epic`, ADR-167)
+- [x] The core: `combat/streak.js` switches (`?streakfx=`, the Lab's 'streak' row), the tiers 3 / 5 / 7 / 10 / 15
+- [x] The storm: a long flurry's later cuts each faster, every blow in its own frame (seven against the wyrm 1.52 -> 1.18 s)
+- [x] The tiers, looks only: echo lines on the hanging cuts at 10 / 15, HUNDREDFOLD / THOUSANDFOLD FLASH
+- [x] The burst as lines, four levels (`?burst=`; the owner's level 2)
+- [x] A single perfect parry / dodge in three looks (`?perfect=`; the owner's sharp), the rules unchanged (game time measured)
+- [x] The aura: the steel remembers (round 1), the fire rim (round 3); the world answers from tier 2
+- [x] The counter beside the hero and the tier words (`?streakCount=`; the owner's lines)
+- [x] The sound: the climb in the track's key, the loss, the drone (the owner's guqin on a minor pentatonic)
+- [x] Tests: integ `storm`, `streakfx`, `streakhud`, `streaksound`; duel `perfectfx`; the wyrm's pace meter per seed and in the mean
+- [ ] The tier rings on the burst read
+- [ ] Cinderwood's fire field near the hero (barely prints in headless captures; check the real page)
+- [ ] The aura through the Ghostep's cold cast (it blinks off after a perfect dodge)
+- [ ] Played
+- [ ] On the phone
+- [ ] The sound heard in the game
 
 ## M1.68 — Tian Lei's blows audited; he stops attacking the air (2026-11-23, `enemies/ascendant-ascii`, ADR-162)
 - [x] A motion audit of every move and of a real fight (opt-in `asc.mjs audit` / `auditfight`)

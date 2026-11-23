@@ -1498,3 +1498,53 @@ the body.
 - **The body answers** (ADR-149): the reaction's first pose shows in the frame the freeze holds, small
   enough that the struck surface stays 0.01 - 0.07 m from the drawn cut (`snapM` 0.06 on a duelist),
   so the cut, the stamp and the spray stay on the body; the swing to the peak comes after the freeze.
+
+### The streak and a single perfect defence (2026-11-23, ADR-167; `combat/perfectFx.js`, `player/flurryFx.js`, `player/flurryBurst.js`, `player/streakFx.js`, `ui/streakCounter.js`)
+The rule of the pass: **lines, not light**, and one idea a piece that grows by tier (a streak of 3 /
+5 / 7 / 10 / 15), never a new effect per count. Everything that marks a moment is written in the fire
+field's letters the way the impact stamp is (above): snapped to cells, hexagon rings, stepped frames,
+ink on black, never over the hero.
+- **The perfect marks** (sharp, the default; cinema): a perfect parry prints a short gold cross along
+  the two blades round a hot heart, which snaps to a hexagon ring and breaks into specks (sharp: 5
+  frames, about 50 blobs; cinema bigger, 9 frames, an echo ring). Each frame is held 0.04 s of REAL
+  time (cinema 0.065 s), so a mark does not stretch in the slow motion round it. Tint zone 800101,
+  gold on black; no cell below 0.7 m. A perfect dodge: the afterimage (his fine digits) stands still,
+  one digit to a cell, for 0.1 s (cinema 0.3 s), then tears into its letters along the way he left;
+  one clean line of cold steel from where he was to where he is (4 frames; cinema 5); cinema adds an
+  arrival ring round his chest. The old blink streams are not drawn in these looks.
+- **The burst levels** (`?burst=0..3`, the owner's 2): 0 the white bloom as before; 1 the lights and
+  blooms halved, thin long lines on top; 2 lines first, the target and the hero visible through it; 3
+  only lines, a blink of darkness round the star. Each hanging cut flares out thin to 1.35 / 1.6 /
+  1.85 × its length for a few frames. The same level calms a storm cut's centre (on the wyrm the
+  storm's centres stacked into a bloom).
+- **The storm and the tiers' echoes:** a storm cut's arrival, bite and vanish are thinner the deeper
+  into the storm, its afterimage the light one, its speed clone printed on the contact. At tier 4 every
+  hanging cut gets one fine echo line two cells beside it in `steel` (heat 0.55, shorter at the ends),
+  at tier 5 two, one each side; on the last blow they step away from their cuts in held frames and
+  rings open where the cuts cross (the rings do not read yet under the burst).
+- **The steel remembers** (aura, round 1): an edge line of the hero's cold steel up the blade from the
+  forte (34 % of it at tier 1, the whole edge at 5), the blade's ink and rim lines held a little lit
+  at rest (the flats stay dark, ADR-130), 1 - 3 fine echo lines inside a swing's arc, a wake of his
+  own digits when he rolls, sprints or dashes, a few coat letters lifting at tiers 4 - 5. No new hue
+  per tier: a little whiter at the top.
+- **The fire rim** (aura, round 3; the owner: "a cool faint fiery aura very subtle but cool"): each
+  frame his body is projected into the fire field's cells, the outline closed and the outside
+  flood-filled; the rim is the outside cells touching him, one cell-sized blob each at heat 0.17, so
+  the field prints a thin line of dim red strokes that hugs his figure (below about 0.15 the field's
+  erosion tears it away). Each cell breathes on its own hash. The tiers change only coverage: the
+  share of rim cells lit 0.36 / 0.5 / 0.66 / 0.8 / 0.92, the rim from 55 / 45 / 30 / 12 / 0 % of his
+  height, tiers 1 - 2 on his back side only, tongues of 1 cell (tiers 2 - 3) or 2 (4 - 5) breaking off
+  the top, a faint burning trail along the swings at 4 - 5. Never on the boss's side of him, never
+  over him. The loss: every live blob turns to a puff of smoke in one frame, the edge line snaps dark
+  and falls as strokes, his letters drop to the ground (6 + 7 a tier, 44 at most).
+- **The world** (from tier 2): a short radial lean of the grass (weaker than any of the wyrm's
+  gusts), a ring of the floor's own bits at his feet (grass motes, the courtyard's ash, stone grit by
+  level), letters rising slowly at tiers 4 - 5. Calm and brief: no red, nothing on the ground that
+  stays, nothing that looks like a warning.
+- **The counter** (HUD, `?streakCount=lines`, the owner's pick): a small number in the HUD's font at
+  the hero's chest, on his side clear of the boss: plain and dim at tiers 0 - 1, brighter with a thin
+  underline at 2 - 3, thin strokes either side at 4, pale gold with longer strokes at 5 (13 - 17 px).
+  It pops in about four frames with no overshoot and fades; never a glow, never a shake. A tier's word
+  (TRIPLE ... THOUSANDFOLD) sits under it once, in small spaced gold capitals. A lost streak: grey,
+  struck through in red, the digits parting as they fall. The flurry's banner at tiers 4 - 5 gains
+  thin gold rules, never size.

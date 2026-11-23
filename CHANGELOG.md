@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Seventy-five pieces of work since 0.4.0:
+Seventy-six pieces of work since 0.4.0:
 - **An eighth level: Halcyon Plaza and Halcyon, the Last Saviour** (2026-11-22, ADR-159 – ADR-161). *Added:* an eighth
   level, `?level=city` (the title screen lists it). **Halcyon Plaza**: a city that has not been built yet, at
   night in the rain, read from its streets: a plaza where an avenue meets a street, four towers, cars, lamp
@@ -25,6 +25,33 @@ Seventy-five pieces of work since 0.4.0:
   a raised piece's own height reaches it (a tower's top, a sign hung on a wall), and a blow down on the street no
   longer bites one metres above it; a rest or a retry while a broken car burns no longer leaves it to blow up
   after, or unable to blow up again; See the World's slam lands (it was dodged by the get-up's grace).
+- **Streaks that build: the flurry speeds up, the hero smoulders, the notes climb; a sharper perfect parry** (2026-11-23, ADR-167).
+  *Added:* a long streak of perfect defences now builds, in looks and sound only ("the longer the
+  streak, the faster the attacks and way cooler animation and effects"). **The flurry accelerates:**
+  its first cuts are as before, then each one comes faster until the last land a few frames apart
+  (seven blows' cuts against the wyrm 1.52 -> 1.18 s; on Shen Hui the whole flurry 2.9 -> 2.1 s), every
+  blow still in its own frame, the hero drawn on each. **Past seven,** the flurry still strikes seven
+  blows for the same damage, but at a streak of 10 each hanging cut gets a fine echo line (two at 15)
+  that splits away on the last blow, and the banner says HUNDREDFOLD FLASH / THOUSANDFOLD FLASH. **On
+  the hero,** from a streak of 3: a faint rim of fire letters just outside his figure that covers more
+  of him at each tier, his blade's edge lit further up, echo lines in his swings, a wake of his letters
+  when he rolls or runs; a lost streak puts it all out in one frame. **In the world,** from a streak of
+  5: the grass leans and the floor's grit lifts at his feet on every perfect defence. **A counter:** a
+  small number beside the hero ticks up on every perfect defence from 2 and fades, with a word the
+  first time a streak reaches 3, 5, 7, 10 and 15 (TRIPLE ... THOUSANDFOLD); a lost streak's number is
+  struck through and falls. **The sound:** every perfect defence in a streak rings a soft note one step
+  higher in the key of the playing music, a quiet drone joins from a streak of 5, a lost streak's last
+  note falls. *Changed:* **a single perfect parry** is short and clean (the owner's pick of three
+  looks): a gold mark printed in the letters where the blades cross, less slow motion (x0.6 for 0.18 s,
+  was x0.35 for 0.36 s), a frame flash at a quarter of before; **a perfect dodge** leaves the afterimage
+  standing a moment before it tears away along the way he left, with less slow motion (0.36 s, was
+  0.6 s). The parry window, the i-frames, the crit window and the punish window in game time are
+  unchanged. *Changed:* **the flurry's last blow** no longer blooms into a white blot over both
+  fighters: the lights and the flash are turned down and the hanging cuts flare out as long thin lines
+  (level 2 of four, the owner's pick). With the GHOSTEP / RIPOSTE call-outs the streak's number now
+  lives beside the hero (DEFLECT xN keeps its count). The old looks: `?perfect=today`, `?burst=0`,
+  `?streakfx=off` (or a list: `?streakfx=storm,counter`), `?streakCount=brackets|ticks`,
+  `?auraFire=b`; the Lab's 'streak' row switches the pieces live.
 - **Attack sounds: cues only for blue and red, every blow sounds like its weapon** (2026-11-22, ADR-165). *Changed:* a normal (white) attack makes no cue sound any more:
   no tick as its windup starts and no ping before it lands (the white glint stays). A **blue** attack
   rings a sword left ringing as its windup starts; a **red** (or black) one opens on a log drum and its
