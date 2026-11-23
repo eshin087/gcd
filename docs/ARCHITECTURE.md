@@ -3086,9 +3086,28 @@ strip and the scars are glyph particles (a wearing crown's in the canopy's dim h
 dull hue; destructibles.js `SHED_LEAF`, `SHED_WOOD`, `SHED_BONE`); the flames of burning wood and logs
 are heat in the fire field.
 
+### Halcyon Plaza: explosions, raised pieces, the city's light (2026-11-22, ADR-159)
+- **A raised piece is struck at its real height.** `destructibles.js` skipped a piece when a blow passed
+  over it with `o.y - r > h`: a piece standing on another (`y0` > 0: a tower's top, a shop sign hung on a
+  front, the Skybreak Ring's butte tops) was missed by a blow at its own height. The bound is now
+  `y0 + h` (no lower bound: a blow on a base still reaches its top through `holds`), and the hit point is
+  clamped into `y0 .. y0 + h`. The world test `bite` strikes a raised piece inside its own height.
+- **Explosions are the set's, polled.** The destruction system has no on-break callback and nothing in it
+  explodes. `world/halcyonPlaza.js` (its `ambience`, which atmosphere.js runs every frame) watches each car:
+  broken, it burns for `CITY.car.fuse` s (told and cued as a falling piece is, `combat:tell` /
+  `combat:flash` source world, attack carBomb; the boss's `brain.worldClash` may quiet it), then
+  `world.impact(x, z, 3.2, 1.6, { kind: 'blast', fire: true, by })`, fire, debris, a shake and
+  `world:blast`. The hero inside 2.6 m takes 16 (blockable; a roll clears it); the boss inside 3 m takes 90
+  and 24 posture (`boss.onBlast`) when the hero broke the car. At most two bangs in 0.5 s (the rest wait).
+  The set also exposes `boom(x, z, by)` (a thrown car landing) and `setPhase(n)` (below).
+- **The city's light is heat.** Neon tubes and screen faces are `steel` blobs re-drawn every frame (one
+  frame's life), a budget scaled by `destructibles.q` (at most `CITY.neon.cap` on LOW); a screen is a pale
+  rectangle with his head and shoulders left dark. `setPhase(1 | 2 | 3)`: neon and his face; static then
+  crimson (`void`, which his fx re-palettes); dead. A piece's neon goes out when the piece breaks.
+
 ## Levels and the boss slot (2026-11-12, ADR-058, ADR-060; the Starless level: ADR-068 – ADR-070; the Skybreak Ring: 2026-11-21, ADR-129; the Foxfire Terrace: ADR-147)
 `src/levels/index.js`: `LEVELS` (Cinderwood `cinderwood`, Ashfall `ash`, the Obsidian Throne
-`starless`, the Skybreak Ring `ring`, the Foxfire Terrace `fox`, the Windless Grove `grove`), `DEFAULT_LEVEL`,
+`starless`, the Skybreak Ring `ring`, the Foxfire Terrace `fox`, the Windless Grove `grove`, Halcyon Plaza `city`), `DEFAULT_LEVEL`,
 `withStage(level, search)` (`?stage=lab`: the same level on the training
 room, `world/trainingRoom.js` `createTrainingRoom` / `ROOM_WORLD`; main.js wraps the level with it
 before `applyLevel`; ADR-099), `getLevel(id)` (id or alias, case-insensitive), `levelFromSearch(search)` (`?level=`; unknown → the
@@ -4067,6 +4086,35 @@ flagstone (world/floor.js), stele, lantern, boulder, post (light). Returns creat
 **Destruction's `light` def field** (ADR-145; destructibles.js): the record's `lightPiece`; its topple is
 `quiet` whoever felled it and its landing does only the crumble and a soft `crash` (weight x 0.25): no ground
 marks, gust, shake, domino sweep or blow on anyone. (The record's own `light` is a burning piece's point light.)
+### Halcyon, the Last Saviour — `src/entities/enemies/halcyon/halcyon.js` exports `class Halcyon` (ADR-160)
+A `Duelist` with `HALCYON_KIT` and his own `HalcyonBrain` (`_reach` Infinity for a beat that flies to the
+hero; `_toFoot` and a standing reaction never fall: he hovers); COMBAT.md → "Halcyon" has the fight. The kit:
+`{ id: 'halcyon', TUNING, MOVES, MOVE_NAMES, CLIP, realise, transitions { 2: 'smileDrops', 3: 'noOneWatching' },
+counterMove () => 'riposte', streakMove () => 'streakFlurry', loadout HAL_LOADOUT, poses HAL_POSES, blade
+HAL_FIST, scale, REACT { crashed, blinded }, OPEN ['crashed', 'blinded'] }`. Files: tuning.js, moves.js (the
+data; his beat fields are listed in its header, all prefixed `hal`), poses.js (`hoverLoco`: his footwork is
+flight), gear.js (`hal.*` items: the suit, the cape), look.js (`?halLook=`, `?glare=`, the dressing by
+phase), fx.js (`HalFx extends AscFx`: the void slot re-paletted to his glare), glare.js (`Glare`: his eyes'
+beams), flight.js (`Flight`: the hover, the pass, the crash, the carry), terrain.js (`Terrain`: Curbside,
+the towers, the falling sky, Monument), links.js.
+```
+name = 'HALCYON, THE LAST SAVIOUR';  kind = 'duelist'
+glare / flight / terrain                // his three systems (each has reset(), frame(dt), stats)
+eyesK                                   // 0..1 his eyes' kindle (look.js dresses the `flask` part's glow by it)
+hurt(damage, posture, why) → dealt      // damage no blade dealt (a returned beam, a crash, a blast)
+onBlast(damage, posture, x, z)          // a car's blast the hero caused, beside him (the set calls it)
+terrainOwns() → bool                    // a terrain beat moves him (flight.js keeps its hover off)
+debug: pass(), tower(), fallingSky(), statue(), carry(), explode(n), cityPhase(n), crash(), tidy()
+```
+The flight rule (flight.js `frame`, after the brain): unless a beat of his flight moves him (`owns()`: a
+`lift`, a leap, a pass, the crash, the carry, a terrain beat) he eases to the height his mode asks for:
+6 m asleep, down through the intro, `fly.hover` 0.5 m in footwork and in a move's beats, 0 on one knee (a
+transition's first part, a grounded move's recovery, an open reaction). `stats.out` / `outPhase` /
+`outFoot`: the stretches above `fly.reach` (tests FLIGHT). The crash: `crash(dx, dz, why)` takes the first
+cover on his deflected line (`destructibles.coverAt`), the react 'crashed' held for the stun, `hurt` 60 /
+30, `dragon:crash`. The carry: `grab()` (See the World's hit), the hero held in his own knockdown and
+carried by `position.y`; the slam ends it, the get-up timed so control is gone at most `grab.cap` s.
+
 ## Event catalogue (exact names — producers → consumers)
 Player → hud/audio/fx/flow:
 - `player:attack {kind:'light'|'heavy'|'slam'|'cleave'|'thrust', combo, charge, name}` (swing starts; combo 1–5 = the chain hit, slam = hit 5, the sprint slash and the roll cut report 1; heavy = a heavy branch, combo 0–4 = the light it followed (ADR-115; the Earthbreaker after the fourth is kind slam); cleave = the charge's release, thrust = the execution against a duelist; name = the attack's data name, combat.js),
@@ -4186,6 +4234,17 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   (drawn on the tile); the quake's front and Ring Breaker's tiles send `combat:tell` and `combat:flash`
   with hazard: true and flare; his called lightning (Thunderfall, the volley, the corner bolts) cues as
   the Lord's called strikes do.
+- Halcyon, Halcyon Plaza's boss (ADR-160), added these names: `dragon:crash {why, cover, x, z}` (THE CRASH: a
+  parried flying blow or a perfectly dodged red one threw him off his line; why = parry / dodge / debug, cover =
+  the kind of the piece he went through, or null for a skid), `dragon:grab {x, z}` (See the World caught the
+  hero: the carry starts), `dragon:dash {x, z}` (a pass leaves, at its sonic crack), `dragon:tower {x, z}` (he
+  bursts through a tower's top), `dragon:clap {x, z, r}` (Applause's ring of force), `dragon:split {attack, x, z}`
+  (a thrown car parried: cut in two, its halves go up behind the hero), `dragon:statue {part}` (his own statue
+  loses its head, part head, or its arm, part arm); and `dragon:returned` gets his Stare back in his eyes (attack,
+  damage). His beams emit `dragon:spell` as they light; a held guard under The Stare emits `player:block` as Tian
+  Lei's beam does. The set, Halcyon Plaza (ADR-159), emits `world:blast {x, z, r, by}` (a car goes up: its fuse
+  ran out, or a thrown car landed; by = who broke it) and cues each fuse as a falling piece is cued
+  (`combat:tell` / `combat:flash`, source world, attack carBomb, hazard: true).
 Flow → hud/audio:
 - `state {from, to}`, `bonfire:rest`, `game:retry`, `game:victory`, `area {name}`,
   `game:cinematic {kind}` (flow.cinematic: slow motion and a close camera on a duel's big moment; kind

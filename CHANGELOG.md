@@ -4,7 +4,19 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Sixty-eight pieces of work since 0.4.0:
+Sixty-nine pieces of work since 0.4.0:
+- **A seventh level: Halcyon Plaza and Halcyon, the Last Saviour** (2026-11-22, ADR-159 – ADR-161). *Added:* a seventh
+  level, `?level=city` (the title screen lists it). **Halcyon Plaza**: a city that has not been built yet, at
+  night in the rain, read from its streets: a plaza where an avenue meets a street, four towers, cars, lamp
+  posts, signs, screens that show his face, a statue of him; everything in it breaks, and the cars explode.
+  **Halcyon, the Last Saviour**: a flying strongman in a caped armoured suit with red light for eyes. He
+  hovers within sword reach and leaves it only inside a move that brings him back. Parry a pass and he goes
+  through a storefront and lies in the rubble; send his Stare back with a perfect parry and it burns his
+  eyes; parry a thrown car and it is cut in two. Fly-By, Curbside, Red Glare, Through the Tower, See the World
+  (carried up over the city and thrown down), Meteor, The Falling Sky, Monument (his own statue's arm). At 66 %
+  the smile drops and every screen turns crimson; at 33 % no one is watching and the city goes dark. No
+  reward yet. Look options for the owner: `?halLook=a|b|c`, `?glare=a|b|c`, `?city=a|b|c`. *Fixed:* a blow at
+  a raised piece's own height reaches it (a tower's top, a sign hung on a wall).
 - **The grove's bamboo falls to every stroke** (2026-11-22, ADR-151). *Changed:* in the Windless
   Grove one swing of the sword (or one blow of his) cuts a bamboo stalk clean through where the blade
   passed, and its top slides off the cut at once and crashes over in a burst of leaves (it took two

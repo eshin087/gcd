@@ -5,6 +5,38 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-22 — Session 79: a seventh level, Halcyon Plaza and Halcyon, the Last Saviour (planned in its own chat, built by one Opus agent)
+
+**What changed.** The owner asked for an evil caped strongman from the future, two well-known characters named as the reference
+("laser eyes, flying around a lot with super speed and power" in an ASCII city his moves tear down. Built from
+the planning session's plan (ADR-159 – ADR-161): `?level=city`, a crossroads read from its streets (every
+piece breakable, two-stage towers, cars that burn and explode, screens with his face, his own statue), and
+Halcyon, a bare-handed duelist who hovers in sword reach between moves and leaves it only inside a move.
+His answers' reward: a parried flying blow (or a perfectly dodged red one) throws him off his line into the
+first cover on it (the crash); his Stare perfectly parried goes back into his eyes; a thrown car parried is
+cut in two and goes up behind the hero. Three phases on one bar (the smile drops: the screens turn crimson;
+no one is watching: the city goes dark), the moments (the entrance, the statue's head, the two changes, the
+kill). `destructibles.js`: a raised piece is struck at its real height (`y0 + h`).
+
+**Why.** The owner's four answers: recognizable (a blue suit, a red cape, gold, red eyes, no emblem); all
+four set pieces (through the tower, carried into the sky, his own statue, the falling sky); everything PR #78
+got wrong avoided (the look, the gimmick rule, the dark vault, the slowness); no reward yet.
+
+**Verified.** `city.mjs` all (levels, data, timing, flight, glare, pass, car, tower, statue, grab, phase, flow,
+pace, win, training, looks) passes; `world.mjs` (the city scenario, `sets`, `bite` with a raised piece) and
+`asc.mjs` (the butte tops after the y0 fix) pass; `npm test` and `npm run build` (see the PR). Stills at the
+game camera in headless Edge (the sheets in `docs/looks/halcyon/`). The phone preset (852 x 393, touch): 76
+draw calls against the Skybreak Ring's 73.
+
+**Open / next.** The owner picks `halLook`, `glare`, `city` from the sheets. Cut for time: Last Word, the
+hydrants' spouts, his own SFX (the existing synth sounds play his events), a score of his own (the Obsidian
+Throne's is borrowed). The screens' "face" reads as a pale rectangle at the game camera, not yet as a head
+and shoulders. Not checked: the frame rate on the owner's iPhone, a human playtest of the flight rule and
+the crash's timing, the carry's look up close. The bar (14000) was sized for the fencing bot; a human may
+find it long.
+
+---
+
 ## 2026-11-23 — CI in four parallel jobs; docs-only PRs skip the tests (ADR-153)
 
 **Owner**, after asking why every PR's check takes ~12 minutes when their other games deployed at once:

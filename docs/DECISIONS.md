@@ -4567,3 +4567,71 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   up-to-date rule (two green PRs can still break `main` together) and free runners only.
 - **Consequences:** a run takes ~4 minutes (PR #92: 4 min 19 s); a PR shows six checks. The floor is
   the longest task (lord fxlooks ~230 s); re-measure `est` when a suite grows a lot.
+## ADR-159 — Halcyon Plaza: a city read from its streets, explosions the set polls, four kinds of heat, two-stage towers (2026-11-22)
+
+- **Context:** the owner asked for "some kind of ascii city where his moves are completely destroying the
+  buildings, cars, signs". The game camera looks down at 58 degrees from the south: the sky and the skyline
+  are never on screen, upright things are squashed, and nothing tall may stand south of the fight. The
+  destruction system (ADR-107) has no on-break callback and nothing in it explodes; a raised piece (`y0` >
+  0) was missed by a blow at its own height.
+- **Decision:** `world/halcyonPlaza.js`: a crossroads round a plaza of asphalt (r 15), read from its streets:
+  lane paint and crosswalks carved into the floor's slabs (the painted ones cut finer), cars seen from
+  above, the south faces of four two-stage towers (a base that `holds` its top: the top `y0` 6.5, `fallT`
+  1.6, `blocks` 5; the falling sky takes one), lamp posts, signs, shop signs hung on the fronts (`y0` 3.2,
+  light pieces), four screens showing his face, his statue (body, head `y0`, the raised arm `lift` 1), block
+  fronts (range pieces) and street furniture; all in `breakables` (82 rigid-batch pieces, 279 floor slabs).
+  Only flat silhouettes past 36 m are static (never on a blow's path), as the grove's bamboo wall and the
+  forest's far trees are recorded. Explosions are the set's: its ambience polls the cars (as the Skybreak
+  Ring polls its braziers' posts): a broken car burns `CITY.car.fuse`, told and cued as a falling piece
+  (the boss's fairness guard may quiet it), then a blast that hurts the hero (blockable) and him (when the
+  hero broke it), at most two bangs in 0.5 s. Its light is four kinds of heat in the fire field, used on
+  purpose (STYLE.md "The city's light"): steel neon and screens, void his crimson, fire the wrecks, smoke
+  the rest; `setPhase(n)` by his phase. `destructibles.js`: a blow passes over a piece above `y0 + h`, not
+  `h`, and lands inside `y0 .. y0 + h` (no lower bound: a base passes its blows to its top).
+- **Consequences:** a fifth kind of set: a hard city, not a natural ground. The y0 fix changes no other
+  level's fight (the ring's butte tops were never above a blow that reached them; `asc.mjs` passes). Fallen
+  tower tops are wreckage blocks you walk over, not new cover (nothing can be spawned mid-fight). Measured
+  at the phone preset (852 x 393, touch on): 76 draw calls against the Skybreak Ring's 73; the set alone
+  ~140k triangles after the brick cut. Frame time on the owner's iPhone is not measured.
+
+## ADR-160 — Halcyon, the Last Saviour: flight that never leaves a sword waiting, the crash as the reward loop, his eyes, the grab, the line on the homage (2026-11-22)
+
+- **Context:** the owner asked for an evil caped strongman from the future, two well-known characters named as the reference ("laser eyes, flying
+  around a lot with super speed and power". The earlier take (the Heaven-Fallen, PR #78, closed) failed on
+  four counts the owner named: he did not look the part, its sunlight rule was a gimmick, its setting a dark
+  vault, he was too slow and grounded. A flier against a swordsman is unfair unless the flier comes to the
+  sword.
+- **Decision:** a duelist on the shared engine (`entities/enemies/halcyon/`), bare-handed. THE FLIGHT RULE:
+  he hovers at 0.5 m within sword reach between moves and leaves reach only inside a move that brings him
+  back (tests FLIGHT hold the stretch out of reach to 2.6 / 2.2 / 2.2 s and to none in footwork). No special
+  rule: the reward loop is that the hero's answers put him through his own city: a parried flying blow, or
+  a perfectly dodged red one, THROWS HIM OFF HIS LINE into the first cover on it (the crash: buried, 60
+  damage, open; nothing on the line, a skid); his Stare perfectly parried goes back into his eyes; a thrown
+  car parried is cut in two and its halves go up behind the hero. His eyes are heat from two points at his
+  eyes (`glare.js`, Tian Lei's beam the reference: a held guard pays guard, never health); Red Glare is lit
+  at its cue and crosses the hero's bearing flashLead later. See the World carries the hero on his own
+  knockdown (the hero has no air state): control is gone at most 1.6 s, never on a hero who is down. The
+  line on the homage: a new name for him and every move; the names of the characters the owner gave and of
+  their worlds appear nowhere in the game (tests DATA checks his data and the level's lines); no letter,
+  shield or symbol on him; what carries it is what nobody owns: a caped strongman who flies, red heat from
+  his eyes, a clap that breaks glass, a car thrown one-handed, a smile for the cameras.
+- **Consequences:** the bar is 14000 (the fencing bot wins in 154 - 166 s; at 3400 it won in 40 - 46 s:
+  every crash is a long opening, as designed). Cut: Last Word (a held two-eyed beam and its clash), the
+  hydrants' water spouts, his own SFX (the existing synth sounds play his events). His red role for
+  Training is Meteor (a beam is no fixed contact for a perfect dodge); Meteor has no weight in phase 1.
+
+## ADR-161 — Halcyon's looks wait for the owner; no reward yet, by the owner's word (2026-11-22)
+
+- **Context:** the owner answered "Recognizable" for his look (a deep blue armoured suit, a long red cape,
+  gold trim, burning red eyes, slick hair, neon cyber seams, no chest emblem) and "i havent decided yet.
+  we'll worry about this later" for his reward.
+- **Decision:** three bodies behind `?halLook=a|b|c` (a the owner's answer, b the idol, c tomorrow's
+  tyrant), his eyes' heat behind `?glare=a|b|c`, the city behind `?city=a|b|c`: all in lookSwitch `PENDING`
+  and the Lab's LOOKS rows, none in `PICKED` (`halLook` a is the owner's answer to a question; the sheet is
+  still theirs to confirm). Every option in the hero's ink-line art, dense and bright. The sheets:
+  `docs/looks/halcyon/` (each body hovering, mid-blow and in a pass beside the hero, true size and x3, at
+  1280 x 720, 852 x 393 and 2560 x 1440; the three palettes on a lit Stare; each city wide and at the
+  fight camera, whole and wrecked). No reward ships: no `reward` field on the level, no grant, no victory
+  note; one line in ROADMAP M2.
+- **Consequences:** the fight is built and tuned with a / a / a; a pick changes only colours, the gear and
+  the set's light.

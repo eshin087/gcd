@@ -184,6 +184,16 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.64 — A seventh level: Halcyon Plaza and Halcyon, the Last Saviour (2026-11-22, `claude/level-future-tyrant-afdefc`, ADR-159 – ADR-161)
+- [x] `?level=city`: a crossroads read from its streets, every piece breakable, two-stage towers, cars that
+      explode (the set polls them), the city's light as heat (`setPhase`), `?city=a|b|c`; the `y0` fix
+- [x] Halcyon: flight in reach, the crash, his eyes (The Stare, Red Glare, Scorched Avenue, Crossed Glare),
+      Fly-By, Curbside, Through the Tower, Blink of an Eye, Applause, See the World, Meteor, The Falling
+      Sky, Monument, the moments; `?halLook=a|b|c`, `?glare=a|b|c`
+- [x] Lab, Training, `tests/integration/city.mjs`; the look sheets in `docs/looks/halcyon/`
+- [ ] The owner's picks from the sheets: his body, his eyes' heat, the city's light
+- [ ] Cut, for later: Last Word (and its beam clash), the hydrants' spouts, his own SFX, his own score
+- [ ] A human playtest on the phone (the frame rate on the device is not measured)
 ## M1.63 — The grove's bamboo sliced in one stroke, in clumps (2026-11-22, `world/bamboo-slice`, ADR-151)
 - [x] One blade or blow slices a stalk where it bit; the top slides off the cut at once and goes over
 - [x] Five kinds of cane, three thicknesses, fanning clumps with shoots (`?bamboo=a|b`; `0` the old grove)
@@ -844,6 +854,7 @@ Spec: `docs/specs/ash-disciple.md`.
 - [ ] Techniques: a slot system, a meter filled by parries and perfect dodges, an equip screen; the
       Ash Disciple's technique first (the next PR). The store it can read exists: `game/unlocks.js` (ADR-146)
 - [~] Fixed rewards per boss: the first, One Breath (the Sheathed's draw-slash, ADR-146), ships; the rest (techniques, weapons, abilities, elements); weapons of other lengths
+  - [ ] Halcyon's reward: the owner has not chosen one yet (ADR-161)
   - [ ] The Thousand-Body Fox's Paper Double (a decoy the foe strikes instead of the hero): recorded on the level, not usable (ADR-148); needs the technique slot, a button on every input, a target indirection in every boss's AI
       (the animator, the hit segment and the blade FX read `DIM`)
 - [ ] A hub that links the levels (the bonfire), and a boss-rush mode (refights back to back, a timer)

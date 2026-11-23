@@ -995,6 +995,16 @@ each is drawn: *The look switches*, below.
   phone; without the great spell, with the picks on, 518 / 1642 / 1033 / 698 per form; Shen Hui's
   phase 3 about 700 – 1400.
 
+### The city's light (Halcyon Plaza, 2026-11-22, ADR-159)
+Four kinds of heat, each on purpose, and no other light: `steel` the city's neon tubes and screen faces
+(a screen is a pale rectangle of heat with his head and shoulders left dark: his face on every screen);
+`void`, re-paletted to his crimson (`?glare=`), his eyes, his beams and, from his phase 2, every screen;
+`fire` the burning cars and the wreckage; `smoke` what is left. The neon goes out with the piece it hangs
+on. His phase 3 puts the screens and the neon out: only the fires light the street. The asphalt is a calm
+floor of sparse dim strokes with the lane paint and the crosswalks carved into it (the slabs that carry
+paint are cut finer so the stripes read); the towers' fronts carry rows of windows in their carved colour.
+Rain is one-cell glyph particles. Two point lights of its own, at most.
+
 ### The look switches (2026-11-16, ADR-122)
 Every new look and every redraw of this pass was shown to the owner as two or three options on one
 rendered sheet, behind a URL switch (`duelist/lookSwitch.js` `lookOf`; COMBAT.md / ARCHITECTURE.md
@@ -1035,6 +1045,9 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?grove=` | the Windless Grove's light and ground (ADR-145; read when the level is built) | - | a moonlit night with mist | grey dawn fog | first snow: pale litter, frost on the stalks | **a** |
 | `?sheathLook=` | Lu Wusheng's body (read when his rig is built) | - | Mourning White: undyed hemp, a white brow band with two trailing tails, hair in a knot | Reed Cloak: a shaggy straw rain cape, a cloth over the lower face | One Sleeve: a dark robe off the sword arm, the bare arm bound in cord, short grey hair; `d` the Wanderer (added 2026-11-22 at the owner's ask, an option): a slighter man (drawn 7 % smaller) in a faded indigo robe over wide charcoal trousers, a long sand scarf with trailing tails, dark hair in a high tail | **d** |
 | `?drawCut=` | the Sheathed's draw (ADR-145) | - | one white line | the line and an afterimage of him where he stood | - | **a** |
+| `?halLook=` | Halcyon's body (ADR-161; read when his rig is built; ink-line art) | - | a deep blue armoured suit, a long red cape, a gold belt and cuffs, red boots, dark slick hair, eyes two red points, pale neon seams, a plain gold clasp at each shoulder (the owner's answer) | the idol: a navy suit, gold shoulder pieces of his own shape, white gloves, a cape with a bright lining, blond hair | tomorrow's tyrant: black and chrome, a crimson cape, white hair | not picked yet (a) |
+| `?glare=` | his eyes' heat: the beams, the eyes, the crimson screens (a palette swapped into the void slot) | - | crimson with a white-hot steel core | crimson alone | the engine's orange fire with a steel core | not picked yet (a) |
+| `?city=` | Halcyon Plaza's light (ADR-159; read when the level is built) | - | Neon Rain: night, rain, wet dark asphalt, pale neon | Golden Hour: his perfect city at dusk, warm, no rain | Lockdown: red emergency light, two search beams sweeping the plaza | not picked yet (a) |
 
 How a look is chosen (`lookOf(name, def, pick)`): a look forced live by `setLook` (the Lab, the tests,
 the film rig); else the URL's own parameter (`?sky=b`); else, under **`?looks=old`**, `0` for every
