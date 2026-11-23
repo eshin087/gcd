@@ -5,6 +5,8 @@ import { cutBurst } from '../../combat/cutFx.js';
 import { impactK } from '../../combat/impact.js';
 import { stampHit } from '../../combat/impactStamp.js';
 import { calmLook, calmA, calmS } from '../../combat/impactCalm.js';
+import { perfectMode } from '../../combat/streak.js';
+import { perfectFeel, perfectBeat, perfectParryMark, perfectDodgeLine, perfectArrive, perfectGhost } from '../../combat/perfectFx.js';
 
 // Glyph-particle effects owned by the Wanderer: cyan slash arcs (the light swings, the slam, the
 // cleave and its impact), the thrust's long streak, the slam's crystal-shard burst, the violet gem's glow + glints, impact
@@ -185,6 +187,7 @@ const RING = { white: [1.5, 1.55, 1.75], warm: [1.6, 1.3, 0.8], gold: [2.0, 1.45
 
 // (the characters an afterimage is made of: fine digits, as the wyrm is printed)
 const GHOST_DIGITS = '0123456789';
+const GHOST_STAND = [0.3, 0.5, 0.95]; // the sharp / cinema afterimage standing still: dimmer than COL.ghostDim
 const GHOST_CELL = 0.13; // m: an afterimage's character cell (about the cell his coat is printed in)
 
 export class PlayerFx {
@@ -730,6 +733,14 @@ export class PlayerFx {
     const n = Math.max(1, Math.min(6, Number.isFinite(chain) ? chain : 1));
     const fdx = Number.isFinite(dx) ? dx : 0, fdz = Number.isFinite(dz) ? dz : 0;
     const spray = o?.spray ?? (fdx || fdz ? SPRAY.set(fdx * 0.7, 0.6, fdz * 0.7) : null);
+    // a perfect parry in the sharp / cinema look (o.feel: perfectMoment's): the gold clash smaller,
+    // no rings or cross of glyphs, and the mark printed in the letter grid at the crossing
+    const PF = o?.perfect && !o?.light ? o?.feel?.F : null;
+    if (PF) {
+      clashBurst(this.game, x, y, z, { pal: CLASH.perfect, power: (1 + 0.12 * (n - 1)) * PF.clash.power, spray, e1: o?.e1 ?? null, e2: o?.e2 ?? null, ring: PF.clash.ring, cross: PF.clash.cross, light: PF.clash.light, embers: PF.clash.embers });
+      perfectParryMark(this.game, x, y, z, { e1: o?.e1 ?? null, e2: o?.e2 ?? null, mode: o.feel.mode, beat: o.feel.beat, streak: o.feel.streak });
+      return;
+    }
     clashBurst(this.game, x, y, z, {
       pal: o?.perfect ? CLASH.perfect : blue ? CLASH.blue : CLASH.parry,
       power: (o?.light ? 0.55 : 1) * (1 + 0.12 * (n - 1)) * (o?.perfect ? 1.25 : 1),
@@ -905,12 +916,16 @@ export class PlayerFx {
    * flat [ax, ay, az, bx, by, bz, ...] world segments sampled before the blink), a streak to the
    * new spot, and a reappear burst.
    */
-  ghostep(segs, nSegs, ox, oz, nx, nz) {
+  ghostep(segs, nSegs, ox, oz, nx, nz, o = undefined) {
     const fx = this.add;
     if (!fx) return;
     const sx = nx - ox, sz = nz - oz;
     const dist = Math.hypot(sx, sz);
     const ok = dist > 0.3 && Number.isFinite(dist);
+    if (o?.feel?.F) {
+      this._ghostepFeel(fx, segs, nSegs, ox, oz, nx, nz, ok ? sx / dist : NaN, ok ? sz / dist : NaN, o);
+      return;
+    }
     this._afterimage(fx, segs, nSegs, ok ? { dx: sx / dist, dz: sz / dist } : null);
     this.blinkStream(fx, nx, 1.1, nz);
     this.blinkIn(fx, nx, 1.1, nz);
@@ -946,6 +961,54 @@ export class PlayerFx {
   }
 
   /**
+   * The Ghostep in the sharp / cinema look (combat/perfectFx.js PERFECT_FEEL[mode].dodge; o.feel:
+   * perfectMoment's, o.wx / o.wz the way he was going): the afterimage stands as a clear figure, then
+   * tears into its letters along the way he left (ux, uz: toward where he is; NaN when he stayed: the
+   * way he was going); ONE clean line in the letter grid from where he was to where he is (when he
+   * stayed: the last `line.min` m of the way he came, ending on him); cinema adds the arrival mark
+   * round him. Today's streams to and onto him, the ground streak, the motes and the big '|' core are
+   * not drawn; a smaller light.
+   */
+  _ghostepFeel(fx, segs, nSegs, ox, oz, nx, nz, ux, uz, o) {
+    const D = o.feel.F, mode = o.feel.mode, g = this.game, y = 1.1;
+    let dx = ux, dz = uz;
+    const moved = Number.isFinite(dx + dz);
+    if (!moved) {
+      const l = Math.hypot(Number(o.wx) || 0, Number(o.wz) || 0);
+      dx = l > 1e-3 ? o.wx / l : 0;
+      dz = l > 1e-3 ? o.wz / l : 0;
+    }
+    this._afterimage(fx, segs, nSegs, { dx, dz, feel: D });
+    if (moved) perfectDodgeLine(g, ox, y, oz, nx, y, nz, mode);
+    else if (dx || dz) perfectDodgeLine(g, nx - dx * D.line.min, y, nz - dz * D.line.min, nx, y, nz, mode);
+    if (D.arrive) perfectArrive(g, nx, y, nz, mode);
+    if (D.blink) {
+      this.blinkStream(fx, nx, y, nz);
+      this.blinkIn(fx, nx, y, nz);
+    }
+    this._light({ x: nx, y, z: nz, color: [0.55, 0.75, 1.3], intensity: 1.8, radius: 5, life: 0.3, fade: 0.28, fadeIn: 0.02 });
+  }
+
+  /**
+   * The look of a perfect parry / dodge NOW (combat/streak.js perfectMode(), or `mode`): a record
+   * reused per kind: mode ('today' when its feel is null), F (PERFECT_FEEL[mode][kind] or null), and
+   * for a parry beat (cinema: 'full' for a single blow / a string's last blow, else 'short') and T (the
+   * numbers of the freeze, shake, punch and slow motion: cinema's full / short, sharp's own; null =
+   * today's). `streak`: the count the moment makes (the mark's echo reads its tier).
+   */
+  perfectMoment(kind, last = true, streak = 0, mode = perfectMode()) {
+    const all = this._pm ?? (this._pm = {});
+    const R = all[kind] ?? (all[kind] = { kind, mode: 'today', F: null, T: null, beat: '', streak: 0 });
+    const feel = perfectFeel(mode);
+    R.mode = feel ? mode : 'today';
+    R.F = feel?.[kind] ?? null;
+    R.streak = Number.isFinite(streak) ? streak : 0;
+    R.beat = kind === 'parry' && R.F ? perfectBeat(R.mode, last, this.game.realTime) : '';
+    R.T = kind === 'parry' && R.F ? (R.beat ? R.F[R.beat] : R.F) : null;
+    return R;
+  }
+
+  /**
    * The afterimage (ADR-101): the hero as he stood, drawn in fine digits where he was, cold
    * blue-white, falling apart from the feet up. Its points are his body's own (`this.body`,
    * `this.bodyN`: player.js _sampleBody, taken with the pose's `segs`); without them (no meshes: a
@@ -967,6 +1030,9 @@ export class PlayerFx {
     let y0 = Infinity;
     for (let i = 0; i < n; i++) y0 = Math.min(y0, pts[i * 3 + 1]);
     const lifeK = light ? 0.7 : 1;
+    const feel = o?.feel ?? null; // sharp / cinema: the cells go to perfectGhost (stand, then tear)
+    let nG = 0;
+    const GP = feel ? this._ghostPos ?? (this._ghostPos = new Float32Array(480 * 3)) : null;
     // one character to a cell of a GHOST_CELL grid ON THE SCREEN, as he is printed himself: a point
     // that falls in a cell already taken is dropped (characters on top of one another bloom into a
     // white blot), and each is moved onto its cell, so they stand in rows and columns
@@ -982,6 +1048,15 @@ export class PlayerFx {
       cells.add(key);
       const mx = cx * GHOST_CELL - sx, my = cy * GHOST_CELL - sy;
       const x = px + rx * mx + ux * my, y = py + ry * mx + uy * my, z = pz + rz * mx + uz * my;
+      if (GP) {
+        if (nG < 480) {
+          GP[nG * 3] = x;
+          GP[nG * 3 + 1] = y;
+          GP[nG * 3 + 2] = z;
+          nG++;
+        }
+        continue;
+      }
       const h = Math.min(1, Math.max(0, (y - y0) / 1.8)); // 0 his feet … 1 his head
       // (it drifts a little the way he left, and rises)
       fx.spawn({
@@ -990,6 +1065,7 @@ export class PlayerFx {
         color: i % 11 === 0 ? COL.ghost : COL.ghostDim, colorEnd: COL.ghostEnd, alpha: 0.9, alphaEnd: 0, drag: 1.2, flicker: 0.3,
       });
     }
+    if (GP && nG) perfectGhost(this.game, GP, nG, dx, 0, dz, feel.ghost, GHOST_STAND, COL.ghostDim, COL.ghostEnd, GHOST_CELL * 1.25);
   }
 
   /**
