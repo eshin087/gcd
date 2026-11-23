@@ -4,7 +4,27 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Seventy-five pieces of work since 0.4.0:
+Seventy-six pieces of work since 0.4.0:
+- **An eighth level: Halcyon Plaza and Halcyon, the Last Saviour** (2026-11-22, ADR-159 – ADR-161). *Added:* an eighth
+  level, `?level=city` (the title screen lists it). **Halcyon Plaza**: a city that has not been built yet, at
+  night in the rain, read from its streets: a plaza where an avenue meets a street, four towers, cars, lamp
+  posts, signs, screens that show his face, a statue of him; everything in it breaks, and the cars explode.
+  **Halcyon, the Last Saviour**: a flying strongman in a caped armoured suit with red light for eyes. He
+  hovers within sword reach and leaves it only inside a move that brings him back. Parry a pass and he goes
+  through a storefront and lies in the rubble; send his Stare back with a perfect parry and it burns his
+  eyes; parry a thrown car and it is cut in two. Fly-By, Curbside, Red Glare, Through the Tower, See the World
+  (carried up over the city and thrown down), Meteor, The Falling Sky, Monument (his own statue's arm). At 66 %
+  the smile drops and every screen turns crimson; at 33 % no one is watching and the city goes dark. No
+  reward yet. His body, his eyes' heat and the city are the owner's picks: the blue suit and red cape, a crimson beam with a white-hot core, Neon Rain (`?halLook=b|c`, `?glare=b|c`, `?city=b|c` the others). *Changed (ADR-164):*
+  his cape and colours read at game size: from the front a wide red cape frames him (it hung hidden behind
+  him), a clean red inside and out, a brighter blue suit, a gold belt that prints gold; it billows while he
+  hovers and trails long in a pass (the owner's pick of four steps); `?halCape=0|1|2|3` steps back to how he
+  was first built. *Changed (ADR-166):* he is printed like the hero: his letters follow his size on screen
+  as yours do (fewer, bigger letters from 1080p up), a quieter print, and a smaller cape (two thirds of its
+  length, past his knees), the owner's picks; `?halLetters=0`, `?halPrint=0|b`, `?halCapeSize=0|a|c` the other options. *Fixed:* a blow at
+  a raised piece's own height reaches it (a tower's top, a sign hung on a wall), and a blow down on the street no
+  longer bites one metres above it; a rest or a retry while a broken car burns no longer leaves it to blow up
+  after, or unable to blow up again; See the World's slam lands (it was dodged by the get-up's grace).
 - **Streaks that build: the flurry speeds up, the hero smoulders, the notes climb; a sharper perfect parry** (2026-11-23, ADR-167).
   *Added:* a long streak of perfect defences now builds, in looks and sound only ("the longer the
   streak, the faster the attacks and way cooler animation and effects"). **The flurry accelerates:**

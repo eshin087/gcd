@@ -4861,3 +4861,139 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   - Payloads grew (no new event): `player:flurry` gains `streak` (the streak it answers, past the cap), `tier`, `storm` (bool) and `at` (the planned contacts, real s); `player:flurryHit` gains `gap` (real s since the blow before) and `storm` (0 a shown cut, 1, 2, ... into the storm); `player:parry` gains `feel` and `beat`; `player:perfectDodge` gains `feel`.
   - Open: the tier rings on the burst do not read under its remaining glow; on Cinderwood the fire field barely prints near the hero in headless captures (field-wide, cause not found); the aura blinks off for the Ghostep's cold cast after every perfect dodge; nobody has played it, heard the sound in the game, or seen it on the phone.
   - **The wyrm's pace meter is per seed and in the mean** (`TUNING.pressure.meter.rampSeed` 1.05, `ramp` 1.12 over the seeds' mean): a test seed replays a different fight whenever the scenarios before it change (seed 1337: x1.06 inside `all`, x1.28 alone), so a per-seed ramp of x1.12 failed on seed luck, not on the wyrm. The duelists already had this rule (ADR-122). No pressure number changed.
+
+## ADR-159 — Halcyon Plaza: a city read from its streets, explosions the set polls, four kinds of heat, two-stage towers (2026-11-22)
+
+- **Context:** the owner asked for "some kind of ascii city where his moves are completely destroying the
+  buildings, cars, signs". The game camera looks down at 58 degrees from the south: the sky and the skyline
+  are never on screen, upright things are squashed, and nothing tall may stand south of the fight. The
+  destruction system (ADR-107) has no on-break callback and nothing in it explodes; a raised piece (`y0` >
+  0) was missed by a blow at its own height.
+- **Decision:** `world/halcyonPlaza.js`: a crossroads round a plaza of asphalt (r 15), read from its streets:
+  lane paint and crosswalks carved into the floor's slabs (the painted ones cut finer), cars seen from
+  above, the south faces of four two-stage towers (a base that `holds` its top: the top `y0` 6.5, `fallT`
+  1.6, `blocks` 5; the falling sky takes one), lamp posts, signs, shop signs hung on the fronts (`y0` 3.2,
+  light pieces), four screens showing his face, his statue (body, head `y0`, the raised arm `lift` 1), block
+  fronts (range pieces) and street furniture; all in `breakables` (82 rigid-batch pieces, 279 floor slabs).
+  Only flat silhouettes past 36 m are static (never on a blow's path), as the grove's bamboo wall and the
+  forest's far trees are recorded. Explosions are the set's: its ambience polls the cars (as the Skybreak
+  Ring polls its braziers' posts): a broken car burns `CITY.car.fuse`, told and cued as a falling piece
+  (the boss's fairness guard may quiet it), then a blast that hurts the hero (blockable) and him (when the
+  hero broke it), at most two bangs in 0.5 s. Its light is four kinds of heat in the fire field, used on
+  purpose (STYLE.md "The city's light"): steel neon and screens, void his crimson, fire the wrecks, smoke
+  the rest; `setPhase(n)` by his phase. `destructibles.js`: a blow passes over a piece above `y0 + h`, not
+  `h`, and lands inside `y0 .. y0 + h` (no lower bound: a base passes its blows to its top).
+- **Consequences:** a fifth kind of set: a hard city, not a natural ground. The y0 fix changes no other
+  level's fight (the ring's butte tops were never above a blow that reached them; `asc.mjs` passes). Fallen
+  tower tops are wreckage blocks you walk over, not new cover (nothing can be spawned mid-fight). Measured
+  at the phone preset (852 x 393, touch on): 76 draw calls against the Skybreak Ring's 73; the set alone
+  ~140k triangles after the brick cut. Frame time on the owner's iPhone is not measured.
+
+## ADR-160 — Halcyon, the Last Saviour: flight that never leaves a sword waiting, the crash as the reward loop, his eyes, the grab, the line on the homage (2026-11-22)
+
+- **Context:** the owner asked for an evil caped strongman from the future, two well-known characters named as the reference ("laser eyes, flying
+  around a lot with super speed and power". The earlier take (the Heaven-Fallen, PR #78, closed) failed on
+  four counts the owner named: he did not look the part, its sunlight rule was a gimmick, its setting a dark
+  vault, he was too slow and grounded. A flier against a swordsman is unfair unless the flier comes to the
+  sword.
+- **Decision:** a duelist on the shared engine (`entities/enemies/halcyon/`), bare-handed. THE FLIGHT RULE:
+  he hovers at 0.5 m within sword reach between moves and leaves reach only inside a move that brings him
+  back (tests FLIGHT hold the stretch out of reach to 2.6 / 2.2 / 2.2 s and to none in footwork). No special
+  rule: the reward loop is that the hero's answers put him through his own city: a parried flying blow, or
+  a perfectly dodged red one, THROWS HIM OFF HIS LINE into the first cover on it (the crash: buried, 60
+  damage, open; nothing on the line, a skid); his Stare perfectly parried goes back into his eyes; a thrown
+  car parried is cut in two and its halves go up behind the hero. His eyes are heat from two points at his
+  eyes (`glare.js`, Tian Lei's beam the reference: a held guard pays guard, never health); Red Glare is lit
+  at its cue and crosses the hero's bearing flashLead later. See the World carries the hero on his own
+  knockdown (the hero has no air state): control is gone at most 1.6 s, never on a hero who is down. The
+  line on the homage: a new name for him and every move; the names of the characters the owner gave and of
+  their worlds appear nowhere in the game (tests DATA checks his data and the level's lines); no letter,
+  shield or symbol on him; what carries it is what nobody owns: a caped strongman who flies, red heat from
+  his eyes, a clap that breaks glass, a car thrown one-handed, a smile for the cameras.
+- **Consequences:** the bar is 14000 (the fencing bot wins in 156 - 183 s; at 3400 it won in 40 - 46 s:
+  every crash is a long opening, as designed). Cut: Last Word (a held two-eyed beam and its clash), the
+  hydrants' water spouts, his own SFX (the existing synth sounds play his events). His red role for
+  Training is Meteor (a beam is no fixed contact for a perfect dodge); Meteor has no weight in phase 1.
+
+## ADR-161 — Halcyon's looks wait for the owner; no reward yet, by the owner's word (2026-11-22)
+
+- **Context:** the owner answered "Recognizable" for his look (a deep blue armoured suit, a long red cape,
+  gold trim, burning red eyes, slick hair, neon cyber seams, no chest emblem) and "i havent decided yet.
+  we'll worry about this later" for his reward.
+- **Decision:** three bodies behind `?halLook=a|b|c` (a the owner's answer, b the idol, c tomorrow's
+  tyrant), his eyes' heat behind `?glare=a|b|c`, the city behind `?city=a|b|c`: all in lookSwitch `PENDING`
+  and the Lab's LOOKS rows, none in `PICKED` (`halLook` a is the owner's answer to a question; the sheet is
+  still theirs to confirm). Every option in the hero's ink-line art, dense and bright. The sheets:
+  `docs/looks/halcyon/` (each body hovering, mid-blow and in a pass beside the hero, true size and x3, at
+  1280 x 720, 852 x 393 and 2560 x 1440; the three palettes on a lit Stare; each city wide and at the
+  fight camera, whole and wrecked). No reward ships: no `reward` field on the level, no grant, no victory
+  note; one line in ROADMAP M2.
+- **Consequences:** the fight is built and tuned with a / a / a; a pick changes only colours, the gear and
+  the set's light.
+
+## ADR-164 — Halcyon's cape and colours read at game size: `?halCape=0|1|2|3` (2026-11-23)
+
+- **Context:** the owner asked to "fix the look": at true size (he is ~40 px tall at 1280 x 720) the sheets
+  did not read as a blue suit, a big red cape and a gold belt. Measured (pixels round him at 1280 x 720 that
+  print red / blue / gold, look a): facing the camera 24 / 494 / 0, side-on 115 / 432 / 2, from behind
+  199 / 164 / 0, in a pass 332 / 603 / 2. Three causes, all confirmed: facing the camera (most of the
+  fight) the cape hung hidden behind his body and the two outer sheets were edge-on; what showed of it was
+  its inside, the `lining` part, which prints dim (a 0.24 fill read near black); the cool moonlit rim
+  (`uArtRim` x3 on the cape) and the cloth parts' lavender ink turned its red pink; the gold `trim` part's
+  white ink lines printed the 5 cm belt cream, under one letter.
+- **Decision:** one switch of graded steps of one idea (the wyrm lesson: steps, not redraws), read when his
+  rig is built: 0 as he was built; 1 the colours (`look.js` HAL_BRIGHT: the cape a clean red inside and
+  out, its lining lit past 1 because that part prints dim, no moonlit rim on the red, a brighter blue suit,
+  a gold drawn in the `hair` part whose ink lines are gold, and bigger: belt, buckle, clasps, cuffs, boot
+  tops; b navy and gold with the cape's gold lining lit, c black and chrome with a crimson cape); 2 + the
+  shape (`gear.js` CAPE_SHAPE: the same five sheets wider, spread off the shoulders' tops so the cape shows
+  past his arms on both sides and frames him from the front, longer, flaring a little more); 3 + it never
+  hangs still: a new optional streamer field `breeze` ([extra out, rate], `player/anim.js`: a slow swell
+  of the flare while the wearer is near still, gone by 4 m/s; no other streamer has it) and a longer
+  trail in a pass (`lag` 0.95, `max` 1.7). Default 3 (`HAL_CAPE_STEP`), recommended: it is the only step
+  where the cape reads from every side at true size, also on the phone; in `PENDING` and the Lab's LOOKS
+  rows, not in `PICKED`. No emblem, letter or symbol; the hero's ink-line art throughout.
+- **Consequences:** after (step 3, look a): facing the camera 237 / 463 / 23, side-on 339 / 415 / 37, from
+  behind 1262 / 163 / 0, in a pass 368 / 993 / 12; b's gold lining 244 gold pixels facing the camera, c
+  black and chrome against a crimson cape: three figures. No new object on his rig (the same five sheets,
+  joints and meshes; the gold moved part, not count), so the seeded fights did not move (`city pace`,
+  `win` green before the whole suite). Not changed: his eyes' beam (`glare`), the fight's data. The sheets:
+  `docs/looks/halcyon/halCape.png` and the three `halLook_*` re-rendered with step 3 (the old ones kept as
+  `halLook_*_before`). Not solved: the cloth parts' lavender ink still tints the lining's lines pink at a
+  grazing angle (the per-part ink is shared by every rig on the page).
+- **The owner's picks (2026-11-23):** his body, `halLook` a (the deep blue suit and red cape), from the
+  `halLook_*` sheets drawn with step 3; the city, `city` a, Neon Rain, from `city.png`; his eyes' heat,
+  `glare` a, crimson with a white-hot core, from `glare.png`; and the cape, step 3, "billowing", from
+  `halCape.png`. `halLook: 'a'`, `city: 'a'`, `glare: 'a'` and `halCape: '3'` moved from `PENDING` into
+  `PICKED`; the defaults they already drew, so nothing visible changed. None of his switches waits now.
+
+## ADR-166 — Halcyon printed like the hero, a smaller cape: `?halLetters`, `?halPrint`, `?halCapeSize` (2026-11-23)
+
+- **Context:** after picking his look (halLook a, halCape 3, glare a, city a), the owner: "make his cape
+  smaller, make him look more ascii like to look like the main character ascii look more ascii made up".
+  Nearly the words of ADR-155 for Tian Lei, and the same cause: the human bosses print on the fixed 4 px
+  cell (8 at 4K) while the hero's cell follows his size (ADR-130), so from 1080p up Halcyon had more
+  letters down him than the hero (measured, letters down 1.85 m at the fight's distance: 1080p 13.8 vs
+  the hero's 8.6, 1440p 18.4 vs 8.6) and read as a shaded 3D model; and his step-3 print was lifted (a
+  strong edge of light, rim x3). From the front the wide cape (halCape 2 - 3) was the biggest shape on
+  screen.
+- **Decision:** three switches, the recommended option the default; the owner kept it ("Yes, keep it",
+  2026-11-23): `halLetters` a, `halPrint` a, `halCapeSize` b are in `PICKED`, out of `PENDING`:
+  1. `?halLetters=0|a` (default a): his kit's `letters` getter, exactly as Tian Lei's `ascLetters`:
+     `pipeline.bossLetters` gives him the hero's cell (ARCHITECTURE "The bosses' letters"). Live.
+  2. `?halPrint=0|a|b` (default a): a is Tian Lei's quieter print numbers (`ASC_QUIET`): the suit x 0.85,
+     the skin x 0.62, the suit's rim x 1.5 instead of x 3; the cape's red and the gold keep their light
+     (lining x 0.9, the gold x 1); b halfway (x 0.92, skin x 0.8, rim x 2.2). Both keep the blue suit, red
+     cape and gold belt at true size (red / blue / gold pixels facing the camera at 1280 x 720 with the
+     cape b: print 0 123 / 471 / 30, a 112 / 474 / 35, b 118 / 470 / 30).
+  3. `?halCapeSize=0|a|b|c` (default b): the cape's sheets' length and width x 1 / 0.8 / 0.65 / 0.5 (the
+     root's width by the square root, so it still pins across the shoulders), the flare's angle, the
+     colours and the billow kept: the spread from the front shrinks with the length, so the flare needs
+     no scale of its own. b: 1.00 m long (was 1.54), its widest hem 0.52 m (was 0.80); it still frames him
+     from the front and hangs past his knees; c (0.77 m) shows little of it from the front.
+- **Consequences:** letters down him / the hero, before -> after: 720p 9.2 / 8.6 -> same (both 4 px),
+  1080p 13.8 / 8.6 -> 9.2 / 8.6 (6 px), 1440p 18.4 / 8.6 -> 9.2 / 8.6 (8 px), 4K 8 px -> 12 px, the phone
+  9.8 / 9.2 -> same (4 px): on the phone and at 720p the print and the cape carry the change. No object
+  is added to his rig (the same 90 meshes): `city pace` / `win` give the same numbers. Sheets:
+  `docs/looks/halcyon/halAscii.png`, `halCapeSize.png`, `halRecommend.png`. Tests: `city.mjs herolike`.
+

@@ -2300,6 +2300,87 @@ blobs (of 6000) in phase 3. Phase 2 reads the busiest because each of Iron Rain'
 fencing bot (god mode) wins through both bars in 84 s (seed 4242: phase 2 at 27 s, the rising at 53 s).
 STRATEGY (opt-in, god mode, seeds 4242 and 7): mixed 75 – 84 s, parry 95 – 96 s, block-only 89 – 122 s (mortal: alive, it wins), the Long Second bot (every cue answered with the lean) 138 s, dodge-only 142 – 164 s: neither dodging nor leaning is the fastest way through. On the Sheathed with the Long Second learned (sheath.mjs `lean`): mixed 33, parry 42, dodge 64, lean 82 s.
 
+## Halcyon (2026-11-22, ADR-160; `?level=city`)
+
+Halcyon, the Last Saviour: a flying strongman from a future that has not happened yet, BARE-HANDED
+(halcyon/; Tian Lei's strike builders, as the Fox's). One health bar (14000), three phases at 66 % (THE
+SMILE DROPS) and 33 % (NO ONE IS WATCHING), each opened by a red ring blow (2.2 s, 10, r 6, knockback 6)
+and followed at once by Through the Tower / The Falling Sky. Tian Lei's pace: `flashLead` 0.26, first
+windups at least 0.45 s, hits 0.34 s apart at least, `windupScale` [1, 0.93, 0.86]; posture [1100, 1250,
+1400]; the pressure block on (the director, the fairness guard). There is no special rule: a straight
+duel whose reward loop is that the hero's answers put him through his own city.
+
+**The flight rule.** Between moves he hovers at 0.5 m (zones and body circles are tested up to 0.6 m):
+every hurt sphere in sword reach. He leaves reach (above 3.9 m) only inside a move that brings him back,
+at most 2.6 / 2.2 / 2.2 s by phase (tests FLIGHT: measured 0 / 0 / 1.9 s over a minute a phase, never in
+footwork). Struck out of the air he drops; a posture break, a crash or a returned Stare put him on the
+floor: the only times his feet touch it are the ones the hero earned.
+
+**The crash.** A parry of a flying blow (a Fly-By pass, Blink of an Eye's flying cross) or a perfect dodge
+of a red flying blow (Through the Tower, See the World, the last pass of phase 3) throws him off his line
+(0.45 rad away from the hero) into the first standing cover on it within 12 m: he slides in 0.25 s, breaks
+it at his height, and lies buried 1.7 / 1.4 / 1.2 s (60 damage, 30 posture). Nothing on the line: he skids
+8 m through the asphalt, stunned 0.6 x as long (36, 18).
+
+**His eyes.** The tell is on him: two crimson points kindle at his eyes, his head comes down. Every lit
+beam cuts the world at its real height and ends at the first cover on its line (the cover holds the whole
+lit window and burns).
+
+### His moves (N white, B blue, R red, K black; windups at phase 1)
+
+| Move | From | Beats | Band (m) · cooldown · weight |
+|---|---|---|---|
+| Meet and Greet | 1 | N 0.53 jab, 13 · N 0.36 slap, 13 · B+flare 0.42 straight right, 20 | 0 – 3.6 · 3 · [2.4, 1.6, 1.1] |
+| Backhand | 1 | B 0.62 + a bait hold of 0.08 – 0.3, 22, knockback 5 | 0 – 3.2 · 4 · [1.6, 1.1, 0.8] |
+| Smile for the Cameras | 1 | the counter stance (arms spread, chin up): a cut into it is caught; then N 0.50 cross, 14 · B 0.40 palm, 22. Nothing cut: he stands open 0.8 s | 0 – 3.2 · 11 · [0.8, 0.5, 0] |
+| The Stare | 1 | B 1.0 (fixed), his eyes: the line fixed at 0.76 of the windup, lit 0.9 s, 22 x 1.0 m; first contact 20, then ticks of 7 (3 at most). Guard: guard, never health. Parry: it turns off the blade and rakes the set beside the hero. PERFECT parry: back into his eyes (50, 34 posture, he drops and reels 1.6 s) | 2.5 – 14 · 7 · [1.5, 1.0, 0.8] |
+| Red Glare | 1 | R 1.1 (fixed): lit at the cue, swept level at 1.15 m through 110 deg so it crosses the hero's bearing (fixed at the cue) at the impact; 30 m; one hit, 24, knockdown. Safe: rolled through, behind cover, inside 2.2 m of him | 2.4 – 16 · 8 · [1.2, 1.1, 0.9] |
+| Fly-By | 1 | he backs off 14 – 18 m (0.55 s), then a pass at chest height, 40 m/s, through the hero's spot: B+flare 0.70, 22. Parried: the crash. Phase 2: two passes; phase 3: three, the last R 26 (a perfect dodge: the crash) | 0 – 12 · 6 / 7 / 8 · 1.6 / 1.6 / 1.4 (one move per phase) |
+| Curbside | 1 | he lands by the nearest car (a barrier, a lamp post, a slab of the road), lifts it one-handed (1.0 s), throws it: B, 22, cued on the car flashLead before it lands. Parried: cut in two, its halves go up behind the hero (the hero's: they hurt him if he stands there). Rolled: it lands and goes up | 3 – 16 · 9 · [1.2, 1.0, 0.8] |
+| Saviour's Answer | counter | B 0.53, 18, a palm | |
+| Faster Than Sound | counter | his flurry: a cross, then a roundhouse, a hook, an uppercut, each from another side | |
+| Through the Tower | 2 | out behind a standing tower top (0.5 s, out of reach), its windows flare on his line, then R 1.25 (fixed), 26, knockdown, ring 1.8: he bursts through the top at the hero; the top topples across the plaza along his line (its own red tell). He lands in a skid (recovery 1.1) | 0 – 30 · 14 · [0, 1.2, 0.9] |
+| Blink of an Eye | 2 | N 0.62 jab (the slow vanish), N 0.42 hook, B+flare 0.44 cross (parried: the crash), each from another side; then R 0.56 side kick, 24, knockdown | 0 – 8 · 7 · [0, 1.6, 1.4] |
+| Applause | 2 | B 0.70, 18, knockback 6: one clap, a ring of force r 7 across the plaza (the world struck out to 9 m) | 0 – 6.5 · 10 · [0, 1.0, 0.9] |
+| See the World | 2 | R 1.1, an open hand, slow. Caught: carried up to 9 m, held, thrown down through the nearest sign or car: 30, knockdown; control gone 1.6 s at most. Never on a hero who is down or drinking. A perfect dodge: the crash | 0 – 4 · 15 · [0, 0.9, 0.8] |
+| Scorched Avenue | 2 | R 1.3 (fixed): he rises to 6 m; the line through the hero is marked on the road 0.6 s before; the beam's foot runs down it (16 m/s), reaching the hero's spot at the impact: 26, knockdown, r 1.3 | 3 – 18 · 11 · [0, 1.0, 0.8] |
+| Meteor | 2 | R 1.05, 26, knockdown, ring 4: a dive from 9 m; a crater; stuck in it 1.0 s | 3 – 12 · 10 · [0, 1.0, 0.9] |
+| The Falling Sky | 3 | he tears a tower's top free (0.6 s), carries it over the hero; a dark disc with a red rim marks the ground; K 1.6 (fixed), 45, ring 5.5, knockdown; he lands on the heap (recovery 1.2). Once a tower top, 20 s apart | 0 – 30 · 20 · [0, 0, 1.0] |
+| Monument | 3 | he tears the raised arm off his own statue (no arm: a lamp post), back at the hero: B 0.62, 22, ring 5 · R 0.60, 26, ring 5, knockdown · B 0.55, 22, thrown (cued on it) | 0 – 14 · 14 · [0, 0, 1.0] |
+| Crossed Glare | 3 | two Red Glares from opposite sides, the second R 0.9 (0.9 s apart) | 2.4 – 16 · 11 · [0, 0, 1.0] |
+
+Cut from the plan: Last Word (a held two-eyed beam under 12 %) and its clash. Damage caps: N / B 26, R 30,
+K 45 (tests DATA). Links: short chains in phase 1; in phase 3 Fly-By links into The Stare.
+
+### The moments
+- **The entrance**: asleep he hovers 6 m over the plaza beside his statue, arms folded; woken he comes down
+  to his hover and beckons with one finger.
+- **The statue's head**: his first Stare's tail flicks across his own statue's neck and its head comes off
+  (once a fight; `dragon:statue`).
+- **The smile drops (66 %)**: on one knee, a hand to his lip; every screen to static, then crimson; up, a
+  scream, his eyes fire wild: one full turn of the beam at 3 m and above (the signs and lamp heads come
+  down, nothing on the hero); the ring; Through the Tower at once.
+- **No one is watching (33 %)**: he burns out every screen still standing, one short beam each; the neon
+  dies (only the fires light the street); the cape in tatters from here; the ring; The Falling Sky.
+- **The kill**: he tries to rise twice and falls back; his eyes gutter out.
+
+### The cars
+A car broken burns 0.9 s (told and cued as a falling piece), then explodes: the hero inside 2.6 m takes 16
+(blockable; a roll clears it); he takes 90 and 24 posture inside 3 m when the hero broke it (a cut, a
+crash the hero caused, a parried throw's halves). Two bangs per 0.5 s at most.
+
+### The numbers measured (`city.mjs`, 2026-11-23)
+PACE (the steady defender, three seeds x 120 s; after the PR review's fixes and phase 1's rest between
+chains at 0.4 - 0.7 s): P1 46.5 - 50.5 cues a minute (mean 49.1), P2 57.3 - 61.1 (59.6), P3 62.1 - 65.1
+(63.1: x1.06 of P2 in the mean); longest gap 3.78 / 3.37 / 2.92 s; 0 conflicts; a dodge in 21 / 40 / 41 %
+of the cues. Phase 3 was slower than phase 2 at first (P3 / P2
+x0.90 in the mean, under the meter's floor): its long eye-beam moves outweighed its strings. Phase 3 now
+leans on Blink of an Eye and Meet and Greet (weights 1.8, 1.6), The Stare and Red Glare are rarer there
+(0.45, 0.5), Crossed Glare 0.8; recoveries x0.78; the director's density 1.9; chains of up to 7 with
+rests of 0.12 - 0.28 s; idle gaps 0.03 - 0.1 s.
+WIN (the fencing bot in god mode): 157 - 164 s on three seeds (the plan asked 150 - 210; 156 - 183 s before the review fixes). The bar was sized
+for it: 3400 hp gave 40 - 46 s (a crash is a long opening), 7000 / 700 posture 81 s.
+
 ## The duelists' pressure and the fairness guard (2026-11-16, ADR-122)
 The human bosses run one engine (`enemies/duelist/`: `brain.js`, `director.js`, `ledger.js`;
 ARCHITECTURE.md "Duelists"), so the same rules keep them attacking and keep them fair. The owner's

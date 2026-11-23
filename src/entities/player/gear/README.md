@@ -115,7 +115,7 @@ The `head` joint is scaled by `BODY.headScale`, so head gear is modelled at 1.0 
 | Handle | From | Shape |
 | --- | --- | --- |
 | `coat` | `waist` | array of panels `{ anchor, segs: [upper, lower], def, strips, len: [upper, lower], r0 }` (below) |
-| `streamers` | any (a weapon's own: `weapon`) | array of `{ segs: [root, tip], len: [l0, l1], out, lag?, max?, w?, arm?, wrap?, inMax?, floor?, weapon? }` (below) |
+| `streamers` | any (a weapon's own: `weapon`) | array of `{ segs: [root, tip], len: [l0, l1], out, lag?, max?, w?, arm?, wrap?, inMax?, floor?, breeze?, weapon? }` (below) |
 | `offHand` | `arms` | `{ open, grip, fingers? }`: the free hand open, the same hand closed round the grip `DIM.offGrip` below the sword hand (on the `sword` joint), and (optional) the sword fingers (`swordFingers`). Hang `open` and `fingers` on `arms.L.wrist` in wrist space (the hero's animator turns that joint) and put all three in `keep`; the animator shows one of them (`twoHand` and the hand's distance from the grip, the pose's `hs`). Build it with `buildFreeHand(ctx)` (`hands.js`): it does all of that |
 | `gem` | `weapon` | an Object3D on the weapon whose world position is where the gem glows |
 | `flask` | any | a mesh shown only while he drinks (the animator sets its `visible` and `scale`) |
@@ -180,7 +180,9 @@ any item:
   out; not applied while he lies down); `wrap` is the radius the sheet curves round at its root
   (the tests model the sheet with it); `floor: true` keeps its ends over the grass while he rolls or
   falls (a head ribbon: the forward roll puts his crown at the grass; a lagging end is eased back
-  out, never snapped). Any slot may return streamers.
+  out, never snapped); `breeze` ([extra out, rate]) swells the flare slowly by up to that much while
+  the wearer is near still (fading out by 4 m/s), so a cape never hangs dead (Halcyon's, `?halCape=3`).
+  Any slot may return streamers.
   `weapon: true` marks a weapon's own streamer (the moon ribbon off the pommel): the tests count
   the cloak's sheets without it.
   The root may hang on any joint (the cloak drapes one sheet over each upper arm). Give `w` (the

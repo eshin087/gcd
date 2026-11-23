@@ -60,7 +60,8 @@ import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
 //   sweepRec(w, o)                        the same, the segment in a reused record { ax, az, bx, bz, r, power }
 //   stop(ax, az, bx, bz, r, power, o)     a projectile's step: the first cover it meets takes `power`
 //                                          and is returned (the caller ends its projectile), else null
-//   coverAt(ax, az, bx, bz, r)            the first cover on a segment, no damage (`coverT`: where, 0..1)
+//   coverAt(ax, az, bx, bz, r, y?)        the first cover on a segment, no damage (`coverT`: where, 0..1;
+//                                         y: the shot's height, a raised piece above y + r is not in its way)
 //   ignite(x, z, r, k)                    fire lands: wood in the disc catches (and logs lying there)
 //   nearest(x, z, o)                      the nearest intact piece ({ maxDist, minDist, lift, kind, mat })
 //   floorNear(x, z, r, out, o)            the intact floor slabs within r of (x, z), nearest first, into `out`
@@ -1318,7 +1319,7 @@ export class Destructibles {
   }
 
   /** The first cover the segment a → b (widened by r) meets, or null; `coverT` = where along it. */
-  coverAt(ax, az, bx, bz, r = 0) {
+  coverAt(ax, az, bx, bz, r = 0, y = undefined) {
     let best = null, bt = 2;
     if (!Number.isFinite(ax + az + bx + bz + r)) return null;
     if (!this._cells(Math.min(ax, bx) - r, Math.min(az, bz) - r, Math.max(ax, bx) + r, Math.max(az, bz) + r)) {
@@ -1332,6 +1333,7 @@ export class Destructibles {
         for (let k = g.start[c]; k < g.start[c + 1]; k++) {
           const b = L[g.items[k]];
           if (b.state !== INTACT || !b.cover) continue;
+          if (b.y0 > 0 && y !== undefined && y + r < b.y0) continue; // (a raised piece over the shot's height)
           if (segDist(b.x, b.z, ax, az, bx, bz, s) > b.r + r) continue;
           if (s.t < bt) {
             bt = s.t;
@@ -1369,7 +1371,10 @@ export class Destructibles {
           const ox = b.x - x, oz = b.z - z;
           const d = Math.hypot(ox, oz);
           if (d > r + b.r) continue;
-          if (o.y !== undefined && o.y - r > b.h) continue; // it passed over
+          if (o.y !== undefined && o.y - r > b.y0 + b.h) continue; // it passed over (a raised piece: its top is y0 + h)
+          // ... or under a raised piece (a shop sign, a tower's top, the statue's arm): a blow down on the
+          // street does not reach it (blows on a base still reach its top through `holds`, _hit)
+          if (b.y0 > 0 && o.y !== undefined && o.y + r < b.y0) continue;
           // the blow's way: as given, else out from its centre
           let dx = o.dx, dz = o.dz;
           if (!Number.isFinite(dx + dz) || dx * dx + dz * dz < 1e-6) {
@@ -1385,7 +1390,7 @@ export class Destructibles {
             const F = BREAK.floor;
             if (d > F.core) pw *= 1 - (1 - F.rim) * Math.min(1, (d - F.core) / Math.max(0.05, r + b.r - F.core));
           }
-          if (this._hit(b, pw, o, b.x - ox * kk, clamp(o.y ?? 1, 0.2, b.h), b.z - oz * kk, dx, dz)) n++;
+          if (this._hit(b, pw, o, b.x - ox * kk, clamp(o.y ?? 1, b.y0 + 0.2, b.y0 + b.h), b.z - oz * kk, dx, dz)) n++;
         }
       }
     }
@@ -1426,7 +1431,11 @@ export class Destructibles {
           // (a brush passes over a flat stone: BREAK.brushFlat)
           if (b.h < BREAK.brushFlat && o.brush === true && b.mat === 'stone') continue;
           if (segDist(b.x, b.z, ax, az, bx, bz, s) > r + b.r) continue;
-          if (o.y !== undefined && o.y - r > b.h) continue;
+          if (o.y !== undefined && o.y - r > b.y0 + b.h) continue;
+          // (a raised piece: the edge passing under it, where it is nearest the piece, does not reach it;
+          // a piece on the ground keeps taking an edge drawn below its foot, a blade's point in the earth)
+          const py = tilted ? ya + (yb - ya) * s.t : (o.y ?? 1);
+          if (b.y0 > 0 && (tilted || o.y !== undefined) && py + r < b.y0) continue;
           let dx = o.dx, dz = o.dz;
           if (!Number.isFinite(dx + dz) || dx * dx + dz * dz < 1e-6) {
             dx = bx - ax;
@@ -1434,8 +1443,7 @@ export class Destructibles {
           }
           const px = ax + (bx - ax) * s.t, pz = az + (bz - az) * s.t;
           // (a floor slab under an edge drawn along it, not a blow landing on it: BREAK.floor.sweep of it)
-          const py = tilted ? ya + (yb - ya) * s.t : (o.y ?? 1);
-          if (this._hit(b, b.floor && o.down !== true ? power * BREAK.floor.sweep : power, o, px, clamp(py, 0.2, b.h), pz, dx, dz)) n++;
+          if (this._hit(b, b.floor && o.down !== true ? power * BREAK.floor.sweep : power, o, px, clamp(py, b.y0 + 0.2, b.y0 + b.h), pz, dx, dz)) n++;
         }
       }
     }
@@ -1444,7 +1452,7 @@ export class Destructibles {
 
   /** A projectile's step a → b: the first cover in its way takes `power` and is returned; else null. */
   stop(ax, az, bx, bz, r, power, o = NONE) {
-    const b = this.coverAt(ax, az, bx, bz, r);
+    const b = this.coverAt(ax, az, bx, bz, r, o.y);
     if (!b) return null;
     const t = this.coverT;
     this._quiet = 0;
@@ -1452,7 +1460,7 @@ export class Destructibles {
     this.struck.broke = 0;
     this._hr = Math.max(r, 0.3);
     this._hc = false;
-    this._hit(b, power, o, ax + (bx - ax) * t, clamp(o.y ?? 1, 0.2, b.h), az + (bz - az) * t, bx - ax, bz - az);
+    this._hit(b, power, o, ax + (bx - ax) * t, clamp(o.y ?? 1, b.y0 + 0.2, b.y0 + b.h), az + (bz - az) * t, bx - ax, bz - az);
     return b;
   }
 

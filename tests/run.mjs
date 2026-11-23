@@ -35,6 +35,9 @@ const INTEG_2 = ['hero', 'herolife', 'herolook', 'herohand', 'heroweight', 'hero
 // looks: about half the suite; `pace` plays every form for minutes per seed). `lord` runs the rest.
 const LORD = 'tests/integration/lord.mjs';
 const LORD_OWN = ['fxlooks', 'pace'];
+// city's (Halcyon Plaza): the pace meter and the fencing bot's three fights, each a process of its own
+const CITY = 'tests/integration/city.mjs';
+const CITY_OWN = ['pace', 'win'];
 
 // [name, node args, env, est]. est: seconds in a CI share (2026-11-23, PR #92's first run;
 // four tasks beside each other on a 4-core runner); it only deals the shares, a stale one costs balance,
@@ -47,6 +50,11 @@ const TASKS = [
   ['lord', [LORD, '.', 'all'], { ABYSS_SKIP: LORD_OWN.join(',') }, 120],
   ['asc', ['tests/integration/asc.mjs', '.', 'all'], {}, 110],
   ['fox', ['tests/integration/fox.mjs', '.', 'all'], {}, 105],
+  // (Halcyon Plaza, ADR-160: its long scenarios each a process of their own, as lord's; est scaled from a
+  // local npm test run against fox's: 229 / 196 / 145 s here where fox took 294)
+  ['city', [CITY, '.', 'all'], { ABYSS_SKIP: CITY_OWN.join(',') }, 82],
+  ['city pace', [CITY, '.', 'pace'], {}, 70],
+  ['city win', [CITY, '.', 'win'], {}, 52],
   ['lord pace', [LORD, '.', 'pace'], {}, 105],
   ['sheath', ['tests/integration/sheath.mjs', '.', 'all'], {}, 90],
   ['woke', ['tests/integration/woke.mjs', '.', 'all'], {}, 100],
