@@ -8,8 +8,8 @@ Seventy-four pieces of work since 0.4.0:
 - **Attack sounds: cues only for blue and red, every blow sounds like its weapon** (2026-11-22, ADR-165). *Changed:* a normal (white) attack makes no cue sound any more:
   no tick as its windup starts and no ping before it lands (the white glint stays). A **blue** attack
   rings a sword left ringing as its windup starts; a **red** (or black) one opens on a log drum and its
-  distant boom, and the same drum, cut short, marks the moment to dodge. The blue timing sound keeps
-  today's synth ping until the owner picks one (a second round is on the audition page). *Added:* every
+  distant boom, and the same drum, cut short, marks the moment to dodge. The blue timing sound stays
+  today's synth ping (the owner heard three rounds of recordings and kept it). *Added:* every
   human boss's blow now sounds as it travels, timed so its loudest moment lands on the hit: a sword
   boss's cut, heavy cut, thrust or draw, a bare-handed boss's jab or full-body blow (a kick counts as
   heavy); the Cinder Wyrm's claws and tail sweeps; the hero's own sword uses the same takes, pitched a

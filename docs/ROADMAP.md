@@ -499,7 +499,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] The wyrm's claws and tail, the hero's sword on the same takes
 - [x] An audition page; the owner's picks ship; `?sfx=old` and a Lab row
 - [ ] Follow-ups:
-  - [ ] The owner's pick of the blue timing sound (second round on the page)
+  - [x] The blue timing sound: three rounds of recordings heard, the synth ping kept
   - [ ] The owner's listen in a fight and on the phone: the mix against the music
   - [ ] A real punch / kick and creature swipe if a CC0 recording turns up
 

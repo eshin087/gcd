@@ -4840,5 +4840,6 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   sounds like a fight, rate-limited (0.09 s between boss blows) so it does not turn into the noise of PR
   #55. New bosses need only a `weapon` in their tuning. The CC0 material has no real punch or creature
   swipe: the fist and wyrm slots are swishes, some slowed, and may be replaced. The blue timing sound
-  waits for the owner's second-round pick (today's synth ping until then).
+  stays today's synth ping: the owner heard three rounds of candidates and kept it (`time-blue` has no
+  file; a pick later is a line in `scripts/audio/sfx-picks.json` and a rerun of `build-sfx.py`).
 

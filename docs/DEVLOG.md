@@ -30,8 +30,9 @@ own sword, an audition page first and then a listen in a real fight.
 - Sourcing: 98 CC0 candidates from 25 OpenGameArt pages, licences checked per page and per pack; an
   audition page (https://claude.ai/artifact/VYVdpfmycGiZeTecunB2Gb) with today's synth as a reference row
   and a "hear it in a fight" sequence. The owner picked 11 of 12 slots; for the blue timing sound they
-  said none of these, so a second round (six short strikes from the same sword recordings as their blue
-  warning, as their red pair is one drum long and short) went up on the page.
+  said none of these twice (round 2: six short strikes from the same sword recordings as their blue
+  warning; round 3: a blade shing, a wood tak, a muted bell, a choked gong, a glass tick) and then kept
+  today's synth ping: `time-blue` has no recording, so `combat:flash` plays the synth recipe for blue.
 
 **Measured / verified.** In the dev server (Ash Disciple, AI on, 20 s): 12 normal tells and flashes
 played no cue; 4 blue and 7 red tells played the recordings; 22 blows played 22 blow sounds (sword light
@@ -56,7 +57,7 @@ PURSUIT's Aura Burst chase asked for 1.5 m closer, but the move he rolls after b
 (Tiger Descends runs into the hero, Golden Gates stops at a fist's reach): now he closes in and that
 move's blows reach the hero. Neither was a game bug.
 
-**Next.** The owner's pick of the blue timing sound; their listen in a fight on the PR's preview (and on
+**Next.** The owner's listen in a fight on the PR's preview (and on
 the phone); the mix (cue and blow levels against the music) by their ear.
 
 ## 2026-11-23 — Session 84: Tian Lei's blows audited; he stops attacking the air
