@@ -141,13 +141,13 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
           off = vec3(bend.x, -0.5 * b * b, bend.y) * h;
           // a laid-over blade shows its flat to the light: the front's band is a shade lighter, most
           // just behind its edge
-          lift = G.w * min(1.0, fk * 0.6 + edge * 0.6);
+          lift = G.w * min(1.0, fk * 0.55 + edge * 0.8);
         }
         // trodden (the scorch map's b: world/life/steps.js): it lies flatter, every way
         if (trample > 0.004) {
           float a = iRoot.w * 6.2832;
-          off.xz += vec2(cos(a), sin(a)) * trample * h * 0.5;
-          off.y -= trample * h * 0.55;
+          off.xz += vec2(cos(a), sin(a)) * trample * h * 0.6;
+          off.y -= trample * h * 0.72;
         }
         // trample / pushers (ignore airborne ones: y > 1.5)
         for (int i = 0; i < MAX_PUSH; i++) {
@@ -184,7 +184,7 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
         alb = mix(alb, vec3(0.014, 0.012, 0.011) * (0.6 + tip), burn);
         // light catching the bent blades on a front's leading edge; trodden blades a little darker
         if (lift > 0.0) alb *= 1.0 + lift * (0.35 + 0.65 * tip);
-        if (trample > 0.004) alb *= 1.0 - 0.3 * trample;
+        if (trample > 0.004) alb *= 1.0 - 0.7 * trample;
         float sh = shadowAtFast(vec3(root.x, 0.3, root.z));
         vec3 L = uAmbient * 1.6 + uMoonColor * 0.62 * sh + pointLights(root + vec3(0.0, 0.35, 0.0), vec3(0.0, 1.0, 0.0), 1.0);
         vec3 col = alb * L;

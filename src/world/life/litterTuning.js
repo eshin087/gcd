@@ -28,6 +28,7 @@
 //     lie       its brightness lying, against 1 in the air
 //     alpha     its opacity
 //     from      [min, max] m: where it starts falling ('edge' kinds start on the ground)
+//     flat      (optional) it lies turned at most this many rad off the screen's horizontal
 //     where     where it falls and lies: { at: 'rim' | 'near' | 'ash' | 'kerb' | 'flat', ... } (litter.js)
 //     source    'sky' (falls from above) | 'edge' (tumbles in along the ground from upwind)
 //   kerb       (ring) a tumbling letter that reaches this |x| or |z| from inside stops against it
@@ -70,22 +71,22 @@ export const LITTER = deepFreeze({
     // the clearing's rim, thinning toward the middle; they lie on the grass and the flagstones
     cinderwood: {
       takes: ['leaves'],
-      rate: 2.4,
-      lying: 150,
+      rate: 4.5,
+      lying: 170,
       last: [80, 160],
-      grass: 0.95,
+      grass: 1.15,
       kinds: [
         {
-          share: 0.45, glyphs: "~()c,", color: [0.17, 0.27, 0.13], color2: [0.12, 0.18, 0.09],
-          size: [0.27, 0.35], ground: { glyphs: 'ce()v', size: [0.26, 0.34] }, fall: [0.6, 0.95], slip: 0.55, flutter: [1.6, 2.8], spin: 2.4, tau: 0.55,
-          lift: [2.75, 4.3], carry: 0.85, hop: 1.4, lie: 0.7, alpha: 0.85, from: [4.5, 8],
-          where: { at: 'rim', lo: 0.12, r0: 10, r1: 30 }, source: 'sky',
+          share: 0.45, glyphs: "()cec", color: [0.3, 0.44, 0.2], color2: [0.22, 0.33, 0.15],
+          size: [0.38, 0.48], ground: { glyphs: 'ce()v', size: [0.36, 0.44] }, fall: [0.42, 0.65], slip: 0.85, flutter: [1.4, 2.4], spin: 2.4, tau: 0.6,
+          lift: [2.25, 3.5], carry: 1, hop: 1.5, lie: 0.85, alpha: 0.9, from: [4.5, 8],
+          where: { at: 'rim', lo: 0.25, r0: 8, r1: 28 }, source: 'sky',
         },
         {
-          share: 0.55, glyphs: "~()c'", color: [0.3, 0.21, 0.1], color2: [0.22, 0.15, 0.08],
-          size: [0.27, 0.35], ground: { glyphs: 'ce()s', size: [0.26, 0.34] }, fall: [0.65, 1.0], slip: 0.5, flutter: [1.8, 3], spin: 2.8, tau: 0.5,
-          lift: [2.65, 4.1], carry: 0.85, hop: 1.4, lie: 0.8, alpha: 0.85, from: [4.5, 8],
-          where: { at: 'rim', lo: 0.12, r0: 10, r1: 30 }, source: 'sky',
+          share: 0.55, glyphs: "()cec", color: [0.42, 0.31, 0.16], color2: [0.32, 0.24, 0.12],
+          size: [0.38, 0.48], ground: { glyphs: 'ce()s', size: [0.36, 0.44] }, fall: [0.45, 0.7], slip: 0.8, flutter: [1.5, 2.6], spin: 2.8, tau: 0.55,
+          lift: [2.15, 3.4], carry: 1, hop: 1.5, lie: 0.85, alpha: 0.9, from: [4.5, 8],
+          where: { at: 'rim', lo: 0.25, r0: 8, r1: 28 }, source: 'sky',
         },
       ],
     },
@@ -95,17 +96,19 @@ export const LITTER = deepFreeze({
     // kicked up by feet. Ash melts into the floor sooner than a leaf.
     ash: {
       takes: ['ash'],
-      rate: 26,
-      lying: 230,
-      last: [10, 22],
+      // (fewer, flatter letters lying in drifts in the lee of what stands, clear floor between: a field of
+      // round dots everywhere read as snow, or noise)
+      rate: 18,
+      lying: 240,
+      last: [14, 28],
       grass: 0.9,
-      shelter: 0.6,
+      shelter: 0.3,
       kinds: [
         {
-          share: 1, glyphs: ".,'`", color: [0.38, 0.37, 0.35], color2: [0.29, 0.28, 0.27],
-          size: [0.12, 0.22], ground: { glyphs: '.:;c', size: [0.22, 0.3] }, fall: [0.55, 0.9], slip: 0.3, flutter: [1.2, 2.4], spin: 1.5, tau: 0.45,
-          lift: [1.9, 3.6], carry: 0.9, hop: 0.9, lie: 0.8, alpha: 0.85, from: [4, 9],
-          where: { at: 'ash', base: 1, pile: 2.2, reach: 1.6, gap: 0.45, lee: [[1, 0], [0, -1]], within: 40, maxR: 3.5 },
+          share: 1, glyphs: ".,'`", color: [0.42, 0.41, 0.39], color2: [0.33, 0.32, 0.3],
+          size: [0.12, 0.22], ground: { glyphs: '~-=~_', size: [0.34, 0.44] }, fall: [0.55, 0.9], slip: 0.3, flutter: [1.2, 2.4], spin: 0, tau: 0.45,
+          lift: [1.9, 3.6], carry: 0.9, hop: 0.9, lie: 1.05, alpha: 0.85, from: [4, 9], flat: 0.22,
+          where: { at: 'ash', base: 0.06, pile: 3, reach: 1.7, gap: 0.35, lee: [[1, 0], [0, -1], [0.7, -0.7]], within: 40, maxR: 3.5, tags: ['stone', 'boulder'] },
           source: 'sky',
         },
       ],
@@ -115,14 +118,15 @@ export const LITTER = deepFreeze({
     // the air's slow draw toward the star moves what is in the air
     starless: {
       takes: ['leaves'],
-      rate: 0.5,
-      lying: 45,
+      // (the dark grit was invisible on the obsidian: a few cinders of the star instead, ember-edged)
+      rate: 0.35,
+      lying: 26,
       last: [90, 180],
       grass: 0.9,
       kinds: [
         {
-          share: 1, glyphs: ".·", color: [0.17, 0.05, 0.04], color2: [0.09, 0.03, 0.03],
-          size: [0.16, 0.22], ground: { glyphs: 'o.:', size: [0.2, 0.26] }, fall: [0.4, 0.7], slip: 0.12, flutter: [0.8, 1.6], spin: 1.2, tau: 0.6,
+          share: 1, glyphs: "o·*", color: [0.66, 0.17, 0.06], color2: [0.46, 0.1, 0.05],
+          size: [0.2, 0.26], ground: { glyphs: 'oc*', size: [0.24, 0.3] }, fall: [0.4, 0.7], slip: 0.12, flutter: [0.8, 1.6], spin: 1.2, tau: 0.6,
           lift: [0.8, 1.5], carry: 0.9, hop: 0.6, lie: 0.6, alpha: 0.8, from: [3, 6],
           where: { at: 'flat', r: 15, out: 0.55 }, source: 'sky',
         },
@@ -141,15 +145,15 @@ export const LITTER = deepFreeze({
       shelter: 1.5,
       kinds: [
         {
-          share: 0.7, glyphs: ".:o", color: [0.26, 0.19, 0.12], color2: [0.18, 0.13, 0.08],
-          size: [0.2, 0.28], fall: [2.2, 3.2], slip: 0.1, flutter: [2, 4], spin: 5, tau: 0.18,
-          lift: [0.8, 2.6], carry: 0.6, hop: 0.7, lie: 0.6, alpha: 0.8, from: [0.05, 0.15],
+          share: 0.7, glyphs: "o:co", color: [0.54, 0.45, 0.32], color2: [0.44, 0.36, 0.25],
+          size: [0.26, 0.34], fall: [2.2, 3.2], slip: 0.1, flutter: [2, 4], spin: 5, tau: 0.18,
+          lift: [0.8, 2.6], carry: 0.6, hop: 1.1, lie: 0.75, alpha: 0.8, from: [0.05, 0.15],
           where: { at: 'kerb', base: 0.25, pile: 3, depth: 1.4, half: 15 }, source: 'edge',
         },
         {
-          share: 0.3, glyphs: "v(~", color: [0.3, 0.25, 0.14], color2: [0.22, 0.18, 0.1],
-          size: [0.24, 0.3], fall: [1.1, 1.6], slip: 0.2, flutter: [2, 3.5], spin: 4, tau: 0.25,
-          lift: [1.0, 2.8], carry: 0.7, hop: 0.9, lie: 0.55, alpha: 0.8, from: [0.05, 0.2],
+          share: 0.3, glyphs: "v(~", color: [0.58, 0.52, 0.34], color2: [0.48, 0.42, 0.27],
+          size: [0.3, 0.38], fall: [1.1, 1.6], slip: 0.2, flutter: [2, 3.5], spin: 4, tau: 0.25,
+          lift: [1.0, 2.8], carry: 0.7, hop: 1.3, lie: 0.7, alpha: 0.8, from: [0.05, 0.2],
           where: { at: 'kerb', base: 0.25, pile: 3, depth: 1.4, half: 15 }, source: 'edge',
         },
       ],
@@ -159,21 +163,21 @@ export const LITTER = deepFreeze({
     // charm posts at r 16.5; they lie on the paving and skitter when the breeze sighs
     fox: {
       takes: ['leaves'],
-      rate: 1.2,
-      lying: 120,
+      rate: 3,
+      lying: 130,
       last: [80, 160],
-      grass: 0.95,
+      grass: 1.15,
       kinds: [
         {
-          share: 0.78, glyphs: "~()c'", color: [0.22, 0.17, 0.11], color2: [0.15, 0.13, 0.11],
-          size: [0.27, 0.35], ground: { glyphs: 'ce()s', size: [0.26, 0.34] }, fall: [0.6, 1.0], slip: 0.5, flutter: [1.6, 2.8], spin: 2.6, tau: 0.5,
-          lift: [2.2, 3.8], carry: 0.85, hop: 1.3, lie: 0.55, alpha: 0.85, from: [4, 7],
+          share: 0.78, glyphs: "()cec", color: [0.42, 0.33, 0.2], color2: [0.32, 0.27, 0.2],
+          size: [0.38, 0.46], ground: { glyphs: 'ce()s', size: [0.36, 0.44] }, fall: [0.45, 0.7], slip: 0.8, flutter: [1.4, 2.4], spin: 2.6, tau: 0.55,
+          lift: [1.8, 3.2], carry: 1, hop: 1.4, lie: 0.8, alpha: 0.9, from: [4, 7],
           where: { at: 'rim', lo: 0.3, r0: 8, r1: 18 }, source: 'sky',
         },
         {
-          share: 0.22, glyphs: '=-[', color: [0.34, 0.32, 0.27], color2: [0.27, 0.25, 0.21],
-          size: [0.34, 0.42], ground: { glyphs: '=[]', size: [0.34, 0.42] }, fall: [0.45, 0.7], slip: 0.7, flutter: [1.4, 2.4], spin: 3.2, tau: 0.6,
-          lift: [1.9, 3.2], carry: 0.9, hop: 1.5, lie: 0.5, alpha: 0.8, from: [1.6, 3],
+          share: 0.22, glyphs: '=[]', color: [0.56, 0.53, 0.45], color2: [0.46, 0.43, 0.36],
+          size: [0.4, 0.48], ground: { glyphs: '=[]', size: [0.4, 0.48] }, fall: [0.4, 0.6], slip: 0.9, flutter: [1.3, 2.2], spin: 3.2, tau: 0.6,
+          lift: [1.6, 2.8], carry: 1, hop: 1.5, lie: 0.75, alpha: 0.85, from: [1.6, 3],
           where: { at: 'near', r: 16.5, angles: [24, -24, 60, -60, 130, -130, 160, -160], spread: 2.6, lo: 0.04 },
           source: 'sky',
         },
@@ -190,9 +194,9 @@ export const LITTER = deepFreeze({
       grass: 0.9,
       kinds: [
         {
-          share: 1, glyphs: "/\\()", color: [0.13, 0.22, 0.1], color2: [0.18, 0.2, 0.1],
-          size: [0.3, 0.38], ground: { glyphs: '()<>', size: [0.3, 0.38] }, fall: [0.45, 0.6], slip: 0, flutter: [1.0, 1.6], spin: 1.8, tau: 0.6,
-          lift: [1.4, 2.4], carry: 1, hop: 1.1, lie: 0.55, alpha: 0.85, from: [6, 9],
+          share: 1, glyphs: "/\\()", color: [0.3, 0.44, 0.2], color2: [0.36, 0.4, 0.2],
+          size: [0.42, 0.5], ground: { glyphs: '()<>', size: [0.4, 0.48] }, fall: [0.45, 0.6], slip: 0, flutter: [1.0, 1.6], spin: 1.8, tau: 0.6,
+          lift: [1.4, 2.4], carry: 1, hop: 1.1, lie: 0.7, alpha: 0.85, from: [6, 9],
           where: { at: 'rim', lo: 0.35, r0: 5, r1: 15 }, source: 'sky',
         },
       ],
