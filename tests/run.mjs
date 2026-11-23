@@ -36,21 +36,21 @@ const INTEG_2 = ['hero', 'herolife', 'herolook', 'herohand', 'heroweight', 'hero
 const LORD = 'tests/integration/lord.mjs';
 const LORD_OWN = ['fxlooks', 'pace'];
 
-// [name, node args, env, est]. est: seconds on a 4-core CI runner (2026-11-23, run 45096349846;
-// the lord parts from its scenarios' shares); it only deals the shares, a stale one costs balance,
+// [name, node args, env, est]. est: seconds in a CI share (2026-11-23, PR #92's first run;
+// four tasks beside each other on a 4-core runner); it only deals the shares, a stale one costs balance,
 // never coverage. Slowest first, so the long ones start at once when there are fewer cores than tasks.
 const TASKS = [
-  ['integ', [INTEG, '.', 'all'], { ABYSS_SKIP: ['timing', ...INTEG_2].join(',') }, 360],
-  ['lord fxlooks', [LORD, '.', 'fxlooks'], {}, 300],
-  ['asc', ['tests/integration/asc.mjs', '.', 'all'], {}, 270],
-  ['duel', ['tests/integration/duel.mjs', '.', 'all'], {}, 270],
-  ...Array.from({ length: TIMING_PARTS }, (_, i) => [`integ timing ${i + 1}/${TIMING_PARTS}`, [INTEG, '.', 'timing'], { ABYSS_TM_SHARD: `${i + 1}/${TIMING_PARTS}` }, 210]),
-  ['lord', [LORD, '.', 'all'], { ABYSS_SKIP: LORD_OWN.join(',') }, 220],
-  ['fox', ['tests/integration/fox.mjs', '.', 'all'], {}, 160],
-  ['integ hero + world', [INTEG, '.', INTEG_2.join(',')], {}, 150],
-  ['lord pace', [LORD, '.', 'pace'], {}, 120],
-  ['sheath', ['tests/integration/sheath.mjs', '.', 'all'], {}, 100],
-  ['world', ['tests/integration/world.mjs', '.', 'all'], { ABYSS_SKIP: 'budget' }, 100],
+  ['lord fxlooks', [LORD, '.', 'fxlooks'], {}, 230],
+  ['integ', [INTEG, '.', 'all'], { ABYSS_SKIP: ['timing', ...INTEG_2].join(',') }, 215],
+  ['duel', ['tests/integration/duel.mjs', '.', 'all'], {}, 175],
+  ...Array.from({ length: TIMING_PARTS }, (_, i) => [`integ timing ${i + 1}/${TIMING_PARTS}`, [INTEG, '.', 'timing'], { ABYSS_TM_SHARD: `${i + 1}/${TIMING_PARTS}` }, 140]),
+  ['lord', [LORD, '.', 'all'], { ABYSS_SKIP: LORD_OWN.join(',') }, 120],
+  ['asc', ['tests/integration/asc.mjs', '.', 'all'], {}, 110],
+  ['fox', ['tests/integration/fox.mjs', '.', 'all'], {}, 105],
+  ['lord pace', [LORD, '.', 'pace'], {}, 105],
+  ['sheath', ['tests/integration/sheath.mjs', '.', 'all'], {}, 90],
+  ['world', ['tests/integration/world.mjs', '.', 'all'], { ABYSS_SKIP: 'budget' }, 80],
+  ['integ hero + world', [INTEG, '.', INTEG_2.join(',')], {}, 70],
   ['glyphcheck', ['tests/glyphcheck.mjs', '.'], {}, 1],
   ['changelogcheck', ['tests/changelogcheck.mjs', '.'], {}, 1],
 ];
@@ -60,7 +60,7 @@ const TASKS = [
 // not the code: the same tree read p99.9 0.3 - 0.6 ms alone and 1.65 / 2.53 ms on two CI runs (the
 // budget is 1.5), with `destructibles.js` unchanged.
 const ALONE = [
-  ['world budget', ['tests/integration/world.mjs', '.', 'budget'], {}, 10],
+  ['world budget', ['tests/integration/world.mjs', '.', 'budget'], {}, 5],
 ];
 // what a task must not inherit from the caller's shell: these narrow what a suite runs
 const NARROWING = ['ABYSS_SKIP', 'ABYSS_TM', 'ABYSS_TM_SHARD'];
