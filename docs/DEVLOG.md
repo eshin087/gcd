@@ -23,6 +23,10 @@ two prints, to pick from.
 - `sheathTone: 'a'` in `PICKED` (the owner's pick); `sheathArt` stays `a`, its Lab row `awaiting` again; duel.mjs's
   picks check lets a picked switch wait for a new pick. `sheath.mjs` LOOK covers every print.
 
+**The pick.** The owner picked step 2 from the sheet (2026-11-23): `sheathArt: '2'` in `PICKED`, the Lab row not
+`awaiting`, `sheath.mjs` LOOK checks 2 as the default and `a` as an option (the palettes by the digits' ink). Open:
+the mark (`?sheathMark=`), a real phone, his digits larger than the hero's letters.
+
 **Measured** on main's grove with its new bamboo (rebased; the camera pinned at its default distance; his pixels /
 the floor under him; the hero about 25 / 16): 720p 0 37.0 / 20.3, 1 26.5 / 20.2, 2 36.1 / 20.3, 3 31.2 / 20.1, a
 35.1 / 20.2; phone 0 34.1, 1 26.9, 2 39.5, 3 26.8, a 27.9 (the floor about 19.7; the hero about 27 / 16.3).

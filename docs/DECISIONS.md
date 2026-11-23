@@ -4619,3 +4619,7 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   material changed. Prints 1 - a wear a reworked body (full sleeves, one roll of scarf, plain gaiters, no wrist
   bands); 0 keeps him as he shipped. `sheathArt` stays `a` in `PICKED` and its Lab row is `awaiting` again (the
   picks test now lets a picked switch wait for a new pick). The author would pick 2 (DEVLOG 2026-11-23).
+- **The pick (2026-11-23): step 2.** The owner picked 2, the digits in his palette, lit and outlined harder:
+  `sheathArt: '2'` in `PICKED`, the Lab row no longer `awaiting`. 0, 1, 3 and a stay behind the switch. Known
+  limits of 2 at fight distance: his digits are larger than the hero's letters, only his lit side prints (he
+  reads narrower than the hero), the face does not read. The mark (`?sheathMark=`) is still not picked.

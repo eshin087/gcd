@@ -26,7 +26,7 @@ Sixty-nine pieces of work since 0.4.0:
   distance: `?sheathArt=0|1|2|3|a` renders five graded steps from the digits to the ink-line art (1 and 2
   the digits in his colours with a stroke outline, 3 the ink-line art flattened), and prints 1 - a wear
   a reworked body that hides the mesh at his size (full sleeves, one roll of scarf, plain gaiters). The
-  print waits for the owner's pick (a drawn). `sheath.mjs` LOOK.
+  owner picked step 2 (the digits in his colours, lit and outlined), which is what the game now draws. `sheath.mjs` LOOK.
 - **A sixth level: the Windless Grove and the Sheathed** (2026-11-22, ADR-144 – ADR-146). *Added:* a fifth
   level, `?level=grove` (the title screen lists it). **The Windless Grove**: a bamboo grove at night, a
   round clearing with a worn ring of paving, a mound planted with forty swords. **Lu Wusheng, the

@@ -201,7 +201,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] The owner's picks from the sheets: his body (d, the Wanderer), the cut, the grove's light
 - [x] Readable (ADR-152): the hero's ink-line print (the owner's pick), lifted; his silhouette, motion, lines and names
 - [x] The palette: a, indigo and sand (the owner's pick)
-- [ ] The owner's picks from the ADR-152 sheets: the print's five steps (`?sheathArt=`), the mark (`?sheathMark=`)
+- [x] The print: step 2, the digits in his colours, lit and outlined (the owner's pick of five, `?sheathArt=`)
+- [ ] The owner's pick of the mark from the ADR-152 sheet (`?sheathMark=`)
 - [ ] His own score (borrowed tracks until an audition page)
 - [ ] A human playtest of the draw on the phone; One Breath's balance bot on Shen Hui
 ## M1.61 — A fifth level: the Foxfire Terrace and Wen Yao, the Thousand-Body Fox (2026-11-21, `claude/thousand-body-fox-33750d`, ADR-147, ADR-148)

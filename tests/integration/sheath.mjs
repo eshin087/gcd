@@ -1166,21 +1166,19 @@ async function scenarioTraining() {
 
 // ================================================================== scenario: look (ADR-152: the print, the palettes, the mark, the motion)
 async function scenarioLook() {
-  out('\n== scenario LOOK (the ink-line print by default, the digits behind ?sheathArt=0, the palettes, the mark, his hands and feet) ==');
+  out('\n== scenario LOOK (print 2 by default: the digits in his colours; the five steps, the palettes, the mark, his hands and feet) ==');
   const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
-  const { SHEATH_TONE, SHEATH_MARK } = await imp('src/entities/enemies/sheathed/look.js');
+  const { SHEATH_TONE, SHEATH_MARK, SHEATH_STEP } = await imp('src/entities/enemies/sheathed/look.js');
   const fillOf = (m) => { const c = m?.uniforms?.uArtFill?.value; return c ? [c.r, c.g, c.b].map((x) => +x.toFixed(3)) : null; };
   const same = (a, b) => !!a && !!b && a.every((x, i) => Math.abs(x - b[i]) < 1e-3);
   const meshesOf = (d, mat) => { const o = []; d.rig.root.traverse((m) => { if (m.isMesh && m.material === mat) o.push(m); }); return o; };
-  // the shipped print: the hero's ink-line art, palette a, mark a
+  // the shipped print: step 2 (the digits in palette a, lit and outlined), mark a
   {
     const G = build();
     const d = G.game.dragon, M = d.rig.materials;
-    assert(!M.coat.uniforms.uWInk && same(fillOf(M.coat), SHEATH_TONE.a.coat) && same(fillOf(M.leather), SHEATH_TONE.a.leather), `the ink-line print by default, palette a (robe ${fillOf(M.coat)}, scarf ${fillOf(M.leather)})`);
-    assert(fillOf(M.trim).every((x) => x < 0.04) && Object.values(SHEATH_TONE.a).every((c) => Math.max(...c) > 0.04), 'the scabbard the darkest fill on him');
-    assert(meshesOf(d, M.hair).length === 0 && meshesOf(d, M.shirt).length > 0, 'his hair off the gold-lined `hair` part');
-    const strips = meshesOf(d, M.piping);
-    assert(strips.length > 0 && same(fillOf(M.piping), SHEATH_MARK.strip) && d._offStrip?.length === 2 && d.rig.streamers.length === d.anim.streamState.length, `mark a: the strip on both scabbard pieces (${strips.length} meshes, ${d._offStrip?.length} springs on the hip piece)`);
+    { const c = M.coat.uniforms.uWInk?.value, want = SHEATH_TONE.a.coat.map((x) => x * SHEATH_STEP['2'].ink);
+      assert(!!c && !M.coat.uniforms.uArtFill && same([c.r, c.g, c.b].map((x) => +x.toFixed(3)), want), `print 2 by default: the digits in palette a (robe ink ${c ? [c.r, c.g, c.b].map((x) => x.toFixed(2)) : '?'})`); }
+    assert(d._offStrip?.length === 2 && d.rig.streamers.length === d.anim.streamState.length, `mark a by default: the strip's springs on the hip piece (${d._offStrip?.length})`);
     // ADR-126's audit through One Breath (the cut's one frame is the draw itself): no hand jumps
     const p = G.game.player;
     duel(G, { dist: 4.5 });
@@ -1202,7 +1200,6 @@ async function scenarioLook() {
   }
   // the options, each on a rig built anew (read when his rig is built)
   const opt = (k, v, fn) => { setLook(k, v); try { const G = build(); fn(G.game.dragon, G.game.dragon.rig.materials); } finally { setLook(k, null); } };
-  const { SHEATH_STEP } = await imp('src/entities/enemies/sheathed/look.js');
   let coat0 = 0;
   opt('sheathArt', '0', (d, M) => { coat0 = d.rig.coat.length; assert(!!M.coat.uniforms.uWInk && !M.coat.uniforms.uArtFill && !meshesOf(d, M.piping).length && !d._offStrip?.length, '?sheathArt=0: the wyrm\'s digits and his body as he shipped (no mark)'); });
   for (const st of ['1', '2']) {
@@ -1211,12 +1208,19 @@ async function scenarioLook() {
       assert(!!c && same([c.r, c.g, c.b].map((x) => +x.toFixed(3)), want) && d.rig.coat.length === coat0 + 4 && d._offStrip?.length === 2, `?sheathArt=${st}: the digits in his palette (robe ink ${c ? [c.r, c.g, c.b].map((x) => x.toFixed(2)) : '?'}), his reworked body (${d.rig.coat.length} cloth panels), the mark`);
     });
   }
+  opt('sheathArt', 'a', (d, M) => {
+    assert(!M.coat.uniforms.uWInk && same(fillOf(M.coat), SHEATH_TONE.a.coat) && same(fillOf(M.leather), SHEATH_TONE.a.leather), `?sheathArt=a: the ink-line print, palette a (robe ${fillOf(M.coat)}, scarf ${fillOf(M.leather)})`);
+    assert(fillOf(M.trim).every((x) => x < 0.04) && Object.values(SHEATH_TONE.a).every((c) => Math.max(...c) > 0.04), 'the scabbard the darkest fill on him');
+    assert(meshesOf(d, M.hair).length === 0 && meshesOf(d, M.shirt).length > 0, 'his hair off the gold-lined `hair` part');
+    const strips = meshesOf(d, M.piping);
+    assert(strips.length > 0 && same(fillOf(M.piping), SHEATH_MARK.strip) && d._offStrip?.length === 2 && d.rig.streamers.length === d.anim.streamState.length, `mark a: the strip on both scabbard pieces (${strips.length} meshes, ${d._offStrip?.length} springs on the hip piece)`);
+  });
   opt('sheathArt', '3', (d, M) => {
     let lines = 0;
     d.rig.root.traverse((o) => { if (o.isMesh && o.material === M.coat) lines += o.geometry.attributes.aPart?.array.some((x) => x > 0) ? 1 : 0; });
     assert(!M.coat.uniforms.uWInk && !!M.coat.uniforms.uArtFill && lines === 0 && M.coat.uniforms.uArtSpec.value.x === 0, `?sheathArt=3: the ink-line art, flat (robe meshes with inner lines: ${lines})`);
   });
-  for (const t of ['b', 'c']) opt('sheathTone', t, (d, M) => assert(same(fillOf(M.coat), SHEATH_TONE[t].coat) && same(fillOf(M.pants), SHEATH_TONE[t].pants), `?sheathTone=${t}: its robe and trousers`));
+  for (const t of ['b', 'c']) opt('sheathTone', t, (d, M) => { const c = M.coat.uniforms.uWInk?.value; assert(!!c && same([c.r, c.g, c.b].map((x) => +x.toFixed(3)), SHEATH_TONE[t].coat.map((x) => x * SHEATH_STEP['2'].ink)), `?sheathTone=${t}: its robe (the digits' ink)`); });
   opt('sheathMark', 'b', (d, M) => assert(meshesOf(d, M.piping).length === 0 && !d._offStrip?.length && d.rig.streamers.length === d.anim.streamState.length, '?sheathMark=b: no strip (the streak instead)'));
   opt('sheathMark', '0', (d, M) => assert(meshesOf(d, M.piping).length === 0 && !d._offStrip?.length, '?sheathMark=0: no mark'));
 }
