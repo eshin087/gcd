@@ -25,6 +25,7 @@ export const TUNING = {
   // ramping (the owner's pick): a string's follow-up windups 0.34 s in form 1 (Shen Hui's) down to
   // 0.28 s in form 4 (windupScale), so its blows land 0.42 → 0.36 s apart; every hit still cued by
   // its flash
+  weapon: 'sword', // what his blows sound like through the air (duelist/attackSound.js: dragon:attack)
   flashLead: 0.26, // the glint this long before every impact (<= the tightest gap: each flash after the hit before it)
   minFirstWindup: 0.4, // a move's first real hit, every form
   minHitGap: 0.34, // impact to impact inside a move

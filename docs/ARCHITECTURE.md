@@ -4271,7 +4271,13 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   audio two steels ringing, a flicker of the frame),
   `combat:deflectChain {count}` (the attacker's count: the 2nd, 3rd ... parry in a row within one string;
   a hit that lands or is blocked resets it, dodges keep it; contract 1; the HUD shows "DEFLECT ×N")
-- `dragon:wake`, `dragon:roar {strength}`, `dragon:introDone`, `dragon:windup {name}`, `dragon:attack {name}`,
+- `dragon:wake`, `dragon:roar {strength}`, `dragon:introDone`, `dragon:windup {name}`,
+  `dragon:attack {name, weapon, weight, shape, tell, impactIn, x, z}` (the wyrm: {name} alone, as an attack's active
+  phase begins: audio its swipe, a claw or a tail; a duelist, duelist/brain.js, and a fox's paper self: once per real
+  blow, ATTACK_SOUND.lead s before its impact and never before its glint, not for a feint, a cast, a pure throw, a
+  burst or a phase change; weapon sword / fist from the boss's TUNING.weapon, weight light / heavy, shape cut /
+  thrust / kick / draw, impactIn game seconds to the impact, x/z where he stands; audio the blade or fist through
+  the air, its loudest moment on the impact; the payload object is reused: read it at once),
   `dragon:step {x, z, heavy}`, `dragon:wingFlap {strength}`, `dragon:takeoff`, `dragon:land {x, z}` (the leap,
   every flight, and the crash of a plunged flier),
   `dragon:breathStart`, `dragon:breathEnd` (the breath, the sky strafe's pass, the fire snap's gout, the breathed patterns and the firebrand's kindling), `dragon:fireball {x, y, z}`,

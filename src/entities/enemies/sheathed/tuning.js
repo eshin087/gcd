@@ -12,6 +12,7 @@ export const TUNING = {
   bound: 12.5,
 
   // ---- tells (COMBAT.md "Core rules")
+  weapon: 'sword', // what his blows sound like through the air (duelist/attackSound.js: dragon:attack)
   flashLead: 0.3,
   minFirstWindup: 0.42,
   minHitGap: 0.32,

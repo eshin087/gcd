@@ -34,6 +34,7 @@ export const TUNING = {
 
   // ---- tells (COMBAT.md; checked by tests/integration/asc.mjs DATA). A string's follow-up windups
   // 0.34 s in form 1 down to ~0.29 s in form 3 (windupScale)
+  weapon: 'fist', // bare-handed: what his blows sound like through the air (duelist/attackSound.js: dragon:attack)
   flashLead: 0.26,
   minFirstWindup: 0.4,
   minHitGap: 0.34,
