@@ -3350,8 +3350,10 @@ function chaseCase(name, { form = 1, dist = 2.4, at = [0, -2], hero = null, purs
     G.input.up(1);
     G.input.axis = { x: 0, y: 0 };
     const hits = G.hits.slice(h0).filter((h) => h.attack === name);
+    // (the blows of what he did after breaking off, in the window: the chase reached the hero)
+    const follow = stopAt === null ? [] : G.hits.slice(h0).filter((h) => h.attack !== name && h.t - t0 >= stopAt);
     d.hitPlayer = hp;
-    return { G, d, p, A, flashes, hits, stops: (d.brain.stats.stops ?? 0) - s0, stopAt, stopDist, closest, air: airAt };
+    return { G, d, p, A, flashes, hits, follow, stops: (d.brain.stats.stops ?? 0) - s0, stopAt, stopDist, closest, air: airAt };
   } finally {
     if (!pursue) TUNING.pressure.pursue = PU;
   }
@@ -3380,9 +3382,15 @@ async function scenarioPursuit() {
   };
   const burst = chaseCase('auraBurst', { form: 2, dist: 2.2, hero: rollOut });
   const burst0 = chaseCase('auraBurst', { form: 2, dist: 2.2, hero: rollOut, pursue: false });
-  out(`     Aura Burst rolled out of: broken off at ${burst.stopAt?.toFixed(2)} s with the hero ${burst.stopDist.toFixed(1)} m off, the closest he came in 1.5 s ${burst.closest.toFixed(1)} m; without the pursuit: ${burst0.flashes.length} glint, ${burst0.air} swing at air`);
-  assert(burst.stops === 1 && !burst.flashes.length && !burst.hits.length && burst.closest < burst.stopDist - 1.5,
-    `Aura Burst, the hero rolls out before its cue: broken off (${burst.stops}), no glint (${burst.flashes.length}), no hit (${burst.hits.length}), and he chases: ${burst.stopDist.toFixed(1)} → ${burst.closest.toFixed(1)} m`);
+  out(`     Aura Burst rolled out of: broken off at ${burst.stopAt?.toFixed(2)} s with the hero ${burst.stopDist.toFixed(1)} m off, the closest he came in 1.5 s ${burst.closest.toFixed(1)} m, then ${burst.follow.map((h) => `${h.attack} ${h.r}`).join(', ') || 'no blow'}; without the pursuit: ${burst0.flashes.length} glint, ${burst0.air} swing at air`);
+  // (he chases: the move he picks after breaking off is a roll, and the gap it leaves is that move's:
+  // Tiger Descends' dash runs into him (0.6 m), Golden Gates' strikes stop at a fist's reach (1.2 m).
+  // So "chases" is: he closes in and that move's blows reach the hero in the window (who ran on to
+  // 6 m: a blow on him there is the chase, whatever reach the move has). The sounds' own
+  // random stream (ADR-165) turned this seed's pick from tiger to goldenGates, which the old
+  // 1.5 m-closer band missed while every blow of it landed.)
+  assert(burst.stops === 1 && !burst.flashes.length && !burst.hits.length && burst.closest < burst.stopDist && burst.follow.length > 0,
+    `Aura Burst, the hero rolls out before its cue: broken off (${burst.stops}), no glint (${burst.flashes.length}), no hit (${burst.hits.length}), and he chases: ${burst.stopDist.toFixed(1)} → ${burst.closest.toFixed(1)} m, ${burst.follow.length} blow${burst.follow.length === 1 ? '' : 's'} of the next move on him`);
   assert(burst0.stops === 0 && burst0.flashes.length === 1 && burst0.air === 1, `without TUNING.pressure.pursue (as before): the burst is thrown at air (${burst0.flashes.length} glint, ${burst0.air} at air)`);
   // 2. ... and a hero who stays in it is hit as before
   const stay = chaseCase('auraBurst', { form: 2, dist: 2.2 });

@@ -1,5 +1,5 @@
 import { clamp } from '../core/math.js';
-import { env, perc, glide, spikes, rnd, mtof, num } from './dsp.js';
+import { env, perc, glide, spikes, rnd, mtof, num, arand } from './dsp.js';
 
 // One-shot sound recipes, played through AudioEngine.play(name, opts).
 // Each entry: { prio, rev, gap, falloff, bus, gain, play(v, t, o, E) }
@@ -189,6 +189,32 @@ function thump(v, t, from, to, slide, a, decay) {
   perc(hg.gain, t, a * 0.22, 0.003, decay * 0.5);
   h.connect(hg).connect(v.out);
 }
+
+// A boss's blow through the air when its recorded clip is not there (bladeWhoosh): its own noise stream
+// (the seeded sims replay the AI's Math.random; this sound must not draw from it).
+let wseed = 0x510e527f;
+const wrnd = () => (wseed = (Math.imul(wseed, 1664525) + 1013904223) >>> 0) / 4294967296;
+/** Filtered noise with a piecewise-linear gain envelope, rate and offset from wrnd → v.out. */
+function wswish(v, t, kind, type, freq, q, pts) {
+  const D = pts[pts.length - 1][0];
+  const n = v.noise(kind, t, t + D + 0.02, 0.92 + 0.16 * wrnd(), wrnd());
+  const f = v.filter(type, freq, q);
+  const g = v.gain(0);
+  env(g.gain, t, pts);
+  n.connect(f).connect(g).connect(v.out);
+  return f;
+}
+/** bladeWhoosh's length (s) for its opts (weapon / weight / shape). */
+function bladeDur(o) {
+  const heavy = o.weight === 'heavy';
+  if (o.weapon === 'fist') return o.shape === 'kick' ? 0.3 : heavy ? 0.26 : 0.17;
+  if (o.shape === 'draw') return 0.2;
+  if (o.shape === 'thrust') return heavy ? 0.36 : 0.3;
+  return heavy ? 0.38 : 0.24;
+}
+const BLADE_PEAK = 0.42; // of its length: where bladeWhoosh is loudest
+/** s from bladeWhoosh's start to its loudest moment (audio.js lines it up with the impact). */
+export const bladeWhooshPeak = (o) => bladeDur(o || {}) * BLADE_PEAK;
 
 // --- catalogue ----------------------------------------------------------------------------
 
@@ -1046,6 +1072,33 @@ export const SFX = {
     },
   },
 
+  /**
+   * A duelist's blow through the air when its recorded clip is not there (dragon:attack; audio.js):
+   * quieter than the hero's swing and lower. opts.weapon 'sword' | 'fist', weight 'light' | 'heavy',
+   * shape 'cut' | 'thrust' | 'kick' | 'draw'. A sword: the swing's band sweep (a draw: short and high,
+   * a thrust: a long rising hiss); a fist / kick: a dull low rush of air.
+   */
+  bladeWhoosh: {
+    prio: 3, rev: 0.1, falloff: 0.8, gain: 0.55,
+    play(v, t, o) {
+      const heavy = o.weight === 'heavy';
+      const D = bladeDur(o);
+      const pk = D * BLADE_PEAK;
+      if (o.weapon === 'fist') {
+        const lo = heavy || o.shape === 'kick' ? 160 : 240;
+        const hi = (heavy || o.shape === 'kick' ? 900 : 1400) * (0.94 + 0.12 * wrnd());
+        const lp = wswish(v, t, 'pink', 'lowpass', lo, 1.2, [[0, 0], [pk, heavy ? 0.7 : 0.55], [D, 0]]);
+        env(lp.frequency, t, [[0, lo], [pk, hi], [D, lo]]);
+        return;
+      }
+      const draw = o.shape === 'draw', thrust = o.shape === 'thrust';
+      const lo = draw ? 1400 : heavy ? 260 : 480;
+      const hi = (draw ? 6200 : thrust ? 2600 : heavy ? 1250 : 2300) * (0.94 + 0.12 * wrnd());
+      const bp = wswish(v, t, 'white', 'bandpass', lo, heavy ? 1.1 : 1.5, [[0, 0], [pk, heavy ? 0.7 : 0.55], [D, 0]]);
+      env(bp.frequency, t, [[0, lo], [pk, hi], [D, thrust ? hi * 0.8 : lo * 1.3]]);
+    },
+  },
+
   /** Generic heavy limb/tail whoosh for dragon:attack names without a dedicated sound. */
   dragonSwipe: {
     prio: 3, rev: 0.12, gap: 0.2, falloff: 0.8,
@@ -1450,7 +1503,7 @@ export const SFX = {
       const bp = swish(v, t, 'pink', 'bandpass', 200, 0.8, [[0, 0], [0.5, 0.32], [2.0, 0]]);
       env(bp.frequency, t, [[0, 200], [0.7, 1500], [2.0, 400]]);
       for (let i = 0; i < 10; i++) {
-        ping(v, t + 0.25 + Math.random() * 1.6, 'sine', rnd(3000, 6500), rnd(0.025, 0.06), 0.14);
+        ping(v, t + 0.25 + arand() * 1.6, 'sine', rnd(3000, 6500), rnd(0.025, 0.06), 0.14);
       }
       for (const m of [45, 52, 57]) {
         const s = v.osc('sine', mtof(m), t, t + 2.65);

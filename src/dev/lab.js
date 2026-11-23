@@ -13,6 +13,7 @@ import { TrainingPanel } from './trainingPanel.js';
 import { setCutStyle, cutStyle } from '../combat/cutFx.js';
 import { IMPACT } from '../combat/impact.js';
 import { CALM_LOOK, setCalm, calmLevel } from '../combat/impactCalm.js';
+import { sfxMode, setSfxMode } from '../audio/samples.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { buildLooks } from './labLooks.js';
 import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
@@ -1108,6 +1109,23 @@ export class Lab {
       this._syncCutBtns();
     });
     this.ui.calmBtn.title = "today's flare at the contact toned down: 0 as before, 1 the default, 2 and 3 calmer";
+    // the attack sounds (audio/samples.js; ?sfx=old): new = cues on blue / red only, recorded where loaded,
+    // each boss's blade or fist through the air; old = the sounds before (a tick on every tell, all synth)
+    const sfr = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'sfx', sfr).title = 'the attack sounds and the blue / red cues (?sfx=old: as before)';
+    const sfGrid = el('div', 'lab-grid', null, sfr);
+    sfGrid.style.flex = '1';
+    this.ui.sfxBtns = ['new', 'old'].map((m) => {
+      const b = button(sfGrid, m, () => {
+        setSfxMode(m);
+        this._syncCutBtns();
+      });
+      b.title = m === 'new'
+        ? 'cues on blue / red blows only (recorded where loaded), a boss blade or fist sounds through the air'
+        : 'as before: a tick on every tell, the flash ping on every blow, all synth, no boss swing sound';
+      return { m, el: b };
+    });
+    this.ui.sfxNote = el('span', 'lab-note', '', sfGrid);
     // the sword looks (gear/moonblade.js; the owner's pick, ?sword=): equip one (a rebuild: build-time
     // cost, Lab only)
     const swr = el('div', 'lab-row', null, body);
@@ -1213,6 +1231,9 @@ export class Lab {
     }
     const w = this.game.player?.loadout?.weapon;
     for (const { k, el: b } of this.ui.swordBtns ?? []) setClass(b, 'on', w === SWORD_PARAM[k]);
+    for (const { m, el: b } of this.ui.sfxBtns ?? []) setClass(b, 'on', sfxMode() === m);
+    const bank = this.game.audio?.samples;
+    if (this.ui.sfxNote) setText(this.ui.sfxNote, bank ? `${bank.loaded}/${bank.total} files${bank.failed ? `, ${bank.failed} failed` : ''}` : 'no audio yet');
   }
 
   /** A flurry of `n` blows on the boss now (player.debug.flurry). */

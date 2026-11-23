@@ -72,6 +72,17 @@ export const RELEASES = [
       },
       {
         date: '2026-11-22',
+        title: 'Attack sounds: cues only for blue and red, every blow sounds like its weapon',
+        notes: [
+          'White attacks no longer make a warning sound: watch the glint, and listen to the weapon.',
+          'A blue attack (parry it) rings like a sword left ringing as the windup starts.',
+          'A red attack (dodge it) opens on a deep log drum, and the same drum, short, marks the moment to dodge.',
+          'Every boss blow now sounds as it travels: a sword cutting the air, a fist or a kick, the wyrm\'s claws and tail. Your own sword too.',
+          'Prefer the old sounds? Add ?sfx=old to the address.',
+        ],
+      },
+      {
+        date: '2026-11-22',
         title: "The grove's bamboo falls to every stroke",
         notes: [
           'In the Windless Grove one swing cuts a bamboo stalk clean through where your blade passes, and the top slides off and crashes down in a burst of leaves. Swing through a clump and the whole clump comes down.',

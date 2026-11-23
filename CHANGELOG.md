@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Seventy-four pieces of work since 0.4.0:
+Seventy-five pieces of work since 0.4.0:
 - **An eighth level: Halcyon Plaza and Halcyon, the Last Saviour** (2026-11-22, ADR-159 – ADR-161). *Added:* an eighth
   level, `?level=city` (the title screen lists it). **Halcyon Plaza**: a city that has not been built yet, at
   night in the rain, read from its streets: a plaza where an avenue meets a street, four towers, cars, lamp
@@ -23,6 +23,22 @@ Seventy-four pieces of work since 0.4.0:
   as yours do (fewer, bigger letters from 1080p up), a quieter print, and a smaller cape (two thirds of its
   length, past his knees); `?halLetters=0`, `?halPrint=0|b`, `?halCapeSize=0|a|c` the other options. *Fixed:* a blow at
   a raised piece's own height reaches it (a tower's top, a sign hung on a wall).
+- **Attack sounds: cues only for blue and red, every blow sounds like its weapon** (2026-11-22, ADR-165). *Changed:* a normal (white) attack makes no cue sound any more:
+  no tick as its windup starts and no ping before it lands (the white glint stays). A **blue** attack
+  rings a sword left ringing as its windup starts; a **red** (or black) one opens on a log drum and its
+  distant boom, and the same drum, cut short, marks the moment to dodge. The blue timing sound stays
+  today's synth ping (the owner heard three rounds of recordings and kept it). *Added:* every
+  human boss's blow now sounds as it travels, timed so its loudest moment lands on the hit: a sword
+  boss's cut, heavy cut, thrust or draw, a bare-handed boss's jab or full-body blow (a kick counts as
+  heavy); the Cinder Wyrm's claws and tail sweeps; the hero's own sword uses the same takes, pitched a
+  little higher. Three takes per slot rotate with a small pitch change so a string does not repeat one
+  sound, and two boss blows never start within 0.09 s. All recorded, CC0 from OpenGameArt, picked by the
+  owner by ear on an audition page (credits in `assets/audio/CREDITS.md`). `?sfx=old` (and the Lab's sfx
+  row) brings back the sounds before, exactly. The duelist engine announces each real blow with
+  `dragon:attack {name, weapon, weight, shape, tell, impactIn, x, z}`.
+  *Fixed* (found when the sounds stopped drawing from the fights' random numbers): the Cinder Wyrm could
+  pick a tree at its very feet for a throw, back off too slowly, then call the throw off after its red
+  warning (a warning with no blow); the lunge now waits for the back-off.
 - **Tian Lei's attacks move naturally, and he stops punching the air** (2026-11-23, ADR-162). *Fixed:* his feet no longer jump or slide while he
   strikes (a planted foot snapped up to 0.7 m in a frame at the blows of his strings, and swivelled when he
   turned); his punches land with the arm extended (every one landed with the elbow bent at ~130°); his

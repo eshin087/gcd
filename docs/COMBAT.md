@@ -215,13 +215,16 @@ or a cut of your own gets it knocked open, and a parry or a hit between them res
 ```
        windup start (combat:tell)            timing cue (combat:flash), 0.35 s before impact
 red    animation only                        THE RED FLARE through the striking part, a red light,
-       audio: low brass sting                body spike 1.6 gone in 0.25 s, red screen-edge flash
-blue   animation only (blade 'shing')        a white eight-point star 1.6x as big, with a ring
+       audio: the red warning (cue-red)      body spike 1.6 gone in 0.25 s, red screen-edge flash,
+                                             audio: the red timing sound (time-red)
+blue   animation only                        a white eight-point star 1.6x as big, with a ring,
+       audio: the blue warning (cue-blue)    audio: the blue timing sound (time-blue)
  +flare (a parry moment)                     THE BLUE FLARE instead, a blue light, blue screen edge
 black  darkness gathers on the striking      THE BLACK FLARE (a dark bar round a white-hot thread),
        part (an eclipse that grows), the     the screen edge goes dark
        body darkens, the screen edge dims
-normal animation only (faint audio tick)     a white cross on the letter grid + bright ting
+normal animation only (no cue sound: the    a white cross on the letter grid (no cue sound)
+       blow's own swing through the air)
 hazard the ground heats up from its spawn     its edge shows, the heat flares, a warm light
        audio: a lighter hazard cue           no screen-edge flash
 ```
@@ -253,12 +256,21 @@ hazard the ground heats up from its spawn     its edge shows, the heat flares, a
   round, the body darkening (`TELL_STYLE.black.warn`), the screen edge dimming (`combat:charge`).
   The levels are dark, so black is drawn by what rings it. Then the black flare.
 - **Parryable (`normal`, `blue`) — the animation is the tell.** No colour coding during the windup
-  (audio: a faint tick, or a blade "shing" for `blue`). On the cue a brief **white cross** pops at
-  the striking part with a short bright "ting": one row of `-` (13 cells) through one column of `|`
+  (audio: the blue warning for `blue`; nothing for `normal`). On the cue a brief **white cross** pops at
+  the striking part (a `blue` one with the blue timing sound): one row of `-` (13 cells) through one column of `|`
   (7 cells), white-hot digits where they meet, written on the letter grid (0.2 s; it opens at full
   size on the cue frame and draws back into its heart). `blue` (heavy, big-posture) gets the same
   cross 1.6x as big (21 x 11 cells) with diagonals, an **eight-point star**, and a thin ring of
-  strokes opening round it (0.28 s), and a richer ting — still white, never blue.
+  strokes opening round it (0.28 s) — still white, never blue.
+- **The sounds (2026-11-22; owner: "it should only have the sound played for red/blue attacks").**
+  Only a blue and a red / black blow have cues: a warning as the windup starts and a timing sound
+  just before it lands, recorded in-world one-shots (`cue-blue` / `cue-red`, `time-blue` /
+  `time-red`; the synth sting / ping until they load). Every boss blow, normal ones included, makes
+  its own sound through the air, its loudest moment on the impact: a sword boss's blade (light, heavy,
+  thrust, the Sheathed's draw), a bare-handed boss's fist or kick, the wyrm's claws and tail; the
+  hero's own blade is pitched a little above theirs. Hazards and bullets keep their cues.
+  `?sfx=old` restores the sounds before (a tick on every tell, the ping on every flash, all synth).
+  ARCHITECTURE.md → Audio, "The attack sounds".
 - **One design for every boss (ADR-113).** The three cues are drawn by `DuelFx.tellFlash(tell, x, y,
   z, k)` in the fire field (data: `TELL_GLINT`, `TELL_BLAZE` in `enemies/duelist/fx.js`); the wyrm
   draws its own through the same code at 1.5x. The red cue is a ragged blaze of red letters thrown

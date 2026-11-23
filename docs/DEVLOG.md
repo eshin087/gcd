@@ -91,6 +91,61 @@ find it long.
 
 ---
 
+## 2026-11-23 — Session 85: attack sounds (planned by Fable, built by Opus agents, picked by ear)
+
+**What changed.** The owner: the blue / red attack sounds were tacky, and the warning should be more
+natural instead of making the player rely on sound for everything: a cue only for red and blue attacks,
+and every other attack the natural sound of the weapon (a sword boss's blade, a fist fighter's fist).
+Their answers before the work: keep both blue / red sounds (the warning at the windup and the timing
+sound), in-world sounds, new sounds for the sword bosses, the bare-handed bosses, the wyrm and the hero's
+own sword, an audition page first and then a listen in a real fight.
+- Cues (audio.js): `combat:tell` plays `cue-blue` / `cue-red` (+ the music dip) only for blue / red /
+  black; `combat:flash` plays `time-blue` / `time-red` only for those; a normal tell or flash is silent.
+  Hazards and bullets keep their cues exactly. Until a recording loads the synth recipes play, so a blue
+  or red blow is never silent.
+- Blows: the duelist engine emits `dragon:attack` once per real blow (no feint, cast, pure throw, burst
+  or phase change), 0.3 s before its impact and never before its glint (`duelist/attackSound.js`
+  classifies weapon / weight / shape from the beat data; `weapon` declared once in each boss's tuning; a
+  fox's paper self sends the same at its glint). The audio plays `sword-light / -heavy / -thrust / -draw`
+  or `fist-light / -heavy` with the clip's `peak_ms` lined up on the impact, spatialised on the sfx bus;
+  the wyrm's swipe plays `beast-claw` / `beast-tail` by name; the hero's swing the sword slots pitched up.
+- `samples.js` / `sampleList.js` (slots as data) / `sampleFiles.js` (generated): the one-shot runtime cut
+  down from the closed PR #55 (its own LCG: no Math.random draws, the seeded sims stay put).
+- `scripts/audio/build-sfx.py`: the picks + the sourcing manifest -> `assets/audio/sfx/*.mp3`
+  (23 files, about 90 KB), `sampleFiles.js` and the credits table. `?sfx=old` and a Lab row: as before.
+- Sourcing: 98 CC0 candidates from 25 OpenGameArt pages, licences checked per page and per pack; an
+  audition page (https://claude.ai/artifact/VYVdpfmycGiZeTecunB2Gb) with today's synth as a reference row
+  and a "hear it in a fight" sequence. The owner picked 11 of 12 slots; for the blue timing sound they
+  said none of these twice (round 2: six short strikes from the same sword recordings as their blue
+  warning; round 3: a blade shing, a wood tak, a muted bell, a choked gong, a glass tick) and then kept
+  today's synth ping: `time-blue` has no recording, so `combat:flash` plays the synth recipe for blue.
+
+**Measured / verified.** In the dev server (Ash Disciple, AI on, 20 s): 12 normal tells and flashes
+played no cue; 4 blue and 7 red tells played the recordings; 22 blows played 22 blow sounds (sword light
+12, heavy 5, thrust 3, a kick on fist-heavy 2); the hero's cuts drew sword-light. All 23 files load.
+Nobody but the owner can hear them: levels in the mix are not checked by ear.
+
+**Tests.** duel `sfx` and integ `sfx` scenarios added. Untouched main plus only the random-stream commit
+failed three seeded checks with the same numbers (no fighter had changed: the fights rolled a different
+sequence): fox PHASE (five selves), integ LAB (fireBrand: one flash per tell) and integ PRESSURE (seed 1337
+phase 2 at 46.8 cues a minute, under 48). One was a real edge case the new sequence exposed, fixed in the
+game: the wyrm's throw lunge (`terrainAttacks.js`: a tree at its feet, it backed off at 6 m/s while the
+plan reckoned 24, came to the bite too close and aborted after its red tell; the lunge now waits up to
+`jaws.backMax` 0.8 s). The fox's selves were reworked on main meanwhile (packs): the fox check moved with
+them. Two were test bands: PRESSURE's per-phase cue-rate floor holds over the mean of its three seeds;
+BREACH's standoff band counts where the wyrm's share of the gap ends (main itself failed the old +6 m
+band on 2 of 5 seeds) and its reset check reads the wall at `world.restore()`. Open: BREACH's 60 %
+cue-rate condition would fail on seed 2026 (and on main's 1337); only 4242 runs.
+After the rebase onto the reworked Wen Yao and Tian Lei, two more single-sample checks moved the same way
+(main plus only the random-stream commit fails them too): fox PHASE's "phase-3 moves join the pool" took
+300 rounds and missed the Moon-Swallowing Pearl (about 1 % of a pick at 6 m): now 3000 rounds; asc
+PURSUIT's Aura Burst chase asked for 1.5 m closer, but the move he rolls after breaking off sets the gap
+(Tiger Descends runs into the hero, Golden Gates stops at a fist's reach): now he closes in and that
+move's blows reach the hero. Neither was a game bug.
+
+**Next.** The owner's listen in a fight on the PR's preview (and on
+the phone); the mix (cue and blow levels against the music) by their ear.
+
 ## 2026-11-23 — Session 84: Tian Lei's blows audited; he stops attacking the air
 
 **Owner:** "ok looks good but i noticed a lot of the attack animations and attacks look unnatural. audit it and fix it to improve it. make the boss also stop attacking empty air if the player moves out of the distance". Branch `enemies/ascendant-ascii` (on PR #96's look pass). ADR-162 / Session 84 / M1.68.
