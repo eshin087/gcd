@@ -67,7 +67,7 @@ export const STEPS = freeze({
     max: 120,
     /** s between two refreshes of the batch (the fade steps at this rate: far below what the eye sees) */
     refresh: 0.1,
-    y: 0.06,
+    y: 0.1,
     /** the batch's soft depth (m): low, so a mark on the floor is not faded into it */
     soft: 0.08,
   },
@@ -79,35 +79,36 @@ export const STEPS = freeze({
   surfaces: {
     grass: {
       // torn blade bits on a sprint (player/fx.js COL.grassBit), and the trample
-      bits: { run: 0, sprint: 1.5, heavy: 4, glyph: "/\\',", color: [0.16, 0.26, 0.12], colorEnd: [0.05, 0.09, 0.04], size: [0.13, 0.2], up: [1.0, 1.8], out: [0.5, 1.2], life: [0.35, 0.6], gravity: -6, drag: 2.2, alpha: 0.8 },
+      bits: { run: 0, sprint: 1.5, heavy: 4, glyph: "/\\',", color: [0.16, 0.26, 0.12], colorEnd: [0.05, 0.09, 0.04], y: [0.15, 0.3], size: [0.15, 0.22], up: [1.0, 1.8], out: [0.5, 1.2], life: [0.35, 0.6], gravity: -6, drag: 2.2, alpha: 0.8 },
       trample: true,
     },
     earth: {
       // a small low dust puff (the hero's own dust, smaller)
-      puff: { run: 1.5, sprint: 2.5, heavy: 6, glyph: '.,:', color: [0.2, 0.18, 0.14], colorEnd: [0.09, 0.08, 0.065], size: [0.13, 0.2], sizeEnd: [0.26, 0.38], up: [0.15, 0.45], out: [0.35, 0.9], life: [0.4, 0.7], gravity: -0.6, drag: 3, alpha: 0.6 },
-      print: { life: 5, glyph: ',', size: 0.17, stretch: 0.2, color: [0.035, 0.03, 0.025], alpha: 0.5 },
+      puff: { run: 1.5, sprint: 2.5, heavy: 6, glyph: '.,:', color: [0.2, 0.18, 0.14], colorEnd: [0.09, 0.08, 0.065], y: [0.15, 0.3], size: [0.18, 0.26], sizeEnd: [0.32, 0.45], up: [0.15, 0.45], out: [0.35, 0.9], life: [0.45, 0.75], gravity: -0.6, drag: 3, alpha: 0.7 },
+      print: { life: 5, glyph: '0', size: 0.2, stretch: 0.3, color: [0.1, 0.085, 0.065], alpha: 0.75, hold: 1.6 },
     },
     stone: {
       // a tiny grit puff on a sprint or a landing only
-      puff: { run: 0, sprint: 1, heavy: 4, glyph: '.,', color: [0.18, 0.17, 0.15], colorEnd: [0.08, 0.075, 0.07], size: [0.1, 0.15], sizeEnd: [0.16, 0.24], up: [0.2, 0.5], out: [0.3, 0.8], life: [0.3, 0.5], gravity: -1.5, drag: 3, alpha: 0.55 },
+      puff: { run: 0, sprint: 1, heavy: 4, glyph: '.,', color: [0.18, 0.17, 0.15], colorEnd: [0.08, 0.075, 0.07], y: [0.15, 0.3], size: [0.14, 0.2], sizeEnd: [0.22, 0.3], up: [0.2, 0.5], out: [0.3, 0.8], life: [0.3, 0.5], gravity: -1.5, drag: 3, alpha: 0.65 },
     },
     sand: {
       // dry clay and grit: a puff on every step that the wind carries off (`wind`: the share of the
       // air's velocity it takes)
-      puff: { run: 1, sprint: 2, heavy: 5, glyph: '.,:', color: [0.24, 0.19, 0.13], colorEnd: [0.11, 0.085, 0.06], size: [0.12, 0.18], sizeEnd: [0.28, 0.4], up: [0.2, 0.5], out: [0.25, 0.7], life: [0.6, 1.0], gravity: -0.25, drag: 1.6, alpha: 0.55, wind: 0.8 },
+      puff: { run: 1, sprint: 2, heavy: 5, glyph: '.,:', color: [0.3, 0.24, 0.16], colorEnd: [0.13, 0.1, 0.07], y: [0.18, 0.35], size: [0.17, 0.25], sizeEnd: [0.34, 0.48], up: [0.2, 0.5], out: [0.25, 0.7], life: [0.9, 1.4], gravity: -0.2, drag: 0.9, alpha: 0.65, wind: 0.8 },
     },
     ash: {
       // a soft grey puff every step: it hangs a moment, then sinks; and a print that fills in
-      puff: { run: 2.5, sprint: 3.5, heavy: 8, glyph: '.,:', color: [0.17, 0.165, 0.16], colorEnd: [0.085, 0.082, 0.08], size: [0.14, 0.22], sizeEnd: [0.3, 0.42], up: [0.25, 0.6], out: [0.3, 0.8], life: [0.8, 1.2], gravity: -0.35, drag: 3.2, alpha: 0.55, wind: 0.3 },
-      print: { life: 12, glyph: '0', size: 0.2, stretch: 0.35, color: [0.02, 0.02, 0.022], alpha: 0.55 },
+      puff: { run: 2.5, sprint: 3.5, heavy: 8, glyph: '.,:', color: [0.22, 0.215, 0.21], colorEnd: [0.1, 0.098, 0.095], y: [0.2, 0.4], size: [0.2, 0.28], sizeEnd: [0.36, 0.5], up: [0.25, 0.6], out: [0.3, 0.8], life: [0.8, 1.2], gravity: -0.35, drag: 3.2, alpha: 0.7, wind: 0.3 },
+      print: { life: 12, glyph: '0', size: 0.26, stretch: 0.35, color: [0.12, 0.12, 0.125], alpha: 0.85, hold: 1.6 },
     },
     obsidian: {
       // no dust: a faint dim red glint, one or two letters, gone in 0.3 s
-      glint: { run: 1, sprint: 1.5, heavy: 3, glyph: "'`.", color: [0.32, 0.05, 0.035], colorEnd: [0.08, 0.01, 0.01], size: [0.1, 0.15], life: [0.22, 0.3], alpha: 0.7 },
+      // (a mark of the prints' batch: it lies on the floor)
+      glint: { run: 1, sprint: 1.5, heavy: 3, glyph: "'", color: [0.5, 0.08, 0.05], size: 0.18, life: 0.3, alpha: 0.75, hold: 1 },
     },
     leaf: {
       // a fallen leaf or two flicked aside (the litter's own leaves are asked to scatter too)
-      flick: { run: 1, sprint: 1.5, heavy: 4, glyph: ",'`", color: [0.12, 0.13, 0.07], colorEnd: [0.06, 0.065, 0.035], size: [0.14, 0.2], up: [0.6, 1.2], out: [0.6, 1.3], life: [0.4, 0.65], gravity: -4, drag: 2.5, alpha: 0.75 },
+      flick: { run: 1, sprint: 1.5, heavy: 4, glyph: ",'`", color: [0.12, 0.13, 0.07], colorEnd: [0.06, 0.065, 0.035], y: [0.15, 0.3], size: [0.15, 0.22], up: [0.6, 1.2], out: [0.6, 1.3], life: [0.4, 0.65], gravity: -4, drag: 2.5, alpha: 0.75 },
     },
   },
 
@@ -115,7 +116,7 @@ export const STEPS = freeze({
   scatter: { r: 0.5, k: 0.25, rHeavy: 1.4, kHeavy: 0.7 },
 
   /** wet ground (weather.wet over `min`): a tiny splash of two or three dim letters */
-  splash: { min: 0.3, run: 2, sprint: 3, heavy: 5, glyph: "'.", color: [0.16, 0.18, 0.22], colorEnd: [0.06, 0.07, 0.09], size: [0.09, 0.13], up: [0.8, 1.4], out: [0.4, 0.9], life: [0.22, 0.32], gravity: -9, drag: 1.5, alpha: 0.6 },
+  splash: { min: 0.3, run: 2, sprint: 3, heavy: 5, glyph: "'.", color: [0.16, 0.18, 0.22], colorEnd: [0.06, 0.07, 0.09], y: [0.1, 0.2], size: [0.1, 0.14], up: [0.8, 1.4], out: [0.4, 0.9], life: [0.22, 0.32], gravity: -9, drag: 1.5, alpha: 0.6 },
 
   /** per-level changes to a surface's answer: `perLevel[level][surface][part]` replaces that part
    *  (null: the part is left out) */

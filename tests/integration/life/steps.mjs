@@ -232,15 +232,16 @@ export default {
     T.assert(sum > 0 && sum <= 30, `grass at a sprint: a torn blade or two (${(sum / 10).toFixed(1)} a step)`);
     const st = n('ring', 0, 0, {});
     T.assert(st.d === 0, `stone at a run: nothing (${st.d})`);
-    // obsidian: a glint gone in 0.3 s
-    const ob = n('starless', 3, 3, { sprint: true });
-    T.assert(ob.d >= 1 && ob.d <= 3, `obsidian: a glint (${ob.d})`);
-    const op = tap(ob.w);
-    ob.w.life.steps.step(3, 3, { sprint: true });
-    ob.w.life.steps.step(3, 3, { heavy: true });
-    const l0 = op.live();
-    ob.w.step(0.32);
-    T.assert(l0 >= 1 && op.live() === 0, `obsidian: the glint is gone in 0.32 s (${l0} -> ${op.live()})`);
+    // obsidian: no dust, a glint on the floor (a mark of the prints' batch) gone in 0.3 s
+    const ob = T.build('starless', 'steps');
+    ob.step(0.1);
+    const oa = ob.counts().spawned.alpha;
+    ob.life.steps.step(3, 3, { sprint: true });
+    ob.life.steps.step(3.5, 3, { heavy: true });
+    const g0 = ob.life.steps.prints;
+    T.assert(ob.counts().spawned.alpha === oa && g0 >= 2 && g0 <= 5, `obsidian: no dust, a glint or two (${g0} marks, +${ob.counts().spawned.alpha - oa} dust)`);
+    ob.step(0.32);
+    T.assert(ob.life.steps.prints === 0 && ob.counts().own === 0, `obsidian: the glint is gone in 0.32 s (${ob.life.steps.prints})`);
     // sand: the puff goes downwind
     const w = T.build('ring', 'steps,wind');
     w.step(0.5);

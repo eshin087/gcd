@@ -235,7 +235,13 @@ export class Steps {
 
     if (A.bits) this._burst(A.bits, mode, q, x, z, 0);
     if (A.puff) this._burst(A.puff, mode, q * (heavy ? 1 : 1 + 0.6 * kick), x, z, A.puff.wind ?? 0);
-    if (A.glint) this._burst(A.glint, mode, q, x, z, 0);
+    if (A.glint) {
+      // (a glint lies ON the floor: it is a mark of the prints' batch, whose depth fade is low)
+      const want = (A.glint[mode] ?? 0) * q;
+      let n = Math.floor(want);
+      if (L.rand() < want - n) n++;
+      for (let i = 0; i < n; i++) this._print(A.glint, x + L.range(-0.15, 0.15), z + L.range(-0.15, 0.15), 0, 0);
+    }
     if (A.flick) this._burst(A.flick, mode, q, x, z, 0);
     if (A.print) {
       if (heavy) {
@@ -282,7 +288,7 @@ export class Steps {
       const sp = (spec.out ? L.range(spec.out[0], spec.out[1]) : 0) * big * K;
       const ca = Math.cos(a), sa = Math.sin(a);
       p.x = x + ca * 0.12;
-      p.y = 0.06 + L.rand() * 0.06;
+      p.y = spec.y ? L.range(spec.y[0], spec.y[1]) : L.range(0.2, 0.32); // (the shared pool fades a letter within ~0.5 m of the floor)
       p.z = z + sa * 0.12;
       p.vx = ca * sp + wx;
       p.vy = (spec.up ? L.range(spec.up[0], spec.up[1]) : 0) * big * K;
@@ -331,7 +337,7 @@ export class Steps {
     const r = R[this._n++];
     r.x = x;
     r.z = z;
-    r.rot = groundRot(dx, dz) - Math.PI / 2 + (this.life.rand() - 0.5) * 0.3;
+    r.rot = dx || dz ? groundRot(dx, dz) - Math.PI / 2 + (this.life.rand() - 0.5) * 0.3 : this.life.rand() * 6.283;
     r.age = 0;
     r.spec = spec;
     this._stale = true;
@@ -346,9 +352,9 @@ export class Steps {
       const r = this._recs[i], s = r.spec;
       const f = 1 - r.age / s.life;
       // it holds a while, then fills in
-      const a = s.alpha * Math.min(1, 1.6 * f);
+      const a = s.alpha * Math.min(1, (s.hold ?? 1) * f);
       pr.x = r.x; pr.y = Y; pr.z = r.z;
-      pr.size = pr.sizeEnd = s.size;
+      pr.size = pr.sizeEnd = Array.isArray(s.size) ? s.size[0] : s.size;
       pr.glyph = s.glyph;
       pr.color = pr.colorEnd = s.color;
       pr.alpha = pr.alphaEnd = a;
@@ -367,28 +373,28 @@ export class Steps {
       return;
     }
     if (!this._n) return;
-    // the prints age (records, oldest first: the expired ones are at the front)
-    let drop = 0;
+    // the marks age; the ones that are gone leave the list (the live keep their order, oldest first;
+    // a gone record is swapped to the back, ready for reuse)
+    const R = this._recs;
+    let w = 0, quick = false;
     for (let i = 0; i < this._n; i++) {
-      const r = this._recs[i];
+      const r = R[i];
       r.age += dt;
-      if (r.age >= r.spec.life) drop = i + 1;
+      if (r.age >= r.spec.life) continue;
+      if (r.spec.life < 2) quick = true;
+      if (w !== i) {
+        R[i] = R[w];
+        R[w] = r;
+      }
+      w++;
     }
-    if (drop) {
-      const R = this._recs;
-      for (let i = 0; i < drop; i++) this._spareTmp(R, i);
-      R.copyWithin(0, drop, this._n);
-      // (the dropped records go to the back, ready for reuse)
-      for (let i = 0; i < drop; i++) R[this._n - drop + i] = this._tmp[i];
-      this._n -= drop;
+    if (w !== this._n) {
+      this._n = w;
       this._stale = true;
     }
     this._refresh += dt;
-    if (this._stale || this._refresh >= STEPS.prints.refresh) this._redraw();
-  }
-
-  _spareTmp(R, i) {
-    (this._tmp ??= new Array(this._max ?? STEPS.prints.max))[i] = R[i];
+    // (a short mark, a glint, fades every frame; the prints ten times a second)
+    if (this._stale || quick || this._refresh >= STEPS.prints.refresh) this._redraw();
   }
 
   _wipe() {
