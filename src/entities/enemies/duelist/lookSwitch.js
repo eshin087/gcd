@@ -50,7 +50,8 @@ export const PICKED = Object.freeze({
   sheathLook: 'd', // his body: the Wanderer (the owner's pick, 2026-11-22, over a, mourning white)
   drawCut: 'a', // the draw's cut: one white line (the owner's pick)
   sheathArt: 'a', // his print: the hero's ink-line art (the owner's pick, 2026-11-22, over 0, the wyrm's digits; ADR-152)
-  // (sheathTone, sheathMark: rendered for the owner, not picked yet: their Lab rows are 'awaiting')
+  sheathTone: 'a', // his palette: indigo and sand (the owner's pick, 2026-11-23, of three)
+  // (sheathMark: rendered for the owner, not picked yet: its Lab row is 'awaiting')
 });
 
 /** Switches the owner has not picked yet (their rendered options wait for the owner): in the Lab's LOOKS

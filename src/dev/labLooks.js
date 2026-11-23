@@ -53,7 +53,7 @@ export const LOOK_SWITCHES = Object.freeze([
   ['drawCut', ['a', 'b'], 'a', 'a', false, ['grove'], 'the draw\'s cut: a one white line, b with an afterimage'],
   // --- grove: Lu Wusheng readable (ADR-152): the print picked; the palette and the mark wait for the owner
   ['sheathArt', ['0', 'a'], '0', 'a', true, ['grove'], 'Lu Wusheng\'s print: a the hero\'s ink-line art, 0 the wyrm\'s digits (a reload)'],
-  ['sheathTone', ['a', 'b', 'c'], 'a', 'a', true, ['grove'], 'the Wanderer\'s palette: a indigo and sand, b pale and cold, c moss and rust (a reload)', 'awaiting'],
+  ['sheathTone', ['a', 'b', 'c'], 'a', 'a', true, ['grove'], 'the Wanderer\'s palette: a indigo and sand, b pale and cold, c moss and rust (a reload)'],
   ['sheathMark', ['a', 'b', '0'], 'a', 'a', true, ['grove'], 'his mark: a a torn strip on the scabbard, b a white streak in the hair, 0 none (a reload)', 'awaiting'],
 ]);
 
