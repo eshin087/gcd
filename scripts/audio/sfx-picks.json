@@ -1,7 +1,4 @@
 {
-  "cue-blue": [
-    "cand/cue-blue/05-blade-ring.wav"
-  ],
   "cue-red": [
     "cand/cue-red/01-log-drum-boom.wav"
   ],
@@ -43,5 +40,44 @@
   ],
   "beast-tail": [
     "cand/beast-tail/01-megaswosh2-slow.wav"
+  ],
+  "parry": [
+    "parry--r1.wav"
+  ],
+  "parry-blue": [
+    "parry-blue--r2.wav"
+  ],
+  "hurt": [
+    "hurt--r1.wav"
+  ],
+  "hit-scale": [
+    "hit-scale--d1.wav"
+  ],
+  "cut-light": [
+    "cut-light--d2.wav"
+  ],
+  "cut-heavy": [
+    "cut-heavy--d1.wav"
+  ],
+  "slam": [
+    "slam--r2.wav"
+  ],
+  "flurry-cut": [
+    "flurry-cut--d1.wav"
+  ],
+  "flurry-coil": [
+    "flurry-coil--d2.wav"
+  ],
+  "plunge-dive": [
+    "plunge-dive--r2.wav"
+  ],
+  "plunge-hit": [
+    "plunge-hit--r2.wav"
+  ],
+  "clash": [
+    "clash--r2.wav"
+  ],
+  "boss-guard": [
+    "boss-guard--d2.wav"
   ]
 }
