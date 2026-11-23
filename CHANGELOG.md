@@ -15,7 +15,7 @@ Seventy-four pieces of work since 0.4.0:
   eyes; parry a thrown car and it is cut in two. Fly-By, Curbside, Red Glare, Through the Tower, See the World
   (carried up over the city and thrown down), Meteor, The Falling Sky, Monument (his own statue's arm). At 66 %
   the smile drops and every screen turns crimson; at 33 % no one is watching and the city goes dark. No
-  reward yet. Look options for the owner: `?halLook=a|b|c`, `?glare=a|b|c`, `?city=a|b|c`. *Changed (ADR-164):*
+  reward yet. His body is the owner's pick, the blue suit and red cape (`?halLook=b|c` the others); look options still for the owner: `?glare=a|b|c`, `?city=a|b|c`. *Changed (ADR-164):*
   his cape and colours read at game size: from the front a wide red cape frames him (it hung hidden behind
   him), a clean red inside and out, a brighter blue suit, a gold belt that prints gold; it billows while he
   hovers and trails long in a pass (the owner's pick of four steps); `?halCape=0|1|2|3` steps back to how he

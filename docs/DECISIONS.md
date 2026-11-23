@@ -4919,5 +4919,7 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   `docs/looks/halcyon/halCape.png` and the three `halLook_*` re-rendered with step 3 (the old ones kept as
   `halLook_*_before`). Not solved: the cloth parts' lavender ink still tints the lining's lines pink at a
   grazing angle (the per-part ink is shared by every rig on the page).
-- **The owner's pick (2026-11-23):** step 3, "billowing", from `halCape.png`. `halCape: '3'` moved from
-  `PENDING` into `PICKED`; the default it already drew, so nothing visible changed.
+- **The owner's picks (2026-11-23):** his body, `halLook` a (the deep blue suit and red cape), from the
+  `halLook_*` sheets drawn with step 3; and the cape, step 3, "billowing", from `halCape.png`. `halLook: 'a'` and
+  `halCape: '3'` moved from `PENDING` into `PICKED`; the defaults they already drew, so nothing visible
+  changed. ADR-161's `glare` and `city` still wait.
