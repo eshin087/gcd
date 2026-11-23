@@ -5081,3 +5081,151 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   the air stand down (the arrival's DEFAULT shot does not know where their spawn is; the air's quiet
   recipe would silence their own voices), weather, litter and creatures have nothing to draw, and the
   wind and the steps run on their defaults. Their blocks are open (ROADMAP).
+
+## ADR-168 — Xin Yi reworked (1): phase 1 in two gears, the flurry burst, acrobatic kicks and air, Borrowed Wall off the side upright (2026-11-23)
+
+- **Context:** the owner played the merged fight (ADR-156) and asked, word for word: "make him more ascii like
+  to match the main character feel. he's too detailed and we need the ascii look to hide the imperfections.
+  his attacks and animation needs to be improved. he's overall boring right now and you need to add way more
+  faster combos, cool acrobatic kicks, air attacks, jumping from the side wall to kick, flurries of combos,
+  especially in the first phase. 2nd phase make his bullets not put you in a stunlock so player can parry or
+  dodge out of it in a small window." A planning session asked four questions; the owner took the
+  recommended option of each: phase 1 is one hand, then both about a third in; strings keep the 0.32 s floor
+  and speed comes from longer strings, less rest and one-cue flurry bursts; bullets in bursts of three with
+  gaps (ADR-169); he looked too detailed on the iPhone and the desktop (ADR-170). Measured first: phase 1 had
+  six moves, 65 - 71 cues a minute, the longest gap 3.29 s, 7 % dodges, and Borrowed Wall almost never ran
+  (an upright within 4.5 m only).
+- **Decision:**
+  1. **Two gears inside phase 1** (same bar, same gate). Gear 1 one hand (the left behind his back). At bar 1
+     <= 0.83, between two moves (in his footwork or a move's recovery: under steady links he never stood in his
+     footwork for seconds), the move `secondHand`: he flips back, the left hand comes out, a shake of the
+     wrist, a two-handed guard (`GEAR2_GUARD`); 0.9 s with his guard down (a real opening; no ring, no
+     invulnerability); `dragon:gear`, the banner HE STOPS TEACHING. Gear 2 realises phase 1 two-handed round
+     its own guard and adds A Hundred Hands, The Long Lesson and Storm Step; gear 1's moves stay at x 0.55.
+     Per-gear pressure through getters on `TUNING.idleGap`, `chain`, `pressure.chainDepth`, `chainRest`
+     (`GEARED.now`), so the engine reads them unchanged.
+  2. **The flurry burst** (`flurry: { n, dur, cap }` on a `sustain` + `selfHit` beat; flurry.js): ONE cue,
+     one windup >= 0.42 s, one glint, one ledger interval; 6 - 8 blows drawn over 0.7 - 0.75 s (the limbs
+     alternate at ~10 a second, a fan of three trails, an afterimage every other blow, a patter); the hero's
+     answer is decided ONCE by the first blow that finds him: a parry turns it all (+ 20 posture, a heavy
+     deflect), a held guard pays at most `cap` (30) guard and no health, a roll dodges it all, a hit is one
+     stagger and chip that never re-staggers, pushed out of reach. At most one burst a move; its own category.
+     The name was grepped against every boss's move data first (`burst` is Tian Lei's beat field: not used).
+  3. **The kicks** (`strikes.js`, built on Tian Lei's builders): the spin back kick, the spinning backfist,
+     the tornado, the butterfly, the flash kick (a back flip, he lands 2.4 m back), the no-hand cartwheel kick,
+     bicycle snaps hanging in the air, the drop heel (a red ring), the flying knee (dashes stop 1.35 m short).
+     A flying foot is keyed in BODY space and turned into model space through the key's own rotation, so a
+     turn or a flip carries the legs (the feet are model space in the animator).
+  4. **The moves** (COMBAT.md table): Three Steps on Air, The Sky Turns Twice, Crane Crossing Water, Moon Over
+     the Shoulder, Rain on One Roof (gear 1); A Hundred Hands, The Long Lesson, Storm Step (gear 2); The First
+     Lesson's beckon 0.5 s and a spin back kick; Climbing the Stair four kicks; Idle Hand a spinning backfist
+     and a drop heel (red: the dodges); The Sky Turns Twice ends on a drop heel (a sweep after the spins did not
+     read at its contact); the counter a spin back kick; his streak flurry a burst, a tornado, a palm;
+     Close Iron a spin kick before the point-blank shot; A Thousand Hands a burst in the middle; Iron in the
+     Air (phase 2: a sideways leap, one bullet burst, the heavy shot).
+  5. **Borrowed Wall reworked** and used often (weight 1.8, cooldown 5, band 3.5 - 12, the first far / away
+     link and out of Brushing Dust): the upright he reaches by 0.4 of the windup whose flight crosses the
+     hero's facing most (the dojo's posts, the screens, the pillars, the code columns), two steps up its face
+     (1.8 m), THE SPRING (a bite on the upright, a thump; the target fixed), a flat arc, the blow in the air:
+     a flying side kick (blue flare) or a drop heel (red, a ring on the spot); none in reach: the same off the
+     floor beside the hero. His root is driven through the whole beat; never inside a collider or out of bound.
+     The long hang (time 0.45 for 0.18 s at the arc's top, the hero in the kick's line, once in 12 s) is in.
+  6. **ADR-162's kit for him** (a helper agent, `wokenOne` + `duelist/feetPlan.js`): soft arms and legs (`armSoft` / `legSoft`, the
+     hero's numbers), the feet planner lifted out of ascendant.js into `duelist/feetPlan.js` (Tian Lei calls the
+     same code: his `asc.mjs audit` / `auditfight` print byte-identical before and after), palms on a dash stop
+     1.35 m short, `pressure.pursue` (Tian Lei's block). The audit (`woke.mjs audit`, opt-in; main measured first,
+     84 runs): punches' elbows at contact 126 - 131 deg -> 143 - 164 (mean 152); planted feet sliding 198.5 m ->
+     64.7 m (the worst frame 788 -> 272 mm), strings with the hero circling 1.8 - 11.3 m -> 0.74 - 1.89 m a string;
+     runs with a jolt over 300 mm/f2 41 -> 25; swings thrown at air 2 - 7 a minute (flee / retreat bots) -> 0 for
+     every bot and phase. On the new moves the audit then found the spin back kick's knee flipping at the strike
+     (jolts up to 1228) and a sweep after a spin jolting in its tuck: the spin kick's knee pole keyed one way, the
+     sweeps after spins replaced by drop heels, the cartwheel and tornado turned over their windup.
+     `motionfix`: every string's worst jolt 310 - 473 (main 353 - 653).
+- **Numbers (`woke.mjs pace`, three seeds x 60 s a stage, the real set):** cues a minute by STAGE: phase 1 gear 1 85.2,
+  gear 2 87.3, phase 2 74.9, phase 3 76.7 (seed means) (main: phase 1 65.1 -
+  71.1, mean 67.2); the longest gap 2.42 / 2.39 / 2.23 / 3.32 s (main's phase 1: 3.29); dodges 13 / 10 / 7 / 21 %
+  of cues (main's phase 1: 7 %); 0 conflicting cues; phases 2 - 3 at 0.86 - 0.88 of gear 2. Pinned from the worst
+  seed with a margin (`pressure.meter`: minRate 70 / 78 / 65 / 62, maxGap 3.3 / 3.0 / 3.5 / 3.9). Short of the
+  plan's targets, said plainly: gear 2's 95 - 105 (a burst counts one cue), 15 - 25 % dodges in phase 1 (13 % / 10 %).
+  STRATEGY (god mode, seeds 4242 and 7): mixed 72 s, parry 106, block-only 75, lean 112, dodge-only 111: dodging
+  and leaning are not the fastest. The mortal block-only bot survives and wins (61 - 89 s):
+  no health through a block. WIN: the fencing bot wins through both bars in 66 s (84
+  before).
+- **Why not** more cues in gear 2 by cutting the bursts: a burst of 7 - 8 blows counts as ONE cue by the
+  owner's choice (one parry answers it); gear 2's count sits below the plan's 95 - 105 because of that, while
+  its strings run at the 0.32 s floor. **Why not** let a burst re-stagger: a hero hit by the first blow must be
+  free before the next cue (`woke.mjs flurry`: 0.79 s).
+- **Found on the way:** a deathblow on a posture break with less of bar 1 left than the execution's damage
+  killed him in phase 2 (the denser fight breaks him more): it is THE FALL now, as bar 1 empty always was.
+- **Consequences:** tests `woke.mjs` `flurry` (one parry, one guard under the cap, one dodge, one stagger,
+  free before the next blow), `wall` (an upright in reach used, 2.15 m up its face, the floor spring, both
+  blows' tells, never inside a collider), `gear` (gear 2 at 0.80, between moves, the opening), `pace` per
+  stage, `timing` (a burst's later blows share its cue). Lab: Gear 1 / 2, Wall kick / heel; Training: the
+  burst, the wall kick, a bullet burst. Cut (the plan's cut order): phase 3's Falling Leaves, the pillar run
+  inside Iron Rain, `doubleWall`.
+
+## ADR-169 — Xin Yi reworked (2): the bullets' rule: a burst is one cue and one result, a hit is a short flinch, nothing locks the hero (2026-11-23)
+
+- **Context:** Iron Rain fired 11 shots 0.14 s apart, each with knock-back 0.4: every shot re-entered the
+  hero's 0.4 s stagger and cleared his input buffer (player.js), so the first slug that landed locked him
+  through the stream and the heavy shot after it. The owner: "make his bullets not put you in a stunlock so
+  player can parry or dodge out of it in a small window"; asked, bursts of three with a gap.
+- **Decision:** THE RULE (`woke.mjs nolock`): after any bullet of his hits the hero, the hero can act for at
+  least 0.25 s before the next thing of his that can hurt him arrives, and a bullet never re-staggers a hero
+  flinching from a bullet.
+  1. Iron Rain is three bursts of three (0.09 s inside, 0.5 s between), then the heavy shot (B, returnable).
+     Each burst ONE cue (the beat's glint for the first; a glint at the muzzle for the others, `flashLead`
+     before the first slug arrives: the slugs themselves are `quiet`) and ONE result (iron.js `slugHit`).
+  2. The aim is fixed at the burst's glint (or as it leaves, if earlier), led by the hero's speed then; the
+     slugs `keepAim` (a fairness hang does not re-aim them): a roll or a turn after the glint is clean.
+  3. A hit: the first slug that lands is a 0.18 s FLINCH (player.js `hit.stun`: a shorter stagger that keeps
+     the input buffer; `hit.mercy` 0.1 s more in which no `stun` hit staggers again); EVERY slug carries it,
+     whatever the burst's result so far (a guard let go after a blocked first slug, a roll whose i-frames end
+     inside the burst: the review of the PR found those gave a full 0.4 s stagger and 0.05 - 0.12 s free), so a
+     burst staggers at most once and its other slugs hurt without staggering; each slug keeps its knock-back, so
+     a raised guard pays guard, never health, and every slug that lands starts `shotMercy`. A parry turns the burst (its slugs spark off the blade for 0.3 s); a held guard pays 4 a slug
+     (12 a burst, 36 a volley, 9 the heavy one), never health.
+  4. Every other shot of his is harmless inside `shotMercy` 0.45 s of a bullet that hit him (iron.js `shotHit`).
+  5. Iron in the Air uses the same burst (one, `bursts: 1`).
+- **Numbers:** `woke.mjs nolock`: a hero who stands unguarded through Iron
+  Rain takes 3 flinches (one a burst) and the heavy shot, never a second stagger from a bullet; the least free time
+  between two of his hits after a bullet 0.32 s (>= 0.25); hit by burst 1, then guard / parry / roll: burst 2
+  blocked / parried / dodged; the guard let go after a blocked slug 1, and a roll straight back whose i-frames
+  end inside the burst: every slug's stagger the 0.18 s flinch, 0.42 / 0.37 s free before the next hurt (the
+  old code: 0.49 - 0.50 s staggers, 0.12 / 0.05 s free). Each burst lands 7 - 10 ms from its glint + 0.26 s (`timing`). A held guard through a
+  whole volley pays 45 guard, no health (`cover`). Before: one slug locked the hero through all eleven and the
+  heavy shot.
+- **Why not** a separate stagger state: the hero's own stagger with a shorter length and a kept buffer is the
+  smallest change; every field is additive and inert for every other attacker (integ / duel / lord / asc /
+  fox / sheath suites green).
+- **Consequences:** `woke.mjs nolock` (every phase-2 move on a hero who stands unguarded; hit by burst 1, then
+  guard / parry / roll: burst 2 blocked / parried / dodged), `cover` (a held guard through a volley: guard
+  only), `timing` (each burst lands 7 - 10 ms from its glint + 0.26 s). Two additive fields in
+  `ascendant/fx.js` (`quiet`, `keepAim`), set only by his slugs.
+
+## ADR-170 — Xin Yi reworked (3): printed like the hero: his letters follow his size, the quiet print, simpler shapes, a coat that moves (2026-11-23)
+
+- **Context:** he was in the hero's ink-line art but on the bosses' FIXED 4 px cell (about twice the hero's
+  letters across him from 1080p up), with a LIFTED print (ink gains 1.6: his jade silhouette at full light at
+  any distance, inner seams, a lifted skin fill, a glowing glint) and small modelled parts (the glasses' arms
+  and bridge, two collar faces, lapel facings): a lit line drawing of a 3D model. The owner saw it as too
+  detailed on the iPhone and the desktop. Built by a helper agent; the owner picked from the sheets.
+- **The owner's pick (2026-11-23, from the before | a | b sheets at 1280x720, 2560x1440, 852x393 and 734x343):**
+  "Print a": both switches ship at a (`lookSwitch.js` PICKED; their call-site default is '0', as he shipped,
+  so `?looks=old` shows it); b and 0 stay behind the switches and in the Lab's LOOKS rows.
+- **Decision:** two switches, built with a (Lab LOOKS rows):
+  1. `?oneLetters=a|0`: `WOKEN_KIT.letters`, Tian Lei's getter (ADR-155): his cell follows his size (cells
+     his / the hero's: 4/4 at 1280x720, 6/6 at 1920x1080, 8/8 at 2560x1440, 4/4 on 852x393 and 734x343).
+  2. `?onePrint=a|b|0`: a = every ink / rim gain <= 1.5 (the edge fades with distance), the jade edge at 0.55 of
+     the lifted one, no far line, the skin at `HERO_INK.skin`'s numbers with its fill x 0.62 (ADR-155's factor:
+     the face printed ~1.5x the hero's), no glow on the glint and the muzzles, phase 3's edge x 1.35; simpler
+     shapes (the glasses one dark band, one collar shape, a flat shirt V; rig meshes 59 -> 57); the coat stirs
+     from phase 1 (tails 0.048, sides 0.03, the closed front 0.01) and every panel's swing is clamped (75 deg
+     out, 20 in: the cartwheel's 122 / 44 deg before). b = a, and one cell bolder on a frame under 540 px tall
+     (an additive `kit.letterBias`; 6 cells on the phones). 0 = as shipped exactly.
+- **Close-ups:** every close shot (the Bend 30 m, the fall 28 m, the rising ~31 m, the deathblow 27.5 m) stays
+  beyond the hero's `near` 20 m: the rule never falls back to the fine cell; nothing pulled back.
+- **Why not** a renderer change for the phone: `letterBias` is one additive step on the rule's own cell.
+- **Consequences:** `woke.mjs herolike` (the cells on five screens, the quiet print's numbers, 0 = main's table,
+  the coat inside its swing). Left: 3 - 6 cm of hanging cloth still meets the legs in strides (a shin push on
+  the coat's lower segment would need `anim.js`); the clamp could move into `anim.js` as per-panel limits.

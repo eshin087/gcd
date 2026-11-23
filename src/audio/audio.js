@@ -995,6 +995,11 @@ export class AudioEngine {
     on('dragon:stop', () => this.play('stopHum', this._atDragon()));
     on('dragon:sent', () => this.play('codeBurst', this._atDragon()));
     on('dragon:reload', () => this.play('gunClatter', this._atDragon()));
+    // the rework (ADR-168): a burst's blows patter (a soft dry tick each), the kick-off from a wall thumps,
+    // the second hand coming out (gear 2) is a short rising hum
+    on('dragon:burst', (d) => this.play('burstPatter', this._atDragon({ i: num(d.i, 0) })));
+    on('dragon:wallKick', () => this.play('land', this._atDragon()));
+    on('dragon:gear', () => this.play('stillHum', this._atDragon({ dur: 0.5 })));
     on('dragon:unwrite', () => this.play('morphTicks', this._atDragon({ short: true })));
     on('dragon:dejavu', () => this.play('dejaBlip'));
     on('dragon:stillHand', (d) => this.play('stillHum', this._atDragon({ dur: num(d.dur, 1.5) })));

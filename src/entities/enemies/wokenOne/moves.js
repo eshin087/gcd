@@ -1,8 +1,9 @@
 import { TELL } from '../../../combat/rules.js';
 import { makeRealise } from '../duelist/realise.js';
 import { X as ASC, CLIPS as ASC_CLIPS } from '../ascendant/moves.js';
-import { PHASE_POSES, BEHIND } from './poses.js';
-import { TUNING } from './tuning.js';
+import { PHASE_POSES, GEAR2_POSES, BEHIND } from './poses.js';
+import { TUNING, GEARED } from './tuning.js';
+import { spinBack, spinFist, tornado, butterfly, flash, aerial, bicycle, dropHeel, flyKnee, burstKeys, BURST_PART } from './strikes.js';
 
 // Xin Yi's moves and reaction clips, as data (ADR-156; COMBAT.md → "The One Who Woke"). He fights
 // BARE-HANDED (phase 2: a gun in each hand, which strikes as a fist and fires): his blows are built with
@@ -36,7 +37,8 @@ const N = TELL.NORMAL, B = TELL.BLUE, R = TELL.RED, K = TELL.BLACK;
 const { punch, kick, elbow, strikeKeys, F, feet: FT } = ASC;
 
 /** A dash on a beat: from `from` of the windup to the impact, stopping `stop` m short, `max` m at most. */
-const dash = (max, from = 0.6, stop = 1.0) => ({ dash: { from, to: 1.0, stop, max }, close: 0 });
+// (a palm thrust on a dash stops 1.35 m short: its lunge reaches that far, ADR-162's rule)
+const dash = (max, from = 0.6, stop = 1.35) => ({ dash: { from, to: 1.0, stop, max }, close: 0 });
 /** His head turned away from the hero through a blow (he looks away between blows: phase 1). */
 const away = (beat, k = 0.7) => ({ ...beat, keys: beat.keys.map(([u, p]) => [u, u < 0.95 ? { ...p, hdY: (p.hdY ?? 0) + k } : p]) });
 
@@ -119,6 +121,33 @@ export const FALLEN = { bY: -0.84, pitch: -1.45, hdX: -0.2, yaw: 0, rH: [-0.36, 
 // ---------------------------------------------------------------- beats
 const T = TUNING;
 const ST = T.stance;
+/** Iron Rain's lit window: its bursts' slugs, last to last (iron.js _rainStep). */
+const RAIN_DUR = (() => {
+  const I = T.ironRain;
+  return (I.bursts - 1) * ((I.per - 1) * I.gap + I.rest) + (I.per - 1) * I.gap;
+})();
+/** One burst of Iron Rain, first slug to last. */
+const BURST1_DUR = (T.ironRain.per - 1) * T.ironRain.gap;
+/** Iron in the Air: a step, the leap sideways, flat in the air (rolled onto his side), both guns out. */
+const leapKeys = () => [
+  [0.35, F({ yaw: -0.1, bY: -0.3, pitch: 0.1, rH: [0.06, -0.2, 0.3], lH: [-0.06, -0.2, 0.3], ...FT.LOW })],
+  [0.7, F({ yaw: 0.0, roll: 1.2, bY: -0.1, rH: [0.12, 0.1, 0.6], rP: [-0.8, -0.2, -0.4], lH: [-0.12, 0.1, 0.6], lP: [0.8, -0.2, -0.4], rF: [-0.2, 0.7, -0.2], lF: [0.2, 0.9, -0.1], flat: 0.2 })],
+  [1.0, { ...F({ yaw: 0.0, roll: 1.45, bY: -0.06, rH: [0.12, 0.1, 0.6], rP: [-0.8, -0.2, -0.4], lH: [-0.12, 0.1, 0.6], lP: [0.8, -0.2, -0.4], rF: [-0.3, 0.8, -0.2], lF: [0.1, 1.0, -0.1], flat: 0.2 }), e: 'l' }],
+  [1.6, F({ yaw: 0.0, roll: 0.9, bY: -0.2, rH: [0.12, 0.1, 0.6], lH: [-0.12, 0.1, 0.6], rF: [-0.3, 0.4, -0.1], lF: [0.2, 0.5, 0.0], flat: 0.3 })],
+  [2.0, F({ yaw: -0.2, roll: 0.0, bY: -0.4, pitch: 0.1, rH: [0.12, -0.1, 0.5], lH: [-0.12, -0.1, 0.5], ...FT.LOW })],
+];
+/** Gear 2's opening: a back flip off the hands (the left hand comes out from behind his back), the wrist
+ *  shaken once, the two-handed guard (lead hand open forward, rear hand at the chest). */
+const secondHandKeys = () => [
+  [0.1, F({ bY: -0.32, pitch: 0.2, rH: [0.0, -0.3, 0.1], ...BEHIND, ...FT.OR })],
+  [0.28, F({ bY: 0.0, pitch: -1.6, hdX: -0.4, rH: [-0.1, 0.5, -0.1], lH: [0.1, 0.5, -0.1], rF: [-0.12, 0.9, 0.3], lF: [0.12, 0.8, 0.1], flat: 0.2 })],
+  [0.45, { ...F({ bY: -0.3, pitch: 0.2, rH: [0.06, -0.2, 0.3], lH: [-0.16, -0.06, 0.3], lP: [0.8, -0.5, 0.2], ...FT.OR }), e: 'o' }],
+  [0.6, F({ bY: -0.16, yaw: -0.2, rH: [0.06, -0.1, 0.24], lH: [-0.2, 0.06, 0.34], lP: [0.9, 0.2, 0.3], ...FT.OR })],
+  [0.7, F({ bY: -0.16, yaw: -0.2, rH: [0.06, -0.1, 0.24], lH: [-0.12, 0.0, 0.34], lP: [0.9, -0.6, -0.2], ...FT.OR })],
+  [0.8, F({ bY: -0.16, yaw: -0.2, rH: [0.06, -0.1, 0.24], lH: [-0.2, 0.06, 0.34], lP: [0.9, 0.2, 0.3], ...FT.OR })],
+  [1.0, F({ bY: -0.18, yaw: -0.3, hdY: 0.3, rH: [0.1, 0.06, 0.2], lH: [0.02, 0.1, 0.4], lP: [0.8, -0.8, 0.1], ...FT.OR })],
+  [2.0, F({ bY: -0.18, yaw: -0.3, hdY: 0.3, rH: [0.1, 0.06, 0.2], lH: [0.02, 0.1, 0.4], lP: [0.8, -0.8, 0.1], ...FT.OR })],
+];
 /** A counter stance (Tian Lei's Still Water): a feint with a bait hold, catching from ST.from. */
 const stance = (P) => ({
   tell: N, windup: ST.windup, fixed: true, hold: ST.hold, active: 0.05, damage: 0, feint: true, stance: { from: ST.from, open: ST.open },
@@ -157,28 +186,59 @@ const risingKeys = () => [
   [2.0, F({ ...STILL })],
 ];
 
+// ---------------------------------------------------------------- the rework's beats (ADR-168)
+/**
+ * A FLURRY BURST (flurry.js): one cue, one windup, one glint, then `n` blows drawn over `dur` s, ONE
+ * result. `kind` 'chain' (both fists) | 'right' (the right hand alone: gear 1) | 'kicks'. `cap`: the
+ * most a held guard pays for the whole burst.
+ */
+const burst = (kind, tell, windup, damage, n = 7, dur = 0.7, o = {}) => {
+  const { left = false, cock = 0.72, cap = 30, ...extra } = o;
+  return {
+    tell, windup, active: 0.06, damage, knockback: 0.5, flurry: { n, dur, cap, kind }, sustain: { dur, tick: dur / (n - 1) }, selfHit: true, noWorld: true,
+    zone: kind === 'kicks' ? { kind: 'sector', r: 2.0, ang: 0.7 } : { kind: 'sector', r: 1.9, ang: 0.8 }, part: BURST_PART[kind] ?? 'fistR',
+    track: 0.85, keys: burstKeys(kind, n, cock, left), ...extra, cock,
+  };
+};
+/** His low sweep (red, knockdown, a ring 2.2): Tian Lei's. */
+const sweep = (windup, damage, o = {}) => ({ ...kick('sweep', R, windup, damage, o), knockdown: true, ring: 2.2 });
+/** A palm on a dash (it stops 1.35 m short: ADR-162's rule, no blow ends inside the hero). */
+const palmDash = (tell, windup, damage, o = {}) => ({ ...punch('palm', tell, windup, damage, o), ...dash(2.6, 0.55, 1.35) });
+/** The flying side kick out of Borrowed Wall (a parry moment): Tian Lei's flying kick, the zone longer. */
+const wallKick = () => ({ ...kick('flying', B, 1.05, 22, { flare: true, cock: 0.62 }), lift: null, zone: { kind: 'line', r: 2.6, w: 0.9 }, wallBlow: 'kick' });
+/** ... or the drop heel onto the spot fixed at the spring (red: roll). */
+const wallHeel = () => ({ ...dropHeel(R, 1.05, 22, { from: 0, cock: 0.62 }), lift: null, zone: { kind: 'ring', r: 2.4 }, ring: 2.4, knockdown: true, wallBlow: 'heel' });
+
 /** The moves whose string deja vu replays (TUNING.dejavu): their builders, `L` true = mirrored. */
 const DEJAVU_BUILD = {
+  /** The First Lesson: the beckon, then five blows of the right hand and the feet; the palm a parry moment. */
   lesson: (L) => ({
-    label: 'The First Lesson', phase: 1, weight: [2.2, 1.2, 0.9], cooldown: 7, band: [0, 3.4], recovery: 0.7, cat: 'string',
+    label: 'The First Lesson', phase: 1, weight: [2.2, 1.2, 0.9], cooldown: 6, band: [0, 3.4], recovery: 0.6, cat: 'string',
     beats: [
-      { feint: true, beckon: true, windup: 0.7, active: 0.05, close: 0, track: 1, part: 'fistR', keys: beckonKeys() },
+      { feint: true, beckon: true, windup: 0.5, active: 0.05, close: 0, track: 1, part: 'fistR', keys: beckonKeys() },
       punch('cross', N, 0.46, 9, { left: L }),
-      punch('hook', N, 0.34, 9, { left: L }),
       punch('backfist', N, 0.34, 9, { left: L }),
-      kick('front', N, 0.36, 10, { left: L }),
+      kick('front', N, 0.34, 10, { left: L }),
+      spinBack(N, 0.36, 10, { left: L }),
       punch('palm', B, 0.5, 20, { flare: true, left: L }),
     ],
   }),
+  /** Climbing the Stair: front, round, the other leg's round high, the spin back kick (a parry moment). */
   stairKick: (L) => ({
-    label: 'Climbing the Stair', phase: 1, weight: [1.6, 1.0, 0.8], cooldown: 6, band: [0, 3.6], recovery: 0.65, cat: 'string',
-    beats: [kick('front', N, 0.48, 10, { left: L }), kick('round', N, 0.36, 11, { left: L }), kick('side', B, 0.42, 18, { left: L })],
+    label: 'Climbing the Stair', phase: 1, weight: [1.8, 1.0, 0.8], cooldown: 5, band: [0, 3.6], recovery: 0.55, cat: 'string',
+    beats: [
+      kick('front', N, 0.46, 10, { left: L }),
+      kick('round', N, 0.34, 10, { left: L }),
+      kick('round', N, 0.34, 10, { left: !L }),
+      spinBack(B, 0.42, 20, { flare: true, left: L }),
+    ],
   }),
   closeIron: (L) => ({
-    label: 'Close Iron', phase: 2, weight: [0, 1.8, 0], cooldown: 5, band: [0, 3.2], recovery: 0.6, cat: 'string',
+    label: 'Close Iron', phase: 2, weight: [0, 2.2, 0], cooldown: 5, band: [0, 3.2], recovery: 0.6, cat: 'string',
     beats: [
       elbow(N, 0.46, 10, { left: L }),
       punch('backfist', N, 0.34, 10, { left: L }),
+      spinBack(N, 0.36, 10, { left: L }),
       { ...punch('cross', B, 0.5, 20, { flare: true, left: L }), iron: 'point', zone: { kind: 'line', r: 3.2, w: 0.9 } },
     ],
   }),
@@ -186,8 +246,8 @@ const DEJAVU_BUILD = {
     label: 'A Thousand Hands', phase: 3, weight: [0, 0, 1.8], cooldown: 6, band: [0, 3.4], recovery: 0.7, cat: 'string',
     beats: [
       punch('cross', N, 0.46, 8, { left: L }),
-      punch('hook', N, 0.32, 8, { left: !L }),
-      punch('cross', N, 0.32, 8, { left: L }),
+      // (the three middle punches: one burst, ADR-168)
+      burst('chain', N, 0.46, 16, 8, 0.75, { left: L }),
       // (skipped frames: he tears into a column of digits and prints again at the hero's other side)
       { ...punch('hook', N, 0.46, 8, { left: !L }), flit: { r: 2.3 } },
       punch('cross', N, 0.32, 8, { left: L }),
@@ -202,10 +262,72 @@ export const DEJAVU_MOVES = Object.freeze(Object.keys(DEJAVU_BUILD));
 export const MOVES = {
   // ================================================================ phase 1: the Sparring Hall, one hand
   ...Object.fromEntries(Object.entries(DEJAVU_BUILD).map(([k, f]) => [k, f(false)])),
-  /** Idle Hand: a jab and a backfist, his head turned away. */
+  /** Idle Hand: a cross and a backfist, his head turned away; the spinning backfist; the drop heel (red). */
   idleHand: {
-    label: 'Idle Hand', phase: 1, weight: [2.0, 1.2, 0.8], cooldown: 3.5, band: [0, 3.2], recovery: 0.5, cat: 'string',
-    beats: [away(punch('cross', N, 0.46, 10)), away(punch('backfist', N, 0.34, 11))],
+    label: 'Idle Hand', phase: 1, weight: [1.8, 1.2, 0.8], cooldown: 4, band: [0, 3.2], recovery: 0.5, cat: 'string',
+    beats: [away(punch('cross', N, 0.46, 10)), away(punch('backfist', N, 0.34, 10)), spinFist(N, 0.36, 10), dropHeel(R, 0.5, 20)],
+  },
+  // ---- the rework's phase 1 (ADR-168): kicks, air, a burst of the right hand (gear 1, one hand)
+  /** Three Steps on Air: a hop and he HANGS in the air: three bicycle snaps, then the drop heel (red). */
+  threeOnAir: {
+    label: 'Three Steps on Air', phase: 1, weight: [2.4, 0.6, 0.6], cooldown: 7, band: [0, 3.2], recovery: 0.6, cat: 'string',
+    beats: [
+      bicycle(N, 0.5, 9, { first: true }),
+      bicycle(N, 0.34, 9, { left: true }),
+      bicycle(N, 0.34, 9),
+      dropHeel(R, 0.55, 20, { from: 0.6 }),
+    ],
+  },
+  /** The Sky Turns Twice: a tornado kick, another the other way, then the drop heel (red; the sweep after a
+   *  spin did not read at its contact at the game camera: the film review, ADR-168). */
+  skyTurns: {
+    label: 'The Sky Turns Twice', phase: 1, weight: [2.4, 0.6, 0.6], cooldown: 7, band: [0, 3.4], recovery: 0.6, cat: 'string',
+    beats: [tornado(N, 0.5, 10), tornado(N, 0.4, 10, { left: true }), dropHeel(R, 0.55, 20)],
+  },
+  /** Crane Crossing Water: two butterfly kicks that carry him in, then the flying side kick (a parry moment). */
+  craneWater: {
+    label: 'Crane Crossing Water', phase: 1, weight: [1.3, 0.6, 0.5], cooldown: 7, band: [2.5, 6], recovery: 0.65, cat: 'closer', gapCloser: true,
+    beats: [butterfly(N, 0.5, 10), butterfly(N, 0.42, 10, { left: true }), { ...kick('flying', B, 0.46, 20, { flare: true }), ...dash(2.4, 0.4, 1.35) }],
+  },
+  /** Moon Over the Shoulder: the flash kick (he lands 2.4 m back), at once the flying knee on a dash. */
+  moonOver: {
+    label: 'Moon Over the Shoulder', phase: 1, weight: [1.2, 0.6, 0.6], cooldown: 7, band: [0, 2.2], recovery: 0.6, cat: 'string',
+    beats: [flash(N, 0.46, 10), flyKnee(B, 0.5, 20, { flare: true, dash: 4 })],
+  },
+  /** Rain on One Roof: a burst of the right hand alone, then the palm (a parry moment). */
+  oneRoof: {
+    label: 'Rain on One Roof', phase: 1, weight: [1.4, 0.5, 0.5], cooldown: 7, band: [0, 3.0], recovery: 0.6, cat: 'flurry',
+    beats: [burst('right', N, 0.5, 16, 7, 0.7), { ...punch('palm', B, 0.45, 20, { flare: true }) }],
+  },
+  // ---- gear 2 (both hands: bar 1 at or under TUNING.gear2.at; `gear: 2`, wokenOne.weigh)
+  /** A Hundred Hands: the chain-punch burst of both hands, a hook, both palms (a parry moment). */
+  hundredHands: {
+    label: 'A Hundred Hands', phase: 1, gear: 2, weight: [1.8, 0.8, 0.6], cooldown: 6, band: [0, 3.0], recovery: 0.5, cat: 'flurry',
+    beats: [burst('chain', N, 0.5, 17, 8, 0.75), punch('hook', N, 0.34, 9), elbow(N, 0.32, 9), punch('double', B, 0.42, 20, { flare: true })],
+  },
+  /** The Long Lesson: seven blows, hands and feet (the full-deflect string). */
+  longLesson: {
+    label: 'The Long Lesson', phase: 1, gear: 2, weight: [2.6, 0.6, 0.6], cooldown: 8, band: [0, 3.2], recovery: 0.55, cat: 'string',
+    beats: [
+      punch('cross', N, 0.46, 9),
+      punch('hook', N, 0.32, 9),
+      elbow(N, 0.32, 9),
+      aerial(N, 0.36, 10),
+      tornado(N, 0.36, 10),
+      punch('backfist', N, 0.32, 9),
+      spinBack(B, 0.42, 20, { flare: true }),
+    ],
+  },
+  /** Storm Step: the flying knee from far, a burst, a tornado kick, the drop heel (red). */
+  stormStep: {
+    label: 'Storm Step', phase: 1, gear: 2, weight: [1.6, 0.5, 0.5], cooldown: 7, band: [2.5, 6.5], recovery: 0.55, cat: 'closer', gapCloser: true,
+    beats: [flyKnee(N, 0.5, 10, { dash: 5 }), punch('cross', N, 0.34, 9), burst('chain', N, 0.42, 16, 7, 0.7), tornado(N, 0.36, 10), dropHeel(R, 0.5, 20)],
+  },
+  /** Gear 2's opening (never picked: wokenOne.js starts it): he flips back, the left hand comes out, a
+   *  shake of the wrist, the two-handed guard. Guard down all through (a real opening). */
+  secondHand: {
+    label: 'The Second Hand', phase: 1, weight: [0, 0, 0], manual: true, hidden: true, cooldown: 0, band: [0, 99], recovery: 0.1, recoverOpen: 1, cat: 'single', twoHand: true,
+    beats: [{ feint: true, secondHand: true, fixed: true, windup: T.gear2.open, active: 0.05, close: 0, track: 0.3, keys: secondHandKeys(), travel: [[0.1, 0], [0.45, -1.6], [1.0, -1.6]], lift: [[0.1, 0], [0.28, 0.5], [0.45, 0], [2, 0]] }],
   },
   /** Brushing Dust: a palm shove that makes range. */
   brushOff: {
@@ -214,17 +336,15 @@ export const MOVES = {
   },
   /** Low Wind: a sweep at the ankles (red: roll through it). */
   lowWind: {
-    label: 'Low Wind', phase: 1, weight: [1.0, 0.8, 0.6], cooldown: 6, band: [0, 3.0], recovery: 0.7, cat: 'hazard',
-    beats: [{ ...kick('sweep', R, 0.64, 22), knockdown: true, ring: 2.2 }],
+    label: 'Low Wind', phase: 1, weight: [2.0, 1.2, 0.6], cooldown: 6, band: [0, 3.0], recovery: 0.7, cat: 'hazard',
+    beats: [sweep(0.64, 22)],
   },
-  /** Borrowed Wall: two steps up the nearest upright by his path, then a flying kick (a parry moment). */
+  /** Borrowed Wall (reworked, ADR-168): the upright that brings him at the hero from the SIDE, two steps up
+   *  its face, the spring, then a flying side kick (a parry moment) or the drop heel (red); no upright in
+   *  reach: the same off the floor. His root is driven by wokenOne.js _wallRun through the whole beat. */
   wallStep: {
-    label: 'Borrowed Wall', phase: 1, weight: [1.0, 0.8, 0.6], cooldown: 7, band: [5, 11], recovery: 0.7, cat: 'closer', gapCloser: true,
-    beats: [{
-      ...kick('flying', B, 0.9, 22, { flare: true, cock: 0.62 }), wall: true, air: true, track: 0.8,
-      dash: { from: 0.45, to: 1.0, stop: 1.4, max: 10 }, close: 0,
-      lift: [[0.15, 0], [0.42, 1.3], [0.7, 1.5], [1.0, 0.9], [1.6, 0.3], [2.0, 0]],
-    }],
+    label: 'Borrowed Wall', phase: 1, weight: [1.8, 0.9, 0.7], cooldown: 5, band: [3.5, 12], recovery: 0.6, cat: 'closer', gapCloser: true,
+    beats: [{ pick: [{ ...wallKick(), wall: true, air: true, track: 0, close: 0 }, { ...wallHeel(), wall: true, air: true, track: 0, close: 0 }] }],
   },
 
   // ================================================================ phase 2: the Pillared Hall, iron
@@ -234,9 +354,24 @@ export const MOVES = {
     beats: [
       {
         tell: N, windup: 0.8, active: 0.06, damage: 0, iron: 'rain', selfHit: true, noWorld: true, zone: { kind: 'line', r: 14, w: 0.6 },
-        sustain: { dur: T.ironRain.dur, tick: T.ironRain.dur / (T.ironRain.count - 1) }, part: 'fistR', close: 0, track: 1, keys: aimKeys(true),
+        // (the bursts run on their own clock, iron.js _rainStep: the lit window holds all of them)
+        sustain: { dur: RAIN_DUR + 0.04, tick: RAIN_DUR + 0.04 }, part: 'fistR', close: 0, track: 1, keys: aimKeys(true),
       },
-      shotBeat(B, 0.42, T.ironRain.last, { iron: 'heavy', both: true }),
+      // (the heavy last shot 0.6 s after the third burst)
+      shotBeat(B, 0.62, T.ironRain.last, { iron: 'heavy', both: true }),
+    ],
+  },
+  /** Iron in the Air (the rework, ADR-169): he leaps sideways, flat in the air, and fires ONE burst
+   *  (white); lands in a slide and fires the heavy shot (blue, returnable). */
+  ironLeap: {
+    label: 'Iron in the Air', phase: 2, weight: [0, 1.4, 0], cooldown: 7, band: [4, 12], recovery: 0.6, cat: 'ranged', ranged: true,
+    beats: [
+      {
+        tell: N, windup: 0.62, active: 0.06, damage: 0, iron: 'rain', bursts: 1, selfHit: true, noWorld: true, zone: { kind: 'line', r: 14, w: 0.6 }, air: true,
+        sustain: { dur: BURST1_DUR + 0.04, tick: BURST1_DUR + 0.04 }, part: 'fistR', close: 0, track: 1, cock: 0.7, keys: leapKeys(),
+        lift: [[0.4, 0], [0.75, 0.85], [1.0, 0.95], [1.6, 0.6], [2.0, 0]],
+      },
+      shotBeat(B, 0.5, 14, { iron: 'heavy', both: true }),
     ],
   },
   /** Two Thunders: two heavy shots, both returnable. */
@@ -293,7 +428,7 @@ export const MOVES = {
   /** The Dive Within: the charged blow (black): the hall's letters stream into his chest, a flat lunge. */
   diveWithin: {
     label: 'The Dive Within', phase: 3, weight: [0, 0, 0.7], cooldown: 14, band: [2, 9], recovery: 0.9, cat: 'closer', gapCloser: true,
-    beats: [{ tell: K, windup: 1.5, hold: [0.1, 0.5], active: 0.1, damage: T.dive.damage, knockback: 3, knockdown: true, dive: true, zone: { kind: 'line', r: 2.2, w: 1.0 }, part: 'palms', ...dash(T.dive.reach, 0.86, 0.9), track: 0.85, cock: 0.86, keys: diveKeys() }],
+    beats: [{ tell: K, windup: 1.5, hold: [0.1, 0.5], active: 0.1, damage: T.dive.damage, knockback: 3, knockdown: true, dive: true, zone: { kind: 'line', r: 2.2, w: 1.0 }, part: 'palms', ...dash(T.dive.reach, 0.86, 1.35), track: 0.85, cock: 0.86, keys: diveKeys() }],
   },
 
   // ================================================================ the transitions
@@ -307,14 +442,15 @@ export const MOVES = {
   },
 
   // ================================================================ counters (out of his guard)
-  answer: { label: 'Answer', phase: 1, weight: 0, counter: true, cooldown: 0, band: [0, 5], recovery: 0.55, beats: [punch('cross', N, 0.46, 12, { track: 0.7 }), punch('palm', B, 0.4, 18)] },
+  answer: { label: 'Answer', phase: 1, weight: 0, counter: true, cooldown: 0, band: [0, 5], recovery: 0.55, beats: [spinBack(N, 0.46, 12, { track: 0.7 }), punch('palm', B, 0.4, 18)] },
   answer2: { label: 'Answer (iron)', phase: 2, weight: 0, counter: true, cooldown: 0, band: [0, 5], recovery: 0.55, beats: [elbow(N, 0.46, 12, { track: 0.7 }), { ...punch('cross', B, 0.4, 18), iron: 'point', zone: { kind: 'line', r: 3.0, w: 0.9 } }] },
   answer3: { label: 'Answer (the One)', phase: 3, weight: 0, counter: true, cooldown: 0, band: [0, 5], recovery: 0.55, beats: [punch('hook', N, 0.46, 12, { track: 0.7 }), punch('palm', B, 0.4, 18, { ...dash(2.4) })] },
 
   // ================================================================ his flurries (a streak of guards)
-  hundredHands: flurry(1, [['punch', 'cross'], ['kick', 'front'], ['punch', 'hook'], ['punch', 'backfist']]),
-  hundredHands2: flurry(2, [['punch', 'hook'], ['kick', 'side'], ['punch', 'cross'], ['kick', 'round']]),
-  hundredHands3: flurry(3, [['kick', 'round'], ['punch', 'cross'], ['kick', 'front'], ['punch', 'hook']]),
+  // (phase 1's, the rework: a burst, a tornado kick, a palm; flurry.js settles the streak for a burst)
+  streakHands: { ...flurry(1, [['punch', 'cross']]), beats: [burst('right', N, 0.6, 16, 7, 0.7, { track: 0.7 }), tornado(N, 0.46, 9), punch('palm', N, 0.46, 9)] },
+  streakHands2: flurry(2, [['punch', 'hook'], ['kick', 'side'], ['punch', 'cross'], ['kick', 'round']]),
+  streakHands3: flurry(3, [['kick', 'round'], ['punch', 'cross'], ['kick', 'front'], ['punch', 'hook']]),
 };
 // deja vu's mirrored copies (phase 3 replays left for right): never picked, only linked to
 for (const [k, f] of Object.entries(DEJAVU_BUILD)) MOVES[`${k}M`] = { ...f(true), weight: [0, 0, 1], manual: true, hidden: true, mirrorOf: k };
@@ -322,7 +458,7 @@ for (const [k, f] of Object.entries(DEJAVU_BUILD)) MOVES[`${k}M`] = { ...f(true)
 /** His flurry of one phase: the first blow from where he stands; in phase 3 each later one from another side. */
 function flurry(ph, kinds) {
   return {
-    label: `Hundred Hands${ph > 1 ? ` (${ph})` : ''}`, phase: ph, weight: 0, counter: true, streak: true, cooldown: 0, band: [0, 6], recovery: 0.7,
+    label: `Rain of Hands${ph > 1 ? ` (${ph})` : ''}`, phase: ph, weight: 0, counter: true, streak: true, cooldown: 0, band: [0, 6], recovery: 0.7,
     beats: kinds.map(([fn, kind], i) => (fn === 'kick' ? kick : punch)(kind, N, i ? 0.46 : 0.6, 8, i && ph >= 3 ? { flit: { r: 2.4 } } : { track: 0.7 })),
   };
 }
@@ -330,14 +466,14 @@ function flurry(ph, kinds) {
 export const MOVE_NAMES = Object.keys(MOVES);
 export const TRANSITIONS = Object.freeze({ 2: 'ironSeeds', 3: 'rising' });
 export const COUNTERS = Object.freeze(['answer', 'answer2', 'answer3']);
-export const STREAKS = Object.freeze(['hundredHands', 'hundredHands2', 'hundredHands3']);
+export const STREAKS = Object.freeze(['streakHands', 'streakHands2', 'streakHands3']);
 
 // ---------------------------------------------------------------- phase 1: one hand
 /** A beat with the left hand behind his back in every key (phase 1). */
 const oneHandBeat = (b) => (b?.keys ? { ...b, keys: b.keys.map(([u, p]) => [u, { ...p, ...BEHIND }]) } : b);
 const oneHand = (def) => ({ ...def, beats: def.beats.map((b) => (b.pick ? { ...b, pick: b.pick.map(oneHandBeat) } : oneHandBeat(b))) });
 /** The moves as realised in phase 1 (the left hand behind his back; transitions as authored). */
-const MOVES_P1 = Object.fromEntries(Object.entries(MOVES).map(([k, d]) => [k, d.transition ? d : oneHand(d)]));
+const MOVES_P1 = Object.fromEntries(Object.entries(MOVES).map(([k, d]) => [k, d.transition || d.twoHand ? d : oneHand(d)]));
 
 // ---------------------------------------------------------------- reaction clips
 // Tian Lei's bare-handed clips, with his own on top: THE LEAN (his ward clips: a slip back and aside, the
@@ -405,8 +541,16 @@ export const CLIPS_BY_PHASE = PHASE_POSES.map((P) => {
   return out;
 });
 export const CLIP = CLIPS_BY_PHASE[0];
+/** Gear 2's reaction clips (phase 1, both hands: GEAR2_POSES' guard). */
+export const CLIPS_GEAR2 = (() => {
+  const out = Object.fromEntries(Object.entries(CLIPS).map(([k, c]) => [k, GEAR2_POSES.compileClip(c.keys.map(([t, pose]) => ({ t, ...pose })), c.dur, { hold: !!c.hold })]));
+  for (const [k, c] of Object.entries(out)) c.name = k;
+  return out;
+})();
 
 const REALISERS = PHASE_POSES.map((P, i) => makeRealise({ TUNING, MOVES: i === 0 ? MOVES_P1 : MOVES, compileClip: (keys, dur) => P.compileClip(keys, dur), completeBeat: P.completeBeat }));
+/** Phase 1 in gear 2 (both hands, ADR-168): the moves two-handed, round gear 2's guard. */
+const REALISE_G2 = makeRealise({ TUNING, MOVES, compileClip: (keys, dur) => GEAR2_POSES.compileClip(keys, dur), completeBeat: GEAR2_POSES.completeBeat });
 
 /**
  * A move as it will play this time (duelist/realise.js), round the guard of the phase it is used in; a
@@ -429,7 +573,9 @@ export function realise(name, phase = 1, rnd = Math.random, opts = null) {
     return v;
   };
   if (replay) REPLAY.name = REPLAY.draws = null;
-  const A = REALISERS[Math.min(REALISERS.length, Math.max(1, ph)) - 1](name, phase, r, opts);
+  // (phase 1 in gear 2, and gear 2's own opening: two-handed, round gear 2's guard)
+  const g2 = ph === 1 && !def.transition && (GEARED.now >= 2 || def.twoHand);
+  const A = (g2 ? REALISE_G2 : REALISERS[Math.min(REALISERS.length, Math.max(1, ph)) - 1])(name, phase, r, opts);
   if (A) {
     A.draws = draws;
     A.replay = !!replay;

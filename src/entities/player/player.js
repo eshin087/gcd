@@ -258,6 +258,7 @@ export class Player {
     this.dodgeN = -1;
     this.dodgeKey = '';
     this.chipGuard = 0;
+    this.shotStunT = 0; // s a bullet's flinch still guards him from another (hit.stun, ADR-169)
     this._v = new THREE.Vector3();
     this._v2 = new THREE.Vector3();
     this._lock = new THREE.Vector3();
@@ -522,7 +523,12 @@ export class Player {
     }
 
     // (g) plain hit
-    const guarded = chip && this.chipGuard > 0;
+    // (`hit.stun`, ADR-169: a bullet's FLINCH: a stagger of `stun` s that keeps the input buffer (a press
+    // during it fires as it ends); while one runs, and `hit.mercy` s after it, another bullet hurts him but
+    // never staggers him again. Absent on every other hit: as before)
+    const stun = clamp(fin(hit.stun, 0), 0, TUNE.staggerDur);
+    const stunned = stun > 0 && this.shotStunT > 0;
+    const guarded = (chip && this.chipGuard > 0) || stunned;
     if (chip) this.chipGuard = TUNE.chipGuard;
     this._streakEnd(); // hurt: the streak of perfect dodges is over
     if (!chip) this.guardWait = Math.max(this.guardWait, GUARD.regenDelay);
@@ -555,15 +561,24 @@ export class Player {
         this._setKb(nx, nz, Math.max(kb, 1.2));
         this._enter('knockdown', 'knockdown', hot ? 0.1 : 0.06);
       }
-    } else if (kb > 0 || (dmg >= TUNE.minStaggerDamage && !guarded)) {
+    } else if ((kb > 0 && !stunned) || (dmg >= TUNE.minStaggerDamage && !guarded)) {
       if (this.state !== 'knockdown' && this.state !== 'guardBreak') {
+        const kept = stun > 0 ? this.buf.action : null, keptT = this.buf.t;
         this._interrupt();
+        if (kept) {
+          this.buf.action = kept;
+          this.buf.t = keptT;
+        }
         // the way the blow drives him, in his own axes: the flinch gives that way
         const cy = Math.cos(this.yaw), sy = Math.sin(this.yaw);
         this.hitPush.x = nx * cy - nz * sy;
         this.hitPush.z = nx * sy + nz * cy;
         this._setKb(nx, nz, Math.max(kb, TUNE.defaultPush));
         this._enter('stagger', 'stagger', hot ? 0.1 : 0.05);
+        if (stun > 0) {
+          this.staggerLen = stun;
+          this.shotStunT = stun + clamp(fin(hit.mercy, 0), 0, 1);
+        }
       }
     }
     return RESULT.HIT;
@@ -702,6 +717,7 @@ export class Player {
     this.bladeHot = 0;
     this.burnGlow = 0;
     this.chipGuard = 0;
+    this.shotStunT = 0;
     this.dodgeN = -1;
     this.diedEmitted = false;
     this._clearBurn();
@@ -806,6 +822,7 @@ export class Player {
     this.control = control;
     if (this.buf.action && this.time - this.buf.t > TUNE.buffer) this.buf.action = null;
     if (this.chipGuard > 0) this.chipGuard -= dt;
+    if (this.shotStunT > 0) this.shotStunT -= dt;
     if (this.critTimer > 0) this.critTimer = Math.max(0, this.critTimer - dt);
     if (this.iframeT > 0) this.iframeT = Math.max(0, this.iframeT - dt);
     if (this.assist.t > 0) this.assist.t -= dt;

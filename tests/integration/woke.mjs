@@ -5,7 +5,8 @@
 // its scenes. A bot drives the input. The harness is fox.mjs's (its build, bots, helpers).
 // usage: node woke.mjs <repoRoot> [scenario]   (env: ABYSS_SEED=n reseeds the AI)
 //   scenario: levels | data | timing | scenes | cover | bend | stop | stance | flight | rising | dejavu |
-//             reward | flow | looks | training | pace | win | all   (opt-in: smoke, strategy, cost)
+//             reward | flow | looks | herolike | flurry | nolock | wall | gear | training | pace | win | motionfix | pursuit | all
+//             (opt-in: smoke, strategy, cost, audit)
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { ui, AUDIO, resetWindow } from './shim.mjs';
@@ -430,14 +431,24 @@ async function scenarioData() {
   assert(L[0].feint && L[0].beckon && L.filter((b) => !b.feint).map((b) => b.tell).join() === [TELL.NORMAL, TELL.NORMAL, TELL.NORMAL, TELL.NORMAL, TELL.BLUE].join() && L[5].flare, 'The First Lesson: the beckon, then N N N N and the blue flare');
   assert(L.filter((b) => !b.feint).length >= TUNING.fullDeflect.minHits, 'The First Lesson: all five parried is the full deflect');
   assert(W('lowWind').tell === TELL.RED && W('lowWind').knockdown && W('lowWind').ring === 2.2, 'Low Wind: red, the ankles, knockdown');
-  assert(W('wallStep').wall && W('wallStep').flare && MOVES.wallStep.band[0] === 5 && MOVES.wallStep.band[1] === 11, 'Borrowed Wall: a closer from 5 - 11 m, a parry moment');
-  assert(W('ironRain').iron === 'rain' && W('ironRain').sustain?.dur === TUNING.ironRain.dur && W('ironRain', 1).cast?.kind === 'shot' && W('ironRain', 1).tell === TELL.BLUE, 'Iron Rain: a stream (one cue), then the big returnable shot');
+  {
+    // (the rework, ADR-168: the wall kick used often; its two blows drawn at the spring)
+    const P = MOVES.wallStep.beats[0].pick ?? [];
+    const kick = P.find((b) => b.wallBlow === 'kick'), heel = P.find((b) => b.wallBlow === 'heel');
+    assert(P.length === 2 && kick?.wall && kick.tell === TELL.BLUE && kick.flare && heel?.wall && heel.tell === TELL.RED && heel.zone?.kind === 'ring' && MOVES.wallStep.band[0] === 3.5 && MOVES.wallStep.band[1] === 12 && MOVES.wallStep.cooldown === 5,
+      'Borrowed Wall: a closer from 3.5 - 12 m (cooldown 5): a flying side kick (blue flare) or the drop heel (red ring)');
+  }
+  {
+    const I = TUNING.ironRain, lit = (I.bursts - 1) * ((I.per - 1) * I.gap + I.rest) + (I.per - 1) * I.gap;
+    assert(W('ironRain').iron === 'rain' && W('ironRain').sustain?.dur >= lit && I.bursts === 3 && I.per === 3 && I.gap <= 0.09 && I.rest >= 0.5 && W('ironRain', 1).cast?.kind === 'shot' && W('ironRain', 1).tell === TELL.BLUE,
+      'Iron Rain: three bursts of three (0.09 s inside, 0.5 s between), then the big returnable shot');
+  }
   assert(W('twoThunders').cast?.kind === 'shot' && W('twoThunders', 1).cast?.kind === 'shot', 'Two Thunders: two heavy shots');
-  assert(W('closeIron', 2).flare && W('closeIron', 2).iron === 'point', 'Close Iron: the point-blank shot is a parry moment');
+  assert(W('closeIron', 3).flare && W('closeIron', 3).iron === 'point' && W('closeIron', 2).part === 'footR', 'Close Iron: a spin back kick, then the point-blank shot, a parry moment');
   assert(W('stillHand').tell === TELL.BLUE && W('stillHand').lock && MOVES.stillHand.beats[0].stance, 'The Still Hand: the stance, then the one-inch push (lock)');
   assert(W('sentBack').send && W('sentBack').flare && MOVES.sentBack.beats.filter((b) => !b.feint).length === 1, 'Return to Sender: ONE blow, one blue flare');
   assert(W('diveWithin').tell === TELL.BLACK && W('diveWithin').damage === 44 && MOVES.diveWithin.cooldown === 14, 'The Dive Within: black, 44, cooldown 14');
-  assert(MOVES.thousandHands.beats.filter((b) => !b.feint).length === 7 && MOVES.thousandHands.beats[3].flit, 'A Thousand Hands: six blows and the flare; skipped frames after the third');
+  assert(MOVES.thousandHands.beats.filter((b) => !b.feint).length === 6 && MOVES.thousandHands.beats[1].flurry && MOVES.thousandHands.beats[2].flit, 'A Thousand Hands: a burst in the middle, skipped frames after it, the flare');
   assert(MOVES.leaveFloor.beats[2].pick?.length === 2 && MOVES.leaveFloor.beats[2].pick.some((b) => b.fist) && MOVES.leaveFloor.beats[2].pick.some((b) => b.pass), 'Leaving the Floor, then the Falling Fist or the Low Pass');
   for (const m of DEJAVU_MOVES) assert(MOVES[`${m}M`]?.mirrorOf === m && MOVES[`${m}M`].manual, `deja vu: ${m} has its mirrored copy (only linked to)`);
   const T2 = MOVES.ironSeeds.beats[0], T3 = MOVES.rising.beats[0];
@@ -466,12 +477,15 @@ async function scenarioTiming() {
     const at = def.counter ? 2.2 : Math.max(1.6, Math.min(hi - 0.4, lo + (Math.min(hi, 12) - lo) * 0.4));
     duel(G, { dist: at, form: f });
     G.game.player.debug.god = true;
-    const flashes = [], contacts = [];
-    G.watch = (n, e) => { if (n === 'combat:flash' && e?.source === 'dragon') flashes.push(G.game.time); };
+    const flashes = [], contacts = [], later = [];
+    // (a flurry burst's later blows share its ONE cue, ADR-168: only its first contact is timed)
+    G.watch = (n, e) => { if (n === 'combat:flash' && e?.source === 'dragon') flashes.push(G.game.time); if (n === 'dragon:burst' && e?.i > 0) later.push(G.game.time); };
     const h0 = G.hits.length;
     if (!d.debug.trigger(name)) { assert(false, `${name} P${f}: starts`); continue; }
     run(G, 9, null, () => quiet(d));
-    for (const h of G.hits.slice(h0)) if (h.r !== RESULT.IGNORED) { contacts.push(h.t); if (only) out(`       ${h.t.toFixed(3)} contact ${h.attack} ${h.r}`); }
+    // (and a bullet burst's later slugs, 0.09 s apart, share its one glint: ADR-169)
+    let lastShot = -9;
+    for (const h of G.hits.slice(h0)) if (h.r !== RESULT.IGNORED && !later.some((t) => Math.abs(t - h.t) < 1e-6) && !(h.kind === 'shot' && h.t - lastShot < 0.25 && (lastShot = h.t))) { if (h.kind === 'shot') lastShot = h.t; contacts.push(h.t); if (only) out(`       ${h.t.toFixed(3)} contact ${h.attack} ${h.r}`); }
     let w = 0;
     for (const c of contacts) {
       // (the cue that belongs to it: the nearest to flashLead before it, so a stream's next shot's cue is not taken for it)
@@ -1062,8 +1076,12 @@ async function scenarioPace() {
   const answer = (tell) => (tell === TELL.RED || tell === TELL.BLACK ? 'dodge' : 'guard');
   const skip = (name) => !MOVES[name] || MOVES[name].transition || MOVES[name].counter;
   const rows = [];
+  // (four STAGES, ADR-168: phase 1 in gear 1 (one hand), phase 1 in gear 2 (both hands), phases 2 and 3;
+  // the meter's arrays are per stage)
+  const STAGES = [{ ph: 1, gear: 1, tag: 'P1 g1' }, { ph: 1, gear: 2, tag: 'P1 g2' }, { ph: 2, tag: 'P2' }, { ph: 3, tag: 'P3' }];
   for (const seed of SEEDS) {
-    for (let ph = 1; ph <= 3; ph++) {
+    for (let si = 1; si <= STAGES.length; si++) {
+      const ST = STAGES[si - 1], ph = ST.ph;
       const G = build(seed, true);
       const { game } = G;
       const d = game.dragon, p = game.player;
@@ -1072,7 +1090,8 @@ async function scenarioPace() {
       p.debug.noRiposte = true;
       G.defend = paceDefender(G);
       toPhase(G, ph, (GG) => { GG.input.axis = { x: 0, y: 0 }; GG.defend.act(); });
-      Math.random = mulberry32(seed * 7 + ph);
+      if (ST.gear) d.debug.setGear(ST.gear, true);
+      Math.random = mulberry32(seed * 7 + ph + (ST.gear === 2 ? 101 : 0));
       const flashes = [], acts = [], cats = {}, busyT = [];
       let frames = 0, peakFire = 0;
       const s0 = { ...(d.brain.stats ?? {}) };
@@ -1102,6 +1121,7 @@ async function scenarioPace() {
         if (d.brain.pendingPhase > ph) d.brain.pendingPhase = 0;
         // (his bar must not run out under the defender's riposte-less guard: kept full)
         if (d.hp < d.maxHp * 0.6) d.hp = d.maxHp * (ph === 1 ? 0.95 : 0.9);
+        if (ST.gear === 1 && d.gear !== 1) d.debug.setGear(1);
         frames++;
       }
       G.watch = null;
@@ -1126,26 +1146,29 @@ async function scenarioPace() {
       for (const x of flashes) if (answer(x[1]) === 'dodge') dodges++;
       const st = d.brain.stats ?? {};
       const dlt = (k) => (st[k] ?? 0) - (s0[k] ?? 0);
-      rows.push({ seed, ph, T, cues: flashes.length, perMin: (flashes.length * 60) / T, gapMax, gapAt, cats, picks: acts.length, conflicts, conflictAt, dodge: dodges / (flashes.length || 1), holds: dlt('holds'), feints: dlt('feints'), links: dlt('links'), peakFire });
+      rows.push({ seed, ph: si, tag: ST.tag, T, cues: flashes.length, perMin: (flashes.length * 60) / T, gapMax, gapAt, cats, picks: acts.length, conflicts, conflictAt, dodge: dodges / (flashes.length || 1), holds: dlt('holds'), feints: dlt('feints'), links: dlt('links'), peakFire });
     }
   }
   out(`   ${SECS} s per phase, seeds ${SEEDS.join(', ')}`);
   out(`   seed ph cue/min gapMax moves links clash hold/f  dodge%  fire-peak  ${CATS.map((c) => c.slice(0, 7).padStart(8)).join('')}`);
   for (const r of rows) {
-    out(`   ${String(r.seed).padStart(4)}  ${r.ph} ${r.perMin.toFixed(1).padStart(7)} ${r.gapMax.toFixed(2).padStart(6)} ${String(r.picks).padStart(5)} ${String(r.links).padStart(5)} ${String(r.conflicts).padStart(5)} ${`${r.holds}/${r.feints}`.padStart(6)} ${(r.dodge * 100).toFixed(0).padStart(6)} ${String(r.peakFire).padStart(10)}  ${CATS.map((c) => (((r.cats[c] || 0) * 100) / (r.picks || 1)).toFixed(0).padStart(8)).join('')}`);
+    out(`   ${String(r.seed).padStart(4)}  ${r.tag.padEnd(5)} ${r.perMin.toFixed(1).padStart(7)} ${r.gapMax.toFixed(2).padStart(6)} ${String(r.picks).padStart(5)} ${String(r.links).padStart(5)} ${String(r.conflicts).padStart(5)} ${`${r.holds}/${r.feints}`.padStart(6)} ${(r.dodge * 100).toFixed(0).padStart(6)} ${String(r.peakFire).padStart(10)}  ${CATS.map((c) => (((r.cats[c] || 0) * 100) / (r.picks || 1)).toFixed(0).padStart(8)).join('')}`);
     out(`         longest gap at ${r.gapAt}${r.conflicts ? ` · CONFLICTS ${r.conflictAt.slice(0, 6).join(' · ')}` : ''}`);
   }
   const mean = (ph, k) => { const rs = rows.filter((r) => r.ph === ph); return rs.reduce((a, r) => a + r[k], 0) / (rs.length || 1); };
-  for (let ph = 1; ph <= 3; ph++) out(`   mean P${ph}: ${mean(ph, 'perMin').toFixed(1)} cues/min · longest gap ${Math.max(...rows.filter((r) => r.ph === ph).map((r) => r.gapMax)).toFixed(2)} s · ${mean(ph, 'picks').toFixed(1)} moves · conflicts ${rows.filter((r) => r.ph === ph).reduce((a, r) => a + r.conflicts, 0)} · dodge ${(mean(ph, 'dodge') * 100).toFixed(0)} % · fire field peak ${Math.max(...rows.filter((r) => r.ph === ph).map((r) => r.peakFire))}`);
+  for (let ph = 1; ph <= STAGES.length; ph++) out(`   mean ${STAGES[ph - 1].tag}: ${mean(ph, 'perMin').toFixed(1)} cues/min · longest gap ${Math.max(...rows.filter((r) => r.ph === ph).map((r) => r.gapMax)).toFixed(2)} s · ${mean(ph, 'picks').toFixed(1)} moves · conflicts ${rows.filter((r) => r.ph === ph).reduce((a, r) => a + r.conflicts, 0)} · dodge ${(mean(ph, 'dodge') * 100).toFixed(0)} % · fire field peak ${Math.max(...rows.filter((r) => r.ph === ph).map((r) => r.peakFire))}`);
   const A = P?.meter;
   if (!A) return;
-  if (A.rampMean) for (let ph = 2; ph <= 3; ph++) {
-    const a0 = mean(ph - 1, 'perMin'), a1 = mean(ph, 'perMin');
-    assert(a1 >= a0 * pp(A.rampMean, ph), `the seeds' mean: P${ph} at least x${pp(A.rampMean, ph)} P${ph - 1}'s cues a minute (${a0.toFixed(1)} → ${a1.toFixed(1)})`);
+  // (the ramp, ADR-168: gear 2 over gear 1; phases 2 and 3 not slower than gear 2 by more than rampMean)
+  if (A.rampMean) for (let ph = 2; ph <= STAGES.length; ph++) {
+    const ref = ph === 2 ? 1 : 2;
+    const a0 = mean(ref, 'perMin'), a1 = mean(ph, 'perMin');
+    assert(a1 >= a0 * pp(A.rampMean, ph), `the seeds' mean: ${STAGES[ph - 1].tag} at least x${pp(A.rampMean, ph)} ${STAGES[ref - 1].tag}'s cues a minute (${a0.toFixed(1)} → ${a1.toFixed(1)})`);
   }
+  if (A.dodge) for (const r of rows) if (r.ph <= 2) assert(r.dodge >= A.dodge[0] && r.dodge <= A.dodge[1], `seed ${r.seed} ${r.tag}: dodges ${(r.dodge * 100).toFixed(0)} % of cues (${A.dodge[0] * 100} - ${A.dodge[1] * 100} %)`);
   for (const r of rows) {
-    assert(r.perMin >= pp(A.minRate, r.ph), `seed ${r.seed} P${r.ph}: ${r.perMin.toFixed(1)} cues a minute >= ${pp(A.minRate, r.ph)}`);
-    assert(r.gapMax <= pp(A.maxGap, r.ph), `seed ${r.seed} P${r.ph}: longest gap ${r.gapMax.toFixed(2)} s <= ${pp(A.maxGap, r.ph)} s (${r.gapAt})`);
+    assert(r.perMin >= pp(A.minRate, r.ph), `seed ${r.seed} ${r.tag}: ${r.perMin.toFixed(1)} cues a minute >= ${pp(A.minRate, r.ph)}`);
+    assert(r.gapMax <= pp(A.maxGap, r.ph), `seed ${r.seed} ${r.tag}: longest gap ${r.gapMax.toFixed(2)} s <= ${pp(A.maxGap, r.ph)} s (${r.gapAt})`);
     assert(r.conflicts === 0, `seed ${r.seed} P${r.ph}: no two cues of different sources needing different answers within 0.3 s (${r.conflicts}: ${r.conflictAt.slice(0, 4).join(' · ')})`);
     assert(r.peakFire < 2500, `seed ${r.seed} P${r.ph}: the fire field's peak ${r.peakFire} < 2500 blobs`);
   }
@@ -1394,6 +1417,1090 @@ async function scenarioScenes() {
   assert(!set0.length, `uScript is 0 on every other level (${others.map((L) => L.id).join(', ')})${set0.length ? ': set on ' + set0.join(', ') : ''}`);
 }
 
+// ================================================================== the rework (ADR-168, ADR-169): the lead's scenarios
+/** Trigger `name` and answer its beat `bi` (a real hit index) the way `how` says: 'parry' (a press
+ *  0.1 s before its impact), 'guard' (held from the start), 'dodge' (a roll 0.1 s before, sideways),
+ *  'stand' (nothing). Returns what happened in the beat's window. */
+function answerBeat(G, name, bi, how, { dist = 1.8, ph = 1, gear = 1, extraT = 0 } = {}) {
+  const { game, input } = G;
+  const d = game.dragon, p = game.player;
+  duel(G, { dist, form: ph });
+  if (ph === 1) d.debug.setGear(gear, true);
+  p.debug.god = false;
+  p.hp = p.maxHp;
+  p.guard = 100;
+  d.debug.trigger(name);
+  const A = d.brain.act;
+  const real = A?.beats.filter((b) => !b.feint) ?? [];
+  const b = real[bi];
+  if (!b) return null;
+  const t0 = game.time - A.t;
+  const at = (x) => t0 + x;
+  const hp0 = p.hp;
+  let minGuard = p.guard, staggers = 0, wasStag = false, stagEnd = -1, flashes = 0, clicked = false, rolled = false;
+  const hits0 = G.hits.length;
+  G.watch = (n, e) => { if (n === 'combat:flash' && e?.source === 'dragon' && game.time >= at(b.start) && game.time <= at(b.end)) flashes++; };
+  const end = at(b.end) + 0.05 + extraT;
+  run(G, end - game.time + 0.02, () => {
+    const t = game.time;
+    input.axis = { x: 0, y: 0 };
+    game.mouseGround.set(d.position.x, 0, d.position.z);
+    if (how === 'guard') input.buttons[1] = true;
+    if (how === 'parry' && !clicked && t >= at(b.impact) - 0.1 - DT) { clicked = true; input.up(1); input.click(1); }
+    if (how === 'dodge' && !rolled && t >= at(b.impact) - 0.1 - DT) {
+      rolled = true;
+      const dx = p.position.x - d.position.x, dz = p.position.z - d.position.z, l = Math.hypot(dx, dz) || 1;
+      input.axis = { x: dz / l, y: dx / l };
+      input.tap('Space');
+    }
+    if (t >= at(b.impact) - 1e-6) {
+      const st = p.state === 'stagger';
+      if (st && !wasStag) staggers++;
+      if (!st && wasStag) stagEnd = t;
+      wasStag = st;
+    }
+    minGuard = Math.min(minGuard, p.guard);
+  });
+  G.watch = null;
+  if (how === 'guard') input.up(1);
+  const hits = G.hits.slice(hits0).filter((h) => h.attack === name);
+  const next = real[bi + 1];
+  return {
+    b, A, t0, hits, staggers, stagEnd, flashes, guardCost: 100 - minGuard, hpLost: hp0 - p.hp,
+    dist: Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z), nextImpact: next ? at(next.impact) : Infinity,
+    stats: d.flurry?.stats,
+  };
+}
+
+async function scenarioFlurry() {
+  out('\n== scenario FLURRY (a burst: one cue, ONE result; one parry, one guard under the cap, one dodge, one stagger) ==');
+  const D = MOVES.oneRoof.beats[0];
+  assert(D.flurry && D.selfHit && D.sustain && D.flurry.n >= 6 && D.flurry.n <= 8 && D.damage >= 16 && D.damage <= 18 && D.windup >= TUNING.minFirstWindup,
+    `Rain on One Roof's burst: ${D.flurry.n} blows over ${D.flurry.dur} s, ${D.damage} in all, windup ${D.windup} s, the guard's cap ${D.flurry.cap}`);
+  // (no move holds two bursts; every burst is a category of its own in the director's eyes or inside a string)
+  const two = MOVE_NAMES.filter((n) => (MOVES[n].beats ?? []).filter((b) => b.flurry).length > 1);
+  assert(!two.length, `at most one burst a move ${JSON.stringify(two)}`);
+  for (const how of ['parry', 'guard', 'dodge', 'stand']) {
+    const G = build();
+    const r = answerBeat(G, 'oneRoof', 0, how);
+    if (!r) {
+      assert(false, `${how}: the burst played`);
+      continue;
+    }
+    const res = r.hits.map((h) => h.r);
+    const S = r.stats;
+    out(`     ${how}: results ${JSON.stringify(res)} · staggers ${r.staggers} · guard ${r.guardCost.toFixed(1)} · health ${r.hpLost.toFixed(1)} · cues ${r.flashes} · ${JSON.stringify(S)}`);
+    assert(r.flashes === 1, `${how}: ONE cue for the burst (${r.flashes})`);
+    if (how === 'parry') assert(res[0] === RESULT.PARRIED && !res.includes(RESULT.HIT) && r.hpLost === 0, 'one parry turns the whole burst: no blow lands');
+    if (how === 'guard') assert(res[0] === RESULT.BLOCKED && r.hpLost === 0 && r.guardCost <= D.flurry.cap + 1e-6 && r.guardCost > 0, `a held guard pays ${r.guardCost.toFixed(1)} guard (<= ${D.flurry.cap}) and no health`);
+    if (how === 'dodge') assert(r.hpLost === 0 && !res.includes(RESULT.HIT), 'one roll through its first blow dodges it all');
+    if (how === 'stand') {
+      assert(r.staggers === 1, `hit: ONE stagger for the whole burst (${r.staggers})`);
+      assert(Math.abs(r.hpLost - D.damage) <= 2, `hit: the burst's total is its damage (${r.hpLost.toFixed(1)} of ${D.damage})`);
+      assert(r.dist > (D.zone?.r ?? 1.9) - 0.3, `hit: pushed out of reach by its end (${r.dist.toFixed(2)} m)`);
+      const free = r.nextImpact - (r.stagEnd > 0 ? r.stagEnd : r.t0 + r.b.impact + 0.4);
+      assert(free >= 0.25, `hit: the hero is free ${free.toFixed(2)} s before the next blow (>= 0.25)`);
+    }
+  }
+}
+
+/** Every hit of his on a hero who stands unguarded: the bullets never lock him. */
+async function scenarioNolock() {
+  out('\n== scenario NOLOCK (phase 2: after any bullet hits, the hero can act >= 0.25 s before the next thing that hurts him; no second bullet stagger) ==');
+  const I = TUNING.ironRain;
+  for (const name of ['ironRain', 'twoThunders', 'closeIron', 'turningWheel']) {
+    const G = build();
+    const { game, input } = G;
+    duel(G, { dist: name === 'closeIron' ? 2 : 8, form: 2 });
+    const d = game.dragon, p = game.player;
+    p.debug.god = false;
+    p.hp = p.maxHp;
+    let stag = 0, prev = false, worst = Infinity, lastHurtEnd = -1, bulletStag = 0, staggering = false;
+    const hurts = [];
+    G.watch = (n) => {
+      if (n === 'player:hurt') hurts.push(game.time);
+    };
+    d.debug.trigger(name);
+    const h0 = G.hits.length;
+    run(G, 5, () => {
+      input.axis = { x: 0, y: 0 };
+      game.mouseGround.set(d.position.x, 0, d.position.z);
+      p.hp = Math.max(p.hp, 60);
+      const st = p.state === 'stagger';
+      if (st && !prev) {
+        stag++;
+        const last = G.hits[G.hits.length - 1];
+        if (last && /shot/.test(last.kind ?? '') && staggering) bulletStag++;
+      }
+      staggering = st && /shot/.test(G.hits[G.hits.length - 1]?.kind ?? '');
+      if (!st && prev) lastHurtEnd = game.time;
+      prev = st;
+    }, () => quiet(d) && game.time > 1);
+    G.watch = null;
+    const hits = G.hits.slice(h0).filter((h) => h.r === RESULT.HIT);
+    // the free window: from the end of each stagger to the next HIT that is not part of the same burst
+    // (a burst's own slugs arrive inside its flinch as chip)
+    let free = Infinity;
+    for (let i = 1; i < hits.length; i++) {
+      if (hits[i - 1].kind !== 'shot') continue; // (the rule follows a BULLET that hit him; a melee string is the engine's)
+      const gap = hits[i].t - hits[i - 1].t;
+      if (gap < I.gap * (I.per - 1) + 0.05) continue; // (the same burst)
+      free = Math.min(free, gap - I.stun);
+    }
+    worst = free;
+    out(`     ${name}: ${hits.length} hits · staggers ${stag} · the least free time between two of them ${Number.isFinite(worst) ? worst.toFixed(2) : '-'} s`);
+    assert(!Number.isFinite(worst) || worst >= 0.25, `${name}: the hero can act >= 0.25 s before the next thing that hurts him`);
+    assert(bulletStag === 0, `${name}: no bullet re-staggers a hero flinching from a bullet`);
+  }
+  // hit by burst 1, then guard / parry / roll: burst 2 is blocked / parried / dodged
+  for (const how of ['guard', 'parry', 'dodge']) {
+    const G = build();
+    const { game, input } = G;
+    duel(G, { dist: 8, form: 2 });
+    const d = game.dragon, p = game.player;
+    p.debug.god = false;
+    d.debug.trigger('ironRain');
+    const A = d.brain.act, b = A.beats[0];
+    const t0 = game.time - A.t, every = (I.per - 1) * I.gap + I.rest;
+    // (the second burst's first slug leaves at impact + every; it flies ~0.25 s at 8 m)
+    let pressed = false, seen = 0, glint2 = -1;
+    G.watch = (n, e) => {
+      if (n === 'combat:flash' && e?.burst) {
+        seen++;
+        if (glint2 < 0) glint2 = game.time;
+      }
+    };
+    const h0 = G.hits.length;
+    run(G, b.impact - A.t + every + 0.6, () => {
+      input.axis = { x: 0, y: 0 };
+      game.mouseGround.set(d.position.x, 0, d.position.z);
+      // the second burst: answered from its glint (it lands flashLead after it)
+      if (glint2 < 0) return;
+      const arrive = glint2 + TUNING.flashLead, now = game.time;
+      if (how === 'guard') input.buttons[1] = true;
+      if (how === 'parry' && !pressed && now >= arrive - 0.12) { pressed = true; input.up(1); input.click(1); }
+      if (how === 'dodge' && !pressed && now >= arrive - 0.12) {
+        pressed = true;
+        const dx = p.position.x - d.position.x, dz = p.position.z - d.position.z, l = Math.hypot(dx, dz) || 1;
+        input.axis = { x: dz / l, y: dx / l };
+        input.tap('Space');
+      }
+    });
+    input.up(1);
+    G.watch = null;
+    const all = G.hits.slice(h0).filter((h) => h.attack === 'ironRain');
+    const first = all.find((h) => h.r === RESULT.HIT);
+    const after = all.filter((h) => glint2 > 0 && h.t >= glint2);
+    const want = how === 'guard' ? RESULT.BLOCKED : how === 'parry' ? RESULT.PARRIED : RESULT.DODGED;
+    out(`     burst 1 hit, then ${how}: burst 2 ${JSON.stringify(after.map((h) => h.r))} · glints ${seen}`);
+    // (a roll after the glint leaves the burst's fixed aim: its slugs miss him, or meet his i-frames)
+    const ok = how === 'dodge' ? !after.some((h) => h.r === RESULT.HIT) : after.length > 0 && !after.some((h) => h.r === RESULT.HIT) && after.some((h) => h.r === want);
+    assert(!!first && ok, `hit by burst 1, then ${how}: burst 2 is ${how === 'dodge' ? 'dodged (missed or i-frames)' : want}`);
+  }  // (the review of PR #101) a burst whose first slug was blocked or dodged: its later slugs must flinch, not
+  // stagger: the guard let go after slug 1; a roll straight back along the line of fire whose i-frames end
+  // inside the burst. Both keep >= 0.25 s free before the next hurt, and no second stagger in a burst
+  for (const how of ['letgo', 'rollback']) {
+    const G = build();
+    const { game, input } = G;
+    duel(G, { dist: 8, form: 2 });
+    const d = game.dragon, p = game.player;
+    p.debug.god = false;
+    p.hp = p.maxHp;
+    const glints = [];
+    G.watch = (n, e) => {
+      if (n === 'combat:flash' && e?.source === 'dragon' && e?.attack === 'ironRain') glints.push(game.time);
+    };
+    d.debug.trigger('ironRain');
+    const h0 = G.hits.length;
+    const stag = [];
+    let prev = false, done = false;
+    const RI = 0.4; // (player.js TUNE.roll.iframes[1]: the roll's i-frames end 0.4 s in)
+    run(G, 4, () => {
+      input.axis = { x: 0, y: 0 };
+      game.mouseGround.set(d.position.x, 0, d.position.z);
+      p.hp = Math.max(p.hp, 60);
+      const st = p.state === 'stagger';
+      if (st && !prev) stag.push([game.time, Infinity]);
+      if (!st && prev) stag[stag.length - 1][1] = game.time;
+      prev = st;
+      // burst 1 lands flashLead after its glint (the beat's own)
+      const g = glints[0];
+      if (g === undefined || done) return;
+      const arrive = g + TUNING.flashLead;
+      if (how === 'letgo') {
+        if (game.time < arrive + 0.03) input.buttons[1] = true;
+        else {
+          input.up(1);
+          done = true;
+        }
+      }
+      if (how === 'rollback' && game.time >= arrive + 0.06 - RI) {
+        // straight back along the line of fire: the i-frames end 0.06 s after slug 1, slugs 2 - 3 still to come
+        const dx = p.position.x - d.position.x, dz = p.position.z - d.position.z, l = Math.hypot(dx, dz) || 1;
+        input.axis = { x: dx / l, y: -dz / l };
+        input.tap('Space');
+        done = true;
+      }
+    }, () => quiet(d) && game.time > 1);
+    input.up(1);
+    G.watch = null;
+    const hits = G.hits.slice(h0).filter((h) => h.r === RESULT.HIT);
+    // no second stagger inside a burst: staggers that start within 0.3 s of each other
+    let twice = 0;
+    for (let i = 1; i < stag.length; i++) if (stag[i][0] - stag[i - 1][0] < 0.3) twice++;
+    // free time: from each stagger's end to the next hit that is not of the same burst
+    let free = Infinity;
+    for (const [s0, s1] of stag) {
+      const next = hits.find((h) => h.t > s1 + 1e-6 && h.t - s0 > 0.3);
+      if (next) free = Math.min(free, next.t - s1);
+    }
+    const r1 = G.hits.slice(h0).filter((h) => h.attack === 'ironRain').slice(0, 4).map((h) => h.r);
+    out(`     ${how}: burst 1 ${JSON.stringify(r1)} · ${hits.length} hits · staggers ${stag.length} (${stag.map(([a, b]) => (b - a).toFixed(2)).join(', ')} s) · least free ${Number.isFinite(free) ? free.toFixed(2) : '-'} s`);
+    assert(hits.length > 0, `${how}: a later slug of a burst still lands (the case is real)`);
+    assert(twice === 0, `${how}: never a second stagger inside a burst`);
+    // (a slug's stagger: one that starts on a slug's hit; the heavy last shot is a blue blow of its own)
+    const slugStag = stag.filter(([a]) => hits.some((h) => Math.abs(h.t - a) < 0.02 && h.damage < TUNING.ironRain.last));
+    assert(slugStag.length > 0 && slugStag.every(([a, b]) => b - a <= TUNING.ironRain.stun + 0.05), `${how}: every slug's stagger is the short flinch (${slugStag.length}, <= ${TUNING.ironRain.stun} s)`);
+    assert(!Number.isFinite(free) || free >= 0.25, `${how}: >= 0.25 s free before the next hurt (${Number.isFinite(free) ? free.toFixed(2) : '-'} s)`);
+  }
+}
+
+async function scenarioWall() {
+  out('\n== scenario WALL (Borrowed Wall: the upright to the hero\'s side, or the floor; the bite; both blows\' tells; never inside a collider) ==');
+  for (const which of ['kick', 'heel']) {
+    for (const where of ['dojo', 'floor']) {
+      const G = build(SEED, true);
+      const { game, input } = G;
+      duel(G, { dist: 6 });
+      const d = game.dragon, p = game.player, W = game.world.destructibles;
+      p.debug.god = true;
+      game.world.forest?.scenes?.snap?.('dojo');
+      // near a post (x = 7.5) or in the open middle
+      if (where === 'dojo') {
+        d.position.set(5.5, 0, 0);
+        p.debug.teleport(4.0, 5.0);
+      } else {
+        for (const b of W.list) if (!b.floor && b.h > 1.6) b.absent = true;
+        d.position.set(0, 0, -4);
+        p.debug.teleport(0, 2);
+      }
+      p.yaw = 0;
+      const bite0 = W.bitten ?? 0;
+      let tells = [], maxY = 0, inside = 0, kick = null;
+      G.watch = (n, e) => {
+        if (n === 'combat:tell' && e?.source === 'dragon') tells.push(e.tell);
+        if (n === 'dragon:wallKick') kick = e;
+      };
+      d.debug.wall(which);
+      const A = d.brain.act;
+      run(G, 2.4, () => {
+        input.axis = { x: 0, y: 0 };
+        maxY = Math.max(maxY, d.position.y);
+        for (const c of game.world.colliders?.circles ?? SET.circles) {
+          if (c.r > 0 && Math.hypot(d.position.x - c.x, d.position.z - c.z) < c.r - 0.05 && d.position.y < (c.h ?? 9)) inside++;
+        }
+      }, () => d.brain.act !== A && d.mode === 'foot');
+      G.watch = null;
+      const wantTell = which === 'kick' ? TELL.BLUE : TELL.RED;
+      const wall = A?.wall;
+      out(`     ${which} / ${where}: upright ${wall?.b ? `${wall.b.kind} at (${wall.b.x.toFixed(1)}, ${wall.b.z.toFixed(1)})` : 'none (the floor)'} · up ${maxY.toFixed(2)} m · tells ${JSON.stringify(tells)} · bites ${(W.bitten ?? 0) - bite0} · inside a collider ${inside} frames`);
+      assert(tells.includes(wantTell), `${which}: its tell (${wantTell})`);
+      assert(!!kick, `${which} / ${where}: the spring (dragon:wallKick)`);
+      if (where === 'dojo') {
+        assert(!!wall?.b, `${which}: an upright in reach is used (${wall?.b?.kind})`);
+        assert(maxY >= TUNING.wall.up - 0.2, `${which}: up its face (${maxY.toFixed(2)} m)`);
+      } else assert(!wall?.b, `${which}: no upright: off the floor`);
+      assert(inside === 0, `${which} / ${where}: never inside a collider`);
+      assert(Math.hypot(d.position.x, d.position.z) <= (d.bound ?? TUNING.bound) + 0.05, `${which} / ${where}: inside his bound`);
+    }
+  }
+}
+
+async function scenarioGear() {
+  out('\n== scenario GEAR (phase 1: one hand, then both at bar 1 <= 0.83; between moves; the opening) ==');
+  const G = build();
+  const { game } = G;
+  duel(G, { dist: 3, ai: true });
+  const d = game.dragon, p = game.player;
+  p.debug.god = true;
+  assert(d.gear === 1, 'he opens in gear 1');
+  let gearAt = null, inString = false, opening = null;
+  G.watch = (n, e) => {
+    if (n === 'dragon:gear') {
+      gearAt = { t: game.time, hp: d.hp / d.maxHp };
+    }
+  };
+  d.hp = d.maxHp * 0.9;
+  run(G, 3);
+  assert(d.gear === 1, `still gear 1 above ${TUNING.gear2.at} (bar ${(d.hp / d.maxHp).toFixed(2)})`);
+  d.hp = d.maxHp * 0.8;
+  const wasAct = d.mode === 'act' ? d.brain.act?.name : null;
+  run(G, 6, () => {
+    if (!gearAt && d.mode === 'act' && d.brain.act?.name !== 'secondHand') inString = true;
+    if (d.brain.act?.name === 'secondHand' && !opening) opening = { t: game.time, guard: d.guarding };
+  }, () => !!gearAt && d.mode === 'foot' && game.time - gearAt.t > 1.2);
+  G.watch = null;
+  assert(!!gearAt && d.gear === 2, `gear 2 at bar ${gearAt?.hp.toFixed(2)} (<= ${TUNING.gear2.at})`);
+  assert(!!opening && opening.guard === false, 'the second hand comes out through an opening (his guard down)');
+  const op = MOVES.secondHand.beats[0];
+  assert(Math.abs(op.windup - TUNING.gear2.open) < 1e-6 && MOVES.secondHand.recoverOpen === 1, `the opening lasts ${TUNING.gear2.open} s`);
+  // gear 2's moves only in gear 2; the pressure numbers per gear
+  const G2 = build();
+  duel(G2, { dist: 3 });
+  const d2 = G2.game.dragon;
+  assert(d2.weigh('hundredHands', MOVES.hundredHands, 1, 2) === 0, 'A Hundred Hands waits for gear 2');
+  d2.debug.setGear(2, true);
+  assert(d2.weigh('hundredHands', MOVES.hundredHands, 1, 2) > 0, 'A Hundred Hands in gear 2');
+  assert(TUNING.pressure.chainDepth[0] > 5 && TUNING.chain[0] > 0.75, `gear 2's pressure (chainDepth ${TUNING.pressure.chainDepth[0]}, chain ${TUNING.chain[0]})`);
+  d2.debug.setGear(1);
+  assert(TUNING.pressure.chainDepth[0] === 5, 'gear 1\'s pressure back');
+  // phase 1 realised two-handed in gear 2 (the left hand no longer behind his back)
+  d2.debug.setGear(2, true);
+  const A2 = realise('lesson', 1, () => 0.5);
+  d2.debug.setGear(1);
+  const A1 = realise('lesson', 1, () => 0.5);
+  assert(A1 && A2 && A1.clip !== A2.clip, 'gear 2 realises phase 1 two-handed (its own clip)');
+}
+
+// ================================================================== scenario: herolike
+/**
+ * HEROLIKE (ADR-170): Xin Yi printed like the hero. His letters follow his size on screen by the
+ * hero's rule (his kit's letters -> pipeline.bossLetters, Tian Lei's ADR-155), on five screens;
+ * `?oneLetters=0` the fixed cell as before. The quiet print (`?onePrint=a`): every ink gain at or under
+ * 1.5 (the edge fades with distance as the hero's does), far line 0, the face at HERO_INK.skin's numbers,
+ * the bright cells without glow, phase 3's edge x1.35; `?onePrint=b`: one cell bolder on a small screen
+ * only (kit.letterBias); `?onePrint=0`: the table he shipped with, exactly. The coat stirs in phase 1 and
+ * holds inside its swing in the cartwheel.
+ */
+async function scenarioHeroLike() {
+  out("\n== scenario HEROLIKE (his letters follow his size like the hero's; the hero's quiet print; ?onePrint=0 as shipped) ==");
+  const { setLook, pickedOf, PENDING } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const LOOK = await imp('src/entities/enemies/wokenOne/look.js');
+  const { Pipeline, HERO_CELLS, BOSS_BIAS_H } = await imp('src/render/pipeline.js');
+  const { HERO_INK, heroPartValues } = await imp('src/entities/player/model.js');
+  assert(['oneLetters', 'onePrint'].every((n) => !PENDING.includes(n) && pickedOf(n) === 'a') && LOOK.oneLettersOn() && LOOK.onePrintNow() === 'a',
+    'oneLetters and onePrint are the owner pick, a (PICKED, not PENDING; 2026-11-23: "Print a"); they draw a by default');
+  const G = build();
+  const d = G.game.dragon, kit = d.kit;
+  const on = {}, bias = {};
+  for (const o of ['0', 'a']) { setLook('oneLetters', o); on[o] = !!kit.letters; }
+  setLook('oneLetters', null);
+  for (const o of ['0', 'a', 'b']) { setLook('onePrint', o); bias[o] = kit.letterBias; }
+  setLook('onePrint', null);
+  assert(kit.letters === true && on.a && !on['0'] && bias['0'] === 0 && bias.a === 0 && bias.b === 1,
+    `his kit asks for letters that follow his size (${kit.letters}; ?oneLetters=0: ${on['0']}, live); letterBias 0 / 0 / 1 for onePrint 0 / a / b (${bias['0']} / ${bias.a} / ${bias.b})`);
+  // the pipeline (a mock renderer): the bosses' grid (ARCHITECTURE "The bosses' letters")
+  const U = G.game.U, cam = G.game.camera;
+  const renderer = {
+    extensions: { has: () => true }, autoClear: true, _dpr: 1,
+    setRenderTarget() {}, setClearColor() {}, getClearColor() {}, getClearAlpha: () => 0, clear() {}, render() {},
+    setPixelRatio(x) { this._dpr = x; }, getPixelRatio() { return this._dpr; }, setSize() {},
+  };
+  const pipe = new Pipeline(renderer, G.game.scene, G.game.fxScene, cam, U);
+  cam.fov = CONFIG.camera.fov;
+  cam.updateProjectionMatrix();
+  cam.updateMatrixWorld(true);
+  const u = pipe.asciiMat.uniforms, ps = new THREE.Vector4();
+  const cellsAt = (W, H, D, letters, b = 0) => {
+    pipe.setSize(W, H, 1);
+    pipe.bossLetters = letters;
+    pipe.bossLetterBias = b;
+    U.uBossScreen.value.set(0.4, 0.5, D + cam.matrixWorld.elements[9], 1);
+    ps.set(0.6, 0.5, D, 0);
+    for (let i = 0; i < 3; i++) { pipe._updateHeroLetters(ps); pipe._updateBossLetters(U.uBossScreen.value); }
+    return [u.uHeroCell.value.x, pipe.selfCell.x];
+  };
+  const rows = [];
+  for (const [name, W, H, D] of [['1280x720', 1280, 720, 36], ['1920x1080', 1920, 1080, 36], ['2560x1440', 2560, 1440, 36], ['852x393', 852, 393, 20], ['734x343', 734, 343, 20]]) {
+    const [b, h] = cellsAt(W, H, D, kit.letters);
+    const [b0] = cellsAt(W, H, D, false);
+    const fixed = b0 === pipe.heroCell.x && u.tHeroArt.value === pipe.heroArt.texture && u.uHeroPx.value.x === Math.max(1, Math.floor(H / 1080));
+    pipe._bossBase = 0;
+    const [bb, hb] = cellsAt(W, H, D, true, 1);
+    const small = H < BOSS_BIAS_H;
+    const want = small ? HERO_CELLS[HERO_CELLS.indexOf(hb) + 1] : hb;
+    pipe._bossBase = 0;
+    rows.push(`${name} ${b}/${h} (0: ${b0}, b: ${bb})`);
+    assert(b === h && fixed && bb === want,
+      `${name} at ${D} m: his cell ${b} px is the hero's ${h} px; ?oneLetters=0 the fixed ${b0} px as before; ?onePrint=b ${bb} px (${small ? 'one step bolder: a small screen' : 'the same: not a small screen'})`);
+  }
+  out('   his / the hero\'s cell: ' + rows.join('; '));
+  // the quiet print: the shared part tables as he writes them (phases 1 - 3)
+  const table = (print, phase) => {
+    setLook('onePrint', print);
+    const g = build();
+    const dd = g.game.dragon;
+    if (phase > 1) dd.debug.setPhase(phase);
+    run(g, 0.1);
+    const M = dd.rig.materials, Ug = g.game.U;
+    const t = {};
+    for (const p of [1, 2, 3, 4, 5, 6, 11, 12, 19]) t[p] = { ink: Ug.uHeroPartInk.value[p].toArray(), rim: Ug.uHeroPartRim.value[p].toArray(), fill: Ug.uHeroPartFill.value[p].toArray() };
+    const f = M.flask.uniforms;
+    const r = { t, glow: f.uGlowMask?.value, glowK: f.uArtGlowK?.value, skin: M.skin.uniforms.uArtFill.value.r, meshes: 0, dd };
+    dd.rig.root.traverse((o) => { if (o.isMesh) r.meshes++; });
+    setLook('onePrint', null);
+    return r;
+  };
+  const qa = table('a', 2), q3 = table('a', 3), q0 = table('0', 2), q03 = table('0', 3);
+  const [sl, sf, sr] = heroPartValues(HERO_INK.skin);
+  const parts = Object.values(qa.t);
+  const gains = Math.max(...parts.map((p) => Math.max(p.ink[3], p.rim[3])));
+  const far = Math.max(...parts.map((p) => p.fill[2]));
+  const sk = qa.t[1];
+  assert(gains <= 1.5 && far === 0, `the quiet print: every ink and silhouette gain <= 1.5 (max ${gains}), far line 0 everywhere (max ${far}): the edge fades with distance, no seams at the game camera`);
+  assert(sk.fill[0] === sf[0] && sk.fill[3] === sf[3] && sk.ink[3] === sl[3] && sk.rim[3] === sr[3] && (sk.fill[1] & 4),
+    `his face and hands at HERO_INK.skin's numbers: fill gain ${sk.fill[0]} (${sf[0]}), far fill ${sk.fill[3]} (${sf[3]}), line ${sk.ink[3]} (${sl[3]}), rim ${sk.rim[3]} (${sr[3]}), open`);
+  assert(qa.glow === 0 && qa.glowK === 0 && q0.glow === 1 && qa.t[19].ink[3] <= 1 && qa.skin < q0.skin,
+    `the bright cells do not glow (glow mask ${qa.glow}, was ${q0.glow}; ink gain ${qa.t[19].ink[3]}); the face's fill held down (${qa.skin.toFixed(2)}, was ${q0.skin.toFixed(2)})`);
+  const e2 = qa.t[6].rim[1], e3 = q3.t[6].rim[1], o2 = q0.t[6].rim[1];
+  assert(Math.abs(e3 / e2 - 1.35) < 1e-3 && e2 < o2 * 0.6 && e2 > o2 * 0.45 && e2 > qa.t[6].rim[0],
+    `the jade edge at about half the lifted one's (${e2.toFixed(3)} / ${o2.toFixed(3)}), phase 3's x${(e3 / e2).toFixed(2)} (the lifted print's ratio)`);
+  // ?onePrint=0: the table he shipped with, exactly (main 7884a1e look.js inkTable, look a)
+  const J = [0.62, 1.0, 0.84], L = (s, a) => [J[0] * s, J[1] * s, J[2] * s, a];
+  const SHIP = (k) => ({
+    6: { ink: L(0.36, 1.6), rim: L(0.95 * k, 1.0), fill: [1, 0, 0.12, 1.0] }, 4: { ink: L(0.3, 1.6), rim: L(0.8 * k, 1.0), fill: [1, 0, 0.12, 0.9] },
+    5: { ink: L(0.3, 1.6), rim: L(0.7 * k, 1.0), fill: [1, 0, 0.1, 0.6] }, 12: { ink: L(0.34, 1.6), rim: L(0.8 * k, 1.0), fill: [1, 0, 0.2, 0.8] },
+    3: { ink: L(0.3, 1.0), rim: L(0.6 * k, 1.0), fill: [1, 0, 0.1, 0.5] }, 11: { ink: L(0.34, 1.6), rim: L(0.85 * k, 1.0), fill: [1.0, 8, 0.15, 0.8] },
+    1: { ink: [0.75, 0.85, 0.8, 0.8], rim: [0.85, 0.95, 0.9, 0.9], fill: [2.2, 4, 0, 0.75] }, 2: { ink: [0.2, 0.3, 0.26, 0.8], rim: [0.25, 0.35, 0.3, 0.8], fill: [1, 0, 0, 1] },
+    19: { ink: [0.9, 1.3, 1.1, 1.8], rim: [0.9, 1.3, 1.1, 1.8], fill: [1, 2, 1, 1.4] },
+  });
+  const same = (a, b) => a.every((x, i) => Math.abs(x - b[i]) < 1e-6);
+  const diff = [];
+  for (const [T, S] of [[q0.t, SHIP(1)], [q03.t, SHIP(1.35)]]) for (const p in S) for (const k of ['ink', 'rim', 'fill']) if (!same(T[p][k], S[p][k])) diff.push(`${p}.${k}`);
+  assert(!diff.length && q0.meshes > qa.meshes, `?onePrint=0: his part table as shipped, phases 2 and 3 (${diff.join(', ') || 'identical'}); the shapes too (${q0.meshes} meshes, the quiet print ${qa.meshes})`);
+  // the coat: it stirs from phase 1 (its tails and sides; the closed front barely), and the cartwheel
+  // keeps every panel inside its swing
+  const P1 = (print) => {
+    setLook('onePrint', print);
+    const g = build();
+    setLook('onePrint', null);
+    const D = g.game.dragon.rig.root.userData.dress;
+    run(g, 0.1);
+    const t = D.panels.find((p) => p.tail).def, f = D.panels.find((p) => p.front).def, s = D.panels.find((p) => !p.tail && !p.front).def;
+    return { tail: t.breeze, side: s.breeze, front: f.breeze, frontAz: D.fronts.map((F) => F.C.def.az) };
+  };
+  const c0 = P1('0'), ca = P1('a');
+  assert(c0.tail === 0 && ca.tail > 0 && ca.side > 0 && ca.front < ca.side && ca.frontAz.every((a, i) => a === c0.frontAz[i]),
+    `phase 1: the coat stirs (tails ${ca.tail.toFixed(3)}, sides ${ca.side.toFixed(3)}, the closed front ${ca.front.toFixed(3)}; as shipped ${c0.tail}), the front stays closed (az ${ca.frontAz.map((a) => a.toFixed(2)).join(' / ')})`);
+  const swing = (print) => {
+    setLook('onePrint', print);
+    const g = build();
+    setLook('onePrint', null);
+    duel(g, { dist: 4, form: 2 });
+    const dd = g.game.dragon, st = dd.anim.coatState;
+    dd.debug.trigger('turningWheel');
+    let out = 0, inw = 0;
+    for (let i = 0; i < 100; i++) {
+      g.tick(DT);
+      for (const s of st) { const t = s[0].x + s[1].x; out = Math.max(out, -t); inw = Math.max(inw, t); }
+    }
+    return { out, inw };
+  };
+  const w0 = swing('0'), wa = swing('a'), CS = LOOK.COAT_SWING;
+  assert(wa.out <= CS.out + 1e-6 && wa.inw <= CS.in + 1e-6 && (w0.out > CS.out || w0.inw > CS.in),
+    `the cartwheel: every panel inside its swing (out ${(wa.out * 57.3).toFixed(0)} deg <= ${(CS.out * 57.3).toFixed(0)}, in ${(wa.inw * 57.3).toFixed(0)} deg <= ${(CS.in * 57.3).toFixed(0)}; as shipped out ${(w0.out * 57.3).toFixed(0)}, in ${(w0.inw * 57.3).toFixed(0)})`);
+}
+
+// ================================================================== the motion audit (ADR-162's, for him: ADR-168)
+const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+const AUD_PTS = ['fistR', 'fistL', 'elbowR', 'elbowL', 'kneeR', 'kneeL', 'footR', 'footL', 'head', 'chest', 'pelvis'];
+const _inv = new THREE.Matrix4();
+/** His joints now: W world, B his own frame (the root's), Wr world round his root. */
+function rigSample(d) {
+  const R = d.rig;
+  R.root.updateMatrixWorld(true);
+  _inv.copy(R.root.matrixWorld).invert();
+  const at = (o, x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z).applyMatrix4(o.matrixWorld);
+  const W = {
+    fistR: at(R.sword), fistL: at(R.arms.L.wrist ?? R.arms.L.fore), elbowR: at(R.arms.R.fore), elbowL: at(R.arms.L.fore),
+    shR: at(R.arms.R.upper), shL: at(R.arms.L.upper), hipR: at(R.legs.R.thigh), hipL: at(R.legs.L.thigh),
+    kneeR: at(R.legs.R.shin), kneeL: at(R.legs.L.shin), footR: at(R.legs.R.foot), footL: at(R.legs.L.foot),
+    head: at(R.head, 0, 0.1, 0), chest: at(R.chest, 0, 0.12, 0), pelvis: at(R.pelvis),
+  };
+  const B = {}, Wr = {};
+  const root = new THREE.Vector3().setFromMatrixPosition(R.root.matrixWorld);
+  for (const k in W) {
+    B[k] = W[k].clone().applyMatrix4(_inv);
+    Wr[k] = W[k].clone().sub(root);
+  }
+  return { W, B, Wr, root, yaw: d.yaw, x: d.position.x, z: d.position.z, y: d.position.y };
+}
+/** A point drawn on him (leaned toward the camera, at his drawn size) → the same point on his upright
+ *  gameplay body (duelist.drawnPoint's inverse). */
+function upright(d, v) {
+  const L = d.lean, P = d.position, k = L?.k || 0, S = d.drawScale || 1;
+  const y = v.y - P.y;
+  return new THREE.Vector3(P.x + (v.x - P.x - k * (L?.dx || 0) * y - (L?.ox || 0)) / S, P.y + y / S, P.z + (v.z - P.z - k * (L?.dz || 0) * y - (L?.oz || 0)) / S);
+}
+const DEG = 180 / Math.PI;
+const ang3 = (a, b, c) => {
+  const u = new THREE.Vector3().subVectors(a, b).normalize(), w = new THREE.Vector3().subVectors(c, b).normalize();
+  return Math.acos(Math.min(1, Math.max(-1, u.dot(w)))) * DEG;
+};
+/** The largest one-frame jolt over three samples (second difference, mm a frame², in his own frame or in
+ *  the world round his root, whichever is worse) and its joint. */
+function joltOf(a, b, c) {
+  let best = 0, k0 = '', w = false;
+  const v = new THREE.Vector3();
+  for (const k of AUD_PTS) {
+    const jb = v.copy(c.B[k]).addScaledVector(b.B[k], -2).add(a.B[k]).length() * 1000;
+    const jw = v.copy(c.Wr[k]).addScaledVector(b.Wr[k], -2).add(a.Wr[k]).length() * 1000;
+    const j = Math.max(jb, jw);
+    if (j > best) { best = j; k0 = k; w = jw > jb; }
+  }
+  return { j: best, k: k0, w };
+}
+/** The root's pop over three samples: its second difference along the floor (mm a frame²). */
+const rootPop = (a, b, c) => Math.hypot(c.x - 2 * b.x + a.x, c.z - 2 * b.z + a.z) * 1000;
+/** The moves the audit covers: every one of MOVE_NAMES, in every phase it is used in (a transition in its
+ *  own, a counter or a flurry in its phase, deja vu's mirrored copies in phase 3). ABYSS_AUDIT=name,name
+ *  keeps those only. */
+function auditList() {
+  const only = (process.env.ABYSS_AUDIT ?? '').split(',').filter(Boolean);
+  const L = [];
+  for (const name of MOVE_NAMES) {
+    if (only.length && !only.includes(name)) continue;
+    const def = MOVES[name];
+    // (a hidden move: the phases it weighs in, its own at least)
+    const used = def.hidden && !def.mirrorOf ? [1, 2, 3].filter((f) => weightIn(def, f) > 0 && f >= (def.phase ?? 1)) : phasesOf(name);
+    const phs = def.transition ? [def.phase] : def.counter ? [def.phase ?? 1] : def.mirrorOf ? [3] : used.length ? used : [def.phase ?? 1];
+    for (const ph of phs) L.push({ name, ph });
+  }
+  return L;
+}
+
+/**
+ * The audit of `list` ([{ name, ph }]): each move run once (AI off, phase `ph` entered through
+ * debug.setPhase, so the move is realised round that phase's guard) with the hero still in front of him at
+ * the middle of its band, and once with the hero circling him at 3.5 m/s when `orbits` holds true. His
+ * joints tracked frame by frame (his own frame and the world round his root): the largest jolts and where
+ * they fall (windup / strike / active / follow / recovery / the blend out), the fastest turn, how far his
+ * planted feet slide (in all, and the worst frame), the elbows' and knees' tightest fold, the root's pops
+ * (its second difference) anywhere on the floor and at each beat's end, and each blow at its impact frame:
+ * the limb's end against the hero's body circle (gap m; negative: inside him), the striking arm's elbow (a
+ * fist, a palm) or the kicking leg's knee. Frames in the air (a lift, a flight, a dash's travel, a blink, a
+ * flit) and in a hit-stop or a slow-mo are left out of the jolts.
+ */
+function auditMoves(list, orbits = [false, true], TOP = 0) {
+  const rows = [], worst = [];
+  for (const orbit of orbits) {
+    for (const { name, ph } of list) {
+      const def = MOVES[name];
+      const G = build(SEED, def.beats.some((b) => b.unwrite));
+      const band = def.band ?? [0, 4];
+      const dist = Math.min(7, Math.max(1.6, (band[0] + Math.min(band[1], 8)) / 2));
+      duel(G, { dist, form: def.transition ? def.phase - 1 : ph });
+      const { game } = G;
+      const d = game.dragon, p = game.player;
+      p.debug.god = true;
+      p.debug.noRiposte = true;
+      settle(G, 2);
+      // (the hero EAST of him, as asc.mjs's: the drawn figure leans toward the camera along z)
+      d.position.set(0, 0, 0);
+      d.yaw = Math.PI / 2;
+      p.debug.teleport(dist, 0);
+      game.mouseGround.set(0, 0, 0);
+      // (footwork's own planner holds his feet in the world: let them step to the new place first)
+      run(G, 0.7);
+      // (Return to Sender needs three bolts hanging before him: the Lab's)
+      if (def.needs === 'held3') d.debug.hold(3);
+      if (!d.debug.trigger(name)) { rows.push({ name, ph, orbit, fail: 'trigger' }); continue; }
+      const A = d.brain.act;
+      if (!A) { rows.push({ name, ph, orbit, fail: 'no act' }); continue; }
+      const F = [], contact = [];
+      let after = -1, th = Math.atan2(p.position.x - d.position.x, p.position.z - d.position.z), px = d.position.x, pz = d.position.z;
+      const phaseOf = (t) => {
+        for (const b of A.beats) {
+          if (t < b.start) continue;
+          const i = b.index ?? A.beats.indexOf(b);
+          if (t < b.impact - 0.12) return `b${i} windup`;
+          if (t <= b.impact + 0.06) return `b${i} strike`;
+          if (t <= b.end + 1e-6) return `b${i} active`;
+        }
+        return t < (A.recoveryStart ?? A.end) ? 'follow' : 'recovery';
+      };
+      for (let i = 0; i < 1500; i++) {
+        if (orbit) {
+          th += (3.5 / Math.max(1.5, dist)) * DT;
+          p.debug.teleport(d.position.x + Math.sin(th) * dist, d.position.z + Math.cos(th) * dist);
+        }
+        p.hp = p.maxHp;
+        const inAct = d.brain.act === A && d.mode === 'act';
+        if (!inAct && after < 0) after = 0;
+        if (after >= 0 && after++ > 14) break;
+        const s = rigSample(d);
+        s.t = inAct ? A.t : A.end + after * DT;
+        s.ph = inAct ? phaseOf(A.t) : 'blend out';
+        s.beatEnd = inAct && A.beats.some((b) => Math.abs(A.t - b.end) < DT * 1.5);
+        s.jump = Math.hypot(d.position.x - px, d.position.z - pz) > 0.4;
+        px = d.position.x;
+        pz = d.position.z;
+        s.stop = game.hitstopTimer > 0 || game.timeScale < 0.9;
+        s.air = s.jump || d.position.y > 0.05 || !!d.brain.leap || (inAct && (A.beats.some((b) => b.def.dash && A.t >= b.start && A.t <= b.end + 0.1) || A.beats.some((b) => (b.def.blink || b.def.flit) && A.t >= b.start - 0.05 && A.t <= b.impact + 0.05)));
+        F.push(s);
+        // the blow against the hero, at each real beat's impact frame
+        if (inAct) for (const b of A.beats) {
+          if (b.feint || b._aud || A.t < b.impact || !b.def.zone || b.def.cast || b.def.selfHit || b.def.send) continue;
+          b._aud = true;
+          // (the limb's end as drawn, back on his upright gameplay body: the camera lean and his drawn size
+          // out, duelist.drawnPoint's inverse; the hero's position is gameplay)
+          const tp = upright(d, d._tip), pp = p.position, pr = p.radius ?? 0.45;
+          const flat = Math.hypot(tp.x - pp.x, tp.z - pp.z) - pr, up = tp.y < 0 ? -tp.y : tp.y > 1.85 ? tp.y - 1.85 : 0;
+          const part = b.def.part ?? 'fistR';
+          const arm = part === 'fistL' ? ['shL', 'elbowL', 'fistL'] : ['shR', 'elbowR', 'fistR'];
+          const leg = part === 'footL' || part === 'kneeL' ? ['hipL', 'kneeL', 'footL'] : ['hipR', 'kneeR', 'footR'];
+          const kick = /^(foot|knee)/.test(part);
+          contact.push({ i: b.index ?? A.beats.indexOf(b), gap: Math.max(flat, up), flat, y: tp.y, zone: b.def.zone.kind, part,
+            sep: +Math.hypot(pp.x - d.position.x, pp.z - d.position.z).toFixed(2),
+            elbow: kick || part === 'feet' ? null : Math.round(ang3(s.B[arm[0]], s.B[arm[1]], s.B[arm[2]])),
+            knee: kick ? Math.round(ang3(s.B[leg[0]], s.B[leg[1]], s.B[leg[2]])) : null });
+        }
+        G.tick(DT);
+      }
+      // jolts and the root's pops
+      let pb = { v: 0 }, pw = { v: 0 }, out1 = { v: 0 }, pop = { v: 0 }, popEnd = { v: 0 }, total = 0;
+      const jolts = [], v = new THREE.Vector3();
+      for (let i = 2; i < F.length; i++) {
+        const a = F[i - 2], b = F[i - 1], c = F[i];
+        if (a.air || b.air || c.air || a.stop || b.stop || c.stop) continue;
+        let fb = 0;
+        for (const k of AUD_PTS) {
+          const jb = v.copy(c.B[k]).addScaledVector(b.B[k], -2).add(a.B[k]).length() * 1000;
+          const jw = v.copy(c.Wr[k]).addScaledVector(b.Wr[k], -2).add(a.Wr[k]).length() * 1000;
+          const j = Math.max(jb, jw);
+          fb = Math.max(fb, j);
+          jolts.push({ j, k, t: c.t, ph: c.ph, w: jw > jb });
+          if (jb > pb.v) pb = { v: jb, k, t: c.t, ph: c.ph };
+          if (jw > pw.v) pw = { v: jw, k, t: c.t, ph: c.ph };
+          if (c.ph === 'blend out' && j > out1.v) out1 = { v: j, k };
+        }
+        total += fb;
+        const rp = rootPop(a, b, c);
+        if (rp > pop.v) pop = { v: rp, ph: c.ph };
+        const seam = a.beatEnd || b.beatEnd || c.beatEnd || (c.ph === 'blend out' && a.ph !== 'blend out');
+        if (seam && rp > popEnd.v) popEnd = { v: rp, ph: c.ph };
+      }
+      jolts.sort((x, y) => y.j - x.j);
+      // his facing: the fastest turn (deg/s, one frame)
+      let yawR = 0, yawAt = '';
+      for (let i = 1; i < F.length; i++) {
+        if (F[i].jump) continue;
+        const r = (Math.abs(wrapA(F[i].yaw - F[i - 1].yaw)) / DT) * DEG;
+        if (r > yawR) { yawR = r; yawAt = F[i].ph; }
+      }
+      // planted feet: travel on the floor while the foot is down (world), outside dashes, blinks and leaps
+      let slide = 0, slideMax = 0, slideAt = '';
+      for (let i = 1; i < F.length; i++) {
+        if (F[i].air || F[i - 1].air) continue;
+        for (const k of ['footR', 'footL']) {
+          const a = F[i].W[k], b = F[i - 1].W[k];
+          if (a.y < 0.14 && b.y < 0.14) {
+            const m = Math.hypot(a.x - b.x, a.z - b.z);
+            slide += m;
+            if (m > slideMax) { slideMax = m; slideAt = F[i].ph; }
+          }
+        }
+      }
+      // joints: the elbows' and knees' tightest fold, the lowest knee / foot
+      let elbow = 180, knee = 180, low = 9;
+      for (const s of F) {
+        elbow = Math.min(elbow, ang3(s.B.shR, s.B.elbowR, s.B.fistR), ang3(s.B.shL, s.B.elbowL, s.B.fistL));
+        knee = Math.min(knee, ang3(s.B.hipR, s.B.kneeR, s.B.footR), ang3(s.B.hipL, s.B.kneeL, s.B.footL));
+        low = Math.min(low, s.W.kneeR.y, s.W.kneeL.y, s.W.footR.y, s.W.footL.y);
+      }
+      rows.push({ name, ph, orbit, dist: +dist.toFixed(1), frames: F.length, total: Math.round(total), pb, pw, out: out1, pop, popEnd, yawR: Math.round(yawR), yawAt, slide: +slide.toFixed(2), slideMax: Math.round(slideMax * 1000), slideAt, elbow: Math.round(elbow), knee: Math.round(knee), low: +low.toFixed(2), contact });
+      if (TOP) worst.push(`   ${name} P${ph}${orbit ? ' (orbit)' : ''}: ` + jolts.filter((x, i, L) => L.findIndex((y) => y.k === x.k && Math.abs(y.t - x.t) < 0.05) === i).slice(0, TOP).map((x) => `${x.k} ${Math.round(x.j)}${x.w ? 'w' : ''} @${x.t.toFixed(2)} ${x.ph}`).join(' · '));
+    }
+  }
+  return { rows, worst };
+}
+
+/**
+ * His AI against a defending bot (makeDefender, mixed; god mode), `secs` s in each phase (entered through
+ * debug.setPhase): each frame his worst jolt with what he was doing and what he did two frames before (a
+ * seam), the root's pops, and at every LINK (one move straight into the next) and every beat's end the
+ * jolt and the root's pop across it. Hit-stops, slow-mo and jumps of the root (a blink, a flit, the air)
+ * are left out.
+ */
+function auditFight(secs = 30, phases = [1, 2, 3]) {
+  const R = [];
+  for (const ph of phases) {
+    const G = build(SEED + ph, true);
+    duel(G, { dist: 3, form: ph, ai: true });
+    const { game } = G;
+    const d = game.dragon, p = game.player;
+    p.debug.god = true;
+    p.debug.noRiposte = true;
+    G.defend = makeDefender(G, { style: 'mixed' });
+    Math.random = mulberry32(SEED * 7 + ph);
+    const what = () => {
+      const a = d.brain.act;
+      if (d.mode === 'act' && a) {
+        const b = a.beats.find((x) => a.t < x.end + 1e-6);
+        return `${a.name}:${b ? (a.t < b.impact - 0.12 ? 'windup' : 'strike') + (b.index ?? a.beats.indexOf(b)) : 'recovery'}`;
+      }
+      return d.mode === 'react' ? `react:${d.brain.react?.kind ?? ''}` : d.mode;
+    };
+    const H = [], all = [], links = [], ends = [];
+    let px = d.position.x, pz = d.position.z, lastHs = -99, total = 0, frames = 0, pops = 0, popMax = 0, prevAct = null, prevBeat = -1;
+    for (let i = 0, n = Math.round(secs / DT); i < n; i++) {
+      G.defend.act();
+      p.hp = p.maxHp;
+      game.mouseGround.set(d.position.x, 0, d.position.z);
+      G.tick(DT);
+      if (d.brain.pendingPhase > ph) d.brain.pendingPhase = 0;
+      if (d.hp < d.maxHp * 0.6) d.hp = d.maxHp * (ph === 1 ? 0.95 : 0.9);
+      if (game.hitstopTimer > 0 || game.timeScale < 0.9) lastHs = i;
+      const s = rigSample(d);
+      const a = d.mode === 'act' ? d.brain.act : null;
+      const bi = a ? a.beats.findIndex((x) => a.t < x.end + 1e-6) : -1;
+      s.link = !!(a && prevAct && a !== prevAct);
+      s.end = !!(a && a === prevAct && bi !== prevBeat);
+      prevAct = a;
+      prevBeat = bi;
+      s.jump = Math.hypot(d.position.x - px, d.position.z - pz) > 0.4 || d.position.y > 0.05 || !!d.brain.leap;
+      px = d.position.x;
+      pz = d.position.z;
+      s.w = what();
+      s.t = game.time;
+      H.push(s);
+      if (H.length > 4) H.shift();
+      if (H.length < 4 || H.some((h) => h.jump) || i - lastHs < 4) continue;
+      frames++;
+      const J = joltOf(H[1], H[2], H[3]), rp = rootPop(H[1], H[2], H[3]);
+      total += J.j;
+      popMax = Math.max(popMax, rp);
+      if (rp > 150) pops++;
+      all.push({ j: Math.round(J.j), k: J.k, t: +s.t.toFixed(2), now: H[3].w, before: H[1].w, rp: Math.round(rp) });
+      // a seam (a link, a beat's end) at this frame: the worse of the two windows that straddle it
+      const seam = { j: Math.round(Math.max(J.j, joltOf(H[0], H[1], H[2]).j)), rp: Math.round(Math.max(rp, rootPop(H[0], H[1], H[2]))), k: J.k, w: `${H[1].w} -> ${H[3].w}` };
+      if (H[2].link) links.push(seam);
+      else if (H[2].end) ends.push(seam);
+    }
+    G.defend = null;
+    all.sort((x, y) => y.j - x.j);
+    R.push({ ph, frames, mean: total / Math.max(1, frames), over300: all.filter((x) => x.j > 300).length, over150: all.filter((x) => x.j > 150).length, seams: all.filter((x) => x.now !== x.before && x.j > 150).length, pops, popMax: Math.round(popMax), all, links, ends });
+  }
+  return R;
+}
+
+async function scenarioAudit() {
+  out('\n== scenario AUDIT (opt-in: every move, the hero still and circling; then his AI in each phase: jolts, sliding feet, elbows at contact, blows inside the hero, root pops) ==');
+  const TOP = Number(process.env.ABYSS_AUDIT_TOP ?? 0);
+  const fmt = (o) => (o.v ? `${Math.round(o.v)} ${o.k ?? ''} ${o.ph ?? ''}`.replace(/\s+/g, ' ').trim() : '-');
+  if (process.env.ABYSS_AUDIT_MOVES !== '0') {
+    const { rows, worst } = auditMoves(auditList(), [false, true], TOP);
+    out('   move            P orbit   total  jolt own frame (mm/f2)         jolt world round root           blend-out     turn/s  slide m (worst mm)          elbow knee  low  root pop any / beat end      blows: limb gap m (- inside him) / elbow° / knee°');
+    for (const r of rows) {
+      if (r.fail) { out(`   ${r.name.padEnd(15)} ${r.ph} FAIL ${r.fail}`); continue; }
+      const c = r.contact.map((x) => `${x.part}:${x.flat.toFixed(2)}${x.y > 1.85 || x.y < 0 ? '^' : ''}${x.elbow != null ? `/${x.elbow}°` : ''}${x.knee != null ? `/k${x.knee}°` : ''}`).join(' ');
+      out(`   ${r.name.padEnd(15)} ${r.ph} ${r.orbit ? 'yes  ' : '     '} ${String(r.total).padStart(6)}  ${fmt(r.pb).padEnd(30)} ${fmt(r.pw).padEnd(31)} ${fmt(r.out).padEnd(13)} ${String(r.yawR).padStart(5)}  ${r.slide.toFixed(2).padStart(5)} (${String(r.slideMax).padStart(3)} ${r.slideAt.padEnd(10)}) ${String(r.elbow).padStart(5)} ${String(r.knee).padStart(4)} ${r.low.toFixed(2).padStart(5)}  ${String(Math.round(r.pop.v)).padStart(5)} / ${String(Math.round(r.popEnd.v)).padStart(4)} ${(r.popEnd.ph ?? '').padEnd(12)}  ${c}`);
+    }
+    if (TOP) for (const w of worst) out(w);
+    const ok = rows.filter((r) => !r.fail);
+    const sum = (k) => ok.reduce((a, r) => a + r[k], 0);
+    const blows = ok.flatMap((r) => r.contact);
+    const fists = blows.filter((c) => c.part === 'fistR' || c.part === 'fistL');
+    const kicks = blows.filter((c) => c.knee != null);
+    out(`   -- ${ok.length} runs (${rows.length - ok.length} failed to start): jolt total ${sum('total')} mm/f2 (each frame's worst, summed) · the worst ${Math.round(Math.max(...ok.map((r) => Math.max(r.pb.v, r.pw.v))))} · runs with a jolt over 300: ${ok.filter((r) => Math.max(r.pb.v, r.pw.v) > 300).length}`);
+    out(`   -- feet: slide ${sum('slide').toFixed(2)} m in all, the worst frame ${Math.max(...ok.map((r) => r.slideMax))} mm; root pops: the worst ${Math.round(Math.max(...ok.map((r) => r.pop.v)))}, at a beat's end ${Math.round(Math.max(...ok.map((r) => r.popEnd.v)))} mm/f2`);
+    out(`   -- blows: ${blows.length}; inside him (gap < -0.15 m): ${blows.filter((c) => c.flat < -0.15).length}, the deepest ${Math.min(...blows.map((c) => c.flat)).toFixed(2)} m; fists' elbows at contact ${fists.length ? `${Math.min(...fists.map((c) => c.elbow))} - ${Math.max(...fists.map((c) => c.elbow))}° (mean ${(fists.reduce((a, c) => a + c.elbow, 0) / fists.length).toFixed(0)})` : '-'}; kicks' knees ${kicks.length ? `${Math.min(...kicks.map((c) => c.knee))} - ${Math.max(...kicks.map((c) => c.knee))}°` : '-'}`);
+    const J = process.env.ABYSS_AUDIT_JSON;
+    if (J) fs.writeFileSync(J, JSON.stringify(rows, null, 1));
+  }
+  if (process.env.ABYSS_AUDIT_FIGHT !== '0') {
+    const secs = Number(process.env.ABYSS_FIGHT_SECS ?? 30);
+    out(`\n   -- his AI against a defender, ${secs} s a phase --`);
+    const mx = (L, k) => (L.length ? Math.max(...L.map((x) => x[k])) : 0);
+    for (const r of auditFight(secs)) {
+      const lk = r.links, en = r.ends;
+      out(`   P${r.ph}: ${r.frames} frames, mean worst jolt ${r.mean.toFixed(1)} mm/f2; over 300: ${r.over300}, over 150: ${r.over150}, of those on a seam: ${r.seams}; root pops over 150: ${r.pops} (worst ${r.popMax})`);
+      out(`       links ${lk.length}: worst jolt ${mx(lk, 'j')}, root pop ${mx(lk, 'rp')}${lk.length ? ` (${[...lk].sort((a, b) => b.j - a.j).slice(0, 3).map((x) => `${x.j}/${x.rp} ${x.w}`).join(' · ')})` : ''}`);
+      out(`       beat ends ${en.length}: worst jolt ${mx(en, 'j')}, root pop ${mx(en, 'rp')}${en.length ? ` (${[...en].sort((a, b) => b.rp - a.rp).slice(0, 3).map((x) => `${x.j}/${x.rp} ${x.w}`).join(' · ')})` : ''}`);
+      const seen = new Set();
+      for (const x of r.all) {
+        const key = `${x.k} ${x.now} ${x.before}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out(`       ${String(x.j).padStart(5)} ${x.k.padEnd(7)} t${x.t}  ${x.before === x.now ? x.now : `${x.before} -> ${x.now}`}  (root ${x.rp})`);
+        if (seen.size >= Number(process.env.ABYSS_FIGHT_TOP ?? 12)) break;
+      }
+    }
+  }
+}
+
+/**
+ * MOTIONFIX (ADR-162's kit for him, ADR-168): what the audit found on his strings and the kit fixed stays fixed.
+ * Every string he picks (cat 'string', in the first phase it is used in; deja vu's copies are the same
+ * blows), run with the hero circling him: a punch lands with the arm open (anim.js armSoft: every elbow
+ * was 126 - 131° at contact), a planted foot no longer swivels and skates with his tracking turn (the
+ * feet's planner: 1.8 - 11.3 m of sliding a string, up to 711 mm in one frame), and no joint jolts past
+ * 480 mm/f² (four of the five strings did on main: 353 - 653).
+ */
+async function scenarioMotionFix() {
+  out('\n== scenario MOTIONFIX (his strings with the hero circling: punches with an open arm, feet that stay planted, no pops) ==');
+  const names = MOVE_NAMES.filter((n) => MOVES[n].cat === 'string' && !MOVES[n].mirrorOf && !MOVES[n].transition && phasesOf(n).length);
+  const { rows } = auditMoves(names.map((name) => ({ name, ph: phasesOf(name)[0] })), [true]);
+  const ok = rows.filter((r) => !r.fail);
+  assert(ok.length === names.length && names.length >= 4, `${ok.length} of ${names.length} strings run (${names.join(', ')})`);
+  const fists = ok.flatMap((r) => r.contact.filter((c) => c.part === 'fistR' || c.part === 'fistL').map((c) => ({ ...c, name: r.name })));
+  const low = fists.filter((c) => c.elbow < 140);
+  assert(fists.length >= 8 && !low.length, `${fists.length} punches land with the arm open: elbows ${Math.min(...fists.map((c) => c.elbow))} - ${Math.max(...fists.map((c) => c.elbow))}° (main: 126 - 131°)${low.length ? `; under 140: ${low.map((c) => `${c.name}#${c.i} ${c.elbow}`).join(', ')}` : ''}`);
+  const feet = ok.map((r) => `${r.name} ${r.slide.toFixed(2)} m / ${r.slideMax}`).join(', ');
+  assert(ok.every((r) => r.slideMax < 300 && r.slide < 2.5), `planted feet hold through his tracking turn: under 2.5 m of sliding a string and 300 mm in a frame (${feet}; main: 1.8 - 11.3 m, up to 711 mm)`);
+  const jolt = (r) => Math.round(Math.max(r.pb.v, r.pw.v));
+  assert(ok.every((r) => jolt(r) < 480), `no joint jolts past 480 mm/f² in a string: ${ok.map((r) => `${r.name} ${jolt(r)}`).join(', ')} (main: 353 - 653)`);
+}
+
+// ================================================================== the pursuit (pressure.pursue)
+/** A bot that keeps the hero away from him: the pace defender's answers, and between them 'retreat' (runs
+ *  from each of his windups, sprinting, then comes back in), 'flee' (the same, never bending back in at
+ *  the floor's edge), 'kite' (holds 6 - 8 m) or 'roam' (2.5, 5 or 9 m, a new spot every 4 s). */
+function aiBot(G, mode, roam) {
+  const def = paceDefender(G);
+  let runUntil = -1;
+  const goal = { r: 2.5, a: 0, until: -1 };
+  const B = (CONFIG.world.dragonBound ?? 12) - 0.6;
+  const runs = mode === 'retreat' || mode === 'flee';
+  return {
+    onEvent(n, e) {
+      def.onEvent(n, e);
+      if (runs && n === 'dragon:windup' && MOVES[e?.name] && !MOVES[e.name].transition) runUntil = G.game.time + 1.1;
+    },
+    act() {
+      const g = G.game, input = G.input, p = g.player, d = g.dragon;
+      const rolled = def.act();
+      if (rolled || p.state === 'roll') { input.release('ShiftLeft'); return rolled; }
+      // (the retreating hero runs instead of guarding: only a red cue makes him roll)
+      if (runs && g.time < runUntil) input.up(1);
+      const dx = p.position.x - d.position.x, dz = p.position.z - d.position.z, dist = Math.hypot(dx, dz) || 1;
+      let wx = 0, wz = 0, sprint = false;
+      if (runs) {
+        if (g.time < runUntil) {
+          wx = dx / dist; wz = dz / dist; sprint = true;
+          // (at the floor's edge: along it, the side away from him, bending back in (retreat) or not (flee))
+          const R0 = Math.hypot(p.position.x, p.position.z) || 1;
+          if (Math.hypot(p.position.x + wx * 2, p.position.z + wz * 2) > B) {
+            const t = dx * p.position.z - dz * p.position.x >= 0 ? 1 : -1, k = mode === 'flee' ? 0 : Math.min(1.5, Math.max(0, (R0 - (B - 2.5)) / 2));
+            wx = (-dz / dist) * t - (p.position.x / R0) * k; wz = (dx / dist) * t - (p.position.z / R0) * k;
+            const l = Math.hypot(wx, wz) || 1; wx /= l; wz /= l;
+          }
+        } else if (dist > 3.2) { wx = -dx / dist; wz = -dz / dist; }
+      } else {
+        if (g.time > goal.until) {
+          goal.r = mode === 'kite' ? 6 + roam() * 2 : [2.5, 5, 9][Math.floor(roam() * 3)];
+          goal.a = Math.atan2(dx, dz) + (roam() - 0.5) * 1.6;
+          goal.until = g.time + (mode === 'kite' ? 2 : 4);
+        }
+        const gx = d.position.x + Math.sin(goal.a) * goal.r, gz = d.position.z + Math.cos(goal.a) * goal.r;
+        const k = Math.hypot(gx, gz) > B ? B / Math.hypot(gx, gz) : 1;
+        const ex = gx * k - p.position.x, ez = gz * k - p.position.z, l = Math.hypot(ex, ez);
+        if (l > 0.6) { wx = ex / l; wz = ez / l; sprint = mode === 'kite' && l > 2; }
+      }
+      if (sprint) input.hold('ShiftLeft'); else input.release('ShiftLeft');
+      input.axis = { x: wx, y: -wz };
+      return rolled;
+    },
+  };
+}
+
+/** A real melee beat of his: a zone of his own (no cast, no stream, no sent volley, nothing out of the
+ *  hover: those reach wherever the hero is). */
+const meleeBeat = (b) => !b.feint && !!b.def.zone && !b.def.cast && !b.def.selfHit && !b.def.send && !b.def.fist && !b.def.pass && (!b.def.release || b.cut === true);
+
+/** One AI run against a bot in phase `ph`: his melee swings, those at air (the hero beyond the blow's zone
+ *  + 1.5 m at its impact, nothing met) split into the swings THROWN at air (the hero already out of what
+ *  it could reach, past the pursuit's margin, at its glint) and those the hero ESCAPED (he left after the
+ *  glint: a blow once cued is thrown), the glints with no blow after them (the move left before the
+ *  impact with him not hit out of it), the break-offs. `pursue: false`: the kit without pressure.pursue. */
+function whiffRun(seed, ph, mode, secs, pursue = true) {
+  const PU = TUNING.pressure.pursue;
+  if (!pursue) delete TUNING.pressure.pursue;
+  try {
+    const G = build(seed, true);
+    const { game } = G;
+    const d = game.dragon, p = game.player;
+    duel(G, { dist: 3, ai: true, form: ph });
+    p.debug.god = true;
+    p.debug.noRiposte = true;
+    G.defend = aiBot(G, mode, mulberry32(seed * 31 + ph));
+    Math.random = mulberry32(seed * 7 + ph);
+    const hp = d.hitPlayer.bind(d);
+    d.hitPlayer = (o) => { const r = hp(o); if (o?.beat && r !== RESULT.IGNORED) o.beat._contact = true; return r; };
+    const pr = p.radius ?? 0.45, c = new THREE.Vector3();
+    const R = { seed, ph, mode, swings: 0, air: 0, escaped: 0, contacts: 0, glints: 0, glintNoBlow: 0, by: {}, lost: {}, stops: d.brain.stats.stops ?? 0 };
+    let lastA = null, lastT = 0;
+    const settleAct = (A, t, why) => {
+      for (const b of A.beats) {
+        if (!b.flashed || !meleeBeat(b) || b._g) continue;
+        b._g = true;
+        R.glints++;
+        // (a glint whose blow never came: the move left before its impact, and not because he was hit out of it)
+        if (t < b.impact - 1e-6 && why !== 'react' && why !== 'broken') { R.glintNoBlow++; R.lost[A.name] = (R.lost[A.name] || 0) + 1; }
+      }
+    };
+    const t0 = game.time;
+    for (let i = 0; i < Math.round(secs / DT); i++) {
+      G.defend.act();
+      game.mouseGround.set(d.position.x, 0, d.position.z);
+      G.tick(DT);
+      if (d.brain.pendingPhase > ph) d.brain.pendingPhase = 0;
+      if (d.hp < d.maxHp * 0.6) d.hp = d.maxHp * (ph === 1 ? 0.95 : 0.9);
+      const a = d.mode === 'act' ? d.brain.act : null;
+      if (lastA && a !== lastA) settleAct(lastA, lastT, d.mode);
+      lastA = a;
+      lastT = a ? a.t : 0;
+      if (a && !a.def.transition) {
+        for (const b of a.beats) {
+          if (!meleeBeat(b)) continue;
+          // (at its glint: how far the hero stood beyond what the blow could still reach; past the pursuit's
+          // margin the blow was thrown at air by choice, under it he left after the glint, an evasion)
+          if (b.flashed && b._g0 === undefined) {
+            const s = d.brain._sense();
+            b._g0 = s ? s.dist - d.brain._reachLeft(b, a.t, s) : Infinity;
+          }
+          if (b._far === undefined && a.t >= b.impact) {
+            // (the zone's centre: `fwd` m ahead of him, `side` m to his left)
+            const z = b.def.zone, fx = Math.sin(d.yaw), fz = Math.cos(d.yaw), f = z.fwd || 0, sd = z.side || 0;
+            const cc = c.set(d.position.x + fx * f + fz * sd, 0, d.position.z + fz * f - fx * sd);
+            b._far = Math.hypot(p.position.x - cc.x, p.position.z - cc.z) - (z.r + pr);
+          }
+          if (b.done && !b._seen && b._far !== undefined) {
+            b._seen = true;
+            R.swings++;
+            if (b._contact || b.cover) { R.contacts++; continue; }
+            if (b._far > 1.5) {
+              if (b._g0 !== undefined && b._g0 <= (PU?.margin ?? 0.5)) R.escaped++;
+              else { R.air++; R.by[a.name] = (R.by[a.name] || 0) + 1; }
+            }
+          }
+        }
+      }
+    }
+    R.T = game.time - t0;
+    R.stops = (d.brain.stats.stops ?? 0) - R.stops;
+    G.defend = null;
+    d.hitPlayer = hp;
+    return R;
+  } finally {
+    if (!pursue) TUNING.pressure.pursue = PU;
+  }
+}
+
+/**
+ * One staged move with his AI on (the reach watch is his AI's): `name` triggered in phase `ph` with the hero
+ * `dist` m in front of him, `hero(G, t)` steering the hero each frame. Returns the move's glints, its blows on
+ * the hero, the break-offs, the swings at air, the hero's distance at the break-off and the closest he came
+ * in the `after` s that followed. `pursue: false`: the kit without pressure.pursue.
+ */
+function chaseCase(name, { ph = 1, dist = 1.8, hero = null, pursue = true, after = 1.5 } = {}) {
+  const PU = TUNING.pressure.pursue;
+  if (!pursue) delete TUNING.pressure.pursue;
+  try {
+    const G = build(SEED, true);
+    const { game } = G;
+    const d = game.dragon, p = game.player;
+    duel(G, { dist, form: ph });
+    p.debug.god = true;
+    p.debug.noRiposte = true;
+    d.position.set(0, 0, -2);
+    d.yaw = 0;
+    place(G, dist);
+    run(G, 0.05);
+    const flashes = [], h0 = G.hits.length, s0 = d.brain.stats.stops ?? 0;
+    G.watch = (n, e) => { if (n === 'combat:flash' && e?.attack === name) flashes.push({ t: game.time, tell: e.tell }); };
+    const hp = d.hitPlayer.bind(d);
+    d.hitPlayer = (o) => { const r = hp(o); if (o?.beat && r !== RESULT.IGNORED) o.beat._contact = true; return r; };
+    d.debug.trigger(name);
+    d.debug.setAI(true);
+    const A = d.brain.act;
+    let stopAt = null, stopDist = 0, closest = Infinity, air = 0;
+    const t0 = game.time;
+    const gap = () => Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z);
+    run(G, 6, () => {
+      for (const b of A.beats) if (b.done && !b._seenW && meleeBeat(b)) { b._seenW = true; if (!b._contact && !b.cover) air++; }
+      hero?.(G, game.time - t0);
+      if (stopAt === null && (d.brain.stats.stops ?? 0) > s0) { stopAt = game.time - t0; stopDist = gap(); }
+      if (stopAt !== null) closest = Math.min(closest, gap());
+    }, () => (stopAt !== null ? game.time - t0 > stopAt + after : d.brain.act !== A && game.time - t0 > 0.5));
+    G.watch = null;
+    G.input.release('ShiftLeft');
+    G.input.up(1);
+    G.input.axis = { x: 0, y: 0 };
+    d.hitPlayer = hp;
+    return { G, d, A, flashes, hits: G.hits.slice(h0).filter((h) => h.attack === name), stops: (d.brain.stats.stops ?? 0) - s0, stopAt, stopDist, closest, air };
+  } finally {
+    if (!pursue) TUNING.pressure.pursue = PU;
+  }
+}
+
+/** The hero's input toward a direction (world x, z), sprinting or not. */
+const steer = (G, wx, wz, sprint = false) => {
+  if (sprint) G.input.hold('ShiftLeft');
+  else G.input.release('ShiftLeft');
+  G.input.axis = { x: wx, y: -wz };
+};
+
+/**
+ * PURSUIT (pressure.pursue, Tian Lei's, ADR-162; his, ADR-168): a blow the hero has run out of the reach of breaks off
+ * before its glint and he chases; a glint is always followed by a blow. Staged: the hero sprints out of
+ * Idle Hand's first windup (broken off, no glint, no hit, he comes after him; without the pursuit the jab
+ * is thrown at air), a hero who stays is hit as before, a string on a hero who guards in reach is thrown
+ * whole. Then his AI a minute a phase against heroes who step out of reach (ABYSS_WBOTS, default
+ * retreat,flee; ABYSS_WSECS 60): 0 swings thrown at air (a hero who leaves after a glint escapes a blow
+ * that is thrown: counted apart), 0 glints with no blow.
+ */
+async function scenarioPursuit() {
+  out('\n== scenario PURSUIT (a blow the hero ran out of the reach of breaks off before its glint, and he chases; no swing at air) ==');
+  const PU = TUNING.pressure.pursue, pf = (v, ph) => (Array.isArray(v) ? v[Math.min(v.length, ph) - 1] : v);
+  assert(PU && PU.margin > 0 && [1, 2, 3].every((f) => pf(PU.closeK, f) >= 1 && pf(PU.dashK, f) >= 1),
+    `TUNING.pressure.pursue: break off ${PU?.margin} m past what a blow can still reach; the chase by phase x${[1, 2, 3].map((f) => pf(PU?.closeK, f)).join(' / ')} step-in, x${[1, 2, 3].map((f) => pf(PU?.dashK, f)).join(' / ')} dash`);
+  // 1. the hero rolls away out of Idle Hand's first windup (at 0.1 s, before its glint) and sprints on
+  const runOut = (G, t) => {
+    if (t < 0.08) return;
+    const p = G.game.player, d = G.game.dragon, dx = p.position.x - d.position.x, dz = p.position.z - d.position.z, l = Math.hypot(dx, dz) || 1;
+    if (t < 0.9) steer(G, dx / l, dz / l, true);
+    if (t > 0.08 && t < 0.11) G.input.tap('Space');
+    if (t >= 0.9) steer(G, 0, 0);
+  };
+  const jab = chaseCase('idleHand', { hero: runOut, dist: 3.0 });
+  const jab0 = chaseCase('idleHand', { hero: runOut, dist: 3.0, pursue: false });
+  out(`     Idle Hand rolled out of: broken off at ${jab.stopAt?.toFixed(2)} s with the hero ${jab.stopDist.toFixed(1)} m off, the closest he came in 1.5 s ${jab.closest.toFixed(1)} m; without the pursuit: ${jab0.flashes.length} glints, ${jab0.air} at air`);
+  assert(jab.stops === 1 && !jab.flashes.length && !jab.hits.length && jab.air === 0 && jab.closest < jab.stopDist - 1.5,
+    `Idle Hand, the hero rolls out of its first windup from 3 m: broken off (${jab.stops}), no glint (${jab.flashes.length}), no hit (${jab.hits.length}), and he chases: ${jab.stopDist.toFixed(1)} → ${jab.closest.toFixed(1)} m`);
+  assert(jab0.stops === 0 && jab0.flashes.length >= 1 && jab0.air >= 1, `without TUNING.pressure.pursue (as on main): thrown at air (${jab0.flashes.length} glints, ${jab0.air} at air)`);
+  // 2. ... and a hero who stays is hit as before; a string on a hero who guards in reach is thrown whole
+  const stay = chaseCase('idleHand');
+  const real = stay.A.beats.filter((b) => !b.feint).length;
+  assert(stay.stops === 0 && stay.flashes.length === real && stay.hits.length === real, `Idle Hand, the hero stays: ${stay.flashes.length} glints, ${stay.hits.length} blows of ${real} (${stay.hits.map((h) => h.r).join(' ')})`);
+  const guard = chaseCase('stairKick', { hero: (G) => G.input.press(1) });
+  const real2 = guard.A.beats.filter((b) => !b.feint).length;
+  assert(guard.stops === 0 && guard.flashes.length === real2 && guard.hits.length === real2, `Climbing the Stair on a hero who guards in reach: ${guard.flashes.length} glints and ${guard.hits.length} blows of ${real2}, ${guard.stops} broken off`);
+  // 3. his AI against heroes who step out of reach
+  const SEEDS = (process.env.ABYSS_WSEEDS ?? String(SEED)).split(',').map(Number).filter(Number.isFinite);
+  const SECS = Number(process.env.ABYSS_WSECS ?? 60);
+  const BOTS = (process.env.ABYSS_WBOTS ?? 'retreat,flee').split(',');
+  // (ABYSS_WPURSUE=0: the same bots against the kit without pressure.pursue, as on main: reported, the
+  // asserts left out)
+  const WITH = process.env.ABYSS_WPURSUE !== '0';
+  out(`     his AI, ${SECS} s a phase, seeds ${SEEDS.join(', ')}${WITH ? '' : ', WITHOUT pressure.pursue'}:`);
+  out('     bot      P  swings  contact  AIR  air/min  escaped  glints  no blow  broken off   at air by move');
+  for (const mode of BOTS) {
+    for (let ph = 1; ph <= 3; ph++) {
+      const rs = SEEDS.map((seed) => whiffRun(seed, ph, mode, SECS, WITH));
+      const sum = (k) => rs.reduce((a, r) => a + r[k], 0), T = sum('T');
+      const by = {};
+      for (const r of rs) for (const [k, v] of Object.entries(r.by)) by[k] = (by[k] || 0) + v;
+      const lost = {};
+      for (const r of rs) for (const [k, v] of Object.entries(r.lost)) lost[k] = (lost[k] || 0) + v;
+      out(`     ${mode.padEnd(8)} ${ph} ${String(sum('swings')).padStart(7)} ${String(sum('contacts')).padStart(8)} ${String(sum('air')).padStart(4)} ${((sum('air') * 60) / T).toFixed(2).padStart(8)} ${String(sum('escaped')).padStart(8)} ${String(sum('glints')).padStart(7)} ${String(sum('glintNoBlow')).padStart(8)} ${String(sum('stops')).padStart(11)}   ${Object.entries(by).map(([k, v]) => `${k} ${v}`).join(' · ')}${Object.keys(lost).length ? `  (glints lost: ${Object.entries(lost).map(([k, v]) => `${k} ${v}`).join(' · ')})` : ''}`);
+      if (!WITH) continue;
+      assert(sum('air') === 0, `${mode} P${ph}: 0 swings thrown at air a minute (${((sum('air') * 60) / T).toFixed(2)}; ${sum('swings')} swings, ${sum('escaped')} escaped after their glint, ${sum('stops')} broken off)`);
+      assert(sum('glintNoBlow') === 0, `${mode} P${ph}: every glint is followed by its blow (${sum('glints')} glints, ${sum('glintNoBlow')} without)`);
+    }
+  }
+}
+
 const S = {
   pace: scenarioPace,
   win: scenarioWin,
@@ -1410,12 +2517,20 @@ const S = {
   flow: scenarioFlow,
   levels: scenarioLevels,
   data: scenarioData,
+  flurry: scenarioFlurry,
+  nolock: scenarioNolock,
+  wall: scenarioWall,
+  gear: scenarioGear,
   timing: scenarioTiming,
+  audit: scenarioAudit,
+  motionfix: scenarioMotionFix,
+  pursuit: scenarioPursuit,
   smoke: scenarioSmoke,
   looks: scenarioLooks,
+  herolike: scenarioHeroLike,
   scenes: scenarioScenes,
 };
-const OPT_IN = new Set(['smoke', 'cost', 'strategy']);
+const OPT_IN = new Set(['smoke', 'cost', 'strategy', 'audit']);
 const list = SCEN === 'all' ? Object.keys(S).filter((k) => !OPT_IN.has(k)) : SCEN.split(',');
 for (const k of list) {
   if (!S[k]) { out(`unknown scenario ${k}`); process.exit(2); }

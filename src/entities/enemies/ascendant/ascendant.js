@@ -7,6 +7,7 @@ import { TUNE as HERO_TUNE } from '../../player/player.js';
 import { Duelist } from '../duelist/duelist.js';
 import { DuelBrain } from '../duelist/brain.js';
 import { GUARD_KINDS } from '../duelist/guard.js';
+import { planFeet, feetPose } from '../duelist/feetPlan.js';
 import { answerOf, GUARD as GUARD_ANSWER } from '../duelist/director.js';
 import * as GEAR from './gear.js';
 import * as LOOK from './look.js';
@@ -73,47 +74,10 @@ const POSES = Object.freeze({
   },
   duel: (p, A) => {
     formPoses(A.player?.form ?? 1).duelClip(p, A);
-    // (his feet stay planted while a move carries him: the planner's offsets, Ascendant._planFeet)
-    const o = A.player?.feetOff;
-    if (o) {
-      // (a foot the clip carries across the floor is lifted: a step; its speed from the last frame)
-      const t = A.time ?? 0, dt = t - (o.t ?? -1), live = dt > 1e-4 && dt < 0.1;
-      o.t = t;
-      for (const [ch, f] of [[P.rF, o.r], [P.lF, o.l]]) {
-        const x = p[ch], z = p[ch + 2], v = live ? Math.hypot(x - (f.cx ?? x), z - (f.cz ?? z)) / dt : 0;
-        f.cx = x;
-        f.cz = z;
-        if (live) f.lift += (Math.min(FEET.lift, v * 0.06) - f.lift) * Math.min(1, dt * 30);
-        // a foot the clip lifts (a kick, a step) lets the planner's offset go SMOOTHLY: its weight
-        // eases to 0 while it is up and back to 1 on the floor, and the offset fades in the air, so it
-        // lands where the clip puts it (ADR-162: a hard cut at a height flickered as the key crossed
-        // it, and the foot jumped up to 0.7 m in a frame)
-        const up = p[ch + 1] > DIM.ankle + 0.06;
-        if (live) {
-          f.w += ((up ? 0 : 1) - f.w) * Math.min(1, dt * FEET.ease);
-          if (up) {
-            const k = Math.min(1, dt * FEET.fade);
-            f.x -= f.x * k;
-            f.z -= f.z * k;
-            f.y -= f.y * k;
-          }
-        }
-        const w = f.w;
-        p[ch] += f.x * w;
-        p[ch + 1] += (f.y + f.lift) * w;
-        p[ch + 2] += f.z * w;
-        // (where it is drawn, model space: the planner turns a planted foot against his turn)
-        f.mx = p[ch];
-        f.mz = p[ch + 2];
-      }
-    }
+    // (his feet stay planted while a move carries him: the planner's offsets, duelist/feetPlan.js)
+    feetPose(p, A);
   },
 });
-/** The feet's planner (Ascendant._planFeet): a planted foot is held where it stands while the root
- *  moves and turns under it; past `reach` m off its key it steps (`time` s, lifted `lift` m) back under
- *  him (both feet at once past `both` x reach); a foot the clip lifts lets its offset go (`ease` /s its
- *  weight, `fade` /s the offset in the air); a turn of more than `spin` rad in a frame is a jump. */
-const FEET = { reach: 0.24, time: 0.14, lift: 0.11, decay: 14, both: 1.6, ease: 14, fade: 9, spin: 0.6 };
 /** The beat a move is in at its time t (its windup or its active frames), or null. */
 const beatNow = (a) => (a ? a.beats.find((b) => a.t < b.end + 1e-6) ?? null : null);
 
@@ -379,71 +343,9 @@ export class Ascendant extends Duelist {
     super._animate(dt);
   }
 
-  /**
-   * His feet through a move: the clip keys them in the root's space, so a root that moves (a step-in,
-   * a dash, a slide back) would skate them. A foot on the floor is held where it stands in the world
-   * (an offset from its key, in model space); once it is FEET.reach m off its key it steps back under
-   * him, lifted, one foot at a time. Out of a move (footwork has the animator's own planner), a jump
-   * of the root (a blink, a flit) or a foot off the floor: the offsets go.
-   */
+  /** His feet through a move: the shared planner (duelist/feetPlan.js; ADR-162). */
   _planFeet(dt) {
-    const pl = this.pilot, pos = this.position;
-    const foot = () => ({ x: 0, y: 0, z: 0, t: -1, x0: 0, z0: 0, lift: 0, w: 1, mx: NaN, mz: NaN });
-    const F = (this._feet ??= { px: pos.x, pz: pos.z, yaw: this.yaw, r: foot(), l: foot() });
-    pl.feetOff = F;
-    const dx = pos.x - F.px, dz = pos.z - F.pz, dy = wrapAngle(this.yaw - F.yaw);
-    F.px = pos.x;
-    F.pz = pos.z;
-    const yaw0 = F.yaw;
-    F.yaw = this.yaw;
-    const jump = dx * dx + dz * dz > 0.6 * 0.6 || Math.abs(dy) > FEET.spin;
-    if (this.mode !== 'act' || jump || !(dt > 0) || pos.y > 0.3) {
-      const k = jump ? 1 : Math.min(1, dt * FEET.decay);
-      for (const f of [F.r, F.l]) {
-        f.x -= f.x * k;
-        f.z -= f.z * k;
-        f.y -= f.y * k;
-        f.t = -1;
-        f.mx = f.mz = NaN; // (drawn by footwork now: no turn to answer until a move draws it again)
-      }
-      return;
-    }
-    const s = this.drawScale || 1, c = Math.cos(this.yaw), sn = Math.sin(this.yaw);
-    const mx = (dx * c - dz * sn) / s, mz = (dx * sn + dz * c) / s;
-    // (his turn this frame: a planted foot drawn at (f.mx, f.mz) stays where it stands in the world, so
-    // in his own frame it turns the other way round his root; ADR-162: it swivelled with him)
-    const c0 = Math.cos(yaw0), s0 = Math.sin(yaw0);
-    let stepping = false;
-    for (const f of [F.r, F.l]) {
-      if (f.t >= 0) {
-        // stepping: back to its key, lifted on the way
-        f.t += dt;
-        const k = Math.min(1, f.t / FEET.time), e = k * k * (3 - 2 * k);
-        f.x = f.x0 * (1 - e);
-        f.z = f.z0 * (1 - e);
-        f.y = FEET.lift * Math.sin(Math.PI * k);
-        if (k >= 1) f.t = -1;
-        else stepping = true;
-      } else {
-        f.x -= mx;
-        f.z -= mz;
-        f.y = 0;
-        if (dy !== 0 && Number.isFinite(f.mx + f.mz) && f.w > 0.5) {
-          const wx = f.mx * c0 + f.mz * s0, wz = -f.mx * s0 + f.mz * c0; // (model → world, his old turn)
-          f.x += wx * c - wz * sn - f.mx; // (→ model, his new turn)
-          f.z += wx * sn + wz * c - f.mz;
-        }
-      }
-    }
-    // a foot past `reach` steps (the farther first); while one steps, the other only past `both` x reach
-    const r = Math.hypot(F.r.x, F.r.z), l = Math.hypot(F.l.x, F.l.z);
-    for (const [f, d] of r >= l ? [[F.r, r], [F.l, l]] : [[F.l, l], [F.r, r]]) {
-      if (f.t >= 0 || d <= FEET.reach || (stepping && d <= FEET.reach * FEET.both)) continue;
-      f.t = 0;
-      f.x0 = f.x;
-      f.z0 = f.z;
-      stepping = true;
-    }
+    planFeet(this, dt);
   }
 
   // ---------------------------------------------------------------- his limbs

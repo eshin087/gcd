@@ -6,7 +6,7 @@ import {
   gridGeometry, shellGeometry, bandGeometry, boxGeometry, mergeGeometries, sub, foldLines, lerp, limb, gripFist, orient,
   orientTo, clumpGeometry, partGeometry,
 } from '../../player/heroGeo.js';
-import { oneLookNow, dressOf, at } from './look.js';
+import { oneLookNow, onePrintNow, dressOf, at } from './look.js';
 
 // Xin Yi's gear: the hero's skeleton (built by the same buildHero(U, loadout), driven by the same
 // animator) in the hero's ink-line art, bare-handed as Tian Lei (no weapon: the right fist hangs on the
@@ -27,6 +27,10 @@ import { oneLookNow, dressOf, at } from './look.js';
 //              in the weapon slot (it is what he holds, and it hangs on the sword joint)
 // The options (`?oneLook=a|b|c`, look.js oneLookNow; read when his rig is built): a the Long Coat,
 // b the Cassock (narrow, closed, floor-length, it barely stirs), c the Grey Coat (a's cut; look.js colours).
+// The quiet print (`?onePrint=a|b`, ADR-170, look.js onePrintNow; '0' the shapes he shipped with) draws the small
+// parts as the letters can hold them: the glasses one dark band across the eyes (no arms, no bridge;
+// the glint one small plain cell), the high collar one shape (its inside the coat's own cloth: no lining
+// edge), the open V a flat fill of shirt (no lapel facings).
 //
 // His materials are his own instances (look.js tintOne writes the colours): `coat` / `collar` the coat,
 // `lining` its inside (and the skirt's back faces), `collarIn` the collar's inner face, `shirt` the shirt
@@ -75,12 +79,34 @@ function glassesGeometry(DIM) {
   return { band: mergeGeometries(parts), glint };
 }
 
+/** The quiet print's glasses (head space): one dark band across the eyes, following the face's curve
+ *  (the face is the body's ellipsoid, r [0.078, 0.09, 0.1] round DIM.skull), a little off it; the glint:
+ *  one small cell on his left. No arms, no bridge: at the letters' size they were a scatter of lines. */
+function bandGlassesGeometry(DIM) {
+  const [sx, sy, sz] = DIM.skull;
+  const y = sy - 0.011, A = 0.72, hh = 0.0135;
+  const band = gridGeometry(10, 2, (s, t, o) => {
+    const a = lerp(-A, A, s), h = lerp(-hh, hh, t);
+    // the face's ellipse at this height, 7 mm out; the ends wrap back a little more (the temples)
+    const k = Math.sqrt(Math.max(0, 1 - (h + y - sy) ** 2 / 0.0081));
+    o[0] = sx + Math.sin(a) * (0.078 * k + 0.007);
+    o[1] = y + h * (1 - 0.25 * Math.abs(s - 0.5));
+    o[2] = sz + Math.cos(a) * (0.1 * k + 0.007);
+    o[3] = a * 0.1;
+    o[4] = o[1];
+  });
+  const ga = 0.36; // (the glint: on his left, high on the band)
+  const glint = ellipsoidGeometry(0.009, 0.006, 0.003, { widthSegs: 6, heightSegs: 4 })
+    .rotateY(ga).translate(sx + Math.sin(ga) * 0.087, y + 0.004, sz + Math.cos(ga) * 0.109);
+  return { band: sub(band, 0), glint };
+}
+
 function buildHead(ctx) {
   const { head, M, DIM, mesh } = ctx;
   const H = hairGeometry(DIM);
   mesh(head, H.cap, M.hair);
   mesh(head, H.back, M.hair);
-  const G = glassesGeometry(DIM);
+  const G = onePrintNow() === '0' ? glassesGeometry(DIM) : bandGlassesGeometry(DIM);
   mesh(head, G.band, M.eye);
   mesh(head, G.glint, M.flask);
   return {};
@@ -108,7 +134,7 @@ const coatSeams = (x, y, z) => 0.5 + 0.7 * Math.sin(Math.atan2(x, z) * 2 + 0.6);
  * jaw, flaring out a little at the top, open in front (`open`: its half-angle, rad). `top` its height
  * (world). Outer face `M.collar`, inner face `M.collarIn` (BackSide: the camera looks down into it).
  */
-function collarGeometry(top, open, flare = 0.018, fall = 0.075) {
+function collarGeometry(top, open, flare = 0.018, fall = 0.075, flip = false) {
   const y0 = 1.485, cols = 22, rows = 3;
   return gridGeometry(cols, rows, (s, t, o) => {
     const a = open + s * (Math.PI * 2 - 2 * open);
@@ -123,7 +149,20 @@ function collarGeometry(top, open, flare = 0.018, fall = 0.075) {
     o[2] = Math.cos(a) * rz - 0.014;
     o[3] = (a - Math.PI) * 0.09;
     o[4] = o[1];
-  });
+  }, flip);
+}
+/** The collar's two faces: today's (outer `M.collar`, inner `M.collarIn` on the same sheet) or, in the
+ *  quiet print, one shape: both faces the coat's own cloth (the inner one a reversed copy). */
+function collarFaces(ctx, args) {
+  const { chest, M, mesh } = ctx;
+  const cg = collarGeometry(...args);
+  if (onePrintNow() === '0') {
+    mesh(chest, sub(cg, 1), M.collar);
+    mesh(chest, cg, M.collarIn);
+    return;
+  }
+  mesh(chest, sub(cg, 0), M.collar);
+  mesh(chest, sub(collarGeometry(args[0], args[1], args[2], args[3], true), 0), M.collar);
 }
 
 /** a / c: the coat's torso (closed in phase 1, open from phase 2: two shells, one shown), the shirt in
@@ -137,6 +176,11 @@ function chestCoat(ctx) {
   at(D, open, 2, 3);
   // the shirt in the V (always built: hidden behind the closed coat in phase 1)
   mesh(spine, shellGeometry(rings(0.002), { span: 0.5, cols: 8, sub: 2 }), M.shirt);
+  // the quiet print: the V a flat fill of shirt, no facings; the collar one shape
+  if (onePrintNow() !== '0') {
+    collarFaces(ctx, [1.625, 0.62, 0.016, 0.055]);
+    return { keep: [closed, open] };
+  }
   // the lapels' edge: a narrow facing down each side of the V (the lining turned out), phases 2 - 3
   const lap = [];
   for (const s of [-1, 1]) {
@@ -157,9 +201,7 @@ function chestCoat(ctx) {
   const lapel = mesh(spine, mergeGeometries(lap), M.lining);
   at(D, lapel, 2, 3);
   // the high collar: outer and inner faces
-  const cg = collarGeometry(1.625, 0.62, 0.016, 0.055);
-  mesh(chest, sub(cg, 1), M.collar);
-  mesh(chest, cg, M.collarIn);
+  collarFaces(ctx, [1.625, 0.62, 0.016, 0.055]);
   return { keep: [closed, open, lapel] };
 }
 
@@ -168,9 +210,7 @@ function chestCoat(ctx) {
 function chestCassock(ctx) {
   const { spine, chest, M, mesh } = ctx;
   mesh(spine, foldLines(shellGeometry(rings(0.008), { sub: 3, cols: 28 }), coatSeams), M.coat);
-  const cg = collarGeometry(1.6, 0.14, 0.004, 0.03);
-  mesh(chest, sub(cg, 1), M.collar);
-  mesh(chest, cg, M.collarIn);
+  collarFaces(ctx, [1.6, 0.14, 0.004, 0.03]);
   // the buttons: on the shell's front, 1.49 m down to 1.12 m
   const bt = [];
   for (let i = 0; i < 8; i++) {

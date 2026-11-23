@@ -29,6 +29,7 @@ export const SCRIPTHALL = Object.freeze({
   text: Object.freeze({
     arrive: ['Every wall of this hall is written in the same falling hand. At its far end a man in a long black coat stands with his back to you.', 'Rest at the bonfire to restore your flasks.'],
     stir: 'The falling letters hold still. He looks over his shoulder…',
+    gear2: 'HE STOPS TEACHING', // (phase 1's second gear: wokenOne.js _gearUp, ADR-168)
     phase2: 'A HUNDRED IRON SEEDS',
     phase3: 'HE SEES THE SCRIPT',
     victory: 'THE ONE WHO WOKE SLEEPS',

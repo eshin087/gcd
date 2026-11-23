@@ -30,6 +30,18 @@ export const RELEASES = [
       },
       {
         date: '2026-11-23',
+        title: 'Xin Yi reworked: drawn like the hero, kicks and flurries, a wall kick, bullets that never lock you',
+        notes: [
+          'Xin Yi is drawn in letters like the hero: quieter, simpler, his coat moving in every phase.',
+          'Phase 1 is faster and full of kicks: spinning kicks, tornado and butterfly kicks, kicks in the air, and flurries of blows.',
+          'A flurry is one glint: one parry turns it all, a held guard costs a little guard and no health, one roll passes it.',
+          'He runs up the pillar or screen at your side and springs at you: parry the flying kick, roll the drop heel.',
+          'About a third into the fight his second hand comes out: watch for the opening as it does.',
+          'His bullets come in bursts of three, each with one glint. A hit is a short flinch: you can always guard, parry or roll before the next burst.',
+        ],
+      },
+      {
+        date: '2026-11-23',
         title: 'The living world',
         notes: [
           'The levels are now alive before the fight: faint wisps of tiny letters drift across on the wind, leaves and ash fall and lie, banners and paper charms stream, mist and drizzle pass, birds lift off as you run near.',

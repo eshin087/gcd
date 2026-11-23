@@ -5,6 +5,47 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-23 — Session 87: Xin Yi reworked: drawn like the hero, kicks and flurries, a wall kick, bullets that never lock (planned by Fable, built by Opus: a lead and three agents)
+
+**What.** The owner played the merged fight (Session 82) and asked for more ASCII, faster combos, acrobatic
+kicks, air attacks, a wall kick, flurries (phase 1 above all) and bullets that never stun-lock. Fable planned it
+with four questions (the owner took each recommended answer); this session built it (ADR-168 – ADR-170):
+- **The look** (a helper; `?oneLetters`, `?onePrint` a / b / 0; the owner picked a, "Print a"): his letters follow his size,
+  the hero's quiet print, simpler glasses / collar / shirt, a coat that moves from phase 1 and is clamped for
+  flips; b is one letter size bolder on a phone (`kit.letterBias`).
+- **Motion** (a helper): ADR-162's kit for him: soft arms and legs, the feet planner lifted into
+  `duelist/feetPlan.js` (Tian Lei byte-identical in his audit), the pursuit (0 swings at air); `woke.mjs audit`
+  (opt-in) with main's numbers first, `motionfix`, `pursuit`. The audit then caught the spin back kick's knee
+  flipping and the sweep jolting after a spin (both fixed) and palm dashes ending inside the hero (1.35 m stop).
+- **Phase 1** in two gears (one hand; both at 83 % through a 0.9 s opening); THE FLURRY BURST (one cue, one
+  result); nine new strike builders (`strikes.js`: spins, tornado, butterfly, flash kick, cartwheel kick,
+  bicycle, drop heel, flying knee, the burst's keys); eight new strings; Borrowed Wall off the upright at the
+  hero's side (or the floor), a flying side kick or a drop heel, used often.
+- **Phase 2**: THE BULLETS' RULE: Iron Rain in three bursts of three, each one cue (its glint `flashLead` before
+  it lands, the aim fixed there) and one result; a hit is a 0.18 s flinch that keeps the input buffer
+  (`hit.stun` / `hit.mercy` in player.js, inert for everything else); `shotMercy` 0.45 s for his other shots;
+  Iron in the Air; Close Iron's spin kick.
+- **Phase 3**: A Thousand Hands with a burst in its middle.
+
+**Numbers.** PACE cues a minute by STAGE: phase 1 gear 1 85.2, gear 2 87.3, phase 2 74.9, phase 3 76.7 (seed means) (main: phase 1 65.1 - 71.1, mean 67.2); the longest gap 2.42 / 2.39 / 2.23 / 3.32 s (main's phase 1: 3.29); dodges 13 / 10 / 7 / 21 % of cues (main's phase 1: 7 %); 0 conflicting cues; phases 2 - 3 at 0.86 - 0.88 of gear 2. Pinned from the worst seed with a margin (`pressure.meter`: minRate 70 / 78 / 65 / 62, maxGap 3.3 / 3.0 / 3.5 / 3.9). Short of the plan's targets, said plainly: gear 2's 95 - 105 (a burst counts one cue), 15 - 25 % dodges in phase 1 (13 % / 10 %). STRATEGY (god mode, seeds 4242 and 7): mixed 72 s, parry 106, block-only 75, lean 112, dodge-only 111: dodging and leaning are not the fastest. The mortal block-only bot survives and wins (61 - 89 s): no health through a block. WIN: the fencing bot wins through both bars in 66 s (84 before). The motion audit: elbows at contact 130 -> 152 deg (mean), feet sliding 198.5 -> 64.7 m, 0 swings at air (was 2 - 7 a minute), every string's worst jolt 310 - 473 mm/f2 (main 353 - 653). NOLOCK: `woke.mjs nolock`: a hero who stands unguarded through Iron Rain takes 3 flinches (one a burst) and the heavy shot, never a second stagger from a bullet; the least free time between two of his hits after a bullet 0.32 s (>= 0.25); hit by burst 1, then guard / parry / roll: burst 2 blocked / parried / dodged. Each burst lands 7 - 10 ms from its glint + 0.26 s (`timing`). A held guard through a whole volley pays 45 guard, no health (`cover`). Before: one slug locked the hero through all eleven and the heavy shot.
+
+**Open.** The owner's picks still open: `oneLook`, `hall`, `script` (`oneLetters` and `onePrint`: a, picked); the iPhone (how he
+reads in letters, the bursts at the phone camera, fps). Gear 2 measures under the plan's 95 - 105 cues a minute:
+a burst of 7 - 8 blows is ONE cue by the owner's choice. Cut (the plan's cut order): phase 3's Falling Leaves,
+the pillar run inside Iron Rain, `doubleWall`, the footwork clips (back handspring, cartwheel side-switch,
+kick-up). Left from the audit: Low Wind's sweep (Tian Lei's builder) still jolts in its tuck (pre-existing, a
+little worse with the planner), the rising's first keys, hooks and backfists that end 0.4 - 0.6 m short; 3 - 6 cm
+of hanging coat meets the legs in strides (a shin push needs anim.js). From the film review (every new move at the game camera,
+four sides): the cartwheel kick's heel meets the hero's sword hand, 0.8 m short of his body (its zone hits; the
+picture does not); on the upright he stands beside its face instead of leaning out from it; the flare's streak is
+centred where its glint went out (behind him as he flies); in flips the coat's panels still read as a star at
+the game camera (clamped to 50 deg); the tornado from the south reads as sitting in the air; the flit of A
+Thousand Hands lands south of the hero and covers him (as before).
+
+**Lessons.** Two of three helpers could not write into their own worktrees (a hook: "belongs to another
+session's worktree") and worked in scratch clones; cherry-picking their commits onto the lead branch worked,
+the conflicts all in the suite's scenario block (keep both, mind the closing brace). The timing test caught
+what no other did: a burst's glint 0.26 s before its slugs LEFT put them 0.5 s after it.
 ## 2026-11-23 — The living world, round 2: the air as clumps of tiny faint letters (the owner's verdict; ADR-163 addendum)
 
 **Owner** (on the preview): "wind effects need to be way subtle and not like this random wave taking over

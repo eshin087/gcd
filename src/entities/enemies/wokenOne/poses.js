@@ -54,6 +54,18 @@ const RUN = [
 
 /** One pose set per phase (index 0 = phase 1). */
 export const PHASE_POSES = GUARDS.map((G, i) => createDuelPoses(G, { breath: { k: 1.0, period: 3.6 }, run: RUN[i] }));
+
+/** Phase 1's GEAR 2 (ADR-168: bar 1 at or under TUNING.gear2.at): both hands out, the lead (left) hand
+ *  open forward, the rear (right) hand at the chest; a little lower and wider than the teacher's stance. */
+export const GEAR2_GUARD = Object.freeze({
+  ...BASE, bY: -0.12, yaw: -0.34, hdY: 0.3, rH: [0.1, 0.06, 0.2], rP: [-0.8, -0.7, -0.1], lH: [0.02, 0.1, 0.42], lP: [0.8, -0.8, 0.1],
+  rF: [-0.2, ANK, -0.22], lF: [0.18, ANK, 0.26], rK: [-0.4, 0, 0.9], lK: [0.4, 0, 0.9], sw: [0.3, 0.6],
+});
+export const GEAR2_POSES = createDuelPoses(GEAR2_GUARD, { breath: { k: 1.0, period: 3.2 }, run: { hand: [-0.04, -0.3, 0.1], pole: [-0.8, -0.4, -0.4], blade: [0.2, 0.8], flat: [0, 0, 1] } });
+/** The pose set he moves with: `set` 4 = phase 1's gear 2 (wokenOne.js pilot.pset). */
+export const posesOf = (set) => (set === 4 ? GEAR2_POSES : phasePoses(set));
 /** The pose set of a phase (1-based, clamped). */
-export const phasePoses = (ph) => PHASE_POSES[Math.min(PHASE_POSES.length, Math.max(1, ph | 0)) - 1];
+export function phasePoses(ph) {
+  return PHASE_POSES[Math.min(PHASE_POSES.length, Math.max(1, ph | 0)) - 1];
+}
 export { FIST_UP, FIST_FLAT };
