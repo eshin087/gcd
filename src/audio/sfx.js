@@ -1,5 +1,6 @@
 import { clamp } from '../core/math.js';
 import { env, perc, glide, spikes, rnd, mtof, num } from './dsp.js';
+import { tuneParry } from './streakSound.js';
 
 // One-shot sound recipes, played through AudioEngine.play(name, opts).
 // Each entry: { prio, rev, gap, falloff, bus, gain, play(v, t, o, E) }
@@ -542,7 +543,12 @@ export const SFX = {
       const ch = clamp(Math.round(num(o.chain, 1)), 1, 8);
       const up = Math.pow(2, ((ch - 1) * 2) / 12) * (pf ? 1.5 : 1); // +2 semitones per deflect; perfect: +a fifth
       // struck steel: inharmonic partials, instant attack, ringing decay (+ a detuned twin = beating)
-      const f0 = (big ? 740 : 880) * up * rnd(0.98, 1.02);
+      const base = big ? 740 : 880, jit = rnd(0.98, 1.02);
+      // the streak's sound on (streakSound.js): the chain climbs the scale of the playing track instead
+      // of whole tones (a quarter of the jitter, so it stays in tune)
+      const f0 = o.tune ? tuneParry(o.tune, base, ch) * (pf ? 1.5 : 1) * (1 + (jit - 1) * 0.25) : base * up * jit;
+      // a single perfect parry's ring per perfectMode() (sharp: tighter, cinema: a longer tail; today: 1)
+      const rk = num(o.ring, 1);
       for (const [r, a, d] of [[1, 0.2, 0.7], [1.006, 0.1, 0.8], [2.32, 0.15, 0.55], [3.7, 0.11, 0.4], [5.1, 0.08, 0.3], [6.9, 0.05, 0.22]]) {
         ping(v, t, 'sine', f0 * r, a * k, d * len, 0.001);
       }
@@ -558,9 +564,9 @@ export const SFX = {
       }
       if (o.perfectMelee) {
         // perfect: a sharper crack and a high bright bell that rings through the slow motion
-        burst(v, t, 'white', 'highpass', 5200, 1.2, 0.45, 0.03, 0.0004);
-        ping(v, t + 0.003, 'sine', f0 * 3, 0.08, 1.3, 0.001);
-        ping(v, t + 0.003, 'triangle', f0 * 4.5, 0.035, 0.9, 0.001);
+        burst(v, t, 'white', 'highpass', 5200, 1.2, 0.45, 0.03 * Math.min(1, rk), 0.0004);
+        ping(v, t + 0.003, 'sine', f0 * 3, 0.08, 1.3 * rk, 0.001);
+        ping(v, t + 0.003, 'triangle', f0 * 4.5, 0.035, 0.9 * rk, 0.001);
       }
       if (ch >= 2) {
         // the chain's ring: a high bell on the clang's pitch, longer and brighter as it climbs
@@ -577,7 +583,8 @@ export const SFX = {
       }
       // sparkle ring: quick ascending glints
       const notes = big ? [88, 91, 95, 100, 103] : [91, 95, 100];
-      notes.forEach((m, i) => ping(v, t + 0.04 + i * 0.035, 'sine', mtof(m) * up, 0.05 * k, 0.35, 0.002));
+      // (tuned: the glints are the scale's next notes above the clang's octave)
+      notes.forEach((m, i) => ping(v, t + 0.04 + i * 0.035, 'sine', o.tune ? tuneParry(o.tune, f0 * 2, i + (big ? 0 : 1) + 1) : mtof(m) * up, 0.05 * k, 0.35, 0.002));
       if (big) {
         // deflect: a crystalline shimmer blooming over the clang + rising air
         for (const det of [0, 7]) {
@@ -761,13 +768,16 @@ export const SFX = {
     prio: 6, rev: 0.3, gap: 0.03, bus: 'cue',
     play(v, t, o) {
       const n = clamp(num(o.n, 1), 1, 8), k = (n - 1) / 7;
-      const up = Math.pow(2, (2 * (n - 1)) / 12);
-      const bp = swish(v, t, 'white', 'bandpass', 2600, 1.4, [[0, 0], [0.012, 0.5], [0.07, 0.16], [0.11, 0]]);
+      // the streak's sound on (streakSound.js): opts.f = the ring on the scale; opts.fast = a cut of the
+      // storm's merged run (the sweep voice carries the ring: here only a lighter swish and bite, no thump)
+      const up = o.f > 0 ? o.f / 1568 : Math.pow(2, (2 * (n - 1)) / 12);
+      const fast = !!o.fast, sk = fast ? 0.55 : 1, ring = fast ? 0.2 : 1;
+      const bp = swish(v, t, 'white', 'bandpass', 2600, 1.4, [[0, 0], [0.012, 0.5 * sk], [0.07, 0.16 * sk], [fast ? 0.08 : 0.11, 0]]);
       glide(bp.frequency, t, 2600, 7200, 0.07);
-      burst(v, t + 0.012, 'white', 'highpass', 5200, 0.7, 0.28, 0.05, 0.001);
-      thump(v, t + 0.012, 170, 60, 0.07, 0.45, 0.1);
+      burst(v, t + 0.012, 'white', 'highpass', 5200, 0.7, 0.28 * sk, fast ? 0.035 : 0.05, 0.001);
+      if (!fast) thump(v, t + 0.012, 170, 60, 0.07, 0.45, 0.1);
       for (const [f, a, d] of [[1568, 0.15, 0.3], [2349, 0.09, 0.22], [3951, 0.05, 0.16]]) {
-        ping(v, t + 0.012, 'sine', f * up * rnd(0.995, 1.005), a * (0.8 + 0.4 * k), d);
+        ping(v, t + 0.012, 'sine', f * up * rnd(0.995, 1.005), a * (0.8 + 0.4 * k) * ring, fast ? d * 0.5 : d);
       }
     },
   },
@@ -803,10 +813,23 @@ export const SFX = {
       burst(v, t, 'white', 'highpass', 3800, 0.7, 0.45, 0.16, 0.001);
       thump(v, t, 140, 38, 0.2, 0.85, 0.4);
       const steps = [0, 3, 7, 10, 12, 15, 19];
+      // the streak's sound on (streakSound.js): opts.f = the run's root in the track's key; opts.tier
+      // grows the chord: a longer ring from tier 3, a low root under it, the fifth below, the top octave
+      const R = o.f > 0 ? o.f : 880, tier = clamp(Math.round(num(o.tier, 0)), 0, 5), dk = 1 + 0.18 * Math.max(0, tier - 2);
       for (let i = 0; i < n; i++) {
-        const f = 880 * Math.pow(2, steps[i] / 12) * rnd(0.995, 1.005), at = t + 0.012 + i * 0.03;
-        ping(v, at, 'sine', f, 0.1, 0.55);
-        ping(v, at, 'sine', f * 2.01, 0.035, 0.3);
+        const f = R * Math.pow(2, steps[i] / 12) * rnd(0.995, 1.005), at = t + 0.012 + i * 0.03;
+        ping(v, at, 'sine', f, 0.1, 0.55 * dk);
+        ping(v, at, 'sine', f * 2.01, 0.035, 0.3 * dk);
+      }
+      if (o.f > 0 && tier >= 3) {
+        const at = t + 0.012 + n * 0.03, kk = clamp(num(o.k, 1), 0, 2);
+        ping(v, t + 0.012, 'sine', R / 2, 0.09 * kk, 0.9 * dk);
+        ping(v, t + 0.012, 'triangle', R / 2, 0.025 * kk, 0.5 * dk);
+        if (tier >= 4) ping(v, at, 'sine', R * 0.75, 0.06 * kk, 0.8 * dk);
+        if (tier >= 5) {
+          ping(v, at + 0.03, 'sine', R * 4, 0.04 * kk, 0.9 * dk);
+          ping(v, at + 0.03, 'sine', R * 3, 0.045 * kk, 1.0 * dk);
+        }
       }
     },
   },

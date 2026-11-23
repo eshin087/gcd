@@ -10598,6 +10598,156 @@ async function scenarioZoomArt() {
   return G;
 }
 
+async function scenarioStreakSound() {
+  out('\n== scenario STREAKSOUND (the streak pass: the climb, the loss, the layer; audio/streakSound.js) ==');
+  const { STREAK_FX, STREAK_TIERS } = await imp('src/combat/streak.js');
+  const { StreakSound, STREAK_SOUND: SD, SCALES } = await imp('src/audio/streakSound.js');
+  const G = build();
+  const { game, input } = G;
+  input.tap('Space');
+  G.tick(DT);
+  const A = game.audio, ctx = AUDIO.ctx, SS = A.streakSound;
+  assert(ctx && SS && !SS.bus && !SS.layer, 'the streak sound exists with the engine and has built nothing yet');
+  const e0 = errors.length;
+  const on0 = STREAK_FX.on.sound, k0 = STREAK_FX.k.sound;
+  STREAK_FX.on.sound = true;
+  STREAK_FX.k.sound = 1;
+  // spies: nodes created, values scheduled on any AudioParam
+  let nodes = 0, sched = 0;
+  const CM = ['createGain', 'createOscillator', 'createBiquadFilter', 'createWaveShaper', 'createBufferSource', 'createStereoPanner'];
+  for (const m of CM) { const f = ctx[m]; ctx[m] = function (...a) { nodes++; return f.apply(this, a); }; }
+  const PP = Object.getPrototypeOf(ctx.createGain().gain);
+  const PM = ['setTargetAtTime', 'setValueAtTime', 'linearRampToValueAtTime', 'exponentialRampToValueAtTime', 'cancelScheduledValues', 'cancelAndHoldAtTime'];
+  const P0 = {};
+  for (const m of PM) { P0[m] = PP[m]; PP[m] = function (...a) { sched++; return P0[m].apply(this, a); }; }
+  const wait = (s) => { ctx.currentTime += s; A.update(Math.min(s, 0.1)); };
+  const ev = (n, d) => game.events.emit(n, d);
+  const parry = (n) => { ev('player:streak', { count: n, lost: 0 }); ev('player:parry', { tell: 'normal', attack: 'strike', chain: 1, light: false, perfect: false, last: true, flare: false }); };
+  const dodge = (n) => { ev('player:streak', { count: n, lost: 0 }); ev('player:perfectDodge', { attack: 'strike', tell: 'red', streak: n }); ev('player:ghostep', { x: 0, z: 0 }); };
+  wait(1);
+  // the climb: one scale step per count, two octaves at the top degree, then held
+  const sc = SCALES[SD.scale];
+  const hz = [], ext = [];
+  for (let n = 1; n <= 18; n++) {
+    const c0 = SS.climbs, x0 = SS.extras;
+    (n % 2 ? parry : dodge)(n);
+    assert(SS.climbs === c0 + 1, `count ${n}: one climb note (${SS.climbs - c0})`);
+    hz.push(SS.lastHz);
+    ext.push(SS.extras - x0);
+    wait(0.6);
+  }
+  const f1 = hz[0];
+  assert(f1 >= SD.lo && f1 < SD.lo * 2, `the climb starts on the tonic in its octave (${f1.toFixed(1)} Hz)`);
+  const want = hz.map((_, i) => f1 * Math.pow(2, (12 * Math.floor(Math.min(i, sc.top) / sc.steps.length) + sc.steps[Math.min(i, sc.top) % sc.steps.length]) / 12));
+  assert(hz.every((f, i) => Math.abs(f / want[i] - 1) < 1e-6), `each count is its scale step (${hz.map((f) => f.toFixed(0)).join(' ')})`);
+  assert(hz.every((f, i) => i === 0 || (i <= sc.top ? f > hz[i - 1] : f === hz[i - 1])), 'strictly rising to the top degree, then held');
+  assert(Math.abs(hz[sc.top] / f1 - 4) < 1e-6, `two octaves at the top (${(hz[sc.top] / f1).toFixed(3)})`);
+  const tierAt = ext.map((x, i) => (x ? i + 1 : 0)).filter(Boolean);
+  assert(JSON.stringify(tierAt) === JSON.stringify([...STREAK_TIERS]), `a tier reached adds its extra once (at ${tierAt})`);
+  // the loss: 2 or more answers, 1 does not
+  let l0 = SS.losses;
+  ev('player:streak', { count: 0, lost: 18 });
+  assert(SS.losses === l0 + 1, 'a streak of 18 lost: the falling answer');
+  wait(1);
+  parry(1);
+  wait(0.5);
+  l0 = SS.losses;
+  ev('player:streak', { count: 0, lost: 1 });
+  assert(SS.losses === l0, 'a streak of 1 lost: nothing');
+  parry(1);
+  parry(2);
+  l0 = SS.losses;
+  ev('player:streak', { count: 0, lost: 2 });
+  assert(SS.losses === l0 + 1, 'a streak of 2 lost: the answer');
+  wait(1);
+  // the layer: only in a fight, from tier 2, its level per tier; back to 0 (and gone) after a loss
+  A.setMusic('boss');
+  wait(0.1);
+  const lv = [];
+  for (let n = 1; n <= 16; n++) { parry(n); lv.push(SS.layerLevel()); wait(0.3); }
+  const expect = (n) => SD.layer[[0, 0, 1, 1, 2, 2, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5][n - 1]];
+  const okL = lv.every((v, i) => Math.abs(v - (expect(i + 1) ?? 0)) < 1e-9);
+  assert(okL && lv[3] === 0 && lv[4] > 0 && lv[15] > lv[9], `the layer follows the tier (${lv.map((v) => v.toFixed(3)).join(' ')})`);
+  assert(SS.layer && SS.layer.out.outs.has(A.musicBus), 'the layer plays into the music bus (it ducks with the music)');
+  ev('player:streak', { count: 0, lost: 16 });
+  assert(SS.layerLevel() === 0 && SS.layer?.dead, 'lost: the layer fades to 0');
+  wait(1);
+  wait(1.5);
+  assert(!SS.layer, 'and is gone once faded');
+  // ten perfect defences a second: a bounded number of voices
+  let maxLive = 0, n10 = 0;
+  for (let i = 0; i < 30; i++) {
+    parry(++n10);
+    const now = ctx.currentTime;
+    maxLive = Math.max(maxLive, SS.voices.filter((v) => !v.killed && v.end > now).length);
+    wait(0.1);
+  }
+  assert(maxLive <= SD.maxVoices && SS.voices.length <= SD.maxVoices + 12, `ten a second: at most ${maxLive} live climb voices (cap ${SD.maxVoices}), ${SS.voices.length} kept`);
+  ev('player:streak', { count: 0, lost: n10 });
+  wait(2);
+  // the flurry: cuts on the scale; a storm's close cuts merge into one sweep
+  const played = [];
+  const play0 = A.play;
+  A.play = function (n, o) { played.push([n, o]); return play0.call(this, n, o); };
+  const sw0 = SS.sweeps;
+  for (let i = 1; i <= 6; i++) { ev('player:flurryHit', { n: i, of: 7, last: false, damage: 28 }); wait(i < 3 ? 0.15 : 0.05); }
+  const cuts = played.filter(([n]) => n === 'flurryCut').map(([, o]) => o);
+  assert(cuts.length === 6 && cuts.every((o) => o.f > 0) && !cuts[0].fast && !cuts[1].fast && cuts.slice(3).every((o) => o.fast) && SS.sweeps === sw0 + 1, `the storm's last cuts merge into one sweep (${cuts.map((o) => (o.fast ? 'f' : 'c')).join('')}, sweeps +${SS.sweeps - sw0})`);
+  played.length = 0;
+  A.play = play0;
+  wait(1);
+  // off (or at 0): no new node, no new scheduled value, the same sound as the engine without the piece
+  const run = () => {
+    nodes = 0; sched = 0;
+    A.setMusic('boss');
+    for (let n = 1; n <= 6; n++) { (n % 2 ? parry : dodge)(n); ctx.currentTime += 0.3; }
+    ev('player:flurryHit', { n: 1, of: 7, last: false, damage: 28 });
+    ev('player:flurryEnd', { strikes: 7, damage: 200, art: 'rend', label: 'x' });
+    ev('player:streak', { count: 0, lost: 6 });
+    return { nodes, sched };
+  };
+  const keep = A.streakSound;
+  A.streakSound = null;
+  const base = run();
+  wait(2);
+  A.streakSound = keep;
+  STREAK_FX.on.sound = false;
+  const c0 = SS.climbs;
+  const off = run();
+  wait(2);
+  STREAK_FX.on.sound = true;
+  STREAK_FX.k.sound = 0;
+  const zero = run();
+  wait(2);
+  STREAK_FX.k.sound = 1;
+  const on = run();
+  wait(2);
+  assert(off.nodes === base.nodes && off.sched === base.sched && zero.nodes === base.nodes && zero.sched === base.sched && SS.climbs === c0 + 6, `off (or at 0): the same ${base.nodes} nodes and ${base.sched} scheduled values as without the piece (off ${off.nodes}/${off.sched}, k=0 ${zero.nodes}/${zero.sched})`);
+  assert(on.nodes > base.nodes, `on: its own nodes on top (${on.nodes} vs ${base.nodes})`);
+  STREAK_FX.on.sound = false;
+  assert(SS.parryTune() === null, 'off: the parry keeps its whole-tone chain');
+  STREAK_FX.on.sound = true;
+  assert(SS.parryTune() && SS.parryTune().scale === sc, 'on: the parry chain climbs the same scale');
+  // no AudioContext: nothing throws, nothing plays
+  const c = A.ctx;
+  A.ctx = null;
+  let threw = false;
+  try {
+    parry(1); parry(2); parry(3);
+    ev('player:streak', { count: 0, lost: 3 });
+    const S2 = new StreakSound({ ctx: null, play: () => true });
+    S2.onStreak({ count: 5, lost: 0 }); S2.onDefence('parry'); S2.climb(4); S2.loss(4); S2.onTell(); S2.flurryCut({ n: 2 }); S2.burst({ strikes: 7 }); S2.tick(0); S2.onStreak({ count: 0, lost: 5 });
+  } catch (e) { threw = e; }
+  A.ctx = c;
+  assert(!threw, `without an AudioContext nothing throws (${threw})`);
+  for (const m of PM) PP[m] = P0[m];
+  for (const m of CM) delete ctx[m];
+  STREAK_FX.on.sound = on0;
+  STREAK_FX.k.sound = k0;
+  assert(errors.length === e0, `no errors through the streak sound checks (${errors.length - e0})`);
+  return G;
+}
+
 async function scenarioThump() {
   out('\n== scenario THUMP (the impact pass: a sub under a heavy blow, one short music dip; audio/thump.js) ==');
   const { IMPACT } = await imp('src/combat/impact.js');
@@ -11441,6 +11591,7 @@ const SCENARIOS = {
   looks: scenarioLooks,
   music: scenarioMusic,
   thump: scenarioThump,
+  streaksound: scenarioStreakSound,
   flight: scenarioFlight,
   tongues: scenarioTongues,
   fxlooks: scenarioFxLooks,
