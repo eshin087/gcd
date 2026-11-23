@@ -1170,6 +1170,130 @@ export const SFX = {
     },
   },
 
+  // ===== Xin Yi, the One Who Woke (ADR-156): quiet synth, dry; noise offsets from the cut's own
+  // stream (crnd), never Math.random (the seeded sims must not feel them) =====
+  /** A gun shot: a dry tick over a low thump (`heavy`: deeper and a little louder). */
+  ironShot: {
+    prio: 3, rev: 0.06, gap: 0.05, falloff: 0.8, gain: 0.42,
+    play(v, t, o) {
+      const heavy = !!o.heavy;
+      const n = v.noise('white', t, t + 0.04, 1, crnd());
+      const hp = v.filter('bandpass', heavy ? 3400 : 4600, 2.5);
+      const g = v.gain(0);
+      perc(g.gain, t, heavy ? 0.55 : 0.45, 0.001, heavy ? 0.02 : 0.012);
+      n.connect(hp).connect(g).connect(v.out);
+      thump(v, t + 0.002, heavy ? 100 : 130, heavy ? 36 : 52, heavy ? 0.09 : 0.06, heavy ? 0.6 : 0.42, heavy ? 0.2 : 0.11);
+    },
+  },
+  /** THE BEND: a falling whoosh, the air going slow round him. */
+  bendWhoosh: {
+    prio: 4, rev: 0.32, gap: 0.3, gain: 0.5,
+    play(v, t) {
+      const D = 0.75;
+      const n = v.noise('pink', t, t + D + 0.05, 1, crnd());
+      const bp = v.filter('bandpass', 2400, 1.6);
+      env(bp.frequency, t, [[0, 2600], [D * 0.4, 900], [D, 260]]);
+      const g = v.gain(0);
+      env(g.gain, t, [[0, 0], [0.08, 0.5], [D * 0.5, 0.3], [D, 0]]);
+      n.connect(bp).connect(g).connect(v.out);
+      const s = v.osc('sine', 180, t, t + D + 0.05);
+      glide(s.frequency, t, 180, 55, D);
+      const sg = v.gain(0);
+      env(sg.gain, t, [[0, 0], [0.1, 0.14], [D, 0]]);
+      s.connect(sg).connect(v.out);
+    },
+  },
+  /** THE STOP: a hum rising under a held bolt, cut to silence the moment it stops. */
+  stopHum: {
+    prio: 4, rev: 0, gap: 0.1, falloff: 0.8, gain: 0.45,
+    play(v, t) {
+      const D = 0.34;
+      const s = v.osc('sine', 140, t, t + D + 0.01);
+      glide(s.frequency, t, 140, 430, D);
+      const q = v.osc('triangle', 280, t, t + D + 0.01);
+      glide(q.frequency, t, 280, 860, D);
+      const g = v.gain(0);
+      env(g.gain, t, [[0, 0], [D * 0.9, 0.3], [D, 0.32]]);
+      g.gain.setValueAtTime(0, t + D); // (cut: no tail)
+      const qg = v.gain(0.25);
+      s.connect(g);
+      q.connect(qg).connect(g);
+      g.connect(v.out);
+    },
+  },
+  /** The Still Hand held after the rising: a low tone that holds, then lets go. */
+  stillHum: {
+    prio: 3, rev: 0.2, gap: 0.5, gain: 0.35,
+    play(v, t, o) {
+      const D = clamp(num(o.dur, 1.5), 0.4, 3);
+      for (const [f, a] of [[110, 0.2], [220, 0.08], [331, 0.04]]) {
+        const s = v.osc('sine', f, t, t + D + 0.3);
+        const g = v.gain(0);
+        env(g.gain, t, [[0, 0], [0.15, a], [D, a * 0.8], [D + 0.3, 0]]);
+        s.connect(g).connect(v.out);
+      }
+    },
+  },
+  /** DEJA VU: the hall stutters: a two-note blip, the same note twice, the second a hair late. */
+  dejaBlip: {
+    prio: 4, rev: 0.1, gap: 0.3, gain: 0.5,
+    play(v, t) {
+      for (const dt of [0, 0.075]) {
+        const s = v.osc('square', 988, t + dt, t + dt + 0.06);
+        const lp = v.filter('lowpass', 2400, 0.8);
+        const g = v.gain(0);
+        perc(g.gain, t + dt, 0.12, 0.002, 0.045);
+        s.connect(lp).connect(g).connect(v.out);
+      }
+    },
+  },
+  /** The hall rewrites itself (a scene's morph): a falling run of dry ticks, slowing. */
+  morphTicks: {
+    prio: 2, rev: 0.25, gap: 0.6, falloff: 0.5, gain: 0.32,
+    play(v, t, o) {
+      const N = o.short ? 6 : 16, D = o.short ? 0.35 : 1.1;
+      for (let i = 0; i < N; i++) {
+        const u = i / (N - 1), tt = t + D * Math.pow(u, 1.4);
+        const n = v.noise('white', tt, tt + 0.03, 1, crnd());
+        const bp = v.filter('bandpass', 5200 - 4200 * u, 5);
+        const g = v.gain(0);
+        perc(g.gain, tt, 0.5 * (1 - 0.5 * u) * (0.7 + 0.3 * crnd()), 0.001, 0.014);
+        n.connect(bp).connect(g).connect(v.out);
+      }
+    },
+  },
+  /** Return to Sender met / bolts burst: a crackle of ticks over a soft thump. */
+  codeBurst: {
+    prio: 3, rev: 0.15, gap: 0.15, falloff: 0.8, gain: 0.4,
+    play(v, t) {
+      const n = v.noise('white', t, t + 0.16, 1, crnd());
+      const bp = v.filter('bandpass', 3800, 1.4);
+      const g = v.gain(0);
+      g.gain.setValueAtTime(0, t);
+      for (let i = 0; i < 9; i++) {
+        const tt = t + 0.014 * i + 0.006 * crnd();
+        g.gain.setValueAtTime(0.4 * (1 - i / 10), tt);
+        g.gain.setTargetAtTime(0, tt + 0.001, 0.004);
+      }
+      n.connect(bp).connect(g).connect(v.out);
+      thump(v, t, 110, 45, 0.1, 0.4, 0.18);
+    },
+  },
+  /** The reload: both guns thrown down, a few hard ticks of metal on the floor. */
+  gunClatter: {
+    prio: 2, rev: 0.12, gap: 0.3, falloff: 0.8, gain: 0.36,
+    play(v, t) {
+      for (const [dt, f, a] of [[0.18, 2900, 0.5], [0.24, 2300, 0.35], [0.31, 3400, 0.4], [0.4, 2600, 0.22], [0.47, 3100, 0.15]]) {
+        const n = v.noise('white', t + dt, t + dt + 0.05, 1, crnd());
+        const bp = v.filter('bandpass', f, 7);
+        const g = v.gain(0);
+        perc(g.gain, t + dt, a, 0.001, 0.035);
+        n.connect(bp).connect(g).connect(v.out);
+        ping(v, t + dt, 'triangle', f * 0.5, a * 0.12, 0.06);
+      }
+    },
+  },
+
   wear: {
     prio: 2, rev: 0.16, gap: 0.14, falloff: 0.7, gain: 0.45,
     play(v, t, o) {
