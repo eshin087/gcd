@@ -3282,7 +3282,7 @@ the order wind, weather, litter, steps, creatures, answer, updated in that order
 
 **Per level, and a level with no block.** Each layer's tuning file has one block per level id. A level
 with no block of its own (a new one) gets: the wind `WIND_DEFAULT` (a quiet breeze, prevailing 0.8 m/s
-toward +x, breathing, no scheduled fronts and no streaks; a front sent by the arrival or the answer still
+toward +x, breathing, no scheduled fronts and no wisps; a front sent by the arrival or the answer still
 crosses, on `WIND_DEFAULT_FRONTS`), no weather, no litter, no creatures (so `takes()` is false and the
 atmosphere keeps its own leaves, mist and fireflies), the steps' `fallback` map (slabs stone, grass, else
 earth), the answer's `DEFAULT` (Cinderwood's numbers), the air's `quiet` recipe (a low breeze; note it
@@ -3306,7 +3306,8 @@ marks a part with `hangFrom`.
   ≤ 4 at once, strength ≤ 3, radius ≤ 40). `life.gust` lands here. It also moves the still grove's air.
 - `lull(sec)` the air falls still (`WIND_LULL` hold 6, ease 1.2 s); `dirX`, `dirZ` (unit), `speed` (m/s),
   `level` 0..1 (prevailing + the front at the focus, over the level's `loud` m/s: the air's sound), `gust`
-  0..1 the front passing the focus, `still` (true in the grove), `fronts`, `bursts`.
+  0..1 the front passing the focus, `still` (true in the grove), `fronts`, `bursts`, `wisped` (wisps
+  born this visit: the tests).
 - **The field.** The prevailing direction wanders (`dir` ± `wander` deg on two slow sines); the speed
   breathes between `floor` and 1 × `speed` on two sines (`periods`), held still at the bottom by `pause`
   (the fox's sighs), made restless by `fit` (the ash). The strength `_k` = `life.k` × `weather.windK`.
@@ -3321,17 +3322,19 @@ marks a part with `hangFrom`.
   `U.uWind` vec4 (dirX, dirZ, speed, level); `U.uWindFronts` vec4[`WIND_FRONTS_LEN` 12]: `[2i]` front i
   (nx, nz, edge position along n, strength × env × `_k`; 0 = none), `[2i + 1]` (tail, lead, phase, 0), `[8]`
   the sink (x, z, 1 when on, 0), `[9]` the field's travel (x, z: the grass's patches ride it downwind), `[10]`
-  the grass's answer (lean, wave, front × (0.5 + 0.5 calm), lift × calm: the band steps back in the fight),
-  `[11]` the trees' (lean, rock, front, stir). A still level still writes its direction (dir (0, 0) means
+  the grass's answer (lean, wave, front × (0.5 + 0.5 calm): a gust's stir steps back in the fight, patch:
+  how far that stir is broken into loose local patches), `[11]` the trees' (lean, rock, front, stir). A still level still writes its direction (dir (0, 0) means
   "off"). `shaderLib.js` exports `WIND_SLOTS` 4, `WIND_FRONTS_LEN`, and **`WIND_GLSL`** (vertex):
   `windOn()` (false while uWind's direction is zero: the reader keeps its old motion exactly),
   `windDirAt(xz)` (toward the sink where there is one), `windFronts(xz, out dir, out edge)` → how much front
   passes there (0..~1.2), its direction, how much of it is the leading edge. wind.js `_frontK` is the same
   formula on the CPU (keep the two in step; `hang.js` `hangLean` is a third copy).
 - **Who reads it.** The grass (`grass.js`, WIND_GLSL): with the wind on the blade leans along the
-  prevailing air (`lean`), in patches travelling downwind (`wave`), is laid over by a passing front
-  (`front`, at most 0.9 of its height) and fluttered in it, and the band just behind a front's edge is
-  drawn lighter (`lift`: light on the laid-over blades). The trees and anything with `aSway`
+  prevailing air (`lean`), in patches travelling downwind (`wave`), and is bent by a passing front
+  (`front`; the bend clamped at 0.9 of its height) and fluttered in it, the front's strength there
+  multiplied by mix(1, smoothstep(0.25, 0.75, pattern), `patch`): an uneven pattern riding the field's
+  travel, so a gust stirs loose local patches, never a band across the view. Its colour never changes
+  with the wind (the old `lift`, a lighter band behind a front's edge, is gone). The trees and anything with `aSway`
   (`createAsciiObjectMaterial`): lean and rock along it, a front bends the bough (`front`) and stirs it
   crosswise (`stir`). The fire field (`fire.wind`, `fire.windK` = the level's `fire` `{ smoke, flame }`;
   set while the piece is on, null when off): each smoke puff takes the air where it is, the flames the
@@ -3340,22 +3343,45 @@ marks a part with `hangFrom`.
   before: the count is unchanged). The weather, the litter, the creatures, hanging cloth, the hero's hair
   (`anim.js` `HAIR_WIND` 0.06 per m/s), the Ring's dust and rain (turned to the wind's way), the air's
   sound. The Windless Grove's bamboo (`aSway`) no longer sways while the piece is on: its speed is 0.
-- **The streaks** (fx.alpha, the wind's only letters): runs of `run` 2 – 4 strokes (`glyph` `~~=-`, `gap`
-  0.62 m apart, 0.75 – 1.3 m up, `size` 0.8 – 1.0 m, `life` 1.1 – 1.9 s) riding a front, `edge` 0.6 of them
-  on its leading edge at its speed, the rest in its wake slower, each run turned to the wind's way on
-  screen; `rate` 32 a second per strength-1 front × quality × calm × min(1.5, k), only while the edge is
-  within 30 m of the focus, fewer where the front's patch is weak, never within 1.6 m of the hero, at
-  most `max` 200 alive.
+- **The wisps** (`_wisps`, the wind's only letters; STYLE.md "The living world"): clumps of many tiny
+  faint letters in the house letter, printed by the wind's own `LetterBatch` (below), nothing in the
+  shared pools. The batch is made on the first update with the piece on in a level with a `wisps` block:
+  `round(max × quality)` clumps (quality clamped 0.3 – 1, at least 1) of up to `per[1]` letters each
+  (at quality 1 `max` 10 × 96 = 960 letters), its letters the tuning's `glyph` plus the four strokes
+  `- / | \`. It is built on the wisps' OWN stream (an LCG seeded from a hash of the level id; Math.random
+  is swapped for it while three.js draws the batch's uuids), not through `life.build`: building through
+  it moved `life.rand`, which the creatures and the fronts draw from, and how many wisps there are
+  must never move what the other layers draw. Births: in the breeze `rate` a second × quality × calm ×
+  min(1.5, k) × min(1.5, speed / the level's `speed`), at a point of the `view` round the focus (x ±19,
+  z -13 .. +9 m), with `calmPer` 0.65 of the letters; where a front passes (its edge within 30 m of the
+  focus, env ≥ 0.05) `gust` a second × quality × calm × min(1.5, k) × min(1.5, strength) × env, along its
+  edge and up to 1.4 tails behind it, kept with the front's patch² (fewer between its patches), `len` ×
+  `gustLen`; none within a 2 m square round the hero. A wisp: velocity eased toward `wind.at` × `carry`
+  (time constant `ease`), its axis turning to its way over 1.5 s; in over the first 0.18 of its `life`,
+  out from 0.6, × calm; `len` × (1 + `stretch` × age) along, `width` × (1 + `spread` × age) across, its axis
+  bent by a `curl` (× 0.4 – 1.2) sine of `wave` rad/m running along it. A letter: its place along
+  (triangular: dense in the middle) and across, its own `flow` m/s along the clump, its own fade in and
+  out (born at 0 – 0.3 of the wisp's life, gone at 0.5 – 1), alpha `alpha` × 0.4 – 1 × (1 - 4u²) toward
+  the ends × a slow shimmer, faded inside `heroClear` 0.6 – 1.8 m of the hero; 0.45 – 1.3 m (`y`) over
+  the ground ± `rise`. A `-` of the glyph list prints as whichever of `- / | \` runs along the wisp on
+  screen there (`uCamRight`, `uCamUp`). Off, hidden, or the level's `wisps` null: the clumps go at once.
 - **`WIND_TUNE[level]`** (`BASE` merged under each): `dir`, `wander`, `speed`, `breath { floor, periods,
   pause, fit }`, `fronts { every, strength, speed, tail, lead, air, spread, from, to }` (null: none),
-  `sink { x, z, radius }`, `streaks { rate, max, run, gap, edge, y, life, size, color, alpha, glyph }`,
-  `grass { lean, wave, front, lift }`, `trees { lean, rock, front, stir }`, `loud`, `fire { smoke, flame }`.
+  `sink { x, z, radius }`, `wisps { max, per, calmPer, rate, gust, life, len, gustLen, width, stretch,
+  spread, flow, curl, wave, y, rise, carry, ease, view, size, alpha, color, glyph, heroClear, snap? }`
+  (null: none; `snap` 1 puts a letter's cell on the art grid instead of the nearest pixel, unset today),
+  `grass { lean, wave, front, patch }`, `trees { lean, rock, front, stir }`, `loud`, `fire { smoke, flame }`.
   BASE: dir 0, speed 1.4, fronts every 9 – 15 s at 7 – 8.5 m/s, tail 4.5 – 6.5, lead 0.9, air 2.2, from 40,
-  to 50. Cinderwood: dir -18, 1.5 m/s, a front every 8 – 14 s. Ash: dir -8, 1.6 m/s, fitful (`fit` 0.45,
-  floor 0.35), a front every 6 – 11 s at 8 – 9.5 m/s. Starless: the sink, 0.45 m/s, breathing on 9 s, no
-  fronts, grass front and lift 0. Ring: dir 0 (toward +x), 3.2 m/s, floor 0.78, a front every 5 – 9 s at 9 –
-  10.5 m/s, `loud` 6. Fox: dir -25, 1.3 m/s, floor 0.05 with `pause` 0.38 (sighs), a front every 11 – 18 s.
-  Grove: `still`, speed 0, no fronts, no streaks.
+  to 50; wisps max 10, per 64 – 96, rate 0.6, gust 3.2, life 5 – 8 s, len 1.8 – 3 m (gustLen 1.35), width
+  0.16 – 0.34 m, stretch 0.9, spread 0.8, flow 0.28, curl 0.3, wave 0.9, y 0.45 – 1.3, rise 0.12, carry
+  1, ease 0.9, size 0.34, alpha 0.4, color (0.62, 0.7, 0.68), glyph `-~.,'` plus a backtick and `:`; grass
+  lean 0.16, wave 0.2, front 0.24, patch 1; trees lean 0.3, rock 0.25, front 0.28, stir 0.08.
+  Cinderwood: dir -18, 1.5 m/s, a front every 8 – 14 s. Ash: dir -8, 1.6 m/s, fitful (`fit` 0.45,
+  floor 0.35), a front every 6 – 11 s at 8 – 9.5 m/s, wisps grey (rate 0.7, gust 3.4), grass front 0.22.
+  Starless: the sink, 0.45 m/s, breathing on 9 s, no fronts, no wisps, grass front 0. Ring: dir 0 (toward
+  +x), 3.2 m/s, floor 0.78, a front every 5 – 9 s at 9 – 10.5 m/s, `loud` 6, wisps dust-coloured (rate
+  0.8), grass front 0.22. Fox: dir -25, 1.3 m/s, floor 0.05 with `pause` 0.38 (sighs), a front every 11 –
+  18 s, wisps bluer (rate 0.45). Grove: `still`, speed 0, no fronts, no wisps.
 
 ### The weather — `life.weather` (`weather.js`, `weatherTuning.js`)
 - `name` (the spell now: it switches half way through a cross-fade), `spell` (the one it is heading
@@ -3382,25 +3408,65 @@ marks a part with `hangFrom`.
   every frame: it adds `weather.flash` itself, `write(U, far, bolts)`), while every factor is 1 (within
   `idle` 1e-4), and with the piece off. Test `weather.uniforms`: off, the uniforms are bit-identical.
 - **Per level** (spells; `calm` first): Cinderwood clear (mist 0.3) ↔ mist (fog in, `fogColor` 4) →
-  drizzle (wet 0.5, windK 1.25, `|` streaks at the wind's slant). Ash ashfall → squall (windK 1.6, an ember
-  stream in fx.add) or greyout (grey ash hanging, fog pulled in to 0.55 / 0.66). Starless still (20 – 36 s; the
+  drizzle (wet 0.5, windK 1.25, tiny strokes at the wind's slant). Ash ashfall → squall (windK 1.6, a
+  stream of tiny ember dots in an additive batch) or greyout (grey ash hanging, fog pulled in to 0.55 / 0.66). Starless still (20 – 36 s; the
   first 4 – 7 s) ↔ breath (2 – 3.5 s): `set.ambience.breathe(k)` each frame (throneHall.js: the seal swells,
   a pulse runs out along the inlay, red motes rise over the seal and round the camera, the ambient and fog
   warm). Ring dusk ↔ gathering (windK 1.3): dust devils and far dry lightning, before the fight only
   (`_pre` eases out over 0.6 s once the boss is up or past form 1). Fox moonlit ↔ cloud (moon 0.75,
   ambient 0.82) ↔ groundmist (the terrace's foot, r 17 – 24). Grove still ↔ mist (pools low, no drift) ↔
   snow (option c).
-- **What it draws.** Into the shared pools: today's veil (the atmosphere's faint low mist, drawn here
-  while `takes('mist')`), rain, the grey-out's ash, snow (fx.alpha), the squall's embers (fx.add). In its
-  **own batch** (`WeatherBatch`, a `GlyphParticles` whose update is a no-op; made on first use through
-  `life.build`; written straight into its buffers each frame): mist **banks** (`BANK`: at most 12 ×
-  quality, 36 – 46 letters `~ - =` of 0.5 – 0.75 m each, born where a band's value passes its `veil`,
-  carried by the air each frame, in over 4 s, out over 5 s, × calm, faded inside 0.5 – 1.7 m of the hero)
-  and the Ring's **dust devils** (at most 2, 64 letters each, a 6 – 8 m twisting funnel leaning downwind,
-  the first 3 – 6 s in; its whole path kept off the ring (|x|, |z| ≥ 18) and 6 m from the hero). The air it
+- **What it draws.** Nothing in the shared pools any more: every letter of the weather prints in the
+  house letter in its **own batches** (`LetterBatch`, below; each made on first use through `life.build`
+  with the drawing's stream standing in for the atlas's later uuids, registered with the pipeline,
+  written by the weather each frame). The main batch (`_batch`) holds, written each frame: the mist
+  **banks** (`BANK`: at most `max` 6 × quality, each `per` 160 – 220 letters (`. , ' - : ~` and a backtick, the Grove
+  110 – 150), `rate` 1.2 banks a second in view at full mist; born in a band of the level wherever its
+  value is above the band's `veil`, now 0 everywhere: from the first breath of mist), and the Ring's
+  **dust devils** (at most 2, `letters` 150 each, a 5 – 7 m column with a 0.55 – 0.9 m funnel at the top
+  leaning downwind, alpha 0.32, the first 3 – 6 s in; its whole path kept off the ring (|x|, |z| ≥ 18) and
+  6 m from the hero); and, spawned (moving and fading by themselves, aged by the batch's `flow`), what
+  falls: the drizzle (`rate` 70; a drop is `|`, or `\` / `/` past `slant` 0.45 of its fall's on-screen
+  speed across, `ticks` 0.3 of them a `'` or `,`; alpha 0.22 → 0.1), the grey-out's ash (alpha 0.42) and
+  the snow (`. ' *`, alpha 0.36), at most `fallMax` 700 (rate × the longest life × quality × 1.15, capped).
+  The ember squall has its own ADDITIVE batch (`_emberBatch`: rate × life × quality × 1.15 letters, 26 a
+  second of `. '` dots in a dim ember red, `bright` 0.15 of them in `brightColor`). **A bank**: a soft heap,
+  each letter placed by three uniforms summed (`spread` 4.6 m along the air, 1.8 m across, × `scale` 0.75 –
+  1.15, lengthening by `grow` 0.35 over its life, its heart `rise` 0.5 m higher), a thin mist's bank
+  `thin` 0.3 of the letters at half the brightness; each letter comes and goes on its own `cycle` 4 – 9 s
+  beat (then is placed anew elsewhere in the bank) and streams `stream` 0.7 m along the air and rises
+  `lift` 0.12 m while it is there, so the bank rolls; the bank is carried by the air (eased over 2 s, its
+  axis turning over 4 s), lives 18 – 28 s, in over `fadeIn` 5 s, out over `fadeOut` 6 s, × calm, faded inside
+  `heroClear` 0.5 – 1.7 m of the hero. The old VEIL (the atmosphere's wide faint `~ -` strokes, drawn by
+  the weather while it took the mist) is gone: with the weather on, the banks are the mist. The air it
   drifts on: `wind.at` × the level's `carry` while the wind blows, else its own `drift` × windK, nothing
-  in a still level. Every rate × quality × k × calm; spawns 2.5 m (mist) / 0.8 m (what falls) off the hero.
-  `takes('mist')` where the level has `mist` (Cinderwood, Fox, Grove).
+  in a still level. Every rate × quality × k × calm; spawns 2.5 m (mist) / 0.8 m (what falls, where it
+  lands) off the hero. `takes('mist')` where the level has `mist` (Cinderwood, Fox, Grove).
+
+### The air's letters — `LetterBatch` (`world/life/letterBatch.js`)
+How the wind's wisps and the weather print (STYLE.md "The living world": the air is clumps of many tiny
+faint letters). Each letter is a world point projected to the screen and printed as ONE cell of the
+house letter, the wyrm's pixel font (`render/wyrmGlyphs.js`; 5 x 8 px with the 720p font, 4 x 6 with the
+small one, 6 x 9 with the large), whatever its distance: pixel-exact, nearest-filtered, its cell's corner
+on a whole pixel (`snap` 1: on the art grid). It follows the art pass's font (`pipeline.artFont`,
+`artCell`) and rebuilds its atlas when that changes. A soft depth test against the scene (`uSoft` 0.6
+m), normal or additive blending, drawn in the FX pass (registered with `pipeline.registerParticles`;
+its `update()` is a no-op: its owner writes it).
+- `new LetterBatch(game, max, chars, { additive, spawned, snap, rand })`: `max` letters at most, `chars`
+  the letters it can print (atlas columns 1.., 0 blank), `spawned` the share of `max` kept for spawned
+  letters, `rand` the stream three.js's uuids draw from when the atlas is rebuilt (never Math.random;
+  build the batch itself through `life.build` or with Math.random swapped for an own stream).
+- `col(ch)` → the atlas column of a letter (0: blank, one it lacks).
+- Each frame: `begin()`, then `flow(dt, t)` (ages, moves and writes the SPAWNED letters), `put(x, y, z,
+  size, col, rot, color, alpha)` (one WRITTEN letter, placed by its owner this frame: how a clump
+  stretches, curls and thins as one shape; `size` and `rot` are kept for the callers' shape, the house
+  letter has one size and stands upright), `end()`. `spawn({ x, y, z, vx, vy, vz, life, col, color,
+  colorEnd, alpha, alphaEnd, drag, gravity, flicker })` → false when the spawned store is full (a
+  spawned letter fades in over the first tenth of its life). `empty()` drops everything; `count` the
+  letters drawn. No allocation per frame, no Math.random; a NaN position is skipped.
+- `wyrmGlyphs.js` `createWyrmLetterAtlas(key, s, chars)` → `{ texture, total }`: an atlas of any letters of
+  a wyrm font at integer scale, drawn as the wyrm's own (the same cell, the same soft halo). The fonts
+  gained `, ~ = * +` and a backtick for the air; the wyrm's own atlas and sets are unchanged.
 
 ### The litter — `life.litter` (`litter.js`, `litterTuning.js`)
 - `scatter(x, z, r, k)` → how many letters it moved: what lies (or flies) within r is thrown outward and
@@ -3593,8 +3659,12 @@ Math.random, Math.random handed back after the pools are built, inside the budge
 fx.add, +400 fire, 1400 own letters; calm 1 then 0.4 in the fight; the hush holds and lets go), `alone`
 (each piece alone: no throw, no Math.random; litter without wind falls straight down; what a layer takes
 the atmosphere no longer draws), `phone` (quality 0.5 draws no more than 1), `switches` (all off mid-run:
-nothing left). The pieces' own budgets: the wind's streaks 200; the weather +250 alpha, +190 add, +150 fire,
-600 own; the litter 500 at quality 1, 250 at 0.5; the steps 60 fx.alpha and 120 prints in a 30 s sprint;
+nothing left). The pieces' own budgets: the wind's wisps in their own batch only, at most `max` × quality ×
+`per[1]` letters (960 at quality 1), at most +25 fx.alpha over life off and fx.add untouched, one own pool,
+fewer wisps born at quality 0.5 (`wind.budget`; `wind.wisps`: a few in the breeze, more in a front, every
+letter within its clump, none on the hero, none in the grove, none off); the weather +250 alpha, +190 add,
++150 fire, 1600 own in every spell (`weather.budget`; `weather.bank`: a bank densest at its heart and
+rolling; `weather.groveStill`: the grove's banks do not drift); the litter 500 at quality 1, 250 at 0.5; the steps 60 fx.alpha and 120 prints in a 30 s sprint;
 the creatures 60 alpha and 120 add a frame × quality.
 
 ## Levels and the boss slot (2026-11-12, ADR-058, ADR-060; the Starless level: ADR-068 – ADR-070; the Skybreak Ring: 2026-11-21, ADR-129; the Foxfire Terrace: ADR-147)

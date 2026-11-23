@@ -5,6 +5,56 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-23 — The living world, round 2: the air as clumps of tiny faint letters (the owner's verdict; ADR-163 addendum)
+
+**Owner** (on the preview): "wind effects need to be way subtle and not like this random wave taking over
+a full screen, the ascii characters should also not be so big and be tiny feint and clearly many ascii
+characters clumped up. same with the other weather effect. make it very subtle and more ascii like and
+natural realistic." And: "sound looks good" (the air's sound stays). Rebuilt by an agent on `life/wisp`
+(d09ae0f, e2c1735), merged into `world/living-world` (eab68e1).
+
+**What changed.**
+- **The house letter for the air.** New `world/life/letterBatch.js` (`LetterBatch`): each letter a world
+  point projected to the screen and printed as one cell of the wyrm's pixel font (5 x 8 px at 720p,
+  following `pipeline.artFont`), pixel-exact, nearest-filtered, soft depth test, FX pass; written letters
+  (placed by their clump each frame) and spawned ones (move and fade by themselves). `wyrmGlyphs.js` gained
+  `createWyrmLetterAtlas(key, s, chars)` and bitmaps for `, ~ = * +` and a backtick; the wyrm's atlas is
+  unchanged.
+- **Wind.** The front's lit band is gone (`grass.lift` removed; `uWindFronts[10].w` is now `patch`: a gust
+  stirs loose local patches). Grass `front` 0.24 (Ashfall and the Ring 0.22; was 0.8 - 0.9), the canopy's
+  0.28 / stir 0.08 (was 0.75 / 0.16). The streaks became **wisps** (`wisps` replaces `streaks`): clumps of
+  64 - 96 tiny letters, 1.8 - 3 m along the air and 0.16 - 0.34 m across, alpha 0.4 at most, riding
+  `wind.at`, stretching, curling and coming apart over 5 - 8 s; a few in the breeze, more in a front; none
+  on the Throne or in the Grove. At most 10 clumps x 96 = 960 letters. Built on their own seeded stream,
+  not `life.build` (that moved `life.rand` and so the birds' and the fronts' draws). New `wind.wisped`.
+- **Weather.** Mist banks are soft heaps of 160 - 220 tiny pale letters (the Grove 110 - 150), densest at
+  the heart, each letter cycling 4 - 9 s and streaming 0.7 m along the air, so the bank rolls; at most 6
+  banks (was 12 of 36 - 46 big letters). The veil is removed. The drizzle `| \ /` by the wind's slant and
+  `' ,` (70 a second, alpha 0.22; was 160 of `|` at 0.42); the squall's embers tiny dim dots, 15 % of
+  them brighter, in an additive batch; the grey-out's ash alpha 0.42; the snow `. ' *` alpha 0.36; the
+  devils columns of 150 grains (was 64 big letters). Everything the weather draws left the shared pools
+  for its own batches (falling letters at most 700). The Throne's breath motes 0.5 → 0.3 m. The Ring's far
+  lightning unchanged.
+- **Litter** (tuning only): leaves and paper in the air 0.28 - 0.36 m (was 0.38 - 0.5), alpha 0.72; the
+  Ring's grit 0.20 - 0.26, seed 0.24 - 0.30, alpha 0.62. What lies keeps its body.
+- Tried and cut for the air: world-atlas glyph particles (below ~0.4 m they blur to specks); the fire
+  field (its smoke is the bonfire's, any heat hazes the world, mist printed as dark-backed slabs).
+
+**The lesson.** The first round's "ten-second test" (would a player told nothing notice?) pushed the air
+bigger and brighter; this owner reads the air as alive from MANY tiny faint letters in a clump, not from
+one thing that is easy to see. STYLE.md "The living world" carries it as the first rule.
+
+**Verified.** `life` suite: `wind.wisps` (9 wisps in 20 s of breeze, 10 in 5 s of a front, every letter
+in its clump, none on the hero, none in the grove, none off), `wind.budget` (at most 640 of 960 letters,
+fx.alpha +13 at most, 11 wisps at quality 0.5 against 24), `weather.bank` (197 letters, 75 in the inner
+third against 27 in the outer, all 197 back elsewhere in 9.5 s), `weather.budget` (own letters 847 at
+most, Cinderwood's mist, against 1600).
+
+**Open.** The drizzle may be too faint; the Ring's devils need luck to be in view (none on screen in the
+budget runs); the Foxfire Terrace's calm shows little; off-is-free is argued by construction (the wind-off
+branch, nothing built with the piece off), not re-filmed against `main`; `snap: 1` (letters on the art
+grid) is not filmed; the owner has not seen round 2 yet.
+
 ## 2026-11-23 — The living world: one wind, nine layers, behind `?life=` (planned by Fable, built by Opus agents; ADR-163)
 
 **Owner:** "make the ascii world feel more alive. have natural looking ascii wind, subtle falling leaves,

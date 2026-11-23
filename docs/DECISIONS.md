@@ -4916,3 +4916,25 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   quiet default). Open: the default strength (the owner's pick), the sound's level (an audition page
   exists), the ash drifts and the Throne's glint do not read yet, a banner's moon shadow does not lean,
   the far Throne banners (static mesh) stay rigid, and the `life` suite is the longest new CI task.
+- **Addendum (2026-11-23, the owner's verdict):** on the first preview the owner turned the wind and the
+  weather down: "wind effects need to be way subtle and not like this random wave taking over a full
+  screen, the ascii characters should also not be so big and be tiny feint and clearly many ascii
+  characters clumped up. same with the other weather effect. make it very subtle and more ascii like
+  and natural realistic." ("sound looks good": the air's sound stays as built.) What changed: the
+  front's lit BAND through the grass is gone (`grass.lift` removed; the slot is now `patch`, a gust
+  stirring loose local patches, the grass's `front` 0.24 (0.22 on Ashfall and the Ring) where it was 0.8 -
+  0.9; the canopy's `front` and `stir` 0.28 and 0.08 where they were 0.75 and 0.16); the streaks became WISPS, clumps of 64 - 96 tiny letters that ride
+  the air, stretch, curl and come apart (none on the Throne or in the Grove); the mist banks became soft
+  heaps of 160 - 220 tiny letters that roll, the veil under them removed; the drizzle, the ash, the
+  squall's embers, the snow and the devils' 150 grains print in the same letters; leaves and paper in
+  the air shrank to 0.28 - 0.36 m at alpha 0.72. Every letter of the air prints through a new
+  `LetterBatch` (`world/life/letterBatch.js`) as one cell of the house letter, the wyrm's pixel font
+  (5 x 8 px at 720p), whatever its distance. Glyph particles from the world atlas were tried for it and
+  cut (below about 0.4 m they blur to specks), and so was the fire field (its smoke is the bonfire's,
+  any heat in it hazes the world, mist printed in it came out as dark-backed slabs). **Why the
+  ten-second test was the wrong standard for this owner:** it asked whether a player told nothing would
+  NOTICE the air, and the visibility pass answered by making letters bigger and brighter and the band
+  stronger; this owner reads the air as alive when there are MANY tiny faint letters clumped into a
+  shape, not when one thing is easy to see. Visibility comes from count and clumping, never from size
+  or light (now a STYLE rule, "The living world"). What still holds from the first pass: a letter that
+  must be seen on its own (a lying leaf, a firefly, a bird) has body, 0.3 m or more.

@@ -1361,44 +1361,62 @@ One wind per level, and what lives in it: the grass and the trees lean and are s
 leaves (ash, paper, grit) fall and lie, footsteps answer the ground, slow weather, small creatures,
 banners and paper that hang in the wind. Behind `?life=` (off by default, the owner picks from films);
 ARCHITECTURE.md "The living world" has the contract and every number. One mood per level, slow changes:
-Cinderwood a night breeze in slow breaths and fronts you see cross the meadow; Ashfall dry and fitful;
+Cinderwood a night breeze in slow breaths and gust fronts that stir the meadow; Ashfall dry and fitful;
 the Obsidian Throne nothing but a slow draw toward the star, which breathes; the Skybreak Ring a steady
 plateau wind, dust devils and far dry lightning before the fight; the Foxfire Terrace a breeze in sighs
 with real pauses; the Windless Grove holds its breath (no wind at all).
 
-**The rules this pass learned** (each from a film that did not read):
-- **At the game camera a thin stroke under about 0.3 m is one pixel of ink.** An ambient letter that must
-  be SEEN has body (`c e s v o ( ) < > = ~`) at 0.3 - 0.5 m, or it moves. A lying leaf is `c e ( ) v s`
-  0.36 - 0.44 m, never `, ' \``; a firefly is a 0.55 m `·` (0.2 m was one pixel); a moth 0.36 m.
-- **Wind is drawn by what it moves**, not by letters of its own: a gust front is a travelling BAND of
-  grass laid over (up to 0.9 of the blade) and drawn a shade lighter just behind its edge (the light on
-  the bent blades), with short runs of `~ = -` strokes riding its edge, turned to the wind's way on
-  screen. A front that does not read gets a stronger band, never more streaks. In the fight the band
-  steps back (its lift × calm): a light sweep across the floor must not compete with a tell.
+**The rules this pass learned** (each from a film that did not read, or from the owner's verdict):
+- **The air is CLUMPS OF MANY TINY FAINT LETTERS** (the owner, 2026-11-23, on the first preview: "the
+  ascii characters should also not be so big and be tiny feint and clearly many ascii characters clumped
+  up"). Every letter of the wind and the weather prints in the house letter: one cell of the wyrm's
+  pixel font (5 x 8 px at 720p, whatever its distance; `world/life/letterBatch.js`), dim, at most 0.5
+  alpha (the drizzle 0.22). One letter alone is near invisible; the clump is what reads: a wisp of 64 - 96 letters, a
+  mist bank of 160 - 220, a dust devil's column of 150. A shape that does not read gets more letters or
+  a tighter clump, never bigger or brighter ones. Nothing is lit or laid over across the view: no band
+  of light through the grass, no wave across the screen; a gust stirs the meadow in loose local patches.
+- **A letter that must be seen ON ITS OWN has body.** At the game camera a thin stroke under about 0.3 m
+  is one pixel of ink, so a lying, perched or flying thing (not the air) is a letter with body (`c e s v
+  o ( ) < > = ~`) at 0.3 - 0.5 m, or it moves. A lying leaf is `c e ( ) v s` 0.36 - 0.44 m, never `, '
+  \``; a firefly is a 0.55 m `·` (0.2 m was one pixel); a moth 0.36 m. A leaf in the air is smaller and
+  fainter (0.28 - 0.36 m, alpha 0.72): it moves.
 - **Dark on dark is invisible, pale on dark is a stray bright letter**: a creature on the night floor or
   against the crowns is a dull mid tone (birds in the air moon-grey, the hawk a dusky brown a little
   lighter than the floor), and its shape says what it is (a wingspan, a flap), not its colour.
 - **Nothing ambient covers the hero**: lying letters fade out under his feet (0.32 - 0.7 m), mist banks
-  clear round him (0.5 - 1.7 m), streaks, rain and dust devils keep off him, fireflies part from him.
+  clear round him (0.5 - 1.7 m), a wisp's letters fade inside 0.6 - 1.8 m of him (and none is born
+  within 2 m), rain lands 0.8 m off him, dust devils keep 6 m off him, fireflies part from him.
 
 **The wind.** The grass (and anything with sway: the trees' crowns, the old bamboo) leans along the
-prevailing air in patches that travel downwind; a front lays the meadow over and lightens it as it
-passes, the crowns bend and stir crosswise as it reaches the tree wall. The streaks are the wind's only
-letters: runs of 2 - 4 strokes `~~=-` 0.8 - 1.0 m tall, dim and in the level's own hue (the ash's grey,
-the Ring's dust), most on the front's edge. The bonfire's smoke, its embers, the default mist, leaves and
-ash ride the same air; flames lean a little. Where there is little grass (Ashfall, the Ring) a front
-shows mostly in what it carries.
+prevailing air in patches that travel downwind. A passing front stirs the meadow in loose local patches
+(an uneven pattern riding the field's travel, so a patch comes and goes as the front passes; at most
+0.24 of the blade, 0.22 on Ashfall and the Ring, half that in the fight) and flutters the blades there;
+the grass never changes brightness. The crowns bend a little (0.28) and stir crosswise (0.08) as it
+reaches the tree wall. **The wisps** are the wind's letters: thin drifts of 64 - 96 tiny letters
+(`- ~ . , ' :` and a backtick; a `-` prints as whichever of `- / | \` runs along the wisp on screen), 1.8 - 3 m long
+along the air (a front's 1.35 x that) and 0.16 - 0.34 m across, dense in the middle and single letters
+at the ends, 0.45 - 1.3 m over the ground, at most 0.4 alpha in the level's own dim hue (grey-green,
+the ash's grey, the Ring's dust, the Terrace's blue). A wisp rides the air (`wind.at`), stretches to
+1.9 x its length and widens as it goes, its axis curling in a slow wave; each letter flows at its own
+pace inside it and fades in and out on its own, so a wisp comes apart over its 5 - 8 s rather than
+ends. A few in the breeze (a breeze's wisp has 0.65 of the letters), more where a front passes, fewer
+between the front's patches. None on the Obsidian Throne (its air is the star's slow draw) or in the
+Windless Grove. The bonfire's smoke, its embers, the default mist, leaves and ash ride the same air;
+flames lean a little. Where there is little grass (Ashfall, the Ring) a front shows mostly in its wisps
+and in what it carries.
 
 **What falls and lies** (its own batch, one draw call): Cinderwood dark green and brown leaves `()ce`
-0.38 - 0.48 m off the canopy, thicker toward the clearing's rim, lying on the blades' tips in the meadow
+(0.28 - 0.34 m in the air, alpha 0.72) off the canopy, thicker toward the clearing's rim, lying on the blades' tips in the meadow
 (the soft depth test half hides them among the blades) and on the flagstones; Ashfall's ashfall as
 before (`.,'\`` flakes) that lies as **flat strokes** `~ - = _` 0.34 - 0.44 m, turned along the screen's
 horizontal, drifting in the lee of stones with clear floor between (a field of round dots everywhere read
 as snow, or noise); the Throne a few ember-edged cinders `o c *` of the star; the Ring grit and seed
-(`o : c`, `v ( ~`) that tumbles in along the ground from upwind and piles against the kerb; the Terrace
-dry leaves and pale paper slips `= [ ]` round the charm posts; the Grove single bamboo leaves `/ \ ( )` that
-come straight down, turning, and lie as `( ) < >`. A front lifts what lies under it; a running hero kicks
-what is at his feet; a blow throws it.
+(`o : c` 0.20 - 0.26 m, `v ( ~` 0.24 - 0.30 m, alpha 0.62) that tumbles in along the ground from upwind
+and piles against the kerb; the Terrace dry leaves (0.28 - 0.34 m in the air) and pale paper slips `= [ ]`
+(0.30 - 0.36 m) round the charm posts; the Grove single bamboo leaves `/ \ ( )` (0.30 - 0.36 m) that come
+straight down, turning, and lie as `( ) < >`. Every leaf and slip in the air is at alpha 0.72 (the
+owner's verdict on the air: it was 0.38 - 0.5 m, 0.85 - 0.9); what lies keeps its body. A front lifts
+what lies under it; a running hero kicks what is at his feet; a blow throws it.
 
 **Prints and the trodden grass.** A step on earth or ash leaves a print: a dim stretched `0` lying on the
 floor (earth 0.2 m, gone in 5 s; ash 0.3 m, darker than the ash, filling in over 14 s), turned to the way
@@ -1408,18 +1426,29 @@ scorch map's blue): a run leaves a trail about 1.3 m wide where the blades lie f
 low, sand a pale puff the wind carries off, ash a soft grey puff that hangs and sinks, stone a grit puff on
 a sprint only; a wet step a tiny splash.
 
-**The weather.** Mist banks: loose clusters of 36 - 46 letters `~ - =` 0.5 - 0.75 m, drifting as one with
-the air, in and out over seconds, over today's faint veil (thicker in the tree line than the clearing;
-the Terrace's round its foot; the Grove's pooled low and still). The drizzle: dim `|` streaks at the
-wind's slant. The ash's squall: a loose stream of 0.6 m HDR embers carried across the yard; the grey-out:
-more fine ash hanging, the fog pulled in and greyed. The Terrace's cloud: the moon dims to 0.75 and
-returns. The Grove's snow (`?grove=c` only): `* · .` 0.42 m straight down. **The Throne's breath**: every
+**The weather** (every letter of it in the house letter, in the weather's own batches). **Mist banks**:
+soft low heaps of 160 - 220 tiny pale letters (`. , ' - : ~` and a backtick), densest at the heart and thinning to
+single letters at the edge, spread over about 9 m along the air and 3.6 m across (x 0.75 - 1.15 a bank,
+lengthening by a third over its life), 0.75 - 1.3 m up, alpha at most 0.5. Inside a bank every letter comes
+and goes on its own 4 - 9 s beat (in, out, and back elsewhere in the bank) and streams 0.7 m along the air
+while it is there, rising a little, so the bank rolls and thins instead of sliding as one; the bank
+itself drifts with the air, comes in over 5 s, goes over 6 s and lives 18 - 28 s. A thin mist makes thin
+banks (0.3 of the letters, half as bright), a thick one full ones; there is no veil under them any more
+(the banks are the mist). Thicker in the tree line than the clearing; the Terrace's also round its foot;
+the Grove's smaller (110 - 150 letters), pooled low and barely streaming. **The drizzle**: tiny dim
+strokes, `|` falling straight, `\` or `/` when the wind slants it, three in ten a `'` or `,` (alpha
+0.22). **The ash's squall**: a loose faint stream of tiny dim ember dots (`. '`) carried across the yard,
+15 % of them a little brighter, in an additive batch; **the grey-out**: more fine ash (`. , '` and a backtick, alpha
+0.42) hanging, the fog pulled in and greyed. The Terrace's cloud: the moon dims to 0.75 and returns. The
+Grove's snow (`?grove=c` only): sparse `. ' *` (alpha 0.36) straight down. **The Throne's breath**: every
 half minute or so the seal swells, a pulse of light runs out along the inlay and the cracks, a slow
-column of red motes rises over the seal and over the crater round the camera, and the crater's dark
-warms; then a long stillness (the first breath comes a few seconds after arriving). **The Ring before the
-fight**: dust devils, twisting 6 - 8 m funnels of 64 pale dust letters leaning downwind, crossing the
-badlands and never the ring; far dry lightning drawn by what it lights (no bolt: the far side of the sky,
-the ambient and the moon brighten for about 0.4 s, now and then twice), gone once the boss is up.
+column of tiny red motes (0.3 m: their light, not their size, carries the breath) rises over the seal and
+over the crater round the camera, and the crater's dark warms; then a long stillness (the first breath
+comes a few seconds after arriving). **The Ring before the fight**: dust devils, loose rising columns of
+150 pale dust grains 5 - 7 m tall, a 0.55 - 0.9 m funnel at the top leaning downwind (alpha 0.32),
+crossing the badlands and never the ring; far dry lightning drawn by what it lights (no bolt: the far
+side of the sky, the ambient and the moon brighten for about 0.4 s, now and then twice), gone once the
+boss is up.
 
 **Creatures** (one letter each, re-drawn every frame). Fireflies, the one bright thing as before (a 0.55 m
 `·` that blinks; the Terrace's foxfire paler and bluer and keeping 7 m off; the Grove's hanging almost
@@ -1444,9 +1473,18 @@ Dark grit on the obsidian (invisible: the star's cinders instead). Sparks orbiti
 or a stray bright letter). The first pass at the subtle end: the front read as a slow lighter wash, a
 lying leaf as a speck, the Throne's "all" as today; the visibility pass made the band and its lift
 stronger, the streaks runs of strokes along the edge, the lying letters bodied, the leaves bigger, the
-mist banks letters of their own. Still faint after it (open): the obsidian glint, the Ring's far
-flicker, the moths, the ash's drifts against the paving's own strokes, the roar's answer at the game
-camera on Ashfall and in the Grove.
+mist banks letters of their own. **Turned down by the owner (2026-11-23, the first preview)**: the
+wind read as a wave taking over the whole screen, its letters too big (the rule above). Gone with it:
+the front's BAND through the grass (laid over up to 0.9 of the blade and drawn lighter behind its edge:
+`grass.lift`), the streaks (runs of 2 - 4 `~ = -` strokes 0.8 - 1.0 m tall riding the edge), the mist
+banks of 36 - 46 big `~ - =` letters (0.5 - 0.75 m) over the atmosphere's wide faint veil, the drizzle's
+long `|` streaks, the squall's 0.6 m HDR embers, the 0.42 m snow, the dust devils' 64 big letters: all
+too big and too bright, laid over the view. Tried for the new air and cut: the world atlas's glyph
+particles (below about 0.4 m a letter of the world atlas blurs to a speck, not a letter); the fire field (its smoke is the bonfire's, any heat it holds hazes the world
+round it, and mist printed in it came out as dark-backed slabs). Still faint (open): the obsidian
+glint, the Ring's far flicker, the moths, the ash's drifts against the paving's own strokes, the roar's
+answer at the game camera on Ashfall and in the Grove; after the owner's verdict the drizzle may be too
+faint, the Ring's devils need luck to be in view, and the Foxfire Terrace's calm shows little.
 
 ### The Hall of Falling Script and Xin Yi (2026-11-22, ADR-156, ADR-157; `world/scriptHall.js`, `enemies/wokenOne/`, `?level=code`)
 "More extra ASCII" (the owner) is four layers INSIDE the game's letter systems: none of it is a pass over the

@@ -190,8 +190,12 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Weather in slow spells per level; small creatures that mind the hero
 - [x] The sound of the air; the arrival shot; the world's answers to the fight; cloth and paper that hang
 - [x] `?life=` / `?lifeK=`, the Lab's rows, `tests/integration/life.mjs`
+- [x] Round 2, the owner's verdict: the air as clumps of many tiny faint letters (`LetterBatch`, the house letter); the grass band and the streaks gone, wisps instead
+- [x] Mist banks and dust devils a second look (soft heaps of 160 - 220 tiny letters that roll; columns of 150 grains); the weather's letters in its own batches
+- [ ] The owner sees round 2 on the preview
 - [ ] The owner picks the strength → the default goes on (today: off)
-- [ ] Mist banks and dust devils a second look; ash drifts, the obsidian glint, moths do not read yet
+- [ ] The drizzle may be too faint; the Ring's devils seldom in view; the Foxfire Terrace's calm shows little
+- [ ] Ash drifts, the obsidian glint, moths do not read yet
 - [ ] A banner's moon shadow leans with it; the far Throne banners
 - [ ] Tuning blocks for levels added after this (they get the quiet default)
 
