@@ -2162,6 +2162,10 @@ async function scenarioPressure() {
 // ================================================================== scenario: impact
 async function scenarioImpact() {
   out('\n== scenario IMPACT (hit stun both ways, the parry layered) ==');
+  // the parry's own numbers as they were before the streak pass (?perfect=today): the `perfectfx`
+  // scenario measures the sharp / cinema looks
+  const STKX = await imp('src/combat/streak.js');
+  STKX.setPerfectMode('today');
   const G = build();
   duel(G, { dist: 2.4 });
   const { game, input } = G;
@@ -2222,6 +2226,7 @@ async function scenarioImpact() {
     else assert(stop >= 0.045 && stop <= 0.09 && flash > 0.1 && !seen.includes('perfectParry'), `a parry inside a string: a short freeze ${stop.toFixed(3)} s, a flash ${flash.toFixed(2)}, no slow motion`);
     settle(G);
   }
+  STKX.setPerfectMode(STKX.PERFECT_DEFAULT);
   return G;
 }
 
