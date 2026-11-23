@@ -50,6 +50,14 @@ export const BEAM_TUNING = {
     dim: 0.9, // the light of the ring held down this far at the charge's end (ambience.dim)
     cine: { zoom: -3, weight: 0.45, dur: 1.2 }, // the short look at him as the charge begins
   },
+  // Instant Wave (form 3, the fourth wave): the sign, he is gone, and `r` m off the hero's side (`at` rad
+  // round from the hero's facing, either way) he fires a cupped-hands beam point blank. The vanish at
+  // `signAt` of the windup: the windup after the arrival, (1 - signAt) x windup, is 0.94 s (>= 0.8: the
+  // cue is fair); the line is fixed at `fix` (0.29 s before it fires, about the red cue).
+  instant: {
+    windup: 1.45, signAt: 0.35, r: 4, at: 1.25, len: 12, w: 1.6, lit: 0.5, fix: 0.8,
+    first: { damage: 24, knockback: 6 }, tick: 8, push: 0.45,
+  },
   // THE CLASH: a perfect parry of the great beam's head (brain.startLock at range)
   clash: {
     start: 0.5, push: 0.085, decay: 0.3, dur: 3.0, hold: 0.55, // the lock's meter (the duel's: 0.5 / 0.085 / 0.38 / 2.6 / 0.6)
