@@ -846,6 +846,10 @@ export class Lab {
         ob.textContent = `One Breath ${U.toggle('oneBreath', !U.has('oneBreath')) ? 'on' : 'off'}`;
       });
       ob.title = 'the draw-slash: guard, then hold heavy (the Sheathed\'s reward; ?tech=draw)';
+      const ls = button(grid, `Long Second ${U.has('longSecond') ? 'on' : 'off'}`, () => {
+        ls.textContent = `Long Second ${U.toggle('longSecond', !U.has('longSecond')) ? 'on' : 'off'}`;
+      });
+      ls.title = 'the lean: guard, then dodge with no direction (Xin Yi\'s reward; ?tech=lean)';
     }
     // the Thousand-Body Fox (ADR-147): his paper selves, the Pearl, the mantle
     if (typeof this.game.dragon?.debug?.clones === 'function') {
@@ -857,6 +861,15 @@ export class Lab {
         m.classList?.toggle?.('on', !!on);
       });
       m.title = 'the Fox-Fire Mantle on / off (phase 3 wears it by itself)';
+    }
+    // Xin Yi, the One Who Woke (ADR-156): the Bend, the fall and the rising, the stop, the scenes, deja vu
+    if (typeof this.game.dragon?.debug?.bendNow === 'function') {
+      const W = this.game.dragon.debug;
+      button(grid, 'Bend now', () => W.bendNow('shot')).title = 'THE BEND now (phase 2: a returned shot\'s; open 1 s, the first cut crits)';
+      button(grid, 'Fall + rise', () => W.fallAndRise()).title = 'bar 1 emptied and the deathblow: THE FALL, then the rising into the Source';
+      button(grid, 'Hold 3', () => W.hold(3)).title = 'three bolts hanging before his palm (phase 3: Return to Sender comes)';
+      button(grid, 'Deja vu', () => W.dejavu('lesson')).title = 'the hall stutters and The First Lesson replays';
+      for (const id of ['hall', 'dojo', 'source']) button(grid, `Scene ${id}`, () => W.scene(id)).title = `the hall rewrites itself into the ${id} scene from where he stands (the morph)`;
     }
     const row = el('div', 'lab-row', null, body);
     el('span', 'lab-lbl', 'HP', row);

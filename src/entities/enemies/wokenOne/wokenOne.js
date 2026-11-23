@@ -149,8 +149,10 @@ export class WokenOne extends Duelist {
       if (n > 1) d.emit(`dragon:phase${n}`);
       return true;
     };
-    dbg.phase2 = () => dbg.setPhase(2);
-    dbg.phase3 = () => dbg.setPhase(3);
+    dbg.setForm = (n) => dbg.setPhase(n); // (the Lab and Training skip to a phase through it)
+    // (the Lab's phase buttons play the change: Phase 2 is A Hundred Iron Seeds (the engine's forcePhase),
+    // Phase 3 is the fall and the rising)
+    dbg.phase3 = () => (d.phase >= 3 ? false : dbg.fallAndRise());
     Object.defineProperty(dbg, 'currentPhase', { get: () => d.phase });
     /** Lab: THE BEND now (a returned shot's: 'shot'; a cut's: 'cut'). */
     dbg.bendNow = (why = 'shot') => {
@@ -188,6 +190,16 @@ export class WokenOne extends Duelist {
       return d.source.holdDebug(n);
     };
     dbg.held = () => d.source?.held?.length ?? 0;
+    /** Lab, Training: Leaving the Floor with its second blow chosen ('fist' | 'pass'). */
+    dbg.flight = (which = 'fist') => {
+      if (d.mode === 'sleep' || d.mode === 'intro') d.brain.startFight();
+      if (d.phase < 3) dbg.setPhase(3);
+      REPLAY.name = 'leaveFloor';
+      REPLAY.draws = [which === 'pass' ? 0.99 : 0.01];
+      const ok = d.brain.trigger('leaveFloor');
+      REPLAY.name = REPLAY.draws = null;
+      return ok;
+    };
   }
 
   // ---------------------------------------------------------------- contract
@@ -198,6 +210,11 @@ export class WokenOne extends Duelist {
 
   get LINKS() {
     return LINKS;
+  }
+
+  /** The victory's one line (flow.js): only the fight that taught it. */
+  victoryNote() {
+    return this._learned ? 'YOU LEARNED THE LONG SECOND' : null;
   }
 
   /** His guard: down while bent, through the reload, while he hangs in the air or lies. */
@@ -223,6 +240,7 @@ export class WokenOne extends Duelist {
     this._dejavuNext = false;
     this._introT = 0;
     this._beckoned = false;
+    this._learned = false;
     this._slow = 0;
     super.reset();
     (this.iron ??= new IronMoves(this)).reset();
@@ -339,7 +357,10 @@ export class WokenOne extends Duelist {
     return dmg;
   }
 
+  /** He falls: the hero learns the Long Second (ADR-158; game.unlocks, absent in some tests' worlds). */
   _die() {
+    const fresh = this.mode !== 'dying' && this.mode !== 'dead';
+    if (fresh) this._learned = !!this.game.unlocks?.grant?.('longSecond');
     this._changing = false;
     this._fall = null;
     this._palmT = 0;

@@ -22,7 +22,8 @@ const { LightPool } = await imp('src/render/lights.js');
 const { GlyphParticles } = await imp('src/render/particles.js');
 const { FireField } = await imp('src/render/fireField.js');
 const { Colliders } = await imp('src/world/colliders.js');
-const { TELL, RESULT, POSTURE } = await imp('src/combat/rules.js');
+const { TELL, RESULT, POSTURE, DEFENSE } = await imp('src/combat/rules.js');
+const DEFENSE_GHOST = DEFENSE.ghostep.slowmoTime;
 const { LEVELS, getLevel, levelFromSearch, applyLevel } = await imp('src/levels/index.js');
 const { createScriptHall, HALL, SLOTS, SCENES } = await imp('src/world/scriptHall.js');
 const { Destructibles } = await imp('src/world/destructibles.js');
@@ -832,6 +833,139 @@ async function scenarioFlow() {
   assert(S.now === 'hall' && d.phase === 1 && d.mode === 'sleep', 'a reset: the hall, he turns his back again');
 }
 
+// ================================================================== scenario: reward (the Long Second, ADR-158)
+async function scenarioReward() {
+  out('\n== scenario REWARD (the Long Second: locked by default, the gesture, the lean in place, its i-frames, the slow-mo; granted on his death) ==');
+  const { Unlocks, UNLOCK_KEY } = await imp('src/game/unlocks.js');
+  const { TUNE } = await imp('src/entities/player/player.js');
+  const mem = new Map(), store = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, String(v)) };
+  const U = new Unlocks(store, '');
+  assert(!U.has('longSecond') && U.grant('longSecond') && !U.grant('longSecond') && JSON.parse(mem.get(UNLOCK_KEY)).includes('longSecond'), 'the store: granted once, kept in storage');
+  assert(new Unlocks(null, '?tech=lean').has('longSecond') && !new Unlocks(null, '?tech=lean').has('oneBreath') && !new Unlocks(null, '').has('longSecond'), '?tech=lean turns it on for the page load');
+  const L = TUNE.lean, BK = TUNE.backstep;
+  assert(L.dist === 0 && L.iframes[0] === 0.03 && L.iframes[1] === 0.34 && L.attackAfter === 0.24 && L.slowmo === 0.9 && BK.iframes[1] === 0.22, 'its numbers beside the backstep\'s: no travel, i-frames 0.03 - 0.34 (0.03 - 0.22), free to cut after 0.24, a 0.9 s slow-mo');
+  /** guard (the middle click), then dodge with `axis` */
+  const gesture = (G, learned, axis = { x: 0, y: 0 }) => {
+    const { game, input } = G;
+    const p = game.player;
+    if (learned) game.unlocks = new Unlocks(null, '?tech=lean');
+    else delete game.unlocks;
+    duel(G, { dist: 6 });
+    p.debug.god = true;
+    input.press(1);
+    run(G, 0.25);
+    const x0 = p.position.x, z0 = p.position.z;
+    input.axis = axis;
+    input.tap('Space');
+    run(G, 0.02);
+    const st = p.state, lean = p.rollLean, back = p.rollBack;
+    let iAt = false;
+    run(G, 0.28, () => { if (p.stateT > 0.25 && p.stateT < 0.32 && p.state === 'roll') iAt = iAt || p.isInvulnerable(); });
+    input.up(1);
+    run(G, 0.4);
+    return { st, lean, back, iAt, moved: Math.hypot(p.position.x - x0, p.position.z - z0) };
+  };
+  {
+    const r = gesture(build(), false);
+    assert(r.st === 'roll' && r.back && !r.lean && r.moved > 1.0, `locked (no store, the tests' worlds): guard + dodge is the backstep, as before (moved ${r.moved.toFixed(2)} m)`);
+  }
+  {
+    const r = gesture(build(), true);
+    assert(r.st === 'roll' && r.lean && r.moved < 0.2, `learned: the Long Second, a lean in place (moved ${r.moved.toFixed(2)} m)`);
+    assert(r.iAt, 'its i-frames run past the backstep\'s (still untouchable at 0.25 - 0.32 s)');
+  }
+  {
+    const r = gesture(build(), true, { x: 1, y: 0 });
+    assert(r.st === 'roll' && !r.lean && !r.back && r.moved > 2, `with a direction held the roll is the roll (moved ${r.moved.toFixed(2)} m)`);
+  }
+  // a perfect lean under a white blow: a streak pip, the longer slow-mo, three afterimages, no crit window
+  {
+    const G = build();
+    const { game, input } = G;
+    const p = game.player, d = game.dragon;
+    game.unlocks = new Unlocks(null, '?tech=lean');
+    duel(G, { dist: 1.8 });
+    p.debug.god = true;
+    let perfect = null, ghosts = 0;
+    G.watch = (n, e) => { if (n === 'player:perfectDodge') perfect = e; };
+    const gh = p.fx.ghostep.bind(p.fx);
+    p.fx.ghostep = (...a) => { ghosts++; return gh(...a); };
+    input.press(1);
+    d.debug.trigger('idleHand');
+    const A = d.brain.act, b = A.beats.find((x) => !x.feint);
+    let leaned = false, slow = 0;
+    run(G, 1.5, () => {
+      if (!leaned && A.t >= b.impact - 0.08) { leaned = true; input.axis = { x: 0, y: 0 }; input.tap('Space'); }
+      slow = Math.max(slow, game.hitstopTimer);
+    }, () => perfect !== null);
+    run(G, 0.05, () => { slow = Math.max(slow, game.hitstopTimer); });
+    input.up(1);
+    assert(perfect !== null && p.rollLean, 'a perfect Long Second under a white blow');
+    assert(slow > DEFENSE_GHOST + 0.2 && ghosts >= 3 && p.critTimer <= 0, `it slows time ${slow.toFixed(2)} s (the Ghostep's ${DEFENSE_GHOST}), ${ghosts} afterimages, no crit window (white)`);
+  }
+  // granted on his death; the victory's line
+  {
+    const G = build();
+    const { game } = G;
+    const d = game.dragon;
+    const mem2 = new Map();
+    game.unlocks = new Unlocks({ getItem: (k) => mem2.get(k) ?? null, setItem: (k, v) => mem2.set(k, String(v)) }, '');
+    duel(G, { dist: 3, form: 3 });
+    assert(!game.unlocks.has('longSecond') && d.victoryNote() === null, 'not learned before he falls');
+    d.debug.kill();
+    run(G, 0.5);
+    assert(game.unlocks.has('longSecond') && d.victoryNote() === 'YOU LEARNED THE LONG SECOND', 'his death teaches it: YOU LEARNED THE LONG SECOND');
+  }
+}
+
+// ================================================================== scenario: training
+async function scenarioTraining() {
+  out('\n== scenario TRAINING (every situation of the Training catalogue for this boss plays out and shows what it promises) ==');
+  const G = build(SEED, true);
+  const { game } = G;
+  duel(G, { dist: 4 });
+  const T = game.lab.training;
+  const { bossKinds } = await imp('src/dev/training.js');
+  const kinds = bossKinds(game);
+  assert(kinds.has('woke') && !kinds.has('ash') && !kinds.has('lord') && !kinds.has('asc') && !kinds.has('fox') && kinds.has('duel'), `his own boss kind (${[...kinds].join(', ')})`);
+  const only = process.env.ABYSS_TONLY?.split(',');
+  const L = only ? only.map((id) => T.find(id)).filter(Boolean) : T.list();
+  const bad = [];
+  for (const s of L) {
+    T.run(s.id);
+    let frames = 0;
+    while (T.ph !== 'done' && frames < Math.round(40 / DT)) { G.tick(DT); frames++; }
+    const r = T.lastResult;
+    const ok = T.ph === 'done' && r?.id === s.id && r.ok;
+    if (!ok || process.env.ABYSS_TRACE) out(`   ${ok ? 'ok ' : 'BAD'} ${s.cat} · ${s.name}: ${T.ph} in ${(frames * DT).toFixed(1)} s · missing ${JSON.stringify(r?.missing ?? '?')} · hero ${game.player.state} · boss ${game.dragon.state}`);
+    if (!ok) bad.push(s.id);
+  }
+  T.stop();
+  assert((only || L.length >= 20) && !bad.length, `every situation plays out and shows what it promises (${L.length - bad.length} of ${L.length}${bad.length ? `; not: ${bad.join(', ')}` : ''})`);
+  assert(['wokeLesson', 'wokeRain', 'wokeThunder', 'wokeStill', 'wokeFist'].every((id) => !!T.find(id)), 'his five lessons are in the catalogue');
+  // the Lab's own buttons for him
+  const G3 = build(SEED, true);
+  duel(G3, { dist: 5, form: 2 });
+  const d3 = G3.game.dragon;
+  const bent = d3.debug.bendNow('shot');
+  run(G3, 1.5);
+  const S = G3.game.world.forest.scenes;
+  const sc = d3.debug.scene('dojo');
+  run(G3, 2);
+  assert(bent && sc && S.now === 'dojo', 'the Lab: Bend now, Scene dojo');
+  const held = d3.debug.hold(3);
+  run(G3, 0.3);
+  assert(held === 3 && d3.phase === 3, 'the Lab: Hold 3 (phase 3)');
+  d3.reset();
+  G3.game.world.restore();
+  duel(G3, { dist: 3, form: 2 });
+  const fell = d3.debug.fallAndRise();
+  run(G3, TUNING.fall.lie + 5, null, () => d3.phase === 3 && d3.mode === 'foot');
+  assert(fell && d3.phase === 3 && S.now === 'source', 'the Lab: Fall + rise');
+  const dv = d3.debug.dejavu('thousandHands');
+  assert(dv && d3.brain.act?.replay === false, 'the Lab: Deja vu (a first pass, nothing to replay yet)');
+}
+
 // ================================================================== scenario: smoke
 async function scenarioSmoke() {
   out('\n== scenario SMOKE (he fights a defender for 60 s in each phase) ==');
@@ -850,6 +984,8 @@ async function scenarioSmoke() {
 }
 
 const S = {
+  training: scenarioTraining,
+  reward: scenarioReward,
   cover: scenarioCover,
   bend: scenarioBend,
   stop: scenarioStop,

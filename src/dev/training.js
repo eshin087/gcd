@@ -16,7 +16,7 @@ import { TUNING as WYRM, SCALE as WYRM_SCALE } from '../entities/dragon/tuning.j
 // every situation through `run(id)` (tests: integ / duel / lord TRAINING).
 //
 // A situation: { id, cat, name, desc, boss (kinds it applies to: 'wyrm' | 'duel' | 'ash' | 'lord' |
-//   'asc' (Tian Lei) | 'fox' (Wen Yao) | 'any'), dist (m from the boss; omit = the boss's default), ang (rad off his facing), side (put the
+//   'asc' (Tian Lei) | 'fox' (Wen Yao) | 'woke' (Xin Yi) | 'any'), dist (m from the boss; omit = the boss's default), ang (rad off his facing), side (put the
 //   hero beside him, for the camera), streak (the hero's, set before), foe (his streak), art (pin the
 //   flurry's art), hp (the hero's), god (default true), answer (mode, or (i, T) → mode for blow i),
 //   go(T) (start it), tick(T, dt) (every frame while it runs), until(T) (done; default: the boss's
@@ -54,6 +54,9 @@ const ROLES = {
   grove: { single: 'knock', string: 'refusals', long: 'fordSteps', red: 'reedCutter', mikiri: 'tapStone' },
   // Wen Yao (the Foxfire Terrace): no perilous thrust (no mikiri situation for him)
   fox: { single: 'foxBite', string: 'brushstrokes', long: 'streakFlurry', red: 'sweepingBrush', lock: 'moonLadder' },
+  // Xin Yi (the Hall of Falling Script): no perilous thrust; his lock is the Still Hand's push, which
+  // only comes out of a caught cut (no lock situation for him)
+  code: { single: 'brushOff', string: 'stairKick', long: 'lesson', red: 'lowWind' },
 };
 
 export function bossKinds(game) {
@@ -63,7 +66,7 @@ export function bossKinds(game) {
   if (typeof d?.debug?.flurry === 'function') {
     k.add('duel');
     // (a three-bar boss is not the Lord: Tian Lei has his own kind, the Lord's situations need the crater)
-    k.add(d?.kit?.id === 'ascendant' ? 'asc' : d?.kit?.id === 'sheathed' ? 'sheathed' : d?.kit?.id === 'thousandFox' ? 'fox' : d?.lives ? 'lord' : 'ash');
+    k.add(d?.kit?.id === 'ascendant' ? 'asc' : d?.kit?.id === 'sheathed' ? 'sheathed' : d?.kit?.id === 'thousandFox' ? 'fox' : d?.kit?.id === 'wokenOne' ? 'woke' : d?.lives ? 'lord' : 'ash');
   }
   return k;
 }
@@ -195,6 +198,43 @@ const foxClose = (T, near = 2.2) => {
 add('THE THOUSAND-BODY FOX', [
   { id: 'foxPop', name: 'Pop the copies · parry them', boss: 'fox', dist: 4, answer: 'parry', desc: 'Two paper selves tear free round you and cut in turn. Parry each cut: a parried self pops (his posture takes it).', go: (T) => T.d.debug.clones(2), until: (T) => T.t > 1 && !(T.d.clones?.live > 0) && T.heroFree(), max: 16, expect: ['dragon:clone', 'player:parry'] },
   { id: 'foxPearlBurst', name: 'The Pearl · burst it in his hand', boss: 'fox', dist: 2.6, answer: 'none', desc: 'He steps back and shapes the Pearl in his palm: his guard is down. Close in and cut him twice while it charges: it bursts in his hand and he reels.', go: (T) => T.d.debug.trigger('foxPearl'), tick: (T) => { if (T.d.pearl?.charging) { foxClose(T); T.at(0.9, () => T.tap('@attack')); T.at(1.3, () => T.tap('@attack')); T.at(1.7, () => T.tap('@attack')); } else T._axis(0, 0); }, until: (T) => T.t > 1 && !T.moving() && T.heroFree(), max: 10, expect: ['dragon:stagger'] },
+]);
+
+// Xin Yi, the One Who Woke (ADR-156): his five lessons. His shots and the front cue themselves (bullet /
+// hazard flashes, which the toolbar's answer leaves alone): those two lessons answer them here.
+/** A perfect parry as each heavy shot of his is about to meet the hero (its own flight). */
+const wokeShot = (T) => {
+  const p = T.p;
+  if (!p) return;
+  for (const s of T.d.fx?.shots ?? []) {
+    if (!s.alive || s.done || s.returned || !s.heavy || s._tp) continue;
+    const dist = Math.hypot(p.position.x - s.x, p.position.z - s.z) - (s.radius ?? 0.4) - (p.radius ?? 0.45);
+    if (dist / Math.max(1, s.speed) <= 0.05) {
+      s._tp = true;
+      T.tap('@block', 0.05);
+    }
+  }
+};
+/** A roll at the Falling Fist's cue, and again as its front is cued on the hero. */
+const wokeFront = (T) => {
+  const a = T.d.brain?.act, F = T.d.source?.front;
+  const b = a?.beats?.find((x) => x.def.fist);
+  if (b && !b._tr && a.t >= b.flash + 0.14) {
+    b._tr = true;
+    T._answer('dodge');
+  }
+  if (F?.live && F.flashed && !F._tr) {
+    F._tr = true;
+    T.later(0.12, () => T._answer('dodge'));
+  }
+};
+// Xin Yi, the One Who Woke (ADR-156): his five lessons
+add('THE ONE WHO WOKE', [
+  { id: 'wokeLesson', name: 'The First Lesson · parry all five', boss: 'woke', move: 'lesson', phase: 1, answer: 'parry', dist: 2.4, desc: 'The beckon is its sign: the long string comes. One hand, feet planted, five blows; the last is the blue flare. Parry all five: the full deflect.', expect: ['player:parry'] },
+  { id: 'wokeRain', name: 'Iron Rain · use the pillar', boss: 'woke', move: 'ironRain', phase: 2, answer: 'none', dist: 8, pieces: true, desc: 'He strafes round you firing from both hands. A pillar between you takes the shots (each takes its letters off); a held guard pays guard, never health.', go: (T) => { const W = T.game.world?.destructibles, pl = W?.list?.find((b) => b.kind === 'pillar' && !b.absent && b.state === 0); if (pl) { T.p.debug.teleport(pl.x - 1.2, pl.z); T.d.position.set(pl.x + 7, 0, pl.z); } T.d.debug.trigger('ironRain'); }, expect: [] },
+  { id: 'wokeThunder', name: 'Two Thunders · send one back', boss: 'woke', answer: 'none', go: (T) => { if (T.d.phase !== 2) T.d.debug.setPhase(2); T.d.position.set(0, 0, -7); T.d.yaw = 0; T.p.debug.teleport(0, -1); T.d.debug.trigger('twoThunders'); }, tick: wokeShot, desc: 'Two heavy shots. A perfect parry sends one back: he bends under it (time slows), open for a second; the first cut crits. Send both: he cannot bend twice.', expect: ['player:parry'] },
+  { id: 'wokeStill', name: 'The Still Hand · wait it out', boss: 'woke', move: 'stillHand', phase: 3, answer: 'none', dist: 2.2, desc: 'The raised flat palm: a cut into it is caught and answered by a one-inch push. Wait it out instead: his guard stays down.', expect: [] },
+  { id: 'wokeFist', name: 'The Falling Fist · roll the front', boss: 'woke', phase: 3, answer: 'none', dist: 5, desc: 'He leaves the floor and dives on where you stood: roll out of the crater, then roll through the front as it reaches you.', go: (T) => { if (T.d.source) T.d.source.front._tr = false; T.d.debug.flight?.('fist'); }, tick: wokeFront, until: (T) => T.t > 4 && !T.moving() && T.heroFree() && !T.d.source?.front?.live, max: 12, expect: ['player:perfectDodge'] },
 ]);
 
 add('BOSS STATES', [
