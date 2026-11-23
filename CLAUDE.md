@@ -6,7 +6,7 @@ rendered in its own ASCII look. Today: five levels, each its own
 page load (`?level=`): Cinderwood Hollow (the Cinder Wyrm), the Ashfall Courtyard (the Ash Disciple,
 a three-phase human duelist), the Obsidian Throne (the Starless Lord, a four-form duelist with Void spells)
 the Skybreak Ring (Tian Lei, the Last Ascendant: a bare-handed three-form duelist with ki blasts and beams)
-and the Foxfire Terrace (Wen Yao, the Thousand-Body Fox: a dao duelist who fights beside paper copies of himself).
+and the Foxfire Terrace (Wen Yao, the Thousand-Body Fox: a bare-handed fighter who fights beside paper copies of himself).
 Read this file first, every session.
 
 - Repo: https://github.com/eshin087/gcdAbyss · Live: https://gcdabyss.vercel.app (auto-deploys `main`)

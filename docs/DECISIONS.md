@@ -4080,11 +4080,20 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   fills the arena with clones that pop in one hit while the real one charges a spiralling orb, whose
   last phase wears a fox-spirit cloak of fire. It is in the spirit of a famous ninja-clone hero and
   must not be him.
-- **An original, not the franchise.** His own name (WEN YAO, THE THOUSAND-BODY FOX), a bone fox mask,
-  a dark robe, a dao. None of that series' signature look or words: no orange suit, no headband, no
-  whisker marks, no hand seals, no technique names of it, no palm thrust with the orb (he bats it with
-  the flat of the blade), no cloak with many tails (ONE brush tail, a fox's head as a hood), selves
-  that TEAR off him as paper rather than smoke clones.
+- **An original, not the franchise.** His own name (WEN YAO, THE THOUSAND-BODY FOX), his own move names
+  in the plain wuxia style of the others, a kitsune's fox mask. None of that character's protected
+  signature design or words: no orange jumpsuit with black shoulders, no headband with a metal plate,
+  no whisker marks, no swirl emblem, no spiky blond hair, no hand seals, no technique names of that
+  series; selves that TEAR off him as paper rather than smoke clones.
+- **The owner's turn, 2026-11-22:** "make the boss look as recognizable [as] the referenced character and
+  use its signature moves ... with different names", then "as similar without causing copyright issue
+  ... a fist fighter". A recognisable copy of a character's design is a copy whatever it is called, so
+  the homage was pushed through what nobody owns: he fights BARE-HANDED (his dao removed; Tian Lei's
+  strike builders and limb-as-blade), the selves fight as a PACK (the Round; one holds the Pearl with
+  him; one throws him: Fox Descending), the orb is shaped in his OPEN PALM and DRIVEN into the hero (a
+  common anime trope; the thrown volley kept as Pearl Rain), and phase 3 is the NINE-TAILED FOX of the
+  old tales (the spirit grows from one tail to nine as his bar runs out), a loud bright figure on
+  offer among the looks.
 - **Decision, the selves are the boss's own bodies, not an actor list.** The roadmap's "boss slot as an
   actor list" is not done and this does not do it: the game still has one boss. `FoxClones`
   (`thousandFox/clones.js`) is a fixed pool of five hero rigs built in his constructor (never mid-fight:

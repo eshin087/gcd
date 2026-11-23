@@ -187,10 +187,11 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 ## M1.56 — A fifth level: the Foxfire Terrace and Wen Yao, the Thousand-Body Fox (2026-11-21, `claude/thousand-body-fox-33750d`, ADR-147, ADR-148)
 - [x] An original in the spirit of a ninja-clone hero: his own name, mask, outfit and move names, none of that series' look
 - [x] The level (`?level=fox`) and its set: a round paved terrace, lanterns, stone foxes, charm posts that burn, a great stone fox and a spirit gate
-- [x] Wen Yao on the duelist engine (no engine change): three phases, eighteen moves as data, links, the seated intro
+- [x] Wen Yao on the duelist engine (no engine change): three phases, nineteen moves as data, links, the seated intro
+- [x] The owner's turn (2026-11-22): a bare-handed fist fighter (Tian Lei's strike builders), the homage pushed through what nobody owns (the pack, the palm-driven Pearl, the nine-tailed fox)
 - [x] The paper selves: his own bodies (a pool of five built with him), pop in one hit, the cleave, one cut at a time under the fairness guard
-- [x] The Pearl: fed by the selves, starved by popping them, interrupted by two cuts, three at once from phase 2
-- [x] The Fox-Fire Mantle (phase 3): fire on the world where he stands, the tail, the pounce, the black pearl
+- [x] The Pearl: shaped in his palm with a self's help, fed by the selves, starved by popping them, interrupted by two blows, driven home on a dash; Pearl Rain throws three from phase 2; Fox Descending off a self's hands
+- [x] The Nine-Tailed Fox (phase 3): one tail to nine as his bar runs out, fire on the world, the tail, the pounce, the black pearl
 - [x] Foxfire as a palette of the fire field; the rigid batch's bone texture grows when a level needs it
 - [x] The look options rendered (body a - d, foxfire a - c, selves a / b); the fight built with each one's a
 - [x] `tests/integration/fox.mjs` in `npm test`; the Lab (FIGHT buttons, LOOKS rows) and Training know him (two situations of his own)
@@ -198,7 +199,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] The owner's picks: `?foxLook=`, `?foxfire=`, `?clones=` (from the sheets in `docs/looks/fox/`)
   - [ ] The owner plays the preview on the phone: the selves' readability at 852 x 393, the frame rate with five out
   - [ ] The level's own score (it borrows three tracks)
-  - [ ] Phase 3 asks more (twice the dodges) but is not busier than phase 2 (81.9 against 85.0 cues a minute)
+  - [ ] Phase 3 asks more (twice the dodges) but is not busier than phase 2 (79.3 against 80.2 cues a minute, bare-handed)
 
 ## M1.55 — The hero looks the same on every screen (2026-11-21, `player/hero-look-everywhere`, ADR-130)
 - [x] His letter cell follows his size: 0.115 m at his depth on every screen and camera distance

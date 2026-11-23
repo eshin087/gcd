@@ -9,23 +9,22 @@ Sixty-one pieces of work since 0.4.0:
   *Added:* a fifth level, `?level=fox` (the title screen lists it). **The Foxfire Terrace**: a round
   terrace on a moonlit hill shrine, stone lanterns and seated stone foxes on its rim, wooden charm posts
   hung with paper round it, a great stone fox and a spirit gate. **Wen Yao, the Thousand-Body Fox**: a
-  masked swordsman who tears paper copies of himself off his body. They walk at you and cut one at a
-  time, with the same white cue as his own blows, and a single cut pops one (a heavy cut pops the one
-  beside it too; a parry pops it). The real one is always the one you are locked on to, the only one
-  with a shadow, a steel blade and, later, the fire. While his copies keep you busy he draws out the
-  Pearl of the Hollow Moon over his blade, fed by a thread from every copy alive, and bats it at you: red,
-  a burst that is bigger and harder for every copy still standing. Pop copies to starve it, cut him twice
-  while he charges to burst it in his hand, or roll out of where it lands. Phase 2 (four copies): he
-  trades places with a copy mid-string, every copy cuts in turn round you before his own blow, three
-  pearls at once. Phase 3: the copies burn up into him and he wears a fox's head and tail of fire that
-  sets the charm posts and the hill's grass alight; a tail sweep, a long pounce, and a black pearl he
-  leaps down with. Asleep he sits among four copies that tear into paper as he rises. His own test suite;
-  the Lab and Training know him. *Changed:* the bone texture of the batched bodies grows when a level
-  has more bodies than it holds (the fox and his five copies); the other levels are drawn as before.
-  Kept behind switches for the owner's pick: three more outfits (`?foxLook=b|c|d`), the foxfire's colour
-  (`?foxfire=b|c`), paler copies (`?clones=b`). Recorded, not yet usable: his reward, the Paper Double
-  (there is no technique slot yet). The level borrows music for now. Nobody has played it yet: his
-  numbers are first guesses from bots.
+  masked bare-handed fighter who tears paper copies of himself off his body. They walk at you and strike
+  as a pack, one at a time, with the same white cue as his own blows; a single cut pops one (a heavy cut
+  pops the one beside it too; a parry pops it). The real one is always the one you are locked on to, the
+  only one with a shadow, the one who holds the Pearl. He shapes the Pearl of the Hollow Moon in his open
+  palm, a copy holding it with him and every other copy feeding it a thread, then dashes in and drives it
+  into you: red, stronger for every copy still standing. Pop copies to starve it, hit him twice while he
+  shapes it to burst it in his hand, or roll. Phase 2 (four copies): he trades places with a copy
+  mid-string, springs off a copy's hands at you, every copy strikes in turn round you before his own
+  blow, three pearls thrown at once. Phase 3: the copies burn up into him and a nine-tailed fox of fire
+  wakes round him, one more tail as his health runs out; a tail sweep, a long pounce, a black pearl he
+  leaps down with; the charm posts and the hill's grass catch. Asleep he sits among four copies that tear
+  into paper as he rises. His own test suite; the Lab and Training know him. *Changed:* the bone texture
+  of the batched bodies grows when a level has more bodies than it holds; the other levels are drawn as
+  before. Kept behind switches for the owner's pick: his looks (`?foxLook=`), the foxfire's colour
+  (`?foxfire=`), paler copies (`?clones=b`). Recorded, not yet usable: his reward, the Paper Double. The
+  level borrows music for now. Nobody has played it yet: his numbers are first guesses from bots.
 - **On a phone: the health bars no longer overlap, and two new ways to hold the controls** (2026-11-21, ADR-131).
   *Fixed:* on a phone in landscape the hero's HP row ran into the boss's bar (Safari gives an iPhone
   about 734 px of width: the hero's row ended at 242 px, the boss's began at 217). The top row is now

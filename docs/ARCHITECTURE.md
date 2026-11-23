@@ -3682,7 +3682,8 @@ T.shots.disc.homeWait, 'disc')` (a longer hang, or home uncued and harmless). Ad
 returnable, returned, curve, hang, through, tx, tz, leg, path, form, seed, hitKind`.
 
 ### The Thousand-Body Fox — `src/entities/enemies/thousandFox/fox.js` exports `class ThousandFox` (ADR-147)
-Wen Yao, a masked dao swordsman on the duelist engine: one health bar, three phases (`phaseAt` [1, 0.66,
+Wen Yao, a masked BARE-HANDED fighter on the duelist engine (2026-11-22: the owner's "a fist fighter, no
+sword"): one health bar, three phases (`phaseAt` [1, 0.66,
 0.33]); `FOX_KIT` (`id` 'thousandFox', `transitions` { 2: 'thousandBodies', 3: 'foxMantle' },
 `counterMove` 'riposte', `streakMove` 'streakFlurry'). No change to `duelist/*.js`: everything is a hook.
 - **Files:** `fox.js` (the class, `FoxBrain`), `moves.js` (the moves as data in the Ash format; his own beat
@@ -3690,17 +3691,27 @@ Wen Yao, a masked dao swordsman on the duelist engine: one health bar, three pha
   fields `clonesFight`, `needs`, `densityAs`, `hidden`: its header), `tuning.js` (Shen Hui's blocks plus
   `clones`, `pearl`, `mantle`, `world`, `crescent`), `poses.js` (`GUARD`, `FOX_POSES`), `links.js`,
   `clones.js` (`FoxClones`), `pearl.js` (`FoxPearl`), `fx.js` (`FoxFx extends DuelFx`), `gear.js`
-  (`FOX_LOADOUT`, `FOX_BLADE`), `look.js` (`FOX_LOOKS`, `foxLook(name)`, `tintFox(M, { pale })`, `dressFox`).
+  (`FOX_LOADOUT`: no weapon; `FOX_FIST` = kit.blade, the right fist on the sword joint), `look.js` (`FOX_LOOKS`, `foxLook(name)`, `tintFox(M, { pale })`, `dressFox`).
+- **Bare hands (Tian Lei's way, ascendant.js, copied in fox.js):** his blows are Tian Lei's exported strike
+  builders (`ascendant/moves.js` `X.punch / kick / elbow / strikeKeys`, authored round the same left-lead
+  stance) and his reaction clips Tian Lei's `CLIPS`, compiled round his own `GUARD` (Tian Lei's loose
+  second guard, the lead hand open, palm up). The engine's "blade" (hilt → tip: the parry, the trade, the
+  lock, the trails) is the STRIKING LIMB of the moment: `_strikePart()` (the beat's `part`: fistR, fistL,
+  palms, footR / L, kneeR / L, elbowR / L, feet), `_limbSeg(part, a, b)`, `tellPoint(part)`,
+  `_drawnPoints()`, `_poseAt(t)`; `palmPoint(out)` (over the open lead palm: the Pearl's spot).
 - **The class:** `d.clones` (FoxClones), `d.pearl` (FoxPearl), `d.mantleK` (0..1, the mantle grown in),
+  `d.tails` (phase 3's fox spirit: 1 as it wakes, `T.mantle.tails` 9 as his bar runs out; 3 when the Lab
+  forces the mantle),
   `debug.clones(n)` (tear n selves off now, to the cap), `debug.popAll()`, `debug.pearl()` (the Pearl
   now), `debug.mantle(on)` (on / off / null = by phase), `debug.liveClones()`. Hooks used: `_setup` (the
   pool and the Lab's API, inside the base constructor), `_tint` / `_tintSelf`, `_makeFx`, `_makeBrain`,
   `reset` (he sits among four seated selves), `guarding` (down through the Pearl's charge), `weigh` (the
   Round needs two selves, no scatter at the cap, `densityAs`), `onActStart` (the Round tears its selves
   if too few; a transition pops them, phase 3's burns them into him; the Pearl begins), `beatMotion`
-  (the trade of places, the scatter, the Round's call), `onImpact` (the transitions tear selves to the
-  cap; the tail, the pounce and the black pearl on the world), `onCast` (the bat), `onRelease` (Paper
-  Blades, Shen Hui's crescents), `brainFrame` (the intro's tearing, the selves, the pearls, the mantle's
+  (the trade of places, the springboard off a self, the self that helps shape the drive, the scatter,
+  the Round's call), `onImpact` (the transitions tear selves to the cap; the drive's burst; the tail, the
+  pounce and the black pearl on the world), `onCast` (Pearl Rain's throw), `hitPlayer` (the drive's blow
+  grows with the selves that fed it), `brainFrame` (the intro's tearing, the selves, the pearls, the mantle's
   `world.ignite`), `afterPose` (the Pearl over the blade, the black pearl, the mantle, the selves'
   poses and spheres), `takeHit` (a 'cloneN' part pops; a cut while he charges counts toward the
   interrupt), `_break` (every self pops), `drawnPoint` (about the nearest body's root).
@@ -3712,12 +3723,16 @@ Wen Yao, a masked dao swordsman on the duelist engine: one health bar, three pha
   round }`), `live`, `alive(i)`, `busy`, `cap()`, `spawn(n, why)` (a ring 3.5 – 5.5 m round the hero,
   `apart` 2.2 m, `d.standable`; its own seeded stream), `popAt(i, x, y, z, heavy, by)`, `popWithin(x,
   z, r, by)`, `popAll(by)`, `burnAll()`, `nearest(x, z)`, `swapWith(i)`, `round(hisImpactIn)`,
-  `seat(n)` / `tearSeated(t)` / `seated` (the intro), `handPoint(i, out)` (the Pearl's thread),
+  `seat(n)` / `tearSeated(t)` / `seated` (the intro), `assist(i, d)` (state 'assist': holds the Pearl
+  with him, at his left), `brace(i, d)` (state 'brace': cups its hands for his spring), `handPoint(i, out)`
+  (the Pearl's thread),
   `setCut(act)` (the realised `paperCut`), `frame(dt)`, `pose(dt)`. Its rigs are plain hero rigs
   (`buildHero(U, FOX_LOADOUT)`, their own `HeroAnimator`, `installLean`, `batchRigid`), not shadow
   casters; a hero-side double can take one (ADR-148).
-- **`FoxPearl`** (`d.pearl`): `charging`, `flying`, `u` (the charge 0..1), `shots` (three), `begin(act)`,
-  `charge(b, u, dt)`, `struck(heavy)` → burst in his hand?, `interrupt()`, `cancel()`, `bat(b, s, act)`,
+- **`FoxPearl`** (`d.pearl`): `kind` ('drive' | 'charge': the volley), `charging`, `flying`, `u` (the charge
+  0..1), `selves` (the selves feeding it), `shots` (three), `begin(act)`, `charge(b, u, dt)`, `struck(heavy)`
+  → burst in his hand?, `interrupt()`, `cancel()`, `drive(b, s, act)` (the drive's burst), `bat(b, s, act)`
+  (Pearl Rain's throw),
   `frame(dt)`; counts `landed`, `interrupts` (tests).
 - **`FoxFx`** (`d.fx`): the surface in its header (`pearlCharge`, `pearlThread`, `pearlFly`,
   `pearlMark`, `pearlBurst`, `pearlFizzle`, `greatPearl`, `greatBurst`, `cloneSpawn`, `clonePop`,
