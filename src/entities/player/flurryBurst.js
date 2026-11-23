@@ -16,7 +16,7 @@
 // Presentation only: no timing, damage, hit-stop, camera or hit test moves. Read at the moment of
 // the blow (flurry.js / flurryFx.js snapshot it). ?burst=0|1|2|3 in the URL; setBurst(n) (the Lab /
 // the films); setBurst(obj) a custom level (a BURST_LOOK.levels entry's shape: the measuring rig
-// switches one effect off at a time with it). Default BURST_DEFAULT (0) until the owner picks.
+// switches one effect off at a time with it). Default BURST_DEFAULT (2, the owner's pick).
 
 const deepFreeze = (o) => {
   for (const v of Object.values(o)) if (v && typeof v === 'object') deepFreeze(v);
@@ -68,7 +68,7 @@ export const BURST_LOOK = deepFreeze({
     },
   ],
 });
-export const BURST_DEFAULT = 0;
+export const BURST_DEFAULT = 2; // the owner's pick (2026-11-23); ?burst=0 draws the burst as before
 
 const fromUrl = () => {
   try {

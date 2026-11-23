@@ -13,13 +13,15 @@
 //   world    at high tiers the arena answers a perfect defence: dust, embers, the grass (player/streakFx.js)
 //
 // A single perfect parry / perfect dodge has three looks (?perfect=today | sharp | cinema; the owner
-// compares `sharp` and `cinema`; `today` is drawn until a pick is made): combat/perfectFx.js.
+// picked `sharp`, the default; `?perfect=today` draws it as before): combat/perfectFx.js.
 //
 // The tier of a streak (read anywhere, never stored): 0 below TIERS[0], then 1, 2, ... The flurry's
 // own length stops at DEFENSE.flurry.max (7) and its damage with it: tiers change looks only.
 
 const PIECES = ['storm', 'tiers', 'aura', 'counter', 'sound', 'world'];
 const PERFECT = ['today', 'sharp', 'cinema'];
+/** The look a single perfect parry / dodge gets when nothing asks for another (the owner's pick, 2026-11-23). */
+export const PERFECT_DEFAULT = 'sharp';
 
 /** Streak counts at which a tier begins (tier 1 at TIERS[0], ...). Tier 3 is the full flurry. */
 export const STREAK_TIERS = Object.freeze([3, 5, 7, 10, 15]);
@@ -59,10 +61,10 @@ export const STREAK_FX = {
   k: { storm: 1, tiers: 1, aura: 1, counter: 1, sound: 1, world: 1 },
   perfectModes: PERFECT,
   /** The look of a single perfect parry / dodge. */
-  perfect: PERFECT.includes(q('perfect')) ? q('perfect') : 'today',
+  perfect: PERFECT.includes(q('perfect')) ? q('perfect') : PERFECT_DEFAULT,
 };
 
 /** A piece's strength (0 when it is off). */
 export const streakK = (piece) => (STREAK_FX.on[piece] === true ? Math.max(0, Number(STREAK_FX.k[piece]) || 0) : 0);
-export const setPerfectMode = (m) => (STREAK_FX.perfect = PERFECT.includes(m) ? m : 'today');
+export const setPerfectMode = (m) => (STREAK_FX.perfect = PERFECT.includes(m) ? m : PERFECT_DEFAULT);
 export const perfectMode = () => STREAK_FX.perfect;
