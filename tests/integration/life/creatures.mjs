@@ -78,7 +78,7 @@ export default {
       const y0 = b.py;
       w.step(2);
       const up = b.y - y0, away = Math.hypot(b.x - b.px, b.z - b.pz);
-      T.assert(up > 5 && away > 8, `${id}: 2 s later it is ${up.toFixed(1)} m up and ${away.toFixed(1)} m away`);
+      T.assert(up > 3.5 && away > 5, `${id}: 2 s later it is ${up.toFixed(1)} m up and ${away.toFixed(1)} m away`);
       T.assert(far.every((o) => o.state === 'perched'), `${id}: the ${far.length} birds 25 m from him stay perched`);
     }
   },

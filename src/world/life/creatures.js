@@ -269,7 +269,9 @@ export class Creatures {
     const fx = life.game?.fx;
     const draw = this.visible;
     // (counts thin with the phone's budget and the fight's calm: a record draws while q < keep)
-    const keep = Math.max(0, Math.min(1, life.quality)) * Math.max(0, Math.min(1, life.calm));
+    // (the fight thins them more than its calm: calm^1.5, so the ground the fight is read on clears)
+    const cm = Math.max(0, Math.min(1, life.calm));
+    const keep = Math.max(0, Math.min(1, life.quality)) * cm * Math.sqrt(cm);
     this._fireflies(dt, keep, draw ? fx?.add : null);
     this._moths(dt, keep, draw ? fx?.alpha : null);
     this._birds(dt, draw ? fx?.alpha : null);

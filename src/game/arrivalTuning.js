@@ -24,7 +24,7 @@ const DEFAULT = Object.freeze({
   weight: 1,
   hold: 3,
   inLambda: 2.4,
-  outLambda: 1,
+  outLambda: 1.2,
   skipLambda: 2.2,
   front: { strength: 1, speed: 9, width: 12, delay: 0.3 },
   mobile: { zoom: 3, weight: 1 },
