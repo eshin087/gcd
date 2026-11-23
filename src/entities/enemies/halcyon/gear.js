@@ -5,7 +5,7 @@ import {
   shellGeometry, skirtSheet, tatterStrip, bandGeometry, boxGeometry, mergeGeometries, sub, foldLines, ribbonCrease, lerp, limb,
   gripFist, orient, orientTo, clumpGeometry, partGeometry,
 } from '../../player/heroGeo.js';
-import { halLookNow, halCapeNow, dressOf, at } from './look.js';
+import { halLookNow, halCapeNow, halCapeSizeNow, dressOf, at } from './look.js';
 
 // Halcyon's gear: the hero's skeleton (buildHero), no weapon (bare-handed: the right fist on the sword
 // joint), drawn in the hero's ink-line art. Three outfits (`?halLook=a|b|c`, look.js; read when his rig
@@ -235,9 +235,15 @@ CAPE_SHAPE[3] = {
   lag: 0.95, max: 1.7, breeze: [0.16, 1.6],
   sheets: CAPE_SHAPE[2].sheets.map((d) => ({ ...d, len: [d.len[0] + 0.04, d.len[1] + 0.08] })),
 };
-/** The cape his rig is built with (look.js halCapeNow): { sheets, lag, max, breeze }. */
-export function capeShape(step = halCapeNow()) {
-  return CAPE_SHAPE[step] ?? { sheets: HAL_CAPE, lag: CAPE_LAG, max: CAPE_MAX, breeze: null };
+/** The cape his rig is built with (look.js halCapeNow, halCapeSizeNow): { sheets, lag, max, breeze }.
+ *  `k` (?halCapeSize=, ADR-166) scales every sheet's length and width (the root's by its square root,
+ *  so it still pins across the shoulders); the flare's angle and the billow are kept, so the sheets'
+ *  spread from the front shrinks with their length. */
+export function capeShape(step = halCapeNow(), k = halCapeSizeNow()) {
+  const C = CAPE_SHAPE[step] ?? { sheets: HAL_CAPE, lag: CAPE_LAG, max: CAPE_MAX, breeze: null };
+  if (!(k > 0) || k === 1) return C;
+  const r = Math.sqrt(k);
+  return { ...C, sheets: C.sheets.map((d) => ({ ...d, w: [d.w[0] * r, d.w[1] * k, d.w[2] * k], len: [d.len[0] * k, d.len[1] * k], wrap: d.wrap * r })) };
 }
 /** The sheets whose lower edge is torn away in phase 3 (tatters hang in its place). */
 const TORN = new Set([0, 3, 4]);

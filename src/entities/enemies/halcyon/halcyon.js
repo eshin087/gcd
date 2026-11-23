@@ -10,7 +10,7 @@ import { HAL_POSES } from './poses.js';
 import { MOVES, MOVE_NAMES, CLIP, TRANSITIONS, AFTER, REACT, OPEN, realise } from './moves.js';
 import { TUNING } from './tuning.js';
 import { LINKS } from './links.js';
-import { tintHalcyon, dressHalcyon } from './look.js';
+import { tintHalcyon, dressHalcyon, halLettersOn } from './look.js';
 import { HalFx } from './fx.js';
 import { Glare } from './glare.js';
 import { Flight } from './flight.js';
@@ -47,6 +47,11 @@ export const HALCYON_KIT = Object.freeze({
   scale: TUNING.scale,
   REACT, OPEN,
   dress: (d, dt) => dressHalcyon(d, dt),
+  // his ink-line letters follow his size on screen as the hero's do (ARCHITECTURE "The bosses'
+  // letters"; `?halLetters=0` the fixed cell; read live, ADR-166)
+  get letters() {
+    return halLettersOn();
+  },
 });
 
 const _a = new THREE.Vector3(), _b = new THREE.Vector3();

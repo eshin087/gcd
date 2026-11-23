@@ -26,11 +26,43 @@ import { setFill } from '../ashDisciple/bodyArt.js';
 //                     (the streamers' `breeze`, player/anim.js; CAPE_SHAPE[3]).
 //                  The default is the step recommended to the owner (HAL_CAPE_STEP), and the owner
 //                  picked it: 3 (2026-11-23; lookSwitch PICKED).
+//   The owner, after picking step 3 (2026-11-23): "make his cape smaller, make him look more ascii like to
+//   look like the main character ascii look more ascii made up". Tian Lei's answer to the same words
+//   (ADR-155) is the model; three switches, in PENDING, the owner picks from the sheets (ADR-166):
+//   ?halLetters=0|a   a: his letters follow his size on screen by the hero's rule (his kit's `letters`,
+//                  ARCHITECTURE "The bosses' letters"; read live); 0 the bosses' fixed fine cell.
+//   ?halPrint=0|a|b   0: the step-3 print (a lit figure, a strong edge); a: the hero's quieter print
+//                  (Tian Lei's ASC_QUIET numbers: a darker field of letters, a softer edge); b: between.
+//   ?halCapeSize=0|a|b|c   the cape's length and spread: 0 as picked, a ~80 %, b ~65 %, c ~50 % (to the
+//                  back of his knees); its colours and its billow kept.
 // (?city=a|b|c is the set's: world/halcyonPlaza.js.)
-// Read when his rig is built (a reload).
+// Read when his rig is built (a reload), but halLetters (live).
 export const HAL_CAPE_STEP = '3';
-export const HAL_LOOKS = Object.freeze({ halLook: 'a', glare: 'a', halCape: HAL_CAPE_STEP });
+export const HAL_LOOKS = Object.freeze({ halLook: 'a', glare: 'a', halCape: HAL_CAPE_STEP, halLetters: 'a', halPrint: 'a', halCapeSize: 'b' });
 export const halLook = (name) => lookOf(name, HAL_LOOKS[name] ?? 'a');
+
+/** His letters follow his size as the hero's do (`?halLetters=a`; live: his kit's `letters` getter). */
+export function halLettersOn() {
+  return halLook('halLetters') === 'a';
+}
+
+/** The print (`?halPrint=0|a|b`): his fills times `fill` (per part), the rim on his suit times `rim`
+ *  (in place of HAL_LIFT.rim); 0 = none (the step-3 print). Tian Lei's quieter print (ASC_QUIET: cloth
+ *  x 0.85, skin x 0.62, rim x 1.5) is a; b is halfway. The gold and the cape's red keep their fill. */
+export const HAL_PRINT = {
+  a: { fill: { pants: 0.85, armor: 0.85, piping: 0.8, collar: 0.85, welt: 0.85, skin: 0.62, shirt: 1.0, lining: 0.9, coat: 0.9, hem: 0.85 }, rim: 1.5 },
+  b: { fill: { pants: 0.92, armor: 0.92, piping: 0.9, collar: 0.92, welt: 0.92, skin: 0.8, shirt: 1.0, lining: 0.95, coat: 0.95, hem: 0.92 }, rim: 2.2 },
+};
+export function halPrintNow() {
+  const o = halLook('halPrint');
+  return o === 'a' || o === 'b' ? o : '0';
+}
+
+/** The cape's size (`?halCapeSize=`): its sheets' length and width times this. */
+export const HAL_CAPE_SIZE = Object.freeze({ 0: 1, a: 0.8, b: 0.65, c: 0.5 });
+export function halCapeSizeNow() {
+  return HAL_CAPE_SIZE[halLook('halCapeSize')] ?? HAL_CAPE_SIZE[HAL_LOOKS.halCapeSize];
+}
 
 /** The cape step his rig is built with: 0..3 (an unknown value draws the default). */
 export function halCapeNow() {
@@ -101,10 +133,13 @@ export function tintHalcyon(M) {
   const T = bright ? { ...HAL_TINT[o], ...HAL_BRIGHT[o] } : HAL_TINT[o] ?? HAL_TINT.a;
   for (const k in T) M[k]?.uniforms?.uArtFill?.value.setRGB(T[k][0], T[k][1], T[k][2]);
   if (!bright) for (const k in HAL_LIFT.fill) M[k]?.uniforms?.uArtFill?.value.multiplyScalar(HAL_LIFT.fill[k]);
+  const P = HAL_PRINT[halPrintNow()];
   for (const k of HAL_LIFT.rimOn) {
     const u = M[k]?.uniforms?.uArtRim;
-    if (u) u.value *= bright && k in BRIGHT_RIM ? BRIGHT_RIM[k] : HAL_LIFT.rim;
+    if (u) u.value *= bright && k in BRIGHT_RIM ? BRIGHT_RIM[k] : P ? P.rim : HAL_LIFT.rim;
   }
+  // ?halPrint=a|b: the hero's quieter print (ADR-166)
+  if (P) for (const k in P.fill) M[k]?.uniforms?.uArtFill?.value.multiplyScalar(P.fill[k]);
   // the neon seams light themselves a little (their ink lines glow), the eyes burn
   const pu = M.piping?.uniforms;
   if (pu?.uInkGlow) pu.uInkGlow.value = 0.5;

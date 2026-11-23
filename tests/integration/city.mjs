@@ -4,7 +4,7 @@
 // the level's set (world/halcyonPlaza.js), or the real set with its breakables and its ambience (the
 // cars' fuses, setPhase). A bot drives the input. The harness is fox.mjs's (its build, bots, helpers).
 // usage: node city.mjs <repoRoot> [scenario]   (env: ABYSS_SEED=n reseeds the AI)
-//   scenario: levels | data | timing | flight | glare | pass | car | tower | statue | grab | phase | flow | pace | win | training | looks | all
+//   scenario: levels | data | timing | flight | glare | pass | car | tower | statue | grab | phase | flow | pace | win | training | looks | herolike | all
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { ui, AUDIO, resetWindow } from './shim.mjs';
@@ -1148,6 +1148,79 @@ async function scenarioTraining() {
   assert(Object.values(b).every(Boolean) && (G3.counts['world:blast'] ?? 0) >= 1, `the Lab: Pass, City phase, Explode, The Falling Sky (${JSON.stringify(b)})`);
 }
 
+// ================================================================== scenario: herolike (ADR-166)
+async function scenarioHeroLike() {
+  out("\n== scenario HEROLIKE (?halLetters= / ?halPrint= / ?halCapeSize=: printed like the hero, a smaller cape) ==");
+  const LS = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const LOOK = await imp('src/entities/enemies/halcyon/look.js');
+  const { capeShape } = await imp('src/entities/enemies/halcyon/gear.js');
+  const { Pipeline } = await imp('src/render/pipeline.js');
+  for (const k of ['halLetters', 'halPrint', 'halCapeSize']) assert(LS.PENDING.includes(k) && !(k in (LS.PICKED ?? {})), `?${k}= waits for the owner (PENDING, not PICKED)`);
+  const G = build();
+  const d = G.game.dragon, kit = d.kit, on = {};
+  for (const o of ['0', 'a']) { LS.setLook('halLetters', o); on[o] = !!kit.letters; }
+  LS.setLook('halLetters', null);
+  assert(kit.letters === LOOK.halLettersOn() && on.a === true && on['0'] === false, `his kit asks for letters that follow his size (default ${kit.letters}); ?halLetters=0 the fixed cell; live`);
+  // the pipeline (a mock renderer), as asc.mjs herolike: his cell beside the hero's at the same depth
+  const U = G.game.U, cam = G.game.camera;
+  const renderer = {
+    extensions: { has: () => true }, autoClear: true, _dpr: 1,
+    setRenderTarget() {}, setClearColor() {}, getClearColor() {}, getClearAlpha: () => 0, clear() {}, render() {},
+    setPixelRatio(x) { this._dpr = x; }, getPixelRatio() { return this._dpr; }, setSize() {},
+  };
+  const pipe = new Pipeline(renderer, G.game.scene, G.game.fxScene, cam, U);
+  cam.fov = CONFIG.camera.fov;
+  cam.updateProjectionMatrix();
+  cam.updateMatrixWorld(true);
+  const u = pipe.asciiMat.uniforms, ps = new THREE.Vector4();
+  const cellsAt = (H, D, letters) => {
+    pipe.setSize(Math.round((H * 16) / 9), H, 1);
+    pipe.bossLetters = letters;
+    U.uBossScreen.value.set(0.4, 0.5, D + cam.matrixWorld.elements[9], 1);
+    ps.set(0.6, 0.5, D, 0);
+    for (let i = 0; i < 3; i++) { pipe._updateHeroLetters(ps); pipe._updateBossLetters(U.uBossScreen.value); }
+    return [u.uHeroCell.value.x, pipe.selfCell.x];
+  };
+  const rows = [];
+  for (const [name, H, D] of [['phone', 393, 20], ['720p', 720, 36], ['1080p', 1080, 36], ['1440p', 1440, 36], ['4K', 2160, 36]]) {
+    const [b, h] = cellsAt(H, D, true);
+    const [b0] = cellsAt(H, D, false);
+    rows.push(`${name} ${b0} -> ${b} / ${h}`);
+    assert(b === h && b0 === pipe.heroCell.x, `${name} at ${D} m: his cell ${b} px is the hero's ${h} px (with ?halLetters=0 the fixed ${b0} px)`);
+  }
+  out("   his cell (fixed -> following) / the hero's: " + rows.join('; '));
+  // the print: quieter fills, a softer edge on the suit; the cape's red and the gold kept bright enough
+  const tint = (p) => {
+    LS.setLook('halPrint', p);
+    const g = build();
+    LS.setLook('halPrint', null);
+    const M = g.game.dragon.rig.materials;
+    return { skin: M.skin.uniforms.uArtFill.value.r, suit: M.armor.uniforms.uArtFill.value.b, rim: M.armor.uniforms.uArtRim.value, red: M.lining.uniforms.uArtFill.value.r, gold: M.hair.uniforms.uArtFill.value.r };
+  };
+  const p0 = tint('0'), pa = tint('a'), pb = tint('b');
+  assert(pa.skin < p0.skin * 0.7 && pa.suit < p0.suit && pa.rim < p0.rim * 0.6 && pb.skin > pa.skin && pb.skin < p0.skin && pb.rim > pa.rim && pb.rim < p0.rim,
+    `the quieter print: skin ${p0.skin.toFixed(2)} / a ${pa.skin.toFixed(2)} / b ${pb.skin.toFixed(2)}, suit blue ${p0.suit.toFixed(2)} / ${pa.suit.toFixed(2)} / ${pb.suit.toFixed(2)}, rim ${p0.rim.toFixed(2)} / ${pa.rim.toFixed(2)} / ${pb.rim.toFixed(2)}`);
+  assert(pa.red > 1.5 && pa.gold === p0.gold, `the cape's red (${pa.red.toFixed(2)}) and the gold (${pa.gold.toFixed(2)}) still lit in print a`);
+  // the cape's size: shorter and narrower by its factor, the billow kept, the same five sheets
+  const full = capeShape(3, 1), len = (C) => Math.max(...C.sheets.map((s) => s.len[0] + s.len[1])), wid = (C) => Math.max(...C.sheets.map((s) => s.w[2]));
+  for (const [o, k] of Object.entries(LOOK.HAL_CAPE_SIZE)) {
+    const C = capeShape(3, k);
+    assert(C.sheets.length === 5 && Math.abs(len(C) - k * len(full)) < 1e-9 && Math.abs(wid(C) - k * wid(full)) < 1e-9 && C.breeze === full.breeze,
+      `?halCapeSize=${o}: the cape ${(len(C)).toFixed(2)} m long, its widest hem ${wid(C).toFixed(2)} m (x${k}), the billow kept`);
+  }
+  for (const o of ['0', 'c']) {
+    LS.setLook('halCapeSize', o);
+    let meshes = 0, ok = true;
+    try {
+      const g = build();
+      g.game.dragon.rig.root.traverse((m) => { if (m.isMesh) meshes++; });
+      run(g, 0.5);
+    } catch (e) { ok = false; out(`     ${o}: ${e.message}`); }
+    assert(ok && meshes === 90, `?halCapeSize=${o} builds, the same ${meshes} meshes (no new object on his rig)`);
+  }
+  LS.setLook('halCapeSize', null);
+}
+
 // ================================================================== scenario: looks
 async function scenarioLooks() {
   out('\n== scenario LOOKS (each ?halLook= / ?halCape= / ?glare= / ?city= builds; all four are the owner\'s picks, in PICKED) ==');
@@ -1177,6 +1250,7 @@ async function scenarioLooks() {
     const { HAL_CAPE } = await imp('src/entities/enemies/halcyon/gear.js');
     assert(PICK.halCape === '3' && !LS.PENDING.includes('halCape'), '?halCape= is the owner\'s pick, 3 (PICKED, not PENDING; 2026-11-23)');
     const seen = {};
+    LS.setLook('halCapeSize', '0'); // (the cape at the size the steps were built at)
     for (const v of ['0', '1', '2', '3']) {
       LS.setLook('halCape', v);
       let ok = true, meshes = 0, S = [], red = 0;
@@ -1197,6 +1271,7 @@ async function scenarioLooks() {
     }
     assert(seen['0'].meshes === seen['3'].meshes && seen['1'].red > seen['0'].red, `the steps keep his mesh count (${seen['0'].meshes} / ${seen['3'].meshes}) and from 1 on light the cape's inside`);
     LS.setLook('halCape', null);
+    LS.setLook('halCapeSize', null);
     assert(String(HAL_CAPE_STEP) === LS.lookOf('halCape', HAL_CAPE_STEP), `no ?halCape= draws step ${HAL_CAPE_STEP}`);
   }
   for (const v of ['a', 'b', 'c']) {
@@ -1236,6 +1311,7 @@ const S = {
   win: scenarioWin,
   training: scenarioTraining,
   looks: scenarioLooks,
+  herolike: scenarioHeroLike,
 };
 const OPT_IN = new Set(['smoke']);
 // ABYSS_SKIP (a comma list) leaves scenarios out of `all` (tests/run.mjs runs pace and win as processes of their own)

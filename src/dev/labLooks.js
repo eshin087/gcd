@@ -67,6 +67,9 @@ export const LOOK_SWITCHES = Object.freeze([
   // --- city: Halcyon Plaza and Halcyon (ADR-161; every one waits for the owner, read when built: a reload)
   ['halLook', ['a', 'b', 'c'], 'a', 'a', true, ['city'], 'Halcyon\'s body: a blue suit and red cape, b the idol, c tomorrow\'s tyrant (a reload)'],
   ['halCape', ['0', '1', '2', '3'], '3', '3', true, ['city'], 'his cape and colours at game size: 0 as first built, 1 brighter, 2 + a wide flared cape, 3 + its billow and a long trail (a reload)'],
+  ['halLetters', ['0', 'a'], 'a', 'a', false, ['city'], 'his letters: a follow his size as the hero\'s do, 0 the bosses\' fixed fine cell'],
+  ['halPrint', ['0', 'a', 'b'], 'a', 'a', true, ['city'], 'his print: 0 the lit step-3 figure, a the hero\'s quieter print, b between (a reload)'],
+  ['halCapeSize', ['0', 'a', 'b', 'c'], 'b', 'b', true, ['city'], 'his cape\'s size: 0 as picked, a ~80 %, b ~65 %, c ~50 % (to the back of his knees) (a reload)'],
   ['glare', ['a', 'b', 'c'], 'a', 'a', true, ['city'], 'his eyes\' heat: a crimson, white core; b crimson alone; c orange fire (a reload)'],
   ['city', ['a', 'b', 'c'], 'a', 'a', true, ['city'], 'the city: a neon rain, b golden hour, c lockdown (a reload)'],
 ]);
