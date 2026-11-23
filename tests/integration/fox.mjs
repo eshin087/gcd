@@ -555,7 +555,7 @@ async function scenarioClones() {
     G.game.player.debug.god = true;
     G.defend = makeDefender(G);
     let stray = 0, packs = 0, maxLive = 0;
-    const HELP = new Set(['pack', 'assist', 'lift', 'twin', 'left']);
+    const HELP = new Set(['pack', 'assist', 'lifting', 'twin', 'swapped']);
     G.watch = (n, e) => { if (n === 'dragon:clone' && e.kind === 'spawn' && !['assist', 'lift', 'twin', 'swap'].includes(e.by)) packs++; };
     run(G, 60, () => {
       G.defend.act();

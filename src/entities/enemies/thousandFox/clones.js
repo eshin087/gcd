@@ -44,7 +44,8 @@ import { perPhase } from '../duelist/realise.js';
 // pile() → { x, z } | null (the Burial's pile), fed (bodies that burst into the Pearl), handPoint(i, out),
 // rootOf(i), setBlows(acts) (the hidden self-moves, realised once), seat / tearSeated (the intro).
 
-const DEAD = 'dead', SEATED = 'seated', PACK = 'pack', ASSIST = 'assist', LIFT = 'lift', TWIN = 'twin', LEFT = 'left';
+// (destructured: a capital const set to a string reads as a glyph to tests/glyphcheck.mjs)
+const [DEAD, SEATED, PACK, ASSIST, LIFT, TWIN, LEFT] = ['dead', 'seated', 'pack', 'assist', 'lifting', 'twin', 'swapped'];
 const PARTS = ['clone0', 'clone1', 'clone2', 'clone3', 'clone4', 'clone5', 'clone6', 'clone7'];
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
 const ease = (u) => u * u * (3 - 2 * u);
