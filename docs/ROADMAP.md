@@ -184,6 +184,15 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.60 — Tian Lei as a recognizable homage (2026-11-22, `enemies/ascendant-homage`, ADR-150)
+- [x] Three homage bodies behind `?ascLook=`; the owner picked the orange gi (`h`)
+- [x] Instant Wave (form 3): the sign, beside the hero, a cupped-hands beam
+- [x] Options: every beam out of cupped hands (`?ascBeamPose=cup`), the pale gathered sphere (`?ascOrb=c`)
+- [ ] The owner picks the beam pose and the orb
+- [ ] The wink names for his techniques (proposed: Crane Wave, Spirit Lantern, Instant Step ...)
+- [ ] The gold hair apart from the gold aura in forms 2 - 3 (an aura option)
+- [ ] One line for lookalike requests across sessions
+
 ## M1.57 — Round the Obsidian Throne, what the challengers left (2026-11-22, `level/throne-props`, ADR-133)
 - [x] The felled forest's identical logs in a starburst replaced: 13 kinds of piece in the prop art
       path, each built afresh, faced to the camera, lying along the blast's way out

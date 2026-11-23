@@ -4,7 +4,14 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Sixty-two pieces of work since 0.4.0:
+Sixty-five pieces of work since 0.4.0:
+- **Tian Lei in the orange gi, and the instant beam** (2026-11-22, ADR-150). *Changed:* Tian Lei, the
+  Last Ascendant, now fights in an orange gi over blue with black spiky hair that stands up gold when
+  he transforms: a homage to a famous fighter, under his own name. *Added:* **Instant Wave** in his
+  third form: two fingers to his brow, he appears right beside you, hands cupped at his hip, and fires
+  a beam point-blank (a red cue; roll or run off the line). Kept behind switches: his old tunic and two
+  more homage outfits (`?ascLook=a|g|v`), every beam out of cupped hands (`?ascBeamPose=cup`), the
+  great orb as a pale gathered sphere (`?ascOrb=c`).
 - **Tian Lei's third wave: the sign, the counter stances, the great orb and the barrage** (2026-11-22,
   ADR-135). *Added:* in the Skybreak Ring, **the sign**: from his second form, Tian Lei raises two
   fingers to his brow, a snap of light, and he is gone and behind you (or at your left, your right and

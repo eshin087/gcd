@@ -19,6 +19,14 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-22',
+        title: 'Tian Lei in the orange gi, and the instant beam',
+        notes: [
+          'Tian Lei now fights in an orange gi with spiky black hair that turns gold when he transforms.',
+          'In his third form he can touch two fingers to his brow, appear right beside you and fire a beam point-blank. Watch for the red flash and roll out of the line.',
+        ],
+      },
+      {
+        date: '2026-11-22',
         title: "Tian Lei's third wave: the sign, the counter stances, the great orb and the barrage",
         notes: [
           'In the Skybreak Ring, Tian Lei now raises two fingers to his brow before he vanishes: a snap of light, and he is behind you with the blow still coming. When the hand goes up, turn.',
