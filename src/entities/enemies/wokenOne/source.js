@@ -61,7 +61,7 @@ export class SourceMoves {
   }
 
   begin(A) {
-    if (!A.def.beats.some((b) => b.fist || b.pick?.some((x) => x.fist))) this.fist = null;
+    this.fist = null;
   }
 
   /** Unwriting can start: a code pillar standing within unwriting.near m. */

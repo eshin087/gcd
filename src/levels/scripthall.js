@@ -9,7 +9,7 @@ const H = HALL;
 
 export const SCRIPTHALL = Object.freeze({
   id: 'code',
-  aliases: ['one', 'hall', 'script', 'woke', 'xinyi'],
+  aliases: ['one', 'script', 'scripthall', 'woke', 'xinyi'], // ('hall' is the Obsidian Throne's)
   name: 'The Hall of Falling Script',
   sub: 'where one man woke and stayed',
   world: Object.freeze({

@@ -23,7 +23,7 @@ export const TUNING = {
   flashLead: 0.26,
   minFirstWindup: 0.42,
   minHitGap: 0.32,
-  windupScale: [1, 0.95, 0.9],
+  windupScale: [1, 0.96, 0.92], // (the first windups are authored >= 0.46 s: x 0.92 keeps them over minFirstWindup)
   recoveryScale: [0.9, 0.82, 0.76],
   close: { first: 3.0, next: 1.5, speed: 13 },
   reach: { fist: 1.7, kick: 2.1, line: 2.2, lineW: 0.8 },

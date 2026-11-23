@@ -205,7 +205,7 @@ export const MOVES = {
   /** Idle Hand: a jab and a backfist, his head turned away. */
   idleHand: {
     label: 'Idle Hand', phase: 1, weight: [2.0, 1.2, 0.8], cooldown: 3.5, band: [0, 3.2], recovery: 0.5, cat: 'string',
-    beats: [away(punch('cross', N, 0.44, 10)), away(punch('backfist', N, 0.34, 11))],
+    beats: [away(punch('cross', N, 0.46, 10)), away(punch('backfist', N, 0.34, 11))],
   },
   /** Brushing Dust: a palm shove that makes range. */
   brushOff: {
@@ -259,7 +259,7 @@ export const MOVES = {
   /** The Still Hand: the raised flat palm; a cut into it is caught and answered by a one-inch push. */
   stillHand: {
     label: 'The Still Hand', phase: 3, weight: [0, 0, 1.2], cooldown: 9, band: [0, 3.2], recovery: 0.6, cat: 'single',
-    beats: [stance(STILL), { ...punch('palm', B, 0.42, 22, { lock: true, flare: true }), close: 0.8 }],
+    beats: [stance(STILL), { ...punch('palm', B, 0.46, 22, { lock: true, flare: true }), close: 0.8 }],
   },
   /** Pushing Hands: two palm bolts in the code's green, both returnable (a returned one hangs: the stop). */
   pushingHands: {
@@ -285,7 +285,7 @@ export const MOVES = {
       {
         pick: [
           { tell: R, windup: 1.1, fixed: true, active: 0.12, damage: T.flight.fist.damage, knockback: 3, knockdown: true, fist: true, air: true, zone: { kind: 'ring', r: T.flight.fist.crater }, ring: T.flight.fist.crater, part: 'fistR', close: 0, track: 0.7, cock: 0.7, keys: fistKeys(), lift: [[0, T.flight.hover + 0.2], [0.7, T.flight.hover + 0.6], [1.0, 0]] },
-          { tell: R, windup: 0.9, fixed: true, active: 0.35, damage: T.flight.lowPass.damage, knockback: 3, knockdown: true, pass: true, air: true, zone: { kind: 'line', r: T.flight.lowPass.len, w: T.flight.lowPass.w }, part: 'fistR', close: 0, track: 0.7, cock: 0.7, keys: passKeys(), lift: [[0, T.flight.hover + 0.2], [0.7, T.flight.hover], [1.0, T.flight.lowPass.y], [1.9, T.flight.lowPass.y], [2.0, 0]] },
+          { tell: R, windup: 0.9, fixed: true, active: 0.35, damage: T.flight.lowPass.damage, knockback: 3, knockdown: true, pass: true, air: true, zone: { kind: 'line', r: T.flight.lowPass.len, w: T.flight.lowPass.w }, part: 'fistR', close: 0, track: 0.7, cock: 0.7, keys: passKeys(), lift: [[0, T.flight.hover + 0.2], [0.7, T.flight.hover], [1.0, T.flight.lowPass.y], [1.7, T.flight.lowPass.y], [1.95, 0]] },
         ],
       },
     ],

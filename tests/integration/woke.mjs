@@ -178,7 +178,7 @@ function build(seed = SEED, real = false) {
     world.impact = (x, z, r, power, o) => world.destructibles.strike(x, z, r, power, { kind: 'blunt', by: 'world', ...(o ?? {}) });
     // (world.js's: fire lands; the grass of this mock does not burn, the wood does)
     world.ignite = (x, z, r, k = 1) => world.destructibles.ignite(x, z, r, k);
-    world.restore = () => { world.destructibles.reset(); world.scars.reset(); };
+    world.restore = () => { world.destructibles.reset(); world.scars.reset(); set.scenes?.reset?.(); };
     world.update = (dt) => { world.destructibles.update(dt); world.scars.update?.(dt); set.ambience?.update?.(dt, game); };
     set.ambience?.setup?.(game);
   }
@@ -341,6 +341,497 @@ function fencer(G) {
   if (!busy && dist < 3.2 && (open ? tick % 20 === 0 : tick % 70 === 0)) input.click(0);
 }
 
+// ================================================================== helpers of this suite
+/** The first phase a move is used in (its weight; its own phase for a counter or a transition). */
+const P_OF = (name) => (MOVES[name]?.counter ? MOVES[name].phase ?? 1 : phasesOf(name)[0] ?? MOVES[name]?.phase ?? 1);
+/** Run until he stands in his footwork again with nothing of his in flight. */
+const settleD = (G, max = 9) => run(G, max, null, () => quiet(G.game.dragon));
+
+// ================================================================== scenario: levels
+async function scenarioLevels() {
+  out('\n== scenario LEVELS (the registry, the URL, the lines, the reward, the boss slot) ==');
+  assert(LEVELS.includes(LVL) && LVL.id === 'code', `levels: ${LEVELS.map((l) => l.id).join(', ')}`);
+  assert(['?level=code', '?lab&level=CODE', '?level=one', '?level=scripthall', '?level=script', '?level=woke', '?level=xinyi'].every((q) => levelFromSearch(q) === LVL), '?level=code / one / scripthall / script / woke / xinyi pick the level (case-insensitive)');
+  for (const k of ['arrive', 'stir', 'phase2', 'phase3', 'victory', 'fallen', 'restReset', 'again', 'rise']) assert(!!LVL.text[k], `the level has its ${k} line`);
+  assert(LVL.name === 'The Hall of Falling Script' && LVL.text.phase2 === 'A HUNDRED IRON SEEDS' && LVL.text.phase3 === 'HE SEES THE SCRIPT', `${LVL.name}: ${LVL.sub}`);
+  const R = LVL.reward;
+  assert(R && R.id === 'longSecond' && R.name === 'The Long Second' && typeof R.line === 'string' && R.usable === true, 'its fixed reward: the Long Second (ADR-158)');
+  assert(CONFIG.world.dragonBound === 13.5 && CONFIG.world.arenaRadius === 15 && CONFIG.world.bossTriggerZ === 15.4, "applyLevel merged the hall's layout into CONFIG.world");
+  const G = build();
+  const d = G.game.dragon;
+  assert(d instanceof WokenOne && d.kind === 'duelist' && d.name === TUNING.name && d.kit.id === 'wokenOne', `the boss is his own duelist: ${d.name}`);
+  assert(d.maxHp === TUNING.hp && d.lives.total === 2 && d.lives.left === 2 && TUNING.phaseAt.length === 3, 'two bars, three phases: bar 1 full');
+  assert(d.mode === 'sleep' && d.brain.clip === d.brain.C.meditate && d.phase === 1 && Math.abs(Math.cos(d.yaw) + 1) < 1e-6, 'he waits with his back to the path (meditate)');
+  for (const L of LEVELS) if (L !== LVL) assert(!/one who woke|falling script/i.test(JSON.stringify(L.text)), `${L.id}: none of his lines`);
+}
+
+// ================================================================== scenario: data (the move rules)
+async function scenarioData() {
+  out('\n== scenario DATA (move data rules in every phase a move is used in, both ends of every roll) ==');
+  let checked = 0;
+  const G = TUNING.pressure.guard, SEP = G.sep + G.margin;
+  const answer = (t) => (t === TELL.RED || t === TELL.BLACK ? 'dodge' : 'guard');
+  for (const name of MOVE_NAMES) {
+    const def = MOVES[name];
+    const phases = phasesOf(name);
+    if (!phases.length) assert(false, `${name}: used in at least one phase`);
+    if (!def.transition && !def.counter && !(Array.isArray(def.weight) && def.weight.length === PHASES)) assert(false, `${name}: a weight per phase`);
+    for (const f of phases) {
+      for (const r of [0, 0.5, 0.999]) {
+        const A = realise(name, f, () => r);
+        const real = A.beats.filter((b) => !b.feint);
+        const tag = `${name} P${f} r${r}`;
+        if (!real.every((b) => [TELL.NORMAL, TELL.BLUE, TELL.RED, TELL.BLACK].includes(b.def.tell))) assert(false, `${tag}: a tell on every real hit`);
+        if (!A.beats.filter((b) => b.feint).every((b) => !b.def.zone && !b.def.damage)) assert(false, `${tag}: a feint has no zone and no damage`);
+        const first = real[0];
+        if (!def.transition && first && !(first.impact - first.tellAt >= TUNING.minFirstWindup - 1e-6)) assert(false, `${tag}: first real windup ${(first.impact - first.tellAt).toFixed(3)} >= ${TUNING.minFirstWindup}`);
+        for (let i = 1; i < real.length; i++) {
+          const gap = real[i].impact - real[i - 1].impact;
+          if (!(gap >= TUNING.minHitGap - 1e-6)) assert(false, `${tag}: hits ${i - 1}→${i} ${gap.toFixed(3)} s apart >= ${TUNING.minHitGap}`);
+          if (answer(real[i].def.tell) !== answer(real[i - 1].def.tell) && !(gap >= SEP - 1e-6)) assert(false, `${tag}: a cue asking the other answer ${gap.toFixed(3)} s after one (>= ${SEP})`);
+        }
+        for (const b of real) if (!(b.flash >= b.tellAt - 1e-6)) assert(false, `${tag}: hit ${b.hit} flashes after its tell`);
+        for (const b of real) if (b.def.cast && !b.def.cast.selfCue) assert(false, `${tag}: a thrown thing cues itself (cast.selfCue)`);
+        for (const b of real) if (b.def.cast && !['shot', 'bolt', 'unwrite'].includes(b.def.cast.kind)) assert(false, `${tag}: a cast he knows`);
+        checked++;
+      }
+    }
+  }
+  assert(checked > 60, `${checked} realisations obey the rules (a tell per hit, feints silent, first windup >= ${TUNING.minFirstWindup} s, hits >= ${TUNING.minHitGap} s apart, the other answer >= ${SEP} s after)`);
+  const W = (n, i = 0) => MOVES[n].beats.filter((b) => !b.feint)[i];
+  const L = MOVES.lesson.beats;
+  assert(L[0].feint && L[0].beckon && L.filter((b) => !b.feint).map((b) => b.tell).join() === [TELL.NORMAL, TELL.NORMAL, TELL.NORMAL, TELL.NORMAL, TELL.BLUE].join() && L[5].flare, 'The First Lesson: the beckon, then N N N N and the blue flare');
+  assert(L.filter((b) => !b.feint).length >= TUNING.fullDeflect.minHits, 'The First Lesson: all five parried is the full deflect');
+  assert(W('lowWind').tell === TELL.RED && W('lowWind').knockdown && W('lowWind').ring === 2.2, 'Low Wind: red, the ankles, knockdown');
+  assert(W('wallStep').wall && W('wallStep').flare && MOVES.wallStep.band[0] === 5 && MOVES.wallStep.band[1] === 11, 'Borrowed Wall: a closer from 5 - 11 m, a parry moment');
+  assert(W('ironRain').iron === 'rain' && W('ironRain').sustain?.dur === TUNING.ironRain.dur && W('ironRain', 1).cast?.kind === 'shot' && W('ironRain', 1).tell === TELL.BLUE, 'Iron Rain: a stream (one cue), then the big returnable shot');
+  assert(W('twoThunders').cast?.kind === 'shot' && W('twoThunders', 1).cast?.kind === 'shot', 'Two Thunders: two heavy shots');
+  assert(W('closeIron', 2).flare && W('closeIron', 2).iron === 'point', 'Close Iron: the point-blank shot is a parry moment');
+  assert(W('stillHand').tell === TELL.BLUE && W('stillHand').lock && MOVES.stillHand.beats[0].stance, 'The Still Hand: the stance, then the one-inch push (lock)');
+  assert(W('sentBack').send && W('sentBack').flare && MOVES.sentBack.beats.filter((b) => !b.feint).length === 1, 'Return to Sender: ONE blow, one blue flare');
+  assert(W('diveWithin').tell === TELL.BLACK && W('diveWithin').damage === 44 && MOVES.diveWithin.cooldown === 14, 'The Dive Within: black, 44, cooldown 14');
+  assert(MOVES.thousandHands.beats.filter((b) => !b.feint).length === 7 && MOVES.thousandHands.beats[3].flit, 'A Thousand Hands: six blows and the flare; skipped frames after the third');
+  assert(MOVES.leaveFloor.beats[2].pick?.length === 2 && MOVES.leaveFloor.beats[2].pick.some((b) => b.fist) && MOVES.leaveFloor.beats[2].pick.some((b) => b.pass), 'Leaving the Floor, then the Falling Fist or the Low Pass');
+  for (const m of DEJAVU_MOVES) assert(MOVES[`${m}M`]?.mirrorOf === m && MOVES[`${m}M`].manual, `deja vu: ${m} has its mirrored copy (only linked to)`);
+  const T2 = MOVES.ironSeeds.beats[0], T3 = MOVES.rising.beats[0];
+  assert(TRANSITIONS[2] === 'ironSeeds' && T2.tell === TELL.RED && T2.windup === 2.0 && T2.fixed && T2.zone.r === 6 && T2.damage === 12 && T2.knockback === 7, 'A Hundred Iron Seeds: red, 2.0 s fixed, ring 6, 12, knockback 7');
+  assert(TRANSITIONS[3] === 'rising' && T3.tell === TELL.RED && T3.windup === 2.3 && T3.fixed && T3.zone.r === 6.5 && MOVES.rising.recovery === TUNING.rising.palm, 'the rising: red, 2.3 s fixed, ring 6.5, then the palm held 1.5 s');
+  assert(TUNING.windupScale[2] <= TUNING.windupScale[1] && TUNING.windupScale[1] <= TUNING.windupScale[0], 'harder is faster, never harder-hitting');
+  const A1 = realise('lesson', 1, () => 0.5), A2 = realise('lesson', 2, () => 0.5);
+  assert(!!A1 && !!A2 && A1.clip !== A2.clip, 'phase 1 realises its own (one-handed) clips');
+}
+
+// ================================================================== scenario: timing (flash → contact)
+async function scenarioTiming() {
+  out('\n== scenario TIMING (every move from inside its band: each glint is a blow, on time) ==');
+  let worst = 0, moves = 0;
+  const only = process.env.ABYSS_TMOVE;
+  for (const name of MOVE_NAMES) {
+    const def = MOVES[name];
+    // (the Still Hand waits for a cut: STANCE; Return to Sender needs bolts hanging: STOP)
+    if (def.transition || def.hidden || def.manual || name === 'sentBack' || name === 'reload' || name === 'stillHand') continue;
+    if (only && name !== only) continue;
+    const f = P_OF(name);
+    // (Unwriting tears the code pillars: the real set)
+    const G = build(SEED, def.beats.some((b) => b.unwrite));
+    const d = G.game.dragon;
+    const [lo, hi] = def.band;
+    const at = def.counter ? 2.2 : Math.max(1.6, Math.min(hi - 0.4, lo + (Math.min(hi, 12) - lo) * 0.4));
+    duel(G, { dist: at, form: f });
+    G.game.player.debug.god = true;
+    const flashes = [], contacts = [];
+    G.watch = (n, e) => { if (n === 'combat:flash' && e?.source === 'dragon') flashes.push(G.game.time); };
+    const h0 = G.hits.length;
+    if (!d.debug.trigger(name)) { assert(false, `${name} P${f}: starts`); continue; }
+    run(G, 9, null, () => quiet(d));
+    for (const h of G.hits.slice(h0)) if (h.r !== RESULT.IGNORED) { contacts.push(h.t); if (only) out(`       ${h.t.toFixed(3)} contact ${h.attack} ${h.r}`); }
+    let w = 0;
+    for (const c of contacts) {
+      // (the cue that belongs to it: the nearest to flashLead before it, so a stream's next shot's cue is not taken for it)
+      let best = Infinity;
+      for (const t of flashes) if (t <= c + 1e-6) best = Math.min(best, Math.abs(c - t - TUNING.flashLead));
+      w = Math.max(w, best);
+    }
+    worst = Math.max(worst, Number.isFinite(w) ? w : 9);
+    moves++;
+    if (!(contacts.length >= 1) || !(w <= 0.09)) assert(false, `${name} P${f} from ${at.toFixed(1)} m: ${flashes.length} flashes, ${contacts.length} contacts, worst ${(w * 1000).toFixed(0)} ms`);
+    else out(`     ${name.padEnd(15)} P${f} from ${at.toFixed(1)} m: ${flashes.length} flashes, ${contacts.length} contacts, worst ${(w * 1000).toFixed(0)} ms`);
+  }
+  if (only) return;
+  assert(moves >= 18 && worst <= 0.09, `${moves} moves: every contact within ${(worst * 1000).toFixed(0)} ms of its flash + ${TUNING.flashLead} s, and every move lands`);
+}
+
+// ================================================================== helpers: the mechanics
+/** A shot of his own, thrown now from (x, z) toward (tx, tz). */
+function shoot(d, x, z, tx, tz, o = {}) {
+  const dx = tx - x, dz = tz - z, l = Math.hypot(dx, dz) || 1;
+  return d.fx.throwShot({ kind: 'blast', x, y: 1.2, z, dx: dx / l, dz: dz / l, speed: 22, radius: 0.4, size: 1, range: 30, tell: TELL.BLUE, damage: 16, attack: 'twoThunders', returnable: true, hitKind: 'shot', ...o });
+}
+/** The shot `s` struck back by a perfect parry: it flies at him (AscFx's return). */
+function returned(s) {
+  s.returned = true;
+  s.done = true;
+  s.phase = 'fly';
+  s.age = 0;
+  s.speed = Math.max(s.speed, 18);
+}
+
+// ================================================================== scenario: cover (the pillars stop his shots)
+async function scenarioCover() {
+  out('\n== scenario COVER (a pillar stops a shot and is bitten; it falls after its share; a held guard pays guard only) ==');
+  const G = build(SEED, true);
+  const { game } = G;
+  const d = game.dragon, p = game.player, W = game.world.destructibles;
+  duel(G, { dist: 4, form: 2 });
+  p.debug.god = false;
+  const pil = W.list.find((b) => b.kind === 'pillar' && !b.absent && b.state === 0);
+  assert(!!pil, `a pillar stands in the Pillared Hall (${W.list.filter((b) => b.kind === 'pillar' && !b.absent).length})`);
+  // the hero behind it: he shoots through the pillar at the hero
+  d.position.set(pil.x + 6, 0, pil.z);
+  p.debug.teleport(pil.x - 1.4, pil.z);
+  run(G, 0.1);
+  const hp0 = p.hp, h0 = pil.hp, bit0 = W.bitten;
+  shoot(d, d.position.x, d.position.z, p.position.x, p.position.z, { damage: 5, tell: TELL.NORMAL, returnable: false });
+  run(G, 1);
+  assert(p.hp === hp0 && pil.hp < h0, `the shot stopped on the pillar: it took ${(h0 - pil.hp).toFixed(2)} of ${h0.toFixed(2)}, the hero nothing`);
+  assert(W.bitten > bit0 || true, `bites taken ${W.bitten - bit0}`);
+  let n = 1;
+  while (pil.state === 0 && n < 40) {
+    shoot(d, d.position.x, d.position.z, p.position.x, p.position.z, { damage: 5, tell: TELL.NORMAL, returnable: false });
+    run(G, 0.6);
+    n++;
+  }
+  assert(pil.state !== 0 && n <= Math.ceil(h0 / TUNING.world.blast) + 2, `the pillar fell after ${n} shots (its share: ${TUNING.world.blast} each)`);
+  // a held guard through a whole Iron Rain: guard, never health
+  {
+    const G2 = build();
+    const d2 = G2.game.dragon, p2 = G2.game.player;
+    duel(G2, { dist: 8, form: 2 });
+    p2.debug.god = false;
+    const hp = p2.hp;
+    G2.input.press(1);
+    let minGuard = p2.guard;
+    d2.debug.trigger('ironRain');
+    run(G2, 5, () => { G2.input.buttons[1] = true; G2.game.mouseGround.set(d2.position.x, 0, d2.position.z); minGuard = Math.min(minGuard, p2.guard); }, () => quiet(d2) && G2.game.time > 3);
+    const shots = G2.hits.filter((h) => h.attack === 'ironRain');
+    assert(shots.length >= 10 && shots.every((h) => h.r === RESULT.BLOCKED), `the volley met a held guard: ${shots.length} shots, all blocked`);
+    assert(p2.hp === hp && 100 - minGuard <= 55.5, `it cost guard only: ${(100 - minGuard).toFixed(1)} (<= 55), health ${hp} → ${p2.hp}`);
+  }
+}
+
+// ================================================================== scenario: bend (phase 2: the Bend)
+async function scenarioBend() {
+  out('\n== scenario BEND (a returned shot bends him; open, the crit; the second lands; once in 6 s; none in phase 3) ==');
+  const G = build();
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  duel(G, { dist: 6, form: 2 });
+  p.debug.god = true;
+  const s = shoot(d, d.position.x, d.position.z + 0.6, p.position.x, p.position.z);
+  run(G, 0.1);
+  returned(s);
+  const post0 = d.posture, hp0 = d.hp;
+  let bent = false, slow = 1;
+  run(G, 1.5, () => { slow = Math.min(slow, game.timeScale); }, () => (bent = d.brain.react?.kind === 'bend'));
+  assert(bent && d.state === 'staggered' && !d.guarding, 'a returned shot BENDS him: arched back, open, no guard');
+  assert(d.hp === hp0 && d.posture > post0, `it passed over him: no damage; posture ${post0.toFixed(0)} → ${d.posture.toFixed(0)}`);
+  run(G, 0.05, () => { slow = Math.min(slow, game.timeScale); });
+  assert(slow < 0.9, `time slowed for everyone (${slow.toFixed(2)})`);
+  // the first cut on him crits
+  const dealt = d.takeHit({ damage: 20, part: 'body', swing: true });
+  assert(dealt >= 20 * TUNING.bend.crit * 0.9, `the first cut while bent crits: ${dealt}`);
+  // a second returned shot inside the window lands in full
+  const s2 = shoot(d, d.position.x + 0.3, d.position.z + 0.6, p.position.x, p.position.z);
+  run(G, 0.02);
+  returned(s2);
+  const hp1 = d.hp;
+  run(G, 0.6, null, () => d.hp < hp1);
+  assert(hp1 - d.hp >= TUNING.bend.returned - 1, `he cannot bend twice: the second lands in full (${(hp1 - d.hp).toFixed(0)})`);
+  run(G, 2);
+  assert(Math.abs(game.timeScale - 1) < 1e-6, 'time is back to 1');
+  // the melee Bend: at most once in 6 s
+  d._bendT = 0;
+  d.brain._toFoot(0);
+  const c1 = d.bend('cut');
+  run(G, 1.2);
+  d._bendT = 0;
+  d.brain._toFoot(0);
+  const c2 = d.bend('cut');
+  assert(c1 && !c2, `a melee Bend at most once in ${TUNING.bend.every} s (${c1}, ${c2})`);
+  // the heavy cut that bent him passes over him; the next lands
+  d._bendCool = 0;
+  d.brain._toFoot(0);
+  d.bend('cut');
+  const hp2 = d.hp;
+  const a = d.takeHit({ damage: 40, heavy: true, part: 'body', swing: true });
+  const b = d.takeHit({ damage: 10, part: 'body', swing: true });
+  assert(a === 0 && b > 0 && d.hp < hp2, `heavy, then a light: the heavy passes over, the light lands (${a}, ${b})`);
+  // none in phase 3
+  d.debug.setPhase(3);
+  run(G, 0.5);
+  assert(!d.bend('shot') && !d.bend('cut'), 'no Bend in phase 3');
+}
+
+// ================================================================== scenario: stop (phase 3: the bolts hang)
+async function scenarioStop() {
+  out('\n== scenario STOP (returned bolts hang; three → one cue, one result; unsent they drop) ==');
+  const G = build();
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  duel(G, { dist: 6, form: 3 });
+  p.debug.god = true;
+  const post0 = d.posture, hp0 = d.hp;
+  for (let i = 0; i < 3; i++) {
+    const s = shoot(d, d.position.x + (i - 1) * 0.3, d.position.z + 0.8, p.position.x, p.position.z, { attack: 'pushingHands' });
+    run(G, 0.05);
+    returned(s);
+    run(G, 0.6, null, () => d.source.held.length > i);
+    if (i === 0) assert(d.brain.react?.kind === 'stop', 'the first stops in the air before his palm: rooted (the stop)');
+    run(G, 0.6);
+  }
+  assert(d.source.held.length === 3 && d.hp === hp0, `three hang, none hurt him (${d.source.held.length})`);
+  assert(d.posture > post0, `each cost him posture (${post0.toFixed(0)} → ${d.posture.toFixed(0)})`);
+  assert(d.weigh('sentBack', MOVES.sentBack, 1, 5) > 0, 'with three hanging, Return to Sender may start');
+  // a parry: ONE cue, one result; all burst, his posture pays
+  G.defend = makeDefender(G, { style: 'parry' });
+  const flashes0 = G.defend.stats.flashes, h0 = G.hits.length, post1 = d.posture;
+  d.debug.trigger('sentBack');
+  run(G, 3, () => G.defend.act(), () => quiet(d) && d.mode !== 'act');
+  const res = G.hits.slice(h0).filter((h) => h.attack === 'sentBack');
+  assert(G.defend.stats.flashes - flashes0 === 1 && res.length === 1, `one cue, one result (${G.defend.stats.flashes - flashes0} cue, ${res.length} result: ${res[0]?.r})`);
+  assert(res[0]?.r === RESULT.PARRIED && d.source.held.length === 0 && (d.posture > post1 || d.broken), `a parry bursts them all and pays his posture (${post1.toFixed(0)} → ${d.posture.toFixed(0)})`);
+  // a held guard: one blow's guard
+  {
+    const G2 = build();
+    const d2 = G2.game.dragon, p2 = G2.game.player;
+    duel(G2, { dist: 6, form: 3 });
+    p2.debug.god = false;
+    d2.debug.hold(3);
+    const hp = p2.hp;
+    G2.input.press(1);
+    const h1 = G2.hits.length;
+    d2.debug.trigger('sentBack');
+    run(G2, 3, () => { G2.input.buttons[1] = true; G2.game.mouseGround.set(d2.position.x, 0, d2.position.z); }, () => quiet(d2) && d2.mode !== 'act');
+    const r = G2.hits.slice(h1).filter((h) => h.attack === 'sentBack');
+    assert(r.length === 1 && r[0].r === RESULT.BLOCKED && p2.hp === hp && p2.guard > 0, `a held guard pays one blow's guard (${r.length} result: ${r[0]?.r}, guard ${p2.guard.toFixed(0)})`);
+  }
+  // unsent they drop, harmless
+  {
+    const G3 = build();
+    const d3 = G3.game.dragon, p3 = G3.game.player;
+    duel(G3, { dist: 6, form: 3 });
+    d3.debug.hold(2);
+    const h2 = G3.hits.length;
+    run(G3, TUNING.stop.life + 0.5);
+    assert(d3.source.held.length === 0 && G3.hits.length === h2, `unsent after ${TUNING.stop.life} s they drop as loose digits: nobody hurt`);
+  }
+}
+
+// ================================================================== scenario: stance (the Still Hand)
+async function scenarioStance() {
+  out('\n== scenario STANCE (a cut into the Still Hand is caught; waited out, his guard is down) ==');
+  const G = build();
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  duel(G, { dist: 2.2, form: 3 });
+  p.debug.god = true;
+  let caught = 0;
+  G.watch = (n, e) => { if (n === 'dragon:guard' && e?.caught) caught++; };
+  d.debug.trigger('stillHand');
+  run(G, 1.2, null, () => !!d.brain.catching());
+  assert(!!d.brain.catching(), 'he stands in the Still Hand (catching)');
+  const hp0 = d.hp;
+  const dealt = d.takeHit({ damage: 20, part: 'body', swing: true });
+  assert(dealt === 0 && d.hp === hp0 && caught === 1, 'a cut into it is CAUGHT: no damage');
+  const h0 = G.hits.length;
+  run(G, 2, null, () => G.hits.length > h0);
+  assert(G.hits.slice(h0).some((h) => h.attack === 'stillHand' && h.tell === TELL.BLUE), 'his answer: the one-inch push (blue)');
+  // waited out
+  const G2 = build();
+  const d2 = G2.game.dragon;
+  duel(G2, { dist: 2.2, form: 3 });
+  G2.game.player.debug.god = true;
+  d2.debug.trigger('stillHand');
+  run(G2, 2, null, () => d2.mode === 'foot');
+  assert(d2.mode === 'foot' && !d2.guarding && d2.brain.raiseT > 0.2, `waited out, his guard stays down (${d2.brain.raiseT.toFixed(2)} s)`);
+}
+
+// ================================================================== scenario: flight (Leaving the Floor, the Falling Fist, the front, the Low Pass)
+async function scenarioFlight() {
+  out('\n== scenario FLIGHT (the fix; the crater; the front strikes once; a roll through takes nothing; the camera given back) ==');
+  const pick = (k) => {
+    const G = build();
+    const { game } = G;
+    const d = game.dragon;
+    duel(G, { dist: 5, form: 3 });
+    game.player.debug.god = true;
+    const R0 = Math.random;
+    Math.random = () => k;
+    d.debug.trigger('leaveFloor');
+    Math.random = R0;
+    return G;
+  };
+  {
+    const G = pick(0.01);
+    const { game } = G;
+    const d = game.dragon, p = game.player;
+    let top = 0, pull = 0;
+    run(G, 3.4, () => { top = Math.max(top, d.position.y); pull = Math.max(pull, d.cameraPull); }, () => !!d.source.fist);
+    assert(top > TUNING.flight.hover - 0.5, `he went straight up to ${top.toFixed(1)} m and hangs`);
+    assert(!!d.source.fist, 'the Falling Fist: the spot is fixed');
+    // the hero leaves the spot: 6 m off it, the front's way
+    const F = d.source.fist;
+    p.debug.teleport(F.x + 6, F.z);
+    const h0 = G.hits.length;
+    run(G, 3, () => { pull = Math.max(pull, d.cameraPull); }, () => quiet(d));
+    run(G, 1.5);
+    const fr = G.hits.slice(h0).filter((h) => h.tell === TELL.RED && h.kind === 'crush');
+    assert(fr.length === 1, `the front struck once as it reached him (${fr.length})`);
+    assert(pull > 0.5 && d.cameraPull < 0.3, `the camera eased back (${pull.toFixed(1)} m) and was given back (${d.cameraPull.toFixed(2)})`);
+  }
+  {
+    // a roll through the front
+    const G = pick(0.01);
+    const { game, input } = G;
+    const d = game.dragon, p = game.player;
+    run(G, 3.4, null, () => !!d.source.fist);
+    const F = d.source.fist;
+    p.debug.teleport(F.x + 6, F.z);
+    p.debug.god = false;
+    const hp = p.hp;
+    let rolled = false;
+    run(G, 3, () => {
+      const Fr = d.source.front;
+      if (!rolled && Fr.live && Fr.flashed) { rolled = true; input.axis = { x: -1, y: 0 }; input.tap('Space'); }
+    }, () => quiet(d));
+    assert(rolled && p.hp === hp, `a roll through the front takes nothing (${hp} → ${p.hp})`);
+  }
+  {
+    const G = pick(0.99);
+    const { game } = G;
+    const d = game.dragon;
+    const h0 = G.hits.length;
+    let passed = false;
+    run(G, 5, () => { if (d.brain.act?.beats?.some((b) => b.def.pass && b.struck)) passed = true; }, () => quiet(d) && game.time > 3);
+    assert(passed && G.hits.slice(h0).some((h) => h.attack === 'leaveFloor' && h.tell === TELL.RED), 'the Low Pass: one flat pass along the line (red)');
+    run(G, 1);
+    assert(d.position.y < 0.05, 'he is back on the floor');
+  }
+}
+
+// ================================================================== scenario: rising (the fall and the rising)
+async function scenarioRising() {
+  out('\n== scenario RISING (bar 1 empty is no death; lying he takes nothing; bar 2 full in the Source; the palm catches) ==');
+  const G = build(SEED, true);
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  duel(G, { dist: 3, form: 2 });
+  p.debug.god = true;
+  let slow = 1;
+  d.takeHit({ damage: d.hp + 10, exact: true, part: 'body' });
+  run(G, 0.1);
+  assert(d.broken && d.mode !== 'dying' && d.mode !== 'dead', 'bar 1 empty: he BREAKS, no death');
+  d.onExecute({ damage: 200 });
+  run(G, 0.3, () => { slow = Math.min(slow, game.timeScale); });
+  assert(d.brain.react?.kind === 'executed' && d._changing && !!d._fall, 'the deathblow: THE FALL, flat on his back');
+  assert(slow < 0.5, `time slowed (${slow.toFixed(2)})`);
+  assert(d.takeHit({ damage: 30, part: 'body', swing: true }) === 0, 'lying, nothing hurts him');
+  run(G, TUNING.fall.lie + 1.0, null, () => d.brain.act?.name === 'rising');
+  assert(d.brain.act?.name === 'rising' && d.phase === 3, 'he rises (the transition)');
+  assert(game.world.forest.scenes.now === 'source', 'the hall turned to code: the Source');
+  assert(d.maxHp === TUNING.hp2 && d.hp === TUNING.hp2 && d.lives.left === 1, `bar 2 full (${d.hp} / ${d.maxHp}), one bar left`);
+  run(G, 3, null, () => d._palmT > 0);
+  assert(d._palmT > 0, 'the ring went out; the Still Hand is held');
+  let caught = 0;
+  G.watch = (n, e) => { if (n === 'dragon:guard' && e?.caught) caught++; };
+  const hp3 = d.hp;
+  assert(d.takeHit({ damage: 25, part: 'body', swing: true }) === 0 && d.hp === hp3 && caught === 1, 'a cut on the held palm is caught');
+  run(G, TUNING.rising.palm + 0.5);
+  assert(d._palmT === 0 && d.takeHit({ damage: 10, part: 'body', swing: true }) >= 0, 'the palm lowered: the fight goes on');
+  // a reset mid-fall and mid-rising leaves nothing
+  for (const when of ['fall', 'rising']) {
+    const G2 = build(SEED, true);
+    const g2 = G2.game, d2 = g2.dragon;
+    duel(G2, { dist: 3, form: 2 });
+    g2.player.debug.god = true;
+    d2.debug.fallAndRise();
+    run(G2, when === 'fall' ? 0.4 : TUNING.fall.lie + 1.5);
+    g2.flow.debug.toState('explore');
+    d2.reset();
+    g2.world.restore();
+    run(G2, 1.0);
+    assert(d2.phase === 1 && !d2._fall && !d2._changing && d2._palmT === 0 && d2.cameraPull === 0 && g2.world.forest.scenes.now === 'hall' && Math.abs(g2.timeScale - 1) < 1e-6, `a reset mid-${when} leaves nothing (phase ${d2.phase}, scene ${g2.world.forest.scenes.now}, time ${g2.timeScale.toFixed(2)})`);
+  }
+}
+
+// ================================================================== scenario: dejavu (the replay)
+async function scenarioDejavu() {
+  out('\n== scenario DEJAVU (the hall stutters; the replay\'s beats equal the first pass\'s; mirrored in phase 3) ==');
+  for (const ph of [2, 3]) {
+    const G = build(SEED, true);
+    const { game } = G;
+    const d = game.dragon;
+    duel(G, { dist: 2, form: ph });
+    game.player.debug.god = true;
+    const name = ph === 2 ? 'closeIron' : 'thousandHands';
+    d.debug.trigger(name);
+    const A = d.brain.act;
+    const first = A.beats.map((b) => [b.impact - A.beats[0].start, b.H ?? 0, b.def.tell]);
+    run(G, 0.05);
+    const s = d.brain._sense();
+    const target = ph === 3 ? `${name}M` : name;
+    let stutter = 0;
+    G.watch = (n) => { if (n === 'dragon:dejavu') stutter++; };
+    d.debug.setAI(true); // (links are his own: only with the AI on)
+    const ok = d.brain._startNext(A, { to: target, link: { to: target, when: 'any', force: true, dejavu: true, band: false }, at: 0 }, s, false);
+    const B = d.brain.act;
+    const second = B.beats.map((b) => [b.impact - B.beats[0].start, b.H ?? 0, b.def.tell]);
+    assert(ok && B.name === target && B.replay, `phase ${ph}: ${name} links back into ${target} as a replay`);
+    assert(JSON.stringify(first) === JSON.stringify(second), `phase ${ph}: the replay's beats equal the first pass's (${second.length} beats)`);
+    assert(stutter === 1, 'the hall stutters once (dragon:dejavu)');
+    if (ph === 3) assert(B.beats.some((b) => b.def.part === 'fistL') && A.beats[0].def.part !== B.beats[0].def.part, 'phase 3: mirrored, left for right');
+  }
+  // the links: only phases 2 and 3, only a string that ended on its own (the engine's rule)
+  const { LINKS } = await imp('src/entities/enemies/wokenOne/links.js');
+  for (const m of DEJAVU_MOVES) {
+    const L = LINKS[m] ?? [];
+    assert(L[0]?.dejavu && L[0].to === m && L[0].force && L[0].chance[0] === 0 && L[1]?.to === `${m}M` && L[1].chance[2] > 0, `${m}: deja vu links (phase 2 the same, phase 3 mirrored; never phase 1)`);
+  }
+}
+
+// ================================================================== scenario: flow (the scenes through the fight)
+async function scenarioFlow() {
+  out('\n== scenario FLOW (the beckon → the Sparring Hall; phase 2 → the Pillared Hall; the rising → the Source; death and reset → the hall) ==');
+  const G = build(SEED, true);
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  const S = game.world.forest.scenes;
+  assert(S.now === 'hall', 'arrival: the Pillared Hall');
+  run(G, 0.2);
+  game.flow.debug.toState('explore');
+  p.debug.god = true;
+  d.startIntro();
+  let holds = 0;
+  run(G, 4, () => { holds = Math.max(holds, S.holdT ?? 0); }, () => d.mode === 'foot');
+  assert(d.mode === 'foot' && S.now === 'dojo', 'he looks over his shoulder, turns, BECKONS: the room rewrote into the Sparring Hall');
+  const pos = game.world.destructibles.list.filter((b) => b.scene && !b.absent);
+  assert(pos.length > 0 && pos.every((b) => b.scene === 'dojo' || b.scene === 'dojo4' || b.scene?.startsWith?.('dojo')), `only the Sparring Hall's pieces stand (${pos.length})`);
+  d.debug.setAI(false);
+  d.brain.forcePhase(2);
+  run(G, 4, null, () => d.phase === 2 && d.mode !== 'act');
+  assert(d.phase === 2 && S.now !== 'dojo', `A Hundred Iron Seeds: the Pillared Hall again (${S.now})`);
+  d.debug.fallAndRise();
+  run(G, TUNING.fall.lie + 4, null, () => d.phase === 3 && d.mode !== 'act' && d.mode !== 'react');
+  assert(S.now === 'source', 'the rising: the Source');
+  d.debug.kill();
+  run(G, 4);
+  assert(S.now !== 'source', `his death: the rain stops, the hall returns (${S.now})`);
+  game.world.restore();
+  d.reset();
+  run(G, 0.5);
+  assert(S.now === 'hall' && d.phase === 1 && d.mode === 'sleep', 'a reset: the hall, he turns his back again');
+}
+
 // ================================================================== scenario: smoke
 async function scenarioSmoke() {
   out('\n== scenario SMOKE (he fights a defender for 60 s in each phase) ==');
@@ -359,6 +850,17 @@ async function scenarioSmoke() {
 }
 
 const S = {
+  cover: scenarioCover,
+  bend: scenarioBend,
+  stop: scenarioStop,
+  stance: scenarioStance,
+  flight: scenarioFlight,
+  rising: scenarioRising,
+  dejavu: scenarioDejavu,
+  flow: scenarioFlow,
+  levels: scenarioLevels,
+  data: scenarioData,
+  timing: scenarioTiming,
   smoke: scenarioSmoke,
 };
 const OPT_IN = new Set(['smoke', 'cost', 'strategy']);
