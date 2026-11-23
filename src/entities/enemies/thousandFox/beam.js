@@ -552,9 +552,10 @@ export class FoxHowl {
       extra: { perfect: false },
     });
     if (r === RESULT.BLOCKED) {
+      // (the blocked head is not a tick: the guard still meets `maxTicks` sustained ticks after it, as a
+      // hero who took the head does, so a full guard ends at 30 x 1.15 + 3 x 14 = 77 of 100)
       this.stats.blocked++;
-      B.taken = 1;
-      if (B.taken >= T.maxTicks) this._clear(p, true);
+      B.taken = 0;
     } else if (r === RESULT.HIT) B.taken = 0;
     else if (r === RESULT.DODGED || r === RESULT.PERFECT) this.stats.dodged++;
     return r;
