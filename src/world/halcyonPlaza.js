@@ -893,19 +893,21 @@ function makeCity({ L, opt, neon, screens, cars }) {
     /** 1 neon and his face; 2 static, then crimson; 3 the neon and the screens dead (a reset: 1). */
     setPhase(n) {
       const v = Math.min(3, Math.max(1, Math.round(Number(n) || 1)));
-      if (v === st.phase) return v;
-      st.phase = v;
-      st.phaseT = 0;
       if (v === 1) {
-        // (a reset: the fuses forgotten, the lights back)
+        // (a reset: the fuses forgotten, the lights back; also when he is reset in phase 1 already, a rest
+        // or a retry mid-fuse: a live fuse would go up after it, and one left 'done' never burn again)
         for (const f of fuses) {
           f.state = 'idle';
           f.t = 0;
+          f.wait = 0;
           f.told = f.flashed = f.quiet = false;
         }
         st.booms.length = 0;
         st.pieces = null;
       }
+      if (v === st.phase) return v;
+      st.phase = v;
+      st.phaseT = 0;
       return v;
     },
     get phase() {

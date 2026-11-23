@@ -437,10 +437,11 @@ export class Flight {
       W?.impact?.(x, z, 1.6, 1.2, this._k);
       d.fx.crater?.(x, z, 1.8, 1.2);
       this.game.shake?.(0.6);
-      // the get-up comes so the whole loss of control is at most G.cap
+      // the slam lands first (the get-up's last 0.5 s are i-frames: set before it, the slam came back DODGED) ...
+      d.hitPlayer({ damage: G.damage, knockback: G.knockback, knockdown: true, kind: 'crush', tell: TELL.RED, attack: 'seeTheWorld', from: { x: x - Math.sin(d.yaw), z: z - Math.cos(d.yaw) }, parryable: false, blockable: false, extra: { perfect: false } });
+      // ... then the get-up comes so the whole loss of control is at most G.cap
       const dur = HERO_TUNE?.knockdownDur ?? 1.3, left = Math.max(0.3, G.cap - C.t);
       if (pl.state === 'knockdown') pl.stateT = Math.max(0, dur - left);
-      d.hitPlayer({ damage: G.damage, knockback: G.knockback, knockdown: true, kind: 'crush', tell: TELL.RED, attack: 'seeTheWorld', from: { x: x - Math.sin(d.yaw), z: z - Math.cos(d.yaw) }, parryable: false, blockable: false, extra: { perfect: false } });
       C.on = false;
     }
   }

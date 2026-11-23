@@ -61,7 +61,7 @@ export const TUNING = {
   chain: [0.55, 0.68, 0.78],
   pressure: {
     chainDepth: [4, 5, 7],
-    chainRest: [[0.45, 0.75], [0.25, 0.45], [0.12, 0.28]],
+    chainRest: [[0.4, 0.7], [0.25, 0.45], [0.12, 0.28]],
     linkCut: 0.5, chainCut: 0.5,
     near: 3.3, far: 6, front: 0.9, behind: 2.2, away: 1.2,
     maxRun: [2, 3, 3], overRun: 0.1, sameCat: 0.7,

@@ -1890,11 +1890,42 @@ const S = {
     const shop = shops[0], sh = shop.hp;
     D.strike(shop.x, shop.z, 0.4, 0.5, { kind: BLOW.BLUNT, by: 'boss', y: CITY.shop.y0 + 0.5, src: D.swing() });
     assert(shop.hp < sh, `a blow at ${(CITY.shop.y0 + 0.5).toFixed(1)} m reaches a shop sign hung at ${CITY.shop.y0} m`);
+    // ... and a blow down on the street under one does not (the review of 22b049b: a raised piece took any
+    // blow below it, its hit point clamped up to y0 + 0.2): strike, sweep and a projectile's stop
+    {
+      const s2 = shops[1], h2 = s2.hp, b2 = s2.bricks?.n ?? 0;
+      D.strike(s2.x, s2.z, 0.5, 2, { kind: BLOW.BLUNT, by: 'boss', y: 1.0, src: D.swing() });
+      D.sweep(s2.x - 1, s2.z, s2.x + 1, s2.z, 0.4, 2, { kind: BLOW.CUT, by: 'player', y: 1.0, src: D.swing() });
+      D.sweep(s2.x - 1, s2.z, s2.x + 1, s2.z, 0.4, 2, { kind: BLOW.CUT, by: 'player', ya: 0.8, yb: 1.4, src: D.swing() });
+      assert(s2.hp === h2 && (s2.bricks?.n ?? 0) === b2, `a blow at 1 m under a shop sign hung at ${CITY.shop.y0} m leaves it whole (${h2.toFixed(2)} -> ${s2.hp.toFixed(2)}, ${b2} -> ${s2.bricks?.n ?? 0} bites)`);
+      D.sweep(s2.x - 1, s2.z, s2.x + 1, s2.z, 0.4, 0.5, { kind: BLOW.CUT, by: 'player', y: CITY.shop.y0 + 0.4, src: D.swing() });
+      assert(s2.hp < h2, `a sweep at its own height (${(CITY.shop.y0 + 0.4).toFixed(1)} m) bites it (${h2.toFixed(2)} -> ${s2.hp.toFixed(2)})`);
+    }
+    // a blow on a tower's base goes to its top while the top stands (`holds`), and a broken base brings its top down
+    {
+      const b3 = bases[1], t3 = b3.top, th = t3.hp;
+      D.strike(b3.x + b3.r, b3.z, 0.6, 0.5, { kind: BLOW.BLUNT, by: 'boss', y: 1.0, src: D.swing() });
+      assert(t3.hp < th, `a ground blow on a tower's base wears its top (holds: ${th.toFixed(2)} -> ${t3.hp.toFixed(2)})`);
+      for (let i = 0; i < 40 && t3.state === STATE.INTACT; i++) {
+        D.strike(b3.x + b3.r, b3.z, 0.6, 1.5, { kind: BLOW.BLAST, by: 'boss', y: 1.0, src: D.swing() });
+        step(0.05);
+      }
+      step(3);
+      assert(t3.state !== STATE.INTACT, `blows on the ground at a tower's base bring its top down (${t3.state})`);
+    }
     // the statue's head: a blow at its height takes the head and leaves the body
     const sb = statue.hp;
     D.strike(head.x, head.z, 0.45, 5, { kind: BLOW.BLAST, by: 'boss', y: head.y0 + 0.3, src: D.swing() });
     step(1.5);
     assert(head.state !== STATE.INTACT && statue.state === STATE.INTACT && statue.hp === sb, 'a blow at the statue\'s neck takes its head; the body is untouched');
+    {
+      // (the review of 22b049b) a blow at 1 m under his statue's raised arm does not reach it (a fresh
+      // plaza: the neck's blast above took the arm with the head)
+      const W2 = build(createHalcyonPlaza);
+      const arm2 = W2.D.list.find((b) => b.kind === 'statueArm'), ah = arm2.hp;
+      W2.D.strike(arm2.x, arm2.z, 0.6, 2, { kind: BLOW.BLUNT, by: 'boss', y: 1.0, src: W2.D.swing() });
+      assert(ah > 0 && arm2.hp === ah, `a blow at 1 m under his statue's arm (at ${arm2.y0.toFixed(1)} m) leaves it whole (${ah.toFixed(2)} -> ${arm2.hp.toFixed(2)})`);
+    }
     // the fuse: a car the hero broke burns, then goes up; the hero inside its reach and him take its blast
     set.ambience.setup(game);
     const amb = (sec) => { for (let k = 0; k < Math.round(sec * 60); k++) { step(1 / 60); set.ambience.update(1 / 60, game); } };

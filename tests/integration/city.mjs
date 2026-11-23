@@ -684,6 +684,33 @@ async function scenarioCar() {
     run(G, CITY.car.fuse + 0.4, () => { d.position.set(car.x + 1.8, TUNING.fly.hover, car.z); });
     assert(flash === 1 && hp0 - d.hp >= CITY.car.boss.damage - 1, `a car the hero broke beside him: cued, then it goes up and he takes ${hp0 - d.hp}`);
   }
+  {
+    // a reset in phase 1 mid-fuse (a rest, a retry: the flow's order, his reset then the world's): no bang
+    // follows, and the restored car can burn and blow up again (the review of 22b049b: setPhase(1) in phase 1
+    // returned before forgetting the fuses)
+    const G = build(SEED, true);
+    const { game } = G;
+    const d = game.dragon, p = game.player;
+    duel(G, { dist: 6 });
+    p.debug.god = true;
+    d.debug.setAI(false);
+    const car = pieces(G, 'car').find((b) => b.state === 0);
+    p.debug.teleport(car.x + 6, car.z + 4);
+    let blast = 0;
+    G.watch = (n) => { if (n === 'world:blast') blast++; };
+    const fuseOf = () => game.world.forest.ambience.fuses.find((f) => f.piece === car);
+    game.world.destructibles.strike(car.x, car.z, 0.4, 50, { kind: 'blunt', by: 'player', y: 0.8, src: game.world.destructibles.swing() });
+    run(G, CITY.car.fuse * 0.5);
+    const mid = fuseOf()?.state;
+    d.reset();
+    game.world.restore();
+    run(G, CITY.car.fuse + 1);
+    assert(mid === 'fuse' && blast === 0 && car.state === 0 && fuseOf()?.state === 'idle', `a reset mid-fuse in phase 1: no bang after it (${blast}), the car whole (${car.state}), its fuse idle (${mid} -> ${fuseOf()?.state})`);
+    const b0 = blast;
+    game.world.destructibles.strike(car.x, car.z, 0.4, 50, { kind: 'blunt', by: 'player', y: 0.8, src: game.world.destructibles.swing() });
+    run(G, CITY.car.fuse + 0.6);
+    assert(blast > b0, `... and the restored car, broken again, goes up again (${blast - b0} blast)`);
+  }
 }
 
 // ================================================================== scenario: tower (Through the Tower)
@@ -771,6 +798,26 @@ async function scenarioGrab() {
   const slam = G.hits.filter((h) => h.attack === 'seeTheWorld' && h.damage >= 20).length;
   assert(grabT > 0 && topY > TUNING.grab.height * 0.8 && slam === 1 && p.position.y === 0, `caught: carried up to ${topY.toFixed(1)} m and thrown down (${slam})`);
   assert(freeAt > 0 && freeAt - grabT <= TUNING.grab.cap + 0.2, `control is back ${(freeAt - grabT).toFixed(2)} s after the catch (cap ${TUNING.grab.cap})`);
+  // the slam lands (the review of 22b049b: the get-up time was set before the hit, inside its i-frames, so
+  // the slam came back DODGED): a mortal hero loses the slam's damage, control still back within the cap
+  {
+    const G4 = build(SEED, true);
+    const d4 = G4.game.dragon, p4 = G4.game.player;
+    duel(G4, { dist: 2, form: 2 });
+    p4.debug.god = false;
+    p4.hp = p4.maxHp ?? p4.hp;
+    let g4 = -1, f4 = -1, hpPre = p4.hp;
+    G4.watch = (n) => { if (n === 'dragon:grab') g4 = G4.game.time; };
+    d4.debug.carry();
+    run(G4, 6, () => {
+      G4.game.mouseGround.set(d4.position.x, 0, d4.position.z);
+      if (!G4.hits.some((h) => h.attack === 'seeTheWorld' && h.damage >= 20)) hpPre = p4.hp;
+      if (g4 > 0 && f4 < 0 && G4.game.time > g4 + 0.1 && p4.state !== 'knockdown') f4 = G4.game.time;
+    }, () => f4 > 0 && d4.mode === 'foot');
+    const sl = G4.hits.find((h) => h.attack === 'seeTheWorld' && h.damage >= 20);
+    assert(sl?.r === RESULT.HIT && hpPre - p4.hp >= TUNING.grab.damage - 0.5, `the slam lands: ${sl?.r}, the hero ${hpPre.toFixed(0)} -> ${p4.hp.toFixed(0)} (the slam ${TUNING.grab.damage})`);
+    assert(f4 > 0 && f4 - g4 <= TUNING.grab.cap + 0.2, `... and control is back ${(f4 - g4).toFixed(2)} s after the catch (cap ${TUNING.grab.cap})`);
+  }
   // never on a hero who is down
   const G2 = build(SEED, true);
   const d2 = G2.game.dragon, p2 = G2.game.player;
