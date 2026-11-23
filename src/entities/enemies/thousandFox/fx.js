@@ -99,6 +99,9 @@ export class FoxFx extends DuelFx {
       this.game.fx?.fire?.setPalette?.('void', FIRE_PALETTES.foxfire);
       this.FIRE3 = K_VOID;
     }
+    /** phase 3's fire as a shock front's kind, and its colours that are not heat (lights, sparks) */
+    this._front3 = this.FIRE3 === K_FIRE ? 'fire' : 'void';
+    this.L3 = LOOKS[this.look3 === 'b' ? 'a' : 'b'];
     this.L = LOOKS[this.look];
     this._ks = 0x7f4a7c15;
     this._col = [0, 0, 0]; // scratch colour (the pools copy it at spawn)
@@ -671,7 +674,7 @@ export class FoxFx extends DuelFx {
    *  different lives: a stream that keeps arriving). ~55 blobs, 10 slips. */
   cloneBurn(x, y, z, tx, ty, tz, k = 1) {
     if (!this.fire || !Number.isFinite(x + y + z + tx + ty + tz)) return;
-    const F = this.FOX, kk = Math.max(0.3, Math.min(1, fin(k, 1)));
+    const F = this.FIRE3, kk = Math.max(0.3, Math.min(1, fin(k, 1)));
     for (let i = 0; i < 18; i++) {
       const a = this.kr() * TAU, rr = this.krand(0.05, 0.3);
       this._blob(x + Math.cos(a) * rr, this.krand(0.8, 1.9), z + Math.sin(a) * rr, 0, this.krand(1.2, 2.6), 0, this.krand(0.35, 0.6), 0.44, 0.24, 0.4 * kk, 0, F, 1.2, 1);
@@ -683,7 +686,7 @@ export class FoxFx extends DuelFx {
     }
     for (let i = 0; i < 10; i++) {
       const ember = i % 2 === 0, a = this.kr() * TAU;
-      const o = this._rec(x + Math.cos(a) * 0.2, this.krand(0.8, 1.8), z + Math.sin(a) * 0.2, this.krand(0.6, 1.1), this.krand(0.16, 0.22), 0.1, ember ? "'." : SLIPS, ember ? this.L.spark : CHAR, ember ? this.L.sparkEnd : CHAR_END);
+      const o = this._rec(x + Math.cos(a) * 0.2, this.krand(0.8, 1.8), z + Math.sin(a) * 0.2, this.krand(0.6, 1.1), this.krand(0.16, 0.22), 0.1, ember ? "'." : SLIPS, ember ? this.L3.spark : CHAR, ember ? this.L3.sparkEnd : CHAR_END);
       o.vx = Math.cos(a) * this.krand(0.3, 1);
       o.vy = this.krand(1.5, 3);
       o.vz = Math.sin(a) * this.krand(0.3, 1);
@@ -714,7 +717,7 @@ export class FoxFx extends DuelFx {
     const x = d.position.x, z = d.position.z;
     if (!Number.isFinite(x + z + d.position.y)) return;
     k = Math.min(1, k);
-    const A = this._axes(), B = this._toCam(), F = this.FOX, t = this.game.time ?? 0;
+    const A = this._axes(), B = this._toCam(), F = this.FIRE3, t = this.game.time ?? 0;
     const H = (this._mH ??= { x: 0, y: 0, z: 0 }), C = (this._mC ??= { x: 0, y: 0, z: 0 }), Pv = (this._mP ??= { x: 0, y: 0, z: 0 });
     const hs = d._hs;
     if (!this._drawn(d, hs?.[0], H) || !this._drawn(d, hs?.[1], C) || !this._drawn(d, hs?.[2], Pv)) return;
@@ -780,7 +783,7 @@ export class FoxFx extends DuelFx {
    *  higher), each lagging the node before it (a turn trails), each swaying on its own beat; during
    *  the sweep they swing round with it. */
   _tailsFrame(d, Pv, fx, fz, dt, k, t, life, n, shed = 1) {
-    const N = this._tail, F = this.FOX;
+    const N = this._tail, F = this.FIRE3;
     const fresh = !(this._tailT >= 0) || Math.abs(t - this._tailT) > 0.25 || n !== this._tailN;
     this._tailT = t;
     this._tailN = n;
@@ -874,7 +877,7 @@ export class FoxFx extends DuelFx {
     S.a0 = yaw + Math.PI;
     S.a = S.a0;
     S.dir = 1;
-    this.shock(x, z, S.r, this._opt(0.9, 0.8, this._front, 0, false));
+    this.shock(x, z, S.r, this._opt(0.9, 0.8, this._front3, 0, false));
   }
 
   _sweepRun(dt) {
@@ -893,7 +896,7 @@ export class FoxFx extends DuelFx {
       S.acc -= 1;
       const a = S.a - S.dir * this.krand(0, 0.35), rr = S.r * this.krand(0.5, 0.95), ca = Math.cos(a), sa = Math.sin(a);
       // (a = 0 points +z: positions use sin for x, cos for z, as his yaw)
-      this._blob(S.x + sa * rr, this.krand(0.8, 1.3), S.z + ca * rr, ca * S.dir * 4 + sa * 1.5, this.krand(0.5, 1.5), -sa * S.dir * 4 + ca * 1.5, this.krand(0.25, 0.4), 0.5, 0.28, 0.42, 0, this.FOX, 2, 1.2);
+      this._blob(S.x + sa * rr, this.krand(0.8, 1.3), S.z + ca * rr, ca * S.dir * 4 + sa * 1.5, this.krand(0.5, 1.5), -sa * S.dir * 4 + ca * 1.5, this.krand(0.25, 0.4), 0.5, 0.28, 0.42, 0, this.FIRE3, 2, 1.2);
     }
   }
 
@@ -901,15 +904,15 @@ export class FoxFx extends DuelFx {
    *  sparks, dust, a light. ~200 blobs. */
   pounceLand(x, z, r) {
     if (!this.fire || !Number.isFinite(x + z + r)) return;
-    const F = this.FOX, R = Math.max(0.8, r);
-    this.shock(x, z, R * 1.7, this._opt(1.2, 1, this._front, 0, false));
+    const F = this.FIRE3, R = Math.max(0.8, r);
+    this.shock(x, z, R * 1.7, this._opt(1.2, 1, this._front3, 0, false));
     for (let i = 0; i < 24; i++) {
       const a = this.kr() * TAU, rr = R * Math.sqrt(this.kr());
       this._blob(x + Math.cos(a) * rr, this.krand(0.78, 1.0), z + Math.sin(a) * rr, 0, this.krand(1.5, 3.5), 0, this.krand(0.4, 0.7), 0.5, 0.28, 0.4, 0, F, 1, 1.5);
     }
     this._sparks(x, 0.9, z, 14, 2.5, 6);
     this.dust(x, z, 1.0);
-    this._light({ x, y: 1.2, z, color: this.L.light, intensity: 4, radius: R + 5, life: 0.45, fade: 0.35 });
+    this._light({ x, y: 1.2, z, color: this.L3.light, intensity: 4, radius: R + 5, life: 0.45, fade: 0.35 });
   }
 
   // ---------------------------------------------------------------- the change
@@ -923,10 +926,10 @@ export class FoxFx extends DuelFx {
   phaseBurst(n, x, z) {
     if (n !== 3) return super.phaseBurst(n, x, z);
     if (!Number.isFinite(x + z)) return;
-    const d = this.d, r = fin(d?.T?.transition?.ringRadius, 6), F = this.FOX;
-    this.shock(x, z, r, this._opt(1.3, 1, this._front, 0, false));
-    this.shock(x, z, r * 0.75, this._opt(0.7, 0.8, this._front, 0.16, false));
-    this.shock(x, z, r * 0.5, this._opt(0.45, 0.7, this._front, 0.32, false));
+    const d = this.d, r = fin(d?.T?.transition?.ringRadius, 6), F = this.FIRE3, front = this._front3, LC = this.L3; // (phase 3's fire)
+    this.shock(x, z, r, this._opt(1.3, 1, front, 0, false));
+    this.shock(x, z, r * 0.75, this._opt(0.7, 0.8, front, 0.16, false));
+    this.shock(x, z, r * 0.5, this._opt(0.45, 0.7, front, 0.32, false));
     // the roar's breath: out of the fox's head, along his facing, widening
     const yaw = fin(d?.yaw, 0), fx = Math.sin(yaw), fz = Math.cos(yaw), sx = -fz, sz = fx, hy = Math.max(1.4, fin(d?._hs?.[0]?.y, 1.5) * 1.1);
     for (let i = 0; i < 34; i++) {
@@ -942,7 +945,7 @@ export class FoxFx extends DuelFx {
     Cm.acc = 0;
     this._sparks(x, 1.1, z, 20, 2, 7, 3);
     this.game.world?.gust?.(x, z, 1.6, r * 2);
-    this._light({ x, y: 1.5, z, color: this.L.light, intensity: 4.5, radius: r * 1.6, life: 0.7, fade: 0.6 });
+    this._light({ x, y: 1.5, z, color: LC.light, intensity: 4.5, radius: r * 1.6, life: 0.7, fade: 0.6 });
   }
 
   // ---------------------------------------------------------------- his bare hands
@@ -983,7 +986,7 @@ export class FoxFx extends DuelFx {
     while (Cm.acc >= 1 && g++ < 8) {
       Cm.acc -= 1;
       const a = this.kr() * TAU, rr = this.krand(0.5, 1.2), sp = this.krand(1.5, 3);
-      this._blob(x + Math.cos(a) * rr, this.krand(0.8, 1.4), z + Math.sin(a) * rr, -Math.sin(a) * sp, this.krand(3, 6), Math.cos(a) * sp, this.krand(0.4, 0.7), 0.46, 0.22, 0.38, 0, this.FOX, 1.2, 1.5);
+      this._blob(x + Math.cos(a) * rr, this.krand(0.8, 1.4), z + Math.sin(a) * rr, -Math.sin(a) * sp, this.krand(3, 6), Math.cos(a) * sp, this.krand(0.4, 0.7), 0.46, 0.22, 0.38, 0, this.FIRE3, 1.2, 1.5);
     }
   }
 }
