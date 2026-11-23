@@ -828,7 +828,9 @@ function makeAmbience(braziers, { haze = false, floor = null } = {}) {
     cur.fogNear = PALETTE[0].fogNear * a + PALETTE[1].fogNear * b + PALETTE[2].fogNear * c;
     cur.fogFar = PALETTE[0].fogFar * a + PALETTE[1].fogFar * b + PALETTE[2].fogFar * c;
   };
-  const write = (U) => {
+  // far: dry lightning far off before the fight (the living world's weather, world/life/weather.js:
+  // weather.flash, ~0.1 at most): the sky's ambient and fog flicker a little toward the storm's bolt
+  const write = (U, far = 0) => {
     if (!U?.uMoonColor?.value) return;
     const f = st.flash, d = 1 - 0.75 * st.dim;
     const B = WEATHER.bolt, G = WEATHER.flareGold;
@@ -836,6 +838,11 @@ function makeAmbience(braziers, { haze = false, floor = null } = {}) {
     U.uMoonColor.value.setRGB(cur.moon[0] * d + fm[0] * f, cur.moon[1] * d + fm[1] * f, cur.moon[2] * d + fm[2] * f);
     U.uAmbient.value.setRGB(cur.ambient[0] * d + fa[0] * f, cur.ambient[1] * d + fa[1] * f, cur.ambient[2] * d + fa[2] * f);
     U.uFogColor?.value?.setRGB(cur.fogColor[0] * d + 0.02 * f, cur.fogColor[1] * d + 0.022 * f, cur.fogColor[2] * d + 0.028 * f);
+    if (far > 0) {
+      const a = U.uAmbient.value, c = U.uFogColor?.value;
+      a.setRGB(a.r + B.ambient[0] * far, a.g + B.ambient[1] * far, a.b + B.ambient[2] * far);
+      c?.setRGB(c.r + 0.02 * far, c.g + 0.022 * far, c.b + 0.028 * far);
+    }
     U.uMoonDir?.value?.set(cur.dir[0], cur.dir[1], cur.dir[2]).normalize();
     if (U.uFogNear) U.uFogNear.value = cur.fogNear;
     if (U.uFogFar) U.uFogFar.value = cur.fogFar;
@@ -912,7 +919,12 @@ function makeAmbience(braziers, { haze = false, floor = null } = {}) {
       }
       st.flash = st.flash > 0.004 ? st.flash * Math.exp(-dt * B.decay) : 0;
       blend();
-      write(game.U);
+      // (the living world, world/life/: its far lightning, and its wind's way for the dust and the rain)
+      const life = game.world?.life;
+      const far = life?.on?.('weather') ? Number(life.weather?.flash) || 0 : 0;
+      const wnd = life?.on?.('wind') && life.wind?.speed > 0 && Number.isFinite(life.wind.dirX + life.wind.dirZ) ? life.wind : null;
+      const wx = wnd ? wnd.dirX : 1, wz = wnd ? wnd.dirZ : 0;
+      write(game.U, far);
       // the glow round him in his golden form
       if (st.glow) {
         const G = WEATHER.glow, p = boss?.position;
@@ -959,6 +971,14 @@ function makeAmbience(braziers, { haze = false, floor = null } = {}) {
         part.vx = wind * (0.7 + 0.6 * rnd());
         part.vy = (rnd() - 0.4) * 0.3;
         part.vz = (rnd() - 0.5) * 0.4;
+        if (wnd) {
+          // the living world's wind blows: the same draw, turned to its way (upwind of the view, along it)
+          const ox = part.x - f.x, oz = part.z - f.z + 3, ax = part.vx, az = part.vz;
+          part.x = f.x + ox * wx - oz * wz;
+          part.z = f.z - 3 + ox * wz + oz * wx;
+          part.vx = ax * wx - az * wz;
+          part.vz = ax * wz + az * wx;
+        }
         part.life = 2.5 + rnd() * 3;
         part.size = 0.13 + rnd() * 0.12;
         part.sizeEnd = 0.08;
@@ -1039,9 +1059,9 @@ function makeAmbience(braziers, { haze = false, floor = null } = {}) {
           part.x = f.x + (rnd() - 0.5) * 40 - 3;
           part.z = f.z + (rnd() - 0.5) * 30 - 3;
           part.y = 5 + rnd() * 4;
-          part.vx = 3.2;
+          part.vx = wnd ? 3.2 * wx - 0.4 * wz : 3.2;
           part.vy = -14 - rnd() * 4;
-          part.vz = 0.4;
+          part.vz = wnd ? 3.2 * wz + 0.4 * wx : 0.4;
           part.life = 0.55 + rnd() * 0.2;
           part.size = 0.42;
           part.sizeEnd = 0.42;
