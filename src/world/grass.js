@@ -226,7 +226,7 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
         // trodden blades a little darker
         if (trample > 0.004) alb *= 1.0 - 0.7 * trample;
         // a mown stub is paler at its cut (fresh: never the burnt grass's black)
-        if (mown > 0.0) alb = mix(alb, mix(uFresh, uFreshAsh, uAsh), uMowFresh * mown * (lying > 0.5 ? uMowLie.z : 0.45 + 0.55 * position.y));
+        if (mown > 0.0) alb = mix(alb, mix(uFresh, uFreshAsh, uAsh), uMowFresh * mown * (1.0 - burn) * (lying > 0.5 ? uMowLie.z : 0.45 + 0.55 * position.y));
         float sh = shadowAtFast(vec3(root.x, 0.3, root.z));
         vec3 L = uAmbient * 1.6 + uMoonColor * 0.62 * sh + pointLights(root + vec3(0.0, 0.35, 0.0), vec3(0.0, 1.0, 0.0), 1.0);
         vec3 col = alb * L;
