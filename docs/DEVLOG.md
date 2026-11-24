@@ -5,6 +5,45 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-23 — Grades, saved bests and a boss rush, shaped for online leaderboards (ADR-179)
+
+**Goal** (planned with the owner by another session; their three calls are final): saved records,
+grades and a boss-rush mode, stored so online leaderboards can come later without changing what is
+saved. A grade is CLEAN PLAY (deaths, the winning attempt's damage; time only orders a grade); in the
+rush health and flasks refill and a death retries the boss with the clock running.
+
+**What changed**
+- `game/rank.js` + `rankTuning.js`: `rankRun` (S / A / B / C, marks UNTOUCHED / DEATHLESS / NO FLASK) and
+  `compareRank` (grade, then time). Not `grade.js` (that is the screen's colour grade).
+- `game/records.js`: `buildRecord` (the one writer of the run record, `v: 1`) and the `Records` store
+  (`abyss.records.v1`: per level and the rush, clears + best time + best grade; the last 24 records).
+- `game/eligibility.js`: what voids a run (the Lab, cheats, `__tick`, `debug.toState`, `?stage=lab`,
+  `?tech=`, fourteen gameplay URL switches found by a sweep of every parameter the game reads).
+- `game/rush.js`: the rush across page loads in sessionStorage; `game/recorder.js` (`flow.recorder`):
+  the flow's side, the clock, the record per win, `game:record`.
+- `game/stats.js`: per-attempt damage and flasks (`newAttempt`), `bossTime`.
+- `game/flow.js`: the recorder wired in (hurt / heal / death / victory / quit / pagehide), a rush page
+  skips the title, the record screen's head and the rush's rows and prompts.
+- `main.js`: the rush's level on a rush page; `game.records / eligibility / rush / startRush`; `__tick`
+  voids. `levels/index.js` `levelUrl` drops `?rush`.
+- UI: `ui/recordLooks.js` (three grade looks, three title looks, `?gradeLook=` / `?recLook=`), the title's
+  BOSS RUSH button (pad-walked with the stages), `StatsPanel.show(rows, head)`, the rush line under the
+  minimap; styles in `hudStyle.js`.
+- Tests: `tests/integration/records.mjs` (grade boundaries, the store fresh / corrupt / full / blocked /
+  version, the rush across simulated page loads, eligibility, the real GameFlow writing one record and a
+  Lab-touched run none, the screens); in `tests/run.mjs`.
+
+**Verified:** `npm test` and `npm run build` green; the title, the record screen and the rush line
+captured at 720p and on the phone size both ways up (headless Edge on the GPU); a rush driven through
+all eight levels in the browser with Lab jumps: every fight's record said NOT RECORDED and nothing was
+stored.
+
+**Open:** the owner picks the two looks; the thresholds are starting numbers; a human on a real phone
+and with a pad on the title; a full rush played for real; online leaderboards (ROADMAP M2: the seam is
+`game:record`).
+
+---
+
 ## 2026-11-23 — A fight the world feels: the blade clean through, a mark for every boss blow, flocks, animals, a set that shakes (ADR-177; planned by Fable, built by Opus agents)
 
 **Owner:** "when the player hits something like a rock or tree, the sword gets stopped and i dont like

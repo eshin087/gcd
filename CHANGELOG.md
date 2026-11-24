@@ -4,7 +4,21 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Eighty pieces of work since 0.4.0:
+Eighty-one pieces of work since 0.4.0:
+- **Grades, saved bests and a boss rush** (2026-11-23, ADR-179). *Added:* a won fight is graded for
+  CLEAN PLAY (the owner's rule): S = no deaths and at most 15 % of max HP lost in the winning attempt,
+  A = no deaths or one death and at most half, B = up to three deaths, C = any other win; time only
+  orders runs of one grade. Blows met on the guard cost no HP, so blocking, parrying and dodging grade
+  the same. Marks beside it: UNTOUCHED, DEATHLESS, NO FLASK. The victory RECORD shows the grade in block
+  letters, the time to the hundredth, NEW BEST and the best before; the title shows each level's best
+  grade and time and a **BOSS RUSH** entry: all eight levels in order, each its own page, health and
+  flasks full at every fight, a death retries the boss with the clock running, a reload mid-fight is a
+  death, a `3 / 8` timer under the minimap, and a rush record with every split. Saved per browser
+  (`abyss.records.v1`: per level and the rush, best time and best grade, the last 24 run records in full,
+  shaped for a later online leaderboard; `game:record` is the seam an uploader subscribes to). Runs with
+  the Lab, a cheat, `__tick`, `?stage=lab`, `?tech=` or a gameplay URL switch are not recorded.
+  The grade's and the title's looks have three options each (`?gradeLook=`, `?recLook=`); the owner has
+  not picked.
 - **The sword cuts clean through; the fight marks the ground; birds and animals flee** (2026-11-23, ADR-177).
   *Changed:* the hero's blade no longer stops on a rock, a tree or a pillar it cannot fell: the swing
   goes through at full speed, the piece still takes the blow, its letters fly on along the cut, stone

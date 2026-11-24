@@ -1105,6 +1105,8 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?halCapeSize=` | Halcyon's cape's size (ADR-166; read when his rig is built) | as picked (1.54 m) | ~80 % | ~65 % (1.00 m, past his knees) | ~50 %, to the back of his knees | **b** (the owner's pick, 2026-11-23) |
 | `?glare=` | his eyes' heat: the beams, the eyes, the crimson screens (a palette swapped into the void slot) | - | crimson with a white-hot steel core | crimson alone | the engine's orange fire with a steel core | **a**, the owner's pick (2026-11-23) |
 | `?city=` | Halcyon Plaza's light (ADR-159; read when the level is built) | - | Neon Rain: night, rain, wet dark asphalt, pale neon | Golden Hour: his perfect city at dusk, warm, no rain | Lockdown: red emergency light, two search beams sweeping the plaza | **a**, the owner's pick (2026-11-23) |
+| `?gradeLook=` | the record screen's grade (ADR-179; `ui/recordLooks.js`; sheet `docs/looks/records/grade-options.jpg`) | - | the grade in block letters over its time, marks and the best before | the block letters beside those lines | the banners' plain `#` letters, the time beside | **a** (not picked yet) |
+| `?recLook=` | the title's best under each level (ADR-179; sheet `docs/looks/records/title-options.jpg`) | - | a small line under each button: grade and time | the grade in the button after the name, the time on a second line | one line under the picker for the button the mouse or pad is on | **a** (not picked yet) |
 
 How a look is chosen (`lookOf(name, def, pick)`): a look forced live by `setLook` (the Lab, the tests,
 the film rig); else the URL's own parameter (`?sky=b`); else, under **`?looks=old`**, `0` for every

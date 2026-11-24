@@ -2255,7 +2255,7 @@ bannerHint(text) / clearBanner(instant)   // sub-line under the current banner; 
 bannerRecap(lines | null)                 // small lines under the hint (the death screen: the killing move, then what
                                           // struck him); the first is drawn brighter; cleared by a new banner and by
                                           // clearBanner(true)
-showStats(rows)                      // victory / death run stats
+showStats(rows, head?)               // the victory record; head = the run's grade, marks, time, NEW BEST, the best before (ADR-179)
 prompt(text|null)                    // interaction prompt, e.g. "[@interact] Rest at bonfire" (the chip shows the bound key)
 promptText                           // getter: the prompt shown now (raw "[@interact] ..." text) or null
 promptEl                             // the prompt's element (touch controls make it a tap target)
@@ -5209,6 +5209,102 @@ cover on his deflected line (`destructibles.coverAt`), the react 'crashed' held 
 30, `dragon:crash`. The carry: `grab()` (See the World's hit), the hero held in his own knockdown and
 carried by `position.y`; the slam ends it, the get-up timed so control is gone at most `grab.cap` s.
 
+## Records, grades and the boss rush (2026-11-23, ADR-179)
+Saved records shaped for an online leaderboard later: what is stored now is what a server will take,
+so the shapes and rules here are its contract. Modules (all `src/game/`): `rank.js` + `rankTuning.js`
+(the grade), `records.js` (the run record and the store), `eligibility.js` (whether a run counts),
+`rush.js` (the boss rush's state across page loads), `recorder.js` (`flow.recorder`: between GameFlow
+and the three). The screens: `ui/recordLooks.js` (the grade and the bests, behind `?gradeLook=` /
+`?recLook=`), `ui/screens.js` (`TitleScreen` records argument, `StatsPanel.show(rows, head)`),
+`ui/minimap.js` (the rush's line under the disc).
+
+**The run record** (`buildRecord(o)` is the one function that writes one; version `v: 1`):
+```
+{ v: 1, id,                       // id: unique per run (crypto.randomUUID; never Math.random)
+  kind: 'boss' | 'rush',
+  level,                          // a boss: its level id; a rush: the ordered level ids
+  gameVersion, at,                // GAME_VERSION; ISO time the record was written
+  timeMs,                         // see "Timing"
+  deaths, damageTaken, maxHp, flasksUsed,   // the clean-play inputs (below)
+  grade: 'S'|'A'|'B'|'C', marks: ['UNTOUCHED'|'DEATHLESS'|'NO FLASK', ...],
+  stats,                          // RunStats.snapshot() (a boss; {} for a rush)
+  device: 'keyboard'|'pad'|'touch',         // the device in use at the win
+  techniques: [ids],              // Unlocks.all() at the win
+  style: string | null,           // the hero's move style (null until that system is on main)
+  rush: id | null,                // a boss fought inside a rush: the rush's id
+  splits: [{ level, timeMs, fightMs, deaths, damageTaken, maxHp, flasksUsed, grade, eligible }]  // a rush only
+}
+```
+No player name, no network code. Plain JSON: `JSON.parse(JSON.stringify(r))` is the same record.
+
+**Timing** (real time, ms, rounded):
+- a boss: the WINNING attempt's fight time: real time in the flow's `boss` state (`stats.attemptTime`).
+  A pause (`paused`, also the automatic one when the tab is hidden), the intro (`bossIntro`), the walk
+  (`explore`), the death screen and the record screen never count. The time a step adds is the frame's
+  real time clamped to 0.1 s, so a stalled frame adds at most that.
+- a rush: the sum of ALL boss-state time over every fight, failed attempts included (the clock keeps
+  running through deaths; loads, walks, intros and record screens never count, so a slow device or
+  connection costs nothing). A split's `timeMs` is that level's share (every attempt), `fightMs` its
+  winning attempt.
+- Game time scales (slow motion, hit-stop) do not slow the clock: it reads real time.
+
+**The clean-play inputs**: `deaths` (a boss: deaths before the win on this page; in a rush the
+level's deaths, a reload mid-fight included), `damageTaken` (HP lost to blows that LANDED in the winning
+attempt: `player:hurt`; a blow met on the guard costs guard, not HP, so blocking, parrying and dodging
+weigh the same; only a contact stream's chip through a held guard is not counted either), `maxHp`
+(`player.maxHp`), `flasksUsed` (every attempt). A rush's record sums its splits.
+
+**The grade** (`rankRun({ deaths, damageTaken, maxHp, flasksUsed })` → `{ grade, marks, hurt }`;
+thresholds in `rankTuning.js` `RANK`): S = no deaths and at most 15 % of max HP lost in the winning
+attempt; A = no deaths, or one death and at most 50 %; B = up to three deaths; C = any other win. Time
+never changes a grade; `compareRank(a, b)` orders runs: the better grade, then the faster `timeMs`. A
+rush is graded by the same rule on its totals (deaths summed, damage summed over max HP summed).
+Marks: UNTOUCHED (no death, no damage), DEATHLESS (no death), NO FLASK (no flask in any attempt).
+
+**Eligibility** (`game.eligibility`, one per page; `eligible`, `reason`, `note()` the record screen's
+line, `void(reason, detail)`, `watch(game)` per flow frame). Not eligible (nothing is stored, the record
+screen says `NOT RECORDED: ...`): the Lab opened (`lab.open` on any frame; its controls need it open),
+god mode, endless flasks, the attack-speed slider, `game.debugTimeScale` other than 1, a boss's AI
+switched off (`dragon.debug.aiEnabled === false`), `window.__tick`, `flow.debug.toState`, a level on the
+training room (`level.stage === 'lab'`), and the URL switches in `GAMEPLAY_SWITCHES` away from their
+shipped value (`stage`, `tech`, `lab`, `training`, `cutStop`, `apoc`, `ring`, `bamboo`, `outskirts`,
+`looks`, `wyrmLook`, `ablaze`, `perfect`, `streakfx`). Every other switch is a look and does not void
+(ADR-179 lists them). Once void a run stays void for the page; a rush stays void for all its pages.
+**Client-side times can be forged** (the console, a patched build, a replayed request): nothing here
+proves a run was played. Validating a submitted record (plausible times per boss, the record's version
+against the game's, rate limits, replays if ever) is the server's job when there is one.
+
+**The store** (`game.records`, `Records(storage)`; localStorage `abyss.records.v1`, injectable):
+`{ v: 1, levels: { [id]: { clears, bestTime, bestGrade } }, rush: { clears, bestTime, bestGrade } | null,
+recent: [record, ...] }` (a best: `{ timeMs, grade, marks, id, at }`). `best(id)`, `rushBest()`,
+`recent()` (the last `RECENT` = 24 records, oldest first: the queue a later uploader drains),
+`add(record)` → `{ newBestTime, newBestGrade, prevTime, prevGrade }`, `clear()`. A best time and a best
+grade are separate bests and may come from different runs. A rush's fight also counts as that boss's
+clear. Corrupt or another version's data in the key reads as empty (a later version reads this key
+and carries it forward); a full storage drops the queue to its newest six and tries again; blocked or
+missing storage keeps everything for the page load. Nothing throws.
+
+**The boss rush** (`game.rush`, `Rush(sessionStorage, search)`; sessionStorage `abyss.rush.v1`, this tab):
+`{ v, id, order, index, levelMs, deaths, flasks, live, splits, void, startedAt, done }`. The title's BOSS
+RUSH calls `game.startRush()` → `Rush.start(session, order, id)` and loads `rushUrl(order[0], href)`
+(`?level=<id>&rush=1`, the other parameters kept; `levelUrl` drops `?rush`). Every level in `LEVELS`
+order: a new level joins the rush with no other change. A rush page (main.js: the rush's level,
+whatever `?level` says) shows no title and starts at once (`_title` → `_startGame`). Each fight is a
+fresh page or a respawn: health and flasks are full. `rush.tick(dt, fighting)` runs the clock in the
+boss state and banks it about once a second and on `pagehide` / a hidden tab with `live` set while
+fighting: a reload or a reopened tab mid-fight resumes that boss with the time kept and counts a death
+(`arrive()`); a crash loses at most a second of the clock. A death is the normal retry (`death()`).
+A win (`win(split)`) banks the split and moves on; the record screen shows the fight's record with
+the rush's place and time, and `[interact] Next boss` loads the next page (`recorder.next()`); after
+the last, the rush record (each split, the totals, the overall grade, NEW BEST) and `[interact] Back to
+the title`. QUIT TO TITLE ends the rush with no record (`recorder.quit()`); so does any page of the
+game without `?rush`. The HUD: `recorder.rushClock()` → `{ index, count, ms }` drawn as `3 / 8  4:12.3`
+under the minimap (no panel; none on the record screen).
+
+**The seam**: `game:record {kind, record, newBestTime, newBestGrade}` is emitted once per stored record
+(an eligible won fight; after a rush's last fight, the rush's record too). A future uploader subscribes to
+it, or drains `records.recent()` at boot; neither changes what is stored.
+
 ## Event catalogue (exact names — producers → consumers)
 Player → hud/audio/fx/flow:
 - `player:attack {kind:'light'|'heavy'|'slam'|'cleave'|'thrust', combo, charge, name}` (swing starts; combo 1–5 = the chain hit, slam = hit 5, the sprint slash and the roll cut report 1; heavy = a heavy branch, combo 0–4 = the light it followed (ADR-115; the Earthbreaker after the fourth is kind slam); cleave = the charge's release, thrust = the execution against a duelist; name = the attack's data name, combat.js),
@@ -5358,6 +5454,7 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   (`combat:tell` / `combat:flash`, source world, attack carBomb, hazard: true).
 Flow → hud/audio:
 - `state {from, to}`, `bonfire:rest`, `game:retry`, `game:victory`, `area {name}`,
+  `game:record {kind, record, newBestTime, newBestGrade}` (a run record was stored: an eligible won fight, or a finished boss rush, ADR-179; record = the run record of "Records" below; HUD: the title's bests; the seam a future uploader subscribes to),
   `game:cinematic {kind}` (flow.cinematic: slow motion and a close camera on a duel's big moment; kind
   fullDeflect / bladeLock / mikiri / execution / perfectParry (the hero's perfect parry of a blade: a short
   slow motion, no gong), or lock = the blade lock's camera push-in: no slow motion,
