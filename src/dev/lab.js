@@ -21,6 +21,7 @@ import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { buildLooks } from './labLooks.js';
 import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
 import { LIFE, setLife, setLifeK } from '../world/life/lifeSwitch.js';
+import { MYSTIC_IDS, MYSTIC_NAMES, mysticMode, setMystic, arcOn, setArc } from '../entities/player/swordMystic.js';
 
 // The Lab — a debug panel to test the boss without playing the fight (contract: docs/ARCHITECTURE.md
 // → Lab; usage: src/dev/README.md). It talks only to the actors' `debug` APIs (dragon.debug,
@@ -1262,6 +1263,32 @@ export class Lab {
       b.title = `equip ${SWORD_PARAM[k]}`;
       return { k, el: b };
     });
+    // the sword's mystical layer (player/swordMystic.js, ?mystic=0|a|b|c|d) and the arc that grows with
+    // the streak (?arc=0|1): both live, off = today
+    const myr = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'mystic', myr).title = "the sword's mystical layer for the owner's pick (?mystic=)";
+    const myGrid = el('div', 'lab-grid', null, myr);
+    myGrid.style.flex = '1';
+    this.ui.mysticBtns = MYSTIC_IDS.map((m) => {
+      const b = button(myGrid, m === '0' ? '0' : `${m} ${MYSTIC_NAMES[m]}`, () => {
+        setMystic(m);
+        this._syncCutBtns();
+      });
+      b.title = `?mystic=${m}: ${MYSTIC_NAMES[m]}`;
+      return { m, el: b };
+    });
+    const arr = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'arc', arr).title = 'the swing arc grows with the streak (?arc=1)';
+    const arGrid = el('div', 'lab-grid', null, arr);
+    arGrid.style.flex = '1';
+    this.ui.arcBtns = ['0', '1'].map((m) => {
+      const b = button(arGrid, m === '0' ? '0 today' : '1 grows', () => {
+        setArc(m);
+        this._syncCutBtns();
+      });
+      b.title = m === '0' ? 'the arc as today' : 'the arc hangs longer, layered lines and beads by streak tier';
+      return { m, el: b };
+    });
     // the wyrm's heads (entities/dragon/heads.js, ?wyrmFace=): a build-time choice, so a page reload
     const wfr = el('div', 'lab-row', null, body);
     el('span', 'lab-lbl', 'head', wfr).title = "the Cinder Wyrm's heads (?wyrmFace=; reloads the page): drake as it ships, old = the head before, the rest shown and passed on";
@@ -1348,6 +1375,8 @@ export class Lab {
     }
     const w = this.game.player?.loadout?.weapon;
     for (const { k, el: b } of this.ui.swordBtns ?? []) setClass(b, 'on', w === SWORD_PARAM[k]);
+    for (const { m, el: b } of this.ui.mysticBtns ?? []) setClass(b, 'on', mysticMode() === m);
+    for (const { m, el: b } of this.ui.arcBtns ?? []) setClass(b, 'on', arcOn() === (m === '1'));
     for (const { m, el: b } of this.ui.sfxBtns ?? []) setClass(b, 'on', sfxMode() === m);
     for (const { m, el: b } of this.ui.chainBtns ?? []) setClass(b, 'on', chainMode() === m);
     const bank = this.game.audio?.samples;

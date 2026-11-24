@@ -5,7 +5,8 @@ import { cutBurst } from '../../combat/cutFx.js';
 import { impactK } from '../../combat/impact.js';
 import { stampHit } from '../../combat/impactStamp.js';
 import { calmLook, calmA, calmS } from '../../combat/impactCalm.js';
-import { perfectMode } from '../../combat/streak.js';
+import { perfectMode, streakTier } from '../../combat/streak.js';
+import { arcOn } from './swordMystic.js';
 import { perfectFeel, perfectBeat, perfectParryMark, perfectDodgeLine, perfectArrive, perfectGhost } from '../../combat/perfectFx.js';
 
 // Glyph-particle effects owned by the Wanderer: cyan slash arcs (the light swings, the slam, the
@@ -152,6 +153,29 @@ function arcPoint(t, f, o) {
   o[2] = ARC.az + ARC.dz * t + z * len;
 }
 const TRAIL_NONE = [];
+/**
+ * The arc that grows with the streak (`?arc=1`, swordMystic.js arcOn; off = today exactly). Still the
+ * owner's crescent and still lines, not light: per tier (streakTier 0..5) it hangs longer, gains fine
+ * lines OUTSIDE its edge and inside it (in place of the aura's echo lines while it is on), and from
+ * tier 3 a bead of light is left along the edge now and then, drifting out of the cut (ornate, not
+ * bright). Tiers 1 / 3 / 5 must tell apart at the game camera: 1 a second line, 3 a layered band, 5
+ * a wide fan of fine lines with beads, hanging twice as long.
+ *   linger   × the arc's life       outer / inner  lines beyond / inside the edge (`step` of the reach)
+ *   outA     the outer lines' alpha innerA         the inner lines' alpha
+ *   beads    chance per sub-step    size           × the edge's stroke
+ */
+export const ARC_STREAK = {
+  linger: [1, 1.3, 1.45, 1.65, 1.85, 2.1],
+  outer: [0, 1, 1, 1, 2, 2],
+  inner: [0, 0, 1, 2, 2, 3],
+  step: 0.055,
+  outA: [0, 0.42, 0.44, 0.48, 0.5, 0.55],
+  innerA: [0, 0, 0.36, 0.42, 0.46, 0.5],
+  beads: [0, 0, 0, 0.18, 0.3, 0.45],
+  size: [1, 1, 1.06, 1.1, 1.16, 1.22],
+  col: [0.55, 0.85, 1.3], // the fine lines' steel (ECHO_COL's, a little brighter for the outer ones)
+  bead: [0.7, 1.0, 1.45],
+};
 const ECHO_COL = [0.5, 0.8, 1.25]; // the echo lines' steel (under the bloom: fine lines, no glow)
 const ECHO_STEP = 0.075; // the streak's echo lines (trail): this share of the reach apart, inward from the edge
 // calm at the contact: the arc's factors at one stroke (PlayerFx._arcCalm; reused)
@@ -281,11 +305,19 @@ export class PlayerFx {
     const nSub = Math.min(TRAIL_SUB_MAX, Math.max(2, Math.ceil(tipStep / TRAIL_SUB_LEN)));
     const T = crit ? ARC_TONE.crit : ARC_TONE[heavy || thrust ? 'heavy' : 'light'];
     const core = T.core, veil = T.veil, end = T.end;
-    const linger = cleave ? 1.7 : heavy ? 1.3 : 1;
+    // the arc that grows with the streak (ARC_STREAK; tier 0 with it off: today exactly)
+    const AS = ARC_STREAK, at5 = arcOn() ? Math.min(5, streakTier(this.game.player?.streak | 0)) : 0;
+    const linger = (cleave ? 1.7 : heavy ? 1.3 : 1) * AS.linger[at5];
     const rows = thrust ? TRAIL_NONE : S.veil;
     // the streak's echo lines (player/streakFx.js `echoes`; 0 = none, today): fine lines inside the
     // edge, ECHO_STEP of the reach apart, fainter inward, hanging longer than the edge
-    const SK = this.game.fx?.streak, nEcho = thrust ? 0 : Math.min(4, SK?.echoes | 0), echoA = nEcho > 0 ? Math.min(1, Number(SK.echoA) || 0) : 0;
+    const SK = this.game.fx?.streak;
+    let nEcho = thrust ? 0 : Math.min(4, SK?.echoes | 0), echoA = nEcho > 0 ? Math.min(1, Number(SK.echoA) || 0) : 0;
+    if (at5 > 0 && !thrust) {
+      nEcho = AS.inner[at5];
+      echoA = AS.innerA[at5];
+    }
+    const nOut = thrust ? 0 : AS.outer[at5], sizeK = AS.size[at5];
     for (let s = 1; s <= nSub; s++) {
       const t = s / nSub, t0 = (s - 1) / nSub;
       // the edge
@@ -297,7 +329,7 @@ export class PlayerFx {
         const mx = (ARC_P[0] + ARC_Q[0]) / 2, my = (ARC_P[1] + ARC_Q[1]) / 2, mz = (ARC_P[2] + ARC_Q[2]) / 2;
         // calm at the contact: dimmer and thinner where it crosses a fresh contact (1 elsewhere, today)
         const K = this._arcCalm(mx, my, mz), hot = bite && !(K.k > 0 && this._calmZ.L.arc.bite === false);
-        const size = S.edge * (heavy ? 1.25 : 1) * (0.6 + 0.4 * turn) * (bite ? 1.15 : 1) * K.s;
+        const size = S.edge * (heavy ? 1.25 : 1) * (0.6 + 0.4 * turn) * (bite ? 1.15 : 1) * K.s * sizeK;
         fx.spawn({
           x: mx, y: my, z: mz,
           life: R(S.life[0], S.life[1]) * linger, size, sizeEnd: size * 0.15,
@@ -318,6 +350,30 @@ export class PlayerFx {
           life: S.life[1] * linger * (1 + 0.3 * j), size, sizeEnd: size * 0.2,
           glyph: '|', rot: alongRot(ex, ey, ez), stretch: Math.min(30, (es / size) * 1.7),
           color: ECHO_COL, colorEnd: end, alpha: (echoA / (0.6 + 0.4 * j)) * (0.4 + 0.6 * turn), alphaEnd: 0, drag: 2,
+        });
+      }
+      // the streak's arc (ARC_STREAK): fine lines just outside the edge, and beads left along it
+      for (let j = 1; j <= nOut; j++) {
+        const f = Math.min(1, at + AS.step * j);
+        arcPoint(t, f, ARC_P);
+        arcPoint(t0, f, ARC_Q);
+        const ex = ARC_P[0] - ARC_Q[0], ey = ARC_P[1] - ARC_Q[1], ez = ARC_P[2] - ARC_Q[2], es = Math.hypot(ex, ey, ez);
+        if (!(es > 0.01)) continue;
+        const size = S.edge * 0.75;
+        fx.spawn({
+          x: (ARC_P[0] + ARC_Q[0]) / 2, y: (ARC_P[1] + ARC_Q[1]) / 2, z: (ARC_P[2] + ARC_Q[2]) / 2,
+          life: S.life[1] * linger * (1 + 0.2 * j), size, sizeEnd: size * 0.2,
+          glyph: '|', rot: alongRot(ex, ey, ez), stretch: Math.min(30, (es / size) * 1.7),
+          color: AS.col, colorEnd: end, alpha: (AS.outA[at5] / j) * (0.4 + 0.6 * turn), alphaEnd: 0, drag: 2,
+        });
+      }
+      if (at5 > 0 && AS.beads[at5] > 0 && !thrust && rnd() < AS.beads[at5] * turn) {
+        arcPoint(t, at * R(0.92, 1.02), ARC_P);
+        const ox = ARC_P[0] - ARC.ax, oy = ARC_P[1] - ARC.ay, oz = ARC_P[2] - ARC.az, ol = Math.hypot(ox, oy, oz) || 1;
+        fx.spawn({
+          x: ARC_P[0], y: ARC_P[1], z: ARC_P[2], vx: (ox / ol) * 0.35, vy: (oy / ol) * 0.35 + 0.1, vz: (oz / ol) * 0.35,
+          life: R(0.45, 0.7) * Math.sqrt(linger), size: 0.08, sizeEnd: 0.04,
+          glyph: '·', color: AS.bead, colorEnd: end, alpha: 0.7, alphaEnd: 0, drag: 1.5,
         });
       }
       // the veil
