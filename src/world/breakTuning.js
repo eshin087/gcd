@@ -268,6 +268,24 @@ export const BREAK = Object.freeze({
       freeze: Object.freeze({ wood: 0.075, hard: 0.095 }), shake: Object.freeze({ wood: 0.14, hard: 0.2 }),
       stick: Object.freeze({ wood: 0.11, hard: 0 }), push: Object.freeze({ wood: 0.25, hard: 0.45 }),
       through: 0.05, minH: 0.6, touch: 0.25,
+    }),
+    /**
+     * `pass` (the hero's blade by default; 2026-11-23, the owner: "allow the player to swing their attack
+     * animation through it"): the blade goes CLEAN THROUGH every piece, at full speed: no rewind, no
+     * freeze, no bounce. The piece takes the blow as before; what it knocks off (its bricks, its chips,
+     * its dust) flies on ALONG the cut (`along` x the blade's travel, `face` x out of the face where it
+     * was struck) instead of back toward him. On each piece the steel crosses, once a swing
+     * (player/fx.js `cutPass`): stone and metal throw a short spray of `sparks` (light, heavy) off the
+     * face along the cut, wood `splinters` and a breath of bark dust; a `line` of faint pale strokes
+     * marks where the edge crossed the face for `lineLife` s (`lineStep` m apart, at most `lineMax`).
+     * The hand feels it: one camera `jolt` a swing (light, heavy: under a landed cut's 0.12 / 0.3).
+     * `?cutStop=1` gives back the blade that stops (`stop` above, ADR-132).
+     */
+    pass: Object.freeze({
+      along: 1.1, face: 0.45,
+      sparks: Object.freeze([5, 9]), splinters: Object.freeze([6, 10]),
+      line: false, lineLife: 0.2, lineStep: 0.16, lineMax: 9,
+      jolt: Object.freeze([0.05, 0.12]),
     }), out: 1.6, up: 1.4, litter: 3, shed: 0.72, windY: 0.7 }),
   /**
    * SLICED pieces (a def's `slice: true`: the Windless Grove's bamboo; the owner: "make the bamboo all
