@@ -27,6 +27,7 @@ const { resolveOn } = await imp('src/world/edge.js');
 const { LEVELS, applyLevel } = await imp('src/levels/index.js');
 const { LivingWorld, LIFE_TUNE } = await imp('src/world/life/life.js');
 const { LIFE, LIFE_PIECES, setLife, setLifeK } = await imp('src/world/life/lifeSwitch.js');
+const { mulberry32 } = await imp('src/core/rng.js');
 
 const errors = [];
 console.error = (...a) => { errors.push(a.map((x) => (x?.stack ? x.stack.split('\n').slice(0, 3).join(' | ') : String(x))).join(' ')); };
@@ -36,11 +37,16 @@ let fails = 0;
 const assert = (c, m) => { if (!c) { fails++; out('FAIL', m); } else out('ok  ', m); };
 const near = (a, b, eps = 1e-6) => Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) <= eps;
 
-// Math.random is counted: nothing of the living world may draw from it (the seeded sims replay it)
-const realRandom = Math.random;
+// Math.random is counted: nothing of the living world may draw from it (the seeded sims replay it).
+// It is SEEDED: every build() restarts it from the level's own seed, so a level's set and atmosphere
+// (the fireflies' places and phases, the embers, the ash: they draw from Math.random) come out the same
+// on every run, and two builds of one level (quality 1 / 0.5, a piece on / off) get the same ambience.
+// Unseeded, the fireflies alone moved the shared pools' spawns by ~1000 in 73000 run to run.
+let randomSource = mulberry32(0x11fe);
 let randomCalls = 0;
-const countingRandom = () => { randomCalls++; return realRandom(); };
+const countingRandom = () => { randomCalls++; return randomSource(); };
 Math.random = countingRandom;
+const seedFor = (id) => { let h = 0x11fe5eed; for (const ch of id) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0; return h; };
 
 const WORLD0 = JSON.parse(JSON.stringify(CONFIG.world));
 const LEVEL_IDS = LEVELS.map((L) => L.id);
@@ -53,10 +59,12 @@ const LEVEL_IDS = LEVELS.map((L) => L.id);
  *   step(sec)      runs the frame: life, atmosphere, the pools (as World.update and main.js do)
  *   walk(vx, vz)   the hero moves at that velocity from now on (m/s); place(x, z) teleports him
  *   o.feet         the stand-in's feet come down while he walks (steps.footfall, as player.js does)
- *   counts()       { alpha, add, fire, own, pools, litter, prints, spawned: { alpha, add, fire }, random }: live particles per
- *                  shared pool; `own` / `pools`: the living world's own pools (registered with the pipeline
- *                  after the set's); spawns since the build; `random`: Math.random calls made inside
- *                  life.update and life.gust (must stay 0)
+ *   counts()       { alpha, add, fire, own, pools, litter, prints, spawned: { alpha, add, fire }, lifeSpawned: { alpha, add,
+ *                  fire }, random }: live particles per shared pool; `own` / `pools`: the living world's own
+ *                  pools (registered with the pipeline after the set's); `spawned`: spawns into the shared pools
+ *                  since the build, everyone's; `lifeSpawned`: those made inside life.update / life.gust / the
+ *                  feet; `random`: Math.random calls made inside life.update and life.gust (must stay 0)
+ *   Math.random restarts from the level's seed on every build (the same level: the same ambience).
  */
 function build(levelId = 'cinderwood', spec = 'all', o = {}) {
   const level = LEVELS.find((L) => L.id === levelId);
@@ -66,14 +74,19 @@ function build(levelId = 'cinderwood', spec = 'all', o = {}) {
   applyLevel(level);
   setLife(spec);
   setLifeK(o.k ?? 1);
+  randomSource = mulberry32(o.seed ?? seedFor(levelId));
   const U = createSharedUniforms();
   const events = new Events();
   const spawned = { alpha: 0, add: 0, fire: 0 };
+  const lifeSpawned = { alpha: 0, add: 0, fire: 0 };
+  let inLife = 0;
+  const inside = (fn) => { inLife++; try { return fn(); } finally { inLife--; } };
   const checked = (pool, key, fields) => {
     const spawn = pool.spawn.bind(pool);
     pool.spawn = (r) => {
       for (const k of fields) if (r[k] !== undefined && !Number.isFinite(r[k])) throw new Error(`NaN ${key} particle ${k}`);
       spawned[key]++;
+      if (inLife) lifeSpawned[key]++;
       return spawn(r);
     };
     return pool;
@@ -101,7 +114,7 @@ function build(levelId = 'cinderwood', spec = 'all', o = {}) {
       if (![x, z, s, r].every(Number.isFinite)) throw new Error('NaN gust');
       this.gusts++;
       const r0 = randomCalls;
-      this.life?.gust(x, z, s, r);
+      inside(() => this.life?.gust(x, z, s, r));
       lifeRandom += randomCalls - r0;
     },
     resolve: (pos, r, b, soft, who) => resolveOn(colliders, null, pos, r, b, soft, who),
@@ -142,9 +155,9 @@ function build(levelId = 'cinderwood', spec = 'all', o = {}) {
         footT = 0.32;
         side = -side;
         const p = game.player.position;
-        life.steps?.footfall?.(p.x, p.z, { sprint: Math.hypot(vel.x, vel.z) > 6, side, vx: vel.x, vz: vel.z });
+        inside(() => life.steps?.footfall?.(p.x, p.z, { sprint: Math.hypot(vel.x, vel.z) > 6, side, vx: vel.x, vz: vel.z }));
       }
-      life.update(dt);
+      inside(() => life.update(dt));
       lifeRandom += randomCalls - r0;
       world.atmosphere.update(dt);
       world.scorch.update(dt);
@@ -161,7 +174,7 @@ function build(levelId = 'cinderwood', spec = 'all', o = {}) {
     own: own.slice(ownBase).reduce((n, p) => n + (p.count ?? 0), 0), pools: own.length - ownBase,
     // (each own pool by its owner: litter / steps)
     litter: life.litter?.pool?.count ?? 0, prints: life.steps?.pool?.count ?? 0,
-    spawned: { ...spawned }, random: lifeRandom,
+    spawned: { ...spawned }, lifeSpawned: { ...lifeSpawned }, random: lifeRandom,
   });
   return {
     game, world, life, set, U, level, step, counts, own,

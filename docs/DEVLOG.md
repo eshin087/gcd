@@ -5,6 +5,36 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-23 — The life suite's phone check made deterministic (a flaky test, no game change)
+
+**Why.** `life.mjs core.phone` asserted per level "no more spawns on the phone (sum at quality 0.5 <= sum at 1
+× 1.01 + 20)" and failed about one run in a hundred: twice in a row on PR #101's CI (Cinderwood 73706 vs 72756,
+then Foxfire 73790 vs 73021), on unchanged `main`.
+
+**Cause.** The suite counted Math.random but never seeded it, and the sets' ambience draws from it: the
+Atmosphere's 70 fireflies get their places and phases from Math.random at construction and are re-drawn into
+fx.add every frame, ~72 000 of the ~73 000 spawns on Cinderwood, Foxfire and the Grove. Which fireflies were in
+view moved the count by ~1000 per build, independently at each quality. The living world itself spawned 0
+into the shared pools in that check on every level (its letters are in its own pools), so the check
+measured only the fireflies' noise.
+
+**Changed (tests and docs only).** `tests/integration/life.mjs`: Math.random is a seeded mulberry32 behind the
+same counting wrapper, restarted from the level's seed on every `build` (`o.seed` overrides), so two builds
+of one level get the same ambience and every run the same numbers; `counts().lifeSpawned`: the spawns made
+inside `life.update` / `life.gust` / the feet. `core.phone` now asserts, with no tolerance: the creatures'
+letters (unchanged), the living world's own pools' letters summed over 45 samples (new: what the phone
+budget is for; Cinderwood 16 663 vs 31 383, the Grove 6655 vs 12 131), its spawns into the shared pools, and
+all spawns (equal at both qualities except the Obsidian Throne, 7057 vs 7062). ARCHITECTURE's life-suite
+section says so.
+
+**Verified.** `core.phone` gives the same output (md5) on every run; `life.mjs . all` 5 runs in a row, all
+passing, identical but for one wall-clock line (`steps`: "100000 surfaceAt calls in 17 / 20 ms"); `npm test` green.
+
+**Open.** None from this. A single-instant snapshot of the own pools is not a phone check (the Grove's pools
+held 202 letters at 0.5 vs 187 at 1 at the 45 s mark, while the 45-sample sum halves): sum over time.
+
+---
+
 ## 2026-11-23 — Session 87: Xin Yi reworked: drawn like the hero, kicks and flurries, a wall kick, bullets that never lock (planned by Fable, built by Opus: a lead and three agents)
 
 **What.** The owner played the merged fight (Session 82) and asked for more ASCII, faster combos, acrobatic
