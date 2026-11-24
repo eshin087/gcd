@@ -4,7 +4,6 @@
 // that up with the blow's impact). A slot with no file plays its synth fallback.
 
 export const SAMPLE_FILES = {
-  'cue-blue': [{ file: 'cue-blue-1.mp3', peak_ms: 4 }],
   'cue-red': [{ file: 'cue-red-1.mp3', peak_ms: 10 }],
   'time-red': [{ file: 'time-red-1.mp3', peak_ms: 6 }],
   'sword-light': [{ file: 'sword-light-1.mp3', peak_ms: 206 }, { file: 'sword-light-2.mp3', peak_ms: 77 }, { file: 'sword-light-3.mp3', peak_ms: 60 }],
@@ -15,4 +14,17 @@ export const SAMPLE_FILES = {
   'fist-heavy': [{ file: 'fist-heavy-1.mp3', peak_ms: 64 }, { file: 'fist-heavy-2.mp3', peak_ms: 79 }, { file: 'fist-heavy-3.mp3', peak_ms: 77 }],
   'beast-claw': [{ file: 'beast-claw-1.mp3', peak_ms: 100 }],
   'beast-tail': [{ file: 'beast-tail-1.mp3', peak_ms: 110 }],
+  'parry': [{ file: 'parry-1.mp3', peak_ms: 7 }],
+  'parry-blue': [{ file: 'parry-blue-1.mp3', peak_ms: 4 }],
+  'hurt': [{ file: 'hurt-1.mp3', peak_ms: 8 }],
+  'hit-scale': [{ file: 'hit-scale-1.mp3', peak_ms: 3 }],
+  'cut-light': [{ file: 'cut-light-1.mp3', peak_ms: 20 }],
+  'cut-heavy': [{ file: 'cut-heavy-1.mp3', peak_ms: 4 }],
+  'slam': [{ file: 'slam-1.mp3', peak_ms: 9 }],
+  'flurry-cut': [{ file: 'flurry-cut-1.mp3', peak_ms: 9 }],
+  'flurry-coil': [{ file: 'flurry-coil-1.mp3', peak_ms: 406 }],
+  'plunge-dive': [{ file: 'plunge-dive-1.mp3', peak_ms: 106 }],
+  'plunge-hit': [{ file: 'plunge-hit-1.mp3', peak_ms: 14 }],
+  'clash': [{ file: 'clash-1.mp3', peak_ms: 9 }],
+  'boss-guard': [{ file: 'boss-guard-1.mp3', peak_ms: 3 }],
 };

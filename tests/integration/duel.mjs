@@ -4358,6 +4358,53 @@ async function scenarioSfx() {
     SMP.setSfxMode('new');
     game.audio.play = play0;
   }
+
+  // the combat core against a duelist (round 2): his cloth keeps the synth hit, the blade's bite, his guard,
+  // the clash and the parry are recorded when loaded; the synth until then and with ?sfx=old
+  {
+    const A = game.audio, ctx = A.ctx, ev = game.events;
+    const { SAMPLE_FILES } = await imp('src/audio/sampleFiles.js');
+    const slots = ['parry', 'parry-blue', 'cut-light', 'clash', 'boss-guard', 'hit-scale'];
+    const keep = {};
+    const heard = [];
+    const took = [];
+    const p0 = A.play, s0 = A._sample;
+    A.play = function (n, o) { heard.push(n); return p0.call(this, n, o); };
+    A._sample = function (slot, ...a) { const ok = s0.call(this, slot, ...a); if (ok) took.push(slot); return ok; };
+    const fire = (n, d) => { heard.length = 0; took.length = 0; ctx.currentTime += 0.5; ev.emit(n, d); return `${took.join('+')}|${heard.join('+')}`; };
+    const HIT = { damage: 20, part: 'body', point: { x: 1, y: 1, z: 1 }, heavy: false, crit: false, kind: 'light', guarded: false, combo: 1, weight: 'light', shards: false };
+    const run = () => [
+      fire('player:hitDragon', HIT),
+      fire('dragon:guard', { heavy: true, deflect: false, caught: false }),
+      fire('dragon:guard', { heavy: false, deflect: true, caught: false }),
+      fire('combat:clash', { heavy: false, crush: false, counter: false, x: 0, y: 1, z: 0 }),
+      fire('player:parry', { tell: 'blue', attack: 'x', chain: 2, light: false, perfect: false, last: true, flare: false }),
+    ];
+    try {
+      const none = run();
+      assert(JSON.stringify(none) === JSON.stringify(['|hit+cut', '|guard', '|deflected', '|trade', '|parry']), `no file: a duelist's hit, guard, deflect, clash and parry play their synth (${none.join(' ')})`);
+      for (const s of slots) {
+        keep[s] = SAMPLE_FILES[s];
+        SAMPLE_FILES[s] = [{ file: `${s}-1.mp3`, peak_ms: 20 }];
+        A.samples.recs.set(`${s}-1.mp3`, { buf: ctx.createBuffer(1, 4410, 44100), off: 0, peak: 0.02 });
+      }
+      A.samples.loaded = slots.length;
+      const got = run();
+      assert(JSON.stringify(got) === JSON.stringify(['cut-light|hit', 'boss-guard|', '|deflected', 'clash|', 'parry-blue|']),
+        `loaded: a duelist's cloth keeps the synth hit (the blade's bite recorded), his guard boss-guard, his deflect the synth, the clash and the parry recorded (${got.join(' ')})`);
+      SMP.setSfxMode('old');
+      const old = run();
+      assert(JSON.stringify(old) === JSON.stringify(none), `?sfx=old with the files loaded: the synth as before (${old.join(' ')})`);
+    } finally {
+      SMP.setSfxMode('new');
+      A.play = p0;
+      A._sample = s0;
+      for (const [s, l] of Object.entries(keep)) { if (l === undefined) delete SAMPLE_FILES[s]; else SAMPLE_FILES[s] = l; }
+      A.samples.recs.clear();
+      A.samples.last.clear();
+      A.samples.loaded = 0;
+    }
+  }
   return G;
 }
 

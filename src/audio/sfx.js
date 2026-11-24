@@ -12,14 +12,14 @@ import { tuneParry } from './streakSound.js';
 //            not the pause duck; default is the sfx bus
 // `v` is a Voice (node factory whose output is v.out), `t` the start time in ctx seconds.
 
-const RX_FIRE = /burn|fire|flame|breath|blaze|inferno|ball/i;
+export const RX_FIRE = /burn|fire|flame|breath|blaze|inferno|ball/i;
 
 // the 'cut' layer's noise offset from its own stream (the seeded sims replay the AI's Math.random)
 let cseed = 0x3c6ef372;
 const crnd = () => (cseed = (Math.imul(cseed, 1664525) + 1013904223) >>> 0) / 4294967296;
 /** A landed cut per weight (player:hitDragon `weight`): the slice's band sweep f0 → f1 Hz over D s at
  *  peak a, and its ring (gain, decay s). */
-const CUT_SND = {
+export const CUT_SND = {
   light: { f0: 5200, f1: 1700, D: 0.075, a: 0.32, ring: 0.05, rd: 0.14 },
   sweep: { f0: 4800, f1: 1500, D: 0.09, a: 0.34, ring: 0.055, rd: 0.16 },
   point: { f0: 6200, f1: 2600, D: 0.06, a: 0.3, ring: 0.06, rd: 0.12 },
@@ -28,6 +28,38 @@ const CUT_SND = {
   execute: { f0: 5600, f1: 1200, D: 0.12, a: 0.45, ring: 0.1, rd: 0.3 },
 };
 const CUT_STEP = [1, 1.0595, 1.1225, 1.189, 0.84]; // a semitone up each hit of the chain; the finisher drops
+/** The cut's pitch (x) for its opts: the chain's step (CUT_STEP by combo) and the ±2 % of alternate cuts
+ *  (the recorded cut-light / cut-heavy play at this rate: audio.js). */
+export function cutPitch(o) {
+  return CUT_STEP[((((num(o.combo, 1) | 0) - 1) % 5) + 5) % 5] * (o.alt ? 1.02 : 0.98);
+}
+
+/** The parry clang's base pitch (Hz) for its opts (draws ONE value from the audio stream: the parry recipe's
+ *  first draw, so the synth's sequence is unchanged): tell blue 740 else 880, two semitones up per deflect
+ *  of the chain (or the streak's scale, opts.tune), a fifth higher for a returned bullet (perfect). */
+function parryF0(o) {
+  const big = o.tell === 'blue', pf = !!o.perfect;
+  const ch = clamp(Math.round(num(o.chain, 1)), 1, 8);
+  const up = Math.pow(2, ((ch - 1) * 2) / 12) * (pf ? 1.5 : 1); // +2 semitones per deflect; perfect: +a fifth
+  const base = big ? 740 : 880, jit = rnd(0.98, 1.02);
+  // the streak's sound on (streakSound.js): the chain climbs the scale of the playing track instead
+  // of whole tones (a quarter of the jitter, so it stays in tune)
+  return o.tune ? tuneParry(o.tune, base, ch) * (pf ? 1.5 : 1) * (1 + (jit - 1) * 0.25) : base * up * jit;
+}
+/** The perfect parry of a blade (opts.perfectMelee): a sharper crack and a high bright bell that rings
+ *  through the slow motion, its ring × opts.ring (perfectMode(): sharp 0.55, cinema 1.6). */
+function parryPerfectLayer(v, t, f0, rk) {
+  burst(v, t, 'white', 'highpass', 5200, 1.2, 0.45, 0.03 * Math.min(1, rk), 0.0004);
+  ping(v, t + 0.003, 'sine', f0 * 3, 0.08, 1.3 * rk, 0.001);
+  ping(v, t + 0.003, 'triangle', f0 * 4.5, 0.035, 0.9 * rk, 0.001);
+}
+/** A crit's bright metallic ring (over 'hit'). */
+function critRing(v, t) {
+  for (const [f, a, d] of [[2093, 0.12, 0.35], [3136, 0.08, 0.25], [4699, 0.05, 0.18]]) {
+    ping(v, t + 0.005, 'sine', f * rnd(0.99, 1.01), a, d);
+  }
+  burst(v, t + 0.003, 'white', 'highpass', 6000, 0.7, 0.18, 0.12, 0.001);
+}
 
 // --- shared building blocks ---------------------------------------------------------------
 
@@ -226,7 +258,7 @@ export const SFX = {
     play(v, t, o) {
       const heavy = !!o.heavy;
       const D = o.thrust ? 0.5 : heavy ? 0.42 : 0.24;
-      const c = 1 + ((num(o.combo, 0) | 0) % 3) * 0.07;
+      const c = 1 + clamp((num(o.combo, 1) | 0) - 1, 0, 4) * 0.035; // every cut of the chain a step higher (1..5)
       const lo = heavy ? 300 : 650;
       const hi = (heavy ? 1500 : 2900) * c * rnd(0.92, 1.08);
       const bp = swish(v, t, 'white', 'bandpass', lo, heavy ? 1.1 : 1.6, [[0, 0], [D * 0.4, heavy ? 0.75 : 0.6], [D, 0]]);
@@ -303,12 +335,14 @@ export const SFX = {
         q.connect(hp).connect(qg).connect(v.out);
       }
       // a bright metallic ring for crits (every landed cut rings in its own 'cut' layer)
-      if (crit) {
-        for (const [f, a, d] of [[2093, 0.12, 0.35], [3136, 0.08, 0.25], [4699, 0.05, 0.18]]) {
-          ping(v, t + 0.005, 'sine', f * rnd(0.99, 1.01), a, d);
-        }
-        burst(v, t + 0.003, 'white', 'highpass', 6000, 0.7, 0.18, 0.12, 0.001);
-      }
+      if (crit) critRing(v, t);
+    },
+  },
+  /** A crit's ring alone: over the recorded hit-scale (audio.js), which has none of its own. */
+  hitCrit: {
+    prio: 3, rev: 0.12, gap: 0.04,
+    play(v, t) {
+      critRing(v, t);
     },
   },
 
@@ -351,6 +385,13 @@ export const SFX = {
       }
       gg.connect(v.out);
       if (RX_FIRE.test(String(o.kind || ''))) swish(v, t, 'white', 'highpass', 3500, 0.7, [[0, 0], [0.02, 0.2], [0.5, 0]]);
+    },
+  },
+  /** A burn's hiss alone (the synth hurt's fire layer): over the recorded hurt when fire struck (audio.js). */
+  hurtFire: {
+    prio: 4, rev: 0.1, gap: 0.08,
+    play(v, t) {
+      swish(v, t, 'white', 'highpass', 3500, 0.7, [[0, 0], [0.02, 0.2], [0.5, 0]]);
     },
   },
 
@@ -623,10 +664,7 @@ export const SFX = {
       const ch = clamp(Math.round(num(o.chain, 1)), 1, 8);
       const up = Math.pow(2, ((ch - 1) * 2) / 12) * (pf ? 1.5 : 1); // +2 semitones per deflect; perfect: +a fifth
       // struck steel: inharmonic partials, instant attack, ringing decay (+ a detuned twin = beating)
-      const base = big ? 740 : 880, jit = rnd(0.98, 1.02);
-      // the streak's sound on (streakSound.js): the chain climbs the scale of the playing track instead
-      // of whole tones (a quarter of the jitter, so it stays in tune)
-      const f0 = o.tune ? tuneParry(o.tune, base, ch) * (pf ? 1.5 : 1) * (1 + (jit - 1) * 0.25) : base * up * jit;
+      const f0 = parryF0(o);
       // a single perfect parry's ring per perfectMode() (sharp: tighter, cinema: a longer tail; today: 1)
       const rk = num(o.ring, 1);
       for (const [r, a, d] of [[1, 0.2, 0.7], [1.006, 0.1, 0.8], [2.32, 0.15, 0.55], [3.7, 0.11, 0.4], [5.1, 0.08, 0.3], [6.9, 0.05, 0.22]]) {
@@ -642,12 +680,8 @@ export const SFX = {
         ping(v, t, 'sine', f0 * 0.5, 0.12 * k, 0.9 * len, 0.001);
         burst(v, t, 'pink', 'lowpass', 1400, 0.8, 0.4 * k, 0.12);
       }
-      if (o.perfectMelee) {
-        // perfect: a sharper crack and a high bright bell that rings through the slow motion
-        burst(v, t, 'white', 'highpass', 5200, 1.2, 0.45, 0.03 * Math.min(1, rk), 0.0004);
-        ping(v, t + 0.003, 'sine', f0 * 3, 0.08, 1.3 * rk, 0.001);
-        ping(v, t + 0.003, 'triangle', f0 * 4.5, 0.035, 0.9 * rk, 0.001);
-      }
+      // perfect: a sharper crack and a high bright bell that rings through the slow motion
+      if (o.perfectMelee) parryPerfectLayer(v, t, f0, rk);
       if (ch >= 2) {
         // the chain's ring: a high bell on the clang's pitch, longer and brighter as it climbs
         const a = 0.05 + 0.012 * Math.min(6, ch);
@@ -676,6 +710,15 @@ export const SFX = {
         const bp = swish(v, t, 'white', 'bandpass', 3000, 2, [[0, 0], [0.05, 0.12], [0.6, 0]]);
         glide(bp.frequency, t, 3000, 9000, 0.6);
       }
+    },
+  },
+
+  /** The perfect parry's own layer alone (parry's opts.perfectMelee block, its pitch from the same opts):
+   *  over the recorded parry-blue (audio.js _parry), the crack and the high bell, ring × opts.ring. */
+  parryPerfect: {
+    prio: 6, rev: 0.4, gap: 0.06,
+    play(v, t, o) {
+      parryPerfectLayer(v, t, parryF0(o), num(o.ring, 1));
     },
   },
 

@@ -71,6 +71,7 @@ export const STREAK_SOUND = {
   timbre: 'guqin', // TIMBRES key
   lo: 233, // Hz: the climb's tonic is put in [lo, 2 lo) (Bb3 .. A4): two octaves up stays under ~1.9 kHz
   gain: 0.075, // a climb note's peak (each voice), before streakK
+  parryGain: 0.5, // x on a parry's climb note (the owner, combat sounds round two: "quieter" under the steel)
   growth: 0.2, // the note's level rises this much (x) from streak 1 to 15
   rev: 0.22, // reverb send
   bright: 0.3, // the held top note's extra partial at full brightness (x the note)
@@ -333,7 +334,7 @@ export class StreakSound {
     const pm = perfectSound();
     const T = TIMBRES[S.timbre] || TIMBRES.guqin;
     const f = this.climbHz(n);
-    const lvl = S.gain * k * (1 + S.growth * clamp((n - 1) / 14, 0, 1));
+    const lvl = S.gain * k * (1 + S.growth * clamp((n - 1) / 14, 0, 1)) * (kind === 'parry' ? S.parryGain : 1);
     const v = this._voice(1, S.rev * (pm ? (pm.ring < 1 ? 0.5 : 1.6) : 1));
     if (!v) return false;
     const t = E.ctx.currentTime + 0.006;
@@ -436,12 +437,14 @@ export class StreakSound {
     const sc = this.scale();
     const off = Math.max(0, streakTier(this.count) - 2);
     const deg = Math.min(S.cutTop, n - 1 + off);
-    const f = nearest(this.currentKey().tonic, S.cutHi) * Math.pow(2, degreeSemis(sc, deg) / 12);
+    const base = nearest(this.currentKey().tonic, S.cutHi);
+    const f = base * Math.pow(2, degreeSemis(sc, deg) / 12);
     const fast = n > 1 && now - this.cutAt < S.fastCut;
     if (fast) this._sweepTo(f, this.cutF, now);
     this.cutAt = now;
     this.cutF = f;
-    return { n, f, fast };
+    // (base: the scale's first cut, degree 0: the recorded flurry-cut rises by f / base)
+    return { n, f, fast, base };
   }
 
   /** The merged sweep: one voice whose pitch glides up to each new cut. */
