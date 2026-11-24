@@ -8,6 +8,9 @@ import { HERO_ART } from './materials.js';
 import { LET_GO_GLSL, letGoUniforms } from './letGo.js';
 import { RIPPLE } from './impactRipple.js';
 
+/** The time rip's live cuts at once (player/timeRip.js; the ASCII pass's uCutA / uCutB size). */
+const CUT_SLOTS = 2;
+
 // Frame pipeline:
 //   0. one scene-graph matrix update, then the rigid batches' bone matrices (rigidBatch.js)
 //   1. moon shadow map  (casters = objects on LAYER_CASTER, then the batched actors' shadow
@@ -362,6 +365,15 @@ export class Pipeline {
         uRipC: { value: Array.from({ length: RIPPLE.slots }, () => new THREE.Vector4()) },
         uRip: { value: new THREE.Vector4(0, 0, 6, 0) },
         uRip2: { value: new THREE.Vector4() },
+        // THE TIME RIP (player/timeRip.js; ?rip=strip | negative): a flash cut's thin band of the
+        // printed letters, for two or three frames. uCutN = live cuts (0: the pass reads nothing); per
+        // cut uCutA = its two ends (frame px, y up), uCutB = (1 strip | 2 negative, the band's
+        // half-width in art cells, the strip's shift in cells, the negative's weight); uCutTone = the
+        // negative's pale cell (rgb) and how hard a lit letter darkens it (all set by TimeRip.write)
+        uCutN: { value: 0 },
+        uCutA: { value: Array.from({ length: CUT_SLOTS }, () => new THREE.Vector4()) },
+        uCutB: { value: Array.from({ length: CUT_SLOTS }, () => new THREE.Vector4()) },
+        uCutTone: { value: new THREE.Vector4(0.5, 0.55, 0.62, 1.6) },
         uTime: U.uTime ?? { value: 0 },
         // LETTING GO (letGo.js): the dying wyrm's letters let go cell by cell and fall; shared with
         // its materials (uWyrmGrid: the art cell and the grid anchor; uWyrmLetGo.x: 0 = off)
@@ -485,6 +497,10 @@ export class Pipeline {
         uniform vec4 uRipC[${RIPPLE.slots}];
         uniform vec4 uRip;
         uniform vec4 uRip2;
+        uniform float uCutN;
+        uniform vec4 uCutA[${CUT_SLOTS}];
+        uniform vec4 uCutB[${CUT_SLOTS}];
+        uniform vec4 uCutTone;
         uniform float uTime;
         uniform vec4 uLetGoInk;
         ${LET_GO_GLSL}
@@ -501,6 +517,10 @@ export class Pipeline {
         // (0 '-', 1 '/', 2 '|', 3 '\\') the cell prints along the front, -1 none
         vec4 gRip = vec4(0.0);
         float gRipS = -1.0;
+        // the time rip (uCutN > 0 only, cutBand): gCutPx = the pixel this one prints (a strip's band
+        // reads the letters a few whole cells along the cut), gCutNeg = how far it prints in negative
+        vec2 gCutPx = vec2(0.0);
+        float gCutNeg = 0.0;
 
         float hash12(vec2 p) {
           vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -983,8 +1003,34 @@ export class Pipeline {
           return drew;
         }
 
+        // ---- the time rip (timeRip.js): is this pixel's art cell in a live cut's band? Measured in
+        // cells (5 x 8) from the cell's centre to the cut's segment; a strip moves what the band
+        // prints by whole cells along the cut, each side the other way (the cells ON the line stay:
+        // the seam is the fire field's steel); a negative marks the band.
+        void cutBand(vec2 px) {
+          vec2 c = floor(px / uArtCell) + 0.5;
+          for (int i = 0; i < ${CUT_SLOTS}; i++) {
+            if (float(i) >= uCutN) break;
+            vec4 A = uCutA[i];
+            vec4 B = uCutB[i];
+            vec2 a = A.xy / uArtCell, ab = A.zw / uArtCell - a;
+            float L2 = dot(ab, ab);
+            if (L2 < 0.25) continue;
+            float t = dot(c - a, ab) / L2;
+            if (t < 0.0 || t > 1.0) continue;
+            float L = sqrt(L2);
+            vec2 dir = ab / L;
+            float s = dot(c - a, vec2(-dir.y, dir.x));
+            if (abs(s) > B.y) continue;
+            if (B.x < 1.5) {
+              if (abs(s) < 0.5) continue;
+              gCutPx = px - floor(dir * B.z * sign(s) + 0.5) * uArtCell;
+            } else gCutNeg = max(gCutNeg, B.w);
+          }
+        }
+
         void cellMain() {
-          vec2 px = gl_FragCoord.xy;
+          vec2 px = gCutPx;
           // the hero first: his own pixel-font grid, drawn as ink-line art. The player on the grid
           // that follows his size (only the box round him is searched), then the human bosses on theirs
           vec2 dS = abs(px - uSelfBox.xy);
@@ -1200,8 +1246,15 @@ export class Pipeline {
         }
 
         void main() {
+          gCutPx = gl_FragCoord.xy;
+          if (uCutN > 0.5) cutBand(gCutPx);
           cellMain();
           if (uWyrmLetGo.x > 0.0) letGoFall();
+          // the time rip's negative: the letters dark on a pale steel cell (the band only)
+          if (gCutNeg > 0.0) {
+            vec3 ink = uCutTone.rgb * clamp(1.0 - luma(gl_FragColor.rgb) * uCutTone.w, 0.0, 1.0);
+            gl_FragColor.rgb = mix(gl_FragColor.rgb, ink, clamp(gCutNeg, 0.0, 1.0));
+          }
         }
       `,
       depthTest: false,
@@ -1552,6 +1605,16 @@ export class Pipeline {
         this.ripple = null;
       }
     }
+    // the time rip's live cuts (strip / negative), projected with the same camera (setTimeRip)
+    if (this.timeRip) {
+      try {
+        this.timeRip.write(this);
+      } catch (err) {
+        u.uCutN.value = 0;
+        console.error('[timeRip] write failed', err);
+        this.timeRip = null;
+      }
+    }
     // (the wyrm's grid anchor: _updateWyrmGrid, before the scene pass)
     // the props' grid anchor: where the world's ground origin would be on screen if the whole ground
     // moved like the ground at the focus (the screen position of the focus, minus the focus's world
@@ -1588,6 +1651,12 @@ export class Pipeline {
   setRipple(ripple) {
     this.ripple = ripple ?? null;
     if (!this.ripple) this.asciiMat.uniforms.uRipN.value = 0;
+  }
+
+  /** The time rip (player/timeRip.js; null: none): its write(pipeline) fills uCutN / uCutA / uCutB right before the ASCII pass. */
+  setTimeRip(rip) {
+    this.timeRip = rip ?? null;
+    if (!this.timeRip) this.asciiMat.uniforms.uCutN.value = 0;
   }
 
   /** The fire field (render/fireField.js): its heat passes run after the scene pass, its letters draw first in the FX pass. */
