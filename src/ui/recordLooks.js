@@ -4,19 +4,21 @@ import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
 import { formatTime } from '../game/records.js';
 
 // How a grade and a best are shown (ADR-179): taste calls, so each has options behind a URL switch,
-// like the other look switches; the owner has NOT picked yet (2026-11-23). docs/looks/records/ (grade-options.jpg, title-options.jpg).
+// like the other look switches. The owner picked from the rendered sheets (2026-11-24): grade a, title b;
+// the other options stay behind their switches. docs/looks/records/ (grade-options.jpg, title-options.jpg).
 //
 //   ?gradeLook=  the record screen's grade
-//     a  the grade in block letters over the panel, the time, the marks and the bests under it (shipped)
+//     a  the grade in block letters over its time, marks and the best before (the owner's pick)
 //     b  the grade beside its lines: block letters on the left, time / marks / bests on the right
 //     c  the grade in the banners' plain '#' letters, the time beside it on one line
 //   ?recLook=    the title's best under each level
-//     a  a small line under each stage button: the grade and the best time (shipped)
+//     a  a small line under each stage button: the grade and the best time
 //     b  the grade inside the button after the name; the time on a small second line in the button
+//        (the owner's pick)
 //     c  one line under the picker for the stage the mouse / pad is on (the current one otherwise)
 
 export const GRADE_LOOK_DEFAULT = 'a';
-export const REC_LOOK_DEFAULT = 'a';
+export const REC_LOOK_DEFAULT = 'b';
 const OPTS = ['a', 'b', 'c'];
 
 export const gradeLookNow = () => {

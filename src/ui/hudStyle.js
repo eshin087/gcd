@@ -702,11 +702,16 @@ const CSS = `
 .ab-rec-head.g-c .ab-rec-side { text-align: left; }
 .ab-rec-head.g-c .ab-rec-time { font-size: 17px; }
 /* with a grade: the grade on the left, the rows beside it in two columns (no taller than the rows were) */
-.ab-stats.has-head { width: auto; max-width: 94vw; display: flex; align-items: center; gap: 22px; padding: 10px 18px 11px; }
+/* (centred by margins, not left: 50% + a shift: a box at left: 50% may only grow to half the screen,
+   and its right column spilled past the border; the panel takes its rows' width, at most the screen's,
+   and a label too long for what is left is cut short with an ellipsis, never drawn outside) */
+.ab-stats.has-head { left: 0; right: 0; margin: 0 auto; transform: none; width: max-content; max-width: 94vw; box-sizing: border-box; display: flex; align-items: center; gap: 22px; padding: 10px 18px 11px; }
 .ab-stats.has-head .ab-rec-head { flex: 0 0 auto; margin: 0; }
 .ab-stats.has-head .ab-rec-rows { flex: 1 1 auto; min-width: 0; }
-.ab-stats.has-head .ab-stats-body { display: grid; grid-template-columns: auto auto; column-gap: 22px; }
-.ab-stats.has-head .row { gap: 12px; white-space: nowrap; }
+.ab-stats.has-head .ab-stats-body { display: grid; grid-template-columns: repeat(2, minmax(0, auto)); column-gap: 22px; }
+.ab-stats.has-head .row { gap: 12px; white-space: nowrap; min-width: 0; }
+.ab-stats.has-head .row .k { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ab-stats.has-head .row .v { flex: 0 0 auto; }
 
 /* ---------- help + hint ---------- */
 .ab-help {
@@ -971,6 +976,10 @@ html.abyss-pad .kb-only, html.abyss-pad .tp-only { display: none !important; }
   .ab-touch .ab-title { padding-top: 0; }
   .ab-touch .ab-logo { font-size: clamp(8px, 1.45vw, 15px); }
   .ab-touch .ab-title-rule { margin-top: 8px; }
+  /* the stage picker with each best (ADR-179): tighter buttons, so eight levels and the rush keep to two rows */
+  .ab-touch .ab-stage { gap: 6px; margin-top: 10px; }
+  .ab-touch .ab-stage .ab-btn { min-height: 0; margin: 0; font-size: 9.5px; letter-spacing: 0.1em; padding: 4px 8px; }
+  .ab-touch .ab-stage .ab-stage-time, .ab-touch .ab-stage .ab-stage-best { margin-top: 1px; font-size: 8.5px; }
   .ab-touch .ab-title-sub { margin-top: 6px; font-size: 10px; }
   .ab-touch .ab-press { margin-top: 16px; }
   .ab-touch .ab-title-ctrl { margin-top: 10px; font-size: 9.5px; line-height: 17px; }

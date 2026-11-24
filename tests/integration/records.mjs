@@ -4,6 +4,7 @@
 // the DOM shim. Storage is a Map-backed mock (localStorage and sessionStorage: injectable everywhere).
 // usage: node records.mjs <repoRoot> [scenario]
 //   scenario: grade | store | rush | eligible | flow | screens | all
+import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { ui, resetWindow } from './shim.mjs';
 
@@ -448,7 +449,7 @@ SCENARIOS.flow = () => {
 };
 
 // ---------------------------------------------------------------- the screens: the title's bests, the grade
-SCENARIOS.screens = () => {
+SCENARIOS.screens = async () => {
   out('\n== scenario SCREENS (the title shows each best and the rush; the record shows the grade) ==');
   const text = (n) => n.textContent;
   for (const look of ['a', 'b', 'c']) {
@@ -484,6 +485,24 @@ SCENARIOS.screens = () => {
     assert(t.includes('█') || t.includes('#'), `grade look ${look}: the grade in block letters`);
     assert(t.includes('1:23.45') && t.includes('NEW BEST') && t.includes('DEATHLESS') && t.includes('B 1:40.00') && t.includes('Fight time'), `grade look ${look}: the time, NEW BEST, the marks, the best before and today's rows`);
   }
+  // the owner's picks (2026-11-24) ship with no parameter: the grade a, the title b
+  const { gradeLookNow, recLookNow } = await imp('src/ui/recordLooks.js');
+  assert(gradeLookNow() === 'a' && recLookNow() === 'b', `the shipped looks are the owner's picks: grade ${gradeLookNow()}, title ${recLookNow()}`);
+  const T0 = new TitleScreen(ui, true, { levels: LEVELS.map((L) => ({ id: L.id, name: L.name })), current: 'cinderwood', pick() {} }, null, { bestFor: (id) => (id === 'ash' ? { grade: 'S', marks: [], timeMs: 83456, clears: 1 } : null), startRush() {} });
+  const ash0 = T0.stageButtons.find((b) => b.dataset.level === 'ash');
+  assert(T0.recLook === 'b' && ash0.find((n) => n.classList?.contains('ab-stage-grade')) && text(ash0).includes('1:23.45'), `with no parameter the title draws look b: the grade in the button (${text(ash0)})`);
+  // the record panel's overflow (2026-11-24, the owner's report: "Total time", "Flasks used" outside
+  // the border at 852 x 393 and on narrower desktops; measured in a browser, 5 - 31 px out): its cause
+  // was a panel at left: 50% (a box there may only grow to half the screen) whose two columns did not
+  // fit. Layout cannot be measured headless, so this guards the fix's rule itself: the panel with a
+  // grade is centred by margins at its rows' width (at most the screen's), and a label that does not
+  // fit is cut with an ellipsis. (The browser check, every row inside the border at 1280 x 720,
+  // 1024 x 640, 1600 x 900, 852 x 393 and 393 x 852 for every grade look: ADR-179.)
+  const css = fs.readFileSync(`${ROOT}/src/ui/hudStyle.js`, 'utf8');
+  const rule = (sel) => (css.match(new RegExp(`^${sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} \\{([^}]*)\\}`, 'm')) ?? [])[1] ?? '';
+  const head = rule('.ab-stats.has-head');
+  assert(/left: 0;/.test(head) && /transform: none;/.test(head) && /width: max-content;/.test(head) && /max-width: 94vw;/.test(head), `the record panel with a grade is centred by margins at its rows' width, at most the screen's (${head.trim().slice(0, 90)}...)`);
+  assert(/minmax\(0, auto\)/.test(rule('.ab-stats.has-head .ab-stats-body')) && /text-overflow: ellipsis;/.test(rule('.ab-stats.has-head .row .k')), "its columns may shrink and a label that does not fit is cut short, never drawn past the border");
 };
 
 globalThis.__lookMod = await imp('src/entities/enemies/duelist/lookSwitch.js');
