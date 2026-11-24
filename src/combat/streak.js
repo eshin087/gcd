@@ -6,7 +6,9 @@
 //   storm    the flurry accelerates: its first cuts are shown, each later one comes faster, the last
 //            land almost at once; the whole flurry stays short however long the streak (player/flurry.js).
 //            Its tempo (STREAK_FX.tempo; ?tempo=0 off): the first cut a heavy beat, each later one a
-//            share of the one before (DEFENSE.flurry.tempo); off = the storm of ADR-167 exactly
+//            share of the one before (DEFENSE.flurry.tempo); off = the storm of ADR-167 exactly.
+//            Its chain (STREAK_FX.chain; ?chain=0 off): the passes run A -> B -> C, each from where
+//            the one before ended, every slash on the path he ran (DEFENSE.flurry.chain)
 //   tiers    past the flurry's 7 blows a longer streak LOOKS grander at each tier: the flurry's cuts
 //            and its last blow, the banner's name (player/flurryFx.js, ui/)
 //   aura     the streak shows on the hero and his blade between flurries (player/streakFx.js)
@@ -67,6 +69,11 @@ export const STREAK_FX = {
   /** The storm's tempo (DEFENSE.flurry.tempo): heavy first, then faster by ratio. false (?tempo=0) =
    *  the storm's pace of ADR-167 exactly. Only with the storm piece on; read as a flurry starts. */
   tempo: q('tempo') !== '0',
+  /** The flurry's path chains (DEFENSE.flurry.chain): every pass starts where the one before ended,
+   *  every slash drawn lies on the path he ran, the last blow's 'A' shards are white-steel letter
+   *  dust. false (?chain=0) = the ring-teleport paths, the crescents and the shards exactly as before.
+   *  Read as a flurry starts. */
+  chain: q('chain') !== '0',
 };
 
 /** A piece's strength (0 when it is off). */

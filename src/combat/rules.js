@@ -195,6 +195,39 @@ export const DEFENSE = Object.freeze({
       ratio: [0.78, 0.52],
       stormAt: 0.4,
     },
+    // THE CHAIN (STREAK_FX.chain, on by default, ?chain=0 off: the ring-teleport paths above exactly):
+    // every pass starts where the one before ended (A -> B -> C, never back to the start). The first
+    // cut starts on the side he dodged on (`reach` out, as before); each pass then runs from where he
+    // stands past the target, `off` m off its middle (on the ground past his side; round the head
+    // across it), on out to `reach` beyond it. The whole run is planned as the flurry starts (a
+    // depth-first search over both sides x the `off` candidates of every cut, pruned by its bound, at
+    // most `nodes` steps). Its score: the lines' spread (the smallest |sin| between two of them, the
+    // wyrm's neck kept clear as before; counted up to `gap`: past it a star is a star), less `near`
+    // for a pass that ends within `keepOff` m of his dodge spot (never back to the start), `artNear`
+    // if the art on the ground would end there too, `artNeck` if round the head the iai would run
+    // along the neck (its coil then carries him round the head to where it does not), `same` for a turn the other way (a zigzag lays lines side by side); plus
+    // `front` when on the ground the last flash cut ends before the foe's face (the art through him
+    // then leaves the hero at his back, as before).
+    // The first cut may start `start` rad round from straight toward the dodge spot (still on his
+    // side), whichever spreads the star best (round the head the neck takes a place in it).
+    // A run of 2, 4 or 6 flash cuts whose lines spread cannot also end before his face: the art then
+    // leaves the hero past the foe on his front side. The art starts where the last cut ended: the iai from there, the split
+    // rises from there, the vault steps in from there (during its coil). Every hanging line is the
+    // path his chest ran (CHEST m over his root); the flash cuts' crescents and the iai's lens are gone
+    // (the line is the slash), the split's / vault's crescent follows his blade's sampled path, the
+    // ground's last blow throws white-steel letter dust (flurryFx.js DUST) instead of the 'A' shards.
+    chain: {
+      off: { ground: [0.55, 0.67, 0.79, 0.9], air: [0.85, 0.95, 1.05, 1.15] },
+      start: [0, 0.2, -0.2, 0.4, -0.4],
+      nodes: 8000,
+      gap: 0.45,
+      keepOff: 1.6,
+      near: 1,
+      artNear: 0.1,
+      artNeck: 0.15,
+      front: 0.05,
+      same: 0.04,
+    },
     last: { damage: 60, posture: 22 },
     keepStreak: 0,
   },

@@ -101,6 +101,22 @@ export class Flurry {
     this.stormK = 0; // streakK('storm'): 0 = every cut paced as before the storm
     this.tempo = false; // the storm's tempo (STREAK_FX.tempo, with the storm on): heavy first, then by ratio
     this._r = 1; // the tempo's ratio for this flurry
+    // the chain (STREAK_FX.chain, DEFENSE.flurry.chain): every pass starts where the one before ended
+    this.chain = false;
+    this._planS = new Int8Array(F.max + 1); // the chain's plan: each flash cut's side (+1 / -1) ...
+    this._planOff = new Float32Array(F.max + 1); // ... and how far off the target's middle it passes (m)
+    this.planGap = 1; // the plan's smallest |sin| between two of its lines (tests)
+    this._planA0 = NaN; // the plan: the angle round the target the first cut starts at
+    this.planNodes = 0; // the plan's search steps (tests)
+    this._pa = new Float64Array(F.max + 1); // the search's path: each line's heading, side, off
+    this._ps = new Int8Array(F.max + 1);
+    this._po = new Float64Array(F.max + 1);
+    this.C0 = new THREE.Vector3(); // where an art's coil starts (with the chain: where the last cut ended)
+    this._artChain = false; // this art runs from where the last cut ended (the chain, N > 1)
+    this._from = { ox: 0, oz: 0 }; // the plunge's "came from" with the chain: where he is
+    this._sw = new Float32Array(3 * 12); // an art's blade path through its strike (the chain's crescent)
+    this._swN = 0;
+    this._q = new THREE.Vector3();
     this.lastHitT = -1; // the real clock at the last blow (the gap the HUD and the sound are told)
     this.clock = 0; // s (real) since the flurry started
     this._seq = 0; // counts phase changes (the storm runs on through a frame while phases end)
@@ -239,6 +255,9 @@ export class Flurry {
     this.tempo = this.stormK > 0 && STREAK_FX.tempo !== false;
     // (the tempo's ratio: the more cuts it paces, the faster each falls off the one before)
     this._r = lerp(TP.ratio[0], TP.ratio[1], clamp((this._paced() - 2) / 4, 0, 1));
+    this.chain = STREAK_FX.chain !== false;
+    this.fx.chain = this.chain;
+    this._swN = 0;
     this.clock = 0;
     this.lastHitT = -1;
     this.fx.setTier(this.tier, streakK('tiers'));
@@ -246,6 +265,7 @@ export class Flurry {
     this.tell = tell;
     this.ox = p.x;
     this.oz = p.z;
+    if (this.chain) this._planChain();
     this.on = true;
     this.pending = true;
     this.fx.pull = this.air ? AIR_PULL : 0;
@@ -662,6 +682,14 @@ export class Flurry {
       this._bail();
       return;
     }
+    if (this.chain) {
+      if (!this._chainPath()) {
+        this._bail();
+        return;
+      }
+      this._cutStarts();
+      return;
+    }
     const a = this._nextAngle();
     this.ang = a;
     const dx = Math.sin(a), dz = Math.cos(a);
@@ -709,6 +737,148 @@ export class Flurry {
     L.by = this.air ? B.y + CHEST : lineY;
     L.k = 0;
     L.last = false;
+    this._cutStarts();
+  }
+
+  /** The chain (DEFENSE.flurry.chain): this pass's path → A, B, its heading → d, him at A facing B,
+   *  its hanging line the path his chest runs. The first starts on the side he dodged on (as before),
+   *  every later one where he stands: where the last one ended. False: no finite path. */
+  _chainPath() {
+    const P = this.p, p = P.position, g = P.game, T = this.T, A = this.A, B = this.B;
+    const R = this.air ? F.reach.air : G.reach, cy = T.y - CHEST;
+    if (this.nLines === 0) {
+      const a = Number.isFinite(this._planA0) ? this._planA0 : this._offNeck(Math.atan2(this.ox - T.x, this.oz - T.z));
+      A.set(T.x + Math.sin(a) * R, 0, T.z + Math.cos(a) * R);
+      if (this.air) A.y = Math.max(MIN_Y, cy + lerp(0.3, 1.2, P.anim.noise()));
+      else g.world?.resolve?.(A, P.radius, CONFIG.world.playerBound, false, 'hero');
+    } else A.copy(p);
+    if (!this.air) A.y = 0;
+    this._chainExit(A, B, R);
+    // (round the head each pass climbs or dives a little: it ends above the middle, then below, ...)
+    B.y = this.air ? Math.max(MIN_Y, cy + (this.i % 2 ? 1 : -1) * lerp(0.3, 1.2, P.anim.noise())) : 0;
+    if (!Number.isFinite(A.x + A.y + A.z + B.x + B.y + B.z)) return false;
+    const ex = B.x - A.x, ez = B.z - A.z, el = Math.hypot(ex, ez);
+    if (el > 1e-3) {
+      this.d.x = ex / el;
+      this.d.z = ez / el;
+    }
+    this.ang = Math.atan2(-this.d.x, -this.d.z);
+    p.copy(A);
+    P.yaw = Math.atan2(this.d.x, this.d.z);
+    // (the slash he leaves: exactly the path his chest runs, A to B, CHEST m over his root)
+    this._line(A, B, CHEST);
+    return true;
+  }
+
+  /**
+   * The chain's plan, made as the flurry starts (DEFENSE.flurry.chain): where round the target the
+   * first cut starts, and for every flash cut the side it passes the target on (+1 / -1) and how far
+   * off its middle (m) -> this._planA0 / _planS / _planOff. A depth-first search over the whole run
+   * (the target where it stands now, every pass from `reach` out to `reach` out beyond it), pruned
+   * by its bound (the spread only shrinks and the costs only grow as cuts are added), at most
+   * `nodes` steps: the lines spread like a star as widely as they can (the wyrm's neck kept clear), no
+   * pass ends near his dodge spot, on the ground the art then not either and the last cut ends before
+   * the foe's face, the turns keep their way. Once a flurry, never a frame of its own; no allocation
+   * past the closures below.
+   */
+  _planChain() {
+    const T = this.T, C = F.chain, offs = this.air ? C.off.air : C.off.ground, R = this.air ? F.reach.air : G.reach;
+    const n = Math.min(this.cuts, this._planS.length);
+    this._planA0 = NaN;
+    this.planGap = 1;
+    if (!(n > 0)) return;
+    const D = ARTS[this.art], toArt = D.kind !== 'return', ox = this.ox - T.x, oz = this.oz - T.z;
+    const fy = fin(this.att?.yaw, NaN), ffx = Math.sin(fy), ffz = Math.cos(fy), behind = fin(this.att?.ghostepBehind, 1.5);
+    const o0 = Math.atan2(ox, oz);
+    // (round the head the passes end about CHEST under its middle: metres over the dodge spot)
+    const dy = this.air ? Math.max(0, T.y - CHEST) : 0;
+    const k2 = C.keepOff * C.keepOff - dy * dy;
+    const near = (x, z) => (x - ox) * (x - ox) + (z - oz) * (z - oz) < k2;
+    const cap = C.gap, bonus = this.air ? 0 : C.front;
+    // (the neck's heading, once: _neckGap's, inlined)
+    const ap = this.att?.position, nx = ap ? ap.x - T.x : 0, nz = ap ? ap.z - T.z : 0;
+    const hasNeck = this.air && !!ap && Number.isFinite(nx + nz) && nx * nx + nz * nz >= 1, neck = hasNeck ? Math.atan2(nx, nz) : 0;
+    const A = this._pa, S = this._ps, O = this._po;
+    let best = -Infinity, nodes = 0;
+    const take = (a0, gap, pen) => {
+      const sc = Math.min(gap, cap) - pen + 0.01 * gap;
+      if (!(sc > best + 1e-9)) return;
+      best = sc;
+      this._planA0 = a0;
+      this.planGap = gap;
+      for (let k = 0; k < n; k++) {
+        this._planS[k] = S[k];
+        this._planOff[k] = O[k];
+      }
+    };
+    const dfs = (k, x, z, a0, gap, pen, turn) => {
+      if (nodes++ > C.nodes) return;
+      const r = Math.max(0.3, Math.hypot(x, z)), base = Math.atan2(-x, -z), last = k === n - 1;
+      for (let si = 0; si < 2; si++) {
+        const sg = (si ? -1 : 1) * (turn || 1); // (the same way as the last turn first)
+        for (let q = 0; q < offs.length; q++) {
+          const off = Math.min(offs[q], r * 0.85), a = base + sg * Math.asin(off / r);
+          const run = Math.sqrt(Math.max(0, r * r - off * off)) + Math.sqrt(Math.max(0, R * R - off * off));
+          const ex = x + Math.sin(a) * run, ez = z + Math.cos(a) * run;
+          let p2 = pen;
+          if (near(ex, ez)) p2 += C.near;
+          if (turn && sg !== turn) p2 += C.same;
+          let g2 = hasNeck ? Math.min(gap, Math.abs(Math.sin(a - neck))) : gap;
+          for (let j = 0; j < k; j++) g2 = Math.min(g2, Math.abs(Math.sin(a - A[j])));
+          // (the bound: nothing added later widens the spread or lowers the costs, but the front)
+          if (!(Math.min(g2, cap) - p2 + 0.01 * g2 + bonus > best + 1e-9)) continue;
+          A[k] = a;
+          S[k] = sg;
+          O[k] = offs[q];
+          if (!last) {
+            dfs(k + 1, ex, ez, a0, g2, p2, sg);
+            continue;
+          }
+          if (toArt) {
+            const el = Math.max(0.3, Math.hypot(ex, ez)), ux = -ex / el, uz = -ez / el;
+            if (!this.air) {
+              if (Number.isFinite(fy) && ex * ffx + ez * ffz > 0) p2 -= C.front;
+              if (near(ux * behind, uz * behind)) p2 += C.artNear;
+            } else if (D.kind === 'iai' && hasNeck && Math.abs(Math.sin(Math.atan2(ux, uz) - neck)) < 0.55) p2 += C.artNeck;
+          }
+          take(a0, g2, p2);
+        }
+      }
+    };
+    // (the first cut starts on the side he dodged on, turned a little either way if that spreads the
+    // star better: `start`, rad; never along the wyrm's neck)
+    for (let q = 0; q < C.start.length; q++) {
+      const a0 = this._offNeck(o0 + C.start[q]);
+      dfs(0, Math.sin(a0) * R, Math.cos(a0) * R, a0, 1, 0.001 * q, 0);
+    }
+    this.planNodes = nodes;
+  }
+
+  /** The chain: where the pass from A ends (-> out, y 0): past the target on the side and as far off
+   *  its middle as planned (_planChain), `R` m beyond it; on the ground resolved against the walls. */
+  _chainExit(A, out, R) {
+    const P = this.p, g = P.game, T = this.T, offs = this.air ? F.chain.off.air : F.chain.off.ground;
+    let tx = T.x - A.x, tz = T.z - A.z;
+    const r = Math.max(0.3, Math.hypot(tx, tz));
+    if (Math.hypot(tx, tz) > 0.3) {
+      tx /= r;
+      tz /= r;
+    } else {
+      tx = Math.sin(P.yaw);
+      tz = Math.cos(P.yaw);
+    }
+    const k = Math.min(this.i, this._planS.length - 1), sg = this._planS[k] || 1;
+    const off = Math.min(fin(this._planOff[k], offs[0]) || offs[0], r * 0.85);
+    const a = Math.atan2(tx, tz) + sg * Math.asin(off / r);
+    const run = Math.sqrt(Math.max(0, r * r - off * off)) + Math.sqrt(Math.max(0, R * R - off * off));
+    out.set(A.x + Math.sin(a) * run, 0, A.z + Math.cos(a) * run);
+    if (!this.air) g.world?.resolve?.(out, P.radius, CONFIG.world.playerBound, false, 'hero');
+    return out;
+  }
+
+  /** A flash cut's path is set (A, B, d, its line): he is there, the pass begins. */
+  _cutStarts() {
+    const A = this.A;
     this.hit = false;
     this.cloned = false;
     this.glow = 1;
@@ -745,7 +915,9 @@ export class Flurry {
     const st = final ? 0 : this._storm(this.i), w = this._weight(this.i);
     const cs = this.tempo ? lerp(S.cam, 1, w) : st > 0 ? S.cam : 1, fk = this.tempo ? lerp(S.fx, 1, w) : st > 0 ? S.fx : 1;
     const ck = (this.air ? 1 : G.kick) * cs, sk = (this.air ? 1 : G.shake) * cs; // a man is framed closer than the wyrm
-    this.fx.cut(T.x, T.y, T.z, this.d.x, this.d.z, this.i, this.n, st, st > 0 ? 1 : fk);
+    // (the chain: the bite is drawn where his blade passes the target, on the path he runs)
+    const Q = this.chain ? this._onPath(this._q) : T;
+    this.fx.cut(Q.x, Q.y, Q.z, this.d.x, this.d.z, this.i, this.n, st, st > 0 ? 1 : fk);
     if (!this.air) this.fx.ground(T.x, T.z, this.d.x, this.d.z, (0.6 + 0.6 * k) * fk);
     if (st > 0) this.fx.streak(this.A, this.p.position, CHEST, this.d.x, this.d.z);
     // weight: a kick along the cut, a punch in, the hero frozen on the contact, then a beat in which
@@ -773,6 +945,14 @@ export class Flurry {
     // (extra fields: `gap` the real seconds since the blow before, `storm` 0 a shown cut, 1, 2, ...
     // how deep into the storm)
     P._emit('player:flurryHit', { n: this.i + 1, of: this.n, last: false, damage: dealt, gap: +gap.toFixed(3), storm: this._stormStep(this.i) });
+  }
+
+  /** The point of this pass (A → B, CHEST m over his root) nearest the target (→ out). */
+  _onPath(out) {
+    const A = this.A, B = this.B, T = this.T;
+    const ex = B.x - A.x, ez = B.z - A.z, l2 = ex * ex + ez * ez;
+    const f = l2 > 1e-6 ? clamp(((T.x - A.x) * ex + (T.z - A.z) * ez) / l2, 0, 1) : 0;
+    return out.set(A.x + ex * f, A.y + (B.y - A.y) * f + CHEST, A.z + ez * f);
   }
 
   /** `damage` (final) into the target through its takeHit. Returns what was dealt. `reel`: how
@@ -809,12 +989,23 @@ export class Flurry {
       // its impact (player.js _plungeImpact → burst)
       this.on = false;
       this.hidden = false;
-      if (!P._startPlunge(this.att, false, this.attack, this.tell, true, this)) this._bail();
+      // (the chain: the plunge rises from the side of the head he is on, not the one he dodged on)
+      this._from.ox = p.x;
+      this._from.oz = p.z;
+      if (!P._startPlunge(this.att, false, this.attack, this.tell, true, this.chain ? this._from : this)) this._bail();
       return;
     }
     const att = this.att, ap = att.position, A = this.A, B = this.B, X = this.X;
     const bound = CONFIG.world.playerBound;
-    if (this.air) {
+    this.C0.copy(p);
+    // (the chain: from where the last cut ended; an art alone, N = 1, starts as it always did)
+    this._artChain = this.chain && this.cuts > 0;
+    if (this._artChain) {
+      if (!this._chainArt(D)) {
+        this._bail();
+        return;
+      }
+    } else if (this.air) {
       const pl = P.pl;
       pl.att = att;
       pl.exec = false;
@@ -865,20 +1056,116 @@ export class Flurry {
       this.d.x = -fx;
       this.d.z = -fz;
     }
-    p.copy(A);
+    // (the chain: he winds up where the last cut left him, and the coil carries him to A: the split
+    // rises to its height, the vault steps in; the iai's A is where he is)
+    if (this._artChain) p.copy(this.C0);
+    else p.copy(A);
     P.yaw = this.yaw0 = Math.atan2(this.d.x, this.d.z);
     this.hit = false;
     this.glinted = false;
     this.glow = 0;
+    this._swN = 0;
     this._appear(D.kind === 'iai' ? 'coil' : D.kind === 'split' ? 'raise' : 'crouch', D.kind === 'iai' ? 'drawCut' : D.kind === 'split' ? 'slam' : 'risingSlash', 1);
-    this.fx.appear(A.x, A.y + CHEST, A.z, this.d.x, this.d.z, this.n - 1, this.n, true);
+    this.fx.appear(p.x, p.y + CHEST, p.z, this.d.x, this.d.z, this.n - 1, this.n, true);
     this._phase(FP.COIL, D.coil);
     P._emit('player:flurryArt', { art: this.art, air: this.air, dur: D.coil });
+  }
+
+  /**
+   * The chain: the art from where the last cut ended (this.C0), on through the target, in its own
+   * shape → A (where the strike starts), B (where it ends), X (the split's contact), d. On the ground
+   * he ends past the foe (`ghostepBehind` beyond him along the line); round the head the iai runs from
+   * here through the middle, the split rises above this side and lands on the far one.
+   */
+  _chainArt(D) {
+    const P = this.p, g = P.game, T = this.T, att = this.att, ap = att.position, A = this.A, B = this.B, X = this.X, C0 = this.C0;
+    const bound = CONFIG.world.playerBound;
+    let ux = T.x - C0.x, uz = T.z - C0.z;
+    const r = Math.hypot(ux, uz);
+    if (r > 0.3) {
+      ux /= r;
+      uz /= r;
+    } else {
+      ux = this.d.x;
+      uz = this.d.z;
+    }
+    if (this.air) {
+      const pl = P.pl;
+      pl.att = att;
+      pl.exec = false;
+      pl.hit = false;
+      pl.dealt = 0;
+      pl.ox = this.ox;
+      pl.oz = this.oz;
+      P._plungePoint(att, pl.pt);
+      const cy = T.y - CHEST;
+      if (D.kind === 'iai') {
+        // one straight line from where he is through the head's middle; if that runs along the neck
+        // (into the body) the coil carries him round the head, as far out, to where it does not
+        let a = Math.atan2(ux, uz);
+        A.copy(C0);
+        A.y = Math.max(MIN_Y, C0.y);
+        if (this._neckGap(a) < 0.55) {
+          a = this._offNeck(a);
+          const rr = Math.max(1, r);
+          A.x = T.x - Math.sin(a) * rr;
+          A.z = T.z - Math.cos(a) * rr;
+        }
+        const dx = Math.sin(a), dz = Math.cos(a), run = Math.max(0, (T.x - A.x) * dx + (T.z - A.z) * dz) + D.out;
+        B.set(A.x + dx * run, Math.max(MIN_Y, 2 * cy - A.y), A.z + dz * run);
+        this.d.x = dx;
+        this.d.z = dz;
+      } else {
+        // the far side of the head is where he lands: it rises above this side, falls through it
+        pl.ox = T.x + ux * 3;
+        pl.oz = T.z + uz * 3;
+        P._plungeDir(att, pl);
+        pl.from.set(pl.ox, 0, pl.oz);
+        P._plungeLanding(pl, pl.land);
+        B.copy(pl.land);
+        this.d.x = pl.dx;
+        this.d.z = pl.dz;
+        A.set(pl.pt.x - pl.dx * D.back, pl.pt.y + D.up - 0.6, pl.pt.z - pl.dz * D.back);
+        X.set(T.x - pl.dx * 0.5, Math.max(MIN_Y, T.y - 0.25), T.z - pl.dz * 0.5);
+      }
+    } else {
+      const behind = fin(att.ghostepBehind, 1.5);
+      // (the iai and the split pass his side, as the cuts do: the side nearer the way he faces now)
+      let sd = 0;
+      if (D.kind !== 'vault') {
+        const turn = this.d.x * uz - this.d.z * ux; // which way he turns to face the target
+        sd = (turn >= 0 ? 1 : -1) * G.side;
+      }
+      const px = uz, pz = -ux; // across the line, in the ground plane
+      if (D.kind === 'iai') A.set(C0.x, 0, C0.z);
+      else A.set(T.x - ux * D.back, 0, T.z - uz * D.back);
+      B.set(T.x + ux * behind + px * sd, 0, T.z + uz * behind + pz * sd);
+      if (D.kind === 'iai') {
+        // (from where he stands past his side: the line through the side point)
+        const sx = T.x + px * sd - A.x, sz = T.z + pz * sd - A.z, sl = Math.hypot(sx, sz);
+        if (sl > 0.3) B.set(A.x + (sx / sl) * (sl + behind), 0, A.z + (sz / sl) * (sl + behind));
+      }
+      g.world?.resolve?.(A, P.radius, bound, false, 'hero');
+      g.world?.resolve?.(B, P.radius, bound, false, 'hero');
+      if (!Number.isFinite(A.x + A.z + B.x + B.z)) return false;
+      A.y = D.kind === 'split' ? D.up : 0;
+      B.y = 0;
+      X.set(T.x - ux * 0.5, 0.5, T.z - uz * 0.5);
+      const ex = B.x - A.x, ez = B.z - A.z, el = Math.hypot(ex, ez);
+      this.d.x = el > 1e-3 ? ex / el : ux;
+      this.d.z = el > 1e-3 ? ez / el : uz;
+    }
+    return Number.isFinite(A.x + A.y + A.z + B.x + B.y + B.z + X.x + X.y + X.z);
   }
 
   /** The coil: he hangs in the wound-up pose while the blade gathers its light. */
   _tickCoil(u, rdt) {
     const P = this.p, D = ARTS[this.art];
+    if (this._artChain) {
+      // (the chain: from where the last cut left him to where the strike starts, slowing into it)
+      P.position.lerpVectors(this.C0, this.A, 1 - (1 - u) * (1 - u));
+      this.anim.air = P.position.y > 0.05;
+    }
     this.glow = u;
     this.anim.k = u;
     P.getChestPos(this._v, true);
@@ -890,6 +1177,8 @@ export class Flurry {
     }
     if (u < 1) return;
     this.glow = 1;
+    if (this._artChain) P.position.copy(this.A);
+    if (this.chain) this._sample();
     if (D.kind === 'iai') this._line(this.A, this.B, CHEST, true);
     // (the wyrm's last blow is a plunge to everything that listens: the dive's rush, the stats)
     if (this.air) P._emit('player:plunge', { execution: false });
@@ -914,8 +1203,20 @@ export class Flurry {
     return L;
   }
 
+  /** The chain: his blade's point now onto the art's sampled path (the split's / vault's crescent). */
+  _sample() {
+    if (this._swN >= this._sw.length / 3) return;
+    const v = this.p._bladePoint(1, this._v), k = this._swN * 3;
+    if (!Number.isFinite(v.x + v.y + v.z)) return;
+    this._sw[k] = v.x;
+    this._sw[k + 1] = v.y;
+    this._sw[k + 2] = v.z;
+    this._swN++;
+  }
+
   _tickStrike(u) {
     const P = this.p, p = P.position, D = ARTS[this.art], A = this.A, B = this.B, X = this.X, an = this.anim;
+    if (this.chain && !this.hit && D.kind !== 'iai') this._sample();
     if (D.kind === 'iai') {
       // (on the ground he slows into the finish, so the eye lands on it)
       const e = this.air ? u : 1 - (1 - u) * (1 - u);
@@ -925,7 +1226,11 @@ export class Flurry {
       if (L) L.k = e;
       if (u >= 1) {
         // across, his back to it: the finish held while the cut hangs in the air unanswered
-        this.fx.pass(this.T.x, this.T.y, this.T.z, this.d.x, this.d.z);
+        if (this.chain) {
+          // (the chain: the flash on his path where it passes the target)
+          const Q = this._onPath(this._q);
+          this.fx.pass(Q.x, Q.y, Q.z, this.d.x, this.d.z);
+        } else this.fx.pass(this.T.x, this.T.y, this.T.z, this.d.x, this.d.z);
         P.game.shake?.(0.12);
         this._phase(FP.AFTER, D.hold);
       }
@@ -1015,11 +1320,15 @@ export class Flurry {
     g.punch?.((2.2 + 0.25 * this.n) * (this.air ? 1 : G.kick));
     g.world?.gust?.(T.x, T.z, 1.5, 8);
     P.anim.kickCoat(1.1, P.anim.noise);
-    this.fx.artHit(T.x, T.y, T.z, this.d.x, this.d.z, ARTS[this.art].kind);
+    // (the chain: the split's / vault's crescent is the path his blade swept, sampled to this frame)
+    if (this.chain) this._sample();
+    this.fx.artHit(T.x, T.y, T.z, this.d.x, this.d.z, ARTS[this.art].kind, this.chain ? this._sw : null, this._swN);
     this.fx.impact(T.x, T.y, T.z, this.d.x, this.d.z, 1);
     if (!this.air) {
       this.fx.ground(T.x, T.z, this.d.x, this.d.z, 1.6);
-      P.fx.slamShards(T.x + this.d.x * 0.4, T.z + this.d.z * 0.4, true);
+      // (the chain: white-steel letter dust, not the slam's big 'A' shards)
+      if (this.chain) this.fx.dust(T.x + this.d.x * 0.4, 0, T.z + this.d.z * 0.4, this.d.x, this.d.z);
+      else P.fx.slamShards(T.x + this.d.x * 0.4, T.z + this.d.z * 0.4, true);
     }
     this.burst(dealt, T);
   }
@@ -1053,7 +1362,8 @@ export class Flurry {
       // the plunge's own landing: the crouch, the slide, the crit window
       this.on = false;
       P._enter('plunge', 'plunge', 0.03);
-      P.fx.slamShards(p.x + this.d.x * 0.7, p.z + this.d.z * 0.7, true);
+      if (this.chain) this.fx.dust(p.x + this.d.x * 0.7, 0, p.z + this.d.z * 0.7, this.d.x, this.d.z, 0.6);
+      else P.fx.slamShards(p.x + this.d.x * 0.7, p.z + this.d.z * 0.7, true);
       P._plungeLand();
       return;
     }
