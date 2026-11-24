@@ -1198,6 +1198,12 @@ For every blade the hero meets (the wyrm's too; bullets keep their light clash):
     (0.1 s, ×0.55 for 0.16 s, dim 0.16). A bigger mark, one echo ring more from streak tier 3. cinema
     dodge: the flow's moment (×0.25 for 0.85 s, the camera 3.4 m closer, no gong), the afterimage
     stands 0.3 s, an arrival mark round him.
+- **Pixel-font ASCII art on perfect defences** (2026-11-23, ADR-173; `combat/perfectArt.js`;
+  `?perfectArt=0|a|b|c`, the Lab's `p.art:` button in the `streak` row): **a (`silk`, Whispered Steel &
+  Silk) is the default** in the browser (`0` in headless Node so seeded suites stay untouched; `0` =
+  before, `b` = `sever`, `c` = `qi` stay behind the switch). Scoped strictly to **Perfect Parry,
+  Perfect Dodge** (Ghostep, red/black Flurry start, wyrm Plunge blink) and **Mikiri** — normal parries
+  stay quiet; zero timing windows or balance numbers change (STYLE.md).
 - **Duel framing:** within 6.5 m of a duelist the camera sits 6 m closer (30 m, not 36; gone 4 m
   further out; scaled for the phone's closer camera), so the blades read; the punches start there.
 - **A blow that lands on the hero** freezes the frame (0.085 s; a big one 0.13 s) with a heavier

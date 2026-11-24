@@ -4,7 +4,21 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Seventy-eight pieces of work since 0.4.0:
+Seventy-nine pieces of work since 0.4.0:
+- **Subtle pixel-font ASCII perfect parry and perfect dodge** (2026-11-23, ADR-173). *Added:* a pixel-font ASCII
+  pass for perfect defences (`src/combat/perfectArt.js`; `?perfectArt=0|a|b|c`, the Lab's `p.art:` button in the
+  `streak` row; `a`, **Whispered Steel & Silk**, is the owner's pick and the default). Drawn in the house pixel
+  font (`LetterBatch`: 5x8 px at 720p, 4x6 on phones, 6x9 at 1080p) at sub-bloom ink levels over a dark backing
+  so every digit and stroke stays crisp without white glare, scoped strictly to **Perfect Parry, Perfect Dodge**
+  (Ghostep, red/black Flurry start, wyrm Plunge) and **Mikiri** while normal parries stay quiet: a **Perfect
+  Parry** sheds a stepped blade cross and fine steel-and-gold micro-digits that curl away on the level's wind,
+  sends a shockwave ripple through the parried boss's own letters, and stirs loose ground litter at your feet; a
+  **Perfect Dodge** leaves a contour-stroked pixel-font husk (`| / \ -` silhouette rim, dim digits inside)
+  standing for `0.14 s` before peeling letter by letter into a wind wisp along your dodge path, with curved
+  slipstream strokes at your feet. Two alternative looks stay behind `?perfectArt=b` (**Ink-Cut Severance**: a
+  2-frame ink-cut silence, a hairline horizontal slash across the clash, a sliced staggered husk) and
+  `?perfectArt=c` (**Wuxia Qi Seal**: a stepped octagram bagua seal at the clash and on the ground where you
+  stood); `?perfectArt=0` restores the previous look. No timing windows, hitboxes or balance rules changed.
 - **Xin Yi reworked: drawn like the hero, kicks and flurries, a wall kick, bullets that never lock you** (2026-11-23, ADR-168 – ADR-170). *Changed:* Xin Yi, the One Who Woke, is printed
   like the hero: his letters follow his size on screen, a quieter edge that fades with distance, simpler
   glasses, collar and shirt, a coat that moves in every phase (`?oneLetters=a|0`, `?onePrint=a|b|0`, b one

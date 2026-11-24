@@ -1323,6 +1323,17 @@ cinema`). Nothing stores a tier: each piece reads it at the moment.
   `player._ghostep` passes `{ feel, wx, wz }` to `fx.ghostep` (`_ghostepFeel`: the standing afterimage,
   its tear, the line) and calls `_slowmo(sec, mode)`: sharp a hitstop slow motion of its own scale,
   cinema `flow.cinematic({ ..., quiet: true })`.
+- *Pixel-font perfect-defence art* (`combat/perfectArt.js`, ADR-173): `PERFECT_ART_MODES` (`['0', 'a',
+  'b', 'c']`), `PERFECT_ART_DEFAULT` `'a'` (browser default; headless Node defaults to `'0'`),
+  `perfectArtMode()` / `setPerfectArtMode(m)` (`?perfectArt=0|a|b|c`, the Lab's `p.art:` button in the
+  `streak` row), `perfectArtCanDraw(game)` (mode != `'0'` and `pipeline.registerParticles` present),
+  `perfectArtSuppressesFlash()` (2-frame flash suppression in `b`), `perfectArtParry(game, x, y, z, o)`
+  (called only on `o.perfect && !o.light` in `PlayerFx.parry` and on `player._mikiri`),
+  `perfectArtDodge(game, x0, y0, z0, x1, y1, z1, o)` (called on `PlayerFx._ghostepFeel`, `plungeBlink`
+  and `Flurry.start`), `perfectArtUpdate(game, dt, realDt)` / `perfectArtClear(game)` (wired into
+  `perfectUpdate` / `perfectClear`), `PERFECT_ART_LAST` (tests). Draws on three lazy `LetterBatch`
+  pools (`snap`, `flow`, `dim`) on `fxScene` and its own LCG (`withRand`), never `Math.random` or
+  `scene`.
 - *The aura and the world* (`player/streakFx.js` `class StreakFx`, `game.fx.streak`, built in main.js
   after the player, `update(fxDt)` after the ripple, `clear()` with the other fx): listens to
   `player:streak`; exposes per frame `edge`, `edgeA`, `bladeLine`, `echoes`, `echoA` (0 = today).

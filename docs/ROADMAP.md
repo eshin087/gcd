@@ -184,6 +184,18 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.75 — Subtle pixel-font ASCII perfect parry and perfect dodge (2026-11-23, `gemini/combat-perfect-ascii`, ADR-173)
+- [x] Three pixel-font ASCII looks (`LetterBatch`, house 5x8 px cell, sub-bloom ink over dark backing) filmed in
+      2x2 real-time + 0.3x slow-mo clips (`?perfectArt=0|a|b|c`, Lab `streak` row `p.art:` button)
+- [x] Scoped strictly to Perfect Parry, Perfect Dodge (Ghostep, red/black Flurry start, wyrm Plunge blink) and
+      Mikiri; normal parries stay quiet; zero gameplay timings, windows or seeded fights moved
+- [x] The owner's pick: `a` (**Whispered Steel & Silk** — wind-curled micro-digits + boss letter ripple on
+      Perfect Parry; contour-stroked pixel-font husk peeling into a wind wisp on Perfect Dodge), promoted to
+      default; `0`, `b` (`sever`) and `c` (`qi`) kept behind `?perfectArt=`
+- [x] Tests: `duel.mjs` `perfectfx` (`a` browser default, `0` headless default, normal deflect quiet, zero
+      `Math.random` draws), `glyphcheck.mjs`, desktop + iPhone Pro portrait / landscape checks
+- [ ] Frame-rate and feel check on the real iPhone Pro
+
 ## M1.73 — Xin Yi reworked: drawn like the hero, kicks and flurries, a wall kick, bullets that never lock (2026-11-23, `claude/xinyi-rework-4b1d8a`, ADR-168 – ADR-170)
 - [x] Printed like the hero: his letters follow his size (`?oneLetters`), the quiet print and simpler shapes (`?onePrint` a / b / 0), the coat moving in every phase and clamped for flips
 - [x] ADR-162's kit for him: soft arms and legs, the shared feet planner (`duelist/feetPlan.js`), palms that stop at the hero, no swings at air; the audit before and after

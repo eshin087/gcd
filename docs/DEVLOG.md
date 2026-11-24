@@ -5,6 +5,42 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-23 — Session 89: Subtle pixel-font ASCII perfect parry and perfect dodge (Author: Gemini; ADR-173)
+
+**Goal.** Make combat Perfect Parry and Perfect Dodge look more epic in a subtle, crafted ASCII manner without
+bloom blots or gameplay changes; film side-by-side variations for the owner to choose from.
+
+**Built & filmed.** `src/combat/perfectArt.js` (`?perfectArt=0|a|b|c`, Lab `streak` row `p.art:` button), wired
+into `perfectFx.js`, `player/fx.js`, `player/player.js`, `player/flurry.js`, and `game/flow.js`. Three distinct
+looks in the house pixel font (`LetterBatch`, 5x8 px at 720p, 4x6 on phone, 6x9 at 1080p) were filmed against
+Shen Hui in synchronized 2x2 `.mp4` videos (1.0x real-time + 0.3x slow-mo) and checked at desktop (`1280x720`)
+and iPhone Pro (`852x393`, `393x852`):
+- **A · Whispered Steel & Silk (`a`, owner's pick -> browser default):** wind-curled micro-digits and blade-line
+  cross at the clash + an `ImpactRipple` shockwave through the parried boss's letters + `litter.scatter` at the
+  feet; on Perfect Dodge, a contour-stroked pixel-font husk (`| / \ -` rim, dim fine digits inside) stands
+  `0.14 s` real before peeling into a wind wisp along the dodge vector, with curved foot slipstream strokes.
+- **B · Ink-Cut Severance (`b`, kept behind `?perfectArt=b`):** 2-frame ink-cut flash suppression, razor-thin
+  screen-wide horizontal slash line of `- = : .` across the clash, and a diagonally severed dodge husk whose top
+  and bottom halves slide apart before evaporating.
+- **C · Wuxia Qi Seal (`c`, kept behind `?perfectArt=c`):** stepped octagram bagua seal of `/` `\` `-` `|` digits
+  at the clash and stamped briefly on the ground under the vanished stance, with an upward-drifting ash husk.
+
+**Decisions & calibration (owner's 4 answers).** Picked **A · Whispered Steel & Silk** for both Perfect Parry and
+Perfect Dodge; kept intensity sub-bloom (`0.50 - 0.76` linear RGB rims over normal-blended dark-ink backing so
+characters never blur into white bloom); scoped strictly to **Perfect Parry + Perfect Dodge (Ghostep, red/black
+Flurry start, Plunge blink) + Mikiri** so normal parries stay quiet. Every spawned glyph is pulled `+0.92 m`
+along the camera ray (`PULL_M`, zero screen shift) so `LetterBatch`'s `uSoft = 0.6` m depth-fade never erases
+low/ground letters, and `HOUSE_CHARS` uses only the exact intersection of `FONT_3X5`, `FONT_4X6` and `FONT_5X7`.
+Headless Node defaults to `'0'` and randomness uses a module-local LCG (`withRand`) so zero seeded fights move.
+
+**Verified.** `glyphcheck.mjs` (`bad=0`), `changelogcheck.mjs`, `duel.mjs` `perfectfx` (asserting browser `'a'`,
+headless `'0'`, normal deflect silence, `a|b|c` parry & dodge counts, and `0` `Math.random` draws), full
+`npm test` and `npm run build` green; live check of default `?level=ash` at `1280x720`.
+
+**Open.** Owner's feel & frame-rate check on the real iPhone Pro.
+
+---
+
 ## 2026-11-23 — The life suite's phone check made deterministic (a flaky test, no game change)
 
 **Why.** `life.mjs core.phone` asserted per level "no more spawns on the phone (sum at quality 0.5 <= sum at 1

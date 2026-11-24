@@ -1651,6 +1651,20 @@ ink on black, never over the hero.
   one digit to a cell, for 0.1 s (cinema 0.3 s), then tears into its letters along the way he left;
   one clean line of cold steel from where he was to where he is (4 frames; cinema 5); cinema adds an
   arrival ring round his chest. The old blink streams are not drawn in these looks.
+- **Whispered Steel & Silk** (`?perfectArt=a`, the owner's pick and browser default; ADR-173,
+  `combat/perfectArt.js`; `0` = before, `b` = `sever`, `c` = `qi`): drawn in the house pixel font
+  (`LetterBatch`, 5x8 px at 720p, 4x6 on phones, 6x9 at 1080p) at sub-bloom linear RGB (`0.50 - 0.76`
+  rims, `0.16 - 0.32` fills) over normal-blended dark-ink backing (`[0.015, 0.018, 0.024]`), pulled
+  `+0.92 m` along the camera ray so `uSoft = 0.6` m depth-fade never erases low or ground glyphs.
+  Scoped to **Perfect Parry, Perfect Dodge and Mikiri** only: a **Perfect Parry** sheds a stepped
+  blade-clash cross and fine steel-and-gold digits that curl downstream on `world.life.wind`, sends an
+  `ImpactRipple` shockwave through the parried boss's own letters, and stirs `world.life.litter` at the
+  feet; a **Perfect Dodge** replaces the additive glyph-particle Ghostep haze with a contour-stroked
+  pixel-font husk (`| / \ -` silhouette rim, dim digits inside) that stands for `0.14 s` real before
+  peeling top-to-bottom into a wind wisp along the dodge line, with curved slipstream strokes at the
+  feet. `b` (`sever`) cuts the flash for two real frames and draws a hairline horizontal slash and a
+  diagonally parted husk; `c` (`qi`) stamps a stepped octagram bagua seal at the clash and on the
+  ground beneath the vanished stance.
 - **The burst levels** (`?burst=0..3`, the owner's 2): 0 the white bloom as before; 1 the lights and
   blooms halved, thin long lines on top; 2 lines first, the target and the hero visible through it; 3
   only lines, a blink of darkness round the star. Each hanging cut flares out thin to 1.35 / 1.6 /

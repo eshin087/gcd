@@ -5229,3 +5229,42 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
 - **Consequences:** `woke.mjs herolike` (the cells on five screens, the quiet print's numbers, 0 = main's table,
   the coat inside its swing). Left: 3 - 6 cm of hanging cloth still meets the legs in strides (a shin push on
   the coat's lower segment would need `anim.js`); the clamp could move into `anim.js` as per-panel limits.
+
+## ADR-173 — Subtle pixel-font ASCII art for perfect parry, perfect dodge and Mikiri (?perfectArt=0|a|b|c) (2026-11-23)
+
+- **Context:** The owner asked to make combat perfect parry and perfect dodge look more epic in a subtle, cool
+  ASCII manner, with side-by-side video previews of variations to choose from. ADR-167's `sharp` look tuned the
+  timing feel (shorter freeze, softer flash, tighter slow-mo), while the parry mark still printed through the
+  coarse fire field and the Ghostep afterimage still spawned additive world-atlas glyph particles (`fx.add`)
+  that softened or bloomed when clustered.
+- **The owner's picks (2026-11-23, from synchronized 2x2 real-time + 0.3x slow-mo video previews):**
+  1. **Perfect Parry & Perfect Dodge look:** **A · Whispered Steel & Silk** (`?perfectArt=a`, promoted as
+     `PERFECT_ART_DEFAULT` in the browser; `'0'` in headless Node so existing seeded suites stay untouched;
+     `0` = before, `b` = Ink-Cut Severance, `c` = Wuxia Qi Seal stay behind `?perfectArt=0|a|b|c` and the Lab's
+     `p.art:` button in the `streak` row).
+  2. **Subtlety:** sub-bloom linear RGB (`0.50 - 0.76` rims, `0.16 - 0.32` fills) over normal-blended dark-ink
+     backing (`[0.015, 0.018, 0.024]`) so every character reads as crisp, readable text without white bloom.
+  3. **Scope:** **Perfect Parry, Perfect Dodge (Ghostep, red/black Flurry start, wyrm Plunge blink), and Mikiri
+     only** — normal parries (`!o.perfect`) and light bullet deflects (`o.light`) stay quiet so perfect timing
+     feels distinct.
+- **Decision (`src/combat/perfectArt.js`):**
+  1. **House pixel-font batches:** three lazy-initialized `LetterBatch` pools (`snap`, `flow`, `dim`;
+     `world/life/letterBatch.js`, 5x8 px at 720p, 4x6 on phone, 6x9 at 1080p) registered on `fxScene` only when
+     active. `HOUSE_CHARS` strictly intersects `FONT_3X5`, `FONT_4X6` and `FONT_5X7` (`wyrmGlyphs.js`) and
+     `glyphcheck.mjs`.
+  2. **Camera-ray depth pull (`PULL_M = 0.92` m):** `LetterBatch` fades letters within `uSoft = 0.6` m of scene
+     depth, which otherwise erases >90 % of foot-ring and low-torso glyphs against the floor. Pulling each
+     spawned glyph `0.92 m` toward `camera.position` keeps zero screen-space shift while preserving crisp legs
+     and ground rings.
+  3. **Whispered Steel & Silk (`a`):**
+     - *Perfect Parry / Mikiri:* stepped blade-clash cross + directional sparks of fine digits that curl
+       downstream on `world.life.wind`, paired with an `ImpactRipple` shockwave (`fx.ripple.hit`) through the
+       parried boss's own letters and a radial foot-ring on `world.life.litter.scatter`.
+     - *Perfect Dodge:* when `perfectArtCanDraw(game)` is true, replaces the additive glyph-particle Ghostep
+       afterimage and blink streams with a contour-stroked pixel-font husk (`| / \ -` silhouette rim, dim digits
+       inside) that holds still for `0.14 s` real and peels top-to-bottom into a wind wisp along the dodge line,
+       plus curved slipstream strokes at the feet.
+  4. **Determinism & rules:** zero gameplay rules, windows, hitboxes or timings touched; module-local LCG
+     `pseed` wrapped in `withRand` (`0` draws from `Math.random()`); zero meshes added to `scene`.
+- **Consequences:** `duel.mjs` `perfectfx` asserts browser default `'a'`, headless default `'0'`, normal deflect
+  silence, parry & dodge recording across `a | b | c`, and zero `Math.random()` draws; `glyphcheck.mjs` green.
