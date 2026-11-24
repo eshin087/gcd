@@ -42,6 +42,11 @@ export class Animals {
     const sp = this.life.game?.CONFIG?.world?.playerSpawn;
     if (sp && Math.hypot(sp.x - x, sp.z - z) < 14) return false;
     for (const c of circles) if (Math.hypot(c.x - x, c.z - z) < c.r + pad) return false;
+    // (nor under anything that stands: a butte, a pillar, a trunk draws far wider than its collider)
+    for (const d of this.life.set?.breakables ?? []) {
+      if (!d || !(d.h >= 0.4) || !Number.isFinite(d.x + d.z)) continue;
+      if (Math.hypot(d.x - x, d.z - z) < (d.r ?? 0.5) * (d.h > 3 ? 2.2 : 1.3) + pad) return false;
+    }
     for (const a of this.list) if (Math.hypot(a.hx - x, a.hz - z) < 2.2) return false;
     return true;
   }

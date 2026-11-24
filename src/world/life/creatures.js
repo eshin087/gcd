@@ -493,7 +493,6 @@ export class Creatures {
         const q = this._ground(s.x, s.y, s.z), r = (s.r || 1) * (s.y > 0.5 ? this._camR.y / Math.max(1, this._camR.y - s.y) : 1) + clear;
         if (Math.abs(q[0] - gx) < r && Math.abs(q[1] - gz) < r && Math.hypot(q[0] - gx, q[1] - gz) < r) return true;
       }
-      // (_ground overwrote _gp: the letter's point again for the next test)
       return false;
     }
     const c = this._camR;

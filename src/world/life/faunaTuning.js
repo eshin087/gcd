@@ -112,12 +112,13 @@ const KINDS = Object.freeze({
   deer: Object.freeze({
     gait: 'bound', speed: 7.5, arc: 0.85, hz: 1.7, zig: 0.12,
     r: 13, runR: 18, react: Object.freeze([0.1, 0.45]),
-    sit: Object.freeze([[-0.5, 0, '='], [0.5, 0, '='], [1.25, 0.95, "'"], [-0.55, -0.95, '|'], [0.55, -0.95, '|']]),
+    // (a long body, the neck and head up at the front, the legs under: wider than tall)
+    sit: Object.freeze([[-0.55, 0, '='], [0.45, 0, '='], [1.2, 0.8, '/'], [-0.6, -0.95, '|'], [0.5, -0.95, '|']]),
     run: Object.freeze([
-      [[-0.5, 0, '='], [0.5, 0, '='], [1.3, 0.75, "'"], [-0.9, -0.85, '/'], [0.95, -0.85, BS]],
-      [[-0.5, 0, '='], [0.5, 0, '='], [1.3, 0.75, "'"], [-0.2, -0.85, BS], [0.3, -0.85, '/']],
+      [[-0.55, 0, '='], [0.45, 0, '='], [1.3, 0.65, '/'], [-1, -0.85, '/'], [0.95, -0.85, BS]],
+      [[-0.55, 0, '='], [0.45, 0, '='], [1.3, 0.65, '/'], [-0.25, -0.85, BS], [0.25, -0.85, '/']],
     ]),
-    air: Object.freeze([[-0.5, 0, '='], [0.5, 0, '='], [1.35, 0.6, "'"], [-1.1, -0.65, '/'], [1.2, -0.6, BS]]),
+    air: Object.freeze([[-0.55, 0, '='], [0.45, 0, '='], [1.35, 0.55, '/'], [-1.25, -0.6, '-'], [1.3, -0.55, '-']]),
     color: Object.freeze([0.3, 0.25, 0.2]), alpha: Object.freeze([0.4, 0.68]), y: 0.95, front: 2,
   }),
   rat: Object.freeze({
@@ -132,7 +133,9 @@ const KINDS = Object.freeze({
     r: 5, runR: 8, react: Object.freeze([0, 0.1]),
     sit: Object.freeze([[-0.9, 0, '~'], [0, 0, 'x'], [0.85, 0, '-']]),
     run: Object.freeze([[[-0.95, 0, '~'], [0, 0, 'x'], [0.85, 0, '-']], [[-0.95, 0.05, '-'], [0, 0, '+'], [0.85, 0, '-']]]),
-    color: Object.freeze([0.3, 0.24, 0.16]), alpha: Object.freeze([0.4, 0.66]), y: 0.06, front: 1.2,
+    // (a dusty mid tone: on the clay round the Ring a darker one was near invisible, and the first
+    //  ones were placed inside a butte: animals.js keeps them clear of what stands)
+    color: Object.freeze([0.22, 0.18, 0.12]), alpha: Object.freeze([0.7, 0.85]), y: 0.06, front: 1.2,
   }),
   fox: Object.freeze({
     gait: 'trot', speed: 3.4, arc: 0.06, hz: 3.2, zig: 0,
@@ -140,14 +143,16 @@ const KINDS = Object.freeze({
      *  and looks back at him for `look` s (`lookAt` s into its run) */
     look: 1.1, lookAt: 0.9,
     r: 11, runR: 14, react: Object.freeze([0.4, 0.7]),
-    sit: Object.freeze([[-1.05, 0.15, '~'], [0, 0, '='], [0.85, 0.75, 'v'], [-0.35, -0.9, '|'], [0.4, -0.9, '|']]),
+    // (long and low: the brush trailing, the body, the head and its ears up at the front, one leg
+    //  letter under that flickers with the trot)
+    sit: Object.freeze([[-1.85, 0.3, '~'], [-0.9, 0, '='], [0.05, 0, '='], [0.95, 0.6, 'v'], [-0.4, -0.9, '|']]),
     run: Object.freeze([
-      [[-1.1, 0.05, '~'], [0, 0, '='], [0.9, 0.6, 'v'], [-0.5, -0.9, '/'], [0.5, -0.9, BS]],
-      [[-1.1, 0.15, '~'], [0, 0, '='], [0.9, 0.65, 'v'], [-0.3, -0.9, '|'], [0.35, -0.9, '|']],
+      [[-1.9, 0.15, '~'], [-0.9, 0, '='], [0.05, 0, '='], [1, 0.5, 'v'], [-0.4, -0.9, 'x']],
+      [[-1.9, 0.3, '~'], [-0.9, 0, '='], [0.05, 0, '='], [1, 0.55, 'v'], [-0.4, -0.9, '|']],
     ]),
     /** the tail: the foxfire's pale blue, a glint that hangs where it slipped into the dark */
     tail: Object.freeze([0.3, 0.55, 0.75]), glint: 1.4,
-    color: Object.freeze([0.36, 0.17, 0.07]), alpha: Object.freeze([0.55, 0.75]), y: 0.55, front: 1.6,
+    color: Object.freeze([0.27, 0.13, 0.06]), alpha: Object.freeze([0.55, 0.75]), y: 0.55, front: 1.6,
   }),
 });
 
