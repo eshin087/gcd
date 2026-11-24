@@ -3037,6 +3037,106 @@ async function scenarioStorm() {
   return G;
 }
 
+// ================================================================== scenario: chain (the flurry's path, round the head)
+// THE CHAIN (STREAK_FX.chain, DEFENSE.flurry.chain; ?chain=0 off): round the wyrm's head every pass
+// starts where the one before ended, every hanging line is the path he ran, the art starts where the
+// last cut ended (the iai through the middle, the split rising from there, the plunge rising over the
+// side he is on), no 'A' shard. Off: the ring-teleport paths exactly. On a man: duel.mjs `chain`.
+async function scenarioChain() {
+  out('\n== scenario CHAIN (round the head: each pass from where the last ended; the slashes on his path; no shards) ==');
+  const { STREAK_FX } = await imp('src/combat/streak.js');
+  const G = build();
+  fightSetup(G);
+  const { game } = G;
+  const d = game.dragon, p = game.player, F = DEFENSE.flurry, CH = 1.2;
+  const chain0 = STREAK_FX.chain;
+  const take = (n, art, chain = true) => {
+    STREAK_FX.chain = chain;
+    run(G, 2.5, { passive: true });
+    settle(G);
+    d.hp = d.maxHp;
+    place(G, 6);
+    const hp0 = d.hp, fl = p.flurry;
+    const tr = { passes: [], art: null, hits: [], f: 0, glyphs: new Set(), lineErr: 0, near: Infinity, ok: false, minY: Infinity };
+    const o0 = { cs: fl._cutStarts, va: fl._vanish, ba: fl._beginArt };
+    fl._cutStarts = function () { tr.passes.push({ ax: p.position.x, ay: p.position.y, az: p.position.z, L: fl.nLines - 1 }); return o0.cs.call(this); };
+    fl._vanish = function (b) {
+      const ps = tr.passes[tr.passes.length - 1];
+      if (ps && ps.bx === undefined && fl.i < fl.cuts) {
+        ps.bx = p.position.x;
+        ps.by = p.position.y;
+        ps.bz = p.position.z;
+        const L = fl.lines[ps.L];
+        if (L) tr.lineErr = Math.max(tr.lineErr, Math.hypot(L.ax - ps.ax, L.ay - ps.ay - CH, L.az - ps.az), Math.hypot(L.bx - ps.bx, L.by - ps.by - CH, L.bz - ps.bz));
+      }
+      return o0.va.call(this, b);
+    };
+    fl._beginArt = function () {
+      const sx = p.position.x, sy = p.position.y, sz = p.position.z;
+      const r = o0.ba.call(this);
+      tr.art = { sx, sy, sz, ax: fl.A.x, ay: fl.A.y, az: fl.A.z, bx: fl.B.x, bz: fl.B.z, state: p.state, px: p.position.x, py: p.position.y, pz: p.position.z, plx: p.pl.ox, plz: p.pl.oz, ptx: p.pl.pt.x, ptz: p.pl.pt.z };
+      return r;
+    };
+    const spy = [];
+    for (const pool of new Set([game.fx?.add, game.fx?.alpha, p.fx?.add, p.fx?.alpha].filter(Boolean))) {
+      const s0 = pool.spawn;
+      spy.push([pool, s0]);
+      pool.spawn = function (o) { if (p.state === 'flurry' && typeof o?.glyph === 'string') tr.glyphs.add(o.glyph); return s0.call(this, o); };
+    }
+    G.watch = (nm, e) => { if (nm === 'player:flurryHit') tr.hits.push({ f: tr.f, last: e.last, damage: e.damage }); };
+    tr.ok = p.debug.flurry(n, art);
+    tr.ox = fl.ox;
+    tr.oz = fl.oz;
+    for (let i = 0; i < Math.round(9 / DT) && (p.state === 'flurry' || p.state === 'plunge'); i++) {
+      aimAt(G);
+      tr.f++;
+      G.tick(DT);
+      // (where he is, against the spot he dodged on: in the air he passes metres over it)
+      if (p.state === 'flurry' && tr.passes[0]?.bx !== undefined && fl.i < fl.cuts) tr.near = Math.min(tr.near, Math.hypot(p.position.x - tr.ox, p.position.y, p.position.z - tr.oz));
+    }
+    G.watch = null;
+    delete fl._cutStarts;
+    delete fl._vanish;
+    delete fl._beginArt;
+    for (const [pool, s0] of spy) pool.spawn = s0;
+    tr.dmg = hp0 - d.hp;
+    tr.jumps = tr.passes.slice(1).map((q, i) => Math.hypot(q.ax - tr.passes[i].bx, q.ay - tr.passes[i].by, q.az - tr.passes[i].bz));
+    const lp = tr.passes[tr.passes.length - 1];
+    tr.artJump = tr.art && lp ? Math.hypot(tr.art.sx - lp.bx, tr.art.sy - lp.by, tr.art.sz - lp.bz) : 0;
+    const T = fl.T, rel = (x, y, z) => `(${(x - T.x).toFixed(1)},${(y - T.y).toFixed(1)},${(z - T.z).toFixed(1)})`;
+    tr.seq = `O${rel(tr.ox, 0, tr.oz)} ` + tr.passes.map((q) => `${rel(q.ax, q.ay, q.az)}->${rel(q.bx, q.by, q.bz)}`).join(' ') + (tr.art ? ` | art from ${rel(tr.art.sx, tr.art.sy, tr.art.sz)}${tr.art.state === 'plunge' ? ` (plunge: hangs at ${rel(tr.art.px, tr.art.py, tr.art.pz)})` : ` to ${rel(tr.art.ax, tr.art.ay, tr.art.az)} -> ${rel(tr.art.bx, 0, tr.art.bz)}`}` : '') + ` | lands ${rel(p.position.x, 0, p.position.z)}`;
+    tr.seq += ` · planned spread ${(Math.asin(Math.min(1, fl.planGap)) * 57.3).toFixed(0)} degrees`;
+    return tr;
+  };
+  const shard = (t) => [...t.glyphs].some((g) => g.includes('A'));
+  for (const art of ['severing', 'heavensplit', 'skyfall']) {
+    for (let n = 2; n <= F.max; n++) {
+      const on = take(n, art), off = take(n, art, false);
+      if ([3, 7].includes(n)) out(`   ${art} N=${n}: ${on.seq}`);
+      const hf = (t) => t.hits.map((h) => h.f);
+      const df = hf(on).map((f, i) => Math.abs(f - (hf(off)[i] ?? -99)));
+      assert(on.ok && off.ok && on.hits.length === n && on.dmg === off.dmg && df.every((x) => x <= 1), `${art} N=${n}: ${on.hits.length} blows, ${on.dmg} damage as with the chain off (${off.dmg}), every blow within a frame of it (${hf(on).join(',')} / ${hf(off).join(',')})`);
+      assert(on.jumps.every((j) => j < 0.3) && (art === 'skyfall' || on.artJump < 0.3), `${art} N=${n}: each pass starts where the last ended (${on.jumps.map((j) => j.toFixed(2)).join(' ') || '-'} m)${art === 'skyfall' ? '' : `, the art too (${on.artJump.toFixed(2)} m)`}`);
+      assert(n < 3 || on.near >= 1.5, `${art} N=${n}: never back within 1.5 m of his dodge spot after the first pass (${on.near === Infinity ? '-' : on.near.toFixed(2)} m)`);
+      assert(on.lineErr < 0.35, `${art} N=${n}: every hanging line runs from his chest at the pass's start to its end (off by ${on.lineErr.toFixed(3)} m at most)`);
+      // (the plunge is left alone: its own impact and landing are the plunge's, chain or not)
+      assert(!shard(on), `${art} N=${n}: no 'A' shard in the flurry with the chain (${[...on.glyphs].filter((g) => g.includes('A')).join(' ') || 'none'})`);
+      if (art === 'skyfall') {
+        // the plunge rises over the side of the head he is on (from behind the head: its side in
+        // front, as the plunge always turns it): never over the far side from where the last cut ended
+        const lp = on.passes[on.passes.length - 1], A = on.art;
+        const hx = A.px - A.ptx, hz = A.pz - A.ptz, lx = lp.bx - A.ptx, lz = lp.bz - A.ptz;
+        const cos = (hx * lx + hz * lz) / (Math.hypot(hx, hz) * Math.hypot(lx, lz) || 1);
+        const behind = (lx * Math.sin(d.yaw) + lz * Math.cos(d.yaw)) / (Math.hypot(lx, lz) || 1) < -0.3; // (_plungeDir's own rule)
+        const from = Math.hypot(A.plx - lp.bx, A.plz - lp.bz);
+        assert(A && A.state === 'plunge' && from < 0.3 && (behind || cos > -0.1), `skyfall N=${n}: the plunge comes from where the last cut ended (${from.toFixed(2)} m) and hangs over that side of the head (${(Math.acos(Math.max(-1, Math.min(1, cos))) * 57.3).toFixed(0)} degrees round from it${behind ? '; it ended behind the head, which the plunge turns to its front' : ''})`);
+      }
+    }
+  }
+  STREAK_FX.chain = chain0;
+  return G;
+}
+
 // ================================================================== scenario: the riposte (ADR-094, on the wyrm)
 async function scenarioRiposte() {
   out('\n== scenario RIPOSTE (parries count in the streak; a parried bite is answered by flash cuts round the head) ==');
@@ -12423,6 +12523,7 @@ const SCENARIOS = {
   plunge: scenarioPlunge,
   flurry: scenarioFlurry,
   storm: scenarioStorm,
+  chain: scenarioChain,
   riposte: scenarioRiposte,
   flare: scenarioFlare,
   stamp: scenarioStamp,
