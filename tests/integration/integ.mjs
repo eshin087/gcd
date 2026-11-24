@@ -12449,6 +12449,266 @@ async function scenarioHeroCombo() {
   return lastG;
 }
 
+// ================================================================== scenario: comboaudit (opt-in)
+// The light combo of one style (ABYSS_COMBO=<style id>, default today), measured for its author:
+// tests/audit/hero-combo.mjs runs it (`node tests/audit/hero-combo.mjs . <style>`). It asserts nothing
+// that can fail the suite (it is never in `all`): every line is a number to act on, and the lint rows
+// say pass / fail per clip with the suites' own rules.
+async function scenarioComboAudit() {
+  const id = process.env.ABYSS_COMBO || 'today';
+  const S = await imp('src/entities/player/styles/index.js');
+  const { LIGHT, lightChain, hitWindows } = await imp('src/entities/player/combat.js');
+  const { SWINGS } = await imp('src/entities/player/swings.js');
+  const { BODY } = await imp('src/entities/player/model.js');
+  const { P: AP } = await imp('src/entities/player/anim.js');
+  out(`\n== COMBO AUDIT: style '${id}' (styles/COMBOS.md) ==`);
+  if (!S.STYLES[id]) { out(`unknown style '${id}' (${S.STYLE_IDS.join(' | ')})`); fails++; return null; }
+  const was = S.comboStyleId();
+  const DEG = 180 / Math.PI, f2 = (v) => (Number.isFinite(v) ? v.toFixed(2) : '-'), f3 = (v) => (Number.isFinite(v) ? v.toFixed(3) : '-');
+  const looksOf = (d) => [d.anim, ...(d.variants ?? [])];
+  const dmgOf = (d) => (hitWindows(d) ?? [[0, 0, d]]).reduce((s, w) => s + (Number(w[2].damage) || 0), 0);
+  let lastG = null;
+  /** A fresh fight; the hero `gap` m off the wyrm's chest (> 20: 40 m off, in open air). */
+  const fresh = (gap) => {
+    const G = (lastG = build());
+    fightSetup(G);
+    settle(G);
+    const d = G.game.dragon, p = G.game.player, fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
+    const c = d.hurtSpheres.filter((h) => h.part === 'body').reduce((a, h) => ((h.x - d.position.x) * fx + (h.z - d.position.z) * fz > (a.x - d.position.x) * fx + (a.z - d.position.z) * fz ? h : a));
+    const place = (g) => {
+      const far = g > 20;
+      p.debug.teleport(far ? d.position.x + fx * 40 : c.x + fx * (c.r + g), far ? d.position.z + fz * 40 : c.z + fz * (c.r + g));
+      p.yaw = Math.atan2(c.x - p.position.x, c.z - p.position.z);
+      aimAt(G);
+    };
+    p.debug.god = true;
+    place(gap);
+    run(G, 0.4, { passive: true });
+    const taken = [];
+    const th = d.takeHit.bind(d);
+    d.takeHit = (o) => { taken.push({ t: G.game.time, dmg: o?.damage }); return th(o); };
+    return { G, p, place, taken };
+  };
+  const tick = (G, n, each) => { for (let i = 0; i < n; i++) { aimAt(G); each?.(i); G.tick(DT); } };
+  /** Mashed (a click every 3 frames) for `secs`: the swing starts (name, time) and what landed. */
+  const mashed = (chain, gap, secs) => {
+    const T = fresh(gap), starts = [];
+    let last = null;
+    tick(T.G, Math.round(secs / DT), (i) => {
+      if (i % 3 === 0) T.G.input.click(0);
+      const d = T.p.atk?.def;
+      if (T.p.state === 'attack' && d && d !== last) starts.push({ name: d.name, t: T.G.game.time, combo: d.combo });
+      last = T.p.state === 'attack' ? d : null;
+    });
+    return { starts, taken: T.taken };
+  };
+  /** One cycle of the chain mashed: its length (first hit 1 to the next hit 1) and its damage per second. */
+  const cycle = (chain) => {
+    const M = mashed(chain, 2.0, 0.6 + chain.reduce((s, d) => s + d.windup + d.active + d.recovery, 0) * 1.3);
+    const i0 = M.starts.findIndex((s) => s.name === chain[0].name), i1 = M.starts.findIndex((s, i) => i > i0 && s.name === chain[0].name);
+    const T0 = M.starts[i0]?.t, T1 = M.starts[i1]?.t, len = T1 - T0;
+    const landed = M.taken.filter((h) => h.t >= T0 && h.t < T1).reduce((s, h) => s + (h.dmg || 0), 0);
+    const all = chain.reduce((s, d) => s + dmgOf(d), 0);
+    return { M, len, dpsAll: all / len, dpsLanded: landed / len, gaps: M.starts.slice(i0, i1 + 1).map((s, k, a) => (k ? s.t - a[k - 1].t : 0)).slice(1) };
+  };
+  S.setComboStyle('today');
+  const ref = cycle(LIGHT);
+  out(`   today (reference): a mashed cycle ${f2(ref.len)} s, ${ref.dpsAll.toFixed(1)} damage/s if every hit lands (${ref.dpsLanded.toFixed(1)} landed at 2.0 m)`);
+  S.setComboStyle(id);
+  const st = S.STYLES[id];
+  const chains = [['chain', lightChain(0)], ...(Array.isArray(st.chainAwake) ? st.chainAwake.filter((e) => Array.isArray(e?.chain) && e.chain.length).map((e) => [`chainAwake minTier ${e.minTier}`, e.chain]) : [])];
+  try {
+    for (const [label, chain] of chains) {
+      out(`\n-- ${label}: ${chain.length} hits (${chain.map((d) => d.name).join(' → ')})`);
+      // (1) timings
+      out('   hit  name                 kind   W / A / R (s)        next from   swing   damage  posture  looks  windows');
+      for (const d of chain) {
+        const next = d.windup + d.active + (Number(d.chain) || 0) * d.recovery, Wn = hitWindows(d);
+        out(`   ${String(d.combo).padEnd(4)} ${String(d.name).padEnd(20)} ${String(d.kind).padEnd(6)} ${f2(d.windup)} / ${f2(d.active)} / ${f2(d.recovery)}     ${f3(next).padEnd(10)}  ${f2(d.windup + d.active + d.recovery)}    ${String(dmgOf(d)).padEnd(6)}  ${String(d.poise ?? '-').padEnd(7)}  ${looksOf(d).length}      ${Wn ? Wn.map((w) => `${f3(w[0])}-${f3(w[1])} s (${w[2].damage})`).join(', ') : '-'}`);
+      }
+      // (2) the mashed cadence and the damage per second
+      const C = cycle(chain);
+      const dev = (C.dpsAll / ref.dpsAll - 1) * 100;
+      out(`   mashed: hit starts ${C.gaps.map(f2).join(' · ')} s apart; a cycle ${f2(C.len)} s; ${C.dpsAll.toFixed(1)} damage/s if every hit lands (${dev >= 0 ? '+' : ''}${dev.toFixed(1)} % vs today ${ref.dpsAll.toFixed(1)}; target ±6 %), ${C.dpsLanded.toFixed(1)} landed at 2.0 m  ${Math.abs(dev) <= 6 ? 'PASS' : 'FAIL'}`);
+      // (3) every look of every hit, one press at a time at 2.0 / 2.75 / 3.5 m: hit or miss
+      const nLooks = Math.max(...chain.map((d) => looksOf(d).length));
+      const rows = [];
+      for (let k = 0; k < chain.length; k++) {
+        const d = chain[k], n = looksOf(d).length, cells = [];
+        for (let v = 0; v < n; v++) {
+          for (const gap of [2.0, 2.75, 3.5]) {
+            const T = fresh(k ? 30 : gap);
+            T.p.anim.forceVariantBy = { [d.name]: v };
+            T.p.anim.forceVariant = 0;
+            for (let j = 0; j < k; j++) tick(T.G, Math.round(CHAIN_EVERY / DT), (i) => { if (!i) T.G.input.click(0); });
+            if (k) T.place(gap);
+            const h0 = T.taken.length;
+            tick(T.G, Math.round(1.2 / DT), (i) => { if (!i) T.G.input.click(0); });
+            const got = T.taken.length - h0;
+            const exp = hitWindows(d)?.length ?? 1;
+            cells.push(`${got >= exp ? 'hit' : got ? `${got}/${exp}` : 'MISS'}`);
+          }
+        }
+        rows.push(`   ${String(d.combo).padEnd(3)} ${String(d.name).padEnd(20)} ${looksOf(d).map((an, v) => `#${v} ${an.clip}: ${cells.slice(v * 3, v * 3 + 3).join(' ')}`).join(' | ')}`);
+      }
+      out(`   reach (one press each; a look's 2.0 / 2.75 / 3.5 m):`);
+      for (const r of rows) out(r);
+      // (4) the motion, each look mashed in open air: crossing, fastest frames, elbows, feet, hips, blade vs body
+      const T = fresh(30), p = T.p, r = p.rig, A = p.anim, HD = HERO_DIM;
+      const { ell, cap, shell } = heroShapes(BODY, HD);
+      const parts = [['torso', r.spine, shell], ['hips', r.pelvis, (q) => ell(q, BODY.hips.c, BODY.hips.r)], ['head', r.head, (q) => ell(q, BODY.head.c, BODY.head.r)]];
+      const inv = new THREE.Matrix4(), invB = new THREE.Matrix4(), v = new THREE.Vector3(), w = new THREE.Vector3(), q = new THREE.Vector3();
+      const S0 = {}, segNames = ['R upper', 'R fore', 'L upper', 'L fore'];
+      const pos = { now: {}, was: {} };
+      const dirNow = segNames.map(() => new THREE.Vector3()), dirWas = segNames.map(() => new THREE.Vector3());
+      let key = null;
+      const frame = () => {
+        const a = p.atk, d = a?.def;
+        const k = d && p.state === 'attack' && d.kind !== 'heavy' ? `${d.name}#${A.atkVar}` : null;
+        inv.copy(r.root.matrixWorld).invert();
+        invB.copy(r.body.matrixWorld).invert();
+        const sc = 1 / (p.drawScale || 1);
+        const P = (J, out3, local = null) => (local ? out3.set(...local).applyMatrix4(J.matrixWorld) : out3.setFromMatrixPosition(J.matrixWorld)).applyMatrix4(inv).multiplyScalar(sc);
+        const pts = {
+          'R hand': P(r.arms.R.fore, new THREE.Vector3(), [0, -HD.foreArm, 0]), 'L hand': P(r.arms.L.wrist, new THREE.Vector3()),
+          'blade point': P(r.sword, new THREE.Vector3(), [0, 0, HD.drawnTip ?? HD.steelTip ?? 0.9]), head: P(r.head, new THREE.Vector3()),
+          'R elbow': P(r.arms.R.fore, new THREE.Vector3()), 'L elbow': P(r.arms.L.fore, new THREE.Vector3()),
+        };
+        const shR = P(r.arms.R.upper, new THREE.Vector3()), shL = P(r.arms.L.upper, new THREE.Vector3());
+        [r.arms.R, r.arms.L].forEach((arm, j) => {
+          const e0 = v.setFromMatrixPosition(arm.upper.matrixWorld).applyMatrix4(invB), e1 = w.setFromMatrixPosition(arm.fore.matrixWorld).applyMatrix4(invB);
+          dirNow[j * 2].subVectors(e1, e0).normalize();
+          q.set(0, -HD.foreArm, 0).applyMatrix4(arm.fore.matrixWorld).applyMatrix4(invB);
+          dirNow[j * 2 + 1].subVectors(q, e1).normalize();
+        });
+        if (k) {
+          const R = S0[k] ?? (S0[k] = { n: 0, seg: {}, pt: {}, elb: [[180, 0], [180, 0]], cross: null, crossAz: Infinity, inside: false, pen: -1, penAt: '', hipT: -1, hipV: 0, handT: -1, handV: 0, hipPrev: null, foot: [0, 0], footPrev: null, fx: null });
+          R.n++;
+          const W = d.windup, end = p._strikeEnd ? p._strikeEnd(a) : W + d.active;
+          if (key === k) {
+            for (let j = 0; j < 4; j++) {
+              const turn = Math.acos(clamp(dirNow[j].dot(dirWas[j]), -1, 1)) * DEG;
+              if (turn > (R.seg[segNames[j]]?.[0] ?? 0)) R.seg[segNames[j]] = [turn, a.t];
+            }
+            for (const [nm, pt] of Object.entries(pts)) {
+              const was0 = pos.was[nm];
+              if (!was0) continue;
+              const step = pt.distanceTo(was0);
+              if (step > (R.pt[nm]?.[0] ?? 0)) R.pt[nm] = [step, a.t];
+            }
+          }
+          // elbows: the interior angle, shoulder → elbow → hand
+          for (const [j, sh, el, hd] of [[0, shR, pts['R elbow'], pts['R hand']], [1, shL, pts['L elbow'], pts['L hand']]]) {
+            const ang = Math.acos(clamp(v.subVectors(sh, el).normalize().dot(w.subVectors(hd, el).normalize()), -1, 1)) * DEG;
+            R.elb[j][0] = Math.min(R.elb[j][0], ang);
+            R.elb[j][1] = Math.max(R.elb[j][1], ang);
+          }
+          // where the blade crosses his front: the frame its direction is nearest straight ahead (root frame)
+          if (a.t >= W - 0.06 && a.t <= end + 0.08) {
+            const h0 = P(r.sword, v, [0, 0, 0.2]), h1 = P(r.sword, w, [0, 0, 0.8]);
+            const az = Math.abs(Math.atan2(h1.x - h0.x, h1.z - h0.z)) * DEG;
+            if (az < R.crossAz) { R.crossAz = az; R.cross = (a.t - W) / Math.max(1e-6, end - W); R.inside = a.t >= W && a.t <= end; }
+          }
+          // the kinetic chain: the hips' turn rate and the sword hand's speed peaks (W - 0.05 .. the strike's end)
+          if (a.t >= W - 0.05 && a.t <= end) {
+            const hy = A.cur[AP.pelvY] + (A.cur[AP.yaw] ?? 0);
+            if (R.hipPrev !== null) { const rate = Math.abs(hy - R.hipPrev); if (rate > R.hipV) { R.hipV = rate; R.hipT = a.t; } }
+            R.hipPrev = hy;
+            const hs = pos.was['R hand'] ? pts['R hand'].distanceTo(pos.was['R hand']) : 0;
+            if (hs > R.handV) { R.handV = hs; R.handT = a.t; }
+          }
+          // feet that slide: a foot on the grass (≤ 4 cm up) creeping 0.2-3 cm a frame in the world (a
+          // step moves faster; a skate or a toe drag is this)
+          const feet = [r.legs.R.foot, r.legs.L.foot].map((f) => new THREE.Vector3().setFromMatrixPosition(f.matrixWorld));
+          if (key !== k) R.footCur = [0, 0]; // (per swing: the worst swing of this look is kept)
+          if (R.footPrev) for (let j = 0; j < 2; j++) {
+            const m = Math.hypot(feet[j].x - R.footPrev[j].x, feet[j].z - R.footPrev[j].z);
+            if (feet[j].y - p.position.y < HD.ankle + 0.04 && m >= 0.002 && m <= 0.03) R.footCur[j] += m;
+            R.foot[j] = Math.max(R.foot[j], R.footCur[j]);
+          }
+          R.footPrev = feet;
+          // the blade inside his torso, hips or head (m; > 0 = inside)
+          for (let z = 0.2; z <= (HD.drawnTip ?? HD.steelTip ?? 0.9) + 1e-6; z += 0.05) {
+            v.set(0, 0, z).applyMatrix4(r.sword.matrixWorld);
+            for (const [nm, J, fn] of parts) {
+              const pen = fn(J.worldToLocal(w.copy(v)));
+              if (pen > R.pen) { R.pen = pen; R.penAt = `${nm} t ${a.t.toFixed(2)}`; }
+            }
+          }
+        }
+        for (let j = 0; j < 4; j++) dirWas[j].copy(dirNow[j]);
+        for (const [nm, pt] of Object.entries(pts)) (pos.was[nm] ??= new THREE.Vector3()).copy(pt);
+        if (!k && key) for (const R of Object.values(S0)) R.footPrev = null;
+        key = k;
+      };
+      for (let look = 0; look < nLooks; look++) {
+        A.forceVariant = look;
+        A.forceVariantBy = null;
+        tick(T.G, 3, null);
+        for (let k = 0; k < chain.length; k++) tick(T.G, Math.round(Math.max(CHAIN_EVERY, chain[k].windup + chain[k].active + (Number(chain[k].chain) || 0) * chain[k].recovery + 0.02) / DT), (i) => { if (!i) T.G.input.click(0); frame(); });
+        tick(T.G, Math.round(1.0 / DT), () => frame());
+      }
+      A.forceVariant = null;
+      out('   motion (each look, walked hit by hit in open air; "fastest" = the most in one frame at 60 fps, and when on the swing clock):');
+      for (const [k, R] of Object.entries(S0)) {
+        const seg = Object.entries(R.seg).map(([n, [deg, t]]) => `${n} ${deg.toFixed(0)}° @${t.toFixed(2)}`).join(', ');
+        const ptS = Object.entries(R.pt).map(([n, [m, t]]) => `${n} ${(m * 100).toFixed(0)} cm @${t.toFixed(2)}`).join(', ');
+        const worstSeg = Math.max(0, ...Object.values(R.seg).map((x) => x[0]));
+        const lead = R.hipT >= 0 && R.handT >= 0 ? Math.round((R.handT - R.hipT) * 60) : NaN;
+        out(`   ${k}`);
+        out(`      crosses his front at ${Number.isFinite(R.cross) ? (R.cross * 100).toFixed(0) : '-'} % of the strike (${R.crossAz.toFixed(0)}° off ahead) ${R.inside ? 'PASS inside the active frames' : 'FAIL outside the active frames'}`);
+        out(`      fastest: ${seg}  ${worstSeg < 60 ? 'PASS' : 'FAIL'} (< 60°)`);
+        out(`               ${ptS}`);
+        out(`      elbows (interior °): right ${R.elb[0][0].toFixed(0)}-${R.elb[0][1].toFixed(0)}, left ${R.elb[1][0].toFixed(0)}-${R.elb[1][1].toFixed(0)}; feet sliding on the grass R ${(R.foot[0] * 100).toFixed(0)} / L ${(R.foot[1] * 100).toFixed(0)} cm ${Math.max(...R.foot) <= 0.12 ? "PASS" : "FAIL"} (≤ 12 cm a swing, the toe drag)`);
+        out(`      hips lead the hand by ${Number.isFinite(lead) ? lead : '-'} frame(s) ${lead >= 1 ? 'PASS' : 'FAIL'} (≥ 1); blade vs torso / hips / head: ${R.pen > 0 ? `${(R.pen * 100).toFixed(1)} cm INSIDE (${R.penAt}) FAIL` : `clear by ${(-R.pen * 100).toFixed(1)} cm PASS`}`);
+      }
+      // (5) the clips' lint (the suites' rules: HEROLIFE 1d / 1e, HEROWEIGHT W1)
+      out('   clip lint (the rules every SWINGS clip is held to; an exemption is the lead\'s and the owner\'s call):');
+      const clips = [...new Set(chain.flatMap((d) => looksOf(d).filter((an) => an?.kind === 'clip').map((an) => an.clip)))];
+      const spun = new Set(chain.flatMap((d) => looksOf(d).filter((an) => an?.kind === 'clip' && an.spin).map((an) => an.clip)));
+      for (const name of clips) {
+        const C = SWINGS[name];
+        if (!C) { out(`   ${name}: NOT IN SWINGS FAIL`); continue; }
+        const res = [];
+        const ks = C.keys.filter((k) => Array.isArray(k.a) && k.u > 1.001 && k.u <= 2.001);
+        if (C.line !== 'point' && ks.length) {
+          const steep = Math.max(...ks.map((k) => Math.abs(k.a[1])));
+          const front = ks.reduce((b, k) => (Math.abs(k.a[0]) < Math.abs(b.a[0]) ? k : b));
+          const crosses = Math.abs(front.a[0]) <= 45;
+          res.push(`diagonal (≤ 50°, ≤ 20° crossing): steepest ${steep}°${crosses ? `, ${front.a[1]}° crossing` : ''} ${!(steep <= 50) || (crosses && !(Math.abs(front.a[1]) <= 20)) ? 'FAIL' : 'PASS'}`);
+          const mid = C.keys.find((k) => Array.isArray(k.a) && Math.abs(k.u - 1.5) < 0.06);
+          if (C.keys.some((k) => k.two === 1)) res.push('whip: two-handed (not held to it)');
+          else if (spun.has(name)) res.push('whip: a spin (exempt, as in the suite)');
+          else if (!mid) res.push('whip: no blade key at u 1.5 (the suite skips it)');
+          else res.push(`whip (20-45° short of ahead at u 1.5): ${Math.abs(mid.a[0])}° ${Math.abs(mid.a[0]) >= 20 && Math.abs(mid.a[0]) <= 45 ? 'PASS' : 'FAIL (a whirl is exempt by name in the suite)'}`);
+        }
+        if (C.line === 'point') {
+          const el = Math.max(...C.keys.filter((k) => k.u > 1.5 && k.u <= 2.001 && Array.isArray(k.a)).map((k) => k.a[1]));
+          res.push(`thrust rises (≥ 30° at full reach): ${el}° ${el >= 30 ? 'PASS' : 'FAIL'}`);
+        }
+        if (spun.has(name) || C.keys.some((k) => k.two === 1)) res.push('anticipation / overshoot: not held to them (a spin or a two-handed blow; the suite\'s list is the one-handed lights)');
+        else {
+          const has = (k, f) => k[f] != null, nohand = (k) => !has(k, 'h') && !has(k, 'a');
+          const all = C.keys;
+          const coil = all.find((k) => k.u >= 0.9 && k.u <= 1 && has(k, 'hip')), ant = all.find((k) => k.u >= 0.5 && k.u <= 0.8 && has(k, 'hip') && nohand(k));
+          const toward = [...all].filter((k) => k.u <= 2 && has(k, 'hip')).pop();
+          if (coil && toward) {
+            const sg = -Math.sign(toward.hip - coil.hip);
+            res.push(`anticipation (u 0.5-0.8, hips ≥ 0.06 / chest ≥ 0.04 rad past the coil, body only): ${ant && sg * (ant.hip - coil.hip) >= 0.06 - 1e-9 && sg * (ant.sy - coil.sy) >= 0.04 - 1e-9 ? 'PASS' : 'FAIL'}`);
+            const os = all.find((k) => k.u >= 2.05 && k.u <= 2.25 && has(k, 'hip') && nohand(k)), lastHip = [...all].filter((k) => has(k, 'hip')).pop().hip;
+            res.push(`overshoot (u 2.05-2.25, hips ≥ ${C.line === 'point' ? 0.025 : 0.06} rad past the finish, settling back): ${os && Math.abs(os.hip) >= Math.abs(toward.hip) + (C.line === 'point' ? 0.025 : 0.06) - 1e-9 && Math.abs(lastHip) < Math.abs(os.hip) ? 'PASS' : 'FAIL'}`);
+          } else res.push('anticipation / overshoot: no hip keys at the coil and the finish (FAIL for a light)');
+        }
+        if (!C.line) res.push('line: none (the variant picker cannot keep two hits off one plane) FAIL');
+        out(`   ${name} (line ${C.line ?? '-'}): ${res.join(' · ')}`);
+      }
+    }
+  } finally {
+    S.setComboStyle(was);
+  }
+  return lastG;
+}
+
 const SCENARIOS = {
   timestep: scenarioTimestep,
   strategy: scenarioStrategy,
@@ -12515,9 +12775,10 @@ const SCENARIOS = {
   wreckage: scenarioWreckage,
   breach: scenarioBreach,
   probe: scenarioProbe,
+  comboaudit: scenarioComboAudit,
 };
 const runs = [];
-const OPT_IN = new Set(['probe', 'strategy']); // run only when named
+const OPT_IN = new Set(['probe', 'strategy', 'comboaudit']); // run only when named (comboaudit: tests/audit/hero-combo.mjs)
 // ABYSS_SKIP: scenarios left out of `all` because the caller runs them beside this process
 const SKIP = new Set((process.env.ABYSS_SKIP || '').split(',').filter(Boolean));
 for (const name of SKIP) if (!SCENARIOS[name]) { out(`ABYSS_SKIP: unknown scenario '${name}'`); process.exit(2); }
