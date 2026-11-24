@@ -7,7 +7,8 @@ import { mowOn } from './scorch.js';
 
 // Hundreds of thousands of grass blades, each ONE glyph stroke ( | / \ ' Y V ... ) standing
 // on the ground, leaning with the wind, pushed aside by feet, flattened by wing gusts and
-// burnt to ash glyphs by dragon fire. Instances are generated in random order, so drawing
+// burnt to ash glyphs by dragon fire, mown by the sword and torn out under a blow's mark (the scorch
+// map's A: a cut blade keeps the stub of its own letter, pale at the cut; grassTuning.js). Instances are generated in random order, so drawing
 // only the first N (quality setting) thins the field evenly.
 
 const BLADES = [

@@ -9,7 +9,9 @@ import { mowOn } from './scorch.js';
 // is reset, in one batch of their own (the throne hall's inlay works the same way):
 //   scars.mark(x, z, o)                      a blow met the ground (world.groundBlow): a mark of its KIND
 //                                            (SCAR.mark: slam, cut, thrust, dash, blast, beam, step), so the
-//                                            arena shows what was fought there; `?marks=0` leaves only today's
+//                                            arena shows what was fought there; `?marks=0` leaves only today's.
+//                                            It first tears the grass out in its shape (scorch.tear, GRASS.mark;
+//                                            `?mow=0` none): its glyphs then lie on the bare floor, not on the tips
 //   scars.ground(x, z, power, dx, dz)        a star of cracks in the floor, as wide as the blow was hard
 //   scars.crater(x, z, r, power)             a crater's rim: a ring of thrown-up earth
 //   scars.object(owner, x, y, z, power, M)   a nick on a struck object (dropped when it breaks)

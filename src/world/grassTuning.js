@@ -1,15 +1,17 @@
 // Grass the sword cuts (the scorch map's A channel, "torn"): what the blade, the boss's marks and the
 // wyrm's claws take out of the meadow, and how a mown blade is drawn. Read by scorch.js (tear),
-// grass.js (the shader), world/mow.js (the hero's swing) and scars.js (every kind of mark tears).
+// grass.js (the shader; mowSwing, the hero's swing) and scars.js (every kind of mark tears).
 // `?mow=0`: nothing tears (today's grass, exactly).
 
 export const GRASS = Object.freeze({
   /**
    * The mown blade (grass.js): a torn blade keeps the lower `stub` share of its letter's ink (the
    * letter is CUT, its upper part gone: not shrunk, not swapped like burnt grass), each blade's cut a
-   * little higher or lower (`jitter`), a few of them `low` (cut to the root). Its top is paler where it
-   * was cut (`fresh`, `freshAsh` on the Ashfall's dried grass), `freshK` of the way; the stubble barely
-   * sways (`stiff`: the wind's lean x the share left). `gain`: the torn value that is a full cut.
+   * little higher or lower (`jitter`), a few of them `low` (cut to the root). The torn value x `gain`
+   * is the share of the blades there that are cut (each blade is cut or stands: a light tear is a
+   * scatter of stubs, a swath's edge a ragged line of them). A stub is paler where it was cut (`fresh`,
+   * `freshAsh` on the Ashfall's dried grass), `freshK` of the way (never over burnt grass); it sways as
+   * the lower part of the blade does (barely).
    */
   blade: Object.freeze({
     stub: 0.42,
@@ -27,12 +29,13 @@ export const GRASS = Object.freeze({
     lie: [0.4, 0.55, 0.85],
   }),
   /**
-   * The hero's swing (world/mow.js, called beside player.js `_cutWorld`): every frame of the active
-   * window the drawn steel (out to `reach` x its length) is swept from last frame's pose to this one in
-   * sub-steps of at most `sub` m of the point's travel (`maxSub` at most); wherever the steel passes
-   * below the grass's top (`top` x the meadow's height there) it tears a strip along the steel, `w` m
-   * wide (at least; the sub-step's travel when that is wider), as deep as how far under the tops the
-   * edge went: `depth` x (top - y) / top, a tear under `min` none. Only where the grass grows
+   * The hero's swing (grass.js mowSwing, called by player.js `_combat` beside `_cutWorld`): every frame
+   * from the active window to `after` s past it, while the steel's point moves at `speed` m/s or more,
+   * the drawn steel (out to `reach` x its length) is swept from last frame's pose to this one in
+   * sub-steps of at most `sub` m of the point's travel (`maxSub` at most); wherever it passes lower than
+   * `above` m over the grass's top (`top` x the meadow's height there) it tears a strip along the steel
+   * `w` m wide: `skim` deep at the tops (fading to 0 `above` m over them), 1 at `stubY` x the top and
+   * under, times `maxK` (the sword MOWS; a tear under `min` x maxK none). Only where grass grows
    * (`minDensity`, the fire's density there).
    */
   mow: Object.freeze({
