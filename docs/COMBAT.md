@@ -594,6 +594,37 @@ same 258 damage in the same time as a streak of 7 (integ `storm`).
   101 (gaps 27, 14, 7, 5, 4 / 24, 11, 6, 4, 4); 3 blows 14, 45, last 101 / 12, 39, last 90. Damage, the
   blows, the world's hold, the crit window and where he ends are as before (integ `storm`, duel
   `tempo`).
+- **The chain** (2026-11-24; `DEFENSE.flurry.chain`, `STREAK_FX.chain`; `?chain=0` and the Lab's
+  `chain` button give the paths above exactly). Owner: "the 2 streak the character should quickly move
+  2 times from A - B - C but right now it goes back to the original A location"; "make sure all the
+  white slashes ... is accurate to how the character moved". **Every pass starts where the one before
+  ended.** The first flash cut starts on the side he dodged on, `reach` out (2.3 m on a man, 4.6 m round
+  the head); each pass runs from where he stands past the target (on a man 0.55 - 0.9 m off his middle,
+  past his side; round the head 0.85 - 1.15 m off its middle) and on out to `reach` beyond it, where the
+  next starts. The blink between two cuts stays (the afterimage, the arrival flash), but he reappears
+  where he already is, turned to the next line. The whole run is planned as the flurry starts (a
+  bounded search over each cut's side and offset, a few ms): the lines spread like a star as widely as
+  they can (round the head the neck kept clear; at seven blows the six lines 21 - 27° apart at least),
+  no pass ends within 1.6 m of the dodge spot, and on a man the last cut ends before his face when the
+  star allows it. **The art starts where the last cut ended**: the iai from there through the target
+  (round the head, if that line runs along the neck, its coil carries him round the head first), the
+  split rises from there during its coil to its height and falls through, the vault steps in from
+  there during its coil; Skyfall's plunge rises over the side of the head he is on. With one blow (the
+  art alone) nothing moves. On a man he still ends past the foe, `ghostepBehind` beyond him along the
+  art, and the foe staggers away from there; **after an odd number of flash cuts (2 blows, and 4 or 6
+  when the star needs it) that is at the foe's FRONT**, not his back (a run of 2 / 4 / 6 cuts whose
+  lines spread cannot also end before his face). The crit window opens either way. A riposte's cuts
+  chain the same way and he is back where he parried at the end, as before. **Every slash is on his
+  path:** each hanging cut is the path his chest ran (A to B, 1.2 m over his root), not a short line
+  through the foe; a flash cut's bite (its stroke, star and sparks) and the iai's crossing flash are
+  drawn where his path passes the target; the flash cuts' crescents and the iai's two-arc lens are gone;
+  the split's / vault's crescent is drawn along his blade's sampled path through the strike; the burst's
+  thin lines are no longer than the cuts. **The last blow on a man throws white-steel letter dust**
+  (`flurryFx.js` `DUST`: 96 tiny letters and 8 falling dots, 0.05 - 0.09 m, steel white to a pale
+  blue-grey under the bloom threshold, thrown low and fast along the blow and to its sides, dragged
+  down into a drift that thins out in 0.6 - 0.9 s) instead of the slam's big 'A' shards; round the
+  head the art's shards are dust too. Damage, the blows and their frames, the world's hold and the
+  crit window are as before (duel / integ `chain`).
 - **Past seven** (`tiers`): at tier 4 every hanging cut has a fine echo line beside it, at tier 5 two;
   on the last blow they split away and rings open where they cross. The banner names the full flurry
   of a tier-4 / 5 streak HUNDREDFOLD FLASH / THOUSANDFOLD FLASH (SEVENFOLD below), a rule more, never
