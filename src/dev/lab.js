@@ -1219,20 +1219,21 @@ export class Lab {
       this._syncCutBtns();
     });
     this.ui.burstBtn.title = "the flurry's last blow: 0 as before, 1 - 3 lines instead of the white burst";
-    // the attack sounds (audio/samples.js; ?sfx=old): new = cues on blue / red only, recorded where loaded,
-    // each boss's blade or fist through the air; old = the sounds before (a tick on every tell, all synth)
+    // the sound passes (audio/samples.js; ?sfx=new): old (the default) = the original synth sounds (a tick on
+    // every tell, all synth); new = cues on blue / red only, recorded / designed where loaded, each boss's
+    // blade or fist through the air
     const sfr = el('div', 'lab-row', null, body);
-    el('span', 'lab-lbl', 'sfx', sfr).title = 'the attack sounds and the blue / red cues (?sfx=old: as before)';
+    el('span', 'lab-lbl', 'sfx', sfr).title = 'the sound effects: old = the original synth (the default), new = the recorded / designed sounds of the sound passes (?sfx=new)';
     const sfGrid = el('div', 'lab-grid', null, sfr);
     sfGrid.style.flex = '1';
-    this.ui.sfxBtns = ['new', 'old'].map((m) => {
+    this.ui.sfxBtns = ['old', 'new'].map((m) => {
       const b = button(sfGrid, m, () => {
         setSfxMode(m);
         this._syncCutBtns();
       });
       b.title = m === 'new'
-        ? 'cues on blue / red blows only (recorded where loaded), a boss blade or fist sounds through the air'
-        : 'as before: a tick on every tell, the flash ping on every blow, all synth, no boss swing sound';
+        ? 'the sound passes: cues on blue / red blows only, recorded / designed sounds where loaded, a boss blade or fist through the air'
+        : 'the original synth (the default): a tick on every tell, the flash ping on every blow, all synth, no boss swing sound';
       return { m, el: b };
     });
     this.ui.sfxNote = el('span', 'lab-note', '', sfGrid);

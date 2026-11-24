@@ -5,6 +5,32 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-23 — Session 90: every sound effect back to its first synth version
+
+**Owner:** (after a session of sound picks) "lets just make all the sounds go back to their original. i want to
+start from baseline and undo all the sound changes." Asked the scope; they chose all sound effects, music kept.
+
+**The session before it** (kept in a git stash, "swing + warning sound options", and the pickers): the hero's
+recorded light-cut swing did not match the animation (its takes peaked at 206 / 77 / 60 ms, the blade lands at
+about 150 ms); five designed swings with their top on the blade were built and the owner picked `e`, then asked for
+softer ones for mashing; the blue / red warnings ("too cheap", "way too dramatic and long"): the originals back,
+four variations of each, a plucked-string pair, seven variations of it, and a spread of families, all turned down.
+Rig lessons are in the memory notes (render each event through a fresh `AudioEngine` on an `OfflineAudioContext`;
+level-match A-weighted; a deep fundamental is not heard on a phone).
+
+**Changed** (ADR-178). `samples.js`: `DEFAULT_SFX = 'old'`; `?sfx=new` / `setSfxMode('new')` opts in and starts the
+download; `load()` does nothing while off. Lab `sfx` row: `old` / `new`. Integ and duel `sfx` scenarios switch the
+mode on and restore the default; integ asserts the default is `old`.
+
+**Verified in headless Edge:** default 0 of 35 files requested; `?sfx=new` 35 of 35 loaded; the Lab's switch loads
+them live. This found a slip of mine that node could not: a block replacement in `samples.js` had also removed
+`headOffset`, which only runs when a file decodes (the tests have no fetch).
+
+**Open.** Nobody has listened to the baseline in play. The next round should start from the owner's words (a
+reference, a game, a feeling) rather than options.
+
+---
+
 ## 2026-11-23 — A fight the world feels: the blade clean through, a mark for every boss blow, flocks, animals, a set that shakes (ADR-177; planned by Fable, built by Opus agents)
 
 **Owner:** "when the player hits something like a rock or tree, the sword gets stopped and i dont like

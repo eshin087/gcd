@@ -4,7 +4,18 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Eighty pieces of work since 0.4.0:
+Eighty-one pieces of work since 0.4.0:
+- **Every sound effect is back to its first synth version** (2026-11-23, ADR-178). *Changed:* the owner turned down a new light-cut
+  swing, plucked-string warnings and two rounds of variations of the blue and red warnings, and asked to "start
+  from baseline and undo all the sound changes". The recorded and designed sounds of the attack-sound pass
+  (ADR-165) and the combat-core round (ADR-172) are now OFF by default: a tick on every tell, the flash's ping on
+  every blow, the original blue and red warnings (the red log drum is gone), the synth parry with its climbing
+  chain, hurt, clash, slam, flurry, plunge and swing, and no sound of a boss's blade. *Added:* `?sfx=new` (and the
+  Lab's `sfx` row, `old` / `new`) turns the recordings and designed sounds back on; their files are not downloaded
+  unless it is on (the default fetches none of its 35). The recorded music per level and boss phase (ADR-117) is
+  unchanged. Not undone: the sounds that came with later features (the streak's climb note, the impact sub, the
+  living world's air) and two small fixes from the round-two sign-off (the hero's combo swing rising on every cut,
+  the streak's note half as loud on a parry).
 - **The sword cuts clean through; the fight marks the ground; birds and animals flee** (2026-11-23, ADR-177).
   *Changed:* the hero's blade no longer stops on a rock, a tree or a pillar it cannot fell: the swing
   goes through at full speed, the piece still takes the blow, its letters fly on along the cut, stone
