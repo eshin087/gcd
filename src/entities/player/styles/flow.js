@@ -259,6 +259,151 @@ const circle = {
   },
 };
 
+// ================================================================ THE COMBO: a sword dance in figure eights
+// Five presses, one figure: each finish is the next coil, the steel swinging back like a pendulum
+// and looping up the side it finished on into the next cut (R → L, loop up the left, L → R, loop up
+// the right, down and back up in one press, a drawn cut R → L that he holds, and the wide backhand
+// sweep L → R that he holds with the fingers out, which leaves the blade low on the right where the
+// first cut loops up again). The groove, mashed: da · da · da-da · (held) DAAA · (held).
+// Next from: 0.26 · 0.27 · 0.35 · 0.51 · 0.50 s, a cycle of ~1.88 s, 201 damage (~107 /s).
+const CHAIN = [
+  {
+    // 1 the falling river: from high right a diagonal across his chest down past the left hip; the
+    // free arm swings out behind him against it
+    name: 'flowRiver', kind: 'light', combo: 1, damage: 27, poise: 10, heavy: false,
+    windup: 0.1, active: 0.11, recovery: 0.22, chain: 0.22, lunge: 0.55, reach: 2.2,
+    hitstop: 0.045, shake: 0.1, bite: 0.8, contact: 'light', punch: 0.3, kick: 0.07, flare: 0.45,
+    anim: { kind: 'clip', clip: 'flowRiver' },
+  },
+  {
+    // 2 the returning river: the steel loops up his left side and falls back across to the right hip
+    name: 'flowReturn', kind: 'light', combo: 2, damage: 29, poise: 11, heavy: false,
+    windup: 0.11, active: 0.11, recovery: 0.22, chain: 0.22, lunge: 0.55, reach: 2.2,
+    hitstop: 0.05, shake: 0.11, bite: 0.9, contact: 'light', punch: 0.32, kick: 0.07, flare: 0.5,
+    anim: { kind: 'clip', clip: 'flowReturn' },
+  },
+  {
+    // 3 twin ripples: up the right side and down across him, and in the same breath the wrist rolls
+    // over and the steel runs back up the same line: two blows in one press
+    name: 'flowTwin', kind: 'light', combo: 3, damage: 35, poise: 13, heavy: false,
+    windup: 0.1, active: 0.2, recovery: 0.24, chain: 0.2, lunge: 0.6, reach: 2.2,
+    hitstop: 0.04, shake: 0.1, bite: 0.6, contact: 'light', punch: 0.28, kick: 0.06, flare: 0.45,
+    hits: [
+      { at: [1.0, 1.42], damage: 16, poise: 6, hitstop: 0.035, bite: 0.5 },
+      { at: [1.5, 2.0], damage: 19, poise: 7, hitstop: 0.055, bite: 0.9, punch: 0.4, contact: 'sweep', flare: 0.55 },
+    ],
+    anim: { kind: 'clip', clip: 'flowTwin' },
+  },
+  {
+    // 4 the drawn breath: he sinks and steps through, drawing the blade low and flat from behind the
+    // right hip across to his left, the hips turning with it, and HOLDS it there a beat
+    name: 'flowDraw', kind: 'light', combo: 4, damage: 42, poise: 18, heavy: false,
+    windup: 0.12, active: 0.12, recovery: 0.38, chain: 0.6, buffer: 0.55, lunge: 0.7, reach: 2.2,
+    hitstop: 0.075, shake: 0.18, bite: 1.2, biteHold: 0.12, heft: { t: 0.08, rate: 0.35 },
+    contact: 'sweep', punch: 0.55, kick: 0.12, flare: 0.6,
+    anim: { kind: 'clip', clip: 'flowDraw', turn: 0.3 },
+  },
+  {
+    // 5 the wide sweep: out of the held breath the whole body unwinds into a deep bow and the steel
+    // sweeps wide and low from his left all the way round past the right, and he holds it, the
+    // sword fingers pointed at the foe
+    name: 'flowSweep', kind: 'light', combo: 5, damage: 78, poise: 42, heavy: true,
+    windup: 0.2, active: 0.14, recovery: 0.48, chain: 0.25, buffer: 0.5, lunge: 0.75, reach: 2.3,
+    hitstop: 0.13, shake: 0.4, bite: 1.45, biteHold: 0.14, heft: { t: 0.1, rate: 0.3 },
+    contact: 'cleave', punch: 1.5, kick: 0.2, flare: 0.95,
+    anim: { kind: 'clip', clip: 'flowSweep', turn: -0.4 },
+  },
+];
+
+const SWINGS = {
+  /** 1 the falling river (line right): cocked beside the head, the diagonal down across his chest. */
+  flowRiver: {
+    line: 'right',
+    lF: [0.15, 0.48], rF: [-0.17, -0.46], fy: [0.15, -0.75], drag: 0.14,
+    keys: [
+      { u: 0.6, by: -0.04, bz: -0.09, bx: -0.06, hip: -0.46, sy: -0.52, sx: -0.1, fh: 'chest' },
+      { u: 1.0, h: [-0.06, 0.2, 0.0], a: [-150, 40], by: -0.08, bz: -0.07, bx: -0.05, hip: -0.38, sy: -0.44, sx: -0.04, sz: 0.05, fh: 'chest' },
+      { u: 1.25, h: [0.02, 0.14, 0.24], a: [-102, 32] },
+      { u: 1.5, h: [0.14, -0.05, 0.46], a: [-30, 12], by: -0.22, bz: 0.1, bx: 0.01, hip: 0.2, sy: 0.0, sx: 0.3, sz: 0.0, l: [0.3, -0.12, 0.02], lp: [0.45, -0.85, -0.3], ld: [85, 8], pn: [-0.3, -1, 0], lk: 0 },
+      { u: 1.75, h: [0.25, -0.22, 0.41], a: [30, -16] },
+      { u: 2.0, h: [0.31, -0.33, 0.3], a: [72, -34], by: -0.29, bz: 0.15, bx: 0.05, hip: 0.4, sy: 0.42, sx: 0.42, sz: -0.07, fh: 'highWing', l: [0.34, 0.0, -0.24] },
+      { u: 2.15, by: -0.31, bz: 0.17, bx: 0.06, hip: 0.5, sy: 0.55, sx: 0.47 },
+      { u: 2.45, h: [0.34, -0.36, 0.14], a: [128, -22], by: -0.26, bz: 0.11, bx: 0.04, hip: 0.44, sy: 0.48, sx: 0.38, sz: -0.06, fh: 'highWing' },
+    ],
+  },
+  /** 2 the returning river (line left): the loop up his left side, the diagonal down to the right
+   *  hip; the fingers come in to the chest through the loop and fly out to his left at the finish. */
+  flowReturn: {
+    line: 'left',
+    lF: [0.15, 0.48], rF: [-0.17, -0.46], fy: [0.15, -0.75], drag: 0.14,
+    keys: [
+      { u: 0.6, by: -0.1, bz: -0.08, bx: -0.06, hip: 0.43, sy: 0.52, sx: -0.06, l: [0.18, -0.3, 0.08] },
+      { u: 1.0, h: [0.32, 0.14, 0.1], a: [156, 44], by: -0.09, bz: -0.06, bx: -0.05, hip: 0.34, sy: 0.45, sx: 0.0, sz: -0.05, fh: 'chest', l: [-0.06, -0.2, 0.26], ld: [15, 55] },
+      { u: 1.25, h: [0.24, 0.1, 0.32], a: [104, 34] },
+      { u: 1.5, h: [0.1, -0.06, 0.46], a: [30, 12], by: -0.22, bz: 0.1, bx: 0.01, hip: -0.08, sy: 0.0, sx: 0.3, l: [0.24, -0.12, 0.1], lp: [0.4, -0.85, -0.3], ld: [70, 30], pn: [-0.4, -1, 0], lk: 0 },
+      { u: 1.75, h: [-0.12, -0.24, 0.4], a: [-30, -16] },
+      { u: 2.0, h: [-0.24, -0.34, 0.26], a: [-70, -34], by: -0.29, bz: 0.15, bx: 0.05, hip: -0.36, sy: -0.4, sx: 0.4, sz: 0.07, fh: 'wing', l: [0.44, -0.12, -0.16] },
+      { u: 2.15, by: -0.31, bz: 0.17, bx: 0.06, hip: -0.47, sy: -0.52, sx: 0.45 },
+      { u: 2.45, h: [-0.26, -0.38, 0.08], a: [-124, -26], by: -0.26, bz: 0.11, bx: 0.04, hip: -0.42, sy: -0.46, sx: 0.36, sz: 0.06, fh: 'wing' },
+    ],
+  },
+  /** 3 twin ripples (line right): up the right side to the coil, down across to the left hip (the
+   *  first blow), the wrist rolling over at the bottom, the fingers meeting the sword wrist, and back
+   *  up the same diagonal to high right (the second), the fingers splitting away to the left. */
+  flowTwin: {
+    line: 'right',
+    lF: [0.15, 0.46], rF: [-0.17, -0.44], fy: [0.2, -0.7], drag: 0.16,
+    keys: [
+      { u: 0.6, by: -0.03, bz: -0.08, bx: -0.06, hip: -0.46, sy: -0.52, sx: -0.06, fh: 'chest' },
+      { u: 1.0, h: [-0.06, 0.18, 0.02], a: [-148, 36], by: -0.07, bz: -0.06, bx: -0.05, hip: -0.38, sy: -0.44, sx: -0.02, sz: 0.04, fh: 'chest' },
+      { u: 1.18, h: [0.06, 0.06, 0.34], a: [-70, 22] },
+      { u: 1.3, h: [0.18, -0.12, 0.45], a: [0, 0], by: -0.2, bz: 0.08, bx: 0.02, hip: 0.14, sy: 0.05, sx: 0.3 },
+      { u: 1.4, h: [0.28, -0.28, 0.34], a: [74, -30], by: -0.25, bz: 0.11, bx: 0.04, hip: 0.3, sy: 0.32, sx: 0.38, fh: 'wrist', l: [0.02, -0.3, 0.3], lk: 0.6 },
+      { u: 1.62, h: [0.14, -0.14, 0.44], a: [10, -6], by: -0.2, bz: 0.12, hip: 0.04, sy: 0.02, sx: 0.28, l: [0.3, -0.24, 0.06], lp: [0.4, -0.7, -0.5], ld: [95, -20], pn: [0, -1, 0], lk: 0 },
+      { u: 1.8, h: [-0.08, 0.06, 0.4], a: [-50, 20] },
+      { u: 2.0, h: [-0.2, 0.18, 0.28], a: [-84, 38], by: -0.1, bz: 0.13, bx: 0.05, hip: -0.32, sy: -0.34, sx: 0.06, sz: 0.06, fh: 'wingLo', l: [0.42, -0.3, -0.14] },
+      { u: 2.13, by: -0.08, bz: 0.14, bx: 0.06, hip: -0.42, sy: -0.46, sx: 0.0 },
+      { u: 2.45, h: [-0.24, 0.24, 0.12], a: [-120, 46], by: -0.09, bz: 0.1, bx: 0.04, hip: -0.38, sy: -0.42, sx: 0.02, sz: 0.05, fh: 'wingLo' },
+    ],
+  },
+  /** 4 the drawn breath (line flat): low from behind the right hip, sinking and stepping through,
+   *  the blade drawn level across to his left and held there, the free hand high behind him. */
+  flowDraw: {
+    line: 'flat',
+    lF: [0.18, 0.44], rF: [-0.18, -0.46], fy: [0.55, -0.6], drag: 0.16, home: 0.6,
+    keys: [
+      { u: 0.6, by: -0.24, bz: -0.08, bx: -0.06, hip: -0.52, sy: -0.56, sx: 0.3, fh: 'aimLo' },
+      { u: 1.0, h: [-0.14, -0.37, -0.16], a: [-156, -12], by: -0.22, bz: -0.06, bx: -0.05, hip: -0.44, sy: -0.48, sx: 0.26, fh: 'aimLo' },
+      { u: 1.3, h: [0.0, -0.34, 0.26], a: [-104, -10] },
+      { u: 1.5, h: [0.14, -0.3, 0.45], a: [-32, -5], by: -0.32, bz: 0.11, bx: 0.01, hip: 0.14, sy: 0.02, sx: 0.36, l: [0.24, -0.08, 0.12], lp: [0.45, -0.85, -0.3], ld: [60, 10], pn: [0, -1, 0], lk: 0 },
+      { u: 1.75, h: [0.3, -0.25, 0.36], a: [36, 3] },
+      { u: 2.0, h: [0.38, -0.19, 0.2], a: [96, 12], by: -0.27, bz: 0.15, bx: 0.05, hip: 0.42, sy: 0.44, sx: 0.3, fh: 'highWing', l: [0.34, 0.02, -0.2] },
+      { u: 2.15, by: -0.25, bz: 0.16, bx: 0.06, hip: 0.52, sy: 0.56, sx: 0.32 },
+      { u: 2.4, h: [0.37, -0.14, 0.12], a: [134, 18], by: -0.24, bz: 0.12, bx: 0.05, hip: 0.47, sy: 0.5, sx: 0.26, fh: 'highWing', l: [0.32, 0.0, -0.18] },
+      { u: 2.6, h: [0.37, -0.14, 0.12], a: [136, 18], by: -0.23, bz: 0.12, bx: 0.05, hip: 0.46, sy: 0.5, sx: 0.25, fh: 'highWing', l: [0.32, 0.0, -0.18] },
+    ],
+  },
+  /** 5 the wide sweep (line low): the blade gathered low at his left, the body unwinding into a
+   *  deep bow, one wide sweep along the knees from the left round past the right, and held, the
+   *  sword fingers thrown out at the foe against it. */
+  flowSweep: {
+    line: 'low',
+    lF: [0.2, 0.52], rF: [-0.19, -0.5], fy: [0.35, -0.85], drag: 0.2, home: 0.55,
+    keys: [
+      { u: 0.6, by: -0.3, bz: -0.09, bx: -0.06, hip: 0.56, sy: 0.6, sx: 0.36, fh: 'wrist', l: [0.08, -0.3, 0.3] },
+      { u: 1.0, h: [0.36, -0.32, 0.04], a: [150, -10], by: -0.3, bz: -0.07, bx: -0.05, hip: 0.46, sy: 0.52, sx: 0.36, fh: 'wrist', l: [0.08, -0.3, 0.3], lk: 0.8 },
+      { u: 1.12, l: [0.18, -0.26, 0.24], lp: [0.5, -0.8, -0.2], ld: [40, -20], pn: [0, -1, 0], lk: 0.2 },
+      { u: 1.28, h: [0.28, -0.32, 0.32], a: [98, -10] },
+      { u: 1.5, h: [0.12, -0.3, 0.47], a: [32, -8], by: -0.4, bz: 0.1, bx: 0.01, hip: -0.04, sy: 0.06, sx: 0.44, l: [0.06, -0.12, 0.36], lp: [0.4, -0.9, -0.1], ld: [-4, 4], pn: [-1, 0, 0], lk: 0 },
+      { u: 1.75, h: [-0.14, -0.28, 0.42], a: [-36, -6] },
+      { u: 2.0, h: [-0.3, -0.24, 0.24], a: [-96, -2], by: -0.42, bz: 0.15, bx: 0.05, hip: -0.4, sy: -0.4, sx: 0.46, fh: 'aim', l: [0.0, -0.04, 0.44], ld: [-6, 6] },
+      { u: 2.15, by: -0.44, bz: 0.16, bx: 0.06, hip: -0.5, sy: -0.52, sx: 0.48 },
+      { u: 2.4, h: [-0.34, -0.22, 0.1], a: [-130, 2], by: -0.4, bz: 0.13, bx: 0.05, hip: -0.45, sy: -0.47, sx: 0.44, fh: 'aim', l: [0.0, -0.04, 0.44], ld: [-6, 6] },
+      { u: 2.55, h: [-0.34, -0.22, 0.1], a: [-132, 2], by: -0.39, bz: 0.13, bx: 0.05, hip: -0.45, sy: -0.47, sx: 0.43, fh: 'aim', l: [0.0, -0.04, 0.44], ld: [-6, 6] },
+    ],
+  },
+};
+
 export const flow = {
   id: 'flow',
   label: 'Flowing swordsman',
@@ -266,6 +411,6 @@ export const flow = {
   stances: { ease: [trail, low, water], fight: [long, high] },
   shift: { fade: 2.8 },
   fidgets: [flower, drawArc, flick, circle],
-  chain: null,
-  swings: {},
+  chain: CHAIN,
+  swings: SWINGS,
 };
