@@ -1519,7 +1519,9 @@ export const SFX = {
       if (st >= 2) burst(v, t + 0.02, 'pink', 'bandpass', o.mat === 'bone' ? 1700 : 1100, 1.4, 0.35, 0.05, 0.001);
       // the lean: a slow creak of wood (with the living world's sound on, its own treeCreak plays it:
       // audio/lifeSfx.js, from the tremor's world:impact listener)
-      if (st >= 3 && !E?.game?.world?.life?.on?.('air')) {
+      // (both pieces: the creak is the tremor's, piece 'answer', heard through the air's sound)
+      const life = E?.game?.world?.life;
+      if (st >= 3 && !(life?.on?.('air') && life?.on?.('answer'))) {
         const c = v.osc('sawtooth', 70 * rnd(0.9, 1.1), t, t + 0.6);
         const f = v.filter('bandpass', 420, 6);
         const g = v.gain(0);

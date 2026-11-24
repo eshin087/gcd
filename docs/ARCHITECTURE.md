@@ -2517,8 +2517,8 @@ the fallback.
   (an execution: the `postureBreak` roar).
 - `world:impact` by kind: 'chip' `chip`, 'wear' `wear` (2026-11-16, ADR-120: a quiet leaf hiss, a dry
   crack from stage 2, a low creak for the lean; gain 0.45, `gap` 0.14 s so a roar's front sets off a
-  few, not hundreds; since ADR-180 the lean's creak only while the living world's `air` piece is off:
-  with it on, the tremor's `treeCreak` is the one creak), 'burn' `sizzle`, 'burnout' `emberHiss`, any
+  few, not hundreds; since ADR-180 the lean's creak only unless the living world's `air` and `answer` pieces are both on:
+  then the tremor's `treeCreak` is the one creak), 'burn' `sizzle`, 'burnout' `emberHiss`, any
   other `crash`.
 
 **The sound of the air (2026-11-23, ADR-163; `audio/air.js`, `?life=air`).** `engine.air` (`class Air`,
@@ -4148,7 +4148,8 @@ recorded ambience down as noisy), short, quiet, under the fight; heard only with
   tree's creak, which may reach it. Judged on the audition page beside the footstep and the light swing;
   the suite checks the ranges, not the loudness.
 - **The `wear` creak gives way** (sfx.js `wear`, `world:impact` 'wear'): its stage-3 creak of wood plays
-  only while `game.world.life.on('air')` is false; with the air on the tremor's `treeCreak` plays it (its
+  unless `life.on('air')` and `life.on('answer')` are both true (the tremor, piece `answer`, makes the
+  new one; with only one of them on, the old creak stays, so a lean is never silent); with both on the tremor's `treeCreak` plays it (its
   leaf hiss and the snap of stage 2 as before). One creak for one lean.
 
 ### The arrival — `game/arrival.js` (`arrivalTuning.js`)
