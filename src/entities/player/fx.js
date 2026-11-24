@@ -564,6 +564,96 @@ export class PlayerFx {
     }
   }
 
+  /**
+   * The blade passes through a piece of the world (BREAK.chip.pass; player.js `_cutWorld`): on the
+   * face the steel crossed, at (x, y, z) (the piece's footprint centre bx, bz, radius r), as it travels
+   * (tx, ty, tz) (unit, world): steel on stone or metal throws a short spray of sparks off the face
+   * ALONG the cut; wood splinters and sheds a breath of bark dust the same way; and a faint pale line
+   * marks where the edge crossed the face for a moment (a slice, not a hole). `P` = BREAK.chip.pass,
+   * `M` = the piece's material (its dim hue for the splinters), `q` = the world's quality (0.3 .. 1).
+   * Returns how many glyphs it spawned.
+   */
+  cutPass(x, y, z, bx, bz, r, tx, ty, tz, mat, M, heavy, P, q = 1) {
+    const add = this.add, solid = this.alpha;
+    if (!add || !solid || !P || !Number.isFinite(x + y + z + tx + ty + tz + bx + bz + r)) return 0;
+    let n = 0;
+    // the face's outward normal where it was struck (on the ground plane)
+    let nx = x - bx, nz = z - bz;
+    const nl = Math.hypot(nx, nz);
+    if (nl > 1e-3) {
+      nx /= nl;
+      nz /= nl;
+    } else {
+      nx = -tz;
+      nz = tx;
+    }
+    const hl = Math.hypot(tx, tz) || 1, hx = tx / hl, hz = tz / hl;
+    const k = Math.max(0.3, Math.min(1, q));
+    if (mat === 'stone' || mat === 'metal') {
+      // a short spray of hot specks off the face, carried on along the cut (never back at him)
+      const m = Math.max(2, Math.round((heavy ? P.sparks[1] : P.sparks[0]) * k));
+      for (let i = 0; i < m; i++) {
+        const sp = R(2.5, 6) * (heavy ? 1.25 : 1);
+        add.spawn({
+          x, y, z,
+          vx: hx * sp + nx * R(0.4, 1.8) + R(-0.8, 0.8), vy: ty * sp * 0.5 + R(0.3, 2.4), vz: hz * sp + nz * R(0.4, 1.8) + R(-0.8, 0.8),
+          life: R(0.1, 0.26), size: R(0.14, 0.2), sizeEnd: 0.04,
+          glyph: "'.", color: COL.spark, colorEnd: COL.sparkEnd,
+          alpha: 1, alphaEnd: 0, gravity: -9, drag: 2.4,
+        });
+        n++;
+      }
+      if (heavy) this._light({ x, y, z, color: [1, 0.78, 0.5], intensity: 1.2, radius: 2.6, life: 0.08, fade: 0.07 });
+    } else if (mat === 'wood' || mat === 'bone') {
+      // splinters torn out along the cut, and a breath of bark dust drifting after them
+      const m = Math.max(2, Math.round((heavy ? P.splinters[1] : P.splinters[0]) * k));
+      const c0 = M?.color ?? COL.dust, c1 = M?.colorEnd ?? COL.dustEnd;
+      for (let i = 0; i < m; i++) {
+        const sp = R(1.4, 3.6) * (heavy ? 1.3 : 1);
+        solid.spawn({
+          x: x + R(-0.08, 0.08), y: y + R(-0.1, 0.1), z: z + R(-0.08, 0.08),
+          vx: hx * sp + nx * R(0.2, 1.2) + R(-0.5, 0.5), vy: R(0.6, 2.6), vz: hz * sp + nz * R(0.2, 1.2) + R(-0.5, 0.5),
+          life: R(0.35, 0.65), size: R(0.24, 0.34), sizeEnd: 0.16,
+          glyph: "/\\|-'`", color: c0, colorEnd: c1,
+          alpha: 1, alphaEnd: 0, gravity: -13, drag: 0.8, spin: R(-10, 10), rot: R(0, 6.283),
+        });
+        n++;
+      }
+      const d = Math.round(3 * k);
+      for (let i = 0; i < d; i++) {
+        solid.spawn({
+          x: x + R(-0.15, 0.15), y: y + R(-0.15, 0.15), z: z + R(-0.15, 0.15),
+          vx: hx * R(0.5, 1.2) + nx * 0.3, vy: R(0.1, 0.4), vz: hz * R(0.5, 1.2) + nz * 0.3,
+          life: R(0.6, 1.0), size: 0.2, sizeEnd: 0.42,
+          glyph: ".,'", color: c1, colorEnd: c1, alpha: 0.5, alphaEnd: 0, drag: 1.6, gravity: 0,
+        });
+        n++;
+      }
+    }
+    // the line where the edge crossed the face: a few faint strokes laid along the cut on the side it
+    // came in by, at the blade's height, gone in a blink
+    if (P.line && r > 0.05) {
+      const span = Math.min(1.3, (Math.min(1.1, 2 * r) / r) * 0.5); // rad either side of the struck point
+      const a0 = Math.atan2(nz, nx), dir = nx * hz - nz * hx >= 0 ? 1 : -1; // (which way the cut runs round it)
+      const steps = Math.max(2, Math.min(P.lineMax, Math.round((2 * span * r) / P.lineStep)));
+      const rr = r + 0.03;
+      for (let i = 0; i <= steps; i++) {
+        const u = i / steps, ang = a0 + dir * span * (u * 2 - 1);
+        const c = Math.cos(ang), s = Math.sin(ang);
+        // (along the circle: its tangent, tilted as the blade travels up or down)
+        const ex = -s * dir, ez = c * dir;
+        add.spawn({
+          x: bx + c * rr, y: y + ty * (u - 0.5) * span * r * 1.2, z: bz + s * rr,
+          life: P.lineLife * (0.7 + 0.6 * u), size: 0.12, sizeEnd: 0.1,
+          glyph: '|', rot: alongRot(ex, ty * 0.6, ez), stretch: (P.lineStep / 0.12) * 2,
+          color: COL.arcCore, colorEnd: COL.arcEnd, alpha: 0.35, alphaEnd: 0,
+        });
+        n++;
+      }
+    }
+    return n;
+  }
+
   /** White-gold sparks at a sword contact (cold blue-white on a crit). (dx, dz) = swing direction. */
   sparks(x, y, z, dx, dz, heavy, crit = false) {
     const fx = this.add;
