@@ -16,6 +16,15 @@
 //            down     ... and down the drop (rad/m)
 //            front    m/s of air a strength-1 front adds where it passes (the wind's own `air`)
 //            wobble   0..1: the lean is never held: it breathes this share on two slow sines per piece
+//   kick     a blow's shock (the living world's tremor, life/tremor.js → hangKick): a swing away from
+//            the blow on top of the wind's lean, ringing down (uHangKick, uHangKickP):
+//            slots    kicks at once (the newest replaces the weakest)
+//            reach    m: it reaches this far from the blow, falling off as (1 - d / reach)^2
+//            decay    1/s: how fast the swing rings down (e^-decay t: a tenth of it after ~1.4 s)
+//            rate     rad/s of the swing (its period ~0.85 s: a banner on its bar)
+//            speed    m/s the shock runs out from the blow (a far banner swings a beat later)
+//            life     s after which a kick is spent (the shader skips it)
+//            paper    how much more a paper strip swings (x sqrt(give), at most this)
 export const HANG = Object.freeze({
   kinds: Object.freeze({
     cloth: Object.freeze({ give: 1 }),
@@ -23,4 +32,5 @@ export const HANG = Object.freeze({
     rope: Object.freeze({ give: -0.35 }),
   }),
   shader: Object.freeze({ lean: 0.5, half: 2.2, ripple: 0.07, rate: 6, along: 4, down: 2.2, front: 2.4, wobble: 0.22 }),
+  kick: Object.freeze({ slots: 2, reach: 22, decay: 1.7, rate: 7.4, speed: 40, life: 2.6, paper: 1.35 }),
 });

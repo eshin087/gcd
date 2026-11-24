@@ -1287,8 +1287,15 @@ function hangUniforms(U, h) {
     uWindFronts: U.uWindFronts ?? { value: Array.from({ length: WIND_FRONTS_LEN }, () => new THREE.Vector4()) },
     uHang: { value: new THREE.Vector4(h.lean ?? 0.5, h.half ?? 2.2, h.ripple ?? 0.07, h.rate ?? 5.5) },
     uHang2: { value: new THREE.Vector4(h.along ?? 2.2, h.down ?? 1.6, h.front ?? 2.4, h.wobble ?? 0.22) },
+    // a blow's shock (world/hang.js hangKick, the living world's tremor): shared by every hanging
+    // material, made with the first one (all zero: nothing is added)
+    uHangKick: U.uHangKick ?? (U.uHangKick = { value: Array.from({ length: HANG_KICK_LEN }, () => new THREE.Vector4(0, 0, 0, 0)) }),
   };
 }
+
+/** Kick slots in uHangKick (world/hang.js writes them) x 2 vec4 each: (x, z, t0, amp rad), (reach m, decay 1/s, rate rad/s, speed m/s). */
+export const HANG_KICKS = 2;
+export const HANG_KICK_LEN = HANG_KICKS * 2;
 
 /**
  * What hangs answers the wind (prop art with `hang`; world/hang.js): `aHang` x = m below the line the
@@ -1305,20 +1312,47 @@ ${WIND_GLSL}
 attribute vec2 aHang;
 uniform vec4 uHang;  // lean (rad), half (drag for half of it), ripple (m), rate (rad/s)
 uniform vec4 uHang2; // along (rad/m), down (rad/m), front (m/s per strength), wobble
+uniform vec4 uHangKick[${HANG_KICK_LEN}]; // per kick: (x, z, t0, amp rad), (reach m, decay 1/s, rate rad/s, speed m/s)
+bool hangKicked() {
+  float k = 0.0;
+  for (int i = 0; i < ${HANG_KICKS}; i++) k += uHangKick[i * 2].w;
+  return k > 0.0;
+}
+// a blow's shock: the swing (rad, away from the blow along the returned way) it gives a piece at p now
+vec2 hangKickAt(vec2 p) {
+  vec2 kv = vec2(0.0);
+  for (int i = 0; i < ${HANG_KICKS}; i++) {
+    vec4 K = uHangKick[i * 2];
+    if (K.w <= 0.0) continue;
+    vec4 Q = uHangKick[i * 2 + 1];
+    vec2 e = p - K.xy;
+    float d = length(e);
+    float f = max(0.0, 1.0 - d / max(Q.x, 0.1));
+    float age = uTime - K.z - d / max(Q.w, 1.0);
+    if (f <= 0.0 || age <= 0.0 || age * Q.y > 4.0) continue;
+    kv += (d > 0.2 ? e / d : vec2(1.0, 0.0)) * (K.w * f * f * exp(-age * Q.y) * sin(age * Q.z));
+  }
+  return kv;
+}
 vec3 hangOffset(vec3 p, mat4 mm, vec3 n, inout vec3 tilt) {
   vec3 up = mm[1].xyz;
   float ul = length(up);
   float gate = ul > 1e-4 ? smoothstep(0.985, 0.998, up.y / ul) : 0.0;
   gate *= 1.0 - smoothstep(0.03, 0.12, abs(mm[3].y));
   if (gate <= 0.0) return vec3(0.0);
+  float h = aHang.x, give = abs(aHang.y);
+  // the shock of a blow nearby: a swing away from it that rings down (a paper strip, lighter, more)
+  vec3 ko = vec3(0.0);
+  vec2 kv = hangKickAt(mm[3].xz) * (aHang.y > 0.0 ? min(1.35, sqrt(give)) : 0.8);
+  float ka = length(kv);
+  if (ka > 1e-4) ko = vec3(kv.x / ka * sin(ka), 1.0 - cos(ka), kv.y / ka * sin(ka)) * h;
   vec2 fd;
   float edge;
   float fk = windFronts(p.xz, fd, edge);
   vec2 v = windDirAt(p.xz) * uWind.z + fd * (fk * uHang2.z);
   float s = length(v);
-  if (s < 1e-4) return vec3(0.0);
+  if (s < 1e-4) return ko * gate;
   vec2 dir = v / s;
-  float h = aHang.x, give = abs(aHang.y);
   // (each piece its own phase, from where it stands)
   float ph = fract(sin(dot(mm[3].xz, vec2(12.9898, 78.233))) * 43758.5453) * 6.2832;
   // (drag grows with the square of the air: a breath barely stirs it, a gust takes it)
@@ -1337,12 +1371,12 @@ vec3 hangOffset(vec3 p, mat4 mm, vec3 n, inout vec3 tilt) {
     float c = a * cos(arg) * gate;
     tilt -= dot(n, side) * (vec3(dir.x, 0.0, dir.y) * (c * uHang2.x) - vec3(0.0, c * uHang2.y, 0.0));
   }
-  return o * gate;
+  return (o + ko) * gate;
 }
 `;
 const HANG_MAIN_GLSL = /* glsl */ `
         vec3 hangTilt = vec3(0.0);
-        if (aHang.x > 0.0 && windOn()) wp.xyz += hangOffset(wp.xyz, mm, normalize(mat3(mm) * normal), hangTilt);`;
+        if (aHang.x > 0.0 && (windOn() || hangKicked())) wp.xyz += hangOffset(wp.xyz, mm, normalize(mat3(mm) * normal), hangTilt);`;
 const HANG_NORMAL_GLSL = /* glsl */ `
         vN = normalize(vN + hangTilt);`;
 

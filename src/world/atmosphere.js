@@ -39,6 +39,10 @@ export class Atmosphere {
     this._blob = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0.7, size: 0.8, sizeEnd: 0.3, heat: 0.32, heatEnd: 0, drag: 1.2, gravity: 1, kind: 'fire' };
     this._smoke = { x: 0, y: 2.0, z: 0, vx: 0, vy: 0.7, vz: 0, life: 2, size: 0.8, sizeEnd: 2.2, heat: 0.3, heatEnd: 0, drag: 0.3, gravity: 0, kind: 'smoke' };
     this.emberAcc = 0;
+    // the bonfire gutters (gutter(): a big blow lands near): 0..1 now, and the way the flames are pushed
+    this.gut = 0;
+    this._gutX = 0;
+    this._gutZ = 0;
     this.leafAcc = 0;
     this.ashAcc = 0;
     this.t = 0;
@@ -90,9 +94,32 @@ export class Atmosphere {
     }
   }
 
+  /**
+   * A big blow landed near (the living world's tremor, life/tremor.js): the bonfire gutters for a
+   * moment: its flames dip and lean away along (dx, dz), its light dims, then it burns up again
+   * (k 0..1: how hard; it settles in ~0.6 s). With k 0 (never called) the fire burns exactly as before.
+   */
+  gutter(k, dx = 0, dz = 0) {
+    if (!Number.isFinite(k + dx + dz) || !(k > 0)) return;
+    k = Math.min(1, k);
+    if (k < this.gut) return;
+    const l = Math.hypot(dx, dz);
+    this.gut = k;
+    this._gutX = l > 1e-3 ? dx / l : 0;
+    this._gutZ = l > 1e-3 ? dz / l : 0;
+  }
+
   update(dt) {
     this.t += dt;
     this._updateGlow(dt);
+    // (the gutter settles)
+    if (this.gut > 0) {
+      this.gut = this.gut * Math.exp(-dt / 0.3) - dt * 0.05;
+      if (this.gut <= 0.01) this.gut = 0;
+      if (this.bonfireLit) this.light.intensity = 2.4 * (1 - 0.55 * this.gut);
+      else this.gut = 0;
+    }
+    const gut = this.gut, gx = this._gutX * gut * 2.2, gz = this._gutZ * gut * 2.2;
     const fxA = this.game.fx.add;
     const fxB = this.game.fx.alpha;
     const bf = this.bonfire;
@@ -123,6 +150,11 @@ export class Atmosphere {
         b.vx = (Math.random() - 0.5) * 0.3; b.vy = 1.1 + Math.random() * 1.2; b.vz = (Math.random() - 0.5) * 0.3;
         b.life = 0.5 + Math.random() * 0.45;
         b.size = 0.7 + Math.random() * 0.3;
+        if (gut > 0) {
+          // guttering: low, pushed over, smaller
+          b.vx += gx; b.vz += gz; b.vy *= 1 - 0.6 * gut;
+          b.size *= 1 - 0.35 * gut;
+        }
         fire.spawn(b);
       }
       this.smokeAcc += dt * 1.6;
@@ -136,12 +168,12 @@ export class Atmosphere {
         s.life = 1.6 + Math.random() * 1.2;
         fire?.spawn(s);
       }
-      this.emberAcc += dt * 7;
+      this.emberAcc += dt * (7 + 30 * gut);
       while (this.emberAcc >= 1) {
         this.emberAcc -= 1;
         fxA.spawn({
           x: bf.x + (Math.random() - 0.5) * 0.4, y: 0.6, z: bf.z + (Math.random() - 0.5) * 0.4,
-          vx: (Math.random() - 0.5) * 0.9 + wB.x * 0.45, vy: 1.6 + Math.random() * 1.6, vz: (Math.random() - 0.5) * 0.9 + wB.z * 0.45,
+          vx: (Math.random() - 0.5) * 0.9 + wB.x * 0.45 + gx, vy: 1.6 + Math.random() * 1.6, vz: (Math.random() - 0.5) * 0.9 + wB.z * 0.45 + gz,
           life: 1.4 + Math.random() * 1.6, size: 0.14, sizeEnd: 0.05,
           glyph: ".·'", color: [2.8, 0.9, 0.2], colorEnd: [0.6, 0.08, 0.01],
           alpha: 1, alphaEnd: 0, drag: 0.4, flicker: 0.6,

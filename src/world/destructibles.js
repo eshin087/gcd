@@ -1327,6 +1327,59 @@ export class Destructibles {
     st.bd = d;
   }
 
+  /**
+   * The intact pieces (not the floor's slabs, not a piece out of the world) whose footprint reaches
+   * within `reach` m of (x, z), into `out` (its length is set; at most `max`). No damage, no state.
+   * Returns how many. (The living world's tremor reads what stands near a blow: life/tremor.js.)
+   */
+  around(x, z, reach, out, max = 64) {
+    if (!out) return 0;
+    out.length = 0;
+    if (!Number.isFinite(x + z + reach) || !(reach > 0)) return 0;
+    if (!this._cells(x - reach, z - reach, x + reach, z + reach)) return 0;
+    const L = this.list, g = this._g, R = this._gr, ra = R.a, rb = R.b, rc = R.c, rd = R.d;
+    for (let cz = rc; cz <= rd; cz++) {
+      for (let cx = ra; cx <= rb; cx++) {
+        const c = cz * g.nx + cx;
+        for (let k = g.start[c]; k < g.start[c + 1] && out.length < max; k++) {
+          const b = L[g.items[k]];
+          if (b.state !== INTACT || b.floor || b.absent) continue;
+          if (Math.hypot(b.x - x, b.z - z) - b.r > reach) continue;
+          out.push(b);
+        }
+      }
+    }
+    return out.length;
+  }
+
+  /**
+   * A shudder WITHOUT damage (a blow landed near, not on it: the tremor): the piece shakes along
+   * (dx, dz) by `amp` rad at most, as a struck one does, and settles in the same 0.28 s. Its structure,
+   * bricks, marks and sounds are untouched. A range piece (a tree of the forest, a bamboo cane) rewrites
+   * its vertices while it shakes: at most BREAK.wear.shakeMax x quality of those at once, the rest stay
+   * still. A piece already shaking harder keeps its shake. Returns whether it shudders.
+   */
+  shudder(b, amp, dx = 0, dz = 1) {
+    if (!b || b.state !== INTACT || b.floor || b.absent || !(amp > 0) || !Number.isFinite(amp + dx + dz)) return false;
+    if (b.top !== null && b.top.state === INTACT) b = b.top;
+    const a = Math.min(0.09, amp) / Math.max(0.6, b.weight);
+    if (b.shake > 0 && b.shakeAmp * (b.shake / 0.28) >= a) return false;
+    if (b.ranged) {
+      if (!b.body?.pose) return false;
+      if (!(b.shake > 0)) {
+        if (this._rShake >= Math.max(2, Math.round(BREAK.wear.shakeMax * this.q))) return false;
+        this._rShake++;
+      }
+    }
+    const l = Math.hypot(dx, dz);
+    b.dx = l > 1e-4 ? dx / l : 0;
+    b.dz = l > 1e-4 ? dz / l : 1;
+    b.shake = 0.28;
+    b.shakeAmp = a;
+    this._wake(b);
+    return true;
+  }
+
   /** The first cover the segment a → b (widened by r) meets, or null; `coverT` = where along it. */
   coverAt(ax, az, bx, bz, r = 0, y = undefined) {
     let best = null, bt = 2;

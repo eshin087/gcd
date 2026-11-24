@@ -191,7 +191,7 @@ function build(levelId = 'cinderwood', spec = 'all', o = {}) {
 const T = { THREE, CONFIG, LEVELS, LEVEL_IDS, LIFE, LIFE_PIECES, LIFE_TUNE, setLife, setLifeK, build, assert, out, near, imp, ROOT, countingRandom };
 
 // one file per piece (its owner's): a missing or broken file fails the suite
-const FILES = ['core', 'wind', 'weather', 'litter', 'steps', 'creatures', 'answer', 'air', 'arrival', 'hang'];
+const FILES = ['core', 'wind', 'weather', 'litter', 'steps', 'creatures', 'answer', 'air', 'arrival', 'hang', 'tremor', 'aftermath'];
 const S = {};
 for (const f of FILES) {
   try {
