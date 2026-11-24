@@ -357,6 +357,10 @@ export const SCAR = Object.freeze({
     grit: Object.freeze([0.07, 0.06, 0.055]), // thrown-up earth (a crater's rim)
     merge: Object.freeze({ near: 0.8, keep: 0.45, floor: 0.2, slots: 192, twice: 0.35 }),
     by: Object.freeze({ player: 0.6 }),
+    /** the hero's heavy blows (player.js; light cuts leave nothing): the charged cleave's end in the
+     *  floor (power from charge 0 to 1, a gash `cleaveLen` m), the plunge's landing (a slam); the slam
+     *  finisher's is its world.impact (a blunt blow: a slam) */
+    hero: Object.freeze({ cleave: [0.45, 1.25], cleaveLen: 1.3, plunge: 0.75 }),
     /** a fist, a tail, a foot, a landing: a shallow crater, a ring of grit and short radial cracks;
      *  from `crater` power today's crater rim is the ring */
     slam: Object.freeze({ r: [0.55, 2.3], rk: 0.75, grit: [6, 15], spokes: [3, 6], glyphs: '.,:o', crack: 0.42 }),

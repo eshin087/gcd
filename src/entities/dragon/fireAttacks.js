@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { TUNING, SCALE } from './tuning.js';
 import { clamp, lerp, smoothstep, easeOutCubic, easeInCubic, easeInOutSine, angleDiff } from '../../core/math.js';
-import { beat, roarFx, roarPose, GROUND_BLOW } from './attacks.js';
+import { beat, roarFx, roarPose, GROUND_BLOW, NOVA_BLOW } from './attacks.js';
 import { FLIGHT } from './tuningFire.js';
 import { APOC_LOOK, skyBolt, skyPillar, skyThroat } from './skyFx.js';
 
@@ -1915,7 +1915,7 @@ const nova = {
     {
       // the blast on the world: everything near its heart goes, the rim is only chipped
       const NW = TUNING.world.nova;
-      g.world?.impact?.(a.cx, a.cz, NV.radius * NW[2], NW[0], GROUND_BLOW);
+      g.world?.impact?.(a.cx, a.cz, NV.radius * NW[2], NW[0], NOVA_BLOW);
       g.world?.destructibles?.strike(a.cx, a.cz, NV.radius, NW[1], GROUND_BLOW);
     }
     d.emit('dragon:hazard', { kind: 'nova', stage: 'hit', x: a.cx, z: a.cz, radius: NV.radius });

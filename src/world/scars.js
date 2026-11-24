@@ -145,7 +145,7 @@ export class Scars {
   /**
    * A blow met the ground (world.groundBlow): the floor keeps a mark of its kind until the reset.
    * `o`: { kind: 'slam' | 'cut' | 'thrust' | 'dash' | 'blast' | 'step' | 'beam', power, r, dx, dz, len,
-   * by, hot, claws (a cut: n parallel gashes, a beast's), arc (a dash / cut: round (x, z) at r, len m of
+   * by, hot, claws (a cut: n parallel gashes, a beast's; `spread` m apart), arc (a dash / cut: round (x, z) at r, len m of
    * arc from the angle of (dx, dz): an ankle sweep) }. Returns the glyphs it laid.
    */
   mark(x, z, o) {
@@ -175,7 +175,7 @@ export class Scars {
     if (keep <= 0) return 0;
     switch (kind) {
       case 'slam': this._slam(x, z, power, size, keep, r); break;
-      case 'cut': this._cut(x, z, dx, dz, power, len, keep, o.claws | 0, o.arc ? r : 0); break;
+      case 'cut': this._cut(x, z, dx, dz, power, len, keep, o.claws | 0, o.arc ? r : 0, o.spread); break;
       case 'thrust': this._thrust(x, z, dx, dz, power, keep); break;
       case 'dash': this._dash(x, z, dx, dz, power, len, keep, o.arc ? r : 0); break;
       case 'blast': this._blast(x, z, power, size, keep, !!o.hot); break;
@@ -248,16 +248,17 @@ export class Scars {
   }
 
   /** One long thin gash along (dx, dz) from (x, z), or `claws` parallel ones; `arc` > 0: round (x, z). */
-  _cut(x, z, dx, dz, power, len, keep, claws, arc) {
+  _cut(x, z, dx, dz, power, len, keep, claws, arc, spread) {
     const T = SCAR.mark.cut, K = SCAR.mark, y = K.y;
     const k = clamp01((power - 0.2) / 1.2);
     const L = Math.min(T.len[1], Math.max(T.len[0], Number.isFinite(len) ? len : T.len[0] + 1.6 * k));
     const lines = claws > 1 ? Math.min(4, claws) : 1;
+    const sp = Number.isFinite(spread) && spread > 0 ? spread : T.claws; // (a claw's spacing)
     const bow = (rnd() - 0.5) * 2 * T.bow * L;
     const px = -dz, pz = dx; // (across the gash)
     const a0 = Math.atan2(dz, dx);
     for (let c = 0; c < lines; c++) {
-      const off = lines > 1 ? (c - (lines - 1) / 2) * T.claws : 0;
+      const off = lines > 1 ? (c - (lines - 1) / 2) * sp : 0;
       const Lc = L * (lines > 1 ? 0.75 + 0.25 * rnd() : 1);
       const steps = Math.max(2, Math.round(Lc / T.step));
       for (let i = 0; i <= steps; i++) {
@@ -287,7 +288,7 @@ export class Scars {
     const side = rnd() < 0.5 ? -1 : 1;
     const n = Math.round((T.grit[0] + (T.grit[1] - T.grit[0]) * k) * keep);
     for (let i = 0; i < n; i++) {
-      const t = 0.25 + 0.6 * rnd(), s = t * L, d = side * (0.28 + 0.4 * rnd() + (lines - 1) * T.claws * 0.5);
+      const t = 0.25 + 0.6 * rnd(), s = t * L, d = side * (0.28 + 0.4 * rnd() + (lines - 1) * sp * 0.5);
       const cx = arc > 0 ? x + Math.cos(a0 + s / arc) * (arc + d) : x + dx * s + px * d;
       const cz = arc > 0 ? z + Math.sin(a0 + s / arc) * (arc + d) : z + dz * s + pz * d;
       this._add(cx, y + 0.02, cz, pick('.,\''), 0.18 + 0.12 * rnd(), K.grit, K.alpha, rnd() * TAU, -1);
