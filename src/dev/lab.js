@@ -1209,6 +1209,11 @@ export class Lab {
       });
       return { s, el: b };
     });
+    this.ui.tempoBtn = button(stkGrid, 'tempo', () => {
+      STREAK_FX.tempo = !STREAK_FX.tempo;
+      this._syncCutBtns();
+    });
+    this.ui.tempoBtn.title = "the storm's tempo (?tempo=0 off): the first cut a heavy beat, each later one a share of the one before; off = the storm as it was (ADR-167). Only with 'storm' on; read as a flurry starts";
     this.ui.perfectBtn = button(stkGrid, `perfect: ${perfectMode()}`, () => {
       const M = STREAK_FX.perfectModes;
       setPerfectMode(M[(M.indexOf(perfectMode()) + 1) % M.length]);
@@ -1358,6 +1363,7 @@ export class Lab {
     setClass(this.ui.shudBtn, 'on', !!d && 'shudderK' in d && d.shudderK > 0);
     for (const { s, el: b } of this.ui.impactBtns ?? []) setClass(b, 'on', IMPACT.on[s] === true);
     for (const { s, el: b } of this.ui.streakBtns ?? []) setClass(b, 'on', STREAK_FX.on[s] === true);
+    if (this.ui.tempoBtn) setClass(this.ui.tempoBtn, 'on', STREAK_FX.tempo !== false);
     if (this.ui.perfectBtn) this.ui.perfectBtn.textContent = `perfect: ${perfectMode()}`;
     if (this.ui.parryFxBtn) this.ui.parryFxBtn.textContent = `parryFx ${parryFxMode()}`;
     if (this.ui.burstBtn) this.ui.burstBtn.textContent = `burst ${burstLevel()}`;
