@@ -19,6 +19,13 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-24',
+        title: 'A green flame on the sword',
+        notes: [
+          'A tight flame of tiny green marks now burns round your sword, licking up off the blade. It is there even with no streak and burns denser and hotter as your streak climbs. Add ?mystic=0 to the address to turn it off.',
+        ],
+      },
+      {
+        date: '2026-11-24',
         title: 'A perfect parry throws a few orange sparks',
         notes: [
           'Parry perfectly and a quick spit of orange sparks flies off the crossed blades, the way real steel sparks: short streaks that shrink to dots and die in under half a second.',

@@ -184,6 +184,11 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.80 — The sword burns with a tight green flame (2026-11-24, `player/sword-green-flame`, ADR-182)
+- [x] A tight envelope of Matrix-green marks round the steel, in the hero's own micro letters, there with no streak and denser and hotter by tier (`?mystic=0` off)
+- [x] Picked by the owner over a day of filmed rounds (wisps, red flames, green, enveloping, smaller); scenario `swordmystic`; the Lab's `mystic` row
+- [ ] Played and seen on the iPhone (frame rate unverified)
+- [ ] The streak aura's red rim in green to match the sword? (owner to decide)
 ## M1.79 — Three more: grass the sword mows, lamps that light with the fight, the living world heard (2026-11-23, `world/alive-three`, ADR-180)
 - [x] Torn grass (the scorch map's A): the sword mows, every floor mark tears its shape (`?mow=0`)
 - [x] Lanterns and braziers that kindle by phase and fire, gutter under blows, go out when broken; low lights in the pool

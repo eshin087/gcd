@@ -5470,3 +5470,45 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   one light blow and about half the bots' wins would be an S, the rest an A, and the owner has not played them. Nothing proves a client's time; the server validates.
   Not checked: a human on a real phone, a pad on the title with nine buttons, a full rush played by a
   person (a full rush was driven in a browser with Lab jumps, which voided it, as it should).
+
+## ADR-182 — The sword burns with a tight green flame in the hero's own micro letters (2026-11-24)
+
+- **Context:** the owner: "i also want his sword to look a bit more mystical in a subtle way. maybe make the sword
+  animation change as you get streaks". On record: the blade is dark steel that lights only while it cuts (ADR-130);
+  always-on bright glows read "flashy"; ambient effects are many TINY FAINT letters (ADR-163); ADR-167's streak aura
+  already puts a faint red rim round him. Over a day of filmed rounds the owner picked: four first readings (a breath
+  of violet letters, climbing digits, wisps off the steel, a lingering line) → the wisps "but with neon matrix color
+  effect" (one classic green of three) → "not wisps but like a fiery subtle flame cool ascii effect on the sword"
+  (three flames in the fire field's red) → "make the sword color matrix green" → "more cooler flame enveloping the
+  sword ascii looking" → "the glow is way too big, make the ascii characters much more smaller" → of two, "A: tight".
+- **Decision:**
+  1. **A tight envelope of green flame round the steel** (`player/swordMystic.js`; on for everyone, `?mystic=0` and
+     the Lab's `mystic` row off / flame give today's blade). Every cell touching the steel on the screen (never the
+     steel's own cell: it is never covered; at most one below it) burns on its own beat, its mark re-rolling 8 times
+     a second; tongues of 1 – 3 cells climb off the top and break away; strokes lick off the steel and climb cell by
+     cell (spawned, snapped to his grid). With `streakTier` 0 – 5 (the hero's own streak, independent of
+     `?streakfx=`) it burns denser (62 → 90 % of the cells lit) and hotter, the tongues climb higher, the licks come
+     6 → 14 a second, and toward the point the marks pale to green-white (the lit head of Matrix rain). Nothing over
+     his torso's column below his head; nothing on a dead, hidden or unarmed hero; it rests through the flurry.
+  2. **Drawn in the HERO'S OWN micro letters**, not the world's: `render/glyphs.js` PIXEL_3X3 (3 × 3 marks in his
+     4 × 4 px cells at 720p, half the world letter's height; `pixelArtOrder()` gives each mark's atlas column),
+     through a `LetterBatch` that takes the pipeline's own hero atlas (`pipeline.heroArt`, `heroCell`; never disposed
+     by it) and snaps to his grid. Heat picks the mark the way the fire field picks its letter: a stroke at a cool
+     tip, a tiny letter shape in the body, a dense mark at the hot heart. In world letters (5 × 8) the flame was as
+     wide as his head ("the glow is way too big").
+  3. **Not the fire field** (the house rule for burning effects is field heat): the field prints only its three hues
+     (red fire, the Lord's violet, steel) in world-sized letters, and its two dye zones serve the bosses' timing
+     tells. A green flame at the hero's scale cannot be field heat without a fourth kind. The flame keeps the field's
+     grammar (heat → stroke / body / heart, tongues, boiling) in his letters instead.
+  4. **Matrix green:** linear body (0.06, 1.0, 0.06) (the grade and the tone map lean a green toward mint, so the
+     blue is kept low), cool tips (0, 0.5, 0.04), the lit head (0.62, 1.0, 0.6); alpha 0.5 – 0.9 by heat. Brightest
+     pixel before the tone map about 0.76 at tier 0 and 0.93 at tier 5, so its marks carry a small bloom halo (about
+     half its pixels are over the 0.55 threshold). The owner approved it so; `GREEN` is the knob if it reads as glow.
+- **Status:** shipped. Left out on purpose: the hero's move styles and the growing arc (`?arc=`) of the closed PR
+  #105; they were options for the owner's pick and are not part of this.
+- **Consequences:** the `swordmystic` scenario holds the flame to his marks, its budgets (6 licks, 110 marks a
+  frame), green, colour × alpha at most 0.9, growth by tier, on by default, nothing after death, and the off state
+  to today's blade frame by frame and to drawing and building nothing. Every other scenario now runs with it on (the
+  harness's pipeline has no frame size, so it draws nothing there). The streak aura's rim stays red: a red rim round
+  him and a green sword at tiers 1+ (the owner may want the aura green too). On-device frame rate is unverified (one
+  more batch, up to ~160 instances, one draw call).

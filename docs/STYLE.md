@@ -1778,6 +1778,25 @@ the body.
   enough that the struck surface stays 0.01 - 0.07 m from the drawn cut (`snapM` 0.06 on a duelist),
   so the cut, the stamp and the spray stay on the body; the swing to the peak comes after the freeze.
 
+### The sword's green flame (2026-11-24, ADR-182; `player/swordMystic.js`; on by default, `?mystic=0` off)
+The owner: "a fiery subtle flame cool ascii effect on the sword", "matrix green", "enveloping the sword", "the glow is
+way too big, make the ascii characters much more smaller". What ships:
+- **A tight envelope of burning marks round the steel, in Matrix green.** Every cell touching the steel on the
+  screen burns on its own beat (never the steel's own cell; at most one below it), its mark re-rolling as fire
+  boils; tongues climb off the top and break away; strokes lick off the steel and climb cell by cell. Already there at
+  rest; with the streak it burns denser and hotter, the tongues climb higher, more licks come, and toward the point
+  the marks pale to green-white (Matrix rain's lit head).
+- **At the hero's scale: his own micro letters.** The flame prints the hero's 3 × 3 marks in his 4 × 4 px cells (half
+  the world letter's height), on his grid. Heat picks the mark as the fire field picks its letter: a stroke at a cool
+  tip (`| / \ :`), a tiny letter shape in the body (`+ x v n A s z r T`), a dense mark at the hot heart (`o B A`).
+  The lesson: an effect that rides the hero is drawn in his letters; the world's 5 × 8 letters round his blade read
+  as a glow as wide as his head.
+- **Colour:** linear body (0.06, 1.0, 0.06), cool (0, 0.5, 0.04), lit head (0.62, 1.0, 0.6); blue kept low or the
+  grade turns it mint. Its brightest marks reach the bloom (0.76 … 0.93 before the tone map): a small halo the owner
+  approved; `GREEN` is the knob.
+- **The steel stays dark until it cuts** (ADR-130): nothing is written on the blade or its uniforms, and nothing burns
+  over his torso.
+
 ### The perfect parry's sparks (2026-11-24, ADR-181; `combat/perfectFx.js` hosts, `combat/parrySparks.js` draws)
 
 On top of the gold mark, a perfect parry of a blow throws what real steel throws: a FEW sparks (12 - 16), FAST,

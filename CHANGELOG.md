@@ -4,7 +4,11 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Eighty-four pieces of work since 0.4.0:
+Eighty-five pieces of work since 0.4.0:
+- **A green flame on the sword** (2026-11-24, ADR-182). *Added:* a tight flame of tiny green marks burns round the
+  hero's steel, in his own small letters: it licks up off the blade, boils, and climbs away in tongues. It is there
+  with no streak and burns denser and hotter as the streak climbs (tiers 0 to 5), the point paling to green-white at
+  the top. On by default; `?mystic=0` turns it off (the Lab's PLAYER row `mystic`: off / flame).
 - **Grades, saved bests and a boss rush** (2026-11-23, ADR-179). *Added:* a won fight is graded for
   CLEAN PLAY (the owner's rule): S = no deaths and at most 15 % of max HP lost in the winning attempt,
   A = no deaths or one death and at most half, B = up to three deaths, C = any other win; time only
