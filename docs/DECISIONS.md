@@ -5363,8 +5363,22 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
        phone (`3 / 8  4:12.3`, tenths during the fight; hundredths on the record).
   7. **The looks are the owner's to pick** (CLAUDE.md "render options"): three options each for the
      record screen's grade (`?gradeLook=a|b|c`) and the title's record line (`?recLook=a|b|c`), captured at
-     720p and at the phone in both orientations in `docs/looks/records/`. Shipped: `a` / `a` (my
-     recommendation), behind the switches like the other look options. The owner has not picked.
+     720p and at the phone in both orientations in `docs/looks/records/`, behind the switches like the
+     other look options. **The owner picked (2026-11-24): the grade `a` (block letters over its lines),
+     the title `b` (the grade in the button after the name, the time on a second line)**; the other
+     options stay behind their switches. With `b` the phone's title in landscape grew to three rows of
+     buttons and lost the top of the logo: on a touch screen in landscape the stage buttons are tighter
+     (9.5 px letters, 4 x 8 px padding, 6 px gaps), which keeps them to two rows.
+  8. **The record panel's border holds every row** (the owner's report, 2026-11-24: "Total time" and
+     "Flasks used" outside the border). Measured in a browser: the right column stuck out by 5 - 31 px
+     at 1280 x 720 (looks b / c), 1024 x 640 and 852 x 393, every look; 393 x 852 and 1600 x 900 were
+     inside. The cause: the panel was placed at `left: 50%` and shifted back by half its width, and a
+     box placed there may only grow to half the screen, so its two columns of rows overflowed it. Now
+     the panel with a grade is centred by its margins at its rows' width (at most 94 % of the screen),
+     its columns may shrink, and a label that cannot fit is cut short with an ellipsis instead of drawn
+     past the border. After: 0 px out for every look at 1280 x 720, 1024 x 640, 1600 x 900, 852 x 393
+     and 393 x 852, the rush's record too (`docs/looks/records/panel-overflow-before-after.jpg`). The
+     `records` suite guards the rule (layout itself cannot be measured headless).
 - **Consequences:** the store and the record are stable shapes; a later version migrates from
   `abyss.records.v1`. The grade thresholds are starting numbers: the suites' winning bots fight in god mode and
   land 0 - 8 blows on the hero a fight (most 0 - 3); a duelist's blow is 18 - 38 HP of 160, so an S allows

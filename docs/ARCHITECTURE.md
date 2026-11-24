@@ -5215,7 +5215,7 @@ so the shapes and rules here are its contract. Modules (all `src/game/`): `rank.
 (the grade), `records.js` (the run record and the store), `eligibility.js` (whether a run counts),
 `rush.js` (the boss rush's state across page loads), `recorder.js` (`flow.recorder`: between GameFlow
 and the three). The screens: `ui/recordLooks.js` (the grade and the bests, behind `?gradeLook=` /
-`?recLook=`), `ui/screens.js` (`TitleScreen` records argument, `StatsPanel.show(rows, head)`),
+`?recLook=`; the owner's picks ship: `a` / `b`), `ui/screens.js` (`TitleScreen` records argument, `StatsPanel.show(rows, head)`),
 `ui/minimap.js` (the rush's line under the disc).
 
 **The run record** (`buildRecord(o)` is the one function that writes one; version `v: 1`):

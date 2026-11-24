@@ -17,8 +17,9 @@ Eighty-one pieces of work since 0.4.0:
   (`abyss.records.v1`: per level and the rush, best time and best grade, the last 24 run records in full,
   shaped for a later online leaderboard; `game:record` is the seam an uploader subscribes to). Runs with
   the Lab, a cheat, `__tick`, `?stage=lab`, `?tech=` or a gameplay URL switch are not recorded.
-  The grade's and the title's looks have three options each (`?gradeLook=`, `?recLook=`); the owner has
-  not picked.
+  The grade's and the title's looks were picked by the owner from three options each: the grade in block
+  letters over its lines, the title's grade inside each level's button (the others stay behind
+  `?gradeLook=` / `?recLook=`).
 - **The sword cuts clean through; the fight marks the ground; birds and animals flee** (2026-11-23, ADR-177).
   *Changed:* the hero's blade no longer stops on a rock, a tree or a pillar it cannot fell: the swing
   goes through at full speed, the piece still takes the blow, its letters fly on along the cut, stone

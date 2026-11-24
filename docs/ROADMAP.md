@@ -189,7 +189,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] The store (localStorage, versioned, survives broken storage), the run record shaped for a leaderboard, `game:record`
 - [x] What voids a run: the Lab, cheats, `__tick`, `debug.toState`, `?stage=lab`, `?tech=`, the gameplay URL switches
 - [x] The record screen's grade, the title's bests, BOSS RUSH; the rush across page loads, its timer under the minimap
-- [ ] The owner's picks: the grade's look (`?gradeLook=`) and the title's (`?recLook=`)
+- [x] The owner's picks: the grade's look `a`, the title's `b` (2026-11-24)
+- [x] The record panel keeps every row inside its border on every screen (the owner's report, 2026-11-24)
 - [ ] Played on a real phone (the title with nine buttons, both ways up); a full rush played by a human
 
 ## M1.75 — A fight the world feels (2026-11-23, `world/fight-alive`, ADR-177)

@@ -5,6 +5,31 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-24 — The record looks picked; the record panel's border holds every row (ADR-179)
+
+**Owner:** picked the grade's look `a` and the title's `b` from the sheets on PR #108, and reported that on
+the record screen some rows ("Total time", "Flasks used") sat outside the panel's border.
+
+**What changed**
+- `ui/recordLooks.js`: `REC_LOOK_DEFAULT` is `b` (the grade was already `a`); the others stay behind the
+  switches. With `b` the phone's title in landscape grew to three rows of stage buttons and pushed the
+  logo off the top: on touch in landscape the buttons are tighter now (two rows again, nothing outside).
+- `ui/hudStyle.js`: the record panel with a grade is centred by margins at its rows' width (max 94 % of
+  the screen) instead of `left: 50%` and a shift (a box there may only grow to half the screen: the
+  cause); its columns may shrink; a label that cannot fit ends in an ellipsis.
+- `tests/integration/records.mjs` (`screens`): the shipped looks are the picks; the title with no
+  parameter draws `b`; the panel's rule is guarded (layout is not measurable headless).
+
+**Verified:** measured in headless Edge (every row's box against the panel's): before, 5 - 31 px out at
+1280 x 720 (looks b / c), 1024 x 640 and 852 x 393; after, 0 at those and at 1600 x 900 and 393 x 852, every
+look, and the rush's record. The title with no parameter: nothing outside the window at 1280 x 720,
+852 x 393 and 393 x 852. Pictures: `docs/looks/records/panel-overflow-before-after.jpg`, `title-shipped.jpg`.
+`npm test`, `npm run build`.
+
+**Open:** the owner on a real iPhone (both ways up) and with a pad; a full rush played by a person.
+
+---
+
 ## 2026-11-23 — Grades, saved bests and a boss rush, shaped for online leaderboards (ADR-179)
 
 **Goal** (planned with the owner by another session; their three calls are final): saved records,
