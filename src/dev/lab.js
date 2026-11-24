@@ -984,7 +984,8 @@ export class Lab {
       }).title = 'a blow takes the bricks (the letters) of a piece where it struck (on by default; ?chip=0 off; reloads: the level is built with finer bricks)';
       // the hero's blade on what it does not fell (BREAK.chip.pass / .stop): clean through (default) or it
       // stops there as it did (?cutStop=1, ADR-132). Live: read at each swing
-      const stops = () => lookOf('cutStop', '0', '0') !== '0';
+      // (the stop also needs bites on: with ?chip=0 the blade goes through whatever this says)
+      const stops = () => lookOf('cutStop', '0', '0') !== '0' && lookOf('chip', 'a', 'a') !== '0';
       const b = button(grid, `Blade: ${stops() ? 'stops' : 'through'}`, () => {
         setLook('cutStop', stops() ? '0' : '1');
         b.textContent = `Blade: ${stops() ? 'stops' : 'through'}`;

@@ -193,7 +193,16 @@ export default {
     for (const c of FAUNA_TUNE.letters ?? '') used.add(c);
     for (const f of ['tremorTuning', 'aftermathTuning']) {
       const m = await T.imp(`src/world/life/${f}.js`);
-      for (const v of Object.values(m)) for (const g of Object.values(v?.glyph ?? {})) for (const c of String(g)) used.add(c);
+      // (the export is a map of level blocks, each with its own `glyph` strings)
+      let blocks = 0;
+      for (const v of Object.values(m)) {
+        for (const lv of Object.values(v ?? {})) {
+          if (!lv?.glyph) continue;
+          blocks++;
+          for (const g of Object.values(lv.glyph)) for (const c of String(g)) used.add(c);
+        }
+      }
+      T.assert(blocks > 0, `${f}: its level blocks' letters were read (${blocks} blocks)`);
     }
     used.delete(' ');
     for (const [key, F] of Object.entries(WYRM_FONTS)) {
