@@ -22,7 +22,7 @@ export const GRASS = Object.freeze({
     fresh: [0.27, 0.27, 0.13],
     freshAsh: [0.17, 0.16, 0.14],
     freshK: 0.9,
-    fresh2: 0.35, // round 2: x freshK (the stubble stays letters in the grass's colours, not a pale wash)
+    fresh2: 0.75, // round 2: x freshK (the stubble stays letters in the grass's colours, not a pale wash)
     /** torn past bare[0] .. bare[1] the grass is torn OUT (a blow's mark: the floor bare under it, the stubs
      *  at the root, nothing lying), under it MOWN (the sword tears at most GRASS.mow.maxK) */
     bare: [0.84, 0.97],
@@ -60,6 +60,14 @@ export const GRASS = Object.freeze({
     bits: Object.freeze({ per: 2.2, max: 14, size: [0.1, 0.16], life: [0.35, 0.7], up: [0.8, 2.0], fling: [0.6, 1.8] }),
   }),
   /**
+   * The cut follows the drawn arc (round 3; world/mowFx.js cutArc, called by player/fx.js trail for each
+   * stroke of the arc's EDGE): a stroke lower than `above` m over the grass's top (`top` x the meadow's
+   * height there) cuts every blade whose root lies within w/2 (`wHeavy` for the heavy blows) of the
+   * stroke's footprint as the camera sees it (along the view ray down to `mid` x the top). The cut is
+   * one byte per blade instance in a `tex`-wide texture the grass shader reads: exact to the blade.
+   */
+  arc: Object.freeze({ top: 1.05, above: 0.85, mid: 0.5, w: 0.55, wHeavy: 0.7, tex: 512 }),
+  /**
    * The cut tops (world/mowFx.js, round 2): the upper part of each cut blade's letter leaves on the frame
    * its stub shows. `look` the default of `?mowLook=` (a thrown, b sliced, c shred, r1 round 1). At most
    * `max` pieces (x the quality), `perTear` new ones a tear call; the oldest lying one gives way first.
@@ -70,7 +78,7 @@ export const GRASS = Object.freeze({
    * burst into a couple more of the grass's strokes (`glyphs`) at `size` x the blade.
    */
   fly: Object.freeze({
-    look: 'a',
+    look: 'b',
     max: 1400,
     touch: 4096, // cells one tear call may hand over (a slam's whole disc)
     perTear: 360,
@@ -82,7 +90,9 @@ export const GRASS = Object.freeze({
     lit: [2.3, 1.3], // brightness x the grass's own: in the air (a cut top catching the light), lying (calmed over `calm` s)
     calm: 0.8,
     throw: Object.freeze({ fling: [1.6, 3.6], side: 0.45, up: [2.8, 4.8], spin: [5, 13] }),
-    slice: Object.freeze({ time: [0.18, 0.32], drift: 0.6, fly: 0.22 }),
+    // (b, round 3: the owner's pick, quieter: a short lean over, a little drift, the grass's own light,
+    // a short lie; `lean` rad off upright they come to rest)
+    slice: Object.freeze({ time: [0.2, 0.34], drift: 0.15, fly: 0.05, lean: [0.9, 1.25], lie: [0.6, 1.2], thin: 0.4, lit: [1.05, 1.0] }),
     shred: Object.freeze({ fling: [1.8, 4.2], side: 0.6, up: [2.6, 4.6], spin: [8, 18], extra: 0.7, size: 0.5, glyphs: "/\\|',`" }),
   }),
   /**

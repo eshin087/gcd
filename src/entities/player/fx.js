@@ -286,11 +286,14 @@ export class PlayerFx {
     // the streak's echo lines (player/streakFx.js `echoes`; 0 = none, today): fine lines inside the
     // edge, ECHO_STEP of the reach apart, fainter inward, hanging longer than the edge
     const SK = this.game.fx?.streak, nEcho = thrust ? 0 : Math.min(4, SK?.echoes | 0), echoA = nEcho > 0 ? Math.min(1, Number(SK.echoA) || 0) : 0;
+    // the grass under the edge is cut as the edge is drawn over it (world/mowFx.js cutArc; none headless)
+    const tops = this.game.world?.scorch?.tops;
     for (let s = 1; s <= nSub; s++) {
       const t = s / nSub, t0 = (s - 1) / nSub;
       // the edge
       arcPoint(t, at, ARC_P);
       arcPoint(t0, at, ARC_Q);
+      if (tops) tops.cutArc(ARC_Q[0], ARC_Q[1], ARC_Q[2], ARC_P[0], ARC_P[1], ARC_P[2], heavy);
       let dx = ARC_P[0] - ARC_Q[0], dy = ARC_P[1] - ARC_Q[1], dz = ARC_P[2] - ARC_Q[2];
       let step = Math.hypot(dx, dy, dz);
       if (step > 0.01) {

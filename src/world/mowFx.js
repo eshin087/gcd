@@ -44,6 +44,11 @@ export class MowFx {
     this.sc = scorch;
     this.look = mowLook();
     const F = GRASS.fly;
+    // the look's own lying, thinning and light (b, sliced: quieter: GRASS.fly.slice)
+    const SL = this.look === 'b' ? F.slice : F;
+    this._lieT = SL.lie;
+    this._thin = SL.thin;
+    this._lit = SL.lit;
     const M = (this.max = F.max);
     this.n = 0;
     // per piece (SoA): position of its base, velocity, screen-plane rotation and spin, quad, colour
@@ -59,10 +64,24 @@ export class MowFx {
     this.thrown = 0; // pieces spawned since the last read (mowStats)
     this.total = 0;
     this.dropped = 0;
+    this.arcCut = 0; // blades the drawn arc cut (the tests', the Lab's)
     this._frag = gis(F.shred.glyphs);
     // the blades: a bucket grid of instance indices on the scorch map's cells (CSR)
     const B = grass.blades, S = scorch.size, N = B.n;
-    this.cut = new Uint8Array(N); // the blade's top has left (cleared with the map)
+    // the blade's top has left (255; cleared with the map): also a texture the grass shader reads by its
+    // instance (a blade the sword's arc cut is a stub, exactly the blades it crossed, not a cell's share)
+    const TW = GRASS.arc.tex;
+    this.cut = new Uint8Array(TW * Math.ceil(N / TW));
+    this.cutTex = new THREE.DataTexture(this.cut, TW, this.cut.length / TW, THREE.RedFormat, THREE.UnsignedByteType);
+    this.cutTex.magFilter = this.cutTex.minFilter = THREE.NearestFilter;
+    this.cutTex.generateMipmaps = false;
+    this.cutTex.needsUpdate = true;
+    this._texDirty = false;
+    const gu = grass.mesh.material.uniforms;
+    if (gu.uCutTex) {
+      gu.uCutTex.value = this.cutTex;
+      gu.uCutOn.value = 1;
+    }
     this._cutAny = false;
     const cnt = new Int32Array(S * S + 1);
     const cellOf = new Int32Array(N);
@@ -229,8 +248,9 @@ export class MowFx {
             // (grass.js: mown = step(r3 x 0.92 + 0.04, torn x gain))
             const r3 = fract(rw * 3.17 + 0.37);
             if (torn * G.gain < r3 * 0.92 + 0.04) continue;
-            this.cut[i] = 1;
+            this.cut[i] = 255;
             this._cutAny = true;
+            this._texDirty = true;
             if (sc.burnAt(x, z) > 0.55) continue; // (a burnt blade's top is ash: nothing flies)
             const r2 = fract(rw * 7.31);
             const bare = smooth(BA[0], BA[1], torn);
@@ -292,7 +312,7 @@ export class MowFx {
       this.y0[j] = this.py[j];
       // (a sideways sign on screen: the way the swing crosses the view)
       const sx = Math.sign(ux * rx.x + uz * rx.z) || (rnd() < 0.5 ? -1 : 1);
-      this.lieRot[j] = sx * (Math.PI * 0.5 + R(-0.25, 0.25));
+      this.lieRot[j] = look === 'b' && !frag ? sx * R(F.slice.lean[0], F.slice.lean[1]) : sx * (Math.PI * 0.5 + R(-0.25, 0.25));
       const side = R(-1, 1);
       const T = look === 'c' ? F.shred : F.throw;
       if (look === 'b' && !frag && rnd() > F.slice.fly) {
@@ -309,7 +329,7 @@ export class MowFx {
         this.vy[j] = R(T.up[0], T.up[1]) * (0.7 + 0.3 * k);
         this.spin[j] = R(T.spin[0], T.spin[1]) * (rnd() < 0.5 ? -1 : 1);
       }
-      this.lie[j] = R(F.lie[0], F.lie[1]);
+      this.lie[j] = R(this._lieT[0], this._lieT[1]);
     }
   }
 
@@ -317,13 +337,86 @@ export class MowFx {
   clear() {
     this.n = 0;
     this.geo.instanceCount = 0;
-    if (this._cutAny) this.cut.fill(0);
+    if (this._cutAny) {
+      this.cut.fill(0);
+      this._texDirty = true;
+    }
     this._cutAny = false;
   }
 
+  /**
+   * The sword's drawn arc crossed the grass this sub-step (player/fx.js trail: its EDGE stroke from
+   * (ax, ay, az) to (bx, by, bz), the line the player watches): every blade the stroke passes over, as
+   * the camera sees it, is cut now and its top leaves along the stroke's way. Only where the stroke is
+   * low enough to be in the grass (GRASS.arc). Precise to the blade (its root within w/2 of the stroke's
+   * footprint), not a map cell's share. Returns the blades it cut.
+   */
+  cutArc(ax, ay, az, bx, by, bz, heavy = false) {
+    if (this.look === 'r1' || !Number.isFinite(ax + ay + az + bx + by + bz)) return 0;
+    const A = GRASS.arc, B = this.grass.blades, G = GRASS.blade, S = this.sc.size, cs = this.sc.cellSize;
+    const top = this.grass.heightAt((ax + bx) * 0.5, (az + bz) * 0.5) * A.top;
+    if (!(top > 0.02)) return 0;
+    const lim = top + A.above;
+    if (ay >= lim && by >= lim) return 0;
+    // the part of the stroke low enough to be in the grass
+    if (ay > lim) {
+      const c = (ay - lim) / (ay - by);
+      ax += (bx - ax) * c; az += (bz - az) * c; ay = lim;
+    } else if (by > lim) {
+      const c = (by - lim) / (by - ay);
+      bx += (ax - bx) * c; bz += (az - bz) * c; by = lim;
+    }
+    // where it sits on screen: along the camera's ray down to the blades' middle height
+    const cam = this.game.camera?.position, hm = top * A.mid;
+    if (cam && Number.isFinite(cam.y) && cam.y > lim + 1) {
+      let t = (hm - cam.y) / (ay - cam.y);
+      ax = cam.x + (ax - cam.x) * t; az = cam.z + (az - cam.z) * t;
+      t = (hm - cam.y) / (by - cam.y);
+      bx = cam.x + (bx - cam.x) * t; bz = cam.z + (bz - cam.z) * t;
+    }
+    const ex = bx - ax, ez = bz - az, l2 = ex * ex + ez * ez, el = Math.sqrt(l2);
+    const hw = (heavy ? A.wHeavy : A.w) * 0.5;
+    const f = this._fling;
+    f.on = el > 1e-4;
+    f.ux = f.on ? ex / el : 0;
+    f.uz = f.on ? ez / el : 0;
+    f.k = 1;
+    const visible = Math.min(B.n, this.grass.mesh.geometry.instanceCount);
+    const i0 = Math.max(0, Math.floor((Math.min(ax, bx) - hw - this.sc.min) / cs)), i1 = Math.min(S - 1, Math.floor((Math.max(ax, bx) + hw - this.sc.min) / cs));
+    const j0 = Math.max(0, Math.floor((Math.min(az, bz) - hw - this.sc.min) / cs)), j1 = Math.min(S - 1, Math.floor((Math.max(az, bz) + hw - this.sc.min) / cs));
+    let n = 0;
+    const cap = Math.round(GRASS.fly.perTear * this._q());
+    for (let j = j0; j <= j1; j++) {
+      for (let i = i0; i <= i1; i++) {
+        const c = j * S + i;
+        for (let p = this.start[c], e = this.start[c + 1]; p < e; p++) {
+          const k = this.idx[p];
+          if (this.cut[k] || k >= visible || B.data[k * 4 + 3] > 0.5) continue;
+          const x = B.root[k * 4], z = B.root[k * 4 + 1];
+          const t = l2 > 1e-9 ? Math.min(1, Math.max(0, ((x - ax) * ex + (z - az) * ez) / l2)) : 0;
+          const dx = ax + ex * t - x, dz = az + ez * t - z;
+          if (dx * dx + dz * dz > hw * hw) continue;
+          this.cut[k] = 255;
+          this._cutAny = true;
+          this._texDirty = true;
+          if (this.sc.burnAt(x, z) > 0.55) continue;
+          const r2 = fract(B.root[k * 4 + 3] * 7.31);
+          const stubK = r2 < G.low ? 0.04 : G.stub + G.jitter * (r2 - 0.5) * 2;
+          if (n++ < cap) this._spawn(k, x, z, G.ink[0] + (G.ink[1] - G.ink[0]) * stubK, ax, az, 0);
+        }
+      }
+    }
+    f.on = false;
+    this.arcCut += n;
+    return n;
+  }
+
   update(dt) {
+    if (this._texDirty) {
+      this.cutTex.needsUpdate = true;
+      this._texDirty = false;
+    }
     if (!(dt > 0)) return;
-    if (this._cutAny && this.sc.tornCells === 0) this.cut.fill(0), (this._cutAny = false);
     const F = GRASS.fly, g = F.gravity, drag = Math.exp(-F.drag * dt);
     const P = this.aP.array, Sa = this.aS.array, C = this.aC.array;
     let n = this.n;
@@ -362,7 +455,7 @@ export class MowFx {
         const s = Math.min(1, this.age[j] / F.settle);
         this.rot[j] = this.rot0[j] + (this.lieRot[j] - this.rot0[j]) * (s * (2 - s));
         const t = this.age[j] - this.lie[j];
-        this.fade[j] = t > 0 ? t / F.thin : 0;
+        this.fade[j] = t > 0 ? t / this._thin : 0;
         if (this.fade[j] >= 1) {
           // gone: the last live piece takes its slot
           n--;
@@ -376,7 +469,8 @@ export class MowFx {
       // (a top in the air catches the light; lying it calms to the grass's own tone over `calm` s)
       const lying = this.state[j] === LIE;
       C[o] = this.colv[j]; C[o + 1] = Math.min(1, this.fade[j]); C[o + 2] = lying ? 1 : 0;
-      C[o + 3] = lying ? F.lit[1] + (F.lit[0] - F.lit[1]) * Math.max(0, 1 - this.age[j] / F.calm) : F.lit[0];
+      const Lt = this._lit;
+      C[o + 3] = lying ? Lt[1] + (Lt[0] - Lt[1]) * Math.max(0, 1 - this.age[j] / F.calm) : Lt[0];
       j++;
     }
     this.n = n;

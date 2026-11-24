@@ -82,6 +82,8 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
       uMowBare: { value: new THREE.Vector2(B.bare[0], B.bare[1]) },
       uMowLie: { value: new THREE.Vector3(B.lie[0], B.lie[1], B.lie[2]) },
       uMowMode: { value: mowLook() === 'r1' ? 0 : 1 },
+      uCutTex: { value: null },
+      uCutOn: { value: 0 },
       uMowFresh2: { value: B.fresh2 },
       uFresh: { value: new THREE.Vector3(...B.fresh) },
       uFreshAsh: { value: new THREE.Vector3(...B.freshAsh) },
@@ -103,7 +105,9 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
       uniform float uMowGain, uMowFresh;
       uniform vec2 uMowBare; // torn past x .. y: torn out (a blow's mark), not mown
       uniform vec3 uMowLie;
-      uniform float uMowMode, uMowFresh2; // 1: round 2 (the tops leave as letters, world/mowFx.js); its paleness share  // the cut tops lying: share of the mown blades, their size, their paleness
+      uniform float uMowMode, uMowFresh2;
+      uniform sampler2D uCutTex;
+      uniform float uCutOn; // 1: round 2 (the tops leave as letters, world/mowFx.js); its paleness share  // the cut tops lying: share of the mown blades, their size, their paleness
       uniform vec3 uFresh, uFreshAsh;
       varying vec2 vUv;
       varying vec3 vCol;
@@ -128,13 +132,17 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
         // stub is the letter's own stroke, not a squashed one); each blade's cut a little different
         float cutV = 1.0, mown = 0.0, lying = 0.0, bare = 0.0;
         float tilt = iData.y;
-        if (torn > 0.004 && flower < 0.5) {
+        // the blades the sword's drawn arc cut (world/mowFx.js cutArc: one byte per instance, exact to the blade)
+        float fc = 0.0;
+        if (uCutOn > 0.5 && flower < 0.5) fc = texelFetch(uCutTex, ivec2(gl_InstanceID % ${GRASS.arc.tex}, gl_InstanceID / ${GRASS.arc.tex}), 0).r;
+        if ((torn > 0.004 || fc > 0.5) && flower < 0.5) {
           float r2 = fract(iRoot.w * 7.31), r3 = fract(iRoot.w * 3.17 + 0.37), r4 = fract(iRoot.w * 5.71 + 0.11);
           // (torn is the share of the blades here that were cut: each blade is cut or it stands, so a
           // light tear thins the meadow to a scatter of stubs and a swath's edge is a ragged line of them)
           float cutP = torn * uMowGain;
           // (round 2: cut or standing, on the very frame world/mowFx.js sends its top away: the same test)
           mown = uMowMode > 0.5 ? step(r3 * 0.92 + 0.04, cutP) : smoothstep(r3 * 0.92, r3 * 0.92 + 0.08, cutP);
+          mown = max(mown, step(0.5, fc));
           // torn OUT (a blow's mark, torn past uMowBare.x): the stubs go to the root, nothing lies, the floor
           // shows bare under the mark; mown (the sword, up to GRASS.mow.maxK): pale stubble and cut tops
           bare = smoothstep(uMowBare.x, uMowBare.y, torn);
@@ -379,6 +387,9 @@ export const mowStats = MOW;
 export function mowSwing(game, a, sw, fx = null) {
   const w = game?.world, sc = w?.scorch;
   if (!a || !sc?.tearLine || !sw?.valid || !mowOn()) return 0;
+  // (round 2 on, the cut follows the DRAWN arc: player/fx.js trail -> world/mowFx.js cutArc; the steel's
+  // strip into the scorch map is round 1's, `?mowLook=r1`)
+  if (mowLook() !== 'r1') return 0;
   const M = GRASS.mow, d = a.def;
   // (from the active window to a little past it: the follow-through still cuts what it passes)
   const W = Number(d?.windup), E = W + Number(d?.active) + M.after;

@@ -2091,6 +2091,9 @@ const S = {
     let draws = 0;
     Math.random = () => { draws++; return R0(); };
 
+    // (the steel's strip into the scorch map is round 1's mow, `?mowLook=r1`; round 3 cuts along the drawn
+    // arc: the `tops` scenario)
+    setLook('mowLook', 'r1');
     // 1. a low sweep (the edge 0.12 m up, through grass ~0.5 m tall) mows its arc and nothing beside it
     const cx = -12, cz = 0;
     const add = swing(cx, cz, 0.12, -0.9, 0.9, 0.05);
@@ -2113,6 +2116,7 @@ const S = {
     { const atk = { def: { windup: 0, active: 1 }, t: 0.2 }; pose(sw.pa, sw.pb, -30, 10, 0.1, 0, 0); pose(sw.a, sw.b, -30, 10, 0.1, 0, 0); mowSwing(game, atk, sw, fx); }
     assert(sc.tornCells === nStill, 'a blade at rest (a hitstop) mows nothing');
 
+    setLook('mowLook', null);
     // 3. every kind of floor mark tears its shape (the marks then lie on the stubble)
     const kinds = [
       ['slam', -40, -30, { kind: 'slam', power: 1.4, r: 3 }, [[0, 0], [0.8, 0]], [[4, 0]]],
@@ -2170,6 +2174,7 @@ const S = {
   tops() {
     // the meadow on the west, paving on the east; a real grass of 30k blades over 24 m
     const dens = (x, z) => (x < 0 ? 1 : 0);
+    setLook('mowLook', 'a'); // (the thrown look first: its tops fly up and along; b, the default, below)
     const { world, game } = build(createForest, dens);
     const sc = world.scorch;
     world.grass = createGrass(game.U, { count: 30000, extent: 24, density: dens, height: (x, z, r) => 0.5 * (0.75 + r() * 0.5) });
@@ -2237,6 +2242,51 @@ const S = {
       assert(draws === 0, `the tops draw nothing from Math.random, built or flying (${draws} draws)`);
     } finally {
       Math.random = R0;
+      setLook('mowLook', null);
+    }
+    // round 3: the cut follows the DRAWN arc (player/fx.js trail -> tops.cutArc), the default look b
+    {
+      const W = build(createForest, dens);
+      const sc3 = W.world.scorch;
+      W.world.grass = createGrass(W.game.U, { count: 30000, extent: 24, density: dens, height: (x, z, r) => 0.5 * (0.75 + r() * 0.5) });
+      let d3 = 0;
+      Math.random = () => { d3++; return R0(); };
+      try {
+        sc3.update(1 / 60);
+        const T = sc3.tops, B = W.world.grass.blades, A = GRASS.arc;
+        assert(T.look === 'b' && GRASS.fly.look === 'b', 'the default look is b, sliced');
+        // an edge stroke low in the grass (0.3 m up) from (-8, 1) to (-6, 1): exactly the blades within w/2 of it
+        const n = T.cutArc(-8, 0.3, 1, -6, 0.3, 1, false);
+        let inside = 0, wrong = 0;
+        for (let i = 0; i < B.n; i++) {
+          if (B.data[i * 4 + 3] > 0.5) continue;
+          const x = B.root[i * 4], z = B.root[i * 4 + 1];
+          const t = Math.max(0, Math.min(1, (x + 8) / 2)), d = Math.hypot(-8 + 2 * t - x, 1 - z);
+          const want = d <= A.w * 0.5;
+          if (want) inside++;
+          if (!!T.cut[i] !== want) wrong++;
+        }
+        assert(n === inside && inside > 20 && wrong === 0 && sc3.tornCells === 0, `an arc stroke in the grass cuts the ${n} blades within ${A.w / 2} m of its line and no other (${wrong} differ), on its own call, without the map's cells (${sc3.tornCells} torn)`);
+        // b: the tops topple, lean over less than lying flat, drift little, are no brighter than the grass
+        let topple = 0, lean = 0;
+        for (let j = 0; j < T.n; j++) { if (T.state[j] === 1) topple++; if (Math.abs(T.lieRot[j]) < Math.PI * 0.45) lean++; }
+        assert(topple >= T.n * 0.85 && lean >= T.n * 0.85, `b: ${topple}/${T.n} tops topple off their stubs, ${lean} come to rest leaning (under 81 degrees)`);
+        for (let f = 0; f < 30; f++) sc3.update(1 / 60);
+        let lit = 0;
+        for (let j = 0; j < T.n; j++) lit = Math.max(lit, T.aC.array[j * 4 + 3]);
+        assert(lit <= 1.06, `b: a top is no brighter than its grass (x ${lit.toFixed(2)})`);
+        for (let f = 0; f < 60 * 3; f++) sc3.update(1 / 60);
+        assert(T.n === 0, `b: 3.5 s on, every top has thinned away (${T.n} left)`);
+        // a stroke high over the grass cuts nothing; the reset makes every blade whole
+        const hi = T.cutArc(-8, 2.2, 4, -6, 2.2, 4, false);
+        sc3.reset();
+        let left = 0;
+        for (let i = 0; i < B.n; i++) left += T.cut[i] ? 1 : 0;
+        assert(hi === 0 && left === 0, `a stroke 2.2 m up cuts nothing (${hi}); the reset leaves no blade cut (${left})`);
+        assert(d3 === 0, `the arc's cut draws nothing from Math.random (${d3})`);
+      } finally {
+        Math.random = R0;
+      }
     }
     // round 1's look builds no tops
     setLook('mowLook', 'r1');
