@@ -4,6 +4,14 @@
 const FIREFLY_LEVELS = new Set(['cinderwood', 'fox', 'grove']);
 /** shared-pool budget (BRIEF section 6): letters drawn by the creatures in one frame */
 const BUDGET = { alpha: 60, add: 120 };
+/** the fauna (flock.js, animals.js): where there are flocks, where there are animals */
+const FLOCK_LEVELS = new Set(['cinderwood', 'ash', 'fox', 'city']);
+const ANIMAL_LEVELS = new Set(['cinderwood', 'ash', 'ring', 'fox']);
+/** the fauna's own batch: letters a frame at most (a full sky of flocks and every animal) */
+const LETTERS = 260;
+
+const flying = (C) => C.flocks.airborne;
+const anyFlock = (C) => C.flocks.flocks.some((f) => f.on);
 
 const minFirefly = (w) => {
   const h = w.game.player.position;
@@ -253,7 +261,9 @@ export default {
         }
         const c = w.counts();
         T.assert(ma <= BUDGET.alpha * quality && md <= BUDGET.add * quality, `${id} q${quality}: at most ${ma} alpha (<= ${BUDGET.alpha * quality}), ${md} add (<= ${BUDGET.add * quality}) a frame; ${(sum / 1200).toFixed(1)} on average`);
-        T.assert(c.pools === 0 && c.random === 0, `${id} q${quality}: no pool of its own, no Math.random (${c.random})`);
+        // (the fauna's letters are the creatures' one own batch, on the levels that have fauna)
+        const fauna = !!w.life.creatures.letters;
+        T.assert(c.pools === (fauna ? 1 : 0) && c.random === 0, `${id} q${quality}: ${fauna ? 'one batch of its own (the fauna)' : 'no pool of its own'} (${c.pools}), no Math.random (${c.random})`);
         if (quality === 1) {
           T.setLife('off');
           w.step(0.5);
@@ -262,5 +272,200 @@ export default {
         }
       }
     }
+  },
+
+  /** Fire landing on the tree line sends a flock of 20+ birds up within a second (not all on one
+   *  frame); they are gone from the level within 14 s; a second fire a second later sends none. */
+  flockFire(T) {
+    const w = T.build('cinderwood', 'creatures');
+    w.place(0, 0);
+    w.step(0.5);
+    const C = w.life.creatures, F = C.flocks;
+    T.assert(F.roosts.length >= 8 && F.roosts.every((R) => R.birds >= 30), `${F.roosts.length} roosts on the tree wall, ${F.roosts.reduce((n, R) => n + R.birds, 0)} birds hidden in the canopy`);
+    const R = F.roosts[0];
+    w.world.ignite(R.tx + 3, R.tz, 2, 1);
+    const f = F.flocks.find((o) => o.on);
+    T.assert(!!f && f.roost === R && R.birds === 0, `fire 3 m from its tree: that roost goes (${f ? f.n : 0} birds)`);
+    w.step(1 / 60);
+    const first = flying(C);
+    w.step(1.2);
+    const up = flying(C);
+    T.assert(first < f.n * 0.5 && up >= 20, `they burst out over a second: ${first} in the air after a frame, ${up} after 1.2 s`);
+    let top = 0;
+    for (let i = 0; i < f.n; i++) top = Math.max(top, f.birds[i].y);
+    T.assert(top > R.y + 1.5, `they rise out of the crown (${(top - R.y).toFixed(1)} m over it)`);
+    // a second fire, a second later, at another roost: the sky's gap holds it
+    w.step(1);
+    const R2 = F.roosts[5];
+    w.world.ignite(R2.tx, R2.tz, 2, 1);
+    T.assert(R2.birds > 0 && F.flocks.filter((o) => o.on).length === 1, `a second fire a second later sends none (that roost still holds ${R2.birds})`);
+    w.step(12);
+    T.assert(!anyFlock(C) && flying(C) === 0, `14 s on, the flock is gone from the level (${flying(C)} in the air)`);
+    w.world.ignite(R2.tx, R2.tz, 2, 1);
+    T.assert(R2.birds === 0 && anyFlock(C), 'after the gap, fire at another roost sends its flock');
+    // a level has a finite number of birds: a roost that went does not go again in the fight
+    w.game.state = 'boss';
+    w.step(30);
+    F._last = -1e9;
+    T.assert(F.flush(R, R.x, R.z) === 0 && R.birds === 0, 'an emptied roost has no more birds in the fight');
+  },
+
+  /** A toppled tree's flock leaves from that tree (world:impact 'topple' through the answer). */
+  flockTree(T) {
+    const w = T.build('cinderwood', 'creatures,answer');
+    w.place(0, 0);
+    w.step(0.5);
+    const F = w.life.creatures.flocks, R = F.roosts[2];
+    w.emit('world:impact', { kind: 'chip', mat: 'wood', x: R.tx, y: 1, z: R.tz, power: 1, by: 'player' });
+    T.assert(R.birds > 0 && !F.flocks.some((f) => f.on), 'a chip on its tree sends none');
+    w.emit('world:impact', { kind: 'topple', mat: 'wood', x: R.tx + 2, y: 0.5, z: R.tz - 1, power: 2, by: 'boss' });
+    const f = F.flocks.find((o) => o.on);
+    T.assert(!!f && f.roost === R, `the tree 2 m from the roost falls: its flock goes (${f?.n ?? 0}; ${F.lastWhy})`);
+    w.step(1.5);
+    let d = 0, n = 0;
+    for (let i = 0; i < (f?.n ?? 0); i++) {
+      const b = f.birds[i];
+      if (b.t < 0) continue;
+      d += Math.hypot(b.x - R.x, b.z - R.z);
+      n++;
+    }
+    T.assert(n >= 20 && d / n < 10, `1.5 s on, ${n} birds out, ${(d / Math.max(1, n)).toFixed(1)} m on average from that tree`);
+    F._last = -1e9;
+    w.emit('world:impact', { kind: 'crash', mat: 'stone', x: 0, y: 0.4, z: 0, power: 1, by: 'boss' });
+    T.assert(F.flocks.filter((o) => o.on).length === 1, 'a crash in the middle of the clearing sends no flock');
+  },
+
+  /** Animals within the hero's radius bolt away from him and end in cover; those far away stay. */
+  animals(T) {
+    for (const id of ['cinderwood', 'ash', 'ring', 'fox']) {
+      const w = T.build(id, 'creatures');
+      w.place(0, 0);
+      w.step(0.5);
+      const A = w.life.creatures.animals, L = A.list;
+      T.assert(L.length >= 1, `${id}: ${L.length} animals (${[...new Set(L.map((a) => a.kind))].join(', ')})`);
+      if (!L.length) continue;
+      const a = L[0];
+      const r = Math.hypot(a.x, a.z) || 1;
+      const sx = a.x - (a.x / r) * 3.5, sz = a.z - (a.z / r) * 3.5;
+      const far = L.filter((o) => o !== a && Math.hypot(o.x - a.x, o.z - a.z) > 30);
+      w.place(sx, sz);
+      const d0 = Math.hypot(a.x - sx, a.z - sz);
+      w.step(0.8);
+      T.assert(a.state === 'run' || a.state === 'hid' || a.state === 'gone', `${id}: the ${a.kind} 3.5 m from him bolts (${a.state})`);
+      let inside = 0;
+      for (let t = 0; t < 14 && a.state === 'run'; t += 0.1) {
+        w.step(0.1);
+        if (A.inside(a.x, a.z)) inside++;
+      }
+      T.assert(a.state === 'hid' || a.state === 'gone', `${id}: it is in cover (${a.state})`);
+      const d1 = Math.hypot(a.x - sx, a.z - sz);
+      T.assert(d1 > d0 + 4 && inside === 0, `${id}: it ran away from him (${d0.toFixed(1)} -> ${d1.toFixed(1)} m), never onto the fighting ground`);
+      T.assert(far.every((o) => o.state === 'sit'), `${id}: the ${far.length} more than 30 m off still sit`);
+    }
+  },
+
+  /** Nothing alive is ever on the fighting ground: the hero runs the rim, roars, blows and fire everywhere. */
+  keepOut(T) {
+    for (const id of ['cinderwood', 'ash', 'ring', 'fox']) {
+      const w = T.build(id, 'creatures,answer', { state: 'boss' });
+      w.step(0.5);
+      const A = w.life.creatures.animals, K = w.life.creatures.FL.keepOut;
+      let bad = 0, frames = 0;
+      for (let i = 0; i < 40; i++) {
+        const ang = i * 0.7, x = Math.cos(ang) * (K + 2), z = Math.sin(ang) * (K + 2);
+        w.place(x, z);
+        if (i % 5 === 0) w.emit('dragon:roar', { strength: 1 });
+        w.world.impact(x * 0.8, z * 0.8, 2, 1.2, { kind: 'blunt', by: 'boss' });
+        w.world.ignite(-x, -z, 3, 1);
+        for (let k = 0; k < 15; k++) {
+          w.step(1 / 30);
+          frames++;
+          for (const a of A.list) if (a.state !== 'hid' && a.state !== 'gone' && A.inside(a.x, a.z)) bad++;
+        }
+      }
+      T.assert(bad === 0, `${id}: over ${frames} frames of the fight no animal is inside the fighting ground (${bad})`);
+    }
+  },
+
+  /** Nothing returns while the boss is up; some come back after the victory. The fox goes once. */
+  returns(T) {
+    const w = T.build('cinderwood', 'creatures', { state: 'boss' });
+    w.place(0, 0);
+    w.step(0.5);
+    const C = w.life.creatures, F = C.flocks, A = C.animals;
+    // (at most three flocks in the air: each roost goes as soon as there is room)
+    for (const R of F.roosts) {
+      for (let t = 0; R.birds > 0 && t < 60; t += 0.5) {
+        F._last = -1e9;
+        if (!F.flush(R, 0, 0)) w.step(0.5);
+      }
+    }
+    A.alarm(0, 0, 200, 'test');
+    w.step(15);
+    T.assert(F.roosts.every((R) => R.birds === 0) && A.list.every((a) => a.state === 'hid'), 'the roosts are empty, the animals in cover');
+    w.step(150);
+    T.assert(F.roosts.every((R) => R.birds === 0) && A.list.every((a) => a.state === 'hid'), 'two and a half minutes of the fight later nothing has returned');
+    w.game.state = 'victory';
+    w.step(45);
+    const r1 = F.roosts.filter((R) => R.birds > 0).length, a1 = A.list.filter((a) => a.state === 'sit').length;
+    w.step(90);
+    const r2 = F.roosts.filter((R) => R.birds > 0).length, a2 = A.list.filter((a) => a.state === 'sit').length;
+    T.assert(r1 >= 1 && r2 >= r1 && r2 >= F.roosts.length * 0.6, `after the victory the roosts fill over time (${r1} at 45 s, ${r2} of ${F.roosts.length} at 135 s)`);
+    T.assert(a2 >= 1 && a2 >= a1, `... and animals come back (${a1} at 45 s, ${a2} of ${A.list.length} at 135 s)`);
+    const fx = T.build('fox', 'creatures');
+    fx.step(0.5);
+    const fox = fx.life.creatures.animals.list[0];
+    fx.place(fox.x + 2, fox.z);
+    fx.step(15);
+    fx.place(0, 30);
+    fx.step(300);
+    T.assert(fox.kind === 'fox' && fox.state === 'gone', `the fox slips away once and is not back in this visit (${fox.state})`);
+  },
+
+  /** Where there is fauna (the Throne, the Grove, the code hall: none); the letter budget on every level. */
+  fauna(T) {
+    for (const id of T.LEVEL_IDS) {
+      const w = T.build(id, 'creatures,answer');
+      w.step(0.5);
+      const C = w.life.creatures;
+      const nf = C.flocks?.roosts.length ?? 0, na = C.animals?.list.length ?? 0;
+      T.assert((nf > 0) === FLOCK_LEVELS.has(id) && (na > 0) === ANIMAL_LEVELS.has(id), `${id}: ${nf} roosts, ${na} animals`);
+      if (id === 'starless') T.assert(!C.letters && nf === 0 && na === 0, 'the Throne: nothing alive, no batch');
+      for (const quality of [1, 0.5]) {
+        const q = T.build(id, 'creatures,answer', { quality });
+        q.step(0.5);
+        const Q = q.life.creatures;
+        let max = 0;
+        // the worst case: a roost goes every 2 s (the gap skipped), every animal runs, the hero runs about
+        q.walk(4, -3);
+        for (let i = 0; i < 30 * 60; i++) {
+          if (i % 120 === 0 && Q.flocks) {
+            Q.flocks._last = -1e9;
+            const R = Q.flocks.roosts.find((o) => o.birds > 0);
+            if (R) Q.flocks.flush(R, 0, 0);
+          }
+          if (i === 200) Q.animals?.alarm(0, 0, 200, 'test');
+          q.step(1 / 60);
+          max = Math.max(max, Q.drawn.letters ?? 0, Q.letters?.n ?? 0);
+        }
+        const c = q.counts();
+        const cap = LETTERS * Math.max(0.5, quality);
+        T.assert(max <= cap && c.random === 0, `${id} q${quality}: at most ${max} fauna letters a frame (<= ${cap}), ${c.random} Math.random`);
+      }
+    }
+  },
+
+  /** The Lab's buttons: a flock flees, the animals bolt, life returns. */
+  lab(T) {
+    const w = T.build('cinderwood', 'creatures');
+    w.place(0, 0);
+    w.step(0.5);
+    const act = (label) => w.life.actions.find((a) => a.label === label);
+    T.assert(['flock flees', 'animals bolt', 'life returns'].every(act), 'the three buttons are on the life row');
+    T.assert(act('flock flees').run() >= 20, 'flock flees: a roost goes');
+    w.place(25, 0);
+    T.assert(act('animals bolt').run() >= 1, 'animals bolt: they run');
+    w.step(15);
+    T.assert(act('life returns').run() >= 1 && w.life.creatures.flocks.roosts.every((R) => R.birds > 0), 'life returns: the roosts are full again');
   },
 };
