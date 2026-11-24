@@ -2576,6 +2576,14 @@ stands again when the fight resets (a death, a rest at the bonfire, the Lab's Re
   blows and bite it in full. A duelist cuts a pillar down in about ten blows, three of his heavy ones.
   Every blow leaves a mark as big as it was hard; a hard one cracks the floor, and one of power 1.2 or
   more leaves a **crater** (a rim of thrown-up earth and a charred floor until the reset).
+- **The floor keeps every blow** (2026-11-23, ADR-177; `?marks=0` the floor as before): each boss attack
+  that meets the ground leaves a mark of its kind (a slam's crater, a blade's gash, a thrust's nick, a
+  dash's furrow, a blast's scorched round, a beam's trench, a heavy footprint), and so do the hero's
+  heavy blows (the charged cleave's end, the plunge, the slam; light cuts leave nothing). They stay until
+  the fight resets. **Floor marks change nothing in the fight**: no damage, no fire, no hazard, no draw
+  from the seeded random stream (the seeded fights replay exactly with and without them); they are dim
+  grey, never red, so they never read as a tell. The blows near them shake the set and send the birds
+  and animals off (STYLE.md "A fight the world feels"); that changes nothing in the fight either.
 - **Bites: a piece loses its letters where it was struck** (2026-11-21, ADR-132; on: the owner's
   pick; `?chip=0` or the Lab's WORLD -> Bites turns them off). Every tree, stone, boulder, pillar, statue,
   bone and landmark piece is made of bricks, the blocks of letters it is drawn with (about one letter
@@ -2587,12 +2595,18 @@ stands again when the fight resets (a death, a rest at the bonfire, the Lab's Re
   grows where a blade keeps biting, and the tree falls as its structure there runs out. Nothing
   about how much a piece takes, when it falls or what it deals has changed: it is the same
   structure, shown where the blows went. Floor slabs keep their cracked and broken looks.
-  **The blade stops on what it does not cut through** (the owner: "the sword should stop when it
-  hits it instead of going straight through it"): the frame freezes a beat, the camera shakes, steel
-  on stone throws sparks, a blade in wood sticks for a tenth of a second; then it is thrown back and
-  he gives a step (stone a bigger one), and can swing again after about 0.3 s, as after a duelist's
-  deflection. A cut that fells or breaks the thing goes through it. So a swing that meets a pillar or
-  a tree before it reaches the boss stops there: stand clear of cover to cut.
+  **The blade goes clean through whatever it does not fell** (2026-11-23, ADR-177; the owner: "the
+  sword gets stopped and i dont like this feeling. lets allow the player to swing their attack
+  animation through it"; it supersedes ADR-132's stop). The swing's clock, pose and reach are those of
+  open air, frame for frame: a swing through a rock or a tree ends when it would have ended and still
+  lands on a boss behind it. The piece takes the blow once per swing, as before (its structure, its
+  bite, its fall): its letters are knocked off where the steel crossed and fly on along the cut, stone
+  and metal throw sparks, wood splinters; one small camera jolt a swing (0.05 light, 0.12 heavy). No
+  freeze, no bounce, no recovery: cover no longer costs the hero his swing. **The old stop stays behind
+  `?cutStop=1`** (the Lab's WORLD -> Blade: stops; bites on only): the frame freezes a beat, the camera
+  shakes, steel on stone throws sparks, a blade in wood sticks for a tenth of a second; then it is
+  thrown back and he gives a step (stone a bigger one), and can swing again after about 0.3 s, as after
+  a duelist's deflection; a cut that fells or breaks the thing goes through it.
 - **Bamboo is sliced in one stroke** (ADR-151): in the Windless Grove any blade or blow cuts a stalk
   through where it passed; its top slides off the cut at once and goes over, quietly (no tell, no
   harm). The blade goes on through, so one swing cuts a clump.
