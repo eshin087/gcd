@@ -79,11 +79,11 @@ export const GRASS = Object.freeze({
     settle: 0.12,
     lie: [1.6, 3.2],
     thin: 0.7,
-    lit: [1.9, 1.25], // brightness x the grass's own: in the air (a cut top catching the light), lying (calmed over `calm` s)
+    lit: [2.3, 1.3], // brightness x the grass's own: in the air (a cut top catching the light), lying (calmed over `calm` s)
     calm: 0.8,
-    throw: Object.freeze({ fling: [1.6, 3.6], side: 0.45, up: [2.4, 4.2], spin: [5, 13] }),
+    throw: Object.freeze({ fling: [1.6, 3.6], side: 0.45, up: [2.8, 4.8], spin: [5, 13] }),
     slice: Object.freeze({ time: [0.18, 0.32], drift: 0.6, fly: 0.22 }),
-    shred: Object.freeze({ fling: [1.8, 4.2], side: 0.6, up: [2.0, 3.8], spin: [8, 18], extra: 0.7, size: 0.5, glyphs: "/\\|',`" }),
+    shred: Object.freeze({ fling: [1.8, 4.2], side: 0.6, up: [2.6, 4.6], spin: [8, 18], extra: 0.7, size: 0.5, glyphs: "/\\|',`" }),
   }),
   /**
    * What each KIND of floor mark tears (scars.mark): a slam a disc as wide as its round, a cut / claws
