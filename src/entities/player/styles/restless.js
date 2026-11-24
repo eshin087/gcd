@@ -372,22 +372,23 @@ const fidgets = [
 // Each hit starts on the side the one before left the blade (the pendulum): R→L, L→R, R→L, L→R,
 // R→L→R, R→L. His free hand fights like a boxer's: up before the chin as a guard hand in the quick
 // cuts, a punch-like feint, flung wide only on the drive.
-// next from (W + A + chain × R): 0.21 · 0.324 · 0.38 · 0.36 · 0.345 · 0.623 = 2.24 s; with the hit-
-// stops and the drive's heft a mashed cycle runs ~2.37 s: 253 damage → ~107 /s (today 107.8).
+// next from (W + A + chain × R): 0.25 · 0.324 · 0.38 · 0.36 · 0.345 · 0.692 = 2.35 s; with the hit-
+// stops and the drive's heft a mashed cycle runs ~2.47 s: 266 damage → ~107.7 /s (today 107.8).
+// The blows land ~0.21 · 0.39 · 0.47 · 0.26 · 0.10 · 0.41 · 0.63 s apart: tat-tat, tat, tat, tat-tat-TAT.
 /** The guard hand: open before the chin, the fingers up, the palm toward the foe. */
 const GUARD = { l: [-0.05, -0.15, 0.25], lp: [0.7, -0.65, -0.2], ld: [-5, 58], pn: [-0.4, 0, 0.7], lk: 0, hs: 0 };
 const C = (name, extra) => ({ kind: 'clip', clip: name, ...extra });
 const chain = [
   {
     // 1 tat: the jab-cut. A short falling diagonal from beside the right shoulder; hardly a windup.
-    name: 'restlessJab', kind: 'light', combo: 1, damage: 25, poise: 10, heavy: false,
-    windup: 0.08, active: 0.09, recovery: 0.2, chain: 0.2, lunge: 0.45, reach: 2.2,
+    name: 'restlessJab', kind: 'light', combo: 1, damage: 26, poise: 10, heavy: false,
+    windup: 0.12, active: 0.09, recovery: 0.2, chain: 0.2, lunge: 0.45, reach: 2.2,
     hitstop: 0.04, shake: 0.08, bite: 0.7, contact: 'light', punch: 0.25, kick: 0.05, flare: 0.4,
     anim: C('restlessJab'),
   },
   {
     // 2 tat: the cross. A flat backhand return at chest height, the guard hand punching out with it.
-    name: 'restlessCross', kind: 'light', combo: 2, damage: 28, poise: 11, heavy: false,
+    name: 'restlessCross', kind: 'light', combo: 2, damage: 29, poise: 11, heavy: false,
     windup: 0.08, active: 0.09, recovery: 0.28, chain: 0.55, lunge: 0.4, reach: 2.2,
     hitstop: 0.045, shake: 0.1, bite: 0.8, contact: 'light', punch: 0.3, kick: 0.06, flare: 0.45,
     buffer: 0.45,
@@ -395,7 +396,7 @@ const chain = [
   },
   {
     // 3 tat: the step-in. Dropped low on the right, a skip in and one rising cut to high left.
-    name: 'restlessRise', kind: 'light', combo: 3, damage: 36, poise: 14, heavy: false,
+    name: 'restlessRise', kind: 'light', combo: 3, damage: 38, poise: 14, heavy: false,
     windup: 0.12, active: 0.11, recovery: 0.3, chain: 0.5, lunge: 0.8, reach: 2.2,
     hitstop: 0.06, shake: 0.14, bite: 1.0, contact: 'sweep', punch: 0.45, kick: 0.09, flare: 0.55,
     buffer: 0.5,
@@ -404,7 +405,7 @@ const chain = [
   {
     // 4 tat: the feint. The shoulder dips and the guard hand jabs (the fake), then the blade comes
     // over the left shoulder in a falling cross cut down to the right hip.
-    name: 'restlessFeint', kind: 'light', combo: 4, damage: 33, poise: 13, heavy: false,
+    name: 'restlessFeint', kind: 'light', combo: 4, damage: 35, poise: 13, heavy: false,
     windup: 0.2, active: 0.1, recovery: 0.24, chain: 0.25, lunge: 0.5, reach: 2.2,
     hitstop: 0.055, shake: 0.12, bite: 0.9, contact: 'light', punch: 0.4, kick: 0.08, flare: 0.5,
     anim: C('restlessFeint'),
@@ -412,12 +413,12 @@ const chain = [
   {
     // 5 tat-tat: the burst. Two cuts in one press: up from the right knee to high left, and straight
     // back down to the right hip.
-    name: 'restlessBurst', kind: 'light', combo: 5, damage: 42, poise: 15, heavy: false,
+    name: 'restlessBurst', kind: 'light', combo: 5, damage: 44, poise: 15, heavy: false,
     windup: 0.09, active: 0.2, recovery: 0.22, chain: 0.25, lunge: 0.55, reach: 2.2,
     hitstop: 0.045, shake: 0.1, bite: 0.8, contact: 'light', punch: 0.3, kick: 0.06, flare: 0.45,
     hits: [
-      { at: [1.0, 1.5], damage: 19, poise: 7 },
-      { at: [1.5, 2.0], damage: 23, poise: 8, hitstop: 0.06, shake: 0.13, punch: 0.4, kick: 0.08, bite: 1.0 },
+      { at: [1.0, 1.5], damage: 20, poise: 7 },
+      { at: [1.5, 2.0], damage: 24, poise: 8, hitstop: 0.06, shake: 0.13, punch: 0.4, kick: 0.08, bite: 1.0 },
     ],
     branch: 4,
     anim: C('restlessBurst'),
@@ -425,8 +426,8 @@ const chain = [
   {
     // 6 TAT: the drive. Wound back over the right shoulder with the fingers on the foe, a long step
     // through and one heavy diagonal down to the left hip; he holds it.
-    name: 'restlessDrive', kind: 'light', combo: 6, damage: 89, poise: 56, heavy: true,
-    windup: 0.24, active: 0.13, recovery: 0.46, chain: 0.55, lunge: 1.0, reach: 2.2,
+    name: 'restlessDrive', kind: 'light', combo: 6, damage: 94, poise: 58, heavy: true,
+    windup: 0.24, active: 0.13, recovery: 0.46, chain: 0.7, lunge: 1.0, reach: 2.2,
     hitstop: 0.13, shake: 0.45, bite: 1.5, biteHold: 0.14, heft: { t: 0.1, rate: 0.3 }, flare: 1.0,
     contact: 'cleave', punch: 1.7, kick: 0.22, buffer: 0.6, branch: 0,
     anim: C('restlessDrive'),
@@ -441,8 +442,8 @@ const swings = {
     lF: [0.15, 0.42], rF: [-0.17, -0.4], fy: [0.2, -0.7], drag: 0.16,
     keys: [
       { u: 0.6, by: -0.06, bz: -0.06, bx: -0.05, hip: -0.36, sy: -0.42, sx: 0.02, ...GUARD },
-      { u: 1.0, h: [-0.08, 0.14, 0.06], a: [-135, 34], by: -0.08, bz: -0.05, bx: -0.04, hip: -0.28, sy: -0.36, sx: 0.06, sz: 0.04, ...GUARD },
-      { u: 1.25, h: [0.0, 0.1, 0.28], a: [-90, 26] },
+      { u: 1.0, h: [-0.16, 0.06, 0.2], a: [-85, 26], by: -0.08, bz: -0.05, bx: -0.04, hip: -0.28, sy: -0.36, sx: 0.06, sz: 0.04, ...GUARD },
+      { u: 1.25, h: [-0.04, 0.04, 0.36], a: [-58, 20] },
       { u: 1.5, h: [0.12, -0.04, 0.46], a: [-30, 10], by: -0.18, bz: 0.08, bx: 0.01, hip: 0.14, sy: 0.0, sx: 0.28, l: [-0.08, -0.17, 0.2], lp: [0.75, -0.6, -0.25], ld: [0, 55], pn: [-0.4, 0, 0.7], lk: 0 },
       { u: 1.75, h: [0.22, -0.18, 0.42], a: [24, -12] },
       { u: 2.0, h: [0.28, -0.28, 0.32], a: [58, -26], by: -0.24, bz: 0.11, bx: 0.04, hip: 0.3, sy: 0.32, sx: 0.36, sz: -0.05, l: [0.06, -0.2, 0.18], lp: [0.75, -0.55, -0.35], ld: [20, 40], pn: [-0.5, -0.3, 0.6] },
@@ -509,7 +510,7 @@ const swings = {
     fy: [0.35, -0.65],
     keys: [
       { u: 0.6, by: -0.3, bz: -0.08, bx: -0.06, hip: -0.42, sy: -0.48, sx: 0.4, ...GUARD },
-      { u: 1.0, h: [-0.14, -0.34, -0.08], a: [-140, -28], by: -0.26, bz: -0.06, bx: -0.05, hip: -0.34, sy: -0.42, sx: 0.34, ...GUARD },
+      { u: 1.0, h: [-0.1, -0.32, 0.06], a: [-120, -24], by: -0.26, bz: -0.06, bx: -0.05, hip: -0.34, sy: -0.42, sx: 0.34, ...GUARD },
       { u: 1.28, h: [0.06, -0.16, 0.44], a: [-10, 4], by: -0.18, hip: 0.0, sy: -0.06, sx: 0.26 },
       { u: 1.5, h: [0.2, 0.08, 0.36], a: [40, 34], by: -0.14, bz: 0.08, bx: 0.02, hip: 0.2, sy: 0.24, sx: 0.16, l: [0.06, -0.18, 0.2], lp: [0.75, -0.55, -0.3], ld: [10, 50], pn: [-0.4, 0, 0.7], lk: 0 },
       { u: 1.72, h: [0.04, -0.12, 0.44], a: [-24, -6] },
@@ -522,8 +523,8 @@ const swings = {
    *  sword fingers on the foe, then a long step through and one heavy diagonal from high right down
    *  across his chest past the left hip; deep in the front knee, the free arm flung back, held. */
   restlessDrive: {
-    line: 'right',
-    home: 0.55,
+    line: 'down',
+    home: 0.45,
     lF: [0.16, 0.56], rF: [-0.17, -0.5], fy: [0.12, -0.78], drag: 0.12,
     keys: [
       { u: 0.3, h: [-0.1, 0.06, 0.12], a: [-120, 30], by: -0.12, hip: -0.3, sy: -0.36, sx: 0.04, ...GUARD },
@@ -531,11 +532,11 @@ const swings = {
       { u: 1.0, h: [-0.08, 0.22, -0.02], a: [-158, 42], by: -0.07, bz: -0.08, bx: -0.05, hip: -0.44, sy: -0.52, sx: -0.06, sz: 0.06, fh: 'aim', hs: 1 },
       { u: 1.25, h: [0.02, 0.16, 0.24], a: [-108, 34] },
       { u: 1.5, h: [0.14, -0.04, 0.48], a: [-32, 12], by: -0.26, bz: 0.12, bx: 0.01, hip: 0.18, sy: 0.0, sx: 0.36, l: [0.26, -0.06, 0.06], lp: [0.45, -0.85, -0.3], ld: [70, 15], pn: [-0.3, -1, 0], lk: 0 },
-      { u: 1.75, h: [0.26, -0.22, 0.42], a: [30, -18] },
-      { u: 2.0, h: [0.32, -0.34, 0.3], a: [74, -36], by: -0.36, bz: 0.17, bx: 0.05, hip: 0.42, sy: 0.44, sx: 0.5, sz: -0.07, fh: 'highWing', l: [0.32, 0.01, -0.22] },
-      { u: 2.15, by: -0.38, bz: 0.19, bx: 0.06, hip: 0.52, sy: 0.58, sx: 0.55 },
-      { u: 2.45, h: [0.34, -0.36, 0.2], a: [100, -30], by: -0.35, bz: 0.15, bx: 0.05, hip: 0.48, sy: 0.52, sx: 0.5, fh: 'highWing' },
-      { u: 2.6, h: [0.34, -0.36, 0.19], a: [102, -30], by: -0.35, bz: 0.15, bx: 0.05, hip: 0.48, sy: 0.52, sx: 0.5, fh: 'highWing' },
+      { u: 1.75, h: [0.2, -0.2, 0.46], a: [-4, -16] },
+      { u: 2.0, h: [0.2, -0.36, 0.36], a: [34, -38], by: -0.38, bz: 0.17, bx: 0.04, hip: 0.26, sy: 0.26, sx: 0.55, sz: -0.04, fh: 'highWing', l: [0.32, 0.01, -0.22] },
+      { u: 2.15, by: -0.4, bz: 0.19, bx: 0.05, hip: 0.35, sy: 0.37, sx: 0.6 },
+      { u: 2.45, h: [0.21, -0.37, 0.34], a: [40, -36], by: -0.37, bz: 0.16, bx: 0.04, hip: 0.31, sy: 0.32, sx: 0.55, fh: 'highWing' },
+      { u: 2.6, h: [0.21, -0.37, 0.33], a: [41, -36], by: -0.37, bz: 0.16, bx: 0.04, hip: 0.31, sy: 0.32, sx: 0.55, fh: 'highWing' },
     ],
   },
 };
