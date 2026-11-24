@@ -1214,6 +1214,11 @@ export class Lab {
       this._syncCutBtns();
     });
     this.ui.tempoBtn.title = "the storm's tempo (?tempo=0 off): the first cut a heavy beat, each later one a share of the one before; off = the storm as it was (ADR-167). Only with 'storm' on; read as a flurry starts";
+    this.ui.chainBtn = button(stkGrid, 'chain', () => {
+      STREAK_FX.chain = !STREAK_FX.chain;
+      this._syncCutBtns();
+    });
+    this.ui.chainBtn.title = "the flurry's chain (?chain=0 off): each pass starts where the last ended (A -> B -> C), every slash on the path he ran, letter dust on the last blow; off = the ring-teleport paths, the crescents and the 'A' shards as before. Read as a flurry starts";
     this.ui.perfectBtn = button(stkGrid, `perfect: ${perfectMode()}`, () => {
       const M = STREAK_FX.perfectModes;
       setPerfectMode(M[(M.indexOf(perfectMode()) + 1) % M.length]);
@@ -1364,6 +1369,7 @@ export class Lab {
     for (const { s, el: b } of this.ui.impactBtns ?? []) setClass(b, 'on', IMPACT.on[s] === true);
     for (const { s, el: b } of this.ui.streakBtns ?? []) setClass(b, 'on', STREAK_FX.on[s] === true);
     if (this.ui.tempoBtn) setClass(this.ui.tempoBtn, 'on', STREAK_FX.tempo !== false);
+    if (this.ui.chainBtn) setClass(this.ui.chainBtn, 'on', STREAK_FX.chain !== false);
     if (this.ui.perfectBtn) this.ui.perfectBtn.textContent = `perfect: ${perfectMode()}`;
     if (this.ui.parryFxBtn) this.ui.parryFxBtn.textContent = `parryFx ${parryFxMode()}`;
     if (this.ui.burstBtn) this.ui.burstBtn.textContent = `burst ${burstLevel()}`;
