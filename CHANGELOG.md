@@ -4,7 +4,21 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Seventy-nine pieces of work since 0.4.0:
+Eighty pieces of work since 0.4.0:
+- **The sword cuts clean through; the fight marks the ground; birds and animals flee** (2026-11-23, ADR-177).
+  *Changed:* the hero's blade no longer stops on a rock, a tree or a pillar it cannot fell: the swing
+  goes through at full speed, the piece still takes the blow, its letters fly on along the cut, stone
+  sparks and wood splinters (`?cutStop=1`, or the Lab's Blade button, keeps the blade that stops).
+  *Added:* **every boss attack that meets the ground leaves a mark of its kind** (a crater for a slam,
+  one long gash for a sword cut, three for claws, a furrow for a dash, a scorched round for a blast, a
+  trench for a beam), on all eight bosses, and the marks stay until the fight resets (`?marks=0`: the
+  floor as it was). **Birds flee the fight:** a flock bursts out of the trees when the wyrm's fire, a
+  heavy blow or a falling tree reaches it, and crosses the sky. **Animals run:** rabbits and deer in
+  Cinderwood, rats in the Ashfall ruins, lizards at the Skybreak Ring, one fox at the Foxfire shrine,
+  a few small letters each, bolting into cover as you or the fight come near. **The set shakes** under
+  heavy blows: leaves rain off a struck tree, dust sifts off pillars, banners and paper charms swing,
+  pebbles hop, the bonfire gutters. **After:** thin smoke rises where fire burned out and leans with
+  the wind, embers drift, dust hangs over a crater. The marks change nothing in the fight.
 - **Combat sounds, round two: real steel on the parry, picked by ear** (2026-11-23, ADR-172). *Changed:* the owner compared 37 combat sounds on a picker
   page (the original synth, what played then, two sounds designed from scratch and up to two CC0
   recordings each, every sound placed in eleven scripted fight moments) and picked. Now recorded: the
