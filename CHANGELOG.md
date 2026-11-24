@@ -4,7 +4,11 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Eighty-two pieces of work since 0.4.0:
+Eighty-three pieces of work since 0.4.0:
+- **A green flame on the sword** (2026-11-24, ADR-182). *Added:* a tight flame of tiny green marks burns round the
+  hero's steel, in his own small letters: it licks up off the blade, boils, and climbs away in tongues. It is there
+  with no streak and burns denser and hotter as the streak climbs (tiers 0 to 5), the point paling to green-white at
+  the top. On by default; `?mystic=0` turns it off (the Lab's PLAYER row `mystic`: off / flame).
 - **A perfect parry throws a few orange sparks** (2026-11-24, ADR-181). *Added:* on a perfect parry of a blow, a
   quick spit of 12 - 16 orange spark letters leaves the crossed blades along the blade that glanced off: short
   streaks that shrink to dots, cool to dark red and are gone in under half a second, a couple falling to the floor.

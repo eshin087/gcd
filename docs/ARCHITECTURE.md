@@ -1315,6 +1315,18 @@ cinema`). Nothing stores a tier: each piece reads it at the moment.
   `parrySparks(game, x, y, z, o)` (from `PlayerFx.parry`'s perfect branch: the crossing, the edges `e1` / `e2`,
   `met`, the push way), `parrySparksUpdate(game, realDt)` (from `perfectUpdate`), `parrySparksClear()` (from
   `perfectClear`), `parrySparksBusy()`. Its own `LetterBatch`, built on the first spit; its own seeded stream.
+**The sword's green flame** (ADR-182). `player/swordMystic.js` `class SwordMystic` (`player.mystic`, built in the Player's
+constructor; `update(dt)` at the end of `Player._updateFx`, returning at once with `?mystic=0`). `mysticMode()` is `'c'` (the
+flame) or `'0'` (off; `setMystic(id)`; `MYSTIC_IDS` = `0,c`, `MYSTIC_NAMES`). `FLAME` holds the tuning, one entry per
+`streakTier(player.streak)` 0 – 5 (read from the hero's own streak, not `streakK`: `?streakfx=off` leaves it on); `GREEN` the
+colours and the heat bands; `MYSTIC` the budgets, lift and soft depth; `MYSTIC_GLYPHS` the marks it may print. Every mark is the
+hero's own micro letter (`render/glyphs.js` PIXEL_3X3, its atlas column from `pixelArtOrder()`) in a `LetterBatch` of its own
+(`world/life/letterBatch.js`, snapped, its `_sync` replaced so it takes `pipeline.heroArt` / `pipeline.heroCell` and never
+disposes them; registered with `pipeline.registerParticles`), built the first time the layer is on, on the module's own LCG
+stream (`setMysticSeed(v)`; never `Math.random`). The flame needs `pipeline.width` / `height` (nothing without them). Budgets a
+frame: `MYSTIC.budget` (6) licks, `MYSTIC.cells` (110) flame marks; `onEmit` (tests) sees every one ('spawn' | 'flame'); `n`,
+`w`, `heat`, `total` count them. Nothing on a dead, hidden or unarmed hero, none over his torso's column; none of it writes a
+uniform. The Lab's PLAYER row `mystic` (off / flame) sits after `sword`.
 - *A single perfect parry / dodge* (`combat/perfectFx.js`): `PERFECT_FEEL` (today null; sharp; cinema,
   with `full` / `short` beats, `gap` 0.9 s, `echoTier` 3), `perfectFeel(mode)`, `perfectBeat(mode, last,
   realTime)`, `MARK_LOOK` (tint zone id 800101), `PERFECT_LAST` (tests), `PERFECT_GLYPHS`;

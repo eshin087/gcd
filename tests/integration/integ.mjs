@@ -10237,6 +10237,129 @@ async function scenarioHeroStance() {
   return G;
 }
 
+// ================================================================== scenario: the sword's green flame
+// The sword's layer (ADR-182): a tight green flame in the hero's own micro letters, on by default; off (?mystic=0) = today's
+// blade frame by frame; only its marks; its budgets; green; never a glow; grows by tier; nothing after death.
+async function scenarioSwordMystic() {
+  out('\n== scenario SWORDMYSTIC (the sword\'s green flame, on by default (?mystic=0 = off): off = today, allowed glyphs, budget, monotone by tier, green, faint, nothing after death) ==');
+  const SM = await imp('src/entities/player/swordMystic.js');
+  assert(SM.mysticMode() === 'c' && SM.MYSTIC_IDS.join() === '0,c', 'the flame is the shipped layer: on with no URL, no other option left');
+  const mode0 = SM.mysticMode();
+  let last = null;
+  const look = (game) => {
+    const p = game.player, bu = p.rig.materials.blade.uniforms, U = game.U, o = [bu.uInkGlow.value, bu.uGlow.value];
+    for (const k of ['uSelfPartInk', 'uSelfPartRim', 'uSelfPartFill']) for (const v of U[k]?.value ?? []) o.push(v.x, v.y, v.z, v.w);
+    return o.join(',');
+  };
+  /** A build in a fight, the hero at 4.5 m, god mode; `hook` false: the hook removed (today's game). */
+  const setup = (hook = true) => {
+    const G = (last = build());
+    fightSetup(G);
+    place(G, 4.5);
+    const p = G.game.player;
+    p.debug.god = true;
+    if (!hook) p.mystic = null;
+    // (a frame to draw the flame on: the harness's pipeline has no size, as STREAKFX gives it one; the
+    // hero's own 4 x 4 px cell)
+    Object.assign(G.game.pipeline, { width: 1280, height: 720, artCell: { x: 5, y: 8 }, heroCell: { x: 4, y: 4 } });
+    return G;
+  };
+  /** What the mystic layer draws (its onEmit hook), the most a frame, and anything it puts in the fire field. */
+  const watch = (G) => {
+    const { game } = G, p = game.player, rec = { spawns: [], frameMax: 0, writeMax: 0, other: 0 };
+    const M = p.mystic;
+    if (!M) return rec;
+    M.onEmit = (kind, glyph, a, life, size, col) => {
+      rec.spawns.push({ kind, glyph, a, life: kind === 'flame' ? 1 / 60 : life, size: 0.13, st: 0, ok: Number.isFinite(a + life + size + col), col });
+    };
+    const upd = M.update.bind(M);
+    let inM = false;
+    const f = game.fx.fire.spawn.bind(game.fx.fire);
+    game.fx.fire.spawn = (o) => { if (inM) rec.other++; return f(o); };
+    M.update = (dt) => {
+      inM = true;
+      upd(dt);
+      inM = false;
+      rec.frameMax = Math.max(rec.frameMax, M.n);
+      rec.writeMax = Math.max(rec.writeMax, M.w);
+    };
+    return rec;
+  };
+  /** At ease 1.2 s, in the fight stance 1.2 s, three cuts, standing 1 s. */
+  const drive = (G, n) => {
+    const p = G.game.player;
+    p.debug.streak(n);
+    p.debug.fightStance = false;
+    for (let i = 0; i < 72; i++) G.tick(DT);
+    p.debug.fightStance = true;
+    for (let i = 0; i < 72; i++) G.tick(DT);
+    for (let k = 0; k < 3; k++) { p._buffer('light'); for (let i = 0; i < 22; i++) G.tick(DT); }
+    for (let i = 0; i < 60; i++) G.tick(DT);
+    p.debug.fightStance = null;
+  };
+  try {
+    // (1) off: the blade's uniforms frame by frame as with no hook at all, and nothing spawned
+    SM.setMystic('0');
+    const frames = (hook) => {
+      const G = setup(hook), rec = watch(G), p = G.game.player, f = [];
+      p.debug.streak(15);
+      for (let i = 0; i < 90; i++) { if (i === 10 || i === 32) p._buffer('light'); G.tick(DT); f.push(look(G.game)); }
+      return { f, rec, total: p.mystic?.total ?? 0, lb: p.mystic?.lb ?? null };
+    };
+    const today = frames(false), off = frames(true);
+    assert(today.f.every((x, i) => x === off.f[i]) && off.f.length === 90, 'mystic off: the blade\'s uniforms and part tables of a swing at streak 15 are today\'s, frame by frame');
+    assert(off.rec.spawns.length === 0 && off.rec.other === 0 && off.total === 0 && off.lb === null, `mystic off: the layer draws nothing and builds nothing (${off.rec.spawns.length} marks)`);
+    // (2) the flame: the hero's own marks, the budget, finite, monotone by tier, green, nothing in the fire field
+    const TIERS = [[0, 0], [3, 1], [7, 3], [15, 5]];
+    for (const m of ['c']) {
+      SM.setMystic(m);
+      SM.setMysticSeed(0x1234);
+      const row = [];
+      for (const [n, t] of TIERS) {
+        const G = setup(true), rec = watch(G);
+        drive(G, n);
+        const allowed = new Set([...SM.MYSTIC_GLYPHS[m]]);
+        const badGlyph = rec.spawns.filter((s) => ![...s.glyph].every((c) => allowed.has(c))).length;
+        const nan = rec.spawns.filter((s) => !s.ok).length;
+        // presence: alpha x life x stroke length, summed (what the eye gets of it)
+        const pres = rec.spawns.reduce((acc, s) => acc + s.a * Math.min(1, s.life) * s.size * (1 + s.st), 0);
+        const hot = rec.spawns.reduce((acc, s) => Math.max(acc, s.col), 0);
+        const kinds = [...new Set(rec.spawns.map((s) => s.kind))].join('+');
+        row.push({ kinds, n, t, k: rec.spawns.length, max: rec.frameMax, wmax: rec.writeMax, other: rec.other, badGlyph, nan, pres, hot });
+      }
+      out(`     ${m} (${SM.MYSTIC_NAMES[m]})`, row.map((r) => `t${r.t}: ${r.k} ${r.kinds}, max ${r.max}/frame, presence ${r.pres.toFixed(3)}, peak col x a ${r.hot.toFixed(2)}`).join(' | '));
+      assert(row.every((r) => r.k > 0), `${m}: already there with no streak, and at every tier (${row.map((r) => r.k).join(' / ')} spawns)`);
+      assert(row.every((r) => r.badGlyph === 0 && r.nan === 0 && r.other === 0), `${m}: only its glyphs (${SM.MYSTIC_GLYPHS[m]}), all finite, nothing in the fire field`);
+      assert(row.every((r) => r.max <= SM.MYSTIC.budget && r.wmax <= SM.MYSTIC.cells), `${m}: at most ${SM.MYSTIC.budget} licks and ${SM.MYSTIC.cells} flame marks a frame (peak ${Math.max(...row.map((r) => r.max))} / ${Math.max(...row.map((r) => r.wmax))})`);
+      assert(row.every((r) => r.kinds.includes('flame') && r.kinds.includes('spawn')), `${m}: a flame round the steel and licks off it at every tier (${row.map((r) => r.kinds).join(' / ')})`);
+      let mono = true;
+      for (let i = 1; i < row.length; i++) if (!(row[i].pres >= row[i - 1].pres * 0.98)) mono = false;
+      assert(mono && row[3].pres > row[0].pres * 1.5, `${m}: grows with the tier (presence ${row.map((r) => r.pres.toFixed(3)).join(' -> ')})`);
+      // green, the hero's own size, never a glow: a mark's strongest channel x alpha at most 0.9 (ADR-175)
+      assert(row.every((r) => r.hot <= 0.9), `${m}: not a glow (colour x alpha at most ${Math.max(...row.map((r) => r.hot)).toFixed(2)})`);
+      const W = SM.GREEN.body;
+      assert(W[1] >= 0.9 && W[1] > 6 * Math.max(W[0], W[2]), `${m}: Matrix green (linear ${W.join(', ')}: green high, red and blue low)`);
+    }
+    // (3) nothing on a dead hero
+    {
+      SM.setMystic('c');
+      const G = setup(true), rec = watch(G), p = G.game.player;
+      p.debug.streak(15);
+      for (let i = 0; i < 30; i++) G.tick(DT);
+      p.debug.god = false;
+      p.debug.kill();
+      const n0 = rec.spawns.length;
+      for (let i = 0; i < 60; i++) G.tick(DT);
+      assert(!p.alive && rec.spawns.length === n0, `nothing after death (${rec.spawns.length - n0} spawns)`);
+    }
+  } finally {
+    SM.setMystic(mode0);
+  }
+  return last;
+}
+
+
+
 // ================================================================== scenario: terrain moves (ADR-110)
 // The wyrm's moves that use the world's pieces, on the REAL Destructibles over a small hand-built set
 // (build({ terrain })): the tell and its flash, the piece taken / flown / landed where it was marked,
@@ -12403,6 +12526,7 @@ const SCENARIOS = {
   wyrmlook: scenarioWyrmLook,
   herolife: scenarioHeroLife,
   streakfx: scenarioStreakFx,
+  swordmystic: scenarioSwordMystic,
   herohand: scenarioHeroHand,
   heroweight: scenarioHeroWeight,
   heroarms: scenarioHeroArms,

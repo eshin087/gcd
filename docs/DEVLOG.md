@@ -5,6 +5,33 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-24 — The sword's green flame (ADR-182; branch `player/sword-green-flame`)
+
+**Owner, over a day of rounds:** "i also want his sword to look a bit more mystical in a subtle way" → of four readings,
+the wisps "but with neon matrix color effect" → "not wisps but like a fiery subtle flame cool ascii effect on the
+sword" → "make the sword color matrix green" → "more cooler flame enveloping the sword ascii looking" → "the glow is way
+too big, make the ascii characters much more smaller" → "A: tight" → "lets move forward and merge it".
+
+**What.** `player/swordMystic.js` (new): every cell touching the steel on screen burns on its own beat (never the
+steel's cell, never over his torso), marks boil, tongues climb off the top, strokes lick off the steel and climb cell
+by cell; denser, hotter and paler toward the point with the streak. Drawn in the hero's own 3 × 3 micro letters on his
+4 × 4 px grid through a `LetterBatch` that takes the pipeline's hero atlas (`glyphs.js` gains `pixelArtOrder()`). Why
+not the fire field (the house rule for burning effects): it has no green and prints world-sized letters; in those
+letters the flame was as wide as his head. Three hook lines in `player.js`; Lab row `mystic` (off / flame); scenario
+`swordmystic` (on by default; off = today's blade frame by frame, nothing built; his marks only; budgets; green; colour
+× alpha at most 0.9; growth by tier; nothing after death; its setup gives the harness's pipeline a frame size).
+
+**How it got here.** The flame was built on the hero-styles branch (PR #105, which the owner closed unmerged while this
+was being merged into it); this PR carries only the flame: the move styles, the growing arc (`?arc=`) and the
+resting-blade halo fix (ADR-176) stay on that branch. Films, one video per round: the scratchpad's `neon/clips/`.
+
+**Measured.** Brightest pixel before the tone map 0.76 (tier 0) / 0.93 (tier 5); about half the flame's pixels are over
+the 0.55 bloom threshold, so the marks carry a small halo. The owner approved the video with it; `GREEN` is the knob.
+
+**Open.** The streak aura's rim is red beside a green sword (ask the owner). Phone frame rate unverified.
+
+---
+
 ## 2026-11-24 — Session 91: the perfect parry throws a few orange sparks (and what was turned down to get there)
 
 **Owner:** "what can we improve next in terms of visuals, effects, animations etc. i want to make perfect parry and

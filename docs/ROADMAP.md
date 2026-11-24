@@ -184,6 +184,12 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.79 — The sword burns with a tight green flame (2026-11-24, `player/sword-green-flame`, ADR-182)
+- [x] A tight envelope of Matrix-green marks round the steel, in the hero's own micro letters, there with no streak and denser and hotter by tier (`?mystic=0` off)
+- [x] Picked by the owner over a day of filmed rounds (wisps, red flames, green, enveloping, smaller); scenario `swordmystic`; the Lab's `mystic` row
+- [ ] Played and seen on the iPhone (frame rate unverified)
+- [ ] The streak aura's red rim in green to match the sword? (owner to decide)
+
 ## M1.77 — The perfect parry throws a few orange sparks (2026-11-24, `combat/perfect-sparks`, ADR-181)
 - [x] A calm spit of orange spark letters off the crossed blades on a perfect parry (`?parryFx=a`, the default; `0` as before)
 - [x] The shipped mark, freeze, slow motion, sound and the perfect dodge's afterimage unchanged (the owner's call after three rejected passes)

@@ -48,7 +48,7 @@ and `tyrant|viper|revenant` (ADR-124) the heads the owner passed on. The owner's
 wyrm's lean build; 0 = the wyrm before; ADR-123), `?zoomArt=a|c` (b: the letters
 follow the zoom) and `?ablaze=off|a|c` (b: the wyrm's phase 3 fire). The impact pass's pieces (ADR-149): `?impact=off|all|stamp,ripple,react,thump` (default all; Lab: the 'impact' row), and
 `?calm=0..3` the light at the contact (default 1; 0 = as before; Lab: the row's `calm` button). The streak pass's switches (ADR-167): `?streakfx=off|all|storm,tiers,aura,counter,sound,world`,
-`?perfect=today|sharp|cinema` (default sharp), `?burst=0..3` (default 2), `?streakCount=` and `?auraFire=` (Lab: the 'streak' row); the perfect parry's spark spit `?parryFx=0|a` (default a; ADR-181; Lab: the streak row's `parryFx`). Bites (a blow knocks the bricks, the letters, out of
+`?perfect=today|sharp|cinema` (default sharp), `?burst=0..3` (default 2), `?streakCount=` and `?auraFire=` (Lab: the 'streak' row); the perfect parry's spark spit `?parryFx=0|a` (default a; ADR-181; Lab: the streak row's `parryFx`); the sword's green flame (tiny marks burning round the steel, in the hero's own letters; ADR-182) is ON by default, `?mystic=0` turns it off (Lab: PLAYER → `mystic`). Bites (a blow knocks the bricks, the letters, out of
 a piece where it struck; the hero's blade goes clean through what it does not fell, chipping it along
 the cut) are on: `?chip=0` turns them off (ADR-132); `?cutStop=1` gives back the blade that stops there
 (ADR-177; Lab: WORLD → Blade). Floor marks (every boss blow that meets the ground leaves a mark of its
