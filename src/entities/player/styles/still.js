@@ -242,8 +242,102 @@ const FIGHT = [
   { id: 'still.high', fn: highPoint, w: 1, dwell: [7, 12] },
 ];
 
+// ================================================================ THE COMBO
+// SNAP ... snap-snap ... DRAW. Few hits, each sudden: almost no windup, a hard stop on a held finish
+// (a press made in the hold is kept: `buffer`), the next coil where the last cut left the steel.
+//   1 the snap        one short falling diagonal, high right to low left, and a dead stop
+//   2 the double      in one press a rising backhand to high right and, off a hard stop there, the
+//                     falling cut back down: two blows (`hits`)
+//   3 the drawing cut gathered at the left hip, the free fingers on the sword wrist, then one long
+//                     level cut out to the right with a step through, held, the fingers thrown back
+const SNAP = {
+  name: 'still1', kind: 'light', combo: 1, damage: 38, poise: 16, heavy: false,
+  windup: 0.07, active: 0.09, recovery: 0.36, chain: 0.6, buffer: 0.5, lunge: 0.6, reach: 2.2,
+  hitstop: 0.065, shake: 0.14, bite: 1.1, biteHold: 0.1, heft: { t: 0.06, rate: 0.4 }, flare: 0.6,
+  contact: 'light', punch: 0.45, kick: 0.09,
+  anim: { kind: 'clip', clip: 'still1' },
+};
+const DOUBLE = {
+  name: 'still2', kind: 'light', combo: 2, damage: 50, poise: 20, heavy: false,
+  windup: 0.08, active: 0.22, recovery: 0.34, chain: 0.55, buffer: 0.5, lunge: 0.55, reach: 2.2,
+  hitstop: 0.05, shake: 0.12, bite: 0.9, contact: 'light', punch: 0.35, kick: 0.08,
+  hits: [
+    { at: [1.0, 1.45], damage: 24, poise: 10, hitstop: 0.045, bite: 0.8, punch: 0.3 },
+    { at: [1.55, 2.0], damage: 26, poise: 10, hitstop: 0.07, shake: 0.16, bite: 1.1, biteHold: 0.1, punch: 0.5, kick: 0.1, contact: 'sweep', flare: 0.7 },
+  ],
+  anim: { kind: 'clip', clip: 'still2' },
+};
+const DRAW = {
+  name: 'still3', kind: 'light', combo: 3, damage: 74, poise: 41, heavy: true,
+  windup: 0.17, active: 0.15, recovery: 0.55, chain: 0.42, buffer: 0.6, lunge: 1.0, reach: 2.3,
+  hitstop: 0.13, shake: 0.42, bite: 1.45, biteHold: 0.14, heft: { t: 0.1, rate: 0.3 }, flare: 1.0,
+  contact: 'cleave', punch: 1.5, kick: 0.2,
+  anim: { kind: 'clip', clip: 'still3' },
+};
+const CHAIN = [SNAP, DOUBLE, DRAW];
+
+const SWINGS = {
+  /** 1, the snap: barely cocked high on his right, one short diagonal down across his chest to low
+   *  past the left hip, and a dead stop there (held); the free hand drawn back behind the hip. */
+  still1: {
+    line: 'right', home: 0.55,
+    lF: [0.15, 0.46], rF: [-0.17, -0.44], fy: [0.15, -0.75], drag: 0.14,
+    keys: [
+      { u: 0.55, by: -0.03, bz: -0.07, bx: -0.05, hip: -0.4, sy: -0.46, sx: -0.08 },
+      { u: 1.0, h: [-0.06, 0.18, 0.04], a: [-125, 36], by: -0.06, bz: -0.05, bx: -0.04, hip: -0.32, sy: -0.4, sx: -0.02, sz: 0.05, fh: 'aim' },
+      { u: 1.25, h: [0.04, 0.1, 0.3], a: [-80, 26] },
+      { u: 1.5, h: [0.14, -0.06, 0.47], a: [-30, 10], by: -0.2, bz: 0.09, bx: 0.01, hip: 0.16, sy: 0.0, sx: 0.28, l: [0.24, -0.16, 0.04], lp: [0.45, -0.85, -0.3], ld: [80, -10], pn: [-0.3, -1, 0], lk: 0 },
+      { u: 1.75, h: [0.24, -0.24, 0.4], a: [34, -18] },
+      { u: 2.0, h: [0.28, -0.32, 0.28], a: [66, -32], by: -0.26, bz: 0.12, bx: 0.05, hip: 0.36, sy: 0.38, sx: 0.4, sz: -0.06, fh: 'tail' },
+      { u: 2.08, h: [0.29, -0.33, 0.27], a: [69, -33] },
+      { u: 2.15, by: -0.28, bz: 0.13, bx: 0.06, hip: 0.46, sy: 0.5, sx: 0.44 },
+      { u: 2.55, h: [0.29, -0.33, 0.26], a: [70, -33], by: -0.26, bz: 0.11, bx: 0.05, hip: 0.41, sy: 0.44, sx: 0.4, sz: -0.05, fh: 'tail' },
+    ],
+  },
+  /** 2, the double: from low at the left hip, a rising backhand up
+   *  across his front to high on his right, a hard stop there, and the falling cut straight back down
+   *  to low past the left hip: snap-snap. Held. The free hand rides low behind him, out as the brake. */
+  still2: {
+    line: 'flat', home: 0.5,
+    fy: [0.4, -0.6],
+    keys: [
+      { u: 0.6, by: -0.22, bz: -0.07, bx: -0.05, hip: 0.5, sy: 0.56, sx: 0.32, l: [0.2, -0.36, -0.12] },
+      { u: 1.0, h: [0.34, -0.34, 0.08], a: [146, -26], by: -0.2, bz: -0.05, bx: -0.04, hip: 0.42, sy: 0.49, sx: 0.3, l: [0.2, -0.34, -0.06], lp: [0.6, -0.6, -0.5], ld: [150, -50], pn: [-1, 0, 0], lk: 0 },
+      { u: 1.15, h: [0.25, -0.26, 0.34], a: [96, -18] },
+      { u: 1.25, h: [0.12, -0.12, 0.47], a: [32, -4], by: -0.14, bz: 0.06, bx: 0.0, hip: 0.02, sy: 0.08, sx: 0.22 },
+      { u: 1.4, h: [-0.12, 0.08, 0.4], a: [-56, 26], by: -0.1, bz: 0.08, bx: 0.03, hip: -0.22, sy: -0.24, sx: 0.08, l: [0.36, -0.24, -0.04], lp: [0.4, -0.6, -0.6], ld: [100, -20], pn: [0, -1, 0] },
+      { u: 1.6, h: [-0.1, 0.1, 0.38], a: [-62, 30], by: -0.1, bz: 0.08, bx: 0.03, hip: -0.24, sy: -0.28, sx: 0.06 },
+      { u: 1.75, h: [0.1, -0.04, 0.46], a: [-14, 8], by: -0.18, bz: 0.1, bx: 0.03, hip: 0.06, sy: 0.02, sx: 0.28, l: [0.3, -0.2, 0.0], lp: [0.45, -0.85, -0.3], ld: [90, -20], pn: [-0.3, -1, 0] },
+      { u: 1.88, h: [0.22, -0.22, 0.4], a: [38, -18] },
+      { u: 2.0, h: [0.28, -0.32, 0.28], a: [66, -32], by: -0.26, bz: 0.12, bx: 0.05, hip: 0.3, sy: 0.34, sx: 0.4, sz: -0.06, fh: 'tail' },
+      { u: 2.08, h: [0.29, -0.33, 0.27], a: [69, -33] },
+      { u: 2.15, by: -0.28, bz: 0.13, bx: 0.06, hip: 0.4, sy: 0.46, sx: 0.44 },
+      { u: 2.5, h: [0.29, -0.33, 0.26], a: [70, -33], by: -0.26, bz: 0.11, bx: 0.05, hip: 0.35, sy: 0.4, sx: 0.4, sz: -0.05, fh: 'tail' },
+    ],
+  },
+  /** 3, the drawing cut: he gathers, sinking, the blade drawn back low at his left hip with the point
+   *  behind him and the free fingers on the sword wrist; then one long level cut out across his front
+   *  to his right, stepping through, the fingers thrown out to his left against it. He holds it. */
+  still3: {
+    line: 'low', home: 0.6,
+    lF: [0.16, 0.56], rF: [-0.17, -0.48], fy: [0.25, -0.8], drag: 0.16,
+    keys: [
+      { u: 0.6, by: -0.27, bz: -0.08, bx: -0.06, hip: 0.58, sy: 0.62, sx: 0.28, fh: 'wrist', l: [0.12, -0.34, 0.22] },
+      { u: 1.0, h: [0.36, -0.38, -0.02], a: [150, -14], by: -0.25, bz: -0.06, bx: -0.05, hip: 0.5, sy: 0.56, sx: 0.26, fh: 'wrist', l: [0.12, -0.34, 0.22], lk: 0.9 },
+      { u: 1.1, l: [0.22, -0.3, 0.16], lp: [0.5, -0.8, -0.2], ld: [70, -20], pn: [0, -1, 0], lk: 0.2 },
+      { u: 1.25, h: [0.3, -0.32, 0.26], a: [100, -10] },
+      { u: 1.5, h: [0.12, -0.26, 0.5], a: [30, -6], by: -0.3, bz: 0.1, bx: 0.01, hip: -0.02, sy: 0.04, sx: 0.32, l: [0.38, -0.2, -0.02], lp: [0.3, -0.7, -0.6], ld: [100, -10], pn: [0, -1, 0], lk: 0 },
+      { u: 1.75, h: [-0.18, -0.2, 0.48], a: [-40, -4] },
+      { u: 2.0, h: [-0.36, -0.18, 0.3], a: [-100, -2], by: -0.33, bz: 0.15, bx: 0.05, hip: -0.4, sy: -0.44, sx: 0.3, fh: 'wing', l: [0.45, -0.18, -0.14] },
+      { u: 2.08, h: [-0.37, -0.18, 0.28], a: [-104, -2] },
+      { u: 2.15, by: -0.35, bz: 0.16, bx: 0.06, hip: -0.5, sy: -0.54, sx: 0.33 },
+      { u: 2.6, h: [-0.37, -0.18, 0.27], a: [-106, -2], by: -0.33, bz: 0.13, bx: 0.05, hip: -0.45, sy: -0.49, sx: 0.3, fh: 'wing', l: [0.45, -0.18, -0.14] },
+    ],
+  },
+};
+
 export const still = {
   id: 'still', label: 'Still master', blurb: 'Calm and still; sudden sharp cuts, held poses.',
   stances: { ease: EASE, fight: FIGHT }, shift: { fade: 3.2 },
-  fidgets: FIDGETS, chain: null, swings: {},
+  fidgets: FIDGETS, chain: CHAIN, swings: SWINGS,
 };
