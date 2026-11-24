@@ -4,6 +4,12 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
+Eighty-six pieces of work since 0.4.0:
+- **Smaller combat text** (2026-11-24, ADR-184). *Changed:* the call-outs over the hero (PARRY, DEFLECT, COUNTER,
+  GHOSTEP ...) and the damage numbers are smaller and keep one size at every window width. They grew with the
+  window before, so a 1920-wide window drew DEFLECT at 22 px and the flurry's cut counter at 34 px. Now: call-outs
+  11 - 12 px (BLOCK 9 px), damage numbers 10 / 11 / 12 px (plain / heavy / crit), the cut counter 15 px. The owner
+  picked this size from three rendered options. Colours, glow and motion are unchanged.
 Eighty-five pieces of work since 0.4.0:
 - **A green flame on the sword** (2026-11-24, ADR-182). *Added:* a tight flame of tiny green marks burns round the
   hero's steel, in his own small letters: it licks up off the blade, boils, and climbs away in tongues. It is there

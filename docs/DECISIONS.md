@@ -5357,7 +5357,6 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   dominates the meadow; a lantern's flame is a few letters at the game camera; Foxfire's ten lanterns
   share three lights; the Ring's braziers became low lights (they give way to the fight's) also with
   the living world off; nobody has heard the sounds yet.
-
 ## ADR-181 — The perfect parry throws a few orange sparks; nothing else of the moment changes (2026-11-24)
 
 - **Context:** the owner asked to make the perfect parry and dodge "more epic cool with subtle effects". In one session
@@ -5512,6 +5511,19 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   harness's pipeline has no frame size, so it draws nothing there). The streak aura's rim stays red: a red rim round
   him and a green sword at tiers 1+ (the owner may want the aura green too). On-device frame rate is unverified (one
   more batch, up to ~160 instances, one draw call).
+
+## ADR-184 — Combat text at fixed, smaller sizes (2026-11-24)
+
+- **Context:** the owner noticed the combat text next to the hero (counter, deflect, damage numbers) looked much
+  larger than they remembered and asked for it small like the original. The CSS had not changed since v0.2.0, but
+  the call-outs and the crit / cut-counter numbers were sized with `clamp(.., vw, ..)`, so they grew with the window:
+  at 1920 wide DEFLECT was 22 px and the cut counter 34 px, against a hero only a few dozen pixels tall.
+- **Decision:** fixed pixel sizes, option B of three rendered at 1920x1080 (A today; B about two thirds; C the HUD's
+  own size with a lighter weight): call-outs 11 px (12 px for deflect / return / ghostep / danger, 9 px for BLOCK),
+  damage numbers 10 / 11 / 12 px, the flurry's cut counter 15 px, letter spacing 0.2em. Weight, colours, glow and the
+  pop / rise motion are unchanged (`src/ui/hudStyle.js`).
+- **Consequences:** the same size at every window width and on the phone; the text reads as a note beside the
+  fight rather than a headline. No switch keeps the old sizes (a pure size change; the old values are in git).
 
 ## ADR-185 — CI: the long checks split into processes of their own; every PR auto-merges when green (2026-11-24)
 
