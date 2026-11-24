@@ -187,7 +187,7 @@ export class Terrain {
     this._o = { damage: 0, from: { x: 0, z: 0 }, point: { x: 0, y: 0.8, z: 0 }, knockback: 0, knockdown: false, kind: 'crush', burn: 0, tell: TELL.RED, parryable: false, blockable: false, attack: '', plunge: false, perfect: undefined };
     this._stop = { kind: 'blunt', by: 'boss', y: 0.8, dx: 0, dz: 0 };
     this._sweep = { kind: BLOW.BLUNT, by: 'boss', y: 1, dx: 0, dz: 0, src: -1 };
-    this._land = { kind: BLOW.BLAST, by: 'boss', dx: 0, dz: 0, src: -1, fire: 0 };
+    this._land = { kind: BLOW.BLAST, by: 'boss', dx: 0, dz: 0, src: -1, fire: 0, mark: 'slam' }; // (a thrown piece lands: a crater, not a blast's char)
     this._throw = { time: 1, power: 1, radius: 2, by: 'boss', onLand: null };
   }
 

@@ -5,6 +5,8 @@ import * as LitterM from './litter.js';
 import * as StepsM from './steps.js';
 import * as CreaturesM from './creatures.js';
 import * as AnswerM from './answer.js';
+import * as TremorM from './tremor.js';
+import * as AftermathM from './aftermath.js';
 
 // THE LIVING WORLD (`game.world.life`; the switch: lifeSwitch.js, `?life=`).
 //
@@ -35,6 +37,9 @@ import * as AnswerM from './answer.js';
 //   life.gust(x, z, strength, radius)   world.gust() calls this: a radial burst of air (a roar, a
 //                         landing, a blow). It reaches the wind (so letters in the air and on the ground
 //                         are pushed) and whoever else listens.
+//   life.impact(x, z, r, power, o)      world.impact() and world.groundBlow() call this: a blow landed.
+//                         Every layer with an `impact` method whose piece is on gets it.
+//   life.ignite(x, z, r, k)             world.ignite() calls this: fire landed. Likewise `ignite`.
 //   life.action(label, run, title)      a button on the Lab's 'life' row (a gust now, rain now, ...)
 //
 //   life.wind             wind.js      .at(x, z, out) .front(o) .burst(x, z, s, r) .dirX .dirZ .speed .level .still
@@ -43,6 +48,8 @@ import * as AnswerM from './answer.js';
 //   life.steps            steps.js     .surfaceAt(x, z) .step(x, z, o)
 //   life.creatures        creatures.js .startle(x, z, r, k)
 //   life.answer           answer.js
+//   life.tremor           tremor.js    (piece 'answer') what stands near a heavy blow shakes
+//   life.aftermath        aftermath.js (piece 'answer') what a fight leaves in the air: smoke, dust, embers
 //   (a layer is always there, also when its piece is off: its methods then do nothing and its values
 //    are the still-air defaults. Outside readers still write `game.world?.life?.wind?.at(...)`: the
 //    headless sims run on a world mock with no life at all.)
@@ -71,7 +78,9 @@ export const LIFE_TUNE = Object.freeze({
 });
 
 const FIGHT = new Set(['bossIntro', 'boss']);
-const ORDER = ['wind', 'weather', 'litter', 'steps', 'creatures', 'answer'];
+const ORDER = ['wind', 'weather', 'litter', 'steps', 'creatures', 'answer', 'tremor', 'aftermath'];
+/** the piece of the switch a layer belongs to, where it is not its own name */
+const PIECE = { tremor: 'answer', aftermath: 'answer' };
 const MAKERS = {
   wind: () => WindM.Wind,
   weather: () => WeatherM.Weather,
@@ -79,6 +88,8 @@ const MAKERS = {
   steps: () => StepsM.Steps,
   creatures: () => CreaturesM.Creatures,
   answer: () => AnswerM.Answer,
+  tremor: () => TremorM.Tremor,
+  aftermath: () => AftermathM.Aftermath,
 };
 
 export class LivingWorld {
@@ -187,16 +198,41 @@ export class LivingWorld {
     if (this.on('answer')) this._call('answer', 'gust', x, z, strength, radius);
   }
 
+  /**
+   * A blow landed on the world (world.impact and world.groundBlow call this): at (x, z), reach r m,
+   * `power` on the POWER scale (0.3 light, 1 heavy, 2 the biggest), `o` the blow's record (kind, by,
+   * dx, dz, len, hot; may be undefined). Every layer with an `impact(x, z, r, power, o)` method whose
+   * piece is on gets it: what stands near shakes (tremor), what lives near flees (creatures), what
+   * lies is thrown (litter), dust and smoke stay after (aftermath).
+   */
+  impact(x, z, r = 2, power = 1, o = undefined) {
+    if (!this.enabled || !Number.isFinite(x + z + r + power)) return;
+    for (const [name, layer] of this.layers) {
+      if (typeof layer.impact !== 'function' || !this.on(PIECE[name] ?? name)) continue;
+      this._call(name, 'impact', x, z, r, power, o);
+    }
+  }
+
+  /** Fire landed on the disc (x, z, r) with strength k (world.ignite calls this): every layer with an
+   *  `ignite(x, z, r, k)` method whose piece is on gets it (birds leave, smoke rises after). */
+  ignite(x, z, r = 2, k = 1) {
+    if (!this.enabled || !Number.isFinite(x + z + r + k)) return;
+    for (const [name, layer] of this.layers) {
+      if (typeof layer.ignite !== 'function' || !this.on(PIECE[name] ?? name)) continue;
+      this._call(name, 'ignite', x, z, r, k);
+    }
+  }
+
   /** A button on the Lab's 'life' row. */
   action(label, run, title = '') {
     if (typeof label === 'string' && typeof run === 'function') this.actions.push({ label, run, title });
   }
 
-  _call(name, method, a, b, c, d) {
+  _call(name, method, a, b, c, d, e) {
     const layer = this[name];
     if (typeof layer?.[method] !== 'function') return undefined;
     try {
-      return layer[method](a, b, c, d);
+      return layer[method](a, b, c, d, e);
     } catch (err) {
       this._fail(name, err);
       return undefined;

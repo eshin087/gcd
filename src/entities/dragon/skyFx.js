@@ -45,7 +45,7 @@ const EMBER_COL = [3.0, 1.0, 0.18];
 const ASH_COL = [1.2, 0.35, 0.06];
 const ROCK_COL = [0.17, 0.14, 0.12];
 const DIRT_COL = [0.12, 0.09, 0.07];
-const FIRE_BLOW = Object.freeze({ kind: 'blast', by: 'boss', falloff: TUNING.world.falloff }); // (weaker toward its rim)
+const FIRE_BLOW = Object.freeze({ kind: 'blast', by: 'boss', falloff: TUNING.world.falloff, hot: true }); // (weaker toward its rim; its floor mark is charred)
 const TAU = Math.PI * 2;
 const rand = (a, b) => a + Math.random() * (b - a);
 const MAX_BOLTS = 20;

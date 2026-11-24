@@ -10,6 +10,7 @@
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { ui, AUDIO, resetWindow } from './shim.mjs';
+import { attachMarks, marksCheck } from './marks.mjs';
 
 const ROOT = process.argv[2];
 const SCEN = process.argv[3] || 'all';
@@ -1175,8 +1176,9 @@ async function scenarioPace() {
 }
 
 // ================================================================== scenario: win / strategy
-function fight(seed, style, { mortal = false, max = 480, lean = false } = {}) {
+function fight(seed, style, { mortal = false, max = 480, lean = false, marks = true } = {}) {
   const G = build(seed, true);
+  G.marks = marks ? attachMarks(G.game) : null; // (the floor marks the fight leaves: they change nothing in it)
   const { game } = G;
   if (lean) game.unlocks = new (UNLOCKS.Unlocks)(null, '?tech=lean');
   duel(G, { dist: 4, ai: true });
@@ -1196,7 +1198,7 @@ function fight(seed, style, { mortal = false, max = 480, lean = false } = {}) {
   run(G, max, (GG) => fencer(GG, mortal), () => d.state === 'dead' || d.mode === 'dead' || !p.alive || game.state === 'victory');
   G.watch = null;
   G.defend = null;
-  return { won: d.state === 'dead' || d.mode === 'dead' || game.state === 'victory', died: !p.alive, secs: game.time - t0, phase: d.phase, phAt: phAt.map((t) => Math.max(0, t - t0)), hits: G.hits.filter((h) => h.r === RESULT.HIT).length, ...n };
+  return { marks: G.marks, won: d.state === 'dead' || d.mode === 'dead' || game.state === 'victory', died: !p.alive, secs: game.time - t0, phase: d.phase, phAt: phAt.map((t) => Math.max(0, t - t0)), hits: G.hits.filter((h) => h.r === RESULT.HIT).length, ...n };
 }
 
 async function scenarioWin() {
@@ -1205,6 +1207,7 @@ async function scenarioWin() {
   for (const seed of SEEDS) {
     const r = fight(seed, 'mixed');
     out(`     seed ${seed}: ${r.won ? 'won' : 'NOT won'} in ${r.secs.toFixed(0)} s: phases at ${r.phAt.map((t) => t.toFixed(0)).join(' / ')} s; ${r.parries} parries, ${r.perfect} perfect dodges, ${r.breaks} breaks, ${r.bends} bends, ${r.stops} stops, ${r.hits} hits taken; phase ${r.phase}`);
+    marksCheck(r.marks, 'woke', out, assert);
     assert(r.won && r.phase === 3, `seed ${seed}: the fencing bot wins through all three phases`);
     assert(r.secs > 40 && r.secs < 480, `seed ${seed}: the fight takes ${r.secs.toFixed(0)} s`);
   }

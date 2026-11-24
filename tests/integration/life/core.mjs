@@ -182,5 +182,33 @@ export default {
       T.assert(!ARRIVAL_TUNING[id] ? a.begin() === false && !a.active : true, `${id}: no arrival shot of its own → no arrival`);
     }
   },
+
+  /** Every letter the air and the fauna print exists in all three of the wyrm's fonts: a letter a font
+   *  lacks prints BLANK (a flock was invisible at the large font until `v c x s` were added there). */
+  async fonts(T) {
+    const { WYRM_FONTS } = await T.imp('src/render/wyrmGlyphs.js');
+    const BS = String.fromCharCode(92);
+    const used = new Set("v^-~'0=|/" + BS + 'cxso+.,`:;*');
+    const { FAUNA_TUNE } = await T.imp('src/world/life/faunaTuning.js');
+    for (const c of FAUNA_TUNE.letters ?? '') used.add(c);
+    for (const f of ['tremorTuning', 'aftermathTuning']) {
+      const m = await T.imp(`src/world/life/${f}.js`);
+      // (the export is a map of level blocks, each with its own `glyph` strings)
+      let blocks = 0;
+      for (const v of Object.values(m)) {
+        for (const lv of Object.values(v ?? {})) {
+          if (!lv?.glyph) continue;
+          blocks++;
+          for (const g of Object.values(lv.glyph)) for (const c of String(g)) used.add(c);
+        }
+      }
+      T.assert(blocks > 0, `${f}: its level blocks' letters were read (${blocks} blocks)`);
+    }
+    used.delete(' ');
+    for (const [key, F] of Object.entries(WYRM_FONTS)) {
+      const missing = [...used].filter((c) => !F.glyphs[c]);
+      T.assert(missing.length === 0, `${key}: has every letter the living world prints${missing.length ? ` (missing ${JSON.stringify(missing.join(''))})` : ` (${used.size})`}`);
+    }
+  },
 };
 

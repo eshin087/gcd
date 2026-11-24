@@ -5,6 +5,61 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-23 — A fight the world feels: the blade clean through, a mark for every boss blow, flocks, animals, a set that shakes (ADR-177; planned by Fable, built by Opus agents)
+
+**Owner:** "when the player hits something like a rock or tree, the sword gets stopped and i dont like
+this feeling. lets allow the player to swing their attack animation through it while making the terrain
+get damaged and show chip damage. make it look natural and good. i also want the background to have more
+alive like the ground gets damaged per boss attack to show the damage done from the boss. have more cool
+atmospheric moments like animals running away as you get close to them in the fight or a flock of birds
+flying away from the dragon blowing fire at it. think of ideas and ask me any questions". Their picks:
+clean through; marks stay until the reset; all four moments; animals tiny. Branch `world/fight-alive`.
+
+**How.** The lead wired the hooks first (`world.groundBlow`, blows and fire forwarded to the living
+world's layers, two stub layers), then four agents in four worktrees: CUT, GROUND, FAUNA, TREMOR. They
+merged with one two-line conflict. Each ran only its own suites (the lesson of the last build: seven
+agents running the whole set stalled the machine); the lead ran the whole set once on the merge.
+
+- **The blade goes clean through.** `_cutWorld` no longer rewinds, freezes, sticks or bounces. Measured:
+  the attack clock with a boulder or a tree in the path equals the clock with none, frame for frame
+  (light 29 frames, Piercing Gale 52, the charged cleave 65). The piece takes the same blow. Debris
+  flies along the cut (about 30 bits with the blade against 4 - 7 back at him); sparks on stone and
+  metal, splinters on wood; a jolt of 0.05 / 0.12. `?cutStop=1` (the Lab: Blade) is the old stop.
+- **Every boss blow marks the floor.** `scars.mark`: seven kinds, each a dark stroke with a dim lit
+  lip, grey ink, thinned where they pile up; `SCAR.max` 520 → 3600 (the oldest fade). One hook in the
+  duelist engine reads each beat's shape; the wyrm's claws, stomps, dives, tail and fire call it
+  themselves. Headless bot wins leave 8 - 157 marks a fight (the wyrm 130). The seeded fights replay
+  line for line against the base. `?marks=0` is the floor as it was.
+- **Flocks and animals.** Roosts of 30 - 44 birds leave when fire, a blow, a falling tree or a roar
+  reaches them (a real breath on the tree wall: the flock went 1.2 s later), routed across the top of
+  the frame. Rabbits and deer (Cinderwood), rats (Ashfall), lizards (the Ring), one fox (Foxfire, once
+  a visit); nothing in the Throne or the Grove. Some return after the fight.
+- **The set shakes; the aftermath.** A blow of power 0.7 or more shakes what stands within
+  r + 3 x power^2 m: trees shudder without damage and drop their leaves, tall stone sifts dust, banners
+  and charms swing (11.8 degrees at the peak, still again in 2 s), pebbles hop, the bonfire gutters.
+  Smoke rises where fire burned out (at most five columns), embers, a haze over a crater.
+- **A font gap found at the merge:** the wyrm's large font had no `c x s`, and no font had `^` or `o`:
+  a flock printed blank at that size. Added; `core.fonts` checks every letter against every font.
+
+**Verified.** The whole test set and the build on the merged branch (see the PR's checks). The cut's
+clock by test; the marks by a world scenario and by the win scenarios compared against an extracted
+base; the fauna, tremor and aftermath by their life scenarios. Films of each piece.
+
+**Not verified / open.**
+- The owner has seen clips, not played it. Their calls: the sparks' size, the marks' brightness and
+  whether a pale trench or arc reads like a tell, the flock's brightness and its routing through the
+  top of the frame, the deer's and the fox's sprites.
+- Faint at the game camera: the kinds of mark (they read zoomed), marks on grass, the dust sift, the
+  pebbles, the smoke, the crater haze, the tree's shudder. Ashfall's crows do not read.
+- Films with REAL boss moves exist only for the wyrm's breath and a leap; most tremor films are staged.
+- Not looked at: Halcyon Plaza's pigeons; the phone (`&touch`) for any of the four.
+- Tian Lei's bolt beats still sweep 17 m of the world (older than this work); the Woken One's crater
+  effect is drawn at his root while the mark is at his heel.
+
+**Next.** The owner plays the preview; then a pass on whatever they call too faint or too loud.
+
+---
+
 ## 2026-11-23 — Session 88: combat sounds, round two (planned by Fable, built by Opus agents, picked by ear)
 
 **Owner:** "what are the remaining original sounds left ... lets do a new round of selection. i want to make

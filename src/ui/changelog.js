@@ -19,6 +19,18 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-23',
+        title: 'The sword cuts clean through; the fight marks the ground; birds and animals flee',
+        notes: [
+          'Your sword no longer stops when it meets a rock, a tree or a pillar. The swing goes through at full speed, chips fly along the cut, stone sparks and wood splinters.',
+          'Every boss attack that hits the ground now leaves its own mark: a crater for a slam, a long gash for a sword cut, a furrow for a dash, a scorched round for a blast, a trench for a beam. The marks stay until the fight resets, so the arena shows the fight.',
+          'Birds burst out of the trees and cross the sky when fire, a heavy blow or a falling tree reaches them.',
+          'Small animals bolt as you or the fight come near: rabbits and deer in Cinderwood, rats in the Ashfall ruins, lizards at the Skybreak Ring, one fox at the Foxfire shrine.',
+          'Heavy blows shake the set: leaves fall from a struck tree, dust sifts off pillars, banners and paper charms swing. Afterwards thin smoke rises where fire burned out.',
+          'None of this changes how the fight plays.',
+        ],
+      },
+      {
+        date: '2026-11-23',
         title: 'Combat sounds, round two: real steel on the parry, picked by ear',
         notes: [
           'Parries now ring with real swords: a sword on a katana, and a spear on a katana for a blue or perfect parry.',

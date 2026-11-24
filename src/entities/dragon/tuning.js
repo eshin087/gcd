@@ -44,6 +44,10 @@ export const TUNING = {
     // a ground blow (the stomp, a leap, a hop, a dive, the nova) is this much weaker at its rim than at
     // its heart (2026-11-15: the dive's 7.5 m felled all it covered: a four-minute fight left a sixth standing)
     falloff: 0.6, // the blast: at its heart, at its rim; the heart's share of the radius
+    // the marks its blows leave on the floor (world.groundBlow → scars.mark, ADR-107; a POWER each):
+    // the claws' rake at a swipe's plant (3 gashes), an overhead's claws in the ground, the charge's
+    // skid (a furrow), a landing (a crater), a hind foot (a faint print), the tail slapped down
+    marks: { rake: 0.55, claws: 1.0, clawLen: 1.5, skid: 0.8, skidLen: 2.6, land: 1.6, step: 0.7, tail: 1.2, spread: 0.55 },
     explosion: 0.7, meteor: 0.7, pillar: 0.9, // (tuning: explosion 0.9, meteor 1.5, pillar 1.0: Armageddon's sixty meteors broke the whole paving)
     trample: 1.2, // (ADR-107's trample round the root: replaced by `body` below; kept for older readers)
     // the body against the world (dragon.js _wreck, 2026-11-15): each hurt sphere that moves faster

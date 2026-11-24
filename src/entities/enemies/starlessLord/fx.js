@@ -7,7 +7,7 @@ import { THRONE } from '../../../world/throneHall.js';
 
 /** A thrown stone stopped by cover / a blast on the floor, as blows on the world (ADR-107). */
 const SHOT_BLOW = Object.freeze({ kind: 'blunt', by: 'boss', y: 0.95 });
-const BLAST_BLOW = Object.freeze({ kind: 'blast', by: 'boss' });
+const BLAST_BLOW = Object.freeze({ kind: 'blast', by: 'boss', hot: true }); // (its floor mark is charred)
 
 // The Starless Lord's FX, on top of the duelist's (tells, clashes, sparks, sweep trails). Void and
 // steel, both printed by the fire field (render/fireField.js) in the wyrm's small digits:

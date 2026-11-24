@@ -74,7 +74,7 @@ export class BeamMoves {
     this._w = new THREE.Vector3();
     this._stations = new Set();
     this._wo = { kind: 'blast', by: 'boss', dx: 0, dz: 0, y: 1.2, src: -1 };
-    this._to = { kind: 'blast', by: 'boss', dx: 0, dz: 0, src: -1, scar: true };
+    this._to = { kind: 'blast', by: 'boss', dx: 0, dz: 0, src: -1, scar: true, mark: 'beam', hot: true, len: NaN }; // (its trench: scars.mark `beam`, a station's stretch)
     this.B = { on: false, phase: 'off' };
     this.stats = { beams: 0, first: 0, ticks: 0, blocked: 0, clashes: 0, won: 0, lost: 0, tops: 0 };
     this._form = 0;

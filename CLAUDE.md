@@ -49,8 +49,10 @@ wyrm's lean build; 0 = the wyrm before; ADR-123), `?zoomArt=a|c` (b: the letters
 follow the zoom) and `?ablaze=off|a|c` (b: the wyrm's phase 3 fire). The impact pass's pieces (ADR-149): `?impact=off|all|stamp,ripple,react,thump` (default all; Lab: the 'impact' row), and
 `?calm=0..3` the light at the contact (default 1; 0 = as before; Lab: the row's `calm` button). The streak pass's switches (ADR-167): `?streakfx=off|all|storm,tiers,aura,counter,sound,world`,
 `?perfect=today|sharp|cinema` (default sharp), `?burst=0..3` (default 2), `?streakCount=` and `?auraFire=` (Lab: the 'streak' row). Bites (a blow knocks the bricks, the letters, out of
-a piece where it struck, and the hero's blade stops on what it does not cut through) are on: `?chip=0`
-turns them off (ADR-132). The grove's bamboo: `?bamboo=0|b` (a, the owner's pick: five kinds of cane mixed in clumps;
+a piece where it struck; the hero's blade goes clean through what it does not fell, chipping it along
+the cut) are on: `?chip=0` turns them off (ADR-132); `?cutStop=1` gives back the blade that stops there
+(ADR-177; Lab: WORLD → Blade). Floor marks (every boss blow that meets the ground leaves a mark of its
+kind until the reset; ADR-177): `?marks=0` leaves today's cracks only. The grove's bamboo: `?bamboo=0|b` (a, the owner's pick: five kinds of cane mixed in clumps;
 0 = the grove before; ADR-151). The living world (ADR-163): `?life=off|all|<pieces>` (a comma list of
 `wind, litter, steps, weather, creatures, air, arrival, answer`) and `?lifeK=0.25..2` its strength; ON by
 default (the owner's pick; `?life=off` turns it all off; Lab: WORLD → the 'life' rows and the layers' buttons).
@@ -88,13 +90,14 @@ In Claude Code the preview config is `.claude/launch.json` (`abyss-dev`).
 - **ASCII look is a feature.** Anything visible must go through the glyph systems described in
   `docs/STYLE.md` (the art pass, screen-grid ASCII, carved floors, the fire field, glyph particles). No plain shaded
   meshes. Only glyphs in the world atlas may be passed to `gi()` / materials / particles — `npm test` checks.
-- **The world breaks, letter by letter (ADR-107, ADR-132).** Every background object in every level
-  is destructible, and a hit knocks its letters off exactly where it lands ("bites"); the hero's blade
-  stops on what it does not cut through. Follow the checklist in `docs/ARCHITECTURE.md` → "Destruction"
-  → "Making a new object destructible". In short:
+- **The world breaks, letter by letter (ADR-107, ADR-132, ADR-177).** Every background object in every
+  level is destructible, and a hit knocks its letters off exactly where it lands ("bites"); the hero's
+  blade goes CLEAN THROUGH what it does not fell (its swing runs as in open air; the piece is chipped
+  along the cut; `?cutStop=1` keeps the old stop). Follow the checklist in `docs/ARCHITECTURE.md` →
+  "Destruction" → "Making a new object destructible". In short:
   - Anything new that stands in a level and could be hit is listed in its set's `breakables` (not
     merged into the static meshes), with a finite `hp`, a `mat` and a footprint `r` that matches what
-    is drawn (the blade stops at that circle).
+    is drawn (the circle the blade crosses and chips).
   - Build it from non-indexed triangle geometry through one of the two drawing paths (`look: 'range'`
     in a set's merged mesh, or `'prop'` / `'grid'` through the breakables' rigid batch). Bites are made
     from its triangles; do not pre-split it into cubes, and do not hand-shrink its triangles (the
@@ -103,6 +106,12 @@ In Claude Code the preview config is `.claude/launch.json` (`abyss-dev`).
     `world.ignite`, `world.destructibles.strike / sweep / stop`, guarded with `?.`. Pass the blow's
     real height (`y`, or a blade's `ya` / `yb`) so the bite lands where it struck. Its power goes in the
     fighter's tuning.
+  - Anything new that hits the FLOOR calls `world.groundBlow(x, z, { kind, power, ... })` (a duelist's
+    beat may give its own `groundMark` instead), so the floor keeps a mark of its kind; it damages
+    nothing (ARCHITECTURE.md "Floor marks").
+  - Anything new that drifts or lives in the air (dust, smoke, a flock, an animal) prints through
+    `LetterBatch` (`world/life/letterBatch.js`) in the tiny-letter look: many tiny faint letters in a
+    clump, never bigger or brighter ones (STYLE.md "The living world").
   - A new level is covered by the world test `bite` with no change (it walks the level registry): it
     fails if a level lists no breakables, or a piece gets no bricks. Only an object the owner decided
     stays whole is left out of `breakables`, and the decision is written down (today: the bonfires,

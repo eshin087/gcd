@@ -19,7 +19,7 @@ import { sfxMode, setSfxMode, chainMode, setChainMode, CHAIN_MODES } from '../au
 import { PARRY_CHAIN } from '../audio/parryChain.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { buildLooks } from './labLooks.js';
-import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
+import { lookOf, setLook } from '../entities/enemies/duelist/lookSwitch.js';
 import { LIFE, setLife, setLifeK } from '../world/life/lifeSwitch.js';
 
 // The Lab — a debug panel to test the boss without playing the fight (contract: docs/ARCHITECTURE.md
@@ -982,6 +982,16 @@ export class Lab {
           console.error('[lab] bites reload failed', err);
         }
       }).title = 'a blow takes the bricks (the letters) of a piece where it struck (on by default; ?chip=0 off; reloads: the level is built with finer bricks)';
+      // the hero's blade on what it does not fell (BREAK.chip.pass / .stop): clean through (default) or it
+      // stops there as it did (?cutStop=1, ADR-132). Live: read at each swing
+      // (the stop also needs bites on: with ?chip=0 the blade goes through whatever this says)
+      const stops = () => lookOf('cutStop', '0', '0') !== '0' && lookOf('chip', 'a', 'a') !== '0';
+      const b = button(grid, `Blade: ${stops() ? 'stops' : 'through'}`, () => {
+        setLook('cutStop', stops() ? '0' : '1');
+        b.textContent = `Blade: ${stops() ? 'stops' : 'through'}`;
+        this._status(stops() ? 'the blade stops on what it does not fell (?cutStop=1, as before)' : 'the blade goes clean through (the default)', 'ok');
+      });
+      b.title = 'the hero\'s blade on a rock or a tree it does not fell: clean through, the piece chipped along the cut (default), or it stops there and bounces back (?cutStop=1, the old feel)';
     }
     // (2026-11-16: the tree wall wears down in stages; the landmarks break in pieces)
     const nearestWall = (at) => {

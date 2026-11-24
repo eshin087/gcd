@@ -460,6 +460,42 @@ export class Litter {
     return k;
   }
 
+  /**
+   * n letters start falling from a crown: from within r m of (x, z), between heights y0 and y1 (the
+   * tremor shakes them off a tree, life/tremor.js). `ki`: the kind (an index into the level's kinds;
+   * default: by their shares). They then fall on the wind and lie like any litter. Returns how many.
+   */
+  showerAt(x, z, r = 1.5, n = 8, y0 = 3, y1 = 6, ki = -1) {
+    if (!this._on() || !this.leaves || !Number.isFinite(x + z + r + y0 + y1) || !(n >= 1)) return 0;
+    const L = this.life, cap = this._cap(), H = L.hero;
+    const kind = ki >= 0 && ki < this.kinds.length ? ki | 0 : -1;
+    let k = 0;
+    for (let i = 0; i < n && this.count < cap; i++) {
+      const f = this._free();
+      if (!f) break;
+      const a = L.rand() * TAU, d = r * Math.sqrt(L.rand());
+      const px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d;
+      // (none lands on the hero's head)
+      if (Math.abs(px - H.x) < 0.6 && Math.abs(pz - H.z) < 0.6) continue;
+      this._dress(f, kind >= 0 ? kind : this._kindIndex());
+      f.s = AIR;
+      f.x = px;
+      f.z = pz;
+      f.y = Math.max(0.3, L.range(Math.min(y0, y1), Math.max(y0, y1)));
+      // (shaken loose: a little drop and toss, then the air has it)
+      f.vx = (L.rand() - 0.5) * 0.6;
+      f.vz = (L.rand() - 0.5) * 0.6;
+      f.vy = -f.fall * L.range(0.6, 1.4);
+      f.a = 0;
+      f.fa = 1 / 0.25;
+      f.b = 1;
+      f.age = 0;
+      this.count++;
+      k++;
+    }
+    return k;
+  }
+
   takes(what) {
     return !!this.T && Array.isArray(this.T.takes) && this.T.takes.includes(what);
   }

@@ -184,7 +184,12 @@ function segDist(px, pz, ax, az, bx, bz, out) {
  *  (pieces only wear down and break whole). Read at each blow; a level built with it on has finer
  *  bricks (forest.js `brickEdge`), so the Lab switches it with a reload. */
 export const chipLook = () => lookOf('chip', 'a', 'a');
+/** The hero's blade on a piece it does not cut through (`?cutStop=`): '0' it goes clean through (the
+ *  owner's pick, 2026-11-23; BREAK.chip.pass), '1' it STOPS there as it did (ADR-132; BREAK.chip.stop).
+ *  Read at each swing (player.js `_cutWorld`). */
+export const cutStops = () => chipLook() !== '0' && lookOf('cutStop', '0', '0') !== '0';
 const PICK_MAX = 128;
+const PASS_MAX = 6; // pieces one blow's `struck.list` keeps
 const PICK_D = new Float32Array(PICK_MAX), PICK_I = new Int32Array(PICK_MAX);
 let pickK = 0;
 /**
@@ -974,9 +979,14 @@ export class Destructibles {
     /**
      * What the last strike / sweep / stop met (the hero's blade reads it: a blade stops on what it
      * could not cut through, BREAK.chip.stop): `held` the first piece that held (null: none), where it
-     * was struck (x, y, z), `broke` how many it broke. Reset at the start of each call.
+     * was struck (x, y, z), `broke` how many it broke. Reset at the start of each call. `n` / `list`:
+     * every piece the call struck (at most PASS_MAX: { b, x, y, z, broke }, reused records), so a blade
+     * passing through can mark its passage on each (player.js `_cutWorld`, BREAK.chip.pass).
      */
-    this.struck = { held: null, x: 0, y: 0, z: 0, broke: 0 };
+    this.struck = { held: null, x: 0, y: 0, z: 0, broke: 0, n: 0, list: Array.from({ length: PASS_MAX }, () => ({ b: null, x: 0, y: 0, z: 0, broke: false })) };
+    // (a blade that passes through, `o.tx, o.tz`: its own travel on the ground; set while _hit deals it)
+    this._tx = 0;
+    this._tz = 0;
     this._carryHit = { x: 0, z: 0, piece: null };
     /** counts since the reset (the tests' wall report): wind fronts, trees they reached; carries, reached, lit */
     this.stat = { wind: 0, windTrees: 0, carry: 0, reached: 0, lit: 0 };
@@ -1327,6 +1337,59 @@ export class Destructibles {
     st.bd = d;
   }
 
+  /**
+   * The intact pieces (not the floor's slabs, not a piece out of the world) whose footprint reaches
+   * within `reach` m of (x, z), into `out` (its length is set; at most `max`). No damage, no state.
+   * Returns how many. (The living world's tremor reads what stands near a blow: life/tremor.js.)
+   */
+  around(x, z, reach, out, max = 64) {
+    if (!out) return 0;
+    out.length = 0;
+    if (!Number.isFinite(x + z + reach) || !(reach > 0)) return 0;
+    if (!this._cells(x - reach, z - reach, x + reach, z + reach)) return 0;
+    const L = this.list, g = this._g, R = this._gr, ra = R.a, rb = R.b, rc = R.c, rd = R.d;
+    for (let cz = rc; cz <= rd; cz++) {
+      for (let cx = ra; cx <= rb; cx++) {
+        const c = cz * g.nx + cx;
+        for (let k = g.start[c]; k < g.start[c + 1] && out.length < max; k++) {
+          const b = L[g.items[k]];
+          if (b.state !== INTACT || b.floor || b.absent) continue;
+          if (Math.hypot(b.x - x, b.z - z) - b.r > reach) continue;
+          out.push(b);
+        }
+      }
+    }
+    return out.length;
+  }
+
+  /**
+   * A shudder WITHOUT damage (a blow landed near, not on it: the tremor): the piece shakes along
+   * (dx, dz) by `amp` rad at most, as a struck one does, and settles in the same 0.28 s. Its structure,
+   * bricks, marks and sounds are untouched. A range piece (a tree of the forest, a bamboo cane) rewrites
+   * its vertices while it shakes: at most BREAK.wear.shakeMax x quality of those at once, the rest stay
+   * still. A piece already shaking harder keeps its shake. Returns whether it shudders.
+   */
+  shudder(b, amp, dx = 0, dz = 1) {
+    if (!b || b.state !== INTACT || b.floor || b.absent || !(amp > 0) || !Number.isFinite(amp + dx + dz)) return false;
+    if (b.top !== null && b.top.state === INTACT) b = b.top;
+    const a = Math.min(0.09, amp) / Math.max(0.6, b.weight);
+    if (b.shake > 0 && b.shakeAmp * (b.shake / 0.28) >= a) return false;
+    if (b.ranged) {
+      if (!b.body?.pose) return false;
+      if (!(b.shake > 0)) {
+        if (this._rShake >= Math.max(2, Math.round(BREAK.wear.shakeMax * this.q))) return false;
+        this._rShake++;
+      }
+    }
+    const l = Math.hypot(dx, dz);
+    b.dx = l > 1e-4 ? dx / l : 0;
+    b.dz = l > 1e-4 ? dz / l : 1;
+    b.shake = 0.28;
+    b.shakeAmp = a;
+    this._wake(b);
+    return true;
+  }
+
   /** The first cover the segment a → b (widened by r) meets, or null; `coverT` = where along it. */
   coverAt(ax, az, bx, bz, r = 0, y = undefined) {
     let best = null, bt = 2;
@@ -1364,6 +1427,7 @@ export class Destructibles {
     this._quiet = 0;
     this.struck.held = null;
     this.struck.broke = 0;
+    this.struck.n = 0;
     // (bites, BREAK.chip: a blow over a disc eats outward from its own centre)
     this._hr = r;
     this._hc = true;
@@ -1425,6 +1489,7 @@ export class Destructibles {
     this._quiet = 0;
     this.struck.held = null;
     this.struck.broke = 0;
+    this.struck.n = 0;
     this._hr = r;
     this._hc = false;
     // (o.ya, o.yb: the segment's heights at its two ends, a blade's hilt and point: where on it a piece
@@ -1467,6 +1532,7 @@ export class Destructibles {
     this._quiet = 0;
     this.struck.held = null;
     this.struck.broke = 0;
+    this.struck.n = 0;
     this._hr = Math.max(r, 0.3);
     this._hc = false;
     this._hit(b, power, o, ax + (bx - ax) * t, clamp(o.y ?? 1, b.y0 + 0.2, b.y0 + b.h), az + (bz - az) * t, bx - ax, bz - az);
@@ -1690,6 +1756,11 @@ export class Destructibles {
     dx /= l;
     dz /= l;
     const kind = o.kind ?? BLOW.BLUNT, by = o.by ?? 'world';
+    // a blade going through (o.tx, o.tz: its travel, unit; the hero's, BREAK.chip.pass): what it knocks
+    // off flies on along the cut, not back toward the one who struck it (_chips, _drop)
+    const tx = o.tx, along = tx !== undefined && Number.isFinite(tx + o.tz) && tx * tx + o.tz * o.tz > 0.25;
+    this._tx = along ? tx : 0;
+    this._tz = along ? o.tz : 0;
     // a brush (a body walking into it): only what is over BREAK.brush of its structure bites
     const brush = o.brush === true;
     const dmg = brush ? brushed(b, power * (b.M.take[kind] ?? 1)) : power * (b.M.take[kind] ?? 1);
@@ -1704,6 +1775,15 @@ export class Destructibles {
     if (sliced) took = b.hp;
     const bit = took > 0 && !sliced ? this._bite(b, px, py, pz, Math.min(took, b.hp), dx, dz) : 0;
     if (!shove) this._chips(b, px, py, pz, dx, dz, brush ? dmg : power, bit > 0); // (a brush: splinters for what it bit)
+    const S0 = this.struck;
+    if (S0.n < PASS_MAX) {
+      const e = S0.list[S0.n++];
+      e.b = b;
+      e.x = px;
+      e.y = py;
+      e.z = pz;
+      e.broke = took > 0 && b.hp - took <= 0;
+    }
     if (took === 0 || (b.hp -= took) > 0) {
       // it holds: a nick, a shudder (a floor slab: no nick; it shows cracked once it has taken enough)
       // (a range piece's shudder rewrites its vertices: at most BREAK.wear.shakeMax x quality of them
@@ -1733,11 +1813,13 @@ export class Destructibles {
         S.y = py;
         S.z = pz;
       }
+      this._tx = this._tz = 0;
       return true;
     }
     this.struck.broke++;
     b.hy = py; // (where the blow bit: a blade cuts its stump about there, BREAK.fell)
     this._break(b, dx, dz, by, kind);
+    this._tx = this._tz = 0;
     return true;
   }
 
@@ -1825,7 +1907,7 @@ export class Destructibles {
   _drop(b, out, n, ox, oy, oz, dx, dz, k = 0.2) {
     const solid = this.game.fx?.alpha, glow = this.game.fx?.add;
     if (!solid) return;
-    const C = BREAK.chip, M = b.M, p = this._p, q = this.q;
+    const C = BREAK.chip, M = b.M, p = this._p, q = this.q, tx = this._tx, tz = this._tz;
     const fx = M.sparks && glow ? glow : solid;
     const leafOf = b.ranged ? b.body.leaf : null;
     p.alpha = 1;
@@ -1855,9 +1937,12 @@ export class Destructibles {
         nz = -dz;
       }
       const kick = C.out * (0.6 + 1.6 * Math.min(1, k * 3)) * (leaf ? 0.45 : 1) * (0.5 + rnd());
-      p.vx = (nx * 0.7 - dx * 0.5) * kick + (rnd() - 0.5) * 0.9;
+      // (a blade passing through, BREAK.chip.pass: carried on along the cut, out of the face)
+      const ax = tx !== 0 || tz !== 0 ? tx * C.pass.along + nx * C.pass.face + dx * 0.25 : nx * 0.7 - dx * 0.5;
+      const az = tx !== 0 || tz !== 0 ? tz * C.pass.along + nz * C.pass.face + dz * 0.25 : nz * 0.7 - dz * 0.5;
+      p.vx = ax * kick + (rnd() - 0.5) * 0.9;
       p.vy = C.up * (0.4 + rnd()) * (leaf ? 0.6 : 1);
-      p.vz = (nz * 0.7 - dz * 0.5) * kick + (rnd() - 0.5) * 0.9;
+      p.vz = az * kick + (rnd() - 0.5) * 0.9;
       p.life = clamp(fall + p.vy / g + 0.15 + rnd() * 0.25, 0.4, 2.2);
       p.size = (leaf ? 0.38 : 0.36) + rnd() * 0.14;
       p.sizeEnd = 0.24;
@@ -2832,6 +2917,18 @@ export class Destructibles {
     // (`bit`: its bricks fell as letters, _drop: only a few splinters with them)
     const n = Math.round(clamp(3 + power * 12, 3, 18) * fq * (bit ? 0.3 : 1));
     const M = b.M, p = this._p;
+    // (a blade passing through, BREAK.chip.pass: thrown on along its travel `tx, tz` and out of the
+    // face; any other blow: back off the face toward the one who struck it)
+    const tx = this._tx, tz = this._tz, along = tx !== 0 || tz !== 0, PA = BREAK.chip.pass.along;
+    let nx = x - b.x, nz = z - b.z;
+    const nl = Math.hypot(nx, nz);
+    if (nl > 1e-3) {
+      nx /= nl;
+      nz /= nl;
+    } else {
+      nx = -dx;
+      nz = -dz;
+    }
     p.glyph = M.chips;
     p.color = M.color;
     p.colorEnd = M.colorEnd;
@@ -2846,9 +2943,15 @@ export class Destructibles {
       p.x = x + (rnd() - 0.5) * 0.25;
       p.y = y + (rnd() - 0.5) * 0.3;
       p.z = z + (rnd() - 0.5) * 0.25;
-      p.vx = -dx * back - dz * side * 2.2;
-      p.vy = 1.2 + rnd() * 3.2;
-      p.vz = -dz * back + dx * side * 2.2;
+      if (along) {
+        p.vx = (tx * PA + nx * 0.5) * back - tz * side * 0.7;
+        p.vy = 0.8 + rnd() * 2.2;
+        p.vz = (tz * PA + nz * 0.5) * back + tx * side * 0.7;
+      } else {
+        p.vx = -dx * back - dz * side * 2.2;
+        p.vy = 1.2 + rnd() * 3.2;
+        p.vz = -dz * back + dx * side * 2.2;
+      }
       p.life = 0.45 + rnd() * 0.45;
       p.size = 0.3 + rnd() * 0.2 + power * 0.1;
       p.spin = (rnd() - 0.5) * 12;
@@ -2872,9 +2975,9 @@ export class Destructibles {
         p.x = x + (rnd() - 0.5) * 0.4;
         p.y = y + (rnd() - 0.5) * 0.4;
         p.z = z + (rnd() - 0.5) * 0.4;
-        p.vx = -dx * 0.6 + (rnd() - 0.5) * 0.8;
+        p.vx = (along ? tx * 0.8 + nx * 0.3 : -dx * 0.6) + (rnd() - 0.5) * 0.8;
         p.vy = 0.3 + rnd() * 0.6;
-        p.vz = -dz * 0.6 + (rnd() - 0.5) * 0.8;
+        p.vz = (along ? tz * 0.8 + nz * 0.3 : -dz * 0.6) + (rnd() - 0.5) * 0.8;
         p.life = 0.6 + rnd() * 0.6;
         dust.spawn(p);
       }

@@ -5249,3 +5249,45 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   picker. At the owner's sign-off: chain `a`; the other parry uses play one strike of the blue parry recording; the
   streak's climb note is half as loud on a parry; the hero's combo swing rises on every cut.
 
+## ADR-177 — The blade goes clean through; every boss blow marks the floor; the set, the birds and the animals answer the fight (2026-11-23)
+
+- **Context:** the owner: "when the player hits something like a rock or tree, the sword gets stopped and
+  i dont like this feeling. lets allow the player to swing their attack animation through it while making
+  the terrain get damaged and show chip damage. make it look natural and good. i also want the background
+  to have more alive like the ground gets damaged per boss attack to show the damage done from the boss.
+  have more cool atmospheric moments like animals running away as you get close to them in the fight or a
+  flock of birds flying away from the dragon blowing fire at it." Asked, they picked: clean through;
+  marks that stay until the fight resets; birds that flee, animals that run, a set that shakes, an
+  aftermath; animals drawn tiny, a few letters.
+- **Decision:**
+  1. **The hero's blade never stops (this supersedes ADR-132's stop).** A swing through a piece it does
+     not fell keeps the clock and the reach it has in open air: no rewind, no freeze, no stick, no
+     bounce. The piece takes the same blow once per swing; what it loses flies ALONG the cut (the blow
+     carries the blade's travel), stone and metal spark, wood splinters, one small jolt. The stop is
+     kept behind `?cutStop=1`.
+  2. **A blow that meets the ground says so.** `world.groundBlow(x, z, o)` keeps a mark of the blow's
+     kind (slam, cut, thrust, dash, blast, beam, step) and tells the living world; it damages nothing.
+     The human bosses get it from ONE hook in the shared engine at each beat's impact, read from the
+     beat's own shape (a beat may carry `groundMark`, or `false`); the wyrm and the hero call it.
+     Marks stay until `world.restore()`; past the cap the oldest fade.
+  3. **Marks change nothing in the fight.** No damage, no fire, no timing, no `Math.random`: the seeded
+     fights replay line for line. A mark chars the scorch map only where no grass grows (so no fire
+     burns differently), which is why marks are weakest on grass.
+  4. **The living world feels every blow and every fire.** `world.impact`, `world.groundBlow` and
+     `world.ignite` reach every layer with an `impact` / `ignite` method. Two new layers under the
+     piece `answer`: the tremor (what stands near shakes without being damaged: leaves off a tree,
+     dust off a pillar, a swing in what hangs, pebbles, the bonfire's gutter) and the aftermath (smoke
+     where fire burned out, embers, a haze over a crater).
+  5. **Flocks and animals, in the approved letter.** Birds roost unseen and leave as a flock when fire,
+     a heavy blow, a falling tree or a roar reaches them; a roost that left stays empty for the fight.
+     Because the game camera never sees the tree wall in a fight, a flock is routed across the top band
+     of the frame. Ground animals are two to five of the wyrm's letters, read by gait, outside the
+     fighting ground, untouchable; some come back after the fight.
+- **Why this way:** the stop was built to give cover weight, and the owner's hand says it feels like
+  being caught; the weight now comes from what the cut throws. One engine hook marks seven bosses'
+  moves without forty hand-written calls and covers a boss added later. Everything in the air uses the
+  one look the owner approved (many tiny faint letters clumped; ADR-163's addendum).
+- **Consequences / open:** at the game camera the KINDS of mark read only zoomed, and marks on grass
+  are faint (a floor channel the grass reads as torn would fix it, at the price of touching fire fuel);
+  the dust sift, the pebbles, the smoke and the crater haze are faint; Ashfall's crows do not read; the
+  wyrm's fire fills the mark cap in about three minutes. The owner has not yet judged any of it in play.

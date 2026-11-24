@@ -137,6 +137,7 @@ export const TUNING = {
     ring: 1.0, // The Held Breath: every stalk within ringR falls on the click
     ringR: 9,
     late: 0.8, // the hanging cuts
+    mark: 1.1, // the cut's gash on the floor (world.groundBlow `cut`: one clean line the length of the cut)
   },
   // the hanging cuts (lateCuts.js, phase 3's The Sound Arrives Late): lines of heat across the arena
   late: { len: 14, w: 1.0, count: [3, 4], first: 1.0, gap: 0.7, damage: 24, knockback: 2.2, lead: 0.3 },
