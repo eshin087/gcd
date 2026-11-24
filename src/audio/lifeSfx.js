@@ -245,14 +245,17 @@ export const LIFE_SFX = Object.freeze({
       const am = v.gain(0.7);
       for (let u = 0.02; u < D; u += rr(0.025, 0.06)) am.gain.setTargetAtTime(rr(0.3, 1), t + u, 0.006);
       saw.connect(am);
+      // (its level grows slower than the shake: a hard one is not much louder; the first formant at full,
+      // the second and the body under it)
       const out = v.gain(0);
-      env(out.gain, t, [[0, 0], [0.14, C.amp * 0.55 * k], [D * 0.5, C.amp * k], [D * 0.85, C.amp * 0.5 * k], [D, 0]]);
+      const a = C.amp * 1.6 * Math.sqrt(k);
+      env(out.gain, t, [[0, 0], [0.14, a * 0.55], [D * 0.5, a], [D * 0.85, a * 0.5], [D, 0]]);
       out.connect(v.out);
-      const f1 = v.filter('bandpass', ra(C.f1), 7), g1 = v.gain(1.6);
-      am.connect(f1).connect(g1).connect(out);
-      const f2 = v.filter('bandpass', ra(C.f2), 9), g2 = v.gain(0.55);
+      const f1 = v.filter('bandpass', ra(C.f1), 7);
+      am.connect(f1).connect(out);
+      const f2 = v.filter('bandpass', ra(C.f2), 9), g2 = v.gain(0.55 / 1.6);
       am.connect(f2).connect(g2).connect(out);
-      const lp = v.filter('lowpass', 210, 0.7), g3 = v.gain(C.body / Math.max(1e-3, C.amp));
+      const lp = v.filter('lowpass', 210, 0.7), g3 = v.gain(Math.min(1, C.body / Math.max(1e-3, C.amp * 1.6)));
       am.connect(lp).connect(g3).connect(out);
       // a few fibres giving at the end
       evN = 0;
@@ -365,8 +368,8 @@ export const LIFE_SFX = Object.freeze({
     play(v, t, o) {
       const C = S.lampOut, k = clamp(num(o.k, 1), 0.3, 1.2);
       // the last puff of the flame, and a short hiss falling away
-      nb(v, t, 'pink', 'lowpass', rr(420, 560), 0.8, C.puff * k, 0.015, 0.12);
-      const f = nb(v, t, 'white', 'bandpass', 4000, 1.1, C.hiss * k, 0.01, rr(0.22, 0.32));
+      nb(v, t, 'pink', 'lowpass', rr(420, 560), 0.8, C.puff * k * rr(0.75, 1), 0.015, rr(0.09, 0.14));
+      const f = nb(v, t, 'white', 'bandpass', 4000, 1.1, C.hiss * k * rr(0.75, 1), 0.01, rr(0.22, 0.32));
       env(f.frequency, t, [[0, rr(3600, 4400)], [0.3, rr(1600, 2000)]]);
       // a click or two of the stone cooling
       const n = r() < 0.5 ? 1 : 2;

@@ -32,8 +32,8 @@ export const LIFE_SFX_TUNE = Object.freeze({
     flockBurst: Object.freeze({
       gain: 1, gap: 0.6, falloff: 0.65, rev: 0.16, prio: 1,
       kinds: Object.freeze({
-        small: Object.freeze({ noise: 'pink', band: Object.freeze([620, 1350]), q: 0.9, beat: 7, beats: Object.freeze([2, 4]), clap: Object.freeze([0.0025, 0.016]), amp: 0.09, body: 0.05, bodyHz: 380, wash: 0.03, washHz: Object.freeze([500, 1500]), spread: 1.1 }),
-        crow: Object.freeze({ noise: 'brown', band: Object.freeze([330, 700]), q: 0.8, beat: 4.4, beats: Object.freeze([2, 3]), clap: Object.freeze([0.004, 0.035]), amp: 0.26, body: 0.08, bodyHz: 260, wash: 0.025, washHz: Object.freeze([320, 900]), spread: 1.3 }),
+        small: Object.freeze({ noise: 'pink', band: Object.freeze([620, 1350]), q: 0.9, beat: 7, beats: Object.freeze([2, 4]), clap: Object.freeze([0.0025, 0.016]), amp: 0.06, body: 0.034, bodyHz: 380, wash: 0.021, washHz: Object.freeze([500, 1500]), spread: 1.1 }),
+        crow: Object.freeze({ noise: 'brown', band: Object.freeze([330, 700]), q: 0.8, beat: 4.4, beats: Object.freeze([2, 3]), clap: Object.freeze([0.004, 0.035]), amp: 0.1, body: 0.035, bodyHz: 260, wash: 0.012, washHz: Object.freeze([320, 900]), spread: 1.3 }),
         pigeon: Object.freeze({ noise: 'white', band: Object.freeze([900, 2100]), q: 1.1, beat: 8.5, beats: Object.freeze([3, 6]), clap: Object.freeze([0.0012, 0.01]), amp: 0.07, body: 0.035, bodyHz: 420, wash: 0.025, washHz: Object.freeze([650, 1800]), spread: 1 }),
       }),
     }),
@@ -42,9 +42,9 @@ export const LIFE_SFX_TUNE = Object.freeze({
     animalBolt: Object.freeze({
       gain: 1, gap: 0.12, falloff: 0.9, rev: 0.06, prio: 0,
       rabbit: Object.freeze({ hops: Object.freeze([2, 3]), every: Object.freeze([0.3, 0.42]), band: Object.freeze([1300, 2300]), amp: 0.06, decay: Object.freeze([0.05, 0.08]), thump: 0.035 }),
-      deer: Object.freeze({ bounds: Object.freeze([2, 3]), every: Object.freeze([0.52, 0.64]), pair: Object.freeze([0.05, 0.09]), hoof: 0.07, hoofHz: Object.freeze([85, 110]), brush: 0.035 }),
+      deer: Object.freeze({ bounds: Object.freeze([2, 3]), every: Object.freeze([0.52, 0.64]), pair: Object.freeze([0.05, 0.09]), hoof: 0.034, hoofHz: Object.freeze([85, 110]), brush: 0.02 }),
       rat: Object.freeze({ len: Object.freeze([0.32, 0.48]), rate: Object.freeze([26, 40]), band: Object.freeze([3200, 5200]), amp: 0.05, scrape: 0.012 }),
-      lizard: Object.freeze({ bursts: Object.freeze([2, 3]), len: Object.freeze([0.12, 0.24]), rest: Object.freeze([0.16, 0.34]), rate: Object.freeze([14, 20]), band: Object.freeze([4200, 6200]), amp: 0.04 }),
+      lizard: Object.freeze({ bursts: Object.freeze([2, 3]), len: Object.freeze([0.12, 0.24]), rest: Object.freeze([0.16, 0.34]), rate: Object.freeze([14, 20]), band: Object.freeze([4200, 6200]), amp: 0.06 }),
       fox: Object.freeze({ band: Object.freeze([950, 1400]), amp: 0.05, decay: Object.freeze([0.16, 0.22]) }),
     }),
     /** a tree shudders under a blow that does not break it (o.k: the shake's strength there, 0..2; o.kind):
@@ -52,15 +52,15 @@ export const LIFE_SFX_TUNE = Object.freeze({
      *  shiver */
     treeShudder: Object.freeze({
       gain: 1, gap: 0, falloff: 0.85, rev: 0.1, prio: 0,
-      leaf: Object.freeze({ band: 2900, q: 0.6, amp: 0.05, len: Object.freeze([0.32, 0.6]), rate: Object.freeze([13, 21]), tick: 0.012, knock: 0.025 }),
-      dead: Object.freeze({ band: 2100, q: 2.6, amp: 0.05, len: Object.freeze([0.22, 0.4]), rate: Object.freeze([11, 17]), tick: 0, knock: 0.03 }),
-      cane: Object.freeze({ band: 5200, q: 0.8, amp: 0.016, len: Object.freeze([0.18, 0.3]), rate: Object.freeze([16, 24]), tick: 0, knock: 0 }),
+      leaf: Object.freeze({ band: 2900, q: 0.6, amp: 0.036, len: Object.freeze([0.32, 0.6]), rate: Object.freeze([13, 21]), tick: 0.012, knock: 0.025 }),
+      dead: Object.freeze({ band: 2100, q: 2.6, amp: 0.04, len: Object.freeze([0.22, 0.4]), rate: Object.freeze([11, 17]), tick: 0, knock: 0.03 }),
+      cane: Object.freeze({ band: 5200, q: 0.8, amp: 0.035, len: Object.freeze([0.18, 0.3]), rate: Object.freeze([16, 24]), tick: 0, knock: 0 }),
     }),
     /** a tree leans to its fall (the last stage of its wear): a slow wooden groan, stick-slip pulses
      *  (`rate` a second, sliding) through two wood formants, a crackle of fibres at the end. o.k 0.5..1.5 */
     treeCreak: Object.freeze({
       gain: 1, gap: 0.5, falloff: 0.7, rev: 0.2, prio: 1,
-      len: Object.freeze([0.95, 1.35]), rate: Object.freeze([30, 46]), f1: Object.freeze([300, 440]), f2: Object.freeze([850, 1150]), amp: 0.3, body: 0.12, fibres: 0.025,
+      len: Object.freeze([0.95, 1.35]), rate: Object.freeze([30, 46]), f1: Object.freeze([300, 440]), f2: Object.freeze([850, 1150]), amp: 0.058, body: 0.026, fibres: 0.01,
     }),
     /** dust sifting off stone: a faint fine patter of grains, thinning (o.k 0..2) */
     dustSift: Object.freeze({
@@ -86,12 +86,12 @@ export const LIFE_SFX_TUNE = Object.freeze({
     /** a lantern / brazier catches (the LAMPS agent calls it): a soft whump and a short crackle (o.k 0..1) */
     lampCatch: Object.freeze({
       gain: 1, gap: 0.15, falloff: 0.85, rev: 0.12, prio: 0,
-      whump: 0.12, sub: 0.035, crackle: 0.05, crackles: Object.freeze([6, 10]),
+      whump: 0.036, sub: 0.012, crackle: 0.02, crackles: Object.freeze([6, 10]),
     }),
     /** a flame fluttering under a shockwave (o.k 0..1) */
     lampGutter: Object.freeze({
       gain: 1, gap: 0.25, falloff: 0.85, rev: 0.08, prio: 0,
-      len: Object.freeze([0.45, 0.75]), amp: 0.06, every: Object.freeze([0.035, 0.08]),
+      len: Object.freeze([0.45, 0.75]), amp: 0.033, every: Object.freeze([0.035, 0.08]),
     }),
     /** a flame dying (knocked over, blown out): a short dying hiss and a click of cooling stone */
     lampOut: Object.freeze({
