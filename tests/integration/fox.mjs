@@ -8,6 +8,7 @@
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { ui, AUDIO, resetWindow } from './shim.mjs';
+import { attachMarks, marksCheck } from './marks.mjs';
 
 const ROOT = process.argv[2];
 const SCEN = process.argv[3] || 'all';
@@ -1236,6 +1237,7 @@ async function scenarioWin() {
   const SEEDS = (process.env.ABYSS_WSEEDS ?? '4242,7,99').split(',').map(Number);
   for (const seed of SEEDS) {
     const G = build(seed);
+    const MK = attachMarks(G.game); // (the floor marks the fight leaves: they change nothing in it)
     const { game } = G;
     const d = game.dragon;
     duel(G, { dist: 3, ai: true });
@@ -1248,6 +1250,7 @@ async function scenarioWin() {
     const T = game.time - t0;
     const taken = G.hits.filter((h) => h.r === RESULT.HIT).length;
     out(`     seed ${seed}: ${won ? 'won' : 'NOT won'} in ${T.toFixed(0)} s: phases at ${phAt.map((t) => (t - t0 > 0 ? (t - t0).toFixed(0) : '0')).join(' / ')} s, ${pops} selves cut down, ${taken} hits taken (god mode); phase ${d.phase}, hp ${Math.round(d.hp)}`);
+    marksCheck(MK, 'fox', out, assert);
     assert(won && d.phase === 3, `seed ${seed}: the fencing bot wins through all three phases`);
     assert(T > 30 && T < 360, `seed ${seed}: the fight takes ${T.toFixed(0)} s`);
   }

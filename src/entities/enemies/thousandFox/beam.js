@@ -80,7 +80,7 @@ export class FoxHowl {
     this._pl = { x: 0, z: 0 };
     this._stations = new Set();
     this._wo = { kind: 'blast', by: 'boss', dx: 0, dz: 0, y: 1.2, src: -1 };
-    this._to = { kind: 'blast', by: 'boss', dx: 0, dz: 0, src: -1, scar: true };
+    this._to = { kind: 'blast', by: 'boss', dx: 0, dz: 0, src: -1, scar: true, mark: 'beam', hot: true, len: NaN }; // (its trench: scars.mark `beam`, a station's stretch)
     this._st = { rise: 0, rear: 0, jaw: 0, turn: 0, fade: 0 };
     this._phase = 0;
     this._phaseAt = 0;

@@ -144,21 +144,22 @@ export class World {
    * A blow lands on the world at (x, z): every breakable the disc touches takes `power` (POWER scale,
    * breakTuning.js), and a hard one (>= SCAR.ground.min) cracks the floor. `o`: { kind: BLOW.*, by:
    * 'player' | 'boss' | 'world', dx, dz (its way), y (its height: a blow above a low piece passes
-   * over it), src (one id per swing), scar: false (no floor mark), fire: k (it also sets alight) }.
+   * over it), src (one id per swing), scar: false (no floor mark), fire: k (it also sets alight),
+   * mark: a scars.mark kind for its floor mark (default by `kind`; false: today's cracks), marked: true
+   * (the caller lays its own mark with groundBlow: none here), hot: true (the mark is charred) }.
    * Returns how many pieces it struck.
    */
   impact(x, z, r, power, o) {
     if (!Number.isFinite(x + z + r + power) || !(power > 0)) return 0;
     const n = this.destructibles.strike(x, z, r, power, o ?? this._impact);
     if (o?.scar !== false && power >= SCAR.ground.min) {
-      this.scars.ground(x, z, power, o?.dx, o?.dz);
+      // the floor's mark (scars.impactMark: one of the blow's kind, or today's cracks with `?marks=0`)
+      this.scars.impactMark(x, z, r, power, o);
       // torn ground: the grass there is gone (char without heat)
       this.scorch.burnCircle(x, z, Math.min(r, 0.6 + power * 0.9), 0.5, 0);
       // a big blow leaves a crater: a rim of thrown-up earth and a charred floor that stay till the reset
       if (power >= SCAR.crater.min) {
-        const cr = Math.min(r, 1.2 + power * 1.1);
-        this.scars.crater(x, z, cr, power);
-        this.scorch.burnCircle(x, z, cr, SCAR.crater.char, 0);
+        this.scorch.burnCircle(x, z, Math.min(r, 1.2 + power * 1.1), SCAR.crater.char, 0);
       }
     }
     if (o?.fire > 0) this.ignite(x, z, r, o.fire);

@@ -2,7 +2,7 @@ import { clamp, wrapAngle, smoothstep, turnToward } from '../../../core/math.js'
 import { TELL, TELL_STYLE, RESULT, DEFENSE, dodgeOnly, isFlare } from '../../../combat/rules.js';
 import { perPhase } from './realise.js';
 import { GUARD_TRAVEL, GUARD_KINDS } from './guard.js';
-import { DUEL_WORLD } from './worldTuning.js';
+import { DUEL_WORLD, DUEL_MARK } from './worldTuning.js';
 import { CueLedger, throwsAt, glaiveHome } from './ledger.js';
 import { ATTACK_SOUND, beatSound } from './attackSound.js';
 import { answerOf, DODGE, prepareChoose, directWeight, booked, linkFor, linkUsable } from './director.js';
@@ -1272,7 +1272,10 @@ export class DuelBrain {
         // (the cover the hero stands behind, for a line of the Void: found first, the FX draw to it)
         b.cover = this._coverFor(b, s);
         d.onImpact?.(b, s, a);
-        if ((!b.def.release || b.cut) && !b.def.cast && !b.def.selfHit && !b.def.draw) this._worldBlow(b);
+        // (the floor's mark of this blow, from its data: the world blow then lays none of its own)
+        const gm = this._groundOf(b);
+        if ((!b.def.release || b.cut) && !b.def.cast && !b.def.selfHit && !b.def.draw) this._worldBlow(b, !!gm);
+        if (gm) d.game.world?.groundBlow?.(gm.x, gm.z, gm);
       }
       // (a beat whose hits the actor deals itself: no zone result here; it is over at its end)
       if (b.def.selfHit) {
@@ -1617,15 +1620,16 @@ export class DuelBrain {
    * as hard as the blow (its damage / T.world.per; a red blow harder). A ring or a blow that knocks
    * down bites stone as a blunt blow and cracks the floor.
    */
-  _worldBlow(b) {
+  _worldBlow(b, marked = false) {
     const d = this.d, w = d.game.world, z = b.def.zone;
     const W = w?.destructibles;
     if (!W?.strike || !z || b.def.bolt || b.def.pull || b.def.grip || b.def.noWorld || (d.position.y > 0.6 && !b.def.air)) return;
     const WT = this.T.world ?? DUEL_WORLD;
     const heavy = z.kind === 'ring' || !!b.def.ring || !!b.def.knockdown;
     const power = ((b.def.damage ?? 12) / (WT.per ?? DUEL_WORLD.per)) * (b.def.tell === TELL.RED ? WT.red ?? DUEL_WORLD.red : 1);
-    const o = (this._wb ??= { kind: 'cut', by: 'boss', dx: 0, dz: 0, y: 1, src: -1, scar: false });
+    const o = (this._wb ??= { kind: 'cut', by: 'boss', dx: 0, dz: 0, y: 1, src: -1, scar: false, marked: false });
     o.kind = heavy ? 'blunt' : 'cut';
+    o.marked = marked; // (the beat's own floor mark is laid by groundBlow: the crack under a heavy blow is not doubled)
     o.src = W.swing();
     o.scar = heavy;
     const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw), zf = z.fwd || 0, zs = z.side || 0;
@@ -1646,6 +1650,137 @@ export class DuelBrain {
       if (heavy) w.impact?.(cx, cz, z.r * 0.55, power, o);
       else W.strike(cx, cz, z.r * 0.55, power, o);
     }
+  }
+
+  /**
+   * The mark this beat leaves on the FLOOR at its impact (worldTuning.js DUEL_MARK: a beat's own
+   * `groundMark`, else read from its shape), as a reused world.groundBlow record { x, z, kind, power,
+   * r, dx, dz, len, arc, by }, or null. It changes nothing in the fight: no damage, no fire, no draw
+   * from Math.random. Beats whose thing goes out (a release, a cast, a beam, a draw) mark only by
+   * their own `groundMark` (the actor marks where it lands).
+   */
+  _groundOf(b) {
+    const D = b.def, d = this.d, G = D.groundMark;
+    if (G === false || b.feint || !d.game.world?.groundBlow) return null;
+    const own = G && typeof G === 'object' ? G : null;
+    if (!own && (D.selfHit || D.draw || D.cast || (D.release && !b.cut) || D.bolt || D.pull || D.grip || D.noWorld)) return null;
+    if (!own && d.position.y > 0.6) return null; // (still in the air: it met nothing)
+    const z = D.zone;
+    if (!z && !own) return null;
+    const M = this.T.marks ? { ...DUEL_MARK, ...this.T.marks } : DUEL_MARK;
+    const WT = this.T.world ?? DUEL_WORLD;
+    const base = ((D.damage ?? 12) / (WT.per ?? DUEL_WORLD.per)) * (D.tell === TELL.RED || D.tell === TELL.BLACK ? WT.red ?? DUEL_WORLD.red : 1);
+    if (!(base > 0) && !own?.power) return null;
+    const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
+    const zf = z?.fwd || 0, zs = z?.side || 0, r = z?.r ?? 2;
+    const heavy = z?.kind === 'ring' || !!D.ring || !!D.knockdown || D.tell === TELL.RED || D.tell === TELL.BLACK;
+    const landing = !!(D.leap || D.dive || D.blink?.land || this._landsAt(D));
+    const low = this._bladeLow(D) <= M.low;
+    const dash = Number(D.dash?.max) || 0;
+    let kind = own?.kind ?? null, fwd = zf, side = zs, len = NaN, arc = 0, rr = NaN, pk = 1;
+    if (!kind) {
+      if (z?.kind === 'ring' && r >= M.bigRing) kind = 'blast';
+      else if (landing) kind = low && z?.kind !== 'ring' ? 'cut' : 'slam';
+      else if (heavy && z?.kind === 'ring') {
+        if (D.part === 'feet') {
+          kind = 'dash'; // (an ankle sweep: the leg's scuffed arc round him)
+          arc = Math.max(0.8, r * 0.55);
+        } else {
+          kind = 'slam';
+          if (!zf) fwd = 0.5; // (the fists / the heel come down before him, not under his root)
+        }
+      } else if (low) kind = 'cut';
+      else if (dash >= M.dash) kind = 'dash';
+      else return null;
+    }
+    switch (kind) {
+      case 'slam':
+        pk = M.slam;
+        rr = z?.kind === 'ring' ? Math.min(r * 0.5, 2) : NaN;
+        break;
+      case 'blast':
+        pk = M.blast;
+        rr = Math.min(r * 0.35, 2.4);
+        break;
+      case 'cut':
+        pk = M.cut;
+        fwd += z?.kind === 'ring' ? 0.4 : r * 0.42;
+        len = Math.min(M.cutLen[1], Math.max(M.cutLen[0], r * 0.75));
+        break;
+      case 'thrust':
+        pk = M.thrust;
+        fwd += Math.min(1.4, r * 0.6);
+        break;
+      case 'dash':
+        if (arc > 0) {
+          pk = M.sweep;
+          len = arc * Math.PI * 2 * M.sweepArc;
+        } else {
+          pk = M.skid;
+          len = Math.min(M.skidLen[1], Math.max(M.skidLen[0], dash * 0.3));
+          fwd -= len; // (the furrow runs up to where he stands)
+        }
+        break;
+      default:
+        break;
+    }
+    const o = (this._gm ??= { x: 0, z: 0, kind: 'slam', power: 0, r: NaN, dx: 0, dz: 0, len: NaN, arc: false, claws: 0, by: 'boss', hot: false });
+    if (own) {
+      if (Number.isFinite(own.fwd)) fwd = own.fwd;
+      if (Number.isFinite(own.side)) side = own.side;
+      if (Number.isFinite(own.len)) len = own.len;
+      if (Number.isFinite(own.r)) rr = own.r;
+      if (own.arc) arc = Number.isFinite(own.arc) ? own.arc : Math.max(0.8, r * 0.55);
+    }
+    o.x = d.position.x + fx * fwd + fz * side;
+    o.z = d.position.z + fz * fwd - fx * side;
+    o.kind = kind;
+    o.power = Number.isFinite(own?.power) ? own.power : base * pk;
+    o.r = rr;
+    o.len = len;
+    o.arc = arc > 0;
+    if (arc > 0) {
+      // (an arc runs round his zone's centre, starting off his right hand)
+      o.r = arc;
+      o.dx = -fz;
+      o.dz = fx;
+    } else {
+      o.dx = fx;
+      o.dz = fz;
+    }
+    o.claws = own?.claws | 0;
+    o.hot = !!own?.hot;
+    o.by = 'boss';
+    return o.power > 0 ? o : null;
+  }
+
+  /** A beat whose lift comes down at its impact (a hop, a leap, a somersault that lands its blow). */
+  _landsAt(D) {
+    const L = D.lift;
+    if (!Array.isArray(L) || L.length < 2) return false;
+    let up = 0, atImpact = NaN;
+    for (const k of L) {
+      if (!Array.isArray(k)) continue;
+      if (k[0] < 0.999 && k[1] > up) up = k[1];
+      if (k[0] >= 0.999 && k[0] <= 1.2 && !Number.isFinite(atImpact)) atImpact = k[1];
+    }
+    return up >= 0.45 && Number.isFinite(atImpact) && atImpact <= 0.08;
+  }
+
+  /** The lowest blade elevation (rad, the pose's `sw[1]`) at or just after the beat's impact; +Inf
+   *  for a beat with no blade. (Memoised per beat definition.) */
+  _bladeLow(D) {
+    const C = (this._lowOf ??= new WeakMap());
+    let v = C.get(D);
+    if (v !== undefined) return v;
+    v = Infinity;
+    for (const k of D.keys ?? []) {
+      const u = k?.[0], p = k?.[1];
+      if (!(u >= 0.99 && u <= 1.7) || !Array.isArray(p?.sw)) continue;
+      if (Number.isFinite(p.sw[1])) v = Math.min(v, p.sw[1]);
+    }
+    C.set(D, v);
+    return v;
   }
 
   /** Is the hero inside the zone (his position and facing, the hero's radius)? `air`: the beat is

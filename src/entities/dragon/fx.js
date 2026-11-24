@@ -4,7 +4,7 @@ import { wallWind, carryFire } from './wallReach.js';
 import { DuelFx } from '../enemies/duelist/fx.js';
 
 /** A blast as a blow on the world (world.impact). */
-const FIRE_BLOW = Object.freeze({ kind: 'blast', by: 'boss', falloff: TUNING.world.falloff }); // (weaker toward its rim)
+const FIRE_BLOW = Object.freeze({ kind: 'blast', by: 'boss', falloff: TUNING.world.falloff, hot: true }); // (weaker toward its rim; its floor mark is charred)
 
 // Dragon FX. Everything that burns is heat in the fire field (render/fireField.js, ADR-113: blobs
 // that add up into one body of fire printed in the wyrm's small digits): the breath, the fireballs

@@ -13,7 +13,7 @@ import { DEFAULT_LOADOUT, swordFromUrl } from './gear/index.js';
 import { CLASH, clashBurst, clashGrind, closestOnSegments } from '../../combat/clashFx.js';
 import { CUT_LOOK } from '../../combat/cutFx.js';
 import { Flurry } from './flurry.js';
-import { BREAK } from '../../world/breakTuning.js';
+import { BREAK, SCAR } from '../../world/breakTuning.js';
 import { chipLook, cutStops } from '../../world/destructibles.js';
 
 // The Wanderer. Owns input → state machine → movement/collision → animation → sword hits → FX.
@@ -2507,6 +2507,7 @@ export class Player {
     this._setKb(pl.dx, pl.dz, 0.55);
     this._plungePhase(PL.LAND);
     this.fx.plungeLand(p.x, p.z, pl.dx, pl.dz);
+    this._groundMark(p.x, p.z, 'slam', SCAR.mark.hero.plunge, NaN);
     g.shake?.(0.22);
     g.world?.gust?.(p.x, p.z, 0.8, 4);
     {
@@ -3247,6 +3248,7 @@ export class Player {
           if (Number.isFinite(this._tip.x + this._tip.z)) {
             this.game.world?.gust?.(this._tip.x, this._tip.z, 0.8 + 0.4 * a.charge, 4 + a.charge);
             this.fx.dust(this._tip.x, this._tip.z, 8 + Math.round(6 * a.charge), 1 + 0.5 * a.charge);
+            this._groundMark(this._tip.x, this._tip.z, 'cut', lerp(SCAR.mark.hero.cleave[0], SCAR.mark.hero.cleave[1], clamp(fin(a.charge, 0), 0, 1)), SCAR.mark.hero.cleaveLen);
           }
           this.anim.kickCoat(0.5 + 0.3 * a.charge, this.anim.noise);
         }
@@ -3310,6 +3312,20 @@ export class Player {
     if (!Array.isArray(spheres) || !spheres.length) return;
     // (viaShards: the blade is in the ground, the shards are the contact: no drawn cut)
     if (bandHit(spheres, x, 0, z, x, 0, z, fin(S.radius, 1.5), fin(S.height, 3), 0, this._hit) > 0) this._applyHit(a, this._hit, true);
+  }
+
+  /** One of his heavy blows met the floor (world.groundBlow: a mark of its kind, `by: 'player'`; it
+   *  damages nothing). The gash runs from (x, z) along his facing. */
+  _groundMark(x, z, kind, power, len) {
+    const w = this.game.world;
+    if (!w?.groundBlow || !Number.isFinite(x + z)) return;
+    const o = (this._gmo ??= { kind: 'cut', power: 0, dx: 0, dz: 1, len: NaN, by: 'player' });
+    o.kind = kind;
+    o.power = power;
+    o.dx = Math.sin(this.yaw);
+    o.dz = Math.cos(this.yaw);
+    o.len = len;
+    w.groundBlow(x - (kind === 'cut' ? o.dx * len * 0.35 : 0), z - (kind === 'cut' ? o.dz * len * 0.35 : 0), o);
   }
 
   /** This swing as a blow on the world (world.destructibles: one id per swing, so a piece takes it once). */

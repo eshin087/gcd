@@ -39,7 +39,7 @@ export class Glare {
     this.B = { on: false, phase: 'off' };
     this.stats = { beams: 0, first: 0, ticks: 0, blocked: 0, parried: 0, returned: 0, hits: 0, covered: 0 };
     this._wo = { kind: 'blast', by: 'boss', dx: 0, dz: 0, y: 1.2, ya: 1.2, yb: 1.2, src: -1, scar: true };
-    this._to = { kind: 'blast', by: 'boss', dx: 0, dz: 0, src: -1, scar: true };
+    this._to = { kind: 'blast', by: 'boss', dx: 0, dz: 0, src: -1, scar: true, mark: 'beam', hot: true, len: NaN }; // (its trench: scars.mark `beam`, a station's stretch)
     this._fire = { kind: 'blast', by: 'boss', y: 1, src: -1 };
     this._stations = new Set();
     this._blockEvt = -Infinity;

@@ -358,7 +358,7 @@ const grip = (windup, o = {}) => ({
 });
 /** The Rift as a beat: `count` fissures of red light thrown along the floor from the staff's point. */
 const rift = (windup, count, o = {}) => ({
-  tell: N, windup, fixed: true, active: 0.1, damage: 16, knockback: 1.6, release: { style: 'rift', count, spread: 0.36 }, part: 'feet', close: 0, track: 0.8, keys: riftKeys(), ...o,
+  tell: N, windup, fixed: true, active: 0.1, damage: 16, knockback: 1.6, release: { style: 'rift', count, spread: 0.36 }, part: 'feet', close: 0, track: 0.8, keys: riftKeys(), groundMark: { kind: 'thrust', power: 0.9, fwd: 0.9 }, ...o,
 });
 /** Parting Light as a beat: a backflip away from the opponent and, landing, crescents of red light
  *  (`count`, a number or one per form). */

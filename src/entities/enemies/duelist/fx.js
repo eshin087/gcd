@@ -97,6 +97,9 @@ export const TELL_CHARGE = Object.freeze({ rate: 70, from: [1.6, 3.4], life: [0.
 let FLARE_ID = 1;
 const FLARE_MARGIN = [0.06, 0.1]; // of the frame's width / height: a flare's heart is never nearer an edge
 
+// a fissure's crack behind it (the Starless Lord's rift): a segment this long, this hard
+const RIFT_MARK = Object.freeze({ seg: 1.3, power: 0.7 });
+
 export class DuelFx {
   constructor(d) {
     this.d = d;
@@ -1818,7 +1821,7 @@ export class DuelFx {
     const c = this.crescents.find((p) => !p.alive);
     if (!c) return null;
     const l = Math.hypot(dx, dz) || 1;
-    Object.assign(c, { alive: true, x, z, dx: dx / l, dz: dz / l, age: 0, flashed: -1, done: false, speed: undefined, radius: undefined, half: undefined, life: undefined, style: undefined, tell: o.tell ?? TELL.NORMAL, damage: o.damage ?? 14, kb: o.knockback ?? 0.8, attack: o.attack ?? 'ashCrescent' });
+    Object.assign(c, { alive: true, x, z, dx: dx / l, dz: dz / l, age: 0, flashed: -1, done: false, speed: undefined, radius: undefined, half: undefined, life: undefined, style: undefined, mk: 0, tell: o.tell ?? TELL.NORMAL, damage: o.damage ?? 14, kb: o.knockback ?? 0.8, attack: o.attack ?? 'ashCrescent' });
     return c;
   }
 
@@ -1832,6 +1835,20 @@ export class DuelFx {
     this._frontsUpdate(fdt);
     this._emittersUpdate(fdt);
     this._streaksUpdate(fdt);
+  }
+
+  /** A fissure's crack on the floor behind it (world.groundBlow `cut`, a segment every RIFT_MARK.seg m). */
+  _riftMark(c, step) {
+    const w = this.game.world;
+    if (!w?.groundBlow) return;
+    c.mk += step;
+    if (c.mk < RIFT_MARK.seg) return;
+    const g = (this._riftG ??= { kind: 'cut', power: RIFT_MARK.power, dx: 0, dz: 1, len: 0, by: 'boss' });
+    g.dx = c.dx;
+    g.dz = c.dz;
+    g.len = c.mk;
+    w.groundBlow(c.x - c.dx * c.mk, c.z - c.dz * c.mk, g);
+    c.mk = 0;
   }
 
   get crescentsAlive() {
@@ -1857,6 +1874,7 @@ export class DuelFx {
         c.alive = false;
         continue;
       }
+      if (c.style === 'rift') this._riftMark(c, speed * dt);
       // the world in its way (ADR-107): a crescent bursts on cover and chips it; a wall of force
       // goes through and throws down what it meets; a fissure runs under everything
       const W = this.game.world?.destructibles;

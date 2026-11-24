@@ -266,7 +266,15 @@ export class Sheathed extends Duelist {
       }
       // a long scar on the floor under the blade's own part
       const sc = wd?.scars;
-      if (sc?.ground) for (const f of [0.25, 0.55, 0.85]) sc.ground(W.ax + (W.bx - W.ax) * f, W.az + (W.bz - W.az) * f, 0.55, W.dx, W.dz);
+      if (sc?.on && wd?.groundBlow) {
+        // (one clean gash the length of the cut: scars.mark's `cut`)
+        const g = (this._gmo ??= { kind: 'cut', power: 0, dx: 0, dz: 1, len: 0, by: 'boss' });
+        g.power = T.mark ?? 1.1;
+        g.dx = W.dx;
+        g.dz = W.dz;
+        g.len = Math.hypot(W.bx - W.ax, W.bz - W.az);
+        wd.groundBlow(W.ax, W.az, g);
+      } else if (sc?.ground) for (const f of [0.25, 0.55, 0.85]) sc.ground(W.ax + (W.bx - W.ax) * f, W.az + (W.bz - W.az) * f, 0.55, W.dx, W.dz);
     }
     if (R.live) {
       R.live = false;
