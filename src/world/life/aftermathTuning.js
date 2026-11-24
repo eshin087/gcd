@@ -29,14 +29,14 @@
 
 const DEFAULT = {
   smoke: {
-    max: 5, merge: 3, wait: 1.6, life: [20, 40], per: 64, height: [3.2, 4.6], rise: [0.45, 0.7],
-    spread: 0.35, grow: 0.9, carry: 0.55, lean: 3.2, curl: 0.35, minBurn: 0.05,
-    color: [0.3, 0.3, 0.32], alpha: 0.34, fadeIn: 3,
+    max: 5, merge: 3, wait: 1.6, life: [20, 40], per: 130, height: [2.4, 3.4], rise: [0.4, 0.6],
+    spread: 0.28, grow: 0.6, carry: 0.35, lean: 1.8, curl: 0.3, minBurn: 0.05,
+    color: [0.44, 0.44, 0.47], alpha: 0.72, fadeIn: 3,
   },
   embers: { rate: 1.4, hot: 0.35, life: [1.8, 3.4], rise: [0.25, 0.6], carry: 0.7, color: [0.78, 0.26, 0.06], colorEnd: [0.22, 0.04, 0.01], flicker: 0.45, max: 48 },
   dust: {
     min: 1.2, max: 3, merge: 3, life: [6, 10], per: 90, r: 1.1, y: [0.12, 1.1], carry: 0.32, grow: 0.7, cycle: [2.2, 4.5],
-    color: [0.46, 0.42, 0.36], alpha: 0.3, fadeIn: 0.8,
+    color: [0.52, 0.48, 0.42], alpha: 0.5, fadeIn: 0.8,
   },
   heroClear: [0.5, 1.4],
   glyph: { smoke: ".,'`:~-.'", dust: ".,'`-.:.", ember: ".'." },
@@ -48,13 +48,13 @@ export const AFTERMATH_TUNING = Object.freeze({
   DEFAULT: level(),
   cinderwood: level(),
   // the burned sect: grey ash-dust, the smoke a shade warmer
-  ash: level({ dust: { ...DEFAULT.dust, color: [0.42, 0.41, 0.39] }, smoke: { ...DEFAULT.smoke, color: [0.32, 0.31, 0.3] } }),
+  ash: level({ dust: { ...DEFAULT.dust, color: [0.42, 0.41, 0.39] }, smoke: { ...DEFAULT.smoke, color: [0.46, 0.45, 0.44] } }),
   // the crater: what hangs is dark, red-grey; smoke drawn slowly toward the star by the air
-  starless: level({ dust: { ...DEFAULT.dust, color: [0.34, 0.24, 0.22], alpha: 0.28 }, smoke: { ...DEFAULT.smoke, color: [0.28, 0.25, 0.26] } }),
+  starless: level({ dust: { ...DEFAULT.dust, color: [0.42, 0.3, 0.28], alpha: 0.46 }, smoke: { ...DEFAULT.smoke, color: [0.4, 0.36, 0.37] } }),
   // the badlands: ochre dust; the plateau wind takes smoke away fast (a shorter, leaning column)
   ring: level({
     dust: { ...DEFAULT.dust, color: [0.55, 0.47, 0.35], carry: 0.38 },
-    smoke: { ...DEFAULT.smoke, life: [16, 28], height: [2.6, 3.6], lean: 4 },
+    smoke: { ...DEFAULT.smoke, life: [16, 28], height: [2, 2.8], lean: 2.4 },
   }),
   fox: level({ dust: { ...DEFAULT.dust, color: [0.44, 0.42, 0.39] } }),
   // the grove: no wind; smoke rises straight and the haze hangs where it is

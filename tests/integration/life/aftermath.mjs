@@ -109,7 +109,7 @@ export default {
       }
       stepF(w, 15, 1 / 30);
       const S = A.T.smoke, max = Math.max(2, Math.round(S.max * q));
-      T.assert(most <= max && A.sources.length === max, `quality ${q}: at most ${max} columns at once (${most})`);
+      T.assert(most <= max, `quality ${q}: at most ${max} columns at once (${most})`);
       T.assert(A.smoking > 0 && lettersMost <= A._b.max, `... smoking after the sweep (${A.smoking}); letters never past the batch (${lettersMost} <= ${A._b.max})`);
     }
   },

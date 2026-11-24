@@ -40,14 +40,14 @@ export class Aftermath {
     this._visible = true;
     this._b = undefined;
     this._eb = undefined;
-    const q = Math.max(0.3, Math.min(1, life.quality));
+    // (made for quality 1: the phone preset is set after the world is built; quality limits what is used)
     const S = this.T.smoke, D = this.T.dust;
-    this._perS = Math.max(16, Math.round(S.per * q));
-    this._perD = Math.max(20, Math.round(D.per * 2 * q));
-    this.sources = Array.from({ length: Math.max(2, Math.round(S.max * q)) }, (_, i) => ({
+    this._perS = Math.max(16, S.per);
+    this._perD = Math.max(20, D.per * 2);
+    this.sources = Array.from({ length: Math.max(2, S.max) }, (_, i) => ({
       i, on: false, state: 0, x: 0, z: 0, r: 1, k: 1, last: 0, age: 0, life: 1, H: 3, wx: 0, wz: 0, acc: 0, n: 0,
     }));
-    this.haze = Array.from({ length: Math.max(1, Math.round(D.max * q)) }, (_, i) => ({
+    this.haze = Array.from({ length: Math.max(1, D.max) }, (_, i) => ({
       i, on: false, x: 0, z: 0, r: 1, age: 0, life: 1, n: 0, vx: 0, vz: 0, k: 1,
     }));
     this._sl = null;
@@ -99,11 +99,17 @@ export class Aftermath {
 
   // ---- what lands -----------------------------------------------------------------------------------
 
+  /** How many of `n` records the phone budget lets run (life.quality now). */
+  _use(n, max) {
+    return Math.min(n, Math.max(2, Math.round(max * Math.max(0.3, Math.min(1, this.life.quality)))));
+  }
+
   ignite(x, z, r = 2, k = 1) {
     if (!this.on || !Number.isFinite(x + z + r + k) || !(r > 0) || !(k > 0)) return false;
-    const S = this.T.smoke, t = this.life.t;
+    const S = this.T.smoke, t = this.life.t, use = this._use(this.sources.length, S.max);
     let best = null, bd = Infinity;
-    for (const s of this.sources) {
+    for (let i = 0; i < use; i++) {
+      const s = this.sources[i];
       if (!s.on) continue;
       const d = Math.hypot(s.x - x, s.z - z);
       if (d < S.merge + s.r * 0.5 && d < bd) {
@@ -125,10 +131,10 @@ export class Aftermath {
     }
     // a free column, else the one longest without fire (the newest win)
     let s = null;
-    for (const o of this.sources) if (!o.on) { s = o; break; }
+    for (let i = 0; i < use && !s; i++) if (!this.sources[i].on) s = this.sources[i];
     if (!s) {
       s = this.sources[0];
-      for (const o of this.sources) if (o.last < s.last) s = o;
+      for (let i = 0; i < use; i++) if (this.sources[i].last < s.last) s = this.sources[i];
     }
     s.on = true;
     s.state = 0;
@@ -158,11 +164,12 @@ export class Aftermath {
       this._hazeLetters(h);
       return true;
     }
+    const use = Math.min(this.haze.length, Math.max(1, Math.round(D.max * Math.max(0.3, Math.min(1, this.life.quality)))));
     let h = null;
-    for (const o of this.haze) if (!o.on) { h = o; break; }
+    for (let i = 0; i < use && !h; i++) if (!this.haze[i].on) h = this.haze[i];
     if (!h) {
       h = this.haze[0];
-      for (const o of this.haze) if (o.life - o.age < h.life - h.age) h = o;
+      for (let i = 0; i < use; i++) if (this.haze[i].life - this.haze[i].age < h.life - h.age) h = this.haze[i];
     }
     if (!this._batch()) return false;
     h.on = true;
@@ -353,20 +360,21 @@ export class Aftermath {
     for (const s of this.sources) {
       if (!s.on || s.state !== 1) continue;
       const life = s.age / s.life;
-      const env = smoothE(s.age / S.fadeIn) * Math.pow(1 - life, 1.2);
+      const env = smoothE(s.age / S.fadeIn) * Math.pow(1 - life, 0.9);
       if (!(env > 0.01)) continue;
       // it thins by count as well as by alpha: fewer letters as it goes
       const keep = 0.3 + 0.7 * (1 - life);
       const H = s.H, rise = (S.rise[0] + S.rise[1]) * 0.5;
-      const wr = s.r / 1.5, L0 = s.i * this._perS;
-      for (let j = 0; j < this._perS; j++) {
+      const wr = s.r / 1.5, L0 = s.i * this._perS, nS = Math.max(16, Math.round(this._perS * Math.max(0.3, Math.min(1, this.life.quality))));
+      for (let j = 0; j < nS; j++) {
         const l = Ls[L0 + j];
         if (l.keep > keep) continue;
         let u = l.u0 + (s.age * rise * l.sp) / H;
         u -= Math.floor(u);
-        const y = 0.15 + u * H;
+        // (denser low: it slows and spreads as it rises)
+        const hu = Math.pow(u, 1.3), y = 0.15 + hu * H;
         // the lean: the air x the time it took to rise this high, at most `lean` m
-        const tt = (u * H) / rise;
+        const tt = (hu * H) / rise;
         let lx = s.wx * tt, lz = s.wz * tt;
         const ll = Math.hypot(lx, lz);
         if (ll > S.lean) {
@@ -378,7 +386,7 @@ export class Aftermath {
         const x = s.x + lx + l.ox * rr + Math.sin(t * 0.6 + l.ph + u * 5) * cu;
         const z = s.z + lz + l.oz * rr + Math.cos(t * 0.47 + l.ph * 1.3 + u * 4) * cu * 0.7;
         // (it comes up out of the char softly and is gone by the top)
-        const a = S.alpha * env * l.a * smoothE(u / 0.12) * Math.pow(1 - u, 1.4) * this._clear(x, z);
+        const a = S.alpha * env * l.a * smoothE(u / 0.12) * Math.pow(1 - u, 0.8) * this._clear(x, z);
         n = this._put(b, n, x, y, z, l.g, S.color, a);
       }
     }

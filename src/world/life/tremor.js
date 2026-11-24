@@ -222,11 +222,12 @@ export class Tremor {
       r.y = top - this._r() * Math.min(0.5, b.h * 0.15);
       r.vx = (this._r() - 0.5) * 0.08;
       r.vz = (this._r() - 0.5) * 0.08;
-      r.vy = -this._range(S.fall);
-      const fallT = Math.max(0.3, (r.y - gy - 0.1) / Math.max(0.3, -r.vy + 0.6));
-      r.life = Math.min(this._range(S.life), fallT);
-      r.gravity = S.gravity;
-      r.drag = 0.6;
+      // (each letter its own start and its own pull: they leave the top as a trickle, not a sheet)
+      const v = this._range(S.fall), gk = this._range(S.gravity), h = Math.max(0.2, r.y - gy - 0.12);
+      r.vy = -v;
+      r.gravity = -gk;
+      r.drag = 0.15;
+      r.life = Math.min(this._range(S.life), (-v + Math.sqrt(v * v + 2 * gk * h)) / gk);
       r.col = this._dg[(this._r() * this._dg.length) | 0];
       r.color = S.color;
       r.colorEnd = S.color;
