@@ -60,14 +60,16 @@ export const GRASS = Object.freeze({
    */
   mark: Object.freeze({
     slam: Object.freeze({ r: 1.05, k: [0.75, 1] }),
-    cut: Object.freeze({ w: 0.6, k: [0.85, 1] }),
+    cut: Object.freeze({ w: 0.5, k: [0.85, 1] }),
     thrust: Object.freeze({ w: 0.34, r: 0.45, k: [0.7, 1] }),
     dash: Object.freeze({ w: 0.62, k: [0.85, 1] }),
     blast: Object.freeze({ r: 0.95, k: [0.85, 1] }),
     beam: Object.freeze({ w: 0.8, k: [1, 1] }),
-    step: Object.freeze({ r: 0.42, k: [0.45, 0.7] }),
+    step: Object.freeze({ r: 0.5, k: [0.6, 0.85] }),
     lift: 0.08,
   }),
-  /** the A channel's soft edge: a disc / a strip is full depth inside, falling off over `soft` m */
-  soft: 0.35,
+  /** the A channel's edge: a disc / a strip is full depth out to its radius and `full` of a map cell more
+   *  (0.625 m cells: a line narrower than a cell still mows the cells it crosses), falling off over `soft` m */
+  full: 0.25,
+  soft: 0.3,
 });

@@ -84,14 +84,14 @@ export class Scorch {
   }
 
   /**
-   * The grass is torn at (x, z): a disc r m wide, k deep (0..1: 1 mown to stubble), its edge soft over
-   * GRASS.soft m; max-blended into A, only where grass grows. Persistent until reset(). No random draw.
+   * The grass is torn at (x, z): a disc r m wide, k deep (0..1: 1 mown to stubble), full out to r (and
+   * GRASS.full of a cell more: the cell a point falls in is never short), its edge soft over GRASS.soft m; max-blended into A, only where grass grows. Persistent until reset(). No random draw.
    * Returns the tear it added (the sum over its cells).
    */
   tear(x, z, r, k = 1) {
     if (!mowOn() || !Number.isFinite(x + z + r + k) || !(r > 0) || !(k > 0)) return 0;
     k = Math.min(1, k);
-    const s = this.size, cs = this.cellSize, soft = GRASS.soft, R = r + soft * 0.5;
+    const s = this.size, cs = this.cellSize, soft = GRASS.soft, R = r + cs * GRASS.full + soft;
     const dens = this._grassDensity();
     const c0x = Math.max(0, Math.floor((x - R - this.min) / cs)), c1x = Math.min(s - 1, Math.floor((x + R - this.min) / cs));
     const c0z = Math.max(0, Math.floor((z - R - this.min) / cs)), c1z = Math.min(s - 1, Math.floor((z + R - this.min) / cs));
@@ -116,7 +116,7 @@ export class Scorch {
     if (!mowOn() || !Number.isFinite(ax + az + bx + bz + w + k + k2) || !(w > 0) || !(Math.max(k, k2) > 0)) return 0;
     k = Math.min(1, Math.max(0, k));
     k2 = Math.min(1, Math.max(0, k2));
-    const s = this.size, cs = this.cellSize, soft = GRASS.soft, R = w * 0.5 + soft * 0.5;
+    const s = this.size, cs = this.cellSize, soft = GRASS.soft, R = w * 0.5 + cs * GRASS.full + soft;
     const dens = this._grassDensity();
     const ex = bx - ax, ez = bz - az, l2 = ex * ex + ez * ez;
     const c0x = Math.max(0, Math.floor((Math.min(ax, bx) - R - this.min) / cs)), c1x = Math.min(s - 1, Math.floor((Math.max(ax, bx) + R - this.min) / cs));
