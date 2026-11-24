@@ -7,6 +7,7 @@ import { stampHit } from '../../combat/impactStamp.js';
 import { calmLook, calmA, calmS } from '../../combat/impactCalm.js';
 import { perfectMode } from '../../combat/streak.js';
 import { perfectFeel, perfectBeat, perfectParryMark, perfectDodgeLine, perfectArrive, perfectGhost } from '../../combat/perfectFx.js';
+import { parryFxSpec, parrySparks } from '../../combat/parrySparks.js';
 
 // Glyph-particle effects owned by the Wanderer: cyan slash arcs (the light swings, the slam, the
 // cleave and its impact), the thrust's long streak, the slam's crystal-shard burst, the violet gem's glow + glints, impact
@@ -832,6 +833,8 @@ export class PlayerFx {
     if (PF) {
       clashBurst(this.game, x, y, z, { pal: CLASH.perfect, power: (1 + 0.12 * (n - 1)) * PF.clash.power, spray, e1: o?.e1 ?? null, e2: o?.e2 ?? null, ring: PF.clash.ring, cross: PF.clash.cross, light: PF.clash.light, embers: PF.clash.embers });
       perfectParryMark(this.game, x, y, z, { e1: o?.e1 ?? null, e2: o?.e2 ?? null, mode: o.feel.mode, beat: o.feel.beat, streak: o.feel.streak });
+      // ?parryFx= (combat/parrySparks.js; '0' as shipped): a spit of orange sparks off the crossed steel
+      if (parryFxSpec()) parrySparks(this.game, x, y, z, { e1: o?.e1 ?? null, e2: o?.e2 ?? null, spray, met: !!o?.met, fdx, fdz });
       return;
     }
     clashBurst(this.game, x, y, z, {

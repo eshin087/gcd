@@ -5292,6 +5292,28 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   the dust sift, the pebbles, the smoke and the crater haze are faint; Ashfall's crows do not read; the
   wyrm's fire fills the mark cap in about three minutes. The owner has not yet judged any of it in play.
 
+## ADR-178 — Every sound effect back to its first synth version: the sound passes are off by default (2026-11-23)
+
+- **Context:** ADR-165 (attack cues and blows as recordings) and ADR-172 (the combat core as recordings and
+  designed sounds) replaced much of the synth. In a session that followed, the owner turned down a new light-cut
+  swing (round one picked `e`, then "i dont like any of these"), plucked-string blue and red warnings, seven
+  variations of them, and a spread of other families (bamboo, wood, bell, flute, steel, drum, bowstring, breath),
+  and said: "lets just make all the sounds go back to their original. i want to start from baseline and undo all
+  the sound changes". Asked the scope, they chose: all sound effects, keep the music.
+- **Decision:** the existing switch is turned round: `samples.js` `DEFAULT_SFX = 'old'`, `?sfx=new` (the Lab's
+  `sfx` row) opts in. Nothing is deleted: the recordings, the designed sounds, `sampleList.js`, `parryChain.js` and
+  the synth recipes stay. The sample bank fetches nothing while the mode is `old` and loads on `setSfxMode('new')`
+  (verified in a headless browser: default 0 of 35 files requested; `?sfx=new` and the live switch 35 of 35).
+  The recorded music (ADR-117) is untouched. Sounds that belong to later features (the streak's climb note, ADR-167;
+  the impact pass's sub and music dip, ADR-149; the living world's air, ADR-163) and the round-two sign-off's two
+  small fixes (the combo swing's pitch rising on every cut; the streak note × 0.5 on a parry) are not part of the
+  switch and stay.
+- **Consequences:** a new sound round starts from the first synth sounds. The work of that session (a swing with
+  its top on the blade's contact, `player:attack`'s windup / active, `?swing=`, `?blue=` / `?red=` with the
+  families above, the pickers) is not in the repo: it is a git stash on the machine that made it ("swing + warning
+  sound options") and the pickers' pages. The tests of the sound passes (integ and duel `sfx`) switch the mode on
+  and put the default back.
+
 ## ADR-180 — Grass the sword mows, lamps that light with the fight, and the living world heard (2026-11-23)
 
 - **Context:** asked "what else do you recommend to make the world and background more alive and
@@ -5335,3 +5357,22 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   dominates the meadow; a lantern's flame is a few letters at the game camera; Foxfire's ten lanterns
   share three lights; the Ring's braziers became low lights (they give way to the fight's) also with
   the living world off; nobody has heard the sounds yet.
+
+## ADR-181 — The perfect parry throws a few orange sparks; nothing else of the moment changes (2026-11-24)
+
+- **Context:** the owner asked to make the perfect parry and dodge "more epic cool with subtle effects". In one session
+  they turned down, on film: a four-piece pass (the floor's letters reacting, poses, a darkened iris and camera lean,
+  the world answering) with "i dont want the background to change color at all"; a shower of ~170 white-gold sparks
+  as "too bright / fireworks, too many / too big, wrong motion, not the right idea" and "calmer"; four richer
+  afterimages of the hero's real body with "the original is better". Asked for a reference they said to research it
+  and decide.
+- **Decision:** the shipped perfect parry (`?perfect=sharp`, ADR-167) stays exactly as it is, and a perfect parry of a
+  blow adds a spit of 12 - 16 sparks modelled on real sword sparks and on Sekiro's deflect: few, fast, short-lived,
+  orange; most along the blade that glanced off; each a stroke along its motion that becomes a dot as it slows; cooling
+  to dark red; under the bloom threshold, so a crisp letter and never a glow; real time; one cell each
+  (`combat/parrySparks.js`, `?parryFx=0|a`, default `a`). A normal parry, a perfectly parried bullet and the perfect
+  dodge are unchanged.
+- **Consequences:** the moment is still dominated by the gold mark; the spit is a detail, read best at the end of the
+  freeze and in a string. Against the wyrm the sparks are mostly hidden by its own parry star. One more `LetterBatch`
+  draw call while sparks live. The rejected passes stay on local branches; a later round on these moments should start
+  from a concrete reference and one narrow prototype, and never change the background.

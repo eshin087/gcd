@@ -18,7 +18,8 @@ import { StreakSound, perfectSound } from './streakSound.js';
 
 // WebAudio engine: the sound effects are synthesised at runtime, except the attack sounds, the red cues
 // and the combat core (parries, hurt, the hero's landed cuts, slam, flurry, plunge, clash, the boss's
-// guard), which are recorded / designed one-shots over the synth (samples.js, sampleList.js; `?sfx=old`:
+// guard), which are recorded / designed one-shots over the synth (samples.js, sampleList.js; OFF by default,
+// ADR-176: `?sfx=new` turns them on; `?sfx=old`, the default:
 // all synth, as before); the music is recorded tracks per level and boss phase (tracks.js; ADR-117) over a
 // synthesised fallback score (music.js).
 // The AudioContext is created lazily by unlock() (flow calls it on title dismiss; the engine

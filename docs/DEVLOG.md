@@ -73,6 +73,69 @@ lantern's `lamp` mark) and ran the whole set once.
 
 ---
 
+## 2026-11-24 — Session 91: the perfect parry throws a few orange sparks (and what was turned down to get there)
+
+**Owner:** "what can we improve next in terms of visuals, effects, animations etc. i want to make perfect parry and
+dodge effects look more epic cool with subtle effects as a start." Branch `combat/perfect-sparks`. ADR-181 / M1.77.
+
+**What shipped.** `?parryFx=a`, the default (`combat/parrySparks.js`): on a PERFECT parry of a blow, on top of the
+shipped `sharp` mark (unchanged), 12 - 16 sparks leave the crossing, about 70 % along the attacker's edge past the
+crossing, the rest along the hero's edge (no crossed steel, e.g. the wyrm: the way the blow was pushed aside); 4 - 7
+m/s, strong drag, gravity; a stroke (`- / | \`) laid along its screen motion while fast, then `'`, then `.`;
+yellow-orange to deep orange to dark red, no channel above the bloom threshold (no halo, never white); light ones live
+0.12 - 0.3 s real, two or three heavy ones 0.35 - 0.5 s and die on the floor; real time (they leave the contact in the
+0.11 s freeze); at most 48 alive; never over a fighter's head or chest. One house-letter `LetterBatch`, built on the
+first spit. `?parryFx=0` (the Lab's `parryFx` button in the streak row) draws the parry as before.
+
+**What was turned down, in order (all filmed at the game camera; the owner's words):**
+1. A four-piece pass on one moment record (a ring through the floor's letters, poses, a darkened iris / camera lean /
+   sound duck, the world answering), three options each, 19 clips: "i dont like any of this. start over. i dont want
+   the background to change color at all."
+2. Sparks round 1 (a glint run down the blades and ~46 sparks): read as nothing at the game camera (sent back by the
+   lead, never shown). Round 2 (a white-gold fan of ~170 streaks): "too bright / fireworks, too many / too big, wrong
+   motion, not the right idea", "calmer".
+3. The perfect dodge's afterimage drawn as a second copy of the hero's real body (four options: an ink copy that
+   unravels, a pose trail, a cut ghost, a brush smear): "i still the the original is better". The shipped afterimage
+   stays.
+4. Asked for a reference, the owner: "do your own research and figure out the best thing". The calm spit was
+   designed from what real sword sparks and Sekiro's deflect do (few, fast, short-lived, orange; streak to dot).
+
+**Verification.** duel `parryfx` (0 draws no spark; `a` 12 - 16 on a perfect parry, none on a normal one, none white,
+90 % within 0.6 m (measured 93.4 % over 60 seeded spits), all gone within 0.55 s (0.483 s at most), a string peaks at
+48, no `Math.random`, nothing throws without a fire field, `a` is the default); `perfectfx`, `deflect`, glyph check;
+`npm test`: see the PR. Filmed: parry1, parry3, the wyrm, the phone.
+
+**Open.** It is quiet by design: at full speed it reads as a few orange flecks after the gold flash. When the blow
+glances toward the hero many sparks land over his lower body; against the wyrm they fly back into its head and sit
+under its own white parry star. Not played on the iPhone. The rejected work is on local branches only
+(`combat/perfect-epic`, `pfx/*`, `player/dodge-afterimage`), not pushed.
+
+## 2026-11-23 — Session 90: every sound effect back to its first synth version
+
+**Owner:** (after a session of sound picks) "lets just make all the sounds go back to their original. i want to
+start from baseline and undo all the sound changes." Asked the scope; they chose all sound effects, music kept.
+
+**The session before it** (kept in a git stash, "swing + warning sound options", and the pickers): the hero's
+recorded light-cut swing did not match the animation (its takes peaked at 206 / 77 / 60 ms, the blade lands at
+about 150 ms); five designed swings with their top on the blade were built and the owner picked `e`, then asked for
+softer ones for mashing; the blue / red warnings ("too cheap", "way too dramatic and long"): the originals back,
+four variations of each, a plucked-string pair, seven variations of it, and a spread of families, all turned down.
+Rig lessons are in the memory notes (render each event through a fresh `AudioEngine` on an `OfflineAudioContext`;
+level-match A-weighted; a deep fundamental is not heard on a phone).
+
+**Changed** (ADR-178). `samples.js`: `DEFAULT_SFX = 'old'`; `?sfx=new` / `setSfxMode('new')` opts in and starts the
+download; `load()` does nothing while off. Lab `sfx` row: `old` / `new`. Integ and duel `sfx` scenarios switch the
+mode on and restore the default; integ asserts the default is `old`.
+
+**Verified in headless Edge:** default 0 of 35 files requested; `?sfx=new` 35 of 35 loaded; the Lab's switch loads
+them live. This found a slip of mine that node could not: a block replacement in `samples.js` had also removed
+`headOffset`, which only runs when a file decodes (the tests have no fetch).
+
+**Open.** Nobody has listened to the baseline in play. The next round should start from the owner's words (a
+reference, a game, a feeling) rather than options.
+
+---
+
 ## 2026-11-23 — A fight the world feels: the blade clean through, a mark for every boss blow, flocks, animals, a set that shakes (ADR-177; planned by Fable, built by Opus agents)
 
 **Owner:** "when the player hits something like a rock or tree, the sword gets stopped and i dont like

@@ -1776,6 +1776,15 @@ the body.
   enough that the struck surface stays 0.01 - 0.07 m from the drawn cut (`snapM` 0.06 on a duelist),
   so the cut, the stamp and the spray stay on the body; the swing to the peak comes after the freeze.
 
+### The perfect parry's sparks (2026-11-24, ADR-181; `combat/perfectFx.js` hosts, `combat/parrySparks.js` draws)
+
+On top of the gold mark, a perfect parry of a blow throws what real steel throws: a FEW sparks (12 - 16), FAST,
+SHORT-LIVED, ORANGE, most along the blade that glanced off. Each is one house letter: a stroke laid along its screen
+motion while fast, `'` then `.` as it slows, yellow-orange to dark red, never above the bloom threshold (a crisp letter,
+never a glow, never white). The owner's rules from the passes turned down on the way: the background never changes
+colour or print for a combat moment; no fireworks (many bright streaks), no glints that run, no soft light; detail
+over size.
+
 ### The streak and a single perfect defence (2026-11-23, ADR-167; `combat/perfectFx.js`, `player/flurryFx.js`, `player/flurryBurst.js`, `player/streakFx.js`, `ui/streakCounter.js`)
 The rule of the pass: **lines, not light**, and one idea a piece that grows by tier (a streak of 3 /
 5 / 7 / 10 / 15), never a new effect per count. Everything that marks a moment is written in the fire

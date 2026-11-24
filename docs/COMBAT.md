@@ -270,7 +270,8 @@ hazard the ground heats up from its spawn     its edge shows, the heat flares, a
   thrust, the Sheathed's draw), a bare-handed boss's fist or kick, the wyrm's claws and tail; the
   hero's own light cut is pitched a little above theirs (his heavy cut and thrust are the synth's).
   Hazards and bullets keep their cues.
-  `?sfx=old` restores the sounds before (a tick on every tell, the ping on every flash, all synth).
+  Off by default since ADR-178: the default is the original synth (a tick on every tell, the ping on every
+  flash, all synth); `?sfx=new` turns these sounds on.
   ARCHITECTURE.md → Audio, "The attack sounds".
 - **The combat core's sounds (2026-11-23, round 2).** The parry of a blade is a recorded steel clash
   (an ordinary blow; a bigger one for a blue blow and a perfect parry, which keeps its crack and high bell
