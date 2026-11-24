@@ -21,6 +21,9 @@ import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { buildLooks } from './labLooks.js';
 import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
 import { LIFE, setLife, setLifeK } from '../world/life/lifeSwitch.js';
+import { STYLES, STYLE_IDS, setStanceStyle, stanceStyleId } from '../entities/player/styles/index.js';
+import { listOf, SET_NAMES } from '../entities/player/stances.js';
+import { FIDGET_NAMES } from '../entities/player/anim.js';
 
 // The Lab — a debug panel to test the boss without playing the fight (contract: docs/ARCHITECTURE.md
 // → Lab; usage: src/dev/README.md). It talks only to the actors' `debug` APIs (dragon.debug,
@@ -808,6 +811,71 @@ export class Lab {
     for (const B of this.ui.stanceBtns ?? []) B.el.classList?.toggle?.('on', B.v === v);
   }
 
+  /** PLAYER → 'moves: stand' (the move style he stands and idles in, styles/index.js), 'pose' (pin a
+   *  pose of the style's sets: player.debug.stance) and 'fidget' (start an idle action now:
+   *  anim.debug.fidget). The pose and fidget rows are rebuilt when the style changes. */
+  _buildMovesStand(body) {
+    const mr = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'moves: stand', mr).title = 'the move style he stands and idles in (?stance= / ?moves=; the light chain has its own row)';
+    const mg = el('div', 'lab-grid', null, mr);
+    mg.style.flex = '1';
+    this.ui.movesStandBtns = STYLE_IDS.map((id) => {
+      const b = button(mg, id, () => {
+        setStanceStyle(id);
+        const pd = this.game.player?.debug;
+        if (pd?.stance) pd.stance.ease = pd.stance.fight = null;
+        this._syncMovesStand(true);
+        this._status(`stands as: ${STYLES[id]?.label ?? id}`, 'ok');
+      });
+      b.title = STYLES[id]?.blurb ?? id;
+      return { id, el: b };
+    });
+    const pr = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'pose', pr).title = 'pin one pose of the style (at ease / in a fight), or auto: he shifts between them';
+    this.ui.poseGrid = el('div', 'lab-grid', null, pr);
+    this.ui.poseGrid.style.flex = '1';
+    const fr = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'fidget', fr).title = 'start one of the style\'s idle actions now (standing still)';
+    this.ui.fidgetGrid = el('div', 'lab-grid', null, fr);
+    this.ui.fidgetGrid.style.flex = '1';
+    this._syncMovesStand(true);
+  }
+
+  _syncMovesStand(rebuild = false) {
+    const id = stanceStyleId(), style = STYLES[id];
+    for (const B of this.ui.movesStandBtns ?? []) setClass(B.el, 'on', B.id === id);
+    const pd = this.game.player?.debug;
+    if (rebuild && this.ui.poseGrid) {
+      const host = this.ui.poseGrid;
+      host.textContent = '';
+      this.ui.poseBtns = [];
+      for (const set of SET_NAMES) {
+        const list = listOf(style, set);
+        for (const S of [null, ...list]) {
+          const b = button(host, `${set === 'ease' ? 'ease' : 'fight'}: ${S ? S.id : 'auto'}`, () => {
+            if (pd?.stance) pd.stance[set] = S ? S.id : null;
+            this._syncMovesStand();
+          });
+          b.title = S ? `hold ${S.id} (${set})` : `${set}: he shifts between the style's poses`;
+          this.ui.poseBtns.push({ set, id: S ? S.id : null, el: b });
+        }
+      }
+    }
+    if (rebuild && this.ui.fidgetGrid) {
+      const host = this.ui.fidgetGrid;
+      host.textContent = '';
+      const own = Array.isArray(style?.fidgets) && style.fidgets.length ? style.fidgets : null;
+      const names = own ? own.map((D) => D?.name).filter((n) => typeof n === 'string') : FIDGET_NAMES;
+      for (const n of names) {
+        button(host, n, () => {
+          const ok = this.game.player?.anim?.debug?.fidget?.(n);
+          this._status(ok ? `idle action: ${n}` : `idle action ${n}: not now (another clip is playing)`, ok ? 'ok' : 'warn');
+        }).title = `start ${n} now`;
+      }
+    }
+    for (const B of this.ui.poseBtns ?? []) setClass(B.el, 'on', (pd?.stance?.[B.set] ?? null) === B.id);
+  }
+
   _syncOutfit() {
     for (const B of this.ui.lookBtns ?? []) B.el.classList?.toggle?.('on', B.id === this.game.player?.look);
   }
@@ -1140,6 +1208,7 @@ export class Lab {
       return { v, el: btn };
     });
     this._syncStanceBtns();
+    this._buildMovesStand(body);
     // the look of a landed cut (combat/cutFx.js; the owner's pick): the slash line, or a fan of sparks
     const cut = el('div', 'lab-row', null, body);
     el('span', 'lab-lbl', 'cut', cut).title = 'the look of a landed cut (combat/cutFx.js)';

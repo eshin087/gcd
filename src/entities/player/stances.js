@@ -1,6 +1,7 @@
-// The hero's two standing stances (ADR-114; the owner's pick of three rendered options, "A · At
-// ease"), and the life in them. anim.js stand() writes them over guard()'s ready stance for the
-// hero's animator only, blended by the animator's fightW:
+// The hero's standing stances (ADR-114; the owner's pick of three rendered options, "A · At
+// ease"), the life in them, and the STANCE SETS a move style brings (styles/index.js): anim.js
+// stand() writes them over guard()'s ready stance for the hero's animator only, blended by the
+// animator's fightW:
 //
 //   AT EASE   nothing to fight. He stands tall and a little side-on with the weight on the rear
 //             leg; the sword arm hangs loose and the blade carries on down the arm's own line, out
@@ -16,76 +17,24 @@
 // ribs, both hands hung beside the hips at one height, and over a breath nothing travelled more
 // than 1-3 cm, under half a pixel at the game camera.
 //
+// THE SETS (a style's `stances`: { ease: [STANCE], fight: [STANCE] }, styles/STANCES.md): per set
+// the animator holds one STANCE for a random dwell, then cross-fades to another (stanceStep below,
+// run once a frame by HeroAnimator.update). Today's style brings none: TODAY_SETS, the two above,
+// one stance a set, so nothing is ever picked and the pose is today's exactly.
+//
 // Pose space: body axes (x = his left, y up, z ahead); hand targets are offsets from each shoulder
 // (anim.js). Every other clip, and a duelist's footwork, keeps guard() as its base.
-import { TAU } from '../../core/math.js';
 import { DIM } from './heroDims.js';
+// (no import of styles/: a style file may import this one)
+import { set3, dir, handBelt, standLife, STAND_LIFE, BELT, smoother } from './poseKit.js';
+import { streakTier } from '../../combat/streak.js';
 
+export { STAND_LIFE, BELT };
 const ANK = DIM.ankle;
-const DEG = Math.PI / 180;
-
-/** The stance's life: periods (s) of its slow oscillators. None shares a period with another, so
- *  the stance never visibly loops: the breath (at ease / in the guard), the weight settling from
- *  foot to foot, a slower drift of the weight, the two the look-around is made of, and the two
- *  that carry the blade's point round. `arms` = how far (rad of the breath) the arms trail the chest. */
-export const STAND_LIFE = { breath: [3.7, 3.1], settle: 7.9, drift: 11.9, look: [9.1, 5.3], point: [4.7, 6.4], arms: 0.9 };
-
-const M = { br: 0, brL: 0, sw: 0, dr: 0, look: 0, tipA: 0, tipB: 0 };
-function oscillate(t, breath) {
-  const L = STAND_LIFE, b = (t * TAU) / breath;
-  M.br = Math.sin(b);
-  M.brL = Math.sin(b - L.arms);
-  M.sw = Math.sin((t * TAU) / L.settle + 1.1);
-  M.dr = Math.sin((t * TAU) / L.drift + 0.4);
-  // (two sines: he looks one way, comes back, glances the other; never a metronome)
-  M.look = 0.62 * Math.sin((t * TAU) / L.look[0] + 2.0) + 0.38 * Math.sin((t * TAU) / L.look[1]);
-  M.tipA = Math.sin((t * TAU) / L.point[0] + 0.6);
-  M.tipB = Math.sin((t * TAU) / L.point[1]);
-  return M;
-}
-
-/** p[i..i+2] = the unit vector at azimuth az (0 ahead, + his left) and elevation el (degrees). */
-function dir(p, i, az, el) {
-  const a = az * DEG, e = el * DEG, c = Math.cos(e);
-  p[i] = c * Math.sin(a);
-  p[i + 1] = Math.sin(e);
-  p[i + 2] = c * Math.cos(a);
-}
-function set3(p, i, x, y, z) {
-  p[i] = x;
-  p[i + 1] = y;
-  p[i + 2] = z;
-}
-
-/** The free hand on the belt at the left hip, the elbow out behind it (both stances: one hand is
- *  enough). h: the hand from its shoulder; p: the elbow's side; d / n: the fingers and the palm; all
- *  in body axes as the chest stands at ease (turned `yaw`): a stance turns them with its own chest. */
-export const BELT = { yaw: -0.14, h: [-0.004, -0.33, 0.022], p: [0.85, -0.15, -0.6], d: [-0.8, -0.2, 0.56], n: [-0.56, 0.05, -0.82] };
-function turned(p, i, v, c, s) {
-  p[i] = v[0] * c + v[2] * s;
-  p[i + 1] = v[1];
-  p[i + 2] = -v[0] * s + v[2] * c;
-}
-/** `yaw` = this stance's chest turn (pelvY + spY): the hand belongs to the waist, which turns with it. */
-function onTheBelt(p, P, m, yaw) {
-  const a = yaw - BELT.yaw, c = Math.cos(a), s = Math.sin(a);
-  // the palm on the side of the waist at the belt, a hand's thickness off it …
-  turned(p, P.lH, BELT.h, c, s);
-  p[P.lH] += 0.004 * m.sw;
-  p[P.lH + 1] += 0.01 * m.brL;
-  turned(p, P.lP, BELT.p, c, s);
-  // … an open hand, the fingers round the front of the hip toward the buckle, the palm in on it
-  turned(p, P.lD, BELT.d, c, s);
-  turned(p, P.lN, BELT.n, c, s);
-  p[P.hs] = 0;
-  p[P.lk] = 0;
-  p[P.twoHand] = 0;
-  p[P.offAt] = 0;
-}
 
 /** AT EASE (see the header). P = anim.js's channel map; A = the animator (its time). */
 export function atEase(p, P, A) {
-  const m = oscillate(A.time, STAND_LIFE.breath[0]);
+  const m = standLife(A.time, STAND_LIFE.breath[0]);
   p[P.bodyX] = -0.028 - 0.022 * m.sw; // the hips over the rear (right) leg; the weight settles
   p[P.bodyY] = -0.012 + 0.007 * m.br;
   p[P.bodyZ] = -0.012;
@@ -108,7 +57,7 @@ export function atEase(p, P, A) {
   // the flat to the front and the back, square to the blade: as broad as a blade this steep can be
   // to the game camera on all four sides of him (≥ 0.29 of its width; tipped 6° it showed 0.19 to one)
   set3(p, P.swF, 0.62, -0.05, 0.79);
-  onTheBelt(p, P, m, p[P.pelvY] + p[P.spY]);
+  handBelt(p, m, p[P.pelvY] + p[P.spY]);
   set3(p, P.rF, -0.135, ANK, -0.09); // the weight leg under the hips, the toes out
   set3(p, P.lF, 0.13, ANK, 0.15); // the left foot ahead, the knee soft
   set3(p, P.rK, -0.5, 0.05, 1);
@@ -120,7 +69,7 @@ export function atEase(p, P, A) {
 
 /** FIGHT, the fencer's guard (see the header). The point draws a slow small circle on the foe. */
 export function fencerGuard(p, P, A) {
-  const m = oscillate(A.time, STAND_LIFE.breath[1]);
+  const m = standLife(A.time, STAND_LIFE.breath[1]);
   p[P.bodyX] = 0.0 - 0.01 * m.sw;
   p[P.bodyY] = -0.06 + 0.006 * m.br; // the knees soft
   p[P.bodyZ] = 0.0 + 0.012 * m.dr; // the weight rides a little on and off the front foot
@@ -142,7 +91,7 @@ export function fencerGuard(p, P, A) {
   dir(p, P.swD, -9 + 2.4 * m.tipA, 13 + 2.2 * m.tipB + 1.2 * m.brL);
   // the flat up: broad to the game camera from every side (edge up, it vanished from behind)
   set3(p, P.swF, 0.25, 1, 0);
-  onTheBelt(p, P, m, p[P.pelvY] + p[P.spY]);
+  handBelt(p, m, p[P.pelvY] + p[P.spY]);
   set3(p, P.rF, -0.1, ANK, 0.25); // the sword foot forward
   set3(p, P.lF, 0.11, ANK, -0.22); // the rear foot turned out
   set3(p, P.rK, -0.4, 0, 1);
@@ -153,3 +102,136 @@ export function fencerGuard(p, P, A) {
   p[P.lFy] = 0.95;
   p[P.footFlat] = 0.95;
 }
+
+// ================================================================ THE STANCE SETS
+/** Today's sets: one stance each, so the engine never picks, never draws noise, never fades. */
+export const TODAY_SETS = Object.freeze({
+  ease: Object.freeze([Object.freeze({ id: 'atEase', fn: atEase, w: 1, dwell: [1e9, 1e9] })]),
+  fight: Object.freeze([Object.freeze({ id: 'fencer', fn: fencerGuard, w: 1, dwell: [1e9, 1e9] })]),
+});
+export const SET_NAMES = ['ease', 'fight'];
+/** The cross-fade between two stances of a set when the style names none (s, smootherstep). */
+export const SHIFT_FADE = 1.2;
+const TIER_MAX = 5;
+/** How fast A.streakK (0..1, the streak's tier / 5) follows the tier (1/s). */
+const STREAK_K_RATE = 3;
+
+/** The sets a style stands in (its `stances`, each set falling back to today's when it is missing,
+ *  empty or malformed). */
+export function setsOf(style) {
+  const S = style?.stances;
+  if (!S || typeof S !== 'object') return TODAY_SETS;
+  return S;
+}
+export function listOf(style, set) {
+  const L = setsOf(style)[set];
+  return Array.isArray(L) && L.length && L.every((s) => s && typeof s.fn === 'function') ? L : TODAY_SETS[set];
+}
+const okTier = (s, tier) => tier >= (Number.isFinite(s.minTier) ? s.minTier : 0) && tier <= (Number.isFinite(s.maxTier) ? s.maxTier : TIER_MAX);
+
+/** A set's selection state on the animator (HeroAnimator.stanceSel[set]). */
+export const newSel = () => ({ list: null, cur: null, prev: null, k: 1, t: 0, dwell: 0, n: 0 });
+
+/** Pick the next stance of `list` by weight, among those whose tier range holds `tier` (all of
+ *  them when none does), never `not` while another is eligible. `rnd` 0..1 noise (called only when
+ *  there is a choice to make). */
+const wOf = (s) => Math.max(0, Number.isFinite(s.w) ? s.w : 1);
+function pick(list, tier, not, rnd) {
+  let n = 0, sum = 0;
+  for (const s of list) if (s !== not && okTier(s, tier)) { n++; sum += wOf(s); }
+  const byTier = n > 0;
+  if (!n) for (const s of list) if (s !== not) { n++; sum += wOf(s); }
+  if (!n) return not ?? list[0]; // (a list of one)
+  const ok = (s) => s !== not && (!byTier || okTier(s, tier));
+  if (n === 1 || !(sum > 0)) {
+    for (const s of list) if (ok(s)) return s;
+  }
+  let r = rnd() * sum, last = null;
+  for (const s of list) {
+    if (!ok(s)) continue;
+    last = s;
+    r -= wOf(s);
+    if (r <= 0) return s;
+  }
+  return last ?? list[0];
+}
+function dwellOf(s, rnd, many) {
+  const d = Array.isArray(s?.dwell) ? s.dwell : null;
+  if (!many) return Infinity; // (one stance: it never moves on)
+  const a = Number.isFinite(d?.[0]) ? Math.max(0.5, d[0]) : 6, b = Number.isFinite(d?.[1]) ? Math.max(a, d[1]) : a * 2;
+  return a + (b - a) * rnd();
+}
+
+/**
+ * Once a frame (HeroAnimator.update, beside fightW; the hero only): for each set, hold the stance
+ * for its dwell, then start a cross-fade to the next one (only while `calm`: in the loco clip, no
+ * idle action running, no guard held). A pin (player.debug.stance[set]), a style switch or a streak
+ * tier that leaves the current stance out move on at once, but only once a running fade is done
+ * (a fade never restarts half way: no pop). Noise: the animator's own stance stream (A.stanceNoise,
+ * drawn only when there is a choice: today's sets never draw it). `style`: styles/index.js's.
+ */
+export function stanceStep(A, dt, calm, style) {
+  const pl = A.player;
+  const tier = streakTier(Number.isFinite(pl?.streak) ? pl.streak : 0);
+  A.streakTier = tier;
+  const want = tier / TIER_MAX, rate = 1 - Math.exp(-STREAK_K_RATE * Math.max(0, dt));
+  A.streakK = Number.isFinite(A.streakK) ? A.streakK + (want - A.streakK) * rate : want;
+  const fade = Number.isFinite(style?.shift?.fade) && style.shift.fade > 0.05 ? style.shift.fade : SHIFT_FADE;
+  const pins = pl?.debug?.stance;
+  for (const set of SET_NAMES) {
+    const S = A.stanceSel[set], list = listOf(style, set);
+    if (S.k < 1) S.k = Math.min(1, S.k + dt / (S.fade || fade));
+    S.t += dt;
+    if (!S.cur) {
+      // the first frame (or after a reset): straight into a stance, no fade
+      S.list = list;
+      S.cur = pick(list, tier, null, A.stanceNoise);
+      S.prev = null;
+      S.k = 1;
+      S.t = 0;
+      S.dwell = dwellOf(S.cur, A.stanceNoise, list.length > 1);
+      continue;
+    }
+    if (S.k < 1) continue; // a fade runs to its end before anything else starts
+    const pinId = typeof pins?.[set] === 'string' ? pins[set] : null;
+    const pinned = pinId ? list.find((s) => s.id === pinId) ?? null : null;
+    let next = null;
+    if (pinned) {
+      if (S.cur !== pinned) next = pinned;
+    } else if (S.list !== list || !list.includes(S.cur)) {
+      next = pick(list, tier, null, A.stanceNoise);
+    } else if (!okTier(S.cur, tier) && list.some((s) => okTier(s, tier))) {
+      next = pick(list, tier, S.cur, A.stanceNoise);
+    } else if (calm && S.t >= S.dwell && list.length > 1) {
+      next = pick(list, tier, S.cur, A.stanceNoise);
+      if (next === S.cur) S.t = 0;
+    }
+    S.list = list;
+    if (!next || next === S.cur) continue;
+    S.prev = S.cur;
+    S.cur = next;
+    S.k = 0;
+    S.fade = fade;
+    S.t = 0;
+    S.n++;
+    S.dwell = dwellOf(next, A.stanceNoise, list.length > 1);
+  }
+}
+
+/** Write a set's stance into p (p holds guard()'s base): the current one, or mid-fade the previous
+ *  one (into `scr`, from the same base) blended toward it. `blend(out, a, b, t)` = anim.js's. */
+export function writeSet(p, P, A, S, scr, blend) {
+  const cur = S.cur;
+  if (!cur) return;
+  if (S.prev && S.k < 1) {
+    scr.set(p);
+    S.prev.fn(scr, P, A);
+    cur.fn(p, P, A);
+    blend(p, scr, p, smoother(S.k), S.mem ?? (S.mem = { d: 0, ok: false }));
+  } else {
+    cur.fn(p, P, A);
+    if (S.mem) S.mem.ok = false;
+  }
+}
+/** The weight (0..1) the CURRENT stance of a set has in the pose (1 out of a fade). */
+export const curWeight = (S) => (S.prev && S.k < 1 ? smoother(S.k) : 1);
