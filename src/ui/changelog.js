@@ -18,6 +18,15 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-24',
+        title: 'A perfect parry throws a few orange sparks',
+        notes: [
+          'Parry perfectly and a quick spit of orange sparks flies off the crossed blades, the way real steel sparks: short streaks that shrink to dots and die in under half a second.',
+          'Nothing else changes: the gold flash, the freeze and the sound are as before, and normal parries and the perfect dodge look the same.',
+          'Prefer the parry without them? Add ?parryFx=0 to the address.',
+        ],
+      },
+      {
         date: '2026-11-23',
         title: 'Every sound effect is back to its first synth version',
         notes: [
