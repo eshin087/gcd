@@ -382,6 +382,142 @@ const FIDGETS = [
   { name: 'showy.beckon', dur: 2.6, sets: ['ease', 'fight'], fn: fBeckon },
 ];
 
+// ================================================================ THE COMBO
+// Five presses, a groove of quick-quick-(tat-tat)-hop ... SPIN:
+//   1 the flourish     the blade wheels once by his right hip before it falls across him
+//   2 the reverse      a rising backhand, the hips pivoting round with it
+//   3 the twin         two blows in one press, a V: down to his front-right and up to his left,
+//                      then a held beat
+//   4 the hop cut      a skip in, falling from over the left shoulder to the right hip
+//   5 the spiral       a full turn to his right off the ground (rising, not today's level whirl), the blade rising round him from the
+//                      grass to high on his right; he lands and holds it, the free arm out
+// The steel swings back like a pendulum: each hit starts on the side where the one before leaves it
+// (1 ends low left, 2 high right, 3 high left, 4 low right, 5 high right, into 1's wheel).
+// next from: 0.304 · 0.224 · 0.469 · 0.302 · 0.598 s, a cycle of ~1.9 s, 202 damage (the audit)
+const CHAIN = [
+  {
+    name: 'showyFlourish', kind: 'light', combo: 1, damage: 30, poise: 11, heavy: false,
+    windup: 0.15, active: 0.11, recovery: 0.22, chain: 0.2, lunge: 0.55, reach: 2.2,
+    hitstop: 0.05, shake: 0.1, bite: 0.9, contact: 'light', punch: 0.3, kick: 0.07, flare: 0.5,
+    anim: { kind: 'clip', clip: 'showyFlourish' },
+  },
+  {
+    name: 'showyReverse', kind: 'light', combo: 2, damage: 28, poise: 10, heavy: false,
+    windup: 0.08, active: 0.1, recovery: 0.22, chain: 0.2, lunge: 0.5, reach: 2.2,
+    hitstop: 0.045, shake: 0.1, bite: 0.8, contact: 'light', punch: 0.3, kick: 0.06, flare: 0.5,
+    anim: { kind: 'clip', clip: 'showyReverse', turn: -0.35 },
+  },
+  {
+    name: 'showyTwin', kind: 'light', combo: 3, damage: 48, poise: 18, heavy: false,
+    windup: 0.1, active: 0.2, recovery: 0.26, chain: 0.65, buffer: 0.55, lunge: 0.6, reach: 2.2,
+    hitstop: 0.05, shake: 0.12, bite: 0.9, contact: 'light', punch: 0.35, kick: 0.08, flare: 0.55,
+    hits: [
+      { at: [1.0, 1.46], damage: 22, poise: 8, hitstop: 0.04, bite: 0.7 },
+      { at: [1.5, 2.0], damage: 26, poise: 10, hitstop: 0.065, bite: 1.1, biteHold: 0.1, punch: 0.45, contact: 'sweep', heft: { t: 0.06, rate: 0.4 }, flare: 0.65 },
+    ],
+    anim: { kind: 'clip', clip: 'showyTwin', turn: 0.3 },
+  },
+  {
+    name: 'showyHop', kind: 'light', combo: 4, damage: 34, poise: 14, heavy: false,
+    windup: 0.12, active: 0.11, recovery: 0.24, chain: 0.3, lunge: 0.7, reach: 2.2,
+    hitstop: 0.06, shake: 0.16, bite: 1.1, contact: 'sweep', punch: 0.5, kick: 0.1, flare: 0.6,
+    anim: { kind: 'clip', clip: 'showyHop', hop: 0.16, tuck: 0.8 },
+  },
+  {
+    name: 'showySpiral', kind: 'light', combo: 5, damage: 80, poise: 49, heavy: true,
+    windup: 0.2, active: 0.16, recovery: 0.45, chain: 0.55, buffer: 0.6, lunge: 0.75, reach: 2.3,
+    hitstop: 0.12, shake: 0.4, bite: 1.4, biteHold: 0.14, heft: { t: 0.1, rate: 0.3 }, flare: 0.95,
+    contact: 'cleave', punch: 1.5, kick: 0.2,
+    anim: { kind: 'clip', clip: 'showySpiral', spin: -1, spinFeet: 'hop', hop: 0.2, tuck: 1.0 },
+  },
+];
+
+const SWINGS = {
+  /** 1 · the flourish: from wherever he stands the blade wheels down past his right hip, round
+   *  behind and up to the coil beside his head, then one diagonal down across him to low left. */
+  showyFlourish: {
+    line: 'right',
+    lF: [0.15, 0.48], rF: [-0.17, -0.46], fy: [0.15, -0.75], drag: 0.14,
+    keys: [
+      { u: 0.4, h: [-0.2, -0.36, 0.02], a: [-138, -48], fh: 'chest' },
+      { u: 0.7, by: -0.04, bz: -0.09, bx: -0.06, hip: -0.44, sy: -0.5, sx: -0.1 },
+      { u: 1.0, h: [-0.06, 0.2, 0.0], a: [-152, 40], by: -0.08, bz: -0.07, bx: -0.05, hip: -0.36, sy: -0.44, sx: -0.04, sz: 0.05, fh: 'aim' },
+      { u: 1.25, h: [0.02, 0.14, 0.24], a: [-102, 32] },
+      { u: 1.5, h: [0.14, -0.05, 0.46], a: [-30, 12], by: -0.21, bz: 0.09, bx: 0.01, hip: 0.18, sy: 0.0, sx: 0.3, sz: 0.0, l: [0.26, -0.06, 0.06], lp: [0.45, -0.85, -0.3], ld: [70, 15], pn: [-0.3, -1, 0], lk: 0 },
+      { u: 1.75, h: [0.25, -0.22, 0.41], a: [30, -16] },
+      { u: 2.0, h: [0.31, -0.33, 0.3], a: [72, -34], by: -0.28, bz: 0.13, bx: 0.05, hip: 0.38, sy: 0.4, sx: 0.42, sz: -0.07, fh: 'highWing', l: [0.32, 0.01, -0.22] },
+      { u: 2.15, by: -0.3, bz: 0.15, bx: 0.06, hip: 0.5, sy: 0.55, sx: 0.47 },
+      { u: 2.4, h: [0.34, -0.36, 0.16], a: [126, -24], by: -0.25, bz: 0.1, bx: 0.04, hip: 0.43, sy: 0.47, sx: 0.38, sz: -0.06, fh: 'highWing' },
+    ],
+  },
+  /** 2 · the reverse: the backhand rises from the left hip across his front to high right as the
+   *  hips pivot round with it; the free arm, still out from the flourish, swings down against it. */
+  showyReverse: {
+    line: 'right',
+    fy: [0.45, -0.6],
+    keys: [
+      { u: 0.6, by: -0.28, bz: -0.07, bx: -0.06, hip: 0.5, sy: 0.57, sx: 0.36 },
+      { u: 1.0, h: [0.36, -0.37, 0.06], a: [148, -30], by: -0.25, bz: -0.06, bx: -0.05, hip: 0.42, sy: 0.5, sx: 0.32, fh: 'highWing', l: [0.34, -0.08, -0.16] },
+      { u: 1.25, h: [0.28, -0.3, 0.32], a: [98, -26] },
+      { u: 1.5, h: [0.13, -0.14, 0.46], a: [30, -8], by: -0.15, bz: 0.08, bx: 0.01, hip: -0.06, sy: 0.08, sx: 0.22, l: [0.34, -0.3, 0], lp: [0.4, -0.6, -0.6], ld: [95, -30], pn: [0, -1, 0], lk: 0 },
+      { u: 1.75, h: [-0.08, 0.06, 0.42], a: [-30, 18] },
+      { u: 2.0, h: [-0.2, 0.18, 0.3], a: [-70, 40], by: -0.05, bz: 0.11, bx: 0.05, hip: -0.38, sy: -0.38, sx: 0.04, sz: 0.06, fh: 'wingLo', l: [0.42, -0.32, -0.16] },
+      { u: 2.15, by: -0.03, bz: 0.12, bx: 0.06, hip: -0.5, sy: -0.52, sx: -0.02 },
+      { u: 2.4, h: [-0.24, 0.24, 0.12], a: [-118, 52], by: -0.04, bz: 0.08, bx: 0.04, hip: -0.45, sy: -0.47, sx: -0.03, sz: 0.05, fh: 'wingLo' },
+    ],
+  },
+  /** 3 · the twin: two blows in one press, a V: from high right down to his front-right low, the
+   *  wrist turns over at the bottom and it rises across him to high left; the hips carry both. */
+  showyTwin: {
+    line: 'down',
+    lF: [0.17, 0.44], fy: [0.35, -0.65],
+    keys: [
+      { u: 0.6, by: -0.06, bz: -0.07, bx: -0.06, hip: -0.5, sy: -0.55, sx: 0.0, fh: 'aim' },
+      { u: 1.0, h: [-0.14, 0.16, 0.14], a: [-118, 36], by: -0.08, bz: -0.06, bx: -0.05, hip: -0.42, sy: -0.48, sx: 0.04, fh: 'aim' },
+      { u: 1.2, h: [-0.02, 0.0, 0.36], a: [-70, 10] },
+      { u: 1.42, h: [0.06, -0.2, 0.46], a: [-24, -14], by: -0.24, bz: 0.08, bx: 0.0, hip: -0.06, sy: -0.06, sx: 0.36, fh: 'chest' },
+      { u: 1.62, h: [0.16, -0.12, 0.45], a: [26, -4] },
+      { u: 1.8, h: [0.26, 0.04, 0.38], a: [66, 18] },
+      { u: 2.0, h: [0.32, 0.16, 0.24], a: [96, 36], by: -0.12, bz: 0.11, bx: 0.05, hip: 0.36, sy: 0.42, sx: 0.08, sz: -0.05, fh: 'tail', l: [0.24, -0.42, -0.3] },
+      { u: 2.15, by: -0.12, bz: 0.12, bx: 0.06, hip: 0.47, sy: 0.54, sx: 0.04 },
+      { u: 2.4, h: [0.36, 0.2, 0.12], a: [124, 46], by: -0.11, bz: 0.08, bx: 0.04, hip: 0.42, sy: 0.47, sx: 0.04, fh: 'tail' },
+    ],
+  },
+  /** 4 · the hop cut: a skip in (the def's `hop`), lifted over the left shoulder, falling across
+   *  his chest to the right hip. */
+  showyHop: {
+    line: 'left',
+    lF: [0.15, 0.48], rF: [-0.17, -0.46], fy: [0.15, -0.75], drag: 0.14,
+    keys: [
+      { u: 0.6, by: -0.1, bz: -0.08, bx: -0.06, hip: 0.5, sy: 0.56, sx: -0.06, l: [0.18, -0.3, 0.08] },
+      { u: 1.0, h: [0.32, 0.14, 0.1], a: [156, 44], by: -0.09, bz: -0.06, bx: -0.05, hip: 0.42, sy: 0.5, sx: 0.0, sz: -0.05, fh: 'chest', l: [-0.06, -0.2, 0.26], ld: [15, 55] },
+      { u: 1.25, h: [0.24, 0.1, 0.32], a: [104, 34] },
+      { u: 1.5, h: [0.1, -0.06, 0.46], a: [30, 12], by: -0.21, bz: 0.09, bx: 0.01, hip: -0.06, sy: 0.0, sx: 0.3, l: [0.22, -0.1, 0.12], lp: [0.4, -0.85, -0.3], ld: [60, 40], pn: [-0.4, -1, 0], lk: 0 },
+      { u: 1.75, h: [-0.12, -0.24, 0.4], a: [-30, -16] },
+      { u: 2.0, h: [-0.24, -0.34, 0.26], a: [-70, -34], by: -0.28, bz: 0.13, bx: 0.05, hip: -0.36, sy: -0.4, sx: 0.4, sz: 0.07, fh: 'highWing', l: [0.32, 0.04, -0.2] },
+      { u: 2.15, by: -0.3, bz: 0.15, bx: 0.06, hip: -0.48, sy: -0.53, sx: 0.45 },
+      { u: 2.4, h: [-0.26, -0.38, 0.08], a: [-124, -26], by: -0.25, bz: 0.1, bx: 0.04, hip: -0.42, sy: -0.46, sx: 0.36, sz: 0.06, fh: 'highWing' },
+    ],
+  },
+  /** 5 · the spiral: he sinks, wound to his right, and turns once to his right off the ground (the
+   *  def's `spin` / `hop`), the blade rising round him from low behind his right hip to high at his
+   *  front-right; he lands and holds the finish, the free arm out the other way. */
+  showySpiral: {
+    line: 'spiral',
+    spin: true,
+    home: 0.6,
+    lead: [0.01, 0.005],
+    keys: [
+      { u: 0.5, by: -0.3, bz: -0.04, hip: 0.3, sy: 0.32, sx: 0.36 },
+      { u: 1.0, h: [-0.24, -0.34, -0.04], a: [-160, -28], by: -0.3, hip: -0.36, sy: -0.26, sx: 0.32, fh: 'chest', l: [-0.06, -0.3, 0.26] },
+      { u: 1.5, h: [-0.3, -0.22, 0.05], a: [-116, 6], by: -0.17, hip: -0.4, sy: -0.36, sx: 0.2, fh: 'chest', l: [-0.04, -0.28, 0.24] },
+      { u: 2.0, h: [-0.32, 0.14, 0.28], a: [-62, 38], by: -0.07, bz: 0.06, bx: 0.04, hip: 0.06, sy: -0.06, sx: 0.04, fh: 'wing', l: [0.45, -0.16, -0.1] },
+      { u: 2.2, by: -0.12, bz: 0.07, bx: 0.05, hip: 0.0, sy: -0.12, sx: 0.08 },
+      { u: 2.6, h: [-0.3, 0.12, 0.24], a: [-64, 38], by: -0.1, bz: 0.06, bx: 0.04, hip: 0.02, sy: -0.1, sx: 0.06, fh: 'wing' },
+    ],
+  },
+};
+
 export const showy = {
   id: 'showy',
   label: 'Showy acrobat',
@@ -389,6 +525,6 @@ export const showy = {
   stances: STANCES,
   shift: { fade: 2.5 },
   fidgets: FIDGETS,
-  chain: null,
-  swings: {},
+  chain: CHAIN,
+  swings: SWINGS,
 };
