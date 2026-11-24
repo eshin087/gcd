@@ -5666,7 +5666,7 @@ async function scenarioHeroLife() {
       const crosses = Math.abs(front.a[0]) <= 45;
       if (!(steep <= 50) || (crosses && !(Math.abs(front.a[1]) <= 20))) bad.push(`${name} (steepest ${steep}°, ${front.a[1]}° as it crosses his front)`);
       const mid = C.keys.find((k) => Array.isArray(k.a) && Math.abs(k.u - 1.5) < 0.06);
-      if (mid && !C.keys.some((k) => k.two === 1) && name !== 'whirl' && name !== 'risingWhirl') whip.push([name, Math.abs(mid.a[0])]);
+      if (mid && !C.keys.some((k) => k.two === 1) && name !== 'whirl' && name !== 'risingWhirl' && !C.spin) whip.push([name, Math.abs(mid.a[0])]);
     }
     out(`   planes: ${Object.keys(SWINGS).length} clips, upright ones: ${bad.join('; ') || 'none'}; blade behind the hand at mid-cut: ${whip.map(([n, v]) => `${n} ${v}°`).join(' · ')}`);
     assert(!bad.length, `every cut is a diagonal: the blade under 50° of elevation in the active frames and within 20° of level as it crosses his front (${bad.join('; ') || 'all'})`);

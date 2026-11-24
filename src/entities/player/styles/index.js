@@ -17,10 +17,17 @@
 //             (never the same twice running). One entry = one fixed stance.
 //   shift     optional { fade: seconds } for that cross-fade
 //   fidgets   null = today's FIDGETS (anim.js), or [{ name, dur, fn(p, A, u, e), sets: ['ease'] }]
-//   chain     null = today's LIGHT (combat.js), or an array of attack defs in LIGHT's shape (each
-//             with a `name` unique across every style, `combo` = its index + 1)
+//   chain     null = today's LIGHT (combat.js), or 3 - 7 attack defs in LIGHT's shape (each with a
+//             `name` unique across every style, `combo` = its index + 1). The levers (several
+//             blows in one press, a held beat, heft, the rules a clip must pass): styles/COMBOS.md
+//   chainAwake  optional [{ minTier, chain }]: at a chain's START the entry with the highest
+//             minTier at or under the hero's streak tier replaces the chain (the streak piece
+//             'tiers' on)
 //   swings    {} or clips in swings.js's format, under names unique across every style (prefix
-//             them with the style's id); they are added to SWINGS
+//             them with the style's id); they are added to SWINGS. A clip whose blade is carried
+//             round by a body turn carries `spin: true` (the whip lint skips it, as it does the whirl)
+// A style file imports only ../poseKit.js and ../swingKit.js (never anim.js, swings.js or combat.js:
+// they import the styles).
 // Nothing here may read Math.random (the sims seed it): use the animator's noise.
 import { today } from './today.js';
 import { flow } from './flow.js';
