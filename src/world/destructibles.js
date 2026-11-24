@@ -1708,12 +1708,6 @@ export class Destructibles {
     const tx = o.tx, along = tx !== undefined && Number.isFinite(tx + o.tz) && tx * tx + o.tz * o.tz > 0.25;
     this._tx = along ? tx : 0;
     this._tz = along ? o.tz : 0;
-    const r = this._hitOn(b, power, o, px, py, pz, dx, dz, kind, by);
-    this._tx = this._tz = 0;
-    return r;
-  }
-
-  _hitOn(b, power, o, px, py, pz, dx, dz, kind, by) {
     // a brush (a body walking into it): only what is over BREAK.brush of its structure bites
     const brush = o.brush === true;
     const dmg = brush ? brushed(b, power * (b.M.take[kind] ?? 1)) : power * (b.M.take[kind] ?? 1);
@@ -1766,11 +1760,13 @@ export class Destructibles {
         S.y = py;
         S.z = pz;
       }
+      this._tx = this._tz = 0;
       return true;
     }
     this.struck.broke++;
     b.hy = py; // (where the blow bit: a blade cuts its stump about there, BREAK.fell)
     this._break(b, dx, dz, by, kind);
+    this._tx = this._tz = 0;
     return true;
   }
 
