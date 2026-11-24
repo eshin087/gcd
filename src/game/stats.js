@@ -1,5 +1,8 @@
 // Run statistics for the victory record. A "run" starts at the title (or an [R] restart);
-// fight time is the duration of the final (winning) attempt only.
+// fight time is the duration of the final (winning) attempt only: real time in the flow's `boss` state
+// (a pause, the intro and the death screen never count). The attempt's figures (attemptTime,
+// attemptDamage, attemptFlasks) start over at every respawn (newAttempt); bossTime is every attempt's
+// fight time on this page (the rush clock's share); the rest add up over the run.
 
 const finite = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 const clock = (s) => {
@@ -15,6 +18,9 @@ export class RunStats {
 
   reset() {
     this.attemptTime = 0;
+    this.attemptDamage = 0; // HP lost to blows that landed in this attempt (the grade's input)
+    this.attemptFlasks = 0;
+    this.bossTime = 0;
     this.totalTime = 0;
     this.deaths = 0;
     this.flasksUsed = 0;
@@ -29,9 +35,19 @@ export class RunStats {
     this.guardBreaks = 0;
   }
 
+  /** A respawn: the next attempt's figures start at zero. */
+  newAttempt() {
+    this.attemptTime = 0;
+    this.attemptDamage = 0;
+    this.attemptFlasks = 0;
+  }
+
   snapshot() {
     return {
       fightTime: this.attemptTime,
+      attemptDamage: Math.round(this.attemptDamage),
+      attemptFlasks: this.attemptFlasks,
+      bossTime: this.bossTime,
       totalTime: this.totalTime,
       deaths: this.deaths,
       flasksUsed: this.flasksUsed,

@@ -184,6 +184,15 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.78 — Grades, saved bests and a boss rush (2026-11-23, `claude/game-records-boss-rush-2d742b`, ADR-179)
+- [x] A grade for clean play (deaths and the winning attempt's damage; time only orders a grade), marks beside it
+- [x] The store (localStorage, versioned, survives broken storage), the run record shaped for a leaderboard, `game:record`
+- [x] What voids a run: the Lab, cheats, `__tick`, `debug.toState`, `?stage=lab`, `?tech=`, the gameplay URL switches
+- [x] The record screen's grade, the title's bests, BOSS RUSH; the rush across page loads, its timer under the minimap
+- [x] The owner's picks: the grade's look `a`, the title's `b` (2026-11-24)
+- [x] The record panel keeps every row inside its border on every screen (the owner's report, 2026-11-24)
+- [ ] Played on a real phone (the title with nine buttons, both ways up); a full rush played by a human
+
 ## M1.77 — The perfect parry throws a few orange sparks (2026-11-24, `combat/perfect-sparks`, ADR-181)
 - [x] A calm spit of orange spark letters off the crossed blades on a perfect parry (`?parryFx=a`, the default; `0` as before)
 - [x] The shipped mark, freeze, slow motion, sound and the perfect dodge's afterimage unchanged (the owner's call after three rejected passes)
@@ -983,7 +992,11 @@ Spec: `docs/specs/ash-disciple.md`.
   - [ ] Halcyon's reward: the owner has not chosen one yet (ADR-161)
   - [ ] The Thousand-Body Fox's Paper Double (a decoy the foe strikes instead of the hero): recorded on the level, not usable (ADR-148); needs the technique slot, a button on every input, a target indirection in every boss's AI
       (the animator, the hit segment and the blade FX read `DIM`)
-- [ ] A hub that links the levels (the bonfire), and a boss-rush mode (refights back to back, a timer)
+- [ ] A hub that links the levels (the bonfire)
+- [x] A boss-rush mode: every level back to back, a timer, deaths retried with the clock running, a saved rush time and grade (ADR-179)
+- [x] Saved records and grades: per level and the rush, best time and best grade, the last 24 run records (ADR-179)
+- [ ] Online leaderboards: a server that takes the run records as they are stored (docs/ARCHITECTURE.md "Records"); the seam is `game:record` (or draining `records.recent()` at boot); the server validates (client times can be forged); a player name / account, chosen by the owner
+- [ ] The grade's thresholds tuned once the owner has played them (rankTuning.js)
 - [ ] More duelists from the roster (The Moth, The Bell-Warden, The Calligrapher, The Iron Abbot)
 - [ ] Regular mobs (2–3 types) on the approaches, using the shared combat system and tell rules
 - [ ] Save / load (localStorage), settings menu (keybinds, volume, quality)
