@@ -1344,6 +1344,27 @@ cinema`). Nothing stores a tier: each piece reads it at the moment.
   `steel` kind in tint zone 735101. `STREAK_AURA`, `STREAK_FIRE`, `STREAK_WORLD` (gust, ring, rise per
   tier; `floor` by level id) are exported. It steps aside while the hero is in `flurry` or `plunge`,
   dead, or while `player.ghostFx` > 0.5. Its own seeded stream.
+- *The time rip* (`player/timeRip.js` `class TimeRip`, `game.fx.rip`, built in main.js after the
+  streak fx; `?rip=off|tear|strip|ghosts|negative`, default `tear` until the owner picks):
+  `TIME_RIP.mode` is live (read at every cut; `ripMode()` / `setRipMode(m)`, the Lab's `rip` button in
+  the streak row), `RIP_LOOK` holds every number per mode, `RIP_STAT` counts (tests), `RIP_GLYPHS` the
+  ghosts' digits. It listens to the flurry's start, blow and end events (no new event): on a blow it
+  reads the newest hanging line `player.flurry.lines[nLines - 1]` (once per line: an art's last blow
+  draws none and marks nothing new), and the blow's `storm` / `gap` / `last`; a line is re-read live
+  (its `k`) while its flurry runs, then kept as copied. `update(fxDt, realDt)` runs in main.js's
+  simulation step after the world and BEFORE the lights, the particle pools and the fire field age (what
+  it draws shows this frame); its marks step in real time, its blobs and particles live on fx time with
+  one copy alive a frame. Steel (`game.fx.fire`, kind `steel`) for the tear's hairline and split and
+  the strip's seam; glyph digits (`game.fx.add`) for the ghosts, from `player._sampleBody()` /
+  `player._ghostPts` (the afterimage's points; no randomness). The strip and the negative are the ASCII
+  pass's `cutBand` (render/pipeline.js): `uCutN` (0 = the pass reads nothing; set to 0 once when the last
+  cut ends, nothing written while idle), `uCutA[2]` = a cut's two ends in frame px (y up), `uCutB[2]` =
+  (1 strip | 2 negative, half-width in art cells, shift in cells, the negative's weight), `uCutTone` (the
+  negative's pale cell rgb, letter contrast). `TimeRip.write(pipeline)` fills them, from `update` and
+  again from the pipeline right before the pass (`pipeline.setTimeRip(rip)`, as the impact ripple).
+  `clear()` with the other fx (flow `_resetWorld`, world `setVisible`). `busy`, `ghostAnchors` /
+  `ghostAnchorN` (the newest copies' chests) for the tests (`timerip` in integ.mjs and duel.mjs,
+  `tests/integration/timerip.mjs`).
 - *Payload fields added* (no new event): the flurry's start event gains `streak`, `tier`, `storm`
   (true when its later cuts are a storm) and `at` (the real s from now each flash cut is planned to
   land); each flurry blow's event gains `gap` (real s since the blow before) and `storm` (0 a shown
