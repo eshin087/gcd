@@ -184,7 +184,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
-## M1.74 — A fight the world feels (2026-11-23, `world/fight-alive`, ADR-177)
+## M1.75 — A fight the world feels (2026-11-23, `world/fight-alive`, ADR-177)
 - [x] The hero's blade goes clean through what it does not fell (`?cutStop=1`: the stop of ADR-132)
 - [x] A mark of its kind for every boss blow that meets the ground, on all eight bosses, until the reset (`?marks=0`)
 - [x] Flocks that flee fire, blows and falling trees; rabbits, deer, rats, lizards, one fox
