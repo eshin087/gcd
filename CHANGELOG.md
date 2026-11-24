@@ -4,7 +4,15 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Eighty-two pieces of work since 0.4.0:
+Eighty-three pieces of work since 0.4.0:
+- **The streak's answer starts heavy and speeds up** (2026-11-24, ADR-182). *Changed:* the flash cuts that answer a
+  perfect dodge of a red blow, a parry's riposte and the counter no longer flick by at low streaks. The first cut is
+  a beat you can read: he is seen wound up (0.11 s; two frames before), crosses as fast as before, is held on the
+  contact (0.11 s) and holds the finish; each later cut takes a share of the one before, a gentle share for a short
+  streak and a steep one for a long streak, so a streak of 2 or 3 is weighty and a 7 still ends in the storm (its
+  whole length is unchanged). The storm begins when the cuts have become fast enough, not at the third cut; a
+  riposte's last cut is a heavy closing beat. Round the wyrm's head the cuts have a seen wind-up too. Damage and
+  rules are unchanged. *Added:* `?tempo=0` (the Lab's `tempo` button) gives the pacing before.
 - **A perfect parry throws a few orange sparks** (2026-11-24, ADR-181). *Added:* on a perfect parry of a blow, a
   quick spit of 12 - 16 orange spark letters leaves the crossed blades along the blade that glanced off: short
   streaks that shrink to dots, cool to dark red and are gone in under half a second, a couple falling to the floor.

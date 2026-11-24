@@ -5332,3 +5332,16 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   freeze and in a string. Against the wyrm the sparks are mostly hidden by its own parry star. One more `LetterBatch`
   draw call while sparks live. The rejected passes stay on local branches; a later round on these moments should start
   from a concrete reference and one narrow prototype, and never change the background.
+
+## ADR-182 — The flurry's tempo: a heavy first cut, each later cut a share of the one before, the storm by pace (2026-11-24)
+
+- **Context:** the owner, a day after the streak pass (ADR-167): "looks too fast in the early streaks. something about it just looks not epic/stunning"; asked which part: "All of it, you judge". Measured: a flash cut was 0.35 s on a man with its wind-up on screen for two frames (0.25 s round the wyrm's head, no wind-up seen), the first cut landed 0.12 s after the dodge, and the storm began at a fixed cut (the third on a man) whatever the streak, so a streak of 4 or 5 was two full cuts, one or two blips and the art.
+- **Decision:** one tempo rule for the flurry, the riposte and the counter (`DEFENSE.flurry.tempo`, `STREAK_FX.tempo`, on by default with the storm piece):
+  1. **The first cut is a heavy beat** in the iai rhythm, slow / fast / slow: hidden 0.06 s, seen wound up 0.11 s (0.08 round the head), the dash at its old speed, the contact frozen 0.11 s, the finish held 0.15 s (0.11). The dash is not slowed: the contrast is the point.
+  2. **Each later cut takes `r` of the one before; `r` is set by the number of flash cuts** (0.78 for two, 0.52 for six, a straight line between; never below `storm.floor`). Short flurries stay weighty, a seven keeps its length (113 frames against 112 on a man).
+  3. **A storm cut is one whose pace is below `stormAt` (0.4)**, not one past a place in the list; weight (camera, flare, sparks) falls with the pace instead of jumping.
+  4. **A riposte's / counter's last cut is the heavy beat again.**
+  5. **Timing and weight only:** damage, posture, blows, the world's hold, the crit window and the hero's end place are unchanged; no new effect was added (the owner turned down brighter and busier perfect effects the same week, ADR-181).
+  6. **The pace before stays one switch away** (`?tempo=0`, the Lab's `tempo` button): ADR-167's frames are pinned in the tests.
+- **Turned down:** slowing the whole flurry (a seven was already called too long at 2.9 s, ADR-167); a later start for the storm by place (the cliff stays, only later); new glints or sparks on the heavy beat (the art's glint would be cheapened; timing first); touching the single perfect parry / dodge moment (picked by the owner on film the day before).
+- **Consequences:** a streak of 2 to 5 takes 0.18 - 0.35 s longer in real time (the world is held at 0.07 meanwhile, so about 0.02 s of fight). A seeded test fight that holds a flurry replays differently: integ `breach` is pinned to the old pace, and what the other path showed (the wyrm's `pounce` 0.5 m past its share of a gap) is open. Open on screen: the step into the storm round the head (24 -> 11 frames at a streak of 7) and the riposte's last freeze (0.198 s).

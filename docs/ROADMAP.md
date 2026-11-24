@@ -184,6 +184,14 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.78 — The streak's answer starts heavy and speeds up by ratio (2026-11-24, `combat/streak-pace`, ADR-182)
+- [x] The first flash cut a heavy beat (a seen wind-up, a held contact, a held finish), on a man and round the wyrm's head
+- [x] Each later cut a share of the one before, the share by the flurry's length; the storm by pace, not by place
+- [x] A riposte's / counter's last cut the heavy beat again; `?tempo=0` and the Lab's `tempo` button for the pace before
+- [ ] The owner's verdict on the before / after clips
+- [ ] Judged on screen: the step into the storm (24 -> 11 frames round the head at 7), the riposte's last freeze (0.198 s)
+- [ ] The wyrm's `pounce` past its share of a gap in the tree wall (integ `breach` replays at the old pace until then)
+
 ## M1.77 — The perfect parry throws a few orange sparks (2026-11-24, `combat/perfect-sparks`, ADR-181)
 - [x] A calm spit of orange spark letters off the crossed blades on a perfect parry (`?parryFx=a`, the default; `0` as before)
 - [x] The shipped mark, freeze, slow motion, sound and the perfect dodge's afterimage unchanged (the owner's call after three rejected passes)

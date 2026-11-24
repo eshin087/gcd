@@ -5,6 +5,46 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-24 — Session 92: the streak's answer starts heavy and speeds up by ratio (planned by Fable, built by Opus agents)
+
+**Owner:** "the new perfect dodge/parry streak effect right now looks too fast in the early streaks. something about it just looks not epic/stunning. review it and make it look and fell good. plan it out with fable and have opus agents do the work". Asked which part and where: "All of it, you judge", "Both" (human bosses and the wyrm). Branch `combat/streak-pace`. ADR-182 / M1.78.
+
+**The review** (film strips and hit frames at 60 fps on the Ash Disciple, before any change). Every flash cut was a flick: the wind-up on screen for 0.035 s (two frames), the freeze on the contact 0.065 s, the whole cut 0.35 s on a man and 0.25 s round the wyrm's head (no wind-up seen there at all). The first cut landed 0.12 s after the dodge, before the dodge itself had been seen; a streak of 2 was over in one second. And the storm of ADR-167 began at a fixed cut (the third on a man, the fourth round the head) whatever the streak, so a streak of 4 or 5 showed two full cuts, then one or two weightless blips, then the art: a cliff, not an acceleration.
+
+**What was built** (`DEFENSE.flurry.tempo`, `player/flurry.js`, `STREAK_FX.tempo`): one tempo rule for the flurry, the riposte and the counter.
+- **The first cut is a heavy beat:** hidden 0.06 s, seen wound up 0.11 s (0.08 round the head, which now has a seen wind-up), the dash as fast as before (0.12 / 0.10 s), frozen on the contact 0.11 s, the finish held 0.15 s (0.11 round the head).
+- **Each later cut takes a share `r` of the one before**, and `r` depends on how many flash cuts there are: 0.78 for two, down to 0.52 for six (`ratio`). A short flurry stays weighty; a seven still ends with its cuts a few frames apart.
+- **A cut is a storm cut when its pace has fallen below `stormAt` (0.4)**, not at a fixed place in the list; the camera's kick and shake and the cut's flare and sparks fall with the pace from whole to the storm's share.
+- **A riposte's / counter's last cut is the heavy beat again**, as a closing beat.
+- Damage, posture, the blows, the world's hold, the crit window and where the hero ends up are unchanged.
+- `?tempo=0` (the Lab's `tempo` button in the 'streak' row) gives ADR-167's pacing exactly; the storm piece off gives the pace before ADR-167, as before.
+
+**Measured** (frames at 60 fps from the flurry's start; the test harness; `s` a storm cut):
+
+| | before | now |
+|---|---|---|
+| man, streak 2 | 8, art 26, last 62 | 14, art 37, last 73 |
+| man, streak 3 | 8, 30, art 44, last 80 | 14, 45, art 65, last 101 |
+| man, streak 4 | 8, 31, 48s, art 59, last 95 | 14, 44, 66, art 80, last 116 |
+| man, streak 5 | 8, 31, 48s, 58s, art 66, last 102 | 14, 44, 64, 74s, art 83, last 119 |
+| man, streak 7 | 8, 31, 49s, 60s, 66s, 70s, art 76, last 112 | 14, 41, 55s, 62s, 67s, 71s, art 77, last 113 |
+| man, riposte of 3 | 8, 31, 51 | 14, 45, 76 |
+| wyrm, streak 3 | 6, 22, art 32, last 66 | 12, 39, art 56, last 90 |
+| wyrm, streak 7 | 6, 23, 39, 53s, 61s, 65s, art 71, last 105 | 12, 36, 47s, 53s, 57s, 61s, art 67, last 101 |
+
+**How it was built.** Fable reviewed (film strips from headless Edge, the hit frames), asked the owner two questions and wrote the rule and its numbers. One Opus agent built it in the worktree with its tests (four commits); a second Opus agent built a filming pipeline in the scratchpad and filmed nine cases before / after at the game's own camera, full frame, 60 fps, each clip at true speed then half speed. The lead checked a frame strip of the first cut (the hero is on screen wound up for about six frames; two before) and sent the clips to the owner.
+
+**Verification.** integ `storm` keeps every ADR-167 assertion with the tempo off and adds the tempo's (the first contact no sooner than 0.18 s, gaps that never grow, no storm cut at streaks 2 and 3, a seven's last gap <= 4 frames, a streak of 15 = a streak of 7 in blows, damage and time, damage unchanged for every N); a new duel scenario `tempo` checks the same on a man and pins the `?tempo=0` frames to ADR-167's. The agent's `npm test`: 20 of 21 tasks passed; the one red was integ `breach` (below). The lead then pinned that scenario to the old pace and re-ran the suite: see the PR.
+
+**Found and left.**
+- **integ `breach` and the wyrm's pounce.** The scenario's seeded defender earns one flurry before the gap is torn; with the tempo it lasts longer in real time and seed 4242 ran another fight from there: one `pounce` carried the wyrm's root up to 0.5 m past its share of the gap for 56 frames, and the cues out there read 33 a minute. The scenario now replays its fight at the old pace (it is about the wall). Open: `pounce` is neither clamped to `boundAt` in the gap nor counted as airborne in `BREACH_AIR`.
+- The cut that crosses into the storm loses its seen wind-up at once: round the head at a streak of 7 the gaps go 24 -> 11 frames. If it reads as a cliff on screen, let the wind-up fade with the weight.
+- A riposte's last freeze is the heavy stop x 1.8 = 0.198 s (0.117 s before): to be judged on screen.
+- The single perfect parry / dodge moment, the streak's number and the aura were not touched.
+- The clips show the canvas only (no HUD); the owner has not played it.
+
+**Next.** The owner's verdict on the clips; then the three "to be judged" points above.
+
 ## 2026-11-24 — Session 91: the perfect parry throws a few orange sparks (and what was turned down to get there)
 
 **Owner:** "what can we improve next in terms of visuals, effects, animations etc. i want to make perfect parry and
