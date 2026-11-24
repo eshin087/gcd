@@ -43,6 +43,8 @@ npm run hero-parts  # regenerate src/entities/player/heroParts.js (needs Blender
 Levels: `?level=ash` loads the Ashfall Courtyard, `?level=starless` the Obsidian Throne, `?level=ring` the Skybreak Ring, `?level=fox` the Foxfire Terrace, `?level=grove` the Windless Grove (`?tech=draw`: One Breath without the kill), `?level=code` the Hall of Falling Script (`?tech=lean`: the Long Second without the kill), `?level=city` Halcyon Plaza (default:
 Cinderwood); the title screen and the Lab pick one too. Kept for later use (ADR-089; today's look is the default): `?heroLook=robe|swallow|warden`
 (`-shade`: the face in shadow) and `?sword=sheet|ribbon|crescent` dress the hero (Lab: OUTFIT, sword);
+`?freeHand=loose|sway|rest|belt` sets where the hero's free hand rests standing (default loose; belt = before;
+Lab: PLAYER → hand; ADR-182, options until the owner picks).
 `?wyrmFace=old` gives the wyrm the face it had before the drake (ADR-124), `skull|loong|demon` (ADR-120)
 and `tyrant|viper|revenant` (ADR-124) the heads the owner passed on. The owner's picks with the options turned down behind them: `?wyrmLook=0|a|b` (c: the
 wyrm's lean build; 0 = the wyrm before; ADR-123), `?zoomArt=a|c` (b: the letters

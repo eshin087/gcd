@@ -4,7 +4,14 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Eighty-two pieces of work since 0.4.0:
+Eighty-three pieces of work since 0.4.0:
+- **The free hand hangs loose at his side** (2026-11-24, ADR-182). *Changed:* the owner asked for the default pose "to not have the character
+  hold his hand on his hip all the time", with a clip of an ASCII swordsman whose free arm hangs straight at his
+  side. Standing at ease and in the fight stance, the hero's free hand now hangs open beside his thigh, the elbow
+  nearly straight (about 155°), breathing and drifting with his weight. *Added:* `?freeHand=` and the Lab's
+  PLAYER → `hand` row, options until the owner picks: `loose` (the default), `sway` (it swings with his weight;
+  in the fight stance it is held out behind him), `rest` (loose, and at ease the hand goes to the belt about 7 s
+  of every 23), `belt` (the pose before). The look, the swings and every other clip are unchanged.
 - **A perfect parry throws a few orange sparks** (2026-11-24, ADR-181). *Added:* on a perfect parry of a blow, a
   quick spit of 12 - 16 orange spark letters leaves the crossed blades along the blade that glanced off: short
   streaks that shrink to dots, cool to dark red and are gone in under half a second, a couple falling to the floor.

@@ -206,6 +206,13 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [ ] The faint ones: dust sift, pebbles, smoke, crater haze, the tree's shudder; Ashfall's crows
 - [ ] Films with real boss moves for every level; the phone; Halcyon Plaza's pigeons looked at
 
+## M1.74 — The free hand hangs loose at his side (2026-11-24, `player/free-hand-loose`, ADR-182)
+- [x] The free hand off the belt in both stances: `loose` (the default), `sway`, `rest`, `belt` (before) behind `?freeHand=` and the Lab's `hand` row
+- [x] HEROSTANCE S2b: each loose option 12 s a stance, clear of the waist, hips and thigh, under the belt, the elbow open
+- [ ] The owner's pick on the preview; then the losing options and the switch come out
+- [ ] On the iPhone; the transitions from the loose hand into swings, rolls and the idle play audited against `main`
+- [ ] PR #105 (move styles, draft) rewrites `stances.js`: rebase it on this or fold this into it
+
 ## M1.73 — Xin Yi reworked: drawn like the hero, kicks and flurries, a wall kick, bullets that never lock (2026-11-23, `claude/xinyi-rework-4b1d8a`, ADR-168 – ADR-170)
 - [x] Printed like the hero: his letters follow his size (`?oneLetters`), the quiet print and simpler shapes (`?onePrint` a / b / 0), the coat moving in every phase and clamped for flips
 - [x] ADR-162's kit for him: soft arms and legs, the shared feet planner (`duelist/feetPlan.js`), palms that stop at the hero, no swings at air; the audit before and after

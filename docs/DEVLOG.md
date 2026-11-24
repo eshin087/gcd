@@ -5,6 +5,33 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-24 — The free hand hangs loose at his side (ADR-182)
+
+**Owner:** "keep the current main character look. we are only focusing on change the default pose and animation
+to not have the character hold his hand on his hip all the time", with a clip (an ASCII swordsman in a gat,
+posted on X) as the model for the free hand. Watched frame by frame: his free arm hangs straight and loose at
+his side, close to the robe, the hand by the upper thigh; it never goes to the hip.
+
+**What.** `stances.js`: the free hand of both stances (at ease, the fencer's guard) is one of `FREE_HANDS`,
+picked by `?freeHand=` (`freeHandPick`, live from the Lab's PLAYER → `hand` row). `loose` (default): the hand
+asked for 0.558 m below and a little out from the shoulder, past the arm's soft reach, so the elbow opens to
+~155° and stays soft; an open hand, the fingers along the forearm, the palm to the leg; it drifts with the
+breath and the weight (4-5 cm). `sway`: the same with a larger swing (8 cm) and, in the guard, the arm held
+out behind him as a counterweight. `rest`: loose, and at ease the hand eases to the belt for 7 s of every 23
+(`REST_BELT`, `restBeltWeight`). `belt`: ADR-114's pose. Asked for at 0.50 m the arm hung crooked (127-136°)
+and the palm touched the thigh: moved out 2.5 cm and lengthened.
+
+**Verification.** HEROSTANCE S2 checks the belt with `belt` picked; new S2b runs each loose option 12 s in each
+stance (rest 24 s): clear of the waist and hips by 9-19 cm, of the thigh by 1.2-15 cm, 19-25 cm under the belt,
+the elbow 141-157°, never more than 1 cm a frame; `rest` on the belt 29 % of the time. HEROARMS' free-elbow
+check follows the pick. `hero`, `herohand`, `heroarms`, `heroweight`, `herolife`, `herolook`, `herostance`
+green; the full suite: see the PR. Rendered in headless Edge at 1440p (game camera, close turnarounds, rest over
+24 s).
+
+**Open.** The owner's pick; not looked at on the phone; the transitions out of the loose hand (setting off,
+swings, a roll, the idle play) not audited frame by frame against `main` (the suites' transition checks pass).
+From behind at the game camera the cloak covers the free arm, so the change shows mostly from the front and the
+quarters. PR #105 (draft) rewrites `stances.js` (`poseKit.js`, `handLoose`): whichever lands second rebases.
 ## 2026-11-24 — Session 91: the perfect parry throws a few orange sparks (and what was turned down to get there)
 
 **Owner:** "what can we improve next in terms of visuals, effects, animations etc. i want to make perfect parry and

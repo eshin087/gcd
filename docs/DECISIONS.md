@@ -5332,3 +5332,22 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   freeze and in a string. Against the wyrm the sparks are mostly hidden by its own parry star. One more `LetterBatch`
   draw call while sparks live. The rejected passes stay on local branches; a later round on these moments should start
   from a concrete reference and one narrow prototype, and never change the background.
+
+## ADR-182 — The free hand hangs loose at his side; where it rests is a switch until the owner picks (2026-11-24)
+
+- **Context:** ADR-114 rested the free hand on the belt in both stances (the owner's pick of three rendered
+  stances, 2026-11-15). On 2026-11-16 they wrote "i dont want his left hand always placed on the side"; PR #105
+  (draft) answers that inside a larger pass of four move styles. On 2026-11-24 they narrowed it: keep the look,
+  change only the default pose so the hand is not on the hip all the time, with a clip of a swordsman whose free
+  arm hangs straight at his side.
+- **Decision:** `stances.js` `FREE_HANDS` behind `?freeHand=` and the Lab's `hand` row: `loose` (default),
+  `sway`, `rest`, `belt` (before). The hanging hand is a target past the arm's soft reach (`HERO_SOFT`), so the
+  elbow opens to ~155° and never locks; it is turned with the stance's chest like the belt pose; the stance's own
+  oscillators move it, so nothing new loops. Only `stand()`'s free-hand channels change: guard() (a duelist's
+  base) and every other clip are as they were.
+- **Why not** fold it into PR #105: that pass is unpicked and conflicts with `main`; this is the one change the
+  owner asked for now, small enough to rebase either way. **Why not** a free hand in sword fingers: the clip's
+  hand is open and still, and the owner's earlier picks (ADR-114) kept the fingers for the swings.
+- **Consequences:** HEROSTANCE gains S2b; HEROARMS' free-elbow range follows the pick. From behind at the game
+  camera the cloak covers the hanging arm. After the pick the losing options and the switch come out.
+
