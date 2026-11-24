@@ -1402,14 +1402,14 @@ export class Lab {
       b.title = `equip ${SWORD_PARAM[k]}`;
       return { k, el: b };
     });
-    // the sword's mystical layer (player/swordMystic.js, ?mystic=0|a|b|c|d) and the arc that grows with
-    // the streak (?arc=0|1): both live, off = today
+    // the sword's wisps (player/swordMystic.js: green letters off the steel, on by default; ?mystic=0 is
+    // today's blade) and the arc that grows with the streak (?arc=0|1|2): both live
     const myr = el('div', 'lab-row', null, body);
-    el('span', 'lab-lbl', 'mystic', myr).title = "the sword's mystical layer for the owner's pick (?mystic=)";
+    el('span', 'lab-lbl', 'mystic', myr).title = "the sword's wisps: tiny green letters off the steel on the wind (?mystic=0 turns them off)";
     const myGrid = el('div', 'lab-grid', null, myr);
     myGrid.style.flex = '1';
     this.ui.mysticBtns = MYSTIC_IDS.map((m) => {
-      const b = button(myGrid, m === '0' ? '0' : `${m} ${MYSTIC_NAMES[m]}`, () => {
+      const b = button(myGrid, m === '0' ? 'off' : MYSTIC_NAMES[m], () => {
         setMystic(m);
         this._syncCutBtns();
       });

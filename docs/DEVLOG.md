@@ -5,6 +5,35 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-23 — The sword's wisps, picked and made neon green (follow-up to session 89; branch `claude/sword-neon-0cafcc`)
+
+**Owner:** of the four sword options, "lets go with c tiny letters peeling off the steel on the wind but with
+neon matrix color effect."
+
+**What.** `swordMystic.js` is now the wisps alone, on by default (`?mystic=0` = today's blade); options a (breath),
+b (script) and d (shadow), their tuning, the glyph-particle and written-letter paths and the `?neon=` switch used
+for the pick are gone (the module shrank from 550 to 280 lines, and its stale header, which still said a and d
+used glyph particles, is rewritten). Three greens were filmed on one fixed stage (open grass, boss asleep,
+`?life=off`, the game camera at 720p and 1440p, the phone preset, tiers 0 / 1 / 3 / 5, plus a clip per tone) and
+the owner took **A, one classic Matrix green**, over B (a pale lit head) and C (cooling to teal). The colour is
+linear (0.06, 1.0, 0.06): the first try at (0, 1, 0.28) read as mint after the grade and the tone map. Measured in
+the buffer before the tone map (pixels the layer adds, tier 0 / tier 5): the strongest channel peaks at 0.71 / 0.81;
+about 0.7 / 5 pixels a frame are over the bloom threshold 0.55, so the halo is a hint and the letters stay crisp
+(B reached 0.75 / 0.85 and C 0.73 / 0.81). With no streak the wisps come 6 a second (they were 4; borderline at
+rest), up to 12 at tier 5; alpha 0.70 – 0.88 by tier.
+- Lab: the PLAYER row `mystic` is off / wisps. Scenario `swordmystic`: the wisps on with no URL and the others
+  gone; off = today's blade frame by frame, nothing built; glyphs, budget, tier growth, green (g high, r and b low),
+  colour × alpha at most 0.9 (0.75 with no streak), nothing after death. The arc part is untouched.
+- Docs: ADR-175, STYLE.md "The sword's wisps and the arc's tiers", ARCHITECTURE (player section, the Lab row),
+  ROADMAP, CHANGELOG, WHAT'S NEW, the CLAUDE.md switch line, `src/dev/README.md`.
+
+**Open.** The wisps now run in every scenario (default on): the full suite is the check. On-device frame rate on the
+phone is unverified (one more 64-letter batch, at most 6 spawns a frame); at 852 × 393 the letters are a few
+pixels but read clearly green. The arc (`?arc=`) is still an option for the owner's pick. A brighter or whiter
+wisp (B) is a one-line change in `WISPS.col` if they want it later.
+
+---
+
 ## 2026-11-23 — Session 89: the hero's move styles: four characters to pick from, switchable combos, a mystical sword (planned by Fable, built by Opus agents)
 
 **Owner:** "lets improve the main character. i dont want his default pose to always be holding one of his hands

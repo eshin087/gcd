@@ -30,11 +30,10 @@ export const RELEASES = [
       },
       {
         date: '2026-11-23',
-        title: 'A more mystical sword, to try, and an arc that grows with the streak',
+        title: 'A more mystical sword: green wisps, and an arc that grows with the streak, to try',
         notes: [
-          'Options to try, off by default: ?mystic=a a breath of violet letters up the edges, ?mystic=b tiny digits climbing the blade, ?mystic=c wisps peeling off the steel on the wind, ?mystic=d a line of letters left where the blade stops.',
-          'Each is faint and already there at rest, and grows as your streak grows.',
-          '?arc=1 makes your swing arc gain fine lines, hang longer and leave beads of light as the streak climbs; ?arc=2 does the same more quietly.',
+          'Tiny green letters now peel off your sword on the wind, like falling code. They are there even with no streak, and come thicker, brighter and longer-lived as your streak climbs. Add ?mystic=0 to the address to turn them off.',
+          'Also to try, off by default: ?arc=1 makes your swing arc gain fine lines, hang longer and leave beads of light as the streak climbs; ?arc=2 does the same more quietly.',
         ],
       },
       {

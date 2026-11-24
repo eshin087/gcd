@@ -1688,19 +1688,24 @@ ink on black, never over the hero.
   struck through in red, the digits parting as they fall. The flurry's banner at tiers 4 - 5 gains
   thin gold rules, never size.
 
-### The sword's mystical layer and the arc's tiers (2026-11-23, ADR-175; `player/swordMystic.js`, `player/fx.js`; options: `?mystic=`, `?arc=`)
-The owner: "a bit more mystical in a subtle way". The rules every option follows:
-- **The steel stays dark until it cuts** (ADR-130). Nothing is written on the blade: every mark starts off
-  the steel (beside an edge, or 5 – 11 cm off its axis), so it never prints on his own pale blade, and none of it touches the blade's uniforms. While a cut lights the steel a quarter of
-  the look stays: the cut is the steel's moment.
-- **Already there at rest, growing by tier.** Each option is one idea that shows with no streak (at ease
-  and in a fight) and wakes tier by tier (0 – 5): faster, longer, a few more letters, a little paler at the
-  top. No new hue per tier: the gem's violet (a), a cold blue (b, c, d).
-- **Tiny faint house letters, one to a screen cell** (the living world's rule, ADR-163): the wyrm's pixel
-  font through `LetterBatch`; a letter whose cell already holds one this frame is skipped, so a blade
-  pointed at the camera does not stack its letters into one pale blob. Colour × alpha at most ~0.62 (the
-  bloom starts at 0.55); at most 6 new marks and 20 written letters a frame. Glyphs: a `: ' .`, b digits,
-  c `. , ' ~` and the backquote, d the stroke that matches the blade's angle on the screen (`| / - \`).
+### The sword's wisps and the arc's tiers (2026-11-23, ADR-175; `player/swordMystic.js`, `player/fx.js`; the wisps on by default, `?mystic=0` off; `?arc=` an option)
+The owner: "a bit more mystical in a subtle way", then of four readings "c tiny letters peeling off the steel on
+the wind but with neon matrix color effect". What ships:
+- **Wisps: tiny letters peeling off the steel on the wind, in Matrix green.** `. , ' ~` and the backquote (house letters, one
+  letter cell each, the wyrm's pixel font through `LetterBatch`), spawned 5 – 11 cm off the steel's axis along
+  its upper part, drifting up and downwind (`game.world.life.wind`, ADR-163), fading in over a tenth of their
+  life and dimming toward a deeper green as they die. One tone: linear (0.06, 1.0, 0.06), which the grade and
+  the tone map turn into a phosphor green (blue kept low, or it reads mint). At 720p a letter is 5 × 8 px and
+  crisp; at the phone's 852 × 393 it is a few pixels and still reads as green.
+- **Neon, but not a glow.** The first colour in this look to go near the bloom threshold: a letter's brightest
+  pixel is about 0.71 at tier 0 and 0.81 at tier 5 before the tone map (bloom starts at 0.55), a pixel or so a
+  frame over it at rest and 5 at the top. Never raise a tone until the wisps bloom into a halo; B (a pale
+  head) and C (cooling to teal) were turned down for being brighter or less Matrix.
+- **Already there at rest, growing by tier.** 6 wisps a second with no streak, 12 at tier 5 (plus more where
+  the point moves), living 1.2 s to 1.8 s, alpha 0.70 to 0.88.
+- **The steel stays dark until it cuts** (ADR-130). Nothing is written on the blade: every letter starts off
+  the steel, and none of it touches the blade's uniforms. While a cut lights the steel the letters come at
+  half their alpha: the cut is the steel's moment.
 - **The lesson:** a glyph particle of the world atlas under about 6 px prints as a blur, not a letter
   (round 1 of this layer did not read at the game camera). Tiny letters near the hero go through
   `LetterBatch`; glyph particles stay for things about one letter cell big or larger.

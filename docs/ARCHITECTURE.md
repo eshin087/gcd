@@ -1401,18 +1401,17 @@ cinema`). Nothing stores a tier: each piece reads it at the moment.
   when not perfect or a bullet) and `beat` (cinema's 'full' | 'short', else ''); the perfect dodge
   event gains `feel`. `player.debug.flurry(strikes)` takes a streak up to 99 (7 blows still).
 
-**The sword's mystical layer and the growing arc** (ADR-175; options, off by default). `player/swordMystic.js`
+**The sword's wisps and the growing arc** (ADR-175; the wisps on by default, the arc an option). `player/swordMystic.js`
 `class SwordMystic` (`player.mystic`, built in the Player's constructor; `update(dt)` at the end of
-`Player._updateFx`, returning at once with the option off). `?mystic=0|a|b|c|d` (`mysticMode()`, `setMystic(id)`;
-`MYSTIC_IDS`, `MYSTIC_NAMES`): a breath, b script, c wisps, d shadow. `MYSTIC` holds the tuning, one entry
-per `streakTier(player.streak)` 0 – 5 (read from the hero's own streak, not `streakK`: `?streakfx=off`
-leaves it on); `MYSTIC_GLYPHS` what each option may print. Every mark is a house letter through a
-`LetterBatch` of its own (`world/life/letterBatch.js`, 64 letters, registered with
-`pipeline.registerParticles`), built the first time an option needs it, on the module's own LCG stream
-(`setMysticSeed(v)`; never `Math.random`). Budgets a frame: `MYSTIC.budget` (6) new spawns,
-`MYSTIC.letters` (20) written letters, one letter a screen cell (`MYSTIC.cell`); `onEmit` (tests) sees
-every mark; `n`, `w`, `total` count them. Nothing on a dead, hidden or unarmed hero; none of it writes a
-uniform. `?arc=0|1|2` (`arcOn()`, `setArc(v)`, kept in the same module): `fx.trail` reads it with
+`Player._updateFx`, returning at once with `?mystic=0`). `mysticMode()` is `'c'` (the wisps) or `'0'` (off;
+`setMystic(id)`; `MYSTIC_IDS` = `0,c`, `MYSTIC_NAMES`). `WISPS` holds the tuning, one entry per
+`streakTier(player.streak)` 0 – 5 (read from the hero's own streak, not `streakK`: `?streakfx=off` leaves it
+on), and the one colour (Matrix green); `MYSTIC` the budget, lift and rise; `MYSTIC_GLYPHS` what it may print.
+Every wisp is a spawned house letter in a `LetterBatch` of its own (`world/life/letterBatch.js`, 64 letters,
+registered with `pipeline.registerParticles`), built the first time the layer is on, on the module's own LCG
+stream (`setMysticSeed(v)`; never `Math.random`), riding `game.world.life.wind`. Budget a frame:
+`MYSTIC.budget` (6) new letters; `onEmit` (tests) sees every one; `n`, `total` count them. Nothing on a dead,
+hidden or unarmed hero; none of it writes a uniform. `?arc=0|1|2` (`arcOn()`, `setArc(v)`, kept in the same module): `fx.trail` reads it with
 `streakTier(player.streak)` and takes `ARC_STREAK` (1) or `ARC_STREAK_CALM` (2) for the arc's `linger`,
 its edge `size`, `outer` / `inner` fine lines (the inner ones replace `game.fx.streak`'s echoes while
 on) and `beads`; tier 0 is today's arc.
@@ -2756,7 +2755,7 @@ and labels them.
 cycles auto → 1 → 2 … and pins that hit's look through `anim.forceVariantBy[def.name]`); after `stance`
 `moves: stand` (`setStanceStyle`), `pose` (auto or one stance per set: `player.debug.stance`) and `fidget`
 (start one of the style's idle actions now: `anim.debug.fidget`); the pose and fidget rows are rebuilt when
-the style changes. After `sword`: `mystic` (`setMystic`, 0 / a / b / c / d) and `arc` (`setArc`, 0 / 1 / 2;
+the style changes. After `sword`: `mystic` (`setMystic`, off / wisps) and `arc` (`setArc`, 0 / 1 / 2;
 ADR-175).
 
 ### Bindings — `src/core/bindings.js` (ADR-067)

@@ -19,13 +19,14 @@ Eighty-two pieces of work since 0.4.0:
   blow in one press, and drag through what it cuts; a heavy press after the fifth light or later gives the
   Earthbreaker; the swing's rising pitch spreads over the whole combo; the Training room's chain row plays the
   whole combo.
-- **A more mystical sword, to try, and an arc that grows with the streak** (2026-11-23, ADR-175). *Added* (options for the owner's pick; off
-  by default): `?mystic=a` a breath of the gem's violet letters running up beside both edges, `?mystic=b` tiny
-  digits climbing the edge, `?mystic=c` wisps of tiny letters peeling off the steel on the wind, `?mystic=d` a
-  line of letters left where the blade stops. Each is faint and there with no streak, and grows tier by tier.
-  `?arc=1` the swing's arc gains fine lines inside and outside its edge, hangs up to twice as long and leaves
-  beads of light from tier 3; `?arc=2` the same, restrained. Tier 0 is the arc as before. The Lab's PLAYER rows
-  `mystic` and `arc`.
+- **A more mystical sword: green wisps, and an arc that grows with the streak, to try** (2026-11-23, ADR-175).
+  *Added:* tiny letters peel off the hero's steel on the wind in Matrix green (the owner's pick of four
+  readings, in a neon tone: crisp letters, not a glow). They are there with no streak and come thicker, brighter
+  and longer-lived as the streak climbs (tiers 0 to 5). On by default; `?mystic=0` turns them off (the Lab's
+  PLAYER row `mystic`: off / wisps). `?arc=1` the swing's arc gains fine lines inside and outside its edge,
+  hangs up to twice as long and leaves beads of light from tier 3; `?arc=2` the same, restrained (options, off
+  by default; Lab row `arc`). Tier 0 is the arc as before. *Removed:* the other three sword options
+  (the violet breath, the climbing digits, the lingering line) before they shipped.
 - **The resting blade no longer glows** (2026-11-23, ADR-176). *Fixed:* at some poses and facings a bright halo
   bloomed round the hero's blade while he stood still, and the point left a pale block in the grass: a letter of
   the world grid printed the steel's raw colour beside it.
