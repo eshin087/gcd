@@ -5246,6 +5246,6 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   pitch with a bell: it grows in weight (`parryChain.js`, three versions behind `?chain=`).
 - **Consequences:** a slot changes by a line in `scripts/audio/sfx-picks.json` and a rerun of `build-sfx.py`.
   The next rounds (the wyrm, the boss specials, the world and menus) reuse the renderer, the designer and the
-  picker. The streak's climb note and the other parry uses (mikiri, counter, blade lock, the flare) still play
-  the old climbing parry: left for the owner's call.
+  picker. At the owner's sign-off: chain `a`; the other parry uses play one strike of the blue parry recording; the
+  streak's climb note is half as loud on a parry; the hero's combo swing rises on every cut.
 

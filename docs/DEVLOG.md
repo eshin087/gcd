@@ -43,7 +43,13 @@ the parry; the hero's combo swing pitch steps up, up, back down. Each is a small
 **Tests.** integ / duel `sfx` extended (every event's slot, the synth fallback, `?sfx=old`, the chain
 switch). `npm test`: 21 of 21. No seeded check moved (new code draws only from the audio's own streams).
 
-**Next.** The owner's chain pick; their listen in a fight on the PR's preview (and the phone); the open items above.
+**Sign-off** (a one-page form, https://claude.ai/artifact/7RNVT5T6iHwPjejtN2finX): chain `a`; the streak note
+"quieter" on parries (`STREAK_SOUND.parryGain` 0.5); the other parry uses switched to one strike of the blue parry
+recording (`_parryAlso`; the synth with its old chain value is the fallback); the combo swing pitch fixed (step
+= combo - 1, 0..4, for the recording and the synth); merge. Owner: prefers one page with links and tap
+answers over step-by-step guidance.
+
+**Next.** The next rounds: the Cinder Wyrm, the boss specials, the world and menus.
 
 ---
 

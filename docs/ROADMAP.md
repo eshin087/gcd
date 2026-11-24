@@ -554,8 +554,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Two designed and up to two recorded options per slot; a picker with WHEN lines and moments
 - [x] The owner's picks in the game at matched loudness; `?sfx=old` the originals
 - [ ] Follow-ups:
-  - [ ] The owner's pick of the deflect chain (`?chain=a|b|c`)
-  - [ ] The other parry uses (mikiri, counter, blade lock, the flare) and the streak note: the owner's call
+  - [x] The owner's pick of the deflect chain: `a`, weight that builds
+  - [x] The other parry uses on the new parry; the streak note quieter on parries; the combo pitch fixed
   - [ ] The next rounds: the Cinder Wyrm, the boss specials, the world and menus
 
 ## M1.69 — Attack sounds: cues only for blue / red, blows that sound like their weapon (2026-11-22, `audio/attack-sounds`, ADR-165)

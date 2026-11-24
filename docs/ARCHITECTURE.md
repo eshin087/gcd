@@ -2443,6 +2443,11 @@ owner's pick of 2026-11-23). `cue-blue` and `time-blue` have no file: the synth 
   `parryChain.js` `PARRY_CHAIN`, `chainK` / `chainRate` / `chainGain` / `chainLayers`): a = weight (the clang an
   octave under itself and a sub), b = doubled strike (a second / third strike, a driven band, +½ semitone a
   step to 2), c = long ring (a low ring on the streak's tonic, more hall); no bell, no sparkle.
+  The parry's other uses (`player:mikiri`, `player:counter`, `player:lock` won, `dragon:deflected`, a blue
+  flare's `combat:flash`, `player:flareCounter`) → `_parryAlso`: one strike of `parry-blue`, no climb (the synth
+  `parry` with its old chain value as the fallback and with `?sfx=old`). The streak's climb note on a parry is
+  × `STREAK_SOUND.parryGain` (0.5). The hero's swing pitch steps with `combo` 1..5 (step `combo - 1`, 0..4),
+  the recorded light cut by `HERO.combo` and the synth `swing` by 0.035 a step.
   `player:hurt` (end of frame) → `hurt`, gain × `(clamp(damage / 40, 0.6, 1.4) / 0.6) ^ HURT.exp`, + `hurtFire`
   for a fire kind. `player:hitDragon` on a beast (not a wing) → `hit-scale` (heavy × `HIT_HEAVY`, + `hitCrit` on
   a crit; a duelist's cloth and a wing: the synth `hit`); its blade layer → `cut-light` (light / sweep /

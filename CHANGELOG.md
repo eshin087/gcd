@@ -16,7 +16,10 @@ Seventy-nine pieces of work since 0.4.0:
   wood guard). Back to the original synth: the blue warning, the hero's heavy cut and execution thrust.
   Kept: block, guard break, dodge, Ghostep, roll, a cut on a human boss, the flurry burst, his deflect, the
   red cues, the bosses' blows, the wyrm's sweeps. The deflect chain no longer climbs with a bell: three
-  heavier versions behind `?chain=a|b|c` (the Lab's chain row; the owner's pick pending, `a` by default).
+  heavier versions behind `?chain=a|b|c` (the Lab's chain row); the owner picked `a`, weight that builds. From
+  their sign-off: the counter, mikiri, a blade lock won, a boss deflected, the blue flare's timing ring and the
+  flare counter play one strike of the blue parry recording instead of the climbing synth; the streak's climb
+  note is half as loud on a parry; the hero's combo swing now rises on every cut (it fell back at the whirl).
   Every new sound matches the loudness of the one it replaces (measured through the real engine);
   `?sfx=old` still plays the originals. Credits: `assets/audio/CREDITS.md` "Combat sounds".
 - **Xin Yi reworked: drawn like the hero, kicks and flurries, a wall kick, bullets that never lock you** (2026-11-23, ADR-168 – ADR-170). *Changed:* Xin Yi, the One Who Woke, is printed

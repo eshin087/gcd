@@ -12177,6 +12177,9 @@ async function scenarioSfx() {
       deflect: ['dragon:guard', { heavy: false, deflect: true, caught: false }],
       heavy: ['player:attack', { kind: 'heavy', combo: 0, charge: 0, name: 'heavy' }],
       thrust: ['player:attack', { kind: 'thrust', combo: 1, charge: 0, name: 'thrust' }],
+      counter: ['player:counter', {}],
+      mikiri: ['player:mikiri', {}],
+      deflected: ['dragon:deflected', {}],
     };
     const smp0 = A._sample;
     const took = [];
@@ -12187,7 +12190,7 @@ async function scenarioSfx() {
       if (evs[k][0] === 'player:hurt') { played.length = 0; A.update(DT); p.push(...played); }
       return { p, s: took.map((x) => x.slot), took: took.slice() };
     };
-    const SYN = { parry: ['parry'], parryBlue: ['parry'], parryPerfect: ['parry'], parryBullet: ['parry'], hurt: ['hurt'], hurtFire: ['hurt'], hit: ['hit', 'cut'], hitCrit: ['hit', 'cut', 'sub'], hitWing: ['hit', 'cut'], hitSlam: ['hit', 'cut', 'sub'], slam: ['slam'], flurryCut: ['flurryCut'], flurryCoil: ['flurryCoil'], dive: ['plungeDive'], plungeHit: ['plungeHit'], clash: ['trade'], guard: ['guard'], deflect: ['deflected'], heavy: ['swing'], thrust: ['swing'] };
+    const SYN = { parry: ['parry'], parryBlue: ['parry'], parryPerfect: ['parry'], parryBullet: ['parry'], hurt: ['hurt'], hurtFire: ['hurt'], hit: ['hit', 'cut'], hitCrit: ['hit', 'cut', 'sub'], hitWing: ['hit', 'cut'], hitSlam: ['hit', 'cut', 'sub'], slam: ['slam'], flurryCut: ['flurryCut'], flurryCoil: ['flurryCoil'], dive: ['plungeDive'], plungeHit: ['plungeHit'], clash: ['trade'], guard: ['guard'], deflect: ['deflected'], heavy: ['swing'], thrust: ['swing'], counter: ['parry'], mikiri: ['parry'], deflected: ['parry'] };
     const synthAll = () => Object.keys(evs).filter((k) => { const f = fire(k); return !same(f.p, SYN[k]) || f.s.length; });
     const starts2 = [];
     ctx.createBufferSource = function () { const s = cbs.call(this); srcs++; const st = s.start?.bind(s); s.start = (t, off) => { starts2.push([t, s.buffer, off]); return st?.(t, off); }; return s; };
@@ -12208,6 +12211,8 @@ async function scenarioSfx() {
         hitWing: [['cut-light'], ['hit']], hitSlam: [['hit-scale', 'cut-heavy'], ['sub']], slam: [['slam'], []], flurryCut: [['flurry-cut'], []],
         flurryCoil: [['flurry-coil'], []], dive: [['plunge-dive'], []], plungeHit: [['plunge-hit'], []], clash: [['clash'], []], guard: [['boss-guard'], []],
         deflect: [[], ['deflected']], heavy: [[], ['swing']], thrust: [[], ['swing']],
+        // (the parry's other uses: one strike of the blue parry recording, no climbing synth: round two sign-off)
+        counter: [['parry-blue'], []], mikiri: [['parry-blue'], []], deflected: [['parry-blue'], []],
       };
       bad = Object.keys(WANT).filter((k) => { const f = fire(k); return !same(f.s, WANT[k][0]) || !same(f.p, WANT[k][1]); }).map((k) => { const f = fire(k); return `${k}: ${JSON.stringify(f.s)} ${JSON.stringify(f.p)}`; });
       assert(!bad.length, `loaded: each event plays its slot (a blue / perfect parry parry-blue + the perfect layer; a bullet's parry, a wing, the boss's deflect, the hero's heavy cut and thrust the synth) ${bad.join(' | ')}`);

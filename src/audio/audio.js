@@ -370,6 +370,16 @@ export class AudioEngine {
     return true;
   }
 
+  /**
+   * The parry's other uses (mikiri, the counter, a blade lock won, a boss deflected, a blue flare's timing
+   * ring, the flare counter): the blue parry recording as ONE strike (no climb, no bell: the owner, round
+   * two sign-off), the synth `parry` with its old chain value until the file loads and with `?sfx=old`.
+   */
+  _parryAlso(o) {
+    if (sfxMode() !== 'old' && this._sample('parry-blue', null)) return true;
+    return this.play('parry', o);
+  }
+
   /** A blow on the hero (end of frame): recorded, louder with the damage (HURT), a burn's hiss over it. */
   _hurt(o) {
     const k = clamp(num(o.damage, 20) / HURT.div, HURT.min, HURT.max) / HURT.min;
@@ -858,7 +868,9 @@ export class AudioEngine {
       // the recorded blade when it is there (pitched above the bosses', rising up the combo), else the synth
       // (HERO_SLOT: the heavy cut and the thrust are the synth's own)
       const slot = HERO_SLOT[d.kind === 'thrust' ? 'thrust' : heavy ? 'heavy' : 'light'];
-      const step = (num(d.combo, 0) | 0) % 3;
+      // (the light chain's combo runs 1..5: every cut a step higher, the whirl and the lunge too; it used to
+      // fall back at the whirl, `combo % 3`: the owner, round two sign-off)
+      const step = clamp((num(d.combo, 1) | 0) - 1, 0, 4);
       if (!slot || !this._sample(slot, null, 1, HERO.rate * (1 + step * HERO.combo), 'hero')) this.play('swing', { heavy, combo: d.combo, thrust: d.kind === 'thrust' });
     });
     on('player:slam', (d) => this._sample('slam', this._at(d.x, d.z)) || this.play('slam', { x: d.x, z: d.z }));
@@ -981,17 +993,17 @@ export class AudioEngine {
     on('player:lock', (d) => {
       if (d.phase === 'start') this.play('block', { tell: 'blue', damage: 0 });
       else if (d.phase === 'push') this.play('guard', { heavy: false }); // (a shove grinds: no bell per press)
-      else if (d.phase === 'won') this.play('parry', { tell: 'blue', chain: 6 });
+      else if (d.phase === 'won') this._parryAlso({ tell: 'blue', chain: 6 });
       else this.play('block', { tell: 'blue', damage: 10 });
     });
     on('player:mikiri', () => {
-      this.play('parry', { tell: 'blue', chain: 5 });
+      this._parryAlso({ tell: 'blue', chain: 5 });
       this.streakSound?.onDefence('mikiri');
     });
-    on('player:counter', () => this.play('parry', { tell: 'blue', chain: 7, perfect: true }));
+    on('player:counter', () => this._parryAlso({ tell: 'blue', chain: 7, perfect: true }));
     // a deep gong under the slow motion (the blade lock's camera push-in has its own clash and no slow-mo)
     on('game:cinematic', (e) => { if (e?.kind !== 'lock' && e?.kind !== 'perfectParry' && e?.kind !== 'flurry') this.play('gong'); });
-    on('dragon:deflected', () => this.play('parry', { tell: 'blue', chain: 8 }));
+    on('dragon:deflected', () => this._parryAlso({ tell: 'blue', chain: 8 }));
     on('player:guardBreak', () => {
       this.charge?.stop(0.05);
       this.play('guardBreak');
@@ -1038,10 +1050,10 @@ export class AudioEngine {
         // (the white glint of an ordinary blow is visual alone)
         if (this._sample(o.tell === 'red' ? 'time-red' : 'time-blue', o) || this.play('flash', o)) this._dipMusic();
       }
-      if (d.flare && d.tell === 'blue') this.play('parry', { tell: 'blue', chain: 3 });
+      if (d.flare && d.tell === 'blue') this._parryAlso({ tell: 'blue', chain: 3 });
     });
     // the counter blow (a parried blue flare blow answered by the hero, ADR-118)
-    on('player:flareCounter', () => this.play('parry', { tell: 'blue', chain: 6, perfect: true }));
+    on('player:flareCounter', () => this._parryAlso({ tell: 'blue', chain: 6, perfect: true }));
 
     on('player:died', () => {
       this.charge?.stop(0.1);

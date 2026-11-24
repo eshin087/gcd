@@ -117,8 +117,8 @@ export const CLASH_HEAVY = 1.25;
 export const BLOWS = { gap: 0.09 };
 
 /** The hero's own sword (player:attack): the same slots, pitched above the bosses so the two blades can
- *  be told apart; each step of the combo `combo` higher (of 3, as the synth's rising swing). */
-export const HERO = { gain: 0.8, rate: 1.08, combo: 0.03, rev: 0.08, prio: 2, gap: 0.04 };
+ *  be told apart; each cut of the chain `combo` higher (combo 1..5: up to 4 steps, as the synth's rising swing). */
+export const HERO = { gain: 0.8, rate: 1.08, combo: 0.025, rev: 0.08, prio: 2, gap: 0.04 };
 
 /** The slot of a duelist's blow (dragon:attack's weapon / weight / shape). */
 export function blowSlot(weapon, weight, shape) {

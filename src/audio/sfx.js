@@ -258,7 +258,7 @@ export const SFX = {
     play(v, t, o) {
       const heavy = !!o.heavy;
       const D = o.thrust ? 0.5 : heavy ? 0.42 : 0.24;
-      const c = 1 + ((num(o.combo, 0) | 0) % 3) * 0.07;
+      const c = 1 + clamp((num(o.combo, 1) | 0) - 1, 0, 4) * 0.035; // every cut of the chain a step higher (1..5)
       const lo = heavy ? 300 : 650;
       const hi = (heavy ? 1500 : 2900) * c * rnd(0.92, 1.08);
       const bp = swish(v, t, 'white', 'bandpass', lo, heavy ? 1.1 : 1.6, [[0, 0], [D * 0.4, heavy ? 0.75 : 0.6], [D, 0]]);
