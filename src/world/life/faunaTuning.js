@@ -29,10 +29,10 @@ const FLOCK = Object.freeze({
   /** the shape (m): along its way, across it, up and down. It starts tight and loosens to `loose` x
    *  over its flight; every bird's place in it drifts on its own slow beat (`drift` Hz), so the shape
    *  stretches, curls and thins and is never evenly spaced */
-  along: 0.8,
-  across: 0.5,
-  up: 0.35,
-  loose: 1.8,
+  along: 1.1,
+  across: 0.55,
+  up: 0.4,
+  loose: 2.4,
   drift: Object.freeze([0.12, 0.35]),
   /** how a bird keeps its place: a spring (1/s^2) and its damping (1/s); the spring comes in over
    *  `gather` s (the burst first scatters them, then they close up) */
@@ -45,8 +45,8 @@ const FLOCK = Object.freeze({
   quit: Object.freeze([0.4, 1]),
   fade: 1.4,
   /** the look: a moon-grey letter, faint; alone it is near invisible (the flock's mass reads) */
-  color: Object.freeze([0.5, 0.52, 0.6]),
-  alpha: 0.78,
+  color: Object.freeze([0.46, 0.48, 0.56]),
+  alpha: 0.72,
   /** a bird whose letter would land within this many m (ground) of the hero or the boss is not drawn */
   clear: 2.2,
 });
