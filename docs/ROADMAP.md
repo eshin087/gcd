@@ -184,6 +184,16 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.79 — Three more: grass the sword mows, lamps that light with the fight, the living world heard (2026-11-23, `world/alive-three`, ADR-180)
+- [x] Torn grass (the scorch map's A): the sword mows, every floor mark tears its shape (`?mow=0`)
+- [x] Lanterns and braziers that kindle by phase and fire, gutter under blows, go out when broken; low lights in the pool
+- [x] The living world's sounds (`LIFE_SFX`, `lifeSay`), per level, rate-limited, an audition page
+- [x] The cut redone at the owner's call (2026-11-24): under the sword's drawn arc, blade by blade, the tops thrown quietly (`?mowLook=`)
+- [ ] The lying tops in the wind; a stub that springs; the cut texture's upload on the phone
+- [ ] The owner hears the sounds; their call on a lantern flame's size
+- [ ] The flurry mows; the Ashfall grass's cut colour; the gutter's lean
+- [ ] On the phone
+
 ## M1.78 — Grades, saved bests and a boss rush (2026-11-23, `claude/game-records-boss-rush-2d742b`, ADR-179)
 - [x] A grade for clean play (deaths and the winning attempt's damage; time only orders a grade), marks beside it
 - [x] The store (localStorage, versioned, survives broken storage), the run record shaped for a leaderboard, `game:record`

@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Eighty-three pieces of work since 0.4.0:
+Eighty-four pieces of work since 0.4.0:
 - **Grades, saved bests and a boss rush** (2026-11-23, ADR-179). *Added:* a won fight is graded for
   CLEAN PLAY (the owner's rule): S = no deaths and at most 15 % of max HP lost in the winning attempt,
   A = no deaths or one death and at most half, B = up to three deaths, C = any other win; time only
@@ -25,6 +25,17 @@ Eighty-three pieces of work since 0.4.0:
   streaks that shrink to dots, cool to dark red and are gone in under half a second, a couple falling to the floor.
   No white, no glow; the gold mark, the freeze, the slow motion and the sound are as before, and a normal parry and
   the perfect dodge are unchanged. `?parryFx=0` (the Lab's `parryFx` button) draws the parry without them.
+- **The sword mows the grass; lanterns light with the fight; the living world is heard** (2026-11-23, ADR-180).
+  *Added:* **the sword cuts the grass** under its swing's arc, blade by blade, the moment the arc passes:
+  each blade keeps the stub of its own letter and its top is tossed off quietly along the swing
+  (`?mowLook=b|c|r1`: other looks; the stubble stays until the fight resets; `?mow=0`: today's grass); **every boss mark tears the
+  grass out** under it, so the marks show in the meadow (the wyrm's claws leave three raked furrows).
+  **The lanterns light**: Ashfall's, Foxfire's and the Windless Grove's stone lanterns kindle as the fight
+  goes on (a few when you arrive, more at each of the boss's phases, any that fire reaches), gutter when a
+  heavy blow lands near and go out when broken; the Skybreak Ring's braziers gutter and die the same
+  way. **The new life is heard**: a flock's wings as it leaves, a rustle as an animal bolts, a tree's
+  shudder and its creak before it falls, dust and pebbles, a lantern catching and dying; quiet,
+  synthesized, one sound per moment. None of it changes how the fight plays.
 - **Every sound effect is back to its first synth version** (2026-11-23, ADR-178). *Changed:* the owner turned down a new light-cut
   swing, plucked-string warnings and two rounds of variations of the blue and red warnings, and asked to "start
   from baseline and undo all the sound changes". The recorded and designed sounds of the attack-sound pass

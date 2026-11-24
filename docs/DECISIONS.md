@@ -5314,6 +5314,50 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   sound options") and the pickers' pages. The tests of the sound passes (integ and duel `sfx`) switch the mode on
   and put the default back.
 
+## ADR-180 — Grass the sword mows, lamps that light with the fight, and the living world heard (2026-11-23)
+
+- **Context:** asked "what else do you recommend to make the world and background more alive and
+  interactable to make the fight seem cool", the owner got eight ideas and said "Build top three":
+  grass the sword cuts (which also lets the boss marks of ADR-177 show on grass, where they were
+  faint), the levels' unlit lanterns lighting with the fight, and sound for the new life.
+- **Decision:**
+  1. **Torn grass is the scorch map's A channel**, the one channel nothing in the fire reads: a tear
+     is persistent until the fight's reset and never changes what burns, so the seeded fights replay
+     byte for byte. The sword mows (`mowSwing` beside `_cutWorld`: where the steel passes low enough,
+     a strip along its ground path; the blade's height decides skim or cut), a floor mark tears its own
+     shape out. The grass shader draws two looks from one channel: mown (the blade's own letter clipped
+     to a pale stub, some tops lying) and torn out (bare floor). Burnt grass stays black.
+  2. **Lamps are a living-world layer** (`life.lamps`, piece `answer`): a breakable def carries
+     `lamp: { y, r }`; a lamp kindles by a per-level rule (some at the start, more at each boss phase,
+     fire landing near), gutters under a blow, goes out for good when its piece breaks. The flame is
+     heat in the fire field; only a few lamps hold a real light: the light pool gained LOW lights
+     that take only the slots the fight leaves free and fade in and out of them.
+  3. **The living world's one-shot sounds** go through `life.sound` / `lifeSay` into `LIFE_SFX`:
+     synthesized, short, one sound per event (a flock is one burst, a shake one or two shudders), per
+     level (the Throne and the Hall hear nothing alive, the Grove only its canes and its lamps), no
+     louder than a footstep at the same distance except a big flock and a creak, never `Math.random`.
+- **Why this way:** one free channel and a shader branch that is skipped where nothing is torn cost
+  nothing where nothing happened; the light pool's eight slots belong to the fight, so lamps borrow
+  what is left; the sounds lean on the approved air bed's manner (the owner: "sound looks good").
+- **Amended 2026-11-24 (the owner saw the cut):** "the grass cut doesn't look good ... we should be
+  able to see the grass get cut the moment the sword touches the grass and have ascii grass get thrown
+  into the air". Measured: the cut was a blotch of a map cell's share of blades round the steel, and
+  most of the DRAWN arc passed over grass that stood. Now **the drawn arc is the cut's source**
+  (`player/fx.js` `trail()` → `world/mowFx.js` `cutArc`, each edge stroke low enough, carried along the
+  view ray): exact to the blade, one byte per blade instance in a texture the grass shader reads by
+  `gl_InstanceID`, so the sword no longer writes A (A stays for the marks; `?mowLook=r1` keeps the first
+  round). Each cut blade's top, its own letter, leaves on the frame its stub shows (`MowFx`). Three
+  looks were filmed (thrown, sliced, shred); the owner liked sliced, then asked for the cut to follow
+  the swing, then chose **thrown, made subtle**: half the tops tossed low with a gentle spin, the rest
+  toppling, no brighter than the grass. Why a per-blade texture and not finer scorch cells: the cut
+  must sit on the arc's line (~0.5 m wide) and the fire's 0.625 m map is shared with what burns.
+- **Consequences / open:** (first round) the mowing is calm (a pale speckled clearing more than a crisp
+  swath) and the hero's mostly vertical cuts leave lanes, not arcs (both answered by the amendment);
+  the cut tops do not move with the wind once lying; a stub does not spring; after a fire-heavy fight burnt ground still
+  dominates the meadow; a lantern's flame is a few letters at the game camera; Foxfire's ten lanterns
+  share three lights; the Ring's braziers became low lights (they give way to the fight's) also with
+  the living world off; nobody has heard the sounds yet.
+
 ## ADR-181 — The perfect parry throws a few orange sparks; nothing else of the moment changes (2026-11-24)
 
 - **Context:** the owner asked to make the perfect parry and dodge "more epic cool with subtle effects". In one session

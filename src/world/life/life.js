@@ -7,6 +7,7 @@ import * as CreaturesM from './creatures.js';
 import * as AnswerM from './answer.js';
 import * as TremorM from './tremor.js';
 import * as AftermathM from './aftermath.js';
+import * as LampsM from './lamps.js';
 
 // THE LIVING WORLD (`game.world.life`; the switch: lifeSwitch.js, `?life=`).
 //
@@ -40,6 +41,8 @@ import * as AftermathM from './aftermath.js';
 //   life.impact(x, z, r, power, o)      world.impact() and world.groundBlow() call this: a blow landed.
 //                         Every layer with an `impact` method whose piece is on gets it.
 //   life.ignite(x, z, r, k)             world.ignite() calls this: fire landed. Likewise `ignite`.
+//   life.sound(name, x, z, o)           a one-shot sound of the living world (audio/lifeSfx.js: a flock's
+//                         wings, a creak, pebbles): placed at (x, z), only with the piece `air` on
 //   life.action(label, run, title)      a button on the Lab's 'life' row (a gust now, rain now, ...)
 //
 //   life.wind             wind.js      .at(x, z, out) .front(o) .burst(x, z, s, r) .dirX .dirZ .speed .level .still
@@ -50,6 +53,7 @@ import * as AftermathM from './aftermath.js';
 //   life.answer           answer.js
 //   life.tremor           tremor.js    (piece 'answer') what stands near a heavy blow shakes
 //   life.aftermath        aftermath.js (piece 'answer') what a fight leaves in the air: smoke, dust, embers
+//   life.lamps            lamps.js     (piece 'answer') the levels' lanterns and braziers: lit, guttering, dark
 //   (a layer is always there, also when its piece is off: its methods then do nothing and its values
 //    are the still-air defaults. Outside readers still write `game.world?.life?.wind?.at(...)`: the
 //    headless sims run on a world mock with no life at all.)
@@ -73,14 +77,16 @@ export const LIFE_TUNE = Object.freeze({
   calmUp: 4,
   /** s for `hush` to fall away once its hold is over */
   hushRelease: 1.5,
+  /** life.sound() stays quiet while the world holds its breath deeper than this */
+  soundHush: 0.6,
   /** `calm` rises again only while `hush` is below this (the victory's lull holds the world still first) */
   calmHush: 0.5,
 });
 
 const FIGHT = new Set(['bossIntro', 'boss']);
-const ORDER = ['wind', 'weather', 'litter', 'steps', 'creatures', 'answer', 'tremor', 'aftermath'];
+const ORDER = ['wind', 'weather', 'litter', 'steps', 'creatures', 'answer', 'tremor', 'aftermath', 'lamps'];
 /** the piece of the switch a layer belongs to, where it is not its own name */
-const PIECE = { tremor: 'answer', aftermath: 'answer' };
+const PIECE = { tremor: 'answer', aftermath: 'answer', lamps: 'answer' };
 const MAKERS = {
   wind: () => WindM.Wind,
   weather: () => WeatherM.Weather,
@@ -90,6 +96,7 @@ const MAKERS = {
   answer: () => AnswerM.Answer,
   tremor: () => TremorM.Tremor,
   aftermath: () => AftermathM.Aftermath,
+  lamps: () => LampsM.Lamps,
 };
 
 export class LivingWorld {
@@ -110,6 +117,7 @@ export class LivingWorld {
     this._heroInit = false;
     this._focus0 = { x: 0, y: 0, z: 0 };
     this.actions = [];
+    this._snd = {};
     this._errs = Object.create(null);
     this.layers = [];
     for (const name of ORDER) {
@@ -166,6 +174,31 @@ export class LivingWorld {
       return fn();
     } finally {
       Math.random = mr;
+    }
+  }
+
+  /**
+   * A one-shot sound of the living world (audio/lifeSfx.js names it): at (x, z) when given, so it is
+   * placed and falls off with distance like the fight's sounds; `o` adds { gain, k, ... } for the sound's
+   * own recipe. Only while the piece `air` is on (the sound of the air is the living world's sound) and
+   * the world is not holding its breath past `LIFE_TUNE.soundHush`. Returns whether it played.
+   */
+  sound(name, x = NaN, z = NaN, o = undefined) {
+    if (!this.enabled || !this.on('air') || this.hush > LIFE_TUNE.soundHush) return false;
+    const audio = this.game?.audio;
+    if (typeof audio?.play !== 'function') return false;
+    const r = this._snd;
+    for (const k in r) delete r[k];
+    if (o) Object.assign(r, o);
+    if (Number.isFinite(x + z)) {
+      r.x = x;
+      r.z = z;
+    }
+    try {
+      return audio.play(name, r) === true;
+    } catch (err) {
+      this._fail('sound', err);
+      return false;
     }
   }
 

@@ -2,7 +2,7 @@
 // Scorch, GroundFire, Scars and Destructibles on the REAL sets (the forest, the courtyard), wired
 // like src/world/world.js; the hero and the boss are small stand-ins that record what lands on them.
 // usage: node world.mjs <repoRoot> [scenario]
-//   scenario: sets | floor | terrace | colossus | chip | fell | cover | fire | throw | marks | reset | grid | body | wreck | spread | wear | wall | reach | landmarks | edge | budget | bite | slice | placed | all
+//   scenario: sets | floor | terrace | colossus | chip | fell | cover | fire | throw | marks | reset | grid | body | wreck | spread | wear | wall | reach | landmarks | edge | budget | bite | slice | placed | mow | tops | all
 // (body / budget run the REAL Dragon on the REAL forest: its body against the world, ARCHITECTURE.md
 // "Destruction" → "The wyrm's body")
 import { pathToFileURL } from 'node:url';
@@ -28,6 +28,8 @@ const { Scars } = await imp('src/world/scars.js');
 const { Destructibles, STATE, reseedBreaks } = await imp('src/world/destructibles.js');
 const { BREAK, BLOW, FIRE, SCAR } = await imp('src/world/breakTuning.js');
 const { createForest } = await imp('src/world/forest.js');
+const { mowSwing, meadowHeight, createGrass } = await imp('src/world/grass.js');
+const { GRASS } = await imp('src/world/grassTuning.js');
 const { ELDER_COLLIDERS } = await imp('src/world/landmarks.js');
 const ELDER_N = ELDER_COLLIDERS.length;
 const { createCourtyard } = await imp('src/world/courtyard.js');
@@ -2047,6 +2049,274 @@ const S = {
     { const per = {}; set.group.traverse((o) => { if (o.isMesh) per[o.name] = Math.round((o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3); }); out(`     triangles by mesh: ${JSON.stringify(per)}`); }
     out(`     the city: ${L.length} pieces (${batch} in the rigid batch, ${D.floor.length} floor), ${bones} bones, ${meshes.length} draw meshes (${meshes.join(', ')}), ${Math.round(tris)} triangles, ${colliders.circles.length} colliders`);
     assert(batch <= 110 && bones <= 340 && tris <= 160000, `the phone budget: ${batch} batch pieces (<= 110), ${bones} bones (<= 340), ${Math.round(tris)} triangles (<= 160k)`);
+  },
+
+  // ---------------------------------------------------------------- grass the sword cuts (the scorch map's A)
+  // (last: its marks draw on the scars' cosmetic stream, which the scenarios after it would see)
+  mow() {
+    // the meadow on the west (x < 0), paving on the east (x >= 0): grass only where it grows
+    const dens = (x, z) => (x < 0 ? 1 : 0);
+    const { world, game } = build(createForest, dens);
+    const sc = world.scorch, scars = world.scars;
+    world.groundBlow = (x, z, o) => { if (Number.isFinite(x + z) && o && o.power > 0) scars.mark(x, z, o); };
+    // a sword sweep stand-in (the hero's SwordSweep: a hilt, b the gameplay reach, point(f) the steel)
+    const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+    const sw = { valid: true, a: V3(), b: V3(), pa: V3(), pb: V3(), point(f, out) { return out.lerpVectors(this.a, this.b, f * 0.44); } };
+    const fx = { n: 0, mowBits(ax, az, bx, bz, n) { if (![ax, az, bx, bz, n].every(Number.isFinite)) throw new Error('NaN bits'); this.n += n; } };
+    const pose = (A, B, cx, cz, y, ang, tilt = 0) => {
+      // the blade from a hilt at (cx, y, cz) 1.9 m out at ground angle ang, its point dipped by tilt (m)
+      A.set(cx, y, cz);
+      B.set(cx + Math.cos(ang) * 1.9, y - tilt, cz + Math.sin(ang) * 1.9);
+    };
+    const swing = (cx, cz, y, a0, a1, tilt, frames = 14) => {
+      const atk = { def: { windup: 0, active: 1 }, t: 0.2 };
+      pose(sw.pa, sw.pb, cx, cz, y, a0, tilt);
+      let add = 0;
+      for (let i = 1; i <= frames; i++) {
+        pose(sw.a, sw.b, cx, cz, y, a0 + ((a1 - a0) * i) / frames, tilt);
+        add += mowSwing(game, atk, sw, fx);
+        sw.pa.copy(sw.a);
+        sw.pb.copy(sw.b);
+        atk.t += 1 / 60;
+      }
+      return add;
+    };
+    const along = (cx, cz, r, a) => sc.tornAt(cx + Math.cos(a) * r, cz + Math.sin(a) * r);
+    // (the RGB channels as they were, with some burn, heat and trample written first)
+    sc.burnCircle(-20, -20, 2, 0.6, 0.8);
+    sc.trample(-15, -20, 0.6, 0.8);
+    const rgb = () => { const d = sc.data, o = []; for (let i = 0; i < d.length; i += 4) o.push(d[i], d[i + 1], d[i + 2]); return o; };
+    const rgb0 = rgb(), burn0 = Float32Array.from(sc.burn), heat0 = Float32Array.from(sc.heat), tram0 = Float32Array.from(sc.tram);
+    const R0 = Math.random;
+    let draws = 0;
+    Math.random = () => { draws++; return R0(); };
+
+    // (the steel's strip into the scorch map is round 1's mow, `?mowLook=r1`; round 3 cuts along the drawn
+    // arc: the `tops` scenario)
+    setLook('mowLook', 'r1');
+    // 1. a low sweep (the edge 0.12 m up, through grass ~0.5 m tall) mows its arc and nothing beside it
+    const cx = -12, cz = 0;
+    const add = swing(cx, cz, 0.12, -0.9, 0.9, 0.05);
+    const onArc = [-0.6, -0.3, 0, 0.3, 0.6].map((a) => along(cx, cz, 0.75, a));
+    const behind = along(cx, cz, 0.8, Math.PI), far = along(cx, cz, 3.2, 0);
+    assert(add > 0 && Math.min(...onArc) >= GRASS.mow.maxK - 1e-6 && Math.max(...onArc) < GRASS.blade.bare[0], `a low sweep mows its arc: torn ${onArc.map((v) => v.toFixed(2)).join(' ')} along it (${GRASS.mow.maxK}: mown, never torn out)`);
+    assert(behind === 0 && far === 0, `... and nothing beside it: behind him ${behind}, 3.2 m out (past the steel) ${far}`);
+    assert(fx.n > 0 && fx.n <= GRASS.mow.bits.max, `the cut tops fly: ${fx.n} letters for the swing (1 .. ${GRASS.mow.bits.max})`);
+    // 2. a swing at waist height clips the tall grass's tops lightly, and nothing on paving
+    const meadowTop = Math.max(...[-0.5, 0, 0.5].map((a) => meadowHeight(-20 + Math.cos(a), 8 + Math.sin(a), () => 0.5)));
+    const nWaist0 = sc.tornCells;
+    swing(-20, 8, meadowTop * 1.05 + 0.2, -0.6, 0.6, 0);
+    const waist = Math.max(...[-0.4, 0, 0.4].map((a) => along(-20, 8, 0.7, a)));
+    assert(waist > 0 && waist < 0.5, `a swing at waist height (${(meadowTop * 1.05 + 0.2).toFixed(2)} m over grass ${meadowTop.toFixed(2)} m tall) only skims: torn ${waist.toFixed(2)} (0 .. 0.5), ${sc.tornCells - nWaist0} cells`);
+    const nPave0 = sc.tornCells;
+    swing(12, 0, 0.12, -0.9, 0.9, 0.05);
+    assert(sc.tornCells === nPave0 && along(12, 0, 0.75, 0) === 0, `the same low sweep on paving tears nothing (${sc.tornCells - nPave0} cells)`);
+    // a blade held still (a freeze) cuts nothing
+    const nStill = sc.tornCells;
+    { const atk = { def: { windup: 0, active: 1 }, t: 0.2 }; pose(sw.pa, sw.pb, -30, 10, 0.1, 0, 0); pose(sw.a, sw.b, -30, 10, 0.1, 0, 0); mowSwing(game, atk, sw, fx); }
+    assert(sc.tornCells === nStill, 'a blade at rest (a hitstop) mows nothing');
+
+    setLook('mowLook', null);
+    // 3. every kind of floor mark tears its shape (the marks then lie on the stubble)
+    const kinds = [
+      ['slam', -40, -30, { kind: 'slam', power: 1.4, r: 3 }, [[0, 0], [0.8, 0]], [[4, 0]]],
+      ['blast', -40, -20, { kind: 'blast', power: 1.2, r: 3, hot: true }, [[0, 0], [0, 0.7]], [[4, 0]]],
+      ['cut', -40, -10, { kind: 'cut', power: 1, dx: 1, dz: 0, len: 3 }, [[0.4, 0], [1.5, 0], [2.6, 0]], [[1.5, 1.6]]],
+      ['claws', -40, 0, { kind: 'cut', power: 1, dx: 1, dz: 0, len: 2.4, claws: 3, spread: 0.8 }, [[1, -0.8], [1, 0], [1, 0.8]], [[1, 2.4]]],
+      ['thrust', -40, 10, { kind: 'thrust', power: 1, dx: 1, dz: 0 }, [[0, 0]], [[0, 2]]],
+      ['dash', -40, 20, { kind: 'dash', power: 1.2, dx: 1, dz: 0, len: 5 }, [[1, 0], [2.5, 0], [4.5, 0]], [[2.5, 2]]],
+      ['beam', -40, 30, { kind: 'beam', power: 1.5, dx: 1, dz: 0, len: 12, hot: true }, [[1, 0], [6, 0], [11, 0]], [[6, 2]]],
+      ['tail arc', -55, -20, { kind: 'dash', power: 1.2, dx: 1, dz: 0, len: 6, arc: true, r: 4 }, [[4, 0], [4 * Math.cos(0.75), 4 * Math.sin(0.75)], [4 * Math.cos(1.4), 4 * Math.sin(1.4)]], [[0, 0]]],
+      ['step', -55, 0, { kind: 'step', power: 1.2, dx: 1, dz: 0 }, [[0, 0]], [[1.5, 0]]],
+    ];
+    for (const [name, x, z, o, inside, outside] of kinds) {
+      const tin = inside.map(([u, v]) => sc.tornAt(x + u, z + v));
+      const ylift0 = scars.marks.length;
+      scars.mark(x, z, { by: 'boss', ...o });
+      const tin2 = inside.map(([u, v]) => sc.tornAt(x + u, z + v)), tout = outside.map(([u, v]) => sc.tornAt(x + u, z + v));
+      const ys = scars.marks.slice(ylift0).map((m) => m.y);
+      const yAvg = ys.reduce((s, y) => s + y, 0) / Math.max(1, ys.length);
+      assert(Math.max(...tin) === 0 && Math.min(...tin2) >= 0.6 && Math.max(...tout) === 0, `${name}: torn ${tin2.map((v) => v.toFixed(2)).join(' ')} along its shape (>= 0.6), ${tout.map((v) => v.toFixed(2)).join(' ')} beside it`);
+      assert(ys.length > 0 && yAvg < SCAR.mark.y + SCAR.mark.grassLift * 0.6, `... its ${ys.length} glyphs lie on the stubble (mean ${yAvg.toFixed(2)} m; on standing grass ${(SCAR.mark.y + SCAR.mark.grassLift).toFixed(2)})`);
+    }
+    const paveMark = sc.tornCells;
+    scars.mark(20, 20, { kind: 'slam', power: 1.4, r: 3, by: 'boss' });
+    assert(sc.tornCells === paveMark, 'a slam on paving tears nothing');
+
+    // 4. no Math.random, R / G / B untouched; ?mow=0 tears nothing
+    assert(draws === 0, `tearing draws nothing from Math.random (${draws} draws)`);
+    const rgb1 = rgb();
+    let diff = 0;
+    for (let i = 0; i < rgb0.length; i++) if (rgb0[i] !== rgb1[i]) diff++;
+    // (the blast and the beam char the floor only where no grass grows: their own char, scars._char)
+    let charOff = 0;
+    for (let i = 0; i < burn0.length; i++) if (burn0[i] !== sc.burn[i] && dens(sc.min + ((i % sc.size) + 0.5) * sc.cellSize, 0) > 0) charOff++;
+    assert(charOff === 0 && heat0.every((v, i) => v === sc.heat[i]) && tram0.every((v, i) => v === sc.tram[i]), `the tears change no burn on the meadow, no heat, no trample (${diff} R/G/B bytes differ: the marks' own char on paving)`);
+    setLook('mow', '0');
+    try {
+      const n0 = sc.tornCells;
+      swing(-30, 20, 0.1, -0.9, 0.9, 0.05);
+      scars.mark(-30, 30, { kind: 'slam', power: 1.4, r: 3, by: 'boss' });
+      sc.tear(-30, 25, 2, 1);
+      assert(sc.tornCells === n0, `?mow=0: the sweep, a slam and tear() tear nothing (${sc.tornCells - n0} cells)`);
+    } finally {
+      setLook('mow', null);
+    }
+    // 5. reset() clears A (the fight's reset)
+    sc.reset();
+    let a = 0;
+    for (let i = 3; i < sc.data.length; i += 4) a += sc.data[i];
+    assert(sc.tornCells === 0 && a === 0 && sc.tornAt(cx + 0.75, cz) === 0, 'scorch.reset() clears the torn grass (A all 0)');
+    Math.random = R0;
+  },
+
+  // ---------------------------------------------------------------- the cut tops (round 2, world/mowFx.js)
+  tops() {
+    // the meadow on the west, paving on the east; a real grass of 30k blades over 24 m
+    const dens = (x, z) => (x < 0 ? 1 : 0);
+    setLook('mowLook', 'a'); // (the thrown look first: its tops fly up and along; b, the default, below)
+    const { world, game } = build(createForest, dens);
+    const sc = world.scorch;
+    world.grass = createGrass(game.U, { count: 30000, extent: 24, density: dens, height: (x, z, r) => 0.5 * (0.75 + r() * 0.5) });
+    const R0 = Math.random;
+    let draws = 0;
+    Math.random = () => { draws++; return R0(); };
+    try {
+      sc.update(1 / 60); // (the tops are built on the first frame the grass is there)
+      const T = sc.tops;
+      assert(!!T && game.scene.children.includes(T.mesh), 'the cut tops are built on the first frame, their batch in the scene');
+      const B = world.grass.blades, G = GRASS.blade;
+      // the blades a strip reaches: the very test the grass shader makes (bilinear torn x gain over the
+      // blade's own threshold) decides which lose their tops, on the call itself
+      T.setFling(1, 0, 1);
+      // (a sweep's sub-step: under the per-call cap, GRASS.fly.perTear, which only a big mark reaches)
+      sc.tearLine(-7, 0, -5.8, 0, 0.8, GRASS.mow.maxK);
+      T.clearFling();
+      const fr = (v) => v - Math.floor(v);
+      let want = 0, got = 0, wrong = 0, far = 0;
+      for (let i = 0; i < B.n; i++) {
+        const x = B.root[i * 4], z = B.root[i * 4 + 1];
+        if (B.data[i * 4 + 3] > 0.5) continue;
+        const cut = T._tornAt(x, z) * G.gain >= fr(B.root[i * 4 + 3] * 3.17 + 0.37) * 0.92 + 0.04;
+        if (cut) want++;
+        if (T.cut[i]) got++;
+        if (!!T.cut[i] !== cut) wrong++;
+        if (T.cut[i] && (Math.abs(z) > 1.6 || x > -2.5 || x < -9.5)) far++;
+      }
+      assert(want > 50 && wrong === 0 && far === 0, `a strip cuts ${got} blades on its own call, exactly those the shader shows as stubs (${wrong} differ, ${far} outside the strip)`);
+      assert(T.n === got && T.total === got, `... and every cut blade's top leaves on that frame: ${T.n} tops for ${got} cut blades`);
+      // a top starts where its blade's top was: on the strip, at a blade's height, thrown along the swing
+      let off = 0, up = 0, along = 0, thrown = 0;
+      for (let j = 0; j < T.n; j++) {
+        if (Math.abs(T.pz[j]) > 1.6 || T.px[j] > -2.5 || T.px[j] < -9.5) off++;
+        if (T.py[j] > 0.02 && T.py[j] < 0.7) up++;
+        if (T.state[j] !== 0) continue;
+        thrown++;
+        if (T.vx[j] > 0 && T.vy[j] > 0) along++;
+      }
+      // (a, round 4: a sprinkle: GRASS.fly.throw.share of the tops are tossed, the rest topple off)
+      const sh = GRASS.fly.throw.share;
+      assert(off === 0 && up === T.n && along === thrown && thrown > T.n * (sh - 0.15) && thrown < T.n * (sh + 0.15), `the tops start on the strip (${off} off), at a blade's height (${up}/${T.n}); ${thrown} of them (about ${sh * 100} %) are thrown, all up and along the swing (${along})`);
+      // the same cut again tears nothing new: no second top
+      sc.tearLine(-7, 0, -5.8, 0, 0.8, GRASS.mow.maxK);
+      assert(T.total === got, `a blade loses its top once (${T.total - got} more on a second pass)`);
+      // they fly, land, lie and thin away
+      let flying = 0;
+      for (let f = 0; f < 30; f++) sc.update(1 / 60);
+      for (let j = 0; j < T.n; j++) if (T.state[j] === 0) flying++;
+      let lying = 0;
+      for (let f = 0; f < 60; f++) sc.update(1 / 60);
+      for (let j = 0; j < T.n; j++) if (T.state[j] === 2 && T.py[j] <= 0.021) lying++;
+      const n1 = T.n;
+      for (let f = 0; f < 60 * 5; f++) sc.update(1 / 60);
+      assert(flying > 0 && lying === n1 && T.n === 0 && T.geo.instanceCount === 0, `0.5 s on ${flying} are in the air; 1.5 s on all ${lying} lie on the floor; 6.5 s on none is left (${T.n})`);
+      // on paving nothing is cut
+      sc.tearLine(2, 0, 6, 0, 0.8, 1);
+      assert(T.n === 0, `a strip on paving cuts no blade (${T.n} tops)`);
+      // a slam's mark throws the grass it tears out, from all of its round
+      sc.tear(-6, 5, 1.6, 1);
+      let n = 0, w = 0, e = 0;
+      for (let j = 0; j < T.n; j++) { n++; if (T.px[j] < -6) w++; else e++; }
+      assert(n > 30 && w > n * 0.25 && e > n * 0.25, `a mark's tear throws its grass out of the whole round (${n} tops: ${w} west, ${e} east of its middle)`);
+      // the reset: every blade whole, no top
+      sc.reset();
+      let cut = 0;
+      for (let i = 0; i < B.n; i++) cut += T.cut[i];
+      assert(T.n === 0 && cut === 0, 'scorch.reset() takes every top away and makes every blade whole');
+      assert(draws === 0, `the tops draw nothing from Math.random, built or flying (${draws} draws)`);
+    } finally {
+      Math.random = R0;
+      setLook('mowLook', null);
+    }
+    // round 3: the cut follows the DRAWN arc (player/fx.js trail -> tops.cutArc), the default look b
+    {
+      setLook('mowLook', 'b');
+      const W = build(createForest, dens);
+      const sc3 = W.world.scorch;
+      W.world.grass = createGrass(W.game.U, { count: 30000, extent: 24, density: dens, height: (x, z, r) => 0.5 * (0.75 + r() * 0.5) });
+      let d3 = 0;
+      Math.random = () => { d3++; return R0(); };
+      try {
+        sc3.update(1 / 60);
+        const T = sc3.tops, B = W.world.grass.blades, A = GRASS.arc;
+        assert(T.look === 'b' && GRASS.fly.look === 'a', 'b, sliced, as asked (the default is a, thrown)');
+        // an edge stroke low in the grass (0.3 m up) from (-8, 1) to (-6, 1): exactly the blades within w/2 of it
+        const n = T.cutArc(-8, 0.3, 1, -6, 0.3, 1, false);
+        let inside = 0, wrong = 0;
+        for (let i = 0; i < B.n; i++) {
+          if (B.data[i * 4 + 3] > 0.5) continue;
+          const x = B.root[i * 4], z = B.root[i * 4 + 1];
+          const t = Math.max(0, Math.min(1, (x + 8) / 2)), d = Math.hypot(-8 + 2 * t - x, 1 - z);
+          const want = d <= A.w * 0.5;
+          if (want) inside++;
+          if (!!T.cut[i] !== want) wrong++;
+        }
+        assert(n === inside && inside > 20 && wrong === 0 && sc3.tornCells === 0, `an arc stroke in the grass cuts the ${n} blades within ${A.w / 2} m of its line and no other (${wrong} differ), on its own call, without the map's cells (${sc3.tornCells} torn)`);
+        // b: the tops topple, lean over less than lying flat, drift little, are no brighter than the grass
+        let topple = 0, lean = 0;
+        for (let j = 0; j < T.n; j++) { if (T.state[j] === 1) topple++; if (Math.abs(T.lieRot[j]) < Math.PI * 0.45) lean++; }
+        assert(topple >= T.n * 0.85 && lean >= T.n * 0.85, `b: ${topple}/${T.n} tops topple off their stubs, ${lean} come to rest leaning (under 81 degrees)`);
+        for (let f = 0; f < 30; f++) sc3.update(1 / 60);
+        let lit = 0;
+        for (let j = 0; j < T.n; j++) lit = Math.max(lit, T.aC.array[j * 4 + 3]);
+        assert(lit <= 1.06, `b: a top is no brighter than its grass (x ${lit.toFixed(2)})`);
+        for (let f = 0; f < 60 * 3; f++) sc3.update(1 / 60);
+        assert(T.n === 0, `b: 3.5 s on, every top has thinned away (${T.n} left)`);
+        // a stroke high over the grass cuts nothing; the reset makes every blade whole
+        const hi = T.cutArc(-8, 2.2, 4, -6, 2.2, 4, false);
+        sc3.reset();
+        let left = 0;
+        for (let i = 0; i < B.n; i++) left += T.cut[i] ? 1 : 0;
+        assert(hi === 0 && left === 0, `a stroke 2.2 m up cuts nothing (${hi}); the reset leaves no blade cut (${left})`);
+        assert(d3 === 0, `the arc's cut draws nothing from Math.random (${d3})`);
+      } finally {
+        Math.random = R0;
+        setLook('mowLook', null);
+      }
+      // a, the default (round 4): the same arc cut, a quiet toss: no brighter than the grass, short-lived
+      const W4 = build(createForest, dens);
+      W4.world.grass = createGrass(W4.game.U, { count: 30000, extent: 24, density: dens, height: (x, z, r) => 0.5 * (0.75 + r() * 0.5) });
+      W4.world.scorch.update(1 / 60);
+      const T4 = W4.world.scorch.tops;
+      const n4 = T4.cutArc(-8, 0.3, 1, -6, 0.3, 1, false);
+      let fly4 = 0;
+      for (let j = 0; j < T4.n; j++) if (T4.state[j] === 0) fly4++;
+      W4.world.scorch.update(1 / 60);
+      let lit4 = 0;
+      for (let j = 0; j < T4.n; j++) lit4 = Math.max(lit4, T4.aC.array[j * 4 + 3]);
+      for (let f = 0; f < 60 * 3; f++) W4.world.scorch.update(1 / 60);
+      assert(T4.look === 'a' && n4 > 20 && fly4 > 0 && fly4 < n4 * 0.6 && lit4 <= 1.16 && T4.n === 0, `a (the default) cuts along the arc too (${n4} blades), tosses ${fly4} of the tops, no brighter than x ${lit4.toFixed(2)}, all gone 3 s on (${T4.n} left)`);
+    }
+    // round 1's look builds no tops
+    setLook('mowLook', 'r1');
+    try {
+      const W2 = build(createForest, dens);
+      W2.world.grass = createGrass(W2.game.U, { count: 2000, extent: 24, density: dens, height: () => 0.5 });
+      W2.world.scorch.update(1 / 60);
+      assert(W2.world.scorch.tops === null, '?mowLook=r1: no cut tops (round 1)');
+    } finally {
+      setLook('mowLook', null);
+    }
   },
 };
 const near = (a, b, eps) => Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) <= eps;

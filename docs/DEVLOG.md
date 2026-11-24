@@ -5,6 +5,74 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-24 — The grass cut, redone: cut under the drawn arc, the tops thrown, quietly (ADR-180 amended; Opus agent)
+
+**Owner:** "the grass cut doesn't look good ... redo the grass cutting and show me previews"; then "i
+like the sliced look the most but make it more subtle and right now it doesn't do the cut animation
+where the sword goes"; then "looks right and i like the thrown effect the most but make the thrown
+effect more subtle". Same branch, PR #109.
+
+- **Round 2** (`world/mowFx.js`): each cut blade's top, its own letter in its own colour, leaves on the
+  frame its stub shows; three looks behind `?mowLook=a|b|c` (thrown, sliced, shred; `r1` the first round).
+- **Round 3, the cut follows the swing.** Measured per frame with a debug overlay: the cut was a map
+  cell's share of blades scattered round the steel (30 – 65 a frame), and the height gate let only 3 – 4
+  of a light cut's 11 arc frames cut anything, at the ground point under the steel, not under the arc
+  the camera shows. Now `player/fx.js` `trail()` hands each edge stroke to `cutArc`: blades within
+  0.275 m of its view-ray footprint are cut, one byte per blade in a texture the grass shader reads by
+  `gl_InstanceID`. Cut blades sit a mean 4.6 px from the arc's stroke at the game camera; an arc that
+  stays high cuts nothing. The sword no longer writes the scorch map's A (only `r1` does); marks still tear.
+- **Round 4, thrown and quiet** (`GRASS.fly.throw`): half the tops tossed, `up` 1.7 – 2.7 m/s (was 2.8 –
+  4.8), `fling` 0.9 – 2 (1.6 – 3.6), `spin` 2 – 6 rad/s (5 – 13), light × 1.15 (2.3), lie 0.7 – 1.3 s (1.6 –
+  3.2); the rest topple off. About 130 tops a swing at quality 1 (65 thrown), 48 at 0.5.
+
+**Verified.** All 21 suites and the build; `world.mjs` `tops` (the arc cuts exactly the blades within
+w / 2 and no cell, a high stroke cuts nothing, a throws about its share, no brighter than the grass, gone
+in 3 s, reset); the seeded wyrm fight's trace byte-identical to the base; films side by side per round.
+
+**Open.** Lying tops do not move with the wind; a stub does not spring; the 256 KB cut texture's upload
+on a phone (only on frames something is cut) is not measured; the `f_stoneCell` shader warning on load
+is older than this work.
+
+---
+
+## 2026-11-23 — Three more: grass the sword mows, lamps that light with the fight, the living world heard (ADR-180; planned by Fable, built by Opus agents)
+
+**Owner:** "what else do you recommend to make the world and background more alive and interactable to
+make the fight seem cool"; given eight ideas: "Build top three". Branch `world/alive-three`.
+
+**How.** The lead wired `life.sound`, an empty `LIFE_SFX` table and a `lamps` stub; three agents
+(GRASS, LAMPS, SOUND) built in their own worktrees and ran only their own suites; the merge had no
+conflict; the lead connected the seams (the lamps' sounds through `lifeSay`; the old 'wear' creak gives
+way to the new `treeCreak` while the air is on, or both played; the Throne's outskirts keep a
+lantern's `lamp` mark) and ran the whole set once.
+
+- **Grass.** The scorch map's A channel is torn grass (`tear`, `tearLine`, `tornAt`; only where grass
+  grows; never R / G / B; `?mow=0`). The sword mows along its ground path where the steel passes low
+  (lights skim the tops, low chops and the cleave cut lanes about 1 m x 3 m, stabs pass over); cut tops
+  fly. Every floor mark tears its own shape out, so marks finally read on grass (the wyrm's three claw
+  gashes do). The seeded wyrm fight's trace is byte-identical.
+- **Lamps.** Ashfall's four lanterns, Foxfire's ten, the Grove's two (and the Ring's braziers, which
+  already burned) kindle by level: a few at the start, more at each phase, nearest the boss first;
+  fire near one lights it; a blow nearby makes it gutter; a broken one goes out in a puff until the
+  reset. Orange everywhere (foxfire blue vanished into Foxfire's stone and is the boss's colour).
+  Low lights in the pool: a lamp takes only a free slot and fades in and out.
+- **Sounds.** Ten synthesized one-shots (flock burst, animal bolt, tree shudder and creak, dust,
+  pebbles, leaf skitter, lamp catch / gutter / out), per level, rate-limited, quieter in the fight,
+  measured offline against a footstep and a swing; an audition page for the owner.
+
+**Verified.** The whole test set (21 suites) and the build on the merged branch; `world.mjs` `mow`,
+`life` `lamps` and the air's sound scenarios; films of the mowing, the marks on grass and the lamps.
+
+**Not verified / open.**
+- Nobody has heard the sounds; the owner judges on the audition page.
+- The mowing reads calm at the game camera; after a fire-heavy fight burnt ground dominates; the flying
+  cut tops are barely visible; the flurry does not mow.
+- A lantern's flame is a few letters at the game camera; the gutter's lean does not read (its dip does).
+- The Ring's braziers are low lights also with the living world off.
+- Not looked at on the phone except for page errors.
+
+---
+
 ## 2026-11-24 — The record looks picked; the record panel's border holds every row (ADR-179)
 
 **Owner:** picked the grade's look `a` and the title's `b` from the sheets on PR #108, and reported that on
@@ -66,6 +134,9 @@ stored.
 **Open:** the owner picks the two looks; the thresholds are starting numbers; a human on a real phone
 and with a pad on the title; a full rush played for real; online leaderboards (ROADMAP M2: the seam is
 `game:record`).
+
+---
+
 ## 2026-11-24 — Session 91: the perfect parry throws a few orange sparks (and what was turned down to get there)
 
 **Owner:** "what can we improve next in terms of visuals, effects, animations etc. i want to make perfect parry and

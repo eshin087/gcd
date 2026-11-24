@@ -499,7 +499,9 @@ export function createSkybreakRing(U, colliders) {
     const x = sx * (HALF + 0.95), z = sz * (HALF + 0.95), h = sz < 0 ? 4.4 : 2.7;
     const P = buildRingPost(pr, x, z, { h, yaw: range(pr, -0.08, 0.08) });
     const def = piece('post', x, z, 0.75, [...P.stone, ...P.bronze], { lift: 2 });
-    braziers.push({ x, y: P.fireY, z, def, light: null, piece: undefined, acc: 0 });
+    // (gut, gx, gz: a blow's shock, life/lamps.js through ambience.gutter; lit: the light's share, which
+    // fades out when the post goes, not at once)
+    braziers.push({ x, y: P.fireY, z, def, light: null, piece: undefined, acc: 0, gut: 0, gx: 0, gz: 0, lit: 1 });
   }
 
   // ---- the way in: a path of flagstones from the bonfire up to the ring's south edge
@@ -793,7 +795,8 @@ const WEATHER = Object.freeze({
   rain: 90, // streaks a second (form 3)
   haze: 5, // c: strokes of haze a second in the depths round the crown
   glow: Object.freeze({ color: [1.0, 0.72, 0.25], intensity: 1.3, radius: 9 }), // the light round him in form 2
-  brazier: Object.freeze({ rate: 12, light: [1.0, 0.5, 0.18], intensity: 1.4, radius: 6 }),
+  // (out: s for the light to die once the post is down; gutter: as the bonfire's, atmosphere.js)
+  brazier: Object.freeze({ rate: 12, light: [1.0, 0.5, 0.18], intensity: 1.4, radius: 6, out: 0.35, gutLean: 2.2, gutDim: 0.55, gutTau: 0.3 }),
 });
 
 // a brazier flame's reused fire-field record, and the particles' (no allocation per spawn)
@@ -864,11 +867,28 @@ function makeAmbience(braziers, { haze = false, floor = null } = {}) {
     get state() {
       return { w: st.w.slice(), flash: st.flash, dim: st.dim, phase: st.phase };
     },
+    /** the braziers ({ x, y, z, def, light, piece, gut, lit }; the living world's lamps read them) */
+    braziers,
+    /**
+     * A blow's shock reached brazier `b` (life/lamps.js): its flames dip and lean away along (dx, dz),
+     * its light dims, and it burns up again in ~0.6 s (k 0..1: how hard). Never called: it burns as before.
+     */
+    gutter(b, k, dx = 0, dz = 0) {
+      if (!b || !Number.isFinite(k + dx + dz) || !(k > 0)) return false;
+      k = Math.min(1, k);
+      if (k < b.gut) return false;
+      const l = Math.hypot(dx, dz);
+      b.gut = k;
+      b.gx = l > 1e-3 ? dx / l : 0;
+      b.gz = l > 1e-3 ? dz / l : 0;
+      return true;
+    },
     setup(game) {
       blend();
       write(game.U);
       const W = WEATHER.brazier;
-      for (const b of braziers) b.light = game.lights?.add?.({ x: b.x, y: b.y + 0.3, z: b.z, color: W.light, intensity: W.intensity, radius: W.radius, flicker: 0.5 }) ?? null;
+      // (low: they take the slots the fight's own lights leave free, and fade in and out of them)
+      for (const b of braziers) b.light = game.lights?.add?.({ x: b.x, y: b.y + 0.3, z: b.z, color: W.light, intensity: W.intensity, radius: W.radius, flicker: 0.5, low: true }) ?? null;
       const G = WEATHER.glow;
       st.glow = game.lights?.add?.({ x: 0, y: 1.6, z: 0, color: G.color, intensity: 0, radius: G.radius, flicker: 0.25 }) ?? null;
     },
@@ -943,7 +963,16 @@ function makeAmbience(braziers, { haze = false, floor = null } = {}) {
       for (const b of braziers) {
         if (b.piece === undefined && D?.list) b.piece = D.list.find((o) => o.def === b.def) ?? null;
         const up = !b.piece || b.piece.state === 0;
-        if (b.light) b.light.intensity = up ? BW.intensity * (1 - 0.6 * st.dim) : 0;
+        // (the post down: its light dies over BW.out s, not at once; stood up again at the reset, it comes
+        // back as quickly)
+        b.lit = up ? Math.min(1, b.lit + dt / BW.out) : b.lit > 0.01 ? b.lit * Math.exp(-dt / (BW.out / 3)) : 0;
+        // (a shock's gutter settles as the bonfire's does)
+        if (b.gut > 0) {
+          b.gut = b.gut * Math.exp(-dt / BW.gutTau) - dt * 0.05;
+          if (b.gut <= 0.01 || !up) b.gut = 0;
+        }
+        const gut = b.gut;
+        if (b.light) b.light.intensity = BW.intensity * (1 - 0.6 * st.dim) * (1 - BW.gutDim * gut) * b.lit;
         if (!up || !fire) continue;
         b.acc += dt * BW.rate;
         while (b.acc >= 1) {
@@ -959,6 +988,13 @@ function makeAmbience(braziers, { haze = false, floor = null } = {}) {
           q.life = 0.35 + rnd() * 0.35;
           q.size = 0.5 + hot * 0.25;
           q.heat = 0.42 + hot * 0.12;
+          if (gut > 0) {
+            // guttering: low, pushed over, smaller (the bonfire's answer)
+            q.vx += b.gx * gut * BW.gutLean;
+            q.vz += b.gz * gut * BW.gutLean;
+            q.vy *= 1 - 0.6 * gut;
+            q.size *= 1 - 0.35 * gut;
+          }
           fire.spawn(q);
         }
       }
