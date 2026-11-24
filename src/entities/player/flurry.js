@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { CONFIG } from '../../core/config.js';
 import { clamp, lerp, smoothstep } from '../../core/math.js';
 import { DEFENSE } from '../../combat/rules.js';
-import { streakK, streakTier } from '../../combat/streak.js';
+import { STREAK_FX, streakK, streakTier } from '../../combat/streak.js';
 import { FlurryFx } from './flurryFx.js';
 import { burstLook } from './flurryBurst.js';
 
@@ -28,6 +28,7 @@ import { burstLook } from './flurryBurst.js';
 const F = DEFENSE.flurry;
 const G = F.ground; // the cuts against a foe on the ground (a duelist)
 const S = F.storm; // the storm: a long flurry's later cuts, each faster than the last (streakK('storm'))
+const TP = F.tempo; // the storm's tempo: heavy first, then faster by ratio (STREAK_FX.tempo)
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
 const CHEST = 1.2; // m above his root the blade crosses a target at
 const KEEP = 0.05; // s: the world's hold is re-armed for this long every frame
@@ -98,6 +99,8 @@ export class Flurry {
     this.streakN = 1; // the streak it answers (raw: it counts on past the cap of blows)
     this.tier = 0; // streakTier(streakN)
     this.stormK = 0; // streakK('storm'): 0 = every cut paced as before the storm
+    this.tempo = false; // the storm's tempo (STREAK_FX.tempo, with the storm on): heavy first, then by ratio
+    this._r = 1; // the tempo's ratio for this flurry
     this.lastHitT = -1; // the real clock at the last blow (the gap the HUD and the sound are told)
     this.clock = 0; // s (real) since the flurry started
     this._seq = 0; // counts phase changes (the storm runs on through a frame while phases end)
@@ -233,6 +236,9 @@ export class Flurry {
     this.streakN = streakN;
     this.tier = streakTier(streakN);
     this.stormK = streakK('storm');
+    this.tempo = this.stormK > 0 && STREAK_FX.tempo !== false;
+    // (the tempo's ratio: the more cuts it paces, the faster each falls off the one before)
+    this._r = lerp(TP.ratio[0], TP.ratio[1], clamp((this._paced() - 2) / 4, 0, 1));
     this.clock = 0;
     this.lastHitT = -1;
     this.fx.setTier(this.tier, streakK('tiers'));
@@ -263,7 +269,8 @@ export class Flurry {
     P._enter('flurry', 'flurry', 0);
     this.fx.vanish(P._ghostSegs, nSegs, p.x, p.y, p.z);
     this.hidden = true;
-    this._phase(FP.BLINK, F.cut.blink);
+    // (the tempo: the blink before the heavy beat is its own; a lone art's is as before)
+    this._phase(FP.BLINK, this.tempo && this.cuts > 0 ? this._beat().blink : F.cut.blink);
     g.shake?.(0.15);
     // the camera leans in on the target for as long as the cuts take (no slow-mo of its own: the
     // world's hold is the flurry's)
@@ -292,6 +299,11 @@ export class Flurry {
   /** Real seconds flash cut `i` takes, about (its blink before it to its held finish). */
   _cutTime(i) {
     const C = F.cut, p = this._pace(i);
+    if (this.tempo) {
+      // (the tempo: the blink before cut i is paced as cut i; a storm cut has no wind-up seen)
+      const B = this._beat();
+      return (B.blink + (this._stormStep(i) > 0 ? 0 : B.hang) + B.dash + B.hold) * p + this._stop(i);
+    }
     if (this._stormStep(i) > 0) return (this.air ? C.blink + C.dash + C.hold : C.blink + G.dash + G.hold) * p + this._stop(i);
     return (this.air ? C.blink + C.dash + C.stop + C.hold : C.blink + G.hang + G.dash + C.stop + G.hold) * p;
   }
@@ -302,11 +314,30 @@ export class Flurry {
     let t = 0;
     for (let i = 0; i < this.cuts; i++) {
       const p = this._pace(i), st = this._stormStep(i) > 0;
-      const to = this.air ? C.blink + C.dash * 0.5 : st ? C.blink + G.dash * G.hitAt : C.blink + (G.hang + G.dash) * (this._hangShare() + (1 - this._hangShare()) * G.hitAt);
+      let to;
+      if (this.tempo) {
+        const B = this._beat();
+        to = B.blink + (st ? 0 : B.hang) + B.dash * (this.air ? 0.5 : G.hitAt);
+      } else to = this.air ? C.blink + C.dash * 0.5 : st ? C.blink + G.dash * G.hitAt : C.blink + (G.hang + G.dash) * (this._hangShare() + (1 - this._hangShare()) * G.hitAt);
       out.push(+(t + to * p).toFixed(3));
       t += this._cutTime(i);
     }
     return out;
+  }
+
+  /** The tempo's beats of a cut at pace 1 (DEFENSE.flurry.tempo: on the ground / in the air). */
+  _beat() {
+    return this.air ? TP.air : TP.ground;
+  }
+
+  /** How many flash cuts the tempo paces: a flurry's all, a riposte's all but its last blow. */
+  _paced() {
+    return Math.max(0, this.riposte ? this.cuts - 1 : this.cuts);
+  }
+
+  /** Is cut `i` a riposte's (or a counter's) last blow? */
+  _final(i) {
+    return this.riposte && i >= this.cuts - 1;
   }
 
   _hangShare() {
@@ -326,14 +357,25 @@ export class Flurry {
 
   /** 0: cut `i` is shown (paced as before the storm); 1, 2, ...: how far into the storm it is. */
   _stormStep(i) {
-    // (a riposte's last cut is its last blow: paced and weighed as a shown cut)
-    if (!(this.stormK > 0) || (this.riposte && i >= this.cuts - 1)) return 0;
+    // (a riposte's last cut is its last blow: paced and weighed as a shown cut; with the tempo, as
+    // the heavy beat)
+    if (!(this.stormK > 0) || this._final(i)) return 0;
+    if (this.tempo) {
+      // the tempo: a storm cut is one whose pace has fallen under `stormAt` (the paces only fall,
+      // so the storm cuts are the last ones): how many up to and including i
+      if (!(this._pace(i) < TP.stormAt)) return 0;
+      let s = 0;
+      for (let j = 0; j <= i; j++) if (this._pace(j) < TP.stormAt) s++;
+      return s;
+    }
     return Math.max(0, i - this._shown() + 1);
   }
 
   /** The pace of cut `i` (x its beats). The storm: each cut past the shown ones takes `fall` (^ k)
-   *  of the time of the one before, never less than `floor`. */
+   *  of the time of the one before, never less than `floor`. The tempo: every cut takes the ratio
+   *  (^ k) of the one before, from the heavy beat (pace 1), never less than `floor`. */
   _pace(i) {
+    if (this.tempo) return this._final(i) ? 1 : Math.max(S.floor, Math.pow(this._r, this.stormK * i));
     const s = this._stormStep(i);
     if (s <= 0) return this._basePace(i);
     return Math.max(S.floor, this._basePace(this._shown() - 1) * Math.pow(S.fall, this.stormK * s));
@@ -349,8 +391,16 @@ export class Flurry {
    *  drawn on the target as it lands. */
   _stop(i) {
     const p = this._pace(i);
+    if (this.tempo) return this._stormStep(i) > 0 ? Math.max(S.stopMin, this._beat().stop * p) : this._beat().stop * p;
     if (this._stormStep(i) > 0) return Math.max(S.stopMin, F.cut.stop * p);
     return F.cut.stop * (0.75 + 0.25 * p);
+  }
+
+  /** The weight of cut `i` with the tempo: 1 at pace 1 down to 0 at the storm's threshold (the
+   *  camera's kick and shake, the flare and the sparks fall with it); 1 without the tempo. */
+  _weight(i) {
+    if (!this.tempo || this._final(i)) return 1;
+    return clamp((this._pace(i) - TP.stormAt) / (1 - TP.stormAt), 0, 1);
   }
 
   /** Keep the world held (a hit-stop at DEFENSE.flurry.world, re-armed for KEEP s). The scale is
@@ -456,20 +506,21 @@ export class Flurry {
       case FP.DASH: {
         // in the air: straight through the head. On the ground (`ground`): seen wound up where he
         // appeared, in fast to the contact, then slowing into the finish
+        // (with the tempo the air cut is seen wound up too: `hang` > 0 round the head as well)
         const storm = this._stormStep(this.i) > 0;
-        let v = this.air ? u : clamp((u - this.hang) / (1 - this.hang), 0, 1);
+        let v = this.hang > 0 ? clamp((u - this.hang) / (1 - this.hang), 0, 1) : u;
         const hitV = this.air ? 0.5 : G.hitAt;
         if (storm && !this.hit && v >= hitV) {
           // (a storm cut: held on the contact, never past it, in the frame the blow lands)
           v = hitV;
-          this.t = this.dur * (this.air ? hitV : this.hang + (1 - this.hang) * hitV);
+          this.t = this.dur * (this.hang + (1 - this.hang) * hitV);
         }
         const e = this.air ? v : groundEase(v);
         p.lerpVectors(this.A, this.B, e);
         this.anim.u = 1 + v;
         const L = this.lines[this.nLines - 1];
         if (L) L.k = e;
-        if (!storm && !this.cloned && this.air && u >= 0.3) {
+        if (!storm && !this.cloned && this.air && v >= 0.3) {
           // a speed clone: the shape of him mid-pass, left hanging on the line
           this.cloned = true;
           this.fx.clone(P._ghostSegs, P._sampleGhost());
@@ -487,15 +538,19 @@ export class Flurry {
           this._cutHit();
           if (storm) break;
         }
-        if (u >= 1) this._phase(FP.HOLD, (this.air ? F.cut.hold : G.hold) * this._pace(this.i));
+        if (u >= 1) this._phase(FP.HOLD, (this.tempo ? this._beat().hold : this.air ? F.cut.hold : G.hold) * this._pace(this.i));
         break;
       }
       case FP.HOLD:
         this.anim.u = 2 + 0.25 * u;
         if (u >= 1) {
-          // (after the storm, the art comes out of a whole blink: the storm is seen to end)
-          const toArt = this._stormStep(this.i) > 0 && !(this.i + 1 < this.cuts && this._stormStep(this.i + 1) > 0);
-          this._vanish(F.cut.blink * (toArt ? 1 : this._pace(this.i)));
+          // (with the tempo the blink before a cut is paced as that cut; the art's as before)
+          if (this.tempo && this.i + 1 < this.cuts) this._vanish(this._beat().blink * this._pace(this.i + 1));
+          else {
+            // (after the storm, the art comes out of a whole blink: the storm is seen to end)
+            const toArt = this._stormStep(this.i) > 0 && !(this.i + 1 < this.cuts && this._stormStep(this.i + 1) > 0);
+            this._vanish(F.cut.blink * (toArt ? 1 : this._pace(this.i)));
+          }
         }
         break;
       case FP.COIL:
@@ -662,6 +717,13 @@ export class Flurry {
     const st = this._storm(this.i);
     this._appear('cut', CUT_CLIPS[this.clipI++ % CUT_CLIPS.length], 1);
     this.fx.appear(A.x, A.y + CHEST, A.z, this.d.x, this.d.z, this.i, this.n, false, st);
+    if (this.tempo) {
+      // the tempo: seen wound up where he appears (`hang`; in the air too), then the pass
+      const B = this._beat();
+      this.hang = st > 0 ? 0 : B.hang / (B.hang + B.dash);
+      this._phase(FP.DASH, (st > 0 ? B.dash : B.hang + B.dash) * this._pace(this.i));
+      return;
+    }
     this.hang = this.air || st > 0 ? 0 : G.hang / (G.hang + G.dash);
     this._phase(FP.DASH, (this.air ? F.cut.dash : st > 0 ? G.dash : G.hang + G.dash) * this._pace(this.i));
   }
@@ -679,16 +741,18 @@ export class Flurry {
     const dealt = this._damage(K ? K.damage : C.damage, K ? K.posture : C.posture, !!K, (K ? 1 : 0.45) * bf, final ? 2 : 1, final ? { x: this.ox, z: this.oz } : null);
     const k = this.n > 1 ? this.i / (this.n - 1) : 0;
     // a storm cut (0..1: how deep into the storm) kicks the camera less, its flare and sparks thinner
-    const st = final ? 0 : this._storm(this.i), cs = st > 0 ? S.cam : 1;
+    // (with the tempo the weight falls with the pace, no cliff: 1 at pace 1 to the storm's at `stormAt`)
+    const st = final ? 0 : this._storm(this.i), w = this._weight(this.i);
+    const cs = this.tempo ? lerp(S.cam, 1, w) : st > 0 ? S.cam : 1, fk = this.tempo ? lerp(S.fx, 1, w) : st > 0 ? S.fx : 1;
     const ck = (this.air ? 1 : G.kick) * cs, sk = (this.air ? 1 : G.shake) * cs; // a man is framed closer than the wyrm
-    this.fx.cut(T.x, T.y, T.z, this.d.x, this.d.z, this.i, this.n, st);
-    if (!this.air) this.fx.ground(T.x, T.z, this.d.x, this.d.z, (0.6 + 0.6 * k) * (st > 0 ? S.fx : 1));
+    this.fx.cut(T.x, T.y, T.z, this.d.x, this.d.z, this.i, this.n, st, st > 0 ? 1 : fk);
+    if (!this.air) this.fx.ground(T.x, T.z, this.d.x, this.d.z, (0.6 + 0.6 * k) * fk);
     if (st > 0) this.fx.streak(this.A, this.p.position, CHEST, this.d.x, this.d.z);
     // weight: a kick along the cut, a punch in, the hero frozen on the contact, then a beat in which
     // the world runs and the target reels under it (a storm cut's are as short as its pace)
     g.shake?.((0.2 + 0.14 * k) * sk);
     g.punch?.((0.9 + 0.9 * k) * ck);
-    this.freeze = final ? F.cut.stop * (0.75 + 0.25 * this._basePace(this.i)) * 1.8 : this._stop(this.i);
+    this.freeze = final ? (this.tempo ? this._beat().stop : F.cut.stop * (0.75 + 0.25 * this._basePace(this.i))) * 1.8 : this._stop(this.i);
     this.reelT = this.freeze + fin(C.reel, 0) * (st > 0 && !final ? this._pace(this.i) : 1);
     const gap = this.lastHitT >= 0 ? this.clock - this.lastHitT : 0;
     this.lastHitT = this.clock;

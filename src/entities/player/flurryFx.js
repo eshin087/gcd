@@ -384,15 +384,18 @@ export class FlurryFx {
   }
 
   /** A flash cut bites at (x, y, z), the blade travelling (dx, dz): a white stroke across it, a star,
-   *  sparks thrown on along the cut. `i` of `n`: each cut of a flurry bites harder than the last. */
-  cut(x, y, z, dx, dz, i = 0, n = 1, st = 0) {
+   *  sparks thrown on along the cut. `i` of `n`: each cut of a flurry bites harder than the last.
+   *  `wk` (the storm's tempo: 1 at a heavy beat down to storm.fx near the storm): the flare (the
+   *  stroke, the star, the light) and the sparks are scaled by it; the crescent keeps its size. */
+  cut(x, y, z, dx, dz, i = 0, n = 1, st = 0, wk = 1) {
     const fx = this.add;
     if (!fx || !Number.isFinite(x + y + z)) return;
     if (st > 0) {
       this._stormCut(fx, x, y, z, dx, dz, i, st);
       return;
     }
-    const k = n > 1 ? i / (n - 1) : 0, s = (1 + 0.5 * k) * this.k;
+    if (!(wk > 0) || !Number.isFinite(wk)) wk = 1;
+    const k = n > 1 ? i / (n - 1) : 0, s = (1 + 0.5 * k) * this.k * (wk < 1 ? wk : 1);
     const hot = k > 0.6, c0 = hot ? COL.gold : COL.spark, c1 = hot ? COL.goldEnd : COL.sparkEnd;
     const rot = this._rot(dx, 0, dz);
     // the stroke: bright for two frames, along the cut
@@ -405,7 +408,7 @@ export class FlurryFx {
     this._crescent(fx, x - vx * r, y - vy * r, z - vz * r, dx, 0, dz, vx, vy, vz, r, Math.PI / 2 + 0.95, Math.PI / 2 - 0.95, (0.4 + 0.15 * k) * this.k, 0.22, COL.hot, hot ? COL.gold : COL.ice, 0.1 * Math.sqrt(this.k));
     const CL = burstLook()?.cut, cs = CL?.star ?? ONE2, cl = CL ? CL.light ?? 1 : 1;
     if (cs[0] > 0) fx.spawn({ x, y, z, life: 0.09, size: 0.7 * s * cs[1], sizeEnd: 0.15 * cs[1], glyph: '+', rot: rot + 0.785, color: COL.hot, colorEnd: c0, alpha: cs[0], alphaEnd: 0 });
-    const m = 8 + Math.round(6 * k);
+    const m = wk < 1 ? Math.max(3, Math.round((8 + 6 * k) * wk)) : 8 + Math.round(6 * k);
     for (let j = 0; j < m; j++) {
       const sp = R(5, 13) * s, vx = dx * sp + R(-3, 3), vy = R(-1, 4.5), vz = dz * sp + R(-3, 3);
       fx.spawn({
@@ -413,7 +416,7 @@ export class FlurryFx {
         glyph: "|'", rot: this._rot(vx, vy, vz), color: c0, colorEnd: c1, alpha: 1, alphaEnd: 0, drag: 3.5, gravity: -5,
       });
     }
-    if (cl > 0) this._light({ x, y, z, color: hot ? [1.3, 0.95, 0.45] : [0.6, 0.85, 1.4], intensity: (2.4 + 1.2 * k) * cl, radius: 5, life: 0.14, fade: 0.12 });
+    if (cl > 0) this._light({ x, y, z, color: hot ? [1.3, 0.95, 0.45] : [0.6, 0.85, 1.4], intensity: (2.4 + 1.2 * k) * cl * (wk < 1 ? wk : 1), radius: 5, life: 0.14, fade: 0.12 });
   }
 
   /** A storm cut bites: the stroke and a thin, short crescent (its line is the look), a small star,

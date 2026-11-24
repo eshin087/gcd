@@ -177,6 +177,24 @@ export const DEFENSE = Object.freeze({
     // the camera's kick and shake x `cam`, its flare and sparks x `fx`. The last shown cut and the art
     // keep their whole weight. A riposte is all flash cuts: the same rule.
     storm: { shown: { air: 3, ground: 2 }, fall: 0.56, floor: 0.12, stopMin: 0.018, cam: 0.35, fx: 0.45 },
+    // THE TEMPO (STREAK_FX.tempo, on by default, ?tempo=0 off; only with the storm piece on: it
+    // replaces `shown` / `fall` above): "heavy first, then faster by ratio". The first flash cut is a
+    // HEAVY BEAT that can be read: hidden `blink`, SEEN wound up where he appears `hang`, the pass
+    // `dash` (as fast as ever: the contrast is the point), frozen on the contact `stop`, the finish
+    // held `hold` (real s; on the ground round a foe / in the air round the wyrm's head). Every later
+    // cut takes `ratio` of the one before: r = lerp(ratio[0], ratio[1], (c - 2) / 4 clamped), c the
+    // flash cuts paced (a flurry's all; a riposte's all but its last), pace(i) = max(storm.floor,
+    // r ^ (k i)) at the storm piece's strength k: a short flurry stays weighty, a long one runs into
+    // the storm. A cut whose pace is under `stormAt` is a STORM cut (as above: no wind-up seen, the
+    // freeze `stop` x pace but at least storm.stopMin). The camera's kick and shake and the cut's
+    // flare and sparks fall with the pace, from 1 at pace 1 to storm.cam / storm.fx at `stormAt`;
+    // a cut's freeze is `stop` x its pace. A riposte's last cut is the heavy beat again.
+    tempo: {
+      ground: { blink: 0.06, hang: 0.11, dash: 0.12, stop: 0.11, hold: 0.15 },
+      air: { blink: 0.06, hang: 0.08, dash: 0.1, stop: 0.11, hold: 0.11 },
+      ratio: [0.78, 0.52],
+      stormAt: 0.4,
+    },
     last: { damage: 60, posture: 22 },
     keepStreak: 0,
   },

@@ -4,7 +4,9 @@
 // list; the Lab's 'streak' row):
 //
 //   storm    the flurry accelerates: its first cuts are shown, each later one comes faster, the last
-//            land almost at once; the whole flurry stays short however long the streak (player/flurry.js)
+//            land almost at once; the whole flurry stays short however long the streak (player/flurry.js).
+//            Its tempo (STREAK_FX.tempo; ?tempo=0 off): the first cut a heavy beat, each later one a
+//            share of the one before (DEFENSE.flurry.tempo); off = the storm of ADR-167 exactly
 //   tiers    past the flurry's 7 blows a longer streak LOOKS grander at each tier: the flurry's cuts
 //            and its last blow, the banner's name (player/flurryFx.js, ui/)
 //   aura     the streak shows on the hero and his blade between flurries (player/streakFx.js)
@@ -62,6 +64,9 @@ export const STREAK_FX = {
   perfectModes: PERFECT,
   /** The look of a single perfect parry / dodge. */
   perfect: PERFECT.includes(q('perfect')) ? q('perfect') : PERFECT_DEFAULT,
+  /** The storm's tempo (DEFENSE.flurry.tempo): heavy first, then faster by ratio. false (?tempo=0) =
+   *  the storm's pace of ADR-167 exactly. Only with the storm piece on; read as a flurry starts. */
+  tempo: q('tempo') !== '0',
 };
 
 /** A piece's strength (0 when it is off). */
