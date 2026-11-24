@@ -45,7 +45,8 @@ export class MowFx {
     this.look = mowLook();
     const F = GRASS.fly;
     // the look's own lying, thinning and light (b, sliced: quieter: GRASS.fly.slice)
-    const SL = this.look === 'b' ? F.slice : F;
+    // (a, thrown, round 4: quiet too: GRASS.fly.throw; c keeps round 2's)
+    const SL = this.look === 'b' ? F.slice : this.look === 'a' ? F.throw : F;
     this._lieT = SL.lie;
     this._thin = SL.thin;
     this._lit = SL.lit;
@@ -312,10 +313,13 @@ export class MowFx {
       this.y0[j] = this.py[j];
       // (a sideways sign on screen: the way the swing crosses the view)
       const sx = Math.sign(ux * rx.x + uz * rx.z) || (rnd() < 0.5 ? -1 : 1);
-      this.lieRot[j] = look === 'b' && !frag ? sx * R(F.slice.lean[0], F.slice.lean[1]) : sx * (Math.PI * 0.5 + R(-0.25, 0.25));
+      // (b: most tops topple off their stubs, F.slice.fly of them are thrown; a: F.throw.share are thrown,
+      // the rest topple as in b)
+      const topple = !frag && (look === 'b' ? rnd() > F.slice.fly : look === 'a' ? rnd() > F.throw.share : false);
+      this.lieRot[j] = topple ? sx * R(F.slice.lean[0], F.slice.lean[1]) : sx * (Math.PI * 0.5 + R(-0.25, 0.25));
       const side = R(-1, 1);
       const T = look === 'c' ? F.shred : F.throw;
-      if (look === 'b' && !frag && rnd() > F.slice.fly) {
+      if (topple) {
         // sliced: it topples off its stub to the side the blade went, and lies
         this.state[j] = TOPPLE;
         this.t0[j] = R(F.slice.time[0], F.slice.time[1]);

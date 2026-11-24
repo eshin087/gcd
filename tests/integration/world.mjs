@@ -2206,13 +2206,17 @@ const S = {
       assert(want > 50 && wrong === 0 && far === 0, `a strip cuts ${got} blades on its own call, exactly those the shader shows as stubs (${wrong} differ, ${far} outside the strip)`);
       assert(T.n === got && T.total === got, `... and every cut blade's top leaves on that frame: ${T.n} tops for ${got} cut blades`);
       // a top starts where its blade's top was: on the strip, at a blade's height, thrown along the swing
-      let off = 0, up = 0, along = 0;
+      let off = 0, up = 0, along = 0, thrown = 0;
       for (let j = 0; j < T.n; j++) {
         if (Math.abs(T.pz[j]) > 1.6 || T.px[j] > -2.5 || T.px[j] < -9.5) off++;
         if (T.py[j] > 0.02 && T.py[j] < 0.7) up++;
+        if (T.state[j] !== 0) continue;
+        thrown++;
         if (T.vx[j] > 0 && T.vy[j] > 0) along++;
       }
-      assert(off === 0 && up === T.n && along === T.n, `the tops start on the strip (${off} off), at a blade's height (${up}/${T.n}), thrown up and along the swing (${along}/${T.n})`);
+      // (a, round 4: a sprinkle: GRASS.fly.throw.share of the tops are tossed, the rest topple off)
+      const sh = GRASS.fly.throw.share;
+      assert(off === 0 && up === T.n && along === thrown && thrown > T.n * (sh - 0.15) && thrown < T.n * (sh + 0.15), `the tops start on the strip (${off} off), at a blade's height (${up}/${T.n}); ${thrown} of them (about ${sh * 100} %) are thrown, all up and along the swing (${along})`);
       // the same cut again tears nothing new: no second top
       sc.tearLine(-7, 0, -5.8, 0, 0.8, GRASS.mow.maxK);
       assert(T.total === got, `a blade loses its top once (${T.total - got} more on a second pass)`);
@@ -2246,6 +2250,7 @@ const S = {
     }
     // round 3: the cut follows the DRAWN arc (player/fx.js trail -> tops.cutArc), the default look b
     {
+      setLook('mowLook', 'b');
       const W = build(createForest, dens);
       const sc3 = W.world.scorch;
       W.world.grass = createGrass(W.game.U, { count: 30000, extent: 24, density: dens, height: (x, z, r) => 0.5 * (0.75 + r() * 0.5) });
@@ -2254,7 +2259,7 @@ const S = {
       try {
         sc3.update(1 / 60);
         const T = sc3.tops, B = W.world.grass.blades, A = GRASS.arc;
-        assert(T.look === 'b' && GRASS.fly.look === 'b', 'the default look is b, sliced');
+        assert(T.look === 'b' && GRASS.fly.look === 'a', 'b, sliced, as asked (the default is a, thrown)');
         // an edge stroke low in the grass (0.3 m up) from (-8, 1) to (-6, 1): exactly the blades within w/2 of it
         const n = T.cutArc(-8, 0.3, 1, -6, 0.3, 1, false);
         let inside = 0, wrong = 0;
@@ -2286,7 +2291,21 @@ const S = {
         assert(d3 === 0, `the arc's cut draws nothing from Math.random (${d3})`);
       } finally {
         Math.random = R0;
+        setLook('mowLook', null);
       }
+      // a, the default (round 4): the same arc cut, a quiet toss: no brighter than the grass, short-lived
+      const W4 = build(createForest, dens);
+      W4.world.grass = createGrass(W4.game.U, { count: 30000, extent: 24, density: dens, height: (x, z, r) => 0.5 * (0.75 + r() * 0.5) });
+      W4.world.scorch.update(1 / 60);
+      const T4 = W4.world.scorch.tops;
+      const n4 = T4.cutArc(-8, 0.3, 1, -6, 0.3, 1, false);
+      let fly4 = 0;
+      for (let j = 0; j < T4.n; j++) if (T4.state[j] === 0) fly4++;
+      W4.world.scorch.update(1 / 60);
+      let lit4 = 0;
+      for (let j = 0; j < T4.n; j++) lit4 = Math.max(lit4, T4.aC.array[j * 4 + 3]);
+      for (let f = 0; f < 60 * 3; f++) W4.world.scorch.update(1 / 60);
+      assert(T4.look === 'a' && n4 > 20 && fly4 > 0 && fly4 < n4 * 0.6 && lit4 <= 1.16 && T4.n === 0, `a (the default) cuts along the arc too (${n4} blades), tosses ${fly4} of the tops, no brighter than x ${lit4.toFixed(2)}, all gone 3 s on (${T4.n} left)`);
     }
     // round 1's look builds no tops
     setLook('mowLook', 'r1');

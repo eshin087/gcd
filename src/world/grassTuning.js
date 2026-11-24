@@ -78,7 +78,7 @@ export const GRASS = Object.freeze({
    * burst into a couple more of the grass's strokes (`glyphs`) at `size` x the blade.
    */
   fly: Object.freeze({
-    look: 'b',
+    look: 'a',
     max: 1400,
     touch: 4096, // cells one tear call may hand over (a slam's whole disc)
     perTear: 360,
@@ -89,7 +89,10 @@ export const GRASS = Object.freeze({
     thin: 0.7,
     lit: [2.3, 1.3], // brightness x the grass's own: in the air (a cut top catching the light), lying (calmed over `calm` s)
     calm: 0.8,
-    throw: Object.freeze({ fling: [1.6, 3.6], side: 0.45, up: [2.8, 4.8], spin: [5, 13] }),
+    // (a, the owner's pick, round 4: a sprinkle, not a burst: `share` of the cut tops are tossed, lower and
+    // shorter, a gentle spin, the grass's own light; the rest topple off as in b; a short lie, an early thin.
+    // Round 2's a: every top, fling [1.6, 3.6], side 0.45, up [2.8, 4.8], spin [5, 13], lie [1.6, 3.2], thin 0.7, lit [2.3, 1.3])
+    throw: Object.freeze({ share: 0.5, fling: [0.9, 2.0], side: 0.3, up: [1.7, 2.7], spin: [2, 6], lie: [0.7, 1.3], thin: 0.45, lit: [1.15, 1.0] }),
     // (b, round 3: the owner's pick, quieter: a short lean over, a little drift, the grass's own light,
     // a short lie; `lean` rad off upright they come to rest)
     slice: Object.freeze({ time: [0.2, 0.34], drift: 0.15, fly: 0.05, lean: [0.9, 1.25], lie: [0.6, 1.2], thin: 0.4, lit: [1.05, 1.0] }),
