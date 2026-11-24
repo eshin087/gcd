@@ -85,6 +85,14 @@ const smooth = (a, b, v) => {
  */
 export function hangLean(U, x, z, give, out) {
   out.x = out.y = out.z = 0;
+  // a blow's shock (hangKick): a swing away from it, on top of the wind's lean
+  const kk = hangKickAt(U, x, z, _kv) * (give > 0 ? Math.min(HANG.kick.paper, Math.sqrt(give)) : 0.8);
+  if (kk > 1e-4) {
+    const s = Math.sin(kk);
+    out.x = _kv.x * s;
+    out.y = 1 - Math.cos(kk);
+    out.z = _kv.z * s;
+  }
   const W = U?.uWind?.value, A = U?.uWindFronts?.value;
   if (!W || !A || Math.abs(W.x) + Math.abs(W.y) <= 0.5) return out;
   // windDirAt
@@ -122,8 +130,71 @@ export function hangLean(U, x, z, give, out) {
   const vx = dx * W.z + fx * k * H.front, vz = dz * W.z + fz * k * H.front, s = Math.hypot(vx, vz);
   if (!(s > 1e-4)) return out;
   const drag = s * Math.abs(give), th = H.lean * ((drag * drag) / (drag * drag + H.half * H.half)), sn = Math.sin(th);
-  out.x = (vx / s) * sn;
-  out.y = 1 - Math.cos(th);
-  out.z = (vz / s) * sn;
+  out.x += (vx / s) * sn;
+  out.y += 1 - Math.cos(th);
+  out.z += (vz / s) * sn;
   return out;
+}
+
+const _kv = { x: 0, z: 0 };
+const KICK_LEN = HANG.kick.slots * 2;
+
+/**
+ * A blow's shock reaches what hangs (the living world's tremor, life/tremor.js): from (x, z) a swing
+ * of `amp` rad away from the blow, falling off to nothing at `reach` m (default HANG.kick.reach) and
+ * ringing down over HANG.kick (its decay, rate, speed). Into the shared `uHangKick` (made with the
+ * first hanging material, render/materials.js): nothing happens in a level where nothing hangs. The
+ * newest kick takes a free slot, or the one that has the least swing left. Returns the slot, or -1.
+ */
+export function hangKick(U, x, z, amp, reach = HANG.kick.reach) {
+  const A = U?.uHangKick?.value, t = U?.uTime?.value;
+  if (!A || A.length < KICK_LEN || !Number.isFinite(x + z + amp + reach + t) || !(amp > 0) || !(reach > 0)) return -1;
+  const K = HANG.kick;
+  let slot = 0, least = Infinity;
+  for (let i = 0; i < K.slots; i++) {
+    const a = A[i * 2];
+    const left = a.w > 0 ? a.w * Math.exp(-Math.max(0, t - a.z) * K.decay) : 0;
+    if (left < least) {
+      least = left;
+      slot = i;
+    }
+  }
+  A[slot * 2].set(x, z, t, Math.min(1, amp));
+  A[slot * 2 + 1].set(reach, K.decay, K.rate, K.speed);
+  return slot;
+}
+
+/** The spent kicks are zeroed (the shader then skips them, and with the wind off adds nothing). */
+export function hangKickSettle(U) {
+  const A = U?.uHangKick?.value, t = U?.uTime?.value;
+  if (!A || !Number.isFinite(t)) return;
+  for (let i = 0; i < HANG.kick.slots && i * 2 < A.length; i++) {
+    const a = A[i * 2];
+    if (a.w > 0 && (t - a.z > HANG.kick.life + 1 || t < a.z - 1)) a.set(0, 0, 0, 0);
+  }
+}
+
+/** The kicks' swing at a piece standing at (x, z) now: its size (rad, returned) and its way into `out` { x, z } (unit). */
+export function hangKickAt(U, x, z, out) {
+  out.x = out.z = 0;
+  const A = U?.uHangKick?.value, t = U?.uTime?.value;
+  if (!A || !Number.isFinite(t)) return 0;
+  let kx = 0, kz = 0;
+  for (let i = 0; i < HANG.kick.slots && i * 2 + 1 < A.length; i++) {
+    const a = A[i * 2], q = A[i * 2 + 1];
+    if (!(a.w > 0)) continue;
+    const ex = x - a.x, ez = z - a.y, d = Math.hypot(ex, ez);
+    const f = Math.max(0, 1 - d / Math.max(q.x, 0.1));
+    const age = t - a.z - d / Math.max(q.w, 1);
+    if (f <= 0 || age <= 0 || age * q.y > 4) continue;
+    const k = a.w * f * f * Math.exp(-age * q.y) * Math.sin(age * q.z);
+    kx += (d > 0.2 ? ex / d : 1) * k;
+    kz += (d > 0.2 ? ez / d : 0) * k;
+  }
+  const l = Math.hypot(kx, kz);
+  if (l > 1e-6) {
+    out.x = kx / l;
+    out.z = kz / l;
+  }
+  return l;
 }
