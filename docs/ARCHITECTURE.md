@@ -100,10 +100,10 @@ ADR-120).
 | `hitstop(sec, scale=0.04)` | brief time-scale dip measured in real seconds (also the perfect-dodge slow-mo, the plunge's included: `hitstop(0.6, 0.3)`) |
 | `debugTimeScale` | Lab multiplier on game time (1 = normal). Only the Lab writes it. |
 | `viewOverride` | `null` or `{ pos, target, focus? }` — camera override applied by main.js after the rig (see Frame order). Only the Lab model viewer writes it. |
-| `lights` | `add({x,y,z,color:[r,g,b],intensity,radius,life,fade,fadeIn,flicker})` → light (mutable `x,y,z`, `.set()`, `.kill()`) |
+| `lights` | `add({x,y,z,color:[r,g,b],intensity,radius,life,fade,fadeIn,flicker,low,slotFade})` → light (mutable `x,y,z`, `.set()`, `.kill()`). The pool (`render/lights.js` `LightPool`) fills the shader's `MAX_PL` slots with the best-scoring lights (intensity × radius over distance to the focus). A **low** light (`low: true`, 2026-11-23, ADR-180: the living world's lanterns, the Skybreak Ring's braziers) takes only the slots the others leave free: its rank among the low lights (without the flicker; one holding a slot keeps it against a light only up to 1.25 × better) picks which; it fades INTO a slot it is given and OUT of one it must give up over `slotFade` s (default 0.3; it holds the slot while fading, so for that moment the least of the others waits), never a pop. With no low light alive the pool picks exactly as before. `pool.used` / `pool.usedLow`: slots the last update wrote, all and low (tests, the Lab) |
 | `fx.add` / `fx.alpha` | glyph particles, additive-HDR / alpha-blended. `spawn({x,y,z,vx,vy,vz,life,size,sizeEnd,glyph,color,colorEnd,alpha,alphaEnd,gravity,drag,spin,rot,flicker,stretch})`. `glyph`: char, string of chars (random pick) or atlas index. |
 | `fx.ripple` / `fx.stamp` | the impact pass (ADR-149): `fx.ripple` = `ImpactRipple` (`render/impactRipple.js`: `hit(x, y, z, o, k)`, `update(dt)`, `clear()`, `write(pipeline)`; `n`, `live`), `fx.stamp` = `{ clear }` (`combat/impactStamp.js`: `stampHit`, `stampUpdate`, `stampClear`). Both run on fx time and are cleared on a level reset (flow, `world.debug.setVisible`) |
-| `world` | `resolve(pos, radius, bound, soft = false, who = null)` circle collision (`who` 'hero': on a set with an edge the hero's ground replaces the `bound` circle; `edge` is that edge or null and `heroBound(x, z)` how far out he may stand that way: Destruction → "The edge of the open ground", ADR-125; `soft`: pass through the circles marked `soft`, the trunks and stumps of breakable wood: the wyrm's body, ADR-119); `setQuality(k)` (the destruction's phone budget 0.3 .. 1; `setGrassQuality` sets it from the preset, `QUALITY` in breakTuning.js); `setPusher(slot, x, y, z, r)` grass trample (slot 0 = player, 1–9 = dragon; y > 1.5 = airborne, ignored); `clearPushers(from, to)`; `gust(x, z, strength 0..2, radius)` (also `life.gust`: the living world's air takes the same push); `scorch.burnCircle(x, z, r, burn 0..1, heat 0..1)`, `scorch.reset()`; the scorch map's channels: R burn, G heat, B **trample** (`scorch.trample(x, z, r, k)` max-blended, `scorch.trampleAt(x, z)`; the living world's steps write it, the grass lies flatter and darker by it, it stands up over `STEPS.trample.decay` s; GLSL `scorch3At(xz)`, `trampleAt(xz)` in COMMON_GLSL); **`life`** (`world/life/life.js` `LivingWorld`, `?life=`; null if it failed to build: see "The living world"); `colliders.blocked(ax,az,bx,bz)`; `setGrassQuality(count)` (instanced grass blades drawn; main.js applies the quality preset); **destruction** (ADR-107, see Destruction): `impact(x, z, r, power, o)`, `ignite(x, z, r, k, grass = true)` (both also reach the living world: `life.impact` / `life.ignite`, ADR-177), `groundBlow(x, z, o)` (a blow met the floor: a mark of its kind, `scars.mark`, and `life.impact`; it damages nothing; ADR-177), `restore()`, `destructibles`, `fire`, `scars` (the tests' world mocks lack them: every caller outside `src/world` guards with `?.`); `bonfire {x,z}`; `nest {x,z}`; `atmosphere` (the bonfire's flames, smoke and embers; the default night's fireflies, low mist and falling leaves, or a set's `ash` / `ambience`: with the living world on, it skips the leaves, fireflies, mist or ash a layer draws itself, `life.takes(what)`, and while the wind piece is on its smoke, embers, mist, leaves and ash drift on `life.wind.at` instead of their fixed drift; their Math.random draws are unchanged); `atmosphere.setBonfireLit(bool)`; `atmosphere.skyGlow(k 0..1)` (the sky over the clearing glows orange: warms the shared ambient and fog colours; call every frame while it should show, it eases in and out and lets go 0.2 s after the last call; Armageddon, ADR-053); Lab only: `debug.setVisible(bool)` hides / restores the environment (ground, grass, forest group = trees, stones, flagstones, nest bones, bonfire; atmosphere paused and in-flight particles in `fx.*` dropped; the exact previous `visible` flags come back; lights, scorch and colliders untouched), `debug.visible` |
+| `world` | `resolve(pos, radius, bound, soft = false, who = null)` circle collision (`who` 'hero': on a set with an edge the hero's ground replaces the `bound` circle; `edge` is that edge or null and `heroBound(x, z)` how far out he may stand that way: Destruction → "The edge of the open ground", ADR-125; `soft`: pass through the circles marked `soft`, the trunks and stumps of breakable wood: the wyrm's body, ADR-119); `setQuality(k)` (the destruction's phone budget 0.3 .. 1; `setGrassQuality` sets it from the preset, `QUALITY` in breakTuning.js); `setPusher(slot, x, y, z, r)` grass trample (slot 0 = player, 1–9 = dragon; y > 1.5 = airborne, ignored); `clearPushers(from, to)`; `gust(x, z, strength 0..2, radius)` (also `life.gust`: the living world's air takes the same push); `scorch.burnCircle(x, z, r, burn 0..1, heat 0..1)`, `scorch.reset()`; the scorch map's channels: R burn, G heat, B **trample** (`scorch.trample(x, z, r, k)` max-blended, `scorch.trampleAt(x, z)`; the living world's steps write it, the grass lies flatter and darker by it, it stands up over `STEPS.trample.decay` s; GLSL `scorch3At(xz)`, `trampleAt(xz)` in COMMON_GLSL), A **torn** (2026-11-23, ADR-180: grass the sword mowed or a blow's mark tore out, 0..1, kept until `scorch.reset()`; `scorch.tear(x, z, r, k)`, `scorch.tearLine(ax, az, bx, bz, w, k, k2)`, `scorch.tornAt(x, z)`, `scorch.tornCells`; `?mow=0` none (`mowOn()` in scorch.js); GLSL `scorch4At(xz)` (all four channels, the same single fetch) and `tornAt(xz)`; see Destruction → "Grass the sword cuts"); `grass` (`createGrass`'s record: `mesh`, `total`, `setCount(c)`, and since ADR-180 `densityAt(x, z)` 0..1 and `heightAt(x, z)` the meadow's typical blade height there, m: the mow reads them); **`life`** (`world/life/life.js` `LivingWorld`, `?life=`; null if it failed to build: see "The living world"); `colliders.blocked(ax,az,bx,bz)`; `setGrassQuality(count)` (instanced grass blades drawn; main.js applies the quality preset); **destruction** (ADR-107, see Destruction): `impact(x, z, r, power, o)`, `ignite(x, z, r, k, grass = true)` (both also reach the living world: `life.impact` / `life.ignite`, ADR-177), `groundBlow(x, z, o)` (a blow met the floor: a mark of its kind, `scars.mark`, and `life.impact`; it damages nothing; ADR-177), `restore()`, `destructibles`, `fire`, `scars` (the tests' world mocks lack them: every caller outside `src/world` guards with `?.`); `bonfire {x,z}`; `nest {x,z}`; `atmosphere` (the bonfire's flames, smoke and embers; the default night's fireflies, low mist and falling leaves, or a set's `ash` / `ambience`: with the living world on, it skips the leaves, fireflies, mist or ash a layer draws itself, `life.takes(what)`, and while the wind piece is on its smoke, embers, mist, leaves and ash drift on `life.wind.at` instead of their fixed drift; their Math.random draws are unchanged); `atmosphere.setBonfireLit(bool)`; `atmosphere.skyGlow(k 0..1)` (the sky over the clearing glows orange: warms the shared ambient and fog colours; call every frame while it should show, it eases in and out and lets go 0.2 s after the last call; Armageddon, ADR-053); Lab only: `debug.setVisible(bool)` hides / restores the environment (ground, grass, forest group = trees, stones, flagstones, nest bones, bonfire; atmosphere paused and in-flight particles in `fx.*` dropped; the exact previous `visible` flags come back; lights, scorch and colliders untouched), `debug.visible` |
 | `player`, `dragon`, `hud`, `audio`, `flow`, `lab` | the modules below. `dragon` is **the boss slot** (the wyrm in Cinderwood, the Ash Disciple in Ashfall; see Levels and the boss slot); `boss` is the same object |
 | `level`, `levels`, `pickLevel(id)` | the level this page load built (`levels/index.js` definition), every level as `{ id, name }` (the title's stage picker, the Lab's LEVEL row), and a reload into another one (`?level=<id>`, other parameters kept). Tests may leave them out: flow falls back to Cinderwood's lines |
 | `heroLook`, `heroLooks`, `pickHeroLook(id)` | the hero's outfit option (kept for later use: the owner, 2026-11-14, keeps today's look as the default; `player/gear/looks.js`): the id main.js read from `?heroLook=` (the Player wears it), every option as `{ id, name }` (the Lab's OUTFIT row), and a live switch (`player.setLook(id)`, the URL updated in place; `pickLevel` keeps the parameter). Tests may leave them out: the Player wears the default look |
@@ -2419,7 +2419,7 @@ first. Off (the default): `begin()` does nothing. "The living world" → The arr
 constructor(game)          // subscribes to events; AudioContext created lazily
 unlock()                   // call on first user gesture (flow does this on title dismiss)
 update(realDt)
-play(name, opts)           // one-shot SFX by name (sfx.js SFX, then fire.js FIRE_SFX, then thump.js THUMP_SFX)
+play(name, opts)           // one-shot SFX by name (sfx.js SFX, then fire.js FIRE_SFX, then thump.js THUMP_SFX, then lifeSfx.js LIFE_SFX)
 setMusic(mode)             // 'none'|'ambient'|'boss'|'boss2'|'victory'|'death'
 toggleMute(); muted: boolean;  setVolume(0..1)
 thump: Thump;  thumpDip: GainNode|null // the impact pass (thump.js): the sub voice + the music's dip node
@@ -2537,7 +2537,9 @@ the fallback.
   (an execution: the `postureBreak` roar).
 - `world:impact` by kind: 'chip' `chip`, 'wear' `wear` (2026-11-16, ADR-120: a quiet leaf hiss, a dry
   crack from stage 2, a low creak for the lean; gain 0.45, `gap` 0.14 s so a roar's front sets off a
-  few, not hundreds), 'burn' `sizzle`, 'burnout' `emberHiss`, any other `crash`.
+  few, not hundreds; since ADR-180 the lean's creak only unless the living world's `air` and `answer` pieces are both on:
+  then the tremor's `treeCreak` is the one creak), 'burn' `sizzle`, 'burnout' `emberHiss`, any
+  other `crash`.
 
 **The sound of the air (2026-11-23, ADR-163; `audio/air.js`, `?life=air`).** `engine.air` (`class Air`,
 built in `_build` beside `engine.ambience`, updated after it): no node until the living world's `air`
@@ -2545,7 +2547,10 @@ piece is on; then a synthesized bed per level that follows the wind, the weather
 over today's bed's wind and voices through `ForestAmbience.windDuck` / `voiceDuck` (two unity gains: at
 1, always with the piece off, the bed is exactly as before; the bonfire is on neither). Contract and
 numbers: "The living world" → The sound of the air. `sfx.js` `footstep` plays the ground's own sound
-when the payload carries a surface (the steps piece on), today's burst without one.
+when the payload carries a surface (the steps piece on), today's burst without one. **The living world's
+one-shot sounds** (2026-11-23, ADR-180; `audio/lifeSfx.js` `LIFE_SFX`, looked up last by `play`; the
+layers call them through `lifeSay` → `life.sound` → `play`, only with the `air` piece on): "The living
+world" → The living world's sounds.
 
 **The thump (ADR-149, `audio/thump.js`: `THUMP`, `THUMP_SFX`, `class Thump`).** `engine.thump`
 (a `Thump`, no nodes of its own) runs on `player:hitDragon` after the engine's early returns (a
@@ -2690,7 +2695,10 @@ flees (the roost nearest the camera's focus with birds bursts out, away from the
 animals bolt (every animal within 60 m of the hero), life returns (the roosts full again, a few birds
 flying in to one, the animals back, the birds on their perches); the answer's roar's answer, hush 2 s; the
 tremor's tremor at hero (a 1.4 blow beside him); the aftermath's smoke at hero, crater dust at hero;
-arrival (replay). A button's status line is what its `run` returned. `_syncLifeBtns` lights them.
+since ADR-180 the lamps' light lamps (every standing lantern catches, the nearest the hero first), gutter
+at hero (a heavy shock at him: the lamps near him gutter, the nearest lit one at least), lamps out (every
+burning lantern dark in a puff; they can be lit again); arrival (replay). (No button for the mow: swing
+in the grass.) A button's status line is what its `run` returned. `_syncLifeBtns` lights them.
 **Blade** (ADR-177; WORLD, beside Bites): `Blade: through` / `Blade: stops` flips `?cutStop` live
 (`setLook('cutStop', ...)`; read at each swing).
 **The 'streak' row** (ADR-167): one on / off toggle per piece of `STREAK_FX.pieces` (storm, tiers, aura,
@@ -2946,6 +2954,7 @@ off where it lands. For a new object, a new set or a new level:
 | `fallOff`, `fallT` | m out from its base where a felled piece starts to land (its strip starts there), s it falls |
 | `blocks` | how many big carved blocks of wreckage it leaves (a statue's) instead of a rubble pile |
 | `cy` | (a crater's hanging stone) its height in the air, exact (ADR-122; the Lord's effects read it) |
+| `lamp` | `{ y, r }` (2026-11-23, ADR-180): it holds a flame, the living world's lamps light it ("The living world" → The lamps): `y` the window's centre height over its base, `r` the window's half width (m). Read only by `life.lamps`; a piece that breaks, falls or is taken puts its flame out |
 | `slice` | true: one blade or blow cuts it through at the height it bit (ADR-151, `BREAK.slice`; the grove's bamboo): its body loses what is below the cut in the frame of the blow (`RangeBody.cutY`), its stump is cut to that height on a slant, its top slides off the cut and goes over about its lower end (`_sliceFall`). Not by fire or a body brushing past. A range piece only |
 
 A set draws its stumps, rubble and any breakables it adds from an rng stream of its own, so the rest of
@@ -3314,7 +3323,10 @@ fight's reset (the owner's pick): after a fight the arena shows what was fought 
   capped at `lineInk` 0.42 in its brightest channel: the throne hall's ember-red ink would draw gashes
   as red strips, and a danger marker is red strokes (today's cracks keep the set's own ink). Alpha
   `alpha` 0.85, at `y` 0.07 m; on grass the mark lies on the blade tips (lifted `grassLift` 0.3 m × the
-  grass's density there, `world.fire.density`: under them the meadow hid it). With the kinds on the
+  grass's density there, `world.fire.density`: under them the meadow hid it). Since ADR-180 a mark first
+  TEARS the grass out in its own shape (below, "Grass the sword cuts"; `?mow=0` none) and each glyph then
+  lies by what is under it: on the stubble (`GRASS.mark.lift` 0.08 m × density) where the grass is torn,
+  on the tips where it still stands (`_liftAt`). With the kinds on the
   batch's soft depth is a floor's, `soft` 0.08 m (the particles' 0.6 faded a mark lying 0.07 m up to a
   tenth of itself).
 - **Power.** A mark lighter than `min` 0.12 is not drawn; the hero's marks are `by.player` 0.6 the size.
@@ -3346,9 +3358,97 @@ fight's reset (the owner's pick): after a fight the arena shows what was fought 
 | the wyrm | `attacks.js` `wyrmMark(d, x, z, kind, power, dx, dz, len, claws, r)` (`TUNING.world.marks`, a POWER each: a swipe's plant `rake` 0.55, three gashes 0.7 × `clawLen` 1.5 m; the overhead's claws in the ground `claws` 1.0, three gashes `clawLen`, dragged back toward it; the charge's skid `skid` 0.8, two furrows `skidLen` 2.6 m up to the forefeet; the tail slapped down `tail` 1.2, one furrow root to tip (its stations' world.impact `marked`); `dragon.js` a charging hind foot `step` 0.7, a landing `land` 1.6 a slam (r 0.4 × the landing's radius); claw `spread` 0.55 × scale); phase 3: hot (but a step). `GROUND_BLOW` (the stomp, leap, hop, slams) `mark: 'slam'`; `NOVA_BLOW` `mark: 'blast', hot`; the fire's `FIRE_BLOW` (`fx.js`, `skyFx.js`) hot; `terrain.js` a thrown piece's landing `mark: 'slam'` | |
 | the hero | player.js `_groundMark(x, z, kind, power, len)` → `world.groundBlow` (`by: 'player'`; `SCAR.mark.hero`): the charged cleave's end in the floor a `cut` of power `cleave` 0.45 – 1.25 by charge, `cleaveLen` 1.3 m along his facing; the plunge's landing a `slam` of `plunge` 0.75; the slam finisher through its `world.impact` (a blunt blow: a slam). Light cuts leave nothing | |
 
+**Grass the sword cuts** (2026-11-23, ADR-180; `world/scorch.js`, `world/grass.js`, `world/grassTuning.js`
+`GRASS`, `world/scars.js`; the switch `?mow=`, `mowOn()` in scorch.js, a look switch read per tear:
+`?mow=0` tears nothing and the grass is exactly as before; `?looks=old` keeps it on, it is a new thing).
+The hero's blade MOWS the grass it passes through low, and every floor mark TEARS the grass out in its
+shape, so the marks read on a meadow too. Cosmetic only: no hit, no clock, no damage, no fire changes.
+- **The scorch map's A channel = torn** (0..1: 1 cut to stubble). `scorch.tear(x, z, r, k = 1)` a disc,
+  `scorch.tearLine(ax, az, bx, bz, w, k = 1, k2 = k)` a strip w m wide, k deep at a and k2 at b (a blade's
+  arc, a gash, a furrow: cheaper than many discs); each full out to its radius and `GRASS.full` 0.25 of a
+  map cell more (0.625 m cells: a line narrower than a cell still mows the cells it crosses), its edge
+  soft over `GRASS.soft` 0.3 m; MAX-blended (a lighter tear never undoes a deeper one), and only where
+  grass grows (`world.fire.density` ≥ `GRASS.mow.minDensity` 0.12; with no density function every cell):
+  paving and bare earth are never torn. Both return the tear they added (the sum over their cells).
+  `scorch.tornAt(x, z)`, `scorch.torn` (Float32Array), `scorch.tornCells` (cells with any tear). It stays
+  until `scorch.reset()` (which zeroes A with the rest); nothing decays it. It writes A only: never R, G
+  or B, and nothing in fire.js reads A (the fire burns exactly as before). No random draw. (Not to be
+  confused with world.impact's "torn ground" below: that is a charred disc in R.)
+- **The grass shader** (`grass.js`, `scorch4At(root.xz)`: burn, heat, trample and torn in one fetch;
+  uniforms from `GRASS.blade`: `uMow` (stub, jitter, low), `uMowInk`, `uMowGain`, `uMowFresh`, `uMowBare`,
+  `uMowLie`, `uFresh`, `uFreshAsh`). torn × `gain` 1.25 is the SHARE of the blades there that are cut
+  (each blade is cut or stands, by its own hash: a light tear is a scatter of stubs, a swath's edge a ragged
+  line of them). A cut blade keeps the lower `stub` 0.42 (± `jitter` 0.12; `low` 0.15 of them to the root)
+  of its letter's INK (`ink` [0.2, 0.8]: the share of the quad the atlas cell's ink spans): the quad and
+  its uv are clipped at the same height, so the stub is the letter's own stroke, not a squashed one; it
+  sways as the lower part of a blade does. `lie[0]` 0.4 of the mown blades are instead a cut TOP lying
+  where it fell (the whole letter at `lie[1]` 0.55 × the size, laid over ±72 – 100°, 0.03 m up, no wind).
+  A stub is paler at its cut (`fresh`, `freshAsh` on Ashfall's dried grass, `freshK` 0.9 of the way,
+  never over burnt grass: a mown blade that burnt stays dark). Torn past `bare` [0.84, 0.97] the grass is
+  torn OUT: the stubs go to the root, nothing lies, the floor shows bare (only a mark reaches that: the
+  sword stops at `mow.maxK` 0.8). A flower over torn 0.4 is gone. Burn still wins over all of it.
+- **`mowSwing(game, a, sw, fx = null)`** (grass.js; `mowStats` = `{ atk, acc, bits, torn, swings }` for the
+  tests): player.js `_combat` calls it every frame of a swing (state attack / heavy), right after the
+  hit test, `_cutWorld`, the trail and the glint, with the attack `a`, the SwordSweep `sw` and `this.fx`.
+  It acts from the active window (`def.windup`) to `GRASS.mow.after` 0.14 s past it (the follow-through
+  still cuts), never on an execution (`a.exec`), only while the steel's point moves at `speed` 2.5 m/s or
+  more (a blade at rest or held in a hitstop cuts nothing), and reads only the swing: its clock, its hit
+  and the seeded stream are untouched. The drawn steel, out to `reach` 1.45 × its length (to the arc's
+  edge the player sees), is swept from last frame's pose to this one in sub-steps of at most `sub` 0.2 m
+  of the point's travel (`maxSub` 8). Wherever it passes under `above` 0.45 m over the grass's top (`top`
+  1.05 × `world.grass.heightAt`, else `meadowHeight`) it tears a strip `w` 0.8 m wide along the steel:
+  `skim` 0.45 deep at the tops (fading to 0 `above` over them), 1 at `stubY` 0.55 × the top and under, ×
+  `maxK` 0.8 (a tear under `min` 0.08 × maxK none). So a low sweep mows its arc, a waist-high swing only
+  skims the tops, a vertical chop leaves a lane (~1 × 3 m), and a stab, the piercing gale and the tempest
+  pass over the grass. The cut tops fly: `fx.mowBits(ax, az, bx, bz, n, ux, uz, top, B)` (player/fx.js),
+  `bits.per` 2.2 letters per unit of new tear, at most `bits.max` 14 a swing × `world.quality`, tiny
+  (`size` 0.1 – 0.16) letters `/ \ ' , |` in `COL.grassBit`, thrown along the blade's travel and up, falling
+  fast, from the fx module's own stream. The flurry's cuts do not mow (state 'flurry' is not a swing
+  of `_combat`'s; open). **All of this bullet is the first round's cut, kept only for `?mowLook=r1`:**
+  with any other look `mowSwing` writes no A (the owner turned it down: a blotch round the steel, and
+  most of the drawn arc cut nothing). The sword's cut today is the next two bullets.
+- **The cut follows the drawn arc** (`world/mowFx.js` `MowFx`, built by `scorch.js` as `scorch.tops` where
+  grass grows and `mowOn()` and the look is not `r1`). `player/fx.js` `trail()` hands every stroke of the
+  arc's EDGE, the same slerped sub-steps it draws, to `tops.cutArc(ax, ay, az, bx, by, bz, heavy)`: so the
+  grass is cut where and on the frame the arc is drawn, and never when none is (headless: no trail, no
+  cut). A stroke cuts only the part of it lower than `GRASS.arc.above` 0.85 m over the grass's top (`top`
+  1.05 × `heightAt`); its ends are carried along the camera's view ray down to `mid` 0.5 × the top (the
+  cut sits under the arc as the player sees it); every blade whose root lies within `w` / 2 (0.55 m;
+  `wHeavy` 0.7 for the heavy blows) of that footprint is cut. The blades are found through a bucket grid
+  of the grass's instances on the scorch map's cells (built once, ~3 ms). The cut is ONE BYTE PER BLADE
+  (`tops.cut`, an R8 `DataTexture` `tops.cutTex` `arc.tex` 512 wide), uploaded only on a frame something
+  was cut, cleared by `scorch.reset()`; the grass shader reads it by `texelFetch(gl_InstanceID)` (uniform
+  `uCutTex`) and draws a cut blade as its stub, exactly like a mown one. So the sword's cut is exact to
+  the blade, not a map cell's share, and A stays for the marks.
+- **The cut tops** (`MowFx`, one instanced batch of up to `GRASS.fly.max` 1400 × quality pieces, fixed
+  typed arrays, its own seeded stream): a cut blade's TOP, the upper part of its own letter in its own
+  colour, is spawned on the frame its stub shows, where the top was, so no blade pops from whole to
+  stub. It then goes by the look, `?mowLook=` (read once; `GRASS.fly.look`): **`a` thrown, the default**
+  (`fly.throw`: `share` 0.5 of the tops tossed along the stroke's way, `fling` 0.9 – 2 m/s, `up` 1.7 –
+  2.7 m/s, `spin` 2 – 6 rad/s, no brighter than × 1.15 the grass; the rest topple off as in b; they lie
+  0.7 – 1.3 s and thin over 0.45 s), `b` sliced (`fly.slice`: the tops lean off their stubs, a little
+  drift, 5 % thrown), `c` shred (`fly.shred`: a burst of the grass's strokes), `r1` the first round (no
+  tops). A mark's tear hands its blades over the same way (`scorch.tear` → `tops`), at most `perTear` a
+  call. Cost at quality 1: `cutArc` ≈ 0.03 ms a frame of a swing, the batch ≈ 0.03 ms; about 130 tops a
+  swing (65 thrown), half that at quality 0.5.
+- **The marks tear first** (`scars.mark` with `world.scorch.tearLine`, a density function and `mowOn()`):
+  before its glyphs are laid, each kind tears its shape (`GRASS.mark`, depth `k` from a light blow to the
+  hardest by its power, (power − 0.3) / 1.5): a `slam` a disc `r` 1.05 × its round (the crater's radius
+  from `SCAR.crater.min`); a `blast` a round 0.95 × its radius; a `cut` each gash along its own path (its
+  bow, each claw's offset, or its arc), `w` 0.5 wide, tapered toward both ends as the gash is (`_tearCut`);
+  a `thrust` a short strip `w` 0.34 and a disc `r` 0.45 at its point; a `dash` a furrow `w` 0.62 (wider for
+  a harder blow; an arc's along the arc, `_tearArc`); a `beam` a strip `w` 0.8 along its length; a `step`
+  (power ≥ `SCAR.mark.step.min`) a paw's disc `r` 0.5 at `k` 0.6 – 0.85 (a step MOWS rather than tears
+  out: under `bare[0]`). Every other kind's `k` is 0.9 – 1: torn out. The tearing draws no random number,
+  so the marks' own stream is the same with the mow on or off.
+- **Cost** (measured 2026-11-23): about 4.8 µs a frame at worst; a minute of fight tears 600 –
+  900 of the map's 65 536 cells. The world test **`mow`** (below, Tests).
+
 **`world.impact(x, z, r, power, o)`** = `destructibles.strike` + for a hard blow (`SCAR.ground.min` 0.45
 or more; `o.scar: false` skips it) its floor mark (`scars.impactMark`: a mark of its kind, or today's
-cracks and crater rim with `?marks=0`) and torn grass, and for a blow of `SCAR.crater.min` 1.2 or more
+cracks and crater rim with `?marks=0`; since ADR-180 the mark tears the grass out in its shape, A) and
+its "torn ground" (`burnCircle` 0.5 burn, no heat, radius min(r, 0.6 + 0.9 power): char in R, which the
+grass draws as burnt and which wins over the mown look), and for a blow of `SCAR.crater.min` 1.2 or more
 a charred disc of radius min(r, 1.2 + power × 1.1) m + `ignite` when `o.fire` is set + **`life.impact(x,
 z, r, power, o)`** (ADR-177: what stands near shakes, what lives near flees, dust hangs after). `o`
 gained `mark` (a `scars.mark` kind; false: today's cracks), `marked` (the caller lays its own mark with
@@ -3405,9 +3505,10 @@ piece, `hangKickSettle(U)` frees spent slots. Under "The living world" → The t
 ## The living world (2026-11-23, ADR-163): one wind, and what lives in it
 Files: `src/world/life/` (`life.js` the hub, THE CONTRACT in its header; `lifeSwitch.js` the switch; one
 `<layer>.js` + `<layer>Tuning.js` per layer: wind, weather, litter, steps, creatures, answer, and since
-ADR-177 tremor and aftermath; the fauna: `flock.js`, `animals.js`, `faunaTuning.js`, owned by creatures),
-`src/world/hang.js` + `hangTuning.js` (what hangs), `src/audio/air.js` + `airTuning.js` (the sound of the
-air), `src/game/arrival.js` + `arrivalTuning.js` (the arrival). The ambient life of a level before and
+ADR-177 tremor and aftermath, since ADR-180 lamps; the fauna: `flock.js`, `animals.js`, `faunaTuning.js`,
+owned by creatures), `src/world/hang.js` + `hangTuning.js` (what hangs), `src/audio/air.js` + `airTuning.js`
+(the sound of the air), `src/audio/lifeSfx.js` + `lifeSfxTuning.js` (its one-shot sounds, ADR-180),
+`src/game/arrival.js` + `arrivalTuning.js` (the arrival). The ambient life of a level before and
 round the fight: one shared wind per level that the grass, the trees, smoke, letters in the air, hanging
 cloth and the hero's hair all read; things that fall and lie; footsteps that answer the ground; slow
 weather; small creatures; the sound of the air; a camera beat as the player arrives; the world answering
@@ -3442,16 +3543,17 @@ it failed). THE CONTRACT every layer and outside reader may rely on:
 | `gust(x, z, strength, radius)` | `world.gust()` calls it: `wind.burst` and `answer.gust` (both only while their piece is on) |
 | `impact(x, z, r, power, o)` | (ADR-177) `world.impact()` and `world.groundBlow()` call it: a blow landed at (x, z), reach r m, `power` on the POWER scale (0.3 light, 1 heavy, 2 the biggest), `o` the blow's record (kind, by, dx, dz, len, hot; may be undefined). Every layer with an `impact(x, z, r, power, o)` method whose piece is on gets it: the creatures (flocks, animals), the tremor, the aftermath. Nothing when `enabled` is false or a number is not finite |
 | `ignite(x, z, r, k)` | (ADR-177) `world.ignite()` calls it: fire landed. Likewise every layer with an `ignite(x, z, r, k)` method whose piece is on: the creatures, the aftermath |
+| `sound(name, x, z, o)` | (ADR-180) a one-shot sound of the living world (a `LIFE_SFX` name, `audio/lifeSfx.js`): `audio.play(name, r)` with `o`'s fields copied into one reused record, plus `x` / `z` when both are finite (placed and falling off with distance like the fight's sounds). Only while `enabled`, the piece **`air`** is on (the sound of the air is the living world's sound) and `hush` is not above `LIFE_TUNE.soundHush` 0.6. → whether a voice started (`audio.play` returned true); a throw is caught and logged (`_fail('sound')`: the first three; nothing is switched off by it). The layers do not call it directly: they call `lifeSay` (below, "The living world's sounds"), which calls it |
 | `action(label, run, title)` | a button on the Lab's life rows (`run` may return a status string) |
-| `wind`, `weather`, `litter`, `steps`, `creatures`, `answer`, `tremor`, `aftermath` | the layers (below). A layer's piece is its own name, but for those in `PIECE` (life.js): `tremor` and `aftermath` belong to the piece **`answer`** (no new word in `?life=`; `on(PIECE[name] ?? name)`). One is always there, also with its piece off (its methods then do nothing and its values are the still-air defaults); one that failed to build is a frozen no-op stand-in. Outside readers still write `game.world?.life?.wind?.at(...)`: the tests' world mocks have no life |
+| `wind`, `weather`, `litter`, `steps`, `creatures`, `answer`, `tremor`, `aftermath`, `lamps` | the layers (below). A layer's piece is its own name, but for those in `PIECE` (life.js): `tremor`, `aftermath` and (ADR-180) `lamps` belong to the piece **`answer`** (no new word in `?life=`; `on(PIECE[name] ?? name)`). One is always there, also with its piece off (its methods then do nothing and its values are the still-air defaults); one that failed to build is a frozen no-op stand-in. Outside readers still write `game.world?.life?.wind?.at(...)`: the tests' world mocks have no life |
 
 `update(dt)` (world.js, each frame the world is drawn), `clear(why)` ('reset': `world.restore()`; 'hide':
 the Lab hides the world), `setVisible(on)` (`world.debug.setVisible`; hiding also clears with 'hide').
-`LIFE_TUNE` (life.js) `{ fightCalm 0.4, calmDown 1.2, calmUp 4, hushRelease 1.5, calmHush 0.5 }`.
+`LIFE_TUNE` (life.js) `{ fightCalm 0.4, calmDown 1.2, calmUp 4, hushRelease 1.5, soundHush 0.6, calmHush 0.5 }`.
 
 **A layer** is a class `{ constructor(life), update(dt), clear(why), setVisible(on), takes(what) }` (and, if
 it answers blows or fire, `impact(x, z, r, power, o)` / `ignite(x, z, r, k)`), built in the order wind,
-weather, litter, steps, creatures, answer, tremor, aftermath, updated in that order (`ORDER`). `_call` passes
+weather, litter, steps, creatures, answer, tremor, aftermath, lamps, updated in that order (`ORDER`). `_call` passes
 up to five arguments. The rules:
 - `update(dt)` runs every frame, piece on or off: off, it returns at once and leaves NOTHING on screen
   (a layer that was on wipes its letters, its pool and its uniforms the first frame it is off).
@@ -3474,7 +3576,10 @@ earth), the answer's `DEFAULT` (Cinderwood's numbers), the air's `quiet` recipe 
 turns today's bed's wind AND voices down to 0), the arrival's `DEFAULT` shot (it looks at (0, 0) and drifts
 to (0, 10): give a new level a block with its own `look` / `end`), and nothing hangs until its builder
 marks a part with `hangFrom`. Since ADR-177: no fauna (no roosts, no animals: `FAUNA_TUNE.levels`), the
-tremor's and the aftermath's `DEFAULT` (Cinderwood's numbers).
+tremor's and the aftermath's `DEFAULT` (Cinderwood's numbers). Since ADR-180: the lamps' `DEFAULT` (one
+lantern lit at the start, one more at the fight, 2 / 2 / all at phases 2 / 3 / 4: only for breakables
+that carry `lamp`, so a level without lanterns lights nothing) and the sounds' `DEFAULT` level block
+(every sound heard, small birds, stone grit, leafy trees).
 
 ### The wind — `life.wind` (`wind.js`, `windTuning.js`)
 - `at(x, z, out)` → `out` `{ x, z, k, alarm }`: the air's velocity there (m/s), `k` 0..1 how much gust is
@@ -3709,7 +3814,8 @@ its `update()` is a no-op: its owner writes it).
 - **The trample = the scorch map's blue channel** (`scorch.trample(x, z, r, k)` max-blended, a disc with a
   soft edge, at most `maxCells` 2048 cells; `scorch.trampleAt(x, z)`; it stands up linearly over
   `trample.decay` 10 s; `scorch.reset()` clears it; no random draw). A run treads r 0.7, a sprint 0.85, a
-  heavy landing 1.2 m. The grass shader reads it (`scorch3At(xz).z`, `trampleAt`): a trodden blade lies
+  heavy landing 1.2 m. The grass shader reads it (`scorch4At(xz).z` since ADR-180, which reads the torn
+  grass in the same fetch; `trampleAt`): a trodden blade lies
   flatter every way and is drawn darker (up to 0.7 × darker). scorch.js imports `STEPS` for the decay and
   the cap.
 - **The hooks**: player.js `_footstep` (the payload gains `surface` and today's dust is skipped while the
@@ -3868,6 +3974,11 @@ What stands near a heavy blow shakes, by what it is, and settles in under a seco
 - Its letters (dust, grit: `glyph`) print in the house letter in an own `LetterBatch` made at the first
   shake through `life.build` (`uSoft` 0.12: they lie low); its noise from its own LCG, no Math.random
   (`litter.showerAt` draws from `life.rand`). No allocation per frame.
+- The sound (ADR-180; "The living world's sounds"): a shake is ONE `treeShudder` at its strongest tree
+  (a second one only when three or more shook), a `treeCreak` at a leaning tree it shakes, `dustSift` at
+  the strongest stone that sifted, `pebbles` where the floor hopped; and while the piece is on it listens
+  to `world:impact` 'wear' (wood, the last stage: the lean) for a `treeCreak`. A blow also gutters the
+  lamps (`life.lamps`, the same `life.impact`).
 
 ### The aftermath — `life.aftermath` (`aftermath.js`, `aftermathTuning.js`; piece `answer`; 2026-11-23, ADR-177)
 What a fight leaves in the air after the flames and the blows; it thins by TIME, not by `life.calm` (the
@@ -3900,6 +4011,83 @@ fight is when it is made), lingers after a victory and is gone at the fight's re
   quality 1 (the phone preset comes after the world is built: quality limits what is used); no
   allocation per frame, no Math.random (its own LCG). Cost: ~0.13 ms a frame on a desktop with 5 columns
   and 3 hazes (885 letters).
+- The sound (ADR-180): a new crater haze is heard as a faint sift of grit (`dustSift`, k 0.4 + 0.4 × its
+  strength, at most 1.4, 0.12 s after the blow); the smoke and the embers are silent.
+
+### The lamps — `life.lamps` (`lamps.js`, `lampsTuning.js`; piece `answer`; 2026-11-23, ADR-180)
+The levels' stone lanterns and the Skybreak Ring's braziers: a lantern stands dark or burns as the visit
+starts, more KINDLE as the fight heats up, a lit one GUTTERS under a blow's shock and burns up again, and
+it goes OUT when the piece that holds it breaks, falls or is taken (never relit in that fight).
+- **Where a lamp is.** A breakable whose def carries **`lamp: { y, r }`** (the window's centre height and
+  half width, m): `courtyard.js` exports `LANTERN_LAMP` `{ y 1.22, r 0.15 }` for its `buildLantern` (the
+  Ashfall Courtyard's four corner lanterns; the Foxfire Terrace's ten use it too), `windlessGrove.js` its
+  own `{ 1.07, 0.13 }` (the two lanterns on the path), `starfallProps.js` `buildLantern` returns `lamp`
+  for a STANDING lantern only (`{ y 1.62 × 1.15 s, r 0.2 s }`; a fallen or thrown one has none) and
+  `throneHall.js` copies it onto the outskirts' breakable (so the Obsidian Throne has lanterns only under
+  `?outskirts=a | m`; the default `c` has none). And the Ring's braziers: `set.ambience.braziers` (the four
+  posts' `{ x, y, z, def, light, piece, gut, gx, gz, lit }`; the ambience draws their flames and lights)
+  with **`ambience.gutter(b, k, dx, dz)`** (→ whether it took: a stronger shock than the one settling;
+  never called, a brazier burns as before). A new level's lantern needs only the `lamp` field (and a
+  block in `LAMPS_TUNING` for its kindling). Found once `world.destructibles.list` exists (looked for
+  again every second until then).
+- **States** (`LAMP` `{ DARK 0, KINDLE 1, LIT 2, OUT 3 }`); a gutter is a level `gut` (0..1) on a burning
+  lamp, not a state. **The start** (and every `clear('reset')`): the `start` lanterns nearest the hero's
+  spawn (`CONFIG.world.playerSpawn`) burn, the rest stand dark, every brazier burns. **The fight**: when
+  `game.state` becomes 'boss', `fight` more catch, the nearest the boss first (0.6 s before the first).
+  **The phases**: `dragon:phase {n}` and `dragon:phase2` … `phase4` (subscribed only while the piece is
+  on; a phase counts once) → `phaseUp(n)`: `phase[n]` more (99 = all that still stand), the nearest the
+  boss first, one after another `stagger` 0.35 – 1 s apart. **Fire** (`ignite`, from `life.ignite`) within
+  `ignite.r` 3 m of its disc lights a dark standing lantern at once, catching in `ignite.kindle` 0.45 s.
+  A catch eases in over `kindle.sec` 1.1 s with a stutter (`stutter` 0.55), then burns steady.
+- **The gutter** (`impact`, from `life.impact`): p = power × `life.k`; under `gutter.power` 0.25 nothing.
+  Reach = min(`max` 16, r × `r` 1 + `k` 3 × p^`pow` 2) m; at d m (from the lamp's window) the strength is
+  p × (1 − d / reach)^`fall` 1.2 (× `brazier.k` 0.8 on a brazier); from `min` 0.15 the lamp gutters to
+  min(1, s × `k` 0.85) (a weaker shock never lowers a stronger one): its blobs lean away from the blow at
+  `lean` 1.4 m/s × gut, rise slower, shrink, cool a little; its light dims by `dim` 0.6 × gut; it settles
+  as gut × e^(−t / `tau` 0.25) less `drop` 0.12 a second (a full gutter in ~0.8 s). A brazier's gutter is
+  the ambience's (`gutLean` 2.2, `gutDim` 0.55, `gutTau` 0.3: back in ~0.6 s).
+- **Out.** A lamp whose piece is no longer INTACT goes OUT (each frame's check): a puff of `out.puff` 4
+  fire-field smoke blobs and `flare` 2 last licks of fire where the flame was, its light fading over
+  `light.out` 0.35 s (never a pop). It stays out through phases and fire until the reset. A brazier's post
+  down: the ambience stops its flame and fades its light over `WEATHER.brazier.out` 0.35 s (this applies
+  with the living world off too); the layer puffs it out.
+- **The flame** is heat in the fire field (STYLE "The fire field"): `flame.rate` 14 blobs a second (× 0.6
+  + 0.4 × quality, so a phone keeps 0.8 of them; × 0.35 + 0.65 × the glow while it catches), `size` 0.42 –
+  0.52, `heat` 0.78 – 0.98, `life` 0.28 – 0.4 s, `rise` 0.04 – 0.14 m/s, spread over `spread` 0.55 × the
+  window's half width, kind `kind` ('fire' on every level). It is drawn **`toCam` 0.9 m along the view ray
+  toward the camera** (the fire field's soft depth test would not print it inside the stone box; moved
+  along the ray it prints on the same spot; headless: the game camera's way, 58° down) and follows the
+  piece's pivot (a shuddering lantern leans its flame).
+- **The light** is a LOW light of the pool (above, `lights`): at most `light.max` lanterns hold one, the
+  nearest the camera's focus within `reach` 26 m (a holder keeps its place against one up to 15 % nearer),
+  each fading in and out of its share over `fade` 0.5 s; colour (1, 0.52, 0.2) (`colorVoid` for a 'void'
+  flame), `intensity` 2 × share × glow × (1 − dim × gut), `radius` 5 m, `flicker` 0.45, `slotFade` 0.3,
+  made through `life.build`. The fight's own lights win the slots; the lamps take what is left. The Ring's
+  braziers' lights (the ambience's) are low lights too since ADR-180, with the living world off as well.
+- **Per level** (`LAMPS_TUNING`, else `DEFAULT`: start 1, fight 1, phases [0, 0, 2, 2, 99], 3 lights):
+  `ash` 1 at the gate, 1 at the fight, 1 at phase 2, the rest at phase 3, 4 lights (the courtyard's pool
+  holds only the bonfire's); `fox` 2, 2, 3 at phase 2, all ten at phase 3, 3 lights; `grove` none until
+  both catch at phase 2 (or when fire reaches them), 2 lights; `starless` none, 1 at the fight, 2, 2, all
+  at phase 4, 2 lights (the hall's own six hold the pool); `ring` no lanterns, its braziers burn from the
+  start. Cinderwood, the Hall of Falling Script and Halcyon Plaza have no lamp (the Plaza's lamp posts are
+  electric neon).
+- **API.** `impact(x, z, r, power)`, `ignite(x, z, r, k)` (→ how many caught), `kindle(n, x, z, first =
+  0.15)` (n more, the nearest (x, z) first; → how many will), `phaseUp(n)`, `shock(x, z, r = 2.5, power =
+  1.4)` (a gutter forced past the power floor; → how many guttered), `gutterAtHero()`, `douse()` (every
+  burning lantern dark in a puff; they may be lit again; the braziers untouched), `lit` (how many burn,
+  catching or lit, braziers too), `list` (the records `{ kind 'lantern' | 'brazier', state, x, y, z, r,
+  glow, gut, gx, gz, w (its light's share), b (the piece), br (the brazier), light }`), `lights` (lamp
+  lights shining now), `stat` `{ kindled, guttered, out, ignited, blobs, puffs }` (this page load), `kind`
+  (the flame's fire-field kind; the films tried 'void' on the Terrace), `off` (true: nothing, a film's
+  "today"). `clear('reset')` the level's start again; any other `clear` or `setVisible(false)` dark at
+  once. **The Lab**: **light lamps** (every standing lantern catches, the nearest the hero first, 0.2 s
+  in), **gutter at hero** (a 1.4 shock at the hero; with no lamp in reach, the nearest lit one gutters
+  anyway), **lamps out** (`douse`).
+- **The sounds** (through `lifeSay`, so only with the piece `air` on too): `lampCatch` as a lantern
+  catches, `lampGutter { k }` once a blow at the lamp it shook hardest (not within `gutter.sound` 0.5 s of
+  that lamp's last), `lampOut` as a burning one goes out (`douse` is silent).
+- Off (the piece, or `off`): nothing burns, no light is asked of the pool (a light already made is held at
+  0). No allocation per frame; no Math.random (its own LCG; the lights through `life.build`).
 
 ### What hangs — `world/hang.js`, `hangTuning.js`
 - A builder marks a hanging part while its geometry is still upright in its own frame: `hangFrom(geo, top,
@@ -3949,6 +4137,67 @@ wind); the whole bed thins by (1 - calm) × 0.5; the tense states silence its vo
 switching (`fadeIn` 1.2, `fadeOut` 0.8 s); nodes dropped once silent. Its own LCG. `ambience.js` exports
 `follow`.
 
+### The living world's sounds — `audio/lifeSfx.js` (`lifeSfxTuning.js`; 2026-11-23, ADR-180)
+One-shot sounds for the new life: a flock's wings, an animal bolting, a tree's shudder and creak, dust
+and pebbles, leaves skittering, a lantern catching, guttering, dying. Synthesized only (the owner turned
+recorded ambience down as noisy), short, quiet, under the fight; heard only with the piece **`air`** on
+(`life.sound`), whichever piece makes the event.
+- **`LIFE_SFX`** (the recipes; the format of sfx.js: `{ prio, rev, gap, falloff, gain, play(v, t, o, E) }`,
+  every number in `LIFE_SFX_TUNE.sound`); `audio.play(name, o)` looks a name up in `SFX`, then `FIRE_SFX`,
+  `THUMP_SFX`, then `LIFE_SFX` (then the aliases). `LIFE_SOUNDS` lists the names:
+  | name | `o` | what |
+  |---|---|---|
+  | `flockBurst` | `n` (birds, 4 – 48), `kind` 'small' / 'crow' / 'pigeon' | a roost leaving: soft wing claps over ~1.2 s (more birds, more claps, each one quieter as n^-0.25), a low swell and a rising wash of air |
+  | `animalBolt` | `kind` 'rabbit' / 'deer' / 'rat' / 'lizard' / 'fox' | a rabbit's hops in the grass, a deer's few bounds of hooves, a rat's scratch-skitter, a lizard's ticks on stone, the fox's one soft rustle |
+  | `treeShudder` | `k` 0..2, `kind` 'leaf' / 'dead' / 'cane' | leaves fluttering and settling (dead: dry twigs; cane: the bamboo's faint shiver), a dull knock of the trunk |
+  | `treeCreak` | `k` 0.5 – 1.5 | a tree leaning to its fall: a slow wooden groan (stick-slip pulses through two wood formants) and a crackle of fibres |
+  | `dustSift` | `k` | a faint fine patter of grains, thinning |
+  | `pebbles` | `k`, `mat` 'stone' / 'glass' / 'sand' / 'earth' | a few small clicks scattering, each with a smaller bounce; stone and glass (obsidian) ring faintly |
+  | `leafSkitter` | `k` | a few dry ticks and a brush |
+  | `lampCatch` / `lampGutter` / `lampOut` | `k` 0..1 | a soft whump and a crackle; the flame fluttering; a short dying hiss and a click of cooling stone |
+  Every call varies (pitch, timing, band, count) from this module's OWN stream (an LCG; the noise offsets
+  too): never Math.random and never the audio's shared `dsp.arand` (the fight's sounds keep their
+  sequence). Every sound ends within 2.5 s. `o.delay` (s) starts it later (audio.play), `o.x / o.z` place it.
+- **`lifeSay(life, name, x, z, o, i = 0)`** — how a layer asks (never `life.sound` directly): nothing for
+  an unknown name or a level that never hears it (`lifeHeard(levelId, name)`: 0 when the level's block
+  has it in `off`, else its `gain[name]` or 1); the callers' rate limit `LIFE_SFX_TUNE.say[name]` (`gap` s
+  between two of that name on one living world, on `life.t`; `i` > 0, the i-th of one burst, passes only
+  in the same `life.t` as the first one that played, and only while i < `most`); the level's kind when `o`
+  gives none (`flockBurst.kind` ← `birds`, `treeShudder.kind` ← `tree`, `pebbles.mat` ← `ground`); gain =
+  `o.gain` × heard × (1 − `fight` 0.3 × clamp((1 − calm) / 0.6, 0, 1)), so ×0.7 at the fight's full calm;
+  then `life.sound(name, x, z, rec)`. → whether it played (only a played first one stamps the time). `o` is
+  read, never kept (one reused record). The engine adds its own `gap` per name on top (`audio.play`).
+- **Who says what** (each a reused options record, no allocation):
+  | caller | sound |
+  |---|---|
+  | `flock.js` (a roost flushed) | ONE `flockBurst { n }` at the roost; a flock flying in is silent |
+  | `animals.js` (an animal starts to run) | `animalBolt { kind }` (its kind) |
+  | `tremor.js` `_say` (after a shake) | `treeShudder { k, kind }` at the strongest tree shaken (k ≥ `tremor.shudderMin` 0.2; kind 'cane' for bamboo, 'leaf' for a leafy tree that is not a deadTree, else 'dead'); a second one at the next strongest only when `secondAt` 3 or more shook, `second` 0.05 – 0.14 s later, `k2` 0.7 as strong (i = 1): never one per tree. `treeCreak { k ≤ 1.5 }` at a shaken tree that already leans (it topples and its wear is at stage 3). `dustSift { k ≤ 1.6 }` 0.05 s on at the strongest stone that sifted |
+  | `tremor.js` `_floor` (pebbles hopped) | `pebbles { k = min(2, power) }` |
+  | `tremor.js` `_world` (`world:impact` kind 'wear', mat 'wood', power ≥ 3: the lean; not on a piece with `topples: false`; listened to while the piece `answer` is on) | `treeCreak { k: creakK 1 }` |
+  | `aftermath.js` (a new crater haze) | `dustSift` (the tremor's dust in the same blow is the same name: the rate limit keeps one) |
+  | `litter.js` `scatter` (a blow throws what lies) | `leafSkitter { k ≤ 1.5 }`, once, when at least `skitterMin` 6 were thrown |
+  | `lamps.js` | `lampCatch`, `lampGutter { k }`, `lampOut` (see "The lamps") |
+- **Rate limits.** `say` (`gap` s / `most` a burst): flockBurst 1 / 1, animalBolt 0.15 / 1, treeShudder
+  0.3 / 2, treeCreak 0.8 / 1, dustSift 0.5 / 1, pebbles 0.25 / 1, leafSkitter 0.6 / 1, lampCatch 0.15 / 2,
+  lampGutter 0.25 / 2, lampOut 0.2 / 2. The engine's own `gap`: 0.6, 0.12, 0, 0.5, 0.35, 0.2, 0.5, 0.15,
+  0.25, 0.2 in the same order.
+- **Per level** (`LIFE_SFX_TUNE.levels`, `lifeSfxLevel(id)`; birds / ground / tree; what is never heard):
+  Cinderwood small / earth / leaf; Ashfall crow / stone / dead, no leafSkitter; the Obsidian Throne glass /
+  dead, no flock, animal, shudder or skitter (only creaks, dust, pebbles and the lamps); the Skybreak Ring
+  sand / dead, no flock or skitter; the Foxfire Terrace small / stone / dead; the Windless Grove the canes'
+  shudder and the lanterns only (their three × 0.6); Halcyon Plaza pigeon / stone / dead; the Hall of
+  Falling Script stone / dead, no flock, animal or skitter. A level without a block: everything, small /
+  stone / leaf.
+- **Loudness** (the taste, `lifeSfxTuning.js` header): the gains are peaks before the voice's and the bus's;
+  nothing may be louder than the hero's footstep at the same distance, except a flock's burst and a
+  tree's creak, which may reach it. Judged on the audition page beside the footstep and the light swing;
+  the suite checks the ranges, not the loudness.
+- **The `wear` creak gives way** (sfx.js `wear`, `world:impact` 'wear'): its stage-3 creak of wood plays
+  unless `life.on('air')` and `life.on('answer')` are both true (the tremor, piece `answer`, makes the
+  new one; with only one of them on, the old creak stays, so a lean is never silent); with both on the tremor's `treeCreak` plays it (its
+  leaf hiss and the snap of stage 2 as before). One creak for one lean.
+
 ### The arrival — `game/arrival.js` (`arrivalTuning.js`)
 `flow.arrival` (`new Arrival(game, flow)`): `begin()` (flow `_startGame`, after its camera lines: the
 title was dismissed; once per page load, `used`; nothing with the piece off), `update(dt)` (flow, real dt,
@@ -3979,7 +4228,7 @@ the whole run). Math.random is SEEDED: every `build` restarts it from the level'
 so a set's ambience (the fireflies, embers, ash: they draw from Math.random) is the same on every run and
 in two builds of one level; unseeded, the fireflies alone moved the shared pools' spawns by ~1000 in 73 000
 run to run (the `phone` check failed about one run in a hundred). One file per piece (`FILES`: core, wind, weather, litter, steps, creatures, answer, air,
-arrival, hang, and since ADR-177 tremor, aftermath; a missing or broken file fails the suite); after each scenario the switch goes back to off.
+arrival, hang, and since ADR-177 tremor, aftermath, since ADR-180 lamps; a missing or broken file fails the suite); after each scenario the switch goes back to off.
 The suite's world mock forwards `impact`, `groundBlow` and `ignite` to `life.impact` / `life.ignite` as
 world.js does (`world.impacts` counts them).
 **`core`** enforces the contract on every level: `off` (no own pool, takes nothing, still air, clear
@@ -4006,14 +4255,45 @@ fight, the letters' budget, the Lab buttons); `answer.world` (`world:impact` top
 wood break reach `creatures.fell`); `tremor.tree`,
 `light`, `merge`, `banner`, `dust`, `floor`, `grove`, `clear`; `aftermath.smoke`, `budget`, `dust`,
 `grove`, `clear`.
+Since ADR-180: **`lamps`** (the breakables built on the toolbox's world as world.js builds them): `find`
+(every level's lamps: Ashfall's four lanterns, the Terrace's ten, the Grove's two, Cinderwood none, the
+Ring's four braziers; a flame in its window; as many burn at the start as the tuning says), `phases` (the
+fight's start and each phase light their counts, the nearest the boss first, one after another),
+`ignite` (fire 1.9 m off a dark lantern lights it at once, steady in 0.45 s; the other does not catch),
+`gutter` (a light cut 13 m off: nothing; a heavy blow 2 m off: it gutters, its light dims, it leans away,
+and is back within a second), `out` (struck down: out in a puff, its light fading, never a pop; phases
+and fire leave it out; the reset lights the start's again), `budget` (all ten on the Terrace burn, at most
+`light.max` lamp lights at once, also walking the rim; eight of the fight's own lights take the slots
+back, each low light fading out over 0.3 s; they return when those go), `brazier` (a Ring brazier gutters
+and burns up again; its post down: out, its light fading), `off` (the piece off: nothing burns, no low
+light in the pool; on: zero Math.random inside the living world, the flames are fire-field heat). **`air`**'s
+sound scenarios (the REAL AudioEngine on the shim's strict WebAudio mock): `sounds` (every `LIFE_SFX`
+recipe plays with every gain it sets finite and in [0, 1], no Math.random, each ends within 2.5 s, ten
+calls of one sound are ten different sounds; the lamps' three exist), `shudders` (a blow that shakes
+three or more trees plays one or two shudders, one patter of pebbles and one sift of dust at most; ten
+blows in a second at most eight; the Grove's are the canes'), `creatures` (a flock that flees is ONE
+burst of its level's kind and size, Cinderwood small birds, Ashfall crows; fire and a blow at one roost
+together one burst; bolting animals one sound each at most, a rabbit's or a deer's), `creak` (a lean,
+`world:impact` 'wear' 3 on wood, creaks once; a stage 2 and a second lean within 0.8 s none), `quiet`
+(the `air` piece off: a flock and a heavy shake play nothing; under a hush past 0.6 nothing; once the
+breath is let go the next flock is heard).
 
-### Tests — floor marks and the blade (ADR-177)
+### Tests — floor marks, the blade and the mow (ADR-177, ADR-180)
 - World test **`marks`** (`node tests/integration/world.mjs . marks`, on the courtyard): each of the seven
   kinds lands where its blow did (its glyphs centred within 0.5 m); `world.impact` lays a blunt blow's
   slam and a blast's blast, not today's crack; the same blow twice at once is drawn once and a hundred on
   one spot are thinned; the hero's slam is smaller than the boss's; NO draw from Math.random; groundBlow
   damages nothing; a hot blast chars the paving and lights nothing; the cap holds and the oldest fade
   (never a pop) and go; the reset clears them; `?marks=0` gives today's cracks only.
+- World test **`mow`** (ADR-180; `node tests/integration/world.mjs . mow`, on the forest with a meadow to
+  the west and paving to the east; run LAST of `all`: its marks draw on the scars' cosmetic stream):
+  `mowSwing` with a stand-in SwordSweep. A low sweep mows its arc to `GRASS.mow.maxK` (mown, never torn
+  out) and nothing behind him or past the steel; the cut tops fly (1 .. `bits.max`); a waist-high swing
+  only skims (torn 0 – 0.5); the same sweep on paving tears nothing; a blade at rest (a hitstop) mows
+  nothing; every kind of mark tears its shape (≥ 0.6 along it, 0 beside it) and its glyphs lie on the
+  stubble; a slam on paving tears nothing; tearing draws nothing from Math.random and changes no burn on
+  the meadow, no heat, no trample; `?mow=0` (the sweep, a slam and `tear()`) tears nothing;
+  `scorch.reset()` clears A.
 - **`tests/integration/marks.mjs`** (a helper, not a suite of `run.mjs`): `attachMarks(game)` wires a REAL
   `Scars` (built on its own Math.random stream) into a fight sim's mock world as world.js wires
   `groundBlow` and world.impact's mark; `marksLine(sc)`, `marksCheck(sc, tag, out, assert)`. The WIN

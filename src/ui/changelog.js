@@ -56,6 +56,17 @@ export const RELEASES = [
       },
       {
         date: '2026-11-23',
+        title: 'The sword mows the grass; lanterns light with the fight; the living world is heard',
+        notes: [
+          'Your sword cuts the grass under its swing the moment it passes, tossing the cut tops lightly into the air. The stubble stays until the fight resets.',
+          "Boss attacks tear the grass out where they land, so their marks now show in the meadow. The dragon's claws leave three raked furrows.",
+          'The stone lanterns at Ashfall, Foxfire and the Windless Grove light as the fight goes on, flicker when a heavy blow lands near, and go out when broken.',
+          'You now hear the world around the fight: birds taking off, animals bolting, trees shaking and creaking, lanterns catching. All of it quiet, under the fight.',
+          'To see the grass as it was, add ?mow=0 to the address.',
+        ],
+      },
+      {
+        date: '2026-11-23',
         title: 'The sword cuts clean through; the fight marks the ground; birds and animals flee',
         notes: [
           'Your sword no longer stops when it meets a rock, a tree or a pillar. The swing goes through at full speed, chips fly along the cut, stone sparks and wood splinters.',

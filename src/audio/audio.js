@@ -13,6 +13,7 @@ import { createMusic } from './music.js';
 import { FIRE_SFX, subscribeFire } from './fire.js';
 import { TrackBank, TrackLoop } from './tracks.js';
 import { THUMP_SFX, Thump } from './thump.js';
+import { LIFE_SFX } from './lifeSfx.js';
 import { StreakSound, perfectSound } from './streakSound.js';
 
 // WebAudio engine: the sound effects are synthesised at runtime, except the attack sounds, the red cues
@@ -218,7 +219,7 @@ export class AudioEngine {
     const ctx = this.ctx;
     if (!ctx || ctx.state === 'closed' || typeof name !== 'string') return false;
     let o = opts && typeof opts === 'object' ? opts : EMPTY;
-    let def = SFX[name] ?? FIRE_SFX[name] ?? THUMP_SFX[name];
+    let def = SFX[name] ?? FIRE_SFX[name] ?? THUMP_SFX[name] ?? LIFE_SFX[name];
     if (!def && ALIASES[name]) {
       const [n, extra] = ALIASES[name];
       name = n;

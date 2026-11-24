@@ -2,6 +2,8 @@ import { GlyphParticles } from '../../render/particles.js';
 import { gi } from '../../render/glyphs.js';
 import { meadowHeight } from '../grass.js';
 import { LITTER } from './litterTuning.js';
+import { lifeSay } from '../../audio/lifeSfx.js';
+import { LIFE_SFX_TUNE as SAY } from '../../audio/lifeSfxTuning.js';
 
 // THE LITTER (piece 'litter'): what falls and lies: leaves, ash, paper slips, grit, by level
 // (litterTuning.js). It drifts down on the wind, lands, stays on the ground as letters, and lifts
@@ -30,6 +32,8 @@ import { LITTER } from './litterTuning.js';
 
 const FREE = 0, AIR = 1, LYING = 2, FADE = 3;
 const TAU = Math.PI * 2;
+/** the skitter's sound options (reused) */
+const SND = { k: 1 };
 const GRID = 1; // m a weight cell
 const GRID_HALF = 80;
 const GRID_N = (GRID_HALF * 2) / GRID;
@@ -446,6 +450,12 @@ export class Litter {
       if (f.s === LYING) this.lying--;
       this._lift(f, ux * out, S.up * k * hop * (0.3 + 0.7 * fo) * L.range(0.6, 1.1), uz * out);
       n++;
+    }
+    // the leaves thrown are heard as a faint dry skitter, once (audio/lifeSfx.js; a level of ash or grit:
+    // silent, lifeSfxTuning.js)
+    if (n >= SAY.skitterMin) {
+      SND.k = Math.min(1.5, k);
+      lifeSay(L, 'leafSkitter', x, z, SND);
     }
     return n;
   }

@@ -1,5 +1,6 @@
 import { LetterBatch } from './letterBatch.js';
 import { aftermathTuning } from './aftermathTuning.js';
+import { lifeSay } from '../../audio/lifeSfx.js';
 
 // THE AFTERMATH (piece 'answer'): what a fight leaves in the air, after the flames and the blows:
 //   smoke    where fire landed (ignite) and has burned out, a thin slow column of tiny faint letters
@@ -21,8 +22,12 @@ import { aftermathTuning } from './aftermathTuning.js';
 //   aftermath.off                         true: it does nothing (a film's "today")
 // With the piece off: nothing; its letters are gone. Two own LetterBatches (the smoke and dust; the
 // embers, additive), made at the first fire or blow; no allocation per frame, no Math.random.
+// The sound: a new haze is heard as a faint sift of grit (audio/lifeSfx.js 'dustSift'); the smoke is
+// silent (its hiss was too much), the embers too (the fire has its own).
 
 const TAU = Math.PI * 2;
+/** the sound's options (reused) */
+const SND = { k: 1, delay: 0.12 };
 const smoothE = (x) => {
   const t = x < 0 ? 0 : x > 1 ? 1 : x;
   return t * t * (3 - 2 * t);
@@ -182,6 +187,10 @@ export class Aftermath {
     h.vx = h.vz = 0;
     this._hazeLetters(h);
     this.stat.hazes++;
+    // the grit coming down over the crater as the haze rises (a faint patter, a beat after the blow; the
+    // tremor's dust off a stone in the same blow is the same sound: lifeSay keeps one)
+    SND.k = Math.min(1.4, 0.4 + 0.4 * h.k);
+    lifeSay(this.life, 'dustSift', x, z, SND);
     return true;
   }
 
