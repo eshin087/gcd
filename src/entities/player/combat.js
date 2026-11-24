@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { clamp, lerp } from '../../core/math.js';
 import { DIM } from './model.js';
+import { comboStyle } from './styles/index.js';
+import { streakTier, streakK } from '../../combat/streak.js';
 
 // Attack data + the blade sweep used for hit detection. No stamina: pacing comes from windup /
 // recovery only (docs/COMBAT.md). Moveset (ADR-041; owner concept sheet "Combat key poses"):
@@ -182,11 +184,68 @@ export const HEAVY = [
 ];
 
 /** The heavy that a heavy press makes after `def` (the attack in whose recovery it comes): after the
- *  n-th light (n 1-4) its branch HEAVY[n]; after anything else (the slam, a heavy, nothing) HEAVY[0]. */
+ *  n-th light (n 1-4) its branch HEAVY[n]; after anything else (the slam, a heavy, nothing) HEAVY[0].
+ *  A style's chain may be 3 to 7 hits: a light past the fourth gives the last branch (HEAVY[4], the
+ *  Earthbreaker), and a def's own `branch` (0-4) picks one outright (a finisher that is a light: 0). */
 export function heavyAfter(def) {
+  const b = def?.branch;
+  if (Number.isInteger(b) && b >= 0 && b < HEAVY.length) return HEAVY[b];
   const n = def?.kind === 'light' ? Math.round(Number(def.combo) || 0) : 0;
-  return HEAVY[n >= 1 && n <= 4 ? n : 0];
+  return HEAVY[n >= 1 ? Math.min(n, HEAVY.length - 1) : 0];
 }
+
+/**
+ * THE LIGHT CHAIN NOW (styles/COMBOS.md): the combo style's `chain` (styles/index.js comboStyle;
+ * ?combo= / ?moves=, the Lab's 'combo' row), else LIGHT. With a `chainAwake` list on the style, the
+ * entry with the highest `minTier` at or under the streak's tier (combat/streak.js streakTier of
+ * `streak`, the hero's perfect-defence count) replaces it, while the streak's 'tiers' piece is on.
+ * Read at the START of a chain only: the swing keeps the list it started in (player.js atk.chain).
+ */
+export function lightChain(streak = 0) {
+  const st = comboStyle();
+  let ch = Array.isArray(st?.chain) && st.chain.length ? st.chain : LIGHT;
+  const aw = st?.chainAwake;
+  if (Array.isArray(aw) && aw.length && streakK('tiers') > 0) {
+    const tier = streakTier(Number.isFinite(streak) ? streak : 0);
+    let best = null;
+    for (const e of aw) {
+      if (!e || !Array.isArray(e.chain) || !e.chain.length || !(fin0(e.minTier) <= tier)) continue;
+      if (!best || fin0(e.minTier) >= fin0(best.minTier)) best = e;
+    }
+    if (best) ch = best.chain;
+  }
+  return ch;
+}
+const fin0 = (v) => (Number.isFinite(v) ? v : 0);
+
+/**
+ * The hit windows of a def with `hits` (more than one blow in one press; styles/COMBOS.md), as attack
+ * clock seconds: [[t0, t1, hitDef], ...] (cached per def: built once). A window's `at` is [u0, u1] in
+ * the clip's phase (swings.js: 1-2 the active frames; mapped through the windup / active / recovery
+ * linearly, as anim.js phaseTime). `hitDef` is the def with the window's own fields on top (damage,
+ * poise, hitstop, shake, punch, kick, contact, bite, glint, reel, heft, ...): what the hit reads. null
+ * for a def without `hits` (one blow in its active frames, as always).
+ */
+export function hitWindows(def) {
+  if (!def || !Array.isArray(def.hits) || !def.hits.length) return null;
+  let W = WIN_CACHE.get(def);
+  if (W !== undefined) return W;
+  const w = def.windup, a = def.active, r = def.recovery;
+  const pt = (u) => (u < 1 ? u * w : u < 2 ? w + (u - 1) * a : w + a + (u - 2) * r);
+  W = [];
+  for (const h of def.hits) {
+    const at = Array.isArray(h?.at) ? h.at : null;
+    const u0 = Number(at?.[0]), u1 = Number(at?.[1]);
+    if (!(Number.isFinite(u0) && Number.isFinite(u1) && u1 > u0)) continue;
+    const { at: _at, ...own } = h;
+    W.push([pt(u0), pt(u1), { ...def, ...own, hits: null }]);
+  }
+  W.sort((x, y) => x[0] - y[0]);
+  if (!W.length) W = null;
+  WIN_CACHE.set(def, W);
+  return W;
+}
+const WIN_CACHE = new WeakMap();
 
 /** LMB while sprinting: a bounding rising slash, low right → high left, that carries the run's
  *  momentum `travel` m along the run direction (`keepYaw`: it does not snap to the aim). Counts as

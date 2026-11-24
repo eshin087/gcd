@@ -1,6 +1,7 @@
 import { CONFIG } from '../core/config.js';
 import { DEFENSE } from '../combat/rules.js';
 import { ARTS } from '../entities/player/flurry.js';
+import { lightChain } from '../entities/player/combat.js';
 import { TUNING as WYRM, SCALE as WYRM_SCALE } from '../entities/dragon/tuning.js';
 
 // Training (ADR-099; usage: src/dev/README.md → Training): a fighting game's training mode for the
@@ -133,7 +134,8 @@ add('BOSS STREAK', [
 ]);
 
 add('OFFENCE', [
-  { id: 'chain', name: 'Light chain (5 hits)', boss: 'any', desc: 'The five-hit chain into the slam.', dist: 2.4, wyrmDist: 3.2, go: () => {}, tick: (T) => T.every(0.36, 5, () => T.tap('@attack')), until: (T) => T.t > 2.4 && T.heroFree(), expect: ['player:attack'] },
+  // (the combo of the style picked, combat.js lightChain: today five hits into the slam; 3-7 for a style's)
+  { id: 'chain', name: 'Light chain (the whole combo)', boss: 'any', desc: 'Every hit of the light combo, tapped in rhythm (today: five hits into the slam).', dist: 2.4, wyrmDist: 3.2, go: () => {}, tick: (T) => T.every(0.36, lightChain().length, () => T.tap('@attack')), until: (T) => T.t > 2.4 + 0.36 * Math.max(0, lightChain().length - 5) && T.heroFree(), expect: ['player:attack'] },
   // the heavy branches (ADR-115): n lights, then HEAVY (combat.js HEAVY)
   ...[
     ['Piercing Gale', 'Heavy on its own: a dashing two-handed thrust that closes the gap.'],
