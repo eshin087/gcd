@@ -13,20 +13,27 @@ import { SFX_ROOT, SLOTS, slotFiles } from './sampleList.js';
 const CONCURRENCY = 4;
 const SILENT = 0.0025; // |sample| under which a file's head counts as encoder padding / silence
 
-// ---- the switch back: `?sfx=old` (or setSfxMode('old'): the Lab) plays exactly the sounds before this
-// pass: a tick on every tell, the flash's ping on every blow, all synth, no sound of a boss's blade
-let mode = 'new';
+// ---- the recorded / designed sounds are OFF by default (ADR-176): the owner asked for every sound effect back
+// to its first synth version ("start from baseline"). `?sfx=new` (or setSfxMode('new'): the Lab) plays the
+// recordings and designed sounds of the attack-sound pass (ADR-165) and the combat-core round (ADR-172): cues
+// only on blue / red, a boss's blade or fist through the air, steel on the parry and so on. The default plays
+// exactly the sounds before them: a tick on every tell, the flash's ping on every blow, all synth, no sound of
+// a boss's blade. The files are not fetched until the mode is switched on.
+export const DEFAULT_SFX = 'old';
+let mode = DEFAULT_SFX;
 try {
   const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('sfx') : null;
-  if (q === 'old') mode = 'old';
+  if (q === 'new' || q === 'old') mode = q;
 } catch {
   /* no location */
 }
-/** 'new' (the default) | 'old' (the sounds before the attack-sound pass). */
+/** 'old' (the default: the original synth) | 'new' (the recorded / designed sounds of the sound passes). */
 export const sfxMode = () => mode;
-/** Switch live (the Lab); returns the mode now. */
+const BANKS = new Set();
+/** Switch live (the Lab); returns the mode now. Switching to 'new' starts loading the files. */
 export function setSfxMode(m) {
-  mode = m === 'old' ? 'old' : 'new';
+  mode = m === 'new' ? 'new' : 'old';
+  if (mode === 'new') for (const bank of BANKS) bank.load();
   return mode;
 }
 
@@ -66,6 +73,7 @@ function canFetch() {
 export class SampleBank {
   constructor(E) {
     this.E = E;
+    BANKS.add(this);
     this.recs = new Map(); // file -> { buf, off, peak (s) } | null (failed)
     this.last = new Map(); // slot -> the index played last
     this.loaded = 0;
@@ -83,7 +91,7 @@ export class SampleBank {
 
   /** Start loading every slot's files (once per context; a no-op without fetch). */
   load() {
-    if (this.total || !canFetch()) return;
+    if (this.total || !canFetch() || mode === 'old') return;
     const jobs = [];
     for (const slot of SLOTS) for (const f of slotFiles(slot)) if (f && typeof f.file === 'string') jobs.push(f);
     this.total = jobs.length;

@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Eighty-one pieces of work since 0.4.0:
+Eighty-three pieces of work since 0.4.0:
 - **Grades, saved bests and a boss rush** (2026-11-23, ADR-179). *Added:* a won fight is graded for
   CLEAN PLAY (the owner's rule): S = no deaths and at most 15 % of max HP lost in the winning attempt,
   A = no deaths or one death and at most half, B = up to three deaths, C = any other win; time only
@@ -20,6 +20,22 @@ Eighty-one pieces of work since 0.4.0:
   The grade's and the title's looks were picked by the owner from three options each: the grade in block
   letters over its lines, the title's grade inside each level's button (the others stay behind
   `?gradeLook=` / `?recLook=`).
+- **A perfect parry throws a few orange sparks** (2026-11-24, ADR-181). *Added:* on a perfect parry of a blow, a
+  quick spit of 12 - 16 orange spark letters leaves the crossed blades along the blade that glanced off: short
+  streaks that shrink to dots, cool to dark red and are gone in under half a second, a couple falling to the floor.
+  No white, no glow; the gold mark, the freeze, the slow motion and the sound are as before, and a normal parry and
+  the perfect dodge are unchanged. `?parryFx=0` (the Lab's `parryFx` button) draws the parry without them.
+- **Every sound effect is back to its first synth version** (2026-11-23, ADR-178). *Changed:* the owner turned down a new light-cut
+  swing, plucked-string warnings and two rounds of variations of the blue and red warnings, and asked to "start
+  from baseline and undo all the sound changes". The recorded and designed sounds of the attack-sound pass
+  (ADR-165) and the combat-core round (ADR-172) are now OFF by default: a tick on every tell, the flash's ping on
+  every blow, the original blue and red warnings (the red log drum is gone), the synth parry with its climbing
+  chain, hurt, clash, slam, flurry, plunge and swing, and no sound of a boss's blade. *Added:* `?sfx=new` (and the
+  Lab's `sfx` row, `old` / `new`) turns the recordings and designed sounds back on; their files are not downloaded
+  unless it is on (the default fetches none of its 35). The recorded music per level and boss phase (ADR-117) is
+  unchanged. Not undone: the sounds that came with later features (the streak's climb note, the impact sub, the
+  living world's air) and two small fixes from the round-two sign-off (the hero's combo swing rising on every cut,
+  the streak's note half as loud on a parry).
 - **The sword cuts clean through; the fight marks the ground; birds and animals flee** (2026-11-23, ADR-177).
   *Changed:* the hero's blade no longer stops on a rock, a tree or a pillar it cannot fell: the swing
   goes through at full speed, the piece still takes the blow, its letters fly on along the cut, stone

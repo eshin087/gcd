@@ -184,7 +184,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
-## M1.76 — Grades, saved bests and a boss rush (2026-11-23, `claude/game-records-boss-rush-2d742b`, ADR-179)
+## M1.78 — Grades, saved bests and a boss rush (2026-11-23, `claude/game-records-boss-rush-2d742b`, ADR-179)
 - [x] A grade for clean play (deaths and the winning attempt's damage; time only orders a grade), marks beside it
 - [x] The store (localStorage, versioned, survives broken storage), the run record shaped for a leaderboard, `game:record`
 - [x] What voids a run: the Lab, cheats, `__tick`, `debug.toState`, `?stage=lab`, `?tech=`, the gameplay URL switches
@@ -192,6 +192,18 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] The owner's picks: the grade's look `a`, the title's `b` (2026-11-24)
 - [x] The record panel keeps every row inside its border on every screen (the owner's report, 2026-11-24)
 - [ ] Played on a real phone (the title with nine buttons, both ways up); a full rush played by a human
+
+## M1.77 — The perfect parry throws a few orange sparks (2026-11-24, `combat/perfect-sparks`, ADR-181)
+- [x] A calm spit of orange spark letters off the crossed blades on a perfect parry (`?parryFx=a`, the default; `0` as before)
+- [x] The shipped mark, freeze, slow motion, sound and the perfect dodge's afterimage unchanged (the owner's call after three rejected passes)
+- [ ] Played and seen on the iPhone
+- [ ] A next round on the perfect dodge / parry, if any: from a concrete reference and one narrow prototype; never the background
+
+## M1.76 — Every sound effect back to its first synth version (2026-11-23, `audio/swing-choices`, ADR-178)
+- [x] The recorded / designed sounds off by default (`?sfx=new` turns them on; no files fetched while off)
+- [x] The new swing and warning options of the session set aside (a git stash, not in the repo)
+- [x] The music (ADR-117) kept
+- [ ] The next sound round, from the baseline: the owner says what they want first (a reference, a game, a word) rather than picking from options they then reject
 
 ## M1.75 — A fight the world feels (2026-11-23, `world/fight-alive`, ADR-177)
 - [x] The hero's blade goes clean through what it does not fell (`?cutStop=1`: the stop of ADR-132)

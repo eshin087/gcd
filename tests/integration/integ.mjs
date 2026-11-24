@@ -12121,6 +12121,8 @@ async function scenarioBladeStop() {
 async function scenarioSfx() {
   out('\n== scenario SFX (the attack sounds: cues only on blue / red, recorded where loaded, the synth until then; hazards / bullets as before; ?sfx=old) ==');
   const SMP = await imp('src/audio/samples.js');
+  assert(SMP.DEFAULT_SFX === 'old' && SMP.sfxMode() === 'old', 'the recorded / designed sounds are off by default: every sound effect is its original synth (ADR-176)');
+  SMP.setSfxMode('new'); // (the sound passes are off by default, ADR-176: this scenario tests them)
   const { SAMPLE_FILES } = await imp('src/audio/sampleFiles.js');
   const { SLOT, BEAST, blowSlot } = await imp('src/audio/sampleList.js');
   const G = build();
@@ -12346,7 +12348,7 @@ async function scenarioSfx() {
       A.samples.loaded = 0;
     }
   } finally {
-    SMP.setSfxMode('new');
+    SMP.setSfxMode(SMP.DEFAULT_SFX);
     A.play = play0;
   }
   return G;

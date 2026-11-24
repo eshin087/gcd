@@ -1310,6 +1310,11 @@ cinema`). Nothing stores a tier: each piece reads it at the moment.
   `FlurryFx` (lights, flares, sparks, stars, halo, speed lines, crescent, veil, the thin long lines,
   `pfx`: the hero's own spark star and shockwave) and `flurry.js` (the boss's hurt flash on the last
   blow, x `boss`); `game/flow.js` multiplies the flurry's `flashPulse` and `dip` by `burstScreen()`.
+- *The perfect parry's sparks* (`combat/parrySparks.js`, ADR-181): `PARRY_FX` (`?parryFx=0|a`), `PARRY_FX_DEFAULT`
+  'a', `parryFxMode()` / `setParryFx(m)`, `parryFxSpec(m)`, `PARRY_SPARK_GLYPHS`, `PARRY_SPARKS_LAST` (tests);
+  `parrySparks(game, x, y, z, o)` (from `PlayerFx.parry`'s perfect branch: the crossing, the edges `e1` / `e2`,
+  `met`, the push way), `parrySparksUpdate(game, realDt)` (from `perfectUpdate`), `parrySparksClear()` (from
+  `perfectClear`), `parrySparksBusy()`. Its own `LetterBatch`, built on the first spit; its own seeded stream.
 - *A single perfect parry / dodge* (`combat/perfectFx.js`): `PERFECT_FEEL` (today null; sharp; cinema,
   with `full` / `short` beats, `gap` 0.9 s, `echoTier` 3), `perfectFeel(mode)`, `perfectBeat(mode, last,
   realTime)`, `MARK_LOOK` (tint zone id 800101), `PERFECT_LAST` (tests), `PERFECT_GLYPHS`;
@@ -2407,7 +2412,9 @@ setMusic(mode)             // 'none'|'ambient'|'boss'|'boss2'|'victory'|'death'
 toggleMute(); muted: boolean;  setVolume(0..1)
 thump: Thump;  thumpDip: GainNode|null // the impact pass (thump.js): the sub voice + the music's dip node
 ```
-**The attack sounds (2026-11-22; `audio/samples.js`, `audio/sampleList.js`, `audio/sampleFiles.js`).**
+**The attack sounds (2026-11-22; `audio/samples.js`, `audio/sampleList.js`, `audio/sampleFiles.js`).** *Off by default since ADR-178:
+the default is the original synth (a tick on every tell, the flash's ping on every blow, no sound of a boss's blade);
+`?sfx=new` turns on what this section and "The combat core" below describe.*
 Only a blue or a red / black blow has cues: `combat:tell` plays the warning `cue-blue` / `cue-red` (+ the
 music dip for red), `combat:flash` the timing sound `time-blue` / `time-red` (+ the dip); a normal tell and a
 normal flash play nothing (the white glint is visual). Hazards and bullets keep their cues as before
@@ -2459,9 +2466,10 @@ owner's pick of 2026-11-23). `cue-blue` and `time-blue` have no file: the synth 
   `plunge-dive` (its peak `DEFENSE.plunge.dive` s on: the landing), `player:plungeHit` → `plunge-hit` (× `EXEC`
   on an execution). `combat:clash` → `clash` (heavy × 1.25). `dragon:guard` not a deflect → `boss-guard`
   (heavy × `GUARD_HEAVY`); a deflect → the synth `deflected`.
-- `?sfx=old` (`samples.js` `sfxMode()` / `setSfxMode()`; the Lab's `sfx` row flips it live): exactly
-  the sounds before: a tick on every tell, the flash's ping on every blow, all synth, no sound of a
-  duelist's blade.
+- `?sfx=old` (the default since ADR-178) / `?sfx=new` (`samples.js` `sfxMode()` / `setSfxMode()`, `DEFAULT_SFX`;
+  the Lab's `sfx` row flips it live): `old` is exactly the sounds before: a tick on every tell, the flash's ping on
+  every blow, all synth, no sound of a duelist's blade; `new` the recorded / designed sounds. The bank fetches
+  nothing while the mode is `old` and loads when `setSfxMode('new')` runs.
 
 **Recorded music (ADR-117).** The sound effects stay synthesised. The background music is recorded:
 each level's exploring track and one track per boss phase, all CC0 from OpenGameArt, picked by the

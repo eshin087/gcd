@@ -1,6 +1,7 @@
 import { axes, screenAngle } from './clashFx.js';
 import { FIRE_KIND } from '../render/firePalettes.js';
 import { perfectMode, streakTier } from './streak.js';
+import { parrySparksUpdate, parrySparksClear } from './parrySparks.js';
 
 // A SINGLE PERFECT PARRY / PERFECT DODGE, in three looks (combat/streak.js: perfectMode(), read at the
 // moment of the parry / dodge):
@@ -679,6 +680,7 @@ export function perfectUpdate(game, dt, realDt) {
     const r = fin(realDt) ? realDt : d;
     if (!(r > 0) || !(d > 0)) return; // (a pause: nothing ages)
     fxNow += d;
+    parrySparksUpdate(game, d, r); // (?parryFx=: combat/parrySparks.js, the perfect parry's spit of sparks)
     if (ghost.alive) {
       ghost.t += r;
       ghostTick(game, d);
@@ -706,6 +708,7 @@ export function perfectUpdate(game, dt, realDt) {
 export function perfectClear() {
   for (const S of marks) S.alive = false;
   ghost.alive = false;
+  parrySparksClear();
   deadline = -1;
   fullAt = -Infinity;
 }
