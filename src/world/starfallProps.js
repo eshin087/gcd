@@ -270,7 +270,8 @@ export function buildLantern(rng, x, z, oy, s = 1, state = 0) {
   }
   // a standing lantern faces the camera; a fallen one lies along the blast's way
   const yaw = state === 0 ? range(rng, -0.5, 0.5) : oy;
-  return { geos: place(out, x, z, yaw), r: state === 2 ? 1.2 * k : 0.55 * k, cr: 0.45 * k, mat: 'stone', h: state === 0 ? 2.1 * k : 1.0 };
+  // (`lamp`: where a standing one's flame would sit, the window's centre; life/lamps.js. A thrown one has none)
+  return { geos: place(out, x, z, yaw), r: state === 2 ? 1.2 * k : 0.55 * k, cr: 0.45 * k, mat: 'stone', h: state === 0 ? 2.1 * k : 1.0, lamp: state === 0 ? { y: 1.62 * k * 1.15, r: 0.2 * k } : null };
 }
 
 /**

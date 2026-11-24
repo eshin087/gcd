@@ -141,6 +141,10 @@ export function buildPillar(rng, x, z, h, { r = 0.42, fallen = false, yaw = 0 } 
   return g;
 }
 
+/** Where a stone lantern's flame sits (buildLantern's lamp box, 1.03 - 1.41 m): its centre's height and
+ *  the box's half width (m). The living world's lamps read it off the breakable (`lamp`, life/lamps.js). */
+export const LANTERN_LAMP = Object.freeze({ y: 1.22, r: 0.15 });
+
 /** A stone lantern: base, post, the lamp box with its window, a pointed cap. */
 export function buildLantern(rng, x, z, yaw) {
   const parts = [];
@@ -316,7 +320,7 @@ export function createCourtyard(U, colliders) {
   // stone lanterns at the inner corners
   for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
     const x = sx * (C.half - 2.2), z = sz * (C.half - 2.2);
-    standing('lantern', buildLantern(rng, x, z, range(rng, -0.2, 0.2)), x, z, 0.45, { topples: false });
+    standing('lantern', buildLantern(rng, x, z, range(rng, -0.2, 0.2)), x, z, 0.45, { topples: false, lamp: LANTERN_LAMP });
   }
   // the ruined hall to the north: a row of column stumps, a stele
   for (const x of [-9, -4.5, 4.5, 9]) {
