@@ -7,7 +7,7 @@
 //
 // Body axes: x = his LEFT, y up, z AHEAD. Hand targets are offsets from each shoulder. Nothing here
 // allocates per call or reads Math.random: every pose is a pure function of the animator's time.
-import { P, set3, v3, dir, unitAzEl, standLife, handLoose, ANK } from '../poseKit.js';
+import { P, set3, v3, dir, unitAzEl, standLife, handLoose, ANK, add3, dirNudge, hump, kf, smoother } from '../poseKit.js';
 
 // The life's periods (s): breath, settle, drift, the look's two, the point's two; none a multiple of
 // another. A little slower than today's: he is never hurried.
@@ -201,13 +201,71 @@ const high = {
   },
 };
 
+// ================================================================ IDLE (offsets from whatever pose he holds)
+const TAU = Math.PI * 2;
+/** THE FLOWER: the wrist rolls the blade in a slow figure eight beside him, twice, the point lifted
+ *  off the grass; the eyes follow the steel. */
+const flower = {
+  name: 'flow.flower', dur: 4.4, sets: ['ease'],
+  fn(p, A, u, e) {
+    const b = hump(u, 0.04, 0.2, 0.78, 0.96);
+    const ph = TAU * 2 * smoother((u - 0.08) / 0.84);
+    dirNudge(p, P.swD, 46 * Math.sin(ph) * b, (30 + 22 * Math.sin(2 * ph)) * b, e);
+    add3(p, P.rH, -0.02 * Math.sin(ph) * b, (0.06 + 0.02 * Math.sin(2 * ph)) * b, 0.07 * b, e);
+    p[P.hdX] += 0.12 * b * e;
+    p[P.hdY] += -0.18 * b * e + 0.08 * Math.sin(ph) * b * e;
+    p[P.spY] += 0.04 * Math.sin(ph) * b * e;
+    add3(p, P.lH, 0.02 * Math.sin(ph) * b, 0.01 * b, 0, e);
+  },
+};
+/** THE DRAWING ARC: as in tai chi sword he sinks, lifts the blade slowly forward, carries it round
+ *  to his left with the hips, the weight going over, and lets it settle back down; the free hand
+ *  rises against it. */
+const drawArc = {
+  name: 'flow.draw', dur: 5.6, sets: ['ease'],
+  fn(p, A, u, e) {
+    const rise = kf(u, [0.05, 0, 0.32, 1, 0.62, 0.75, 0.9, 0]);
+    const sweep = kf(u, [0.18, 0, 0.62, 1, 0.94, 0]);
+    dirNudge(p, P.swD, 52 * sweep, 38 * rise, e);
+    add3(p, P.rH, 0.08 * sweep, 0.12 * rise, 0.12 * rise, e);
+    p[P.bodyY] -= 0.035 * Math.max(rise, sweep) * e;
+    p[P.bodyX] += 0.035 * (sweep - 0.5 * rise) * e;
+    p[P.pelvY] += 0.16 * sweep * e;
+    p[P.spY] += 0.1 * sweep * e;
+    p[P.spX] += 0.03 * rise * e;
+    p[P.hdY] += (0.14 * sweep - 0.1 * rise) * e;
+    add3(p, P.lH, 0.04 * sweep, 0.09 * rise, -0.04 * sweep, e);
+  },
+};
+/** THE FLICK: one snap of the wrist that throws the point up and the blood off it, a settle. */
+const flick = {
+  name: 'flow.flick', dur: 2.4, sets: ['ease', 'fight'],
+  fn(p, A, u, e) {
+    const b = kf(u, [0.22, 0, 0.32, 1, 0.42, 1, 0.58, -0.25, 0.76, 0]);
+    dirNudge(p, P.swD, 10 * b, 26 * b, e);
+    add3(p, P.rH, 0, 0.03 * b, 0.03 * b, e);
+    p[P.hdX] += 0.05 * kf(u, [0.25, 0, 0.4, 1, 0.8, 0]) * e;
+  },
+};
+/** THE POINT'S CIRCLE (in the guard): the point draws one small slow circle on the foe and the
+ *  fingers settle again; small, it never blocks a move. */
+const circle = {
+  name: 'flow.circle', dur: 3.4, sets: ['fight'],
+  fn(p, A, u, e) {
+    const b = hump(u, 0.05, 0.25, 0.75, 0.95), ph = TAU * smoother((u - 0.1) / 0.8);
+    dirNudge(p, P.swD, 9 * Math.sin(ph) * b, 7 * (Math.cos(ph) - 1) * b, e);
+    add3(p, P.rH, 0.01 * Math.sin(ph) * b, 0.01 * Math.cos(ph) * b, 0.02 * b, e);
+    add3(p, P.lH, 0, 0.015 * b, 0.02 * b, e);
+  },
+};
+
 export const flow = {
   id: 'flow',
   label: 'Flowing swordsman',
   blurb: 'Loose and graceful; cuts that roll into each other.',
   stances: { ease: [trail, low, water], fight: [long, high] },
   shift: { fade: 2.8 },
-  fidgets: null,
+  fidgets: [flower, drawArc, flick, circle],
   chain: null,
   swings: {},
 };
