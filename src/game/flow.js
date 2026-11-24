@@ -7,6 +7,8 @@ import { ScreenGrade } from './grade.js';
 import { RunStats } from './stats.js';
 import { MoveLog, prettyMove } from './telemetry.js';
 import { Arrival } from './arrival.js';
+import { Recorder } from './recorder.js';
+import { formatTime } from './records.js';
 import { burstScreen } from '../entities/player/flurryBurst.js';
 
 // Game flow: owns game.state and every transition
@@ -98,6 +100,9 @@ export class GameFlow {
     // what each of the boss's moves did to the hero (game/telemetry.js): this attempt's table and
     // the totals kept across sessions
     this.moves = new MoveLog(globalThis.localStorage ?? null, game.level?.id ?? 'cinderwood');
+    // saved records, the run's eligibility and the boss rush (game/recorder.js; ADR-179)
+    this.recorder = new Recorder(game);
+    this.recordView = null;
     this.queue = [];
     this.pausedFrom = null;
     this.stateTime = 0;
@@ -130,6 +135,7 @@ export class GameFlow {
     this.debug = {
       toState: (name) => {
         try {
+          this.recorder.elig.void('state'); // a jumped fight is not a run (game/eligibility.js)
           return this._debugToState(name);
         } catch (err) {
           this._report(`debug.toState(${name})`, err);
@@ -146,10 +152,15 @@ export class GameFlow {
     ev?.on('player:hurt', (d) => {
       const dmg = finite(d?.damage);
       this.stats.damageTaken += dmg;
+      this.stats.attemptDamage += dmg;
       if (dmg > 0) this.grade.hurtPulse(dmg, d?.kind === 'burn');
     });
     ev?.on('combat:answer', (d) => this.moves.answer(d, this.game.time));
-    ev?.on('player:heal', () => this.stats.flasksUsed++);
+    ev?.on('player:heal', () => {
+      this.stats.flasksUsed++;
+      this.stats.attemptFlasks++;
+      this.recorder.flask();
+    });
     ev?.on('player:hitDragon', (d) => {
       this.stats.damageDealt += finite(d?.damage);
       this.stats.hits++;
@@ -222,12 +233,18 @@ export class GameFlow {
       this._unlockAudio();
     });
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) this.autoPause = true;
+      if (document.hidden) {
+        this.autoPause = true;
+        this._try(() => this.recorder.bank(), 'recorder.bank');
+      }
     });
+    // the rush clock is banked as the page goes (a reload mid-fight keeps the time and is a death)
+    addEventListener('pagehide', () => this._try(() => this.recorder.bank(), 'recorder.bank'));
 
     game.state = 'title';
     game.timeScale = 1;
-    game.hud?.showTitle?.();
+    // a boss rush page skips the title: its fight starts at once (game/rush.js)
+    if (!this.recorder.inRush) game.hud?.showTitle?.();
   }
 
   // ------------------------------------------------------------------ public
@@ -243,6 +260,7 @@ export class GameFlow {
     } catch (err) {
       this._report('update', err);
     }
+    this._try(() => this.recorder.frame(rdt, g.state), 'recorder.frame');
     // the perfect parry's / dodge's marks (combat/perfectFx.js: drawn before the fire field's update)
     perfectUpdate(g, dt, realDt);
     // always keep time + screen grade coherent, even after an error
@@ -291,6 +309,7 @@ export class GameFlow {
     const g = this.game;
     g.hud?.showPause?.(false);
     this.pausedFrom = null;
+    this._try(() => this.recorder.quit(), 'recorder.quit'); // a rush ends here, with no record
     if (typeof g.pickLevel === 'function' && typeof globalThis.location?.assign === 'function') {
       this._try(() => g.pickLevel(g.level?.id), 'quitToTitle');
       return;
@@ -480,6 +499,12 @@ export class GameFlow {
   // ------------------------------------------------------------------ states
   _title() {
     this._titleShot();
+    // a boss rush page: no title, the fight's level starts at once
+    if (this.recorder.inRush) {
+      this._startGame();
+      if (this.recorder.reloadDeath) this._log('The page was left mid-fight: it counts as a death. The clock kept its time.', 'warn');
+      return;
+    }
     if (this.game.hud?.newsUi?.on) return; // reading WHAT'S NEW: a key or click must not start the game
     if (this.stateTime > TUNE.title.minTime && this._dismissPressed()) this._startGame();
   }
@@ -655,6 +680,7 @@ export class GameFlow {
   _boss(rdt) {
     const g = this.game;
     this.stats.attemptTime += rdt;
+    this.stats.bossTime += rdt;
     this.stats.totalTime += rdt;
     if (this.dragonDownT < 0 && this._playerDead()) {
       this._enterDead();
@@ -745,6 +771,7 @@ export class GameFlow {
     if (g.state === 'dead') return;
     this._setState('dead');
     this.stats.deaths++;
+    this._try(() => this.recorder.death(), 'recorder.death');
     // (a death no blow dealt: the burn's ticks)
     if (!this.moves.killedBy) this.moves.killedBy = { attack: 'burn', tell: null };
     this._try(() => this.moves.commit('death'), 'moves.commit');
@@ -793,6 +820,8 @@ export class GameFlow {
     g.audio?.setMusic?.('victory');
     this._try(() => this.moves.commit('victory'), 'moves.commit');
     g.events?.emit('game:victory', this.stats.snapshot());
+    // the run's record: graded, stored when eligible (game/recorder.js), shown on the record screen
+    this.recordView = this._try(() => this.recorder.win(this.stats), 'recorder.win') ?? null;
     if (this.bossBarHideT < 0) this.bossBarHideT = 1.2;
     this._dragonFocus(this._ov.focus);
     this._ovW = TUNE.victoryCam.weight;
@@ -811,10 +840,48 @@ export class GameFlow {
     if (!this.statsShown && this.victoryT >= TUNE.statsDelay) {
       this.statsShown = true;
       const w = this.moves.worst(1)[0];
-      g.hud?.showStats?.(w ? [...this.stats.rows(), ['Struck most by', `${this.moveLabel(w.id)} (${w.hit})`]] : this.stats.rows());
-      g.hud?.prompt?.('[@interact] Fight again');
+      const rows = w ? [...this.stats.rows(), ['Struck most by', `${this.moveLabel(w.id)} (${w.hit})`]] : this.stats.rows();
+      const V = this.recordView, R = V?.rush;
+      if (R?.last && R.record) {
+        // the rush's last fight: the rush's record (its total, every split, its grade)
+        g.hud?.showStats?.(this._splitRows(R), this._recordHead(R.record, R, 'BOSS RUSH'));
+      } else {
+        if (R) rows.unshift(['Rush', `${R.index} / ${R.count} won`], ['Rush time', formatTime(R.totalMs)]);
+        g.hud?.showStats?.(rows, V ? this._recordHead(V.record, V, null) : null);
+      }
+      g.hud?.prompt?.(R ? (R.last ? '[@interact] Back to the title' : '[@interact] Next boss') : '[@interact] Fight again');
     }
-    if (this.victoryT > 1 && !this.respawning && this._act('interact')) this._beginRespawn(true);
+    if (this.victoryT > 1 && !this.respawning && this._act('interact')) {
+      if (this.recordView?.rush) {
+        if (!this._leaving) this._leaving = !!this._try(() => this.recorder.next(), 'recorder.next');
+      } else this._beginRespawn(true);
+    }
+  }
+
+  /** The record screen's head: the grade, its marks, the time, NEW BEST and the best before. */
+  _recordHead(rec, V, title) {
+    if (!rec) return null;
+    const B = V.best, prevT = V.best?.prevTime ?? V.prev?.bestTime ?? null, prevG = V.best?.prevGrade ?? V.prev?.bestGrade ?? null;
+    return {
+      title,
+      grade: rec.grade,
+      marks: rec.marks,
+      time: formatTime(rec.timeMs),
+      newBestTime: !!B?.newBestTime && !!prevT,
+      newBestGrade: !!B?.newBestGrade && !!prevG && prevG.grade !== rec.grade,
+      first: !!B && !prevT,
+      prev: prevT ? `${prevG?.grade ?? ''} ${formatTime(prevT.timeMs)}`.trim() : null,
+      note: V.note ?? null,
+    };
+  }
+
+  /** The rush record's rows: one per fight (its grade, deaths, time), then the totals. */
+  _splitRows(R) {
+    const g = this.game;
+    const name = (id) => g.levels?.find?.((L) => L.id === id)?.name ?? id;
+    const rows = R.record.splits.map((s, i) => [`${i + 1}  ${String(name(s.level)).toUpperCase()}`, `${s.grade}  ${s.deaths ? `${s.deaths}x  ` : ''}${formatTime(s.timeMs)}`]);
+    rows.push(['Deaths', String(R.record.deaths)], ['Damage taken', `${R.record.damageTaken} of ${R.record.maxHp}`], ['Flasks used', String(R.record.flasksUsed)]);
+    return rows;
   }
 
   /** A boss move's name for the player: the boss's own label for it, else the id spelled out. */
@@ -869,7 +936,7 @@ export class GameFlow {
     const g = this.game;
     this._resetWorld();
     if (resetRun) this.stats.reset();
-    else this.stats.attemptTime = 0;
+    else this.stats.newAttempt();
     this.moves.reset();
 
     this._setState('explore');
@@ -1000,7 +1067,7 @@ export class GameFlow {
     this._resetWorld();
     this.grade.fade = 0;
     this.grade.desat = 0;
-    this.stats.attemptTime = 0;
+    this.stats.newAttempt();
     this._setState('explore');
     g.events?.emit('game:retry');
     g.audio?.setMusic?.('ambient');

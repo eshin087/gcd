@@ -13,6 +13,7 @@ import { ScreenProjector } from './project.js';
 import { ChangelogPanel } from './changelogPanel.js';
 import { RemapPanel } from './remap.js';
 import { HelpPanel, PauseMenu, StatsPanel, TitleScreen } from './screens.js';
+import { gradeLookNow } from './recordLooks.js';
 import { TellEdges } from './tells.js';
 import { StreakCounter } from './streakCounter.js';
 
@@ -78,7 +79,7 @@ export class Hud {
     // on the last blow
     this.slashes = [el('div', 'ab-slash', null, this.root), el('div', 'ab-slash', null, this.root)];
     this.bannerUi = new Banner(this.root);
-    this.statsUi = new StatsPanel(this.root);
+    this.statsUi = new StatsPanel(this.root, gradeLookNow());
     this.help = new HelpPanel(this.root);
     const hint = el('div', 'ab-hint ab-play ab-nontouch', null, this.root);
     fillKeyText(hint, '[@help] help  [@pause] pause');
@@ -86,7 +87,18 @@ export class Hud {
     const stage = Array.isArray(game.levels) ? { levels: game.levels, current: game.level?.id, pick: (id) => game.pickLevel?.(id) } : null;
     // WHAT'S NEW (ui/changelogPanel.js): opened from the title and the pause menu, both show its badge
     this.newsUi = new ChangelogPanel(game, this.root);
-    this.titleUi = new TitleScreen(this.root, (game.state || 'title') === 'title', stage, this.newsUi);
+    // each level's best and the BOSS RUSH entry (game/recorder.js; ADR-179): read through the flow's
+    // recorder once it exists (the HUD is built first), else straight from game.records
+    const bestOf = (id) => {
+      const R = game.flow?.recorder;
+      if (R) return R.bestFor(id);
+      const b = id === 'rush' ? game.records?.rushBest?.() : game.records?.best?.(id);
+      return b?.bestGrade ? { grade: b.bestGrade.grade, marks: b.bestGrade.marks ?? [], timeMs: b.bestTime?.timeMs ?? b.bestGrade.timeMs, clears: b.clears } : null;
+    };
+    const records = { bestFor: bestOf, startRush: () => game.startRush?.() ?? game.flow?.recorder?.startRush?.() };
+    // (a boss rush page skips the title: game/rush.js)
+    const titleOn = (game.state || 'title') === 'title' && !game.rush?.active;
+    this.titleUi = new TitleScreen(this.root, titleOn, stage, this.newsUi, records);
     this.pauseUi = new PauseMenu(game, this.root, this.newsUi);
     this.remapUi = new RemapPanel(game, this.root);
     this.feed = new CombatFeed(game, this);
@@ -101,6 +113,8 @@ export class Hud {
         this.streakUi.clear();
       }
     });
+    // a run record was stored (game/recorder.js): the title's bests follow
+    on('game:record', () => this.titleUi.refreshRecords?.());
     on('game:retry', () => {
       this.calls.clear();
       this.streakUi.clear();
@@ -367,9 +381,10 @@ export class Hud {
     return this.help.toggle(force);
   }
 
-  /** Victory record rows [[label, value], ...]; null hides. */
-  showStats(rows) {
-    this.statsUi.show(rows);
+  /** Victory record rows [[label, value], ...]; null hides. head (optional): the run's grade, marks,
+   *  time and bests (GameFlow._recordHead; ui/recordLooks.js gradeHead). */
+  showStats(rows, head = null) {
+    this.statsUi.show(rows, head);
   }
 
   // ---------------------------------------------------------------- per frame

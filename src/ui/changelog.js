@@ -37,6 +37,18 @@ export const RELEASES = [
       },
       {
         date: '2026-11-23',
+        title: 'Grades, saved bests and a boss rush',
+        notes: [
+          'Every won fight now gets a grade, S, A, B or C, for clean play: how many times you died and how much health the winning attempt cost you. Time never changes the grade; it only decides which of two equal runs is better.',
+          'Blocking, parrying and dodging can all earn an S: a blow met on your guard costs guard, not health.',
+          'Beside the grade: UNTOUCHED (no damage at all), DEATHLESS and NO FLASK. The record shows your time to the hundredth, NEW BEST, and the best you had before.',
+          'The title shows each level\'s best grade and best time under its name.',
+          'BOSS RUSH on the title: all eight bosses back to back for one time. Health and flasks are full before every fight. A death retries the same boss and the clock keeps running; a reload mid-fight counts as a death. A small timer and "3 / 8" sit under the map.',
+          'Runs with the Lab open, a cheat or a gameplay switch in the address are not recorded, and the record says why.',
+        ],
+      },
+      {
+        date: '2026-11-23',
         title: 'The sword mows the grass; lanterns light with the fight; the living world is heard',
         notes: [
           'Your sword cuts the grass under its swing the moment it passes, tossing the cut tops lightly into the air. The stubble stays until the fight resets.',

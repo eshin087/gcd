@@ -73,6 +73,70 @@ lantern's `lamp` mark) and ran the whole set once.
 
 ---
 
+## 2026-11-24 — The record looks picked; the record panel's border holds every row (ADR-179)
+
+**Owner:** picked the grade's look `a` and the title's `b` from the sheets on PR #108, and reported that on
+the record screen some rows ("Total time", "Flasks used") sat outside the panel's border.
+
+**What changed**
+- `ui/recordLooks.js`: `REC_LOOK_DEFAULT` is `b` (the grade was already `a`); the others stay behind the
+  switches. With `b` the phone's title in landscape grew to three rows of stage buttons and pushed the
+  logo off the top: on touch in landscape the buttons are tighter now (two rows again, nothing outside).
+- `ui/hudStyle.js`: the record panel with a grade is centred by margins at its rows' width (max 94 % of
+  the screen) instead of `left: 50%` and a shift (a box there may only grow to half the screen: the
+  cause); its columns may shrink; a label that cannot fit ends in an ellipsis.
+- `tests/integration/records.mjs` (`screens`): the shipped looks are the picks; the title with no
+  parameter draws `b`; the panel's rule is guarded (layout is not measurable headless).
+
+**Verified:** measured in headless Edge (every row's box against the panel's): before, 5 - 31 px out at
+1280 x 720 (looks b / c), 1024 x 640 and 852 x 393; after, 0 at those and at 1600 x 900 and 393 x 852, every
+look, and the rush's record. The title with no parameter: nothing outside the window at 1280 x 720,
+852 x 393 and 393 x 852. Pictures: `docs/looks/records/panel-overflow-before-after.jpg`, `title-shipped.jpg`.
+`npm test`, `npm run build`.
+
+**Open:** the owner on a real iPhone (both ways up) and with a pad; a full rush played by a person.
+
+---
+
+## 2026-11-23 — Grades, saved bests and a boss rush, shaped for online leaderboards (ADR-179)
+
+**Goal** (planned with the owner by another session; their three calls are final): saved records,
+grades and a boss-rush mode, stored so online leaderboards can come later without changing what is
+saved. A grade is CLEAN PLAY (deaths, the winning attempt's damage; time only orders a grade); in the
+rush health and flasks refill and a death retries the boss with the clock running.
+
+**What changed**
+- `game/rank.js` + `rankTuning.js`: `rankRun` (S / A / B / C, marks UNTOUCHED / DEATHLESS / NO FLASK) and
+  `compareRank` (grade, then time). Not `grade.js` (that is the screen's colour grade).
+- `game/records.js`: `buildRecord` (the one writer of the run record, `v: 1`) and the `Records` store
+  (`abyss.records.v1`: per level and the rush, clears + best time + best grade; the last 24 records).
+- `game/eligibility.js`: what voids a run (the Lab, cheats, `__tick`, `debug.toState`, `?stage=lab`,
+  `?tech=`, fourteen gameplay URL switches found by a sweep of every parameter the game reads).
+- `game/rush.js`: the rush across page loads in sessionStorage; `game/recorder.js` (`flow.recorder`):
+  the flow's side, the clock, the record per win, `game:record`.
+- `game/stats.js`: per-attempt damage and flasks (`newAttempt`), `bossTime`.
+- `game/flow.js`: the recorder wired in (hurt / heal / death / victory / quit / pagehide), a rush page
+  skips the title, the record screen's head and the rush's rows and prompts.
+- `main.js`: the rush's level on a rush page; `game.records / eligibility / rush / startRush`; `__tick`
+  voids. `levels/index.js` `levelUrl` drops `?rush`.
+- UI: `ui/recordLooks.js` (three grade looks, three title looks, `?gradeLook=` / `?recLook=`), the title's
+  BOSS RUSH button (pad-walked with the stages), `StatsPanel.show(rows, head)`, the rush line under the
+  minimap; styles in `hudStyle.js`.
+- Tests: `tests/integration/records.mjs` (grade boundaries, the store fresh / corrupt / full / blocked /
+  version, the rush across simulated page loads, eligibility, the real GameFlow writing one record and a
+  Lab-touched run none, the screens); in `tests/run.mjs`.
+
+**Verified:** `npm test` and `npm run build` green; the title, the record screen and the rush line
+captured at 720p and on the phone size both ways up (headless Edge on the GPU); a rush driven through
+all eight levels in the browser with Lab jumps: every fight's record said NOT RECORDED and nothing was
+stored.
+
+**Open:** the owner picks the two looks; the thresholds are starting numbers; a human on a real phone
+and with a pad on the title; a full rush played for real; online leaderboards (ROADMAP M2: the seam is
+`game:record`).
+
+---
+
 ## 2026-11-24 — Session 91: the perfect parry throws a few orange sparks (and what was turned down to get there)
 
 **Owner:** "what can we improve next in terms of visuals, effects, animations etc. i want to make perfect parry and

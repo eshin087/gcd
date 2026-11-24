@@ -61,6 +61,7 @@ const TASKS = [
   ['world', ['tests/integration/world.mjs', '.', 'all'], { ABYSS_SKIP: 'budget' }, 80],
   ['life', ['tests/integration/life.mjs', '.', 'all'], {}, 240],
   ['integ hero + world', [INTEG, '.', INTEG_2.join(',')], {}, 70],
+  ['records', ['tests/integration/records.mjs', '.', 'all'], {}, 4],
   ['glyphcheck', ['tests/glyphcheck.mjs', '.'], {}, 1],
   ['changelogcheck', ['tests/changelogcheck.mjs', '.'], {}, 1],
 ];
