@@ -28,6 +28,9 @@ import { resolveOn } from './edge.js';
 //   world.impact(x, z, r, power, o)         a blow lands on the world: breakables in the disc take it,
 //                                           a hard one cracks the floor; o.fire: it also sets alight
 //   world.ignite(x, z, r, k, grass = true)  fire lands: grass (unless grass = false) and wood catch
+//   world.groundBlow(x, z, o)               a blow met the GROUND (no piece need stand there): the floor keeps
+//                                           a mark of its kind (scars.mark) and the living world feels it.
+//                                           It damages nothing: a blow that also breaks things calls impact too
 //   world.destructibles / .fire / .scars    the systems behind them (destructibles.js, fire.js, scars.js)
 //   world.restore()                         everything stands and is unburnt again (the fight's reset;
 //                                           a set with `scenes`: its first scene again, ADR-157)
@@ -159,12 +162,36 @@ export class World {
       }
     }
     if (o?.fire > 0) this.ignite(x, z, r, o.fire);
+    // (the living world feels every blow: what stands near shakes, what lives near flees)
+    this.life?.impact(x, z, r, power, o);
     return n;
+  }
+
+  /**
+   * A blow met the GROUND at (x, z), whether or not anything stands there: the floor keeps a mark of
+   * its kind until the fight's reset (scars.mark) and the living world feels it (life.impact). It
+   * damages nothing and sets nothing alight: a blow that also breaks things calls impact() as before.
+   * `o`: { kind: 'slam' | 'cut' | 'thrust' | 'dash' | 'blast' | 'step' | 'beam' (GROUND_BLOW),
+   *        power (POWER scale: 0.3 a light blow, 1 a heavy one, 2 the biggest),
+   *        r (m: the blow's reach on the floor), dx, dz (its way on the ground, unit; omit for none),
+   *        len (m: a cut's, a dash's or a beam's length along dx, dz, from (x, z)),
+   *        by: 'boss' | 'player', hot: true (it burned: the mark is charred) }.
+   */
+  groundBlow(x, z, o) {
+    if (!Number.isFinite(x + z) || !o || !(o.power > 0)) return;
+    try {
+      this.scars.mark?.(x, z, o);
+    } catch (err) {
+      console.error('[world] scars.mark', err);
+    }
+    this.life?.impact(x, z, Number.isFinite(o.r) ? o.r : 2, o.power, o);
   }
 
   /** Fire lands on the disc (x, z, r): the grass in it (unless `grass` is false) and the wood catch. */
   ignite(x, z, r, k = 1, grass = true) {
     const n = grass ? this.fire.ignite(x, z, r, k) : 0;
+    // (the living world feels fire land: birds leave a tree line it reaches, smoke rises after)
+    this.life?.ignite(x, z, r, k);
     return n + this.destructibles.ignite(x, z, r, k);
   }
 

@@ -91,6 +91,15 @@ export class Scars {
     for (let i = 0; i < M.length; i++) this._spawn(M[i]);
   }
 
+  /**
+   * A blow met the ground (world.groundBlow): the floor keeps a mark of its kind until the reset.
+   * `o`: { kind: 'slam' | 'cut' | 'thrust' | 'dash' | 'blast' | 'step' | 'beam', power, r, dx, dz, len, by, hot }.
+   * STUB: no mark yet.
+   */
+  mark(x, z, o) {
+    return 0;
+  }
+
   /** Cracks in the floor round (x, z): spokes of strokes, longer the harder the blow; (dx, dz) leans them. */
   ground(x, z, power, dx = 0, dz = 0) {
     const G = SCAR.ground;
