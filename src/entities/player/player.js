@@ -9,6 +9,7 @@ import { HERO_LOOKS, DEFAULT_LOOK, LOOK_IDS, getLook } from './gear/looks.js';
 import { HeroAnimator, ROLL_SLIDE } from './anim.js';
 import { lightChain, hitWindows, HEAVY, heavyAfter, SPRINT_ATK, ROLL_ATK, THRUST, CLEAVE, ONE_BREATH, CHARGE, REACH, HIT_FEEL, feel, chargeStats, bandHit, SwordSweep } from './combat.js';
 import { PlayerFx, EDGE_GLINT } from './fx.js';
+import { SwordMystic } from './swordMystic.js';
 import { DEFAULT_LOADOUT, swordFromUrl } from './gear/index.js';
 import { CLASH, clashBurst, clashGrind, closestOnSegments } from '../../combat/clashFx.js';
 import { CUT_LOOK } from '../../combat/cutFx.js';
@@ -341,6 +342,7 @@ export class Player {
     this.anim = new HeroAnimator(this.rig, this, null, { freeHand: true });
     this.anim.onFootstep = (side, dust) => this._footstep(side, dust);
     this.fx = new PlayerFx(game, this.rig);
+    this.mystic = new SwordMystic(this); // the sword's mystical layer (?mystic=; off = nothing drawn)
     this.flurry = new Flurry(this, TUNE);
     // camera lean (model.js LEAN): visual only; hits and the dragon's aim use unleaned positions
     this.lean = installLean(this.object3d, this.drawScale);
@@ -3742,6 +3744,7 @@ export class Player {
         if (charging || LOCO.has(this.state)) this.fx.gemGlint(this._gem.x, this._gem.y, this._gem.z, charging ? 0.5 + 0.5 * this.chargeK : 0.45, gv.x, gv.z, gv.y);
       }
     }
+    this.mystic?.update(dt); // (swordMystic.js; returns at once with ?mystic= off)
   }
 
   _updateMaterials(dt) {

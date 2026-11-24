@@ -25,6 +25,7 @@ import { STYLES, STYLE_IDS, setComboStyle, comboStyleId, setStanceStyle, stanceS
 import { lightChain } from '../entities/player/combat.js';
 import { listOf, SET_NAMES } from '../entities/player/stances.js';
 import { FIDGET_NAMES } from '../entities/player/anim.js';
+import { MYSTIC_IDS, MYSTIC_NAMES, mysticMode, setMystic, arcOn, setArc } from '../entities/player/swordMystic.js';
 
 // The Lab — a debug panel to test the boss without playing the fight (contract: docs/ARCHITECTURE.md
 // → Lab; usage: src/dev/README.md). It talks only to the actors' `debug` APIs (dragon.debug,
@@ -1401,6 +1402,32 @@ export class Lab {
       b.title = `equip ${SWORD_PARAM[k]}`;
       return { k, el: b };
     });
+    // the sword's mystical layer (player/swordMystic.js, ?mystic=0|a|b|c|d) and the arc that grows with
+    // the streak (?arc=0|1): both live, off = today
+    const myr = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'mystic', myr).title = "the sword's mystical layer for the owner's pick (?mystic=)";
+    const myGrid = el('div', 'lab-grid', null, myr);
+    myGrid.style.flex = '1';
+    this.ui.mysticBtns = MYSTIC_IDS.map((m) => {
+      const b = button(myGrid, m === '0' ? '0' : `${m} ${MYSTIC_NAMES[m]}`, () => {
+        setMystic(m);
+        this._syncCutBtns();
+      });
+      b.title = `?mystic=${m}: ${MYSTIC_NAMES[m]}`;
+      return { m, el: b };
+    });
+    const arr = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'arc', arr).title = 'the swing arc grows with the streak (?arc=1 full, ?arc=2 restrained)';
+    const arGrid = el('div', 'lab-grid', null, arr);
+    arGrid.style.flex = '1';
+    this.ui.arcBtns = ['0', '1', '2'].map((m) => {
+      const b = button(arGrid, m === '0' ? '0 today' : m === '1' ? '1 full' : '2 restrained', () => {
+        setArc(m);
+        this._syncCutBtns();
+      });
+      b.title = m === '0' ? 'the arc as today' : m === '1' ? 'the arc hangs longer, layered lines and beads by streak tier' : 'the same growth, fewer and finer lines';
+      return { m, el: b };
+    });
     // the wyrm's heads (entities/dragon/heads.js, ?wyrmFace=): a build-time choice, so a page reload
     const wfr = el('div', 'lab-row', null, body);
     el('span', 'lab-lbl', 'head', wfr).title = "the Cinder Wyrm's heads (?wyrmFace=; reloads the page): drake as it ships, old = the head before, the rest shown and passed on";
@@ -1487,6 +1514,8 @@ export class Lab {
     }
     const w = this.game.player?.loadout?.weapon;
     for (const { k, el: b } of this.ui.swordBtns ?? []) setClass(b, 'on', w === SWORD_PARAM[k]);
+    for (const { m, el: b } of this.ui.mysticBtns ?? []) setClass(b, 'on', mysticMode() === m);
+    for (const { m, el: b } of this.ui.arcBtns ?? []) setClass(b, 'on', String(arcOn()) === m);
     for (const { m, el: b } of this.ui.sfxBtns ?? []) setClass(b, 'on', sfxMode() === m);
     for (const { m, el: b } of this.ui.chainBtns ?? []) setClass(b, 'on', chainMode() === m);
     const bank = this.game.audio?.samples;
