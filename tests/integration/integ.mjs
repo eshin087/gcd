@@ -12272,6 +12272,183 @@ async function scenarioSfx() {
 }
 const num0 = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 
+// ================================================================== scenario: herocombo
+// The light chain from the combo style (combat.js lightChain, styles/index.js comboStyle; styles/COMBOS.md),
+// proven on TEST-ONLY combos written into the `flow` stub and restored: with the switch untouched today's
+// chain is exactly as before; a chain of 3 and of 7 walks and wraps; a def with two hit windows lands
+// twice for each window's damage (and is bitten twice, and sounds twice); chainAwake swaps the chain at
+// the streak's tier, never mid-chain; the heavy branches clamp; heft drags the clock; a swing's
+// `buffer` keeps a press through a long beat; nothing turns NaN.
+async function scenarioHeroCombo() {
+  out('\n== scenario HEROCOMBO (the combo style\'s chain: today unchanged; 3 and 7 hits walk and wrap; two hit windows; chainAwake; heavy branches; heft; buffer) ==');
+  const S = await imp('src/entities/player/styles/index.js');
+  const { LIGHT, HEAVY, lightChain } = await imp('src/entities/player/combat.js');
+  const { STREAK_FX } = await imp('src/combat/streak.js');
+  const st = S.STYLES.flow;
+  const keep = { chain: st.chain, chainAwake: st.chainAwake, pick: S.comboStyleId(), tiers: STREAK_FX.on.tiers };
+  const mk = (tag, picks, extra = {}) => picks.map((i, k) => ({ ...LIGHT[i], name: `${tag}${k + 1}`, combo: k + 1, ...(extra[k] ?? {}) }));
+  const C3 = mk('tcThree', [0, 1, 4], { 1: { branch: 3 } });
+  const C7 = mk('tcSeven', [0, 1, 2, 3, 0, 1, 4]);
+  let lastG = null, nan = 0;
+  /** A fresh fight, the hero `gap` m off the wyrm's chest (straight in front), variants pinned to 0. */
+  const fresh = (gap = 1) => {
+    const G = (lastG = build());
+    fightSetup(G);
+    settle(G);
+    const d = G.game.dragon, p = G.game.player, fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
+    const c = d.hurtSpheres.filter((h) => h.part === 'body').reduce((a, h) => ((h.x - d.position.x) * fx + (h.z - d.position.z) * fz > (a.x - d.position.x) * fx + (a.z - d.position.z) * fz ? h : a));
+    const far = gap > 20;
+    p.debug.teleport(far ? d.position.x + fx * 40 : c.x + fx * (c.r + gap), far ? d.position.z + fz * 40 : c.z + fz * (c.r + gap));
+    p.yaw = Math.atan2(c.x - p.position.x, c.z - p.position.z);
+    p.debug.god = true;
+    p.anim.forceVariant = 0;
+    aimAt(G);
+    run(G, 0.4, { passive: true });
+    // what the wyrm is asked to take (raw, before its part multipliers)
+    const taken = [];
+    const th = d.takeHit.bind(d);
+    d.takeHit = (o) => { taken.push(o?.damage); return th(o); };
+    return { G, taken };
+  };
+  /** Step `secs`, `press(i)` each frame first; the events and the hero's finite-ness recorded. */
+  const go = (G, secs, press) => {
+    const ev = [], p = G.game.player, A = p.anim;
+    G.watch = (n, e) => {
+      if (n === 'player:attack') ev.push({ n: 'atk', t: G.game.time, name: e.name, kind: e.kind, win: e.window ?? 0 });
+      else if (n === 'player:hitDragon') ev.push({ n: 'hit', t: G.game.time, name: p.atk?.def?.name, dmg: e.damage });
+    };
+    ev.bites = [];
+    for (let i = 0, n = Math.round(secs / DT); i < n; i++) {
+      aimAt(G);
+      press?.(i);
+      G.tick(DT);
+      // (the contact the animator's bite reads: atk.hitAt, set as a blow lands)
+      const ha = p.atk?.hitAt;
+      if (Number.isFinite(ha) && ha >= 0 && ha !== ev.bites[ev.bites.length - 1]) ev.bites.push(ha);
+      if (!Number.isFinite(p.position.x + p.position.z + p.yaw) || A.cur.some((v) => !Number.isFinite(v))) nan++;
+    }
+    G.watch = null;
+    return ev;
+  };
+  const mash = (G) => (i) => { if (i % 3 === 0) G.input.click(0); };
+  const names = (ev) => ev.filter((e) => e.n === 'atk' && !e.win).map((e) => e.name);
+  try {
+    // ---- today: the switch untouched, the chain is LIGHT; the same chain through the style path is
+    // the same swing for swing, hit for hit
+    S.setComboStyle('today');
+    assert(lightChain(0) === LIGHT && lightChain(9) === LIGHT, 'with the switch untouched the light chain is LIGHT (combat.js)');
+    const t0 = fresh(1);
+    const evA = go(t0.G, 2.6, mash(t0.G));
+    st.chain = LIGHT.slice();
+    S.setComboStyle('flow');
+    const t1 = fresh(1);
+    const evB = go(t1.G, 2.6, mash(t1.G));
+    st.chain = keep.chain;
+    S.setComboStyle('today');
+    const sig = (ev, taken) => JSON.stringify([ev.map((e) => [e.n, e.name, e.t.toFixed(4), e.n === 'hit' ? e.dmg : e.kind]), taken]);
+    const nA = names(evA);
+    out(`   today mashed: ${nA.join(' ')}; hits at ${evA.filter((e) => e.n === 'hit').map((e) => e.t.toFixed(2)).join(', ')} s; raw damage ${t0.taken.join(' / ')}`);
+    assert(nA.slice(0, 6).join(' ') === 'fallingCut risingCut whirl stab slam fallingCut', `today's chain walks and wraps (${nA.join(' ')})`);
+    assert(t0.taken.slice(0, 5).join() === LIGHT.map((L) => L.damage).join(), `today's hits ask for LIGHT's damage (${t0.taken.slice(0, 5).join(' / ')})`);
+    assert(sig(evA, t0.taken) === sig(evB, t1.taken), 'the same chain through the style path is the same, swing for swing and hit for hit (names, times, damage)');
+
+    // ---- 3 and 7 hits walk and wrap
+    for (const [C, secs] of [[C3, 2.4], [C7, 3.6]]) {
+      st.chain = C;
+      S.setComboStyle('flow');
+      const T = fresh(30);
+      const n = names(go(T.G, secs, mash(T.G)));
+      const want = [...C.map((d) => d.name), C[0].name];
+      out(`   ${C.length} hits mashed: ${n.join(' ')}`);
+      assert(n.slice(0, want.length).join(' ') === want.join(' '), `a chain of ${C.length} walks hit by hit and wraps (${n.join(' ')})`);
+    }
+
+    // ---- the heavy branches: after the n-th light its own, past the fourth the last; a def's `branch`
+    const branchOf = (C, n) => {
+      st.chain = C;
+      S.setComboStyle('flow');
+      const T = fresh(30);
+      for (let k = 0; k < n; k++) go(T.G, CHAIN_EVERY, (i) => { if (!i) T.G.input.click(0); });
+      const ev = go(T.G, 1.2, (i) => { if (!i) T.G.input.click(2); });
+      return ev.find((e) => e.n === 'atk' && HEAVY.some((h) => h.name === e.name))?.name ?? ev.find((e) => e.n === 'atk')?.name ?? null;
+    };
+    const rowsH = [];
+    for (let n = 1; n <= 6; n++) rowsH.push([n, branchOf(C7, n), HEAVY[Math.min(n, 4)].name]);
+    rowsH.push(['3-hit, 2 (branch 3)', branchOf(C3, 2), HEAVY[3].name]);
+    out(`   heavy branches: ${rowsH.map(([n, g, w]) => `${n}→${g}${g === w ? '' : ` (want ${w})`}`).join(' · ')}`);
+    assert(rowsH.every(([, g, w]) => g === w), 'the heavy branches come out of a 7-hit chain (past the fourth light: the last) and a def\'s `branch` picks its own');
+
+    // ---- two hit windows in one press: two blows, each window's damage, two bites, two swing sounds
+    {
+      const W2 = { ...LIGHT[0], name: 'tcWin1', combo: 1, hits: [{ at: [1.0, 1.45], damage: 11, poise: 3 }, { at: [1.45, 2.0], damage: 17, poise: 5 }] };
+      st.chain = [W2, ...C3.slice(1)];
+      S.setComboStyle('flow');
+      const T = fresh(0.3);
+      const ev = go(T.G, 0.9, (i) => { if (!i) T.G.input.click(0); });
+      const hits = ev.filter((e) => e.n === 'hit'), atks = ev.filter((e) => e.n === 'atk');
+      out(`   two windows: ${atks.length} swing sounds (windows ${atks.map((e) => e.win).join(', ')}); hits at ${hits.map((e) => e.t.toFixed(3)).join(', ')} s, raw damage ${T.taken.join(' / ')}, bites at ${ev.bites.map((v) => v.toFixed(3)).join(', ')} s of the swing`);
+      assert(hits.length === 2 && T.taken.join() === '11,17', `a def with two hit windows lands twice, each for its window's damage (${T.taken.join(' / ')})`);
+      assert(atks.length === 2 && atks[1].win === 1 && ev.bites.length === 2 && ev.bites[0] < ev.bites[1], 'each window sounds (player:attack, window 1) and the bite answers each (hitAt re-set)');
+    }
+
+    // ---- chainAwake: the streak's tier picks the chain at its START, never mid-chain; off with 'tiers'
+    {
+      st.chain = C7;
+      st.chainAwake = [{ minTier: 1, chain: C3 }, { minTier: 3, chain: mk('tcAwake', [2, 3, 4]) }];
+      S.setComboStyle('flow');
+      const at = [lightChain(0)[0].name, lightChain(3)[0].name, lightChain(7)[0].name, lightChain(99)[0].name];
+      STREAK_FX.on.tiers = false;
+      const off = lightChain(7)[0].name;
+      STREAK_FX.on.tiers = keep.tiers;
+      const T = fresh(30), p = T.G.game.player;
+      p.debug.streak(3); // tier 1
+      const e1 = names(go(T.G, 0.5, (i) => { if (!i) T.G.input.click(0); }));
+      go(T.G, 0.8);
+      p.debug.streak(0);
+      const e2 = names(go(T.G, CHAIN_EVERY, (i) => { if (!i) T.G.input.click(0); }));
+      p.debug.streak(7); // tier 3, mid-chain: the chain he is in goes on
+      const e3 = names(go(T.G, 0.5, (i) => { if (!i) T.G.input.click(0); }));
+      out(`   chainAwake: streak 0 / 3 / 7 / 99 start ${at.join(' / ')}, tiers off ${off}; in play: streak 3 → ${e1[0]}, streak 0 → ${e2[0]}, then 7 mid-chain → ${e3[0]}`);
+      assert(at.join() === 'tcSeven1,tcThree1,tcAwake1,tcAwake1' && off === 'tcSeven1', 'chainAwake: the entry with the highest minTier at or under the tier replaces the chain (none with the tiers piece off)');
+      assert(e1[0] === 'tcThree1' && e2[0] === 'tcSeven1' && e3[0] === 'tcSeven2', 'in play the chain is picked as it starts and kept to its end');
+      st.chainAwake = keep.chainAwake;
+    }
+
+    // ---- heft: a landed hit drags the clock; buffer: a press kept through a long beat
+    {
+      const dur = (def) => {
+        st.chain = [def, ...C3.slice(1)];
+        S.setComboStyle('flow');
+        const T = fresh(0.5), p = T.G.game.player;
+        let n = 0, on = 0;
+        go(T.G, 1.2, (i) => { if (!i) T.G.input.click(0); if (p.state === 'attack') on++; n++; });
+        return { s: on * DT, hits: T.taken.length };
+      };
+      const plain = dur({ ...LIGHT[0], name: 'tcHeft0', combo: 1 }), heft = dur({ ...LIGHT[0], name: 'tcHeft1', combo: 1, heft: { t: 0.1, rate: 0.3 } });
+      out(`   heft: a landed light in attack ${plain.s.toFixed(3)} s; with heft { t 0.1, rate 0.3 } ${heft.s.toFixed(3)} s`);
+      assert(plain.hits === 1 && heft.hits === 1 && heft.s - plain.s >= 0.04 && heft.s - plain.s <= 0.12, `heft drags the swing's clock after a landed hit (+${((heft.s - plain.s) * 1000).toFixed(0)} ms, 40-120)`);
+      const second = (buffer) => {
+        st.chain = [{ ...LIGHT[0], name: `tcBuf${buffer}`, combo: 1, chain: 0.9, ...(buffer ? { buffer } : null) }, ...C3.slice(1)];
+        S.setComboStyle('flow');
+        const T = fresh(30);
+        // one press 0.08 s into the swing: the next may start only 0.45 s in (chain 0.9 of the recovery)
+        return names(go(T.G, 1.0, (i) => { if (i === 0 || i === 5) T.G.input.click(0); })).length;
+      };
+      const sb0 = second(0), sb1 = second(0.7);
+      out(`   buffer: a press 0.08 s into a slow-chaining swing starts ${sb0 - 1} more hit(s) without, ${sb1 - 1} with buffer 0.7`);
+      assert(sb0 === 1 && sb1 === 2, 'a swing\'s `buffer` keeps a press through its long beat (0.3 s otherwise: it is dropped)');
+    }
+    assert(nan === 0, `nothing turns NaN (${nan} frames)`);
+  } finally {
+    st.chain = keep.chain;
+    st.chainAwake = keep.chainAwake;
+    STREAK_FX.on.tiers = keep.tiers;
+    S.setComboStyle(keep.pick);
+    if (lastG) lastG.game.player.anim.forceVariant = null;
+  }
+  return lastG;
+}
+
 const SCENARIOS = {
   timestep: scenarioTimestep,
   strategy: scenarioStrategy,
@@ -12321,6 +12498,7 @@ const SCENARIOS = {
   streakfx: scenarioStreakFx,
   herohand: scenarioHeroHand,
   heroweight: scenarioHeroWeight,
+  herocombo: scenarioHeroCombo,
   heroarms: scenarioHeroArms,
   herostance: scenarioHeroStance,
   looks: scenarioLooks,
