@@ -14,6 +14,7 @@
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { ui, fireWin, AUDIO, resetWindow, El } from './shim.mjs';
+import { attachMarks, marksCheck } from './marks.mjs';
 
 const ROOT = process.argv[2];
 const SCEN = process.argv[3] || 'all';
@@ -1390,6 +1391,7 @@ async function scenarioBudget() {
 async function scenarioWin() {
   out('\n== scenario WIN (god-mode bot: attacks, parries, blocks, dodges) ==');
   const G = build();
+  const MK = attachMarks(G.game); // (the floor marks the fight leaves: they change nothing in it)
   const { game, input, evLog, counts, counters } = G;
   G.defend = makeDefender(G);
   assert(game.state === 'title', 'boots in title');
@@ -1431,6 +1433,7 @@ async function scenarioWin() {
   const c = (n) => counts[n] || 0;
   const fightT = game.time - t0;
   out(`   fight: t=${fightT.toFixed(1)}s (phase 2 at ${(phaseT[1] - t0).toFixed(1)} s, phase 3 at ${(phaseT[2] - t0).toFixed(1)} s) dragon hp=${game.dragon.hp} state=${game.dragon.state} phase=${maxPhase} hits=${c('player:hitDragon')} hurt=${c('player:hurt')} tells=${c('combat:tell')} flashes=${c('combat:flash')} break=${sawBreak} air=${sawAir}`);
+  marksCheck(MK, 'integ', out, assert);
   out(`   defence: parry ${c('player:parry')}/${G.defend.stats.parryTry} tries · block ${c('player:block')} · guardBreak ${c('player:guardBreak')} · perfect ${c('player:perfectDodge')}/${G.defend.stats.dodgeTry} tries · ghostep ${c('player:ghostep')} · dodge ${c('player:dodge')} · dragon:parried ${c('dragon:parried')} · deflect chains ${c('combat:deflectChain')} (longest x${chainMax}) · postureBreak ${c('dragon:postureBreak')} at ${breakT.map((t) => (t - t0).toFixed(0)).join(', ')} s`);
   out(`   AI picks: ${Object.entries(picks).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(' · ')}`);
   assert(won, 'victory reached');

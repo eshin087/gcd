@@ -440,6 +440,35 @@ export class Scars {
     if (any) s.dirty = true;
   }
 
+  /**
+   * world.impact's own floor mark (a blow of SCAR.ground.min power or more, unless o.scar === false):
+   * one of its kind (o.mark names it, else the blow's kind: blunt a slam, blast / fire a blast, cut a
+   * gash), none when the caller lays its own (o.marked: a groundBlow follows), today's cracks and
+   * crater rim when the kinds are off (`?marks=0`) or o.mark === false. The scorch map's char is
+   * world.impact's, as before. A reused record: no allocation.
+   */
+  impactMark(x, z, r, power, o) {
+    if (o?.scar === false || !(power >= SCAR.ground.min) || !Number.isFinite(x + z + r + power)) return;
+    const cr = Math.min(r, 1.2 + power * 1.1);
+    if (!this.on || o?.mark === false) {
+      this.ground(x, z, power, o?.dx, o?.dz);
+      if (power >= SCAR.crater.min) this.crater(x, z, cr, power);
+      return;
+    }
+    if (o?.marked) return;
+    const m = (this._mk ??= { kind: 'slam', power: 0, r: 0, dx: NaN, dz: NaN, len: NaN, by: 'boss', hot: false, claws: 0, arc: false });
+    const k = o?.mark ?? o?.kind;
+    m.kind = KINDS.includes(k) ? k : k === 'blast' || k === 'fire' ? 'blast' : 'slam';
+    m.power = power;
+    m.r = power >= SCAR.crater.min ? cr : Math.min(r, 0.6 + power * 0.9);
+    m.dx = o?.dx;
+    m.dz = o?.dz;
+    m.len = Number.isFinite(o?.len) ? o.len : NaN;
+    m.by = o?.by ?? 'boss';
+    m.hot = !!o?.hot || o?.fire > 0 || k === 'fire';
+    this.mark(x, z, m);
+  }
+
   // ---------------------------------------------------------------- today's marks
 
   /** Cracks in the floor round (x, z): spokes of strokes, longer the harder the blow; (dx, dz) leans them. */

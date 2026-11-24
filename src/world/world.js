@@ -144,26 +144,22 @@ export class World {
    * A blow lands on the world at (x, z): every breakable the disc touches takes `power` (POWER scale,
    * breakTuning.js), and a hard one (>= SCAR.ground.min) cracks the floor. `o`: { kind: BLOW.*, by:
    * 'player' | 'boss' | 'world', dx, dz (its way), y (its height: a blow above a low piece passes
-   * over it), src (one id per swing), scar: false (no floor mark), fire: k (it also sets alight) }.
+   * over it), src (one id per swing), scar: false (no floor mark), fire: k (it also sets alight),
+   * mark: a scars.mark kind for its floor mark (default by `kind`; false: today's cracks), marked: true
+   * (the caller lays its own mark with groundBlow: none here), hot: true (the mark is charred) }.
    * Returns how many pieces it struck.
    */
   impact(x, z, r, power, o) {
     if (!Number.isFinite(x + z + r + power) || !(power > 0)) return 0;
     const n = this.destructibles.strike(x, z, r, power, o ?? this._impact);
     if (o?.scar !== false && power >= SCAR.ground.min) {
-      // the floor's mark: one of its kind (scars.mark: o.mark names it, else the blow's kind: blunt a
-      // slam, blast / fire a blast, cut a gash), unless the caller lays it itself (o.marked: a
-      // groundBlow follows) or the kinds are off (`?marks=0`: today's cracks and crater rim)
-      const kinds = this.scars.on && o?.mark !== false;
-      const cr = Math.min(r, 1.2 + power * 1.1);
-      if (!kinds) this.scars.ground(x, z, power, o?.dx, o?.dz);
-      else if (!o?.marked) this._markImpact(x, z, power >= SCAR.crater.min ? cr : Math.min(r, 0.6 + power * 0.9), power, o);
+      // the floor's mark (scars.impactMark: one of the blow's kind, or today's cracks with `?marks=0`)
+      this.scars.impactMark(x, z, r, power, o);
       // torn ground: the grass there is gone (char without heat)
       this.scorch.burnCircle(x, z, Math.min(r, 0.6 + power * 0.9), 0.5, 0);
       // a big blow leaves a crater: a rim of thrown-up earth and a charred floor that stay till the reset
       if (power >= SCAR.crater.min) {
-        if (!kinds) this.scars.crater(x, z, cr, power);
-        this.scorch.burnCircle(x, z, cr, SCAR.crater.char, 0);
+        this.scorch.burnCircle(x, z, Math.min(r, 1.2 + power * 1.1), SCAR.crater.char, 0);
       }
     }
     if (o?.fire > 0) this.ignite(x, z, r, o.fire);
@@ -182,27 +178,6 @@ export class World {
    *        len (m: a cut's, a dash's or a beam's length along dx, dz, from (x, z)),
    *        by: 'boss' | 'player', hot: true (it burned: the mark is charred) }.
    */
-  /** world.impact's own floor mark (a reused record): its kind from o.mark or the blow's kind. */
-  _markImpact(x, z, r, power, o) {
-    const m = (this._mk ??= { kind: 'slam', power: 0, r: 0, dx: NaN, dz: NaN, len: NaN, by: 'boss', hot: false, claws: 0, arc: false });
-    const k = o?.mark ?? o?.kind;
-    m.kind = k === 'cut' || k === 'slam' || k === 'thrust' || k === 'dash' || k === 'beam' || k === 'step' ? k : k === BLOW.BLAST || k === BLOW.FIRE ? 'blast' : 'slam';
-    m.power = power;
-    m.r = r;
-    m.dx = o?.dx;
-    m.dz = o?.dz;
-    m.len = Number.isFinite(o?.len) ? o.len : NaN;
-    m.by = o?.by ?? 'boss';
-    m.hot = !!o?.hot || o?.fire > 0 || k === BLOW.FIRE;
-    m.claws = 0;
-    m.arc = false;
-    try {
-      this.scars.mark(x, z, m);
-    } catch (err) {
-      console.error('[world] scars.mark', err);
-    }
-  }
-
   groundBlow(x, z, o) {
     if (!Number.isFinite(x + z) || !o || !(o.power > 0)) return;
     try {

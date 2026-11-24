@@ -7,6 +7,7 @@
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { ui, AUDIO, resetWindow } from './shim.mjs';
+import { attachMarks, marksCheck } from './marks.mjs';
 
 const ROOT = process.argv[2];
 const SCEN = process.argv[3] || 'all';
@@ -2009,6 +2010,7 @@ async function scenarioPace() {
 async function scenarioWin() {
   out('\n== scenario WIN (a fencing bot in god mode: parries, rolls, cuts in his openings) ==');
   const G = build();
+  const MK = attachMarks(G.game); // (the floor marks the fight leaves: they change nothing in it)
   const { game } = G;
   duel(G, { dist: 4, ai: true });
   G.defend = makeDefender(G);
@@ -2034,6 +2036,7 @@ async function scenarioWin() {
   const secs = game.time - t0;
   const taken = G.hits.filter((h) => h.r === RESULT.HIT).length;
   out(`     ${won ? 'won' : 'not won'} in ${secs.toFixed(0)} s: ${stats.parries} parries, ${stats.guards} guarded swings, ${stats.ghosteps} Ghosteps, ${stats.breaks} breaks, ${stats.execs} executions, ${taken} hits taken, ${G.defend.stats.flashes} flashes; phase ${d.phase}`);
+  marksCheck(MK, 'duel', out, assert);
   out(`     damage by his state: ${JSON.stringify(dmgBy)}`);
   assert(won, 'the fencing bot defeats the Ash Disciple within 6 minutes');
   // (the second pass: three phases; the third, ash on the wind, from 30 %)
