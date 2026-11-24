@@ -83,7 +83,7 @@ const low = {
     p[P.hdZ] = 0.02;
     set3(p, P.rH, -0.17 + 0.006 * m.tipB, -0.43 + 0.012 * m.brL, 0.18 + 0.008 * m.tipA);
     set3(p, P.rP, 0.4, -0.4, -0.8);
-    dir(p, P.swD, -40 + 3 * m.tipA, -37 + 2 * m.tipB + 1.2 * m.brL);
+    dir(p, P.swD, -43 + 3 * m.tipA, -38 + 2 * m.tipB + 1.2 * m.brL);
     set3(p, P.swF, 0.84, -0.54, 0.05);
     handLoose(p, m, { out: 0.04, fwd: -0.07, swing: 1.2 });
     set3(p, P.rF, -0.11, ANK, 0.16);
