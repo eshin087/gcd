@@ -11,12 +11,16 @@
 //   id, label, blurb
 //   stances   null = today's two (stances.js atEase / fencerGuard), or
 //             { ease: [STANCE, ...], fight: [STANCE, ...] } with
-//             STANCE = { id, fn(p, P, A), w = 1, dwell = [min, max] seconds }
+//             STANCE = { id, fn(p, P, A), w = 1, dwell = [min, max] seconds (counted after its
+//             fade), minTier?, maxTier? (the streak tiers it may play at), move? ({ d, n } or
+//             false: where the free hand's fingers and palm go as he sets off) }
 //             fn writes a whole standing pose over guard()'s, like stances.js atEase. The animator
 //             holds one stance per set for `dwell` seconds, then cross-fades to another by weight
 //             (never the same twice running). One entry = one fixed stance.
 //   shift     optional { fade: seconds } for that cross-fade
-//   fidgets   null = today's FIDGETS (anim.js), or [{ name, dur, fn(p, A, u, e), sets: ['ease'] }]
+//   fidgets   null = today's FIDGETS (anim.js), or [{ name, dur, fn(p, A, u, e), sets: ['ease'] }],
+//             written as offsets from the current pose ('fight' in `sets`: it plays in the guard too).
+//             Guide: styles/STANCES.md; audit: node tests/audit/hero-stance.mjs . <id>
 //   chain     null = today's LIGHT (combat.js), or 3 - 7 attack defs in LIGHT's shape (each with a
 //             `name` unique across every style, `combo` = its index + 1). The levers (several
 //             blows in one press, a held beat, heft, the rules a clip must pass): styles/COMBOS.md
