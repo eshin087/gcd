@@ -18,6 +18,16 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-23',
+        title: 'Subtle pixel-font ASCII perfect parry and perfect dodge',
+        notes: [
+          'A perfect parry now sheds fine pixel-font digits and a razor blade cross that curl away on the wind, while a subtle shockwave ripples through the parried boss and stirs loose ash or leaves at your feet.',
+          'A perfect dodge leaves a contour-stroked ASCII husk of your stance standing for a moment before it peels letter by letter into a wind wisp along your dodge path.',
+          'Normal parries stay quiet so perfect timing feels distinct, and every window and combat rule is unchanged.',
+          'To try the other looks (Ink-Cut Severance or Wuxia Qi Seal) or the previous look, add ?perfectArt=b, ?perfectArt=c or ?perfectArt=0 to the address, or cycle p.art in the Lab.',
+        ],
+      },
+      {
         date: '2026-11-22',
         title: 'An eighth level: Halcyon Plaza and Halcyon, the Last Saviour',
         notes: [

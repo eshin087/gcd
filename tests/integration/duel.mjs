@@ -1503,6 +1503,40 @@ async function scenarioPerfectFx() {
     threw = e;
   }
   game.fx.fire = fire;
+  // (?perfectArt=0|a|b|c: Whispered Steel & Silk 'a' is the browser default; headless defaults to '0';
+  //  normal parries stay quiet, perfect parries / dodges / mikiri run with zero Math.random draws)
+  {
+    const PA = await imp('src/combat/perfectArt.js');
+    assert(PA.PERFECT_ART_DEFAULT === 'a' && PA.perfectArtMode() === '0', `perfectArt: browser default 'a', headless default '0' (${PA.PERFECT_ART_DEFAULT}, ${PA.perfectArtMode()})`);
+    STK.setPerfectMode('sharp');
+    let rngDraws = 0;
+    const mr0 = Math.random;
+    Math.random = () => { rngDraws++; return mr0(); };
+    try {
+      const p0 = PA.PERFECT_ART_LAST.parries, d0 = PA.PERFECT_ART_LAST.dodges;
+      PA.setPerfectArtMode('0');
+      p.fx.parry(0, 1.1, 0, false, 1, 0, 1, { perfect: true, feel: p.fx.perfectMoment('parry', true, 2, 'sharp'), attacker: d });
+      PA.perfectArtDodge(game, { pts: p.fx.body, nPts: p.fx.bodyN, ox: 0, oz: 0, nx: 1, nz: 0, dx: 1, dz: 0, moved: true });
+      assert(PA.PERFECT_ART_LAST.parries === p0 && PA.PERFECT_ART_LAST.dodges === d0, '?perfectArt=0 spawns nothing');
+      for (const am of ['a', 'b', 'c']) {
+        PA.setPerfectArtMode(am);
+        const pp = PA.PERFECT_ART_LAST.parries, dd = PA.PERFECT_ART_LAST.dodges;
+        // normal parry does NOT trigger perfectArtParry
+        p.fx.parry(0, 1.1, 0, false, 1, 0, 1, { perfect: false, attacker: d });
+        assert(PA.PERFECT_ART_LAST.parries === pp, `?perfectArt=${am}: normal deflect keeps quiet`);
+        // perfect parry & perfect dodge trigger cleanly
+        p.fx.parry(0, 1.1, 0, false, 1, 0, 1, { perfect: true, feel: p.fx.perfectMoment('parry', true, 3, 'sharp'), attacker: d });
+        PA.perfectArtDodge(game, { pts: p.fx.body, nPts: p.fx.bodyN, ox: 0, oz: 0, nx: 1.2, nz: 0, dx: 1, dz: 0, moved: true });
+        for (let i = 0; i < 6; i++) PFX.perfectUpdate(game, DT, DT);
+        assert(PA.PERFECT_ART_LAST.parries === pp + 1 && PA.PERFECT_ART_LAST.dodges === dd + 1, `?perfectArt=${am}: perfect parry & dodge recorded`);
+      }
+      assert(rngDraws === 0, `perfectArt: zero Math.random draws across all modes (${rngDraws})`);
+    } finally {
+      Math.random = mr0;
+      PA.setPerfectArtMode('0');
+      PFX.perfectClear(game);
+    }
+  }
   STK.setPerfectMode('today');
   PFX.perfectClear();
   assert(!threw && errors.length === 0, `nothing throws without a fire field (${threw?.message ?? 'ok'}), no console errors`);

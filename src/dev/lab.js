@@ -13,6 +13,7 @@ import { TrainingPanel } from './trainingPanel.js';
 import { setCutStyle, cutStyle } from '../combat/cutFx.js';
 import { IMPACT } from '../combat/impact.js';
 import { STREAK_FX, setPerfectMode, perfectMode } from '../combat/streak.js';
+import { PERFECT_ART_MODES, PERFECT_ART_NAMES, perfectArtMode, setPerfectArtMode } from '../combat/perfectArt.js';
 import { BURST_LOOK, setBurst, burstLevel } from '../entities/player/flurryBurst.js';
 import { CALM_LOOK, setCalm, calmLevel } from '../combat/impactCalm.js';
 import { sfxMode, setSfxMode } from '../audio/samples.js';
@@ -1203,6 +1204,12 @@ export class Lab {
       this._syncCutBtns();
     });
     this.ui.perfectBtn.title = 'the look of a single perfect parry / dodge: today, sharp or cinema';
+    this.ui.perfectArtBtn = button(stkGrid, `p.art: ${PERFECT_ART_NAMES[perfectArtMode()]}`, () => {
+      const M = PERFECT_ART_MODES;
+      setPerfectArtMode(M[(M.indexOf(perfectArtMode()) + 1) % M.length]);
+      this._syncCutBtns();
+    });
+    this.ui.perfectArtBtn.title = 'subtle ASCII perfect parry / dodge variations (?perfectArt=0|a|b|c): 0 default, a silk, b sever, c qi';
     this.ui.burstBtn = button(stkGrid, `burst ${burstLevel()}`, () => {
       setBurst((Math.max(0, burstLevel()) + 1) % BURST_LOOK.levels.length);
       this._syncCutBtns();
@@ -1326,6 +1333,10 @@ export class Lab {
     for (const { s, el: b } of this.ui.impactBtns ?? []) setClass(b, 'on', IMPACT.on[s] === true);
     for (const { s, el: b } of this.ui.streakBtns ?? []) setClass(b, 'on', STREAK_FX.on[s] === true);
     if (this.ui.perfectBtn) this.ui.perfectBtn.textContent = `perfect: ${perfectMode()}`;
+    if (this.ui.perfectArtBtn) {
+      this.ui.perfectArtBtn.textContent = `p.art: ${PERFECT_ART_NAMES[perfectArtMode()]}`;
+      setClass(this.ui.perfectArtBtn, 'on', perfectArtMode() !== '0');
+    }
     if (this.ui.burstBtn) this.ui.burstBtn.textContent = `burst ${burstLevel()}`;
     if (this.ui.calmBtn) {
       this.ui.calmBtn.textContent = `calm ${calmLevel()}`;

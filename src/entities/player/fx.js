@@ -7,6 +7,7 @@ import { stampHit } from '../../combat/impactStamp.js';
 import { calmLook, calmA, calmS } from '../../combat/impactCalm.js';
 import { perfectMode } from '../../combat/streak.js';
 import { perfectFeel, perfectBeat, perfectParryMark, perfectDodgeLine, perfectArrive, perfectGhost } from '../../combat/perfectFx.js';
+import { perfectArtMode, perfectArtCanDraw, perfectArtParry, perfectArtDodge } from '../../combat/perfectArt.js';
 
 // Glyph-particle effects owned by the Wanderer: cyan slash arcs (the light swings, the slam, the
 // cleave and its impact), the thrust's long streak, the slam's crystal-shard burst, the violet gem's glow + glints, impact
@@ -737,8 +738,14 @@ export class PlayerFx {
     // no rings or cross of glyphs, and the mark printed in the letter grid at the crossing
     const PF = o?.perfect && !o?.light ? o?.feel?.F : null;
     if (PF) {
-      clashBurst(this.game, x, y, z, { pal: CLASH.perfect, power: (1 + 0.12 * (n - 1)) * PF.clash.power, spray, e1: o?.e1 ?? null, e2: o?.e2 ?? null, ring: PF.clash.ring, cross: PF.clash.cross, light: PF.clash.light, embers: PF.clash.embers });
-      perfectParryMark(this.game, x, y, z, { e1: o?.e1 ?? null, e2: o?.e2 ?? null, mode: o.feel.mode, beat: o.feel.beat, streak: o.feel.streak });
+      const art = perfectArtMode();
+      clashBurst(this.game, x, y, z, { pal: CLASH.perfect, power: (1 + 0.12 * (n - 1)) * PF.clash.power * (art !== '0' ? 0.68 : 1), spray, e1: o?.e1 ?? null, e2: o?.e2 ?? null, ring: PF.clash.ring, cross: PF.clash.cross, light: PF.clash.light, embers: PF.clash.embers });
+      if (art !== 'b') {
+        perfectParryMark(this.game, x, y, z, { e1: o?.e1 ?? null, e2: o?.e2 ?? null, mode: o.feel.mode, beat: o.feel.beat, streak: o.feel.streak });
+      }
+      if (art !== '0') {
+        perfectArtParry(this.game, x, y, z, { e1: o?.e1 ?? null, e2: o?.e2 ?? null, spray, nx: -fdx, nz: -fdz, attacker: o?.attacker ?? null, last: o?.last !== false, streak: o.feel.streak, big: !!blue });
+      }
       return;
     }
     clashBurst(this.game, x, y, z, {
@@ -978,9 +985,15 @@ export class PlayerFx {
       dx = l > 1e-3 ? o.wx / l : 0;
       dz = l > 1e-3 ? o.wz / l : 0;
     }
-    this._afterimage(fx, segs, nSegs, { dx, dz, feel: D });
-    if (moved) perfectDodgeLine(g, ox, y, oz, nx, y, nz, mode);
-    else if (dx || dz) perfectDodgeLine(g, nx - dx * D.line.min, y, nz - dz * D.line.min, nx, y, nz, mode);
+    const art = perfectArtMode();
+    if (art !== '0') {
+      perfectArtDodge(g, { pts: this.body, nPts: this.bodyN, ox, oz, nx, nz, dx, dz, moved, tell: o?.tell ?? 'normal', flurry: false });
+    }
+    if (!perfectArtCanDraw(g)) {
+      this._afterimage(fx, segs, nSegs, { dx, dz, feel: D });
+      if (moved) perfectDodgeLine(g, ox, y, oz, nx, y, nz, mode);
+      else if (dx || dz) perfectDodgeLine(g, nx - dx * D.line.min, y, nz - dz * D.line.min, nx, y, nz, mode);
+    }
     if (D.arrive) perfectArrive(g, nx, y, nz, mode);
     if (D.blink) {
       this.blinkStream(fx, nx, y, nz);
@@ -1138,8 +1151,13 @@ export class PlayerFx {
   plungeBlink(segs, nSegs, ox, oz, nx, ny, nz) {
     const fx = this.add;
     if (!fx || !Number.isFinite(ox + oz + nx + ny + nz)) return;
-    this._afterimage(fx, segs, nSegs);
-    this.blinkStream(fx, nx, ny + 1.1, nz);
+    if (perfectArtMode() !== '0') {
+      perfectArtDodge(this.game, { pts: this.body, nPts: this.bodyN, ox, oz, nx, nz, dx: nx - ox, dz: nz - oz, moved: true, tell: 'red', flurry: true });
+    }
+    if (!perfectArtCanDraw(this.game)) {
+      this._afterimage(fx, segs, nSegs);
+      this.blinkStream(fx, nx, ny + 1.1, nz);
+    }
     // the rising streak, laid along the 3D path (it reads as the way he went)
     const sx = nx - ox, sy = ny + 0.4, sz = nz - oz;
     const dist = Math.hypot(sx, sy, sz);

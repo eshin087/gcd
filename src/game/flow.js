@@ -3,6 +3,7 @@ import { CONFIG } from '../core/config.js';
 import { clamp, damp, lerp } from '../core/math.js';
 import { DEFENSE } from '../combat/rules.js';
 import { PERFECT_FEEL, perfectUpdate, perfectClear } from '../combat/perfectFx.js';
+import { perfectArtSuppressesFlash } from '../combat/perfectArt.js';
 import { ScreenGrade } from './grade.js';
 import { RunStats } from './stats.js';
 import { MoveLog, prettyMove } from './telemetry.js';
@@ -169,7 +170,7 @@ export class GameFlow {
       const PF = d?.perfect && !d?.light ? PERFECT_FEEL[d?.feel]?.parry : null;
       if (PF) {
         const T = d?.beat && PF[d.beat] ? PF[d.beat] : PF;
-        if (PF.flash > 0) this.grade.flashPulse(PF.flash);
+        if (PF.flash > 0 && !perfectArtSuppressesFlash()) this.grade.flashPulse(PF.flash);
         if (T.dim > 0) this.grade.dimPulse(T.dim, T.dimHold);
         return;
       }
@@ -895,7 +896,7 @@ export class GameFlow {
       g.fx?.ripple?.clear?.();
       g.fx?.streak?.clear?.();
       g.fx?.stamp?.clear?.();
-      perfectClear();
+      perfectClear(g);
       g.fx?.alpha?.clear?.();
     }, 'fx.clear');
     this._try(() => g.world?.atmosphere?.setBonfireLit?.(true), 'setBonfireLit');

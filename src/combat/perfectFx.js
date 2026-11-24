@@ -1,6 +1,7 @@
 import { axes, screenAngle } from './clashFx.js';
 import { FIRE_KIND } from '../render/firePalettes.js';
 import { perfectMode, streakTier } from './streak.js';
+import { perfectArtUpdate, perfectArtClear } from './perfectArt.js';
 
 // A SINGLE PERFECT PARRY / PERFECT DODGE, in three looks (combat/streak.js: perfectMode(), read at the
 // moment of the parry / dodge):
@@ -674,6 +675,7 @@ function ghostTick(game, d) {
  * (game.fxDt, else `dt`). Never throws.
  */
 export function perfectUpdate(game, dt, realDt) {
+  perfectArtUpdate(game, dt, realDt);
   try {
     const d = fxStep(game, fin(dt) ? dt : 0);
     const r = fin(realDt) ? realDt : d;
@@ -703,11 +705,12 @@ export function perfectUpdate(game, dt, realDt) {
 }
 
 /** Drop every running mark and the tear (a level reset). */
-export function perfectClear() {
+export function perfectClear(game) {
   for (const S of marks) S.alive = false;
   ghost.alive = false;
   deadline = -1;
   fullAt = -Infinity;
+  perfectArtClear(game);
 }
 
 /** Any mark or tear still running (tests). */

@@ -5,6 +5,7 @@ import { DEFENSE } from '../../combat/rules.js';
 import { streakK, streakTier } from '../../combat/streak.js';
 import { FlurryFx } from './flurryFx.js';
 import { burstLook } from './flurryBurst.js';
+import { perfectArtMode, perfectArtCanDraw, perfectArtDodge } from '../../combat/perfectArt.js';
 
 // The flurry (ADR-091; rules: DEFENSE.flurry, docs/COMBAT.md → "The streak and the flurry"): what a
 // perfect dodge that can reach its attacker turns into. As many blows as the streak counts: FLASH
@@ -261,7 +262,12 @@ export class Flurry {
     P.assist.target = null;
     P.assist.t = 0;
     P._enter('flurry', 'flurry', 0);
-    this.fx.vanish(P._ghostSegs, nSegs, p.x, p.y, p.z);
+    if (!riposte && perfectArtMode() !== '0') {
+      perfectArtDodge(g, { pts: P.fx.body, nPts: P.fx.bodyN, ox: p.x, oz: p.z, nx: this.T.x, nz: this.T.z, dx: P.rollDir.x, dz: P.rollDir.z, moved: true, tell, flurry: true });
+    }
+    if (riposte || !perfectArtCanDraw(g)) {
+      this.fx.vanish(P._ghostSegs, nSegs, p.x, p.y, p.z);
+    }
     this.hidden = true;
     this._phase(FP.BLINK, F.cut.blink);
     g.shake?.(0.15);
