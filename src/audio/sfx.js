@@ -1512,13 +1512,14 @@ export const SFX = {
 
   wear: {
     prio: 2, rev: 0.16, gap: 0.14, falloff: 0.7, gain: 0.45,
-    play(v, t, o) {
+    play(v, t, o, E) {
       const st = clamp(num(o.power, 1), 1, 3);
       // the leaves (a soft hiss) and the snap of what broke
       swish(v, t, 'pink', 'bandpass', 3200, 0.7, [[0, 0], [0.04, 0.22], [0.35, 0]]);
       if (st >= 2) burst(v, t + 0.02, 'pink', 'bandpass', o.mat === 'bone' ? 1700 : 1100, 1.4, 0.35, 0.05, 0.001);
-      // the lean: a slow creak of wood
-      if (st >= 3) {
+      // the lean: a slow creak of wood (with the living world's sound on, its own treeCreak plays it:
+      // audio/lifeSfx.js, from the tremor's world:impact listener)
+      if (st >= 3 && !E?.game?.world?.life?.on?.('air')) {
         const c = v.osc('sawtooth', 70 * rnd(0.9, 1.1), t, t + 0.6);
         const f = v.filter('bandpass', 420, 6);
         const g = v.gain(0);

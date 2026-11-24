@@ -1,4 +1,5 @@
 import { lampsTuning } from './lampsTuning.js';
+import { lifeSay } from '../../audio/lifeSfx.js';
 
 // THE LAMPS (piece 'answer'): the levels' stone lanterns and the Skybreak Ring's braziers. A lantern
 // stands dark, or burns as the visit starts (the place is inhabited); more KINDLE as the fight heats up
@@ -255,7 +256,7 @@ export class Lamps {
     L.t = 0;
     L.wait = -1;
     this.stat.kindled++;
-    this.life.sound?.('lampCatch', L.x, L.z);
+    lifeSay(this.life, 'lampCatch', L.x, L.z);
   }
 
   // ------------------------------------------------------------------ what shakes them
@@ -304,7 +305,7 @@ export class Lamps {
     // (one sound a blow, at the lamp it shook hardest)
     if (loud) {
       loud.sndT = this.life.t;
-      this.life.sound?.('lampGutter', loud.x, loud.z, { k: loudK });
+      lifeSay(this.life, 'lampGutter', loud.x, loud.z, { k: loudK });
     }
     return n;
   }
@@ -351,7 +352,7 @@ export class Lamps {
     if (!burning) return;
     this.stat.out++;
     this._puff(L);
-    this.life.sound?.('lampOut', L.fx, L.fz);
+    lifeSay(this.life, 'lampOut', L.fx, L.fz);
   }
 
   /** The flame dies: a puff of smoke from where it burned and a last lick of fire. */
