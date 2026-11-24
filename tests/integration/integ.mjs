@@ -5326,6 +5326,30 @@ async function scenarioWyrmLook() {
   return G;
 }
 
+// ================================================================== scenario: timerip (?rip=)
+// The flurry's cuts rip the picture (player/timeRip.js): a flurry of five on the wyrm in each look
+// (tests/integration/timerip.mjs has the checks): off adds nothing, every mark sits on its cut's line,
+// the screen pass is idle again at once, the blows and the damage are those of off.
+async function scenarioTimeRip() {
+  out("\n== scenario TIMERIP (the flurry's cuts rip the picture: off | tear | strip | ghosts | negative, on the wyrm) ==");
+  const { timeRipCheck } = await import('./timerip.mjs');
+  const R = await timeRipCheck({
+    THREE, build, assert, out, DT, label: 'wyrm',
+    setup: (G) => {
+      fightSetup(G);
+      run(G, 2.5, { passive: true });
+      settle(G);
+      G.game.dragon.hp = G.game.dragon.maxHp;
+      place(G, 6);
+      G.game.player.debug.god = true;
+    },
+    go: (G) => G.game.player.debug.flurry(5, 'severing'),
+    frame: (G) => { aimAt(G); G.tick(DT); },
+    busy: (G) => G.game.player.state === 'flurry' || G.game.player.state === 'plunge',
+  });
+  return R.negative.G;
+}
+
 async function scenarioStreakFx() {
   out('\n== scenario STREAKFX (the streak on the hero and in the world: off = today, monotone by tier, the loss, the ground answers) ==');
   const SKM = await imp('src/combat/streak.js');
@@ -12450,6 +12474,7 @@ const SCENARIOS = {
   wyrmlook: scenarioWyrmLook,
   herolife: scenarioHeroLife,
   streakfx: scenarioStreakFx,
+  timerip: scenarioTimeRip,
   herohand: scenarioHeroHand,
   heroweight: scenarioHeroWeight,
   heroarms: scenarioHeroArms,
