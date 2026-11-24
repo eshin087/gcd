@@ -6770,32 +6770,24 @@ async function scenarioSwordMystic() {
     if (!hook) p.mystic = null;
     return G;
   };
-  /** What the mystic layer spawns: wraps fx.add / fx.alpha / fx.fire while p.mystic.update runs. */
+  /** What the mystic layer draws (its onEmit hook), the most a frame, and anything it puts in the fire field. */
   const watch = (G) => {
-    const { game } = G, p = game.player, rec = { spawns: [], frameMax: 0, other: 0 };
+    const { game } = G, p = game.player, rec = { spawns: [], frameMax: 0, writeMax: 0, other: 0 };
     const M = p.mystic;
     if (!M) return rec;
+    M.onEmit = (kind, glyph, a, life, size, col) => {
+      rec.spawns.push({ kind, glyph, a, life: kind === 'letter' ? 1.6 / 60 : life, size: kind === 'stroke' ? size : 0.13, st: 0, ok: Number.isFinite(a + life + size + col), col });
+    };
     const upd = M.update.bind(M);
     let inM = false;
-    const wrap = (pool, kind) => {
-      const f = pool.spawn.bind(pool);
-      pool.spawn = (o) => {
-        if (inM) {
-          if (kind !== 'add') rec.other++;
-          else rec.spawns.push({ glyph: typeof o.glyph === 'string' ? o.glyph : '?', a: o.alpha, life: o.life, size: o.size, st: o.stretch || 0, ok: Number.isFinite(o.x + o.y + o.z + o.alpha + o.life + o.size), col: Math.max(...o.color) * o.alpha });
-        }
-        return f(o);
-      };
-    };
-    wrap(game.fx.add, 'add');
-    wrap(game.fx.alpha, 'alpha');
-    wrap(game.fx.fire, 'fire');
+    const f = game.fx.fire.spawn.bind(game.fx.fire);
+    game.fx.fire.spawn = (o) => { if (inM) rec.other++; return f(o); };
     M.update = (dt) => {
       inM = true;
-      const n0 = rec.spawns.length;
       upd(dt);
       inM = false;
-      rec.frameMax = Math.max(rec.frameMax, rec.spawns.length - n0);
+      rec.frameMax = Math.max(rec.frameMax, M.n);
+      rec.writeMax = Math.max(rec.writeMax, M.w);
     };
     return rec;
   };
@@ -6819,11 +6811,11 @@ async function scenarioSwordMystic() {
       const G = setup(hook), rec = watch(G), p = G.game.player, f = [];
       p.debug.streak(15);
       for (let i = 0; i < 90; i++) { if (i === 10 || i === 32) p._buffer('light'); G.tick(DT); f.push(look(G.game)); }
-      return { f, rec, total: p.mystic?.total ?? 0 };
+      return { f, rec, total: p.mystic?.total ?? 0, lb: p.mystic?.lb ?? null };
     };
     const today = frames(false), off = frames(true);
     assert(today.f.every((x, i) => x === off.f[i]) && off.f.length === 90, 'mystic off: the blade\'s uniforms and part tables of a swing at streak 15 are today\'s, frame by frame');
-    assert(off.rec.spawns.length === 0 && off.rec.other === 0 && off.total === 0, `mystic off: the layer spawns nothing (${off.rec.spawns.length} spawns)`);
+    assert(off.rec.spawns.length === 0 && off.rec.other === 0 && off.total === 0 && off.lb === null, `mystic off: the layer draws nothing and builds nothing (${off.rec.spawns.length} marks)`);
     // (2) each option: its glyphs, the budget, finite, monotone by tier, faint, nothing in the fire field
     const TIERS = [[0, 0], [3, 1], [7, 3], [15, 5]];
     for (const m of ['a', 'b', 'c', 'd']) {
@@ -6839,16 +6831,17 @@ async function scenarioSwordMystic() {
         // presence: alpha x life x stroke length, summed (what the eye gets of it)
         const pres = rec.spawns.reduce((acc, s) => acc + s.a * Math.min(1, s.life) * s.size * (1 + s.st), 0);
         const hot = rec.spawns.reduce((acc, s) => Math.max(acc, s.col), 0);
-        row.push({ n, t, k: rec.spawns.length, max: rec.frameMax, other: rec.other, badGlyph, nan, pres, hot });
+        const kinds = [...new Set(rec.spawns.map((s) => s.kind))].join('+');
+        row.push({ kinds, n, t, k: rec.spawns.length, max: rec.frameMax, wmax: rec.writeMax, other: rec.other, badGlyph, nan, pres, hot });
       }
-      out(`     ${m} (${SM.MYSTIC_NAMES[m]})`, row.map((r) => `t${r.t}: ${r.k} spawns, max ${r.max}/frame, presence ${r.pres.toFixed(3)}, peak col x a ${r.hot.toFixed(2)}`).join(' | '));
+      out(`     ${m} (${SM.MYSTIC_NAMES[m]})`, row.map((r) => `t${r.t}: ${r.k} ${r.kinds}, max ${r.max}/frame, presence ${r.pres.toFixed(3)}, peak col x a ${r.hot.toFixed(2)}`).join(' | '));
       assert(row.every((r) => r.k > 0), `${m}: already there with no streak, and at every tier (${row.map((r) => r.k).join(' / ')} spawns)`);
-      assert(row.every((r) => r.badGlyph === 0 && r.nan === 0 && r.other === 0), `${m}: only its glyphs (${SM.MYSTIC_GLYPHS[m]}), all finite, nothing in the fire field or fx.alpha`);
-      assert(row.every((r) => r.max <= SM.MYSTIC.budget), `${m}: at most ${SM.MYSTIC.budget} spawns a frame (peak ${Math.max(...row.map((r) => r.max))})`);
+      assert(row.every((r) => r.badGlyph === 0 && r.nan === 0 && r.other === 0), `${m}: only its glyphs (${SM.MYSTIC_GLYPHS[m]}), all finite, nothing in the fire field`);
+      assert(row.every((r) => r.max <= SM.MYSTIC.budget && r.wmax <= SM.MYSTIC.letters), `${m}: at most ${SM.MYSTIC.budget} new spawns and ${SM.MYSTIC.letters} written letters a frame (peak ${Math.max(...row.map((r) => r.max))} / ${Math.max(...row.map((r) => r.wmax))})`);
       let mono = true;
       for (let i = 1; i < row.length; i++) if (!(row[i].pres >= row[i - 1].pres * 0.98)) mono = false;
       assert(mono && row[3].pres > row[0].pres * 1.5, `${m}: grows with the tier (presence ${row.map((r) => r.pres.toFixed(3)).join(' -> ')})`);
-      assert(row.every((r) => r.hot < 0.9), `${m}: faint (colour x alpha at most ${Math.max(...row.map((r) => r.hot)).toFixed(2)} < 0.9)`);
+      assert(row.every((r) => r.hot <= 0.63), `${m}: faint (colour x alpha at most ${Math.max(...row.map((r) => r.hot)).toFixed(2)}: about the bloom threshold, 0.55)`);
     }
     // (3) nothing on a dead hero
     {
