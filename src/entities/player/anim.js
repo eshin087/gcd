@@ -1044,7 +1044,9 @@ function attackPose(p, A) {
   // behind its arc, then whips through to catch up. It is never pulled back past the frame that hit.
   const at = A.player?.atk;
   if (k.kind === 'clip' && at && at.def === d && fin(at.hitAt, -1) >= 0) {
-    const s = t - at.hitAt, b = clamp(fin(d.bite, 1), 0, 2) * (1 - smoothstep(0, BITE.dur, s)), H = A.bite;
+    // (a def with `hits`: the window that landed, at.hd; `biteHold` s: how long the edge holds, BITE.dur)
+    const bd = at.hd ?? d;
+    const s = t - at.hitAt, b = clamp(fin(bd.bite, 1), 0, 2) * (1 - smoothstep(0, clamp(fin(bd.biteHold, BITE.dur), 0.02, 0.3), s)), H = A.bite;
     if (H.rec !== at || H.at !== at.hitAt) {
       // (keyed on the record AND the time: two swings can hit at the very same clock time, and the
       // second one must not reuse the first one's blade)
@@ -3297,7 +3299,10 @@ export class HeroAnimator {
     let k = 0;
     if (def && Array.isArray(list) && list.length) {
       const n = list.length + 1;
-      if (Number.isInteger(this.forceVariant)) k = clamp(this.forceVariant, 0, n - 1);
+      // (`forceVariantBy` { [def name]: index }: one hit pinned, the Lab's 'look' row; forceVariant: all)
+      const fb = this.forceVariantBy?.[def.name];
+      if (Number.isInteger(fb)) k = clamp(fb, 0, n - 1);
+      else if (Number.isInteger(this.forceVariant)) k = clamp(this.forceVariant, 0, n - 1);
       else {
         // the looks left after the two rules (the line first; if that leaves none, only the repeat)
         const P0 = SW_PICK;

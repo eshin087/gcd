@@ -1,3 +1,6 @@
+import { FH } from './swingKit.js';
+import { STYLES } from './styles/index.js';
+
 // The hero's swings as keyframed clips (data only; anim.js `swingPose` plays them, combat.js names
 // one per hit: `anim: { kind: 'clip', clip: '<name>' }`).
 //
@@ -90,22 +93,8 @@
 // It is never flung from in front of him to behind him and snapped forward again for the next coil
 // in one frame: the arm-snap test bounds it.
 
-/** The free hand's places (a key's `fh`; the key's own fields win): where it is (`l`), its elbow
- *  (`lp`), where the sword fingers point (`ld`), the palm (`pn`) and the sword wrist (`lk`). */
-export const FH = {
-  aim: { l: [-0.02, 0, 0.4], lp: [0.35, -0.9, -0.1], ld: [-6, 10], pn: [-1, 0, 0], lk: 0 }, // 立剑指: at the foe, the thumb up, the elbow dropped
-  aimLo: { l: [0.06, -0.26, 0.36], lp: [0.45, -0.85, -0.2], ld: [-4, -12], pn: [0, -1, 0], lk: 0 }, // 平剑指: a low point, the palm down
-  chest: { l: [-0.1, -0.22, 0.26], lp: [0.6, -0.75, -0.2], ld: [22, 55], pn: [-1, 0, 0], lk: 0 }, // tucked before the left chest, the fingers up (arms in)
-  wrist: { l: [-0.1, -0.25, 0.3], lp: [0.5, -0.85, -0.1], ld: [-60, -20], pn: [0, -1, 0], lk: 1 }, // 合: on the sword wrist (give `l` per clip)
-  highWing: { l: [0.3, -0.02, -0.2], lp: [0.35, -0.8, -0.45], ld: [130, 25], pn: [-0.5, -1, 0.2], lk: 0 }, // drawn back-left at shoulder height (a bow draw)
-  // (Session 30: it was LEVEL at shoulder height, [0.46, -0.06, -0.1]: with the whirl's and the flat
-  // backhand's finish he stood like a scarecrow, one arm straight out. The hand sits a hand's width
-  // under the shoulder now and the elbow hangs: a line that slopes away from the blade)
-  wing: { l: [0.44, -0.17, -0.12], lp: [0.2, -0.75, -0.65], ld: [100, -8], pn: [0, -1, 0], lk: 0 }, // 展: out to his left, sloping down from the shoulder
-  wingLo: { l: [0.4, -0.3, -0.14], lp: [0.3, -0.45, -0.85], ld: [110, -35], pn: [0, -1, 0], lk: 0 }, // low, out to his left
-  tail: { l: [0.22, -0.38, -0.22], lp: [0.75, -0.3, -0.6], ld: [170, -58], pn: [-1, 0, 0], lk: 0 }, // behind the hip, the fingers back and down
-  high: { l: [0.2, 0.3, -0.1], lp: [0.85, -0.3, 0.4], ld: [-10, 75], pn: [0.2, 0, 1], lk: 0 }, // RARE (the low sweep only): beside the head, never over the crown
-};
+// The free hand's places (`FH`) live in swingKit.js (a style's clips import them from there).
+export { FH };
 
 export const SWINGS = {
   // ---- hit 1: right to left ------------------------------------------------------------------
@@ -457,3 +446,23 @@ export const SWINGS = {
     ],
   },
 };
+
+// Every style's own clips (styles/<id>.js `swings`, ADR to come) join SWINGS under their own names, so
+// the animator plays them and every lint that walks SWINGS (the suites, tests/audit/hero-combo.mjs)
+// checks them too. A name already taken is left out (first come keeps it) and said once in the console.
+/** The clip names each style added (style id → [names]); `today` adds none. */
+export const STYLE_SWINGS = {};
+for (const [id, st] of Object.entries(STYLES)) {
+  const add = (STYLE_SWINGS[id] = []);
+  const sw = st?.swings;
+  if (!sw || typeof sw !== 'object') continue;
+  for (const [name, clip] of Object.entries(sw)) {
+    if (!clip || !Array.isArray(clip.keys)) continue;
+    if (Object.prototype.hasOwnProperty.call(SWINGS, name)) {
+      console.warn(`[swings] style ${id}: clip name '${name}' is taken; its clip is left out`);
+      continue;
+    }
+    SWINGS[name] = clip;
+    add.push(name);
+  }
+}

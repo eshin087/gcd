@@ -21,6 +21,8 @@ import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { buildLooks } from './labLooks.js';
 import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
 import { LIFE, setLife, setLifeK } from '../world/life/lifeSwitch.js';
+import { STYLES, STYLE_IDS, setComboStyle, comboStyleId } from '../entities/player/styles/index.js';
+import { lightChain } from '../entities/player/combat.js';
 
 // The Lab — a debug panel to test the boss without playing the fight (contract: docs/ARCHITECTURE.md
 // → Lab; usage: src/dev/README.md). It talks only to the actors' `debug` APIs (dragon.debug,
@@ -803,6 +805,74 @@ export class Lab {
     this.ui.looksSync = buildLooks(body, id, (t) => this._status(t, 'ok'));
   }
 
+  /** PLAYER → 'moves: combo' (the light chain's style, styles/index.js setComboStyle; ?combo=) and
+   *  'look' (pin a variant of each hit of that chain: anim.forceVariantBy; a tap cycles auto → 1 → 2 …). */
+  _buildComboRows(body) {
+    const cr = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'combo', cr).title = 'moves: combo: the light chain of a style (?combo=; takes effect as the next chain starts)';
+    const cg = el('div', 'lab-grid', null, cr);
+    cg.style.flex = '1';
+    this.ui.comboBtns = STYLE_IDS.map((id) => {
+      const b = button(cg, id, () => {
+        setComboStyle(id);
+        this._syncComboBtns();
+        this._buildLookBtns();
+        this._status(`combo: ${id} (${lightChain(this.game.player?.streak ?? 0).length} hits)`, 'ok');
+      });
+      b.title = `${STYLES[id]?.label ?? id}: ${STYLES[id]?.blurb ?? ''}`;
+      return { id, el: b };
+    });
+    const lr = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'look', lr).title = 'pin one look (variant) of each hit of the chain: a tap cycles auto → 1 → 2 …';
+    const g = el('div', 'lab-grid', null, lr);
+    g.style.flex = '1';
+    // (a pool of seven, the longest chain: the ones past the chain's end are hidden)
+    this.ui.lookBtns7 = Array.from({ length: 7 }, (_, i) => {
+      const B = { i, def: null, el: null };
+      B.el = button(g, '-', () => this._cycleLook(B));
+      return B;
+    });
+    this._syncComboBtns();
+    this._buildLookBtns();
+  }
+
+  _lookLabel(d) {
+    const k = this.game.player?.anim?.forceVariantBy?.[d.name];
+    return `${d.combo}:${Number.isInteger(k) ? k + 1 : 'auto'}`;
+  }
+
+  _cycleLook(B) {
+    const d = B.def, A = this.game.player?.anim;
+    if (!d || !A) return;
+    const n = 1 + (Array.isArray(d.variants) ? d.variants.length : 0);
+    const M = (A.forceVariantBy ??= {});
+    const k = M[d.name];
+    if (!Number.isInteger(k)) M[d.name] = 0;
+    else if (k + 1 < n) M[d.name] = k + 1;
+    else delete M[d.name];
+    setText(B.el, this._lookLabel(d));
+    setClass(B.el, 'on', Number.isInteger(M[d.name]));
+  }
+
+  _syncComboBtns() {
+    const id = comboStyleId();
+    for (const B of this.ui.comboBtns ?? []) B.el.classList?.toggle?.('on', B.id === id);
+  }
+
+  _buildLookBtns() {
+    const chain = lightChain(this.game.player?.streak ?? 0);
+    for (const B of this.ui.lookBtns7 ?? []) {
+      const d = chain[B.i] ?? null;
+      B.def = d;
+      if (B.el?.style) B.el.style.display = d ? '' : 'none';
+      if (!d) continue;
+      const n = 1 + (Array.isArray(d.variants) ? d.variants.length : 0);
+      setText(B.el, this._lookLabel(d));
+      setClass(B.el, 'on', Number.isInteger(this.game.player?.anim?.forceVariantBy?.[d.name]));
+      B.el.title = `${d.name}: ${n} look${n > 1 ? 's' : ''}`;
+    }
+  }
+
   _syncStanceBtns() {
     const v = this.game.player?.debug?.fightStance ?? null;
     for (const B of this.ui.stanceBtns ?? []) B.el.classList?.toggle?.('on', B.v === v);
@@ -1124,6 +1194,7 @@ export class Lab {
       setText(this.ui.atkSpeedVal, `x${v.toFixed(2)}`);
     });
     this.ui.atkSpeedVal = el('span', 'lab-val', 'x1.00', sp);
+    this._buildComboRows(body);
     // the stance he stands in (stances.js; player.debug.fightStance): the game's choice (the fight
     // stance while locked on or in a boss fight), or hold one of the two to look at it
     const stc = el('div', 'lab-row', null, body);

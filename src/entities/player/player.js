@@ -7,7 +7,7 @@ import { TELL, RESULT, DEFENSE, GUARD, tellDefaults, facingDelta, dodgeOnly, tel
 import { buildHero, setHeroGlyphScale, installLean, tintHero, LEAN, PLAYER_SCALE, BLADE_BASE, HERO_INK, DIM } from './model.js';
 import { HERO_LOOKS, DEFAULT_LOOK, LOOK_IDS, getLook } from './gear/looks.js';
 import { HeroAnimator, ROLL_SLIDE } from './anim.js';
-import { LIGHT, HEAVY, heavyAfter, SPRINT_ATK, ROLL_ATK, THRUST, CLEAVE, ONE_BREATH, CHARGE, REACH, HIT_FEEL, feel, chargeStats, bandHit, SwordSweep } from './combat.js';
+import { lightChain, hitWindows, HEAVY, heavyAfter, SPRINT_ATK, ROLL_ATK, THRUST, CLEAVE, ONE_BREATH, CHARGE, REACH, HIT_FEEL, feel, chargeStats, bandHit, SwordSweep } from './combat.js';
 import { PlayerFx, EDGE_GLINT } from './fx.js';
 import { DEFAULT_LOADOUT, swordFromUrl } from './gear/index.js';
 import { CLASH, clashBurst, clashGrind, closestOnSegments } from '../../combat/clashFx.js';
@@ -370,7 +370,7 @@ export class Player {
   isSwinging() {
     const a = this.atk;
     if (!a || a.pending || !a.def || (this.state !== 'attack' && this.state !== 'heavy')) return false;
-    return a.t >= a.def.windup && a.t <= a.def.windup + a.def.active + 0.04;
+    return a.t >= a.def.windup && a.t <= this._strikeEnd(a) + 0.04;
   }
 
   /** What the animator's flurry clip reads (flurry.js `anim`). */
@@ -820,7 +820,9 @@ export class Player {
     // skip input on the first controllable frame (the click that dismissed a menu)
     this._readInput(control && this.control, dt);
     this.control = control;
-    if (this.buf.action && this.time - this.buf.t > TUNE.buffer) this.buf.action = null;
+    // (a swing's own `buffer`, combat.js / styles/COMBOS.md: a press made in a long beat is kept that long)
+    const kb = this.atk?.def?.buffer, keep = kb > TUNE.buffer ? kb : TUNE.buffer;
+    if (this.buf.action && this.time - this.buf.t > keep) this.buf.action = null;
     if (this.chipGuard > 0) this.chipGuard -= dt;
     if (this.shotStunT > 0) this.shotStunT -= dt;
     if (this.critTimer > 0) this.critTimer = Math.max(0, this.critTimer - dt);
@@ -1163,9 +1165,11 @@ export class Player {
       this.buf.action = null;
       if (this._tryExecution()) return true;
       // out of a sprint: the bounding slash; out of a forward roll: the low rising cut
-      if (this.state === 'sprint' && Math.hypot(fin(this.groundVel.x), fin(this.groundVel.z)) > TUNE.runSpeed * 1.05) return this._startAttack(SPRINT_ATK);
-      if (this.state === 'roll' && !this.rollBack) return this._startAttack(ROLL_ATK);
-      return this._startAttack(LIGHT[0]);
+      // (the chain he starts now: the combo style's, combat.js lightChain; the swing keeps it, atk.chain)
+      const ch = lightChain(this.streak);
+      if (this.state === 'sprint' && Math.hypot(fin(this.groundVel.x), fin(this.groundVel.z)) > TUNE.runSpeed * 1.05) return this._startAttack(SPRINT_ATK, ch);
+      if (this.state === 'roll' && !this.rollBack) return this._startAttack(ROLL_ATK, ch);
+      return this._startAttack(ch[0], ch);
     }
     // a heavy on its own (out of a sprint or a roll too): the gap-closing thrust, HEAVY[0]
     if (a === 'heavy' && allowAttack) {
@@ -1514,7 +1518,7 @@ export class Player {
     if (!this.canTrade() || a.pending) return false;
     if (a.hit && !a.guarded) return false; // it already bit: a plain trade of blows, as before
     const T = DEFENSE.trade, W = a.def.windup;
-    return a.t >= W - T.early && a.t <= W + a.def.active + T.late;
+    return a.t >= W - T.early && a.t <= this._strikeEnd(a) + T.late;
   }
 
   /** Could a swing of the hero's meet a blow right now? He is swinging (not the execution), and the
@@ -2631,7 +2635,9 @@ export class Player {
   }
 
   // --- attacks -----------------------------------------------------------
-  _startAttack(def) {
+  /** Start the attack `def`; `chain`: the light chain it belongs to (combat.js lightChain; the next
+   *  light of it follows), null for a heavy. */
+  _startAttack(def, chain = null) {
     if (!def) return false;
     const light = def.kind === 'light';
     // the counter cut: the first light after a perfect parry winds up faster and crits
@@ -2647,6 +2653,10 @@ export class Player {
       // never waits (ADR-115: the charge moved to the heavy button)
       pending: def.button === 'heavy' && this.hb.held,
       damage: fin(def.damage, 30), poise: fin(def.poise, 12), charge: 0, relT: 0, shaped: false, svx: 0, svz: 0,
+      // the chain it belongs to; its hit windows (combat.js hitWindows: null = one blow in the active
+      // frames), the one now (wi) and the def that window's hit reads (hd); `heftT`: the clock's
+      // drag after a landed hit (a def's `heft`)
+      chain: Array.isArray(chain) && chain.length ? chain : null, win: hitWindows(def), wi: -1, hd: def, heftT: 0, heftK: 1,
     };
     this.chargeK = 0;
     if (!def.keepYaw) this.yaw = this._aimYaw(this.yaw); // commit the swing direction
@@ -2658,7 +2668,9 @@ export class Player {
 
   /** A swing really starts (a held light only once it is released): announce it, glint the gem. */
   _swingStarted(def, charge) {
-    this._emit('player:attack', { kind: def.kind, combo: def.combo, charge, name: def.name ?? null });
+    // (`of`: the length of the light chain it belongs to, null for a heavy: audio.js spreads its rising
+    // pitch over a chain of 3-7 hits as over today's 5)
+    this._emit('player:attack', { kind: def.kind, combo: def.combo, charge, name: def.name ?? null, of: this.atk?.chain?.length ?? null });
     if (def.kind !== 'light') this.anim.kickCoat(def.dash ? 0.5 + 0.5 * charge : 0.45);
     this.rig.gem.getWorldPosition(this._gem);
     const gv = this.gemVel;
@@ -2816,7 +2828,13 @@ export class Player {
     }
     const d = a.def;
     const W = d.windup, A = d.active, R = d.recovery;
-    const sp = this._attackSpeed();
+    let sp = this._attackSpeed();
+    // a landed hit's HEFT (a def's `heft`, _applyHit): the attack's clock runs at heftK for heftT s
+    // after the freeze, so the follow-through drags through what it cut (the root's speeds go with it)
+    if (a.heftT > 0 && !(fin(this.game.hitstopTimer) > 0)) {
+      a.heftT -= dt;
+      sp *= clamp(fin(a.heftK, 1), 0.05, 1);
+    }
     dt *= sp; // the attack's own clock (the root's speeds below are scaled back, so distances hold)
     if (a.pending) {
       if (!this.hb.held) {
@@ -2879,8 +2897,13 @@ export class Player {
       if (b === 'light' && r >= fin(d.chain, 0)) {
         this.buf.action = null;
         if (this._tryExecution()) return;
-        const next = d.kind === 'light' ? LIGHT[d.combo % LIGHT.length] : LIGHT[0];
-        if (this._startAttack(next)) return;
+        // (the chain this swing belongs to: the next hit of it, or, past its end or after anything that
+        // is not a light, the first of the chain as it is NOW: a combo switch or the streak's tier
+        // takes effect there and never mid-chain)
+        const was = a.chain ?? lightChain(this.streak);
+        const i = d.kind === 'light' ? Math.round(fin(d.combo, 1)) % was.length : 0;
+        const ch = i === 0 ? lightChain(this.streak) : was;
+        if (this._startAttack(ch[i] ?? ch[0], ch)) return;
       } else if (b === 'heavy' && r >= fin(d.chain, 0)) {
         // the heavy branch: after the n-th light its own heavy (combat.js HEAVY); it ends the chain
         this.buf.action = null;
@@ -3198,18 +3221,33 @@ export class Player {
       a.prevT = t;
       const crit = this.critTimer > 0 || !!a.crit;
       const armed = !!this.rig.loadout?.weapon;
+      // a def with `hits` (combat.js hitWindows): each window is a blow of its own, tested afresh
+      // (ws..we the window now; s0..s1 all of them: the arc and the world's sweep run through them)
+      let ws = W, we = end, s0 = W, s1 = end;
+      const Wn = a.win;
+      if (Wn) {
+        let i = -1;
+        for (let k = 0; k < Wn.length; k++) if (t >= Wn[k][0]) i = k;
+        if (i >= 0 && i !== a.wi) this._hitWindow(a, i);
+        const cw = Wn[Math.max(0, a.wi)];
+        ws = cw[0];
+        we = cw[1];
+        s0 = Wn[0][0];
+        s1 = Wn[Wn.length - 1][1];
+      }
       // any overlap of this frame with the active window counts (robust to long frames)
-      if (t >= W && prevT <= end + 0.04) {
+      if (t >= s0 && prevT <= s1 + 0.04) {
+        const live = t >= ws && prevT <= we;
         // the hit first: a cut that lands this frame draws its contact, not the arc's glint
-        if (!a.hit && prevT <= end) this._tryHit(a);
+        if (!a.hit && live) this._tryHit(a);
         // the blade meets the world too (ADR-107): what it sweeps through is chipped, cut down, felled
-        if (prevT <= end) this._cutWorld(a, sw, prevT);
+        if (live) this._cutWorld(a, sw, prevT);
         // (the arc bites as a cut lands: white-hot for 0.06 s of the attack clock after the contact)
         this.fx.trail(sw.pa, sw.pb, sw.a, sw.b, d.kind, crit, true, a.hit && a.hitAt >= 0 && a.t - a.hitAt < 0.06);
         // a glint on the arc's edge as the cut comes through (the cleave cuts late in its dash). The
         // edge runs just past the steel's point (fx.arcAt), not at the end of the reach. A landed
         // cut's core is the beat's one star: a whiff keeps the glint
-        if (!a.hit && !a.glint && d.kind !== 'thrust' && t >= W + d.active * (d.kind === 'cleave' ? 0.82 : 0.6)) {
+        if (!a.hit && !a.glint && d.kind !== 'thrust' && t >= ws + (we - ws) * (d.kind === 'cleave' ? 0.82 : 0.6)) {
           a.glint = true;
           const f = this.fx.arcAt(d.kind);
           this._tip.lerpVectors(sw.a, sw.b, f);
@@ -3226,7 +3264,7 @@ export class Player {
       // the active frames until the cut lands (after the hit test: never a second star on the contact
       // frame) or reaches the arc's glint on a whiff. Not the execution's thrust
       if (armed && !a.hit && d.kind !== 'thrust') {
-        const G = EDGE_GLINT, g0 = W - G.lead, g1 = W + d.active * (d.kind === 'cleave' ? G.atCleave : G.at);
+        const G = EDGE_GLINT, g0 = ws - G.lead, g1 = ws + (we - ws) * (d.kind === 'cleave' ? G.atCleave : G.at);
         if (t >= g0 && prevT <= g1) {
           const u = clamp((t - g0) / (g1 - g0), 0, 1), z = lerp(G.z[0], G.z[1], u ** G.ease);
           this.fx.edgeGlint(sw, a.glintZ ?? G.z[0], z, this.bladeFar, crit, fin(this.game.realDt, 1 / 60), d.glint === 'ridge');
@@ -3391,6 +3429,36 @@ export class Player {
     }
   }
 
+  /** The attack clock at which a swing's last blow can land: its active frames' end, or its last
+   *  hit window's (a def with `hits`) when that is later. */
+  _strikeEnd(a) {
+    const d = a.def, e = d.windup + d.active, Wn = a.win;
+    return Wn && Wn.length ? Math.max(e, Wn[Wn.length - 1][1]) : e;
+  }
+
+  /** A def with `hits`: the swing enters its window `i` (combat.js hitWindows). The blow is new: it may
+   *  land again (a.hit), on the world as a new blow (wsrc), with its own glints, damage and feel (a.hd);
+   *  the bite answers it (anim.js reads a.hitAt, re-set as it lands). Past the first, the window's swing
+   *  sound: player:attack again, with `window` = i (audio.js plays it whatever the gap). */
+  _hitWindow(a, i) {
+    const w = a.win?.[i];
+    if (!w) return;
+    a.wi = i;
+    a.hd = w[2];
+    a.hit = false;
+    a.glint = false;
+    a.glintZ = null;
+    a.wsrc = undefined;
+    a.wthrough = false;
+    a.wfelt = false;
+    a.damage = fin(w[2].damage, fin(a.def.damage, 30));
+    a.poise = fin(w[2].poise, fin(a.def.poise, 12));
+    if (i > 0) {
+      const d = a.def;
+      this._emit('player:attack', { kind: d.kind, combo: d.combo, charge: 0, name: d.name ?? null, of: a.chain?.length ?? null, window: i });
+    }
+  }
+
   _tryHit(a) {
     if (a.exec) {
       this._executeHit(a);
@@ -3402,7 +3470,7 @@ export class Player {
     const spheres = dr.hurtSpheres;
     if (!Array.isArray(spheres) || !spheres.length) return;
     const h = this._hit;
-    if (!this.sweep.test(spheres, h, fin(a.def.up, REACH.up))) return;
+    if (!this.sweep.test(spheres, h, fin((a.hd ?? a.def).up, REACH.up))) return;
     this._applyHit(a, h);
   }
 
@@ -3414,9 +3482,10 @@ export class Player {
    */
   _applyHit(a, h, viaShards = false) {
     const dr = this.game.dragon;
-    a.hit = true; // one hit per swing
+    a.hit = true; // one hit per swing (per window of a def with `hits`)
 
-    const d = a.def, heavy = !!d.heavy;
+    // (the window's own def for a def with `hits`: its damage, feel and contact; the def otherwise)
+    const d = a.hd ?? a.def, heavy = !!d.heavy;
     const part = typeof h.sphere.part === 'string' ? h.sphere.part : 'body';
     const crit = this.critTimer > 0 || !!a.crit;
     const damage = a.damage * (crit ? DEFENSE.ghostep.critMult : 1); // raw: the dragon applies part multipliers
@@ -3454,13 +3523,21 @@ export class Player {
     if (guarded) return;
     if (dealt > 0) this._guardGain(heavy ? GUARD.hit.heavy : GUARD.hit.light);
     // (the steel flares at its own contact: not when the shards hit and the blade is in the ground)
-    if (!viaShards) this.bladeFlare = Math.max(this.bladeFlare, heavy || crit ? TUNE.bladeFlare.hit[1] : TUNE.bladeFlare.hit[0]);
+    // (a def's `flare`: its own flash of the steel on a landed hit, in TUNE.bladeFlare.hit's units; a crit keeps the heavy one at least)
+    if (!viaShards) this.bladeFlare = Math.max(this.bladeFlare, Number.isFinite(d.flare) ? Math.max(clamp(d.flare, 0, 1.5), crit ? TUNE.bladeFlare.hit[1] : 0) : heavy || crit ? TUNE.bladeFlare.hit[1] : TUNE.bladeFlare.hit[0]);
     // the contact, for the animator and other areas: when (the attack clock: anim.js attackPose's bite;
     // −1 = none) and which way the blade went
     a.hitAt = a.t;
     a.cutDir = this._cutDir(C, a.cutDir);
     const HF = HIT_FEEL.crit, k = fin(a.charge, 0);
     this._hitstop(fin(d.hitstop, 0.05) * (crit ? HF.stop : 1) * (d.kind === 'cleave' ? 1 + 0.3 * k : 1));
+    // HEFT (a def's `heft` { t, rate }; none today): after the freeze his own clock drags at `rate` for
+    // `t` s, the blade pushing through what it cut before it carries on (_tickAttack)
+    const HT = d.heft;
+    if (HT && fin(HT.t, 0) > 0) {
+      a.heftT = Math.min(0.3, fin(HT.t, 0));
+      a.heftK = clamp(fin(HT.rate, 0.35), 0.05, 1);
+    }
     this.game.shake?.(fin(d.shake, 0) * (crit ? HF.shake : 1));
     const pm = feel(d.punch, k) + (crit ? HF.punch : 0);
     if (pm > 0) this.game.punch?.(pm);
@@ -3714,7 +3791,7 @@ export class Player {
       glow = 1.0 + 0.8 * k;
     } else if (a && (st === 'attack' || st === 'heavy') && !a.pending) {
       const d = a.def, t = a.t;
-      if (t >= d.windup - 0.06 && t <= d.windup + d.active + 0.12) {
+      if (t >= d.windup - 0.06 && t <= this._strikeEnd(a) + 0.12) {
         // relative to rest: at the game camera the rest ink is already 1.6 and the rest glow 1.45 (a
         // flat 1.6 / 1.25 left a light strike no brighter than the idle blade there, its seams dimmer)
         ink = Math.max(d.heavy ? 2.2 : 1.6, restInk + (d.heavy ? 0.6 : 0.3));
@@ -3772,7 +3849,7 @@ export class Player {
       // light is there at once and leaves in a few frames (bladeHot). It goes to his OWN part tables
       // (uSelfPart*): no boss's rig reads them.
       const F = TUNE.bladeFlare, B = HERO_INK.bladeTip, P = B.part;
-      const inStrike = !!a && (st === 'attack' || st === 'heavy') && !a.pending && a.t >= a.def.windup - 0.06 && a.t <= a.def.windup + a.def.active + 0.12;
+      const inStrike = !!a && (st === 'attack' || st === 'heavy') && !a.pending && a.t >= a.def.windup - 0.06 && a.t <= this._strikeEnd(a) + 0.12;
       let hot = inStrike ? 1 : 0;
       if (st === 'charge') hot = Math.max(hot, clamp(this.chargeK, 0, 1));
       else if (flurrying) hot = 1;

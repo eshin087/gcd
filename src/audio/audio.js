@@ -15,6 +15,10 @@ import { TrackBank, TrackLoop } from './tracks.js';
 import { THUMP_SFX, Thump } from './thump.js';
 import { StreakSound, perfectSound } from './streakSound.js';
 
+/** A light chain's hit `c` of `of` hits as a step of today's five (the swing's and the cut's rising
+ *  pitch; styles/COMBOS.md): today's chain (5) and anything not a number pass through as they are. */
+const chainCombo = (c, of) => (of === 5 || !Number.isFinite(c) || !Number.isFinite(of) || of < 2 || c < 1 ? c : 1 + Math.round(((c - 1) * 4) / (of - 1)));
+
 // WebAudio engine: the sound effects are synthesised at runtime, except the attack sounds, the red cues
 // and the combat core (parries, hurt, the hero's landed cuts, slam, flurry, plunge, clash, the boss's
 // guard), which are recorded / designed one-shots over the synth (samples.js, sampleList.js; `?sfx=old`:
@@ -870,8 +874,17 @@ export class AudioEngine {
       const slot = HERO_SLOT[d.kind === 'thrust' ? 'thrust' : heavy ? 'heavy' : 'light'];
       // (the light chain's combo runs 1..5: every cut a step higher, the whirl and the lunge too; it used to
       // fall back at the whirl, `combo % 3`: the owner, round two sign-off)
-      const step = clamp((num(d.combo, 1) | 0) - 1, 0, 4);
-      if (!slot || !this._sample(slot, null, 1, HERO.rate * (1 + step * HERO.combo), 'hero')) this.play('swing', { heavy, combo: d.combo, thrust: d.kind === 'thrust' });
+      // (a style's chain of 3-7 hits, `of`: its steps spread over today's five; the last cut's chain
+      // length is kept for its landed cuts; a hit window past the first, `window`, is never eaten by the gap)
+      const of = num(d.of, 5) >= 2 ? num(d.of, 5) : 5;
+      this._chainOf = d.kind === 'light' || d.kind === 'slam' ? of : 5;
+      const combo = chainCombo(d.combo, of);
+      if (num(d.window, 0) > 0) {
+        this._last.delete('smp:hero');
+        this._last.delete('swing');
+      }
+      const step = clamp((combo | 0) - 1, 0, 4);
+      if (!slot || !this._sample(slot, null, 1, HERO.rate * (1 + step * HERO.combo), 'hero')) this.play('swing', { heavy, combo, thrust: d.kind === 'thrust' });
     });
     on('player:slam', (d) => this._sample('slam', this._at(d.x, d.z)) || this.play('slam', { x: d.x, z: d.z }));
     on('player:charge', (d) => this.charge?.start(d));
@@ -890,7 +903,7 @@ export class AudioEngine {
       // (not the slam's ground shards: the blade is in the ground, the shards hit)
       if (d.shards) return;
       this._cutN = (this._cutN + 1) | 0;
-      this._cut({ weight: d.weight ?? (d.heavy ? 'slam' : 'light'), combo: d.combo, crit: d.crit, alt: this._cutN & 1, x, z });
+      this._cut({ weight: d.weight ?? (d.heavy ? 'slam' : 'light'), combo: chainCombo(d.combo, num(this._chainOf, 5)), crit: d.crit, alt: this._cutN & 1, x, z });
       // the impact pass: the sub under a heavy blow and the music's dip (thump.js; off: nothing at all)
       this.thump?.onHit(d);
     });
