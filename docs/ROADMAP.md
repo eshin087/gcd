@@ -27,16 +27,6 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Anime-style (SAO-inspired) black-coat swordsman protagonist
 - [x] ASCII-ify creatures and grass; more detailed stone ASCII; bigger dragon (×1.25)
 
-## M1.6 — A fight the world feels (2026-11-23, `world/fight-alive`, ADR-177)
-- [x] The hero's blade goes clean through what it does not fell (`?cutStop=1`: the stop of ADR-132)
-- [x] A mark of its kind for every boss blow that meets the ground, on all eight bosses, until the reset (`?marks=0`)
-- [x] Flocks that flee fire, blows and falling trees; rabbits, deer, rats, lizards, one fox
-- [x] The set shakes (leaves, dust, what hangs, pebbles, the bonfire); smoke, embers and haze after
-- [ ] Played by the owner; their calls on the sparks, the marks' brightness, the flock, the deer and the fox
-- [ ] The kinds of mark at the game camera; marks on grass (a "torn" floor channel the grass reads)
-- [ ] The faint ones: dust sift, pebbles, smoke, crater haze, the tree's shudder; Ashfall's crows
-- [ ] Films with real boss moves for every level; the phone; Halcyon Plaza's pigeons looked at
-
 ## M1.5 — Look pass from the v0.2 review
 - [x] Calm, world-anchored v0.1-style grass (no swimming ground)
 - [x] Crisp surface-glyph hero and wyrm; moonlit outline on the hero
@@ -193,6 +183,16 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Face: brow, nose and jaw lines under the fringe
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
+
+## M1.74 — A fight the world feels (2026-11-23, `world/fight-alive`, ADR-177)
+- [x] The hero's blade goes clean through what it does not fell (`?cutStop=1`: the stop of ADR-132)
+- [x] A mark of its kind for every boss blow that meets the ground, on all eight bosses, until the reset (`?marks=0`)
+- [x] Flocks that flee fire, blows and falling trees; rabbits, deer, rats, lizards, one fox
+- [x] The set shakes (leaves, dust, what hangs, pebbles, the bonfire); smoke, embers and haze after
+- [ ] Played by the owner; their calls on the sparks, the marks' brightness, the flock, the deer and the fox
+- [ ] The kinds of mark at the game camera; marks on grass (a "torn" floor channel the grass reads)
+- [ ] The faint ones: dust sift, pebbles, smoke, crater haze, the tree's shudder; Ashfall's crows
+- [ ] Films with real boss moves for every level; the phone; Halcyon Plaza's pigeons looked at
 
 ## M1.73 — Xin Yi reworked: drawn like the hero, kicks and flurries, a wall kick, bullets that never lock (2026-11-23, `claude/xinyi-rework-4b1d8a`, ADR-168 – ADR-170)
 - [x] Printed like the hero: his letters follow his size (`?oneLetters`), the quiet print and simpler shapes (`?onePrint` a / b / 0), the coat moving in every phase and clamped for flips
