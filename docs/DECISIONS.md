@@ -5317,8 +5317,21 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
 - **Why this way:** one free channel and a shader branch that is skipped where nothing is torn cost
   nothing where nothing happened; the light pool's eight slots belong to the fight, so lamps borrow
   what is left; the sounds lean on the approved air bed's manner (the owner: "sound looks good").
-- **Consequences / open:** the mowing is calm (a pale speckled clearing more than a crisp swath) and
-  the hero's mostly vertical cuts leave lanes, not arcs; after a fire-heavy fight burnt ground still
+- **Amended 2026-11-24 (the owner saw the cut):** "the grass cut doesn't look good ... we should be
+  able to see the grass get cut the moment the sword touches the grass and have ascii grass get thrown
+  into the air". Measured: the cut was a blotch of a map cell's share of blades round the steel, and
+  most of the DRAWN arc passed over grass that stood. Now **the drawn arc is the cut's source**
+  (`player/fx.js` `trail()` → `world/mowFx.js` `cutArc`, each edge stroke low enough, carried along the
+  view ray): exact to the blade, one byte per blade instance in a texture the grass shader reads by
+  `gl_InstanceID`, so the sword no longer writes A (A stays for the marks; `?mowLook=r1` keeps the first
+  round). Each cut blade's top, its own letter, leaves on the frame its stub shows (`MowFx`). Three
+  looks were filmed (thrown, sliced, shred); the owner liked sliced, then asked for the cut to follow
+  the swing, then chose **thrown, made subtle**: half the tops tossed low with a gentle spin, the rest
+  toppling, no brighter than the grass. Why a per-blade texture and not finer scorch cells: the cut
+  must sit on the arc's line (~0.5 m wide) and the fire's 0.625 m map is shared with what burns.
+- **Consequences / open:** (first round) the mowing is calm (a pale speckled clearing more than a crisp
+  swath) and the hero's mostly vertical cuts leave lanes, not arcs (both answered by the amendment);
+  the cut tops do not move with the wind once lying; a stub does not spring; after a fire-heavy fight burnt ground still
   dominates the meadow; a lantern's flame is a few letters at the game camera; Foxfire's ten lanterns
   share three lights; the Ring's braziers became low lights (they give way to the fight's) also with
   the living world off; nobody has heard the sounds yet.

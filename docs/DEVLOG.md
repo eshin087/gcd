@@ -5,6 +5,36 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-24 — The grass cut, redone: cut under the drawn arc, the tops thrown, quietly (ADR-180 amended; Opus agent)
+
+**Owner:** "the grass cut doesn't look good ... redo the grass cutting and show me previews"; then "i
+like the sliced look the most but make it more subtle and right now it doesn't do the cut animation
+where the sword goes"; then "looks right and i like the thrown effect the most but make the thrown
+effect more subtle". Same branch, PR #109.
+
+- **Round 2** (`world/mowFx.js`): each cut blade's top, its own letter in its own colour, leaves on the
+  frame its stub shows; three looks behind `?mowLook=a|b|c` (thrown, sliced, shred; `r1` the first round).
+- **Round 3, the cut follows the swing.** Measured per frame with a debug overlay: the cut was a map
+  cell's share of blades scattered round the steel (30 – 65 a frame), and the height gate let only 3 – 4
+  of a light cut's 11 arc frames cut anything, at the ground point under the steel, not under the arc
+  the camera shows. Now `player/fx.js` `trail()` hands each edge stroke to `cutArc`: blades within
+  0.275 m of its view-ray footprint are cut, one byte per blade in a texture the grass shader reads by
+  `gl_InstanceID`. Cut blades sit a mean 4.6 px from the arc's stroke at the game camera; an arc that
+  stays high cuts nothing. The sword no longer writes the scorch map's A (only `r1` does); marks still tear.
+- **Round 4, thrown and quiet** (`GRASS.fly.throw`): half the tops tossed, `up` 1.7 – 2.7 m/s (was 2.8 –
+  4.8), `fling` 0.9 – 2 (1.6 – 3.6), `spin` 2 – 6 rad/s (5 – 13), light × 1.15 (2.3), lie 0.7 – 1.3 s (1.6 –
+  3.2); the rest topple off. About 130 tops a swing at quality 1 (65 thrown), 48 at 0.5.
+
+**Verified.** All 21 suites and the build; `world.mjs` `tops` (the arc cuts exactly the blades within
+w / 2 and no cell, a high stroke cuts nothing, a throws about its share, no brighter than the grass, gone
+in 3 s, reset); the seeded wyrm fight's trace byte-identical to the base; films side by side per round.
+
+**Open.** Lying tops do not move with the wind; a stub does not spring; the 256 KB cut texture's upload
+on a phone (only on frames something is cut) is not measured; the `f_stoneCell` shader warning on load
+is older than this work.
+
+---
+
 ## 2026-11-23 — Three more: grass the sword mows, lamps that light with the fight, the living world heard (ADR-180; planned by Fable, built by Opus agents)
 
 **Owner:** "what else do you recommend to make the world and background more alive and interactable to

@@ -125,14 +125,19 @@ the wyrm next to it, it is wrong, however good it looks alone.
   (open).
 - **Grass the sword cuts** (2026-11-23, ADR-180; `?mow=0` the grass as before). The owner asked for a
   world that answers the fight; the meadow is the biggest thing in it. Three looks, each kept distinct:
-  - **Mown** (the hero's blade, wherever it passes low through the grass: a low sweep mows its arc, a
-    waist-high swing only skims the tops, a vertical chop leaves a lane, a stab passes over): each blade
-    there is cut or stands (a scatter of stubs at the edge of a swath, never an even shave). A cut blade
-    keeps the STUB OF ITS OWN LETTER, its lower part clipped at a slightly different height per blade,
-    not a shorter or squashed letter and not a swapped glyph; the stub is PALE AT THE CUT (a dry straw
-    tone, an ashen one on Ashfall's dried grass), and 40 % of the cut tops LIE where they fell, small,
-    laid over, still. A handful of tiny grass letters fly off the blade per swing (at most 14), in the
-    grass's own green, and fall back fast.
+  - **Cut** (the hero's blade; 2026-11-24, the owner's fourth look at it): the grass is cut UNDER THE
+    SWORD'S DRAWN ARC, blade by blade, on the frame the arc passes over it, so the cut travels with the
+    swing as a thin curve of stubs (an arc that stays high, the piercing gale's, cuts nothing). A cut
+    blade keeps the STUB OF ITS OWN LETTER, its lower part clipped at a slightly different height per
+    blade, not a shorter or squashed letter and not a swapped glyph; the stub is pale at the cut (a dry
+    straw tone, an ashen one on Ashfall's dried grass). Its TOP, the upper part of that same letter in
+    its own colour, leaves on the same frame (no pop from whole to stub): THROWN, the owner's pick, and
+    quiet: about half the tops are tossed low along the swing with a gentle spin, the rest topple off
+    their stubs; none brighter than the grass; they lie about a second and thin away. A sprinkle, not a
+    burst (the owner: "make the thrown effect more subtle"). Turned down on the way: the first round's
+    pale blotch round the steel with a few flying bits ("doesn't look good"), a bright spray of every top
+    (too busy). `?mowLook=b` (the tops lean off and lie), `c` (a burst of strokes) and `r1` (the first
+    round) remain.
   - **Torn out** (a blow's mark: every kind tears its own shape first, the slam's disc, the gash's line,
     the claws' three, the furrow, the beam's strip): the grass goes to the root and the floor shows bare
     under the mark, nothing lies; the mark's glyphs then lie ON THE FLOOR, not on the blade tips, so a
@@ -1086,7 +1091,8 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?chip=` | bites: a blow takes the bricks of a piece where it struck (every level; read when the level is built and at each blow; ADR-132; Lab: WORLD -> Bites) | pieces wear down in stages and break whole | the bricks under the blow fall as their letters; a solid piece keeps a skin there, set back | - | - | **a** |
 | `?cutStop=` | the hero's blade on a piece it does not fell (every level; read at each swing; ADR-177; Lab: WORLD -> Blade; with bites on only; values 0 / 1, and here `0` is the NEW default, `1` the feel before) | clean through: chips along the cut, sparks off stone, splinters off wood | `1`: it stops there (ADR-132: a freeze, sparks, a bounce) | - | - | **0** (2026-11-23) |
 | `?marks=` | the floor's marks (every level; read per blow; ADR-177) | today's cracks and crater rims only | `1`: a mark of each blow's kind (slam, cut, thrust, dash, blast, beam, step) that stays until the reset | - | - | **1** (2026-11-23) |
-| `?mow=` | grass the sword cuts (every level with grass; read per tear; ADR-180; a new thing, so `?looks=old` keeps it; no Lab row) | the grass as before: nothing is mown or torn | `1`: the blade mows what it passes low through (pale stubs of each blade's own letter, cut tops lying), every floor mark tears the grass out in its shape (bare floor under the mark) | - | - | **1** (2026-11-23: built at the owner's "Build top three"; the look not yet seen by the owner) |
+| `?mow=` | grass the sword cuts (every level with grass; read per tear; ADR-180; a new thing, so `?looks=old` keeps it; no Lab row) | the grass as before: nothing is mown or torn | `1`: the blade cuts the grass under its drawn arc (stubs of each blade's own letter, the tops leaving by `?mowLook=`), every floor mark tears the grass out in its shape (bare floor under the mark) | - | - | **1** (2026-11-23: built at the owner's "Build top three"; the cut redone three times, 2026-11-24) |
+| `?mowLook=` | how a cut blade's top leaves (read once; ADR-180; no Lab row) | `r1`: the first round (a pale blotch of stubs round the steel, a few flying bits) | `a`: thrown, quiet (half the tops tossed low along the swing, the rest topple) | `b`: sliced (the tops lean off their stubs and lie) | `c`: shred (a burst of the grass's strokes) | **a** (2026-11-24, the owner: "i like the thrown effect the most but make the thrown effect more subtle") |
 | `?ashLook=` | Shen Hui's body (read when his rig is built) | today's figure | the dragon look (the wyrm's art path) | today's figure dressed by phase | both | **b** |
 | `?lordLook=` | Varr Nihil's body (read when his rig is built) | today's figure | the dragon look | today's figure dressed by form | both | **b** |
 | `?outskirts=` | what lies round the Obsidian Throne's crater (ADR-133; read when the level is built; `m` all of them) | the felled forest | the shrine the star fell on | the star's debris | those who came for him | **c** |

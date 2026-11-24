@@ -188,7 +188,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Torn grass (the scorch map's A): the sword mows, every floor mark tears its shape (`?mow=0`)
 - [x] Lanterns and braziers that kindle by phase and fire, gutter under blows, go out when broken; low lights in the pool
 - [x] The living world's sounds (`LIFE_SFX`, `lifeSay`), per level, rate-limited, an audition page
-- [ ] The owner hears the sounds; their calls on the mowing's boldness and a lantern flame's size
+- [x] The cut redone at the owner's call (2026-11-24): under the sword's drawn arc, blade by blade, the tops thrown quietly (`?mowLook=`)
+- [ ] The lying tops in the wind; a stub that springs; the cut texture's upload on the phone
+- [ ] The owner hears the sounds; their call on a lantern flame's size
 - [ ] The flurry mows; the Ashfall grass's cut colour; the gutter's lean
 - [ ] On the phone
 

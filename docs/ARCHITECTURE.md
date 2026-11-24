@@ -3384,7 +3384,33 @@ shape, so the marks read on a meadow too. Cosmetic only: no hit, no clock, no da
   `bits.per` 2.2 letters per unit of new tear, at most `bits.max` 14 a swing × `world.quality`, tiny
   (`size` 0.1 – 0.16) letters `/ \ ' , |` in `COL.grassBit`, thrown along the blade's travel and up, falling
   fast, from the fx module's own stream. The flurry's cuts do not mow (state 'flurry' is not a swing
-  of `_combat`'s; open).
+  of `_combat`'s; open). **All of this bullet is the first round's cut, kept only for `?mowLook=r1`:**
+  with any other look `mowSwing` writes no A (the owner turned it down: a blotch round the steel, and
+  most of the drawn arc cut nothing). The sword's cut today is the next two bullets.
+- **The cut follows the drawn arc** (`world/mowFx.js` `MowFx`, built by `scorch.js` as `scorch.tops` where
+  grass grows and `mowOn()` and the look is not `r1`). `player/fx.js` `trail()` hands every stroke of the
+  arc's EDGE, the same slerped sub-steps it draws, to `tops.cutArc(ax, ay, az, bx, by, bz, heavy)`: so the
+  grass is cut where and on the frame the arc is drawn, and never when none is (headless: no trail, no
+  cut). A stroke cuts only the part of it lower than `GRASS.arc.above` 0.85 m over the grass's top (`top`
+  1.05 × `heightAt`); its ends are carried along the camera's view ray down to `mid` 0.5 × the top (the
+  cut sits under the arc as the player sees it); every blade whose root lies within `w` / 2 (0.55 m;
+  `wHeavy` 0.7 for the heavy blows) of that footprint is cut. The blades are found through a bucket grid
+  of the grass's instances on the scorch map's cells (built once, ~3 ms). The cut is ONE BYTE PER BLADE
+  (`tops.cut`, an R8 `DataTexture` `tops.cutTex` `arc.tex` 512 wide), uploaded only on a frame something
+  was cut, cleared by `scorch.reset()`; the grass shader reads it by `texelFetch(gl_InstanceID)` (uniform
+  `uCutTex`) and draws a cut blade as its stub, exactly like a mown one. So the sword's cut is exact to
+  the blade, not a map cell's share, and A stays for the marks.
+- **The cut tops** (`MowFx`, one instanced batch of up to `GRASS.fly.max` 1400 × quality pieces, fixed
+  typed arrays, its own seeded stream): a cut blade's TOP, the upper part of its own letter in its own
+  colour, is spawned on the frame its stub shows, where the top was, so no blade pops from whole to
+  stub. It then goes by the look, `?mowLook=` (read once; `GRASS.fly.look`): **`a` thrown, the default**
+  (`fly.throw`: `share` 0.5 of the tops tossed along the stroke's way, `fling` 0.9 – 2 m/s, `up` 1.7 –
+  2.7 m/s, `spin` 2 – 6 rad/s, no brighter than × 1.15 the grass; the rest topple off as in b; they lie
+  0.7 – 1.3 s and thin over 0.45 s), `b` sliced (`fly.slice`: the tops lean off their stubs, a little
+  drift, 5 % thrown), `c` shred (`fly.shred`: a burst of the grass's strokes), `r1` the first round (no
+  tops). A mark's tear hands its blades over the same way (`scorch.tear` → `tops`), at most `perTear` a
+  call. Cost at quality 1: `cutArc` ≈ 0.03 ms a frame of a swing, the batch ≈ 0.03 ms; about 130 tops a
+  swing (65 thrown), half that at quality 0.5.
 - **The marks tear first** (`scars.mark` with `world.scorch.tearLine`, a density function and `mowOn()`):
   before its glyphs are laid, each kind tears its shape (`GRASS.mark`, depth `k` from a light blow to the
   hardest by its power, (power − 0.3) / 1.5): a `slam` a disc `r` 1.05 × its round (the crater's radius
