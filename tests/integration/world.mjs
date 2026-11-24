@@ -2,7 +2,7 @@
 // Scorch, GroundFire, Scars and Destructibles on the REAL sets (the forest, the courtyard), wired
 // like src/world/world.js; the hero and the boss are small stand-ins that record what lands on them.
 // usage: node world.mjs <repoRoot> [scenario]
-//   scenario: sets | floor | terrace | colossus | chip | fell | cover | fire | throw | marks | reset | grid | body | wreck | spread | wear | wall | reach | landmarks | edge | budget | bite | slice | placed | mow | all
+//   scenario: sets | floor | terrace | colossus | chip | fell | cover | fire | throw | marks | reset | grid | body | wreck | spread | wear | wall | reach | landmarks | edge | budget | bite | slice | placed | mow | tops | all
 // (body / budget run the REAL Dragon on the REAL forest: its body against the world, ARCHITECTURE.md
 // "Destruction" → "The wyrm's body")
 import { pathToFileURL } from 'node:url';
@@ -28,7 +28,7 @@ const { Scars } = await imp('src/world/scars.js');
 const { Destructibles, STATE, reseedBreaks } = await imp('src/world/destructibles.js');
 const { BREAK, BLOW, FIRE, SCAR } = await imp('src/world/breakTuning.js');
 const { createForest } = await imp('src/world/forest.js');
-const { mowSwing, meadowHeight } = await imp('src/world/grass.js');
+const { mowSwing, meadowHeight, createGrass } = await imp('src/world/grass.js');
 const { GRASS } = await imp('src/world/grassTuning.js');
 const { ELDER_COLLIDERS } = await imp('src/world/landmarks.js');
 const ELDER_N = ELDER_COLLIDERS.length;
@@ -2164,6 +2164,90 @@ const S = {
     for (let i = 3; i < sc.data.length; i += 4) a += sc.data[i];
     assert(sc.tornCells === 0 && a === 0 && sc.tornAt(cx + 0.75, cz) === 0, 'scorch.reset() clears the torn grass (A all 0)');
     Math.random = R0;
+  },
+
+  // ---------------------------------------------------------------- the cut tops (round 2, world/mowFx.js)
+  tops() {
+    // the meadow on the west, paving on the east; a real grass of 30k blades over 24 m
+    const dens = (x, z) => (x < 0 ? 1 : 0);
+    const { world, game } = build(createForest, dens);
+    const sc = world.scorch;
+    world.grass = createGrass(game.U, { count: 30000, extent: 24, density: dens, height: (x, z, r) => 0.5 * (0.75 + r() * 0.5) });
+    const R0 = Math.random;
+    let draws = 0;
+    Math.random = () => { draws++; return R0(); };
+    try {
+      sc.update(1 / 60); // (the tops are built on the first frame the grass is there)
+      const T = sc.tops;
+      assert(!!T && game.scene.children.includes(T.mesh), 'the cut tops are built on the first frame, their batch in the scene');
+      const B = world.grass.blades, G = GRASS.blade;
+      // the blades a strip reaches: the very test the grass shader makes (bilinear torn x gain over the
+      // blade's own threshold) decides which lose their tops, on the call itself
+      T.setFling(1, 0, 1);
+      // (a sweep's sub-step: under the per-call cap, GRASS.fly.perTear, which only a big mark reaches)
+      sc.tearLine(-7, 0, -5.8, 0, 0.8, GRASS.mow.maxK);
+      T.clearFling();
+      const fr = (v) => v - Math.floor(v);
+      let want = 0, got = 0, wrong = 0, far = 0;
+      for (let i = 0; i < B.n; i++) {
+        const x = B.root[i * 4], z = B.root[i * 4 + 1];
+        if (B.data[i * 4 + 3] > 0.5) continue;
+        const cut = T._tornAt(x, z) * G.gain >= fr(B.root[i * 4 + 3] * 3.17 + 0.37) * 0.92 + 0.04;
+        if (cut) want++;
+        if (T.cut[i]) got++;
+        if (!!T.cut[i] !== cut) wrong++;
+        if (T.cut[i] && (Math.abs(z) > 1.6 || x > -2.5 || x < -9.5)) far++;
+      }
+      assert(want > 50 && wrong === 0 && far === 0, `a strip cuts ${got} blades on its own call, exactly those the shader shows as stubs (${wrong} differ, ${far} outside the strip)`);
+      assert(T.n === got && T.total === got, `... and every cut blade's top leaves on that frame: ${T.n} tops for ${got} cut blades`);
+      // a top starts where its blade's top was: on the strip, at a blade's height, thrown along the swing
+      let off = 0, up = 0, along = 0;
+      for (let j = 0; j < T.n; j++) {
+        if (Math.abs(T.pz[j]) > 1.6 || T.px[j] > -2.5 || T.px[j] < -9.5) off++;
+        if (T.py[j] > 0.02 && T.py[j] < 0.7) up++;
+        if (T.vx[j] > 0 && T.vy[j] > 0) along++;
+      }
+      assert(off === 0 && up === T.n && along === T.n, `the tops start on the strip (${off} off), at a blade's height (${up}/${T.n}), thrown up and along the swing (${along}/${T.n})`);
+      // the same cut again tears nothing new: no second top
+      sc.tearLine(-7, 0, -5.8, 0, 0.8, GRASS.mow.maxK);
+      assert(T.total === got, `a blade loses its top once (${T.total - got} more on a second pass)`);
+      // they fly, land, lie and thin away
+      let flying = 0;
+      for (let f = 0; f < 30; f++) sc.update(1 / 60);
+      for (let j = 0; j < T.n; j++) if (T.state[j] === 0) flying++;
+      let lying = 0;
+      for (let f = 0; f < 60; f++) sc.update(1 / 60);
+      for (let j = 0; j < T.n; j++) if (T.state[j] === 2 && T.py[j] <= 0.021) lying++;
+      const n1 = T.n;
+      for (let f = 0; f < 60 * 5; f++) sc.update(1 / 60);
+      assert(flying > 0 && lying === n1 && T.n === 0 && T.geo.instanceCount === 0, `0.5 s on ${flying} are in the air; 1.5 s on all ${lying} lie on the floor; 6.5 s on none is left (${T.n})`);
+      // on paving nothing is cut
+      sc.tearLine(2, 0, 6, 0, 0.8, 1);
+      assert(T.n === 0, `a strip on paving cuts no blade (${T.n} tops)`);
+      // a slam's mark throws the grass it tears out, from all of its round
+      sc.tear(-6, 5, 1.6, 1);
+      let n = 0, w = 0, e = 0;
+      for (let j = 0; j < T.n; j++) { n++; if (T.px[j] < -6) w++; else e++; }
+      assert(n > 30 && w > n * 0.25 && e > n * 0.25, `a mark's tear throws its grass out of the whole round (${n} tops: ${w} west, ${e} east of its middle)`);
+      // the reset: every blade whole, no top
+      sc.reset();
+      let cut = 0;
+      for (let i = 0; i < B.n; i++) cut += T.cut[i];
+      assert(T.n === 0 && cut === 0, 'scorch.reset() takes every top away and makes every blade whole');
+      assert(draws === 0, `the tops draw nothing from Math.random, built or flying (${draws} draws)`);
+    } finally {
+      Math.random = R0;
+    }
+    // round 1's look builds no tops
+    setLook('mowLook', 'r1');
+    try {
+      const W2 = build(createForest, dens);
+      W2.world.grass = createGrass(W2.game.U, { count: 2000, extent: 24, density: dens, height: () => 0.5 });
+      W2.world.scorch.update(1 / 60);
+      assert(W2.world.scorch.tops === null, '?mowLook=r1: no cut tops (round 1)');
+    } finally {
+      setLook('mowLook', null);
+    }
   },
 };
 const near = (a, b, eps) => Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) <= eps;

@@ -73,7 +73,7 @@ export const GRASS = Object.freeze({
     look: 'a',
     max: 1400,
     touch: 4096, // cells one tear call may hand over (a slam's whole disc)
-    perTear: 220,
+    perTear: 360,
     gravity: 9.5,
     drag: 1.6,
     settle: 0.12,

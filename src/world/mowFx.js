@@ -58,6 +58,7 @@ export class MowFx {
     this._all = [this.px, this.py, this.pz, this.vx, this.vy, this.vz, this.rot, this.spin, this.rot0, this.lieRot, this.age, this.lie, this.w, this.h, this.v0, this.glyph, this.colv, this.fade, this.state, this.t0, this.y0, this.born];
     this.thrown = 0; // pieces spawned since the last read (mowStats)
     this.total = 0;
+    this.dropped = 0;
     this._frag = gis(F.shred.glyphs);
     // the blades: a bucket grid of instance indices on the scorch map's cells (CSR)
     const B = grass.blades, S = scorch.size, N = B.n;
@@ -207,8 +208,10 @@ export class MowFx {
     const seen = this._seen;
     let made = 0;
     const cap = Math.round(GRASS.fly.perTear * this._q());
+    // (the cells in a strided order: when a big tear passes `cap`, the tops that fly are spread over all of
+    // it, not the first rows)
     for (let k = 0; k < n; k++) {
-      const c0 = list[k], ci = c0 % S, cj = (c0 - ci) / S;
+      const c0 = list[(k * 7919) % n], ci = c0 % S, cj = (c0 - ci) / S;
       // (bilinear: a cell's value reaches the blades of the cells round it)
       for (let dj = -1; dj <= 1; dj++) {
         for (let di = -1; di <= 1; di++) {
@@ -234,6 +237,7 @@ export class MowFx {
             const stubK = r2 < Math.max(G.low, bare * 0.85) ? 0.04 : G.stub * (1 - 0.5 * bare) + G.jitter * (r2 - 0.5) * 2;
             const v0 = G.ink[0] + (G.ink[1] - G.ink[0]) * stubK;
             if (made++ < cap) this._spawn(i, x, z, v0, cx, cz, bare);
+            else this.dropped++; // (a big mark past the cap: this blade's top is not seen leaving)
           }
         }
       }
