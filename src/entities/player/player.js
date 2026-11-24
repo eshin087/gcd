@@ -15,6 +15,7 @@ import { CUT_LOOK } from '../../combat/cutFx.js';
 import { Flurry } from './flurry.js';
 import { BREAK, SCAR } from '../../world/breakTuning.js';
 import { chipLook, cutStops } from '../../world/destructibles.js';
+import { mowSwing } from '../../world/grass.js';
 
 // The Wanderer. Owns input → state machine → movement/collision → animation → sword hits → FX.
 // Contract: docs/ARCHITECTURE.md (Player). Combat rules: docs/COMBAT.md + src/combat/rules.js.
@@ -3223,6 +3224,9 @@ export class Player {
           this.anim.kickCoat(0.32, this.anim.noise);
         }
       }
+      // the grass the blade passes through low is mown, from the active window into the follow-through
+      // (world/grass.js mowSwing: the scorch map's A only, the swing's clock and hit untouched)
+      mowSwing(this.game, a, sw, this.fx);
       // the edge glint runs up the leading edge as the cut comes in (fx.edgeGlint): from just before
       // the active frames until the cut lands (after the hit test: never a second star on the contact
       // frame) or reaches the arc's glint on a whiff. Not the execution's thrust

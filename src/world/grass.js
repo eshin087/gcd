@@ -2,10 +2,13 @@ import * as THREE from 'three';
 import { COMMON_GLSL, WIND_GLSL, WIND_FRONTS_LEN } from '../render/shaderLib.js';
 import { gi, gis } from '../render/glyphs.js';
 import { mulberry32, pickWeighted, fbm2 } from '../core/rng.js';
+import { GRASS } from './grassTuning.js';
+import { mowOn } from './scorch.js';
 
 // Hundreds of thousands of grass blades, each ONE glyph stroke ( | / \ ' Y V ... ) standing
 // on the ground, leaning with the wind, pushed aside by feet, flattened by wing gusts and
-// burnt to ash glyphs by dragon fire. Instances are generated in random order, so drawing
+// burnt to ash glyphs by dragon fire, mown by the sword and torn out under a blow's mark (the scorch
+// map's A: a cut blade keeps the stub of its own letter, pale at the cut; grassTuning.js). Instances are generated in random order, so drawing
 // only the first N (quality setting) thins the field evenly.
 
 const BLADES = [
@@ -56,6 +59,7 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
   geo.instanceCount = n;
 
   const burnt = gis(".,'");
+  const B = GRASS.blade;
   const mat = new THREE.ShaderMaterial({
     uniforms: {
       uTime: U.uTime, uMoonDir: U.uMoonDir, uMoonColor: U.uMoonColor, uAmbient: U.uAmbient,
@@ -70,6 +74,14 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
       uWindFronts: U.uWindFronts ?? { value: Array.from({ length: WIND_FRONTS_LEN }, () => new THREE.Vector4()) },
       uBurnt: { value: new THREE.Vector3(...burnt) },
       uAsh: { value: Math.min(1, Math.max(0, Number(ash) || 0)) },
+      uMow: { value: new THREE.Vector3(B.stub, B.jitter, B.low) },
+      uMowInk: { value: new THREE.Vector2(B.ink[0], B.ink[1]) },
+      uMowGain: { value: B.gain },
+      uMowFresh: { value: B.freshK },
+      uMowBare: { value: new THREE.Vector2(B.bare[0], B.bare[1]) },
+      uMowLie: { value: new THREE.Vector3(B.lie[0], B.lie[1], B.lie[2]) },
+      uFresh: { value: new THREE.Vector3(...B.fresh) },
+      uFreshAsh: { value: new THREE.Vector3(...B.freshAsh) },
     },
     vertexShader: /* glsl */ `
       ${COMMON_GLSL}
@@ -83,6 +95,12 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
       uniform float uCullDist;
       uniform vec3 uBurnt;
       uniform float uAsh;
+      uniform vec3 uMow;     // the mown blade: stub (share of the ink kept), jitter, share cut to the root
+      uniform vec2 uMowInk;  // the letter's ink spans this share of its quad
+      uniform float uMowGain, uMowFresh;
+      uniform vec2 uMowBare; // torn past x .. y: torn out (a blow's mark), not mown
+      uniform vec3 uMowLie;  // the cut tops lying: share of the mown blades, their size, their paleness
+      uniform vec3 uFresh, uFreshAsh;
       varying vec2 vUv;
       varying vec3 vCol;
       varying float vGlyph;
@@ -92,25 +110,54 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
         // cheap cull: outside the visible ellipse around the focus
         if (length(rel * vec2(0.75, 1.0)) > uCullDist) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
 
-        vec3 sc3 = scorch3At(root.xz);
-        vec2 sc = sc3.xy;
+        vec4 sc4 = scorch4At(root.xz);
+        vec2 sc = sc4.xy;
         float burn = sc.x, heat = sc.y;
-        float trample = sc3.z;
+        float trample = sc4.z;
+        float torn = sc4.w;
         float flower = iData.w;
         float h = iRoot.z * mix(1.0, 0.32, burn);
         float w = h * 0.92; // square-ish quads keep glyphs at their natural proportions
         float baseY = 0.0;
+        // mown (the scorch map's a: world/scorch.js tear, grassTuning.js GRASS.blade): the blade's letter
+        // is CUT, its lower part left standing (the quad and its uv clipped at the same height, so the
+        // stub is the letter's own stroke, not a squashed one); each blade's cut a little different
+        float cutV = 1.0, mown = 0.0, lying = 0.0, bare = 0.0;
+        float tilt = iData.y;
+        if (torn > 0.004 && flower < 0.5) {
+          float r2 = fract(iRoot.w * 7.31), r3 = fract(iRoot.w * 3.17 + 0.37), r4 = fract(iRoot.w * 5.71 + 0.11);
+          // (torn is the share of the blades here that were cut: each blade is cut or it stands, so a
+          // light tear thins the meadow to a scatter of stubs and a swath's edge is a ragged line of them)
+          float cutP = torn * uMowGain;
+          mown = smoothstep(r3 * 0.92, r3 * 0.92 + 0.08, cutP);
+          // torn OUT (a blow's mark, torn past uMowBare.x): the stubs go to the root, nothing lies, the floor
+          // shows bare under the mark; mown (the sword, up to GRASS.mow.maxK): pale stubble and cut tops
+          bare = smoothstep(uMowBare.x, uMowBare.y, torn);
+          if (mown > 0.55 && r4 < uMowLie.x * (1.0 - bare)) {
+            // a cut top lying where it fell: the blade's whole letter, small, laid over (no wind)
+            lying = 1.0;
+            h *= uMowLie.y;
+            w = h * 0.92;
+            tilt = (r2 < 0.5 ? -1.0 : 1.0) * (1.25 + 0.5 * r3);
+            baseY = 0.03;
+          } else {
+            float stubK = r2 < max(uMow.z, bare * 0.85) ? 0.04 : uMow.x * (1.0 - 0.5 * bare) + uMow.y * (r2 - 0.5) * 2.0;
+            float cv = uMowInk.x + (uMowInk.y - uMowInk.x) * stubK;
+            cutV = mix(1.0, cv, mown);
+          }
+        }
         if (flower > 0.5) {
           w = h = 0.13 + iData.z * 0.09;
           baseY = iRoot.z * 0.55;
-          if (burn > 0.3) { w = h = 0.0; }
+          if (burn > 0.3 || torn > 0.4) { w = h = 0.0; }
         }
 
-        float tilt = iData.y;
-        vec2 q = vec2(position.x * w, position.y * h);
+        vec2 q = vec2(position.x * w, position.y * h * cutV);
         q = vec2(cos(tilt) * q.x - sin(tilt) * q.y, sin(tilt) * q.x + cos(tilt) * q.y);
         vec3 wp = root + vec3(0.0, baseY, 0.0) + uCamRight * q.x + uBladeUp * q.y;
-        float tip = position.y;
+        // (the share of the full blade's height this vertex stands at: a stub sways and lies as the
+        // lower part of the blade does, stiff)
+        float tip = lying > 0.5 ? 0.3 : position.y * cutV;
 
         // wind
         vec3 off;
@@ -184,6 +231,8 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
         alb = mix(alb, vec3(0.014, 0.012, 0.011) * (0.6 + tip), burn);
         // trodden blades a little darker
         if (trample > 0.004) alb *= 1.0 - 0.7 * trample;
+        // a mown stub is paler at its cut (fresh: never the burnt grass's black)
+        if (mown > 0.0) alb = mix(alb, mix(uFresh, uFreshAsh, uAsh), uMowFresh * mown * (1.0 - burn) * (1.0 - 0.75 * bare) * (lying > 0.5 ? uMowLie.z : 0.45 + 0.55 * position.y));
         float sh = shadowAtFast(vec3(root.x, 0.3, root.z));
         vec3 L = uAmbient * 1.6 + uMoonColor * 0.62 * sh + pointLights(root + vec3(0.0, 0.35, 0.0), vec3(0.0, 1.0, 0.0), 1.0);
         vec3 col = alb * L;
@@ -194,7 +243,7 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
         col += vec3(1.0, 0.3, 0.05) * heat * heat * tip * 1.6 * flick;
         col = applyFog(col, wp);
         vCol = col;
-        vUv = uv;
+        vUv = vec2(uv.x, uv.y * cutV);
         vGlyph = iData.x;
         if (burn > 0.55 && flower < 0.5) {
           float r = fract(iRoot.w * 13.1);
@@ -224,9 +273,13 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
   const mesh = new THREE.Mesh(geo, mat);
   mesh.frustumCulled = false;
   mesh.name = 'grass';
+  const mid = () => 0.5; // (the height's random draw at its middle: the meadow's typical blade there)
   return {
     mesh,
     total: n,
+    /** The grass's density (0..1) and its typical blade height (m) at (x, z): the mow reads them. */
+    densityAt: (x, z) => density(x, z),
+    heightAt: (x, z) => height(x, z, mid),
     setCount(c) {
       geo.instanceCount = Math.max(0, Math.min(n, c));
     },
@@ -298,6 +351,110 @@ export function meadowDensity(colliders, treeSpots, bare = [], extent = 150, sla
     if (i < 0 || j < 0 || i >= N || j >= N) return 0;
     return grid[j * N + i] * slabFactor(x, z);
   };
+}
+
+// ------------------------------------------------------------------ the sword mows
+const MOW = { atk: null, acc: 0, bits: 0, torn: 0, swings: 0 };
+const _H = { x: 0, y: 0, z: 0 }, _T = { x: 0, y: 0, z: 0 }, _P = new THREE.Vector3();
+const MID = () => 0.5;
+const meadowTop = (x, z) => meadowHeight(x, z, MID);
+const lerp3 = (o, a, b, t) => { o.x = a.x + (b.x - a.x) * t; o.y = a.y + (b.y - a.y) * t; o.z = a.z + (b.z - a.z) * t; return o; };
+/** What the mow did (the tests', the Lab's): the swing it last cut for, its torn total, bits thrown. */
+export const mowStats = MOW;
+
+/**
+ * The hero's swing through the grass (player.js, beside `_cutWorld`, each frame of the active window;
+ * GRASS.mow): the drawn steel, swept from last frame's pose to this one, tears a strip of the scorch
+ * map's A wherever it passes under the grass's top, as deep as it went under; the cut tops fly
+ * (fx.mowBits, a handful a swing). `sw`: the SwordSweep (a, b this frame, pa, pb last; point(f)).
+ * Reads the world, writes only A; no Math.random. Returns the tear it added.
+ */
+export function mowSwing(game, a, sw, fx = null) {
+  const w = game?.world, sc = w?.scorch;
+  if (!a || !sc?.tearLine || !sw?.valid || !mowOn()) return 0;
+  const M = GRASS.mow, d = a.def;
+  // (from the active window to a little past it: the follow-through still cuts what it passes)
+  const W = Number(d?.windup), E = W + Number(d?.active) + M.after;
+  if (!(a.t >= W) || !(a.t <= E) || a.exec) return 0;
+  if (MOW.atk !== a) {
+    MOW.atk = a;
+    MOW.acc = 0;
+    MOW.bits = 0;
+    MOW.swings++;
+  }
+  const hAt = typeof w.grass?.heightAt === 'function' ? w.grass.heightAt : meadowTop;
+  // the drawn steel's share of the gameplay segment (sw.point(1) is the steel's point), out to `reach`
+  const ex = sw.b.x - sw.a.x, ey = sw.b.y - sw.a.y, ez = sw.b.z - sw.a.z, L = Math.hypot(ex, ey, ez);
+  if (!(L > 1e-4)) return 0;
+  sw.point(1, _P);
+  const f1 = Math.min(1, (Math.hypot(_P.x - sw.a.x, _P.y - sw.a.y, _P.z - sw.a.z) / L) * M.reach);
+  // the point's travel this frame: as many sub-steps as keep each under M.sub m
+  const tx = sw.b.x - sw.pb.x, tz = sw.b.z - sw.pb.z, ty = sw.b.y - sw.pb.y;
+  const travel = Math.hypot(tx, ty, tz) * f1;
+  if (!Number.isFinite(travel)) return 0;
+  // (a blade at rest, or held in a freeze, cuts nothing)
+  const dt = Number(game.dt) > 0 ? game.dt : 1 / 60;
+  if (travel / dt < M.speed) return 0;
+  const n = Math.max(1, Math.min(M.maxSub, Math.ceil(travel / M.sub)));
+  const tl = Math.hypot(tx, tz);
+  const ux = tl > 1e-5 ? tx / tl : 0, uz = tl > 1e-5 ? tz / tl : 0;
+  let add = 0;
+  for (let s = 1; s <= n; s++) {
+    const t = s / n;
+    lerp3(_H, sw.pa, sw.a, t);
+    lerp3(_T, sw.pb, sw.b, t);
+    // (the point on the steel's own arc: its length kept, not the chord's)
+    let dx = _T.x - _H.x, dy = _T.y - _H.y, dz = _T.z - _H.z;
+    const dl = Math.hypot(dx, dy, dz);
+    if (!(dl > 1e-5)) continue;
+    const k = (L * f1) / dl;
+    _T.x = _H.x + dx * k; _T.y = _H.y + dy * k; _T.z = _H.z + dz * k;
+    add += tearUnder(sc, hAt, _H, _T, M);
+  }
+  if (add > 0) {
+    MOW.torn += add;
+    // the cut tops fly: a handful a swing (x the quality), along the steel's ground path
+    const q = Number.isFinite(w.quality) ? w.quality : 1;
+    const cap = Math.round(M.bits.max * q);
+    MOW.acc += add * M.bits.per;
+    let nb = Math.min(Math.floor(MOW.acc), cap - MOW.bits);
+    if (nb > 0 && fx?.mowBits) {
+      MOW.acc -= nb;
+      MOW.bits += nb;
+      const top = hAt(_H.x, _H.z);
+      fx.mowBits(sw.a.x, sw.a.z, _T.x, _T.z, nb, ux, uz, top, M.bits);
+    } else if (nb <= 0) MOW.acc = Math.min(MOW.acc, 1);
+  }
+  return add;
+}
+
+/** How deep (0..1) an edge at height y tears grass whose top is `top` m (GRASS.mow: skims over the
+ *  tops, mows to stubble at stubY x the top and under). */
+function mowDepth(y, top, M) {
+  if (y >= top + M.above) return 0;
+  if (y >= top) return (M.skim * (top + M.above - y)) / M.above;
+  const lo = top * M.stubY;
+  return y <= lo ? 1 : M.skim + ((1 - M.skim) * (top - y)) / (top - lo);
+}
+
+/** The part of the steel H -> T (3D) low enough to meet the grass, torn into A as deep as it went. */
+function tearUnder(sc, hAt, H, T, M) {
+  const top = hAt((H.x + T.x) * 0.5, (H.z + T.z) * 0.5) * M.top;
+  if (!(top > 0.02)) return 0;
+  const lim = top + M.above;
+  if (H.y >= lim && T.y >= lim) return 0;
+  // clip to the part under lim
+  let ax = H.x, ay = H.y, az = H.z, bx = T.x, by = T.y, bz = T.z;
+  if (ay > lim) {
+    const c = (ay - lim) / (ay - by);
+    ax += (bx - ax) * c; az += (bz - az) * c; ay = lim;
+  } else if (by > lim) {
+    const c = (by - lim) / (by - ay);
+    bx += (ax - bx) * c; bz += (az - bz) * c; by = lim;
+  }
+  const ka = mowDepth(ay, top, M) * M.maxK, kb = mowDepth(by, top, M) * M.maxK;
+  if (Math.max(ka, kb) < M.min * M.maxK) return 0;
+  return sc.tearLine(ax, az, bx, bz, M.w, ka, kb);
 }
 
 /** Distance from (x, z) to the nearest edge of polygon `poly` if inside it, else 0. */

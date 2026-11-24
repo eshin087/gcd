@@ -302,6 +302,13 @@ vec3 scorch3At(vec2 xz) {
   return textureLod(uScorch, uv, 0.0).rgb;
 }
 float trampleAt(vec2 xz) { return scorch3At(xz).z; }
+// ... with a = torn (0..1: grass the sword mowed or a blow tore out, 1 cut to stubble; world/scorch.js tear)
+vec4 scorch4At(vec2 xz) {
+  vec2 uv = (xz - uScorchBounds.xy) / uScorchBounds.z;
+  if (uv.x <= 0.0 || uv.y <= 0.0 || uv.x >= 1.0 || uv.y >= 1.0) return vec4(0.0);
+  return textureLod(uScorch, uv, 0.0);
+}
+float tornAt(vec2 xz) { return scorch4At(xz).w; }
 `;
 
 /** Standard vertex shader for meshes (world position + normal varyings). */
