@@ -184,6 +184,12 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.77 — The perfect parry throws a few orange sparks (2026-11-24, `combat/perfect-sparks`, ADR-181)
+- [x] A calm spit of orange spark letters off the crossed blades on a perfect parry (`?parryFx=a`, the default; `0` as before)
+- [x] The shipped mark, freeze, slow motion, sound and the perfect dodge's afterimage unchanged (the owner's call after three rejected passes)
+- [ ] Played and seen on the iPhone
+- [ ] A next round on the perfect dodge / parry, if any: from a concrete reference and one narrow prototype; never the background
+
 ## M1.76 — Every sound effect back to its first synth version (2026-11-23, `audio/swing-choices`, ADR-178)
 - [x] The recorded / designed sounds off by default (`?sfx=new` turns them on; no files fetched while off)
 - [x] The new swing and warning options of the session set aside (a git stash, not in the repo)

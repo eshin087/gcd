@@ -4,7 +4,12 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Eighty-one pieces of work since 0.4.0:
+Eighty-two pieces of work since 0.4.0:
+- **A perfect parry throws a few orange sparks** (2026-11-24, ADR-181). *Added:* on a perfect parry of a blow, a
+  quick spit of 12 - 16 orange spark letters leaves the crossed blades along the blade that glanced off: short
+  streaks that shrink to dots, cool to dark red and are gone in under half a second, a couple falling to the floor.
+  No white, no glow; the gold mark, the freeze, the slow motion and the sound are as before, and a normal parry and
+  the perfect dodge are unchanged. `?parryFx=0` (the Lab's `parryFx` button) draws the parry without them.
 - **Every sound effect is back to its first synth version** (2026-11-23, ADR-178). *Changed:* the owner turned down a new light-cut
   swing, plucked-string warnings and two rounds of variations of the blue and red warnings, and asked to "start
   from baseline and undo all the sound changes". The recorded and designed sounds of the attack-sound pass

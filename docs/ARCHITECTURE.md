@@ -1310,6 +1310,11 @@ cinema`). Nothing stores a tier: each piece reads it at the moment.
   `FlurryFx` (lights, flares, sparks, stars, halo, speed lines, crescent, veil, the thin long lines,
   `pfx`: the hero's own spark star and shockwave) and `flurry.js` (the boss's hurt flash on the last
   blow, x `boss`); `game/flow.js` multiplies the flurry's `flashPulse` and `dip` by `burstScreen()`.
+- *The perfect parry's sparks* (`combat/parrySparks.js`, ADR-181): `PARRY_FX` (`?parryFx=0|a`), `PARRY_FX_DEFAULT`
+  'a', `parryFxMode()` / `setParryFx(m)`, `parryFxSpec(m)`, `PARRY_SPARK_GLYPHS`, `PARRY_SPARKS_LAST` (tests);
+  `parrySparks(game, x, y, z, o)` (from `PlayerFx.parry`'s perfect branch: the crossing, the edges `e1` / `e2`,
+  `met`, the push way), `parrySparksUpdate(game, realDt)` (from `perfectUpdate`), `parrySparksClear()` (from
+  `perfectClear`), `parrySparksBusy()`. Its own `LetterBatch`, built on the first spit; its own seeded stream.
 - *A single perfect parry / dodge* (`combat/perfectFx.js`): `PERFECT_FEEL` (today null; sharp; cinema,
   with `full` / `short` beats, `gap` 0.9 s, `echoTier` 3), `perfectFeel(mode)`, `perfectBeat(mode, last,
   realTime)`, `MARK_LOOK` (tint zone id 800101), `PERFECT_LAST` (tests), `PERFECT_GLYPHS`;

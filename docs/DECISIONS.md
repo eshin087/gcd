@@ -5313,3 +5313,22 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   families above, the pickers) is not in the repo: it is a git stash on the machine that made it ("swing + warning
   sound options") and the pickers' pages. The tests of the sound passes (integ and duel `sfx`) switch the mode on
   and put the default back.
+
+## ADR-181 — The perfect parry throws a few orange sparks; nothing else of the moment changes (2026-11-24)
+
+- **Context:** the owner asked to make the perfect parry and dodge "more epic cool with subtle effects". In one session
+  they turned down, on film: a four-piece pass (the floor's letters reacting, poses, a darkened iris and camera lean,
+  the world answering) with "i dont want the background to change color at all"; a shower of ~170 white-gold sparks
+  as "too bright / fireworks, too many / too big, wrong motion, not the right idea" and "calmer"; four richer
+  afterimages of the hero's real body with "the original is better". Asked for a reference they said to research it
+  and decide.
+- **Decision:** the shipped perfect parry (`?perfect=sharp`, ADR-167) stays exactly as it is, and a perfect parry of a
+  blow adds a spit of 12 - 16 sparks modelled on real sword sparks and on Sekiro's deflect: few, fast, short-lived,
+  orange; most along the blade that glanced off; each a stroke along its motion that becomes a dot as it slows; cooling
+  to dark red; under the bloom threshold, so a crisp letter and never a glow; real time; one cell each
+  (`combat/parrySparks.js`, `?parryFx=0|a`, default `a`). A normal parry, a perfectly parried bullet and the perfect
+  dodge are unchanged.
+- **Consequences:** the moment is still dominated by the gold mark; the spit is a detail, read best at the end of the
+  freeze and in a string. Against the wyrm the sparks are mostly hidden by its own parry star. One more `LetterBatch`
+  draw call while sparks live. The rejected passes stay on local branches; a later round on these moments should start
+  from a concrete reference and one narrow prototype, and never change the background.

@@ -5,6 +5,43 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-24 — Session 91: the perfect parry throws a few orange sparks (and what was turned down to get there)
+
+**Owner:** "what can we improve next in terms of visuals, effects, animations etc. i want to make perfect parry and
+dodge effects look more epic cool with subtle effects as a start." Branch `combat/perfect-sparks`. ADR-181 / M1.77.
+
+**What shipped.** `?parryFx=a`, the default (`combat/parrySparks.js`): on a PERFECT parry of a blow, on top of the
+shipped `sharp` mark (unchanged), 12 - 16 sparks leave the crossing, about 70 % along the attacker's edge past the
+crossing, the rest along the hero's edge (no crossed steel, e.g. the wyrm: the way the blow was pushed aside); 4 - 7
+m/s, strong drag, gravity; a stroke (`- / | \`) laid along its screen motion while fast, then `'`, then `.`;
+yellow-orange to deep orange to dark red, no channel above the bloom threshold (no halo, never white); light ones live
+0.12 - 0.3 s real, two or three heavy ones 0.35 - 0.5 s and die on the floor; real time (they leave the contact in the
+0.11 s freeze); at most 48 alive; never over a fighter's head or chest. One house-letter `LetterBatch`, built on the
+first spit. `?parryFx=0` (the Lab's `parryFx` button in the streak row) draws the parry as before.
+
+**What was turned down, in order (all filmed at the game camera; the owner's words):**
+1. A four-piece pass on one moment record (a ring through the floor's letters, poses, a darkened iris / camera lean /
+   sound duck, the world answering), three options each, 19 clips: "i dont like any of this. start over. i dont want
+   the background to change color at all."
+2. Sparks round 1 (a glint run down the blades and ~46 sparks): read as nothing at the game camera (sent back by the
+   lead, never shown). Round 2 (a white-gold fan of ~170 streaks): "too bright / fireworks, too many / too big, wrong
+   motion, not the right idea", "calmer".
+3. The perfect dodge's afterimage drawn as a second copy of the hero's real body (four options: an ink copy that
+   unravels, a pose trail, a cut ghost, a brush smear): "i still the the original is better". The shipped afterimage
+   stays.
+4. Asked for a reference, the owner: "do your own research and figure out the best thing". The calm spit was
+   designed from what real sword sparks and Sekiro's deflect do (few, fast, short-lived, orange; streak to dot).
+
+**Verification.** duel `parryfx` (0 draws no spark; `a` 12 - 16 on a perfect parry, none on a normal one, none white,
+90 % within 0.6 m (measured 93.4 % over 60 seeded spits), all gone within 0.55 s (0.483 s at most), a string peaks at
+48, no `Math.random`, nothing throws without a fire field, `a` is the default); `perfectfx`, `deflect`, glyph check;
+`npm test`: see the PR. Filmed: parry1, parry3, the wyrm, the phone.
+
+**Open.** It is quiet by design: at full speed it reads as a few orange flecks after the gold flash. When the blow
+glances toward the hero many sparks land over his lower body; against the wyrm they fly back into its head and sit
+under its own white parry star. Not played on the iPhone. The rejected work is on local branches only
+(`combat/perfect-epic`, `pfx/*`, `player/dodge-afterimage`), not pushed.
+
 ## 2026-11-23 — Session 90: every sound effect back to its first synth version
 
 **Owner:** (after a session of sound picks) "lets just make all the sounds go back to their original. i want to
