@@ -5,6 +5,104 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-23 — Session 89: the hero's move styles: four characters to pick from, switchable combos, a mystical sword (planned by Fable, built by Opus agents)
+
+**Owner:** "lets improve the main character. i dont want his default pose to always be holding one of his hands
+on his hip. make dynamic different default poses and cool idle and other different animations such as idle,
+attack etc for me to review. i'm also not a fan of the current default auto attack animation, so think of a way
+to make a cool default auto attack that people will love to see spammed and feels good. ... i also want his sword
+to look at bit more mystical in a subtle way. maybe make the sword animation change as you get streaks and stuff."
+Asked afterwards, they ticked all four complaints about today's light chain ("looks stiff or plain", "no rhythm
+when spammed", "hits feel weak", "the moves themselves": the whirl, the poke and the leaping slam), "show me all"
+of four characters (FLOW, a flowing wuxia swordsman; STILL, a still, deadly master; RESTLESS, a restless
+aggressive duelist; SHOWY, a showy acrobat), that all four things change with the streak (the sword's look, the
+arc and trail, the moves, how he holds the sword at rest), and "free hand, same damage rate" for the combos.
+
+**What.** Everything new is an OPTION behind a switch (ADR-174 – ADR-176); with no switch the game plays as
+before, poses and uniforms unchanged (`herostyles` holds today's pose to it frame by frame). One render defect
+was fixed for everyone.
+- **Move styles** (`player/styles/`): `index.js` holds the contract, `STYLES` and the switches (`?moves=` both
+  halves, `?stance=` standing and idle only, `?combo=` the light chain only; `today | flow | still | restless |
+  showy`); `today.js` is the shipped hero (every field null); one data file per character; guides
+  `STANCES.md` and `COMBOS.md` for their authors.
+- **Stance sets** (engine): `poseKit.js` (new: the pose helpers out of anim.js, re-exported there, and free-hand
+  rests that are not the belt: `handLoose`, `handFingers`, beside `handBelt`); `stances.js` `TODAY_SETS`,
+  `stanceStep`, `SHIFT_FADE` 1.2 s. Per set (at ease / in a fight) the animator holds one stance for its dwell
+  (counted after its fade), then cross-fades to another by weight, never the one held; a shift starts only in
+  the loco clip with no idle action and no guard held, and a fade runs to its end. `minTier` / `maxTier` pick
+  stances by streak tier; a stance's `move` says where the free hand goes as he sets off. A style's idle actions
+  name their `sets`: one with `'fight'` also plays standing in the guard; today's keep the old rule (none in a
+  fight).
+- **Switchable combos** (engine): `combat.js` `lightChain(streak)` (the combo style's `chain`, else `LIGHT`; a
+  style's `chainAwake` by streak tier at a chain's start, with the streak's `tiers` piece on); the swing keeps
+  the chain it started in. Chains of 3 – 7 hits; a heavy press after the fifth light or later gives the
+  Earthbreaker, and a def's `branch` picks one. New def levers, each off unless set: `hits` (several blows in
+  one press, each window with its own damage, world blow, bite, arc glint and swing sound), `heft` (his clock
+  drags after a landed hit), `biteHold`, `flare`, `buffer` (a press in a long beat is kept), `branch`.
+  `swingKit.js` (new) holds `FH` so style clips need no import of `swings.js`; style clips join `SWINGS` and
+  every lint walks them. `player:attack` gained `of` (the chain's length) and `window` (the blow's index); the
+  swing's rising pitch spreads over 3 – 7 hits. Training's chain row plays the whole combo.
+- **The four characters** (data only). Cadence and damage per second from the combo audit
+  (`tests/audit/hero-combo.mjs`, mashed against the wyrm; today 194 in 1.80 s, 107.8/s):
+
+  | Style | Stances (at ease · in a fight · on a streak) | Idle actions | Combo |
+  |---|---|---|---|
+  | flow | trailing, low line, still water · long guard, high line · the current, the tide | flower, draw, flick, circle | 5 presses (River, Return, Twin of two blows, Draw held, Sweep held): 211 in 1.97 s, 107.2/s; tier 3+: an Eddy of two blows in the middle (6 presses) |
+  | still | planted, carried, level · low, high · level and high, awake | grip, breath, chiburi, gaze | 3 presses (a snap, two blows, the drawing cut of 74): 162 in 1.53 s, 105.9/s; tier 3+: the drawing cut as two blows (90) |
+  | restless | bob, trail, prowl (he switches the lead foot) · crouch, cocked · itch, hunt | roll, tap, neck, beckon | 6 presses (Jab, Cross, Rise, Feint, Burst of two, Drive): 266 in 2.47 s, 107.7/s; tier 3+: a Burst of three and a heavier Drive |
+  | showy | presenter, swallow, cane · high line, the bow · flaunt, crest | flower, salute, shoulder, beckon | 5 presses (Flourish, Reverse, Twin of two, Hop cut, Spiral: a full turn off the ground, held): 220 in 2.07 s, 106.4/s; tier 3+: the spiral turns twice with two blows |
+
+  No stance rests a hand on the hip or the belt. Dropped by the numbers, in all four: a held reverse grip
+  (the wrist bound keeps the blade on the forearm's line) and blades held across the body or far behind (the
+  run and block entries popped).
+- **The sword** (`player/swordMystic.js`, `fx.js`): `?mystic=0|a|b|c|d`: a, the breath (short trains of the
+  gem's violet letters running up beside both edges); b, script (digits climbing beside the edge); c, wisps
+  (tiny letters peeling off the steel on the wind); d, shadow (a line of stroke letters left where the blade
+  stops). Each is there with no streak and grows over tiers 0 – 5 (the hero's own streak; `?streakfx=` does not
+  turn it off). All of its marks are house letters through the living world's `LetterBatch`; colour × alpha
+  stays at or under ~0.62. `?arc=0|1|2`: the swing's arc grows with the streak (1 full: up to two outer and
+  three inner lines, hanging × 2.1, beads from tier 3; 2 restrained: one outer, two inner, × 1.55); tier 0 is
+  the shipped arc.
+- **Fixed** (`render/pipeline.js`, always on): a halo round the RESTING blade at some poses and facings, and the
+  pale block where the point rests in the grass. The world grid tested the creature grid's bound (alpha < 0.46)
+  before `isArt / isProp`; the player's own pixel window (0.42 – 0.45, ADR-130) lies under that bound, so a world
+  cell centred on his blade printed a creature-grid letter in the steel's raw HDR colour (4 – 6), which bloomed.
+  Measured: 17 – 49 px over the 0.55 bloom threshold before, none after (the gem's own violet point aside).
+- **Lab** (PLAYER): `combo` and `look` (pin one look per hit) after the `atk` slider; `moves: stand`, `pose`,
+  `fidget` after `stance`; `mystic` and `arc` after `sword`.
+
+**How.** Fable planned it from the owner's answers and wrote the brief (the owner's taste on record, the hero's
+known failure list, the capture rig). Three Opus agents mapped the hero's code and then built the engines in
+their own worktrees: stance sets with poseKit (`h3/stance`), the switchable chain with its levers
+(`h3/chain`), the sword's options (`h3/sword`, two rounds: the first round's letters did not read at the game
+camera). Four Opus authors wrote one character each against `STANCES.md` / `COMBOS.md` and the two audits
+(`tests/audit/hero-stance.mjs`, `hero-combo.mjs`: every pose, fade, idle action and transition, every look of
+every hit at 2.0 / 2.75 / 3.5 m, measured in his own frame). A film agent shot each style at the game camera.
+The lead reviewed and merged each branch in turn.
+
+**Tests.** New scenarios `herostyles` (after `herostance`: today frame by frame, the set engine on a test-only
+style), `herocombo` (after `heroweight`: today's chain through the style path swing for swing, chains of 3 and 7
+walking and wrapping, the heavy branches off a 7-hit chain and `branch`, two windows landing and sounding
+twice, `chainAwake` read at a chain's start only, heft, buffer), `swordmystic` (after `streakfx`: every option's glyphs, its budget and alpha, off draws
+nothing). The opt-in audits exit 0 whatever they find.
+
+**Next.** The owner picks: a style (or a stance style and a combo style apart), a mystic option, an arc level.
+Then the losing options and the switches come out, and the winner is hardened: variants per hit, the outfits
+(`?heroLook=`), the phone, the audits' gaps, the docs for the winner alone.
+
+**Open.**
+- The audits: the combo audit never raises the streak (its `chainAwake` rows show the base chain); the stance
+  audit reads the wrist kink from sheared matrices (measure with the lean off); its "-> light" row always plays
+  today's chain.
+- Weak spots handed in: the blade point's speed into a backpedal or a block from the trailing poses (10 – 13 cm
+  and 70 – 117 cm a frame; today 9.9 and 83); restless's lead-foot switches step the feet 2 – 4 cm a frame in a
+  cross-fade (wanted); showy's finisher is still a full turn to his right; a hit that opens later than the tests'
+  0.36 s click is kept by `buffer`; mystic d fails "noticeable at rest with no streak".
+- `swordMystic.js`'s header still says a and d draw lines as glyph particles; since round 2 every mark is a
+  letter through `LetterBatch` (`_spawn` is unused).
+
+---
+
 ## 2026-11-23 — Session 88: combat sounds, round two (planned by Fable, built by Opus agents, picked by ear)
 
 **Owner:** "what are the remaining original sounds left ... lets do a new round of selection. i want to make

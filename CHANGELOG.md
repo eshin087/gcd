@@ -4,7 +4,31 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Seventy-nine pieces of work since 0.4.0:
+Eighty-two pieces of work since 0.4.0:
+- **Four ways for the hero to move, to try: stances, idles and a light combo each** (2026-11-23, ADR-174). *Added*
+  (options for the owner's pick; with no switch the hero moves exactly as before): four characters, each a set
+  of standing poses he shifts between at ease and in a fight, his own idle actions, and his own light combo.
+  `?moves=flow` the flowing swordsman (cuts that roll into each other: five presses, a double and two held
+  beats), `?moves=still` the still master (snap ... snap-snap ... the drawing cut: three presses), `?moves=restless`
+  the restless duelist (tat-tat, tat, tat, tat-tat-TAT: six presses, a feint and a burst), `?moves=showy` the showy
+  acrobat (flourish, reverse, twin, hop cut, a spiral off the ground: five presses). `?stance=` takes only how he
+  stands and idles, `?combo=` only the combo (`today` is the shipped hero). No pose rests a hand on his hip. On a
+  streak (from seven perfect defences, tier 3) each holds the sword differently and its combo changes a hit.
+  Every combo deals about today's damage per second (106 – 108 against today's 108, mashed). The Lab's PLAYER
+  rows `moves: stand`, `pose`, `fidget`, `combo`, `look`. *Changed:* a combo may be 3 to 7 hits, land more than one
+  blow in one press, and drag through what it cuts; a heavy press after the fifth light or later gives the
+  Earthbreaker; the swing's rising pitch spreads over the whole combo; the Training room's chain row plays the
+  whole combo.
+- **A more mystical sword, to try, and an arc that grows with the streak** (2026-11-23, ADR-175). *Added* (options for the owner's pick; off
+  by default): `?mystic=a` a breath of the gem's violet letters running up beside both edges, `?mystic=b` tiny
+  digits climbing the edge, `?mystic=c` wisps of tiny letters peeling off the steel on the wind, `?mystic=d` a
+  line of letters left where the blade stops. Each is faint and there with no streak, and grows tier by tier.
+  `?arc=1` the swing's arc gains fine lines inside and outside its edge, hangs up to twice as long and leaves
+  beads of light from tier 3; `?arc=2` the same, restrained. Tier 0 is the arc as before. The Lab's PLAYER rows
+  `mystic` and `arc`.
+- **The resting blade no longer glows** (2026-11-23, ADR-176). *Fixed:* at some poses and facings a bright halo
+  bloomed round the hero's blade while he stood still, and the point left a pale block in the grass: a letter of
+  the world grid printed the steel's raw colour beside it.
 - **Combat sounds, round two: real steel on the parry, picked by ear** (2026-11-23, ADR-172). *Changed:* the owner compared 37 combat sounds on a picker
   page (the original synth, what played then, two sounds designed from scratch and up to two CC0
   recordings each, every sound placed in eleven scripted fight moments) and picked. Now recorded: the

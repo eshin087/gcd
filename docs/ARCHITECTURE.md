@@ -124,7 +124,11 @@ Render helpers for creature modules:
   (0.5); with the shared `U.uArtSolid` = 1 the material writes its art source (0 = the patterned
   surface render, a look-dev A/B). `artGain` (default 1) scales the generic smooth source. The pass
   tests the hero's grid first, then the wyrm's, then the background props' (`FLAG.ART_PROP` 0.57,
-  window 0.555–0.585, ADR-100), then the world grid. Two creature paths, told
+  window 0.555–0.585, ADR-100), then the world grid. (Inside the world grid a cell centred on a creature or
+  prop edge, `isArt(a) || isProp(a)`, passes its raw pixel and is tested BEFORE the creature grid's
+  `a < 0.46`: the player's own window, 0.42 – 0.45, lies under that bound, and a world cell on his blade
+  printed a creature-grid letter in the steel's raw HDR colour, a bloom round the resting blade; ADR-176.)
+  Two creature paths, told
   apart by the **alpha contract** (no other material may write alpha in 0.46–0.55, and none but
   prop art in 0.555–0.585):
 
@@ -755,6 +759,8 @@ debug: { god: boolean, infiniteFlasks: boolean, heal(), teleport(x, z), kill(), 
                                        //   much faster, its step covering the same ground (the Lab's "atk" slider)
          fightStance: boolean | null,  // the stance he stands in (ADR-114): true holds the fight stance, false at ease;
                                        //   null = the game decides (the Lab's "stance" row)
+         stance: { ease, fight },      // a stance id of the move style's set pins that pose (ADR-174; it waits for a
+                                       //   running fade); null = the animator shifts between them (the Lab's "pose" row)
          plunge(execution = false) }   // Lab / captures: start the plunge on the dragon now (any range, in the air too)
 ```
 Module-private state the animator reads (anim.js): `plungeAnim { phase, u, t, exec, h }` (the plunge
@@ -764,7 +770,8 @@ within `DEFENSE.perfectParryWindow`, read by an attacker that answers a perfect 
 parries), `rmb { held, upT, parryT, edge, chain }`.
 Controls (only while `game.state` ∈ {`explore`,`bossIntro`,`boss`}): WASD move · mouse aim · LMB tap =
 light chain of five (a cut from the right → a backhand → a whirl → a lunge → the two-handed slam finisher,
-each with other looks; ADR-041, ADR-071),
+each with other looks; ADR-041, ADR-071; with a move style's combo, `?combo=`, its own 3 – 7 hits: "The light
+chain from the style" below),
 LMB while sprinting = the sprint slash, LMB out of a forward roll = the roll cut (`SPRINT_ATK`,
 `ROLL_ATK`; both count as hit 1), LMB hold ≥ 0.3 s then release = the charged dashing cleave (`CLEAVE`, ADR-072) · LMB tap with a posture-broken wyrm's head within 9 m = the execution
 (a broken **duelist** within its `execRange`: the execution thrust, `_startExecuteThrust`: a full
@@ -1190,7 +1197,31 @@ row for one def (`varLast`) and never a clip along the `line` the swing before i
 entries carry `line`; `anim.lastLine`; a chain's first hit follows nothing), so two hits in a row
 are never in the same plane. The result is `anim.atkDef` / `anim.atkAnim` / `anim.atkVar` (0 =
 `anim`), and `attackPose` reads `atkAnim` for its def. `anim.forceVariant` (an index, or null) pins
-the pick (tests). The blade is still the hit test, so each look is swung at the wyrm in REACH.
+the pick (tests); `anim.forceVariantBy` ({ [def name]: index }) pins one hit's (the Lab's `look` row). The
+blade is still the hit test, so each look is swung at the wyrm in REACH.
+**The light chain from the style** (ADR-174; `combat.js` `lightChain(streak)`, `hitWindows(def)`,
+`heavyAfter(def)`; `styles/COMBOS.md`): a light press out of nothing starts `lightChain(player.streak)`:
+the combo style's `chain` (`styles/index.js` `comboStyle()`; `?combo=` / `?moves=`), else `LIGHT`; with the
+style's `chainAwake` and `streakK('tiers')` > 0, the entry with the highest `minTier` at or under
+`streakTier(streak)` replaces it. `_startAttack(def, chain)` keeps the list on the swing (`atk.chain`);
+in a light's recovery the next press takes `chain[combo % length]`, and at the chain's end (or after
+anything that is not a light) `lightChain` is read again, so a switch or a new tier shows only as a chain
+starts. The sprint slash and the roll cut start the chain that is current (they count as hit 1). Chains
+are 3 – 7 defs, `combo` = index + 1, names unique across every style; a style's clips join `SWINGS`
+(`swings.js` `STYLE_SWINGS`; a taken name is left out with a console warning). `heavyAfter`: a def's own
+`branch` (0 – 4) picks `HEAVY[branch]`; else after the n-th light `HEAVY[min(n, 4)]`, after anything else
+`HEAVY[0]`. The def levers (each off unless set; today's defs set none):
+- `hits: [{ at: [u0, u1], ...fields }]`: several blows in one press. `hitWindows(def)` maps each `at` (clip
+  phase u, linear per phase) to attack-clock seconds, cached per def, with the window's fields over the
+  def's (`atk.win`, `atk.wi`, `atk.hd`: the def that window's hit reads). Entering a window (`_hitWindow`)
+  rearms the hit, the world blow (a new `wsrc`), the glints and the damage / poise; past the first it emits
+  `player:attack` again with `window`. `_strikeEnd(atk)` (the later of the active frames' end and the last
+  window's) bounds `isSwinging`, the trade check and the blade's strike light.
+- `heft: { t ≤ 0.3, rate }`: after a landed hit's freeze the attack clock runs at `rate` for `t` s
+  (`atk.heftT`, `heftK`); the root's step scales with it.
+- `biteHold` (s, the bite's hold before it tears on; anim.js), `flare` (0 – 1.5: the steel's flash on a landed
+  hit in `TUNE.bladeFlare.hit`'s units; a crit keeps the heavy one at least), `buffer` (s > 0.3: a press made
+  in this swing is kept that long instead of `TUNE.buffer`).
 **One hand, two hands** (ADR-071; it was two hands on every swing, ADR-046): the chain, the sprint
 slash and the roll cut are one-handed, the free hand keyed against the sword hand; the slam, the
 charge and the cleave hold the grip with both (`twoHand` 1, the off hand IK'd to the grip point;
@@ -1219,6 +1250,31 @@ around and the blade's point; none a multiple of another). In a fight the sword 
 on the move (`FIGHT_RUN`; a sprint trails the blade); a roll and a backstep ease the sword arm out
 of the pose they began in (`swordFromEntry`, `SWORD_ENTRY` 0.16 s) and the loco clip settles the
 blade into the stance over `LOCO_SETTLE` (0.24 s).
+**Move styles and stance sets** (ADR-174; `player/styles/`, contract in `styles/index.js`, guides
+`styles/STANCES.md` and `styles/COMBOS.md`): `STYLES` = `{ today, flow, still, restless, showy }`, one data
+file each (`id, label, blurb, stances, shift, fidgets, chain, chainAwake, swings`); `today.js` sets every
+field null, so the engine uses its own data. `stanceStyle()` / `comboStyle()` (and `…Id()`) are what he
+stands in and what his light chain comes from: `?stance=` / `?combo=` each, `?moves=` both (the specific
+switch wins), `setStanceStyle` / `setComboStyle` / `setMoves` at run time (an unknown id is ignored). A style
+file imports only `poseKit.js` and `swingKit.js`: `anim.js`, `swings.js` and `combat.js` import the styles.
+`poseKit.js` holds the pose helpers (channel map `P`, `set3`, `dir`, `dirLerp`, `standLife`, `wave`, ...;
+`anim.js` re-exports what it moved) and the free hand's rests: `handBelt` (today's), `handLoose`,
+`handFingers`. `swingKit.js` holds `FH` (it imports nothing; `swings.js` re-exports it).
+A style's `stances` is `{ ease: [STANCE], fight: [STANCE] }`, STANCE `{ id, fn(p, P, A), w, dwell: [min,
+max], minTier?, maxTier?, move? }` (`fn` writes a whole standing pose over `guard()`'s, as `atEase` does).
+`stances.js`: `TODAY_SETS` (ADR-114's two, one a set, never picked), `setsOf` / `listOf` (a missing or
+malformed set falls back to today's), `SHIFT_FADE` 1.2 s (a style's `shift.fade` overrides), `stanceStep`
+run once a frame from `HeroAnimator.update` beside `fightW`. Per set (`A.stanceSel[set]`: `cur`, `prev`,
+`k` the fade, `t`, `dwell`, `n`) it holds `cur` for its dwell (drawn with the animator's own noise,
+`A.stanceNoise`, counted after the fade into it), then picks another by weight among those whose tier range
+holds `A.streakTier` (all when none does), never `cur` while another is eligible, and cross-fades
+(smootherstep). A shift STARTS only while calm: the loco clip, no idle action, no guard held; a fade always
+runs to its end, and a pin (`player.debug.stance[set]`), a style switch or a tier that leaves `cur` out of
+range moves on only after it. `stand()` writes each set's `cur` (or blends `prev` toward it) and the two sets
+blend by `fightW` as before. `A.streakTier` (0 – 5, `streakTier(player.streak)`) and `A.streakK` (tier / 5,
+eased at 3/s) are there for a pose to read. A STANCE's `move` (`{ d, n }` unit vectors or `false`) is where
+the free hand's fingers and palm are pulled as he sets off (default `REST_LD` / `REST_LN`; `false` keeps the
+stance's own).
 **Idle life** (ADR-047): in the loco clip, standing still in the `idle` state, at ease (not locked
 on, not in the fight stance: `fightW` ≤ 0.05), with no guard held, for `IDLE_LIFE.after` (2.5 s), `HeroAnimator._idleLife` starts an action from `FIDGETS`
 every `IDLE_LIFE.gap` (2–4.5 s after the last one ends), picked with the animator's own noise (never
@@ -1226,7 +1282,12 @@ every `IDLE_LIFE.gap` (2–4.5 s after the last one ends), picked with the anima
 `lean` (1.7–4.2 s each). Each is a layer over the at-ease stance (`idleLife` in `locoGuard`) with a
 0.45 s fade in and 0.55 s out; anything else (a move, a lock-on, a guard, another clip) cuts it within
 `IDLE_LIFE.cancel` (0.16 s). State: `anim.fidget = { k, t, w, cut, still, wait, last, count, name }`.
-Visual only: no hit test runs outside attacks.
+Visual only: no hit test runs outside attacks. With a move style (ADR-174) `_idleLife` takes the style's
+`fidgets` (`{ name, dur, fn(p, A, u, e), sets }`, written as offsets over the current pose) instead of
+`FIDGETS`: one whose `sets` holds `'fight'` also plays standing in the guard (`fightW` > 0.95, locked on
+too), `'ease'` as above; with no `sets` it is at ease only, and today's keep that rule. `anim.debug.fidget(name)`
+starts one now in either set (the Lab's `fidget` row; false for an unknown name); `FIDGET_NAMES` lists
+today's.
 **Idle** (`guard`, ADR-041; ADR-040 put the blade out to his side, where the game camera sees it):
 weight on the left leg, the right foot a shoulder's width out and forward with the knee soft, the
 upper arm hanging by the ribs with the elbow a little back, the grip beside the right hip and
@@ -1339,6 +1400,22 @@ cinema`). Nothing stores a tier: each piece reads it at the moment.
   cut, else how deep into the storm); the parry event gains `feel` (the perfect look's mode, 'today'
   when not perfect or a bullet) and `beat` (cinema's 'full' | 'short', else ''); the perfect dodge
   event gains `feel`. `player.debug.flurry(strikes)` takes a streak up to 99 (7 blows still).
+
+**The sword's mystical layer and the growing arc** (ADR-175; options, off by default). `player/swordMystic.js`
+`class SwordMystic` (`player.mystic`, built in the Player's constructor; `update(dt)` at the end of
+`Player._updateFx`, returning at once with the option off). `?mystic=0|a|b|c|d` (`mysticMode()`, `setMystic(id)`;
+`MYSTIC_IDS`, `MYSTIC_NAMES`): a breath, b script, c wisps, d shadow. `MYSTIC` holds the tuning, one entry
+per `streakTier(player.streak)` 0 – 5 (read from the hero's own streak, not `streakK`: `?streakfx=off`
+leaves it on); `MYSTIC_GLYPHS` what each option may print. Every mark is a house letter through a
+`LetterBatch` of its own (`world/life/letterBatch.js`, 64 letters, registered with
+`pipeline.registerParticles`), built the first time an option needs it, on the module's own LCG stream
+(`setMysticSeed(v)`; never `Math.random`). Budgets a frame: `MYSTIC.budget` (6) new spawns,
+`MYSTIC.letters` (20) written letters, one letter a screen cell (`MYSTIC.cell`); `onEmit` (tests) sees
+every mark; `n`, `w`, `total` count them. Nothing on a dead, hidden or unarmed hero; none of it writes a
+uniform. `?arc=0|1|2` (`arcOn()`, `setArc(v)`, kept in the same module): `fx.trail` reads it with
+`streakTier(player.streak)` and takes `ARC_STREAK` (1) or `ARC_STREAK_CALM` (2) for the arc's `linger`,
+its edge `size`, `outer` / `inner` fine lines (the inner ones replace `game.fx.streak`'s echoes while
+on) and `beads`; tier 0 is today's arc.
 
 `edgeGlint(sw, z0, z1, far, crit, realDt, ridge)`: a small cold '+' (and '|' strokes behind it)
 running up the LEADING edge of the steel from sword-space height z0 to z1 this frame (`leadSide(sw,
@@ -2447,7 +2524,10 @@ owner's pick of 2026-11-23). `cue-blue` and `time-blue` have no file: the synth 
   flare's `combat:flash`, `player:flareCounter`) → `_parryAlso`: one strike of `parry-blue`, no climb (the synth
   `parry` with its old chain value as the fallback and with `?sfx=old`). The streak's climb note on a parry is
   × `STREAK_SOUND.parryGain` (0.5). The hero's swing pitch steps with `combo` 1..5 (step `combo - 1`, 0..4),
-  the recorded light cut by `HERO.combo` and the synth `swing` by 0.035 a step.
+  the recorded light cut by `HERO.combo` and the synth `swing` by 0.035 a step. A move style's chain of 3 – 7
+  hits (the event's `of`, ADR-174) is spread over the same five steps (`chainCombo(c, of)`; `of` 5 or none
+  passes through); the last swing's `of` is kept for its landed cuts. A `player:attack` with `window` > 0 (a
+  second blow in one press) clears the 40 ms gap first, so it always sounds.
   `player:hurt` (end of frame) → `hurt`, gain × `(clamp(damage / 40, 0.6, 1.4) / 0.6) ^ HURT.exp`, + `hurtFire`
   for a fire kind. `player:hitDragon` on a beast (not a wing) → `hit-scale` (heavy × `HIT_HEAVY`, + `hitCrit` on
   a crit; a duelist's cloth and a wing: the synth `hit`); its blade layer → `cut-light` (light / sweep /
@@ -2671,6 +2751,13 @@ hush 2 s; arrival (replay). A button's status line is what its `run` returned. `
 counter, sound, world), a `perfect: <mode>` button that cycles today / sharp / cinema
 (`setPerfectMode`), and `burst N` that cycles the burst level 0 - 3 (`setBurst`). `_syncCutBtns` lights
 and labels them.
+**The move styles' rows** (ADR-174, PLAYER): after the `atk` slider `combo` (one button per `STYLE_IDS`:
+`setComboStyle`, taking effect as the next chain starts) and `look` (one button per hit of that chain; a tap
+cycles auto → 1 → 2 … and pins that hit's look through `anim.forceVariantBy[def.name]`); after `stance`
+`moves: stand` (`setStanceStyle`), `pose` (auto or one stance per set: `player.debug.stance`) and `fidget`
+(start one of the style's idle actions now: `anim.debug.fidget`); the pose and fidget rows are rebuilt when
+the style changes. After `sword`: `mystic` (`setMystic`, 0 / a / b / c / d) and `arc` (`setArc`, 0 / 1 / 2;
+ADR-175).
 
 ### Bindings — `src/core/bindings.js` (ADR-067)
 ```
@@ -4908,7 +4995,7 @@ carried by `position.y`; the slam ends it, the get-up timed so control is gone a
 
 ## Event catalogue (exact names — producers → consumers)
 Player → hud/audio/fx/flow:
-- `player:attack {kind:'light'|'heavy'|'slam'|'cleave'|'thrust', combo, charge, name}` (swing starts; combo 1–5 = the chain hit, slam = hit 5, the sprint slash and the roll cut report 1; heavy = a heavy branch, combo 0–4 = the light it followed (ADR-115; the Earthbreaker after the fourth is kind slam); cleave = the charge's release, thrust = the execution against a duelist; name = the attack's data name, combat.js),
+- `player:attack {kind:'light'|'heavy'|'slam'|'cleave'|'thrust', combo, charge, name, of, window}` (swing starts; combo 1..n = the chain hit (n = of: 5 today, 3 to 7 for a move style's chain, ADR-174), slam = hit 5 today, the sprint slash and the roll cut report 1; heavy = a heavy branch, combo 0–4 = the light it followed (ADR-115; the Earthbreaker after the fourth is kind slam); cleave = the charge's release, thrust = the execution against a duelist; name = the attack's data name, combat.js; of = the length of the light chain the swing belongs to, null for a heavy; window = for a def with several hit windows, the window entered (1, 2, ...): the same swing emits again for each window past the first, absent otherwise),
   `player:charge {t}` (charge start; t = seconds to full charge), `player:slam {x, z}` (the slam meets the ground: shard burst),
   `player:hitDragon {damage, part, point, heavy, crit, kind, guarded, combo, weight, shards}` (heavy = slam / cleave / thrust / plunge; kind 'plunge' = the
   head-stab, crit on an execution; guarded = a duelist's guard turned it: damage 0; point = where the cut is drawn

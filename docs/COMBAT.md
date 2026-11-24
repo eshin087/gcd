@@ -359,16 +359,19 @@ or guarding, a roll leaves it); release: a 5 m blink step along his aim, 46 dama
 heavy blade blow met by the cut is beaten aside (the draw counter: 46 damage, 40 posture, he reels, no crit
 window). A red or black blow lands on him in the stance. Not learned, the same input is the cleave's charge.
 
-| Move | Input | Timing (windup / active / recovery) | Damage | Posture | Notes |
+The Posture column is the posture a hit DEALS to the wyrm or a duelist: `POSTURE.hit` (light 5, heavy 16;
+`combat/rules.js`) × `clamp(poise / 12, 0.6, 1.5)` (a heavy: `poise / 40`), the def's `poise` in brackets.
+
+| Move | Input | Timing (windup / active / recovery) | Damage | Posture (poise) | Notes |
 |---|---|---|---|---|---|
-| 1 — falling cut | LMB tap | 0.11 / 0.12 / 0.24 s (0.47 s) | 30 | 5 | one-handed: cocked beside the head (blade up-back-right), the sword fingers pointing at the target; a diagonal down across the front as the hips turn through and the body sinks, ending low past the left hip while the fingers draw back high-left like a bow; cyan crescent |
-| 2 — backhand | LMB tap in the recovery | 0.11 / 0.12 / 0.24 s | 32 | 5 | back across his front from the left: rising from the left hip to high right, the body rising with it (or level at chest height with a pivot, or falling from over the left shoulder); the sword fingers gather on the sword wrist in the coil and split from it, opening out to his left (the falling one tucks them before the chest and draws them back high) |
-| 3 — whirl | 3rd tap | 0.13 / 0.15 / 0.26 s (0.54 s) | 36 | 6 | he follows the backhand round to his right: one full turn with the sword arm thrown out level and the free arm tucked before the chest through the turn, then flung wide as the brake, dropping into the turn and leaning to the inside of it, his head staying on the target and coming round ahead of the body; the blade crosses the front about two thirds of the way round, inside the active frames, and carries on round to his right |
-| 4 — lunge | 4th tap | 0.11 / 0.10 / 0.24 s (0.45 s) | 30 | 6 | one-handed: the hand draws back to the right ribs with the point already up and the sword fingers at the foe, then one long line from the fingertips behind the hip through the arm to the point, driven forward and UP at 35° (the rising thrust: 45°, its fingers and point converging on one spot). Both thrusts rise (ADR-077): a level blade pointed toward the game camera is drawn straight down the screen to the grass at his feet, as if planted in the ground |
-| 5 — slam (finisher) | 5th tap | 0.28 / 0.13 / 0.42 s (0.83 s) | 66 | 18 | two-handed (ADR-076): he gathers (dips and coils right, the blade drawn down-back past the right hip), leaps as the blade sweeps up his right side and cocks over the shoulder, and brings it down in one diagonal across his front into the ground ahead and a little left, landing folded over the planted blade and holding it; a crystal-shard burst (r 1.7 m) at the point hits if the blade missed |
-| Sprint slash | LMB while sprinting (faster than a run) | 0.11 / 0.13 / 0.32 s | 40 | 7 | a bounding rising slash, low right → high left; carries 2.4 m along the RUN direction (it does not snap to the aim); counts as hit 1 (the next tap is the rising backhand) |
-| Roll cut | LMB out of a forward roll | 0.10 / 0.11 / 0.26 s | 34 | 6 | a low cut rising out of the crouch, right → left; counts as hit 1. A backstep (Space with no direction) starts the plain chain |
-| Cleave — charged | hold HEAVY ≥ 0.3 s, release (ADR-115; it was the attack button's) | 0.08 / 0.24 / 0.45 s | 70–110 by charge (full at 1.2 s) | 12–20 | a deep stance coiled away from the target, both hands on the grip held out before the right side of his chest, the sword elbow lifted out to the side and the off forearm across the chest (ADR-078), the blade standing nearly upright out to his right, a hand's width clear of his hood (ADR-090: it stood beside the ear and crossed his face) (moves at ×0.4; lightning crawls on the blade past half charge); the release dashes 2.2–3.6 m along the facing with the blade still cocked and carves one two-handed diagonal, high right to past the left hip, as the dash dies out (the blade crosses his front over the last 45 % of the active frames), sinking into a long low lunge that he holds, the free hand letting go and snapping into sword fingers at the foe while the blade trails low behind; a wide crescent that hangs in the air (cooling to violet), and on a hit a 0.15–0.2 s freeze, a doubled slash line with a tick across it, a ring, a fan of streaks along the cut, a 0.14–0.24 m kick and a 1.2–2.0 m punch (ADR-072; it was a lunging thrust) |
+| 1 — falling cut | LMB tap | 0.11 / 0.12 / 0.24 s (0.47 s) | 30 | 5 (12) | one-handed: cocked beside the head (blade up-back-right), the sword fingers pointing at the target; a diagonal down across the front as the hips turn through and the body sinks, ending low past the left hip while the fingers draw back high-left like a bow; cyan crescent |
+| 2 — backhand | LMB tap in the recovery | 0.11 / 0.12 / 0.24 s | 32 | 5 (12) | back across his front from the left: rising from the left hip to high right, the body rising with it (or level at chest height with a pivot, or falling from over the left shoulder); the sword fingers gather on the sword wrist in the coil and split from it, opening out to his left (the falling one tucks them before the chest and draws them back high) |
+| 3 — whirl | 3rd tap | 0.13 / 0.15 / 0.26 s (0.54 s) | 36 | 6.7 (16) | he follows the backhand round to his right: one full turn with the sword arm thrown out level and the free arm tucked before the chest through the turn, then flung wide as the brake, dropping into the turn and leaning to the inside of it, his head staying on the target and coming round ahead of the body; the blade crosses the front about two thirds of the way round, inside the active frames, and carries on round to his right |
+| 4 — lunge | 4th tap | 0.11 / 0.10 / 0.24 s (0.45 s) | 30 | 5.8 (14) | one-handed: the hand draws back to the right ribs with the point already up and the sword fingers at the foe, then one long line from the fingertips behind the hip through the arm to the point, driven forward and UP at 35° (the rising thrust: 45°, its fingers and point converging on one spot). Both thrusts rise (ADR-077): a level blade pointed toward the game camera is drawn straight down the screen to the grass at his feet, as if planted in the ground |
+| 5 — slam (finisher) | 5th tap | 0.28 / 0.13 / 0.42 s (0.83 s) | 66 | 17.6 (44) | two-handed (ADR-076): he gathers (dips and coils right, the blade drawn down-back past the right hip), leaps as the blade sweeps up his right side and cocks over the shoulder, and brings it down in one diagonal across his front into the ground ahead and a little left, landing folded over the planted blade and holding it; a crystal-shard burst (r 1.7 m) at the point hits if the blade missed |
+| Sprint slash | LMB while sprinting (faster than a run) | 0.11 / 0.13 / 0.32 s | 40 | 7.5 (18) | a bounding rising slash, low right → high left; carries 2.4 m along the RUN direction (it does not snap to the aim); counts as hit 1 (the next tap is the rising backhand) |
+| Roll cut | LMB out of a forward roll | 0.10 / 0.11 / 0.26 s | 34 | 5.8 (14) | a low cut rising out of the crouch, right → left; counts as hit 1. A backstep (Space with no direction) starts the plain chain |
+| Cleave — charged | hold HEAVY ≥ 0.3 s, release (ADR-115; it was the attack button's) | 0.08 / 0.24 / 0.45 s | 70–110 by charge (full at 1.2 s) | 12–20 (30–50) | a deep stance coiled away from the target, both hands on the grip held out before the right side of his chest, the sword elbow lifted out to the side and the off forearm across the chest (ADR-078), the blade standing nearly upright out to his right, a hand's width clear of his hood (ADR-090: it stood beside the ear and crossed his face) (moves at ×0.4; lightning crawls on the blade past half charge); the release dashes 2.2–3.6 m along the facing with the blade still cocked and carves one two-handed diagonal, high right to past the left hip, as the dash dies out (the blade crosses his front over the last 45 % of the active frames), sinking into a long low lunge that he holds, the free hand letting go and snapping into sword fingers at the foe while the blade trails low behind; a wide crescent that hangs in the air (cooling to violet), and on a hit a 0.15–0.2 s freeze, a doubled slash line with a tick across it, a ring, a fan of streaks along the cut, a 0.14–0.24 m kick and a 1.2–2.0 m punch (ADR-072; it was a lunging thrust) |
 
 - **Heavy branches** (ADR-115; owner: heavy branches off the chain; numbers in `combat.js` `HEAVY`, a
   first pass to tune from play): HEAVY (RMB / R2 / the HEAVY tile) pressed on its own, or in the
@@ -377,7 +380,7 @@ window). A red or black blow lands on him in the stance. Not learned, the same i
   Held past `CHARGE.hold` (0.3 s) a heavy press is the charge instead. A light press no longer waits
   to see whether it is held: it cuts at once.
 
-  | Input | Heavy | Windup / active / recovery (s) | Damage | Posture | Its job |
+  | Input | Heavy | Windup / active / recovery (s) | Damage | Poise (the def's; dealt: 16 × poise / 40) | Its job |
   |---|---|---|---|---|---|
   | H | Piercing Gale | 0.30 / 0.14 / 0.42 | 54 | 34 | a two-handed thrust on a 2.8 m dash: the gap closer |
   | L-H | Rising Crescent | 0.28 / 0.14 / 0.42 | 50 | 36 | rises from the left hip to high right; staggers a duelist (`reel` 2) |
@@ -440,7 +443,29 @@ window). A red or black blow lands on him in the stance. Not learned, the same i
   swings (70 per second; at the slow pace 237 in 3.79 s, 63). Mashed, the whole chain lands 194 in
   ~1.86 s, about 104 per second (the slow chain: 237 in ~2.17 s, 109): the lights' ×1.4 of the slow
   pace is gone (30 / 32 / 36 / 30 again) and the slam went from 58 to 66 for the beat its landing
-  now holds. The old three dealt 120 in 1.94 s.
+  now holds. The old three dealt 120 in 1.94 s. Measured again by the combo audit (2026-11-23,
+  `node tests/audit/hero-combo.mjs .`, mashed against the wyrm with the suites' harness, freezes
+  included): 194 in 1.80 s, **107.8 per second**. The move styles below are held to that number.
+- **Move styles' combos** (2026-11-23, ADR-174; OPTIONS for the owner's pick, `?combo=<id>` or
+  `?moves=<id>`; the default above is unchanged). Each style brings its own light chain of 3 – 7 presses
+  (`styles/<id>.js` `chain`, the levers in `styles/COMBOS.md`): some presses land two or three blows (hit
+  windows), some hold a beat (a late `chain`, a `buffer` that keeps an early tap), the finisher drags through
+  what it cuts (`heft`). On a streak of tier 3 (seven perfect defences) and up a style's `chainAwake` chain
+  replaces it as a chain starts. A heavy press after the n-th light gives the n-th heavy branch, past the
+  fourth the Earthbreaker (a def's `branch` may pick one). Rates by the combo audit, mashed; "next" is when
+  each next press may start (`windup + active + chain × recovery`), before freezes:
+
+  | Style | Presses (blows) | Rhythm (next, s) | Cycle (audit) | Damage | Per second | On a streak (tier 3+) |
+  |---|---|---|---|---|---|---|
+  | today | 5 (5) | 0.30 · 0.30 · 0.36 · 0.28 · 0.54 | 1.80 s | 194 | 107.8 | unchanged |
+  | flow | 5 (6): River, Return, Twin (two), Draw (held), Sweep (held finish) | 0.26 · 0.27 · 0.35 · 0.47 · 0.46 | 1.97 s | 211 | 107.2 | 6 presses: an Eddy (two blows) before the Draw; 106.3 /s measured in the page |
+  | still | 3 (4): a snap, two blows, the drawing cut (74) | 0.38 · 0.49 · 0.55 | 1.53 s | 162 | 105.9 | the drawing cut as two blows (90) |
+  | restless | 6 (7): Jab, Cross, Rise, Feint, Burst (two), Drive | 0.25 · 0.32 · 0.38 · 0.36 · 0.35 · 0.69 | 2.47 s | 266 | 107.7 | the Burst three blows (52), the Drive 95 |
+  | showy | 5 (6): Flourish, Reverse, Twin (two), Hop cut, Spiral (a full turn off the ground, held) | 0.30 · 0.22 · 0.47 · 0.30 · 0.61 | 2.07 s | 220 | 106.4 | the Spiral turns twice, two blows (92) |
+
+  Every chain is all lights (one-handed or not, none of kind `slam`); the restless Drive and the still and
+  showy finishers are lights that hold, not a slam with shards. Posture (the defs' `poise`) grows toward the
+  finisher as today's does (today 12 / 12 / 16 / 14 / 44; the styles' finishers 41 – 58).
 - The broad build (2026-11-09) kept the bones: the REACH table is unchanged; the hit segment moved
   by ≤ 2.5 cm on some active frames (ARCHITECTURE.md, animator).
 - Not in the table: **the plunge** (a perfect dodge of the wyrm) and **the execution** (an attack

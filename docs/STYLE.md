@@ -1687,3 +1687,26 @@ ink on black, never over the hero.
   (TRIPLE ... THOUSANDFOLD) sits under it once, in small spaced gold capitals. A lost streak: grey,
   struck through in red, the digits parting as they fall. The flurry's banner at tiers 4 - 5 gains
   thin gold rules, never size.
+
+### The sword's mystical layer and the arc's tiers (2026-11-23, ADR-175; `player/swordMystic.js`, `player/fx.js`; options: `?mystic=`, `?arc=`)
+The owner: "a bit more mystical in a subtle way". The rules every option follows:
+- **The steel stays dark until it cuts** (ADR-130). Nothing is written on the blade: every mark starts off
+  the steel (beside an edge, or 5 – 11 cm off its axis), so it never prints on his own pale blade, and none of it touches the blade's uniforms. While a cut lights the steel a quarter of
+  the look stays: the cut is the steel's moment.
+- **Already there at rest, growing by tier.** Each option is one idea that shows with no streak (at ease
+  and in a fight) and wakes tier by tier (0 – 5): faster, longer, a few more letters, a little paler at the
+  top. No new hue per tier: the gem's violet (a), a cold blue (b, c, d).
+- **Tiny faint house letters, one to a screen cell** (the living world's rule, ADR-163): the wyrm's pixel
+  font through `LetterBatch`; a letter whose cell already holds one this frame is skipped, so a blade
+  pointed at the camera does not stack its letters into one pale blob. Colour × alpha at most ~0.62 (the
+  bloom starts at 0.55); at most 6 new marks and 20 written letters a frame. Glyphs: a `: ' .`, b digits,
+  c `. , ' ~` and the backquote, d the stroke that matches the blade's angle on the screen (`| / - \`).
+- **The lesson:** a glyph particle of the world atlas under about 6 px prints as a blur, not a letter
+  (round 1 of this layer did not read at the game camera). Tiny letters near the hero go through
+  `LetterBatch`; glyph particles stay for things about one letter cell big or larger.
+- **The arc** (`?arc=1`; `?arc=2` restrained): still the owner's crescent and still LINES, not light.
+  Per tier it hangs longer (up to × 2.1; restrained × 1.55), gains fine lines just outside its edge (up to
+  two; one) and inside it (up to three; two, in place of the aura's echo lines), and from tier 3
+  (restrained 4) leaves a bead of light now and then that drifts out of the cut. Tiers 1 / 3 / 5 must tell
+  apart at the game camera: a second line, a layered band, a wide fan with beads. Tier 0 is the arc as it
+  ships.

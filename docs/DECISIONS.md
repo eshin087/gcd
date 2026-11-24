@@ -5249,3 +5249,104 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   picker. At the owner's sign-off: chain `a`; the other parry uses play one strike of the blue parry recording; the
   streak's climb note is half as loud on a parry; the hero's combo swing rises on every cut.
 
+## ADR-174 — The hero's move styles: a character is data (stance sets, idle actions, a light combo), four options behind switches until the owner picks (2026-11-23)
+
+- **Context:** the owner: "i dont want his default pose to always be holding one of his hands on his hip. make
+  dynamic different default poses and cool idle and other different animations ... i'm also not a fan of the
+  current default auto attack animation, so think of a way to make a cool default auto attack that people will
+  love to see spammed and feels good." Asked, they ticked all four complaints about today's chain (ADR-041,
+  ADR-071, ADR-075): stiff or plain, no rhythm when mashed, weak hits, the wrong moves (the whirl, the poke and
+  the leaping slam); "show me all" of four characters (FLOW, STILL, RESTLESS, SHOWY); that the moves and the
+  rest pose change with the streak; and "free hand, same damage rate". ADR-114 had given him exactly two
+  stances (one at ease, one in a fight) and ADR-047 / ADR-114 idle actions at ease only, all in code.
+- **Decision:**
+  1. **A style is one data file** (`player/styles/<id>.js`, contract in `styles/index.js`): `stances` (sets
+     `ease` / `fight` of poses), `shift` (the cross-fade), `fidgets` (idle actions with the `sets` they play in),
+     `chain` (3 – 7 light defs in `LIGHT`'s shape), `chainAwake` (chains by streak tier), `swings` (its clips,
+     names prefixed with its id, added to `SWINGS`). It imports only `poseKit.js` and `swingKit.js`, never the
+     modules that import the styles (`anim.js`, `swings.js`, `combat.js`): no cycle. `today.js` is all null: the
+     engine falls back to its own data, byte for byte.
+  2. **Two halves, three switches:** `?moves=<id>` both, `?stance=<id>` standing and idle only, `?combo=<id>`
+     the light chain only (each wins over `?moves=`); `setMoves` / `setStanceStyle` / `setComboStyle` and the
+     Lab's rows switch them live. (`?chain=` was taken by the parry's deflect chain, ADR-172.)
+  3. **Stance sets beside ADR-114:** per set the animator holds one stance for its dwell (counted after its
+     fade), then cross-fades by weight to another, never the one held (`stances.js stanceStep`, `SHIFT_FADE`
+     1.2 s unless the style names one). A shift starts only in the loco clip with no idle action and no guard
+     held; a fade always runs to its end, and a pin, a style switch or a tier change waits for it. `minTier` /
+     `maxTier` choose by `streakTier`; `A.streakTier` / `A.streakK` let a pose read the streak; a stance's `move`
+     sets where the free hand goes as he sets off. ADR-114's two stances are `TODAY_SETS` (one a set: never
+     picked). The pose helpers moved to `poseKit.js` with free-hand rests off the belt (`handLoose`,
+     `handFingers`). A style's idle action with `'fight'` in its `sets` also plays standing in the guard
+     (locked on too); today's keep ADR-114's rule.
+  4. **Switchable combos beside ADR-041 / ADR-115:** `combat.js lightChain(streak)` is read at a chain's START
+     only and the swing keeps it (`atk.chain`), so a switch or a tier never changes a chain halfway. A heavy
+     press after the n-th light gives `HEAVY[n]`, past the fourth `HEAVY[4]` (the Earthbreaker); a def's
+     `branch` picks one. The levers a groove and a hit's weight needed, each off unless a def sets it: `hits`
+     (several hit windows in one press, each its own blow on the boss and the world, bite, glint and swing
+     sound), `heft` (his clock drags after a landed hit's freeze), `biteHold`, `flare`, `buffer`. The rhythm
+     (quick-quick-pause-BIG) is set by the data alone: the next hit starts at `windup + active + chain ×
+     recovery`.
+  5. **The same damage rate:** every chain was held within ±6 % of today's mashed rate on the combo audit
+     (`tests/audit/hero-combo.mjs`: today 194 in 1.80 s, 107.8/s; flow 107.2, still 105.9, restless 107.7, showy
+     106.4), so the bosses' balance (ADR-102's bots) stands whichever is picked.
+  6. **Measured, not eyeballed:** two opt-in audits walk a style (`hero-stance.mjs`: every pose, fade, idle
+     action and transition in his own frame; `hero-combo.mjs`: every look of every hit at 2.0 / 2.75 / 3.5 m,
+     the crossing inside the active frames, arm-segment turns under 60° a frame, toe drag ≤ 12 cm).
+- **Status:** options pending the owner's pick (a style, or a stance style and a combo style apart). The
+  default stays `today`.
+- **Dropped by the numbers** (in all four styles): a held reverse grip (the wrist bound keeps the blade on the
+  forearm's line, so the grip could not be held without failing the kink bound); blades held across the body or
+  far behind him (the run and block entries popped out of them); any pose with a hand on the hip or the belt
+  (the owner's ask). A clip carried round by a body turn takes `spin: true` instead of an exemption by name.
+- **Consequences:** a new character is a file and two guides (`STANCES.md`, `COMBOS.md`), no engine change.
+  `player:attack` carries `of` and `window` (no new event); the swing's rising pitch spreads over 3 – 7 hits.
+  Once the owner picks, the losing files and the switches come out and the winner is hardened (variants per
+  hit, the outfits, the phone, the audits' gaps: the combo audit never raises the streak; the stance audit
+  reads the wrist kink from sheared matrices; its "-> light" row plays today's chain).
+
+## ADR-175 — The sword's mystical layer and an arc that grows with the streak: house letters through LetterBatch, four options behind `?mystic=`, two levels behind `?arc=` (2026-11-23)
+
+- **Context:** the owner: "i also want his sword to look at bit more mystical in a subtle way. maybe make the
+  sword animation change as you get streaks and stuff", and that the sword's own look and the swing's arc and
+  trail should both change with the streak. On record: the blade is dark steel that lights only while it cuts
+  and the glowing arc is theirs (ADR-130); always-on bright glows read "flashy"; ambient effects are many TINY
+  FAINT letters (ADR-163). ADR-167's aura already puts lines on the steel and echo lines inside the arc.
+- **Decision:**
+  1. **Four readings, one idea each** (`player/swordMystic.js`, `?mystic=0|a|b|c|d`, the Lab's `mystic` row): a,
+     the breath (trains of the gem's violet letters `: ' .` running from the gem to the point beside both
+     edges, in time with the gem); b, script (digits climbing beside the edge, some leaving the point at tiers
+     4 – 5); c, wisps (`. , ' ~` peeling off the steel on the wind, more where the blade moves); d, shadow (a
+     line of the stroke letter that matches the blade's screen angle, left where it stops). Each is there with
+     no streak and grows by `streakTier` 0 – 5 (the hero's own streak, independent of `?streakfx=`).
+  2. **House letters through the living world's `LetterBatch`, not glyph particles and not the fire field.** A
+     glyph particle of the world atlas under about 6 px prints as a blur, not a letter (round 1's marks did not
+     read at the game camera); `LetterBatch` prints the wyrm's pixel font crisp at any size, one letter a
+     screen cell (a letter whose cell already holds one this frame is skipped). The fire field is heat: it
+     would make the steel burn and haze round him, and the steel must stay dark until it cuts. Its mesh is
+     built only when an option needs it, on the module's own random stream (three.js draws uuids).
+  3. **Faint by rule:** colour × alpha at most ~0.62 (the bloom starts at 0.55); at most 6 new marks and 20
+     written letters a frame; a quarter of the look while the blade is lit by a cut; nothing written to the
+     blade's uniforms; nothing on a dead, hidden or unarmed hero; it rests through the flurry.
+  4. **The arc** (`fx.js ARC_STREAK`, `ARC_STREAK_CALM`; `?arc=0|1|2`, the Lab's `arc` row): still the owner's
+     crescent and still lines, not light. Per tier it hangs longer (× 1.3 … 2.1; restrained × 1.15 … 1.55),
+     gains fine lines outside its edge (up to 2; restrained 1) and inside it (up to 3; restrained 2, in place of
+     the streak aura's echo lines while on), and from tier 3 (restrained: 4) leaves beads along the edge. Tier 0
+     is the shipped arc exactly.
+- **Status:** options pending the owner's pick (one mystic option or none, an arc level). Off by default.
+- **Consequences:** the `swordmystic` scenario holds each option to its glyphs, budget and alpha and the off
+  state to drawing and building nothing. Known: option d fails "noticeable at rest with no streak". The
+  module's header still describes round 1 (lines as glyph particles); the picked option's docs replace it.
+
+## ADR-176 — The world grid tests a creature or prop edge before the creature grid's bound (2026-11-23)
+
+- **Context:** a bright halo bloomed round the hero's RESTING blade at some poses and facings, and the point
+  left a pale block where it rested in the grass. In the ASCII pass's world grid the creature-grid branch
+  (alpha < 0.46) came before `isArt(a) || isProp(a)`. The player's own pixel window (0.42 – 0.45, ADR-130)
+  lies under 0.46, so a world cell whose centre fell on his blade printed a creature-grid letter in the steel's
+  raw HDR colour (4 – 6) beside it, and it bloomed.
+- **Decision:** in the world grid `isArt / isProp` (the raw pixel) is tested before the creature grid
+  (`render/pipeline.js`). Always on: it is a defect, not a look.
+- **Consequences:** measured, 17 – 49 px over the 0.55 bloom threshold round the resting blade before, none
+  after (the gem's violet point aside). An addendum to ADR-130's pixel windows: a window under 0.46 must not be
+  read by the creature grid.
+

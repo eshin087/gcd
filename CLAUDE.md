@@ -48,7 +48,11 @@ and `tyrant|viper|revenant` (ADR-124) the heads the owner passed on. The owner's
 wyrm's lean build; 0 = the wyrm before; ADR-123), `?zoomArt=a|c` (b: the letters
 follow the zoom) and `?ablaze=off|a|c` (b: the wyrm's phase 3 fire). The impact pass's pieces (ADR-149): `?impact=off|all|stamp,ripple,react,thump` (default all; Lab: the 'impact' row), and
 `?calm=0..3` the light at the contact (default 1; 0 = as before; Lab: the row's `calm` button). The streak pass's switches (ADR-167): `?streakfx=off|all|storm,tiers,aura,counter,sound,world`,
-`?perfect=today|sharp|cinema` (default sharp), `?burst=0..3` (default 2), `?streakCount=` and `?auraFire=` (Lab: the 'streak' row). Bites (a blow knocks the bricks, the letters, out of
+`?perfect=today|sharp|cinema` (default sharp), `?burst=0..3` (default 2), `?streakCount=` and `?auraFire=` (Lab: the 'streak' row). The hero's
+move styles, options for the owner's pick (ADR-174; default `today`, as before): `?moves=today|flow|still|restless|showy`
+(both halves), `?stance=` (standing and idle only), `?combo=` (the light chain only); `?mystic=0|a|b|c|d` the sword's
+mystical layer, `?arc=0|1|2` the arc that grows with the streak (ADR-175; Lab PLAYER: `combo`, `look`, `moves: stand`,
+`pose`, `fidget`, `mystic`, `arc`). Bites (a blow knocks the bricks, the letters, out of
 a piece where it struck, and the hero's blade stops on what it does not cut through) are on: `?chip=0`
 turns them off (ADR-132). The grove's bamboo: `?bamboo=0|b` (a, the owner's pick: five kinds of cane mixed in clumps;
 0 = the grove before; ADR-151). The living world (ADR-163): `?life=off|all|<pieces>` (a comma list of
@@ -161,7 +165,7 @@ src/world      ground, grass, forest/stones/bones/bonfire, landmarks (the big se
                life/ (the living world: life.js + a layer and its tuning each) and hang.js; with
                audio/air.js (the air's sound) and game/arrival.js (the arrival shot)
 src/combat     shared combat rules: hit resolution, guard/parry/dodge, attack tells
-src/entities   player/ (gear/ = equipment slot items)  dragon/  enemies/duelist/ (the engine human
+src/entities   player/ (gear/ = equipment slot items, styles/ = the move styles)  dragon/  enemies/duelist/ (the engine human
                bosses share)  enemies/ashDisciple/  enemies/starlessLord/  enemies/ascendant/  enemies/thousandFox/
                enemies/sheathed/  enemies/wokenOne/  enemies/halcyon/  (future: npcs/)
 src/levels     level registry (?level=): the set, the boss, the flow's lines per level
