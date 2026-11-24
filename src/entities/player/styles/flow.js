@@ -31,7 +31,7 @@ function hand(p, h, e, d, dw, n, hs) {
 /** TRAILING: the blade carried low behind the right hip, the point trailing over the grass; the
  *  free hand hangs a little forward, open. The weight on the rear (right) leg. */
 const trail = {
-  id: 'flow.trail', w: 1.2, dwell: [8, 15],
+  id: 'flow.trail', w: 1.2, dwell: [8, 15], maxTier: 2,
   fn(p, P, A) {
     const m = life(A, LIFE.breath[0]);
     p[P.bodyX] = -0.03 - 0.02 * m.sw;
@@ -66,7 +66,7 @@ const trail = {
  *  blade low and forward off his right side, the point over the grass; the weight settles forward
  *  and back; the free hand hangs back at his left side, loose, the head turned out over the field. */
 const low = {
-  id: 'flow.low', w: 1, dwell: [7, 13],
+  id: 'flow.low', w: 1, dwell: [7, 13], maxTier: 2,
   fn(p, P, A) {
     const m = life(A, LIFE.breath[0] * 1.07);
     p[P.bodyX] = -0.01 + 0.012 * m.sw;
@@ -83,7 +83,7 @@ const low = {
     p[P.hdZ] = 0.02;
     set3(p, P.rH, -0.17 + 0.006 * m.tipB, -0.43 + 0.012 * m.brL, 0.18 + 0.008 * m.tipA);
     set3(p, P.rP, 0.4, -0.4, -0.8);
-    dir(p, P.swD, -37 + 3 * m.tipA, -37 + 2 * m.tipB + 1.2 * m.brL);
+    dir(p, P.swD, -40 + 3 * m.tipA, -37 + 2 * m.tipB + 1.2 * m.brL);
     set3(p, P.swF, 0.84, -0.54, 0.05);
     handLoose(p, m, { out: 0.04, fwd: -0.07, swing: 1.2 });
     set3(p, P.rF, -0.11, ANK, 0.16);
@@ -100,7 +100,7 @@ const FINGERS_UP = unitAzEl(-6, 64);
 /** STILL WATER: the blade hangs at his right side point down and a little forward; the free hand
  *  raised in sword fingers before the chest. The feet near together, the weight centred. */
 const water = {
-  id: 'flow.water', w: 0.8, dwell: [6, 11],
+  id: 'flow.water', w: 0.8, dwell: [6, 11], maxTier: 2,
   fn(p, P, A) {
     const m = life(A, LIFE.breath[0] * 1.15);
     p[P.bodyX] = 0.0 - 0.012 * m.sw;
@@ -135,7 +135,7 @@ const AIM_BACK = unitAzEl(85, -42);
 /** THE LONG GUARD: side-on, the sword foot forward, the blade low and forward at the foe's knees;
  *  the free arm drawn back behind him in sword fingers, the counterweight. */
 const long = {
-  id: 'flow.long', w: 1, dwell: [6, 12],
+  id: 'flow.long', w: 1, dwell: [6, 12], maxTier: 2,
   move: { d: [0.1, -0.6, 0.8], n: [-0.4, -0.6, -0.7] },
   fn(p, P, A) {
     const m = life(A, LIFE.breath[1]);
@@ -170,7 +170,7 @@ const AIM_FWD = unitAzEl(-8, 12);
 /** THE HIGH LINE: the sword hand up beside the head, the blade level forward along the forearm,
  *  its point on the foe's eyes; the free hand out ahead in sword fingers. */
 const high = {
-  id: 'flow.high', w: 1, dwell: [5, 10],
+  id: 'flow.high', w: 1, dwell: [5, 10], maxTier: 2,
   move: { d: [0.05, -0.5, 0.85], n: [-0.6, -0.4, -0.7] },
   fn(p, P, A) {
     const m = life(A, LIFE.breath[1] * 1.08);
@@ -197,6 +197,81 @@ const high = {
     set3(p, P.lK, 0.7, 0, 0.7);
     p[P.rFy] = -0.4;
     p[P.lFy] = 0.9;
+    p[P.footFlat] = 0.95;
+  },
+};
+
+// ================================================================ ON A STREAK (tier 3 and up)
+// From the streak's third tier he stands in these instead (the others carry maxTier 2): the blade
+// lifts off the grass and the stance opens, the steel moving more, as if the current had him.
+const FINGERS_LO = unitAzEl(10, -40);
+/** THE CURRENT (at ease, streak): the trailing blade lifted, the point riding high behind him and
+ *  swaying slowly; the free hand low ahead of the hip in sword fingers. */
+const current = {
+  id: 'flow.current', w: 1, dwell: [8, 14], minTier: 3,
+  move: { d: [0.1, -0.6, 0.8], n: [-0.4, -0.6, -0.7] },
+  fn(p, P, A) {
+    const m = life(A, LIFE.breath[0] * 0.95);
+    const k = A.streakK ?? 0.6;
+    p[P.bodyX] = -0.025 - 0.02 * m.sw;
+    p[P.bodyY] = -0.04 + 0.008 * m.br;
+    p[P.bodyZ] = 0.0;
+    p[P.pelvX] = 0;
+    p[P.pelvY] = -0.24;
+    p[P.pelvZ] = -0.04 - 0.02 * m.sw;
+    p[P.spX] = 0.0 + 0.024 * m.br;
+    p[P.spY] = 0.1;
+    p[P.spZ] = 0.03 + 0.02 * m.sw;
+    p[P.hdX] = 0.02 - 0.02 * m.br;
+    p[P.hdY] = 0.06 + 0.16 * m.look;
+    p[P.hdZ] = -0.02;
+    set3(p, P.rH, -0.23 + 0.01 * m.tipB, -0.42 + 0.014 * m.brL, -0.18 + 0.015 * m.tipA);
+    set3(p, P.rP, 0.6, -0.2, 0.8);
+    dir(p, P.swD, -140 + (4 + 3 * k) * m.tipA, -30 + (3 + 2 * k) * m.tipB + 1.2 * m.brL);
+    set3(p, P.swF, 0.321, -0.866, 0.383);
+    hand(p, [0.07 + 0.006 * m.sw, -0.45 + 0.012 * m.brL, 0.16 + 0.01 * m.br], [0.45, -0.3, -0.8], FINGERS_LO, 1, [-0.35, -0.6, -0.72], 1);
+    set3(p, P.rF, -0.14, ANK, -0.12);
+    set3(p, P.lF, 0.13, ANK, 0.16);
+    set3(p, P.rK, -0.5, 0.05, 1);
+    set3(p, P.lK, 0.25, 0.05, 1);
+    p[P.rFy] = -0.6;
+    p[P.lFy] = 0.15;
+    p[P.footFlat] = 0.95;
+  },
+};
+const AIM_LINE = unitAzEl(-10, -16);
+/** THE TIDE (in a fight, streak): the long guard sunk deeper and wider, the point low at the foe
+ *  and swaying more as the streak grows; the free hand out ahead in sword fingers along the blade's
+ *  own line, both arms pointing the way in. */
+const tide = {
+  id: 'flow.tide', w: 1, dwell: [6, 12], minTier: 3,
+  move: { d: [0.05, -0.5, 0.85], n: [-0.6, -0.4, -0.7] },
+  fn(p, P, A) {
+    const m = life(A, LIFE.breath[1] * 0.95);
+    const k = A.streakK ?? 0.6;
+    p[P.bodyX] = 0.0 - 0.012 * m.sw;
+    p[P.bodyY] = -0.13 + 0.006 * m.br;
+    p[P.bodyZ] = 0.0 + 0.016 * m.dr;
+    p[P.pelvX] = 0;
+    p[P.pelvY] = 0.32;
+    p[P.pelvZ] = 0.02;
+    p[P.spX] = 0.06 + 0.02 * m.br;
+    p[P.spY] = 0.22;
+    p[P.spZ] = -0.03;
+    p[P.hdX] = 0.04 - 0.012 * m.br;
+    p[P.hdY] = -0.48;
+    p[P.hdZ] = 0.02;
+    set3(p, P.rH, -0.09 + 0.006 * m.tipB, -0.35 + 0.012 * m.brL, 0.33 + 0.01 * m.tipA);
+    set3(p, P.rP, 0.1, -0.7, -0.7);
+    dir(p, P.swD, -9 + (2.5 + 3 * k) * m.tipA, -19 + (2 + 2 * k) * m.tipB + 1.2 * m.brL);
+    set3(p, P.swF, 0.2, 1, 0.15);
+    hand(p, [0.0 + 0.005 * m.sw, -0.27 + 0.01 * m.brL, 0.34 + 0.008 * m.br], [0.4, -0.85, -0.2], AIM_LINE, 1, [0, -1, 0], 1);
+    set3(p, P.rF, -0.11, ANK, 0.32);
+    set3(p, P.lF, 0.13, ANK, -0.28);
+    set3(p, P.rK, -0.4, 0, 1);
+    set3(p, P.lK, 0.75, 0, 0.65);
+    p[P.rFy] = -0.45;
+    p[P.lFy] = 0.95;
     p[P.footFlat] = 0.95;
   },
 };
@@ -315,6 +390,29 @@ const CHAIN = [
   },
 ];
 
+// ON A STREAK (tier 3 and up; the streak's 'tiers' piece): one more figure in the dance. After the
+// twin ripples the steel runs on in an eddy, a level double out to his left and back, before the
+// drawn breath: six presses, da · da · da-da · da-da · (held) DAAA. Cycle ~2.32 s, 247 damage.
+const AW = (d, name, combo) => ({ ...d, name, combo });
+const EDDY = {
+  name: 'flowEddyA', kind: 'light', combo: 4, damage: 36, poise: 14, heavy: false,
+  windup: 0.1, active: 0.2, recovery: 0.24, chain: 0.2, lunge: 0.5, reach: 2.2,
+  hitstop: 0.04, shake: 0.11, bite: 0.6, contact: 'light', punch: 0.3, kick: 0.06, flare: 0.5,
+  hits: [
+    { at: [1.0, 1.42], damage: 16, poise: 6, hitstop: 0.035, bite: 0.5 },
+    { at: [1.5, 2.0], damage: 20, poise: 8, hitstop: 0.06, bite: 1.0, punch: 0.45, contact: 'sweep', flare: 0.6 },
+  ],
+  anim: { kind: 'clip', clip: 'flowEddy' },
+};
+const CHAIN_AWAKE = [
+  AW(CHAIN[0], 'flowRiverA', 1),
+  AW(CHAIN[1], 'flowReturnA', 2),
+  AW(CHAIN[2], 'flowTwinA', 3),
+  EDDY,
+  AW(CHAIN[3], 'flowDrawA', 5),
+  AW(CHAIN[4], 'flowSweepA', 6),
+];
+
 const SWINGS = {
   /** 1 the falling river (line right): cocked beside the head, the diagonal down across his chest. */
   flowRiver: {
@@ -366,6 +464,26 @@ const SWINGS = {
       { u: 2.45, h: [-0.24, 0.24, 0.12], a: [-120, 46], by: -0.09, bz: 0.1, bx: 0.04, hip: -0.38, sy: -0.42, sx: 0.02, sz: 0.05, fh: 'wingLo' },
     ],
   },
+  /** (streak) the eddy (line flat): out of the ripples' finish the blade drops to his right at
+   *  chest height and runs level across to his left (the first blow), the wrist turns over with the
+   *  fingers at the sword wrist, and it runs back level to his right (the second), the fingers
+   *  flying out to the left. */
+  flowEddy: {
+    line: 'flat',
+    lF: [0.18, 0.42], rF: [-0.17, -0.44], fy: [0.5, -0.6], drag: 0.16,
+    keys: [
+      { u: 0.6, by: -0.18, bz: -0.08, bx: -0.06, hip: -0.5, sy: -0.56, sx: 0.16, fh: 'chest' },
+      { u: 1.0, h: [-0.3, -0.12, 0.08], a: [-150, 4], by: -0.17, bz: -0.06, bx: -0.05, hip: -0.42, sy: -0.48, sx: 0.16, fh: 'chest' },
+      { u: 1.18, h: [-0.06, -0.12, 0.38], a: [-70, 2] },
+      { u: 1.3, h: [0.14, -0.12, 0.46], a: [0, 0], by: -0.21, bz: 0.08, bx: 0.02, hip: 0.1, sy: 0.04, sx: 0.24 },
+      { u: 1.4, h: [0.3, -0.14, 0.3], a: [84, 4], by: -0.22, bz: 0.1, bx: 0.04, hip: 0.34, sy: 0.38, sx: 0.24, fh: 'wrist', l: [0.04, -0.16, 0.3], lk: 0.5 },
+      { u: 1.62, h: [0.12, -0.1, 0.46], a: [8, 6], by: -0.2, bz: 0.12, hip: 0.02, sy: 0.02, sx: 0.22, l: [0.38, -0.12, 0.04], lp: [0.2, -0.7, -0.7], ld: [95, 0], pn: [0, -1, 0], lk: 0 },
+      { u: 1.8, h: [-0.14, -0.06, 0.42], a: [-56, 10] },
+      { u: 2.0, h: [-0.3, -0.04, 0.26], a: [-96, 12], by: -0.18, bz: 0.13, bx: 0.05, hip: -0.36, sy: -0.38, sx: 0.12, fh: 'wing', l: [0.45, -0.16, -0.13] },
+      { u: 2.13, by: -0.19, bz: 0.14, bx: 0.06, hip: -0.46, sy: -0.5, sx: 0.14 },
+      { u: 2.45, h: [-0.32, 0.0, 0.1], a: [-136, 16], by: -0.16, bz: 0.1, bx: 0.04, hip: -0.42, sy: -0.46, sx: 0.1, fh: 'wing' },
+    ],
+  },
   /** 4 the drawn breath (line flat): low from behind the right hip, sinking and stepping through,
    *  the blade drawn level across to his left and held there, the free hand high behind him. */
   flowDraw: {
@@ -408,9 +526,10 @@ export const flow = {
   id: 'flow',
   label: 'Flowing swordsman',
   blurb: 'Loose and graceful; cuts that roll into each other.',
-  stances: { ease: [trail, low, water], fight: [long, high] },
-  shift: { fade: 2.8 },
+  stances: { ease: [trail, low, water, current], fight: [long, high, tide] },
+  shift: { fade: 3.2 },
   fidgets: [flower, drawArc, flick, circle],
   chain: CHAIN,
+  chainAwake: [{ minTier: 3, chain: CHAIN_AWAKE }],
   swings: SWINGS,
 };
