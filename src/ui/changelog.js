@@ -19,6 +19,14 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-24',
+        title: 'The free hand hangs loose at his side',
+        notes: [
+          'Standing still, the hero no longer keeps his free hand on his hip: it hangs loose beside his leg, at ease and in a fight.',
+          'Options to try while the look is being picked: add ?freeHand=sway (the arm swings with his weight), ?freeHand=rest (now and then the hand goes to the belt) or ?freeHand=belt (as before) to the address, or use the hand row in the Lab.',
+        ],
+      },
+      {
+        date: '2026-11-24',
         title: 'A perfect parry throws a few orange sparks',
         notes: [
           'Parry perfectly and a quick spit of orange sparks flies off the crossed blades, the way real steel sparks: short streaks that shrink to dots and die in under half a second.',

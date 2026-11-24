@@ -19,6 +19,7 @@ import { CALM_LOOK, setCalm, calmLevel } from '../combat/impactCalm.js';
 import { sfxMode, setSfxMode, chainMode, setChainMode, CHAIN_MODES } from '../audio/samples.js';
 import { PARRY_CHAIN } from '../audio/parryChain.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
+import { FREE_HANDS, freeHandPick } from '../entities/player/stances.js';
 import { buildLooks } from './labLooks.js';
 import { lookOf, setLook } from '../entities/enemies/duelist/lookSwitch.js';
 import { LIFE, setLife, setLifeK } from '../world/life/lifeSwitch.js';
@@ -1151,6 +1152,22 @@ export class Lab {
       return { v, el: btn };
     });
     this._syncStanceBtns();
+    // where the free hand rests in both stances (stances.js FREE_HANDS, ?freeHand=): the owner's
+    // options until the pick, switched live
+    const hnd = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'hand', hnd).title = 'where the free hand rests standing (?freeHand=)';
+    const hGrid = el('div', 'lab-grid', null, hnd);
+    hGrid.style.flex = '1';
+    const hBtns = Object.entries(FREE_HANDS).map(([id, tip]) => {
+      const btn = button(hGrid, id, () => {
+        freeHandPick.id = id;
+        for (const B of hBtns) B.el.classList?.toggle?.('on', B.id === id);
+        this._status(`free hand: ${id} (?freeHand=${id})`, 'ok');
+      });
+      btn.title = tip;
+      return { id, el: btn };
+    });
+    for (const B of hBtns) B.el.classList?.toggle?.('on', B.id === freeHandPick.id);
     // the look of a landed cut (combat/cutFx.js; the owner's pick): the slash line, or a fan of sparks
     const cut = el('div', 'lab-row', null, body);
     el('span', 'lab-lbl', 'cut', cut).title = 'the look of a landed cut (combat/cutFx.js)';

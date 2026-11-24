@@ -7812,8 +7812,14 @@ async function scenarioHeroArms() {
     `at ease the sword arm hangs loose: the elbow open ${ease.R.toFixed(0)}° (≥ 125), in beside the ribs (flare ${ease.fR.toFixed(2)} ≤ 0.4), the blade ${ease.kink.toFixed(0)}° off the forearm's line (≤ 16; the stance before it: 27)`);
   assert(rest.R >= 85 && rest.R <= 125 && rest.fR <= 0.4 && rest.kink <= 16,
     `in the guard the sword arm is half extended: the elbow ${rest.R.toFixed(0)}° (85-125), in beside the ribs (flare ${rest.fR.toFixed(2)} ≤ 0.4), the blade ${rest.kink.toFixed(0)}° off the forearm's line (≤ 16)`);
-  assert(ease.open && rest.open && ease.L >= 60 && ease.L <= 105 && rest.L >= 60 && rest.L <= 105,
-    `in both the free hand lies open on the belt, the elbow bent (${ease.L.toFixed(0)}° at ease, ${rest.L.toFixed(0)}° in the guard; 60-105)`);
+  // (since 2026-11-24 the free hand's rest is an option, stances.js FREE_HANDS: on the belt the
+  // elbow is bent; hanging loose, the default, it is nearly straight. HEROSTANCE checks each one)
+  {
+    const { freeHandPick } = await imp('src/entities/player/stances.js');
+    const [lo, hi, what] = freeHandPick.id === 'belt' ? [60, 105, 'lies open on the belt, the elbow bent'] : [145, 165, 'hangs open at his side, the elbow nearly straight'];
+    assert(ease.open && rest.open && ease.L >= lo && ease.L <= hi && rest.L >= lo && rest.L <= hi,
+      `in both the free hand ${what} (${ease.L.toFixed(0)}° at ease, ${rest.L.toFixed(0)}° in the guard; ${lo}-${hi}; ?freeHand=${freeHandPick.id})`);
+  }
   // (A2) on the run the elbows point back, not out, and the free arm opens behind him and folds in
   // front; in a PURE strafe (the aim held square to the run: |mz| < 0.1, no sideways drift) the arms
   // still swing
@@ -10057,7 +10063,7 @@ async function scenarioHeroStance() {
   out('\n== scenario HEROSTANCE (at ease and the fencer\'s guard: the rule, the wrist, the hand on the belt, the life, the transitions) ==');
   const { DIM: HD, BODY } = await imp('src/entities/player/model.js');
   const { P, N, guard, stand } = await imp('src/entities/player/anim.js');
-  const { STAND_LIFE, BELT } = await imp('src/entities/player/stances.js');
+  const { STAND_LIFE, BELT, FREE_HANDS, freeHandPick, REST_BELT } = await imp('src/entities/player/stances.js');
   const G = build();
   const { game, input } = G;
   run(G, 0.3);
@@ -10107,7 +10113,7 @@ async function scenarioHeroStance() {
 
   // (S2) each stance, standing: the wrist, the elbows, the point, the hand on the waist, the blade
   // broad to the game camera with him turned four ways
-  const { shell, ell } = heroShapes(BODY, HD);
+  const { shell, ell, cap } = heroShapes(BODY, HD);
   // how deep a point is in the waist: its shell, or the hips under it (+ = inside)
   const inWaist = (o) => Math.max(shell(r.spine.worldToLocal(w.copy(o))), ell(r.pelvis.worldToLocal(w.copy(o)), BODY.hips.c, BODY.hips.r));
   const camDir = new THREE.Vector3(0, Math.sin(CONFIG.camera.pitch), Math.cos(CONFIG.camera.pitch)); // from him to the camera
@@ -10132,6 +10138,10 @@ async function scenarioHeroStance() {
     go(0.9);
     return S;
   };
+  // (the belt is one of the free hand's options since 2026-11-24, `?freeHand=belt`: S2 checks it there;
+  // S2b checks the loose ones)
+  const pickWas = freeHandPick.id;
+  freeHandPick.id = 'belt';
   const E = shape(false), Fg = shape(true);
   out(`   at ease: wrist ${E.kink.toFixed(0)}°, elbows R ${E.R.toFixed(0)}° L ${E.L.toFixed(0)}°, the point ${E.tip.toFixed(2)} m up, palm ${(E.palm * 100).toFixed(1)} cm / fingertip ${(E.finger * 100).toFixed(1)} cm in the waist, the flat ${E.broad.toFixed(2)} to the camera at worst`);
   out(`   the guard: wrist ${Fg.kink.toFixed(0)}°, elbows R ${Fg.R.toFixed(0)}° L ${Fg.L.toFixed(0)}°, the point ${Fg.tip.toFixed(2)} m up, palm ${(Fg.palm * 100).toFixed(1)} cm / fingertip ${(Fg.finger * 100).toFixed(1)} cm in the waist, the flat ${Fg.broad.toFixed(2)} to the camera at worst`);
@@ -10143,6 +10153,73 @@ async function scenarioHeroStance() {
     // (a blade that hangs steeply cannot face four cameras at once: ≥ 0.25 of its width at ease)
     const need = S === E ? 0.25 : 0.3;
     assert(S.broad >= need, `${name} the blade shows its flat to the game camera whichever way he faces (${S.broad.toFixed(2)} of its width at worst, ≥ ${need}; edge-on it vanished from behind)`);
+  }
+  freeHandPick.id = pickWas;
+
+  // (S2b) the free hand hanging loose (the owner, 2026-11-24: not on the hip all the time; FREE_HANDS):
+  // through 12 s of each stance's life the hand stays clear of the waist, the hips and the left thigh,
+  // well below the belt, the elbow nearly straight; `rest` spends part of its time on the belt.
+  {
+    const legL = r.legs.L, belt = () => r.pelvis.localToWorld(w.set(0, HD.coatY, 0)).y; // the belt: the coat skirt's anchor
+    const handPts = [() => v.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.L.fore.matrixWorld), () => v.setFromMatrixPosition(r.arms.L.point.matrixWorld)];
+    const depth = () => {
+      let d = -9, inThigh = -9;
+      for (const f of handPts) {
+        const q = f();
+        d = Math.max(d, inWaist(q));
+        inThigh = Math.max(inThigh, cap(legL.thigh.worldToLocal(w.copy(q)), 0, HD.thigh, BODY.thigh[0], BODY.thigh[1]));
+      }
+      return [d, inThigh];
+    };
+    const sample = (id, fight, sec) => {
+      freeHandPick.id = id;
+      p.debug.fightStance = fight;
+      aim.x = 0;
+      aim.z = -60;
+      go(2.0);
+      const S = { waist: -9, thigh: -9, below: 9, elbow: [999, 0], onBelt: 0, n: 0, open: true, lo: new THREE.Vector3(Infinity, Infinity, Infinity), hi: new THREE.Vector3(-Infinity, -Infinity, -Infinity), step: 0 };
+      const was = new THREE.Vector3();
+      go(sec, () => {
+        const [d, t] = depth();
+        S.waist = Math.max(S.waist, d);
+        S.thigh = Math.max(S.thigh, t);
+        const hy = handPts[0]().y, by = belt();
+        S.below = Math.min(S.below, by - hy);
+        if (by - hy < 0.1) S.onBelt++;
+        const e = elbow('L');
+        S.elbow[0] = Math.min(S.elbow[0], e);
+        S.elbow[1] = Math.max(S.elbow[1], e);
+        S.open &&= r.offHand.open.visible && !r.offHand.fingers?.visible && !r.offHand.grip.visible;
+        r.chest.worldToLocal(handPts[0]());
+        S.lo.min(v);
+        S.hi.max(v);
+        if (S.n++) S.step = Math.max(S.step, v.distanceTo(was));
+        was.copy(v);
+      });
+      S.range = Math.max(S.hi.x - S.lo.x, S.hi.y - S.lo.y, S.hi.z - S.lo.z);
+      S.onBelt /= S.n;
+      return S;
+    };
+    const fmt = (S) => `waist ${(-S.waist * 100).toFixed(1)} cm, thigh ${(-S.thigh * 100).toFixed(1)} cm clear; ${(S.below * 100).toFixed(0)} cm below the belt at most; elbow ${S.elbow[0].toFixed(0)}-${S.elbow[1].toFixed(0)}°; it moves ${(S.range * 100).toFixed(1)} cm (fastest frame ${(S.step * 100).toFixed(2)})`;
+    for (const id of Object.keys(FREE_HANDS)) {
+      if (id === 'belt') continue;
+      for (const fight of [false, true]) {
+        const S = sample(id, fight, id === 'rest' && !fight ? REST_BELT.every + 1 : 12);
+        const name = `${id}, ${fight ? 'the guard' : 'at ease'}`;
+        out(`   free hand ${name}: ${fmt(S)}${id === 'rest' && !fight ? `; on the belt ${(S.onBelt * 100).toFixed(0)} % of the time` : ''}`);
+        assert(S.open && S.step <= 0.01 && S.range >= 0.01, `${name}: the free hand is open and alive (it moves ${(S.range * 100).toFixed(1)} cm in the chest's frame, ≥ 1; never more than ${(S.step * 100).toFixed(2)} cm in a frame, ≤ 1)`);
+        if (id === 'rest' && !fight) {
+          assert(S.onBelt >= 0.2 && S.onBelt <= 0.4 && S.waist <= 0.015, `rest, at ease: the hand goes to the belt ${(S.onBelt * 100).toFixed(0)} % of the time (20-40 %) and never into the waist (${(S.waist * 100).toFixed(1)} cm ≤ 1.5)`);
+          continue;
+        }
+        // (sway's guard holds the arm out behind him: a little more bend, well clear of everything)
+        const out_ = id === 'sway' && fight, minElbow = out_ ? 136 : 148, minBelow = out_ ? 0.15 : 0.2;
+        assert(S.waist <= -0.02 && S.thigh <= -0.01 && S.below >= minBelow && S.elbow[0] >= minElbow,
+          `${name}: the free hand hangs loose, never on the hip: ${(-S.waist * 100).toFixed(1)} cm clear of the waist and hips (≥ 2), ${(-S.thigh * 100).toFixed(1)} cm of the thigh (≥ 1), ${(S.below * 100).toFixed(0)} cm under the belt (≥ ${minBelow * 100}), the elbow open ${S.elbow[0].toFixed(0)}° at least (≥ ${minElbow})`);
+      }
+    }
+    freeHandPick.id = pickWas;
+    p.debug.fightStance = null;
   }
 
   // (S3) the life in a stance: over 12 s the point travels, and never in a jump

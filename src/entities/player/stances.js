@@ -83,6 +83,94 @@ function onTheBelt(p, P, m, yaw) {
   p[P.offAt] = 0;
 }
 
+// ---------------------------------------------------------------- where the free hand rests
+// (The owner, 2026-11-24: change the default pose "to not have the character hold his hand on his
+// hip all the time", with a clip of an ASCII swordsman as the model: his free arm hangs straight and
+// loose at his side, close to the robe, the hand by the thigh.) `?freeHand=` picks one; the Lab's
+// PLAYER → `hand` row switches it live. Options until the owner picks; `belt` is the pose before.
+export const FREE_HANDS = Object.freeze({
+  loose: 'hangs loose at his side in both stances (the reference)',
+  sway: 'hangs loose and swings with his weight; held out behind him in the fight stance',
+  rest: 'hangs loose; at ease he rests it on the belt now and then (about a third of the time)',
+  belt: 'on the belt in both stances (before)',
+});
+export const FREE_HAND_DEFAULT = 'loose';
+/** The option a URL query asks for (`?freeHand=sway`, case-insensitive); the default when absent or unknown. */
+export function freeHandFromSearch(search) {
+  let id = null;
+  try {
+    const q = new URLSearchParams(search ?? '');
+    id = q.get('freeHand') ?? q.get('freehand');
+  } catch {
+    id = null;
+  }
+  const k = typeof id === 'string' ? id.trim().toLowerCase() : '';
+  return Object.hasOwn(FREE_HANDS, k) ? k : FREE_HAND_DEFAULT;
+}
+/** The pick in force (the Lab and the tests set `.id` live). */
+export const freeHandPick = { id: freeHandFromSearch(typeof location !== 'undefined' ? location.search : '') };
+
+/** The loose arm, as the chest stands square (yaw 0): the hand beside the thigh, a little out from
+ *  the hip and ahead of it, the elbow soft and pointing back; an open hand whose fingers follow the
+ *  forearm (a weak lD) with the palm in toward the leg. `sway`: its fight stance holds it out behind. */
+// (|h| 0.558 m: past the arm's soft reach (anim.js HERO_SOFT), so the elbow opens to ~157° and stays
+// a little soft; asked for at 0.50 m it hung crooked at 127-136°)
+const LOOSE = { h: [0.055, -0.555, 0.03], p: [0.35, -0.2, -0.9], d: [0.02, -0.3, 0.06], n: [-0.6, 0, 0.1] };
+const SWAY_FIGHT = { h: [0.13, -0.5, -0.15], p: [0.45, -0.25, -0.85], d: [0.04, -0.3, -0.05], n: [-0.55, 0, -0.2] };
+/** `rest`: the hand goes to the belt for REST_BELT.on of every REST_BELT.every s at ease, easing over `ease` s. */
+export const REST_BELT = { every: 23, at: 9, on: 7, ease: 0.9 };
+const _L = { h: [0, 0, 0], p: [0, 0, 0], d: [0, 0, 0], n: [0, 0, 0] };
+const smooth01 = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
+/** How much of the hand is on the belt in `rest` at animator time t (0..1). */
+export function restBeltWeight(t) {
+  const R = REST_BELT, u = (((t - R.at) % R.every) + R.every) % R.every;
+  return smooth01(u / R.ease) * smooth01((R.on - u) / R.ease);
+}
+
+/** The free hand hanging (loose / sway / rest), turned with the stance's chest `yaw`. */
+function hanging(p, P, m, yaw, fight, swing) {
+  const c = Math.cos(yaw), s = Math.sin(yaw);
+  const B = fight && swing ? SWAY_FIGHT : LOOSE;
+  const k = swing ? 1 : 0;
+  // the life: the arm trails the breath (brL) and the weight; with `sway` it swings ahead and back
+  // as the weight drifts and the eyes wander, a counterweight that is never still
+  _L.h[0] = B.h[0] + (0.004 + 0.01 * k) * m.sw;
+  _L.h[1] = B.h[1] + 0.008 * m.brL;
+  _L.h[2] = B.h[2] + (0.012 + 0.024 * k) * m.dr + 0.012 * k * (fight ? m.br : m.look);
+  turned(p, P.lH, _L.h, c, s);
+  turned(p, P.lP, B.p, c, s);
+  turned(p, P.lD, B.d, c, s);
+  turned(p, P.lN, B.n, c, s);
+  p[P.hs] = 0;
+  p[P.lk] = 0;
+  p[P.twoHand] = 0;
+  p[P.offAt] = 0;
+}
+const _BL = new Float32Array(12);
+/** The free hand of a stance: the pick (freeHandPick.id). `fight` = the fencer's guard. */
+function restFreeHand(p, P, m, yaw, fight, t) {
+  const id = freeHandPick.id;
+  if (id === 'belt') return onTheBelt(p, P, m, yaw);
+  hanging(p, P, m, yaw, fight, id === 'sway');
+  if (id !== 'rest' || fight) return;
+  const w = restBeltWeight(t);
+  if (w <= 0) return;
+  // the belt's pose, blended in: the hand travels from the thigh up to the hip and back
+  for (let i = 0; i < 3; i++) {
+    _BL[i] = p[P.lH + i];
+    _BL[3 + i] = p[P.lP + i];
+    _BL[6 + i] = p[P.lD + i];
+    _BL[9 + i] = p[P.lN + i];
+  }
+  onTheBelt(p, P, m, yaw);
+  for (let i = 0; i < 3; i++) {
+    p[P.lH + i] = _BL[i] + (p[P.lH + i] - _BL[i]) * w;
+    p[P.lP + i] = _BL[3 + i] + (p[P.lP + i] - _BL[3 + i]) * w;
+    p[P.lD + i] = _BL[6 + i] + (p[P.lD + i] - _BL[6 + i]) * w;
+    p[P.lN + i] = _BL[9 + i] + (p[P.lN + i] - _BL[9 + i]) * w;
+  }
+}
+
 /** AT EASE (see the header). P = anim.js's channel map; A = the animator (its time). */
 export function atEase(p, P, A) {
   const m = oscillate(A.time, STAND_LIFE.breath[0]);
@@ -108,7 +196,7 @@ export function atEase(p, P, A) {
   // the flat to the front and the back, square to the blade: as broad as a blade this steep can be
   // to the game camera on all four sides of him (≥ 0.29 of its width; tipped 6° it showed 0.19 to one)
   set3(p, P.swF, 0.62, -0.05, 0.79);
-  onTheBelt(p, P, m, p[P.pelvY] + p[P.spY]);
+  restFreeHand(p, P, m, p[P.pelvY] + p[P.spY], false, A.time);
   set3(p, P.rF, -0.135, ANK, -0.09); // the weight leg under the hips, the toes out
   set3(p, P.lF, 0.13, ANK, 0.15); // the left foot ahead, the knee soft
   set3(p, P.rK, -0.5, 0.05, 1);
@@ -142,7 +230,7 @@ export function fencerGuard(p, P, A) {
   dir(p, P.swD, -9 + 2.4 * m.tipA, 13 + 2.2 * m.tipB + 1.2 * m.brL);
   // the flat up: broad to the game camera from every side (edge up, it vanished from behind)
   set3(p, P.swF, 0.25, 1, 0);
-  onTheBelt(p, P, m, p[P.pelvY] + p[P.spY]);
+  restFreeHand(p, P, m, p[P.pelvY] + p[P.spY], true, A.time);
   set3(p, P.rF, -0.1, ANK, 0.25); // the sword foot forward
   set3(p, P.lF, 0.11, ANK, -0.22); // the rear foot turned out
   set3(p, P.rK, -0.4, 0, 1);
