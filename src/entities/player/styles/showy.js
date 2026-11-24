@@ -252,15 +252,67 @@ function bow(p, P, A) {
   p[P.footFlat] = 0.95;
 }
 
+/** ON A STREAK (tier 3+), AT EASE: the flaunt: tall, the chin up, the sword arm long out to his
+ *  front-right with the blade level beyond it, pointed at the field; the free hand open behind him,
+ *  palm up: "come and see". */
+function flaunt(p, P, A) {
+  const m = standLife(A.time + 0.7, LIFE_A.breath[0] * 0.93, LIFE_A);
+  p[P.bodyX] = -0.03 - 0.015 * m.sw;
+  p[P.bodyY] = -0.015 + 0.007 * m.br;
+  p[P.bodyZ] = -0.01;
+  p[P.pelvX] = 0;
+  p[P.pelvY] = -0.22;
+  p[P.pelvZ] = -0.04 - 0.02 * m.sw;
+  p[P.spX] = -0.07 + 0.025 * m.br;
+  p[P.spY] = 0.12;
+  p[P.spZ] = 0.04 + 0.02 * m.sw;
+  p[P.hdX] = -0.06 - 0.02 * m.br;
+  p[P.hdY] = -0.25 + 0.1 * m.look;
+  p[P.hdZ] = -0.04;
+  armLine(p, -68 + 3 * m.tipA, 2 + 2.5 * m.tipB + 1.2 * m.brL, -85 + 2 * m.tipA, -48 + 1.5 * m.brL);
+  set3(p, P.swF, 0, -1, 0);
+  // the free hand open behind him, palm up
+  set3(p, P.lH, 0.26 + 0.008 * m.sw, -0.32 + 0.012 * m.brL, -0.12 + 0.01 * m.dr);
+  set3(p, P.lP, 0.4, -0.6, -0.7);
+  const d = unitAzEl(120, -10 + 3 * m.br);
+  set3(p, P.lD, d[0] * 0.8, d[1] * 0.8, d[2] * 0.8);
+  set3(p, P.lN, 0.1, 0.85, -0.2);
+  p[P.hs] = 0;
+  p[P.lk] = 0;
+  p[P.twoHand] = 0;
+  p[P.offAt] = 0;
+  set3(p, P.rF, -0.13, ANK, -0.1);
+  set3(p, P.lF, 0.13, ANK, 0.19);
+  set3(p, P.rK, -0.5, 0.05, 1);
+  set3(p, P.lK, 0.3, 0.05, 1);
+  p[P.rFy] = -0.7;
+  p[P.lFy] = 0.45;
+  p[P.footFlat] = 0.95;
+}
+
+/** ON A STREAK (tier 3+), IN A FIGHT: the crest: the high line opened out: the blade above his head
+ *  turned out over his right shoulder and a little raised, the chest open to the foe. */
+function crest(p, P, A) {
+  highLine(p, P, A);
+  const m = standLife(A.time + 0.4, 3.0, LIFE_A);
+  armLine(p, -40 + 2 * m.tipA, 12 + 2 * m.tipB + 1 * m.brL, -72, 44 + 1.5 * m.brL);
+  set3(p, P.swF, -0.12, -0.99, 0.08);
+  p[P.spX] = -0.03 + 0.02 * m.br;
+  p[P.spY] = 0.2;
+  p[P.hdX] = -0.02;
+}
+
 const STANCES = {
   ease: [
-    { id: 'showy.present', fn: present, w: 1.2, dwell: [8, 15], move: { d: [0.3, -0.6, 0.7], n: [-0.4, -0.6, -0.7] } },
-    { id: 'showy.swallow', fn: swallow, w: 1, dwell: [7, 12], move: { d: [0.1, -0.6, 0.8], n: [-0.4, -0.6, -0.7] } },
-    { id: 'showy.cane', fn: cane, w: 1, dwell: [8, 14] },
+    { id: 'showy.present', fn: present, w: 1.2, dwell: [8, 15], maxTier: 2, move: { d: [0.3, -0.6, 0.7], n: [-0.4, -0.6, -0.7] } },
+    { id: 'showy.swallow', fn: swallow, w: 1, dwell: [7, 12], maxTier: 2, move: { d: [0.1, -0.6, 0.8], n: [-0.4, -0.6, -0.7] } },
+    { id: 'showy.cane', fn: cane, w: 1, dwell: [8, 14], maxTier: 2 },
+    { id: 'showy.flaunt', fn: flaunt, w: 1, dwell: [8, 14], minTier: 3, move: { d: [0.3, -0.6, 0.7], n: [-0.4, -0.6, -0.7] } },
   ],
   fight: [
-    { id: 'showy.high', fn: highLine, w: 1, dwell: [6, 12] },
-    { id: 'showy.bow', fn: bow, w: 1, dwell: [5, 10] },
+    { id: 'showy.high', fn: highLine, w: 1, dwell: [6, 12], maxTier: 2 },
+    { id: 'showy.bow', fn: bow, w: 1, dwell: [5, 10], maxTier: 2 },
+    { id: 'showy.crest', fn: crest, w: 1, dwell: [6, 12], minTier: 3 },
   ],
 };
 
@@ -432,6 +484,22 @@ const CHAIN = [
   },
 ];
 
+// ON A STREAK (tier 3+, the streak piece 'tiers'): the same five, but the spiral turns TWICE off
+// the ground and cuts on each turn (two blows), landing higher and holding longer.
+const AWAKE = [
+  ...CHAIN.slice(0, 4).map((d) => ({ ...d, name: d.name + 'T3' })),
+  {
+    name: 'showySpiralT3', kind: 'light', combo: 5, damage: 92, poise: 52, heavy: true,
+    windup: 0.22, active: 0.26, recovery: 0.45, chain: 0.55, buffer: 0.6, lunge: 1.0, reach: 2.3,
+    hitstop: 0.1, shake: 0.36, bite: 1.2, contact: 'sweep', punch: 1.0, kick: 0.16, flare: 0.8,
+    hits: [
+      { at: [1.0, 1.5], damage: 38, poise: 20 },
+      { at: [1.5, 2.0], damage: 54, poise: 32, hitstop: 0.13, shake: 0.46, bite: 1.45, biteHold: 0.14, heft: { t: 0.1, rate: 0.3 }, flare: 1.05, contact: 'cleave', punch: 1.7, kick: 0.22 },
+    ],
+    anim: { kind: 'clip', clip: 'showySpiralT3', spin: -2, spinFeet: 'hop', hop: 0.3, tuck: 1.2 },
+  },
+];
+
 const SWINGS = {
   /** 1 · the flourish: from wherever he stands the blade wheels down past his right hip, round
    *  behind and up to the coil beside his head, then one diagonal down across him to low left. */
@@ -518,6 +586,14 @@ const SWINGS = {
   },
 };
 
+/** 5, on a streak: the spiral's keys over two turns (the def's spin -2): the same rise, a longer hold. */
+SWINGS.showySpiralT3 = {
+  ...SWINGS.showySpiral,
+  home: 0.65,
+  lead: [0.0, 0.0],
+  keys: SWINGS.showySpiral.keys.map((k) => (k.u === 1.0 ? { ...k, hip: -0.7, sy: -0.5 } : k.u === 1.5 ? { ...k, hip: -0.5, sy: -0.5 } : k)),
+};
+
 export const showy = {
   id: 'showy',
   label: 'Showy acrobat',
@@ -526,5 +602,6 @@ export const showy = {
   shift: { fade: 2.5 },
   fidgets: FIDGETS,
   chain: CHAIN,
+  chainAwake: [{ minTier: 3, chain: AWAKE }],
   swings: SWINGS,
 };
