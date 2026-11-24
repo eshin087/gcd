@@ -21,7 +21,7 @@ export const RELEASES = [
         date: '2026-11-23',
         title: 'The sword mows the grass; lanterns light with the fight; the living world is heard',
         notes: [
-          'A low swing mows the grass where your blade passes, and the stubble stays until the fight resets.',
+          'Your sword cuts the grass under its swing the moment it passes, tossing the cut tops lightly into the air. The stubble stays until the fight resets.',
           "Boss attacks tear the grass out where they land, so their marks now show in the meadow. The dragon's claws leave three raked furrows.",
           'The stone lanterns at Ashfall, Foxfire and the Windless Grove light as the fight goes on, flicker when a heavy blow lands near, and go out when broken.',
           'You now hear the world around the fight: birds taking off, animals bolting, trees shaking and creaking, lanterns catching. All of it quiet, under the fight.',

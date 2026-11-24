@@ -6,8 +6,9 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 ## [Unreleased]
 Eighty-one pieces of work since 0.4.0:
 - **The sword mows the grass; lanterns light with the fight; the living world is heard** (2026-11-23, ADR-180).
-  *Added:* **a low swing mows the grass** where the blade passes, to short pale stubble with the cut
-  tops lying beside it, until the fight resets (`?mow=0`: today's grass); **every boss mark tears the
+  *Added:* **the sword cuts the grass** under its swing's arc, blade by blade, the moment the arc passes:
+  each blade keeps the stub of its own letter and its top is tossed off quietly along the swing
+  (`?mowLook=b|c|r1`: other looks; the stubble stays until the fight resets; `?mow=0`: today's grass); **every boss mark tears the
   grass out** under it, so the marks show in the meadow (the wyrm's claws leave three raked furrows).
   **The lanterns light**: Ashfall's, Foxfire's and the Windless Grove's stone lanterns kindle as the fight
   goes on (a few when you arrive, more at each of the boss's phases, any that fire reaches), gutter when a
