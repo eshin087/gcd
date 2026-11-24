@@ -10246,6 +10246,12 @@ async function scenarioHeroStance() {
 // real style: tests/audit/hero-stance.mjs.
 const HEROSTYLES_TODAY = { frames: 3600, hash: '77d7cb3d' }; // (recorded 2026-11-23 from 971a915, before the stance sets)
 async function scenarioHeroStyles() {
+  // the stance audit (tests/audit/hero-stance.mjs runs this with ABYSS_STANCE_AUDIT=<styleId>): the
+  // table instead of the checks
+  if (process.env.ABYSS_STANCE_AUDIT) {
+    const M = await import(pathToFileURL(`${ROOT}/tests/audit/hero-stance.mjs`).href);
+    return (await M.runAudit({ build, run, heroShapes, coatCrossOf, THREE, imp, out, DT, CONFIG, styleId: process.env.ABYSS_STANCE_AUDIT, quick: !!process.env.ABYSS_STANCE_QUICK })) ?? build();
+  }
   out('\n== scenario HEROSTYLES (the stance sets: today exactly as before; dwell, fade, pin, tiers, a style switch, idle actions by set, the Lab rows) ==');
   const { P, N, stand } = await imp('src/entities/player/anim.js');
   const G = build();
