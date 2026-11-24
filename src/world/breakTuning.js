@@ -331,9 +331,9 @@ export const FIRE = Object.freeze({
 /** Impact marks (world/scars.js). */
 export const SCAR = Object.freeze({
   // glyphs kept (x the world's quality: half on a phone); the oldest go first. The marks stay until the
-  // fight's reset (the owner, 2026-11-23): 2600 holds a whole fight (a long wyrm fight leaves ~1500).
+  // fight's reset (the owner, 2026-11-23): 3600 holds a whole fight (the bot's wyrm fight leaves ~2700).
   // They cost nothing per frame while nothing changes (the batch is written only when a mark comes or fades)
-  max: 2600,
+  max: 3600,
   ground: Object.freeze({ min: 0.45, glyphs: 'x+*', spokes: [5, 9], reach: [0.7, 2.6] }),
   object: Object.freeze({ glyphs: 'x/\\+', size: [0.22, 0.5] }),
   /** a crater: a blow of `min` power or more leaves a rim of thrown-up earth and a charred disc */
