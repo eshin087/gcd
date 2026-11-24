@@ -1643,6 +1643,28 @@ export class PlayerFx {
     }
   }
 
+  /**
+   * The cut tops fly (world/grass.js mowSwing, GRASS.mow.bits `B`): `n` tiny grass letters off the
+   * strip the steel mowed this frame (a -> b on the ground), thrown on along the blade's travel (ux,
+   * uz unit) and up, in the grass's own green, falling back fast (the slide's torn grass, COL.grassBit).
+   * `top`: the grass's height there (m). The module's own stream: no Math.random.
+   */
+  mowBits(ax, az, bx, bz, n, ux, uz, top, B) {
+    const fx = this.alpha;
+    if (!fx || !(n > 0) || !Number.isFinite(ax + az + bx + bz + ux + uz + top)) return;
+    const h = Math.max(0.1, top);
+    for (let i = 0; i < n; i++) {
+      const t = 0.25 + 0.75 * rnd(), f = R(B.fling[0], B.fling[1]), side = R(-0.5, 0.5);
+      fx.spawn({
+        x: ax + (bx - ax) * t + R(-0.1, 0.1), y: h * R(0.45, 0.9), z: az + (bz - az) * t + R(-0.1, 0.1),
+        vx: ux * f - uz * side, vy: R(B.up[0], B.up[1]), vz: uz * f + ux * side,
+        life: R(B.life[0], B.life[1]), size: R(B.size[0], B.size[1]), sizeEnd: 0.07,
+        glyph: "/\\',|", color: COL.grassBit, colorEnd: COL.grassBitEnd,
+        alpha: 0.8, alphaEnd: 0, drag: 2.4, gravity: -3.2, spin: R(-6, 6),
+      });
+    }
+  }
+
   /** The blade's point dragging in the grass (the roll's slide): cold sparks flicked off it, back
    *  against the slide (dx, dz unit). */
   scrape(dt, x, y, z, dx, dz, sp) {

@@ -1,14 +1,22 @@
 import * as THREE from 'three';
 import { CONFIG } from '../core/config.js';
 import { STEPS } from './life/stepsTuning.js';
+import { GRASS } from './grassTuning.js';
+import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
+
+/** Does the grass tear (`?mow=0`: nothing is torn, today's grass)? Read per tear (a Map lookup). */
+export const mowOn = () => lookOf('mow', '1') !== '0';
 
 // World-space burn map sampled by grass + ground shaders.
 //   R = burn (persistent char: grass shrinks to ash glyphs)
 //   G = heat (glowing embers, decays over a few seconds)
 //   B = trample (grass trodden by a foot, 0..1; the living world's steps write it, the grass lies
 //       flatter and darker by it; it stands up again over STEPS.trample.decay s)
+//   A = torn (grass the sword mowed or a blow tore out, 0..1: 1 cut to stubble; it stays until
+//       reset(); grassTuning.js; the fire never reads it)
 // Dragon fire calls scorch.burnCircle(x, z, radius, burnAmount, heatAmount); a footstep
-// scorch.trample(x, z, r, k) (max-blended, its own decay, no random draw).
+// scorch.trample(x, z, r, k) (max-blended, its own decay, no random draw); a blade or a mark
+// scorch.tear(x, z, r, k) / tearLine(ax, az, bx, bz, w, k, k2) (max-blended, persistent, no random draw).
 export class Scorch {
   constructor(U, game, size = 256) {
     this.game = game;
@@ -45,6 +53,86 @@ export class Scorch {
     this._tramIn = new Uint8Array(size * size);
     this._tramList = new Int32Array(STEPS.trample.maxCells);
     this._tramN = 0;
+    // the torn grass (A): what the sword mowed, what a mark tore out; it stays till reset(). Its own
+    // cells and count; nothing here touches R, G, B or the fire (nothing in fire.js reads A)
+    this.torn = new Float32Array(size * size);
+    this.tornCells = 0;
+  }
+
+  /** How torn the grass is at (x, z): 0 (standing) .. 1 (mown to stubble). */
+  tornAt(x, z) {
+    const i = this._idx(x, z);
+    return i < 0 ? 0 : this.torn[i];
+  }
+
+  /** One cell's tear: max-blended into A where grass grows; returns how much it grew. */
+  _tear(i, v, dens, wx, wz) {
+    if (v <= this.torn[i]) return 0;
+    if (dens && !(dens(wx, wz) >= GRASS.mow.minDensity)) return 0;
+    const was = this.torn[i];
+    if (!(was > 0)) this.tornCells++;
+    this.torn[i] = v;
+    this.data[i * 4 + 3] = Math.round(v * 255);
+    this.dirty = true;
+    return v - was;
+  }
+
+  /** The meadow's density function (the fire's fuel: world.js's meadow), or null (none: every cell). */
+  _grassDensity() {
+    const d = this.game?.world?.fire?.density;
+    return typeof d === 'function' ? d : null;
+  }
+
+  /**
+   * The grass is torn at (x, z): a disc r m wide, k deep (0..1: 1 mown to stubble), its edge soft over
+   * GRASS.soft m; max-blended into A, only where grass grows. Persistent until reset(). No random draw.
+   * Returns the tear it added (the sum over its cells).
+   */
+  tear(x, z, r, k = 1) {
+    if (!mowOn() || !Number.isFinite(x + z + r + k) || !(r > 0) || !(k > 0)) return 0;
+    k = Math.min(1, k);
+    const s = this.size, cs = this.cellSize, soft = GRASS.soft, R = r + soft * 0.5;
+    const dens = this._grassDensity();
+    const c0x = Math.max(0, Math.floor((x - R - this.min) / cs)), c1x = Math.min(s - 1, Math.floor((x + R - this.min) / cs));
+    const c0z = Math.max(0, Math.floor((z - R - this.min) / cs)), c1z = Math.min(s - 1, Math.floor((z + R - this.min) / cs));
+    let add = 0;
+    for (let cz = c0z; cz <= c1z; cz++) {
+      for (let cx = c0x; cx <= c1x; cx++) {
+        const wx = this.min + (cx + 0.5) * cs, wz = this.min + (cz + 0.5) * cs;
+        const d = Math.hypot(wx - x, wz - z);
+        if (d >= R) continue;
+        const v = k * Math.min(1, (R - d) / soft);
+        add += this._tear(cz * s + cx, v, dens, wx, wz);
+      }
+    }
+    return add;
+  }
+
+  /**
+   * A strip of torn grass from (ax, az) to (bx, bz), w m wide: k deep at a, k2 at b (a blade's arc, a
+   * gash, a furrow: cheaper than many discs). As tear(): soft-edged, max-blended, grass only.
+   */
+  tearLine(ax, az, bx, bz, w, k = 1, k2 = k) {
+    if (!mowOn() || !Number.isFinite(ax + az + bx + bz + w + k + k2) || !(w > 0) || !(Math.max(k, k2) > 0)) return 0;
+    k = Math.min(1, Math.max(0, k));
+    k2 = Math.min(1, Math.max(0, k2));
+    const s = this.size, cs = this.cellSize, soft = GRASS.soft, R = w * 0.5 + soft * 0.5;
+    const dens = this._grassDensity();
+    const ex = bx - ax, ez = bz - az, l2 = ex * ex + ez * ez;
+    const c0x = Math.max(0, Math.floor((Math.min(ax, bx) - R - this.min) / cs)), c1x = Math.min(s - 1, Math.floor((Math.max(ax, bx) + R - this.min) / cs));
+    const c0z = Math.max(0, Math.floor((Math.min(az, bz) - R - this.min) / cs)), c1z = Math.min(s - 1, Math.floor((Math.max(az, bz) + R - this.min) / cs));
+    let add = 0;
+    for (let cz = c0z; cz <= c1z; cz++) {
+      for (let cx = c0x; cx <= c1x; cx++) {
+        const wx = this.min + (cx + 0.5) * cs, wz = this.min + (cz + 0.5) * cs;
+        const t = l2 > 1e-9 ? Math.min(1, Math.max(0, ((wx - ax) * ex + (wz - az) * ez) / l2)) : 0;
+        const d = Math.hypot(ax + ex * t - wx, az + ez * t - wz);
+        if (d >= R) continue;
+        const v = (k + (k2 - k) * t) * Math.min(1, (R - d) / soft);
+        if (v > 0) add += this._tear(cz * s + cx, v, dens, wx, wz);
+      }
+    }
+    return add;
   }
 
   trampleAt(x, z) {
@@ -171,6 +259,8 @@ export class Scorch {
     this.tram.fill(0);
     this._tramIn.fill(0);
     this._tramN = 0;
+    this.torn.fill(0);
+    this.tornCells = 0;
     this.tex.needsUpdate = true;
   }
 

@@ -2,6 +2,8 @@ import { GlyphParticles } from '../render/particles.js';
 import { CONFIG } from '../core/config.js';
 import { SCAR, FIRE } from './breakTuning.js';
 import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
+import { GRASS } from './grassTuning.js';
+import { mowOn } from './scorch.js';
 
 // Impact marks (ADR-107): what a blow leaves behind. Glyphs that stay where they are until the fight
 // is reset, in one batch of their own (the throne hall's inlay works the same way):
@@ -64,6 +66,8 @@ export class Scars {
     this._dirty = false; // a mark came: the batch's buffers are written on the next update
     this._dying = 0; // the oldest this many marks are fading out
     this._lift = 0; // (m: a kind mark on grass lies on its tips)
+    this._liftDens = null; // (inside mark() with the mow on: the density each glyph's lift is read by)
+    this._sc = null; // (inside mark() with the mow on: the scorch map it tears)
     this._dieT = 0;
     /** how many kind marks were made, by kind (the tests', the Lab's) */
     this.made = { slam: 0, cut: 0, thrust: 0, dash: 0, blast: 0, beam: 0, step: 0 };
@@ -117,7 +121,9 @@ export class Scars {
   }
 
   _add(x, y, z, glyph, size, color, alpha, rot, owner) {
-    y += this._lift;
+    // (a kind mark with the mow on: each glyph lies on what is there, the stubble where its blow tore
+    // the grass, the blades' tips where it did not)
+    y += this._liftDens ? this._liftAt(x, z) : this._lift;
     if (!Number.isFinite(x + y + z + size + rot)) return;
     const M = this.marks;
     if (M.length >= this.cap) {
@@ -189,22 +195,102 @@ export class Scars {
     // (on grass the mark lies on the blades' tips: under them the meadow would hide it)
     const dens = this.game.world?.fire?.density;
     this._lift = typeof dens === 'function' ? SCAR.mark.grassLift * clamp01(Number(dens(x, z)) || 0) : 0;
-    switch (kind) {
-      case 'slam': this._slam(x, z, power, size, keep, r); break;
-      case 'cut': this._cut(x, z, dx, dz, power, len, keep, o.claws | 0, o.arc ? r : 0, o.spread); break;
-      case 'thrust': this._thrust(x, z, dx, dz, power, keep); break;
-      case 'dash': this._dash(x, z, dx, dz, power, len, keep, o.arc ? r : 0); break;
-      case 'blast': this._blast(x, z, power, size, keep, !!o.hot); break;
-      case 'beam': this._beam(x, z, dx, dz, power, len, !!o.hot || o.hot === undefined); break;
-      case 'step': this._step(x, z, dx, dz, power); break;
+    // the blow tears the grass in its shape first (the scorch map's A, GRASS.mark; `?mow=0` none), and
+    // then the mark's glyphs lie on the stubble where it did: they read on the floor, not on the tips
+    const sc = this.game.world?.scorch;
+    const tears = !!sc?.tearLine && typeof dens === 'function' && mowOn();
+    try {
+      if (tears) {
+        this._liftDens = dens;
+        this._sc = sc;
+        // (a cut tears inside _cut: its bow and its claws' lengths are drawn there)
+        if (kind !== 'cut') this._tearKind(kind, x, z, dx, dz, power, size, len, o.arc ? r : 0, r);
+      }
+      switch (kind) {
+        case 'slam': this._slam(x, z, power, size, keep, r); break;
+        case 'cut': this._cut(x, z, dx, dz, power, len, keep, o.claws | 0, o.arc ? r : 0, o.spread); break;
+        case 'thrust': this._thrust(x, z, dx, dz, power, keep); break;
+        case 'dash': this._dash(x, z, dx, dz, power, len, keep, o.arc ? r : 0); break;
+        case 'blast': this._blast(x, z, power, size, keep, !!o.hot); break;
+        case 'beam': this._beam(x, z, dx, dz, power, len, !!o.hot || o.hot === undefined); break;
+        case 'step': this._step(x, z, dx, dz, power); break;
+      }
+    } finally {
+      this._lift = 0;
+      this._liftDens = null;
+      this._sc = null;
     }
-    this._lift = 0;
     const n = this.marks.length - n0;
     if (n > 0) {
       this.made[kind]++;
       this.kinds++;
     }
     return Math.max(0, n);
+  }
+
+  /** How high a kind mark's glyph at (x, z) lies with the mow on: on the stubble where the grass is
+   *  torn, on the blades' tips where it stands (SCAR.mark.grassLift), by the grass's density there. */
+  _liftAt(x, z) {
+    const d = clamp01(Number(this._liftDens(x, z)) || 0);
+    if (!(d > 0)) return 0;
+    const m = clamp01((this._sc?.tornAt?.(x, z) ?? 0) * GRASS.blade.gain);
+    return d * (SCAR.mark.grassLift * (1 - m) + GRASS.mark.lift * m);
+  }
+
+  /** The depth (0..1) a kind's blow of `power` tears (GRASS.mark[kind].k, light .. hardest). */
+  _tearK(kind, power) {
+    const K = GRASS.mark[kind].k;
+    return lerp(K[0], K[1], clamp01((power - 0.3) / 1.5));
+  }
+
+  /** A strip along an arc round (cx, cz) at radius rr, from angle a0 over `len` m (pieces ~0.5 m). */
+  _tearArc(cx, cz, rr, a0, len, w, k) {
+    const n = Math.max(1, Math.ceil(len / 0.5));
+    let px = cx + Math.cos(a0) * rr, pz = cz + Math.sin(a0) * rr;
+    for (let i = 1; i <= n; i++) {
+      const a = a0 + (len * i) / n / rr, qx = cx + Math.cos(a) * rr, qz = cz + Math.sin(a) * rr;
+      this._sc.tearLine(px, pz, qx, qz, w, k);
+      px = qx;
+      pz = qz;
+    }
+  }
+
+  /**
+   * The grass a kind mark's blow tore (GRASS.mark), the shape the mark is drawn in (its sizes as the
+   * kind's own method takes them; a cut's is torn in _cut). Draws no random number: the marks' stream
+   * is the same with the mow on or off.
+   */
+  _tearKind(kind, x, z, dx, dz, power, size, len, arc, rBlow) {
+    const G = GRASS.mark, T = SCAR.mark, sc = this._sc, k = this._tearK(kind, power);
+    switch (kind) {
+      case 'slam': {
+        const R = power >= SCAR.crater.min ? Math.max(size, Math.min(Number.isFinite(rBlow) ? rBlow : 9, 1.2 + power * 1.1)) : size;
+        sc.tear(x, z, R * G.slam.r, k);
+        break;
+      }
+      case 'blast': sc.tear(x, z, size * G.blast.r, k); break;
+      case 'thrust': {
+        const L = lerp(T.thrust.len[0], T.thrust.len[1], clamp01((power - 0.2) / 1.2));
+        sc.tearLine(x - dx * L * 0.5, z - dz * L * 0.5, x + dx * L * 0.5, z + dz * L * 0.5, G.thrust.w, k);
+        sc.tear(x + dx * L * 0.5, z + dz * L * 0.5, G.thrust.r, k * 0.8);
+        break;
+      }
+      case 'dash': {
+        const L = Math.min(T.dash.len[1], Math.max(T.dash.len[0], Number.isFinite(len) ? len : 1.5));
+        const w = G.dash.w * (0.8 + 0.5 * clamp01((power - 0.2) / 1.2));
+        if (arc > 0) this._tearArc(x, z, arc, Math.atan2(dz, dx), L, w, k);
+        else sc.tearLine(x, z, x + dx * L, z + dz * L, w, k * 0.8, k);
+        break;
+      }
+      case 'beam': {
+        const L = Math.min(T.beam.len[1], Math.max(T.beam.len[0], Number.isFinite(len) ? len : 1.4));
+        sc.tearLine(x, z, x + dx * L, z + dz * L, G.beam.w, k);
+        break;
+      }
+      case 'step':
+        if (power >= T.step.min) sc.tear(x, z, G.step.r * (0.6 + 0.4 * clamp01((power - T.step.min) / 1.2)), k);
+        break;
+    }
   }
 
   /** A round mark's radius (a slam's, a blast's): by its power, never past the blow's own reach. */
@@ -291,6 +377,8 @@ export class Scars {
       const off = lines > 1 ? (c - (lines - 1) / 2) * sp : 0;
       const Lc = L * (lines > 1 ? 0.75 + 0.25 * rnd() : 1);
       const steps = Math.max(2, Math.round(Lc / T.step));
+      // the grass along this gash is torn first (its glyphs then lie on the stubble; no random draw)
+      if (this._sc) this._tearCut(x, z, dx, dz, px, pz, a0, Lc, bow, off, arc, power);
       for (let i = 0; i <= steps; i++) {
         if (keep < 1 && rnd() > keep + 0.25) continue;
         const t = i / steps, s = t * Lc;
@@ -322,6 +410,31 @@ export class Scars {
       const cx = arc > 0 ? x + Math.cos(a0 + s / arc) * (arc + d) : x + dx * s + px * d;
       const cz = arc > 0 ? z + Math.sin(a0 + s / arc) * (arc + d) : z + dz * s + pz * d;
       this._add(cx, y + 0.02, cz, pick('.,\''), 0.18 + 0.12 * rnd(), this.lip, K.alpha * this.lipA, rnd() * TAU, -1);
+    }
+  }
+
+  /** One gash's torn grass (_cut's own path: its bow, its claw's offset, or round (x, z) at `arc`),
+   *  in GRASS.mark.cut.w wide pieces, tapered toward both ends as the gash is. */
+  _tearCut(x, z, dx, dz, px, pz, a0, Lc, bow, off, arc, power) {
+    const G = GRASS.mark.cut, k = this._tearK('cut', power), n = Math.max(2, Math.ceil(Lc / 0.45));
+    let qx = 0, qz = 0, qk = 0;
+    for (let i = 0; i <= n; i++) {
+      const t = i / n, s = t * Lc, taper = Math.sin(Math.PI * Math.min(1, 0.12 + t * 0.88));
+      let cx, cz;
+      if (arc > 0) {
+        const a = a0 + s / arc, rr = arc + off;
+        cx = x + Math.cos(a) * rr;
+        cz = z + Math.sin(a) * rr;
+      } else {
+        const b = bow * Math.sin(Math.PI * t) + off;
+        cx = x + dx * s + px * b;
+        cz = z + dz * s + pz * b;
+      }
+      const ck = k * (0.6 + 0.4 * taper);
+      if (i > 0) this._sc.tearLine(qx, qz, cx, cz, G.w, qk, ck);
+      qx = cx;
+      qz = cz;
+      qk = ck;
     }
   }
 
