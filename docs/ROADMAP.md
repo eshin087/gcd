@@ -188,11 +188,12 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Stance sets (a few poses per set he shifts between, by streak tier), per-style idle actions, `poseKit.js`
 - [x] Switchable light combos of 3 – 7 presses: hit windows, heft, a held beat's buffer, heavy branches clamped
 - [x] Four characters as options (`?moves=flow|still|restless|showy`, `?stance=`, `?combo=`): no hand on the hip, each about today's damage per second
-- [x] The sword's mystical layer (four options `?mystic=a|b|c|d`; the owner picked c, the wisps, in Matrix green: now the default, `?mystic=0` off) and an arc that grows with the streak (`?arc=1|2`, still an option)
+- [x] The sword's mystical layer (four options, then green wisps, then three flames; the owner's pick: a tight green flame in the hero's own micro letters, on by default, `?mystic=0` off) and an arc that grows with the streak (`?arc=1|2`, still an option)
 - [x] The resting blade's halo fixed (the world grid's order)
 - [x] Lab rows; scenarios `herostyles`, `herocombo`, `swordmystic`; the opt-in stance and combo audits
-- [ ] The owner's picks: a style (or a stance style and a combo style apart), an arc level (the mystic option is picked: the green wisps)
-- [ ] Remove the losing options and the switches; the docs for the winner alone
+- [ ] The owner's picks: a style (or a stance style and a combo style apart), an arc level (the sword's layer is picked: the green flame)
+- [ ] Remove the losing options and the switches; the docs for the winner alone (done for the sword's layer)
+- [ ] The streak aura's rim in green to match the sword's flame? (owner to decide)
 - [ ] Harden the winner: variants per hit, the outfits (`?heroLook=`), the phone, the audits' gaps (the combo audit's streak, the stance audit's wrist kink, its "-> light" row)
 - [ ] Weak spots: the point's speed into a backpedal or a block from the trailing poses; showy's finisher a full turn to his right
 ## M1.73 — Xin Yi reworked: drawn like the hero, kicks and flurries, a wall kick, bullets that never lock (2026-11-23, `claude/xinyi-rework-4b1d8a`, ADR-168 – ADR-170)

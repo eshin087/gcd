@@ -209,6 +209,18 @@ const PIXEL_3X3 = [
   [7, 7, 7], // #
 ];
 
+/**
+ * The atlas column (createPixelArtAtlas's sparse → dense order) of each PIXEL_3X3 entry, by its index
+ * in that list: an effect drawn in the hero's own micro letters (player/swordMystic.js) finds a mark.
+ */
+export function pixelArtOrder() {
+  const lit = (rows) => rows.reduce((n, r) => n + (r & 1) + ((r >> 1) & 1) + ((r >> 2) & 1), 0);
+  const sorted = PIXEL_3X3.map((rows, i) => ({ rows, i })).sort((a, b) => lit(a.rows) - lit(b.rows) || a.i - b.i);
+  const col = new Array(PIXEL_3X3.length);
+  sorted.forEach(({ i }, c) => (col[i] = c));
+  return col;
+}
+
 /** Fill cell of the hero's micro-font atlas at scale s: a 3x3 glyph + 1 px spacing, in whole pixels. */
 export const pixelArtCell = (s) => {
   const c = Math.max(4, Math.round(4 * s));

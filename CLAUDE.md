@@ -50,8 +50,8 @@ follow the zoom) and `?ablaze=off|a|c` (b: the wyrm's phase 3 fire). The impact 
 `?calm=0..3` the light at the contact (default 1; 0 = as before; Lab: the row's `calm` button). The streak pass's switches (ADR-167): `?streakfx=off|all|storm,tiers,aura,counter,sound,world`,
 `?perfect=today|sharp|cinema` (default sharp), `?burst=0..3` (default 2), `?streakCount=` and `?auraFire=` (Lab: the 'streak' row). The hero's
 move styles, options for the owner's pick (ADR-174; default `today`, as before): `?moves=today|flow|still|restless|showy`
-(both halves), `?stance=` (standing and idle only), `?combo=` (the light chain only); the sword's wisps (tiny green letters off the steel on the wind) are ON by default, `?mystic=0` turns
-them off; `?arc=0|1|2` the arc that grows with the streak (ADR-175; Lab PLAYER: `combo`, `look`, `moves: stand`,
+(both halves), `?stance=` (standing and idle only), `?combo=` (the light chain only); the sword's green flame (tiny marks burning round the steel) is ON by default, `?mystic=0` turns
+it off; `?arc=0|1|2` the arc that grows with the streak (ADR-175; Lab PLAYER: `combo`, `look`, `moves: stand`,
 `pose`, `fidget`, `mystic`, `arc`). Bites (a blow knocks the bricks, the letters, out of
 a piece where it struck, and the hero's blade stops on what it does not cut through) are on: `?chip=0`
 turns them off (ADR-132). The grove's bamboo: `?bamboo=0|b` (a, the owner's pick: five kinds of cane mixed in clumps;

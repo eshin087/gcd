@@ -5,6 +5,34 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-24 — The sword's layer becomes a tight green flame in the hero's own letters (branch `claude/sword-neon-0cafcc`)
+
+**Owner, in order:** "i want the sword effect to not be wisps but like a fiery subtle flame cool ascii effect on
+the sword" → (three red flames filmed) "make the sword color matrix green color. give me 1 video comparing all
+3" → "i want it to be more cooler flame enveloping the sword ascii looking" → "the glow is way too big, make
+the ascii characters much more smaller" → of two, "A: tight".
+
+**What.** `swordMystic.js` is now the flame alone, on by default (`?mystic=0` = today's blade): every cell
+touching the steel on the screen burns on its own beat (never the steel's cell, never over his torso), marks
+re-roll as fire boils, tongues climb off the top, strokes lick off the steel and climb cell by cell; denser,
+hotter and paler toward the point with the streak. Drawn in the hero's own 3 × 3 micro letters on his 4 × 4 px
+grid through a `LetterBatch` that takes the pipeline's hero atlas (`glyphs.js` gains `pixelArtOrder()`). Why
+not the fire field (the house rule for burning effects): it has no green and prints world-sized letters; in
+those letters the flame was as wide as his head. The wisps, the red flames, the envelope's full version and the
+`?neon=` / `?flame=` pick switches are gone. Lab row `mystic`: off / flame. Scenario `swordmystic`: the flame on
+with no URL; off = today's blade frame by frame, nothing built; his marks only; at most 6 licks and 110 marks a
+frame; green; colour × alpha at most 0.9; growth by tier; nothing after death (its setup gives the harness's
+pipeline a frame size). Films (one video per round, the owner's ask): the scratchpad's `neon/clips/`.
+
+**Measured.** Brightest pixel before the tone map 0.76 (tier 0) / 0.93 (tier 5); about half the flame's pixels
+are over the 0.55 bloom threshold, so the marks carry a small halo. The owner approved the video with it;
+`GREEN` is the knob if it still reads as glow.
+
+**Open.** The streak aura's rim is still red next to a green sword (ask the owner). Phone frame rate unverified.
+The arc (`?arc=`) still an option.
+
+---
+
 ## 2026-11-23 — The sword's wisps, picked and made neon green (follow-up to session 89; branch `claude/sword-neon-0cafcc`)
 
 **Owner:** of the four sword options, "lets go with c tiny letters peeling off the steel on the wind but with

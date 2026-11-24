@@ -30,9 +30,9 @@ export const RELEASES = [
       },
       {
         date: '2026-11-23',
-        title: 'A more mystical sword: green wisps, and an arc that grows with the streak, to try',
+        title: 'A green flame on the sword, and an arc that grows with the streak, to try',
         notes: [
-          'Tiny green letters now peel off your sword on the wind, like falling code. They are there even with no streak, and come thicker, brighter and longer-lived as your streak climbs. Add ?mystic=0 to the address to turn them off.',
+          'A tight flame of tiny green marks now burns round your sword, licking up off the blade. It is there even with no streak and burns denser and hotter as your streak climbs. Add ?mystic=0 to the address to turn it off.',
           'Also to try, off by default: ?arc=1 makes your swing arc gain fine lines, hang longer and leave beads of light as the streak climbs; ?arc=2 does the same more quietly.',
         ],
       },

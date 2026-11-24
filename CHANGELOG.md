@@ -19,14 +19,15 @@ Eighty-two pieces of work since 0.4.0:
   blow in one press, and drag through what it cuts; a heavy press after the fifth light or later gives the
   Earthbreaker; the swing's rising pitch spreads over the whole combo; the Training room's chain row plays the
   whole combo.
-- **A more mystical sword: green wisps, and an arc that grows with the streak, to try** (2026-11-23, ADR-175).
-  *Added:* tiny letters peel off the hero's steel on the wind in Matrix green (the owner's pick of four
-  readings, in a neon tone: crisp letters, not a glow). They are there with no streak and come thicker, brighter
-  and longer-lived as the streak climbs (tiers 0 to 5). On by default; `?mystic=0` turns them off (the Lab's
-  PLAYER row `mystic`: off / wisps). `?arc=1` the swing's arc gains fine lines inside and outside its edge,
-  hangs up to twice as long and leaves beads of light from tier 3; `?arc=2` the same, restrained (options, off
-  by default; Lab row `arc`). Tier 0 is the arc as before. *Removed:* the other three sword options
-  (the violet breath, the climbing digits, the lingering line) before they shipped.
+- **A green flame on the sword, and an arc that grows with the streak, to try** (2026-11-24, ADR-175).
+  *Added:* a tight flame of tiny green marks burns round the hero's steel, in his own small letters: it licks
+  up off the blade, boils, and climbs away in tongues. It is there with no streak and burns denser and
+  hotter as the streak climbs (tiers 0 to 5), the point paling to green-white at the top. On by default;
+  `?mystic=0` turns it off (the Lab's PLAYER row `mystic`: off / flame). `?arc=1` the swing's arc gains fine
+  lines inside and outside its edge, hangs up to twice as long and leaves beads of light from tier 3; `?arc=2`
+  the same, restrained (options, off by default; Lab row `arc`). Tier 0 is the arc as before. *Removed:* the
+  other sword looks tried on the way (a violet breath, climbing digits, a lingering line, green wisps, red
+  flames) before they shipped.
 - **The resting blade no longer glows** (2026-11-23, ADR-176). *Fixed:* at some poses and facings a bright halo
   bloomed round the hero's blade while he stood still, and the point left a pale block in the grass: a letter of
   the world grid printed the steel's raw colour beside it.

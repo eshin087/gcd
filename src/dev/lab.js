@@ -1402,10 +1402,10 @@ export class Lab {
       b.title = `equip ${SWORD_PARAM[k]}`;
       return { k, el: b };
     });
-    // the sword's wisps (player/swordMystic.js: green letters off the steel, on by default; ?mystic=0 is
+    // the sword's flame (player/swordMystic.js: green marks burning round the steel, on by default; ?mystic=0 is
     // today's blade) and the arc that grows with the streak (?arc=0|1|2): both live
     const myr = el('div', 'lab-row', null, body);
-    el('span', 'lab-lbl', 'mystic', myr).title = "the sword's wisps: tiny green letters off the steel on the wind (?mystic=0 turns them off)";
+    el('span', 'lab-lbl', 'mystic', myr).title = "the sword's flame: tiny green marks burning round the steel (?mystic=0 turns it off)";
     const myGrid = el('div', 'lab-grid', null, myr);
     myGrid.style.flex = '1';
     this.ui.mysticBtns = MYSTIC_IDS.map((m) => {

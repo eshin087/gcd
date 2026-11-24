@@ -6750,10 +6750,10 @@ async function scenarioHeroLook() {
 // one template (the finishes spread round him, the hand most of the way there at contact); the free
 // elbow bent on the grip; the drink; the idle breath; a NaN in the pose; no Math.random in the wrist.
 async function scenarioSwordMystic() {
-  out('\n== scenario SWORDMYSTIC (the sword\'s wisps, neon green, on by default (?mystic=0 = off) and the arc that grows with the streak ?arc=: off = today, allowed glyphs, budget, monotone by tier, green, faint, nothing after death) ==');
+  out('\n== scenario SWORDMYSTIC (the sword\'s green flame, on by default (?mystic=0 = off) and the arc that grows with the streak ?arc=: off = today, allowed glyphs, budget, monotone by tier, green, faint, nothing after death) ==');
   const SM = await imp('src/entities/player/swordMystic.js');
   const { ARC_STREAK, ARC_STREAK_CALM } = await imp('src/entities/player/fx.js');
-  assert(SM.mysticMode() === 'c' && SM.MYSTIC_IDS.join() === '0,c', 'the wisps are the shipped layer: on with no URL, the other options gone');
+  assert(SM.mysticMode() === 'c' && SM.MYSTIC_IDS.join() === '0,c', 'the flame is the shipped layer: on with no URL, no other option left');
   const mode0 = SM.mysticMode(), arc0 = SM.arcOn();
   let last = null;
   const look = (game) => {
@@ -6769,15 +6769,18 @@ async function scenarioSwordMystic() {
     const p = G.game.player;
     p.debug.god = true;
     if (!hook) p.mystic = null;
+    // (a frame to draw the flame on: the harness's pipeline has no size, as STREAKFX gives it one; the
+    // hero's own 4 x 4 px cell)
+    Object.assign(G.game.pipeline, { width: 1280, height: 720, artCell: { x: 5, y: 8 }, heroCell: { x: 4, y: 4 } });
     return G;
   };
   /** What the mystic layer draws (its onEmit hook), the most a frame, and anything it puts in the fire field. */
   const watch = (G) => {
-    const { game } = G, p = game.player, rec = { spawns: [], frameMax: 0, other: 0 };
+    const { game } = G, p = game.player, rec = { spawns: [], frameMax: 0, writeMax: 0, other: 0 };
     const M = p.mystic;
     if (!M) return rec;
     M.onEmit = (kind, glyph, a, life, size, col) => {
-      rec.spawns.push({ kind, glyph, a, life, size: 0.13, st: 0, ok: Number.isFinite(a + life + size + col), col });
+      rec.spawns.push({ kind, glyph, a, life: kind === 'flame' ? 1 / 60 : life, size: 0.13, st: 0, ok: Number.isFinite(a + life + size + col), col });
     };
     const upd = M.update.bind(M);
     let inM = false;
@@ -6788,6 +6791,7 @@ async function scenarioSwordMystic() {
       upd(dt);
       inM = false;
       rec.frameMax = Math.max(rec.frameMax, M.n);
+      rec.writeMax = Math.max(rec.writeMax, M.w);
     };
     return rec;
   };
@@ -6816,7 +6820,7 @@ async function scenarioSwordMystic() {
     const today = frames(false), off = frames(true);
     assert(today.f.every((x, i) => x === off.f[i]) && off.f.length === 90, 'mystic off: the blade\'s uniforms and part tables of a swing at streak 15 are today\'s, frame by frame');
     assert(off.rec.spawns.length === 0 && off.rec.other === 0 && off.total === 0 && off.lb === null, `mystic off: the layer draws nothing and builds nothing (${off.rec.spawns.length} marks)`);
-    // (2) the wisps: their glyphs, the budget, finite, monotone by tier, green and crisp, nothing in the fire field
+    // (2) the flame: the hero's own marks, the budget, finite, monotone by tier, green, nothing in the fire field
     const TIERS = [[0, 0], [3, 1], [7, 3], [15, 5]];
     for (const m of ['c']) {
       SM.setMystic(m);
@@ -6832,20 +6836,19 @@ async function scenarioSwordMystic() {
         const pres = rec.spawns.reduce((acc, s) => acc + s.a * Math.min(1, s.life) * s.size * (1 + s.st), 0);
         const hot = rec.spawns.reduce((acc, s) => Math.max(acc, s.col), 0);
         const kinds = [...new Set(rec.spawns.map((s) => s.kind))].join('+');
-        row.push({ kinds, n, t, k: rec.spawns.length, max: rec.frameMax, other: rec.other, badGlyph, nan, pres, hot });
+        row.push({ kinds, n, t, k: rec.spawns.length, max: rec.frameMax, wmax: rec.writeMax, other: rec.other, badGlyph, nan, pres, hot });
       }
       out(`     ${m} (${SM.MYSTIC_NAMES[m]})`, row.map((r) => `t${r.t}: ${r.k} ${r.kinds}, max ${r.max}/frame, presence ${r.pres.toFixed(3)}, peak col x a ${r.hot.toFixed(2)}`).join(' | '));
       assert(row.every((r) => r.k > 0), `${m}: already there with no streak, and at every tier (${row.map((r) => r.k).join(' / ')} spawns)`);
       assert(row.every((r) => r.badGlyph === 0 && r.nan === 0 && r.other === 0), `${m}: only its glyphs (${SM.MYSTIC_GLYPHS[m]}), all finite, nothing in the fire field`);
-      assert(row.every((r) => r.max <= SM.MYSTIC.budget), `${m}: at most ${SM.MYSTIC.budget} new spawns a frame (peak ${Math.max(...row.map((r) => r.max))})`);
+      assert(row.every((r) => r.max <= SM.MYSTIC.budget && r.wmax <= SM.MYSTIC.cells), `${m}: at most ${SM.MYSTIC.budget} licks and ${SM.MYSTIC.cells} flame marks a frame (peak ${Math.max(...row.map((r) => r.max))} / ${Math.max(...row.map((r) => r.wmax))})`);
+      assert(row.every((r) => r.kinds.includes('flame') && r.kinds.includes('spawn')), `${m}: a flame round the steel and licks off it at every tier (${row.map((r) => r.kinds).join(' / ')})`);
       let mono = true;
       for (let i = 1; i < row.length; i++) if (!(row[i].pres >= row[i - 1].pres * 0.98)) mono = false;
       assert(mono && row[3].pres > row[0].pres * 1.5, `${m}: grows with the tier (presence ${row.map((r) => r.pres.toFixed(3)).join(' -> ')})`);
-      // neon (the owner asked): the letter's strongest channel x alpha up to 0.9 at the top tier; on screen its brightest
-      // pixel is ~0.7 (tier 0) .. ~0.85 (tier 5) before the tone map: a few pixels a frame over the bloom threshold
-      // 0.55 and no halo to speak of (measured 2026-11-23, ADR-175)
-      assert(row.every((r) => r.hot <= 0.9) && row[0].hot <= 0.75, `${m}: crisp, not a glow (colour x alpha at most ${Math.max(...row.map((r) => r.hot)).toFixed(2)}, ${row[0].hot.toFixed(2)} with no streak)`);
-      const W = SM.WISPS.col;
+      // green, the hero's own size, never a glow: a mark's strongest channel x alpha at most 0.9 (ADR-175)
+      assert(row.every((r) => r.hot <= 0.9), `${m}: not a glow (colour x alpha at most ${Math.max(...row.map((r) => r.hot)).toFixed(2)})`);
+      const W = SM.GREEN.body;
       assert(W[1] >= 0.9 && W[1] > 6 * Math.max(W[0], W[2]), `${m}: Matrix green (linear ${W.join(', ')}: green high, red and blue low)`);
     }
     // (3) nothing on a dead hero

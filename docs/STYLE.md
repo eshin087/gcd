@@ -1688,27 +1688,24 @@ ink on black, never over the hero.
   struck through in red, the digits parting as they fall. The flurry's banner at tiers 4 - 5 gains
   thin gold rules, never size.
 
-### The sword's wisps and the arc's tiers (2026-11-23, ADR-175; `player/swordMystic.js`, `player/fx.js`; the wisps on by default, `?mystic=0` off; `?arc=` an option)
-The owner: "a bit more mystical in a subtle way", then of four readings "c tiny letters peeling off the steel on
-the wind but with neon matrix color effect". What ships:
-- **Wisps: tiny letters peeling off the steel on the wind, in Matrix green.** `. , ' ~` and the backquote (house letters, one
-  letter cell each, the wyrm's pixel font through `LetterBatch`), spawned 5 – 11 cm off the steel's axis along
-  its upper part, drifting up and downwind (`game.world.life.wind`, ADR-163), fading in over a tenth of their
-  life and dimming toward a deeper green as they die. One tone: linear (0.06, 1.0, 0.06), which the grade and
-  the tone map turn into a phosphor green (blue kept low, or it reads mint). At 720p a letter is 5 × 8 px and
-  crisp; at the phone's 852 × 393 it is a few pixels and still reads as green.
-- **Neon, but not a glow.** The first colour in this look to go near the bloom threshold: a letter's brightest
-  pixel is about 0.71 at tier 0 and 0.81 at tier 5 before the tone map (bloom starts at 0.55), a pixel or so a
-  frame over it at rest and 5 at the top. Never raise a tone until the wisps bloom into a halo; B (a pale
-  head) and C (cooling to teal) were turned down for being brighter or less Matrix.
-- **Already there at rest, growing by tier.** 6 wisps a second with no streak, 12 at tier 5 (plus more where
-  the point moves), living 1.2 s to 1.8 s, alpha 0.70 to 0.88.
-- **The steel stays dark until it cuts** (ADR-130). Nothing is written on the blade: every letter starts off
-  the steel, and none of it touches the blade's uniforms. While a cut lights the steel the letters come at
-  half their alpha: the cut is the steel's moment.
-- **The lesson:** a glyph particle of the world atlas under about 6 px prints as a blur, not a letter
-  (round 1 of this layer did not read at the game camera). Tiny letters near the hero go through
-  `LetterBatch`; glyph particles stay for things about one letter cell big or larger.
+### The sword's green flame and the arc's tiers (2026-11-24, ADR-175; `player/swordMystic.js`, `player/fx.js`; the flame on by default, `?mystic=0` off; `?arc=` an option)
+The owner: "a fiery subtle flame cool ascii effect on the sword", "matrix green", "enveloping the sword",
+"the glow is way too big, make the ascii characters much more smaller". What ships:
+- **A tight envelope of burning marks round the steel, in Matrix green.** Every cell touching the steel on
+  the screen burns on its own beat (never the steel's own cell; at most one below it), its mark re-rolling
+  as fire boils; tongues climb off the top and break away; strokes lick off the steel and climb cell by
+  cell. Already there at rest; with the streak it burns denser and hotter, the tongues climb higher, more
+  licks come, and toward the point the marks pale to green-white (Matrix rain's lit head).
+- **At the hero's scale: his own micro letters.** The flame prints the hero's 3 × 3 marks in his 4 × 4 px
+  cells (half the world letter's height), on his grid. Heat picks the mark as the fire field picks its
+  letter: a stroke at a cool tip (`| / \ :`), a tiny letter shape in the body (`+ x v n A s z r T`), a
+  dense mark at the hot heart (`o B A`). The lesson: an effect that rides the hero is drawn in his letters;
+  the world's 5 × 8 letters round his blade read as a glow as wide as his head.
+- **Colour:** linear body (0.06, 1.0, 0.06), cool (0, 0.5, 0.04), lit head (0.62, 1.0, 0.6); blue kept low
+  or the grade turns it mint. Its brightest marks reach the bloom (0.76 … 0.93 before the tone map): a small
+  halo the owner approved; `GREEN` is the knob.
+- **The steel stays dark until it cuts** (ADR-130): nothing is written on the blade or its uniforms, and
+  nothing burns over his torso.
 - **The arc** (`?arc=1`; `?arc=2` restrained): still the owner's crescent and still LINES, not light.
   Per tier it hangs longer (up to × 2.1; restrained × 1.55), gains fine lines just outside its edge (up to
   two; one) and inside it (up to three; two, in place of the aura's echo lines), and from tier 3

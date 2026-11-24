@@ -5304,52 +5304,59 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   hit, the outfits, the phone, the audits' gaps: the combo audit never raises the streak; the stance audit
   reads the wrist kink from sheared matrices; its "-> light" row plays today's chain).
 
-## ADR-175 — The sword's mystical layer and an arc that grows with the streak: the wisps in Matrix green through LetterBatch, `?arc=` still options (2026-11-23)
+## ADR-175 — The sword's mystical layer and an arc that grows with the streak: a tight green flame in the hero's own micro letters, `?arc=` still options (2026-11-23, revised 2026-11-24)
 
 - **Context:** the owner: "i also want his sword to look at bit more mystical in a subtle way. maybe make the
   sword animation change as you get streaks and stuff", and that the sword's own look and the swing's arc and
   trail should both change with the streak. On record: the blade is dark steel that lights only while it cuts
   and the glowing arc is theirs (ADR-130); always-on bright glows read "flashy"; ambient effects are many TINY
-  FAINT letters (ADR-163). ADR-167's aura already puts lines on the steel and echo lines inside the arc.
+  FAINT letters (ADR-163). ADR-167's aura already puts a faint red rim round him and echo lines in the arc.
+- **The road (all filmed, picked by the owner):** four readings (a breath of violet letters, climbing
+  digits, wisps off the steel, a lingering line); they took the wisps, "but with neon matrix color effect",
+  and of three greens one classic Matrix green (2026-11-23, shipped on the branch). Then (2026-11-24): "i want
+  the sword effect to not be wisps but like a fiery subtle flame cool ascii effect on the sword". Three flames
+  in the fire field's red (embers, a sheath, a burning edge) → "make the sword color matrix green color" →
+  "more cooler flame enveloping the sword ascii looking" (a tight and a full envelope) → "the glow is way too
+  big, make the ascii characters much more smaller" → of the two at the hero's size, "A: tight".
 - **Decision:**
-  1. **The wisps, in Matrix green (the owner's pick, 2026-11-23).** Four readings were built as options (a,
-     the breath of the gem's violet letters up the edges; b, script, digits climbing beside the edge; c,
-     wisps; d, shadow, a line of the stroke letter left where the blade stops); the owner took c: "lets go
-     with c tiny letters peeling off the steel on the wind but with neon matrix color effect." c is the one
-     layer now (`player/swordMystic.js`; the others are removed): `. , ' ~` and the backquote peel off the steel on the
-     living world's wind (`life.wind`), more where the blade moves, there with no streak and growing by
-     `streakTier` 0 – 5 (the hero's own streak, independent of `?streakfx=`). **On by default for everyone;**
-     `?mystic=0` (the Lab's `mystic` row: off / wisps) is today's blade.
-  1b. **The tone: one classic Matrix green** (linear 0.06, 1.0, 0.06; the grade and the tone map lean a green
-     toward mint, so the blue is kept low: a first try at (0, 1, 0.28) read as mint). Three tones were filmed
-     (A one tone, B a pale green-white head settling to green like the lit head of Matrix rain, C green
-     cooling to teal as it dies); the owner took A. It stays a crisp letter, not a glow: the brightest pixel
-     of a letter in the buffer before the tone map is about 0.71 (tier 0) / 0.81 (tier 5) (the bloom starts at
-     0.55 and takes a third of the excess above it), and about 1 pixel a frame at rest and 5 at tier 5 are
-     over the threshold, so it adds a hint of halo and no more. The alpha runs 0.70 … 0.88 by tier (the blue
-     it was drawn in first stayed under 0.62), and with no streak the wisps come 6 a second (they were 4: it
-     was borderline at rest), up to 12 at tier 5.
-  2. **House letters through the living world's `LetterBatch`, not glyph particles and not the fire field.** A
-     glyph particle of the world atlas under about 6 px prints as a blur, not a letter (round 1's marks did not
-     read at the game camera); `LetterBatch` prints the wyrm's pixel font crisp at any size, one letter a
-     screen cell (a letter whose cell already holds one this frame is skipped). The fire field is heat: it
-     would make the steel burn and haze round him, and the steel must stay dark until it cuts. Its mesh is
-     built only when an option needs it, on the module's own random stream (three.js draws uuids).
-  3. **Tiny by rule:** a letter's strongest channel × alpha at most 0.9 (0.75 at tier 0); at most 6 new
-     letters a frame; half the alpha while the blade is lit by a cut; nothing written to the blade's
-     uniforms; nothing on a dead, hidden or unarmed hero; it rests through the flurry.
-  4. **The arc** (`fx.js ARC_STREAK`, `ARC_STREAK_CALM`; `?arc=0|1|2`, the Lab's `arc` row): still the owner's
+  1. **A tight envelope of green flame round the steel** (`player/swordMystic.js`; on by default for
+     everyone, `?mystic=0` and the Lab's `mystic` row off / flame give today's blade). Every cell touching the
+     steel on the screen (never the steel's own cell: it is never covered; at most one below it) burns on its
+     own beat, its mark re-rolling 8 times a second; tongues of 1 – 3 cells climb off the top and break away;
+     strokes lick off the steel and climb cell by cell (spawned, snapped to his grid). With `streakTier` 0 – 5
+     (the hero's own streak, independent of `?streakfx=`) it burns denser (62 → 90 % of the cells lit) and
+     hotter, the tongues climb higher, the licks come 6 → 14 a second, and toward the point the marks pale to
+     green-white (the lit head of Matrix rain). Nothing over his torso's column below his head.
+  2. **Drawn in the HERO'S OWN micro letters**, not the world's: `render/glyphs.js` PIXEL_3X3 (3 × 3 marks in
+     his 4 × 4 px cells at 720p, half the world letter's height), through a `LetterBatch` that takes the
+     pipeline's own hero atlas (`pipeline.heroArt`, `heroCell`; never disposed by it) and snaps to his grid.
+     Heat picks the mark the way the fire field picks its letter: a stroke at a cool tip, a tiny letter
+     shape in the body, a dense mark at the hot heart. In world letters (5 × 8) the flame was as wide as
+     his head ("the glow is way too big").
+  3. **Not the fire field** (CLAUDE.md asks for burning effects as fire-field heat): the field prints only its
+     three hues (red fire, the Lord's violet, steel), in world-sized letters, and its two dye zones serve the
+     bosses' timing tells. A green flame at the hero's scale cannot be field heat without a fourth kind (a
+     fourth heat channel). The flame keeps the field's grammar (heat → stroke / body / heart, tongues,
+     boiling) in his letters instead.
+  4. **Matrix green:** linear body (0.06, 1.0, 0.06) (the grade and the tone map lean a green toward mint, so
+     the blue is low), cool tips (0, 0.5, 0.04), the lit head (0.62, 1.0, 0.6); alpha 0.5 – 0.9 by heat.
+     Brightest pixel before the tone map: about 0.76 at tier 0 and 0.93 at tier 5, so its marks carry a small
+     bloom halo (about half its pixels are over the 0.55 threshold). The owner approved it so; dimming
+     `GREEN.body` / `GREEN.alpha` is the knob if it reads as too much glow.
+  5. **The arc** (`fx.js ARC_STREAK`, `ARC_STREAK_CALM`; `?arc=0|1|2`, the Lab's `arc` row): still the owner's
      crescent and still lines, not light. Per tier it hangs longer (× 1.3 … 2.1; restrained × 1.15 … 1.55),
      gains fine lines outside its edge (up to 2; restrained 1) and inside it (up to 3; restrained 2, in place of
      the streak aura's echo lines while on), and from tier 3 (restrained: 4) leaves beads along the edge. Tier 0
      is the shipped arc exactly.
-- **Status:** the wisps picked and shipped in green (2026-11-23); options a, b, d and the `?neon=` tone
-  switch removed. The arc (`?arc=0|1|2`) is still an option, off by default, pending the owner's pick.
-- **Consequences:** the `swordmystic` scenario holds the wisps to their glyphs, budget, green and alpha, on
-  by default, and the off state (`?mystic=0`) to today's blade frame by frame and to drawing and building
-  nothing. Every other scenario now runs with the wisps on. The phone (852 × 393) shows the green clearly
-  though the letters are only a few pixels there; on-device frame rate is unverified (a spawn budget of 6 a
-  frame into one 64-letter batch: one more draw call).
+- **Status:** the tight green flame shipped (2026-11-24); the wisps, the other flames and every pick switch
+  (`?neon=`, `?flame=`) removed. The arc (`?arc=0|1|2`) is still an option, off by default, pending a pick.
+- **Consequences:** the `swordmystic` scenario holds the flame to his marks, its budgets (6 licks, 110 marks
+  a frame), green, colour × alpha at most 0.9, growth by tier, on by default, nothing after death, and the off
+  state (`?mystic=0`) to today's blade frame by frame and to drawing and building nothing. Every other
+  scenario runs with it on (the harness's pipeline has no frame size, so it draws nothing there). The streak
+  aura's rim stays red: the sword is green and the aura red at tiers 1+ (the owner may want the aura green
+  too: a follow-up). `glyphs.js` gains `pixelArtOrder()` (each PIXEL_3X3 mark's atlas column). On-device
+  frame rate is unverified (one more batch, up to ~160 instances, one draw call).
 
 ## ADR-176 — The world grid tests a creature or prop edge before the creature grid's bound (2026-11-23)
 
