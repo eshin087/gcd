@@ -154,7 +154,7 @@ function arcPoint(t, f, o) {
 }
 const TRAIL_NONE = [];
 /**
- * The arc that grows with the streak (`?arc=1`, swordMystic.js arcOn; off = today exactly). Still the
+ * The arc that grows with the streak (`?arc=1` full, `?arc=2` ARC_STREAK_CALM; swordMystic.js arcOn; 0 = today exactly). Still the
  * owner's crescent and still lines, not light: per tier (streakTier 0..5) it hangs longer, gains fine
  * lines OUTSIDE its edge and inside it (in place of the aura's echo lines while it is on), and from
  * tier 3 a bead of light is left along the edge now and then, drifting out of the cut (ornate, not
@@ -175,6 +175,18 @@ export const ARC_STREAK = {
   size: [1, 1, 1.06, 1.1, 1.16, 1.22],
   col: [0.55, 0.85, 1.3], // the fine lines' steel (ECHO_COL's, a little brighter for the outer ones)
   bead: [0.7, 1.0, 1.45],
+};
+/** `?arc=2`: the restrained growth (the owner chooses between this and the full one): the same
+ *  idea with fewer, finer lines, a shorter hang and few beads; tier 0 is today's arc too. */
+export const ARC_STREAK_CALM = {
+  ...ARC_STREAK,
+  linger: [1, 1.15, 1.25, 1.35, 1.45, 1.55],
+  outer: [0, 1, 1, 1, 1, 1],
+  inner: [0, 0, 1, 1, 1, 2],
+  outA: [0, 0.3, 0.32, 0.34, 0.36, 0.38],
+  innerA: [0, 0, 0.28, 0.3, 0.32, 0.34],
+  beads: [0, 0, 0, 0, 0.12, 0.2],
+  size: [1, 1, 1, 1.04, 1.06, 1.08],
 };
 const ECHO_COL = [0.5, 0.8, 1.25]; // the echo lines' steel (under the bloom: fine lines, no glow)
 const ECHO_STEP = 0.075; // the streak's echo lines (trail): this share of the reach apart, inward from the edge
@@ -306,7 +318,7 @@ export class PlayerFx {
     const T = crit ? ARC_TONE.crit : ARC_TONE[heavy || thrust ? 'heavy' : 'light'];
     const core = T.core, veil = T.veil, end = T.end;
     // the arc that grows with the streak (ARC_STREAK; tier 0 with it off: today exactly)
-    const AS = ARC_STREAK, at5 = arcOn() ? Math.min(5, streakTier(this.game.player?.streak | 0)) : 0;
+    const lvl = arcOn(), AS = lvl === 2 ? ARC_STREAK_CALM : ARC_STREAK, at5 = lvl ? Math.min(5, streakTier(this.game.player?.streak | 0)) : 0;
     const linger = (cleave ? 1.7 : heavy ? 1.3 : 1) * AS.linger[at5];
     const rows = thrust ? TRAIL_NONE : S.veil;
     // the streak's echo lines (player/streakFx.js `echoes`; 0 = none, today): fine lines inside the

@@ -6752,7 +6752,7 @@ async function scenarioHeroLook() {
 async function scenarioSwordMystic() {
   out('\n== scenario SWORDMYSTIC (the sword\'s mystical layer ?mystic= and the arc that grows with the streak ?arc=: off = today, allowed glyphs, budget, monotone by tier, nothing after death) ==');
   const SM = await imp('src/entities/player/swordMystic.js');
-  const { ARC_STREAK } = await imp('src/entities/player/fx.js');
+  const { ARC_STREAK, ARC_STREAK_CALM } = await imp('src/entities/player/fx.js');
   const mode0 = SM.mysticMode(), arc0 = SM.arcOn();
   let last = null;
   const look = (game) => {
@@ -6869,12 +6869,18 @@ async function scenarioSwordMystic() {
       game.fx.add.spawn = f;
       return { k, life: k ? life / k : 0, dots };
     };
-    const offA = swing(false, 15), arcRow = [0, 3, 7, 15].map((n) => swing(true, n));
+    const offA = swing(0, 15), arcRow = [0, 3, 7, 15].map((n) => swing(1, n));
     out('     arc', `off at 15: ${offA.k} strokes, life ${offA.life.toFixed(3)} | on: ${arcRow.map((r, i) => `t${[0, 1, 3, 5][i]} ${r.k} strokes life ${r.life.toFixed(3)} dots ${r.dots}`).join(' | ')}`);
     let up = true;
     for (let i = 1; i < arcRow.length; i++) if (!(arcRow[i].k > arcRow[i - 1].k) || !(arcRow[i].life > arcRow[i - 1].life)) up = false;
     assert(up, 'arc on: each tier (0 / 1 / 3 / 5) lays more line strokes and they hang longer');
     assert(arcRow[3].life > arcRow[0].life * 1.6 && arcRow[3].k > arcRow[0].k * 1.5, `arc on: tier 5's lines hang ${(arcRow[3].life / Math.max(1e-6, arcRow[0].life)).toFixed(2)}x as long, ${arcRow[3].k} strokes against ${arcRow[0].k}`);
+    const calmRow = [0, 3, 7, 15].map((n) => swing(2, n));
+    out('     arc 2', calmRow.map((r, i) => `t${[0, 1, 3, 5][i]} ${r.k} strokes life ${r.life.toFixed(3)} dots ${r.dots}`).join(' | '));
+    let upC = true;
+    for (let i = 1; i < calmRow.length; i++) if (!(calmRow[i].k >= calmRow[i - 1].k) || !(calmRow[i].life > calmRow[i - 1].life)) upC = false;
+    assert(upC && Math.abs(calmRow[0].k - arcRow[0].k) <= 4, 'arc 2 (restrained): grows by tier too, tier 0 the same as the full one');
+    assert(calmRow[3].k < arcRow[3].k && calmRow[3].life < arcRow[3].life && calmRow[3].dots < arcRow[3].dots, `arc 2 at tier 5 is calmer than arc 1 (${calmRow[3].k} strokes life ${calmRow[3].life.toFixed(3)} against ${arcRow[3].k} / ${arcRow[3].life.toFixed(3)})`);
     assert(ARC_STREAK.linger[0] === 1 && ARC_STREAK.outer[0] === 0 && ARC_STREAK.inner[0] === 0 && ARC_STREAK.size[0] === 1, 'arc: tier 0 is today\'s arc');
   } finally {
     SM.setMystic(mode0);

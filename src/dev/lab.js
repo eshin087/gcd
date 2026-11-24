@@ -1278,15 +1278,15 @@ export class Lab {
       return { m, el: b };
     });
     const arr = el('div', 'lab-row', null, body);
-    el('span', 'lab-lbl', 'arc', arr).title = 'the swing arc grows with the streak (?arc=1)';
+    el('span', 'lab-lbl', 'arc', arr).title = 'the swing arc grows with the streak (?arc=1 full, ?arc=2 restrained)';
     const arGrid = el('div', 'lab-grid', null, arr);
     arGrid.style.flex = '1';
-    this.ui.arcBtns = ['0', '1'].map((m) => {
-      const b = button(arGrid, m === '0' ? '0 today' : '1 grows', () => {
+    this.ui.arcBtns = ['0', '1', '2'].map((m) => {
+      const b = button(arGrid, m === '0' ? '0 today' : m === '1' ? '1 full' : '2 restrained', () => {
         setArc(m);
         this._syncCutBtns();
       });
-      b.title = m === '0' ? 'the arc as today' : 'the arc hangs longer, layered lines and beads by streak tier';
+      b.title = m === '0' ? 'the arc as today' : m === '1' ? 'the arc hangs longer, layered lines and beads by streak tier' : 'the same growth, fewer and finer lines';
       return { m, el: b };
     });
     // the wyrm's heads (entities/dragon/heads.js, ?wyrmFace=): a build-time choice, so a page reload
@@ -1376,7 +1376,7 @@ export class Lab {
     const w = this.game.player?.loadout?.weapon;
     for (const { k, el: b } of this.ui.swordBtns ?? []) setClass(b, 'on', w === SWORD_PARAM[k]);
     for (const { m, el: b } of this.ui.mysticBtns ?? []) setClass(b, 'on', mysticMode() === m);
-    for (const { m, el: b } of this.ui.arcBtns ?? []) setClass(b, 'on', arcOn() === (m === '1'));
+    for (const { m, el: b } of this.ui.arcBtns ?? []) setClass(b, 'on', String(arcOn()) === m);
     for (const { m, el: b } of this.ui.sfxBtns ?? []) setClass(b, 'on', sfxMode() === m);
     for (const { m, el: b } of this.ui.chainBtns ?? []) setClass(b, 'on', chainMode() === m);
     const bank = this.game.audio?.samples;

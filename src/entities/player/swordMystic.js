@@ -46,7 +46,8 @@ const q = (name) => {
     return null;
   }
 };
-const PICK = { mode: IDS.includes(q('mystic')) ? q('mystic') : '0', arc: q('arc') === '1' };
+const arcIn = (v) => (v === 2 || v === '2' ? 2 : v === true || v === 1 || v === '1' ? 1 : 0);
+const PICK = { mode: IDS.includes(q('mystic')) ? q('mystic') : '0', arc: arcIn(q('arc')) };
 
 /** The option drawn now ('0' = off). */
 export const mysticMode = () => PICK.mode;
@@ -55,11 +56,12 @@ export function setMystic(id) {
   PICK.mode = IDS.includes(String(id)) ? String(id) : '0';
   return PICK.mode;
 }
-/** `?arc=1`: the swing's arc grows with the streak (fx.js ARC_STREAK); off = today exactly. */
+/** `?arc=1` (full) / `?arc=2` (restrained): the swing's arc grows with the streak (fx.js ARC_STREAK /
+ *  ARC_STREAK_CALM); 0 = today exactly. Returns the level (0, 1, 2). */
 export const arcOn = () => PICK.arc;
-/** Lab / tests: switch the growing arc live. Returns what is now set. */
-export function setArc(on) {
-  PICK.arc = on === true || on === 1 || on === '1';
+/** Lab / tests: switch the growing arc live (0 | 1 | 2; true = 1). Returns the level now set. */
+export function setArc(v) {
+  PICK.arc = arcIn(v);
   return PICK.arc;
 }
 
@@ -71,9 +73,9 @@ const R = (a, b) => a + rnd() * (b - a);
 export const setMysticSeed = (v) => (mseed = v >>> 0);
 
 /** The house letters it may print (all in the wyrm's fonts and the world atlas). */
-const LETTERS = "0123456789.,'`~:";
+const LETTERS = "0123456789.,'`~:|/-\\";
 /** What each option may draw (the scenario checks every emission). */
-export const MYSTIC_GLYPHS = Object.freeze({ a: "|'.", b: '0123456789', c: ".,'`~", d: '|' });
+export const MYSTIC_GLYPHS = Object.freeze({ a: ":'.", b: '0123456789', c: ".,'`~", d: '|/-\\' });
 
 /**
  * The tuning, one entry per tier (index = streakTier 0..5).
@@ -88,46 +90,48 @@ export const MYSTIC_GLYPHS = Object.freeze({ a: "|'.", b: '0123456789', c: ".,'`
  */
 export const MYSTIC = {
   budget: 6,
-  letters: 10,
+  letters: 20,
+  cell: [0.13, 0.2], // m: one house letter at his depth on the screen (5 x 8 px at 720p, 36 m), for the one-a-cell rule
   gain: 1,
   lift: 0.6,
   rise: 3,
   quiet: 0.25,
   a: {
-    period: [5.2, 4.4, 3.8, 3.2, 2.7, 2.2], // s from the gem to the point
-    len: [0.14, 0.17, 0.21, 0.25, 0.3, 0.36], // m of the steel the breath covers
-    alpha: [0.4, 0.44, 0.48, 0.52, 0.56, 0.6],
+    period: [4.6, 4.0, 3.5, 3.0, 2.6, 2.2], // s from the gem to the point
+    train: [3, 3, 3, 4, 4, 5], // letters in the train up each edge (head ':' then "'" then '.')
+    gap: 0.075, // m between two letters of the train
+    alpha: [0.5, 0.52, 0.55, 0.58, 0.6, 0.62],
     second: [0, 0, 0, 1, 1, 1], // a second breath half a period behind
     mote: [0, 0, 0, 0, 1, 1], // it leaves the point as a letter
-    size: 0.08,
-    off: 0.05, // m off each edge (x 0.4 close up .. 1 at the game camera)
+    off: 0.09, // m off each edge (x 0.5 close up .. 1 at the game camera): never on his own pale blade
     // the gem's violet all the way up, a little paler toward the point and at the top tiers
-    from: [0.5, 0.2, 0.95], to: [0.5, 0.3, 1.0], top: [0.6, 0.42, 1.0],
+    from: [0.62, 0.26, 1.0], to: [0.62, 0.36, 1.0], top: [0.7, 0.48, 1.0],
   },
   b: {
-    slots: [2, 2, 3, 4, 5, 6], // digits on the steel at once
-    speed: [0.1, 0.12, 0.15, 0.18, 0.22, 0.27], // m/s up the steel
-    alpha: [0.42, 0.45, 0.49, 0.53, 0.57, 0.62],
+    slots: [4, 4, 5, 6, 7, 8], // digits beside the steel at once
+    speed: [0.12, 0.14, 0.17, 0.2, 0.24, 0.28], // m/s up the steel
+    alpha: [0.52, 0.54, 0.56, 0.58, 0.6, 0.62],
     leave: [0, 0, 0, 0, 0.35, 0.6], // share of the digits that leave the point and drift off
-    off: 0.07, // m beside the edge (the letter is wider than the blade: never over it)
+    off: 0.1, // m beside the edge (the letter is wider than the blade: never over it)
     col: [0.3, 0.45, 0.9], hot: [0.42, 0.58, 1.0],
   },
   c: {
-    rest: [1.6, 2.0, 2.8, 3.6, 4.6, 5.8], // wisps a second at rest, off the upper steel
-    move: [3, 4, 6, 8, 11, 14], // more per m/s the point moves
-    life: [0.8, 0.85, 0.95, 1.05, 1.15, 1.3],
-    alpha: [0.42, 0.45, 0.49, 0.53, 0.57, 0.62],
+    rest: [4, 4.6, 5.6, 6.8, 8, 9.5], // wisps a second at rest, off the upper steel
+    move: [4, 5, 7, 9, 12, 15], // more per m/s the point moves
+    life: [1.2, 1.3, 1.4, 1.5, 1.65, 1.8],
+    alpha: [0.5, 0.52, 0.55, 0.58, 0.6, 0.62],
+    off: [0.05, 0.11], // m off the steel's axis they start (either side: not printed on his blade)
     wind: 0.55, // share of the wind they ride (and a floor of drift up and back when the air is still)
     col: [0.3, 0.46, 0.9], end: [0.1, 0.16, 0.4],
   },
   d: {
-    life: [0.36, 0.44, 0.54, 0.66, 0.8, 0.96], // s a copy lingers
-    alpha: [0.42, 0.45, 0.49, 0.53, 0.57, 0.62],
+    life: [0.55, 0.62, 0.72, 0.84, 0.98, 1.15], // s a copy lingers
+    alpha: [0.55, 0.56, 0.58, 0.6, 0.61, 0.62],
     mid: [0, 0, 0, 1, 1, 1], // a cut also leaves one at its middle
-    rest: [2.6, 2.4, 2.1, 1.8, 1.5, 1.2], // s between copies at rest (when the blade has moved)
-    strokes: 3, // strokes laid along the steel for one copy
-    size: 0.09,
-    slide: 0.2, // m/s the copy slides off on the wind
+    rest: [1.8, 1.6, 1.4, 1.2, 1.0, 0.85], // s between copies at rest
+    strokes: 6, // letters laid along the steel for one copy (at most; one a screen cell)
+    start: 0.07, // m off the steel's axis a copy starts
+    slide: 0.28, // m/s the copy slides off (on the wind, or across the blade's flat in still air)
     col: [0.32, 0.5, 0.98], end: [0.08, 0.12, 0.32],
   },
 };
@@ -176,6 +180,18 @@ export class SwordMystic {
     this.tipZ = 0;
     this._cx = this._cy = this._cz = 0;
     this._cam = null;
+    this._seen = new Float32Array(48); // the screen points of this frame's written letters
+  }
+
+  /** Back to its first frame (a level reset; the film rig stages every row alike). */
+  reset() {
+    this.t = this.vis = this.tier = this.acc = this.restT = this.moved = 0;
+    this.atkSeen = null;
+    this.midDone = this.endDone = false;
+    this.slots = null;
+    this.mote[0] = this.mote[1] = false;
+    this.tipX = NaN;
+    if (this.lb) this._lbClear();
   }
 
   /** Per frame (player._updateFx). With the option off it returns at once: nothing drawn. */
@@ -192,7 +208,7 @@ export class SwordMystic {
     const pool = g?.fx?.alpha ?? g?.fx?.add, sw = P.rig?.sword, e = sw?.matrixWorld?.elements;
     const armed = !!P.rig?.loadout?.weapon;
     const hidden = P.state === 'flurry' || (P.state === 'plunge' && P.pl?.phase === 0) || P.object3d?.visible === false;
-    const lb = mode === 'b' || mode === 'c' || mode === 'a' ? this._letters() : this.lb;
+    const lb = mode !== '0' ? this._letters() : this.lb;
     if (lb) lb.begin();
     if (!pool || !e || !armed || !P.alive || P.state === 'dead' || hidden) {
       this.tipX = NaN;
@@ -295,11 +311,20 @@ export class SwordMystic {
     return true;
   }
 
-  /** A written house letter at S.x/y/z (this frame only). */
+  /** A written house letter at S.x/y/z (this frame only). One letter to a screen cell: where the
+   *  blade points at the camera its letters would stack into one pale blob, so a letter whose cell
+   *  this frame already holds one is skipped. */
   _put(ch, c, a) {
     const lb = this.lb;
     if (!lb || this.w >= MYSTIC.letters || !(a > 0.01)) return false;
     if (!Number.isFinite(S.x + S.y + S.z) || S.y < 0.03) return false;
+    const C = this._cam;
+    if (C) {
+      const sx = S.x * C[0] + S.y * C[1] + S.z * C[2], sy = S.x * C[4] + S.y * C[5] + S.z * C[6], P = this._seen;
+      for (let i = 0; i < this.w; i++) if (Math.abs(P[i * 2] - sx) < MYSTIC.cell[0] && Math.abs(P[i * 2 + 1] - sy) < MYSTIC.cell[1]) return false;
+      P[this.w * 2] = sx;
+      P[this.w * 2 + 1] = sy;
+    }
     const al = Math.min(1, a * MYSTIC.gain);
     lb.put(S.x, S.y, S.z, 0, lb.col(ch), 0, c, al);
     this.w++;
@@ -376,41 +401,36 @@ export class SwordMystic {
 
   // ------------------------------------------------------------------ a: the breath
   _breath(pool, e, t, fdt, quiet) {
-    const A = MYSTIC.a, z0 = DIM.gem, z1 = (DIM.drawnTip ?? DIM.steelTip) - 0.02;
-    const period = this._k(A.period, t), len = this._k(A.len, t), alpha = this._k(A.alpha, t) * quiet;
-    const rot = this._rot(e), dl = Math.hypot(e[8], e[9], e[10]) || 1, far = Math.min(1, Math.max(0, Number(this.player.bladeFar) || 0));
+    const A = MYSTIC.a, z0 = DIM.gem + 0.04, z1 = (DIM.drawnTip ?? DIM.steelTip) - 0.02;
+    const period = this._k(A.period, t), alpha = this._k(A.alpha, t) * quiet;
+    const far = Math.min(1, Math.max(0, Number(this.player.bladeFar) || 0)), K = A.train[t];
     const n = 1 + (A.second[t] ? 1 : 0);
     for (let i = 0; i < n; i++) {
       // 0..1 through one breath; the second half a period behind
       const u = (((this.t / period + i * 0.5) % 1) + 1) % 1;
       const s = u * u * (3 - 2 * u); // it eases out of the gem, runs, and slows at the point
-      const zc = z0 + (z1 - z0) * s;
-      const fade = Math.sin(Math.PI * Math.min(1, u * 1.08));
-      const a = alpha * Math.max(0, fade) * (i ? 0.7 : 1);
-      if (a > 0.02) {
-        // two thin lines hugging both edges, just off the steel (on it they vanish into the blade's own
-        // pale letters at the game camera): the gem's violet, a little paler at the top tiers
-        const off = hwAt(zc) + A.off * (0.4 + 0.6 * far);
-        lerp3(C0, A.from, t >= 4 ? A.top : A.to, s);
+      const head = z0 + (z1 - z0 + A.gap * (K - 1)) * s; // (the train runs on until its tail is out)
+      const fade = Math.sin(Math.PI * u);
+      // a short train of the gem's violet letters up each edge, just off the steel: ':' at its head,
+      // then "'" and '.' fading behind it
+      for (let k = 0; k < K; k++) {
+        const zz = head - A.gap * k;
+        if (zz < z0 || zz > z1) continue;
+        const a = alpha * fade * (1 - k / (K + 0.5)) * (i ? 0.75 : 1);
+        if (!(a > 0.03)) continue;
+        lerp3(C0, A.from, t >= 4 ? A.top : A.to, (zz - z0) / (z1 - z0));
+        const off = hwAt(zz) + A.off * (0.5 + 0.5 * far);
         for (let side = -1; side <= 1; side += 2) {
-          this._reset(fdt * 1.6);
-          this._at(e, side * off, zc);
-          S.glyph = '|';
-          S.size = S.sizeEnd = A.size;
-          S.stretch = Math.min(12, (len * dl) / A.size);
-          S.rot = rot;
-          S.color = C0;
-          S.colorEnd = C0;
-          S.alpha = S.alphaEnd = Math.min(1, a);
-          this._spawn(pool);
+          this._at(e, side * off, zz);
+          this._put(k === 0 ? ':' : k === 1 ? "'" : '.', C0, a);
         }
       }
       // the top tiers: at the point it leaves the steel as a letter, once a breath
       if (A.mote[t] && u > 0.93 && !this.mote[i]) {
         this.mote[i] = true;
-        this._at(e, 0, z1 + 0.03);
+        this._at(e, 0, z1 + 0.04);
         const w = this._wind();
-        this._lfrom(R(0.9, 1.3), w.x * 0.4 + R(-0.06, 0.06), R(0.25, 0.4), w.z * 0.4 + R(-0.06, 0.06), A.top, A.from, alpha);
+        this._lfrom(R(1.1, 1.5), w.x * 0.4 + R(-0.06, 0.06), R(0.25, 0.4), w.z * 0.4 + R(-0.06, 0.06), A.top, A.from, alpha);
         this._lspawn(rnd() < 0.5 ? "'" : '.');
       } else if (u < 0.5) this.mote[i] = false;
     }
@@ -461,7 +481,7 @@ export class SwordMystic {
     while (this.acc >= 1 && this.n < MYSTIC.budget) {
       this.acc -= 1;
       const f = Math.sqrt(rnd()); // the upper steel more than the forte
-      this._at(e, R(-0.03, 0.03), z0 + (z1 - z0) * f);
+      this._at(e, (rnd() < 0.5 ? -1 : 1) * R(Cc.off[0], Cc.off[1]), z0 + (z1 - z0) * f);
       this._lfrom(life * R(0.8, 1.2), w.x * k + R(-0.08, 0.08), R(0.12, 0.32), w.z * k + R(-0.08, 0.08), Cc.col, Cc.end, alpha, 0.6);
       this._lspawn(WISP[Math.floor(rnd() * WISP.length)]);
     }
@@ -492,38 +512,40 @@ export class SwordMystic {
       return;
     }
     this.atkSeen = null;
-    // at rest: now and then, when the blade has moved a little since the last copy (it settles)
-    if (this.restT >= this._k(D.rest, t) && this.moved > 0.04) {
+    // at rest: now and then the steel breathes out a copy of itself (still or moving)
+    if (this.restT >= this._k(D.rest, t)) {
       this.restT = 0;
       this.moved = 0;
-      this._copy(pool, e, t, 0.6 * (0.5 + 0.5 * quiet));
+      this._copy(pool, e, t, 0.8 * (0.5 + 0.5 * quiet));
     }
   }
 
   /** One faint copy of the steel: D.strokes '|' laid along it, sliding off on the wind. */
   _copy(pool, e, t, k) {
-    const D = MYSTIC.d, z0 = DIM.forte, z1 = (DIM.drawnTip ?? DIM.steelTip) - 0.03;
-    const rot = this._rot(e);
-    const dl = Math.hypot(e[8], e[9], e[10]) || 1, seg = ((z1 - z0) / D.strokes) * dl;
-    const w = this._wind(), wl = Math.hypot(w.x, w.z);
+    // a line of the house's stroke letters along the steel, one a screen cell, the stroke that runs
+    // the way the blade lies on the screen ('|' '/' '-' '\'), sliding off together
+    const D = MYSTIC.d, z0 = DIM.forte, z1 = (DIM.drawnTip ?? DIM.steelTip) - 0.03, C = this._cam;
+    let ch = '|';
+    let n = D.strokes;
+    if (C) {
+      const sx = e[8] * C[0] + e[9] * C[1] + e[10] * C[2], sy = e[8] * C[4] + e[9] * C[5] + e[10] * C[6];
+      const a = Math.atan2(sy, sx), u = ((a / Math.PI) % 1 + 1) % 1; // 0..1 half turns
+      ch = u < 0.125 || u >= 0.875 ? '-' : u < 0.375 ? '/' : u < 0.625 ? '|' : '\\';
+      // as many letters as the steel spans cells on the screen
+      const len = (z1 - z0) * Math.hypot(sx, sy);
+      n = Math.max(1, Math.min(D.strokes, Math.round(len / MYSTIC.cell[Math.abs(sy) > Math.abs(sx) ? 1 : 0])));
+    }
+    const w = this._wind(), wl = Math.hypot(w.x, w.z), xl = Math.hypot(e[0], e[1], e[2]) || 1;
+    const vx = wl > 0.05 ? (w.x / wl) * D.slide : (e[0] / xl) * D.slide;
+    const vy = wl > 0.05 ? 0.05 : (e[1] / xl) * D.slide + 0.05;
+    const vz = wl > 0.05 ? (w.z / wl) * D.slide : (e[2] / xl) * D.slide;
     const life = this._k(D.life, t), alpha = this._k(D.alpha, t) * k;
-    for (let i = 0; i < D.strokes; i++) {
-      const zz = z0 + (z1 - z0) * ((i + 0.5) / D.strokes);
-      this._reset(life);
-      this._at(e, 0, zz);
-      S.glyph = '|';
-      S.size = D.size;
-      S.sizeEnd = D.size * 0.7;
-      S.stretch = Math.min(14, (seg * 1.05) / D.size);
-      S.rot = rot;
-      S.vx = wl > 0.05 ? (w.x / wl) * D.slide : 0;
-      S.vz = wl > 0.05 ? (w.z / wl) * D.slide : 0;
-      S.vy = 0.05;
-      S.color = D.col;
-      S.colorEnd = D.end;
-      S.alpha = Math.min(1, alpha * (i === D.strokes - 1 ? 1 : 0.85));
-      S.alphaEnd = 0;
-      this._spawn(pool);
+    for (let i = 0; i < n; i++) {
+      const zz = z0 + (z1 - z0) * ((i + 0.5) / n);
+      // (it starts a hair off the steel already: on it, it would print on his own pale blade)
+      this._at(e, D.start, zz);
+      this._lfrom(life, vx, vy, vz, D.col, D.end, alpha, 0.4, 0);
+      this._lspawn(ch);
     }
   }
 }
