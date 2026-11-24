@@ -130,17 +130,19 @@ export function listOf(style, set) {
 const okTier = (s, tier) => tier >= (Number.isFinite(s.minTier) ? s.minTier : 0) && tier <= (Number.isFinite(s.maxTier) ? s.maxTier : TIER_MAX);
 
 /** A set's selection state on the animator (HeroAnimator.stanceSel[set]). */
-export const newSel = () => ({ list: null, cur: null, prev: null, k: 1, t: 0, dwell: 0, n: 0 });
+export const newSel = () => ({ list: null, cur: null, prev: null, k: 1, t: 0, dwell: 0, n: 0, fade: 0, mem: { d: 0, ok: false } });
 
 /** Pick the next stance of `list` by weight, among those whose tier range holds `tier` (all of
  *  them when none does), never `not` while another is eligible. `rnd` 0..1 noise (called only when
  *  there is a choice to make). */
 const wOf = (s) => Math.max(0, Number.isFinite(s.w) ? s.w : 1);
 function pick(list, tier, not, rnd) {
+  // (the tier rules while any stance of the list is in range, the one held included: with only that
+  // one in range he stays in it; with none in range every stance may play)
+  let byTier = false;
+  for (const s of list) if (okTier(s, tier)) byTier = true;
   let n = 0, sum = 0;
-  for (const s of list) if (s !== not && okTier(s, tier)) { n++; sum += wOf(s); }
-  const byTier = n > 0;
-  if (!n) for (const s of list) if (s !== not) { n++; sum += wOf(s); }
+  for (const s of list) if (s !== not && (!byTier || okTier(s, tier))) { n++; sum += wOf(s); }
   if (!n) return not ?? list[0]; // (a list of one)
   const ok = (s) => s !== not && (!byTier || okTier(s, tier));
   if (n === 1 || !(sum > 0)) {
@@ -180,8 +182,11 @@ export function stanceStep(A, dt, calm, style) {
   const pins = pl?.debug?.stance;
   for (const set of SET_NAMES) {
     const S = A.stanceSel[set], list = listOf(style, set);
-    if (S.k < 1) S.k = Math.min(1, S.k + dt / (S.fade || fade));
-    S.t += dt;
+    // (the dwell counts from the end of the fade into the stance)
+    if (S.k < 1) {
+      S.k = Math.min(1, S.k + dt / (S.fade || fade));
+      if (S.k >= 1) S.t = 0;
+    } else S.t += dt;
     if (!S.cur) {
       // the first frame (or after a reset): straight into a stance, no fade
       S.list = list;
@@ -227,7 +232,7 @@ export function writeSet(p, P, A, S, scr, blend) {
     scr.set(p);
     S.prev.fn(scr, P, A);
     cur.fn(p, P, A);
-    blend(p, scr, p, smoother(S.k), S.mem ?? (S.mem = { d: 0, ok: false }));
+    blend(p, scr, p, smoother(S.k), S.mem);
   } else {
     cur.fn(p, P, A);
     if (S.mem) S.mem.ok = false;
