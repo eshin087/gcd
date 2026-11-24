@@ -597,8 +597,8 @@ export class PlayerFx {
         add.spawn({
           x, y, z,
           vx: hx * sp + nx * R(0.4, 1.8) + R(-0.8, 0.8), vy: ty * sp * 0.5 + R(0.3, 2.4), vz: hz * sp + nz * R(0.4, 1.8) + R(-0.8, 0.8),
-          life: R(0.1, 0.26), size: R(0.14, 0.2), sizeEnd: 0.04,
-          glyph: "'.", color: COL.spark, colorEnd: COL.sparkEnd,
+          life: R(0.12, 0.3), size: R(0.2, 0.28), sizeEnd: 0.06,
+          glyph: "+'.", color: COL.spark, colorEnd: COL.sparkEnd,
           alpha: 1, alphaEnd: 0, gravity: -9, drag: 2.4,
         });
         n++;

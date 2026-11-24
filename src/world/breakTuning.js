@@ -284,7 +284,7 @@ export const BREAK = Object.freeze({
     pass: Object.freeze({
       along: 1.1, face: 0.45,
       sparks: Object.freeze([5, 9]), splinters: Object.freeze([6, 10]),
-      line: true, lineLife: 0.2, lineStep: 0.16, lineMax: 9,
+      line: false, lineLife: 0.2, lineStep: 0.16, lineMax: 9,
       jolt: Object.freeze([0.05, 0.12]),
     }), out: 1.6, up: 1.4, litter: 3, shed: 0.72, windY: 0.7 }),
   /**
