@@ -3523,7 +3523,8 @@ export class Player {
     if (guarded) return;
     if (dealt > 0) this._guardGain(heavy ? GUARD.hit.heavy : GUARD.hit.light);
     // (the steel flares at its own contact: not when the shards hit and the blade is in the ground)
-    if (!viaShards) this.bladeFlare = Math.max(this.bladeFlare, heavy || crit ? TUNE.bladeFlare.hit[1] : TUNE.bladeFlare.hit[0]);
+    // (a def's `flare`: its own flash of the steel on a landed hit, in TUNE.bladeFlare.hit's units; a crit keeps the heavy one at least)
+    if (!viaShards) this.bladeFlare = Math.max(this.bladeFlare, Number.isFinite(d.flare) ? Math.max(clamp(d.flare, 0, 1.5), crit ? TUNE.bladeFlare.hit[1] : 0) : heavy || crit ? TUNE.bladeFlare.hit[1] : TUNE.bladeFlare.hit[0]);
     // the contact, for the animator and other areas: when (the attack clock: anim.js attackPose's bite;
     // −1 = none) and which way the blade went
     a.hitAt = a.t;
