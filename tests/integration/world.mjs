@@ -2096,7 +2096,7 @@ const S = {
     const add = swing(cx, cz, 0.12, -0.9, 0.9, 0.05);
     const onArc = [-0.6, -0.3, 0, 0.3, 0.6].map((a) => along(cx, cz, 0.75, a));
     const behind = along(cx, cz, 0.8, Math.PI), far = along(cx, cz, 3.2, 0);
-    assert(add > 0 && Math.min(...onArc) >= 0.9, `a low sweep mows its arc: torn ${onArc.map((v) => v.toFixed(2)).join(' ')} along it (>= 0.9), ${sc.tornCells} cells`);
+    assert(add > 0 && Math.min(...onArc) >= GRASS.mow.maxK - 1e-6 && Math.max(...onArc) < GRASS.blade.bare[0], `a low sweep mows its arc: torn ${onArc.map((v) => v.toFixed(2)).join(' ')} along it (${GRASS.mow.maxK}: mown, never torn out)`);
     assert(behind === 0 && far === 0, `... and nothing beside it: behind him ${behind}, 3.2 m out (past the steel) ${far}`);
     assert(fx.n > 0 && fx.n <= GRASS.mow.bits.max, `the cut tops fly: ${fx.n} letters for the swing (1 .. ${GRASS.mow.bits.max})`);
     // 2. a swing at waist height clips the tall grass's tops lightly, and nothing on paving

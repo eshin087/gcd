@@ -77,6 +77,7 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
       uMowInk: { value: new THREE.Vector2(B.ink[0], B.ink[1]) },
       uMowGain: { value: B.gain },
       uMowFresh: { value: B.freshK },
+      uMowBare: { value: new THREE.Vector2(B.bare[0], B.bare[1]) },
       uMowLie: { value: new THREE.Vector3(B.lie[0], B.lie[1], B.lie[2]) },
       uFresh: { value: new THREE.Vector3(...B.fresh) },
       uFreshAsh: { value: new THREE.Vector3(...B.freshAsh) },
@@ -96,6 +97,7 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
       uniform vec3 uMow;     // the mown blade: stub (share of the ink kept), jitter, share cut to the root
       uniform vec2 uMowInk;  // the letter's ink spans this share of its quad
       uniform float uMowGain, uMowFresh;
+      uniform vec2 uMowBare; // torn past x .. y: torn out (a blow's mark), not mown
       uniform vec3 uMowLie;  // the cut tops lying: share of the mown blades, their size, their paleness
       uniform vec3 uFresh, uFreshAsh;
       varying vec2 vUv;
@@ -119,7 +121,7 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
         // mown (the scorch map's a: world/scorch.js tear, grassTuning.js GRASS.blade): the blade's letter
         // is CUT, its lower part left standing (the quad and its uv clipped at the same height, so the
         // stub is the letter's own stroke, not a squashed one); each blade's cut a little different
-        float cutV = 1.0, mown = 0.0, lying = 0.0;
+        float cutV = 1.0, mown = 0.0, lying = 0.0, bare = 0.0;
         float tilt = iData.y;
         if (torn > 0.004 && flower < 0.5) {
           float r2 = fract(iRoot.w * 7.31), r3 = fract(iRoot.w * 3.17 + 0.37), r4 = fract(iRoot.w * 5.71 + 0.11);
@@ -127,7 +129,10 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
           // light tear thins the meadow to a scatter of stubs and a swath's edge is a ragged line of them)
           float cutP = torn * uMowGain;
           mown = smoothstep(r3 * 0.92, r3 * 0.92 + 0.08, cutP);
-          if (mown > 0.55 && r4 < uMowLie.x) {
+          // torn OUT (a blow's mark, torn past uMowBare.x): the stubs go to the root, nothing lies, the floor
+          // shows bare under the mark; mown (the sword, up to GRASS.mow.maxK): pale stubble and cut tops
+          bare = smoothstep(uMowBare.x, uMowBare.y, torn);
+          if (mown > 0.55 && r4 < uMowLie.x * (1.0 - bare)) {
             // a cut top lying where it fell: the blade's whole letter, small, laid over (no wind)
             lying = 1.0;
             h *= uMowLie.y;
@@ -135,7 +140,7 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
             tilt = (r2 < 0.5 ? -1.0 : 1.0) * (1.25 + 0.5 * r3);
             baseY = 0.03;
           } else {
-            float stubK = r2 < uMow.z ? 0.04 : uMow.x + uMow.y * (r2 - 0.5) * 2.0;
+            float stubK = r2 < max(uMow.z, bare * 0.85) ? 0.04 : uMow.x * (1.0 - 0.5 * bare) + uMow.y * (r2 - 0.5) * 2.0;
             float cv = uMowInk.x + (uMowInk.y - uMowInk.x) * stubK;
             cutV = mix(1.0, cv, mown);
           }
@@ -226,7 +231,7 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
         // trodden blades a little darker
         if (trample > 0.004) alb *= 1.0 - 0.7 * trample;
         // a mown stub is paler at its cut (fresh: never the burnt grass's black)
-        if (mown > 0.0) alb = mix(alb, mix(uFresh, uFreshAsh, uAsh), uMowFresh * mown * (1.0 - burn) * (lying > 0.5 ? uMowLie.z : 0.45 + 0.55 * position.y));
+        if (mown > 0.0) alb = mix(alb, mix(uFresh, uFreshAsh, uAsh), uMowFresh * mown * (1.0 - burn) * (1.0 - 0.75 * bare) * (lying > 0.5 ? uMowLie.z : 0.45 + 0.55 * position.y));
         float sh = shadowAtFast(vec3(root.x, 0.3, root.z));
         vec3 L = uAmbient * 1.6 + uMoonColor * 0.62 * sh + pointLights(root + vec3(0.0, 0.35, 0.0), vec3(0.0, 1.0, 0.0), 1.0);
         vec3 col = alb * L;
@@ -446,8 +451,8 @@ function tearUnder(sc, hAt, H, T, M) {
     const c = (by - lim) / (by - ay);
     bx += (ax - bx) * c; bz += (az - bz) * c; by = lim;
   }
-  const ka = mowDepth(ay, top, M), kb = mowDepth(by, top, M);
-  if (Math.max(ka, kb) < M.min) return 0;
+  const ka = mowDepth(ay, top, M) * M.maxK, kb = mowDepth(by, top, M) * M.maxK;
+  if (Math.max(ka, kb) < M.min * M.maxK) return 0;
   return sc.tearLine(ax, az, bx, bz, M.w, ka, kb);
 }
 

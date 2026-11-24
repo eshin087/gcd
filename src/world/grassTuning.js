@@ -20,6 +20,9 @@ export const GRASS = Object.freeze({
     fresh: [0.27, 0.27, 0.13],
     freshAsh: [0.17, 0.16, 0.14],
     freshK: 0.9,
+    /** torn past bare[0] .. bare[1] the grass is torn OUT (a blow's mark: the floor bare under it, the stubs
+     *  at the root, nothing lying), under it MOWN (the sword tears at most GRASS.mow.maxK) */
+    bare: [0.84, 0.97],
     /** the cut tops lying where they fell: [share of the mown blades, their size (x the blade), paleness] */
     lie: [0.4, 0.55, 0.85],
   }),
@@ -33,6 +36,7 @@ export const GRASS = Object.freeze({
    * (`minDensity`, the fire's density there).
    */
   mow: Object.freeze({
+    maxK: 0.8, // the sword mows (pale stubble); only a blow's mark tears the grass out (GRASS.blade.bare)
     reach: 1.45, // x the drawn steel: out to the arc's edge (player/fx.js ARC_LOOK.at), the cut the player sees
     sub: 0.2,
     maxSub: 8,
@@ -59,11 +63,11 @@ export const GRASS = Object.freeze({
    * stubble, not on the blades' tips).
    */
   mark: Object.freeze({
-    slam: Object.freeze({ r: 1.05, k: [0.75, 1] }),
-    cut: Object.freeze({ w: 0.5, k: [0.85, 1] }),
-    thrust: Object.freeze({ w: 0.34, r: 0.45, k: [0.7, 1] }),
-    dash: Object.freeze({ w: 0.62, k: [0.85, 1] }),
-    blast: Object.freeze({ r: 0.95, k: [0.85, 1] }),
+    slam: Object.freeze({ r: 1.05, k: [0.95, 1] }),
+    cut: Object.freeze({ w: 0.5, k: [0.95, 1] }),
+    thrust: Object.freeze({ w: 0.34, r: 0.45, k: [0.9, 1] }),
+    dash: Object.freeze({ w: 0.62, k: [0.95, 1] }),
+    blast: Object.freeze({ r: 0.95, k: [0.95, 1] }),
     beam: Object.freeze({ w: 0.8, k: [1, 1] }),
     step: Object.freeze({ r: 0.5, k: [0.6, 0.85] }),
     lift: 0.08,
