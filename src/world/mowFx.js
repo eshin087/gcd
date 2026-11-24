@@ -1,0 +1,398 @@
+import * as THREE from 'three';
+import { COMMON_GLSL } from '../render/shaderLib.js';
+import { gis } from '../render/glyphs.js';
+import { GRASS } from './grassTuning.js';
+import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
+
+// The cut tops (ADR: grass the sword cuts, round 2). When a tear (world/scorch.js: the sword's mow, a
+// mark's blow) cuts a blade, the blade's stub stays in the meadow (grass.js: the lower part of its own
+// letter) and its TOP, the very upper part of that letter, in its own colour, is handed here on the
+// same frame: one instance of this batch, drawn exactly where the blade's top was, which then flies,
+// topples or bursts (the look, `?mowLook=`), lands, lies a while and thins away. So a blade never pops
+// from whole to stub: its top is seen leaving.
+//   mowLook   'a' thrown (a spray of grass letters launched along the swing; the default)
+//             'b' sliced (the tops topple off their stubs and lie; a few fly)
+//             'c' shred  (each top bursts into a couple of the grass's own strokes, flung)
+//             'r1'       round 1 (no tops: the stub appears at once, the shader lays a pale top beside it)
+// Blades are found under a cut through a bucket grid of the grass's instances on the scorch map's cells
+// (built once). A blade is cut when the bilinear torn value there x GRASS.blade.gain passes its own
+// threshold: the test the grass shader makes, so the top leaves on the frame its stub shows.
+// No Math.random (the module's own stream; the batch is built through a local stream for three's uuids).
+// No allocation per frame: fixed typed arrays, the batch's buffers are rewritten up to the live count.
+
+/** The cut's look (`?mowLook=a|b|c|r1`): read once when the world is built. */
+export const mowLook = () => {
+  const v = lookOf('mowLook', GRASS.fly.look);
+  return v === 'b' || v === 'c' || v === 'r1' ? v : 'a';
+};
+
+let seed = 0x2b61d9a3;
+const rnd = () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296;
+const R = (a, b) => a + (b - a) * rnd();
+const fract = (v) => v - Math.floor(v);
+const smooth = (a, b, x) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
+const FLY = 0, TOPPLE = 1, LIE = 2;
+
+export class MowFx {
+  /** `grass`: world.grass (createGrass's result, with `blades`); `scorch`: the map it reads. */
+  constructor(game, grass, scorch) {
+    this.game = game;
+    this.grass = grass;
+    this.sc = scorch;
+    this.look = mowLook();
+    const F = GRASS.fly;
+    const M = (this.max = F.max);
+    this.n = 0;
+    // per piece (SoA): position of its base, velocity, screen-plane rotation and spin, quad, colour
+    this.px = new Float32Array(M); this.py = new Float32Array(M); this.pz = new Float32Array(M);
+    this.vx = new Float32Array(M); this.vy = new Float32Array(M); this.vz = new Float32Array(M);
+    this.rot = new Float32Array(M); this.spin = new Float32Array(M); this.rot0 = new Float32Array(M);
+    this.lieRot = new Float32Array(M); this.age = new Float32Array(M); this.lie = new Float32Array(M);
+    this.w = new Float32Array(M); this.h = new Float32Array(M); this.v0 = new Float32Array(M);
+    this.glyph = new Float32Array(M); this.colv = new Float32Array(M); this.fade = new Float32Array(M);
+    this.state = new Uint8Array(M); this.t0 = new Float32Array(M); this.y0 = new Float32Array(M);
+    this.born = new Float32Array(M); // (game time it was cut: the oldest lying piece gives way first)
+    this._all = [this.px, this.py, this.pz, this.vx, this.vy, this.vz, this.rot, this.spin, this.rot0, this.lieRot, this.age, this.lie, this.w, this.h, this.v0, this.glyph, this.colv, this.fade, this.state, this.t0, this.y0, this.born];
+    this.thrown = 0; // pieces spawned since the last read (mowStats)
+    this.total = 0;
+    this._frag = gis(F.shred.glyphs);
+    // the blades: a bucket grid of instance indices on the scorch map's cells (CSR)
+    const B = grass.blades, S = scorch.size, N = B.n;
+    this.cut = new Uint8Array(N); // the blade's top has left (cleared with the map)
+    this._cutAny = false;
+    const cnt = new Int32Array(S * S + 1);
+    const cellOf = new Int32Array(N);
+    for (let i = 0; i < N; i++) {
+      const c = scorch._idx(B.root[i * 4], B.root[i * 4 + 1]);
+      cellOf[i] = c;
+      if (c >= 0) cnt[c + 1]++;
+    }
+    for (let c = 0; c < S * S; c++) cnt[c + 1] += cnt[c];
+    this.start = cnt;
+    this.idx = new Int32Array(N);
+    const fill = Int32Array.from(cnt.subarray(0, S * S));
+    for (let i = 0; i < N; i++) if (cellOf[i] >= 0) this.idx[fill[cellOf[i]]++] = i;
+    this._seen = new Uint32Array(S * S);
+    this._stamp = 0;
+    // the batch: one quad per piece, billboarded as the blades are
+    const quad = new THREE.BufferGeometry();
+    quad.setAttribute('position', new THREE.Float32BufferAttribute([-0.5, 0, 0, 0.5, 0, 0, 0.5, 1, 0, -0.5, 1, 0], 3));
+    quad.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 1, 1, 0, 1], 2));
+    quad.setIndex([0, 1, 2, 0, 2, 3]);
+    const geo = new THREE.InstancedBufferGeometry();
+    geo.index = quad.index;
+    geo.setAttribute('position', quad.attributes.position);
+    geo.setAttribute('uv', quad.attributes.uv);
+    this.aP = new THREE.InstancedBufferAttribute(new Float32Array(M * 4), 4).setUsage(THREE.DynamicDrawUsage);
+    this.aS = new THREE.InstancedBufferAttribute(new Float32Array(M * 4), 4).setUsage(THREE.DynamicDrawUsage);
+    this.aC = new THREE.InstancedBufferAttribute(new Float32Array(M * 4), 4).setUsage(THREE.DynamicDrawUsage);
+    geo.setAttribute('aP', this.aP);
+    geo.setAttribute('aS', this.aS);
+    geo.setAttribute('aC', this.aC);
+    geo.instanceCount = 0;
+    this.geo = geo;
+    const U = game.U;
+    const mat = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: U.uTime, uMoonDir: U.uMoonDir, uMoonColor: U.uMoonColor, uAmbient: U.uAmbient,
+        uFogColor: U.uFogColor, uFogNear: U.uFogNear, uFogFar: U.uFogFar, uFocus: U.uFocus,
+        uCamPos: U.uCamPos, uPLPos: U.uPLPos, uPLCol: U.uPLCol, uPLRad: U.uPLRad,
+        uShadowMap: U.uShadowMap, uShadowMatrix: U.uShadowMatrix, uShadowTexel: U.uShadowTexel,
+        uGlyphAtlas: U.uGlyphAtlas, uScorch: U.uScorch, uScorchBounds: U.uScorchBounds,
+        uCamRight: U.uCamRight, uBladeUp: U.uBladeUp,
+        uAsh: grass.mesh.material.uniforms.uAsh,
+      },
+      vertexShader: /* glsl */ `
+        ${COMMON_GLSL}
+        attribute vec4 aP; // base x, y, z, screen-plane rotation
+        attribute vec4 aS; // the blade's quad w, h, the cut (share of the quad under it), glyph
+        attribute vec4 aC; // colour var, thinning (0..1), lying (0..1), brightness (the cut catching the light)
+        uniform vec3 uCamRight;
+        uniform vec3 uBladeUp;
+        uniform float uAsh;
+        varying vec2 vUv;
+        varying vec3 vCol;
+        varying float vGlyph;
+        varying float vFade;
+        void main() {
+          float v0 = aS.z;
+          // the upper part of the blade's letter: its quad from the cut up, its uv the same rows
+          vec2 q = vec2(position.x * aS.x, position.y * aS.y * (1.0 - v0));
+          float c = cos(aP.w), s = sin(aP.w);
+          q = vec2(c * q.x - s * q.y, s * q.x + c * q.y);
+          vec3 wp = aP.xyz + uCamRight * q.x + uBladeUp * q.y;
+          // the grass's own colour at that height (grass.js), lit as the blades are
+          float tip = v0 + (1.0 - v0) * position.y;
+          vec3 rootC = vec3(0.010, 0.018, 0.013);
+          vec3 tipC = mix(vec3(0.1, 0.16, 0.072), vec3(0.132, 0.188, 0.08), aC.x);
+          tipC = mix(tipC, vec3(0.12, 0.144, 0.104), step(0.82, aC.x));
+          tipC = mix(tipC, mix(vec3(0.105, 0.1, 0.095), vec3(0.14, 0.13, 0.115), aC.x), uAsh);
+          rootC = mix(rootC, vec3(0.012, 0.011, 0.011), uAsh);
+          vec3 alb = mix(rootC, tipC, tip);
+          vec3 at = vec3(aP.x, max(aP.y, 0.0) + 0.3, aP.z);
+          float sh = shadowAtFast(at);
+          vec3 L = uAmbient * 1.6 + uMoonColor * 0.62 * sh + pointLights(at, vec3(0.0, 1.0, 0.0), 1.0);
+          vCol = applyFog(alb * L * aC.w, wp);
+          vUv = vec2(uv.x, v0 + (1.0 - v0) * uv.y);
+          vGlyph = aS.w;
+          vFade = aC.y;
+          gl_Position = projectionMatrix * viewMatrix * vec4(wp, 1.0);
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        uniform sampler2D uGlyphAtlas;
+        varying vec2 vUv;
+        varying vec3 vCol;
+        varying float vGlyph;
+        varying float vFade;
+        void main() {
+          vec2 uv = clamp(vUv, 0.03, 0.97);
+          float col = mod(vGlyph, 16.0);
+          float row = floor(vGlyph / 16.0);
+          float m = texture2D(uGlyphAtlas, vec2((col + uv.x) / 16.0, (7.0 - row + uv.y) / 8.0)).a;
+          // (thinning away: the letter's thin parts go first, a letter to the end, never a smear)
+          if (m < 0.42 + 0.55 * vFade) discard;
+          gl_FragColor = vec4(vCol * (0.55 + 0.45 * m), 0.0);
+        }
+      `,
+      blending: THREE.NoBlending,
+      side: THREE.DoubleSide,
+    });
+    this.mesh = new THREE.Mesh(geo, mat);
+    this.mesh.frustumCulled = false;
+    this.mesh.name = 'grassTops';
+    this._fling = { on: false, ux: 0, uz: 0, k: 1 };
+  }
+
+  /** The swing's way for the cuts that follow (grass.js mowSwing): unit (ux, uz), k its strength. */
+  setFling(ux, uz, k = 1) {
+    const f = this._fling;
+    f.on = Number.isFinite(ux + uz);
+    f.ux = ux;
+    f.uz = uz;
+    f.k = k;
+  }
+
+  clearFling() {
+    this._fling.on = false;
+  }
+
+  /** The torn value the GPU samples at (x, z): the map's A, bilinear between cell centres. */
+  _tornAt(x, z) {
+    const sc = this.sc, S = sc.size;
+    const fx = (x - sc.min) / sc.cellSize - 0.5, fz = (z - sc.min) / sc.cellSize - 0.5;
+    const ix = Math.floor(fx), iz = Math.floor(fz), tx = fx - ix, tz = fz - iz;
+    const a00 = this._a(ix, iz, S), a10 = this._a(ix + 1, iz, S), a01 = this._a(ix, iz + 1, S), a11 = this._a(ix + 1, iz + 1, S);
+    const a = a00 + (a10 - a00) * tx, b = a01 + (a11 - a01) * tx;
+    return a + (b - a) * tz;
+  }
+
+  _a(i, j, S) {
+    return i < 0 || j < 0 || i >= S || j >= S ? 0 : this.sc.data[(j * S + i) * 4 + 3] / 255;
+  }
+
+  /**
+   * A tear just wrote these cells (scorch.js, `n` cell indices): every blade the change reaches whose
+   * cut threshold it passed loses its top now. (cx, cz): the tear's middle (the way a blow throws when
+   * no swing gives one); `out`: a blow that tears the grass out (thrown harder, from the root).
+   */
+  cells(list, n, cx, cz) {
+    if (!n || this.look === 'r1') return;
+    const sc = this.sc, S = sc.size, B = this.grass.blades, G = GRASS.blade, BA = G.bare;
+    const visible = Math.min(B.n, this.grass.mesh.geometry.instanceCount);
+    const stamp = ++this._stamp;
+    const seen = this._seen;
+    let made = 0;
+    const cap = Math.round(GRASS.fly.perTear * this._q());
+    for (let k = 0; k < n; k++) {
+      const c0 = list[k], ci = c0 % S, cj = (c0 - ci) / S;
+      // (bilinear: a cell's value reaches the blades of the cells round it)
+      for (let dj = -1; dj <= 1; dj++) {
+        for (let di = -1; di <= 1; di++) {
+          const i2 = ci + di, j2 = cj + dj;
+          if (i2 < 0 || j2 < 0 || i2 >= S || j2 >= S) continue;
+          const c = j2 * S + i2;
+          if (seen[c] === stamp) continue;
+          seen[c] = stamp;
+          for (let p = this.start[c], e = this.start[c + 1]; p < e; p++) {
+            const i = this.idx[p];
+            if (this.cut[i] || i >= visible || B.data[i * 4 + 3] > 0.5) continue;
+            const x = B.root[i * 4], z = B.root[i * 4 + 1], rw = B.root[i * 4 + 3];
+            const torn = this._tornAt(x, z);
+            if (!(torn > 0.004)) continue;
+            // (grass.js: mown = step(r3 x 0.92 + 0.04, torn x gain))
+            const r3 = fract(rw * 3.17 + 0.37);
+            if (torn * G.gain < r3 * 0.92 + 0.04) continue;
+            this.cut[i] = 1;
+            this._cutAny = true;
+            if (sc.burnAt(x, z) > 0.55) continue; // (a burnt blade's top is ash: nothing flies)
+            const r2 = fract(rw * 7.31);
+            const bare = smooth(BA[0], BA[1], torn);
+            const stubK = r2 < Math.max(G.low, bare * 0.85) ? 0.04 : G.stub * (1 - 0.5 * bare) + G.jitter * (r2 - 0.5) * 2;
+            const v0 = G.ink[0] + (G.ink[1] - G.ink[0]) * stubK;
+            if (made++ < cap) this._spawn(i, x, z, v0, cx, cz, bare);
+          }
+        }
+      }
+    }
+  }
+
+  _q() {
+    const q = this.game.world?.quality;
+    return Number.isFinite(q) ? Math.max(0.3, q) : 1;
+  }
+
+  /** A free slot: a new one, else the oldest piece already lying (it was going to thin away). */
+  _slot() {
+    if (this.n < Math.round(this.max * this._q())) return this.n++;
+    let best = -1, bt = Infinity;
+    for (let j = 0; j < this.n; j++) if (this.state[j] === LIE && this.born[j] < bt) { bt = this.born[j]; best = j; }
+    return best;
+  }
+
+  _spawn(i, x, z, v0, cx, cz, bare) {
+    const B = this.grass.blades, U = this.game.U, F = GRASS.fly, look = this.look;
+    const h = B.root[i * 4 + 2], tilt = B.data[i * 4 + 1];
+    const rx = U.uCamRight.value, up = U.uBladeUp.value;
+    // where the top was: the blade's base + its quad's cut height, along the blade's own lean
+    const oy = v0 * h, qx = -Math.sin(tilt) * oy, qy = Math.cos(tilt) * oy;
+    const pieces = look === 'c' ? 1 + (rnd() < F.shred.extra ? 2 : 1) : 1;
+    // the way it goes: along the swing, else out from the tear's middle
+    const f = this._fling;
+    let ux, uz, k;
+    if (f.on) { ux = f.ux; uz = f.uz; k = f.k; } else {
+      const dx = x - cx, dz = z - cz, l = Math.hypot(dx, dz);
+      ux = l > 1e-3 ? dx / l : 1; uz = l > 1e-3 ? dz / l : 0; k = 0.6 + 0.6 * bare;
+    }
+    for (let p = 0; p < pieces; p++) {
+      const j = this._slot();
+      if (j < 0) return;
+      this.total++;
+      this.thrown++;
+      const frag = p > 0;
+      this.px[j] = x + rx.x * qx + up.x * qy;
+      this.py[j] = Math.max(0.02, rx.y * qx + up.y * qy);
+      this.pz[j] = z + rx.z * qx + up.z * qy;
+      this.rot[j] = this.rot0[j] = tilt;
+      this.w[j] = h * 0.92 * (frag ? F.shred.size : 1);
+      this.h[j] = h * (frag ? F.shred.size : 1);
+      this.v0[j] = frag ? 0 : v0;
+      this.glyph[j] = frag ? this._frag[Math.floor(rnd() * this._frag.length)] : B.data[i * 4];
+      this.colv[j] = B.data[i * 4 + 2];
+      this.fade[j] = 0;
+      this.age[j] = 0;
+      this.born[j] = this.game.time ?? 0;
+      this.y0[j] = this.py[j];
+      // (a sideways sign on screen: the way the swing crosses the view)
+      const sx = Math.sign(ux * rx.x + uz * rx.z) || (rnd() < 0.5 ? -1 : 1);
+      this.lieRot[j] = sx * (Math.PI * 0.5 + R(-0.25, 0.25));
+      const side = R(-1, 1);
+      const T = look === 'c' ? F.shred : F.throw;
+      if (look === 'b' && !frag && rnd() > F.slice.fly) {
+        // sliced: it topples off its stub to the side the blade went, and lies
+        this.state[j] = TOPPLE;
+        this.t0[j] = R(F.slice.time[0], F.slice.time[1]);
+        this.vx[j] = ux * F.slice.drift * k; this.vz[j] = uz * F.slice.drift * k; this.vy[j] = 0;
+        this.spin[j] = 0;
+      } else {
+        this.state[j] = FLY;
+        const s = R(T.fling[0], T.fling[1]) * k;
+        this.vx[j] = ux * s - uz * side * T.side;
+        this.vz[j] = uz * s + ux * side * T.side;
+        this.vy[j] = R(T.up[0], T.up[1]) * (0.7 + 0.3 * k);
+        this.spin[j] = R(T.spin[0], T.spin[1]) * (rnd() < 0.5 ? -1 : 1);
+      }
+      this.lie[j] = R(F.lie[0], F.lie[1]);
+    }
+  }
+
+  /** The fight's reset: every top is gone, every blade whole again (with the map). */
+  clear() {
+    this.n = 0;
+    this.geo.instanceCount = 0;
+    if (this._cutAny) this.cut.fill(0);
+    this._cutAny = false;
+  }
+
+  update(dt) {
+    if (!(dt > 0)) return;
+    if (this._cutAny && this.sc.tornCells === 0) this.cut.fill(0), (this._cutAny = false);
+    const F = GRASS.fly, g = F.gravity, drag = Math.exp(-F.drag * dt);
+    const P = this.aP.array, Sa = this.aS.array, C = this.aC.array;
+    let n = this.n;
+    for (let j = 0; j < n; ) {
+      this.age[j] += dt;
+      const st = this.state[j];
+      if (st === FLY) {
+        this.vy[j] -= g * dt;
+        this.vx[j] *= drag;
+        this.vz[j] *= drag;
+        this.px[j] += this.vx[j] * dt;
+        this.py[j] += this.vy[j] * dt;
+        this.pz[j] += this.vz[j] * dt;
+        this.rot[j] += this.spin[j] * dt;
+        if (this.py[j] <= 0.02 && this.vy[j] < 0) {
+          // landed: it lies on its side where it fell
+          this.py[j] = 0.02;
+          this.state[j] = LIE;
+          this.age[j] = 0;
+          this.rot0[j] = this.rot[j];
+        }
+      } else if (st === TOPPLE) {
+        // over t0 s it tips about its base to lie, its base sinking to the floor
+        const u = Math.min(1, this.age[j] / this.t0[j]), e = u * u;
+        this.rot[j] = this.rot0[j] + (this.lieRot[j] - this.rot0[j]) * e;
+        this.py[j] = Math.max(0.02, this.y0[j] * (1 - e));
+        this.px[j] += this.vx[j] * dt * (1 - u);
+        this.pz[j] += this.vz[j] * dt * (1 - u);
+        if (u >= 1) {
+          this.state[j] = LIE;
+          this.age[j] = 0;
+          this.rot0[j] = this.rot[j];
+        }
+      } else {
+        // lying: it settles flat over a moment, lies, then thins away
+        const s = Math.min(1, this.age[j] / F.settle);
+        this.rot[j] = this.rot0[j] + (this.lieRot[j] - this.rot0[j]) * (s * (2 - s));
+        const t = this.age[j] - this.lie[j];
+        this.fade[j] = t > 0 ? t / F.thin : 0;
+        if (this.fade[j] >= 1) {
+          // gone: the last live piece takes its slot
+          n--;
+          this._move(n, j);
+          continue;
+        }
+      }
+      const o = j * 4;
+      P[o] = this.px[j]; P[o + 1] = this.py[j]; P[o + 2] = this.pz[j]; P[o + 3] = this.rot[j];
+      Sa[o] = this.w[j]; Sa[o + 1] = this.h[j]; Sa[o + 2] = this.v0[j]; Sa[o + 3] = this.glyph[j];
+      // (a top in the air catches the light; lying it calms to the grass's own tone over `calm` s)
+      const lying = this.state[j] === LIE;
+      C[o] = this.colv[j]; C[o + 1] = Math.min(1, this.fade[j]); C[o + 2] = lying ? 1 : 0;
+      C[o + 3] = lying ? F.lit[1] + (F.lit[0] - F.lit[1]) * Math.max(0, 1 - this.age[j] / F.calm) : F.lit[0];
+      j++;
+    }
+    this.n = n;
+    this.geo.instanceCount = n;
+    if (n) {
+      this._up(this.aP, n);
+      this._up(this.aS, n);
+      this._up(this.aC, n);
+    }
+  }
+
+  _up(a, n) {
+    a.clearUpdateRanges();
+    a.addUpdateRange(0, n * 4);
+    a.needsUpdate = true;
+  }
+
+  _move(from, to) {
+    if (from === to) return;
+    const L = this._all;
+    for (let k = 0; k < L.length; k++) L[k][to] = L[k][from];
+  }
+}

@@ -4,6 +4,7 @@ import { gi, gis } from '../render/glyphs.js';
 import { mulberry32, pickWeighted, fbm2 } from '../core/rng.js';
 import { GRASS } from './grassTuning.js';
 import { mowOn } from './scorch.js';
+import { mowLook } from './mowFx.js';
 
 // Hundreds of thousands of grass blades, each ONE glyph stroke ( | / \ ' Y V ... ) standing
 // on the ground, leaning with the wind, pushed aside by feet, flattened by wing gusts and
@@ -80,6 +81,8 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
       uMowFresh: { value: B.freshK },
       uMowBare: { value: new THREE.Vector2(B.bare[0], B.bare[1]) },
       uMowLie: { value: new THREE.Vector3(B.lie[0], B.lie[1], B.lie[2]) },
+      uMowMode: { value: mowLook() === 'r1' ? 0 : 1 },
+      uMowFresh2: { value: B.fresh2 },
       uFresh: { value: new THREE.Vector3(...B.fresh) },
       uFreshAsh: { value: new THREE.Vector3(...B.freshAsh) },
     },
@@ -99,7 +102,8 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
       uniform vec2 uMowInk;  // the letter's ink spans this share of its quad
       uniform float uMowGain, uMowFresh;
       uniform vec2 uMowBare; // torn past x .. y: torn out (a blow's mark), not mown
-      uniform vec3 uMowLie;  // the cut tops lying: share of the mown blades, their size, their paleness
+      uniform vec3 uMowLie;
+      uniform float uMowMode, uMowFresh2; // 1: round 2 (the tops leave as letters, world/mowFx.js); its paleness share  // the cut tops lying: share of the mown blades, their size, their paleness
       uniform vec3 uFresh, uFreshAsh;
       varying vec2 vUv;
       varying vec3 vCol;
@@ -129,11 +133,12 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
           // (torn is the share of the blades here that were cut: each blade is cut or it stands, so a
           // light tear thins the meadow to a scatter of stubs and a swath's edge is a ragged line of them)
           float cutP = torn * uMowGain;
-          mown = smoothstep(r3 * 0.92, r3 * 0.92 + 0.08, cutP);
+          // (round 2: cut or standing, on the very frame world/mowFx.js sends its top away: the same test)
+          mown = uMowMode > 0.5 ? step(r3 * 0.92 + 0.04, cutP) : smoothstep(r3 * 0.92, r3 * 0.92 + 0.08, cutP);
           // torn OUT (a blow's mark, torn past uMowBare.x): the stubs go to the root, nothing lies, the floor
           // shows bare under the mark; mown (the sword, up to GRASS.mow.maxK): pale stubble and cut tops
           bare = smoothstep(uMowBare.x, uMowBare.y, torn);
-          if (mown > 0.55 && r4 < uMowLie.x * (1.0 - bare)) {
+          if (uMowMode < 0.5 && mown > 0.55 && r4 < uMowLie.x * (1.0 - bare)) {
             // a cut top lying where it fell: the blade's whole letter, small, laid over (no wind)
             lying = 1.0;
             h *= uMowLie.y;
@@ -232,7 +237,7 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
         // trodden blades a little darker
         if (trample > 0.004) alb *= 1.0 - 0.7 * trample;
         // a mown stub is paler at its cut (fresh: never the burnt grass's black)
-        if (mown > 0.0) alb = mix(alb, mix(uFresh, uFreshAsh, uAsh), uMowFresh * mown * (1.0 - burn) * (1.0 - 0.75 * bare) * (lying > 0.5 ? uMowLie.z : 0.45 + 0.55 * position.y));
+        if (mown > 0.0) alb = mix(alb, mix(uFresh, uFreshAsh, uAsh), uMowFresh * mix(1.0, uMowFresh2, uMowMode) * mown * (1.0 - burn) * (1.0 - 0.75 * bare) * (lying > 0.5 ? uMowLie.z : 0.45 + 0.55 * position.y));
         float sh = shadowAtFast(vec3(root.x, 0.3, root.z));
         vec3 L = uAmbient * 1.6 + uMoonColor * 0.62 * sh + pointLights(root + vec3(0.0, 0.35, 0.0), vec3(0.0, 1.0, 0.0), 1.0);
         vec3 col = alb * L;
@@ -277,6 +282,8 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
   return {
     mesh,
     total: n,
+    /** the blades' instance data on the CPU (world/mowFx.js finds the ones a cut reaches): iRoot, iData */
+    blades: { root, data, n },
     /** The grass's density (0..1) and its typical blade height (m) at (x, z): the mow reads them. */
     densityAt: (x, z) => density(x, z),
     heightAt: (x, z) => height(x, z, mid),
@@ -399,6 +406,9 @@ export function mowSwing(game, a, sw, fx = null) {
   const tl = Math.hypot(tx, tz);
   const ux = tl > 1e-5 ? tx / tl : 0, uz = tl > 1e-5 ? tz / tl : 0;
   let add = 0;
+  // (the tops this swing cuts go along the steel's way: world/mowFx.js)
+  const tops = sc.tops;
+  tops?.setFling(ux, uz, Math.min(1.3, Math.max(0.5, travel / dt / 9)));
   for (let s = 1; s <= n; s++) {
     const t = s / n;
     lerp3(_H, sw.pa, sw.a, t);
@@ -411,7 +421,9 @@ export function mowSwing(game, a, sw, fx = null) {
     _T.x = _H.x + dx * k; _T.y = _H.y + dy * k; _T.z = _H.z + dz * k;
     add += tearUnder(sc, hAt, _H, _T, M);
   }
-  if (add > 0) {
+  tops?.clearFling();
+  // (round 1's bits: only when no cut tops fly, `?mowLook=r1`)
+  if (add > 0 && !tops) {
     MOW.torn += add;
     // the cut tops fly: a handful a swing (x the quality), along the steel's ground path
     const q = Number.isFinite(w.quality) ? w.quality : 1;

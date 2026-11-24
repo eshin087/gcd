@@ -3,6 +3,7 @@ import { CONFIG } from '../core/config.js';
 import { STEPS } from './life/stepsTuning.js';
 import { GRASS } from './grassTuning.js';
 import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
+import { MowFx, mowLook } from './mowFx.js';
 
 /** Does the grass tear (`?mow=0`: nothing is torn, today's grass)? Read per tear (a Map lookup). */
 export const mowOn = () => lookOf('mow', '1') !== '0';
@@ -57,6 +58,13 @@ export class Scorch {
     // cells and count; nothing here touches R, G, B or the fire (nothing in fire.js reads A)
     this.torn = new Float32Array(size * size);
     this.tornCells = 0;
+    // the cells a tear call changed (handed to the cut tops, world/mowFx.js, before the call returns)
+    this._touch = new Int32Array(GRASS.fly.touch);
+    this._touchN = 0;
+    /** the cut tops (world/mowFx.js): built on the first frame the world's grass is there (null headless,
+     *  with `?mow=0` or `?mowLook=r1`) */
+    this.tops = null;
+    this._topsTried = false;
   }
 
   /** How torn the grass is at (x, z): 0 (standing) .. 1 (mown to stubble). */
@@ -74,7 +82,15 @@ export class Scorch {
     this.torn[i] = v;
     this.data[i * 4 + 3] = Math.round(v * 255);
     this.dirty = true;
+    if (this._touchN < this._touch.length) this._touch[this._touchN++] = i;
     return v - was;
+  }
+
+  /** A tear call is done: the blades it cut lose their tops now (the same frame their stubs show). */
+  _cutTops(cx, cz) {
+    const n = this._touchN;
+    this._touchN = 0;
+    if (n && this.tops) this.tops.cells(this._touch, n, cx, cz);
   }
 
   /** The meadow's density function (the fire's fuel: world.js's meadow), or null (none: every cell). */
@@ -105,6 +121,7 @@ export class Scorch {
         add += this._tear(cz * s + cx, v, dens, wx, wz);
       }
     }
+    this._cutTops(x, z);
     return add;
   }
 
@@ -132,6 +149,7 @@ export class Scorch {
         if (v > 0) add += this._tear(cz * s + cx, v, dens, wx, wz);
       }
     }
+    this._cutTops((ax + bx) * 0.5, (az + bz) * 0.5);
     return add;
   }
 
@@ -261,10 +279,34 @@ export class Scorch {
     this._tramN = 0;
     this.torn.fill(0);
     this.tornCells = 0;
+    this._touchN = 0;
+    this.tops?.clear();
     this.tex.needsUpdate = true;
   }
 
+  /** The cut tops' batch, made once the world's grass is there (through a local stream: three's uuids
+   *  must not draw from Math.random, the seeded fights replay it). */
+  _makeTops() {
+    this._topsTried = true;
+    const g = this.game, grass = g?.world?.grass;
+    if (!grass?.blades || !g.scene || !mowOn() || mowLook() === 'r1') return;
+    const mr = Math.random;
+    let q = 0x5eed7;
+    Math.random = () => (q = (Math.imul(q, 1664525) + 1013904223) >>> 0) / 4294967296;
+    try {
+      this.tops = new MowFx(g, grass, this);
+      g.scene.add(this.tops.mesh);
+    } catch (err) {
+      this.tops = null;
+      console.error('[scorch] the cut tops could not be built', err);
+    } finally {
+      Math.random = mr;
+    }
+  }
+
   update(dt) {
+    if (!this._topsTried) this._makeTops();
+    if (this.tops) this.tops.update(dt);
     this._picks = 0;
     this._seen = 0;
     if (this.active.size) {

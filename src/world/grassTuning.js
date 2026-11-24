@@ -22,6 +22,7 @@ export const GRASS = Object.freeze({
     fresh: [0.27, 0.27, 0.13],
     freshAsh: [0.17, 0.16, 0.14],
     freshK: 0.9,
+    fresh2: 0.35, // round 2: x freshK (the stubble stays letters in the grass's colours, not a pale wash)
     /** torn past bare[0] .. bare[1] the grass is torn OUT (a blow's mark: the floor bare under it, the stubs
      *  at the root, nothing lying), under it MOWN (the sword tears at most GRASS.mow.maxK) */
     bare: [0.84, 0.97],
@@ -57,6 +58,32 @@ export const GRASS = Object.freeze({
      * the cells), at most `max` a swing (x the quality), in the grass's own green, tiny, short-lived.
      */
     bits: Object.freeze({ per: 2.2, max: 14, size: [0.1, 0.16], life: [0.35, 0.7], up: [0.8, 2.0], fling: [0.6, 1.8] }),
+  }),
+  /**
+   * The cut tops (world/mowFx.js, round 2): the upper part of each cut blade's letter leaves on the frame
+   * its stub shows. `look` the default of `?mowLook=` (a thrown, b sliced, c shred, r1 round 1). At most
+   * `max` pieces (x the quality), `perTear` new ones a tear call; the oldest lying one gives way first.
+   * In the air: `gravity` m/s2, `drag` /s; landed it settles flat over `settle` s, lies `lie` s, thins
+   * away over `thin` s. `throw` (a): along the swing `fling` m/s x its strength, `side` of that across,
+   * `up` m/s, `spin` rad/s. `slice` (b): a top topples off its stub over `time` s drifting `drift` m/s
+   * along the swing; `fly` of them are thrown as in a. `shred` (c): as `throw`, and `extra` of the tops
+   * burst into a couple more of the grass's strokes (`glyphs`) at `size` x the blade.
+   */
+  fly: Object.freeze({
+    look: 'a',
+    max: 1400,
+    touch: 4096, // cells one tear call may hand over (a slam's whole disc)
+    perTear: 220,
+    gravity: 9.5,
+    drag: 1.6,
+    settle: 0.12,
+    lie: [1.6, 3.2],
+    thin: 0.7,
+    lit: [1.9, 1.25], // brightness x the grass's own: in the air (a cut top catching the light), lying (calmed over `calm` s)
+    calm: 0.8,
+    throw: Object.freeze({ fling: [1.6, 3.6], side: 0.45, up: [2.4, 4.2], spin: [5, 13] }),
+    slice: Object.freeze({ time: [0.18, 0.32], drift: 0.6, fly: 0.22 }),
+    shred: Object.freeze({ fling: [1.8, 4.2], side: 0.6, up: [2.0, 3.8], spin: [8, 18], extra: 0.7, size: 0.5, glyphs: "/\\|',`" }),
   }),
   /**
    * What each KIND of floor mark tears (scars.mark): a slam a disc as wide as its round, a cut / claws
