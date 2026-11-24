@@ -16,7 +16,8 @@ import { STREAK_FX, setPerfectMode, perfectMode } from '../combat/streak.js';
 import { PERFECT_ART_MODES, PERFECT_ART_NAMES, perfectArtMode, setPerfectArtMode } from '../combat/perfectArt.js';
 import { BURST_LOOK, setBurst, burstLevel } from '../entities/player/flurryBurst.js';
 import { CALM_LOOK, setCalm, calmLevel } from '../combat/impactCalm.js';
-import { sfxMode, setSfxMode } from '../audio/samples.js';
+import { sfxMode, setSfxMode, chainMode, setChainMode, CHAIN_MODES } from '../audio/samples.js';
+import { PARRY_CHAIN } from '../audio/parryChain.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { buildLooks } from './labLooks.js';
 import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
@@ -1232,6 +1233,20 @@ export class Lab {
       return { m, el: b };
     });
     this.ui.sfxNote = el('span', 'lab-note', '', sfGrid);
+    // the deflect chain on the recorded parry (audio/parryChain.js; ?chain=): a weight, b doubled strike,
+    // c long ring (the synth parry, ?sfx=old, keeps its own climb)
+    const chr = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'chain', chr).title = 'the deflect chain on the recorded parry (?chain=a|b|c)';
+    const chGrid = el('div', 'lab-grid', null, chr);
+    chGrid.style.flex = '1';
+    this.ui.chainBtns = CHAIN_MODES.map((m) => {
+      const b = button(chGrid, `${m}: ${PARRY_CHAIN[m].label}`, () => {
+        setChainMode(m);
+        this._syncCutBtns();
+      });
+      b.title = `parries in rhythm build: ${PARRY_CHAIN[m].label}`;
+      return { m, el: b };
+    });
     // the sword looks (gear/moonblade.js; the owner's pick, ?sword=): equip one (a rebuild: build-time
     // cost, Lab only)
     const swr = el('div', 'lab-row', null, body);
@@ -1345,6 +1360,7 @@ export class Lab {
     const w = this.game.player?.loadout?.weapon;
     for (const { k, el: b } of this.ui.swordBtns ?? []) setClass(b, 'on', w === SWORD_PARAM[k]);
     for (const { m, el: b } of this.ui.sfxBtns ?? []) setClass(b, 'on', sfxMode() === m);
+    for (const { m, el: b } of this.ui.chainBtns ?? []) setClass(b, 'on', chainMode() === m);
     const bank = this.game.audio?.samples;
     if (this.ui.sfxNote) setText(this.ui.sfxNote, bank ? `${bank.loaded}/${bank.total} files${bank.failed ? `, ${bank.failed} failed` : ''}` : 'no audio yet');
   }

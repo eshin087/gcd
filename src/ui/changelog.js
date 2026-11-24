@@ -28,6 +28,17 @@ export const RELEASES = [
         ],
       },
       {
+        date: '2026-11-23',
+        title: 'Combat sounds, round two: real steel on the parry, picked by ear',
+        notes: [
+          'Parries now ring with real swords: a sword on a katana, and a spear on a katana for a blue or perfect parry.',
+          'Getting hit, two blades clashing, the slam and the plunge have new recorded sounds; your cuts landing, the flurry and a boss holding your strike have new sounds made for the game.',
+          'A string of parries no longer climbs like a xylophone: the chain gets heavier instead.',
+          'The blue warning and your heavy cut and finishing thrust are back to their first sounds.',
+          'Prefer the old sounds? Add ?sfx=old to the address.',
+        ],
+      },
+      {
         date: '2026-11-22',
         title: 'An eighth level: Halcyon Plaza and Halcyon, the Last Saviour',
         notes: [

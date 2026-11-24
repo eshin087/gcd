@@ -5230,6 +5230,25 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   the coat inside its swing). Left: 3 - 6 cm of hanging cloth still meets the legs in strides (a shin push on
   the coat's lower segment would need `anim.js`); the clamp could move into `anim.js` as per-panel limits.
 
+## ADR-172 — Combat sounds, round two: the combat core picked by ear against the originals, sounds designed as well as found (2026-11-23)
+
+- **Context:** after ADR-165 (attack sounds), ~85 sounds were still the original synth. The owner wanted to
+  compare them with new options, hear when each plays, and be free to keep an original; they also allowed
+  sounds made for the game instead of only found ones.
+- **Decision:** a picker per round, one group at a time (this round: the combat core, 25 slots, plus last
+  round's 11 against their originals). The originals are rendered through the real engine (OfflineAudioContext
+  in headless Edge) so the comparison and every loudness match are true; each slot offers the original, two
+  sounds designed from scratch and up to two CC0 recordings; scripted moments timed from the tuning show when
+  each sound plays. Picks ship through the sample system of ADR-165 (`sampleList.js` slots, generated
+  `sampleFiles.js`, `build-sfx.py` with recorded and designed manifests; designed files are credited "made for
+  ABYSS"); the synth recipe stays the fallback and `?sfx=old` the way back. Each new sound is set to the
+  in-game loudness of the sound it replaces, measured through the engine. The deflect chain stops climbing in
+  pitch with a bell: it grows in weight (`parryChain.js`, three versions behind `?chain=`).
+- **Consequences:** a slot changes by a line in `scripts/audio/sfx-picks.json` and a rerun of `build-sfx.py`.
+  The next rounds (the wyrm, the boss specials, the world and menus) reuse the renderer, the designer and the
+  picker. At the owner's sign-off: chain `a`; the other parry uses play one strike of the blue parry recording; the
+  streak's climb note is half as loud on a parry; the hero's combo swing rises on every cut.
+
 ## ADR-173 — Subtle pixel-font ASCII art for perfect parry, perfect dodge and Mikiri (?perfectArt=0|a|b|c) (2026-11-23)
 
 - **Context:** The owner asked to make combat perfect parry and perfect dodge look more epic in a subtle, cool

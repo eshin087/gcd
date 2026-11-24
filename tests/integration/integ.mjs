@@ -12146,12 +12146,131 @@ async function scenarioSfx() {
       A.samples.last.clear();
       A.samples.loaded = 0;
     }
+
+    // ---- the combat core (round 2): each event's slot, the synth when no file, ?sfx=old, the chain switch
+    const { SLOT: SL, HURT, FLURRY } = await imp('src/audio/sampleList.js');
+    const { PARRY_CHAIN } = await imp('src/audio/parryChain.js');
+    const { DEFENSE } = await imp('src/combat/rules.js');
+    const CORE = ['parry', 'parry-blue', 'hurt', 'hit-scale', 'cut-light', 'cut-heavy', 'slam', 'flurry-cut', 'flurry-coil', 'plunge-dive', 'plunge-hit', 'clash', 'boss-guard'];
+    assert(CORE.every((s) => SL[s] && SAMPLE_FILES[s]?.length >= 1) && !SAMPLE_FILES['cue-blue'] && !SAMPLE_FILES['time-blue'],
+      `every combat-core slot has its config and its picked file; cue-blue / time-blue have none (their synth: ${CORE.filter((s) => !SAMPLE_FILES[s]?.length).join(' ') || 'all present'})`);
+    const HIT = { damage: 30, part: 'body', heavy: false, crit: false, kind: 'light', combo: 1, weight: 'light', point: { x: 1, y: 1, z: 1 }, guarded: false, shards: false };
+    const PAR = { tell: 'normal', attack: 'swipe', chain: 1, light: false, perfect: false, last: true, flare: false };
+    const evs = {
+      parry: ['player:parry', PAR],
+      parryBlue: ['player:parry', { ...PAR, tell: 'blue' }],
+      parryPerfect: ['player:parry', { ...PAR, perfect: true }],
+      parryBullet: ['player:parry', { ...PAR, light: true, perfect: true }],
+      hurt: ['player:hurt', { damage: 20.7, kind: '', hp: 100 }],
+      hurtFire: ['player:hurt', { damage: 20, kind: 'fireball', hp: 100 }],
+      hit: ['player:hitDragon', HIT],
+      hitCrit: ['player:hitDragon', { ...HIT, crit: true }],
+      hitWing: ['player:hitDragon', { ...HIT, part: 'wing' }],
+      hitSlam: ['player:hitDragon', { ...HIT, heavy: true, kind: 'slam', combo: 5, weight: 'slam' }],
+      slam: ['player:slam', { x: 1, z: 1 }],
+      flurryCut: ['player:flurryHit', { n: 1, of: 3, last: false, damage: 10 }],
+      flurryCoil: ['player:flurryArt', { art: 'passing', air: false, dur: 0.22 }],
+      dive: ['player:plunge', { execution: false }],
+      plungeHit: ['player:plungeHit', { damage: 90, execution: false }],
+      clash: ['combat:clash', { heavy: false, crush: false, counter: false, x: 1, y: 1, z: 1 }],
+      guard: ['dragon:guard', { heavy: false, deflect: false, caught: false }],
+      deflect: ['dragon:guard', { heavy: false, deflect: true, caught: false }],
+      heavy: ['player:attack', { kind: 'heavy', combo: 0, charge: 0, name: 'heavy' }],
+      thrust: ['player:attack', { kind: 'thrust', combo: 1, charge: 0, name: 'thrust' }],
+      counter: ['player:counter', {}],
+      mikiri: ['player:mikiri', {}],
+      deflected: ['dragon:deflected', {}],
+    };
+    const smp0 = A._sample;
+    const took = [];
+    A._sample = function (slot, o, g, r, who, layer) { const ok = smp0.call(this, slot, o, g, r, who, layer); if (ok) took.push({ slot, g, r }); return ok; };
+    const fire = (k) => {
+      took.length = 0;
+      const p = step(...evs[k]);
+      if (evs[k][0] === 'player:hurt') { played.length = 0; A.update(DT); p.push(...played); }
+      return { p, s: took.map((x) => x.slot), took: took.slice() };
+    };
+    const SYN = { parry: ['parry'], parryBlue: ['parry'], parryPerfect: ['parry'], parryBullet: ['parry'], hurt: ['hurt'], hurtFire: ['hurt'], hit: ['hit', 'cut'], hitCrit: ['hit', 'cut', 'sub'], hitWing: ['hit', 'cut'], hitSlam: ['hit', 'cut', 'sub'], slam: ['slam'], flurryCut: ['flurryCut'], flurryCoil: ['flurryCoil'], dive: ['plungeDive'], plungeHit: ['plungeHit'], clash: ['trade'], guard: ['guard'], deflect: ['deflected'], heavy: ['swing'], thrust: ['swing'], counter: ['parry'], mikiri: ['parry'], deflected: ['parry'] };
+    const synthAll = () => Object.keys(evs).filter((k) => { const f = fire(k); return !same(f.p, SYN[k]) || f.s.length; });
+    const starts2 = [];
+    ctx.createBufferSource = function () { const s = cbs.call(this); srcs++; const st = s.start?.bind(s); s.start = (t, off) => { starts2.push([t, s.buffer, off]); return st?.(t, off); }; return s; };
+    try {
+      // headless: no file loads, every event plays exactly its synth recipe
+      let bad = synthAll();
+      assert(!bad.length, `no file: every combat-core event plays its synth recipe as before (off: ${bad.join(' ')})`);
+      // files injected (as if loaded): each event its slot; a layer only where the synth had one beside it
+      for (const s of CORE) {
+        keep[s] = SAMPLE_FILES[s];
+        SAMPLE_FILES[s] = [{ file: `${s}-1.mp3`, peak_ms: s === 'flurry-coil' ? 400 : 100 }];
+        A.samples.recs.set(`${s}-1.mp3`, mk(0, s === 'flurry-coil' ? 400 : 100));
+      }
+      A.samples.loaded = CORE.length;
+      const WANT = {
+        parry: [['parry'], []], parryBlue: [['parry-blue'], []], parryPerfect: [['parry-blue'], ['parryPerfect']], parryBullet: [[], ['parry']],
+        hurt: [['hurt'], []], hurtFire: [['hurt'], ['hurtFire']], hit: [['hit-scale', 'cut-light'], []], hitCrit: [['hit-scale', 'cut-light'], ['hitCrit', 'sub']],
+        hitWing: [['cut-light'], ['hit']], hitSlam: [['hit-scale', 'cut-heavy'], ['sub']], slam: [['slam'], []], flurryCut: [['flurry-cut'], []],
+        flurryCoil: [['flurry-coil'], []], dive: [['plunge-dive'], []], plungeHit: [['plunge-hit'], []], clash: [['clash'], []], guard: [['boss-guard'], []],
+        deflect: [[], ['deflected']], heavy: [[], ['swing']], thrust: [[], ['swing']],
+        // (the parry's other uses: one strike of the blue parry recording, no climbing synth: round two sign-off)
+        counter: [['parry-blue'], []], mikiri: [['parry-blue'], []], deflected: [['parry-blue'], []],
+      };
+      bad = Object.keys(WANT).filter((k) => { const f = fire(k); return !same(f.s, WANT[k][0]) || !same(f.p, WANT[k][1]); }).map((k) => { const f = fire(k); return `${k}: ${JSON.stringify(f.s)} ${JSON.stringify(f.p)}`; });
+      assert(!bad.length, `loaded: each event plays its slot (a blue / perfect parry parry-blue + the perfect layer; a bullet's parry, a wing, the boss's deflect, the hero's heavy cut and thrust the synth) ${bad.join(' | ')}`);
+      // what the synth did with its opts, kept: a bigger blow louder, the flurry and the cut a step higher each
+      const gOf = (k, d) => { evs[k][1] = { ...evs[k][1], ...d }; const f = fire(k); return f.took[0]; };
+      const h1 = gOf('hurt', { damage: 20.7 }).g, h2 = gOf('hurt', { damage: 34.5 }).g, h3 = gOf('hurt', { damage: 90 }).g;
+      assert(h2 > h1 * 1.2 && h3 > h2 && Math.abs(h3 - HURT.max / HURT.min) < 1e-6, `hurt: louder with the damage, capped (x${h1.toFixed(2)} / x${h2.toFixed(2)} / x${h3.toFixed(2)})`);
+      const f1 = gOf('flurryCut', { n: 1 }).r, f2 = gOf('flurryCut', { n: 2 }).r, f3 = gOf('flurryCut', { n: 3 }).r, f8 = gOf('flurryCut', { n: 8 }).r;
+      assert(Math.abs(f1 - 1) < 0.01 && f2 > f1 * 1.1 && f3 > f2 * 1.1 && f8 <= FLURRY.maxRate + 1e-9, `the flurry's cut a step higher each cut (the synth's rise), capped (x${f1.toFixed(3)} / x${f2.toFixed(3)} / x${f3.toFixed(3)} / x${f8.toFixed(3)})`);
+      const c1 = fire('hit').took[1].r;
+      evs.hit[1] = { ...HIT, combo: 2 };
+      const c2 = fire('hit').took[1].r;
+      assert([1.0595 * 1.02 / 0.98, 1.0595 * 0.98 / 1.02].some((x) => Math.abs(c2 / c1 - x) < 0.005), `the cut a semitone up the chain, alternating ±2 % (x${c1.toFixed(3)} -> x${c2.toFixed(3)})`);
+      evs.hit[1] = HIT;
+      // timing: the dive's loudest moment on the blade's landing; the coil's top on the strike, cut there
+      starts2.length = 0;
+      let t0 = ctx.currentTime + 0.5;
+      fire('dive');
+      const dv = starts2[0]?.[0] - t0 + 0.1; // (its peak 0.1 s into the clip, rate ~1)
+      assert(Math.abs(dv - (num0(DEFENSE.plunge?.dive) + 0.006)) < 0.01, `plunge-dive: its peak lands on the blade's landing (${dv.toFixed(3)} s, dive ${DEFENSE.plunge?.dive} s)`);
+      starts2.length = 0;
+      t0 = ctx.currentTime + 0.5;
+      fire('flurryCoil');
+      const [ct, , coff] = starts2[0] ?? [];
+      assert(Math.abs(ct - t0 - 0.006) < 0.005 && Math.abs(coff - (0.002 + 0.4 - 0.22)) < 0.01, `flurry-coil: started ${(coff - 0.002).toFixed(3)} s into the file so its top (0.400) lands 0.22 s on, on the strike`);
+      // the deflect chain: the recording alone at chain 1; per variant a different build (sources / rate)
+      const runChain = (mode, ch) => { SMP.setChainMode(mode); const n0 = srcs; evs.parry[1] = { ...evs.parry[1], chain: ch }; const f = fire('parry'); return { n: srcs - n0, r: f.took[0]?.r, g: f.took[0]?.g, p: f.p }; };
+      const ch = {};
+      for (const m of ['a', 'b', 'c']) ch[m] = [1, 3, 5].map((c) => runChain(m, c));
+      out(`     chain: ${JSON.stringify(ch)}`);
+      assert(['a', 'b', 'c'].every((m) => ch[m][0].n === 1 && ch[m].every((x) => !x.p.length)), 'the chain: a single parry is the recording alone; no synth (no bell, no sparkle) at any step');
+      assert(ch.a[1].n === 2 && ch.b[1].n === 3 && ch.b[2].n === 4 && ch.c[1].n === 1, `a: + its octave shadow; b: + a second strike and the driven band (+ a third from chain 4); c: the ring is synth, no more clips (${ch.a[1].n} / ${ch.b[1].n} / ${ch.b[2].n} / ${ch.c[1].n})`);
+      const rr = (m, i) => ch[m][i].r / ch[m][0].r;
+      assert(Math.abs(rr('a', 2) - 1) < 0.05 && Math.abs(rr('c', 2) - 1) < 0.05 && rr('b', 2) > 1.05 && rr('b', 2) < Math.pow(2, PARRY_CHAIN.b.semisMax / 12) + 0.05 && ch.a[2].g > ch.a[0].g,
+        `no climb in a / c, b half a semitone a step (x${rr('b', 2).toFixed(3)} at chain 5); the clang grows (a x${ch.a[2].g.toFixed(2)})`);
+      assert(SMP.setChainMode('zz') === 'a' && SMP.chainMode() === 'a', 'an unknown ?chain= is a');
+      evs.parry[1] = { ...evs.parry[1], chain: 1 };
+      // ?sfx=old with the files loaded: the synth, exactly as before
+      SMP.setSfxMode('old');
+      bad = synthAll();
+      assert(!bad.length, `?sfx=old ignores the loaded combat-core files: every event its synth (off: ${bad.join(' ')})`);
+    } finally {
+      SMP.setSfxMode('new');
+      SMP.setChainMode('a');
+      A._sample = smp0;
+      ctx.createBufferSource = cbs;
+      for (const [slot, l] of Object.entries(keep)) { if (l === undefined) delete SAMPLE_FILES[slot]; else SAMPLE_FILES[slot] = l; }
+      A.samples.recs.clear();
+      A.samples.last.clear();
+      A.samples.loaded = 0;
+    }
   } finally {
     SMP.setSfxMode('new');
     A.play = play0;
   }
   return G;
 }
+const num0 = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 
 const SCENARIOS = {
   timestep: scenarioTimestep,
