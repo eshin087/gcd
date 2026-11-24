@@ -1,5 +1,9 @@
 import { CREATURES_TUNE as TUNE } from './creaturesTuning.js';
+import { FAUNA_TUNE as FT } from './faunaTuning.js';
 import { gi } from '../../render/glyphs.js';
+import { LetterBatch } from './letterBatch.js';
+import { Flocks } from './flock.js';
+import { Animals } from './animals.js';
 
 // THE CREATURES (piece 'creatures'): small living things, one letter each, that mind the hero: birds
 // that lift off, moths round a flame, fireflies that part from his path. Nothing to hit, nothing that
@@ -21,6 +25,17 @@ import { gi } from '../../render/glyphs.js';
 // numbers and the per-level choices: creaturesTuning.js. No allocation per frame, no Math.random (the
 // living world's own stream, life.rand), nothing outside the living world without `?.`.
 //
+// THE FAUNA (2026-11-23; flock.js, animals.js, faunaTuning.js): the flocks hidden in a level's canopy
+// that burst out and wheel away when fire, a heavy blow, a falling or burning tree or a roar reaches
+// them, and the small ground animals that bolt into cover when the hero or the fight comes near. Both
+// print in the house letter, in one LetterBatch of the creatures' own (made on the first update with
+// the piece on, on the fauna's own seeded stream, as the wind's wisps: how many there are never moves
+// what the other layers draw). Added:
+//   creatures.impact(x, z, r, power, o) / .ignite(x, z, r, k)   (life.impact / life.ignite call them)
+//   creatures.fell(x, z, kind)       a tree fell, crashed or caught (answer.js routes world:impact here)
+//   creatures.flocks / .animals      the two (read-only, for the tests and the Lab); drawn.letters
+//   Lab: 'flock flees', 'animals bolt', 'life returns'
+//
 // Per level: Cinderwood: fireflies (they take over atmosphere.js's), small birds on the tree wall, moths
 // round the bonfire. Ashfall: crows on the pillars, a few moths. The Obsidian Throne: nothing alive (sparks
 // at the vents were tried and cut: creaturesTuning `sparks.perVent` 0). The Skybreak Ring: one hawk circling high before the fight, moths
@@ -36,6 +51,7 @@ const alarmAt = (w) => {
   return Number.isFinite(a) ? a : 0;
 };
 const NONE = Object.freeze([]);
+const BSL = String.fromCharCode(92); // (a back-slash)
 // (the game camera's view down: CONFIG.camera.pitch, 58 degrees; used when the camera is not there)
 const SIN_PITCH = Math.sin((58 * Math.PI) / 180), COS_PITCH = Math.cos((58 * Math.PI) / 180);
 
@@ -61,11 +77,111 @@ export class Creatures {
     };
     this._w = { x: 0, z: 0, k: 0 };
     this._g = null; // glyph indices (looked up on the first update)
+    // the fauna (flocks, animals) and their letters: built on the first update with the piece on
+    this.FL = FT.levels[life.levelId] ?? null;
+    this.flocks = null;
+    this.animals = null;
+    this.letters = null;
+    this._hidden = false;
+    this._fs = 0;
+    this._fought = false;
+    /** s since the boss was last up (or since the page loaded): the fauna's return clock */
+    this._calmT = 0;
+    this._ar = 0; // (round-robin: the animal whose gust check runs this frame)
+    this.drawn.letters = 0;
+    this._fc = [0, 0, 0];
+    this._makePutters();
     life.action?.('startle at hero', () => {
       const h = this.life.hero;
       return this.startle(h.x, h.z, 14, 1);
     }, 'everything alive within 14 m of the hero flees');
     life.action?.('birds return', () => this.returnBirds(), 'every bird whose perch stands goes back to it now');
+    life.action?.('flock flees', () => this.flockFlees(), 'the roost nearest the camera that still has birds bursts out, away from the hero');
+    life.action?.('animals bolt', () => {
+      const h = this.life.hero;
+      return this._ready() ? this.animals.alarm(h.x, h.z, 60, 'lab') : 0;
+    }, 'every animal within 60 m of the hero bolts for cover');
+    life.action?.('life returns', () => this.lifeReturns(), 'the roosts fill again (a few birds fly in), the animals are back, the birds on their perches');
+  }
+
+  /** The fauna's own stream (an LCG seeded once from the level: never life.rand, never Math.random). */
+  _fr() {
+    this._fs = (Math.imul(this._fs, 1664525) + 1013904223) >>> 0;
+    return this._fs / 4294967296;
+  }
+
+  /** Build the fauna (once, the piece on). True when there is any. */
+  _ready() {
+    if (!this.life.on('creatures')) return false;
+    if (!this.ready) this._build();
+    return !!this.flocks;
+  }
+
+  _buildFauna() {
+    const life = this.life;
+    let h = 0x6fa1ab3d;
+    for (const ch of String(life.levelId)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
+    this._fs = h;
+    const rand = () => this._fr();
+    this.flocks = new Flocks(life, this.FL, rand);
+    this.animals = new Animals(life, this.FL, rand);
+    if (!this.flocks.roosts.length && !this.animals.list.length) return;
+    if (!life.game?.U) return;
+    // the letters: one batch (normal blending), made with the fauna's stream standing in for Math.random
+    const mr = Math.random;
+    Math.random = rand;
+    try {
+      this.letters = new LetterBatch(life.game, FT.max, FT.letters, { rand });
+      this._lc = {};
+      for (const c of FT.letters) this._lc[c] = this.letters.col(c);
+      const F = this.flocks.F;
+      this._wing = F.wings.map((c) => this.letters.col(c));
+      this.letters.mesh.visible = this.visible;
+      life.game.pipeline?.registerParticles?.(this.letters);
+    } catch {
+      this.letters = null;
+    } finally {
+      Math.random = mr;
+    }
+  }
+
+  /** The Lab: the roost nearest the camera's focus with birds in it bursts out, away from the hero. */
+  flockFlees() {
+    if (!this._ready()) return 0;
+    const f = this.life.focus, h = this.life.hero, F = this.flocks;
+    F._last = -1e9; // (the Lab does not wait for the gap)
+    const R = F._nearest(f.x ?? 0, f.z ?? 0, 1e9);
+    return R ? F.flush(R, h.x, h.z, 'lab') : 0;
+  }
+
+  /** The Lab: life comes back now (the roosts, the animals, the perched birds). */
+  lifeReturns() {
+    if (!this._ready()) return 0;
+    const F = this.flocks;
+    F._last = -1e9;
+    // (one flies in where it shows; the rest are simply full again)
+    const R = F.roosts.find((o) => o.birds < o.full && F._standing(o));
+    if (R) F._inbound(R);
+    return F.refill(true) + this.animals.returnAll() + this.returnBirds();
+  }
+
+  /** A blow landed (life.impact): a roost near a heavy one goes, the animals near it bolt. */
+  impact(x, z, r, power, o) {
+    if (!Number.isFinite(x + z + r + power) || !this._ready()) return 0;
+    const n = this.flocks.blow(x, z, r, power);
+    return n + this.animals.alarm(x, z, r + 6 + 6 * Math.min(2, Math.max(0, power)), 'blow');
+  }
+
+  /** Fire landed (life.ignite): the roost it reaches goes, the animals near it bolt. */
+  ignite(x, z, r, k) {
+    if (!Number.isFinite(x + z + r) || !this._ready()) return 0;
+    return this.flocks.fire(x, z, r) + this.animals.alarm(x, z, r + 8, 'fire');
+  }
+
+  /** A tree fell, crashed or caught at (x, z) (answer.js, from world:impact). */
+  fell(x, z, kind = '') {
+    if (!Number.isFinite(x + z) || !this._ready()) return 0;
+    return this.flocks.fell(x, z) + this.animals.alarm(x, z, 10, kind || 'fell');
   }
 
   // ------------------------------------------------------------------ build (once, piece on)
@@ -73,6 +189,7 @@ export class Creatures {
   _build() {
     this.ready = true;
     const L = this.L, life = this.life;
+    this._buildFauna();
     if (!L) return;
     const F = TUNE.firefly, M = TUNE.moth;
     this._g = {
@@ -195,10 +312,11 @@ export class Creatures {
 
   /** Everything alive within r of (x, z) flees (k: how hard). Returns how many fled. */
   startle(x, z, r = 10, k = 1) {
-    if (!this.life.on('creatures') || !this.L || !Number.isFinite(x + z + r + k) || !(r > 0)) return 0;
+    if (!this.life.on('creatures') || !Number.isFinite(x + z + r + k) || !(r > 0)) return 0;
     if (!this.ready) this._build();
     const kk = Math.max(0, k) * this.life.k, F = TUNE.firefly;
-    let n = 0;
+    // the fauna: one roost (the nearest, the flocks' limits hold the rest), the animals in reach
+    let n = this.flocks ? this.flocks.startle(x, z, r, k) + (k >= 0.3 ? this.animals.alarm(x, z, r, 'startle') : 0) : 0;
     for (const f of this.fireflies) {
       const dx = f.x - x, dz = f.z - z, d = Math.hypot(dx, dz);
       if (d > r) continue;
@@ -237,10 +355,17 @@ export class Creatures {
 
   setVisible(on) {
     this.visible = !!on;
+    if (this.letters) {
+      this.letters.mesh.visible = this.visible;
+      if (!this.visible) this.letters.empty();
+    }
   }
 
   clear(why) {
     if (!this.ready) return;
+    this.flocks?.clear(why);
+    this.animals?.clear(why);
+    if (why === 'reset') this._calmT = 0;
     for (const f of this.fireflies) f.vx = f.vz = f.fx = f.fz = 0;
     for (const m of this.moths) m.fear = 0;
     if (why !== 'reset') return;
@@ -262,9 +387,15 @@ export class Creatures {
 
   update(dt) {
     const life = this.life;
-    this.drawn.alpha = this.drawn.add = 0;
-    if (!life.on('creatures') || !this.L || !(dt > 0)) return;
+    this.drawn.alpha = this.drawn.add = this.drawn.letters = 0;
+    if (!life.on('creatures') || !(dt > 0)) {
+      // (switched off: nothing stays on screen)
+      if (this.letters && this.letters.count) this.letters.empty();
+      return;
+    }
     if (!this.ready) this._build();
+    this._fauna(dt);
+    if (!this.L) return;
     this.t += dt;
     const fx = life.game?.fx;
     const draw = this.visible;
@@ -277,6 +408,160 @@ export class Creatures {
     this._birds(dt, draw ? fx?.alpha : null);
     this._hawk(dt, draw ? fx?.alpha : null);
     this._sparks(dt, keep, draw ? fx?.add : null);
+  }
+
+  // ------------------------------------------------------------------ the fauna
+
+  _fauna(dt) {
+    const life = this.life, F = this.flocks, A = this.animals;
+    if (!F) return;
+    const fight = FIGHT.has(life.game?.state);
+    if (fight) {
+      this._calmT = 0;
+      this._fought = true;
+    } else this._calmT += dt;
+    const back = fight ? -1 : this._calmT;
+    const B = this.letters, draw = !!B && this.visible;
+    if (draw) {
+      B.begin();
+      this._cam();
+    }
+    F.update(dt, fight, back, draw ? this._putBird : null);
+    // a gust's alarm reaches one sitting animal a frame (round-robin): it bolts away from the wind
+    const n = A.list.length;
+    if (n && TUNE.alarm.gust < 1) {
+      const a = A.list[(this._ar = (this._ar + 1) % n)];
+      if (a.state === 'sit' && alarmAt(life.wind?.at?.(a.x, a.z, this._w)) > TUNE.alarm.gust) {
+        A.alarm(a.x, a.z, 3, 'gust');
+      }
+    }
+    A.update(dt, fight, back, life.hero, draw ? this._putAnimal : null);
+    if (draw) {
+      B.end();
+      this.drawn.letters = B.count;
+    }
+  }
+
+  /** The camera this frame, for the letters (right, up, where it is, metres a pixel per metre away). */
+  _cam() {
+    const g = this.life.game, U = g?.U, cam = g?.camera, c = this._camR;
+    const R = U?.uCamRight?.value, Up = U?.uCamUp?.value, P = cam?.position;
+    c.rx = R?.x ?? 1; c.ry = R?.y ?? 0; c.rz = R?.z ?? 0;
+    c.ux = Up?.x ?? 0; c.uy = Up?.y ?? 1; c.uz = Up?.z ?? 0;
+    const f = this.life.focus;
+    if (P && Number.isFinite(P.x + P.y + P.z)) {
+      c.x = P.x; c.y = P.y; c.z = P.z;
+    } else {
+      c.x = f.x ?? 0; c.y = 30.5; c.z = (f.z ?? 0) + 19.1;
+    }
+    const fov = Number.isFinite(cam?.fov) ? cam.fov : 50, resY = U?.uResolution?.value?.y || 720;
+    c.mk = (2 * Math.tan((fov * Math.PI) / 360)) / resY;
+    const cell = g?.pipeline?.artCell;
+    c.cw = cell?.x > 0 ? cell.x : 5;
+    c.ch = cell?.y > 0 ? cell.y : 8;
+    const b = g?.dragon?.position ?? g?.boss?.position;
+    c.bx = b && Number.isFinite(b.x + b.z) ? b.x : 1e9;
+    c.bz = b && Number.isFinite(b.x + b.z) ? b.z : 1e9;
+    c.hush = 1 - 0.5 * this.life.hush;
+    this._boss = g?.dragon ?? g?.boss ?? null;
+  }
+
+  /** Where (x, y, z) shows on the ground (the camera's line of sight through it), into this._gp. */
+  _ground(x, y, z) {
+    const c = this._camR, o = this._gp;
+    o[0] = x; o[1] = z;
+    if (y > 0.02 && c.y > y + 0.1) {
+      const t = c.y / (c.y - y);
+      o[0] = c.x + (x - c.x) * t;
+      o[1] = c.z + (z - c.z) * t;
+    }
+    return o;
+  }
+
+  /** Does a letter at (x, y, z) print over a fighter? (the hero within `clear` m where it shows on the
+   *  ground; the boss: over any of its hurt spheres (the wyrm's, a duelist's) with `clear` to spare, else
+   *  within 2 x clear of where it stands) */
+  _overFighter(x, y, z, clear) {
+    const h = this.life.hero, g = this._ground(x, y, z), gx = g[0], gz = g[1];
+    if (Math.hypot(gx - h.x, gz - h.z) < clear) return true;
+    const b = this._boss;
+    const H = b?.hurtSpheres;
+    if (Array.isArray(H) && H.length) {
+      for (let i = 0; i < H.length; i++) {
+        const s = H[i];
+        if (!s || !Number.isFinite(s.x + s.y + s.z)) continue;
+        const q = this._ground(s.x, s.y, s.z), r = (s.r || 1) * (s.y > 0.5 ? this._camR.y / Math.max(1, this._camR.y - s.y) : 1) + clear;
+        if (Math.abs(q[0] - gx) < r && Math.abs(q[1] - gz) < r && Math.hypot(q[0] - gx, q[1] - gz) < r) return true;
+      }
+      // (_ground overwrote _gp: the letter's point again for the next test)
+      return false;
+    }
+    const c = this._camR;
+    return Math.hypot(gx - c.bx, gz - c.bz) < clear * 2;
+  }
+
+  _makePutters() {
+    this._gp = [0, 0];
+    this._boss = null;
+    this._camR = { rx: 1, ry: 0, rz: 0, ux: 0, uy: 1, uz: 0, x: 0, y: 30, z: 19, mk: 0.001, cw: 5, ch: 8, bx: 1e9, bz: 1e9, hush: 1 };
+    /** one bird: a wing letter (0, 1: the beat; 2: a glide) */
+    this._putBird = (x, y, z, g, a) => {
+      const F = this.flocks.F, c = this._camR;
+      if (this._overFighter(x, y, z, F.clear)) return;
+      const col = this._fc, k = c.hush;
+      col[0] = F.color[0] * k; col[1] = F.color[1] * k; col[2] = F.color[2] * k;
+      this.letters.put(x, y, z, 0, this._wing[g] ?? 0, 0, col, F.alpha * a);
+    };
+    /** one animal: its body's letters laid on the screen's grid round its point, facing its way */
+    this._putAnimal = (a) => {
+      const K = a.K, c = this._camR, B = this.letters, life = this.life;
+      if (!(a.q < Math.max(0.34, life.quality)) && !a.o.once) return;
+      const col = this._fc;
+      if (a.state === 'hid' || a.state === 'gone') {
+        // the fox's foxfire glint, hanging where it slipped into the dark
+        if (!(a.glint > 0) || !K.tail) return;
+        const t = a.glint / K.glint;
+        col[0] = K.tail[0]; col[1] = K.tail[1]; col[2] = K.tail[2];
+        B.put(a.gx, K.y + 0.2 + (1 - t) * 0.4, a.gz, 0, this._lc["'"], 0, col, 0.55 * t * Math.min(1, (1 - t) * 6));
+        return;
+      }
+      let frame = K.sit;
+      const moving = a.state === 'run';
+      if (moving) {
+        const R = K.run;
+        if (K.air && a.y > K.arc * 0.55) frame = K.air;
+        else if (a.look > 0) frame = K.sit;
+        else if (K.gait === 'hop' && a.pause > 0) frame = R[0];
+        else if (K.gait === 'scuttle' && a.pause > 0) frame = K.sit;
+        else if (K.gait === 'dart' && a.pause > 0) frame = K.sit;
+        else frame = R[(K.gait === 'hop' ? (a.hop < 0.5 ? 1 : 0) : Math.floor(a.hop * 2)) % R.length];
+      } else if (a.twitch > 0 && K.run) frame = K.run[0];
+      const alpha = (moving ? K.alpha[1] : K.alpha[0]) * a.a;
+      if (!(alpha > 0.01)) return;
+      // its point, drawn `front` m toward the camera (the grass and the stones are depth-tested)
+      let x = a.x, y = K.y + a.y, z = a.z;
+      if (this._overFighter(x, y, z, 1.4)) return;
+      let dx = c.x - x, dy = c.y - y, dz = c.z - z;
+      const dist = Math.hypot(dx, dy, dz) || 1;
+      const f = (K.front ?? 1) / dist;
+      x += dx * f; y += dy * f; z += dz * f;
+      // facing: the way it runs on screen (the fox looking back: at the hero)
+      let fx = Math.cos(a.yaw), fz = Math.sin(a.yaw);
+      if (a.look > 0 || a.state === 'wait') { fx = life.hero.x - a.x; fz = life.hero.z - a.z; }
+      const s = fx * c.rx + fz * c.rz < 0 ? -1 : 1;
+      const m = (dist - (K.front ?? 1)) * c.mk, pw = c.cw * m, ph = c.ch * m;
+      const k = c.hush;
+      for (let i = 0; i < frame.length; i++) {
+        const L = frame[i];
+        const ox = s * L[0] * pw, oy = L[1] * ph;
+        let ch = L[2];
+        if (s < 0) ch = ch === '/' ? BSL : ch === BSL ? '/' : ch;
+        const tail = K.tail && i === 0;
+        const cc = tail ? K.tail : K.color;
+        col[0] = cc[0] * k; col[1] = cc[1] * k; col[2] = cc[2] * k;
+        B.put(x + c.rx * ox + c.ux * oy, y + c.ry * ox + c.uy * oy, z + c.rz * ox + c.uz * oy, 0, this._lc[ch] ?? 0, 0, col, alpha * (tail ? 0.8 : 1));
+      }
+    };
   }
 
   _emit(pool, x, y, z, glyph, size, r, g, b, alpha, dt) {
