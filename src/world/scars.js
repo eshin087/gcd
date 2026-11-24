@@ -44,8 +44,11 @@ export class Scars {
     this.ink = Array.isArray(ink) && ink.length === 3 && ink.every(Number.isFinite) ? ink : DEFAULT_INK;
     // a kind mark's ink never brighter than SCAR.mark.lineInk: the throne hall's ember-red ink drawn as
     // gashes and spokes all over the floor would read as danger strokes (today's cracks keep the set's ink)
-    const top = Math.max(...this.ink), L = SCAR.mark.lineInk;
-    this.lineInk = top > L ? this.ink.map((c) => (c * L) / top) : this.ink;
+    // (and mostly grey: SCAR.mark.inkSat of the set ink's colour is kept)
+    const lum = 0.3 * this.ink[0] + 0.59 * this.ink[1] + 0.11 * this.ink[2], sat = SCAR.mark.inkSat;
+    const grey = this.ink.map((c) => lum + (c - lum) * sat);
+    const top = Math.max(...grey), L = SCAR.mark.lineInk;
+    this.lineInk = top > L ? grey.map((c) => (c * L) / top) : grey;
     // the lit lip of a mark (broken stone / earth where the light catches it, the house style's few
     // brighter digits) and the thrown-up grit: per level (SCAR.mark.lip), else the default
     const lip = SCAR.mark.lip[game?.level?.id] ?? SCAR.mark.lip.default;

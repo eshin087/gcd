@@ -355,6 +355,7 @@ export const SCAR = Object.freeze({
     soft: 0.08, // m: the batch's soft depth (a floor mark is not faded into the floor; the footprints' 0.08)
     alpha: 0.85,
     lineInk: 0.42,
+    inkSat: 0.3, // of the set ink's colour a kind mark keeps (the rest grey)
     /** the lit lip of a gash / a crack / a furrow and the thrown-up grit: broken stone where the light
      *  catches it (the house style's few brighter digits), dim, never white; per level (game.level.id) */
     lip: Object.freeze({
