@@ -2,7 +2,12 @@ import * as THREE from 'three';
 import { clamp, lerp, smoothstep, damp, easeOutCubic, wrapAngle, TAU } from '../../core/math.js';
 import { DIM, BODY, HAIR_CLUSTERS, HERO_SCALE, sheetOffset } from './model.js';
 import { SWINGS, FH } from './swings.js';
-import { atEase, fencerGuard } from './stances.js';
+import { atEase, fencerGuard, stanceStep, writeSet, newSel, curWeight, SET_NAMES } from './stances.js';
+import { stanceStyle } from './styles/index.js';
+import { P, N, v3, to3, kf, dirLerp, dirTo, unitAzEl, freeLimp, REST_LD, REST_LN } from './poseKit.js';
+
+// (the channel map and the pose helpers live in poseKit.js, where a style file reads them without a cycle)
+export { P, N, v3, to3, kf, dirLerp };
 
 // Procedural animation for the Wanderer, keyed to the owner's concept sheets ("Movement" / "Combat
 // key poses"). Every frame a target POSE (a flat Float32Array) is built for the current clip as a
@@ -18,30 +23,6 @@ import { atEase, fencerGuard } from './stances.js';
 //   foot targets (rF/lF) are MODEL space (ground-relative); poses that need feet to follow the
 //   body (roll tuck, lying down) map body-space points through their own body transform.
 
-export const P = {
-  bodyX: 0, bodyY: 1, bodyZ: 2, pitch: 3, yaw: 4, roll: 5,
-  pelvY: 6, pelvZ: 7, spX: 8, spY: 9, spZ: 10, hdX: 11, hdY: 12,
-  rH: 13, rP: 16, lH: 19, lP: 22, // hand offsets + elbow pole directions (body axes)
-  swD: 25, swF: 28, // blade direction + flat normal (body axes)
-  rF: 31, lF: 34, // foot targets (model space)
-  rK: 37, lK: 40, // knee pole directions (body axes)
-  footFlat: 43, flask: 44,
-  twoHand: 45, // 0..1: the off hand joins the grip (the slam, the charge and the cleave, the guard)
-  hdZ: 46, // head tilt (roll)
-  pelvX: 47, // pelvis tuck / tilt (pitch)
-  rFy: 48, lFy: 49, // foot yaw (toe-out) relative to the root
-  rFf: 50, lFf: 51, // per-foot flat factor (× footFlat): heel peel / toe-off / swing
-  // with twoHand: how far UP the sword from the grip the off hand sits (m; 0 = on the grip under the
-  // sword hand): a palm braced on the flat of the blade
-  offAt: 52,
-  // the free hand: its fingers' direction and the way its palm faces (body axes; each vector's
-  // LENGTH is its weight: 0 = the hand rigid on the forearm, today's look), its shape (0 open, 1
-  // sword fingers) and how far it rests on the sword wrist (0..1). Read only for an animator built
-  // with opts.freeHand (the hero); every other animator ignores whatever they hold
-  lD: 53, lN: 56, hs: 59, lk: 60,
-};
-/** The pose's channel count (a duelist's scratch poses are sized from it). */
-export const N = 61;
 const ENTRY_EASE = 0.85; // an easeOut cross-fade (attack entries) arrives at this fraction of its time
 const TURN_LAG_MAX = 1.4; // rad: how far the drawn heading may trail the gameplay yaw in a fast turn
 const TURN_K = 650; // stiffness (1/s²) of the critically damped spring the drawn heading follows
@@ -54,34 +35,12 @@ const FIGHT_STATES = new Set(['bossIntro', 'boss']); // flow states in which the
 const FIGHT_EASE = [6, 2.6]; // 1/s: he takes the guard in ~0.35 s and lets it down over ~0.9 s (one rate both ways dropped the point 18 cm a frame as a fight ended)
 
 // ---------------------------------------------------------------- pose helpers
-export const v3 = (p, i, x, y, z) => {
-  p[i] = x;
-  p[i + 1] = y;
-  p[i + 2] = z;
-};
-/** Move p[i..i+2] toward (x,y,z) by t. */
-export const to3 = (p, i, x, y, z, t) => {
-  if (t <= 0) return;
-  p[i] += (x - p[i]) * t;
-  p[i + 1] += (y - p[i + 1]) * t;
-  p[i + 2] += (z - p[i + 2]) * t;
-};
 /** The free hand opens and braces on the grass by k: the fingers ahead, the palm down. */
 const palmBraced = (p, k) => {
   if (!(k > 0)) return;
   p[P.hs] += (0 - p[P.hs]) * Math.min(1, k);
   to3(p, P.lD, LD_BRACE[0], LD_BRACE[1], LD_BRACE[2], Math.min(1, k));
   to3(p, P.lN, 0, -1, 0, Math.min(1, k));
-};
-/** The free hand loses its shape and its wrist by k (hit, fall, heal): open, rigid on the forearm. */
-const freeLimp = (p, k) => {
-  if (!(k > 0)) return;
-  const s = 1 - Math.min(1, k);
-  p[P.hs] += (0 - p[P.hs]) * Math.min(1, k);
-  for (let i = 0; i < 3; i++) {
-    p[P.lD + i] *= s;
-    p[P.lN + i] *= s;
-  }
 };
 const setLen = (p, i, x, y, z, len) => {
   const l = Math.hypot(x, y, z) || 1;
@@ -94,105 +53,6 @@ function blend(out, a, b, t, mem = null) {
   dirLerp(out, P.swD, ax, ay, az, bx, by, bz, t, mem);
 }
 
-// ---------------------------------------------------------------- blade direction blending
-// Blade directions are blended by azimuth (round the body's vertical axis, + = the hero's left)
-// and elevation, not component-wise: a component lerp between a blade low ahead and one trailing
-// low behind passes through "straight down", which buried the point; the tip floor then swung it
-// round under the body in 2-3 frames (a whip through the legs on every run start / stop, roll and
-// recovery). Now a low blade sweeps round the side at its own height, and never through the
-// back-left (from the right hand that path runs between the legs): it goes round the outside.
-const DIR_AVOID = 2.35; // azimuth a blade below shoulder height never sweeps through (back-left)
-const DIR_HIGH = 0.45; // elevation (rad) above which the blade clears the shoulder there
-const DIR_LOCAL = 0.8; // rad of azimuth below which a move is local (never sent the long way round)
-// a move this close to half a turn has no natural way round; below DIR_FLIP_HIGH (rad of elevation,
-// about the head) it goes round the FRONT, never behind the shoulders (ADR-034: the lean idle hangs
-// the blade at his right front, ~180° from the light combo's finish over his left shoulder; the way
-// behind ran the steel through the sword arm's shoulder for a frame)
-const DIR_FLIP = 2.75, DIR_FLIP_HIGH = 0.9;
-const _ae = [0, 0, 0];
-function azEl(x, y, z, o) {
-  const h = Math.hypot(x, z);
-  o[0] = Math.atan2(x, z);
-  o[1] = Math.atan2(y, h);
-  o[2] = h / (Math.hypot(x, y, z) || 1); // how horizontal (0 = vertical: no heading)
-}
-/** mem (optional, a cross-fade's): { d, ok } — the sweep keeps the way round it took last frame
- *  (the nearest 2π branch to it): the target moves during a fade, and re-deciding the way every
- *  frame flipped the blade to the other side of the body mid-fade. */
-export function dirLerp(out, i, ax, ay, az, bx, by, bz, t, mem = null) {
-  if (!(t > 0)) {
-    v3(out, i, ax, ay, az);
-    return;
-  }
-  if (t >= 1) {
-    v3(out, i, bx, by, bz);
-    return;
-  }
-  azEl(ax, ay, az, _ae);
-  let a0 = _ae[0];
-  const e0 = _ae[1], h0 = _ae[2];
-  azEl(bx, by, bz, _ae);
-  let a1 = _ae[0];
-  const e1 = _ae[1], h1 = _ae[2];
-  // a (nearly) vertical end has little heading, and it flips 180° as the blade passes vertical (the
-  // slam's raise): lean on the other end's heading as an end nears vertical, so the path stays
-  // continuous; the end correction below keeps both ends exact
-  const k0 = smoothstep(0.03, 0.3, h0), k1 = smoothstep(0.03, 0.3, h1);
-  a1 = a0 + wrapAngle(a1 - a0) * k1;
-  a0 = a1 + wrapAngle(a0 - a1) * k0;
-  let d = wrapAngle(a1 - a0);
-  if (Math.min(e0, e1) < DIR_HIGH && Math.abs(d) > DIR_LOCAL) {
-    // a path that crosses the back-left below shoulder height (behind / through the body from the
-    // right hand) goes round the other way; one still high there passes over the shoulder. A short
-    // move of a blade already AT the back-left (light 1's rising finish → light 2's coil) stays
-    // local: flipping it sent the blade 350° round the body in two frames
-    const f = wrapAngle(DIR_AVOID - a0);
-    if (((d > 0 && f > 0 && f < d) || (d < 0 && f < 0 && f > d)) && e0 + ((e1 - e0) * f) / d < DIR_HIGH) d -= Math.sign(d) * TAU;
-  }
-  if (Math.abs(d) > DIR_FLIP) {
-    const fb = wrapAngle(Math.PI - a0); // from a0 to straight behind
-    if (((d > 0 && fb > 0 && fb < d) || (d < 0 && fb < 0 && fb > d)) && e0 + ((e1 - e0) * fb) / d < DIR_FLIP_HIGH) d -= Math.sign(d) * TAU;
-  }
-  if (mem) {
-    if (mem.ok) d += TAU * Math.round((mem.d - d) / TAU);
-    mem.d = d;
-    mem.ok = true;
-  }
-  const a = a0 + d * t, e = e0 + (e1 - e0) * t;
-  const c = Math.cos(e);
-  let x = c * Math.sin(a), y = Math.sin(e), z = c * Math.cos(a);
-  if (k0 < 1 || k1 < 1) {
-    // the borrowed headings moved the path's ends: fade in the difference to the true ends
-    const la = Math.hypot(ax, ay, az) || 1, lb = Math.hypot(bx, by, bz) || 1;
-    const c0 = Math.cos(e0), c1 = Math.cos(e1), s = 1 - t;
-    x += s * (ax / la - c0 * Math.sin(a0)) + t * (bx / lb - c1 * Math.sin(a0 + d));
-    y += s * (ay / la - Math.sin(e0)) + t * (by / lb - Math.sin(e1));
-    z += s * (az / la - c0 * Math.cos(a0)) + t * (bz / lb - c1 * Math.cos(a0 + d));
-    const l = Math.hypot(x, y, z);
-    if (l > 1e-6) {
-      x /= l;
-      y /= l;
-      z /= l;
-    }
-  }
-  v3(out, i, x, y, z);
-}
-/** Turn the blade direction p[i..i+2] toward (x, y, z) by t, round the outside (see dirLerp). */
-function dirTo(p, i, x, y, z, t) {
-  if (!(t > 0)) return;
-  dirLerp(p, i, p[i], p[i + 1], p[i + 2], x, y, z, Math.min(1, t));
-}
-/** Piecewise curve through flat [t0, v0, t1, v1, ...] keys, smoothstepped between neighbours. */
-export function kf(t, k) {
-  if (t <= k[0]) return k[1];
-  for (let i = 2; i < k.length; i += 2) {
-    if (t <= k[i]) {
-      const u = (t - k[i - 2]) / Math.max(1e-6, k[i] - k[i - 2]);
-      return k[i - 1] + (k[i + 1] - k[i - 1]) * u * u * (3 - 2 * u);
-    }
-  }
-  return k[k.length - 1];
-}
 const _eul = new THREE.Euler(0, 0, 0, 'YXZ');
 const _bv = new THREE.Vector3();
 /** Blend foot target p[i] toward a BODY-space point mapped through this pose's body transform. */
@@ -266,16 +126,7 @@ function kv3(p, i, t, k) {
 // the ribs, the forearm runs into the blade's line, and the steel stands out to his side, past
 // his silhouette and the cape, from every camera.)
 const IDLE_SW = [-0.6, -0.79, 0.12];
-// [azimuth, elevation] in degrees (body axes: az 0 ahead, + his left; el + up) → a unit vector: the
-// free hand's fingers (swings.js `ld`, the poses). Its own degree constant: REST_LD is built at
-// module load, before SW_DEG below exists
-const AZEL = Math.PI / 180;
-const unitAzEl = (az, el) => {
-  const a = az * AZEL, e = el * AZEL, c = Math.cos(e);
-  return [c * Math.sin(a), Math.sin(e), c * Math.cos(a)];
-};
-const REST_LD = unitAzEl(14, -50); // the rest's sword fingers: ahead and down, a "seated" jian rest
-const REST_LN = [-0.35, -0.6, -0.72]; // … their palm down and back
+// (unitAzEl, REST_LD / REST_LN: poseKit.js)
 const LD_BRACE = unitAzEl(0, -10); // a palm braced on the grass: the fingers ahead
 const LD_WARD = unitAzEl(-4, -12); // the backstep's warding low point
 const LD_FOE = unitAzEl(0, 0); // straight at the foe
@@ -334,31 +185,90 @@ export function guard(p, A) {
 }
 
 const SCR_FIGHT = new Float32Array(N);
+const SCR_BASE = new Float32Array(N), SCR_EPREV = new Float32Array(N), SCR_FPREV = new Float32Array(N);
+const TODAY_SEL = { ease: null, fight: null }; // (a pose built without an animator's selection: today's)
+const MOVE_T = new Float32Array(7); // stand(): the free hand's weighted target as he sets off (d, n, weight)
 /** Where the hero STANDS (ADR-114, stances.js): at ease, or in the fencer's guard once a fight is
  *  on, blended by A.fightW (HeroAnimator.update). The hero's animator only (A.freeHand): a
  *  duelist's footwork reads guard(), and guard() stays the base every other clip is written over.
- *  loco() blends the gait in over this, and an attack's recovery comes home to it. */
+ *  loco() blends the gait in over this, and an attack's recovery comes home to it.
+ *  Each of the two is a SET (a move style's `stances`, styles/STANCES.md): the stance the animator
+ *  holds in it (A.stanceSel, picked once a frame in update()), or mid-shift the one before blended
+ *  toward it (stances.js writeSet). Today's style: one stance a set, so this is ADR-114's exactly. */
 export function stand(p, A) {
   guard(p, A);
   if (!A.freeHand) return;
+  const sel = A.stanceSel ?? TODAY_SEL;
+  const SE = sel.ease?.cur ? sel.ease : null, SF = sel.fight?.cur ? sel.fight : null;
   const f = clamp(fin(A.fightW), 0, 1);
-  if (f >= 0.999) fencerGuard(p, P, A);
-  else {
-    atEase(p, P, A);
+  SCR_BASE.set(p);
+  if (f >= 0.999) {
+    if (SF) writeSet(p, P, A, SF, SCR_FPREV, blend);
+    else fencerGuard(p, P, A);
+  } else {
+    if (SE) writeSet(p, P, A, SE, SCR_EPREV, blend);
+    else atEase(p, P, A);
     if (f > 0.001) {
-      for (let i = 0; i < N; i++) SCR_FIGHT[i] = p[i];
-      fencerGuard(SCR_FIGHT, P, A);
+      SCR_FIGHT.set(SCR_BASE);
+      if (SF) writeSet(SCR_FIGHT, P, A, SF, SCR_FPREV, blend);
+      else fencerGuard(SCR_FIGHT, P, A);
       blend(p, p, SCR_FIGHT, f * f * (3 - 2 * f));
     }
   }
   // setting off, the free hand lets go of the belt's shape for the rest it swings in (guard()'s:
   // the fingers ahead and down). Kept, the hand turned in on the hip put its fingertips 6.7 cm
-  // into it as the arm swung past.
+  // into it as the arm swung past. A stance may name its own (STANCE.move: { d, n } the fingers'
+  // and the palm's directions, or false: the hand keeps the stance's own): the target is weighted
+  // by each stance's share of the pose
   const mv = smoothstep(0.02, 0.3, A.moveW);
   if (mv > 0) {
-    to3(p, P.lD, REST_LD[0], REST_LD[1], REST_LD[2], mv);
-    to3(p, P.lN, REST_LN[0], REST_LN[1], REST_LN[2], mv);
+    const T = moveTarget(SE, SF, f);
+    if (!T) {
+      to3(p, P.lD, REST_LD[0], REST_LD[1], REST_LD[2], mv);
+      to3(p, P.lN, REST_LN[0], REST_LN[1], REST_LN[2], mv);
+    } else if (T[6] > 1e-4) {
+      to3(p, P.lD, T[0], T[1], T[2], mv * T[6]);
+      to3(p, P.lN, T[3], T[4], T[5], mv * T[6]);
+    }
   }
+}
+/** The free hand's target as he sets off, weighted over the stances in the pose; null when none of
+ *  them names one (today's: REST_LD / REST_LN at full weight). */
+const ownMove = (s) => !!s && s.move !== undefined;
+const setOwnsMove = (S) => !!S && (ownMove(S.cur) || (!!S.prev && S.k < 1 && ownMove(S.prev)));
+let moveSum = 0;
+function moveAdd(s, w) {
+  if (!s || !(w > 0)) return;
+  moveSum += w;
+  const m = s.move, T = MOVE_T;
+  if (m === false) return;
+  const d = Array.isArray(m?.d) ? m.d : REST_LD, n = Array.isArray(m?.n) ? m.n : REST_LN;
+  T[0] += d[0] * w;
+  T[1] += d[1] * w;
+  T[2] += d[2] * w;
+  T[3] += n[0] * w;
+  T[4] += n[1] * w;
+  T[5] += n[2] * w;
+  T[6] += w;
+}
+function moveSet(S, w) {
+  if (!S) return;
+  const c = curWeight(S);
+  moveAdd(S.cur, w * c);
+  if (S.prev && S.k < 1) moveAdd(S.prev, w * (1 - c));
+}
+function moveTarget(SE, SF, f) {
+  const ease = f < 0.999, fight = f > 0.001;
+  if (!((ease && setOwnsMove(SE)) || (fight && setOwnsMove(SF)))) return null;
+  const T = MOVE_T;
+  T.fill(0);
+  moveSum = 0;
+  const fs = f * f * (3 - 2 * f);
+  if (ease) moveSet(SE, fight ? 1 - fs : 1);
+  if (fight) moveSet(SF, ease ? fs : 1);
+  if (T[6] > 1e-6) for (let i = 0; i < 6; i++) T[i] /= T[6];
+  T[6] = moveSum > 1e-6 ? T[6] / moveSum : 0;
+  return T;
 }
 
 /** The hero's blade (and, `arm`, the sword hand and its elbow) leaves where it was as this clip
@@ -2540,13 +2450,20 @@ const FIDGETS = [
   { name: 'shoulder', dur: 3.6, fn: fidgetShoulder },
   { name: 'lean', dur: 4.2, fn: fidgetLean },
 ];
+/** Today's idle actions by name (the Lab's 'fidget' row when the style brings none). */
+export const FIDGET_NAMES = Object.freeze(FIDGETS.map((D) => D.name));
 /** The current idle action's layer (A.fidget, timed in HeroAnimator._idleLife). */
 function idleLife(p, A) {
   const F = A.fidget;
   if (!F || F.k < 0 || !(F.w > 0.001)) return;
-  const D = FIDGETS[F.k];
-  D.fn(p, A, clamp(F.t / D.dur, 0, 1), F.w);
+  const D = (F.list ?? FIDGETS)[F.k];
+  if (!D || typeof D.fn !== 'function') return;
+  D.fn(p, A, clamp(F.t / fidgetDur(D), 0, 1), F.w);
 }
+/** An idle action's length (s; a style's without one: 3 s). */
+const fidgetDur = (D) => (D?.dur > 0 ? D.dur : 3);
+/** Which set an idle action may play in (`sets`; today's: ease only). */
+const fidgetIn = (D, set) => (Array.isArray(D?.sets) ? D.sets.includes(set) : set === 'ease');
 
 const POSES = {
   loco: locoGuard,
@@ -2859,7 +2776,22 @@ export class HeroAnimator {
     this.updraft = 0; // the charge's updraft on the coat and hair (0..1, eased)
     // idle life: the action playing (k = FIDGETS index, -1 none), its time, weight, whether it was
     // cut, calm time since the last one ended, the wait before the next, and how many have played
-    this.fidget = { k: -1, t: 0, w: 0, cut: false, still: 0, wait: IDLE_LIFE.after, last: -1, count: 0, name: '' };
+    // (`list`: the list k indexes, null = FIDGETS; `set`: the set it plays in; `forced`: the Lab's)
+    this.fidget = { k: -1, t: 0, w: 0, cut: false, still: 0, wait: IDLE_LIFE.after, last: -1, count: 0, name: '', list: null, set: 'ease', forced: false };
+    // the stance sets (stances.js stanceStep, the hero only): per set the stance held, the one it
+    // fades from, the fade's progress, the time in it and its dwell. The streak's tier (0..5) and a
+    // smoothed 0..1 of it, for a stance's pose to read. Its own noise stream: picking a stance never
+    // moves the idle actions' picks (today's sets never draw it at all)
+    this.stanceSel = { ease: newSel(), fight: newSel() };
+    this.streakTier = 0;
+    this.streakK = 0;
+    this._ss = 0x6c8e9cf5;
+    this.stanceNoise = () => {
+      this._ss = (Math.imul(this._ss, 1664525) + 1013904223) >>> 0;
+      return this._ss / 4294967296;
+    };
+    // Lab / tests: start an idle action now by name (from the style's list, else today's): true if found
+    this.debug = { fidget: (name) => this._forceFidget(name) };
     // the attack's look (combat.js `variants`): which def it was picked for, the anim block, its index
     this.atkDef = null;
     this.atkAnim = null;
@@ -3049,7 +2981,8 @@ export class HeroAnimator {
     this.holdOff.x = this.holdOff.z = 0;
     this.hop.set = false;
     this.toeK = 0;
-    Object.assign(this.fidget, { k: -1, t: 0, w: 0, cut: false, still: 0, wait: IDLE_LIFE.after, name: '' });
+    Object.assign(this.fidget, { k: -1, t: 0, w: 0, cut: false, still: 0, wait: IDLE_LIFE.after, name: '', list: null, set: 'ease', forced: false });
+    for (const set of SET_NAMES) Object.assign(this.stanceSel[set], newSel());
     this.visYaw = fin(this.player.yaw);
     this.cycOn = false;
     this._pv.init = false;
@@ -3252,6 +3185,9 @@ export class HeroAnimator {
       const fight = typeof force === 'boolean' ? force : !!pl.lockOn || FIGHT_STATES.has(pl.game?.state);
       this.fightW = damp(fin(this.fightW), fight ? 1 : 0, FIGHT_EASE[fight ? 0 : 1], dt);
     }
+    // … and which stance of each set (the move style's, styles/index.js; today's: one each). A shift
+    // starts only in the loco clip with no idle action playing and no guard held (never mid-attack)
+    if (this.freeHand) stanceStep(this, dt, this.key === 'loco' && !(this.fidget.k >= 0) && !(fin(pl.guardHold) > 0.001), stanceStyle());
     this._idleLife(dt, sp);
     this.poses[this.key](this.target, this);
     if (this.blendT < this.blendDur) {
@@ -3327,42 +3263,108 @@ export class HeroAnimator {
    *  when he moves, attacks or guards. */
   _idleLife(dt, sp) {
     const F = this.fidget, pl = this.player;
-    const calm = this.key === 'loco' && pl.state === 'idle' && sp < 0.1 && this.moveW < 0.05 && !pl.lockOn && !(this.fightW > 0.05) && !(fin(pl.guardHold) > 0.001);
+    // the list: the move style's own idle actions (the hero only), else today's FIDGETS. Today's
+    // play at ease only; a style's each in the sets it names (`sets`), 'fight' meaning the full
+    // guard (locked on, or a boss fight). The rest of the rule is today's: standing still in the
+    // loco clip, the idle state, no guard held
+    const own = this.freeHand ? stanceStyle()?.fidgets : null;
+    const list = Array.isArray(own) && own.length ? own : FIDGETS;
+    const still = this.key === 'loco' && pl.state === 'idle' && sp < 0.1 && this.moveW < 0.05 && !(fin(pl.guardHold) > 0.001);
+    const ease = !pl.lockOn && !(this.fightW > 0.05);
+    const set = ease ? 'ease' : this.fightW > 0.95 ? 'fight' : null;
     if (this.key !== 'loco' && F.k >= 0) {
       // another clip took over (its cross-fade starts from this pose)
       F.k = -1;
       F.w = 0;
+      F.forced = false;
     }
     if (F.k >= 0) {
-      const D = FIDGETS[F.k];
+      const L = F.list ?? FIDGETS, D = L[F.k], dur = fidgetDur(D);
       F.t += dt;
-      const env = smoothstep(0, IDLE_LIFE.fadeIn, F.t) * (1 - smoothstep(D.dur - IDLE_LIFE.fadeOut, D.dur, F.t));
+      const env = smoothstep(0, IDLE_LIFE.fadeIn, F.t) * (1 - smoothstep(dur - IDLE_LIFE.fadeOut, dur, F.t));
+      // (a forced one, the Lab's, plays in either set; a move, an attack or a guard still cut it)
+      const calm = still && (F.forced || (set !== null && set === F.set && fidgetIn(D, set)));
       if (!calm) F.cut = true;
       F.w = F.cut ? Math.max(0, Math.min(env, F.w - dt / IDLE_LIFE.cancel)) : env;
-      if (F.t >= D.dur || (F.cut && F.w <= 0)) {
+      if (F.t >= dur || (F.cut && F.w <= 0)) {
         F.k = -1;
         F.w = 0;
         F.name = '';
         F.still = 0;
+        F.forced = false;
         F.wait = lerp(IDLE_LIFE.gap[0], IDLE_LIFE.gap[1], this.noise());
       }
       return;
     }
-    if (!calm) {
+    let n = 0;
+    if (still && set !== null) {
+      if (list === FIDGETS) n = set === 'ease' ? FIDGETS.length : 0;
+      else for (const D of list) if (fidgetIn(D, set) && typeof D?.fn === 'function') n++;
+    }
+    if (!(n > 0)) {
       F.still = 0;
       F.wait = Math.max(F.wait, IDLE_LIFE.after);
       return;
     }
     F.still += dt;
     if (F.still < F.wait) return;
-    let k = Math.min(FIDGETS.length - 1, Math.floor(this.noise() * FIDGETS.length));
-    if (k === F.last) k = (k + 1 + Math.floor(this.noise() * (FIDGETS.length - 1))) % FIDGETS.length;
+    let k;
+    if (list === FIDGETS) {
+      // (today's pick, draw for draw)
+      const last = F.list === null ? F.last : -1;
+      k = Math.min(FIDGETS.length - 1, Math.floor(this.noise() * FIDGETS.length));
+      if (k === last) k = (k + 1 + Math.floor(this.noise() * (FIDGETS.length - 1))) % FIDGETS.length;
+    } else {
+      // the m-th of the n that may play here, never the last one again while another may
+      const last = F.list === list ? F.last : -1;
+      const lastOk = last >= 0 && fidgetIn(list[last], set) && typeof list[last]?.fn === 'function';
+      const pool = lastOk && n > 1 ? n - 1 : n;
+      let m = Math.min(pool - 1, Math.floor(this.noise() * pool));
+      k = -1;
+      for (let i = 0; i < list.length; i++) {
+        const D = list[i];
+        if (!fidgetIn(D, set) || typeof D?.fn !== 'function' || (lastOk && n > 1 && i === last)) continue;
+        if (m-- === 0) {
+          k = i;
+          break;
+        }
+      }
+      if (k < 0) return;
+    }
+    F.list = list === FIDGETS ? null : list;
+    F.set = set;
+    F.forced = false;
     F.k = F.last = k;
     F.t = 0;
     F.w = 0;
     F.cut = false;
     F.count++;
-    F.name = FIDGETS[k].name;
+    F.name = list[k].name ?? '';
+  }
+
+  /** Start the idle action `name` now (the move style's list first, then today's; Lab / tests). It
+   *  plays in either set; a move, an attack or a guard cuts it as any other. False if none is called
+   *  that, or another clip than loco is playing. */
+  _forceFidget(name) {
+    const own = this.freeHand ? stanceStyle()?.fidgets : null;
+    let list = Array.isArray(own) ? own : null, k = list ? list.findIndex((D) => D?.name === name && typeof D.fn === 'function') : -1;
+    if (k < 0) {
+      list = FIDGETS;
+      k = FIDGETS.findIndex((D) => D.name === name);
+    }
+    if (k < 0 || this.key !== 'loco') return false;
+    const F = this.fidget;
+    F.list = list === FIDGETS ? null : list;
+    F.set = !this.player?.lockOn && !(this.fightW > 0.05) ? 'ease' : 'fight';
+    F.forced = true;
+    F.k = F.last = k;
+    F.t = 0;
+    F.w = 0;
+    F.cut = false;
+    F.still = 0;
+    F.count++;
+    F.name = list[k].name ?? '';
+    return true;
   }
 
   /** The root travel recorded the first frame this clip reached time t0 (slot 0/1); before that,

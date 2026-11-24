@@ -4,7 +4,7 @@
 // the real Colliders. A bot drives the input: it moves, attacks, blocks, parries and dodges.
 // usage: node integ.mjs <repoRoot> [scenario]   (env: ABYSS_SEED=n reseeds the AI, ABYSS_TRACE=1 logs combat events)
 //   scenario: gate | hero | batch | breath | parry | block | reach | red | plunge | flurry | deflect | lab | strings | plungeReact | terrain |
-//             timing | fire | music | thump | sfx | herolook | wyrmface | wyrmlook | herolife | herohand | heroweight | heroarms | herostance | looks | win | die | touch | pad | remap | all (default all)
+//             timing | fire | music | thump | sfx | herolook | wyrmface | wyrmlook | herolife | herohand | heroweight | heroarms | herostance | herostyles | looks | win | die | touch | pad | remap | all (default all)
 //             or a comma list of them (hero,looks,...)
 //   (timing: ABYSS_TM=name,name... probes only those attacks; ABYSS_TMV=1 prints its per-placement map;
 //    ABYSS_TM_SHARD=k/n probes every n-th attack of the list, starting at the k-th: n runs cover it all)
@@ -10234,6 +10234,242 @@ async function scenarioHeroStance() {
   return G;
 }
 
+// ================================================================== scenario: the stance sets (move styles)
+// The engine a move style plugs its stances / shift / idle actions into (styles/index.js,
+// stances.js stanceStep, styles/STANCES.md). (A) today's style draws today's pose frame by frame: a
+// checksum of every pose channel over a scripted minute (at ease with the idle actions, a lock-on, the
+// guard held on the move, stops), recorded from the code before the engine (ABYSS_STYLES_REF=1 prints
+// it from any ROOT: point ROOT at an extracted older tree to re-record it). (B) a TEST-ONLY style (the
+// fields of the `flow` stub, set here and restored): dwell, the cross-fade, never twice running, a
+// weight of 0, the pin, the streak tiers, a style switch at run time, the style's idle actions (by
+// set, forced, cut), the Lab's rows, no NaN, no allocation per frame. The audit an author runs on a
+// real style: tests/audit/hero-stance.mjs.
+const HEROSTYLES_TODAY = { frames: 3600, hash: '77d7cb3d' }; // (recorded 2026-11-23 from 971a915, before the stance sets)
+async function scenarioHeroStyles() {
+  // the stance audit (tests/audit/hero-stance.mjs runs this with ABYSS_STANCE_AUDIT=<styleId>): the
+  // table instead of the checks
+  if (process.env.ABYSS_STANCE_AUDIT) {
+    const M = await import(pathToFileURL(`${ROOT}/tests/audit/hero-stance.mjs`).href);
+    return (await M.runAudit({ build, run, heroShapes, coatCrossOf, THREE, imp, out, DT, CONFIG, styleId: process.env.ABYSS_STANCE_AUDIT, quick: !!process.env.ABYSS_STANCE_QUICK })) ?? build();
+  }
+  out('\n== scenario HEROSTYLES (the stance sets: today exactly as before; dwell, fade, pin, tiers, a style switch, idle actions by set, the Lab rows) ==');
+  const { P, N, stand } = await imp('src/entities/player/anim.js');
+  const G = build();
+  const { game, input } = G;
+  run(G, 0.3);
+  assert(game.flow.debug.toState('explore') === true, 'flow.debug.toState(explore) from title');
+  const p = game.player, A = p.anim, pd = p.debug;
+  pd.god = true;
+  // (the wyrm held asleep: a minute beside it woke it, and the fight's stance and a fireball took over)
+  game.dragon.update = () => {};
+  const LANE = [-10, 13];
+  p.debug.teleport(LANE[0], LANE[1]);
+  const aim = { x: 0, z: -60 };
+  let bad = 0;
+  const go = (sec, each) => { for (let i = 0, n = Math.round(sec / DT); i < n; i++) { game.mouseGround.set(p.position.x + aim.x, 0, p.position.z + aim.z); G.tick(DT); if (!A.cur.every(Number.isFinite)) bad++; each?.(); } };
+
+  // (A) today, frame by frame: FNV-1a over the pose's float bits and the idle action playing
+  {
+    const bits = new Uint32Array(A.cur.buffer, A.cur.byteOffset, N);
+    let h = 0x811c9dc5, frames = 0;
+    const mix = (x) => { h ^= x >>> 0; h = Math.imul(h, 0x01000193) >>> 0; };
+    const each = () => { frames++; for (let i = 0; i < N; i++) mix(bits[i]); mix(A.fidget.k + 1); };
+    go(14, each); // at ease, the idle actions on (they start after 2.5 s)
+    const lockWas = p._updateLock;
+    p._updateLock = () => {};
+    p.lockOn = true;
+    go(3, each); // the guard taken
+    // (each move back where it began: walking on, he walked into the wyrm's clearing and woke it)
+    for (const ax of [[0, 1], [1, 0], [0, -1]]) { input.axis = { x: ax[0], y: ax[1] }; go(1.2, each); input.axis = { x: 0, y: 0 }; go(1.2, each); p.debug.teleport(LANE[0], LANE[1]); }
+    p.lockOn = false;
+    p._updateLock = lockWas;
+    go(6, each); // let down, at ease again
+    pd.fightStance = true;
+    input.axis = { x: -1, y: 0 };
+    go(1.5, each);
+    input.axis = { x: 0, y: 0 };
+    go(2.5, each);
+    p.debug.teleport(LANE[0], LANE[1]);
+    pd.fightStance = null;
+    input.axis = { x: 0, y: -1 };
+    go(2, each);
+    input.axis = { x: 0, y: 0 };
+    go(1, each);
+    p.debug.teleport(LANE[0], LANE[1]);
+    go(60 - frames * DT, each);
+    const hash = h.toString(16).padStart(8, '0') + (game.state === 'explore' ? '' : `-${game.state}`);
+    out(`   today: ${frames} frames, pose checksum ${hash} (recorded before the engine: ${HEROSTYLES_TODAY.hash}), ${A.fidget.count} idle actions`);
+    if (process.env.ABYSS_STYLES_REF) return G;
+    assert(frames === HEROSTYLES_TODAY.frames && hash === HEROSTYLES_TODAY.hash && bad === 0, `today's style draws today's pose, frame by frame: ${frames} frames, checksum ${hash} = ${HEROSTYLES_TODAY.hash} (the pose before the stance sets), every channel finite`);
+    assert(A._ss === 0x6c8e9cf5 && A.stanceSel.ease.cur?.id === 'atEase' && A.stanceSel.fight.cur?.id === 'fencer' && A.stanceSel.ease.n === 0 && A.stanceSel.fight.n === 0,
+      `today never picks: one stance a set (${A.stanceSel.ease.cur?.id} / ${A.stanceSel.fight.cur?.id}), no shift, no draw on the stance noise`);
+  }
+
+  // (B) a test-only style on the `flow` stub
+  const STY = await imp('src/entities/player/styles/index.js');
+  const { atEase, fencerGuard, stanceStep } = await imp('src/entities/player/stances.js');
+  const KIT = await imp('src/entities/player/poseKit.js');
+  const F = STY.STYLES.flow, saved = { stances: F.stances, shift: F.shift, fidgets: F.fidgets };
+  const was0 = STY.stanceStyleId();
+  const DW = [2, 3], FADE = 0.6;
+  const e1 = { id: 'e1', w: 1, dwell: DW, fn: (q, PP, a) => { atEase(q, PP, a); KIT.handLoose(q, KIT.standLife(a.time, 3.7)); } };
+  const e2 = { id: 'e2', w: 1, dwell: DW, fn: (q, PP, a) => { atEase(q, PP, a); q[PP.spY] += 0.15; KIT.handFingers(q, KIT.standLife(a.time, 3.7), { at: 'low' }); }, move: false };
+  const e3 = { id: 'e3', w: 1, dwell: DW, fn: (q, PP, a) => { atEase(q, PP, a); q[PP.spY] -= 0.15; } };
+  const eNever = { id: 'eNever', w: 0, dwell: DW, fn: (q, PP, a) => { atEase(q, PP, a); q[PP.spY] += 0.5; } };
+  const f1 = { id: 'f1', w: 1, dwell: DW, maxTier: 1, fn: fencerGuard };
+  const f2 = { id: 'f2', w: 1, dwell: DW, minTier: 2, fn: (q, PP, a) => { fencerGuard(q, PP, a); q[PP.spY] += 0.12; } };
+  const played = [];
+  const tBoth = { name: 'tBoth', dur: 1.4, sets: ['ease', 'fight'], fn: (q, a, u, e) => { q[P.hdY] += 0.5 * Math.sin(Math.PI * u) * e; KIT.dirNudge(q, P.swD, 10 * Math.sin(Math.PI * u), 0, e); } };
+  const tEase = { name: 'tEase', dur: 1.1, sets: ['ease'], fn: (q, a, u, e) => { KIT.add3(q, P.lH, 0, 0.05 * KIT.hump(u, 0.1, 0.3, 0.7, 0.9), 0, e); } };
+  try {
+    F.stances = { ease: [e1, e2, e3, eNever], fight: [f1, f2] };
+    F.shift = { fade: FADE };
+    F.fidgets = [tBoth, tEase];
+    A.fidget.wait = 1e9; // (B1-B4: the idle actions held off)
+    // (B1) a style switch at run time: it fades over, never pops
+    p.debug.teleport(LANE[0], LANE[1]);
+    go(1.0);
+    const S = A.stanceSel.ease;
+    let step = 0, fadeSeen = false;
+    const hand = new Float32Array(6);
+    const watchStep = () => {
+      const d = Math.max(Math.abs(A.cur[P.spY] - hand[0]), Math.hypot(A.cur[P.lH] - hand[1], A.cur[P.lH + 1] - hand[2], A.cur[P.lH + 2] - hand[3]));
+      step = Math.max(step, d);
+      hand[0] = A.cur[P.spY]; hand[1] = A.cur[P.lH]; hand[2] = A.cur[P.lH + 1]; hand[3] = A.cur[P.lH + 2];
+    };
+    watchStep();
+    step = 0;
+    STY.setStanceStyle('flow');
+    go(FADE + 0.2, () => { fadeSeen ||= S.k < 1; watchStep(); });
+    const into = S.cur?.id;
+    out(`   style switch today → test: into ${into} with a ${FADE} s fade (seen ${fadeSeen}), the chest / free hand at most ${(step * 100).toFixed(2)} cm|crad a frame`);
+    assert(fadeSeen && ['e1', 'e2', 'e3'].includes(into) && step <= 0.02 && bad === 0, `a style switched at run time fades over (into ${into}; the chest's turn and the free hand ≤ ${(step * 100).toFixed(2)} per frame, ≤ 2; an instant switch is 15)`);
+    // (B2) dwell, never twice running, a weight of 0, the fade's length
+    const shifts = [];
+    let fadeFrames = 0, fades = 0, wasK = 1;
+    step = 0;
+    go(40, () => {
+      if (S.k < 1) fadeFrames++;
+      if (S.k < 1 && wasK >= 1) { fades++; shifts.push({ t: game.time, id: S.cur.id, from: S.prev?.id }); }
+      wasK = S.k;
+      watchStep();
+    });
+    const holds = shifts.slice(1).map((s, i) => s.t - shifts[i].t);
+    const twice = shifts.filter((s) => s.id === s.from).length;
+    out(`   40 s at ease: ${shifts.length} shifts (${shifts.map((s) => s.id).join(' ')}); held ${Math.min(...holds).toFixed(2)}-${Math.max(...holds).toFixed(2)} s between shifts (dwell ${DW.join('-')} + the fade); ${(fadeFrames * DT / Math.max(1, fades)).toFixed(2)} s a fade; the chest / free hand ≤ ${(step * 100).toFixed(2)} a frame`);
+    assert(shifts.length >= 9 && twice === 0 && !shifts.some((s) => s.id === 'eNever'), `he shifts between the poses (${shifts.length} in 40 s), never into the one he holds (${twice}), never into a pose of weight 0`);
+    assert(holds.length && Math.min(...holds) >= DW[0] + FADE - 2 * DT && Math.max(...holds) <= DW[1] + FADE + 2 * DT && Math.abs((fadeFrames * DT) / fades - FADE) < 2 * DT && step <= 0.02,
+      `each pose is held for its dwell after the fade (${Math.min(...holds).toFixed(2)}-${Math.max(...holds).toFixed(2)} s, in ${(DW[0] + FADE).toFixed(1)}-${(DW[1] + FADE).toFixed(1)}), each fade lasts the style's ${FADE} s, and nothing pops (≤ ${(step * 100).toFixed(2)} a frame)`);
+    // (B3) no shift mid-attack or on the move with an idle action: calm only (the attack holds the pick)
+    {
+      for (let i = 0; i < 120 && S.k < 1; i++) go(DT);
+      S.t = S.dwell - 0.05;
+      const n0 = S.n;
+      input.click(0);
+      let during = 0;
+      go(0.5, () => { if (A.key !== 'loco' && S.n !== n0) during++; });
+      go(1.2);
+      assert(during === 0 && S.n > n0, `a dwell that runs out in an attack waits for the loco clip (${during} shifts started inside the attack; ${S.n - n0} after it)`);
+    }
+    // (B4) the pin: held, then let go; an unknown id is ignored
+    pd.stance.ease = 'e3';
+    go(FADE + 0.1);
+    const pinnedTo = S.cur.id, n1 = S.n;
+    go(12);
+    const heldPin = S.cur.id === 'e3' && S.n === n1;
+    pd.stance.ease = 'nope';
+    go(10);
+    const freed = S.n > n1;
+    pd.stance.ease = null;
+    out(`   pin e3: ${pinnedTo} within ${FADE + 0.1} s, held 12 s (${heldPin}); an unknown pin ignored (${freed})`);
+    assert(pinnedTo === 'e3' && heldPin && freed, 'player.debug.stance pins a pose (it waits for a running fade, then holds it), an unknown id is ignored');
+    // (B5) the streak's tiers: f1 (tiers 0-1), f2 (2-5)
+    pd.fightStance = true;
+    go(1.5);
+    const SF = A.stanceSel.fight;
+    go(8);
+    const t0Pose = SF.cur.id, t0Shifts = SF.n;
+    p.streak = 7;
+    go(FADE + 0.2);
+    const t3Pose = SF.cur.id, tier3 = A.streakTier, k3 = A.streakK;
+    go(6);
+    const stay3 = SF.cur.id;
+    p.streak = 0;
+    go(FADE + 0.2);
+    const back = SF.cur.id;
+    out(`   tiers: streak 0 → ${t0Pose} (${SF.n - t0Shifts} shifts); streak 7 (tier ${tier3}, streakK ${k3.toFixed(2)}) → ${t3Pose}, still ${stay3} 6 s on; streak 0 → ${back}`);
+    assert(t0Pose === 'f1' && tier3 === 3 && t3Pose === 'f2' && stay3 === 'f2' && back === 'f1' && k3 > 0.3 && k3 <= 0.6 + 1e-6,
+      'a pose holds only in its tiers (minTier / maxTier): with the other out of range he stays; a streak that leaves the pose out moves him on at once; A.streakTier / A.streakK follow the streak');
+    // (B6) the style's idle actions: by set, never the same twice, forced, cut
+    A.fidget.wait = IDLE_LIFE_AFTER;
+    const names = [];
+    let lastName = '';
+    const watch = () => { if (A.fidget.name && A.fidget.name !== lastName) names.push(A.fidget.name); lastName = A.fidget.name; };
+    go(20, watch);
+    const inFight = names.slice();
+    pd.fightStance = false;
+    names.length = 0;
+    go(30, watch);
+    const atEaseN = names.slice();
+    const repeat = atEaseN.filter((n, i) => i && n === atEaseN[i - 1]).length;
+    out(`   idle actions: in the guard ${inFight.join(' ') || 'none'}; at ease ${atEaseN.join(' ') || 'none'}`);
+    assert(inFight.length >= 2 && inFight.every((n) => n === 'tBoth') && atEaseN.includes('tEase') && atEaseN.includes('tBoth') && repeat === 0,
+      `a style's idle actions play in the sets they name: in the guard only tBoth (${inFight.length}), at ease both, never the same twice running (${repeat})`);
+    pd.fightStance = true;
+    go(1.0);
+    for (let i = 0; i < 300 && A.fidget.k >= 0; i++) go(DT);
+    const forced = A.debug.fidget('tEase');
+    go(0.4);
+    const wF = A.fidget.w, nameF = A.fidget.name;
+    input.axis = { x: 0, y: 1 };
+    go(0.25);
+    input.axis = { x: 0, y: 0 };
+    assert(forced && nameF === 'tEase' && wF > 0.5 && A.fidget.w === 0 && !A.debug.fidget('nope'), `anim.debug.fidget forces one in either set (tEase in the guard: weight ${wF.toFixed(2)}), a step cuts it, an unknown name is refused`);
+    // (B7) the Lab rows
+    {
+      const L = game.lab, find = (arr, f) => (arr ?? []).find(f);
+      STY.setStanceStyle('today');
+      if (!L.ui.movesStandBtns) { input.tap('F1'); G.tick(DT); } // (the panel is built as it opens)
+      L._syncMovesStand?.(true);
+      const mb = find(L.ui.movesStandBtns, (b) => b.id === 'flow');
+      mb?.el.dispatch('click');
+      const poses = (L.ui.poseBtns ?? []).map((b) => `${b.set}:${b.id ?? 'auto'}`);
+      find(L.ui.poseBtns, (b) => b.set === 'ease' && b.id === 'e2')?.el.dispatch('click');
+      const pinned = pd.stance.ease;
+      const fidgetBtns = L.ui.fidgetGrid?.children?.filter?.((c) => c.tagName === 'BUTTON').length ?? 0;
+      find(L.ui.poseBtns, (b) => b.set === 'ease' && b.id === null)?.el.dispatch('click');
+      assert(L.ui.movesStandBtns?.length === STY.STYLE_IDS.length && STY.stanceStyleId() === 'flow' && poses.join(',') === 'ease:auto,ease:e1,ease:e2,ease:e3,ease:eNever,fight:auto,fight:f1,fight:f2' && pinned === 'e2' && pd.stance.ease === null && fidgetBtns === 2,
+        `the Lab: 'moves: stand' (${L.ui.movesStandBtns?.length} styles) switches the style; 'pose' lists auto + each pose of each set (${poses.length}) and pins one; 'fidget' lists the style's ${fidgetBtns}`);
+    }
+    // (B8) no allocation per frame in the engine (stanceStep + stand over shifting sets)
+    {
+      const v8 = await import('node:v8'), vm = await import('node:vm');
+      v8.setFlagsFromString('--expose-gc');
+      const gc = vm.runInNewContext('gc');
+      const scr = new Float32Array(N), t0 = A.time;
+      const loop = (n) => { for (let i = 0; i < n; i++) { A.time += DT; A.moveW = (i % 300) / 300; stanceStep(A, DT, true, F); stand(scr, A); } };
+      loop(2000);
+      gc();
+      const h0 = process.memoryUsage().heapUsed;
+      loop(20000);
+      gc();
+      const grew = process.memoryUsage().heapUsed - h0;
+      A.time = t0;
+      out(`   allocation: the heap grew ${(grew / 1024).toFixed(0)} KB over 20000 engine frames (shifting, fading, setting off)`);
+      assert(grew < 200 * 1024 && scr.every(Number.isFinite), `the engine allocates nothing per frame (${(grew / 1024).toFixed(0)} KB over 20000 frames, < 200)`);
+    }
+    assert(bad === 0, `every pose channel finite through the scenario (${bad} bad frames)`);
+  } finally {
+    Object.assign(F, saved);
+    STY.setStanceStyle(was0);
+    pd.stance.ease = pd.stance.fight = null;
+    pd.fightStance = null;
+    A.fidget.wait = IDLE_LIFE_AFTER;
+  }
+  return G;
+}
+const IDLE_LIFE_AFTER = 2.5; // anim.js IDLE_LIFE.after
+
 // ================================================================== scenario: terrain moves (ADR-110)
 // The wyrm's moves that use the world's pieces, on the REAL Destructibles over a small hand-built set
 // (build({ terrain })): the tell and its flash, the piece taken / flown / landed where it was marked,
@@ -12761,6 +12997,7 @@ const SCENARIOS = {
   herocombo: scenarioHeroCombo,
   heroarms: scenarioHeroArms,
   herostance: scenarioHeroStance,
+  herostyles: scenarioHeroStyles,
   looks: scenarioLooks,
   music: scenarioMusic,
   thump: scenarioThump,

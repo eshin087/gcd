@@ -318,6 +318,9 @@ export class Player {
       // the stance he stands in (stances.js): true holds the fight stance, false at ease; null = the
       // game decides (the fight stance while locked on or in a boss fight)
       fightStance: null,
+      // … and which pose of the move style's set (styles/STANCES.md): a stance id pins it, null = the
+      // animator shifts between them (a pin waits for a shift already under way to end)
+      stance: { ease: null, fight: null },
       // a multiplier on the attack clock: every swing's windup, cut and recovery run this much
       // faster (its lunge covers the same ground). 1 in play; the Lab's slider tries other paces
       attackSpeed: 1,
