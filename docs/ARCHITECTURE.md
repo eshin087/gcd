@@ -1288,14 +1288,20 @@ catch (a throw is logged, the cut still draws). `cutBurst` calls `takeStampRepla
 its slash line and cross when the stamp just drew in 'instead' mode.
 
 **The streak pass** (`combat/streak.js`, ADR-167). `STREAK_FX = { pieces: ['storm', 'tiers', 'aura',
-'counter', 'sound', 'world'], on, k, perfectModes, perfect }`; `streakK(piece)` = `k[piece]` while on,
+'counter', 'sound', 'world'], on, k, perfectModes, perfect, tempo }` (`tempo`: the storm's tempo, a
+live boolean, `?tempo=0` false; the Lab's `tempo` button); `streakK(piece)` = `k[piece]` while on,
 else 0 (`?streakfx=` absent, empty or 'all': every piece; a list: those named; 'off': none; the Lab's
 'streak' row flips `on` live). `STREAK_TIERS` [3, 5, 7, 10, 15], `streakTier(n)` 0 - 5, `streakHeat(n)`
 0..1. `PERFECT_DEFAULT` 'sharp', `perfectMode()` / `setPerfectMode(m)` (`?perfect=today | sharp |
 cinema`). Nothing stores a tier: each piece reads it at the moment.
 - *The storm* (`DEFENSE.flurry.storm`; `flurry.js`): `start` reads `streakN` (the streak, past the cap of
   blows), `tier`, `stormK` = `streakK('storm')` once. `_stormStep(i)` (0 a shown cut, then 1, 2, ...),
-  `_pace(i)`, `_stop(i)`, `_cutTime(i)`, `_plannedHits()`. A storm cut's beats may be shorter than a
+  `_pace(i)`, `_stop(i)`, `_cutTime(i)`, `_plannedHits()`. With the tempo (`DEFENSE.flurry.tempo`;
+  `tempo` = `stormK > 0 && STREAK_FX.tempo`, read once at `start`, with its ratio `_r`): `_beat()` the
+  heavy beat's numbers (ground / air), `_paced()` the cuts it paces, `_final(i)` a riposte's last cut,
+  `_pace(i)` = max(floor, r^(k i)) (1 for `_final`), `_stormStep(i)` counts the cuts up to i whose pace
+  is under `stormAt`, `_weight(i)` 0..1 (the camera's and the flare's share), `hang` > 0 in the air too;
+  `FlurryFx.cut(..., st, wk)` scales the flare and the sparks by `wk`. A storm cut's beats may be shorter than a
   frame: `update` runs on through them (at most 8 steps) until a blow lands or a cut's finish is
   reached, so each blow lands in a frame of its own; `_cloneAt` prints its speed clone in `draw` once
   he is posed on the contact; `_stormAngle` picks its line (24 candidates); `camera()` keeps the target
@@ -2682,7 +2688,8 @@ arrival (replay). A button's status line is what its `run` returned. `_syncLifeB
 **Blade** (ADR-177; WORLD, beside Bites): `Blade: through` / `Blade: stops` flips `?cutStop` live
 (`setLook('cutStop', ...)`; read at each swing).
 **The 'streak' row** (ADR-167): one on / off toggle per piece of `STREAK_FX.pieces` (storm, tiers, aura,
-counter, sound, world), a `perfect: <mode>` button that cycles today / sharp / cinema
+counter, sound, world), `tempo` (flips `STREAK_FX.tempo`: the storm's tempo, read as a flurry starts),
+a `perfect: <mode>` button that cycles today / sharp / cinema
 (`setPerfectMode`), and `burst N` that cycles the burst level 0 - 3 (`setBurst`). `_syncCutBtns` lights
 and labels them.
 

@@ -575,7 +575,25 @@ same 258 damage in the same time as a streak of 7 (integ `storm`).
   star: 19 - 23° from the nearest at seven). The camera holds the target, not the hero. Against the
   wyrm, the flash cuts of 5 / 6 / 7 blows: 1.02 / 1.25 / 1.52 s → 0.97 / 1.08 / 1.18 s, the seven's
   blows 6, 17, 16, 14, 8, 4 frames apart; 4 blows or fewer unchanged (3 or fewer on a man). A riposte
-  (all flash cuts) follows the same rule.
+  (all flash cuts) follows the same rule. This rule is still one switch away (`?tempo=0`, the Lab's
+  `tempo` button); by default the storm runs on its tempo:
+- **The tempo** (2026-11-24; `DEFENSE.flurry.tempo`, `STREAK_FX.tempo`; only with the storm piece on).
+  Owner: the storm "looks too fast in the early streaks ... not epic". One rule, **heavy first, then
+  faster by ratio**. The first flash cut is a HEAVY BEAT that can be read: hidden 0.06 s, SEEN wound up
+  where he appears 0.11 s (0.08 round the head: the air cut has its wind-up now too), the pass as fast
+  as ever (0.12 s; 0.10), frozen on the contact 0.11 s, the finish held 0.15 s (0.11): its contact
+  0.2 - 0.22 s after the dodge. Every later cut takes a share r of the one before, r = 0.78 with 2
+  paced cuts falling to 0.52 with 6 (`ratio`; a riposte paces all its cuts but its last), never under
+  12 % (`floor`): paces 1 / .78 (2 cuts), 1 / .72 / .51 (3), 1 / .65 / .42 / .27 (4),
+  1 / .59 / .34 / .20 / .12 (5), 1 / .52 / .27 / .14 / .12 / .12 (6). A cut whose pace is under 0.4
+  (`stormAt`) is a storm cut (as above), so the storm is a speed, not a place: none at 2 or 3 blows,
+  1 at 5, 4 at 7. A cut's freeze is 0.11 s × its pace; its camera kick / shake and its flare and
+  sparks fall with the pace from whole at 1 to the storm's ×0.35 / ×0.45 at 0.4, no cliff. A riposte's
+  last cut is the heavy beat again (its freeze ×1.8). Frames at 60 fps from the start, a man (the Ash
+  Disciple) / the wyrm's head: 7 blows 14, 41, 55, 62, 67, 71, last 113 / 12, 36, 47, 53, 57, 61, last
+  101 (gaps 27, 14, 7, 5, 4 / 24, 11, 6, 4, 4); 3 blows 14, 45, last 101 / 12, 39, last 90. Damage, the
+  blows, the world's hold, the crit window and where he ends are as before (integ `storm`, duel
+  `tempo`).
 - **Past seven** (`tiers`): at tier 4 every hanging cut has a fine echo line beside it, at tier 5 two;
   on the last blow they split away and rings open where they cross. The banner names the full flurry
   of a tier-4 / 5 streak HUNDREDFOLD FLASH / THOUSANDFOLD FLASH (SEVENFOLD below), a rule more, never
