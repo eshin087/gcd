@@ -1,6 +1,7 @@
 import { CONFIG } from '../core/config.js';
 import { GAME_VERSION } from './changelog.js';
 import { button, controlsGrid, el, fillKeyText, tellLegend, touchGrid } from './dom.js';
+import { dressStageButton, gradeHead, recLookNow, sharedLine } from './recordLooks.js';
 
 // Full-screen / panel UI: title, pause menu, help panel, victory record.
 
@@ -53,7 +54,9 @@ export class TitleScreen {
    *  level is its own page load: picking one reloads the game into it, levels/index.js).
    *  news (optional): the WHAT'S NEW panel (ui/changelogPanel.js): a button under the picker opens
    *  it and carries its unread badge. */
-  constructor(parent, visible, stage = null, news = null) {
+  /** records (optional): { bestFor(id) → { grade, marks, timeMs, clears } | null, startRush() } — each
+   *  level's best under its button and the BOSS RUSH entry (ADR-179; ?recLook=, ui/recordLooks.js). */
+  constructor(parent, visible, stage = null, news = null, records = null) {
     this.root = el('div', 'ab-title', null, parent);
     const inner = el('div', 'ab-title-inner', null, this.root);
     inner.style.cssText = 'display:flex;flex-direction:column;align-items:center';
@@ -61,8 +64,11 @@ export class TitleScreen {
     el('div', 'ab-title-rule', '◆', inner);
     el('div', 'ab-title-sub', 'an ASCII action RPG', inner);
     this.stageButtons = []; // the stage picker's buttons, for the gamepad's focus (ui/gamepad.js)
+    this.records = records;
+    this.recLook = recLookNow();
+    this._stages = []; // [button, id, name]
     if (stage?.levels?.length > 1) {
-      const row = el('div', 'ab-stage', null, inner);
+      const row = el('div', `ab-stage r-${this.recLook}`, null, inner);
       for (const L of stage.levels) {
         const b = button(row, L.id === stage.current ? 'on' : '', () => {
           if (L.id !== stage.current) stage.pick?.(L.id);
@@ -70,7 +76,23 @@ export class TitleScreen {
         b.textContent = String(L.name).toUpperCase();
         b.dataset.level = L.id;
         this.stageButtons.push(b);
+        this._stages.push([b, L.id, String(L.name).toUpperCase()]);
       }
+      // the boss rush: every level back to back for one time (game/rush.js); pad-walked with the stages
+      if (records?.startRush) {
+        const b = button(row, 'ab-rush-btn', () => records.startRush());
+        b.dataset.level = 'rush';
+        this.stageButtons.push(b);
+        this._stages.push([b, 'rush', 'BOSS RUSH']);
+        this.rushButton = b;
+      }
+      this.current = stage.current;
+      this.sharedEl = this.recLook === 'c' ? el('div', 'ab-stage-shared', null, inner) : null;
+      if (this.sharedEl) {
+        for (const [b, id] of this._stages) b.addEventListener('mouseenter', () => this._share(id));
+        row.addEventListener('mouseleave', () => this._share(null));
+      }
+      this.refreshRecords();
     }
     // WHAT'S NEW: walked with the stage buttons on a pad (ui/gamepad.js), never starts the game
     this.newsButton = null;
@@ -120,6 +142,39 @@ export class TitleScreen {
     }
   }
 
+  /** Each stage button's best (and the rush's) from the records; call again when a record is saved. */
+  refreshRecords() {
+    const R = this.records;
+    for (const [b, id, name] of this._stages) {
+      let best = null;
+      try {
+        best = R?.bestFor?.(id) ?? null;
+      } catch {
+        best = null;
+      }
+      dressStageButton(b, name, best, this.recLook);
+    }
+    this._share(this._shareId ?? null, true);
+  }
+
+  /** recLook c: the shared line shows stage `id` (null: the pad's focus, else the current stage). */
+  _share(id, force = false) {
+    if (!this.sharedEl) return;
+    const focus = this._stages.find(([b]) => b.classList?.contains('pad-focus'))?.[1];
+    const want = id ?? focus ?? this.current;
+    if (want === this._shownId && !force) return;
+    this._shareId = id;
+    this._shownId = want;
+    const S = this._stages.find(([, sid]) => sid === want);
+    let best = null;
+    try {
+      best = this.records?.bestFor?.(want) ?? null;
+    } catch {
+      best = null;
+    }
+    sharedLine(this.sharedEl, S?.[2] ?? '', best);
+  }
+
   show() {
     this.visible = true;
     this.goneT = 0;
@@ -141,6 +196,7 @@ export class TitleScreen {
       if (this.goneT <= 0) this.root.classList.add('gone');
     }
     if (!this.visible) return;
+    if (this.sharedEl && this._shareId == null) this._share(null); // follows the pad's focus
     this.t += dt;
     this.acc += dt;
     if (this.acc < 1 / SHIMMER_HZ) return;
@@ -339,18 +395,28 @@ export class HelpPanel {
 }
 
 export class StatsPanel {
-  constructor(parent) {
-    this.root = el('div', 'ab-stats ab-panel', null, parent);
-    el('div', 'ab-stats-title', 'RECORD', this.root);
-    this.body = el('div', '', null, this.root);
+  /** look: the grade's look option ('a' | 'b' | 'c'; ?gradeLook=, ui/recordLooks.js). */
+  constructor(parent, look = 'a') {
+    this.root = el('div', `ab-stats ab-panel g-${look}`, null, parent);
+    this.look = look;
+    // with a grade (has-head): the grade on the left, the rows beside it in two columns (stacked on a
+    // phone held upright), so the panel is no taller than the rows were
+    this.head = el('div', 'ab-rec-head', null, this.root);
+    const rowsEl = el('div', 'ab-rec-rows', null, this.root);
+    this.titleEl = el('div', 'ab-stats-title', 'RECORD', rowsEl);
+    this.body = el('div', 'ab-stats-body', null, rowsEl);
   }
 
-  /** rows: [[label, value], ...] or null to hide. */
-  show(rows) {
+  /** rows: [[label, value], ...] or null to hide. head (optional): the run's grade, marks and time
+   *  (GameFlow._recordHead): { title, grade, marks, time, newBestTime, newBestGrade, first, prev, note }. */
+  show(rows, head = null) {
     if (!Array.isArray(rows) || !rows.length) {
       this.root.classList.remove('on');
       return;
     }
+    this.titleEl.textContent = head?.title ?? 'RECORD';
+    gradeHead(this.head, head, this.look);
+    this.root.classList.toggle('has-head', !!head?.grade);
     this.body.textContent = '';
     for (const row of rows) {
       if (!Array.isArray(row)) continue;
