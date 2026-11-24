@@ -42,8 +42,8 @@ export class Scars {
   constructor(game, ink) {
     this.game = game;
     this.ink = Array.isArray(ink) && ink.length === 3 && ink.every(Number.isFinite) ? ink : DEFAULT_INK;
-    // a line's ink (a gash, a furrow, a trench) never brighter than SCAR.mark.lineInk: an ember-red ink
-    // drawn as a long stroke would read as a danger strip
+    // a kind mark's ink never brighter than SCAR.mark.lineInk: the throne hall's ember-red ink drawn as
+    // gashes and spokes all over the floor would read as danger strokes (today's cracks keep the set's ink)
     const top = Math.max(...this.ink), L = SCAR.mark.lineInk;
     this.lineInk = top > L ? this.ink.map((c) => (c * L) / top) : this.ink;
     // the lit lip of a mark (broken stone / earth where the light catches it, the house style's few
@@ -260,7 +260,7 @@ export class Scars {
       }
     }
     // the crushed middle and short radial cracks out to the rim
-    this._add(x + (rnd() - 0.5) * 0.15, y, z + (rnd() - 0.5) * 0.15, pick('x+*'), 0.36 + 0.2 * k, this.ink, K.alpha, rnd() * 3, -1);
+    this._add(x + (rnd() - 0.5) * 0.15, y, z + (rnd() - 0.5) * 0.15, pick('x+*'), 0.36 + 0.2 * k, this.lineInk, K.alpha, rnd() * 3, -1);
     const spokes = Math.max(2, Math.round((T.spokes[0] + (T.spokes[1] - T.spokes[0]) * k) * Math.sqrt(keep)));
     const s0 = rnd() * TAU;
     for (let s = 0; s < spokes; s++) {
@@ -269,7 +269,7 @@ export class Scars {
       for (let d = 0.3; d < reach; d += 0.34) {
         a += (rnd() - 0.5) * 0.25;
         const ca = Math.cos(a), sa = Math.sin(a);
-        this._line(x + ca * d, y, z + sa * d, ca, sa, T.crack * (1 - 0.4 * (d / reach)), this.ink, K.alpha * 0.9, d < reach * 0.6);
+        this._line(x + ca * d, y, z + sa * d, ca, sa, T.crack * (1 - 0.4 * (d / reach)), this.lineInk, K.alpha * 0.9, d < reach * 0.6);
       }
     }
   }
@@ -328,7 +328,7 @@ export class Scars {
     const k = clamp01((power - 0.2) / 1.2);
     const L = lerp(T.len[0], T.len[1], k), rot = groundRot(dx, dz);
     for (let s = -L * 0.5; s <= L * 0.5 + 1e-6; s += 0.2) this._line(x + dx * s, y, z + dz * s, dx, dz, T.size * (1 - 0.3 * Math.abs(s) / L), this.lineInk, K.alpha);
-    this._add(x + dx * L * 0.5, y, z + dz * L * 0.5, pick('vx'), T.size * 0.8, this.ink, K.alpha, rot, -1);
+    this._add(x + dx * L * 0.5, y, z + dz * L * 0.5, pick('vx'), T.size * 0.8, this.lineInk, K.alpha, rot, -1);
     const n = Math.round((T.spray[0] + (T.spray[1] - T.spray[0]) * k) * keep);
     for (let i = 0; i < n; i++) {
       const a = (rnd() - 0.5) * 1.1, d = lerp(T.reach[0], T.reach[1], rnd()) * (0.6 + 0.4 * k);
@@ -385,7 +385,7 @@ export class Scars {
   _blast(x, z, power, R, keep, hot) {
     const T = SCAR.mark.blast, K = SCAR.mark, y = K.y;
     const k = clamp01((power - 0.3) / 1.5);
-    const dark = hot ? T.char : this.ink;
+    const dark = hot ? T.char : this.lineInk;
     const n = Math.round((T.dots[0] + (T.dots[1] - T.dots[0]) * k) * keep);
     for (let i = 0; i < n; i++) {
       // (denser toward the middle: the round is scorched, not ringed)
@@ -401,7 +401,7 @@ export class Scars {
         a += (rnd() - 0.5) * 0.3;
         const ca = Math.cos(a), sa = Math.sin(a);
         // (thin cracks: smaller strokes than a slam's)
-        this._line(x + ca * d, y, z + sa * d, ca, sa, 0.32 * (1 - 0.35 * ((d - R * 0.45) / reach)), this.ink, K.alpha * 0.85, rnd() < 0.5);
+        this._line(x + ca * d, y, z + sa * d, ca, sa, 0.32 * (1 - 0.35 * ((d - R * 0.45) / reach)), this.lineInk, K.alpha * 0.85, rnd() < 0.5);
       }
     }
     if (hot) this._char(x, z, R * 0.8, K.char.blast);
@@ -435,11 +435,11 @@ export class Scars {
     l[1] = z;
     const k = clamp01((power - T.min) / 1.2), s = 0.6 + 0.4 * k;
     // a pad and three toes fanned ahead
-    this._add(x, y, z, pick('o.'), 0.3 * s, this.ink, T.alpha, 0, -1);
+    this._add(x, y, z, pick('o.'), 0.3 * s, this.lineInk, T.alpha, 0, -1);
     for (let i = -1; i <= 1; i++) {
       const a = i * 0.45, ca = Math.cos(a), sa = Math.sin(a);
       const ux = dx * ca - dz * sa, uz = dz * ca + dx * sa;
-      this._line(x + ux * 0.42 * s, y, z + uz * 0.42 * s, ux, uz, 0.26 * s, this.ink, T.alpha);
+      this._line(x + ux * 0.42 * s, y, z + uz * 0.42 * s, ux, uz, 0.26 * s, this.lineInk, T.alpha);
     }
   }
 
