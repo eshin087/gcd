@@ -23,6 +23,9 @@ export class Minimap {
     this.ctx = this.canvas.getContext('2d');
     this.coordEl = el('div', 'ab-map-line', '', this.root);
     this.fpsEl = el('div', 'ab-map-line fps', '', this.root);
+    // the boss rush's line (ADR-179): the fight's number and the rush's time, small, under the disc
+    this.rushEl = el('div', 'ab-map-line rush', '', this.root);
+    this._rush = null;
     this.scale = (SIZE / 2 - 5) / RANGE; // px per meter
     this.layer = null;
     this.layerTried = false;
@@ -36,6 +39,7 @@ export class Minimap {
 
   update(dt) {
     this.t += dt;
+    this._rushLine();
     if (!this.layerTried) {
       this.layerTried = true;
       try {
@@ -93,6 +97,21 @@ export class Minimap {
         this.fpsEl.textContent = s;
       }
     }
+  }
+
+  /** '3 / 8  4:12.3': written only when it changes (a tenth of a second); hidden outside a rush. */
+  _rushLine() {
+    const c = this.game.flow?.recorder?.rushClock?.();
+    let s = '';
+    if (c) {
+      const ds = Math.floor(num(c.ms) / 100);
+      const t = ds % 10, sec = Math.floor(ds / 10) % 60, m = Math.floor(ds / 600);
+      s = `${c.index} / ${c.count}  ${m}:${sec < 10 ? '0' : ''}${sec}.${t}`;
+    }
+    if (s === this._rush) return;
+    if (!s !== !this._rush) this.rushEl.classList.toggle('on', !!s);
+    this._rush = s;
+    this.rushEl.textContent = s;
   }
 
   _bake() {

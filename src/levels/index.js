@@ -70,9 +70,11 @@ export function applyLevel(level) {
   for (const [k, v] of Object.entries(W)) CONFIG.world[k] = v && typeof v === 'object' ? { ...v } : v;
 }
 
-/** `href` with `?level=<id>` set (the other query parameters, e.g. `?lab`, are kept). */
+/** `href` with `?level=<id>` set (the other query parameters, e.g. `?lab`, are kept; `?rush` is not:
+ *  a level's own page is never a boss rush page, game/rush.js rushUrl). */
 export function levelUrl(id, href) {
   const u = new URL(href);
+  u.searchParams.delete('rush');
   if (id === DEFAULT_LEVEL.id) u.searchParams.delete('level');
   else u.searchParams.set('level', id);
   return u.toString();

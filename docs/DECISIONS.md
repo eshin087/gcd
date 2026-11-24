@@ -5333,6 +5333,100 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   draw call while sparks live. The rejected passes stay on local branches; a later round on these moments should start
   from a concrete reference and one narrow prototype, and never change the background.
 
+## ADR-179 — Grades, saved records and a boss rush, shaped for an online leaderboard (2026-11-23)
+
+- **Context:** the owner asked for saved records, grades and a boss-rush mode, and plans online
+  leaderboards later, so what is saved must be what a server will take. A planning session settled three
+  things with the owner (2026-11-23), final: (1) a grade measures CLEAN PLAY: damage taken and deaths
+  decide it, time only separates equal runs, a careful defensive win can be an S (their standing rule:
+  defensive play is never punished); (2) in the rush, health and flasks refill before every fight; (3) in
+  the rush a death retries the same boss, the clock keeps running, the death is counted.
+- **Decision:**
+  1. **One run record per finished run, written by one function** (`records.js` `buildRecord`, `v: 1`):
+     kind, level(s), game version, time, the clean-play inputs, grade, marks, the RunStats snapshot, the
+     device, the learned techniques, the move style (null until PR 105's system is on `main`), and for a
+     rush its splits. No player name, no network code. The fields and the timing rules are written into
+     ARCHITECTURE.md "Records" as the contract a leaderboard server holds runs to.
+  2. **Timing is real time in the boss state.** A boss: the winning attempt (`stats.attemptTime`; a pause,
+     the intro, the walk and the screens never count; checked headless: 10 + 10 s around a 20 s pause
+     reads 20.0 s). A rush: every boss-state second of every fight, failed attempts included; loads,
+     walks, intros and record screens never count, so a slow device or connection costs nothing.
+     Client-side times can be forged: validation is the server's job later.
+  3. **The grade** (`rank.js`, thresholds as data in `rankTuning.js`): S = no deaths and at most 15 % of
+     max HP lost in the winning attempt; A = no deaths, or one death and at most 50 %; B = up to three
+     deaths; C = any other win. Time never changes a grade; `compareRank` orders by grade, then time.
+     "Damage taken" is HP lost to blows that LANDED (`player:hurt`): a blow met on the guard costs guard,
+     not HP (player.js `_block`), so blocking, parrying and rolling all reach an S the same way; only a
+     contact stream's chip through a held guard costs HP, and is not counted either. Marks: UNTOUCHED
+     (no death, no damage), DEATHLESS, NO FLASK (no flask in any attempt). **A rush's overall grade is
+     the same rule on its totals**: deaths summed, the eight winning attempts' damage summed over the
+     eight max HPs summed (an S rush is deathless and averaged at most 15 %), flasks summed.
+  4. **Eligibility** (`eligibility.js`): a run is recorded only if played as the game ships. VOID: the
+     Lab opened on any frame (its controls need it open; `?lab` too), god mode, endless flasks, the
+     attack-speed slider, the Lab's time scale, a boss's AI switched off, `window.__tick`,
+     `flow.debug.toState`, the training room (`?stage=lab`), `?tech=`, and these URL switches away from
+     their shipped value (read from the code with a sweep of every parameter the game reads):
+     `training`; `cutStop` (1: the blade stops, a swing ends early); `apoc` (c: the meteor rain
+     re-paced, the wyrm out of reach); `ring` (b / c: another Skybreak arena and its colliders); `bamboo`
+     (other breakable stalks and colliders); `outskirts` (0: the Throne's props and their colliders
+     go); `looks=old` (it sends `outskirts` back to 0); `wyrmLook` (another build carries the neck, so
+     the head's hurt sphere, differently between attacks); `ablaze` (its fire lights the cover);
+     `perfect` (today / cinema: another slow motion after a perfect defence); `streakfx` (without
+     `storm` the flurry's pacing changes). NOT void (looks, sounds, input): `heroLook`, `sword`,
+     `wyrmFace`, `breath`, `flare`, `zoomArt`, `nobatch`, `noseen`, `impact`, `calm`, `stamp`,
+     `stampInk`, `cutfx`, `burst`, `streakCount`, `auraFire`, `sfx`, `chain`, `music`, `life`, `lifeK`,
+     `marks`, `floor`, `grove`, `city`, `hall`, `script`, `chip`, every duelist look switch (ADR-122's
+     table: `kindle`, `qi`, `ashLook`, `lordLook`, `asc*`, `sheath*`, `fox*`, `hal*`, `one*` ...),
+     `gradeLook`, `recLook`, and the device switches `touch`, `pad`, `hold` (the device is recorded
+     instead). A void run's record screen says why in one line (`NOT RECORDED: the Lab was used`); the
+     grade is still shown; nothing is stored. Once void, void for the page; a rush, for all its pages.
+  5. **The store** (`records.js` `Records`, the pattern of `unlocks.js`): localStorage
+     `abyss.records.v1`, injectable storage, never throws (corrupt / another version reads as empty, a
+     full store drops the queue to six and retries, blocked or missing storage keeps the page's runs).
+     Per level and for the rush: clears, the best time and the best grade, two separate bests; plus the
+     last 24 run records in full (a full rush and the runs before it), the queue a later uploader
+     drains. `game:record` is emitted per stored record: the seam an uploader subscribes to.
+  6. **The boss rush** (`rush.js`): every level in `LEVELS` order (a new level joins with no change), each
+     its own page load (`?level=<id>&rush=1`); the run in sessionStorage (`abyss.rush.v1`, this tab).
+     What I decided beyond the plan:
+     - a rush page plays the rush's level whatever `?level` says, so a reload on the record screen after
+       a win goes on to the next boss (the win was banked) instead of losing the rush;
+     - the clock is banked about once a second and on `pagehide` / a hidden tab, with a `live` flag in
+       the boss state: a reload or a reopened tab mid-fight is a death with the time kept; a crash loses
+       at most a second of the clock; a reload outside the fight (walking, the death screen) is no death;
+     - opening any page of the game without `?rush` ends the rush (no stale rush waiting in the tab);
+       QUIT TO TITLE ends it with no record; a finished rush is cleared when its record screen is left;
+     - a rush's fight is also that boss's clear: it updates the level's bests (its time is the winning
+       attempt's) and carries the rush's id;
+     - "Fight again" is not offered in a rush: the record screen's press goes on ("Next boss", and after
+       the last, "Back to the title");
+     - the HUD's rush line is under the minimap, the corner the minimap already holds on desktop and
+       phone (`3 / 8  4:12.3`, tenths during the fight; hundredths on the record).
+  7. **The looks are the owner's to pick** (CLAUDE.md "render options"): three options each for the
+     record screen's grade (`?gradeLook=a|b|c`) and the title's record line (`?recLook=a|b|c`), captured at
+     720p and at the phone in both orientations in `docs/looks/records/`, behind the switches like the
+     other look options. **The owner picked (2026-11-24): the grade `a` (block letters over its lines),
+     the title `b` (the grade in the button after the name, the time on a second line)**; the other
+     options stay behind their switches. With `b` the phone's title in landscape grew to three rows of
+     buttons and lost the top of the logo: on a touch screen in landscape the stage buttons are tighter
+     (9.5 px letters, 4 x 8 px padding, 6 px gaps), which keeps them to two rows.
+  8. **The record panel's border holds every row** (the owner's report, 2026-11-24: "Total time" and
+     "Flasks used" outside the border). Measured in a browser: the right column stuck out by 5 - 31 px
+     at 1280 x 720 (looks b / c), 1024 x 640 and 852 x 393, every look; 393 x 852 and 1600 x 900 were
+     inside. The cause: the panel was placed at `left: 50%` and shifted back by half its width, and a
+     box placed there may only grow to half the screen, so its two columns of rows overflowed it. Now
+     the panel with a grade is centred by its margins at its rows' width (at most 94 % of the screen),
+     its columns may shrink, and a label that cannot fit is cut short with an ellipsis instead of drawn
+     past the border. After: 0 px out for every look at 1280 x 720, 1024 x 640, 1600 x 900, 852 x 393
+     and 393 x 852, the rush's record too (`docs/looks/records/panel-overflow-before-after.jpg`). The
+     `records` suite guards the rule (layout itself cannot be measured headless).
+- **Consequences:** the store and the record are stable shapes; a later version migrates from
+  `abyss.records.v1`. The grade thresholds are starting numbers: the suites' winning bots fight in god mode and
+  land 0 - 8 blows on the hero a fight (most 0 - 3); a duelist's blow is 18 - 38 HP of 160, so an S allows
+  one light blow and about half the bots' wins would be an S, the rest an A, and the owner has not played them. Nothing proves a client's time; the server validates.
+  Not checked: a human on a real phone, a pad on the title with nine buttons, a full rush played by a
+  person (a full rush was driven in a browser with Lab jumps, which voided it, as it should).
+
 ## ADR-182 — The sword burns with a tight green flame in the hero's own micro letters (2026-11-24)
 
 - **Context:** the owner: "i also want his sword to look a bit more mystical in a subtle way. maybe make the sword
