@@ -17,6 +17,7 @@ import { lampsTuning } from './lampsTuning.js';
 //                                     w (its light's share), b (the piece) }; the tests read it)
 //   lamps.lights                      lamp lights shining now (at most light.max)
 //   lamps.stat                        counts this page load (kindled, guttered, out, ...)
+//   lamps.off                         true: it does nothing (a film's "today": the lanterns stand dark)
 //
 // Where a lamp is: a breakable whose def carries `lamp: { y, r }` (the window's centre height and half
 // width: courtyard.js, foxTerrace.js, windlessGrove.js, starfallProps.js), and the Ring's braziers
@@ -40,6 +41,7 @@ export class Lamps {
     this.T = lampsTuning(life.levelId);
     /** the flame's fire-field kind (the films try 'fire' against 'void' on the Foxfire Terrace) */
     this.kind = this.T.kind;
+    this.off = false;
     this.list = [];
     this.lights = 0;
     this.stat = { kindled: 0, guttered: 0, out: 0, ignited: 0, blobs: 0, puffs: 0 };
@@ -62,7 +64,7 @@ export class Lamps {
   }
 
   get on() {
-    return !!this.life.on?.('answer');
+    return !this.off && !!this.life.on?.('answer');
   }
 
   /** How many burn now (catching or lit). */
@@ -446,7 +448,8 @@ export class Lamps {
       const p = this._bossAt();
       this.kindle(this.T.fight, p.x, p.z, 0.6);
     }
-    const T = this.T, F = T.flame, G = T.gutter, q = Math.max(0.3, Math.min(1, this.life.quality));
+    // (the phone: fewer blobs, not so few that a flame of a dozen letters falls apart: x 0.8 at quality 0.5)
+    const T = this.T, F = T.flame, G = T.gutter, q = 0.6 + 0.4 * Math.max(0.3, Math.min(1, this.life.quality));
     const fire = this.life.game?.fx?.fire;
     for (const L of this.list) {
       // a piece that is down puts its flame out for the fight
@@ -515,8 +518,8 @@ export class Lamps {
           b.vx += L.gx * gut * G.lean;
           b.vz += L.gz * gut * G.lean;
           b.vy *= 1 - 0.7 * gut;
-          b.size *= 1 - 0.4 * gut;
-          b.heat *= 1 - 0.35 * gut;
+          b.size *= 1 - 0.3 * gut;
+          b.heat *= 1 - 0.25 * gut;
         }
         fire.spawn(b);
         this.stat.blobs++;

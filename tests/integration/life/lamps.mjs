@@ -176,7 +176,7 @@ export default {
     w.place(0, 6);
     Lm.kindle(99, 0, 0, 0);
     let most = 0, low = 0;
-    w.stepAll(5, 1 / 60, () => {
+    w.stepAll(9, 1 / 60, () => {
       most = Math.max(most, shining(Lm));
       low = Math.max(low, w.game.lights.usedLow);
     });
