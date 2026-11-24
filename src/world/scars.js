@@ -46,6 +46,11 @@ export class Scars {
     // drawn as a long stroke would read as a danger strip
     const top = Math.max(...this.ink), L = SCAR.mark.lineInk;
     this.lineInk = top > L ? this.ink.map((c) => (c * L) / top) : this.ink;
+    // the lit lip of a mark (broken stone / earth where the light catches it, the house style's few
+    // brighter digits) and the thrown-up grit: per level (SCAR.mark.lip), else the default
+    const lip = SCAR.mark.lip[game?.level?.id] ?? SCAR.mark.lip.default;
+    this.lip = lip.color;
+    this.lipA = lip.alpha;
     this.max = SCAR.max;
     this.cap = SCAR.max;
     /** the marks, oldest first: { x, y, z, glyph, size, color: [r, g, b], alpha, rot, owner } (records are reused) */
@@ -55,6 +60,7 @@ export class Scars {
     this._stale = false;
     this._dirty = false; // a mark came: the batch's buffers are written on the next update
     this._dying = 0; // the oldest this many marks are fading out
+    this._lift = 0; // (m: a kind mark on grass lies on its tips)
     this._dieT = 0;
     /** how many kind marks were made, by kind (the tests', the Lab's) */
     this.made = { slam: 0, cut: 0, thrust: 0, dash: 0, blast: 0, beam: 0, step: 0 };
@@ -71,6 +77,9 @@ export class Scars {
     try {
       // (headroom over the cap for the marks fading out while new ones come)
       this.sys = new GlyphParticles(game.U, { max: Math.ceil(this.max * (1 + SCAR.evict)) + 64, additive: false });
+      // (the batch's soft depth: at the particles' 0.6 m a mark lying 0.07 m over the floor was faded to a
+      // tenth of itself; with the kinds on the batch is a floor's, SCAR.mark.soft)
+      if (marksOn() && this.sys.uniforms?.uSoft) this.sys.uniforms.uSoft.value = SCAR.mark.soft;
       game.pipeline?.registerParticles?.(this.sys);
     } catch {
       this.sys = null; // (headless: no particle batch; the marks are still counted)
@@ -105,6 +114,7 @@ export class Scars {
   }
 
   _add(x, y, z, glyph, size, color, alpha, rot, owner) {
+    y += this._lift;
     if (!Number.isFinite(x + y + z + size + rot)) return;
     const M = this.marks;
     if (M.length >= this.cap) {
@@ -173,6 +183,9 @@ export class Scars {
     const mz = kind === 'cut' || kind === 'dash' || kind === 'beam' ? z + dz * (o.arc ? 0 : (len || 1) * 0.5) : z;
     const keep = kind === 'beam' ? 1 : this._merge(mx, mz, size, kind);
     if (keep <= 0) return 0;
+    // (on grass the mark lies on the blades' tips: under them the meadow would hide it)
+    const dens = this.game.world?.fire?.density;
+    this._lift = typeof dens === 'function' ? SCAR.mark.grassLift * clamp01(Number(dens(x, z)) || 0) : 0;
     switch (kind) {
       case 'slam': this._slam(x, z, power, size, keep, r); break;
       case 'cut': this._cut(x, z, dx, dz, power, len, keep, o.claws | 0, o.arc ? r : 0, o.spread); break;
@@ -182,6 +195,7 @@ export class Scars {
       case 'beam': this._beam(x, z, dx, dz, power, len, !!o.hot || o.hot === undefined); break;
       case 'step': this._step(x, z, dx, dz, power); break;
     }
+    this._lift = 0;
     const n = this.marks.length - n0;
     if (n > 0) {
       this.made[kind]++;
@@ -196,6 +210,19 @@ export class Scars {
     let R = T.r[0] + (power - 0.3) * T.rk;
     if (Number.isFinite(r)) R = Math.min(R, Math.max(T.r[0], r * 0.6));
     return Math.min(T.r[1], Math.max(T.r[0], R));
+  }
+
+  /** One stroke of a line along (ux, uz): its lit lip a hair to the north (the far edge, where the light
+   *  catches it), then the dark stroke itself. */
+  _line(x, y, z, ux, uz, size, ink, alpha, lip = true) {
+    const rot = groundRot(ux, uz);
+    if (lip) {
+      let px = -uz, pz = ux;
+      if (pz > 0 || (Math.abs(pz) < 0.3 && px < 0)) { px = -px; pz = -pz; }
+      const o = SCAR.mark.lipOff;
+      this._add(x + px * o, y - 0.005, z + pz * o, '-', size * 0.85, this.lip, alpha * this.lipA, rot, -1);
+    }
+    this._add(x, y, z, '-', size, ink, alpha, rot, -1);
   }
 
   /** The share of a new mark's glyphs kept: thinned by each older mark of its kind near (x, z). */
@@ -223,13 +250,13 @@ export class Scars {
     const T = SCAR.mark.slam, K = SCAR.mark, y = K.y;
     const k = clamp01((power - 0.3) / 1.5);
     // the biggest reuse today's crater rim (and its charred disc, which world.impact lays)
-    if (power >= SCAR.crater.min) this.crater(x, z, Math.max(R, Math.min(Number.isFinite(rBlow) ? rBlow : 9, 1.2 + power * 1.1)), power, keep);
+    if (power >= SCAR.crater.min) this.crater(x, z, Math.max(R, Math.min(Number.isFinite(rBlow) ? rBlow : 9, 1.2 + power * 1.1)), power, keep, this.lip);
     else {
       const n = Math.max(3, Math.round((T.grit[0] + (T.grit[1] - T.grit[0]) * k) * keep));
       const a0 = rnd() * TAU;
       for (let i = 0; i < n; i++) {
         const a = a0 + (i / n) * TAU + (rnd() - 0.5) * 0.7, d = R * (0.78 + 0.38 * rnd());
-        this._add(x + Math.cos(a) * d, y + 0.03, z + Math.sin(a) * d, pick(T.glyphs), 0.2 + rnd() * 0.18 + 0.1 * k, K.grit, K.alpha, rnd() * TAU, -1);
+        this._add(x + Math.cos(a) * d, y + 0.03, z + Math.sin(a) * d, pick(T.glyphs), 0.2 + rnd() * 0.18 + 0.1 * k, this.lip, K.alpha * this.lipA, rnd() * TAU, -1);
       }
     }
     // the crushed middle and short radial cracks out to the rim
@@ -242,7 +269,7 @@ export class Scars {
       for (let d = 0.3; d < reach; d += 0.34) {
         a += (rnd() - 0.5) * 0.25;
         const ca = Math.cos(a), sa = Math.sin(a);
-        this._add(x + ca * d, y, z + sa * d, '-', T.crack * (1 - 0.4 * (d / reach)), this.ink, K.alpha * 0.9, groundRot(ca, sa), -1);
+        this._line(x + ca * d, y, z + sa * d, ca, sa, T.crack * (1 - 0.4 * (d / reach)), this.ink, K.alpha * 0.9, d < reach * 0.6);
       }
     }
   }
@@ -281,7 +308,7 @@ export class Scars {
           ux = dx;
           uz = dz;
         }
-        this._add(cx, y, cz, '-', lerp(T.size[0], T.size[1], k) * (0.55 + 0.45 * taper), this.lineInk, K.alpha * (0.6 + 0.4 * taper), groundRot(ux, uz), -1);
+        this._line(cx, y, cz, ux, uz, lerp(T.size[0], T.size[1], k) * (0.55 + 0.45 * taper), this.lineInk, K.alpha * (0.6 + 0.4 * taper));
       }
     }
     // a little grit thrown to one side of it
@@ -291,7 +318,7 @@ export class Scars {
       const t = 0.25 + 0.6 * rnd(), s = t * L, d = side * (0.28 + 0.4 * rnd() + (lines - 1) * sp * 0.5);
       const cx = arc > 0 ? x + Math.cos(a0 + s / arc) * (arc + d) : x + dx * s + px * d;
       const cz = arc > 0 ? z + Math.sin(a0 + s / arc) * (arc + d) : z + dz * s + pz * d;
-      this._add(cx, y + 0.02, cz, pick('.,\''), 0.18 + 0.12 * rnd(), K.grit, K.alpha, rnd() * TAU, -1);
+      this._add(cx, y + 0.02, cz, pick('.,\''), 0.18 + 0.12 * rnd(), this.lip, K.alpha * this.lipA, rnd() * TAU, -1);
     }
   }
 
@@ -300,14 +327,14 @@ export class Scars {
     const T = SCAR.mark.thrust, K = SCAR.mark, y = K.y;
     const k = clamp01((power - 0.2) / 1.2);
     const L = lerp(T.len[0], T.len[1], k), rot = groundRot(dx, dz);
-    for (let s = -L * 0.5; s <= L * 0.5 + 1e-6; s += 0.2) this._add(x + dx * s, y, z + dz * s, '-', T.size * (1 - 0.3 * Math.abs(s) / L), this.lineInk, K.alpha, rot, -1);
+    for (let s = -L * 0.5; s <= L * 0.5 + 1e-6; s += 0.2) this._line(x + dx * s, y, z + dz * s, dx, dz, T.size * (1 - 0.3 * Math.abs(s) / L), this.lineInk, K.alpha);
     this._add(x + dx * L * 0.5, y, z + dz * L * 0.5, pick('vx'), T.size * 0.8, this.ink, K.alpha, rot, -1);
     const n = Math.round((T.spray[0] + (T.spray[1] - T.spray[0]) * k) * keep);
     for (let i = 0; i < n; i++) {
       const a = (rnd() - 0.5) * 1.1, d = lerp(T.reach[0], T.reach[1], rnd()) * (0.6 + 0.4 * k);
       const ca = Math.cos(a), sa = Math.sin(a);
       const ux = dx * ca - dz * sa, uz = dz * ca + dx * sa;
-      this._add(x + ux * d, y + 0.02, z + uz * d, pick('.,\'`'), 0.17 + 0.12 * rnd(), K.grit, K.alpha, rnd() * TAU, -1);
+      this._add(x + ux * d, y + 0.02, z + uz * d, pick('.,\'`'), 0.17 + 0.12 * rnd(), this.lip, K.alpha * this.lipA, rnd() * TAU, -1);
     }
   }
 
@@ -337,18 +364,20 @@ export class Scars {
       for (const side of [-1, 1]) {
         if (rnd() > (0.55 + 0.4 * deep) * keep + 0.1) continue;
         at(s + (rnd() - 0.5) * 0.12, side * w * (0.85 + 0.3 * rnd()), P);
-        this._add(P[0], y, P[1], rnd() < 0.8 ? '-' : '~', T.size * (0.75 + 0.3 * rnd()), this.lineInk, T.alpha * deep, P[2] + (rnd() - 0.5) * 0.2, -1);
+        // (the edge on the far side catches the light: the furrow's lit lip; the near one is its shadow)
+        const lit = arc > 0 ? side > 0 : dx * side < 0 || (Math.abs(dx) < 0.3 && side > 0);
+        this._add(P[0], y, P[1], rnd() < 0.8 ? '-' : '~', T.size * (0.75 + 0.3 * rnd()), lit ? this.lip : this.lineInk, T.alpha * deep * (lit ? this.lipA : 1), P[2] + (rnd() - 0.5) * 0.2, -1);
       }
       if (rnd() < 0.3 * keep) {
         at(s, (rnd() - 0.5) * w, P);
-        this._add(P[0], y + 0.01, P[1], pick('.,'), 0.17, K.grit, T.alpha, rnd() * TAU, -1);
+        this._add(P[0], y + 0.01, P[1], pick('.,'), 0.17, this.lip, T.alpha * this.lipA, rnd() * TAU, -1);
       }
     }
     // the heap of earth pushed up where it stopped
     const n = Math.round((3 + 4 * k) * keep);
     for (let i = 0; i < n; i++) {
       at(L + 0.1 + 0.3 * rnd(), (rnd() - 0.5) * w * 2.4, P);
-      this._add(P[0], y + 0.03, P[1], pick('.,:o'), 0.2 + 0.14 * rnd(), K.grit, K.alpha, rnd() * TAU, -1);
+      this._add(P[0], y + 0.03, P[1], pick('.,:o'), 0.2 + 0.14 * rnd(), this.lip, K.alpha * this.lipA, rnd() * TAU, -1);
     }
   }
 
@@ -372,7 +401,7 @@ export class Scars {
         a += (rnd() - 0.5) * 0.3;
         const ca = Math.cos(a), sa = Math.sin(a);
         // (thin cracks: smaller strokes than a slam's)
-        this._add(x + ca * d, y, z + sa * d, '-', 0.32 * (1 - 0.35 * ((d - R * 0.45) / reach)), this.ink, K.alpha * 0.85, groundRot(ca, sa), -1);
+        this._line(x + ca * d, y, z + sa * d, ca, sa, 0.32 * (1 - 0.35 * ((d - R * 0.45) / reach)), this.ink, K.alpha * 0.85, rnd() < 0.5);
       }
     }
     if (hot) this._char(x, z, R * 0.8, K.char.blast);
@@ -387,7 +416,8 @@ export class Scars {
     for (let s = 0; s < L; s += T.step) {
       for (const side of [-1, 1]) {
         const d = side * w * (0.9 + 0.25 * rnd());
-        this._add(x + dx * s + px * d, y, z + dz * s + pz * d, '-', 0.34 + 0.06 * rnd(), this.lineInk, K.alpha, rot + (rnd() - 0.5) * 0.12, -1);
+        const lit = pz * side < 0; // (the far edge's lip catches the light)
+        this._add(x + dx * s + px * d, y, z + dz * s + pz * d, '-', 0.34 + 0.06 * rnd(), lit ? this.lip : this.lineInk, K.alpha * (lit ? this.lipA : 1), rot + (rnd() - 0.5) * 0.12, -1);
       }
       // the glass: a pale sheen down the middle, every other cell (dim: never a lit line)
       if (rnd() < 0.55) this._add(x + dx * s + px * (rnd() - 0.5) * w * 0.5, y + 0.01, z + dz * s + pz * (rnd() - 0.5) * w * 0.5, rnd() < 0.7 ? '=' : '~', 0.3, T.glass, T.glassAlpha, rot, -1);
@@ -409,7 +439,7 @@ export class Scars {
     for (let i = -1; i <= 1; i++) {
       const a = i * 0.45, ca = Math.cos(a), sa = Math.sin(a);
       const ux = dx * ca - dz * sa, uz = dz * ca + dx * sa;
-      this._add(x + ux * 0.42 * s, y, z + uz * 0.42 * s, '-', 0.26 * s, this.ink, T.alpha, groundRot(ux, uz), -1);
+      this._line(x + ux * 0.42 * s, y, z + uz * 0.42 * s, ux, uz, 0.26 * s, this.ink, T.alpha);
     }
   }
 
@@ -500,16 +530,17 @@ export class Scars {
    * A crater's rim round (x, z), r out: earth thrown up in a ring of dark lumps, denser the harder the
    * blow (SCAR.crater). The charred floor inside it is the scorch map's (world.impact). `keep` thins it.
    */
-  crater(x, z, r, power, keep = 1) {
+  crater(x, z, r, power, keep = 1, color = null) {
     const C = SCAR.crater;
     if (!Number.isFinite(x + z + r + power) || !(r > 0.3)) return;
     const k = Math.min(1, Math.max(0, (power - C.min) / 1.3));
     const n = Math.max(4, Math.round((C.ring[0] + (C.ring[1] - C.ring[0]) * k) * keep));
-    const col = this._col;
-    col[0] = 0.07; col[1] = 0.06; col[2] = 0.055;
+    const col = color ?? this._col;
+    if (!color) { col[0] = 0.07; col[1] = 0.06; col[2] = 0.055; }
+    const alpha = color ? SCAR.mark.alpha * this.lipA : 0.9;
     for (let i = 0; i < n; i++) {
       const a = (i / n) * 6.283 + (rnd() - 0.5) * 0.4, d = r * (0.85 + 0.3 * rnd());
-      this._add(x + Math.cos(a) * d, 0.1, z + Math.sin(a) * d, C.glyphs[Math.floor(rnd() * C.glyphs.length)], 0.3 + rnd() * 0.25 + 0.15 * k, col, 0.9, rnd() * 6.283, -1);
+      this._add(x + Math.cos(a) * d, 0.1, z + Math.sin(a) * d, C.glyphs[Math.floor(rnd() * C.glyphs.length)], 0.3 + rnd() * 0.25 + 0.15 * k, col, alpha, rnd() * 6.283, -1);
     }
   }
 

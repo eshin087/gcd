@@ -781,10 +781,11 @@ export class Dragon {
     if (this.state === 'dead') return;
     this.emit('dragon:step', { x: limb.pos.x, z: limb.pos.z, heavy: !!limb.hind });
     this.ablaze.step(limb.pos.x, limb.pos.z, !!limb.hind); // (phase 3: a burning footprint)
-    // (a hind foot's faint print: scars.mark keeps one in SCAR.mark.step.gap m)
-    if (limb.hind && this.state !== 'sleeping') wyrmMark(this, limb.pos.x, limb.pos.z, 'step', TUNING.world.marks.step, this.fwd.x, this.fwd.z);
+
     const charging = this.brain.action?.name === 'charge' && this.brain.action.phase === 'active';
     if (charging && limb.hind) this.game.shake?.(0.07);
+    // (a charging hind foot's print: the run stays on the floor; scars.mark keeps one in SCAR.mark.step.gap m)
+    if (charging && limb.hind) wyrmMark(this, limb.pos.x, limb.pos.z, 'step', TUNING.world.marks.step, this.fwd.x, this.fwd.z);
     const n = limb.hind ? 5 : 3;
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2;

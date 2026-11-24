@@ -352,9 +352,16 @@ export const SCAR = Object.freeze({
   mark: Object.freeze({
     min: 0.12, // a blow lighter than this leaves nothing
     y: 0.07,
+    soft: 0.08, // m: the batch's soft depth (a floor mark is not faded into the floor; the footprints' 0.08)
     alpha: 0.85,
     lineInk: 0.42,
-    grit: Object.freeze([0.07, 0.06, 0.055]), // thrown-up earth (a crater's rim)
+    /** the lit lip of a gash / a crack / a furrow and the thrown-up grit: broken stone where the light
+     *  catches it (the house style's few brighter digits), dim, never white; per level (game.level.id) */
+    lip: Object.freeze({
+      default: Object.freeze({ color: [0.42, 0.4, 0.37], alpha: 0.66 }),
+    }),
+    lipOff: 0.11, // m: the lip a hair north of its stroke (the far edge)
+    grassLift: 0.3, // m x the grass's density there: a mark on a meadow lies on the blades' tips (under them it is hidden)
     merge: Object.freeze({ near: 0.8, keep: 0.45, floor: 0.2, slots: 192, twice: 0.35 }),
     by: Object.freeze({ player: 0.6 }),
     /** the hero's heavy blows (player.js; light cuts leave nothing): the charged cleave's end in the
@@ -363,9 +370,9 @@ export const SCAR = Object.freeze({
     hero: Object.freeze({ cleave: [0.45, 1.25], cleaveLen: 1.3, plunge: 0.75 }),
     /** a fist, a tail, a foot, a landing: a shallow crater, a ring of grit and short radial cracks;
      *  from `crater` power today's crater rim is the ring */
-    slam: Object.freeze({ r: [0.55, 2.3], rk: 0.75, grit: [6, 15], spokes: [3, 6], glyphs: '.,:o', crack: 0.42 }),
+    slam: Object.freeze({ r: [0.55, 2.3], rk: 0.75, grit: [6, 15], spokes: [3, 6], glyphs: '.,:;', crack: 0.42 }),
     /** a blade's edge in the floor: one long thin gash along its way, grit thrown to one side */
-    cut: Object.freeze({ step: 0.27, size: [0.3, 0.5], len: [0.8, 3.4], bow: 0.14, grit: [2, 5], claws: 0.42 }),
+    cut: Object.freeze({ step: 0.2, size: [0.3, 0.5], len: [0.8, 3.4], bow: 0.14, grit: [2, 5], claws: 0.42 }),
     /** a point driven in: a short deep nick, a spray ahead of it */
     thrust: Object.freeze({ len: [0.4, 0.8], size: 0.55, spray: [4, 8], reach: [0.5, 1.5] }),
     /** a body or a blade dragged along the floor: a shallow furrow, scuffed edges, a heap at its end */

@@ -366,7 +366,11 @@ export class Flight {
     o.dz = R.dz;
     o.y = 0.3;
     o.src = W?.destructibles?.swing?.() ?? -1;
+    o.mark = 'dash'; // (its floor mark: a furrow the way he skids, not a crater; scars.mark)
+    o.len = 1.1;
     W?.impact?.(x, z, 0.7, 0.8, o);
+    o.mark = undefined;
+    o.len = undefined;
   }
 
   // ---------------------------------------------------------------- the carry (See the World)
