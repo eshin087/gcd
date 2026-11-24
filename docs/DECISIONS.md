@@ -5291,3 +5291,34 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   are faint (a floor channel the grass reads as torn would fix it, at the price of touching fire fuel);
   the dust sift, the pebbles, the smoke and the crater haze are faint; Ashfall's crows do not read; the
   wyrm's fire fills the mark cap in about three minutes. The owner has not yet judged any of it in play.
+
+## ADR-180 — Grass the sword mows, lamps that light with the fight, and the living world heard (2026-11-23)
+
+- **Context:** asked "what else do you recommend to make the world and background more alive and
+  interactable to make the fight seem cool", the owner got eight ideas and said "Build top three":
+  grass the sword cuts (which also lets the boss marks of ADR-177 show on grass, where they were
+  faint), the levels' unlit lanterns lighting with the fight, and sound for the new life.
+- **Decision:**
+  1. **Torn grass is the scorch map's A channel**, the one channel nothing in the fire reads: a tear
+     is persistent until the fight's reset and never changes what burns, so the seeded fights replay
+     byte for byte. The sword mows (`mowSwing` beside `_cutWorld`: where the steel passes low enough,
+     a strip along its ground path; the blade's height decides skim or cut), a floor mark tears its own
+     shape out. The grass shader draws two looks from one channel: mown (the blade's own letter clipped
+     to a pale stub, some tops lying) and torn out (bare floor). Burnt grass stays black.
+  2. **Lamps are a living-world layer** (`life.lamps`, piece `answer`): a breakable def carries
+     `lamp: { y, r }`; a lamp kindles by a per-level rule (some at the start, more at each boss phase,
+     fire landing near), gutters under a blow, goes out for good when its piece breaks. The flame is
+     heat in the fire field; only a few lamps hold a real light: the light pool gained LOW lights
+     that take only the slots the fight leaves free and fade in and out of them.
+  3. **The living world's one-shot sounds** go through `life.sound` / `lifeSay` into `LIFE_SFX`:
+     synthesized, short, one sound per event (a flock is one burst, a shake one or two shudders), per
+     level (the Throne and the Hall hear nothing alive, the Grove only its canes and its lamps), no
+     louder than a footstep at the same distance except a big flock and a creak, never `Math.random`.
+- **Why this way:** one free channel and a shader branch that is skipped where nothing is torn cost
+  nothing where nothing happened; the light pool's eight slots belong to the fight, so lamps borrow
+  what is left; the sounds lean on the approved air bed's manner (the owner: "sound looks good").
+- **Consequences / open:** the mowing is calm (a pale speckled clearing more than a crisp swath) and
+  the hero's mostly vertical cuts leave lanes, not arcs; after a fire-heavy fight burnt ground still
+  dominates the meadow; a lantern's flame is a few letters at the game camera; Foxfire's ten lanterns
+  share three lights; the Ring's braziers became low lights (they give way to the fight's) also with
+  the living world off; nobody has heard the sounds yet.

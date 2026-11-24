@@ -5,6 +5,44 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-23 — Three more: grass the sword mows, lamps that light with the fight, the living world heard (ADR-180; planned by Fable, built by Opus agents)
+
+**Owner:** "what else do you recommend to make the world and background more alive and interactable to
+make the fight seem cool"; given eight ideas: "Build top three". Branch `world/alive-three`.
+
+**How.** The lead wired `life.sound`, an empty `LIFE_SFX` table and a `lamps` stub; three agents
+(GRASS, LAMPS, SOUND) built in their own worktrees and ran only their own suites; the merge had no
+conflict; the lead connected the seams (the lamps' sounds through `lifeSay`; the old 'wear' creak gives
+way to the new `treeCreak` while the air is on, or both played; the Throne's outskirts keep a
+lantern's `lamp` mark) and ran the whole set once.
+
+- **Grass.** The scorch map's A channel is torn grass (`tear`, `tearLine`, `tornAt`; only where grass
+  grows; never R / G / B; `?mow=0`). The sword mows along its ground path where the steel passes low
+  (lights skim the tops, low chops and the cleave cut lanes about 1 m x 3 m, stabs pass over); cut tops
+  fly. Every floor mark tears its own shape out, so marks finally read on grass (the wyrm's three claw
+  gashes do). The seeded wyrm fight's trace is byte-identical.
+- **Lamps.** Ashfall's four lanterns, Foxfire's ten, the Grove's two (and the Ring's braziers, which
+  already burned) kindle by level: a few at the start, more at each phase, nearest the boss first;
+  fire near one lights it; a blow nearby makes it gutter; a broken one goes out in a puff until the
+  reset. Orange everywhere (foxfire blue vanished into Foxfire's stone and is the boss's colour).
+  Low lights in the pool: a lamp takes only a free slot and fades in and out.
+- **Sounds.** Ten synthesized one-shots (flock burst, animal bolt, tree shudder and creak, dust,
+  pebbles, leaf skitter, lamp catch / gutter / out), per level, rate-limited, quieter in the fight,
+  measured offline against a footstep and a swing; an audition page for the owner.
+
+**Verified.** The whole test set (21 suites) and the build on the merged branch; `world.mjs` `mow`,
+`life` `lamps` and the air's sound scenarios; films of the mowing, the marks on grass and the lamps.
+
+**Not verified / open.**
+- Nobody has heard the sounds; the owner judges on the audition page.
+- The mowing reads calm at the game camera; after a fire-heavy fight burnt ground dominates; the flying
+  cut tops are barely visible; the flurry does not mow.
+- A lantern's flame is a few letters at the game camera; the gutter's lean does not read (its dip does).
+- The Ring's braziers are low lights also with the living world off.
+- Not looked at on the phone except for page errors.
+
+---
+
 ## 2026-11-23 — A fight the world feels: the blade clean through, a mark for every boss blow, flocks, animals, a set that shakes (ADR-177; planned by Fable, built by Opus agents)
 
 **Owner:** "when the player hits something like a rock or tree, the sword gets stopped and i dont like

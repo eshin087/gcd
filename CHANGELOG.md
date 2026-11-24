@@ -4,7 +4,17 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Eighty pieces of work since 0.4.0:
+Eighty-one pieces of work since 0.4.0:
+- **The sword mows the grass; lanterns light with the fight; the living world is heard** (2026-11-23, ADR-180).
+  *Added:* **a low swing mows the grass** where the blade passes, to short pale stubble with the cut
+  tops lying beside it, until the fight resets (`?mow=0`: today's grass); **every boss mark tears the
+  grass out** under it, so the marks show in the meadow (the wyrm's claws leave three raked furrows).
+  **The lanterns light**: Ashfall's, Foxfire's and the Windless Grove's stone lanterns kindle as the fight
+  goes on (a few when you arrive, more at each of the boss's phases, any that fire reaches), gutter when a
+  heavy blow lands near and go out when broken; the Skybreak Ring's braziers gutter and die the same
+  way. **The new life is heard**: a flock's wings as it leaves, a rustle as an animal bolts, a tree's
+  shudder and its creak before it falls, dust and pebbles, a lantern catching and dying; quiet,
+  synthesized, one sound per moment. None of it changes how the fight plays.
 - **The sword cuts clean through; the fight marks the ground; birds and animals flee** (2026-11-23, ADR-177).
   *Changed:* the hero's blade no longer stops on a rock, a tree or a pillar it cannot fell: the swing
   goes through at full speed, the piece still takes the blow, its letters fly on along the cut, stone

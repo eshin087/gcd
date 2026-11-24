@@ -184,6 +184,14 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.76 — Three more: grass the sword mows, lamps that light with the fight, the living world heard (2026-11-23, `world/alive-three`, ADR-180)
+- [x] Torn grass (the scorch map's A): the sword mows, every floor mark tears its shape (`?mow=0`)
+- [x] Lanterns and braziers that kindle by phase and fire, gutter under blows, go out when broken; low lights in the pool
+- [x] The living world's sounds (`LIFE_SFX`, `lifeSay`), per level, rate-limited, an audition page
+- [ ] The owner hears the sounds; their calls on the mowing's boldness and a lantern flame's size
+- [ ] The flurry mows; the Ashfall grass's cut colour; the gutter's lean
+- [ ] On the phone
+
 ## M1.75 — A fight the world feels (2026-11-23, `world/fight-alive`, ADR-177)
 - [x] The hero's blade goes clean through what it does not fell (`?cutStop=1`: the stop of ADR-132)
 - [x] A mark of its kind for every boss blow that meets the ground, on all eight bosses, until the reset (`?marks=0`)
