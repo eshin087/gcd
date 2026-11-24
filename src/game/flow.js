@@ -894,6 +894,7 @@ export class GameFlow {
       g.fx?.shed?.clear?.();
       g.fx?.ripple?.clear?.();
       g.fx?.streak?.clear?.();
+      g.fx?.rip?.clear?.();
       g.fx?.stamp?.clear?.();
       perfectClear();
       g.fx?.alpha?.clear?.();
