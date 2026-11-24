@@ -184,6 +184,12 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.76 — Every sound effect back to its first synth version (2026-11-23, `audio/swing-choices`, ADR-178)
+- [x] The recorded / designed sounds off by default (`?sfx=new` turns them on; no files fetched while off)
+- [x] The new swing and warning options of the session set aside (a git stash, not in the repo)
+- [x] The music (ADR-117) kept
+- [ ] The next sound round, from the baseline: the owner says what they want first (a reference, a game, a word) rather than picking from options they then reject
+
 ## M1.75 — A fight the world feels (2026-11-23, `world/fight-alive`, ADR-177)
 - [x] The hero's blade goes clean through what it does not fell (`?cutStop=1`: the stop of ADR-132)
 - [x] A mark of its kind for every boss blow that meets the ground, on all eight bosses, until the reset (`?marks=0`)

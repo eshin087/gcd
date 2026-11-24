@@ -19,6 +19,15 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-23',
+        title: 'Every sound effect is back to its first synth version',
+        notes: [
+          'Parries, hits, warnings and swings are back to their first synthesized sounds, as at the start.',
+          'The recorded music for each level and boss is unchanged.',
+          'Want the recorded and designed sounds back? Add ?sfx=new to the address (or use the Lab).',
+        ],
+      },
+      {
+        date: '2026-11-23',
         title: 'The sword cuts clean through; the fight marks the ground; birds and animals flee',
         notes: [
           'Your sword no longer stops when it meets a rock, a tree or a pillar. The swing goes through at full speed, chips fly along the cut, stone sparks and wood splinters.',

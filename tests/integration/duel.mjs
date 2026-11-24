@@ -4250,6 +4250,7 @@ async function scenarioReact() {
 async function scenarioSfx() {
   out('\n== scenario SFX (the attack sounds: one blow through the air per real blow, before its impact; cues only on blue / red; ?sfx=old) ==');
   const SMP = await imp('src/audio/samples.js');
+  SMP.setSfxMode('new'); // (the sound passes are off by default, ADR-176: this scenario tests them)
   const { ATTACK_SOUND, beatSound } = await imp('src/entities/enemies/duelist/attackSound.js');
   // every boss's data: the weapon its TUNING declares, every blow classified (or left out: a cast, a pure throw, a burst)
   const BOSSES = [
@@ -4399,7 +4400,7 @@ async function scenarioSfx() {
       const old = run();
       assert(JSON.stringify(old) === JSON.stringify(none), `?sfx=old with the files loaded: the synth as before (${old.join(' ')})`);
     } finally {
-      SMP.setSfxMode('new');
+      SMP.setSfxMode(SMP.DEFAULT_SFX);
       A.play = p0;
       A._sample = s0;
       for (const [s, l] of Object.entries(keep)) { if (l === undefined) delete SAMPLE_FILES[s]; else SAMPLE_FILES[s] = l; }

@@ -5291,3 +5291,25 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   are faint (a floor channel the grass reads as torn would fix it, at the price of touching fire fuel);
   the dust sift, the pebbles, the smoke and the crater haze are faint; Ashfall's crows do not read; the
   wyrm's fire fills the mark cap in about three minutes. The owner has not yet judged any of it in play.
+
+## ADR-178 — Every sound effect back to its first synth version: the sound passes are off by default (2026-11-23)
+
+- **Context:** ADR-165 (attack cues and blows as recordings) and ADR-172 (the combat core as recordings and
+  designed sounds) replaced much of the synth. In a session that followed, the owner turned down a new light-cut
+  swing (round one picked `e`, then "i dont like any of these"), plucked-string blue and red warnings, seven
+  variations of them, and a spread of other families (bamboo, wood, bell, flute, steel, drum, bowstring, breath),
+  and said: "lets just make all the sounds go back to their original. i want to start from baseline and undo all
+  the sound changes". Asked the scope, they chose: all sound effects, keep the music.
+- **Decision:** the existing switch is turned round: `samples.js` `DEFAULT_SFX = 'old'`, `?sfx=new` (the Lab's
+  `sfx` row) opts in. Nothing is deleted: the recordings, the designed sounds, `sampleList.js`, `parryChain.js` and
+  the synth recipes stay. The sample bank fetches nothing while the mode is `old` and loads on `setSfxMode('new')`
+  (verified in a headless browser: default 0 of 35 files requested; `?sfx=new` and the live switch 35 of 35).
+  The recorded music (ADR-117) is untouched. Sounds that belong to later features (the streak's climb note, ADR-167;
+  the impact pass's sub and music dip, ADR-149; the living world's air, ADR-163) and the round-two sign-off's two
+  small fixes (the combo swing's pitch rising on every cut; the streak note × 0.5 on a parry) are not part of the
+  switch and stay.
+- **Consequences:** a new sound round starts from the first synth sounds. The work of that session (a swing with
+  its top on the blade's contact, `player:attack`'s windup / active, `?swing=`, `?blue=` / `?red=` with the
+  families above, the pickers) is not in the repo: it is a git stash on the machine that made it ("swing + warning
+  sound options") and the pickers' pages. The tests of the sound passes (integ and duel `sfx`) switch the mode on
+  and put the default back.
