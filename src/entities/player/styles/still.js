@@ -5,7 +5,7 @@
 //             flick to clean the blade (chiburi) and then nothing.
 //   COMBO     few hits, each sudden: almost no windup, a hard stop, a held finish.
 // The contract: styles/index.js. Guides: styles/STANCES.md, styles/COMBOS.md.
-import { P, ANK, set3, dir, add3, dirNudge, kf, hump, handLoose, standLife, STAND_LIFE } from '../poseKit.js';
+import { P, ANK, set3, dir, add3, dirNudge, kf, hump, handLoose, handFingers, standLife, STAND_LIFE } from '../poseKit.js';
 
 // his own slow life: a long breath, the weight settling slowly, a gaze that hardly wanders
 const LIFE = { ...STAND_LIFE, breath: [4.9, 4.3], settle: 11.3, drift: 17.9, look: [13.7, 7.9], point: [6.1, 8.3], arms: 1.1 };
@@ -59,10 +59,10 @@ function carried(p, P, A) {
   p[P.hdX] = 0.13 - 0.01 * m.br; // bowed a little: the eyes on the ground ahead
   p[P.hdY] = -0.08 + 0.06 * m.look;
   p[P.hdZ] = 0.02;
-  set3(p, P.rH, -0.1 + 0.004 * m.tipB, -0.4 + 0.008 * m.brL, 0.2 + 0.006 * m.tipA);
-  set3(p, P.rP, 0.3, -0.85, -0.4);
-  dir(p, P.swD, -27 + 1.6 * m.tipA, -31 + 1.2 * m.tipB + 0.6 * m.brL);
-  set3(p, P.swF, 0.75, -0.66, -0.06); // (the broadest the drawn flat gets to the camera all round)
+  set3(p, P.rH, -0.14 + 0.004 * m.tipB, -0.4 + 0.008 * m.brL, 0.18 + 0.006 * m.tipA);
+  set3(p, P.rP, 0.5, -0.8, -0.3);
+  dir(p, P.swD, -43 + 1.6 * m.tipA, -31 + 1.2 * m.tipB + 0.6 * m.brL);
+  set3(p, P.swF, 0.35, -0.86, -0.38); // (the broadest the drawn flat gets to the camera all round)
   handLoose(p, m, { out: 0.02, fwd: -0.07, swing: 0.7 });
   set3(p, P.rF, -0.12, ANK, 0.1);
   set3(p, P.lF, 0.13, ANK, -0.09);
@@ -143,8 +143,8 @@ function lowPoint(p, P, A) {
   p[P.footFlat] = 0.95;
 }
 
-/** HIGH POINT: the sword hand high beside the right temple, the blade straight off the forearm with
- *  the point dropped at the foe's eyes; the free hand's sword fingers low before him. Only the tip
+/** HIGH POINT: the sword hand high before the right shoulder, the blade straight off the forearm
+ *  across before his face with the point at the foe's eyes; the free hand's sword fingers low before him. Only the tip
  *  moves. */
 function highPoint(p, P, A) {
   const m = lifeOf(A, 1);
@@ -160,10 +160,12 @@ function highPoint(p, P, A) {
   p[P.hdX] = 0.04;
   p[P.hdY] = -0.36;
   p[P.hdZ] = 0.02;
-  set3(p, P.rH, -0.1, -0.08 + 0.006 * m.brL, 0.46); // the arm out before the shoulder, the elbow dropped under it
-  set3(p, P.rP, -0.5, -0.85, 0);
-  dir(p, P.swD, 5 + 1.8 * m.tipA, 13 + 1.6 * m.tipB); // the point up a little: a tall foe's eyes
-  set3(p, P.swF, -0.02, 0.97, -0.22);
+  set3(p, P.rH, 0.04, -0.02 + 0.006 * m.brL, 0.4); // the hand before the right shoulder, the elbow out
+  set3(p, P.rP, -0.9, -0.4, -0.1);
+  // the blade across before his face, the point up a little at a tall foe's eyes: a diagonal from
+  // the camera behind him (straight ahead it stood up the screen as a bar, and hid end-on from ahead)
+  dir(p, P.swD, 30 + 1.8 * m.tipA, 12 + 1.6 * m.tipB);
+  set3(p, P.swF, -0.1, 0.98, -0.18);
   set3(p, P.lH, 0.05, -0.42 + 0.008 * m.brL, 0.2);
   set3(p, P.lP, 0.45, -0.3, -0.8);
   set3(p, P.lD, 0.0, -0.45, 0.85);
@@ -232,14 +234,32 @@ const FIDGETS = [
   },
 ];
 
+// ON A STREAK (tier 3+): the stillness turns to intent. At ease the level blade is held with the free
+// hand's sword fingers raised before his chest, the head square to the field; in a fight the high
+// point with the fingers raised the same way. The calm poses give way (maxTier 2).
+function levelAwake(p, P, A) {
+  level(p, P, A);
+  const m = lifeOf(A, 1);
+  handFingers(p, m, { at: 'chest' });
+  p[P.hdY] = 0.06 * m.look;
+  p[P.hdX] = 0.02;
+  p[P.spX] += 0.02;
+}
+function highAwake(p, P, A) {
+  highPoint(p, P, A);
+  handFingers(p, lifeOf(A, 1), { at: 'chest' });
+}
+
 const EASE = [
-  { id: 'still.planted', fn: planted, w: 1.2, dwell: [10, 16] },
-  { id: 'still.carried', fn: carried, w: 1, dwell: [8, 14] },
-  { id: 'still.level', fn: level, w: 1, dwell: [9, 15] },
+  { id: 'still.planted', fn: planted, w: 1.2, dwell: [10, 16], maxTier: 2 },
+  { id: 'still.carried', fn: carried, w: 1, dwell: [8, 14], maxTier: 2 },
+  { id: 'still.level', fn: level, w: 1, dwell: [9, 15], maxTier: 2 },
+  { id: 'still.levelAwake', fn: levelAwake, w: 1, dwell: [9, 15], minTier: 3, move: { d: [0, -0.6, 0.8], n: [-0.6, -0.2, -0.7] } },
 ];
 const FIGHT = [
-  { id: 'still.low', fn: lowPoint, w: 1, dwell: [8, 14] },
-  { id: 'still.high', fn: highPoint, w: 1, dwell: [7, 12] },
+  { id: 'still.low', fn: lowPoint, w: 1, dwell: [8, 14], maxTier: 2 },
+  { id: 'still.high', fn: highPoint, w: 1, dwell: [7, 12], maxTier: 2 },
+  { id: 'still.highAwake', fn: highAwake, w: 1, dwell: [7, 12], minTier: 3, move: { d: [0, -0.6, 0.8], n: [-0.6, -0.2, -0.7] } },
 ];
 
 // ================================================================ THE COMBO
@@ -275,6 +295,19 @@ const DRAW = {
   anim: { kind: 'clip', clip: 'still3' },
 };
 const CHAIN = [SNAP, DOUBLE, DRAW];
+// ON A STREAK (tier 3+): the drawing cut does not stop out on his right: off a hard stop there the
+// blade cuts straight back in and stops with its point on the foe. Two blows in one press.
+const DRAW_AWAKE = {
+  name: 'still3x', kind: 'light', combo: 3, damage: 90, poise: 46, heavy: true,
+  windup: 0.17, active: 0.28, recovery: 0.55, chain: 0.42, buffer: 0.6, lunge: 1.0, reach: 2.3,
+  hitstop: 0.1, shake: 0.32, bite: 1.2, biteHold: 0.12, flare: 0.9, contact: 'cleave', punch: 1.1, kick: 0.16,
+  hits: [
+    { at: [1.0, 1.5], damage: 44, poise: 20, hitstop: 0.09, bite: 1.2, contact: 'sweep' },
+    { at: [1.6, 2.0], damage: 46, poise: 26, hitstop: 0.14, shake: 0.45, bite: 1.4, biteHold: 0.14, heft: { t: 0.1, rate: 0.3 }, punch: 1.6, kick: 0.22, contact: 'cleave', flare: 1.0 },
+  ],
+  anim: { kind: 'clip', clip: 'still3x' },
+};
+const CHAIN_AWAKE = [SNAP, DOUBLE, DRAW_AWAKE];
 
 const SWINGS = {
   /** 1, the snap: barely cocked high on his right, one short diagonal down across his chest to low
@@ -334,10 +367,33 @@ const SWINGS = {
       { u: 2.6, h: [-0.37, -0.18, 0.27], a: [-106, -2], by: -0.33, bz: 0.13, bx: 0.05, hip: -0.45, sy: -0.49, sx: 0.3, fh: 'wing', l: [0.45, -0.18, -0.14] },
     ],
   },
+  /** 3 on a streak: the drawing cut out to his right, a hard stop, then the blade cut straight back
+   *  in, level, to stop across his front with the point on the foe, the sword fingers beside it; held
+   *  (pointed straight ahead it stood up the screen as a bar from the camera behind him). */
+  still3x: {
+    line: 'low', home: 0.6,
+    lF: [0.16, 0.56], rF: [-0.17, -0.48], fy: [0.25, -0.8], drag: 0.16,
+    keys: [
+      { u: 0.6, by: -0.27, bz: -0.08, bx: -0.06, hip: 0.58, sy: 0.62, sx: 0.28, fh: 'wrist', l: [0.12, -0.34, 0.22] },
+      { u: 1.0, h: [0.36, -0.38, -0.02], a: [150, -14], by: -0.25, bz: -0.06, bx: -0.05, hip: 0.5, sy: 0.56, sx: 0.26, fh: 'wrist', l: [0.12, -0.34, 0.22], lk: 0.9 },
+      { u: 1.08, l: [0.22, -0.3, 0.16], lp: [0.5, -0.8, -0.2], ld: [70, -20], pn: [0, -1, 0], lk: 0.2 },
+      { u: 1.2, h: [0.3, -0.32, 0.26], a: [100, -10] },
+      { u: 1.33, h: [0.12, -0.26, 0.5], a: [30, -6], by: -0.3, bz: 0.1, bx: 0.01, hip: -0.02, sy: 0.04, sx: 0.32, l: [0.38, -0.2, -0.02], lp: [0.3, -0.7, -0.6], ld: [100, -10], pn: [0, -1, 0], lk: 0 },
+      { u: 1.43, h: [-0.18, -0.2, 0.48], a: [-40, -4] },
+      { u: 1.57, h: [-0.34, -0.18, 0.32], a: [-96, -2], by: -0.32, bz: 0.13, bx: 0.04, hip: -0.36, sy: -0.4, sx: 0.28, fh: 'wing', l: [0.45, -0.18, -0.14] },
+      { u: 1.66, h: [-0.3, -0.16, 0.36], a: [-72, 0], by: -0.31, bz: 0.13, bx: 0.04, hip: -0.32, sy: -0.36, sx: 0.28 },
+      { u: 1.8, h: [-0.08, -0.12, 0.48], a: [-18, 4] },
+      { u: 1.9, h: [0.04, -0.08, 0.5], a: [18, 8], by: -0.29, bz: 0.14, bx: 0.04, hip: 0.02, sy: 0.04, sx: 0.3, fh: 'aim', l: [0.04, -0.12, 0.4], ld: [-6, 6] },
+      { u: 2.0, h: [0.06, -0.06, 0.47], a: [34, 10], by: -0.29, bz: 0.15, bx: 0.04, hip: 0.1, sy: 0.12, sx: 0.3, fh: 'aim', l: [0.04, -0.12, 0.4], ld: [-6, 6] },
+      { u: 2.12, by: -0.31, bz: 0.16, bx: 0.05, hip: 0.2, sy: 0.22, sx: 0.33 },
+      { u: 2.6, h: [0.06, -0.07, 0.46], a: [35, 9], by: -0.29, bz: 0.13, bx: 0.04, hip: 0.15, sy: 0.17, sx: 0.3, fh: 'aim', l: [0.04, -0.12, 0.4], ld: [-6, 6] },
+    ],
+  },
 };
 
 export const still = {
   id: 'still', label: 'Still master', blurb: 'Calm and still; sudden sharp cuts, held poses.',
   stances: { ease: EASE, fight: FIGHT }, shift: { fade: 3.2 },
   fidgets: FIDGETS, chain: CHAIN, swings: SWINGS,
+  chainAwake: [{ minTier: 3, chain: CHAIN_AWAKE }],
 };
