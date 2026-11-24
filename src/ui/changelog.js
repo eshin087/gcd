@@ -19,6 +19,31 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-23',
+        title: 'Four ways for the hero to move, to try: stances, idles and a light combo each',
+        notes: [
+          'Options to try before one is picked: with nothing added to the address the hero moves as before.',
+          'Each is a character: how he stands at ease and in a fight (he shifts between a few poses), what he does when idle, and his own light combo. No pose rests a hand on his hip.',
+          'Add ?moves=flow for the flowing swordsman, ?moves=still for the still master, ?moves=restless for the restless duelist, ?moves=showy for the showy acrobat.',
+          '?stance= takes only how he stands and idles, ?combo= only the combo, so you can mix two.',
+          'On a streak of seven perfect defences each one holds the sword differently and changes a blow of its combo. Every combo deals about the same damage per second as before.',
+        ],
+      },
+      {
+        date: '2026-11-23',
+        title: 'A more mystical sword, to try, and an arc that grows with the streak',
+        notes: [
+          'Options to try, off by default: ?mystic=a a breath of violet letters up the edges, ?mystic=b tiny digits climbing the blade, ?mystic=c wisps peeling off the steel on the wind, ?mystic=d a line of letters left where the blade stops.',
+          'Each is faint and already there at rest, and grows as your streak grows.',
+          '?arc=1 makes your swing arc gain fine lines, hang longer and leave beads of light as the streak climbs; ?arc=2 does the same more quietly.',
+        ],
+      },
+      {
+        date: '2026-11-23',
+        title: 'The resting blade no longer glows',
+        notes: ['At some angles a bright halo bloomed round your sword while you stood still, and its point left a pale block in the grass. Both are gone.'],
+      },
+      {
+        date: '2026-11-23',
         title: 'Combat sounds, round two: real steel on the parry, picked by ear',
         notes: [
           'Parries now ring with real swords: a sword on a katana, and a spear on a katana for a blue or perfect parry.',
