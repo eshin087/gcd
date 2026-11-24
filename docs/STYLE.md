@@ -123,6 +123,26 @@ the wyrm next to it, it is wrong, however good it looks alone.
   fight happened here", but the KINDS read only zoomed in (a 1.5 m gash is ~28 px at the game camera) and
   they are weakest on grass; the lip's brightness and the pale arcs and trenches are the owner's to judge
   (open).
+- **Grass the sword cuts** (2026-11-23, ADR-180; `?mow=0` the grass as before). The owner asked for a
+  world that answers the fight; the meadow is the biggest thing in it. Three looks, each kept distinct:
+  - **Mown** (the hero's blade, wherever it passes low through the grass: a low sweep mows its arc, a
+    waist-high swing only skims the tops, a vertical chop leaves a lane, a stab passes over): each blade
+    there is cut or stands (a scatter of stubs at the edge of a swath, never an even shave). A cut blade
+    keeps the STUB OF ITS OWN LETTER, its lower part clipped at a slightly different height per blade,
+    not a shorter or squashed letter and not a swapped glyph; the stub is PALE AT THE CUT (a dry straw
+    tone, an ashen one on Ashfall's dried grass), and 40 % of the cut tops LIE where they fell, small,
+    laid over, still. A handful of tiny grass letters fly off the blade per swing (at most 14), in the
+    grass's own green, and fall back fast.
+  - **Torn out** (a blow's mark: every kind tears its own shape first, the slam's disc, the gash's line,
+    the claws' three, the furrow, the beam's strip): the grass goes to the root and the floor shows bare
+    under the mark, nothing lies; the mark's glyphs then lie ON THE FLOOR, not on the blade tips, so a
+    mark finally reads on a meadow (a heavy step's paw only mows).
+  - **Burnt stays black**: burn wins over both. A mown blade that burns is dark, never pale; the burnt
+    grass's ash glyphs are unchanged.
+  Mown and burnt read clearly apart side by side. Honest (from the films): the marks reading on grass
+  (the claws especially) is the clearest gain; a sweep's lane is pale and speckled, quiet rather than
+  crisp; after a long fight the burnt ground dominates both. The calm of the look (the strip's width,
+  how many tops lie, how pale the cut) is the owner's to judge (open); the flurry does not mow.
 
 **Effects (ADR-113).** Anything that burns, glows or strikes as a body is HEAT IN THE FIRE FIELD
 (`game.fx.fire`), printed in the same small letters as the wyrm: never a big glyph sprite. Read
@@ -231,7 +251,7 @@ History matters here:
 | Flagstones, the courtyard's paving, the crater's plates (floors only) | **carved glyphs**: one crisp glyph per world-fixed lattice cell (0.22 × 0.28 m on a plane facing the default camera, rows randomly offset), picked by light on flat facets (lit `% # 8 @ &`, shadow `. : ;`), mid-lit flanks hatched along their contour (`/ \| \`), world-fixed cracks, dim green moss tufts (`, ; " *`), near-black gaps. Flagstones: dimmer, irregular 5–7-sided slabs, half-sunk and tilted, a chipped moonlit chamfer, grass leaning over and growing through the rim | `createCarvedGlyphMaterial` (`render/materials.js`), looks `STONE_LOOK` / `SLAB_LOOK` in `world/forest.js` |
 | Trunks (the Cinder Tree's wood is prop art since ADR-113) | screen-grid `STONE` 1.0: symbol ramp `. : - = + * % # 8 & @ M W` + **outline glyphs** (`\| - / \`) on silhouettes / depth steps of raised props | `createAsciiObjectMaterial` → `render/pipeline.js` |
 | Canopies | screen-grid `LEAF` 0.6: blobby ramp `. : o 0 O 8 @` | same |
-| Grass | ~260k instanced quads, each ONE glyph stroke (`\| / \ ' Y V v l i`) **anchored in the world** (no shimmer when the camera moves); gentle slow wind, trample pushers, wing gusts, burnt to ash glyphs; dim world-space soil glyphs between | `world/grass.js`, `world/ground.js` |
+| Grass | ~260k instanced quads, each ONE glyph stroke (`\| / \ ' Y V v l i`) **anchored in the world** (no shimmer when the camera moves); gentle slow wind, trample pushers, wing gusts, burnt to ash glyphs, mown to the stubs of their own letters and torn out under a mark (ADR-180, "How things break"); dim world-space soil glyphs between | `world/grass.js`, `world/ground.js` |
 | Hero, wyrm | **classic ASCII art** of a shaded SOURCE image (v0.4), matched to the owner's two reference images on 2026-11-08: the **wyrm** as fine pixel-font digits (5x8 px cells at 720p since 2026-11-15, ADR-093) whose brightness draws charcoal scales, molten cracks and crimson torn sails; the **hero** as ink-line art, dim dense letters inside bright one-pixel ink lines. Rules and numbers: "Creature ASCII art" below | `createSurfaceGlyphMaterial` (`wyrm` / `heroArt` sources) → `render/pipeline.js` (hero branch, `wyrmCell`), `render/wyrmGlyphs.js`, `createPixelArtAtlas` |
 | FX | camera-facing glyph particles, additive HDR (bloom) or alpha, drawn after the grid pass; the fire spells' ground warnings, meteors, lava, flame walls and the plunge's bursts are made of them too ("Fire, hazards and the plunge" below) | `render/particles.js`, `dragon/fx.js`, `player/fx.js` |
 | Fire light | pooled point lights (8 visible) lighting every shader | `render/lights.js` |
@@ -1066,6 +1086,7 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?chip=` | bites: a blow takes the bricks of a piece where it struck (every level; read when the level is built and at each blow; ADR-132; Lab: WORLD -> Bites) | pieces wear down in stages and break whole | the bricks under the blow fall as their letters; a solid piece keeps a skin there, set back | - | - | **a** |
 | `?cutStop=` | the hero's blade on a piece it does not fell (every level; read at each swing; ADR-177; Lab: WORLD -> Blade; with bites on only; values 0 / 1, and here `0` is the NEW default, `1` the feel before) | clean through: chips along the cut, sparks off stone, splinters off wood | `1`: it stops there (ADR-132: a freeze, sparks, a bounce) | - | - | **0** (2026-11-23) |
 | `?marks=` | the floor's marks (every level; read per blow; ADR-177) | today's cracks and crater rims only | `1`: a mark of each blow's kind (slam, cut, thrust, dash, blast, beam, step) that stays until the reset | - | - | **1** (2026-11-23) |
+| `?mow=` | grass the sword cuts (every level with grass; read per tear; ADR-180; a new thing, so `?looks=old` keeps it; no Lab row) | the grass as before: nothing is mown or torn | `1`: the blade mows what it passes low through (pale stubs of each blade's own letter, cut tops lying), every floor mark tears the grass out in its shape (bare floor under the mark) | - | - | **1** (2026-11-23: built at the owner's "Build top three"; the look not yet seen by the owner) |
 | `?ashLook=` | Shen Hui's body (read when his rig is built) | today's figure | the dragon look (the wyrm's art path) | today's figure dressed by phase | both | **b** |
 | `?lordLook=` | Varr Nihil's body (read when his rig is built) | today's figure | the dragon look | today's figure dressed by form | both | **b** |
 | `?outskirts=` | what lies round the Obsidian Throne's crater (ADR-133; read when the level is built; `m` all of them) | the felled forest | the shrine the star fell on | the star's debris | those who came for him | **c** |
@@ -1417,7 +1438,8 @@ art path at 720p he is still about 12 letter rows; b survives it by its colour, 
 One wind per level, and what lives in it: the grass and the trees lean and are swept by gust fronts,
 leaves (ash, paper, grit) fall and lie, footsteps answer the ground, slow weather, small creatures,
 banners and paper that hang in the wind; since ADR-177 flocks and small animals that flee the fight, a
-set that shakes under heavy blows, smoke and dust that linger after ("A fight the world feels" below). On by default (the owner's pick, 2026-11-23; `?life=off` turns it off);
+set that shakes under heavy blows, smoke and dust that linger after, and since ADR-180 lanterns that
+light, gutter and go dark and the sounds of all of it ("A fight the world feels" below). On by default (the owner's pick, 2026-11-23; `?life=off` turns it off);
 ARCHITECTURE.md "The living world" has the contract and every number. One mood per level, slow changes:
 Cinderwood a night breeze in slow breaths and gust fronts that stir the meadow; Ashfall dry and fitful;
 the Obsidian Throne nothing but a slow draw toward the star, which breathes; the Skybreak Ring a steady
@@ -1561,6 +1583,31 @@ few letters). Everything below prints in the house letter (`LetterBatch`), dim, 
   goes, with a few embers lifting off the hot early part; after a big blow (1.2 or more) a LOW HAZE of
   pale dust hangs over the crater for 6 - 10 s, densest low, drifting off downwind. Never on the hero;
   never a grey sprite.
+- **The lamps** (2026-11-23, ADR-180; the piece 'answer'). The stone lanterns of Ashfall (4), the Foxfire
+  Terrace (10), the Windless Grove (2) and the Throne's outskirts (`?outskirts=a | m` only) and the
+  Skybreak Ring's four braziers. A lantern's flame is HEAT IN THE FIRE FIELD, small and ORANGE: a handful
+  of hot blobs in its window (a dozen letters or so, an orange heart, red strokes round it), drawn 0.9 m
+  along the view ray toward the camera so it prints on the window instead of inside the stone. Its light is
+  a small warm pool (5 m) that takes only the light slots the fight leaves free and fades in and out of
+  them, never popping. **Their states**: dark; catching (a flicker that stutters into a steady flame over
+  about a second); lit; guttering under a blow's shock (the flame dips, leans away from the blow, shrinks,
+  its light dims, and it burns up again in under a second; the braziers the same, as the bonfire does);
+  out, when the piece that holds it breaks, falls or is taken: a puff of smoke and a last lick of fire,
+  the light fading, and it stays dark for the fight. **The fight lights them**: a few burn as the visit
+  starts (the place is inhabited), more as the fight begins and at each new phase, the nearest the boss
+  first, one after another, so the fight's heat reaches them; fire landing near one lights it at once.
+  Ashfall 1 lit at the gate, the rest by phase 3; the Terrace 2, then 2, then 3, all ten at phase 3; the
+  Grove stays dark (its stillness) until both catch at phase 2; the Throne dark until he rises. Honest: at
+  the game camera a flame is a few letters (it may read small); the Grove's film reads best.
+- **The sounds of all this** (ADR-180; heard with the piece 'air' on). Synthesized only (recorded
+  ambience was turned down as noisy), short, quiet and never pretty: no sound of the world is louder than
+  the hero's footstep at the same distance, except a big flock's burst and a tree's creak, which may reach
+  it, and all sit far under the fight. ONE sound per event, never one per thing: a flock that goes is one
+  burst of wings, a blow that shakes twelve trees one shudder (two when three or more shook), one patter
+  of pebbles, one sift of dust; a lean creaks once. Each level hears its own (Ashfall's crows, the Plaza's
+  pigeons, obsidian grit that rings faintly on the Throne, the Ring's sand; the Grove only its canes'
+  shiver and its lanterns, quieter); every call varies a little, so ten are ten different sounds. Not yet
+  heard by the owner (open).
 - **What does not read yet** (honest, from the films): the crows on Ashfall (the flock does not read),
   a flock off a single tree (weak; a fire flush across the tree line reads at full size), the Plaza's
   pigeons (not seen); the animals at the game camera are tiny (the rat `~c` and the rabbit `0-'` read on a
@@ -1570,6 +1617,8 @@ few letters). Everything below prints in the house letter (`LetterBatch`), dim, 
   swing reads. Not checked on the phone; no film of the quiet after a victory.
 
 **Tried and cut.** The hawk's shadow on the floor (a dark letter on the dark floor never read; dropped).
+The Foxfire Terrace's lanterns burning pale foxfire (the 'void' slot of the fire field: it vanished into
+the stone, and that colour is the boss's; the lanterns burn orange like every other level's).
 Dark grit on the obsidian (invisible: the star's cinders instead). Sparks orbiting the Throne's vents
 (they said nothing the vents' own motes and embers did not; `perVent` 0). Black birds and a pale hawk (lost,
 or a stray bright letter). The first pass at the subtle end: the front read as a slow lighter wash, a
