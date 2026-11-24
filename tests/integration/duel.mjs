@@ -1172,6 +1172,79 @@ async function scenarioDeflect() {
   return G;
 }
 
+// ================================================================== scenario: tempo (the storm's tempo on a man; integ `storm` round the wyrm's head)
+// DEFENSE.flurry.tempo (STREAK_FX.tempo, the default with the storm piece on): the first flash cut is a
+// heavy beat (seen wound up, held on the contact, the finish held), each later one a share of the one
+// before, the storm where the pace falls under `stormAt`. ?tempo=0: the storm of ADR-167 exactly; the
+// storm piece off: the pace before it, whatever the tempo says. A riposte's last cut is the heavy beat
+// again. Damage, the blows and where he ends: as before.
+async function scenarioTempo() {
+  out('\n== scenario TEMPO (the flurry on a man: heavy first, then faster by ratio; ?tempo=0 the storm as it was) ==');
+  const { STREAK_FX } = await imp('src/combat/streak.js');
+  const G = build();
+  duel(G, { dist: 4 });
+  const { game } = G;
+  const d = game.dragon, p = game.player, F = DEFENSE.flurry, S = F.storm, TP = F.tempo;
+  const on0 = STREAK_FX.on.storm, tempo0 = STREAK_FX.tempo;
+  /** One flurry of `n` blows (Passing Cut), or a riposte of `n` cuts: the frame of every blow. */
+  const take = (n, { storm = true, tempo = true, riposte = false } = {}) => {
+    STREAK_FX.on.storm = storm;
+    STREAK_FX.tempo = tempo;
+    settle(G);
+    place(G, 2.5);
+    run(G, 0.3);
+    d.hp = d.maxHp;
+    const hp0 = d.hp;
+    const tr = { hits: [], art: -1, f: 0, ev: null, ok: false };
+    G.watch = (nm, e) => {
+      const fl = p.flurry;
+      if (nm === 'player:flurryHit') tr.hits.push({ f: tr.f, last: e.last, storm: e.storm, freeze: fl.freeze, hang: fl.hang, w: fl._weight(fl.i), hidden: fl.hidden });
+      if (nm === 'player:flurryArt' && tr.art < 0) tr.art = tr.f;
+      if (nm === 'player:flurry') tr.ev = { ...e };
+    };
+    tr.ok = riposte ? p.flurry.start(d, false, n, null, TELL.NORMAL, { riposte: true }) : p.debug.flurry(n, 'passing');
+    tr.tempo = p.flurry.tempo;
+    run(G, 8, () => { tr.f++; }, () => p.state !== 'flurry');
+    G.watch = null;
+    tr.dmg = hp0 - d.hp;
+    tr.frames = tr.hits.map((h) => h.f).join(',');
+    return tr;
+  };
+  const gaps = (t) => t.hits.filter((h) => !h.last).map((h, i, A) => (i ? h.f - A[i - 1].f : null)).slice(1);
+  const rows = [];
+  for (let n = 2; n <= F.max; n++) {
+    const off = take(n, { tempo: false }), on = take(n), bare = take(n, { storm: false }), bareT = take(n, { storm: false, tempo: false });
+    rows.push({ n, off, on, bare, bareT });
+    out(`   N=${n}: blows on frames ${off.frames} (art ${off.art}) → tempo ${on.frames} (art ${on.art}) · storm cuts ${off.hits.filter((h) => h.storm > 0).length} → ${on.hits.filter((h) => h.storm > 0).length} · damage ${off.dmg} / ${on.dmg}`);
+  }
+  assert(rows.every((r) => r.off.ok && r.on.ok && r.on.tempo === true && r.off.tempo === false && r.bare.tempo === false), 'every flurry starts; the tempo is on by default and ?tempo=0 / the storm piece off turn it off');
+  assert(rows.every((r) => r.bare.frames === r.bareT.frames && r.bare.art === r.bareT.art), `the storm piece off: the pace before the storm, whatever the tempo says (N=7 on frames ${rows[rows.length - 1].bare.frames})`);
+  for (const r of rows) {
+    const h = r.on.hits, cuts = h.filter((x) => !x.last), g = gaps(r.on);
+    assert(h.length === r.n && h[r.n - 1].last && r.on.dmg === r.off.dmg && r.on.dmg === r.bare.dmg && h.every((x, i) => i === 0 || x.f > h[i - 1].f), `N=${r.n}: ${h.length} blows, each in a frame of its own, ${r.on.dmg} damage as before (${r.off.dmg})`);
+    assert(h[0].f * DT >= 0.18 - 1e-9 && h[0].hang > 0 && Math.abs(h[0].freeze - TP.ground.stop) < 1e-9 && h[0].w === 1, `N=${r.n}: the first cut is the heavy beat: its contact ${(h[0].f * DT).toFixed(3)} s after the start (>= 0.18), seen wound up, frozen ${h[0].freeze.toFixed(3)} s`);
+    assert(g.every((x, i) => i === 0 || x <= g[i - 1] + 1), `N=${r.n}: the gaps between blows never grow (${g.join(', ') || '-'} frames)`);
+    assert(g.every((x, i) => i === g.length - 1 || x <= 2.25 * g[i + 1]), `N=${r.n}: no cliff between neighbouring gaps: each at most 2.25x the next (${g.join(', ') || '-'} frames)`);
+    assert(cuts.every((x, i) => i === 0 || (x.w <= cuts[i - 1].w + 1e-9 && x.freeze <= cuts[i - 1].freeze + 1e-9)) && cuts.every((x) => !(x.storm > 0) || (x.w === 0 && x.freeze >= S.stopMin - 1e-9 && !x.hidden)), `N=${r.n}: the weight (${cuts.map((x) => x.w.toFixed(2)).join(' ')}) and the freeze (${cuts.map((x) => x.freeze.toFixed(3)).join(' ')} s) fall cut by cut`);
+    assert(r.on.ev?.storm === cuts.some((x) => x.storm > 0) && r.on.ev?.at?.length === r.n - 1, `N=${r.n}: player:flurry plans ${r.on.ev?.at?.length} contacts (storm ${r.on.ev?.storm})`);
+  }
+  assert(rows.filter((r) => r.n <= 3).every((r) => r.on.hits.every((x) => !(x.storm > 0))), 'N=2 and N=3: no storm cut');
+  const g7 = gaps(rows[rows.length - 1].on);
+  assert(g7[g7.length - 1] <= 4 && rows[rows.length - 1].on.hits.some((x) => x.storm > 0), `N=7 still ends in a storm a few frames apart (${g7.join(', ')} frames; the last <= 4)`);
+  // ?tempo=0 is the storm of ADR-167 (the frames measured when the tempo was built, 2026-11-24)
+  const OLD = { 2: '8,62', 3: '8,30,80', 4: '8,31,48,95', 5: '8,31,48,58,102', 6: '8,31,49,59,65,107', 7: '8,31,49,60,66,70,112' };
+  assert(rows.every((r) => r.off.frames === OLD[r.n]), `?tempo=0: the storm's frames as they were (${rows.map((r) => r.off.frames).join(' / ')})`);
+  // the riposte: its cuts paced by the tempo, its last the heavy beat again (pace 1, whole weight, its 1.8x freeze)
+  for (const n of [1, 3, 5]) {
+    const r = take(n, { riposte: true }), o = take(n, { riposte: true, tempo: false }), L = r.hits[r.hits.length - 1];
+    out(`   riposte of ${n}: frames ${o.frames} → tempo ${r.frames} · damage ${o.dmg} / ${r.dmg}`);
+    assert(r.ok && r.hits.length === n && r.dmg === o.dmg && L.w === 1 && L.hang > 0 && Math.abs(L.freeze - TP.ground.stop * 1.8) < 1e-9 && !(L.storm > 0), `a riposte of ${n}: ${r.hits.length} cuts for ${r.dmg} damage as before, its last the heavy beat (frozen ${L.freeze.toFixed(3)} s)`);
+  }
+  STREAK_FX.on.storm = on0;
+  STREAK_FX.tempo = tempo0;
+  return G;
+}
+
 // ================================================================== scenario: ghostep
 async function scenarioGhostep() {
   out('\n== scenario GHOSTEP (a perfect dodge is answered by the flurry: an art through him that leaves the hero at his back; a streak adds flash cuts) ==');
@@ -4590,6 +4663,7 @@ const SCENARIOS = {
   trade: scenarioTrade,
   deflect: scenarioDeflect,
   ghostep: scenarioGhostep,
+  tempo: scenarioTempo,
   perfectfx: scenarioPerfectFx,
   parryfx: scenarioParryFx,
   streak: scenarioStreak,
