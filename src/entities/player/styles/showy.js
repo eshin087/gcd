@@ -5,7 +5,7 @@
 // blade on the forearm's line (the wrist kink is bounded at 16 deg in a held pose), so a held reverse
 // grip or a blade across the neck cannot stand still; they live in the idle actions instead, where
 // the wrist may turn, and the held poses are their cousins on the forearm's line.)
-import { P, set3, dir, unitAzEl, add3, to3, dirNudge, dirTo, kf, hump, smoother, standLife, handLoose, handFingers, wave, ANK } from '../poseKit.js';
+import { P, N, set3, dir, unitAzEl, to3, dirNudge, dirTo, kf, hump, smoother, standLife, handLoose, ANK } from '../poseKit.js';
 
 // ---------------------------------------------------------------- the sword arm on the blade's line
 // The held poses keep the forearm on the blade's line (the kink): the hand target is built from the
@@ -264,13 +264,131 @@ const STANCES = {
   ],
 };
 
+// ================================================================ IDLE
+// Offsets from whatever pose he stands in, or blends toward a target by the action's weight (the
+// feet are never written: a fidget that moves them makes the planner step).
+const TAU = Math.PI * 2;
+const SCR = new Float32Array(N);
+const UPPER_CH = [P.spX, P.spY, P.spZ, P.hdX, P.hdY, P.hdZ];
+const VEC_CH = [P.rH, P.rP, P.lH, P.lP, P.lD, P.lN, P.swF];
+/** Blend p's upper body (not the feet, not the hips' place) toward the pose in SCR by w. */
+function toScr(p, w) {
+  if (!(w > 0)) return;
+  for (const i of UPPER_CH) p[i] += (SCR[i] - p[i]) * w;
+  for (const i of VEC_CH) to3(p, i, SCR[i], SCR[i + 1], SCR[i + 2], w);
+  dirTo(p, P.swD, SCR[P.swD], SCR[P.swD + 1], SCR[P.swD + 2], w);
+  p[P.hs] += (SCR[P.hs] - p[P.hs]) * w;
+}
+/** The blade beside him in the plane x = X (body axes), at angle a round it (0 = point down,
+ *  PI/2 = point ahead), by w. */
+function bladeWheel(p, X, a, w) {
+  const c = Math.sqrt(1 - X * X);
+  dirTo(p, P.swD, X, -Math.cos(a) * c, Math.sin(a) * c, w);
+  to3(p, P.swF, -1, 0, 0, w);
+}
+
+/** THE FLOWER: the hand comes up before his right hip and the blade wheels twice beside him, the
+ *  second turn faster, then stops dead with the point low ahead; the free hand opens out to the
+ *  side as if to say "there". */
+function fFlower(p, A, u, e) {
+  const arm = hump(u, 0.05, 0.18, 0.82, 0.97);
+  to3(p, P.rH, -0.2, -0.36, 0.17, arm * e);
+  to3(p, P.rP, 0.4, -0.5, -0.8, arm * e);
+  // two turns: the first over 0.42 of the action, the second over 0.2, then the stop
+  const s = kf(u, [0.14, 0, 0.5, 1, 0.7, 2]);
+  const wheel = hump(u, 0.1, 0.18, 0.78, 0.94);
+  if (wheel > 0) bladeWheel(p, -0.58, 0.55 + TAU * s, wheel * e);
+  // the free hand presents as the second turn ends
+  const pr = hump(u, 0.55, 0.72, 0.88, 0.99);
+  to3(p, P.lH, 0.3, -0.28, 0.16, pr * e);
+  to3(p, P.lP, 0.6, -0.75, -0.3, pr * e);
+  to3(p, P.lN, 0.15, 0.8, 0.3, pr * e);
+  to3(p, P.lD, 0.45, -0.15, 0.5, pr * e);
+  p[P.hs] += (0 - p[P.hs]) * pr * e;
+  p[P.hdY] += (-0.35 * hump(u, 0.12, 0.25, 0.6, 0.75) + 0.3 * pr) * e;
+  p[P.hdX] += 0.12 * hump(u, 0.12, 0.25, 0.6, 0.75) * e;
+  p[P.spY] += 0.08 * pr * e;
+}
+
+/** THE SALUTE: the blade comes up before his chest, the sword fingers rise beside it and the head
+ *  bows; held; then the point is flicked out low to his right and he lets it fall back. */
+function fSalute(p, A, u, e) {
+  const k = hump(u, 0.04, 0.3, 0.66, 0.8);
+  if (k > 0) {
+    SCR.set(p);
+    salute(SCR, P, A);
+    toScr(p, smoother(k) * e);
+    p[P.hdX] += 0.16 * hump(u, 0.3, 0.38, 0.52, 0.6) * e;
+    p[P.spX] += 0.06 * hump(u, 0.3, 0.38, 0.52, 0.6) * e;
+  }
+  // the flick: out low to his right, fast, then home
+  const fl = hump(u, 0.66, 0.72, 0.8, 0.96);
+  if (fl > 0) {
+    to3(p, P.rH, -0.25, -0.36, 0.12, fl * e);
+    to3(p, P.rP, 0.3, -0.6, -0.75, fl * e);
+    dirTo(p, P.swD, -0.75, -0.5, 0.43, fl * e);
+    to3(p, P.swF, 0.4, -0.85, 0.35, fl * e);
+  }
+}
+
+/** THE SHOULDER: one wheel of the blade beside him, then it is laid on his right shoulder, the
+ *  point up behind him; a bounce of the steel on the shoulder, the free hand palm up out to the
+ *  side, the head cocked; then down again. */
+function fShoulder(p, A, u, e) {
+  const wheel = hump(u, 0.04, 0.12, 0.26, 0.34);
+  if (wheel > 0) {
+    to3(p, P.rH, -0.2, -0.33, 0.16, wheel * e);
+    bladeWheel(p, -0.58, 0.55 + TAU * kf(u, [0.08, 0, 0.32, 1]), wheel * e);
+  }
+  const sh = hump(u, 0.26, 0.4, 0.78, 0.92);
+  if (sh > 0) {
+    const b = 0.03 * Math.sin(Math.PI * smoother((u - 0.52) / 0.12));
+    to3(p, P.rH, 0.0, 0.0 + (u > 0.52 && u < 0.64 ? b : 0), 0.19, sh * e);
+    to3(p, P.rP, -0.45, -0.9, 0.2, sh * e);
+    dirTo(p, P.swD, -0.1, 0.56, -0.82, sh * e);
+    to3(p, P.swF, -1, 0.2, 0, sh * e);
+    to3(p, P.lH, 0.28, -0.3, 0.14, sh * e);
+    to3(p, P.lP, 0.6, -0.75, -0.3, sh * e);
+    to3(p, P.lN, 0.15, 0.8, 0.3, sh * e);
+    to3(p, P.lD, 0.45, -0.15, 0.5, sh * e);
+    p[P.hs] += (0 - p[P.hs]) * sh * e;
+    p[P.hdZ] -= 0.12 * sh * e;
+    p[P.hdY] += 0.12 * sh * e;
+    p[P.spZ] += 0.04 * sh * e;
+    p[P.spX] -= 0.04 * sh * e;
+  }
+}
+
+/** THE BECKON (in the fight too): the free hand comes forward palm up and the fingers call the foe
+ *  in, twice; the point dips once with it. */
+function fBeckon(p, A, u, e) {
+  const k = hump(u, 0.05, 0.22, 0.75, 0.95);
+  to3(p, P.lH, -0.02, -0.2, 0.36, k * e);
+  to3(p, P.lP, 0.5, -0.8, -0.3, k * e);
+  to3(p, P.lN, -0.1, 0.9, 0.2, k * e);
+  const curl = kf(u, [0.3, 0, 0.38, 1, 0.46, 0, 0.54, 1, 0.62, 0]);
+  const d = unitAzEl(0, 20 + 60 * curl);
+  to3(p, P.lD, d[0] * 0.8, d[1] * 0.8, d[2] * 0.8, k * e);
+  p[P.hs] += (0 - p[P.hs]) * k * e;
+  p[P.hdZ] += 0.1 * k * e;
+  p[P.hdX] -= 0.05 * k * e;
+  dirNudge(p, P.swD, 0, -8 * hump(u, 0.3, 0.4, 0.5, 0.62), e);
+}
+
+const FIDGETS = [
+  { name: 'showy.flower', dur: 3.0, sets: ['ease'], fn: fFlower },
+  { name: 'showy.salute', dur: 4.2, sets: ['ease'], fn: fSalute },
+  { name: 'showy.shoulder', dur: 3.8, sets: ['ease'], fn: fShoulder },
+  { name: 'showy.beckon', dur: 2.6, sets: ['ease', 'fight'], fn: fBeckon },
+];
+
 export const showy = {
   id: 'showy',
   label: 'Showy acrobat',
   blurb: 'Flourishes, spins and hops; dramatic finishes.',
   stances: STANCES,
   shift: { fade: 2.5 },
-  fidgets: null,
+  fidgets: FIDGETS,
   chain: null,
   swings: {},
 };
