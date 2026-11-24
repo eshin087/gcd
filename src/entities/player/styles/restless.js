@@ -434,6 +434,27 @@ const chain = [
   },
 ];
 
+// ON A STREAK (tier 3+, from 7 perfect defences): the burst gets a third cut (down, up, and an
+// uppercut back up the right side: tat-tat-tat) and the drive lands heavier. The same rate: the third
+// blow pays for the 0.07 s it adds.
+const burstX = {
+  name: 'restlessBurstX', kind: 'light', combo: 5, damage: 52, poise: 18, heavy: false,
+  windup: 0.09, active: 0.27, recovery: 0.22, chain: 0.25, lunge: 0.6, reach: 2.2,
+  hitstop: 0.045, shake: 0.1, bite: 0.8, contact: 'light', punch: 0.3, kick: 0.06, flare: 0.5,
+  hits: [
+    { at: [1.0, 1.35], damage: 17, poise: 6 },
+    { at: [1.35, 1.68], damage: 17, poise: 6 },
+    { at: [1.68, 2.0], damage: 18, poise: 6, hitstop: 0.065, shake: 0.15, punch: 0.45, kick: 0.09, bite: 1.0 },
+  ],
+  branch: 4,
+  anim: C('restlessBurst3'),
+};
+const driveX = {
+  ...chain[5], name: 'restlessDriveX', damage: 95, poise: 60,
+  hitstop: 0.15, shake: 0.55, bite: 1.6, flare: 1.2, punch: 1.9, kick: 0.24,
+};
+const chainAwake = [{ minTier: 3, chain: [chain[0], chain[1], chain[2], chain[3], burstX, driveX] }];
+
 const swings = {
   /** Hit 1, the jab-cut: cocked beside the right shoulder (not over it), a short quick diagonal down
    *  across his chest to the left hip; the guard hand pulls in to the chin as the sword hand goes out. */
@@ -519,6 +540,25 @@ const swings = {
       { u: 2.4, h: [-0.24, -0.34, 0.14], a: [-118, -24], by: -0.24, bz: 0.09, bx: 0.04, hip: -0.38, sy: -0.42, sx: 0.34, l: [0.18, -0.16, 0.18] },
     ],
   },
+  /** Hit 5 on a streak, the burst of three: up across his front to high left, straight back down to
+   *  the right hip, and an uppercut back up the right side to high right, where the drive's windup
+   *  takes it. */
+  restlessBurst3: {
+    line: 'spiral',
+    fy: [0.35, -0.65],
+    keys: [
+      { u: 0.6, by: -0.3, bz: -0.08, bx: -0.06, hip: -0.42, sy: -0.48, sx: 0.4, ...GUARD },
+      { u: 1.0, h: [-0.1, -0.32, 0.06], a: [-120, -24], by: -0.26, bz: -0.06, bx: -0.05, hip: -0.34, sy: -0.42, sx: 0.34, ...GUARD },
+      { u: 1.18, h: [0.06, -0.16, 0.44], a: [-10, 4], by: -0.18, hip: 0.0, sy: -0.06, sx: 0.26 },
+      { u: 1.35, h: [0.2, 0.08, 0.36], a: [40, 34], by: -0.14, bz: 0.06, bx: 0.02, hip: 0.2, sy: 0.24, sx: 0.16, l: [0.06, -0.18, 0.2], lp: [0.75, -0.55, -0.3], ld: [10, 50], pn: [-0.4, 0, 0.7], lk: 0 },
+      { u: 1.5, h: [0.04, -0.12, 0.44], a: [-24, -6] },
+      { u: 1.68, h: [-0.18, -0.3, 0.3], a: [-75, -26], by: -0.26, bz: 0.1, bx: 0.04, hip: -0.24, sy: -0.28, sx: 0.36, l: [0.16, -0.14, 0.2] },
+      { u: 1.84, h: [0.04, -0.12, 0.46], a: [6, 0] },
+      { u: 2.0, h: [-0.04, 0.12, 0.38], a: [-18, 36], by: -0.12, bz: 0.13, bx: 0.05, hip: 0.05, sy: 0.08, sx: 0.12, l: [0.18, -0.2, 0.16], lp: [0.7, -0.6, -0.35], ld: [30, 40], pn: [-0.4, -0.3, 0.6] },
+      { u: 2.15, by: -0.11, bz: 0.14, bx: 0.06, hip: 0.13, sy: 0.17, sx: 0.08 },
+      { u: 2.4, h: [-0.1, 0.14, 0.28], a: [-40, 40], by: -0.13, bz: 0.1, bx: 0.04, hip: 0.09, sy: 0.12, sx: 0.1, ...GUARD },
+    ],
+  },
   /** Hit 6, the drive: gathered (the guard hand up), wound far back over the right shoulder with the
    *  sword fingers on the foe, then a long step through and one heavy diagonal from high right down
    *  across his chest past the left hip; deep in the front knee, the free arm flung back, held. */
@@ -549,5 +589,6 @@ export const restless = {
   shift: { fade: 1.7 },
   fidgets,
   chain,
+  chainAwake,
   swings,
 };
