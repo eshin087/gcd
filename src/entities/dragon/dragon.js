@@ -10,7 +10,7 @@ import { TUNING, SCALE } from './tuning.js';
 import { buildDrake, SHED } from './model.js';
 import { Rig, createPose, resetPose } from './rig/anim.js';
 import { Brain, SEQ, NO_PLUNGE } from './ai.js';
-import { ATTACKS, MELEE, perPhase } from './attacks.js';
+import { ATTACKS, MELEE, perPhase, wyrmMark } from './attacks.js';
 import { DragonFx } from './fx.js';
 import { Hazards } from './hazards.js';
 import { Bullets } from './bullets.js';
@@ -781,8 +781,11 @@ export class Dragon {
     if (this.state === 'dead') return;
     this.emit('dragon:step', { x: limb.pos.x, z: limb.pos.z, heavy: !!limb.hind });
     this.ablaze.step(limb.pos.x, limb.pos.z, !!limb.hind); // (phase 3: a burning footprint)
+
     const charging = this.brain.action?.name === 'charge' && this.brain.action.phase === 'active';
     if (charging && limb.hind) this.game.shake?.(0.07);
+    // (a charging hind foot's print: the run stays on the floor; scars.mark keeps one in SCAR.mark.step.gap m)
+    if (charging && limb.hind) wyrmMark(this, limb.pos.x, limb.pos.z, 'step', TUNING.world.marks.step, this.fwd.x, this.fwd.z);
     const n = limb.hind ? 5 : 3;
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2;
@@ -1061,6 +1064,8 @@ export class Dragon {
         if (st.top >= T.landing.minFall) {
           D.strike(x, z, T.landing.radius, T.landing.power, st.land);
           wallWind(this, x, z, 'landing');
+          // (its landing's mark on the floor: a crater under it)
+          wyrmMark(this, x, z, 'slam', TUNING.world.marks.land, this.fwd.x, this.fwd.z, NaN, 0, T.landing.radius * 0.4);
         }
         st.top = 0;
       }

@@ -120,7 +120,11 @@ function build(levelId = 'cinderwood', spec = 'all', o = {}) {
     resolve: (pos, r, b, soft, who) => resolveOn(colliders, null, pos, r, b, soft, who),
     heroBound: () => CONFIG.world.playerBound ?? Infinity,
     setPusher() {}, clearPushers() {},
-    impact: () => 0, ignite: () => 0,
+    // (as world.js forwards them: a blow and fire reach the living world's layers)
+    impacts: 0,
+    impact(x, z, r, power, o) { this.impacts++; this.life?.impact(x, z, r, power, o); return 0; },
+    groundBlow(x, z, o) { this.impacts++; this.life?.impact(x, z, Number.isFinite(o?.r) ? o.r : 2, o?.power ?? 1, o); },
+    ignite(x, z, r, k = 1) { this.life?.ignite(x, z, r, k); return 0; },
   };
   world.scorch = new Scorch(U, game);
   // the grass density as world.js makes it (the fire's fuel; the steps' surface reads it)
@@ -187,7 +191,7 @@ function build(levelId = 'cinderwood', spec = 'all', o = {}) {
 const T = { THREE, CONFIG, LEVELS, LEVEL_IDS, LIFE, LIFE_PIECES, LIFE_TUNE, setLife, setLifeK, build, assert, out, near, imp, ROOT, countingRandom };
 
 // one file per piece (its owner's): a missing or broken file fails the suite
-const FILES = ['core', 'wind', 'weather', 'litter', 'steps', 'creatures', 'answer', 'air', 'arrival', 'hang'];
+const FILES = ['core', 'wind', 'weather', 'litter', 'steps', 'creatures', 'answer', 'air', 'arrival', 'hang', 'tremor', 'aftermath'];
 const S = {};
 for (const f of FILES) {
   try {

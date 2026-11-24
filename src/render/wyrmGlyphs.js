@@ -49,6 +49,9 @@ const FONT_4X6 = {
   '=': [0, 0, 15, 0, 15, 0],
   '*': [0, 4, 14, 4, 10, 0],
   '+': [0, 4, 4, 14, 4, 4],
+  // (the fauna's letters, world/life/flock.js, animals.js: a wingbeat's upstroke, a round body)
+  '^': [4, 10, 0, 0, 0, 0],
+  o: [0, 0, 6, 9, 9, 6],
 };
 
 // The same letters as 3 x 5 bitmaps, for small screens (a phone at the LOW preset is ~393 px tall).
@@ -89,6 +92,9 @@ const FONT_3X5 = {
   '=': [0, 7, 0, 7, 0],
   '*': [0, 5, 2, 5, 0],
   '+': [0, 2, 7, 2, 0],
+  // (the fauna's letters, world/life/flock.js, animals.js: a wingbeat's upstroke, a round body)
+  '^': [2, 5, 0, 0, 0],
+  o: [0, 2, 5, 2, 0],
 };
 
 // Classic 5 x 7 dot-matrix letters, for screens where a 5 x 8 cell would be too fine (~900 px tall).
@@ -125,6 +131,13 @@ const FONT_5X7 = {
   '=': bits(['00000', '00000', '11111', '00000', '11111', '00000', '00000']),
   '*': bits(['00000', '00100', '10101', '01110', '10101', '00100', '00000']),
   '+': bits(['00000', '00100', '00100', '11111', '00100', '00100', '00000']),
+  // (the fauna's letters, world/life/flock.js, animals.js: this font lacked them, so at the large letter
+  //  a flock's birds and the rats' and lizards' bodies printed blank)
+  '^': bits(['00100', '01010', '10001', '00000', '00000', '00000', '00000']),
+  c: bits(['00000', '00000', '01110', '10000', '10000', '10000', '01110']),
+  x: bits(['00000', '00000', '10001', '01010', '00100', '01010', '10001']),
+  s: bits(['00000', '00000', '01111', '10000', '01110', '00001', '11110']),
+  o: bits(['00000', '00000', '01110', '10001', '10001', '10001', '01110']),
 };
 
 /**

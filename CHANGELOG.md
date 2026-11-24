@@ -31,6 +31,36 @@ Eighty-two pieces of work since 0.4.0:
 - **The resting blade no longer glows** (2026-11-23, ADR-176). *Fixed:* at some poses and facings a bright halo
   bloomed round the hero's blade while he stood still, and the point left a pale block in the grass: a letter of
   the world grid printed the steel's raw colour beside it.
+- **A perfect parry throws a few orange sparks** (2026-11-24, ADR-181). *Added:* on a perfect parry of a blow, a
+  quick spit of 12 - 16 orange spark letters leaves the crossed blades along the blade that glanced off: short
+  streaks that shrink to dots, cool to dark red and are gone in under half a second, a couple falling to the floor.
+  No white, no glow; the gold mark, the freeze, the slow motion and the sound are as before, and a normal parry and
+  the perfect dodge are unchanged. `?parryFx=0` (the Lab's `parryFx` button) draws the parry without them.
+- **Every sound effect is back to its first synth version** (2026-11-23, ADR-178). *Changed:* the owner turned down a new light-cut
+  swing, plucked-string warnings and two rounds of variations of the blue and red warnings, and asked to "start
+  from baseline and undo all the sound changes". The recorded and designed sounds of the attack-sound pass
+  (ADR-165) and the combat-core round (ADR-172) are now OFF by default: a tick on every tell, the flash's ping on
+  every blow, the original blue and red warnings (the red log drum is gone), the synth parry with its climbing
+  chain, hurt, clash, slam, flurry, plunge and swing, and no sound of a boss's blade. *Added:* `?sfx=new` (and the
+  Lab's `sfx` row, `old` / `new`) turns the recordings and designed sounds back on; their files are not downloaded
+  unless it is on (the default fetches none of its 35). The recorded music per level and boss phase (ADR-117) is
+  unchanged. Not undone: the sounds that came with later features (the streak's climb note, the impact sub, the
+  living world's air) and two small fixes from the round-two sign-off (the hero's combo swing rising on every cut,
+  the streak's note half as loud on a parry).
+- **The sword cuts clean through; the fight marks the ground; birds and animals flee** (2026-11-23, ADR-177).
+  *Changed:* the hero's blade no longer stops on a rock, a tree or a pillar it cannot fell: the swing
+  goes through at full speed, the piece still takes the blow, its letters fly on along the cut, stone
+  sparks and wood splinters (`?cutStop=1`, or the Lab's Blade button, keeps the blade that stops).
+  *Added:* **every boss attack that meets the ground leaves a mark of its kind** (a crater for a slam,
+  one long gash for a sword cut, three for claws, a furrow for a dash, a scorched round for a blast, a
+  trench for a beam), on all eight bosses, and the marks stay until the fight resets (`?marks=0`: the
+  floor as it was). **Birds flee the fight:** a flock bursts out of the trees when the wyrm's fire, a
+  heavy blow or a falling tree reaches it, and crosses the sky. **Animals run:** rabbits and deer in
+  Cinderwood, rats in the Ashfall ruins, lizards at the Skybreak Ring, one fox at the Foxfire shrine,
+  a few small letters each, bolting into cover as you or the fight come near. **The set shakes** under
+  heavy blows: leaves rain off a struck tree, dust sifts off pillars, banners and paper charms swing,
+  pebbles hop, the bonfire gutters. **After:** thin smoke rises where fire burned out and leans with
+  the wind, embers drift, dust hangs over a crater. The marks change nothing in the fight.
 - **Combat sounds, round two: real steel on the parry, picked by ear** (2026-11-23, ADR-172). *Changed:* the owner compared 37 combat sounds on a picker
   page (the original synth, what played then, two sounds designed from scratch and up to two CC0
   recordings each, every sound placed in eleven scripted fight moments) and picked. Now recorded: the

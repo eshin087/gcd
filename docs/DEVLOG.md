@@ -157,6 +157,121 @@ Then the losing options and the switches come out, and the winner is hardened: v
   0.36 s click is kept by `buffer`; mystic d fails "noticeable at rest with no streak".
 - `swordMystic.js`'s header still says a and d draw lines as glyph particles; since round 2 every mark is a
   letter through `LetterBatch` (`_spawn` is unused).
+## 2026-11-24 — Session 91: the perfect parry throws a few orange sparks (and what was turned down to get there)
+
+**Owner:** "what can we improve next in terms of visuals, effects, animations etc. i want to make perfect parry and
+dodge effects look more epic cool with subtle effects as a start." Branch `combat/perfect-sparks`. ADR-181 / M1.77.
+
+**What shipped.** `?parryFx=a`, the default (`combat/parrySparks.js`): on a PERFECT parry of a blow, on top of the
+shipped `sharp` mark (unchanged), 12 - 16 sparks leave the crossing, about 70 % along the attacker's edge past the
+crossing, the rest along the hero's edge (no crossed steel, e.g. the wyrm: the way the blow was pushed aside); 4 - 7
+m/s, strong drag, gravity; a stroke (`- / | \`) laid along its screen motion while fast, then `'`, then `.`;
+yellow-orange to deep orange to dark red, no channel above the bloom threshold (no halo, never white); light ones live
+0.12 - 0.3 s real, two or three heavy ones 0.35 - 0.5 s and die on the floor; real time (they leave the contact in the
+0.11 s freeze); at most 48 alive; never over a fighter's head or chest. One house-letter `LetterBatch`, built on the
+first spit. `?parryFx=0` (the Lab's `parryFx` button in the streak row) draws the parry as before.
+
+**What was turned down, in order (all filmed at the game camera; the owner's words):**
+1. A four-piece pass on one moment record (a ring through the floor's letters, poses, a darkened iris / camera lean /
+   sound duck, the world answering), three options each, 19 clips: "i dont like any of this. start over. i dont want
+   the background to change color at all."
+2. Sparks round 1 (a glint run down the blades and ~46 sparks): read as nothing at the game camera (sent back by the
+   lead, never shown). Round 2 (a white-gold fan of ~170 streaks): "too bright / fireworks, too many / too big, wrong
+   motion, not the right idea", "calmer".
+3. The perfect dodge's afterimage drawn as a second copy of the hero's real body (four options: an ink copy that
+   unravels, a pose trail, a cut ghost, a brush smear): "i still the the original is better". The shipped afterimage
+   stays.
+4. Asked for a reference, the owner: "do your own research and figure out the best thing". The calm spit was
+   designed from what real sword sparks and Sekiro's deflect do (few, fast, short-lived, orange; streak to dot).
+
+**Verification.** duel `parryfx` (0 draws no spark; `a` 12 - 16 on a perfect parry, none on a normal one, none white,
+90 % within 0.6 m (measured 93.4 % over 60 seeded spits), all gone within 0.55 s (0.483 s at most), a string peaks at
+48, no `Math.random`, nothing throws without a fire field, `a` is the default); `perfectfx`, `deflect`, glyph check;
+`npm test`: see the PR. Filmed: parry1, parry3, the wyrm, the phone.
+
+**Open.** It is quiet by design: at full speed it reads as a few orange flecks after the gold flash. When the blow
+glances toward the hero many sparks land over his lower body; against the wyrm they fly back into its head and sit
+under its own white parry star. Not played on the iPhone. The rejected work is on local branches only
+(`combat/perfect-epic`, `pfx/*`, `player/dodge-afterimage`), not pushed.
+
+## 2026-11-23 — Session 90: every sound effect back to its first synth version
+
+**Owner:** (after a session of sound picks) "lets just make all the sounds go back to their original. i want to
+start from baseline and undo all the sound changes." Asked the scope; they chose all sound effects, music kept.
+
+**The session before it** (kept in a git stash, "swing + warning sound options", and the pickers): the hero's
+recorded light-cut swing did not match the animation (its takes peaked at 206 / 77 / 60 ms, the blade lands at
+about 150 ms); five designed swings with their top on the blade were built and the owner picked `e`, then asked for
+softer ones for mashing; the blue / red warnings ("too cheap", "way too dramatic and long"): the originals back,
+four variations of each, a plucked-string pair, seven variations of it, and a spread of families, all turned down.
+Rig lessons are in the memory notes (render each event through a fresh `AudioEngine` on an `OfflineAudioContext`;
+level-match A-weighted; a deep fundamental is not heard on a phone).
+
+**Changed** (ADR-178). `samples.js`: `DEFAULT_SFX = 'old'`; `?sfx=new` / `setSfxMode('new')` opts in and starts the
+download; `load()` does nothing while off. Lab `sfx` row: `old` / `new`. Integ and duel `sfx` scenarios switch the
+mode on and restore the default; integ asserts the default is `old`.
+
+**Verified in headless Edge:** default 0 of 35 files requested; `?sfx=new` 35 of 35 loaded; the Lab's switch loads
+them live. This found a slip of mine that node could not: a block replacement in `samples.js` had also removed
+`headOffset`, which only runs when a file decodes (the tests have no fetch).
+
+**Open.** Nobody has listened to the baseline in play. The next round should start from the owner's words (a
+reference, a game, a feeling) rather than options.
+
+---
+
+## 2026-11-23 — A fight the world feels: the blade clean through, a mark for every boss blow, flocks, animals, a set that shakes (ADR-177; planned by Fable, built by Opus agents)
+
+**Owner:** "when the player hits something like a rock or tree, the sword gets stopped and i dont like
+this feeling. lets allow the player to swing their attack animation through it while making the terrain
+get damaged and show chip damage. make it look natural and good. i also want the background to have more
+alive like the ground gets damaged per boss attack to show the damage done from the boss. have more cool
+atmospheric moments like animals running away as you get close to them in the fight or a flock of birds
+flying away from the dragon blowing fire at it. think of ideas and ask me any questions". Their picks:
+clean through; marks stay until the reset; all four moments; animals tiny. Branch `world/fight-alive`.
+
+**How.** The lead wired the hooks first (`world.groundBlow`, blows and fire forwarded to the living
+world's layers, two stub layers), then four agents in four worktrees: CUT, GROUND, FAUNA, TREMOR. They
+merged with one two-line conflict. Each ran only its own suites (the lesson of the last build: seven
+agents running the whole set stalled the machine); the lead ran the whole set once on the merge.
+
+- **The blade goes clean through.** `_cutWorld` no longer rewinds, freezes, sticks or bounces. Measured:
+  the attack clock with a boulder or a tree in the path equals the clock with none, frame for frame
+  (light 29 frames, Piercing Gale 52, the charged cleave 65). The piece takes the same blow. Debris
+  flies along the cut (about 30 bits with the blade against 4 - 7 back at him); sparks on stone and
+  metal, splinters on wood; a jolt of 0.05 / 0.12. `?cutStop=1` (the Lab: Blade) is the old stop.
+- **Every boss blow marks the floor.** `scars.mark`: seven kinds, each a dark stroke with a dim lit
+  lip, grey ink, thinned where they pile up; `SCAR.max` 520 → 3600 (the oldest fade). One hook in the
+  duelist engine reads each beat's shape; the wyrm's claws, stomps, dives, tail and fire call it
+  themselves. Headless bot wins leave 8 - 157 marks a fight (the wyrm 130). The seeded fights replay
+  line for line against the base. `?marks=0` is the floor as it was.
+- **Flocks and animals.** Roosts of 30 - 44 birds leave when fire, a blow, a falling tree or a roar
+  reaches them (a real breath on the tree wall: the flock went 1.2 s later), routed across the top of
+  the frame. Rabbits and deer (Cinderwood), rats (Ashfall), lizards (the Ring), one fox (Foxfire, once
+  a visit); nothing in the Throne or the Grove. Some return after the fight.
+- **The set shakes; the aftermath.** A blow of power 0.7 or more shakes what stands within
+  r + 3 x power^2 m: trees shudder without damage and drop their leaves, tall stone sifts dust, banners
+  and charms swing (11.8 degrees at the peak, still again in 2 s), pebbles hop, the bonfire gutters.
+  Smoke rises where fire burned out (at most five columns), embers, a haze over a crater.
+- **A font gap found at the merge:** the wyrm's large font had no `c x s`, and no font had `^` or `o`:
+  a flock printed blank at that size. Added; `core.fonts` checks every letter against every font.
+
+**Verified.** The whole test set and the build on the merged branch (see the PR's checks). The cut's
+clock by test; the marks by a world scenario and by the win scenarios compared against an extracted
+base; the fauna, tremor and aftermath by their life scenarios. Films of each piece.
+
+**Not verified / open.**
+- The owner has seen clips, not played it. Their calls: the sparks' size, the marks' brightness and
+  whether a pale trench or arc reads like a tell, the flock's brightness and its routing through the
+  top of the frame, the deer's and the fox's sprites.
+- Faint at the game camera: the kinds of mark (they read zoomed), marks on grass, the dust sift, the
+  pebbles, the smoke, the crater haze, the tree's shudder. Ashfall's crows do not read.
+- Films with REAL boss moves exist only for the wyrm's breath and a leap; most tremor films are staged.
+- Not looked at: Halcyon Plaza's pigeons; the phone (`&touch`) for any of the four.
+- Tian Lei's bolt beats still sweep 17 m of the world (older than this work); the Woken One's crater
+  effect is drawn at his root while the mark is at his heel.
+
+**Next.** The owner plays the preview; then a pass on whatever they call too faint or too loud.
 
 ---
 

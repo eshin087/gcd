@@ -18,6 +18,36 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-24',
+        title: 'A perfect parry throws a few orange sparks',
+        notes: [
+          'Parry perfectly and a quick spit of orange sparks flies off the crossed blades, the way real steel sparks: short streaks that shrink to dots and die in under half a second.',
+          'Nothing else changes: the gold flash, the freeze and the sound are as before, and normal parries and the perfect dodge look the same.',
+          'Prefer the parry without them? Add ?parryFx=0 to the address.',
+        ],
+      },
+      {
+        date: '2026-11-23',
+        title: 'Every sound effect is back to its first synth version',
+        notes: [
+          'Parries, hits, warnings and swings are back to their first synthesized sounds, as at the start.',
+          'The recorded music for each level and boss is unchanged.',
+          'Want the recorded and designed sounds back? Add ?sfx=new to the address (or use the Lab).',
+        ],
+      },
+      {
+        date: '2026-11-23',
+        title: 'The sword cuts clean through; the fight marks the ground; birds and animals flee',
+        notes: [
+          'Your sword no longer stops when it meets a rock, a tree or a pillar. The swing goes through at full speed, chips fly along the cut, stone sparks and wood splinters.',
+          'Every boss attack that hits the ground now leaves its own mark: a crater for a slam, a long gash for a sword cut, a furrow for a dash, a scorched round for a blast, a trench for a beam. The marks stay until the fight resets, so the arena shows the fight.',
+          'Birds burst out of the trees and cross the sky when fire, a heavy blow or a falling tree reaches them.',
+          'Small animals bolt as you or the fight come near: rabbits and deer in Cinderwood, rats in the Ashfall ruins, lizards at the Skybreak Ring, one fox at the Foxfire shrine.',
+          'Heavy blows shake the set: leaves fall from a struck tree, dust sifts off pillars, banners and paper charms swing. Afterwards thin smoke rises where fire burned out.',
+          'None of this changes how the fight plays.',
+        ],
+      },
+      {
         date: '2026-11-23',
         title: 'Four ways for the hero to move, to try: stances, idles and a light combo each',
         notes: [

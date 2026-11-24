@@ -14,6 +14,7 @@
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { ui, fireWin, AUDIO, resetWindow, El } from './shim.mjs';
+import { attachMarks, marksCheck } from './marks.mjs';
 
 const ROOT = process.argv[2];
 const SCEN = process.argv[3] || 'all';
@@ -1390,6 +1391,7 @@ async function scenarioBudget() {
 async function scenarioWin() {
   out('\n== scenario WIN (god-mode bot: attacks, parries, blocks, dodges) ==');
   const G = build();
+  const MK = attachMarks(G.game); // (the floor marks the fight leaves: they change nothing in it)
   const { game, input, evLog, counts, counters } = G;
   G.defend = makeDefender(G);
   assert(game.state === 'title', 'boots in title');
@@ -1431,6 +1433,7 @@ async function scenarioWin() {
   const c = (n) => counts[n] || 0;
   const fightT = game.time - t0;
   out(`   fight: t=${fightT.toFixed(1)}s (phase 2 at ${(phaseT[1] - t0).toFixed(1)} s, phase 3 at ${(phaseT[2] - t0).toFixed(1)} s) dragon hp=${game.dragon.hp} state=${game.dragon.state} phase=${maxPhase} hits=${c('player:hitDragon')} hurt=${c('player:hurt')} tells=${c('combat:tell')} flashes=${c('combat:flash')} break=${sawBreak} air=${sawAir}`);
+  marksCheck(MK, 'integ', out, assert);
   out(`   defence: parry ${c('player:parry')}/${G.defend.stats.parryTry} tries · block ${c('player:block')} · guardBreak ${c('player:guardBreak')} · perfect ${c('player:perfectDodge')}/${G.defend.stats.dodgeTry} tries · ghostep ${c('player:ghostep')} · dodge ${c('player:dodge')} · dragon:parried ${c('dragon:parried')} · deflect chains ${c('combat:deflectChain')} (longest x${chainMax}) · postureBreak ${c('dragon:postureBreak')} at ${breakT.map((t) => (t - t0).toFixed(0)).join(', ')} s`);
   out(`   AI picks: ${Object.entries(picks).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(' · ')}`);
   assert(won, 'victory reached');
@@ -12347,42 +12350,85 @@ async function scenarioCalm() {
   return G;
 }
 
-// ================================================================ BLADESTOP (bites on, ?chip=a; ADR-132)
-// The hero's real swing into a piece of the world: with bites on the blade STOPS on what it does not cut
-// through (the frame freezes, it is held, then thrown back: the bounce), and passes through what it
-// breaks; with bites off it passes through everything, as before.
+// ================================================================ BLADESTOP / CUT (the blade goes clean through)
+// The hero's real swing into a piece of the world. Default (BREAK.chip.pass, the owner 2026-11-23): the
+// blade goes CLEAN THROUGH: the attack clock, frame by frame, is exactly the clock of the same swing in
+// open air (no rewind, no freeze, no bounce), the piece takes the blow, what it knocks off flies on along
+// the cut (not back at him), the passage marks it (sparks / splinters / the line), and a boss behind the
+// piece is hit by the same swing. `?cutStop=1`: the blade STOPS on what it does not cut through, as
+// ADR-132 had it (freeze, held, thrown back) and passes what it breaks; `?chip=0`: it passes everything.
 async function scenarioBladeStop() {
-  out('\n== scenario BLADESTOP (bites on: the blade stops on a piece it cannot cut through; off: it passes through) ==');
+  out('\n== scenario BLADESTOP / CUT (default: the blade goes clean through; ?cutStop=1: it stops; ?chip=0: bites off) ==');
   const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
-  const ST = BREAK.chip.stop;
-  /** One light swing at `kind` (the hand-built field's dead tree or boulder) from 1 m east of it. */
-  const swing = (G, kind, low = false) => {
+  const ST = BREAK.chip.stop, PS = BREAK.chip.pass;
+  /** One swing at piece `kind` (the hand-built field's dead tree or boulder) from 1 m east of it.
+   *  `open`: the same swing with the pieces near it gone (open air). `heavy`: a tapped heavy. `boss`:
+   *  the dragon set this far west of the piece. Records the attack clock each frame. */
+  const swing = (G, kind, { low = false, open = false, heavy = false, cleave = false, gap = 1.0, boss = NaN } = {}) => {
     const { game } = G;
     const p = game.player, D = game.world.destructibles;
     game.world.restore();
     const b = D.list.find((x) => x.kind === kind && x.state === PIECE.INTACT && Math.hypot(x.x, x.z) < 20);
     if (low) b.hp = 0.02; // (one cut fells it)
-    game.dragon.position.set(-b.x * 0.2, 0, 26);
+    if (Number.isFinite(boss)) game.dragon.position.set(b.x - boss, 0, b.z);
+    else game.dragon.position.set(-b.x * 0.2, 0, 26);
     run(G, 0.3, { passive: true });
-    p.debug.teleport(b.x + b.r + 1.0, b.z);
+    p.debug.teleport(b.x + b.r + gap, b.z);
     p.yaw = -Math.PI / 2;
     const aim = () => game.mouseGround.set(b.x, 0, b.z);
     aim();
     G.tick(DT);
     const hp0 = b.hp;
-    const rec = { states: new Set(), maxT: 0, froze: false, end: 0, bounceAt: -1, sparks: 0 };
-    const add0 = game.fx?.add?.count ?? 0;
-    p._buffer('light');
-    for (let i = 0; i < 90; i++) {
-      aim();
-      G.tick(DT);
-      rec.states.add(p.state);
-      if (p.atk && (p.state === 'attack' || p.state === 'heavy')) {
-        rec.maxT = Math.max(rec.maxT, p.atk.t);
-        rec.end = p.atk.def.windup + p.atk.def.active;
+    const rec = { states: new Set(), clock: [], maxT: 0, froze: false, end: 0, bounceAt: -1, hit: false, shake: 0, along: 0, back: 0, pass: 0 };
+    // what flies off the piece: its velocity along the cut (the blade runs round him here: north or
+    // south) vs back toward him (east)
+    const pools = [game.fx.alpha, game.fx.add], spawns = pools.map((P) => P.spawn);
+    pools.forEach((P, i) => {
+      P.spawn = (o) => {
+        if (Math.hypot(o.x - b.x, o.z - b.z) < b.r + 1.2 && Number.isFinite(o.vx + o.vz) && Math.hypot(o.vx, o.vz) > 0.8) {
+          if (o.vx > Math.abs(o.vz)) rec.back++;
+          else rec.along++;
+        }
+        return spawns[i].call(P, o);
+      };
+    });
+    const shake0 = game.shake;
+    game.shake = (k) => {
+      rec.shake = Math.max(rec.shake, k);
+      return shake0?.call(game, k);
+    };
+    const saved = open ? D.list.map((x) => [x, x.state]) : null;
+    if (open) for (const x of D.list) if (Math.hypot(x.x - b.x, x.z - b.z) < 6) x.state = PIECE.GONE;
+    const F = p.fx, cp = F.cutPass;
+    F.cutPass = function (...args) {
+      const n = cp.apply(F, args);
+      if (n > 0) rec.pass++;
+      return n;
+    };
+    try {
+      // (the charged cleave: the heavy button held a full charge, then let go)
+      const hold = cleave ? Math.ceil(1.3 / DT) : 0;
+      if (cleave) G.input.press(2);
+      else p._buffer(heavy ? 'heavy' : 'light');
+      for (let i = 0; i < 100 + hold; i++) {
+        aim();
+        if (cleave && i === hold) G.input.up(2);
+        G.tick(DT);
+        rec.states.add(p.state);
+        if (p.atk && (p.state === 'attack' || p.state === 'heavy')) {
+          rec.maxT = Math.max(rec.maxT, p.atk.t);
+          rec.end = p.atk.def.windup + p.atk.def.active;
+          rec.clock.push(p.atk.t);
+          if (p.atk.hit) rec.hit = true;
+        } else rec.clock.push(-1);
+        if (game.hitstopTimer > 0 && !rec.hit) rec.froze = true;
+        if (p.state === 'bounce' && rec.bounceAt < 0) rec.bounceAt = i;
       }
-      if (game.hitstopTimer > 0) rec.froze = true;
-      if (p.state === 'bounce' && rec.bounceAt < 0) rec.bounceAt = i;
+    } finally {
+      pools.forEach((P, i) => (P.spawn = spawns[i]));
+      game.shake = shake0;
+      delete F.cutPass;
+      if (saved) for (const [x, st] of saved) x.state = st;
     }
     rec.took = hp0 - b.hp;
     rec.piece = b;
@@ -12390,31 +12436,66 @@ async function scenarioBladeStop() {
     rec.dist = Math.hypot(p.position.x - b.x, p.position.z - b.z);
     return rec;
   };
+  const frames = (r) => r.clock.filter((t) => t >= 0).length;
+  const same = (A, B) => A.length === B.length && A.every((t, i) => Math.abs(t - B[i]) < 1e-9);
   let last = null;
-  for (const look of ['a', '0']) {
-    setLook('chip', look);
+  for (const mode of ['pass', 'stop', 'off']) {
+    setLook('chip', mode === 'off' ? '0' : 'a');
+    setLook('cutStop', mode === 'stop' ? '1' : null);
     try {
       const G = (last = build({ terrain: 'field' }));
       fightSetup(G);
-      const on = look === 'a';
       for (const kind of ['boulder', 'deadTree']) {
-        const r = swing(G, kind);
         const name = kind === 'boulder' ? 'a boulder' : 'a dead tree';
-        if (on) {
+        const r = swing(G, kind);
+        if (mode === 'pass') {
+          const air = swing(G, kind, { open: true });
+          assert(r.took > 0 && r.state === PIECE.INTACT && !r.states.has('bounce') && !r.froze && r.maxT >= r.end && same(r.clock, air.clock),
+            `clean through: a light cut into ${name} takes ${r.took.toFixed(3)} (it stands), never freezes or bounces, and its clock is the open-air swing's frame for frame (${frames(r)} frames vs ${frames(air)}, to ${r.maxT.toFixed(3)} s past ${r.end.toFixed(3)})`);
+          assert(r.pass >= 1 && r.along > r.back * 2 && r.shake > 0 && r.shake <= PS.jolt[0] + 1e-9,
+            `the passage reads: marked ${r.pass} time(s) (sparks / splinters / the line), ${r.along} bits fly along the cut vs ${r.back} back at him, one jolt of ${r.shake.toFixed(2)} (a landed light's is 0.12)`);
+          // a heavy (from idle: Piercing Gale) and the charged cleave, each through it
+          // (the cleave dashes: from the first start where its cut meets the piece)
+          for (const [hn, ho] of [['a heavy (Piercing Gale)', { heavy: true }], ['the charged cleave', { cleave: true }]]) {
+            let h = null;
+            for (const gap of ho.cleave ? [0.6, 1.2, 1.8, 2.4, 3.0, 3.6] : [1.0]) if (!(h?.took > 0)) h = Object.assign(swing(G, kind, { ...ho, gap }), { gap });
+            const hAir = swing(G, kind, { ...ho, gap: h.gap, open: true });
+            assert((h.took > 0 || kind === 'deadTree' && ho.heavy) && !h.states.has('bounce') && !h.froze && same(h.clock, hAir.clock) && h.shake <= PS.jolt[1] + 1e-9,
+              `${hn} through ${name} (from ${h.gap} m): takes ${h.took.toFixed(3)} (the light ${r.took.toFixed(3)}; ${h.state === PIECE.INTACT ? 'it stands' : 'it goes down'}), never stops, its clock is open air's (${frames(h)} frames vs ${frames(hAir)}), jolt ${h.shake.toFixed(2)}`);
+          }
+        } else if (mode === 'stop') {
           assert(r.took > 0 && r.state === PIECE.INTACT && r.states.has('bounce') && r.froze && r.maxT < r.end - 1e-3,
-            `bites on: a light cut into ${name} chips it (${r.took.toFixed(3)} taken), freezes the frame, the blade stops at ${r.maxT.toFixed(3)} s of the cut's ${r.end.toFixed(3)} and is thrown back (bounce); he ends ${r.dist.toFixed(2)} m from it`);
+            `?cutStop=1: a light cut into ${name} chips it (${r.took.toFixed(3)} taken), freezes the frame, the blade stops at ${r.maxT.toFixed(3)} s of the cut's ${r.end.toFixed(3)} and is thrown back (bounce); he ends ${r.dist.toFixed(2)} m from it`);
         } else {
           assert(r.took > 0 && !r.states.has('bounce') && r.maxT >= r.end, `bites off: the same cut into ${name} takes ${r.took.toFixed(3)} and the blade carries through (the cut runs to ${r.maxT.toFixed(3)} s, past ${r.end.toFixed(3)}), as before`);
         }
       }
-      if (on) {
-        const r = swing(G, 'deadTree', true);
-        assert(r.state !== PIECE.INTACT && !r.states.has('bounce') && r.maxT >= r.end, `bites on: a cut that fells the tree goes through it (no bounce; the cut runs to ${r.maxT.toFixed(3)} s)`);
-        const s0 = ST.freeze.wood;
-        assert(s0 > 0 && ST.freeze.hard >= s0 && ST.push.hard >= ST.push.wood, 'stone rings harder than wood (BREAK.chip.stop: a longer freeze, a bigger push)');
+      if (mode === 'stop') {
+        const r = swing(G, 'deadTree', { low: true });
+        assert(r.state !== PIECE.INTACT && !r.states.has('bounce') && r.maxT >= r.end, `?cutStop=1: a cut that fells the tree goes through it (no bounce; the cut runs to ${r.maxT.toFixed(3)} s)`);
+        assert(ST.freeze.wood > 0 && ST.freeze.hard >= ST.freeze.wood && ST.push.hard >= ST.push.wood, 'stone rings harder than wood (BREAK.chip.stop: a longer freeze, a bigger push)');
+      }
+      // the boss behind the tree: the same swing reaches him through it
+      if (mode !== 'off') {
+        let at = NaN;
+        for (const d of [1.2, 1.6, 2.0, 2.4, 2.8, 3.2, 3.6, 4.0, 4.5, 5.0]) {
+          if (swing(G, 'deadTree', { open: true, boss: d }).hit) {
+            at = d;
+            break;
+          }
+        }
+        if (mode === 'pass') {
+          assert(Number.isFinite(at), `a boss stands where the light reaches him in open air (${at} m past the tree)`);
+          const r = swing(G, 'deadTree', { boss: at });
+          assert(r.hit && r.took > 0 && !r.states.has('bounce'), `clean through: the cut goes through the tree (it takes ${r.took.toFixed(3)}) and lands on the boss ${at} m behind it in the same swing`);
+        } else if (Number.isFinite(at)) {
+          const r = swing(G, 'deadTree', { boss: at });
+          out(`   (?cutStop=1, the boss ${at} m behind the tree: ${r.hit ? 'hit' : 'not hit'}; the blade ${r.states.has('bounce') ? 'stopped and bounced' : 'went on'})`);
+        }
       }
     } finally {
       setLook('chip', null);
+      setLook('cutStop', null);
     }
   }
   return last;
@@ -12424,6 +12505,8 @@ async function scenarioBladeStop() {
 async function scenarioSfx() {
   out('\n== scenario SFX (the attack sounds: cues only on blue / red, recorded where loaded, the synth until then; hazards / bullets as before; ?sfx=old) ==');
   const SMP = await imp('src/audio/samples.js');
+  assert(SMP.DEFAULT_SFX === 'old' && SMP.sfxMode() === 'old', 'the recorded / designed sounds are off by default: every sound effect is its original synth (ADR-176)');
+  SMP.setSfxMode('new'); // (the sound passes are off by default, ADR-176: this scenario tests them)
   const { SAMPLE_FILES } = await imp('src/audio/sampleFiles.js');
   const { SLOT, BEAST, blowSlot } = await imp('src/audio/sampleList.js');
   const G = build();
@@ -12649,7 +12732,7 @@ async function scenarioSfx() {
       A.samples.loaded = 0;
     }
   } finally {
-    SMP.setSfxMode('new');
+    SMP.setSfxMode(SMP.DEFAULT_SFX);
     A.play = play0;
   }
   return G;
@@ -13130,6 +13213,7 @@ const SCENARIOS = {
   ablaze: scenarioAblaze,
   terrain: scenarioTerrain,
   bladestop: scenarioBladeStop,
+  cut: scenarioBladeStop,
   win: scenarioWin,
   die: scenarioDie,
   touch: scenarioTouch,

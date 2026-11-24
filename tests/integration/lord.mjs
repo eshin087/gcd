@@ -8,6 +8,7 @@
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { ui, AUDIO, resetWindow } from './shim.mjs';
+import { attachMarks, marksCheck } from './marks.mjs';
 
 const ROOT = process.argv[2];
 const SCEN = process.argv[3] || 'all';
@@ -2037,6 +2038,7 @@ async function scenarioPace() {
 async function scenarioWin() {
   out('\n== scenario WIN (a fencing bot in god mode: parries, rolls, cuts in his openings, gives the deathblows) ==');
   const G = build();
+  const MK = attachMarks(G.game); // (the floor marks the fight leaves: they change nothing in it)
   const { game } = G;
   const d = game.dragon;
   duel(G, { dist: 3, ai: true });
@@ -2055,6 +2057,7 @@ async function scenarioWin() {
   const taken = G.hits.filter((h) => h.r === RESULT.HIT).length;
   const parries = G.hits.filter((h) => h.r === RESULT.PARRIED).length;
   out(`     ${won ? 'won' : 'NOT won'} in ${T.toFixed(0)} s: ${blows} deathblows, ${parries} parries, ${taken} hits taken (god mode), form starts at ${formAt.map((t) => (t - t0 > 0 ? (t - t0).toFixed(0) : '0')).join(' / ')} s; form ${d.phase}, bar ${Math.round(d.hp)}`);
+  marksCheck(MK, 'lord', out, assert);
   const dmg = G.hits.filter((h) => h.r === RESULT.HIT).reduce((a, h) => a + (h.damage ?? 0), 0);
   if (skill < 1) {
     out(`     probe (skill ${skill}): ${taken} hits for ${dmg.toFixed(0)} damage in ${T.toFixed(0)} s (the hero has 160 HP and 5 flasks of 70)`);

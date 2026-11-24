@@ -2,7 +2,7 @@
 // Scorch, GroundFire, Scars and Destructibles on the REAL sets (the forest, the courtyard), wired
 // like src/world/world.js; the hero and the boss are small stand-ins that record what lands on them.
 // usage: node world.mjs <repoRoot> [scenario]
-//   scenario: sets | floor | terrace | colossus | chip | fell | cover | fire | throw | reset | grid | body | wreck | spread | wear | wall | reach | landmarks | edge | budget | bite | slice | placed | all
+//   scenario: sets | floor | terrace | colossus | chip | fell | cover | fire | throw | marks | reset | grid | body | wreck | spread | wear | wall | reach | landmarks | edge | budget | bite | slice | placed | all
 // (body / budget run the REAL Dragon on the REAL forest: its body against the world, ARCHITECTURE.md
 // "Destruction" → "The wyrm's body")
 import { pathToFileURL } from 'node:url';
@@ -634,6 +634,86 @@ const S = {
     step(1.2);
     assert(c.state === STATE.GONE, '... and bursts');
     assert(D.throwTo(c, 0, 0) === false && D.take(c) === false, 'a piece that is gone cannot be thrown or taken');
+  },
+
+  // ---------------------------------------------------------------- every kind of blow marks the floor (scars.mark)
+  marks() {
+    // (on the courtyard's paving: its scar ink, its fuel-less floor for the char)
+    const { D, world, game, step } = build(createCourtyard, () => 0);
+    const sc = world.scars;
+    // (world.groundBlow and world.impact's floor mark, as world.js wires them)
+    world.groundBlow = (x, z, o) => { if (Number.isFinite(x + z) && o && o.power > 0) sc.mark(x, z, o); };
+    world.impact = (x, z, r, p, o) => { const n = D.strike(x, z, r, p, o ?? { kind: BLOW.BLUNT, by: 'world' }); sc.impactMark(x, z, r, p, o); return n; };
+    const R0 = Math.random;
+    let draws = 0;
+    Math.random = () => { draws++; return R0(); };
+    const standing0 = D.standing, hp0 = D.list.map((b) => b.hp);
+    // each kind where its blow landed: the mark's glyphs centre within 0.5 m of where it should
+    const CASES = [
+      ['slam', 0, 6, { power: 1.0, r: 2 }, [0, 6]],
+      ['cut', 4, 6, { power: 1.0, dx: 1, dz: 0, len: 2.4 }, [5.2, 6]],
+      ['thrust', 8, 6, { power: 1.0, dx: 0, dz: 1 }, [8, 6.4]],
+      ['dash', -4, 10, { power: 0.8, dx: 1, dz: 0, len: 3 }, [-2.4, 10]],
+      ['blast', -8, 6, { power: 1.2, r: 3, hot: true }, [-8, 6]],
+      ['beam', -6, 14, { power: 0.8, dx: 1, dz: 0, len: 5 }, [-3.5, 14]],
+      ['step', 6, 14, { power: 0.9, dx: 0, dz: 1 }, [6, 14.1]],
+    ];
+    for (const [kind, x, z, o, [ex, ez]] of CASES) {
+      const n0 = sc.count, k0 = sc.made[kind];
+      world.groundBlow(x, z, { kind, by: 'boss', ...o });
+      const M = sc.marks.slice(n0);
+      const cx = M.reduce((a, m) => a + m.x, 0) / Math.max(1, M.length), cz = M.reduce((a, m) => a + m.z, 0) / Math.max(1, M.length);
+      const finite = M.every((m) => [m.x, m.y, m.z, m.size, m.rot, m.alpha].every(Number.isFinite));
+      assert(sc.made[kind] === k0 + 1 && M.length >= 3 && finite && Math.hypot(cx - ex, cz - ez) <= 0.5, `${kind}: ${M.length} glyphs, centred ${Math.hypot(cx - ex, cz - ez).toFixed(2)} m from where it landed (<= 0.5)`);
+    }
+    const untouched = D.standing === standing0 && D.list.every((b, i) => b.hp === hp0[i]);
+    // a heavy blow through world.impact draws its kind's mark (blunt: a slam; blast: a blast), not today's crack
+    { const k0 = sc.made.slam, b0 = sc.made.blast;
+      world.impact(0, -6, 2, 1.0, { kind: BLOW.BLUNT, by: 'boss', src: D.swing() });
+      world.impact(6, -6, 2, 1.0, { kind: BLOW.BLAST, by: 'boss', src: D.swing() });
+      assert(sc.made.slam === k0 + 1 && sc.made.blast === b0 + 1, 'world.impact: a blunt blow leaves a slam, a blast a blast'); }
+    // the same blow told twice in one moment (its actor and the engine) is drawn once; a hundred blows on a spot are thinned
+    { const n0 = sc.count;
+      world.groundBlow(-10, -8, { kind: 'slam', power: 1, by: 'boss' });
+      const n1 = sc.count;
+      world.groundBlow(-10, -8, { kind: 'slam', power: 1, by: 'boss' });
+      assert(sc.count === n1 && n1 > n0, `the same blow twice at once: drawn once (${n1 - n0} glyphs, then ${sc.count - n1})`);
+      let sum = 0;
+      for (let i = 0; i < 100; i++) { game.time += 0.6; const m = sc.count; world.groundBlow(-10 + (i % 5) * 0.2, -8, { kind: 'slam', power: 1, by: 'boss' }); sum += sc.count - m; }
+      assert(sum < (n1 - n0) * 20, `a hundred slams on one spot: ${sum} glyphs (< ${(n1 - n0) * 20}, a fifth of them drawn whole)`); }
+    // the hero's heavy blows are smaller than the boss's
+    { const n0 = sc.count; world.groundBlow(10, -12, { kind: 'slam', power: 1, by: 'boss' }); const nb = sc.count - n0;
+      const n1 = sc.count; world.groundBlow(14, -12, { kind: 'slam', power: 1, by: 'player' }); const np = sc.count - n1;
+      assert(np > 0 && np < nb, `the hero's slam (${np} glyphs) is smaller than the boss's (${nb})`); }
+    Math.random = R0;
+    assert(draws === 0, `no mark draws from Math.random (${draws} draws): the seeded fights replay`);
+    assert(untouched, 'groundBlow damages nothing: every piece stands as it stood, at full hp');
+    // the char: only where nothing burns (the courtyard's paving: density 0)
+    assert(world.scorch.burnAt(-8, 6) > 0 && world.fire.count === 0, `a hot blast chars the paving (${world.scorch.burnAt(-8, 6).toFixed(2)}), lights nothing`);
+    // the cap holds; the oldest fade out (never a pop), then go
+    sc.cap = 400;
+    for (let i = 0; i < 300; i++) { game.time += 0.6; world.groundBlow((i * 3.7) % 40 - 20, (i * 2.3) % 40 - 20, { kind: 'blast', power: 1, by: 'boss' }); step(1 / 60); }
+    const peak = sc.count, dying = sc._dying;
+    assert(peak <= Math.ceil(sc.cap * 1.15) + 1, `the cap holds: ${peak} glyphs (cap ${sc.cap} + the share fading)`);
+    const a0 = sc.sys ? sc.sys.data[16] : 1;
+    step(0.5);
+    const a1 = sc.sys ? sc.sys.data[16] : 0;
+    assert(dying > 0 && a1 < a0 && a1 > 0, `the oldest ${dying} fade (alpha ${a0.toFixed(2)} → ${a1.toFixed(2)}), not popped`);
+    step(SCAR.fade + 0.2);
+    assert(sc.count <= sc.cap && sc._dying === 0, `... then go (${sc.count} <= ${sc.cap})`);
+    // the reset clears them
+    sc.reset();
+    assert(sc.count === 0 && sc.kinds === 0 && (!sc.sys || sc.sys.count === 0), 'world.restore() (scars.reset): no mark is left');
+    // ?marks=0: today's marks only (a heavy impact cracks the floor as before, a groundBlow draws nothing)
+    setLook('marks', '0');
+    try {
+      world.groundBlow(0, 0, { kind: 'slam', power: 1.5, by: 'boss' });
+      const g0 = sc.count;
+      world.impact(0, 0, 3, 1.5, { kind: BLOW.BLUNT, by: 'boss', src: D.swing() });
+      assert(g0 === 0 && sc.count > 0 && sc.kinds === 0, `?marks=0: groundBlow draws nothing, world.impact draws today's cracks and crater rim (${sc.count} glyphs)`);
+    } finally {
+      setLook('marks', null);
+    }
   },
 
   // ---------------------------------------------------------------- the fight's reset: everything stands again

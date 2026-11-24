@@ -10,8 +10,9 @@ function spy(w) {
   const front = L.wind.front.bind(L.wind);
   L.wind.front = (o) => { if (o) c.front.push(o); else front(o); };
   L.wind.burst = (...a) => { c.burst.push(a); };
-  L.creatures.startle = (...a) => { c.startle.push(a); return 0; };
-  L.litter.scatter = (...a) => { c.scatter.push(a); return 0; };
+  // (life._call passes a fifth argument, undefined for these: the spies keep what the methods take)
+  L.creatures.startle = (x, z, r, k) => { c.startle.push([x, z, r, k]); return 0; };
+  L.litter.scatter = (x, z, r, k) => { c.scatter.push([x, z, r, k]); return 0; };
   const hush = L.hushFor.bind(L);
   L.hushFor = (sec, k) => { c.hush.push([sec, k]); hush(sec, k); };
   c.reset = () => { for (const k of ['front', 'startle', 'scatter', 'hush', 'burst']) c[k].length = 0; };
@@ -237,5 +238,22 @@ export default {
       T.assert(w.counts().random === 0, `${id}: no Math.random`);
       T.assert(w.counts().pools === 0, `${id}: the answer makes no pool of its own`);
     }
+  },
+
+  /** world:impact: a tree that falls, crashes, catches or breaks (wood) reaches creatures.fell at its
+   *  point; a chip, a stone breaking, a broken payload do not. */
+  world(T) {
+    const w = T.build('cinderwood', 'answer');
+    const got = [];
+    w.life.creatures.fell = (x, z, kind) => { got.push([x, z, kind]); return 0; };
+    w.step(0.5);
+    for (const kind of ['topple', 'crash', 'burn']) w.emit('world:impact', { kind, mat: 'wood', x: 30, y: 1, z: -4, power: 1, by: 'boss' });
+    w.emit('world:impact', { kind: 'break', mat: 'wood', x: 1, y: 1, z: 2, power: 1, by: 'player' });
+    w.emit('world:impact', { kind: 'break', mat: 'stone', x: 1, y: 1, z: 2, power: 1, by: 'player' });
+    w.emit('world:impact', { kind: 'chip', mat: 'wood', x: 1, y: 1, z: 2, power: 0.3, by: 'player' });
+    w.emit('world:impact', { kind: 'topple', mat: 'wood', x: NaN, z: 'a' });
+    w.emit('world:impact', undefined);
+    T.assert(got.length === 4 && got[0][0] === 30 && got[0][1] === -4 && got.map((g) => g[2]).join() === 'topple,crash,burn,break', `the tree's fall, crash, fire and a wooden break reach the creatures (${got.map((g) => g[2]).join(', ')})`);
+    T.assert(Object.values(w.life._errs).every((n) => !n), 'nothing threw');
   },
 };

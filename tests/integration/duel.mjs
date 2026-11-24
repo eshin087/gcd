@@ -7,6 +7,7 @@
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { ui, AUDIO, resetWindow } from './shim.mjs';
+import { attachMarks, marksCheck } from './marks.mjs';
 
 const ROOT = process.argv[2];
 const SCEN = process.argv[3] || 'all';
@@ -1509,6 +1510,156 @@ async function scenarioPerfectFx() {
   return G;
 }
 
+// ================================================================== scenario: parryfx (?parryFx=)
+// The perfect parry's spit of sparks (combat/parrySparks.js, ?parryFx=0|a; `a` the default, ADR-181;
+// 0 = the parry as before): with 0 nothing is drawn beyond the shipped mark (no spark); with a the mark is the same
+// (frames, blobs) and a PERFECT parry throws 12 - 16 sparks (never a normal one): none white, none
+// above the bloom threshold, 90 % of them die within 0.6 m of the crossing, all gone within 0.55 s
+// real; finite; no Math.random; a string stays at most 48 alive; nothing throws without a fire field.
+async function scenarioParryFx() {
+  out('\n== scenario PARRYFX (the perfect parry: a spit of orange sparks off the crossed steel; ?parryFx=0|a) ==');
+  const PFX = await imp('src/combat/perfectFx.js');
+  const STK = await imp('src/combat/streak.js');
+  const PS = await imp('src/combat/parrySparks.js');
+  const L = PS.PARRY_SPARKS_LAST;
+  const press = (lead) => (left) => {
+    G.game.dragon.posture = 0;
+    if (left > lead) return false;
+    G.input.up(1);
+    G.input.click(1);
+    return true;
+  };
+  let G = null;
+  const R = {};
+  STK.setPerfectMode('sharp');
+  for (const mode of ['0', 'a']) {
+    PS.setParryFx(mode);
+    PFX.perfectClear();
+    G = build();
+    duel(G, { dist: 2.0 });
+    const { game } = G;
+    const p = game.player;
+    p.debug.god = true;
+    p.debug.noRiposte = true;
+    const r = (R[mode] = { mode });
+    // 1) a normal parry (pressed early, outside the perfect window): no spark
+    run(G, 0.4);
+    home(G);
+    place(G, 2.0);
+    run(G, 0.3);
+    let n0 = L.n, perf = null;
+    G.watch = (n, e) => {
+      if (n === 'player:parry') perf = !!e?.perfect;
+    };
+    answerMove(G, 'plumThrust', press(0.17), 3);
+    G.watch = null;
+    r.normal = { perfect: perf, sparks: L.n - n0 };
+    // 2) a perfect parry
+    settle(G, 8);
+    home(G);
+    place(G, 2.0);
+    run(G, 0.3);
+    n0 = L.n;
+    const m0 = PFX.PERFECT_LAST.n;
+    L.peak = 0;
+    L.maxCh = 0;
+    L.white = 0;
+    L.bad = 0;
+    answerMove(G, 'plumThrust', press(0.04), 3);
+    run(G, 1.0);
+    r.marks = PFX.PERFECT_LAST.n - m0;
+    r.blobs = PFX.PERFECT_LAST.blobs;
+    r.frames = PFX.PERFECT_LAST.frames;
+    r.sparks = L.n - n0;
+    r.spawned = r.sparks ? L.spawned : 0;
+    r.main = L.main;
+    r.heavy = L.heavy;
+    r.near = r.sparks ? L.near / Math.max(1, L.died) : 0;
+    r.reach = L.reachMax;
+    r.life = L.lifeMax;
+    r.maxCh = L.maxCh;
+    r.white = L.white;
+    r.end = r.sparks ? L.lifeMax : null; // (real s from the spit to its last spark's death)
+    r.busy = PS.parrySparksBusy();
+    r.bad = L.bad;
+    out(`   ${mode}: normal parry ${r.normal.perfect ? 'PERFECT?' : 'normal'} (${r.normal.sparks} spits) · perfect: mark ${r.marks} (${r.frames} frames, ${r.blobs} blobs) · sparks ${r.spawned} (${r.main} along the attacker's edge, ${r.heavy} heavy), ${(r.near * 100).toFixed(0)} % died within 0.6 m (furthest ${r.reach.toFixed(2)} m), last died ${r.life.toFixed(2)} s real, brightest channel ${r.maxCh.toFixed(2)}, ${r.white} white`);
+  }
+  const Z = R['0'], A = R.a;
+  assert(Z.normal.perfect === false && Z.marks === 1 && Z.sparks === 0 && Z.spawned === 0 && !Z.busy, `0: the shipped mark (${Z.frames} frames, ${Z.blobs} blobs), no spark`);
+  assert(A.normal.perfect === false && A.normal.sparks === 0, `a: a normal parry throws no spark (${A.normal.sparks})`);
+  assert(A.marks === 1 && A.frames === Z.frames && A.blobs === Z.blobs, `a: the shipped mark unchanged (${A.frames} frames / ${A.blobs} blobs vs ${Z.frames} / ${Z.blobs})`);
+  assert(A.sparks === 1 && A.spawned >= 12 && A.spawned <= 16 && A.main >= 1, `a: one spit of ${A.spawned} sparks (12 - 16), ${A.main} along the attacker's edge`);
+  assert(A.white === 0 && A.maxCh > 0.2 && A.maxCh <= 0.55 + 1e-6, `a: orange, never white (${A.white}), brightest channel ${A.maxCh.toFixed(3)} <= 0.55 (no bloom)`);
+  assert(A.near >= 0.9 && A.end !== null && A.end <= 0.55 && A.life <= 0.55 && !A.busy && A.bad === 0, `a: ${(A.near * 100).toFixed(0)} % died within 0.6 m, all gone after ${A.end?.toFixed(2)} s real (<= 0.55), none NaN`);
+  // many spits (steel met and not): 12 - 16 each, 90 % within 0.6 m, gone within 0.55 s real; a string
+  // of ten 0.1 s apart keeps at most 48 alive; no Math.random; no throw without fx
+  const { game } = G;
+  const p = game.player;
+  const x = p.position.x, y = 1.25, z = p.position.z;
+  const MR = Math.random;
+  let drew = 0, threw = null, peak = 0, died = 0, near = 0, lifeMax = 0, nMin = 99, nMax = 0, white = 0, chMax = 0;
+  Math.random = () => {
+    drew++;
+    return MR();
+  };
+  try {
+    for (let s = 0; s < 60; s++) {
+      PFX.perfectClear();
+      L.white = 0;
+      L.maxCh = 0;
+      const met = s % 3 !== 2, c = Math.cos(s), sn = Math.sin(s);
+      const e1 = { x: c, y: 0.6, z: sn }, e2 = { x: Math.sin(s * 1.7), y: -0.2 + 0.3 * c, z: Math.cos(s * 1.7) };
+      PS.parrySparks(game, x, met ? y : 0.9, z, { e1: met ? e1 : null, e2: met ? e2 : null, met, fdx: sn, fdz: c, mode: 'a' });
+      nMin = Math.min(nMin, L.spawned);
+      nMax = Math.max(nMax, L.spawned);
+      for (let j = 0; j < 60 && PS.parrySparksBusy(); j++) PFX.perfectUpdate(game, DT, DT);
+      died += L.died;
+      near += L.near;
+      lifeMax = Math.max(lifeMax, L.lifeMax);
+      white += L.white;
+      chMax = Math.max(chMax, L.maxCh);
+    }
+    PFX.perfectClear();
+    const e1 = { x: 0.2, y: 1, z: 0.1 }, e2 = { x: 1, y: 0.1, z: 0.3 };
+    for (let i = 0; i < 10; i++) {
+      PS.parrySparks(game, x, y, z, { e1, e2, met: true, mode: 'a' });
+      peak = Math.max(peak, L.alive);
+      for (let j = 0; j < 6; j++) {
+        PFX.perfectUpdate(game, DT, DT);
+        peak = Math.max(peak, L.alive);
+      }
+    }
+    for (let j = 0; j < 60; j++) PFX.perfectUpdate(game, DT, DT);
+  } catch (e) {
+    threw = e;
+  }
+  Math.random = MR;
+  const ended = !PS.parrySparksBusy();
+  out(`   60 spits: ${nMin} - ${nMax} sparks each, ${((near / Math.max(1, died)) * 100).toFixed(1)} % died within 0.6 m, the last after ${lifeMax.toFixed(3)} s real, brightest channel ${chMax.toFixed(3)}, ${white} white · ten in a row: peak ${peak} alive`);
+  assert(nMin >= 12 && nMax <= 16 && near / Math.max(1, died) >= 0.9 && lifeMax <= 0.55 && white === 0 && chMax <= 0.55 + 1e-6, `60 spits: ${nMin} - ${nMax} sparks, ${((near / Math.max(1, died)) * 100).toFixed(1)} % within 0.6 m, gone within ${lifeMax.toFixed(3)} s real, none white`);
+  assert(!threw && drew === 0 && peak <= 48 && ended, `ten in a row: at most ${peak} sparks alive (48), all gone after; Math.random drawn ${drew} times; ${threw?.message ?? 'no throw'}`);
+  const fx = game.fx;
+  game.fx = { add: null, alpha: null, fire: null };
+  threw = null;
+  try {
+    PS.parrySparks(game, x, y, z, { e1: { x: 1, y: 0, z: 0 }, e2: { x: 0, y: 1, z: 0 }, met: true, mode: 'a' });
+    PFX.perfectParryMark(game, x, y, z, { mode: 'sharp' });
+    for (let j = 0; j < 90; j++) PFX.perfectUpdate(game, DT, DT);
+    PS.setParryFx('a');
+    p.fx.parry(x, y, z, false, 1, 0, 1, { perfect: true, feel: p.fx.perfectMoment('parry', true, 3, 'sharp') });
+    for (let j = 0; j < 90; j++) PFX.perfectUpdate(game, DT, DT);
+  } catch (e) {
+    threw = e;
+  }
+  game.fx = fx;
+  PS.setParryFx(PS.PARRY_FX_DEFAULT);
+  PFX.perfectClear();
+  STK.setPerfectMode('today');
+  assert(PS.PARRY_FX_DEFAULT === 'a' && PS.parryFxMode() === 'a', `the spit is the default look (${PS.PARRY_FX_DEFAULT}; ?parryFx=0 draws the parry as before)`);
+  assert(!threw && !PS.parrySparksBusy() && errors.length === 0, `nothing throws without a fire field or particles (${threw?.message ?? 'ok'}), no console errors`);
+  return G;
+}
+
 // ================================================================== scenario: streak (ADR-094)
 // The shared streak (parries and clashes count in it), the riposte a parried last blow is answered
 // with, his own streak of guards and the flurry it brings.
@@ -2009,6 +2160,7 @@ async function scenarioPace() {
 async function scenarioWin() {
   out('\n== scenario WIN (a fencing bot in god mode: parries, rolls, cuts in his openings) ==');
   const G = build();
+  const MK = attachMarks(G.game); // (the floor marks the fight leaves: they change nothing in it)
   const { game } = G;
   duel(G, { dist: 4, ai: true });
   G.defend = makeDefender(G);
@@ -2034,6 +2186,7 @@ async function scenarioWin() {
   const secs = game.time - t0;
   const taken = G.hits.filter((h) => h.r === RESULT.HIT).length;
   out(`     ${won ? 'won' : 'not won'} in ${secs.toFixed(0)} s: ${stats.parries} parries, ${stats.guards} guarded swings, ${stats.ghosteps} Ghosteps, ${stats.breaks} breaks, ${stats.execs} executions, ${taken} hits taken, ${G.defend.stats.flashes} flashes; phase ${d.phase}`);
+  marksCheck(MK, 'duel', out, assert);
   out(`     damage by his state: ${JSON.stringify(dmgBy)}`);
   assert(won, 'the fencing bot defeats the Ash Disciple within 6 minutes');
   // (the second pass: three phases; the third, ash on the wind, from 30 %)
@@ -4247,6 +4400,7 @@ async function scenarioReact() {
 async function scenarioSfx() {
   out('\n== scenario SFX (the attack sounds: one blow through the air per real blow, before its impact; cues only on blue / red; ?sfx=old) ==');
   const SMP = await imp('src/audio/samples.js');
+  SMP.setSfxMode('new'); // (the sound passes are off by default, ADR-176: this scenario tests them)
   const { ATTACK_SOUND, beatSound } = await imp('src/entities/enemies/duelist/attackSound.js');
   // every boss's data: the weapon its TUNING declares, every blow classified (or left out: a cast, a pure throw, a burst)
   const BOSSES = [
@@ -4396,7 +4550,7 @@ async function scenarioSfx() {
       const old = run();
       assert(JSON.stringify(old) === JSON.stringify(none), `?sfx=old with the files loaded: the synth as before (${old.join(' ')})`);
     } finally {
-      SMP.setSfxMode('new');
+      SMP.setSfxMode(SMP.DEFAULT_SFX);
       A.play = p0;
       A._sample = s0;
       for (const [s, l] of Object.entries(keep)) { if (l === undefined) delete SAMPLE_FILES[s]; else SAMPLE_FILES[s] = l; }
@@ -4437,6 +4591,7 @@ const SCENARIOS = {
   deflect: scenarioDeflect,
   ghostep: scenarioGhostep,
   perfectfx: scenarioPerfectFx,
+  parryfx: scenarioParryFx,
   streak: scenarioStreak,
   training: scenarioTraining,
   execute: scenarioExecute,

@@ -268,6 +268,24 @@ export const BREAK = Object.freeze({
       freeze: Object.freeze({ wood: 0.075, hard: 0.095 }), shake: Object.freeze({ wood: 0.14, hard: 0.2 }),
       stick: Object.freeze({ wood: 0.11, hard: 0 }), push: Object.freeze({ wood: 0.25, hard: 0.45 }),
       through: 0.05, minH: 0.6, touch: 0.25,
+    }),
+    /**
+     * `pass` (the hero's blade by default; 2026-11-23, the owner: "allow the player to swing their attack
+     * animation through it"): the blade goes CLEAN THROUGH every piece, at full speed: no rewind, no
+     * freeze, no bounce. The piece takes the blow as before; what it knocks off (its bricks, its chips,
+     * its dust) flies on ALONG the cut (`along` x the blade's travel, `face` x out of the face where it
+     * was struck) instead of back toward him. On each piece the steel crosses, once a swing
+     * (player/fx.js `cutPass`): stone and metal throw a short spray of `sparks` (light, heavy) off the
+     * face along the cut, wood `splinters` and a breath of bark dust; a `line` of faint pale strokes
+     * marks where the edge crossed the face for `lineLife` s (`lineStep` m apart, at most `lineMax`).
+     * The hand feels it: one camera `jolt` a swing (light, heavy: under a landed cut's 0.12 / 0.3).
+     * `?cutStop=1` gives back the blade that stops (`stop` above, ADR-132).
+     */
+    pass: Object.freeze({
+      along: 1.1, face: 0.45,
+      sparks: Object.freeze([5, 9]), splinters: Object.freeze([6, 10]),
+      line: false, lineLife: 0.2, lineStep: 0.16, lineMax: 9,
+      jolt: Object.freeze([0.05, 0.12]),
     }), out: 1.6, up: 1.4, litter: 3, shed: 0.72, windY: 0.7 }),
   /**
    * SLICED pieces (a def's `slice: true`: the Windless Grove's bamboo; the owner: "make the bamboo all
@@ -330,11 +348,62 @@ export const FIRE = Object.freeze({
 
 /** Impact marks (world/scars.js). */
 export const SCAR = Object.freeze({
-  max: 520, // glyphs kept; the oldest go first
+  // glyphs kept (x the world's quality: half on a phone); the oldest go first. The marks stay until the
+  // fight's reset (the owner, 2026-11-23): 3600 holds a whole fight (the bot's wyrm fight leaves ~2700).
+  // They cost nothing per frame while nothing changes (the batch is written only when a mark comes or fades)
+  max: 3600,
   ground: Object.freeze({ min: 0.45, glyphs: 'x+*', spokes: [5, 9], reach: [0.7, 2.6] }),
   object: Object.freeze({ glyphs: 'x/\\+', size: [0.22, 0.5] }),
   /** a crater: a blow of `min` power or more leaves a rim of thrown-up earth and a charred disc */
   crater: Object.freeze({ min: 1.2, glyphs: '.:o,', ring: [10, 26], char: 0.85 }),
-  /** at the cap this share of the oldest marks goes in one step (one rebuild of the batch, not one per mark) */
+  /** at the cap this share of the oldest marks goes, fading out over `fade` s (never a pop in view) */
   evict: 0.15,
+  fade: 1.4,
+  /**
+   * The mark each KIND of blow leaves on the floor (scars.mark, world.groundBlow; `?marks=0`: today's
+   * cracks only). Glyphs from the world atlas in the set's crack ink, dim; nothing red or bright (a
+   * danger marker is red strokes): `lineInk` caps a line's brightest channel (the throne hall's ember
+   * ink would draw a gash like a red strip). A mark of the same kind landing within `merge.near` x its
+   * size of an older one is thinned to `merge.keep` of its glyphs per mark already there (a hundred
+   * blows on one spot do not turn it to noise). `by.player`: the hero's marks are smaller.
+   */
+  mark: Object.freeze({
+    min: 0.12, // a blow lighter than this leaves nothing
+    y: 0.07,
+    soft: 0.08, // m: the batch's soft depth (a floor mark is not faded into the floor; the footprints' 0.08)
+    alpha: 0.85,
+    lineInk: 0.42,
+    inkSat: 0.3, // of the set ink's colour a kind mark keeps (the rest grey)
+    /** the lit lip of a gash / a crack / a furrow and the thrown-up grit: broken stone where the light
+     *  catches it (the house style's few brighter digits), dim, never white; per level (game.level.id) */
+    lip: Object.freeze({
+      default: Object.freeze({ color: [0.42, 0.4, 0.37], alpha: 0.66 }),
+    }),
+    lipOff: 0.11, // m: the lip a hair north of its stroke (the far edge)
+    grassLift: 0.3, // m x the grass's density there: a mark on a meadow lies on the blades' tips (under them it is hidden)
+    merge: Object.freeze({ near: 0.8, keep: 0.45, floor: 0.2, slots: 192, twice: 0.35 }),
+    by: Object.freeze({ player: 0.6 }),
+    /** the hero's heavy blows (player.js; light cuts leave nothing): the charged cleave's end in the
+     *  floor (power from charge 0 to 1, a gash `cleaveLen` m), the plunge's landing (a slam); the slam
+     *  finisher's is its world.impact (a blunt blow: a slam) */
+    hero: Object.freeze({ cleave: [0.45, 1.25], cleaveLen: 1.3, plunge: 0.75 }),
+    /** a fist, a tail, a foot, a landing: a shallow crater, a ring of grit and short radial cracks;
+     *  from `crater` power today's crater rim is the ring */
+    slam: Object.freeze({ r: [0.55, 2.3], rk: 0.75, grit: [6, 15], spokes: [3, 6], glyphs: '.,:;', crack: 0.42 }),
+    /** a blade's edge in the floor: one long thin gash along its way, grit thrown to one side */
+    cut: Object.freeze({ step: 0.2, size: [0.3, 0.5], len: [0.8, 3.4], bow: 0.14, grit: [2, 5], claws: 0.42 }),
+    /** a point driven in: a short deep nick, a spray ahead of it */
+    thrust: Object.freeze({ len: [0.4, 0.8], size: 0.55, spray: [4, 8], reach: [0.5, 1.5] }),
+    /** a body or a blade dragged along the floor: a shallow furrow, scuffed edges, a heap at its end */
+    dash: Object.freeze({ step: 0.36, w: 0.2, size: 0.32, len: [0.8, 6], alpha: 0.62 }),
+    /** ki, a spell, an explosion: a scorched round, a star of thin cracks */
+    blast: Object.freeze({ r: [0.6, 2.4], rk: 0.8, dots: [7, 18], spokes: [5, 8], glyphs: '.:;,', char: [0.03, 0.026, 0.022] }),
+    /** a beam: a long charred trench along its path, a glassy middle */
+    beam: Object.freeze({ step: 0.32, w: 0.32, len: [0.5, 30], glass: [0.15, 0.16, 0.19], glassAlpha: 0.45 }),
+    /** a heavy footfall: a faint print, only above `min` power, at most one in `gap` m of the last */
+    step: Object.freeze({ min: 0.5, gap: 2.6, alpha: 0.5 }),
+    /** the scorch map, charred ONLY where no grass grows (paving: the cells' fuel is under
+     *  FIRE.minFuel either way, so no fire burns differently), no heat, no random draw */
+    char: Object.freeze({ blast: 0.5, beam: 0.75 }),
+  }),
 });

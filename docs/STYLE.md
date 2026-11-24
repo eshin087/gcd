@@ -87,6 +87,42 @@ the wyrm next to it, it is wrong, however good it looks alone.
   is full the oldest piece sinks into the ground. A crater (a blow of power 1.2 or more) is a rim of
   thrown-up earth glyphs and a charred disc of the scorch map. Burning wood lights only a local glow
   (5 m) so the fire on the ground stays readable.
+- **The blade's passage** (2026-11-23, ADR-177; the owner: "make the terrain get damaged and show chip
+  damage. make it look natural and good"). The hero's blade goes clean through a rock or a tree it does
+  not fell; what shows the cut is the piece. Its bricks fall as letters where the steel crossed, thrown
+  on ALONG the cut and out of the face (never back at him); steel on stone or metal throws a short spray
+  of hot specks `+ ' .` along the cut (5 light, 9 heavy; a heavy cut a blink of warm light); wood and
+  bone tear out splinters `/ \ | - '` in the piece's own dim hue with a breath of bark dust drifting after
+  them. One small jolt of the camera a swing, under a landed cut's. A faint pale line across the face
+  where the edge crossed exists and is off (`BREAK.chip.pass.line`). `?cutStop=1` is the blade that stops
+  (ADR-132's freeze, sparks and bounce).
+- **Floor marks** (2026-11-23, ADR-177; `?marks=0` the floor as before). Every boss attack that meets the
+  ground leaves a mark of its KIND, and the marks stay until the fight resets, so after a fight the arena
+  says what was fought there:
+  - a **slam** (a fist, a tail, a foot, a landing): a shallow crater, a ring of grit `. , : ;`, a crushed
+    middle `x + *` and a few short radial cracks; the biggest are today's crater rim;
+  - a **cut** (a blade's edge in the floor): one long thin gash with a gentle bow, tapered at both ends,
+    grit thrown to one side; a beast's claws three parallel gashes;
+  - a **thrust**: a short deep nick ending in a `v` / `x`, a spray of grit ahead of it;
+  - a **dash** (a body or a blade dragged): a shallow furrow, two scuffed edges of `- ~` deepening toward
+    its end, a heap of `. , : o` where it stopped; an ankle sweep a scuffed arc round the one who swept;
+  - a **blast** (ki, a spell, an explosion): a scorched round of `. : ; ,` dense at the heart and a star of
+    thin cracks; a hot one charred;
+  - a **beam**: a long charred trench along its path, its middle glassy (`= ~`, dim, never a lit line);
+  - a **step** (a heavy footfall): a faint print, a pad and three toes, one in 2.6 m at most.
+  How they are drawn: each line is a DARK STROKE (`-`, turned to its way on screen) with a dim **lit lip**
+  a hair to the north of it, the far edge where the light catches broken stone (grey (0.42, 0.4, 0.37)
+  at 0.66 of the mark's alpha: the house style's few brighter digits, never white); grit and thrown-up
+  earth print in the lip's grey. The dark ink is the set's crack ink turned mostly GREY (0.3 of its
+  colour kept) and capped dim: a mark is never red or bright, because a danger marker is red strokes
+  (the throne hall's ember-red cracks drew red strips across the floor; today's cracks keep their ink).
+  Marks of one kind piling up on one spot are THINNED (each new one keeps 0.45 of its glyphs per mark
+  already there), so a hundred blows do not turn a spot to noise. On grass a mark lies on the blades'
+  tips (under them the meadow hid it). The char of a hot blast or a beam lands only where no grass grows.
+  A mark never reads as a tell: no glow, no colour, no motion. Honest: after a fight the floor reads "a
+  fight happened here", but the KINDS read only zoomed in (a 1.5 m gash is ~28 px at the game camera) and
+  they are weakest on grass; the lip's brightness and the pale arcs and trenches are the owner's to judge
+  (open).
 
 **Effects (ADR-113).** Anything that burns, glows or strikes as a body is HEAT IN THE FIRE FIELD
 (`game.fx.fire`), printed in the same small letters as the wyrm: never a big glyph sprite. Read
@@ -1028,6 +1064,8 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?great=` | Starless Night's waves | - | the dark tide (a violet wall, a red seam on its front) | the sky's edge (standing white strokes, lightning off it) | the floor answers (dust and chips along a red seam; the costliest: fire field peak 4942 of 6000) | **a** |
 | `?floor=` | a broken floor slab (both arenas; read when the level is built) | - | rubble on printed earth | heaved into a low mound of brighter shards | - | **a** |
 | `?chip=` | bites: a blow takes the bricks of a piece where it struck (every level; read when the level is built and at each blow; ADR-132; Lab: WORLD -> Bites) | pieces wear down in stages and break whole | the bricks under the blow fall as their letters; a solid piece keeps a skin there, set back | - | - | **a** |
+| `?cutStop=` | the hero's blade on a piece it does not fell (every level; read at each swing; ADR-177; Lab: WORLD -> Blade; with bites on only; values 0 / 1, and here `0` is the NEW default, `1` the feel before) | clean through: chips along the cut, sparks off stone, splinters off wood | `1`: it stops there (ADR-132: a freeze, sparks, a bounce) | - | - | **0** (2026-11-23) |
+| `?marks=` | the floor's marks (every level; read per blow; ADR-177) | today's cracks and crater rims only | `1`: a mark of each blow's kind (slam, cut, thrust, dash, blast, beam, step) that stays until the reset | - | - | **1** (2026-11-23) |
 | `?ashLook=` | Shen Hui's body (read when his rig is built) | today's figure | the dragon look (the wyrm's art path) | today's figure dressed by phase | both | **b** |
 | `?lordLook=` | Varr Nihil's body (read when his rig is built) | today's figure | the dragon look | today's figure dressed by form | both | **b** |
 | `?outskirts=` | what lies round the Obsidian Throne's crater (ADR-133; read when the level is built; `m` all of them) | the felled forest | the shrine the star fell on | the star's debris | those who came for him | **c** |
@@ -1378,7 +1416,8 @@ art path at 720p he is still about 12 letter rows; b survives it by its colour, 
 ### The living world (2026-11-23, ADR-163; `world/life/`, `world/hang.js`, `?life=`)
 One wind per level, and what lives in it: the grass and the trees lean and are swept by gust fronts,
 leaves (ash, paper, grit) fall and lie, footsteps answer the ground, slow weather, small creatures,
-banners and paper that hang in the wind. On by default (the owner's pick, 2026-11-23; `?life=off` turns it off);
+banners and paper that hang in the wind; since ADR-177 flocks and small animals that flee the fight, a
+set that shakes under heavy blows, smoke and dust that linger after ("A fight the world feels" below). On by default (the owner's pick, 2026-11-23; `?life=off` turns it off);
 ARCHITECTURE.md "The living world" has the contract and every number. One mood per level, slow changes:
 Cinderwood a night breeze in slow breaths and gust fronts that stir the meadow; Ashfall dry and fitful;
 the Obsidian Throne nothing but a slow draw toward the star, which breathes; the Skybreak Ring a steady
@@ -1485,6 +1524,50 @@ ripple reads face on. Paper is lighter: it lifts in a sigh and falls still in th
 block swing as one. A felled, carried or thrown piece hangs still. The Ring's banners stream steadily, the
 Terrace's charm strips flutter, the crater's banners barely stir in its draw; nothing hangs in Ashfall,
 Cinderwood or the Grove.
+
+**A fight the world feels** (2026-11-23, ADR-177; the owner: "animals running away as you get close to
+them in the fight or a flock of birds flying away from the dragon blowing fire at it"; animals TINY, a
+few letters). Everything below prints in the house letter (`LetterBatch`), dim, like the air.
+- **Flocks.** A stretch of canopy holds 30 - 44 small birds (Ashfall's crows 9 - 15, the Terrace 12 - 22,
+  the Plaza's pigeons 14 - 24). Fire, a heavy blow, a falling or burning tree or a roar near it, and they
+  burst out over a second, climb, bank together and wheel away: a LOOSE, THINNING CLOUD of tiny
+  moon-grey letters (`v` / `-` with the wingbeat, `-` gliding; alpha 0.72), never evenly spaced (each
+  bird's place drifts on its own slow beat, so the shape stretches and curls), loosening to 2.4 x its
+  size and thinning as birds drop out one by one instead of ending. ONE bird is near invisible; the
+  flock's mass is what reads. The game camera never sees the tree wall from the arena, so a flock is
+  ROUTED THROUGH THE TOP BAND OF THE FRAME (0.6 - 0.74 on a screen height of -1 bottom to 1 top), across and out the
+  far side, never over a fighter (a letter that would print over the hero or the boss is not drawn).
+  Ashfall's crows are darker, heavier and slower (`v ~ -`). A roost that went stays empty for the
+  fight; birds fly back in after it (20 - 80 s).
+- **Animals: two to five tiny letters, read by their GAIT.** They sit nearly invisible at the edge of the
+  arena, never on the fighting ground, and bolt into cover when the hero or the fight comes near:
+  Cinderwood's rabbits `0 '` (a hop, a pause, a zig; `- 0 '` in the air) and a herd of three deer, a
+  long body `= =` with the neck up `/` and the legs under (`|`, `/` and a back-slash; long bounds); Ashfall's rats `~ c` (a low dart
+  along the wall, one pause); the Ring's lizards `~ x -` (stop-start scuttle, a dusty mid tone that shows
+  on the clay); the Terrace's one fox `~ = = v |` (long and low, the brush trailing, a steady trot, one
+  stop to look back at the hero, a pale blue foxfire glint where its tail slips into the dark; once a
+  visit). They come back 25 - 90 s after the fight, fading in only when the hero is far.
+- **The set shakes under a heavy blow** (the tremor; power 0.7 or more, out to 3 power² m plus the blow's
+  reach): trees shudder and drop a few of their own leaves from the crown, bamboo shivers, a thin TRICKLE
+  of pale dust letters sifts off the top of a tall stone (each letter its own start and pull: a trickle,
+  not a sheet) with a faint puff at its foot, what hangs swings away from the blow and rings down (a
+  banner peaks about 12 degrees and is still in two seconds), pebbles hop a hand's height off the floor
+  (grit `. , : o ; '`) a beat after the blow and lie a moment, the grass flattens outward where the blow
+  made no gust of its own, the bonfire gutters (its flames dip and lean away, its light dims, a gust of
+  embers).
+- **What it leaves in the air** (the aftermath, gone at the reset, lingering after a victory): where fire
+  burned out, a thin slow COLUMN OF SMOKE of tiny faint grey letters (`. , ' : ~ -` and a backtick, about
+  130 a column, 2.4 - 3.4 m high) rises for 20 - 40 s, leaning and curling on the wind and thinning as it
+  goes, with a few embers lifting off the hot early part; after a big blow (1.2 or more) a LOW HAZE of
+  pale dust hangs over the crater for 6 - 10 s, densest low, drifting off downwind. Never on the hero;
+  never a grey sprite.
+- **What does not read yet** (honest, from the films): the crows on Ashfall (the flock does not read),
+  a flock off a single tree (weak; a fire flush across the tree line reads at full size), the Plaza's
+  pigeons (not seen); the animals at the game camera are tiny (the rat `~c` and the rabbit `0-'` read on a
+  3 x crop, the deer is a small table, the fox `~==v`); the tremor's dust off the ruins, the pebbles, the
+  smoke columns and the crater haze are faint at the game camera, the charms' swing too small, a tree's
+  shudder subtle (the grass flattening reads most) and lost when the wyrm fills the frame; the banners'
+  swing reads. Not checked on the phone; no film of the quiet after a victory.
 
 **Tried and cut.** The hawk's shadow on the floor (a dark letter on the dark floor never read; dropped).
 Dark grit on the obsidian (invisible: the star's cinders instead). Sparks orbiting the Throne's vents
@@ -1637,6 +1720,15 @@ the body.
 - **The body answers** (ADR-149): the reaction's first pose shows in the frame the freeze holds, small
   enough that the struck surface stays 0.01 - 0.07 m from the drawn cut (`snapM` 0.06 on a duelist),
   so the cut, the stamp and the spray stay on the body; the swing to the peak comes after the freeze.
+
+### The perfect parry's sparks (2026-11-24, ADR-181; `combat/perfectFx.js` hosts, `combat/parrySparks.js` draws)
+
+On top of the gold mark, a perfect parry of a blow throws what real steel throws: a FEW sparks (12 - 16), FAST,
+SHORT-LIVED, ORANGE, most along the blade that glanced off. Each is one house letter: a stroke laid along its screen
+motion while fast, `'` then `.` as it slows, yellow-orange to dark red, never above the bloom threshold (a crisp letter,
+never a glow, never white). The owner's rules from the passes turned down on the way: the background never changes
+colour or print for a combat moment; no fireworks (many bright streaks), no glints that run, no soft light; detail
+over size.
 
 ### The streak and a single perfect defence (2026-11-23, ADR-167; `combat/perfectFx.js`, `player/flurryFx.js`, `player/flurryBurst.js`, `player/streakFx.js`, `ui/streakCounter.js`)
 The rule of the pass: **lines, not light**, and one idea a piece that grows by tier (a streak of 3 /

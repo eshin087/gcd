@@ -5371,3 +5371,86 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   after (the gem's violet point aside). An addendum to ADR-130's pixel windows: a window under 0.46 must not be
   read by the creature grid.
 
+## ADR-177 — The blade goes clean through; every boss blow marks the floor; the set, the birds and the animals answer the fight (2026-11-23)
+
+- **Context:** the owner: "when the player hits something like a rock or tree, the sword gets stopped and
+  i dont like this feeling. lets allow the player to swing their attack animation through it while making
+  the terrain get damaged and show chip damage. make it look natural and good. i also want the background
+  to have more alive like the ground gets damaged per boss attack to show the damage done from the boss.
+  have more cool atmospheric moments like animals running away as you get close to them in the fight or a
+  flock of birds flying away from the dragon blowing fire at it." Asked, they picked: clean through;
+  marks that stay until the fight resets; birds that flee, animals that run, a set that shakes, an
+  aftermath; animals drawn tiny, a few letters.
+- **Decision:**
+  1. **The hero's blade never stops (this supersedes ADR-132's stop).** A swing through a piece it does
+     not fell keeps the clock and the reach it has in open air: no rewind, no freeze, no stick, no
+     bounce. The piece takes the same blow once per swing; what it loses flies ALONG the cut (the blow
+     carries the blade's travel), stone and metal spark, wood splinters, one small jolt. The stop is
+     kept behind `?cutStop=1`.
+  2. **A blow that meets the ground says so.** `world.groundBlow(x, z, o)` keeps a mark of the blow's
+     kind (slam, cut, thrust, dash, blast, beam, step) and tells the living world; it damages nothing.
+     The human bosses get it from ONE hook in the shared engine at each beat's impact, read from the
+     beat's own shape (a beat may carry `groundMark`, or `false`); the wyrm and the hero call it.
+     Marks stay until `world.restore()`; past the cap the oldest fade.
+  3. **Marks change nothing in the fight.** No damage, no fire, no timing, no `Math.random`: the seeded
+     fights replay line for line. A mark chars the scorch map only where no grass grows (so no fire
+     burns differently), which is why marks are weakest on grass.
+  4. **The living world feels every blow and every fire.** `world.impact`, `world.groundBlow` and
+     `world.ignite` reach every layer with an `impact` / `ignite` method. Two new layers under the
+     piece `answer`: the tremor (what stands near shakes without being damaged: leaves off a tree,
+     dust off a pillar, a swing in what hangs, pebbles, the bonfire's gutter) and the aftermath (smoke
+     where fire burned out, embers, a haze over a crater).
+  5. **Flocks and animals, in the approved letter.** Birds roost unseen and leave as a flock when fire,
+     a heavy blow, a falling tree or a roar reaches them; a roost that left stays empty for the fight.
+     Because the game camera never sees the tree wall in a fight, a flock is routed across the top band
+     of the frame. Ground animals are two to five of the wyrm's letters, read by gait, outside the
+     fighting ground, untouchable; some come back after the fight.
+- **Why this way:** the stop was built to give cover weight, and the owner's hand says it feels like
+  being caught; the weight now comes from what the cut throws. One engine hook marks seven bosses'
+  moves without forty hand-written calls and covers a boss added later. Everything in the air uses the
+  one look the owner approved (many tiny faint letters clumped; ADR-163's addendum).
+- **Consequences / open:** at the game camera the KINDS of mark read only zoomed, and marks on grass
+  are faint (a floor channel the grass reads as torn would fix it, at the price of touching fire fuel);
+  the dust sift, the pebbles, the smoke and the crater haze are faint; Ashfall's crows do not read; the
+  wyrm's fire fills the mark cap in about three minutes. The owner has not yet judged any of it in play.
+
+## ADR-178 — Every sound effect back to its first synth version: the sound passes are off by default (2026-11-23)
+
+- **Context:** ADR-165 (attack cues and blows as recordings) and ADR-172 (the combat core as recordings and
+  designed sounds) replaced much of the synth. In a session that followed, the owner turned down a new light-cut
+  swing (round one picked `e`, then "i dont like any of these"), plucked-string blue and red warnings, seven
+  variations of them, and a spread of other families (bamboo, wood, bell, flute, steel, drum, bowstring, breath),
+  and said: "lets just make all the sounds go back to their original. i want to start from baseline and undo all
+  the sound changes". Asked the scope, they chose: all sound effects, keep the music.
+- **Decision:** the existing switch is turned round: `samples.js` `DEFAULT_SFX = 'old'`, `?sfx=new` (the Lab's
+  `sfx` row) opts in. Nothing is deleted: the recordings, the designed sounds, `sampleList.js`, `parryChain.js` and
+  the synth recipes stay. The sample bank fetches nothing while the mode is `old` and loads on `setSfxMode('new')`
+  (verified in a headless browser: default 0 of 35 files requested; `?sfx=new` and the live switch 35 of 35).
+  The recorded music (ADR-117) is untouched. Sounds that belong to later features (the streak's climb note, ADR-167;
+  the impact pass's sub and music dip, ADR-149; the living world's air, ADR-163) and the round-two sign-off's two
+  small fixes (the combo swing's pitch rising on every cut; the streak note × 0.5 on a parry) are not part of the
+  switch and stay.
+- **Consequences:** a new sound round starts from the first synth sounds. The work of that session (a swing with
+  its top on the blade's contact, `player:attack`'s windup / active, `?swing=`, `?blue=` / `?red=` with the
+  families above, the pickers) is not in the repo: it is a git stash on the machine that made it ("swing + warning
+  sound options") and the pickers' pages. The tests of the sound passes (integ and duel `sfx`) switch the mode on
+  and put the default back.
+
+## ADR-181 — The perfect parry throws a few orange sparks; nothing else of the moment changes (2026-11-24)
+
+- **Context:** the owner asked to make the perfect parry and dodge "more epic cool with subtle effects". In one session
+  they turned down, on film: a four-piece pass (the floor's letters reacting, poses, a darkened iris and camera lean,
+  the world answering) with "i dont want the background to change color at all"; a shower of ~170 white-gold sparks
+  as "too bright / fireworks, too many / too big, wrong motion, not the right idea" and "calmer"; four richer
+  afterimages of the hero's real body with "the original is better". Asked for a reference they said to research it
+  and decide.
+- **Decision:** the shipped perfect parry (`?perfect=sharp`, ADR-167) stays exactly as it is, and a perfect parry of a
+  blow adds a spit of 12 - 16 sparks modelled on real sword sparks and on Sekiro's deflect: few, fast, short-lived,
+  orange; most along the blade that glanced off; each a stroke along its motion that becomes a dot as it slows; cooling
+  to dark red; under the bloom threshold, so a crisp letter and never a glow; real time; one cell each
+  (`combat/parrySparks.js`, `?parryFx=0|a`, default `a`). A normal parry, a perfectly parried bullet and the perfect
+  dodge are unchanged.
+- **Consequences:** the moment is still dominated by the gold mark; the spit is a detail, read best at the end of the
+  freeze and in a string. Against the wyrm the sparks are mostly hidden by its own parry star. One more `LetterBatch`
+  draw call while sparks live. The rejected passes stay on local branches; a later round on these moments should start
+  from a concrete reference and one narrow prototype, and never change the background.

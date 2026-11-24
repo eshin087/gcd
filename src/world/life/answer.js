@@ -17,6 +17,10 @@ import { answerTuning } from './answerTuning.js';
 //   dragon:dead / game:victory    a lull (a long hush), then the breeze returns
 //   player:died                   a hush
 //   answer.gust(x, z, s, r)       (life.gust calls it) a strong burst startles the creatures in its radius
+//   world:impact 'topple' | 'crash' | 'burn' | 'break' (wood)
+//                                 a tree falls, crashes down or catches: creatures.fell (the birds hidden
+//                                 in the canopy there burst out, the animals near it bolt; the flocks'
+//                                 own limits keep a fire fight from emptying the sky)
 // Everything is rate-limited (answerTuning.gap) and scaled by life.k. With the piece off nothing is
 // subscribed (the subscriptions follow the switch, so the Lab can flip it live) and nothing runs.
 // In the Windless Grove these are the only things that ever move the air: the fronts pass there too.
@@ -24,6 +28,8 @@ import { answerTuning } from './answerTuning.js';
 const BLOWS = ['dragon:land', 'dragon:explosion', 'player:slam', 'player:plungeHit'];
 const PHASES = ['dragon:phase', 'dragon:phase2', 'dragon:phase3', 'dragon:phase4'];
 const GREAT = new Set(['red', 'black']);
+/** what of the world's own impacts (destructibles.js) sends the birds up and the animals running */
+const FELL = new Set(['topple', 'crash', 'burn', 'break']);
 
 const num = (v, d) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
 
@@ -68,6 +74,7 @@ export class Answer {
       sub('dragon:dead', () => this.answerLull());
       sub('game:victory', () => this.answerLull());
       sub('player:died', () => this.answerDied());
+      sub('world:impact', (d) => this.answerWorld(d));
       this._offs = offs;
     } else if (!want && this._offs) {
       for (const off of this._offs) {
@@ -196,6 +203,16 @@ export class Answer {
   answerDied() {
     if (!this._gate('died')) return false;
     this.life.hushFor(this.T.died.sec, this.T.died.k);
+    return true;
+  }
+
+  /** world:impact (one reused payload: read now, keep nothing): a tree falls, crashes or catches. */
+  answerWorld(d) {
+    if (!d || !FELL.has(d.kind) || (d.kind === 'break' && d.mat !== 'wood')) return false;
+    const x = num(d.x, NaN), z = num(d.z, NaN);
+    if (!Number.isFinite(x + z)) return false;
+    this.counts.world = (this.counts.world ?? 0) + 1;
+    this.life._call?.('creatures', 'fell', x, z, d.kind);
     return true;
   }
 

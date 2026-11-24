@@ -14,8 +14,8 @@ import { DEFAULT_LOADOUT, swordFromUrl } from './gear/index.js';
 import { CLASH, clashBurst, clashGrind, closestOnSegments } from '../../combat/clashFx.js';
 import { CUT_LOOK } from '../../combat/cutFx.js';
 import { Flurry } from './flurry.js';
-import { BREAK } from '../../world/breakTuning.js';
-import { chipLook } from '../../world/destructibles.js';
+import { BREAK, SCAR } from '../../world/breakTuning.js';
+import { chipLook, cutStops } from '../../world/destructibles.js';
 
 // The Wanderer. Owns input → state machine → movement/collision → animation → sword hits → FX.
 // Contract: docs/ARCHITECTURE.md (Player). Combat rules: docs/COMBAT.md + src/combat/rules.js.
@@ -2516,6 +2516,7 @@ export class Player {
     this._setKb(pl.dx, pl.dz, 0.55);
     this._plungePhase(PL.LAND);
     this.fx.plungeLand(p.x, p.z, pl.dx, pl.dz);
+    this._groundMark(p.x, p.z, 'slam', SCAR.mark.hero.plunge, NaN);
     g.shake?.(0.22);
     g.world?.gust?.(p.x, p.z, 0.8, 4);
     {
@@ -3290,6 +3291,7 @@ export class Player {
           if (Number.isFinite(this._tip.x + this._tip.z)) {
             this.game.world?.gust?.(this._tip.x, this._tip.z, 0.8 + 0.4 * a.charge, 4 + a.charge);
             this.fx.dust(this._tip.x, this._tip.z, 8 + Math.round(6 * a.charge), 1 + 0.5 * a.charge);
+            this._groundMark(this._tip.x, this._tip.z, 'cut', lerp(SCAR.mark.hero.cleave[0], SCAR.mark.hero.cleave[1], clamp(fin(a.charge, 0), 0, 1)), SCAR.mark.hero.cleaveLen);
           }
           this.anim.kickCoat(0.5 + 0.3 * a.charge, this.anim.noise);
         }
@@ -3355,6 +3357,20 @@ export class Player {
     if (bandHit(spheres, x, 0, z, x, 0, z, fin(S.radius, 1.5), fin(S.height, 3), 0, this._hit) > 0) this._applyHit(a, this._hit, true);
   }
 
+  /** One of his heavy blows met the floor (world.groundBlow: a mark of its kind, `by: 'player'`; it
+   *  damages nothing). The gash runs from (x, z) along his facing. */
+  _groundMark(x, z, kind, power, len) {
+    const w = this.game.world;
+    if (!w?.groundBlow || !Number.isFinite(x + z)) return;
+    const o = (this._gmo ??= { kind: 'cut', power: 0, dx: 0, dz: 1, len: NaN, by: 'player' });
+    o.kind = kind;
+    o.power = power;
+    o.dx = Math.sin(this.yaw);
+    o.dz = Math.cos(this.yaw);
+    o.len = len;
+    w.groundBlow(x - (kind === 'cut' ? o.dx * len * 0.35 : 0), z - (kind === 'cut' ? o.dz * len * 0.35 : 0), o);
+  }
+
   /** This swing as a blow on the world (world.destructibles: one id per swing, so a piece takes it once). */
   _worldBlowOf(a, ground = false) {
     const D = this.game.world?.destructibles;
@@ -3370,46 +3386,78 @@ export class Player {
   /**
    * The swing against the world's breakables (ADR-107): each piece the blade sweeps through takes one
    * blow per swing, as hard as the cut (POWER = its damage / 110: a full cleave fells a tree). What
-   * falls, falls away from him: stand so the thing is between you and the foe. With bites on
-   * (`?chip=a`, ADR-132) the blade STOPS on a piece it does not cut through (_bladeStops); `prevT`: the
-   * attack clock last frame.
+   * falls, falls away from him: stand so the thing is between you and the foe. The blade goes CLEAN
+   * THROUGH (BREAK.chip.pass; the owner, 2026-11-23): the swing's clock, its pose and its reach run
+   * exactly as in open air (so the same swing still meets a boss behind the piece), and the piece shows
+   * the passage: its bricks knocked off where the steel crossed, thrown on along the cut, sparks off
+   * stone, splinters off wood, a faint line across the face, one small jolt of the camera.
+   * `?cutStop=1` (cutStops) gives back the blade that STOPS on a piece it does not cut through
+   * (_bladeStops, ADR-132); `prevT`: the attack clock last frame.
    */
   _cutWorld(a, sw, prevT = NaN) {
     const o = this._worldBlowOf(a);
     if (!o) return;
     const p = this.position;
+    const stops = cutStops();
     o.dx = (sw.a.x + sw.b.x) * 0.5 - p.x;
     o.dz = (sw.a.z + sw.b.z) * 0.5 - p.z;
     o.y = Math.min(sw.a.y, sw.b.y) - 0.3;
     // (the blade's own height at its two ends: a piece is bitten where the steel met it, BREAK.chip)
     o.ya = sw.a.y;
     o.yb = sw.b.y;
+    // the blade's travel this frame (its middle, on the ground): what it knocks off flies on along it
+    const T = this._cutT ??= { x: 0, y: 0, z: 0 };
+    T.x = (sw.a.x + sw.b.x - sw.pa.x - sw.pb.x) * 0.5;
+    T.y = (sw.a.y + sw.b.y - sw.pa.y - sw.pb.y) * 0.5;
+    T.z = (sw.a.z + sw.b.z - sw.pa.z - sw.pb.z) * 0.5;
+    const tl = Math.hypot(T.x, T.y, T.z), hl = Math.hypot(T.x, T.z);
+    if (!stops && hl > 1e-4 && Number.isFinite(tl)) {
+      o.tx = T.x / hl;
+      o.tz = T.z / hl;
+    } else o.tx = o.tz = NaN; // (the stop: its chips fly back off the face, as they did)
     const D = this.game.world.destructibles;
     const n = D.sweep(sw.a.x, sw.a.z, sw.b.x, sw.b.z, REACH.radius, fin(a.damage, 30) / 110, o);
     if (n > 0 && !a.exec && D.struck && chipLook() !== '0') {
       const S = D.struck, ST = BREAK.chip.stop;
-      // (only on contact: the steel within `touch` m of the piece's footprint, the blade's thickness)
-      if (S.held && S.held.h >= ST.minH && this._bladeTouches(sw, S.held, ST.touch)) {
-        this._bladeStops(a, S, prevT);
-        return;
-      }
-      // it cut the thing through: a beat of weight as the blade goes on
-      if (S.broke > 0 && !a.wthrough) {
-        a.wthrough = true;
-        this._hitstop(ST.through, 0.05);
-      }
+      if (stops) {
+        // (only on contact: the steel within `touch` m of the piece's footprint, the blade's thickness)
+        if (S.held && S.held.h >= ST.minH && this._bladeTouches(sw, S.held, ST.touch)) {
+          this._bladeStops(a, S, prevT);
+          return;
+        }
+        // it cut the thing through: a beat of weight as the blade goes on
+        if (S.broke > 0 && !a.wthrough) {
+          a.wthrough = true;
+          this._hitstop(ST.through, 0.05);
+        }
+      } else if (tl > 1e-4 && Number.isFinite(tl)) this._cutPasses(a, S, T.x / tl, T.y / tl, T.z / tl);
     }
     if (n > 0 && !a.wfelt) {
       a.wfelt = true; // the hand feels it: one small jolt per swing
-      this.game.shake?.(a.def.heavy ? 0.12 : 0.05);
+      const J = BREAK.chip.pass.jolt;
+      this.game.shake?.(a.def.heavy ? J[1] : J[0]);
     }
   }
 
   /**
-   * The cut met a piece it could not cut through (BREAK.chip.stop, ADR-132): the blade stops there. The attack
-   * clock goes back to the middle of this frame's travel (about where the edge met it), the frame
-   * freezes, the camera shakes, steel on stone throws sparks; _tickAttack holds the pose while it
-   * sticks (wood) and then throws the blade back (the bounce), away from the piece.
+   * The blade went through the pieces this frame's sweep struck (BREAK.chip.pass): each shows where the
+   * steel crossed it (fx.cutPass: sparks off stone and metal, splinters off wood, the line across the
+   * face). A floor slab under the edge shows nothing more; a sliced piece (bamboo) falls at the cut.
+   */
+  _cutPasses(a, S, tx, ty, tz) {
+    const P = BREAK.chip.pass, q = fin(this.game.world?.destructibles?.q, 1), heavy = !!a.def.heavy;
+    for (let i = 0; i < S.n; i++) {
+      const e = S.list[i], b = e.b;
+      if (!b || b.floor || b.slice) continue;
+      this.fx.cutPass(e.x, e.y, e.z, b.x, b.z, fin(b.r, 0.4), tx, ty, tz, b.mat, b.M, heavy, P, q);
+    }
+  }
+
+  /**
+   * The cut met a piece it could not cut through (BREAK.chip.stop, ADR-132; with `?cutStop=1`): the
+   * blade stops there. The attack clock goes back to the middle of this frame's travel (about where the
+   * edge met it), the frame freezes, the camera shakes, steel on stone throws sparks; _tickAttack holds
+   * the pose while it sticks (wood) and then throws the blade back (the bounce), away from the piece.
    */
   /** Does the blade's segment (sw.a -> sw.b, ground plane) come within `pad` m of piece b's footprint? */
   _bladeTouches(sw, b, pad) {

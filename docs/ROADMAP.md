@@ -184,7 +184,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
-## M1.75 — The hero's move styles: four characters, switchable combos, a mystical sword (2026-11-23, `player/hero-stances-swordplay`, ADR-174 – ADR-176)
+## M1.78 — The hero's move styles: four characters, switchable combos, a mystical sword (2026-11-23, `player/hero-stances-swordplay`, ADR-174 – ADR-176)
 - [x] Stance sets (a few poses per set he shifts between, by streak tier), per-style idle actions, `poseKit.js`
 - [x] Switchable light combos of 3 – 7 presses: hit windows, heft, a held beat's buffer, heavy branches clamped
 - [x] Four characters as options (`?moves=flow|still|restless|showy`, `?stance=`, `?combo=`): no hand on the hip, each about today's damage per second
@@ -196,6 +196,29 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [ ] The streak aura's rim in green to match the sword's flame? (owner to decide)
 - [ ] Harden the winner: variants per hit, the outfits (`?heroLook=`), the phone, the audits' gaps (the combo audit's streak, the stance audit's wrist kink, its "-> light" row)
 - [ ] Weak spots: the point's speed into a backpedal or a block from the trailing poses; showy's finisher a full turn to his right
+
+## M1.77 — The perfect parry throws a few orange sparks (2026-11-24, `combat/perfect-sparks`, ADR-181)
+- [x] A calm spit of orange spark letters off the crossed blades on a perfect parry (`?parryFx=a`, the default; `0` as before)
+- [x] The shipped mark, freeze, slow motion, sound and the perfect dodge's afterimage unchanged (the owner's call after three rejected passes)
+- [ ] Played and seen on the iPhone
+- [ ] A next round on the perfect dodge / parry, if any: from a concrete reference and one narrow prototype; never the background
+
+## M1.76 — Every sound effect back to its first synth version (2026-11-23, `audio/swing-choices`, ADR-178)
+- [x] The recorded / designed sounds off by default (`?sfx=new` turns them on; no files fetched while off)
+- [x] The new swing and warning options of the session set aside (a git stash, not in the repo)
+- [x] The music (ADR-117) kept
+- [ ] The next sound round, from the baseline: the owner says what they want first (a reference, a game, a word) rather than picking from options they then reject
+
+## M1.75 — A fight the world feels (2026-11-23, `world/fight-alive`, ADR-177)
+- [x] The hero's blade goes clean through what it does not fell (`?cutStop=1`: the stop of ADR-132)
+- [x] A mark of its kind for every boss blow that meets the ground, on all eight bosses, until the reset (`?marks=0`)
+- [x] Flocks that flee fire, blows and falling trees; rabbits, deer, rats, lizards, one fox
+- [x] The set shakes (leaves, dust, what hangs, pebbles, the bonfire); smoke, embers and haze after
+- [ ] Played by the owner; their calls on the sparks, the marks' brightness, the flock, the deer and the fox
+- [ ] The kinds of mark at the game camera; marks on grass (a "torn" floor channel the grass reads)
+- [ ] The faint ones: dust sift, pebbles, smoke, crater haze, the tree's shudder; Ashfall's crows
+- [ ] Films with real boss moves for every level; the phone; Halcyon Plaza's pigeons looked at
+
 ## M1.73 — Xin Yi reworked: drawn like the hero, kicks and flurries, a wall kick, bullets that never lock (2026-11-23, `claude/xinyi-rework-4b1d8a`, ADR-168 – ADR-170)
 - [x] Printed like the hero: his letters follow his size (`?oneLetters`), the quiet print and simpler shapes (`?onePrint` a / b / 0), the coat moving in every phase and clamped for flips
 - [x] ADR-162's kit for him: soft arms and legs, the shared feet planner (`duelist/feetPlan.js`), palms that stop at the hero, no swings at air; the audit before and after

@@ -41,7 +41,29 @@ const _a = V(), _b = V(), _c = V();
 
 /** A slam on the ground as a blow on the world (world.impact: breakables in its ring, a crack in the floor). */
 // (falloff: a ground blow is weaker toward its rim: TUNING.world.falloff)
-export const GROUND_BLOW = Object.freeze({ kind: 'blast', by: 'boss', falloff: TUNING.world.falloff });
+export const GROUND_BLOW = Object.freeze({ kind: 'blast', by: 'boss', falloff: TUNING.world.falloff, mark: 'slam' });
+// (the tail slapped down: its stations break and char as before, its mark is the one furrow along it)
+const TAIL_BLOW = Object.freeze({ ...GROUND_BLOW, marked: true });
+// (the nova: a blast of fire, its mark a scorched round)
+export const NOVA_BLOW = Object.freeze({ kind: 'blast', by: 'boss', falloff: TUNING.world.falloff, mark: 'blast', hot: true });
+
+/** The floor's mark of one of its blows (world.groundBlow → scars.mark; a reused record). */
+const _ma = V(), _mb = V();
+const _gm = { kind: 'cut', power: 0, r: NaN, dx: 0, dz: 0, len: NaN, by: 'boss', hot: false, claws: 0, spread: NaN, arc: false };
+export function wyrmMark(d, x, z, kind, power, dx, dz, len = NaN, claws = 0, r = NaN) {
+  const w = d?.game?.world;
+  if (!w?.groundBlow || !Number.isFinite(x + z)) return;
+  _gm.kind = kind;
+  _gm.power = power;
+  _gm.dx = dx;
+  _gm.dz = dz;
+  _gm.len = len;
+  _gm.claws = claws;
+  _gm.spread = TUNING.world.marks.spread * S;
+  _gm.r = r;
+  _gm.hot = d.phase >= 3 && kind !== 'step'; // (the third phase's paws burn)
+  w.groundBlow(x, z, _gm);
+}
 
 /** Sphere (x,y,z,r) vs the player's vertical cylinder (radius = player.radius, height 1.8). */
 export function sphereHitsPlayer(player, x, y, z, r) {
@@ -389,6 +411,9 @@ function swipeRecover(d, w, k) {
       pose.pawPlant[w.wi] = true;
       d.fx.dustRing(w.plant.x, w.plant.z, 0.35 * S, 12, 0.45);
       d.emit('dragon:step', { x: w.plant.x, z: w.plant.z, heavy: false });
+      // the claws rake the ground across the front: three short gashes the way the paw swept
+      const A = d.rootPt(_ma, w.p1[0], 0, w.p1[2]), B = d.rootPt(_mb, w.p2[0], 0, w.p2[2]);
+      wyrmMark(d, w.plant.x - (B.x - A.x) * 0.25, w.plant.z - (B.z - A.z) * 0.25, 'cut', TUNING.world.marks.rake, B.x - A.x, B.z - A.z, TUNING.world.marks.clawLen * 0.7, 3);
     }
   }
   pose.twist = w.side * 0.2 * (1 - k);
@@ -1031,6 +1056,9 @@ const charge = {
       // the forefeet plant and skid: dust off both front paws
       const A2 = d.rig.pt.arms;
       for (let k = 0; k < 2; k++) d.fx.dustRing(A2[k].toe.x, A2[k].toe.z, 0.6 * S, 18, 0.9);
+      // (and two furrows run up to them)
+      const M = TUNING.world.marks;
+      for (let k = 0; k < 2; k++) wyrmMark(d, A2[k].toe.x - d.fwd.x * M.skidLen, A2[k].toe.z - d.fwd.z * M.skidLen, 'dash', M.skid, d.fwd.x, d.fwd.z, M.skidLen);
     }
   },
   update(d, a, dt) {
@@ -1507,6 +1535,8 @@ const OVERHEAD = {
     d.fx.slamBurst?.(h.plant.x, h.plant.z, 1.3 * S);
     d.emit('dragon:step', { x: h.plant.x, z: h.plant.z, heavy: true });
     d.game.shake?.(0.22);
+    // its claws in the ground: three deep gashes, dragged back toward it
+    { const M = TUNING.world.marks; wyrmMark(d, h.plant.x, h.plant.z, 'cut', M.claws, -d.fwd.x, -d.fwd.z, M.clawLen, 3); }
   },
   recover(d, a, h, k) {
     const pose = d.pose, ov = pose.pawOv[h.wi];
@@ -2356,7 +2386,9 @@ const TAIL_SLAM = {
     const tip = ch.p[n];
     d.emit('dragon:spell', { name: 'tailSlam', x: tip.x, z: tip.z }); // (its own sound: audio/fire.js SPELL)
     d.fx.groundShock?.(tip.x, tip.z, 3.5, 0.5);
-    for (let i = 6; i <= n; i += 5) g.world?.impact?.(ch.p[i].x, ch.p[i].z, 1.6 * S, TUNING.world.hop, GROUND_BLOW);
+    for (let i = 6; i <= n; i += 5) g.world?.impact?.(ch.p[i].x, ch.p[i].z, 1.6 * S, TUNING.world.hop, TAIL_BLOW);
+    // the mark: one long furrow where the tail came down, from its root to its tip
+    { const r0 = ch.p[4], L = Math.hypot(tip.x - r0.x, tip.z - r0.z); if (L > 0.5) wyrmMark(d, r0.x, r0.z, 'dash', TUNING.world.marks.tail, tip.x - r0.x, tip.z - r0.z, L); }
     d.emit('dragon:step', { x: tip.x, z: tip.z, heavy: true });
     const p = g.player?.position;
     if (!p) return;
