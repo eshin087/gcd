@@ -86,6 +86,41 @@ function script(w, s) {
 
 const level = (p) => (p ? (p._target !== undefined ? p._target : p.value) : NaN);
 
+// ---- the living world's one-shot sounds (audio/lifeSfx.js) ---------------------------------------------
+
+/** A level with the audio engine AND its breakables (the tremor shakes them), every life sound counted:
+ *  `plays` [{ name, ok, o }] (o: a copy of the options), heard(name) how many played. */
+async function lifeAudio(T, id, spec = 'all', o = {}) {
+  const a = await withAudio(T, id, spec, o);
+  const { Destructibles } = await T.imp('src/world/destructibles.js');
+  const { Scars } = await T.imp('src/world/scars.js');
+  const { LIFE_SFX } = await T.imp('src/audio/lifeSfx.js');
+  a.world.scars = new Scars(a.game, a.set.scarInk);
+  const D = new Destructibles(a.game, a.world, a.set);
+  a.world.destructibles = D;
+  a.D = D;
+  a.plays = [];
+  const play = a.E.play.bind(a.E);
+  a.E.play = (name, opts) => {
+    const ok = play(name, opts);
+    if (LIFE_SFX[name]) a.plays.push({ name, ok, o: { ...opts } });
+    return ok;
+  };
+  a.heard = (name) => a.plays.filter((p) => p.ok && (!name || p.name === name)).length;
+  a.tick = (sec) => {
+    for (let t = 0; t < sec - 1e-9; t += DT) {
+      a.frame();
+      D.update(DT);
+    }
+  };
+  a.tick(0.5);
+  a.plays.length = 0;
+  return a;
+}
+
+/** The trees (wood, standing, leafy) within r of (x, z). */
+const treesNear = (D, x, z, r) => D.list.filter((b) => b.state === 0 && b.mat === 'wood' && b.kind === 'tree' && Math.hypot(b.x - x, b.z - z) < r);
+
 /** Every gain the air holds: finite and inside [0, 1]. */
 function gainsOk(air) {
   const bad = [];
@@ -250,6 +285,187 @@ export default {
       const amb = a.E.ambience;
       T.assert(a.E.air && !a.E.air.built && amb.windDuck.gain.value === 1 && amb.voiceDuck.gain.value === 1, `${id}: no recipe → the air stands down, today's bed plays`);
     }
+  },
+
+  /** Every life sound, every variant, ten times each, through the real engine on the strict mock: none
+   *  throws, every gain it sets is finite and inside [0, 1] (a modulator's depth, a gain into a param,
+   *  aside), it draws nothing from Math.random, it ends within 2.5 s, and no two calls are the same. */
+  async sounds(T) {
+    const { LIFE_SFX, LIFE_SOUNDS } = await T.imp('src/audio/lifeSfx.js');
+    const { LIFE_SFX_TUNE } = await T.imp('src/audio/lifeSfxTuning.js');
+    const a = await withAudio(T, 'cinderwood', 'all');
+    const E = a.E, ctx = a.ctx;
+    // every value a gain param is given, per gain node
+    const made = [];
+    const cg = ctx.createGain.bind(ctx);
+    ctx.createGain = () => {
+      const g = cg(), p = g.gain, seen = [], at = [];
+      for (const m of ['setValueAtTime', 'linearRampToValueAtTime', 'exponentialRampToValueAtTime', 'setTargetAtTime']) {
+        const f = p[m].bind(p);
+        p[m] = (v, t, ...r) => { seen.push(v); at.push(t - ctx.currentTime); return f(v, t, ...r); };
+      }
+      made.push({ g, seen, at });
+      return g;
+    };
+    const VARS = {
+      flockBurst: Object.keys(LIFE_SFX_TUNE.sound.flockBurst.kinds).flatMap((kind) => [4, 24, 48].map((n) => ({ kind, n }))),
+      animalBolt: ['rabbit', 'deer', 'rat', 'lizard', 'fox'].map((kind) => ({ kind })),
+      treeShudder: ['leaf', 'dead', 'cane'].flatMap((kind) => [0.1, 1, 2.5].map((k) => ({ kind, k }))),
+      pebbles: ['stone', 'glass', 'sand', 'earth'].flatMap((mat) => [0.2, 1, 3].map((k) => ({ mat, k }))),
+    };
+    let bad = [], played = 0, rnd = 0, long = 0, same = 0;
+    for (const name of LIFE_SOUNDS) {
+      for (const o of VARS[name] ?? [{ k: 0.1 }, { k: 1 }, { k: 2 }, {}]) {
+        const sig = new Set();
+        for (let i = 0; i < 10; i++) {
+          made.length = 0;
+          E._last.clear();
+          // (an empty pool: each call gets its own voice, none is stolen or dropped)
+          for (const v of E.pools.sfx) v.dispose();
+          E.pools.sfx.length = 0;
+          const mr = Math.random;
+          Math.random = () => { rnd++; return mr(); };
+          let ok = false;
+          try {
+            ok = E.play(name, { ...o, x: 3, z: 2 });
+          } finally {
+            Math.random = mr;
+          }
+          if (ok) played++;
+          const v = E.pools.sfx[E.pools.sfx.length - 1];
+          if (v && v.end - ctx.currentTime > 2.5) long++;
+          for (const { g, seen } of made) {
+            // (a modulator's depth: a gain feeding a param, not a level)
+            if ([...g.outs].some((d) => !d.connect)) continue;
+            for (const x of [g.gain.value, ...seen]) if (!Number.isFinite(x) || x < 0 || x > 1) bad.push(`${name} ${JSON.stringify(o)}: ${x}`);
+          }
+          // its shape this time: the levels it set and when, rounded (two the same: no variation)
+          sig.add(made.map(({ seen, at }) => seen.slice(0, 8).map((x, j) => `${x.toFixed(5)}@${at[j].toFixed(4)}`).join(',')).join('|'));
+          a.frames(3);
+        }
+        if (sig.size < 10) { same++; T.out(`     ${name} ${JSON.stringify(o)}: ${sig.size} of 10 different`); }
+      }
+    }
+    ctx.createGain = cg;
+    T.assert(played > 300 && bad.length === 0, `every life sound plays (${played} calls) and every gain it sets is finite and inside [0, 1]${bad.length ? ` (${bad.slice(0, 3).join('; ')})` : ''}`);
+    T.assert(rnd === 0, `the life sounds draw nothing from Math.random (${rnd} calls)`);
+    T.assert(long === 0, `every life sound ends within 2.5 s (${long} longer)`);
+    T.assert(same === 0, `ten calls of one sound are ten different sounds (${same} variants repeated)`);
+    // (the names the LAMPS agent calls exist)
+    T.assert(['lampCatch', 'lampGutter', 'lampOut'].every((n) => !!LIFE_SFX[n]), 'the lamps\' three sounds are there (lampCatch, lampGutter, lampOut)');
+  },
+
+  /** A heavy blow beside a stand of trees: what stands shakes, and it is heard as ONE or TWO shudders,
+   *  never one per tree; one patter of pebbles at most, one sift of dust at most. */
+  async shudders(T) {
+    const a = await lifeAudio(T, 'cinderwood', 'all');
+    const D = a.D, Tr = a.life.tremor;
+    // the densest spot of the tree wall the blow can reach
+    let best = null, bn = 0;
+    for (const b of D.list) {
+      if (b.kind !== 'tree' || b.state !== 0) continue;
+      const r = Math.hypot(b.x, b.z) || 1, x = b.x - (b.x / r) * 3, z = b.z - (b.z / r) * 3;
+      const n = treesNear(D, x, z, 13).length;
+      if (n > bn) { bn = n; best = { x, z }; }
+    }
+    T.assert(bn >= 12, `cinderwood: a spot with ${bn} trees within 13 m of a blow`);
+    if (!best) return;
+    a.place(best.x + 6, best.z + 6);
+    a.tick(0.3);
+    a.plays.length = 0;
+    const t0 = Tr.stat.trees;
+    a.world.impact(best.x, best.z, 2.5, 2, { kind: 'blunt', by: 'boss' });
+    a.tick(0.6);
+    const shook = Tr.stat.trees - t0, sh = a.heard('treeShudder');
+    T.assert(shook >= 3 && sh >= 1 && sh <= 2, `a blow that shakes ${shook} trees (of ${bn} near) plays ${sh} shudders`);
+    T.assert(a.heard('pebbles') <= 1 && a.heard('dustSift') <= 1, `one patter of pebbles (${a.heard('pebbles')}), one sift of dust at most (${a.heard('dustSift')})`);
+    // a rain of blows there: still a handful, not one per tree per blow
+    a.plays.length = 0;
+    for (let i = 0; i < 10; i++) {
+      a.world.impact(best.x + (i % 3) - 1, best.z + ((i * 7) % 3) - 1, 2.5, 2, { kind: 'blunt', by: 'boss' });
+      a.tick(0.1);
+    }
+    const rain = a.heard('treeShudder');
+    T.assert(rain <= 8, `ten blows in a second there play ${rain} shudders (two at most per shake, 0.3 s apart)`);
+    // the grove: a blow among the canes is the bamboo's faintest shiver, nothing else
+    const g = await lifeAudio(T, 'grove', 'all');
+    const cane = g.D.list.find((b) => b.kind === 'bamboo' && b.state === 0 && Math.hypot(b.x, b.z) < 30);
+    if (cane) {
+      g.place(cane.x + 6, cane.z + 6);
+      g.tick(0.3);
+      g.plays.length = 0;
+      g.world.impact(cane.x + 1, cane.z + 1, 2, 2, { kind: 'blunt', by: 'boss' });
+      g.tick(0.6);
+      const names = [...new Set(g.plays.filter((p) => p.ok).map((p) => p.name))];
+      T.assert(names.every((n) => n === 'treeShudder') && g.plays.filter((p) => p.ok).every((p) => p.o.kind === 'cane'),
+        `grove: a heavy blow among the canes is heard only as their shiver (${names.join(', ') || 'nothing'}; kinds ${[...new Set(g.plays.map((p) => p.o.kind))].join(', ')})`);
+    } else T.assert(false, 'grove: a bamboo cane near the clearing');
+  },
+
+  /** A flock that goes is ONE wing burst at its roost, sized by its birds and of the level's kind; an
+   *  animal that bolts is one sound of its kind. */
+  async creatures(T) {
+    for (const [id, kind] of [['cinderwood', 'small'], ['ash', 'crow']]) {
+      const a = await lifeAudio(T, id, 'all');
+      const n = a.life.creatures.flockFlees();
+      a.tick(1.5);
+      const b = a.plays.filter((p) => p.ok && p.name === 'flockBurst');
+      T.assert(n > 0 && b.length === 1 && b[0].o.n === n && b[0].o.kind === kind && Number.isFinite(b[0].o.x),
+        `${id}: a flock of ${n} birds leaves: ${b.length} burst (n ${b[0]?.o.n}, ${b[0]?.o.kind}) at its roost`);
+      // the fire's flight and a heavy blow at the same roost in the same moment: still one
+      a.life.creatures.flocks._last = -1e9;
+      const R = a.life.creatures.flocks.roosts.find((o) => o.birds > 0);
+      if (R) {
+        a.plays.length = 0;
+        a.world.ignite(R.tx, R.tz, 2, 1);
+        a.world.impact(R.tx, R.tz, 2, 1.5, { kind: 'blunt', by: 'boss' });
+        a.tick(0.5);
+        T.assert(a.heard('flockBurst') <= 1, `${id}: fire and a blow at one roost together: ${a.heard('flockBurst')} burst`);
+      }
+    }
+    const c = await lifeAudio(T, 'cinderwood', 'all');
+    c.life.creatures._ready();
+    const h = c.life.hero, bolted = c.life.creatures.animals.alarm(h.x, h.z, 80, 'test');
+    c.tick(2);
+    const bolts = c.plays.filter((p) => p.ok && p.name === 'animalBolt');
+    T.assert(bolted > 0 && bolts.length >= 1 && bolts.length <= bolted && bolts.every((p) => p.o.kind === 'rabbit' || p.o.kind === 'deer'),
+      `cinderwood: ${bolted} animals bolt, ${bolts.length} heard (${[...new Set(bolts.map((p) => p.o.kind))].join(', ')})`);
+  },
+
+  /** A tree reaching its last stage leans over: it creaks once (world:impact 'wear', stage 3, wood). */
+  async creak(T) {
+    const a = await lifeAudio(T, 'cinderwood', 'all');
+    const tree = a.D.list.find((b) => b.kind === 'tree' && b.state === 0 && b.topples);
+    T.assert(!!tree, 'cinderwood: a tree that topples');
+    if (!tree) return;
+    const ev = { kind: 'wear', mat: 'wood', x: tree.x, y: 3, z: tree.z, power: 3, by: 'boss', id: tree.id };
+    a.emit('world:impact', ev);
+    a.emit('world:impact', { ...ev, power: 2 });
+    a.tick(0.3);
+    a.emit('world:impact', ev);
+    a.tick(0.3);
+    T.assert(a.heard('treeCreak') === 1, `the lean creaks once (${a.heard('treeCreak')}; a stage 2 and a second lean within 0.8 s: none)`);
+  },
+
+  /** With the piece 'air' off nothing of it is heard; while the world holds its breath, nothing either. */
+  async quiet(T) {
+    const a = await lifeAudio(T, 'cinderwood', 'wind,weather,litter,steps,creatures,answer');
+    a.life.creatures.flockFlees();
+    a.life.tremor.shake(a.life.hero.x + 3, a.life.hero.z - 2, 2.5, 2);
+    a.tick(1.5);
+    T.assert(a.plays.length === 0, `air off: a flock and a heavy shake play nothing (${a.plays.length} calls)`);
+    const b = await lifeAudio(T, 'cinderwood', 'all');
+    b.life.hushFor(3, 1);
+    b.tick(0.8);
+    const n = b.life.creatures.flockFlees();
+    b.life.tremor.shake(b.life.hero.x + 3, b.life.hero.z - 2, 2.5, 2);
+    b.tick(0.5);
+    T.assert(b.life.hush > 0.6 && n > 0 && b.plays.length === 0, `hush ${b.life.hush.toFixed(2)}: a flock of ${n} and a heavy shake play nothing (${b.plays.length} calls)`);
+    b.tick(6);
+    b.life.creatures.flocks._last = -1e9;
+    b.life.creatures.flockFlees();
+    b.tick(0.5);
+    T.assert(b.heard('flockBurst') === 1, `the breath let go (hush ${b.life.hush.toFixed(2)}): the next flock is heard (${b.heard('flockBurst')})`);
   },
 };
 

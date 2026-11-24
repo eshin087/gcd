@@ -1,6 +1,8 @@
 import { LetterBatch } from './letterBatch.js';
 import { tremorTuning } from './tremorTuning.js';
 import { hangKick, hangKickSettle } from '../hang.js';
+import { lifeSay } from '../../audio/lifeSfx.js';
+import { LIFE_SFX_TUNE as SAY } from '../../audio/lifeSfxTuning.js';
 
 // THE TREMOR (piece 'answer'): a heavy blow shakes what stands near it. A blow of `power` at (x, z) sends
 // a shake outward that falls off with distance (tremorTuning.js: reach, fall); what stands inside it
@@ -27,9 +29,16 @@ import { hangKick, hangKickSettle } from '../hang.js';
 //   tremor.off                         true: it does nothing (a film's "today")
 // With the piece off: nothing; its letters are gone. Its own letters (dust, grit) print in the house
 // letter in an own LetterBatch, made at the first shake; no allocation per frame, no Math.random.
+// The sound (audio/lifeSfx.js, through lifeSay: the piece 'air' on): a shake is heard as ONE shudder at
+// its strongest tree and a second one only when three or more shook (never one per tree), a creak when
+// a tree that already leans is shaken, dust at the strongest stone that sifted, pebbles where the floor
+// hopped. And the lean itself (world:impact 'wear' at the last stage, on wood that topples): a creak.
 
 const TAU = Math.PI * 2;
 const MEM = 8;
+/** the sound's options (reused) */
+const SND = { k: 1, kind: undefined, delay: 0 };
+const CREAK = { k: 1 };
 const WOOD_LEAFY = new Set(['tree', 'deadTree', 'cinderBough']);
 
 export class Tremor {
@@ -52,6 +61,10 @@ export class Tremor {
     // the pebbles: records written each frame (they hop, land, lie a moment, fade)
     this._peb = [];
     this._pebN = 0;
+    // what a shake is heard as (the strongest two trees, a leaning one, the strongest stone)
+    this._heard = { n: 0, a: null, b: null, lean: null, stone: null, sa: 0, sb: 0, sl: 0, ss: 0 };
+    this._off = null;
+    this._onWorld = (d) => this._world(d);
     if (life.enabled) {
       life.action?.('tremor at hero', () => {
         const h = life.hero;
@@ -136,6 +149,8 @@ export class Tremor {
     const L = this.life, T = this.T, q = Math.max(0.3, Math.min(1, L.quality)), near = this._near;
     const n = D.around(x, z, reach, near, 80);
     let leafLeft = Math.round(T.tree.total * q), caneLeft = Math.round(T.bamboo.total * q), dustLeft = Math.round(T.stone.total * q);
+    const H = this._heard;
+    H.n = 0; H.a = H.b = H.lean = H.stone = null; H.sa = H.sb = H.sl = H.ss = 0;
     for (let i = 0; i < n; i++) {
       const b = near[i];
       const ox = b.x - x, oz = b.z - z, dd = Math.hypot(ox, oz);
@@ -145,16 +160,24 @@ export class Tremor {
       if (b.kind === 'bamboo') {
         const B = T.bamboo;
         if (s < B.min) continue;
-        if (D.shudder?.(b, Math.min(B.cap, B.amp * s), dx, dz)) this.stat.canes++;
+        if (D.shudder?.(b, Math.min(B.cap, B.amp * s), dx, dz)) {
+          this.stat.canes++;
+          this._shook(b, s);
+        }
         if (B.leaves > 0 && b.leafy > 0 && caneLeft > 0) caneLeft -= this._leaves(b, B, s, q, caneLeft);
       } else if (b.mat === 'wood' && (WOOD_LEAFY.has(b.kind) || b.leafy > 0)) {
         const B = T.tree;
         if (s < B.min) continue;
-        if (D.shudder?.(b, Math.min(B.cap, B.amp * s), dx, dz)) this.stat.trees++;
+        if (D.shudder?.(b, Math.min(B.cap, B.amp * s), dx, dz)) {
+          this.stat.trees++;
+          this._shook(b, s);
+        }
         if (B.leaves > 0 && b.leafy > 0 && leafLeft > 0) leafLeft -= this._leaves(b, B, s, q, leafLeft);
       } else if (b.mat === 'stone' && b.kind !== 'boulder' && b.h >= T.stone.minH && b.hpMax !== Infinity) {
         if (s < T.stone.min || dustLeft <= 0) continue;
-        dustLeft -= this._sift(b, s, q, dustLeft);
+        const k = this._sift(b, s, q, dustLeft);
+        dustLeft -= k;
+        if (k > 0 && s > H.ss) { H.stone = b; H.ss = s; }
       } else if (b.mat === 'wood' || b.mat === 'metal') {
         // a post, a lamp, a rack: a small shudder
         const B = T.tree;
@@ -162,6 +185,72 @@ export class Tremor {
       }
     }
     near.length = 0;
+    this._say(x, z);
+  }
+
+  /** A tree (or cane) shook with strength s: the two strongest are heard, and one that leans creaks. */
+  _shook(b, s) {
+    const H = this._heard;
+    H.n++;
+    if (s > H.sa) { H.b = H.a; H.sb = H.sa; H.a = b; H.sa = s; }
+    else if (s > H.sb) { H.b = b; H.sb = s; }
+    // (a tree at its last stage leans already: a blow beside it makes it groan)
+    if (b.topples && b.wear >= 3 && s > H.sl) { H.lean = b; H.sl = s; }
+  }
+
+  /** What this shake is heard as (audio/lifeSfx.js): one or two shudders (never one per tree), the
+   *  creak of a leaning tree, the dust off the strongest stone. The pebbles: _floor. */
+  _say(x, z) {
+    const H = this._heard, L = this.life, Y = SAY.tremor;
+    if (H.a && H.sa >= Y.shudderMin) {
+      const kind = (b) => (b.kind === 'bamboo' ? 'cane' : b.leafy > 0 && b.kind !== 'deadTree' ? 'leaf' : 'dead');
+      SND.k = H.sa;
+      SND.kind = kind(H.a);
+      SND.delay = 0;
+      if (lifeSay(L, 'treeShudder', H.a.x, H.a.z, SND) && H.b && H.n >= Y.secondAt && H.sb >= Y.shudderMin) {
+        SND.k = H.sb * Y.k2;
+        SND.kind = kind(H.b);
+        SND.delay = this._range(Y.second);
+        lifeSay(L, 'treeShudder', H.b.x, H.b.z, SND, 1);
+      }
+    }
+    if (H.lean) this._creak(H.lean.x, H.lean.z, Math.min(1.5, H.sl));
+    if (H.stone) {
+      SND.k = Math.min(1.6, H.ss);
+      SND.kind = undefined;
+      SND.delay = 0.05;
+      lifeSay(L, 'dustSift', H.stone.x, H.stone.z, SND);
+    }
+    H.a = H.b = H.lean = H.stone = null;
+  }
+
+  _creak(x, z, k) {
+    CREAK.k = k;
+    return lifeSay(this.life, 'treeCreak', x, z, CREAK);
+  }
+
+  /** world:impact (read now, keep nothing): a tree reaching its last stage leans over: it creaks. */
+  _world(d) {
+    if (!this.on || !d || d.kind !== 'wear' || d.mat !== 'wood' || !(d.power >= 3)) return;
+    const b = this.life.world?.destructibles?.list?.[d.id];
+    if (b && b.topples === false) return;
+    if (Number.isFinite(d.x + d.z)) this._creak(d.x, d.z, SAY.tremor.creakK);
+  }
+
+  /** Listen to world:impact while the piece is on (the lean's creak). */
+  _sync() {
+    const ev = this.life.game?.events, want = this.on && typeof ev?.on === 'function';
+    if (want && !this._off) {
+      const off = ev.on('world:impact', this._onWorld);
+      this._off = typeof off === 'function' ? off : () => ev.off?.('world:impact', this._onWorld);
+    } else if (!want && this._off) {
+      try {
+        this._off();
+      } catch {
+        /* already gone */
+      }
+      this._off = null;
+    }
   }
 
   /** Where a tree's crown is (its leaf parts as they stand, else a guess from its size), into this._crown. */
@@ -305,6 +394,12 @@ export class Tremor {
       k++;
     }
     this.stat.pebbles += k;
+    if (k > 0) {
+      SND.k = Math.min(2, p);
+      SND.kind = undefined;
+      SND.delay = 0;
+      lifeSay(L, 'pebbles', x, z, SND);
+    }
   }
 
   _inside(C, x, z) {
@@ -371,6 +466,7 @@ export class Tremor {
   }
 
   update(dt) {
+    this._sync();
     if (!this.on) {
       if (this._b) this._empty();
       return;
