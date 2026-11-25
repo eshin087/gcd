@@ -13,7 +13,7 @@ import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
 /** The spray's strength (`?grassSpray=a|b|c|0`): read once when the world is built. */
 export const sprayLook = () => {
   const v = lookOf('grassSpray', GRASS.spray.look);
-  return v === 'a' || v === 'b' || v === 'c' ? v : '0';
+  return v === 'a' || v === 'a2' || v === 'a0' || v === 'b' || v === 'c' ? v : '0';
 };
 
 let seed = 0x6a09e667;

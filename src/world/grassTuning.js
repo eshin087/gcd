@@ -76,11 +76,18 @@ export const GRASS = Object.freeze({
    * `lie` s at `lieAlpha` and fade; `life` s at most in the air. Colours: `fresh` green to `straw`.
    */
   spray: Object.freeze({
-    look: 'b',
+    look: 'a',
     glyphs: "/\\|',;`vi1",
     max: 1600,
     lowQ: 0.8, // at quality q a cut blade throws per x (1 / q)^lowQ (the phone draws a third of the blades)
-    a: Object.freeze({ per: 0.45 }),
+    // a / a2 (round 6, the owner's pick a, closer to the grass): chips of the cut blade's OWN letter in
+    // its own colour, drawn as the grass is (world/mowFx.js _chip): `size` x the blade, `frag` of them a
+    // band of its strokes (`band` of the cell tall, at the letter's own scale), tumbling at `spin` rad/s,
+    // coloured as the blade is at `tip` of its height throughout, `lit` x its light in the air / lying.
+    // a0: round 5's a (the house letter, fresh green to straw)
+    a: Object.freeze({ per: 0.5, size: [0.55, 0.75], frag: 0.45, band: [0.18, 0.3], spin: [5, 12], tip: 0.85, lit: [1.6, 1.05] }),
+    a2: Object.freeze({ per: 0.4, size: [0.8, 1.0], frag: 0.25, band: [0.2, 0.34], spin: [3, 8], tip: 0.85, lit: [1.6, 1.05] }),
+    a0: Object.freeze({ per: 0.45 }),
     b: Object.freeze({ per: 0.9 }),
     c: Object.freeze({ per: 1.6, wide: 1.45, fresh2: 1.0 }),
     fling: [1.0, 3.0],
@@ -110,7 +117,7 @@ export const GRASS = Object.freeze({
    */
   fly: Object.freeze({
     look: 'a',
-    max: 1400,
+    max: 2000,
     touch: 4096, // cells one tear call may hand over (a slam's whole disc)
     perTear: 360,
     gravity: 9.5,

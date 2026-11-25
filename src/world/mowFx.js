@@ -58,11 +58,14 @@ export class MowFx {
     this.vx = new Float32Array(M); this.vy = new Float32Array(M); this.vz = new Float32Array(M);
     this.rot = new Float32Array(M); this.spin = new Float32Array(M); this.rot0 = new Float32Array(M);
     this.lieRot = new Float32Array(M); this.age = new Float32Array(M); this.lie = new Float32Array(M);
-    this.w = new Float32Array(M); this.h = new Float32Array(M); this.v0 = new Float32Array(M);
+    this.w = new Float32Array(M); this.h = new Float32Array(M); this.v0 = new Float32Array(M); this.v1 = new Float32Array(M);
+    // (a chip of the spray: its colour is the blade's top's throughout, `tipMin`, and its own light)
+    this.tipMin = new Float32Array(M); this.lit0 = new Float32Array(M); this.lit1 = new Float32Array(M);
+    this.grav = new Float32Array(M); // (m/s2: a top falls as GRASS.fly.gravity, a chip lighter, GRASS.spray.gravity)
     this.glyph = new Float32Array(M); this.colv = new Float32Array(M); this.fade = new Float32Array(M);
     this.state = new Uint8Array(M); this.t0 = new Float32Array(M); this.y0 = new Float32Array(M);
     this.born = new Float32Array(M); // (game time it was cut: the oldest lying piece gives way first)
-    this._all = [this.px, this.py, this.pz, this.vx, this.vy, this.vz, this.rot, this.spin, this.rot0, this.lieRot, this.age, this.lie, this.w, this.h, this.v0, this.glyph, this.colv, this.fade, this.state, this.t0, this.y0, this.born];
+    this._all = [this.px, this.py, this.pz, this.vx, this.vy, this.vz, this.rot, this.spin, this.rot0, this.lieRot, this.age, this.lie, this.w, this.h, this.v0, this.v1, this.tipMin, this.lit0, this.lit1, this.grav, this.glyph, this.colv, this.fade, this.state, this.t0, this.y0, this.born];
     this.thrown = 0; // pieces spawned since the last read (mowStats)
     this.total = 0;
     this.dropped = 0;
@@ -114,6 +117,8 @@ export class MowFx {
     geo.setAttribute('aP', this.aP);
     geo.setAttribute('aS', this.aS);
     geo.setAttribute('aC', this.aC);
+    this.aT = new THREE.InstancedBufferAttribute(new Float32Array(M), 1).setUsage(THREE.DynamicDrawUsage);
+    geo.setAttribute('aT', this.aT);
     geo.instanceCount = 0;
     this.geo = geo;
     const U = game.U;
@@ -131,7 +136,8 @@ export class MowFx {
         ${COMMON_GLSL}
         attribute vec4 aP; // base x, y, z, screen-plane rotation
         attribute vec4 aS; // the blade's quad w, h, the cut (share of the quad under it), glyph
-        attribute vec4 aC; // colour var, thinning (0..1), lying (0..1), brightness (the cut catching the light)
+        attribute vec4 aC; // colour var, thinning (0..1), the band's top (uv; 1 = the letter's top), brightness
+        attribute float aT; // the lowest height on the blade its colour is taken from (a chip: the blade's top)
         uniform vec3 uCamRight;
         uniform vec3 uBladeUp;
         uniform float uAsh;
@@ -142,12 +148,13 @@ export class MowFx {
         void main() {
           float v0 = aS.z;
           // the upper part of the blade's letter: its quad from the cut up, its uv the same rows
-          vec2 q = vec2(position.x * aS.x, position.y * aS.y * (1.0 - v0));
+          float span = aC.z - v0;
+          vec2 q = vec2(position.x * aS.x, position.y * aS.y * span);
           float c = cos(aP.w), s = sin(aP.w);
           q = vec2(c * q.x - s * q.y, s * q.x + c * q.y);
           vec3 wp = aP.xyz + uCamRight * q.x + uBladeUp * q.y;
           // the grass's own colour at that height (grass.js), lit as the blades are
-          float tip = v0 + (1.0 - v0) * position.y;
+          float tip = max(aT, v0 + span * position.y);
           vec3 rootC = vec3(0.010, 0.018, 0.013);
           vec3 tipC = mix(vec3(0.1, 0.16, 0.072), vec3(0.132, 0.188, 0.08), aC.x);
           tipC = mix(tipC, vec3(0.12, 0.144, 0.104), step(0.82, aC.x));
@@ -158,7 +165,7 @@ export class MowFx {
           float sh = shadowAtFast(at);
           vec3 L = uAmbient * 1.6 + uMoonColor * 0.62 * sh + pointLights(at, vec3(0.0, 1.0, 0.0), 1.0);
           vCol = applyFog(alb * L * aC.w, wp);
-          vUv = vec2(uv.x, v0 + (1.0 - v0) * uv.y);
+          vUv = vec2(uv.x, v0 + span * uv.y);
           vGlyph = aS.w;
           vFade = aC.y;
           gl_Position = projectionMatrix * viewMatrix * vec4(wp, 1.0);
@@ -189,7 +196,10 @@ export class MowFx {
     this._fling = { on: false, ux: 0, uz: 0, k: 1 };
     // the grass spray (round 5, `?grassSpray=`): letters thrown off what the arc cuts; c cuts a bolder line
     const sl = sprayLook();
-    this.spray = sl === '0' || this.look === 'r1' ? null : new GrassSpray(game, sl);
+    this.chips = (sl === 'a' || sl === 'a2') && this.look !== 'r1' ? GRASS.spray[sl] : null;
+    this._chipAcc = 0;
+    this.chipped = 0; // chips thrown (the tests', the Lab's)
+    this.spray = sl === '0' || this.look === 'r1' || this.chips ? null : new GrassSpray(game, sl);
     this._wide = this.spray?.T.wide ?? 1;
     if (this.spray?.T.fresh2 != null && gu.uMowFresh2) gu.uMowFresh2.value = this.spray.T.fresh2;
   }
@@ -284,6 +294,60 @@ export class MowFx {
     return best;
   }
 
+  /**
+   * The grass spray in the grass's own letters (`?grassSpray=a|a2`; GRASS.spray[look]): the blade at
+   * instance i, cut at (x, z) by a stroke going (ux, uz), throws `per` chips on average: small pieces of
+   * ITS letter (its glyph, its colour field, lit as the grass is), a whole small letter or a band of its
+   * strokes (`frag` of them), `size` x the blade, thrown along the swing and up, tumbling, landing to
+   * lie a moment and thin away. A phone throws more a blade (GRASS.spray.lowQ).
+   */
+  _chip(i, x, z, ux, uz) {
+    const T = this.chips, S = GRASS.spray, B = this.grass.blades, q = this._q();
+    this._chipAcc += T.per * Math.pow(1 / Math.max(0.4, q), S.lowQ);
+    const h = B.root[i * 4 + 2], G = GRASS.blade;
+    while (this._chipAcc >= 1) {
+      this._chipAcc -= 1;
+      const j = this._slot();
+      if (j < 0) return;
+      this.total++;
+      this.chipped++;
+      const frag = rnd() < T.frag, k = R(T.size[0], T.size[1]);
+      let v0 = 0, v1 = 1;
+      if (frag) {
+        // a band of the letter's strokes (its ink spans GRASS.blade.ink of the cell)
+        const band = R(T.band[0], T.band[1]);
+        v0 = R(G.ink[0], G.ink[1] - band);
+        v1 = v0 + band;
+      }
+      this.px[j] = x + R(-0.1, 0.1);
+      this.py[j] = h * R(0.35, 0.85);
+      this.pz[j] = z + R(-0.1, 0.1);
+      this.w[j] = h * 0.92 * k;
+      this.h[j] = h * k; // (a band is drawn at the letter's own scale: its strokes, not stretched)
+      this.v0[j] = v0;
+      this.v1[j] = v1;
+      this.tipMin[j] = T.tip;
+      this.grav[j] = S.gravity;
+      this.lit0[j] = T.lit[0];
+      this.lit1[j] = T.lit[1];
+      this.glyph[j] = B.data[i * 4];
+      this.colv[j] = B.data[i * 4 + 2];
+      this.fade[j] = 0;
+      this.age[j] = 0;
+      this.born[j] = this.game.time ?? 0;
+      this.rot[j] = this.rot0[j] = B.data[i * 4 + 1] + R(-0.5, 0.5);
+      this.y0[j] = this.py[j];
+      this.lieRot[j] = (rnd() < 0.5 ? -1 : 1) * (Math.PI * 0.5 + R(-0.6, 0.6));
+      const fl = R(S.fling[0], S.fling[1]), side = R(-1, 1) * S.side;
+      this.state[j] = FLY;
+      this.vx[j] = ux * fl - uz * side;
+      this.vz[j] = uz * fl + ux * side;
+      this.vy[j] = R(S.up[0], S.up[1]);
+      this.spin[j] = R(T.spin[0], T.spin[1]) * (rnd() < 0.5 ? -1 : 1);
+      this.lie[j] = R(S.lie[0], S.lie[1]);
+    }
+  }
+
   _spawn(i, x, z, v0, cx, cz, bare) {
     const B = this.grass.blades, U = this.game.U, F = GRASS.fly, look = this.look;
     const h = B.root[i * 4 + 2], tilt = B.data[i * 4 + 1];
@@ -311,6 +375,11 @@ export class MowFx {
       this.w[j] = h * 0.92 * (frag ? F.shred.size : 1);
       this.h[j] = h * (frag ? F.shred.size : 1);
       this.v0[j] = frag ? 0 : v0;
+      this.v1[j] = 1;
+      this.tipMin[j] = 0;
+      this.grav[j] = F.gravity;
+      this.lit0[j] = this._lit[0];
+      this.lit1[j] = this._lit[1];
       this.glyph[j] = frag ? this._frag[Math.floor(rnd() * this._frag.length)] : B.data[i * 4];
       this.colv[j] = B.data[i * 4 + 2];
       this.fade[j] = 0;
@@ -412,6 +481,7 @@ export class MowFx {
           this._texDirty = true;
           if (this.sc.burnAt(x, z) > 0.55) continue;
           if (this.spray) this.spray.cut(x, B.root[k * 4 + 2], z, f.ux, f.uz);
+          else if (this.chips) this._chip(k, x, z, f.ux, f.uz);
           const r2 = fract(B.root[k * 4 + 3] * 7.31);
           const stubK = r2 < G.low ? 0.04 : G.stub + G.jitter * (r2 - 0.5) * 2;
           if (n++ < cap) this._spawn(k, x, z, G.ink[0] + (G.ink[1] - G.ink[0]) * stubK, ax, az, 0);
@@ -437,7 +507,7 @@ export class MowFx {
       this.age[j] += dt;
       const st = this.state[j];
       if (st === FLY) {
-        this.vy[j] -= g * dt;
+        this.vy[j] -= this.grav[j] * dt;
         this.vx[j] *= drag;
         this.vz[j] *= drag;
         this.px[j] += this.vx[j] * dt;
@@ -481,9 +551,10 @@ export class MowFx {
       Sa[o] = this.w[j]; Sa[o + 1] = this.h[j]; Sa[o + 2] = this.v0[j]; Sa[o + 3] = this.glyph[j];
       // (a top in the air catches the light; lying it calms to the grass's own tone over `calm` s)
       const lying = this.state[j] === LIE;
-      C[o] = this.colv[j]; C[o + 1] = Math.min(1, this.fade[j]); C[o + 2] = lying ? 1 : 0;
-      const Lt = this._lit;
-      C[o + 3] = lying ? Lt[1] + (Lt[0] - Lt[1]) * Math.max(0, 1 - this.age[j] / F.calm) : Lt[0];
+      C[o] = this.colv[j]; C[o + 1] = Math.min(1, this.fade[j]); C[o + 2] = this.v1[j];
+      const L0 = this.lit0[j], L1 = this.lit1[j];
+      C[o + 3] = lying ? L1 + (L0 - L1) * Math.max(0, 1 - this.age[j] / F.calm) : L0;
+      this.aT.array[j] = this.tipMin[j];
       j++;
     }
     this.n = n;
@@ -492,6 +563,9 @@ export class MowFx {
       this._up(this.aP, n);
       this._up(this.aS, n);
       this._up(this.aC, n);
+      this.aT.clearUpdateRanges();
+      this.aT.addUpdateRange(0, n);
+      this.aT.needsUpdate = true;
     }
   }
 
