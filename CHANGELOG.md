@@ -4,7 +4,10 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred pieces of work since 0.4.0:
+One hundred and one pieces of work since 0.4.0:
+- **The sword hand looks natural in the idle tricks** (2026-11-25, ADR-186). *Fixed:* in the wrist spin, the
+  figure-eight, the salute and the rite and breath spells, the hero's sword fist no longer twists off his wrist:
+  his forearm now leads the blade, which stays close to its line, as it does in his stances.
 - **The world is printed like the dragon** (2026-11-25, ADR-198). *Changed:* every level's ground, floors, grass,
   rocks, pillars, walls and trees are printed in the wyrm's own fine digits: a lit relief, dark where it turns
   from the moon and bright where the light catches it, in letters fixed to the world, so the ground looks

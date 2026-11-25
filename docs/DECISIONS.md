@@ -5701,6 +5701,12 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   `anim.spell`): the rite, the sigil, the breath. They stay in the flame's own tiny letters and green; a line of
   them needs a mark every ~3.5 cm to read at the game camera, and anything written near the ground hides in the grass.
 
+- **Amended (2026-11-25, the sword hand):** the owner: "something about the idle animations on the right hand looks
+  weird in terms of angle and unnatural feel". The sword fist is on the sword's frame, the back of the hand on the
+  forearm's: the spin, the figure-eight, the salute, the rite and the breath turned the blade 66-129° off the forearm
+  and the fist off the wrist. They now lead with the forearm (`armAlong`: the elbow placed, the forearm aimed where the
+  blade goes, the blade a little off it): 31-52° at worst, and `heroidles` holds every idle action to 60°.
+
 ## ADR-187 — The run's free arm: three carries for the owner to compare, by speed the default (2026-11-24)
 
 - **Context:** the owner, in a three-part hero motion pass (idle, the run's free arm, the light chain, each its own
