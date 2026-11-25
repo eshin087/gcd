@@ -5512,3 +5512,29 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   harness's pipeline has no frame size, so it draws nothing there). The streak aura's rim stays red: a red rim round
   him and a green sword at tiers 1+ (the owner may want the aura green too). On-device frame rate is unverified (one
   more batch, up to ~160 instances, one draw call).
+
+## ADR-185 — CI: the long checks split into processes of their own; every PR auto-merges when green (2026-11-24)
+
+- **Context:** the owner: "it takes a while for new changes to get pushed through". A PR's `test-and-build`
+  took 8 - 10 minutes, and one task set it: `lord fxlooks` ran 539 s in its share (est 230) while the other
+  shares were done in 3.7 - 7 minutes; after it, `life` (430 s). Nearly all of fxlooks was its last check,
+  SPELLS + TERRAIN printed under '0', 'a', 'b' and the shipped looks: TERRAIN alone about 90 % of it. And a
+  green PR then waited, often for hours, for someone to press merge.
+- **Decision:** lord.mjs takes `ABYSS_FX` (parts of fxlooks: a switch's name, spy, fight, same,
+  same-spells, same-terrain, same-terrain@a / @b / @ship; `!part` leaves one out) and run.mjs runs each
+  TERRAIN look as a process of its own (TERRAIN under '0', then that look), the rest of fxlooks as one more.
+  life.mjs takes `ABYSS_SKIP`; run.mjs runs its files in three processes. Every est re-measured from PR
+  #113's run. A new workflow, `automerge.yml`, sets auto-merge (squash) on every PR from this repo when it is
+  opened, reopened or made ready (not a draft, not one labelled `hold`): the owner's call ("have every pr set
+  to auto merge automatically").
+- **Why this way:** no check is dropped or weakened: each part asserts exactly what it did inside fxlooks;
+  TERRAIN under '0' runs three times instead of once (about 2 more minutes of runner time, none of the
+  wall). The main fxlooks task and `life` run "everything but" the split parts, so a part or a life file
+  added later runs by itself. Auto-merge changes when a PR merges, not what must pass: the required check
+  and the up-to-date rule still decide (a merge queue would update branches by itself, but needs an
+  organisation-owned repo). A push by the Actions token starts no workflow, so a PR behind `main` is brought
+  up to date by a session or the owner (`gh pr update-branch`), not by a bot.
+- **Consequences:** the longest task is `integ` (~295 s); each share deals ~1000 s of tasks four at a time,
+  so a run should take about 5 - 6 minutes (was 8 - 10). A PR merges the moment its check is green: the
+  Vercel preview is no longer a gate before production, so a PR the owner wants to see first is opened as a
+  draft or with `--label hold`. Re-measure `est` when a suite grows a lot.
