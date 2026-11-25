@@ -3339,6 +3339,9 @@ export class HeroAnimator {
    *  when he moves, attacks or guards. */
   _idleLife(dt, sp) {
     const F = this.fidget, pl = this.player;
+    // the spell playing (idles.js SPELLS; swordMystic.js draws it from this): its name, 0..1, weight
+    const SP = (this.spell ??= { kind: '', u: 0, w: 0 });
+    SP.w = 0;
     const still = this.key === 'loco' && pl.state === 'idle' && sp < 0.1 && this.moveW < 0.05 && !(fin(pl.guardHold) > 0.001);
     const old = idlesOld();
     // which actions may play now (F.pool): the old ones at ease; ADR-186's at ease, or in the fight
@@ -3371,6 +3374,11 @@ export class HeroAnimator {
       if (!calm || pool !== F.pool) F.cut = true;
       // (one that swings the blade lets go a little slower: cut in 0.16 s, a trick's blade swept 0.5 m a frame)
       F.w = F.cut ? Math.max(0, Math.min(env, F.w - dt / (D.blade ? IDLES.cancelBlade : IDLE_LIFE.cancel))) : env;
+      if (D.spell) {
+        SP.kind = D.name;
+        SP.u = clamp(F.t / D.dur, 0, 1);
+        SP.w = F.w;
+      }
       if (F.t >= D.dur || (F.cut && F.w <= 0)) {
         F.k = -1;
         F.w = 0;

@@ -10792,8 +10792,9 @@ async function scenarioHeroIdles() {
   for (const R of actRow) {
     const where = `${R.fight ? 'the guard' : 'at ease'}, ${R.name}`;
     assert(R.played > 30 && R.eR >= 60 && R.eL >= 40 && R.kMax <= 145, `${where}: plays (${R.played} frames); the elbows ≥ R ${R.eR.toFixed(0)}° (60) L ${R.eL.toFixed(0)}° (40), the sword wrist ≤ ${R.kMax.toFixed(0)}° (145: anim.js WRIST_BACK, 128°, and the point's floor after it)`);
-    // (the inspect wipes the flat with the free hand: the arm meets the steel there on purpose)
-    assert(R.core <= -0.08 && (R.arm <= -0.08 || (R.name === 'inspect' && R.arm <= 0)) && R.cross <= R.frames * 0.02,
+    // (the inspect wipes the flat with the free hand, the rite lays the sword fingers on it: the arm meets
+    // the steel there on purpose)
+    assert(R.core <= -0.08 && (R.arm <= -0.08 || ((R.name === 'inspect' || R.name === 'rite') && R.arm <= 0)) && R.cross <= R.frames * 0.02,
       `${where}: the drawn blade stays ${(-R.core * 100).toFixed(1)} cm off his body (≥ 8: the ${R.at}), ${(-R.arm * 100).toFixed(1)} cm off his arms, through the coat in ${R.cross} of ${R.frames} frames (≤ 2 %)`);
     assert(R.tipLow >= 0.1 && R.hand <= 0.04 && R.pop <= 0.1, `${where}: the point ≥ ${R.tipLow.toFixed(2)} m over the grass, the free hand ≤ ${(R.hand * 100).toFixed(1)} cm into the coat (≤ 4), no pop (${(R.pop * 100).toFixed(1)} cm, ${R.popAt}; ≤ 10)`);
   }

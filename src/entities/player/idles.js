@@ -6,8 +6,8 @@
 // Three layers over the two stances (stances.js; anim.js stand()):
 //
 //   RESTS    where his arms are when he does nothing. At ease he moves between a few (EASE_RESTS: the
-//            free arm hanging loose, both hands low on the hilt, the blade trailing low behind him,
-//            the hand on the belt as before), one every
+//            free arm hanging loose, the sword fingers low by the hip, a hand holding the cloak at the
+//            chest, the hand on the belt as before; the sword arm always the at-ease stance's), one every
 //            IDLES.restHold s, a slow change of IDLES.restMove s. In the fight the fencer's guard
 //            keeps its legs, its body and its blade, and the free hand comes OFF the belt to one of
 //            FIGHT_RESTS (the sword fingers pointing at the foe, up beside the face, a guard hand
@@ -15,8 +15,8 @@
 //   HABITS   the idle actions (anim.js FIDGETS's machinery, HeroAnimator._idleLife): small things
 //            with both arms (re-grip, roll the shoulders, flex the free hand, brush the coat, ...).
 //   TRICKS   every IDLES.trickEvery actions at ease: a wrist spin, a figure-eight, the salute (the
-//            blade upright before his face, palm over fist), a flick of the blade clean (chiburi), a
-//            reverse-grip flip.
+//            blade upright before his face, palm over fist), a flick of the blade clean (chiburi); and
+//            three SPELLS drawn in the sword's green flame (the rite, the sigil, the breath).
 //            Never in a fight: there only HABITS that stay in the guard (FIGHT_ACTS).
 //
 // `?idles=old` keeps the idles before this pass (the belt, anim.js FIDGETS): setIdles() / the Lab.
@@ -29,8 +29,11 @@ import { TAU, clamp, lerp, smoothstep } from '../../core/math.js';
 // (function declarations: safe through the anim.js <-> idles.js import cycle, read at call time only)
 import { dirLerp, kf } from './anim.js';
 import { onTheBelt, standLife } from './stances.js';
+import { DIM } from './heroDims.js';
 
 const DEG = Math.PI / 180;
+// a sword-hand offset → the same point as a free-hand offset (x): the two shoulders' spacing (anim.js's own)
+const LEFT_FROM_RIGHT = -(DIM.shoulder[0] + DIM.gripShoulder[0]);
 
 // ---------------------------------------------------------------- the switch
 const IDS = ['new', 'old'];
@@ -168,44 +171,39 @@ function restLoose(p, P, A, m) {
   p[P.offAt] = 0;
 }
 
-/** The hilt: both hands low before him, the sword hand before the belt, the free hand laid on its
- *  wrist; the blade down to the grass ahead of his right foot. A swordsman waiting. */
-function restHilt(p, P, A, m) {
-  const yaw = p[P.pelvY] + p[P.spY];
-  set3(p, P.rH, 0.07 + 0.004 * m.sw, -0.45 + 0.01 * m.brL, 0.23 + 0.006 * m.tipA);
-  set3(p, P.rP, 0.75, -0.3, -0.6);
-  dir(p, P.swD, -12 + 2.5 * m.tipA, -70 + 2 * m.tipB + 1.2 * m.brL);
-  dir(p, P.swF, 68, 0);
-  freeTo(p, P.lH, -0.21, -0.45 + 0.01 * m.brL, 0.23, yaw, 1);
-  set3(p, P.lP, 0.6, -0.55, -0.6);
-  // the open hand over the sword wrist (anim.js apply(): lk carries it there and lays it on)
-  p[P.lk] = 1;
-  p[P.hs] = 0;
-  freeTo(p, P.lD, -0.9, -0.3, 0.3, yaw, 1);
-  freeTo(p, P.lN, 0, -1, 0, yaw, 1);
-  p[P.twoHand] = 0;
-  p[P.offAt] = 0;
-  p[P.hdX] += 0.05;
-}
-
-/** Trailing: the sword arm hangs a little back, the blade low behind him to his right, the point a
- *  hand and a half over the grass; the free hand loose in the sword fingers by the left thigh. */
-function restTrail(p, P, A, m) {
+/** Sword fingers: the free hand low by the left hip in the sword fingers, pointing ahead and down (the
+ *  jian's rest, the ready stance's own before ADR-114: guard()), the weight on the right leg, the eyes a
+ *  little down and to his left. */
+function restFingers(p, P, A, m) {
   const yaw = p[P.pelvY] + p[P.spY], t = A.time;
-  set3(p, P.rH, -0.2 + 0.005 * m.tipB, -0.46 + 0.01 * m.brL, -0.11 + 0.008 * m.tipA);
-  set3(p, P.rP, 0.4, -0.1, -0.9);
-  dir(p, P.swD, -122 + 3 * m.tipA, -48 + 2 * m.tipB + 1.2 * m.brL);
-  dir(p, P.swF, -32, 0);
-  freeTo(p, P.lH, 0.03, -0.49 + 0.01 * m.brL, 0.07 + 0.012 * sn(t, 3.7, 1.3), yaw, 1);
-  set3(p, P.lP, 0.35, -0.25, -0.9);
+  freeTo(p, P.lH, 0.06 + 0.005 * m.sw, -0.49 + 0.01 * m.brL, 0.07 + 0.01 * sn(t, 4.1, 0.7), yaw, 1);
+  set3(p, P.lP, 0.36, -0.2, -0.9);
   p[P.hs] = 1;
-  freeTo(p, P.lD, 0.1, -0.8, 0.55, yaw, 0.8);
-  freeTo(p, P.lN, -0.6, -0.2, -0.75, yaw, 0.8);
+  freeTo(p, P.lD, 0.2, -0.77, 0.6, yaw, 0.85);
+  freeTo(p, P.lN, -0.35, -0.6, -0.72, yaw, 0.85);
   p[P.lk] = 0;
   p[P.twoHand] = 0;
   p[P.offAt] = 0;
-  p[P.bodyX] += 0.008;
-  p[P.hdY] -= 0.08;
+  p[P.bodyX] -= 0.008;
+  p[P.hdX] += 0.06;
+  p[P.hdY] += 0.08;
+}
+
+/** The cloak: the free hand up at the cloak's edge before his left breast, as a man holds his coat
+ *  closed in the wind; the elbow down at his side. The weight even, the head a little tilted. */
+function restCloak(p, P, A, m) {
+  const yaw = p[P.pelvY] + p[P.spY];
+  freeTo(p, P.lH, -0.05 + 0.004 * m.sw, -0.21 + 0.008 * m.brL, 0.17, yaw, 1);
+  set3(p, P.lP, 0.35, -0.9, -0.2);
+  p[P.hs] = 0;
+  // the fingers up and in along the cloak's edge, the palm on it
+  freeTo(p, P.lD, -0.35, 0.85, 0.2, yaw, 0.85);
+  freeTo(p, P.lN, -0.15, 0.05, -0.98, yaw, 0.85);
+  p[P.lk] = 0;
+  p[P.twoHand] = 0;
+  p[P.offAt] = 0;
+  p[P.bodyX] += 0.01;
+  p[P.hdZ] += 0.05;
 }
 
 /** The belt: the free hand on the belt as before this pass (stances.js), one rest among the others. */
@@ -213,15 +211,17 @@ function restBelt(p, P, A, m) {
   onTheBelt(p, P, m, p[P.pelvY] + p[P.spY]);
 }
 
-/** name, the pose, how often it is picked (relative); `low`: the blade hangs low before him, the rests
- *  an action that swings the blade (`blade` below) starts from (from the trail the sweep to its first key
- *  crossed his body and the wrist's limit: he moves to a low rest first). (A fifth, the blade carried on
- *  his shoulder, was dropped: leaving it for a run, a roll or a charge swung the point 0.7-1.0 m a frame.) */
+/** name, the pose, how often it is picked (relative); `low`: an action that swings the blade (`blade`
+ *  below) may start from it. Every rest keeps the sword arm the owner picked for the at-ease stance
+ *  (ADR-114: the blade on the forearm's line, out at his front-right where the game camera sees it); only
+ *  the free arm, the weight and the head change. (The owner turned down rests that moved the sword: both
+ *  hands on the hilt before him hid the blade from the game camera and turned the wrist; the blade
+ *  trailing behind him bent the wrist 50-60°; carried on the shoulder, the elbow at the fold limit.) */
 export const EASE_RESTS = [
   { name: 'loose', fn: restLoose, w: 3, low: true },
-  { name: 'hilt', fn: restHilt, w: 2, low: true },
-  { name: 'trail', fn: restTrail, w: 2, low: false },
-  { name: 'belt', fn: restBelt, w: 1, low: true },
+  { name: 'fingers', fn: restFingers, w: 2.5, low: true },
+  { name: 'cloak', fn: restCloak, w: 2, low: true },
+  { name: 'belt', fn: restBelt, w: 1.5, low: true },
 ];
 
 // the fight: the sword arm and the blade stay the guard's (stances.js fencerGuard); the free hand only
@@ -334,9 +334,6 @@ function restBlend(p, P, A, S, list) {
   const ax = p[P.swD], ay = p[P.swD + 1], az = p[P.swD + 2];
   for (let i = 0; i < n; i++) p[i] += (SCR[i] - p[i]) * k;
   dirLerp(p, P.swD, ax, ay, az, SCR[P.swD], SCR[P.swD + 1], SCR[P.swD + 2], k, S.mem);
-  // a change of hands: the hand on the wrist lifts off it on the way (never straight through his belly)
-  const lift = Math.sin(Math.PI * k) * Math.abs((b.fn === restHilt ? 1 : 0) - (a.fn === restHilt ? 1 : 0));
-  if (lift > 0) p[P.lH + 2] += 0.06 * lift;
 }
 /** stand(): the at-ease rest's arms over atEase (stances.js). */
 export function easeArms(p, P, A) {
@@ -354,20 +351,24 @@ export function guardArms(p, P, A) {
 // ---------------------------------------------------------------- HABITS at ease (both arms)
 // fn(p, P, A, u, e): u = the action's own 0..1, e = its weight (the envelope). Written over the rest.
 
-/** Re-grip: the free hand comes to the hilt, the sword hand eases its grip and the blade turns a
- *  quarter in the two hands, then back; the free hand goes home. */
+/** Re-grip: where the blade hangs, the sword hand eases and closes again round the grip, the blade
+ *  turning a quarter in it and dipping a little through the fingers; the free hand shakes itself loose at
+ *  his side; he glances down at the hilt. (Brought before him with both hands on it, the blade was hidden
+ *  from the game camera and the sword wrist turned.) */
 function actRegrip(p, P, A, u, e) {
-  const on = bump(u, 0.12, 0.3, 0.72, 0.9) * e;
-  to3(p, P.rH, 0.05, -0.38, 0.22, e);
-  to3(p, P.rP, 0.25, -0.55, -0.8, e);
-  aimTo(p, P.swD, -20, -42, e);
-  p[P.twoHand] = Math.max(p[P.twoHand], on);
-  p[P.lk] *= 1 - e;
-  p[P.offAt] = 0;
-  const turn = kf(u, [0.3, 0, 0.42, 1, 0.56, 1, 0.68, -0.25, 0.76, 0]);
-  flatAt(p, P, 1.3 + 1.2 * turn, e);
-  p[P.hdX] += 0.12 * e;
-  p[P.hdY] -= 0.12 * e;
+  const yaw = p[P.pelvY] + p[P.spY];
+  const ease = kf(u, [0.15, 0, 0.3, 1, 0.45, 1, 0.6, 0]); // the grip loosens …
+  const turn = kf(u, [0.25, 0, 0.42, 1, 0.62, 1, 0.75, 0]); // … the blade turns in it …
+  p[P.rH + 1] -= 0.025 * ease * e; // … and drops a little through the fingers
+  p[P.swD + 1] -= 0.06 * ease * e;
+  flatAt(p, P, 0.9 * turn, e);
+  // the free hand shakes out: open, a flick of the fingers, open
+  const sh = bump(u, 0.2, 0.3, 0.7, 0.8) * e;
+  freeTo(p, P.lH, 0.05, -0.47, 0.07, yaw, sh);
+  p[P.hs] += (kf(u, [0.3, 0, 0.4, 1, 0.48, 0, 0.56, 1, 0.64, 0]) - p[P.hs]) * sh;
+  p[P.lk] *= 1 - sh;
+  p[P.hdX] += 0.14 * ease * e;
+  p[P.hdY] -= 0.18 * ease * e;
 }
 
 /** The shoulders: both roll back in turn (the hands circle with them), then the head leans to one
@@ -525,21 +526,89 @@ function trickFlick(p, P, A, u, e) {
   p[P.bodyY] -= 0.025 * snap * (1 - back) * e;
 }
 
-/** The reverse-grip flip: the hand comes up before his belly, the blade flips back along the forearm
- *  (the point past his elbow: a reverse grip), holds a beat, and flips forward again. */
-function trickFlip(p, P, A, u, e) {
-  to3(p, P.rH, -0.08, -0.3, 0.28, e);
-  to3(p, P.rP, 0.15, -0.9, -0.4, e);
-  const r = kf(u, [0.2, 0, 0.32, 1, 0.56, 1, 0.68, 0]);
-  // forward and down along the forearm → back along it, up and out past the elbow
-  aimTo(p, P.swD, lerp(-12, -150, r), lerp(-30, 10, r), e);
-  flatAt(p, P, lerp(1.57, -1.57, r), e);
+// ---------------------------------------------------------------- SPELLS at ease (ADR-186, the owner: "casting
+// some kind of cool subtle spell with his swords, to make the player curious about the true power of the
+// sword"). The motion here; what they draw is the sword's own green flame (swordMystic.js), which reads
+// `anim.spell` = { kind, u, w } (anim.js _idleLife): the action's name, its 0..1 and its weight. With
+// `?mystic=0` they are the motion alone.
+
+/** The rite: the blade raised upright beside his right shoulder, the free hand's sword fingers laid on
+ *  the flat at the guard and drawn slowly up it toward the point; the flame swells behind them, and at the
+ *  point a few marks lift off like embers. His eyes follow the fingers. */
+function spellRite(p, P, A, u, e) {
+  // (raised as the salute raises it: the blade turns up WITH the hand, from the hanging line through ahead
+  // of him; turned toward its end from the start, the wrist hit its limit half way and the steel flipped)
+  const up = smoothstep(0.04, 0.22, u), dn = smoothstep(0.82, 0.97, u), w = e * (1 - dn);
+  to3(p, P.rH, lerp(-0.15, -0.06, up), lerp(-0.44, -0.18, up), lerp(0.08, 0.26, up), w);
+  to3(p, P.rP, lerp(0.6, 0.45, up), -0.75, lerp(-0.55, -0.5, up), w);
+  aimTo(p, P.swD, lerp(-40, -24, up), lerp(-40, 74, up), w);
+  flatAt(p, P, 1.57, w * up);
+  // the sword fingers from the guard (0.14 m up the blade) to two thirds of it, then off
+  const on = bump(u, 0.24, 0.34, 0.72, 0.8) * e;
+  const d = lerp(0.14, 0.62, smoothstep(0.34, 0.72, u));
+  const bl = Math.hypot(p[P.swD], p[P.swD + 1], p[P.swD + 2]) || 1;
+  const bx = p[P.swD] / bl, by = p[P.swD + 1] / bl, bz = p[P.swD + 2] / bl;
+  to3(p, P.lH, p[P.rH] + bx * d + LEFT_FROM_RIGHT + 0.03, p[P.rH + 1] + by * d, p[P.rH + 2] + bz * d + 0.05, on);
+  to3(p, P.lP, 0.7, -0.7, -0.2, on);
+  p[P.hs] += (1 - p[P.hs]) * on;
+  to3(p, P.lD, bx, by, bz, on);
+  to3(p, P.lN, -p[P.swF], -p[P.swF + 1], -p[P.swF + 2], on);
   p[P.lk] *= 1 - e;
   p[P.twoHand] *= 1 - e;
+  // the eyes on the fingers as they climb
+  p[P.hdY] -= 0.3 * w;
+  p[P.hdX] -= lerp(0.0, 0.2, smoothstep(0.34, 0.72, u)) * w;
+  p[P.spX] -= 0.03 * w;
+}
+
+/** The sigil: the point lowered to the grass ahead of his right foot, the head bowed; the wrist turns
+ *  the point in a small slow circle, and round him a ring of faint marks writes itself on the ground,
+ *  holds, and lifts away. */
+function spellSigil(p, P, A, u, e) {
+  const dn = bump(u, 0.04, 0.2, 0.8, 0.96);
+  const w = e * dn;
+  const c = smoothstep(0.22, 0.62, u) * TAU;
+  to3(p, P.rH, -0.16, -0.44, 0.12, w);
+  to3(p, P.rP, 0.45, -0.3, -0.85, w);
+  aimTo(p, P.swD, -38 + 9 * Math.sin(c), -64 + 4 * Math.cos(c), w);
+  flatAt(p, P, 1.2, w);
+  // the free hand opens, palm down, a little out from his side, as if pressing on the air
   const yaw = p[P.pelvY] + p[P.spY];
-  freeTo(p, P.lH, 0.07, -0.46, 0.04, yaw, bump(u, 0.05, 0.2, 0.8, 0.95) * e * 0.5);
-  p[P.hdX] += 0.16 * e;
-  p[P.hdY] -= 0.1 * e;
+  const on = bump(u, 0.12, 0.26, 0.7, 0.84) * e;
+  freeTo(p, P.lH, 0.12, -0.44, 0.12, yaw, on);
+  p[P.hs] += (0 - p[P.hs]) * on;
+  freeTo(p, P.lD, 0.3, -0.25, 0.9, yaw, on);
+  freeTo(p, P.lN, 0, -1, 0, yaw, on);
+  p[P.lk] *= 1 - e;
+  p[P.twoHand] *= 1 - e;
+  p[P.hdX] += 0.22 * w;
+  p[P.spX] += 0.05 * w;
+  p[P.bodyY] -= 0.02 * w;
+}
+
+/** The breath: the blade upright before his right shoulder, the head bowed over it, the free hand open
+ *  beside it; he breathes in slow and deep, the flame swells, a thread of marks circles him at the height
+ *  of his chest and comes back into the steel, and he lets the blade down. */
+function spellBreath(p, P, A, u, e) {
+  const up = smoothstep(0.04, 0.2, u), dn = smoothstep(0.84, 0.97, u), w = e * (1 - dn);
+  to3(p, P.rH, lerp(-0.15, -0.02, up), lerp(-0.44, -0.2, up), lerp(0.08, 0.26, up), w);
+  to3(p, P.rP, lerp(0.6, 0.45, up), -0.75, lerp(-0.55, -0.5, up), w);
+  aimTo(p, P.swD, lerp(-40, -12, up), lerp(-40, 80, up), w);
+  flatAt(p, P, 1.57, w * up);
+  const yaw = p[P.pelvY] + p[P.spY];
+  const on = bump(u, 0.16, 0.28, 0.74, 0.84) * e;
+  freeTo(p, P.lH, -0.17, -0.2, 0.25, yaw, on);
+  to3(p, P.lP, 0.6, -0.8, -0.2, on);
+  p[P.hs] += (0 - p[P.hs]) * on;
+  freeTo(p, P.lD, -0.1, 0.95, 0.2, yaw, on);
+  freeTo(p, P.lN, -0.95, 0, 0.25, yaw, on);
+  p[P.lk] *= 1 - e;
+  p[P.twoHand] *= 1 - e;
+  // the deep breath: the chest fills and empties twice, the head bowed
+  const br = Math.sin(TAU * 2 * smoothstep(0.22, 0.78, u)) * bump(u, 0.2, 0.3, 0.7, 0.8);
+  p[P.spX] -= 0.05 * br * e;
+  p[P.bodyY] += 0.01 * br * e;
+  p[P.hdX] += 0.2 * w;
 }
 
 export const EASE_TRICKS = [
@@ -547,7 +616,9 @@ export const EASE_TRICKS = [
   { name: 'eight', dur: 3.0, fn: trickEight, trick: true, blade: true },
   { name: 'salute', dur: 3.4, fn: trickSalute, trick: true, blade: true },
   { name: 'flick', dur: 2.8, fn: trickFlick, trick: true, blade: true },
-  { name: 'flip', dur: 2.6, fn: trickFlip, trick: true, blade: true },
+  { name: 'rite', dur: 4.4, fn: spellRite, trick: true, blade: true, spell: true },
+  { name: 'sigil', dur: 4.2, fn: spellSigil, trick: true, blade: true, spell: true },
+  { name: 'breath', dur: 4.6, fn: spellBreath, trick: true, blade: true, spell: true },
 ];
 
 // ---------------------------------------------------------------- HABITS in the fight (small, in the guard)

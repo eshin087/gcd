@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Eighty-nine pieces of work since 0.4.0:
+Ninety pieces of work since 0.4.0:
 - **The hero comes alive standing still** (2026-11-24, ADR-186). *Changed:* the hero no longer stands with his free
   hand on his hip all the time. At ease he moves between several rests (the free arm hanging loose, the sword
   fingers low by his hip, a hand holding his cloak at the chest, the hand on the belt now and then; the sword always

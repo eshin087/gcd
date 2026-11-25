@@ -41,6 +41,7 @@ Suites: heroidles, swordmystic, herolife, herohand, heroarms, herostance, hero, 
 720p frame at the real game camera), both re-shot.
 
 ---
+
 ## 2026-11-25 — The streak's answer: a heavy first cut, a path that flows, a figure each time, cuts that tear the picture (ADR-190, ADR-191; planned by Fable, built by Opus agents)
 
 **Owner, round 1:** "the new perfect dodge/parry streak effect right now looks too fast in the early streaks. something about it just looks not epic/stunning. review it and make it look and fell good. plan it out with fable and have opus agents do the work". Asked which part and where: "All of it, you judge"; "Both" (men and the wyrm). **Round 2**, after the clips: "make sure all the white slashes that show up is accurate to how the character moved. theres a random 2 curved slashes at the end of the combo that appears out of nowhere. also the streak animation and movement shouldnt have to go back to the original place ... A - B - C ... also replace the explosion "A" effect with something more cooler ascii smaller character detailed explosion. i also want the slashes to look like its ripping time in a cool flash instant. make different variations". Asked: all four rip ideas built to compare, "White-steel letter dust", no reference clip ("you decide"). **Round 3:** "make the streak not always form some kind of star ... always be dynamic with different figures". **Pick:** from one comparison film, "strip". Branch `combat/streak-pace` (+ `combat/streak-rip`, merged in).
@@ -74,6 +75,9 @@ his blade printed the steel's raw HDR colour. The art / prop test now comes firs
 filming the sword options for ADR-182 (closed PR #105); PR #114 shipped the flame without it. Measured before / after at
 the game camera: 17 – 49 px over the bloom threshold round the resting blade, then none. Verified: the whole
 `npm test` and `npm run build`.
+
+---
+
 ## 2026-11-24 — The hero's idles: rests, habits with both arms, sword tricks; the guard hand off the belt (ADR-186; branch `claude/hero-idles-2776d8`)
 
 **Owner:** "make the main character and several idle positions instead of having the same holding his left hand on his
