@@ -23,6 +23,8 @@ import { PARRY_CHAIN } from '../audio/parryChain.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { MYSTIC_IDS, MYSTIC_NAMES, mysticMode, setMystic } from '../entities/player/swordMystic.js';
 import { IDLES_IDS, IDLES_NAMES, idlesMode, setIdles, EASE_RESTS, FIGHT_RESTS, EASE_HABITS, EASE_TRICKS, FIGHT_ACTS } from '../entities/player/idles.js';
+import { RUN_ARM_IDS, RUN_ARM_NAMES, runArmMode, setRunArm } from '../entities/player/runArms.js';
+import { HAND_LOOK_IDS, HAND_LOOK_NAMES, handLook } from '../entities/player/gear/handLook.js';
 import { buildLooks } from './labLooks.js';
 import { lookOf, setLook } from '../entities/enemies/duelist/lookSwitch.js';
 import { LIFE, setLife, setLifeK } from '../world/life/lifeSwitch.js';
@@ -1338,6 +1340,38 @@ export class Lab {
       b.title = `equip ${SWORD_PARAM[k]}`;
       return { k, el: b };
     });
+    // the free arm on the run (player/runArms.js, ADR-187; ?runArm=a|b|c|old, default c), live
+    const rar = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'run arm', rar).title = "the free (left) arm on the run (?runArm=): natural = a runner's swing, pumping at a sprint; dash = swept back behind him; by speed = natural, the dash at a sprint (default); before = the swing before";
+    const raGrid = el('div', 'lab-grid', null, rar);
+    raGrid.style.flex = '1';
+    this.ui.runArmBtns = RUN_ARM_IDS.map((m) => {
+      const b = button(raGrid, RUN_ARM_NAMES[m], () => {
+        setRunArm(m);
+        this._syncCutBtns();
+      });
+      b.title = `?runArm=${m}: ${RUN_ARM_NAMES[m]}`;
+      return { m, el: b };
+    });
+    // the free hand's look (player/gear/handLook.js, ?handLook=0|a|b|c|d): built with the rig, so a reload
+    const hlr = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'hand', hlr).title = "the free (left) hand's size and ink (?handLook=; reloads the page): before, a smaller (the default, the owner's pick), b smaller and shaded, c smaller and dark, d a leather glove";
+    const hlGrid = el('div', 'lab-grid', null, hlr);
+    hlGrid.style.flex = '1';
+    for (const id of HAND_LOOK_IDS) {
+      const b = button(hlGrid, `${id === '0' ? 'before' : id}`, () => {
+        try {
+          const u = new URL(globalThis.location.href);
+          if (id === 'a') u.searchParams.delete('handLook');
+          else u.searchParams.set('handLook', id);
+          globalThis.location.href = u.toString();
+        } catch (err) {
+          this._status(`error: ${err?.message ?? err}`, 'err');
+        }
+      });
+      b.title = `?handLook=${id}: ${HAND_LOOK_NAMES[id]}`;
+      setClass(b, 'on', handLook().id === id);
+    }
     // the sword's flame (player/swordMystic.js: green marks burning round the steel, on by default; ?mystic=0 is
     // today's blade), live
     const myr = el('div', 'lab-row', null, body);
@@ -1448,6 +1482,7 @@ export class Lab {
     setClass(this.ui.shudBtn, 'on', !!d && 'shudderK' in d && d.shudderK > 0);
     for (const { s, el: b } of this.ui.impactBtns ?? []) setClass(b, 'on', IMPACT.on[s] === true);
     for (const { s, el: b } of this.ui.streakBtns ?? []) setClass(b, 'on', STREAK_FX.on[s] === true);
+    for (const { m, el: b } of this.ui.runArmBtns ?? []) setClass(b, 'on', runArmMode() === m);
     if (this.ui.tempoBtn) setClass(this.ui.tempoBtn, 'on', STREAK_FX.tempo !== false);
     if (this.ui.chainBtn) setClass(this.ui.chainBtn, 'on', STREAK_FX.chain !== false);
     if (this.ui.figureBtn) this.ui.figureBtn.textContent = `figure: ${STREAK_FX.figure}`;

@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Ninety pieces of work since 0.4.0:
+Ninety-one pieces of work since 0.4.0:
 - **The hero comes alive standing still** (2026-11-24, ADR-186). *Changed:* the hero no longer stands with his free
   hand on his hip all the time. At ease he moves between several rests (the free arm hanging loose, the sword
   fingers low by his hip, a hand holding his cloak at the chest, the hand on the belt now and then; the sword always
@@ -16,6 +16,14 @@ Ninety pieces of work since 0.4.0:
   guard (sword fingers at the foe, beside his face, an open guard hand, or floating low) that changes as he waits,
   with small guard shifts and grip adjustments and never a trick. `?idles=old` brings back the hand on the belt
   (the Lab's PLAYER rows `idles` and `idle ▸`).
+- **A natural running arm, three ways to carry it** (2026-11-24, ADR-187). *Changed:* the hero's free (left) hand
+  no longer swings a stiff fist on the run. By default it swings like a runner's, the elbow bent near a right angle
+  and working with the stride, the hand open and loose, and as a sprint builds it sweeps back behind him into a
+  swordsman's dash. Strafing and backing away (lock-on play) it keeps swinging. The owner compares three carries:
+  `?runArm=a` (a runner's swing that pumps at a sprint), `b` (the dash whenever he runs forward), `c` (by speed, the
+  default), `old` the swing before; the Lab's PLAYER row `run arm` switches them live. The free hand is smaller
+  (× 0.8; the owner's pick of five looks, "the left hand size and color is standing out too much"):
+  `?handLook=0` is the hand before, `b` / `c` darker skin, `d` a leather glove (the Lab's `hand` row).
 - **The streak's answer: a heavy first cut, a path that flows, cuts that tear the picture** (2026-11-25, ADR-190, ADR-191). *Changed:*
   the flash cuts that answer a perfect dodge of a red blow, a parry's riposte and the counter. The first cut is a beat
   you can read (he is seen wound up, crosses as fast as before, is held on the contact), each later one comes faster,
