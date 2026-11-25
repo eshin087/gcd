@@ -26,6 +26,14 @@ export const RELEASES = [
       },
       {
         date: '2026-11-24',
+        title: 'The hero comes alive standing still',
+        notes: [
+          'Standing still, the hero no longer keeps his hand on his hip. He shifts between rests, re-grips his sword, rolls his shoulders, brushes his coat, and every few moments shows a sword trick: a wrist spin, a figure-eight, a salute, a flick of the blade, a reverse-grip flip.',
+          'In a boss fight his free hand comes off the belt into a guard that changes as he waits, with small shifts of the blade, and no tricks. Add ?idles=old to the address for the stance before.',
+        ],
+      },
+      {
+        date: '2026-11-24',
         title: 'Smaller combat text',
         notes: [
           'The words over your hero (PARRY, DEFLECT, COUNTER and the rest) and the damage numbers are smaller, closer to the HUD\'s own text.',
