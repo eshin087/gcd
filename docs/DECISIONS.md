@@ -5724,3 +5724,8 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   ink**, now every outfit's free hand (the open hand, the sword fingers, the fist on the grip). The sword hand is
   unchanged. The two darker inks (`HERO_INK.handShade` / `handDark`, part 1 with the skin's lines) are built only
   when their look is drawn: a material more on the rig draws a uuid from the seeded `Math.random`.
+- **Amended (2026-11-25), the default carry is A:** #117 shipped `c` (by speed) as the default, though the owner had
+  tried `?runArm=a` on the preview and approved it ("the animation looks fine"). In production: "the new one looks
+  really bad. it doesnt seem to be the one i chose". #122 reverted #117; this re-ships it with **`a`, natural, the
+  default** (a runner's swing on the run, the pump at a sprint) and the smaller hand. `b` and `c` stay behind the
+  switch. Lesson: the default is what the owner approved in game, not the session's recommendation.

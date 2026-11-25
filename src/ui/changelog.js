@@ -36,9 +36,9 @@ export const RELEASES = [
         date: '2026-11-24',
         title: 'A natural running arm, three ways to carry it',
         notes: [
-          "Your free hand swings like a runner's now: the elbow bent and working with the stride, the hand open and loose. As a sprint builds he sweeps it back behind him in a swordsman's dash. Strafing round a boss it keeps swinging.",
+          "Your free hand swings like a runner's now: the elbow bent and working with the stride, the hand open and loose. At a sprint it pumps harder. Strafing round a boss it keeps swinging.",
           'His free hand is smaller too, so it no longer stands out against his dark coat.',
-          'Compare the three: add ?runArm=a (a runner, pumping at a sprint), ?runArm=b (the dash whenever he runs) or ?runArm=c (by speed, the default) to the address; ?runArm=old is the swing before.',
+          "Other ways to carry it: add ?runArm=b (a swordsman's dash, swept back behind him) or ?runArm=c (natural, then the dash at a sprint) to the address; ?runArm=old is the swing before.",
         ],
       },
       {
