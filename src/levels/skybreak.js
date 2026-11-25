@@ -1,5 +1,6 @@
 import { createSkybreakRing, RING } from '../world/skybreakRing.js';
 import { Ascendant } from '../entities/enemies/ascendant/ascendant.js';
+import { TUNING as BOSS_TUNING } from '../entities/enemies/ascendant/tuning.js';
 
 // The Skybreak Ring: a tournament ring of stone tiles on the open badlands, and Tian Lei, the Last
 // Ascendant: a bare-handed fighter who is beaten three times, each time in a greater form. The ring
@@ -11,6 +12,7 @@ export const SKYBREAK = Object.freeze({
   aliases: ['skybreak', 'ascendant', 'tianlei'],
   name: 'The Skybreak Ring',
   sub: 'where the last ascendant waits for a challenger',
+  boss: BOSS_TUNING.name, // the boss's full name (the title's world list; the HUD reads the boss's own)
   world: Object.freeze({
     arenaRadius: R.half,
     playerBound: R.bound, // round the origin: the ring, the path and the bonfire landing (?ring=c: the crown's rim colliders hold him)

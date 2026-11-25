@@ -1,5 +1,6 @@
 import { createScriptHall, HALL } from '../world/scriptHall.js';
 import { WokenOne } from '../entities/enemies/wokenOne/wokenOne.js';
+import { TUNING as BOSS_TUNING } from '../entities/enemies/wokenOne/tuning.js';
 
 // The Hall of Falling Script: a written world, a universe of its own that gcd's sword carries him to,
 // and Xin Yi, the One Who Woke, who woke inside it and stayed to keep it from being unwritten
@@ -13,6 +14,7 @@ export const SCRIPTHALL = Object.freeze({
   aliases: ['one', 'script', 'scripthall', 'woke', 'xinyi'], // ('hall' is the Obsidian Throne's)
   name: 'The Hall of Falling Script',
   sub: 'where one man woke and stayed',
+  boss: BOSS_TUNING.name, // the boss's full name (the title's world list; the HUD reads the boss's own)
   world: Object.freeze({
     arenaRadius: 15,
     playerBound: 40, // round the origin: the hall, the steps, the path and the bonfire landing

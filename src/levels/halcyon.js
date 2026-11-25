@@ -1,5 +1,6 @@
 import { createHalcyonPlaza, PLAZA } from '../world/halcyonPlaza.js';
 import { Halcyon } from '../entities/enemies/halcyon/halcyon.js';
+import { TUNING as BOSS_TUNING } from '../entities/enemies/halcyon/tuning.js';
 
 // Halcyon Plaza: a city that has not been built yet (a world of an age still to come, one of the
 // worlds and universes gcd's sword carries him to), and Halcyon, the Last Saviour, who owns it
@@ -12,6 +13,7 @@ export const HALCYON = Object.freeze({
   aliases: ['halcyon', 'plaza', 'neon', 'saviour', 'tomorrow'],
   name: 'Halcyon Plaza',
   sub: 'a city that has not been built yet, and the man who owns it',
+  boss: BOSS_TUNING.name, // the boss's full name (the title's world list; the HUD reads the boss's own)
   world: Object.freeze({
     arenaRadius: P.r,
     playerBound: P.bound, // round the origin (the towers' colliders hold the hero in the corners)
