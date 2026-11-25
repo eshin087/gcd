@@ -58,14 +58,14 @@ const tops = (T) => T.total - T.chipped;
 
 if (MODE === 'ship') {
   console.log('== DGGRASS (what ships: no switch)');
-  ok(dgGrassOpt() === 'a' && dgGrassLook() === 'a' && dgCutOpt() === '0', `the dragon print's grass is a, its cut round 2's (dgGrass ${dgGrassOpt()}, dgCut ${dgCutOpt()})`);
-  ok(DG_GRASS_GLSL === dgGrassGlsl('a', '0') && DG_GRASS_GLSL.includes('#define DG_MODE 1') && DG_GRASS_GLSL.includes('#define DG_CUT 0'), 'the ground prints the tufts, the round-2 cut (DG_MODE 1, DG_CUT 0)');
+  ok(dgGrassOpt() === 'a' && dgGrassLook() === 'a' && dgCutOpt() === 'b', `the dragon print's grass is a, its cut the swath with the glow (dgGrass ${dgGrassOpt()}, dgCut ${dgCutOpt()})`);
+  ok(DG_GRASS_GLSL === dgGrassGlsl('a', 'b') && DG_GRASS_GLSL.includes('#define DG_MODE 1') && DG_GRASS_GLSL.includes('#define DG_CUT 2'), 'the ground prints the tufts and the cut swath (DG_MODE 1, DG_CUT 2)');
   const M = meadow();
   const T = M.world.scorch.tops;
   const n = T.cutArc(-2, 0.3, 1, 2, 0.3, 1, false);
   const sc = M.world.scorch;
   ok(M.world.grass.mesh.material.defines?.DG_PRINT === 0, 'the 3D blades are not printed (they are hidden: world.js)');
-  ok(n > 50 && sc.tornCells > 0 && sc.tornAt(0, 1) > 0.7 && T.chipped > 0 && tops(T) === 0 && !T.cutMap && !T.tufts, `the arc mows its strip into A (${sc.tornCells} cells), the chips fly (${T.chipped}), no cut top (${tops(T)}), no fine map, no standing tufts`);
+  ok(n > 50 && !!T.cutMap && T.chipped > 0 && tops(T) === 0 && !T.tufts, `the arc cuts its strip into the fine map (${n} blades), the chips fly (${T.chipped}), no cut top (${tops(T)}), no standing tufts`);
   console.log(fails ? `\n${fails} dgGrass (ship) check(s) FAILED` : '\nall dgGrass (ship) checks passed');
   process.exit(fails ? 1 : 0);
 }
