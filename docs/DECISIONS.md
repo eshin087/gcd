@@ -34,8 +34,8 @@ Template: **Context** (why decide) · **Decision** · **Consequences**.
 - **Consequences:** `npm test` must stay green on `main`; new systems add scenarios.
 
 ## ADR-005 — Hosting: GitHub (public) + Vercel static deploy (2026-11-01)
-- **Decision:** public repo `eshin087/gcdAbyss`; Vercel project `gcdabyss` builds `npm run build`
-  and serves `dist/` at gcdabyss.vercel.app; every push to `main` deploys, PRs get previews.
+- **Decision:** public repo `eshin087/gcd`; Vercel project `thegcd` builds `npm run build`
+  and serves `dist/` at thegcd.vercel.app; every push to `main` deploys, PRs get previews.
 - **Consequences:** `main` must always be shippable; CI runs tests + build on every push/PR.
 
 ## ADR-006 — Protected main, PR-only changes, lean deployments (2026-11-01)
@@ -532,7 +532,7 @@ Template: **Context** (why decide) · **Decision** · **Consequences**.
 - **Decision:**
   - Tune against the integration bots: `win` (god mode, answers every tell) for fight length and
     phase timing, and the opt-in `probe` scenario (a mortal bot that answers a share of the tells,
-    `ABYSS_SKILL`; reseed with `ABYSS_SEED`) for danger, at several skills.
+    `GCD_SKILL`; reseed with `GCD_SEED`) for danger, at several skills.
   - The lead's retune: HP 4200 → 4500, the plunge's damage final (no head ×1.5), AI weights toward
     the strings and the fire attacks, the unlock stagger.
   - Record the measurements in COMBAT.md "Current numbers" whenever the balance changes.
@@ -1338,7 +1338,7 @@ Template: **Context** (why decide) · **Decision** · **Consequences**.
     zoom. A is dodge (not a tap / hold B) so a perfect dodge has no release latency.
   - Aim without a cursor: the right stick steers; idle, attacks auto-aim at the boss in range (the
     touch rule, now one shared helper `ui/aim.js`).
-  - Device in use = whichever produced the last input; `html.abyss-pad` swaps the on-screen hints
+  - Device in use = whichever produced the last input; `html.gcd-pad` swaps the on-screen hints
     (and PlayStation labels from Sony's vendor id). Menus: title any button / stage picker, pause
     menu focus with the D-pad and A, B to resume. A button held across a menu ↔ play change counts
     only after release, so closing a menu never also rolls or sprints.
@@ -3179,7 +3179,7 @@ ADR-092).
   as data (`ui/changelog.js` `RELEASES`, newest first; the work since the last release is the
   versionless LATEST release), a panel (`ui/changelogPanel.js`) opened from a corner button on the
   title screen and an item in the pause menu, each with a count of the entries this browser has not
-  read (localStorage `abyss.whatsnew.seen`, the ids read; on a first visit only the newest day's
+  read (localStorage `gcd.whatsnew.seen`, the ids read; on a first visit only the newest day's
   entries are new). Closing the panel marks everything read. Entries are short, player-facing
   rewrites of CHANGELOG.md's headlines; `tests/changelogcheck.mjs` (in `npm test`) fails when a
   headline in CHANGELOG.md → [Unreleased] has no entry with the same title, or when `GAME_VERSION`
@@ -4124,7 +4124,7 @@ Two separate things:
 
 **Consequences.** `GlyphBar` / `GlyphPosture` have `resize(cells)`; lengths in the top row are no
 longer constants (`hud.fit` reports them). The touch layer has two more pieces of saved state
-(`layout`, `holdAttack`, in `abyss.touchPad`) and one more button (`.tc-guard`). `CONFIG.touch.pad.split`
+(`layout`, `holdAttack`, in `gcd.touchPad`) and one more button (`.tc-guard`). `CONFIG.touch.pad.split`
 and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
 
 ## ADR-133 — Round the Obsidian Throne: varied breakable props in place of the felled forest (2026-11-22)
@@ -4499,7 +4499,7 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
 - **Context:** ADR-059 promises a fixed reward per boss; the technique system (slots, a meter, an equip
   screen, ROADMAP M2) is not built. The Sheathed's reward is a draw-slash, and it should ship working.
 - **Decision:** `game/unlocks.js` `Unlocks` (`has`, `grant`, `all`, `clear`, `toggle`; localStorage
-  `abyss.unlocks.v1`; `?tech=draw|none`), `game.unlocks` (main.js). His death grants `oneBreath`; the
+  `gcd.unlocks.v1`; `?tech=draw|none`), `game.unlocks` (main.js). His death grants `oneBreath`; the
   victory logs YOU LEARNED ONE BREATH; the help lists it once learned; the Lab toggles it. The input
   needs no new button: a HEAVY press begun with the guard up (or within 0.2 s of lowering it) and held
   past CHARGE.hold takes the draw stance instead of the cleave's charge (`_startCharge` redirects only
@@ -4629,7 +4629,7 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   job, and a gate job named `test-and-build` (the name protection requires) passes only when all of
   them did. A `changes` job reads the PR's own diff (the merge commit against its first parent); with
   nothing outside docs/, *.md, .claude/ the tests and the build skip and the gate passes. lord's
-  longest scenarios run as tasks of their own (`ABYSS_SKIP`, as integ and world did).
+  longest scenarios run as tasks of their own (`GCD_SKIP`, as integ and world did).
 - **Why this way:** a required check that is skipped is never reported and blocks the merge, so the
   skip lives inside the workflow and the gate always reports. Dealing by estimate keeps one list of
   tasks (a new suite cannot be left out of CI); a wrong estimate only unbalances the shares. Kept: the
@@ -5241,7 +5241,7 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   sounds designed from scratch and up to two CC0 recordings; scripted moments timed from the tuning show when
   each sound plays. Picks ship through the sample system of ADR-165 (`sampleList.js` slots, generated
   `sampleFiles.js`, `build-sfx.py` with recorded and designed manifests; designed files are credited "made for
-  ABYSS"); the synth recipe stays the fallback and `?sfx=old` the way back. Each new sound is set to the
+  gcd"); the synth recipe stays the fallback and `?sfx=old` the way back. Each new sound is set to the
   in-game loudness of the sound it replaces, measured through the engine. The deflect chain stops climbing in
   pitch with a bell: it grows in weight (`parryChain.js`, three versions behind `?chain=`).
 - **Consequences:** a slot changes by a line in `scripts/audio/sfx-picks.json` and a rerun of `build-sfx.py`.
@@ -5425,13 +5425,13 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
      instead). A void run's record screen says why in one line (`NOT RECORDED: the Lab was used`); the
      grade is still shown; nothing is stored. Once void, void for the page; a rush, for all its pages.
   5. **The store** (`records.js` `Records`, the pattern of `unlocks.js`): localStorage
-     `abyss.records.v1`, injectable storage, never throws (corrupt / another version reads as empty, a
+     `gcd.records.v1`, injectable storage, never throws (corrupt / another version reads as empty, a
      full store drops the queue to six and retries, blocked or missing storage keeps the page's runs).
      Per level and for the rush: clears, the best time and the best grade, two separate bests; plus the
      last 24 run records in full (a full rush and the runs before it), the queue a later uploader
      drains. `game:record` is emitted per stored record: the seam an uploader subscribes to.
   6. **The boss rush** (`rush.js`): every level in `LEVELS` order (a new level joins with no change), each
-     its own page load (`?level=<id>&rush=1`); the run in sessionStorage (`abyss.rush.v1`, this tab).
+     its own page load (`?level=<id>&rush=1`); the run in sessionStorage (`gcd.rush.v1`, this tab).
      What I decided beyond the plan:
      - a rush page plays the rush's level whatever `?level` says, so a reload on the record screen after
        a win goes on to the next boss (the win was banked) instead of losing the rush;
@@ -5465,7 +5465,7 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
      and 393 x 852, the rush's record too (`docs/looks/records/panel-overflow-before-after.jpg`). The
      `records` suite guards the rule (layout itself cannot be measured headless).
 - **Consequences:** the store and the record are stable shapes; a later version migrates from
-  `abyss.records.v1`. The grade thresholds are starting numbers: the suites' winning bots fight in god mode and
+  `gcd.records.v1`. The grade thresholds are starting numbers: the suites' winning bots fight in god mode and
   land 0 - 8 blows on the hero a fight (most 0 - 3); a duelist's blow is 18 - 38 HP of 160, so an S allows
   one light blow and about half the bots' wins would be an S, the rest an A, and the owner has not played them. Nothing proves a client's time; the server validates.
   Not checked: a human on a real phone, a pad on the title with nine buttons, a full rush played by a
@@ -5567,10 +5567,10 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   shares were done in 3.7 - 7 minutes; after it, `life` (430 s). Nearly all of fxlooks was its last check,
   SPELLS + TERRAIN printed under '0', 'a', 'b' and the shipped looks: TERRAIN alone about 90 % of it. And a
   green PR then waited, often for hours, for someone to press merge.
-- **Decision:** lord.mjs takes `ABYSS_FX` (parts of fxlooks: a switch's name, spy, fight, same,
+- **Decision:** lord.mjs takes `GCD_FX` (parts of fxlooks: a switch's name, spy, fight, same,
   same-spells, same-terrain, same-terrain@a / @b / @ship; `!part` leaves one out) and run.mjs runs each
   TERRAIN look as a process of its own (TERRAIN under '0', then that look), the rest of fxlooks as one more.
-  life.mjs takes `ABYSS_SKIP`; run.mjs runs its files in three processes. Every est re-measured from PR
+  life.mjs takes `GCD_SKIP`; run.mjs runs its files in three processes. Every est re-measured from PR
   #113's run. A new workflow, `automerge.yml`, sets auto-merge (squash) on every PR from this repo when it is
   opened, reopened or made ready (not a draft, not one labelled `hold`): the owner's call ("have every pr set
   to auto merge automatically").
@@ -5804,6 +5804,61 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   the CPU's `bendAt` are kept in step by hand; close up a lying blade is a long sheared stroke (as the
   pusher's always was); the phone's frame cost is the owner's to confirm.
 
+## ADR-195 — The game is called gcd (2026-11-25)
+
+- **Context:** the owner renamed the game and named its hero. The repo moves to `eshin087/gcd` and the site
+  to https://thegcd.vercel.app; the old address is dropped with no redirect (the owner does the GitHub and
+  Vercel renames after the merge).
+- **Decision:** the game is **gcd**, written lowercase everywhere a player sees it (the title logo, the
+  browser tab, the start-failure text, WHAT'S NEW's header, the credits) and in prose docs. No capitals
+  were needed anywhere: every place the name shows stands on its own. The lore, in three sentences: gcd is a
+  mysterious being who wields the most powerful sword in all universes. The sword is what lets him defeat
+  these legendary bosses. It is also what carries him between campfires in different worlds and universes.
+  The title logo is a small lowercase "gcd" in the banners' block face (six rows, one width; the banner
+  letterforms are unchanged). Identifiers follow: env vars `GCD_*`, classes `gcd-touch` / `gcd-pad`,
+  style ids `gcd-lab-style` / `gcd-training-style`, `.claude/launch.json` `gcd-dev`, the package name
+  `gcd`. Storage keys become `gcd.*` (`gcd.bindings.v2`, `gcd.lab.v1`, `gcd.records.v1`, `gcd.rush.v1`,
+  `gcd.telemetry.v1`, `gcd.unlocks.v1`, `gcd.whatsnew.seen`, `gcd.touchPad`) with **no migration**.
+- **Why:** localStorage and sessionStorage belong to an origin; on the new address nothing saved under the
+  old one can be read, whatever the keys are called, so migration code would never run where it matters.
+  Renaming every key now keeps one name through the code.
+- **The title's random draws are pinned:** the logo's shimmer drew `Math.random` once per solid block a
+  tick, from the stream the seeded sims share, so the shorter logo moved every seeded fight (five suites
+  failed on their margins). The sparkle now has its own xorshift, and `TitleScreen.update` still draws the
+  first logo's count from `Math.random` (`STREAM_COLS`, its blocks per column, skipping the sweep), so the
+  sims replay as before and no later logo or title layout can move a fight.
+- **Exceptions (left as they are):** third-party work titles and their file names: the music track
+  "Ambience of a Fallen Age (The Abyss)" by Umplix (`assets/audio/CREDITS.md`, the `trackList.js` comment,
+  `build-music.py`'s `the_abyss.wav`, ADR-117's track list), since a credit must stay accurate; the local
+  folder name in absolute paths (the owner renames it later). History documents keep what they said, with
+  the product name and URLs replaced in place.
+- **Consequences / open:** until the address moves, the live site's players lose saved bindings, records,
+  learned techniques and read marks once this deploys. The title screen's layout is being redesigned on
+  another branch; it meets this LOGO there.
+
+## ADR-196 — The title is the sword's path; a loading screen from the first paint (2026-11-25)
+
+- **Context:** with the rename (ADR-195) the owner asked for a better front: an ASCII loading progress with
+  the gcd branding on a first load, and a title where the stages are easy to pick instead of one long line of
+  buttons. Three title layouts (a world list, a campfire grid, the sword's path), two loaders (centred, a
+  console) and two places for the hero's name in the HUD were built behind switches and shown as screenshots.
+- **Decision:** the owner picked **menu c, the sword's path** (the worlds as fires along one line the sword
+  travels; the one in focus opens under it with its keeper, record and the way to travel or begin; upright,
+  the path runs down the side), **loader b, the console** (the logo, each finished boot step with its real
+  time, the bar, a lore line), and **no name in the HUD**. They asked for the name over the hero's head to
+  stay close to him: the tag reads gcd and rides his head bone instead of hanging at a fixed 2.2 m over his
+  feet (it floated a metre clear when his head dropped in a roll). `?menu=0` and `?loader=a` keep the
+  others; `PICKED.menu = 'c'`.
+- **Why the loader is honest:** measured on the built page (gzipped, cold cache): 0.3 s download, 2 s boot
+  on a fast machine; on slow 4G with a 4x-slowed CPU 10 s download and 10 s boot, the world's build about 70 %
+  of the boot, and a first-ever shader compile up to 7 s. The bar shows a waiting run while bytes arrive
+  (nothing to count), then the boot's real steps; no artificial delay, so a warm load barely shows it. The
+  web fonts' sheet no longer blocks the first paint (the loader showed at 1.0 s on slow 4G, now 0.25 s).
+- **Lore** (the owner's three places: the loader's lines, the picker framed as fires the sword can reach,
+  the hero's name): eleven plain lines rotate on the loader; a pick says where the sword takes him next.
+- **Consequences / open:** the layouts are DOM text in the HUD's idiom (no images, no new font); the path
+  gets tight past about ten worlds (names wrap; it will need to scroll or shrink). Not yet seen on a real
+  iPhone notch, home bar or a real gamepad (emulated and stubbed).
 ## ADR-197 — The dragon print: the ground, floors, grass, props and trees printed in the wyrm's digits (2026-11-25)
 
 - **Context:** the owner: the ground "doesn't seem like ascii ground ... make it look cool ascii without being

@@ -1,7 +1,7 @@
 import { el, num } from './dom.js';
 import { blockText } from './blockText.js';
 
-// The big words are BLOCK LETTERS built from characters, in the ABYSS logo's letterforms
+// The big words are BLOCK LETTERS built from characters, in the title logo's block face
 // (ui/blockText.js; ADR-098): as large as fits the screen's width up to BLOCK_MAX px a character
 // (by kind), stacked word by word on a narrow screen. BLOCK_MIN: below this the words stack instead.
 const BLOCK_MAX = { death: 17, victory: 13, area: 9, bonfire: 11, phase: 6 };

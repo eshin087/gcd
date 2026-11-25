@@ -2,7 +2,7 @@
 // AshDisciple, Hud, GameFlow, AudioEngine and Lab (+ real LightPool, GlyphParticles, CameraRig,
 // Events) wired like src/main.js for `?level=ash`; the world is a light mock on the real Colliders
 // with the courtyard's ring of pillars. A bot drives the input.
-// usage: node duel.mjs <repoRoot> [scenario]   (env: ABYSS_SEED=n reseeds the AI)
+// usage: node duel.mjs <repoRoot> [scenario]   (env: GCD_SEED=n reseeds the AI)
 //   scenario: levels | data | timing | terrain | guard | clash | trade | deflect | ghostep | execute | phase | flow | win | sfx | all
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -46,7 +46,7 @@ const out = (...a) => process.stdout.write(a.join(' ') + '\n');
 let fails = 0;
 const assert = (c, m) => { if (!c) { fails++; out('FAIL', m); } else out('ok  ', m); };
 const mulberry32 = (a) => () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-const SEED = Number(process.env.ABYSS_SEED ?? 4242);
+const SEED = Number(process.env.GCD_SEED ?? 4242);
 const DT = 1 / 60;
 
 // the event catalogue (docs/ARCHITECTURE.md → "Event catalogue"): what this level emits must be in it
@@ -447,11 +447,11 @@ async function scenarioMoves() {
         const h0 = G.hits.length;
         d.debug.trigger(name);
         const mtrace = [];
-        run(G, 9, (GG) => { if (process.env.ABYSS_MTRACE) mtrace.push([+GG.game.time.toFixed(2), `${p.state}/${d.brain.act?.beats?.findIndex((b) => d.brain.act.t < b.end) ?? '-'}`]); GG.input.axis = { x: 0, y: 0 }; GG.defend.act(); GG.game.mouseGround.set(d.position.x, 0, d.position.z); }, () => d.mode === 'foot' && !d.fx.crescentsAlive);
+        run(G, 9, (GG) => { if (process.env.GCD_MTRACE) mtrace.push([+GG.game.time.toFixed(2), `${p.state}/${d.brain.act?.beats?.findIndex((b) => d.brain.act.t < b.end) ?? '-'}`]); GG.input.axis = { x: 0, y: 0 }; GG.defend.act(); GG.game.mouseGround.set(d.position.x, 0, d.position.z); }, () => d.mode === 'foot' && !d.fx.crescentsAlive);
         G.defend = null;
         input.up(1);
         const landed = G.hits.slice(h0).filter((h) => h.attack === name && h.r === RESULT.HIT);
-        if (process.env.ABYSS_MTRACE && landed.length) out('     trace', name, JSON.stringify(G.hits.slice(h0).map((h) => [h.attack, h.r, h.tell, +(h.t).toFixed(2)])), JSON.stringify(mtrace.filter((x, i, A) => i === 0 || x[1] !== A[i - 1][1])));
+        if (process.env.GCD_MTRACE && landed.length) out('     trace', name, JSON.stringify(G.hits.slice(h0).map((h) => [h.attack, h.r, h.tell, +(h.t).toFixed(2)])), JSON.stringify(mtrace.filter((x, i, A) => i === 0 || x[1] !== A[i - 1][1])));
         tried.push(`${name}/P${ph}/${style}:${landed.length}`);
         if (landed.length) assert(false, `${name} P${ph}: answered by a ${style === 'dodge' ? 'rolling' : 'parrying'} bot, ${landed.length} blow(s) landed (${landed.map((h) => h.tell).join(',')})`);
       }
@@ -1542,7 +1542,7 @@ async function scenarioGhostep() {
   input.click(0);
   // (he may still be in a freeze: 0.9 s of real time)
   run(G, 0.9, () => trace.push(`${p.state}${p.atk?.hit ? '!' : ''}`));
-  if (process.env.ABYSS_TRACE) out('     trace', back0.toFixed(2), d.mode, d.brain.act?.name ?? '-', trace.filter((s, i, a) => s !== a[i - 1]).join(' '));
+  if (process.env.GCD_TRACE) out('     trace', back0.toFixed(2), d.mode, d.brain.act?.name ?? '-', trace.filter((s, i, a) => s !== a[i - 1]).join(' '));
   assert(d.hp < hp0, `a cut at his back after it lands (hp ${hp0} → ${d.hp}; ${back0.toFixed(2)} m behind him, ${d.mode})`);
 
   // each of the arts against a foe on the ground, two blows: a flash cut through him, then the art
@@ -1692,7 +1692,7 @@ async function scenarioPerfectFx() {
     answerMove(G, 'ashRain', press(0.04), 12);
     MOVES.ashRain.beats.forEach((bt, i) => (bt.lock = locks[i]));
     G.watch = null;
-    if (process.env.ABYSS_TRACE) out('     ashRain', G.hits.slice(h0).map((h) => `${h.r}/${h.tell}@${h.t.toFixed(2)}`).join(' '), d.mode, d.brain.react?.kind, d.posture, d.maxPosture, d.broken);
+    if (process.env.GCD_TRACE) out('     ashRain', G.hits.slice(h0).map((h) => `${h.r}/${h.tell}@${h.t.toFixed(2)}`).join(' '), d.mode, d.brain.react?.kind, d.posture, d.maxPosture, d.broken);
     r.stringReal = game.realTime - rs;
     r.stringGame = game.time - gs;
     r.perf = perf;
@@ -2083,7 +2083,7 @@ async function scenarioTraining() {
     while (T.ph !== 'done' && frames < Math.round(40 / DT)) { G.tick(DT); frames++; }
     const r = T.lastResult;
     const ok = T.ph === 'done' && r?.id === s.id && r.ok;
-    if (!ok || process.env.ABYSS_TRACE) out(`   ${ok ? 'ok ' : 'BAD'} ${s.cat} · ${s.name}: ${T.ph} in ${(frames * DT).toFixed(1)} s · missing ${JSON.stringify(r?.missing ?? '?')} · hero ${game.player.state} streak ${game.player.streak} · boss ${game.dragon.state}`);
+    if (!ok || process.env.GCD_TRACE) out(`   ${ok ? 'ok ' : 'BAD'} ${s.cat} · ${s.name}: ${T.ph} in ${(frames * DT).toFixed(1)} s · missing ${JSON.stringify(r?.missing ?? '?')} · hero ${game.player.state} streak ${game.player.streak} · boss ${game.dragon.state}`);
     if (!ok) bad.push(s.id);
   }
   T.stop();
@@ -2230,7 +2230,7 @@ async function scenarioFlow() {
 // the guard held through a normal / blue blow, a roll 0.28 s before a red / black one (out of a
 // hazard's ring: away from its centre). The hero roams between standoffs (2.5 / 5 / 9 m, a new one
 // every 4 s), on the REAL courtyard (the terrain moves are in). Per seed and per phase (every phase
-// the kit has), ABYSS_PSECS s each (default 120), seeds ABYSS_PSEEDS (default 4242,7,99): cues a
+// the kit has), GCD_PSECS s each (default 120), seeds GCD_PSEEDS (default 4242,7,99): cues a
 // minute (combat:flash from 'dragon' or 'world'), the longest gap between cues (a black blow's charge
 // counts as activity), the mix by category, the moves chained (started straight out of another, no
 // footwork between) and the longest chain, conflicts (two flashes under 0.3 s apart needing
@@ -2285,8 +2285,8 @@ async function scenarioPace() {
   out('\n== scenario PACE (a steady defender in god mode vs his AI, per phase: cues, gaps, mix, chains, conflicts) ==');
   const DIR = await imp('src/entities/enemies/duelist/director.js');
   const P = TUNING.pressure ?? null;
-  const SECS = Number(process.env.ABYSS_PSECS ?? 120);
-  const SEEDS = (process.env.ABYSS_PSEEDS ?? '4242,7,99').split(',').map(Number).filter(Number.isFinite);
+  const SECS = Number(process.env.GCD_PSECS ?? 120);
+  const SEEDS = (process.env.GCD_PSEEDS ?? '4242,7,99').split(',').map(Number).filter(Number.isFinite);
   const pp = (v, ph) => (Array.isArray(v) ? v[Math.min(v.length, Math.max(1, ph)) - 1] : v);
   const CATS = DIR.CATEGORIES;
   const answer = (tell) => (tell === TELL.RED || tell === TELL.BLACK ? 'dodge' : 'guard');
@@ -2316,7 +2316,7 @@ async function scenarioPace() {
       const s0 = { ...(d.brain.stats ?? {}) };
       const dbg = [];
       G.watch = (n, e) => {
-        if ((process.env.ABYSS_PDBG || process.env.ABYSS_PGAP) && /dragon:windup|combat:flash|combat:tell|dragon:parried|dragon:guard/.test(n)) dbg.push([game.time, `${n.split(':')[1]} ${e?.name ?? e?.attack ?? ''} ${e?.tell ?? ''}${n === 'combat:tell' ? ` in ${e.impactIn?.toFixed(2)}` : ''} [${d.mode} ${d.brain.act?.name ?? ''} h${d.brain.stats?.holds} d${d.brain.stats?.delays}]`]);
+        if ((process.env.GCD_PDBG || process.env.GCD_PGAP) && /dragon:windup|combat:flash|combat:tell|dragon:parried|dragon:guard/.test(n)) dbg.push([game.time, `${n.split(':')[1]} ${e?.name ?? e?.attack ?? ''} ${e?.tell ?? ''}${n === 'combat:tell' ? ` in ${e.impactIn?.toFixed(2)}` : ''} [${d.mode} ${d.brain.act?.name ?? ''} h${d.brain.stats?.holds} d${d.brain.stats?.delays}]`]);
         if (n === 'combat:flash' && (e?.source === 'dragon' || e?.source === 'world')) flashes.push([game.time, e.tell, e.attack, e.source]);
         if (n === 'combat:charge' && Number.isFinite(e?.dur)) for (let k = 0; k < e.dur; k += 0.1) busyT.push(game.time + k);
         if (n === 'dragon:windup' && !skip(e?.name)) { acts.push([game.time, e.name]); const c = DIR.categoryOf(MOVES[e.name]); cats[c] = (cats[c] || 0) + 1; }
@@ -2361,8 +2361,8 @@ async function scenarioPace() {
       for (let i = 1; i < ts.length; i++) {
         const g = ts[i] - ts[i - 1];
         if (g > gapMax) { gapMax = g; gapAt = `${(ts[i - 1] - t0).toFixed(0)} s: ${acts.filter((w) => w[0] > ts[i - 1] - 0.5 && w[0] < ts[i]).map((w) => w[1]).join(', ') || 'no move'}`; }
-        // ABYSS_PGAP=1: the event log through each gap over 2.8 s
-        if (process.env.ABYSS_PGAP && g > 2.8) out(`      GAP P${ph} seed ${seed} ${g.toFixed(2)} s at ${(ts[i - 1] - t0).toFixed(2)}: ${dbg.filter((x) => x[0] > ts[i - 1] - 0.3 && x[0] < ts[i] + 0.1).map((x) => `${(x[0] - t0).toFixed(2)} ${x[1]}`).join(' | ')}`);
+        // GCD_PGAP=1: the event log through each gap over 2.8 s
+        if (process.env.GCD_PGAP && g > 2.8) out(`      GAP P${ph} seed ${seed} ${g.toFixed(2)} s at ${(ts[i - 1] - t0).toFixed(2)}: ${dbg.filter((x) => x[0] > ts[i - 1] - 0.3 && x[0] < ts[i] + 0.1).map((x) => `${(x[0] - t0).toFixed(2)} ${x[1]}`).join(' | ')}`);
       }
       let conflicts = 0, inner = 0;
       const conflictAt = [], innerAt = new Set();
@@ -2372,8 +2372,8 @@ async function scenarioPace() {
           if (flashes[i][2] === flashes[j][2]) { inner++; innerAt.add(flashes[i][2]); } else {
             conflicts++;
             conflictAt.push(`${flashes[i][2]}/${flashes[j][2]} @${(flashes[i][0] - t0).toFixed(1)}`);
-            // ABYSS_PDBG=1: what happened round each conflict
-            if (process.env.ABYSS_PDBG) out(`      CONFLICT P${ph} ${(flashes[i][0] - t0).toFixed(2)}: ${dbg.filter((x) => x[0] > flashes[i][0] - 2.5 && x[0] < flashes[j][0] + 0.4).map((x) => `${(x[0] - t0).toFixed(2)} ${x[1]}`).join(' | ')}`);
+            // GCD_PDBG=1: what happened round each conflict
+            if (process.env.GCD_PDBG) out(`      CONFLICT P${ph} ${(flashes[i][0] - t0).toFixed(2)}: ${dbg.filter((x) => x[0] > flashes[i][0] - 2.5 && x[0] < flashes[j][0] + 0.4).map((x) => `${(x[0] - t0).toFixed(2)} ${x[1]}`).join(' | ')}`);
           }
         }
       }
@@ -2388,15 +2388,15 @@ async function scenarioPace() {
       const st = d.brain.stats ?? {};
       const dlt = (k) => (st[k] ?? 0) - (s0[k] ?? 0);
       rows.push({ seed, ph, T, cues: flashes.length, perMin: (flashes.length * 60) / T, gapMax, gapAt, cats, picks: acts.length, chained, chainMax, conflicts, conflictAt, inner, innerAt: [...innerAt], busy: busy / frames, burn: burnF / frames, dodge: dodges / (flashes.length || 1), runMax, holds: dlt('holds'), feints: dlt('feints'), told: dlt('toldFeints'), delays: dlt('delays'), links: dlt('links'), cuts: dlt('cuts'), rests: dlt('rests'), hurt, modeT });
-      // ABYSS_PGUARD=1: what the fairness guard would not let through (feints, faded marks, strikes
+      // GCD_PGUARD=1: what the fairness guard would not let through (feints, faded marks, strikes
       // not called), each with the impact it collided with (brain.guardLog)
-      if (process.env.ABYSS_PGUARD) {
+      if (process.env.GCD_PGUARD) {
         const tally = {};
         for (const e of d.brain.guardLog ?? []) if (e.t >= t0) tally[`${e.kind} ${e.what} x ${e.with}`] = (tally[`${e.kind} ${e.what} x ${e.with}`] || 0) + 1;
         out(`      P${ph} seed ${seed} guard: ${Object.entries(tally).sort((x, y) => y[1] - x[1]).map(([k, v]) => `${k} ${v}`).join(' · ') || '-'}`);
       }
-      // ABYSS_PATT=1: where the phase's time went, move by move (s in it, picks, its cues, cues a second)
-      if (process.env.ABYSS_PATT) {
+      // GCD_PATT=1: where the phase's time went, move by move (s in it, picks, its cues, cues a second)
+      if (process.env.GCD_PATT) {
         const fl = {}, pk = {};
         for (const f of flashes) fl[f[2]] = (fl[f[2]] || 0) + 1;
         for (const w of acts) pk[w[1]] = (pk[w[1]] || 0) + 1;
@@ -2530,7 +2530,7 @@ async function scenarioPressure() {
   const ktrace = [];
   run(G, 9, () => {
     speedWin();
-    if (process.env.ABYSS_TRACE) ktrace.push(`${d.mode === 'act' ? d.brain.act.name : d.mode === 'react' ? d.brain.react.kind : d.mode}`);
+    if (process.env.GCD_TRACE) ktrace.push(`${d.mode === 'act' ? d.brain.act.name : d.mode === 'react' ? d.brain.react.kind : d.mode}`);
     const R = Math.hypot(p.position.x, p.position.z) || 1;
     const tx = -p.position.z / R, tz = p.position.x / R; // the tangent of a circle round the middle
     const rr = (8 - R) * 0.6; // and back toward radius 8
@@ -2541,7 +2541,7 @@ async function scenarioPressure() {
   input.release('ShiftLeft');
   input.axis = { x: 0, y: 0 };
   const caught = G.hits.length - k0;
-  if (process.env.ABYSS_TRACE) out('     kite', ktrace.filter((x, i, A) => x !== A[i - 1]).join(' '));
+  if (process.env.GCD_TRACE) out('     kite', ktrace.filter((x, i, A) => x !== A[i - 1]).join(' '));
   // (a hero sprinting sideways at full speed beats a thrust's line now and then: seeds land 1–7 blows)
   assert(topSpeed > 7.4 && minD < 1.5 && caught >= 1, `a hero sprinting circles is run down: his top speed ${topSpeed.toFixed(1)} m/s (the hero's sprint 7.2), closest ${minD.toFixed(2)} m, ${caught} blows reached him in 9 s`);
   settle(G);
@@ -3364,7 +3364,7 @@ async function scenarioTerrain() {
   ev = answer('flagVolley', 'stand', 0, -3, 0, 5, 2, true);
   hit = ev.hits.filter((h) => h.attack === 'flagVolley');
   const nV = ev.tells.length;
-  if (process.env.ABYSS_TDBG) out('     volley', JSON.stringify({ hits: ev.hits.map((h) => [h.attack, h.r, +h.t.toFixed(2)]), flashes: ev.flashes.map((f) => +f.t.toFixed(2)), tells: ev.tells.map((f) => +f.t.toFixed(2)), impacts: ev.impacts.filter((e) => e.kind === 'throw' || e.kind === 'crash').map((e) => [e.kind, e.id, +e.t.toFixed(2)]) }));
+  if (process.env.GCD_TDBG) out('     volley', JSON.stringify({ hits: ev.hits.map((h) => [h.attack, h.r, +h.t.toFixed(2)]), flashes: ev.flashes.map((f) => +f.t.toFixed(2)), tells: ev.tells.map((f) => +f.t.toFixed(2)), impacts: ev.impacts.filter((e) => e.kind === 'throw' || e.kind === 'crash').map((e) => [e.kind, e.id, +e.t.toFixed(2)]) }));
   assert(ev.ok && nV >= 2 && nV <= 3 && ev.tells.every((t) => t.tell === TELL.BLUE) && ev.flashes.length === nV && ev.marks === 0, `Flagstone Volley (phase 2): ${nV} slabs, each levered and kicked, each with its flare; nothing on the ground`);
   assert(hit.length === nV && hit.every((h) => h.r === RESULT.HIT) && worst(ev, 'flagVolley') <= 0.085 && hit.slice(1).every((h, i) => h.t - hit[i].t >= TUNING.minHitGap), `each strikes a hero who stands, ${ms(worst(ev, 'flagVolley'))} ms off its flare + lead, ${hit.slice(1).map((h, i) => (h.t - hit[i].t).toFixed(2)).join(' / ')} s apart`);
   ev = answer('flagVolley', 'parry', 0, -3, 0, 5, 2, true);
@@ -3469,14 +3469,14 @@ async function scenarioTerrain() {
 /**
  * The tuning pass's measuring bots (2026-11-16; not pass / fail: it measures). On the REAL set, mortal
  * (no god mode), each its own random stream for what it misses (the AI's stream stays the seed's):
- * - fencers that answer 95 / 85 / 70 % of the cues (ABYSS_BSKILLS) and cut in his openings, whole
- *   fights (ABYSS_BSECS, default 420 s), three seeds (ABYSS_BSEEDS): won, the time, the time in each
+ * - fencers that answer 95 / 85 / 70 % of the cues (GCD_BSKILLS) and cut in his openings, whole
+ *   fights (GCD_BSECS, default 420 s), three seeds (GCD_BSEEDS): won, the time, the time in each
  *   phase, hits, damage, flasks, the worst blow and the worst second (damage inside any 1 s);
- * - a pure defender (never attacks, answers 95 %), two minutes (ABYSS_BDSECS) in each phase, mortal,
+ * - a pure defender (never attacks, answers 95 %), two minutes (GCD_BDSECS) in each phase, mortal,
  *   drinking when low: survived, damage, flasks; and the same with its guard held in burning ground
  *   (`stand`: it does not step off; the owner's question about the guard's 1 HP a tick).
  * The bots answer the world's cues too (a felled piece, rolled out of its strip) and step off a burning
- * line (the hero sees it), unless `stand`. ABYSS_BOTS=fight|defend|stand picks a part (default all).
+ * line (the hero sees it), unless `stand`. GCD_BOTS=fight|defend|stand picks a part (default all).
  */
 function probeDefender(G, { skill = 1, seed = 1 } = {}) {
   const pend = [];
@@ -3536,10 +3536,10 @@ function stepOffFire(G) {
 }
 async function scenarioBots() {
   out('\n== scenario BOTS (mortal fencers at 95 / 85 / 70 %, a pure defender per phase; the real set) ==');
-  const SEEDS = (process.env.ABYSS_BSEEDS ?? '4242,7,99').split(',').map(Number).filter(Number.isFinite);
-  const SKILLS = (process.env.ABYSS_BSKILLS ?? '0.95,0.85,0.7').split(',').map(Number).filter(Number.isFinite);
-  const SECS = Number(process.env.ABYSS_BSECS ?? 420), DSECS = Number(process.env.ABYSS_BDSECS ?? 120);
-  const PART = process.env.ABYSS_BOTS ?? 'all';
+  const SEEDS = (process.env.GCD_BSEEDS ?? '4242,7,99').split(',').map(Number).filter(Number.isFinite);
+  const SKILLS = (process.env.GCD_BSKILLS ?? '0.95,0.85,0.7').split(',').map(Number).filter(Number.isFinite);
+  const SECS = Number(process.env.GCD_BSECS ?? 420), DSECS = Number(process.env.GCD_BDSECS ?? 120);
+  const PART = process.env.GCD_BOTS ?? 'all';
   let last = null;
   const worst = (hits) => {
     let blow = 0, sec = 0, blowBy = '', secBy = '';
@@ -3647,14 +3647,14 @@ async function scenarioBots() {
 }
 
 // ================================================================== scenario: answer (opt-in)
-/** The fairness sweep of the tuning pass: every AI move (or ABYSS_AMOVES) in every phase it is in,
+/** The fairness sweep of the tuning pass: every AI move (or GCD_AMOVES) in every phase it is in,
  *  triggered from 5 distances across its band (left and right of his facing), against the parrying
  *  bot (white / blue parried, red / black rolled across) with the hero standing, or walking in at him
- *  (ABYSS_AWALK=1: what the pure defender does past 3.4 m). Prints every blow that lands. */
+ *  (GCD_AWALK=1: what the pure defender does past 3.4 m). Prints every blow that lands. */
 async function scenarioAnswer() {
   out('\n== scenario ANSWER (every move from across its band against the parrying bot) ==');
-  const pick = process.env.ABYSS_AMOVES ? process.env.ABYSS_AMOVES.split(',') : MOVE_NAMES.filter((n) => !MOVES[n].counter && !MOVES[n].transition && !MOVES[n].terrain);
-  const walk = !!process.env.ABYSS_AWALK;
+  const pick = process.env.GCD_AMOVES ? process.env.GCD_AMOVES.split(',') : MOVE_NAMES.filter((n) => !MOVES[n].counter && !MOVES[n].transition && !MOVES[n].terrain);
+  const walk = !!process.env.GCD_AWALK;
   const G = build();
   duel(G, { dist: 4 });
   const { game, input } = G;
@@ -3700,10 +3700,10 @@ const perPhaseW = (w, ph) => (Array.isArray(w) ? w[Math.min(w.length, ph) - 1] :
 
 // ================================================================== scenario: ranged (opt-in)
 /** The sword qi moves at each range of their band (a standing, guarding hero): the cues they give and
- *  the crescents thrown / fizzled. ABYSS_RMOVES picks the moves. */
+ *  the crescents thrown / fizzled. GCD_RMOVES picks the moves. */
 async function scenarioRanged() {
   out('\n== scenario RANGED (the qi moves: cues by range) ==');
-  const names = (process.env.ABYSS_RMOVES ?? 'ashCrescent,emberFan,qiStorm,partingWind,chaseRain').split(',');
+  const names = (process.env.GCD_RMOVES ?? 'ashCrescent,emberFan,qiStorm,partingWind,chaseRain').split(',');
   const G = build();
   duel(G, { dist: 4 });
   const { game, input } = G;
@@ -3738,10 +3738,10 @@ async function scenarioRanged() {
 }
 
 // ================================================================== scenario: probe (opt-in)
-/** A mortal fencer that reads only a share of the tells (ABYSS_SKILL, default 0.85). Not a pass /
+/** A mortal fencer that reads only a share of the tells (GCD_SKILL, default 0.85). Not a pass /
  *  fail check: it measures how dangerous he is. node duel.mjs . probe */
 async function scenarioProbe() {
-  const skill = Number(process.env.ABYSS_SKILL ?? 0.85);
+  const skill = Number(process.env.GCD_SKILL ?? 0.85);
   out(`\n== scenario PROBE (a mortal fencer reading ${Math.round(skill * 100)} % of the tells) ==`);
   const G = build();
   const { game } = G;
@@ -4390,10 +4390,10 @@ async function scenarioHeavy() {
 
 // ================================================================== scenario: strategy (opt-in)
 /** Which defence wins? Three bots that differ only in how they answer a tell (makeDefender `style`),
- *  each in god mode (how fast it kills, how often it is struck) and mortal at ABYSS_SKILL (does it
+ *  each in god mode (how fast it kills, how often it is struck) and mortal at GCD_SKILL (does it
  *  live). Not a pass / fail check: node duel.mjs . strategy */
 async function scenarioStrategy() {
-  const skill = Number(process.env.ABYSS_SKILL ?? 0.85);
+  const skill = Number(process.env.GCD_SKILL ?? 0.85);
   out(`
 == scenario STRATEGY (mixed / parry-only / dodge-only; god mode, then mortal at ${Math.round(skill * 100)} %) ==`);
   let last = null;
@@ -4888,13 +4888,13 @@ const SCENARIOS = {
 };
 const runs = [];
 const OPT_IN = new Set(['probe', 'strategy', 'bots', 'ranged', 'answer']); // run only when named
-// `all`, one scenario or a comma list; ABYSS_SKIP (a comma list) leaves scenarios out of `all`
+// `all`, one scenario or a comma list; GCD_SKIP (a comma list) leaves scenarios out of `all`
 // (tests/run.mjs runs the long ones as processes of their own, so a new scenario lands in `all`)
-const SKIP = new Set((process.env.ABYSS_SKIP ?? '').split(',').map((s) => s.trim()).filter(Boolean));
-for (const k of SKIP) if (!SCENARIOS[k]) { out(`unknown scenario in ABYSS_SKIP: ${k}`); process.exit(2); }
+const SKIP = new Set((process.env.GCD_SKIP ?? '').split(',').map((s) => s.trim()).filter(Boolean));
+for (const k of SKIP) if (!SCENARIOS[k]) { out(`unknown scenario in GCD_SKIP: ${k}`); process.exit(2); }
 const WANT = SCEN === 'all' ? [] : SCEN.split(',');
 for (const k of WANT) if (!SCENARIOS[k]) { out(`unknown scenario '${k}' (${Object.keys(SCENARIOS).join(' | ')} | all)`); process.exit(2); }
-if (SCEN === 'all' && SKIP.size) out(`\n(not run here, ABYSS_SKIP: ${[...SKIP].join(', ')})`);
+if (SCEN === 'all' && SKIP.size) out(`\n(not run here, GCD_SKIP: ${[...SKIP].join(', ')})`);
 for (const [name, fn] of Object.entries(SCENARIOS)) if (WANT.includes(name) || (SCEN === 'all' && !OPT_IN.has(name) && !SKIP.has(name))) runs.push(await fn());
 if (!runs.length) { out(`unknown scenario '${SCEN}' (${Object.keys(SCENARIOS).join(' | ')} | all)`); process.exit(2); }
 

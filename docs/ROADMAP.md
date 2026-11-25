@@ -185,7 +185,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
-## M1.87 — The dragon print: the world printed in the wyrm's digits (2026-11-25, `render/ground-looks`, ADR-197)
+## M1.88 — The dragon print: the world printed in the wyrm's digits (2026-11-25, `render/ground-looks`, ADR-197)
 - [x] Four ground looks rendered; the owner picked b, the dragon ground (a lit relief in the wyrm's digits on a world-anchored lattice)
 - [x] The core (`render/dragonPrint.js`) and the default in every level (`?dragon=0` the world before)
 - [x] Floors of every level, props and trees, four upgrades (cloud, contact, ripple, ridge), flash footprints on every surface
@@ -193,6 +193,13 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] A cut that shows in the printed grass (dgCut b); fallen leaves as lit lenses (leafLook a)
 - [ ] Grass a with more depth: the owner's pick of a3d1 / a3d2 / a3d3
 - [ ] The phone's frame cost; remove the first round's looks a / c / d
+
+## M1.87 — The front: the sword's path and a loading screen (2026-11-25, `ui/gcd-front`, ADR-196)
+- [x] A loading screen from the first paint, an honest bar of the boot's steps (`?loader=a|b`; b the owner's pick)
+- [x] Three title layouts (`?menu=a|b|c`; c the owner's pick, `0` the title before), CONTROLS behind a button
+- [x] The hero's tag reads gcd and rides his head; the HUD name off (`?heroName=a|b`)
+- [ ] Seen on the iPhone (notch, home bar, upright and landscape) and with a real pad
+- [ ] The path past ten worlds (scroll or shrink)
 
 ## M1.86 — The bosses printed the hero's way (2026-11-24, `render/boss-hero-ink`, ADR-194)
 - [x] Why they looked apart: same letters, but flat dark / flat bright fills, a hairline outline, no hem

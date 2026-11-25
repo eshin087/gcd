@@ -2,8 +2,8 @@
 // Sheathed, Hud, GameFlow, AudioEngine and Lab (+ real LightPool, GlyphParticles, FireField, CameraRig,
 // Events) wired like src/main.js for `?level=grove`; the world is a light mock on the real Colliders, or
 // (`real`) the set built anew with its breakables. A bot drives the input. Modelled on asc.mjs.
-// usage: node sheath.mjs <repoRoot> [scenario]   (env: ABYSS_SEED=n reseeds the AI; ABYSS_PSEEDS /
-//   ABYSS_PSECS for PACE; ABYSS_TUNE='{...}' deep-merges into TUNING)
+// usage: node sheath.mjs <repoRoot> [scenario]   (env: GCD_SEED=n reseeds the AI; GCD_PSEEDS /
+//   GCD_PSECS for PACE; GCD_TUNE='{...}' deep-merges into TUNING)
 //   scenario: level | rules | draw | honor | sheath | world | phases | late | pace | win | strategy | reward | look | all
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -38,9 +38,9 @@ const { AudioEngine } = await imp('src/audio/audio.js');
 const { GameFlow } = await imp('src/game/flow.js');
 const { Lab } = await imp('src/dev/lab.js');
 
-if (process.env.ABYSS_TUNE) {
+if (process.env.GCD_TUNE) {
   const merge = (o, v) => { for (const [k, x] of Object.entries(v)) { if (x && typeof x === 'object' && !Array.isArray(x) && o[k] && typeof o[k] === 'object') merge(o[k], x); else o[k] = x; } };
-  merge(TUNING, JSON.parse(process.env.ABYSS_TUNE));
+  merge(TUNING, JSON.parse(process.env.GCD_TUNE));
 }
 const LVL = getLevel('grove');
 const errors = [];
@@ -50,7 +50,7 @@ const out = (...a) => process.stdout.write(a.join(' ') + '\n');
 let fails = 0;
 const assert = (c, m) => { if (!c) { fails++; out('FAIL', m); } else out('ok  ', m); };
 const mulberry32 = (a) => () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-const SEED = Number(process.env.ABYSS_SEED ?? 4242);
+const SEED = Number(process.env.GCD_SEED ?? 4242);
 const DT = 1 / 60;
 const NPH = TUNING.phaseAt.length;
 const weightIn = (def, f) => (Array.isArray(def.weight) ? def.weight[f - 1] ?? 0 : def.weight ?? 0);
@@ -909,7 +909,7 @@ async function scenarioWin() {
 // ================================================================== scenario: strategy
 async function scenarioStrategy() {
   out('\n== scenario STRATEGY (mixed / parry / dodge / block-only bots, god mode; the block-only bot must not die to a draw) ==');
-  const seeds = (process.env.ABYSS_SSEEDS ?? '4242,7').split(',').map(Number);
+  const seeds = (process.env.GCD_SSEEDS ?? '4242,7').split(',').map(Number);
   for (const style of ['mixed', 'parry', 'dodge', 'block']) {
     for (const seed of seeds) {
       const r = fight(seed, style, { max: 420 });
@@ -929,7 +929,7 @@ async function scenarioStrategy() {
 async function scenarioLean() {
   out('\n== scenario LEAN (opt-in: the Long Second learned; the bots on him, the lean bot must not be the fastest) ==');
   const U = await imp('src/game/unlocks.js');
-  const seeds = (process.env.ABYSS_SSEEDS ?? '4242,7').split(',').map(Number);
+  const seeds = (process.env.GCD_SSEEDS ?? '4242,7').split(',').map(Number);
   const res = {};
   for (const style of ['mixed', 'parry', 'dodge', 'lean']) {
     for (const seed of seeds) {
@@ -1000,8 +1000,8 @@ async function scenarioPace() {
   out('\n== scenario PACE (a steady defender in god mode vs his AI, per phase: cues a minute, gaps, conflicts) ==');
   const DIR = await imp('src/entities/enemies/duelist/director.js');
   const P = TUNING.pressure;
-  const SECS = Number(process.env.ABYSS_PSECS ?? 60); // (60 s a phase: the suite's time; the meter was measured so)
-  const SEEDS = (process.env.ABYSS_PSEEDS ?? '4242,7,99').split(',').map(Number).filter(Number.isFinite);
+  const SECS = Number(process.env.GCD_PSECS ?? 60); // (60 s a phase: the suite's time; the meter was measured so)
+  const SEEDS = (process.env.GCD_PSEEDS ?? '4242,7,99').split(',').map(Number).filter(Number.isFinite);
   const pp = (v, ph) => (Array.isArray(v) ? v[Math.min(v.length, Math.max(1, ph)) - 1] : v);
   const answer = (tell) => (tell === TELL.RED || tell === TELL.BLACK ? 'dodge' : 'guard');
   const skip = (name) => !MOVES[name] || MOVES[name].transition || MOVES[name].counter || MOVES[name].manual;
@@ -1064,7 +1064,7 @@ async function scenarioPace() {
         }
       }
       const draws = flashes.filter((f) => MOVES[f[2]] && f[1] === TELL.BLUE && flat(f[2]).some((b) => b.draw)).length;
-      if (process.env.ABYSS_PATT) out(`      P${ph}: ${Object.entries(acts.reduce((m, [, n]) => ((m[n] = (m[n] || 0) + 1), m), {})).map(([k, v]) => `${k} ${v}`).join(' ')}`);
+      if (process.env.GCD_PATT) out(`      P${ph}: ${Object.entries(acts.reduce((m, [, n]) => ((m[n] = (m[n] || 0) + 1), m), {})).map(([k, v]) => `${k} ${v}`).join(' ')}`);
       rows.push({ seed, ph, T, perMin: (flashes.length * 60) / T, gapMax, gapAt, picks: acts.length, conflicts, conflictAt, draws, cats, feints: d.brain.stats.feints, honor: d.stats.honorFeints });
     }
   }

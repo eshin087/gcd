@@ -56,9 +56,9 @@ export function shapeOf(name, passes, air = false) {
   }
 }
 
-/** The figure sheet's data (ABYSS_FIGURES_OUT: a JSON file both suites add to; render: scratch). */
+/** The figure sheet's data (GCD_FIGURES_OUT: a JSON file both suites add to; render: scratch). */
 export function dumpFigure(entry) {
-  const f = process.env.ABYSS_FIGURES_OUT;
+  const f = process.env.GCD_FIGURES_OUT;
   if (!f) return;
   let all = [];
   try {

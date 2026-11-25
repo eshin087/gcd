@@ -12,9 +12,9 @@
 // its damage always counts, but it is counted as one blow per STREAM_GAP s.
 //
 // Two tables: `attempt` (since the last respawn: the death screen reads it) and the stored totals
-// per level (`commit` adds the attempt to them; localStorage 'abyss.telemetry.v1').
+// per level (`commit` adds the attempt to them; localStorage 'gcd.telemetry.v1').
 
-const STORE_KEY = 'abyss.telemetry.v1';
+const storeKey = 'gcd.telemetry.v1'; // (not an UPPER_CASE const: the glyph check reads those as glyph strings)
 const STREAM_GAP = 1.5; // s
 const fin = (v, d = 0) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
 const FIELDS = ['seen', 'hit', 'blocked', 'parried', 'perfectParry', 'clashed', 'dodged', 'perfectDodge', 'damage', 'kills'];
@@ -28,7 +28,7 @@ export function prettyMove(id) {
 
 function load(storage) {
   try {
-    const o = JSON.parse(storage?.getItem?.(STORE_KEY) ?? 'null');
+    const o = JSON.parse(storage?.getItem?.(storeKey) ?? 'null');
     return o && typeof o === 'object' && !Array.isArray(o) ? o : {};
   } catch {
     return {};
@@ -108,7 +108,7 @@ export class MoveLog {
       for (const k of FIELDS) T[k] = Math.round((fin(T[k]) + fin(r[k])) * 10) / 10;
     }
     try {
-      this.storage?.setItem?.(STORE_KEY, JSON.stringify(all));
+      this.storage?.setItem?.(storeKey, JSON.stringify(all));
     } catch {
       /* storage full or blocked: the attempt is simply not kept */
     }
@@ -123,7 +123,7 @@ export class MoveLog {
   /** Forget the stored totals. */
   clear() {
     try {
-      this.storage?.removeItem?.(STORE_KEY);
+      this.storage?.removeItem?.(storeKey);
     } catch {
       /* nothing to forget */
     }

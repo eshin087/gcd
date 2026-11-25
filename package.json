@@ -1,5 +1,5 @@
 {
-  "name": "abyss-ascii-soulslike",
+  "name": "gcd",
   "version": "0.4.0",
   "scripts": {
     "dev": "node scripts/serve.mjs",
@@ -7,7 +7,7 @@
     "hero-parts": "node scripts/blender/build-hero-parts.mjs",
     "test": "node tests/run.mjs ."
   },
-  "description": "ASCII soulslike demo: a wyvern boss fight in a moonlit forest",
+  "description": "gcd: an ASCII wuxia boss rush in the browser",
   "dependencies": {
     "three": "0.180.0"
   },
@@ -18,7 +18,7 @@
   "private": true,
   "repository": {
     "type": "git",
-    "url": "https://github.com/eshin087/gcdAbyss.git"
+    "url": "https://github.com/eshin087/gcd.git"
   },
-  "homepage": "https://gcdabyss.vercel.app"
+  "homepage": "https://thegcd.vercel.app"
 }

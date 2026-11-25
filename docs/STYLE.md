@@ -1,6 +1,6 @@
-# ABYSS — Visual Style Bible
+# gcd — Visual Style Bible
 
-ABYSS draws everything in characters. This document sets out the look and how this codebase
+gcd draws everything in characters. This document sets out the look and how this codebase
 produces it.
 
 ## The house style: the dragon look (read this first)
@@ -258,7 +258,7 @@ straight on the game with a dark halo.
   posture is a run of `=` growing from the middle of a row of `-`. Colour says which meter it is
   (red HP, steel guard, cyan crit, gold posture); the characters say how much.
 - **Big words are block letters** (`ui/blockText.js`): YOU DIED, the victory line, area names and
-  phase calls are built from the same six-row letterforms as the ABYSS title logo, sized to the
+  phase calls are built from the same six-row block face as the title logo, sized to the
   screen and stacked word by word on a narrow one. Names that are too long for that (the boss's)
   are wide-spaced capitals in the game's monospace. There is no serif font in the HUD.
 - **No name plate** (name, level, class): it was decoration. **The minimap** is a small faint disc

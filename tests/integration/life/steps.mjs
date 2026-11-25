@@ -1,6 +1,6 @@
 // The living world's 'steps' piece: its scenarios (tests/integration/life.mjs runs them; T is its toolbox).
 // One scenario per rule the piece must keep. Run: node tests/integration/life.mjs . steps
-// (`steps.map` prints every level's surface map: ABYSS_STEPS_MAP=1 to see it)
+// (`steps.map` prints every level's surface map: GCD_STEPS_MAP=1 to see it)
 
 const CH = { grass: '"', earth: '.', stone: '#', ash: ':', obsidian: '@', sand: '~', leaf: ',' };
 
@@ -51,7 +51,7 @@ function sprint(w, sec, vx, vz, o = {}, probe = null) {
 const first = {
   /** A top-down map of every level's surfaces (60 x 60 m, 1 m a letter, north up). */
   map(T) {
-    const show = !!process.env.ABYSS_STEPS_MAP;
+    const show = !!process.env.GCD_STEPS_MAP;
     for (const id of T.LEVEL_IDS) {
       const w = T.build(id, 'off');
       const S = w.life.steps;

@@ -1,10 +1,10 @@
 // What the hero has learned (ADR-146): the fixed rewards of the bosses, the smallest store the
 // technique system of ROADMAP M2 can later read. Saved per browser in localStorage (key
-// `abyss.unlocks.v1`, a JSON list of ids); a storage argument for tests (as Bindings takes one).
+// `gcd.unlocks.v1`, a JSON list of ids); a storage argument for tests (as Bindings takes one).
 // `?tech=draw` turns One Breath on without the kill, `?tech=none` off (this page load only).
 //   has(id) · grant(id) → true when it is new · all() → [ids] · clear()
 // Ids: 'oneBreath' (the Sheathed's draw-slash), 'longSecond' (Xin Yi's lean; ADR-158: ?tech=lean).
-export const UNLOCK_KEY = 'abyss.unlocks.v1';
+export const UNLOCK_KEY = 'gcd.unlocks.v1';
 const TECH = { draw: 'oneBreath', lean: 'longSecond' };
 
 export class Unlocks {

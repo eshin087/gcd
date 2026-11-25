@@ -2,21 +2,26 @@ import { CONFIG } from '../core/config.js';
 import { GAME_VERSION } from './changelog.js';
 import { button, controlsGrid, el, fillKeyText, tellLegend, touchGrid } from './dom.js';
 import { dressStageButton, gradeHead, recLookNow, sharedLine } from './recordLooks.js';
+import { TitleMenu, menuNow } from './titleMenu.js';
+import { GCD_LOGO } from './gcdLogo.js';
 
 // Full-screen / panel UI: title, pause menu, help panel, victory record.
 
-// "ABYSS" in a block/box-drawing figlet face. The <pre> uses a font stack that has the box glyphs
+// "gcd", lowercase, in a block/box-drawing figlet face (the banners' face, ui/blockText.js, drawn
+// small: d's stem rises a row above the bowls, g's tail drops a row below them). Every row is one
+// width. The <pre> uses a font stack that has the box glyphs
 // itself (JetBrains Mono from Google Fonts is subset without them, which would misalign columns).
 const LOGO = [
-  ' █████╗ ' + '██████╗ ' + '██╗   ██╗' + '███████╗' + '███████╗',
-  '██╔══██╗' + '██╔══██╗' + '╚██╗ ██╔╝' + '██╔════╝' + '██╔════╝',
-  '███████║' + '██████╔╝' + ' ╚████╔╝ ' + '███████╗' + '███████╗',
-  '██╔══██║' + '██╔══██╗' + '  ╚██╔╝  ' + '╚════██║' + '╚════██║',
-  '██║  ██║' + '██████╔╝' + '   ██║   ' + '███████║' + '███████║',
-  '╚═╝  ╚═╝' + '╚═════╝ ' + '   ╚═╝   ' + '╚══════╝' + '╚══════╝',
+  '        ' + ' ' + '        ' + ' ' + '     ██╗',
+  ' ██████╗' + ' ' + ' ██████╗' + ' ' + ' ██████║',
+  '██╔══██║' + ' ' + '██╔════╝' + ' ' + '██╔══██║',
+  '╚██████║' + ' ' + '╚██████╗' + ' ' + '╚██████║',
+  ' ╚═══██║' + ' ' + ' ╚═════╝' + ' ' + ' ╚═════╝',
+  ' █████╔╝' + ' ' + '        ' + ' ' + '        ',
 ];
-const LOGO_W = LOGO[0].length;
 const SHIMMER_HZ = 12;
+// solid blocks per column of the first title logo (41 columns): see TitleScreen.update
+const STREAM_COLS = [4, 5, 2, 2, 2, 5, 4, 0, 5, 5, 3, 3, 3, 5, 2, 0, 1, 2, 2, 3, 3, 2, 2, 1, 0, 4, 4, 3, 3, 3, 4, 4, 0, 4, 4, 3, 3, 3, 4, 4, 0];
 
 // the title's controls line; "[@action]" chips show the bound key (or the pad button while a pad is
 // in use) and follow every remap (ui/dom.js actionChip)
@@ -57,6 +62,20 @@ export class TitleScreen {
   /** records (optional): { bestFor(id) → { grade, marks, timeMs, clears } | null, startRush() } — each
    *  level's best under its button and the BOSS RUSH entry (ADR-179; ?recLook=, ui/recordLooks.js). */
   constructor(parent, visible, stage = null, news = null, records = null) {
+    // ?menu=a|b|c: one of the new layouts (ui/titleMenu.js); none: the title as before
+    this.menuLook = stage?.levels?.length > 1 ? menuNow() : null;
+    if (this.menuLook) {
+      this.root = el('div', `ab-title gm gm-${this.menuLook}`, null, parent);
+      this.stageButtons = [];
+      this.records = records;
+      this.newsButton = null;
+      this.current = stage.current;
+      this.menu = new TitleMenu(this, this.root, this.menuLook, stage, news, records);
+      this.logo = this.menu.logo;
+      this._shimmerInit(GCD_LOGO);
+      this._visibleInit(visible);
+      return;
+    }
     this.root = el('div', 'ab-title', null, parent);
     const inner = el('div', 'ab-title-inner', null, this.root);
     inner.style.cssText = 'display:flex;flex-direction:column;align-items:center';
@@ -119,8 +138,14 @@ export class TitleScreen {
     tellLegend(inner).classList.add('title');
     el('div', 'ab-credit', `prototype v${GAME_VERSION}`, this.root);
 
-    // shimmer: a sweeping column of '▓' plus a few random '▒' over the solid blocks
-    this.chars = [...LOGO.join('\n')];
+    this._shimmerInit(LOGO);
+    this._visibleInit(visible);
+  }
+
+  /** shimmer: a sweeping column of '▓' plus a few random '▒' over the solid blocks of `lines` */
+  _shimmerInit(lines) {
+    this.logoW = lines[0].length;
+    this.chars = [...lines.join('\n')];
     this.blocks = [];
     let col = 0;
     for (let i = 0; i < this.chars.length; i++) {
@@ -132,18 +157,41 @@ export class TitleScreen {
       col++;
     }
     this.work = this.chars.slice();
+  }
+
+  _visibleInit(visible) {
     this.visible = true;
     this.goneT = 0;
     this.t = 0;
     this.acc = 0;
+    this.seed = 0x9e3779b9; // the shimmer's own random numbers: the game's stream must not depend on the logo
     if (!visible) {
       this.visible = false;
       this.root.classList.add('off', 'gone');
     }
   }
 
+  /** The new layouts: did the menu use this key (an arrow, Enter on an entry) this frame? */
+  eatsKey(code) {
+    return !!this.menu?.eats?.(code);
+  }
+
+  /** The new layouts: the CONTROLS panel is open (a key or a click closes it, not starts the game). */
+  holdsStart() {
+    return !!this.menu?.drawerOn;
+  }
+
+  /** The new layouts: the entry from `el` in direction (dx, dy) (ui/gamepad.js); null: none. */
+  navigate(el, dx, dy) {
+    return this.menu?.navigate?.(el, dx, dy) ?? null;
+  }
+
   /** Each stage button's best (and the rush's) from the records; call again when a record is saved. */
   refreshRecords() {
+    if (this.menu) {
+      this.menu.refresh();
+      return;
+    }
     const R = this.records;
     for (const [b, id, name] of this._stages) {
       let best = null;
@@ -190,6 +238,16 @@ export class TitleScreen {
     this.goneT = 1.2;
   }
 
+  /** A small xorshift in [0, 1): the shimmer's sparkle only (never Math.random, which the fights share). */
+  _rand() {
+    let x = this.seed;
+    x ^= x << 13;
+    x ^= x >>> 17;
+    x ^= x << 5;
+    this.seed = x >>> 0;
+    return this.seed / 4294967296;
+  }
+
   update(dt) {
     if (this.goneT > 0) {
       this.goneT -= dt;
@@ -197,18 +255,27 @@ export class TitleScreen {
     }
     if (!this.visible) return;
     if (this.sharedEl && this._shareId == null) this._share(null); // follows the pad's focus
+    this.menu?.update(dt);
     this.t += dt;
     this.acc += dt;
     if (this.acc < 1 / SHIMMER_HZ) return;
     this.acc = 0;
-    const sweep = ((this.t * 15) % (LOGO_W + 30)) - 15;
+    const sweep = ((this.t * 15) % (this.logoW + 30)) - 15;
     const w = this.work;
     for (let k = 0; k < this.blocks.length; k += 2) {
       const i = this.blocks[k], col = this.blocks[k + 1];
       const d = Math.abs(col - sweep);
-      w[i] = d < 1.2 ? '▓' : d < 2.4 ? '▒' : Math.random() < 0.012 ? '▓' : '█';
+      w[i] = d < 1.2 ? '▓' : d < 2.4 ? '▒' : this._rand() < 0.012 ? '▓' : '█';
     }
     this.logo.textContent = w.join('');
+    // The seeded fight sims were tuned on the stream the first title logo left behind: it drew
+    // Math.random once per solid block away from its sweep. Those draws are kept (the count only,
+    // from that logo's blocks per column), so a new logo or layout never moves a fight (ADR-195).
+    const old = ((this.t * 15) % (STREAM_COLS.length + 30)) - 15;
+    for (let c = 0; c < STREAM_COLS.length; c++) {
+      if (Math.abs(c - old) < 2.4) continue;
+      for (let n = STREAM_COLS[c]; n > 0; n--) Math.random();
+    }
   }
 }
 

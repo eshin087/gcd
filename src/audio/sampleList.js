@@ -2,7 +2,7 @@ import { SAMPLE_FILES } from './sampleFiles.js';
 
 // The recorded / designed one-shots: the attack sounds and the blue / red cues (ADR-165), and the combat
 // core (round 2): the parries, the hurt, the hero's cuts landing, the slam, the flurry, the plunge, the
-// clash, the boss's guard. Recorded files are CC0 (OpenGameArt), designed ones were made for ABYSS.
+// clash, the boss's guard. Recorded files are CC0 (OpenGameArt), designed ones were made for gcd.
 // Content is data. The files and their peak times are generated (sampleFiles.js, by
 // scripts/audio/build-sfx.py from the owner's picks, scripts/audio/sfx-picks.json); this file says how
 // each slot plays. assets/audio/CREDITS.md names every source. A slot with no file (cue-blue, time-blue

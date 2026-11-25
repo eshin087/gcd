@@ -31,11 +31,23 @@ import { GameFlow } from './game/flow.js';
 import { Lab } from './dev/lab.js';
 import { Unlocks } from './game/unlocks.js';
 import { lookOf } from './entities/enemies/duelist/lookSwitch.js';
+import { bootStep, bootDone, bootFail, fontSheetReady, travelNote } from './ui/bootLoader.js';
 
 // Boot + main loop. Builds the shared `game` context every module receives (see ARCHITECTURE.md).
 
+// The boot runs in named steps; between two the loading screen (index.html) repaints its bar
+// (ui/bootLoader.js; no wait at all where there is no loading screen). Each step's share of the bar is
+// its share of a boot measured with the CPU slowed four times (a phone's pace; the world is about
+// 70 % of it); the first frame (every shader compiled) closes it.
+const BOOT = { fonts: 0, renderer: 0.07, world: 0.08, hero: 0.82, boss: 0.85, interface: 0.87, shaders: 0.91 };
+const BOOT_ORDER = Object.keys(BOOT);
+const step = (name) => bootStep(name, BOOT[name], BOOT[BOOT_ORDER[BOOT_ORDER.indexOf(name) + 1]] ?? 1);
+
 async function boot() {
+  await step('fonts');
+  await fontSheetReady();
   await loadFonts();
+  await step('renderer');
   // the level (`?level=ash`; levels/index.js): its world overrides land in CONFIG.world before any
   // module reads them
   // (`?stage=lab`: the same boss on the training room, the lab stage)
@@ -70,8 +82,10 @@ async function boot() {
     CONFIG,
     level,
     // the stage picker (title screen, Lab): every level, and a reload into one of them
-    levels: LEVELS.map((L) => ({ id: L.id, name: L.name })),
+    levels: LEVELS.map((L) => ({ id: L.id, name: L.name, sub: L.sub, boss: L.boss })),
     pickLevel(id) {
+      travelNote(id); // the next page's loading screen names where the sword is going (index.html)
+      travelNote(id, getLevel(id)?.name ?? null);
       location.assign(levelUrl(id, location.href));
     },
     // saved records, whether this page's run counts, the boss rush (game/records.js, eligibility.js,
@@ -146,12 +160,14 @@ async function boot() {
   game.fx.ripple = new ImpactRipple(game); // a struck body's letters take the blow (impactRipple.js)
   game.fx.stamp = { clear: () => stampClear(game) }; // the hit printed at the contact (impactStamp.js)
 
+  await step('world');
   try {
     game.records = new Records(globalThis.localStorage ?? null);
   } catch {
     game.records = new Records(null);
   }
   game.world = new World(game);
+  await step('hero');
   // what the hero has learned (ADR-146: One Breath, the Sheathed's reward; ?tech=draw|none)
   game.unlocks = new Unlocks();
   game.audio = new AudioEngine(game);
@@ -159,9 +175,11 @@ async function boot() {
   game.fx.streak = new StreakFx(game); // the streak on the hero and in the world (player/streakFx.js)
   game.fx.rip = new TimeRip(game); // the flurry's cuts rip the picture (player/timeRip.js, ?rip=)
   pipeline.setSeenThrough(game.player.object3d); // he prints through what covers him (ADR-106)
+  await step('boss');
   // the boss slot (ARCHITECTURE.md → Levels): the wyrm or the level's own boss; game.boss is the same
   game.dragon = level.createBoss(game);
   game.boss = game.dragon;
+  await step('interface');
   game.hud = new Hud(game);
   game.gamepad = new GamepadControls(game); // inert until a pad is connected and used
   game.touch = new TouchControls(game); // inert on desktop; may pick the touch quality preset
@@ -186,6 +204,8 @@ async function boot() {
   addEventListener('resize', applyQuality);
 
   game.cameraRig.snap(game.player.position);
+  // the first frame compiles every shader on screen: the loading screen's last step
+  await step('shaders');
 
   // --- per-frame helpers
   const ray = new THREE.Raycaster();
@@ -309,6 +329,7 @@ async function boot() {
   // --- loop
   let last = performance.now();
   let fpsAcc = 0, fpsFrames = 0;
+  let shown = false; // the first frame is drawn: the loading screen goes
   game.fps = 0;
   const frame = (now) => {
     requestAnimationFrame(frame);
@@ -322,6 +343,10 @@ async function boot() {
       fpsFrames = 0;
     }
     tick(realDt);
+    if (!shown) {
+      shown = true;
+      bootDone();
+    }
   };
 
   // A failing module must not freeze the whole frame: log its first few errors and carry on.
@@ -466,9 +491,10 @@ async function boot() {
 }
 
 boot().catch((err) => {
+  bootFail();
   console.error(err);
   const el = document.createElement('pre');
   el.style.cssText = 'position:fixed;inset:0;margin:0;padding:24px;color:#f88;background:#000;font:14px monospace;white-space:pre-wrap;z-index:99';
-  el.textContent = `ABYSS failed to start:\n\n${err?.stack || err}`;
+  el.textContent = `gcd failed to start:\n\n${err?.stack || err}`;
   document.body.appendChild(el);
 });

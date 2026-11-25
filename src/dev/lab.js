@@ -52,7 +52,7 @@ const LAB_KEY = /^(?:(?:Digit|Numpad)([1-9])|BracketLeft|BracketRight)$/;
 const REFRESH = 1 / 12; // readout refresh period (real s)
 const ABILITY_POLL = 1.0; // re-read debug.abilities() while open (real s)
 const BADGE_POLL = 0.5; // closed-state badge check (real s)
-const STORE_KEY = 'abyss.lab.v1';
+const storeKey = 'gcd.lab.v1'; // (not an UPPER_CASE const: the glyph check reads those as glyph strings)
 const BAR_CELLS = 30;
 const BAR_SPAN = 0.9; // s before impact covered by the timing bar
 
@@ -73,7 +73,7 @@ function urlWantsLab() {
 
 function loadPrefs() {
   try {
-    const raw = globalThis.localStorage?.getItem(STORE_KEY);
+    const raw = globalThis.localStorage?.getItem(storeKey);
     const o = raw ? JSON.parse(raw) : null;
     return o && typeof o === 'object' ? o : {};
   } catch {
@@ -692,7 +692,7 @@ export class Lab {
 
   _savePrefs() {
     try {
-      globalThis.localStorage?.setItem(STORE_KEY, JSON.stringify(this.prefs));
+      globalThis.localStorage?.setItem(storeKey, JSON.stringify(this.prefs));
     } catch {
       /* private mode / no storage: prefs are a convenience only */
     }
