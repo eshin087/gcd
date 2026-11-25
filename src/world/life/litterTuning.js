@@ -31,6 +31,16 @@
 //     flat      (optional) it lies turned at most this many rad off the screen's horizontal
 //     where     where it falls and lies: { at: 'rim' | 'near' | 'ash' | 'kerb' | 'flat', ... } (litter.js)
 //     source    'sky' (falls from above) | 'edge' (tumbles in along the ground from upwind)
+//     print     (optional) how it lies under the leaf looks (`?leafLook=a|b|c`, render/dragonLeaf.js; '0' and
+//               ?dragon=0: the letters above): { shape, len, color, color2, curl, wide, glow, air }
+//       shape   'leaf' (a blade and its stem) | 'slip' (a bar of paper) | 'grit' (one cell) | 'seed' (strokes)
+//       len     [min, max] m its half-length (each one its own; a ground cell is 0.135 x 0.25 m)
+//       color   linear body colour of the print (as the dragon ground's body: ~0.06 - 0.14), color2 the
+//               other end of its tint (the letters' tint share and brightness jitter, as `color`)
+//       curl    [min, max] how far its ends turn up (one end catches the moon, the other falls dark)
+//       wide    the blade's extra half-width in cells at its middle (0: one cell a row or column)
+//       glow    its own light (a cinder), over the moon's
+//       air     the letters it falls with under those looks (default: glyphs)
 //   kerb       (ring) a tumbling letter that reaches this |x| or |z| from inside stops against it
 //   shelter    how much harder a letter is to lift where it piles (x the weight above 1)
 const deepFreeze = (o) => {
@@ -65,6 +75,59 @@ export const LITTER = deepFreeze({
   liftEvery: 4,
   /** the Lab's 'leaf shower': this many start falling round the camera at once */
   shower: 60,
+  /**
+   * The leaf looks (render/dragonLeaf.js, `?leafLook=`): what a kind with a `print` block lies as. Both
+   * a and b are drawn by one print (a small quad a leaf, `y` m over the floor: over the slabs' tops, 0.03 -
+   * 0.1 m), lit as the dragon ground is; `ash` the letters where a scorch chars it (to `char`).
+   *  a (one glyph lying flat along it): `lens` the blade's glyph, its height laid along the leaf (its slashed
+   *    oval reads as a blade and its midrib), `lensLen` its length against the piece's own; `lensW` m its
+   *    cell's width across the leaf, `lensInk` the share of its cell its ink spans along it; `lensHalf` m
+   *    the blade's half-width, filled between the strokes with its dark face (`fill` its share of the
+   *    strokes' light, `fillA` its opacity); `stemGlyph` the stem's stroke, `lensStem` m long; `lensGrit` m
+   *    a grain's glyph cell; `lensGain` / `lensLift` as b's gain and lift. In a, b and c a blade in the
+   *    AIR is the same lens glyph (the litter's pool, unlit), `airW` m wide, turning over as it falls, in
+   *    the print's colour x `airK`; the other shapes fall as their `air` letters
+   *  b (printed in the ground's own cells): `ramp` a blade's round digits by its light (dark → bright),
+   *    `grit` a grain's, `slip` a paper's bar, `strokes` a stem's or a straw's by its way on the screen
+   *    (- / | \); `stem` cells of stem past the blade's base, `stemLight` its share of the blade's light
+   *    (a's too); `gain` the body's brightness against the kinds' colours, `lift` its tone over the bare
+   *    ground's (a leaf lies proud of the ground: it catches more light), `taper` how many tones lighter a
+   *    blade's ends print than its middle
+   *  c (tiny house letters, LetterBatch): `marks` the letters, `blade` a blade's (a tiny oval) and its stem
+   *    a stroke along it; `bK` the colour against the print's (the letters are unlit), `bAlpha` their opacity
+   */
+  print: {
+    y: 0.11,
+    ash: '.,:;~',
+    char: [0.05, 0.045, 0.04],
+    lens: '0',
+    lensLen: 0.8,
+    lensW: 0.26,
+    lensInk: 0.7,
+    lensHalf: 0.06,
+    fill: 0.18,
+    fillA: 0.85,
+    stemGlyph: '-',
+    lensStem: 0.12,
+    lensGrit: 0.2,
+    lensGain: 2.2,
+    lensLift: 0.1,
+    airW: 0.2,
+    airK: 1.15,
+    ramp: 'oo0088@@',
+    grit: '.:o0@',
+    slip: '=',
+    strokes: '-/|\\',
+    stem: 0.9,
+    stemLight: 0.7,
+    gain: 4,
+    lift: 0.25,
+    taper: 0.3,
+    marks: "-/|\\'.,o",
+    blade: 'o',
+    bK: 0.9,
+    bAlpha: 0.85,
+  },
 
   levels: {
     // a night breeze through oaks and pines: dark green and brown leaves off the canopy ring and into
@@ -81,12 +144,14 @@ export const LITTER = deepFreeze({
           size: [0.28, 0.34], ground: { glyphs: 'ce()v', size: [0.36, 0.44] }, fall: [0.42, 0.65], slip: 0.85, flutter: [1.4, 2.4], spin: 2.4, tau: 0.6,
           lift: [2.25, 3.5], carry: 1, hop: 1.5, lie: 0.85, alpha: 0.72, from: [4.5, 8],
           where: { at: 'rim', lo: 0.25, r0: 8, r1: 28 }, source: 'sky',
+          print: { shape: 'leaf', len: [0.16, 0.26], color: [0.12, 0.13, 0.05], color2: [0.095, 0.11, 0.045], curl: [0.4, 1.0], air: '()' },
         },
         {
           share: 0.55, glyphs: "()cec", color: [0.42, 0.31, 0.16], color2: [0.32, 0.24, 0.12],
           size: [0.28, 0.34], ground: { glyphs: 'ce()s', size: [0.36, 0.44] }, fall: [0.45, 0.7], slip: 0.8, flutter: [1.5, 2.6], spin: 2.8, tau: 0.55,
           lift: [2.15, 3.4], carry: 1, hop: 1.5, lie: 0.85, alpha: 0.72, from: [4.5, 8],
           where: { at: 'rim', lo: 0.25, r0: 8, r1: 28 }, source: 'sky',
+          print: { shape: 'leaf', len: [0.16, 0.26], color: [0.16, 0.095, 0.042], color2: [0.13, 0.08, 0.038], curl: [0.4, 1.0], air: '()' },
         },
       ],
     },
@@ -129,6 +194,7 @@ export const LITTER = deepFreeze({
           size: [0.2, 0.26], ground: { glyphs: 'oc*', size: [0.24, 0.3] }, fall: [0.4, 0.7], slip: 0.12, flutter: [0.8, 1.6], spin: 1.2, tau: 0.6,
           lift: [0.8, 1.5], carry: 0.9, hop: 0.6, lie: 0.6, alpha: 0.8, from: [3, 6],
           where: { at: 'flat', r: 15, out: 0.55 }, source: 'sky',
+          print: { shape: 'grit', len: [0, 0], color: [0.3, 0.07, 0.03], color2: [0.22, 0.05, 0.025], curl: [0, 0.4], glow: 0.7 },
         },
       ],
     },
@@ -149,12 +215,14 @@ export const LITTER = deepFreeze({
           size: [0.2, 0.26], fall: [2.2, 3.2], slip: 0.1, flutter: [2, 4], spin: 5, tau: 0.18,
           lift: [0.8, 2.6], carry: 0.6, hop: 1.1, lie: 0.75, alpha: 0.62, from: [0.05, 0.15],
           where: { at: 'kerb', base: 0.25, pile: 3, depth: 1.4, half: 15 }, source: 'edge',
+          print: { shape: 'grit', len: [0, 0], color: [0.15, 0.125, 0.09], color2: [0.12, 0.1, 0.07], curl: [0, 0.5] },
         },
         {
           share: 0.3, glyphs: "v(~", color: [0.58, 0.52, 0.34], color2: [0.48, 0.42, 0.27],
           size: [0.24, 0.3], fall: [1.1, 1.6], slip: 0.2, flutter: [2, 3.5], spin: 4, tau: 0.25,
           lift: [1.0, 2.8], carry: 0.7, hop: 1.3, lie: 0.7, alpha: 0.62, from: [0.05, 0.2],
           where: { at: 'kerb', base: 0.25, pile: 3, depth: 1.4, half: 15 }, source: 'edge',
+          print: { shape: 'seed', len: [0.08, 0.15], color: [0.16, 0.14, 0.09], color2: [0.13, 0.115, 0.075], curl: [0, 0.3], air: '-~' },
         },
       ],
     },
@@ -173,6 +241,7 @@ export const LITTER = deepFreeze({
           size: [0.28, 0.34], ground: { glyphs: 'ce()s', size: [0.36, 0.44] }, fall: [0.45, 0.7], slip: 0.8, flutter: [1.4, 2.4], spin: 2.6, tau: 0.55,
           lift: [1.8, 3.2], carry: 1, hop: 1.4, lie: 0.8, alpha: 0.72, from: [4, 7],
           where: { at: 'rim', lo: 0.3, r0: 8, r1: 18 }, source: 'sky',
+          print: { shape: 'leaf', len: [0.12, 0.2], color: [0.13, 0.1, 0.06], color2: [0.1, 0.085, 0.062], curl: [0.4, 1.0], air: '()' },
         },
         {
           share: 0.22, glyphs: '=[]', color: [0.56, 0.53, 0.45], color2: [0.46, 0.43, 0.36],
@@ -180,6 +249,7 @@ export const LITTER = deepFreeze({
           lift: [1.6, 2.8], carry: 1, hop: 1.5, lie: 0.75, alpha: 0.72, from: [1.6, 3],
           where: { at: 'near', r: 16.5, angles: [24, -24, 60, -60, 130, -130, 160, -160], spread: 2.6, lo: 0.04 },
           source: 'sky',
+          print: { shape: 'slip', len: [0.1, 0.16], color: [0.17, 0.165, 0.14], color2: [0.14, 0.135, 0.115], curl: [0, 0.3] },
         },
       ],
     },
@@ -198,6 +268,7 @@ export const LITTER = deepFreeze({
           size: [0.3, 0.36], ground: { glyphs: '()<>', size: [0.4, 0.48] }, fall: [0.45, 0.6], slip: 0, flutter: [1.0, 1.6], spin: 1.8, tau: 0.6,
           lift: [1.4, 2.4], carry: 1, hop: 1.1, lie: 0.7, alpha: 0.72, from: [6, 9],
           where: { at: 'rim', lo: 0.35, r0: 5, r1: 15 }, source: 'sky',
+          print: { shape: 'leaf', len: [0.18, 0.26], color: [0.085, 0.12, 0.055], color2: [0.1, 0.11, 0.055], curl: [0.3, 0.8], air: '/\\' },
         },
       ],
     },
