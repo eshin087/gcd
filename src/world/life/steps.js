@@ -1,6 +1,7 @@
 import { GlyphParticles } from '../../render/particles.js';
 import { CONFIG } from '../../core/config.js';
 import { STEPS } from './stepsTuning.js';
+import { bendLook } from '../grassTrail.js';
 
 // THE STEPS (piece 'steps'): a footstep answers the surface it lands on (stepsTuning.js has every number).
 //
@@ -251,12 +252,15 @@ export class Steps {
         this._print(A.print, x + dz * 0.16, z - dx * 0.16, dx, dz);
       } else this._print(A.print, x, z, dx, dz);
     }
-    // trodden grass, wherever grass grows
+    // trodden grass, wherever grass grows (`?bend=0`: today's trodden trail in the scorch map's B; else
+    // the grass bends round the hero's wake, world/grassTrail.js, which a sprint and a landing widen)
     if (code & GRASS_BIT) {
       const T = STEPS.trample;
       const r = heavy ? T.rHeavy : sprint ? T.rSprint : T.r;
-      const k = heavy ? T.kHeavy : sprint ? T.kSprint : T.k;
-      L.world?.scorch?.trample?.(x, z, r, k);
+      if (bendLook() === '0') {
+        const k = heavy ? T.kHeavy : sprint ? T.kSprint : T.k;
+        L.world?.scorch?.trample?.(x, z, r, k);
+      } else if (heavy || sprint) L.world?.trail?.press?.(x, z, r);
     }
     // what lies underfoot is moved (the litter's)
     const S = STEPS.scatter;
