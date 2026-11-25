@@ -19,6 +19,13 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-25',
+        title: 'Your clicks reach the fight again',
+        notes: [
+          'After the title faded, its invisible panels sat over the game and caught your clicks: attacks and blocks did nothing, and a click could send you to another world and back to the loading screen. Fixed.',
+        ],
+      },
+      {
+        date: '2026-11-25',
         title: 'Every fire comes from the wyrm; it roars up spells and a brood of fire; a forest you can walk into',
         notes: [
           'The Cinder Wyrm\'s fire always comes from the wyrm now: the chasing lava pillars follow a glowing crack that runs out of its feet, its second wall of fire is laid out from the first, and its meteors pour out of a burning vortex above it.',
