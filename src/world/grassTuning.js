@@ -98,6 +98,8 @@ export const GRASS = Object.freeze({
     m: Object.freeze({
       per: 0.5, size: [0.4, 0.55], frag: 0, band: [0.2, 0.34], spin: [0, 0], tip: 0.85, lit: [1, 1], code: true, trail: 0,
       col: Object.freeze({ head: [0.17, 0.58, 0.26], tail: [0.06, 0.3, 0.12], deep: [0.02, 0.08, 0.04], cool: 0.18, darken: 0.35, flip: [0.09, 0.24] }),
+      // (a phone, quality under 0.75: the meadow is drawn smaller and sparser; a step up, as m4)
+      phone: Object.freeze({ size: [0.5, 0.66], col: Object.freeze({ head: [0.22, 0.76, 0.32], tail: [0.05, 0.42, 0.15], deep: [0.02, 0.11, 0.05], cool: 0.24, darken: 0.5, flip: [0.07, 0.2] }) }),
     }),
     m4: Object.freeze({
       per: 0.55, size: [0.45, 0.6], frag: 0, band: [0.2, 0.34], spin: [0, 0], tip: 0.85, lit: [1, 1], code: true, trail: 0,

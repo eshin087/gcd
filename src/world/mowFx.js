@@ -324,7 +324,9 @@ export class MowFx {
       if (j < 0) return;
       this.total++;
       this.chipped++;
-      const frag = !this._code && rnd() < T.frag, k = R(T.size[0], T.size[1]);
+      // (a phone draws the meadow smaller: the variant's `phone` sizes, when it has them)
+      const Z = q < 0.75 && T.phone ? T.phone.size : T.size;
+      const frag = !this._code && rnd() < T.frag, k = R(Z[0], Z[1]);
       let v0 = 0, v1 = 1;
       if (frag) {
         // a band of the letter's strokes (its ink spans GRASS.blade.ink of the cell)
@@ -523,6 +525,8 @@ export class MowFx {
       this._texDirty = false;
     }
     this.spray?.update(dt);
+    // (the code's colours: on a phone the variant's `phone` ones, when it has them)
+    if (this.chips) this._cc = (this._q() < 0.75 && this.chips.phone?.col) || this.chips.col || GRASS.spray.code;
     if (!(dt > 0)) return;
     const F = GRASS.fly, g = F.gravity, drag = Math.exp(-F.drag * dt);
     const P = this.aP.array, Sa = this.aS.array, C = this.aC.array;
