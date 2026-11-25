@@ -96,7 +96,7 @@ export const DG = Object.freeze({
    * (tone) in `glow` (its body; the drawn arc covers it its first moments); the tips thrown: `chips` a cut tuft (x the quality),
    * at most `maxChips` a stroke, each the print's `cell` (m), along the swing `fling` m/s, `up` m/s.
    */
-  cut: Object.freeze({ size: 1024, w: 0.5, dark: 0.55, stubs: 0.5, pale: 0.45, fresh: 0.85, flash: 0.55, bright: 0.6, glow: [0.2, 0.3, 0.13], chips: 1.6, maxChips: 40, cell: [0.135, 0.229], fling: [1.2, 3.2], up: [1.6, 3.2] }),
+  cut: Object.freeze({ size: 1024, w: 0.6, dark: 0.55, stubs: 0.85, pale: 0.5, fresh: 0.85, flash: 0.55, bright: 0.6, glow: [0.2, 0.3, 0.13], chips: 1.6, maxChips: 40, cell: [0.135, 0.229], fling: [1.2, 3.2], up: [1.6, 3.2] }),
   /**
    * b, the standing digit blades (world/grass.js): rooted on a checkerboard `lattice` [x, z] m of the print's
    * cells (alternate rows a cell over), where `keep` x the meadow's density lets one grow; each a column of
