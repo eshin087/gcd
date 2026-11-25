@@ -169,15 +169,16 @@ const LIGHT_FRESH = [
   { anim: { kind: 'clip', clip: 'freshSwallowThrust', spin: 1, spinFeet: 'hop' }, variants: [{ kind: 'clip', clip: 'freshTwoStepThrust', hop: 0.08, tuck: 0.6 }] },
   { anim: { kind: 'clip', clip: 'freshSplitter', hop: 0.18, tuck: 1.1 }, variants: [] },
 ];
-/** `?lights=blink` (the owner, 2026-11-25: "a fierce skilled striker instead of ... acrobatics", no
- *  twirls, a finisher that is a spell and looks nothing like the heavy slam): hits 1-2 precise, tight
- *  cuts that snap to a stop, hits 3-4 planted, brutal blows (lightsBlink.js), and hit 5 the finisher
- *  picked in finishers.js (`?finisher=`). No spin and no hop anywhere. */
+/** `?lights=blink` (the owner, 2026-11-25: "sharper angles and faster attacks, almost like the main
+ *  character is doing instant slashes to show how fast he is"): the hits on today's clock, each cut
+ *  instant (lightsBlink.js: hold, snap, cross, snap, stand; blinkFx.js draws each as one straight line):
+ *  a falling diagonal, a flat backhand, the other diagonal, a thrust, and hit 5 the finisher picked in
+ *  finishers.js (`?finisher=`). One look per hit, no spin, no hop. */
 const LIGHT_BLINK = [
-  { anim: { kind: 'clip', clip: 'strikeFalling' }, variants: [{ kind: 'clip', clip: 'strikeDraw', turn: 0.3 }, { kind: 'clip', clip: 'strikeRising' }] },
-  { anim: { kind: 'clip', clip: 'strikeBackhand' }, variants: [{ kind: 'clip', clip: 'strikeFlatBack', turn: -0.4 }, { kind: 'clip', clip: 'strikeFallingBack' }] },
-  { anim: { kind: 'clip', clip: 'strikeCleave', turn: 0.35 }, variants: [{ kind: 'clip', clip: 'strikeHew' }, { kind: 'clip', clip: 'strikeLowCut' }] },
-  { anim: { kind: 'clip', clip: 'strikeLunge' }, variants: [{ kind: 'clip', clip: 'strikeRisingThrust' }] },
+  { anim: { kind: 'clip', clip: 'blinkFall' }, variants: [] },
+  { anim: { kind: 'clip', clip: 'blinkFlat' }, variants: [] },
+  { anim: { kind: 'clip', clip: 'blinkCross' }, variants: [] },
+  { anim: { kind: 'clip', clip: 'blinkThrust' }, variants: [] },
   { anim: FINISHER_ANIMS[finisherId()], variants: [] },
 ];
 const LIGHT_NEW = LIGHT.map((L) => ({ anim: L.anim, variants: L.variants }));

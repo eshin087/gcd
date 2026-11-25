@@ -15,6 +15,7 @@ import { CUT_LOOK } from '../../combat/cutFx.js';
 import { Flurry } from './flurry.js';
 import { SwordMystic } from './swordMystic.js';
 import { FinisherFx } from './finisherFx.js';
+import { BlinkFx } from './blinkFx.js';
 import { BREAK, SCAR } from '../../world/breakTuning.js';
 import { chipLook, cutStops } from '../../world/destructibles.js';
 import { mowSwing } from '../../world/grass.js';
@@ -342,6 +343,7 @@ export class Player {
     this.anim.onFootstep = (side, dust) => this._footstep(side, dust);
     this.fx = new PlayerFx(game, this.rig);
     this.mystic = new SwordMystic(this); // the sword's green flame (on by default; ?mystic=0 = nothing drawn)
+    this.blinkFx = new BlinkFx(this); // an instant cut's straight slash line (?lights=blink; nothing otherwise)
     this.finisherFx = new FinisherFx(this); // the striker chain's finisher spell (?lights=blink, ?finisher=)
     this.flurry = new Flurry(this, TUNE);
     // camera lean (model.js LEAN): visual only; hits and the dragon's aim use unleaned positions
@@ -3722,6 +3724,7 @@ export class Player {
       }
     }
     this.mystic?.update(dt); // (swordMystic.js; returns at once with ?mystic=0)
+    this.blinkFx?.update(); // (blinkFx.js; returns at once outside the blink chain)
     this.finisherFx?.update(dt); // (finisherFx.js; nothing until a striker finisher swings)
   }
 
