@@ -19,6 +19,13 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-25',
+        title: 'The first load is faster',
+        notes: [
+          'The loading screen now prepares all the graphics the first frame needs at once, so a first visit reaches the game in about two thirds of the time.',
+        ],
+      },
+      {
+        date: '2026-11-25',
         title: 'Every fire comes from the wyrm; it roars up spells and a brood of fire; a forest you can walk into',
         notes: [
           'The Cinder Wyrm\'s fire always comes from the wyrm now: the chasing lava pillars follow a glowing crack that runs out of its feet, its second wall of fire is laid out from the first, and its meteors pour out of a burning vortex above it.',

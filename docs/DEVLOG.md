@@ -5,6 +5,19 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-25 — The first frame's shaders compiled side by side (`render/precompile.js`; branch `render/precompile`)
+
+**Owner** (testing a preview): "the preview links take a really long time on shaders to load the game for the first
+time. is this normal?" **Measured** (headless Edge on the RTX 4090, the GPU's shader disk cache off: a first visit):
+the boot reached `gcd:shaders` in ~2 s and the first frame ~6 s later; each program compiled as it first drew, one
+after another, the art pass alone ~2.5 s in D3D's compiler. **Change:** the loading screen's last step starts every
+program of the visible scene, the fx scene and the pipeline's passes at once (`WebGLRenderer.compile` per visible
+object, a full-screen quad per pass; KHR_parallel_shader_compile), waits for them (30 s at most), then draws.
+Hidden objects are left out. Cold load ~8 s → ~5.3 s (two runs each). `?precompile=0` as before; `game.precompiled`
+{ programs, ms }. Safari without the extension: compiles queued as before, no wait.
+
+---
+
 ## 2026-11-25 — Every wyrm fire travels from it; roar-cast spells and a brood of fire; a forest you can walk into (ADR-197; planned by the lead, built by Opus agents)
 
 **Owner:** fire "out of nowhere" must come from the dragon; new roar spells with "dragon incantation symbols" (mini

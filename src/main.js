@@ -32,6 +32,7 @@ import { Lab } from './dev/lab.js';
 import { Unlocks } from './game/unlocks.js';
 import { lookOf } from './entities/enemies/duelist/lookSwitch.js';
 import { bootStep, bootDone, bootFail, fontSheetReady, travelNote } from './ui/bootLoader.js';
+import { precompile } from './render/precompile.js';
 
 // Boot + main loop. Builds the shared `game` context every module receives (see ARCHITECTURE.md).
 
@@ -204,8 +205,17 @@ async function boot() {
   addEventListener('resize', applyQuality);
 
   game.cameraRig.snap(game.player.position);
-  // the first frame compiles every shader on screen: the loading screen's last step
+  // the first frame compiles every shader on screen: the loading screen's last step. They are started
+  // all at once and compiled side by side first (render/precompile.js; `?precompile=0` as before)
   await step('shaders');
+  if (lookOf('precompile', 'a') !== '0') {
+    const pc0 = performance.now();
+    const [n, nf] = await Promise.all([
+      precompile(game.renderer, game.scene, game.camera, game.pipeline),
+      game.fxScene ? precompile(game.renderer, game.fxScene, game.camera, null) : 0,
+    ]);
+    game.precompiled = { programs: n + nf, ms: Math.round(performance.now() - pc0) };
+  }
 
   // --- per-frame helpers
   const ray = new THREE.Raycaster();

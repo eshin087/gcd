@@ -4,7 +4,10 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Ninety-seven pieces of work since 0.4.0:
+Ninety-eight pieces of work since 0.4.0:
+- **The first load is faster** (2026-11-25). *Changed:* the loading screen's last step compiles every shader the first
+  frame needs side by side before it is drawn, instead of one after another as each first draws; a first visit (no
+  shaders cached yet) reached the game in ~8 s and now in ~5 s on a desktop GPU. `?precompile=0` as before.
 - **Every fire comes from the wyrm; it roars up spells and a brood of fire; a forest you can walk into** (2026-11-25, ADR-197).
   *Changed:* no fire of the wyrm's appears out of nowhere: the phase-3 lava pillars chase the hero along a glowing
   crack that runs out of its forefeet (the crack's arrival is part of their tell), the phase-3 second flame wall is
