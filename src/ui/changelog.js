@@ -19,6 +19,13 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-25',
+        title: 'The sword hand looks natural in the idle tricks',
+        notes: [
+          "In the wrist spin, the figure-eight, the salute and the sword spells, the hero's forearm now leads the blade, so his sword fist no longer twists off his wrist.",
+        ],
+      },
+      {
+        date: '2026-11-25',
         title: 'The world is printed like the dragon',
         notes: [
           "Every level is now printed in the dragon's own fine digits: the ground, the floors, the grass, the rocks and the trees. Dark where they turn from the moon, bright where the light catches them, so the ground has depth and shadows fall across it.",

@@ -349,6 +349,60 @@ export function guardArms(p, P, A) {
   p[P.offAt] = 0;
 }
 
+// ---------------------------------------------------------------- the sword arm led by the forearm
+// The sword fist is built on the SWORD's frame (gear/wanderer.js: the fingers wrap the grip in every pose)
+// while the back of the hand and the cuff are the forearm's: the further the blade leaves the forearm's
+// line, the more the fist turns off the wrist. The owner's stances keep it within ~7° (ADR-114); spun and
+// raised at 80-130° off it, "something about ... the right hand looks weird in terms of angle". So the moves
+// that swing or raise the blade lead with the FOREARM: the elbow is placed, the forearm aims where the blade
+// goes, and the hand is a forearm's length on along that aim; the blade leans only a little off it.
+const FORE = DIM.foreArm;
+const _ax = [0, 0, 0];
+function unitAzEl(az, el, o) {
+  const a = az * DEG, e = el * DEG, c = Math.cos(e);
+  o[0] = c * Math.sin(a);
+  o[1] = Math.sin(e);
+  o[2] = c * Math.cos(a);
+  return o;
+}
+/** The at-ease sword arm (stances.js atEase) as an elbow and a forearm's aim: where a led move starts. */
+const EASE_ELBOW = [-0.044, -0.257, -0.047], EASE_AIM = [-56, -55];
+/** Toward by t: the elbow at (ex, ey, ez) (an offset from the sword shoulder, body axes), the forearm aimed
+ *  at az / el (degrees), the hand a forearm's length on along it, the elbow bending toward where it is. */
+function armAlong(p, P, ex, ey, ez, az, el, t) {
+  if (!(t > 0)) return;
+  unitAzEl(az, el, _ax);
+  const hx = ex + _ax[0] * FORE, hy = ey + _ax[1] * FORE, hz = ez + _ax[2] * FORE;
+  to3(p, P.rH, hx, hy, hz, t);
+  // the pole: the elbow's side of the shoulder → hand line
+  const hl2 = hx * hx + hy * hy + hz * hz || 1, k = (ex * hx + ey * hy + ez * hz) / hl2;
+  let px = ex - hx * k, py = ey - hy * k, pz = ez - hz * k;
+  const pl = Math.hypot(px, py, pz);
+  if (pl > 1e-4) {
+    px /= pl;
+    py /= pl;
+    pz /= pl;
+  } else {
+    px = 0.3;
+    py = -0.9;
+    pz = -0.3;
+  }
+  to3(p, P.rP, px, py, pz, t);
+}
+/** The elbow and the aim along a path of keys u → [ex, ey, ez, az, el] (kf per channel), written by t. */
+function armPath(p, P, u, keys, t) {
+  const n = keys.length;
+  const ch = (j) => {
+    const k = new Array(2 * n);
+    for (let i = 0; i < n; i++) {
+      k[2 * i] = keys[i][0];
+      k[2 * i + 1] = keys[i][1 + j];
+    }
+    return kf(u, k);
+  };
+  armAlong(p, P, ch(0), ch(1), ch(2), ch(3), ch(4), t);
+}
+
 // ---------------------------------------------------------------- HABITS at ease (both arms)
 // fn(p, P, A, u, e): u = the action's own 0..1, e = its weight (the envelope). Written over the rest.
 
@@ -432,40 +486,32 @@ export const EASE_HABITS = [
 ];
 
 // ---------------------------------------------------------------- TRICKS at ease
-/** The wrist spin: the hand comes out beside him and the blade turns two full circles in the plane
- *  at his right side (the point forward, up, back, down), quick in the middle, and settles. */
-// (the plane leans out 46°: at 33° its high back quarter sat at 140° round from ahead, and a block
-// taken there swung the blade the short way, behind his head, through the wrist's limit)
-const SPIN_X = -0.72;
+/** The wrist spin: the forearm points out and down at his right, and the point swirls twice round it in a
+ *  quick cone (the blade never more than ~45° off the forearm's line), fast in the middle, and settles. */
 function trickSpin(p, P, A, u, e) {
-  to3(p, P.rH, -0.23, -0.34, 0.16, e);
-  to3(p, P.rP, 0.2, -0.6, -0.8, e);
+  const s = smoothstep(0.14, 0.86, u), ph = 2 * TAU * s;
+  const w = e * bump(s, 0, 0.08, 0.92, 1); // (into the cone and out of it without a corner)
+  const lead = bump(u, 0.04, 0.16, 0.86, 0.97) * e;
+  armPath(p, P, smoothstep(0.04, 0.16, u), [[0, ...EASE_ELBOW, ...EASE_AIM], [1, -0.07, -0.26, 0.07, -32, -30]], lead);
+  aimTo(p, P.swD, lerp(-56, -32, smoothstep(0.04, 0.16, u)) + 28 * Math.sin(ph) * w, lerp(-55, -30, smoothstep(0.04, 0.16, u)) + 24 * Math.cos(ph) * w, lead);
+  flatAt(p, P, 1.57 + ph, w);
   const lf = bump(u, 0.05, 0.2, 0.8, 0.95) * e;
   const yaw = p[P.pelvY] + p[P.spY];
   freeTo(p, P.lH, 0.08, -0.45, 0.05, yaw, lf * 0.6); // the free arm a little out: balance
   p[P.lk] *= 1 - e;
   p[P.twoHand] *= 1 - e;
-  const s = smoothstep(0.14, 0.86, u);
-  if (s <= 0 || s >= 1) return;
-  const c = Math.sqrt(1 - SPIN_X * SPIN_X);
-  const a = Math.atan2(0.12, 0.79) + 2 * TAU * s;
-  const w = e * bump(s, 0, 0.06, 0.94, 1); // (into the circle and out of it without a corner)
-  dirLerp(p, P.swD, p[P.swD], p[P.swD + 1], p[P.swD + 2], SPIN_X, -Math.cos(a) * c, Math.sin(a) * c, w, ACT);
-  to3(p, P.swF, -1, 0, 0, w);
   p[P.hdY] -= 0.22 * e;
   p[P.hdX] += 0.14 * e;
 }
 
-/** The figure-eight: the arm out before him, the point draws an 8 lying on its side ahead of him
- *  twice, the wrist rolling the flat through each loop. The blade never points back at him. */
+/** The figure-eight: the forearm out before him to his right, and the point draws an 8 lying on its side
+ *  round its line twice (±26° across, ±19° up and down), the wrist rolling the flat through each loop. */
 function trickEight(p, P, A, u, e) {
   const s = smoothstep(0.14, 0.86, u), ph = TAU * 2 * s;
   const w = e * bump(s, 0, 0.08, 0.92, 1);
-  to3(p, P.rH, -0.17 - 0.05 * Math.sin(ph) * w, -0.24 + 0.03 * Math.sin(2 * ph) * w, 0.3, e);
-  to3(p, P.rP, 0.1, -0.9, -0.4, e);
-  // (out to his right and up: in front of him the game camera behind him never saw it)
-  const az = -42 + 48 * Math.sin(ph), el = 18 + 34 * Math.sin(2 * ph);
-  aimTo(p, P.swD, lerp(-45, az, w), lerp(-10, el, w), e);
+  const g = smoothstep(0.04, 0.16, u), lead = bump(u, 0.04, 0.16, 0.86, 0.97) * e;
+  armPath(p, P, g, [[0, ...EASE_ELBOW, ...EASE_AIM], [1, -0.05, -0.21, 0.18, -30, 2]], lead);
+  aimTo(p, P.swD, lerp(-56, -30, g) + 26 * Math.sin(ph) * w, lerp(-55, 4, g) + 19 * Math.sin(2 * ph) * w, lead);
   flatAt(p, P, 1.57 + 1.3 * Math.cos(ph), w);
   const yaw = p[P.pelvY] + p[P.spY];
   const lf = bump(u, 0.05, 0.2, 0.8, 0.95) * e;
@@ -477,26 +523,24 @@ function trickEight(p, P, A, u, e) {
   p[P.spY] += 0.06 * Math.sin(ph) * w;
 }
 
-/** The salute: the sword hand comes up before his chest with the blade upright before his face, the
- *  free palm laid over the sword fist (the open hand over the fist), a short bow of the head; then the
- *  blade opens down and out to his right in one quick arc and he lets it back to rest. (It took the place
- *  of a pass behind his back: the sword is the right hand's alone (anim.js apply()), and from behind his
- *  back a block's or a charge's own entry turned the blade past the wrist's limit, a 1.5 m jump.) */
+/** The salute: the forearm rises with the blade until both stand upright before his right shoulder (the
+ *  blade a little past plumb), the free palm laid over the sword fist, a short bow of the head; then the blade
+ *  opens down and out to his right in one quick arc, the forearm leading it, and he lets it back to rest. */
 function trickSalute(p, P, A, u, e) {
   const up = smoothstep(0.06, 0.3, u), open = smoothstep(0.62, 0.74, u), home = smoothstep(0.76, 0.95, u);
   const k = up * (1 - open);
-  // the fist before the breastbone, then out to his right with the arc
-  // (a hand right of his breastbone: the upright blade stands before his right cheek, his face clear of it)
-  const hx = lerp(lerp(-0.15, 0.05, up), -0.26, open), hy = lerp(lerp(-0.44, -0.2, up), -0.38, open), hz = lerp(lerp(0.08, 0.26, up), 0.2, open);
-  to3(p, P.rH, hx, hy, hz, e * (1 - home));
-  to3(p, P.rP, lerp(0.6, 0.4, open), -0.75, lerp(-0.55, -0.65, open), e * (1 - home));
-  // upright (a little forward of plumb), then the arc down and out
-  aimTo(p, P.swD, lerp(lerp(-40, -6, up), -72, open), lerp(lerp(-40, 80, up), -40, open), e * (1 - home));
-  flatAt(p, P, lerp(1.57, 0.3, open), e * (1 - home));
+  // the forearm: down at rest → upright before the shoulder → down and out at his right with the arc
+  const tt = e * (1 - home);
+  // (the elbow forward of his ribs: folded under the hand at the shoulder it closed to 50°)
+  const ex = lerp(lerp(EASE_ELBOW[0], -0.02, up), -0.07, open), ey = lerp(lerp(EASE_ELBOW[1], -0.21, up), -0.25, open), ez = lerp(lerp(EASE_ELBOW[2], 0.19, up), 0.06, open);
+  const aaz = lerp(lerp(EASE_AIM[0], -8, up), -68, open), ael = lerp(lerp(EASE_AIM[1], 62, up), -42, open);
+  armAlong(p, P, ex, ey, ez, aaz, ael, tt);
+  aimTo(p, P.swD, aaz, ael + 16 * k, tt);
+  flatAt(p, P, lerp(1.57, 0.3, open), tt);
   // the free palm over the fist (anim.js lays the open hand on the sword wrist: lk)
   const on = bump(u, 0.18, 0.3, 0.58, 0.66) * e;
   const yaw = p[P.pelvY] + p[P.spY];
-  freeTo(p, P.lH, -0.27, -0.22, 0.28, yaw, on);
+  freeTo(p, P.lH, -0.36, 0.0, 0.27, yaw, on);
   p[P.lk] = Math.max(p[P.lk] * (1 - e), on);
   p[P.hs] += (0 - p[P.hs]) * on;
   p[P.twoHand] *= 1 - e;
@@ -533,16 +577,13 @@ function trickFlick(p, P, A, u, e) {
 // `anim.spell` = { kind, u, w } (anim.js _idleLife): the action's name, its 0..1 and its weight. With
 // `?mystic=0` they are the motion alone.
 
-/** The rite: the blade raised upright beside his right shoulder, the free hand's sword fingers laid on
- *  the flat at the guard and drawn slowly up it toward the point; the flame swells behind them, and at the
- *  point a few marks lift off like embers. His eyes follow the fingers. */
+/** The rite: the forearm raises the blade upright beside his right shoulder, the free hand's sword fingers
+ *  laid on the flat at the guard and drawn slowly up it toward the point; the flame swells behind them, and at
+ *  the point a few marks lift off like embers. His eyes follow the fingers. */
 function spellRite(p, P, A, u, e) {
-  // (raised as the salute raises it: the blade turns up WITH the hand, from the hanging line through ahead
-  // of him; turned toward its end from the start, the wrist hit its limit half way and the steel flipped)
   const up = smoothstep(0.04, 0.22, u), dn = smoothstep(0.82, 0.97, u), w = e * (1 - dn);
-  to3(p, P.rH, lerp(-0.15, -0.06, up), lerp(-0.44, -0.18, up), lerp(0.08, 0.26, up), w);
-  to3(p, P.rP, lerp(0.6, 0.45, up), -0.75, lerp(-0.55, -0.5, up), w);
-  aimTo(p, P.swD, lerp(-40, -24, up), lerp(-40, 74, up), w);
+  armAlong(p, P, lerp(EASE_ELBOW[0], -0.06, up), lerp(EASE_ELBOW[1], -0.21, up), lerp(EASE_ELBOW[2], 0.18, up), lerp(EASE_AIM[0], -20, up), lerp(EASE_AIM[1], 60, up), w);
+  aimTo(p, P.swD, lerp(EASE_AIM[0], -22, up), lerp(EASE_AIM[1], 72, up), w);
   flatAt(p, P, 1.57, w * up);
   // the sword fingers from the guard (0.14 m up the blade) to two thirds of it, then off
   const on = bump(u, 0.24, 0.34, 0.72, 0.8) * e;
@@ -587,18 +628,17 @@ function spellSigil(p, P, A, u, e) {
   p[P.bodyY] -= 0.02 * w;
 }
 
-/** The breath: the blade upright before his right shoulder, the head bowed over it, the free hand open
- *  beside it; he breathes in slow and deep, the flame swells, a thread of marks circles him at the height
- *  of his chest and comes back into the steel, and he lets the blade down. */
+/** The breath: the forearm raises the blade upright before his right shoulder, the head bowed over it, the
+ *  free hand open beside it; he breathes in slow and deep, the flame swells, a thread of marks circles him at
+ *  the height of his chest and comes back into the steel, and he lets the blade down. */
 function spellBreath(p, P, A, u, e) {
   const up = smoothstep(0.04, 0.2, u), dn = smoothstep(0.84, 0.97, u), w = e * (1 - dn);
-  to3(p, P.rH, lerp(-0.15, -0.02, up), lerp(-0.44, -0.2, up), lerp(0.08, 0.26, up), w);
-  to3(p, P.rP, lerp(0.6, 0.45, up), -0.75, lerp(-0.55, -0.5, up), w);
-  aimTo(p, P.swD, lerp(-40, -12, up), lerp(-40, 80, up), w);
+  armAlong(p, P, lerp(EASE_ELBOW[0], -0.03, up), lerp(EASE_ELBOW[1], -0.19, up), lerp(EASE_ELBOW[2], 0.22, up), lerp(EASE_AIM[0], -8, up), lerp(EASE_AIM[1], 62, up), w);
+  aimTo(p, P.swD, lerp(EASE_AIM[0], -10, up), lerp(EASE_AIM[1], 80, up), w);
   flatAt(p, P, 1.57, w * up);
   const yaw = p[P.pelvY] + p[P.spY];
   const on = bump(u, 0.16, 0.28, 0.74, 0.84) * e;
-  freeTo(p, P.lH, -0.17, -0.2, 0.25, yaw, on);
+  freeTo(p, P.lH, -0.2, -0.12, 0.25, yaw, on);
   to3(p, P.lP, 0.6, -0.8, -0.2, on);
   p[P.hs] += (0 - p[P.hs]) * on;
   freeTo(p, P.lD, -0.1, 0.95, 0.2, yaw, on);
