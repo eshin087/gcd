@@ -4,7 +4,11 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and two pieces of work since 0.4.0:
+One hundred and three pieces of work since 0.4.0:
+- **The sword hand looks natural in the idle tricks** (2026-11-25, ADR-186). *Fixed:* in the wrist spin, the
+  figure-eight, the salute and the rite and breath spells, the hero's sword fist no longer twists off his wrist:
+  his forearm now leads the blade, which stays close to its line, as it does in his stances; in the salute and the
+  spells the fist rises before his chest, so the raised forearm no longer shows as a jagged stick from the game camera.
 - **Shadows cost less, and their edges stop crawling** (2026-11-25, ADR-201). *Changed:* the moon's shadows are the
   same, but what does not move (trees, rocks, walls, the broken pieces at rest) is no longer drawn into them
   again every frame, only when something in it changes: the shadow pass draws 15 - 79 % fewer triangles a

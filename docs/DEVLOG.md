@@ -5,6 +5,37 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-25 — The idles' sword hand: the forearm leads the blade (ADR-186 amended)
+
+**Owner:** "something about the idle animations on the right hand looks weird in terms of angle and unnatural feel.
+show me close angles", then, on the four-angle review films: "Fix the big angles".
+
+**Cause.** The sword fist is built on the SWORD's frame (gear/wanderer.js, so the fingers wrap the grip in every
+pose) while the back of the hand and the cuff are the forearm's. The owner's stances keep the blade within ~7° of
+the forearm's line; the spin, the figure-eight, the salute, the rite and the breath turned it 66-129° off it, so the
+fist twisted off the wrist.
+
+**Fix.** `idles.js armAlong / armPath`: those moves place the elbow and aim the forearm where the blade goes, the hand
+a forearm's length on along that aim (from the at-ease arm, `EASE_ELBOW` / `EASE_AIM`); the blade leans only a little
+off it. The spin is a quick swirl of the point round the forearm (±28° / ±24°), the figure-eight an 8 round its line
+(±26° / ±19°); the salute, the rite and the breath raise the forearm with the blade, the elbow forward of the ribs.
+Worst blade-to-forearm angle: spin 129 → 45°, figure-eight 101 → 52°, salute 82 → 31°, rite 66 → 33°, breath 80 →
+39° (the rests 16-17°, as before). `heroidles` now holds every action to 60°.
+
+**Then, at the game camera** (the owner: "something about the right hand from normal camera angle makes it look
+very jagged and weird looking"): stood upright beside his head, the raised forearm showed from behind and above as a
+ragged column of the vambrace's tan letters (hiding the forearm in a render took it away). The salute, the rite and
+the breath now bring the fist up before his chest near his middle (`RAISE`, `armRaise`), the forearm rising at ~32°
+toward it and the wrist cocked the rest of the way, where his head and shoulder cover the forearm as they did before
+the forearm led. Wrist 54 / 40 / 49° (under the 60° bar), elbows ≥ 61°. `armPath` no longer allocates per frame.
+Film: the three moves at the game camera, main | the forearm upright | now.
+
+**Measured.** heroidles passes: elbows R ≥ 62°, the blade ≥ 22 cm off his body; every move from every rest and from
+inside every action within the stance before. Films: four close angles of every idle (camera lean off), and the five
+moves before | after.
+
+---
+
 ## 2026-11-25 — The still shadow map (ADR-201; branch `render/shadow-cache`)
 
 **Owner:** "is there anything we can change to ensure that laptop has 60 fps without sacrificing much?";
