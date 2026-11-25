@@ -21,8 +21,18 @@ import { DRAGON_STEP_GLSL, DP_STEP_U } from './dragonStep.js';
 //                 (one wall catches the moon, the other and the bottom fall dark), chips broken out of the
 //                 chamfer, moss as a soft green cushion. Lit as the ground: the moon (its shadow map, the
 //                 upgrades' cloud), the point lights; the tone picks the digit (dpGlyph) and its brightness.
+//   the rim       a lip one cell wide at every edge of a slab's top (aRim, addSlabRim: the distance to the
+//                 edge, made when the set is built, or on the first draw), its normal turned outward: lit on
+//                 the side that faces the moon, dark on the others, so the slab reads raised off the ground
+//                 and the joints between slabs read as dark seams. Chips are broken out of it.
 //   the body      the stone's own carved colour (aCol: each level's palette kept), pulled toward grey (`sat`)
-//                 and a touch cooler (`tint`), times the material's `gain` and `k`.
+//                 and a touch cooler (`tint`), times the material's `gain` (live: the ring's floor by form)
+//                 and `k`; seen by the ground's light plus the material's `inkFloor` (a slab still prints in
+//                 a deep shadow; its top keeps the `sky`'s tone there).
+//   also          the scorch (ash digits where it burnt, embers), the script wave (a re-rolled cell prints lit
+//                 in its green), the flash prints (?prints=a), the four upgrades' hooks (dragonPrintFx.js:
+//                 dpCloud, dpContact, dpRipple, dpRidge; the ridge's neighbours carry the slab's drop past
+//                 its edge, so an outline can follow a slab).
 //
 // Looks (dragonLook('dpFloor'); read when a material is built):
 //   '0'  the carved glyphs as they ship (nothing here runs)
@@ -30,13 +40,17 @@ import { DRAGON_STEP_GLSL, DP_STEP_U } from './dragonStep.js';
 //   'b'  a stronger relief: deeper wear and grain, wider cracks, more chips, a brighter rim
 // A set may give its own numbers (`o.dp` in createCarvedGlyphMaterial: any key of DP_FLOOR.a).
 
-/** The looks' numbers. k: body brightness (x the material's gain); sat: how much of the stone's own hue is
- *  kept (0 grey); tint: cooler; wear / grain: the relief's broad hollows and fine grain (slope); crack: the
- *  grooves' depth (x the material's crackAmount); chip: how many chamfer cells are broken out; rim: the lit
- *  chamfer's lift; moss: the cushion's lift; wet: a sheen of the point lights and the moon (wet asphalt). */
+/** The looks' numbers (a set overrides the palette's, not the relief's: `dp` in createCarvedGlyphMaterial).
+ *  The palette: k body brightness (x the material's gain; a: tuned for Cinderwood's flagstones, which give
+ *  none); sat how much of the stone's own hue is kept (0 grey); tint cooler; top a slab's top a tone over
+ *  the flat ground where the moon reaches it (stone is smoother than soil); sky the tone a top keeps in
+ *  the moon's shadow; moss how much of the carved moss shows; wet a sheen of the moon and the lights in
+ *  puddles (wet asphalt). The relief: wear / grain the broad hollows and the fine grain (slope); crack the
+ *  grooves' depth (x the material's crackAmount); chip the share of rim cells broken out; rim the lit lip's
+ *  lift; rimW the lip's width (m; 0 none: tarmac); lip how far the lip's normal turns outward. */
 export const DP_FLOOR = Object.freeze({
-  a: Object.freeze({ k: 1, sat: 0.45, tint: [0.95, 0.99, 1.06], top: 0.25, sky: 0.22, wear: 0.35, grain: 0.2, crack: 0.8, chip: 0.25, rim: 0.6, rimW: 0.18, lip: 1.2, moss: 0.35, wet: 0 }),
-  b: Object.freeze({ k: 1, sat: 0.45, tint: [0.95, 0.99, 1.06], top: 0.25, sky: 0.22, wear: 0.9, grain: 0.5, crack: 1.4, chip: 0.45, rim: 0.7, rimW: 0.24, lip: 1.6, moss: 0.5, wet: 0 }),
+  a: Object.freeze({ k: 1.5, sat: 0.35, tint: [0.95, 0.99, 1.06], top: 0.3, sky: 0.22, wear: 0.35, grain: 0.2, crack: 0.8, chip: 0.25, rim: 0.6, rimW: 0.18, lip: 1.2, moss: 0.35, wet: 0 }),
+  b: Object.freeze({ k: 1.5, sat: 0.35, tint: [0.95, 0.99, 1.06], top: 0.3, sky: 0.22, wear: 0.9, grain: 0.5, crack: 1.4, chip: 0.45, rim: 0.7, rimW: 0.24, lip: 1.6, moss: 0.5, wet: 0 }),
 });
 
 /** The floor's look: 0 off ('0'), 1 'a', 2 'b'. */
@@ -232,7 +246,7 @@ uniform vec4 uDpBody;   // tint, k
 uniform float uDpSat;
 uniform vec4 uDpRelief; // wear, grain, crack, chip
 uniform vec4 uDpLift;   // rim (the lit lip's lift), moss, wet, the rim's width (m)
-uniform vec4 uDpRim;    // the lip's turn (the normal's outward lean at the edge), (debug), the top's lift, the sky's floor
+uniform vec4 uDpRim;    // the lip's turn (the normal's outward lean at the edge), -, the top's lift, the sky's floor
 uniform float uDpAsh[5];
 varying float vRim;     // 1 + the distance to the slab's edge (m; addSlabRim), 0 unknown
 float dpAshAt(int i) { float r = uDpAsh[0]; for (int k = 0; k < 5; k++) if (k == i) r = uDpAsh[k]; return r; }

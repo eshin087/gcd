@@ -137,6 +137,7 @@ export function createTrainingRoom(U, colliders) {
   const pitch = CONFIG.camera.pitch;
   const slabMat = createCarvedGlyphMaterial(U, {
     ...SLAB_LOOK, gain: 1.4, lumScale: 2.0, edge: 0.55, inkFloor: 0.03, crackAmount: 0.08, topGlyphs: ['.   ', '. . ', '.:. ', ':.:.', ':;:.', ';:;:'], viewPitch: pitch,
+    dp: { k: 0.6, top: 0.04 }, // (the dragon print, `?dpFloor=`: the room's floor stays dim under its lit grid)
   });
   // the walls and the pylons are printed like the wyrm (prop art, the house style: ADR-100); the
   // floor stays carved, as every level's does. A dark room: a higher source gain
