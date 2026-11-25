@@ -1307,9 +1307,9 @@ export class Lab {
       b.title = `equip ${SWORD_PARAM[k]}`;
       return { k, el: b };
     });
-    // the free arm on the run (player/runArms.js, ADR-187; ?runArm=a|b|c|old, default c), live
+    // the free arm on the run (player/runArms.js, ADR-187; ?runArm=a|b|c|old, default a), live
     const rar = el('div', 'lab-row', null, body);
-    el('span', 'lab-lbl', 'run arm', rar).title = "the free (left) arm on the run (?runArm=): natural = a runner's swing, pumping at a sprint; dash = swept back behind him; by speed = natural, the dash at a sprint (default); before = the swing before";
+    el('span', 'lab-lbl', 'run arm', rar).title = "the free (left) arm on the run (?runArm=): natural = a runner's swing, pumping at a sprint (default); dash = swept back behind him; by speed = natural, the dash at a sprint; before = the swing before";
     const raGrid = el('div', 'lab-grid', null, rar);
     raGrid.style.flex = '1';
     this.ui.runArmBtns = RUN_ARM_IDS.map((m) => {

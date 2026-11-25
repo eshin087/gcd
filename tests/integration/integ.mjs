@@ -8038,7 +8038,7 @@ async function scenarioHeroArms() {
   // still swing
   {
     const R = loco.run, S = loco.strafe, Sp = loco.sprint;
-    // (ADR-187: sprinting under the default carry, 'c', the free arm is swept back and out behind him
+    // (ADR-187: sprinting under a dashing carry, 'b' or 'c', the free arm is swept back and out behind him
     // on purpose, the swordsman's dash: HERORUN bounds it. Here the sword arm, and the free arm of a
     // carry that swings it)
     const dashing = runArmMode() === 'b' || runArmMode() === 'c';
@@ -8258,7 +8258,7 @@ async function scenarioHeroRun() {
     assert(Math.max(rl.popW, rl.popE, bl.popW, bl.popE) <= 27, `c, out of the dash into a roll / a block: the free arm's jolt stays under 27 cm a frame² (${f1(Math.max(rl.popW, rl.popE, bl.popW, bl.popE))}; known, ADR-187)`);
   }
   // the default and the switch
-  assert(RA.runArmMode() === 'c' && RA.setRunArm('zz') === 'c' && RA.setRunArm('old') === 'old' && RA.setRunArm(null) === 'c', `?runArm= defaults to 'c' (by speed); unknown values fall back to it`);
+  assert(RA.runArmMode() === 'a' && RA.setRunArm('zz') === 'a' && RA.setRunArm('old') === 'old' && RA.setRunArm(null) === 'a', `?runArm= defaults to 'a' (natural, the owner's pick); unknown values fall back to it`);
   return G;
 }
 

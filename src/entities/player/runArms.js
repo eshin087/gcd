@@ -31,8 +31,8 @@ import { DIM } from './heroDims.js';
 
 const IDS = ['a', 'b', 'c', 'old'];
 export const RUN_ARM_IDS = Object.freeze(IDS.slice());
-export const RUN_ARM_NAMES = Object.freeze({ a: 'natural', b: 'dash', c: 'by speed', old: 'before' });
-const DEFAULT = 'c';
+export const RUN_ARM_NAMES = Object.freeze({ a: 'natural (default)', b: 'dash', c: 'by speed', old: 'before' });
+const DEFAULT = 'a'; // the owner's pick (2026-11-25): they approved A on the preview; C shipped first and was reverted
 
 const q = (name) => {
   try {
