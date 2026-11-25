@@ -5849,6 +5849,6 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
 - **Consequences:** ATTACKS 46 -> 50; the attack table hashes to c08725a9 (103cbc42 without the four new moves: no
   existing attack changed). Perf, headless Edge on the desktop GPU: draws 91 -> 97 desktop / 90 -> 93 `?touch`, the
   fight's triangles 1.21M -> 1.69M / 0.87M -> 1.11M, GPU time within noise; each spell or brood +0 - 5 draws, under
-  0.2 ms. The phone's frame time is not measured on the device. Open: the looks are the owner's to pick; the wyrm
+  0.2 ms. The phone's frame time is not measured on the device. The owner kept every default look (2026-11-25). Open: the wyrm
   fights at range when the hero stands out among the trees (closing in is an ai.js change); the drakelings' heads are
   their weakest part; the lane's grass fire can burn in bright knots after the serpent sinks.

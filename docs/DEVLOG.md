@@ -23,7 +23,10 @@ count cues a minute stop measuring once a long channel is in the mix.
 terrain), world and life suites, and the whole `npm test` on the final merge with `origin/main`; films of every move
 at the game camera, before and after; perf A/B on headless Edge (desktop GPU).
 
-**Open.** The owner's picks (incant, drakeling, serpent, vortex, forestEnd, meteorSource, wallSource); the phone's
+**Picked.** The owner kept every default (incant a, drakeling a, serpent a, vortex a, forestEnd a, meteorSource
+b, wallSource a).
+
+**Open.** The phone's
 fps on the device; the wyrm fighting at range in the forest; the drakelings' heads; grass fire knots after the
 serpent; `world.restore()` alone leaves a hero out in the forest (the level's resets and the Lab's Restore respawn him).
 

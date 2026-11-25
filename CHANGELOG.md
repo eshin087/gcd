@@ -20,7 +20,7 @@ Ninety-five pieces of work since 0.4.0:
   wall: the hero walks out among the trees wherever there is room, to the map's true end (`?forestEnd=a|b|c`: a
   rock ridge, a thicket wall, a deadfall), and the wyrm follows him in. The forest is denser and layered (young
   trees and snags in front of the old crowns, undergrowth, logs, stumps, mossy rocks, hanging moss), every piece
-  breakable and burnable; the phone draws the far wood and the thicket thinner. The looks are the owner's to pick.
+  breakable and burnable; the phone draws the far wood and the thicket thinner. The owner kept the default looks.
 - **The bosses look built from letters, like the hero** (2026-11-24, ADR-194). *Changed:* every human boss is printed
   the way the hero is: a body of lit letters in his own colours (no more dark fill inside a thin outline, or flat
   bright colour), the hero's blocky outline strokes and dotted rim, and below the knee his clothes break into the

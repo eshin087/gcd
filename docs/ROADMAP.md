@@ -87,7 +87,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
       lead, parry arc, weighted death (ADR-025)
 - [x] Wyrm wakes without the neck twist; the drake head drawn for the view from above (ADR-189)
 - [x] Every wyrm fire travels from it; roar-cast spells and a brood of fire; a walk-out forest (ADR-195)
-- [ ] The owner's picks for ADR-195's looks (incant, drakeling, serpent, vortex, forestEnd, meteorSource, wallSource)
+- [x] The owner's picks for ADR-195's looks (incant, drakeling, serpent, vortex, forestEnd, meteorSource, wallSource): the defaults kept (2026-11-25)
 - [ ] The wyrm presses in when the hero stands out among the trees (it fights at range there)
 - [x] Hero motion: world-planted feet, blade paths, portrait idle, new windups, two-step dash,
       sliding kneel, crescent trails (ADR-023)
