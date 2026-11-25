@@ -2863,7 +2863,9 @@ async function scenarioStorm() {
   const d = game.dragon, p = game.player, F = DEFENSE.flurry, S = F.storm;
   const on0 = { ...STREAK_FX.on }, k0 = { ...STREAK_FX.k };
   /** One flurry of `n` blows (Severing Line): the frame of every blow, where the hero was, the lines. */
-  const tempo0 = STREAK_FX.tempo;
+  const tempo0 = STREAK_FX.tempo, figure0 = STREAK_FX.figure;
+  // (the storm is about pace; its lines are the chain's star: ?figure=star. The figures: integ `chain`)
+  STREAK_FX.figure = 'star';
   const take = (n, storm, tiers = true, streak = n, tempo = false) => {
     STREAK_FX.on.storm = storm;
     STREAK_FX.on.tiers = tiers;
@@ -3034,6 +3036,7 @@ async function scenarioStorm() {
   }
   Object.assign(STREAK_FX.on, on0);
   Object.assign(STREAK_FX.k, k0);
+  STREAK_FX.figure = figure0;
   return G;
 }
 
@@ -3043,15 +3046,19 @@ async function scenarioStorm() {
 // last cut ended (the iai through the middle, the split rising from there, the plunge rising over the
 // side he is on), no 'A' shard. Off: the ring-teleport paths exactly. On a man: duel.mjs `chain`.
 async function scenarioChain() {
-  out('\n== scenario CHAIN (round the head: each pass from where the last ended; the slashes on his path; no shards) ==');
+  out('\n== scenario CHAIN (round the head: each pass from where the last ended; its figures; the slashes on his path; no shards) ==');
   const { STREAK_FX } = await imp('src/combat/streak.js');
+  const FIG = await imp('src/entities/player/flurryFigures.js');
+  const { shapeOf, dumpFigure } = await import(pathToFileURL(`${ROOT}/tests/integration/figures.mjs`).href);
+  const figure0 = STREAK_FX.figure;
   const G = build();
   fightSetup(G);
   const { game } = G;
   const d = game.dragon, p = game.player, F = DEFENSE.flurry, CH = 1.2;
   const chain0 = STREAK_FX.chain;
-  const take = (n, art, chain = true) => {
+  const take = (n, art, chain = true, figure = 'any') => {
     STREAK_FX.chain = chain;
+    STREAK_FX.figure = figure;
     run(G, 2.5, { passive: true });
     settle(G);
     d.hp = d.maxHp;
@@ -3059,7 +3066,7 @@ async function scenarioChain() {
     const hp0 = d.hp, fl = p.flurry;
     const tr = { passes: [], art: null, hits: [], f: 0, glyphs: new Set(), lineErr: 0, near: Infinity, ok: false, minY: Infinity };
     const o0 = { cs: fl._cutStarts, va: fl._vanish, ba: fl._beginArt };
-    fl._cutStarts = function () { tr.passes.push({ ax: p.position.x, ay: p.position.y, az: p.position.z, L: fl.nLines - 1 }); return o0.cs.call(this); };
+    fl._cutStarts = function () { tr.passes.push({ ax: p.position.x, ay: p.position.y, az: p.position.z, L: fl.nLines - 1, tx: fl.T.x, tz: fl.T.z }); return o0.cs.call(this); };
     fl._vanish = function (b) {
       const ps = tr.passes[tr.passes.length - 1];
       if (ps && ps.bx === undefined && fl.i < fl.cuts) {
@@ -3083,8 +3090,14 @@ async function scenarioChain() {
       spy.push([pool, s0]);
       pool.spawn = function (o) { if (p.state === 'flurry' && typeof o?.glyph === 'string') tr.glyphs.add(o.glyph); return s0.call(this, o); };
     }
-    G.watch = (nm, e) => { if (nm === 'player:flurryHit') tr.hits.push({ f: tr.f, last: e.last, damage: e.damage }); };
+    G.watch = (nm, e) => {
+      if (nm === 'player:flurryHit') tr.hits.push({ f: tr.f, last: e.last, damage: e.damage });
+      if (nm === 'player:flurry') tr.ev = { ...e };
+    };
     tr.ok = p.debug.flurry(n, art);
+    tr.figure = fl.figure;
+    tr.fit = fl.figureFit;
+    tr.neck = [d.position.x - fl.T.x, d.position.z - fl.T.z];
     tr.ox = fl.ox;
     tr.oz = fl.oz;
     for (let i = 0; i < Math.round(9 / DT) && (p.state === 'flurry' || p.state === 'plunge'); i++) {
@@ -3105,7 +3118,7 @@ async function scenarioChain() {
     tr.artJump = tr.art && lp ? Math.hypot(tr.art.sx - lp.bx, tr.art.sy - lp.by, tr.art.sz - lp.bz) : 0;
     const T = fl.T, rel = (x, y, z) => `(${(x - T.x).toFixed(1)},${(y - T.y).toFixed(1)},${(z - T.z).toFixed(1)})`;
     tr.seq = `O${rel(tr.ox, 0, tr.oz)} ` + tr.passes.map((q) => `${rel(q.ax, q.ay, q.az)}->${rel(q.bx, q.by, q.bz)}`).join(' ') + (tr.art ? ` | art from ${rel(tr.art.sx, tr.art.sy, tr.art.sz)}${tr.art.state === 'plunge' ? ` (plunge: hangs at ${rel(tr.art.px, tr.art.py, tr.art.pz)})` : ` to ${rel(tr.art.ax, tr.art.ay, tr.art.az)} -> ${rel(tr.art.bx, 0, tr.art.bz)}`}` : '') + ` | lands ${rel(p.position.x, 0, p.position.z)}`;
-    tr.seq += ` · planned spread ${(Math.asin(Math.min(1, fl.planGap)) * 57.3).toFixed(0)} degrees`;
+    tr.seq = `${tr.figure}: ${tr.seq}`;
     return tr;
   };
   const shard = (t) => [...t.glyphs].some((g) => g.includes('A'));
@@ -3133,6 +3146,29 @@ async function scenarioChain() {
       }
     }
   }
+  // THE FIGURES round the head: each pinned (?figure=) at five blows (and every count it is offered
+  // at): laid (or the star where it does not fit), read as its name, chained
+  const FG = F.chain.figures;
+  for (const name of FIG.FIGURE_NAMES) {
+    for (let n = 2; n <= F.max; n++) {
+      if (n - 1 < (FG[name]?.min ?? 1)) continue;
+      const t = take(n, 'severing', true, name);
+      // (the cage and the spiral are not offered round the head: the star stands in)
+      if (FG[name]?.air === false) {
+        assert(t.figure === 'star', `${name} N=${n}: not offered round the head, the star stands in (${t.figure})`);
+        continue;
+      }
+      const sh = shapeOf(t.figure, t.passes, true);
+      if (n === 5) out(`   ${name} N=${n}: ${t.seq}`);
+      assert(t.figure === name || n !== 5, `${name} N=${n}: the figure laid is ${t.figure} (its cost ${t.fit.toFixed(2)})`);
+      assert(sh.ok && t.jumps.every((j) => j < 0.3) && t.near >= 1.5 && t.lineErr < 0.35 && t.ev?.figure === t.figure, `${name} N=${n}: a ${t.figure} (${sh.why}), chained, clear of the dodge spot, its lines on his path`);
+      if (n === 5) {
+        const T = { x: t.passes[0].tx, z: t.passes[0].tz };
+        dumpFigure({ name, N: n, air: true, R: F.reach.air, O: [t.ox - T.x, t.oz - T.z], neck: t.neck, passes: t.passes.map((q) => [q.ax - T.x, q.az - T.z, q.bx - T.x, q.bz - T.z]), art: t.art && t.art.state !== 'plunge' ? [t.art.sx - T.x, t.art.sz - T.z, t.art.bx - T.x, t.art.bz - T.z] : null, label: sh.why });
+      }
+    }
+  }
+  STREAK_FX.figure = figure0;
   STREAK_FX.chain = chain0;
   return G;
 }

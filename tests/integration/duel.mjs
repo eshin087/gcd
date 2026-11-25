@@ -1274,8 +1274,11 @@ async function scenarioTempo() {
 // arts start where the last cut ended, the last blow throws letter dust, not the 'A' shards. Off: the
 // ring-teleport paths exactly. Round the wyrm's head: integ.mjs `chain`.
 async function scenarioChain() {
-  out('\n== scenario CHAIN (the flurry on a man: each pass from where the last ended; the slashes on his path; letter dust) ==');
+  out('\n== scenario CHAIN (the flurry on a man: each pass from where the last ended; its figures; the slashes on his path; letter dust) ==');
   const { STREAK_FX } = await imp('src/combat/streak.js');
+  const FIG = await imp('src/entities/player/flurryFigures.js'), FL = await imp('src/entities/player/flurry.js');
+  const { shapeOf, dumpFigure } = await import(pathToFileURL(`${ROOT}/tests/integration/figures.mjs`).href);
+  const figure0 = STREAK_FX.figure;
   const FX = await imp('src/entities/player/flurryFx.js');
   const G = build();
   duel(G, { dist: 4 });
@@ -1284,8 +1287,9 @@ async function scenarioChain() {
   const chain0 = STREAK_FX.chain;
   const rel = (x, z) => `(${(x - d.position.x).toFixed(2)},${(z - d.position.z).toFixed(2)})`;
   /** One flurry of `n` blows ending in `art` (or a riposte of `n` cuts): its passes, lines, blows. */
-  const take = (n, art, { chain = true, riposte = false, dist = 2.5 } = {}) => {
+  const take = (n, art, { chain = true, riposte = false, dist = 2.5, figure = 'any' } = {}) => {
     STREAK_FX.chain = chain;
+    STREAK_FX.figure = figure;
     settle(G);
     place(G, dist);
     run(G, 0.3);
@@ -1293,7 +1297,7 @@ async function scenarioChain() {
     const hp0 = d.hp, fl = p.flurry;
     const tr = { passes: [], art: null, hits: [], f: 0, glyphs: new Set(), lineErr: 0, near: Infinity, ok: false, end: null };
     const o0 = { cs: fl._cutStarts, va: fl._vanish, ba: fl._beginArt };
-    fl._cutStarts = function () { tr.passes.push({ ax: p.position.x, az: p.position.z, i: fl.i, L: fl.nLines - 1 }); return o0.cs.call(this); };
+    fl._cutStarts = function () { tr.passes.push({ ax: p.position.x, az: p.position.z, i: fl.i, L: fl.nLines - 1, tx: fl.T.x, tz: fl.T.z }); return o0.cs.call(this); };
     fl._vanish = function (b) {
       const ps = tr.passes[tr.passes.length - 1];
       if (ps && ps.bx === undefined && fl.i < fl.cuts) {
@@ -1320,6 +1324,7 @@ async function scenarioChain() {
     G.watch = (nm, e) => {
       if (nm === 'player:flurryHit') tr.hits.push({ f: tr.f, last: e.last, damage: e.damage });
       if (nm === 'player:flurryEnd') tr.end = { ...e };
+      if (nm === 'player:flurry') tr.ev = { ...e };
     };
     tr.ok = riposte ? fl.start(d, false, n, null, TELL.NORMAL, { riposte: true }) : p.debug.flurry(n, art);
     tr.ox = fl.ox;
@@ -1344,8 +1349,9 @@ async function scenarioChain() {
     const lp = tr.passes[tr.passes.length - 1];
     tr.artJump = tr.art && lp ? Math.hypot(tr.art.sx - lp.bx, tr.art.sz - lp.bz) : 0;
     tr.seq = `O${rel(tr.ox, tr.oz)} ` + tr.passes.map((q) => `${rel(q.ax, q.az)}->${rel(q.bx, q.bz)}`).join(' ') + (tr.art ? ` | art ${rel(tr.art.sx, tr.art.sz)}->${rel(tr.art.bx, tr.art.bz)}` : '') + ` | end ${rel(tr.endX, tr.endZ)}`;
-    tr.star = 1;
-    const L = fl.lines;
+    tr.figure = fl.figure;
+    tr.fit = fl.figureFit;
+    tr.seq = `${tr.figure}: ${tr.seq}`;
     return tr;
   };
   const shard = (t) => [...t.glyphs].some((g) => g.includes('A'));
@@ -1364,26 +1370,47 @@ async function scenarioChain() {
       if (n >= 3) assert(off.jumps.some((j) => j > 0.5), `${art} N=${n}, the chain off: the passes teleport round the ring as before (${off.jumps.map((j) => j.toFixed(2)).join(' ')} m)`);
     }
   }
-  // the lines still spread like a star (no two nearly parallel): the smallest angle between two cuts hanging
-  {
-    const fl = p.flurry;
-    STREAK_FX.chain = true;
-    settle(G);
-    place(G, 2.5);
-    run(G, 0.3);
-    let gap = 1;
-    G.watch = (nm) => {
-      if (nm !== 'player:flurryHit') return;
-      const L = fl.lines;
-      for (let a = 0; a < fl.nLines; a++) for (let b = a + 1; b < fl.nLines; b++) {
-        if (L[a].last || L[b].last) continue;
-        gap = Math.min(gap, Math.abs(Math.sin(Math.atan2(L[a].ax - L[a].bx, L[a].az - L[a].bz) - Math.atan2(L[b].ax - L[b].bx, L[b].az - L[b].bz))));
+  // THE FIGURES: each pinned (?figure=), at every cut count it is offered at: it is the figure laid
+  // (or, where it does not fit, the star), it reads as its name, and the chain's rules hold
+  const FG = F.chain.figures;
+  for (const name of FIG.FIGURE_NAMES) {
+    for (let n = 2; n <= F.max; n++) {
+      if (n - 1 < (FG[name]?.min ?? 1)) continue;
+      // (3.5 m off him: a cage or a cross round a man drawn 2.5 m from the dodge spot passes within
+      // 1.5 m of it, and so is passed over there for the star: below)
+      const t = take(n, 'passing', { figure: name, dist: 3.5 });
+      const sh = shapeOf(t.figure, t.passes);
+      if ([3, 5, 7].includes(n)) out(`   ${name} N=${n}: ${t.seq}`);
+      assert(t.figure === name, `${name} N=${n}: the figure laid is ${t.figure} (its cost ${t.fit.toFixed(2)})`);
+      assert(sh.ok, `${name} N=${n}: it reads as a ${t.figure}: ${sh.why}`);
+      assert(t.jumps.every((j) => j < 0.3) && t.artJump < 0.3 && t.near >= 1.5 && t.lineErr < 0.35 && t.ev?.figure === t.figure, `${name} N=${n}: chained (${t.jumps.map((j) => j.toFixed(2)).join(' ') || '-'} m), never back within 1.5 m of the dodge spot (${t.near === Infinity ? '-' : t.near.toFixed(2)} m), its lines on his path, player:flurry says ${t.ev?.figure}`);
+      if ([3, 5, 7].includes(n)) {
+        const T = { x: t.passes[0].tx, z: t.passes[0].tz };
+        dumpFigure({ name, N: n, air: false, R: F.ground.reach, O: [t.ox - T.x, t.oz - T.z], passes: t.passes.map((q) => [q.ax - T.x, q.az - T.z, q.bx - T.x, q.bz - T.z]), art: t.art ? [t.art.sx - T.x, t.art.sz - T.z, t.art.bx - T.x, t.art.bz - T.z] : null, label: sh.why });
       }
-    };
-    p.debug.flurry(F.max, 'passing');
-    run(G, 8, null, () => p.state !== 'flurry');
-    G.watch = null;
-    assert(gap > 0.3, `seven blows: the six cuts' lines spread like a star, each pair at least ${(Math.asin(Math.min(1, gap)) * 57.3).toFixed(0)} degrees apart (planned ${(Math.asin(Math.min(1, fl.planGap)) * 57.3).toFixed(0)}; sides ${[...fl._planS.slice(0, 6)].join(' ')}, off ${[...fl._planOff.slice(0, 6)].map((v) => v.toFixed(2)).join(' ')})`);
+    }
+  }
+  // a figure that does not fit is passed over for the star: a hexagon cage round a man with the dodge
+  // spot 2.5 m off him would pass within 1.3 m of it
+  {
+    const t = take(F.max, 'passing', { figure: 'cage', dist: 2.5 });
+    assert(t.figure === 'star' && t.near >= 1.5, `a cage of six that would pass the dodge spot 2.5 m off him is passed over for the ${t.figure} (never within ${t.near.toFixed(2)} m of it)`);
+  }
+  // the pick: a different figure each flurry, never the same twice running, several of them
+  {
+    FL.setFigureSeed(12345);
+    p.flurry.lastFigure = '';
+    const seen = [];
+    for (let k = 0; k < 20; k++) seen.push(take(5, 'passing').figure);
+    const kinds = new Set(seen), twice = seen.some((f, k) => k > 0 && f === seen[k - 1]);
+    out(`   twenty flurries of five: ${seen.join(' ')}`);
+    assert(kinds.size >= 4 && !twice, `twenty flurries of five draw ${kinds.size} figures (>= 4), never the same twice running (${twice ? 'twice' : 'never'})`);
+  }
+  // ?figure=star is the chain as it was: the same frames, the lines spread like a star
+  {
+    const s7 = take(F.max, 'passing', { figure: 'star' }), o7 = take(F.max, 'passing', { chain: false });
+    const sh = shapeOf('star', s7.passes);
+    assert(s7.figure === 'star' && s7.hits.map((h) => h.f).join() === o7.hits.map((h) => h.f).join() && sh.ok, `?figure=star: seven blows on the frames as before (${s7.hits.map((h) => h.f).join(',')}), ${sh.why}`);
   }
   // the dust: tiny letters, under the bloom threshold
   {
@@ -1407,6 +1434,7 @@ async function scenarioChain() {
     assert(a.hits.map((h) => h.f).join() === b.hits.map((h) => h.f).join() && a.dmg === b.dmg && Math.abs(ra - rb) < 0.05 && a.artJump === 0, `the art alone (N = 1): the same blow on the same frame, ending as far past him (${ra.toFixed(2)} / ${rb.toFixed(2)} m)`);
   }
   STREAK_FX.chain = chain0;
+  STREAK_FX.figure = figure0;
   return G;
 }
 
