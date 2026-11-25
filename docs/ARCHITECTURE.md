@@ -1222,7 +1222,7 @@ of the pose they began in (`swordFromEntry`, `SWORD_ENTRY` 0.16 s) and the loco 
 blade into the stance over `LOCO_SETTLE` (0.24 s).
 **The run's free arm** (ADR-187, `runArms.js`): in the hero's `loco()` the free (left) arm is
 `runArm(p, P, A, phase, armF, sprint, runK, moveW, mz)`'s: one of three carries (`?runArm=a|b|c|old`,
-`runArmMode()` / `setRunArm(id)`, default `c`), written as joint angles (`RUN_ARMS`: the shoulder's swing, how
+`runArmMode()` / `setRunArm(id)`, default `a`, the owner's pick), written as joint angles (`RUN_ARMS`: the shoulder's swing, how
 far the arm stands off his side, the elbow, the forearm's cross) and posed by forward kinematics into `lH`, `lP`,
 `lD`, `lN` and `hs`, with weight `moveW`. `a` swings like a runner (a pump at a sprint), `b` holds the dash (swept
 back behind him; forward only: a strafe or a backpedal swings as `a`), `c` is `a` on the run blending into `b` as

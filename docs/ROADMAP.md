@@ -186,10 +186,10 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] The reference's density of small bright detail
 
 ## M1.82 — The run's free arm: three carries (2026-11-24, `claude/hero-run-arms-2e2cb5`, ADR-187)
-- [x] `player/runArms.js`: A natural (a runner's swing, a sprint's pump), B the swordsman's dash, C by speed (default), `?runArm=a|b|c|old`, the Lab's `run arm` row
+- [x] `player/runArms.js`: A natural (a runner's swing, a sprint's pump), B the swordsman's dash, C by speed, `?runArm=a|b|c|old`, the Lab's `run arm` row
 - [x] The `herorun` scenario: every carry through one course (strafe, backpedal, turn, every transition) against the swing before
 - [x] Review films: the four side by side, game camera over the side view, the front, half speed
-- [ ] The owner's pick of the run arm (films and the preview; C stays the default)
+- [x] The owner's pick of the run arm: A, natural, the default (2026-11-25; C shipped first by mistake, reverted in #122)
 - [x] The free hand smaller (× 0.8), the owner's pick of five looks (`?handLook=0|a|b|c|d`, the Lab's `hand` row)
 - [ ] The roll's and the block's entries out of the dash: the free arm comes forward inside a short cross-fade (about twice the old jolt)
 ## M1.82 — The streak's answer: a heavy first cut, a path that flows, cuts that tear the picture (2026-11-25, `combat/streak-pace`, ADR-190, ADR-191)

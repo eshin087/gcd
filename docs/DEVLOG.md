@@ -33,6 +33,11 @@ near-black sleeve. Five looks rendered live, then built behind `?handLook=0|a|b|
 × 0.85 leather glove. The owner tried them on the preview and picked **a, smaller** (now the default; `0` the
 hand before). The two darker materials are built only for their look, so seeded fights do not move.
 
+**Reverted and re-shipped with A** (2026-11-25). #117 merged with `c` (by speed) as the run arm's default; the
+owner had approved `?runArm=a` on the preview, and in production: "the new one looks really bad. it doesnt seem to
+be the one i chose". #122 reverted it; this PR brings it back with `a` (natural, the pump at a sprint) as the
+default and the smaller hand. My error: I kept my own recommendation as the default after the owner tried another.
+
 **Open.** Out of the dash into a roll or a block the arm comes forward inside that clip's short cross-fade: the
 free elbow jolts 24 cm a frame² (old 13). The roll's and the block's entries are outside this pass. The owner's pick
 of the four (films in this session's scratchpad `rig/out/`).
