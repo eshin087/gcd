@@ -10,6 +10,11 @@ const AWAKE_HIDDEN = new Set(['sleeping', 'dying', 'dead']);
 // taking the lock shows it faintly (`peak` opacity) for `hold` s, then it fades over `fade` s and
 // stays gone until the lock is taken again. Real seconds.
 export const LOCK_MARK = Object.freeze({ peak: 0.55, hold: 0.5, fade: 2.4 });
+// The hero's tag rides his head (owner, 2026-11-25: the name "not too far away from the character"):
+// `over` m above the head bone, which sits about 0.4 m under the top of his hair, so the letters stand
+// just clear of it; it follows a roll, a crouch or a lean down instead of hanging at a fixed height.
+// `follow` /s eases the bob of a step out of it. Without a rig (tests): `fallback` m over his feet.
+export const HERO_TAG = Object.freeze({ over: 0.55, follow: 16, fallback: 2.2 });
 
 class Tag {
   constructor(layer, className, text) {
@@ -36,7 +41,7 @@ export class NameTags {
   constructor(game, parent) {
     this.game = game;
     this.layer = el('div', 'ab-tags ab-play', null, parent);
-    this.player = new Tag(this.layer, 'ab-tag', String(game.player?.name || 'Wanderer'));
+    this.player = new Tag(this.layer, 'ab-tag', String(game.player?.name || 'gcd'));
     this.dragon = new Tag(this.layer, 'ab-tag foe', bossNames(game.dragon?.name).short);
     this.reticle = new Tag(this.layer, 'ab-tag ab-reticle', '◇');
     this.v = new THREE.Vector3();
@@ -70,11 +75,26 @@ export class NameTags {
 
     const p = g.player;
     if (visible && p?.position) {
-      // above the drawn head: the hero leans away from the camera (player.leanPoint)
-      const v = this.pv.set(num(p.position.x), num(p.position.y) + 2.2, num(p.position.z)); // 0.35 m over the head
-      if (typeof p.leanPoint === 'function') p.leanPoint(v);
+      // over his drawn head (HERO_TAG): the head bone's world point carries his lean and his size
+      const v = this.pv;
+      const head = p.rig?.head;
+      if (typeof head?.getWorldPosition === 'function') {
+        head.getWorldPosition(v);
+        v.y += HERO_TAG.over;
+      } else {
+        v.set(num(p.position.x), num(p.position.y) + HERO_TAG.fallback, num(p.position.z));
+        if (typeof p.leanPoint === 'function') p.leanPoint(v);
+      }
+      if (Number.isFinite(v.y)) {
+        const k = Number.isFinite(this.tagY) ? Math.min(1, num(dt, 0) * HERO_TAG.follow) : 1;
+        this.tagY = Number.isFinite(this.tagY) ? this.tagY + (v.y - this.tagY) * k : v.y;
+        v.y = this.tagY;
+      }
       this._place(this.player, v.x, v.y, v.z);
-    } else this.player.show(false);
+    } else {
+      this.player.show(false);
+      this.tagY = NaN;
+    }
 
     const d = g.dragon;
     const awake = !!(d?.state && !AWAKE_HIDDEN.has(d.state));

@@ -5,6 +5,30 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-25 — The front: the sword's path, a loading screen, the hero's tag (ADR-196)
+
+**Owner:** an ASCII loading progress with the gcd branding, a title where the stages are easy to pick; plan
+it with Fable, Opus builds it. Three title layouts, two loaders and two HUD-name places were built behind
+switches (an Opus agent) and shown as screenshots; the owner picked menu c (the sword's path), loader b (the
+console) and no HUD name, and asked that the "gcd" over the hero's head not sit too far from him.
+
+**What changed.** `index.html`: the loading screen, inline, first in `<body>`; the web fonts' sheet no longer
+blocks the first paint. `main.js` boots in named steps (`BOOT` shares) that drive the bar through
+`ui/bootLoader.js`. `ui/titleMenu.js` + `titleMenuStyle.js` + `gcdLogo.js`: the three layouts (`?menu=`,
+default c), a CONTROLS panel for the long controls list, a 2D pad walk (`gamepad.js`), `flow.beginFromTitle()`.
+Each level names its boss (`boss`). The hero is `player.name = 'gcd'`; his tag rides his head bone
+(`HERO_TAG`): measured 3 px over his hair at the far camera, 6 px at the nearest, and it drops with him in a
+roll (it lags the fast dip by up to 17 px for a moment, then sits close again).
+
+**Verified.** The records suite's new `menus` scenario (every layout: keeper, best, select then travel, begin,
+rush, news, CONTROLS, keys; no parameter → c, `?menu=0` → the title before); `npm run build`, and the built page
+from disk shows the loader and boots; in the browser pane: the title comes up as the path, the loader as the
+console, the tag reads gcd at both camera distances.
+
+**Open.** Not seen on a real iPhone (notch, home bar) or with a real pad. The path will need to scroll or
+shrink past about ten worlds. A background tab throttles the loader's timers (the fonts step can read long
+there). The old title's `LOGO` (`?menu=0`) and `GCD_LOGO` are two drawings of the name.
+
 ## 2026-11-25 — The game is called gcd (ADR-195; Opus agent)
 
 **Owner:** the game and its hero are now **gcd**, lowercase wherever a player sees it; the lore: a

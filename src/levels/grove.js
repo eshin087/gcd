@@ -1,5 +1,6 @@
 import { createWindlessGrove, GROVE } from '../world/windlessGrove.js';
 import { Sheathed } from '../entities/enemies/sheathed/sheathed.js';
+import { TUNING as BOSS_TUNING } from '../entities/enemies/sheathed/tuning.js';
 
 // The Windless Grove (ADR-145): a bamboo grove at night with a round clearing, and Lu Wusheng, the
 // Sheathed: a wandering swordsman who kneels before a mound of swords, his own across his knees, and
@@ -12,6 +13,7 @@ export const WINDLESS = Object.freeze({
   aliases: ['sheathed', 'windless', 'bamboo', 'wusheng'],
   name: 'The Windless Grove',
   sub: 'where a man who swore off the sword still carries one',
+  boss: BOSS_TUNING.name, // the boss's full name (the title's world list; the HUD reads the boss's own)
   world: Object.freeze({
     arenaRadius: 15,
     playerBound: G.bound,

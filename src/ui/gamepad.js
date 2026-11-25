@@ -127,7 +127,7 @@ export class GamepadControls {
     }
 
     if (mode === 'play') this._play(lx, ly, lm, rx, ry, rm);
-    else this._menu(realDt, ly);
+    else this._menu(realDt, ly, lx);
   }
 
   // ---------------------------------------------------------------- play
@@ -180,7 +180,7 @@ export class GamepadControls {
   }
 
   // ---------------------------------------------------------------- menus
-  _menu(realDt, ly) {
+  _menu(realDt, ly, lx = 0) {
     const g = this.game, inp = g.input, B = BTN;
     const pressed = (i) => this.eff[i] && !this.prev[i];
     this.autoAim = false;
@@ -218,6 +218,13 @@ export class GamepadControls {
       this._showFocus(list);
       return;
     }
+    // the new title layouts (?menu=a|b|c; ui/titleMenu.js): the D-pad / stick walks them in two
+    // dimensions, A acts on the entry in focus (the current world: begins, like any button)
+    const T = g.hud?.titleUi;
+    if (Array.isArray(T?.navButtons) && typeof T.navigate === 'function') {
+      this._titleMenu(T, realDt, ly, lx, pressed);
+      return;
+    }
     // title: D-pad left / right walks the stage picker, A on another stage picks it; anything else starts
     this._useList('title');
     const list = this._stageButtons();
@@ -230,6 +237,51 @@ export class GamepadControls {
     const target = this.focus >= 0 ? list[this.focus] : null;
     if (pressed(B.A) && target && !target.classList?.contains('on')) {
       this._press(target);
+      return;
+    }
+    for (const i of ANY) {
+      if (pressed(i)) {
+        inp.pulse('Gamepad');
+        break;
+      }
+    }
+  }
+
+  /** The new title layouts: walk the entries by where they are drawn; A acts; B closes CONTROLS. */
+  _titleMenu(T, realDt, ly, lx, pressed) {
+    const B = BTN, inp = this.game.input;
+    this._useList('title-menu');
+    if (T.holdsStart?.()) {
+      // the CONTROLS panel is open: any of A / B / Menu closes it, nothing starts
+      if (pressed(B.A) || pressed(B.B) || pressed(B.START)) {
+        T.menu?.drawer?.(false);
+        this._blockHeld();
+      }
+      return;
+    }
+    const list = T.navButtons;
+    const x = this.eff[B.LEFT] ? -1 : this.eff[B.RIGHT] ? 1 : Math.abs(lx) > 0.5 ? Math.sign(lx) : 0;
+    const y = this.eff[B.UP] ? -1 : this.eff[B.DOWN] ? 1 : Math.abs(ly) > 0.5 ? Math.sign(ly) : 0;
+    // (one axis at a time: the stronger; _navStep repeats while held)
+    const dx = Math.abs(lx) > Math.abs(ly) || this.eff[B.LEFT] || this.eff[B.RIGHT] ? x : 0;
+    const dy = dx ? 0 : y;
+    const key = dx ? dx * 2 : dy;
+    if (key !== this._navKey) {
+      this._navKey = key; // a new direction is a fresh press
+      this.nav.dir = 0;
+    }
+    const step = this._navStep(realDt, false, key !== 0);
+    if (step && list.length) {
+      const from = this.focus >= 0 ? list[this.focus] : list.find((b) => b.classList?.contains('sel')) ?? null;
+      const to = from ? T.navigate(from, dx, dy) : list[0];
+      const i = list.indexOf(to);
+      if (i >= 0) this.focus = i;
+    }
+    this._showFocus(list);
+    const target = this.focus >= 0 ? list[this.focus] : null;
+    if (pressed(B.A) && target && !target.classList?.contains('on')) {
+      this._press(target);
+      this._blockHeld();
       return;
     }
     for (const i of ANY) {

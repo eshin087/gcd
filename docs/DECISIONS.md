@@ -5835,3 +5835,27 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
 - **Consequences / open:** until the address moves, the live site's players lose saved bindings, records,
   learned techniques and read marks once this deploys. The title screen's layout is being redesigned on
   another branch; it meets this LOGO there.
+
+## ADR-196 — The title is the sword's path; a loading screen from the first paint (2026-11-25)
+
+- **Context:** with the rename (ADR-195) the owner asked for a better front: an ASCII loading progress with
+  the gcd branding on a first load, and a title where the stages are easy to pick instead of one long line of
+  buttons. Three title layouts (a world list, a campfire grid, the sword's path), two loaders (centred, a
+  console) and two places for the hero's name in the HUD were built behind switches and shown as screenshots.
+- **Decision:** the owner picked **menu c, the sword's path** (the worlds as fires along one line the sword
+  travels; the one in focus opens under it with its keeper, record and the way to travel or begin; upright,
+  the path runs down the side), **loader b, the console** (the logo, each finished boot step with its real
+  time, the bar, a lore line), and **no name in the HUD**. They asked for the name over the hero's head to
+  stay close to him: the tag reads gcd and rides his head bone instead of hanging at a fixed 2.2 m over his
+  feet (it floated a metre clear when his head dropped in a roll). `?menu=0` and `?loader=a` keep the
+  others; `PICKED.menu = 'c'`.
+- **Why the loader is honest:** measured on the built page (gzipped, cold cache): 0.3 s download, 2 s boot
+  on a fast machine; on slow 4G with a 4x-slowed CPU 10 s download and 10 s boot, the world's build about 70 %
+  of the boot, and a first-ever shader compile up to 7 s. The bar shows a waiting run while bytes arrive
+  (nothing to count), then the boot's real steps; no artificial delay, so a warm load barely shows it. The
+  web fonts' sheet no longer blocks the first paint (the loader showed at 1.0 s on slow 4G, now 0.25 s).
+- **Lore** (the owner's three places: the loader's lines, the picker framed as fires the sword can reach,
+  the hero's name): eleven plain lines rotate on the loader; a pick says where the sword takes him next.
+- **Consequences / open:** the layouts are DOM text in the HUD's idiom (no images, no new font); the path
+  gets tight past about ten worlds (names wrap; it will need to scroll or shrink). Not yet seen on a real
+  iPhone notch, home bar or a real gamepad (emulated and stubbed).
