@@ -76,6 +76,13 @@ bigger than the hero's 5 x 8.
 **Open.** The owner's pick. A, B and D hide the 3D grass, so the wind, trample, mowing and the cut tops do not show
 there yet (burn and tears do, through the scorch map): the picked look needs those wired before it can ship. B is
 busy near firelight on Ashfall.
+## 2026-11-25 — The hero's name tag a little higher (ADR-196)
+
+**Owner:** "make the font a bit higher as it's literally on the edge of the character": the "gcd" over his
+head touched his hair. `HERO_TAG.over` (ui/nameTags.js) went from 0.55 m to 0.75 m over the head bone: the
+gap above his hair is now about 11 px at the normal camera (it was 6) and about 5 px zoomed far out, still
+riding his head bone, so it stays close in a roll. Checked in the browser at 1280 x 720.
+
 ## 2026-11-25 — The first frame's shaders compiled side by side (`render/precompile.js`; branch `render/precompile`)
 
 **Owner** (testing a preview): "the preview links take a really long time on shaders to load the game for the first
