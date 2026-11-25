@@ -25,26 +25,41 @@ a more obvious cut, the lone heavy as a slash and no whirl.
 - `combat.js`: a look per attack def (`wear`, `LOOK_KEYS`); tables in `lightsBlink.js`, `lastHits.js`,
   `heaviesBlink.js`, `specialsBlink.js`.
 - Hits 1-4 rewritten by hand: the arm opens through the cut (end of cut 0.97-0.99 of reach, elbows
-  154-163°, wrists at most 52°), ten to thirteen moving frames after it, no still frame before the way home.
-- The free hand: `P.sd` and `HeroAnimator._sideHand` (anim.js); the belt hand removed.
+  150-163°, wrists at most 52°), then nine to eleven frames of follow-through (40 % by +2, 70 % by +4),
+  the elbow softening as the arm rests. Hit 2 carries round and down to the right hip; hit 3 is a rising
+  forehand from there (the first try reached its coil by looping the blade over his head: a flourish);
+  the thrust ends at shoulder height.
+- The free hand: `P.sd` and `HeroAnimator._sideHand` / `_sideLinger` (anim.js); the belt hand removed. It
+  is let go on the swing's first frame, is beside the hip by the first cut, and stays there through the
+  chain and 0.35 s after it.
 - The five heavies on one rhythm (a still coil, the cut, the landing, a stop, a hold); Gale a dash into a
-  slash, Tempest one level cut with no turn; the heavy line three rows of strokes, a camera kick on the cut.
-- The last hit: five strokes; `finishers.js`, `?finisher=` and the Lab's row removed.
+  slash, Tempest one level cut with no turn; the heavy line five rows of strokes that hold their width
+  (measured on screen in `blinkheavies`: twice a last hit's), a camera kick on the cut; Earthbreaker's
+  line is the cut's chord (it was a pillar).
+- The last hit: five strokes, every two at least 25° apart on screen; `finishers.js`, `?finisher=` and
+  the Lab's row removed.
 - The sprint slash, the roll cut, the charged cleave, One Breath and the execution as instant clips; the
   execution's cyan streak and One Breath's pass mark are left out beside their own lines.
 
 **How.** One plan, a shared brief with the arm rules as numbers, then five agents in this worktree at once,
 each on its own files (the look tables and an empty scenario per part were wired first, so nobody had to
-edit `setLights` or the scenario table). A sixth filmed the result.
+edit `setLights` or the scenario table). A sixth filmed the result and listed what read wrong, frame by
+frame; that list went back to four of the five for a second round (the follow-through, hit 2's arm, hit
+3's windup, the thrust's height, the hand on the hip, the heavy line from the game camera, the last
+strokes that looked alike), and a third for the hand between relaxed hits. One finding was a misread: a
+"raised left hand" in the three-quarter view was the right arm's armour (that camera sees his right side
+on screen-left).
 
 **Verification.** `blinkslash`, `blinklights`, `blinkhand`, `blinkheavies`, `blinkspecials`, `blinklast`;
 the hero suites in the default look; `sheath.mjs . reward` and `duel.mjs . execute` under blink; `npm test`.
 
 **Open / next.** The owner's judgement of the films and the preview. The audit's `ext` is measured in the
 world, where the drawn hero is scaled and leaned toward the camera: the scenarios measure in the chest's
-own frame instead. Known soft spots: the free hand is still on its way to his side through hit 1's windup;
-two pairs of last-hit strokes are close from the game camera (rise / drop, sweep / low); Mountain Splitter
-is 28° off hit 3; the sounds are still a swing's.
+own frame instead. Known soft spots: the roll cut's free hand is at the waist for its first frames (the
+roll's own pose ends there); `lastDrop` draws the shortest line of the five; the lit blade can rest along
+its own line for a few frames after a cut; Earthbreaker's line is a short upright bar from the game
+camera; the lone heavy's dash reads as a step into a slash; the sounds are still a swing's. The side
+hand's 9.5 cm off the thigh wants a check against the hand geometry the run session is reworking.
 
 ---
 

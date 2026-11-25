@@ -6085,10 +6085,16 @@ to follow the instant attack style".
    to near straight, the wrist under 60°, the elbow keyed, the hips ahead of the chest), and the line is
    the chord of that cut.
 4. **Lights flow, heavies land.** A light: a short still coil, the cut, then the blade, the hand and the
-   body carry on along the cut and slow for about ten frames (most of it in the first four, which a mashed
-   chain still shows). A heavy: a long still hold, the cut, two or three frames of the body dropping and
+   body carry on along the cut and slow for nine to eleven frames (the hand a further 27-50 cm, the blade
+   a further 50-90°; about 40 % of it by the second frame and 70 % by the fourth, which is what a mashed
+   chain shows before the next windup gathers), the elbow softening to 115-135° as the arm comes to rest.
+   A first version packed the follow-through into two frames, to be sure a mashed chain showed it: on film
+   the pose then barely changed for ten frames and he still read as frozen. Each hit starts where the one
+   before leaves the blade: a falling diagonal to low left, a level backhand that carries round and down
+   to the right hip, a rising forehand from there to high left, the pull-back, the thrust. A heavy: a long still hold, the cut, two or three frames of the body dropping and
    driving on, a hard stop, a long hold, a slow way home; its line is three rows of strokes, longer and
-   thicker, and drawing it kicks the camera a little, hit or miss (no hit-stop on a miss: that is timing).
+   thicker (five rows that hold their width for ten frames: 15 px against a last hit's 7 at 720p), and
+   drawing it kicks the camera a little, hit or miss (no hit-stop on a miss: that is timing).
 5. **No turn anywhere.** Piercing Gale is a dash into a falling two-handed slash, drawn as a sweep.
    Whirling Tempest is one level cut that unwinds the whole torso (211° round him): its job goes from "a
    blade all round him" to "a blade across his whole front and both sides". Earthbreaker keeps its leap.
@@ -6099,7 +6105,12 @@ to follow the instant attack style".
 7. **The free hand hangs at his side.** A clip's `side` sets a pose channel (`P.sd`); the animator places
    the hand between under the left shoulder and beside the hip, open, the fingers down, with a small damped
    sway that trails each turn. A free pendulum from the shoulder was tried and dropped: an instant cut
-   moves the shoulder half a metre in three frames, and the arm flailed.
+   moves the shoulder half a metre in three frames, and the arm flailed. The hand is let go on the swing's
+   first frame (a drop of 0.16 s: it is beside the hip by the first cut), stays there for the whole attack
+   and for 0.35 s after it (so a chain pressed at a relaxed pace does not lift it to the stance's hand and
+   drop it again between hits), and goes home slowly; a two-handed swing, a guard, a roll or a hit taken
+   gets it back in 0.1 s. It is kept 9.5 cm off the thigh's line: a hand of another size or shape
+   (`gear/hands.js`) needs that distance checked again.
 8. **Every other attack too**: the sprint slash, the roll cut, the charged cleave, One Breath and the
    execution (`specialsBlink.js`). The execution keeps `kind: 'thrust'`, so its kill, its freeze and its
    camera are untouched; only its pose is a clip.
