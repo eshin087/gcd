@@ -4,6 +4,7 @@ import { gis } from '../render/glyphs.js';
 import { DRAGON_PRINT_GLSL, DP_CELL, dragonPrintUniforms, dragonAllOn } from '../render/dragonPrint.js';
 import { DRAGON_PRINT_FX_GLSL, DP_FX_U } from '../render/dragonPrintFx.js';
 import { DG_GRASS_GLSL, dgGrassLook } from './dragonGrass.js';
+import { DRAGON_STEP_GLSL, DP_STEP_U } from '../render/dragonStep.js';
 
 /**
  * The ground's look (a prototype switch, `?ground=`): none = today's soil under the 3D grass;
@@ -58,6 +59,7 @@ export function createGround(U, look = groundLook()) {
       // and the hero's wake (world/grassTrail.js) for the printed grass (world/dragonGrass.js)
       ...dragonPrintUniforms(),
       ...DP_FX_U,
+      ...DP_STEP_U,
       uTrail: U.uTrail ?? { value: Array.from({ length: TRAIL_N }, () => new THREE.Vector4()) },
       uTrailBox: U.uTrailBox ?? { value: Array.from({ length: TRAIL_CH }, () => new THREE.Vector4()) },
       uBend: U.uBend ?? { value: new THREE.Vector4(0, 0, 0, 0) },
@@ -80,6 +82,7 @@ export function createGround(U, look = groundLook()) {
       uniform vec4 uBend, uBendT, uBendS, uBendE;
 #if GROUND_LOOK == 2
       ${DRAGON_PRINT_GLSL}
+      ${DRAGON_STEP_GLSL}
       // the base relief: soft mounds, tussocks where the meadow is thick (height in m-ish units)
       float groundRelief(vec2 p, float d) { return dpFbm(p * 0.3) * 0.9 + dpFbm(p * 1.6) * 0.3 * (0.3 + d); }
       #define DP_RELIEF groundRelief
@@ -196,6 +199,13 @@ export function createGround(U, look = groundLook()) {
         if (burn > 0.35) idx = pick5(uAsh, int(fract(h * 7.1) * 5.0));
         m = glyphGrad(idx, f, dFdx(g), dFdy(g));
         col = vec3(0.008, 0.01, 0.01) * L + body * (0.2 + 1.5 * t + rip * 0.8) * L * m * 1.15;
+        // [prints] a fresh footprint: the cells under the foot turn to code, flash and fade (render/dragonStep.js)
+        vec3 st = dpStep(cxz, h);
+        if (st.x > 0.0) {
+          float sm = glyphGrad(st.z, f, dFdx(g), dFdy(g));
+          vec3 code = mix(vec3(0.14, 0.5, 0.22), vec3(0.75, 1.35, 0.8), st.y);
+          col = mix(col, vec3(0.008, 0.01, 0.01) * L + code * sm, st.x);
+        }
 #elif GROUND_LOOK == 3
         // --- c: tidy tufts: a fine soil dot lattice under the 3D blades (cells 0.16 x 0.28)
         vec2 size = vec2(0.16, 0.28);
