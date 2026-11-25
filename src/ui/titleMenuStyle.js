@@ -139,7 +139,7 @@ const CSS = `
 
 /* ---------- touch: every target a thumb's size ---------- */
 .ab-touch .gm .gm-e { min-height: 44px; }
-.ab-touch .gm .gm-small, .ab-touch .gm .gm-close { min-height: 40px; }
+.ab-touch .gm .gm-small, .ab-touch .gm .gm-close, .ab-touch .gm .gm-act { min-height: 44px; }
 .ab-touch .gm-c .gm-node { min-height: 44px; }
 
 /* ---------- a phone on its side (~390 px tall) ---------- */
