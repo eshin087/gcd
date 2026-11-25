@@ -1589,6 +1589,9 @@ onParried({ attack, tell }): void       // the dragon calls this itself when pla
                                         // deflected (posture + a 0.14 s visual knock-back, the string goes
                                         // on); its last hit / a single melee attack recoils. Emits
                                         // dragon:parried {attack, tell, hit, last} (+ combat:deflectChain)
+                                        // once per parried blow: a second call for the SAME attack within
+                                        // 0.1 s is ignored; another attack (a drakeling's bite beside a
+                                        // claw) is answered too, so player:parry = dragon:parried
 attackLabel(id): string | null          // a move's name for the player (the death screen, the move telemetry): its tuning
                                         // label without the note in brackets; null for an id it does not know. Every boss
                                         // offers it (a duelist: kit.MOVES[id].label)

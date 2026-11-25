@@ -119,6 +119,7 @@ export class Dragon {
     this._part = new THREE.Vector3();
     this._hitPt = new THREE.Vector3();
     this._lastParry = -1;
+    this._lastParryAttack = null;
     this._postureSent = -1;
     this.postureTimer = 0;
     this.warn = 0; // current red tell glow strength (uWarn.a)
@@ -310,8 +311,8 @@ export class Dragon {
   }
 
   /**
-   * Called after player.takeHit returned 'parried' (by hitPlayer; a second call the same instant is
-   * ignored). The DEFLECT CHAIN (contract 1): a parried string hit that is not its last one does not
+   * Called after player.takeHit returned 'parried' (by hitPlayer; a second call for the same attack
+   * within 0.1 s is ignored). The DEFLECT CHAIN (contract 1): a parried string hit that is not its last one does not
    * cancel the string: the posture damage applies and the struck part is knocked back (visual, no
    * timing change). Parrying the last hit (or a single melee attack) recoils the wyrm. Emits
    * 'dragon:parried' {attack, tell, hit, last} and, from the 2nd parry in a row within one string,
@@ -319,10 +320,13 @@ export class Dragon {
    */
   onParried(info = {}) {
     if (this.state === 'dying' || this.state === 'dead' || this.state === 'sleeping') return;
-    if (this.time - this._lastParry < 0.1) return;
-    this._lastParry = this.time;
     const a = this.brain.action;
     const attack = info?.attack ?? a?.cur?.attack ?? a?.name ?? null;
+    // (the guard is per attack: a drakeling's bite parried 0.09 s after the wyrm's own tail lash is a
+    // second blow met, and the hero's player:parry for it must be answered too; ADR-195)
+    if (this.time - this._lastParry < 0.1 && attack === this._lastParryAttack) return;
+    this._lastParry = this.time;
+    this._lastParryAttack = attack;
     const tell = info?.tell === TELL.BLUE ? TELL.BLUE : TELL.NORMAL;
     const mine = !!a && (attack == null || attack === a.name); // the running action's own hit (not a stray shell)
     const b = mine ? a.cur : null;
@@ -475,6 +479,7 @@ export class Dragon {
     this.broken = false;
     this.postureTimer = 0;
     this._lastParry = -1;
+    this._lastParryAttack = null;
     this._lastPlunge = -1;
     this.knock.t = -1;
     this.crashing = false;
