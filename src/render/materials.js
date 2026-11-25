@@ -1648,6 +1648,6 @@ export function createCarvedGlyphMaterial(U, o = {}) {
   });
   // the dragon print's rim (dragonFloor.js addSlabRim): a set gives its meshes theirs when it builds them;
   // any other geometry drawn with this material gets it on its first draw
-  if (dpLook) mat.onBeforeRender = (renderer, scene, camera, geometry) => lazySlabRim(scene, geometry);
+  if (dpLook) mat.onBeforeRender = (renderer, scene, camera, geometry, object) => lazySlabRim(scene, geometry, object);
   return mat;
 }

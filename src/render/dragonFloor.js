@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { gis } from './glyphs.js';
+import { gi, gis } from './glyphs.js';
 import { DRAGON_PRINT_GLSL, DP_CELL, dragonPrintUniforms, dragonLook } from './dragonPrint.js';
 import { DRAGON_PRINT_FX_GLSL, DP_FX_U } from './dragonPrintFx.js';
 import { DRAGON_STEP_GLSL, DP_STEP_U } from './dragonStep.js';
@@ -74,6 +74,8 @@ export function dpFloorUniforms(look, o = {}, pitch = (58 * Math.PI) / 180) {
     uDpLift: { value: new THREE.Vector4(d.rim, d.moss, d.wet, d.rimW) },
     uDpRim: { value: new THREE.Vector4(d.lip, 0, d.top, d.sky) },
     uDpAsh: { value: gis('.,:;~') },
+    // a crack's stroke by its way on screen: dash, slash, bar, backslash
+    uDpStroke: { value: new THREE.Vector4(gi('-'), gi('/'), gi('|'), gi('\\')) },
   };
 }
 
@@ -83,6 +85,12 @@ export function dpFloorUniforms(look, o = {}, pitch = (58 * Math.PI) / 180) {
  *  its line uncapped (at most RIM_MAX), so the distance stays linear across it and the lip keeps its width. */
 export const RIM_CAP = 0.6;
 export const RIM_MAX = 8;
+/** A cracked slab's pieces (world/floor.js 'pavingCracked', forest.js 'flagstoneShards'): their rim starts
+ *  at CRACK_RIM instead of 1, so the print draws every edge of a piece as a crack, a dark seam (a crack
+ *  of a few cm is narrower than a cell: it can only print as its pieces' edges). */
+export const CRACK_RIM = 10;
+const CRACKED = /Cracked$|^flagstoneShards$/;
+const crackMesh = (o) => CRACKED.test(o?.name ?? '');
 
 /**
  * THE RIM (`aRim`): per vertex, 1 + how far the point lies inside its slab's top from the top's edge (m;
@@ -94,19 +102,20 @@ export const RIM_MAX = 8;
  * steep) is all rim (1). 0 (no attribute) = unknown: the print leaves the rim alone.
  * Non-indexed geometry, in place; idempotent. Cost: linear (a grid of the edges); ~10 ms for a paving.
  */
-export function addSlabRim(geo) {
+export function addSlabRim(geo, crack = false) {
   if (!geo?.attributes?.position || geo.index || geo.attributes.aRim) return geo;
-  const rim = slabRimArray(geo);
+  const rim = slabRimArray(geo, crack);
   if (rim) geo.setAttribute('aRim', new THREE.BufferAttribute(rim, 1));
   return geo;
 }
 
-/** addSlabRim's values for `geo` (non-indexed), or null. */
-export function slabRimArray(geo) {
+/** addSlabRim's values for `geo` (non-indexed), or null. `crack`: its pieces are a broken slab's (CRACK_RIM). */
+export function slabRimArray(geo, crack = false) {
   const P = geo?.attributes?.position?.array;
   if (!P || geo.index) return null;
   const nv = P.length / 3, T = Math.floor(nv / 3);
-  const rim = new Float32Array(nv).fill(1);
+  const base = crack ? CRACK_RIM : 1;
+  const rim = new Float32Array(nv).fill(base);
   // the corners as ids (positions met within 2 mm are one corner)
   const ids = new Int32Array(nv);
   const seen = new Map();
@@ -194,7 +203,7 @@ export function slabRimArray(geo) {
         d = RIM_MAX;
         for (let k = 0; k < 3; k++) if (own3[t * 3 + k] >= 0) d = Math.min(d, lineDist(own3[t * 3 + k], x, z));
       } else d = nearest(x, z);
-      rim[v] = 1 + Math.min(RIM_MAX, d);
+      rim[v] = base + Math.min(RIM_MAX, d);
     }
   }
   return rim;
@@ -205,12 +214,12 @@ export function slabRimArray(geo) {
 // attributes, so the draw binds it; added during a draw it would never be bound)
 const PENDING = [];
 /** The carved material's first draw of `geometry` with no rim (materials.js onBeforeRender). Never throws. */
-export function lazySlabRim(scene, geometry) {
+export function lazySlabRim(scene, geometry, object = null) {
   if (!geometry || geometry.attributes?.aRim || geometry.userData.dpRimTried) return;
   geometry.userData.dpRimTried = true;
   let rim = null;
   try {
-    rim = slabRimArray(geometry);
+    rim = slabRimArray(geometry, crackMesh(object));
   } catch {
     rim = null;
   }
@@ -233,7 +242,7 @@ export function lazySlabRim(scene, geometry) {
 export function addSlabRims(group, mat) {
   if (!(mat?.defines?.DP_FLOOR > 0)) return;
   group?.traverse?.((o) => {
-    if (o.isMesh && o.material === mat) addSlabRim(o.geometry);
+    if (o.isMesh && o.material === mat) addSlabRim(o.geometry, crackMesh(o));
   });
 }
 
@@ -248,7 +257,8 @@ uniform vec4 uDpRelief; // wear, grain, crack, chip
 uniform vec4 uDpLift;   // rim (the lit lip's lift), moss, wet, the rim's width (m)
 uniform vec4 uDpRim;    // the lip's turn (the normal's outward lean at the edge), -, the top's lift, the sky's floor
 uniform float uDpAsh[5];
-varying float vRim;     // 1 + the distance to the slab's edge (m; addSlabRim), 0 unknown
+uniform vec4 uDpStroke; // dash, slash, bar, backslash (a crack's seam)
+varying float vRim;     // 1 + the distance to the slab's edge (m; addSlabRim), 0 unknown; a cracked piece's from ${CRACK_RIM}
 float dpAshAt(int i) { float r = uDpAsh[0]; for (int k = 0; k < 5; k++) if (k == i) r = uDpAsh[k]; return r; }
 // the floor's relief (height, m-ish): broad worn hollows and the stone's grain; d (0..1) roughens it (moss, a rim)
 float floorRelief(vec2 p, float d) {
@@ -284,18 +294,20 @@ export const DP_FLOOR_MAIN = /* glsl */ `
         float moss = step(1.0 - vMoss * 0.42 * uDpLift.y, mossN) * (1.0 - burn);
         // THE RIM (aRim): the distance from the CELL'S centre to its slab's edge (the vertex distance is
         // linear in a triangle: its slope from the screen derivatives); a lip one cell wide turns outward
-        float rimK = 0.0, rimD = 9.0;
+        float rimK = 0.0, rimD = 9.0, crack = 0.0;
         vec2 rimO = vec2(0.0), rimG = vec2(0.0);
         if (vRim > 0.5 && uDpLift.w > 0.0) {
+          crack = step(${CRACK_RIM - 0.5}, vRim);
           vec2 dRx = dFdx(vW.xz), dRy = dFdy(vW.xz);
           float rx = dFdx(vRim), ry = dFdy(vRim);
           float det = dRx.x * dRy.y - dRx.y * dRy.x;
           vec2 G = abs(det) > 1e-12 ? vec2(rx * dRy.y - ry * dRx.y, ry * dRx.x - rx * dRy.x) / det : vec2(0.0);
           float gl = length(G);
-          rimD = vRim - 1.0 + dot(G, cw.xz - vW.xz);
+          rimD = vRim - mix(1.0, ${CRACK_RIM.toFixed(1)}, crack) + dot(G, cw.xz - vW.xz);
           rimG = G;
           rimO = gl > 0.3 ? -G / gl : vec2(0.0);
-          rimK = 1.0 - smoothstep(0.02, max(uDpLift.w, 0.04), rimD);
+          // (a crack's seam at least 0.2 m: the cell's centre, a row apart in z, must not step over it)
+          rimK = 1.0 - smoothstep(0.02, max(mix(uDpLift.w, 0.2, crack), 0.04), rimD);
         }
         // the relief bends the facet's normal (only where the facet faces up: a wall keeps its own)
         float up = smoothstep(0.35, 0.8, n.y);
@@ -342,9 +354,11 @@ export const DP_FLOOR_MAIN = /* glsl */ `
           dpT = clamp(dpT * (1.0 - 0.3 * pud * min(uDpLift.z, 1.0)) + uDpLift.z * pud * (sp * 1.5 + luma(PL) * 4.0), 0.0, 1.0);
         }
         // the moonlit rim (a chamfer that faces the light), not where it is chipped; the moss's cushion
-        dpT = clamp(dpT + uDpLift.x * max(rimK, vEdge) * (1.0 - chip) * smoothstep(0.55, 0.95, dot(N, uMoonDir)) * shc + uDpRim.z * up * (1.0 - rimK) * shc, 0.0, 1.0);
+        dpT = clamp(dpT + uDpLift.x * max(rimK, vEdge) * (1.0 - chip) * (1.0 - crack) * smoothstep(0.55, 0.95, dot(N, uMoonDir)) * shc + uDpRim.z * up * (1.0 - rimK) * shc, 0.0, 1.0);
         // the sky: a face open to it keeps a little light in the moon's shadow (a slab's top still reads there)
         dpT = max(dpT, uDpRim.w * smoothstep(0.7, 0.98, N.y));
+        // a cracked piece's edges fall into the crack, dark
+        dpT *= 1.0 - 0.85 * crack * rimK;
         // the groove's bottom and a chip fall dark; occlusion (aAO)
         dpT *= (1.0 - 0.75 * groove * groove) * (1.0 - 0.35 * chip) * mix(1.0, vAO, 0.6);
         dpT *= 1.0 - dpContact(cw.xz);
@@ -363,6 +377,14 @@ export const DP_FLOOR_MAIN = /* glsl */ `
                          dot(sl, oz) + floorRelief(cw.xz + oz, rough) - (rimD + dot(rimG, oz) < 0.0 ? drop : 0.0)) - hc;
           float ridx;
           if (dpRidge(cw.xz, N, dpT, nb, h, ridx)) idx = ridx;
+        }
+        // a cracked piece's edge, the seam of the crack: a dim stroke along it (the house style's inner step),
+        // so a crack narrower than a cell still reads as a line
+        if (crack * rimK > 0.5 && dot(rimO, rimO) > 0.5) {
+          vec2 tg = vec2(-rimO.y, rimO.x);
+          float ka = mod(floor(mod(atan(-tg.y * uDpView.y, tg.x), 3.14159265) / 0.7853982 + 0.5), 4.0);
+          idx = ka < 0.5 ? uDpStroke.x : ka < 1.5 ? uDpStroke.y : ka < 2.5 ? uDpStroke.z : uDpStroke.w;
+          dpT = 0.35;
         }
         if (burn > 0.35) idx = dpAshAt(int(fract(h * 7.1) * 5.0));
 `;

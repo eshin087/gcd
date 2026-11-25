@@ -3,7 +3,7 @@
 // nothing with it off; a slab's rim (addSlabRim: per vertex 1 + the distance to its top's edge) is right
 // on a known slab; every set gives its paving and its cracked / broken looks their rim at build; a
 // geometry met on its first draw (Cinderwood's flagstones: forest.js does not call addSlabRims) gets its
-// rim at the start of the next frame; the print shares the upgrades', the prints' and the ground's
+// rim at the start of the next frame (a cracked slab's pieces, theirs as cracks); the print shares the upgrades', the prints' and the ground's
 // uniforms; the shader's text carries the hooks.
 // usage: node dpfloor.mjs <repoRoot> [scenario]   scenario: rim | sets | off | lazy | all
 import { pathToFileURL } from 'node:url';
@@ -18,7 +18,7 @@ const imp = (p) => import(pathToFileURL(`${ROOT}/${p}`).href);
 const THREE = await imp('node_modules/three/build/three.module.js');
 const { createSharedUniforms } = await imp('src/render/shaderLib.js');
 const { createCarvedGlyphMaterial } = await imp('src/render/materials.js');
-const { addSlabRim, addSlabRims, lazySlabRim, RIM_MAX, DP_FLOOR, dpFloorLook } = await imp('src/render/dragonFloor.js');
+const { addSlabRim, addSlabRims, lazySlabRim, RIM_MAX, CRACK_RIM, DP_FLOOR, dpFloorLook } = await imp('src/render/dragonFloor.js');
 const { DP_FX_U } = await imp('src/render/dragonPrintFx.js');
 const { DP_STEP_U } = await imp('src/render/dragonStep.js');
 const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
@@ -101,19 +101,24 @@ function sets() {
     const body = u.uDpBody?.value;
     assert(body && [body.x, body.y, body.z, body.w].every(Number.isFinite) && body.w > 0, `${name}: its body numbers are finite (k ${body?.w})`);
     // every slab mesh (the paving and the floor's cracked / broken looks) has its rim from the build
-    let n = 0, withRim = 0, inside = 0, bad = 0;
+    let n = 0, withRim = 0, inside = 0, bad = 0, cracked = 0;
     for (const m of list) {
       n++;
       const a = m.geometry.attributes.aRim;
       if (!a) continue;
       withRim++;
+      // (a cracked slab's pieces, floor.js 'pavingCracked': every edge a crack, from CRACK_RIM)
+      const base = /Cracked$/.test(m.name) ? CRACK_RIM : 1;
+      if (base !== 1) cracked++;
       for (let i = 0; i < a.count; i++) {
         const v = a.getX(i);
-        if (!(v >= 1 && v <= 1 + RIM_MAX + 1e-6)) bad++;
-        else if (v > 1.05) inside++;
+        if (!(v >= base && v <= base + RIM_MAX + 1e-6)) bad++;
+        else if (v > base + 0.05) inside++;
       }
     }
     assert(n > 0 && withRim === n && bad === 0, `${name}: ${withRim} of ${n} slab meshes have their rim at build, all in range`);
+    // (the training room's floor stays whole: no cracked look)
+    assert(cracked === (make === createTrainingRoom ? 0 : 1), `${name}: its cracked slabs' pieces are marked as cracks (${cracked} mesh)`);
     assert(inside > 0, `${name}: some of the floor lies inside its slabs' rims (${inside} corners)`);
   }
 }
