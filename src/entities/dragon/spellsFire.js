@@ -213,6 +213,7 @@ const P_MAX = 160; // path points kept (step m apart: ~57 m of its track)
 const N_MAX = 64; // body samples
 const LANE_MAX = 72; // lane points (0.8 m apart: ~58 m of burnt lane)
 const LANE_STEP = 0.8;
+const IGN_MAX = 48; // pending lane fires (one every igniteEvery m)
 const LANE_LIFE = 2.6; // s a lane point's own low flames burn (the grass fire under it burns on its own)
 
 function serpentState() {
@@ -225,8 +226,9 @@ function serpentState() {
     n: 0, step: 0.36,
     px: new Float32Array(N_MAX), py: new Float32Array(N_MAX), pz: new Float32Array(N_MAX),
     dx: new Float32Array(N_MAX), dz: new Float32Array(N_MAX), w: new Float32Array(N_MAX), fade: new Float32Array(N_MAX),
-    glow: 0, sinkK: 0,
+    glow: 0, sinkK: 0, trav: 0, sAmp: 0, hl: null,
     lane: new Float32Array(LANE_MAX * 3), laneN: 0, laneI: 0, laneSince: 0,
+    ign: new Float32Array(IGN_MAX * 3).fill(-1), ignI: 0,
     acc: {},
     sweepD: 0, igniteD: 0, markD: 0, mx: 0, mz: 0, swx: 0, swz: 0, tickT: 0,
     hit: mkHit('fireSerpent'),
@@ -307,13 +309,31 @@ function serpentBody(s, spec) {
     s.px[i] = x;
     s.pz[i] = z;
     const u = i / Math.max(1, n - 1);
-    s.w[i] = lerp(B.head, B.tail, Math.pow(u, 0.8)) * (i < 3 ? 0.75 + 0.08 * i : 1);
+    // thick behind the head, tapering to a thin tail; a neck just behind the head
+    s.w[i] = (B.tail + (B.head - B.tail) * Math.pow(1 - u, B.taper ?? 0.8)) * (dist < 1.2 ? 0.7 + 0.25 * dist : 1);
     s.py[i] = B.y + lift * smoothstep(liftLen, 0, dist);
     // it burns out from the tail as it sinks (sinkK 0 -> 1)
     const sink = clamp(((1 - u) - (s.sinkK * 1.4 - 0.4)) * 3, 0, 1);
     s.fade[i] = ok ? sink : 0;
   }
-  // the way it heads along the body
+  // the S: a wave fixed to the GROUND along its track (each point of the track has its offset, so the
+  // body slides through standing curves as a snake does), none at the head, full a body-length back
+  pathTangent(s, n);
+  const S = spec.slither, A = (S?.amp ?? 0) * s.sAmp, lam = S?.len ?? 8;
+  if (A > 0) {
+    for (let i = 1; i < n; i++) {
+      const dist = i * st;
+      const k = smoothstep(0, S.ramp ?? 2.5, dist) * (1 - 0.45 * (i / n));
+      const off = A * k * Math.sin(((s.trav - dist) / lam) * Math.PI * 2);
+      s.px[i] += -s.dz[i] * off;
+      s.pz[i] += s.dx[i] * off;
+    }
+  }
+  pathTangent(s, n);
+}
+
+/** The way it heads at each sample (s.dx / s.dz, unit), from its neighbours. */
+function pathTangent(s, n) {
   for (let i = 0; i < n; i++) {
     const a = Math.max(0, i - 1), b = Math.min(n - 1, i + 1);
     let dx = s.px[a] - s.px[b], dz = s.pz[a] - s.pz[b];
@@ -341,6 +361,23 @@ function lanePush(s, x, z) {
 }
 function laneAge(s, dt) {
   for (let i = 0; i < s.laneN; i++) s.lane[i * 3 + 2] += dt;
+}
+/** The lane's pending fires: each catches `delay` s after the head passed (all at once with `now`). */
+function igniteDue(d, s, spec, dt, now = false) {
+  const W = spec.world, w = d.game.world;
+  for (let i = 0; i < IGN_MAX; i++) {
+    const k = i * 3;
+    if (!(s.ign[k + 2] >= 0)) continue;
+    s.ign[k + 2] += dt;
+    if (!now && s.ign[k + 2] < W.igniteDelay) continue;
+    s.ign[k + 2] = -1;
+    try {
+      w?.ignite?.(s.ign[k], s.ign[k + 1], W.igniteR, W.igniteK);
+      s.stat.ignited++;
+    } catch (err) {
+      console.error('[dragon] serpent ignite failed', err);
+    }
+  }
 }
 
 /** What the head did to the world over the step (ax, az) -> (x, z): fell, ignite, mark (by metres travelled). */
@@ -370,13 +407,13 @@ function serpentWorld(d, s, spec, ax, az, x, z, y) {
     s.swz = z;
   }
   if (s.igniteD >= W.igniteEvery) {
+    // the ground catches once its tail has passed (lit under it, the grass fire buried its body)
     s.igniteD = 0;
-    try {
-      w?.ignite?.(x, z, W.igniteR, W.igniteK);
-      s.stat.ignited++;
-    } catch (err) {
-      console.error('[dragon] serpent ignite failed', err);
-    }
+    const k = s.ignI * 3;
+    s.ign[k] = x;
+    s.ign[k + 1] = z;
+    s.ign[k + 2] = 0;
+    s.ignI = (s.ignI + 1) % IGN_MAX;
   }
   if (s.markD >= W.markEvery) {
     const o = s.mo, l = Math.hypot(x - s.mx, z - s.mz);
@@ -468,13 +505,17 @@ const fireSerpent = {
     s.sinceStrike = 0;
     s.glow = 0;
     s.sinkK = 0;
+    s.trav = 0;
+    s.sAmp = 0;
     s.n = 0;
     s.laneN = 0;
     s.laneI = 0;
+    for (let i = 0; i < IGN_MAX; i++) s.ign[i * 3 + 2] = -1;
     s.jaw = 0;
     s.heat = 0;
     s.back = 0;
     s.step = S_T.body.step;
+    s.hl = S_T.headLook;
     for (const k in s.acc) s.acc[k] = 0;
     for (const k in s.stat) s.stat[k] = k === 'closest' ? Infinity : 0;
     a.roared = false;
@@ -556,6 +597,7 @@ function serpentStep(d, a, s, dt) {
   const spec = S_T, g = d.game, F = spellFx(d);
   s.t += dt;
   laneAge(s, dt);
+  igniteDue(d, s, spec, dt, s.mode === 'sink');
   const ax = s.x, az = s.z;
   const L = spec.lunge, B = spec.body;
   const pr = playerR(g);
@@ -563,7 +605,7 @@ function serpentStep(d, a, s, dt) {
     s.hunted += dt;
     s.sinceStrike += dt;
     // it rises out of the ground as it leaves the circle
-    s.y = Math.min(B.y, s.y + dt * 4);
+    s.y = Math.min(B.headY ?? B.y, s.y + dt * 4);
     const tg = serpentTarget(d, s, spec, _tg);
     steer(s, tg.x, tg.z, spec.turn, dt);
     s.wig += dt * spec.wiggle.hz * Math.PI * 2;
@@ -572,7 +614,7 @@ function serpentStep(d, a, s, dt) {
     s.x += Math.sin(s.yaw) * s.speed * dt;
     s.z += Math.cos(s.yaw) * s.speed * dt;
     s.hy = s.y;
-    s.jaw = Math.max(0, s.jaw - dt * 3);
+    s.jaw += ((S_T.headLook?.jaw ?? 0.25) - s.jaw) * (1 - Math.exp(-dt * 4)); // (the jaws held a little apart as it hunts)
     s.heat = Math.max(0, s.heat - dt * 2);
     // strike? (in reach and in front, or the hunt is over)
     const p = d.sense.pos;
@@ -608,7 +650,7 @@ function serpentStep(d, a, s, dt) {
     s.speed = Math.max(0, s.speed - dt * 18);
     s.x = s.rx;
     s.z = s.rz;
-    s.hy = lerp(B.y, spec.rearH, smoothstep(0, 0.75, k));
+    s.hy = lerp(B.headY ?? B.y, spec.rearH, smoothstep(0, 0.75, k));
     s.jaw = smoothstep(0.35, 1, k);
     s.heat = k;
     const b = a.sb;
@@ -632,7 +674,7 @@ function serpentStep(d, a, s, dt) {
     const run = L.dist * (1 - Math.pow(1 - k, 1.6)); // (fast off the mark)
     s.x = s.lx0 + Math.sin(s.yaw) * run;
     s.z = s.lz0 + Math.cos(s.yaw) * run;
-    s.hy = lerp(spec.rearH, B.y, smoothstep(0, 0.8, k));
+    s.hy = lerp(spec.rearH, B.headY ?? B.y, smoothstep(0, 0.8, k));
     s.jaw = 1;
     s.heat = 1;
     const b = a.sb;
@@ -679,7 +721,7 @@ function serpentStep(d, a, s, dt) {
       s.base = s.yaw;
     }
   } else if (s.mode === 'recoil') {
-    s.hy = lerp(s.hy, B.y, 1 - Math.exp(-dt * 8));
+    s.hy = lerp(s.hy, B.headY ?? B.y, 1 - Math.exp(-dt * 8));
     s.jaw = Math.max(0, s.jaw - dt * 2.5);
     s.heat = Math.max(0, s.heat - dt * 2);
     s.back = 0;
@@ -717,6 +759,10 @@ function serpentStep(d, a, s, dt) {
     s.glow = 0;
     return;
   }
+  s.trav += Math.hypot(s.x - ax, s.z - az);
+  // the S straightens as it lunges, comes back as it hunts
+  const sWant = s.mode === 'lunge' ? 0.25 : s.mode === 'rear' ? 0.8 : 1;
+  s.sAmp += (sWant - s.sAmp) * (1 - Math.exp(-dt * (s.mode === 'lunge' ? 8 : 2.5)));
   if (s.mode !== 'rear') pathMove(s, s.x, s.z);
   if (s.mode === 'hunt' || s.mode === 'lunge') serpentWorld(d, s, spec, ax, az, s.x, s.z, Math.max(0.8, s.hy));
   serpentBody(s, spec);
@@ -749,7 +795,7 @@ function serpentStep(d, a, s, dt) {
   if (a.sb) cueAt(d, a, a.sb);
   // draw
   F.serpent(s, dt, SL, a.share);
-  F.lane(s, dt, LANE_LIFE, a.share);
+  F.lane(s, dt, LANE_LIFE, a.share, spec.world.igniteDelay);
 }
 
 // ------------------------------------------------------------------ the firestorm
