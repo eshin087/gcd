@@ -135,7 +135,9 @@ export const LIGHT = [
  * live) plays the clips it had before (swings.js / lightsOld.js `…Old`, and the `drawCut` and `slam`
  * it shared with the flurry, One Breath and Earthbreaker); only LIGHT's `anim` / `variants` change, so
  * every hit's timing, damage, reach, tells and its heavy branch are the same in both. The animator
- * reads them as each hit starts (anim.js _pickVariant).
+ * reads them as each hit starts (anim.js _pickVariant). Two more to compare while the owner picks:
+ * `?lights=fresh` (lightsFresh.js) and `?lights=striker` (lightsStriker.js, hit 5 from finishers.js,
+ * `?finisher=lance|cross|talisman|flash`; the striker finishers' spell replaces the slam's shards).
  */
 export const LIGHTS_IDS = ['new', 'old', 'fresh', 'striker'];
 export const LIGHTS_NAMES = { new: 'weighted', old: 'before', fresh: 'brand new', striker: 'striker' };
