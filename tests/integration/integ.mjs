@@ -10487,16 +10487,20 @@ async function scenarioHeroStance() {
 // ================================================================== scenario: the sword's green flame
 // The sword's layer (ADR-182): a tight green flame in the hero's own micro letters, on by default; off (?mystic=0) = today's
 // blade frame by frame; only its marks; its budgets; green; never a glow; grows by tier; nothing after death.
-// ================================================================== scenario: the finisher's magic
-// The fresh chain's last cut (?lights=fresh, hit 5: lightsFresh.js freshSplitter) carries a touch of the
-// sword's green flame, one of four looks (player/finisherFx.js, ?finisher=a|b|c|d): nothing on today's
-// chain; each look spawns, stays in its budget and its own marks, is never a glow, and is gone again
-// within a beat of the cut; nothing after death; its own random stream.
+// ================================================================== scenario: the striker's finisher spell
+// Hit 5 of ?lights=striker (player/finishers.js, ?finisher=lance|cross|talisman|flash) is a planted
+// two-handed strike with a spell on it (player/finisherFx.js): nothing on today's chain; each spell
+// draws its own marks within budget, never a glow, and is gone within a second; it replaces the shard
+// burst; nothing after death; its own random stream. The spell's little extra reach: it lands a hit
+// ~1 m past the blade's reach (only when the blade missed), not 2 m past it, once a swing, and never on
+// today's chain.
 async function scenarioFinisherFx() {
-  out('\n== scenario FINISHERFX (the fresh finisher\'s magic: four looks, nothing elsewhere, the budget, gone after a beat, nothing after death) ==');
+  out('\n== scenario FINISHERFX (the striker finisher\'s spell: four finishers, nothing elsewhere, the budget, gone within a second, no shards, the extra reach) ==');
   const FX = await imp('src/entities/player/finisherFx.js');
+  const FN = await imp('src/entities/player/finishers.js');
   const CB = await imp('src/entities/player/combat.js');
-  const lights0 = CB.lightsMode(), mode0 = FX.finisherMode();
+  const { SWINGS } = await imp('src/entities/player/swings.js');
+  const lights0 = CB.lightsMode(), fin0 = FN.finisherId();
   let last = null;
   const setup = () => {
     const G = (last = build());
@@ -10510,10 +10514,9 @@ async function scenarioFinisherFx() {
   };
   const allowed = new Set([...FX.FINISHER_GLYPHS]);
   const watch = (G) => {
-    const p = G.game.player, F = p.finisherFx, rec = { marks: 0, bad: 0, nan: 0, hot: 0, wMax: 0, nMax: 0, npMax: 0, kinds: new Set(), slamAt: -1, quietAt: -1, frame: 0 };
+    const p = G.game.player, F = p.finisherFx, rec = { marks: 0, bad: 0, nan: 0, hot: 0, wMax: 0, nMax: 0, npMax: 0, slams: 0, shards: 0, strikeAt: -1, quietAt: -1, frame: 0 };
     F.onEmit = (kind, ch, a, col) => {
       rec.marks++;
-      rec.kinds.add(kind);
       if (!allowed.has(ch)) rec.bad++;
       if (!Number.isFinite(a + col)) rec.nan++;
       rec.hot = Math.max(rec.hot, col);
@@ -10525,45 +10528,63 @@ async function scenarioFinisherFx() {
       rec.nMax = Math.max(rec.nMax, F.n);
       rec.npMax = Math.max(rec.npMax, F.lb?.np ?? 0);
     };
-    G.watch = (n) => { if (n === 'player:slam' && rec.slamAt < 0) rec.slamAt = rec.frame; };
+    const sh = p.fx.slamShards.bind(p.fx);
+    p.fx.slamShards = (...a) => { rec.shards++; return sh(...a); };
+    G.watch = (n) => { if (n === 'player:slam') rec.slams++; };
     return rec;
   };
-  /** A mashed chain, then up to 2.5 s more; the frame the magic was last on the screen. */
+  /** A mashed chain, then up to 2.5 s more; the frame its spell last showed. */
   const chain = (G, rec) => {
     const p = G.game.player, F = p.finisherFx;
+    const step = () => { G.tick(DT); rec.frame++; if ((F.lb?.count ?? 0) > 0) rec.quietAt = rec.frame; if (rec.strikeAt < 0 && F.strikes > 0) rec.strikeAt = rec.frame; };
     for (let k = 0; k < 5; k++) {
       p._buffer('light');
-      for (let i = 0, n = Math.round((k === 4 ? 0.9 : CHAIN_EVERY) / DT); i < n; i++) { G.tick(DT); rec.frame++; if ((F.lb?.count ?? 0) > 0) rec.quietAt = rec.frame; }
+      for (let i = 0, n = Math.round((k === 4 ? 0.9 : CHAIN_EVERY) / DT); i < n; i++) step();
     }
-    for (let i = 0; i < 150; i++) { G.tick(DT); rec.frame++; if ((F.lb?.count ?? 0) > 0) rec.quietAt = rec.frame; }
+    for (let i = 0; i < 150; i++) step();
   };
   try {
-    // (1) today's chain: nothing built, nothing drawn
+    // (1) the four finishers' clips: planted (no spin, no hop), two hands on the grip through the cut, the
+    // chest no more than ~40° on the hips
+    {
+      const bad = [];
+      for (const id of FN.FINISHER_IDS) {
+        const an = FN.FINISHER_ANIMS[id], C = SWINGS[an.clip];
+        if (!C) { bad.push(`${id}: no clip`); continue; }
+        if (an.spin || an.hop || an.turn) bad.push(`${id}: spin/hop/turn`);
+        if (!C.keys.filter((k) => k.u >= 1 && k.two != null).every((k) => k.two === 1)) bad.push(`${id}: one hand in the cut`);
+        const tw = Math.max(...C.keys.filter((k) => k.sy != null).map((k) => Math.abs(k.sy)));
+        if (tw > 0.7) bad.push(`${id}: chest ${((tw * 180) / Math.PI).toFixed(0)}° on the hips`);
+      }
+      assert(!bad.length, `the four finishers are planted, two-handed strikes: no spin, no hop, the chest at most 40° on the hips (${bad.join(', ') || 'all'})`);
+    }
+    // (2) today's chain: no spell, the shards as before
     CB.setLights('new');
     {
       const G = setup(), rec = watch(G), F = G.game.player.finisherFx;
       chain(G, rec);
-      assert(rec.slamAt > 0 && rec.marks === 0 && F.total === 0 && F.plays === 0 && F.lb === null, `on today's chain the finisher's magic draws and builds nothing (${rec.marks} marks; the slam met the ground: ${rec.slamAt > 0})`);
+      assert(rec.marks === 0 && F.total === 0 && F.plays === 0 && F.strikes === 0 && F.lb === null && rec.slams === 1 && rec.shards === 1, `on today's chain no spell is drawn or built and the slam bursts its shards as before (${rec.marks} marks, ${F.strikes} strikes, ${rec.shards} shard bursts)`);
     }
-    // (2) each look on the fresh chain
-    CB.setLights('fresh');
+    // (3) each finisher's spell
+    CB.setLights('striker');
     const rows = [];
-    for (const m of FX.FINISHER_IDS) {
-      FX.setFinisher(m);
+    for (const id of FN.FINISHER_IDS) {
+      CB.setFinisherLook(id);
       FX.setFinisherSeed(0x2468);
       const G = setup(), rec = watch(G), F = G.game.player.finisherFx;
       chain(G, rec);
-      rows.push({ m, rec, plays: F.plays, total: F.total, busy: F.busy, count: F.lb?.count ?? -1, after: rec.quietAt - rec.slamAt });
+      rows.push({ id, rec, plays: F.plays, total: F.total, strikes: F.strikes, busy: F.busy, count: F.lb?.count ?? -1, after: rec.quietAt - rec.strikeAt });
     }
-    out(`   ${rows.map((r) => `${r.m} ${FX.FINISHER_NAMES[r.m]}: ${r.total} marks (${[...r.rec.kinds].join('+')}), ≤ ${r.rec.wMax} written / ${r.rec.nMax} spawned a frame, ≤ ${r.rec.npMax} alive, peak col x a ${r.rec.hot.toFixed(2)}, on the screen until ${(r.after * DT).toFixed(2)} s after the blade met the ground`).join('\n   ')}`);
-    assert(rows.every((r) => r.plays === 1 && r.total > 0 && r.rec.slamAt > 0), `each look plays once on the fresh finisher (${rows.map((r) => `${r.m} ${r.plays}x ${r.total}`).join(', ')})`);
+    out(`   ${rows.map((r) => `${r.id}: ${r.total} marks, ≤ ${r.rec.wMax} written / ${r.rec.nMax} spawned a frame, ≤ ${r.rec.npMax} alive, peak col x a ${r.rec.hot.toFixed(2)}, on the screen until ${(r.after * DT).toFixed(2)} s after the impact`).join('\n   ')}`);
+    assert(rows.every((r) => r.plays === 1 && r.strikes === 1 && r.total > 100), `each finisher plays its spell once and takes the impact once (${rows.map((r) => `${r.id} ${r.plays}x/${r.strikes}x ${r.total}`).join(', ')})`);
+    assert(rows.every((r) => r.rec.shards === 0 && r.rec.slams === 0), `the spell replaces the shard burst: no shards, no player:slam (${rows.map((r) => `${r.id} ${r.rec.shards}/${r.rec.slams}`).join(', ')})`);
     assert(rows.every((r) => r.rec.bad === 0 && r.rec.nan === 0), `only the hero's micro marks (${FX.FINISHER_GLYPHS}), all finite`);
-    assert(rows.every((r) => r.rec.wMax <= FX.FIN.cells && r.rec.npMax <= FX.FIN.spawned && r.rec.nMax <= FX.FIN.perFrame), `within budget: ≤ ${FX.FIN.cells} written and ≤ ${FX.FIN.perFrame} spawned a frame, ≤ ${FX.FIN.spawned} moving marks alive (peaks ${rows.map((r) => `${r.rec.wMax}/${r.rec.npMax}`).join(', ')})`);
-    assert(rows.every((r) => r.rec.hot <= 0.9), `faint, never a glow: colour x alpha ≤ 0.9 (peak ${Math.max(...rows.map((r) => r.rec.hot)).toFixed(2)})`);
-    assert(rows.every((r) => !r.busy && r.count === 0 && r.after >= 0 && r.after * DT <= 1.2), `each is gone within 1.2 s of the blade meeting the ground and leaves nothing behind (${rows.map((r) => `${r.m} ${(r.after * DT).toFixed(2)} s`).join(', ')})`);
-    // (3) nothing after death: killed while the crescent still hangs
+    assert(rows.every((r) => r.rec.wMax <= FX.FIN.cells && r.rec.npMax <= FX.FIN.spawned && r.rec.nMax <= FX.FIN.perFrame), `within budget: ≤ ${FX.FIN.cells} written, ≤ ${FX.FIN.perFrame} spawned a frame, ≤ ${FX.FIN.spawned} alive (peaks ${rows.map((r) => `${r.rec.wMax}/${r.rec.nMax}/${r.rec.npMax}`).join(', ')})`);
+    assert(rows.every((r) => r.rec.hot <= 0.9), `bright but never a glow: colour x alpha ≤ 0.9 (peak ${Math.max(...rows.map((r) => r.rec.hot)).toFixed(2)})`);
+    assert(rows.every((r) => !r.busy && r.count === 0 && r.after * DT <= 1.0), `each spell is gone within 1 s of the impact and leaves nothing (${rows.map((r) => `${r.id} ${(r.after * DT).toFixed(2)} s`).join(', ')})`);
+    // (4) nothing after death: killed while the lance still shines
     {
-      FX.setFinisher('a');
+      CB.setFinisherLook('lance');
       const G = setup(), rec = watch(G), p = G.game.player, F = p.finisherFx;
       for (let k = 0; k < 5; k++) { p._buffer('light'); for (let i = 0, n = Math.round((k === 4 ? 0.45 : CHAIN_EVERY) / DT); i < n; i++) { G.tick(DT); rec.frame++; } }
       const before = F.lb?.count ?? 0;
@@ -10574,22 +10595,66 @@ async function scenarioFinisherFx() {
       for (let i = 0; i < 60; i++) G.tick(DT);
       assert(before > 0 && !p.alive && (F.lb?.count ?? 0) === 0 && rec.marks === m0, `nothing after death (${before} marks up as he died, ${F.lb?.count ?? 0} after, ${rec.marks - m0} more drawn)`);
     }
-    // (4) its own random stream: the module never calls Math.random
-    const src = fs.readFileSync(`${ROOT}/src/entities/player/finisherFx.js`, 'utf8');
-    assert(!/Math\.random\(\)/.test(src), 'the finisher\'s magic draws on its own stream (no Math.random call)');
-    // (5) the hit-5 clip: a two-handed diagonal, no spin, the chest on the hips within ~30° in its keys
-    {
-      const { SWINGS } = await imp('src/entities/player/swings.js');
-      const C = SWINGS[FX.FINISHER_CLIP], an = CB.LIGHT[4];
-      const twist = Math.max(...C.keys.filter((k) => k.sy != null).map((k) => Math.abs(k.sy)));
-      CB.setLights('fresh');
-      const look = CB.LIGHT[4].anim;
-      assert(look.clip === FX.FINISHER_CLIP && !look.spin && (look.hop ?? 0) <= 0.2 && an.kind === 'slam' && twist <= 0.6 && C.keys.every((k) => k.two == null || k.two === 1),
-        `the fresh finisher is a two-handed diagonal: no spin, a hop ${look.hop} m (≤ 0.2), the chest at most ${((twist * 180) / Math.PI).toFixed(0)}° on the hips in its keys (≤ 34°)`);
+    // (5) the extra reach: the finisher's blade at growing gaps from the wyrm's chest (the step-in assist
+    // off, so the blade's reach is its own); the spell lands ~1 m past the farthest gap the blade lands
+    // at, and not 2 m past it; one hit a swing
+    const AS = CB.REACH.assist, range0 = AS.range;
+    AS.range = 0;
+    try {
+      const G = setup(), { game, input } = G, p = game.player, d = game.dragon, F = p.finisherFx;
+      fightSetup(G);
+      p.debug.god = true;
+      settle(G);
+      const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
+      const chest = () => d.hurtSpheres.filter((h) => h.part === 'body').reduce((a, h) => ((h.x - d.position.x) * fx + (h.z - d.position.z) * fz > (a.x - d.position.x) * fx + (a.z - d.position.z) * fz ? h : a));
+      const trial = (mode, gap) => {
+        CB.setLights(mode);
+        d.hp = d.maxHp; d.posture = 0; run(G, 1.0, { passive: true }); settle(G);
+        p.debug.teleport(d.position.x + fx * 40, d.position.z + fz * 40);
+        aimAt(G);
+        const hits = [];
+        for (let k = 0; k < 5; k++) {
+          if (k === 4) {
+            const c = chest();
+            p.debug.teleport(c.x + fx * (c.r + gap), c.z + fz * (c.r + gap));
+            p.yaw = Math.atan2(c.x - p.position.x, c.z - p.position.z);
+            G.watch = (n, e) => { if (n === 'player:hitDragon' && p.atk?.def === CB.LIGHT[4]) hits.push(e.shards ? 'spell' : 'blade'); };
+          }
+          aimAt(G);
+          input.click(0);
+          run(G, k < 4 ? CHAIN_EVERY : 1.3, { passive: true });
+        }
+        G.watch = null;
+        return hits;
+      };
+      const res = [];
+      for (const id of FN.FINISHER_IDS) {
+        CB.setFinisherLook(id);
+        let gb = -1;
+        const scan = [];
+        for (let gap = 0.5; gap <= 4.01; gap += 0.25) {
+          const h = trial('striker', gap);
+          scan.push(`${gap}:${h.join('+') || '-'}`);
+          if (h.includes('blade')) gb = gap;
+        }
+        out(`   ${id} scan (gap: hits) ${scan.join(' ')}`);
+        const s0 = F.spellHits;
+        const near = trial('striker', gb + 0.75), s1 = F.spellHits, far = trial('striker', gb + 2.0), s2 = F.spellHits, today = trial('new', gb + 0.75);
+        res.push({ id, gb, near, far, today, sNear: s1 - s0, sFar: s2 - s1, sToday: F.spellHits - s2 });
+      }
+      out(`   reach: ${res.map((r) => `${r.id}: blade to ${r.gb.toFixed(2)} m; +0.75 m: ${r.near.join('+') || 'miss'}; +2 m: ${r.far.join('+') || 'miss'}; today's slam at +0.75 m: ${r.today.join('+') || 'miss'} (shards count as 'spell' here)`).join(' · ')}`);
+      assert(res.every((r) => r.gb > 0 && r.near.length === 1 && r.near[0] === 'spell'), `the spell lands once ~1 m past the blade's farthest reach, where the blade misses (${res.map((r) => `${r.id} ${r.near.join('+') || 'miss'}`).join(', ')})`);
+      assert(res.every((r) => r.far.length === 0), `… and not 2 m past it (${res.map((r) => `${r.id} ${r.far.join('+') || 'miss'}`).join(', ')})`);
+      assert(res.every((r) => r.sNear === 1 && r.sFar === 0 && r.sToday === 0), `one spell hit a swing, none 2 m past, never on today's chain (its slam keeps its shards: ${res.map((r) => r.today.join('+') || 'miss').join(', ')})`);
+    } finally {
+      AS.range = range0;
     }
+    // (6) its own random stream: the module never calls Math.random
+    const src = fs.readFileSync(`${ROOT}/src/entities/player/finisherFx.js`, 'utf8');
+    assert(!/Math\.random\(\)/.test(src), 'the finisher spell draws on its own stream (no Math.random call)');
   } finally {
     CB.setLights(lights0);
-    FX.setFinisher(mode0);
+    CB.setFinisherLook(fin0);
   }
   return last;
 }
