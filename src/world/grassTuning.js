@@ -85,8 +85,8 @@ export const GRASS = Object.freeze({
     // band of its strokes (`band` of the cell tall, at the letter's own scale), tumbling at `spin` rad/s,
     // coloured as the blade is at `tip` of its height throughout, `lit` x its light in the air / lying.
     // a0: round 5's a (the house letter, fresh green to straw)
-    a: Object.freeze({ per: 0.5, size: [0.55, 0.75], frag: 0.45, band: [0.18, 0.3], spin: [5, 12], tip: 0.85, lit: [1.6, 1.05] }),
-    a2: Object.freeze({ per: 0.4, size: [0.8, 1.0], frag: 0.25, band: [0.2, 0.34], spin: [3, 8], tip: 0.85, lit: [1.6, 1.05] }),
+    a: Object.freeze({ per: 0.55, size: [0.75, 0.95], frag: 0.35, band: [0.2, 0.34], spin: [4, 10], tip: 0.85, lit: [1.6, 1.05] }),
+    a2: Object.freeze({ per: 0.5, size: [0.5, 0.7], frag: 0.5, band: [0.18, 0.3], spin: [5, 12], tip: 0.85, lit: [1.6, 1.05] }),
     a0: Object.freeze({ per: 0.45 }),
     b: Object.freeze({ per: 0.9 }),
     c: Object.freeze({ per: 1.6, wide: 1.45, fresh2: 1.0 }),
