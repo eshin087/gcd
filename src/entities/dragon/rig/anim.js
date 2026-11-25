@@ -327,8 +327,28 @@ const SHOULDER_Z = A.hipZ + A.chest[2] + A.shoulder[2];
 /** Idle wing rouse: duration (s) and the quiet gaps between rouses (s, cycled). */
 const ROUSE_TIME = 1.4;
 const ROUSE_GAPS = [9.5, 7.8, 11.2, 8.6];
+/** The head held level (see _updateNeck): share of the chest's up in the head's up (it banks a little
+ *  with the body), and the snout's horizontal share over which the leveling fades in (straight down: none). */
+const HEAD_LEVEL_BODY = 0.25;
+/** ... and how far the brow's 'up' leans toward the chest's forward per unit the snout points down. */
+const HEAD_LEVEL_DIVE = 1;
+/** ... the fastest the leveling roll may change (rad/s), the sine of 'up' off the snout over which it
+ *  is trusted (below the first it holds), and the most of it the neck takes (rad; the head the rest). */
+const HEAD_LEVEL_RATE = 14;
+const HEAD_LEVEL_CONF = [0.08, 0.3];
+const HEAD_LEVEL_NECK = Math.PI;
+const HEAD_ROLL_REST = 0.6; // resting, the head turns this much of it on the neck's end by itself
+/** Where the head may look, in the chest's frame (_updateNeck): over a shoulder at most (rad), up or down
+ *  at most, and the pitch (rad) from which a look point's heading stops counting (none past the second). */
+const HEAD_YAW_MAX = 2.35;
+const HEAD_PITCH_MAX = 1.3;
+const HEAD_STEEP = [1.05, 1.4];
+/** The head's nose-up limit (rad), and the look point's own pitch from which it rises to the third. */
+const HEAD_LOOK_UP = [0.6, 0.9, 1.2];
 /** Fastest the head's aim may turn (rad/s) when no hit sphere rides on it (see _updateNeck). */
 const HEAD_AIM_RATE = 11;
+/** ... and when a hit sphere rides on it (pose.headExact). */
+const HEAD_EXACT_RATE = 45;
 /** Waking, the resting S only fades in once the sleeping curl (s.sleep) is below this. */
 const WAKE_REST_SLEEP = 0.12;
 const UP = new THREE.Vector3(0, 1, 0);
@@ -336,6 +356,9 @@ const UP = new THREE.Vector3(0, 1, 0);
 const NECK_FOLLOW = 0.45;
 /** Below this resting blend the driven visible neck swings (s.rest; see _updateNeck). */
 const NECK_SWING_REST = 0.03;
+/** The driven visible neck missing the measured head by more than the first (x SCALE, m) starts to take
+ *  the measured shape, all of it from the second (see _updateNeck). */
+const SWING_MISS = [0.35, 1.0];
 /** Soft-IK fraction for the wing arms (see solveTwoBone). */
 const WING_SOFT_IK = 0.05;
 /** Deepest the tail's rest shape may dive under the ground clearance, in segments (Chain.buildRest sinkMax). */
@@ -365,6 +388,10 @@ export class Rig {
     this._headDir = V(); // last frame's head aim (world), for the turn-rate limit
     this._qNeckEndM = new THREE.Quaternion(); // the measured neck's end rotation (head pinning)
     this._frame = 0; // update count
+    this._lvAng = 0; // last frame's leveling roll of the head (unwrapped; _updateNeck)
+    this._lvAt = -2;
+    this._hYaw = 0; // last frame's head heading in the chest's frame (_updateNeck)
+    this._hYawAt = -2;
     this._swingAt = -2; // last frame the visible neck swung toward the measured head (_updateNeck)
     this._swingP = Array.from({ length: A.neckSegs + 1 }, () => V()); // its points then
     this._visLive = false;
@@ -830,6 +857,16 @@ export class Rig {
         vis.rest[0].copy(B);
         vis.baseAxis.copy(neck.baseAxis);
         vis.solve(E, 4);
+        // a step it cannot follow (a strike's first frame moves the head metres): FABRIK under the bend
+        // limits missed it by up to 3 m, buckling 2 m out to one side, while the pinned head was drawn
+        // at the measured end (a head apart from its neck for a frame or two; ADR-200). The further it
+        // misses, the more it takes the measured shape, which always reaches
+        const miss = vis.p[n].distanceTo(E);
+        if (miss > SWING_MISS[0] * S) {
+          const w = clamp((miss - SWING_MISS[0] * S) / ((SWING_MISS[1] - SWING_MISS[0]) * S), 0, 1);
+          for (let i = 1; i <= n; i++) vis.p[i].lerp(neck.p[i], w);
+          vis.enforce();
+        }
       }
       for (let i = 0; i <= n; i++) this._swingP[i].copy(vis.p[i]);
       this._swingAt = this._frame;
@@ -846,6 +883,28 @@ export class Rig {
     const dir = this._v[2].subVectors(lv, hc.p[n]);
     if (dir.lengthSq() < 1e-6) dir.copy(last);
     dir.normalize();
+    // where a neck can look, in the chest's frame (ADR-200): over a shoulder at most HEAD_YAW_MAX,
+    // and a foe crossing straight behind does not swap the shoulder it looks over; a look point nearly
+    // straight above or below (the hero under a wheeling flight, the meteors' sky overhead) has no
+    // heading worth following, so the last one holds. (The head looked ~180° back over its own spine
+    // and, as a target passed under or overhead, swung its heading round in a few frames.)
+    {
+      const c = this._v[8].copy(dir).applyQuaternion(this._qChestInv);
+      let yaw = Math.atan2(c.x, c.z), pitch = Math.atan2(c.y, Math.hypot(c.x, c.z));
+      if (!snap && this._hYawAt === this._frame - 1) {
+        const k = clamp((HEAD_STEEP[1] - Math.abs(pitch)) / (HEAD_STEEP[1] - HEAD_STEEP[0]), 0, 1);
+        yaw = this._hYaw + angleDiff(this._hYaw, yaw) * k;
+        if (Math.abs(yaw) > Math.PI) yaw -= Math.sign(yaw) * TAU;
+        if (Math.abs(yaw) > HEAD_YAW_MAX) yaw = (this._hYaw < 0 ? -1 : 1) * HEAD_YAW_MAX;
+      } else yaw = clamp(yaw, -HEAD_YAW_MAX, HEAD_YAW_MAX);
+      pitch = clamp(pitch, -HEAD_PITCH_MAX, HEAD_PITCH_MAX);
+      if (Number.isFinite(yaw + pitch)) {
+        this._hYaw = yaw;
+        this._hYawAt = this._frame;
+        const cp = Math.cos(pitch);
+        dir.set(Math.sin(yaw) * cp, Math.sin(pitch), Math.cos(yaw) * cp).applyQuaternion(qChest);
+      }
+    }
     if (under > 0.001) {
       // forward (chest frame) and down instead of craning back toward a target under the body
       const fw = this._v[3].set(0, -0.35, 1).normalize().applyQuaternion(qChest);
@@ -856,7 +915,12 @@ export class Rig {
       // a few degrees nose-down; at rest the combat stance glares down at its foe (REST_POSE)
       const ld = s.lookDown + Math.max(0, REST_POSE.lookDown - s.lookDown) * s.rest;
       const dip = (0.05 + ((this.m.build?.rest?.headDip ?? REST_POSE.headDip) - 0.05) * s.rest) * awakeW;
-      const pitch = clamp(Math.atan2(dir.y, h), -ld, 0.6) - dip;
+      // (at most 0.6 rad nose-up, unless the look point is set high on purpose: the meteors' roar to
+      // the sky; ADR-200. Its look 40 m up but behind the snout used to swing the head round to face
+      // backward, which is what lifted it; a forward head holds the roar now)
+      const raw = Math.atan2(dir.y, h);
+      const up = HEAD_LOOK_UP[0] + clamp((raw - HEAD_LOOK_UP[1]) / (HEAD_LOOK_UP[2] - HEAD_LOOK_UP[1]), 0, 1) * (HEAD_LOOK_UP[2] - HEAD_LOOK_UP[0]);
+      const pitch = clamp(raw, -ld, up) - dip;
       const cp = Math.cos(pitch) / h;
       dir.set(dir.x * cp, Math.sin(pitch), dir.z * cp);
     }
@@ -875,25 +939,65 @@ export class Rig {
     // frame. Attacks whose hit spheres ride on the snout or the mouth set pose.headExact for their
     // active frames (the bite, the combo's lunge, the charge, the breath, the fireball's spit)
     const hd = this._headDir;
-    if (!snap && !pose.headExact && hd.lengthSq() > 0.5) constrainDir(dir, hd, HEAD_AIM_RATE * dt);
+    // (exact, still at most HEAD_EXACT_RATE: a bite's first frame turned the head alone 75° as its
+    // look jumped onto the hero; two frames now, the snout on its mark from the next; ADR-200)
+    if (!snap && hd.lengthSq() > 0.5) constrainDir(dir, hd, (pose.headExact ? HEAD_EXACT_RATE : HEAD_AIM_RATE) * dt);
     hd.copy(dir);
     aimJoint(m.head, dir, qEnd, this._qHead);
-    // resting, the head is held level about its own snout: the minimal rotation down a neck curved
-    // toward a foe far off to one side rolled it up to ~40° (a tilted, broken-looking head)
-    const lv0 = s.rest * awakeW * (1 - limp);
+    // the head is held level about its own snout (the brow up, toward the sky and a little toward the
+    // chest's back), awake, in every move: the minimal rotation down a curved neck carries the roll
+    // the neck's bends add up to, ~40° resting with a foe off to one side, and 60 - 130° in a flight's
+    // climb or turn (an upside-down head; ADR-200). The brow's 'up' leans along the snout's heading as
+    // it points down (a diving head keeps its brow toward where it looks) and back as it points up, so
+    // it never loses its meaning. Driven, the neck takes the same roll spread down
+    // its joints (each turns about its own bone: no point moves), so the head never twists on the
+    // neck's end. The angle is unwrapped against last frame's: a head ~180° off level swapped between
+    // +180 and -180 and spun the neck's joints 50° a frame
+    const lv0 = awakeW * (1 - limp);
+    let leveled = false;
     if (lv0 > 1e-3) {
       const ax = this._v[3].set(1, 0, 0).applyQuaternion(this._qHead);
-      const lvl = this._v[4].crossVectors(UP, dir);
-      if (lvl.lengthSq() > 1e-4) {
-        lvl.normalize();
-        // signed angle from the head's side axis to the level one, about the snout
-        const ang = Math.atan2(this._v[5].crossVectors(ax, lvl).dot(dir), ax.dot(lvl));
-        if (Number.isFinite(ang)) {
-          this._qHead.premultiply(this._q[8].setFromAxisAngle(dir, ang * lv0));
-          m.head.quaternion.copy(this._q[9].copy(qEnd).invert()).multiply(this._qHead);
+      const up = this._v[6].set(0, 1, 0).applyQuaternion(qChest).multiplyScalar(HEAD_LEVEL_BODY).add(UP);
+      // (along the heading the head holds in the chest's frame, which a look point under or over it
+      // does not swing round: the chest's forward leaned a head glancing back and down against the sky,
+      // and the snout's own heading spun as a wheeling flight's snout pointed down past its foe)
+      const hdg = this._v[7].set(Math.sin(this._hYaw), 0, Math.cos(this._hYaw)).applyQuaternion(qChest);
+      hdg.y = 0;
+      if (hdg.lengthSq() > 1e-8) up.addScaledVector(hdg.normalize(), -dir.y * HEAD_LEVEL_DIVE);
+      const lvl = this._v[4].crossVectors(up, dir);
+      const ul = up.length(), ll = lvl.length();
+      const live = !snap && this._lvAt === this._frame - 1;
+      // how well 'up' says which way level is (its angle off the snout): where it lines up with the
+      // snout it says nothing, and the correction holds what it had
+      const conf = this._lvConf = ul > 1e-6 ? clamp((ll / ul - HEAD_LEVEL_CONF[0]) / (HEAD_LEVEL_CONF[1] - HEAD_LEVEL_CONF[0]), 0, 1) : 0;
+      let st = live ? this._lvAng : 0;
+      if (ll > 1e-6) {
+        lvl.multiplyScalar(1 / ll);
+        // signed angle from the head's side axis to the level one, about the snout; the branch nearest
+        // last frame's, reached at most HEAD_LEVEL_RATE: a reference that swings round (the snout
+        // passing under 'up') rolls the head over through frames, never in one
+        const raw = Math.atan2(this._v[5].crossVectors(ax, lvl).dot(dir), ax.dot(lvl));
+        if (!live) st = raw;
+        else {
+          const step = angleDiff(st, raw), max = HEAD_LEVEL_RATE * dt;
+          st += clamp(step, -max, max) * conf;
         }
       }
+      if (!Number.isFinite(st)) st = 0;
+      this._lvAng = st;
+      this._lvAt = this._frame;
+      const ang = st * lv0;
+      if (Math.abs(ang) > 1e-5) {
+        this._qHead.premultiply(this._q[8].setFromAxisAngle(dir, ang));
+        // (resting, the neck keeps its own roll up to HEAD_ROLL_REST: the stance's S was drawn with it;
+        // past that it takes the rest, or a head glancing back over a shoulder sat 150 - 175° twisted on
+        // the neck's end; a neck twists so far)
+        const nk = clamp(ang - clamp(ang, -HEAD_ROLL_REST, HEAD_ROLL_REST) * s.rest, -HEAD_LEVEL_NECK, HEAD_LEVEL_NECK);
+        if (Math.abs(nk) > 1e-5) vis.apply(qNeckBase, this._qNeckEnd, nk);
+        leveled = true;
+      }
     }
+    if (leveled && !pin) m.head.quaternion.copy(this._q[9].copy(this._qNeckEnd).invert()).multiply(this._qHead);
     if (pin) {
       // re-express the measured head under the shown neck: same world rotation, joint placed on the
       // measured end (local offset from the shown last segment, in model units)
