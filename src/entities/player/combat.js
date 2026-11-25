@@ -4,6 +4,12 @@ import { DIM } from './model.js';
 import { HEAVY_BLINK } from './heaviesBlink.js';
 import { LAST_HIT_BLINK } from './lastHits.js';
 import { SPECIAL_BLINK } from './specialsBlink.js';
+import { LIGHT_STEEL_A } from './steelChainA.js';
+import { LIGHT_STEEL_B, SPECIAL_STEEL_B } from './steelChainB.js';
+import { HEAVY_STEEL_C, SPECIAL_STEEL_C } from './steelHeaviesC.js';
+import { HEAVY_STEEL_D } from './steelHeaviesD.js';
+import { SPECIAL_STEEL_E } from './steelSpecialsE.js';
+import { STEEL } from './steelStance.js';
 
 // Attack data + the blade sweep used for hit detection. No stamina: pacing comes from windup /
 // recovery only (docs/COMBAT.md). Moveset (ADR-041; owner concept sheet "Combat key poses"):
@@ -142,8 +148,8 @@ export const LIGHT = [
  * stronger one-handed stroke, a different one each time, a plain blade hit with no shards; the five
  * heavy branches too: heaviesBlink.js).
  */
-export const LIGHTS_IDS = ['new', 'old', 'fresh', 'blink'];
-export const LIGHTS_NAMES = { new: 'weighted', old: 'before', fresh: 'brand new', blink: 'instant cuts' };
+export const LIGHTS_IDS = ['new', 'old', 'fresh', 'blink', 'steel'];
+export const LIGHTS_NAMES = { new: 'weighted', old: 'before', fresh: 'brand new', blink: 'instant cuts', steel: 'steel' };
 const LIGHT_OLD = [
   {
     anim: { kind: 'clip', clip: 'fallingCutOld' },
@@ -184,6 +190,15 @@ const LIGHT_BLINK = [
   { anim: { kind: 'clip', clip: 'blinkThrust' }, variants: [] },
   LAST_HIT_BLINK, // (lastHits.js: one of five strokes, never the same one twice running)
 ];
+/** `?lights=steel` (ADR-202; the owner, 2026-11-25, on the instant cuts: "this all still looks bad",
+ *  and a reference film of a one-handed straight sword: "both arm angles, placement, animation etc is
+ *  exactly what i want so mirror this"): every attack's poses and arm paths follow that footage, on
+ *  this game's clock, with today's curved trail. Hits 1-5 (steelChainA.js, steelChainB.js), the five
+ *  heavy branches (steelHeaviesC.js, steelHeaviesD.js), the sprint slash, the roll cut, the charged
+ *  heavy, the execution and One Breath (SPECIAL_STEEL), and how he stands (steelStance.js). */
+const LIGHT_STEEL = [...LIGHT_STEEL_A, ...LIGHT_STEEL_B];
+const HEAVY_STEEL = [...HEAVY_STEEL_C, ...HEAVY_STEEL_D];
+const SPECIAL_STEEL = { ...SPECIAL_STEEL_B, ...SPECIAL_STEEL_C, ...SPECIAL_STEEL_E };
 /** What a look set may change on an attack def (setLights): the clip it plays, its other looks, and how
  *  its contact is drawn (`contact`, `glint`: a thrust turned into a slash is drawn as a slash). Never a
  *  number of the hit. A look gives the fields it changes; `null` clears one (`glint: null`). */
@@ -198,19 +213,23 @@ function wear(def, base, look) {
 }
 const LIGHT_NEW = LIGHT.map(lookOf);
 let lightsNow = 'new';
-/** The chain's look now: 'new' (the default), 'old', 'fresh' or 'blink'. */
+/** The chain's look now: 'new' (the default), 'old', 'fresh', 'blink' or 'steel'. */
 export const lightsMode = () => lightsNow;
 /** Switch the chain's look ('new' | 'old' | 'fresh' | 'blink'); false for anything else. 'blink' also
  *  swaps the five heavy branches' `anim` to its instant cuts (HEAVY_BLINK); every other look keeps
  *  today's heavies. Only the looks change: every number of every hit and heavy stays. */
 export function setLights(mode) {
   if (!LIGHTS_IDS.includes(mode)) return false;
-  const blink = mode === 'blink';
-  const src = mode === 'old' ? LIGHT_OLD : mode === 'fresh' ? LIGHT_FRESH : blink ? LIGHT_BLINK : null;
+  const blink = mode === 'blink', steel = mode === 'steel';
+  const src = mode === 'old' ? LIGHT_OLD : mode === 'fresh' ? LIGHT_FRESH : blink ? LIGHT_BLINK : steel ? LIGHT_STEEL : null;
+  const hv = blink ? HEAVY_BLINK : steel ? HEAVY_STEEL : null;
+  const sp = blink ? SPECIAL_BLINK : steel ? SPECIAL_STEEL : null;
   LIGHT.forEach((L, i) => wear(L, LIGHT_NEW[i], src ? src[i] : null));
-  HEAVY.forEach((H, i) => wear(H, HEAVY_NEW[i], blink ? HEAVY_BLINK[i] : null));
-  // (the sprint slash, the roll cut, the charged cleave, One Breath, the execution: specialsBlink.js)
-  for (const k in SPECIAL_DEFS) wear(SPECIAL_DEFS[k], SPECIAL_NEW[k], blink ? SPECIAL_BLINK[k] : null);
+  HEAVY.forEach((H, i) => wear(H, HEAVY_NEW[i], hv ? hv[i] : null));
+  // (the sprint slash, the roll cut, the charged cleave, One Breath, the execution: specialsBlink.js,
+  // the steel set's SPECIAL_STEEL)
+  for (const k in SPECIAL_DEFS) wear(SPECIAL_DEFS[k], SPECIAL_NEW[k], sp ? sp[k] : null);
+  STEEL.on = steel; // (how he stands: steelStance.js, read by anim.js stand())
   lightsNow = mode;
   return true;
 }
@@ -348,7 +367,7 @@ const SPECIAL_NEW = Object.fromEntries(Object.keys(SPECIAL_DEFS).map((k) => [k, 
 {
   // (after every def a look set touches)
   const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('lights') : null;
-  if (q === 'old' || q === 'fresh' || q === 'blink') setLights(q);
+  if (q === 'old' || q === 'fresh' || q === 'blink' || q === 'steel') setLights(q);
 }
 
 export const CHARGE = {

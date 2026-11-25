@@ -1403,7 +1403,7 @@ export class Lab {
         setLights(m);
         this._syncCutBtns();
       });
-      b.title = m === 'old' ? '?lights=old: the chain before the weight pass' : m === 'fresh' ? '?lights=fresh: a brand-new chain (new sword paths)' : m === 'blink' ? '?lights=blink: instant cuts, each with a slash line on its path; the heavies too' : 'the weighted chain (the default)';
+      b.title = m === 'old' ? '?lights=old: the chain before the weight pass' : m === 'fresh' ? '?lights=fresh: a brand-new chain (new sword paths)' : m === 'blink' ? '?lights=blink: instant cuts, each with a slash line on its path; the heavies too' : m === 'steel' ? '?lights=steel: every attack and the stance after the reference footage' : 'the weighted chain (the default)';
       return { m, el: b };
     });
     // the bigger-arc strengths (swings.js ARCS, ?arcs=a|b|c: a prototype for the owner to pick from), live

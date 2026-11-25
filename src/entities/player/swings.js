@@ -101,6 +101,11 @@ import { LIGHTS_BLINK } from './lightsBlink.js';
 import { HEAVIES_BLINK } from './heaviesBlink.js';
 import { LAST_HITS_BLINK } from './lastHits.js';
 import { SPECIALS_BLINK } from './specialsBlink.js';
+import { STEEL_CHAIN_A } from './steelChainA.js';
+import { STEEL_CHAIN_B } from './steelChainB.js';
+import { STEEL_HEAVIES_C } from './steelHeaviesC.js';
+import { STEEL_HEAVIES_D } from './steelHeaviesD.js';
+import { STEEL_SPECIALS_E } from './steelSpecialsE.js';
 
 /** The free hand's places (a key's `fh`; the key's own fields win): where it is (`l`), its elbow
  *  (`lp`), where the sword fingers point (`ld`), the palm (`pn`) and the sword wrist (`lk`). */
@@ -643,4 +648,10 @@ export const SWINGS = {
   ...HEAVIES_BLINK,
   ...LAST_HITS_BLINK,
   ...SPECIALS_BLINK,
+  // ---- the steel look set (?lights=steel, ADR-202: the owner's reference footage, pose for pose) ----
+  ...STEEL_CHAIN_A,
+  ...STEEL_CHAIN_B,
+  ...STEEL_HEAVIES_C,
+  ...STEEL_HEAVIES_D,
+  ...STEEL_SPECIALS_E,
 };

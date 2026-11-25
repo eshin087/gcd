@@ -6352,7 +6352,7 @@ async function scenarioHeroLife() {
       if (C.line === 'point') continue; // a thrust has no plane
       // (the instant cuts, ?lights=blink: the blade is at the coil, then across, then at the finish; it does not
       // whip through a diagonal, and its line is measured on the blade's own path by `blinkslash`)
-      if (/^(blink|last)[A-Z]/.test(name)) continue; // (lastHits.js: the last hit's strokes)
+      if (/^(blink|last|steel)[A-Z]/.test(name)) continue; // (lastHits.js: the last hit's strokes; the steel set follows a reference, its own scenarios: steel*)
       const ks = C.keys.filter((k) => Array.isArray(k.a) && k.u > 1.001 && k.u <= 2.001);
       const steep = Math.max(...ks.map((k) => Math.abs(k.a[1])));
       // the key where the blade is nearest to pointing ahead: its elevation is the cut's height there
@@ -8384,7 +8384,7 @@ async function scenarioHeroLights() {
   setLights('old');
   const sigOld = sig(), clipsOld = clipsOf();
   setLights('new');
-  assert(sigNew === sigOld && LIGHTS_IDS.join() === 'new,old,fresh,blink' && lightsMode() === 'new' && !setLights('x') && lightsMode() === 'new',
+  assert(sigNew === sigOld && LIGHTS_IDS.join() === 'new,old,fresh,blink,steel' && lightsMode() === 'new' && !setLights('x') && lightsMode() === 'new',
     'the chain\'s looks switch (setLights new / old / fresh / blink) and nothing else: every hit\'s timing, damage, reach, tells and weight are the same in both');
   assert(clipsOld.every((c) => SWINGS[c]) && clipsNew.every((c) => SWINGS[c]) && clipsOld.every((c, i) => c !== clipsNew[i]) && clipsOld.includes('drawCut') && clipsOld.includes('slam'),
     `?lights=old plays the clips before the pass (${[...new Set(clipsOld)].join(', ')}), the default the reworked ones (${[...new Set(clipsNew)].join(', ')})`);
@@ -8402,7 +8402,7 @@ async function scenarioHeroLights() {
     G.tick(DT);
     input.tap('F1');
     G.tick(DT);
-    assert(btns.length === 4 && newOn && oldOk && lightsMode() === 'new' && LIGHT[0].anim.clip === 'fallingCut', `the Lab's \`lights\` row: weighted / before / brand new / instant cuts, live (${btns.length} buttons)`);
+    assert(btns.length === 5 && newOn && oldOk && lightsMode() === 'new' && LIGHT[0].anim.clip === 'fallingCut', `the Lab's \`lights\` row: weighted / before / brand new / instant cuts / steel, live (${btns.length} buttons)`);
   }
 
   // (2) the sampler: one frame in the root's frame (metres, unscaled), after a tick
@@ -13110,6 +13110,66 @@ async function scenarioBlinkSpecials() {
   return last;
 }
 
+// ================================================================== `steelstance`: the steel look set, how he stands (steelStance.js)
+// ?lights=steel (ADR-202). Filled by the part's author.
+async function scenarioSteelStance() {
+  out('\n== scenario STEELSTANCE (?lights=steel: how he stands (steelStance.js)) ==');
+  const CB = await imp('src/entities/player/combat.js');
+  const G = build();
+  assert(CB.LIGHTS_IDS.includes('steel'), 'the steel look set is registered');
+  return G;
+}
+
+// ================================================================== `steela`: the steel look set, the chain's hits 1-3 (steelChainA.js)
+// ?lights=steel (ADR-202). Filled by the part's author.
+async function scenarioSteelA() {
+  out('\n== scenario STEELA (?lights=steel: the chain, hits 1-3 (steelChainA.js)) ==');
+  const CB = await imp('src/entities/player/combat.js');
+  const G = build();
+  assert(CB.LIGHTS_IDS.includes('steel'), 'the steel look set is registered');
+  return G;
+}
+
+// ================================================================== `steelb`: the steel look set, the chain's hits 4-5, the sprint slash, the roll cut (steelChainB.js)
+// ?lights=steel (ADR-202). Filled by the part's author.
+async function scenarioSteelB() {
+  out('\n== scenario STEELB (?lights=steel: the chain, hits 4-5, the sprint slash, the roll cut (steelChainB.js)) ==');
+  const CB = await imp('src/entities/player/combat.js');
+  const G = build();
+  assert(CB.LIGHTS_IDS.includes('steel'), 'the steel look set is registered');
+  return G;
+}
+
+// ================================================================== `steelc`: the steel look set, the lone heavy, the heavy after one light, the charged heavy (steelHeaviesC.js)
+// ?lights=steel (ADR-202). Filled by the part's author.
+async function scenarioSteelC() {
+  out('\n== scenario STEELC (?lights=steel: the lone heavy, the heavy after one light, the charged heavy (steelHeaviesC.js)) ==');
+  const CB = await imp('src/entities/player/combat.js');
+  const G = build();
+  assert(CB.LIGHTS_IDS.includes('steel'), 'the steel look set is registered');
+  return G;
+}
+
+// ================================================================== `steeld`: the steel look set, the heavies after two, three and four lights (steelHeaviesD.js)
+// ?lights=steel (ADR-202). Filled by the part's author.
+async function scenarioSteelD() {
+  out('\n== scenario STEELD (?lights=steel: the heavies after two, three and four lights (steelHeaviesD.js)) ==');
+  const CB = await imp('src/entities/player/combat.js');
+  const G = build();
+  assert(CB.LIGHTS_IDS.includes('steel'), 'the steel look set is registered');
+  return G;
+}
+
+// ================================================================== `steele`: the steel look set, the execution and One Breath (steelSpecialsE.js)
+// ?lights=steel (ADR-202). Filled by the part's author.
+async function scenarioSteelE() {
+  out('\n== scenario STEELE (?lights=steel: the execution and One Breath (steelSpecialsE.js)) ==');
+  const CB = await imp('src/entities/player/combat.js');
+  const G = build();
+  assert(CB.LIGHTS_IDS.includes('steel'), 'the steel look set is registered');
+  return G;
+}
+
 // ================================================================== `blinklast`: the instant chain's last hit: a stronger light stroke, a different one each time (lastHits.js)
 // The owner (2026-11-25): "make the last 5th attack just be a more stronger light attack but have it always be
 // a different stroke to make it look dynamic and random". Five one-handed strokes on five lines; the animator
@@ -16238,6 +16298,12 @@ const SCENARIOS = {
   blinkheavies: scenarioBlinkHeavies,
   blinkspecials: scenarioBlinkSpecials,
   blinklast: scenarioBlinkLast,
+  steelstance: scenarioSteelStance,
+  steela: scenarioSteelA,
+  steelb: scenarioSteelB,
+  steelc: scenarioSteelC,
+  steeld: scenarioSteelD,
+  steele: scenarioSteelE,
   blinksolve: scenarioBlinkSolve,
   armaudit: scenarioArmAudit,
   herohand: scenarioHeroHand,

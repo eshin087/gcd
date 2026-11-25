@@ -3,6 +3,7 @@ import { clamp, lerp, smoothstep, damp, easeOutCubic, wrapAngle, TAU } from '../
 import { DIM, BODY, HAIR_CLUSTERS, HERO_SCALE, sheetOffset } from './model.js';
 import { SWINGS, FH, ARCS, widenArcs } from './swings.js';
 import { atEase, fencerGuard } from './stances.js';
+import { STEEL, steelStand } from './steelStance.js';
 import { idlesOld, easeArms, guardArms, newRests, tickRests, pickEase, actStart, lowRest, toLowRest, trailing, EASE_HABITS, EASE_TRICKS, FIGHT_ACTS, EASE_RESTS, FIGHT_RESTS, IDLES } from './idles.js';
 
 // Procedural animation for the Wanderer, keyed to the owner's concept sheets ("Movement" / "Combat
@@ -346,6 +347,8 @@ const SCR_FIGHT = new Float32Array(N);
 export function stand(p, A) {
   guard(p, A);
   if (!A.freeHand) return;
+  // (?lights=steel, ADR-202: one standing pose after the owner's reference, steelStance.js)
+  if (STEEL.on && steelStand(p, P, A)) return;
   const f = clamp(fin(A.fightW), 0, 1);
   // (ADR-186, idles.js: the arms in one of several rests over each stance; `?idles=old` the belt)
   const rests = !idlesOld();
