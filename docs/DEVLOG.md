@@ -5,6 +5,43 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-25 — The dragon print beyond the ground: grass, floors, props, trees, four upgrades, flash footprints (prototype; branch `render/ground-looks`; planned by the lead, four Opus agents built)
+
+**Owner** (picked look B of the four): "i really like the dragon ground look ... it allows the ground to look 3d, can
+help with background shadows. can we try this art style on not just the ground and things like the stone and other
+textures? ... 3d looking grass with this style and still incorporate the player walking around and the grass
+bending ... and the player cutting" (with PR #124's wake); Ashfall's footprints "very ugly ... last too long ...
+cool subtle matrix flash footprints"; "ways to make the dragon ground art look even cooler ... show me". Asked:
+both grass builds; floors, props, trees and every level's ground; matrix green; all four upgrades.
+
+**What** (every piece behind its own switch, default off; `?dragon=1` = all at 'a'):
+- The core `render/dragonPrint.js` (lattice, ramp `.:-=17402#%8@`, `DP_CELL` 0.135 x 0.25 m, `dragonLook`); look b of
+  `world/ground.js` rewired onto it with hooks. The branch merges #124 (the wake) for the grass.
+- Grass `?dgGrass=a|a2|b|c` (`world/dragonGrass.js`; the wake's GLSL shared once as `TRAIL_BEND_GLSL`): a printed
+  tufts (`\|/` over digit roots, laid `= ~`, mown `. :`), b standing digit blades (the 3D blades on a lattice, each a
+  column of lit digits, bend and cut as today), a2 / c extras. With any option the cut tops no longer fly (the green
+  chips do); a / a2 / c also mow the scorch map's A from the arc.
+- Floors `?dpFloor=a|b` (`render/dragonFloor.js` in `createCarvedGlyphMaterial`): every level, a lattice seen along the
+  camera so slab walls sit on the ground's lattice, a lit lip one cell wide (`aRim`, `addSlabRims`), crack seams.
+- Props / trees `?dpProps=a|b` `?dpTrees=a|b` (`render/dragonProps.js`, the art pass's prop branch): the ground's
+  digits and light law in the art pass, relief (chisel, cracks, bark, leaf clumps), no camera key light.
+- Upgrades `?dpCloud= ?dpContact= ?dpRipple= ?dpRidge=` (a | b; `render/dragonPrintFx.js`, `world/groundFx.js`,
+  `groundFxTuning.js`): cloud shadows on the one wind, contact rings (baked from colliders and pieces, fighters as
+  uniforms), a re-print ring from `world.groundBlow`, ridge strokes on lit crests.
+- Footprints `?prints=a` (`render/dragonStep.js`, STEPS.flash): on a dragon-printed floor the cells under the foot turn
+  to code, flash white-green heel to toe and are gone in 0.75 s; elsewhere code letters as particles.
+
+**Tests.** New suites `groundfx`, `dragonProps`, `dggrass`, `dpfloor` (in `npm test`); each piece's agent ran world /
+life / glyphcheck. Frame cost (shared, noisy machine): ground b ~+0.15 ms over today at 1440p, upgrades all on +0.43
+there, floors ~+0.2, grass a ~+0.1 / b ~+0.2, props up to +0.3 where crowns fill the frame.
+
+**Open.** The owner's picks per piece. Weak by their builders' own account: the grass's wake and stubble read quietly;
+Cinderwood's flagstones lose their crisp outline; the props / trees print darker than today (a second round is on it:
+Ashfall's boulders and dead trees printed as outlines only); ridge strokes are faint. Docs (STYLE, ARCHITECTURE),
+CHANGELOG and an ADR follow the picks.
+
+---
+
 ## 2026-11-24 — Four ground looks to pick from (prototype; branch `render/ground-looks`)
 
 **Owner:** "i dont like this ground artstyle/design as it doesn't seem like ascii ground ... think of 4 variations".
