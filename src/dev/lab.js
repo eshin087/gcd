@@ -1219,6 +1219,12 @@ export class Lab {
       STREAK_FX.chain = !STREAK_FX.chain;
       this._syncCutBtns();
     });
+    this.ui.figureBtn = button(stkGrid, `figure: ${STREAK_FX.figure}`, () => {
+      const L = STREAK_FX.figures;
+      STREAK_FX.figure = L[(L.indexOf(STREAK_FX.figure) + 1) % L.length];
+      this._syncCutBtns();
+    });
+    this.ui.figureBtn.title = "the shape the flurry's chained passes draw (?figure=): 'any' a different one each flurry, or one pinned (star, zigzag, cage, spiral, cross). Read as a flurry starts";
     this.ui.chainBtn.title = "the flurry's chain (?chain=0 off): each pass starts where the last ended (A -> B -> C), every slash on the path he ran, letter dust on the last blow; off = the ring-teleport paths, the crescents and the 'A' shards as before. Read as a flurry starts";
     // the time rip (player/timeRip.js; ?rip=): cycles off / tear / strip / ghosts / negative, read at every cut
     this.ui.ripBtn = button(stkGrid, `rip: ${ripMode()}`, () => {
@@ -1377,6 +1383,7 @@ export class Lab {
     for (const { s, el: b } of this.ui.streakBtns ?? []) setClass(b, 'on', STREAK_FX.on[s] === true);
     if (this.ui.tempoBtn) setClass(this.ui.tempoBtn, 'on', STREAK_FX.tempo !== false);
     if (this.ui.chainBtn) setClass(this.ui.chainBtn, 'on', STREAK_FX.chain !== false);
+    if (this.ui.figureBtn) this.ui.figureBtn.textContent = `figure: ${STREAK_FX.figure}`;
     if (this.ui.ripBtn) {
       this.ui.ripBtn.textContent = `rip: ${ripMode()}`;
       setClass(this.ui.ripBtn, 'on', ripMode() !== 'off');
