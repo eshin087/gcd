@@ -5612,3 +5612,48 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   5. **The time rip** (`player/timeRip.js`, `game.fx.rip`, `?rip=`): a cut changes the picture along its own line, never beyond a thin band, never its colour. Four looks were built and filmed side by side; **the owner picked `strip`** (three frames: the letters 3 cells either side print shifted 4 / 3 / 1 cells along the cut, each side the other way, a steel seam on the line) and it is the default; `tear`, `ghosts`, `negative` stay behind the switch. It hooks in through `player:flurry` / `player:flurryHit` / `player:flurryEnd` and `flurry.lines`, a band in the ASCII pass (`uCutN`, early-out when idle), steel in the fire field.
 - **Turned down:** a fan figure (it cannot stay chained without long runs back round); ghosts through the dodge afterimage's single standing copy (one figure at a time); the four rips' first round on film (negative as flat white blocks, ghosts as a wall of digits, strip too small to see at speed), fixed before the pick.
 - **Consequences:** no new event (`player:flurry` gains `figure`); no new draw call; the rip's idle cost is one branch a pixel in the ASCII pass. Seeded fights that hold a flurry replay differently with each switch: city `win` replays with the chain off, integ `pressure` and `storm` with the star, all commented. On film the figures are 100 - 200 px across at the duel camera and the strip lasts three frames: both to be judged in play and on the phone.
+
+## ADR-186 — The hero's idles: rests he moves between, habits with both arms, a trick every few; the guard hand off the belt (2026-11-24)
+
+- **Context:** the owner: "make the main character and several idle positions instead of having the same holding his
+  left hand on his hip all the time. i want him to move both his arms around naturally and doing cool sword tricks
+  during idle". Asked, they chose a MIX (mostly natural habits moving both arms, a flashy trick every few cycles) and
+  BOTH stances (the fight tighter: the hand off the belt, small guard shifts, no tricks that leave him open). ADR-114
+  gave him two stances, both with the free hand on the belt; ADR-047's idle life played six actions at ease only.
+  On record: the owner judges anatomy and naturalness, measured (elbows, the wrist, gaps, pops), from the game camera;
+  the hero's look is not changing, only his motion. Built beside two other sessions (run arm ADR-187, lights ADR-188)
+  in their own regions of `anim.js`.
+- **Decision:**
+  1. **Rests** (`player/idles.js`): the arms' pose over each stance, changed now and then (a slow smootherstep, the
+     blade by `dirLerp` with its own memory). At ease `loose` (the free arm hanging, the hand open), `hilt` (both
+     hands low on the hilt, the free palm on the sword wrist, the point to the grass), `trail` (the blade low behind
+     his right side), `belt` (the old hand on the belt, now one rest of four). In the guard the sword arm and the
+     blade stay `fencerGuard`'s and the free hand leaves the belt: `point` (sword fingers at the foe), `eye` (beside
+     his face), `hand` (an open guard hand), `low` (floating by the hip).
+  2. **Habits** on ADR-047's machinery (`FIDGETS`, `_idleLife`; no second system): at ease four new ones with both
+     arms (re-grip, the shoulders, flex the free hand, brush the coat) and the old look and inspect; in the guard
+     five small ones (grip, guard shift, loosen, beckon, a flick of the point), which play also locked on (the old
+     rule played nothing in a fight).
+  3. **Tricks** every 3 - 4 actions at ease, never in the guard: the wrist spin, the figure-eight (out to his right,
+     the point drawing an 8 ahead, never pointing back at him), the salute (the blade upright before his right
+     cheek, the palm over the fist, a bow, a flourish), the chiburi flick, the reverse-grip flip.
+  4. **No whips out of any of it** (the bar: the stance before, bare and with its old actions): an action that
+     swings the blade starts only from a low rest; a cut lets such an action go over 0.26 s; at ease a block /
+     parry / drink / charge out of one, or out of the trail, enters over at least 0.24 s (their own 0.08 - 0.12 s
+     took a far blade the way behind his head through the wrist's limit). Visual only; in a fight (no tricks, no
+     trail) nothing about those entries changes.
+  5. **Left out, measured:** the blade carried on the shoulder as a rest (the elbow at the fold limit, the blade in
+     the torso, 0.7 - 1.4 m a frame out of it); the guard hand over his head (0.4 m a frame into a block); the pass
+     behind his back to the other hand (the sword is the right hand's alone in `apply()`; out of it a block's entry
+     jumped 1.5 m); the old lean on the pommel (1.4 m a frame into a light, as before).
+  6. `?idles=old` (live: `setIdles`, the Lab's `idles` row) is the belt and the six old actions, unchanged; the Lab's
+     `idle ▸` row plays any rest or action now (`anim.playIdle`, `anim.setRest`).
+- **Status:** built; filmed for the owner (before | after: exploring, the fight, the cuts); their picks pending.
+- **Consequences:** the `heroidles` scenario holds every rest and action to a body's range (elbows, the sword wrist
+  under `WRIST_BACK` and the point's floor), the drawn blade ≥ 8 cm off his body (≥ 10 in a rest) and out of the
+  coat, the point off the grass, the free hand out of him, no pops, every move from every rest and from inside every
+  action within the stance before, the schedule (tricks every few at ease, none in the guard, the rests changing),
+  and `?idles=old`. `herostance` runs with `?idles=old` (the belt as it was); `herolife` / `heroarms` check the new
+  rule. The block's, the roll's and the charge's own entries out of a far blade are left as they were (not this
+  session's region): a follow-up could let a clip's entry turn the blade before the hand, as `swordFromEntry` does
+  for a roll. A true hand-off (the sword in the left hand) needs the rig to pose the sword from either arm.

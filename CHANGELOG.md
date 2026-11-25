@@ -5,6 +5,15 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 
 ## [Unreleased]
 Eighty-nine pieces of work since 0.4.0:
+- **The hero comes alive standing still** (2026-11-24, ADR-186). *Changed:* the hero no longer stands with his free
+  hand on his hip all the time. At ease he moves between several rests (the free arm hanging loose, both hands low
+  on the hilt, the blade trailing low behind him, the hand on the belt now and then), does small things with both
+  arms (re-grips the sword, rolls his shoulders, flexes the free hand, brushes his coat, looks round, checks the
+  edge) and every few actions a sword trick: a wrist spin, a figure-eight, a salute with the blade upright before
+  his face, a flick of the blade clean, a reverse-grip flip. In a fight his free hand comes off the belt into a
+  guard (sword fingers at the foe, beside his face, an open guard hand, or floating low) that changes as he waits,
+  with small guard shifts and grip adjustments and never a trick. `?idles=old` brings back the hand on the belt
+  (the Lab's PLAYER rows `idles` and `idle ▸`).
 - **The streak's answer: a heavy first cut, a path that flows, cuts that tear the picture** (2026-11-25, ADR-190, ADR-191). *Changed:*
   the flash cuts that answer a perfect dodge of a red blow, a parry's riposte and the counter. The first cut is a beat
   you can read (he is seen wound up, crosses as fast as before, is held on the contact), each later one comes faster,

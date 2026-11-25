@@ -185,6 +185,13 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.83 — The hero's idles: rests, habits with both arms, sword tricks (2026-11-24, `claude/hero-idles-2776d8`, ADR-186)
+- [x] At ease: four rests, six habits with both arms, five tricks every 3 - 4 actions; in the fight: the free hand off the belt (four guard hands), five small habits, no tricks (`?idles=old`: the belt)
+- [x] Measured in his own frame (joints, the blade's gaps, the coat, pops) and every move from every rest and every action against the stance before; scenario `heroidles`; the Lab's `idles` / `idle ▸` rows
+- [x] Films before | after sent to the owner (exploring, the fight, the cuts)
+- [ ] The owner's picks (which rests / tricks to keep, their pace); played on the iPhone
+- [ ] The pass behind his back into the left hand (the sword must be able to change hands: a rig change)
+- [ ] The block's / roll's / charge's own short entries out of a far blade (the whips left are theirs)
 ## M1.82 — The streak's answer: a heavy first cut, a path that flows, cuts that tear the picture (2026-11-25, `combat/streak-pace`, ADR-190, ADR-191)
 - [x] The tempo: a heavy first cut, each later one a share of the one before, the storm by pace (`?tempo=0`)
 - [x] The chain: each pass from where the last ended, every slash on his path, the stray crescents gone, letter dust for the `A` shards (`?chain=0`)
