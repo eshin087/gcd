@@ -19,6 +19,14 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-24',
+        title: 'A natural running arm, three ways to carry it',
+        notes: [
+          "Your free hand swings like a runner's now: the elbow bent and working with the stride, the hand open and loose. As a sprint builds he sweeps it back behind him in a swordsman's dash. Strafing round a boss it keeps swinging.",
+          'Compare the three: add ?runArm=a (a runner, pumping at a sprint), ?runArm=b (the dash whenever he runs) or ?runArm=c (by speed, the default) to the address; ?runArm=old is the swing before.',
+        ],
+      },
+      {
+        date: '2026-11-24',
         title: 'A green flame on the sword',
         notes: [
           'A tight flame of tiny green marks now burns round your sword, licking up off the blade. It is there even with no streak and burns denser and hotter as your streak climbs. Add ?mystic=0 to the address to turn it off.',
