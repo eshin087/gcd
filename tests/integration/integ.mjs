@@ -10009,6 +10009,7 @@ async function scenarioBrood() {
   out(`   ${spawns.length} wisps · ${wt.length} tells (${wt.map((x) => x.tell[0]).join('')}) · ${wf.length} flashes · ${blasts.length} bursts on him (${blasts.map((h) => h.r).join(' ')}) · first: told ${(first?.t - tl?.t).toFixed(3)} s, flashed ${(first?.t - fl?.t).toFixed(3)} s before`);
   assert(spawns.length === nw && spawns.every((s) => s.kind === 'wisp'), `phase 2 sends ${nw} wisps`);
   assert(wt.length >= 1 && wt.every((x) => x.tell === TELL.RED) && wf.every((x) => x.tell === TELL.RED), 'every wisp is told red');
+  assert(wt.length === nw && blasts.length === nw, `every wisp comes in at a standing hero: none gutters out, none misses after a knock back (${wt.length} told, ${blasts.length} burst on him, of ${nw})`);
   assert(first && first.tell === TELL.RED && first.r === RESULT.HIT && near(first.t - tl.t, BROOD.wisp.fuse, 2.5 * DT) && near(first.t - fl.t, lead, 2.5 * DT), 'an unanswered wisp bursts on him on time: its fuse after its tell, flashLead after its flash');
   const gaps = [];
   for (let i = 1; i < blasts.length; i++) gaps.push(blasts[i].t - blasts[i - 1].t);
