@@ -390,17 +390,31 @@ function armAlong(p, P, ex, ey, ez, az, el, t) {
   to3(p, P.rP, px, py, pz, t);
 }
 /** The elbow and the aim along a path of keys u → [ex, ey, ez, az, el] (kf per channel), written by t. */
+const _key = new Float32Array(16);
 function armPath(p, P, u, keys, t) {
-  const n = keys.length;
+  const n = Math.min(8, keys.length);
   const ch = (j) => {
-    const k = new Array(2 * n);
     for (let i = 0; i < n; i++) {
-      k[2 * i] = keys[i][0];
-      k[2 * i + 1] = keys[i][1 + j];
+      _key[2 * i] = keys[i][0];
+      _key[2 * i + 1] = keys[i][1 + j];
     }
-    return kf(u, k);
+    return kf(u, n === 8 ? _key : _key.subarray(0, 2 * n));
   };
   armAlong(p, P, ch(0), ch(1), ch(2), ch(3), ch(4), t);
+}
+// The raised blade (the salute, the rite, the breath): the fist comes up before his chest, near his middle,
+// the forearm rising toward it at ~30° and the wrist cocked the rest of the way (40-50°, as a hand holds a
+// sword upright). Stood upright beside his head, the forearm showed from the game camera as a ragged column
+// of the vambrace's letters ("the right hand from normal camera angle ... looks very jagged"); here his head
+// and shoulder cover it, as they did before the forearm led (ADR-186).
+const RAISE = {
+  salute: { el: [-0.022, -0.255, 0.03], aim: [-4, 32], blade: [-8, 76] },
+  rite: { el: [-0.03, -0.255, 0.03], aim: [-8, 32], blade: [-16, 70] },
+  breath: { el: [-0.02, -0.25, 0.04], aim: [-4, 34], blade: [-8, 80] },
+};
+/** armAlong from the at-ease arm toward a RAISE pose by `up`, written by t. */
+function armRaise(p, P, R, up, t) {
+  armAlong(p, P, lerp(EASE_ELBOW[0], R.el[0], up), lerp(EASE_ELBOW[1], R.el[1], up), lerp(EASE_ELBOW[2], R.el[2], up), lerp(EASE_AIM[0], R.aim[0], up), lerp(EASE_AIM[1], R.aim[1], up), t);
 }
 
 // ---------------------------------------------------------------- HABITS at ease (both arms)
@@ -532,10 +546,12 @@ function trickSalute(p, P, A, u, e) {
   // the forearm: down at rest → upright before the shoulder → down and out at his right with the arc
   const tt = e * (1 - home);
   // (the elbow forward of his ribs: folded under the hand at the shoulder it closed to 50°)
-  const ex = lerp(lerp(EASE_ELBOW[0], -0.02, up), -0.07, open), ey = lerp(lerp(EASE_ELBOW[1], -0.21, up), -0.25, open), ez = lerp(lerp(EASE_ELBOW[2], 0.19, up), 0.06, open);
-  const aaz = lerp(lerp(EASE_AIM[0], -8, up), -68, open), ael = lerp(lerp(EASE_AIM[1], 62, up), -42, open);
+  const R = RAISE.salute;
+  const ex = lerp(lerp(EASE_ELBOW[0], R.el[0], up), -0.07, open), ey = lerp(lerp(EASE_ELBOW[1], R.el[1], up), -0.25, open), ez = lerp(lerp(EASE_ELBOW[2], R.el[2], up), 0.06, open);
+  const aaz = lerp(lerp(EASE_AIM[0], R.aim[0], up), -68, open), ael = lerp(lerp(EASE_AIM[1], R.aim[1], up), -42, open);
   armAlong(p, P, ex, ey, ez, aaz, ael, tt);
-  aimTo(p, P.swD, aaz, ael + 16 * k, tt);
+  // the blade: upright over the raised fist (the wrist cocked), with the forearm on the arc out
+  aimTo(p, P.swD, lerp(aaz, R.blade[0], k), lerp(ael, R.blade[1], k), tt);
   flatAt(p, P, lerp(1.57, 0.3, open), tt);
   // the free palm over the fist (anim.js lays the open hand on the sword wrist: lk)
   const on = bump(u, 0.18, 0.3, 0.58, 0.66) * e;
@@ -582,8 +598,8 @@ function trickFlick(p, P, A, u, e) {
  *  the point a few marks lift off like embers. His eyes follow the fingers. */
 function spellRite(p, P, A, u, e) {
   const up = smoothstep(0.04, 0.22, u), dn = smoothstep(0.82, 0.97, u), w = e * (1 - dn);
-  armAlong(p, P, lerp(EASE_ELBOW[0], -0.06, up), lerp(EASE_ELBOW[1], -0.21, up), lerp(EASE_ELBOW[2], 0.18, up), lerp(EASE_AIM[0], -20, up), lerp(EASE_AIM[1], 60, up), w);
-  aimTo(p, P.swD, lerp(EASE_AIM[0], -22, up), lerp(EASE_AIM[1], 72, up), w);
+  armRaise(p, P, RAISE.rite, up, w);
+  aimTo(p, P.swD, lerp(EASE_AIM[0], RAISE.rite.blade[0], up), lerp(EASE_AIM[1], RAISE.rite.blade[1], up), w);
   flatAt(p, P, 1.57, w * up);
   // the sword fingers from the guard (0.14 m up the blade) to two thirds of it, then off
   const on = bump(u, 0.24, 0.34, 0.72, 0.8) * e;
@@ -633,8 +649,8 @@ function spellSigil(p, P, A, u, e) {
  *  the height of his chest and comes back into the steel, and he lets the blade down. */
 function spellBreath(p, P, A, u, e) {
   const up = smoothstep(0.04, 0.2, u), dn = smoothstep(0.84, 0.97, u), w = e * (1 - dn);
-  armAlong(p, P, lerp(EASE_ELBOW[0], -0.03, up), lerp(EASE_ELBOW[1], -0.19, up), lerp(EASE_ELBOW[2], 0.22, up), lerp(EASE_AIM[0], -8, up), lerp(EASE_AIM[1], 62, up), w);
-  aimTo(p, P.swD, lerp(EASE_AIM[0], -10, up), lerp(EASE_AIM[1], 80, up), w);
+  armRaise(p, P, RAISE.breath, up, w);
+  aimTo(p, P.swD, lerp(EASE_AIM[0], RAISE.breath.blade[0], up), lerp(EASE_AIM[1], RAISE.breath.blade[1], up), w);
   flatAt(p, P, 1.57, w * up);
   const yaw = p[P.pelvY] + p[P.spY];
   const on = bump(u, 0.16, 0.28, 0.74, 0.84) * e;

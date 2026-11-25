@@ -22,6 +22,7 @@ export const RELEASES = [
         title: 'The sword hand looks natural in the idle tricks',
         notes: [
           "In the wrist spin, the figure-eight, the salute and the sword spells, the hero's forearm now leads the blade, so his sword fist no longer twists off his wrist.",
+          'In the salute and the spells the fist rises before his chest, so his raised arm no longer looks jagged from the game camera.',
         ],
       },
       {
