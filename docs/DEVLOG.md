@@ -26,6 +26,13 @@ the run into a light, a roll, a block, the flask, a turn: within 3 cm of the old
 How B was found: stills from three sides of five sweeps; straight back the cape hid the arm, shallower read as a
 hand hanging at the hip.
 
+**The free hand's look** (2026-11-25, owner after trying A: "the animation looks fine but the left hand size and
+color is standing out too much"). The hand was the face's skin ink (gain 2.2) at the gauntlet's 1.12 size beside a
+near-black sleeve. Five looks rendered live, then built behind `?handLook=0|a|b|c|d` (`gear/handLook.js`; the Lab's
+`hand` row reloads): today, × 0.8, × 0.8 with the skin fill at ~half (`handShade`) or ~a third (`handDark`), a
+× 0.85 leather glove. Default today until the owner picks; the two new materials are built only for their look, so
+seeded fights do not move.
+
 **Open.** Out of the dash into a roll or a block the arm comes forward inside that clip's short cross-fade: the
 free elbow jolts 24 cm a frame² (old 13). The roll's and the block's entries are outside this pass. The owner's pick
 of the four (films in this session's scratchpad `rig/out/`).
