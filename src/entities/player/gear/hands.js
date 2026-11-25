@@ -1,4 +1,5 @@
 import { mergeGeometries, limb, looseHand, gripFist, swordFingers } from '../heroGeo.js';
+import { handLook } from './handLook.js';
 
 // The free (left) hand, one builder for every `arms` item (gear/README.md): every outfit's sleeves
 // end in the same bare hand, so a change to the hand (its pose, the sword fingers) reaches them all.
@@ -14,8 +15,11 @@ import { mergeGeometries, limb, looseHand, gripFist, swordFingers } from '../her
  * [open, grip, fingers] }: put both in the item's return value (keep: the three are toggled, so the
  * merge must leave them apart). Build-time only.
  */
-export function buildFreeHand({ arms, sword, M, DIM, BODY, mesh }, mat = M.skin) {
-  const fore = arms.L.fore, HK = BODY.hand, fa1 = BODY.foreArm[1];
+export function buildFreeHand({ arms, sword, M, DIM, BODY, mesh }, mat = null) {
+  // the owner's pick of size and ink (`?handLook=`, gear/handLook.js; today's by default)
+  const look = handLook();
+  if (!mat) mat = M[look.mat] ?? M.skin;
+  const fore = arms.L.fore, HK = BODY.hand * look.k, fa1 = BODY.foreArm[1];
   // the skin wrist stays on the forearm
   mesh(fore, limb({ length: 0.05, r0: fa1 - 0.006, r1: fa1 - 0.004, radial: 8, rings: 2, capSegs: 1 }).translate(0, -DIM.foreArm + 0.075, 0), mat);
   // the free hand open (hanging, reaching, bracing): on the wrist joint when the rig has one (the

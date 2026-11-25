@@ -26,6 +26,15 @@ export const RELEASES = [
       },
       {
         date: '2026-11-24',
+        title: 'A natural running arm, three ways to carry it',
+        notes: [
+          "Your free hand swings like a runner's now: the elbow bent and working with the stride, the hand open and loose. At a sprint it pumps harder. Strafing round a boss it keeps swinging.",
+          'His free hand is smaller too, so it no longer stands out against his dark coat.',
+          "Other ways to carry it: add ?runArm=b (a swordsman's dash, swept back behind him) or ?runArm=c (natural, then the dash at a sprint) to the address; ?runArm=old is the swing before.",
+        ],
+      },
+      {
+        date: '2026-11-24',
         title: 'Smaller combat text',
         notes: [
           'The words over your hero (PARRY, DEFLECT, COUNTER and the rest) and the damage numbers are smaller, closer to the HUD\'s own text.',

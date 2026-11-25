@@ -4,7 +4,15 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Eighty-nine pieces of work since 0.4.0:
+Ninety pieces of work since 0.4.0:
+- **A natural running arm, three ways to carry it** (2026-11-24, ADR-187). *Changed:* the hero's free (left) hand
+  no longer swings a stiff fist on the run. It swings like a runner's, the elbow bent near a right angle and working
+  with the stride, the hand open and loose, pumping harder at a sprint; strafing and backing away (lock-on play) it
+  keeps swinging. That is `?runArm=a`, the owner's pick and the default (2026-11-25: the first merge shipped `c` as
+  the default, the owner had approved `a`; it was reverted and re-shipped). `b` the swordsman's dash (swept back
+  behind him whenever he runs forward), `c` natural then the dash at a sprint, `old` the swing before; the Lab's PLAYER row `run arm` switches them live. The free hand is smaller
+  (× 0.8; the owner's pick of five looks, "the left hand size and color is standing out too much"):
+  `?handLook=0` is the hand before, `b` / `c` darker skin, `d` a leather glove (the Lab's `hand` row).
 - **The streak's answer: a heavy first cut, a path that flows, cuts that tear the picture** (2026-11-25, ADR-190, ADR-191). *Changed:*
   the flash cuts that answer a perfect dodge of a red blow, a parry's riposte and the counter. The first cut is a beat
   you can read (he is seen wound up, crosses as fast as before, is held on the contact), each later one comes faster,
