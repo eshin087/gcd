@@ -19,6 +19,14 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-25',
+        title: 'The resolution follows the frame rate',
+        notes: [
+          'A new quality setting, AUTO, is on by default: when your device cannot hold 60 frames a second the game draws at a lower resolution, and climbs back when there is room (never in the middle of a fight).',
+          'F2 or the pause menu cycles AUTO, LOW, MEDIUM and HIGH. A new 60 FPS CAP in the pause menu is on by default on phones and tablets, to keep them cooler.',
+        ],
+      },
+      {
+        date: '2026-11-25',
         title: 'The game runs faster on weaker machines',
         notes: [
           'The picture is the same, and it costs less to draw: the ground is drawn after the things that cover it, and its relief is worked out once when a level loads instead of for every pixel of every frame.',

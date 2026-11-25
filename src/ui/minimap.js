@@ -1,4 +1,5 @@
 import { CONFIG } from '../core/config.js';
+import { qualityLabel } from '../render/autoQuality.js';
 import { TAU } from '../core/math.js';
 import { el, num } from './dom.js';
 
@@ -90,7 +91,7 @@ export class Minimap {
       this.fpsEl.classList.toggle('on', on);
     }
     if (on) {
-      const q = CONFIG.quality[g.settings.quality]?.name ?? '';
+      const q = qualityLabel(g.settings, g.autoQ, CONFIG.quality);
       const s = `FPS ${Math.round(num(g.fps))}  ·  ${q}`;
       if (s !== this._fps) {
         this._fps = s;

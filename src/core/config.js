@@ -188,5 +188,46 @@ export const CONFIG = {
     { name: 'HIGH', grass: 260000, dpr: 2, shadow: 2048 },
   ],
   defaultQuality: 2,
-  defaultQualityTouch: 0, // touch devices start on LOW (phones with DPR 3 + 260k blades crawl)
+  defaultQualityTouch: 0, // touch devices start on LOW when AUTO is off (phones with DPR 3 + 260k blades crawl)
+
+  // AUTO quality (render/autoQuality.js, ADR-200): the render resolution follows the measured frame
+  // time, so the game holds `target` fps where the device can. On by default; F2 / the pause menu
+  // pick a preset instead (AUTO off), ?autoq=0 starts with it off (A/B), ?autoq=1 on.
+  autoQuality: {
+    on: true,
+    // render scale steps (device pixels per CSS pixel), high to low, each with its shadow map and
+    // grass; a step above the screen's own pixel ratio (or maxPixelRatio) is drawn at that ratio
+    steps: [
+      { scale: 2, shadow: 2048, grass: 260000 },
+      { scale: 1.5, shadow: 2048, grass: 260000 },
+      { scale: 1.25, shadow: 2048, grass: 170000 },
+      { scale: 1, shadow: 2048, grass: 170000 },
+      { scale: 0.75, shadow: 1024, grass: 90000 },
+      { scale: 0.5, shadow: 1024, grass: 90000 },
+    ],
+    floor: 0.75, // the lowest scale AUTO may use: coarser letters below it (the owner's call; ?autoqFloor=)
+    target: 60, // fps
+    window: 1.5, // s of frames per decision
+    downAt: 1.1, // a window whose mean frame is over target frame × this is slow (under ~54.5 fps)
+    downWindows: 2, // slow windows in a row before a step down
+    gpuShare: 0.8, // without a GPU timer: script time under this share of the frame = the GPU is the limit
+    minGain: 0.06, // a step down that took less than this share off the frame did not help: undone
+    upAt: 1.03, // a window whose mean frame is at most target frame × this holds the target
+    upWait: 8, // s of holding the target (no GPU timer) before a step up is tried
+    upGpuAt: 0.72, // with a GPU timer: step up when the step's predicted GPU time ≤ target frame × this
+    upGpuWindows: 2, // ... for this many windows in a row
+    fixedShare: 0.25, // share of the GPU frame that does not follow the pixel count (ADR-199: ~20 - 25 %)
+    probeWatch: 5, // s after a step up in which a slow window means it failed (back down)
+    backoff: [20, 60, 180], // s before a failed step up is tried again; after the last, not this page load
+    settle: 0.6, // s of frames ignored after a step (its own rebuild hitch)
+    spike: 0.25, // a frame longer than this (s) is no sample (a hidden tab, a load): the window restarts
+    // the first guess (main.js, the title's first frames): the median of `frames` frames timed at
+    // the top step (each waits for the GPU) after `warm` untimed ones (the first frames after the
+    // load run ~3x slow); the highest step whose predicted frame fits target × `fit`
+    bench: { warm: 20, frames: 11, fit: 0.7 },
+  },
+  // A frame-rate cap on touch devices (heat, battery): on a 120 Hz screen every second refresh is
+  // drawn, so the pace stays even; a screen under 105 Hz is not capped (90 Hz would pace unevenly).
+  // ?fpscap=0|1 forces it; the pause menu toggles it.
+  fpsCap: { touch: true, fps: 60 },
 };

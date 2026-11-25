@@ -74,6 +74,7 @@ const TASKS = [
   ['dggrass', ['tests/integration/dgGrass.mjs', '.'], {}, 15],
   ['dpfloor', ['tests/integration/dpfloor.mjs', '.', 'all'], {}, 15],
   ['records', ['tests/integration/records.mjs', '.', 'all'], {}, 1],
+  ['autoq', ['tests/integration/autoq.mjs', '.', 'all'], {}, 1],
   ['glyphcheck', ['tests/glyphcheck.mjs', '.'], {}, 1],
   ['changelogcheck', ['tests/changelogcheck.mjs', '.'], {}, 1],
 ];
