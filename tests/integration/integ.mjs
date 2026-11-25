@@ -8560,7 +8560,7 @@ async function scenarioHeroArms() {
   return G;
 }
 
-// ================================================================== scenario: the run's arms (ADR-187, ADR-202)
+// ================================================================== scenario: the run's arms (ADR-187, ADR-204)
 // The hero's free (left) arm on the run, each carry of runArms.js (`?runArm=a|b|c|d|old`) through the
 // same course: a run start and stop, the run, a sprint start, the sprint and its end, a strafe and a
 // backpedal in the fight (lock-on play is mostly strafing), a turn, and out of the run into a light,
@@ -8568,7 +8568,7 @@ async function scenarioHeroArms() {
 // the elbow's point in the body's: the drawn figure is lean-sheared): the free elbow's range, how far
 // it flares from the front, the hand's path, and a pop audit (the largest frame-to-frame second
 // difference of the free wrist and elbow, and of the sword hand). Then the sword arm on the run, each carry of
-// runSword.js (`?runSword=hip|old`, ADR-202) through stand → run → sprint → run → stop: the blade's
+// runSword.js (`?runSword=hip|old`, ADR-204) through stand → run → sprint → run → stop: the blade's
 // direction, the point's height, the grip's side and the pops.
 async function scenarioHeroRun() {
   out('\n== scenario HERORUN (the arms on the run: the free arm\'s carries, the sword carry; elbows, the hand\'s path, the blade, pops, transitions) ==');
@@ -8733,7 +8733,7 @@ async function scenarioHeroRun() {
       `a, the sprint: a pump chin to hip, the elbow ${Sa.el[0].toFixed(0)}-${Sa.el[1].toFixed(0)}° (55-120), in (flare ${Sa.flare.toFixed(2)} ≤ 0.45), the hand ${f1(span(Sa, 1))} cm up and down (≥ 30)`);
   }
   {
-    // (d, ADR-202: the full pump, the fist before the belly ↔ behind the hip, the elbow near a right angle)
+    // (d, ADR-204: the full pump, the fist before the belly ↔ behind the hip, the elbow near a right angle)
     const Sd = res.d.sprint;
     assert(Sd.el[0] >= 70 && Sd.el[1] <= 115 && Sd.flare <= 0.45 && span(Sd, 2) >= 0.35 && Sd.popW <= 2.5,
       `d, the sprint: a full pump, the elbow ${Sd.el[0].toFixed(0)}-${Sd.el[1].toFixed(0)}° (70-115), in (flare ${Sd.flare.toFixed(2)} ≤ 0.45), the hand ${f1(span(Sd, 2))} cm fore and aft (≥ 35), no pop (${f1(Sd.popW)} cm ≤ 2.5)`);
@@ -8764,7 +8764,7 @@ async function scenarioHeroRun() {
   return G;
 }
 
-// HERORUN's second half (ADR-202): the sword arm on the run, each carry of runSword.js, through stand → run →
+// HERORUN's second half (ADR-204): the sword arm on the run, each carry of runSword.js, through stand → run →
 // sprint → run → stop, measured in his body frame (the lean shear off): the blade's direction (its forward
 // part and its elevation against level ground), the point's height over the grass, the grip's side, and the
 // pops (the largest frame-to-frame second difference of the grip and the point).

@@ -13,7 +13,7 @@
 //        arm in a sideways run reads as a broken one.
 //   c    BY SPEED: (a) at the run, sweeping back into (b) as a sprint builds (A.sprintW, eased),
 //        forward only, as in (b).
-//   d    FULL PUMP (ADR-202, measured off the owner's reference beside the sword carry `hip`): a
+//   d    FULL PUMP (ADR-204, measured off the owner's reference beside the sword carry `hip`): a
 //        sprinter's arm against the sword arm. Forward, the upper arm ~22° ahead of the torso and the
 //        elbow near a right angle, the hand before the belly, near the midline but not across it; back,
 //        the upper arm ~58° behind, the elbow high behind his back and the forearm hanging, the hand

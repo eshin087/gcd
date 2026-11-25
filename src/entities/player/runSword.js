@@ -1,4 +1,4 @@
-// The hero's sword arm on the run (ADR-202): how the sword hand carries the blade while he runs or sprints
+// The hero's sword arm on the run (ADR-204): how the sword hand carries the blade while he runs or sprints
 // at ease (the fight's carry, FIGHT_RUN, and the backpedal's guard stay anim.js loco()'s and blend over this).
 // The owner (2026-11-25): "the right hand angle and movement looks stiff weird angle and unnatural", then,
 // of two trailing carries, "the running and sword placement still looks off", with a reference video of a

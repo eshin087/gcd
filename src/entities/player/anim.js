@@ -461,12 +461,12 @@ function gaitParams(G, sp, sprintW) {
  *  and leans into the speed and harder into acceleration (sits back when braking), compresses on
  *  each contact, the hips swing with the stride and the shoulders counter-rotate, the head stays
  *  level. The sword arm carries the blade ahead, low at the right hip, rocking with the forearm
- *  (runSword.js, ADR-202; `old` trailed it back beside the right leg (run) → nearly level
+ *  (runSword.js, ADR-204; `old` trailed it back beside the right leg (run) → nearly level
  *  behind (sprint)); the free fist swings / pumps against the legs. Planted feet are held in the
  *  world by the foot planner (HeroAnimator._feet). */
 // (imported here, beside its one caller: the hero's free arm on the run, ADR-187)
 import { runArm } from './runArms.js';
-// … and his sword arm on the run (ADR-202)
+// … and his sword arm on the run (ADR-204)
 import { runSword } from './runSword.js';
 const RSW = { h: [0, 0, 0], p: [0, 0, 0], d: [0, 0, -1], f: [0, 1, 0] };
 export function loco(p, A) {
@@ -555,7 +555,7 @@ export function loco(p, A) {
   const fw = hero ? clamp(fin(A.fightW), 0, 1) * (1 - s) : 0, FR = FIGHT_RUN;
   // (backing away the grip was one constant: the sword elbow stood at 123° for the whole backpedal
   // beside a free arm that pumps; it rides the stride now)
-  // the carry at ease (run → sprint): runSword.js's (ADR-202, `?runSword=`), or the one before ('old'); its
+  // the carry at ease (run → sprint): runSword.js's (ADR-204, `?runSword=`), or the one before ('old'); its
   // arm angles are against the torso's line, so it takes the lean set above
   const rs = hero && runSword(RSW, ph, armF, s, p[P.spX] + p[P.pelvX]), RH = RSW.h, RP = RSW.p, RD = RSW.d;
   const h0 = rs ? RH[0] : lerp(-0.13, -0.15, s), h1 = rs ? RH[1] : lerp(-0.44, -0.37, s) + 0.02 * st, h2 = rs ? RH[2] : lerp(-0.08 + amp, -0.28 + amp * 0.6, s);
