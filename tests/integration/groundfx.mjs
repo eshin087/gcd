@@ -328,16 +328,23 @@ const SCENARIOS = {
     obs.disconnect();
     assert(minor <= 1, `300000 frames, all four on, a blow every 30 frames: ${minor} young-generation collection(s) (none: nothing allocated a frame)`);
     assert(ms < 0.1, `its frame on the CPU: ${(ms * 1000).toFixed(1)} us (< 100 us, the forest's ${world.destructibles.list.length} pieces checked)`);
-    world.destructibles.topple(world.destructibles.list.find((b) => b.kind === 'deadTree' && b.state === STATE.INTACT), 1, 0, 'boss');
-    const t1 = performance.now();
-    fx._since = 1e9;
-    fx.update(1 / 60);
-    out(`   a tree falls: a bake of the ground round it (${fx.lastBake} of ${fx._N * fx._N} texels): ${(performance.now() - t1).toFixed(2)} ms`);
-    fx._full = fx._dirty = true;
-    fx._since = 1e9;
-    const t2 = performance.now();
-    fx.update(1 / 60);
-    out(`   a whole bake of the forest (the first, an option, the reset): ${(performance.now() - t2).toFixed(2)} ms`);
+    // (the bakes' times: medians of several, the first of each path warms it)
+    const med = (a) => a.sort((x, y) => x - y)[a.length >> 1];
+    const part = [], whole = [];
+    const trees = world.destructibles.list.filter((b) => (b.kind === 'deadTree' || b.kind === 'tree') && b.state === STATE.INTACT && !b.wall).slice(0, 9);
+    for (const b of trees) {
+      world.destructibles.topple(b, 1, 0, 'boss');
+      fx._since = 1e9;
+      const t1 = performance.now();
+      fx.update(1 / 60);
+      part.push(performance.now() - t1);
+      fx._full = fx._dirty = true;
+      fx._since = 1e9;
+      const t2 = performance.now();
+      fx.update(1 / 60);
+      whole.push(performance.now() - t2);
+    }
+    out(`   a tree falls: a bake of the ground round it ${med(part).toFixed(2)} ms; a whole bake (the first, an option, the reset) ${med(whole).toFixed(2)} ms (medians of ${trees.length})`);
   },
 
   // ---------------------------------------------------------------- every level (the registry)
