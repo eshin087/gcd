@@ -42,11 +42,11 @@ if (process.env.ABYSS_WYRMLOOK && !(await imp('src/entities/dragon/looks.js')).s
 // ABYSS_WYRMFACE: every wyrm built in this run wears that head (?wyrmFace=, heads.js)
 if (process.env.ABYSS_WYRMFACE && !(await imp('src/entities/dragon/heads.js')).setWyrmFace(process.env.ABYSS_WYRMFACE)) { process.stdout.write(`ABYSS_WYRMFACE: unknown head '${process.env.ABYSS_WYRMFACE}'\n`); process.exit(2); }
 // ABYSS_ARCS: the light chain's bigger-arc strength for this run (?arcs=, swings.js setArcs)
-if (process.env.ABYSS_ARCS && !(await imp('src/entities/player/swings.js')).setArcs(process.env.ABYSS_ARCS)) { process.stdout.write(`ABYSS_ARCS: unknown strength '${process.env.ABYSS_ARCS}'
-`); process.exit(2); }
-// ABYSS_LIGHTS: the light chain's look for this run (?lights=, combat.js setLights: new, old, fresh)
-if (process.env.ABYSS_LIGHTS && !(await imp('src/entities/player/combat.js')).setLights(process.env.ABYSS_LIGHTS)) { process.stdout.write(`ABYSS_LIGHTS: unknown look '${process.env.ABYSS_LIGHTS}'
-`); process.exit(2); }
+if (process.env.ABYSS_ARCS && !(await imp('src/entities/player/swings.js')).setArcs(process.env.ABYSS_ARCS)) { process.stdout.write(`ABYSS_ARCS: unknown strength '${process.env.ABYSS_ARCS}'\n`); process.exit(2); }
+// ABYSS_LIGHTS: the light chain's look for this run (?lights=, combat.js setLights: new, old, fresh, striker)
+if (process.env.ABYSS_LIGHTS && !(await imp('src/entities/player/combat.js')).setLights(process.env.ABYSS_LIGHTS)) { process.stdout.write(`ABYSS_LIGHTS: unknown look '${process.env.ABYSS_LIGHTS}'\n`); process.exit(2); }
+// ABYSS_FINISHER: the striker chain's finisher for this run (?finisher=, combat.js setFinisherLook)
+if (process.env.ABYSS_FINISHER && !(await imp('src/entities/player/combat.js')).setFinisherLook(process.env.ABYSS_FINISHER)) { process.stdout.write(`ABYSS_FINISHER: unknown finisher '${process.env.ABYSS_FINISHER}'\n`); process.exit(2); }
 const { TUNING, SCALE } = await imp('src/entities/dragon/tuning.js');
 const { ATTACKS } = await imp('src/entities/dragon/attacks.js');
 const { attackWeight } = await imp('src/entities/dragon/ai.js');
