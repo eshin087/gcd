@@ -4676,6 +4676,71 @@ breath is let go the next flock is heard).
   rectangle with his head and shoulders left dark. `setPhase(1 | 2 | 3)`: neon and his face; static then
   crimson (`void`, which his fx re-palettes); dead. A piece's neon goes out when the piece breaks.
 
+## The dragon print (2026-11-25, ADR-198): the ground, floors, grass, props and trees printed in the wyrm's digits
+
+The default in every level (`?dragon=0`: the game before it). STYLE.md "The dragon print" has the look; this is
+the code. Every piece reads its switch through `dragonLook(name)` (`render/dragonPrint.js`): `lookOf(name)`
+with default `'a'`, `'0'` under `?dragon=0`; switches: `ground` (world/ground.js: `b` the dragon ground, `0`
+today's; `a` / `c` / `d` the first round's other looks), `dgGrass`, `dpFloor`, `dpProps`, `dpTrees`,
+`dpCloud`, `dpContact`, `dpRipple`, `dpRidge`, `prints`.
+
+- **The core — `render/dragonPrint.js`.** `DRAGON_PRINT_GLSL` (needs COMMON_GLSL): `dpLattice(xz, size, f, g)`
+  (the cell of a world point, x right / -z up on screen; `f` the uv in the cell, pass `dFdx(g)` / `dFdy(g)` to
+  `glyphGrad`), `dpCellCenter(cell, size)`, `dpVnoise` / `dpFbm`, `dpGlyph(tone, hash)` (the ramp `DP_RAMP`
+  `.:-=17402#%8@`). `DP_CELL` = [0.135, 0.25] m. `dragonPrintUniforms()` per material. A cell is lit ONCE, at
+  its centre.
+- **The ground — `world/ground.js` look b (`GROUND_LOOK == 2`).** Per cell: the meadow's density
+  (`setMeadow`: the grass's density baked into a texture by world.js), the relief `groundRelief(p, d)` and
+  its normal, then in this order: `[grass]` `dgGrass(...)` (world/dragonGrass.js), `[fx]` `dpCloud` on the
+  moon's term, the tone, `dpContact`, `dpRipple` (another digit, brighter), `dpRidge` (a stroke on a lit
+  crest, from the broad relief), burn → ash letters, `[prints]` `dpStep` (a footprint's code letters). A new
+  hook goes at its own marked site.
+- **The grass — `world/dragonGrass.js`.** `dgGrassOpt()` (`0 | a | a2 | b | c`), `dgGrassLook()` (`'a'`
+  printed in the ground, no 3D blades; `'b'` the 3D blades stay, printed as digits: `DG_PRINT` in grass.js),
+  `DG` (its numbers), `DG_GRASS_GLSL` (the option baked in). The hero's wake is ONE GLSL chunk,
+  `TRAIL_BEND_GLSL` (world/grassTrail.js; `GrassTrail.bendAt` its CPU copy), used by grass.js and the tufts.
+  With a printed option the sword's arc (`mowFx.cutArc`) also mows the scorch map's A along its clipped
+  stroke (the tufts read A), and no cut tops fly (the green chips do).
+- **The cut in the print (`dgCut`, default `b`):** `mowFx.cutArc` stamps the arc's exact strip into a fine cut
+  map (`uDgCut`, 1024² over the scorch map's extent, ~0.16 m; re-uploaded on the frames it changes); the
+  ground (and `world/dragonTufts.js`, the standing tufts of `a3d3`) reads it on the same frame: shorn tufts,
+  chips of their glyphs, the swath; `b` adds the line's glow (the map stores each texel's frame). Its uniforms
+  ride in `DP_FX_U` (`DG_U`). A reset empties it.
+- **Fallen leaves — `render/dragonLeaf.js` `LeafPrint`** (`leafLook`, default `a`), built by `life.litter`: one
+  instanced draw, a small quad per lying leaf at y 0.11 m whose fragment casts the camera ray to y = 0 (any
+  dragon-printed floor under it; b finds the ground's own cell there), transparent queue, no depth write,
+  never the scene's alpha flag, hidden with nothing to draw. Its numbers come from each piece's existing draws
+  (the litter's own stream): the look never moves the world.
+- **The floors — `render/dragonFloor.js`**, inside `createCarvedGlyphMaterial` (`DP_FLOOR` define; `0` the carved
+  glyphs of before, shader for shader). The lattice is the ground's seen along the camera (z - y cot(pitch)).
+  `aRim` (per vertex: the distance to the edge of a slab's top; `addSlabRim(geo, crack)`, `addSlabRims(group,
+  mat)` at a set's build; `lazySlabRim` on the first draw for Cinderwood's flagstones) prints the lit lip;
+  `CRACK_RIM` marks a cracked piece's edges as seams. A set passes its palette in `dp: { k, sat, top, sky, wet,
+  rimW }`. Calls the four fx hooks and `dpStep`.
+- **Props and trees — `render/dragonProps.js`** + the art pass's prop branch (`render/pipeline.js`
+  `propKind` / `dpSample`). A dragon-printed source writes its relief's tone into alpha inside the props'
+  window (`DP_TONE`: props 0.556 + t x 0.0105, leaves 0.62 + t x 0.16), clear of every `FLAG`; the art pass
+  prints it with the props' own pixel-font digits and strokes. `createPropArtMaterial` (its `dp` path),
+  `createDragonObjectMaterial(U, o)` (= `createAsciiObjectMaterial` with the switches off: every set's
+  props / trees and `destructibles.js`'s rigid batch use it). A dp crown's debris bursts into digits.
+- **The upgrades — `render/dragonPrintFx.js` + `world/groundFx.js` (`world.groundFx`).** `DP_FX_U`: ONE shared
+  uniforms object every dragon-printed material spreads in (`uDpFxOn[4]`, the cloud's drift, the contact
+  texture and its box, `uDpFighters[DP_FIGHTERS]`, `uDpRip[DP_RIP_N]`, the ridge's numbers and glyphs).
+  `GroundFx`: `update(dt)` once a frame after the wake (the switches, the cloud on `world.life.wind`, the
+  fighters' rings from `game.player` and `game.boss.bodyCircles`, the rings' ages, the contact texture
+  re-baked round a piece whose state changed), `blow(x, z, power, o)` (from `world.groundBlow`; a ring from
+  power ≥ 0.45, none beside a young one), `clear()` (the reset), `on`, `rings`, `bakes`, `contactAt(x, z)`.
+  Tuning: `world/groundFxTuning.js`.
+- **The footprints — `render/dragonStep.js`** + `world/life/steps.js`. Every step on every surface records a
+  flash print (`STEPS.flash`). With the dragon ground (`world.ground.userData.look === 'b'`) steps.js writes the
+  newest `DP_STEPS` of them into `DP_STEP_U` once a frame (x, z, age, heading; `uDpStepK.w` 0 when none) and
+  the floor's cells print them (`dpStep(cellCentre, hash)` → strength, heat, the code letter); otherwise a few
+  code letters flash as the prints' particles. `?prints=0` the surfaces' prints before.
+- **Tests:** `groundfx` (rings live and expire, contact bakes, no NaN, no allocation, every level),
+  `dragonProps` (switched off = the materials before; tone windows; every level builds; bites), `dggrass`,
+  `dpfloor` (the rim; every set; switched off = before), `life` `steps.flash`. A check of a look BEFORE the
+  dragon print runs under `?dragon=0` / the piece's `'0'` (`setLook`).
+
 ## Levels and the boss slot (2026-11-12, ADR-058, ADR-060; the Starless level: ADR-068 – ADR-070; the Skybreak Ring: 2026-11-21, ADR-129; the Foxfire Terrace: ADR-147)
 `src/levels/index.js`: `LEVELS` (Cinderwood `cinderwood`, Ashfall `ash`, the Obsidian Throne
 `starless`, the Skybreak Ring `ring`, the Foxfire Terrace `fox`, the Windless Grove `grove`, the Hall of Falling Script `code`, Halcyon Plaza `city`), `DEFAULT_LEVEL`,

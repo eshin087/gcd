@@ -7,6 +7,7 @@ import { createWyrmArtAtlas, wyrmArtLadder, zoomArtStep } from './wyrmGlyphs.js'
 import { HERO_ART } from './materials.js';
 import { LET_GO_GLSL, letGoUniforms } from './letGo.js';
 import { RIPPLE } from './impactRipple.js';
+import { DP_TONE, dpPropsLook, dpTreesLook } from './dragonProps.js';
 
 /** The time rip's live cuts at once (player/timeRip.js; the ASCII pass's uCutA / uCutB size). */
 const CUT_SLOTS = 2;
@@ -408,6 +409,13 @@ export class Pipeline {
         // have at the camera's focus (px, set per frame), so letters stay on an object while the
         // camera follows the hero (exact at the focus depth, a slow drift nearer and farther)
         uPropAnchor: { value: new THREE.Vector2(0, 0) },
+        // ---- THE DRAGON PRINT on props and trees (render/dragonProps.js; ?dpProps, ?dpTrees): x = the props, y =
+        // the trees (1 on). Their sources are lit by a relief; the cells print in the props' own letters, as above.
+        // A dragon-printed source writes its tone in alpha (DP_TONE): a crown's leaves in a window of their own (no
+        // outline round them)
+        uDpOn: { value: new THREE.Vector2(dpPropsLook() !== '0' ? 1 : 0, dpTreesLook() !== '0' ? 1 : 0) },
+        uDpTone: { value: new THREE.Vector3(DP_TONE.a0, DP_TONE.span, DP_TONE.top) },
+        uDpLeaf: { value: new THREE.Vector3(DP_TONE.leaf0, DP_TONE.leafSpan, DP_TONE.leafCut) },
         // ---- the hero seen through what covers him (ADR-106). tSeen = seenRT: the hero's pixels
         // that something stands in front of (their alpha is in the hero's window), and nothing else
         tSeen: { value: this.seenRT.texture },
@@ -491,6 +499,9 @@ export class Pipeline {
         uniform vec3 uPropLum;
         uniform vec3 uPropOutline;
         uniform vec2 uPropAnchor;
+        uniform vec2 uDpOn;
+        uniform vec3 uDpTone;
+        uniform vec3 uDpLeaf;
         uniform sampler2D tFlame;
         uniform vec4 uFlame;
         uniform vec2 uFlameCells;
@@ -567,15 +578,19 @@ export class Pipeline {
           float lum = luma(c.rgb);
           // outline only stones that stand above the ground (flagstones stay pure texture)
           bool raised = worldAt(cuv).y > 0.22;
+          // (one return: the HLSL compiler warned of an uninitialised result with two, X4000)
+          vec3 res;
           if (raised && abs(gx) + abs(gy) > 0.9) {
             float orient = abs(gx) > 2.0 * abs(gy) ? 0.0 : abs(gy) > 2.0 * abs(gx) ? 1.0 : (gx * gy > 0.0 ? 3.0 : 2.0);
             float m = glyphAt(7.0, orient * 4.0 + floor(h * 4.0), local);
-            return mix(c.rgb * uBg, c.rgb * uGain * 1.35 + vec3(0.01), m);
+            res = mix(c.rgb * uBg, c.rgb * uGain * 1.35 + vec3(0.01), m);
+          } else {
+            float l = 1.0 - exp(-lum * uLumMap);
+            float level = clamp(floor(l * 14.0), 0.0, 13.0);
+            float m = glyphAt(0.0, level * 4.0 + floor(h * 4.0), local);
+            res = mix(c.rgb * uBg, c.rgb * uGain, m);
           }
-          float l = 1.0 - exp(-lum * uLumMap);
-          float level = clamp(floor(l * 14.0), 0.0, 13.0);
-          float m = glyphAt(0.0, level * 4.0 + floor(h * 4.0), local);
-          return mix(c.rgb * uBg, c.rgb * uGain, m);
+          return res;
         }
 
         // ---- creature: glyph oriented along the encoded surface flow
@@ -599,6 +614,18 @@ export class Pipeline {
         ${IS_HERO_GLSL}
         bool isArt(float a) { return (a > 0.46 && a < 0.55) || isSelf(a); }
         bool isProp(float a) { return a > 0.555 && a < 0.585; } // FLAG.ART_PROP = 0.57
+        // ---- THE DRAGON PRINT on props and trees (render/dragonProps.js). What the prop branch makes of a sample:
+        // 0 nothing of its; 1 a prop printed in the wyrm's letters (as before the switches); 2 the dragon print (a
+        // source that carries its tone, a prop under ?dpProps, a tree of the screen grid under ?dpTrees)
+        float propKind(float a) {
+          if (a > 0.555 && a < uDpTone.z) return 2.0;
+          if (a > uDpLeaf.x - 0.005 && a < uDpLeaf.x + uDpLeaf.y + 0.005) return 2.0;
+          if (a > 0.555 && a < 0.585) return uDpOn.x > 0.5 ? 2.0 : 1.0;
+          if (uDpOn.y > 0.5 && (abs(a - 0.6) < 0.012 || a > 0.95)) return 2.0;
+          return 0.0;
+        }
+        // a crown's leaves (their own window, uDpLeaf; the screen grid's FLAG.LEAF): no outline, a ragged edge
+        bool dpLeafA(float a) { return (a > uDpLeaf.x - 0.005 && a < uDpLeaf.x + uDpLeaf.y + 0.005) || abs(a - 0.6) < 0.012; }
 
         // ---- the wyrm (FLAG.ART): fine pixel-font digits on black (wyrmGlyphs.js atlas in tArt; ADR-093).
         // The letter is picked per cell: its average source picks a letter SET (a dark cell prints
@@ -1159,15 +1186,23 @@ export class Pipeline {
           vec3 psum = vec3(0.0);
           float phits = 0.0;
           vec4 pmask = vec4(0.0), pdep = vec4(0.0);
+          // (the dragon print: how many of the samples are its own, and how many of those a crown's leaves)
+          float pdp = 0.0, pleaf = 0.0;
+          bool dpOn = uDpOn.x + uDpOn.y > 0.5;
           for (int i = 0; i < 4; i++) {
             vec2 o = vec2(i == 1 || i == 3 ? 0.75 : 0.25, i >= 2 ? 0.75 : 0.25);
             vec2 suv = (pbase + o * uArtCell) / uRes;
             vec4 sa = texture2D(tScene, suv);
-            if (isProp(sa.a)) {
+            float pk = propKind(sa.a);
+            if (pk > 0.0) {
               float dz = linDepth(suv);
               if (i == 0) { pmask.x = 1.0; pdep.x = dz; } else if (i == 1) { pmask.y = 1.0; pdep.y = dz; } else if (i == 2) { pmask.z = 1.0; pdep.z = dz; } else { pmask.w = 1.0; pdep.w = dz; }
               psum += sa.rgb;
               phits += 1.0;
+              if (dpOn && pk > 1.5) {
+                pdp += 1.0;
+                if (dpLeafA(sa.a)) pleaf += 1.0;
+              }
             }
           }
           if (phits >= 1.0) {
@@ -1184,19 +1219,25 @@ export class Pipeline {
                 if (nh >= 1.0 && nh <= 3.0) { pstroke = edgeDir(nearM, nh); pgain = uPropOutline.z; }
               }
             }
+            // (a crown of leaves has no outline: its edge is the ragged edge of its letters; and its deep shade
+            // prints nothing, uDpLeaf.z: the dark between its masses is what draws them, as the screen grid's did)
+            if (pdp > 0.0 && pleaf * 2.0 > phits) pstroke = -1.0;
             if (phits >= 2.0 || pstroke >= 0.0) {
               // (the four samples that found the cell are its tone: a prop's source is smooth, facet by
               // facet, so the wyrm's 16 extra taps would cost a quarter of the pass for nothing)
               vec3 ca = psum / phits * pgain;
               vec4 sp = texture2D(tScene, px / uRes);
-              vec3 cp = isProp(sp.a) && pstroke < 0.0 ? sp.rgb : ca;
+              // (a dragon-printed cell's letter is drawn whole in the cell's tone: its relief's pixels would
+              // speckle the strokes)
+              vec3 cp = isProp(sp.a) && pstroke < 0.0 && pdp < 0.5 ? sp.rgb : ca;
               if (uFlame.z > 0.5) hazeCell(pbase + 0.5 * uArtCell, pcell);
               vec3 pc = artLetters(ca, cp, pcell, (px - pbase) / uArtCell, pstroke, uPropTone, uPropGlyph, uPropLum);
+              if (pdp > 0.0 && pleaf * 2.0 > phits && luma(ca) < uDpLeaf.z) pc = vec3(0.0);
               gl_FragColor = vec4(pc * (1.0 - heroHalo(px)), 1.0);
               return;
             }
           }
-          if (isProp(texture2D(tScene, px / uRes).a)) {
+          if (propKind(texture2D(tScene, px / uRes).a) > 0.0) {
             gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); // an object's edge sliver: black
             return;
           }
@@ -1208,8 +1249,9 @@ export class Pipeline {
           vec3 col;
           if (a < 0.03) {
             col = texture2D(tScene, px / uRes).rgb; // untagged: pass through
-          } else if (isArt(a) || isProp(a)) {
-            // world cell centred on a creature / prop edge: raw pixel. (Checked BEFORE the creature
+          } else if (isArt(a) || isProp(a) || (uDpOn.y > 0.5 && a > 0.588)) {
+            // world cell centred on a creature / prop edge (under ?dpTrees a tree's too: the trees are props
+            // then, render/dragonProps.js): raw pixel. (Checked BEFORE the creature
             // grid: the player's own window (isSelf, 0.42 - 0.45) lies under 0.46, so a world cell whose
             // centre fell on his blade printed a creature-grid letter in the steel's raw HDR colour (4 - 6)
             // beside it: a bright letter that bloomed round a resting blade. ADR-183)

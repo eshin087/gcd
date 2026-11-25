@@ -1,7 +1,10 @@
 import { GlyphParticles } from '../../render/particles.js';
 import { gi } from '../../render/glyphs.js';
+import { LeafPrint, leafLook, LEAF_SHAPES } from '../../render/dragonLeaf.js';
+import { CONFIG } from '../../core/config.js';
 import { meadowHeight } from '../grass.js';
 import { LITTER } from './litterTuning.js';
+import { LetterBatch } from './letterBatch.js';
 import { lifeSay } from '../../audio/lifeSfx.js';
 import { LIFE_SFX_TUNE as SAY } from '../../audio/lifeSfxTuning.js';
 
@@ -29,9 +32,28 @@ import { LIFE_SFX_TUNE as SAY } from '../../audio/lifeSfxTuning.js';
 // The litter keeps to a window round life.focus (the visible ground and a margin): a lying letter the
 // window leaves behind is moved to the band at the window's other edge (out of view), so walking never
 // reveals bare ground.
+//
+// THE LEAF LOOKS (`?leafLook=`, render/dragonLeaf.js; the owner, 2026-11-25: the leaves on the ground "dont
+// look like leaves" as plain letters). A kind with a `print` block (litterTuning.js) lies as:
+//   '0'  its letters (the pool), as before; the default under ?dragon=0
+//   'a'  ONE glyph lying flat along it, lit as the ground (a slashed oval: a blade and its midrib; LeafPrint
+//        in its lens mode: one instanced draw in the world scene)
+//   'b'  printed in the dragon ground's own cells (LeafPrint in its cell mode)
+//   'c'  a little sketch in the living world's tiny letters (a LetterBatch of its own)
+// and falls with its `print.air` letters under a, b and c. The look is read every frame (the Lab and the
+// tests switch it live); a look's drawer is made the first frame it is asked for, on the looks' own
+// stream (_buildOwn), so the look never moves what falls and lies. Its own numbers per piece (its length,
+// axis, curl, seed, print colour) come from the piece's own draws (no draw more from the living world's
+// stream than before).
 
 const FREE = 0, AIR = 1, LYING = 2, FADE = 3;
 const TAU = Math.PI * 2;
+/** a stable 0..1 from a piece's own numbers (no draw from the stream) */
+const frac = (v) => v - Math.floor(v);
+const hash1 = (a, b) => frac(Math.sin(a * 12.9898 + b * 78.233) * 43758.5453);
+/** sin of the game camera's pitch: a world axis's foreshortening on the screen */
+const PITCH = CONFIG.camera?.pitch ?? (58 * Math.PI) / 180;
+const SIN_P = Math.sin(PITCH), COT_P = Math.cos(PITCH) / Math.sin(PITCH);
 /** the skitter's sound options (reused) */
 const SND = { k: 1 };
 const GRID = 1; // m a weight cell
@@ -73,6 +95,13 @@ export class Litter {
     this._mvz = 0;
     this._bounds = this._win;
     this._visible = true;
+    // the leaf looks: the look drawn now, its drawers (made when first asked for), a colour (reused)
+    this._look = '0';
+    this.printer = null;
+    this.lens = null;
+    this.marks = null;
+    this._c3 = [0, 0, 0];
+    this._rs = 0x6d2b79f5;
     // (a level with no litter block has no litter: no buttons for it in the Lab)
     if (!this.T) return;
     life.action?.('leaf shower', () => this.shower(), 'a burst of falling leaves round the camera');
@@ -94,7 +123,11 @@ export class Litter {
       const lie = K.ground?.glyphs ? [...K.ground.glyphs].map((c) => gi(c)) : glyphs;
       const W = K.where ?? { at: 'flat' };
       const base = W.at === 'rim' || W.at === 'near' ? (W.lo ?? 0) : W.at === 'ash' || W.at === 'kerb' ? W.base / (W.base + W.pile) : W.at === 'flat' ? Math.min(1, W.out ?? 1) : 1;
-      return { K, glyphs, lie, W, base, grid: new Float32Array(GRID_N * GRID_N).fill(NaN), pts: this._points(W) };
+      // (the leaf looks: its print's shape, -1 none: it keeps its letters under every look; its air letters)
+      const P = K.print ?? null;
+      const shape = P ? (LEAF_SHAPES[P.shape] ?? 0) : -1;
+      const air = P?.air ? [...P.air].map((c) => gi(c)) : glyphs;
+      return { K, glyphs, lie, W, base, grid: new Float32Array(GRID_N * GRID_N).fill(NaN), pts: this._points(W), P, shape, air };
     });
     let share = 0;
     for (const k of this.kinds) share += k.K.share ?? 1;
@@ -102,6 +135,8 @@ export class Litter {
     this.leaves = Array.from({ length: LITTER.max }, () => ({
       s: FREE, k: 0, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, ph: 0, fq: 1, sa: 0, sp: 0, rot: 0, size: 0.2, g: 0,
       cr: 0, cg: 0, cb: 0, fall: 1, lift: 3, pile: 0, b: 1, a: 0, fa: 0, age: 0, last: 100, gy: 0.05,
+      // (the leaf looks: the print's colour, half-length, curl, seed; its letter in the air)
+      pr: 0, pg: 0, pb: 0, pl: 0.15, pc: 0.5, ps: 0, ga: 0,
     }));
     // (life.build: three.js's uuids draw from the living world's stream, never Math.random)
     try {
@@ -111,6 +146,59 @@ export class Litter {
       this.life.game.pipeline?.registerParticles?.(this.pool);
     } catch {
       this.pool = null; // (no GPU: the letters still live, they are only not drawn)
+    }
+    this._tried = { a: false, b: false, c: false };
+    // (a leaf look's blade in the air: the lens glyph, squeezed along it)
+    this._gLens = gi(LITTER.print.lens);
+  }
+
+  /** The leaf looks' own stream (their drawers' three.js uuids, a LetterBatch's atlas rebuilt when the
+   *  frame size changes): never Math.random, and never the shared stream either, so which look is drawn
+   *  (and when its drawer is made) does not move what falls and lies, nor any other layer. */
+  _r() {
+    this._rs = (Math.imul(this._rs, 1664525) + 1013904223) >>> 0;
+    return this._rs / 4294967296;
+  }
+
+  /** life.build's guard on the looks' own stream: while fn makes GPU objects, Math.random is this._r. */
+  _buildOwn(fn) {
+    const mr = Math.random;
+    Math.random = () => this._r();
+    try {
+      return fn();
+    } finally {
+      Math.random = mr;
+    }
+  }
+
+  /** The leaf look now (read every frame): its drawer is made the first time it is asked for; what the
+   *  look before drew goes. */
+  _setLook(look) {
+    if (look !== this._look) {
+      if (this._look === 'a') this.lens?.empty();
+      if (this._look === 'b') this.printer?.empty();
+      if (this._look === 'c') this.marks?.empty();
+      this._look = look;
+    }
+    if (look !== 'a' && look !== 'b' && look !== 'c') return;
+    if (this._tried[look] || !this.kinds.some((k) => k.shape >= 0)) return;
+    this._tried[look] = true;
+    const g = this.life.game;
+    try {
+      if (look === 'a' || look === 'b') {
+        const p = this._buildOwn(() => new LeafPrint(g.U, LITTER.max, LITTER.print, COT_P, look === 'a' ? 1 : 0));
+        p.setShown(this._visible);
+        g.scene?.add?.(p.mesh);
+        if (look === 'a') this.lens = p;
+        else this.printer = p;
+      } else {
+        this.marks = this._buildOwn(() => new LetterBatch(g, LITTER.max * 4, LITTER.print.marks, { rand: () => this._r() }));
+        this.marks.uniforms.uSoft.value = LITTER.soft;
+        this.marks.mesh.visible = this._visible;
+        g.pipeline?.registerParticles?.(this.marks);
+      }
+    } catch {
+      // (no GPU: the leaves still live, they are only not drawn)
     }
   }
 
@@ -189,7 +277,8 @@ export class Litter {
   _groundY(x, z) {
     const d = this.life.world?.fire?.density?.(x, z);
     const y0 = LITTER.floor;
-    if (!(d > 0.15) || !(this.T.grass > 0)) return y0;
+    // (the grass printed in the ground, its 3D blades not drawn (world.js, the dragon print): it lies on the floor)
+    if (!(d > 0.15) || !(this.T.grass > 0) || this.life.world?.grass?.mesh?.visible === false) return y0;
     const h = meadowHeight(x, z, HALF) * this._grassH;
     return y0 + this.T.grass * (Number.isFinite(h) ? h : 0) * smooth(0.15, 0.65, d);
   }
@@ -246,6 +335,14 @@ export class Litter {
     f.cr = (c0[0] + (c1[0] - c0[0]) * t) * v;
     f.cg = (c0[1] + (c1[1] - c0[1]) * t) * v;
     f.cb = (c0[2] + (c1[2] - c0[2]) * t) * v;
+    const P = this.kinds[ki].P;
+    if (P) {
+      // (the print's own: from this piece's draws, never another one from the stream)
+      const p0 = P.color ?? c0, p1 = P.color2 ?? p0;
+      f.pr = (p0[0] + (p1[0] - p0[0]) * t) * v;
+      f.pg = (p0[1] + (p1[1] - p0[1]) * t) * v;
+      f.pb = (p0[2] + (p1[2] - p0[2]) * t) * v;
+    }
     f.fall = L.range(K.fall[0], K.fall[1]);
     f.lift = L.range(K.lift[0], K.lift[1]);
     f.fq = L.range(K.flutter[0], K.flutter[1]);
@@ -254,6 +351,14 @@ export class Litter {
     f.sp = (L.rand() * 2 - 1) * K.spin;
     f.rot = L.rand() * TAU;
     f.pile = 0;
+    if (P) {
+      const u = hash1(f.ph, f.fq), w = hash1(f.fall, f.sa);
+      f.pl = P.len ? P.len[0] + (P.len[1] - P.len[0]) * u : 0.15;
+      f.pc = P.curl ? P.curl[0] + (P.curl[1] - P.curl[0]) * w : 0.5;
+      f.ps = hash1(f.lift, f.rot);
+      const air = this.kinds[ki].air;
+      f.ga = air[Math.floor(hash1(f.fq, f.sp) * air.length) % air.length] ?? f.g;
+    }
   }
 
   /** The window round the camera's focus (one record, reused). */
@@ -513,6 +618,9 @@ export class Litter {
   setVisible(on) {
     this._visible = !!on;
     if (this.pool) this.pool.mesh.visible = this._visible;
+    this.printer?.setShown(this._visible);
+    this.lens?.setShown(this._visible);
+    if (this.marks) this.marks.mesh.visible = this._visible;
   }
 
   /** 'reset': the fight was reset: what is in the air goes; what lies stays (it is the ground). */
@@ -536,6 +644,7 @@ export class Litter {
     if (!Number.isFinite(dt) || !(dt > 0)) return;
     dt = Math.min(dt, 0.1);
     if (!this.leaves) this._build();
+    this._setLook(leafLook());
     const L = this.life, T = this.T, B = this._window();
     this._bounds = B;
     // the window: a jump (a respawn, the Lab) lays the ground anew; a walk moves what it leaves behind
@@ -765,17 +874,23 @@ export class Litter {
     this._draw();
   }
 
-  /** The records into the pool's instance buffers (one draw call). */
+  /** The records into the pool's instance buffers (one draw call), and what lies under a leaf look into
+   *  its drawer (look a: the lens; b: the cells; c: the tiny letters). */
   _draw() {
     const pool = this.pool;
-    if (!pool) return;
-    const P = pool.iPos.array, D = pool.iData.array, C = pool.iColor.array;
+    const look = this._look, LB = look === 'c' ? this.marks : null;
+    const LP = look === 'a' ? this.lens : look === 'b' ? this.printer : null;
+    const lk = look === 'a' ? LITTER.print.lensLen : 1;
+    LP?.begin();
+    LB?.begin();
+    const P = pool?.iPos.array, D = pool?.iData.array, C = pool?.iColor.array;
+    const max = pool ? pool.max : 0;
     const H = this.life.hero, hc = LITTER.heroClear;
     let n = 0;
     if (this.leaves && this.count > 0) {
       for (const f of this.leaves) {
         if (f.s === FREE) continue;
-        const K = this.kinds[f.k].K;
+        const kd = this.kinds[f.k], K = kd.K;
         let a = K.alpha * f.a;
         if (f.s !== AIR) {
           // not drawn over the hero's feet
@@ -784,16 +899,72 @@ export class Litter {
           if (d2 < hc[1] * hc[1]) a *= smooth(hc[0], hc[1], Math.sqrt(d2));
         }
         if (!(a > 0.002)) continue;
+        const leafy = look !== '0' && kd.shape >= 0;
+        if (leafy && f.s !== AIR) {
+          // a leaf look: what lies is drawn its way
+          const fade = Math.min(1, a / K.alpha);
+          if (LP) LP.put(f.x, f.z, f.rot, f.pl * lk, kd.shape, fade, f.ps, f.pr, f.pg, f.pb, f.pc, kd.P.glow ?? 0, kd.P.wide ?? 0);
+          else this._sketch(LB, f, kd, fade);
+          continue;
+        }
+        if (!pool || n >= max) continue;
         const b = f.b;
         const rot = f.s === AIR && K.spin > 0 ? f.rot + 0.6 * Math.sin(f.ph) : f.rot;
         P[n * 3] = f.x; P[n * 3 + 1] = f.y; P[n * 3 + 2] = f.z;
-        D[n * 4] = f.size; D[n * 4 + 1] = f.g; D[n * 4 + 2] = rot; D[n * 4 + 3] = 0;
+        if (leafy && kd.shape === LEAF_SHAPES.leaf) {
+          // a leaf look's blade in the air: the lens glyph along it, turning over as it falls (it shows its
+          // face, then its edge), in the print's colour (the pool is unlit: `airK` of it)
+          const T = LITTER.print, sz = T.airW;
+          const st = ((2 * f.pl * lk) / (T.lensInk * sz)) * (0.3 + 0.7 * Math.abs(Math.cos(f.ph * 0.7))) - 1;
+          D[n * 4] = sz; D[n * 4 + 1] = this._gLens; D[n * 4 + 2] = rot; D[n * 4 + 3] = Math.max(-0.6, st);
+          C[n * 4] = f.pr * T.airK * b; C[n * 4 + 1] = f.pg * T.airK * b; C[n * 4 + 2] = f.pb * T.airK * b; C[n * 4 + 3] = a;
+          n++;
+          continue;
+        }
+        D[n * 4] = f.size; D[n * 4 + 1] = leafy ? f.ga : f.g; D[n * 4 + 2] = rot; D[n * 4 + 3] = 0;
         C[n * 4] = f.cr * b; C[n * 4 + 1] = f.cg * b; C[n * 4 + 2] = f.cb * b; C[n * 4 + 3] = a;
         n++;
       }
     }
+    LP?.end();
+    LB?.end();
+    if (!pool) return;
     pool.count = n;
     pool.geometry.instanceCount = n;
     pool.iPos.needsUpdate = pool.iData.needsUpdate = pool.iColor.needsUpdate = true;
+  }
+
+  /** Look c: a lying piece as a sketch in the living world's tiny letters (upright, one 5 x 8 px cell
+   *  each): a blade a tiny oval and its stem a stroke along it (by its way on the screen) at its base; a
+   *  grain one dot; a slip or a straw two strokes along it. */
+  _sketch(B, f, kd, fade) {
+    if (!B) return;
+    const T = LITTER.print, c = this._c3, k = T.bK, sh = kd.shape;
+    c[0] = f.pr * k;
+    c[1] = f.pg * k;
+    c[2] = f.pb * k;
+    const a = T.bAlpha * fade, y = LITTER.floor;
+    if (sh === LEAF_SHAPES.grit) {
+      B.put(f.x, y, f.z, 0, B.col('.'), 0, c, a);
+      return;
+    }
+    const ca = Math.cos(f.rot), sa = Math.sin(f.rot);
+    const st = B.col(sh === LEAF_SHAPES.slip ? '-' : T.strokes[this._strokeK(ca, sa)]);
+    if (sh === LEAF_SHAPES.leaf) {
+      const d = f.pl * 0.8;
+      B.put(f.x + ca * d * 0.25, y, f.z + sa * d * 0.25, 0, B.col(T.blade), 0, c, a);
+      B.put(f.x - ca * d, y, f.z - sa * d, 0, st, 0, c, a * 0.8);
+      return;
+    }
+    const l = f.pl * 0.5;
+    B.put(f.x - ca * l, y, f.z - sa * l, 0, st, 0, c, a);
+    B.put(f.x + ca * l, y, f.z + sa * l, 0, st, 0, c, a);
+  }
+
+  /** The stroke (- / | \ : 0..3) for a world axis (cos, sin) on the game camera's screen. */
+  _strokeK(ca, sa) {
+    let t = Math.atan2(-sa * SIN_P, ca);
+    if (t < 0) t += Math.PI;
+    return Math.round(t / (Math.PI / 4)) % 4;
   }
 }

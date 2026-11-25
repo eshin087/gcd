@@ -19,6 +19,16 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-25',
+        title: 'The world is printed like the dragon',
+        notes: [
+          "Every level is now printed in the dragon's own fine digits: the ground, the floors, the grass, the rocks and the trees. Dark where they turn from the moon, bright where the light catches them, so the ground has depth and shadows fall across it.",
+          'The grass lies down as you run through it and rises again, and your sword cuts it where it passes: the tufts fly and a dark swath stays. Fallen leaves lie as small lit leaves.',
+          'Cloud shadows drift with the wind, heavy blows send a ring of digits through the ground, and your footsteps flash in green code for a moment.',
+          'To see the world as it was, add ?dragon=0 to the address.',
+        ],
+      },
+      {
+        date: '2026-11-25',
         title: 'The first load is faster',
         notes: [
           'The loading screen now prepares all the graphics the first frame needs at once, so a first visit reaches the game in about two thirds of the time.',

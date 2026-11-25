@@ -1,0 +1,171 @@
+import { dragonLook } from './dragonPrint.js';
+
+// THE DRAGON PRINT ON THINGS THAT STAND (the owner, 2026-11-24: "can we try this art style on not just the ground
+// and things like the stone and other textures?"). The dragon ground (render/dragonPrint.js, world/ground.js look b)
+// prints a LIT RELIEF in fine digits: a cell's DENSITY is how its relief meets the moon (the digit ramp DP_RAMP,
+// '.' in a trough to '@' on a lit crest), its BRIGHTNESS the body's colour times the light. Here the same print for
+// what stands on it, through the art pass's prop branch (render/pipeline.js), so ground and objects read as one lit
+// world drawn by one hand:
+//
+//   dpProps  rocks, pillars, walls, bones, every prop-art object (createPropArtMaterial, FLAG.ART_PROP)
+//            a  calm relief: chisel facets, soft bumps, a few cracks; lit by the moon and the shadow map only
+//            b  stronger relief: bigger facets, deeper cracks, harder shadows
+//   dpTrees  tree trunks, stumps and canopies (the screen grid's FLAG.STONE / FLAG.LEAF until now; on every level:
+//            the art pass takes them over), and in Cinderwood (world/forest.js) their relief:
+//            a  bark as vertical grain, crowns lit as masses (the moon on the tops, dark under) with soft clumps
+//            b  the clumps stronger and bigger (round puffs, dark gaps), the furrows deeper
+//
+// HOW THE PRINT TRAVELS. A dragon-printed source is a relief lit by the dragon ground's law (the moon on its relief,
+// the shadow map, the fire's light; a cell in shadow dim, a lit face bright) and the props' camera-fixed key light;
+// the art pass prints it in the props' OWN letters by its brightness, exactly as it prints today's props (ADR-100:
+// the wyrm's pixel-font digits, every cell a letter, the outline in stroke glyphs), so a lit face is as bright as
+// before and a face in shadow still prints its dimmest digits; the relief reads as patches of brighter and dimmer
+// letters on top. (A first round printed the ground's own world-atlas digits by a density ramp: at 5 x 8 px they
+// printed at a third of the props' brightness and a dark face printed dots: objects read as bare outlines.)
+// The source writes its tone in alpha inside the props' flag window (DP_TONE: below 0.57), a crown's leaves in a
+// window of their own (DP_TONE.leaf0): the art pass draws no outline round a crown (its edge is the ragged edge of
+// its letters) and prints a dragon-printed letter whole in its cell's tone. A prop or a tree still drawn by
+// createAsciiObjectMaterial prints as today's props do, without a relief of its own.
+//
+// The relief is computed on the geometry's OWN position (the rest pose: it rides with a swaying crown, a carried
+// pillar, a falling piece), turned into the world by the piece's matrix.
+
+export const dpPropsLook = () => {
+  const v = dragonLook('dpProps');
+  return v === 'a' || v === 'b' ? v : '0';
+};
+export const dpTreesLook = () => {
+  const v = dragonLook('dpTrees');
+  return v === 'a' || v === 'b' ? v : '0';
+};
+
+/**
+ * The tone's window in the props' flag (alpha): a0 + tone x span, every value below `top` (FLAG.ART_PROP = 0.57 above it).
+ * A crown's leaves have a window of their own, leaf0 + tone x leafSpan (between FLAG.LEAF 0.6 and FLAG.STONE's 0.8):
+ * the art pass draws no outline round them (a crown's edge is the ragged edge of its digits), and a crown's cell whose
+ * source is darker than `leafCut` (linear luma) prints nothing: the dark between its masses draws them (today's crowns).
+ */
+export const DP_TONE = Object.freeze({ a0: 0.556, span: 0.0105, top: 0.5675, leaf0: 0.62, leafSpan: 0.16, leafCut: 0.008 });
+
+/**
+ * The look's numbers per option. Relief (slopes are added to the surface normal: 0.5 tilts a face ~27 degrees):
+ *   facet   slope of a chisel facet (one random tilt per cell of a warped lattice `size` m across)
+ *   bump    slope of the soft bumps on top (value noise, `bumpF` per m)
+ *   crack   width of a crack (m; 0 = none), `crackK` the share of facets that carry one, `crackDark` how much a
+ *           crack darkens its cells
+ * Light (the ground's law, world/ground.js look b): tone = (N . moon) from law[0] (0) to law[1] (1) x shadow, + `key`
+ *   x the camera-fixed key light (today's props', the wyrm's: a face turned to the camera still reads); the edge
+ *   band adds `edge` x shadow; the ambient occlusion keeps `ao` of its dimming; the source = body x (0.2 + 1.5 tone)
+ *   x the light x `ink`, which the art pass prints in the props' own letters by its brightness (as today's props:
+ *   `ink` sets a lit face as bright as before, a face in shadow prints its dimmest letters, never nothing).
+ */
+export const DP_PROPS = Object.freeze({
+  a: { facet: 0.55, size: 0.4, bump: 0.18, bumpF: 4.5, crack: 0.05, crackK: 0.45, crackDark: 0.75, law: [-0.1, 1.05], edge: 0.2, ao: 0.45, key: 0.45, ink: 1.0 },
+  b: { facet: 0.9, size: 0.5, bump: 0.28, bumpF: 4.0, crack: 0.07, crackK: 0.6, crackDark: 0.9, law: [0.0, 1.0], edge: 0.16, ao: 0.6, key: 0.3, ink: 1.0 },
+});
+/**
+ * Trees: bark (the trunks, the boughs, the stumps) and leaves (the crowns).
+ *   bark   slope of the grain, `barkF` furrows per m round the trunk (a tenth of that up it), `furrow` how dark
+ *          the deep furrows print
+ *   leaf   how far a point turns toward the outside of its clump (round puffs: a lattice of clump centres
+ *          1 / `leafF` m apart), `sprig` slope of the small sprigs on them, `hollow` how dark the gaps between
+ *          clumps print
+ *   barkLaw / leafLaw  the tone's ramp on N . moon (the leaves wrap the light: a crown is soft)
+ *   key    the camera-fixed key light on bark (the crowns take none: their light wraps)
+ *   inkBark / inkLeaf  the source's gain (the crowns a little calmer than today's bright screen-grid crowns)
+ *   shade  how much of the moon's shadow a crown keeps (leaves let light through: a crown in the shade of its
+ *          neighbours is dim, not black); ao  how much of the painted occlusion (a crown's lower half, its
+ *          hollows) dims the tone
+ */
+export const DP_TREES = Object.freeze({
+  a: { bark: 0.55, barkF: 5.5, furrow: 0.5, leaf: 0.6, leafF: 1.5, sprig: 0.2, hollow: 0.15, barkLaw: [-0.15, 1.0], leafLaw: [-0.6, 0.85], shade: 0.65, ao: 0.4, key: 0.15, inkBark: 0.4, inkLeaf: 0.35 },
+  b: { bark: 0.75, barkF: 4.5, furrow: 0.7, leaf: 1.6, leafF: 1.0, sprig: 0.25, hollow: 0.4, barkLaw: [-0.1, 0.95], leafLaw: [-0.45, 0.85], shade: 0.75, ao: 0.5, key: 0.1, inkBark: 0.4, inkLeaf: 0.35 },
+});
+
+/**
+ * GLSL (needs COMMON_GLSL's hash13): the reliefs. Each takes the point p and the face's normal n in the piece's
+ * own space and returns the slope to add to n there (dpBump turns it into the relief's normal), plus how deep in
+ * a crack / a furrow / a hollow the point is (0..1).
+ */
+export const DP_RELIEF_GLSL = /* glsl */ `
+// value noise with its gradient: x = 0..1, yzw = d / dp
+vec4 dpNoised(vec3 x) {
+  vec3 i = floor(x), f = fract(x);
+  vec3 u = f * f * (3.0 - 2.0 * f), du = 6.0 * f * (1.0 - f);
+  float a = hash13(i), b = hash13(i + vec3(1.0, 0.0, 0.0)), c = hash13(i + vec3(0.0, 1.0, 0.0)), d = hash13(i + vec3(1.0, 1.0, 0.0));
+  float e = hash13(i + vec3(0.0, 0.0, 1.0)), f1 = hash13(i + vec3(1.0, 0.0, 1.0)), g = hash13(i + vec3(0.0, 1.0, 1.0)), h = hash13(i + vec3(1.0, 1.0, 1.0));
+  float k1 = b - a, k2 = c - a, k3 = e - a, k4 = a - b - c + d, k5 = a - c - e + g, k6 = a - b - e + f1, k7 = -a + b + c - d + e - f1 - g + h;
+  return vec4(a + k1 * u.x + k2 * u.y + k3 * u.z + k4 * u.x * u.y + k5 * u.y * u.z + k6 * u.z * u.x + k7 * u.x * u.y * u.z,
+    du * vec3(k1 + k4 * u.y + k6 * u.z + k7 * u.y * u.z, k2 + k5 * u.z + k4 * u.x + k7 * u.z * u.x, k3 + k6 * u.x + k5 * u.y + k7 * u.x * u.y));
+}
+// the slope s along the surface (its part across n dropped)
+vec3 dpAlong(vec3 s, vec3 n) { return s - n * dot(s, n); }
+vec3 dpBump(vec3 n, vec3 s) { return normalize(n - dpAlong(s, n)); }
+// stone: k = (facet slope, facet size m, bump slope, bump frequency /m), c = (crack width m, share of facets, -, -)
+vec3 dpStone(vec3 p, vec3 n, vec4 k, vec4 c, out float crack) {
+  // chisel facets: one tilt per cell of a lattice warped so its walls wander
+  vec3 q = p / k.y + 0.3 * sin(p.yzx * 2.3 + p.zxy * 0.9);
+  vec3 cl = floor(q);
+  vec3 tilt = vec3(hash13(cl), hash13(cl + 17.1), hash13(cl + 41.3)) - 0.5;
+  vec4 b = dpNoised(p * k.w + 3.7);
+  vec3 s = tilt * (2.0 * k.x) + b.yzw * (k.z / 1.5);
+  // cracks: thin lines along an iso-line of a coarse noise, on some facets only (a crack ends at a facet's wall)
+  crack = 0.0;
+  if (c.x > 0.0 && hash13(cl + 73.7) < c.y) {
+    vec4 r = dpNoised(p * 1.3 + 11.1);
+    float gl = length(dpAlong(r.yzw, n)) * 1.3;
+    float dm = abs(r.x - 0.5) / max(gl, 0.08);
+    crack = 1.0 - smoothstep(c.x * 0.5, c.x, dm);
+  }
+  return s;
+}
+// bark: furrows running up the trunk (a noise stretched along its height); fur = how deep in a furrow
+vec3 dpBark(vec3 p, vec3 n, float slope, float f, out float fur) {
+  vec3 sc = vec3(f, f * 0.1, f);
+  vec4 b = dpNoised(p * sc + 5.3);
+  fur = smoothstep(0.4, 0.15, b.x);
+  return b.yzw * sc * (slope / f);
+}
+// leaf clumps: the nearest centre of a jittered lattice (size m apart; 2 x 2 x 2 cells searched): returns p's
+// offset from it (m); e = how much nearer it is than the next one (0 on the wall between two clumps)
+vec3 dpClump(vec3 p, float size, out float e) {
+  vec3 q = p / size;
+  vec3 b = floor(q - 0.5);
+  float d1 = 1e9, d2 = 1e9;
+  vec3 c1 = q;
+  for (int i = 0; i < 8; i++) {
+    vec3 cl = b + vec3(float(i & 1), float((i >> 1) & 1), float(i >> 2));
+    vec3 c = cl + 0.5 + (vec3(hash13(cl), hash13(cl + 19.7), hash13(cl + 37.1)) - 0.5) * 0.7;
+    float d = length(q - c);
+    if (d < d1) { d2 = d1; d1 = d; c1 = c; } else if (d < d2) { d2 = d; }
+  }
+  e = d2 - d1;
+  return (q - c1) * size;
+}
+// leaves: each point turned toward the outside of its clump (k: how far), small sprigs on top; returns the
+// NORMAL (not a slope); hol = how deep in the gap between two clumps
+vec3 dpLeaf(vec3 p, vec3 n, float k, float size, float sprig, out float hol) {
+  float e;
+  vec3 o = dpClump(p, size, e);
+  vec4 b = dpNoised(p * (2.7 / size) + 8.3);
+  hol = 1.0 - smoothstep(0.0, 0.22, e);
+  vec3 c = o / max(length(o), 1e-4);
+  c -= 2.0 * min(dot(c, n), 0.0) * n; // (always out of the crown: every clump a puff)
+  return normalize(n + c * k - dpAlong(b.yzw, n) * sprig);
+}
+`;
+
+/**
+ * GLSL for a material that hands its sources to the dragon print: the fx hooks' prelude (a surface that has no
+ * ground relief of its own: DP_RELIEF is flat) and the tone's encoding.
+ */
+export const DP_FX_PRELUDE_GLSL = /* glsl */ `
+float dpNoRelief(vec2 p, float d) { return 0.0; }
+#ifndef DP_RELIEF
+#define DP_RELIEF dpNoRelief
+#endif
+`;
+export const DP_ENCODE_GLSL = /* glsl */ `
+float dpEncode(float t) { return ${DP_TONE.a0.toFixed(4)} + clamp(t, 0.0, 1.0) * ${DP_TONE.span.toFixed(4)}; }
+float dpEncodeLeaf(float t) { return ${DP_TONE.leaf0.toFixed(4)} + clamp(t, 0.0, 1.0) * ${DP_TONE.leafSpan.toFixed(4)}; }
+`;

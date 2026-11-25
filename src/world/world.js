@@ -6,6 +6,8 @@ import { createForest } from './forest.js';
 import { createGrass, meadowDensity, meadowHeight } from './grass.js';
 import { Scorch } from './scorch.js';
 import { GrassTrail } from './grassTrail.js';
+import { GroundFx } from './groundFx.js';
+import { dgGrassLook } from './dragonGrass.js';
 import { Atmosphere } from './atmosphere.js';
 import { LivingWorld } from './life/life.js';
 import { GroundFire } from './fire.js';
@@ -75,6 +77,8 @@ export class World {
     applySky(U, this.forest.sky);
     this.scorch = new Scorch(U, game);
     this.trail = new GrassTrail(U);
+    // the dragon print's upgrades (groundFx.js; render/dragonPrintFx.js): cloud and contact shadows, the ripple, ridges
+    this.groundFx = new GroundFx(game, this);
     const extent = 150;
     const meadow = meadowDensity(this.colliders, this.forest.treeSpots, this.forest.bare, extent, this.forest.slabs);
     // a set may thin and shorten its grass (`grass: { density(x, z) → 0..1 factor, height, ash }`):
@@ -84,8 +88,13 @@ export class World {
     const hk = Number.isFinite(G?.height) ? G.height : 1;
     const height = hk === 1 ? meadowHeight : (x, z, rng) => meadowHeight(x, z, rng) * hk;
     const q = CONFIG.quality[CONFIG.quality.length - 1];
-    this.grass = createGrass(U, { count: q.grass, extent, density, height, ash: G?.ash ?? 0 });
+    const look = this.ground.userData.look;
+    this.grass = createGrass(U, { count: q.grass, extent, density, height, ash: G?.ash ?? 0, lattice: look === 'c' ? [0.24, 0.27, 0.42 * hk] : null });
     game.scene.add(this.grass.mesh);
+    // `?ground=a|b|d` print the meadow in the ground itself (world/ground.js): no 3D blades
+    this.ground.userData.setMeadow?.(density, extent, G?.ash ?? 0);
+    // (look b with dgGrass 'b': the standing digit blades stay; world/dragonGrass.js)
+    if (look && look !== 'c' && !(look === 'b' && dgGrassLook() === 'b')) this.grass.mesh.visible = false;
     // destruction: what burns (the grass is the fuel), what breaks (the set's `breakables`), what is left
     this.fire = new GroundFire(game, this, density);
     this.scars = new Scars(game, this.forest.scarInk);
@@ -192,6 +201,7 @@ export class World {
       console.error('[world] scars.mark', err);
     }
     this.life?.impact(x, z, Number.isFinite(o.r) ? o.r : 2, o.power, o);
+    this.groundFx?.blow(x, z, o.power, o);
   }
 
   /** Fire lands on the disc (x, z, r): the grass in it (unless `grass` is false) and the wood catch. */
@@ -205,6 +215,7 @@ export class World {
   /** The fight's reset: what broke stands again, what burns goes out, the marks are gone. */
   restore() {
     this.trail?.clear();
+    this.groundFx?.clear();
     this.fire.reset();
     this.scars.reset();
     this.destructibles.reset();
@@ -273,6 +284,7 @@ export class World {
     this.scorch.update(dt);
     // (after the hero: his pusher is this frame's)
     this.trail?.update(dt, this.game.U.uPushers.value[0]);
+    this.groundFx?.update(dt);
     if (this._hidden === null) {
       // (before the atmosphere: its smoke and embers read this frame's wind)
       this.life?.update(dt);

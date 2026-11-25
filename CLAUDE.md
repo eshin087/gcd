@@ -92,8 +92,10 @@ In Claude Code the preview config is `.claude/launch.json` (`gcd-dev`).
     in the same small letters. Glyph particles are for small things that fly on their own (embers,
     sparks, dust, debris), about one letter cell in size. No big glowing glyph sprites.
   - Do not invent another glyph style, letter size, ramp or font for something new.
-  - Do not restyle what exists and is not in that look (the hero, the human bosses, the floors, the
-    grass, the trees) unless the owner asks: each was their call.
+  - Do not restyle what exists and is not in that look (the hero, the human bosses) unless the owner
+    asks: each was their call. The ground, the floors, the grass, the props and the trees are printed
+    in the dragon print (ADR-198, `render/dragonPrint.js`, STYLE.md "The dragon print"): a new ground,
+    floor or mark on it prints through it, never a new floor shader.
   - Any change to how something looks: render before / after options and let the owner pick first.
 - **ASCII look is a feature.** Anything visible must go through the glyph systems described in
   `docs/STYLE.md` (the art pass, screen-grid ASCII, carved floors, the fire field, glyph particles). No plain shaded

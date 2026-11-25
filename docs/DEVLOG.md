@@ -5,6 +5,77 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-25 — The dragon print: the world printed in the wyrm's digits, now the default (ADR-198; branch `render/ground-looks`, PR #125; planned by the lead, Opus agents built)
+
+**Owner** (picked look B of the four): "i really like the dragon ground look ... it allows the ground to look 3d, can
+help with background shadows. can we try this art style on not just the ground and things like the stone and other
+textures? ... 3d looking grass with this style and still incorporate the player walking around and the grass
+bending ... and the player cutting" (with PR #124's wake); Ashfall's footprints "very ugly ... last too long ...
+cool subtle matrix flash footprints"; "ways to make the dragon ground art look even cooler ... show me". Asked:
+both grass builds; floors, props, trees and every level's ground; matrix green; all four upgrades.
+
+**What** (every piece behind its own switch, default off; `?dragon=1` = all at 'a'):
+- The core `render/dragonPrint.js` (lattice, ramp `.:-=17402#%8@`, `DP_CELL` 0.135 x 0.25 m, `dragonLook`); look b of
+  `world/ground.js` rewired onto it with hooks. The branch merges #124 (the wake) for the grass.
+- Grass `?dgGrass=a|a2|b|c` (`world/dragonGrass.js`; the wake's GLSL shared once as `TRAIL_BEND_GLSL`): a printed
+  tufts (`\|/` over digit roots, laid `= ~`, mown `. :`), b standing digit blades (the 3D blades on a lattice, each a
+  column of lit digits, bend and cut as today), a2 / c extras. With any option the cut tops no longer fly (the green
+  chips do); a / a2 / c also mow the scorch map's A from the arc.
+- Floors `?dpFloor=a|b` (`render/dragonFloor.js` in `createCarvedGlyphMaterial`): every level, a lattice seen along the
+  camera so slab walls sit on the ground's lattice, a lit lip one cell wide (`aRim`, `addSlabRims`), crack seams.
+- Props / trees `?dpProps=a|b` `?dpTrees=a|b` (`render/dragonProps.js`, the art pass's prop branch): the ground's
+  digits and light law in the art pass, relief (chisel, cracks, bark, leaf clumps), no camera key light.
+- Upgrades `?dpCloud= ?dpContact= ?dpRipple= ?dpRidge=` (a | b; `render/dragonPrintFx.js`, `world/groundFx.js`,
+  `groundFxTuning.js`): cloud shadows on the one wind, contact rings (baked from colliders and pieces, fighters as
+  uniforms), a re-print ring from `world.groundBlow`, ridge strokes on lit crests.
+- Footprints `?prints=a` (`render/dragonStep.js`, STEPS.flash): on a dragon-printed floor the cells under the foot turn
+  to code, flash white-green heel to toe and are gone in 0.75 s; elsewhere code letters as particles.
+
+**Tests.** New suites `groundfx`, `dragonProps`, `dggrass`, `dpfloor` (in `npm test`); each piece's agent ran world /
+life / glyphcheck. Frame cost (shared, noisy machine): ground b ~+0.15 ms over today at 1440p, upgrades all on +0.43
+there, floors ~+0.2, grass a ~+0.1 / b ~+0.2, props up to +0.3 where crowns fill the frame.
+
+**Round 3** (the owner: "i like 'everything on' (grass A) much better than grass b ... make grass A be more 3d
+while still feeling the same and the grass cuts actually look like the ground is cutting ... have the footprints
+show in every stage ... make all the maps use the dragon ground style ... i don't want the leaves on the ground to
+actually look like normal letters (C, S)"). Every piece at 'a' is now the default in every level (`?dragon=0` the
+world before); the flash print lands on every surface; the sword's cut shows in the printed grass (`dgCut` b: a
+fine cut map stamped from the arc, shorn tufts throwing their glyphs, a glow, a dark swath; tuned by the lead so
+the swath reads at the game camera); three steps of more depth for grass a (`a3d1`-`a3d3`, a3d3 standing
+billboards in `world/dragonTufts.js`) for the owner to pick; fallen leaves as a lit lens (`leafLook` a,
+`render/dragonLeaf.js`; b in the ground's cells, c tiny letters). Tests of the looks before run under `?dragon=0` /
+the piece's '0'; new `life` `steps.flash`, `leaves`. Main moved four PRs meanwhile (#124, #126, #119, #128-#129:
+the game is now gcd); the ADR became 197.
+
+**Round 4** (the owner: "lets go with the new default and make the grass ascii particles more smaller. its too
+big right now"). Grass a stays the default; the chips a cut throws in the printed grass are scaled down (the code
+chips 0.6 x, sized from the hidden blades they came from; the tufts' tips 0.7 x a print cell; `DG.cut.chipK` /
+`tipK`; 0.5 / 0.6 was filmed too and the chips nearly vanished: small letters lose their ink). `?dragon=0` keeps
+the 3D grass's chips as they were. Before that turn: the click / loop bug (#130: the faded title caught every
+click) and the slow first load (#131: shaders compiled side by side, ~11 s → ~5 s cold here) were fixed on main.
+
+**Open (round 2).** Weak by their builders' own account: the grass's wake and stubble read quietly;
+Cinderwood's flagstones lose their crisp outline; the props / trees print darker than today (a second round is on it:
+Ashfall's boulders and dead trees printed as outlines only); ridge strokes are faint. Docs (STYLE, ARCHITECTURE),
+CHANGELOG and an ADR follow the picks.
+
+---
+
+## 2026-11-24 — Four ground looks to pick from (prototype; branch `render/ground-looks`)
+
+**Owner:** "i dont like this ground artstyle/design as it doesn't seem like ascii ground ... think of 4 variations".
+
+**What.** `?ground=a|b|c|d` (no parameter: today's ground, unchanged). `world/ground.js` gains the four looks in
+the ground shader; the meadow's density is baked into a texture for them (`setMeadow`). A the letter meadow (grass
+printed in the ground, one small upright letter per world cell, ~6 x 9 px at 720p; no 3D blades); B the dragon
+ground (a lit bumpy source in fine digits, every cell filled); C tidy tufts (the 3D grass kept, one blade per
+0.24 x 0.27 m lattice cell, one size, upright, even tone: `createGrass({ lattice })`); D wind-combed strokes
+(`- / | \ ~` in long swathes along a slow flow field; no 3D blades). Today's soil letters measured ~13 x 16 px,
+bigger than the hero's 5 x 8.
+
+**Open.** The owner's pick. A, B and D hide the 3D grass, so the wind, trample, mowing and the cut tops do not show
+there yet (burn and tears do, through the scorch map): the picked look needs those wired before it can ship. B is
+busy near firelight on Ashfall.
 ## 2026-11-25 — The hero's name tag a little higher (ADR-196)
 
 **Owner:** "make the font a bit higher as it's literally on the edge of the character": the "gcd" over his

@@ -4,6 +4,10 @@ import { gis } from '../render/glyphs.js';
 import { GRASS } from './grassTuning.js';
 import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
 import { GrassSpray, sprayLook } from './grassSpray.js';
+import { dgGrassOpt, dgTufted, dgCutOpt, DG, DG_U } from './dragonGrass.js';
+import { DragonTufts } from './dragonTufts.js';
+import { groundLook } from './ground.js';
+import { DP_CELL } from '../render/dragonPrint.js';
 
 // The cut tops (ADR: grass the sword cuts, round 2). When a tear (world/scorch.js: the sword's mow, a
 // mark's blow) cuts a blade, the blade's stub stays in the meadow (grass.js: the lower part of its own
@@ -36,6 +40,16 @@ const smooth = (a, b, x) => {
   return t * t * (3 - 2 * t);
 };
 const FLY = 0, TOPPLE = 1, LIE = 2;
+const f32 = Math.fround;
+/** COMMON_GLSL's hash12 on the CPU (in float32 steps): which print cells root a tuft (the chips' cells). */
+function hash12(x, y) {
+  let a = fract(f32(x * 0.1031)), b = fract(f32(y * 0.1031)), c = fract(f32(x * 0.1031));
+  const d = f32(a * f32(b + 33.33) + b * f32(c + 33.33) + c * f32(a + 33.33));
+  a = f32(a + d);
+  b = f32(b + d);
+  c = f32(c + d);
+  return fract(f32(f32(a + b) * c));
+}
 
 export class MowFx {
   /** `grass`: world.grass (createGrass's result, with `blades`); `scorch`: the map it reads. */
@@ -215,6 +229,178 @@ export class MowFx {
     this.spray = sl === '0' || this.look === 'r1' || this.chips ? null : new GrassSpray(game, sl);
     this._wide = this.spray?.T.wide ?? 1;
     if (this.spray?.T.fresh2 != null && gu.uMowFresh2) gu.uMowFresh2.value = this.spray.T.fresh2;
+    // the dragon ground's printed tufts (world/dragonGrass.js, `?ground=b&dgGrass=a|a2|c`) read the scorch
+    // map's A, not the blades' bytes: the arc's cut is written there too. No cut top flies with any of the
+    // dragon grass (a, a2: a hidden blade's; b, c: a letter as big as the blade over a meadow printed in
+    // digits): the code chips do
+    const dgo = groundLook() === 'b' ? dgGrassOpt() : '0';
+    this._printTear = dgo === 'a' || dgo === 'a2' || dgo === 'c' || dgo.startsWith('a3d');
+    this._noTops = dgo !== '0';
+    // (the printed grass: smaller chips, DG.cut.chipK / tipK; 1 with the 3D blades)
+    this._chipK = dgo !== '0' ? DG.cut.chipK : 1;
+    this._tipK = dgo !== '0' ? DG.cut.tipK : 1;
+    // the cut IN the printed tufts (dgCut a / b, world/dragonGrass.js): the arc's exact path is cut into a
+    // fine map of its own (not the coarse A), its last strokes kept for the line's flash, and the tufts it
+    // shears throw their tips as chips of their own letters
+    this._dgCut = dgTufted(dgo) && dgCutOpt() !== '0';
+    this._dgStep = DG.step[dgo] ?? DG.step.a;
+    this._arcN = 0;
+    if (this._dgCut) {
+      this._printTear = false;
+      const C = DG.cut;
+      // (R8: 255 cut, 1 .. 250 cut on that frame of a 250-frame clock while the line glows: DG_U)
+      this.cutMap = new Uint8Array(C.size * C.size);
+      this.cutMapTex = new THREE.DataTexture(this.cutMap, C.size, C.size, THREE.RedFormat, THREE.UnsignedByteType);
+      // (the cells still glowing: settled to 255 once DG.cut.flash s is past, so the clock never wraps on them)
+      this._glow = dgCutOpt() === 'b';
+      this._fresh = new Int32Array(1 << 15);
+      this._freshF = new Float64Array(1 << 15);
+      this._fh = 0;
+      this._ft = 0;
+      this.cutMapTex.magFilter = this.cutMapTex.minFilter = THREE.NearestFilter;
+      this.cutMapTex.generateMipmaps = false;
+      this.cutMapTex.needsUpdate = true;
+      DG_U.uDgCut.value = this.cutMapTex;
+      DG_U.uDgCutBox.value.set(scorch.min, scorch.min, scorch.extent, C.size);
+      this._mapDirty = false;
+      this._mapAny = false;
+      this._tipG = gis('\\|/');
+      this._digG = gis('1740');
+      this.tuftChipped = 0; // tips thrown off the printed tufts (the tests', the Lab's)
+    }
+    // a3d3: the tufts stand (world/dragonTufts.js), drawn as a child of this batch (in the scene with it)
+    this.tufts = null;
+    if (dgo === 'a3d3') {
+      this.tufts = new DragonTufts(game, dgo);
+      this.mesh.add(this.tufts.mesh);
+    }
+  }
+
+  /** Is the print's cell at (x, z) cut by the sword (dgCut's map)? */
+  cutPrintAt(x, z) {
+    if (!this.cutMap) return false;
+    const S = DG.cut.size, sc = this.sc;
+    const i = Math.floor(((x - sc.min) / sc.extent) * S), j = Math.floor(((z - sc.min) / sc.extent) * S);
+    return i >= 0 && j >= 0 && i < S && j < S && this.cutMap[j * S + i] > 0;
+  }
+
+  /**
+   * dgCut: the arc's stroke (a, b on the ground, as cutArc sees it) shears the printed tufts under it: the
+   * tufts rooted in the strip that still stand throw their tips (chips of their own letters, the grass's
+   * colour), then the strip goes into the fine map (the ground and the standing tufts read it on this very
+   * frame) and the stroke into the flash's list.
+   */
+  _cutPrint(ax, az, bx, bz, ux, uz) {
+    const C = DG.cut, S = C.size, sc = this.sc, hw = C.w * 0.5;
+    const ex = bx - ax, ez = bz - az, l2 = ex * ex + ez * ez;
+    const dist = (x, z) => {
+      const t = l2 > 1e-9 ? Math.min(1, Math.max(0, ((x - ax) * ex + (z - az) * ez) / l2)) : 0;
+      return Math.hypot(ax + ex * t - x, az + ez * t - z);
+    };
+    // 1) the tips leave (before the map marks the cells: a tuft is shorn once)
+    const sx = DP_CELL[0], sy = DP_CELL[1], st = this._dgStep, T = DG.tuft;
+    const x0 = Math.min(ax, bx) - hw, x1 = Math.max(ax, bx) + hw, z0 = Math.min(az, bz) - hw, z1 = Math.max(az, bz) + hw;
+    const cap = Math.round(C.maxChips * this._q());
+    let made = 0;
+    for (let r = Math.floor(-z1 / sy); r <= Math.floor(-z0 / sy) && made < cap; r++) {
+      const off = hash12(r, 3.7);
+      for (let c = Math.floor(x0 / sx + off); c <= Math.floor(x1 / sx + off) && made < cap; c++) {
+        const x = (c + 0.5 - off) * sx, z = -(r + 0.5) * sy;
+        // (the cell is shorn when the map's texel under it is cut: the same test the stamp below makes)
+        const tcx = sc.min + (Math.floor(((x - sc.min) / sc.extent) * S) + 0.5) * (sc.extent / S), tcz = sc.min + (Math.floor(((z - sc.min) / sc.extent) * S) + 0.5) * (sc.extent / S);
+        if (dist(tcx, tcz) > hw || this.cutPrintAt(x, z)) continue;
+        const d = (this.grass.densityAt?.(x, z) ?? 1) * (1 - Math.min(1, sc.burnAt(x, z)));
+        if (!(d > 0.02)) continue;
+        const hr = hash12(c, r);
+        if (hr >= T.show[0] + T.show[1] * d) continue;
+        const n = Math.floor(d * (st.h[0] + st.h[1] * 0.5) * (0.7 + 0.6 * fract(hr * 7.31 + 0.19)) + 0.5);
+        if (n < 2) continue;
+        let k = C.chips * Math.pow(1 / Math.max(0.4, this._q()), 0.5);
+        while (k > 0 && made < cap) {
+          if (k < 1 && rnd() > k) break;
+          k -= 1;
+          made++;
+          this._tuftChip(x, z, n * C.cell[1] * 0.9, rnd() < 0.75 ? this._tipG[Math.floor(rnd() * 3)] : this._digG[Math.floor(rnd() * 4)], ux, uz);
+        }
+      }
+    }
+    // 2) the strip into the map, stamped with this frame while the line glows (dgCut b)
+    const cs = sc.extent / S, M = this.cutMap;
+    const fr = Math.floor((this.game.U?.uTime?.value ?? 0) * 60);
+    const v = this._glow ? (fr % 250) + 1 : 255;
+    const i0 = Math.max(0, Math.floor((x0 - sc.min) / cs)), i1 = Math.min(S - 1, Math.floor((x1 - sc.min) / cs));
+    const j0 = Math.max(0, Math.floor((z0 - sc.min) / cs)), j1 = Math.min(S - 1, Math.floor((z1 - sc.min) / cs));
+    for (let j = j0; j <= j1; j++) {
+      for (let i = i0; i <= i1; i++) {
+        const o = j * S + i;
+        if (M[o]) continue;
+        if (dist(sc.min + (i + 0.5) * cs, sc.min + (j + 0.5) * cs) > hw) continue;
+        M[o] = v;
+        this._mapDirty = true;
+        this._mapAny = true;
+        if (this._glow) {
+          const k = this._ft++ & (this._fresh.length - 1);
+          this._fresh[k] = o;
+          this._freshF[k] = fr;
+          if (this._ft - this._fh > this._fresh.length) this._fh = this._ft - this._fresh.length;
+        }
+      }
+    }
+    this._arcN++;
+  }
+
+  /** dgCut b: the cells whose line has stopped glowing settle to plain cut (255). */
+  _settle() {
+    const fr = Math.floor((this.game.U?.uTime?.value ?? 0) * 60), lim = DG.cut.flash * 60 + 2;
+    const L = this._fresh.length - 1, M = this.cutMap;
+    while (this._fh < this._ft) {
+      const k = this._fh & L;
+      if (fr - this._freshF[k] < lim && fr >= this._freshF[k]) break;
+      const o = this._fresh[k];
+      if (M[o] > 0 && M[o] < 251) {
+        M[o] = 255;
+        this._mapDirty = true;
+      }
+      this._fh++;
+    }
+  }
+
+  /** A tip shorn off a printed tuft: one print cell of its letter, the grass's colour, thrown along the swing. */
+  _tuftChip(x, z, y, glyph, ux, uz) {
+    const j = this._slot();
+    if (j < 0) return;
+    const C = DG.cut, S = GRASS.spray;
+    this.total++;
+    this.chipped++;
+    this.tuftChipped++;
+    this.px[j] = x + R(-0.06, 0.06);
+    this.py[j] = Math.max(0.05, y * R(0.55, 1));
+    this.pz[j] = z + R(-0.06, 0.06);
+    this.w[j] = C.cell[0] * this._tipK;
+    this.h[j] = C.cell[1] * this._tipK;
+    this.v0[j] = 0;
+    this.v1[j] = 1;
+    this.tipMin[j] = 0.85;
+    this.grav[j] = S.gravity;
+    this.lit0[j] = 1.35;
+    this.lit1[j] = 1.0;
+    this.glyph[j] = glyph;
+    this.code[j] = 0;
+    this.flipT[j] = 0;
+    this.colv[j] = rnd();
+    this.fade[j] = 0;
+    this.age[j] = 0;
+    this.born[j] = this.game.time ?? 0;
+    this.rot[j] = this.rot0[j] = R(-0.3, 0.3);
+    this.y0[j] = this.py[j];
+    this.lieRot[j] = (rnd() < 0.5 ? -1 : 1) * (Math.PI * 0.5 + R(-0.5, 0.5));
+    const fl = R(C.fling[0], C.fling[1]), side = R(-1, 1) * S.side;
+    this.state[j] = FLY;
+    this.vx[j] = ux * fl - uz * side;
+    this.vz[j] = uz * fl + ux * side;
+    this.vy[j] = R(C.up[0], C.up[1]);
+    this.spin[j] = R(3, 9) * (rnd() < 0.5 ? -1 : 1);
+    this.lie[j] = R(S.lie[0], S.lie[1]);
   }
 
   /** The swing's way for the cuts that follow (grass.js mowSwing): unit (ux, uz), k its strength. */
@@ -337,8 +523,8 @@ export class MowFx {
       this.px[j] = x + R(-0.1, 0.1);
       this.py[j] = h * R(0.35, 0.85);
       this.pz[j] = z + R(-0.1, 0.1);
-      this.w[j] = h * 0.92 * k;
-      this.h[j] = h * k; // (a band is drawn at the letter's own scale: its strokes, not stretched)
+      this.w[j] = h * 0.92 * k * this._chipK;
+      this.h[j] = h * k * this._chipK; // (a band is drawn at the letter's own scale: its strokes, not stretched)
       this.v0[j] = v0;
       this.v1[j] = v1;
       this.tipMin[j] = T.tip;
@@ -372,6 +558,7 @@ export class MowFx {
   }
 
   _spawn(i, x, z, v0, cx, cz, bare) {
+    if (this._noTops) return;
     const B = this.grass.blades, U = this.game.U, F = GRASS.fly, look = this.look;
     const h = B.root[i * 4 + 2], tilt = B.data[i * 4 + 1];
     const rx = U.uCamRight.value, up = U.uBladeUp.value;
@@ -448,6 +635,14 @@ export class MowFx {
       this._texDirty = true;
     }
     this._cutAny = false;
+    // (dgCut: the fine map whole again, no line left to flash)
+    if (this._mapAny) {
+      this.cutMap.fill(0);
+      this._fh = this._ft = 0;
+      this._mapDirty = true;
+      this._mapAny = false;
+    }
+    this._arcN = 0;
   }
 
   /**
@@ -514,7 +709,12 @@ export class MowFx {
         }
       }
     }
+    const ux = f.ux, uz = f.uz;
     f.on = false;
+    // (the printed tufts: the strip the arc cut, mown in A, after the blades so their chips fly first;
+    // dgCut: the exact strip in the fine map instead)
+    if (this._printTear) this.sc.tearLine(ax, az, bx, bz, hw, GRASS.mow.maxK);
+    if (this._dgCut) this._cutPrint(ax, az, bx, bz, ux, uz);
     this.arcCut += n;
     return n;
   }
@@ -523,6 +723,11 @@ export class MowFx {
     if (this._texDirty) {
       this.cutTex.needsUpdate = true;
       this._texDirty = false;
+    }
+    if (this._glow && this._fh < this._ft) this._settle();
+    if (this._mapDirty) {
+      this.cutMapTex.needsUpdate = true;
+      this._mapDirty = false;
     }
     this.spray?.update(dt);
     // (the code's colours: on a phone the variant's `phone` ones, when it has them)

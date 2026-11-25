@@ -4,7 +4,18 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Ninety-nine pieces of work since 0.4.0:
+One hundred pieces of work since 0.4.0:
+- **The world is printed like the dragon** (2026-11-25, ADR-198). *Changed:* every level's ground, floors, grass,
+  rocks, pillars, walls and trees are printed in the wyrm's own fine digits: a lit relief, dark where it turns
+  from the moon and bright where the light catches it, in letters fixed to the world, so the ground looks
+  three-dimensional and shadows fall across it. The grass is printed tufts that lie down as you run through
+  and rise again; slabs have a lit lip; cloud shadows drift with the wind, things sit in soft contact
+  shadows, heavy blows send a ring of digits through the ground, lit crests carry outline strokes.
+  Footprints are a quick flash of green code under each step on every surface, gone in under a second.
+  Your sword cuts the grass you can see: the tufts along the blade's path are shorn and fly, the line
+  glows a moment and a dark swath stays. Fallen leaves lie as small lit leaves, not letters.
+  `?dragon=0` gives the world before; one piece: `?dgGrass=0`, `?dpFloor=0`, `?dpProps=0`, `?dpTrees=0`,
+  `?dpCloud=0`, `?dpContact=0`, `?dpRipple=0`, `?dpRidge=0`, `?prints=0`.
 - **The first load is faster** (2026-11-25). *Changed:* the loading screen's last step compiles every shader the first
   frame needs side by side before it is drawn, instead of one after another as each first draws; a first visit (no
   shaders cached yet) reached the game in ~8 s and now in ~5 s on a desktop GPU. `?precompile=0` as before.

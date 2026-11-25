@@ -5908,3 +5908,36 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   0.2 ms. The phone's frame time is not measured on the device. The owner kept every default look (2026-11-25). Open: the wyrm
   fights at range when the hero stands out among the trees (closing in is an ai.js change); the drakelings' heads are
   their weakest part; the lane's grass fire can burn in bright knots after the serpent sinks.
+
+## ADR-198 — The dragon print: the ground, floors, grass, props and trees printed in the wyrm's digits (2026-11-25)
+
+- **Context:** the owner: the ground "doesn't seem like ascii ground ... make it look cool ascii without being
+  too hard on the eyes ... or too grainy"; of four rendered looks they picked b, "the dragon ground" ("it
+  allows the ground to look 3d, can help with background shadows") and asked for it on the stones and other
+  textures, on grass that bends and is cut, every level's ground, ways to make it cooler, and footprints that
+  are "cool subtle matrix flash" instead of Ashfall's dark prints. Having played every piece on at once: "i
+  like 'everything on' (grass A) much better ... make all the maps use the dragon ground style ... have the
+  footprints show in every stage".
+- **Decision:** one print for every surface that is not a fighter: a lit relief (normal, moon, shadow map,
+  point lights) printed in the wyrm's digit ramp on a world-anchored lattice of the wyrm's cell (0.135 x
+  0.25 m, ~5 x 8 px at 720p), one digit per cell lit at its centre (`render/dragonPrint.js`). The ground
+  (look b), the floors of every level (inside `createCarvedGlyphMaterial`, a lit lip per slab), the grass as
+  printed tufts in the ground (no 3D blades), props and trees through the art pass with a relief and the
+  shadow map, four upgrades (cloud shadows on the wind, contact rings, a re-print ripple from ground blows,
+  ridge strokes) and flash footprints printed by the floor's own cells. Every piece behind its own switch,
+  all at `a` by default; `?dragon=0` is the game before. Built as a fan-out (a core with hooks, four agents,
+  a second round for the props' brightness).
+- **Why this way:** world-anchored cells never swim (the reason the typed lattice ground of 2026-11-14 was
+  dropped), one cell size ties the ground to the wyrm and the props, and a lit relief gives the ground the
+  depth and the shadows the owner liked. Marks INTO the floor (prints, leaves) as shared uniform chunks keep
+  them crisp on the lattice instead of soft sprites over it. One shared uniforms object per chunk
+  (`DP_FX_U`, `DP_STEP_U`) means one CPU writer for every surface.
+- **Consequences / open:** grass b (standing digit blades) lost to a; round 3 (the owner, same day) made the
+  sword's cut show in the printed grass (`dgCut` b, the default), gave the fallen leaves a lit lens
+  (`leafLook` a) instead of letters, and rendered three steps of more depth for grass a (`a3d1`-`a3d3`); the
+  owner kept a ("lets go with the new default") and asked for smaller grass chips (0.6 x the code chips,
+  0.7 x the tufts' tips); the
+  floors' and trees' looks before (carved glyphs, round letters), once "do not restyle", are now behind
+  `?dragon=0`; the phone's frame cost is the owner's to confirm (desktop: the print, floors and upgrades
+  add well under 1 ms at 720p); first-round looks a / c / d stay behind `?ground=` until removed.
+

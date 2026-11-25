@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { createCarvedGlyphMaterial, createPropArtMaterial, createAsciiObjectMaterial, SCRIPT_GRID } from '../render/materials.js';
+import { createCarvedGlyphMaterial, createPropArtMaterial, createDragonObjectMaterial, SCRIPT_GRID } from '../render/materials.js';
 import { GlyphParticles } from '../render/particles.js';
 import { gi } from '../render/glyphs.js';
 import { markCaster } from '../render/pipeline.js';
@@ -9,6 +9,7 @@ import { CONFIG } from '../core/config.js';
 import { prep, lumpy, carve, slabGeometry, mul, SLAB_LOOK, buildBonfire, buildRubble, geosHeight, buildFlagstone } from './forest.js';
 import { limb, buildWatcher, WATCHER_SUIT, WATCHER_CODE } from './landmarks.js';
 import { breakableFloor } from './floor.js';
+import { addSlabRims } from '../render/dragonFloor.js';
 import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
 
 // The Hall of Falling Script (levels/scripthall.js; ADR-157): one arena that holds THREE SCENES on the
@@ -138,6 +139,9 @@ const PAVING_LOOK = {
   edge: 0.55,
   inkFloor: 0.035,
   topGlyphs: ['.   ', '. . ', '.:. ', ':.;.', ';:=.', '=;%:'],
+  // the dragon print (`?dpFloor=`, render/dragonFloor.js): the look's own paving and joint kept (the joint
+  // is the chamfer's colour); the script wave runs down the print's columns
+  dp: { k: 0.75, sat: 0.8, top: 0.06 },
 };
 
 // ---------------------------------------------------------------- geometry
@@ -624,7 +628,8 @@ function buildHall(U, colliders) {
     }, 26);
   }
 
-  const mat = createAsciiObjectMaterial(U, { fadeNearPlayer: true, side: THREE.DoubleSide });
+  // (?dpProps / ?dpTrees: the dragon print's relief, render/dragonProps.js; both off: createAsciiObjectMaterial itself)
+  const mat = createDragonObjectMaterial(U, { fadeNearPlayer: true, side: THREE.DoubleSide });
   const meshes = [];
   const mesh = (geos, m, name) => {
     if (!geos.length) return null;
@@ -640,6 +645,7 @@ function buildHall(U, colliders) {
   group.add(...meshes);
   markCaster(group);
   breakables.push(...breakableFloor({ slabs: floor, slabGeos, slabMesh, mat: slabMat, rng: mulberry32(CONFIG.seed + 7157), group, earth: [0.03, 0.04, 0.034] }).defs);
+  addSlabRims(group, slabMat); // (the dragon print's rims: only under ?dpFloor)
 
   const scenes = makeScenes(U, base);
   const sky = SCENE_LIGHT.hall;

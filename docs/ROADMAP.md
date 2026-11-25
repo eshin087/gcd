@@ -188,6 +188,15 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.88 — The dragon print: the world printed in the wyrm's digits (2026-11-25, `render/ground-looks`, ADR-198)
+- [x] Four ground looks rendered; the owner picked b, the dragon ground (a lit relief in the wyrm's digits on a world-anchored lattice)
+- [x] The core (`render/dragonPrint.js`) and the default in every level (`?dragon=0` the world before)
+- [x] Floors of every level, props and trees, four upgrades (cloud, contact, ripple, ridge), flash footprints on every surface
+- [x] Grass printed as tufts (a) over standing digit blades (b: lost)
+- [x] A cut that shows in the printed grass (dgCut b); fallen leaves as lit lenses (leafLook a)
+- [x] The owner kept grass a (the depth steps stay behind `?dgGrass=a3d1..3`); the cut's chips made smaller
+- [ ] The phone's frame cost; remove the first round's looks a / c / d
+
 ## M1.87 — The front: the sword's path and a loading screen (2026-11-25, `ui/gcd-front`, ADR-196)
 - [x] A loading screen from the first paint, an honest bar of the boot's steps (`?loader=a|b`; b the owner's pick)
 - [x] Three title layouts (`?menu=a|b|c`; c the owner's pick, `0` the title before), CONTROLS behind a button
