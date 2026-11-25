@@ -22,26 +22,40 @@ const FLOWERS = [['o', 4], ['*', 3], ['·', 5], ['°', 2], ['.', 3]];
  * density(x, z) -> 0..1 acceptance, height(x, z, rng) -> blade height in meters.
  * ash 0..1: how far the blades are dried to ash grey (0 = the green meadow; the Ashfall level: ~0.85).
  */
-export function createGrass(U, { count = 260000, extent = 150, density, height, seed = 7, ash = 0 } = {}) {
+export function createGrass(U, { count = 260000, extent = 150, density, height, seed = 7, ash = 0, lattice = null } = {}) {
   const rng = mulberry32(seed);
+  // `?ground=c` (world/ground.js): one blade per lattice cell, all one size, upright (a prototype look)
+  if (lattice) count = Math.ceil(extent / lattice[0]) * Math.ceil(extent / lattice[1]);
   const root = new Float32Array(count * 4);
   const data = new Float32Array(count * 4);
   const blades = BLADES.map(([c, w]) => [gi(c), w]);
   const flowers = FLOWERS.map(([c, w]) => [gi(c), w]);
   let n = 0;
   let guard = 0;
+  const lcols = lattice ? Math.ceil(extent / lattice[0]) : 0;
+  let li = -1;
   while (n < count && guard++ < count * 12) {
-    const x = (rng() - 0.5) * extent;
-    const z = (rng() - 0.5) * extent;
-    if (rng() > density(x, z)) continue;
-    const flower = rng() < 0.028;
-    const h = height(x, z, rng);
+    let x, z;
+    if (lattice) {
+      if (++li >= count) break;
+      const row = Math.floor(li / lcols);
+      x = -extent / 2 + ((li % lcols) + 0.5 + (row % 2) * 0.5) * lattice[0];
+      z = -extent / 2 + (row + 0.5) * lattice[1];
+      // thinner where the meadow is thin, and a cell or two bare in the thick of it
+      if (rng() > Math.min(1, density(x, z) * 1.15)) continue;
+    } else {
+      x = (rng() - 0.5) * extent;
+      z = (rng() - 0.5) * extent;
+      if (rng() > density(x, z)) continue;
+    }
+    const flower = rng() < (lattice ? 0.012 : 0.028);
+    const h = lattice ? lattice[2] * (0.92 + 0.08 * rng()) : height(x, z, rng);
     root[n * 4] = x;
     root[n * 4 + 1] = z;
     root[n * 4 + 2] = h;
     root[n * 4 + 3] = rng();
     data[n * 4] = flower ? pickWeighted(rng, flowers) : pickWeighted(rng, blades);
-    data[n * 4 + 1] = (rng() - 0.5) * 0.55; // in-plane tilt
+    data[n * 4 + 1] = lattice ? 0 : (rng() - 0.5) * 0.55; // in-plane tilt
     data[n * 4 + 2] = rng(); // colour variation
     data[n * 4 + 3] = flower ? 1 : 0;
     n++;
@@ -85,6 +99,7 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
       uCutTex: { value: null },
       uCutOn: { value: 0 },
       uMowFresh2: { value: B.fresh2 },
+      uFlat: { value: lattice ? 1 : 0 },
       uFresh: { value: new THREE.Vector3(...B.fresh) },
       uFreshAsh: { value: new THREE.Vector3(...B.freshAsh) },
     },
@@ -106,6 +121,7 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
       uniform vec2 uMowBare; // torn past x .. y: torn out (a blow's mark), not mown
       uniform vec3 uMowLie;
       uniform float uMowMode, uMowFresh2;
+      uniform float uFlat; // ?ground=c: the letter's ink one tone, not dark at the root
       uniform sampler2D uCutTex;
       uniform float uCutOn; // 1: round 2 (the tops leave as letters, world/mowFx.js); its paleness share  // the cut tops lying: share of the mown blades, their size, their paleness
       uniform vec3 uFresh, uFreshAsh;
@@ -240,7 +256,7 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
         // dried to ash (uAsh, the Ashfall level): grey-brown blades, darker roots
         tipC = mix(tipC, mix(vec3(0.105, 0.1, 0.095), vec3(0.14, 0.13, 0.115), iData.z), uAsh);
         rootC = mix(rootC, vec3(0.012, 0.011, 0.011), uAsh);
-        vec3 alb = mix(rootC, tipC, tip);
+        vec3 alb = mix(rootC, tipC, mix(tip, 0.75 + 0.25 * tip, uFlat));
         alb = mix(alb, vec3(0.014, 0.012, 0.011) * (0.6 + tip), burn);
         // trodden blades a little darker
         if (trample > 0.004) alb *= 1.0 - 0.7 * trample;
@@ -296,7 +312,7 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
     densityAt: (x, z) => density(x, z),
     heightAt: (x, z) => height(x, z, mid),
     setCount(c) {
-      geo.instanceCount = Math.max(0, Math.min(n, c));
+      geo.instanceCount = lattice ? n : Math.max(0, Math.min(n, c));
     },
   };
 }

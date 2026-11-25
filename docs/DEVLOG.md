@@ -5,6 +5,24 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-24 — Four ground looks to pick from (prototype; branch `render/ground-looks`)
+
+**Owner:** "i dont like this ground artstyle/design as it doesn't seem like ascii ground ... think of 4 variations".
+
+**What.** `?ground=a|b|c|d` (no parameter: today's ground, unchanged). `world/ground.js` gains the four looks in
+the ground shader; the meadow's density is baked into a texture for them (`setMeadow`). A the letter meadow (grass
+printed in the ground, one small upright letter per world cell, ~6 x 9 px at 720p; no 3D blades); B the dragon
+ground (a lit bumpy source in fine digits, every cell filled); C tidy tufts (the 3D grass kept, one blade per
+0.24 x 0.27 m lattice cell, one size, upright, even tone: `createGrass({ lattice })`); D wind-combed strokes
+(`- / | \ ~` in long swathes along a slow flow field; no 3D blades). Today's soil letters measured ~13 x 16 px,
+bigger than the hero's 5 x 8.
+
+**Open.** The owner's pick. A, B and D hide the 3D grass, so the wind, trample, mowing and the cut tops do not show
+there yet (burn and tears do, through the scorch map): the picked look needs those wired before it can ship. B is
+busy near firelight on Ashfall.
+
+---
+
 ## 2026-11-24 — The run's free arm: three carries (ADR-187; branch `claude/hero-run-arms-2e2cb5`)
 
 **Owner** (the hero motion pass, three sessions: idle, the run's arm, the light chain): "when he runs i want him to

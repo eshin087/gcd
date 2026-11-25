@@ -79,8 +79,12 @@ export class World {
     const hk = Number.isFinite(G?.height) ? G.height : 1;
     const height = hk === 1 ? meadowHeight : (x, z, rng) => meadowHeight(x, z, rng) * hk;
     const q = CONFIG.quality[CONFIG.quality.length - 1];
-    this.grass = createGrass(U, { count: q.grass, extent, density, height, ash: G?.ash ?? 0 });
+    const look = this.ground.userData.look;
+    this.grass = createGrass(U, { count: q.grass, extent, density, height, ash: G?.ash ?? 0, lattice: look === 'c' ? [0.24, 0.27, 0.42 * hk] : null });
     game.scene.add(this.grass.mesh);
+    // `?ground=a|b|d` print the meadow in the ground itself (world/ground.js): no 3D blades
+    this.ground.userData.setMeadow?.(density, extent, G?.ash ?? 0);
+    if (look && look !== 'c') this.grass.mesh.visible = false;
     // destruction: what burns (the grass is the fuel), what breaks (the set's `breakables`), what is left
     this.fire = new GroundFire(game, this, density);
     this.scars = new Scars(game, this.forest.scarInk);
