@@ -94,7 +94,7 @@ const TIPS = '\\|/';
 const B = GRASS.blade;
 
 /** The GLSL for ground.js's look b (its [grass] hook): the option is baked in (the page's URL is fixed). */
-function grassGlsl(opt) {
+export function dgGrassGlsl(opt) {
   // 1: standing tufts printed (a); 2: the relief of laid tussocks (a2, c); 3: the floor under the blades (b)
   const mode = opt === 'a' ? 1 : opt === 'a2' || opt === 'c' ? 2 : opt === 'b' ? 3 : 0;
   const v3 = (a) => a.map((v) => v.toFixed(3)).join(', ');
@@ -269,4 +269,4 @@ void dgGrass(vec2 cw, float h, float d, float burn, float torn, inout vec3 N, in
 `;
 }
 
-export const DG_GRASS_GLSL = grassGlsl(dgGrassOpt());
+export const DG_GRASS_GLSL = dgGrassGlsl(dgGrassOpt());
