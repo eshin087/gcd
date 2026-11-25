@@ -20,8 +20,8 @@ import { sfxMode, setSfxMode, chainMode, setChainMode, CHAIN_MODES } from '../au
 import { PARRY_CHAIN } from '../audio/parryChain.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { MYSTIC_IDS, MYSTIC_NAMES, mysticMode, setMystic } from '../entities/player/swordMystic.js';
-import { LIGHTS_IDS, LIGHTS_NAMES, lightsMode, setLights } from '../entities/player/combat.js';
-import { FINISHER_IDS, FINISHER_NAMES, finisherMode, setFinisher } from '../entities/player/finisherFx.js';
+import { LIGHTS_IDS, LIGHTS_NAMES, lightsMode, setLights, setFinisherLook } from '../entities/player/combat.js';
+import { FINISHER_IDS, FINISHER_NAMES, finisherId } from '../entities/player/finishers.js';
 import { ARC_IDS, ARC_K, arcsMode, setArcs } from '../entities/player/swings.js';
 import { buildLooks } from './labLooks.js';
 import { lookOf, setLook } from '../entities/enemies/duelist/lookSwitch.js';
@@ -1312,15 +1312,15 @@ export class Lab {
       b.title = m === 'old' ? '?lights=old: the chain before the weight pass' : m === 'fresh' ? '?lights=fresh: a brand-new chain (new sword paths)' : 'the weighted chain (the default)';
       return { m, el: b };
     });
-    // the fresh chain's finisher magic (player/finisherFx.js, ?finisher=a|b|c|d: four looks for the owner to
-    // pick from; it plays only on hit 5 of ?lights=fresh), live from the next finisher
+    // the striker chain's finisher (player/finishers.js, ?finisher=lance|cross|talisman|flash: four for the
+    // owner to pick from; hit 5 of ?lights=striker, with its spell, finisherFx.js), live from the next finisher
     const fir = el('div', 'lab-row', null, body);
-    el('span', 'lab-lbl', 'finisher', fir).title = "the fresh chain's last cut (?lights=fresh): a crescent hanging, a rift in the ground, an echo, a flying wave (?finisher=)";
+    el('span', 'lab-lbl', 'finisher', fir).title = "the striker chain's finisher (?lights=striker): a lance of light, a crossing X, a talisman, a flash cut (?finisher=)";
     const fiGrid = el('div', 'lab-grid', null, fir);
     fiGrid.style.flex = '1';
     this.ui.finisherBtns = FINISHER_IDS.map((m) => {
-      const b = button(fiGrid, `${m} ${FINISHER_NAMES[m]}`, () => {
-        setFinisher(m);
+      const b = button(fiGrid, m, () => {
+        setFinisherLook(m);
         this._syncCutBtns();
       });
       b.title = `?finisher=${m}: ${FINISHER_NAMES[m]}`;
@@ -1419,7 +1419,7 @@ export class Lab {
     for (const { s, el: b } of this.ui.streakBtns ?? []) setClass(b, 'on', STREAK_FX.on[s] === true);
     for (const { m, el: b } of this.ui.mysticBtns ?? []) setClass(b, 'on', mysticMode() === m);
     for (const { m, el: b } of this.ui.lightsBtns ?? []) setClass(b, 'on', lightsMode() === m);
-    for (const { m, el: b } of this.ui.finisherBtns ?? []) setClass(b, 'on', finisherMode() === m);
+    for (const { m, el: b } of this.ui.finisherBtns ?? []) setClass(b, 'on', finisherId() === m);
     for (const { m, el: b } of this.ui.arcsBtns ?? []) setClass(b, 'on', arcsMode() === m);
     if (this.ui.perfectBtn) this.ui.perfectBtn.textContent = `perfect: ${perfectMode()}`;
     if (this.ui.parryFxBtn) this.ui.parryFxBtn.textContent = `parryFx ${parryFxMode()}`;
