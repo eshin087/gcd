@@ -303,7 +303,9 @@ export class MowFx {
       const off = hash12(r, 3.7);
       for (let c = Math.floor(x0 / sx + off); c <= Math.floor(x1 / sx + off) && made < cap; c++) {
         const x = (c + 0.5 - off) * sx, z = -(r + 0.5) * sy;
-        if (dist(x, z) > hw || this.cutPrintAt(x, z)) continue;
+        // (the cell is shorn when the map's texel under it is cut: the same test the stamp below makes)
+        const tcx = sc.min + (Math.floor(((x - sc.min) / sc.extent) * S) + 0.5) * (sc.extent / S), tcz = sc.min + (Math.floor(((z - sc.min) / sc.extent) * S) + 0.5) * (sc.extent / S);
+        if (dist(tcx, tcz) > hw || this.cutPrintAt(x, z)) continue;
         const d = (this.grass.densityAt?.(x, z) ?? 1) * (1 - Math.min(1, sc.burnAt(x, z)));
         if (!(d > 0.02)) continue;
         const hr = hash12(c, r);
