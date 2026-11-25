@@ -138,6 +138,12 @@ const S = {
           const props = mats.filter((m) => /dpStone\(/.test(m.fragmentShader));
           assert(props.length > 0 && dp.length > 0 && props.every((m) => m.fragmentShader.includes('dpEncode(') && m.vertexShader.includes('vO = position') && m.uniforms.uDpRelief),
             `${L.name} (${k}): ${props.length} material(s) print the props' relief and hand on their tone`);
+          // (no material of the screen grid's kind is left without the print: a set's ascii-object material and the
+          // breakables' rigid one are createDragonObjectMaterial, so its trees and painted props take the relief)
+          const plain = mats.filter((m) => /vFlag/.test(m.fragmentShader) && !m.userData.dragonPrint);
+          const grid = A.D.gridMat;
+          assert(plain.length === 0 && (!grid || (grid.userData.dragonPrint && grid.userData.rigid && grid.defines?.DP_T === 1)),
+            `${L.name} (${k}): every ascii-object material carries the print (${plain.length} without), the breakables' rigid one too`);
           if (L.buildSet === createForest || L.id === 'cinderwood') {
             const trees = A.set.group.children.find((m) => m.name === 'trees')?.material;
             assert(trees?.defines?.DP_T === 1 && trees.vertexShader.includes('windOn()') && trees.vertexShader.includes('vO = position') && trees.fragmentShader.includes('dpEncodeLeaf('),

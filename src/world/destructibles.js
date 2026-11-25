@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { createAsciiObjectMaterial, createPropArtMaterial } from '../render/materials.js';
+import { createDragonObjectMaterial, createPropArtMaterial } from '../render/materials.js';
+import { dpTreesLook } from '../render/dragonProps.js';
 import { markCaster } from '../render/pipeline.js';
 import { batchRigid } from '../render/rigidBatch.js';
 import { TELL } from '../combat/rules.js';
@@ -127,6 +128,10 @@ const smooth01 = (t) => t * t * (3 - 2 * t);
 const NONE = Object.freeze({});
 const NO_PIECES = Object.freeze([]);
 const LEAVES = 'o0O8@&';
+// (under ?dpTrees a crown is printed in digits, render/dragonProps.js: it bursts into the digits it is drawn in, the
+// dragon print's ramp's fuller ones, STYLE.md "a broken piece bursts into the characters it is drawn in")
+const DP_LEAVES = '74028#';
+const leafGlyphs = () => (dpTreesLook() !== '0' ? DP_LEAVES : LEAVES);
 const DIGITS = '0123456789';
 const FLASH_LEAD = 0.3;
 const SIDES = [-1, 1];
@@ -1000,7 +1005,8 @@ export class Destructibles {
     const defs = Array.isArray(set?.breakables) ? set.breakables : [];
     if (!defs.length) return;
     const U = game.U;
-    this.gridMat = createAsciiObjectMaterial(U, { fadeNearPlayer: true, side: THREE.DoubleSide, rigid: true });
+    // (?dpProps / ?dpTrees: the dragon print's relief, render/dragonProps.js; both off: createAsciiObjectMaterial itself)
+    this.gridMat = createDragonObjectMaterial(U, { fadeNearPlayer: true, side: THREE.DoubleSide, rigid: true });
     // (a set with something hanging, world/hang.js: its prop art answers the wind)
     const hang = defs.some((d) => d?.look === 'prop' && hangs(d.geos)) ? HANG.shader : null;
     this.propMat = createPropArtMaterial(U, { fadeNearPlayer: true, gain: set.stoneMaterial?.uniforms?.uGain?.value ?? 1, rigid: true, hang });
@@ -1655,7 +1661,7 @@ export class Destructibles {
       p.life = 0.9 + rnd() * 0.8;
       p.size = 0.36 + rnd() * 0.16;
       p.sizeEnd = 0.18;
-      p.glyph = LEAVES;
+      p.glyph = leafGlyphs();
       p.color = SHED_LEAF;
       p.colorEnd = SHED_LEAF_END;
       p.alpha = 1;
@@ -1946,7 +1952,7 @@ export class Destructibles {
       p.life = clamp(fall + p.vy / g + 0.15 + rnd() * 0.25, 0.4, 2.2);
       p.size = (leaf ? 0.38 : 0.36) + rnd() * 0.14;
       p.sizeEnd = 0.24;
-      p.glyph = leaf ? LEAVES : b.digits ? DIGITS : M.chips;
+      p.glyph = leaf ? leafGlyphs() : b.digits ? DIGITS : M.chips;
       if (leaf) {
         p.color = SHED_LEAF;
         p.colorEnd = SHED_LEAF_END;
@@ -1968,7 +1974,7 @@ export class Destructibles {
       // every few bricks one stays lying where it comes down, until the reset
       if (++this._lit % C.litter === 0) {
         const t = fall * 0.8;
-        this.world.scars?.rubble(x + p.vx * t, z + p.vz * t, 0.18, M, 1, leaf ? LEAVES : b.digits ? DIGITS : M.chips);
+        this.world.scars?.rubble(x + p.vx * t, z + p.vz * t, 0.18, M, 1, leaf ? leafGlyphs() : b.digits ? DIGITS : M.chips);
       }
     }
   }
@@ -2038,7 +2044,7 @@ export class Destructibles {
       const spark = ember && rnd() < 0.18; // (a burning crown: a few sparks among the charred leaves)
       p.size = spark ? 0.2 + rnd() * 0.08 : (leaf ? 0.36 : 0.34) + rnd() * 0.14;
       p.sizeEnd = spark ? 0.06 : 0.18;
-      p.glyph = spark ? SPARKS : leaf ? LEAVES : b.digits ? DIGITS : M.chips;
+      p.glyph = spark ? SPARKS : leaf ? leafGlyphs() : b.digits ? DIGITS : M.chips;
       if (spark) {
         p.color = SPARK;
         p.colorEnd = SPARK_END;
@@ -3070,7 +3076,7 @@ export class Destructibles {
       p.life = clamp(fall + 0.3 + rnd() * 0.35, 0.5, 1.7);
       p.size = (leaf ? 0.46 : 0.42) + rnd() * 0.24;
       p.sizeEnd = 0.2;
-      p.glyph = hot && ember ? SPARKS : leaf ? LEAVES : prop ? DIGITS : M.chips;
+      p.glyph = hot && ember ? SPARKS : leaf ? leafGlyphs() : prop ? DIGITS : M.chips;
       if (hot && ember) {
         p.color = SPARK;
         p.colorEnd = SPARK_END;

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { createAsciiObjectMaterial, createCarvedGlyphMaterial, createPropArtMaterial } from '../render/materials.js';
+import { createDragonObjectMaterial, createCarvedGlyphMaterial, createPropArtMaterial } from '../render/materials.js';
 import { markCaster } from '../render/pipeline.js';
 import { GlyphParticles } from '../render/particles.js';
 import { mulberry32, range, fbm2, hash2 } from '../core/rng.js';
@@ -426,7 +426,8 @@ export function createThroneHall(U, colliders) {
   // ---- meshes
   const group = new THREE.Group();
   group.name = 'throneHall';
-  const mat = createAsciiObjectMaterial(U, { fadeNearPlayer: true, side: THREE.DoubleSide });
+  // (?dpProps / ?dpTrees: the dragon print's relief, render/dragonProps.js; both off: createAsciiObjectMaterial itself)
+  const mat = createDragonObjectMaterial(U, { fadeNearPlayer: true, side: THREE.DoubleSide });
   // the star, the rim's rubble and the throne are printed like the wyrm (prop art, ADR-100); the
   // floor's plates stay carved. The crater's own night is dark: a higher source gain
   const stoneMat = createPropArtMaterial(U, { fadeNearPlayer: true, gain: 1.5 });

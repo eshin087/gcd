@@ -15,16 +15,17 @@ import { dragonLook } from './dragonPrint.js';
 //            a  bark as vertical grain, crowns lit as masses (the moon on the tops, dark under) with soft clumps
 //            b  the clumps stronger and bigger (round puffs, dark gaps), the furrows deeper
 //
-// HOW THE PRINT TRAVELS. A dragon-printed source writes its colour = the cell's INK (body x the ground's light law,
-// what world/ground.js multiplies its glyph by) and, in alpha, its TONE (0..1, the relief's light: the digit's
-// density) inside the props' flag window: alpha = DP_TONE.a0 + tone x DP_TONE.span (below DP_TONE.top; FLAG.ART_PROP
-// itself is 0.57, above it); a crown's leaves in a window of their own (DP_TONE.leaf0). The art pass averages ink and
-// tone over a cell's four samples and prints the ramp's digit for that tone from the WORLD atlas (the ground's own
-// letters, at the ground's cell size), ink x the glyph, over the ground's near-black backing: one whole digit per
-// cell, outlined in the props' own crisp stroke glyphs as before (ADR-100); a crown has no outline (its edge is the
-// ragged edge of its digits). A prop or a tree still drawn by a material that does not encode its tone
-// (createAsciiObjectMaterial in the other levels: their bones, bonfires, landmarks, bamboo, dead trees) is printed
-// the same way with a tone read from its brightness (DP_ART.legacy), without a relief of its own.
+// HOW THE PRINT TRAVELS. A dragon-printed source is a relief lit by the dragon ground's law (the moon on its relief,
+// the shadow map, the fire's light; a cell in shadow dim, a lit face bright) and the props' camera-fixed key light;
+// the art pass prints it in the props' OWN letters by its brightness, exactly as it prints today's props (ADR-100:
+// the wyrm's pixel-font digits, every cell a letter, the outline in stroke glyphs), so a lit face is as bright as
+// before and a face in shadow still prints its dimmest digits; the relief reads as patches of brighter and dimmer
+// letters on top. (A first round printed the ground's own world-atlas digits by a density ramp: at 5 x 8 px they
+// printed at a third of the props' brightness and a dark face printed dots: objects read as bare outlines.)
+// The source writes its tone in alpha inside the props' flag window (DP_TONE: below 0.57), a crown's leaves in a
+// window of their own (DP_TONE.leaf0): the art pass draws no outline round a crown (its edge is the ragged edge of
+// its letters) and prints a dragon-printed letter whole in its cell's tone. A prop or a tree still drawn by
+// createAsciiObjectMaterial prints as today's props do, without a relief of its own.
 //
 // The relief is computed on the geometry's OWN position (the rest pose: it rides with a swaying crown, a carried
 // pillar, a falling piece), turned into the world by the piece's matrix.
@@ -41,9 +42,10 @@ export const dpTreesLook = () => {
 /**
  * The tone's window in the props' flag (alpha): a0 + tone x span, every value below `top` (FLAG.ART_PROP = 0.57 above it).
  * A crown's leaves have a window of their own, leaf0 + tone x leafSpan (between FLAG.LEAF 0.6 and FLAG.STONE's 0.8):
- * the art pass draws no outline round them (a crown's edge is the ragged edge of its digits).
+ * the art pass draws no outline round them (a crown's edge is the ragged edge of its digits), and a crown's cell whose
+ * source is darker than `leafCut` (linear luma) prints nothing: the dark between its masses draws them (today's crowns).
  */
-export const DP_TONE = Object.freeze({ a0: 0.556, span: 0.0105, top: 0.5675, leaf0: 0.62, leafSpan: 0.16 });
+export const DP_TONE = Object.freeze({ a0: 0.556, span: 0.0105, top: 0.5675, leaf0: 0.62, leafSpan: 0.16, leafCut: 0.017 });
 
 /**
  * The look's numbers per option. Relief (slopes are added to the surface normal: 0.5 tilts a face ~27 degrees):
@@ -51,13 +53,15 @@ export const DP_TONE = Object.freeze({ a0: 0.556, span: 0.0105, top: 0.5675, lea
  *   bump    slope of the soft bumps on top (value noise, `bumpF` per m)
  *   crack   width of a crack (m; 0 = none), `crackK` the share of facets that carry one, `crackDark` how much a
  *           crack darkens its cells
- * Light (the ground's law, world/ground.js look b): tone = (N . moon) from law[0] (0) to law[1] (1) x shadow; the
- *   edge band adds `edge` x shadow; the ambient occlusion keeps `ao` of its dimming; ink = body x (0.2 + 1.5 tone)
- *   x the light x `ink`.
+ * Light (the ground's law, world/ground.js look b): tone = (N . moon) from law[0] (0) to law[1] (1) x shadow, + `key`
+ *   x the camera-fixed key light (today's props', the wyrm's: a face turned to the camera still reads); the edge
+ *   band adds `edge` x shadow; the ambient occlusion keeps `ao` of its dimming; the source = body x (0.2 + 1.5 tone)
+ *   x the light x `ink`, which the art pass prints in the props' own letters by its brightness (as today's props:
+ *   `ink` sets a lit face as bright as before, a face in shadow prints its dimmest letters, never nothing).
  */
 export const DP_PROPS = Object.freeze({
-  a: { facet: 0.55, size: 0.4, bump: 0.18, bumpF: 4.5, crack: 0.05, crackK: 0.45, crackDark: 0.75, law: [-0.1, 1.05], edge: 0.2, ao: 0.45, ink: 3.0 },
-  b: { facet: 0.9, size: 0.5, bump: 0.28, bumpF: 4.0, crack: 0.07, crackK: 0.6, crackDark: 0.9, law: [0.0, 1.0], edge: 0.16, ao: 0.6, ink: 3.0 },
+  a: { facet: 0.55, size: 0.4, bump: 0.18, bumpF: 4.5, crack: 0.05, crackK: 0.45, crackDark: 0.75, law: [-0.1, 1.05], edge: 0.2, ao: 0.45, key: 0.45, ink: 1.0 },
+  b: { facet: 0.9, size: 0.5, bump: 0.28, bumpF: 4.0, crack: 0.07, crackK: 0.6, crackDark: 0.9, law: [0.0, 1.0], edge: 0.16, ao: 0.6, key: 0.3, ink: 1.0 },
 });
 /**
  * Trees: bark (the trunks, the boughs, the stumps) and leaves (the crowns).
@@ -67,29 +71,15 @@ export const DP_PROPS = Object.freeze({
  *          1 / `leafF` m apart), `sprig` slope of the small sprigs on them, `hollow` how dark the gaps between
  *          clumps print
  *   barkLaw / leafLaw  the tone's ramp on N . moon (the leaves wrap the light: a crown is soft)
+ *   key    the camera-fixed key light on bark (the crowns take none: their light wraps)
+ *   inkBark / inkLeaf  the source's gain (the crowns a little calmer than today's bright screen-grid crowns)
  *   shade  how much of the moon's shadow a crown keeps (leaves let light through: a crown in the shade of its
  *          neighbours is dim, not black); ao  how much of the painted occlusion (a crown's lower half, its
  *          hollows) dims the tone
  */
 export const DP_TREES = Object.freeze({
-  a: { bark: 0.55, barkF: 5.5, furrow: 0.5, leaf: 0.6, leafF: 1.5, sprig: 0.2, hollow: 0.35, barkLaw: [-0.15, 1.0], leafLaw: [-0.6, 0.85], shade: 0.65, ao: 0.4, inkBark: 2.6, inkLeaf: 2.8 },
-  b: { bark: 0.75, barkF: 4.5, furrow: 0.7, leaf: 1.6, leafF: 1.0, sprig: 0.25, hollow: 0.7, barkLaw: [-0.1, 0.95], leafLaw: [-0.45, 0.85], shade: 0.75, ao: 0.5, inkBark: 2.6, inkLeaf: 2.8 },
-});
-
-/**
- * The art pass's side (render/pipeline.js, the prop branch): ink x / y = brightness of an outline stroke against
- * the cell's ink (the silhouette, a depth step inside), z = the dimmest an outline prints (x the body's hue, so a
- * shadowed face keeps its edge), w = the glyphs' gain. back = the cell's backing between the strokes of its digit
- * (x, y: the ground's near-black soil, x red and y green and blue) + w x its ink: an object is not a hole in the
- * ground; z = the relative depth step inside an object that draws an inner stroke (the props' own is 0.012: in a
- * crown of clumps that outlined every clump). The outline's strokes are the props' own crisp ones (the wyrm's pixel
- * font), the digits the ground's. Legacy (a source without its tone): x / y ink gain and the tone's curve
- * (1 - exp(-luma x y)) of a prop, z / w the same for a tree.
- */
-export const DP_ART = Object.freeze({
-  ink: [1.7, 1.25, 0.12, 1.0],
-  back: [0.0022, 0.0028, 0.03, 0.012],
-  legacy: [3.5, 9.0, 4.0, 10.0],
+  a: { bark: 0.55, barkF: 5.5, furrow: 0.5, leaf: 0.6, leafF: 1.5, sprig: 0.2, hollow: 0.35, barkLaw: [-0.15, 1.0], leafLaw: [-0.6, 0.85], shade: 0.65, ao: 0.4, key: 0.15, inkBark: 0.4, inkLeaf: 0.35 },
+  b: { bark: 0.75, barkF: 4.5, furrow: 0.7, leaf: 1.6, leafF: 1.0, sprig: 0.25, hollow: 0.7, barkLaw: [-0.1, 0.95], leafLaw: [-0.45, 0.85], shade: 0.75, ao: 0.5, key: 0.1, inkBark: 0.4, inkLeaf: 0.35 },
 });
 
 /**
