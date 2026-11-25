@@ -85,6 +85,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
       blade with a depth pull (ADR-019 … ADR-022)
 - [x] Wyrm motion: flip-free rig, planted feet, the painting's resting display, idle life, strike
       lead, parry arc, weighted death (ADR-025)
+- [x] Wyrm wakes without the neck twist; the drake head drawn for the view from above (ADR-189)
 - [x] Hero motion: world-planted feet, blade paths, portrait idle, new windups, two-step dash,
       sliding kneel, crescent trails (ADR-023)
 - [x] Gameplay unchanged: hit-tested frames identical / within cm (ADR-024); `npm test` + build green
