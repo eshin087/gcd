@@ -5612,3 +5612,60 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   5. **The time rip** (`player/timeRip.js`, `game.fx.rip`, `?rip=`): a cut changes the picture along its own line, never beyond a thin band, never its colour. Four looks were built and filmed side by side; **the owner picked `strip`** (three frames: the letters 3 cells either side print shifted 4 / 3 / 1 cells along the cut, each side the other way, a steel seam on the line) and it is the default; `tear`, `ghosts`, `negative` stay behind the switch. It hooks in through `player:flurry` / `player:flurryHit` / `player:flurryEnd` and `flurry.lines`, a band in the ASCII pass (`uCutN`, early-out when idle), steel in the fire field.
 - **Turned down:** a fan figure (it cannot stay chained without long runs back round); ghosts through the dodge afterimage's single standing copy (one figure at a time); the four rips' first round on film (negative as flat white blocks, ghosts as a wall of digits, strip too small to see at speed), fixed before the pick.
 - **Consequences:** no new event (`player:flurry` gains `figure`); no new draw call; the rip's idle cost is one branch a pixel in the ASCII pass. Seeded fights that hold a flurry replay differently with each switch: city `win` replays with the chain off, integ `pressure` and `storm` with the star, all commented. On film the figures are 100 - 200 px across at the duel camera and the strip lasts three frames: both to be judged in play and on the phone.
+## ADR-187 — The run's free arm: three carries for the owner to compare, by speed the default (2026-11-24)
+
+- **Context:** the owner, in a three-part hero motion pass (idle, the run's free arm, the light chain, each its own
+  session and PR): "when he runs i want him to have his left hand in a natural running pose". Asked which, "show me
+  all 3 variations": (A) a loose natural runner's swing that pumps harder at a sprint, (B) the swordsman's dash, the
+  free arm pulled back and low behind him with the sword trailing on the other side, (C) both by speed. Today's arm
+  (`loco()`, Session 30) was a fist-forward swing written as hand positions: an 85 – 141° elbow, the hand at the guard's
+  shape, the target lerped between two points.
+- **Decision:**
+  1. **`player/runArms.js`** holds the free arm on the run for the hero's animator (`A.freeHand`); `loco()` calls
+     `runArm()` in the hero's branch and keeps today's swing as `?runArm=old`. A duelist's footwork is untouched.
+     `?runArm=a|b|c|old` and the Lab's PLAYER row `run arm` (live) pick it; **the default is `c`**.
+  2. **Written as joint angles, posed by forward kinematics** on the arm's own bones: the upper arm's swing from
+     hanging and how far it stands off his side, the elbow's inside angle, the forearm's cross in toward the chest.
+     They give the hand target (`lH`) and the elbow's pole (`lP`: the elbow itself, off the shoulder → hand line).
+     A blend between two carries blends the angles, so the hand travels round the shoulder on an arc; lerped hand
+     targets from "in front of the chest" to "behind the hip" pass through the ribs, where the solver's rib guard
+     pushes them out in a jump.
+  3. **A, natural:** the run swings the shoulder −44 … +26° and the elbow 118° behind → 78° in front (measured 75 –
+     119°, working 44° a stride; before 85 – 141°), the forearm crossing in 20° in front; the sprint pumps −61 … +43°
+     with the elbow 110 → 64° (measured 63 – 111°, the hand 42 cm up and down: chin to hip). The swing lags the legs
+     by 0.035 of a cycle. The hand is open (`hs` 0), the palm to the thigh, the fingers along the forearm curled a
+     little and drooping; at a sprint straight, a blade hand. The walk's swing is small and nearly straight.
+  4. **B, the dash:** the shoulder 58° back (70° at a sprint), 30° (34°) off his side, the elbow soft (152°), the
+     open hand trailing palm in and up; it rides the stride ±10° at the shoulder and ±8° at the elbow, so it never
+     hangs still (the hand moves ~10 cm). Why so far out and back: rendered straight back, the cape hid the whole arm
+     and from behind he seemed to have a hand on his hip; less far back, the side view read a hand hanging by the hip.
+     The chest leans 0.05 rad further into it. **Forward only**: the dash's weight is `smoothstep(0.35, 0.8, mz)`, so
+     strafing and backing away (lock-on play) swing the arm as in A; the weight eases on its own clock (`dashRate` 5
+     /s on `A.time`, `A.runArmS`) because the aim swung behind him flipped `mz` in ~0.1 s and threw the arm 28 cm a
+     frame².
+  5. **C, by speed:** A, sweeping into B as the sprint builds (`smoothstep(0.15, 0.85, sprintW)`, forward only). The
+     sweep is ~0.5 s; the hand never passes 4.6 m/s in it (A's own sprint pump reaches 6.3).
+  6. **The sword arm is unchanged:** it already trails the blade low beside the right leg on the run and nearly level
+     behind at a sprint, which is B's "sword trailing on the other side". The only shared change is the dash's chest
+     lean. `stand()`'s run-start blend (the idle session's) is read, not edited: `loco()` writes the arm with weight
+     `moveW` over it, so a start eases from the stance.
+- **Why C:** the run keeps a runner's arm that works (the owner called the fixed crook "stiff"), lock-on strafes keep
+  it swinging, and the sprint, where the hero is going somewhere, gets the wuxia dash. B at a plain run holds the arm
+  still behind him the whole time; A at a sprint is the most natural but the least "swordsman".
+- **Status:** the owner compares the four on films and the preview; the default may change with their pick.
+- **Consequences:** the `herorun` scenario runs every carry through one course (a start, the run, a stop, a sprint's
+  start and end, a strafe and a backpedal in the fight, a turn, out of the run into a light, a roll, a block and the
+  flask, out of the sprint into a roll and a block, the sprint's slash) and checks the elbows, the flare, the hand's
+  path and a pop audit against `old`. HEROARMS's "elbows in beside the ribs" check no longer covers the free arm
+  sprinting under a dashing carry (b, c): the sweep out and back is the pose; HERORUN bounds it (out at most 0.8).
+  **Known cost:** out of the dash into a roll or a block, the arm comes from behind him to the front inside that
+  clip's short cross-fade, about twice the old jolt (the free elbow 24 cm a frame² vs 13). Those cross-fades are
+  outside this pass (the roll's and the block's entries); a guard keeps it under 27.
+- **Amended (2026-11-25), the free hand's size:** the owner, trying A on the preview: "the animation looks fine but
+  the left hand size and color is standing out too much". The hand was drawn in the face's skin ink (gain 2.2) at
+  the gauntlet's size (`BODY.hand` 1.12) beside a near-black sleeve, and the new swing carries it across his coat.
+  Of five looks built for the preview (`gear/handLook.js`, `?handLook=0|a|b|c|d`: the hand before, × 0.8, × 0.8 with
+  the skin fill at about half or a third, a × 0.85 leather glove) the owner picked **a: × 0.8 in the same skin
+  ink**, now every outfit's free hand (the open hand, the sword fingers, the fist on the grip). The sword hand is
+  unchanged. The two darker inks (`HERO_INK.handShade` / `handDark`, part 1 with the skin's lines) are built only
+  when their look is drawn: a material more on the rig draws a uuid from the seeded `Math.random`.
