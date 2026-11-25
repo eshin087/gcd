@@ -5,6 +5,30 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-25 — Every wyrm fire travels from it; roar-cast spells and a brood of fire; a forest you can walk into (ADR-197; planned by the lead, built by Opus agents)
+
+**Owner:** fire "out of nowhere" must come from the dragon; new roar spells with "dragon incantation symbols" (mini
+dragons, kamikaze ...); no invisible walls; more forest to rip and burn; good performance. Their picks (asked first):
+visible trails, all four spells, walk into the forest, smooth on the iPhone. Branch `dragon/fire-forest`.
+
+**How.** Stubs with the interfaces fixed, then four agents (fire, brood, spells, forest) in their own worktrees; the
+lead merged them (no conflicts), made their seams (partPos 'point', the tuning merges, the director's brood rule) and
+sent three back for a second round judged at the game camera (the serpent read as a band of fire, the firestorm as a
+blob, the drakelings as winged flames, the forest's rim barely changed). Then a docs agent and an integration agent.
+Lessons for the next pass: the stubs' ADR number was already taken on the base (renumbered to 195, then to 197 when main took 195 and 196 for the rename and the loading screen);
+fire under ~1.5 m sinks into the meadow, a shape in the fire field needs many big cool blobs; seeded fight checks that
+count cues a minute stop measuring once a long channel is in the mix.
+
+**Verified.** Every agent's scenarios (firesource, brood, spells, forestedge, pressure, lab, breach, wreckage,
+terrain), world and life suites, and the whole `npm test` on the final merge with `origin/main`; films of every move
+at the game camera, before and after; perf A/B on headless Edge (desktop GPU).
+
+**Picked.** The owner kept every default (incant a, drakeling a, serpent a, vortex a, forestEnd a, meteorSource
+b, wallSource a).
+
+**Open.** The phone's
+fps on the device; the wyrm fighting at range in the forest; the drakelings' heads; grass fire knots after the
+serpent; `world.restore()` alone leaves a hero out in the forest (the level's resets and the Lab's Restore respawn him).
 ## 2026-11-25 — The front: the sword's path, a loading screen, the hero's tag (ADR-196)
 
 **Owner:** an ASCII loading progress with the gcd branding, a title where the stages are easy to pick; plan

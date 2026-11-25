@@ -21,6 +21,20 @@ import { BREAK } from './breakTuning.js';
 //                            emits world:edge from it)
 //   edge.R (Float32Array, per lane), edge.n, edge.base, edge.outer, edge.laneAngle(i)
 // The ground is star-shaped round the centre: whoever stands on it can always walk straight back in.
+//
+// WALK mode (a set's `edge.walk`: Cinderwood since the fire-and-forest pass, the owner's "no invisible
+// walls: if it looks like the player is able to walk there"): the hero's ground is the whole forest
+// out to the set's true end (`walk.at(angle)`: m from the centre, inside its rock ridge), from the
+// start; the trunks and rocks that stand in it are his walls (their colliders), the ridge's crags the
+// last one, and this ground only the backstop behind them. What the wall's fallen trees open (the
+// lanes above) is then the BOSS's alone (`bossGain`), and a boss follows the hero out too: its gain
+// rises with how far past `base` he stands (+ BREAK.edge.walk.lead m) at once and falls at
+// `walk.ease` m/s (never below how far past its own bound the boss stands: its ground is not pulled
+// from under it), never past `walk.bossIn` m short of the end. `open` is true while he stands past
+// `base` or a lane is torn (what reads an arena's radius off it follows him out); `reaches` reads the
+// base circle (or the torn lanes) while he stands inside it. No world:edge in walk mode (his ground
+// never changes; `version` counts his stepping out and back in: the minimap's zoom).
+//   edge.walk (bool), edge.W (Float32Array per lane: the end), edge.out, edge.follow
 
 const TAU = Math.PI * 2;
 /**
@@ -31,8 +45,11 @@ const TAU = Math.PI * 2;
 const stands = (b) => b.state <= 1 || b.state === 3;
 
 export class Edge {
-  /** `list`: the destructibles' pieces (each with `def.edge` > 0 closes lanes). `cfg`: the set's `edge`. */
-  constructor(list, cfg) {
+  /**
+   * `list`: the destructibles' pieces (each with `def.edge` > 0 closes lanes). `cfg`: the set's `edge`.
+   * `game` (optional): where the hero is (walk mode: `game.player.position`).
+   */
+  constructor(list, cfg, game = null) {
     const E = BREAK.edge;
     const base = Number(cfg?.base);
     this.base = Number.isFinite(base) && base > 0 ? base : 31;
@@ -47,8 +64,30 @@ export class Edge {
     this._F = new Float32Array(N); // the nearest standing piece's line per lane
     this._F0 = new Float32Array(N); // ... with everything standing
     this._opened = new Uint8Array(N);
-    this.open = false;
+    this._open = false;
     this.version = 0;
+    this.game = game;
+    // walk mode: the hero's ground is the set's whole forest out to its end (`cfg.walk.at(angle)`)
+    const at = typeof cfg?.walk?.at === 'function' ? cfg.walk.at : null;
+    this.walk = !!at;
+    /** walk mode: the hero's ground per lane (m from the centre): the end, read at the lane's sides and middle (the least) */
+    this.W = new Float32Array(N).fill(this.base);
+    if (at) {
+      for (let i = 0; i < N; i++) {
+        let w = Infinity;
+        for (let k = 0; k <= 4; k++) {
+          const v = Number(at(-Math.PI + (i + k / 4) * this.step));
+          if (Number.isFinite(v) && v < w) w = v;
+        }
+        this.W[i] = Number.isFinite(w) ? Math.max(this.base, w) : this.base;
+      }
+    }
+    /** the lanes' torn ground (what the fallen wall opened): R itself in the classic mode, the boss's alone in walk mode */
+    this.T = this.walk ? new Float32Array(N).fill(this.base) : this.R;
+    /** walk mode: the hero stands past `base`; the boss's follow gain (m) */
+    this.out = false;
+    this.follow = 0;
+    this._torn = false;
     this.lanes = 0;
     this.grew = 0;
     this.grewLane = -1;
@@ -73,8 +112,17 @@ export class Edge {
     this.count = count;
     this._scan();
     this._F0.set(this._F);
+    if (this.walk) this.R.set(this.W);
     this.refresh();
     this.version = 0;
+  }
+
+  /** Any ground past the base circle in play: a lane torn open, or (walk mode) the hero standing out past it. */
+  get open() {
+    return this._open || (this.walk && this.out);
+  }
+  set open(v) {
+    this._open = !!v;
   }
 
   _scan() {
@@ -94,7 +142,7 @@ export class Edge {
 
   /** Read the pieces again (destructibles.update does, every BREAK.edge.every s; reset at once). True if the ground changed. */
   refresh() {
-    const N = this.n, F = this._F, F0 = this._F0, R = this.R, G = this.G, op = this._opened, base = this.base;
+    const N = this.n, F = this._F, F0 = this._F0, R = this.T, G = this.G, op = this._opened, base = this.base;
     this._scan();
     let changed = false, open = false;
     // a lane something came down in ends at its nearest standing piece; the others are sealed at the base
@@ -154,21 +202,51 @@ export class Edge {
         at = i;
       }
     }
-    this.open = open;
+    this._open = open;
+    this._torn = open;
     /** lanes open; the lane that moved furthest out at the last reading and by how much (m; 0: none did) */
     this.lanes = lanes;
     this.grew = grew;
     this.grewLane = at;
+    if (this.walk) {
+      // (the hero's ground never moves in walk mode: what opened is the boss's, and no world:edge)
+      this.grew = 0;
+      this.grewLane = -1;
+      return false;
+    }
     if (changed) this.version++;
     return changed;
   }
 
   /** Reads the pieces every BREAK.edge.every s. True when ground opened at this reading (`grew`, `grewLane`). */
   update(dt) {
+    if (this.walk) this._follow(dt);
     this._t -= dt;
     if (this._t > 0) return false;
     this._t = BREAK.edge.every;
     return this.refresh() && this.grew > 0;
+  }
+
+  /** Walk mode: is the hero out past `base` (`version` counts it: the minimap's zoom), and the boss's follow gain. */
+  _follow(dt) {
+    const p = this.game?.player?.position, WK = BREAK.edge.walk;
+    const hr = p ? Math.hypot(p.x, p.z) : 0;
+    if (!Number.isFinite(hr)) return;
+    const out = hr > this.base;
+    if (out !== this.out) {
+      this.out = out;
+      this.version++;
+    }
+    const want = out ? hr - this.base + WK.lead : 0;
+    const ease = Number.isFinite(dt) && dt > 0 ? WK.ease * dt : 0;
+    if (want >= this.follow) this.follow = want;
+    else {
+      // (falling, it never pulls the ground from under the boss: no lower than how far past its own
+      // bound it stands now; it walks back in after the hero and the ground comes in with it)
+      const B = this.game?.boss ?? this.game?.dragon, bp = B?.position, bb = Number(B?.bound);
+      const keep = bp && Number.isFinite(bb) ? Math.hypot(bp.x, bp.z) - bb : 0;
+      this.follow = Math.max(want, this.follow - ease, Math.min(this.follow, Number.isFinite(keep) ? keep : 0));
+    }
   }
 
   lane(x, z) {
@@ -183,6 +261,7 @@ export class Edge {
 
   /** How far out the hero's ground goes in the direction of (x, z): m from the centre. */
   heroAt(x, z) {
+    if (this.walk) return this.W[this.lane(x, z)];
     return this.open ? this.R[this.lane(x, z)] : this.base;
   }
 
@@ -191,8 +270,23 @@ export class Edge {
     if (!this.open) return 0;
     const N = this.n, u = (Math.atan2(z, x) + Math.PI) / this.step - 0.5;
     const f = Math.floor(u), t = u - f, i = ((f % N) + N) % N;
-    const g = this.G[i] * (1 - t) + this.G[(i + 1) % N] * t;
+    let g = this._torn ? this.G[i] * (1 - t) + this.G[(i + 1) % N] * t : 0;
+    if (this.walk) {
+      // (it follows the hero out, never past `bossIn` m short of the end in that direction)
+      if (this.follow > g) g = this.follow;
+      const W = this.W, cap = Math.min(W[i], W[(i + 1) % N]) - this.base - BREAK.edge.walk.bossIn;
+      if (g > cap) g = cap;
+    }
     return g > 0 ? g : 0;
+  }
+
+  /**
+   * The ground that counts for a falling piece's warning: the hero's (walk mode: the forest while he
+   * stands out in it; the base circle and the torn lanes while he stands inside it).
+   */
+  _ground(x, z) {
+    if (!this.walk || this.out) return this.heroAt(x, z);
+    return this._torn ? this.T[this.lane(x, z)] : this.base;
   }
 
   /** Does the segment a → b come within `pad` m of ground the hero can stand on? */
@@ -200,7 +294,7 @@ export class Edge {
     const len = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.ceil(len / 1.5));
     for (let k = 0; k <= n; k++) {
       const t = k / n, x = ax + (bx - ax) * t, z = az + (bz - az) * t;
-      if (Math.hypot(x, z) <= this.heroAt(x, z) + pad) return true;
+      if (Math.hypot(x, z) <= this._ground(x, z) + pad) return true;
     }
     return false;
   }
@@ -212,7 +306,7 @@ export class Edge {
   keep(pos, radius = 0) {
     const base = this.base;
     let r = Math.hypot(pos.x, pos.z);
-    if (!this.open) {
+    if (!this.open && !this.walk) {
       const max = base - radius;
       if (r <= max) return false;
       pos.x *= max / r;

@@ -18,6 +18,8 @@ import { Terrain } from './terrain.js';
 import { Ablaze, ablazeLook, setAblazeLook } from './ablaze.js';
 import { wallWind } from './wallReach.js';
 import { WyrmReact } from './react.js';
+import { Incantation } from './incantation.js';
+import { Brood } from './brood.js';
 import { wyrmTopKnobs } from './faces.js';
 
 // VAELGRIM, THE CINDER WYRM — the boss. Public contract: see docs/ARCHITECTURE.md (Dragon).
@@ -117,6 +119,7 @@ export class Dragon {
     this._part = new THREE.Vector3();
     this._hitPt = new THREE.Vector3();
     this._lastParry = -1;
+    this._lastParryAttack = null;
     this._postureSent = -1;
     this.postureTimer = 0;
     this.warn = 0; // current red tell glow strength (uWarn.a)
@@ -151,6 +154,8 @@ export class Dragon {
     this.bullets = new Bullets(this); // the bullet field + fire wheel (bullets.js): cleared like the hazards
     this.terrain = new Terrain(this); // the piece in its jaws / in the air, its mark and its blow (terrain.js, ADR-110)
     this.ablaze = new Ablaze(this); // phase 3: it sets itself on fire (ablaze.js)
+    this.incantation = new Incantation(this); // the glyph circle a roar-cast spell burns (incantation.js, ADR-197)
+    this.brood = new Brood(this); // the fire creatures it calls up (brood.js, ADR-197)
     this.brain = new Brain(this);
     this.debug = createDebug(this);
 
@@ -306,8 +311,8 @@ export class Dragon {
   }
 
   /**
-   * Called after player.takeHit returned 'parried' (by hitPlayer; a second call the same instant is
-   * ignored). The DEFLECT CHAIN (contract 1): a parried string hit that is not its last one does not
+   * Called after player.takeHit returned 'parried' (by hitPlayer; a second call for the same attack
+   * within 0.1 s is ignored). The DEFLECT CHAIN (contract 1): a parried string hit that is not its last one does not
    * cancel the string: the posture damage applies and the struck part is knocked back (visual, no
    * timing change). Parrying the last hit (or a single melee attack) recoils the wyrm. Emits
    * 'dragon:parried' {attack, tell, hit, last} and, from the 2nd parry in a row within one string,
@@ -315,10 +320,13 @@ export class Dragon {
    */
   onParried(info = {}) {
     if (this.state === 'dying' || this.state === 'dead' || this.state === 'sleeping') return;
-    if (this.time - this._lastParry < 0.1) return;
-    this._lastParry = this.time;
     const a = this.brain.action;
     const attack = info?.attack ?? a?.cur?.attack ?? a?.name ?? null;
+    // (the guard is per attack: a drakeling's bite parried 0.09 s after the wyrm's own tail lash is a
+    // second blow met, and the hero's player:parry for it must be answered too; ADR-197)
+    if (this.time - this._lastParry < 0.1 && attack === this._lastParryAttack) return;
+    this._lastParry = this.time;
+    this._lastParryAttack = attack;
     const tell = info?.tell === TELL.BLUE ? TELL.BLUE : TELL.NORMAL;
     const mine = !!a && (attack == null || attack === a.name); // the running action's own hit (not a stray shell)
     const b = mine ? a.cur : null;
@@ -460,6 +468,8 @@ export class Dragon {
     this.fx.reset();
     this.terrain.reset(); // (a piece still in the jaws falls; the world's own reset stands it up again)
     this.ablaze.reset();
+    this.incantation.reset();
+    this.brood.reset();
     this._clearWarn();
     this.state = 'sleeping';
     this.hp = this.maxHp;
@@ -469,6 +479,7 @@ export class Dragon {
     this.broken = false;
     this.postureTimer = 0;
     this._lastParry = -1;
+    this._lastParryAttack = null;
     this._lastPlunge = -1;
     this.knock.t = -1;
     this.crashing = false;
@@ -722,6 +733,9 @@ export class Dragon {
         const t = this.rig.tail;
         return out.copy(t.p[t.n]);
       }
+      case 'point': // a beat that carries its own place (a spell's head, a column's foot: spellsFire.js)
+        if (b && Number.isFinite(b.px + b.py + b.pz)) return out.set(b.px, b.py, b.pz);
+        return out.copy(pt.chest);
       case 'shell':
         if (a?.volley && this.fx.shellPos(a.volley, out)) return out;
         return out.copy(pt.mouth);
@@ -833,6 +847,8 @@ export class Dragon {
     this.broken = false;
     this._clearWarn();
     this.ablaze.reset();
+    this.incantation.reset();
+    this.brood.reset();
     this.object3d.visible = false;
     this.hurtSpheres.length = 0;
     this.bodyCircles.length = 0;
@@ -912,6 +928,12 @@ export class Dragon {
     this.bullets.update(dt); // (guarded inside: never throws)
     this.terrain.update(dt); // (guarded inside: never throws)
     this.ablaze.update(dt); // (phase 3's fire on its wings, claws and tail; goes out while it dies)
+    try {
+      this.incantation.update(dt);
+      this.brood.update(dt);
+    } catch (err) {
+      console.error('[dragon] incantation / brood update failed', err);
+    }
     if (this.state !== 'dying') {
       if (wyrmTopKnobs().glint) this.fx.eyeGlints(dt, this.react.eyes(this.rig.pt.eyes), this.rig.s.eyes);
       // phase 2 smoulders, phase 3 burns (TUNING.phaseEmbers)

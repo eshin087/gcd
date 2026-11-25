@@ -124,7 +124,10 @@ export class Minimap {
     const arena = CONFIG.world.arenaRadius;
     // the edge of the open ground (the forest's wall coming down: world/edge.js): the map draws back
     // as the ground opens, so the hero stays on it
-    const E = g.world?.edge?.open ? g.world.edge : null;
+    // (a walk-mode edge, ADR-197: the hero walks the whole forest; the map draws back to its end, the
+    // ridge, while he stands out in it, and keeps the clearing's scale while he is in the clearing)
+    const E0 = g.world?.edge ?? null;
+    const E = E0?.walk ? (E0.out ? E0 : null) : E0?.open ? E0 : null;
     let far = 0;
     if (E) for (let i = 0; i < E.n; i++) far = Math.max(far, num(E.R[i], 0));
     const range = (this.range = Math.max(RANGE, far + 4));
@@ -173,7 +176,7 @@ export class Minimap {
     }
     // ground the fallen wall has opened: each open lane cleared out to where it ends
     const inset = E ? Math.max(0, E.base - arena) : 0;
-    if (E) {
+    if (E && !E.walk) {
       c.fillStyle = 'rgba(22, 35, 33, 0.97)';
       for (let i = 0; i < E.n; i++) {
         if (!(E.R[i] > E.base + 0.05)) continue;
@@ -189,7 +192,9 @@ export class Minimap {
     c.setLineDash([2, 3]);
     c.strokeStyle = 'rgba(207, 214, 230, 0.22)';
     c.beginPath();
-    if (E) {
+    if (E0?.walk && !E) {
+      // (in the clearing, a walk-mode edge: no line round it, he may walk on into the trees)
+    } else if (E) {
       for (let i = 0; i < E.n; i++) {
         const a0 = E.laneAngle(i) - E.step / 2;
         c.arc(C, C, Math.max(arena, E.R[i] - inset) * s, a0, a0 + E.step);

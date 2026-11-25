@@ -376,6 +376,18 @@ export class Player {
     return a.t >= a.def.windup && a.t <= a.def.windup + a.def.active + 0.04;
   }
 
+  /**
+   * The hand feels a cut on something small the boss sends at him (the wyrm's brood, dragon/brood.js,
+   * ADR-197: it tests his blade itself, as bullets.js does): a short hit-stop, sparks along the cut
+   * (dx, dz), a jolt of the camera. Nothing else (no damage dealt, no streak).
+   */
+  feelCut(x, y, z, dx = 0, dz = 0, heavy = false) {
+    if (!Number.isFinite(x + y + z)) return;
+    this._hitstop(heavy ? 0.075 : 0.05, 0.05);
+    this.fx.sparks(x, y, z, fin(dx), fin(dz), heavy);
+    this.game.shake?.(heavy ? 0.22 : 0.14);
+  }
+
   /** What the animator's flurry clip reads (flurry.js `anim`). */
   get flurryAnim() {
     return this.flurry.anim;

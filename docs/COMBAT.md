@@ -894,6 +894,94 @@ on 124 of 174; the tail slam's raised arch barely reads.
 - Every blow is red. Hazard-dealt blows never plunge, except fire breathed or spat from the air; the
   dive's crash and the nova's blast may (the wyrm is on the ground for both).
 - Flash timing (`npm test` → FIRE, FLIGHT): every blow lands within 17 ms of its flash + lead.
+- **Every fire comes from the wyrm** (2026-11-25, ADR-197; the owner: "some of the dragon fire attacks
+  seem to come out of nowhere. all the fire should be coming from the dragon itself"). Nothing burns
+  away from it any more without visibly travelling there from it:
+  - **Fire eruptions** run on a glowing crack from between its forefeet's slam. Phase 2's line: the
+    crack's head reaches each pillar as it bursts (the timing is unchanged). Phase 3's chase: the crack
+    runs out at 18 m/s to where you are heading, the first pillar is laid where it catches you (or
+    wherever it is after 1.6 s), then it follows you at 9 m/s (over your sprint, 7.2) and every pillar
+    bursts at its head. **The crack's run is part of the tell**: the move's red beat (its tell at the
+    windup) and the first pillar wait for it, so at 14 m the first pillar comes about 0.45 s later than
+    before; the wyrm's head watches the crack run. `?crack=off` gives the eruptions without it.
+  - **Phase 3's second flame wall** is laid, not lit out of nothing: `a` (default) a fire front runs
+    out both ways along its line from where the first wall crosses it, as the first wall springs up;
+    `b` the head swings round and breathes at that point, and a runner of fire crosses the ground to
+    the line. Its warning shows only on the stretch laid so far; the line is laid whole before it
+    ignites, so the wall's timing and tell are unchanged.
+  - **Armageddon's meteors** fall out of the wyrm's own fire in the sky, visible for up to 1.35 s of
+    their warning: `b` (default) a vortex of fire turning over the wyrm, fed by a column of heat off its
+    back, flinging them from its rim; `a` seeds of fire the salvo's bolts hang along the top of the
+    frame, each meteor dropping from the nearest. Where they land and when are unchanged.
+  - `?fireTrail=off` turns all of it off (the fire as before).
+
+## The roar-cast moves: the brood and the fire spells (2026-11-25, ADR-197)
+The owner: "add new dragon attacks where the dragon does some kind of cool dynamic fire spell through
+it roaring and it shows some dragon incantation symbols and a cool fire spell appears, maybe like fire
+mini dragons that must be beaten or kamikaze". Four moves, category `spell`, each opening the same way:
+the wyrm rears tall, chest swelling and throat filling, while a **seal of burning script** is written
+(on the ground round it or before it, or hanging before its jaws), then **roars** and the seal flashes
+white as the spell releases. The cast itself strikes nothing: what it calls up strikes, every blow with
+its own tell. While the windup and a channel run the wyrm stands still over its spell, open to the
+sword. Numbers at phase 1 (windups × the phase's tScale), before the 0.85 damage scale.
+
+| Move (key) | Phases (weight [P1, P2, P3] / cooldown) | Windup / cast / recovery (s) | Seal | AI gate |
+|---|---|---|---|---|
+| Fire drakelings (`drakelings`) | [0, 0.55, 0.6] / 34 | 1.7 / 0.55 / 0.9 | on the ground round its feet, r 10 m | any distance |
+| Kamikaze wisps (`wisps`) | late P1 0.35 (below 75 % of its HP), [–, 0.5, 0.5] / 24 | 1.25 / 1.1 / 0.8 | before its jaws, r 2.6 m | the hero ≥ 7 m away |
+| Fire serpent (`fireSerpent`) | [0, 0.45, 0.35] / 24 | 1.5 / channel / 1.1 | on the ground 7.5 m before it, r 2.6 m | 8 – 34 m |
+| Firestorm (`firestorm`) | [0, 0.35, 0.4] / 26 | 1.5 / channel / 1.2 | on the ground 8.5 m before it, r 3.0 m | 7 – 28 m |
+
+None is picked while its brood lives; the two spells are not picked while Armageddon's barrage or a
+meteor is up, nor while the other spell is fresh off its cast (its cooldown still has more than half
+of this one's to run).
+
+- **Fire drakelings.** [3, 4, 5] small winged dragons of fire burst out of the seal's sigils on your
+  side and circle you, 4.6 – 6.2 m out, 1.9 m up. **One at a time** they lunge: a bite drawn back
+  through a windup of **0.72 s (normal: block or parry; 9, kb 2.5)** or, from phase 2, a share [0, 0.3,
+  0.35] of them **0.95 s (blue: parry it; 14, kb 4.5)**, then a dash at 15 m/s through where you stood.
+  The first lunge comes 1.4 s after the move ends, then one every 0.9 – 1.4 s. A block makes it reel for
+  0.6 s; **a parry kills it** (and counts on the wyrm's posture as any parry does). Each dies to cuts:
+  1 hp in the Lab's phase 1, 2 in phases 2 and 3; a light cut takes 1, a heavy one 2; a cut knocks a
+  survivor reeling. **When its time runs out** (8.5 s, each one 0.7 s after the one before) it climbs
+  over you, white-hot, for 1.05 s and **dives (red: roll out; r 2.4, 16, burn 1.5, kb 6)**; never two
+  dives within 0.8 s.
+- **Kamikaze wisps.** Through the windup [4, 5, 7] wisps swell on its spine and wings and, from the
+  roar on, tear off one by one 0.62 s apart. Each curves in on you (it turns at most 2.6 rad/s, so it
+  swings wide: it never snaps), and **commits** within 3 m: **red** (`combat:tell`), it turns onto you
+  until its flash and flies through where you stand, **bursting 0.68 s after its commit (r 1.9, 12,
+  burn 1, kb 4)**. One commits at a time, at least 0.75 s apart (the next wheels round you until its
+  turn). Cut it down (one cut, committed or not; not while it still rides the wyrm's body) or roll
+  through the burst. One that never reaches you gutters out 7 s after it tore off.
+- **The fire serpent** (phase 2+). A 16 m serpent of fire bursts out of the seal and hunts you along
+  the ground: 6.4 m/s (you sprint 7.2), its heading turning at most 1.35 rad/s (a sprint across its nose
+  outruns the turn), for [3.2, 3.2, 4.2] s at most. It **strikes** [1, 2, 3] times by phase: when you
+  are 2.5 – 7.5 m before its head and within 0.6 rad of its way (from 1.4 s into the hunt, and 0.7 s of
+  hunting after the last strike), or when the hunt runs out, **it rears for 0.78 s (red: the tell at the
+  rear's start)** and lunges 8.5 m along the line it reared on in 0.3 s, bursting where its head lands
+  (head r 1.15, burst r 2.4: **26, burn 2, kb 5**). It lies spent 0.55 s after each strike (an opening),
+  sinks into the ground after the last. **Its body burns on contact**: ticks of 4 (burn 0.8) every 0.35 s,
+  normal fire, blockable, never while you roll. It fells what stands in its way and leaves a burning
+  lane (the grass catches 2.2 s after its head passed) and a charred trench.
+- **The firestorm** (phase 2+). A spinning column of fire rises out of the seal (0.7 s, standing still)
+  and drifts toward you for [4.2, 4.2, 4.8] s at up to 2.5 m/s (you walk out of its way), slowing on top
+  of you, tearing up the trees it passes and lifting [1, 2, 2] light ones into its spin. Then it
+  **gathers for 1.15 s (red: the tell as it starts; it stops, narrows, spins faster, burns brighter)**
+  and **bursts in a ring (r 7: 30, burn 2.5, kb 7)**, flinging what it held 13 m out. **Its wall burns
+  on contact**: ticks of 5 (burn 1) every 0.3 s inside its reach, blockable, never while you roll.
+- **The brood's cues are kept clear of the wyrm's.** A drakeling's lunge is not started while a dodge
+  cue is due near its impact. Any brood cue whose flash is due waits (its creature holds, up to 1.8 s)
+  while a cue of the other answer, the wyrm's own (its running move's blows, told or still to come,
+  a string's later hits included), a hazard's or a bullet's, is due within 0.5 s of it; a red one also
+  waits while bullets are in the air. No lunge or dive starts while the wyrm is in the air or its
+  running move still has a blow to come (at most 2.5 s). While any of its brood lives, the wyrm picks
+  no other spell, no flight and no heavy blow, and live wisps keep it from moves that ask for a guard
+  (as meteors in the sky do). Measured by the brood's author (PRESSURE): cues a minute by phase
+  ~35 – 41 / 58 – 60 / 77 – 83, no clash between two answers.
+- **Their blows on the world** are the wyrm's: the serpent and the column fell what they cross and set
+  it burning; a drakeling's dive and a wisp's burst blast and light where they land and mark the floor.
+- Looks, not picked yet: `?incant=a|b`, `?incantInk=script|fire|blood`, `?drakeling=a|b`,
+  `?serpent=a|b`, `?vortex=a|b` (STYLE.md "The look switches").
 
 ## Bullets (2026-11-09, ADR-039; breathed, perfect returns and Hard: 2026-11-11, ADR-050, ADR-051; no wisps, no spinning, ground tongues: 2026-11-15, ADR-119)
 The wyrm's bullet-hell patterns (`bullets.js`, `bulletAttacks.js`; numbers `tuningBullets.js`) fill
@@ -2745,6 +2833,21 @@ stands again when the fight resets (a death, a rest at the bonfire, the Lab's Re
   the end of phase 1 and 88 / 86 / 90 by the end, the furthest 51 / 54 / 51 m out; the hero's ground
   grows by 1664 / 1828 / 1415 m2 on a circle of 3019. With a gap torn 25 m deep and the hero standing
   in it the wyrm's root went 50.8 m out and it kept 78 % of its cues a minute (35 against 45).
+- **Walk into the forest** (2026-11-25, ADR-197; the owner: "make the map not have invisible walls. if
+  it looks like the player is able to walk there"). In Cinderwood the hero's ground is now **the whole
+  forest from the start**, out to a rock ridge about 48.5 m from the centre (`?forestEnd=b|c`: a
+  thicket wall of dead trunks or a deadfall of giant trunks instead): no wall of air anywhere; the
+  trunks, fallen logs, stumps, rocks and the ridge's crags are what stop him, and he pushes through
+  bushes, ferns and brambles. The wall opening above now only lets **the wyrm** out. **The wyrm
+  follows him in**: its root may go as far past its 24 m as he stands past 31 m, plus 2 m, at once;
+  when he comes back its reach falls at 3 m/s (never from under its feet: it walks back in after him),
+  and it never goes nearer than 7 m to the forest's end. Among the trees it fights as anywhere (it closes in
+  between moves; a hero who keeps far off meets more of its ranged moves). Nothing out there is
+  shelter (as above: a meteor lands where he stands, a barrage moves with him), and the forest is
+  thicker to rip and burn through (young trees, snags, fallen logs, undergrowth). The wall's
+  edge event and the feed's line are not sent on this ground; the minimap draws back to the ridge
+  while he is out in the forest. The Lab's Restore brings a hero out among the trees back to the
+  bonfire first.
 - **The floors break** (ADR-122; `BREAK.floor`, `world/floor.js`). Each slab of the courtyard's paving
   and each plate of the crater is a breakable piece with three states that read at the game camera:
   **whole**; **cracked** (its structure under 0.8 of itself: the slab drawn split into two to four
