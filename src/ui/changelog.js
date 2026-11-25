@@ -18,6 +18,13 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-25',
+        title: 'The resting blade no longer glows',
+        notes: [
+          'A bright white halo no longer blooms round your sword while you stand still at some angles.',
+        ],
+      },
+      {
         date: '2026-11-24',
         title: 'Smaller combat text',
         notes: [
