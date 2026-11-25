@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { createCarvedGlyphMaterial, createPropArtMaterial, createAsciiObjectMaterial, SCRIPT_GRID } from '../render/materials.js';
+import { createCarvedGlyphMaterial, createPropArtMaterial, createDragonObjectMaterial, SCRIPT_GRID } from '../render/materials.js';
 import { GlyphParticles } from '../render/particles.js';
 import { gi } from '../render/glyphs.js';
 import { markCaster } from '../render/pipeline.js';
@@ -628,7 +628,8 @@ function buildHall(U, colliders) {
     }, 26);
   }
 
-  const mat = createAsciiObjectMaterial(U, { fadeNearPlayer: true, side: THREE.DoubleSide });
+  // (?dpProps / ?dpTrees: the dragon print's relief, render/dragonProps.js; both off: createAsciiObjectMaterial itself)
+  const mat = createDragonObjectMaterial(U, { fadeNearPlayer: true, side: THREE.DoubleSide });
   const meshes = [];
   const mesh = (geos, m, name) => {
     if (!geos.length) return null;

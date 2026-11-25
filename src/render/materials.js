@@ -1312,6 +1312,7 @@ function dragonPropUniforms(P) {
     uDpCrack: { value: new THREE.Vector4(P.crack, P.crackK, P.crackDark, 0) },
     uDpLaw: { value: new THREE.Vector4(P.law[0], P.law[1], P.edge, P.ao) },
     uDpInk: { value: P.ink },
+    uDpKey: { value: P.key },
   };
 }
 /**
@@ -1341,6 +1342,9 @@ function dragonPropFrag() {
       uniform vec4 uDpCrack;
       uniform vec4 uDpLaw;
       uniform float uDpInk;
+      uniform float uDpKey;
+      uniform vec3 uCamRight;
+      uniform vec3 uCamUp;
       varying vec3 vW;
       varying vec3 vN;
       varying vec3 vCol;
@@ -1368,7 +1372,11 @@ function dragonPropFrag() {
         float cloud = dpCloud(vW.xz);
         vec3 PL = pointLights(vW + n * 0.05, N, 0.5);
         float t = clamp((dot(N, uMoonDir) - uDpLaw.x) / (uDpLaw.y - uDpLaw.x), 0.0, 1.0) * sh * cloud;
-        t = t * 0.85 + luma(PL) * 2.0;
+        // the camera-fixed key light (today's props' and the wyrm's, from the viewer's upper left): a face turned to
+        // the camera but away from the moon still reads
+        vec3 keyDir = normalize(-0.5 * uCamRight + 0.9 * uCamUp + cross(uCamRight, uCamUp));
+        float key = max(dot(N, keyDir), 0.0);
+        t = t * 0.85 + luma(PL) * 2.0 + uDpKey * key * key * (0.35 + 0.65 * sh);
         // a chamfer or a rim catches the moon; the hollows low on the piece stay dim
         t += vEdge * uEdge * uDpLaw.z * sh;
         t *= mix(1.0, vAO, uDpLaw.w);
@@ -1377,7 +1385,7 @@ function dragonPropFrag() {
         t *= 1.0 - dpContact(vW.xz) * low;
         float rip = dpRipple(vW.xz, hash13(floor(vO * 7.0)));
         t = clamp(t + rip * 0.35, 0.0, 1.0);
-        vec3 L = ambientAt(N) + uMoonColor * (max(uMoonDir.y, 0.0) * 0.85 * sh * cloud) + PL;
+        vec3 L = ambientAt(N) + uMoonColor * (max(uMoonDir.y, 0.0) * 0.85 * sh) + PL; // (a cloud dims the tone only, as on the ground)
         vec3 col = vCol * uGain * (0.2 + 1.5 * t + rip * 0.8) * L * uDpInk;
         // dragon fire scorches low stones; embers glow on them
         vec2 sc = scorchAt(vW.xz);
@@ -1422,7 +1430,9 @@ export function createDragonObjectMaterial(U, o = {}) {
     uDpBark: { value: new THREE.Vector4(t.bark, t.barkF, t.furrow, t.inkBark) },
     uDpLeaf: { value: new THREE.Vector4(t.leaf, t.leafF, t.sprig, t.hollow) },
     uDpTreeLaw: { value: new THREE.Vector4(t.barkLaw[0], t.barkLaw[1], t.leafLaw[0], t.leafLaw[1]) },
-    uDpTreeInk: { value: new THREE.Vector4(t.inkLeaf, t.ao, t.shade, 0) },
+    uDpTreeInk: { value: new THREE.Vector4(t.inkLeaf, t.ao, t.shade, t.key) },
+    uCamRight: U.uCamRight ?? { value: new THREE.Vector3(1, 0, 0) },
+    uCamUp: U.uCamUp ?? { value: new THREE.Vector3(0, 1, 0) },
   });
   mat.defines = { ...(mat.defines ?? {}), DP_T: T ? 1 : 0, DP_P: P ? 1 : 0 };
   mat.fragmentShader = /* glsl */ `
@@ -1443,6 +1453,9 @@ export function createDragonObjectMaterial(U, o = {}) {
       uniform vec4 uDpLeaf;
       uniform vec4 uDpTreeLaw;
       uniform vec4 uDpTreeInk;
+      uniform float uDpKey;
+      uniform vec3 uCamRight;
+      uniform vec3 uCamUp;
       varying vec3 vW;
       varying vec3 vN;
       varying vec3 vCol;
@@ -1478,7 +1491,7 @@ export function createDragonObjectMaterial(U, o = {}) {
         float deep = 0.0;
         vec3 s = vec3(0.0), No = no;
         vec2 law;
-        float ink, ao, wrap = 0.5, shade = 1.0;
+        float ink, ao, wrap = 0.5, shade = 1.0, keyK = 0.0;
         if (leaf) {
           No = dpLeaf(vO, no, uDpLeaf.x, 1.0 / uDpLeaf.y, uDpLeaf.z, deep);
           deep *= uDpLeaf.w;
@@ -1486,25 +1499,29 @@ export function createDragonObjectMaterial(U, o = {}) {
         } else if (bark) {
           s = dpBark(vO, no, uDpBark.x, uDpBark.y, deep);
           deep *= uDpBark.z;
-          law = uDpTreeLaw.xy; ink = uDpBark.w; ao = uDpTreeInk.y;
+          law = uDpTreeLaw.xy; ink = uDpBark.w; ao = uDpTreeInk.y; keyK = uDpTreeInk.w;
         } else {
           s = dpStone(vO, no, uDpRelief, uDpCrack, deep);
           deep *= uDpCrack.z;
-          law = uDpLaw.xy; ink = uDpInk; ao = uDpLaw.w;
+          law = uDpLaw.xy; ink = uDpInk; ao = uDpLaw.w; keyK = uDpKey;
         }
         vec3 N = leaf ? normalize(vR * No) : dpBump(n, vR * s);
         float sh = mix(1.0, shadowAt(vW + n * 0.18), shade);
         float cloud = dpCloud(vW.xz);
         vec3 PL = pointLights(vW + n * 0.05, N, wrap);
         float t = clamp((dot(N, uMoonDir) - law.x) / (law.y - law.x), 0.0, 1.0) * sh * cloud;
-        t = t * 0.85 + luma(PL) * 2.0;
+        // the camera-fixed key light (today's props' and the wyrm's, from the viewer's upper left): a face turned to
+        // the camera but away from the moon still reads
+        vec3 keyDir = normalize(-0.5 * uCamRight + 0.9 * uCamUp + cross(uCamRight, uCamUp));
+        float key = max(dot(N, keyDir), 0.0);
+        t = t * 0.85 + luma(PL) * 2.0 + keyK * key * key * (0.35 + 0.65 * sh);
         t *= mix(1.0, vAO, ao);
         t *= 1.0 - deep;
         float low = 1.0 - smoothstep(0.0, 0.6, vW.y);
         t *= 1.0 - dpContact(vW.xz) * low;
         float rip = dpRipple(vW.xz, hash13(floor(vO * 7.0)));
         t = clamp(t + rip * 0.35, 0.0, 1.0);
-        vec3 L = ambientAt(N) + uMoonColor * (max(uMoonDir.y, 0.0) * 0.85 * sh * cloud) + PL;
+        vec3 L = ambientAt(N) + uMoonColor * (max(uMoonDir.y, 0.0) * 0.85 * sh) + PL; // (a cloud dims the tone only, as on the ground)
         vec3 col = vCol * (0.2 + 1.5 * t + rip * 0.8) * L * ink;
         col = applyFog(col, vW);
         gl_FragColor = vec4(col, leaf ? dpEncodeLeaf(t) : dpEncode(t));

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { FLAG, createAsciiObjectMaterial, createCarvedGlyphMaterial, createPropArtMaterial } from '../render/materials.js';
+import { FLAG, createDragonObjectMaterial, createCarvedGlyphMaterial, createPropArtMaterial } from '../render/materials.js';
 import { markCaster } from '../render/pipeline.js';
 import { addSlabRims } from '../render/dragonFloor.js';
 import { GlyphParticles } from '../render/particles.js';
@@ -133,7 +133,8 @@ export function createTrainingRoom(U, colliders) {
   // ---- meshes
   const group = new THREE.Group();
   group.name = 'trainingRoom';
-  const mat = createAsciiObjectMaterial(U, { fadeNearPlayer: true, side: THREE.DoubleSide });
+  // (?dpProps / ?dpTrees: the dragon print's relief, render/dragonProps.js; both off: createAsciiObjectMaterial itself)
+  const mat = createDragonObjectMaterial(U, { fadeNearPlayer: true, side: THREE.DoubleSide });
   const pitch = CONFIG.camera.pitch;
   const slabMat = createCarvedGlyphMaterial(U, {
     ...SLAB_LOOK, gain: 1.4, lumScale: 2.0, edge: 0.55, inkFloor: 0.03, crackAmount: 0.08, topGlyphs: ['.   ', '. . ', '.:. ', ':.:.', ':;:.', ';:;:'], viewPitch: pitch,

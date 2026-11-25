@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { FLAG, createAsciiObjectMaterial, createCarvedGlyphMaterial, createPropArtMaterial } from '../render/materials.js';
+import { FLAG, createDragonObjectMaterial, createCarvedGlyphMaterial, createPropArtMaterial } from '../render/materials.js';
 import { markCaster } from '../render/pipeline.js';
 import { mulberry32, range, hash2, fbm2 } from '../core/rng.js';
 import { CONFIG } from '../core/config.js';
@@ -456,7 +456,8 @@ export function createCourtyard(U, colliders) {
     }
   }
 
-  const mat = createAsciiObjectMaterial(U, { fadeNearPlayer: true, side: THREE.DoubleSide });
+  // (?dpProps / ?dpTrees: the dragon print's relief, render/dragonProps.js; both off: createAsciiObjectMaterial itself)
+  const mat = createDragonObjectMaterial(U, { fadeNearPlayer: true, side: THREE.DoubleSide });
   const treeMesh = new THREE.Mesh(mergeGeometries(treeGeos), mat);
   treeMesh.name = 'trees';
   const propMesh = new THREE.Mesh(mergeGeometries(propGeos), mat);
