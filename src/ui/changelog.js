@@ -57,6 +57,16 @@ export const RELEASES = [
         ],
       },
       {
+        date: '2026-11-25',
+        title: "The streak's answer: a heavy first cut, a path that flows, cuts that tear the picture",
+        notes: [
+          'The cuts that answer a perfect dodge or a parry no longer flick by at low streaks: the first one is a beat you can read, and each cut after it comes faster, so a streak of 7 still ends in a storm.',
+          'He flows from cut to cut: each pass starts where the last one ended, and every white slash is exactly where he ran. The stray curved slashes at the end are gone, and the last blow bursts into fine letter dust.',
+          'Every streak draws a different figure round the boss (a star, a zigzag, a cage, a spiral, a cross), and each cut tears the picture: the letters on either side of it slide apart for an instant.',
+          'Damage and rules are the same.',
+        ],
+      },
+      {
         date: '2026-11-24',
         title: 'A perfect parry throws a few orange sparks',
         notes: [

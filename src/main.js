@@ -14,6 +14,7 @@ import { FireField } from './render/fireField.js';
 import { ShedDigits } from './render/shedDigits.js';
 import { ImpactRipple } from './render/impactRipple.js';
 import { StreakFx } from './entities/player/streakFx.js';
+import { TimeRip } from './entities/player/timeRip.js';
 import { stampUpdate, stampClear } from './combat/impactStamp.js';
 import { World } from './world/world.js';
 import { Player } from './entities/player/player.js';
@@ -156,6 +157,7 @@ async function boot() {
   game.audio = new AudioEngine(game);
   game.player = new Player(game);
   game.fx.streak = new StreakFx(game); // the streak on the hero and in the world (player/streakFx.js)
+  game.fx.rip = new TimeRip(game); // the flurry's cuts rip the picture (player/timeRip.js, ?rip=)
   pipeline.setSeenThrough(game.player.object3d); // he prints through what covers him (ADR-106)
   // the boss slot (ARCHITECTURE.md → Levels): the wyrm or the level's own boss; game.boss is the same
   game.dragon = level.createBoss(game);
@@ -352,6 +354,9 @@ async function boot() {
     safe('player', () => game.player.update(dt));
     safe('dragon', () => game.dragon.update(dt));
     safe('world', () => game.world.update(dt));
+    // (the time rip: before the pools and the fire field age, so what it draws shows this frame;
+    // its marks step in real time)
+    game.fx.rip?.update(fxDt, stepDt);
     game.lights.update(fxDt, lightsAt ?? game.player.position);
     game.fx.alpha.update(fxDt, game.time);
     game.fx.add.update(fxDt, game.time);

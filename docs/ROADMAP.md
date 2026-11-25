@@ -192,6 +192,15 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [ ] The owner's pick of the run arm (films and the preview; C stays the default)
 - [x] The free hand smaller (× 0.8), the owner's pick of five looks (`?handLook=0|a|b|c|d`, the Lab's `hand` row)
 - [ ] The roll's and the block's entries out of the dash: the free arm comes forward inside a short cross-fade (about twice the old jolt)
+## M1.82 — The streak's answer: a heavy first cut, a path that flows, cuts that tear the picture (2026-11-25, `combat/streak-pace`, ADR-190, ADR-191)
+- [x] The tempo: a heavy first cut, each later one a share of the one before, the storm by pace (`?tempo=0`)
+- [x] The chain: each pass from where the last ended, every slash on his path, the stray crescents gone, letter dust for the `A` shards (`?chain=0`)
+- [x] Five figures, one a flurry, never twice running (`?figure=`)
+- [x] The time rip: four looks filmed side by side; the owner picked the torn strip (`?rip=`)
+- [ ] Played, and seen on the iPhone
+- [ ] Judged in play: the step into the storm round the head, the riposte's last freeze (0.198 s), the figures' size at the duel camera
+- [ ] The wyrm's `pounce` past its share of a gap in the tree wall (integ `breach` replays at the old pace until then)
+
 ## M1.81 — Smaller combat text (2026-11-24, `claude/combat-text-smaller`, ADR-184)
 - [x] Call-outs and damage numbers at fixed, smaller sizes (the owner's option B); no growth with the window
 - [ ] Seen on the owner's desktop and iPhone

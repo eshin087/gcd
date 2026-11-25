@@ -842,7 +842,8 @@ Events: `player:plunge {execution}` as the dive starts, `player:plungeHit {damag
 strikes, attack, tell)`. `strikes` = the streak, at most `DEFENSE.flurry.max`. All but the last are
 flash cuts (phases `FP.BLINK` hidden → `DASH` from one side of the target point through it to the
 other, the hit half way → `HOLD`), each along a new line (turned from the far end of the last, clear
-of the lines already hanging and of the wyrm's neck); the last is an art (`COIL` → `STRIKE` →
+of the lines already hanging and of the wyrm's neck; with the chain, `STREAK_FX.chain`, each pass
+starts where the last ended: below); the last is an art (`COIL` → `STRIKE` →
 `AFTER`), picked at random with the animator's noise, never the same twice running
 (`player.debug.flurryArt` pins one). Kinds: `plunge` (the plunge itself: `_startPlunge(..., chain)`
 takes over in its own state), `iai`, `split`, `vault`. Target point: the head's middle
@@ -1296,14 +1297,22 @@ catch (a throw is logged, the cut still draws). `cutBurst` calls `takeStampRepla
 its slash line and cross when the stamp just drew in 'instead' mode.
 
 **The streak pass** (`combat/streak.js`, ADR-167). `STREAK_FX = { pieces: ['storm', 'tiers', 'aura',
-'counter', 'sound', 'world'], on, k, perfectModes, perfect }`; `streakK(piece)` = `k[piece]` while on,
+'counter', 'sound', 'world'], on, k, perfectModes, perfect, tempo, chain, figure, figures }` (`tempo`: the storm's tempo, a
+live boolean, `?tempo=0` false; the Lab's `tempo` button; `chain`: the flurry's chained paths, a live
+boolean, `?chain=0` false; the Lab's `chain` button; `figure`: 'any' or a figure's name, `?figure=`,
+`figures` the list the Lab cycles); `streakK(piece)` = `k[piece]` while on,
 else 0 (`?streakfx=` absent, empty or 'all': every piece; a list: those named; 'off': none; the Lab's
 'streak' row flips `on` live). `STREAK_TIERS` [3, 5, 7, 10, 15], `streakTier(n)` 0 - 5, `streakHeat(n)`
 0..1. `PERFECT_DEFAULT` 'sharp', `perfectMode()` / `setPerfectMode(m)` (`?perfect=today | sharp |
 cinema`). Nothing stores a tier: each piece reads it at the moment.
 - *The storm* (`DEFENSE.flurry.storm`; `flurry.js`): `start` reads `streakN` (the streak, past the cap of
   blows), `tier`, `stormK` = `streakK('storm')` once. `_stormStep(i)` (0 a shown cut, then 1, 2, ...),
-  `_pace(i)`, `_stop(i)`, `_cutTime(i)`, `_plannedHits()`. A storm cut's beats may be shorter than a
+  `_pace(i)`, `_stop(i)`, `_cutTime(i)`, `_plannedHits()`. With the tempo (`DEFENSE.flurry.tempo`;
+  `tempo` = `stormK > 0 && STREAK_FX.tempo`, read once at `start`, with its ratio `_r`): `_beat()` the
+  heavy beat's numbers (ground / air), `_paced()` the cuts it paces, `_final(i)` a riposte's last cut,
+  `_pace(i)` = max(floor, r^(k i)) (1 for `_final`), `_stormStep(i)` counts the cuts up to i whose pace
+  is under `stormAt`, `_weight(i)` 0..1 (the camera's and the flare's share), `hang` > 0 in the air too;
+  `FlurryFx.cut(..., st, wk)` scales the flare and the sparks by `wk`. A storm cut's beats may be shorter than a
   frame: `update` runs on through them (at most 8 steps) until a blow lands or a cut's finish is
   reached, so each blow lands in a frame of its own; `_cloneAt` prints its speed clone in `draw` once
   he is posed on the contact; `_stormAngle` picks its line (24 candidates); `camera()` keeps the target
@@ -1312,6 +1321,30 @@ cinema`). Nothing stores a tier: each piece reads it at the moment.
   `streak(a, b, up, dx, dz)` lays a storm cut's run; `cut`, `appear`, `vanish` take `st` (0..1, how deep
   into the storm). `flurryFx.js` draws on its own seeded stream (`fxSeed()`, `setFxSeed(v)`), never
   `Math.random`.
+- *The chain* (`DEFENSE.flurry.chain`; `flurry.js`; `chain` = `STREAK_FX.chain`, read once at `start`,
+  also set on `flurry.fx.chain`): `_planFigure()` at `start` picks the FIGURE (`flurry.figure`;
+  `player/flurryFigures.js`: `FIGURE_NAMES` star / zigzag / cage / spiral / cross, `figureSteps(name, n,
+  air, figures, R, mirror, out)` → each pass's signed offset `o` and end radius `e`, `tracePass(ax, az,
+  o, e, out)` one pass with the target at the origin; pure, no three.js). `STREAK_FX.figure` pins one
+  ('any': this module's own seeded stream, `setFigureSeed(v)` for the tests, orders the figures offered
+  at this many cuts, never the last one first; `lastFigure`). `_layFigure` tries it at every
+  `chain.turns` x both hands, costed by `_figureCost` (the dodge spot along every pass, a wall, the
+  neck, the art's end); one costing `chain.fit` or more is passed over; the star is `_planChain()` (a
+  depth-first search, at most `chain.nodes` steps: `_planS[i]` / `_planOff[i]`, `planGap` its spread).
+  Either fills `_planA0` (where round the target the first cut starts), `_planO[i]` / `_planE[i]`
+  (`figureFit` the cost, the tests read it). `_beginCut` → `_chainPath()` (A = where he is, or for the first cut `reach` out at
+  `_planA0`; B = `_chainExit(A, B, R)`; its hanging line `_line(A, B, CHEST)`: the path his chest
+  runs) → `_cutStarts()` (the shared tail). `_onPath(out)`: the point of the pass nearest the target
+  (where `fx.cut` and `fx.pass` draw). An art after cuts (`_artChain`) starts where the last cut ended
+  (`C0`): `_chainArt(D)` sets A / B / X / d from there; `_tickCoil` carries him from `C0` to A; a split /
+  vault samples its blade point every strike step into `_sw` (`_swN` points) and `fx.artHit(..., sw,
+  swN)` draws its crescent along them (`_swept`). Skyfall: `_startPlunge(..., chain)` gets `_from`
+  ({ ox, oz } = where he is) instead of the flurry, so the plunge hangs over his side of the head.
+  `FlurryFx.chain`: no crescent in `cut` / `_stormCut`, no lens in `artHit`, the burst's thin lines
+  at `ext` 1, and `dust(x, y, z, dx, dz, k)` (`DUST`, the alpha pool, `dustStat` for the tests) in
+  place of `PlayerFx.slamShards` on the ground's last blow and of `artHit`'s 'A' shards (round the
+  head, and the Heaven Splitter's landing). The `lines` entries keep their shape (`ax ay az bx by bz k
+  last`) and `player:flurryHit` fires as before.
 - *The burst* (`player/flurryBurst.js`): `BURST_LOOK.levels` (null = today, then 1 - 3), `BURST_DEFAULT`
   2, `setBurst(n)` (0..3, or a custom level object: `burstLevel()` -1), `burstLevel()`, `burstLook()`
   (null at 0), `burstScreen()` ({ cut, last, dip }; all 1 at 0), `pair(L, key)`. Read at the blow by
@@ -1358,7 +1391,29 @@ uniform. The Lab's PLAYER row `mystic` (off / flame) sits after `sword`.
   `steel` kind in tint zone 735101. `STREAK_AURA`, `STREAK_FIRE`, `STREAK_WORLD` (gust, ring, rise per
   tier; `floor` by level id) are exported. It steps aside while the hero is in `flurry` or `plunge`,
   dead, or while `player.ghostFx` > 0.5. Its own seeded stream.
-- *Payload fields added* (no new event): the flurry's start event gains `streak`, `tier`, `storm`
+- *The time rip* (`player/timeRip.js` `class TimeRip`, `game.fx.rip`, built in main.js after the
+  streak fx; `?rip=off|tear|strip|ghosts|negative`, default `strip`, the owner's pick):
+  `TIME_RIP.mode` is live (read at every cut; `ripMode()` / `setRipMode(m)`, the Lab's `rip` button in
+  the streak row), `RIP_LOOK` holds every number per mode, `RIP_STAT` counts (tests), `RIP_GLYPHS` the
+  ghosts' digits. It listens to the flurry's start, blow and end events (no new event): on a blow it
+  reads the newest hanging line `player.flurry.lines[nLines - 1]` (once per line: an art's last blow
+  draws none and marks nothing new), and the blow's `storm` / `gap` / `last`; a line is re-read live
+  (its `k`) while its flurry runs, then kept as copied. `update(fxDt, realDt)` runs in main.js's
+  simulation step after the world and BEFORE the lights, the particle pools and the fire field age (what
+  it draws shows this frame); its marks step in real time, its blobs and particles live on fx time with
+  one copy alive a frame. Steel (`game.fx.fire`, kind `steel`) for the tear's hairline and split and
+  the strip's seam; glyph digits (`game.fx.add`) for the ghosts, from `player._sampleBody()` /
+  `player._ghostPts` (the afterimage's points; no randomness). The strip and the negative are the ASCII
+  pass's `cutBand` (render/pipeline.js): `uCutN` (0 = the pass reads nothing; set to 0 once when the last
+  cut ends, nothing written while idle), `uCutA[2]` = a cut's two ends in frame px (y up), `uCutB[2]` =
+  (1 strip | 2 negative, half-width in art cells, shift in cells, the negative's weight), `uCutTone` (the
+  negative's pale cell rgb, w: a pixel brighter than the scene x uBg x w is a letter's stroke and prints dark); the strip and the negative run along the WHOLE line (k = 1), and their first frame is the contact's (a cut ages from the next step). `TimeRip.write(pipeline)` fills them, from `update` and
+  again from the pipeline right before the pass (`pipeline.setTimeRip(rip)`, as the impact ripple).
+  `clear()` with the other fx (flow `_resetWorld`, world `setVisible`). `busy`, `ghostAnchors` /
+  `ghostAnchorN` (the newest copies' chests) for the tests (`timerip` in integ.mjs and duel.mjs,
+  `tests/integration/timerip.mjs`).
+- *Payload fields added* (no new event): the flurry's start event gains `figure` (the chain's figure,
+  `flurry.figure`; '' with the chain off), `streak`, `tier`, `storm`
   (true when its later cuts are a storm) and `at` (the real s from now each flash cut is planned to
   land); each flurry blow's event gains `gap` (real s since the blow before) and `storm` (0 a shown
   cut, else how deep into the storm); the parry event gains `feel` (the perfect look's mode, 'today'
@@ -2710,7 +2765,10 @@ in the grass.) A button's status line is what its `run` returned. `_syncLifeBtns
 **Blade** (ADR-177; WORLD, beside Bites): `Blade: through` / `Blade: stops` flips `?cutStop` live
 (`setLook('cutStop', ...)`; read at each swing).
 **The 'streak' row** (ADR-167): one on / off toggle per piece of `STREAK_FX.pieces` (storm, tiers, aura,
-counter, sound, world), a `perfect: <mode>` button that cycles today / sharp / cinema
+counter, sound, world), `tempo` (flips `STREAK_FX.tempo`: the storm's tempo, read as a flurry starts), `chain` (flips
+`STREAK_FX.chain`: the flurry's chained paths, read as a flurry starts), `figure: any` (cycles
+`STREAK_FX.figure` through 'any' and the figures),
+a `perfect: <mode>` button that cycles today / sharp / cinema
 (`setPerfectMode`), and `burst N` that cycles the burst level 0 - 3 (`setBurst`). `_syncCutBtns` lights
 and labels them.
 
