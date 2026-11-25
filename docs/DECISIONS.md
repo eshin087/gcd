@@ -5357,6 +5357,7 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   dominates the meadow; a lantern's flame is a few letters at the game camera; Foxfire's ten lanterns
   share three lights; the Ring's braziers became low lights (they give way to the fight's) also with
   the living world off; nobody has heard the sounds yet.
+
 ## ADR-181 — The perfect parry throws a few orange sparks; nothing else of the moment changes (2026-11-24)
 
 - **Context:** the owner asked to make the perfect parry and dodge "more epic cool with subtle effects". In one session
