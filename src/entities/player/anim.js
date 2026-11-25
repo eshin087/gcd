@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { clamp, lerp, smoothstep, damp, easeOutCubic, wrapAngle, TAU } from '../../core/math.js';
 import { DIM, BODY, HAIR_CLUSTERS, HERO_SCALE, sheetOffset } from './model.js';
 import { SWINGS, FH, ARCS, widenArcs } from './swings.js';
-import { atEase, fencerGuard } from './stances.js';
+import { atEase, fencerGuard, BELT } from './stances.js';
 
 // Procedural animation for the Wanderer, keyed to the owner's concept sheets ("Movement" / "Combat
 // key poses"). Every frame a target POSE (a flat Float32Array) is built for the current clip as a
@@ -769,6 +769,7 @@ function swingClip(name) {
       rF: def.rF ?? null, lF: def.lF ?? null, step: def.step ?? null, drag: def.drag ?? 0.22, home: def.home ?? SW_HOME,
       lead: Array.isArray(def.lead) ? def.lead : SW_LEAD, fy: Array.isArray(def.fy) ? def.fy : null,
       fold: Number.isFinite(def.fold) ? def.fold : 1, // × the bite's chest fold and head nod (attackPose)
+      belt: !!def.belt, // the free hand stays on the belt, still in the chest's frame (attackPose, beltHand)
       gather: Array.isArray(def.gather) ? def.gather : null, // [leave, arrive]: the windup's ease (SW_COIL's note)
       hipCoil: keys.find((k) => k.hip != null && k.u >= 0.9 && k.u <= 1.0)?.hip ?? null, // the hips' turn at the coil
     };
@@ -874,7 +875,7 @@ const phaseTime = (u, W, Ac, R) => (u < 1 ? u * W : u < 2 ? W + (u - 1) * Ac : W
 /** Attack time t as a clip phase: 0 → 1 → 2 → 3 at 0, W, W + Ac, W + Ac + R exactly, with the rate
  *  eased through the two joins (a monotone cubic: the windup, the cut and the recovery each run at
  *  their own rate, and a straight map kinked the motion as the cut ended: half speed in one frame). */
-function swingPhase(t, W, Ac, R) {
+export function swingPhase(t, W, Ac, R) {
   if (t <= 0) return 0;
   const s0 = 1 / W, s1 = 1 / Ac, s2 = 1 / R;
   const m1 = (2 * s0 * s1) / (s0 + s1), m2 = (2 * s1 * s2) / (s1 + s2);
@@ -1073,6 +1074,37 @@ function attackPose(p, A) {
       p[P.hdX] += BITE.nod * b * fold;
     }
   }
+  // a clip with `belt` (the blink chain, swings.js): the free hand rests on the belt the whole swing
+  if (k.kind === 'clip' && A.freeHand && swingClip(k.clip)?.belt) beltHand(p);
+}
+
+// the stances' belt (stances.js BELT) in the chest's own frame: there the stances hold it whatever
+// way the chest turns (BELT is written for a chest turned BELT.yaw), so it is one fixed spot
+const BELT_C = (() => {
+  const c = Math.cos(-BELT.yaw), s = Math.sin(-BELT.yaw), t = (v) => [v[0] * c + v[2] * s, v[1], -v[0] * s + v[2] * c];
+  return { h: t(BELT.h), p: t(BELT.p), d: t(BELT.d), n: t(BELT.n) };
+})();
+const _beQ = new THREE.Quaternion(), _beQ2 = new THREE.Quaternion(), _beE = new THREE.Euler(), _beV = new THREE.Vector3();
+/** The free hand on the belt in the chest's frame (the pelvis and the spine as this pose turns
+ *  them): however the body turns, leans and snaps through a cut, the hand stays where it rests,
+ *  low by his left hip, open, the fingers round the front of the hip (the stances' own hand). */
+function beltHand(p) {
+  _beQ.setFromEuler(_beE.set(p[P.pelvX], p[P.pelvY], p[P.pelvZ], 'YXZ')); // (the rig's joints turn YXZ: model.js)
+  _beQ.multiply(_beQ2.setFromEuler(_beE.set(p[P.spX], p[P.spY], p[P.spZ], 'YXZ')));
+  const put = (i, v) => {
+    _beV.set(v[0], v[1], v[2]).applyQuaternion(_beQ);
+    p[i] = _beV.x;
+    p[i + 1] = _beV.y;
+    p[i + 2] = _beV.z;
+  };
+  put(P.lH, BELT_C.h);
+  put(P.lP, BELT_C.p);
+  put(P.lD, BELT_C.d);
+  put(P.lN, BELT_C.n);
+  p[P.hs] = 0;
+  p[P.lk] = 0;
+  p[P.twoHand] = 0;
+  p[P.offAt] = 0;
 }
 // the bite: its length (s of the attack's clock after the hit-pause), how much of the way back to
 // the blade that bit it holds (× bite), the grip's pull (m), the hips' drop (m), the chest's fold
