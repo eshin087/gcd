@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { TUNING, SCALE } from './tuning.js';
 import { clamp, lerp, smoothstep, easeOutCubic, easeInCubic, easeInOutSine, angleDiff } from '../../core/math.js';
 import { beat, roarFx, roarPose, GROUND_BLOW, NOVA_BLOW } from './attacks.js';
-import { FLIGHT } from './tuningFire.js';
+import { FLIGHT, TRAILS } from './tuningFire.js';
+import { CRACK_ON, WALL_SOURCE } from './fireTrails.js';
 import { APOC_LOOK, skyBolt, skyPillar, skyThroat } from './skyFx.js';
 
 // Fire / flight attacks and spells (contract 3; numbers in tuningFire.js = TUNING.attacks.*). Same
@@ -1511,10 +1512,11 @@ const eruptions = {
   cooldown: ER.cooldown,
   phases: (d) => {
     const chase = (d.phase | 0) >= 3 && Math.random() < ER.chase.chance;
-    return [['windup', wind(d, ER.windup)], ['slam', ER.slam], ['channel', chase ? ER.chase.time : 0.01], ['recovery', wind(d, ER.recovery)]];
+    // (the chase holds the forefeet down while its crack runs out to the hero, then chases him)
+    return [['windup', wind(d, ER.windup)], ['slam', ER.slam], ['channel', chase ? ER.chase.time + crackRun(d) : 0.01], ['recovery', wind(d, ER.recovery)]];
   },
-  // one red beat: the pillar that erupts under the hero (the chase: its first pillar)
-  beats: (d, a) => [beat('eruptions', 0, a.list[0][1] + ER.slam + (a.chase ? ER.chase.warn : lineEta(d)), ER, 'forefeet')],
+  // one red beat: the pillar that erupts under the hero (the chase: its first pillar, where the crack catches him)
+  beats: (d, a) => [beat('eruptions', 0, a.list[0][1] + ER.slam + (a.chase ? ER.chase.warn + crackRun(d) : lineEta(d)), ER, 'forefeet')],
   weight: (d, s) => (s.dist >= ER.minDist && s.dist <= ER.maxDist && s.absAng <= 1.3 ? wPhase(ER, d) : 0),
   start(d, a) {
     a.chase = a.list[2][1] > 0.1;
@@ -1545,9 +1547,12 @@ const eruptions = {
     // (2nd pass) from phase 2 every pillar leaves a burning pool (ER.pool s; blockable ticks, none while rolling)
     const common = { attack: 'eruptions', r: ER.radius, active: ER.active, damage: ER.damage, burn: ER.burn, knockback: ER.knockback, pool: perPh(ER.pool, d), poolR: ER.radius * ER.poolR, tickDamage: ER.poolTick, tickBurn: ER.poolBurn };
     const b = a.beats[0];
+    // (ADR-190) the fire runs out of the slam: a glowing crack from between the forefeet (fireTrails.js)
+    const crack = CRACK_ON ? { crack: true, cx: c.x, cz: c.z } : null;
     if (a.chase) {
-      a.line = d.hazards.chase({ ...common, every: ER.chase.every, until: ER.chase.time, warn: ER.chase.warn, lead: ER.chase.lead, group: d.hazards.group(ER.chase.maxHits), linkFirst: true });
+      a.line = d.hazards.chase({ ...common, ...crack, every: ER.chase.every, until: ER.chase.time, warn: ER.chase.warn, lead: ER.chase.lead, group: d.hazards.group(ER.chase.maxHits), linkFirst: true });
       if (b && !b.flashed) b.impactIn = Math.max(0.05, a.T - b.at + ER.chase.warn + 1 / 60);
+      if (crack) retime(d, a, b, a.line);
       return;
     }
     // the line: from the slam toward the (led) hero, one pillar every `step` m past him
@@ -1565,7 +1570,7 @@ const eruptions = {
     const ax = c.x + dx * ERL.start, az = c.z + dz * ERL.start;
     let n = clamp(Math.ceil((dist + ERL.beyond - ERL.start) / ERL.step) + 1, 3, ERL.max);
     while (n > 3 && Math.hypot(ax + dx * (n - 1) * ERL.step, az + dz * (n - 1) * ERL.step) > 28) n--;
-    a.line = d.hazards.line({ ...common, kind: 'line', announce: false, ax, az, dx, dz, n, step: ERL.step, delay: ERL.first, stagger: ERL.delay });
+    a.line = d.hazards.line({ ...common, ...crack, kind: 'line', announce: false, ax, az, dx, dz, n, step: ERL.step, delay: ERL.first, stagger: ERL.delay });
     retime(d, a, b, a.line);
   },
   update(d, a, dt) {
@@ -1573,7 +1578,7 @@ const eruptions = {
     const b = a.cur;
     if (a.phase === 'windup') {
       // rears up on the hind legs, forefeet raised, throat and chest glowing: the slam is coming
-      if (b && !b.flashed) b.impactIn = Math.max(0.05, a.list[0][1] + ER.slam + (a.chase ? ER.chase.warn : lineEta(d)) - b.at);
+      if (b && !b.flashed) b.impactIn = Math.max(0.05, a.list[0][1] + ER.slam + (a.chase ? ER.chase.warn + crackRun(d) : lineEta(d)) - b.at);
       d.turnToward(s.yawTo, d.turnRate * 0.8, dt);
       const coil = smoothstep(0.55, 1, k);
       pose.pitch = -0.5 - 0.1 * coil;
@@ -1614,7 +1619,7 @@ const eruptions = {
     }
     // channel (the chase) and recovery: the forefeet pressed into the ground, the head low over the
     // line, the throat and chest glowing while the pillars burst; then it settles
-    if (!a.chase) retime(d, a, b, a.line);
+    if (!a.chase || CRACK_ON) retime(d, a, b, a.line);
     const h = d.hazards.get(a.line);
     if (h && b) {
       if (h.shape === 4) {
@@ -1646,6 +1651,7 @@ const eruptions = {
     pose.head = d.rootPt(pose.headTarget, 0, 2.6, 5.2);
     pose.headRate = 5;
     if (h && h.shape === 4) pose.look.set(h.ax + h.dx * h.step * h.n, 0, h.az + h.dz * h.step * h.n);
+    else if (h && h.crack) pose.look.set(h.hx, 0, h.hz); // (it watches its crack run)
     else pose.look.copy(s.pos);
     pose.lookDown = 0.9;
     pose.jaw = hold ? 0.8 : 0.2;
@@ -1659,6 +1665,13 @@ const eruptions = {
     d.throat = 0;
   },
 };
+/** The chase's crack: s from the slam until it reaches the hero, from his distance now (0 without the crack). */
+function crackRun(d) {
+  if (!CRACK_ON) return 0;
+  const C = TRAILS.crack;
+  return Math.min(C.maxRun, Math.max(0, (d.sense?.dist ?? 0) - STOMP_Z * S - C.arrive) / C.speed);
+}
+
 /** Before the slam: when the line's pillar under the hero would erupt (s after the slam), from his distance now. */
 function lineEta(d) {
   const s = d.sense;
@@ -1800,6 +1813,7 @@ const flameWall = {
     a.dz = dz;
     a.yaw = Math.atan2(dx, dz);
     a.flared = false;
+    a.aim2 = null;
     const off = FW.start + 2.5 * S;
     const common = { kind: 'wall', attack: 'flameWall', announce: false, len: FW.length, w: FW.width, speed: FW.speed, dist: FW.sweep, damage: FW.damage, burn: FW.burn, knockback: FW.knockback };
     a.walls = [d.hazards.wall({ ...common, x: d.position.x + dx * off, z: d.position.z + dz * off, dx, dz, delay: a.list[0][1] + FW.cast })];
@@ -1811,7 +1825,8 @@ const flameWall = {
         qz = -qz;
       }
       // it starts on the middle's side of him and sweeps through him and on out
-      a.walls.push(d.hazards.wall({ ...common, x: s.pos.x + qx * 12, z: s.pos.z + qz * 12, dx: -qx, dz: -qz, delay: a.list[0][1] + FW.cast + FW.wallGap }));
+      const cx = s.pos.x + qx * 12, cz = s.pos.z + qz * 12, t0 = a.list[0][1] + FW.cast;
+      a.walls.push(d.hazards.wall({ ...common, x: cx, z: cz, dx: -qx, dz: -qz, delay: t0 + FW.wallGap, lay: wallLay(d, a, cx, cz, -qx, -qz, off, t0) }));
     }
     a.wall = a.walls[0];
   },
@@ -1821,7 +1836,7 @@ const flameWall = {
       d.emit('dragon:breathStart');
       d.fx.breathBegin();
       a.breath = true;
-    } else if (phase === 'recovery') this.stopBreath(d, a);
+    } else if (phase === 'recovery' && !(a.aim2 != null)) this.stopBreath(d, a);
   },
   stopBreath(d, a) {
     if (!a.breath) return;
@@ -1872,7 +1887,26 @@ const flameWall = {
       pose.mantle = 1;
       d.throat = 1;
       d.fx.breathEmit(dt, pt.mouth, aim, 0.3);
+    } else if (a.aim2 != null && a.breath && a.t < TRAILS.wall.breath) {
+      // (?wallSource=b) the head swings round to the second wall's line and breathes it: the fire
+      // strikes the ground and runs on to the line (the runner, hazards._lay)
+      const u = clamp(a.t / 0.2, 0, 1);
+      const aim = a.yaw + 0.6 + angleDiff(a.yaw + 0.6, a.aim2) * u;
+      pose.headExact = true;
+      pose.head = pose.headTarget.set(pt.neckBase.x + Math.sin(aim) * 2.6 * S, pt.neckBase.y - 0.4 * S, pt.neckBase.z + Math.cos(aim) * 2.6 * S);
+      pose.headRate = 9;
+      pose.look.set(pt.mouth.x + Math.sin(aim) * 8 * S, 0, pt.mouth.z + Math.cos(aim) * 8 * S);
+      pose.lookDown = 1.0;
+      pose.lookRate = 14;
+      pose.jaw = 0.95;
+      pose.pitch = 0.2;
+      pose.lower = 0.15;
+      pose.spread[0] = pose.spread[1] = 1;
+      pose.mantle = 1;
+      d.throat = 1;
+      d.fx.breathEmit(dt, pt.mouth, aim, 0.3);
     } else {
+      if (a.breath && a.phase === 'recovery') this.stopBreath(d, a);
       pose.pitch = 0.2 * (1 - k);
       pose.lower = 0.15 * (1 - k);
       pose.spread[0] = pose.spread[1] = k < 0.3 ? 1 : REST_SPREAD;
@@ -1886,6 +1920,34 @@ const flameWall = {
     d.throat = 0;
   },
 };
+
+/**
+ * (ADR-190) The second wall's line is laid from the wyrm's fire, not lit out of nothing
+ * (?wallSource, fireTrails.js): a (default) a fire front runs out along it both ways from where the
+ * first wall crosses it, as the first wall springs up; b the head swings round and breathes toward
+ * that point and a runner carries the fire over the ground to it. The line (cx, cz) sweeping along
+ * (wdx, wdz); the first wall lit `off` m out along (a.dx, a.dz), `t0` s from now. Null: off.
+ */
+function wallLay(d, a, cx, cz, wdx, wdz, off, t0) {
+  if (WALL_SOURCE === 'off') return null;
+  const TW = TRAILS.wall;
+  const qx = -a.dz, qz = a.dx; // along the first wall
+  const w1x = d.position.x + a.dx * off, w1z = d.position.z + a.dz * off;
+  const lq = (cx - w1x) * qx + (cz - w1z) * qz;
+  const px = w1x + qx * lq, pz = w1z + qz * lq; // where the first wall crosses the second's line
+  const lx = -wdz, lz = wdx; // along the second wall
+  const sAlong = (px - cx) * lx + (pz - cz) * lz;
+  if (WALL_SOURCE !== 'b') return { s: sAlong, at: t0, speed: TW.laySpeed };
+  let ux = px - d.position.x, uz = pz - d.position.z;
+  const ul = Math.hypot(ux, uz) || 1;
+  ux /= ul;
+  uz /= ul;
+  a.aim2 = Math.atan2(ux, uz);
+  const rx = d.position.x + ux * Math.min(off, ul * 0.8), rz = d.position.z + uz * Math.min(off, ul * 0.8);
+  const at = t0 + TW.strikeDelay;
+  const run = Math.hypot(px - rx, pz - rz) / TW.runSpeed;
+  return { s: sAlong, at: at + run, speed: TW.laySpeed, run: { x: rx, z: rz, at, speed: TW.runSpeed } };
+}
 
 // ------------------------------------------------------------------ inferno nova
 const NV = T.nova;

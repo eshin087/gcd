@@ -4961,6 +4961,186 @@ async function scenarioFire() {
   return G;
 }
 
+// ================================================================== scenario: every fire comes from the wyrm
+// ADR-190 (the owner: "all the fire should be coming from the dragon itself"): no fire appears out of
+// nothing. The eruptions' crack runs out of the forefeet's slam (the P2 line's pillars burst as its head
+// reaches each one; the P3 chase's head runs to the hero and every pillar bursts at it), the P3 second
+// flame wall's warning is laid from where the first wall crosses its line, and Armageddon's meteors
+// fall out of the vortex over the wyrm (fireTrails.js, skyFx.js; the defaults of their switches).
+async function scenarioFireSource() {
+  out('\n== scenario FIRESOURCE (every fire travels from the wyrm: the crack, the laid wall, the meteors\' vortex) ==');
+  const { CRACK_ON, WALL_SOURCE } = await imp('src/entities/dragon/fireTrails.js');
+  const { METEOR_SOURCE } = await imp('src/entities/dragon/skyFx.js');
+  const { TRAILS } = await imp('src/entities/dragon/tuningFire.js');
+  const G = build();
+  const { game, input } = G;
+  fightSetup(G);
+  const d = game.dragon, p = game.player, H = d.hazards, TC = TRAILS.crack;
+  assert(CRACK_ON && WALL_SOURCE === 'a' && METEOR_SOURCE === 'b', `the defaults: the crack on, the wall laid from the first (a), the meteors' vortex (b) (${CRACK_ON} ${WALL_SOURCE} ${METEOR_SOURCE})`);
+  const front = (dist) => {
+    const a = d.yaw;
+    p.debug.teleport(d.position.x + Math.sin(a) * dist, d.position.z + Math.cos(a) * dist);
+    p.yaw = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z);
+    p.debug.heal();
+    aimAt(G);
+  };
+  // the floor marks the crack leaves (world.groundBlow 'cut', by the boss)
+  const W = game.world, gb0 = W.groundBlow;
+  let cuts = 0;
+  if (typeof gb0 === 'function') {
+    W.groundBlow = function (x, z, o) {
+      if (o?.kind === 'cut' && o.by === 'boss') cuts++;
+      return gb0.call(this, x, z, o);
+    };
+  }
+  const startAt = (phase, dist) => {
+    settle(G);
+    H.clear();
+    d.phase = phase;
+    G.tick(DT);
+    front(dist);
+    p.debug.god = true;
+  };
+
+  // ---- the P2 line: a crack from the slam; each pillar bursts as its head gets there
+  startAt(2, 14);
+  cuts = 0;
+  game.lab.trigger('eruptions');
+  let line = null, lastX = NaN, lastZ = NaN, jump = 0, bursts = 0, worst = 0, behind = 0, slamD = NaN, seenMask = 0;
+  for (let i = 0; i < Math.round(4 / DT); i++) {
+    G.tick(DT);
+    if (!line) {
+      line = H.list.find((h) => h.alive && h.shape === 4 && h.attack === 'eruptions') ?? null;
+      if (line) slamD = Math.hypot(line.cx - d.position.x, line.cz - d.position.z);
+    }
+    if (!line || !line.alive || !line.crack) continue;
+    if (Number.isFinite(lastX)) jump = Math.max(jump, Math.hypot(line.hx - lastX, line.hz - lastZ));
+    lastX = line.hx;
+    lastZ = line.hz;
+    for (let k = 0; k < line.n; k++) {
+      if (!(line.mask & (1 << k)) || seenMask & (1 << k)) continue;
+      seenMask |= 1 << k;
+      bursts++;
+      // the head's way along the line against the pillar's
+      const ha = (line.hx - line.ax) * line.dx + (line.hz - line.az) * line.dz, pa = k * line.step;
+      worst = Math.max(worst, Math.abs(ha - pa));
+      behind = Math.max(behind, pa - ha);
+    }
+  }
+  const lineCuts = cuts;
+  out(`   P2 line: crack ${!!line?.crack} from ${slamD.toFixed(1)} m off the root · pillars burst ${bursts}/${line?.n} · head vs pillar at its burst: worst ${worst.toFixed(2)} m (behind ${behind.toFixed(2)}) · biggest step a frame ${jump.toFixed(2)} m · floor marks ${lineCuts}`);
+  assert(line?.crack && slamD < 3.5 * SIZE + 2, 'P2 eruptions: the line opens a crack from the forefeet\'s slam');
+  assert(bursts === line.n && behind <= 0.05 && worst <= line.step, 'P2 eruptions: every pillar bursts as the crack\'s head reaches it (never before)');
+  assert(jump <= line.step * 0.6, 'P2 eruptions: the crack runs (no jump over a pillar in a frame)');
+  if (typeof gb0 === 'function') assert(lineCuts >= 3, `P2 eruptions: the crack leaves its marks on the floor (${lineCuts})`);
+
+  // ---- the P3 chase: the crack runs out to the hero, the pillars burst at its head
+  startAt(3, 14);
+  cuts = 0;
+  const rnd = Math.random;
+  Math.random = () => 0.1; // (picks the chase: ER.chase.chance)
+  game.lab.trigger('eruptions');
+  Math.random = rnd;
+  const isChase = d.brain.action?.chase === true;
+  let ch = null, t0 = NaN, firstT = NaN, firstRun = NaN, off = 0, cjump = 0;
+  lastX = NaN;
+  const seen = new Set(), pillars = [];
+  for (let i = 0; i < Math.round(7 / DT); i++) {
+    input.axis = { x: i % 120 < 60 ? 1 : -1, y: 0 }; // the hero keeps moving (side to side)
+    G.tick(DT);
+    if (!ch) {
+      ch = H.list.find((h) => h.alive && h.shape === 6 && h.attack === 'eruptions') ?? null;
+      if (ch) t0 = game.time - ch.t;
+    }
+    if (!ch) continue;
+    if (ch.alive) {
+      if (Number.isFinite(lastX)) cjump = Math.max(cjump, Math.hypot(ch.hx - lastX, ch.hz - lastZ));
+      lastX = ch.hx;
+      lastZ = ch.hz;
+    }
+    for (const h of H.list) {
+      if (!h.alive || h.kind !== 'pillar' || h.attack !== 'eruptions' || seen.has(h.id)) continue;
+      seen.add(h.id);
+      pillars.push(h.id);
+      off = Math.max(off, Math.hypot(h.x - ch.hx, h.z - ch.hz));
+      if (!Number.isFinite(firstT)) {
+        firstT = game.time - t0;
+        firstRun = Math.max(0, Math.hypot(h.x - ch.cx, h.z - ch.cz) - TC.arrive) / TC.speed;
+      }
+    }
+  }
+  input.axis = { x: 0, y: 0 };
+  out(`   P3 chase: ${isChase} · crack ${!!ch?.crack} · pillars ${pillars.length}, each laid at the crack's head (worst ${off.toFixed(2)} m) · first after ${firstT.toFixed(2)} s (its run there ${firstRun.toFixed(2)} s) · biggest head step a frame ${cjump.toFixed(2)} m · floor marks ${cuts}`);
+  assert(isChase && ch?.crack && pillars.length >= 6, 'P3 eruptions: the chase runs along a crack');
+  assert(off <= 0.05, 'P3 eruptions: every chase pillar bursts out of the crack\'s head');
+  assert(firstT >= firstRun - 2 * DT, 'P3 eruptions: the first pillar waits for the crack to reach the hero');
+  assert(cjump <= TC.speed * DT * 1.05 + 1e-3, 'P3 eruptions: the crack\'s head runs (never jumps)');
+  if (typeof gb0 === 'function') assert(cuts >= 3, `P3 eruptions: the crack leaves its marks on the floor (${cuts})`);
+  d.phase = 1;
+  run(G, 1, { passive: true });
+
+  // ---- the P3 second flame wall: its warning is laid from where the first wall crosses its line
+  startAt(3, 14);
+  game.lab.trigger('flameWall');
+  G.tick(DT);
+  const walls = H.list.filter((h) => h.alive && h.shape === 3 && h.attack === 'flameWall');
+  const w1 = walls.find((h) => !h.lay), w2 = walls.find((h) => h.lay);
+  const fx = d.fx, hb = fx.heatBand, ww = fx.wallWarn;
+  let bandAt = Infinity, warned = 0;
+  fx.heatBand = function (life, st, ...rest) {
+    if (st === w2 && st.alive) bandAt = Math.min(bandAt, st.t);
+    return hb.call(this, life, st, ...rest);
+  };
+  fx.wallWarn = function (life, st, ...rest) {
+    if (st === w2) warned++;
+    return ww.call(this, life, st, ...rest);
+  };
+  let cross = NaN, laidBy = NaN;
+  if (w1 && w2) {
+    // the lay's origin, on the first wall's line as it springs up
+    const q2x = -w2.dz, q2z = w2.dx, ox = w2.x + q2x * w2.layS, oz = w2.z + q2z * w2.layS;
+    cross = Math.abs((ox - w1.x) * w1.dx + (oz - w1.z) * w1.dz);
+    laidBy = w2.layAt + (w2.len / 2 + Math.abs(w2.layS)) / w2.laySpeed;
+  }
+  run(G, 6, { passive: true }, () => !d.brain.action);
+  fx.heatBand = hb;
+  fx.wallWarn = ww;
+  out(`   P3 flame wall: walls ${walls.length} · the second laid from ${cross.toFixed(2)} m off the first's line, from ${w2?.layAt.toFixed(2)} s (the first lights at ${w1?.impact.toFixed(2)} s), whole by ${laidBy.toFixed(2)} s (it lights at ${w2?.impact.toFixed(2)} s) · its first warning at ${bandAt.toFixed(2)} s · warned whole before ${warned}`);
+  assert(walls.length === 2 && w1 && w2, 'P3 flame wall: two walls, the second laid');
+  assert(cross <= 0.05 && Math.abs(w2.layAt - w1.impact) <= 1e-6, 'P3 flame wall: the second wall\'s line runs out of the first as it springs up');
+  assert(laidBy <= w2.impact + 1e-6, 'P3 flame wall: the second wall is laid whole by its ignition');
+  assert(bandAt >= w2.layAt - 1e-6 && warned === 0, 'P3 flame wall: no warning of the second wall before the fire reaches its line');
+
+  // ---- Armageddon: every meteor falls out of the vortex over the wyrm
+  startAt(2, 12);
+  game.lab.trigger('meteorRain');
+  const mseen = new Set();
+  let meteors = 0, farRim = 0, overW = 0, shortFall = Infinity, offV = 0;
+  run(G, 17, { passive: true }, () => {
+    const s = d.fx._sky;
+    for (const h of H.list) {
+      if (!h.alive || h.kind !== 'meteor' || mseen.has(h.id)) continue;
+      mseen.add(h.id);
+      meteors++;
+      if (!s?.vOn) {
+        offV++;
+        continue;
+      }
+      const rim = h.great ? 0 : TRAILS.meteor.vortex.r;
+      farRim = Math.max(farRim, Math.abs(Math.hypot(h.ox - s.vx, h.oz - s.vz) - rim) + Math.abs(h.oy - s.vy));
+      overW = Math.max(overW, Math.hypot(s.vx - d.position.x, s.vz - d.position.z));
+      shortFall = Math.min(shortFall, h.fall);
+    }
+    return false;
+  });
+  out(`   Armageddon: meteors ${meteors} · out of the vortex ${meteors - offV} (worst ${farRim.toFixed(2)} m off its rim) · the vortex at most ${overW.toFixed(1)} m off the wyrm · shortest visible fall ${shortFall.toFixed(2)} s`);
+  assert(meteors >= 25 && offV === 0 && farRim <= 0.05, 'Armageddon: every meteor leaves the vortex\'s rim (the great one its heart)');
+  assert(overW <= 8, 'Armageddon: the vortex hangs over the wyrm');
+  assert(shortFall >= 1.0, 'Armageddon: each meteor is seen the whole way from the vortex (>= 1 s of fall)');
+  if (typeof gb0 === 'function') W.groundBlow = gb0;
+  return G;
+}
+
 // ================================================================== scenario: the hero's rig
 async function scenarioHero() {
   out('\n== scenario HERO (Shadow Swordsman rig: coat strips, streamers, hair stay finite and above the grass) ==');
@@ -12733,6 +12913,7 @@ const SCENARIOS = {
   wyrmreact: scenarioWyrmReact,
   timing: scenarioTiming,
   fire: scenarioFire,
+  firesource: scenarioFireSource,
   ablaze: scenarioAblaze,
   terrain: scenarioTerrain,
   bladestop: scenarioBladeStop,
