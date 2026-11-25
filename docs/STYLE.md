@@ -462,6 +462,11 @@ them, "not too detailed but has enough ascii features and style". That count is 
   the fire at the back of the throat (a lit orange mouth read as a painted board); the neck's quills
   stop short of the skull so its outline is free. At the game camera the head is a wedge with two
   burning eyes; the detail is for close shots.
+- **The drake from above** (2026-11-24, ADR-189): from the game camera its pale bone (brow, horns, cheek
+  fins) read as one big pale V and the eye glints as round pupils. The head now has no glints (the burning
+  slits are the eyes), the horns, fins and brow are dark obsidian lit only at the edges and tips (`mats.horn`),
+  the horns slimmer and swept tighter, a dark crest down the skull. `?wyrmTop=0|a|b` keep the head before and
+  the two options passed on.
 - **Heads kept for later** (2026-11-16, ADR-120): three sculpted heads (`skull`, `loong` with two
   springy whiskers, `demon`; `dragon/heads.js`) were built and filmed: lofted skulls with sockets,
   brow ridges and cheekbones, drawn with flat facets and smaller scales (`FACE_ART`) so the form

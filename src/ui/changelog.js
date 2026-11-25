@@ -34,6 +34,14 @@ export const RELEASES = [
       },
       {
         date: '2026-11-24',
+        title: 'The Cinder Wyrm wakes without a neck twist, and its head reads from above',
+        notes: [
+          'When the fight starts the wyrm now lifts its head, rises and turns to you in one motion: no more neck snapping round and the head flipping over.',
+          'Seen from above, its head is a dark blade with burning slits for eyes: dark horns swept back, no glowing dots, a crest down the skull. From the side it looks as before.',
+        ],
+      },
+      {
+        date: '2026-11-24',
         title: 'A green flame on the sword',
         notes: [
           'A tight flame of tiny green marks now burns round your sword, licking up off the blade. It is there even with no streak and burns denser and hotter as your streak climbs. Add ?mystic=0 to the address to turn it off.',

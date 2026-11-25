@@ -1254,7 +1254,9 @@ async function scenarioBreach() {
       // a corner of the standing wall: counted apart)
       const over = wr - d.boundAt(d.position.x, d.position.z);
       if (over > 0.05) {
-        if (d.state === 'airborne' || BREACH_AIR.has(d.brain.action?.name)) s.airOver = Math.max(s.airOver, over);
+        // (the pounce's hop is a short leap of its own: its active phase is in the air)
+        const hop = d.brain.action?.name === 'pounce' && d.brain.action?.phase === 'active';
+        if (d.state === 'airborne' || BREACH_AIR.has(d.brain.action?.name) || hop) s.airOver = Math.max(s.airOver, over);
         else s.wyrmOff++;
       }
       s.gap += Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z);
@@ -5366,8 +5368,9 @@ async function scenarioWyrmFace() {
     assert(dE < NEAR_EYE && dN < NEAR_EYE * 1.6, `${face}: the drawn eyes ${dE.toFixed(2)} m and the nostrils ${dN.toFixed(2)} m from the old head's (eyes < ${NEAR_EYE}, nostrils < ${(NEAR_EYE * 1.6).toFixed(1)})`);
     // the rigid batch: one bone per mesh; the sculpted heads draw no more materials than the wyrm has
     // (the loong's whiskers and mane use the spine material it already draws)
-    // (the faces of 2026-11-20 add a material for their hollows, the revenant one more for its mask)
-    const extra = { drake: 1, tyrant: 1, viper: 1, revenant: 2 }[face] ?? 0;
+    // (the faces of 2026-11-20 add a material for their hollows, the revenant one more for its mask,
+    // the drake one more for its dark horns: its top `c`, ADR-189)
+    const extra = { drake: 2, tyrant: 1, viper: 1, revenant: 2 }[face] ?? 0;
     assert(r.draws === o.draws + extra && r.bones <= o.bones + 12 && r.tris <= 9000, `${face}: ${r.draws} draws (old ${o.draws}${extra ? ` + ${extra}` : ''}), ${r.bones} bones (old ${o.bones}, at most +12), ${r.tris} head triangles (<= 9000)`);
     assert(r.through < 0 && r.through > -Infinity, `${face}: jaw shut, every lower tooth stays under the skull's hide over it (worst ${(r.through * 1000).toFixed(0)} mm)`);
     if (face === 'loong') {
@@ -11014,7 +11017,7 @@ async function scenarioTerrain() {
       if (process.env.ABYSS_TRACE2 && !d.brain.action && d.state === 'combat') { for (const n of ['hurl', 'tailBat', 'fireBrand']) { const w = attackWeight(ATTACKS[n], n, d, d.sense); dbg[n] = (dbg[n] || 0) + (w > 0 ? 1 : 0); dbg[n + 'cd'] = (dbg[n + 'cd'] || 0) + ((d.brain.cooldowns[n] ?? 0) > 0 ? 1 : 0); } dbg.idle = (dbg.idle || 0) + 1; dbg.dist = (dbg.dist || 0) + d.sense.dist; }
       G.tick(DT);
       if (open && d.brain.action !== open.act) {
-        if (!open.flash) (open.act?.aborted || CUT.has(d.brain.action?.name) || d.state === 'staggered' ? excused++ : unexcused++);
+        if (!open.flash) (open.act?.aborted || open.reset || CUT.has(d.brain.action?.name) || d.state === 'staggered' ? excused++ : unexcused++);
         open = null;
       }
       // 50 s in each phase: the gates are reached by hand, and the wyrm is kept alive between them
@@ -11022,7 +11025,9 @@ async function scenarioTerrain() {
       if (i === 6000) d.debug.setHp(0.3);
       const floor = d.maxHp * (i < 3000 ? 0.7 : i < 6000 ? 0.4 : 0.1);
       if (d.hp < floor) d.hp = floor;
-      if (i % 1800 === 1799) { game.world.restore(); restored++; }
+      // (the reset takes back a piece still in the air: its flash never comes; the head of ADR-189
+      // shifted the seeded fight onto a firebrand in flight at a reset)
+      if (i % 1800 === 1799) { game.world.restore(); restored++; if (open) open.reset = true; }
       if (d.state === 'dead') break;
     }
     G.watch = null;

@@ -329,6 +329,8 @@ const ROUSE_TIME = 1.4;
 const ROUSE_GAPS = [9.5, 7.8, 11.2, 8.6];
 /** Fastest the head's aim may turn (rad/s) when no hit sphere rides on it (see _updateNeck). */
 const HEAD_AIM_RATE = 11;
+/** Waking, the resting S only fades in once the sleeping curl (s.sleep) is below this. */
+const WAKE_REST_SLEEP = 0.12;
 const UP = new THREE.Vector3(0, 1, 0);
 /** Share of the way the driven visible neck is drawn to the measured shape each frame (_updateNeck). */
 const NECK_FOLLOW = 0.45;
@@ -541,7 +543,10 @@ export class Rig {
     // dip and the wings' resting sweep fade in; any attack that aims the head fades them out
     // (settles in slowly, leaves fast: by the end of the shortest windup an attack's head and neck move
     // exactly as they were measured)
-    const restT = pose.head === null && pose.lookDown <= 0.14 + 1e-6 ? (1 - pose.stagger) * (1 - pose.sleep) * (1 - pose.dead) * (1 - pose.airborne) : 0;
+    // Waking, it waits for the sleeping curl to be nearly out (s.sleep, not the pose's target): the
+    // resting S blended point by point with a neck still curled back along the flank spun the head
+    // through ~330 degrees in half a second as the wyrm rose
+    const restT = pose.head === null && pose.lookDown <= 0.14 + 1e-6 ? (1 - pose.stagger) * (1 - pose.sleep) * (1 - pose.dead) * (1 - pose.airborne) * clamp(1 - s.sleep / WAKE_REST_SLEEP, 0, 1) : 0;
     s.rest = sm(s.rest, restT, restT > s.rest ? 2.5 : 9);
     for (let k = 0; k < 2; k++) {
       s.spread[k] = sm(s.spread[k], pose.spread[k], pose.spreadRate);
