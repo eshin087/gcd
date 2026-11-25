@@ -5996,3 +5996,53 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
     world redrawn every frame), lighter trees on LOW (the presets' grass counts do nothing under the
     dragon print), the shared uniforms' upload (about 0.5 ms of script a frame), the worst frames'
     hitches. The floors' shader is as it was: its relief is most of its cost.
+
+## ADR-200 — AUTO quality: the render resolution follows the measured frame time; a 60 fps cap on touch (2026-11-25)
+
+- **Context:** the owner wants "at least 60 fps on every device"; ADR-199's review found nothing lowers the load
+  when a device falls behind (a desktop starts on HIGH at up to 2x device pixels, a phone on LOW at 1x), and the
+  GPU's frame is linear in the pixel count (0.22 - 0.39 ms per megapixel on the RTX 4090, the scene pass 75 - 80 %).
+  The owner's slow machine is GPU-bound (Intel Core Ultra 7 255U, integrated graphics).
+- **Decision:** a controller (`render/autoQuality.js` `AutoQuality`, numbers in `CONFIG.autoQuality`) that steps the
+  render scale through 2, 1.5, 1.25, 1, 0.75 (and 0.5 for reviews) device pixels per CSS pixel, capped by the
+  screen's ratio and `maxPixelRatio`, floored at `floor` (0.75 until the owner picks).
+  - It judges frames in 1.5 s windows. Two slow windows in a row (under ~54.5 fps) while the GPU is the limit step
+    one down, at any moment. The GPU is the limit by its timer (`EXT_disjoint_timer_query_webgl2`: longer than the
+    script and at least 60 % of the frame) or, without one, when the script takes under 80 % of the frame.
+  - Each step down is checked in the next window. On the GPU's time where it is read; without it two steps in a
+    row that did not help are needed, because on a vsynced 60 Hz screen 33 ms and 23 ms of GPU both show as 30 fps
+    (the trace tests found the first rule undoing a good step). A step that did not help is undone and nothing
+    below it is tried again this page load (a slow CPU, a battery saver holding 30 fps).
+  - Up only in a calm state (title, explore, paused, dead, victory): with a timer when the step above is predicted
+    to fit 72 % of the frame for two windows; without one a probe after 8 s of holding 60, watched for 5 s and on
+    failure held back 20, 60, 180 s, then for good.
+  - The first guess: the median of 11 frames on the title (each waits for the GPU) after 20 untimed ones (the
+    first frames after the load ran ~3x slow), predicted to the other steps with 25 % of the frame fixed.
+  - Settings: AUTO is a fourth place in the F2 / pause-menu cycle (AUTO → LOW → MEDIUM → HIGH), on by default; a
+    preset turns it off; `?autoq=0|1`, `?autoqFloor=`. Touch keeps its LOW default only with AUTO off.
+  - The frame-rate cap (`FramePacer`): every n-th refresh, n from the median refresh interval (120 Hz: 2, 144: 2,
+    240: 4; under 105 Hz none, since 90 Hz cannot be cut to 60 evenly). On by default on touch; the pause menu's
+    60 FPS CAP and `?fpscap=0|1` set it.
+- **Alternatives:** dynamic resolution every frame (a viewport inside fixed render targets: no rebuild, but the
+  letter cells and atlases follow the frame height, so the letters would change size continuously; and the
+  coarse steps are what the owner reviews); stepping the presets (grass and shadow counts barely matter under the
+  dragon print, ADR-199); the renderer string (`WEBGL_debug_renderer_info`) to guess a start (a table to keep, and
+  wrong for every unknown chip); a cap by skipping frames by time (uneven on 90 / 144 Hz).
+- **Consequences:**
+  - A step is a `pipeline.setSize`: render targets reallocated and the letter atlases rebuilt. Measured on the
+    RTX 4090 / i9 at a 1280 x 800 window: 2 - 9 ms in `setSize` (about 3 ms of it the atlases) and 5 - 19 ms more on
+    the first frame after it, about one dropped frame; not measured on a weak device. What was done about it:
+    steps are rare (2 windows to go down, hysteresis, back-off), never UP during a fight, and the 0.6 s after a
+    step is not judged.
+  - Below a frame height of 810 px the letter cells stay 9 px (`Pipeline.setSize`), so on a 1280 x 800 window 2x to
+    1x keep ~89 rows of letters with finer or coarser strokes, 0.75x has 67 rows and 0.5x 44; on a phone 1x
+    (today's default) has 44 and 0.75x 33. The floor is the owner's pick (`.claude/autoq-review/`).
+  - A phone may now draw above today's 1x when its GPU has room (more letters, more heat): the cap is on there.
+  - Live checks in headless Edge on the 4090 with a GPU load in proportion to the pixels: 30 fps at 2x stepped to
+    1.5x then 1.25x (68 - 77 fps) in 7 s and held; with the load gone it climbed back on the title; in a boss fight
+    it stepped down but not up. With the CPU throttled 8x (10 fps, GPU idle) it made no step. Headless Edge has no
+    back-pressure (a GPU-saturated loop still ran at 100 fps until the GPU was fully saturated): device frame rates
+    are not claimed.
+  - Tests: the `autoq` suite (device models in, steps out: GPU-bound with and without a timer, probes and back-off,
+    CPU-bound, a frame rate held from outside, spikes, calm, a noisy GPU at a step's edge for 20 minutes, the cap's
+    pacing at 60 - 240 Hz, the switches, the F2 cycle).

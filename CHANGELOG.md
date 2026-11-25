@@ -4,7 +4,14 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and one pieces of work since 0.4.0:
+One hundred and two pieces of work since 0.4.0:
+- **The resolution follows the frame rate** (2026-11-25, ADR-200). *Added:* a new quality setting, AUTO, on by
+  default: the game times its frames and, when the graphics chip cannot hold 60 fps, draws the picture at a lower
+  resolution (2x, 1.5x, 1.25x, 1x, 0.75x of the window's pixels), and climbs back when there is room, only outside a
+  fight. A first guess is timed on the title screen. A slow processor is told apart and left alone (a lower
+  resolution would not help it). F2 and the pause menu cycle AUTO, LOW, MEDIUM, HIGH; a preset turns AUTO off.
+  *Added:* a 60 FPS CAP in the pause menu, on by default on touch devices (heat, battery): a 120 Hz screen draws every
+  second refresh. `?autoq=0` starts with AUTO off, `?autoqFloor=` sets its lowest step, `?fpscap=0|1` the cap.
 - **The game runs faster on weaker machines** (2026-11-25, ADR-199). *Changed:* the picture is the same and costs
   less to draw: the ground is drawn after everything that covers it, and its relief is worked out once when the
   level loads instead of for every pixel of every frame (a frame at 4K costs a fifth to two fifths less on the
