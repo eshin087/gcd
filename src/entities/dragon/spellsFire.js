@@ -932,7 +932,7 @@ function vortexWorld(d, v, spec, ax, az, dt) {
   if (v.igniteT <= 0) {
     v.igniteT = W.igniteEvery;
     try {
-      w?.ignite?.(v.x, v.z, VL.reach + 0.6, W.igniteK);
+      w?.ignite?.(v.x, v.z, VL.reach * (W.igniteR ?? 1), W.igniteK);
       v.stat.ignited++;
     } catch (err) {
       console.error('[dragon] firestorm ignite failed', err);

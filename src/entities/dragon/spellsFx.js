@@ -159,12 +159,12 @@ class SpellFx {
       }
       // the body: a ragged band of small cool blobs (a vertebra: a ball of them) round a hotter spine
       const ww = knot ? w * 1.3 : w;
-      let m = this.count(st, i, DN * (knot ? 170 : 85) * share * g * (seg ? 1 : 0.12 + 0.88 * rib * rib) * (0.5 + ww), dt, knot ? 12 : 16);
+      let m = this.count(st, i, (knot ? 170 * Math.min(DN, 1.6) : 85 * DN) * share * g * (seg ? 1 : 0.12 + 0.88 * rib * rib) * (0.5 + ww), dt, knot ? 12 : 16);
       while (m-- > 0) {
         const l = rand(-1, 1) * ww * 0.85, u = rand(-0.3, 0.45) * ww;
         const c = 1 - Math.abs(l) / Math.max(0.1, ww); // 1 on the spine, 0 at the rim
         const bs = SZ * rand(0.8, 1.2) * Math.max(0.4, ww * (knot ? 1.0 : 0.85));
-        this.blob(x + nx * l, y + u, z + nz * l, 0, rand(0.2, 0.7), 0, rand(0.12, 0.19), bs, bs * 0.7, HK * (0.3 + 0.3 * c) * g * (knot ? 1.1 : 1), 0.08 * HK, 0.8);
+        this.blob(x + nx * l, y + u, z + nz * l, 0, rand(0.2, 0.7), 0, rand(0.12, 0.19), bs, bs * 0.7, HK * (0.3 + 0.3 * c) * g * (knot ? 0.75 : 1), 0.08 * HK, 0.8);
       }
       // the hot spine (every other sample: overlaps build its heat), and flames licking up off its back
       if (!seg && i % 2 === 0) {

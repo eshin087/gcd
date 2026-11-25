@@ -89,7 +89,7 @@ export const SPELLS = {
     world: {
       sweepEvery: 0.5, power: 1.7, // its core: fells what it crosses
       graze: 0.35, grazeEvery: 0.45, // its outer swirl bites what stands within its reach
-      igniteEvery: 1.0, igniteK: 0.7,
+      igniteEvery: 1.6, igniteK: 0.6, igniteR: 0.6, // (x its wall's reach: a wide grass fire at its foot buried the column)
       lift: [1, 2, 2], liftReach: 3.2, // light trees (lift 1) it tears up into its spin, per phase; within this of its wall
       fling: 13, // m from its centre the lifted trees are flung at the burst
       maxR: 40, // m from the arena's centre it may drift
