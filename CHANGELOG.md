@@ -4,8 +4,16 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Ninety-two pieces of work since 0.4.0:
-Ninety-four pieces of work since 0.4.0:
+Ninety-five pieces of work since 0.4.0:
+- **The world is printed like the dragon** (2026-11-25, ADR-196). *Changed:* every level's ground, floors, grass,
+  rocks, pillars, walls and trees are printed in the wyrm's own fine digits: a lit relief, dark where it turns
+  from the moon and bright where the light catches it, in letters fixed to the world, so the ground looks
+  three-dimensional and shadows fall across it. The grass is printed tufts that lie down as you run through
+  and rise again; slabs have a lit lip; cloud shadows drift with the wind, things sit in soft contact
+  shadows, heavy blows send a ring of digits through the ground, lit crests carry outline strokes.
+  Footprints are a quick flash of green code under each step on every surface, gone in under a second.
+  `?dragon=0` gives the world before; one piece: `?dgGrass=0`, `?dpFloor=0`, `?dpProps=0`, `?dpTrees=0`,
+  `?dpCloud=0`, `?dpContact=0`, `?dpRipple=0`, `?dpRidge=0`, `?prints=0`.
 - **The bosses look built from letters, like the hero** (2026-11-24, ADR-194). *Changed:* every human boss is printed
   the way the hero is: a body of lit letters in his own colours (no more dark fill inside a thin outline, or flat
   bright colour), the hero's blocky outline strokes and dotted rim, and below the knee his clothes break into the

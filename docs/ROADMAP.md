@@ -185,6 +185,14 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.87 — The dragon print: the world printed in the wyrm's digits (2026-11-25, `render/ground-looks`, ADR-196)
+- [x] Four ground looks rendered; the owner picked b, the dragon ground (a lit relief in the wyrm's digits on a world-anchored lattice)
+- [x] The core (`render/dragonPrint.js`) and the default in every level (`?dragon=0` the world before)
+- [x] Floors of every level, props and trees, four upgrades (cloud, contact, ripple, ridge), flash footprints on every surface
+- [x] Grass printed as tufts (a) over standing digit blades (b: lost)
+- [~] Grass a with more depth and a cut that shows in the ground; fallen leaves that read as leaves (round 3)
+- [ ] The phone's frame cost; remove the first round's looks a / c / d
+
 ## M1.86 — The bosses printed the hero's way (2026-11-24, `render/boss-hero-ink`, ADR-194)
 - [x] Why they looked apart: same letters, but flat dark / flat bright fills, a hairline outline, no hem
 - [x] `?bossPrint=0|a|b` (the shader: lit letter bodies, the hem below the knee; the art pass: his strokes and rims); b the owner's pick

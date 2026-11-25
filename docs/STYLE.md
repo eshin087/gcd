@@ -38,16 +38,48 @@ the wyrm next to it, it is wrong, however good it looks alone.
 | A creature, a boss, a character | `createSurfaceGlyphMaterial` with an art source, `FLAG.ART` (the wyrm's pass) | a new pass, a new font |
 | An effect that burns, glows or strikes as a body (fire, a spell, a bolt, a shock front, a timing cue) | heat in the fire field (`game.fx.fire`; for the wyrm, `fx._blob` and its engines `_shock` / `breathBody`, below) | meshes, big glyph sprites |
 | Something small that flies on its own (an ember, a spark, dust, a chip) | glyph particles (`fx.add` / `fx.alpha`), about one letter cell | meshes |
+| A ground, a floor, a paving, a mark or a print on them | the dragon print (`render/dragonPrint.js`, below): `createCarvedGlyphMaterial` prints it on floors, look b of `world/ground.js` on the ground; a print INTO the floor (a footprint, a leaf) is a shared uniforms chunk the surfaces read (`render/dragonStep.js`) | sprites lying on the floor, new floor shaders |
 
 **What is NOT in this look, on purpose (do not "fix" it):**
-- **The hero and the two human bosses** keep their ink-line art on a 4 px dot matrix. The owner:
-  "Lets not touch the floor character and bosses" (2026-11-15). A sheet of them in larger letters
-  was shown and not taken up.
-- **The floors** (flagstones, the courtyard's paving, the crater's plates) keep carved glyphs
-  (`createCarvedGlyphMaterial`): the ground must stay calm under the fight.
-- **The trees** keep the screen grid's bigger round letters (`FLAG.LEAF`, trunks `FLAG.STONE`): the
-  owner chose to keep them ("perfect ASCII feel", v0.1).
-- **The grass and the soil** keep their world-anchored strokes.
+- **The hero and the human bosses** keep their own print (the bosses printed the hero's way, ADR-194).
+- Until 2026-11-25 the floors (carved glyphs), the trees (the screen grid's round letters) and the grass
+  and soil (3D strokes) were kept out of this look too. The owner then picked the dragon print for all of
+  them ("make all the maps use the dragon ground style", ADR-196): see "The dragon print" below. Their
+  looks before stay behind `?dragon=0`.
+
+### The dragon print: the ground, the floors, the grass, the props and trees (2026-11-25, ADR-196)
+The owner, shown four ground looks: "i really like the dragon ground look ... it allows the ground to look
+3d, can help with background shadows"; then, having played every piece on at once, "i like 'everything on'
+(grass A) much better ... make all the maps use the dragon ground style". The default in every level;
+`?dragon=0` gives the game before it, one switch overrides one piece.
+- **What it is:** a surface is a LIT RELIEF (its normal, the moon, the shadow map, the point lights)
+  printed in the wyrm's digits `.:-=17402#%8@` on a WORLD-ANCHORED lattice of 0.135 x 0.25 m cells
+  (~5 x 8 px at 720p, the wyrm's own cell; rows offset by a random fraction of a cell). One digit per
+  cell, lit once at its centre: a dark body, brighter digits only where the light catches, every cell
+  filled. World-anchored: nothing swims as the camera moves. `render/dragonPrint.js` (the lattice, the
+  ramp, `dragonLook`), `world/ground.js` look b (the ground; `?ground=0` today's soil and grass).
+- **The grass** (`dgGrass`, `world/dragonGrass.js`): printed tufts, `\ | /` tips over a dark digit root,
+  rising north of their root, the clumps lit on their moon side; the hero's wake lays them (`= ~`) and
+  they rise back on the wake's spring; mown, they are stubble. No 3D blades with it on.
+- **The floors** (`dpFloor`, `render/dragonFloor.js` inside `createCarvedGlyphMaterial`, every level):
+  the lattice seen along the camera (a slab's top, chamfer and wall sit on the ground's lattice), a
+  lip one cell wide lit toward the moon at every slab edge (`aRim`), cracks as grooves and seams. Each
+  set gives only its palette (`dp: { k, sat, top, sky, wet, rimW }`).
+- **Props and trees** (`dpProps`, `dpTrees`, `render/dragonProps.js`, the art pass's prop branch): the
+  props' own pixel-font print with a relief (chisel facets, cracks; bark grain; crowns lit as masses of
+  leaf clumps, no outline on a crown) and the moon's shadow map; as bright as before.
+- **The upgrades** (`render/dragonPrintFx.js`, `world/groundFx.js`): drifting cloud shadows on the one
+  wind (the moon's term only), contact rings at the foot of every piece and fighter, a ring of digits
+  re-printing outward from a heavy blow (`world.groundBlow`; never red or blue), stroke outlines along
+  lit crests. Each `?dpCloud= ?dpContact= ?dpRipple= ?dpRidge=` a / b / 0.
+- **The footprints** (`prints`, STEPS.flash, `render/dragonStep.js`): every step on every surface; on a
+  dragon-printed floor the floor's own cells under the foot's oval turn to code letters, flash
+  white-green heel to toe, re-roll as they cool to code green and are gone in 0.75 s. `?prints=0` the
+  prints before (a dark `0` on ash for 14 s, the owner: "very ugly").
+- **Rules:** a new floor or ground prints through this (never a new floor shader); a mark INTO it is a
+  shared uniforms chunk the surfaces read (`DP_STEP_U` is the example), not sprites lying on it; every
+  dragon-printed surface calls the four upgrade hooks the way look b does; keep it calm (the hero and the
+  boss stay the brightest things; no background colour change).
 
 **Checklist for a new object or character:**
 - Low-poly with FLAT facets: each facet is one tone, and the spread of tones is what prints as form.
