@@ -1562,6 +1562,9 @@ hazards: Hazards                        // the fire hazards (hazards.js, contrac
 bullets: Bullets                        // the bullet field + the ground tongues (bullets.js, ADR-039): see "Bullets" below
 terrain: Terrain                        // the piece in its jaws or in the air (terrain.js, ADR-110): see "Terrain moves" below
 ablaze: Ablaze                          // phase 3: it sets itself on fire (ablaze.js, ADR-120): see "The wyrm ablaze" below
+incantation: Incantation                // the seals of burning script a roar-cast move draws (incantation.js, ADR-195):
+                                        // see "The incantation" below
+brood: Brood                            // the drakelings and wisps it calls up (brood.js, ADR-195): see "The brood" below
 react: WyrmReact                        // the impact pass (react.js, tuningReact.js, ADR-149): the drawn body
                                         // answers where it was hit; see "The drawn reaction" below
 crashing: boolean                       // true while a plunge stops a flight: that action's end() must not land it elsewhere
@@ -1603,9 +1606,9 @@ update(dt)
 drawnPoint(v): Vector3                  // a hurt sphere's exact point → where it is drawn, in place
                                         // (identity unless a reaction is drawn: react.drawnPoint)
 debug: {                                // used by the Lab (generic shape every future enemy implements)
-  abilities(): Array<{ name, label, tell, phase }>,   // every ATTACKS entry (46: 8 singles, 17 strings, 11 fire
-                                        // attacks and flights, 6 bullet patterns, 3 terrain moves and 'roar', the
-                                        // transition shock ring)
+  abilities(): Array<{ name, label, tell, phase }>,   // every ATTACKS entry (50: 8 singles, 17 strings, 11 fire
+                                        // attacks and flights, 6 bullet patterns, 3 terrain moves, 2 brood moves,
+                                        // 2 roar-cast spells (ADR-195) and 'roar', the transition shock ring)
   trigger(name): boolean,               // force an ability now (wakes/starts the fight if needed); false while busy
   setAI(enabled: boolean), aiEnabled: boolean,
   wake(), startFight(),                 // startFight skips the intro straight into combat (no-op if fighting)
@@ -1626,9 +1629,12 @@ plain body; the renderer and the rigid batch's bone texture see the reaction. `r
 While one is drawn the hurt spheres can sit up to about 1 m off the drawn body for 0.2 - 0.5 s.
 
 **Attacks and selection** (`attacks.js` `ATTACKS`: the singles, the strings, `roar` and, spread in,
-`FIRE` from `fireAttacks.js`, `BULLET_HELL` from `bulletAttacks.js` and `TERRAIN_MOVES` from
-`terrainAttacks.js`; their numbers are `TUNING.attacks`, into which `tuningFire.js` `FIRE_ATTACKS`,
-`tuningBullets.js` `BULLET_ATTACKS` and `tuningTerrain.js` `TERRAIN_ATTACKS` are merged, and onto
+`FIRE` from `fireAttacks.js`, `BULLET_HELL` from `bulletAttacks.js`, `TERRAIN_MOVES` from
+`terrainAttacks.js` and, since ADR-195, `BROOD_MOVES` from `broodAttacks.js` and `FIRE_SPELLS` from
+`spellsFire.js`; their numbers are `TUNING.attacks`, into which `tuningFire.js` `FIRE_ATTACKS`,
+`tuningBullets.js` `BULLET_ATTACKS`, `tuningTerrain.js` `TERRAIN_ATTACKS`, `tuningSpells.js` `SPELLS`
+and `tuningBrood.js` `BROOD.moves` are merged (`spellsFire.js` also fills `TUNING.attacks[k] ??=` itself,
+for a test that loads it without `tuning.js`'s merge), and onto
 which `tuning.js` copies each move's combo links from `tuningLinks.js` `LINKS` as
 `TUNING.attacks[name].links`). `dragon.hitPlayer` multiplies every blow's damage by
 `TUNING.damageScale` (0.85), except hits flagged `bullet: true`. The AI weighs any entry generically:
@@ -1656,7 +1662,9 @@ move needs to know:
   string, what its hits are: its tail (`tail*` kinds), wing (`wing*`) or fire (`fireSnap`,
   `emberRake`, and any hit with a `burst`) hits make it that category when they are two or more or
   a third of the string (most wins; a tie goes tail, wing, fire), else melee. Today: melee 13, wing 2
-  (the Wing buffet, the Sky hammer), tail 4, fire 11, flight 7, spell 6, terrain 3.
+  (the Wing buffet, the Sky hammer), tail 4, fire 11, flight 7, spell 10 (the four roar-cast moves of
+  ADR-195 among them: `drakelings`, `wisps`, `fireSerpent`, `firestorm`, tuned `category: 'spell'`),
+  terrain 3.
 - **The pick's weight:** × `repeat` [0.3, 0.65] for the last two picks; × `bias[cat]` per phase
   (melee, wing and tail 1.25 – 1.3); the last pick's category × `sameCat` 0.7, × `overRun` 0.03 once
   `maxRun` (2) picks of it ran in a row; a category absent past `floorAfter` [32, 15, 12] s ×
@@ -1675,6 +1683,13 @@ move needs to know:
   move that asks for a dodge (any red or black blow, every flight and spell, a pattern's red orbs)
   while bullets fly × `mixed` (0). What a move asks for is read from its data (each hit's tell, the
   headline tell, `orbs` / `orbWave` / `barkOrbs`) and learned from the cues it really sends.
+  **The brood** (ADR-195): live kamikaze wisps count as a sky emitter (`sky` = `_emitterLive()` or
+  `brood.count('wisp')` > 0, in `_choose` and in `_link`: they are red blows at times nobody knows yet,
+  like meteors), and while any of the brood lives (`brood.count()` > 0) every spell, every flight and
+  every move tuned `heavy` × `layer` (0): the wyrm fights lighter beside it. The brood moves and the
+  roar-cast spells also gate themselves in their own `weight` (0 while a brood lives; the two spells 0
+  while a barrage or a meteor is up, or while the other spell's cooldown has more than half of this
+  one's still to run).
 - **Combo links.** `TUNING.attacks[name].links = [{ to, when, chance, band? }]` (all of them live in
   `tuningLinks.js`, one table). When a move ends **on its own** (`stopAction(false)`, not
   `aborted`), `Brain._link` takes the first link whose `when` holds for where the hero is now
@@ -1955,7 +1970,8 @@ Striking-part names for tells (`partPos`): 'snout', 'head', 'mouth', 'claw' (a f
 'forefeet' (front-paw midpoint; flashes at both paws; 'wrists' is the v0.3 alias), 'wing' (a wing's
 middle knuckle, `b.wi`: the wing buffet, the wing scythe), 'wings' (between both wings' middle
 knuckles: the wing slam), 'tailTip', 'shell', 'bullet', 'piece' (the tree or boulder a terrain move
-holds or has thrown), default chest. `flashTell` spikes the body's red / black `uWarn` for a dodge-only
+holds or has thrown), 'point' (ADR-195: a beat that carries its own place, `b.px` / `b.py` / `b.pz`, the
+serpent's head, the firestorm's foot; the chest when they are not finite), default chest. `flashTell` spikes the body's red / black `uWarn` for a dodge-only
 blow except when the part is 'piece': a thrown piece's flare is on the piece, the body that threw it is
 not the blow. The stomp's red ground ring is centred between the two forefeet's landing
 spots (root frame (±1.2, 0, 2.9) model units); the slam presses the paws there (dust + a heavy
@@ -2112,6 +2128,38 @@ event scratch).
 - `barrage()` also takes `deckAt` (s after the cast when the sky deck starts; default `glowAt`),
   `deckGrow` (s to spread over the frame) and `cx`, `cz` (where it spreads from: over the wyrm's
   cast): it calls `skyFx.skyDeck` every frame from `deckAt`.
+- **Every fire comes from the wyrm** (2026-11-25, ADR-195; `fireTrails.js`, numbers `tuningFire.js`
+  `TRAILS`): options that make a hazard visibly travel from the wyrm to where it burns.
+  - `line({ ..., crack: true, cx, cz })` and `chase({ ..., crack: true, cx, cz })`: a glowing crack
+    opens from (cx, cz) (the eruptions pass the forefeet's slam point). On a line its head reaches each
+    pillar as it bursts. On a chase its head runs out at `TRAILS.crack.speed` 18 m/s to the led hero
+    (inside `arenaAt`), and the first pillar is laid where it catches him (within `arrive` 0.3 m, or
+    wherever the head is after `maxRun` 1.6 s); from there it follows him at `follow` 9 m/s and every
+    pillar (`every` s) bursts at the head; `until` counts from the catch. The crack's run is part of
+    the chase's tell: the first pillar waits for it, and **`timeTo(ref, ...)` on a CHASE** returns the
+    run still to go (from the hero's led spot, capped by `maxRun`) plus the pillar's `warn`, then the
+    first pillar's own time once it is laid (without a crack: `warn` less the time run).
+  - `wall({ ..., lay: { s, at, speed, run? { x, z, at, speed } } })`: the wall's line is laid from the
+    wyrm's fire: its warning (`fx.heatBand`) shows only over the stretch laid so far, growing both ways
+    from `s` (m along it from its centre) from `at` s at `speed` m/s (raised so it is laid whole by its
+    ignition), with a flame at each end of the laid stretch (`layFront`). `run`: a runner first carries
+    the fire over the ground from (x, z) to the line's point `s` (from `at`, at `speed`).
+  - `circle({ ..., lob })`: a meteor's fall arcs `lob` m over the straight line from its `from`.
+  - The barrage asks `skyFx.skyFeed(fx, k, d)` every frame from half its `glowAt` (the wyrm's fire in
+    the sky: `?meteorSource=a` seeds along the top of the frame, `b` a vortex over its back fed by a
+    column of heat; `off` nothing), and lays each meteor `from` `skyFx.skyFrom(fx, tx, tz, great, out)`
+    (true: out is the seed nearest the spot or the vortex's rim toward it, its heart for the great one;
+    the fall is then `TRAILS.meteor.fall` 1.35 s at most (× 1.15 the great one) on a `lob` 2.5 m arc;
+    false: the old slant from the sky over the wyrm). `METEOR_SOURCE` (skyFx.js) is the switch in use.
+  - `fireTrails.js` (plain functions over the wyrm's `DragonFx`, state on `fx._trails`, 8 trails of 96
+    points, its own LCG, never `Math.random`): `trailStart(fx, x, z, kind 'crack' | 'runner', power)` →
+    a handle or null, `trailHead(fx, ref, x, z)` (the crack opens behind the head, a point every `step`
+    0.7 m jagged `jag` 0.32 m aside, a floor mark `world.groundBlow` kind `cut` every `markEvery` 2 m),
+    `trailRelease(fx, ref)` (it cools out over `glow` s; its marks stay), `trailInfo(fx, ref)` (tests),
+    `trailUpdate(fx, dt)` (from `hazards.update`), `trailReset(fx)` (from `hazards.clear`), `layFront`,
+    `trailRand` (skyFx's sources share it). Switches read once: `WALL_SOURCE` (`?wallSource=a|b|off`),
+    `CRACK_ON` (`?crack=off`), `TRAILS_OFF` (`?fireTrail=off`: all of them, the meteors' source too).
+    A hazard's trail is released when it is killed. Phones draw `phoneK` 0.6 of a crack's blobs.
 - Also: `cutStrip(ref)` (a knocked-out pass stops its front; the burnt part lingers), **`cancel(ref)`**
   (takes back a hazard that has not gone off: a strip not yet started, a circle not yet fired; a
   flying combo knocked out of the air drops its unbreathed strip and its unspat shells; a burning
@@ -2152,6 +2200,15 @@ breathed or spat from the air (the strafe's and a combo pass's strip front, the 
 spawned with `plunge: true`, the airborne plunge); the dive's crash and the nova pass the default (a
 perfect dodge may plunge). The flame ring lays `rings` [1, 2, 3] rings `ringGap` s apart, the flame
 wall `walls` [1, 1, 2] (the second from the hero's side, square to the first), each its own beat.
+Since ADR-195 the fire that burns away from it travels there from it (hazards' options above): the
+eruptions' line and chase run on a crack from the slam (`CRACK_ON`; the chase's channel and its beat
+grow by `crackRun(d)`, the run from the slam to the hero now, at most `maxRun`; through the chase the
+head watches the crack's head), and phase 3's second flame wall is laid (`wallLay`: `a` from where the
+first wall crosses its line, as the first springs up; `b` the head swings round and breathes at that
+point for `TRAILS.wall.breath` 0.6 s, the fire striking the ground where the first wall stands (or
+0.8 of the way there, if nearer) `strikeDelay` 0.15 s after the first wall's cast, and a runner
+carrying it at `runSpeed` 32 m/s to the line; `TRAILS.wall.strike` is not read); Armageddon's meteors
+fall out of `skyFrom`.
 - **Flying combos** (2026-11-15, ADR-119; `makeFlightCombo(key)`): one take-off, then the parts of
   `TUNING.attacks[key].parts` in order (`'pass'`, `'barrage'`, `'dive'`), joined by a `wheel`
   (a banking turn) or a `swoop` (a drop onto the next pass's line), ending in a dive whose crash
@@ -2348,6 +2405,95 @@ heavy)` (a claw's burning wake, every active frame of a claw / overhead hit) and
 functions over `d.fx`, the bulletFx pattern): `snapFire` (the fire snap's gout, through
 `fx.breathBody`) and the dust, fire and embers of the wing slam, the tail slam, the wing scythe and
 the ember rake. Their burning ground is the hazards' `'meleeFire'` strip.
+
+**The roar-cast moves** (2026-11-25, ADR-195, the fire-and-forest pass). Four moves open with a roar
+over a seal of burning script and call up fire that fights on its own: the brood moves `drakelings` and
+`wisps` (`broodAttacks.js` `BROOD_MOVES`, numbers `tuningBrood.js` `BROOD`) and the spells
+`fireSerpent` and `firestorm` (`spellsFire.js` `FIRE_SPELLS`, numbers `tuningSpells.js` `SPELLS`,
+drawing `spellsFx.js`). The same action shape as `fireAttacks.js`; category `spell`. The phase roar
+(`makeRoar`) clears the brood and resets the incantation with the hazards and the bullets.
+
+**The incantation** (`incantation.js` `class Incantation`, `dragon.incantation`; numbers
+`BROOD.incant`): the seal a roar-cast move draws, its lines written ON THE LETTER GRID in the fire
+field through the wyrm's `DuelFx` (`d.fx.tells`: `_ink`, one blob per cell, on the one frame clock).
+Up to 4 at once (the oldest gives way). `Dragon.update` calls `update(dt)` after the hazards, guarded
+with the brood (an error logs; a seal whose drawing throws is dropped); `reset()` on the wyrm's reset,
+its death and the phase roar.
+- `cast({ x, y, z, r, dur, kind, color })` → an id: kind `'ground'` (flat round x, z; its lines stand
+  `groundY` 0.55 m up and `groundGain` × hotter, the field's soft depth fades lower heat) or `'jaws'`
+  (hanging in the air facing the camera; with x unset it hangs `jawOffset` before the mouth and follows
+  it); `r` m (default 6 / 2.4); `dur` s, after which it burns out by itself; `color` the ink
+  (`'script'` | `'fire'` | `'blood'`; default the `?incantInk=` switch).
+- `flare(id, k)` its power 0..1 (it brightens as the spell charges; a rise to 1 is the release: a
+  white-hot flash, `heatFlare` for `flash` 0.22 s); `end(id)` (it burns out over `tail` 0.55 s, its
+  lines tearing up into tongues); `at(id, out)` → false when gone, else fills `out.{x, y, z, r}`;
+  `point(id, i, n, out)` the i-th of n points round its sigil ring (where things burst out of it).
+- **The borrowed void slot.** The fire field's `fire` kind tears a thin line into tongues, so the
+  script inks (`script`, `blood`) are written in the field's VOID slot, which nothing else uses on the
+  wyrm's level, dressed once per page through `fire.setPalette('void', ...)` (`_dress`: `script` the
+  fire's own palette with its turbulence turned down, `BROOD.incant.ink`; `blood` `FIRE_PALETTES.glareDeep`).
+  `fire` writes in the plain fire kind. The two spells pass `color: 'fire'`; the brood's seals take
+  the switch, and the drakelings' bodies are always written in the void slot (`script`, or `blood`
+  under `?incantInk=blood`). A level that puts the void slot to its own use must not cast a seal.
+- Looks: `incantLook()` / `setIncantLook(k)` (`?incant=a|b`), `incantInk()` / `setIncantInk(k)`; look
+  jitter from a hash, never `Math.random`; nothing drawn while no seal burns.
+
+**The brood** (`brood.js` `class Brood`, `dragon.brood`; numbers `BROOD.drakeling`, `BROOD.wisp`,
+`BROOD.hold`, `BROOD.busyWait`): pooled fire creatures (6 drakelings, 8 wisps) that fight beside the
+wyrm on their own, like the hazards.
+- `spawn(kind, o)` → an id (0 when the pool is full): kind `'drakeling'` (`o`: `x, y, z` where it
+  bursts out, `slot` its place on the ring round the hero, `hp`, `life`) or `'wisp'` (`o.src` the body
+  point it rides, 0..7 along the spine, the wing wrists and tips, the tail; `o.delay` s before it swells);
+  `count(kind?)` live ones (no kind: both); `update(dt)` (every frame, never throws: an error drops that
+  creature); `clear()` (all burst harmlessly: the phase roar; also when the wyrm is dying, dead or
+  asleep); `reset()` (nothing left: the wyrm's reset and death). `stats` {spawned, cut, burst, hits,
+  lunges, dives}; `nextLunge` (the drakelings' move sets the first lunge `firstLunge` 1.4 s after it ends).
+- **Their blows** go through `dragon.hitPlayer(o, null)` with a tell and the move's name as `attack`
+  (`'drakelings'`, `'wisps'`): a drakeling's lunge normal or blue (block / parry; a parry kills it and,
+  as any parried non-bullet blow, calls `dragon.onParried`), its dive and every wisp's burst red. Each
+  cue is `combat:tell` (at the lunge's windup, the dive's climb, the wisp's commit) and `combat:flash`
+  `flashLead` before it can land, both with `hazard: true` and `brood: true`, plus the shared cue
+  design at the creature (`fx.tells.hazardFlash`; for a red one, the red blaze where it will burst).
+  A burst calls `world.impact`, `world.ignite` and `world.groundBlow` (kind `blast`) where it lands.
+- **Fairness.** One lunge at a time; never two dives within `dive.gap` 0.8 s; one wisp commits at a time,
+  `sep` 0.75 s apart. A lunge is not started while the brain's cue ledger (`brain._clash`) holds a cue
+  that asks for a dodge near its impact. A cue whose flash is due waits, its creature's clock held
+  (`_hold`), while a cue of the other answer is due within `hold.sep` 0.5 s of it (the ledger, the
+  wyrm's running move's beats told or not, `_beatNear`; for a red one also any bullet in the air), at
+  most `hold.max` 1.8 s per cue. No lunge or dive starts while the wyrm is airborne or its running move
+  has a beat not yet flashed (`_wyrmBusy`), for at most `busyWait` 2.5 s.
+- **The blade seam.** The brood reads the hero's swing as `bullets.js` does: while
+  `player.isSwinging()` and `player.sweep.valid`, the blade's swept quad (`sweep.a`, `b` this frame,
+  `pa`, `pb` the last) is tested against each creature (its radius + `cut`), **once per swing**
+  (`player.atk` is the swing's identity). A cut costs 1 hp (a swing whose `atk.def.heavy`: 2), and the
+  hero feels it through **`player.feelCut(x, y, z, dx, dz, heavy)`** (new on the Player: a short
+  hit-stop, 0.05 s or 0.075 heavy, sparks along the cut, a camera shake; it deals nothing and counts no
+  streak). A drakeling bursting out of the circle and a wisp still on the wyrm's body cannot be cut.
+- Drawn as heat in the fire field through `fx.tells` (`_dot` / `_ink` / `_blob`); embers and sparks are
+  glyph particles; look noise from its own LCG. `drakelingLook()` / `setDrakelingLook(k)`
+  (`?drakeling=a|b`). Phones (quality 0) draw less.
+
+**The roar-cast spells** (`spellsFire.js`): both are CHANNELS: phases `windup` (the roar over the
+circle, × `tScale`), `channel` (40 s at most: the spell runs, the wyrm stands over it, its head
+following it; the channel is cut to its time, `a.dur = a.t`, when the spell is done) and `recovery`.
+Anything that ends the action early (a stagger, a posture break, a phase roar, the reset, death) ends
+the spell: it dies harmlessly (`end()`). Their beats are made at the start with a placeholder time
+(1e4 s: never told) and **re-timed when the blow starts** (`tellNow`: the next untold beat's `at` = now,
+its `impactIn` = the blow's time): one red beat per serpent strike (at the rear) and one for the
+firestorm's burst (as it starts to gather). A beat's part is `'point'` with its own `px, py, pz`
+(`Dragon.partPos` 'point'; `cueAt` draws the in-world cue itself only if `partPos` does not resolve
+there). Contact with the serpent's body or the column's wall deals ticks of normal, blockable fire
+(never while the hero rolls or is untouchable). What they do to the world: `destructibles.sweep` along
+the way, `world.ignite` (the serpent's lane catches `igniteDelay` 2.2 s after its head passed),
+`world.groundBlow` (kind `beam` along the serpent's trench, `blast` at the emerge and the bursts), the
+column lifts light trees (`destructibles.nearest` / `take` / `carry`) and flings them at its burst
+(`throwTo`); under both,
+`world.fire.hush` keeps the grass's flames low. `spellState(d)` → `{ serpent, vortex }` (the running
+spells' state or null; the tests and the Lab). Looks `SERPENT_LOOK` (`?serpent=a|b`) and `VORTEX_LOOK`
+(`?vortex=a|b`), table `SPELL_LOOKS`. `spellsFx.js` `spellFx(d)` draws both: heat in the fire field, a
+rate-based emitter per piece (the same density at any frame rate), embers as glyph particles, the
+dust and splinters the column draws in as one `LetterBatch` (320 + 220 letters), all on the one wind
+(`life.wind.at`), noise from its own `mulberry32`; phones draw `phone` 0.55 / 0.5 of it.
 
 ### HUD — `src/ui/hud.js` exports `class Hud`
 ```
@@ -3287,7 +3433,7 @@ section is used up as the piece's structure runs out.
 
 **The edge of the open ground** (`world/edge.js` `class Edge`, numbers `BREAK.edge`; 2026-11-21, ADR-125).
 Where the hero and the boss may go follows what still stands of a set's wall. A set asks for it by
-returning `edge: { base, outer? }` (base: the circle the level always had, the forest's is
+returning `edge: { base, outer?, walk? }` (`walk`: "The walk edge" below; base: the circle the level always had, the forest's is
 `CONFIG.world.playerBound` 31 m) and marking the pieces that close its ground with `edge` (m) in their
 breakables entry; `Destructibles` builds it (`destructibles.edge`, `world.edge`; null on a set without
 one: the courtyard, the crater, the training room).
@@ -3321,6 +3467,48 @@ fight). Who reads it: the hero (`player.js` `_collide` and the plunge's landing,
 wyrm (`dragon.boundAt` / `arenaAt`, below), the wall's quiet-fall rule, the minimap, the Lab's Open wall.
 Every trunk out to `outer` + 3 m has a collider now (it was 42 m), so the stumps of the opened ground
 stand in the hero's way as the clearing's do.
+
+**The walk edge** (2026-11-25, ADR-195, the owner: "no invisible walls: if it looks like the player is
+able to walk there"; Cinderwood's set today). A set's `edge: { base, walk: { at(angle) } }` (angle =
+`atan2(z, x)`; Cinderwood: `ridgeAt(a) + RIDGE.inset`, the rock ridge's line ~48.5 m, `forestTuning.js`)
+puts the Edge in WALK mode: the hero's ground is the whole forest out to the set's end from the start,
+the trunks, logs, stumps and rocks that stand in it are his walls (their colliders), the ridge's crags
+the last one, and the edge only the backstop behind them.
+- `new Edge(list, cfg, game)`: the third argument (optional; `Destructibles` passes its `game`) is
+  where walk mode reads the hero (`game.player.position`) and the boss (`game.boss ?? game.dragon`).
+- `walk` (bool); `W` (Float32Array per lane: the end, the least of `at` read at the lane's sides and
+  middle, never under `base`; `R` holds it too, so the minimap and `heroAt` read the forest's end);
+  `T` (per lane: what the fallen wall has torn open, the BOSS's ground alone in walk mode; in the
+  classic mode `T` is `R`); `out` (the hero stands past `base`); `follow` (m: the boss's follow gain).
+- `heroAt(x, z)` → `W` of that lane. `keep` never pulls him back to the base circle.
+- `bossGain(x, z)` → the torn lanes' gain (as before) or `follow`, whichever is more, capped at
+  `min(W) - base - BREAK.edge.walk.bossIn` (7 m short of the end). **The boss follows the hero out**:
+  `follow` rises at once to how far past `base` he stands + `walk.lead` 2 m, and when he comes back it
+  falls at `walk.ease` 3 m/s, never below how far past its own bound the boss stands now (its ground is
+  not pulled from under it; it walks back in after him). `_follow(dt)` runs from `update(dt)` every frame.
+- `open` is now a getter (a setter remains): a lane torn open (`_open`) OR, in walk mode, the hero out
+  past `base`; what reads an arena's radius off the edge (`dragon.arenaAt`, the barrage) follows him out.
+  `reaches(...)` reads the hero's ground as it counts for a falling tree's warning: the forest while he
+  stands out in it, the base circle and the torn lanes while he stands inside it.
+- `version` counts his stepping out and back in (the minimap's zoom); `refresh()` returns false and
+  sends **no `world:edge`** in walk mode (his ground never changes; the feed's line is said only where a
+  wall still closes the ground).
+- The minimap (`ui/minimap.js`): with a walk edge it draws back to the ridge while he stands out in the
+  forest, keeps the clearing's scale (and no dashed line round it) while he is in the clearing, and
+  never fills torn lanes. The Lab's **Restore** first sends a hero who is out among the trees back to
+  the bonfire (`flow._respawnPlayer`), as the level's own reset does; **Open wall** on a walk edge opens
+  ground for the wyrm only.
+- A set may also give **`setQuality(k)`**: `destructibles.setQuality(k)` calls it with the budget
+  (0.3 .. 1). Cinderwood's hides the deep mesh (the thicket beyond the ridge, all wood past
+  `GROWTH.phoneFar` 60 m) below `GROWTH.phoneDeep` 0.7, and stops the undergrowth casting shadows.
+- Cinderwood's forest (`forest.js` `growForest`, its own stream `CONFIG.seed + 5023`; numbers
+  `forestTuning.js`, its undergrowth `undergrowth.js`): the ridge's crags (two rows, `RIDGE`, stone
+  breakables whose rubble keeps blocking) or the other ends of `?forestEnd=` (`THICKET`, `DEADFALL`),
+  young trees, the treeline's young trees and snags, tall old pines, snags, dead trunks leaning on the
+  living, a thicket beyond the ridge, fallen logs, stumps, mossy rocks (colliders), bushes, ferns and
+  brambles (no collider: he pushes through; they burn and tear), roots and hanging moss on the old oaks
+  (`GROWTH`; merged into the oak's own piece). Every piece that stands on its own is a breakable; the
+  new trees have `edge: 0` (they do not close the boss's lanes).
 
 **Range pieces** (`RangeBody`, internal): its `visible` folds or restores its whole run; `show(i, on)`
 drops or restores part i; `pose(q, px, py, pz)` turns it by a quaternion about its base and moves it,
@@ -5848,6 +6036,14 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   bullet's tell (normal for an ember, red for an orb or a tongue), hazard: true and bullet: true (audio: the
   flash ping alone, no tell sting, no music dip)
 - Ambient cinders (ADR-119) are hazard circles: their cues carry the attack name cinders (no tuning entry)
+- The roar-cast moves (ADR-195) add no event name. The brood's cues (a drakeling's lunge and dive, a
+  wisp's commit) are combat:tell / combat:flash with source 'dragon', the move that called it as the
+  attack (drakelings or wisps), the creature's tell (normal or blue for a lunge, red for a dive or a
+  wisp), hazard: true and brood: true. The serpent's strikes and the firestorm's burst are ordinary beats
+  of their action (one red combat:tell and combat:flash each, re-timed as the blow starts). Each of the
+  four emits dragon:spell with its name (drakelings, wisps, fireSerpent, firestorm) at its cast or its
+  emergence, its roar dragon:roar (roarFx); a serpent strike and the firestorm's burst emit
+  dragon:explosion where they land. The eruptions' crack and the second wall's laying send nothing new.
 - A duelist's things that fly, wait or fall while he fights (ADR-122) cue themselves with source 'dragon':
   the Starless Sky's strikes (attack starlessSky) and Starless Night's waves (starlessNight) with hazard: true,
   the wheeling blade (wheelingBlade) with bullet: true; Shen Hui's burning ground has no cue (ground to step
@@ -5893,7 +6089,8 @@ World → audio (destruction, ADR-107; see "Destruction" above):
 - `world:edge {x, z, reach, lanes, first}` (ADR-125, the edge of the open ground: a tree of the forest's wall is
   down and ground behind it has opened. x, z: the end of the lane that opened furthest; reach: how far from the
   centre the hero's ground goes there, m; lanes: lanes open in all; first: nothing was open before. One reused
-  payload. The HUD feed says it once a fight, on first)
+  payload. The HUD feed says it once a fight, on first. A walk edge, Cinderwood's since ADR-195, never
+  sends it: the hero's ground there is the whole forest from the start)
 - `world:scene {id, x, z}` (ADR-157, the Hall of Falling Script: the set's scenes.to began a morph to scene id
   from x, z; audio a falling run of ticks)
 - A piece a boss felled emits combat:tell / combat:flash with source 'world', attack 'fallingDebris', tell 'red'

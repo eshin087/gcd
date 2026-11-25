@@ -932,6 +932,41 @@ signal the field has no kind for); sparks, peeling embers and motes are glyph pa
   overhead; **slam burst** (`slamBurst`): a low shock of fire, flames spat up and embers where an
   overhead lands.
 
+### The roar-cast spells, the brood and the fire's trails (2026-11-25, ADR-195)
+Everything here is heat in the fire field (`game.fx.fire`) in the wyrm's own letters; embers, sparks
+and grit are glyph particles one cell in size; the dust and splinters a firestorm draws in are many
+tiny faint letters in one `LetterBatch`, on the one wind. Look noise from each module's own stream.
+The looks are behind switches (the table above); the owner has not picked any of them yet.
+- **The incantation is the dragon script drawn on the letter grid** (`incantation.js`, `DuelFx._ink`:
+  one blob per cell the line crosses), not a font: a table of small shapes of 2 - 5 strokes (a claw,
+  a fang, an eye, a flame, a horn, a crossing, a hook, ...) round a ring, a {7/3} star inside, the band
+  of sigils and the star turning against each other. It is written in (the rings run round, the sigils
+  appear one by one), brightens as the spell charges, flashes white-hot at the release and tears up
+  into tongues as it burns out. A soft line of fire thinner than a cell row vanishes between two rows;
+  a line written cell by cell holds.
+- **The fire's trails** (`fireTrails.js`): the eruptions' crack is heat along a jagged line, hot at
+  its head and cooling behind it, sparks off the head, and a floor mark every 2 m (charred in phase 3);
+  a runner is a fire front with taller flames at its head; a laid wall line has a flame at each end of
+  the laid stretch. The meteors' sources are `skyFx.js` (`skyFeed`, `skyFrom`).
+- **Lessons of this pass:**
+  - **Fire lower than about 1.5 m sinks into the meadow.** The grass's blades hide the field under its
+    soft depth test: the serpent's body first rode at 0.95 m and was lost in the grass, so it rides at
+    1.6 m (its head 2.3 m), and a ground seal's lines stand 0.55 m up, 1.25 x hotter. On bare ground
+    the old rule (at least 0.7 m) still holds.
+  - **A shape in the fire field needs many big cool blobs.** A body printed as a few hot strokes reads
+    as red scratches; many big, cool, overlapping blobs make a body of orange digits with a yellow head
+    and white eyes (the serpent's `headLook`: `dens` 4, `size` 2, `heat` 0.3). Dark bands across a body
+    (every 1.35 m on the serpent) give it segments and length at the game camera.
+  - **Light grass fire behind a moving body**, never under it: a lane lit under the serpent's head hid
+    its body in the flames, so the lane catches 2.2 s after the head has passed (its tail gone by), and
+    under both spells `world.fire.hush` keeps the grass's flames low. A wide grass fire at the column's
+    foot buried it, so it lights less ground (0.6 of its wall's reach every 1.6 s).
+  - **Height has to show on screen.** The column leans away from the game camera (`lean` -0.22 m per m
+    of height along z) so its top climbs up the screen instead of standing in front of its own foot.
+  - **Judge at the game camera.** At 36 m a drakeling is 60 - 80 px; its head is its weakest part, and
+    two that overlap merge into one shape. Motes streaming into a seal did not read at all (`?incant=c`
+    was dropped).
+
 ### The Obsidian Throne and the blades of red light (2026-11-13, ADR-069, ADR-070; the open crater: 2026-11-15, ADR-112)
 - **The crater** (the owner's pick "A, Starfall" of three rendered open arenas; it replaced a walled
   hall: "the walls are also adding a visibility issue so make it more open") has a made floor: rings
@@ -1149,6 +1184,16 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?city=` | Halcyon Plaza's light (ADR-159; read when the level is built) | - | Neon Rain: night, rain, wet dark asphalt, pale neon | Golden Hour: his perfect city at dusk, warm, no rain | Lockdown: red emergency light, two search beams sweeping the plaza | **a**, the owner's pick (2026-11-23) |
 | `?gradeLook=` | the record screen's grade (ADR-179; `ui/recordLooks.js`; sheet `docs/looks/records/grade-options.jpg`) | - | the grade in block letters over its time, marks and the best before | the block letters beside those lines | the banners' plain `#` letters, the time beside | **a**, the owner's pick (2026-11-24) |
 | `?recLook=` | the title's best under each level (ADR-179; sheet `docs/looks/records/title-options.jpg`) | - | a small line under each button: grade and time | the grade in the button after the name, the time on a second line | one line under the picker for the button the mouse or pad is on | **b**, the owner's pick (2026-11-24; sheet `docs/looks/records/title-shipped.jpg`) |
+| `?incant=` | the wyrm's seal of burning script, opening each roar-cast move (ADR-195; read once; no Lab row) | - | **the seal (default)**: rings, a band of sigils, a seven-point star and a small ring at its heart, all flat on the ground (a seal before the jaws stands upright, facing the camera) | the rings and star flat, the sigils standing up on the ring as burning letters 2 m tall that face the camera (they read at the game camera, where flat ones are 2 - 3 rows tall); `c` (script streaming off its body as motes) was dropped in round 2 | - | a (default, not yet picked by the owner) |
+| `?incantInk=` | the seals' and the drakelings' ink (ADR-195; read once; values `script` / `fire` / `blood`) | - | `script` **(default)**: the fire's own colours with its turbulence turned down, so a line holds its shape and boils while tongues climb off it (written in the fire field's void slot) | `fire`: the plain fire kind (its lines burn away into tongues); the two spells' seals are always this | `blood`: the crimson of `glareDeep` (an existing palette) | script (default, not yet picked by the owner) |
+| `?drakeling=` | a fire drakeling's body (ADR-195; read once) | - | **a dim core in a hot rim (default)**: one line from snout to spade tail (9 links, ~4 m), horns, an eye, beating wings of spar, fingers and a trailing edge | a dark wyrm of smoke with burning seams | - | a (default, not yet picked by the owner) |
+| `?serpent=` | the fire serpent (ADR-195; read once) | - | **one long continuous body (default)**: many big cool blobs (orange digits), dark bands every 1.35 m, a hot spine, flames licking off its back, a yellow wedge of a head with jaws and white eyes | a chain of burning vertebrae, a knot of fire every 0.95 m on a thin hot spine (at the game camera it reads close to a) | - | a (default, not yet picked by the owner) |
+| `?vortex=` | the firestorm's column (ADR-195; read once) | - | **a tall thin column (default)**: 14 m, a 0.7 m foot flaring to a 4.2 m crown of smoke, three strands twisting, brighter as they turn to the camera, the top leaning away from it so its height shows | a squat wide storm: 8 m, a broad wall of five strands turning slower | - | a (default, not yet picked by the owner) |
+| `?forestEnd=` | the true end of Cinderwood's map, ~48.5 m out (ADR-195; `lookOf`, read when the level is built; no Lab row) | - | **a rock ridge (default)**: two rows of crags, the back row taller, rubble that still blocks when they crumble | a thicket wall: dead trunks shoulder to shoulder, three rows deep, brambles between; it burns, its black stumps still close it | a deadfall: giant grey trunks fallen along the line, piled two high, their root plates upturned; they do not burn | a (default, not yet picked by the owner) |
+| `?meteorSource=` | where Armageddon's meteors fall from (ADR-195; read once; values `a` / `b` / `off`) | `off`: the empty sky over the wyrm, as before | seeds: the salvo's bolts arc over and hang as burning seeds along the top of the frame; each meteor drops from the nearest | **a vortex (default)**: a ring of fire turning over the wyrm, fed by a column of heat off its back the whole barrage, the meteors flung from its rim | - | b (default, not yet picked by the owner) |
+| `?wallSource=` | where phase 3's second flame wall comes from (ADR-195; read once; values `a` / `b` / `off`) | `off`: lit along its whole line at once, as before | **a fire front (default)**: it runs out both ways along the line from where the first wall crosses it | the head swings round and breathes at that point; a runner of fire crosses the ground to the line, then the line is laid | - | a (default, not yet picked by the owner) |
+| `?crack=` | the eruptions' crack (ADR-195; read once; `off` only) | `off`: the pillars without it | (default, on) a glowing crack runs from the forefeet's slam: the line's pillars burst as its head reaches them, the chase's at its head | - | - | on (default, not yet picked by the owner) |
+| `?fireTrail=` | every fire trail of ADR-195 at once (read once; `off` only) | `off`: the crack, the laid wall and the meteors' source all as before (the films' and the perf's base) | (default) all on, each at its own switch | - | - | on (default, not yet picked by the owner) |
 
 How a look is chosen (`lookOf(name, def, pick)`): a look forced live by `setLook` (the Lab, the tests,
 the film rig); else the URL's own parameter (`?sky=b`); else, under **`?looks=old`**, `0` for every

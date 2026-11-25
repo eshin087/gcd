@@ -3,7 +3,8 @@
 ABYSS is a long-term browser game: a **wuxia skill boss rush** in the vein of Phantom Blade Zero,
 with some exploring and RPG elements and fixed rewards (techniques, weapons, abilities; ADR-059),
 rendered in its own ASCII look. Today: eight levels, each its own
-page load (`?level=`): Cinderwood Hollow (the Cinder Wyrm), the Ashfall Courtyard (the Ash Disciple,
+page load (`?level=`): Cinderwood Hollow (the Cinder Wyrm, who also roars up fire spells and a brood of
+fire, in a forest you can walk into), the Ashfall Courtyard (the Ash Disciple,
 a three-phase human duelist), the Obsidian Throne (the Starless Lord, a four-form duelist with Void spells)
 the Skybreak Ring (Tian Lei, the Last Ascendant: a bare-handed three-form duelist with ki blasts and beams)
 the Foxfire Terrace (Wen Yao, the Thousand-Body Fox: a bare-handed fighter who fights beside paper copies of himself)
@@ -55,7 +56,9 @@ the cut) are on: `?chip=0` turns them off (ADR-132); `?cutStop=1` gives back the
 kind until the reset; ADR-177): `?marks=0` leaves today's cracks only. Grass the sword cuts (the hero's
 blade mows what it passes low through, every floor mark tears the grass out in its shape; ADR-180):
 `?mow=0` leaves the grass as before. The grove's bamboo: `?bamboo=0|b` (a, the owner's pick: five kinds of cane mixed in clumps;
-0 = the grove before; ADR-151). The living world (ADR-163): `?life=off|all|<pieces>` (a comma list of
+0 = the grove before; ADR-151). The fire-and-forest pass (ADR-195; defaults first, none picked yet): `?incant=a|b`,
+`?incantInk=script|fire|blood`, `?drakeling=a|b`, `?serpent=a|b`, `?vortex=a|b`, `?forestEnd=a|b|c`,
+`?meteorSource=b|a|off`, `?wallSource=a|b|off`, `?crack=off`, `?fireTrail=off` (every fire trail as before). The living world (ADR-163): `?life=off|all|<pieces>` (a comma list of
 `wind, litter, steps, weather, creatures, air, arrival, answer`) and `?lifeK=0.25..2` its strength; ON by
 default (the owner's pick; `?life=off` turns it all off; Lab: WORLD → the 'life' rows and the layers' buttons).
 The attack sounds (cues only on blue / red blows, recorded where loaded; every boss's blade or fist
