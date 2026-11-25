@@ -1,13 +1,15 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { FLAG, createAsciiObjectMaterial, createCarvedGlyphMaterial, createPropArtMaterial } from '../render/materials.js';
-import { markCaster } from '../render/pipeline.js';
+import { markCaster, LAYER_CASTER } from '../render/pipeline.js';
 import { mulberry32, range, hash2, fbm2 } from '../core/rng.js';
 import { CONFIG } from '../core/config.js';
 import { TAU } from '../core/math.js';
 import { buildElderWyrm, buildCinderTree, buildCinderStump, landmarkPoint, ELDER_COLLIDERS } from './landmarks.js';
 import { BREAK } from './breakTuning.js';
 import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
+import { RIDGE, GROWTH, ridgeAt } from './forestTuning.js';
+import { buildBush, buildFern, buildBramble, buildLog, buildMossRock, buildCrag, buildRoots, buildMoss } from './undergrowth.js';
 
 // Procedural forest ring around a moonlit clearing: blob oaks and pines (leaf-ramp ASCII),
 // a broken standing-stone circle, boulders, flagstones, the bones of past challengers near
@@ -865,9 +867,17 @@ export function createForest(U, colliders) {
       edge: rad > WALL.from ? Math.max(BREAK.edge.minBlock, BREAK.edge.crown * (t.type === 'pine' ? 2.2 : t.type === 'dead' ? 1.6 : 3.0) * t.s) : 0,
     };
   };
+  // the ridge (forestTuning.js RIDGE): the true end of the map, a ring of crags; no tree stands in it
+  // (dropped after it is built, like a landmark's: the layout's sequence stays as it was)
+  const onRidge = (x, z, pad = 0) => Math.abs(Math.hypot(x, z) - ridgeAt(Math.atan2(z, x)) - RIDGE.out) < RIDGE.size[1] + 0.6 + pad;
+  // what grows on and round the old trees and in the forest draws on a stream of its own (ADR-190)
+  const gr = mulberry32(CONFIG.seed + 5023);
+  const GW = GROWTH;
   for (const t of trees) {
     const g = t.type === 'pine' ? buildPine(rng, t.x, t.z, t.s) : t.type === 'dead' ? buildDeadTree(rng, t.x, t.z, t.s) : buildOak(rng, t.x, t.z, t.s);
     if (inLandmark(t.x, t.z)) continue;
+    if (onRidge(t.x, t.z)) continue;
+    if (t.type === 'oak') growOn(gr, t, g);
     treeSpots.push({ x: t.x, z: t.z, r: t.type === 'pine' ? 2.2 * t.s : 3.0 * t.s });
     const rad = Math.hypot(t.x, t.z);
     // (a trunk out to where the opened ground can reach: BREAK.edge.outer; it was 42 m, what a hero held at 31 m could touch)
@@ -1062,6 +1072,12 @@ export function createForest(U, colliders) {
     treeSpots.push({ x: t.x, z: t.z, r: 5 });
   }
 
+  // the forest he walks in and its end (ADR-190, forestTuning.js): the ridge's crags, young trees, the
+  // undergrowth, fallen logs, old stumps, mossy rocks; beyond the ridge a thicket (the deep mesh: not
+  // drawn on the phone). Their breakables are listed after every other (the ids of what was there stay)
+  const rockRuns = new Runs(), rubbleRuns = new Runs(), brushRuns = new Runs(), deepRuns = new Runs();
+  const grown = growForest({ gr, colliders, treeRuns, stumpRuns, rockRuns, rubbleRuns, brushRuns, deepRuns, treeSpots, buckets, tooClose, inLandmark, open, onRidge, treeBreakable, wearOf, WALL });
+
   const mat = createAsciiObjectMaterial(U, { fadeNearPlayer: true, side: THREE.DoubleSide });
   // (the trees, their stumps, the landmarks' pieces: runs of these meshes, rewritten as they break, so
   // their positions and normals are uploaded in ranges: dynamic buffers)
@@ -1100,13 +1116,226 @@ export function createForest(U, colliders) {
     });
   }
   group.add(treeMesh, propMesh, stumpMesh, stoneMesh, slabMesh, shardMesh);
+  // the growth's meshes: the ridge and the mossy rocks print like the stones; their rubble folds away
+  // until a crag is broken; the undergrowth and the deep thicket in the trees' look
+  const rockMesh = rockRuns.finish([], stoneMat, 'rocks');
+  const rubbleMesh = rubbleRuns.finish([], stoneMat, 'rockRubble');
+  rubbleMesh.userData.foldAway = true;
+  const brushMesh = brushRuns.finish([], mat, 'brush');
+  const deepMesh = deepRuns.finish([], mat, 'deepForest');
+  group.add(rockMesh, rubbleMesh, brushMesh, deepMesh);
+  breakables.push(...grown);
   markCaster(group);
 
   return {
     group, treeSpots, bare, slabs, nest, bonfire: { x: bf.x, z: bf.z },
     material: mat, stoneMaterial: stoneMat, slabMaterial: slabMat,
     breakables,
-    // the clearing's edge follows what stands of the tree wall (edge.js, ADR-125): the hero's circle to start with
-    edge: { base: W.playerBound ?? 31 },
+    // the hero's ground (edge.js WALK mode, ADR-190): the whole forest out to the ridge from the start;
+    // the trunks and rocks are his walls. What the wall's fallen trees open (ADR-125) is the boss's
+    edge: { base: W.playerBound ?? 31, walk: { at: (a) => ridgeAt(a) + RIDGE.inset } },
+    // the phone's share (destructibles.setQuality): the thicket beyond the ridge is not drawn
+    setQuality: (k) => {
+      const phone = k < GROWTH.phoneDeep;
+      deepMesh.visible = !phone;
+      // (... and the undergrowth casts no shadow: low leaves, a pass of the moon's map saved)
+      if (phone) brushMesh.layers.disable(LAYER_CASTER);
+      else brushMesh.layers.enable(LAYER_CASTER);
+    },
   };
+}
+
+// ---------- the forest he walks in (ADR-190) ----------
+/** Roots round an old oak's foot (merged into its trunk) and hanging moss under its crown (parts after it). */
+function growOn(gr, t, g) {
+  const R = GROWTH.roots, M = GROWTH.moss;
+  if (t.s > R.minS) {
+    const n = R.n[0] + Math.floor(gr() * (R.n[1] - R.n[0] + 1));
+    g[0] = mergeGeometries([g[0], ...buildRoots(gr, t.x, t.z, t.s, n, R.len)]);
+  }
+  if (gr() < M.chance && g.length > 2) {
+    const n = M.n[0] + Math.floor(gr() * (M.n[1] - M.n[0] + 1)), from = [];
+    for (let i = 0; i < n; i++) {
+      const blob = g[1 + Math.floor(gr() * (g.length - 1))];
+      blob.computeBoundingBox();
+      const b = blob.boundingBox, cx = (b.min.x + b.max.x) / 2, cz = (b.min.z + b.max.z) / 2;
+      const a = gr() * TAU, d = Math.sqrt(gr()) * (b.max.x - b.min.x) * 0.3;
+      from.push([cx + Math.cos(a) * d, b.min.y + 0.35, cz + Math.sin(a) * d]);
+    }
+    g.push(...buildMoss(gr, from, M.len));
+  }
+}
+
+/**
+ * Places the forest's growth (forestTuning.js GROWTH, RIDGE) and returns its breakables' definitions.
+ * Draws on `gr` only. `o`: the set's runs, colliders, spacing test and its spots (forest.js).
+ */
+function growForest(o) {
+  const { gr, colliders, treeRuns, stumpRuns, rockRuns, rubbleRuns, brushRuns, deepRuns, treeSpots, buckets, tooClose, inLandmark, open, onRidge, treeBreakable, wearOf, WALL } = o;
+  const G = GROWTH, out = [];
+  const cellOf = (x, z) => `${Math.floor(x / 4)},${Math.floor(z / 4)}`;
+  const mark = (x, z) => {
+    const k = cellOf(x, z);
+    if (!buckets.has(k)) buckets.set(k, []);
+    buckets.get(k).push({ x, z });
+  };
+  // a spot clear of every collider (the clearing's stones and boulders, trunks, the bonfire) by `pad` m
+  const clearOf = (x, z, pad) => {
+    for (const c of colliders.circles) if (Math.hypot(c.x - x, c.z - z) < c.r + pad) return false;
+    return true;
+  };
+  // off the path south by its width and GROWTH.pathPad
+  const offPath = (x, z) => open(x, z) && !(z > 25 && Math.abs(x) < 4.2 + G.pathPad + Math.max(0, z - 27) * 0.18);
+  const spot = (band) => {
+    const a = gr() * TAU, r = band[0] + Math.sqrt(gr()) * (band[1] - band[0]);
+    return [Math.cos(a) * r, Math.sin(a) * r, r];
+  };
+  const wallOf = (r) => r > WALL.from;
+
+  // 1. the ridge: a ring of crags, the true end (they chip and crumble, and their rubble still blocks)
+  for (const row of [RIDGE, RIDGE.back]) {
+    let a = -Math.PI + (row === RIDGE ? 0 : (0.5 * RIDGE.step) / RIDGE.r);
+    while (a < Math.PI) {
+      const line = ridgeAt(a), rr = line + row.out;
+      const x = Math.cos(a) * rr, z = Math.sin(a) * rr;
+      const w = range(gr, row.size[0], row.size[1]);
+      // (across the path south: taller, a rockfall that closed the old road)
+      const path = z > 0 && Math.abs(x) < 9;
+      const h = range(gr, row.h[0], row.h[1]) * (path ? RIDGE.pathH : 1);
+      const geo = buildCrag(gr, x, z, w, h, -a + (gr() - 0.5) * 0.8);
+      const c = colliders.add(x, z, w * 0.92, 'stone');
+      out.push({
+        kind: 'crag', mat: 'stone', look: 'range', digits: true, x, z, r: Math.min(1.8, w * 0.95), h: geosHeight([geo]),
+        range: rockRuns.add([geo], null, RIDGE.brick), colliders: [c], hp: RIDGE.hp, topples: false, cover: true, lift: 0, wreck: false,
+        broken: { range: rubbleRuns.add(buildRubble(gr, x, z, w * 0.85, { h: range(gr, 0.8, 1.3) }), null, 0), r: w * RIDGE.stub },
+      });
+      mark(x, z);
+      a += RIDGE.step / line;
+    }
+  }
+
+  // 2. young trees between the old ones (walkable band: colliders; they do not close the boss's lanes)
+  for (let i = 0, k = 0; i < 6000 && k < G.young.n; i++) {
+    const [x, z, r] = spot(G.young.band);
+    if (!offPath(x, z) || inLandmark(x, z, 0.5) || onRidge(x, z, 1) || tooClose(x, z, G.young.gap) || !clearOf(x, z, 1.2)) continue;
+    const t = { x, z, s: range(gr, G.young.s[0], G.young.s[1]), type: gr() < G.young.pine ? 'pine' : 'oak' };
+    const g = t.type === 'pine' ? buildPine(gr, x, z, t.s) : buildOak(gr, x, z, t.s);
+    const c = colliders.add(x, z, 0.4 * t.s, 'trunk');
+    const def = treeBreakable(t, g, c, gr);
+    def.edge = 0;
+    out.push(def);
+    treeSpots.push({ x, z, r: (t.type === 'pine' ? 2.2 : 3.0) * t.s });
+    mark(x, z);
+    k++;
+  }
+
+  // 3. the thicket pressed behind the ridge (deep mesh: no collider, out of his reach)
+  for (let i = 0, k = 0; i < 8000 && k < G.thicket.n; i++) {
+    const [x, z] = spot(G.thicket.band);
+    if (inLandmark(x, z) || onRidge(x, z, -0.4) || Math.hypot(x, z) < ridgeAt(Math.atan2(z, x)) + RIDGE.out || tooClose(x, z, G.thicket.gap)) continue;
+    const roll = gr();
+    const t = { x, z, s: range(gr, G.thicket.s[0], G.thicket.s[1]), type: roll < G.thicket.dead ? 'dead' : roll < G.thicket.dead + G.thicket.pine ? 'pine' : 'oak' };
+    const g = t.type === 'pine' ? buildPine(gr, x, z, t.s) : t.type === 'dead' ? buildDeadTree(gr, x, z, t.s) : buildOak(gr, x, z, t.s);
+    const h = geosHeight(g);
+    out.push({
+      kind: t.type === 'dead' ? 'deadTree' : 'tree', mat: 'wood', look: 'range', x, z, r: 0.45 * t.s, h,
+      range: deepRuns.add(g, t.type === 'dead' ? null : (j) => j > 0, BREAK.chip.far),
+      colliders: [], broken: { range: stumpRuns.add(buildStump(gr, x, z, t.s), null, 0), r: 0 },
+      leafy: t.type === 'dead' ? 0 : 0.6, lift: 1, wear: wearOf(t.type, g.length), wall: true, hpK: WALL.hp, edge: 0,
+    });
+    treeSpots.push({ x, z, r: (t.type === 'pine' ? 2.2 : 3.0) * t.s });
+    mark(x, z);
+    k++;
+  }
+
+  // 4. fallen logs and old stumps (wood: colliders, burnable), mossy rocks (stone)
+  for (let i = 0, k = 0; i < 4000 && k < G.log.n; i++) {
+    const [x, z] = spot(G.log.band);
+    const len = range(gr, G.log.len[0], G.log.len[1]), rad = range(gr, G.log.rad[0], G.log.rad[1]), yaw = gr() * TAU;
+    const c0 = Math.cos(yaw), s0 = Math.sin(yaw);
+    let ok = true;
+    for (const f of [-0.5, 0, 0.5]) {
+      const px = x + c0 * len * f, pz = z + s0 * len * f;
+      if (!offPath(px, pz) || inLandmark(px, pz, 0.5) || onRidge(px, pz, 1) || tooClose(px, pz, 1.4) || !clearOf(px, pz, 0.8)) ok = false;
+    }
+    if (!ok) continue;
+    const L = buildLog(gr, x, z, len, rad, yaw);
+    const cs = [];
+    const n = Math.max(2, Math.ceil(len / 1.1));
+    for (let j = 0; j < n; j++) {
+      const f = j / (n - 1) - 0.5;
+      cs.push(colliders.add(x + c0 * len * f * 0.9, z + s0 * len * f * 0.9, rad + 0.05, 'trunk'));
+    }
+    out.push({
+      kind: 'log', mat: 'wood', look: 'range', x, z, r: Math.min(1.8, len * 0.5), h: rad * 2 + 0.2,
+      range: treeRuns.add(L.geos, (j) => j > 0), colliders: cs, topples: false, cover: false, lift: 0, wreck: false,
+      leafy: 0.15, wall: wallOf(Math.hypot(x, z)),
+    });
+    for (const f of [-0.4, 0, 0.4]) mark(x + c0 * len * f, z + s0 * len * f);
+    k++;
+  }
+  for (let i = 0, k = 0; i < 4000 && k < G.stump.n; i++) {
+    const [x, z, r] = spot(G.stump.band);
+    if (!offPath(x, z) || inLandmark(x, z, 0.5) || onRidge(x, z, 1) || tooClose(x, z, 1.6) || !clearOf(x, z, 0.8)) continue;
+    const s = range(gr, G.stump.s[0], G.stump.s[1]);
+    const geos = buildStump(gr, x, z, s);
+    out.push({
+      kind: 'stump', mat: 'wood', look: 'range', x, z, r: 0.42 * s, h: geosHeight(geos),
+      range: treeRuns.add(geos), colliders: [colliders.add(x, z, 0.4 * s, 'trunk')], topples: false, cover: false, lift: 0, wreck: false, wall: wallOf(r),
+    });
+    mark(x, z);
+    k++;
+  }
+  for (let i = 0, k = 0; i < 4000 && k < G.rock.n; i++) {
+    const [x, z] = spot(G.rock.band);
+    if (!offPath(x, z) || inLandmark(x, z, 0.5) || onRidge(x, z, 1) || tooClose(x, z, 1.8) || !clearOf(x, z, 1)) continue;
+    const size = range(gr, G.rock.size[0], G.rock.size[1]);
+    const geo = buildMossRock(gr, x, z, size);
+    out.push({
+      kind: 'boulder', mat: 'stone', look: 'range', digits: true, x, z, r: size * 0.9, h: geosHeight([geo]),
+      range: rockRuns.add([geo]), colliders: [colliders.add(x, z, size * 0.85, 'boulder')], topples: false, lift: 0, wreck: false,
+    });
+    mark(x, z);
+    k++;
+  }
+
+  // 5. the undergrowth: bushes, ferns, brambles (no collider: he pushes through; it burns, the wyrm tears
+  // it up). In the walkable band on the brush mesh; beyond the ridge, on the deep mesh
+  const kinds = [
+    ['bush', G.bush, buildBush, () => true, 0.55, 1.0],
+    ['fern', G.fern, buildFern, () => true, 0.5, 0.5],
+    ['bramble', G.bramble, buildBramble, (j) => j > 0, 0.65, 0.4],
+  ];
+  // (the undergrowth keeps `brushGap` m from a trunk, a log or a rock, and its own clumps their own spacing)
+  const bb = new Map();
+  const brushNear = (x, z, d) => {
+    const cx = Math.floor(x / 4), cz = Math.floor(z / 4);
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (const t of bb.get(`${cx + i},${cz + j}`) ?? []) if (Math.hypot(t.x - x, t.z - z) < d) return true;
+    return false;
+  };
+  for (const [kind, K, build, leaf, rk, leafy] of kinds) {
+    for (const deep of [false, true]) {
+      const want = deep ? K.deep : K.n, band = deep ? [ridgeAt(0) + RIDGE.out + 1.5, 62] : K.band;
+      // (the walkable share: GROWTH.rim of it at the treeline, the rest through the band)
+      const atRim = deep ? 0 : Math.round(want * G.rim.share);
+      for (let i = 0, k = 0; i < want * 40 && k < want; i++) {
+        const [x, z, r] = spot(k < atRim ? G.rim.band : band);
+        if (!offPath(x, z) || inLandmark(x, z) || onRidge(x, z, 0.6) || tooClose(x, z, G.brushGap) || brushNear(x, z, 0.9)) continue;
+        if (deep ? r < ridgeAt(Math.atan2(z, x)) + RIDGE.out + 1.5 : !clearOf(x, z, 0.5)) continue;
+        const s = range(gr, K.s[0], K.s[1]);
+        const geos = build(gr, x, z, s);
+        out.push({
+          kind, mat: 'wood', look: 'range', x, z, r: rk * s, h: Math.max(0.3, geosHeight(geos)),
+          range: (deep ? deepRuns : brushRuns).add(geos, leaf), colliders: [], topples: false, cover: false, lift: 0, wreck: false,
+          leafy, wall: wallOf(r),
+        });
+        treeSpots.push({ x, z, r: G.grass * s });
+        const bk = cellOf(x, z);
+        if (!bb.has(bk)) bb.set(bk, []);
+        bb.get(bk).push({ x, z });
+        k++;
+      }
+    }
+  }
+  return out;
 }

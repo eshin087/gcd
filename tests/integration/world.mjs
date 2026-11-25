@@ -28,6 +28,7 @@ const { Scars } = await imp('src/world/scars.js');
 const { Destructibles, STATE, reseedBreaks } = await imp('src/world/destructibles.js');
 const { BREAK, BLOW, FIRE, SCAR } = await imp('src/world/breakTuning.js');
 const { createForest } = await imp('src/world/forest.js');
+const { RIDGE, ridgeAt } = await imp('src/world/forestTuning.js');
 const { mowSwing, meadowHeight, createGrass } = await imp('src/world/grass.js');
 const { GRASS } = await imp('src/world/grassTuning.js');
 const { ELDER_COLLIDERS } = await imp('src/world/landmarks.js');
@@ -188,7 +189,7 @@ const S = {
       // 80 before. The duelists' arenas break everything but their landmarks since 2026-11-16: the
       // courtyard 78 → 456 (293 of them its floor's slabs), the crater 36 → 222 (105 of its floor's plates); 255 on 2026-11-22, its felled trunks
       // swapped for the challengers' graves, banners and carts round it)
-      const [lo, hi] = { forest: [20, 760], courtyard: [380, 520], throne: [180, 280], 'ring a': [1, 5000], 'ring b': [1, 5000], 'ring c': [1, 5000], terrace: [300, 520], grove: [420, 900], 'script hall': [300, 520], city: [300, 460] }[name]; // (the grove: 788 since ADR-151's clumps, 2026-11-22; 536 before)
+      const [lo, hi] = { forest: [20, 1900], courtyard: [380, 520], throne: [180, 280], 'ring a': [1, 5000], 'ring b': [1, 5000], 'ring c': [1, 5000], terrace: [300, 520], grove: [420, 900], 'script hall': [300, 520], city: [300, 460] }[name]; // (the grove: 788 since ADR-151's clumps, 2026-11-22; 536 before)
       assert(L.length >= lo && L.length <= hi, `${name}: ${L.length} breakables (${lo}..${hi})`);
       for (const k of kinds) assert(L.some((b) => b.kind === k), `${name}: has a breakable ${k}`);
       if (name === 'forest') {
@@ -1035,7 +1036,8 @@ const S = {
     const S = BREAK.spread;
     const wood = D.list.filter((b) => b.mat === 'wood' && b.burns);
     const nb = (b) => wood.filter((o) => o !== b && Math.hypot(o.x - b.x, o.z - b.z) <= S.reach + b.r + o.r + o.leafy * 1.5).length;
-    const t = wood.reduce((a, b) => (nb(b) > nb(a) ? b : a));
+    // (a tree: ADR-190's undergrowth grows in clumps whose pieces touch, one lit lights its clump-mates at once)
+    const t = wood.filter((b) => b.kind === 'tree' || b.kind === 'deadTree').reduce((a, b) => (nb(b) > nb(a) ? b : a));
     D.ignite(t.x, t.z, 0.3, 1);
     let peak = 0, firstSpread = -1;
     for (let i = 0; i < 60 * 20; i++) {
@@ -1073,7 +1075,8 @@ const S = {
     assert(over === 0, `at LOW quality the fires never pass ${capLow} by spreading (lit ${lit0} at once)`);
     // logs catch from a burning neighbour and in burning grass
     const B = build();
-    const tr = B.D.list.find((b) => b.kind === 'deadTree');
+    // (one in the clearing: at the treeline ADR-190's undergrowth catches from the burning log and lights it again)
+    const tr = B.D.list.find((b) => b.kind === 'deadTree' && Math.hypot(b.x, b.z) < 24);
     B.D.topple(tr, 1, 0, 'world');
     B.step(2);
     const lg = B.D.wreck.live.find((w) => w.kind === 0);
@@ -1291,7 +1294,8 @@ const S = {
     for (const b of D.list) by[b.kind] = (by[b.kind] ?? 0) + 1;
     out(`     forest: ${D.list.length} pieces (${Object.entries(by).map(([k, n]) => `${k} ${n}`).join(', ')}); wreckage pools ${D.wreck.pools.map((p) => p.length).join(' / ')}`);
     // (664 since every tree of the wall and the landmarks break, 2026-11-16; 183 on 2026-11-15, 80 before)
-    assert(D.list.length >= 600 && D.list.length <= 760, `${D.list.length} breakables in Cinderwood (600..760)`);
+    // (ADR-190, 2026-11-25: the forest he walks in, its undergrowth and the ridge: ~1700; 664 before)
+    assert(D.list.length >= 1400 && D.list.length <= 1900, `${D.list.length} breakables in Cinderwood (1400..1900)`);
     assert(bones <= 1023 - 60, `${bones} bones in all with the wyrm (${D.batch.bones} the world's), under the 1023 slots with room for the hero (~140)`);
     // debris by quality: one boulder's break
     const one = (q) => {
@@ -1374,6 +1378,11 @@ const S = {
     B.world.scorch.burnCircle(0, 0, 4, 0.2, 1);
     B.place(0, 6, 0);
     B.game.events.emit = B.emitRaw; // (the test's own event log allocates: off for the measure)
+    // (ADR-190: the undergrowth at the treeline is wood within the fire's reach of these trees; what it
+    // lights in the measure is new fires, events, not a steady frame: the spread's budgets are held. Each
+    // piece alight costs ~0.5 - 1 KB a frame of boxed numbers in its flames, so a measure that let them
+    // spread read 2.3 KB)
+    B.D._tokens = B.D._wallSpread = -1e9;
     B.world.scars.cap = 60; // (so the marks' records are all made before the measure, and recycled in it)
     const loop = (frames, hot) => {
       for (let i = 0; i < frames; i++) {
@@ -1400,12 +1409,14 @@ const S = {
     const grew = process.memoryUsage().heapUsed - h0 - base;
     assert(grew / 2000 < 2048, `2000 frames of the body sweeping, wood burning, logs smouldering: ${(grew / 2000).toFixed(0)} bytes a frame over the bare loop (< 2 KB: no object, array or closure a frame; the rest is V8 boxing call arguments)`);
   },
-  // ---------------------------------------------------------------- the edge of the open ground (edge.js, ADR-125)
-  // The hero's circle and the wyrm's bound follow what stands of the tree wall: nothing moves until a
-  // tree of it is down; where one is, the ground ends short of the next one standing behind it.
+  // ---------------------------------------------------------------- the edge of the open ground (edge.js, ADR-125, ADR-190)
+  // WALK mode (ADR-190, the owner's "no invisible walls"): the hero walks the whole forest out to its
+  // ridge from the start, among the trunks and rocks (their colliders); the ridge's crags close the map
+  // with no gap; the edge's ground is only the backstop behind them. What the wall's fallen trees open
+  // (the lanes, ADR-125) is the BOSS's share, and a boss follows the hero out (and back in) too.
   edge() {
-    const { D, world, log, step, colliders } = build();
-    const E = D.edge, X = BREAK.edge, base = CONFIG.world.playerBound, rad = 0.45;
+    const { D, world, log, step, colliders, game } = build();
+    const E = D.edge, X = BREAK.edge, WK = X.walk, base = CONFIG.world.playerBound, rad = 0.45;
     const hero = (x, z) => { const p = { x, z }; world.resolve(p, rad, base, false, 'hero'); return p; };
     const walk = (a, from = 20, to = 80) => {
       const p = { x: Math.cos(a) * from, z: Math.sin(a) * from };
@@ -1417,92 +1428,115 @@ const S = {
       return Math.hypot(p.x, p.z);
     };
     const off = (b, a) => { const da = Math.atan2(b.z, b.x) - a; return Math.abs(Math.atan2(Math.sin(da), Math.cos(da))); };
-    assert(E && E.base === base && E.n === X.lanes && E.count > 450 && !E.open && E.version === 0, `the forest has an edge: ${E?.n} lanes round the ${E?.base} m line, ${E?.count} trees close them, nothing open`);
+    const at = (x, z) => { game.player.position.set(x, 0, z); E.update(1 / 60); };
+    at(0, 8);
+    let wOff = 0;
+    for (let i = 0; i < E.n; i++) wOff = Math.max(wOff, Math.abs(E.W[i] - ridgeAt(E.laneAngle(i)) - RIDGE.inset));
+    assert(E && E.walk && E.base === base && E.n === X.lanes && E.count > 450 && !E.open && E.lanes === 0 && E.R.every((v, i) => v === E.W[i]),
+      `the forest has a walk edge: ${E?.n} lanes, the hero's ground out to the ridge (${Math.min(...E.W).toFixed(1)} - ${Math.max(...E.W).toFixed(1)} m; within ${wOff.toFixed(2)} m of its line + inset, read at the lane's sides), nothing torn, nothing open while he stands in the clearing`);
+
+    // 1. he walks out in every direction to the ridge and no further; the boss gains nothing yet
     let worst = 0, gain = 0;
     for (let i = 0; i < 72; i++) {
-      const a = (i / 72) * Math.PI * 2;
-      worst = Math.max(worst, Math.abs(walk(a) - (base - rad)));
+      const a = (i / 72) * Math.PI * 2, r = walk(a), L = E.lane(Math.cos(a), Math.sin(a));
+      // (he ends at his lane's end, give or take where a lane beside it ends sooner or later: its side walls)
+      const lo = Math.min(E.W[L], E.W[(L + 1) % E.n], E.W[(L + E.n - 1) % E.n]) - rad - 0.05, hi = Math.max(E.W[L], E.W[(L + 1) % E.n], E.W[(L + E.n - 1) % E.n]) - rad + 1e-6;
+      worst = Math.max(worst, r < lo ? lo - r : r > hi ? r - hi : 0);
       gain = Math.max(gain, E.bossGain(Math.cos(a) * 30, Math.sin(a) * 30));
     }
-    const far = hero(0, 55);
-    assert(worst < 1e-6 && gain === 0 && near(Math.hypot(far.x, far.z), base - rad, 1e-6), `the wall standing: the hero is held on the ${base} m circle in every direction (off by ${worst.toExponential(1)} m), a boss gains nothing, world.resolve(.., hero) is the old circle`);
+    const far = hero(0, 70);
+    assert(worst < 0.05 && gain === 0 && Math.hypot(far.x, far.z) <= E.heroAt(0, 70) - rad + 1e-6 && Math.hypot(far.x, far.z) > base + 10,
+      `straight out in 72 directions he reaches the ridge's backstop (off by ${worst.toFixed(3)} m) and no further (world.resolve(.., hero) from 70 m: ${Math.hypot(far.x, far.z).toFixed(1)} m); a boss gains nothing while he is in the clearing`);
 
-    // one tree of the first row comes down: its lanes open to the tree behind, the rest of the ring stays shut
+    // 2. the ridge closes the map: its first row of crags stands shoulder to shoulder (no gap a hero fits through)
+    const crags = D.list.filter((b) => b.kind === 'crag' && Math.abs(Math.hypot(b.x, b.z) - ridgeAt(Math.atan2(b.z, b.x)) - RIDGE.out) < 0.3);
+    crags.sort((p, q) => Math.atan2(p.z, p.x) - Math.atan2(q.z, q.x));
+    let gap = -Infinity;
+    for (let i = 0; i < crags.length; i++) {
+      const a = crags[i], b = crags[(i + 1) % crags.length], ca = a.colliders[0], cb = b.colliders[0];
+      gap = Math.max(gap, Math.hypot(ca.x - cb.x, ca.z - cb.z) - ca.r - cb.r);
+    }
+    assert(crags.length > 100 && gap < 2 * rad - 0.05 && crags.every((b) => b.state === STATE.INTACT && b.colliders.length === 1 && b.stubR > 0),
+      `the ridge: ${crags.length} crags in its first row, the widest gap between two ${gap.toFixed(2)} m (a hero is ${(2 * rad).toFixed(2)} m across); each breaks to rubble that still blocks`);
+
+    // 3. among the trees: random steps from 36 m out, never off his ground, never inside a trunk or a rock
+    {
+      const rng = mulberry32(77);
+      const p = { x: Math.cos(0.4) * 36, z: Math.sin(0.4) * 36 };
+      let offGround = 0, jump = 0, nan = 0, inside = 0, farthest = 0;
+      const solid = colliders.circles.slice();
+      for (let i = 0; i < 20000; i++) {
+        const a = rng() * Math.PI * 2, l = 0.05 + rng() * 0.3;
+        const tx = p.x + Math.cos(a) * l, tz = p.z + Math.sin(a) * l;
+        p.x = tx;
+        p.z = tz;
+        world.resolve(p, rad, base, false, 'hero');
+        if (!Number.isFinite(p.x + p.z)) nan++;
+        const r = Math.hypot(p.x, p.z);
+        farthest = Math.max(farthest, r);
+        if (r > E.heroAt(p.x, p.z) - rad + 1e-4) offGround++;
+        jump = Math.max(jump, Math.hypot(p.x - tx, p.z - tz));
+        if (i % 50 === 0) for (const c of solid) if (Math.hypot(c.x - p.x, c.z - p.z) < c.r * 0.85 + rad - 1e-3) inside++;
+      }
+      assert(!nan && !offGround && !inside && jump < 1.2 && farthest > base + 2, `20000 random steps among the trees: never off his ground, never inside a trunk or a rock, pushed back ${jump.toFixed(2)} m at most in a step (reached ${farthest.toFixed(1)} m)`);
+    }
+
+    // 4. the boss follows him out: its gain is how far past the line he stands + lead, at once, capped
+    // short of the ridge; when he comes back in it falls at `ease` m/s
+    at(40, 0);
+    const want = Math.min(40 - base + WK.lead, E.heroAt(40, 0) - base - WK.bossIn);
+    const gOut = E.bossGain(30, 0), gFar = E.bossGain(-30, 0);
+    assert(E.out && E.open && E.version >= 1 && near(gOut, want, 0.05) && gFar > 0, `he stands 40 m out: the edge is open, the boss may follow ${gOut.toFixed(1)} m past its bound (${want.toFixed(1)}: ${WK.lead} m past him, at least ${WK.bossIn} m short of the ridge)`);
+    at(60, 0);
+    assert(E.bossGain(30, 0) <= E.heroAt(30, 0) - base - WK.bossIn + 1e-6, `... never into the ridge: ${E.bossGain(30, 0).toFixed(1)} m at most (${WK.bossIn} m short of its end)`);
+    const f0 = E.follow;
+    at(0, 8);
+    for (let k = 0; k < 60; k++) E.update(1 / 60);
+    const f1 = E.follow;
+    for (let k = 0; k < 1200; k++) E.update(1 / 60);
+    assert(!E.out && near(f0 - f1, WK.ease * (61 / 60), 0.1) && E.follow === 0 && E.bossGain(30, 0) === 0 && !E.open, `back in the clearing: its follow falls ${(f0 - f1).toFixed(1)} m in a second (${WK.ease} m/s), then nothing; the edge is shut again`);
+
+    // 5. the fallen wall is the boss's: a first-row tree down opens its lanes to the boss only (no world:edge)
     const lanesOf = (b) => E._lanes.map((l, i) => (l.length && l[0].b === b ? i : -1)).filter((i) => i >= 0);
     const first = D.list.filter((b) => b.def.edge > 0 && Math.hypot(b.x, b.z) < 34 && lanesOf(b).length >= 2 && lanesOf(b).every((i) => E._lanes[i].length > 1 && E._F0[i] < base + X.seal))[0];
-    const mine = lanesOf(first), fr = Math.hypot(first.x, first.z);
+    const mine = lanesOf(first);
+    const edges0 = log.filter((e) => e.n === 'world:edge').length;
     D.strike(first.x, first.z, 0.5, 20, { kind: BLOW.BLUNT, by: 'boss', src: D.swing() });
-    E.refresh();
-    assert(first.state === STATE.FALLING && !E.open, 'while a tree of the wall is falling its lanes stay shut (it opens the ground once it is down)');
     step(2.5);
-    const opened = [];
-    for (let i = 0; i < E.n; i++) if (E.R[i] > base + 1e-3) opened.push(i);
-    const behind = mine.map((i) => E._lanes[i].find((p) => p.b.state === STATE.INTACT || p.b.state === STATE.FALLING)); // (a tree it fell on may be falling: it closes its lane until it is down)
-    assert(first.state === STATE.BROKEN && E.open && E.version >= 1 && mine.every((i) => opened.includes(i)) && mine.every((i, k) => near(E.R[i], Math.min(E.outer, behind[k] ? behind[k].at : E.outer), 1e-3)),
-      `a first-row tree (${fr.toFixed(1)} m) down: its ${mine.length} lanes end ${X.margin} m short of the next tree standing behind (${mine.map((i) => E.R[i].toFixed(1)).join(', ')} m), read within ${X.every} s`);
-    assert(opened.length <= mine.length + 6, `... and only there: ${opened.length} of ${E.n} lanes moved (a sealed lane with a tree at the line does not give way: the ring does not shift at the first breach)`);
-    const midLane = mine[Math.floor(mine.length / 2)], mid = E.laneAngle(midLane);
-    const out1 = walk(mid), shut = walk(mid + Math.PI);
-    assert(near(out1, E.R[midLane] - rad, 0.05) && near(shut, base - rad, 1e-6), `the hero walks out through it to ${out1.toFixed(2)} m and no further; on the far side of the ring he is still held at ${shut.toFixed(2)} m`);
-
-    // a wide gap torn 20 m deep: the hero has all of it, the wyrm's root a share that grows with its width
+    const W0 = E.W.slice();
+    assert(first.state === STATE.BROKEN && E.open && mine.every((i) => E.T[i] > base + 1e-3) && E.R.every((v, i) => v === W0[i]) && log.filter((e) => e.n === 'world:edge').length === edges0,
+      `a first-row tree down: its ${mine.length} lanes open for the boss (${mine.map((i) => E.T[i].toFixed(1)).join(', ')} m); the hero's ground does not move and no world:edge`);
     const a0 = Math.atan2(first.z, first.x);
     const wedge = D.list.filter((b) => b.def.edge > 0 && b.state === STATE.INTACT && off(b, a0) < 0.3 && Math.hypot(b.x, b.z) < 52);
     for (const b of wedge) D.topple(b, b.x / Math.hypot(b.x, b.z), b.z / Math.hypot(b.x, b.z), 'world');
     step(3);
-    const c = E.lane(Math.cos(a0), Math.sin(a0));
-    const deep = walk(a0), g0 = E.bossGain(Math.cos(a0) * 40, Math.sin(a0) * 40), gSide = E.bossGain(Math.cos(a0 + 0.3) * 40, Math.sin(a0 + 0.3) * 40);
-    let steep = 0, over = 0;
-    for (let i = 0; i < E.n; i++) {
-      steep = Math.max(steep, Math.abs(E.G[i] - E.G[(i + 1) % E.n]));
-      over = Math.max(over, E.G[i] - (E.R[i] - base));
-    }
-    assert(wedge.length >= 15 && deep > base + 12 && deep <= E.R[c] - rad + 1e-6, `${wedge.length} trees felled in a wedge 0.6 rad wide: the hero walks out to ${deep.toFixed(1)} m (the lane ends at ${E.R[c].toFixed(1)})`);
-    assert(g0 > 4 && g0 <= E.R[c] - base + 1e-6 && gSide < g0 && over < 1e-6 && steep <= X.slope * E.step * base + 1e-6,
-      `the wyrm's root may follow ${g0.toFixed(1)} m into the middle of it, ${gSide.toFixed(1)} m at its side, never further than the hero's ground, its share never steeper than ${X.slope} m per m along the ring (${steep.toFixed(2)} m a lane)`);
+    const gm = E.bossGain(Math.cos(a0) * 40, Math.sin(a0) * 40), gs = E.bossGain(Math.cos(a0 + 0.3) * 40, Math.sin(a0 + 0.3) * 40);
+    assert(wedge.length >= 15 && gm > 4 && gm <= E.heroAt(Math.cos(a0), Math.sin(a0)) - base - WK.bossIn + 1e-6 && gs < gm,
+      `${wedge.length} trees felled in a wedge: with the hero in the clearing the boss may go ${gm.toFixed(1)} m into the middle of it, ${gs.toFixed(1)} m at its side, never into the ridge`);
 
-    // a hero thrown about inside it: never off his ground, never among the standing trees, no leap
-    const rng = mulberry32(77);
-    const p = { x: Math.cos(a0) * 36, z: Math.sin(a0) * 36 };
-    let offGround = 0, jump = 0, nan = 0, inTree = 0, farthest = 0;
-    const standing = D.list.filter((b) => b.def.edge > 0 && b.state === STATE.INTACT);
-    for (let i = 0; i < 20000; i++) {
-      const a = rng() * Math.PI * 2, l = 0.05 + rng() * 0.3;
-      const tx = p.x + Math.cos(a) * l, tz = p.z + Math.sin(a) * l;
-      p.x = tx;
-      p.z = tz;
-      world.resolve(p, rad, base, false, 'hero');
-      if (!Number.isFinite(p.x + p.z)) nan++;
-      const r = Math.hypot(p.x, p.z);
-      farthest = Math.max(farthest, r);
-      if (r > E.heroAt(p.x, p.z) - rad + 1e-4) offGround++;
-      jump = Math.max(jump, Math.hypot(p.x - tx, p.z - tz));
-      if (i % 50 === 0) for (const b of standing) if (Math.hypot(b.x - p.x, b.z - p.z) < 0.45 * 0.85 + rad - 1e-3) inTree++;
-    }
-    assert(!nan && !offGround && !inTree && jump < 1.2 && farthest > base + 4, `20000 random steps from inside the gap: never off his ground, never inside a standing trunk, pushed back ${jump.toFixed(2)} m at most in a step (reached ${farthest.toFixed(1)} m)`);
-    // a step sideways out of a deep lane puts him back in the lane, not at the old circle
-    let edgeLane = -1;
-    for (let k = 1; k < 20 && edgeLane < 0; k++) if (E.R[(c + k) % E.n] < E.R[(c + k - 1) % E.n] - 6) edgeLane = (c + k) % E.n;
-    const sa = E.laneAngle(edgeLane) - E.step * 0.3, sr = E.R[(edgeLane + E.n - 1) % E.n] - 3;
-    const sp = hero(Math.cos(sa) * sr, Math.sin(sa) * sr);
-    assert(edgeLane >= 0 && Math.hypot(sp.x, sp.z) > sr - 0.5 && E.lane(sp.x, sp.z) !== edgeLane, `a step into the standing wall at the gap's side (${sr.toFixed(1)} m out) is pushed back into the gap (${Math.hypot(sp.x, sp.z).toFixed(1)} m out), not dragged in to the old circle`);
-
-    // a tree at the gap's side falling into it is a red blow again (the hero can stand there now)
-    const side = standing.filter((b) => off(b, a0) > 0.31 && off(b, a0) < 0.5 && Math.hypot(b.x, b.z) > 36 && Math.hypot(b.x, b.z) < 44 && b.topples && b.h > 6 && !(b.leanTo > 0)).sort((p, q) => off(p, a0) - off(q, a0))[0]; // (not one already leaning: it goes the way it leans)
-    const gx = Math.cos(a0) * Math.hypot(side.x, side.z), gz = Math.sin(a0) * Math.hypot(side.x, side.z);
+    // 6. a falling tree warns only where it can land on him: quiet in the forest while he is in the
+    // clearing; out there, one that falls toward him is a red blow
+    const standing = D.list.filter((b) => b.def.edge > 0 && b.state === STATE.INTACT && b.topples && b.h > 6 && !(b.leanTo > 0));
+    const t1 = standing.filter((b) => off(b, a0 + Math.PI) < 0.4 && Math.hypot(b.x, b.z) > 40)[0];
+    D.topple(t1, t1.x, t1.z, 'boss');
+    const t2 = standing.filter((b) => b !== t1 && off(b, a0 + Math.PI / 2) < 0.4 && Math.hypot(b.x, b.z) > 38 && Math.hypot(b.x, b.z) < 44)[0];
+    const hx = t2.x * 0.92 + Math.cos(a0 + Math.PI / 2) * 0, hz = t2.z * 0.92;
+    at(hx, hz);
     const tells0 = log.filter((e) => e.n === 'combat:tell').length;
-    D.topple(side, gx - side.x, gz - side.z, 'boss');
+    D.topple(t2, hx - t2.x, hz - t2.z, 'boss');
     step(0.2);
-    const farTree = standing.filter((b) => off(b, a0 + Math.PI) < 0.4 && Math.hypot(b.x, b.z) > 42 && b.topples)[0];
-    D.topple(farTree, farTree.x, farTree.z, 'boss');
-    assert(side.state === STATE.FALLING && !side.quiet && log.filter((e) => e.n === 'combat:tell').length > tells0 && farTree.quiet, 'a tree beside the gap that falls across it tells red (it can land on him there); one falling outward on the far side of the ring still tells nothing');
+    assert(t1.quiet && t2.state === STATE.FALLING && !t2.quiet && log.filter((e) => e.n === 'combat:tell').length > tells0,
+      'a tree falling outward deep in the forest while he is in the clearing tells nothing; out among the trees, one falling toward him tells red');
     step(3);
 
-    // the reset
+    // the reset: the boss's lanes shut, the hero's ground is still the forest, the trunks are back
+    at(0, 8);
     const n1 = colliders.circles.length;
     D.reset();
-    const back = hero(Math.cos(a0) * 50, Math.sin(a0) * 50);
-    assert(!E.open && E.R.every((v) => v === base) && E.G.every((v) => v === 0) && near(Math.hypot(back.x, back.z), base - rad, 1e-6) && colliders.circles.length >= n1, 'the reset: every lane is shut again at once, a hero out there is back on the circle, the trunks are back');
+    for (let k = 0; k < 600; k++) E.update(1 / 60);
+    const back = hero(Math.cos(a0) * 70, Math.sin(a0) * 70);
+    assert(!E.open && E.T.every((v) => v === base) && E.G.every((v) => v === 0) && E.R.every((v, i) => v === E.W[i]) && Math.hypot(back.x, back.z) > base + 10 && colliders.circles.length >= n1,
+      'the reset: the fallen wall stands again (the boss lanes shut), his ground is still the forest to the ridge, the trunks are back');
 
     // a set without a wall that opens: no edge, the circle as before
     const C = build(createCourtyard);
