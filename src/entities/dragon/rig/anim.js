@@ -343,8 +343,26 @@ const HEAD_ROLL_REST = 0.6; // resting, the head turns this much of it on the ne
 const HEAD_YAW_MAX = 2.35;
 const HEAD_PITCH_MAX = 1.3;
 const HEAD_STEEP = [1.05, 1.4];
+const HEAD_SIDE_SWAP = 0.6; // c: rad past straight back a foe must be before the head swaps shoulders
 /** The head's nose-up limit (rad), and the look point's own pitch from which it rises to the third. */
 const HEAD_LOOK_UP = [0.6, 0.9, 1.2];
+/**
+ * ?neck= (ADR-200; read once): how the head is held and where it may look.
+ *   c (default)  the head upright against its own body (the chest's up) in every move, the level
+ *                correction unwrapped and rate-limited, the neck twisting with it; it looks where its
+ *                move points it (only a look point nearly overhead keeps the chest's heading)
+ *   b            the first pass: upright against the sky, the look held within 135° of the chest and
+ *                its heading kept while the look point is under or over it (the owner: "the head got
+ *                worse when flying and when it does a ground perfect parry attack": it rolled against
+ *                the banking body and looked the wrong way)
+ *   0            as before ADR-200 (level at rest only, no turn limit on exact strikes, the shown neck
+ *                free to miss its head)
+ * The shown-neck catch-up (SWING_MISS) and the exact strikes' turn limit are in c and b.
+ */
+const NECK_MODE = (() => {
+  const v = String(new URLSearchParams(globalThis.location?.search ?? '').get('neck') ?? '').toLowerCase();
+  return v === '0' || v === 'b' ? v : 'c';
+})();
 /** Fastest the head's aim may turn (rad/s) when no hit sphere rides on it (see _updateNeck). */
 const HEAD_AIM_RATE = 11;
 /** ... and when a hit sphere rides on it (pose.headExact). */
@@ -862,7 +880,7 @@ export class Rig {
         // at the measured end (a head apart from its neck for a frame or two; ADR-200). The further it
         // misses, the more it takes the measured shape, which always reaches
         const miss = vis.p[n].distanceTo(E);
-        if (miss > SWING_MISS[0] * S) {
+        if (NECK_MODE !== '0' && miss > SWING_MISS[0] * S) {
           const w = clamp((miss - SWING_MISS[0] * S) / ((SWING_MISS[1] - SWING_MISS[0]) * S), 0, 1);
           for (let i = 1; i <= n; i++) vis.p[i].lerp(neck.p[i], w);
           vis.enforce();
@@ -888,7 +906,33 @@ export class Rig {
     // straight above or below (the hero under a wheeling flight, the meteors' sky overhead) has no
     // heading worth following, so the last one holds. (The head looked ~180° back over its own spine
     // and, as a target passed under or overhead, swung its heading round in a few frames.)
-    {
+    if (NECK_MODE === 'c') {
+      // (c: it looks where its move points it, over a shoulder at most HEAD_YAW_MAX: a foe straight
+      // behind is watched over the shoulder it was on, and once he is clearly round the other side
+      // (HEAD_SIDE_SWAP past straight back) it looks over that one. A look point nearly straight
+      // overhead has no heading, so it takes the chest's: the meteors' look 40 m up but just behind the
+      // snout turned the head round over its spine. One below it keeps its own: the first pass held the
+      // last heading there, and a flight's head looked away from the hero under it)
+      const c = this._v[8].copy(dir).applyQuaternion(this._qChestInv);
+      const pitch = Math.atan2(c.y, Math.hypot(c.x, c.z));
+      let yaw = Math.atan2(c.x, c.z);
+      const k = clamp((pitch - HEAD_STEEP[0]) / (HEAD_STEEP[1] - HEAD_STEEP[0]), 0, 1);
+      yaw *= 1 - k;
+      if (Math.abs(yaw) > HEAD_YAW_MAX) {
+        const live = !snap && this._hYawAt === this._frame - 1;
+        const side = live && Math.abs(this._hYaw) > 0.3 && Math.abs(yaw) > Math.PI - HEAD_SIDE_SWAP ? Math.sign(this._hYaw) : Math.sign(yaw);
+        yaw = side * HEAD_YAW_MAX;
+      }
+      if (Number.isFinite(yaw + pitch)) {
+        const moved = Math.abs(angleDiff(yaw, Math.atan2(c.x, c.z))) > 1e-4;
+        this._hYaw = yaw;
+        this._hYawAt = this._frame;
+        if (moved) {
+          const cp = Math.cos(pitch);
+          dir.set(Math.sin(yaw) * cp, Math.sin(pitch), Math.cos(yaw) * cp).applyQuaternion(qChest);
+        }
+      }
+    } else if (NECK_MODE === 'b') {
       const c = this._v[8].copy(dir).applyQuaternion(this._qChestInv);
       let yaw = Math.atan2(c.x, c.z), pitch = Math.atan2(c.y, Math.hypot(c.x, c.z));
       if (!snap && this._hYawAt === this._frame - 1) {
@@ -919,7 +963,7 @@ export class Rig {
       // the sky; ADR-200. Its look 40 m up but behind the snout used to swing the head round to face
       // backward, which is what lifted it; a forward head holds the roar now)
       const raw = Math.atan2(dir.y, h);
-      const up = HEAD_LOOK_UP[0] + clamp((raw - HEAD_LOOK_UP[1]) / (HEAD_LOOK_UP[2] - HEAD_LOOK_UP[1]), 0, 1) * (HEAD_LOOK_UP[2] - HEAD_LOOK_UP[0]);
+      const up = NECK_MODE === '0' ? HEAD_LOOK_UP[0] : HEAD_LOOK_UP[0] + clamp((raw - HEAD_LOOK_UP[1]) / (HEAD_LOOK_UP[2] - HEAD_LOOK_UP[1]), 0, 1) * (HEAD_LOOK_UP[2] - HEAD_LOOK_UP[0]);
       const pitch = clamp(raw, -ld, up) - dip;
       const cp = Math.cos(pitch) / h;
       dir.set(dir.x * cp, Math.sin(pitch), dir.z * cp);
@@ -941,7 +985,7 @@ export class Rig {
     const hd = this._headDir;
     // (exact, still at most HEAD_EXACT_RATE: a bite's first frame turned the head alone 75° as its
     // look jumped onto the hero; two frames now, the snout on its mark from the next; ADR-200)
-    if (!snap && hd.lengthSq() > 0.5) constrainDir(dir, hd, (pose.headExact ? HEAD_EXACT_RATE : HEAD_AIM_RATE) * dt);
+    if (!snap && hd.lengthSq() > 0.5 && !(pose.headExact && NECK_MODE === '0')) constrainDir(dir, hd, (pose.headExact ? HEAD_EXACT_RATE : HEAD_AIM_RATE) * dt);
     hd.copy(dir);
     aimJoint(m.head, dir, qEnd, this._qHead);
     // the head is held level about its own snout (the brow up, toward the sky and a little toward the
@@ -953,17 +997,35 @@ export class Rig {
     // its joints (each turns about its own bone: no point moves), so the head never twists on the
     // neck's end. The angle is unwrapped against last frame's: a head ~180° off level swapped between
     // +180 and -180 and spun the neck's joints 50° a frame
-    const lv0 = awakeW * (1 - limp);
+    // (c: 'up' is the chest's own, the sky's only at rest, where the chest stands level: a flying body
+    // banks and the head banks with it, a recoiling one rears and the head rears with it; b: the sky's)
+    const lv0 = NECK_MODE === '0' ? s.rest * awakeW * (1 - limp) : awakeW * (1 - limp);
     let leveled = false;
-    if (lv0 > 1e-3) {
+    if (NECK_MODE === '0' && lv0 > 1e-3) {
+      // (as before ADR-200: resting only, the sky's level, the head alone)
       const ax = this._v[3].set(1, 0, 0).applyQuaternion(this._qHead);
-      const up = this._v[6].set(0, 1, 0).applyQuaternion(qChest).multiplyScalar(HEAD_LEVEL_BODY).add(UP);
-      // (along the heading the head holds in the chest's frame, which a look point under or over it
-      // does not swing round: the chest's forward leaned a head glancing back and down against the sky,
-      // and the snout's own heading spun as a wheeling flight's snout pointed down past its foe)
-      const hdg = this._v[7].set(Math.sin(this._hYaw), 0, Math.cos(this._hYaw)).applyQuaternion(qChest);
-      hdg.y = 0;
-      if (hdg.lengthSq() > 1e-8) up.addScaledVector(hdg.normalize(), -dir.y * HEAD_LEVEL_DIVE);
+      const lvl = this._v[4].crossVectors(UP, dir);
+      if (lvl.lengthSq() > 1e-4) {
+        lvl.normalize();
+        const ang = Math.atan2(this._v[5].crossVectors(ax, lvl).dot(dir), ax.dot(lvl));
+        if (Number.isFinite(ang)) {
+          this._qHead.premultiply(this._q[8].setFromAxisAngle(dir, ang * lv0));
+          leveled = true;
+        }
+      }
+    } else if (lv0 > 1e-3) {
+      const ax = this._v[3].set(1, 0, 0).applyQuaternion(this._qHead);
+      const up = this._v[6].set(0, 1, 0).applyQuaternion(qChest);
+      if (NECK_MODE === 'c') up.multiplyScalar(1 - s.rest).addScaledVector(UP, s.rest);
+      else {
+        up.multiplyScalar(HEAD_LEVEL_BODY).add(UP);
+        // (along the heading the head holds in the chest's frame, which a look point under or over it
+        // does not swing round: the chest's forward leaned a head glancing back and down against the
+        // sky, and the snout's own heading spun as a wheeling flight's snout pointed down past its foe)
+        const hdg = this._v[7].set(Math.sin(this._hYaw), 0, Math.cos(this._hYaw)).applyQuaternion(qChest);
+        hdg.y = 0;
+        if (hdg.lengthSq() > 1e-8) up.addScaledVector(hdg.normalize(), -dir.y * HEAD_LEVEL_DIVE);
+      }
       const lvl = this._v[4].crossVectors(up, dir);
       const ul = up.length(), ll = lvl.length();
       const live = !snap && this._lvAt === this._frame - 1;
