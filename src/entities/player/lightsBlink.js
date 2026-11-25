@@ -1,10 +1,10 @@
-// The striker chain's hits 1-4 (`?lights=striker`, combat.js LIGHT_STRIKER; the owner, 2026-11-25:
+// The striker chain's hits 1-4 (`?lights=blink`, combat.js LIGHT_BLINK; the owner, 2026-11-25:
 // "a fierce skilled striker instead of looking like hes doing acrobatics", no twirls). Hits 1-2 are
 // PRECISE: a tighter gather, the same cut through the target, and a follow-through snapped short and
 // held (the blade stops where a trained hand stops it). Hits 3-4 are BRUTAL: planted, the hips driving,
 // carried far. No spin and no hop anywhere. Built from the weighted chain's clips (swings.js), one rule
 // per style; the clip format is swings.js's header. Spread into SWINGS.
-export const LIGHTS_STRIKER = {
+export const LIGHTS_BLINK = {
   /** precise falling cut (hit 1): high right across the chest to past the left hip, snapped to a stop */
   strikeFalling: {
     line: 'right', gather: [0.55, 0.9], lF: [0.15, 0.52], rF: [-0.17, -0.46], fy: [0.15, -0.75], drag: 0.16, home: 0.3, step: [0.1, 1.3],

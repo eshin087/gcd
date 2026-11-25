@@ -1313,9 +1313,9 @@ export class Lab {
       return { m, el: b };
     });
     // the striker chain's finisher (player/finishers.js, ?finisher=lance|cross|talisman|flash: four for the
-    // owner to pick from; hit 5 of ?lights=striker, with its spell, finisherFx.js), live from the next finisher
+    // owner to pick from; hit 5 of ?lights=blink, with its spell, finisherFx.js), live from the next finisher
     const fir = el('div', 'lab-row', null, body);
-    el('span', 'lab-lbl', 'finisher', fir).title = "the striker chain's finisher (?lights=striker): a lance of light, a crossing X, a talisman, a flash cut (?finisher=)";
+    el('span', 'lab-lbl', 'finisher', fir).title = "the striker chain's finisher (?lights=blink): a lance of light, a crossing X, a talisman, a flash cut (?finisher=)";
     const fiGrid = el('div', 'lab-grid', null, fir);
     fiGrid.style.flex = '1';
     this.ui.finisherBtns = FINISHER_IDS.map((m) => {

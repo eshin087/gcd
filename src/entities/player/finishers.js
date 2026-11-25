@@ -1,4 +1,4 @@
-// The striker chain's finisher (hit 5 of `?lights=striker`, combat.js LIGHT_STRIKER): four ideas for
+// The striker chain's finisher (hit 5 of `?lights=blink`, combat.js LIGHT_BLINK): four ideas for
 // the owner to pick from, `?finisher=lance|cross|talisman|flash` (the Lab's PLAYER → `finisher` row).
 // Data only (no imports): combat.js reads the pick's anim block, swings.js spreads the clips into
 // SWINGS, finisherFx.js draws the spell (and gives it its little extra reach: it hits ~1 m past the
@@ -19,7 +19,7 @@
 export const FINISHER_IDS = Object.freeze(['lance', 'cross', 'talisman', 'flash']);
 export const FINISHER_NAMES = Object.freeze({ lance: 'sword-qi lance', cross: 'crossing X', talisman: 'talisman strike', flash: 'flash cut' });
 
-/** The anim block hit 5 plays for each pick (combat.js LIGHT_STRIKER[4].anim): planted, no hop, no spin. */
+/** The anim block hit 5 plays for each pick (combat.js LIGHT_BLINK[4].anim): planted, no hop, no spin. */
 export const FINISHER_ANIMS = Object.freeze({
   lance: Object.freeze({ kind: 'clip', clip: 'finLance' }),
   cross: Object.freeze({ kind: 'clip', clip: 'finCross' }),

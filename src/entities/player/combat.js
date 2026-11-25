@@ -136,11 +136,11 @@ export const LIGHT = [
  * it shared with the flurry, One Breath and Earthbreaker); only LIGHT's `anim` / `variants` change, so
  * every hit's timing, damage, reach, tells and its heavy branch are the same in both. The animator
  * reads them as each hit starts (anim.js _pickVariant). Two more to compare while the owner picks:
- * `?lights=fresh` (lightsFresh.js) and `?lights=striker` (lightsStriker.js, hit 5 from finishers.js,
- * `?finisher=lance|cross|talisman|flash`; the striker finishers' spell replaces the slam's shards).
+ * `?lights=fresh` (lightsFresh.js) and `?lights=blink` (lightsBlink.js, hit 5 from finishers.js,
+ * `?finisher=lance|cross|talisman|flash`; the blink chain's finisher spell replaces the slam's shards).
  */
-export const LIGHTS_IDS = ['new', 'old', 'fresh', 'striker'];
-export const LIGHTS_NAMES = { new: 'weighted', old: 'before', fresh: 'brand new', striker: 'striker' };
+export const LIGHTS_IDS = ['new', 'old', 'fresh', 'blink'];
+export const LIGHTS_NAMES = { new: 'weighted', old: 'before', fresh: 'brand new', blink: 'instant cuts' };
 const LIGHT_OLD = [
   {
     anim: { kind: 'clip', clip: 'fallingCutOld' },
@@ -169,11 +169,11 @@ const LIGHT_FRESH = [
   { anim: { kind: 'clip', clip: 'freshSwallowThrust', spin: 1, spinFeet: 'hop' }, variants: [{ kind: 'clip', clip: 'freshTwoStepThrust', hop: 0.08, tuck: 0.6 }] },
   { anim: { kind: 'clip', clip: 'freshSplitter', hop: 0.18, tuck: 1.1 }, variants: [] },
 ];
-/** `?lights=striker` (the owner, 2026-11-25: "a fierce skilled striker instead of ... acrobatics", no
+/** `?lights=blink` (the owner, 2026-11-25: "a fierce skilled striker instead of ... acrobatics", no
  *  twirls, a finisher that is a spell and looks nothing like the heavy slam): hits 1-2 precise, tight
- *  cuts that snap to a stop, hits 3-4 planted, brutal blows (lightsStriker.js), and hit 5 the finisher
+ *  cuts that snap to a stop, hits 3-4 planted, brutal blows (lightsBlink.js), and hit 5 the finisher
  *  picked in finishers.js (`?finisher=`). No spin and no hop anywhere. */
-const LIGHT_STRIKER = [
+const LIGHT_BLINK = [
   { anim: { kind: 'clip', clip: 'strikeFalling' }, variants: [{ kind: 'clip', clip: 'strikeDraw', turn: 0.3 }, { kind: 'clip', clip: 'strikeRising' }] },
   { anim: { kind: 'clip', clip: 'strikeBackhand' }, variants: [{ kind: 'clip', clip: 'strikeFlatBack', turn: -0.4 }, { kind: 'clip', clip: 'strikeFallingBack' }] },
   { anim: { kind: 'clip', clip: 'strikeCleave', turn: 0.35 }, variants: [{ kind: 'clip', clip: 'strikeHew' }, { kind: 'clip', clip: 'strikeLowCut' }] },
@@ -187,8 +187,8 @@ export const lightsMode = () => lightsNow;
 /** Switch the chain's look ('new' | 'old' | 'fresh'); false for anything else. */
 export function setLights(mode) {
   if (!LIGHTS_IDS.includes(mode)) return false;
-  if (mode === 'striker') LIGHT_STRIKER[4].anim = FINISHER_ANIMS[finisherId()];
-  const src = mode === 'old' ? LIGHT_OLD : mode === 'fresh' ? LIGHT_FRESH : mode === 'striker' ? LIGHT_STRIKER : LIGHT_NEW;
+  if (mode === 'blink') LIGHT_BLINK[4].anim = FINISHER_ANIMS[finisherId()];
+  const src = mode === 'old' ? LIGHT_OLD : mode === 'fresh' ? LIGHT_FRESH : mode === 'blink' ? LIGHT_BLINK : LIGHT_NEW;
   LIGHT.forEach((L, i) => {
     L.anim = src[i].anim;
     L.variants = src[i].variants;
@@ -198,14 +198,14 @@ export function setLights(mode) {
 }
 {
   const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('lights') : null;
-  if (q === 'old' || q === 'fresh' || q === 'striker') setLights(q);
+  if (q === 'old' || q === 'fresh' || q === 'blink') setLights(q);
 }
-/** Pick the striker chain's finisher (finishers.js; the Lab, the film rig): re-points hit 5 when the
- *  striker chain is on. False for an unknown id. */
+/** Pick the blink chain's finisher (finishers.js; the Lab, the film rig): re-points hit 5 when the
+ *  blink chain is on. False for an unknown id. */
 export function setFinisherLook(id) {
   if (!pickFinisher(id)) return false;
-  LIGHT_STRIKER[4].anim = FINISHER_ANIMS[finisherId()];
-  if (lightsNow === 'striker') LIGHT[4].anim = LIGHT_STRIKER[4].anim;
+  LIGHT_BLINK[4].anim = FINISHER_ANIMS[finisherId()];
+  if (lightsNow === 'blink') LIGHT[4].anim = LIGHT_BLINK[4].anim;
   return true;
 }
 

@@ -7683,8 +7683,8 @@ async function scenarioHeroLights() {
   setLights('old');
   const sigOld = sig(), clipsOld = clipsOf();
   setLights('new');
-  assert(sigNew === sigOld && LIGHTS_IDS.join() === 'new,old,fresh,striker' && lightsMode() === 'new' && !setLights('x') && lightsMode() === 'new',
-    'the chain\'s looks switch (setLights new / old / fresh / striker) and nothing else: every hit\'s timing, damage, reach, tells and weight are the same in both');
+  assert(sigNew === sigOld && LIGHTS_IDS.join() === 'new,old,fresh,blink' && lightsMode() === 'new' && !setLights('x') && lightsMode() === 'new',
+    'the chain\'s looks switch (setLights new / old / fresh / blink) and nothing else: every hit\'s timing, damage, reach, tells and weight are the same in both');
   assert(clipsOld.every((c) => SWINGS[c]) && clipsNew.every((c) => SWINGS[c]) && clipsOld.every((c, i) => c !== clipsNew[i]) && clipsOld.includes('drawCut') && clipsOld.includes('slam'),
     `?lights=old plays the clips before the pass (${[...new Set(clipsOld)].join(', ')}), the default the reworked ones (${[...new Set(clipsNew)].join(', ')})`);
   {
@@ -7701,7 +7701,7 @@ async function scenarioHeroLights() {
     G.tick(DT);
     input.tap('F1');
     G.tick(DT);
-    assert(btns.length === 4 && newOn && oldOk && lightsMode() === 'new' && LIGHT[0].anim.clip === 'fallingCut', `the Lab's \`lights\` row: weighted / before / brand new / striker, live (${btns.length} buttons)`);
+    assert(btns.length === 4 && newOn && oldOk && lightsMode() === 'new' && LIGHT[0].anim.clip === 'fallingCut', `the Lab's \`lights\` row: weighted / before / brand new / instant cuts, live (${btns.length} buttons)`);
   }
 
   // (2) the sampler: one frame in the root's frame (metres, unscaled), after a tick
@@ -10488,7 +10488,7 @@ async function scenarioHeroStance() {
 // The sword's layer (ADR-182): a tight green flame in the hero's own micro letters, on by default; off (?mystic=0) = today's
 // blade frame by frame; only its marks; its budgets; green; never a glow; grows by tier; nothing after death.
 // ================================================================== scenario: the striker's finisher spell
-// Hit 5 of ?lights=striker (player/finishers.js, ?finisher=lance|cross|talisman|flash) is a planted
+// Hit 5 of ?lights=blink (player/finishers.js, ?finisher=lance|cross|talisman|flash) is a planted
 // two-handed strike with a spell on it (player/finisherFx.js): nothing on today's chain; each spell
 // draws its own marks within budget, never a glow, and is gone within a second; it replaces the shard
 // burst; nothing after death; its own random stream. The spell's little extra reach: it lands a hit
@@ -10566,7 +10566,7 @@ async function scenarioFinisherFx() {
       assert(rec.marks === 0 && F.total === 0 && F.plays === 0 && F.strikes === 0 && F.lb === null && rec.slams === 1 && rec.shards === 1, `on today's chain no spell is drawn or built and the slam bursts its shards as before (${rec.marks} marks, ${F.strikes} strikes, ${rec.shards} shard bursts)`);
     }
     // (3) each finisher's spell
-    CB.setLights('striker');
+    CB.setLights('blink');
     const rows = [];
     for (const id of FN.FINISHER_IDS) {
       CB.setFinisherLook(id);
@@ -10633,13 +10633,13 @@ async function scenarioFinisherFx() {
         let gb = -1;
         const scan = [];
         for (let gap = 0.5; gap <= 4.01; gap += 0.25) {
-          const h = trial('striker', gap);
+          const h = trial('blink', gap);
           scan.push(`${gap}:${h.join('+') || '-'}`);
           if (h.includes('blade')) gb = gap;
         }
         out(`   ${id} scan (gap: hits) ${scan.join(' ')}`);
         const s0 = F.spellHits;
-        const near = trial('striker', gb + 0.75), s1 = F.spellHits, far = trial('striker', gb + 2.0), s2 = F.spellHits, today = trial('new', gb + 0.75);
+        const near = trial('blink', gb + 0.75), s1 = F.spellHits, far = trial('blink', gb + 2.0), s2 = F.spellHits, today = trial('new', gb + 0.75);
         res.push({ id, gb, near, far, today, sNear: s1 - s0, sFar: s2 - s1, sToday: F.spellHits - s2 });
       }
       out(`   reach: ${res.map((r) => `${r.id}: blade to ${r.gb.toFixed(2)} m; +0.75 m: ${r.near.join('+') || 'miss'}; +2 m: ${r.far.join('+') || 'miss'}; today's slam at +0.75 m: ${r.today.join('+') || 'miss'} (shards count as 'spell' here)`).join(' · ')}`);

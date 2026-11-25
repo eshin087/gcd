@@ -1,4 +1,4 @@
-// THE STRIKER'S FINISHER SPELL: the magic on hit 5 of `?lights=striker` (combat.js LIGHT_STRIKER[4]; the
+// THE STRIKER'S FINISHER SPELL: the magic on hit 5 of `?lights=blink` (combat.js LIGHT_BLINK[4]; the
 // four clips and the pick: finishers.js, `?finisher=lance|cross|talisman|flash`, the Lab's PLAYER →
 // `finisher` row through combat.js setFinisherLook). The owner (2026-11-25): "the finisher needs to be a
 // cool like spell effect that isn't overpowered but looks awesome to always see".
@@ -139,7 +139,7 @@ export class FinisherFx {
   /** The striker finisher this attack is, or null. */
   _which(a) {
     const P = this.player, d = a?.def;
-    if (!d || d !== LIGHT[4] || lightsMode() !== 'striker' || P.anim?.atkDef !== d) return null;
+    if (!d || d !== LIGHT[4] || lightsMode() !== 'blink' || P.anim?.atkDef !== d) return null;
     return finisherOfClip(P.anim?.atkAnim?.clip);
   }
 

@@ -92,7 +92,7 @@
 
 import { LIGHTS_OLD } from './lightsOld.js';
 import { LIGHTS_FRESH } from './lightsFresh.js';
-import { LIGHTS_STRIKER } from './lightsStriker.js';
+import { LIGHTS_BLINK } from './lightsBlink.js';
 import { FINISHER_CLIPS } from './finishers.js';
 
 /** The free hand's places (a key's `fh`; the key's own fields win): where it is (`l`), its elbow
@@ -631,7 +631,7 @@ export const SWINGS = {
   ...LIGHTS_OLD,
   // ---- a brand-new light chain to compare (?lights=fresh: combat.js setLights) ------------------
   ...LIGHTS_FRESH,
-  // ---- the striker chain (?lights=striker: lightsStriker.js) and its finishers (finishers.js) ----
-  ...LIGHTS_STRIKER,
+  // ---- the striker chain (?lights=blink: lightsBlink.js) and its finishers (finishers.js) ----
+  ...LIGHTS_BLINK,
   ...FINISHER_CLIPS,
 };
