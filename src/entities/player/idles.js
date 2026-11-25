@@ -23,7 +23,8 @@
 //
 // Pose space as stances.js: body axes (x his left, y up, z ahead); hand targets are offsets from each
 // shoulder. Every function here writes a pose (anim.js P) and never allocates or throws. Its randomness
-// is the animator's own noise (A.noise), never Math.random.
+// is the idles' own stream on the animator (A.idleNoise), never Math.random, never the animator's `noise` (which picks
+// an attack's look: an idle action drawing on it shifted the blows after it).
 import { TAU, clamp, lerp, smoothstep } from '../../core/math.js';
 // (function declarations: safe through the anim.js <-> idles.js import cycle, read at call time only)
 import { dirLerp, kf } from './anim.js';
@@ -303,7 +304,7 @@ function tickRest(S, list, dt, still, free, hold, move, noise) {
 export function tickRests(A, dt, pool, free) {
   const R = A.rests;
   if (!R) return;
-  const n = A.noise;
+  const n = A.idleNoise;
   tickRest(R.ease, EASE_RESTS, dt, pool === 1, free, IDLES.restHold, IDLES.restMove, n);
   tickRest(R.fight, FIGHT_RESTS, dt, pool === 2, free, IDLES.guardHold, IDLES.guardMove, n);
 }
@@ -624,13 +625,13 @@ export function toLowRest(A) {
   S.b = 0;
   S.u = 0;
   S.mem.ok = false;
-  S.hold = lerp(IDLES.restHold[0], IDLES.restHold[1], A.noise());
+  S.hold = lerp(IDLES.restHold[0], IDLES.restHold[1], A.idleNoise());
 }
 /** The next action at ease: a trick when one is due (F.trickDue), else a habit other than the last; one
  *  that swings the blade only from a low rest. A trick due in a high rest: -1, and the rest goes low
  *  first (the trick follows). List = anim.js EASE_LIST (with three of the older idle actions). */
 export function pickEase(F, list, A) {
-  const noise = A.noise, low = lowRest(A);
+  const noise = A.idleNoise, low = lowRest(A);
   const wantTrick = F.sinceTrick >= F.trickDue;
   if (wantTrick && !low) {
     toLowRest(A);

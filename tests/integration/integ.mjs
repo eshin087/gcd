@@ -7227,11 +7227,17 @@ async function scenarioHeroHand() {
     const lo = new THREE.Vector3(Infinity, Infinity, Infinity), hi = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
     const wait0 = A.fidget.wait;
     A.fidget.wait = 1e9;
+    // (ADR-186: the idles' rests held too, in the guard's open hand; `?idles=old`: the belt)
+    const IDL = await imp('src/entities/player/idles.js');
+    const oldIdles = IDL.idlesOld();
+    for (let i = 0; i < 400 && A.fidget.k >= 0; i++) G.tick(DT);
+    if (!oldIdles) A.setRest('hand', true, 1e9);
     go(1.2);
     go(2.4, () => { handC(v); lo.min(v); hi.max(v); });
     A.fidget.wait = wait0;
+    if (!oldIdles) A.rests.fight.hold = A.rests.ease.hold = 4;
     const rg = Math.max(hi.x - lo.x, hi.y - lo.y, hi.z - lo.z);
-    assert(rg >= 0.005 && A.fidget.k < 0 && H.open.visible && !H.fingers.visible, `at rest the hand on the belt breathes with him: ${(rg * 100).toFixed(1)} cm through 2.4 s (≥ 0.5 cm, chest frame; it rests on the waist, which moves with the chest)`);
+    assert(rg >= 0.005 && A.fidget.k < 0 && H.open.visible && !H.fingers.visible, `at rest the ${oldIdles ? 'hand on the belt' : "guard's open hand"} breathes with him: ${(rg * 100).toFixed(1)} cm through 2.4 s (≥ 0.5 cm, chest frame)`);
   }
   // (H12) a NaN in the free hand's channels never reaches the rig. update() resets a non-finite pose
   // to the guard before apply(), so the free hand's own guards are hit by calling apply() with a pose
@@ -7273,6 +7279,11 @@ async function scenarioHeroHand() {
     const wait0 = A.fidget.wait;
     for (let i = 0; i < 400 && A.fidget.k >= 0; i++) G.tick(D30);
     A.fidget.wait = 1e9;
+    // (ADR-186: the rests held too: a change of rest is the hand moving on purpose, not settling)
+    const restsWas = A.rests ? [A.rests.ease.hold, A.rests.fight.hold] : null;
+    if (A.rests) {
+      for (const S of [A.rests.ease, A.rests.fight]) Object.assign(S, { a: S.u < 1 ? S.b : S.a, u: 1, hold: 1e9 });
+    }
     const err = new THREE.Vector3(), errWas = new THREE.Vector3(), tgt = new THREE.Vector3(), tgtWas = new THREE.Vector3();
     let ok30 = false, rest = 0, restAt = '', chain = 0, chainAt = '', flips = 0, flipAt = '', frames30 = 0, idle = false;
     const step = (mode) => () => {
@@ -7304,6 +7315,7 @@ async function scenarioHeroHand() {
     go30(1.5, step('chain'));
     go30(1.5, step('rest'));
     A.fidget.wait = wait0;
+    if (restsWas) [A.rests.ease.hold, A.rests.fight.hold] = restsWas;
     out(`   30 fps: the wrist at rest ≤ ${restBefore.toFixed(2)}° / ${rest.toFixed(2)}° a frame (before / after a chain); through the chain ≤ ${chain.toFixed(0)}° a frame (${chainAt}), ${flips} spring flips in ${frames30} frames${flipAt ? ` (first ${flipAt})` : ''}`);
     assert(!idle && restBefore < 2 && rest < 2, `at 30 fps the wrist settles at rest: ≤ ${Math.max(restBefore, rest).toFixed(2)}° a frame (< 2°; ${restBefore >= rest ? restBeforeAt : restAt}; one spring step a frame flipped it ~30° every frame; no idle action ran: ${!idle})`);
     assert(frames30 > 100 && chain <= 40 && flips === 0, `at 30 fps through a chain the wrist turns ≤ ${chain.toFixed(0)}° a frame (≤ 40°) and never flips back and forth across a steady target (${flips} frames in ${frames30}${flipAt ? `, ${flipAt}` : ''})`);

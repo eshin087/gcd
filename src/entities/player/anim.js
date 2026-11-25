@@ -3377,7 +3377,7 @@ export class HeroAnimator {
         F.name = '';
         F.still = 0;
         const gap = F.pool === 1 ? IDLES.gapEase : F.pool === 2 ? IDLES.gapFight : IDLE_LIFE.gap;
-        F.wait = lerp(gap[0], gap[1], this.noise());
+        F.wait = lerp(gap[0], gap[1], F.pool ? this.idleNoise() : this.noise());
       }
       return;
     }
@@ -3413,8 +3413,9 @@ export class HeroAnimator {
         return;
       }
     } else {
-      k = Math.min(list.length - 1, Math.floor(this.noise() * list.length));
-      if (k === F.last) k = (k + 1 + Math.floor(this.noise() * (list.length - 1))) % list.length;
+      const nz = pool ? this.idleNoise : this.noise;
+      k = Math.min(list.length - 1, Math.floor(nz() * list.length));
+      if (k === F.last) k = (k + 1 + Math.floor(nz() * (list.length - 1))) % list.length;
     }
     F.k = F.last = k;
     F.pool = pool;
@@ -3425,6 +3426,14 @@ export class HeroAnimator {
     F.name = list[k].name;
     actStart();
   }
+
+  /** ADR-186's idles draw on a stream of their own: on the animator's (`noise`, which also picks an attack's
+   *  look, and an attack's swept blade is its hit test) an idle action in a fight shifted the looks of the
+   *  blows after it and with them a seeded duel's outcome. `?idles=old` keeps drawing on `noise`, as before. */
+  idleNoise = () => {
+    this._ins = (Math.imul(this._ins ?? 0x2545f491, 1664525) + 1013904223) >>> 0;
+    return this._ins / 4294967296;
+  };
 
   /** Lab / tests (ADR-186): play the idle action `name` now (from the list of the stance he stands in:
    *  at ease or the fight; ignored with `?idles=old` for a new one's name, and while he is not standing
