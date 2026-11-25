@@ -1,31 +1,41 @@
-// THE STRIKER'S FINISHER SPELL: the magic on hit 5 of `?lights=blink` (combat.js LIGHT_BLINK[4]; the
-// four clips and the pick: finishers.js, `?finisher=lance|cross|talisman|flash`, the Lab's PLAYER →
-// `finisher` row through combat.js setFinisherLook). The owner (2026-11-25): "the finisher needs to be a
-// cool like spell effect that isn't overpowered but looks awesome to always see".
-//   lance     as the thrust lands, a narrow lance of sword light shoots ~3.6 m on from the point, holds a
-//             beat and fades from the hilt end; a few flecks fly off its head
-//   cross     the two crossing cuts leave their X hanging in the air, bright; then it bursts into sparks
-//   talisman  a seal (a ring with three strokes) is written in the air before him as his free hand
-//             traces it; the cut goes through it and it bursts outward
-//   flash     a few cold marks gather on the still, coiled blade; the cut leaves a thin line of light
-//             hanging where it passed, which then splits apart, its halves drifting up and down
-// Each is gone within about a second, so it never tires in every combo.
+// THE BLINK CHAIN'S LAST HIT, DRAWN: its slash lines and its ENDING (hit 5 of `?lights=blink`, combat.js
+// LIGHT_BLINK[4]; the three last hits: finishers.js, `?finisher=flurry|delayed|flick`; the four endings
+// here, `?ender=blade|array|rift|dragon`, each with any last hit; the Lab's PLAYER → `finisher` and
+// `ender` rows). The owner (2026-11-25): "the ending effect should be something that looks really dope
+// and stunning ascii art to show off the swords mysterious power".
 //
-// THE SPELL'S LITTLE EXTRA REACH (gameplay; `strike`, called by player.js _slamImpact in place of the
-// slam's shard burst): if the blade itself did not land, the spell hits along the blade's own path
-// through the active frames, from the end of the hit segment (combat.js REACH) to SPELL.reach m past it,
-// for the swing's damage, once. Only the striker chain's finishers have it, and for them it REPLACES the
-// shards (1 m of reach instead of the shards' 1.7 m ring): no shards, no ground burst, no `player:slam`.
+// THE SLASH LINES: where an instant cut passed, a sharp line of the house letter hangs across the target
+// (the flurry: five criss-crossing in a blink; the delayed cut: one, a beat after the blade; the flick:
+// one), pale as it appears, then green, then it breaks up.
+// THE ENDINGS: each a LARGE picture in letters, metres across at the game camera, real ASCII art (a
+// silhouette filled with small digits, a brighter outline of strokes, an inner structure), with a
+// build-up, a hit and a dissolve, about 1.2 s:
+//   blade   a giant phantom sword (pommel, wrapped grip, guard, a fuller down the blade) forms above
+//           the target from the pommel down, hangs, drops through it, and crumbles into falling letters
+//   array   eight smaller letter-swords snap into a ring round the target, points in, tremble, all
+//           strike at once; a star of letters bursts at the middle and they fall apart
+//   rift    the slash lines tear open into bright lenses and columns of green letters pour out of them,
+//           then the lenses seal and the last of the columns falls away
+//   dragon  a serpent of streaming letters (a head with an eye, horns and teeth, a scaled body that
+//           tapers) uncoils from the blade along the cut, loops once round the target and scatters
+// Anchor: the boss's nearest body point if it is within ENDER.near m ahead, else ENDER.ahead m ahead of
+// him at chest height. The pictures are laid out on the screen's own letter grid (the art pass's cell,
+// at the anchor's depth, drawn toward the camera by ENDER.lift): every letter sits in a cell, as the
+// wyrm's do. Very close to the camera the letters keep their spacing in metres (a sparser grid), so the
+// count stays inside the budget.
 //
-// How it is drawn: as the sword's flame (swordMystic.js, ADR-182): the HERO'S OWN MICRO LETTERS through a
-// LetterBatch on his atlas and grid, in its Matrix green, one mark a cell along a line, never a glow sprite,
-// never the fire field, never a colour on the screen. Its own random stream and hashes (never
-// Math.random), fixed stores (no allocation a frame), capped counts a frame (FIN), nothing on a dead or
-// hidden hero, nothing at all outside the striker chain's finisher.
+// THE LITTLE EXTRA REACH (gameplay; `strike`, from player.js _slamImpact in place of the slam's shards):
+// if the blade did not land, the blade's path through the active frames is extended SPELL.reach m (in
+// plan, at the blade's height) and hit-tested once, for the swing's damage. Only the blink chain's last
+// hits have it; for them there are no shards, no ground burst and no `player:slam`.
+//
+// House rules: the house letter (world/life/letterBatch.js on the art pass's font: only letters the font
+// has), the sword's green with a pale core (bright, never a background or screen colour, no flash), its
+// own random stream and hashes (never Math.random), fixed stores (no allocation a frame), capped counts
+// (FIN), nothing on a dead or hidden hero, nothing at all outside the blink chain's last hit.
 
 import * as THREE from 'three';
 import { LetterBatch } from '../../world/life/letterBatch.js';
-import { pixelArtOrder } from '../../render/glyphs.js';
 import { LIGHT, REACH, bandHit, lightsMode } from './combat.js';
 import { finisherOfClip } from './finishers.js';
 import { GREEN } from './swordMystic.js';
@@ -33,6 +43,27 @@ import { DIM } from './model.js';
 
 /** The spell's extra reach (m past the blade's hit segment, gameplay metres). */
 export const SPELL = { reach: 1.0 };
+
+// ---- the ending switch ------------------------------------------------------------------------------
+export const ENDER_IDS = Object.freeze(['blade', 'array', 'rift', 'dragon']);
+export const ENDER_NAMES = Object.freeze({ blade: 'phantom blade', array: 'sword array', rift: 'rift', dragon: 'dragon' });
+const q = (name) => {
+  try {
+    return typeof location !== 'undefined' ? new URLSearchParams(location.search).get(name) : null;
+  } catch {
+    return null;
+  }
+};
+const EPICK = { id: ENDER_IDS.includes(q('ender')) ? q('ender') : 'blade' };
+/** The ending now. */
+export const enderId = () => EPICK.id;
+/** Set it (the Lab, the film rig, tests); false for an unknown id. */
+export function setEnder(id) {
+  const m = String(id);
+  if (!ENDER_IDS.includes(m)) return false;
+  EPICK.id = m;
+  return true;
+}
 
 // its own stream (ADR-122): a look never moves the seeded sims
 let fseed = 0x7f4a7c15;
@@ -46,104 +77,142 @@ const hash2 = (a, b) => {
   h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 };
-
-/** The hero's micro letters it prints (their index in PIXEL_3X3). */
-const MICRO = { '.': 1, ':': 2, '-': 5, '|': 6, '/': 7, '\\': 8, '+': 12, x: 13, o: 25, B: 26 };
-export const FINISHER_GLYPHS = Object.freeze(Object.keys(MICRO).join(''));
-
-/** What it may draw, and each spell's numbers (times s, lengths m). */
-export const FIN = {
-  cells: 420, // written marks a frame at most
-  spawned: 300, // moving marks alive at most
-  perFrame: 120, // moving marks spawned a frame at most
-  lift: 0.15, // m drawn toward the camera (with the batch's own soft depth)
-  soft: 0.12,
-  maxAlpha: 0.88, // colour x alpha <= 0.9: bright, never a glow
-  minStep: 0.05, // m: the closest two marks of a line (one of his cells on the screen, at least this)
-  lance: { at: 1.62, len: 3.8, speed: 30, hold: 0.2, fade: 10, maxEl: 22, sparks: 16, width: 2 },
-  cross: { cuts: [[0.15, 0.56], [1.0, 2.0]], rows: [0.6, 0.7, 0.8, 0.9, 1.0], hang: 0.26, sparks: 0.5 },
-  talisman: { r: 0.52, ahead: 0.75, freeze: 1.0, write: [0.1, 0.78], burst: 1.42, sparks: 2 },
-  flash: { gather: [0.45, 1.38], sweep: [1.38, 1.95], rows: [0.86, 0.93, 1.0], hang: 0.3, split: 0.36 },
+const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+const smooth = (v) => {
+  const x = clamp01(v);
+  return x * x * (3 - 2 * x);
 };
 
-// stores (no allocation a frame)
+/** The house letters it prints (all in every art font: render/wyrmGlyphs.js). */
+const CHARS = "0123456789.:;'!rivxcsA@-/|\\,`~=*+^o";
+export const FINISHER_GLYPHS = CHARS;
+const FILL = '0123456789';
+const FILL2 = 'icsrxv';
+const DUST = ".,'`:;";
+const SPARK = '*+^.~';
+
+/** Colours (linear). The sword's green; a pale green-white core where it is hottest. */
+const COL = {
+  dim: [0.02, 0.42, 0.05], // the body's fill
+  body: GREEN.body, // its outline
+  pale: [0.62, 1.0, 0.6], // its structure (the fuller, the guard's edge)
+  core: [0.86, 1.0, 0.84], // the hottest letters (bloom is welcome there)
+  cool: GREEN.cool,
+};
+
+/** What it may draw (marks a frame), and each piece's numbers (s, m). */
+export const FIN = {
+  cells: 2200, // written letters a frame at most
+  spawned: 700, // moving letters alive at most
+  perFrame: 160, // moving letters spawned a frame at most
+  soft: 0.3,
+  pitch: [0.135, 0.216], // m: the letter pitch at the game camera (its 5 x 8 px cell at ~37 px a metre)
+  lines: { len: 3.4, hot: 0.07, hold: 0.34, fade: 0.22 },
+};
+export const ENDER = {
+  near: 4.2, // m: a boss body point within this ahead is the anchor
+  ahead: 2.5, // m ahead of him otherwise, at chest height (y)
+  y: 1.35,
+  lift: 1.6, // m the picture is drawn toward the camera (in front of the target's body)
+  blade: { len: 5.6, hw: 0.7, gw: 1.85, top: 6.1, form: 0.32, hang: 0.12, drop: 0.14, fall: 3.2, crumble: 0.6 },
+  array: { n: 8, len: 2.4, hw: 0.24, gw: 0.6, r0: 4.8, r1: 2.7, r2: 0.4, form: 0.34, hold: 0.18, strike: 0.08, after: 0.55 },
+  rift: { open: 0.12, pour: 0.62, seal: 0.2, width: 0.95, cols: 1, speed: [6, 11], trail: [6, 16], up: 0.25 },
+  dragon: { speed: 21, body: 5.6, r: [0.72, 0.14], loop: 2.5, exit: 3.6, scatter: 0.36, head: [1.35, 0.62] },
+};
+
+// ---- stores (no allocation a frame) ------------------------------------------------------------------
 const NS = 72; // blade samples a swing at most
-const SW = 8; // per sample: the sword's origin (3), its local +z axis in world (3), fx time, phase u
-const PRJ = { px: 0, py: 0, ok: false };
+const SW = 8; // a sample: the sword's origin (3), its local +z axis in world (3), fx time, phase u
 const V = { x: 0, y: 0, z: 0 };
-const L = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 1, col: 0, color: GREEN.body, colorEnd: GREEN.cool, alpha: 1, alphaEnd: 0, drag: 0, gravity: 0, flicker: 0 };
-const C0 = [0, 0, 0];
-const PM = new Float32Array(24 * 3); // _pathMarks: a line's marks this call
+const L = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 1, col: 0, color: COL.body, colorEnd: COL.cool, alpha: 1, alphaEnd: 0, drag: 0, gravity: 0, flicker: 0 };
 const VA = new THREE.Vector3(), VB = new THREE.Vector3(), VC = new THREE.Vector3(), VD = new THREE.Vector3();
-const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+const C0 = [0, 0, 0];
 const mix = (a, b, s) => {
   for (let i = 0; i < 3; i++) C0[i] = a[i] + (b[i] - a[i]) * s;
   return C0;
 };
-// the seal (talisman): a ring and three strokes, in units of its radius (x right, y up on the camera's plane)
-const SEAL = [
-  [0.0, 0.78, 0.0, -0.78],
-  [-0.62, 0.32, 0.62, 0.32],
-  [-0.48, -0.36, 0.48, -0.36],
-];
+// the screen frame of the picture: the anchor's screen point, metres a pixel there, the art cell, the
+// grid step (cells a letter: 1 at the game camera), the camera's right / up / position
+const FR = { ok: false, ax: 0, ay: 0, az: 0, px: 0, py: 0, mpp: 0.027, cw: 5, ch: 8, kx: 1, ky: 1, rx: 1, ry: 0, rz: 0, ux: 0, uy: 1, uz: 0, cx: 0, cy: 0, cz: 0, W: 1280, H: 720, lift: 1.6 };
+// a cell's shape sample (the rasterizers write it)
+const SH = { on: false, ch: '0', c: COL.dim, a: 0 };
+// this frame's claimed cells (open addressing, stamped by frame)
+const OCC_N = 8192;
+const OCC_K = new Int32Array(OCC_N), OCC_S = new Int32Array(OCC_N);
+// the slash lines (local, metres on the picture's plane round the anchor): ax ay bx by t0
+const LN = new Float32Array(8 * 5);
+// the dragon's path: polyline points (local)
+const DP = new Float32Array(96 * 2);
+
+const strokeOf = (dx, dy) => {
+  let ang = (Math.atan2(dy, dx) * 180) / Math.PI;
+  if (ang < 0) ang += 180;
+  return ang < 22.5 || ang >= 157.5 ? '-' : ang < 67.5 ? '/' : ang < 112.5 ? '|' : '\\';
+};
+const pick = (set, h) => set[Math.min(set.length - 1, Math.floor(h * set.length))];
 
 export class FinisherFx {
   constructor(player) {
     this.player = player;
     this.game = player?.game ?? null;
-    this.t = 0; // its own clock (fx time)
-    this.w = 0; // marks written this frame (tests)
-    this.n = 0; // marks spawned this frame (tests)
-    this.total = 0; // everything drawn so far (tests)
-    this.plays = 0; // finishers it has followed (tests)
-    this.spellHits = 0; // hits its reach dealt (tests)
-    this.strikes = 0; // finishers whose impact it took over from the shards (tests)
-    /** Tests: called for every mark ('put' | 'spawn', glyph, alpha, colour max x alpha). */
+    this.t = 0;
+    this.w = 0; // letters written this frame (tests)
+    this.n = 0; // letters spawned this frame (tests)
+    this.total = 0;
+    this.plays = 0; // last hits followed (tests)
+    this.enders = 0; // endings played (tests)
+    this.spellHits = 0;
+    this.strikes = 0;
+    /** Tests: called for every letter ('put' | 'spawn', glyph, alpha, colour max x alpha). */
     this.onEmit = null;
     this.lb = null;
     this._lbTried = false;
-    this._mcol = null;
-    this._cx = this._cy = this._cz = 0;
     this.atk = null;
-    this.id = null; // the finisher this swing is ('lance' | 'cross' | 'talisman' | 'flash')
+    this.id = null;
     this.ns = 0;
     this.S = new Float32Array(NS * SW);
     this.lastU = 0;
-    this.end = -1; // fx time after which the last spell is surely gone
-    // per spell
-    this.lance = { t: -1, x: 0, y: 0, z: 0, dx: 0, dy: 0, dz: 1, sparked: false };
-    this.cross = { done: -1, burst: false, cx: 0, cy: 0, cz: 0 };
-    this.seal = { set: false, frozen: false, x: 0, y: 0, z: 0, rx: 1, ry: 0, rz: 0, ux: 0, uy: 1, uz: 0, R: 0.4, bursting: false, burst: false };
-    this._pch = '/';
-    this.flash = { done: -1, split: false };
+    this.end = -1;
+    this.frame = 0;
+    // the anchor (world), set as the last hit starts
+    this.anc = { set: false, x: 0, y: 0, z: 0 };
+    this.nl = 0; // slash lines
+    this.ender = { id: null, t0: -1, sparked: false, crumble: false };
+    this.arrive = -1; // fx time the ending goes off at
+    this.sx = 0; // the blade tip on the picture's plane at the cut (the dragon's start)
+    this.sy = 0;
+    this._hd = { hx: 0, hy: 0, tx: 1, ty: 0, hl: 0.85, hw: 0.38, fade: 1 };
+    this._dpt = -1;
+    this._dpn = 0;
+    this._pty = 0;
+    this._sw = { ox: 0, oy: 0, dx: 0, dy: 1, len: 1, hw: 0.2, gw: 0.5, reveal: 1, glow: 0, edge: 0.1 };
   }
 
-  /** Back to nothing (a level reset, death). */
   reset() {
     this.atk = null;
     this.id = null;
     this.ns = 0;
+    this.nl = 0;
     this.end = -1;
-    this.lance.t = -1;
+    this.arrive = -1;
+    this.ender.id = null;
+    this.anc.set = false;
     if (this.lb) {
       this.lb.empty();
       this.lb.end();
     }
   }
 
-  /** Busy: a spell is still on the screen (tests). */
   get busy() {
     return this.atk !== null || this.end > this.t || (this.lb?.np ?? 0) > 0;
   }
 
-  /** The striker finisher this attack is, or null. */
   _which(a) {
     const P = this.player, d = a?.def;
     if (!d || d !== LIGHT[4] || lightsMode() !== 'blink' || P.anim?.atkDef !== d) return null;
     return finisherOfClip(P.anim?.atkAnim?.clip);
   }
 
-  /** Per frame (player._updateFx). Nothing at all until a striker finisher swings. */
   update(dt) {
     this.w = this.n = 0;
     const P = this.player, g = this.game;
@@ -151,7 +220,7 @@ export class FinisherFx {
     const fdt = Math.max(Number.isFinite(g?.fxDt) ? g.fxDt : 0, Number.isFinite(dt) ? dt : 0);
     const dead = !P.alive || P.state === 'dead' || P.object3d?.visible === false;
     if (dead) {
-      if (this.lb?.count || this.lb?.np || this.atk) this.reset();
+      if (this.lb?.count || this.lb?.np || this.atk || this.end > this.t) this.reset();
       return;
     }
     const a = P.atk, id = P.state === 'attack' ? this._which(a) : null;
@@ -160,16 +229,24 @@ export class FinisherFx {
     if (!this.lb && !this.atk) return; // (never swung: nothing built, nothing drawn)
     if (!(fdt > 0)) return;
     this.t += fdt;
+    this.frame++;
     const lb = this._letters();
     if (!lb) return;
     lb.begin();
     try {
       if (this.atk) this._follow(this.atk);
-      this._camera();
-      if (this.id === 'lance') this._lance(fdt);
-      else if (this.id === 'cross') this._cross();
-      else if (this.id === 'talisman') this._talisman();
-      else if (this.id === 'flash') this._flash();
+      if (this.anc.set && this._frame()) {
+        this._lines();
+        if (this.arrive >= 0 && this.t >= this.arrive && !this.ender.id) this._goOff();
+        const E = this.ender;
+        if (E.id) {
+          const t = this.t - E.t0;
+          if (E.id === 'blade') this._blade(t);
+          else if (E.id === 'array') this._array(t);
+          else if (E.id === 'rift') this._rift(t);
+          else if (E.id === 'dragon') this._dragon(t);
+        }
+      }
     } catch (err) {
       console.error('[finisherFx]', err);
     }
@@ -181,23 +258,45 @@ export class FinisherFx {
     this.atk = a;
     this.id = id;
     this.ns = 0;
+    this.nl = 0;
     this.lastU = 0;
-    this.end = this.t + 2.5;
-    this.lance.t = -1;
-    this.lance.sparked = false;
-    this.cross.done = -1;
-    this.cross.burst = false;
-    this.seal.set = this.seal.frozen = this.seal.burst = false;
-    this.flash.done = -1;
-    this.flash.split = false;
+    this.arrive = -1;
+    this.ender.id = null;
+    this.end = this.t + 3.5;
     this.plays++;
+    this._anchor();
+  }
+
+  /** The boss's nearest body point within ENDER.near ahead, else a point ENDER.ahead ahead at chest height. */
+  _anchor() {
+    const P = this.player, A = this.anc, p = P.position, yaw = P.yaw ?? 0, fx = Math.sin(yaw), fz = Math.cos(yaw);
+    let best = Infinity;
+    const hs = this.game?.dragon?.hurtSpheres;
+    if (Array.isArray(hs)) {
+      for (let i = 0; i < hs.length; i++) {
+        const h = hs[i];
+        if (!h || !Number.isFinite(h.x + h.y + h.z)) continue;
+        const dx = h.x - p.x, dz = h.z - p.z, ahead = dx * fx + dz * fz, d = Math.hypot(dx, dz) - (h.r || 0);
+        if (ahead <= 0 || d > ENDER.near || d >= best) continue;
+        best = d;
+        A.x = h.x;
+        A.y = Math.min(h.y, 2.4);
+        A.z = h.z;
+      }
+    }
+    if (!(best < Infinity)) {
+      A.x = p.x + fx * ENDER.ahead;
+      A.y = p.y + ENDER.y;
+      A.z = p.z + fz * ENDER.ahead;
+    }
+    A.set = true;
   }
 
   // ------------------------------------------------------------------ following the swing
-  /** The sword's frame this frame (its origin and local +z axis, world), with the fx time and the phase. */
   _follow(a) {
     const d = a.def, W = d.windup, Ac = d.active, R0 = d.recovery, t = a.t;
     const u = t < W ? t / W : t < W + Ac ? 1 + (t - W) / Ac : 2 + (t - W - Ac) / R0;
+    const was = this.lastU;
     this.lastU = u;
     const e = this.player.rig?.sword?.matrixWorld?.elements;
     if (e && u <= 2.2 && this.ns < NS) {
@@ -214,9 +313,55 @@ export class FinisherFx {
       for (let i = 0; i < 6; i++) ok &&= Number.isFinite(S[k + i]);
       if (ok) this.ns++;
     }
+    // the last hit's slash lines (angles in degrees on the picture; they cross the anchor) and when the
+    // ending goes off
+    const at = (uu) => was < uu && u >= uu;
+    if (this.id === 'flurry') {
+      if (at(1.06)) this._line(28, 0, 0.1);
+      if (at(1.17)) this._line(-38, 0.15, -0.12);
+      if (at(1.28)) this._line(-4, -0.1, 0.18);
+      if (at(1.4)) this._line(64, 0.08, -0.05);
+      if (at(1.62)) this._line(-62, -0.05, 0);
+      if (at(1.66)) this.arrive = this.t + 0.02;
+    } else if (this.id === 'delayed') {
+      if (at(2.0)) this.arrive = this.t + 0.16; // (a beat after the blade: the cut "arrives")
+    } else if (this.id === 'flick') {
+      if (at(1.3)) this._line(-34, 0, 0, 1.1);
+      if (at(1.75)) this.arrive = this.t + 0.02;
+    }
   }
 
-  /** The point at local z (the sword's own units: DIM) of sample i → V (world, drawn). */
+  /** A slash line through the anchor (offset ox, oy m) at `deg`, now. */
+  _line(deg, ox, oy, k = 1) {
+    if (this.nl >= 8) return;
+    const h = (FIN.lines.len * k) / 2, r = (deg * Math.PI) / 180, c = Math.cos(r), s = Math.sin(r), o = this.nl * 5;
+    LN[o] = ox - c * h;
+    LN[o + 1] = oy - s * h;
+    LN[o + 2] = ox + c * h;
+    LN[o + 3] = oy + s * h;
+    LN[o + 4] = this.t;
+    this.nl++;
+  }
+
+  _goOff() {
+    const E = this.ender;
+    this.arrive = -1; // (once a swing)
+    E.id = EPICK.id;
+    E.t0 = this.t;
+    E.sparked = false;
+    E.crumble = false;
+    this.enders++;
+    this.end = this.t + 1.8;
+    if (this.id === 'delayed') this._line(26, 0, 0, 1.25); // (the delayed cut's line opens as it arrives)
+    // the blade's point on the picture's plane, for the dragon's start
+    if (this.ns > 0) {
+      this._at(this.ns - 1, DIM.drawnTip ?? DIM.steelTip);
+      this._local(V.x, V.y, V.z);
+      this.sx = V.x;
+      this.sy = V.y;
+    }
+  }
+
   _at(i, z) {
     const S = this.S, k = i * SW;
     V.x = S[k] + S[k + 3] * z;
@@ -226,24 +371,22 @@ export class FinisherFx {
   }
 
   // ------------------------------------------------------------------ the spell's reach (gameplay)
-  /** player.js _slamImpact, as hit 5 ends its active frames: a striker finisher's spell takes the impact
-   *  over from the slam's shards. Returns false (the shards as before) for anything else. If the blade
-   *  did not land, the spell hits along the blade's path through the active frames, from the end of the
-   *  hit segment to SPELL.reach m past it (in plan, at the blade's height), once. */
+  /** player.js _slamImpact as hit 5 ends its active frames: a blink last hit takes the impact over from
+   *  the slam's shards (false: the shards as before, for anything else). If the blade did not land, its
+   *  path through the active frames is extended SPELL.reach m past the hit segment (in plan, at the
+   *  blade's height) and hit-tested once. */
   strike(a) {
     const id = this._which(a);
     if (!id) return false;
     this.strikes++;
     const P = this.player, g = this.game, d = a.def;
-    g?.shake?.(fin(d.shake, 0.3) * 0.35);
+    g?.shake?.(fin(d.shake, 0.3) * 0.3);
     if (a.hit) return true;
     const dr = g?.dragon;
     if (!dr || typeof dr.takeHit !== 'function' || dr.state === 'dead' || dr.state === 'dying') return true;
     const spheres = dr.hurtSpheres;
     if (!Array.isArray(spheres) || !spheres.length || this.ns < 2) return true;
     const z0 = DIM.bladeTip + REACH.tipExt, z1 = z0 + SPELL.reach, up = fin(d.up, REACH.up);
-    // (the blade's frames through the active window, each swept to the next in three steps, as the
-    // blade's own sweep is: combat.js SwordSweep.test)
     for (let i = 1; i < this.ns; i++) {
       const u0 = this.S[(i - 1) * SW + 7], u1 = this.S[i * SW + 7];
       if (u1 < 1 || u0 > 2.0) continue;
@@ -259,9 +402,7 @@ export class FinisherFx {
         VB.lerp(VD.set(V.x, V.y, V.z), f);
         P.unlean?.(VA);
         P.unlean?.(VB);
-        // (along the ground only, at the blade's own height: the spell reaches further ahead, never
-        // higher than the blade, whose band (combat.js REACH) already covers what stands over it)
-        VB.y = VA.y;
+        VB.y = VA.y; // (further ahead, never higher than the blade)
         if (bandHit(spheres, VA.x, VA.y, VA.z, VB.x, VB.y, VB.z, REACH.radius, up, REACH.down, P._hit) > 0) {
           this.spellHits++;
           P._applyHit(a, P._hit, true);
@@ -272,26 +413,14 @@ export class FinisherFx {
     return true;
   }
 
-  // ------------------------------------------------------------------ drawing helpers
+  // ------------------------------------------------------------------ the letters and the grid
   _letters() {
     if (this.lb || this._lbTried) return this.lb;
     this._lbTried = true;
     const g = this.game, mr = Math.random;
     try {
       Math.random = rnd;
-      const lb = new LetterBatch(g, FIN.cells + FIN.spawned, '|', { spawned: FIN.spawned, snap: 1, rand: rnd });
-      const order = pixelArtOrder();
-      this._mcol = {};
-      for (const k in MICRO) this._mcol[k] = order[MICRO[k]] ?? 0;
-      // the hero's atlas and cell (as the sword's flame: his letters, his grid)
-      lb._sync = () => {
-        const Pl = g?.pipeline, art = Pl?.heroArt, c = Pl?.heroCell, U = lb.uniforms;
-        if (c?.x > 0 && c?.y > 0) U.uCell.value.set(c.x, c.y);
-        if (art?.texture && U.tArt.value !== art.texture) {
-          U.tArt.value = art.texture;
-          U.uCols.value = art.cols;
-        }
-      };
+      const lb = new LetterBatch(g, FIN.cells + FIN.spawned, CHARS, { spawned: FIN.spawned, snap: 1, rand: rnd });
       if (lb.uniforms?.uSoft) lb.uniforms.uSoft.value = FIN.soft;
       this.lb = lb;
       g?.pipeline?.registerParticles?.(lb);
@@ -304,382 +433,583 @@ export class FinisherFx {
     return this.lb;
   }
 
-  _camera() {
-    const cam = this.game?.camera?.matrixWorld?.elements;
-    this._cx = cam ? cam[8] * FIN.lift : 0;
-    this._cy = cam ? cam[9] * FIN.lift : 0;
-    this._cz = cam ? cam[10] * FIN.lift : 0;
-  }
-
-  /** World point → screen px (y up) in PRJ; false behind the camera. */
-  _proj(x, y, z) {
-    const g = this.game, cam = g?.camera, pl = g?.pipeline;
-    const m = cam?.matrixWorldInverse?.elements, pe = cam?.projectionMatrix?.elements;
+  /** The picture's screen frame at the anchor (FR); false when it cannot be placed. */
+  _frame() {
+    const g = this.game, cam = g?.camera, pl = g?.pipeline, A = this.anc;
+    const m = cam?.matrixWorldInverse?.elements, pe = cam?.projectionMatrix?.elements, cp = cam?.matrixWorld?.elements;
+    FR.ok = false;
+    if (!m || !pe || !cp || !(pe[5] > 0)) return false;
     const W = pl?.width > 8 ? pl.width : 1280, H = pl?.height > 8 ? pl.height : 720;
-    PRJ.ok = false;
-    if (!m || !pe || !(pe[5] > 0)) return false;
-    const vx = m[0] * x + m[4] * y + m[8] * z + m[12], vy = m[1] * x + m[5] * y + m[9] * z + m[13], vz = -(m[2] * x + m[6] * y + m[10] * z + m[14]);
-    if (!(vz > 0.2)) return false;
-    PRJ.px = (((vx * pe[0]) / vz) * 0.5 + 0.5) * W;
-    PRJ.py = (((vy * pe[5]) / vz) * 0.5 + 0.5) * H;
-    PRJ.ok = Number.isFinite(PRJ.px + PRJ.py);
-    return PRJ.ok;
+    const vx = m[0] * A.x + m[4] * A.y + m[8] * A.z + m[12], vy = m[1] * A.x + m[5] * A.y + m[9] * A.z + m[13], vz = -(m[2] * A.x + m[6] * A.y + m[10] * A.z + m[14]);
+    if (!(vz > 0.5)) return false;
+    FR.W = W;
+    FR.H = H;
+    FR.px = (((vx * pe[0]) / vz) * 0.5 + 0.5) * W;
+    FR.py = (((vy * pe[5]) / vz) * 0.5 + 0.5) * H;
+    FR.mpp = (2 * vz) / (H * pe[5]);
+    FR.cw = pl?.artCell?.x > 0 ? pl.artCell.x : 5;
+    FR.ch = pl?.artCell?.y > 0 ? pl.artCell.y : 8;
+    FR.kx = Math.max(1, Math.round(FIN.pitch[0] / (FR.cw * FR.mpp)));
+    FR.ky = Math.max(1, Math.round(FIN.pitch[1] / (FR.ch * FR.mpp)));
+    FR.ax = A.x;
+    FR.ay = A.y;
+    FR.az = A.z;
+    FR.rx = cp[0];
+    FR.ry = cp[1];
+    FR.rz = cp[2];
+    FR.ux = cp[4];
+    FR.uy = cp[5];
+    FR.uz = cp[6];
+    FR.cx = cp[12];
+    FR.cy = cp[13];
+    FR.cz = cp[14];
+    FR.lift = Math.min(ENDER.lift, vz * 0.6);
+    FR.ok = Number.isFinite(FR.px + FR.py + FR.mpp);
+    return FR.ok;
   }
 
-  /** One of his cells on the screen, in metres, at a world point (marks of a line: one a cell). */
-  _cellM(x, y, z) {
-    const g = this.game, pe = g?.camera?.projectionMatrix?.elements, pl = g?.pipeline, m = g?.camera?.matrixWorldInverse?.elements;
-    const H = pl?.height > 8 ? pl.height : 720, cw = pl?.heroCell?.x > 0 ? pl.heroCell.x : 4;
-    if (!m || !pe || !(pe[5] > 0)) return 0.1;
-    const vz = -(m[2] * x + m[6] * y + m[10] * z + m[14]);
-    if (!(vz > 0.2)) return 0.1;
-    return Math.max(FIN.minStep, (cw * 2 * vz) / (H * pe[5]));
+  /** A world point → its place on the picture's plane (metres right / up of the anchor) → V. */
+  _local(x, y, z) {
+    const dx = x - FR.ax, dy = y - FR.ay, dz = z - FR.az;
+    V.x = dx * FR.rx + dy * FR.ry + dz * FR.rz;
+    V.y = dx * FR.ux + dy * FR.uy + dz * FR.uz;
+    return V;
   }
 
-  /** The stroke that runs along the screen direction from point 0 to point 1: - / | \ . */
-  _stroke(x0, y0, z0, x1, y1, z1) {
-    if (!this._proj(x0, y0, z0)) return '/';
-    const ax = PRJ.px, ay = PRJ.py;
-    if (!this._proj(x1, y1, z1)) return '/';
-    let ang = (Math.atan2(PRJ.py - ay, PRJ.px - ax) * 180) / Math.PI;
-    if (ang < 0) ang += 180;
-    return ang < 22.5 || ang >= 157.5 ? '-' : ang < 67.5 ? '/' : ang < 112.5 ? '|' : '\\';
+  /** Claim grid cell (ci, cj) for this frame; false when a letter is there already. */
+  _claim(ci, cj) {
+    const key = (ci * 73856093) ^ (cj * 19349663);
+    let h = (key >>> 0) % OCC_N;
+    for (let n = 0; n < 64; n++) {
+      if (OCC_S[h] !== this.frame) {
+        OCC_S[h] = this.frame;
+        OCC_K[h] = key;
+        return true;
+      }
+      if (OCC_K[h] === key) return false;
+      h = (h + 1) % OCC_N;
+    }
+    return false;
   }
 
-  _put(x, y, z, ch, c, a) {
-    if (this.w >= FIN.cells || !(y > 0.02)) return;
-    const al = Math.min(FIN.maxAlpha, a);
-    if (!(al > 0.004) || !Number.isFinite(x + y + z)) return;
-    this.lb.put(x + this._cx, y + this._cy, z + this._cz, 0, this._mcol?.[ch] ?? 0, 0, c, al);
+  /** One letter in grid cell (ci, cj) (cell units of the art pass), colour c, alpha a. */
+  _cell(ci, cj, ch, c, a) {
+    if (this.w >= FIN.cells || !(a > 0.01) || !this._claim(ci, cj)) return;
+    const lx = ((ci + 0.5) * FR.cw - FR.px) * FR.mpp, ly = ((cj + 0.5) * FR.ch - FR.py) * FR.mpp;
+    let x = FR.ax + FR.rx * lx + FR.ux * ly, y = FR.ay + FR.ry * lx + FR.uy * ly, z = FR.az + FR.rz * lx + FR.uz * ly;
+    // toward the camera along its own ray (it stays in its cell)
+    const dx = x - FR.cx, dy = y - FR.cy, dz = z - FR.cz, dl = Math.hypot(dx, dy, dz) || 1, k = 1 - FR.lift / dl;
+    x = FR.cx + dx * k;
+    y = FR.cy + dy * k;
+    z = FR.cz + dz * k;
+    if (!Number.isFinite(x + y + z)) return;
+    const al = Math.min(1, a);
+    this.lb.put(x, y, z, 0, this.lb.col(ch), 0, c, al);
     this.w++;
     this.total++;
     this.onEmit?.('put', ch, al, Math.max(c[0], c[1], c[2]) * al);
   }
 
-  /** A moving mark from L (filled by the caller). */
-  _spawn(ch) {
-    if (this.n >= FIN.perFrame || !(L.y > 0.02) || !Number.isFinite(L.x + L.y + L.z)) return;
-    L.alpha = Math.min(FIN.maxAlpha, L.alpha);
-    L.col = this._mcol?.[ch] ?? 0;
-    L.x += this._cx;
-    L.y += this._cy;
-    L.z += this._cz;
-    if (!this.lb.spawn(L)) return;
-    this.n++;
-    this.total++;
-    this.onEmit?.('spawn', ch, L.alpha, Math.max(L.color[0], L.color[1], L.color[2]) * L.alpha);
+  /** The grid cell of local point (lx, ly) → [ci, cj] in V.x, V.y (snapped to the letter step). */
+  _cellOf(lx, ly) {
+    V.x = Math.floor((FR.px + lx / FR.mpp) / FR.cw / FR.kx) * FR.kx;
+    V.y = Math.floor((FR.py + ly / FR.mpp) / FR.ch / FR.ky) * FR.ky;
+    return V;
   }
 
-  /** A spark flying from (x, y, z) with velocity (vx, vy, vz). */
-  _spark(x, y, z, vx, vy, vz, life, hot) {
+  /** A moving letter from a grid cell's world point (drawn toward the camera), velocity in metres on
+   *  the picture's plane (right, up). */
+  _spawnAt(lx, ly, vr, vu, life, ch, c0, a) {
+    if (this.n >= FIN.perFrame) return;
+    let x = FR.ax + FR.rx * lx + FR.ux * ly, y = FR.ay + FR.ry * lx + FR.uy * ly, z = FR.az + FR.rz * lx + FR.uz * ly;
+    const dx = x - FR.cx, dy = y - FR.cy, dz = z - FR.cz, dl = Math.hypot(dx, dy, dz) || 1, k = 1 - FR.lift / dl;
+    x = FR.cx + dx * k;
+    y = FR.cy + dy * k;
+    z = FR.cz + dz * k;
     L.x = x;
     L.y = y;
     L.z = z;
-    L.vx = vx;
-    L.vy = vy;
-    L.vz = vz;
+    L.vx = FR.rx * vr + FR.ux * vu;
+    L.vy = FR.ry * vr + FR.uy * vu;
+    L.vz = FR.rz * vr + FR.uz * vu;
     L.life = life;
-    L.gravity = -1.5;
-    L.drag = 2.2;
-    L.flicker = 0.35;
-    L.color = hot ? GREEN.hot : GREEN.body;
-    L.colorEnd = GREEN.cool;
-    L.alpha = hot ? 0.88 : 0.75;
+    L.gravity = 0;
+    L.drag = 1.2;
+    L.flicker = 0.25;
+    L.color = c0;
+    L.colorEnd = COL.cool;
+    L.alpha = Math.min(1, a);
     L.alphaEnd = 0;
-    this._spawn(hot ? 'x' : rnd() < 0.5 ? '.' : '+');
+    L.col = this.lb.col(ch);
+    if (!Number.isFinite(L.x + L.y + L.z) || !this.lb.spawn(L)) return;
+    this.n++;
+    this.total++;
+    this.onEmit?.('spawn', ch, L.alpha, Math.max(c0[0], c0[1], c0[2]) * L.alpha);
   }
 
-  /** The marks of a line of the blade's path, one a cell, from sample i-1 to i at local z: into PM
-   *  (x, y, z each), their stroke in this._pch; returns how many. */
-  _pathMarks(i, z) {
-    const ax = this._at(i - 1, z).x, ay = V.y, az = V.z;
-    const bx = this._at(i, z).x, by = V.y, bz = V.z;
-    const len = Math.hypot(bx - ax, by - ay, bz - az);
-    if (!(len > 0.01)) return 0;
-    const n = Math.min(24, Math.max(1, Math.round(len / this._cellM(bx, by, bz))));
-    this._pch = this._stroke(ax, ay, az, bx, by, bz);
+  /** Rasterize a shape (this._shape: a method writing SH for a local point) over the local box: one
+   *  letter a grid cell. */
+  _raster(x0, y0, x1, y1, shape) {
+    const c0 = this._cellOf(x0, y0), ci0 = V.x, cj0 = V.y;
+    this._cellOf(x1, y1);
+    const ci1 = V.x, cj1 = V.y;
+    if ((ci1 - ci0) / FR.kx * ((cj1 - cj0) / FR.ky) > 40000) return;
+    for (let cj = cj0; cj <= cj1; cj += FR.ky) {
+      const ly = ((cj + 0.5 * FR.ky) * FR.ch - FR.py) * FR.mpp;
+      for (let ci = ci0; ci <= ci1; ci += FR.kx) {
+        const lx = ((ci + 0.5 * FR.kx) * FR.cw - FR.px) * FR.mpp;
+        SH.on = false;
+        shape.call(this, lx, ly, ci, cj);
+        if (SH.on) this._cell(ci, cj, SH.ch, SH.c, SH.a);
+      }
+    }
+    return c0;
+  }
+
+  // ------------------------------------------------------------------ the slash lines
+  /** Each line: pale as it appears, then green, held, then breaking up from its ends. One letter a cell
+   *  along it, in the stroke that runs its way; a short bright core where it crosses the anchor. */
+  _lines() {
+    const C = FIN.lines;
+    for (let i = 0; i < this.nl; i++) {
+      const o = i * 5, age = this.t - LN[o + 4];
+      if (age < 0 || age > C.hot + C.hold + C.fade) continue;
+      const ax = LN[o], ay = LN[o + 1], bx = LN[o + 2], by = LN[o + 3];
+      const ch = strokeOf(bx - ax, by - ay), len = Math.hypot(bx - ax, by - ay);
+      const step = Math.min(FR.cw * FR.kx, FR.ch * FR.ky) * FR.mpp * 0.7, n = Math.max(2, Math.ceil(len / step));
+      const hot = age < C.hot, gone = clamp01((age - C.hot - C.hold) / C.fade);
+      for (let k = 0; k <= n; k++) {
+        const s = k / n;
+        // it breaks up from the ends as it goes
+        if (gone > 0 && Math.abs(s - 0.5) * 2 > 1 - gone + 0.15 * hash2(i, k)) continue;
+        const mid = 1 - Math.abs(s - 0.5) * 2;
+        this._cellOf(ax + (bx - ax) * s, ay + (by - ay) * s);
+        const c = hot ? COL.core : mid > 0.75 ? COL.pale : COL.body;
+        this._cell(V.x, V.y, hot && mid > 0.85 ? '@' : ch, c, (hot ? 1 : 0.92) * (0.55 + 0.45 * mid));
+      }
+    }
+  }
+
+  // ------------------------------------------------------------------ a sword in letters
+  /** The sword shape at local (lx, ly) for the sword in this._sw: pommel, wrapped grip, guard, blade with
+   *  a fuller, a point; outline strokes, digit fill, a pale structure; `reveal` 0..1 from the pommel. */
+  _swordAt(lx, ly, ci, cj) {
+    const s = this._sw, dx = lx - s.ox, dy = ly - s.oy;
+    const u = dx * s.dx + dy * s.dy, v = -dx * s.dy + dy * s.dx, Lt = s.len;
+    if (u < 0 || u > Lt || u > s.reveal * Lt) return;
+    const av = Math.abs(v), e = s.edge;
+    const uP = 0.07 * Lt, uG = 0.21 * Lt, uB = 0.25 * Lt, uT = 0.84 * Lt;
+    const ang = Math.atan2(s.dy, s.dx);
+    const lit = s.glow;
+    const decode = s.reveal < 1 && u > s.reveal * Lt - 0.6; // (fresh letters flicker in)
+    if (u < uP) {
+      // pommel: a round knot
+      const r = 0.5 * uP, cu = u - r;
+      if (Math.hypot(cu, v) > r * 1.25) return;
+      SH.on = true;
+      SH.ch = Math.hypot(cu, v) > r * 0.6 ? 'o' : '@';
+      SH.c = COL.pale;
+      SH.a = 0.95;
+      return;
+    }
+    if (u < uG) {
+      // the grip, wrapped
+      const gw = s.hw * 0.42;
+      if (av > gw) return;
+      SH.on = true;
+      if (av > gw - e) {
+        SH.ch = strokeOf(Math.cos(ang), Math.sin(ang));
+        SH.c = COL.body;
+        SH.a = 0.95;
+      } else {
+        SH.ch = (ci + cj) & 1 ? 'x' : '+';
+        SH.c = COL.dim;
+        SH.a = 0.85;
+      }
+      return;
+    }
+    if (u < uB) {
+      // the guard: a bar across, its ends tipped
+      if (av > s.gw) return;
+      SH.on = true;
+      const edgeU = u < uG + e * 0.7 || u > uB - e * 0.7;
+      if (av > s.gw - e) {
+        SH.ch = '*';
+        SH.c = COL.core;
+        SH.a = 1;
+      } else if (edgeU) {
+        SH.ch = strokeOf(-Math.sin(ang), Math.cos(ang));
+        SH.c = COL.pale;
+        SH.a = 0.95;
+      } else {
+        SH.ch = '=';
+        SH.c = COL.body;
+        SH.a = 0.9;
+      }
+      return;
+    }
+    // the blade: full width to uT, then tapering to the point
+    const hw = u < uT ? s.hw : s.hw * Math.max(0, (Lt - u) / (Lt - uT));
+    if (av > hw + e * 0.3) return;
+    SH.on = true;
+    if (av > hw - e) {
+      // the edges: along the blade, or converging to the point
+      if (u < uT) SH.ch = strokeOf(Math.cos(ang), Math.sin(ang));
+      else {
+        const t = s.hw / (Lt - uT), side = v > 0 ? 1 : -1;
+        SH.ch = strokeOf(Math.cos(ang) - side * t * Math.sin(ang), Math.sin(ang) + side * t * Math.cos(ang));
+      }
+      SH.c = lit > 0.5 ? COL.core : COL.body;
+      SH.a = 0.95;
+      if (u > Lt - e * 1.5) SH.ch = 'v';
+    } else if (av < s.hw * 0.18 && u > uB + e && u < uT - e) {
+      // the fuller, down the middle
+      SH.ch = '!';
+      SH.c = lit > 0.2 ? COL.core : COL.pale;
+      SH.a = 0.9;
+    } else {
+      const h = hash2(ci * 7 + cj, Math.floor(this.t * (decode ? 30 : 6)));
+      SH.ch = decode ? pick(FILL2, h) : pick(FILL, h);
+      SH.c = lit > 0.7 ? mix(COL.body, COL.pale, 0.4) : COL.body;
+      SH.a = 0.55 + 0.35 * lit;
+    }
+  }
+
+  /** Draw a sword: base at (ox, oy) local, pointing (dx, dy), length len, half widths hw (blade), gw
+   *  (guard); reveal 0..1; glow 0..1. */
+  _sword(ox, oy, dx, dy, len, hw, gw, reveal, glow) {
+    const s = this._sw;
+    s.ox = ox;
+    s.oy = oy;
+    s.dx = dx;
+    s.dy = dy;
+    s.len = len;
+    s.hw = hw;
+    s.gw = gw;
+    s.reveal = reveal;
+    s.glow = glow;
+    s.edge = Math.max(FR.cw * FR.kx, FR.ch * FR.ky) * FR.mpp * 0.75;
+    const ex = dx * len, ey = dy * len, pad = gw + 0.2;
+    this._raster(Math.min(ox, ox + ex) - pad, Math.min(oy, oy + ey) - pad, Math.max(ox, ox + ex) + pad, Math.max(oy, oy + ey) + pad, this._swordAt);
+  }
+
+  /** A sword's letters thrown off as falling characters (one in `every` cells). */
+  _crumbleSword(ox, oy, dx, dy, len, hw, every, fall) {
+    const step = Math.max(FR.cw * FR.kx, FR.ch * FR.ky) * FR.mpp;
+    for (let u = 0; u <= len; u += step) {
+      const w = u < 0.25 * len ? hw * 0.5 : hw;
+      for (let v = -w; v <= w; v += step) {
+        if (hash2(Math.round(u * 50), Math.round(v * 50)) * every > 1) continue;
+        const lx = ox + dx * u - dy * v, ly = oy + dy * u + dx * v;
+        this._spawnAt(lx, ly, R(-0.3, 0.3), -R(0.5, fall), R(0.4, 0.75), pick(FILL + DUST, rnd()), rnd() < 0.2 ? COL.pale : COL.body, 0.9);
+      }
+    }
+  }
+
+  /** A burst of sparks from (lx, ly), n of them, speed sp. */
+  _burst(lx, ly, n, sp) {
     for (let k = 0; k < n; k++) {
-      const f = (k + 0.5) / n;
-      PM[k * 3] = ax + (bx - ax) * f;
-      PM[k * 3 + 1] = ay + (by - ay) * f;
-      PM[k * 3 + 2] = az + (bz - az) * f;
+      const a = (k / n) * Math.PI * 2 + R(-0.2, 0.2), v = sp * R(0.5, 1.2);
+      this._spawnAt(lx, ly, Math.cos(a) * v, Math.sin(a) * v, R(0.3, 0.6), pick(SPARK, rnd()), k % 3 ? COL.body : COL.core, 1);
+    }
+  }
+
+  // ------------------------------------------------------------------ BLADE: the phantom sword
+  _blade(t) {
+    const C = ENDER.blade, E = this.ender;
+    const tForm = C.form, tHang = tForm + C.hang, tDrop = tHang + C.drop, tEnd = tDrop + C.crumble;
+    if (t > tEnd + 0.8) {
+      E.id = null;
+      return;
+    }
+    // it hangs point down above the target, its point C.top - len above it; then drops C.fall
+    const drop = t < tHang ? 0 : t < tDrop ? C.fall * ((t - tHang) / C.drop) ** 2 : C.fall;
+    const top = C.top - drop; // the pommel's height over the anchor
+    if (t < tDrop + 0.05) {
+      const reveal = smooth(t / tForm), glow = t < tForm ? 0.3 : t < tHang ? 0.9 : 1;
+      this._sword(0, top, 0, -1, C.len, C.hw, C.gw, reveal, glow);
+      return;
+    }
+    if (!E.sparked) {
+      E.sparked = true;
+      this._burst(0, 0, 40, 4.5);
+      this._crumbleSword(0, top, 0, -1, C.len, C.hw, 2.2, 3.2);
+    }
+    // what is left of it stands a moment, fading from the pommel down
+    const k = (t - tDrop) / C.crumble;
+    if (k < 1) this._sword(0, top, 0, -1, C.len * (1 - k * 0.95), C.hw, C.gw, 1, 1 - k);
+  }
+
+  // ------------------------------------------------------------------ ARRAY: the ring of swords
+  _array(t) {
+    const C = ENDER.array, E = this.ender, n = C.n;
+    const tStrike = C.form + C.hold, tHit = tStrike + C.strike, tEnd = tHit + C.after;
+    if (t > tEnd + 0.6) {
+      E.id = null;
+      return;
+    }
+    if (t >= tHit && !E.sparked) {
+      E.sparked = true;
+      this._burst(0, 0, 56, 5);
+    }
+    for (let i = 0; i < n; i++) {
+      const th = (i / n) * Math.PI * 2 + 0.2, dx = -Math.cos(th), dy = -Math.sin(th); // pointing in
+      const my = clamp01((t - i * 0.03) / (C.form - n * 0.03 + 0.03));
+      if (!(my > 0)) continue;
+      let r;
+      if (t < C.form) r = C.r0 + (C.r1 - C.r0) * smooth(my);
+      else if (t < tStrike) r = C.r1 + 0.04 * Math.sin(t * 70 + i); // (they tremble)
+      else if (t < tHit) r = C.r1 + (C.r2 - C.r1) * ((t - tStrike) / C.strike);
+      else r = C.r2;
+      // the sword's point sits at radius r: its base len further out
+      const base = r + C.len;
+      const ox = -dx * base, oy = -dy * base;
+      if (t < tHit) this._sword(ox, oy, dx, dy, C.len, C.hw, C.gw, t < C.form ? smooth(my * 1.4) : 1, t < C.form ? 0.3 : 0.9);
+      else {
+        const k = (t - tHit) / C.after;
+        if (k < 1 && hash2(i, 3) > k * 0.6) this._sword(ox, oy, dx, dy, C.len * (1 - k * 0.7), C.hw, C.gw, 1, 1 - k);
+        if (!E.crumble && i === n - 1) {
+          E.crumble = true;
+          for (let j = 0; j < n; j++) {
+            const tj = (j / n) * Math.PI * 2 + 0.2, ddx = -Math.cos(tj), ddy = -Math.sin(tj), bb = C.r2 + C.len;
+            this._crumbleSword(-ddx * bb, -ddy * bb, ddx, ddy, C.len, C.hw, 3, 2.4);
+          }
+        }
+      }
+    }
+    // the star at the middle as they strike
+    if (t >= tHit && t < tHit + 0.14) {
+      const s = 1 - (t - tHit) / 0.14;
+      for (let a = 0; a < 8; a++) {
+        const th = (a / 8) * Math.PI;
+        for (let k = -6; k <= 6; k++) {
+          const lx = Math.cos(th) * k * 0.14 * (0.6 + s), ly = Math.sin(th) * k * 0.14 * (0.6 + s);
+          this._cellOf(lx, ly);
+          this._cell(V.x, V.y, k === 0 ? '@' : strokeOf(Math.cos(th), Math.sin(th)), Math.abs(k) < 3 ? COL.core : COL.body, s);
+        }
+      }
+    }
+  }
+
+  // ------------------------------------------------------------------ RIFT: the cuts tear open
+  _rift(t) {
+    const C = ENDER.rift, E = this.ender, tPour = C.open + C.pour, tEnd = tPour + C.seal;
+    if (t > tEnd + 0.5) {
+      E.id = null;
+      return;
+    }
+    const w = t < C.open ? C.width * smooth(t / C.open) : t < tPour ? C.width : C.width * (1 - smooth((t - tPour) / C.seal));
+    const stepX = FR.cw * FR.kx * FR.mpp, stepY = FR.ch * FR.ky * FR.mpp;
+    const nl = Math.max(1, this.nl);
+    for (let i = 0; i < nl; i++) {
+      let ax = -1.6, ay = -0.8, bx = 1.6, by = 0.8;
+      if (this.nl) {
+        const o = i * 5;
+        ax = LN[o];
+        ay = LN[o + 1];
+        bx = LN[o + 2];
+        by = LN[o + 3];
+      }
+      const len = Math.hypot(bx - ax, by - ay), tx = (bx - ax) / len, ty = (by - ay) / len, nx = -ty, ny = tx;
+      const n = Math.max(4, Math.ceil(len / (stepX * 0.8)));
+      const edge = strokeOf(tx, ty);
+      // the lens: two edges parting, the light inside
+      for (let k = 0; k <= n; k++) {
+        const s = k / n, open = w * Math.sin(Math.PI * s) * (0.75 + 0.25 * hash2(i, k));
+        const cx = ax + (bx - ax) * s, cy = ay + (by - ay) * s;
+        for (let sg = -1; sg <= 1; sg += 2) {
+          this._cellOf(cx + nx * open * 0.5 * sg, cy + ny * open * 0.5 * sg);
+          this._cell(V.x, V.y, edge, COL.body, 0.95);
+        }
+        const m = Math.floor(open / stepY);
+        for (let j = -m; j <= m; j++) {
+          this._cellOf(cx + nx * j * stepY * 0.5, cy + ny * j * stepY * 0.5);
+          this._cell(V.x, V.y, pick(FILL, hash2(k * 13 + j, Math.floor(this.t * 24))), Math.abs(j) < m * 0.5 ? COL.core : COL.pale, 0.95);
+        }
+        // the columns pouring out of it (Matrix rain: a bright head, a fading tail), while it is open
+        if (t >= C.open * 0.5 && k % C.cols === 0 && w > 0.05) {
+          const h = hash2(i * 97 + k, 5), dir = h < C.up ? 1 : -1;
+          const sp = C.speed[0] + (C.speed[1] - C.speed[0]) * hash2(i, k + 9);
+          const tr = Math.round(C.trail[0] + (C.trail[1] - C.trail[0]) * hash2(k, i + 3));
+          const head = (t - C.open * 0.5) * sp; // m travelled
+          const cut = t > tPour ? (t - tPour) * sp : 0; // (sealed: the column's root has left the cut)
+          for (let j = 0; j < tr; j++) {
+            const d = head - j * stepY;
+            if (d < cut || d < 0) continue;
+            this._cellOf(cx, cy + dir * d);
+            const lead = j === 0;
+            this._cell(V.x, V.y, lead ? '@' : pick(FILL + FILL2, hash2(k * 31 + j, Math.floor((this.t + j * 0.05) * 18))), lead ? COL.core : j < 3 ? COL.pale : COL.body, (1 - j / tr) * 0.95);
+          }
+        }
+      }
+    }
+    if (t >= tPour && !E.sparked) {
+      E.sparked = true;
+      for (let i = 0; i < nl; i++) {
+        const o = i * 5;
+        const mx = this.nl ? (LN[o] + LN[o + 2]) / 2 : 0, my = this.nl ? (LN[o + 1] + LN[o + 3]) / 2 : 0;
+        this._burst(mx, my, 10, 2.5);
+      }
+    }
+  }
+
+  // ------------------------------------------------------------------ DRAGON: the serpent of letters
+  /** Its path (local): from the blade's point along the cut to the target, once round it, out and up. */
+  _dragonPath() {
+    const C = ENDER.dragon;
+    let n = 0;
+    const put = (x, y) => {
+      if (n >= 96) return;
+      DP[n * 2] = x;
+      DP[n * 2 + 1] = y;
+      n++;
+    };
+    const sx = Number.isFinite(this.sx) ? this.sx : -2, sy = Number.isFinite(this.sy) ? this.sy : -1.2;
+    // in: from the blade's point to the ring's near side
+    const a0 = Math.atan2(sy, sx), rr = C.loop;
+    for (let k = 0; k <= 10; k++) {
+      const s = k / 10;
+      put(sx + (Math.cos(a0) * rr - sx) * s, sy + (Math.sin(a0) * rr - sy) * s + Math.sin(Math.PI * s) * 0.4);
+    }
+    // round the target once
+    for (let k = 1; k <= 48; k++) {
+      const a = a0 - (k / 48) * Math.PI * 2;
+      put(Math.cos(a) * rr * (1 + 0.08 * Math.sin(k * 0.5)), Math.sin(a) * rr);
+    }
+    // out and up
+    for (let k = 1; k <= 14; k++) {
+      const s = k / 14;
+      put(Math.cos(a0) * rr * (1 - s) + 0.6 * s, Math.sin(a0) * rr * (1 - s) + C.exit * s);
     }
     return n;
   }
 
-  // ------------------------------------------------------------------ lance
-  /** As the thrust lands, a narrow lance of light shoots on from the point along the blade (its rise
-   *  kept low, so it reads ahead of him from the camera behind), holds a beat and fades from its root;
-   *  its head is pale and bright, a fleck spray flies off it as it arrives. */
-  _lance(fdt) {
-    const C = FIN.lance, Ln = this.lance, ns = this.ns;
-    if (Ln.t < 0 && this.atk && this.lastU >= C.at && ns > 0) {
-      const k = (ns - 1) * SW, S = this.S;
-      let dx = S[k + 3], dy = S[k + 4], dz = S[k + 5];
-      const l = Math.hypot(dx, dy, dz) || 1;
-      dx /= l;
-      dy /= l;
-      dz /= l;
-      const maxY = Math.sin((C.maxEl * Math.PI) / 180);
-      if (dy > maxY) {
-        const hz = Math.hypot(dx, dz) || 1, c = Math.sqrt(1 - maxY * maxY);
-        dx = (dx / hz) * c;
-        dz = (dz / hz) * c;
-        dy = maxY;
-      }
-      this._at(ns - 1, DIM.drawnTip ?? DIM.steelTip);
-      Ln.t = 0;
-      Ln.x = V.x;
-      Ln.y = V.y;
-      Ln.z = V.z;
-      Ln.dx = dx;
-      Ln.dy = dy;
-      Ln.dz = dz;
-      Ln.sparked = false;
-      this.end = this.t + 1.2;
+  _dragon(t) {
+    const C = ENDER.dragon, E = this.ender;
+    if (this._dpt !== E.t0) {
+      this._dpt = E.t0;
+      this._dpn = this._dragonPath();
     }
-    if (Ln.t < 0) return;
-    Ln.t += fdt;
-    const grow = C.len / C.speed, fadeT = C.len / C.fade, total = grow + C.hold + fadeT;
-    if (Ln.t >= total) {
-      Ln.t = -1;
+    const n = this._dpn;
+    // the path's length so far at each point (in the same store: computed on the fly)
+    let total = 0;
+    for (let i = 1; i < n; i++) total += Math.hypot(DP[i * 2] - DP[i * 2 - 2], DP[i * 2 + 1] - DP[i * 2 - 1]);
+    const run = total / C.speed, tEnd = run + C.scatter;
+    if (t > tEnd + 0.6) {
+      E.id = null;
       return;
     }
-    const front = Math.min(C.len, Ln.t * C.speed);
-    const back = Ln.t > grow + C.hold ? Math.min(front, (Ln.t - grow - C.hold) * C.fade) : 0;
-    const step = this._cellM(Ln.x, Ln.y, Ln.z);
-    // across the lance on the screen: the camera's view direction x the lance
-    const cam = this.game?.camera?.matrixWorld?.elements;
-    let px = 0, py = 1, pz = 0;
-    if (cam) {
-      px = cam[9] * Ln.dz - cam[10] * Ln.dy;
-      py = cam[10] * Ln.dx - cam[8] * Ln.dz;
-      pz = cam[8] * Ln.dy - cam[9] * Ln.dx;
-      const pl = Math.hypot(px, py, pz) || 1;
-      px /= pl;
-      py /= pl;
-      pz /= pl;
-    }
-    const ch = this._stroke(Ln.x, Ln.y, Ln.z, Ln.x + Ln.dx, Ln.y + Ln.dy, Ln.z + Ln.dz);
-    const n = Math.floor(front / step);
-    for (let i = 0; i <= n; i++) {
-      const s = i * step;
-      if (s < back) continue;
-      const x = Ln.x + Ln.dx * s, y = Ln.y + Ln.dy * s, z = Ln.z + Ln.dz * s;
-      const head = front - s, tail = clamp01((s - back) / 0.5);
-      const hot = head < 0.35;
-      this._put(x, y, z, hot ? (head < 0.15 ? 'B' : 'o') : ch, hot ? GREEN.hot : mix(GREEN.body, GREEN.hot, 0.25), (hot ? 0.88 : 0.8) * (0.4 + 0.6 * tail));
-      // its edges: a cell to each side, thinning toward the head (a lance, not a bar)
-      for (let wd = 1; wd <= C.width; wd++) {
-        // its edges, thinning toward the head and outward (a lance, not a bar)
-        if (!(s < front - 0.3 * wd) || hash2(i, 3 + wd) > 0.95 - 0.2 * wd) continue;
-        for (let sg = -1; sg <= 1; sg += 2) this._put(x + px * sg * step * wd, y + py * sg * step * wd, z + pz * sg * step * wd, hash2(i, sg + 7 + wd) < 0.6 ? ch : ':', wd === 1 ? GREEN.body : GREEN.cool, (wd === 1 ? 0.62 : 0.42) * tail);
+    const head = Math.min(total + C.body, t * C.speed); // the head's distance along the path
+    const scat = t > run ? (t - run) / C.scatter : 0;
+    if (scat > 0 && !E.sparked) {
+      E.sparked = true;
+      // it scatters: the body's letters fly off
+      for (let d = 0; d < C.body; d += 0.12) {
+        this._pathAt(n, Math.min(total, head - d));
+        const lx = V.x, ly = V.y;
+        this._spawnAt(lx, ly, R(-3, 3), R(-1, 3.5), R(0.35, 0.7), pick(FILL + SPARK, rnd()), rnd() < 0.3 ? COL.pale : COL.body, 0.95);
       }
     }
-    // the fleck spray off its head as it arrives; flecks shed along it as it fades
-    if (!Ln.sparked && front >= C.len) {
-      Ln.sparked = true;
-      const hx = Ln.x + Ln.dx * C.len, hy = Ln.y + Ln.dy * C.len, hz = Ln.z + Ln.dz * C.len;
-      for (let k = 0; k < C.sparks; k++) this._spark(hx, hy, hz, Ln.dx * R(1, 3) + R(-1, 1), R(0.2, 1.4), Ln.dz * R(1, 3) + R(-1, 1), R(0.25, 0.45), k < 4);
-    }
-    if (back > 0) {
-      for (let k = 0; k < 2; k++) {
-        const s = back + rnd() * Math.max(0, front - back);
-        this._spark(Ln.x + Ln.dx * s, Ln.y + Ln.dy * s, Ln.z + Ln.dz * s, R(-0.2, 0.2), R(0.3, 0.8), R(-0.2, 0.2), R(0.2, 0.35), false);
+    if (scat >= 1) return;
+    const fade = 1 - scat;
+    const step = Math.min(FR.cw * FR.kx, FR.ch * FR.ky) * FR.mpp;
+    // the body: discs along the path behind the head, tapering; scales inside, an outline outside
+    for (let d = C.body; d >= 0.15; d -= step * 0.9) {
+      const sd = head - d;
+      if (sd < 0) continue;
+      this._pathAt(n, Math.min(total, sd));
+      const cx = V.x, cy = V.y, tx = V.z, ty = this._pty;
+      const f = d / C.body, r = (C.r[0] + (C.r[1] - C.r[0]) * f) * (scat > 0 ? 1 - scat * 0.5 : 1);
+      const m = Math.ceil(r / step);
+      for (let j = -m; j <= m; j++) {
+        const off = j * step * 0.9;
+        if (Math.abs(off) > r) continue;
+        this._cellOf(cx - ty * off, cy + tx * off);
+        const rim = Math.abs(off) > r - step;
+        const ring = Math.floor(sd / (step * 2.2));
+        const ch = rim ? strokeOf(tx, ty) : j === 0 ? (ring & 1 ? '=' : ':') : (ring + j) & 1 ? 'v' : 's';
+        this._cell(V.x, V.y, ch, rim ? COL.body : j === 0 ? COL.pale : COL.dim, (rim ? 0.95 : 0.8) * fade * (1 - 0.4 * f));
       }
+    }
+    // the head: a long skull along the path, an eye, horns swept back, teeth at the jaw
+    if (head > 0.2) {
+      this._pathAt(n, Math.min(total, head));
+      const hx = V.x, hy = V.y, tx = V.z, ty = this._pty;
+      const hl = C.head[0], hw = C.head[1];
+      const Hd = this._hd;
+      Hd.hx = hx;
+      Hd.hy = hy;
+      Hd.tx = tx;
+      Hd.ty = ty;
+      Hd.hl = hl;
+      Hd.hw = hw;
+      Hd.fade = fade;
+      const pad = hl + 0.6;
+      this._raster(hx - pad, hy - pad, hx + pad, hy + pad, this._headAt);
     }
   }
 
-  // ------------------------------------------------------------------ cross
-  /** The two cuts' outer blade, a band of three rows, written where the blade passed as it passes; the
-   *  X hangs bright a beat after the second cut, then bursts into sparks flying out from its middle. */
-  _cross() {
-    const C = FIN.cross, Cr = this.cross, ns = this.ns, S = this.S;
-    if (Cr.burst || ns < 2) return;
-    if (Cr.done < 0 && this.lastU >= C.cuts[1][1] - 0.02) {
-      Cr.done = this.t;
-      this.end = this.t + C.hang + 0.6;
-    }
-    const burst = Cr.done >= 0 && this.t - Cr.done >= C.hang;
-    // the middle of the X (the mean of its marks), for the burst's direction
-    let mx = 0, my = 0, mz = 0, mn = 0;
-    if (burst) {
-      for (let i = 1; i < ns; i++) {
-        const u = S[i * SW + 7];
-        if (!((u >= C.cuts[0][0] && u <= C.cuts[0][1]) || (u >= C.cuts[1][0] && u <= C.cuts[1][1]))) continue;
-        this._at(i, 0.95);
-        mx += V.x;
-        my += V.y;
-        mz += V.z;
-        mn++;
-      }
-      if (mn) {
-        mx /= mn;
-        my /= mn;
-        mz /= mn;
-      }
-    }
-    const zt = DIM.drawnTip ?? DIM.steelTip;
-    for (let i = 1; i < ns; i++) {
-      const u = S[i * SW + 7], u0 = S[(i - 1) * SW + 7];
-      const cut = u0 >= C.cuts[0][0] && u <= C.cuts[0][1] ? 0 : u0 >= C.cuts[1][0] && u <= C.cuts[1][1] ? 1 : -1;
-      if (cut < 0) continue;
-      const age = this.t - S[i * SW + 6];
-      for (let r = 0; r < C.rows.length; r++) {
-        const edge = r === C.rows.length - 1;
-        const n = this._pathMarks(i, C.rows[r] * zt), ch = this._pch;
-        for (let k = 0; k < n; k++) {
-          const x = PM[k * 3], y = PM[k * 3 + 1], z = PM[k * 3 + 2];
-          if (burst) {
-            if (hash2(i * 8 + r, k) < C.sparks) {
-              const dx = x - mx, dy = y - my, dz = z - mz, dl = Math.hypot(dx, dy, dz) || 1, sp = R(1.5, 3.2);
-              this._spark(x, y, z, (dx / dl) * sp, (dy / dl) * sp + 0.6, (dz / dl) * sp, R(0.25, 0.45), edge && k % 3 === 0);
-            }
-            continue;
-          }
-          // fresh marks flare pale, then settle to the body green; the edge row bright, the inner ones cooler
-          const fresh = clamp01(1 - age / 0.12);
-          const c = edge ? mix(GREEN.body, GREEN.hot, fresh) : mix(GREEN.cool, GREEN.body, 0.5 + 0.5 * fresh);
-          this._put(x, y, z, edge || hash2(i, k + 17 * r) < 0.6 ? ch : ':', c, edge ? 0.86 : 0.55);
+  /** The dragon's head at local (lx, ly). */
+  _headAt(lx, ly, ci, cj) {
+    const H = this._hd, dx = lx - H.hx, dy = ly - H.hy;
+    const u = dx * H.tx + dy * H.ty, v = -dx * H.ty + dy * H.tx; // u ahead, v across
+    // the skull: an egg from u -0.35 (back) to u hl (snout)
+    const back = H.hl * 0.4, k = (u + back) / (H.hl + back);
+    const step = Math.max(FR.cw * FR.kx, FR.ch * FR.ky) * FR.mpp;
+    if (k >= 0 && k <= 1) {
+      const w = H.hw * Math.sin(Math.PI * Math.min(1, k * 1.1 + 0.05)) * (1 - 0.45 * k);
+      if (Math.abs(v) <= w) {
+        SH.on = true;
+        const eye = Math.abs(u - H.hl * 0.22) < step * 0.9 && Math.abs(Math.abs(v) - w * 0.45) < step * 0.9 && v > 0;
+        if (eye) {
+          SH.ch = '@';
+          SH.c = COL.core;
+          SH.a = 1;
+        } else if (Math.abs(v) > w - step) {
+          SH.ch = k > 0.7 && v < 0 ? 'v' : strokeOf(H.tx, H.ty); // (teeth along the lower jaw)
+          SH.c = COL.body;
+          SH.a = H.fade;
+        } else {
+          SH.ch = pick(FILL, hash2(ci, cj));
+          SH.c = COL.pale;
+          SH.a = 0.85 * H.fade;
         }
+        return;
       }
     }
-    if (burst) Cr.burst = true;
-  }
-
-  // ------------------------------------------------------------------ talisman
-  /** The seal: a ring and three strokes on the camera's plane before his chest, written as his free
-   *  hand traces it (the windup), riding with him until the cut starts, then left in the air; as the
-   *  blade goes through it, it bursts outward. */
-  _talisman() {
-    const C = FIN.talisman, Sl = this.seal, P = this.player;
-    if (Sl.burst) return;
-    const u = this.lastU;
-    const cam = this.game?.camera?.matrixWorld?.elements;
-    if (!Sl.frozen && this.atk) {
-      // in front of his chest (it rides with him until the cut, then stays where the cut will pass)
-      const ch = P.rig?.chest?.matrixWorld?.elements, yaw = P.yaw ?? 0, S = P.drawScale || 1;
-      if (ch && cam) {
-        const ahead = C.ahead * S;
-        Sl.x = ch[12] + Math.sin(yaw) * ahead;
-        Sl.y = ch[13] - 0.05 * S;
-        Sl.z = ch[14] + Math.cos(yaw) * ahead;
-        Sl.rx = cam[0];
-        Sl.ry = cam[1];
-        Sl.rz = cam[2];
-        Sl.ux = cam[4];
-        Sl.uy = cam[5];
-        Sl.uz = cam[6];
-        Sl.set = true;
-        if (u >= C.freeze) Sl.frozen = true;
+    // horns: two strokes swept back from the crown
+    for (let sg = -1; sg <= 1; sg += 2) {
+      const hu = -(u + H.hl * 0.1), hv = v - sg * H.hw * 0.7;
+      if (hu > 0 && hu < H.hl * 0.9 && Math.abs(hv - sg * hu * 0.55) < step * 0.7) {
+        SH.on = true;
+        SH.ch = '^';
+        SH.c = COL.pale;
+        SH.a = H.fade;
+        return;
       }
-    }
-    if (!Sl.set) return;
-    const S = P.drawScale || 1, Rr = C.r * S;
-    Sl.R = Rr;
-    const wrote = clamp01((u - C.write[0]) / (C.write[1] - C.write[0])); // how much of it is written
-    const burst = u >= C.burst || (!this.atk && Sl.frozen);
-    Sl.bursting = burst;
-    const step = this._cellM(Sl.x, Sl.y, Sl.z);
-    const mark = this._sealMark;
-    // the ring: written first (0 … 0.6 of the writing), clockwise from the top as the fingers go round
-    const nRing = Math.max(12, Math.min(64, Math.round((2 * Math.PI * Rr) / step)));
-    const ringW = clamp01(wrote / 0.6);
-    const last = Math.floor(ringW * nRing);
-    for (let k = 0; k < last; k++) {
-      const th = (k / nRing) * 2 * Math.PI;
-      const lx = -Math.sin(th), ly = Math.cos(th); // (his fingers go round to his left first: the camera's left)
-      const ch = Math.abs(lx) > 0.92 ? '|' : Math.abs(ly) > 0.92 ? '-' : lx * ly > 0 ? '\\' : '/';
-      mark.call(this, lx, ly, ch, k === last - 1 && ringW < 1, k);
-      if (k % 2 === 0) mark.call(this, lx * 0.86, ly * 0.86, ':', false, 300 + k); // (an inner ring, dotted)
-    }
-    // the strokes: the rest of the writing, one after another
-    for (let s = 0; s < SEAL.length; s++) {
-      const w = clamp01((wrote - 0.6) / 0.4 * SEAL.length - s);
-      if (!(w > 0)) continue;
-      const x0 = SEAL[s][0], y0 = SEAL[s][1], x1 = SEAL[s][2], y1 = SEAL[s][3], len = Math.hypot(x1 - x0, y1 - y0) * Rr;
-      const n = Math.max(3, Math.round(len / step)), m = Math.max(1, Math.round(n * w));
-      const ch = Math.abs(x1 - x0) < 0.01 ? '|' : '-';
-      for (let k = 0; k < m; k++) mark.call(this, x0 + ((x1 - x0) * k) / (n - 1), y0 + ((y1 - y0) * k) / (n - 1), ch, k === m - 1 && w < 1, 100 + s * 40 + k);
-    }
-    if (burst) {
-      Sl.burst = true;
-      this.end = this.t + 0.6;
     }
   }
 
-  /** One mark of the seal at (lx, ly) on its plane (units of its radius): written, or, bursting, a spark. */
-  _sealMark(lx, ly, ch, head, k) {
-    const Sl = this.seal, Rr = Sl.R, C = FIN.talisman;
-    const x = Sl.x + (Sl.rx * lx + Sl.ux * ly) * Rr, y = Sl.y + (Sl.ry * lx + Sl.uy * ly) * Rr, z = Sl.z + (Sl.rz * lx + Sl.uz * ly) * Rr;
-    if (Sl.bursting) {
-      for (let j = 0; j < C.sparks; j++) {
-        const sp = R(1.6, 3.6);
-        this._spark(x, y, z, (Sl.rx * lx + Sl.ux * ly) * sp + R(-0.4, 0.4), (Sl.ry * lx + Sl.uy * ly) * sp + 0.6, (Sl.rz * lx + Sl.uz * ly) * sp + R(-0.4, 0.4), R(0.3, 0.55), (k + j) % 3 === 0);
+  /** The point at distance d along the dragon's path → V.x, V.y, its direction → V.z, this._pty. */
+  _pathAt(n, d) {
+    let acc = 0;
+    for (let i = 1; i < n; i++) {
+      const x0 = DP[i * 2 - 2], y0 = DP[i * 2 - 1], x1 = DP[i * 2], y1 = DP[i * 2 + 1];
+      const l = Math.hypot(x1 - x0, y1 - y0);
+      if (acc + l >= d || i === n - 1) {
+        const s = l > 1e-6 ? clamp01((d - acc) / l) : 0;
+        V.x = x0 + (x1 - x0) * s;
+        V.y = y0 + (y1 - y0) * s;
+        V.z = l > 1e-6 ? (x1 - x0) / l : 1;
+        this._pty = l > 1e-6 ? (y1 - y0) / l : 0;
+        return;
       }
-      return;
+      acc += l;
     }
-    const shimmer = 0.85 + 0.15 * Math.sin(this.t * 31 + k * 1.7);
-    this._put(x, y, z, head ? 'o' : ch, head ? GREEN.hot : mix(GREEN.body, GREEN.hot, 0.2), (head ? 0.88 : 0.82) * shimmer);
-  }
-
-  // ------------------------------------------------------------------ flash
-  /** Through the still coil a few cold marks gather on the blade; the cut leaves a thin line of light
-   *  (two rows of the outer blade's path) hanging where it passed, bright, which then splits: its upper
-   *  row drifts up, its lower down, and both fade. */
-  _flash() {
-    const C = FIN.flash, Fl = this.flash, ns = this.ns, S = this.S, u = this.lastU;
-    if (Fl.split || ns < 1) return;
-    const zt = DIM.drawnTip ?? DIM.steelTip;
-    // the gathering: cold marks along the held blade
-    if (this.atk && u >= C.gather[0] && u < C.gather[1]) {
-      const k = (ns - 1);
-      for (let j = 0; j < 6; j++) {
-        if (hash2(j, Math.floor(this.t * 14)) < 0.45) continue;
-        const z = DIM.forte + (zt - DIM.forte) * (0.25 + 0.7 * hash2(j, 9));
-        this._at(k, z);
-        this._put(V.x, V.y + 0.04, V.z, j % 2 ? ':' : '.', GREEN.cool, 0.7);
-      }
-    }
-    if (Fl.done < 0 && this.lastU >= C.sweep[1]) {
-      Fl.done = this.t;
-      this.end = this.t + C.hang + C.split + 0.4;
-    }
-    const split = Fl.done >= 0 && this.t - Fl.done >= C.hang;
-    for (let i = 1; i < ns; i++) {
-      const u0 = S[(i - 1) * SW + 7], u1 = S[i * SW + 7];
-      if (u0 < C.sweep[0] || u1 > C.sweep[1] + 0.05) continue;
-      const age = this.t - S[i * SW + 6];
-      for (let r = 0; r < C.rows.length; r++) {
-        const outer = r === C.rows.length - 1;
-        const n = this._pathMarks(i, C.rows[r] * zt), ch = this._pch;
-        for (let k = 0; k < n; k++) {
-          const x = PM[k * 3], y = PM[k * 3 + 1], z = PM[k * 3 + 2];
-          if (split) {
-            // its halves part: the outer row up, the inner one down
-            L.x = x;
-            L.y = y;
-            L.z = z;
-            L.vx = R(-0.15, 0.15);
-            L.vy = (outer ? 1 : -1) * R(0.5, 0.9);
-            L.vz = R(-0.15, 0.15);
-            L.life = R(0.24, C.split);
-            L.gravity = 0;
-            L.drag = 2.5;
-            L.flicker = 0.2;
-            L.color = outer ? GREEN.hot : GREEN.body;
-            L.colorEnd = GREEN.cool;
-            L.alpha = 0.85;
-            L.alphaEnd = 0;
-            this._spawn(hash2(i * 3 + r, k) < 0.25 ? '.' : ch);
-            continue;
-          }
-          const fresh = clamp01(1 - age / 0.1);
-          this._put(x, y, z, ch, outer ? mix(GREEN.body, GREEN.hot, 0.35 + 0.65 * fresh) : GREEN.body, outer ? 0.88 : 0.66);
-        }
-      }
-    }
-    if (split) Fl.split = true;
+    V.x = DP[0];
+    V.y = DP[1];
+    V.z = 1;
+    this._pty = 0;
   }
 }
 
