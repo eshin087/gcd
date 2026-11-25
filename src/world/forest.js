@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { FLAG, createAsciiObjectMaterial, createCarvedGlyphMaterial, createPropArtMaterial } from '../render/materials.js';
+import { FLAG, createCarvedGlyphMaterial, createPropArtMaterial, createDragonObjectMaterial } from '../render/materials.js';
 import { markCaster } from '../render/pipeline.js';
 import { mulberry32, range, hash2, fbm2 } from '../core/rng.js';
 import { CONFIG } from '../core/config.js';
@@ -1062,7 +1062,9 @@ export function createForest(U, colliders) {
     treeSpots.push({ x: t.x, z: t.z, r: 5 });
   }
 
-  const mat = createAsciiObjectMaterial(U, { fadeNearPlayer: true, side: THREE.DoubleSide });
+  // (?dpTrees / ?dpProps: the dragon print's source for the trees, the bones and the landmarks, render/dragonProps.js;
+  // both off, this is createAsciiObjectMaterial itself)
+  const mat = createDragonObjectMaterial(U, { fadeNearPlayer: true, side: THREE.DoubleSide });
   // (the trees, their stumps, the landmarks' pieces: runs of these meshes, rewritten as they break, so
   // their positions and normals are uploaded in ranges: dynamic buffers)
   const treeMesh = treeRuns.finish(treeGeos, mat, 'trees');
