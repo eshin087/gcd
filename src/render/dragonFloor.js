@@ -64,13 +64,15 @@ export function dpFloorUniforms(look, o = {}, pitch = (58 * Math.PI) / 180) {
 }
 
 // ---------------------------------------------------------------- the rim
-/** How far into a slab's top its rim reaches (m; the print's lip: a little over a cell). Past RIM_CAP the
- *  distance is not needed. */
+/** How far the rim's search for the nearest edge reaches (m; the print's lip is a little over a cell): a
+ *  top triangle with no edge of its own takes at most this. One standing on an edge takes the distance to
+ *  its line uncapped (at most RIM_MAX), so the distance stays linear across it and the lip keeps its width. */
 export const RIM_CAP = 0.6;
+export const RIM_MAX = 8;
 
 /**
- * THE RIM (`aRim`): per vertex, 1 + how far the point lies inside its slab's top from the top's edge (m,
- * at most RIM_CAP), so the print can turn a lip at every edge (lit on the side facing the moon, dark on the
+ * THE RIM (`aRim`): per vertex, 1 + how far the point lies inside its slab's top from the top's edge (m;
+ * RIM_CAP, RIM_MAX), so the print can turn a lip at every edge (lit on the side facing the moon, dark on the
  * other: the slab reads raised) one cell wide whatever the slab's shape. A slab's top is its up-facing
  * triangles (n.y > 0.93); its edge, the edges of those used by one of them only. A top triangle with an
  * edge on the rim takes the distance to that edge's line (exact near it: linear in the triangle); one with
@@ -175,10 +177,10 @@ export function slabRimArray(geo) {
       const v = t * 3 + e, x = P[v * 3], z = P[v * 3 + 2];
       let d;
       if (ownN) {
-        d = RIM_CAP;
+        d = RIM_MAX;
         for (let k = 0; k < 3; k++) if (own3[t * 3 + k] >= 0) d = Math.min(d, lineDist(own3[t * 3 + k], x, z));
       } else d = nearest(x, z);
-      rim[v] = 1 + Math.min(RIM_CAP, d);
+      rim[v] = 1 + Math.min(RIM_MAX, d);
     }
   }
   return rim;
