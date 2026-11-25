@@ -187,18 +187,20 @@ export function createGround(U, look = groundLook()) {
         t *= 1.0 - dpContact(cxz);
         // [fx] a ripple re-prints the cell (another digit, a flash brighter)
         float rip = dpRipple(cxz, h);
-        float hh = fract(h + rip * 0.37);
-        if (idx < 0.0) idx = dpGlyph(clamp(t + rip * 0.35, 0.0, 1.0), hh);
+        float hh = rip > uDpRipK.w ? fract(h + 0.37) : h;
+        if (idx < 0.0) idx = dpGlyph(clamp(t + rip * uDpRipP.x, 0.0, 1.0), hh);
         // [fx] a lit crest prints an outline stroke
+        // (on the broad relief: the meadow's small tussocks would print a stroke round every one)
         if (uDpFxOn[3] > 0.5) {
-          vec4 nb = vec4(groundRelief(cxz + vec2(size.x, 0.0), d), groundRelief(cxz - vec2(size.x, 0.0), d),
-                         groundRelief(cxz - vec2(0.0, size.y), d), groundRelief(cxz + vec2(0.0, size.y), d)) - hc;
-          float ridx;
-          if (dpRidge(cxz, N, t, nb, h, ridx)) idx = ridx;
+          float hr = groundRelief(cxz, 0.0);
+          vec4 nb = vec4(groundRelief(cxz + vec2(size.x, 0.0), 0.0), groundRelief(cxz - vec2(size.x, 0.0), 0.0),
+                         groundRelief(cxz - vec2(0.0, size.y), 0.0), groundRelief(cxz + vec2(0.0, size.y), 0.0)) - hr;
+          float ridx, rg;
+          if (dpRidge(cxz, N, t, nb, size, h, ridx, rg)) { idx = ridx; t += rg; }
         }
         if (burn > 0.35) idx = pick5(uAsh, int(fract(h * 7.1) * 5.0));
         m = glyphGrad(idx, f, dFdx(g), dFdy(g));
-        col = vec3(0.008, 0.01, 0.01) * L + body * (0.2 + 1.5 * t + rip * 0.8) * L * m * 1.15;
+        col = vec3(0.008, 0.01, 0.01) * L + body * (0.2 + 1.5 * t + rip * uDpRipP.y) * L * m * 1.15;
         // [prints] a fresh footprint: the cells under the foot turn to code, flash and fade (render/dragonStep.js)
         vec3 st = dpStep(cxz, h);
         if (st.x > 0.0) {

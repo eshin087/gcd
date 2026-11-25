@@ -201,7 +201,7 @@ export class World {
       console.error('[world] scars.mark', err);
     }
     this.life?.impact(x, z, Number.isFinite(o.r) ? o.r : 2, o.power, o);
-    this.groundFx?.blow(x, z, o.power);
+    this.groundFx?.blow(x, z, o.power, o);
   }
 
   /** Fire lands on the disc (x, z, r): the grass in it (unless `grass` is false) and the wood catch. */

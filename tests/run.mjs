@@ -69,6 +69,7 @@ const TASKS = [
   ['sheath', ['tests/integration/sheath.mjs', '.', 'all'], {}, 102],
   ['lord fxlooks', [LORD, '.', 'fxlooks'], { ABYSS_FX: FX_TERRAIN.map((k) => `!${k}`).join(',') }, 80],
   ['city win', [CITY, '.', 'win'], {}, 69],
+  ['groundfx', ['tests/integration/groundfx.mjs', '.', 'all'], {}, 15],
   ['records', ['tests/integration/records.mjs', '.', 'all'], {}, 1],
   ['glyphcheck', ['tests/glyphcheck.mjs', '.'], {}, 1],
   ['changelogcheck', ['tests/changelogcheck.mjs', '.'], {}, 1],
