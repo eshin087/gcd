@@ -2765,8 +2765,8 @@ export const ATTACKS = {
   ...FIRE, // fireAttacks.js: the short flights and the fire spells (contract 3)
   ...BULLET_HELL, // bulletAttacks.js: the bullet-hell patterns (ADR-039)
   ...TERRAIN_MOVES, // terrainAttacks.js: it takes a tree or a boulder and uses it (ADR-110)
-  ...BROOD_MOVES, // broodAttacks.js: roar-cast, it calls up drakelings and wisps (ADR-190)
-  ...FIRE_SPELLS, // spellsFire.js: roar-cast, the fire serpent and the firestorm vortex (ADR-190)
+  ...BROOD_MOVES, // broodAttacks.js: roar-cast, it calls up drakelings and wisps (ADR-195)
+  ...FIRE_SPELLS, // spellsFire.js: roar-cast, the fire serpent and the firestorm vortex (ADR-195)
 };
 
 /** Parryable close-range swings (+ every string, `def.melee`): a parry on the last hit recoils. */

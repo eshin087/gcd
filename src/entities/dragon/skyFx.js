@@ -30,7 +30,7 @@ import { TUNING } from './tuning.js';
 import { TRAILS } from './tuningFire.js';
 import { trailRand } from './fireTrails.js';
 
-// Where the meteors fall from (ADR-190: "all the fire should be coming from the dragon itself"):
+// Where the meteors fall from (ADR-195: "all the fire should be coming from the dragon itself"):
 // ?meteorSource=a|b|off (read once; ?fireTrail=off: off). a (seeds): the salvo's bolts arc over and
 // hang as burning seeds along the top of the frame, and each meteor drops out of the seed nearest its
 // spot; b (vortex): a vortex of fire turns over the wyrm, fed by a column of heat off its back for the

@@ -1027,7 +1027,7 @@ async function scenarioWreckage() {
     fightSetup(G, { ai: true });
     const d = game.dragon;
     Math.random = mulberry32(seed * 11 + 3);
-    // (ADR-190: the undergrowth at the treeline is kindling, there to be burnt and torn up; the meter is
+    // (ADR-195: the undergrowth at the treeline is kindling, there to be burnt and torn up; the meter is
     // the clearing's own pieces, as it was tuned: the undergrowth is reported apart)
     const UNDER = new Set(['bush', 'fern', 'bramble']);
     const inside = D.list.filter((b) => Math.hypot(b.x, b.z) < BOUND && !UNDER.has(b.kind));
@@ -1277,7 +1277,7 @@ async function scenarioBreach() {
   const before = phase(BREACH_SECS, 26, stat());
   const down0 = D.list.filter((b) => b.def.edge > 0 && b.state !== PIECE.INTACT).length;
   // (the fight's own fire may have felled a tree or two of the wall by now: what that opened is theirs too;
-  // ADR-190: the torn ground is E.T, the boss's, on a walk edge, where the hero's is the forest)
+  // ADR-195: the torn ground is E.T, the boss's, on a walk edge, where the hero's is the forest)
   let slack = 0;
   for (let i = 0; i < E.n; i++) slack = Math.max(slack, (E.T ?? E.R)[i] - E.base);
   // 2. the gap
@@ -1300,7 +1300,7 @@ async function scenarioBreach() {
   out(`   before the gap (${BREACH_SECS} s): ${f(before)}`);
   out(`   ${felled} trees felled in a wedge ${(2 * BREACH_HALF).toFixed(2)} rad wide out to ${BREACH_DEEP} m: his ground ends at ${open.toFixed(1)} m there, the root may go ${gain.toFixed(1)} m past its ${d.bound} m`);
   out(`   out in the gap (${BREACH_SECS} s): ${f(after)} · trees of the wall down ${down0} > ${down0 + felled} > ${down1}`);
-  // (ADR-190: on a walk edge nothing holds the hero at the circle any more, the forest is his ground; he
+  // (ADR-195: on a walk edge nothing holds the hero at the circle any more, the forest is his ground; he
   // holds 26 m out and is never off it. The wyrm's circle holds while he stands inside it)
   assert((E.walk || before.heroFar <= 31 + slack - p.radius + 0.05) && before.wyrmFar <= d.bound + slack + 0.05 && !before.heroOff && !before.wyrmOff && before.airOver < 6,
     `before the gap: the hero within his ground (${before.heroFar.toFixed(2)} m; ${E.walk ? 'the forest is his' : `the circle is ${31 - p.radius}`}), the wyrm's root within its own (${before.wyrmFar.toFixed(2)} m; its circle is ${d.bound}); the fight's own fire had opened ${slack.toFixed(1)} m at most by then`);
@@ -1325,7 +1325,7 @@ async function scenarioBreach() {
   // blows at the line may fell a tree of it again (ADR-154, 2026-11-22: one full run ended with the
   // edge open again, the hero and the wyrm both inside): what stands is read at the restore, what the
   // fight felled after it is counted apart)
-  // (ADR-190: on a walk edge the restore shuts the torn lanes, the boss's; the hero out there stays on
+  // (ADR-195: on a walk edge the restore shuts the torn lanes, the boss's; the hero out there stays on
   // his ground, the forest, and walks back in; the wyrm's ground comes back in after him)
   const shut = E.walk ? E.lanes === 0 : !E.open, t0 = game.time;
   // (classic: the hero is put back by his next step; the wyrm by its next step on the ground: a flight ends first)
@@ -1351,7 +1351,7 @@ async function scenarioBreach() {
   return G;
 }
 
-// ================================================================== scenario: forestedge (no invisible walls: he walks into the forest, ADR-190)
+// ================================================================== scenario: forestedge (no invisible walls: he walks into the forest, ADR-195)
 // The REAL Cinderwood (world/edge.js WALK mode). 1. Exploring, the hero walks from the bonfire out
 // west and north-west through the treeline into the forest: nothing holds him at the old 31 m circle,
 // the trunks and rocks turn him, the ridge's crags stop him at the true end, and he is never off his
@@ -4635,9 +4635,9 @@ async function scenarioAblaze() {
   // the attack table at the base (fc17317): every attack's damage, timings, tells and reach
   // (103cbc42 since the merge with the duelists' second pass, ADR-122: furnaceMaw's bite impact 0.09 → 0.118,
   // the lead's timing fix for its mirrored side; ADR-120 alone left 47e0a683. Nothing of ablaze changes it)
-  // (2843b004 since ADR-190: the table gained the roar-cast spells and the brood's moves, fireSerpent,
-  // firestorm, drakelings, wisps; no existing attack changed)
-  const BASE_ATTACKS = '2843b004';
+  // (c08725a9 since ADR-195: the table gained the roar-cast spells and the brood's moves, fireSerpent,
+  // firestorm, drakelings, wisps; no existing attack changed: without them it still hashes to 103cbc42)
+  const BASE_ATTACKS = 'c08725a9';
   const table0 = JSON.stringify(TUNING.attacks);
   M.setAblazeLook('b');
   const G = build();
@@ -5210,7 +5210,7 @@ async function scenarioFire() {
 }
 
 // ================================================================== scenario: every fire comes from the wyrm
-// ADR-190 (the owner: "all the fire should be coming from the dragon itself"): no fire appears out of
+// ADR-195 (the owner: "all the fire should be coming from the dragon itself"): no fire appears out of
 // nothing. The eruptions' crack runs out of the forefeet's slam (the P2 line's pillars burst as its head
 // reaches each one; the P3 chase's head runs to the hero and every pillar bursts at it), the P3 second
 // flame wall's warning is laid from where the first wall crosses its line, and Armageddon's meteors
@@ -10009,7 +10009,7 @@ async function scenarioMelee() {
 // parryable hit parried (the string goes on after each non-final parry, recoils after the last, the
 // posture adds up, combat:deflectChain counts); a red hit inside a string breaks a held guard.
 async function scenarioBrood() {
-  out('\n== scenario BROOD (the incantation, fire drakelings and kamikaze wisps: ADR-190) ==');
+  out('\n== scenario BROOD (the incantation, fire drakelings and kamikaze wisps: ADR-195) ==');
   const G = build();
   const { game, input } = G;
   fightSetup(G);
@@ -13279,7 +13279,7 @@ async function scenarioSfx() {
 }
 const num0 = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 
-// ================================================================== scenario: spells (ADR-190)
+// ================================================================== scenario: spells (ADR-195)
 // The roar-cast fire spells (spellsFire.js): the fire serpent and the firestorm. Each is a Lab ability
 // with a red tell; forced on the hand-built field (dead trees, boulders) it opens with the incantation
 // and the roar, then HAPPENS: the serpent reaches the hero, strikes on its red beats (one flash per

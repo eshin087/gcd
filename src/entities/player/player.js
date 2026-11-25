@@ -378,7 +378,7 @@ export class Player {
 
   /**
    * The hand feels a cut on something small the boss sends at him (the wyrm's brood, dragon/brood.js,
-   * ADR-190: it tests his blade itself, as bullets.js does): a short hit-stop, sparks along the cut
+   * ADR-195: it tests his blade itself, as bullets.js does): a short hit-stop, sparks along the cut
    * (dx, dz), a jolt of the camera. Nothing else (no damage dealt, no streak).
    */
   feelCut(x, y, z, dx = 0, dz = 0, heavy = false) {

@@ -1036,7 +1036,7 @@ const S = {
     const S = BREAK.spread;
     const wood = D.list.filter((b) => b.mat === 'wood' && b.burns);
     const nb = (b) => wood.filter((o) => o !== b && Math.hypot(o.x - b.x, o.z - b.z) <= S.reach + b.r + o.r + o.leafy * 1.5).length;
-    // (a tree: ADR-190's undergrowth grows in clumps whose pieces touch, one lit lights its clump-mates at once)
+    // (a tree: ADR-195's undergrowth grows in clumps whose pieces touch, one lit lights its clump-mates at once)
     const t = wood.filter((b) => b.kind === 'tree' || b.kind === 'deadTree').reduce((a, b) => (nb(b) > nb(a) ? b : a));
     D.ignite(t.x, t.z, 0.3, 1);
     let peak = 0, firstSpread = -1;
@@ -1075,7 +1075,7 @@ const S = {
     assert(over === 0, `at LOW quality the fires never pass ${capLow} by spreading (lit ${lit0} at once)`);
     // logs catch from a burning neighbour and in burning grass
     const B = build();
-    // (one in the clearing: at the treeline ADR-190's undergrowth catches from the burning log and lights it again)
+    // (one in the clearing: at the treeline ADR-195's undergrowth catches from the burning log and lights it again)
     const tr = B.D.list.find((b) => b.kind === 'deadTree' && Math.hypot(b.x, b.z) < 24);
     B.D.topple(tr, 1, 0, 'world');
     B.step(2);
@@ -1097,7 +1097,7 @@ const S = {
     game.player.position.set(0, 0, 0);
     const A = BREAK.wear.at;
     // an oak, a pine and a dead tree of the wall, struck again and again with a tail's power along the way out
-    // (an old tree of the wall, one that closes its lanes: ADR-190's young trees between them are slight)
+    // (an old tree of the wall, one that closes its lanes: ADR-195's young trees between them are slight)
     const pick = (fn) => D.list.filter((b) => b.wall && b.def.edge > 0 && b.state === STATE.INTACT && fn(b)).sort((p, q) => Math.hypot(p.x, p.z) - Math.hypot(q.x, q.z))[0];
     const trees = [pick((b) => b.kind === 'tree' && b.body.parts > 5), pick((b) => b.kind === 'tree' && b.cut[0] === 2 && b.body.parts === 5), pick((b) => b.kind === 'deadTree')];
     for (const t of trees) {
@@ -1295,7 +1295,7 @@ const S = {
     for (const b of D.list) by[b.kind] = (by[b.kind] ?? 0) + 1;
     out(`     forest: ${D.list.length} pieces (${Object.entries(by).map(([k, n]) => `${k} ${n}`).join(', ')}); wreckage pools ${D.wreck.pools.map((p) => p.length).join(' / ')}`);
     // (664 since every tree of the wall and the landmarks break, 2026-11-16; 183 on 2026-11-15, 80 before)
-    // (ADR-190, 2026-11-25: the forest he walks in, its undergrowth and the ridge: ~1700; 664 before)
+    // (ADR-195, 2026-11-25: the forest he walks in, its undergrowth and the ridge: ~1700; 664 before)
     assert(D.list.length >= 1400 && D.list.length <= 1900, `${D.list.length} breakables in Cinderwood (1400..1900)`);
     assert(bones <= 1023 - 60, `${bones} bones in all with the wyrm (${D.batch.bones} the world's), under the 1023 slots with room for the hero (~140)`);
     // debris by quality: one boulder's break
@@ -1379,7 +1379,7 @@ const S = {
     B.world.scorch.burnCircle(0, 0, 4, 0.2, 1);
     B.place(0, 6, 0);
     B.game.events.emit = B.emitRaw; // (the test's own event log allocates: off for the measure)
-    // (ADR-190: the undergrowth at the treeline is wood within the fire's reach of these trees; what it
+    // (ADR-195: the undergrowth at the treeline is wood within the fire's reach of these trees; what it
     // lights in the measure is new fires, events, not a steady frame: the spread's budgets are held. Each
     // piece alight costs ~0.5 - 1 KB a frame of boxed numbers in its flames, so a measure that let them
     // spread read 2.3 KB)
@@ -1410,8 +1410,8 @@ const S = {
     const grew = process.memoryUsage().heapUsed - h0 - base;
     assert(grew / 2000 < 2048, `2000 frames of the body sweeping, wood burning, logs smouldering: ${(grew / 2000).toFixed(0)} bytes a frame over the bare loop (< 2 KB: no object, array or closure a frame; the rest is V8 boxing call arguments)`);
   },
-  // ---------------------------------------------------------------- the edge of the open ground (edge.js, ADR-125, ADR-190)
-  // WALK mode (ADR-190, the owner's "no invisible walls"): the hero walks the whole forest out to its
+  // ---------------------------------------------------------------- the edge of the open ground (edge.js, ADR-125, ADR-195)
+  // WALK mode (ADR-195, the owner's "no invisible walls"): the hero walks the whole forest out to its
   // ridge from the start, among the trunks and rocks (their colliders); the ridge's crags close the map
   // with no gap; the edge's ground is only the backstop behind them. What the wall's fallen trees open
   // (the lanes, ADR-125) is the BOSS's share, and a boss follows the hero out (and back in) too.

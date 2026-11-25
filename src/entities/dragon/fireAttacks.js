@@ -1547,7 +1547,7 @@ const eruptions = {
     // (2nd pass) from phase 2 every pillar leaves a burning pool (ER.pool s; blockable ticks, none while rolling)
     const common = { attack: 'eruptions', r: ER.radius, active: ER.active, damage: ER.damage, burn: ER.burn, knockback: ER.knockback, pool: perPh(ER.pool, d), poolR: ER.radius * ER.poolR, tickDamage: ER.poolTick, tickBurn: ER.poolBurn };
     const b = a.beats[0];
-    // (ADR-190) the fire runs out of the slam: a glowing crack from between the forefeet (fireTrails.js)
+    // (ADR-195) the fire runs out of the slam: a glowing crack from between the forefeet (fireTrails.js)
     const crack = CRACK_ON ? { crack: true, cx: c.x, cz: c.z } : null;
     if (a.chase) {
       a.line = d.hazards.chase({ ...common, ...crack, every: ER.chase.every, until: ER.chase.time, warn: ER.chase.warn, lead: ER.chase.lead, group: d.hazards.group(ER.chase.maxHits), linkFirst: true });
@@ -1922,7 +1922,7 @@ const flameWall = {
 };
 
 /**
- * (ADR-190) The second wall's line is laid from the wyrm's fire, not lit out of nothing
+ * (ADR-195) The second wall's line is laid from the wyrm's fire, not lit out of nothing
  * (?wallSource, fireTrails.js): a (default) a fire front runs out along it both ways from where the
  * first wall crosses it, as the first wall springs up; b the head swings round and breathes toward
  * that point and a runner carries the fire over the ground to it. The line (cx, cz) sweeping along

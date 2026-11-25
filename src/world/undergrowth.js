@@ -5,7 +5,7 @@ import { hash2, fbm2, range } from '../core/rng.js';
 import { TAU } from '../core/math.js';
 import { prep, lumpy, paint, carve, mul, BARK, STONE } from './forest.js';
 
-// The living forest's small things (the fire-and-forest pass, ADR-190; world/forest.js places them,
+// The living forest's small things (the fire-and-forest pass, ADR-195; world/forest.js places them,
 // forestTuning.js counts them): bushes, ferns, brambles, fallen logs, mossy rocks, the ridge's crags,
 // and what grows on the old oaks (surface roots, hanging moss). Each builder returns world-space,
 // non-indexed geometries painted for the forest's own materials: the screen-grid look of the trees

@@ -2,7 +2,7 @@ import { TUNING } from './tuning.js';
 import { BROOD } from './tuningBrood.js';
 import { roarFx, roarPose, perPhase } from './attacks.js';
 
-// The roar-cast moves that call up the brood (ADR-190): drakelings, wisps. Same contract as
+// The roar-cast moves that call up the brood (ADR-195): drakelings, wisps. Same contract as
 // fireAttacks.js (phases / beats / weight / start / enter / update / hit / end); numbers in
 // tuningBrood.js. Spread into ATTACKS (attacks.js).
 //

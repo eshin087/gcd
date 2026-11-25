@@ -27,7 +27,7 @@ import { TRAILS } from './tuningFire.js';
 // with timeTo()). Groups cap how many hits a whole rain / barrage / chase may deal.
 // No per-frame allocations: pooled hazard records, reused hit / event scratch.
 //
-// Every fire comes from the wyrm (ADR-190, fireTrails.js): a line / chase given an origin (`cx, cz`:
+// Every fire comes from the wyrm (ADR-195, fireTrails.js): a line / chase given an origin (`cx, cz`:
 // the forefeet's slam) opens a glowing crack from it (the line's pillars burst as its head reaches
 // them; the chase's head runs out to the hero and every pillar bursts where it is); a wall given
 // `lay` is laid along its line from `layS` (and a runner may carry the fire there first: `run`);

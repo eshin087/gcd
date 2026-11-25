@@ -169,7 +169,7 @@ export const FLIGHT = {
 };
 
 
-// Fire trails (ADR-190, the fire-and-forest pass: "all the fire should be coming from the dragon
+// Fire trails (ADR-195, the fire-and-forest pass: "all the fire should be coming from the dragon
 // itself"; fireTrails.js, skyFx.js sources). Every fire visibly travels from the wyrm to where it
 // burns. Visual except where noted (the crack's run IS the chase's tell: its first pillar waits for it).
 export const TRAILS = {

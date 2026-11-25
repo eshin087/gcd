@@ -1043,10 +1043,10 @@ export class Lab {
         n++;
       }
       this._status(n ? `${n} trees of the wall fall outward behind the hero: a gap ~${Math.round(0.6 * 34)} m wide, 20 m deep` : 'nothing stands there any more', n ? 'ok' : '');
-    }).title = 'fells every tree of the wall in a wedge straight out from the hero, out to 52 m: the ground opens, the minimap redraws, the wyrm can follow (on a walk edge, Cinderwood since ADR-190, the hero already walks there: it opens ground for the wyrm only)';
+    }).title = 'fells every tree of the wall in a wedge straight out from the hero, out to 52 m: the ground opens, the minimap redraws, the wyrm can follow (on a walk edge, Cinderwood since ADR-195, the hero already walks there: it opens ground for the wyrm only)';
     button(grid, 'Restore', () => {
       // (a hero out among the trees of a walk edge goes back to the bonfire first, as the level's own
-      // reset does: the restored wood must not stand up round him; ADR-190)
+      // reset does: the restored wood must not stand up round him; ADR-195)
       const out = !!w()?.edge?.out;
       if (out) this.game.flow?._respawnPlayer?.();
       w()?.scorch?.reset?.();

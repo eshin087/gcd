@@ -124,7 +124,7 @@ export class Minimap {
     const arena = CONFIG.world.arenaRadius;
     // the edge of the open ground (the forest's wall coming down: world/edge.js): the map draws back
     // as the ground opens, so the hero stays on it
-    // (a walk-mode edge, ADR-190: the hero walks the whole forest; the map draws back to its end, the
+    // (a walk-mode edge, ADR-195: the hero walks the whole forest; the map draws back to its end, the
     // ridge, while he stands out in it, and keeps the clearing's scale while he is in the clearing)
     const E0 = g.world?.edge ?? null;
     const E = E0?.walk ? (E0.out ? E0 : null) : E0?.open ? E0 : null;
