@@ -20,7 +20,7 @@ status line instead of throwing.
   of active cheats (god mode, infinite flasks, attack speed, the cut's fan look, the shudder off,
   time scale, loop, AI off). Click it to reopen.
 - Section collapse state, the hitbox toggle and the loop period persist in `localStorage`
-  (`abyss.lab.v1`). Storage is optional, so private mode works.
+  (`gcd.lab.v1`). Storage is optional, so private mode works.
 
 ## Sections
 | Section | What it does |

@@ -4,7 +4,16 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Ninety-four pieces of work since 0.4.0:
+Ninety-five pieces of work since 0.4.0:
+- **The game is called gcd** (2026-11-25, ADR-195). *Changed:* the game has a new name, gcd, written lowercase
+  everywhere you see it: the title logo (a small lowercase "gcd" in the same block letters), the browser tab, the
+  WHAT'S NEW header. gcd is also the hero: a mysterious being who wields the most powerful sword in all universes,
+  the sword that lets him defeat these legendary bosses and carries him between campfires in different worlds and
+  universes. The game moves with the name to https://thegcd.vercel.app (repo `eshin087/gcd`). The browser keys
+  now start `gcd.` (`gcd.bindings.v2`, `gcd.records.v1`, `gcd.unlocks.v1`, ...): with no migration, saved
+  bindings, records, learned techniques, the touch pad's size and WHAT'S NEW's read marks start fresh (the new
+  address could not read them anyway). For developers: the tests' env vars are `GCD_*`, the touch / pad classes
+  `html.gcd-touch` / `html.gcd-pad`, the preview config `gcd-dev`.
 - **The bosses look built from letters, like the hero** (2026-11-24, ADR-194). *Changed:* every human boss is printed
   the way the hero is: a body of lit letters in his own colours (no more dark fill inside a thin outline, or flat
   bright colour), the hero's blocky outline strokes and dotted rim, and below the knee his clothes break into the
@@ -81,7 +90,7 @@ Ninety-four pieces of work since 0.4.0:
   grade and time and a **BOSS RUSH** entry: all eight levels in order, each its own page, health and
   flasks full at every fight, a death retries the boss with the clock running, a reload mid-fight is a
   death, a `3 / 8` timer under the minimap, and a rush record with every split. Saved per browser
-  (`abyss.records.v1`: per level and the rush, best time and best grade, the last 24 run records in full,
+  (`gcd.records.v1`: per level and the rush, best time and best grade, the last 24 run records in full,
   shaped for a later online leaderboard; `game:record` is the seam an uploader subscribes to). Runs with
   the Lab, a cheat, `__tick`, `?stage=lab`, `?tech=` or a gameplay URL switch are not recorded.
   The grade's and the title's looks were picked by the owner from three options each: the grade in block
@@ -133,7 +142,7 @@ Ninety-four pieces of work since 0.4.0:
   recordings each, every sound placed in eleven scripted fight moments) and picked. Now recorded: the
   parry (a Norse sword on a katana), the blue / perfect parry (a spear on a katana), getting hurt (a body
   punch), two blades clashing (a sword meeting a katana), the slam (a distant boom), the plunge's dive and
-  landing (a slowed swoosh, a heavy punch). Designed for ABYSS: your cut landing on the wyrm (a scale clack),
+  landing (a slowed swoosh, a heavy punch). Designed for gcd: your cut landing on the wyrm (a scale clack),
   the blade layer of a light and of a heavy cut (a dry slice, a deep cleaving bite), the flurry's flash cut
   and coil (a razor flick, a held breath fitted to the coil), the boss holding your strike (a lacquered
   wood guard). Back to the original synth: the blue warning, the hero's heavy cut and execution thrust.
@@ -791,7 +800,7 @@ Ninety-four pieces of work since 0.4.0:
     characters (`HP [################........] 104 / 160`), drawn straight on the game with no
     panel behind them. The piece you just lost shows pale for a moment before it drains.
   - **Big words are block letters.** YOU DIED, the victory line, area names and phase calls are
-    built from characters in the style of the ABYSS title logo, and stack word by word on a narrow
+    built from characters in the style of the gcd title logo, and stack word by word on a narrow
     screen. The serif font is gone from the HUD.
   - *Removed:* the name / "Lv 12" / class lines of the player frame (they were decoration).
   - **The minimap barely exists:** a small faint disc (72 px on desktop, 40 px on phones) with no
@@ -1168,17 +1177,17 @@ Ninety-four pieces of work since 0.4.0:
 
 ### Changed
 - **CI's long checks split; every PR auto-merges when green** (2026-11-24, ADR-185): the Starless Lord's
-  look check and the living world's suite each run in parallel processes (`ABYSS_FX`, `ABYSS_SKIP` in
+  look check and the living world's suite each run in parallel processes (`GCD_FX`, `GCD_SKIP` in
   life.mjs) and the shares are re-dealt on measured times: a PR's check should take ~5-6 minutes (was 8-10).
   `.github/workflows/automerge.yml` sets squash auto-merge on every PR (not drafts, not `hold`).
 - **CI runs the tests as four parallel jobs** (2026-11-23, ADR-153, PR #92): `tests/run.mjs --shard I/N`
   deals the tasks to N shares; the Starless Lord suite runs in three parts; a PR's check takes ~4
   minutes (was 12-15). A PR that only changes docs/, *.md or .claude/ skips the tests and the build.
-  lord.mjs, duel.mjs and asc.mjs take a comma list of scenarios and `ABYSS_SKIP`.
+  lord.mjs, duel.mjs and asc.mjs take a comma list of scenarios and `GCD_SKIP`.
 - **`npm test` runs its suites side by side** (2026-11-15): `tests/run.mjs` starts the four
   integration suites and the two static checks as separate processes, with `integ` in five parts
   (its TIMING scenario in three), and prints each task's output whole and a summary of times. The
-  same checks run. `integ.mjs` takes a comma list of scenarios, `ABYSS_SKIP` and `ABYSS_TM_SHARD`.
+  same checks run. `integ.mjs` takes a comma list of scenarios, `GCD_SKIP` and `GCD_TM_SHARD`.
   CI cancels a PR's superseded run.
 - **The sword arc** (ADR-074): `PlayerFx.trail` draws an edge line, a faint veil and motes, gated
   by how far the blade turned in the frame (was 4–5 rows of bright strokes under `A` / `8` letters
