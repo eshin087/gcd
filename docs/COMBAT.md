@@ -602,11 +602,31 @@ same 258 damage in the same time as a streak of 7 (integ `storm`).
   the head); each pass runs from where he stands past the target (on a man 0.55 - 0.9 m off his middle,
   past his side; round the head 0.85 - 1.15 m off its middle) and on out to `reach` beyond it, where the
   next starts. The blink between two cuts stays (the afterimage, the arrival flash), but he reappears
-  where he already is, turned to the next line. The whole run is planned as the flurry starts (a
-  bounded search over each cut's side and offset, a few ms): the lines spread like a star as widely as
-  they can (round the head the neck kept clear; at seven blows the six lines 21 - 27° apart at least),
-  no pass ends within 1.6 m of the dodge spot, and on a man the last cut ends before his face when the
-  star allows it. **The art starts where the last cut ended**: the iai from there through the target
+  where he already is, turned to the next line. **The passes draw a FIGURE, a different one each
+  flurry** (owner: "not always form some kind of star ... always be dynamic with different figures";
+  `DEFENSE.flurry.chain.figures`, `player/flurryFigures.js`; `?figure=` / the Lab's `figure` button pin
+  one, default `any`): picked from the flurry's own seeded stream among those offered at that many
+  flash cuts, never the same twice running:
+  - **star** (any count): every pass to the same side, the lines crossing on him; its offsets
+    searched for the widest spread (at seven blows the six lines 21 - 28° apart at least).
+  - **zigzag** (2 cuts and up): each pass runs back across him, each crossing him farther along one
+    way (offsets swept from -1.15 to +1.15 m; 1.5 round the head): a lightning bolt that travels
+    across him.
+  - **cage** (3 cuts and up, on the ground): every pass skims the same side of him 1.2 m off his
+    middle, corner to corner of a triangle / square / pentagon / hexagon (by the cut count): he
+    circles him with cuts.
+  - **spiral** (3 cuts and up, on the ground): the cage turning inward, each pass nearer (1.3 m down
+    to 0), the last straight through his middle.
+  - **cross** (3 cuts and up): every other pass straight through his middle, one round his side
+    between them (1.3 m off; 1.6 round the head), each on the other side: the straight cuts cross in
+    an X (an hourglass with its sides).
+  A figure is laid at the turn round him (up to 60° off straight toward the dodge spot) and the hand
+  that cost least; one that would pass within 1.6 m of the dodge spot (anywhere along a pass after the
+  first), run into a wall, or round the head along its neck is passed over, and the star always fits
+  (a hexagon cage round a man the dodge spot 2.5 m off him does not: it comes at 3.5 m). The cage
+  and the spiral are not offered round the wyrm's head (one side would run over its neck, through its
+  body). The storm's late cuts follow the figure. No pass ends within 1.6 m of the dodge spot, and on
+  a man the last cut ends before his face when the figure allows it. **The art starts where the last cut ended**: the iai from there through the target
   (round the head, if that line runs along the neck, its coil carries him round the head first), the
   split rises from there during its coil to its height and falls through, the vault steps in from
   there during its coil; Skyfall's plunge rises over the side of the head he is on. With one blow (the
