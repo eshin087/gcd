@@ -8,9 +8,90 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>gcd</title>
+<!-- the loading screen (below, first thing in <body>): inline, no request of its own, drawn before
+     anything else has arrived; ui/bootLoader.js is its side in the modules -->
+<style id="gcd-load-css">
+html { background: #04060a; }
+#gcd-load {
+  position: fixed; inset: 0; z-index: 1000; overflow: hidden;
+  background: radial-gradient(ellipse 80% 70% at 50% 45%, #0a0d14 0%, #04060a 70%);
+  color: #cfd6e6;
+  font: 12px/1.5 'Cascadia Mono', Consolas, Menlo, 'DejaVu Sans Mono', 'Liberation Mono', monospace;
+  -webkit-font-smoothing: antialiased;
+  transition: opacity 0.28s ease;
+  user-select: none; -webkit-user-select: none;
+}
+#gcd-load.gl-out { opacity: 0; pointer-events: none; }
+#gcd-load pre { margin: 0; font: inherit; white-space: pre; }
+#gcd-load .gl-logo {
+  font-size: 13px; line-height: 1.04; letter-spacing: 0;
+  color: #e9e2d2; text-shadow: 0 0 14px rgba(255, 120, 40, 0.22);
+}
+#gcd-load .gl-bar { white-space: pre; letter-spacing: 0; color: #4f586b; }
+#gcd-load .gl-cells { position: relative; display: inline-block; overflow: hidden; vertical-align: bottom; }
+#gcd-load .gl-fill { position: absolute; left: 0; top: 0; background: #070a10; color: #ff8a3d; text-shadow: 0 0 8px rgba(255, 138, 61, 0.35); }
+/* the part of the bar being worked on now: a run of light crossing it (a compositor animation: it
+   keeps moving while the page is still arriving or a step holds the main thread) */
+#gcd-load .gl-work { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: hidden; }
+#gcd-load .gl-run {
+  position: absolute; left: 0; top: 0; width: 100%; color: #a3abbd;
+  will-change: transform; animation: gl-run 1.5s linear infinite;
+}
+#gcd-load .gl-run i { font-style: normal; background: #070a10; }
+#gcd-load.gl-end .gl-work { display: none; }
+@keyframes gl-run { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+#gcd-load .gl-pct { color: #cfd6e6; font-variant-numeric: tabular-nums; }
+#gcd-load .gl-step { color: #7d879c; letter-spacing: 0.18em; }
+#gcd-load .gl-lore { color: #8a93a6; transition: opacity 0.5s ease; }
+#gcd-load .gl-lore.gl-fade { opacity: 0; }
+#gcd-load .gl-lore.gl-travel { color: #f2e7d2; }
+#gcd-load .gl-log { margin: 0; padding: 0; list-style: none; color: #4f586b; }
+#gcd-load .gl-log li { white-space: pre; }
+#gcd-load .gl-log .gl-now { color: #cfd6e6; }
+#gcd-load .gl-log .gl-ms { color: #7d879c; }
+
+/* a: everything on one centred column */
+#gcd-load.gl-a .gl-in {
+  position: absolute; inset: 0 0 8vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+#gcd-load.gl-a .gl-bar { margin-top: 30px; }
+#gcd-load.gl-a .gl-meta { margin-top: 8px; font-size: 11px; }
+#gcd-load.gl-a .gl-log { display: none; }
+#gcd-load.gl-a .gl-lore { position: fixed; left: 16px; right: 16px; bottom: max(9vh, calc(env(safe-area-inset-bottom) + 24px)); text-align: center; font-size: 12px; letter-spacing: 0.04em; }
+
+/* b: a console at the lower left: the logo, every step done with its time, the bar, the lore */
+#gcd-load.gl-b .gl-in {
+  position: absolute; left: max(8vw, calc(env(safe-area-inset-left) + 16px)); right: 16px;
+  bottom: max(10vh, calc(env(safe-area-inset-bottom) + 20px));
+}
+#gcd-load.gl-b .gl-logo { font-size: 10px; color: #cfd6e6; text-shadow: none; }
+#gcd-load.gl-b .gl-log { margin-top: 18px; font-size: 11px; line-height: 1.65; }
+#gcd-load.gl-b .gl-meta { display: none; }
+#gcd-load.gl-b .gl-bar { margin-top: 10px; }
+#gcd-load.gl-b .gl-lore { margin-top: 22px; font-size: 11px; max-width: 46ch; color: #7d879c; }
+#gcd-load.gl-b .gl-lore::before { content: '# '; color: #4f586b; }
+@media (max-width: 560px) {
+  #gcd-load .gl-logo { font-size: 10px; }
+  #gcd-load.gl-b .gl-logo { font-size: 8px; }
+  #gcd-load .gl-bar { font-size: 11px; }
+}
+@media (max-height: 460px) {
+  #gcd-load.gl-a .gl-in { bottom: 14vh; }
+  #gcd-load.gl-a .gl-bar { margin-top: 18px; }
+  #gcd-load.gl-a .gl-lore { bottom: 7vh; }
+  #gcd-load.gl-b .gl-in { bottom: 6vh; }
+  #gcd-load.gl-b .gl-log { margin-top: 8px; line-height: 1.45; }
+  #gcd-load.gl-b .gl-lore { margin-top: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #gcd-load .gl-run { animation-duration: 4s; }
+}
+</style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Cinzel:wght@500;700&display=swap" rel="stylesheet">
+<!-- (the web fonts' stylesheet does not hold back the first paint, so the loading screen shows at once;
+     main.js waits for it before the glyph atlas is drawn: ui/bootLoader.js fontSheetReady) -->
+<link id="gcd-fonts" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Cinzel:wght@500;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" onerror="this.setAttribute('data-failed', '1')">
 <link rel="stylesheet" href="./src/style.css">
 <script type="importmap">
 {
@@ -25,6 +106,136 @@
 <script defer src="/_vercel/insights/script.js"></script>
 </head>
 <body>
+<div id="gcd-load" class="gl-a" aria-hidden="true"><div class="gl-in"><pre class="gl-logo">                       ██╗
+                       ██║
+ ██████╗  ██████╗  ██████║
+██╔══██║ ██╔════╝ ██╔══██║
+╚██████║ ╚██████╗ ╚██████║
+ ╚═══██║  ╚═════╝  ╚═════╝
+ █████╔╝
+ ╚════╝</pre><ol class="gl-log"><li class="gl-now">arriving</li></ol><div class="gl-bar">[<span class="gl-cells">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░<span class="gl-fill"></span><span class="gl-work"><span class="gl-run"><i>▒▓████▓▒</i></span></span></span>]  <span class="gl-pct">  </span></div><div class="gl-meta"><span class="gl-step">arriving</span></div><div class="gl-lore"></div></div></div>
+<script>
+// The loading screen: a waiting animation (CSS only: the page is still arriving and the main thread is
+// busy) until main.js reports its first boot step; then a real bar of the boot's steps
+// (ui/bootLoader.js: window.__gcdLoad.step / done / fail). ?loader=a|b picks the look, ?loader=a-hold /
+// b-hold keeps it on screen at the longest step (for review). Never throws.
+(function () {
+  try {
+    var R = document.getElementById('gcd-load');
+    if (!R) return;
+    var q = String(location.search || '');
+    var m = /[?&]loader=([a-z-]+)/i.exec(q);
+    var v = m ? m[1].toLowerCase() : 'a';
+    var look = v.charAt(0) === 'b' ? 'b' : 'a';
+    var hold = v.indexOf('hold') >= 0;
+    R.className = 'gl-' + look;
+    var N = 32;
+    var $ = function (c) { return R.getElementsByClassName(c)[0]; };
+    var fill = $('gl-fill'), work = $('gl-work'), pct = $('gl-pct'), stepEl = $('gl-step'), lore = $('gl-lore'), log = $('gl-log');
+    var LORE = [
+      'gcd carries the one sword that cuts between worlds.',
+      'No blade in any universe is older. None cuts deeper.',
+      'Where the sword cuts, a road opens. At its end, a fire.',
+      'Every world keeps one fire burning. That is where he arrives.',
+      'Each world has its keeper, a legend where it stands.',
+      'He does not say where he came from.',
+      'The sword chooses the road. He chooses to walk it.',
+      'Some keepers have waited a long age for him.',
+      'He falls. He wakes again by the fire. He goes back.',
+      'The worlds do not know each other. They all know the sword.',
+      'He rests by the fire, then follows the sword on.'
+    ];
+    var travel = null;
+    try {
+      var t = JSON.parse(sessionStorage.getItem('gcd.travel') || 'null');
+      if (t && t.name && Date.now() - Number(t.at) < 120000) travel = 'The sword cuts a road to ' + t.name + '.';
+    } catch (e) {}
+    var li = Math.floor(Date.now() / 1000) % LORE.length, shownTravel = 0;
+    var showLore = function () {
+      if (travel && shownTravel < 2) {
+        shownTravel++;
+        lore.textContent = travel;
+        lore.className = 'gl-lore gl-travel';
+        return;
+      }
+      lore.textContent = LORE[li];
+      li = (li + 1) % LORE.length;
+      lore.className = 'gl-lore';
+    };
+    showLore();
+    var timer = setInterval(function () {
+      lore.className += ' gl-fade';
+      setTimeout(showLore, 500);
+    }, 4200);
+    var t0 = 0, cur = null, held = false, gone = false;
+    var now = function () { return (window.performance && performance.now) ? performance.now() : Date.now(); };
+    var row = function (word, ms) {
+      var dots = new Array(Math.max(2, 16 - word.length)).join('.');
+      return word + ' ' + dots + ' ';
+    };
+    var L = (window.__gcdLoad = {
+      gone: false,
+      // a step starts with f of the boot done and runs to f1 (its share of the bar shows the run)
+      step: function (word, f, f1) {
+        if (held || gone) return;
+        f = Math.max(0, Math.min(1, Number(f) || 0));
+        f1 = Math.max(f, Math.min(1, Number(f1) || f));
+        var n = Math.floor(f * N), n1 = Math.max(n + 1, Math.round(f1 * N));
+        fill.textContent = new Array(n + 1).join('█');
+        if (f >= 1) R.className += ' gl-end';
+        work.style.left = n + 'ch';
+        work.style.width = Math.min(N, n1) - n + 'ch';
+        var p = Math.round(f * 100) + '%';
+        pct.textContent = p;
+        stepEl.textContent = String(word);
+        var t = now();
+        if (cur) {
+          cur.className = '';
+          var ms = document.createElement('span');
+          ms.className = 'gl-ms';
+          ms.textContent = 'ok  ' + Math.round(t - t0) + ' ms';
+          cur.appendChild(ms);
+        }
+        if (log.firstChild && log.firstChild.textContent === 'arriving') {
+          log.firstChild.textContent = row('page', 0);
+          var a = document.createElement('span');
+          a.className = 'gl-ms';
+          a.textContent = 'ok  ' + Math.round(t) + ' ms';
+          log.firstChild.appendChild(a);
+          log.firstChild.className = '';
+        }
+        cur = document.createElement('li');
+        cur.className = 'gl-now';
+        cur.textContent = row(String(word));
+        log.appendChild(cur);
+        t0 = t;
+        if (hold && f1 - f >= 0.3) held = true; // (review: stays on the longest step, the world)
+      },
+      done: function () {
+        if (gone) return;
+        if (!held) this.step('ready', 1);
+        if (hold) return;
+        gone = true;
+        L.gone = true;
+        clearInterval(timer);
+        R.className += ' gl-out';
+        setTimeout(function () { if (R.parentNode) R.parentNode.removeChild(R); }, 400);
+      },
+      fail: function () {
+        gone = true;
+        L.gone = true;
+        clearInterval(timer);
+        if (R.parentNode) R.parentNode.removeChild(R);
+      }
+    });
+  } catch (e) {
+    try {
+      var r = document.getElementById('gcd-load');
+      if (r && r.parentNode) r.parentNode.removeChild(r);
+    } catch (e2) {}
+  }
+})();
+</script>
 <canvas id="game"></canvas>
 <div id="ui"></div>
 <script type="module" src="./src/main.js"></script>
