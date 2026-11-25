@@ -123,7 +123,7 @@ export function buildBramble(rng, x, z, s) {
  * A fallen log: a trunk lying along (cos yaw, sin yaw) round (x, z), its bark split, moss on its back.
  * Returns { geos: [log, ...moss], ends: [[ax, az], [bx, bz]] } (its ends: its colliders are laid along it).
  */
-export function buildLog(rng, x, z, len, rad, yaw) {
+export function buildLog(rng, x, z, len, rad, yaw, col = BARK) {
   const parts = [];
   const g = prep(new THREE.CylinderGeometry(rad * 0.85, rad, len, 8, Math.max(2, Math.round(len / 1.2))));
   lumpy(g, rad * 0.22, 2.2, rng() * 99);
@@ -134,7 +134,7 @@ export function buildLog(rng, x, z, len, rad, yaw) {
   g.rotateY(-yaw);
   g.translate(0, rad * 0.78, 0);
   paint(g, {
-    col: (px, py, pz) => mul(BARK, 0.6 + 0.55 * hash2(px * 6 + x, pz * 6 + z + py * 3)),
+    col: (px, py, pz) => mul(col, 0.6 + 0.55 * hash2(px * 6 + x, pz * 6 + z + py * 3)),
     flag: FLAG.STONE,
     sway: 0,
     ao: (px, py) => 0.45 + 0.55 * Math.min(1, py / (rad * 1.6)),
@@ -250,4 +250,48 @@ export function buildMoss(rng, from, len) {
     parts.push(g);
   }
   return parts;
+}
+
+export const DEAD_WOOD = [0.15, 0.14, 0.14];
+
+/**
+ * A dead trunk fallen against a standing tree: from its foot on the ground (fx, fz) up to (tx, ty, tz)
+ * on the tree's trunk, `rad` m thick, its bark grey, its upper end snapped. World space.
+ */
+export function buildLeaner(rng, fx, fz, tx, ty, tz, rad) {
+  const d = new THREE.Vector3(tx - fx, ty, tz - fz);
+  const len = d.length();
+  const g = prep(new THREE.CylinderGeometry(rad * 0.75, rad, len, 7, Math.max(2, Math.round(len / 1.2))));
+  g.translate(0, len / 2, 0);
+  lumpy(g, rad * 0.2, 2.4, rng() * 99, new THREE.Vector3(0, len / 2, 0));
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) if (p.getY(i) > len * 0.96) p.setY(i, p.getY(i) - hash2(p.getX(i) * 19 + fx, p.getZ(i) * 19 + fz) * rad * 1.4);
+  g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()));
+  g.translate(fx, -0.1, fz);
+  paint(g, {
+    col: (px, py, pz) => mul(DEAD_WOOD, 0.7 + 0.5 * hash2(px * 7 + fx, pz * 7 + py * 3)),
+    flag: FLAG.STONE,
+    sway: 0,
+    ao: (px, py) => 0.5 + 0.5 * Math.min(1, py / 2.5),
+  });
+  return [g];
+}
+
+/**
+ * A root plate torn up with a fallen giant: a disc of earth and roots standing on edge at the trunk's
+ * end `at` [x, z], facing along the trunk (yaw), `size` m across, its foot sunk.
+ */
+export function buildRootPlate(rng, at, yaw, size) {
+  const g = prep(new THREE.CylinderGeometry(size / 2, size / 2, 0.45, 9, 1));
+  lumpy(g, size * 0.12, 1.5 / size, rng() * 99);
+  g.rotateZ(Math.PI / 2);
+  g.rotateY(-yaw);
+  g.translate(at[0], size * 0.38, at[1]);
+  paint(g, {
+    col: (px, py, pz) => mul([0.1, 0.075, 0.055], 0.7 + 0.6 * hash2(px * 5 + at[0], py * 5 + pz)),
+    flag: FLAG.STONE,
+    sway: 0,
+    ao: (px, py) => 0.45 + 0.55 * Math.min(1, py / size),
+  });
+  return [g];
 }
