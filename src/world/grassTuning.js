@@ -76,7 +76,7 @@ export const GRASS = Object.freeze({
    * `lie` s at `lieAlpha` and fade; `life` s at most in the air. Colours: `fresh` green to `straw`.
    */
   spray: Object.freeze({
-    look: 'm2',
+    look: 'm',
     glyphs: "/\\|',;`vi1",
     max: 1600,
     lowQ: 0.8, // at quality q a cut blade throws per x (1 / q)^lowQ (the phone draws a third of the blades)
@@ -91,7 +91,19 @@ export const GRASS = Object.freeze({
     // m / m2 / m3 (round 7, the owner: "the matrix ascii art"): a's throw, fall and counts, each chip a
     // CODE glyph (`code`) re-rolling as it flies; m2 with a `trail` of fading code glyphs behind it;
     // m3 the cut tops too turn to code as they leave (`tops`)
-    m: Object.freeze({ per: 0.55, size: [0.62, 0.8], frag: 0, band: [0.2, 0.34], spin: [0, 0], tip: 0.85, lit: [1, 1], code: true, trail: 0 }),
+    // m (round 8, the owner: "a bit tinier and a bit more subtle/natural ... but still enough for players
+    // to be like wow thats the grass!"): smaller glyphs, a green a step toward the grass's own, a short
+    // bright phase, a slower flicker, lying glyphs settle to the grass's darkness sooner (`col`); m4 a step
+    // more visible; m0 round 7's m
+    m: Object.freeze({
+      per: 0.5, size: [0.4, 0.55], frag: 0, band: [0.2, 0.34], spin: [0, 0], tip: 0.85, lit: [1, 1], code: true, trail: 0,
+      col: Object.freeze({ head: [0.17, 0.58, 0.26], tail: [0.06, 0.3, 0.12], deep: [0.02, 0.08, 0.04], cool: 0.18, darken: 0.35, flip: [0.09, 0.24] }),
+    }),
+    m4: Object.freeze({
+      per: 0.55, size: [0.45, 0.6], frag: 0, band: [0.2, 0.34], spin: [0, 0], tip: 0.85, lit: [1, 1], code: true, trail: 0,
+      col: Object.freeze({ head: [0.22, 0.76, 0.32], tail: [0.05, 0.42, 0.15], deep: [0.02, 0.11, 0.05], cool: 0.24, darken: 0.5, flip: [0.07, 0.2] }),
+    }),
+    m0: Object.freeze({ per: 0.55, size: [0.62, 0.8], frag: 0, band: [0.2, 0.34], spin: [0, 0], tip: 0.85, lit: [1, 1], code: true, trail: 0 }),
     m2: Object.freeze({ per: 0.55, size: [0.62, 0.8], frag: 0, band: [0.2, 0.34], spin: [0, 0], tip: 0.85, lit: [1, 1], code: true, trail: 2 }),
     m3: Object.freeze({ per: 0.55, size: [0.62, 0.8], frag: 0, band: [0.2, 0.34], spin: [0, 0], tip: 0.85, lit: [1, 1], code: true, trail: 0, tops: true }),
     /**
@@ -113,6 +125,9 @@ export const GRASS = Object.freeze({
       trailDim: 0.85,
       trailRoom: 2,
       turn: [0.04, 0.12],
+      darken: 9, // s: a lying glyph reaches `deep` over its lie (or this, when sooner)
+      flip: [0.05, 0.16], // s between a flying glyph's re-rolls (`flip0` its first)
+      flip0: [0.04, 0.12],
     }),
     b: Object.freeze({ per: 0.9 }),
     c: Object.freeze({ per: 1.6, wide: 1.45, fresh2: 1.0 }),

@@ -204,10 +204,12 @@ export class MowFx {
     this._fling = { on: false, ux: 0, uz: 0, k: 1 };
     // the grass spray (round 5, `?grassSpray=`): letters thrown off what the arc cuts; c cuts a bolder line
     const sl = sprayLook();
-    this.chips = (sl === 'a' || sl === 'a2' || sl === 'm' || sl === 'm2' || sl === 'm3') && this.look !== 'r1' ? GRASS.spray[sl] : null;
+    this.chips = ['a', 'a2', 'm', 'm0', 'm2', 'm3', 'm4'].includes(sl) && this.look !== 'r1' ? GRASS.spray[sl] : null;
     // the code look (the Hall of Falling Script's rain, world/scriptHall.js: its glyphs, its greens)
     this._code = this.chips?.code ? gis(GRASS.spray.code.glyphs) : null;
     this._codeTops = !!this.chips?.tops;
+    // (the code's colours and flicker: the variant's own, else GRASS.spray.code's)
+    this._cc = this.chips?.col ?? GRASS.spray.code;
     this._chipAcc = 0;
     this.chipped = 0; // chips thrown (the tests', the Lab's)
     this.spray = sl === '0' || this.look === 'r1' || this.chips ? null : new GrassSpray(game, sl);
@@ -343,7 +345,7 @@ export class MowFx {
       this.lit1[j] = T.lit[1];
       this.glyph[j] = this._code ? this._codeGlyph() : B.data[i * 4];
       this.code[j] = this._code ? 1 : 0;
-      this.flipT[j] = R(0.04, 0.12);
+      this.flipT[j] = R((this._cc.flip0 ?? this._cc.flip)[0], (this._cc.flip0 ?? this._cc.flip)[1]);
       this.colv[j] = B.data[i * 4 + 2];
       this.fade[j] = 0;
       this.age[j] = 0;
@@ -578,12 +580,12 @@ export class MowFx {
         this.v0[j] = 0;
         this.v1[j] = 1;
         this.glyph[j] = this._codeGlyph();
-        this.flipT[j] = this.age[j] + R(0.04, 0.12);
+        this.flipT[j] = this.age[j] + R((this._cc.flip0 ?? this._cc.flip)[0], (this._cc.flip0 ?? this._cc.flip)[1]);
         this.lieRot[j] = R(-0.2, 0.2);
         this.spin[j] *= 0.15;
       } else if (cd === 1 && this.age[j] >= this.flipT[j] && this.state[j] !== LIE) {
         this.glyph[j] = this._codeGlyph();
-        this.flipT[j] = this.age[j] + R(0.05, 0.16);
+        this.flipT[j] = this.age[j] + R(this._cc.flip[0], this._cc.flip[1]);
       }
       const o = j * 4;
       P[o] = this.px[j]; P[o + 1] = this.py[j]; P[o + 2] = this.pz[j]; P[o + 3] = this.rot[j];
@@ -617,10 +619,10 @@ export class MowFx {
   /** A code glyph's colour (GRASS.spray.code: the hall's rain, tamed): the head's bright green, cooling
    *  to the tail's as it flies, to the deep green as it lies; `k` dims a trail's glyphs. */
   _codeCol(j, k, K, o) {
-    const CO = GRASS.spray.code, lying = this.state[j] === LIE;
+    const CO = this._cc, lying = this.state[j] === LIE;
     let a, b, t;
     if (lying) {
-      a = CO.tail; b = CO.deep; t = Math.min(1, this.age[j] / Math.max(0.05, this.lie[j]));
+      a = CO.tail; b = CO.deep; t = Math.min(1, this.age[j] / Math.max(0.05, Math.min(this.lie[j], CO.darken)));
     } else {
       a = CO.head; b = CO.tail; t = Math.min(1, this.age[j] / CO.cool);
     }
