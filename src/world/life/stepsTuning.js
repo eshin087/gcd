@@ -64,13 +64,14 @@ export const STEPS = freeze({
   },
 
   /**
-   * The flash print (`?prints=a`, also under `?dragon=1`; '0' the prints before). The owner (2026-11-24):
+   * The flash print (the default with the dragon print; `?prints=0` the prints before). The owner (2026-11-24):
    * the ash's footprints were "very ugly ... and they last too long. make it more like cool subtle matrix
    * flash footprints that look cool on spawn and fade away quickly"; picked matrix green. A print is `n`
    * code letters (the code rain's own, GRASS.spray.code) laid in the foot's oval (`foot`: long, wide, m),
    * lit heel to toe `cascade` s apart: each flashes `hot` (white-green) for `hotT` s, cools to `color`,
    * re-rolls its letter every `flicker` s and is gone `life` s after it lit (dimming to `colorEnd`).
-   * Wherever a surface leaves a print (earth, ash); the grass's wake and the puffs are not changed.
+   * On every surface in every level (the owner, 2026-11-25: "have the footprints show in every stage"); the
+   * grass's wake and the puffs are not changed.
    */
   flash: {
     glyphs: '0123456789ZTHKEX<>=:+*',

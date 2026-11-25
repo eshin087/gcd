@@ -251,9 +251,12 @@ export class Steps {
       for (let i = 0; i < n; i++) this._print(A.glint, x + L.range(-0.15, 0.15), z + L.range(-0.15, 0.15), 0, 0);
     }
     if (A.flick) this._burst(A.flick, mode, q, x, z, 0);
-    if (A.print) {
-      // (`?prints=a`: a flash of code letters in the foot's shape, gone in under a second)
-      const P = printLook() === 'a' ? STEPS.flash : A.print;
+    // the prints: the flash (the default, STEPS.flash: code in the foot's shape, gone in under a second) on
+    // EVERY surface in every level (the owner, 2026-11-25: "have the footprints show in every stage"); with
+    // `?prints=0` the surface's own print where it has one (earth, ash)
+    const flash = printLook() === 'a';
+    if (flash || A.print) {
+      const P = flash ? STEPS.flash : A.print;
       if (heavy) {
         // both feet, side by side across the way he came down
         this._print(P, x - dz * 0.16, z + dx * 0.16, dx, dz);

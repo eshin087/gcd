@@ -22,7 +22,7 @@ import { GFX } from './groundFxTuning.js';
 //   fx.bakes             how many times the contact texture was baked (the tests)
 //   fx.contactAt(x, z)   the baked ring's depth there, 0..1 (the tests; reads the CPU copy)
 //
-// The switches (each its own, '0' = off; ?dragon=1 turns them all to 'a'): ?dpCloud= ?dpContact= ?dpRipple=
+// The switches (each its own, '0' = off; 'a' the default, ?dragon=0 turns them all off): ?dpCloud= ?dpContact= ?dpRipple=
 // ?dpRidge= (a | b). They are read every frame (a Map lookup), so the Lab and the tests flip them live.
 
 const KEYS = ['dpCloud', 'dpContact', 'dpRipple', 'dpRidge'];

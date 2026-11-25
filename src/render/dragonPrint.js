@@ -21,10 +21,13 @@ import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
 //                              between neighbouring levels so a smooth slope does not band)
 //   DP_CELL                    the ground's cell (m): [0.135, 0.25]
 //
-// The switches (the owner compares them before anything becomes the default):
-//   ?ground=b              the dragon ground (world/ground.js)
-//   ?dragon=1              every dragon-print piece at its author's pick ('a') at once, the ground too
-//   dragonLook(name)       a piece's option: lookOf(name), whose default is 'a' under ?dragon=1, else '0'
+// The switches. The owner (2026-11-25), having played every piece on at once: "i like 'everything on'
+// (grass A) much better ... make all the maps use the dragon ground style": every piece at 'a' is the
+// DEFAULT in every level.
+//   ?dragon=0              the game as it was before the dragon print (every piece '0', the ground today's)
+//   ?ground=0              today's ground alone (world/ground.js; a / c / d the other first-round looks)
+//   dragonLook(name)       a piece's option: lookOf(name), default 'a' ('0' under ?dragon=0); one switch
+//                          (?dgGrass=0, ?dpRidge=b ...) overrides it
 
 export const DP_RAMP = '.:-=17402#%8@';
 export const DP_CELL = Object.freeze([0.135, 0.25]);
@@ -32,16 +35,16 @@ export const DP_CELL = Object.freeze([0.135, 0.25]);
 const dragonAll = (() => {
   try {
     const v = new URLSearchParams(globalThis.location?.search ?? '').get('dragon');
-    return v === '1' || v === 'all' || v === 'a';
+    return !(v === '0' || v === 'off' || v === 'old');
   } catch {
-    return false;
+    return true;
   }
 })();
 
-/** Is ?dragon=1 on (every piece at its pick)? */
+/** Is the dragon print on (the default; off only under ?dragon=0)? */
 export const dragonAllOn = () => dragonAll;
 
-/** A dragon-print piece's option ('0' off; 'a', 'b', ... its looks). ?dragon=1 makes 'a' the default. */
+/** A dragon-print piece's option ('0' off; 'a', 'b', ... its looks): 'a' by default, '0' under ?dragon=0. */
 export function dragonLook(name) {
   return lookOf(name, dragonAll ? 'a' : '0');
 }

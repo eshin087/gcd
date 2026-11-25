@@ -21,7 +21,8 @@ export function groundLook() {
   try {
     const v = new URLSearchParams(globalThis.location?.search ?? '').get('ground');
     if (v === 'a' || v === 'b' || v === 'c' || v === 'd') return v;
-    // ?dragon=1: every dragon-print piece at once, the ground's look b first (render/dragonPrint.js)
+    if (v === '0') return null;
+    // the dragon ground is the default (render/dragonPrint.js; ?dragon=0 today's)
     return dragonAllOn() ? 'b' : null;
   } catch {
     return null;
