@@ -120,6 +120,10 @@ export function createSharedUniforms() {
     // between x and y (the reference's two-tone anime shading), z = how much of the step replaces
     // the smooth falloff
     uArtHeroCel: { value: new THREE.Vector3(0.3, 0.42, 0.75) },
+    // the human bosses printed the hero's way (ADR-194, `?bossPrint=`; main.js writes it every frame):
+    // x on (1) / off (0), y his own colours (1) or the hero's greys (0), z the boss's feet (world y),
+    // w the hem's height above them (m). Read by the bosses' ink-line materials (materials.js), never the player's
+    uBossPrint: { value: new THREE.Vector4(0, 1, 0, 0.62) },
     // the living world's wind (world/life/wind.js writes both once a frame while the piece is on):
     // dirX, dirZ (unit), speed (m/s), level (0..1). (0, 0, 0, 0) = the wind piece off: the grass and the
     // trees then move exactly as they always did (WIND_GLSL, windOn())

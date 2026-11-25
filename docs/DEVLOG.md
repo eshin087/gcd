@@ -216,6 +216,31 @@ files; the run session saw the same with the free arm); on-device feel unverifie
 
 ---
 
+## 2026-11-24 — The bosses printed the hero's way (ADR-194; branch `render/boss-hero-ink`)
+
+**Owner:** sent the hero at the game camera: "the bosses need to look more like my character look where my character
+looks like its all built with ascii ... i especially love the gray colored details to make the bottom of the cape look
+flowing and to show different shades on the upper top ... show me what the bosses would look like". After the first
+sheet: "im not really seeing the difference besides a reshade". After the second: "Yes, own colours".
+
+**Finding.** Six of the seven human bosses already print in the hero's ink-line art, same letters and cells. Apart
+were their fills (flat dark: the Lord and Xin Yi a faint `+` mass in a thin bright outline; flat bright: Wen Yao,
+Halcyon), the outline (a 1 px hairline; the hero's steps with his font pixels), the plate rims (white; his dotted
+lavender) and the hem (none). Lu Wusheng printed in the wyrm's digits.
+
+**What shipped.** `?bossPrint=0|a|b` (b default). materials.js: the shared `uBossPrint` lifts every boss part's fill
+(3 - 16) to the hero's lit body in the shader (so forms, phases, clones and the Lab all go through it) and prints the
+cloth below the knee as the hem part along a ragged line; `SG_HERO_SELF` keeps the player out. pipeline.js
+`uBossLike`: his lines per font pixel and the player's tables for plates 12 - 16 (not the blade, which the hero's
+cuts light). main.js writes both every frame (the feet followed). `sheathArt` default a. Lab LOOKS row.
+
+**How.** Prototyped live (a scratch module patching each boss's `uArtFill` + a per-material hem uniform), rendered
+at 1920x1080 in headless Edge, the game's 58 degree camera from 36 m, crops x4; then moved into the shaders and
+rendered again against `?bossPrint=0`: the same as the prototype for all seven.
+
+**Open:** the owner has not seen it in play or on the phone. The wyrm, the props and the animals are next in this
+direction (their own art paths). The bosses' slimmer outfits still show fewer letters across than the hero's cloak.
+
 ## 2026-11-24 — Session 92: smaller combat text
 
 **Owner:** "the combat text that shows up next to the character (counter, deflect, dmg numbers, etc) size and font

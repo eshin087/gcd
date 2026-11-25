@@ -1664,6 +1664,15 @@ glint, the Ring's far flicker, the moths, the ash's drifts against the paving's 
 answer at the game camera on Ashfall and in the Grove; after the owner's verdict the drizzle may be too
 faint, the Ring's devils need luck to be in view, and the Foxfire Terrace's calm shows little.
 
+### The bosses printed the hero's way (2026-11-24, ADR-194; `?bossPrint=`, default b)
+The owner's rule since then: a human boss looks "all built with ascii" like the hero. In the ink-line art
+that takes a lit letter body, not a dark fill inside an outline or a flat bright colour: every cloth part of
+a boss prints at about the hero's coat brightness (0.1 - 0.24 linear before the lift), in its own hue at 75 %
+(`a`: the hero's greys), with the hero's blocky strokes and dotted cloth rim, and below the knee his cloth
+breaks into the hero's pale dotted hem along a ragged line (materials.js `uBossPrint`, pipeline.js
+`uBossLike`). Done in the shader: a new boss in the ink-line art gets it with no change; pick his fills for
+hue, not for brightness. The face, the eyes and what glows (parts 1, 2, 17 - 19) keep their own fill.
+
 ### The Hall of Falling Script and Xin Yi (2026-11-22, ADR-156, ADR-157; `world/scriptHall.js`, `enemies/wokenOne/`, `?level=code`)
 "More extra ASCII" (the owner) is four layers INSIDE the game's letter systems: none of it is a pass over the
 frame (a terminal post-process and one character grid over the frame were turned down: "Tried and turned

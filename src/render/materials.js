@@ -178,6 +178,7 @@ function surfaceFeatures(o, cell) {
     if (!(part >= 0 && part < HERO_ART.parts)) throw new Error(`surface glyph heroArt.part: 0..${HERO_ART.parts - 1}, got ${h.part}`);
     defines.SG_HERO_ART = '';
     defines.HERO_A0 = (HERO_ART.a0 - (o.heroSelf ? HERO_ART.self : 0)).toFixed(4);
+    if (o.heroSelf) defines.SG_HERO_SELF = ''; // (the player's rig: the bosses' print, uBossPrint, leaves him alone)
     defines.HERO_AS = HERO_ART.step.toFixed(4);
     uniforms.uArtFill = { value: new THREE.Color(...(h.fill ?? [0.1, 0.1, 0.11])) };
     uniforms.uArtSpec = { value: new THREE.Vector2(h.spec ?? 0, h.specPow ?? 20) };
@@ -283,7 +284,7 @@ const SHARED = [
 // shared by surface-glyph materials only (declared in their own shader, not COMMON_GLSL)
 const SURFACE_SHARED = ['uArtSolid', 'uArtHeroEdge', 'uArtHeroKey'];
 // ... and by the hero's ink-line art source only (`heroArt`)
-const HERO_ART_SHARED = ['uCamRight', 'uCamUp', 'uArtHeroLight', 'uArtHeroRim', 'uArtHeroCel', 'uHeroSolid'];
+const HERO_ART_SHARED = ['uCamRight', 'uCamUp', 'uArtHeroLight', 'uArtHeroRim', 'uArtHeroCel', 'uHeroSolid', 'uBossPrint'];
 
 /**
  * Geometry attributes required: position, normal, aCol (vec3 albedo, linear), aFlag (float),
@@ -594,6 +595,7 @@ export function createSurfaceGlyphMaterial(U, o = {}) {
       uniform float uArtGlowK;
       uniform float uArtSub;
       uniform float uArtPart;
+      uniform vec4 uBossPrint;
       uniform vec3 uCamRight;
       uniform vec3 uCamUp;
       uniform vec4 uArtHeroLight;
@@ -988,7 +990,33 @@ export function createSurfaceGlyphMaterial(U, o = {}) {
         float kn = max(dot(n, kd), 0.0);
         // cel shading: a lit tone and a shadow tone with a short step between them
         kn = mix(kn, smoothstep(uArtHeroCel.x, uArtHeroCel.y, kn) * (0.55 + 0.45 * kn), uArtHeroCel.z);
-        vec3 fillC = uArtFill * (uArtHeroLight.x + uArtHeroLight.y * kn + L * uArtHeroLight.z);
+        // the bosses printed the hero's way (ADR-194, uBossPrint; a human boss's rig only, never the
+        // player's): his cloth / hair / plate fills are lifted to the hero's lit letter body (the colour
+        // kept at y: 0 grey, 1 his own), and below his knee the cloth breaks into the hero's pale
+        // dotted hem along a ragged line. The face, the eyes and what glows keep their own fill.
+        vec3 artFill = uArtFill;
+        float hemK = 0.0;
+#ifndef SG_HERO_SELF
+        if (uBossPrint.x > 0.5) {
+          float pidB = floor(uArtPart * 0.5 + 0.25);
+          if (pidB > 2.5 && pidB < 16.5) {
+            float mxB = max(max(uArtFill.r, uArtFill.g), max(uArtFill.b, 1e-3));
+            vec3 hueB = uArtFill / mxB;
+            float tl = 0.1 + 0.14 * min(dot(uArtFill, vec3(0.2126, 0.7152, 0.0722)) / 0.7, 1.0);
+            vec3 fGrey = (vec3(tl * 0.65) + hueB * (tl * 0.4375)) * 1.8;
+            vec3 fOwn = (vec3(tl * 0.425) + hueB * (tl * 1.6575)) * 1.5;
+            artFill = mix(fGrey, fOwn, uBossPrint.y);
+            // the hem: every part but the trousers, the hair, the plate and the crest (5, 11, 12, 15)
+            if (abs(pidB - 5.0) > 0.5 && abs(pidB - 11.0) > 0.5 && abs(pidB - 12.0) > 0.5 && abs(pidB - 15.0) > 0.5) {
+              float rag = sin(vW.x * 17.0 + vW.z * 5.0) * 0.6 + sin(vW.z * 23.0 - vW.x * 7.0) * 0.4;
+              hemK = step(vW.y, uBossPrint.z + uBossPrint.w + 0.08 * rag);
+              vec3 lav = vec3(0.486, 0.459, 0.675);
+              artFill = mix(artFill, mix(lav, lav * 0.55 + hueB * 0.189, uBossPrint.y), hemK);
+            }
+          }
+        }
+#endif
+        vec3 fillC = artFill * (uArtHeroLight.x + uArtHeroLight.y * kn + L * uArtHeroLight.z);
 #ifdef SG_HERO_FOLDS
         // cloth folds (the reference's coat: dark fold streaks running down it between lit ridges):
         // bands across aGUV x that wander down y. The art pass prints a dark band as sparse letters
@@ -1062,7 +1090,7 @@ export function createSurfaceGlyphMaterial(U, o = {}) {
         col += uWarn.rgb * uWarn.a * (0.08 + 0.9 * m + rim * 2.5);
         col = applyFog(col, vW);
 #ifdef SG_HERO_ART
-        gl_FragColor = vec4(col, HERO_A0 + (uArtPart + floor(vPart + 0.5)) * HERO_AS);
+        gl_FragColor = vec4(col, HERO_A0 + (mix(uArtPart, 16.0, hemK) + floor(vPart + 0.5)) * HERO_AS);
 #else
         gl_FragColor = vec4(col, uFlag);
 #endif

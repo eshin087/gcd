@@ -4,7 +4,13 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Ninety-three pieces of work since 0.4.0:
+Ninety-four pieces of work since 0.4.0:
+- **The bosses look built from letters, like the hero** (2026-11-24, ADR-194). *Changed:* every human boss is printed
+  the way the hero is: a body of lit letters in his own colours (no more dark fill inside a thin outline, or flat
+  bright colour), the hero's blocky outline strokes and dotted rim, and below the knee his clothes break into the
+  hero's pale, ragged, dotted hem. Lu Wusheng now prints in the hero's letters instead of the big digits.
+  `?bossPrint=a` the hero's greys, `?bossPrint=0` as before (the Lab's LOOKS row `bossPrint`); `?sheathArt=2` gives
+  Lu Wusheng his digits back.
 - **The grass bends as you run through it and springs back** (2026-11-25, ADR-193). *Changed:* running through the
   grass no longer leaves a dark trail that appears at once and lingers for ten seconds. The blades bend along
   your way and out from your path, lie down a moment and rise again over two or three seconds; a sprint or a
