@@ -4,7 +4,11 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Eighty-six pieces of work since 0.4.0:
+Eighty-seven pieces of work since 0.4.0:
+- **The resting blade no longer glows** (2026-11-25, ADR-183). *Fixed:* a white halo the size of his head bloomed
+  round the hero's sword at some poses and facings while he stood still, and the point left a pale block where it
+  rested in the grass. A world letter centred on his blade printed the steel's raw brightness; it now shows the pixel
+  underneath, as it always did for every boss.
 - **Smaller combat text** (2026-11-24, ADR-184). *Changed:* the call-outs over the hero (PARRY, DEFLECT, COUNTER,
   GHOSTEP ...) and the damage numbers are smaller and keep one size at every window width. They grew with the
   window before, so a 1920-wide window drew DEFLECT at 22 px and the flurry's cut counter at 34 px. Now: call-outs
