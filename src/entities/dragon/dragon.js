@@ -18,6 +18,8 @@ import { Terrain } from './terrain.js';
 import { Ablaze, ablazeLook, setAblazeLook } from './ablaze.js';
 import { wallWind } from './wallReach.js';
 import { WyrmReact } from './react.js';
+import { Incantation } from './incantation.js';
+import { Brood } from './brood.js';
 import { wyrmTopKnobs } from './faces.js';
 
 // VAELGRIM, THE CINDER WYRM — the boss. Public contract: see docs/ARCHITECTURE.md (Dragon).
@@ -151,6 +153,8 @@ export class Dragon {
     this.bullets = new Bullets(this); // the bullet field + fire wheel (bullets.js): cleared like the hazards
     this.terrain = new Terrain(this); // the piece in its jaws / in the air, its mark and its blow (terrain.js, ADR-110)
     this.ablaze = new Ablaze(this); // phase 3: it sets itself on fire (ablaze.js)
+    this.incantation = new Incantation(this); // the glyph circle a roar-cast spell burns (incantation.js, ADR-190)
+    this.brood = new Brood(this); // the fire creatures it calls up (brood.js, ADR-190)
     this.brain = new Brain(this);
     this.debug = createDebug(this);
 
@@ -460,6 +464,8 @@ export class Dragon {
     this.fx.reset();
     this.terrain.reset(); // (a piece still in the jaws falls; the world's own reset stands it up again)
     this.ablaze.reset();
+    this.incantation.reset();
+    this.brood.reset();
     this._clearWarn();
     this.state = 'sleeping';
     this.hp = this.maxHp;
@@ -833,6 +839,8 @@ export class Dragon {
     this.broken = false;
     this._clearWarn();
     this.ablaze.reset();
+    this.incantation.reset();
+    this.brood.reset();
     this.object3d.visible = false;
     this.hurtSpheres.length = 0;
     this.bodyCircles.length = 0;
@@ -912,6 +920,12 @@ export class Dragon {
     this.bullets.update(dt); // (guarded inside: never throws)
     this.terrain.update(dt); // (guarded inside: never throws)
     this.ablaze.update(dt); // (phase 3's fire on its wings, claws and tail; goes out while it dies)
+    try {
+      this.incantation.update(dt);
+      this.brood.update(dt);
+    } catch (err) {
+      console.error('[dragon] incantation / brood update failed', err);
+    }
     if (this.state !== 'dying') {
       if (wyrmTopKnobs().glint) this.fx.eyeGlints(dt, this.react.eyes(this.rig.pt.eyes), this.rig.s.eyes);
       // phase 2 smoulders, phase 3 burns (TUNING.phaseEmbers)
