@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { clamp, lerp, smoothstep, damp, easeOutCubic, wrapAngle, TAU } from '../../core/math.js';
 import { DIM, BODY, HAIR_CLUSTERS, HERO_SCALE, sheetOffset } from './model.js';
 import { SWINGS, FH, ARCS, widenArcs } from './swings.js';
-import { atEase, fencerGuard, BELT } from './stances.js';
+import { atEase, fencerGuard } from './stances.js';
 import { idlesOld, easeArms, guardArms, newRests, tickRests, pickEase, actStart, lowRest, toLowRest, trailing, EASE_HABITS, EASE_TRICKS, FIGHT_ACTS, EASE_RESTS, FIGHT_RESTS, IDLES } from './idles.js';
 
 // Procedural animation for the Wanderer, keyed to the owner's concept sheets ("Movement" / "Combat
@@ -40,9 +40,12 @@ export const P = {
   // sword fingers) and how far it rests on the sword wrist (0..1). Read only for an animator built
   // with opts.freeHand (the hero); every other animator ignores whatever they hold
   lD: 53, lN: 56, hs: 59, lk: 60,
+  // … and how much it hangs loose at his side on its own pendulum (0..1: HeroAnimator._sideHand; a
+  // clip's `side`). 0 in every pose but those clips' (update() clears it before each pose)
+  sd: 61,
 };
 /** The pose's channel count (a duelist's scratch poses are sized from it). */
-export const N = 61;
+export const N = 62;
 const ENTRY_EASE = 0.85; // an easeOut cross-fade (attack entries) arrives at this fraction of its time
 const TURN_LAG_MAX = 1.4; // rad: how far the drawn heading may trail the gameplay yaw in a fast turn
 const TURN_K = 650; // stiffness (1/s²) of the critically damped spring the drawn heading follows
@@ -332,6 +335,7 @@ export function guard(p, A) {
   v3(p, P.lN, REST_LN[0], REST_LN[1], REST_LN[2]);
   p[P.hs] = 1;
   p[P.lk] = 0;
+  p[P.sd] = 0;
 }
 
 const SCR_FIGHT = new Float32Array(N);
@@ -782,8 +786,7 @@ function swingClip(name) {
       rF: def.rF ?? null, lF: def.lF ?? null, step: def.step ?? null, drag: def.drag ?? 0.22, home: def.home ?? SW_HOME,
       lead: Array.isArray(def.lead) ? def.lead : SW_LEAD, fy: Array.isArray(def.fy) ? def.fy : null,
       fold: Number.isFinite(def.fold) ? def.fold : 1, // × the bite's chest fold and head nod (attackPose)
-      belt: !!def.belt, // the free hand stays on the belt, still in the chest's frame (attackPose, beltHand)
-      side: !!def.side, // the free hand hangs loose at his side through the swing (attackPose)
+      side: !!def.side, // the free hand hangs loose at his side through the swing (attackPose sideHand, _sideHand)
       gather: Array.isArray(def.gather) ? def.gather : null, // [leave, arrive]: the windup's ease (SW_COIL's note)
       hipCoil: keys.find((k) => k.hip != null && k.u >= 0.9 && k.u <= 1.0)?.hip ?? null, // the hips' turn at the coil
     };
@@ -1088,54 +1091,58 @@ function attackPose(p, A) {
       p[P.hdX] += BITE.nod * b * fold;
     }
   }
-  // a clip with `belt` (the blink chain, swings.js): the free hand rests on the belt the whole swing
-  // (`side`: loose at his side; until it has its own hand it is the belt's)
-  if (k.kind === 'clip' && A.freeHand && (swingClip(k.clip)?.belt || swingClip(k.clip)?.side)) beltHand(p, A);
+  // a clip with `side` (the instant cuts, swings.js): the free hand hangs loose at his side the whole
+  // swing, and goes home with the rest of him (the share of the way home: SCRATCH holds the stance)
+  if (k.kind === 'clip' && A.freeHand && swingClip(k.clip)?.side) {
+    const hx = rec > home ? clamp((rec - home) / Math.max(1e-6, 1 - home), 0, 1) : 0;
+    sideHand(p, hx * hx * hx * (hx * (6 * hx - 15) + 10));
+  }
 }
 
-// the stances' belt (stances.js BELT) in the chest's own frame: there the stances hold it whatever
-// way the chest turns (BELT is written for a chest turned BELT.yaw), so it is one fixed spot
-const BELT_C = (() => {
-  const c = Math.cos(-BELT.yaw), s = Math.sin(-BELT.yaw), t = (v) => [v[0] * c + v[2] * s, v[1], -v[0] * s + v[2] * c];
-  return { h: t(BELT.h), p: t(BELT.p), d: t(BELT.d), n: t(BELT.n) };
-})();
-const _beQ = new THREE.Quaternion(), _beQ2 = new THREE.Quaternion(), _beE = new THREE.Euler(), _beV = new THREE.Vector3();
-/** The free hand on the belt in the chest's frame (the pelvis and the spine as this pose turns
- *  them): however the body turns, leans and snaps through a cut, the hand stays where it rests,
- *  low by his left hip, open, the fingers round the front of the hip (the stances' own hand). */
-// (the hand comes to the belt from where the swing found it: the guard holds it off the belt since
-// ADR-186, and set there at once it jumped 17 cm in the swing's first frame. Eased in the chest's own
-// frame, so the chest's turn through the windup does not drag it)
-const BELT_EASE = 0.26; // s
-const _beQ3 = new THREE.Quaternion(), _beV2 = new THREE.Vector3();
-function beltHand(p, A) {
-  const F = A?.from, x = clamp(fin(A?.t, 1) / BELT_EASE, 0, 1), w = F ? x * x * x * (x * (6 * x - 15) + 10) : 1;
-  if (w < 1) {
-    _beQ3.setFromEuler(_beE.set(F[P.pelvX], F[P.pelvY], F[P.pelvZ], 'YXZ'));
-    _beQ3.multiply(_beQ2.setFromEuler(_beE.set(F[P.spX], F[P.spY], F[P.spZ], 'YXZ'))).invert();
-  }
-  _beQ.setFromEuler(_beE.set(p[P.pelvX], p[P.pelvY], p[P.pelvZ], 'YXZ')); // (the rig's joints turn YXZ: model.js)
-  _beQ.multiply(_beQ2.setFromEuler(_beE.set(p[P.spX], p[P.spY], p[P.spZ], 'YXZ')));
-  const put = (i, v) => {
-    _beV.set(v[0], v[1], v[2]);
-    if (w < 1) {
-      // from where it was, in the chest's frame as the swing began
-      _beV2.set(F[i], F[i + 1], F[i + 2]).applyQuaternion(_beQ3);
-      _beV.lerpVectors(_beV2, _beV, w);
-    }
-    _beV.applyQuaternion(_beQ);
-    p[i] = _beV.x;
-    p[i + 1] = _beV.y;
-    p[i + 2] = _beV.z;
-  };
-  put(P.lH, BELT_C.h);
-  put(P.lP, BELT_C.p);
-  put(P.lD, BELT_C.d);
-  put(P.lN, BELT_C.n);
-  p[P.hs] = 0;
-  p[P.lk] = 0;
-  p[P.twoHand] = 0;
-  p[P.offAt] = 0;
+// THE SIDE HAND (a clip's `side`: the instant cuts). The owner (2026-11-25): "the left hand needs to
+// stop holding the hip and be on the side how a sword fighter would normally have and not stiff as
+// well"; asked where: loose at his side, beside the left thigh, the elbow a little bent, swaying a
+// little with each cut. No belt, no flailing. The pose only says WHETHER it hangs (p[sd], going home
+// with the rest of him) and the hand's shape; where it is comes from HeroAnimator._sideHand: a rest
+// the body carries (under the shoulder, beside the hip) with a damped pendulum on it, so it lags the
+// body's turn and drop a little and swings back past its rest before it settles. (Rigid in the chest's
+// frame, on the belt, it read stiff; left to hang free from the shoulder, the instant cuts' snaps of
+// the chest folded the elbow to 45° and whipped the hand about.)
+//   hang   the wrist's rest from the left shoulder (body axes, turned with the chest; m): beside the
+//          thigh, a little out from it and a little ahead of the hip seam; ~0.54 of the arm's 0.55,
+//          so the elbow keeps ~150° (the soft reach, HERO_SOFT)
+//   thigh, hip  … the same rest from the left hip joint (turned with the pelvis), and how far it is
+//          taken (0 under the shoulder … 1 beside the hip: the shoulders swing round the hips in a cut)
+//   w, z   the pendulum's spring (rad/s, damping ratio): under-damped, so it sways once and settles
+//   k, sway  how much of the pendulum's lag shows as the hand's sway, and the most it shows (m)
+//   ease   s the hand takes from where the pose held it to the side, and back home
+//   trail  how far the hand trails his travel (s × his ground speed, m; at most trailMax m)
+//   thighR the free wrist keeps this far from the left thigh's line (m: the thigh, the coat, the hand)
+//   pole, ld, ln  the elbow's way (back and a little out), the fingers (down), the palm (toward the
+//          thigh): body axes turned with the chest (restLoose's, idles.js); lw the hand's weight on them
+export const SIDE = {
+  hang: [0.07, -0.53, 0.06], thigh: [0.14, -0.02, 0.05], hip: 0.5, w: 10.5, z: 0.42, k: 0.35, sway: 0.07, ease: 0.3,
+  trail: 0.012, trailMax: 0.1, thighR: 0.095,
+  pole: [0.35, -0.2, -0.9], ld: [0.06, -0.97, 0.2], ln: [-0.92, -0.05, 0.25], lw: 0.85,
+};
+const SIDE_CH = [P.hs, P.lk, P.twoHand, P.offAt];
+/** p[i..i+2] = v × k turned by the chest's yaw (cos c, sin s), `b` of the way to SCRATCH's. */
+function sidePut(p, i, v, k, c, s, b) {
+  p[i] = lerp(k * (v[0] * c + v[2] * s), SCRATCH[i], b);
+  p[i + 1] = lerp(k * v[1], SCRATCH[i + 1], b);
+  p[i + 2] = lerp(k * (-v[0] * s + v[2] * c), SCRATCH[i + 2], b);
+}
+/** The free hand's channels for a `side` clip: it hangs (sd 1) open and loose, the fingers down, the
+ *  palm toward the thigh, the elbow back; `b` (0..1) of the way home to the stance (SCRATCH: it holds
+ *  the stance only on the way home) as the rest of him goes there. */
+function sideHand(p, b) {
+  if (!(b > 0)) b = 0;
+  const yaw = p[P.pelvY] + p[P.spY], c = Math.cos(yaw), s = Math.sin(yaw), S = SIDE;
+  sidePut(p, P.lP, S.pole, 1, c, s, b);
+  sidePut(p, P.lD, S.ld, S.lw, c, s, b);
+  sidePut(p, P.lN, S.ln, S.lw, c, s, b);
+  for (let j = 0; j < SIDE_CH.length; j++) p[SIDE_CH[j]] = b * SCRATCH[SIDE_CH[j]];
+  p[P.sd] = 1 - b;
 }
 // the bite: its length (s of the attack's clock after the hit-pause), how much of the way back to
 // the blade that bit it holds (× bite), the grip's pull (m), the hips' drop (m), the chest's fold
@@ -2832,6 +2839,13 @@ const LK_WRIST = 0.07, LK_OFF = [0.045, 0.025], LK_ALONG = 0.5, LK_LETGO = [4, 8
 export const OFF_SNAP = [0.035, 0.05, 0.08];
 // × the arm's length: the free elbow on the grip keeps ≥ 23° of bend (the cleave locked it at 176°)
 const LOCK_REACH = 0.98;
+// the side hand's pendulum (_sideHand; SIDE): its sub-steps per second (at least), and the frame
+// length past which it is set on its rest
+const SIDE_HZ = 240, SIDE_SNAP = 0.1;
+// … and the nearest and furthest it may hang from the shoulder (model m: its rod; the soft reach,
+// HERO_SOFT, draws 0.58 as an elbow of ~155°)
+const SIDE_NEAR = 0.25, SIDE_REACH = 0.58;
+const _shO = new THREE.Vector3(), _shQ = new THREE.Vector3(), _shG = new THREE.Vector3(), _shA = new THREE.Vector3(), _shB = new THREE.Vector3(), _shC = new THREE.Vector3();
 const _hG = new THREE.Vector3(), _hd = new THREE.Vector3(), _hn = new THREE.Vector3(), _hy = new THREE.Vector3(), _hp = new THREE.Vector3();
 const _hz = new THREE.Vector3(), _hq1 = new THREE.Quaternion(), _hq2 = new THREE.Quaternion(), _hqs = new THREE.Quaternion();
 // the cloak in the charge's updraft: extra outward flare (tan) at full charge of a sheet on his
@@ -2903,6 +2917,10 @@ export class HeroAnimator {
     this.wristL = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, tx: 0, ty: 0, tz: 0, ok: false, clamped: false };
     this.handFX = { fingers: false, fist: false };
     this.lkState = { prev: new THREE.Vector3(), ok: false, k: 1 };
+    // the side hand (_sideHand): its pendulum's place and speed (world axes from the root); the way
+    // it is going (mode 1 to the side, -1 home, 0 off), how far along (e, 0..1) from where (c); where it
+    // was put last frame (world axes from the root), and p[sd] last frame (pw)
+    this.sideH = { x: new THREE.Vector3(), v: new THREE.Vector3(), c: new THREE.Vector3(), last: new THREE.Vector3(), e: 0, mode: 0, pw: 0, ok: false };
     this.lkEff = 0;
     this.gripGap = 1;
     this.rig = rig;
@@ -3139,6 +3157,7 @@ export class HeroAnimator {
     guard(this.cur, this); // (with the hero's free hand: an animator without opts.freeHand ignores it)
     this.wristL.ok = false;
     this.lkState.ok = false;
+    this.sideH.ok = false;
     this.handFX.fingers = this.handFX.fist = false;
     this.from.set(this.cur);
     this.target.set(this.cur);
@@ -3188,6 +3207,7 @@ export class HeroAnimator {
     for (const st of this.streamState) st.vel.set(0, 0, 0);
     this.wristL.ok = false;
     this.lkState.ok = false;
+    this.sideH.v.set(0, 0, 0); // (it hangs on from where it was in his frame: the root's jump is not its)
   }
 
   /** Throw the coat panels outward (Ghostep reappear, guard break, the slam's impact). `rnd` (0..1
@@ -3334,6 +3354,7 @@ export class HeroAnimator {
       this.fightW = damp(fin(this.fightW), fight ? 1 : 0, FIGHT_EASE[fight ? 0 : 1], dt);
     }
     this._idleLife(dt, sp);
+    this.target[P.sd] = 0; // (only a `side` clip's pose hangs the free hand: attackPose)
     this.poses[this.key](this.target, this);
     if (this.blendT < this.blendDur) {
       this.blendT += dt;
@@ -3828,6 +3849,7 @@ export class HeroAnimator {
     this._arm(r.arms.R, this._handTarget(r.arms.R, p, P.rH), p, P.rP, true);
     // off hand: its own target, or (twoHand) down the grip below the sword hand
     this._handTarget(r.arms.L, p, P.lH);
+    if (this.freeHand) this._sideHand(r, p); // (a `side` clip: the hand hangs on its pendulum)
     let lk = 0;
     if (this.freeHand) {
       // the sword fingers on the sword wrist (lk): the right wrist (chest local) from the solved sword
@@ -3952,6 +3974,144 @@ export class HeroAnimator {
       }
     }
     _bz.copy(_v).multiplyScalar(WRIST_COS).addScaledVector(_w, WRIST_SIN).normalize();
+  }
+
+  /** The side hand (the hero only; attackPose sideHand sets p[sd]): the free wrist's target (_T,
+   *  chest local) hangs at his side. Its rest (the anchor) is SIDE.hang under the left shoulder,
+   *  turned with the chest, drawn SIDE.hip of the way to SIDE.thigh beside the left hip (turned with
+   *  the pelvis): the body carries it, so a cut's snap of the chest does not leave it behind. On that a
+   *  pendulum hangs: a spring (SIDE.w / SIDE.z) that follows the anchor; SIDE.k of how far it lags is
+   *  the hand's sway (at most SIDE.sway), so it trails the body's turn and drop a little and swings
+   *  back past its rest before it settles.
+   *  It goes to the side as p[sd] rises and home to the pose's own hand as it falls, over SIDE.ease s
+   *  each way (smootherstep), from wherever the hand was as the way began (the pose's own hand
+   *  crossed to the swing's in a few frames, and went home in the swing's last tenth of a second). Kept clear of the left thigh, within the arm's reach of the shoulder and above
+   *  the ground. World axes from the root (a root that turns or travels drags nothing; his drawn body
+   *  does), in sub-steps whatever the frame's length, nothing in a frozen frame (hit-stop, a posed
+   *  contact). Off (p[sd] 0 and home) it changes nothing. Allocates nothing, never throws. */
+  _sideHand(r, p) {
+    const S = this.sideH, want = clamp(fin(p[P.sd]), 0, 1), dt = Math.max(0, fin(this.frameDt));
+    const fresh = !S.ok || !Number.isFinite(S.e + S.x.x + S.x.y + S.x.z + S.v.x + S.v.y + S.v.z + S.c.x + S.c.y + S.c.z + S.last.x + S.last.y + S.last.z);
+    if (fresh) {
+      S.ok = true;
+      S.mode = 0;
+      S.pw = 0;
+    }
+    const pw = S.pw, ch = r.chest;
+    S.pw = want;
+    _shO.setFromMatrixPosition(r.root.matrixWorld);
+    _shQ.copy(_T);
+    ch.localToWorld(_shQ).sub(_shO); // the pose's own wrist
+    if (fresh) S.last.copy(_shQ);
+    if (S.mode === 0 && !(want > 1e-4)) {
+      S.last.copy(_shQ); // (where a way to the side starts: last frame's hand, not this frame's pose)
+      return;
+    }
+    const e = ch.matrixWorld.elements, sc = Math.hypot(e[0], e[1], e[2]) || 1;
+    // the anchor: under the shoulder (the chest's yaw), drawn toward beside the hip (the pelvis's)
+    {
+      const yc = Math.atan2(e[8], e[10]), H = SIDE.hang, c = Math.cos(yc), s = Math.sin(yc);
+      _shA.setFromMatrixPosition(r.arms.L.upper.matrixWorld).sub(_shO);
+      _shA.x += sc * (H[0] * c + H[2] * s);
+      _shA.y += sc * H[1];
+      _shA.z += sc * (-H[0] * s + H[2] * c);
+      const Lg = r.legs?.L, k = SIDE.hip;
+      if (Lg && k > 0) {
+        const pe = r.pelvis.matrixWorld.elements, yp = Math.atan2(pe[8], pe[10]), T = SIDE.thigh, cp = Math.cos(yp), sp = Math.sin(yp);
+        _shB.setFromMatrixPosition(Lg.thigh.matrixWorld).sub(_shO);
+        _shB.x += sc * (T[0] * cp + T[2] * sp);
+        _shB.y += sc * T[1];
+        _shB.z += sc * (-T[0] * sp + T[2] * cp);
+        _shA.lerp(_shB, k);
+      }
+    }
+    // which way: to the side while p[sd] stands or rises, home once it falls. A new way starts from
+    // where the hand was last frame, left there in his frame (a clip's first pose may already have
+    // moved it: out of a roll the cut's first frame put it 26 cm away; held in the chest's frame, the
+    // windup's turn of the chest flung it 30 cm in a frame)
+    const way = want > pw + 1e-6 || want >= 0.999 ? 1 : want < pw - 1e-6 || !(want > 1e-4) ? -1 : S.mode || 1;
+    if (way !== S.mode) {
+      if (S.mode === 0) {
+        S.x.copy(_shA); // (the pendulum starts still on its rest)
+        S.v.set(0, 0, 0);
+      }
+      S.c.copy(S.last);
+      S.mode = way;
+      S.e = 0;
+    }
+    S.e = Math.min(1, S.e + dt / SIDE.ease);
+    // the pendulum on the anchor
+    if (dt > SIDE_SNAP) {
+      S.x.copy(_shA); // (a frame that long is no motion to follow: a hidden tab)
+      S.v.set(0, 0, 0);
+    } else if (dt > 0) {
+      const n = Math.min(8, Math.ceil(dt * SIDE_HZ)), h = dt / n, W = SIDE.w, K = W * W, D = 2 * SIDE.z * W;
+      for (let i = 0; i < n; i++) {
+        S.v.x += (K * (_shA.x - S.x.x) - D * S.v.x) * h;
+        S.v.y += (K * (_shA.y - S.x.y) - D * S.v.y) * h;
+        S.v.z += (K * (_shA.z - S.x.z) - D * S.v.z) * h;
+        S.x.addScaledVector(S.v, h);
+      }
+      // (it lags at most what shows as the most sway: a body that snaps further drags it along)
+      _shC.subVectors(S.x, _shA);
+      const lag = _shC.length(), most = (SIDE.sway / SIDE.k) * sc;
+      if (lag > most) {
+        S.x.copy(_shA).addScaledVector(_shC, most / lag);
+        _shC.multiplyScalar(1 / lag);
+        const vn = S.v.dot(_shC);
+        if (vn > 0) S.v.addScaledVector(_shC, -vn);
+      }
+    }
+    // where it goes: the side (its rest, the sway, the trail of his travel), or home
+    if (S.mode > 0) {
+      _shG.subVectors(S.x, _shA).multiplyScalar(SIDE.k).add(_shA);
+      const gv = this.player?.groundVel;
+      if (gv) {
+        let tx = -SIDE.trail * fin(gv.x), tz = -SIDE.trail * fin(gv.z);
+        const tl = Math.hypot(tx, tz), cap = SIDE.trailMax * sc;
+        if (tl > cap) {
+          tx *= cap / tl;
+          tz *= cap / tl;
+        }
+        _shG.x += tx;
+        _shG.z += tz;
+      }
+    } else _shG.copy(_shQ);
+    // … from where the way began, by the ease
+    const x = S.e, ew = x * x * x * (x * (6 * x - 15) + 10);
+    if (ew < 1) _shG.lerpVectors(S.c, _shG, ew);
+    if (S.mode < 0 && ew >= 1 && !(want > 1e-4)) {
+      S.mode = 0; // home: the pose's own hand, untouched
+      return;
+    }
+    // within the arm's reach of the shoulder (and no nearer than it folds)
+    _shA.setFromMatrixPosition(r.arms.L.upper.matrixWorld).sub(_shO);
+    _shC.subVectors(_shG, _shA);
+    {
+      const d = _shC.length(), lo = SIDE_NEAR * sc, hi = SIDE_REACH * sc;
+      if (d > 1e-5 && (d > hi || d < lo)) _shG.copy(_shA).addScaledVector(_shC, (d > hi ? hi : lo) / d);
+    }
+    // clear of the left thigh (its line from the hip to the knee, as the legs stood last frame), the
+    // way it already is from it (pushed out to his left instead, a thigh lifted out to the side in a
+    // low stance sent it 15 cm across in a frame)
+    const Lg = r.legs?.L;
+    if (Lg) {
+      _shA.setFromMatrixPosition(Lg.thigh.matrixWorld).sub(_shO);
+      _shB.setFromMatrixPosition(Lg.shin.matrixWorld).sub(_shO).sub(_shA);
+      _shC.subVectors(_shG, _shA);
+      const l2 = _shB.lengthSq(), k = l2 > 1e-8 ? clamp(_shC.dot(_shB) / l2, 0, 1) : 0;
+      _shC.addScaledVector(_shB, -k); // the line → the wrist
+      const R = SIDE.thighR * sc, d = _shC.length();
+      if (d < R) {
+        if (d > 1e-5) _shG.addScaledVector(_shC, (R - d) / d);
+        else _shG.x += R * e[0] / sc, _shG.z += R * e[2] / sc; // (on the line: out to his left)
+      }
+    }
+    // … and above the ground
+    _shG.y = Math.max(_shG.y, HAND_FLOOR + 0.02 - _shO.y);
+    S.last.copy(_shG);
+    _T.copy(_shG).add(_shO);
+    ch.worldToLocal(_T);
   }
 
   /** The free hand's wrist (rig.arms.L.wrist; the hero only, opts.freeHand): the fingers toward
