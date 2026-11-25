@@ -415,6 +415,7 @@ export class Pipeline {
         tDpAtlas: U.uGlyphAtlas,
         uDpDigs: { value: dpGis(DP_RAMP) },
         uDpTone: { value: new THREE.Vector3(DP_TONE.a0, DP_TONE.span, DP_TONE.top) },
+        uDpLeaf: { value: new THREE.Vector2(DP_TONE.leaf0, DP_TONE.leafSpan) },
         uDpArtInk: { value: new THREE.Vector4(...DP_ART.ink) },
         uDpBack: { value: new THREE.Vector4(...DP_ART.back) },
         uDpLegacy: { value: new THREE.Vector4(...DP_ART.legacy) },
@@ -504,6 +505,7 @@ export class Pipeline {
         uniform sampler2D tDpAtlas;
         uniform float uDpDigs[${DP_RAMP.length}];
         uniform vec3 uDpTone;
+        uniform vec2 uDpLeaf;
         uniform vec4 uDpArtInk;
         uniform vec4 uDpBack;
         uniform vec4 uDpLegacy;
@@ -620,14 +622,18 @@ export class Pipeline {
         // source that carries its tone, a prop under ?dpProps, a tree of the screen grid under ?dpTrees)
         float propKind(float a) {
           if (a > 0.555 && a < uDpTone.z) return 2.0;
+          if (a > uDpLeaf.x - 0.005 && a < uDpLeaf.x + uDpLeaf.y + 0.005) return 2.0;
           if (a > 0.555 && a < 0.585) return uDpOn.x > 0.5 ? 2.0 : 1.0;
           if (uDpOn.y > 0.5 && (abs(a - 0.6) < 0.012 || a > 0.95)) return 2.0;
           return 0.0;
         }
         // a sample's ink (rgb) and tone (a): decoded, or (a source without it: the ascii-object material) read from
         // its brightness
+        // a crown's leaves (their own window, uDpLeaf; the screen grid's FLAG.LEAF): no outline, a ragged edge
+        bool dpLeafA(float a) { return (a > uDpLeaf.x - 0.005 && a < uDpLeaf.x + uDpLeaf.y + 0.005) || abs(a - 0.6) < 0.012; }
         vec4 dpSample(vec4 s) {
           if (s.a < uDpTone.z) return vec4(s.rgb, clamp((s.a - uDpTone.x) / uDpTone.y, 0.0, 1.0));
+          if (s.a > uDpLeaf.x - 0.005 && s.a < uDpLeaf.x + uDpLeaf.y + 0.005) return vec4(s.rgb, clamp((s.a - uDpLeaf.x) / uDpLeaf.y, 0.0, 1.0));
           vec2 k = s.a > 0.585 ? uDpLegacy.zw : uDpLegacy.xy;
           return vec4(s.rgb * k.x, 1.0 - exp(-luma(s.rgb) * k.y));
         }
@@ -1225,7 +1231,7 @@ export class Pipeline {
           vec4 pmask = vec4(0.0), pdep = vec4(0.0);
           // (the dragon print: its samples' ink and tone, and how many of them are its own)
           vec4 pdps = vec4(0.0);
-          float pdp = 0.0;
+          float pdp = 0.0, pleaf = 0.0;
           bool dpOn = uDpOn.x + uDpOn.y > 0.5;
           for (int i = 0; i < 4; i++) {
             vec2 o = vec2(i == 1 || i == 3 ? 0.75 : 0.25, i >= 2 ? 0.75 : 0.25);
@@ -1240,6 +1246,7 @@ export class Pipeline {
               if (dpOn) {
                 pdps += dpSample(sa);
                 if (pk > 1.5) pdp += 1.0;
+                if (dpLeafA(sa.a)) pleaf += 1.0;
               }
             }
           }
@@ -1258,6 +1265,8 @@ export class Pipeline {
                 if (nh >= 1.0 && nh <= 3.0) { pstroke = edgeDir(nearM, nh); pgain = uPropOutline.z; }
               }
             }
+            // (a crown of leaves has no outline: its edge is the ragged edge of its digits)
+            if (pdp > 0.0 && pleaf * 2.0 > phits) pstroke = -1.0;
             if (phits >= 2.0 || pstroke >= 0.0) {
               if (pdp > 0.0) {
                 // THE DRAGON PRINT (render/dragonProps.js): the ground's digit for the cell's tone, in its ink

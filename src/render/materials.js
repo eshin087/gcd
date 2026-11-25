@@ -1506,7 +1506,7 @@ export function createDragonObjectMaterial(U, o = {}) {
         vec3 L = ambientAt(N) + uMoonColor * (max(uMoonDir.y, 0.0) * 0.85 * sh * cloud) + PL;
         vec3 col = vCol * (0.2 + 1.5 * t + rip * 0.8) * L * ink;
         col = applyFog(col, vW);
-        gl_FragColor = vec4(col, dpEncode(t));
+        gl_FragColor = vec4(col, leaf ? dpEncodeLeaf(t) : dpEncode(t));
       }
     `;
   mat.userData.dragonPrint = { trees: T ? (o.trees ?? dpTreesLook()) : '0', props: P ? (o.props ?? dpPropsLook()) : '0' };

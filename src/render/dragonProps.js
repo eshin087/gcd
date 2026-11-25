@@ -35,8 +35,12 @@ export const dpTreesLook = () => {
   return v === 'a' || v === 'b' ? v : '0';
 };
 
-/** The tone's window in the props' flag (alpha): a0 + tone x span, every value below `top` (FLAG.ART_PROP = 0.57 above it). */
-export const DP_TONE = Object.freeze({ a0: 0.556, span: 0.0105, top: 0.5675 });
+/**
+ * The tone's window in the props' flag (alpha): a0 + tone x span, every value below `top` (FLAG.ART_PROP = 0.57 above it).
+ * A crown's leaves have a window of their own, leaf0 + tone x leafSpan (between FLAG.LEAF 0.6 and FLAG.STONE's 0.8):
+ * the art pass draws no outline round them (a crown's edge is the ragged edge of its digits).
+ */
+export const DP_TONE = Object.freeze({ a0: 0.556, span: 0.0105, top: 0.5675, leaf0: 0.62, leafSpan: 0.16 });
 
 /**
  * The look's numbers per option. Relief (slopes are added to the surface normal: 0.5 tilts a face ~27 degrees):
@@ -65,8 +69,8 @@ export const DP_PROPS = Object.freeze({
  *          hollows) dims the tone
  */
 export const DP_TREES = Object.freeze({
-  a: { bark: 0.55, barkF: 5.5, furrow: 0.5, leaf: 0.9, leafF: 1.8, sprig: 0.2, hollow: 0.45, barkLaw: [-0.15, 1.0], leafLaw: [-0.55, 0.9], shade: 0.65, ao: 0.4, inkBark: 2.6, inkLeaf: 2.2 },
-  b: { bark: 0.75, barkF: 4.5, furrow: 0.7, leaf: 1.3, leafF: 1.25, sprig: 0.25, hollow: 0.6, barkLaw: [-0.1, 0.95], leafLaw: [-0.45, 0.85], shade: 0.75, ao: 0.5, inkBark: 2.6, inkLeaf: 2.2 },
+  a: { bark: 0.55, barkF: 5.5, furrow: 0.5, leaf: 0.6, leafF: 1.5, sprig: 0.2, hollow: 0.35, barkLaw: [-0.15, 1.0], leafLaw: [-0.6, 0.85], shade: 0.65, ao: 0.4, inkBark: 2.6, inkLeaf: 2.8 },
+  b: { bark: 0.75, barkF: 4.5, furrow: 0.7, leaf: 1.6, leafF: 1.0, sprig: 0.25, hollow: 0.7, barkLaw: [-0.1, 0.95], leafLaw: [-0.45, 0.85], shade: 0.75, ao: 0.5, inkBark: 2.6, inkLeaf: 2.8 },
 });
 
 /**
@@ -170,4 +174,5 @@ float dpNoRelief(vec2 p, float d) { return 0.0; }
 `;
 export const DP_ENCODE_GLSL = /* glsl */ `
 float dpEncode(float t) { return ${DP_TONE.a0.toFixed(4)} + clamp(t, 0.0, 1.0) * ${DP_TONE.span.toFixed(4)}; }
+float dpEncodeLeaf(float t) { return ${DP_TONE.leaf0.toFixed(4)} + clamp(t, 0.0, 1.0) * ${DP_TONE.leafSpan.toFixed(4)}; }
 `;
