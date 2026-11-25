@@ -20,13 +20,13 @@ swinging it round, the driven shown neck buckling away from its pinned head on a
 **Owner, round 2** (played the first pass, now `?neck=b`): "the head got worse when flying and when it does a
 ground perfect parry attack": it rolled oddly and looked the wrong way. The default (`?neck=c`) holds the head
 upright against its own body, not the sky, and lets it look where its move points it (a shoulder limit, the side
-swapped once a foe is clearly round the other side); `?neck=0` is the wyrm before. The owner picks.
+swapped once a foe is clearly round the other side); `?neck=0` is the wyrm before.
 
 **Owner, round 3** (played c): "c is almost all good but ... during a perfect dodge/parry slow time effect the
 dragon seems to home into the players teleporting movement and makes it do a bad angle". Its sense of the hero
 read his chest every frame, so through his flurry its look point chased each blink round and over its head
 (12 - 28 m of travel, its body turning up to 46° after him). Now it keeps where it last saw him until the flurry
-ends (`Dragon._sensePlayer`, c and b; 0 as before): 0 m, 0°. The head still flinches at each cut, as on main.
+ends (`Dragon._sensePlayer`, c and b; 0 as before): 0 m, 0°. The head still flinches at each cut, as on main. The owner: "Ship c": c is the default, b and 0 stay behind `?neck=`.
 
 **Lessons.** Leveling needs an unwrapped, rate-limited correction: the plain shortest angle swapped between +180
 and -180 and spun the neck 50° a frame; fading it out near vertical brought the flips back. 'Up' for a head

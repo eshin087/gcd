@@ -6083,6 +6083,6 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   answer, the riposte) the wyrm keeps where it last saw him (`_sensePlayer`, c and b): the owner played c and saw
   its head "home into the players teleporting movement"; its look point travelled 12 - 28 m chasing his blinks,
   now none. Seeded fights drift (the mouth sits a little
-  differently, so the bullet cues shift a frame). Open: the owner's pick of c / b / 0; the rear attacks (tail
+  differently, so the bullet cues shift a frame). The owner played c with the flurry fix and picked it: "Ship c" (2026-11-25); b and 0 stay behind `?neck=` for comparison. Open: the rear attacks (tail
   lash, rakes, cataclysm) still curl the neck back over the spine, where 'upright against the body' is ill
   defined and the head can sit rolled; the leap's and pounce's neck strikes stay fast.
