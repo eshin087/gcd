@@ -22,6 +22,9 @@ import { sfxMode, setSfxMode, chainMode, setChainMode, CHAIN_MODES } from '../au
 import { PARRY_CHAIN } from '../audio/parryChain.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { MYSTIC_IDS, MYSTIC_NAMES, mysticMode, setMystic } from '../entities/player/swordMystic.js';
+import { IDLES_IDS, IDLES_NAMES, idlesMode, setIdles, EASE_RESTS, FIGHT_RESTS, EASE_HABITS, EASE_TRICKS, FIGHT_ACTS } from '../entities/player/idles.js';
+import { RUN_ARM_IDS, RUN_ARM_NAMES, runArmMode, setRunArm } from '../entities/player/runArms.js';
+import { HAND_LOOK_IDS, HAND_LOOK_NAMES, handLook } from '../entities/player/gear/handLook.js';
 import { buildLooks } from './labLooks.js';
 import { lookOf, setLook } from '../entities/enemies/duelist/lookSwitch.js';
 import { LIFE, setLife, setLifeK } from '../world/life/lifeSwitch.js';
@@ -807,6 +810,10 @@ export class Lab {
     this.ui.looksSync = buildLooks(body, id, (t) => this._status(t, 'ok'));
   }
 
+  _syncIdleBtns() {
+    for (const { m, el: b } of this.ui.idleBtns ?? []) setClass(b, 'on', idlesMode() === m);
+  }
+
   _syncStanceBtns() {
     const v = this.game.player?.debug?.fightStance ?? null;
     for (const B of this.ui.stanceBtns ?? []) B.el.classList?.toggle?.('on', B.v === v);
@@ -1158,6 +1165,34 @@ export class Lab {
       return { v, el: btn };
     });
     this._syncStanceBtns();
+    // the hero's idles (player/idles.js, ADR-186; ?idles=old): rests, habits and tricks, or the hand on the
+    // belt as before; and a button for each, to play it now (the rests and the actions of the stance he
+    // stands in: at ease, or the fight's)
+    const idr = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'idles', idr).title = "the hero's idles: rests he moves between, habits with both arms and a trick every few (new), or the hand on the belt (?idles=old)";
+    const idg = el('div', 'lab-grid', null, idr);
+    idg.style.flex = '1';
+    this.ui.idleBtns = IDLES_IDS.map((m) => {
+      const b = button(idg, m, () => {
+        setIdles(m);
+        this._syncIdleBtns();
+      });
+      b.title = `?idles=${m}: ${IDLES_NAMES[m]}`;
+      return { m, el: b };
+    });
+    const idp = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'idle ▸', idp).title = 'play one now (stand still; at ease or in the fight stance: the stance row holds either)';
+    const idpg = el('div', 'lab-grid', null, idp);
+    idpg.style.flex = '1';
+    const playIdle = (name, rest) => {
+      const A = this.game.player?.anim;
+      const ok = rest ? A?.setRest?.(name) : A?.playIdle?.(name);
+      this._status(`${rest ? 'rest' : 'idle'} ${name}${ok ? '' : ': not in this stance (or he is moving)'}`, ok ? 'ok' : 'warn');
+    };
+    for (const [list, rest, tip] of [[EASE_RESTS, true, 'at ease: move to this rest'], [EASE_HABITS, false, 'at ease: a habit'], [EASE_TRICKS, false, 'at ease: a trick'], [FIGHT_RESTS, true, 'in the fight: this guard hand'], [FIGHT_ACTS, false, 'in the fight: a habit']]) {
+      for (const D of list) button(idpg, D.name, () => playIdle(D.name, rest)).title = tip;
+    }
+    this._syncIdleBtns();
     // the look of a landed cut (combat/cutFx.js; the owner's pick): the slash line, or a fan of sparks
     const cut = el('div', 'lab-row', null, body);
     el('span', 'lab-lbl', 'cut', cut).title = 'the look of a landed cut (combat/cutFx.js)';
@@ -1309,6 +1344,38 @@ export class Lab {
       b.title = `equip ${SWORD_PARAM[k]}`;
       return { k, el: b };
     });
+    // the free arm on the run (player/runArms.js, ADR-187; ?runArm=a|b|c|old, default a), live
+    const rar = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'run arm', rar).title = "the free (left) arm on the run (?runArm=): natural = a runner's swing, pumping at a sprint (default); dash = swept back behind him; by speed = natural, the dash at a sprint; before = the swing before";
+    const raGrid = el('div', 'lab-grid', null, rar);
+    raGrid.style.flex = '1';
+    this.ui.runArmBtns = RUN_ARM_IDS.map((m) => {
+      const b = button(raGrid, RUN_ARM_NAMES[m], () => {
+        setRunArm(m);
+        this._syncCutBtns();
+      });
+      b.title = `?runArm=${m}: ${RUN_ARM_NAMES[m]}`;
+      return { m, el: b };
+    });
+    // the free hand's look (player/gear/handLook.js, ?handLook=0|a|b|c|d): built with the rig, so a reload
+    const hlr = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'hand', hlr).title = "the free (left) hand's size and ink (?handLook=; reloads the page): before, a smaller (the default, the owner's pick), b smaller and shaded, c smaller and dark, d a leather glove";
+    const hlGrid = el('div', 'lab-grid', null, hlr);
+    hlGrid.style.flex = '1';
+    for (const id of HAND_LOOK_IDS) {
+      const b = button(hlGrid, `${id === '0' ? 'before' : id}`, () => {
+        try {
+          const u = new URL(globalThis.location.href);
+          if (id === 'a') u.searchParams.delete('handLook');
+          else u.searchParams.set('handLook', id);
+          globalThis.location.href = u.toString();
+        } catch (err) {
+          this._status(`error: ${err?.message ?? err}`, 'err');
+        }
+      });
+      b.title = `?handLook=${id}: ${HAND_LOOK_NAMES[id]}`;
+      setClass(b, 'on', handLook().id === id);
+    }
     // the sword's flame (player/swordMystic.js: green marks burning round the steel, on by default; ?mystic=0 is
     // today's blade), live
     const myr = el('div', 'lab-row', null, body);
@@ -1419,6 +1486,7 @@ export class Lab {
     setClass(this.ui.shudBtn, 'on', !!d && 'shudderK' in d && d.shudderK > 0);
     for (const { s, el: b } of this.ui.impactBtns ?? []) setClass(b, 'on', IMPACT.on[s] === true);
     for (const { s, el: b } of this.ui.streakBtns ?? []) setClass(b, 'on', STREAK_FX.on[s] === true);
+    for (const { m, el: b } of this.ui.runArmBtns ?? []) setClass(b, 'on', runArmMode() === m);
     if (this.ui.tempoBtn) setClass(this.ui.tempoBtn, 'on', STREAK_FX.tempo !== false);
     if (this.ui.chainBtn) setClass(this.ui.chainBtn, 'on', STREAK_FX.chain !== false);
     if (this.ui.figureBtn) this.ui.figureBtn.textContent = `figure: ${STREAK_FX.figure}`;

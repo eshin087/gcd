@@ -2286,6 +2286,7 @@ const S = {
     // round 3: the cut follows the DRAWN arc (player/fx.js trail -> tops.cutArc), the default look b
     {
       setLook('mowLook', 'b');
+      setLook('grassSpray', 'b'); // (the letter batch's spray: b's tops alone in the tops' batch)
       const W = build(createForest, dens);
       const sc3 = W.world.scorch;
       W.world.grass = createGrass(W.game.U, { count: 30000, extent: 24, density: dens, height: (x, z, r) => 0.5 * (0.75 + r() * 0.5) });
@@ -2327,6 +2328,7 @@ const S = {
       } finally {
         Math.random = R0;
         setLook('mowLook', null);
+        setLook('grassSpray', null);
       }
       // a, the default (round 4): the same arc cut, a quiet toss: no brighter than the grass, short-lived
       const W4 = build(createForest, dens);
@@ -2335,12 +2337,26 @@ const S = {
       const T4 = W4.world.scorch.tops;
       const n4 = T4.cutArc(-8, 0.3, 1, -6, 0.3, 1, false);
       let fly4 = 0;
-      for (let j = 0; j < T4.n; j++) if (T4.state[j] === 0) fly4++;
+      for (let j = 0; j < T4.n; j++) if (T4.state[j] === 0 && T4.tipMin[j] === 0) fly4++; // (the tops alone: a chip's colour is its blade's top's)
       W4.world.scorch.update(1 / 60);
       let lit4 = 0;
-      for (let j = 0; j < T4.n; j++) lit4 = Math.max(lit4, T4.aC.array[j * 4 + 3]);
+      for (let j = 0; j < T4.n; j++) if (T4.tipMin[j] === 0) lit4 = Math.max(lit4, T4.aC.array[j * 4 + 3]); // (the tops; a chip is a touch lighter in the air)
       for (let f = 0; f < 60 * 3; f++) W4.world.scorch.update(1 / 60);
-      assert(T4.look === 'a' && n4 > 20 && fly4 > 0 && fly4 < n4 * 0.6 && lit4 <= 1.16 && T4.n === 0, `a (the default) cuts along the arc too (${n4} blades), tosses ${fly4} of the tops, no brighter than x ${lit4.toFixed(2)}, all gone 3 s on (${T4.n} left)`);
+      // the grass spray (round 5): letters thrown off the blades the arc cut, then gone
+      // (round 6, the default a: chips of the cut blades' own letters, in the tops' batch, the grass's colour)
+      const SPT = GRASS.spray, per = SPT[SPT.look].per;
+      assert(['a', 'a2', 'm', 'm2', 'm3'].includes(SPT.look) && T4.spray === null && T4.chipped >= n4 * per * 0.8 && T4.chipped <= n4 * per + 1, `the grass spray (${SPT.look}) throws ${T4.chipped} chips off the ${n4} cut blades (about ${per} a blade)`);
+      assert(T4.look === 'a' && n4 > 20 && fly4 > n4 * 0.25 && fly4 < n4 * 0.75 && lit4 <= 1.16 && T4.n === 0, `a (the default) cuts along the arc too (${n4} blades), tosses ${fly4} of the tops, no brighter than x ${lit4.toFixed(2)}, all gone 3 s on (${T4.n} left)`);
+    }
+    // `?grassSpray=0`: no spray (today's grass, exactly)
+    setLook('grassSpray', '0');
+    try {
+      const W0 = build(createForest, dens);
+      W0.world.grass = createGrass(W0.game.U, { count: 2000, extent: 24, density: dens, height: () => 0.5 });
+      W0.world.scorch.update(1 / 60);
+      assert(W0.world.scorch.tops && W0.world.scorch.tops.spray === null, '?grassSpray=0: no grass spray');
+    } finally {
+      setLook('grassSpray', null);
     }
     // round 1's look builds no tops
     setLook('mowLook', 'r1');

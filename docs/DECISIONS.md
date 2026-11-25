@@ -5513,6 +5513,40 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   him and a green sword at tiers 1+ (the owner may want the aura green too). On-device frame rate is unverified (one
   more batch, up to ~160 instances, one draw call).
 
+## ADR-194 — The human bosses are printed the hero's way, in their own colours (2026-11-24)
+
+**Context.** The owner sent the hero at the game camera, enlarged ("i especially love the gray colored details
+to make the bottom of the cape look flowing and to show different shades on the upper top"), and asked for
+every boss to look "all built with ascii" like him; Wen Yao was the closest. Six of the seven human bosses
+already printed in the hero's ink-line art, through the same letters and cells. What set them apart was the
+SOURCE they handed the art pass: flat dark fills (the Lord and Xin Yi printed as faint `+` marks inside a thin
+bright outline) or flat bright colours (Wen Yao's amber, Halcyon's red), a 1 px hairline outline where the
+hero's strokes step with his font pixels, and no pale hem. Lu Wusheng printed in the wyrm's digits.
+
+A first sheet only darkened the fills and added a faint hem; the owner: "im not really seeing the difference
+besides a reshade". The second sheet (lit letter bodies, the hero's strokes and rims, the hem; grey or each
+boss's own colours) was picked: "Yes, own colours".
+
+**Decision.** `?bossPrint=0|a|b`, default `b` (lookSwitch PICKED; Lab LOOKS row `bossPrint`, live):
+- **The fills** (materials.js, `uBossPrint`, a shared uniform; every ink-line material but the player's, which
+  compiles `SG_HERO_SELF`): each cloth / hair / plate part (parts 3 - 16; the face, the eyes and what glows keep
+  theirs) is lifted to the hero's lit letter body: its brightness mapped to 0.1 - 0.24 like his coat, then
+  lifted (× 1.5); its hue kept at 75 % (`b`) or at 35 % with his greys (`a`). Done in the shader, so every
+  writer of `uArtFill` (forms, phases, the fox's clones, the Lab) goes through it unchanged.
+- **The hem:** below his knee (his feet, `uBossPrint.z`, followed every frame by main.js, + 0.62 m) along a
+  ragged line, every part but the trousers, the hair, the plate and the crest prints as the hero's `hem` part
+  (16: pale lavender, dotted edges), tinted toward the boss's own colour in `b`.
+- **The lines** (pipeline.js `uBossLike`): his ink lines are found per font pixel (the hero's blocky strokes),
+  and his plates (parts 12 - 16) read the player's part tables (HERO_SELF: the cloth's dim dotted rim, not a
+  white outline). Not the blade: the player's blade entry is dimmed and lit by his own cuts every frame.
+- **Lu Wusheng** prints in the ink-line art by default (`sheathArt` a, was 2): the owner picked the sheet that
+  showed him so. ADR-152's note ("a read as a 3D model") was before this print.
+
+**Not changed.** Shapes and outfits: the bosses wear slimmer clothes than the hero's broad cloak, so they show
+fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the animals: next, in this direction.
+
+**Cost.** A few ALU per boss fragment, two uniforms; no new draw call, texture or pass.
+
 ## ADR-184 — Combat text at fixed, smaller sizes (2026-11-24)
 
 - **Context:** the owner noticed the combat text next to the hero (counter, deflect, damage numbers) looked much
@@ -5612,3 +5646,160 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   5. **The time rip** (`player/timeRip.js`, `game.fx.rip`, `?rip=`): a cut changes the picture along its own line, never beyond a thin band, never its colour. Four looks were built and filmed side by side; **the owner picked `strip`** (three frames: the letters 3 cells either side print shifted 4 / 3 / 1 cells along the cut, each side the other way, a steel seam on the line) and it is the default; `tear`, `ghosts`, `negative` stay behind the switch. It hooks in through `player:flurry` / `player:flurryHit` / `player:flurryEnd` and `flurry.lines`, a band in the ASCII pass (`uCutN`, early-out when idle), steel in the fire field.
 - **Turned down:** a fan figure (it cannot stay chained without long runs back round); ghosts through the dodge afterimage's single standing copy (one figure at a time); the four rips' first round on film (negative as flat white blocks, ghosts as a wall of digits, strip too small to see at speed), fixed before the pick.
 - **Consequences:** no new event (`player:flurry` gains `figure`); no new draw call; the rip's idle cost is one branch a pixel in the ASCII pass. Seeded fights that hold a flurry replay differently with each switch: city `win` replays with the chain off, integ `pressure` and `storm` with the star, all commented. On film the figures are 100 - 200 px across at the duel camera and the strip lasts three frames: both to be judged in play and on the phone.
+
+## ADR-186 — The hero's idles: rests he moves between, habits with both arms, a trick every few; the guard hand off the belt (2026-11-24)
+
+- **Context:** the owner: "make the main character and several idle positions instead of having the same holding his
+  left hand on his hip all the time. i want him to move both his arms around naturally and doing cool sword tricks
+  during idle". Asked, they chose a MIX (mostly natural habits moving both arms, a flashy trick every few cycles) and
+  BOTH stances (the fight tighter: the hand off the belt, small guard shifts, no tricks that leave him open). ADR-114
+  gave him two stances, both with the free hand on the belt; ADR-047's idle life played six actions at ease only.
+  On record: the owner judges anatomy and naturalness, measured (elbows, the wrist, gaps, pops), from the game camera;
+  the hero's look is not changing, only his motion. Built beside two other sessions (run arm ADR-187, lights ADR-188)
+  in their own regions of `anim.js`.
+- **Decision:**
+  1. **Rests** (`player/idles.js`): the arms' pose over each stance, changed now and then (a slow smootherstep, the
+     blade by `dirLerp` with its own memory). At ease `loose` (the free arm hanging, the hand open), `hilt` (both
+     hands low on the hilt, the free palm on the sword wrist, the point to the grass), `trail` (the blade low behind
+     his right side), `belt` (the old hand on the belt, now one rest of four). In the guard the sword arm and the
+     blade stay `fencerGuard`'s and the free hand leaves the belt: `point` (sword fingers at the foe), `eye` (beside
+     his face), `hand` (an open guard hand), `low` (floating by the hip).
+  2. **Habits** on ADR-047's machinery (`FIDGETS`, `_idleLife`; no second system): at ease four new ones with both
+     arms (re-grip, the shoulders, flex the free hand, brush the coat) and the old look and inspect; in the guard
+     five small ones (grip, guard shift, loosen, beckon, a flick of the point), which play also locked on (the old
+     rule played nothing in a fight).
+  3. **Tricks** every 3 - 4 actions at ease, never in the guard: the wrist spin, the figure-eight (out to his right,
+     the point drawing an 8 ahead, never pointing back at him), the salute (the blade upright before his right
+     cheek, the palm over the fist, a bow, a flourish), the chiburi flick, the reverse-grip flip.
+  4. **No whips out of any of it** (the bar: the stance before, bare and with its old actions): an action that
+     swings the blade starts only from a low rest; a cut lets such an action go over 0.26 s; at ease a block /
+     parry / drink / charge out of one, or out of the trail, enters over at least 0.24 s (their own 0.08 - 0.12 s
+     took a far blade the way behind his head through the wrist's limit). Visual only; in a fight (no tricks, no
+     trail) nothing about those entries changes.
+  5. **Left out, measured:** the blade carried on the shoulder as a rest (the elbow at the fold limit, the blade in
+     the torso, 0.7 - 1.4 m a frame out of it); the guard hand over his head (0.4 m a frame into a block); the pass
+     behind his back to the other hand (the sword is the right hand's alone in `apply()`; out of it a block's entry
+     jumped 1.5 m); the old lean on the pommel (1.4 m a frame into a light, as before).
+  6. `?idles=old` (live: `setIdles`, the Lab's `idles` row) is the belt and the six old actions, unchanged; the Lab's
+     `idle ▸` row plays any rest or action now (`anim.playIdle`, `anim.setRest`).
+- **Status:** built; filmed for the owner (before | after: exploring, the fight, the cuts); their picks pending.
+- **Consequences:** the `heroidles` scenario holds every rest and action to a body's range (elbows, the sword wrist
+  under `WRIST_BACK` and the point's floor), the drawn blade ≥ 8 cm off his body (≥ 10 in a rest) and out of the
+  coat, the point off the grass, the free hand out of him, no pops, every move from every rest and from inside every
+  action within the stance before, the schedule (tricks every few at ease, none in the guard, the rests changing),
+  and `?idles=old`. `herostance` runs with `?idles=old` (the belt as it was); `herolife` / `heroarms` check the new
+  rule. The block's, the roll's and the charge's own entries out of a far blade are left as they were (not this
+  session's region): a follow-up could let a clip's entry turn the blade before the hand, as `swordFromEntry` does
+  for a roll. A true hand-off (the sword in the left hand) needs the rig to pose the sword from either arm.
+
+- **Amended (2026-11-24, round 2):** the owner: "some of the new idle animations have worse unnatural poses or angles
+  ... the old one was holding the sword correctly in both angles", and asked for "cool subtle" sword spells. Every
+  rest now keeps the at-ease sword arm (ADR-114) and changes only the free arm, the weight and the head: `hilt` (blade
+  hidden from the game camera, the wrist turned) and `trail` (the wrist bent 50-60°) gave way to `fingers` and
+  `cloak`; the reverse-grip `flip` (the wrist at 143°) is gone; the re-grip happens where the blade hangs. Three
+  SPELLS join the trick pool, motion in idles.js and marks in the sword's green flame (`swordMystic.js` reads
+  `anim.spell`): the rite, the sigil, the breath. They stay in the flame's own tiny letters and green; a line of
+  them needs a mark every ~3.5 cm to read at the game camera, and anything written near the ground hides in the grass.
+
+## ADR-187 — The run's free arm: three carries for the owner to compare, by speed the default (2026-11-24)
+
+- **Context:** the owner, in a three-part hero motion pass (idle, the run's free arm, the light chain, each its own
+  session and PR): "when he runs i want him to have his left hand in a natural running pose". Asked which, "show me
+  all 3 variations": (A) a loose natural runner's swing that pumps harder at a sprint, (B) the swordsman's dash, the
+  free arm pulled back and low behind him with the sword trailing on the other side, (C) both by speed. Today's arm
+  (`loco()`, Session 30) was a fist-forward swing written as hand positions: an 85 – 141° elbow, the hand at the guard's
+  shape, the target lerped between two points.
+- **Decision:**
+  1. **`player/runArms.js`** holds the free arm on the run for the hero's animator (`A.freeHand`); `loco()` calls
+     `runArm()` in the hero's branch and keeps today's swing as `?runArm=old`. A duelist's footwork is untouched.
+     `?runArm=a|b|c|old` and the Lab's PLAYER row `run arm` (live) pick it; **the default is `c`**.
+  2. **Written as joint angles, posed by forward kinematics** on the arm's own bones: the upper arm's swing from
+     hanging and how far it stands off his side, the elbow's inside angle, the forearm's cross in toward the chest.
+     They give the hand target (`lH`) and the elbow's pole (`lP`: the elbow itself, off the shoulder → hand line).
+     A blend between two carries blends the angles, so the hand travels round the shoulder on an arc; lerped hand
+     targets from "in front of the chest" to "behind the hip" pass through the ribs, where the solver's rib guard
+     pushes them out in a jump.
+  3. **A, natural:** the run swings the shoulder −44 … +26° and the elbow 118° behind → 78° in front (measured 75 –
+     119°, working 44° a stride; before 85 – 141°), the forearm crossing in 20° in front; the sprint pumps −61 … +43°
+     with the elbow 110 → 64° (measured 63 – 111°, the hand 42 cm up and down: chin to hip). The swing lags the legs
+     by 0.035 of a cycle. The hand is open (`hs` 0), the palm to the thigh, the fingers along the forearm curled a
+     little and drooping; at a sprint straight, a blade hand. The walk's swing is small and nearly straight.
+  4. **B, the dash:** the shoulder 58° back (70° at a sprint), 30° (34°) off his side, the elbow soft (152°), the
+     open hand trailing palm in and up; it rides the stride ±10° at the shoulder and ±8° at the elbow, so it never
+     hangs still (the hand moves ~10 cm). Why so far out and back: rendered straight back, the cape hid the whole arm
+     and from behind he seemed to have a hand on his hip; less far back, the side view read a hand hanging by the hip.
+     The chest leans 0.05 rad further into it. **Forward only**: the dash's weight is `smoothstep(0.35, 0.8, mz)`, so
+     strafing and backing away (lock-on play) swing the arm as in A; the weight eases on its own clock (`dashRate` 5
+     /s on `A.time`, `A.runArmS`) because the aim swung behind him flipped `mz` in ~0.1 s and threw the arm 28 cm a
+     frame².
+  5. **C, by speed:** A, sweeping into B as the sprint builds (`smoothstep(0.15, 0.85, sprintW)`, forward only). The
+     sweep is ~0.5 s; the hand never passes 4.6 m/s in it (A's own sprint pump reaches 6.3).
+  6. **The sword arm is unchanged:** it already trails the blade low beside the right leg on the run and nearly level
+     behind at a sprint, which is B's "sword trailing on the other side". The only shared change is the dash's chest
+     lean. `stand()`'s run-start blend (the idle session's) is read, not edited: `loco()` writes the arm with weight
+     `moveW` over it, so a start eases from the stance.
+- **Why C:** the run keeps a runner's arm that works (the owner called the fixed crook "stiff"), lock-on strafes keep
+  it swinging, and the sprint, where the hero is going somewhere, gets the wuxia dash. B at a plain run holds the arm
+  still behind him the whole time; A at a sprint is the most natural but the least "swordsman".
+- **Status:** the owner compares the four on films and the preview; the default may change with their pick.
+- **Consequences:** the `herorun` scenario runs every carry through one course (a start, the run, a stop, a sprint's
+  start and end, a strafe and a backpedal in the fight, a turn, out of the run into a light, a roll, a block and the
+  flask, out of the sprint into a roll and a block, the sprint's slash) and checks the elbows, the flare, the hand's
+  path and a pop audit against `old`. HEROARMS's "elbows in beside the ribs" check no longer covers the free arm
+  sprinting under a dashing carry (b, c): the sweep out and back is the pose; HERORUN bounds it (out at most 0.8).
+  **Known cost:** out of the dash into a roll or a block, the arm comes from behind him to the front inside that
+  clip's short cross-fade, about twice the old jolt (the free elbow 24 cm a frame² vs 13). Those cross-fades are
+  outside this pass (the roll's and the block's entries); a guard keeps it under 27.
+- **Amended (2026-11-25), the free hand's size:** the owner, trying A on the preview: "the animation looks fine but
+  the left hand size and color is standing out too much". The hand was drawn in the face's skin ink (gain 2.2) at
+  the gauntlet's size (`BODY.hand` 1.12) beside a near-black sleeve, and the new swing carries it across his coat.
+  Of five looks built for the preview (`gear/handLook.js`, `?handLook=0|a|b|c|d`: the hand before, × 0.8, × 0.8 with
+  the skin fill at about half or a third, a × 0.85 leather glove) the owner picked **a: × 0.8 in the same skin
+  ink**, now every outfit's free hand (the open hand, the sword fingers, the fist on the grip). The sword hand is
+  unchanged. The two darker inks (`HERO_INK.handShade` / `handDark`, part 1 with the skin's lines) are built only
+  when their look is drawn: a material more on the rig draws a uuid from the seeded `Math.random`.
+- **Amended (2026-11-25), the default carry is A:** #117 shipped `c` (by speed) as the default, though the owner had
+  tried `?runArm=a` on the preview and approved it ("the animation looks fine"). In production: "the new one looks
+  really bad. it doesnt seem to be the one i chose". #122 reverted #117; this re-ships it with **`a`, natural, the
+  default** (a runner's swing on the run, the pump at a sprint) and the smaller hand. `b` and `c` stay behind the
+  switch. Lesson: the default is what the owner approved in game, not the session's recommendation.
+
+## ADR-192 — The sword's cut throws green code, not grass (2026-11-25)
+
+- **Context:** the cut of ADR-180 works, but the owner, playing the live game, was "not seeing the grass
+  cut": at the game camera its stubs and quiet tops vanish into the meadow. They asked for "ascii like
+  grass particles when its swung at", picked a light spray, asked for the grass's colour and more detail,
+  then for "the matrix ascii art instead of actual grass", then for it "a bit tinier and a bit more
+  subtle/natural ... but still enough for players to be like wow thats the grass!".
+- **Decision:** on the frame the drawn arc cuts a blade (`cutArc`), it throws chips into the cut tops'
+  batch: about one for every other cut blade (more per blade on a lower quality), each a code glyph of
+  the Hall of Falling Script's set (world-atlas digits and code letters), about half a blade tall, a calm
+  code green that cools fast and settles to the grass's darkness when it lands, re-rolling to another
+  glyph as it flies. The throw, fall, lie and thin are the cut tops'. Every look met on the way stays
+  behind `?grassSpray=` (`0` none).
+- **Why this way:** the game already has one "code" look (the falling script); reusing its glyphs and
+  greens keeps one style. The chips share the tops' batch, pool and stream, so the spray costs one more
+  attribute, not another draw call, and draws no `Math.random`: the seeded fights replay byte for byte.
+- **Consequences / open:** the code green is a new colour in the meadow; the phone gets a brighter,
+  larger version (at the desktop strength it vanished); the boss marks throw none; nobody has judged it
+  on the phone's own screen.
+
+## ADR-193 — The grass bends round the hero's wake and springs back (2026-11-25)
+
+- **Context:** the owner: "when the player runs through the grass, the ground/grass around it becomes
+  too dark too quickly and doesn't look natural and bad transition. make the grass bend and come back to
+  normal after the player moves through it". Every grass footfall wrote a full trample into the scorch
+  map's blue channel (0.625 m cells): blades every way, up to 0.7 darker at once, standing up over 10 s;
+  the live pusher had no memory, so blades snapped upright the frame he left them.
+- **Decision:** a polyline of the hero's last 32 points (with their time and radius) goes to the grass
+  shader as a uniform array, like the wind's fronts; each blade bends along his way and out from the
+  path by its nearest stretch, holds, and springs back by a damped spring of its own, at most 10 %
+  darker while bent. The steps stop writing the blue channel while it is on. Three tastes filmed; the
+  owner shipped b (a soft lay-down rising over 2 - 3 s). `?bend=0` is the trail before.
+- **Why this way:** a path needs no map, so there are no cells to see, and it knows which way he went;
+  each blade's own spring makes the recovery natural; the blue channel stays free; fire and the seeded
+  fights read nothing new (the trace replays byte for byte). 32 points in four chunks keep the shader's
+  loop short (the grass draw went from 0.27 to at most 0.53 ms on desktop).
+- **Consequences / open:** the boss's pushers still snap back with no wake; the shader's `trailBend` and
+  the CPU's `bendAt` are kept in step by hand; close up a lying blade is a long sheared stroke (as the
+  pusher's always was); the phone's frame cost is the owner's to confirm.

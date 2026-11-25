@@ -103,7 +103,7 @@ ADR-120).
 | `lights` | `add({x,y,z,color:[r,g,b],intensity,radius,life,fade,fadeIn,flicker,low,slotFade})` → light (mutable `x,y,z`, `.set()`, `.kill()`). The pool (`render/lights.js` `LightPool`) fills the shader's `MAX_PL` slots with the best-scoring lights (intensity × radius over distance to the focus). A **low** light (`low: true`, 2026-11-23, ADR-180: the living world's lanterns, the Skybreak Ring's braziers) takes only the slots the others leave free: its rank among the low lights (without the flicker; one holding a slot keeps it against a light only up to 1.25 × better) picks which; it fades INTO a slot it is given and OUT of one it must give up over `slotFade` s (default 0.3; it holds the slot while fading, so for that moment the least of the others waits), never a pop. With no low light alive the pool picks exactly as before. `pool.used` / `pool.usedLow`: slots the last update wrote, all and low (tests, the Lab) |
 | `fx.add` / `fx.alpha` | glyph particles, additive-HDR / alpha-blended. `spawn({x,y,z,vx,vy,vz,life,size,sizeEnd,glyph,color,colorEnd,alpha,alphaEnd,gravity,drag,spin,rot,flicker,stretch})`. `glyph`: char, string of chars (random pick) or atlas index. |
 | `fx.ripple` / `fx.stamp` | the impact pass (ADR-149): `fx.ripple` = `ImpactRipple` (`render/impactRipple.js`: `hit(x, y, z, o, k)`, `update(dt)`, `clear()`, `write(pipeline)`; `n`, `live`), `fx.stamp` = `{ clear }` (`combat/impactStamp.js`: `stampHit`, `stampUpdate`, `stampClear`). Both run on fx time and are cleared on a level reset (flow, `world.debug.setVisible`) |
-| `world` | `resolve(pos, radius, bound, soft = false, who = null)` circle collision (`who` 'hero': on a set with an edge the hero's ground replaces the `bound` circle; `edge` is that edge or null and `heroBound(x, z)` how far out he may stand that way: Destruction → "The edge of the open ground", ADR-125; `soft`: pass through the circles marked `soft`, the trunks and stumps of breakable wood: the wyrm's body, ADR-119); `setQuality(k)` (the destruction's phone budget 0.3 .. 1; `setGrassQuality` sets it from the preset, `QUALITY` in breakTuning.js); `setPusher(slot, x, y, z, r)` grass trample (slot 0 = player, 1–9 = dragon; y > 1.5 = airborne, ignored); `clearPushers(from, to)`; `gust(x, z, strength 0..2, radius)` (also `life.gust`: the living world's air takes the same push); `scorch.burnCircle(x, z, r, burn 0..1, heat 0..1)`, `scorch.reset()`; the scorch map's channels: R burn, G heat, B **trample** (`scorch.trample(x, z, r, k)` max-blended, `scorch.trampleAt(x, z)`; the living world's steps write it, the grass lies flatter and darker by it, it stands up over `STEPS.trample.decay` s; GLSL `scorch3At(xz)`, `trampleAt(xz)` in COMMON_GLSL), A **torn** (2026-11-23, ADR-180: grass the sword mowed or a blow's mark tore out, 0..1, kept until `scorch.reset()`; `scorch.tear(x, z, r, k)`, `scorch.tearLine(ax, az, bx, bz, w, k, k2)`, `scorch.tornAt(x, z)`, `scorch.tornCells`; `?mow=0` none (`mowOn()` in scorch.js); GLSL `scorch4At(xz)` (all four channels, the same single fetch) and `tornAt(xz)`; see Destruction → "Grass the sword cuts"); `grass` (`createGrass`'s record: `mesh`, `total`, `setCount(c)`, and since ADR-180 `densityAt(x, z)` 0..1 and `heightAt(x, z)` the meadow's typical blade height there, m: the mow reads them); **`life`** (`world/life/life.js` `LivingWorld`, `?life=`; null if it failed to build: see "The living world"); `colliders.blocked(ax,az,bx,bz)`; `setGrassQuality(count)` (instanced grass blades drawn; main.js applies the quality preset); **destruction** (ADR-107, see Destruction): `impact(x, z, r, power, o)`, `ignite(x, z, r, k, grass = true)` (both also reach the living world: `life.impact` / `life.ignite`, ADR-177), `groundBlow(x, z, o)` (a blow met the floor: a mark of its kind, `scars.mark`, and `life.impact`; it damages nothing; ADR-177), `restore()`, `destructibles`, `fire`, `scars` (the tests' world mocks lack them: every caller outside `src/world` guards with `?.`); `bonfire {x,z}`; `nest {x,z}`; `atmosphere` (the bonfire's flames, smoke and embers; the default night's fireflies, low mist and falling leaves, or a set's `ash` / `ambience`: with the living world on, it skips the leaves, fireflies, mist or ash a layer draws itself, `life.takes(what)`, and while the wind piece is on its smoke, embers, mist, leaves and ash drift on `life.wind.at` instead of their fixed drift; their Math.random draws are unchanged); `atmosphere.setBonfireLit(bool)`; `atmosphere.skyGlow(k 0..1)` (the sky over the clearing glows orange: warms the shared ambient and fog colours; call every frame while it should show, it eases in and out and lets go 0.2 s after the last call; Armageddon, ADR-053); Lab only: `debug.setVisible(bool)` hides / restores the environment (ground, grass, forest group = trees, stones, flagstones, nest bones, bonfire; atmosphere paused and in-flight particles in `fx.*` dropped; the exact previous `visible` flags come back; lights, scorch and colliders untouched), `debug.visible` |
+| `world` | `resolve(pos, radius, bound, soft = false, who = null)` circle collision (`who` 'hero': on a set with an edge the hero's ground replaces the `bound` circle; `edge` is that edge or null and `heroBound(x, z)` how far out he may stand that way: Destruction → "The edge of the open ground", ADR-125; `soft`: pass through the circles marked `soft`, the trunks and stumps of breakable wood: the wyrm's body, ADR-119); `setQuality(k)` (the destruction's phone budget 0.3 .. 1; `setGrassQuality` sets it from the preset, `QUALITY` in breakTuning.js); `setPusher(slot, x, y, z, r)` grass trample (slot 0 = player, 1–9 = dragon; y > 1.5 = airborne, ignored); `clearPushers(from, to)`; `gust(x, z, strength 0..2, radius)` (also `life.gust`: the living world's air takes the same push); `scorch.burnCircle(x, z, r, burn 0..1, heat 0..1)`, `scorch.reset()`; the scorch map's channels: R burn, G heat, B **trample** (`scorch.trample(x, z, r, k)` max-blended, `scorch.trampleAt(x, z)`; the living world's steps write it with `?bend=0` only, the grass lies flatter and darker by it, it stands up over `STEPS.trample.decay` s; with the wake on (ADR-193) `world.trail` bends the grass instead: `update(dt, P)`, `press(x, z, r)`, `clear()`, `bendAt`, `count`; GLSL `scorch3At(xz)`, `trampleAt(xz)` in COMMON_GLSL), A **torn** (2026-11-23, ADR-180: grass the sword mowed or a blow's mark tore out, 0..1, kept until `scorch.reset()`; `scorch.tear(x, z, r, k)`, `scorch.tearLine(ax, az, bx, bz, w, k, k2)`, `scorch.tornAt(x, z)`, `scorch.tornCells`; `?mow=0` none (`mowOn()` in scorch.js); GLSL `scorch4At(xz)` (all four channels, the same single fetch) and `tornAt(xz)`; see Destruction → "Grass the sword cuts"); `grass` (`createGrass`'s record: `mesh`, `total`, `setCount(c)`, and since ADR-180 `densityAt(x, z)` 0..1 and `heightAt(x, z)` the meadow's typical blade height there, m: the mow reads them); **`life`** (`world/life/life.js` `LivingWorld`, `?life=`; null if it failed to build: see "The living world"); `colliders.blocked(ax,az,bx,bz)`; `setGrassQuality(count)` (instanced grass blades drawn; main.js applies the quality preset); **destruction** (ADR-107, see Destruction): `impact(x, z, r, power, o)`, `ignite(x, z, r, k, grass = true)` (both also reach the living world: `life.impact` / `life.ignite`, ADR-177), `groundBlow(x, z, o)` (a blow met the floor: a mark of its kind, `scars.mark`, and `life.impact`; it damages nothing; ADR-177), `restore()`, `destructibles`, `fire`, `scars` (the tests' world mocks lack them: every caller outside `src/world` guards with `?.`); `bonfire {x,z}`; `nest {x,z}`; `atmosphere` (the bonfire's flames, smoke and embers; the default night's fireflies, low mist and falling leaves, or a set's `ash` / `ambience`: with the living world on, it skips the leaves, fireflies, mist or ash a layer draws itself, `life.takes(what)`, and while the wind piece is on its smoke, embers, mist, leaves and ash drift on `life.wind.at` instead of their fixed drift; their Math.random draws are unchanged); `atmosphere.setBonfireLit(bool)`; `atmosphere.skyGlow(k 0..1)` (the sky over the clearing glows orange: warms the shared ambient and fog colours; call every frame while it should show, it eases in and out and lets go 0.2 s after the last call; Armageddon, ADR-053); Lab only: `debug.setVisible(bool)` hides / restores the environment (ground, grass, forest group = trees, stones, flagstones, nest bones, bonfire; atmosphere paused and in-flight particles in `fx.*` dropped; the exact previous `visible` flags come back; lights, scorch and colliders untouched), `debug.visible` |
 | `player`, `dragon`, `hud`, `audio`, `flow`, `lab` | the modules below. `dragon` is **the boss slot** (the wyrm in Cinderwood, the Ash Disciple in Ashfall; see Levels and the boss slot); `boss` is the same object |
 | `level`, `levels`, `pickLevel(id)` | the level this page load built (`levels/index.js` definition), every level as `{ id, name }` (the title's stage picker, the Lab's LEVEL row), and a reload into another one (`?level=<id>`, other parameters kept). Tests may leave them out: flow falls back to Cinderwood's lines |
 | `heroLook`, `heroLooks`, `pickHeroLook(id)` | the hero's outfit option (kept for later use: the owner, 2026-11-14, keeps today's look as the default; `player/gear/looks.js`): the id main.js read from `?heroLook=` (the Player wears it), every option as `{ id, name }` (the Lab's OUTFIT row), and a live switch (`player.setLook(id)`, the URL updated in place; `pickLevel` keeps the parameter). Tests may leave them out: the Player wears the default look |
@@ -301,6 +301,12 @@ Render helpers for creature modules:
     exactly what `setSize` gives (it records `_heroPx`), so a boss without the flag is drawn as before; one
     grid serves every boss pixel, so his paper selves share his cell. (`foxLetters` is read for every boss that sets `letters`: it
     stays 'b' on Tian Lei's level, which never sets it.)
+    **The bosses printed the hero's way** (ADR-194): main.js writes `U.uBossPrint` (x on, y own colours 1 / the
+    hero's greys 0, z the boss's feet in world y, w the hem's height above them) and the pass's `uBossLike` (x his
+    ink lines per font pixel, y the player's part tables for plates 12 - 16) every frame from
+    `lookOf('bossPrint', '0', 'b')`. Every ink-line material reads `uBossPrint` (`HERO_ART_SHARED`) except the
+    player's (`heroSelf` compiles `SG_HERO_SELF`): the fill is lifted in the shader, so whoever writes `uArtFill`
+    needs no change.
     Ink lines are drawn per pixel by the pass, not from glyphs. `U.uArtHeroCel` (vec3: step from
     shadow to lit between x and y, z = share of the step) cel-shades the art source;
     `U.uHeroPartRim[20]` (vec4: tint × gain) is each part's silhouette ink; fill style + 8 = a
@@ -1220,6 +1226,14 @@ around and the blade's point; none a multiple of another). In a fight the sword 
 on the move (`FIGHT_RUN`; a sprint trails the blade); a roll and a backstep ease the sword arm out
 of the pose they began in (`swordFromEntry`, `SWORD_ENTRY` 0.16 s) and the loco clip settles the
 blade into the stance over `LOCO_SETTLE` (0.24 s).
+**The run's free arm** (ADR-187, `runArms.js`): in the hero's `loco()` the free (left) arm is
+`runArm(p, P, A, phase, armF, sprint, runK, moveW, mz)`'s: one of three carries (`?runArm=a|b|c|old`,
+`runArmMode()` / `setRunArm(id)`, default `a`, the owner's pick), written as joint angles (`RUN_ARMS`: the shoulder's swing, how
+far the arm stands off his side, the elbow, the forearm's cross) and posed by forward kinematics into `lH`, `lP`,
+`lD`, `lN` and `hs`, with weight `moveW`. `a` swings like a runner (a pump at a sprint), `b` holds the dash (swept
+back behind him; forward only: a strafe or a backpedal swings as `a`), `c` is `a` on the run blending into `b` as
+the sprint builds. The dash's weight eases on `A.time` (`A.runArmS`), so `loco()` may run more than once a frame.
+`old` returns false and `loco()` writes the swing before ADR-187. A duelist's footwork never calls it.
 **Idle life** (ADR-047): in the loco clip, standing still in the `idle` state, at ease (not locked
 on, not in the fight stance: `fightW` ≤ 0.05), with no guard held, for `IDLE_LIFE.after` (2.5 s), `HeroAnimator._idleLife` starts an action from `FIDGETS`
 every `IDLE_LIFE.gap` (2–4.5 s after the last one ends), picked with the animator's own noise (never
@@ -1228,6 +1242,25 @@ every `IDLE_LIFE.gap` (2–4.5 s after the last one ends), picked with the anima
 0.45 s fade in and 0.55 s out; anything else (a move, a lock-on, a guard, another clip) cuts it within
 `IDLE_LIFE.cancel` (0.16 s). State: `anim.fidget = { k, t, w, cut, still, wait, last, count, name }`.
 Visual only: no hit test runs outside attacks.
+**The idles** (ADR-186, `idles.js`; `?idles=old` = the paragraph above as it was, live through `setIdles`): `stand()`
+writes a REST's arms over each stance (`easeArms` over `atEase`, `guardArms` over `fencerGuard`): at ease one of
+`EASE_RESTS` (`loose`, `fingers`, `cloak`, `belt`: the free arm only, the sword arm stays `atEase`'s), in the guard one of `FIGHT_RESTS` (`point`, `eye`, `hand`, `low`: the
+free hand off the belt). The state is `anim.rests = { ease, fight }`, each `{ a, b, u, hold, mem }` (from rest a to
+b, `u` 0..1 of the change, smootherstep, the blade by `dirLerp` with its own memory); `tickRests` (in `_idleLife`)
+runs a stance's hold down while he stands still in it and starts a change only between actions (`IDLES.restHold`
+7-12 s / `restMove` 1.3 s at ease, `guardHold` 4-7 s / `guardMove` 0.75 s in the guard). The actions: `F.pool` 0 =
+`FIDGETS` (old), 1 = `EASE_LIST` (`EASE_HABITS`, `look`, `inspect`, `EASE_TRICKS`), 2 = `FIGHT_LIST` (`FIGHT_ACTS`);
+at ease a trick every `IDLES.trickEvery` (3-4) actions (`pickEase`), and one marked `blade` starts only from a `low`
+rest (a trick due in the trail first moves him to `loose`); in the guard (`fightW` > 0.95, also locked on) only
+`FIGHT_ACTS`, never a trick; during the stance's change, none. A cut lets a `blade` action go over
+`IDLES.cancelBlade` (0.26 s), and at ease a block / parry / drink / charge out of a `blade` action or the trail rest
+enters over at least `IDLES.cutFade` (0.24 s). Lab / tests: `anim.playIdle(name)` (a `blade` one from a high rest
+queues behind a move to `loose`), `anim.setRest(name, atOnce?, hold?)`, `anim.idleNames(fight)`. The trick pool's
+three SPELLS (`rite`, `sigil`, `breath`; `spell: true`) publish `anim.spell = { kind, u, w }` (in `_idleLife`, w 0
+otherwise); `swordMystic.js` reads it: the flame swells toward the top tier (`SPELL.surge`, every cell lit, hotter,
+longer tongues), the rite's flame waits above the fingers' front, and each writes the flame's marks through the same
+batch (`SPELL`: the rite's embers, the sigil's ring at knee height, the breath's thread). The idles draw on
+`anim.idleNoise`, never `anim.noise` (which picks an attack's look).
 **Idle** (`guard`, ADR-041; ADR-040 put the blade out to his side, where the game camera sees it):
 weight on the left leg, the right foot a shoulder's width out and forward with the knee soft, the
 upper arm hanging by the ribs with the elbow a little back, the grip beside the right hip and
@@ -3489,6 +3522,20 @@ shape, so the marks read on a meadow too. Cosmetic only: no hit, no clock, no da
   tops). A mark's tear hands its blades over the same way (`scorch.tear` → `tops`), at most `perTear` a
   call. Cost at quality 1: `cutArc` ≈ 0.03 ms a frame of a swing, the batch ≈ 0.03 ms; about 130 tops a
   swing (65 thrown), half that at quality 0.5.
+- **The code spray** (`?grassSpray=`, `GRASS.spray`, ADR-192; read once): on the frame `cutArc` cuts a
+  blade it also throws CHIPS into the cut tops' batch (`MowFx._chip`; the pool is `fly.max` 2000 x quality),
+  `per` 0.5 a cut blade (x (1 / q)^`lowQ` 0.8 on a lower quality: the phone draws a third of the blades).
+  Today's default `m`: each chip is ONE CODE GLYPH from `GRASS.spray.code.glyphs` (the Hall of Falling
+  Script's digits plus `ZTHKEX<>=:+*`, all world-atlas glyphs), `size` 0.4 - 0.55 x the blade, unlit and
+  fogged (attribute `aK`), fresh `col.head` green cooling to `col.tail` over `cool` 0.18 s, settling to
+  `col.deep` (the grass's own darkness) within `darken` 0.35 s of landing, re-rolling to another code glyph
+  every `flip` 0.09 - 0.24 s while it flies, near upright; thrown, falling, lying and thinning as the cut
+  tops do. Under quality 0.75 it takes `m4`'s greens and a size 0.5 - 0.66 (it vanished on the phone).
+  The others: `m4` a step more visible, `m0` / `m2` (each glyph trailing two fading ones) / `m3` (the cut
+  tops turn to code too) the earlier code looks, `a` / `a2` chips of the blade's own letter in its own
+  colour, `a0` / `b` / `c` letters in the house letter (`world/grassSpray.js`, a `LetterBatch`), `0` none.
+  No allocation per frame, no `Math.random` (the tops' own stream). Cost at quality 1: the tops and chips
+  about 0.05 ms a frame; `cutArc` with the spawning about 2.4 ms over a whole four-swing string.
 - **The marks tear first** (`scars.mark` with `world.scorch.tearLine`, a density function and `mowOn()`):
   before its glyphs are laid, each kind tears its shape (`GRASS.mark`, depth `k` from a light blow to the
   hardest by its power, (power − 0.3) / 1.5): a `slam` a disc `r` 1.05 × its round (the crater's radius
@@ -3876,6 +3923,24 @@ its `update()` is a no-op: its owner writes it).
   grass in the same fetch; `trampleAt`): a trodden blade lies
   flatter every way and is drawn darker (up to 0.7 × darker). scorch.js imports `STEPS` for the decay and
   the cap.
+  **Since ADR-193 all of this is `?bend=0` only.** With the wake on (the default), the steps write no B:
+  a sprint step or a heavy landing calls `world.trail.press(x, z, r)` to widen the wake for 0.3 s.
+- **The hero's wake** (`world/grassTrail.js` `GrassTrail`, `world.trail`; ADR-193; `?bend=0|a|b|c`, default
+  `b`, `GRASS.bend` in grassTuning.js; read once, `bendLook()`): `world.update` calls `trail.update(dt, P)`
+  after the player with pusher slot 0. It keeps the hero's last `TRAIL_N` 32 points (x, z, age, r): a new
+  one every 0.35 m and 0.08 s (at once past 1 m; a jump over 3 m starts afresh; standing keeps the point
+  under him pressed; airborne, y > 1.5, radius 0; full, the straightest older point goes). It writes the
+  shared uniforms `uTrail[32]`, `uTrailBox[4]` (a bounding circle per `TRAIL_CH` chunk of `TRAIL_SEG` 8, so
+  the shader skips what is far), `uBend`, `uBendT`, `uBendS`, `uBendE` (shaderLib.js). The grass shader's
+  `trailBend` finds each blade's nearest stretch of the path and bends it ALONG his way and OUT from the
+  path with a smooth (1 - s²)² falloff (no map cells; ± 10° per blade), holds, then springs back by a
+  per-blade damped spring (blades at the edge sooner); a bent blade is at most 5 - 10 % darker by how bent
+  it is. With the wake on it replaces pusher slot 0; the boss's pushers (1 - 9) are unchanged. b (default):
+  hold 0.35 s, critically damped, rises over 2 - 2.6 s; a: a quick spring with a 10 % overshoot, back in
+  about 1 s; c: combed along his way, closing from the edges in, 0.8 - 2 s. `trail.clear()` on
+  `world.restore()`; `trail.bendAt()` is the shader's maths on the CPU (the tests'; keep the two in step by
+  hand). With `?life=off` the wake still bends (it belongs to the world, like the pusher). No random draw,
+  no event, about 1.4 µs a frame on the CPU; the grass draw 0.27 → 0.31 - 0.53 ms at quality 1 (desktop).
 - **The hooks**: player.js `_footstep` (the payload gains `surface` and today's dust is skipped while the
   piece is on), the plunge's landing and flurry.js's touchdown (heavy), the roll's landing (heavy; today's
   dust when footfall says nothing). sfx.js `footstep` plays a recipe per surface when `o.surface` is set

@@ -44,6 +44,9 @@ function oscillate(t, breath) {
   return M;
 }
 
+/** The stance's oscillators at time t (fight: the guard's breath, else at ease's): idles.js reads them. */
+export const standLife = (t, fight) => oscillate(t, STAND_LIFE.breath[fight ? 1 : 0]);
+
 /** p[i..i+2] = the unit vector at azimuth az (0 ahead, + his left) and elevation el (degrees). */
 function dir(p, i, az, el) {
   const a = az * DEG, e = el * DEG, c = Math.cos(e);
@@ -67,7 +70,7 @@ function turned(p, i, v, c, s) {
   p[i + 2] = -v[0] * s + v[2] * c;
 }
 /** `yaw` = this stance's chest turn (pelvY + spY): the hand belongs to the waist, which turns with it. */
-function onTheBelt(p, P, m, yaw) {
+export function onTheBelt(p, P, m, yaw) {
   const a = yaw - BELT.yaw, c = Math.cos(a), s = Math.sin(a);
   // the palm on the side of the waist at the belt, a hand's thickness off it …
   turned(p, P.lH, BELT.h, c, s);

@@ -120,6 +120,10 @@ export function createSharedUniforms() {
     // between x and y (the reference's two-tone anime shading), z = how much of the step replaces
     // the smooth falloff
     uArtHeroCel: { value: new THREE.Vector3(0.3, 0.42, 0.75) },
+    // the human bosses printed the hero's way (ADR-194, `?bossPrint=`; main.js writes it every frame):
+    // x on (1) / off (0), y his own colours (1) or the hero's greys (0), z the boss's feet (world y),
+    // w the hem's height above them (m). Read by the bosses' ink-line materials (materials.js), never the player's
+    uBossPrint: { value: new THREE.Vector4(0, 1, 0, 0.62) },
     // the living world's wind (world/life/wind.js writes both once a frame while the piece is on):
     // dirX, dirZ (unit), speed (m/s), level (0..1). (0, 0, 0, 0) = the wind piece off: the grass and the
     // trees then move exactly as they always did (WIND_GLSL, windOn())
@@ -129,8 +133,23 @@ export function createSharedUniforms() {
     // field's travel (x, z, 0, 0); [10] the grass's answer (lean, wave, front, patch); [11] the trees'
     // (lean, rock, front, stir)
     uWindFronts: { value: Array.from({ length: WIND_FRONTS_LEN }, () => new THREE.Vector4(0, 0, 0, 0)) },
+    // the hero's wake through the grass (world/grassTrail.js writes them once a frame; `?bend=`): his last
+    // positions, oldest first (x, z, age s, radius m; 0 = no contact); each chunk of TRAIL_SEG segments'
+    // bounding circle (x, z, radius; 0 = empty); uBend (on 0 / 1, points, 0, 0), uBendT (hold, tau, omega,
+    // stagger), uBendS (amp, along, out, drop), uBendE (dark, edge, jitter, 0). uBend.x 0: the grass as before
+    uTrail: { value: Array.from({ length: TRAIL_N }, () => new THREE.Vector4(0, 0, 0, 0)) },
+    uTrailBox: { value: Array.from({ length: TRAIL_CH }, () => new THREE.Vector4(0, 0, 0, 0)) },
+    uBend: { value: new THREE.Vector4(0, 0, 0, 0) },
+    uBendT: { value: new THREE.Vector4(0, 1, 0, 0) },
+    uBendS: { value: new THREE.Vector4(0, 0, 0, 0) },
+    uBendE: { value: new THREE.Vector4(0, 1, 0, 0) },
   };
 }
+
+/** The hero's wake (world/grassTrail.js): points at most, chunks, segments a chunk (TRAIL_CH x TRAIL_SEG >= TRAIL_N - 1). */
+export const TRAIL_N = 32;
+export const TRAIL_CH = 4;
+export const TRAIL_SEG = 8;
 
 /** Front slots in uWindFronts (wind.js keeps as many) and the array's length. */
 export const WIND_SLOTS = 4;

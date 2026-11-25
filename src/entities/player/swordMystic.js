@@ -26,6 +26,7 @@
 // nothing over his body (his torso's column below his head); nothing on a dead, hidden or unarmed hero.
 // Through the flurry it rests; through the Ghostep's cold cast after a perfect dodge it goes on.
 
+import { TAU, lerp, smoothstep } from '../../core/math.js';
 import { streakTier } from '../../combat/streak.js';
 import { LetterBatch } from '../../world/life/letterBatch.js';
 import { pixelArtOrder } from '../../render/glyphs.js';
@@ -112,6 +113,28 @@ export const FLAME = {
   head: 1.55, // m: below this height the torso column is his (above it, beside his head, the flame may burn)
 };
 
+/**
+ * The spells (ADR-186: idle actions of the hero's, idles.js SPELLS; the animator publishes the one playing as
+ * `anim.spell` = { kind, u, w }). Each swells the flame (to tier `surge` at full weight) and writes a few of
+ * the same marks:
+ *   rite    embers off the point as his sword fingers leave it (`rite.rate` a second, while u is in `at`)
+ *   sigil   a ring of marks on the ground round him (`r` m, `n` of them), written over `at`, all fading together
+ *   breath  a thread circling him at chest height (`r` m, `turns`), back into the steel at the end
+ */
+export const SPELL = {
+  surge: 5,
+  rite: { at: [0.62, 0.86], rate: 60, life: [0.8, 1.3], rise: [0.3, 0.65] },
+  // (at knee height: written on the ground, or at the shin, it hid under the grass; a mark every ~3.5 cm
+  // reads as a line of his tiny letters at the game camera, 52 of them read as specks)
+  sigil: { at: [0.22, 0.6], r: 0.85, n: 150, life: [1.9, 2.6], y: 0.55 },
+  breath: { at: [0.28, 0.8], r: 0.75, turns: 1.5, y: 1.2, rate: 150, life: 0.7 },
+  // the flame through a spell: every cell lit, hotter by `heat`, tongues `tongue` cells longer; the rite's
+  // flame burns only below the fingers' front (above it dim by `dim`)
+  heat: 0.16,
+  tongue: 2,
+  dim: 0.45,
+};
+
 /** Matrix green (linear: the grade and the tone map lean a green toward mint, so the blue is kept low). */
 export const GREEN = {
   cool: [0.0, 0.5, 0.04], // a tongue's tip, a dying lick
@@ -121,6 +144,15 @@ export const GREEN = {
   hot0: 0.5, // heat from which a cell prints a dense mark and pales toward `hot` (fully at hot0 + 0.25)
   alpha: [0.5, 0.9], // a cell's alpha from the coolest to the hottest
 };
+
+/** How far a spell lifts the flame (0..1) at its u: the rite as the fingers climb, the sigil while the ring
+ *  is written, the breath through the breath. */
+function spellSurge(kind, u) {
+  if (kind === 'rite') return smoothstep(0.3, 0.72, u) * (1 - smoothstep(0.8, 0.92, u));
+  if (kind === 'sigil') return 0.6 * smoothstep(0.18, 0.3, u) * (1 - smoothstep(0.66, 0.8, u));
+  if (kind === 'breath') return smoothstep(0.22, 0.36, u) * (1 - smoothstep(0.72, 0.84, u));
+  return 0;
+}
 
 // reused records (no allocation per frame)
 const L = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 1, col: 0, color: [0, 0, 0], colorEnd: [0, 0, 0], alpha: 1, alphaEnd: 0, drag: 0, gravity: 0, flicker: 0 };
@@ -167,6 +199,9 @@ export class SwordMystic {
     this._mcol = null; // mark → the hero atlas's column
     this.acc = 0; // licks owed
     this._cx = this._cy = this._cz = 0;
+    this.sp = { k: '', n: 0, acc: 0, a0: 0 }; // the spell being written (its marks so far)
+    this.surge = 0; // 0..1: how far a spell lifts the flame now (tests)
+    this.front = -1; // the rite: the share of the blade below his fingers (-1: no rite)
   }
 
   /** Back to its first frame (a level reset; the film rig stages every row alike). */
@@ -208,9 +243,16 @@ export class SwordMystic {
     this._cx = cam ? cam[8] * MYSTIC.lift : 0;
     this._cy = cam ? cam[9] * MYSTIC.lift : 0;
     this._cz = cam ? cam[10] * MYSTIC.lift : 0;
+    // a spell (idles.js) lifts the flame toward the top tier while it plays
+    const S = P.anim?.spell;
+    this.surge = S && S.w > 0.01 ? S.w * spellSurge(S.kind, S.u) : 0;
+    // the rite's front: the share of the blade below the fingers (they climb it over u 0.34 .. 0.72)
+    this.front = S && S.w > 0.01 && S.kind === 'rite' && S.u > 0.3 && S.u < 0.84 ? smoothstep(0.34, 0.72, S.u) : -1;
+    const tt = Math.max(t, Math.min(5, Math.round(SPELL.surge * this.surge)));
     try {
-      this._flame(e, t);
-      this._licks(e, t, fdt);
+      this._flame(e, tt);
+      this._licks(e, tt, fdt);
+      this._spell(e, fdt, S);
     } catch (err) {
       console.error('[swordMystic]', err);
     }
@@ -228,7 +270,7 @@ export class SwordMystic {
     const g = this.game, mr = Math.random;
     try {
       Math.random = rnd;
-      const lb = new LetterBatch(g, 48 + MYSTIC.cells, '|', { spawned: 48, snap: 1, rand: rnd });
+      const lb = new LetterBatch(g, 320 + MYSTIC.cells, '|', { spawned: 320, snap: 1, rand: rnd });
       const order = pixelArtOrder();
       this._mcol = {};
       for (const k in MICRO) this._mcol[k] = order[MICRO[k]] ?? 0;
@@ -315,6 +357,85 @@ export class SwordMystic {
     }
   }
 
+  // ------------------------------------------------------------------ spells: marks a spell writes (SPELL)
+  _spell(e, fdt, S) {
+    const sp = this.sp, lb = this.lb;
+    if (!S || !(S.w > 0.02) || !S.kind || !lb) {
+      sp.k = '';
+      return;
+    }
+    const P = this.player, q = P.position, u = S.u, w = S.w;
+    const tipZ = (DIM.drawnTip ?? DIM.steelTip) - 0.03;
+    const tx = e[8] * tipZ + e[12], ty = e[9] * tipZ + e[13], tz = e[10] * tipZ + e[14];
+    if (sp.k !== S.kind) {
+      sp.k = S.kind;
+      sp.n = 0;
+      sp.acc = 0;
+      sp.a0 = Math.atan2(tx - q.x, tz - q.z); // (the ring and the thread start where the point is)
+    }
+    if (!Number.isFinite(q.x + q.z + tx + ty + tz)) return;
+    if (S.kind === 'rite') {
+      const K = SPELL.rite;
+      if (u < K.at[0] || u > K.at[1]) return;
+      sp.acc = Math.min(8, sp.acc + fdt * K.rate * w);
+      while (sp.acc >= 1) {
+        sp.acc -= 1;
+        this._mark(tx + R(-0.04, 0.04), ty + R(-0.02, 0.06), tz + R(-0.04, 0.04), R(-0.08, 0.08), R(K.rise[0], K.rise[1]), R(-0.08, 0.08), R(K.life[0], K.life[1]), 0.9, 0.3, 1);
+      }
+    } else if (S.kind === 'sigil') {
+      const K = SPELL.sigil;
+      const want = Math.floor(K.n * smoothstep(K.at[0], K.at[1], u) * Math.min(1, w * 1.5));
+      while (sp.n < want) {
+        const a = sp.a0 - (TAU * sp.n) / K.n; // (round from the point, his right to his front to his left)
+        // all fade near together: the first written lives the longest
+        const life = lerp(K.life[1], K.life[0], sp.n / K.n);
+        sp.n++;
+        this._mark(q.x + Math.sin(a) * K.r, K.y, q.z + Math.cos(a) * K.r, 0, 0.05, 0, life, 0.9, 0.5, 1);
+      }
+    } else if (S.kind === 'breath') {
+      const K = SPELL.breath;
+      if (u < K.at[0] || u > K.at[1]) return;
+      const f = (u - K.at[0]) / (K.at[1] - K.at[0]);
+      const a = sp.a0 - TAU * K.turns * f;
+      // the last fifth: the thread closes in on the blade's middle
+      const c = smoothstep(0.8, 1, f), mz = tipZ * 0.5;
+      const mx = e[8] * mz + e[12], my = e[9] * mz + e[13], mzz = e[10] * mz + e[14];
+      const x = lerp(q.x + Math.sin(a) * K.r, mx, c), y = lerp(K.y, my, c), z = lerp(q.z + Math.cos(a) * K.r, mzz, c);
+      sp.acc = Math.min(6, sp.acc + fdt * K.rate * w);
+      while (sp.acc >= 1) {
+        sp.acc -= 1;
+        this._mark(x + R(-0.03, 0.03), y + R(-0.03, 0.03), z + R(-0.03, 0.03), 0, R(0.02, 0.1), 0, K.life * R(0.8, 1.2), 0.9, 0.4, 1);
+      }
+    }
+  }
+
+  /** One mark of a spell: the flame's green, a stroke or a tiny letter (hot = 1: a tiny letter shape). */
+  _mark(x, y, z, vx, vy, vz, life, alpha, flicker, hot) {
+    L.x = x + this._cx;
+    L.y = y + this._cy;
+    L.z = z + this._cz;
+    L.vx = vx;
+    L.vy = vy;
+    L.vz = vz;
+    L.life = life;
+    // (born at the flame's lit head, cooling to its tips: the spell's marks are the flame's hottest)
+    L.color = GREEN.hot;
+    L.colorEnd = GREEN.cool;
+    L.alpha = Math.min(0.9, alpha);
+    L.alphaEnd = 0;
+    L.drag = 0.4;
+    L.gravity = 0;
+    L.flicker = flicker;
+    if (!Number.isFinite(L.x + L.y + L.z)) return false;
+    const set = hot ? HOT + BODY : BODY, ch = set[Math.floor(rnd() * set.length)];
+    L.col = this._mcol?.[ch] ?? 0;
+    if (!this.lb.spawn(L)) return false;
+    this.n++;
+    this.total++;
+    this.onEmit?.('spawn', ch, L.alpha, L.life, 1, cmax(L.color) * L.alpha);
+    return true;
+  }
+
   // ------------------------------------------------------------------ the flame: marks enveloping the steel
   /**
    * The steel's cells on his grid (forte → point) are found; the flame burns in the cells touching them
@@ -394,8 +515,9 @@ export class SwordMystic {
     const zm = (z0 + z1) * 0.5, ax0 = e[8] * zm + e[12], ay0 = e[9] * zm + e[13], az0 = e[10] * zm + e[14];
     if (!proj(ax0, ay0, az0)) return;
     const ax = PRJ.px, ay = PRJ.py, mpp = PRJ.mpp;
-    const heat0 = this._k(S.heat, t), tip = this._k(S.tip, t), cover = this._k(S.cover, t);
-    const tongue = S.tongue[t], tp = this._k(S.tongueP, t), clock = this.t;
+    const sg = this.surge, fr = this.front;
+    const heat0 = this._k(S.heat, t) + SPELL.heat * sg, tip = this._k(S.tip, t), cover = Math.max(this._k(S.cover, t), sg);
+    const tongue = S.tongue[t] + Math.round(SPELL.tongue * sg), tp = Math.max(this._k(S.tongueP, t), 0.7 * sg), clock = this.t;
     const G = GREEN, col = this._mcol;
     const put = (ci, cj, h) => {
       if (this.w >= MYSTIC.cells) return;
@@ -421,6 +543,7 @@ export class SwordMystic {
       const beat = Math.floor(clock * S.beat + hash3(ci, cj, 7) * 4);
       if (hash3(ci, cj, beat) >= cover) continue;
       let h = heat0 + tip * u * u;
+      if (fr >= 0 && u > fr) h *= SPELL.dim; // (the rite: above the fingers the flame waits)
       if (NB[k]) h *= S.below;
       put(ci, cj, h);
       // a tongue off the top: nothing of the steel or the flame above it

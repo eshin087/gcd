@@ -138,6 +138,14 @@ the wyrm next to it, it is wrong, however good it looks alone.
     pale blotch round the steel with a few flying bits ("doesn't look good"), a bright spray of every top
     (too busy). `?mowLook=b` (the tops lean off and lie), `c` (a burst of strokes) and `r1` (the first
     round) remain.
+  - **The code spray** (2026-11-25, ADR-192; `?grassSpray=`): the cut also throws small GREEN CODE GLYPHS,
+    the Hall of Falling Script's digits and code letters, in the world atlas, about half a blade tall,
+    one for every other cut blade; a calm code green (a step toward the grass's own, never neon), bright
+    only for a moment, flickering to another glyph as it flies and settling to the grass's darkness when
+    it lands. The owner: "make the ascii text a bit tinier and a bit more subtle/natural and not SO
+    sticking out but still enough for players to be like wow thats the grass!". Turned down on the way:
+    tiny house-letter specks (unseen at the game camera), the grass's own letters in its own colour (liked,
+    then "the matrix ascii art instead of actual grass"), and the first code look (too bright).
   - **Torn out** (a blow's mark: every kind tears its own shape first, the slam's disc, the gash's line,
     the claws' three, the furrow, the beam's strip): the grass goes to the root and the floor shows bare
     under the mark, nothing lies; the mark's glyphs then lie ON THE FLOOR, not on the blade tips, so a
@@ -1098,6 +1106,8 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?marks=` | the floor's marks (every level; read per blow; ADR-177) | today's cracks and crater rims only | `1`: a mark of each blow's kind (slam, cut, thrust, dash, blast, beam, step) that stays until the reset | - | - | **1** (2026-11-23) |
 | `?mow=` | grass the sword cuts (every level with grass; read per tear; ADR-180; a new thing, so `?looks=old` keeps it; no Lab row) | the grass as before: nothing is mown or torn | `1`: the blade cuts the grass under its drawn arc (stubs of each blade's own letter, the tops leaving by `?mowLook=`), every floor mark tears the grass out in its shape (bare floor under the mark) | - | - | **1** (2026-11-23: built at the owner's "Build top three"; the cut redone three times, 2026-11-24) |
 | `?mowLook=` | how a cut blade's top leaves (read once; ADR-180; no Lab row) | `r1`: the first round (a pale blotch of stubs round the steel, a few flying bits) | `a`: thrown, quiet (half the tops tossed low along the swing, the rest topple) | `b`: sliced (the tops lean off their stubs and lie) | `c`: shred (a burst of the grass's strokes) | **a** (2026-11-24, the owner: "i like the thrown effect the most but make the thrown effect more subtle") |
+| `?grassSpray=` | what the sword's cut throws (read once; ADR-192; no Lab row) | `0`: nothing but the cut tops | `a`: chips of the blade's own letter in its own colour (`a2` smaller; `a0`, `b`, `c` house-letter sprays) | `m0`: the first code look (`m2` with trails, `m3` the tops turn to code) | `m4`: the code a step more visible | **m** (2026-11-25: tinier, calmer code glyphs; the owner: "Ship both") |
+| `?bend=` | the grass round the hero's wake (read once; ADR-193; no Lab row) | the dark trodden trail (the scorch map's blue, 10 s) | quick spring (about 1 s, a small overshoot) | **soft lay-down, rising over 2 - 3 s** | combed wake, closing from the edges | **b** (2026-11-25, the owner: "Ship both") |
 | `?ashLook=` | Shen Hui's body (read when his rig is built) | today's figure | the dragon look (the wyrm's art path) | today's figure dressed by phase | both | **b** |
 | `?lordLook=` | Varr Nihil's body (read when his rig is built) | today's figure | the dragon look | today's figure dressed by form | both | **b** |
 | `?outskirts=` | what lies round the Obsidian Throne's crater (ADR-133; read when the level is built; `m` all of them) | the felled forest | the shrine the star fell on | the star's debris | those who came for him | **c** |
@@ -1513,9 +1523,13 @@ what lies under it; a running hero kicks what is at his feet; a blow throws it.
 
 **Prints and the trodden grass.** A step on earth or ash leaves a print: a dim stretched `0` lying on the
 floor (earth 0.2 m, gone in 5 s; ash 0.3 m, darker than the ash, filling in over 14 s), turned to the way
-he walked. The obsidian answers with a dim red glint (`'`, `*` or a backtick, 0.26 m, 0.75 s; before the fight only, so no red sits beside a red tell), never dust. Grass is TRODDEN (the
-scorch map's blue): a run leaves a trail about 1.3 m wide where the blades lie flatter and darker (up to
-0.7 darker), standing up over 10 s; a narrower trail was lost among the blades. Puffs: earth small and
+he walked. The obsidian answers with a dim red glint (`'`, `*` or a backtick, 0.26 m, 0.75 s; before the fight only, so no red sits beside a red tell), never dust. Grass BENDS ROUND HIS
+WAKE (2026-11-25, ADR-193, `?bend=`): as he runs, the blades within about 0.9 m bend along his way and out
+from the path, lie down a moment and rise again over 2 - 3 s (b, the default), at most 10 % darker while
+bent, with no edge of a map cell anywhere; a sprint or a landing presses a wider wake. The owner turned
+down the trail before it ("too dark too quickly and doesn't look natural and bad transition": a 1.3 m
+band up to 0.7 darker at once, blades every way, standing up over 10 s; `?bend=0`). `a` springs back in
+about a second with a small overshoot, `c` combs the blades along his way and closes from the edges in. Puffs: earth small and
 low, sand a pale puff the wind carries off, ash a soft grey puff that hangs and sinks, stone a grit puff on
 a sprint only; a wet step a tiny splash.
 
@@ -1649,6 +1663,15 @@ round it, and mist printed in it came out as dark-backed slabs). Still faint (op
 glint, the Ring's far flicker, the moths, the ash's drifts against the paving's own strokes, the roar's
 answer at the game camera on Ashfall and in the Grove; after the owner's verdict the drizzle may be too
 faint, the Ring's devils need luck to be in view, and the Foxfire Terrace's calm shows little.
+
+### The bosses printed the hero's way (2026-11-24, ADR-194; `?bossPrint=`, default b)
+The owner's rule since then: a human boss looks "all built with ascii" like the hero. In the ink-line art
+that takes a lit letter body, not a dark fill inside an outline or a flat bright colour: every cloth part of
+a boss prints at about the hero's coat brightness (0.1 - 0.24 linear before the lift), in its own hue at 75 %
+(`a`: the hero's greys), with the hero's blocky strokes and dotted cloth rim, and below the knee his cloth
+breaks into the hero's pale dotted hem along a ragged line (materials.js `uBossPrint`, pipeline.js
+`uBossLike`). Done in the shader: a new boss in the ink-line art gets it with no change; pick his fills for
+hue, not for brightness. The face, the eyes and what glows (parts 1, 2, 17 - 19) keep their own fill.
 
 ### The Hall of Falling Script and Xin Yi (2026-11-22, ADR-156, ADR-157; `world/scriptHall.js`, `enemies/wokenOne/`, `?level=code`)
 "More extra ASCII" (the owner) is four layers INSIDE the game's letter systems: none of it is a pass over the
