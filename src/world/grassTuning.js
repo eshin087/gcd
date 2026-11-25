@@ -68,6 +68,37 @@ export const GRASS = Object.freeze({
    */
   arc: Object.freeze({ top: 1.05, above: 0.85, mid: 0.5, w: 0.55, wHeavy: 0.7, tex: 512 }),
   /**
+   * The grass spray (round 5, world/grassSpray.js; `?grassSpray=a|b|c`, 0 none): grass letters (`glyphs`,
+   * the house letter) thrown off every blade the drawn arc cuts, `per` a blade on average (a light, b
+   * medium, c a full burst that also cuts a bolder line: the arc's width x `wide`, its stubs paler,
+   * `fresh2`), at most `max` alive (x the quality). Along the swing `fling` m/s, `side` across, `up` m/s;
+   * `drag` /s, `gravity` m/s2, a flutter of `flutter` m/s2 at `flutterHz`; landed at `floor` m they lie
+   * `lie` s at `lieAlpha` and fade; `life` s at most in the air. Colours: `fresh` green to `straw`.
+   */
+  spray: Object.freeze({
+    look: 'b',
+    glyphs: "/\\|',;`vi1",
+    max: 1600,
+    lowQ: 0.8, // at quality q a cut blade throws per x (1 / q)^lowQ (the phone draws a third of the blades)
+    a: Object.freeze({ per: 0.45 }),
+    b: Object.freeze({ per: 0.9 }),
+    c: Object.freeze({ per: 1.6, wide: 1.45, fresh2: 1.0 }),
+    fling: [1.0, 3.0],
+    side: 0.9,
+    up: [1.4, 3.0],
+    drag: 1.6,
+    gravity: 6.5,
+    flutter: 3.0,
+    flutterHz: 9,
+    floor: 0.05,
+    life: [0.9, 1.3],
+    lie: [0.3, 0.8],
+    lieAlpha: 0.75,
+    alpha: [0.75, 0.95],
+    fresh: [0.3, 0.46, 0.19],
+    straw: [0.46, 0.44, 0.26],
+  }),
+  /**
    * The cut tops (world/mowFx.js, round 2): the upper part of each cut blade's letter leaves on the frame
    * its stub shows. `look` the default of `?mowLook=` (a thrown, b sliced, c shred, r1 round 1). At most
    * `max` pieces (x the quality), `perTear` new ones a tear call; the oldest lying one gives way first.

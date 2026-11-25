@@ -2305,7 +2305,21 @@ const S = {
       let lit4 = 0;
       for (let j = 0; j < T4.n; j++) lit4 = Math.max(lit4, T4.aC.array[j * 4 + 3]);
       for (let f = 0; f < 60 * 3; f++) W4.world.scorch.update(1 / 60);
+      // the grass spray (round 5): letters thrown off the blades the arc cut, then gone
+      const SP = T4.spray, SPT = GRASS.spray;
+      assert(!!SP && SP.look === SPT.look && SP.total >= n4 * SPT[SPT.look].per * 0.8 && SP.total <= n4 * SPT[SPT.look].per + 1, `the grass spray (${SPT.look}) throws ${SP.total} letters off the ${n4} cut blades (about ${SPT[SPT.look].per} a blade)`);
+      assert(SP.n === 0, `... and 3 s on none is left in the air or lying (${SP.n})`);
       assert(T4.look === 'a' && n4 > 20 && fly4 > 0 && fly4 < n4 * 0.6 && lit4 <= 1.16 && T4.n === 0, `a (the default) cuts along the arc too (${n4} blades), tosses ${fly4} of the tops, no brighter than x ${lit4.toFixed(2)}, all gone 3 s on (${T4.n} left)`);
+    }
+    // `?grassSpray=0`: no spray (today's grass, exactly)
+    setLook('grassSpray', '0');
+    try {
+      const W0 = build(createForest, dens);
+      W0.world.grass = createGrass(W0.game.U, { count: 2000, extent: 24, density: dens, height: () => 0.5 });
+      W0.world.scorch.update(1 / 60);
+      assert(W0.world.scorch.tops && W0.world.scorch.tops.spray === null, '?grassSpray=0: no grass spray');
+    } finally {
+      setLook('grassSpray', null);
     }
     // round 1's look builds no tops
     setLook('mowLook', 'r1');

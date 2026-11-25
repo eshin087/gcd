@@ -3,6 +3,7 @@ import { COMMON_GLSL } from '../render/shaderLib.js';
 import { gis } from '../render/glyphs.js';
 import { GRASS } from './grassTuning.js';
 import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
+import { GrassSpray, sprayLook } from './grassSpray.js';
 
 // The cut tops (ADR: grass the sword cuts, round 2). When a tear (world/scorch.js: the sword's mow, a
 // mark's blow) cuts a blade, the blade's stub stays in the meadow (grass.js: the lower part of its own
@@ -186,6 +187,11 @@ export class MowFx {
     this.mesh.frustumCulled = false;
     this.mesh.name = 'grassTops';
     this._fling = { on: false, ux: 0, uz: 0, k: 1 };
+    // the grass spray (round 5, `?grassSpray=`): letters thrown off what the arc cuts; c cuts a bolder line
+    const sl = sprayLook();
+    this.spray = sl === '0' || this.look === 'r1' ? null : new GrassSpray(game, sl);
+    this._wide = this.spray?.T.wide ?? 1;
+    if (this.spray?.T.fresh2 != null && gu.uMowFresh2) gu.uMowFresh2.value = this.spray.T.fresh2;
   }
 
   /** The swing's way for the cuts that follow (grass.js mowSwing): unit (ux, uz), k its strength. */
@@ -341,6 +347,7 @@ export class MowFx {
   clear() {
     this.n = 0;
     this.geo.instanceCount = 0;
+    this.spray?.clear();
     if (this._cutAny) {
       this.cut.fill(0);
       this._texDirty = true;
@@ -379,7 +386,7 @@ export class MowFx {
       bx = cam.x + (bx - cam.x) * t; bz = cam.z + (bz - cam.z) * t;
     }
     const ex = bx - ax, ez = bz - az, l2 = ex * ex + ez * ez, el = Math.sqrt(l2);
-    const hw = (heavy ? A.wHeavy : A.w) * 0.5;
+    const hw = (heavy ? A.wHeavy : A.w) * 0.5 * this._wide;
     const f = this._fling;
     f.on = el > 1e-4;
     f.ux = f.on ? ex / el : 0;
@@ -404,6 +411,7 @@ export class MowFx {
           this._cutAny = true;
           this._texDirty = true;
           if (this.sc.burnAt(x, z) > 0.55) continue;
+          if (this.spray) this.spray.cut(x, B.root[k * 4 + 2], z, f.ux, f.uz);
           const r2 = fract(B.root[k * 4 + 3] * 7.31);
           const stubK = r2 < G.low ? 0.04 : G.stub + G.jitter * (r2 - 0.5) * 2;
           if (n++ < cap) this._spawn(k, x, z, G.ink[0] + (G.ink[1] - G.ink[0]) * stubK, ax, az, 0);
@@ -420,6 +428,7 @@ export class MowFx {
       this.cutTex.needsUpdate = true;
       this._texDirty = false;
     }
+    this.spray?.update(dt);
     if (!(dt > 0)) return;
     const F = GRASS.fly, g = F.gravity, drag = Math.exp(-F.drag * dt);
     const P = this.aP.array, Sa = this.aS.array, C = this.aC.array;
