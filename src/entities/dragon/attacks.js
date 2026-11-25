@@ -1957,6 +1957,9 @@ const HOP = {
     const g = d.game;
     d.position.x = h.root.x;
     d.position.z = h.root.z;
+    // it lands on its own ground: beside a gap torn in the tree wall the landing (resolved toward its
+    // target) could end 2.4 m out past the standing wall, and stood there through the next blow
+    d._collide();
     d.emit('dragon:land', { x: h.ring.x, z: h.ring.z });
     g.shake?.(0.5);
     g.world?.gust?.(h.ring.x, h.ring.z, 1.6, 14 * S);

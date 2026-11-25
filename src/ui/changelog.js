@@ -18,6 +18,13 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-25',
+        title: 'The resting blade no longer glows',
+        notes: [
+          'A bright white halo no longer blooms round your sword while you stand still at some angles.',
+        ],
+      },
+      {
         date: '2026-11-24',
         title: 'A natural running arm, three ways to carry it',
         notes: [
@@ -31,6 +38,14 @@ export const RELEASES = [
         notes: [
           'The words over your hero (PARRY, DEFLECT, COUNTER and the rest) and the damage numbers are smaller, closer to the HUD\'s own text.',
           'They no longer grow with a bigger window: the same size on any screen.',
+        ],
+      },
+      {
+        date: '2026-11-24',
+        title: 'The Cinder Wyrm wakes without a neck twist, and its head reads from above',
+        notes: [
+          'When the fight starts the wyrm now lifts its head, rises and turns to you in one motion: no more neck snapping round and the head flipping over.',
+          'Seen from above, its head is a dark blade with burning slits for eyes: dark horns swept back, no glowing dots, a crest down the skull. From the side it looks as before.',
         ],
       },
       {

@@ -5551,6 +5551,48 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   so a run should take about 5 - 6 minutes (was 8 - 10). A PR merges the moment its check is green: the
   Vercel preview is no longer a gate before production, so a PR the owner wants to see first is opened as a
   draft or with `--label hold`. Re-measure `est` when a suite grows a lot.
+
+## ADR-183 — The world grid tests a creature or prop edge before the creature grid's bound (2026-11-25)
+
+- **Context:** a bright halo bloomed round the hero's RESTING blade at some poses and facings, and the point left a
+  pale block where it rested in the grass. In the ASCII pass's world grid the creature-grid branch (alpha < 0.46) came
+  before `isArt(a) || isProp(a)`. The player's own pixel window (0.42 – 0.45, ADR-130) lies under 0.46, so a world
+  cell whose centre fell on his blade printed a creature-grid letter in the steel's raw HDR colour (4 – 6) beside it,
+  and it bloomed. The bosses' window (0.46 – 0.49) was always caught by the art test first. Found while filming the
+  sword options of ADR-182 (closed PR #105); left out of PR #114, which shipped the flame.
+- **Decision:** in the world grid `isArt / isProp` (the raw pixel) is tested before the creature grid
+  (`render/pipeline.js`). Always on: a defect, not a look.
+- **Consequences:** measured at the game camera (720p, before bloom), 17 – 49 px over the 0.55 threshold round the
+  resting blade in a range of poses and facings before, none after (the gem's own violet point aside). A cut, the
+  charge, the flurry and a crit light the blade as before. An addendum to ADR-130's pixel windows: a window under 0.46
+  must not be read by the creature grid.
+
+## ADR-189 — The wyrm's wake keeps one neck shape until the curl is out; the drake head is drawn for the view from above (2026-11-24)
+
+- **Context:** the owner: "when the fight starts the dragon does an unnatural neck twist as it wakes up" and "i
+  really like how the dragons face looks like from the side ... but from the top center view, the dragon head looks
+  goofy". Measured on the intro (`SEQ.intro`): in the `rise` phase the head's heading turned ~330 degrees in about
+  0.5 s and its up vector went to -0.35 (upside down). The cause: `s.rest` (the combat stance's resting S, blended
+  point by point into the measured neck) rose with the pose's `sleep` target (0 in `rise`) while the smoothed
+  `s.sleep` still curled the measured neck back along the right flank; lerping two chains whose tips lie on opposite
+  sides of the body swept the last segment, and the head riding it, round the long way. From above, photographs
+  showed the drake's pale bone (brow, the two long horns, the cheek fins) joined into one wide pale V that hid the
+  dark face, and the eye glints (`fx.eyeGlints`: a round dot pulled 0.45 S toward the camera) as two round pupils.
+- **Decision:** the resting weight also waits for the curl: `restT *= clamp(1 - s.sleep / WAKE_REST_SLEEP, 0, 1)`
+  (`WAKE_REST_SLEEP` 0.12, `rig/anim.js`). Only a waking wyrm has a smoothed sleep between 0 and 1, so no attack,
+  stagger or death changes. After: the heading stays within -30 .. +28 degrees through the rise, up vector >= 0.89.
+  For the head, three tops were rendered from above, from the side and at the game camera
+  (`docs/looks/wyrm/top-options.jpg`) and **the owner picked `c`**: no glints; the horns, fins and brow in their own
+  darker material (`mats.horn`: the bone's options, FACE_ART.drake `horn` art: ink 0.13, key 0.2, fresnel 2.2:
+  edges and tips lit); the horns' and fins' sideways sweep halved, the horns at 0.7 of their girth; a crest of five
+  dark spines down the skull. `?wyrmTop=` (faces.js `WYRM_TOPS`, the Lab's `top` row) keeps `0` (the drake before),
+  `a` (no glints) and `b` (a + dark horns). Only the drake wears a top: another face keeps its glints.
+- **Consequences:** the main horn's tip moved (ablaze reads it off the built horn, so the phase-3 fire follows).
+  One more draw for the drake (the `horn` material). The seeded fights ran differently and showed an old edge: the
+  pounce's hop landed its root up to 2.4 m past its ground beside a torn gap; the landing now settles it there
+  (`d._collide()`).
+  The eyes are the slits only; at the game camera they are smaller than the glint was. Not checked: the owner has
+  seen stills and a clip, not played it; the phone view; the other faces with `?wyrmTop=`.
 ## ADR-187 — The run's free arm: three carries for the owner to compare, by speed the default (2026-11-24)
 
 - **Context:** the owner, in a three-part hero motion pass (idle, the run's free arm, the light chain, each its own

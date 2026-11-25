@@ -4,13 +4,28 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Eighty-seven pieces of work since 0.4.0:
+Eighty-nine pieces of work since 0.4.0:
 - **A natural running arm, three ways to carry it** (2026-11-24, ADR-187). *Changed:* the hero's free (left) hand
   no longer swings a stiff fist on the run. By default it swings like a runner's, the elbow bent near a right angle
   and working with the stride, the hand open and loose, and as a sprint builds it sweeps back behind him into a
   swordsman's dash. Strafing and backing away (lock-on play) it keeps swinging. The owner compares three carries:
   `?runArm=a` (a runner's swing that pumps at a sprint), `b` (the dash whenever he runs forward), `c` (by speed, the
   default), `old` the swing before; the Lab's PLAYER row `run arm` switches them live.
+- **The Cinder Wyrm wakes without a neck twist, and its head reads from above** (2026-11-24, ADR-189).
+  *Fixed:* as the wyrm got up, the resting neck shape was blended point by point into a neck still curled
+  back along its flank, and the head spun through ~330 degrees in half a second and turned upside down;
+  the resting shape now waits until the curl is nearly out, and the head stays upright and on the hero
+  (within ~30 degrees) all the way up. *Changed:* the drake head from the game camera (the owner: "from the
+  top center view, the dragon head looks goofy"): no round eye glints (they read as two cartoon pupils; the
+  burning slits are the eyes), the horns, brow and cheek fins dark obsidian lit at the edges and tips instead
+  of one big pale V, the horns slimmer and swept tighter to the neck, a dark crest down the skull. The side
+  view keeps its look. Picked by the owner from three options; `?wyrmTop=0|a|b` keep the head before and the
+  other two (the Lab's `top` row). *Fixed:* the pounce's hop no longer lands the wyrm past the standing tree wall
+  beside a gap it has torn.
+- **The resting blade no longer glows** (2026-11-25, ADR-183). *Fixed:* a white halo the size of his head bloomed
+  round the hero's sword at some poses and facings while he stood still, and the point left a pale block where it
+  rested in the grass. A world letter centred on his blade printed the steel's raw brightness; it now shows the pixel
+  underneath, as it always did for every boss.
 - **Smaller combat text** (2026-11-24, ADR-184). *Changed:* the call-outs over the hero (PARRY, DEFLECT, COUNTER,
   GHOSTEP ...) and the damage numbers are smaller and keep one size at every window width. They grew with the
   window before, so a 1920-wide window drew DEFLECT at 22 px and the flurry's cut counter at 34 px. Now: call-outs
