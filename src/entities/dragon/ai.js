@@ -1369,6 +1369,7 @@ export class Brain {
     const far = s.dist > (PR.farDist ?? 1e9), behind = s.absAng > (PR.behind ?? 1.75);
     const airFull = this.airShare >= perPhase(PR.maxAir ?? 1, ph);
     const castFull = (d.hazards?.alive ?? 0) >= perPhase(PR.maxCast ?? 99, ph);
+    const brood = (d.brood?.count?.() ?? 0) > 0;
     // spells and bullet patterns do not layer on each other (a barrage of meteors over a cone of
     // embers asks for a roll and a parry in the same breath): one waits while the other is live
     const layered = this._castLive();
@@ -1423,6 +1424,8 @@ export class Brain {
       if (behind && cat === 'tail') w *= PR.behindBoost ?? 1;
       if (airFull && cat === 'flight') w *= 0.05;
       if (castFull && cat === 'spell') w *= 0.05;
+      // while its brood lives it fights lighter beside it: no other spell, flight or heavy blow (ADR-190)
+      if (brood && (cat === 'spell' || cat === 'flight' || TUNING.attacks[name]?.heavy)) w *= PR.layer ?? 0.05;
       if (layered && (cat === 'spell' || name in BULLET_ATTACKS)) w *= PR.layer ?? 0.05;
       if ((sky && guardTell(name)) || (shots && redTell(name))) w *= PR.mixed ?? 0;
       if (this.forceCat && cat !== this.forceCat) w *= 0.02;

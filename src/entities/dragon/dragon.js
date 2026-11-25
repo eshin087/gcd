@@ -728,6 +728,9 @@ export class Dragon {
         const t = this.rig.tail;
         return out.copy(t.p[t.n]);
       }
+      case 'point': // a beat that carries its own place (a spell's head, a column's foot: spellsFire.js)
+        if (b && Number.isFinite(b.px + b.py + b.pz)) return out.set(b.px, b.py, b.pz);
+        return out.copy(pt.chest);
       case 'shell':
         if (a?.volley && this.fx.shellPos(a.volley, out)) return out;
         return out.copy(pt.mouth);
