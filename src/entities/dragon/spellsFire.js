@@ -737,6 +737,14 @@ function serpentStep(d, a, s, dt) {
       tick(d, s.hit, spec, s.x, s.z);
     }
   }
+  // the grass's flames under its body burn low (the two fires would add up into white knots)
+  const hush = g.world?.fire?.hush;
+  if (hush && s.n > 2) {
+    for (let j = 0; j < 3; j++) {
+      const i = Math.min(s.n - 1, Math.round((j / 3) * (s.n - 1)) + 2);
+      if (s.fade[i] > 0.1) hush.call(g.world.fire, s.px[i], s.pz[i], 3.2, 0.25);
+    }
+  }
   // the cue at the head (the beat's flash)
   if (a.sb) cueAt(d, a, a.sb);
   // draw
@@ -1087,6 +1095,7 @@ function vortexStep(d, a, v, dt) {
     }
   }
   if (a.vb) cueAt(d, a, a.vb);
+  g.world?.fire?.hush?.(v.x, v.z, VL.reach + 2.5, 0.25); // (the grass's flames under it burn low)
   F.vortex(v, dt, VL, a.share);
 }
 

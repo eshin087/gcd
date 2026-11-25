@@ -30,11 +30,11 @@ export const SPELLS = {
     speed: 6.4, // m/s along the ground (the hero sprints 7.2, runs 4.6)
     turn: 1.35, // rad/s its heading may turn toward him (at 6.4 m/s: a 4.7 m turning circle)
     lead: 0.35, // s of his velocity it aims ahead of him
-    wiggle: { amp: 0.75, hz: 1.1 }, // the slither: its heading swings this many rad either way, this often
-    body: { len: 13, head: 0.95, tail: 0.25, y: 0.95, step: 0.36 }, // m long; half widths at the head / tail; height; sample step
-    reach: [2.5, 9], // it rears when he is this far from its head ...
+    wiggle: { amp: 0.95, hz: 1.0 }, // the slither: its heading swings this many rad either way, this often
+    body: { len: 15, head: 0.72, tail: 0.18, y: 0.95, step: 0.36 }, // m long; half widths at the head / tail; height; sample step
+    reach: [2.5, 7.5], // it rears when he is this far from its head ...
     aim: 0.6, // ... and within this angle (rad) of where it heads
-    firstAfter: 0.9, // s of hunting before its first strike may start
+    firstAfter: 1.4, // s of hunting before its first strike may start
     gap: 0.7, // s of hunting between two strikes
     rear: 0.78, // s it rears (the red tell: combat:tell at its start, the flash flashLead before the lunge lands)
     rearH: 3.2, // m its head rises
@@ -104,7 +104,7 @@ export const SPELL_LOOKS = {
     b: { segmented: true, every: 0.95 },
   },
   vortex: {
-    a: { h: 14, r0: 1.05, r1: 3.9, spin: 5.2, strands: 4, twist: 0.32, rate: 1100, core: 0.45, reach: 2.1 },
-    b: { h: 8, r0: 2.3, r1: 4.6, spin: 3.4, strands: 6, twist: 0.2, rate: 1250, core: 0.9, reach: 3.0 },
+    a: { h: 14, r0: 1.0, r1: 2.9, spin: 5.2, strands: 4, twist: 0.32, rate: 2300, core: 0.45, reach: 2.1 },
+    b: { h: 8, r0: 2.3, r1: 4.0, spin: 3.4, strands: 6, twist: 0.2, rate: 2500, core: 0.9, reach: 3.0 },
   },
 };
