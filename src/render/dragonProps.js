@@ -45,7 +45,7 @@ export const dpTreesLook = () => {
  * the art pass draws no outline round them (a crown's edge is the ragged edge of its digits), and a crown's cell whose
  * source is darker than `leafCut` (linear luma) prints nothing: the dark between its masses draws them (today's crowns).
  */
-export const DP_TONE = Object.freeze({ a0: 0.556, span: 0.0105, top: 0.5675, leaf0: 0.62, leafSpan: 0.16, leafCut: 0.017 });
+export const DP_TONE = Object.freeze({ a0: 0.556, span: 0.0105, top: 0.5675, leaf0: 0.62, leafSpan: 0.16, leafCut: 0.008 });
 
 /**
  * The look's numbers per option. Relief (slopes are added to the surface normal: 0.5 tilts a face ~27 degrees):
@@ -78,8 +78,8 @@ export const DP_PROPS = Object.freeze({
  *          hollows) dims the tone
  */
 export const DP_TREES = Object.freeze({
-  a: { bark: 0.55, barkF: 5.5, furrow: 0.5, leaf: 0.6, leafF: 1.5, sprig: 0.2, hollow: 0.35, barkLaw: [-0.15, 1.0], leafLaw: [-0.6, 0.85], shade: 0.65, ao: 0.4, key: 0.15, inkBark: 0.4, inkLeaf: 0.35 },
-  b: { bark: 0.75, barkF: 4.5, furrow: 0.7, leaf: 1.6, leafF: 1.0, sprig: 0.25, hollow: 0.7, barkLaw: [-0.1, 0.95], leafLaw: [-0.45, 0.85], shade: 0.75, ao: 0.5, key: 0.1, inkBark: 0.4, inkLeaf: 0.35 },
+  a: { bark: 0.55, barkF: 5.5, furrow: 0.5, leaf: 0.6, leafF: 1.5, sprig: 0.2, hollow: 0.15, barkLaw: [-0.15, 1.0], leafLaw: [-0.6, 0.85], shade: 0.65, ao: 0.4, key: 0.15, inkBark: 0.4, inkLeaf: 0.35 },
+  b: { bark: 0.75, barkF: 4.5, furrow: 0.7, leaf: 1.6, leafF: 1.0, sprig: 0.25, hollow: 0.4, barkLaw: [-0.1, 0.95], leafLaw: [-0.45, 0.85], shade: 0.75, ao: 0.5, key: 0.1, inkBark: 0.4, inkLeaf: 0.35 },
 });
 
 /**
