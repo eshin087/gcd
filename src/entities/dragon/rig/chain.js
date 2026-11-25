@@ -277,11 +277,20 @@ export class Chain {
    * fold a segment back on itself (a tail slapped into the ground): there the minimal rotation flipped
    * the roll of that joint and everything after it ~180° in one frame.
    */
-  apply(parentQ, out) {
+  apply(parentQ, out, twist = 0) {
     this._q.copy(parentQ);
+    // `twist` (rad): a roll about the bones spread evenly down the chain, each joint turning its share
+    // about its own axis; the next joint is re-aimed under it, so every point stays where it is and the
+    // last joint ends up rolled by the whole `twist` about its own axis
+    const tw = Number.isFinite(twist) && Math.abs(twist) > 1e-5 ? twist / this.n : 0;
+    if (tw) _qe.setFromAxisAngle(Z, tw);
     for (let i = 0; i < this.n; i++) {
       if (this.stableTwist) aimJointStable(this.joints[i], this.dirs[i], this._q, this._q2);
       else aimJoint(this.joints[i], this.dirs[i], this._q, this._q2);
+      if (tw) {
+        this.joints[i].quaternion.multiply(_qe);
+        this._q2.multiply(_qe);
+      }
       this._q.copy(this._q2);
     }
     return out.copy(this._q);

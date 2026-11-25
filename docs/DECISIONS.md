@@ -6044,3 +6044,45 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
     integrated GPU is not measured (none here). Memory: one more depth map (16 MB at 2048, 4 MB at 1024);
     a big mesh that has moved keeps a copy of its positions on the CPU (Cinderwood's tree run: 11 MB).
 
+## ADR-203 — The wyrm's head held level and kept where a neck can look; the shown neck never leaves its head (2026-11-25)
+
+- **Context:** the owner: "the dragon does weird neck movements when hes flying as well. in general review all the
+  dragon neck movements and make sure it looks natural and accurate and not buggy". An audit stepped every one of
+  the wyrm's 50 moves (plus the stagger and both phase roars) frame by frame from the same start, logging each
+  neck joint's and the head's turn per frame, the head's roll off level, its up vector, where it looks in the
+  chest's frame and its twist on the neck's end. Main showed four faults: (1) the head was leveled only at rest,
+  so it carried the roll the curved neck adds up to: 57 - 79° in flights and upside down (up vector to -0.9) in
+  the sky dive's climb, the wheels, the hover rise and the meteors' cast; (2) look points under, behind or over
+  the head swung it round: ~180° back over the spine (tail attacks, rakes, the wheels; the meteors' look 40 m up
+  but behind the snout turned the head backward), 60 - 156° in one frame; (3) the driven shown neck (ADR-025's
+  swing) could not follow a strike's first step under its bend limits: FABRIK buckled it 2 m to one side while
+  the head, pinned to the measured neck, was drawn 3 m from its end (the storm flurry's lunging bite); (4)
+  `headExact` had no turn limit: a bite's first frame turned the head alone ~75°.
+- **Decision** (rig/anim.js `_updateNeck`, rig/chain.js `apply`; `?neck=c|b|0`, default c): the head is held
+  upright about its snout in every move against its own body (the chest's up; the sky's at rest), by a
+  correction unwrapped against the last frame, at most 14 rad/s, holding where 'up' lines up with the snout; the
+  driven neck takes the same roll spread down its joints (no point moves; resting, only what passes 0.6 rad). It
+  looks where its move points it, over a shoulder at most 135° (a foe straight behind watched over the shoulder
+  it was on until he is 0.6 rad round the other side); a look point nearly straight overhead takes the chest's
+  heading, and a look point set high on purpose lifts the 0.6 rad nose-up limit to 1.2 (the meteors' roar, now
+  facing forward). A shown neck missing the measured head by more than 0.35 x scale m blends to the measured
+  shape (all of it from 1.0 x scale). `headExact` turns at most 45 rad/s.
+  - The first pass (`?neck=b`) held the head upright against the SKY and kept its last heading while the look
+    point was under or over it. The owner played it: "the head got worse when flying and when it does a ground
+    perfect parry attack" (it rolled oddly and looked the wrong way): a banking body with a head held flat to
+    the horizon reads as a twisted neck, and a flight's head held its old heading while the hero was under it.
+    `?neck=0` is the wyrm before ADR-203. Also tried and dropped: fading the leveling out near vertical (it
+    flipped the dives again); a 24 rad/s leveling rate (the wheels' head spun 25 - 30° a frame).
+- **Consequences:** (c against main, the audit) no head flipped upside down by the neck's curl in flight (the
+  sky dive's climb roll 72 -> 35°, the wheels 57 - 60 -> 18 - 25°, the hover rise 67 -> 13°); the flips of the
+  tail lash, tail sweep, rakes and cataclysm 63 - 150 -> 21 - 29° a frame; bite snaps 68 - 80 -> 43°; the storm
+  flurry's neck 128 -> 85° on the strike's first frame (the measured solve's own step, kept: it carries the hit
+  spheres) with no sideways buckle; the plunge and the parry recoil as before. The resting stance and the side
+  view the owner chose are unchanged. Hit spheres: the neck's joints do not move; the snout rolls about itself
+  and turns at most 45 rad/s on an exact strike's first frame. While the hero's flurry runs (a perfect dodge's
+  answer, the riposte) the wyrm keeps where it last saw him (`_sensePlayer`, c and b): the owner played c and saw
+  its head "home into the players teleporting movement"; its look point travelled 12 - 28 m chasing his blinks,
+  now none. Seeded fights drift (the mouth sits a little
+  differently, so the bullet cues shift a frame). The owner played c with the flurry fix and picked it: "Ship c" (2026-11-25); b and 0 stay behind `?neck=` for comparison. Open: the rear attacks (tail
+  lash, rakes, cataclysm) still curl the neck back over the spine, where 'upright against the body' is ill
+  defined and the head can sit rolled; the leap's and pounce's neck strikes stay fast.
