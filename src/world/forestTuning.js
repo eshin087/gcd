@@ -27,6 +27,9 @@ export const RIDGE = Object.freeze({
   pathH: 1.25,
   hp: 9,
   stub: 0.85,
+  /** its bricks: x the brick size (BREAK.chip.brick): a crag is big and far from the fight, coarser bricks
+   *  keep its triangles down (the phone's budget; ~140 a crag at x 1, ~50 at x 2) */
+  brick: 2,
 });
 
 /** The ridge's line at angle `a` (rad, atan2(z, x)): m from the centre. */

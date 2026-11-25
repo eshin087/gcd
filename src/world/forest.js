@@ -1206,7 +1206,7 @@ function growForest(o) {
       const c = colliders.add(x, z, w * 0.92, 'stone');
       out.push({
         kind: 'crag', mat: 'stone', look: 'range', digits: true, x, z, r: Math.min(1.8, w * 0.95), h: geosHeight([geo]),
-        range: rockRuns.add([geo]), colliders: [c], hp: RIDGE.hp, topples: false, cover: true, lift: 0, wreck: false,
+        range: rockRuns.add([geo], null, RIDGE.brick), colliders: [c], hp: RIDGE.hp, topples: false, cover: true, lift: 0, wreck: false,
         broken: { range: rubbleRuns.add(buildRubble(gr, x, z, w * 0.85, { h: range(gr, 0.8, 1.3) }), null, 0), r: w * RIDGE.stub },
       });
       mark(x, z);
