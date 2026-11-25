@@ -16,6 +16,7 @@ import { HelpPanel, PauseMenu, StatsPanel, TitleScreen } from './screens.js';
 import { gradeLookNow } from './recordLooks.js';
 import { TellEdges } from './tells.js';
 import { StreakCounter } from './streakCounter.js';
+import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
 
 // HUD (ADR-098): an ASCII overlay drawn straight on the game, with no panels in play: the player's
 // rows (HP, guard, crit, streak, flasks) and the boss's name and bars are text meters
@@ -215,6 +216,10 @@ export class Hud {
     this.pfEl = pf;
     this.compact = false;
     this._fitKey = '';
+    // the hero's name by his meters, as the boss's sits by its bar (?heroName=a|b|off; off until the
+    // owner picks): a, a quiet line above the HP row; b, at the head of the flask row under the meters
+    const heroName = lookOf('heroName', 'off');
+    if (heroName === 'a') el('div', 'ab-hero-name', 'gcd', pf);
     const hpRow = el('div', 'ab-row', null, pf);
     el('span', 'lbl', 'HP', hpRow);
     this.hpBar = new GlyphBar(hpRow, 'hp', { cells: 24, hold: 0.6, drain: 2.4, rise: 6 });
@@ -242,6 +247,7 @@ export class Hud {
     this._streak = 0;
 
     const foot = el('div', 'ab-pf-foot', null, pf);
+    if (heroName === 'b') el('span', 'ab-hero-name inl', 'gcd', foot);
     const fl = el('span', '', null, foot);
     this.pipsEl = el('span', 'ab-pips', null, fl);
     this.pipFull = el('span', 'full', '', this.pipsEl);

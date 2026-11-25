@@ -116,6 +116,9 @@ const CSS = `
   z-index: 2;
 }
 .ab-row { display: flex; align-items: center; gap: 1ch; line-height: 1.3; }
+/* the hero's name (?heroName=a|b; ui/hud.js): small and quiet, lowercase like the boss's name is upper */
+.ab-hero-name { font-size: 0.78em; font-weight: 700; letter-spacing: 0.32em; color: #aab3c6; opacity: 0.85; line-height: 1.2; margin-bottom: 1px; }
+.ab-hero-name.inl { margin: 0 -1.5ch 0 0; }
 .ab-row .lbl { width: 2ch; font-weight: 700; color: #aab3c6; }
 .ab-row .val { width: 9ch; white-space: nowrap; color: var(--ab-ink); font-variant-numeric: tabular-nums; }
 /* a narrow touch screen (ui/hud.js _fit): shorter meters, the HP number alone */
