@@ -537,11 +537,9 @@ SCENARIOS.menus = async () => {
     T.menu.select('ash');
     const d = text(T.menu.detail);
     assert(d.includes('Shen Hui') && d.includes('the Ash Disciple') && d.includes('1:23.45') && /TRAVEL/.test(d), `look ${look}: the detail names the keeper and the best (${d.slice(0, 90)})`);
-    // a tap on another world selects it; a second (or a click on the selected one) travels
+    // a click or a tap on a world travels there at once
     city.click();
-    assert(picked.length === 0 && T.menu.sel === 'city', `look ${look}: the first tap on another world selects it`);
-    city.click();
-    assert(picked[0] === 'city', `look ${look}: the second travels there`);
+    assert(picked[0] === 'city' && T.menu.sel === 'city', `look ${look}: one click travels there`);
     const here = T.navButtons.find((b) => b.dataset.level === 'cinderwood');
     T.menu.select('cinderwood');
     here.click();

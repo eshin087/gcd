@@ -2633,8 +2633,7 @@ scoped under `.ab-title.gm`; the logo `ui/gcdLogo.js` `GCD_LOGO`, the same rows 
 step by hand): `?menu=c` (default, the sword's path), `a` (the world list), `b` (the campfire grid), `0`
 the title before (`TitleScreen` builds it as it was). The picker reads each level's `name`, `sub` and
 `boss` (levels/*.js: the boss's full name, "NAME, THE EPITHET") from `game.levels`. One selection serves
-every device: hover, the arrow keys, the pad's focus or a first tap select; a click, Enter, A or a second
-tap acts (travel: `stage.pick(id)`, a page load; begin: `stage.begin()` → `flow.beginFromTitle()`).
+every device: hover, the arrow keys, the pad's focus select; a click, a tap, Enter or A acts at once (travel: `stage.pick(id)`, a page load; begin: `stage.begin()` → `flow.beginFromTitle()`).
 `TitleScreen.eatsKey(code)` (a key the menu used this frame: the flow's "press any key" skips it),
 `holdsStart()` (the CONTROLS panel is open: neither the flow nor the pad starts), `navigate(el, dx, dy)`
 (the pad's 2D walk: the nearest entry by its place on screen, `ui/gamepad.js`). CONTROLS opens the full
