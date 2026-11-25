@@ -9,7 +9,7 @@ import { button, el } from './dom.js';
 // open the title screen does not start the game. Badges elsewhere read unseenCount() and listen with
 // onChange().
 
-const SEEN_KEY = 'abyss.whatsnew.seen';
+const SEEN_KEY = 'gcd.whatsnew.seen';
 
 export class ChangelogPanel {
   constructor(game, parent, releases = RELEASES) {
@@ -26,7 +26,7 @@ export class ChangelogPanel {
     this.panel = panel;
     const head = el('div', 'ab-news-head', null, panel);
     el('div', 'ab-pause-title', "WHAT'S NEW", head);
-    el('div', 'ab-news-ver', `ABYSS v${GAME_VERSION}`, head);
+    el('div', 'ab-news-ver', `gcd v${GAME_VERSION}`, head);
     this.list = el('div', 'ab-news-list', null, panel);
     this.rows = []; // { id, row }
     this._build();

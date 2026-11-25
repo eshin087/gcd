@@ -3,7 +3,7 @@ import { BROOD } from './tuningBrood.js';
 import { K_FIRE, K_VOID } from '../enemies/duelist/fx.js';
 import { FIRE_PALETTES } from '../../render/firePalettes.js';
 
-// The wyrm's incantation (ADR-195): the roar that opens a cast spell, and the seal of burning script
+// The wyrm's incantation (ADR-197): the roar that opens a cast spell, and the seal of burning script
 // it draws on the ground round it (or hanging before its jaws), in the fire field's small letters
 // (game.fx.fire, docs/STYLE.md "The fire field"). Every roar-cast spell (spellsFire.js,
 // broodAttacks.js) calls cast() at its windup and reads back where the circle stands.

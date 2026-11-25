@@ -3,7 +3,7 @@
 // CameraRig, Events) wired like src/main.js for `?level=code`; the world is a light mock on the real
 // Colliders, filled by the level's set (world/scriptHall.js), or the real set with its breakables and
 // its scenes. A bot drives the input. The harness is fox.mjs's (its build, bots, helpers).
-// usage: node woke.mjs <repoRoot> [scenario]   (env: ABYSS_SEED=n reseeds the AI)
+// usage: node woke.mjs <repoRoot> [scenario]   (env: GCD_SEED=n reseeds the AI)
 //   scenario: levels | data | timing | scenes | cover | bend | stop | stance | flight | rising | dejavu |
 //             reward | flow | looks | herolike | flurry | nolock | wall | gear | training | pace | win | motionfix | pursuit | all
 //             (opt-in: smoke, strategy, cost, audit)
@@ -42,11 +42,11 @@ const { AudioEngine } = await imp('src/audio/audio.js');
 const { GameFlow } = await imp('src/game/flow.js');
 const { Lab } = await imp('src/dev/lab.js');
 
-// (the tuning pass: ABYSS_TUNE='{"hp":3000,"posture":{"max":[1,2,3]}}' deep-merges into TUNING before
+// (the tuning pass: GCD_TUNE='{"hp":3000,"posture":{"max":[1,2,3]}}' deep-merges into TUNING before
 // anything is built: a setting tried without editing tuning.js; arrays are replaced whole)
-if (process.env.ABYSS_TUNE) {
+if (process.env.GCD_TUNE) {
   const merge = (o, v) => { for (const [k, x] of Object.entries(v)) { if (x && typeof x === 'object' && !Array.isArray(x) && o[k] && typeof o[k] === 'object') merge(o[k], x); else o[k] = x; } };
-  merge(TUNING, JSON.parse(process.env.ABYSS_TUNE));
+  merge(TUNING, JSON.parse(process.env.GCD_TUNE));
 }
 const LVL = getLevel('code');
 const errors = [];
@@ -56,7 +56,7 @@ const out = (...a) => process.stdout.write(a.join(' ') + '\n');
 let fails = 0;
 const assert = (c, m) => { if (!c) { fails++; out('FAIL', m); } else out('ok  ', m); };
 const mulberry32 = (a) => () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-const SEED = Number(process.env.ABYSS_SEED ?? 4242);
+const SEED = Number(process.env.GCD_SEED ?? 4242);
 const DT = 1 / 60;
 const PHASES = TUNING.phaseAt.length;
 const weightIn = (def, f) => (Array.isArray(def.weight) ? def.weight[f - 1] ?? 0 : def.weight ?? 0);
@@ -464,7 +464,7 @@ async function scenarioData() {
 async function scenarioTiming() {
   out('\n== scenario TIMING (every move from inside its band: each glint is a blow, on time) ==');
   let worst = 0, moves = 0;
-  const only = process.env.ABYSS_TMOVE;
+  const only = process.env.GCD_TMOVE;
   for (const name of MOVE_NAMES) {
     const def = MOVES[name];
     // (the Still Hand waits for a cut: STANCE; Return to Sender needs bolts hanging: STOP)
@@ -970,7 +970,7 @@ async function scenarioTraining() {
   const { bossKinds } = await imp('src/dev/training.js');
   const kinds = bossKinds(game);
   assert(kinds.has('woke') && !kinds.has('ash') && !kinds.has('lord') && !kinds.has('asc') && !kinds.has('fox') && kinds.has('duel'), `his own boss kind (${[...kinds].join(', ')})`);
-  const only = process.env.ABYSS_TONLY?.split(',');
+  const only = process.env.GCD_TONLY?.split(',');
   const L = only ? only.map((id) => T.find(id)).filter(Boolean) : T.list();
   const bad = [];
   for (const s of L) {
@@ -979,7 +979,7 @@ async function scenarioTraining() {
     while (T.ph !== 'done' && frames < Math.round(40 / DT)) { G.tick(DT); frames++; }
     const r = T.lastResult;
     const ok = T.ph === 'done' && r?.id === s.id && r.ok;
-    if (!ok || process.env.ABYSS_TRACE) out(`   ${ok ? 'ok ' : 'BAD'} ${s.cat} · ${s.name}: ${T.ph} in ${(frames * DT).toFixed(1)} s · missing ${JSON.stringify(r?.missing ?? '?')} · hero ${game.player.state} · boss ${game.dragon.state}`);
+    if (!ok || process.env.GCD_TRACE) out(`   ${ok ? 'ok ' : 'BAD'} ${s.cat} · ${s.name}: ${T.ph} in ${(frames * DT).toFixed(1)} s · missing ${JSON.stringify(r?.missing ?? '?')} · hero ${game.player.state} · boss ${game.dragon.state}`);
     if (!ok) bad.push(s.id);
   }
   T.stop();
@@ -1070,8 +1070,8 @@ async function scenarioPace() {
   out('\n== scenario PACE (a steady defender in god mode vs his AI, per phase: cues, gaps, conflicts) ==');
   const DIR = await imp('src/entities/enemies/duelist/director.js');
   const P = TUNING.pressure ?? null;
-  const SECS = Number(process.env.ABYSS_PSECS ?? 60);
-  const SEEDS = (process.env.ABYSS_PSEEDS ?? '4242,7,99').split(',').map(Number).filter(Number.isFinite);
+  const SECS = Number(process.env.GCD_PSECS ?? 60);
+  const SEEDS = (process.env.GCD_PSEEDS ?? '4242,7,99').split(',').map(Number).filter(Number.isFinite);
   const pp = (v, ph) => (Array.isArray(v) ? v[Math.min(v.length, Math.max(1, ph)) - 1] : v);
   const CATS = DIR.CATEGORIES;
   const answer = (tell) => (tell === TELL.RED || tell === TELL.BLACK ? 'dodge' : 'guard');
@@ -1203,7 +1203,7 @@ function fight(seed, style, { mortal = false, max = 480, lean = false, marks = t
 
 async function scenarioWin() {
   out('\n== scenario WIN (a fencing bot in god mode: parries, rolls, cuts in his openings, the deathblows) ==');
-  const SEEDS = (process.env.ABYSS_WSEEDS ?? '4242').split(',').map(Number);
+  const SEEDS = (process.env.GCD_WSEEDS ?? '4242').split(',').map(Number);
   for (const seed of SEEDS) {
     const r = fight(seed, 'mixed');
     out(`     seed ${seed}: ${r.won ? 'won' : 'NOT won'} in ${r.secs.toFixed(0)} s: phases at ${r.phAt.map((t) => t.toFixed(0)).join(' / ')} s; ${r.parries} parries, ${r.perfect} perfect dodges, ${r.breaks} breaks, ${r.bends} bends, ${r.stops} stops, ${r.hits} hits taken; phase ${r.phase}`);
@@ -1215,7 +1215,7 @@ async function scenarioWin() {
 
 async function scenarioStrategy() {
   out('\n== scenario STRATEGY (opt-in: mixed / parry / dodge / block-only / the Long Second bots, god mode; then the block-only bot mortal) ==');
-  const seeds = (process.env.ABYSS_SSEEDS ?? '4242,7').split(',').map(Number);
+  const seeds = (process.env.GCD_SSEEDS ?? '4242,7').split(',').map(Number);
   const res = {};
   for (const [style, lean] of [['mixed', false], ['parry', false], ['dodge', false], ['block', false], ['lean', true]]) {
     for (const seed of seeds) {
@@ -1956,10 +1956,10 @@ function joltOf(a, b, c) {
 /** The root's pop over three samples: its second difference along the floor (mm a frame²). */
 const rootPop = (a, b, c) => Math.hypot(c.x - 2 * b.x + a.x, c.z - 2 * b.z + a.z) * 1000;
 /** The moves the audit covers: every one of MOVE_NAMES, in every phase it is used in (a transition in its
- *  own, a counter or a flurry in its phase, deja vu's mirrored copies in phase 3). ABYSS_AUDIT=name,name
+ *  own, a counter or a flurry in its phase, deja vu's mirrored copies in phase 3). GCD_AUDIT=name,name
  *  keeps those only. */
 function auditList() {
-  const only = (process.env.ABYSS_AUDIT ?? '').split(',').filter(Boolean);
+  const only = (process.env.GCD_AUDIT ?? '').split(',').filter(Boolean);
   const L = [];
   for (const name of MOVE_NAMES) {
     if (only.length && !only.includes(name)) continue;
@@ -2189,9 +2189,9 @@ function auditFight(secs = 30, phases = [1, 2, 3]) {
 
 async function scenarioAudit() {
   out('\n== scenario AUDIT (opt-in: every move, the hero still and circling; then his AI in each phase: jolts, sliding feet, elbows at contact, blows inside the hero, root pops) ==');
-  const TOP = Number(process.env.ABYSS_AUDIT_TOP ?? 0);
+  const TOP = Number(process.env.GCD_AUDIT_TOP ?? 0);
   const fmt = (o) => (o.v ? `${Math.round(o.v)} ${o.k ?? ''} ${o.ph ?? ''}`.replace(/\s+/g, ' ').trim() : '-');
-  if (process.env.ABYSS_AUDIT_MOVES !== '0') {
+  if (process.env.GCD_AUDIT_MOVES !== '0') {
     const { rows, worst } = auditMoves(auditList(), [false, true], TOP);
     out('   move            P orbit   total  jolt own frame (mm/f2)         jolt world round root           blend-out     turn/s  slide m (worst mm)          elbow knee  low  root pop any / beat end      blows: limb gap m (- inside him) / elbow° / knee°');
     for (const r of rows) {
@@ -2208,11 +2208,11 @@ async function scenarioAudit() {
     out(`   -- ${ok.length} runs (${rows.length - ok.length} failed to start): jolt total ${sum('total')} mm/f2 (each frame's worst, summed) · the worst ${Math.round(Math.max(...ok.map((r) => Math.max(r.pb.v, r.pw.v))))} · runs with a jolt over 300: ${ok.filter((r) => Math.max(r.pb.v, r.pw.v) > 300).length}`);
     out(`   -- feet: slide ${sum('slide').toFixed(2)} m in all, the worst frame ${Math.max(...ok.map((r) => r.slideMax))} mm; root pops: the worst ${Math.round(Math.max(...ok.map((r) => r.pop.v)))}, at a beat's end ${Math.round(Math.max(...ok.map((r) => r.popEnd.v)))} mm/f2`);
     out(`   -- blows: ${blows.length}; inside him (gap < -0.15 m): ${blows.filter((c) => c.flat < -0.15).length}, the deepest ${Math.min(...blows.map((c) => c.flat)).toFixed(2)} m; fists' elbows at contact ${fists.length ? `${Math.min(...fists.map((c) => c.elbow))} - ${Math.max(...fists.map((c) => c.elbow))}° (mean ${(fists.reduce((a, c) => a + c.elbow, 0) / fists.length).toFixed(0)})` : '-'}; kicks' knees ${kicks.length ? `${Math.min(...kicks.map((c) => c.knee))} - ${Math.max(...kicks.map((c) => c.knee))}°` : '-'}`);
-    const J = process.env.ABYSS_AUDIT_JSON;
+    const J = process.env.GCD_AUDIT_JSON;
     if (J) fs.writeFileSync(J, JSON.stringify(rows, null, 1));
   }
-  if (process.env.ABYSS_AUDIT_FIGHT !== '0') {
-    const secs = Number(process.env.ABYSS_FIGHT_SECS ?? 30);
+  if (process.env.GCD_AUDIT_FIGHT !== '0') {
+    const secs = Number(process.env.GCD_FIGHT_SECS ?? 30);
     out(`\n   -- his AI against a defender, ${secs} s a phase --`);
     const mx = (L, k) => (L.length ? Math.max(...L.map((x) => x[k])) : 0);
     for (const r of auditFight(secs)) {
@@ -2226,7 +2226,7 @@ async function scenarioAudit() {
         if (seen.has(key)) continue;
         seen.add(key);
         out(`       ${String(x.j).padStart(5)} ${x.k.padEnd(7)} t${x.t}  ${x.before === x.now ? x.now : `${x.before} -> ${x.now}`}  (root ${x.rp})`);
-        if (seen.size >= Number(process.env.ABYSS_FIGHT_TOP ?? 12)) break;
+        if (seen.size >= Number(process.env.GCD_FIGHT_TOP ?? 12)) break;
       }
     }
   }
@@ -2449,8 +2449,8 @@ const steer = (G, wx, wz, sprint = false) => {
  * before its glint and he chases; a glint is always followed by a blow. Staged: the hero sprints out of
  * Idle Hand's first windup (broken off, no glint, no hit, he comes after him; without the pursuit the jab
  * is thrown at air), a hero who stays is hit as before, a string on a hero who guards in reach is thrown
- * whole. Then his AI a minute a phase against heroes who step out of reach (ABYSS_WBOTS, default
- * retreat,flee; ABYSS_WSECS 60): 0 swings thrown at air (a hero who leaves after a glint escapes a blow
+ * whole. Then his AI a minute a phase against heroes who step out of reach (GCD_WBOTS, default
+ * retreat,flee; GCD_WSECS 60): 0 swings thrown at air (a hero who leaves after a glint escapes a blow
  * that is thrown: counted apart), 0 glints with no blow.
  */
 async function scenarioPursuit() {
@@ -2480,12 +2480,12 @@ async function scenarioPursuit() {
   const real2 = guard.A.beats.filter((b) => !b.feint).length;
   assert(guard.stops === 0 && guard.flashes.length === real2 && guard.hits.length === real2, `Climbing the Stair on a hero who guards in reach: ${guard.flashes.length} glints and ${guard.hits.length} blows of ${real2}, ${guard.stops} broken off`);
   // 3. his AI against heroes who step out of reach
-  const SEEDS = (process.env.ABYSS_WSEEDS ?? String(SEED)).split(',').map(Number).filter(Number.isFinite);
-  const SECS = Number(process.env.ABYSS_WSECS ?? 60);
-  const BOTS = (process.env.ABYSS_WBOTS ?? 'retreat,flee').split(',');
-  // (ABYSS_WPURSUE=0: the same bots against the kit without pressure.pursue, as on main: reported, the
+  const SEEDS = (process.env.GCD_WSEEDS ?? String(SEED)).split(',').map(Number).filter(Number.isFinite);
+  const SECS = Number(process.env.GCD_WSECS ?? 60);
+  const BOTS = (process.env.GCD_WBOTS ?? 'retreat,flee').split(',');
+  // (GCD_WPURSUE=0: the same bots against the kit without pressure.pursue, as on main: reported, the
   // asserts left out)
-  const WITH = process.env.ABYSS_WPURSUE !== '0';
+  const WITH = process.env.GCD_WPURSUE !== '0';
   out(`     his AI, ${SECS} s a phase, seeds ${SEEDS.join(', ')}${WITH ? '' : ', WITHOUT pressure.pursue'}:`);
   out('     bot      P  swings  contact  AIR  air/min  escaped  glints  no blow  broken off   at air by move');
   for (const mode of BOTS) {

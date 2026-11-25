@@ -86,8 +86,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Wyrm motion: flip-free rig, planted feet, the painting's resting display, idle life, strike
       lead, parry arc, weighted death (ADR-025)
 - [x] Wyrm wakes without the neck twist; the drake head drawn for the view from above (ADR-189)
-- [x] Every wyrm fire travels from it; roar-cast spells and a brood of fire; a walk-out forest (ADR-195)
-- [x] The owner's picks for ADR-195's looks (incant, drakeling, serpent, vortex, forestEnd, meteorSource, wallSource): the defaults kept (2026-11-25)
+- [x] Every wyrm fire travels from it; roar-cast spells and a brood of fire; a walk-out forest (ADR-197)
+- [x] The owner's picks for ADR-197's looks (incant, drakeling, serpent, vortex, forestEnd, meteorSource, wallSource): the defaults kept (2026-11-25)
 - [ ] The wyrm presses in when the hero stands out among the trees (it fights at range there)
 - [x] Hero motion: world-planted feet, blade paths, portrait idle, new windups, two-step dash,
       sliding kneel, crescent trails (ADR-023)
@@ -187,6 +187,13 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Face: brow, nose and jaw lines under the fringe
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
+
+## M1.87 — The front: the sword's path and a loading screen (2026-11-25, `ui/gcd-front`, ADR-196)
+- [x] A loading screen from the first paint, an honest bar of the boot's steps (`?loader=a|b`; b the owner's pick)
+- [x] Three title layouts (`?menu=a|b|c`; c the owner's pick, `0` the title before), CONTROLS behind a button
+- [x] The hero's tag reads gcd and rides his head; the HUD name off (`?heroName=a|b`)
+- [ ] Seen on the iPhone (notch, home bar, upright and landscape) and with a real pad
+- [ ] The path past ten worlds (scroll or shrink)
 
 ## M1.86 — The bosses printed the hero's way (2026-11-24, `render/boss-hero-ink`, ADR-194)
 - [x] Why they looked apart: same letters, but flat dark / flat bright fills, a hairline outline, no hem

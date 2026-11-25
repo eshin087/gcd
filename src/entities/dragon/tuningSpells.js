@@ -1,4 +1,4 @@
-// Numbers for the roar-cast fire spells (spellsFire.js, drawn by spellsFx.js); ADR-195.
+// Numbers for the roar-cast fire spells (spellsFire.js, drawn by spellsFx.js); ADR-197.
 // Registered into TUNING.attacks (spellsFire.js does it at load when tuning.js has not: `??=`), so the
 // Lab, abilities() and hitPlayer read them like every other attack.
 //

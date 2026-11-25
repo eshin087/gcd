@@ -1,7 +1,7 @@
 import { LetterBatch } from '../../world/life/letterBatch.js';
 import { mulberry32 } from '../../core/rng.js';
 
-// How the roar-cast fire spells are drawn (spellsFire.js; ADR-195; docs/STYLE.md "The fire field").
+// How the roar-cast fire spells are drawn (spellsFire.js; ADR-197; docs/STYLE.md "The fire field").
 // Every body of fire here is HEAT IN THE FIRE FIELD (game.fx.fire: many small soft blobs that add up
 // into the wyrm's small letters): the serpent's body, head, eyes and licking back, the lane it leaves
 // burning, the column of the firestorm, its skirt and its crown of smoke, both bursts. Embers are glyph

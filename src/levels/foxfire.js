@@ -1,5 +1,6 @@
 import { createFoxTerrace, TERRACE } from '../world/foxTerrace.js';
 import { ThousandFox } from '../entities/enemies/thousandFox/fox.js';
+import { TUNING as BOSS_TUNING } from '../entities/enemies/thousandFox/tuning.js';
 
 // The Foxfire Terrace: a moonlit hill shrine, and Wen Yao, the Thousand-Body Fox, who sits on its round
 // terrace among his own paper selves (ADR-147; ARCHITECTURE.md → "The Thousand-Body Fox"). The terrace
@@ -11,6 +12,7 @@ export const FOXFIRE = Object.freeze({
   aliases: ['foxfire', 'terrace', 'shrine', 'thousand', 'wenyao'],
   name: 'The Foxfire Terrace',
   sub: 'where the fox keeps a thousand shadows',
+  boss: BOSS_TUNING.name, // the boss's full name (the title's world list; the HUD reads the boss's own)
   world: Object.freeze({
     arenaRadius: 14.5,
     playerBound: 40, // round the origin: the terrace, the path and the bonfire landing

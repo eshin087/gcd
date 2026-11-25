@@ -1,5 +1,6 @@
 import { createThroneHall, THRONE } from '../world/throneHall.js';
 import { StarlessLord } from '../entities/enemies/starlessLord/lord.js';
+import { TUNING as BOSS_TUNING } from '../entities/enemies/starlessLord/tuning.js';
 
 // The Obsidian Throne: the crater where the Starless Lord fell out of the night sky, and the star he
 // took for a throne (COMBAT.md → "The Starless Lord"; world/throneHall.js, ADR-112). The seal inlaid
@@ -12,6 +13,7 @@ export const STARLESS = Object.freeze({
   aliases: ['lord', 'throne', 'hall', 'void', 'starfall', 'crater'],
   name: 'The Obsidian Throne',
   sub: 'where the starless lord waits',
+  boss: BOSS_TUNING.name, // the boss's full name (the title's world list; the HUD reads the boss's own)
   world: Object.freeze({
     arenaRadius: 16,
     playerBound: 40, // round the seal: the crater, the path and the bonfire landing

@@ -20,7 +20,7 @@ export const setDrakelingLook = (k) => {
   if (DRAKE_LOOKS.includes(k)) DRAKE_LOOK = k;
 };
 
-// The wyrm's brood (ADR-195): small fire creatures it calls up with a roar, which fight on their own
+// The wyrm's brood (ADR-197): small fire creatures it calls up with a roar, which fight on their own
 // beside it, like the hazards (hazards.js): fire drakelings (burst out of the incantation's circle,
 // circle the hero, lunge at him one at a time with a tell, die to one or two cuts, dive in and burst
 // when their time runs out) and kamikaze wisps (swell on its spine and wings, tear off, home in on the

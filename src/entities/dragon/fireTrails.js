@@ -1,4 +1,4 @@
-// Fire trails (ADR-195, the fire-and-forest pass; the owner: "all the fire should be coming from the
+// Fire trails (ADR-197, the fire-and-forest pass; the owner: "all the fire should be coming from the
 // dragon itself"). Every hazard that burns away from the wyrm now visibly travels there from it:
 //   crack   a glowing crack in the ground that runs out from its forefeet (the eruptions: the P2 line
 //           of pillars bursts as the crack's head reaches each one; the P3 chase pillars burst where

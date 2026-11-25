@@ -175,7 +175,7 @@ const GHOST_PTS = 420; // points of his body an afterimage is drawn from (_sampl
 export class Player {
   constructor(game) {
     this.game = game;
-    this.name = 'Wanderer';
+    this.name = 'gcd'; // the hero (ADR-195): the name tag over his head
     /** His drawn size (model metres → world; model.js PLAYER_SCALE, ADR-064): the lean and the
      *  animator's foot planner read it. */
     this.drawScale = PLAYER_SCALE;
@@ -378,7 +378,7 @@ export class Player {
 
   /**
    * The hand feels a cut on something small the boss sends at him (the wyrm's brood, dragon/brood.js,
-   * ADR-195: it tests his blade itself, as bullets.js does): a short hit-stop, sparks along the cut
+   * ADR-197: it tests his blade itself, as bullets.js does): a short hit-stop, sparks along the cut
    * (dx, dz), a jolt of the camera. Nothing else (no damage dealt, no streak).
    */
   feelCut(x, y, z, dx = 0, dz = 0, heavy = false) {

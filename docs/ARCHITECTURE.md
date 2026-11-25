@@ -1,4 +1,4 @@
-# ABYSS — Architecture & Module Contracts
+# gcd — Architecture & Module Contracts
 
 Browser game, Three.js 0.180 (WebGL2), plain ES modules, no framework. `npm run dev` serves the
 repo at http://localhost:5173 ; `npm run build` emits a single-file `dist/index.html`.
@@ -888,7 +888,7 @@ cut, `flurry.reelT`); a cut passes `reel: 1` to `takeHit`, the last blow `reel: 
 `_guardOpen(attack, nx, nz, true)` (no health, the whole guard meter, the guard knocked open, thrown back, as a black
 blow does to a guard) and returns BLOCKED; a parry press still parries; god mode is untouched.
 **One Breath** (ADR-146; combat.js `ONE_BREATH`): `game.unlocks` (`game/unlocks.js` `Unlocks`: `has(id)`,
-`grant(id)` → true when new, `toggle(id, on)`, `all()`, `clear()`; localStorage `abyss.unlocks.v1`; `?tech=draw|none`;
+`grant(id)` → true when new, `toggle(id, on)`, `all()`, `clear()`; localStorage `gcd.unlocks.v1`; `?tech=draw|none`;
 absent in the tests' worlds = nothing learned). A HEAVY press begun with the guard up or within 0.2 s of lowering it
 (`hb.guard`) and held past CHARGE.hold: `_startCharge` takes the draw stance instead (state `iai`, the animator's
 `flurry` clip with `flurryAnim.pose = 'coil'`) while `oneBreath` is learned, else the charge as before. In the stance he
@@ -1562,9 +1562,9 @@ hazards: Hazards                        // the fire hazards (hazards.js, contrac
 bullets: Bullets                        // the bullet field + the ground tongues (bullets.js, ADR-039): see "Bullets" below
 terrain: Terrain                        // the piece in its jaws or in the air (terrain.js, ADR-110): see "Terrain moves" below
 ablaze: Ablaze                          // phase 3: it sets itself on fire (ablaze.js, ADR-120): see "The wyrm ablaze" below
-incantation: Incantation                // the seals of burning script a roar-cast move draws (incantation.js, ADR-195):
+incantation: Incantation                // the seals of burning script a roar-cast move draws (incantation.js, ADR-197):
                                         // see "The incantation" below
-brood: Brood                            // the drakelings and wisps it calls up (brood.js, ADR-195): see "The brood" below
+brood: Brood                            // the drakelings and wisps it calls up (brood.js, ADR-197): see "The brood" below
 react: WyrmReact                        // the impact pass (react.js, tuningReact.js, ADR-149): the drawn body
                                         // answers where it was hit; see "The drawn reaction" below
 crashing: boolean                       // true while a plunge stops a flight: that action's end() must not land it elsewhere
@@ -1611,7 +1611,7 @@ drawnPoint(v): Vector3                  // a hurt sphere's exact point → where
 debug: {                                // used by the Lab (generic shape every future enemy implements)
   abilities(): Array<{ name, label, tell, phase }>,   // every ATTACKS entry (50: 8 singles, 17 strings, 11 fire
                                         // attacks and flights, 6 bullet patterns, 3 terrain moves, 2 brood moves,
-                                        // 2 roar-cast spells (ADR-195) and 'roar', the transition shock ring)
+                                        // 2 roar-cast spells (ADR-197) and 'roar', the transition shock ring)
   trigger(name): boolean,               // force an ability now (wakes/starts the fight if needed); false while busy
   setAI(enabled: boolean), aiEnabled: boolean,
   wake(), startFight(),                 // startFight skips the intro straight into combat (no-op if fighting)
@@ -1633,7 +1633,7 @@ While one is drawn the hurt spheres can sit up to about 1 m off the drawn body f
 
 **Attacks and selection** (`attacks.js` `ATTACKS`: the singles, the strings, `roar` and, spread in,
 `FIRE` from `fireAttacks.js`, `BULLET_HELL` from `bulletAttacks.js`, `TERRAIN_MOVES` from
-`terrainAttacks.js` and, since ADR-195, `BROOD_MOVES` from `broodAttacks.js` and `FIRE_SPELLS` from
+`terrainAttacks.js` and, since ADR-197, `BROOD_MOVES` from `broodAttacks.js` and `FIRE_SPELLS` from
 `spellsFire.js`; their numbers are `TUNING.attacks`, into which `tuningFire.js` `FIRE_ATTACKS`,
 `tuningBullets.js` `BULLET_ATTACKS`, `tuningTerrain.js` `TERRAIN_ATTACKS`, `tuningSpells.js` `SPELLS`
 and `tuningBrood.js` `BROOD.moves` are merged (`spellsFire.js` also fills `TUNING.attacks[k] ??=` itself,
@@ -1666,7 +1666,7 @@ move needs to know:
   `emberRake`, and any hit with a `burst`) hits make it that category when they are two or more or
   a third of the string (most wins; a tie goes tail, wing, fire), else melee. Today: melee 13, wing 2
   (the Wing buffet, the Sky hammer), tail 4, fire 11, flight 7, spell 10 (the four roar-cast moves of
-  ADR-195 among them: `drakelings`, `wisps`, `fireSerpent`, `firestorm`, tuned `category: 'spell'`),
+  ADR-197 among them: `drakelings`, `wisps`, `fireSerpent`, `firestorm`, tuned `category: 'spell'`),
   terrain 3.
 - **The pick's weight:** × `repeat` [0.3, 0.65] for the last two picks; × `bias[cat]` per phase
   (melee, wing and tail 1.25 – 1.3); the last pick's category × `sameCat` 0.7, × `overRun` 0.03 once
@@ -1686,7 +1686,7 @@ move needs to know:
   move that asks for a dodge (any red or black blow, every flight and spell, a pattern's red orbs)
   while bullets fly × `mixed` (0). What a move asks for is read from its data (each hit's tell, the
   headline tell, `orbs` / `orbWave` / `barkOrbs`) and learned from the cues it really sends.
-  **The brood** (ADR-195): live kamikaze wisps count as a sky emitter (`sky` = `_emitterLive()` or
+  **The brood** (ADR-197): live kamikaze wisps count as a sky emitter (`sky` = `_emitterLive()` or
   `brood.count('wisp')` > 0, in `_choose` and in `_link`: they are red blows at times nobody knows yet,
   like meteors), and while any of the brood lives (`brood.count()` > 0) every spell, every flight and
   every move tuned `heavy` × `layer` (0): the wyrm fights lighter beside it. The brood moves and the
@@ -1906,7 +1906,7 @@ charge spheres, the breath / fireball origin) are unscaled; `rig.pt.eyes`, `pt.n
 **The build** (2026-11-20, ADR-123; `looks.js`): `?wyrmLook=0|a|b|c` (read once; default `c`, the
 owner's pick: lean, a fierce head carried high, a mane of quills; `0` = the wyrm before, `a` / `b`
 the steps between). Exports: `WYRM_LOOKS`, `WYRM_LOOK_SHIPPED`, `wyrmLookId()`, `wyrmLook()` (the
-build's numbers or null for `0`), `setWyrmLook(k)` (the NEXT built wyrm; tests, `ABYSS_WYRMLOOK`).
+build's numbers or null for `0`), `setWyrmLook(k)` (the NEXT built wyrm; tests, `GCD_WYRMLOOK`).
 A build changes what is drawn and nothing else: `buildDrake` bakes the trunk's and limbs' meshes
 into their joint's frame and scales them there (`slim`, `slimBone`), scales the neck's and tail's
 drawn radii, spine, quill and talon lengths, `headVis` (its size and width) and the old head's
@@ -1973,7 +1973,7 @@ Striking-part names for tells (`partPos`): 'snout', 'head', 'mouth', 'claw' (a f
 'forefeet' (front-paw midpoint; flashes at both paws; 'wrists' is the v0.3 alias), 'wing' (a wing's
 middle knuckle, `b.wi`: the wing buffet, the wing scythe), 'wings' (between both wings' middle
 knuckles: the wing slam), 'tailTip', 'shell', 'bullet', 'piece' (the tree or boulder a terrain move
-holds or has thrown), 'point' (ADR-195: a beat that carries its own place, `b.px` / `b.py` / `b.pz`, the
+holds or has thrown), 'point' (ADR-197: a beat that carries its own place, `b.px` / `b.py` / `b.pz`, the
 serpent's head, the firestorm's foot; the chest when they are not finite), default chest. `flashTell` spikes the body's red / black `uWarn` for a dodge-only
 blow except when the part is 'piece': a thrown piece's flare is on the piece, the body that threw it is
 not the blow. The stomp's red ground ring is centred between the two forefeet's landing
@@ -2131,7 +2131,7 @@ event scratch).
 - `barrage()` also takes `deckAt` (s after the cast when the sky deck starts; default `glowAt`),
   `deckGrow` (s to spread over the frame) and `cx`, `cz` (where it spreads from: over the wyrm's
   cast): it calls `skyFx.skyDeck` every frame from `deckAt`.
-- **Every fire comes from the wyrm** (2026-11-25, ADR-195; `fireTrails.js`, numbers `tuningFire.js`
+- **Every fire comes from the wyrm** (2026-11-25, ADR-197; `fireTrails.js`, numbers `tuningFire.js`
   `TRAILS`): options that make a hazard visibly travel from the wyrm to where it burns.
   - `line({ ..., crack: true, cx, cz })` and `chase({ ..., crack: true, cx, cz })`: a glowing crack
     opens from (cx, cz) (the eruptions pass the forefeet's slam point). On a line its head reaches each
@@ -2203,7 +2203,7 @@ breathed or spat from the air (the strafe's and a combo pass's strip front, the 
 spawned with `plunge: true`, the airborne plunge); the dive's crash and the nova pass the default (a
 perfect dodge may plunge). The flame ring lays `rings` [1, 2, 3] rings `ringGap` s apart, the flame
 wall `walls` [1, 1, 2] (the second from the hero's side, square to the first), each its own beat.
-Since ADR-195 the fire that burns away from it travels there from it (hazards' options above): the
+Since ADR-197 the fire that burns away from it travels there from it (hazards' options above): the
 eruptions' line and chase run on a crack from the slam (`CRACK_ON`; the chase's channel and its beat
 grow by `crackRun(d)`, the run from the slam to the hero now, at most `maxRun`; through the chase the
 head watches the crack's head), and phase 3's second flame wall is laid (`wallLay`: `a` from where the
@@ -2409,7 +2409,7 @@ functions over `d.fx`, the bulletFx pattern): `snapFire` (the fire snap's gout, 
 `fx.breathBody`) and the dust, fire and embers of the wing slam, the tail slam, the wing scythe and
 the ember rake. Their burning ground is the hazards' `'meleeFire'` strip.
 
-**The roar-cast moves** (2026-11-25, ADR-195, the fire-and-forest pass). Four moves open with a roar
+**The roar-cast moves** (2026-11-25, ADR-197, the fire-and-forest pass). Four moves open with a roar
 over a seal of burning script and call up fire that fights on its own: the brood moves `drakelings` and
 `wisps` (`broodAttacks.js` `BROOD_MOVES`, numbers `tuningBrood.js` `BROOD`) and the spells
 `fireSerpent` and `firestorm` (`spellsFire.js` `FIRE_SPELLS`, numbers `tuningSpells.js` `SPELLS`,
@@ -2526,7 +2526,7 @@ showTitle() / hideTitle();  showPause(bool);  toggleHelp()
 [string] }] }`; `version: null` is the LATEST release, the work since the last version) and
 `entryId(entry)` (`date|title`). `ui/changelogPanel.js` `ChangelogPanel` (`hud.newsUi`): `open()`,
 `close()` (marks every entry read), `toggle()`, `on`, `unseenCount()`, `onChange(fn)` (after a read),
-`markAllSeen()`, `scroll(px)`. Read ids live in localStorage `abyss.whatsnew.seen`; with none, only the
+`markAllSeen()`, `scroll(px)`. Read ids live in localStorage `gcd.whatsnew.seen`; with none, only the
 newest day's entries are unread. Esc (capture phase, swallowed), the pad's B / Menu / A and BACK close it;
 while it is open `flow._title` does not start the game and the gamepad drives only the panel (the stick /
 D-pad scroll). Badges: the title button's `.ab-news-badge` ("N NEW") and the pause item's value
@@ -2546,7 +2546,7 @@ when on).
 the boss's rows under them, the prompt and banners above the thumbs, the pause panel in the upper half so the pad shows below it, the title's logo and
 lists to the screen's width.
 Desktop (no `.ab-touch`) is unchanged.
-**Gamepad layout:** while a pad is the device in use, `html.abyss-pad` (and `.ab-pad` on the HUD root)
+**Gamepad layout:** while a pad is the device in use, `html.gcd-pad` (and `.ab-pad` on the HUD root)
 hides `kb-only` and `tp-only` elements and shows `pad-only` ones (title "PRESS ANY BUTTON", the
 pause / help pad grid); `ab-nontouch` elements (the title's controls line, the corner hint, the
 CONTROLS item) hide on touch unless a pad is in use. Action chips relabel to the pad's buttons (and
@@ -2600,12 +2600,45 @@ three colours.
 
 **The streak counter** (`ui/streakCounter.js` `class StreakCounter`, `COUNTER`, `TIER_WORDS`, `COUNTER_LOOKS`; ADR-167): `hud.streakUi`, built in the call-outs' layer; `onStreak(d)` (from `player:streak`: a rise to 2 or more shows the number, a loss of 2 or more shows it struck), `handoff()` (on `player:flurry`), `clear()` (with the call-outs: title, death, retry), `update(realDt)`; `shown` ({ n, tier, word, lost }; tests). Its DOM is built on the first number. `?streakCount=lines | brackets | ticks` (default lines). With `streakK('counter')` > 0 `Callouts.ghostep` / `riposte` drop their ×N, and `Callouts.count` ticks a live count in place while its pop is younger than 0.2 s. `Callouts.banner(text, sub, tier)` passes `tier` to `MiniBanner.show(text, sub, tier)`: 4 and 5 add thin rules (classes `t4` / `t5`, `long` for a long name), never size. `hud.js` exports `FLURRY_TIER_NAMES` ({ 4: 'HUNDREDFOLD FLASH', 5: 'THOUSANDFOLD FLASH' }): a full flurry's banner takes it from the streak's tier (read on `player:flurry`) while `streakK('tiers')` > 0.
 
+### The loading screen and the title's layouts (ADR-196)
+**The loading screen** is plain HTML, CSS and a small classic script at the top of `<body>` in `index.html`
+(`#gcd-load`, its style `#gcd-load-css`), so it paints before the bundle has arrived; `scripts/build.mjs`
+carries it into `dist/index.html` as is. Until the boot reports, its bar is a CSS-only waiting run (the main
+thread is busy parsing). `src/main.js` breaks its boot into named steps with fixed shares of the bar
+(`BOOT`: fonts, renderer, world, hero, boss, interface, shaders; measured on a 4x-slowed CPU, the world is
+most of it) and yields one frame between them, only while a loader is on the page and the tab is visible.
+`ui/bootLoader.js`: `bootStep(word, frac, to)`, `bootDone()`, `bootFail()` drive the page's
+`window.__gcdLoad.step / done / fail` (all no-ops with no loader: the headless tests);
+`fontSheetReady(ms = 3000)` waits for the web fonts' sheet, which `index.html` loads without blocking the
+first paint, so the glyph atlas is drawn with the same fonts as before; `travelNote(id, name)` writes
+sessionStorage `gcd.travel` on a stage pick and the next page's loader names the world it travels to.
+`?loader=b` (default, the console: the finished steps with their real times) or `a` (centred); `-hold`
+(or `hold`) keeps it on screen at the world step. Nothing in it calls `Math.random`.
+
+**The title's layouts** (`ui/titleMenu.js` `class TitleMenu`, `menuNow()`; styles `ui/titleMenuStyle.js`,
+scoped under `.ab-title.gm`; the logo `ui/gcdLogo.js` `GCD_LOGO`, the same rows as the loader's, kept in
+step by hand): `?menu=c` (default, the sword's path), `a` (the world list), `b` (the campfire grid), `0`
+the title before (`TitleScreen` builds it as it was). The picker reads each level's `name`, `sub` and
+`boss` (levels/*.js: the boss's full name, "NAME, THE EPITHET") from `game.levels`. One selection serves
+every device: hover, the arrow keys, the pad's focus or a first tap select; a click, Enter, A or a second
+tap acts (travel: `stage.pick(id)`, a page load; begin: `stage.begin()` → `flow.beginFromTitle()`).
+`TitleScreen.eatsKey(code)` (a key the menu used this frame: the flow's "press any key" skips it),
+`holdsStart()` (the CONTROLS panel is open: neither the flow nor the pad starts), `navigate(el, dx, dy)`
+(the pad's 2D walk: the nearest entry by its place on screen, `ui/gamepad.js`). CONTROLS opens the full
+keyboard / pad / touch grids and the tell legend. The title's shimmer and its pinned `Math.random` draws
+(`STREAM_COLS`, ADR-195) run for every layout.
+
+**The hero's name**: the tag over his head (`ui/nameTags.js`) reads `player.name` ('gcd') and rides his
+head bone (`HERO_TAG`: `over` m above it, eased at `follow` /s; `fallback` m over his feet without a rig).
+`?heroName=a|b` puts the name by his meters too (a: a line over the HP row; b: at the head of the flask
+row); off by default.
+
 ### Flow — `src/game/flow.js` exports `class GameFlow`
 **Move telemetry** (ADR-108, `game/telemetry.js` `MoveLog`): `flow.moves` logs every `combat:answer` per boss move:
 `attempt` (a Map id → { seen, hit, blocked, parried, perfectParry, clashed, dodged, perfectDodge, damage, kills },
 counted in BLOWS; a contact stream is one blow per 1.5 s), `killedBy` ({ attack, tell }; 'burn' when no blow dealt
 the death), `worst(n)`, `commit('death' | 'victory')` (adds the attempt to the level's totals in localStorage
-`abyss.telemetry.v1`: { [level]: { attempts, deaths, wins, killedBy, moves } }), `reset()` on every respawn,
+`gcd.telemetry.v1`: { [level]: { attempts, deaths, wins, killedBy, moves } }), `reset()` on every respawn,
 `table(level, label)` and `totals()` / `clear()`. `flow.moveLabel(id)` names a move (the boss's `attackLabel`, else the
 id spelled out); `flow.deathRecap()` is the death screen's lines ("SLAIN BY …", then up to three moves with "n of m
 blows landed"), shown with `hud.bannerRecap`. The victory record gains "Struck most by". Console:
@@ -2949,7 +2982,7 @@ and labels them.
 ### Bindings — `src/core/bindings.js` (ADR-067)
 ```
 ACTIONS                     // [{ id, label, kb: [codes] | null, pad: [buttons] | null, fixed? }] — the defaults
-new Bindings(storage = localStorage)   // loads 'abyss.bindings.v2' (ADR-115: a v1 save is not read); storage null = defaults, nothing saved
+new Bindings(storage = localStorage)   // loads 'gcd.bindings.v2' (ADR-115: a v1 save is not read); storage null = defaults, nothing saved
 codes(a) / buttons(a)       // the keyboard-mouse codes / pad button indices bound to action a
 bindKey(a, code) / bindPad(a, i)   // replace a's binding; false when refused (reserved, fixed, wrong device)
 reset(save, 'kb' | 'pad' | null);  isDefault(which);  onChange(fn) → unsubscribe;  version
@@ -3052,7 +3085,7 @@ the nearest tile, and a thumb that **slides** onto another tile releases the fir
 second without lifting (release edge first; it must leave its tile by `stick`, 10 px; a slide that
 wanders further than `reach` from every tile keeps what it holds). Each finger holds its own tile.
 The player places the cluster in the pause menu: PAD POSITION (low / mid / high: `pad.pos`) and
-PAD SIZE (small / medium / large: `pad.size`), kept in `localStorage` (`abyss.touchPad`); the
+PAD SIZE (small / medium / large: `pad.size`), kept in `localStorage` (`gcd.touchPad`); the
 controls show through the pause screen, inert, while they are stepped (`.tc-root.peek`). Screens
 taller than 560 px get everything × `pad.tall`. API: `padPos`, `padSize`, `cyclePad('pos' | 'size')`,
 `padPoint(id)` (the screen point at a tile's middle), `padGeo`.
@@ -3093,7 +3126,7 @@ the stick rests level with it, and the camera takes the upright profile
 (`cameraRig.setMobile(phone, portrait)`). Turning the phone releases every held control.
 **Look** (ADR-097): the controls are drawn on the game, not over it: no filled panels, faint
 outlines and glyphs at rest (stick 40 %, buttons 62 %), full strength under a thumb. Activation
-also: `html.abyss-touch` (touch-action none, no callouts, crisp `image-rendering: pixelated`),
+also: `html.gcd-touch` (touch-action none, no callouts, crisp `image-rendering: pixelated`),
 `.ab-touch` on the HUD, the phone camera profile, and `CONFIG.defaultQualityTouch` when the
 quality is still the default. Pointer Events with multi-touch (each control captures its own
 pointer); long-press menus, iOS gesture zoom and page panning are blocked while active (the Lab
@@ -3471,7 +3504,7 @@ wyrm (`dragon.boundAt` / `arenaAt`, below), the wall's quiet-fall rule, the mini
 Every trunk out to `outer` + 3 m has a collider now (it was 42 m), so the stumps of the opened ground
 stand in the hero's way as the clearing's do.
 
-**The walk edge** (2026-11-25, ADR-195, the owner: "no invisible walls: if it looks like the player is
+**The walk edge** (2026-11-25, ADR-197, the owner: "no invisible walls: if it looks like the player is
 able to walk there"; Cinderwood's set today). A set's `edge: { base, walk: { at(angle) } }` (angle =
 `atan2(z, x)`; Cinderwood: `ridgeAt(a) + RIDGE.inset`, the rock ridge's line ~48.5 m, `forestTuning.js`)
 puts the Edge in WALK mode: the hero's ground is the whole forest out to the set's end from the start,
@@ -4925,7 +4958,7 @@ data and a subclass with a few hooks.
     ADR-133: a blow told before the piece began to fall and that no hold could clear).
   - `stats` `{ picks, links, chains, cuts, rests, holds, holdTime, feints, toldFeints, delays, fizzles, floors,
     seeks }`; `guardLog`: a ring of 64 `{ t, kind: 'feint' | 'toldFeint' | 'fade' | 'uncalled', what, with }`
-    (what the guard stepped in for; `ABYSS_PGUARD=1` prints the tally); `ledger` (the `CueLedger`).
+    (what the guard stepped in for; `GCD_PGUARD=1` prints the tally); `ledger` (the `CueLedger`).
   - Internals the tests and the Lab read: `_announce` / `_tellRisk` (a blow at risk keeps its
     `combat:tell` until the guard clears it at its cue, then tell and flash go out together; a blow that
     becomes a feint sends neither), `_worldCue(at, ans)` (a world warning grounds his uncued things in
@@ -5888,7 +5921,7 @@ shipped value (`stage`, `tech`, `lab`, `training`, `cutStop`, `apoc`, `ring`, `b
 proves a run was played. Validating a submitted record (plausible times per boss, the record's version
 against the game's, rate limits, replays if ever) is the server's job when there is one.
 
-**The store** (`game.records`, `Records(storage)`; localStorage `abyss.records.v1`, injectable):
+**The store** (`game.records`, `Records(storage)`; localStorage `gcd.records.v1`, injectable):
 `{ v: 1, levels: { [id]: { clears, bestTime, bestGrade } }, rush: { clears, bestTime, bestGrade } | null,
 recent: [record, ...] }` (a best: `{ timeMs, grade, marks, id, at }`). `best(id)`, `rushBest()`,
 `recent()` (the last `RECENT` = 24 records, oldest first: the queue a later uploader drains),
@@ -5898,7 +5931,7 @@ clear. Corrupt or another version's data in the key reads as empty (a later vers
 and carries it forward); a full storage drops the queue to its newest six and tries again; blocked or
 missing storage keeps everything for the page load. Nothing throws.
 
-**The boss rush** (`game.rush`, `Rush(sessionStorage, search)`; sessionStorage `abyss.rush.v1`, this tab):
+**The boss rush** (`game.rush`, `Rush(sessionStorage, search)`; sessionStorage `gcd.rush.v1`, this tab):
 `{ v, id, order, index, levelMs, deaths, flasks, live, splits, void, startedAt, done }`. The title's BOSS
 RUSH calls `game.startRush()` → `Rush.start(session, order, id)` and loads `rushUrl(order[0], href)`
 (`?level=<id>&rush=1`, the other parameters kept; `levelUrl` drops `?rush`). Every level in `LEVELS`
@@ -6039,7 +6072,7 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   bullet's tell (normal for an ember, red for an orb or a tongue), hazard: true and bullet: true (audio: the
   flash ping alone, no tell sting, no music dip)
 - Ambient cinders (ADR-119) are hazard circles: their cues carry the attack name cinders (no tuning entry)
-- The roar-cast moves (ADR-195) add no event name. The brood's cues (a drakeling's lunge and dive, a
+- The roar-cast moves (ADR-197) add no event name. The brood's cues (a drakeling's lunge and dive, a
   wisp's commit) are combat:tell / combat:flash with source 'dragon', the move that called it as the
   attack (drakelings or wisps), the creature's tell (normal or blue for a lunge, red for a dive or a
   wisp), hazard: true and brood: true. The serpent's strikes and the firestorm's burst are ordinary beats
@@ -6092,7 +6125,7 @@ World → audio (destruction, ADR-107; see "Destruction" above):
 - `world:edge {x, z, reach, lanes, first}` (ADR-125, the edge of the open ground: a tree of the forest's wall is
   down and ground behind it has opened. x, z: the end of the lane that opened furthest; reach: how far from the
   centre the hero's ground goes there, m; lanes: lanes open in all; first: nothing was open before. One reused
-  payload. The HUD feed says it once a fight, on first. A walk edge, Cinderwood's since ADR-195, never
+  payload. The HUD feed says it once a fight, on first. A walk edge, Cinderwood's since ADR-197, never
   sends it: the hero's ground there is the whole forest from the start)
 - `world:scene {id, x, z}` (ADR-157, the Hall of Falling Script: the set's scenes.to began a morph to scene id
   from x, z; audio a falling run of ticks)

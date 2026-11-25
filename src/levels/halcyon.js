@@ -1,10 +1,11 @@
 import { createHalcyonPlaza, PLAZA } from '../world/halcyonPlaza.js';
 import { Halcyon } from '../entities/enemies/halcyon/halcyon.js';
+import { TUNING as BOSS_TUNING } from '../entities/enemies/halcyon/tuning.js';
 
-// Halcyon Plaza: a city that has not been built yet (the Abyss keeps every age it has swallowed, the ones
-// that have not happened yet too), and Halcyon, the Last Saviour, who owns it (ADR-159, ADR-160). The
-// plaza is centred on the origin; the bonfire waits in the south alley's mouth. No reward yet: the owner
-// has not chosen one (ADR-161).
+// Halcyon Plaza: a city that has not been built yet (a world of an age still to come, one of the
+// worlds and universes gcd's sword carries him to), and Halcyon, the Last Saviour, who owns it
+// (ADR-159, ADR-160). The plaza is centred on the origin; the bonfire waits in the south alley's
+// mouth. No reward yet: the owner has not chosen one (ADR-161).
 const P = PLAZA;
 
 export const HALCYON = Object.freeze({
@@ -12,6 +13,7 @@ export const HALCYON = Object.freeze({
   aliases: ['halcyon', 'plaza', 'neon', 'saviour', 'tomorrow'],
   name: 'Halcyon Plaza',
   sub: 'a city that has not been built yet, and the man who owns it',
+  boss: BOSS_TUNING.name, // the boss's full name (the title's world list; the HUD reads the boss's own)
   world: Object.freeze({
     arenaRadius: P.r,
     playerBound: P.bound, // round the origin (the towers' colliders hold the hero in the corners)

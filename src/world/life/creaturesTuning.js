@@ -193,7 +193,7 @@ export const CREATURES_TUNE = Object.freeze({
   levels: Object.freeze({
     cinderwood: Object.freeze({
       // as before (70 at r 22 - 46), and some inside the clearing's rim
-      // (ADR-195: and out among the trees he can now walk in, to the ridge at ~48 m)
+      // (ADR-197: and out among the trees he can now walk in, to the ridge at ~48 m)
       fireflies: { n: 60, r: [22, 48], inner: 24, innerR: [12, 27] },
       moths: { n: 4 },
       // small birds on the tree wall: perches on the canopies of the old trees (not the young: minH m) at r 29 - 37

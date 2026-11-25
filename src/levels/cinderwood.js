@@ -8,6 +8,7 @@ export const CINDERWOOD = Object.freeze({
   aliases: ['wyrm', 'forest', 'hollow'],
   name: 'Cinderwood Hollow',
   sub: 'where the cinder wyrm sleeps',
+  boss: 'VAELGRIM, THE CINDER WYRM', // the boss's full name (the title's world list; dragon.js holds the wyrm's own)
   world: null,
   buildSet: createForest,
   createBoss: (game) => new Dragon(game),

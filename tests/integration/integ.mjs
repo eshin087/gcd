@@ -2,15 +2,15 @@
 // AudioEngine and Lab (+ real LightPool, GlyphParticles, CameraRig, Events), wired exactly like
 // src/main.js (construction order, frame order, debugTimeScale in dt). World is a light mock built on
 // the real Colliders. A bot drives the input: it moves, attacks, blocks, parries and dodges.
-// usage: node integ.mjs <repoRoot> [scenario]   (env: ABYSS_SEED=n reseeds the AI, ABYSS_TRACE=1 logs combat events)
+// usage: node integ.mjs <repoRoot> [scenario]   (env: GCD_SEED=n reseeds the AI, GCD_TRACE=1 logs combat events)
 //   scenario: gate | hero | batch | breath | parry | block | reach | red | plunge | flurry | deflect | lab | strings | plungeReact | terrain |
 //             timing | fire | music | thump | sfx | herolook | wyrmface | wyrmlook | herolife | herohand | heroweight | heroarms | herorun | herostance | looks | win | die | touch | pad | remap | all (default all)
 //             or a comma list of them (hero,looks,...)
-//   (timing: ABYSS_TM=name,name... probes only those attacks; ABYSS_TMV=1 prints its per-placement map;
-//    ABYSS_TM_SHARD=k/n probes every n-th attack of the list, starting at the k-th: n runs cover it all)
-//   ABYSS_WYRMFACE=old|skull|loong|demon builds every wyrm with that head (?wyrmFace=; e.g. a timing run per head)
-//   ABYSS_WYRMLOOK=0|a|b|c builds every wyrm on that build (?wyrmLook=; 0 = the wyrm before the lean build)
-//   ABYSS_SKIP=name,name... leaves those scenarios out of `all` (tests/run.mjs runs `timing` beside it, in parts)
+//   (timing: GCD_TM=name,name... probes only those attacks; GCD_TMV=1 prints its per-placement map;
+//    GCD_TM_SHARD=k/n probes every n-th attack of the list, starting at the k-th: n runs cover it all)
+//   GCD_WYRMFACE=old|skull|loong|demon builds every wyrm with that head (?wyrmFace=; e.g. a timing run per head)
+//   GCD_WYRMLOOK=0|a|b|c builds every wyrm on that build (?wyrmLook=; 0 = the wyrm before the lean build)
+//   GCD_SKIP=name,name... leaves those scenarios out of `all` (tests/run.mjs runs `timing` beside it, in parts)
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { ui, fireWin, AUDIO, resetWindow, El } from './shim.mjs';
@@ -37,10 +37,10 @@ const { TELL, TELL_STYLE, RESULT, DEFENSE, POSTURE, GUARD } = await imp('src/com
 const { Player, TUNE: TUNE_P } = await imp('src/entities/player/player.js');
 const { DIM: HERO_DIM, setHeroGlyphScale } = await imp('src/entities/player/model.js');
 const { Dragon } = await imp('src/entities/dragon/dragon.js');
-// ABYSS_WYRMLOOK: every wyrm built in this run has that build (?wyrmLook=, looks.js)
-if (process.env.ABYSS_WYRMLOOK && !(await imp('src/entities/dragon/looks.js')).setWyrmLook(process.env.ABYSS_WYRMLOOK)) { process.stdout.write(`ABYSS_WYRMLOOK: unknown build '${process.env.ABYSS_WYRMLOOK}'\n`); process.exit(2); }
-// ABYSS_WYRMFACE: every wyrm built in this run wears that head (?wyrmFace=, heads.js)
-if (process.env.ABYSS_WYRMFACE && !(await imp('src/entities/dragon/heads.js')).setWyrmFace(process.env.ABYSS_WYRMFACE)) { process.stdout.write(`ABYSS_WYRMFACE: unknown head '${process.env.ABYSS_WYRMFACE}'\n`); process.exit(2); }
+// GCD_WYRMLOOK: every wyrm built in this run has that build (?wyrmLook=, looks.js)
+if (process.env.GCD_WYRMLOOK && !(await imp('src/entities/dragon/looks.js')).setWyrmLook(process.env.GCD_WYRMLOOK)) { process.stdout.write(`GCD_WYRMLOOK: unknown build '${process.env.GCD_WYRMLOOK}'\n`); process.exit(2); }
+// GCD_WYRMFACE: every wyrm built in this run wears that head (?wyrmFace=, heads.js)
+if (process.env.GCD_WYRMFACE && !(await imp('src/entities/dragon/heads.js')).setWyrmFace(process.env.GCD_WYRMFACE)) { process.stdout.write(`GCD_WYRMFACE: unknown head '${process.env.GCD_WYRMFACE}'\n`); process.exit(2); }
 const { TUNING, SCALE } = await imp('src/entities/dragon/tuning.js');
 const { ATTACKS } = await imp('src/entities/dragon/attacks.js');
 const { attackWeight } = await imp('src/entities/dragon/ai.js');
@@ -67,7 +67,7 @@ const near = (a, b, eps) => Number.isFinite(a) && Number.isFinite(b) && Math.abs
 
 // Deterministic runs: the AI picks attacks with Math.random; every scenario reseeds it.
 const mulberry32 = (a) => () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-const SEED = Number(process.env.ABYSS_SEED ?? 1337);
+const SEED = Number(process.env.GCD_SEED ?? 1337);
 
 // ---- event catalogue, read from the contract (docs/ARCHITECTURE.md → "Event catalogue")
 const CATALOGUE = (() => {
@@ -295,7 +295,7 @@ function build(opts = {}) {
     if (schema) for (const k in schema) if (!typeOk(schema[k], d?.[k])) payloadErrors.add(`${n}.${k}=${JSON.stringify(d?.[k])}`);
     if (!/footstep|step|wingFlap|hurt|hitDragon|attack|windup|fireball|explosion|roll|dodge|posture$/.test(n) || n === 'dragon:hurt') G.evLog.push(`${game.time.toFixed(1)} ${n}${d && n === 'state' ? ' ' + d.from + '->' + d.to : ''}`);
     G.watch?.(n, d);
-    if (process.env.ABYSS_TRACE && game.player && game.dragon && /combat:|player:(parry|block|perfectDodge|dodge|roll|guardBreak|hurt)|dragon:(parried|windup|phase2)/.test(n)) {
+    if (process.env.GCD_TRACE && game.player && game.dragon && /combat:|player:(parry|block|perfectDodge|dodge|roll|guardBreak|hurt)|dragon:(parried|windup|phase2)/.test(n)) {
       out('     TRACE', game.time.toFixed(3), n, JSON.stringify(d ?? null).slice(0, 120), 'p', game.player.state, game.player.stateT.toFixed(2), 'dist', Math.hypot(game.player.position.x - game.dragon.position.x, game.player.position.z - game.dragon.position.z).toFixed(2));
     }
     G.defend?.onEvent(n, d);
@@ -638,7 +638,7 @@ function warnTrace(G, name, seconds, stop = null) {
 // (combo links), ambient fire, time airborne, time with fire on the field, the least safe ground the
 // hero had (free spots of 17 within a roll of him that no blast due within 0.6 s, a roll, covers), and pairs of blows
 // needing different answers (dodge vs parry / block) landing within 0.3 s of each other. Seeds: three
-// (ABYSS_PSEEDS=a,b,c; ABYSS_PSECS=s per phase). It asserts the ramp (each phase busier than the
+// (GCD_PSEEDS=a,b,c; GCD_PSECS=s per phase). It asserts the ramp (each phase busier than the
 // last), a longest gap under a stated maximum, and that every category a phase has is seen.
 // The meter's defender: a player who survives without punishing (the measure of the wyrm's own
 // pressure: a parried last blow recoils it and a perfect dodge plunges onto its head, both cut a chain
@@ -703,8 +703,8 @@ async function scenarioPressure() {
   SFXP.figure = 'star';
   const aiMod = await imp('src/entities/dragon/ai.js');
   const P = TUNING.pressure ?? null;
-  const SECS = Number(process.env.ABYSS_PSECS ?? 120);
-  const SEEDS = (process.env.ABYSS_PSEEDS ?? '1337,7,4242').split(',').map(Number).filter(Number.isFinite);
+  const SECS = Number(process.env.GCD_PSECS ?? 120);
+  const SEEDS = (process.env.GCD_PSEEDS ?? '1337,7,4242').split(',').map(Number).filter(Number.isFinite);
   const ROLL = TUNE_P.roll?.dist ?? 4.2;
   // the director's own categories when it has them (a build without it: a plain derivation, for the
   // "before" numbers only)
@@ -807,7 +807,7 @@ async function scenarioPressure() {
         if (n === 'combat:flash' && e?.source === 'dragon') flashes.push([game.time, e.tell, e.attack]);
         if (n === 'dragon:windup') { winds.push([game.time, e.name]); const c = catOf(e.name); cats[c] = (cats[c] || 0) + 1; tellsOf[e.name] = (tellsOf[e.name] || 0) + 1; }
         if (n === 'player:hurt') hurt++;
-        if (process.env.ABYSS_PDBG && /dragon:windup|combat:flash|combat:tell|dragon:takeoff|dragon:land|dragon:attack/.test(n)) dbgLog.push([game.time, `${n.split(':')[1]} ${e?.name ?? e?.attack ?? ''}${n === 'combat:tell' ? ` ${e.tell} in ${e.impactIn?.toFixed(2)}` : ''} [${d.brain.action?.name ?? 'idle'} ${d.brain.action?.phase ?? ''} amb${d.brain.stats.ambient} dist ${d.sense.dist.toFixed(1)}]`]);
+        if (process.env.GCD_PDBG && /dragon:windup|combat:flash|combat:tell|dragon:takeoff|dragon:land|dragon:attack/.test(n)) dbgLog.push([game.time, `${n.split(':')[1]} ${e?.name ?? e?.attack ?? ''}${n === 'combat:tell' ? ` ${e.tell} in ${e.impactIn?.toFixed(2)}` : ''} [${d.brain.action?.name ?? 'idle'} ${d.brain.action?.phase ?? ''} amb${d.brain.stats.ambient} dist ${d.sense.dist.toFixed(1)}]`]);
       };
       const H = d.hazards.list;
       const pr = game.player.radius ?? 0.45;
@@ -844,7 +844,7 @@ async function scenarioPressure() {
         if (d.hp < pin) d.hp = pin;
         if (d.brain.pendingPhase > ph) d.brain.pendingPhase = 0;
         frames++;
-        if (process.env.ABYSS_PATT) {
+        if (process.env.GCD_PATT) {
           const an = d.brain.action?.name ?? 'idle';
           spent[an] = (spent[an] || 0) + DT;
           // where the hero is as a move ends (what its links can ask for): bearing f / s / b, distance n / m / f
@@ -904,7 +904,7 @@ async function scenarioPressure() {
       if (streamT.length) { ts.push(...streamT); ts.sort((a, b) => a - b); }
       for (let i = 1; i < ts.length; i++) {
         const g = ts[i] - ts[i - 1];
-        if (g > gapMax && process.env.ABYSS_PDBG) { out(`      gap ${g.toFixed(2)} from ${(ts[i - 1] - t0).toFixed(1)}: ${dbgLog.filter((x) => x[0] > ts[i - 1] - 1 && x[0] < ts[i] + 0.2).map((x) => `${(x[0] - t0).toFixed(1)} ${x[1]}`).join(' | ')}`); }
+        if (g > gapMax && process.env.GCD_PDBG) { out(`      gap ${g.toFixed(2)} from ${(ts[i - 1] - t0).toFixed(1)}: ${dbgLog.filter((x) => x[0] > ts[i - 1] - 1 && x[0] < ts[i] + 0.2).map((x) => `${(x[0] - t0).toFixed(1)} ${x[1]}`).join(' | ')}`); }
         if (g > gapMax) { gapMax = g; gapAt = `${(ts[i - 1] - t0).toFixed(0)} s after ${streamT.includes(ts[i - 1]) ? 'breath (its stream)' : flashes.findLast((f) => f[0] <= ts[i - 1])?.[2] ?? 'start'}: ${winds.filter((w) => w[0] > ts[i - 1] - 0.5 && w[0] < ts[i]).map((w) => w[1]).join(', ') || 'no move'}`; }
       }
       for (let i = 0; i < flashes.length; i++) {
@@ -912,7 +912,7 @@ async function scenarioPressure() {
           if (answerOf(flashes[i][1]) === answerOf(flashes[j][1])) continue;
           // (within one pattern, e.g. a torrent's red orb inside its ember stream: the pattern's own
           // design, counted apart; between two sources: the director's composition)
-          if (flashes[i][2] === flashes[j][2]) { inner++; innerAt.push(flashes[i][2]); if (process.env.ABYSS_PDBG) out(`      INNER ${flashes[i][2]} ${(flashes[i][0] - t0).toFixed(2)} ${flashes[i][1]} / ${(flashes[j][0] - t0).toFixed(2)} ${flashes[j][1]} (P${ph}) :: ${dbgLog.filter((x) => x[0] > flashes[i][0] - 1.5 && x[0] < flashes[j][0] + 0.3).map((x) => `${(x[0] - t0).toFixed(2)} ${x[1]}`).join(" | ")}`); } else { conflicts++; conflictAt.push(`${flashes[i][2]}/${flashes[j][2]}`); if (process.env.ABYSS_PDBG) out(`      CLASH at ${(flashes[i][0] - t0).toFixed(2)}: ${dbgLog.filter((x) => x[0] > flashes[i][0] - 4 && x[0] < flashes[j][0] + 0.5).map((x) => `${(x[0] - t0).toFixed(2)} ${x[1]}`).join(' | ')}`); }
+          if (flashes[i][2] === flashes[j][2]) { inner++; innerAt.push(flashes[i][2]); if (process.env.GCD_PDBG) out(`      INNER ${flashes[i][2]} ${(flashes[i][0] - t0).toFixed(2)} ${flashes[i][1]} / ${(flashes[j][0] - t0).toFixed(2)} ${flashes[j][1]} (P${ph}) :: ${dbgLog.filter((x) => x[0] > flashes[i][0] - 1.5 && x[0] < flashes[j][0] + 0.3).map((x) => `${(x[0] - t0).toFixed(2)} ${x[1]}`).join(" | ")}`); } else { conflicts++; conflictAt.push(`${flashes[i][2]}/${flashes[j][2]}`); if (process.env.GCD_PDBG) out(`      CLASH at ${(flashes[i][0] - t0).toFixed(2)}: ${dbgLog.filter((x) => x[0] > flashes[i][0] - 4 && x[0] < flashes[j][0] + 0.5).map((x) => `${(x[0] - t0).toFixed(2)} ${x[1]}`).join(' | ')}`); }
         }
       }
       const picks = Object.values(cats).reduce((a, b) => a + b, 0) || 1;
@@ -922,8 +922,8 @@ async function scenarioPressure() {
         air: air / frames, fire: fire / frames, idle: idle / frames, minSafe, safeLow, conflicts, conflictAt, inner, innerAt, hurt, tellsOf,
         holds: d.brain.stats?.holds ?? 0, seeks: d.brain.stats?.seeks ?? 0, gapAt, safeAt, minSky, avail, idleProbe,
       });
-      // ABYSS_PATT=1: where the phase's time went, move by move (s, picks, its cues, cues a second)
-      if (process.env.ABYSS_PATT) {
+      // GCD_PATT=1: where the phase's time went, move by move (s, picks, its cues, cues a second)
+      if (process.env.GCD_PATT) {
         const fl = {};
         for (const f of flashes) fl[f[2]] = (fl[f[2]] || 0) + 1;
         out(`      P${ph} seed ${seed} time: ${Object.entries(spent).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v.toFixed(0)}s/${tellsOf[k] ?? 0}x/${fl[k] ?? 0}c (${((fl[k] ?? 0) / v).toFixed(2)})`).join(' · ')}`);
@@ -1003,7 +1003,7 @@ async function scenarioPressure() {
 // each piece (the wyrm's move at the time, 'idle' = walking / turning between moves). The tuning
 // (tuning.js `world`, breakTuning.js) aims at a clearing that changes through a fight without being
 // flattened: between a third and two thirds standing at the end, and pieces left for the terrain moves
-// in phase 3. ABYSS_WSEEDS=a,b,c, ABYSS_WSECS=s per phase (the report's: three seeds, 80 s: a 4-minute
+// in phase 3. GCD_WSEEDS=a,b,c, GCD_WSECS=s per phase (the report's: three seeds, 80 s: a 4-minute
 // fight); the suite runs one seed.
 // (the wall report: its front rows out to WALL_FRONT m, the ring cut in WALL_SECTORS; a stretch is a run
 // of sectors at least WALL_HURT damaged (torn) or at most WALL_WHOLE (standing))
@@ -1020,8 +1020,8 @@ function wallStretches(sec) {
 }
 async function scenarioWreckage() {
   out('\n== scenario WRECKAGE (a whole AI fight on the real clearing: what stands, what burns, what felled it) ==');
-  const SECS = Number(process.env.ABYSS_WSECS ?? 80);
-  const SEEDS = (process.env.ABYSS_WSEEDS ?? '1337').split(',').map(Number).filter(Number.isFinite);
+  const SECS = Number(process.env.GCD_WSECS ?? 80);
+  const SEEDS = (process.env.GCD_WSEEDS ?? '1337').split(',').map(Number).filter(Number.isFinite);
   const BOUND = CONFIG.world.playerBound ?? 31;
   const rows = [];
   let lastG = null;
@@ -1033,7 +1033,7 @@ async function scenarioWreckage() {
     fightSetup(G, { ai: true });
     const d = game.dragon;
     Math.random = mulberry32(seed * 11 + 3);
-    // (ADR-195: the undergrowth at the treeline is kindling, there to be burnt and torn up; the meter is
+    // (ADR-197: the undergrowth at the treeline is kindling, there to be burnt and torn up; the meter is
     // the clearing's own pieces, as it was tuned: the undergrowth is reported apart)
     const UNDER = new Set(['bush', 'fern', 'bramble']);
     const inside = D.list.filter((b) => Math.hypot(b.x, b.z) < BOUND && !UNDER.has(b.kind));
@@ -1289,7 +1289,7 @@ async function scenarioBreach() {
   const before = phase(BREACH_SECS, 26, stat());
   const down0 = D.list.filter((b) => b.def.edge > 0 && b.state !== PIECE.INTACT).length;
   // (the fight's own fire may have felled a tree or two of the wall by now: what that opened is theirs too;
-  // ADR-195: the torn ground is E.T, the boss's, on a walk edge, where the hero's is the forest)
+  // ADR-197: the torn ground is E.T, the boss's, on a walk edge, where the hero's is the forest)
   let slack = 0;
   for (let i = 0; i < E.n; i++) slack = Math.max(slack, (E.T ?? E.R)[i] - E.base);
   // 2. the gap
@@ -1312,7 +1312,7 @@ async function scenarioBreach() {
   out(`   before the gap (${BREACH_SECS} s): ${f(before)}`);
   out(`   ${felled} trees felled in a wedge ${(2 * BREACH_HALF).toFixed(2)} rad wide out to ${BREACH_DEEP} m: his ground ends at ${open.toFixed(1)} m there, the root may go ${gain.toFixed(1)} m past its ${d.bound} m`);
   out(`   out in the gap (${BREACH_SECS} s): ${f(after)} · trees of the wall down ${down0} > ${down0 + felled} > ${down1}`);
-  // (ADR-195: on a walk edge nothing holds the hero at the circle any more, the forest is his ground; he
+  // (ADR-197: on a walk edge nothing holds the hero at the circle any more, the forest is his ground; he
   // holds 26 m out and is never off it. The wyrm's circle holds while he stands inside it)
   assert((E.walk || before.heroFar <= 31 + slack - p.radius + 0.05) && before.wyrmFar <= d.bound + slack + 0.05 && !before.heroOff && !before.wyrmOff && before.airOver < 6,
     `before the gap: the hero within his ground (${before.heroFar.toFixed(2)} m; ${E.walk ? 'the forest is his' : `the circle is ${31 - p.radius}`}), the wyrm's root within its own (${before.wyrmFar.toFixed(2)} m; its circle is ${d.bound}); the fight's own fire had opened ${slack.toFixed(1)} m at most by then`);
@@ -1329,7 +1329,7 @@ async function scenarioBreach() {
   // 4242 among them), mean ~6 m on both, while the hero held ~60 m and the root's ground on his line
   // ended 15.5 m short of him: the wyrm fights him from the end of its share, nothing wrong in it
   const hold = Math.min(60, (game.world.heroBound?.(ax, az) ?? 31) - 3), short = Math.max(6, hold - (d.bound + gain));
-  // (fighting = in one of its moves. Was cues a minute >= 60 % of the clearing's; ADR-195: at range it
+  // (fighting = in one of its moves. Was cues a minute >= 60 % of the clearing's; ADR-197: at range it
   // picks the long ranged moves, the firestorm's channel (8.6 s, ONE red cue), the sky furnace (~10 s),
   // the ember rain, and seed 4242 read 24 cues a minute out there against 47 in the clearing while the
   // wyrm was in a move 94 % of the time out there and 86 % in the clearing: the cue count measures the
@@ -1344,7 +1344,7 @@ async function scenarioBreach() {
   // blows at the line may fell a tree of it again (ADR-154, 2026-11-22: one full run ended with the
   // edge open again, the hero and the wyrm both inside): what stands is read at the restore, what the
   // fight felled after it is counted apart)
-  // (ADR-195: on a walk edge the restore shuts the torn lanes, the boss's; the hero out there stays on
+  // (ADR-197: on a walk edge the restore shuts the torn lanes, the boss's; the hero out there stays on
   // his ground, the forest, and walks back in; the wyrm's ground comes back in after him)
   const shut = E.walk ? E.lanes === 0 : !E.open, t0 = game.time;
   // (classic: the hero is put back by his next step; the wyrm by its next step on the ground: a flight ends first)
@@ -1370,7 +1370,7 @@ async function scenarioBreach() {
   return G;
 }
 
-// ================================================================== scenario: forestedge (no invisible walls: he walks into the forest, ADR-195)
+// ================================================================== scenario: forestedge (no invisible walls: he walks into the forest, ADR-197)
 // The REAL Cinderwood (world/edge.js WALK mode). 1. Exploring, the hero walks from the bonfire out
 // west and north-west through the treeline into the forest: nothing holds him at the old 31 m circle,
 // the trunks and rocks turn him, the ridge's crags stop him at the true end, and he is never off his
@@ -1524,7 +1524,7 @@ async function scenarioForestEdge() {
       const hx = p.position.x, hz = p.position.z, hr = Math.hypot(hx, hz);
       if (hr > E.base + 1) {
         // (the cap as bossGain reads it: the lesser of the two lanes whose middles bracket him, so the
-        // wyrm stays bossIn m short of the ridge on both sides of where it reads; ADR-195 integration:
+        // wyrm stays bossIn m short of the ridge on both sides of where it reads; ADR-197 integration:
         // one lane's line alone left a 0.27 m step between two lanes, 50.75 / 50.48 m, read as a miss)
         const u = (Math.atan2(hz, hx) + Math.PI) / E.step - 0.5, li = ((Math.floor(u) % E.n) + E.n) % E.n;
         const want = Math.min(hr - E.base + BREAK.edge.walk.lead, Math.min(E.W[li], E.W[(li + 1) % E.n]) - E.base - BREAK.edge.walk.bossIn);
@@ -1598,12 +1598,12 @@ async function scenarioForestEdge() {
 // Per seed: the peak of the fire field (it holds 6000 blobs), of both glyph pools (alpha 3000, add
 // 7000), and the worst and the mean frame time of dragon.update + world.update (headless node: the
 // CPU side only). Desktop settings, then the phone's (the world's LOW budget). It asserts the fire
-// field's peak stays under BUDGET_FIRE. ABYSS_BSEEDS=a,b,c ABYSS_BSECS=s for the full measurement
+// field's peak stays under BUDGET_FIRE. GCD_BSEEDS=a,b,c GCD_BSECS=s for the full measurement
 // (the report's: three seeds, 180 s); the suite runs one seed for 60 s.
 async function scenarioBudget() {
   out('\n== scenario BUDGET (a phase-3 fight, everything on: fire field, glyph pools, frame time of dragon + world) ==');
-  const SECS = Number(process.env.ABYSS_BSECS ?? 60);
-  const SEEDS = (process.env.ABYSS_BSEEDS ?? '4242').split(',').map(Number).filter(Number.isFinite);
+  const SECS = Number(process.env.GCD_BSECS ?? 60);
+  const SEEDS = (process.env.GCD_BSEEDS ?? '4242').split(',').map(Number).filter(Number.isFinite);
   const BUDGET_FIRE = 4500;
   const rows = [];
   let lastG = null;
@@ -1759,11 +1759,11 @@ async function scenarioWin() {
 }
 
 // ================================================================== scenario: probe (difficulty, opt-in)
-// Not part of 'all': `node tests/integration/integ.mjs . probe` (env ABYSS_SKILL = the share of tells
-// the bot answers, default 0.8; ABYSS_SEED reseeds). A mortal bot with the win scenario's habits
+// Not part of 'all': `node tests/integration/integ.mjs . probe` (env GCD_SKILL = the share of tells
+// the bot answers, default 0.8; GCD_SEED reseeds). A mortal bot with the win scenario's habits
 // fights until it wins or dies: a rough read of the fight's length and danger for tuning.
 async function scenarioProbe() {
-  const skill = Number(process.env.ABYSS_SKILL ?? 0.8);
+  const skill = Number(process.env.GCD_SKILL ?? 0.8);
   out(`
 == scenario PROBE (mortal bot, answers ${Math.round(skill * 100)} % of tells) ==`);
   const G = build();
@@ -2263,11 +2263,11 @@ async function scenarioAsciiHud() {
   assert(text(P) === '---======---', `half posture: the middle half ("${text(P)}")`);
   P.snap(1);
   assert(text(P) === '============', 'full posture: the whole row');
-  // block letters: six rows, every letter as wide on each of them; ABYSS is the title logo
+  // block letters: six rows, every letter as wide on each of them, in the face the title logo is drawn in
   const abc = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   const ragged = [...abc, ',', '.', '-', "'", '!', ' '].filter((ch) => { const r = blockLines(ch); return r.length !== 6 || new Set(r.map((x) => x.length)).size !== 1 || r[0].length < 3; });
   assert(!ragged.length, `every block letter is six rows of one width (${ragged.join('') || 'all'})`);
-  assert(blockLines('ABYSS')[0] === ' █████╗ ██████╗ ██╗   ██╗███████╗███████╗' && blockLines('abyss')[5] === '╚═╝  ╚═╝╚═════╝    ╚═╝   ╚══════╝╚══════╝', 'ABYSS in block letters is the title logo');
+  assert(blockLines('GCD')[0] === ' ██████╗  ██████╗██████╗ ' && blockLines('gcd')[5] === ' ╚═════╝  ╚═════╝╚═════╝ ', 'GCD in block letters keeps the face (and lower case reads as upper)');
   const one = blockText('ASHFALL COURTYARD', { maxCols: 400 }), two = blockText('ASHFALL COURTYARD', { maxCols: 90 });
   assert(one.lines.length === 6 && two.lines.length === 13 && two.lines[6] === '' && two.cols <= 90 && two.lines.every((l) => l.length <= 90), `a long name stacks word by word on a narrow screen (${one.cols} cols → ${two.cols})`);
   // the HUD's own meters
@@ -2804,7 +2804,7 @@ async function scenarioPlunge() {
       // (the vanish is invisible: the camera only has to have him once he reappears)
       if (p.plungeAnim.phase > 0 && (!ndc(G, p.position.x, p.position.y + 1.1, p.position.z).ok || !ndc(G, head.x, head.y, head.z).ok)) {
         tr.offscreen++;
-        if (process.env.ABYSS_TRACE) out('     OFF', p.plungeAnim.phase, p.plungeAnim.u.toFixed(2), JSON.stringify(ndc(G, p.position.x, p.position.y + 1.1, p.position.z)), JSON.stringify(ndc(G, head.x, head.y, head.z)));
+        if (process.env.GCD_TRACE) out('     OFF', p.plungeAnim.phase, p.plungeAnim.u.toFixed(2), JSON.stringify(ndc(G, p.position.x, p.position.y + 1.1, p.position.z)), JSON.stringify(ndc(G, head.x, head.y, head.z)));
       }
       if (i === 5) {
         const hp = p.hp;
@@ -2971,7 +2971,7 @@ async function scenarioPlunge() {
   let airAtDodge = false;
   const hF0 = G.hits.length;
   const rF = forceAttack(G, 'skyStrafe', { answer: 'dodge', settle: 1, max: 7 });
-  if (process.env.ABYSS_TRACE) out('     strafe hits', JSON.stringify(G.hits.slice(hF0)), 'pressLead', rF.pressLead, 'flashT', rF.flashT, 'impactT', rF.impactT, 'hero', p.position.x.toFixed(1), p.position.z.toFixed(1), 'hz', d.hazards.count());
+  if (process.env.GCD_TRACE) out('     strafe hits', JSON.stringify(G.hits.slice(hF0)), 'pressLead', rF.pressLead, 'flashT', rF.flashT, 'impactT', rF.impactT, 'hero', p.position.x.toFixed(1), p.position.z.toFixed(1), 'hz', d.hazards.count());
   airAtDodge = d.state === 'airborne' || d.rig.s.alt > 1;
   const plungedF = p.state === 'plunge';
   const trF = ride(6);
@@ -3582,7 +3582,7 @@ async function scenarioTraining() {
     while (T.ph !== 'done' && frames < Math.round(40 / DT)) { G.tick(DT); frames++; }
     const r = T.lastResult;
     const ok = T.ph === 'done' && r?.id === s.id && r.ok;
-    if (!ok || process.env.ABYSS_TRACE) out(`   ${ok ? 'ok ' : 'BAD'} ${s.cat} · ${s.name}: ${T.ph} in ${(frames * DT).toFixed(1)} s · missing ${JSON.stringify(r?.missing ?? '?')} · hero ${game.player.state} streak ${game.player.streak} · boss ${game.dragon.state}`);
+    if (!ok || process.env.GCD_TRACE) out(`   ${ok ? 'ok ' : 'BAD'} ${s.cat} · ${s.name}: ${T.ph} in ${(frames * DT).toFixed(1)} s · missing ${JSON.stringify(r?.missing ?? '?')} · hero ${game.player.state} streak ${game.player.streak} · boss ${game.dragon.state}`);
     if (!ok) bad.push(s.id);
   }
   T.stop();
@@ -4658,7 +4658,7 @@ async function scenarioAblaze() {
   // the attack table at the base (fc17317): every attack's damage, timings, tells and reach
   // (103cbc42 since the merge with the duelists' second pass, ADR-122: furnaceMaw's bite impact 0.09 → 0.118,
   // the lead's timing fix for its mirrored side; ADR-120 alone left 47e0a683. Nothing of ablaze changes it)
-  // (c08725a9 since ADR-195: the table gained the roar-cast spells and the brood's moves, fireSerpent,
+  // (c08725a9 since ADR-197: the table gained the roar-cast spells and the brood's moves, fireSerpent,
   // firestorm, drakelings, wisps; no existing attack changed: without them it still hashes to 103cbc42)
   const BASE_ATTACKS = 'c08725a9';
   const table0 = JSON.stringify(TUNING.attacks);
@@ -5233,7 +5233,7 @@ async function scenarioFire() {
 }
 
 // ================================================================== scenario: every fire comes from the wyrm
-// ADR-195 (the owner: "all the fire should be coming from the dragon itself"): no fire appears out of
+// ADR-197 (the owner: "all the fire should be coming from the dragon itself"): no fire appears out of
 // nothing. The eruptions' crack runs out of the forefeet's slam (the P2 line's pillars burst as its head
 // reaches each one; the P3 chase's head runs to the hero and every pillar bursts at it), the P3 second
 // flame wall's warning is laid from where the first wall crosses its line, and Armageddon's meteors
@@ -5799,7 +5799,7 @@ async function scenarioWyrmFace() {
   }
   setWyrmFace(prev);
   const o = res.old;
-  assert(WYRM_FACE_SHIPPED === 'drake' && prev === (process.env.ABYSS_WYRMFACE || WYRM_FACE_SHIPPED) && WYRM_FACES[0] === 'drake',
+  assert(WYRM_FACE_SHIPPED === 'drake' && prev === (process.env.GCD_WYRMFACE || WYRM_FACE_SHIPPED) && WYRM_FACES[0] === 'drake',
     `with nothing set the wyrm wears the drake (the owner's pick); in use: ${prev}`);
   for (const face of ['old', 'drake', 'tyrant', 'viper', 'revenant']) {
     const h = res[face]?.horn;
@@ -5894,7 +5894,7 @@ async function scenarioWyrmLook() {
   H.setWyrmFace(face0);
   const o = res['0'];
   out(`   builds: ${WYRM_LOOKS.map((k) => `${k} ${res[k].build ?? '(before)'}: ${res[k].tris} triangles, ${res[k].draws} draws, ${res[k].bones} bones, head at rest ${res[k].rest.head.y.toFixed(2)} m`).join(' · ')}`);
-  assert(WYRM_LOOK_SHIPPED === 'c' && prev === (process.env.ABYSS_WYRMLOOK || WYRM_LOOK_SHIPPED) && o.build === null && res.c.build === 'lean + ragged',
+  assert(WYRM_LOOK_SHIPPED === 'c' && prev === (process.env.GCD_WYRMLOOK || WYRM_LOOK_SHIPPED) && o.build === null && res.c.build === 'lean + ragged',
     `with nothing set the wyrm is build c (lean + ragged); '0' is the wyrm before (in use ${prev}, c: ${res.c.build})`);
   assert(setWyrmLook('z') === false && wyrmLookId() === prev && (prev === '0' ? wyrmLook() === null : !!wyrmLook()), 'an unknown build is refused and the one in use is kept');
   for (const k of WYRM_LOOKS) {
@@ -8600,7 +8600,7 @@ async function scenarioHeroRun() {
       }
       S.hand = Math.max(S.hand, A.cur[P.hs]);
       if (!Number.isFinite(W.x + W.y + W.z + E.x + E.y + E.z)) S.nan++;
-      if (process.env.ABYSS_RUNTRACE === `${mode}:${cur}`) out(`       ${S.n} ${p.state}/${A.key} mz ${A.mz.toFixed(2)} mw ${A.moveW.toFixed(2)} sw ${A.sprintW.toFixed(2)} el ${el.toFixed(0)} fl ${up.x.toFixed(2)} W ${f1(W.x)} ${f1(W.y)} ${f1(W.z)} bw ${(A.runArmS?.bw ?? 0).toFixed(2)}`);
+      if (process.env.GCD_RUNTRACE === `${mode}:${cur}`) out(`       ${S.n} ${p.state}/${A.key} mz ${A.mz.toFixed(2)} mw ${A.moveW.toFixed(2)} sw ${A.sprintW.toFixed(2)} el ${el.toFixed(0)} fl ${up.x.toFixed(2)} W ${f1(W.x)} ${f1(W.y)} ${f1(W.z)} bw ${(A.runArmS?.bw ?? 0).toFixed(2)}`);
       if (prev.n >= 2) {
         // (second difference: X − 2·Q0 + Q1)
         const d2 = (X, Q) => Math.hypot(X.x - 2 * Q[0].x + Q[1].x, X.y - 2 * Q[0].y + Q[1].y, X.z - 2 * Q[0].z + Q[1].z);
@@ -9681,7 +9681,7 @@ async function scenarioPad() {
   const tap = (i, hold = 0.05, after = 0.1) => { btn(i); frames(hold); btn(i, false); frames(after); };
   const B = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, LT: 6, RT: 7, START: 9, L3: 10, R3: 11, UP: 12, DOWN: 13 };
 
-  assert(gp && gp.active === false && !html().contains('abyss-pad'), 'no pad: inert, no pad class');
+  assert(gp && gp.active === false && !html().contains('gcd-pad'), 'no pad: inert, no pad class');
   frames(0.8);
   pads = [null, pad];
   frames(0.2);
@@ -9690,7 +9690,7 @@ async function scenarioPad() {
   const roll0 = c('player:roll');
   btn(B.A);
   frames(0.5);
-  assert(gp.active && html().contains('abyss-pad') && cls('ab-root')?.classList.contains('ab-pad'), 'first press → pad active (html.abyss-pad, HUD .ab-pad)');
+  assert(gp.active && html().contains('gcd-pad') && cls('ab-root')?.classList.contains('ab-pad'), 'first press → pad active (html.gcd-pad, HUD .ab-pad)');
   assert(game.state === 'explore', `title: A → explore (got ${game.state})`);
   assert(c('player:roll') === roll0 && !input.act('dodge'), 'the A that closed the title, still held, does not roll');
   btn(B.A, false);
@@ -9804,11 +9804,11 @@ async function scenarioPad() {
   frames(0.05);
   fireWin('keyup', { code: 'KeyW' });
   frames(0.05);
-  assert(!gp.active && !html().contains('abyss-pad') && !input.act('block'), 'a key press → keyboard in use: pad hints off, the pad\'s held guard released');
+  assert(!gp.active && !html().contains('gcd-pad') && !input.act('block'), 'a key press → keyboard in use: pad hints off, the pad\'s held guard released');
   btn(B.LB, false);
   pad.axes[0] = 0.9;
   frames(0.1);
-  assert(gp.active && html().contains('abyss-pad'), 'the stick → the pad is the device in use again');
+  assert(gp.active && html().contains('gcd-pad'), 'the stick → the pad is the device in use again');
   // non-finite axes read as centred
   pad.axes = [NaN, Infinity, -Infinity, NaN];
   frames(0.1);
@@ -9828,7 +9828,7 @@ async function scenarioPad() {
   // a disconnect mid-fight pauses and hands the screen back to the keyboard hints
   pads = [];
   frames(0.1);
-  assert(!gp.connected && !gp.active && game.state === 'paused' && !html().contains('abyss-pad'), `pad unplugged mid-fight → paused (${game.state})`);
+  assert(!gp.connected && !gp.active && game.state === 'paused' && !html().contains('gcd-pad'), `pad unplugged mid-fight → paused (${game.state})`);
   game.flow.resume();
   frames(0.1);
   delete nav.getGamepads;
@@ -9857,15 +9857,15 @@ async function scenarioRemap() {
   assert(b2.codes('dodge').join() === 'KeyF' && b2.codes('flask').join() === 'KeyQ' && b2.buttons('attack').join() === '0', 'saved: a new Bindings on the same storage loads them');
   b2.reset(true, 'pad');
   assert(b2.buttons('attack').join() === '5' && b2.codes('dodge').join() === 'KeyF', 'reset the pad tab only: the keyboard keeps its remap');
-  mem.set('abyss.bindings.v2', '{ not json');
+  mem.set('gcd.bindings.v2', '{ not json');
   assert(new Bindings(storage).isDefault(), 'corrupt storage → defaults');
-  mem.set('abyss.bindings.v2', JSON.stringify({ kb: { dodge: ['KeyF'], flask: ['KeyF'], attack: ['Escape', 7] }, pad: { attack: [5, 99, 9] } }));
+  mem.set('gcd.bindings.v2', JSON.stringify({ kb: { dodge: ['KeyF'], flask: ['KeyF'], attack: ['Escape', 7] }, pad: { attack: [5, 99, 9] } }));
   const b3 = new Bindings(storage);
   assert(b3.isDefault('kb') && b3.buttons('attack').join() === '5' && b3.buttons('block').join() === '4,6',
     `stored clash that would leave the flask unbound → keyboard defaults; pad junk (99, Menu) dropped (attack ${b3.buttons('attack')})`);
   {
     // (a v1 save put the guard on the right click, now the heavy's: it is not read)
-    const m1 = new Map([['abyss.bindings.v1', JSON.stringify({ kb: { block: ['Mouse2'] } })]]);
+    const m1 = new Map([['gcd.bindings.v1', JSON.stringify({ kb: { block: ['Mouse2'] } })]]);
     const b4 = new Bindings({ getItem: (k) => m1.get(k) ?? null, setItem: (k, v) => m1.set(k, String(v)) });
     assert(b4.isDefault() && b4.codes('block').join() === 'Mouse1' && b4.codes('heavy').join() === 'Mouse2', 'a v1 save (the guard on RMB) is not read: the new defaults stand');
   }
@@ -9988,12 +9988,12 @@ async function scenarioTiming() {
   const { attackWeight } = await imp('src/entities/dragon/ai.js');
   const lead = TUNING.flashLead, TOL = 0.085;
   // the strings, plus the single melee attacks they share performances with (unchanged numbers)
-  let names = (process.env.ABYSS_TM || 'clawCombo,rendingFlurry,hesitantMaw,wingBuffet,tailLash,pounce,frenzy,blackMaw,stormFlurry,wingRend,pivotLash,rearGuard,skyHammer,furnaceMaw,cinderRake,cataclysm,bite,swipe,tail,stomp').split(',');
+  let names = (process.env.GCD_TM || 'clawCombo,rendingFlurry,hesitantMaw,wingBuffet,tailLash,pounce,frenzy,blackMaw,stormFlurry,wingRend,pivotLash,rearGuard,skyHammer,furnaceMaw,cinderRake,cataclysm,bite,swipe,tail,stomp').split(',');
   // one part of the list (tests/run.mjs runs the n parts side by side): every n-th name from the k-th
-  if (process.env.ABYSS_TM_SHARD) {
-    const m = /^(\d+)\/(\d+)$/.exec(process.env.ABYSS_TM_SHARD);
+  if (process.env.GCD_TM_SHARD) {
+    const m = /^(\d+)\/(\d+)$/.exec(process.env.GCD_TM_SHARD);
     const k = m ? +m[1] : 0, n = m ? +m[2] : 0;
-    if (!(n >= 1 && k >= 1 && k <= n)) { assert(false, `ABYSS_TM_SHARD is k/n with 1 <= k <= n (${process.env.ABYSS_TM_SHARD})`); return G; }
+    if (!(n >= 1 && k >= 1 && k <= n)) { assert(false, `GCD_TM_SHARD is k/n with 1 <= k <= n (${process.env.GCD_TM_SHARD})`); return G; }
     names = names.filter((_, i) => i % n === k - 1);
     out(`   part ${k} of ${n}: ${names.join(', ')}`);
   }
@@ -10059,7 +10059,7 @@ async function scenarioTiming() {
         const nb = flashes.length ? Math.max(...flashes.map((f) => f.hit)) + 1 : 0;
         for (let h = 0; h < nb; h++) (R.hits[h] ||= { n: 0, lo: Infinity, hi: -Infinity, bad: [] }).tried = (R.hits[h].tried ?? 0) + 1;
         if (!seen.has(0)) { firstMiss++; if (R.miss1.length < 6) R.miss1.push(`P${phase} ${dist}@${ang.toFixed(1)}`); }
-        if (process.env.ABYSS_TMV) (R.map ||= []).push(`P${phase} ${String(dist).padStart(4)}@${ang.toFixed(1).padStart(4)}: ${[...seen].sort().join('')}/${nb} ${hits.filter((h, i, A) => A.findIndex((x) => x.hit === h.hit) === i).map((h) => { const f = flashes.find((x) => x.hit === h.hit); return f ? Math.round((h.t - f.t - lead) * 1000) : '?'; }).join(',')}`);
+        if (process.env.GCD_TMV) (R.map ||= []).push(`P${phase} ${String(dist).padStart(4)}@${ang.toFixed(1).padStart(4)}: ${[...seen].sort().join('')}/${nb} ${hits.filter((h, i, A) => A.findIndex((x) => x.hit === h.hit) === i).map((h) => { const f = flashes.find((x) => x.hit === h.hit); return f ? Math.round((h.t - f.t - lead) * 1000) : '?'; }).join(',')}`);
       }
     }
     if (R.map) out(R.map.map((l) => `      ${l}`).join('\n'));
@@ -10263,7 +10263,7 @@ async function scenarioMelee() {
 // parryable hit parried (the string goes on after each non-final parry, recoils after the last, the
 // posture adds up, combat:deflectChain counts); a red hit inside a string breaks a held guard.
 async function scenarioBrood() {
-  out('\n== scenario BROOD (the incantation, fire drakelings and kamikaze wisps: ADR-195) ==');
+  out('\n== scenario BROOD (the incantation, fire drakelings and kamikaze wisps: ADR-197) ==');
   const G = build();
   const { game, input } = G;
   fightSetup(G);
@@ -12221,7 +12221,7 @@ async function scenarioTerrain() {
     // of the seed: 0 to 4 over four seeds, on this code and on the code before it)
     for (let i = 0; i < Math.round(300 / DT); i++) {
       bot(G, { god: true, defend: true });
-      if (process.env.ABYSS_TRACE2 && !d.brain.action && d.state === 'combat') { for (const n of ['hurl', 'tailBat', 'fireBrand']) { const w = attackWeight(ATTACKS[n], n, d, d.sense); dbg[n] = (dbg[n] || 0) + (w > 0 ? 1 : 0); dbg[n + 'cd'] = (dbg[n + 'cd'] || 0) + ((d.brain.cooldowns[n] ?? 0) > 0 ? 1 : 0); } dbg.idle = (dbg.idle || 0) + 1; dbg.dist = (dbg.dist || 0) + d.sense.dist; }
+      if (process.env.GCD_TRACE2 && !d.brain.action && d.state === 'combat') { for (const n of ['hurl', 'tailBat', 'fireBrand']) { const w = attackWeight(ATTACKS[n], n, d, d.sense); dbg[n] = (dbg[n] || 0) + (w > 0 ? 1 : 0); dbg[n + 'cd'] = (dbg[n + 'cd'] || 0) + ((d.brain.cooldowns[n] ?? 0) > 0 ? 1 : 0); } dbg.idle = (dbg.idle || 0) + 1; dbg.dist = (dbg.dist || 0) + d.sense.dist; }
       G.tick(DT);
       if (open && d.brain.action !== open.act) {
         if (!open.flash) (open.act?.aborted || open.reset || CUT.has(d.brain.action?.name) || d.state === 'staggered' ? excused++ : unexcused++);
@@ -12239,7 +12239,7 @@ async function scenarioTerrain() {
     }
     G.watch = null;
     G.defend = null;
-    if (process.env.ABYSS_TRACE2) out('   ' + JSON.stringify(dbg) + ' ' + JSON.stringify(picks));
+    if (process.env.GCD_TRACE2) out('   ' + JSON.stringify(dbg) + ' ' + JSON.stringify(picks));
     const total = Object.values(picks).reduce((a, b) => a + b, 0);
     const mine = (picks.hurl || 0) + (picks.tailBat || 0) + (picks.fireBrand || 0);
     out(`   300 s with the AI on: ${total} attacks, terrain moves ${mine} (hurl ${picks.hurl || 0}, tail bat ${picks.tailBat || 0}, firebrand ${picks.fireBrand || 0}); phase ${d.phase}; tells ${tells}, flashes ${flashes}; called off or cut short ${excused}, neither ${unexcused}`);
@@ -13905,7 +13905,7 @@ async function scenarioSfx() {
 }
 const num0 = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 
-// ================================================================== scenario: spells (ADR-195)
+// ================================================================== scenario: spells (ADR-197)
 // The roar-cast fire spells (spellsFire.js): the fire serpent and the firestorm. Each is a Lab ability
 // with a red tell; forced on the hand-built field (dead trees, boulders) it opens with the incantation
 // and the roar, then HAPPENS: the serpent reaches the hero, strikes on its red beats (one flash per
@@ -14198,10 +14198,10 @@ const SCENARIOS = {
 };
 const runs = [];
 const OPT_IN = new Set(['probe', 'strategy']); // run only when named
-// ABYSS_SKIP: scenarios left out of `all` because the caller runs them beside this process
-const SKIP = new Set((process.env.ABYSS_SKIP || '').split(',').filter(Boolean));
-for (const name of SKIP) if (!SCENARIOS[name]) { out(`ABYSS_SKIP: unknown scenario '${name}'`); process.exit(2); }
-if (SCEN === 'all' && SKIP.size) out(`\n(not run here, ABYSS_SKIP: ${[...SKIP].join(', ')})`);
+// GCD_SKIP: scenarios left out of `all` because the caller runs them beside this process
+const SKIP = new Set((process.env.GCD_SKIP || '').split(',').filter(Boolean));
+for (const name of SKIP) if (!SCENARIOS[name]) { out(`GCD_SKIP: unknown scenario '${name}'`); process.exit(2); }
+if (SCEN === 'all' && SKIP.size) out(`\n(not run here, GCD_SKIP: ${[...SKIP].join(', ')})`);
 // a scenario, `all`, or a comma list of scenarios (run in the order of SCENARIOS, as `all` does)
 const WANT = SCEN === 'all' ? [] : SCEN.split(',');
 if (WANT.length > 1) for (const name of WANT) if (!SCENARIOS[name]) { out(`unknown scenario '${name}' in '${SCEN}'`); process.exit(2); }

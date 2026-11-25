@@ -1,4 +1,4 @@
-// Cinderwood's forest beyond the clearing (the fire-and-forest pass, ADR-195): the hero walks out among
+// Cinderwood's forest beyond the clearing (the fire-and-forest pass, ADR-197): the hero walks out among
 // the trees (world/edge.js WALK mode), a rock ridge is the true end of the map, and the forest he walks
 // in is denser and alive (young trees, undergrowth, fallen logs, old stumps, mossy rocks, roots and
 // hanging moss on the old oaks) for the wyrm to rip and burn through. Read by world/forest.js and

@@ -841,7 +841,7 @@ export function createForest(U, colliders) {
   // and rewritten as it shudders, leans, falls or is carried (destructibles.js RangeBody). Its stump is a
   // run of the stump mesh, folded away until it shows.
   const treeRuns = new Runs(), stumpRuns = new Runs(), propRuns = new Runs();
-  // (ADR-195: wood past GROWTH.phoneFar m stands on the deep mesh, which the phone does not draw: its
+  // (ADR-197: wood past GROWTH.phoneFar m stands on the deep mesh, which the phone does not draw: its
   // closer camera never sees that far from the end of the map)
   const deepRuns = new Runs();
   const brFar = mulberry32(CONFIG.seed + 6007); // (the stumps of the trees past the old 42 m line)
@@ -874,7 +874,7 @@ export function createForest(U, colliders) {
   // the ridge (forestTuning.js RIDGE): the true end of the map, a ring of crags; no tree stands in it
   // (dropped after it is built, like a landmark's: the layout's sequence stays as it was)
   const onRidge = (x, z, pad = 0) => Math.abs(Math.hypot(x, z) - ridgeAt(Math.atan2(z, x)) - RIDGE.out) < RIDGE.size[1] + 0.6 + pad;
-  // what grows on and round the old trees and in the forest draws on a stream of its own (ADR-195)
+  // what grows on and round the old trees and in the forest draws on a stream of its own (ADR-197)
   const gr = mulberry32(CONFIG.seed + 5023);
   const kept = []; // (the old trees standing in the walkable band: a dead trunk may lean on one)
   for (const t of trees) {
@@ -1077,7 +1077,7 @@ export function createForest(U, colliders) {
     treeSpots.push({ x: t.x, z: t.z, r: 5 });
   }
 
-  // the forest he walks in and its end (ADR-195, forestTuning.js): the ridge's crags, young trees, the
+  // the forest he walks in and its end (ADR-197, forestTuning.js): the ridge's crags, young trees, the
   // undergrowth, fallen logs, old stumps, mossy rocks; beyond the ridge a thicket (the deep mesh: not
   // drawn on the phone). Their breakables are listed after every other (the ids of what was there stay)
   const rockRuns = new Runs(), rubbleRuns = new Runs(), brushRuns = new Runs();
@@ -1136,7 +1136,7 @@ export function createForest(U, colliders) {
     group, treeSpots, bare, slabs, nest, bonfire: { x: bf.x, z: bf.z },
     material: mat, stoneMaterial: stoneMat, slabMaterial: slabMat,
     breakables,
-    // the hero's ground (edge.js WALK mode, ADR-195): the whole forest out to the ridge from the start;
+    // the hero's ground (edge.js WALK mode, ADR-197): the whole forest out to the ridge from the start;
     // the trunks and rocks are his walls. What the wall's fallen trees open (ADR-125) is the boss's
     edge: { base: W.playerBound ?? 31, walk: { at: (a) => ridgeAt(a) + RIDGE.inset } },
     // the phone's share (destructibles.setQuality): the thicket beyond the ridge is not drawn
@@ -1150,7 +1150,7 @@ export function createForest(U, colliders) {
   };
 }
 
-// ---------- the forest he walks in (ADR-195) ----------
+// ---------- the forest he walks in (ADR-197) ----------
 /** Roots round an old oak's foot (merged into its trunk) and hanging moss under its crown (parts after it). */
 function growOn(gr, t, g) {
   const R = GROWTH.roots, M = GROWTH.moss;

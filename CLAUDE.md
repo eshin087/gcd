@@ -1,6 +1,9 @@
-# gcdAbyss — instructions for Claude agents
+# gcd — instructions for Claude agents
 
-ABYSS is a long-term browser game: a **wuxia skill boss rush** in the vein of Phantom Blade Zero,
+gcd is a long-term browser game (the name is written lowercase wherever a player sees it; ADR-195),
+named for its hero: gcd, a mysterious being who wields the most powerful sword in all universes, the
+sword that lets him defeat these legendary bosses and carries him between campfires in different worlds
+and universes. It is a **wuxia skill boss rush** in the vein of Phantom Blade Zero,
 with some exploring and RPG elements and fixed rewards (techniques, weapons, abilities; ADR-059),
 rendered in its own ASCII look. Today: eight levels, each its own
 page load (`?level=`): Cinderwood Hollow (the Cinder Wyrm, who also roars up fire spells and a brood of
@@ -15,7 +18,7 @@ Second, is the second learned technique) and Halcyon Plaza (Halcyon, the Last Sa
 fights in sword reach, his eyes, a city his moves tear down; no reward yet).
 Read this file first, every session.
 
-- Repo: https://github.com/eshin087/gcdAbyss · Live: https://gcdabyss.vercel.app (auto-deploys `main`)
+- Repo: https://github.com/eshin087/gcd · Live: https://thegcd.vercel.app (auto-deploys `main`)
 - Stack: Three.js 0.180 (WebGL2), plain ES modules, no framework, esbuild only for the release bundle.
 
 ## Start-of-session checklist
@@ -36,7 +39,7 @@ npm test         # headless integration sims (real game modules, mocked DOM/WebG
                  # side by side (tests/run.mjs; --serial or --jobs N after `npm test --`;
                  #  --shard I/N one of CI's parallel shares, --list shows the shares; ADR-153)
                  # (one suite: node tests/integration/lord.mjs . <scenario>, also integ.mjs / duel.mjs / world.mjs / asc.mjs / fox.mjs / city.mjs;
-                 #  `duel.mjs . pace` / `lord.mjs . pace`: the duelists' pressure meter, ABYSS_PSEEDS / ABYSS_PSECS;
+                 #  `duel.mjs . pace` / `lord.mjs . pace`: the duelists' pressure meter, GCD_PSEEDS / GCD_PSECS;
                  #  woke.mjs: Xin Yi, `woke.mjs . strategy` opt-in)
 npm run build    # single-file dist/index.html (what Vercel serves)
 npm run hero-parts  # regenerate src/entities/player/heroParts.js (needs Blender 4.2+; ADR-037)
@@ -56,7 +59,7 @@ the cut) are on: `?chip=0` turns them off (ADR-132); `?cutStop=1` gives back the
 kind until the reset; ADR-177): `?marks=0` leaves today's cracks only. Grass the sword cuts (the hero's
 blade mows what it passes low through, every floor mark tears the grass out in its shape; ADR-180):
 `?mow=0` leaves the grass as before. The grove's bamboo: `?bamboo=0|b` (a, the owner's pick: five kinds of cane mixed in clumps;
-0 = the grove before; ADR-151). The fire-and-forest pass (ADR-195; defaults first, none picked yet): `?incant=a|b`,
+0 = the grove before; ADR-151). The fire-and-forest pass (ADR-197; defaults first, none picked yet): `?incant=a|b`,
 `?incantInk=script|fire|blood`, `?drakeling=a|b`, `?serpent=a|b`, `?vortex=a|b`, `?forestEnd=a|b|c`,
 `?meteorSource=b|a|off`, `?wallSource=a|b|off`, `?crack=off`, `?fireTrail=off` (every fire trail as before). The living world (ADR-163): `?life=off|all|<pieces>` (a comma list of
 `wind, litter, steps, weather, creatures, air, arrival, answer`) and `?lifeK=0.25..2` its strength; ON by
@@ -68,7 +71,7 @@ parameter draws the owner's picks, `?looks=old` the looks before that pass, one 
 (Lab: LOOKS); the table is STYLE.md → "The look switches". In the dev server: append `?lab` to the URL (or press **F1**) for the **Lab** — trigger any boss
 ability / phase / transition, god mode, time scale, hitbox overlay. Console: `__game` (everything),
 `__tick(dt, frames)` (step the sim even when the tab is hidden), `__inspect(x, y, w, h)` (magnify).
-In Claude Code the preview config is `.claude/launch.json` (`abyss-dev`).
+In Claude Code the preview config is `.claude/launch.json` (`gcd-dev`).
 
 ## Rules
 - **Contracts first.** Cross-module APIs and event names live in `docs/ARCHITECTURE.md`. If you
@@ -155,7 +158,7 @@ In Claude Code the preview config is `.claude/launch.json` (`abyss-dev`).
   an up-to-date branch, passed at once for a docs-only PR (docs/, *.md, .claude/; ADR-153); linear
   history, squash/rebase merge, branches auto-delete). Flow: branch → push → `gh pr create` → CI +
   Vercel preview deployment on the PR → squash-merge → Vercel deploys `main` to production
-  (gcdabyss.vercel.app). Never bypass the protection. The squash commit takes the PR's title and
+  (thegcd.vercel.app). Never bypass the protection. The squash commit takes the PR's title and
   description, so write them as the commit message. Every PR auto-merges: `.github/workflows/automerge.yml` sets squash
   auto-merge when a PR is opened (the owner's call, ADR-185), so it merges as soon as `test-and-build` is
   green on an up-to-date branch. To hold one back for the owner to look first, open it as a draft or with

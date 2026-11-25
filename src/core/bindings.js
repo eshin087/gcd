@@ -42,7 +42,7 @@ export const STICK_CLICKS = new Set([10, 11]);
 
 // (v2, 2026-11-15: the heavy button came and the guard moved to the middle click. A v1 save had the
 // guard on the right click, now the heavy's: it is not read, every player starts on the new defaults)
-const STORE_KEY = 'abyss.bindings.v2';
+const STORE_KEY = 'gcd.bindings.v2';
 
 // ---------------------------------------------------------------- labels
 const KEY_NAMES = {

@@ -21,14 +21,14 @@ const corners = (c, s) =>
   ].join(',');
 
 const CSS = `
-html.abyss-touch, html.abyss-touch body {
+html.gcd-touch, html.gcd-touch body {
   touch-action: none;
   overscroll-behavior: none;
   -webkit-touch-callout: none;
   -webkit-tap-highlight-color: transparent;
 }
 /* phones render at DPR 1 on LOW: upscale the ASCII frame with crisp pixels, not a blur */
-html.abyss-touch #game { cursor: default; image-rendering: pixelated; }
+html.gcd-touch #game { cursor: default; image-rendering: pixelated; }
 .tc-root {
   --tc-ink: #cfd6e6;
   --tc-dim: #7d879c;

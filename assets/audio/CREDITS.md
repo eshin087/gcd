@@ -1,8 +1,8 @@
 # Music credits
 
-The background music in ABYSS comes from [OpenGameArt.org](https://opengameart.org) and is used under
+The background music in gcd comes from [OpenGameArt.org](https://opengameart.org) and is used under
 **CC0 1.0** (public domain dedication). No attribution is required, but these composers made the game
-sound the way it does, so they are named here. Some pages offer more than one licence; ABYSS uses the
+sound the way it does, so they are named here. Some pages offer more than one licence; gcd uses the
 CC0 one. The owner picked each track on a score audition page; `scripts/audio/build-music.py` trims and
 loudness-normalises them into `assets/audio/music/` (ADR-117).
 
@@ -29,7 +29,7 @@ loudness-normalises them into `assets/audio/music/` (ADR-117).
 
 The recorded combat sounds (the attack sounds, the blue / red cues, the parries, the hurt, the slam,
 the plunge, the clash) are one-shots from OpenGameArt.org, used under **CC0 1.0**; the "Licence check"
-column is what was checked on each page. The designed ones were made for ABYSS (procedural, no
+column is what was checked on each page. The designed ones were made for gcd (procedural, no
 outside source). The owner picks them by ear; `scripts/audio/build-sfx.py` trims, loudness-matches and
 encodes them into `assets/audio/sfx/` (the game plays its synth sounds for any slot without a file).
 
@@ -60,13 +60,13 @@ encodes them into `assets/audio/sfx/` (the game plays its synth sounds for any s
 | Your parry of an ordinary blow | [Medieval sound effects weapon impacts](https://opengameart.org/content/medieval-sound-effects-weapon-impacts) (Norse Sword Katana Blade on Blade.wav) | MedicineStorm | CC0 1.0 | page lists CC0 only. Uploader MedicineStorm is not the author: the CC0 statement is quoted from StillNorthMedia ("use freely, no royalties, no credit") and its sister FreeFirearmsSFX project ("CC0 NO RIGHTS RESERVED"); the original site survives only on archive.org. The two 7z archives hold only the 48 WAVs (192 kHz 24-bit mono), no licence or readme file. Same source family as the katana / axe swings the owner picked. | `sfx/parry-1.mp3` |
 | Your parry of a blue blow, a perfect parry | [Medieval sound effects weapon impacts](https://opengameart.org/content/medieval-sound-effects-weapon-impacts) (Spear Katana Blade on Blade.wav) | MedicineStorm | CC0 1.0 | page lists CC0 only. Uploader MedicineStorm is not the author: the CC0 statement is quoted from StillNorthMedia ("use freely, no royalties, no credit") and its sister FreeFirearmsSFX project ("CC0 NO RIGHTS RESERVED"); the original site survives only on archive.org. The two 7z archives hold only the 48 WAVs (192 kHz 24-bit mono), no licence or readme file. Same source family as the katana / axe swings the owner picked. | `sfx/parry-blue-1.mp3` |
 | A blow lands on you | [Punch](https://opengameart.org/content/punch) (qubodupPunch04.flac) | qubodup | CC0 1.0 | page lists CC0 only; 7z holds only the audio (extracted in the earlier pass). Based on qubodup's own freesound recording 53985. | `sfx/hurt-1.mp3` |
-| Your cut lands on the wyrm | Made for ABYSS: "Scale clack, meat" (The edge clacks across hard scales and thuds into the meat under them.) | ABYSS | made for ABYSS | (designed for the game) | `sfx/hit-scale-1.mp3` |
-| The blade's bite on a landed light cut | Made for ABYSS: "Dry slice" (A dry, fibrous slice that stops dead: no ring at all.) | ABYSS | made for ABYSS | (designed for the game) | `sfx/cut-light-1.mp3` |
-| The blade's bite on a landed heavy cut | Made for ABYSS: "Deep cleaving bite" (A heavy cut that cleaves deep: a long falling slice, a low ring and a chunk.) | ABYSS | made for ABYSS | (designed for the game) | `sfx/cut-heavy-1.mp3` |
+| Your cut lands on the wyrm | Made for gcd: "Scale clack, meat" (The edge clacks across hard scales and thuds into the meat under them.) | gcd | made for gcd | (designed for the game) | `sfx/hit-scale-1.mp3` |
+| The blade's bite on a landed light cut | Made for gcd: "Dry slice" (A dry, fibrous slice that stops dead: no ring at all.) | gcd | made for gcd | (designed for the game) | `sfx/cut-light-1.mp3` |
+| The blade's bite on a landed heavy cut | Made for gcd: "Deep cleaving bite" (A heavy cut that cleaves deep: a long falling slice, a low ring and a chunk.) | gcd | made for gcd | (designed for the game) | `sfx/cut-heavy-1.mp3` |
 | Your slam into the ground | [Muffled distant explosion](https://opengameart.org/content/muffled-distant-explosion) (NenadSimic - Muffled Distant Explosion.wav) | NenadSimic | CC0 1.0 | page lists CC0 only; single wav download. | `sfx/slam-1.mp3` |
-| A flash cut of the flurry | Made for ABYSS: "Razor flick" (One flash cut: a razor-quick hiss and tick with a hair of ring.) | ABYSS | made for ABYSS | (designed for the game) | `sfx/flurry-cut-1.mp3` |
-| The flurry's last blow coiling | Made for ABYSS: "Breath held tight" (A rising breath and low tension, held, then cut off on the strike.) | ABYSS | made for ABYSS | (designed for the game) | `sfx/flurry-coil-1.mp3` |
+| A flash cut of the flurry | Made for gcd: "Razor flick" (One flash cut: a razor-quick hiss and tick with a hair of ring.) | gcd | made for gcd | (designed for the game) | `sfx/flurry-cut-1.mp3` |
+| The flurry's last blow coiling | Made for gcd: "Breath held tight" (A rising breath and low tension, held, then cut off on the strike.) | gcd | made for gcd | (designed for the game) | `sfx/flurry-coil-1.mp3` |
 | The plunge's dive | [Wind hit time morph](https://opengameart.org/content/wind-hit-time-morph) (qubodup-megaswosh2.wav) | qubodup | CC0 1.0 | page lists CC0 only; zip holds only the audio (no licence file). | `sfx/plunge-dive-1.mp3` |
 | The plunge lands | [150 combat sound effects](https://opengameart.org/content/150-combat-sound-effects) (impact_punch_heavy_002_48kHz_16bit_0.46s_565485a1_s02.wav) | untamedpixels | CC0 1.0 | page lists CC0 only; LICENSES.txt inside: all 150 wavs CC0 1.0, a compilation by untamedpixels; the file used comes from Kenney "Impact Sounds" [s02], listed CC0. | `sfx/plunge-hit-1.mp3` |
 | Two cuts meet | [Medieval sound effects weapon impacts](https://opengameart.org/content/medieval-sound-effects-weapon-impacts) (Norse Sword Katana Blade on Blade.wav) | MedicineStorm | CC0 1.0 | page lists CC0 only. Uploader MedicineStorm is not the author: the CC0 statement is quoted from StillNorthMedia ("use freely, no royalties, no credit") and its sister FreeFirearmsSFX project ("CC0 NO RIGHTS RESERVED"); the original site survives only on archive.org. The two 7z archives hold only the 48 WAVs (192 kHz 24-bit mono), no licence or readme file. Same source family as the katana / axe swings the owner picked. | `sfx/clash-1.mp3` |
-| The boss holds your strike on his guard | Made for ABYSS: "Lacquered wood guard" (Your blade knocks on a hard lacquered guard: hollow and wooden, nothing gained.) | ABYSS | made for ABYSS | (designed for the game) | `sfx/boss-guard-1.mp3` |
+| The boss holds your strike on his guard | Made for gcd: "Lacquered wood guard" (Your blade knocks on a hard lacquered guard: hollow and wooden, nothing gained.) | gcd | made for gcd | (designed for the game) | `sfx/boss-guard-1.mp3` |

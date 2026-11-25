@@ -1,5 +1,5 @@
 // Numbers for the incantation (incantation.js), the brood (brood.js) and the moves that call it
-// (broodAttacks.js); ADR-195. Metres, seconds; heats are the fire field's (render/fireField.js: ~0.4
+// (broodAttacks.js); ADR-197. Metres, seconds; heats are the fire field's (render/fireField.js: ~0.4
 // a cool rim, ~1 the body, 2+ the white heart).
 import { TELL } from '../../combat/rules.js';
 

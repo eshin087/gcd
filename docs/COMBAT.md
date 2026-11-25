@@ -1,6 +1,6 @@
 # Combat design
 
-ABYSS is an action RPG, not a stamina-gated soulslike. Fights are about **reading tells** and
+gcd is an action RPG, not a stamina-gated soulslike. Fights are about **reading tells** and
 answering them with **block, parry or a perfectly timed dodge** — inspired by Phantom Blade Zero's
 attack tells, read from the enemy itself rather than from HUD text, and by Sekiro's deflect
 exchanges: an enemy's combo is met blow by blow. Numbers live in `src/combat/rules.js` (shared) and
@@ -894,7 +894,7 @@ on 124 of 174; the tail slam's raised arch barely reads.
 - Every blow is red. Hazard-dealt blows never plunge, except fire breathed or spat from the air; the
   dive's crash and the nova's blast may (the wyrm is on the ground for both).
 - Flash timing (`npm test` → FIRE, FLIGHT): every blow lands within 17 ms of its flash + lead.
-- **Every fire comes from the wyrm** (2026-11-25, ADR-195; the owner: "some of the dragon fire attacks
+- **Every fire comes from the wyrm** (2026-11-25, ADR-197; the owner: "some of the dragon fire attacks
   seem to come out of nowhere. all the fire should be coming from the dragon itself"). Nothing burns
   away from it any more without visibly travelling there from it:
   - **Fire eruptions** run on a glowing crack from between its forefeet's slam. Phase 2's line: the
@@ -915,7 +915,7 @@ on 124 of 174; the tail slam's raised arch barely reads.
     frame, each meteor dropping from the nearest. Where they land and when are unchanged.
   - `?fireTrail=off` turns all of it off (the fire as before).
 
-## The roar-cast moves: the brood and the fire spells (2026-11-25, ADR-195)
+## The roar-cast moves: the brood and the fire spells (2026-11-25, ADR-197)
 The owner: "add new dragon attacks where the dragon does some kind of cool dynamic fire spell through
 it roaring and it shows some dragon incantation symbols and a cool fire spell appears, maybe like fire
 mini dragons that must be beaten or kamikaze". Four moves, category `spell`, each opening the same way:
@@ -2833,7 +2833,7 @@ stands again when the fight resets (a death, a rest at the bonfire, the Lab's Re
   the end of phase 1 and 88 / 86 / 90 by the end, the furthest 51 / 54 / 51 m out; the hero's ground
   grows by 1664 / 1828 / 1415 m2 on a circle of 3019. With a gap torn 25 m deep and the hero standing
   in it the wyrm's root went 50.8 m out and it kept 78 % of its cues a minute (35 against 45).
-- **Walk into the forest** (2026-11-25, ADR-195; the owner: "make the map not have invisible walls. if
+- **Walk into the forest** (2026-11-25, ADR-197; the owner: "make the map not have invisible walls. if
   it looks like the player is able to walk there"). In Cinderwood the hero's ground is now **the whole
   forest from the start**, out to a rock ridge about 48.5 m from the centre (`?forestEnd=b|c`: a
   thicket wall of dead trunks or a deadfall of giant trunks instead): no wall of air anywhere; the
@@ -3098,7 +3098,7 @@ singles ~25 %; P3 strings ~42 %, fire ~41 %.
 
 **Difficulty (measured, ADR-033).** Integration bots (`tests/integration/integ.mjs`): `win` is a
 god-mode defender that answers every tell; the opt-in `probe` is a mortal bot that answers a share
-of them (`ABYSS_SKILL`, default 0.8; `node tests/integration/integ.mjs . probe`) and fights until it
+of them (`GCD_SKILL`, default 0.8; `node tests/integration/integ.mjs . probe`) and fights until it
 wins or dies. The v0.5 probe runs were at 4200 HP, before the last bump to 4500 (+~7 % fight length);
 the v0.6 runs are one run each at 4500 HP (the sims are seeded, but one run is one sample).
 

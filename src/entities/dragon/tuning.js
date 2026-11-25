@@ -604,8 +604,8 @@ export const TUNING = {
 Object.assign(TUNING.attacks, FIRE_ATTACKS); // fire / flight attacks and spells (tuningFire.js)
 Object.assign(TUNING.attacks, BULLET_ATTACKS); // the bullet-hell patterns (tuningBullets.js)
 Object.assign(TUNING.attacks, TERRAIN_ATTACKS); // the terrain moves (tuningTerrain.js, ADR-110)
-Object.assign(TUNING.attacks, SPELLS); // the roar-cast spells: serpent, firestorm (tuningSpells.js, ADR-195)
-Object.assign(TUNING.attacks, BROOD.moves); // the brood's moves: drakelings, wisps (tuningBrood.js, ADR-195)
+Object.assign(TUNING.attacks, SPELLS); // the roar-cast spells: serpent, firestorm (tuningSpells.js, ADR-197)
+Object.assign(TUNING.attacks, BROOD.moves); // the brood's moves: drakelings, wisps (tuningBrood.js, ADR-197)
 // every move's combo links (tuningLinks.js: one table for the fight's flow)
 for (const k in LINKS) if (TUNING.attacks[k]) TUNING.attacks[k].links = LINKS[k];
 

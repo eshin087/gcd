@@ -154,8 +154,8 @@ export class Dragon {
     this.bullets = new Bullets(this); // the bullet field + fire wheel (bullets.js): cleared like the hazards
     this.terrain = new Terrain(this); // the piece in its jaws / in the air, its mark and its blow (terrain.js, ADR-110)
     this.ablaze = new Ablaze(this); // phase 3: it sets itself on fire (ablaze.js)
-    this.incantation = new Incantation(this); // the glyph circle a roar-cast spell burns (incantation.js, ADR-195)
-    this.brood = new Brood(this); // the fire creatures it calls up (brood.js, ADR-195)
+    this.incantation = new Incantation(this); // the glyph circle a roar-cast spell burns (incantation.js, ADR-197)
+    this.brood = new Brood(this); // the fire creatures it calls up (brood.js, ADR-197)
     this.brain = new Brain(this);
     this.debug = createDebug(this);
 
@@ -323,7 +323,7 @@ export class Dragon {
     const a = this.brain.action;
     const attack = info?.attack ?? a?.cur?.attack ?? a?.name ?? null;
     // (the guard is per attack: a drakeling's bite parried 0.09 s after the wyrm's own tail lash is a
-    // second blow met, and the hero's player:parry for it must be answered too; ADR-195)
+    // second blow met, and the hero's player:parry for it must be answered too; ADR-197)
     if (this.time - this._lastParry < 0.1 && attack === this._lastParryAttack) return;
     this._lastParry = this.time;
     this._lastParryAttack = attack;

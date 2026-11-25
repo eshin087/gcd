@@ -10,7 +10,7 @@
 // a row, then the breather (chainRest). `when`: 'front' (within 0.9 rad of the nose), 'side'
 // (0.9 - 1.75), 'behind', 'near' (< 9 m from the root), 'mid' (9 - 18), 'far' (> 18), 'any'.
 //
-// Measured (scenario PRESSURE, ABYSS_PATT=1 prints where the hero is as each move ends): the strings,
+// Measured (scenario PRESSURE, GCD_PATT=1 prints where the hero is as each move ends): the strings,
 // the bullet patterns, the spells and the terrain moves end with him in FRONT, near or mid, nine times
 // in ten; the wing buffet with him at the SIDE; the pivot lash, the tail bat, the flights and the
 // flame ring often with him BEHIND. So each list reads, in order: behind → the tail; side → a pivot,

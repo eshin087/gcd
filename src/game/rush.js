@@ -1,5 +1,5 @@
 // THE BOSS RUSH (ADR-179): every level in LEVELS order, back to back, each still its own page load.
-// The run lives in sessionStorage (key `abyss.rush.v1`, this tab only), read at boot; a rush page
+// The run lives in sessionStorage (key `gcd.rush.v1`, this tab only), read at boot; a rush page
 // (`?rush` in the URL, rushUrl) skips the title and starts its fight. Health and flasks are full at
 // every fight (each is a fresh page, and a retry respawns him full). A death is the normal retry of the
 // same boss: the rush clock keeps its time and counts the death.
@@ -18,7 +18,7 @@
 //   rush.death()  rush.void(reason)  rush.win(split) → true when it was the last
 //   rush.totalMs  rush.levelMs  rush.deaths  rush.splits  rush.abandon()  rush.bank()
 
-export const RUSH_KEY = 'abyss.rush.v1';
+export const RUSH_KEY = 'gcd.rush.v1';
 const VERSION = 1;
 const BANK_EVERY = 1; // s of real time between banks while the clock runs
 
