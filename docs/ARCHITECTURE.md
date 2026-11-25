@@ -1220,14 +1220,6 @@ around and the blade's point; none a multiple of another). In a fight the sword 
 on the move (`FIGHT_RUN`; a sprint trails the blade); a roll and a backstep ease the sword arm out
 of the pose they began in (`swordFromEntry`, `SWORD_ENTRY` 0.16 s) and the loco clip settles the
 blade into the stance over `LOCO_SETTLE` (0.24 s).
-**The run's free arm** (ADR-187, `runArms.js`): in the hero's `loco()` the free (left) arm is
-`runArm(p, P, A, phase, armF, sprint, runK, moveW, mz)`'s: one of three carries (`?runArm=a|b|c|old`,
-`runArmMode()` / `setRunArm(id)`, default `c`), written as joint angles (`RUN_ARMS`: the shoulder's swing, how
-far the arm stands off his side, the elbow, the forearm's cross) and posed by forward kinematics into `lH`, `lP`,
-`lD`, `lN` and `hs`, with weight `moveW`. `a` swings like a runner (a pump at a sprint), `b` holds the dash (swept
-back behind him; forward only: a strafe or a backpedal swings as `a`), `c` is `a` on the run blending into `b` as
-the sprint builds. The dash's weight eases on `A.time` (`A.runArmS`), so `loco()` may run more than once a frame.
-`old` returns false and `loco()` writes the swing before ADR-187. A duelist's footwork never calls it.
 **Idle life** (ADR-047): in the loco clip, standing still in the `idle` state, at ease (not locked
 on, not in the fight stance: `fightW` ≤ 0.05), with no guard held, for `IDLE_LIFE.after` (2.5 s), `HeroAnimator._idleLife` starts an action from `FIDGETS`
 every `IDLE_LIFE.gap` (2–4.5 s after the last one ends), picked with the animator's own noise (never

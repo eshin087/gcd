@@ -4,7 +4,7 @@
 // the real Colliders. A bot drives the input: it moves, attacks, blocks, parries and dodges.
 // usage: node integ.mjs <repoRoot> [scenario]   (env: ABYSS_SEED=n reseeds the AI, ABYSS_TRACE=1 logs combat events)
 //   scenario: gate | hero | batch | breath | parry | block | reach | red | plunge | flurry | deflect | lab | strings | plungeReact | terrain |
-//             timing | fire | music | thump | sfx | herolook | wyrmface | wyrmlook | herolife | herohand | heroweight | heroarms | herorun | herostance | looks | win | die | touch | pad | remap | all (default all)
+//             timing | fire | music | thump | sfx | herolook | wyrmface | wyrmlook | herolife | herohand | heroweight | heroarms | herostance | looks | win | die | touch | pad | remap | all (default all)
 //             or a comma list of them (hero,looks,...)
 //   (timing: ABYSS_TM=name,name... probes only those attacks; ABYSS_TMV=1 prints its per-placement map;
 //    ABYSS_TM_SHARD=k/n probes every n-th attack of the list, starting at the k-th: n runs cover it all)
@@ -7863,7 +7863,6 @@ async function scenarioHeroArms() {
   out('\n== scenario HEROARMS (the arms open and close; the elbows stay in; the charged blade clear of his head) ==');
   const { DIM: HD } = await imp('src/entities/player/model.js');
   const { P } = await imp('src/entities/player/anim.js');
-  const { runArmMode } = await imp('src/entities/player/runArms.js');
   const G = build();
   const { game, input } = G;
   fightSetup(G);
@@ -8038,13 +8037,8 @@ async function scenarioHeroArms() {
   // still swing
   {
     const R = loco.run, S = loco.strafe, Sp = loco.sprint;
-    // (ADR-187: sprinting under the default carry, 'c', the free arm is swept back and out behind him
-    // on purpose, the swordsman's dash: HERORUN bounds it. Here the sword arm, and the free arm of a
-    // carry that swings it)
-    const dashing = runArmMode() === 'b' || runArmMode() === 'c';
-    const spL = dashing ? 0 : Sp.fL;
-    assert(Math.max(R.fR, R.fL, S.fR, S.fL) <= 0.45 && Math.max(Sp.fR, spL) <= 0.55,
-      `the elbows stay in beside the ribs: out to the side at most ${Math.max(R.fR, R.fL, S.fR, S.fL).toFixed(2)} on the run and the strafe (≤ 0.45; they flared 0.47-0.58), ${Math.max(Sp.fR, spL).toFixed(2)} sprinting (≤ 0.55; 0.60-0.73${dashing ? `; the dash's free arm ${Sp.fL.toFixed(2)}, HERORUN` : ''})`);
+    assert(Math.max(R.fR, R.fL, S.fR, S.fL) <= 0.45 && Math.max(Sp.fR, Sp.fL) <= 0.55,
+      `the elbows stay in beside the ribs: out to the side at most ${Math.max(R.fR, R.fL, S.fR, S.fL).toFixed(2)} on the run and the strafe (≤ 0.45; they flared 0.47-0.58), ${Math.max(Sp.fR, Sp.fL).toFixed(2)} sprinting (≤ 0.55; 0.60-0.73)`);
     assert(R.mz[0] > 0.95 && R.eL[1] - R.eL[0] >= 35 && R.hz[1] - R.hz[0] >= 0.3,
       `the free arm works on the run: its elbow opens and folds ${(R.eL[1] - R.eL[0]).toFixed(0)}° a stride (≥ 35; it was one 87° crook) and the hand's target swings ${((R.hz[1] - R.hz[0]) * 100).toFixed(0)} cm fore and aft (≥ 30)`);
     assert(Math.max(Math.abs(S.mz[0]), Math.abs(S.mz[1])) < 0.1 && S.x[1] - S.x[0] < 0.3 && S.hz[1] - S.hz[0] >= 0.12 && S.eL[1] - S.eL[0] >= 15,
@@ -8064,201 +8058,6 @@ async function scenarioHeroArms() {
   // in the head's frame), through the hold and the dash; both hands on the grip
   assert(holdN >= 60 && dashN >= 30 && Number.isFinite(holdMin) && Number.isFinite(dashMin) && holdMin >= 0.22 && dashMin >= 0.2 && fistShown && gapMax <= 0.035,
     `the charged blade stands clear of his face: ${(holdMin * 100).toFixed(1)} cm from the head's axis through the hold (≥ 22; it was 10.2, inside the hood) and ${(dashMin * 100).toFixed(1)} cm through the release (≥ 20; ${holdN} + ${dashN} frames measured), the free hand's fist on the grip (${(gapMax * 100).toFixed(1)} cm off at most)`);
-  return G;
-}
-
-// ================================================================== scenario: the run's free arm (ADR-187)
-// The hero's free (left) arm on the run, each carry of runArms.js (`?runArm=a|b|c|old`) through the
-// same course: a run start and stop, the run, a sprint start, the sprint and its end, a strafe and a
-// backpedal in the fight (lock-on play is mostly strafing), a turn, and out of the run into a light,
-// a roll, a block and the flask. Measured in his own frames (the elbow in the chest's, the hand and
-// the elbow's point in the body's: the drawn figure is lean-sheared): the free elbow's range, how far
-// it flares from the front, the hand's path, and a pop audit (the largest frame-to-frame second
-// difference of the free wrist and elbow, and of the sword hand, which this pass does not touch).
-async function scenarioHeroRun() {
-  out('\n== scenario HERORUN (the free arm on the run: natural, the dash, by speed; elbows, the hand\'s path, pops, transitions) ==');
-  const { P } = await imp('src/entities/player/anim.js');
-  const RA = await imp('src/entities/player/runArms.js');
-  const DEG = 180 / Math.PI;
-  const LANE = [-10, 13]; // open ground (HEROARMS)
-  const res = {};
-  const f1 = (x) => (x * 100).toFixed(1);
-  for (const mode of ['old', 'a', 'b', 'c']) {
-    RA.setRunArm(mode);
-    const G = build();
-    const { game, input } = G;
-    fightSetup(G); // (the wyrm's AI off: in `explore` it woke and struck him mid-strafe)
-    const p = game.player, r = p.rig, A = p.anim;
-    p.debug.god = true;
-    p.debug.fightStance = false; // at ease, but for the strafe and the backpedal below
-    p.lean.on = false;
-    const aim = { x: 0, z: -60 };
-    const v = new THREE.Vector3();
-    const prev = { W: [new THREE.Vector3(), new THREE.Vector3()], E: [new THREE.Vector3(), new THREE.Vector3()], R: [new THREE.Vector3(), new THREE.Vector3()], n: 0 };
-    const segs = {};
-    let cur = null;
-    const wristL = (o) => r.body.worldToLocal(o.setFromMatrixPosition(r.arms.L.wrist.matrixWorld));
-    const elbowL = (o) => r.body.worldToLocal(o.setFromMatrixPosition(r.arms.L.fore.matrixWorld));
-    const W = new THREE.Vector3(), E = new THREE.Vector3(), R = new THREE.Vector3(), up = new THREE.Vector3();
-    const sample = () => {
-      wristL(W);
-      elbowL(E);
-      r.body.worldToLocal(R.setFromMatrixPosition(r.sword.matrixWorld));
-      const S = cur && segs[cur];
-      if (!S) return;
-      const el = 180 - Math.abs(r.arms.L.fore.rotation.x) * DEG;
-      up.set(0, -1, 0).applyQuaternion(r.arms.L.upper.quaternion);
-      S.n++;
-      S.el[0] = Math.min(S.el[0], el);
-      S.el[1] = Math.max(S.el[1], el);
-      S.flare = Math.max(S.flare, up.x);
-      for (let i = 0; i < 3; i++) {
-        const c = ['x', 'y', 'z'][i];
-        S.lo[i] = Math.min(S.lo[i], W[c]);
-        S.hi[i] = Math.max(S.hi[i], W[c]);
-      }
-      S.hand = Math.max(S.hand, A.cur[P.hs]);
-      if (!Number.isFinite(W.x + W.y + W.z + E.x + E.y + E.z)) S.nan++;
-      if (process.env.ABYSS_RUNTRACE === `${mode}:${cur}`) out(`       ${S.n} ${p.state}/${A.key} mz ${A.mz.toFixed(2)} mw ${A.moveW.toFixed(2)} sw ${A.sprintW.toFixed(2)} el ${el.toFixed(0)} fl ${up.x.toFixed(2)} W ${f1(W.x)} ${f1(W.y)} ${f1(W.z)} bw ${(A.runArmS?.bw ?? 0).toFixed(2)}`);
-      if (prev.n >= 2) {
-        // (second difference: X − 2·Q0 + Q1)
-        const d2 = (X, Q) => Math.hypot(X.x - 2 * Q[0].x + Q[1].x, X.y - 2 * Q[0].y + Q[1].y, X.z - 2 * Q[0].z + Q[1].z);
-        S.popW = Math.max(S.popW, d2(W, prev.W));
-        S.popE = Math.max(S.popE, d2(E, prev.E));
-        S.popR = Math.max(S.popR, d2(R, prev.R));
-        S.vW = Math.max(S.vW, W.distanceTo(prev.W[0]) / DT);
-      }
-    };
-    const shift = () => {
-      prev.W[1].copy(prev.W[0]); prev.W[0].copy(W);
-      prev.E[1].copy(prev.E[0]); prev.E[0].copy(E);
-      prev.R[1].copy(prev.R[0]); prev.R[0].copy(R);
-      prev.n++;
-    };
-    const go = (sec, name, before) => {
-      cur = name;
-      if (name) segs[name] ??= { n: 0, el: [180, 0], flare: -9, lo: [9, 9, 9], hi: [-9, -9, -9], popW: 0, popE: 0, popR: 0, vW: 0, hand: 0, nan: 0 };
-      for (let i = 0, n = Math.round(sec / DT); i < n; i++) {
-        before?.(i);
-        game.mouseGround.set(p.position.x + aim.x, 0, p.position.z + aim.z);
-        G.tick(DT);
-        sample();
-        shift();
-      }
-      cur = null;
-    };
-    const home = () => { input.axis = { x: 0, y: 0 }; go(0.9, null); p.debug.teleport(LANE[0], LANE[1]); go(0.4, null); prev.n = 0; };
-    const north = () => { input.axis = { x: 0, y: 1 }; aim.x = 0; aim.z = -60; };
-    p.debug.teleport(LANE[0], LANE[1]);
-    go(1.0, null);
-    // the run: its start, the run, its stop
-    north();
-    go(0.5, 'start');
-    go(1.4, 'run');
-    input.axis = { x: 0, y: 0 };
-    go(0.8, 'stop');
-    home();
-    // the sprint: from the run, its start, the sprint, its end
-    north();
-    go(0.8, null);
-    input.hold('ShiftLeft');
-    go(0.6, 'sprintStart');
-    go(1.2, 'sprint');
-    input.release('ShiftLeft');
-    go(0.8, 'sprintEnd');
-    home();
-    // the fight's stance: a pure strafe (the aim square to the run) and a backpedal
-    p.debug.fightStance = true;
-    go(0.6, null);
-    north();
-    aim.x = 60; aim.z = 0;
-    go(0.6, null);
-    go(1.4, 'strafe');
-    home();
-    north();
-    aim.x = 0; aim.z = 60;
-    go(0.6, null);
-    go(1.4, 'back');
-    home();
-    p.debug.fightStance = false;
-    go(0.6, null);
-    // a turn: running north, the aim swung round behind him and back
-    north();
-    go(0.8, null);
-    go(1.0, 'turn', (i) => { if (i === 12) { aim.z = 60; } if (i === 40) { aim.z = -60; } });
-    home();
-    // out of the run: a light, a roll, a block, the flask
-    const outOf = (name, act, after, sec = 1.0) => { north(); go(0.8, null); go(0.25, name); act(); go(sec, name); after?.(); home(); };
-    outOf('light', () => input.click(0));
-    outOf('roll', () => input.tap('Space'));
-    outOf('block', () => input.press(1), () => input.up(1), 0.7);
-    outOf('heal', () => input.tap('KeyF'), null, 1.6);
-    // … and out of the sprint (where 'c' is in the dash)
-    const outOfSprint = (name, act, after, sec = 1.0) => { north(); go(0.6, null); input.hold('ShiftLeft'); go(0.9, null); go(0.25, name); act(); go(sec, name); input.release('ShiftLeft'); after?.(); home(); };
-    outOfSprint('sprintRoll', () => input.tap('Space'));
-    outOfSprint('sprintBlock', () => input.press(1), () => input.up(1), 0.7);
-    // the sprint's slash
-    north();
-    go(0.6, null);
-    input.hold('ShiftLeft');
-    go(0.9, null);
-    go(0.2, 'sprintLight');
-    input.click(0);
-    go(0.9, 'sprintLight');
-    input.release('ShiftLeft');
-    home();
-    res[mode] = segs;
-  }
-  RA.setRunArm(null);
-  const G = build();
-  for (const [mode, segs] of Object.entries(res)) {
-    out(`   -- ${mode}`);
-    for (const [k, S] of Object.entries(segs)) {
-      out(`     ${k.padEnd(11)} elbow ${S.el[0].toFixed(0)}-${S.el[1].toFixed(0)}°, flare ${S.flare.toFixed(2)}, hand x ${f1(S.lo[0])}…${f1(S.hi[0])} y ${f1(S.lo[1])}…${f1(S.hi[1])} z ${f1(S.lo[2])}…${f1(S.hi[2])} cm, speed ≤ ${S.vW.toFixed(1)} m/s; pops: wrist ${f1(S.popW)} elbow ${f1(S.popE)} sword hand ${f1(S.popR)} cm${S.nan ? `, NaN ${S.nan}` : ''}`);
-    }
-  }
-  // the checks. (Each carry's own numbers above; 'old' is the swing before ADR-187, the baseline.)
-  const O = res.old, rng = (S) => S.el[1] - S.el[0], span = (S, i) => S.hi[i] - S.lo[i];
-  for (const m of ['a', 'b', 'c']) assert(Object.values(res[m]).every((S) => S.n > 10 && !S.nan), `${m}: every stretch measured, nothing NaN`);
-  for (const m of ['a', 'c']) {
-    const R = res[m].run, S = res[m].strafe, B = res[m].back;
-    assert(R.el[0] >= 65 && R.el[1] <= 125 && rng(R) >= 35 && R.flare <= 0.45 && R.popW <= 2.5,
-      `${m}, the run: a runner's arm, the free elbow ${R.el[0].toFixed(0)}-${R.el[1].toFixed(0)}° (65-125; old ${O.run.el[0].toFixed(0)}-${O.run.el[1].toFixed(0)}), working ${rng(R).toFixed(0)}° a stride (≥ 35), in beside the ribs (flare ${R.flare.toFixed(2)} ≤ 0.45), no pop (wrist ${f1(R.popW)} cm ≤ 2.5)`);
-    assert(rng(S) >= 15 && span(S, 2) >= 0.12 && S.flare <= 0.45 && rng(B) >= 25,
-      `${m}, lock-on play: the strafe's arm still swings (elbow ${rng(S).toFixed(0)}° ≥ 15, the hand ${f1(span(S, 2))} cm fore and aft ≥ 12; flare ${S.flare.toFixed(2)}), the backpedal's too (${rng(B).toFixed(0)}° ≥ 25)`);
-    for (const k of ['light', 'roll', 'block', 'heal', 'turn', 'stop', 'start']) {
-      const S2 = res[m][k], o = O[k];
-      assert(S2.popW <= o.popW + 3 && S2.popE <= o.popE + 3,
-        `${m}, ${k}: no worse a jolt than before (wrist ${f1(S2.popW)} cm, elbow ${f1(S2.popE)} cm; old ${f1(o.popW)} / ${f1(o.popE)}, + 3 allowed)`);
-    }
-  }
-  {
-    const Sa = res.a.sprint;
-    assert(Sa.el[0] >= 55 && Sa.el[1] <= 120 && Sa.flare <= 0.45 && span(Sa, 1) >= 0.3,
-      `a, the sprint: a pump chin to hip, the elbow ${Sa.el[0].toFixed(0)}-${Sa.el[1].toFixed(0)}° (55-120), in (flare ${Sa.flare.toFixed(2)} ≤ 0.45), the hand ${f1(span(Sa, 1))} cm up and down (≥ 30)`);
-  }
-  for (const m of ['b', 'c']) {
-    const S = res[m].sprint;
-    assert(S.hi[2] <= -0.05 && S.lo[0] >= 0.3 && Math.max(span(S, 1), span(S, 2)) >= 0.06 && S.flare <= 0.8 && S.popW <= 1,
-      `${m}, the sprint: the dash, the hand behind him (${f1(S.hi[2])} cm ≤ −5) and out past the cape (${f1(S.lo[0])} cm ≥ 30), riding the stride (${f1(Math.max(span(S, 1), span(S, 2)))} cm ≥ 6), out at most ${S.flare.toFixed(2)} (≤ 0.8), no pop (${f1(S.popW)} cm)`);
-  }
-  {
-    const B = res.b.run, Sb = res.b.strafe;
-    assert(B.hi[2] <= -0.05 && Math.max(span(B, 1), span(B, 2)) >= 0.05 && rng(Sb) >= 15,
-      `b, the run is the dash too (the hand ${f1(B.hi[2])} cm behind, riding ${f1(Math.max(span(B, 1), span(B, 2)))} cm ≥ 5), but a strafe swings (${rng(Sb).toFixed(0)}° ≥ 15)`);
-  }
-  {
-    const s0 = res.c.sprintStart, s1 = res.c.sprintEnd, tc = res.c.turn;
-    assert(s0.popW <= 4 && s1.popW <= 4 && s0.vW <= 6 && s1.vW <= 6 && tc.popW <= O.turn.popW + 3,
-      `c, into and out of the dash: no pop (wrist ${f1(s0.popW)} / ${f1(s1.popW)} cm ≤ 4), the hand never thrown (${s0.vW.toFixed(1)} / ${s1.vW.toFixed(1)} m/s ≤ 6), a turn as before (${f1(tc.popW)} cm; old ${f1(O.turn.popW)})`);
-    // (known, ADR-187: out of the dash into a roll or a block the free arm comes from behind him to the
-    // front inside that clip's short cross-fade, about twice the old jolt. A guard that it gets no worse)
-    const rl = res.c.sprintRoll, bl = res.c.sprintBlock;
-    out(`   out of the dash: roll wrist ${f1(rl.popW)} elbow ${f1(rl.popE)} cm (old ${f1(O.sprintRoll.popW)} / ${f1(O.sprintRoll.popE)}), block ${f1(bl.popW)} / ${f1(bl.popE)} cm (old ${f1(O.sprintBlock.popW)} / ${f1(O.sprintBlock.popE)})`);
-    assert(Math.max(rl.popW, rl.popE, bl.popW, bl.popE) <= 27, `c, out of the dash into a roll / a block: the free arm's jolt stays under 27 cm a frame² (${f1(Math.max(rl.popW, rl.popE, bl.popW, bl.popE))}; known, ADR-187)`);
-  }
-  // the default and the switch
-  assert(RA.runArmMode() === 'c' && RA.setRunArm('zz') === 'c' && RA.setRunArm('old') === 'old' && RA.setRunArm(null) === 'c', `?runArm= defaults to 'c' (by speed); unknown values fall back to it`);
   return G;
 }
 
@@ -12953,7 +12752,6 @@ const SCENARIOS = {
   herohand: scenarioHeroHand,
   heroweight: scenarioHeroWeight,
   heroarms: scenarioHeroArms,
-  herorun: scenarioHeroRun,
   herostance: scenarioHeroStance,
   looks: scenarioLooks,
   music: scenarioMusic,

@@ -4,7 +4,6 @@ import { ellipsoidGeometry } from '../../render/glyphGeometry.js';
 import { DIM, BODY, REST, HAIR_CLUSTERS } from './heroDims.js';
 import { mergeGeometries, sub, partGeometry, orient, limb, swordTip } from './heroGeo.js';
 import { SLOTS, DEFAULT_LOADOUT, resolveLoadout } from './gear/index.js';
-import { handLook, HAND_ONLY_MATS } from './gear/handLook.js';
 
 // The Wanderer, "Shadow Swordsman" (owner concept sheets; build spec docs/art/hero.md; the lean
 // reference match of 2026-11-09, ADR-034, filled out to an athletic build by ADR-040): a 1.80 m
@@ -208,10 +207,6 @@ export const HERO_INK = {
   // (Session 14: a warmer, less pale face and brown eyes; framed by the hood, the white face with
   // two dark violet-rimmed eyes read "like death")
   skin: { part: 1, fill: [0.95, 0.62, 0.44], rim: 0.3, line: [0.7, 0.42, 0.3, 0.75], rimLine: [0.95, 0.72, 0.55, 0.85], fillGain: 2.2, farFill: 0.6, open: true },
-  // the free hand's looks under consideration (gear/hands.js, `?handLook=b|c`): the skin's part and
-  // lines, only the fill darker (a part's lines and gain are shared, its fill is the material's own)
-  handShade: { part: 1, fill: [0.5, 0.32, 0.23], rim: 0.3, line: [0.7, 0.42, 0.3, 0.75], rimLine: [0.95, 0.72, 0.55, 0.85], fillGain: 2.2, farFill: 0.6, open: true },
-  handDark: { part: 1, fill: [0.3, 0.19, 0.14], rim: 0.3, line: [0.7, 0.42, 0.3, 0.75], rimLine: [0.95, 0.72, 0.55, 0.85], fillGain: 2.2, farFill: 0.6, open: true },
   eye: { part: 2, fill: [0.16, 0.1, 0.08], rim: 0, line: [0.55, 0.36, 0.22, 0.8] },
   shirt: { part: 3, fill: [0.07, 0.07, 0.085], line: [1, 1, 1, 0.45], rimLine: CLOTH_RIM, rimDotted: true, farFill: 0.35 },
   lining: { part: 4, fill: [0.05, 0.048, 0.07], line: [0.8, 0.78, 1.0, 0.7], rimLine: CLOTH_RIM, rimDotted: true, farFill: 0.6 },
@@ -302,15 +297,6 @@ export function createHeroMaterials(U, { self = false } = {}) {
     // on the head; even the darkest level prints :o so the face is never a black void. Fixed
     // 0.016 m cells (≈12 px in a head close-up, a pale 1–2 px sliver at the game camera)
     skin: S({
-      levels: [":o", "o:", "oo0", "o0o"], cell: [0.016, 0.016], rowShift: 0.5, base: [0.12, 0.1, 0.1],
-      ink: [0.78, 0.72, 0.7], gain: 0.65, rim: 0.1, outline: 0.06, inkGlow: 0.44, lumScale: 3, glowMask: 0, glyphZoom: 0.5, seed: 9.1,
-    }, { fixed: true }),
-    // the free hand's looks under consideration (gear/hands.js): the skin's letters, a darker fill
-    handShade: S({
-      levels: [":o", "o:", "oo0", "o0o"], cell: [0.016, 0.016], rowShift: 0.5, base: [0.12, 0.1, 0.1],
-      ink: [0.78, 0.72, 0.7], gain: 0.65, rim: 0.1, outline: 0.06, inkGlow: 0.44, lumScale: 3, glowMask: 0, glyphZoom: 0.5, seed: 9.1,
-    }, { fixed: true }),
-    handDark: S({
       levels: [":o", "o:", "oo0", "o0o"], cell: [0.016, 0.016], rowShift: 0.5, base: [0.12, 0.1, 0.1],
       ink: [0.78, 0.72, 0.7], gain: 0.65, rim: 0.1, outline: 0.06, inkGlow: 0.44, lumScale: 3, glowMask: 0, glyphZoom: 0.5, seed: 9.1,
     }, { fixed: true }),
@@ -433,9 +419,7 @@ export function createHeroMaterials(U, { self = false } = {}) {
       selfRim?.[h.part]?.set(sr[0], sr[1], sr[2], sr[3]);
     }
   }
-  // (the free hand's looks under consideration: their materials only when that look is drawn)
-  const hl = handLook().mat;
-  return Object.fromEntries(Object.entries(specs).filter(([name]) => !HAND_ONLY_MATS.includes(name) || name === hl).map(([name, s]) => [name, make(name, s.o, s.opts)]));
+  return Object.fromEntries(Object.entries(specs).map(([name, s]) => [name, make(name, s.o, s.opts)]));
 }
 
 /**

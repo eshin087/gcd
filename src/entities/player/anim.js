@@ -456,8 +456,6 @@ function gaitParams(G, sp, sprintW) {
  *  level. The sword arm trails the blade back and down beside the right leg (run) → nearly level
  *  behind (sprint); the free fist swings / pumps against the legs. Planted feet are held in the
  *  world by the foot planner (HeroAnimator._feet). */
-// (imported here, beside its one caller: the hero's free arm on the run, ADR-187)
-import { runArm } from './runArms.js';
 export function loco(p, A) {
   stand(p, A);
   const w = A.moveW;
@@ -555,13 +553,9 @@ export function loco(p, A) {
   to3(p, P.swF, lerp(lerp(-0.3, 0, bw), 0.25, fw), 1, lerp(lerp(0, 0.2, bw), 0, fw), ws);
   // free arm swings opposite the legs: ahead of the belt (run) → a pumping fist chin ↔ hip (sprint)
   const k = 0.5 - 0.5 * cs * armF; // 1 = fist forward
-  // (ADR-187: the hero's free arm is runArms.js's, one of three carries, `?runArm=`; 'old' is this)
-  const ran = hero && runArm(p, P, A, ph, armF, s, runK, w, mz);
   // (the run's back swing reaches further down and back, so the elbow opens behind him and folds as
   // the hand comes forward: it was one rigid 87° crook swinging from the shoulder)
-  if (ran) {
-    // (runArms.js wrote the hand, the elbow, the fingers and the palm)
-  } else if (hero) {
+  if (hero) {
     to3(p, P.lH, lerp(0.0, -0.06, s) * k + 0.07 * (1 - k), lerp(lerp(-0.485, -0.3, k), lerp(-0.4, -0.04, k), s), lerp(lerp(-0.17, 0.24, k), lerp(-0.18, 0.32, k), s), w);
     to3(p, P.lP, lerp(0.36, 0.42, s), -0.5, -0.8, w);
   } else {
@@ -573,7 +567,7 @@ export function loco(p, A) {
   // the free hand relaxes on the move: an open hand that half follows the forearm's own line (|lD|
   // is its weight). (Session 30: the run kept the sword fingers, two long fingers dangling off a
   // pumping arm; the shape is for the guard and the cuts)
-  if (!ran) {
+  {
     const k = 1 - 0.55 * w;
     for (let i = 0; i < 3; i++) p[P.lD + i] *= k;
     p[P.hs] = lerp(p[P.hs], 0, clamp(w * 2, 0, 1));
