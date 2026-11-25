@@ -22,6 +22,7 @@ import { PARRY_CHAIN } from '../audio/parryChain.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { MYSTIC_IDS, MYSTIC_NAMES, mysticMode, setMystic } from '../entities/player/swordMystic.js';
 import { RUN_ARM_IDS, RUN_ARM_NAMES, runArmMode, setRunArm } from '../entities/player/runArms.js';
+import { HAND_LOOK_IDS, HAND_LOOK_NAMES, handLook } from '../entities/player/gear/handLook.js';
 import { buildLooks } from './labLooks.js';
 import { lookOf, setLook } from '../entities/enemies/duelist/lookSwitch.js';
 import { LIFE, setLife, setLifeK } from '../world/life/lifeSwitch.js';
@@ -1296,6 +1297,25 @@ export class Lab {
       b.title = `?runArm=${m}: ${RUN_ARM_NAMES[m]}`;
       return { m, el: b };
     });
+    // the free hand's look (player/gear/handLook.js, ?handLook=0|a|b|c|d): built with the rig, so a reload
+    const hlr = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'hand', hlr).title = "the free (left) hand's size and ink (?handLook=; reloads the page): today, smaller, smaller and shaded, smaller and dark, a leather glove";
+    const hlGrid = el('div', 'lab-grid', null, hlr);
+    hlGrid.style.flex = '1';
+    for (const id of HAND_LOOK_IDS) {
+      const b = button(hlGrid, `${id === '0' ? 'today' : id}`, () => {
+        try {
+          const u = new URL(globalThis.location.href);
+          if (id === '0') u.searchParams.delete('handLook');
+          else u.searchParams.set('handLook', id);
+          globalThis.location.href = u.toString();
+        } catch (err) {
+          this._status(`error: ${err?.message ?? err}`, 'err');
+        }
+      });
+      b.title = `?handLook=${id}: ${HAND_LOOK_NAMES[id]}`;
+      setClass(b, 'on', handLook().id === id);
+    }
     // the sword's flame (player/swordMystic.js: green marks burning round the steel, on by default; ?mystic=0 is
     // today's blade), live
     const myr = el('div', 'lab-row', null, body);
