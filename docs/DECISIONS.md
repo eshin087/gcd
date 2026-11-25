@@ -5674,3 +5674,23 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   really bad. it doesnt seem to be the one i chose". #122 reverted #117; this re-ships it with **`a`, natural, the
   default** (a runner's swing on the run, the pump at a sprint) and the smaller hand. `b` and `c` stay behind the
   switch. Lesson: the default is what the owner approved in game, not the session's recommendation.
+
+## ADR-192 — The sword's cut throws green code, not grass (2026-11-25)
+
+- **Context:** the cut of ADR-180 works, but the owner, playing the live game, was "not seeing the grass
+  cut": at the game camera its stubs and quiet tops vanish into the meadow. They asked for "ascii like
+  grass particles when its swung at", picked a light spray, asked for the grass's colour and more detail,
+  then for "the matrix ascii art instead of actual grass", then for it "a bit tinier and a bit more
+  subtle/natural ... but still enough for players to be like wow thats the grass!".
+- **Decision:** on the frame the drawn arc cuts a blade (`cutArc`), it throws chips into the cut tops'
+  batch: about one for every other cut blade (more per blade on a lower quality), each a code glyph of
+  the Hall of Falling Script's set (world-atlas digits and code letters), about half a blade tall, a calm
+  code green that cools fast and settles to the grass's darkness when it lands, re-rolling to another
+  glyph as it flies. The throw, fall, lie and thin are the cut tops'. Every look met on the way stays
+  behind `?grassSpray=` (`0` none).
+- **Why this way:** the game already has one "code" look (the falling script); reusing its glyphs and
+  greens keeps one style. The chips share the tops' batch, pool and stream, so the spray costs one more
+  attribute, not another draw call, and draws no `Math.random`: the seeded fights replay byte for byte.
+- **Consequences / open:** the code green is a new colour in the meadow; the phone gets a brighter,
+  larger version (at the desktop strength it vanished); the boss marks throw none; nobody has judged it
+  on the phone's own screen.

@@ -3497,6 +3497,20 @@ shape, so the marks read on a meadow too. Cosmetic only: no hit, no clock, no da
   tops). A mark's tear hands its blades over the same way (`scorch.tear` → `tops`), at most `perTear` a
   call. Cost at quality 1: `cutArc` ≈ 0.03 ms a frame of a swing, the batch ≈ 0.03 ms; about 130 tops a
   swing (65 thrown), half that at quality 0.5.
+- **The code spray** (`?grassSpray=`, `GRASS.spray`, ADR-192; read once): on the frame `cutArc` cuts a
+  blade it also throws CHIPS into the cut tops' batch (`MowFx._chip`; the pool is `fly.max` 2000 x quality),
+  `per` 0.5 a cut blade (x (1 / q)^`lowQ` 0.8 on a lower quality: the phone draws a third of the blades).
+  Today's default `m`: each chip is ONE CODE GLYPH from `GRASS.spray.code.glyphs` (the Hall of Falling
+  Script's digits plus `ZTHKEX<>=:+*`, all world-atlas glyphs), `size` 0.4 - 0.55 x the blade, unlit and
+  fogged (attribute `aK`), fresh `col.head` green cooling to `col.tail` over `cool` 0.18 s, settling to
+  `col.deep` (the grass's own darkness) within `darken` 0.35 s of landing, re-rolling to another code glyph
+  every `flip` 0.09 - 0.24 s while it flies, near upright; thrown, falling, lying and thinning as the cut
+  tops do. Under quality 0.75 it takes `m4`'s greens and a size 0.5 - 0.66 (it vanished on the phone).
+  The others: `m4` a step more visible, `m0` / `m2` (each glyph trailing two fading ones) / `m3` (the cut
+  tops turn to code too) the earlier code looks, `a` / `a2` chips of the blade's own letter in its own
+  colour, `a0` / `b` / `c` letters in the house letter (`world/grassSpray.js`, a `LetterBatch`), `0` none.
+  No allocation per frame, no `Math.random` (the tops' own stream). Cost at quality 1: the tops and chips
+  about 0.05 ms a frame; `cutArc` with the spawning about 2.4 ms over a whole four-swing string.
 - **The marks tear first** (`scars.mark` with `world.scorch.tearLine`, a density function and `mowOn()`):
   before its glyphs are laid, each kind tears its shape (`GRASS.mark`, depth `k` from a light blow to the
   hardest by its power, (power − 0.3) / 1.5): a `slam` a disc `r` 1.05 × its round (the crater's radius
