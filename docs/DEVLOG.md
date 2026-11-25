@@ -5,6 +5,42 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-24 — The idles, round 2: the sword arm as picked in every rest; three sword spells (ADR-186 amended)
+
+**Owner** (on a still of the `hilt` rest beside the belt): "some of the new idle animations have worse unnatural
+poses or angles ... the old one was holding the sword correctly in both angles. analyze all the new idle animations
+and ensure it all looks good and natural. also add more dynamic interesting cool idle moments like the main character
+casting some kind of cool subtle spell with his swords, to make the player curious about the true power of the sword".
+
+**Audit** (every rest, habit and trick at the game camera and from the side and front, strips and full frames):
+- `hilt` (both hands on the hilt before him): from the game camera behind him the blade vanished behind his body, and
+  the wrist turned the steel out of the fist. Dropped.
+- `trail` (the blade low behind him): the sword wrist bent 50-60° off the forearm. Dropped.
+- `flip` (the reverse-grip flip): the wrist folded to 143°. Dropped.
+- `regrip` brought the blade before him with both hands (hidden from behind): now the grip eases and closes where the
+  blade hangs, the blade turning a quarter and dipping through the fingers, the free hand shaking out.
+- Rule kept from now on: every rest keeps the at-ease sword arm the owner picked (ADR-114: the blade on the forearm's
+  line, out at his front-right); the rests change only the free arm, the weight and the head. New: `fingers` (sword
+  fingers low by the hip, guard()'s old rest) and `cloak` (the hand at the cloak's edge on his breast).
+
+**Spells** (idles.js SPELLS, drawn by `swordMystic.js` from `anim.spell`; motion alone with `?mystic=0`), in the
+trick pool: the **rite** (the blade raised beside his shoulder, his sword fingers drawn up the flat, the flame burning
+up behind them and embers lifting off the point), the **sigil** (the point lowered, a ring of the flame's marks written
+round him at knee height, fading together), the **breath** (the blade upright, head bowed, the flame swells and a
+thread of marks circles him once and a half and returns into the steel). In the flame's own tiny green letters: a
+ring of 52 read as specks at the game camera, 150 (a mark every ~3.5 cm) reads as a line; on the ground or at the
+shin the grass hid it.
+
+**Measured.** Rests: the sword wrist ≤ 17° in all four (was 28-64° in hilt / trail), elbows R ≥ 128°. Actions: the
+blade ≥ 16 cm off his body; the rite's free forearm lies 5 cm from the flat (its fingers are on it, as the inspect's).
+Every move from every rest and from inside every action within the stance before (at ease: run 9.0, light 80, roll
+41, block 53, drink 6, charge 13 cm a frame²). Left alone 90 s: 17 actions, 4 of them tricks or spells, all four rests.
+Suites: heroidles, swordmystic, herolife, herohand, heroarms, herostance, hero, herolook, lord `moves`.
+
+**Films:** the close review (before | after, game camera over the close side view) and the in-game one (the whole
+720p frame at the real game camera), both re-shot.
+
+---
 ## 2026-11-25 — The streak's answer: a heavy first cut, a path that flows, a figure each time, cuts that tear the picture (ADR-190, ADR-191; planned by Fable, built by Opus agents)
 
 **Owner, round 1:** "the new perfect dodge/parry streak effect right now looks too fast in the early streaks. something about it just looks not epic/stunning. review it and make it look and fell good. plan it out with fable and have opus agents do the work". Asked which part and where: "All of it, you judge"; "Both" (men and the wyrm). **Round 2**, after the clips: "make sure all the white slashes that show up is accurate to how the character moved. theres a random 2 curved slashes at the end of the combo that appears out of nowhere. also the streak animation and movement shouldnt have to go back to the original place ... A - B - C ... also replace the explosion "A" effect with something more cooler ascii smaller character detailed explosion. i also want the slashes to look like its ripping time in a cool flash instant. make different variations". Asked: all four rip ideas built to compare, "White-steel letter dust", no reference clip ("you decide"). **Round 3:** "make the streak not always form some kind of star ... always be dynamic with different figures". **Pick:** from one comparison film, "strip". Branch `combat/streak-pace` (+ `combat/streak-rip`, merged in).

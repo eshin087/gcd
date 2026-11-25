@@ -188,7 +188,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 ## M1.83 — The hero's idles: rests, habits with both arms, sword tricks (2026-11-24, `claude/hero-idles-2776d8`, ADR-186)
 - [x] At ease: four rests, six habits with both arms, five tricks every 3 - 4 actions; in the fight: the free hand off the belt (four guard hands), five small habits, no tricks (`?idles=old`: the belt)
 - [x] Measured in his own frame (joints, the blade's gaps, the coat, pops) and every move from every rest and every action against the stance before; scenario `heroidles`; the Lab's `idles` / `idle ▸` rows
-- [x] Films before | after sent to the owner (exploring, the fight, the cuts)
+- [x] Films before | after sent to the owner (exploring, the fight, the cuts; and the in-game view)
+- [x] Round 2 at the owner's call: the sword arm as picked in every rest (hilt, trail and the flip dropped); three sword spells in the green flame (rite, sigil, breath)
 - [ ] The owner's picks (which rests / tricks to keep, their pace); played on the iPhone
 - [ ] The pass behind his back into the left hand (the sword must be able to change hands: a rig change)
 - [ ] The block's / roll's / charge's own short entries out of a far blade (the whips left are theirs)

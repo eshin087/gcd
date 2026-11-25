@@ -1230,7 +1230,7 @@ every `IDLE_LIFE.gap` (2–4.5 s after the last one ends), picked with the anima
 Visual only: no hit test runs outside attacks.
 **The idles** (ADR-186, `idles.js`; `?idles=old` = the paragraph above as it was, live through `setIdles`): `stand()`
 writes a REST's arms over each stance (`easeArms` over `atEase`, `guardArms` over `fencerGuard`): at ease one of
-`EASE_RESTS` (`loose`, `hilt`, `trail`, `belt`), in the guard one of `FIGHT_RESTS` (`point`, `eye`, `hand`, `low`: the
+`EASE_RESTS` (`loose`, `fingers`, `cloak`, `belt`: the free arm only, the sword arm stays `atEase`'s), in the guard one of `FIGHT_RESTS` (`point`, `eye`, `hand`, `low`: the
 free hand off the belt). The state is `anim.rests = { ease, fight }`, each `{ a, b, u, hold, mem }` (from rest a to
 b, `u` 0..1 of the change, smootherstep, the blade by `dirLerp` with its own memory); `tickRests` (in `_idleLife`)
 runs a stance's hold down while he stands still in it and starts a change only between actions (`IDLES.restHold`
@@ -1241,7 +1241,12 @@ rest (a trick due in the trail first moves him to `loose`); in the guard (`fight
 `FIGHT_ACTS`, never a trick; during the stance's change, none. A cut lets a `blade` action go over
 `IDLES.cancelBlade` (0.26 s), and at ease a block / parry / drink / charge out of a `blade` action or the trail rest
 enters over at least `IDLES.cutFade` (0.24 s). Lab / tests: `anim.playIdle(name)` (a `blade` one from a high rest
-queues behind a move to `loose`), `anim.setRest(name, atOnce?, hold?)`, `anim.idleNames(fight)`.
+queues behind a move to `loose`), `anim.setRest(name, atOnce?, hold?)`, `anim.idleNames(fight)`. The trick pool's
+three SPELLS (`rite`, `sigil`, `breath`; `spell: true`) publish `anim.spell = { kind, u, w }` (in `_idleLife`, w 0
+otherwise); `swordMystic.js` reads it: the flame swells toward the top tier (`SPELL.surge`, every cell lit, hotter,
+longer tongues), the rite's flame waits above the fingers' front, and each writes the flame's marks through the same
+batch (`SPELL`: the rite's embers, the sigil's ring at knee height, the breath's thread). The idles draw on
+`anim.idleNoise`, never `anim.noise` (which picks an attack's look).
 **Idle** (`guard`, ADR-041; ADR-040 put the blade out to his side, where the game camera sees it):
 weight on the left leg, the right foot a shoulder's width out and forward with the knee soft, the
 upper arm hanging by the ribs with the elbow a little back, the grip beside the right hip and

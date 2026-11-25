@@ -5657,3 +5657,12 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   rule. The block's, the roll's and the charge's own entries out of a far blade are left as they were (not this
   session's region): a follow-up could let a clip's entry turn the blade before the hand, as `swordFromEntry` does
   for a roll. A true hand-off (the sword in the left hand) needs the rig to pose the sword from either arm.
+
+- **Amended (2026-11-24, round 2):** the owner: "some of the new idle animations have worse unnatural poses or angles
+  ... the old one was holding the sword correctly in both angles", and asked for "cool subtle" sword spells. Every
+  rest now keeps the at-ease sword arm (ADR-114) and changes only the free arm, the weight and the head: `hilt` (blade
+  hidden from the game camera, the wrist turned) and `trail` (the wrist bent 50-60°) gave way to `fingers` and
+  `cloak`; the reverse-grip `flip` (the wrist at 143°) is gone; the re-grip happens where the blade hangs. Three
+  SPELLS join the trick pool, motion in idles.js and marks in the sword's green flame (`swordMystic.js` reads
+  `anim.spell`): the rite, the sigil, the breath. They stay in the flame's own tiny letters and green; a line of
+  them needs a mark every ~3.5 cm to read at the game camera, and anything written near the ground hides in the grass.
