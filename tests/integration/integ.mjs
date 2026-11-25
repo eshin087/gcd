@@ -29,7 +29,7 @@ const { LightPool } = await imp('src/render/lights.js');
 const { GlyphParticles } = await imp('src/render/particles.js');
 const { FireField } = await imp('src/render/fireField.js');
 const { Colliders } = await imp('src/world/colliders.js');
-const { Destructibles, STATE: PIECE } = await imp('src/world/destructibles.js');
+const { Destructibles, STATE: PIECE, reseedBreaks } = await imp('src/world/destructibles.js');
 const { BREAK } = await imp('src/world/breakTuning.js');
 const { resolveOn } = await imp('src/world/edge.js');
 const { buildDeadTree, buildBoulder, buildStump, geosHeight, createForest } = await imp('src/world/forest.js');
@@ -400,6 +400,12 @@ function build(opts = {}) {
   // Math.random for every Object3D, geometry and material, so one more mesh on the wyrm or the hero
   // used to move every later roll and turn an unrelated seeded check red (2026-11-16, 2026-11-20)
   Math.random = mulberry32((SEED ^ 0x2545f491) >>> 0);
+  // … and the world's own streams (destructibles.js: how a felled tree lies, how its fire spreads):
+  // module state, so without this a scenario's world drew where the scenarios before it in the same
+  // process had left them: BREACH's wyrm, walking out through the felled trees of its gap, read 41 m
+  // run alone, 44.7 m after the 51 scenarios before it in `all`, and 51 m (a FAIL) once the hero's
+  // swings changed what those scenarios cut down (2026-11-24, ADR-188). Now 45.4 m either way
+  reseedBreaks();
   return G;
 }
 
