@@ -158,9 +158,10 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
       const vec4 DG_TIPS = vec4(${gis('|/\\-').map((v) => v.toFixed(1)).join(', ')}); // upright, right, left, laid
       // the printed blade (world/dragonGrass.js DG.blades): its root / tip tone, body (lit), the cell's dark
       // ground, the fire's glow, how many digits, its hash, the fog, burnt
-      varying vec2 vPT;
-      varying vec3 vPBody, vPBg, vPAdd;
-      varying float vPN, vPH, vPFog, vPBurnt, vPTip;
+      varying vec2 vPT, vPT2;
+      varying vec3 vPBody, vPLa, vPAdd;
+      varying vec4 vPRoot;
+      varying float vPN, vPH, vPFog, vPBurnt, vPTip, vPMown;
 #endif
       void main() {
         vec3 root = vec3(iRoot.x, 0.0, iRoot.y);
@@ -344,28 +345,35 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
         vec2 ln = (off.xz - offW.xz) / max(h, 1e-3) + (vec2(fract(iRoot.w * 3.7), fract(iRoot.w * 5.3)) - 0.5) * 0.3;
         vec3 Nb = normalize(vec3(ln.x * 0.8, 1.0, ln.y * 0.8));
         float tm = smoothstep(uMoonDir.y - 0.3, uMoonDir.y + 0.25, max(dot(Nb, uMoonDir), 0.0));
-        float shT = shadowAtFast(root + vec3(0.0, h * 0.9, 0.0));
         vec3 PLp = pointLights(root + vec3(0.0, 0.35, 0.0), Nb, 0.5);
         float pl = luma(PLp) * 2.0;
-        float tT = clamp(tm * shT * 0.85 + pl + 0.05, 0.0, 1.0);
-        float tR = clamp(tm * sh * 0.85 * ${(pr ?? DG.blades).root.toFixed(2)} + pl * 0.7 - 0.04, 0.0, 1.0);
+        // (the moon's share of the tone and of the light is shadowed row by row in the fragment shader, at each
+        // digit's own height: a shadow's edge falls cell by cell, as on the printed ground)
+        vec2 tMoon = vec2(tm * 0.85 * ${(pr ?? DG.blades).root.toFixed(2)}, tm * 0.85);
+        vec2 tRest = vec2(pl * 0.7 - 0.04, pl + 0.05);
         // (laid by the wake: its whole length catches the moon, a sheen; a mown stub pale at its cut)
-        tT = clamp(tT + 0.2 * bendK, 0.0, 1.0);
-        tR = mix(tR, tT, bendK);
-        if (mown > 0.5) tR = tT = clamp(tT + 0.1, 0.0, 1.0);
-        vec3 Lp = ambientAt(vec3(0.0, 1.0, 0.0)) + uMoonColor * uMoonDir.y * sh * 0.85 + PLp;
+        tRest.y += 0.2 * bendK;
+        tMoon.x = mix(tMoon.x, tMoon.y, bendK);
+        tRest.x = mix(tRest.x, tRest.y, bendK);
+        if (mown > 0.5) {
+          tMoon = vec2(tMoon.y);
+          tRest = vec2(tRest.y + 0.1);
+        }
         vec3 bodyP = mix(vec3(0.07, 0.11, 0.06), vec3(0.085, 0.08, 0.072), uAsh) * (0.85 + 0.3 * iData.z);
         bodyP = mix(bodyP, vec3(0.05, 0.045, 0.04), burn);
         bodyP = mix(bodyP, mix(uFresh, uFreshAsh, uAsh) * 0.42, 0.6 * mown * (1.0 - burn));
         bodyP *= 1.0 - uBendE.x * bendK;
-        vPT = vec2(tR, tT);
-        vPBody = bodyP * Lp * 1.15;
-        vPBg = vec3(0.008, 0.01, 0.01) * Lp;
+        vPT = tMoon;
+        vPT2 = tRest;
+        vPBody = bodyP * 1.15;
+        vPLa = ambientAt(vec3(0.0, 1.0, 0.0)) + PLp;
+        vPRoot = vec4(root, h / nd);
         vPAdd = vec3(1.0, 0.3, 0.05) * heat * heat * 1.6 * flick;
         vPN = nd;
         vPH = iRoot.w;
         vPFog = smoothstep(uFogNear, uFogFar, length(wp.xz - uFocus.xz));
         vPBurnt = burn > 0.55 ? 1.0 : 0.0;
+        vPMown = mown;
         // its tip a stroke the way it leans on screen (its own lean, the wake's, a foot's: not the wind's)
         float lx = ln.x * 1.4 + (fract(iRoot.w * 11.3) - 0.5) * 0.9;
         vPTip = abs(lx) > 1.1 ? DG_TIPS.w : lx > 0.3 ? DG_TIPS.y : lx < -0.3 ? DG_TIPS.z : DG_TIPS.x;
@@ -377,23 +385,31 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
 #if DG_PRINT == 1
       ${COMMON_GLSL}
       ${DRAGON_PRINT_GLSL}
+      const float DG_STUBS[3] = float[3](${gis('.:·').map((v) => v.toFixed(1)).join(', ')});
       varying vec2 vUv;
       varying float vGlyph;
-      varying vec2 vPT;
-      varying vec3 vPBody, vPBg, vPAdd;
-      varying float vPN, vPH, vPFog, vPBurnt, vPTip;
-      // the column's digits: row by row up the blade, each picked by its tone (the root's to the tip's); every
-      // cell filled (its dark ground drawn: a blade in front hides the one behind, digits never overlap)
+      varying vec2 vPT, vPT2;
+      varying vec3 vPBody, vPLa, vPAdd;
+      varying vec4 vPRoot;
+      varying float vPN, vPH, vPFog, vPBurnt, vPTip, vPMown;
+      // the column's digits: row by row up the blade, each picked by its tone (the root's to the tip's, the
+      // moon's share shadowed at the digit's own height); every cell filled (its dark ground drawn: a blade in
+      // front hides the one behind, digits never overlap)
       void main() {
         float rf = vUv.y * vPN;
         float row = clamp(floor(rf), 0.0, vPN - 1.0);
         vec2 f = vec2(clamp(vUv.x, 0.0, 1.0), rf - row);
-        float t = mix(vPT.x, vPT.y, vPN > 1.0 ? row / (vPN - 1.0) : 1.0);
+        float s = vPN > 1.0 ? row / (vPN - 1.0) : 1.0;
+        float shr = shadowAt(vec3(vPRoot.x, (row + 0.5) * vPRoot.w * 0.9, vPRoot.z));
+        float t = clamp(mix(vPT.x, vPT.y, s) * shr + mix(vPT2.x, vPT2.y, s), 0.0, 1.0);
+        vec3 L = vPLa + uMoonColor * uMoonDir.y * shr * 0.85;
         float idx = vPBurnt > 0.5 ? vGlyph : dpGlyph(t, hash12(vec2(vPH * 97.0, row)));
         if (vPBurnt < 0.5 && vPN > 1.5 && row > vPN - 1.5) idx = vPTip;
+        // a mown stub: a pale short mark, not a digit (world/dragonGrass.js's stubble)
+        if (vPBurnt < 0.5 && vPMown > 0.5) idx = DG_STUBS[int(fract(vPH * 11.3) * 3.0)];
         vec2 gc = vec2(vUv.x, rf);
         float m = glyphGrad(idx, f, dFdx(gc), dFdy(gc));
-        vec3 col = vPBg + (vPBody * (0.2 + 1.5 * t) + vPAdd) * m;
+        vec3 col = vec3(0.008, 0.01, 0.01) * L + (vPBody * L * (0.2 + 1.5 * t) + vPAdd) * m;
         gl_FragColor = vec4(mix(col, uFogColor, vPFog), 0.0);
       }
 #else

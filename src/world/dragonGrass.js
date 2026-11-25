@@ -67,6 +67,8 @@ export const DG = Object.freeze({
    */
   blades: Object.freeze({ lattice: [0.135, 0.5], keep: 1.15, cell: [0.135, 0.229], rows: 3, sway: 0.6, root: 0.45 }),
   sparse: Object.freeze({ lattice: [0.27, 0.5], keep: 0.4, cell: [0.135, 0.229], rows: 3, sway: 0.6, root: 0.45 }),
+  /** b: the ground under the blades this much darker (tone, x the meadow's density) */
+  under: 0.3,
   /** the tussocks: a jittered lattice `ts` m apart, each `r` x ts across (by its hash) */
   ts: 1.0,
   r: [0.55, 0.35],
@@ -93,8 +95,8 @@ const B = GRASS.blade;
 
 /** The GLSL for ground.js's look b (its [grass] hook): the option is baked in (the page's URL is fixed). */
 function grassGlsl(opt) {
-  // 1: standing tufts printed (a); 2: the relief of laid tussocks (a2, c)
-  const mode = opt === 'a' ? 1 : opt === 'a2' || opt === 'c' ? 2 : 0;
+  // 1: standing tufts printed (a); 2: the relief of laid tussocks (a2, c); 3: the floor under the blades (b)
+  const mode = opt === 'a' ? 1 : opt === 'a2' || opt === 'c' ? 2 : opt === 'b' ? 3 : 0;
   const v3 = (a) => a.map((v) => v.toFixed(3)).join(', ');
   const T = DG.tuft;
   return /* glsl */ `
@@ -258,6 +260,10 @@ void dgGrass(vec2 cw, float h, float d, float burn, float torn, inout vec3 N, in
   body = mix(body, vec3(${v3(DG.soil)}), bare);
   tone += mix(tn, ${DG.soilTone.toFixed(2)}, bare);
   if (mown > 0.5 && bare < 0.5 && burn < 0.35) idx = DG_STUB[int(fract(h * 11.3) * ${STUB.length}.0)];
+#elif DG_MODE == 3
+  // b: the floor under the standing blades (seen where they are cut, laid or thin), in their shade
+  tone -= ${DG.under.toFixed(2)} * d;
+  body *= 1.0 - 0.25 * d;
 #endif
 }
 `;

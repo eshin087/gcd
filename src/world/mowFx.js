@@ -218,11 +218,12 @@ export class MowFx {
     this._wide = this.spray?.T.wide ?? 1;
     if (this.spray?.T.fresh2 != null && gu.uMowFresh2) gu.uMowFresh2.value = this.spray.T.fresh2;
     // the dragon ground's printed tufts (world/dragonGrass.js, `?ground=b&dgGrass=a|a2|c`) read the scorch
-    // map's A, not the blades' bytes: the arc's cut is written there too; with no 3D blades drawn (a, a2)
-    // no cut top of a hidden blade flies (the chips still do)
+    // map's A, not the blades' bytes: the arc's cut is written there too. No cut top flies with any of the
+    // dragon grass (a, a2: a hidden blade's; b, c: a letter as big as the blade over a meadow printed in
+    // digits): the code chips do
     const dgo = groundLook() === 'b' ? dgGrassOpt() : '0';
     this._printTear = dgo === 'a' || dgo === 'a2' || dgo === 'c';
-    this._noTops = dgo === 'a' || dgo === 'a2';
+    this._noTops = dgo !== '0';
   }
 
   /** The swing's way for the cuts that follow (grass.js mowSwing): unit (ux, uz), k its strength. */
