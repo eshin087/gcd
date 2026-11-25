@@ -5,7 +5,7 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 
 ## [Unreleased]
 Ninety-five pieces of work since 0.4.0:
-- **The world is printed like the dragon** (2026-11-25, ADR-196). *Changed:* every level's ground, floors, grass,
+- **The world is printed like the dragon** (2026-11-25, ADR-197). *Changed:* every level's ground, floors, grass,
   rocks, pillars, walls and trees are printed in the wyrm's own fine digits: a lit relief, dark where it turns
   from the moon and bright where the light catches it, in letters fixed to the world, so the ground looks
   three-dimensional and shadows fall across it. The grass is printed tufts that lie down as you run through

@@ -5804,7 +5804,7 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   the CPU's `bendAt` are kept in step by hand; close up a lying blade is a long sheared stroke (as the
   pusher's always was); the phone's frame cost is the owner's to confirm.
 
-## ADR-196 — The dragon print: the ground, floors, grass, props and trees printed in the wyrm's digits (2026-11-25)
+## ADR-197 — The dragon print: the ground, floors, grass, props and trees printed in the wyrm's digits (2026-11-25)
 
 - **Context:** the owner: the ground "doesn't seem like ascii ground ... make it look cool ascii without being
   too hard on the eyes ... or too grainy"; of four rendered looks they picked b, "the dragon ground" ("it
