@@ -26,7 +26,13 @@ const DUST_CHARS = ".,'`:";
 const DUST_COL = [0.2, 0.19, 0.17];
 const DUST_WARM = [0.6, 0.3, 0.12];
 const DUST_MAX = 320;
+// what it carries round in its spin: splinters, grit and embers, one letter each (written every frame)
+const ORB_CHARS = '/\\|-*';
+const ORB_MAX = 220;
+const ORB_WOOD = [0.42, 0.3, 0.2];
+const ORB_EMBER = [1.0, 0.55, 0.15];
 const SMOKE = 'smoke';
+const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
 /** The spells' drawing state for one wyrm (made on first use: spellFx(d)). */
 class SpellFx {
@@ -50,6 +56,13 @@ class SpellFx {
     this._dC = new Uint8Array(DUST_MAX);
     this._dN = 0;
     this._col = [0, 0, 0];
+    this._oCols = new Uint8Array(ORB_CHARS.length);
+    this._oA = new Float32Array(ORB_MAX);
+    this._oY = new Float32Array(ORB_MAX);
+    this._oR = new Float32Array(ORB_MAX);
+    this._oV = new Float32Array(ORB_MAX);
+    this._oC = new Uint8Array(ORB_MAX);
+    this._oN = 0;
   }
 
   get fire() {
@@ -127,8 +140,12 @@ class SpellFx {
     const seg = !!look?.segmented;
     const every = seg ? Math.max(1, Math.round((look.every ?? 1) / s.step)) : 1;
     const wd = this.wind(s.hx, s.hz);
+    const ribs = (s.hl?.ribs ?? 1.35) / s.step, TWO = Math.PI * 2;
+    const DN = s.hl?.dens ?? 1, SZ = s.hl?.size ?? 1, HK = (s.hl?.heat ?? 1) / Math.sqrt(Math.max(0.25, share)); // (a phone: fewer blobs, each a little hotter)
     for (let i = 1; i < n; i++) {
-      const g = s.glow * s.fade[i];
+      // dark bands across it (its scales, its ribs): the fire thins between two of them
+      const rib = seg ? 1 : 0.5 + 0.5 * Math.cos((TWO * i) / ribs);
+      const g = s.glow * s.fade[i] * (seg ? 1 : 0.5 + 0.5 * rib);
       if (!(g > 0.02)) continue;
       const x = s.px[i], y = s.py[i], z = s.pz[i], w = s.w[i];
       if (!fin(x + y + z + w)) continue;
@@ -142,19 +159,19 @@ class SpellFx {
       }
       // the body: a ragged band of small cool blobs (a vertebra: a ball of them) round a hotter spine
       const ww = knot ? w * 1.3 : w;
-      let m = this.count(st, i, (knot ? 170 : 52) * share * g * (0.5 + ww), dt, knot ? 12 : 6);
+      let m = this.count(st, i, (knot ? 170 * Math.min(DN, 1.6) : 85 * DN) * share * g * (seg ? 1 : 0.12 + 0.88 * rib * rib) * (0.5 + ww), dt, knot ? 12 : 16);
       while (m-- > 0) {
         const l = rand(-1, 1) * ww * 0.85, u = rand(-0.3, 0.45) * ww;
         const c = 1 - Math.abs(l) / Math.max(0.1, ww); // 1 on the spine, 0 at the rim
-        const bs = rand(0.8, 1.2) * Math.max(0.4, ww * (knot ? 1.0 : 0.85));
-        this.blob(x + nx * l, y + u, z + nz * l, 0, rand(0.2, 0.7), 0, rand(0.12, 0.19), bs, bs * 0.7, (0.11 + 0.13 * c) * g * (knot ? 1.2 : 1), 0.04, 0.8);
+        const bs = SZ * rand(0.8, 1.2) * Math.max(0.4, ww * (knot ? 1.0 : 0.85));
+        this.blob(x + nx * l, y + u, z + nz * l, 0, rand(0.2, 0.7), 0, rand(0.12, 0.19), bs, bs * 0.7, HK * (0.3 + 0.3 * c) * g * (knot ? 0.75 : 1), 0.08 * HK, 0.8);
       }
       // the hot spine (every other sample: overlaps build its heat), and flames licking up off its back
       if (!seg && i % 2 === 0) {
         let h = this.count(st, 1000 + i, 26 * share * g, dt, 3);
-        while (h-- > 0) this.blob(x + rand(-0.08, 0.08), y + 0.1 * w, z + rand(-0.08, 0.08), 0, rand(0.2, 0.5), 0, rand(0.1, 0.15), 0.45 * Math.max(0.5, w), 0.32, 0.22 * g, 0.06);
+        while (h-- > 0) this.blob(x + rand(-0.08, 0.08), y + 0.1 * w, z + rand(-0.08, 0.08), 0, rand(0.2, 0.5), 0, rand(0.1, 0.15), 0.45 * Math.max(0.5, w), 0.32, 0.4 * g, 0.1);
       }
-      let t = this.count(st, 2000 + i, 9 * share * g * (0.4 + w), dt, 2);
+      let t = this.count(st, 2000 + i, 9 * share * g * rib * (0.4 + w), dt, 2);
       while (t-- > 0) {
         const l = rand(-0.5, 0.5) * w;
         this.blob(x + nx * l, y + 0.4 * w, z + nz * l, wd.x * 0.4, rand(1.2, 2.4), wd.z * 0.4, rand(0.3, 0.48), rand(0.4, 0.6), 0.2, 0.2 * g, 0, 1.0, 1.3);
@@ -188,28 +205,29 @@ class SpellFx {
     sx /= sl;
     sz /= sl;
     const ux = -fy * fx, uy = fx * fx + fz * fz, uz = -fy * fz; // (up, tipped with the head)
-    const W = s.w[0] * 1.15, L = 1.7, jaw = s.jaw, hot = 1 + 0.5 * (s.heat ?? 0);
-    let m = this.count(st, 'h', 130 * share * g, dt, 10);
+    const W = s.hl?.w ?? 1, L = s.hl?.len ?? 2.2, jaw = s.jaw, hot = 1 + 0.5 * (s.heat ?? 0);
+    let m = this.count(st, 'h', (s.hl?.dens ?? 1) * 230 * share * g, dt, 40);
     while (m-- > 0) {
       const a = rnd(); // 0 at the back of the skull, 1 at the snout
-      const half = W * (1 - 0.62 * a);
+      // a wedge: the broad back of the skull, narrowing to the snout
+      const half = W * (a < 0.2 ? 0.8 + a : 1 - 0.72 * ((a - 0.2) / 0.8));
       const l = rand(-1, 1) * half;
       // the jaws: the front half of the head splits into an upper and a lower jaw as it opens
       const open = jaw * a * a * 0.9;
       const u = rand(-0.25, 0.3) * half + (rnd() < 0.5 ? open : -open);
-      const back = (a - 0.25) * L;
-      const sz2 = rand(0.6, 0.85) * Math.max(0.35, half);
+      const back = (a - 0.3) * L;
+      const sz2 = (s.hl?.size ?? 1) * rand(0.55, 0.8) * Math.max(0.32, half);
       this.blob(
         hx + fx * back + sx * l + ux * u, hy + fy * back + uy * u, hz + fz * back + sz * l + uz * u,
-        0, rand(0.1, 0.4), 0, rand(0.09, 0.14), sz2, sz2 * 0.75, (0.2 + 0.14 * (1 - Math.abs(l) / Math.max(0.1, half))) * g * hot, 0.06, 0.6,
+        0, rand(0.1, 0.4), 0, rand(0.09, 0.14), sz2, sz2 * 0.75, (s.hl?.headHeat ?? 1) * (0.42 + 0.3 * (1 - Math.abs(l) / Math.max(0.1, half))) * g * hot, 0.1, 0.6,
       );
     }
     // the eyes: two small hot knots high on the skull, either side (they print as bright round digits)
-    let e = this.count(st, 'eye', 34 * g, dt, 4);
+    let e = this.count(st, 'eye', 50 * g, dt, 5);
     while (e-- > 0) {
       const side = rnd() < 0.5 ? -1 : 1;
-      const back = 0.12 * L;
-      this.blob(hx + fx * back + sx * side * W * 0.55 + ux * 0.25 * W, hy + fy * back + uy * 0.25 * W, hz + fz * back + sz * side * W * 0.55 + uz * 0.25 * W, 0, 0, 0, 0.08, 0.28, 0.24, 0.75 * g * hot, 0.55);
+      const back = 0.05 * L, o = W * 0.55, up = W * 0.4;
+      this.blob(hx + fx * back + sx * side * o + ux * up, hy + fy * back + uy * up, hz + fz * back + sz * side * o + uz * up, 0, 0, 0, 0.08, 0.42, 0.36, 1.1 * g, 0.85);
     }
     // a strike: fire spits from between the jaws
     if (jaw > 0.3) {
@@ -226,12 +244,12 @@ class SpellFx {
    * The lane it leaves: points of ground it burnt (s.lane: x, z, age per point in a ring), each with a
    * few low small flames that die down over `life` s (the grass fire under it burns on its own).
    */
-  lane(s, dt, life, share) {
+  lane(s, dt, life, share, delay = 0) {
     const L = s.lane, n = s.laneN;
     if (!(n > 0) || !(dt > 0)) return;
     const wd = this.wind(s.hx, s.hz);
     for (let i = 0; i < n; i++) {
-      const k = i * 3, age = L[k + 2];
+      const k = i * 3, age = L[k + 2] - delay;
       if (!(age >= 0) || age > life) continue;
       const f = 1 - age / life;
       let m = this.count(s.acc, 3000 + i, 4 * share * f, dt, 2);
@@ -293,35 +311,42 @@ class SpellFx {
     const r0 = look.r0 * narrow, r1 = look.r1 * (1 - 0.3 * G);
     const S = look.strands, tw = look.twist;
     const wd = this.wind(v.x, v.z);
+    // it leans (m per m of height, along z: + toward the game camera, - away from it: north, up the screen)
+    const LN = look.lean ?? 0, LJ = look.jitter ?? 0.22, FACE = look.face ?? 0;
+    v._H = H;
+    v._r0 = r0;
+    v._r1 = r1;
+    v._lean = LN;
     // the strands: helices of small blobs turning round the axis (the pattern turns: it reads as spin)
     let m = this.count(st, 'col', look.rate * share * k * (1 + 0.3 * G), dt, 120);
     while (m-- > 0) {
       const yk = rnd(), y = 0.75 + yk * H;
       const r = (r0 + (r1 - r0) * Math.pow(yk, 1.5)) * rand(0.9, 1.08);
       const strand = Math.floor(rnd() * S);
-      const a = v.spin + (strand / S) * TAU - tw * y * TAU * 0.25 + rand(-0.22, 0.22);
+      const a = v.spin + (strand / S) * TAU - tw * y * TAU * 0.25 + rand(-LJ, LJ);
       const ca = Math.cos(a), sa = Math.sin(a);
-      const tang = look.spin * r * 0.45; // along the turn
-      const sz = rand(0.65, 0.95) * (0.9 + 0.4 * yk);
-      const hot = 0.2 + 0.1 * yk + 0.14 * G;
+      const tang = look.spin * r * (look.carry ?? 0.45); // along the turn
+      const sz = rand(0.65, 0.95) * (0.9 + 0.4 * yk) * (look.blob ?? 1);
+      // brighter where a strand turns toward the camera (+z): the turning edges read as spin
+      const hot = (0.2 + 0.1 * yk + 0.14 * G) * (1 - FACE * 0.5 + FACE * Math.max(0, sa));
       // the crown leans downwind
       const lean = yk * yk * 1.2;
       this.blob(
-        v.x + ca * r + wd.x * lean, y, v.z + sa * r + wd.z * lean,
+        v.x + ca * r + wd.x * lean, y, v.z + sa * r + wd.z * lean + LN * y,
         -sa * tang, rand(1.5, 3.5) * (1 + G), ca * tang,
-        rand(0.18, 0.26), sz, sz * 0.8, hot * k, 0.04, 1.2,
+        rand(0.18, 0.26) * (look.life ?? 1), sz, sz * 0.8, hot * k * (look.heat ?? 1), 0.04, 1.2,
       );
     }
     // the core: a thin rope of heat up the axis (white-hot as it gathers)
     let c = this.count(st, 'core', 110 * share * k * (1 + G), dt, 12);
     while (c-- > 0) {
       const y = 0.8 + rnd() * H * 0.7;
-      this.blob(v.x + rand(-1, 1) * look.core, y, v.z + rand(-1, 1) * look.core, 0, rand(3, 6), 0, rand(0.1, 0.16), 0.45, 0.35, (0.16 + 0.3 * G) * k, 0.06, 0.8);
+      this.blob(v.x + rand(-1, 1) * look.core, y, v.z + rand(-1, 1) * look.core + LN * y, 0, rand(3, 6), 0, rand(0.1, 0.16), 0.45, 0.35, (0.16 + 0.3 * G) * k, 0.06, 0.8);
     }
     // the skirt: low fire torn round its foot
     let f = this.count(st, 'skirt', 150 * share * k, dt, 16);
     while (f-- > 0) {
-      const a = v.spin * 1.4 + rnd() * TAU, r = rand(r0 * 1.2, r0 * 1.2 + 2.6 * narrow);
+      const a = v.spin * 1.4 + rnd() * TAU, r = rand(r0 * 1.2, r0 * 1.2 + 1.3 * narrow);
       const ca = Math.cos(a), sa = Math.sin(a);
       this.blob(v.x + ca * r, rand(0.72, 1.3), v.z + sa * r, -sa * 4 - ca * 1.5, rand(0.3, 1.2), ca * 4 - sa * 1.5, rand(0.14, 0.24), rand(0.45, 0.7), 0.3, (0.14 + 0.08 * (1 - r / 5)) * k, 0.02, 1.2);
     }
@@ -329,7 +354,7 @@ class SpellFx {
     let sm = this.count(st, 'smoke', 34 * share * k * v.up, dt, 5);
     while (sm-- > 0) {
       const a = rnd() * TAU;
-      this.blob(v.x + Math.cos(a) * r1, H + rand(-0.5, 1), v.z + Math.sin(a) * r1, Math.cos(a) * 2 + wd.x, rand(0.4, 1.2), Math.sin(a) * 2 + wd.z, rand(1.2, 2.0), 1.4, 3.2, 0.34, 0, 0.6, 0.2, SMOKE);
+      this.blob(v.x + Math.cos(a) * r1, H + rand(-0.5, 1), v.z + Math.sin(a) * r1 + LN * H, Math.cos(a) * 2 + wd.x, rand(0.4, 1.2), Math.sin(a) * 2 + wd.z, rand(1.2, 2.0), 1.4, 3.2, 0.34, 0, 0.6, 0.2, SMOKE);
     }
     // embers drawn in from round it: they fly to the wall and up it
     let e = this.count(st, 'emb', 46 * share * k * v.up, dt, 6);
@@ -384,6 +409,28 @@ class SpellFx {
       for (let c = 0; c < 3; c++) col[c] = DUST_COL[c] + (DUST_WARM[c] - DUST_COL[c]) * near;
       b.put(v.x + Math.cos(A[i]) * rr, Y[i], v.z + Math.sin(A[i]) * rr, 0, this._dCols[C[i]], 0, col, fade);
     }
+    // what it carries round: splinters and embers orbiting its wall, rising, falling back in at its foot
+    const NO = Math.min(ORB_MAX, Math.round(ORB_MAX * share));
+    const H = v._H ?? look.h, r0 = v._r0 ?? look.r0, r1 = v._r1 ?? look.r1, LN = v._lean ?? 0;
+    const OA = this._oA, OY = this._oY, OR = this._oR, OV = this._oV, OC = this._oC;
+    while (this._oN < NO) {
+      const i = this._oN++;
+      OA[i] = rnd() * TAU;
+      OY[i] = rand(0.8, H * 0.9);
+      OR[i] = rand(0.2, 1.3);
+      OV[i] = rand(0.6, 1.3);
+      OC[i] = Math.floor(rnd() * ORB_CHARS.length);
+    }
+    for (let i = 0; i < this._oN; i++) {
+      OA[i] += look.spin * 0.8 * OV[i] * dt;
+      OY[i] += 1.5 * OV[i] * dt * k;
+      if (OY[i] > H * 0.9) OY[i] = rand(0.8, 2);
+      const yk = clamp01(OY[i] / Math.max(1, H));
+      const r = r0 + (r1 - r0) * Math.pow(yk, 1.5) + OR[i];
+      const ember = OC[i] === ORB_CHARS.length - 1 || i % 3 === 0;
+      const col = ember ? ORB_EMBER : ORB_WOOD;
+      b.put(v.x + Math.cos(OA[i]) * r, OY[i], v.z + Math.sin(OA[i]) * r + LN * OY[i], 0, this._oCols[ember ? ORB_CHARS.length - 1 : OC[i]], 0, col, 0.9 * k);
+    }
     b.end();
     this._dustLive = true;
   }
@@ -391,6 +438,7 @@ class SpellFx {
   /** The column's last frame: its dust letters are gone (the batch keeps what it was last written). */
   vortexEnd() {
     this._dN = 0;
+    this._oN = 0;
     if (!this._dustLive || !this._dust) return;
     this._dustLive = false;
     try {
@@ -445,9 +493,10 @@ class SpellFx {
     const mr = Math.random;
     Math.random = rnd;
     try {
-      const b = new LetterBatch(g, DUST_MAX, DUST_CHARS, { additive: false, spawned: 0, rand: rnd });
+      const b = new LetterBatch(g, DUST_MAX + ORB_MAX, DUST_CHARS + ORB_CHARS, { additive: false, spawned: 0, rand: rnd });
       pl.registerParticles(b);
       for (let i = 0; i < DUST_CHARS.length; i++) this._dCols[i] = b.col(DUST_CHARS[i]);
+      for (let i = 0; i < ORB_CHARS.length; i++) this._oCols[i] = b.col(ORB_CHARS[i]);
       this._dust = b;
       return b;
     } catch {

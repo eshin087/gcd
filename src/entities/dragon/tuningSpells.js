@@ -30,8 +30,19 @@ export const SPELLS = {
     speed: 6.4, // m/s along the ground (the hero sprints 7.2, runs 4.6)
     turn: 1.35, // rad/s its heading may turn toward him (at 6.4 m/s: a 4.7 m turning circle)
     lead: 0.35, // s of his velocity it aims ahead of him
-    wiggle: { amp: 0.95, hz: 1.0 }, // the slither: its heading swings this many rad either way, this often
-    body: { len: 15, head: 0.72, tail: 0.18, y: 0.95, step: 0.36 }, // m long; half widths at the head / tail; height; sample step
+    wiggle: { amp: 0.3, hz: 0.7 }, // its head's way swings this many rad either way, this often (a little: the S is the body's)
+    // the S along its body: a wave of `amp` m either side fixed to the ground along its track, `len` m from
+    // crest to crest, none at the head and full `ramp` m back (it straightens as it lunges)
+    slither: { amp: 2.2, len: 9, ramp: 3 },
+    // m long; half widths behind the head / at the tail, `taper` the power of the narrowing; the body's
+    // height (1.6: lower, the meadow's blades hide the fire under the soft depth test), the head's (raised
+    // off the ground as it hunts); the sample step
+    body: { len: 16, head: 0.7, tail: 0.07, taper: 0.9, y: 1.6, headY: 2.3, step: 0.36 },
+    // how it is drawn: the head's half width and length (m), its jaws as it hunts, m between the dark
+    // bands along the body; the body's blob rate x `dens`, their size x `size`, their heat x `heat`; the
+    // head's heat x `headHeat` (round 2: the body as it was printed a few red strokes; many big cool
+    // blobs make a body of orange digits, the head yellow, its eyes white)
+    headLook: { w: 1.0, len: 2.3, jaw: 0.28, ribs: 1.35, dens: 4, size: 2.0, heat: 0.3, headHeat: 0.9 },
     reach: [2.5, 7.5], // it rears when he is this far from its head ...
     aim: 0.6, // ... and within this angle (rad) of where it heads
     firstAfter: 1.4, // s of hunting before its first strike may start
@@ -46,7 +57,7 @@ export const SPELLS = {
     tick: { every: 0.35, damage: 4, burn: 0.8, r: 0.55 }, // its body's contact burn (blockable; not while rolling)
     world: {
       sweepEvery: 0.55, power: 1.6, r: 1.0, // m of travel between its blows on what stands in its way
-      igniteEvery: 1.4, igniteR: 1.3, igniteK: 0.85, // the lane catches
+      igniteEvery: 1.4, igniteR: 1.3, igniteK: 0.85, igniteDelay: 2.2, // the lane catches, `igniteDelay` s after its head passed (its tail gone by: lit under it, the grass fire hid its body)
       markEvery: 3.0, // m between the charred trench's marks (world.groundBlow 'beam')
       maxR: 70, // m from the arena's centre it may slither (the map's end)
     },
@@ -78,7 +89,7 @@ export const SPELLS = {
     world: {
       sweepEvery: 0.5, power: 1.7, // its core: fells what it crosses
       graze: 0.35, grazeEvery: 0.45, // its outer swirl bites what stands within its reach
-      igniteEvery: 1.0, igniteK: 0.7,
+      igniteEvery: 1.6, igniteK: 0.6, igniteR: 0.6, // (x its wall's reach: a wide grass fire at its foot buried the column)
       lift: [1, 2, 2], liftReach: 3.2, // light trees (lift 1) it tears up into its spin, per phase; within this of its wall
       fling: 13, // m from its centre the lifted trees are flung at the burst
       maxR: 40, // m from the arena's centre it may drift
@@ -104,7 +115,14 @@ export const SPELL_LOOKS = {
     b: { segmented: true, every: 0.95 },
   },
   vortex: {
-    a: { h: 14, r0: 1.0, r1: 2.9, spin: 5.2, strands: 4, twist: 0.32, rate: 2300, core: 0.45, reach: 2.1 },
-    b: { h: 8, r0: 2.3, r1: 4.0, spin: 3.4, strands: 6, twist: 0.2, rate: 2500, core: 0.9, reach: 3.0 },
+    // h: height (m); r0 / r1: the foot's and the crown's radius; spin rad/s; strands, how they wind
+    // (`twist`), blobs a second; core radius; reach: its wall (contact, the core's sweep); lean (m per
+    // m of height along z: - away from the game camera, which stands south and above: the top climbs
+    // up the screen, so the height shows); jitter (rad) how loose a strand is; face 0..1 how much
+    // brighter a strand burns as it turns toward the camera
+    // carry: share of the turn's speed a blob keeps (less: a sharper strand), life / blob / heat: x a
+    // strand blob's life, size, heat
+    a: { h: 14, r0: 0.7, r1: 4.2, spin: 5.2, strands: 3, twist: 0.55, rate: 3200, core: 0.4, reach: 2.1, lean: -0.22, jitter: 0.1, face: 1, carry: 0.2, life: 0.7, blob: 0.85, heat: 1.35 },
+    b: { h: 8, r0: 2.0, r1: 4.4, spin: 3.4, strands: 5, twist: 0.35, rate: 3400, core: 0.9, reach: 3.0, lean: -0.15, jitter: 0.1, face: 1, carry: 0.2, life: 0.7, blob: 0.85, heat: 1.35 },
   },
 };
