@@ -91,7 +91,7 @@ In Claude Code the preview config is `.claude/launch.json` (`gcd-dev`).
   - Do not invent another glyph style, letter size, ramp or font for something new.
   - Do not restyle what exists and is not in that look (the hero, the human bosses) unless the owner
     asks: each was their call. The ground, the floors, the grass, the props and the trees are printed
-    in the dragon print (ADR-197, `render/dragonPrint.js`, STYLE.md "The dragon print"): a new ground,
+    in the dragon print (ADR-198, `render/dragonPrint.js`, STYLE.md "The dragon print"): a new ground,
     floor or mark on it prints through it, never a new floor shader.
   - Any change to how something looks: render before / after options and let the owner pick first.
 - **ASCII look is a feature.** Anything visible must go through the glyph systems described in

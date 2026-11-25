@@ -5,7 +5,7 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
-## 2026-11-25 — The dragon print: the world printed in the wyrm's digits, now the default (ADR-197; branch `render/ground-looks`, PR #125; planned by the lead, Opus agents built)
+## 2026-11-25 — The dragon print: the world printed in the wyrm's digits, now the default (ADR-198; branch `render/ground-looks`, PR #125; planned by the lead, Opus agents built)
 
 **Owner** (picked look B of the four): "i really like the dragon ground look ... it allows the ground to look 3d, can
 help with background shadows. can we try this art style on not just the ground and things like the stone and other

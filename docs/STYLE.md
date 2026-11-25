@@ -44,10 +44,10 @@ the wyrm next to it, it is wrong, however good it looks alone.
 - **The hero and the human bosses** keep their own print (the bosses printed the hero's way, ADR-194).
 - Until 2026-11-25 the floors (carved glyphs), the trees (the screen grid's round letters) and the grass
   and soil (3D strokes) were kept out of this look too. The owner then picked the dragon print for all of
-  them ("make all the maps use the dragon ground style", ADR-197): see "The dragon print" below. Their
+  them ("make all the maps use the dragon ground style", ADR-198): see "The dragon print" below. Their
   looks before stay behind `?dragon=0`.
 
-### The dragon print: the ground, the floors, the grass, the props and trees (2026-11-25, ADR-197)
+### The dragon print: the ground, the floors, the grass, the props and trees (2026-11-25, ADR-198)
 The owner, shown four ground looks: "i really like the dragon ground look ... it allows the ground to look
 3d, can help with background shadows"; then, having played every piece on at once, "i like 'everything on'
 (grass A) much better ... make all the maps use the dragon ground style". The default in every level;

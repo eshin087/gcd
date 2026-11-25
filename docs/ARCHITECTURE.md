@@ -4485,7 +4485,7 @@ breath is let go the next flock is heard).
   rectangle with his head and shoulders left dark. `setPhase(1 | 2 | 3)`: neon and his face; static then
   crimson (`void`, which his fx re-palettes); dead. A piece's neon goes out when the piece breaks.
 
-## The dragon print (2026-11-25, ADR-197): the ground, floors, grass, props and trees printed in the wyrm's digits
+## The dragon print (2026-11-25, ADR-198): the ground, floors, grass, props and trees printed in the wyrm's digits
 
 The default in every level (`?dragon=0`: the game before it). STYLE.md "The dragon print" has the look; this is
 the code. Every piece reads its switch through `dragonLook(name)` (`render/dragonPrint.js`): `lookOf(name)`

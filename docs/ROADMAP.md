@@ -185,7 +185,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
-## M1.88 — The dragon print: the world printed in the wyrm's digits (2026-11-25, `render/ground-looks`, ADR-197)
+## M1.88 — The dragon print: the world printed in the wyrm's digits (2026-11-25, `render/ground-looks`, ADR-198)
 - [x] Four ground looks rendered; the owner picked b, the dragon ground (a lit relief in the wyrm's digits on a world-anchored lattice)
 - [x] The core (`render/dragonPrint.js`) and the default in every level (`?dragon=0` the world before)
 - [x] Floors of every level, props and trees, four upgrades (cloud, contact, ripple, ridge), flash footprints on every surface

@@ -5859,7 +5859,7 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
 - **Consequences / open:** the layouts are DOM text in the HUD's idiom (no images, no new font); the path
   gets tight past about ten worlds (names wrap; it will need to scroll or shrink). Not yet seen on a real
   iPhone notch, home bar or a real gamepad (emulated and stubbed).
-## ADR-197 — The dragon print: the ground, floors, grass, props and trees printed in the wyrm's digits (2026-11-25)
+## ADR-198 — The dragon print: the ground, floors, grass, props and trees printed in the wyrm's digits (2026-11-25)
 
 - **Context:** the owner: the ground "doesn't seem like ascii ground ... make it look cool ascii without being
   too hard on the eyes ... or too grainy"; of four rendered looks they picked b, "the dragon ground" ("it
