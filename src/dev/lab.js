@@ -22,6 +22,7 @@ import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { MYSTIC_IDS, MYSTIC_NAMES, mysticMode, setMystic } from '../entities/player/swordMystic.js';
 import { LIGHTS_IDS, LIGHTS_NAMES, lightsMode, setLights, setFinisherLook } from '../entities/player/combat.js';
 import { FINISHER_IDS, FINISHER_NAMES, finisherId } from '../entities/player/finishers.js';
+import { ENDER_IDS, ENDER_NAMES, enderId, setEnder } from '../entities/player/finisherFx.js';
 import { ARC_IDS, ARC_K, arcsMode, setArcs } from '../entities/player/swings.js';
 import { buildLooks } from './labLooks.js';
 import { lookOf, setLook } from '../entities/enemies/duelist/lookSwitch.js';
@@ -1312,10 +1313,11 @@ export class Lab {
       b.title = m === 'old' ? '?lights=old: the chain before the weight pass' : m === 'fresh' ? '?lights=fresh: a brand-new chain (new sword paths)' : 'the weighted chain (the default)';
       return { m, el: b };
     });
-    // the striker chain's finisher (player/finishers.js, ?finisher=lance|cross|talisman|flash: four for the
-    // owner to pick from; hit 5 of ?lights=blink, with its spell, finisherFx.js), live from the next finisher
+    // the blink chain's last hit (player/finishers.js, ?finisher=flurry|delayed|flick: three for the owner
+    // to pick from; hit 5 of ?lights=blink) and its ending (finisherFx.js, ?ender=blade|array|rift|dragon:
+    // four, with any last hit), live from the next finisher
     const fir = el('div', 'lab-row', null, body);
-    el('span', 'lab-lbl', 'finisher', fir).title = "the striker chain's finisher (?lights=blink): a lance of light, a crossing X, a talisman, a flash cut (?finisher=)";
+    el('span', 'lab-lbl', 'finisher', fir).title = "the blink chain's last hit (?lights=blink): a blink flurry, a delayed cut, a flick and turn away (?finisher=)";
     const fiGrid = el('div', 'lab-grid', null, fir);
     fiGrid.style.flex = '1';
     this.ui.finisherBtns = FINISHER_IDS.map((m) => {
@@ -1324,6 +1326,18 @@ export class Lab {
         this._syncCutBtns();
       });
       b.title = `?finisher=${m}: ${FINISHER_NAMES[m]}`;
+      return { m, el: b };
+    });
+    const enr = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'ender', enr).title = "the blink chain's ending, ASCII art of the sword's power: a phantom blade, a sword array, a rift, a dragon (?ender=)";
+    const enGrid = el('div', 'lab-grid', null, enr);
+    enGrid.style.flex = '1';
+    this.ui.enderBtns = ENDER_IDS.map((m) => {
+      const b = button(enGrid, m, () => {
+        setEnder(m);
+        this._syncCutBtns();
+      });
+      b.title = `?ender=${m}: ${ENDER_NAMES[m]}`;
       return { m, el: b };
     });
     // the bigger-arc strengths (swings.js ARCS, ?arcs=a|b|c: a prototype for the owner to pick from), live
@@ -1420,6 +1434,7 @@ export class Lab {
     for (const { m, el: b } of this.ui.mysticBtns ?? []) setClass(b, 'on', mysticMode() === m);
     for (const { m, el: b } of this.ui.lightsBtns ?? []) setClass(b, 'on', lightsMode() === m);
     for (const { m, el: b } of this.ui.finisherBtns ?? []) setClass(b, 'on', finisherId() === m);
+    for (const { m, el: b } of this.ui.enderBtns ?? []) setClass(b, 'on', enderId() === m);
     for (const { m, el: b } of this.ui.arcsBtns ?? []) setClass(b, 'on', arcsMode() === m);
     if (this.ui.perfectBtn) this.ui.perfectBtn.textContent = `perfect: ${perfectMode()}`;
     if (this.ui.parryFxBtn) this.ui.parryFxBtn.textContent = `parryFx ${parryFxMode()}`;
