@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { clamp, lerp } from '../../core/math.js';
 import { DIM } from './model.js';
+import { FINISHER_ANIMS, finisherId, pickFinisher } from './finishers.js';
 
 // Attack data + the blade sweep used for hit detection. No stamina: pacing comes from windup /
 // recovery only (docs/COMBAT.md). Moveset (ADR-041; owner concept sheet "Combat key poses"):
@@ -136,8 +137,8 @@ export const LIGHT = [
  * every hit's timing, damage, reach, tells and its heavy branch are the same in both. The animator
  * reads them as each hit starts (anim.js _pickVariant).
  */
-export const LIGHTS_IDS = ['new', 'old', 'fresh'];
-export const LIGHTS_NAMES = { new: 'weighted', old: 'before', fresh: 'brand new' };
+export const LIGHTS_IDS = ['new', 'old', 'fresh', 'striker'];
+export const LIGHTS_NAMES = { new: 'weighted', old: 'before', fresh: 'brand new', striker: 'striker' };
 const LIGHT_OLD = [
   {
     anim: { kind: 'clip', clip: 'fallingCutOld' },
@@ -166,6 +167,17 @@ const LIGHT_FRESH = [
   { anim: { kind: 'clip', clip: 'freshSwallowThrust', spin: 1, spinFeet: 'hop' }, variants: [{ kind: 'clip', clip: 'freshTwoStepThrust', hop: 0.08, tuck: 0.6 }] },
   { anim: { kind: 'clip', clip: 'freshSplitter', hop: 0.18, tuck: 1.1 }, variants: [] },
 ];
+/** `?lights=striker` (the owner, 2026-11-25: "a fierce skilled striker instead of ... acrobatics", no
+ *  twirls, a finisher that is a spell and looks nothing like the heavy slam): hits 1-2 precise, tight
+ *  cuts that snap to a stop, hits 3-4 planted, brutal blows (lightsStriker.js), and hit 5 the finisher
+ *  picked in finishers.js (`?finisher=`). No spin and no hop anywhere. */
+const LIGHT_STRIKER = [
+  { anim: { kind: 'clip', clip: 'strikeFalling' }, variants: [{ kind: 'clip', clip: 'strikeDraw', turn: 0.3 }, { kind: 'clip', clip: 'strikeRising' }] },
+  { anim: { kind: 'clip', clip: 'strikeBackhand' }, variants: [{ kind: 'clip', clip: 'strikeFlatBack', turn: -0.4 }, { kind: 'clip', clip: 'strikeFallingBack' }] },
+  { anim: { kind: 'clip', clip: 'strikeCleave', turn: 0.35 }, variants: [{ kind: 'clip', clip: 'strikeLowCut' }] },
+  { anim: { kind: 'clip', clip: 'strikeLunge' }, variants: [{ kind: 'clip', clip: 'strikeRisingThrust' }] },
+  { anim: FINISHER_ANIMS[finisherId()], variants: [] },
+];
 const LIGHT_NEW = LIGHT.map((L) => ({ anim: L.anim, variants: L.variants }));
 let lightsNow = 'new';
 /** The chain's look now: 'new' (the default), 'old' or 'fresh'. */
@@ -173,7 +185,8 @@ export const lightsMode = () => lightsNow;
 /** Switch the chain's look ('new' | 'old' | 'fresh'); false for anything else. */
 export function setLights(mode) {
   if (!LIGHTS_IDS.includes(mode)) return false;
-  const src = mode === 'old' ? LIGHT_OLD : mode === 'fresh' ? LIGHT_FRESH : LIGHT_NEW;
+  if (mode === 'striker') LIGHT_STRIKER[4].anim = FINISHER_ANIMS[finisherId()];
+  const src = mode === 'old' ? LIGHT_OLD : mode === 'fresh' ? LIGHT_FRESH : mode === 'striker' ? LIGHT_STRIKER : LIGHT_NEW;
   LIGHT.forEach((L, i) => {
     L.anim = src[i].anim;
     L.variants = src[i].variants;
@@ -183,7 +196,15 @@ export function setLights(mode) {
 }
 {
   const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('lights') : null;
-  if (q === 'old' || q === 'fresh') setLights(q);
+  if (q === 'old' || q === 'fresh' || q === 'striker') setLights(q);
+}
+/** Pick the striker chain's finisher (finishers.js; the Lab, the film rig): re-points hit 5 when the
+ *  striker chain is on. False for an unknown id. */
+export function setFinisherLook(id) {
+  if (!pickFinisher(id)) return false;
+  LIGHT_STRIKER[4].anim = FINISHER_ANIMS[finisherId()];
+  if (lightsNow === 'striker') LIGHT[4].anim = LIGHT_STRIKER[4].anim;
+  return true;
 }
 
 /**
