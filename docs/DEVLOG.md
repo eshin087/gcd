@@ -43,6 +43,10 @@ laptop were measured. Next, in the review's order: automatic quality (resolution
 one that makes "every device" reachable; its floor is a look choice for the owner), the shadow map and the
 trees' triangles, the uniforms' upload, the hitches.
 
+## 2026-11-25 — One click travels (ADR-196)
+
+**Owner:** the title made you click a world twice (select, then go). `TitleMenu._click` now selects and acts in one click or tap; hover, arrows and pad focus still only select. The records `menus` test is updated.
+
 ## 2026-11-25 — The hero's name tag much higher (ADR-196)
 
 **Owner:** the tag was "still way too close" at 0.75 m. `HERO_TAG.over` (ui/nameTags.js) is now 1.25 m over

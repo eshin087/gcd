@@ -16,7 +16,7 @@ import { injectTitleMenuStyle } from './titleMenuStyle.js';
 //
 // One selection drives all three: the mouse's hover, the pad's focus or the arrow keys pick the world
 // shown in detail; a click / tap / A / Enter on the selected entry acts on it (travel there, or begin at
-// the current fire). A touch's first tap on another world selects it, the second travels.
+// the current fire). A click or a tap acts at once.
 
 const MENUS = ['a', 'b', 'c'];
 
@@ -304,14 +304,9 @@ export class TitleMenu {
   }
 
   // ------------------------------------------------------------------ acting
-  /** A click: on the selected entry (or one the pad focuses) it acts; on another it selects first (a tap). */
+  /** A click acts at once: travel to that world, or begin at the current fire (the owner's call: no
+   *  select-then-click-again, on a mouse or a touch). */
   _click(id, act) {
-    const E = this.entries.find((x) => x.id === id);
-    const focused = E?.btn?.classList?.contains('pad-focus');
-    if (id !== this.sel && !focused && (E?.kind === 'world' || E?.kind === 'rush')) {
-      this.select(id);
-      return;
-    }
     this.select(id);
     act?.();
   }
