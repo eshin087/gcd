@@ -20,7 +20,7 @@ export function buildFreeHand({ arms, sword, M, DIM, BODY, mesh }, mat = null) {
   // the owner's pick of size and ink (`?handLook=`, gear/handLook.js; today's by default)
   const look = handLook();
   if (!mat) mat = M[look.mat] ?? M.skin;
-  const fore = arms.L.fore, HK = BODY.hand * look.k, fa1 = BODY.foreArm[1];
+  const fore = arms.L.fore, HK = BODY.hand * (look.kRest ?? look.k), fa1 = BODY.foreArm[1];
   // the skin wrist stays on the forearm
   mesh(fore, limb({ length: 0.05, r0: fa1 - 0.006, r1: fa1 - 0.004, radial: 8, rings: 2, capSegs: 1 }).translate(0, -DIM.foreArm + 0.075, 0), mat);
   // the free hand open (hanging, reaching, bracing): on the wrist joint when the rig has one (the

@@ -21,8 +21,9 @@ const LOOKS = {
   d: { k: 0.85, mat: 'leather' },
   // (2026-11-25, the owner: "make the left hand ... look like a hand ... right now it looks like a weird
   // stump": the hand reshaped, gear/handShape.js: a palm as wide as the bracer, jointed fingers, a thumb)
-  e: { k: 1.1, mat: 'skin', shape: 0.22 },
-  f: { k: 1.1, mat: 'skin', shape: 0.75 },
+  // (k sizes the reshaped open hand; the sword fingers and the fist on the grip keep the size before: kRest)
+  e: { k: 1.1, kRest: 1, mat: 'skin', shape: 0.22 },
+  f: { k: 1.1, kRest: 1, mat: 'skin', shape: 0.75 },
 };
 const DEFAULT = 'a';
 const read = () => {
