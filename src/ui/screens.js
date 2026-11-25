@@ -19,6 +19,8 @@ const LOGO = [
 ];
 const LOGO_W = LOGO[0].length;
 const SHIMMER_HZ = 12;
+// solid blocks per column of the first title logo (41 columns): see TitleScreen.update
+const STREAM_COLS = [4, 5, 2, 2, 2, 5, 4, 0, 5, 5, 3, 3, 3, 5, 2, 0, 1, 2, 2, 3, 3, 2, 2, 1, 0, 4, 4, 3, 3, 3, 4, 4, 0, 4, 4, 3, 3, 3, 4, 4, 0];
 
 // the title's controls line; "[@action]" chips show the bound key (or the pad button while a pad is
 // in use) and follow every remap (ui/dom.js actionChip)
@@ -138,6 +140,7 @@ export class TitleScreen {
     this.goneT = 0;
     this.t = 0;
     this.acc = 0;
+    this.seed = 0x9e3779b9; // the shimmer's own random numbers: the game's stream must not depend on the logo
     if (!visible) {
       this.visible = false;
       this.root.classList.add('off', 'gone');
@@ -192,6 +195,16 @@ export class TitleScreen {
     this.goneT = 1.2;
   }
 
+  /** A small xorshift in [0, 1): the shimmer's sparkle only (never Math.random, which the fights share). */
+  _rand() {
+    let x = this.seed;
+    x ^= x << 13;
+    x ^= x >>> 17;
+    x ^= x << 5;
+    this.seed = x >>> 0;
+    return this.seed / 4294967296;
+  }
+
   update(dt) {
     if (this.goneT > 0) {
       this.goneT -= dt;
@@ -208,9 +221,17 @@ export class TitleScreen {
     for (let k = 0; k < this.blocks.length; k += 2) {
       const i = this.blocks[k], col = this.blocks[k + 1];
       const d = Math.abs(col - sweep);
-      w[i] = d < 1.2 ? '▓' : d < 2.4 ? '▒' : Math.random() < 0.012 ? '▓' : '█';
+      w[i] = d < 1.2 ? '▓' : d < 2.4 ? '▒' : this._rand() < 0.012 ? '▓' : '█';
     }
     this.logo.textContent = w.join('');
+    // The seeded fight sims were tuned on the stream the first title logo left behind: it drew
+    // Math.random once per solid block away from its sweep. Those draws are kept (the count only,
+    // from that logo's blocks per column), so a new logo or layout never moves a fight (ADR-195).
+    const old = ((this.t * 15) % (STREAM_COLS.length + 30)) - 15;
+    for (let c = 0; c < STREAM_COLS.length; c++) {
+      if (Math.abs(c - old) < 2.4) continue;
+      for (let n = STREAM_COLS[c]; n > 0; n--) Math.random();
+    }
   }
 }
 
