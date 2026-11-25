@@ -14,7 +14,7 @@ export const LOCK_MARK = Object.freeze({ peak: 0.55, hold: 0.5, fade: 2.4 });
 // `over` m above the head bone, which sits about 0.4 m under the top of his hair, so the letters stand
 // just clear of it; it follows a roll, a crouch or a lean down instead of hanging at a fixed height.
 // `follow` /s eases the bob of a step out of it. Without a rig (tests): `fallback` m over his feet.
-export const HERO_TAG = Object.freeze({ over: 0.55, follow: 16, fallback: 2.2 });
+export const HERO_TAG = Object.freeze({ over: 1.25, follow: 16, fallback: 2.2 });
 
 class Tag {
   constructor(layer, className, text) {

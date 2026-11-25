@@ -8,6 +8,7 @@ import { TAU } from '../core/math.js';
 import { TELL } from '../combat/rules.js';
 import { prep, carve, mul, slabGeometry, SLAB_LOOK, buildBonfire, buildRubble, geosHeight, refine, brickEdge } from './forest.js';
 import { breakableFloor } from './floor.js';
+import { addSlabRims } from '../render/dragonFloor.js';
 import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
 
 // Halcyon Plaza (levels/halcyon.js; ADR-159): a city that has not been built yet, read from its streets.
@@ -653,11 +654,13 @@ function buildPlaza(U, colliders) {
   add(propGeos, stoneMat, 'props');
   meshes.push(fronts.finish(stoneMat, 'blockFronts'));
   // (wet dark tarmac must stay calm under the fight: sparse dim strokes, the paint the brightest of it)
-  const slabMat = createCarvedGlyphMaterial(U, { ...SLAB_LOOK, ...L.floorLook, viewPitch: CONFIG.camera.pitch });
+  // (the dragon print, `?dpFloor=`: tarmac has no joints, so no rim; the wet option's sheen of the lights)
+  const slabMat = createCarvedGlyphMaterial(U, { ...SLAB_LOOK, ...L.floorLook, viewPitch: CONFIG.camera.pitch, dp: { k: 0.6, sat: 0.7, top: 0.04, rimW: 0, wet: (L.wet ?? 0) * 1.6 } });
   const slabMesh = add(slabGeos, slabMat, 'paving');
   group.add(...meshes);
   markCaster(group);
   breakables.push(...breakableFloor({ slabs: floor, slabGeos, slabMesh, mat: slabMat, rng: mulberry32(CONFIG.seed + 7151), group, earth: [0.07, 0.065, 0.06] }).defs);
+  addSlabRims(group, slabMat); // (the dragon print's rims: only under ?dpFloor)
 
   const ambience = makeCity({ L, opt, neon, screens, cars, group });
   const S = CONFIG.world.dragonSleep ?? PLAZA.wait;

@@ -19,6 +19,24 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-25',
+        title: 'The game runs faster on weaker machines',
+        notes: [
+          'The picture is the same, and it costs less to draw: the ground is drawn after the things that cover it, and its relief is worked out once when a level loads instead of for every pixel of every frame.',
+          'A machine that cannot hold 50 frames a second no longer does all the extra work it used to: only the hero and the boss take the extra steps that keep parries fair.',
+        ],
+      },
+      {
+        date: '2026-11-25',
+        title: 'The world is printed like the dragon',
+        notes: [
+          "Every level is now printed in the dragon's own fine digits: the ground, the floors, the grass, the rocks and the trees. Dark where they turn from the moon, bright where the light catches them, so the ground has depth and shadows fall across it.",
+          'The grass lies down as you run through it and rises again, and your sword cuts it where it passes: the tufts fly and a dark swath stays. Fallen leaves lie as small lit leaves.',
+          'Cloud shadows drift with the wind, heavy blows send a ring of digits through the ground, and your footsteps flash in green code for a moment.',
+          'To see the world as it was, add ?dragon=0 to the address.',
+        ],
+      },
+      {
+        date: '2026-11-25',
         title: 'The first load is faster',
         notes: [
           'The loading screen now prepares all the graphics the first frame needs at once, so a first visit reaches the game in about two thirds of the time.',

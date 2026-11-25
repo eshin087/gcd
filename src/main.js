@@ -371,10 +371,12 @@ async function boot() {
     }
   };
 
-  // One simulation step of `stepDt` real seconds: the clocks, then everything that plays the game
-  // (the Lab, the flow, the fighters, the world, the lights and particles). A frame runs one or more
-  // of them (core/timestep.js), then presents once.
+  // One simulation step of `stepDt` real seconds: the clocks, then what the fight's timing hangs on
+  // (the Lab, the flow, the hero, the boss). A frame runs one or more of them (core/timestep.js); the
+  // world round them, the lights and the particles step once for every two (simulateWorld, ADR-199),
+  // then the frame presents once.
   let lightsAt = null; // where the light pool looked last frame (the view override's focus, if any)
+  let worldDt = 0, worldFxDt = 0, worldRealDt = 0; // the time the world has yet to live (simulateWorld)
   const simulate = (stepDt) => {
     let scale = game.timeScale;
     let fxScale = scale;
@@ -394,11 +396,26 @@ async function boot() {
     game.dt = dt;
     game.fxDt = fxDt;
     game.realDt = stepDt;
+    worldDt += dt;
+    worldFxDt += fxDt;
+    worldRealDt += stepDt;
 
     safe('lab', () => game.lab.update(stepDt));
     safe('flow', () => game.flow.update(dt, stepDt));
     safe('player', () => game.player.update(dt));
     safe('dragon', () => game.dragon.update(dt));
+  };
+
+  // The world's step: everything the fighters' steps since the last one left to live, in one go (what
+  // breaks and burns, the grass, the living world, the lights, the particles and the fire field). The
+  // clocks (game.dt, fxDt, realDt) read that whole time while it runs. In a frame of one step it follows
+  // the fighters with that step's own time, as it always did.
+  const simulateWorld = () => {
+    const dt = worldDt, fxDt = worldFxDt, stepDt = worldRealDt;
+    worldDt = worldFxDt = worldRealDt = 0;
+    game.dt = dt;
+    game.fxDt = fxDt;
+    game.realDt = stepDt;
     safe('world', () => game.world.update(dt));
     // (the time rip: before the pools and the fire field age, so what it draws shows this frame;
     // its marks step in real time)
@@ -426,7 +443,7 @@ async function boot() {
     safe('touch', () => game.touch.update(realDt)); // touch aim overrides mouseGround
 
     // (the input's edges are cleared after the first step: core/timestep.js runFrame)
-    runFrame(realDt, simulate, endEdges, steps, one);
+    runFrame(realDt, simulate, endEdges, steps, one, simulateWorld);
     game.simSteps = steps.n;
     safe('lab', () => game.lab.postUpdate?.()); // hitbox overlay matches this frame
     safe('camera', () => updateCameraFocus(realDt));

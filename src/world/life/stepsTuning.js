@@ -63,6 +63,34 @@ export const STEPS = freeze({
     maxCells: 2048,
   },
 
+  /**
+   * The flash print (the default with the dragon print; `?prints=0` the prints before). The owner (2026-11-24):
+   * the ash's footprints were "very ugly ... and they last too long. make it more like cool subtle matrix
+   * flash footprints that look cool on spawn and fade away quickly"; picked matrix green. A print is `n`
+   * code letters (the code rain's own, GRASS.spray.code) laid in the foot's oval (`foot`: long, wide, m),
+   * lit heel to toe `cascade` s apart: each flashes `hot` (white-green) for `hotT` s, cools to `color`,
+   * re-rolls its letter every `flicker` s and is gone `life` s after it lit (dimming to `colorEnd`).
+   * On every surface in every level (the owner, 2026-11-25: "have the footprints show in every stage"); the
+   * grass's wake and the puffs are not changed.
+   */
+  flash: {
+    glyphs: '0123456789ZTHKEX<>=:+*',
+    n: [4, 6],
+    foot: [0.36, 0.15],
+    /** on a dragon-printed floor (render/dragonStep.js) the oval of the floor's cells that flash (long, wide, m:
+     *  the floor's cells are 0.135 x 0.25 m, so a print is a few cells, not one) */
+    cells: [0.62, 0.46],
+    size: 0.2,
+    cascade: 0.018,
+    life: 0.75,
+    hotT: 0.12,
+    hot: [0.75, 1.35, 0.8],
+    color: [0.16, 0.6, 0.26],
+    colorEnd: [0.015, 0.06, 0.025],
+    flicker: 0.07,
+    alpha: 0.85,
+  },
+
   /** the prints (an own pool, `max` x the quality) */
   prints: {
     max: 120,

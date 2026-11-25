@@ -180,6 +180,43 @@ function wyrm() {
 }
 
 const S = {
+  // ---------------------------------------------------------------- the world on its own, longer step (ADR-199)
+  // main.js steps the world once for two of the fighters' steps (core/timestep.js STEP.world): 1 / 30 s at
+  // 30 fps, up to 2 x 20.8 ms. What falls, burns and marks must come out the same at those steps as at
+  // 1 / 60 s (the build's spawns throw on a NaN; a console error fails the suite).
+  worldstep() {
+    const res = [];
+    for (const dt of [1 / 60, 1 / 30, 2 * 1.25 / 60]) {
+      const { D, world, game, hits, step } = build();
+      const t = D.list.find((b) => b.kind === 'deadTree' && !b.wall);
+      const dx = 0.6, dz = 0.8;
+      // the hero stands where the tree will land, then in a fire; a second tree is chipped, the floor marked
+      game.player.position.set(t.x + dx * t.h * 0.6, 0, t.z + dz * t.h * 0.6);
+      game.boss.position.set(t.x - 20, 0, t.z);
+      D.strike(t.x - dx * 0.3, t.z - dz * 0.3, 0.5, 9, { kind: BLOW.BLUNT, by: 'boss', dx, dz, src: D.swing() });
+      world.scars.mark(t.x + 2, t.z, { kind: 'slam', power: 1, r: 2 });
+      let fell = 0;
+      for (; fell < 6 && t.state === STATE.FALLING; fell += dt) step(dt, dt);
+      const crush = hits.filter((h) => h.who === 'hero').length;
+      step(1.5, dt);
+      game.player.position.set(40, 0, 40);
+      const lit = world.fire.ignite(40, 40, 3, 1);
+      hits.length = 0;
+      step(3, dt);
+      const burns = hits.filter((h) => h.who === 'hero' && h.kind === 'fire').length;
+      step(14, dt);
+      res.push({ dt, fell, crush, state: t.state, lit, burns, left: world.fire.count, debris: game.fx.alpha.count + game.fx.add.count });
+    }
+    const [a, b, c] = res;
+    out('   ' + res.map((r) => `${(r.dt * 1000).toFixed(1)} ms: fell in ${r.fell.toFixed(2)} s, ${r.crush} hit, ${r.lit} cells lit, ${r.burns} burns in 3 s, ${r.left} still alight after 17 s`).join(' | '));
+    assert(res.every((r) => r.state !== STATE.FALLING && r.fell < 6), 'a felled tree lands at every step length');
+    assert(Math.abs(b.fell - a.fell) <= 0.1 && Math.abs(c.fell - a.fell) <= 0.1, `... in the same time (${a.fell.toFixed(2)} / ${b.fell.toFixed(2)} / ${c.fell.toFixed(2)} s)`);
+    assert(a.crush === 1 && b.crush === 1 && c.crush === 1, `... and lands on the hero once (${a.crush} / ${b.crush} / ${c.crush})`);
+    assert(a.lit > 0 && b.lit === a.lit && c.lit === a.lit, `the same fire is lit (${a.lit} / ${b.lit} / ${c.lit} cells)`);
+    assert(a.burns >= 3 && Math.abs(b.burns - a.burns) <= 1 && Math.abs(c.burns - a.burns) <= 1, `standing in it burns as often (${a.burns} / ${b.burns} / ${c.burns} ticks in 3 s)`);
+    assert(res.every((r) => r.left === 0), `the fire burns out at every step length (${res.map((r) => r.left).join(' / ')} cells left)`);
+  },
+
   // ---------------------------------------------------------------- the sets list their breakables
   sets() {
     for (const [name, make, kinds] of [['forest', createForest, ['tree', 'deadTree', 'stone', 'boulder', 'flagstone', 'bone']], ['courtyard', createCourtyard, ['pillar', 'lantern']], ['throne', createThroneHall, ['shard', 'slab', 'hover', 'swords', 'banner', 'cairn', 'cart']], ['ring a', ringSet('a'), ['tile', 'post', 'butte', 'butteTop', 'banner', 'mud', 'hoodoo']], ['ring b', ringSet('b'), ['tile', 'post', 'butte', 'butteTop', 'terrace', 'banner']], ['ring c', ringSet('c'), ['tile', 'post', 'butte', 'butteTop', 'spire', 'cairn']], ['grove', createWindlessGrove, ['bamboo', 'graveSword', 'paving', 'flagstone', 'stele', 'lantern', 'boulder', 'post']], ['script hall', createScriptHall, ['tile', 'step', 'flagstone', 'pillar', 'wall', 'liftDoor', 'gate', 'bench', 'planter', 'watcher', 'post', 'screen', 'rack', 'dais', 'codePillar']], ['city', createHalcyonPlaza, ['car', 'lamp', 'sign', 'shopSign', 'screen', 'statue', 'statueHead', 'statueArm', 'towerBase', 'towerTop', 'blockFront', 'kiosk', 'barrier', 'bench', 'hydrant', 'trafficLight', 'bin', 'shelter', 'asphalt', 'sidewalk']]]) {
@@ -2206,7 +2243,18 @@ const S = {
   },
 
   // ---------------------------------------------------------------- the cut tops (round 2, world/mowFx.js)
+  // (the 3D grass's cut, as ?dragon=0 draws it: dgGrass 0; the dragon print's own cut, which ships, is
+  // tests/integration/dgGrass.mjs)
   tops() {
+    setLook('dgGrass', '0');
+    try {
+      topsOld();
+    } finally {
+      setLook('dgGrass', null);
+    }
+  },
+};
+function topsOld() {
     // the meadow on the west, paving on the east; a real grass of 30k blades over 24 m
     const dens = (x, z) => (x < 0 ? 1 : 0);
     setLook('mowLook', 'a'); // (the thrown look first: its tops fly up and along; b, the default, below)
@@ -2368,8 +2416,7 @@ const S = {
     } finally {
       setLook('mowLook', null);
     }
-  },
-};
+}
 const near = (a, b, eps) => Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) <= eps;
 function near0(a, b, eps = 1e-6) {
   return near(a, b, eps);

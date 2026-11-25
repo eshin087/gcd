@@ -5964,3 +5964,91 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   and the cut effects are untouched (the arc follows the new paths by itself). Open: the owner judges the films and
   the preview; the whirls keep their own overshoot (`SPIN_OV`) and got no brake key; the sprint slash and the roll
   cut are unchanged (they start the chain from a run or a roll, not from the chain's finishes).
+
+## ADR-198 — The dragon print: the ground, floors, grass, props and trees printed in the wyrm's digits (2026-11-25)
+
+- **Context:** the owner: the ground "doesn't seem like ascii ground ... make it look cool ascii without being
+  too hard on the eyes ... or too grainy"; of four rendered looks they picked b, "the dragon ground" ("it
+  allows the ground to look 3d, can help with background shadows") and asked for it on the stones and other
+  textures, on grass that bends and is cut, every level's ground, ways to make it cooler, and footprints that
+  are "cool subtle matrix flash" instead of Ashfall's dark prints. Having played every piece on at once: "i
+  like 'everything on' (grass A) much better ... make all the maps use the dragon ground style ... have the
+  footprints show in every stage".
+- **Decision:** one print for every surface that is not a fighter: a lit relief (normal, moon, shadow map,
+  point lights) printed in the wyrm's digit ramp on a world-anchored lattice of the wyrm's cell (0.135 x
+  0.25 m, ~5 x 8 px at 720p), one digit per cell lit at its centre (`render/dragonPrint.js`). The ground
+  (look b), the floors of every level (inside `createCarvedGlyphMaterial`, a lit lip per slab), the grass as
+  printed tufts in the ground (no 3D blades), props and trees through the art pass with a relief and the
+  shadow map, four upgrades (cloud shadows on the wind, contact rings, a re-print ripple from ground blows,
+  ridge strokes) and flash footprints printed by the floor's own cells. Every piece behind its own switch,
+  all at `a` by default; `?dragon=0` is the game before. Built as a fan-out (a core with hooks, four agents,
+  a second round for the props' brightness).
+- **Why this way:** world-anchored cells never swim (the reason the typed lattice ground of 2026-11-14 was
+  dropped), one cell size ties the ground to the wyrm and the props, and a lit relief gives the ground the
+  depth and the shadows the owner liked. Marks INTO the floor (prints, leaves) as shared uniform chunks keep
+  them crisp on the lattice instead of soft sprites over it. One shared uniforms object per chunk
+  (`DP_FX_U`, `DP_STEP_U`) means one CPU writer for every surface.
+- **Consequences / open:** grass b (standing digit blades) lost to a; round 3 (the owner, same day) made the
+  sword's cut show in the printed grass (`dgCut` b, the default), gave the fallen leaves a lit lens
+  (`leafLook` a) instead of letters, and rendered three steps of more depth for grass a (`a3d1`-`a3d3`); the
+  owner kept a ("lets go with the new default") and asked for smaller grass chips (0.6 x the code chips,
+  0.7 x the tufts' tips); the
+  floors' and trees' looks before (carved glyphs, round letters), once "do not restyle", are now behind
+  `?dragon=0`; the phone's frame cost is the owner's to confirm (desktop: the print, floors and upgrades
+  add well under 1 ms at 720p); first-round looks a / c / d stay behind `?ground=` until removed.
+
+## ADR-199 — Frame cost: the ground drawn last and its relief baked; the world on its own step (2026-11-25)
+
+- **Context:** the owner: "the game runs pretty slow on less powerful machines ... i want this to be at least
+  60 fps on every device"; the machine was a laptop on integrated graphics (Intel Core Ultra 7 255U). A
+  measured review (headless Edge on the RTX 4090, every level at 4K where the fill cost shows; the CDP
+  profiler and CPU throttle for the script) found: no automatic quality (a desktop starts on HIGH at up to
+  2x device pixels); the scene pass 75 - 80 % of the GPU frame, the ground 1.1 - 1.45 ms and the paving
+  0.3 - 1.1 ms of a 2.4 - 3.9 ms frame; the ground drawn FIRST (three sorts solid things by material id
+  before depth, and the ground's material is the oldest), so every pixel the floors, trees and fighters
+  cover was shaded and painted over; the ground's relief worked out for every pixel, eight times, though
+  it is fixed in the world and constant across a letter cell; and a slow CPU falling off a cliff, because
+  under 50 fps every catch-up step (ADR-103) re-ran the world and every effect with the fighters (CPU
+  throttled 10x: 10 fps where one step a frame would give about 33).
+- **Decision:** three changes that leave the picture as it was.
+  1. The ground is drawn last of the solid things (`renderOrder` 100) with a strict depth test, so
+     whatever lies exactly in its plane still wins, as it did when drawn over the ground.
+  2. The ground's relief is baked: at load the GPU evaluates the shader's own relief once per cell into
+     two float textures (the normal's steps, with the meadow's share kept apart so it stays live, and the
+     ridge's four neighbours); the ground reads two texels instead of 48 value-noise lookups. Stored as
+     differences, in 32-bit floats where the renderer can draw into them.
+  3. A catch-up step runs the Lab, the flow, the hero and the boss only. The world, the lights and every
+     particle step once for every two of them and after the last (`STEP.world`), with the time those
+     steps took.
+- **Alternatives:** a depth pre-pass (a second draw of everything, for what one `renderOrder` gives);
+  the floors drawn late too (they already draw after the scenery; what covers them is small, and a tie
+  with a prop standing on them could flip); baking the floors' relief (a floor cell is lit on its facet,
+  and the slabs lie at many heights and tilts: not a function of the cell); a tiling noise texture read
+  with the GPU's filter (8-bit weights: the relief's slopes band) or four fetches a lookup (no cheaper
+  than the hash); half-float bake textures (27 MB less; about 0.04 % of the ground's pixels print a
+  neighbouring digit); the world once a FRAME whatever its length (a 100 ms step at 10 fps: untested
+  ground for what falls and burns; every two steps keeps it under 42 ms, 33 ms at 30 fps, the step it
+  had before ADR-103); a budget that drops catch-up steps when they do not fit (it gives up the fair
+  parry window ADR-103 bought: the owner's call, not taken here).
+- **Consequences:**
+  - The picture: at 1080p, old against new on the same frame in all eight levels, at most 9 of 2 073 600
+    pixels differ, by at most 2 of 255 (the same frame drawn twice differs in up to 4). The draw order
+    alone: 0 - 3 pixels.
+  - Frame cost, old against new alternating in one page (the GPU was shared with other sessions: read the
+    ratios, not the milliseconds): at 4K 17 - 45 % less across the eight levels (Cinderwood 5.9 -> 3.8 ms,
+    Ashfall 6.6 -> 3.7, the Ring 6.0 -> 3.9, the city 5.7 -> 4.5), at 1080p 10 - 25 % less. On a quiet
+    GPU Cinderwood's ground went from 2.1 ms to 0.46 ms at 4K.
+  - The simulation of a catch-up frame costs 19 - 28 % less at two steps, 14 - 18 % at three, 23 - 25 %
+    at six (the simulation alone, old stepping against new in one page). The cliff is lower, not gone: a
+    CPU slow enough still runs six steps.
+  - Two float textures of 1779 x 961 cells, 54 MB of GPU memory (27 MB as half floats). `?bake=0` leaves
+    the shader working the relief out per pixel.
+  - The world's clocks: in the world's step `game.dt`, `fxDt` and `realDt` are the time of the steps since
+    its last run. What the world does to the fighters (a falling tree, the ground fire's ticks) comes out
+    the same at 16.7, 33.3 and 41.7 ms (world test `worldstep`).
+  - Not measured: any weak GPU or phone (this machine has only the RTX 4090); the owner's laptop is theirs
+    to confirm. Open, in the order the review gave: automatic quality (the render resolution following the
+    measured frame time, a 60 fps cap on touch), the shadow map (435 000 - 570 000 triangles of static
+    world redrawn every frame), lighter trees on LOW (the presets' grass counts do nothing under the
+    dragon print), the shared uniforms' upload (about 0.5 ms of script a frame), the worst frames'
+    hitches. The floors' shader is as it was: its relief is most of its cost.

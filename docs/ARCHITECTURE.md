@@ -21,7 +21,9 @@ the plunge, three phases, fire hazards, keep-in-view camera, and now the bullet 
 wheel zoom → mouse ray (mouseGround) → gamepad.update(realDt) → touch.update(realDt)
 → 1 – 6 simulation steps (core/timestep.js), each of stepDt real seconds:
     clocks → lab.update(stepDt) → flow.update(dt, stepDt) → player.update(dt) → dragon.update(dt)
-    → world.update(dt) → lights.update → fx.update (alpha, add, fire, shed, ripple, stamp)
+  and after every SECOND step, and after the last (the world's step, ADR-199), with the time of the
+  steps since its last run:
+    world.update(dt) → fx.rip → lights.update → fx.update (alpha, add, fire, shed, ripple, streak, stamp)
       (world.update: … scorch.update → life.update → atmosphere.update: the living world first, so
        the atmosphere's smoke and embers read this frame's wind; neither while the Lab hides the world)
     (input.endFrame() after the FIRST step: the frame's presses and releases are seen once)
@@ -38,6 +40,17 @@ them. So no machine simulates a longer step than the headless tests do (they ste
 `game.realDt` is the STEP's real time; `game.frameDt` is the frame's and `game.simSteps` how many
 steps it took. `window.__tick(dt, frames)` runs one exact step of `dt` per frame (film strips);
 `window.__tick(dt, frames, true)` runs each as a rendered frame of `dt`, cut as the real loop cuts it.
+**The world's step** (ADR-199, `STEP.world` 2): only what the timing windows hang on is stepped at
+1 / 60 s: the Lab, the flow, the hero, the boss. The world (what breaks and burns, scars, the scorch map,
+the grass's wake, the living world, the atmosphere), the time rip, the light pool, both particle pools,
+the fire field, the shed digits, the ripple, the streak and the stamp run once for every two of those
+steps and once more after the last: `runFrame(…, world)` calls `world()` there, and main.js hands it
+the game time, FX time and real time of the steps since its last run (`game.dt`, `game.fxDt`,
+`game.realDt` read that while it runs). A frame of one step runs exactly as before (the fighters, then
+the world, on the same time); at 30 fps the world steps once with 33 ms, at 20 fps twice; its longest
+step is 41.7 ms. A slow machine so pays twice for the fighters only (the world and the effects were
+about 40 % of a step). New per-frame code that is not part of the duel's timing goes in the world's
+step, not in `simulate`; anything in it must be stable at a 42 ms step (world test `worldstep`).
 **View override** (`game.viewOverride`, Lab model viewer only): when it is
 `{ pos, target, focus? }` (Vector3-likes, world metres), main.js places the camera at `pos` looking
 at `target` right after the rig update, and the fog centre (`U.uFocus`), the light-pool selection
@@ -96,7 +109,7 @@ ADR-120).
 | `shake(a)` | camera trauma (0.15 light hit … 0.7 huge slam) |
 | `punch(m)` | a zoom punch: the camera jumps `m` metres closer and springs back in ~0.25 s (`cameraRig.punch`: stacks to 6 m, eased at 11/s, scaled for the phone's closer camera). A blade's clash (1.5 – 3.6), a guard (0.7 – 2.4), every landed cut (lights 0.35 – 0.6, the slam 1.6, the cleave 1.2 – 2.0, the execution 2.0; a crit + 0.6). Optional: callers use `game.punch?.()` |
 | `kick(x, y, z, m)` | a directional kick: the picture is thrown `m` metres (≤ 0.5; at the desktop distance, scaled for the phone like the punch) along world direction (x, y, z) as seen on screen and springs back with one ~12 % overshoot in ~0.25 s, in real time (it plays through a freeze). A landed cut throws it along the blade's travel (lights 0.08 ≈ 4 px at 36 m … the full cleave 0.24). Optional: callers use `game.kick?.()` |
-| `fxDt` | this frame's FX time step (see Frame order): particles and lights run on through a hit-stop |
+| `fxDt` | the running step's FX time (see Frame order): particles and lights run on through a hit-stop. In the world's step it is the FX time of every fighters' step since the last one, as `dt` and `realDt` are |
 | `hitstop(sec, scale=0.04)` | brief time-scale dip measured in real seconds (also the perfect-dodge slow-mo, the plunge's included: `hitstop(0.6, 0.3)`) |
 | `debugTimeScale` | Lab multiplier on game time (1 = normal). Only the Lab writes it. |
 | `viewOverride` | `null` or `{ pos, target, focus? }` — camera override applied by main.js after the rig (see Frame order). Only the Lab model viewer writes it. |
@@ -4684,6 +4697,86 @@ breath is let go the next flock is heard).
   frame's life), a budget scaled by `destructibles.q` (at most `CITY.neon.cap` on LOW); a screen is a pale
   rectangle with his head and shoulders left dark. `setPhase(1 | 2 | 3)`: neon and his face; static then
   crimson (`void`, which his fx re-palettes); dead. A piece's neon goes out when the piece breaks.
+
+## The dragon print (2026-11-25, ADR-198): the ground, floors, grass, props and trees printed in the wyrm's digits
+
+The default in every level (`?dragon=0`: the game before it). STYLE.md "The dragon print" has the look; this is
+the code. Every piece reads its switch through `dragonLook(name)` (`render/dragonPrint.js`): `lookOf(name)`
+with default `'a'`, `'0'` under `?dragon=0`; switches: `ground` (world/ground.js: `b` the dragon ground, `0`
+today's; `a` / `c` / `d` the first round's other looks), `dgGrass`, `dpFloor`, `dpProps`, `dpTrees`,
+`dpCloud`, `dpContact`, `dpRipple`, `dpRidge`, `prints`.
+
+- **The core — `render/dragonPrint.js`.** `DRAGON_PRINT_GLSL` (needs COMMON_GLSL): `dpLattice(xz, size, f, g)`
+  (the cell of a world point, x right / -z up on screen; `f` the uv in the cell, pass `dFdx(g)` / `dFdy(g)` to
+  `glyphGrad`), `dpCellCenter(cell, size)`, `dpVnoise` / `dpFbm`, `dpGlyph(tone, hash)` (the ramp `DP_RAMP`
+  `.:-=17402#%8@`). `DP_CELL` = [0.135, 0.25] m. `dragonPrintUniforms()` per material. A cell is lit ONCE, at
+  its centre.
+- **The ground — `world/ground.js` look b (`GROUND_LOOK == 2`).** Drawn LAST of the solid things
+  (`renderOrder` `GROUND_ORDER` 100, a strict depth test; ADR-199): the floors, trees and fighters that
+  cover it are drawn first, so the depth test drops its pixels there unshaded. An opaque thing that writes
+  no depth and must show over the ground would need a higher `renderOrder`; there is none today (every
+  solid material writes depth). **The baked relief** (`bakeRelief`, `DP_BAKE` 1; ADR-199): the relief is
+  fixed in the world and a cell is lit once, at its centre, so world.js has the GPU work it out once per
+  cell at load, with the shader's own noise, into two float textures the ground reads with `texelFetch`
+  (`uReliefN`: the two parts' steps to +x and +z, for the normal; `uReliefR`: the four neighbours less
+  the cell, for the ridge; `uReliefBox`: the first cell and the cell counts, 1779 x 961; 27 MB each as
+  32-bit floats, half floats where the renderer can only draw into those). `groundRelief(p, d)` = `reliefA`
+  + `reliefB` x (0.3 + d): the meadow's share `d` stays live. `?bake=0`, a renderer with no float targets
+  and the headless tests keep the shader working it out per pixel (`DP_BAKE` 0: the same picture). A change
+  to the relief's GLSL (`RELIEF_GLSL`) changes both at once; a new use of the relief at another offset
+  needs its own baked value. The floors' relief is NOT baked: a floor cell is lit on its facet, whose
+  height varies from slab to slab, so its sample point is not a function of the cell alone. Per cell: the
+  meadow's density
+  (`setMeadow`: the grass's density baked into a texture by world.js), the relief `groundRelief(p, d)` and
+  its normal, then in this order: `[grass]` `dgGrass(...)` (world/dragonGrass.js), `[fx]` `dpCloud` on the
+  moon's term, the tone, `dpContact`, `dpRipple` (another digit, brighter), `dpRidge` (a stroke on a lit
+  crest, from the broad relief), burn → ash letters, `[prints]` `dpStep` (a footprint's code letters). A new
+  hook goes at its own marked site.
+- **The grass — `world/dragonGrass.js`.** `dgGrassOpt()` (`0 | a | a2 | b | c`), `dgGrassLook()` (`'a'`
+  printed in the ground, no 3D blades; `'b'` the 3D blades stay, printed as digits: `DG_PRINT` in grass.js),
+  `DG` (its numbers), `DG_GRASS_GLSL` (the option baked in). The hero's wake is ONE GLSL chunk,
+  `TRAIL_BEND_GLSL` (world/grassTrail.js; `GrassTrail.bendAt` its CPU copy), used by grass.js and the tufts.
+  With a printed option the sword's arc (`mowFx.cutArc`) also mows the scorch map's A along its clipped
+  stroke (the tufts read A), and no cut tops fly (the green chips do).
+- **The cut in the print (`dgCut`, default `b`):** `mowFx.cutArc` stamps the arc's exact strip into a fine cut
+  map (`uDgCut`, 1024² over the scorch map's extent, ~0.16 m; re-uploaded on the frames it changes); the
+  ground (and `world/dragonTufts.js`, the standing tufts of `a3d3`) reads it on the same frame: shorn tufts,
+  chips of their glyphs, the swath; `b` adds the line's glow (the map stores each texel's frame). Its uniforms
+  ride in `DP_FX_U` (`DG_U`). A reset empties it.
+- **Fallen leaves — `render/dragonLeaf.js` `LeafPrint`** (`leafLook`, default `a`), built by `life.litter`: one
+  instanced draw, a small quad per lying leaf at y 0.11 m whose fragment casts the camera ray to y = 0 (any
+  dragon-printed floor under it; b finds the ground's own cell there), transparent queue, no depth write,
+  never the scene's alpha flag, hidden with nothing to draw. Its numbers come from each piece's existing draws
+  (the litter's own stream): the look never moves the world.
+- **The floors — `render/dragonFloor.js`**, inside `createCarvedGlyphMaterial` (`DP_FLOOR` define; `0` the carved
+  glyphs of before, shader for shader). The lattice is the ground's seen along the camera (z - y cot(pitch)).
+  `aRim` (per vertex: the distance to the edge of a slab's top; `addSlabRim(geo, crack)`, `addSlabRims(group,
+  mat)` at a set's build; `lazySlabRim` on the first draw for Cinderwood's flagstones) prints the lit lip;
+  `CRACK_RIM` marks a cracked piece's edges as seams. A set passes its palette in `dp: { k, sat, top, sky, wet,
+  rimW }`. Calls the four fx hooks and `dpStep`.
+- **Props and trees — `render/dragonProps.js`** + the art pass's prop branch (`render/pipeline.js`
+  `propKind` / `dpSample`). A dragon-printed source writes its relief's tone into alpha inside the props'
+  window (`DP_TONE`: props 0.556 + t x 0.0105, leaves 0.62 + t x 0.16), clear of every `FLAG`; the art pass
+  prints it with the props' own pixel-font digits and strokes. `createPropArtMaterial` (its `dp` path),
+  `createDragonObjectMaterial(U, o)` (= `createAsciiObjectMaterial` with the switches off: every set's
+  props / trees and `destructibles.js`'s rigid batch use it). A dp crown's debris bursts into digits.
+- **The upgrades — `render/dragonPrintFx.js` + `world/groundFx.js` (`world.groundFx`).** `DP_FX_U`: ONE shared
+  uniforms object every dragon-printed material spreads in (`uDpFxOn[4]`, the cloud's drift, the contact
+  texture and its box, `uDpFighters[DP_FIGHTERS]`, `uDpRip[DP_RIP_N]`, the ridge's numbers and glyphs).
+  `GroundFx`: `update(dt)` once a frame after the wake (the switches, the cloud on `world.life.wind`, the
+  fighters' rings from `game.player` and `game.boss.bodyCircles`, the rings' ages, the contact texture
+  re-baked round a piece whose state changed), `blow(x, z, power, o)` (from `world.groundBlow`; a ring from
+  power ≥ 0.45, none beside a young one), `clear()` (the reset), `on`, `rings`, `bakes`, `contactAt(x, z)`.
+  Tuning: `world/groundFxTuning.js`.
+- **The footprints — `render/dragonStep.js`** + `world/life/steps.js`. Every step on every surface records a
+  flash print (`STEPS.flash`). With the dragon ground (`world.ground.userData.look === 'b'`) steps.js writes the
+  newest `DP_STEPS` of them into `DP_STEP_U` once a frame (x, z, age, heading; `uDpStepK.w` 0 when none) and
+  the floor's cells print them (`dpStep(cellCentre, hash)` → strength, heat, the code letter); otherwise a few
+  code letters flash as the prints' particles. `?prints=0` the surfaces' prints before.
+- **Tests:** `groundfx` (rings live and expire, contact bakes, no NaN, no allocation, every level),
+  `dragonProps` (switched off = the materials before; tone windows; every level builds; bites), `dggrass`,
+  `dpfloor` (the rim; every set; switched off = before), `life` `steps.flash`. A check of a look BEFORE the
+  dragon print runs under `?dragon=0` / the piece's `'0'` (`setLook`).
 
 ## Levels and the boss slot (2026-11-12, ADR-058, ADR-060; the Starless level: ADR-068 – ADR-070; the Skybreak Ring: 2026-11-21, ADR-129; the Foxfire Terrace: ADR-147)
 `src/levels/index.js`: `LEVELS` (Cinderwood `cinderwood`, Ashfall `ash`, the Obsidian Throne

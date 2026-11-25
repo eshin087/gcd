@@ -193,6 +193,25 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Timing, damage, reach, tells, combo length and the heavy branches unchanged; `?lights=old` and the Lab's `lights` row; scenario `herolights` (both modes, the pop audit, the hit frame)
 - [ ] The owner judges the films and the preview (keep, tune, or more)
 - [ ] The sprint slash and the roll cut in the same style? (they start the chain from a run or a roll)
+## M1.89 — 60 fps on every device: the frame's cost (2026-11-25, `render/perf-ground-steps`, ADR-199)
+- [x] A measured review: every level and the phone preset, GPU by pass and by object, script by function, the loop under a throttled CPU
+- [x] The ground drawn last; its relief baked once per cell (the same picture: at most 9 pixels of 2 million differ)
+- [x] The world, the lights and the particles on their own step: a catch-up step runs the fighters only
+- [ ] Automatic quality: the render resolution follows the measured frame time (the owner picks its floor from rendered options); a 60 fps cap on touch
+- [ ] The shadow map: the static world redrawn only when it moves or something breaks; lighter trees on LOW (the presets' grass counts do nothing now)
+- [ ] The floors' shader (its relief is most of its cost; not bakeable as it is drawn)
+- [ ] Script: the shared uniforms' upload (about 0.5 ms a frame), the worst frames' hitches
+- [ ] Measured on the owner's laptop (Intel Core Ultra 7 255U, integrated graphics) and on a phone
+
+## M1.88 — The dragon print: the world printed in the wyrm's digits (2026-11-25, `render/ground-looks`, ADR-198)
+- [x] Four ground looks rendered; the owner picked b, the dragon ground (a lit relief in the wyrm's digits on a world-anchored lattice)
+- [x] The core (`render/dragonPrint.js`) and the default in every level (`?dragon=0` the world before)
+- [x] Floors of every level, props and trees, four upgrades (cloud, contact, ripple, ridge), flash footprints on every surface
+- [x] Grass printed as tufts (a) over standing digit blades (b: lost)
+- [x] A cut that shows in the printed grass (dgCut b); fallen leaves as lit lenses (leafLook a)
+- [x] The owner kept grass a (the depth steps stay behind `?dgGrass=a3d1..3`); the cut's chips made smaller
+- [ ] The phone's frame cost; remove the first round's looks a / c / d
+
 ## M1.87 — The front: the sword's path and a loading screen (2026-11-25, `ui/gcd-front`, ADR-196)
 - [x] A loading screen from the first paint, an honest bar of the boot's steps (`?loader=a|b`; b the owner's pick)
 - [x] Three title layouts (`?menu=a|b|c`; c the owner's pick, `0` the title before), CONTROLS behind a button
@@ -759,8 +778,8 @@ The first of the changes from the genre review (owner: "lets implement your sugg
 - [ ] The rest of the review, each its own PR:
   - [x] A frame simulated in steps of about 1 / 60 s (`core/sim-step`, ADR-103: no step longer than
         20.8 ms at any frame rate; not a fixed step with interpolation: see the ADR)
-  - [ ] A performance budget (a target machine, a frame-time ceiling); the cost of two to six steps
-        a frame on a slow machine; event-timestamped presses
+  - [ ] A performance budget (a target machine, a frame-time ceiling); event-timestamped presses
+        (the cost of two to six steps a frame on a slow machine: measured and lowered, ADR-199, M1.89)
   - [x] Per-move telemetry; the killing move on the death screen (`game/move-telemetry`, ADR-108)
   - [ ] Read the table after the owner's sessions and tune from it; a way to read it on the phone
   - [x] A heavy button: five heavy branches off the chain, the charge on the heavy, a 2 x 2 phone pad

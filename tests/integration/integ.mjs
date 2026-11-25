@@ -1817,6 +1817,18 @@ async function scenarioTimestep() {
   log.length = 0;
   runFrame(1 / 20, (dt) => log.push(`sim ${(dt * 1000).toFixed(1)}`), () => log.push('edges'), { n: 0, dt: 0 }, true);
   assert(log.join(',') === 'sim 50.0,edges', `one exact step when asked (window.__tick): ${log.join(', ')}`);
+  // the world's own step (ADR-199): after every STEP.world-th step and after the last, so it closes the frame
+  const order = (f, one = false) => {
+    const l = [];
+    runFrame(f, () => l.push('sim'), () => l.push('edges'), { n: 0, dt: 0 }, one, () => l.push('world'));
+    return l.join(',');
+  };
+  assert(STEP.world === 2, `the world's step is two of the fighters' (${STEP.world})`);
+  assert(order(1 / 60) === 'sim,edges,world' && order(1 / 144) === 'sim,edges,world', `a frame of one step runs as it always did: the fighters, then the world (${order(1 / 60)})`);
+  assert(order(1 / 30) === 'sim,edges,sim,world', `30 fps: the fighters twice, the world once (${order(1 / 30)})`);
+  assert(order(1 / 20) === 'sim,edges,sim,world,sim,world', `20 fps: three steps, the world after the second and at the end (${order(1 / 20)})`);
+  assert(order(0.5) === 'sim,edges,sim,world,sim,sim,world,sim,sim,world', `a frame of ${STEP.maxSteps} steps: the world three times (${order(0.5)})`);
+  assert(order(1 / 20, true) === 'sim,edges,world', `one exact step when asked: the world after it (${order(1 / 20, true)})`);
   // in the game: a 30 fps frame split in two steps IS two 60 fps steps; a tap is seen once
   const G = build();
   const { game, input } = G;

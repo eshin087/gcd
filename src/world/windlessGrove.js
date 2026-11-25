@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { FLAG, createAsciiObjectMaterial, createCarvedGlyphMaterial, createPropArtMaterial } from '../render/materials.js';
+import { FLAG, createDragonObjectMaterial, createCarvedGlyphMaterial, createPropArtMaterial } from '../render/materials.js';
 import { markCaster } from '../render/pipeline.js';
 import { mulberry32, range, hash2, fbm2 } from '../core/rng.js';
 import { CONFIG } from '../core/config.js';
@@ -8,6 +8,7 @@ import { TAU } from '../core/math.js';
 import { prep, lumpy, paint, carve, slabGeometry, mul, STONE, SLAB_LOOK, buildBoulder, buildStandingStone, buildFlagstone, buildBonfire, buildRubble, geosHeight } from './forest.js';
 import { buildGreatSword, carved } from './landmarks.js';
 import { breakableFloor } from './floor.js';
+import { addSlabRims } from '../render/dragonFloor.js';
 import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
 
 // The Windless Grove (ADR-145): a bamboo grove at night with a round clearing, where Lu Wusheng, the
@@ -646,7 +647,8 @@ export function createWindlessGrove(U, colliders) {
   }
 
   // ---- meshes
-  const mat = createAsciiObjectMaterial(U, { fadeNearPlayer: true, side: THREE.DoubleSide });
+  // (?dpProps / ?dpTrees: the dragon print's relief, render/dragonProps.js; both off: createAsciiObjectMaterial itself)
+  const mat = createDragonObjectMaterial(U, { fadeNearPlayer: true, side: THREE.DoubleSide });
   const bambooMesh = bamboo.finish(mat, 'bamboo');
   const stumpMesh = stumps.finish(mat, 'bambooStumps');
   stumpMesh.userData.autoHide = true; // (drawn only while a stump shows: RangeBody counts them)
@@ -655,12 +657,14 @@ export function createWindlessGrove(U, colliders) {
   const stoneMat = createPropArtMaterial(U, { fadeNearPlayer: true });
   const stoneMesh = new THREE.Mesh(mergeGeometries(stoneGeos), stoneMat);
   stoneMesh.name = 'stones';
-  const slabMat = createCarvedGlyphMaterial(U, { ...SLAB_LOOK, gain: 1.6, lumScale: 2.0, edge: 0.3, inkFloor: 0.04, viewPitch: CONFIG.camera.pitch });
+  // (the dragon print, `?dpFloor=`: the worn round keeps the sky's light in the stalks' shadow, so it still reads)
+  const slabMat = createCarvedGlyphMaterial(U, { ...SLAB_LOOK, gain: 1.6, lumScale: 2.0, edge: 0.3, inkFloor: 0.04, viewPitch: CONFIG.camera.pitch, dp: { k: 2.2, top: 0.12, sky: 0.36 } });
   const slabMesh = new THREE.Mesh(mergeGeometries(slabGeos), slabMat);
   slabMesh.name = 'paving';
   group.add(bambooMesh, stumpMesh, propMesh, stoneMesh, slabMesh);
   markCaster(group);
   breakables.push(...breakableFloor({ slabs: floor, slabGeos, slabMesh, mat: slabMat, rng: fr, group }).defs);
+  addSlabRims(group, slabMat); // (the dragon print's rims: only under ?dpFloor)
   for (const t of stalkAt) treeSpots.push({ x: t[0], z: t[1], r: 0.9 });
 
   const S = CONFIG.world.dragonSleep ?? C.wait;
