@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { clamp, lerp } from '../../core/math.js';
 import { DIM } from './model.js';
-import { FINISHER_ANIMS, finisherId, pickFinisher } from './finishers.js';
 import { HEAVY_BLINK } from './heaviesBlink.js';
 import { LAST_HIT_BLINK } from './lastHits.js';
 import { SPECIAL_BLINK } from './specialsBlink.js';
@@ -139,9 +138,9 @@ export const LIGHT = [
  * it shared with the flurry, One Breath and Earthbreaker); only LIGHT's `anim` / `variants` change, so
  * every hit's timing, damage, reach, tells and its heavy branch are the same in both. The animator
  * reads them as each hit starts (anim.js _pickVariant). Two more to compare while the owner picks:
- * `?lights=fresh` (lightsFresh.js) and `?lights=blink` (lightsBlink.js, hit 5 from finishers.js,
- * `?finisher=flurry|delayed|double`: a plain blade hit, no shards; the five heavy branches too:
- * heaviesBlink.js).
+ * `?lights=fresh` (lightsFresh.js) and `?lights=blink` (lightsBlink.js, hit 5 from lastHits.js: a
+ * stronger one-handed stroke, a different one each time, a plain blade hit with no shards; the five
+ * heavy branches too: heaviesBlink.js).
  */
 export const LIGHTS_IDS = ['new', 'old', 'fresh', 'blink'];
 export const LIGHTS_NAMES = { new: 'weighted', old: 'before', fresh: 'brand new', blink: 'instant cuts' };
@@ -176,15 +175,14 @@ const LIGHT_FRESH = [
  *  character is doing instant slashes to show how fast he is"): the hits on today's clock, each cut
  *  instant (lightsBlink.js: hold, snap, cross, snap, stand; blinkFx.js draws each as one straight line
  *  where the blade's point passed): a falling diagonal, a flat backhand, the other diagonal, a thrust,
- *  and hit 5 the last hit picked in finishers.js (`?finisher=`). One look per hit, no spin, no hop. The
+ *  and hit 5 one of the last hit's strokes (lastHits.js). One look per hit, no spin, no hop. The
  *  heavy branches swap to instant two-handed cuts with it (HEAVY_BLINK; heaviesBlink.js). */
 const LIGHT_BLINK = [
   { anim: { kind: 'clip', clip: 'blinkFall' }, variants: [] },
   { anim: { kind: 'clip', clip: 'blinkFlat' }, variants: [] },
   { anim: { kind: 'clip', clip: 'blinkCross' }, variants: [] },
   { anim: { kind: 'clip', clip: 'blinkThrust' }, variants: [] },
-  // (lastHits.js: one of several strokes, a different one each time; until it has them, the finisher pick)
-  LAST_HIT_BLINK ?? { anim: FINISHER_ANIMS[finisherId()], variants: [] },
+  LAST_HIT_BLINK, // (lastHits.js: one of five strokes, never the same one twice running)
 ];
 /** What a look set may change on an attack def (setLights): the clip it plays, its other looks, and how
  *  its contact is drawn (`contact`, `glint`: a thrust turned into a slash is drawn as a slash). Never a
@@ -208,22 +206,12 @@ export const lightsMode = () => lightsNow;
 export function setLights(mode) {
   if (!LIGHTS_IDS.includes(mode)) return false;
   const blink = mode === 'blink';
-  if (blink && !LAST_HIT_BLINK) LIGHT_BLINK[4].anim = FINISHER_ANIMS[finisherId()];
   const src = mode === 'old' ? LIGHT_OLD : mode === 'fresh' ? LIGHT_FRESH : blink ? LIGHT_BLINK : null;
   LIGHT.forEach((L, i) => wear(L, LIGHT_NEW[i], src ? src[i] : null));
   HEAVY.forEach((H, i) => wear(H, HEAVY_NEW[i], blink ? HEAVY_BLINK[i] : null));
   // (the sprint slash, the roll cut, the charged cleave, One Breath, the execution: specialsBlink.js)
   for (const k in SPECIAL_DEFS) wear(SPECIAL_DEFS[k], SPECIAL_NEW[k], blink ? SPECIAL_BLINK[k] : null);
   lightsNow = mode;
-  return true;
-}
-/** Pick the blink chain's finisher (finishers.js; the Lab, the film rig): re-points hit 5 when the
- *  blink chain is on. False for an unknown id. */
-export function setFinisherLook(id) {
-  if (!pickFinisher(id)) return false;
-  if (LAST_HIT_BLINK) return true; // (lastHits.js has the last hit now)
-  LIGHT_BLINK[4].anim = FINISHER_ANIMS[finisherId()];
-  if (lightsNow === 'blink') LIGHT[4].anim = LIGHT_BLINK[4].anim;
   return true;
 }
 

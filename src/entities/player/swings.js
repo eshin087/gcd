@@ -46,10 +46,10 @@
 //   stance's foot yaws; `drag` (default 0.22: m the holding foot may stretch past the stance's rear
 //   spot before its toe drags after the body); `fold` (0..1, default 1: × the chest's fold and the
 //   head's nod in the bite after a landed hit, anim.js BITE: 0 for a blade held upright before the
-//   face, which they would put his head into). The blink look set's (lightsBlink.js, finishers.js,
-//   heaviesBlink.js, lastHits.js, specialsBlink.js): `side` (the free hand hangs loose at his side the whole
-//   swing: anim.js; before it `belt`: the free hand on the belt the whole swing, still in the chest's
-//   frame: anim.js beltHand; its keys' free-hand fields are ignored), `slash` / `slashLook` (the slash
+//   face, which they would put his head into). The blink look set's (lightsBlink.js, heaviesBlink.js,
+//   lastHits.js, specialsBlink.js): `side` (the free hand hangs loose at his side the whole
+//   swing, on a pendulum the body carries: anim.js sideHand / HeroAnimator._sideHand; its keys'
+//   free-hand fields are ignored), `slash` / `slashLook` (the slash
 //   lines blinkFx.js draws on the blade's path), `plain` (a slam-kind hit that bursts no shards:
 //   player.js _slamImpact).
 //
@@ -98,7 +98,6 @@
 import { LIGHTS_OLD } from './lightsOld.js';
 import { LIGHTS_FRESH } from './lightsFresh.js';
 import { LIGHTS_BLINK } from './lightsBlink.js';
-import { FINISHER_CLIPS } from './finishers.js';
 import { HEAVIES_BLINK } from './heaviesBlink.js';
 import { LAST_HITS_BLINK } from './lastHits.js';
 import { SPECIALS_BLINK } from './specialsBlink.js';
@@ -639,9 +638,8 @@ export const SWINGS = {
   ...LIGHTS_OLD,
   // ---- a brand-new light chain to compare (?lights=fresh: combat.js setLights) ------------------
   ...LIGHTS_FRESH,
-  // ---- the instant cuts (?lights=blink: lightsBlink.js), its last hits (finishers.js), its heavies --
+  // ---- the instant cuts (?lights=blink: lightsBlink.js), its heavies, its last hit (lastHits.js) ----
   ...LIGHTS_BLINK,
-  ...FINISHER_CLIPS,
   ...HEAVIES_BLINK,
   ...LAST_HITS_BLINK,
   ...SPECIALS_BLINK,

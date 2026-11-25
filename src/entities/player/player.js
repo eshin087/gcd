@@ -3314,7 +3314,7 @@ export class Player {
   /** The slam meets the ground: crystal shards burst at the blade's point (and hit, if the blade
    *  itself missed: d.shards = { radius, height }), a gust, a heavy shake. */
   _slamImpact(a) {
-    // the blink chain's last hits are plain blade hits (finishers.js `plain`): no shards, no burst
+    // the blink chain's last hit is a plain blade hit (lastHits.js `plain`): no shards, no burst
     if (this.anim?.atkDef === a.def && SWINGS[this.anim.atkAnim?.clip]?.plain) return;
     const d = a.def, g = this.game;
     this.sweep.point(1, this._tip);
