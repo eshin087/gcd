@@ -382,6 +382,8 @@ export function createThroneHall(U, colliders) {
         breakables.push({
           kind: b.kind, mat: b.mat, look: 'prop', x: p.x, z: p.z, r: b.r, h: geosHeight(b.geos), geos: b.geos, topples: false,
           colliders: b.cr > 0 ? [colliders.add(p.x, p.z, b.cr, 'stone')] : [], lift: b.lift ?? 0,
+          // (a standing lantern's flame: the living world's lamps light it, world/life/lamps.js)
+          ...(b.lamp ? { lamp: b.lamp } : {}),
           ...(stone ? { broken: { geos: buildRubble(br, p.x, p.z, Math.min(1, b.r * 0.6), { col: mul(STONE, 0.9), h: range(br, 0.25, 0.5) }), look: 'prop', r: 0 } } : {}),
         });
       } else {

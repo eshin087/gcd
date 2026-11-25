@@ -20,6 +20,7 @@ import { CALM_LOOK, setCalm, calmLevel } from '../combat/impactCalm.js';
 import { sfxMode, setSfxMode, chainMode, setChainMode, CHAIN_MODES } from '../audio/samples.js';
 import { PARRY_CHAIN } from '../audio/parryChain.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
+import { MYSTIC_IDS, MYSTIC_NAMES, mysticMode, setMystic } from '../entities/player/swordMystic.js';
 import { buildLooks } from './labLooks.js';
 import { lookOf, setLook } from '../entities/enemies/duelist/lookSwitch.js';
 import { LIFE, setLife, setLifeK } from '../world/life/lifeSwitch.js';
@@ -1303,6 +1304,20 @@ export class Lab {
       b.title = `equip ${SWORD_PARAM[k]}`;
       return { k, el: b };
     });
+    // the sword's flame (player/swordMystic.js: green marks burning round the steel, on by default; ?mystic=0 is
+    // today's blade), live
+    const myr = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'mystic', myr).title = "the sword's flame: tiny green marks burning round the steel (?mystic=0 turns it off)";
+    const myGrid = el('div', 'lab-grid', null, myr);
+    myGrid.style.flex = '1';
+    this.ui.mysticBtns = MYSTIC_IDS.map((m) => {
+      const b = button(myGrid, m === '0' ? 'off' : MYSTIC_NAMES[m], () => {
+        setMystic(m);
+        this._syncCutBtns();
+      });
+      b.title = `?mystic=${m}: ${MYSTIC_NAMES[m]}`;
+      return { m, el: b };
+    });
     // the wyrm's heads (entities/dragon/heads.js, ?wyrmFace=): a build-time choice, so a page reload
     const wfr = el('div', 'lab-row', null, body);
     el('span', 'lab-lbl', 'head', wfr).title = "the Cinder Wyrm's heads (?wyrmFace=; reloads the page): drake as it ships, old = the head before, the rest shown and passed on";
@@ -1388,6 +1403,7 @@ export class Lab {
       this.ui.ripBtn.textContent = `rip: ${ripMode()}`;
       setClass(this.ui.ripBtn, 'on', ripMode() !== 'off');
     }
+    for (const { m, el: b } of this.ui.mysticBtns ?? []) setClass(b, 'on', mysticMode() === m);
     if (this.ui.perfectBtn) this.ui.perfectBtn.textContent = `perfect: ${perfectMode()}`;
     if (this.ui.parryFxBtn) this.ui.parryFxBtn.textContent = `parryFx ${parryFxMode()}`;
     if (this.ui.burstBtn) this.ui.burstBtn.textContent = `burst ${burstLevel()}`;

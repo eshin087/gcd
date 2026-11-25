@@ -193,6 +193,9 @@ const CSS = `
 .ab-map-line { font-size: 9px; color: var(--ab-dim); margin-top: 2px; font-variant-numeric: tabular-nums; }
 .ab-map-line.fps { color: #9fd18b; display: none; }
 .ab-map-line.fps.on { display: block; }
+/* the boss rush's line under the disc (ADR-179): the fight's number and the rush's time */
+.ab-map-line.rush { display: none; color: #d9dfec; letter-spacing: 0.08em; font-size: 10px; }
+.ab-map-line.rush.on { display: block; }
 
 /* ---------- log (bottom-left) ---------- */
 .ab-log {
@@ -399,6 +402,8 @@ const CSS = `
 }
 
 /* ---------- call-outs over the player + damage numbers ---------- */
+/* Fixed pixel sizes, the owner's pick (ADR-184): they no longer grow with the window width
+   (a 1920-wide window drew DEFLECT at 22px and the flurry's counter at 34px). */
 .ab-calls { position: absolute; inset: 0; overflow: hidden; z-index: 2; }
 .ab-call, .ab-num {
   position: absolute;
@@ -417,7 +422,7 @@ const CSS = `
   font-weight: 800;
   text-shadow: 0 0 2px #000, 0 1px 2px #000;
 }
-.ab-call > .t { font-size: clamp(14px, 1.15vw, 19px); letter-spacing: 0.24em; padding-left: 0.24em; }
+.ab-call > .t { font-size: 11px; letter-spacing: 0.2em; padding-left: 0.2em; }
 .ab-call > .streak {
   position: absolute;
   left: -70px;
@@ -429,18 +434,18 @@ const CSS = `
   box-shadow: 0 0 8px ${rgba(CYAN, 0.9)};
 }
 .ab-call.k-parry > .t { color: #fff6e6; text-shadow: 0 0 10px rgba(255, 226, 170, 0.95), 0 0 2px #000, 0 1px 2px #000; }
-.ab-call.k-return > .t { color: #ffd98a; font-size: clamp(16px, 1.3vw, 22px); text-shadow: 0 0 12px rgba(255, 196, 90, 1), 0 0 24px rgba(255, 150, 40, 0.6), 0 0 2px #000; }
-.ab-call.k-danger > .t { color: #ffd6c8; font-size: clamp(15px, 1.2vw, 20px); text-shadow: 0 0 12px rgba(255, 96, 40, 1), 0 0 24px rgba(255, 60, 20, 0.6), 0 0 2px #000; }
-.ab-call.k-deflect > .t { color: #e8f4ff; font-size: clamp(16px, 1.3vw, 22px); text-shadow: 0 0 12px ${rgba(BLUE, 1)}, 0 0 24px ${rgba(BLUE, 0.6)}, 0 0 2px #000; }
-.ab-call.k-ghostep > .t { color: ${CYAN}; font-size: clamp(16px, 1.3vw, 22px); font-style: italic; text-shadow: 0 0 12px ${rgba(CYAN, 1)}, -8px 0 10px ${rgba(CYAN, 0.45)}, 0 0 2px #000; }
+.ab-call.k-return > .t { color: #ffd98a; font-size: 12px; text-shadow: 0 0 12px rgba(255, 196, 90, 1), 0 0 24px rgba(255, 150, 40, 0.6), 0 0 2px #000; }
+.ab-call.k-danger > .t { color: #ffd6c8; font-size: 12px; text-shadow: 0 0 12px rgba(255, 96, 40, 1), 0 0 24px rgba(255, 60, 20, 0.6), 0 0 2px #000; }
+.ab-call.k-deflect > .t { color: #e8f4ff; font-size: 12px; text-shadow: 0 0 12px ${rgba(BLUE, 1)}, 0 0 24px ${rgba(BLUE, 0.6)}, 0 0 2px #000; }
+.ab-call.k-ghostep > .t { color: ${CYAN}; font-size: 12px; font-style: italic; text-shadow: 0 0 12px ${rgba(CYAN, 1)}, -8px 0 10px ${rgba(CYAN, 0.45)}, 0 0 2px #000; }
 .ab-call.k-gbreak > .t { color: #ff6a55; text-shadow: 0 0 10px ${rgba(RED, 0.95)}, 0 0 2px #000, 0 1px 2px #000; }
-.ab-call.k-block > .t { color: #b9c3d8; font-size: 11px; font-weight: 700; letter-spacing: 0.3em; }
-.ab-num > .t { font-size: 12px; color: #f2e9d8; font-variant-numeric: tabular-nums; }
-.ab-num.k-heavy > .t { font-size: 14px; color: #ffd08a; }
-.ab-num.k-crit > .t { font-size: clamp(15px, 1.2vw, 19px); color: ${CYAN}; text-shadow: 0 0 9px ${rgba(CYAN, 0.95)}, 0 0 2px #000, 0 1px 2px #000; }
+.ab-call.k-block > .t { color: #b9c3d8; font-size: 9px; font-weight: 700; letter-spacing: 0.3em; }
+.ab-num > .t { font-size: 10px; color: #f2e9d8; font-variant-numeric: tabular-nums; }
+.ab-num.k-heavy > .t { font-size: 11px; color: #ffd08a; }
+.ab-num.k-crit > .t { font-size: 12px; color: ${CYAN}; text-shadow: 0 0 9px ${rgba(CYAN, 0.95)}, 0 0 2px #000, 0 1px 2px #000; }
 /* a flurry's cut counter over its target */
 .ab-num.k-count > .t {
-  font-size: clamp(22px, 2vw, 34px);
+  font-size: 15px;
   font-style: italic;
   letter-spacing: 0.04em;
   color: #fff;
@@ -670,6 +675,45 @@ const CSS = `
 .ab-stats .row { display: flex; justify-content: space-between; font-size: 11px; line-height: 17px; }
 .ab-stats .row .k { color: var(--ab-dim); }
 .ab-stats .row .v { color: #eef1f8; font-variant-numeric: tabular-nums; }
+/* the run's grade over the record (ADR-179; ?gradeLook=, ui/recordLooks.js): block letters, the time to
+   the hundredth, the marks, NEW BEST, the best before */
+.ab-rec-head { text-align: center; margin-bottom: 6px; }
+.ab-rec-head:empty { display: none; }
+.ab-grade-big {
+  margin: 0 auto 4px;
+  font-family: 'Cascadia Mono', Consolas, Menlo, 'DejaVu Sans Mono', 'Liberation Mono', monospace;
+  font-size: 13px;
+  line-height: 1.02;
+  white-space: pre;
+  display: inline-block;
+  text-align: left;
+}
+.ab-grade-big.gr-s { color: #f3dc94; text-shadow: 0 0 10px rgba(216, 184, 106, 0.55); }
+.ab-grade-big.gr-a { color: var(--ab-ember); text-shadow: 0 0 9px rgba(255, 138, 61, 0.45); }
+.ab-grade-big.gr-b { color: #cfd6e6; text-shadow: 0 0 6px rgba(207, 214, 230, 0.3); }
+.ab-grade-big.gr-c { color: var(--ab-dim); }
+.ab-rec-time { font-size: 15px; letter-spacing: 0.08em; color: #eef1f8; font-variant-numeric: tabular-nums; }
+.ab-rec-new { margin-left: 10px; font-size: 10px; letter-spacing: 0.22em; color: var(--ab-ember); text-shadow: 0 0 8px rgba(255, 138, 61, 0.5); }
+.ab-rec-marks { margin-top: 3px; font-size: 9.5px; letter-spacing: 0.2em; color: var(--ab-gold); min-height: 1px; }
+.ab-rec-prev { margin-top: 3px; font-size: 9.5px; letter-spacing: 0.08em; color: var(--ab-dim); font-variant-numeric: tabular-nums; }
+.ab-rec-note { margin-top: 4px; font-size: 9.5px; letter-spacing: 0.08em; color: #c98a7a; }
+.ab-rec-row { display: flex; align-items: center; justify-content: center; gap: 14px; }
+.ab-rec-head.g-b .ab-rec-side { text-align: left; }
+.ab-rec-head.g-b .ab-grade-big { margin: 0; }
+.ab-rec-head.g-c .ab-grade-big { font-size: 11px; margin: 0; }
+.ab-rec-head.g-c .ab-rec-side { text-align: left; }
+.ab-rec-head.g-c .ab-rec-time { font-size: 17px; }
+/* with a grade: the grade on the left, the rows beside it in two columns (no taller than the rows were) */
+/* (centred by margins, not left: 50% + a shift: a box at left: 50% may only grow to half the screen,
+   and its right column spilled past the border; the panel takes its rows' width, at most the screen's,
+   and a label too long for what is left is cut short with an ellipsis, never drawn outside) */
+.ab-stats.has-head { left: 0; right: 0; margin: 0 auto; transform: none; width: max-content; max-width: 94vw; box-sizing: border-box; display: flex; align-items: center; gap: 22px; padding: 10px 18px 11px; }
+.ab-stats.has-head .ab-rec-head { flex: 0 0 auto; margin: 0; }
+.ab-stats.has-head .ab-rec-rows { flex: 1 1 auto; min-width: 0; }
+.ab-stats.has-head .ab-stats-body { display: grid; grid-template-columns: repeat(2, minmax(0, auto)); column-gap: 22px; }
+.ab-stats.has-head .row { gap: 12px; white-space: nowrap; min-width: 0; }
+.ab-stats.has-head .row .k { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ab-stats.has-head .row .v { flex: 0 0 auto; }
 
 /* ---------- help + hint ---------- */
 .ab-help {
@@ -746,6 +790,24 @@ const CSS = `
 .ab-stage { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 16px; pointer-events: auto; }
 .ab-stage .ab-btn { display: inline-flex; justify-content: center; width: auto; min-height: 0; margin: 0; font-size: 10.5px; letter-spacing: 0.16em; padding: 6px 12px; color: var(--ab-dim); border-color: rgba(207, 214, 230, 0.18); }
 .ab-stage .ab-btn.on { color: #f2e7d2; border-color: var(--ab-ember); text-shadow: 0 0 8px rgba(255, 138, 61, 0.45); cursor: default; }
+/* each stage's best (ADR-179; ?recLook=, ui/recordLooks.js) and the BOSS RUSH entry */
+.ab-stage .ab-btn { flex-direction: column; align-items: center; }
+.ab-stage .ab-stage-best { display: block; margin-top: 3px; font-size: 9px; letter-spacing: 0.08em; color: var(--ab-faint); font-variant-numeric: tabular-nums; }
+.ab-stage .ab-stage-best .g { margin-right: 6px; font-weight: 800; }
+.ab-stage .ab-btn.has-best .ab-stage-best { color: var(--ab-dim); }
+.ab-stage .ab-stage-grade { margin-left: 8px; font-weight: 800; }
+.ab-stage .ab-stage-time { display: block; margin-top: 2px; font-size: 9px; letter-spacing: 0.06em; color: var(--ab-dim); font-variant-numeric: tabular-nums; }
+.ab-stage .gr-s { color: #f3dc94; text-shadow: 0 0 6px rgba(216, 184, 106, 0.5); }
+.ab-stage .gr-a { color: var(--ab-ember); }
+.ab-stage .gr-b { color: #cfd6e6; }
+.ab-stage .gr-c { color: var(--ab-dim); }
+.ab-stage .ab-rush-btn { color: #f2e7d2; border-color: rgba(216, 184, 106, 0.5); }
+.ab-stage-shared { margin-top: 9px; min-height: 14px; font-size: 10px; letter-spacing: 0.12em; color: var(--ab-dim); text-shadow: 0 1px 2px #000; font-variant-numeric: tabular-nums; }
+.ab-stage-shared .n { color: #d9dfec; }
+.ab-stage-shared .g { font-weight: 800; }
+.ab-stage-shared .m { color: var(--ab-gold); }
+.ab-stage-shared .u, .ab-stage-shared .c { color: var(--ab-faint); }
+.ab-stage-shared .gr-s { color: #f3dc94; } .ab-stage-shared .gr-a { color: var(--ab-ember); } .ab-stage-shared .gr-b { color: #cfd6e6; }
 .ab-press {
   margin-top: 34px;
   font-size: 12px;
@@ -906,11 +968,20 @@ html.abyss-pad .kb-only, html.abyss-pad .tp-only { display: none !important; }
   .ab-touch .ab-banner.k-victory { top: 24%; }
   .ab-touch .ab-stats { top: calc(24% + 44px); padding: 6px 12px 7px; }
   .ab-touch .ab-stats .row { line-height: 15px; font-size: 10px; }
+  .ab-touch .ab-stats.has-head { gap: 16px; padding: 7px 14px 8px; }
+  .ab-touch .ab-grade-big { font-size: 10px; }
+  .ab-touch .ab-rec-head.g-c .ab-grade-big { font-size: 8.5px; }
+  .ab-touch .ab-stats.has-head .ab-stats-body { column-gap: 16px; }
+  .ab-touch .ab-stats.has-head .row { font-size: 9.5px; }
   .ab-touch[data-state='victory'] .ab-prompt { bottom: 10px; }
   .ab-touch .ab-mini { top: 22%; }
   .ab-touch .ab-title { padding-top: 0; }
   .ab-touch .ab-logo { font-size: clamp(8px, 1.45vw, 15px); }
   .ab-touch .ab-title-rule { margin-top: 8px; }
+  /* the stage picker with each best (ADR-179): tighter buttons, so eight levels and the rush keep to two rows */
+  .ab-touch .ab-stage { gap: 6px; margin-top: 10px; }
+  .ab-touch .ab-stage .ab-btn { min-height: 0; margin: 0; font-size: 9.5px; letter-spacing: 0.1em; padding: 4px 8px; }
+  .ab-touch .ab-stage .ab-stage-time, .ab-touch .ab-stage .ab-stage-best { margin-top: 1px; font-size: 8.5px; }
   .ab-touch .ab-title-sub { margin-top: 6px; font-size: 10px; }
   .ab-touch .ab-press { margin-top: 16px; }
   .ab-touch .ab-title-ctrl { margin-top: 10px; font-size: 9.5px; line-height: 17px; }
@@ -946,6 +1017,12 @@ html.abyss-pad .kb-only, html.abyss-pad .tp-only { display: none !important; }
   .ab-touch .ab-banner .sub { white-space: normal; padding: 0 14px; line-height: 1.5; }
   .ab-touch .ab-stats { top: calc(18% + 44px); padding: 6px 12px 7px; max-width: 92vw; }
   .ab-touch .ab-stats .row { line-height: 15px; font-size: 10px; }
+  /* upright: the grade over the rows; the prompt below the panel (no fight on the record screen) */
+  .ab-touch .ab-stats.has-head { flex-direction: column; gap: 8px; width: 92vw; top: calc(18% + 80px); }
+  .ab-touch .ab-stats.has-head .ab-rec-rows { width: 100%; }
+  .ab-touch .ab-stats.has-head .ab-stats-body { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 12px; }
+  .ab-touch .ab-stats.has-head .row { font-size: 9.5px; gap: 6px; }
+  .ab-touch[data-state='victory'] .ab-prompt { bottom: 14%; }
   .ab-touch .ab-mini { top: 24%; }
   /* a long flurry name (HUNDREDFOLD / THOUSANDFOLD FLASH) keeps to the width: shorter side rules */
   .ab-touch .ab-mini.long .txt { gap: 8px; }

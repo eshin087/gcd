@@ -1,4 +1,5 @@
 import { FAUNA_TUNE as FT } from './faunaTuning.js';
+import { lifeSay } from '../../audio/lifeSfx.js';
 
 // THE ANIMALS (part of the piece 'creatures'; creatures.js owns them and draws their letters): small
 // ground animals, two to five tiny letters each, that you notice by how they move. They sit still
@@ -12,8 +13,12 @@ import { FAUNA_TUNE as FT } from './faunaTuning.js';
 //   animals.alarm(x, z, r, why)   everything sitting within r of (x, z) bolts away from it → how many
 //   animals.returnAll()   every hidden one is back at its place now (the Lab)
 // No allocation per frame, no Math.random (the fauna's own stream).
+// The sound: one 'animalBolt' of its kind as it starts to run (audio/lifeSfx.js; a herd's are spread
+// by their reactions and the sound's own gap).
 
 const SIT = 'sit', WAIT = 'wait', RUN = 'run', HID = 'hid', GONE = 'gone';
+/** the bolt's sound options (reused) */
+const SND = { kind: '' };
 const TAU = Math.PI * 2;
 
 export class Animals {
@@ -218,7 +223,12 @@ export class Animals {
       } else if (a.state === WAIT) {
         a.wait -= dt;
         // the fox: it turns its head to him while it decides
-        if (a.wait <= 0) a.state = RUN;
+        if (a.wait <= 0) {
+          a.state = RUN;
+          // the sound of it going: its kind's (a rabbit's rustle, a deer's hooves, a rat's skitter...)
+          SND.kind = a.kind;
+          lifeSay(life, 'animalBolt', a.x, a.z, SND);
+        }
       } else if (a.state === RUN) {
         this._gait(a, dt, k);
       } else {

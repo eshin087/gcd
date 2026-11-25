@@ -18,12 +18,35 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
-        date: '2026-11-24',
-        title: "The streak's answer starts heavy and speeds up",
+        date: '2026-11-25',
+        title: 'The resting blade no longer glows',
         notes: [
-          'The cuts that answer a perfect dodge or a parry no longer flick by at low streaks: the first one is a beat you can read. You see him wound up, he crosses, the hit is held.',
-          'Each cut after it comes faster, gently for a short streak and steeply for a long one, so a streak of 7 still ends in a storm of cuts.',
-          'Damage and rules are the same. Prefer the pace before? Add ?tempo=0 to the address.',
+          'A bright white halo no longer blooms round your sword while you stand still at some angles.',
+        ],
+      },
+      {
+        date: '2026-11-24',
+        title: 'Smaller combat text',
+        notes: [
+          'The words over your hero (PARRY, DEFLECT, COUNTER and the rest) and the damage numbers are smaller, closer to the HUD\'s own text.',
+          'They no longer grow with a bigger window: the same size on any screen.',
+        ],
+      },
+      {
+        date: '2026-11-24',
+        title: 'A green flame on the sword',
+        notes: [
+          'A tight flame of tiny green marks now burns round your sword, licking up off the blade. It is there even with no streak and burns denser and hotter as your streak climbs. Add ?mystic=0 to the address to turn it off.',
+        ],
+      },
+      {
+        date: '2026-11-25',
+        title: "The streak's answer: a heavy first cut, a path that flows, cuts that tear the picture",
+        notes: [
+          'The cuts that answer a perfect dodge or a parry no longer flick by at low streaks: the first one is a beat you can read, and each cut after it comes faster, so a streak of 7 still ends in a storm.',
+          'He flows from cut to cut: each pass starts where the last one ended, and every white slash is exactly where he ran. The stray curved slashes at the end are gone, and the last blow bursts into fine letter dust.',
+          'Every streak draws a different figure round the boss (a star, a zigzag, a cage, a spiral, a cross), and each cut tears the picture: the letters on either side of it slide apart for an instant.',
+          'Damage and rules are the same.',
         ],
       },
       {
@@ -42,6 +65,29 @@ export const RELEASES = [
           'Parries, hits, warnings and swings are back to their first synthesized sounds, as at the start.',
           'The recorded music for each level and boss is unchanged.',
           'Want the recorded and designed sounds back? Add ?sfx=new to the address (or use the Lab).',
+        ],
+      },
+      {
+        date: '2026-11-23',
+        title: 'Grades, saved bests and a boss rush',
+        notes: [
+          'Every won fight now gets a grade, S, A, B or C, for clean play: how many times you died and how much health the winning attempt cost you. Time never changes the grade; it only decides which of two equal runs is better.',
+          'Blocking, parrying and dodging can all earn an S: a blow met on your guard costs guard, not health.',
+          'Beside the grade: UNTOUCHED (no damage at all), DEATHLESS and NO FLASK. The record shows your time to the hundredth, NEW BEST, and the best you had before.',
+          'The title shows each level\'s best grade and best time under its name.',
+          'BOSS RUSH on the title: all eight bosses back to back for one time. Health and flasks are full before every fight. A death retries the same boss and the clock keeps running; a reload mid-fight counts as a death. A small timer and "3 / 8" sit under the map.',
+          'Runs with the Lab open, a cheat or a gameplay switch in the address are not recorded, and the record says why.',
+        ],
+      },
+      {
+        date: '2026-11-23',
+        title: 'The sword mows the grass; lanterns light with the fight; the living world is heard',
+        notes: [
+          'Your sword cuts the grass under its swing the moment it passes, tossing the cut tops lightly into the air. The stubble stays until the fight resets.',
+          "Boss attacks tear the grass out where they land, so their marks now show in the meadow. The dragon's claws leave three raked furrows.",
+          'The stone lanterns at Ashfall, Foxfire and the Windless Grove light as the fight goes on, flicker when a heavy blow lands near, and go out when broken.',
+          'You now hear the world around the fight: birds taking off, animals bolting, trees shaking and creaking, lanterns catching. All of it quiet, under the fight.',
+          'To see the grass as it was, add ?mow=0 to the address.',
         ],
       },
       {

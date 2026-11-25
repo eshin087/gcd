@@ -9,7 +9,7 @@ import {
   prep, lumpy, carve, slabGeometry, mul, STONE, SLAB_LOOK,
   buildDeadTree, buildBoulder, buildFlagstone, buildBonfire, buildStump, buildRubble, geosHeight,
 } from './forest.js';
-import { buildLantern } from './courtyard.js';
+import { buildLantern, LANTERN_LAMP } from './courtyard.js';
 import {
   carved, landmarkPoint, frustum, limb, facetCol, buildGreatFox, buildSpiritGate, GREAT_FOX_COLLIDERS, SPIRIT_GATE_COLLIDERS,
 } from './landmarks.js';
@@ -399,7 +399,7 @@ function buildTerrace(U, colliders) {
     const g = buildLantern(rng, p.x, p.z, a + range(rng, -0.08, 0.08));
     breakables.push({
       kind: 'lantern', mat: 'stone', look: 'prop', x: p.x, z: p.z, r: 0.45, h: geosHeight([g]), geos: [g], colliders: [colliders.add(p.x, p.z, 0.45, 'stone')],
-      broken: { geos: buildRubble(br, p.x, p.z, 0.45 * 0.85, { h: range(br, 0.3, 0.5) }), r: 0.32 }, topples: false, lift: 2,
+      broken: { geos: buildRubble(br, p.x, p.z, 0.45 * 0.85, { h: range(br, 0.3, 0.5) }), r: 0.32 }, topples: false, lift: 2, lamp: LANTERN_LAMP,
     });
   }
   // ---- the six seated stone foxes on their plinths, in pairs facing each other across the terrace,

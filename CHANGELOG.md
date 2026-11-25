@@ -4,20 +4,62 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Eighty-three pieces of work since 0.4.0:
-- **The streak's answer starts heavy and speeds up** (2026-11-24, ADR-182). *Changed:* the flash cuts that answer a
-  perfect dodge of a red blow, a parry's riposte and the counter no longer flick by at low streaks. The first cut is
-  a beat you can read: he is seen wound up (0.11 s; two frames before), crosses as fast as before, is held on the
-  contact (0.11 s) and holds the finish; each later cut takes a share of the one before, a gentle share for a short
-  streak and a steep one for a long streak, so a streak of 2 or 3 is weighty and a 7 still ends in the storm (its
-  whole length is unchanged). The storm begins when the cuts have become fast enough, not at the third cut; a
-  riposte's last cut is a heavy closing beat. Round the wyrm's head the cuts have a seen wind-up too. Damage and
-  rules are unchanged. *Added:* `?tempo=0` (the Lab's `tempo` button) gives the pacing before.
+Eighty-eight pieces of work since 0.4.0:
+- **The streak's answer: a heavy first cut, a path that flows, cuts that tear the picture** (2026-11-25, ADR-190, ADR-191). *Changed:*
+  the flash cuts that answer a perfect dodge of a red blow, a parry's riposte and the counter. The first cut is a beat
+  you can read (he is seen wound up, crosses as fast as before, is held on the contact), each later one comes faster,
+  gently for a short streak and steeply for a long one, so a 7 still ends in the storm in the same time. Each pass now
+  starts where the last one ended (no jump back toward where he dodged), every white slash lies on the path he ran,
+  the two curved slashes that appeared from nowhere at the end are gone, and the last blow's big `A` shards are a fine
+  spray of white-steel letter dust. *Added:* the passes draw a different figure each time (star, zigzag, cage, spiral,
+  cross), and each cut tears the picture: for three frames the letters on either side of it slide apart like a torn
+  page (the owner's pick of four looks). Damage and rules are unchanged. `?tempo=0`, `?chain=0`, `?figure=`, `?rip=`
+  (`tear`, `ghosts`, `negative`, `off`) and the Lab's streak row compare.
+- **The resting blade no longer glows** (2026-11-25, ADR-183). *Fixed:* a white halo the size of his head bloomed
+  round the hero's sword at some poses and facings while he stood still, and the point left a pale block where it
+  rested in the grass. A world letter centred on his blade printed the steel's raw brightness; it now shows the pixel
+  underneath, as it always did for every boss.
+- **Smaller combat text** (2026-11-24, ADR-184). *Changed:* the call-outs over the hero (PARRY, DEFLECT, COUNTER,
+  GHOSTEP ...) and the damage numbers are smaller and keep one size at every window width. They grew with the
+  window before, so a 1920-wide window drew DEFLECT at 22 px and the flurry's cut counter at 34 px. Now: call-outs
+  11 - 12 px (BLOCK 9 px), damage numbers 10 / 11 / 12 px (plain / heavy / crit), the cut counter 15 px. The owner
+  picked this size from three rendered options. Colours, glow and motion are unchanged.
+Eighty-five pieces of work since 0.4.0:
+- **A green flame on the sword** (2026-11-24, ADR-182). *Added:* a tight flame of tiny green marks burns round the
+  hero's steel, in his own small letters: it licks up off the blade, boils, and climbs away in tongues. It is there
+  with no streak and burns denser and hotter as the streak climbs (tiers 0 to 5), the point paling to green-white at
+  the top. On by default; `?mystic=0` turns it off (the Lab's PLAYER row `mystic`: off / flame).
+- **Grades, saved bests and a boss rush** (2026-11-23, ADR-179). *Added:* a won fight is graded for
+  CLEAN PLAY (the owner's rule): S = no deaths and at most 15 % of max HP lost in the winning attempt,
+  A = no deaths or one death and at most half, B = up to three deaths, C = any other win; time only
+  orders runs of one grade. Blows met on the guard cost no HP, so blocking, parrying and dodging grade
+  the same. Marks beside it: UNTOUCHED, DEATHLESS, NO FLASK. The victory RECORD shows the grade in block
+  letters, the time to the hundredth, NEW BEST and the best before; the title shows each level's best
+  grade and time and a **BOSS RUSH** entry: all eight levels in order, each its own page, health and
+  flasks full at every fight, a death retries the boss with the clock running, a reload mid-fight is a
+  death, a `3 / 8` timer under the minimap, and a rush record with every split. Saved per browser
+  (`abyss.records.v1`: per level and the rush, best time and best grade, the last 24 run records in full,
+  shaped for a later online leaderboard; `game:record` is the seam an uploader subscribes to). Runs with
+  the Lab, a cheat, `__tick`, `?stage=lab`, `?tech=` or a gameplay URL switch are not recorded.
+  The grade's and the title's looks were picked by the owner from three options each: the grade in block
+  letters over its lines, the title's grade inside each level's button (the others stay behind
+  `?gradeLook=` / `?recLook=`).
 - **A perfect parry throws a few orange sparks** (2026-11-24, ADR-181). *Added:* on a perfect parry of a blow, a
   quick spit of 12 - 16 orange spark letters leaves the crossed blades along the blade that glanced off: short
   streaks that shrink to dots, cool to dark red and are gone in under half a second, a couple falling to the floor.
   No white, no glow; the gold mark, the freeze, the slow motion and the sound are as before, and a normal parry and
   the perfect dodge are unchanged. `?parryFx=0` (the Lab's `parryFx` button) draws the parry without them.
+- **The sword mows the grass; lanterns light with the fight; the living world is heard** (2026-11-23, ADR-180).
+  *Added:* **the sword cuts the grass** under its swing's arc, blade by blade, the moment the arc passes:
+  each blade keeps the stub of its own letter and its top is tossed off quietly along the swing
+  (`?mowLook=b|c|r1`: other looks; the stubble stays until the fight resets; `?mow=0`: today's grass); **every boss mark tears the
+  grass out** under it, so the marks show in the meadow (the wyrm's claws leave three raked furrows).
+  **The lanterns light**: Ashfall's, Foxfire's and the Windless Grove's stone lanterns kindle as the fight
+  goes on (a few when you arrive, more at each of the boss's phases, any that fire reaches), gutter when a
+  heavy blow lands near and go out when broken; the Skybreak Ring's braziers gutter and die the same
+  way. **The new life is heard**: a flock's wings as it leaves, a rustle as an animal bolts, a tree's
+  shudder and its creak before it falls, dust and pebbles, a lantern catching and dying; quiet,
+  synthesized, one sound per moment. None of it changes how the fight plays.
 - **Every sound effect is back to its first synth version** (2026-11-23, ADR-178). *Changed:* the owner turned down a new light-cut
   swing, plucked-string warnings and two rounds of variations of the blue and red warnings, and asked to "start
   from baseline and undo all the sound changes". The recorded and designed sounds of the attack-sound pass
@@ -1082,6 +1124,10 @@ Eighty-three pieces of work since 0.4.0:
   thuds onto its side, the head slaps down last and the wings crumple).
 
 ### Changed
+- **CI's long checks split; every PR auto-merges when green** (2026-11-24, ADR-185): the Starless Lord's
+  look check and the living world's suite each run in parallel processes (`ABYSS_FX`, `ABYSS_SKIP` in
+  life.mjs) and the shares are re-dealt on measured times: a PR's check should take ~5-6 minutes (was 8-10).
+  `.github/workflows/automerge.yml` sets squash auto-merge on every PR (not drafts, not `hold`).
 - **CI runs the tests as four parallel jobs** (2026-11-23, ADR-153, PR #92): `tests/run.mjs --shard I/N`
   deals the tasks to N shares; the Starless Lord suite runs in three parts; a PR's check takes ~4
   minutes (was 12-15). A PR that only changes docs/, *.md or .claude/ skips the tests and the build.

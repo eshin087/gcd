@@ -301,6 +301,9 @@ function pavilionPost(rng, x, z, h) {
   return [g];
 }
 
+/** Where the grove's lantern's flame sits (its lamp box, 0.91 - 1.23 m; life/lamps.js reads `lamp`). */
+const LANTERN_LAMP = Object.freeze({ y: 1.07, r: 0.13 });
+
 /** A stone lantern (the courtyard's shape, smaller and older): carved for the prop art material. */
 function buildLantern(rng, x, z, yaw) {
   const parts = [];
@@ -542,7 +545,7 @@ export function createWindlessGrove(U, colliders) {
   // two stone lanterns on the path
   for (const s of [-1, 1]) {
     const z = C.entryZ + 1.6, x = pathX(z) + s * 1.9;
-    standing('lantern', buildLantern(rng, x, z, range(rng, -0.2, 0.2)), x, z, 0.4, { topples: false });
+    standing('lantern', buildLantern(rng, x, z, range(rng, -0.2, 0.2)), x, z, 0.4, { topples: false, lamp: LANTERN_LAMP });
   }
   // six mossy boulders round the clearing's edge
   for (let i = 0; i < 6; i++) {

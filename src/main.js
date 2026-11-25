@@ -18,7 +18,10 @@ import { TimeRip } from './entities/player/timeRip.js';
 import { stampUpdate, stampClear } from './combat/impactStamp.js';
 import { World } from './world/world.js';
 import { Player } from './entities/player/player.js';
-import { LEVELS, levelFromSearch, applyLevel, levelUrl, withStage } from './levels/index.js';
+import { LEVELS, getLevel, levelFromSearch, applyLevel, levelUrl, withStage } from './levels/index.js';
+import { Rush } from './game/rush.js';
+import { Records } from './game/records.js';
+import { Eligibility } from './game/eligibility.js';
 import { HERO_LOOKS, LOOK_IDS, heroLookFromSearch, heroLookUrl } from './entities/player/gear/looks.js';
 import { Hud } from './ui/hud.js';
 import { TouchControls } from './ui/touch.js';
@@ -36,7 +39,15 @@ async function boot() {
   // the level (`?level=ash`; levels/index.js): its world overrides land in CONFIG.world before any
   // module reads them
   // (`?stage=lab`: the same boss on the training room, the lab stage)
-  const level = withStage(levelFromSearch(location.search), location.search);
+  // a boss rush page (`?rush`; game/rush.js) plays the rush's current level, whatever ?level says
+  let ss = null;
+  try {
+    ss = globalThis.sessionStorage ?? null;
+  } catch {
+    ss = null;
+  }
+  const rush = new Rush(ss, location.search);
+  const level = withStage((rush.active && getLevel(rush.level)) || levelFromSearch(location.search), location.search);
   applyLevel(level);
   // the hero's outfit option (`?heroLook=robe`; gear/looks.js: kept for later use, today's look is the default)
   const heroLook = heroLookFromSearch(location.search);
@@ -62,6 +73,14 @@ async function boot() {
     levels: LEVELS.map((L) => ({ id: L.id, name: L.name })),
     pickLevel(id) {
       location.assign(levelUrl(id, location.href));
+    },
+    // saved records, whether this page's run counts, the boss rush (game/records.js, eligibility.js,
+    // rush.js; ADR-179): the flow's recorder reads them, the title shows the bests
+    records: null,
+    eligibility: new Eligibility(location.search),
+    rush,
+    startRush() {
+      return this.flow?.recorder?.startRush?.() ?? false;
     },
     heroLook,
     // the outfit options (gear/looks.js; `?heroLook=`, kept by pickLevel): the Lab's OUTFIT row; live
@@ -127,6 +146,11 @@ async function boot() {
   game.fx.ripple = new ImpactRipple(game); // a struck body's letters take the blow (impactRipple.js)
   game.fx.stamp = { clear: () => stampClear(game) }; // the hit printed at the contact (impactStamp.js)
 
+  try {
+    game.records = new Records(globalThis.localStorage ?? null);
+  } catch {
+    game.records = new Records(null);
+  }
   game.world = new World(game);
   // what the hero has learned (ADR-146: One Breath, the Sheathed's reward; ?tech=draw|none)
   game.unlocks = new Unlocks();
@@ -379,6 +403,7 @@ async function boot() {
   // strip's exact step); `asFrame`: each is a rendered frame of dt, cut into steps as the real loop
   // cuts it (window.__tick(1 / 30, 30, true): a second at 30 fps, two steps a frame).
   window.__tick = (dt = 1 / 60, frames = 1, asFrame = false) => {
+    game.eligibility?.void?.('tick'); // a run stepped by hand is not a record (game/eligibility.js)
     for (let i = 0; i < frames; i++) tick(Math.min(asFrame ? FRAME_MAX : 0.05, dt), !asFrame);
     return { state: game.state, time: +game.time.toFixed(2), steps: game.simSteps };
   };

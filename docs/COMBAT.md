@@ -2655,7 +2655,11 @@ stands again when the fight resets (a death, a rest at the bonfire, the Lab's Re
   the fight resets. **Floor marks change nothing in the fight**: no damage, no fire, no hazard, no draw
   from the seeded random stream (the seeded fights replay exactly with and without them); they are dim
   grey, never red, so they never read as a tell. The blows near them shake the set and send the birds
-  and animals off (STYLE.md "A fight the world feels"); that changes nothing in the fight either.
+  and animals off (STYLE.md "A fight the world feels"); that changes nothing in the fight either. Nor
+  do (2026-11-23, ADR-180) the grass the hero's blade mows and the marks tear out, the lanterns that
+  light, gutter and go dark, or the living world's sounds: no hit, no swing's clock, no damage, no fire,
+  no draw from the seeded stream, and a lantern's light takes only the light slots the fight's own
+  leave free (when the fight needs one back, the lantern's fades out of it over 0.3 s first).
 - **Bites: a piece loses its letters where it was struck** (2026-11-21, ADR-132; on: the owner's
   pick; `?chip=0` or the Lab's WORLD -> Bites turns them off). Every tree, stone, boulder, pillar, statue,
   bone and landmark piece is made of bricks, the blocks of letters it is drawn with (about one letter

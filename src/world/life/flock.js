@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { FAUNA_TUNE as FT } from './faunaTuning.js';
+import { lifeSay } from '../../audio/lifeSfx.js';
 
 // THE FLOCKS (part of the piece 'creatures'; creatures.js owns it and draws its letters): the birds
 // hidden in a level's canopy (a tree wall, the ruins, the dead trees, the tower tops). A stretch of it
@@ -28,6 +29,8 @@ import { FAUNA_TUNE as FT } from './faunaTuning.js';
 // Rate limits (FAUNA_TUNE.flush): `gap` s between two flocks anywhere, at most `max` in the air, and a
 // roost that went is empty until the fight is over (a level has a finite number of birds). Nothing
 // here allocates per frame or draws from Math.random (its own stream: `rand`).
+// The sound: a flock that goes is ONE wing burst at its roost (audio/lifeSfx.js 'flockBurst', by its
+// size; the level's birds: crows, pigeons, small birds); a flock flying in is silent.
 
 const TAU = Math.PI * 2;
 const MAXB = 48;
@@ -35,6 +38,8 @@ const MAXB = 48;
 const CAM_UP = 36 * Math.sin((58 * Math.PI) / 180), CAM_BACK = 36 * Math.cos((58 * Math.PI) / 180);
 /** the way's knots: a Catmull-Rom spline through 4 points (u 0..3) */
 const SPAN = 3;
+/** the wing burst's options (reused) */
+const SND = { n: 0 };
 
 export class Flocks {
   /** life: the living world; L: the level's FAUNA block; rand: the fauna's own stream */
@@ -243,6 +248,8 @@ export class Flocks {
     }
     this._start(f, R, n, false);
     for (let i = 0; i < n; i++) this._launch(f.birds[i], R, f, i);
+    SND.n = n;
+    lifeSay(life, 'flockBurst', R.x, R.z, SND);
     return n;
   }
 

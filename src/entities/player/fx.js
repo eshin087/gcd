@@ -287,11 +287,14 @@ export class PlayerFx {
     // the streak's echo lines (player/streakFx.js `echoes`; 0 = none, today): fine lines inside the
     // edge, ECHO_STEP of the reach apart, fainter inward, hanging longer than the edge
     const SK = this.game.fx?.streak, nEcho = thrust ? 0 : Math.min(4, SK?.echoes | 0), echoA = nEcho > 0 ? Math.min(1, Number(SK.echoA) || 0) : 0;
+    // the grass under the edge is cut as the edge is drawn over it (world/mowFx.js cutArc; none headless)
+    const tops = this.game.world?.scorch?.tops;
     for (let s = 1; s <= nSub; s++) {
       const t = s / nSub, t0 = (s - 1) / nSub;
       // the edge
       arcPoint(t, at, ARC_P);
       arcPoint(t0, at, ARC_Q);
+      if (tops) tops.cutArc(ARC_Q[0], ARC_Q[1], ARC_Q[2], ARC_P[0], ARC_P[1], ARC_P[2], heavy);
       let dx = ARC_P[0] - ARC_Q[0], dy = ARC_P[1] - ARC_Q[1], dz = ARC_P[2] - ARC_Q[2];
       let step = Math.hypot(dx, dy, dz);
       if (step > 0.01) {
@@ -1642,6 +1645,28 @@ export class PlayerFx {
         life: R(0.3, 0.6), size: grass ? R(0.12, 0.17) : R(0.14, 0.22), sizeEnd: grass ? 0.08 : R(0.3, 0.42),
         glyph: grass ? "/\\'," : '.,:', color: grass ? COL.grassBit : COL.dust, colorEnd: grass ? COL.grassBitEnd : COL.dustEnd,
         alpha: 0.85, alphaEnd: 0, drag: 2.2, gravity: -2.4, spin: R(-4, 4),
+      });
+    }
+  }
+
+  /**
+   * The cut tops fly (world/grass.js mowSwing, GRASS.mow.bits `B`): `n` tiny grass letters off the
+   * strip the steel mowed this frame (a -> b on the ground), thrown on along the blade's travel (ux,
+   * uz unit) and up, in the grass's own green, falling back fast (the slide's torn grass, COL.grassBit).
+   * `top`: the grass's height there (m). The module's own stream: no Math.random.
+   */
+  mowBits(ax, az, bx, bz, n, ux, uz, top, B) {
+    const fx = this.alpha;
+    if (!fx || !(n > 0) || !Number.isFinite(ax + az + bx + bz + ux + uz + top)) return;
+    const h = Math.max(0.1, top);
+    for (let i = 0; i < n; i++) {
+      const t = 0.25 + 0.75 * rnd(), f = R(B.fling[0], B.fling[1]), side = R(-0.5, 0.5);
+      fx.spawn({
+        x: ax + (bx - ax) * t + R(-0.1, 0.1), y: h * R(0.45, 0.9), z: az + (bz - az) * t + R(-0.1, 0.1),
+        vx: ux * f - uz * side, vy: R(B.up[0], B.up[1]), vz: uz * f + ux * side,
+        life: R(B.life[0], B.life[1]), size: R(B.size[0], B.size[1]), sizeEnd: 0.07,
+        glyph: "/\\',|", color: COL.grassBit, colorEnd: COL.grassBitEnd,
+        alpha: 0.8, alphaEnd: 0, drag: 2.4, gravity: -3.2, spin: R(-6, 6),
       });
     }
   }

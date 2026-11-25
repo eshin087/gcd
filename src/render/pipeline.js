@@ -1199,10 +1199,14 @@ export class Pipeline {
           vec3 col;
           if (a < 0.03) {
             col = texture2D(tScene, px / uRes).rgb; // untagged: pass through
+          } else if (isArt(a) || isProp(a)) {
+            // world cell centred on a creature / prop edge: raw pixel. (Checked BEFORE the creature
+            // grid: the player's own window (isSelf, 0.42 - 0.45) lies under 0.46, so a world cell whose
+            // centre fell on his blade printed a creature-grid letter in the steel's raw HDR colour (4 - 6)
+            // beside it: a bright letter that bloomed round a resting blade. ADR-183)
+            col = texture2D(tScene, px / uRes).rgb;
           } else if (a < 0.46) {
             col = creatureCell(c, cell, local);
-          } else if (isArt(a) || isProp(a)) {
-            col = texture2D(tScene, px / uRes).rgb; // world cell centred on a creature / prop edge: raw pixel
           } else if (a < 0.8) {
             float l = 1.0 - exp(-luma(c.rgb) * uLumMap);
             float level = clamp(floor(l * 14.0), 0.0, 13.0);

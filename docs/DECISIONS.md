@@ -5314,6 +5314,50 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   sound options") and the pickers' pages. The tests of the sound passes (integ and duel `sfx`) switch the mode on
   and put the default back.
 
+## ADR-180 — Grass the sword mows, lamps that light with the fight, and the living world heard (2026-11-23)
+
+- **Context:** asked "what else do you recommend to make the world and background more alive and
+  interactable to make the fight seem cool", the owner got eight ideas and said "Build top three":
+  grass the sword cuts (which also lets the boss marks of ADR-177 show on grass, where they were
+  faint), the levels' unlit lanterns lighting with the fight, and sound for the new life.
+- **Decision:**
+  1. **Torn grass is the scorch map's A channel**, the one channel nothing in the fire reads: a tear
+     is persistent until the fight's reset and never changes what burns, so the seeded fights replay
+     byte for byte. The sword mows (`mowSwing` beside `_cutWorld`: where the steel passes low enough,
+     a strip along its ground path; the blade's height decides skim or cut), a floor mark tears its own
+     shape out. The grass shader draws two looks from one channel: mown (the blade's own letter clipped
+     to a pale stub, some tops lying) and torn out (bare floor). Burnt grass stays black.
+  2. **Lamps are a living-world layer** (`life.lamps`, piece `answer`): a breakable def carries
+     `lamp: { y, r }`; a lamp kindles by a per-level rule (some at the start, more at each boss phase,
+     fire landing near), gutters under a blow, goes out for good when its piece breaks. The flame is
+     heat in the fire field; only a few lamps hold a real light: the light pool gained LOW lights
+     that take only the slots the fight leaves free and fade in and out of them.
+  3. **The living world's one-shot sounds** go through `life.sound` / `lifeSay` into `LIFE_SFX`:
+     synthesized, short, one sound per event (a flock is one burst, a shake one or two shudders), per
+     level (the Throne and the Hall hear nothing alive, the Grove only its canes and its lamps), no
+     louder than a footstep at the same distance except a big flock and a creak, never `Math.random`.
+- **Why this way:** one free channel and a shader branch that is skipped where nothing is torn cost
+  nothing where nothing happened; the light pool's eight slots belong to the fight, so lamps borrow
+  what is left; the sounds lean on the approved air bed's manner (the owner: "sound looks good").
+- **Amended 2026-11-24 (the owner saw the cut):** "the grass cut doesn't look good ... we should be
+  able to see the grass get cut the moment the sword touches the grass and have ascii grass get thrown
+  into the air". Measured: the cut was a blotch of a map cell's share of blades round the steel, and
+  most of the DRAWN arc passed over grass that stood. Now **the drawn arc is the cut's source**
+  (`player/fx.js` `trail()` → `world/mowFx.js` `cutArc`, each edge stroke low enough, carried along the
+  view ray): exact to the blade, one byte per blade instance in a texture the grass shader reads by
+  `gl_InstanceID`, so the sword no longer writes A (A stays for the marks; `?mowLook=r1` keeps the first
+  round). Each cut blade's top, its own letter, leaves on the frame its stub shows (`MowFx`). Three
+  looks were filmed (thrown, sliced, shred); the owner liked sliced, then asked for the cut to follow
+  the swing, then chose **thrown, made subtle**: half the tops tossed low with a gentle spin, the rest
+  toppling, no brighter than the grass. Why a per-blade texture and not finer scorch cells: the cut
+  must sit on the arc's line (~0.5 m wide) and the fire's 0.625 m map is shared with what burns.
+- **Consequences / open:** (first round) the mowing is calm (a pale speckled clearing more than a crisp
+  swath) and the hero's mostly vertical cuts leave lanes, not arcs (both answered by the amendment);
+  the cut tops do not move with the wind once lying; a stub does not spring; after a fire-heavy fight burnt ground still
+  dominates the meadow; a lantern's flame is a few letters at the game camera; Foxfire's ten lanterns
+  share three lights; the Ring's braziers became low lights (they give way to the fight's) also with
+  the living world off; nobody has heard the sounds yet.
+
 ## ADR-181 — The perfect parry throws a few orange sparks; nothing else of the moment changes (2026-11-24)
 
 - **Context:** the owner asked to make the perfect parry and dodge "more epic cool with subtle effects". In one session
@@ -5333,15 +5377,211 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   draw call while sparks live. The rejected passes stay on local branches; a later round on these moments should start
   from a concrete reference and one narrow prototype, and never change the background.
 
-## ADR-182 — The flurry's tempo: a heavy first cut, each later cut a share of the one before, the storm by pace (2026-11-24)
+## ADR-179 — Grades, saved records and a boss rush, shaped for an online leaderboard (2026-11-23)
 
-- **Context:** the owner, a day after the streak pass (ADR-167): "looks too fast in the early streaks. something about it just looks not epic/stunning"; asked which part: "All of it, you judge". Measured: a flash cut was 0.35 s on a man with its wind-up on screen for two frames (0.25 s round the wyrm's head, no wind-up seen), the first cut landed 0.12 s after the dodge, and the storm began at a fixed cut (the third on a man) whatever the streak, so a streak of 4 or 5 was two full cuts, one or two blips and the art.
-- **Decision:** one tempo rule for the flurry, the riposte and the counter (`DEFENSE.flurry.tempo`, `STREAK_FX.tempo`, on by default with the storm piece):
-  1. **The first cut is a heavy beat** in the iai rhythm, slow / fast / slow: hidden 0.06 s, seen wound up 0.11 s (0.08 round the head), the dash at its old speed, the contact frozen 0.11 s, the finish held 0.15 s (0.11). The dash is not slowed: the contrast is the point.
-  2. **Each later cut takes `r` of the one before; `r` is set by the number of flash cuts** (0.78 for two, 0.52 for six, a straight line between; never below `storm.floor`). Short flurries stay weighty, a seven keeps its length (113 frames against 112 on a man).
-  3. **A storm cut is one whose pace is below `stormAt` (0.4)**, not one past a place in the list; weight (camera, flare, sparks) falls with the pace instead of jumping.
-  4. **A riposte's / counter's last cut is the heavy beat again.**
-  5. **Timing and weight only:** damage, posture, blows, the world's hold, the crit window and the hero's end place are unchanged; no new effect was added (the owner turned down brighter and busier perfect effects the same week, ADR-181).
-  6. **The pace before stays one switch away** (`?tempo=0`, the Lab's `tempo` button): ADR-167's frames are pinned in the tests.
-- **Turned down:** slowing the whole flurry (a seven was already called too long at 2.9 s, ADR-167); a later start for the storm by place (the cliff stays, only later); new glints or sparks on the heavy beat (the art's glint would be cheapened; timing first); touching the single perfect parry / dodge moment (picked by the owner on film the day before).
-- **Consequences:** a streak of 2 to 5 takes 0.18 - 0.35 s longer in real time (the world is held at 0.07 meanwhile, so about 0.02 s of fight). A seeded test fight that holds a flurry replays differently: integ `breach` is pinned to the old pace, and what the other path showed (the wyrm's `pounce` 0.5 m past its share of a gap) is open. Open on screen: the step into the storm round the head (24 -> 11 frames at a streak of 7) and the riposte's last freeze (0.198 s).
+- **Context:** the owner asked for saved records, grades and a boss-rush mode, and plans online
+  leaderboards later, so what is saved must be what a server will take. A planning session settled three
+  things with the owner (2026-11-23), final: (1) a grade measures CLEAN PLAY: damage taken and deaths
+  decide it, time only separates equal runs, a careful defensive win can be an S (their standing rule:
+  defensive play is never punished); (2) in the rush, health and flasks refill before every fight; (3) in
+  the rush a death retries the same boss, the clock keeps running, the death is counted.
+- **Decision:**
+  1. **One run record per finished run, written by one function** (`records.js` `buildRecord`, `v: 1`):
+     kind, level(s), game version, time, the clean-play inputs, grade, marks, the RunStats snapshot, the
+     device, the learned techniques, the move style (null until PR 105's system is on `main`), and for a
+     rush its splits. No player name, no network code. The fields and the timing rules are written into
+     ARCHITECTURE.md "Records" as the contract a leaderboard server holds runs to.
+  2. **Timing is real time in the boss state.** A boss: the winning attempt (`stats.attemptTime`; a pause,
+     the intro, the walk and the screens never count; checked headless: 10 + 10 s around a 20 s pause
+     reads 20.0 s). A rush: every boss-state second of every fight, failed attempts included; loads,
+     walks, intros and record screens never count, so a slow device or connection costs nothing.
+     Client-side times can be forged: validation is the server's job later.
+  3. **The grade** (`rank.js`, thresholds as data in `rankTuning.js`): S = no deaths and at most 15 % of
+     max HP lost in the winning attempt; A = no deaths, or one death and at most 50 %; B = up to three
+     deaths; C = any other win. Time never changes a grade; `compareRank` orders by grade, then time.
+     "Damage taken" is HP lost to blows that LANDED (`player:hurt`): a blow met on the guard costs guard,
+     not HP (player.js `_block`), so blocking, parrying and rolling all reach an S the same way; only a
+     contact stream's chip through a held guard costs HP, and is not counted either. Marks: UNTOUCHED
+     (no death, no damage), DEATHLESS, NO FLASK (no flask in any attempt). **A rush's overall grade is
+     the same rule on its totals**: deaths summed, the eight winning attempts' damage summed over the
+     eight max HPs summed (an S rush is deathless and averaged at most 15 %), flasks summed.
+  4. **Eligibility** (`eligibility.js`): a run is recorded only if played as the game ships. VOID: the
+     Lab opened on any frame (its controls need it open; `?lab` too), god mode, endless flasks, the
+     attack-speed slider, the Lab's time scale, a boss's AI switched off, `window.__tick`,
+     `flow.debug.toState`, the training room (`?stage=lab`), `?tech=`, and these URL switches away from
+     their shipped value (read from the code with a sweep of every parameter the game reads):
+     `training`; `cutStop` (1: the blade stops, a swing ends early); `apoc` (c: the meteor rain
+     re-paced, the wyrm out of reach); `ring` (b / c: another Skybreak arena and its colliders); `bamboo`
+     (other breakable stalks and colliders); `outskirts` (0: the Throne's props and their colliders
+     go); `looks=old` (it sends `outskirts` back to 0); `wyrmLook` (another build carries the neck, so
+     the head's hurt sphere, differently between attacks); `ablaze` (its fire lights the cover);
+     `perfect` (today / cinema: another slow motion after a perfect defence); `streakfx` (without
+     `storm` the flurry's pacing changes). NOT void (looks, sounds, input): `heroLook`, `sword`,
+     `wyrmFace`, `breath`, `flare`, `zoomArt`, `nobatch`, `noseen`, `impact`, `calm`, `stamp`,
+     `stampInk`, `cutfx`, `burst`, `streakCount`, `auraFire`, `sfx`, `chain`, `music`, `life`, `lifeK`,
+     `marks`, `floor`, `grove`, `city`, `hall`, `script`, `chip`, every duelist look switch (ADR-122's
+     table: `kindle`, `qi`, `ashLook`, `lordLook`, `asc*`, `sheath*`, `fox*`, `hal*`, `one*` ...),
+     `gradeLook`, `recLook`, and the device switches `touch`, `pad`, `hold` (the device is recorded
+     instead). A void run's record screen says why in one line (`NOT RECORDED: the Lab was used`); the
+     grade is still shown; nothing is stored. Once void, void for the page; a rush, for all its pages.
+  5. **The store** (`records.js` `Records`, the pattern of `unlocks.js`): localStorage
+     `abyss.records.v1`, injectable storage, never throws (corrupt / another version reads as empty, a
+     full store drops the queue to six and retries, blocked or missing storage keeps the page's runs).
+     Per level and for the rush: clears, the best time and the best grade, two separate bests; plus the
+     last 24 run records in full (a full rush and the runs before it), the queue a later uploader
+     drains. `game:record` is emitted per stored record: the seam an uploader subscribes to.
+  6. **The boss rush** (`rush.js`): every level in `LEVELS` order (a new level joins with no change), each
+     its own page load (`?level=<id>&rush=1`); the run in sessionStorage (`abyss.rush.v1`, this tab).
+     What I decided beyond the plan:
+     - a rush page plays the rush's level whatever `?level` says, so a reload on the record screen after
+       a win goes on to the next boss (the win was banked) instead of losing the rush;
+     - the clock is banked about once a second and on `pagehide` / a hidden tab, with a `live` flag in
+       the boss state: a reload or a reopened tab mid-fight is a death with the time kept; a crash loses
+       at most a second of the clock; a reload outside the fight (walking, the death screen) is no death;
+     - opening any page of the game without `?rush` ends the rush (no stale rush waiting in the tab);
+       QUIT TO TITLE ends it with no record; a finished rush is cleared when its record screen is left;
+     - a rush's fight is also that boss's clear: it updates the level's bests (its time is the winning
+       attempt's) and carries the rush's id;
+     - "Fight again" is not offered in a rush: the record screen's press goes on ("Next boss", and after
+       the last, "Back to the title");
+     - the HUD's rush line is under the minimap, the corner the minimap already holds on desktop and
+       phone (`3 / 8  4:12.3`, tenths during the fight; hundredths on the record).
+  7. **The looks are the owner's to pick** (CLAUDE.md "render options"): three options each for the
+     record screen's grade (`?gradeLook=a|b|c`) and the title's record line (`?recLook=a|b|c`), captured at
+     720p and at the phone in both orientations in `docs/looks/records/`, behind the switches like the
+     other look options. **The owner picked (2026-11-24): the grade `a` (block letters over its lines),
+     the title `b` (the grade in the button after the name, the time on a second line)**; the other
+     options stay behind their switches. With `b` the phone's title in landscape grew to three rows of
+     buttons and lost the top of the logo: on a touch screen in landscape the stage buttons are tighter
+     (9.5 px letters, 4 x 8 px padding, 6 px gaps), which keeps them to two rows.
+  8. **The record panel's border holds every row** (the owner's report, 2026-11-24: "Total time" and
+     "Flasks used" outside the border). Measured in a browser: the right column stuck out by 5 - 31 px
+     at 1280 x 720 (looks b / c), 1024 x 640 and 852 x 393, every look; 393 x 852 and 1600 x 900 were
+     inside. The cause: the panel was placed at `left: 50%` and shifted back by half its width, and a
+     box placed there may only grow to half the screen, so its two columns of rows overflowed it. Now
+     the panel with a grade is centred by its margins at its rows' width (at most 94 % of the screen),
+     its columns may shrink, and a label that cannot fit is cut short with an ellipsis instead of drawn
+     past the border. After: 0 px out for every look at 1280 x 720, 1024 x 640, 1600 x 900, 852 x 393
+     and 393 x 852, the rush's record too (`docs/looks/records/panel-overflow-before-after.jpg`). The
+     `records` suite guards the rule (layout itself cannot be measured headless).
+- **Consequences:** the store and the record are stable shapes; a later version migrates from
+  `abyss.records.v1`. The grade thresholds are starting numbers: the suites' winning bots fight in god mode and
+  land 0 - 8 blows on the hero a fight (most 0 - 3); a duelist's blow is 18 - 38 HP of 160, so an S allows
+  one light blow and about half the bots' wins would be an S, the rest an A, and the owner has not played them. Nothing proves a client's time; the server validates.
+  Not checked: a human on a real phone, a pad on the title with nine buttons, a full rush played by a
+  person (a full rush was driven in a browser with Lab jumps, which voided it, as it should).
+
+## ADR-182 — The sword burns with a tight green flame in the hero's own micro letters (2026-11-24)
+
+- **Context:** the owner: "i also want his sword to look a bit more mystical in a subtle way. maybe make the sword
+  animation change as you get streaks". On record: the blade is dark steel that lights only while it cuts (ADR-130);
+  always-on bright glows read "flashy"; ambient effects are many TINY FAINT letters (ADR-163); ADR-167's streak aura
+  already puts a faint red rim round him. Over a day of filmed rounds the owner picked: four first readings (a breath
+  of violet letters, climbing digits, wisps off the steel, a lingering line) → the wisps "but with neon matrix color
+  effect" (one classic green of three) → "not wisps but like a fiery subtle flame cool ascii effect on the sword"
+  (three flames in the fire field's red) → "make the sword color matrix green" → "more cooler flame enveloping the
+  sword ascii looking" → "the glow is way too big, make the ascii characters much more smaller" → of two, "A: tight".
+- **Decision:**
+  1. **A tight envelope of green flame round the steel** (`player/swordMystic.js`; on for everyone, `?mystic=0` and
+     the Lab's `mystic` row off / flame give today's blade). Every cell touching the steel on the screen (never the
+     steel's own cell: it is never covered; at most one below it) burns on its own beat, its mark re-rolling 8 times
+     a second; tongues of 1 – 3 cells climb off the top and break away; strokes lick off the steel and climb cell by
+     cell (spawned, snapped to his grid). With `streakTier` 0 – 5 (the hero's own streak, independent of
+     `?streakfx=`) it burns denser (62 → 90 % of the cells lit) and hotter, the tongues climb higher, the licks come
+     6 → 14 a second, and toward the point the marks pale to green-white (the lit head of Matrix rain). Nothing over
+     his torso's column below his head; nothing on a dead, hidden or unarmed hero; it rests through the flurry.
+  2. **Drawn in the HERO'S OWN micro letters**, not the world's: `render/glyphs.js` PIXEL_3X3 (3 × 3 marks in his
+     4 × 4 px cells at 720p, half the world letter's height; `pixelArtOrder()` gives each mark's atlas column),
+     through a `LetterBatch` that takes the pipeline's own hero atlas (`pipeline.heroArt`, `heroCell`; never disposed
+     by it) and snaps to his grid. Heat picks the mark the way the fire field picks its letter: a stroke at a cool
+     tip, a tiny letter shape in the body, a dense mark at the hot heart. In world letters (5 × 8) the flame was as
+     wide as his head ("the glow is way too big").
+  3. **Not the fire field** (the house rule for burning effects is field heat): the field prints only its three hues
+     (red fire, the Lord's violet, steel) in world-sized letters, and its two dye zones serve the bosses' timing
+     tells. A green flame at the hero's scale cannot be field heat without a fourth kind. The flame keeps the field's
+     grammar (heat → stroke / body / heart, tongues, boiling) in his letters instead.
+  4. **Matrix green:** linear body (0.06, 1.0, 0.06) (the grade and the tone map lean a green toward mint, so the
+     blue is kept low), cool tips (0, 0.5, 0.04), the lit head (0.62, 1.0, 0.6); alpha 0.5 – 0.9 by heat. Brightest
+     pixel before the tone map about 0.76 at tier 0 and 0.93 at tier 5, so its marks carry a small bloom halo (about
+     half its pixels are over the 0.55 threshold). The owner approved it so; `GREEN` is the knob if it reads as glow.
+- **Status:** shipped. Left out on purpose: the hero's move styles and the growing arc (`?arc=`) of the closed PR
+  #105; they were options for the owner's pick and are not part of this.
+- **Consequences:** the `swordmystic` scenario holds the flame to his marks, its budgets (6 licks, 110 marks a
+  frame), green, colour × alpha at most 0.9, growth by tier, on by default, nothing after death, and the off state
+  to today's blade frame by frame and to drawing and building nothing. Every other scenario now runs with it on (the
+  harness's pipeline has no frame size, so it draws nothing there). The streak aura's rim stays red: a red rim round
+  him and a green sword at tiers 1+ (the owner may want the aura green too). On-device frame rate is unverified (one
+  more batch, up to ~160 instances, one draw call).
+
+## ADR-184 — Combat text at fixed, smaller sizes (2026-11-24)
+
+- **Context:** the owner noticed the combat text next to the hero (counter, deflect, damage numbers) looked much
+  larger than they remembered and asked for it small like the original. The CSS had not changed since v0.2.0, but
+  the call-outs and the crit / cut-counter numbers were sized with `clamp(.., vw, ..)`, so they grew with the window:
+  at 1920 wide DEFLECT was 22 px and the cut counter 34 px, against a hero only a few dozen pixels tall.
+- **Decision:** fixed pixel sizes, option B of three rendered at 1920x1080 (A today; B about two thirds; C the HUD's
+  own size with a lighter weight): call-outs 11 px (12 px for deflect / return / ghostep / danger, 9 px for BLOCK),
+  damage numbers 10 / 11 / 12 px, the flurry's cut counter 15 px, letter spacing 0.2em. Weight, colours, glow and the
+  pop / rise motion are unchanged (`src/ui/hudStyle.js`).
+- **Consequences:** the same size at every window width and on the phone; the text reads as a note beside the
+  fight rather than a headline. No switch keeps the old sizes (a pure size change; the old values are in git).
+
+## ADR-185 — CI: the long checks split into processes of their own; every PR auto-merges when green (2026-11-24)
+
+- **Context:** the owner: "it takes a while for new changes to get pushed through". A PR's `test-and-build`
+  took 8 - 10 minutes, and one task set it: `lord fxlooks` ran 539 s in its share (est 230) while the other
+  shares were done in 3.7 - 7 minutes; after it, `life` (430 s). Nearly all of fxlooks was its last check,
+  SPELLS + TERRAIN printed under '0', 'a', 'b' and the shipped looks: TERRAIN alone about 90 % of it. And a
+  green PR then waited, often for hours, for someone to press merge.
+- **Decision:** lord.mjs takes `ABYSS_FX` (parts of fxlooks: a switch's name, spy, fight, same,
+  same-spells, same-terrain, same-terrain@a / @b / @ship; `!part` leaves one out) and run.mjs runs each
+  TERRAIN look as a process of its own (TERRAIN under '0', then that look), the rest of fxlooks as one more.
+  life.mjs takes `ABYSS_SKIP`; run.mjs runs its files in three processes. Every est re-measured from PR
+  #113's run. A new workflow, `automerge.yml`, sets auto-merge (squash) on every PR from this repo when it is
+  opened, reopened or made ready (not a draft, not one labelled `hold`): the owner's call ("have every pr set
+  to auto merge automatically").
+- **Why this way:** no check is dropped or weakened: each part asserts exactly what it did inside fxlooks;
+  TERRAIN under '0' runs three times instead of once (about 2 more minutes of runner time, none of the
+  wall). The main fxlooks task and `life` run "everything but" the split parts, so a part or a life file
+  added later runs by itself. Auto-merge changes when a PR merges, not what must pass: the required check
+  and the up-to-date rule still decide (a merge queue would update branches by itself, but needs an
+  organisation-owned repo). A push by the Actions token starts no workflow, so a PR behind `main` is brought
+  up to date by a session or the owner (`gh pr update-branch`), not by a bot.
+- **Consequences:** the longest task is `integ` (~295 s); each share deals ~1000 s of tasks four at a time,
+  so a run should take about 5 - 6 minutes (was 8 - 10). A PR merges the moment its check is green: the
+  Vercel preview is no longer a gate before production, so a PR the owner wants to see first is opened as a
+  draft or with `--label hold`. Re-measure `est` when a suite grows a lot.
+
+## ADR-183 — The world grid tests a creature or prop edge before the creature grid's bound (2026-11-25)
+
+- **Context:** a bright halo bloomed round the hero's RESTING blade at some poses and facings, and the point left a
+  pale block where it rested in the grass. In the ASCII pass's world grid the creature-grid branch (alpha < 0.46) came
+  before `isArt(a) || isProp(a)`. The player's own pixel window (0.42 – 0.45, ADR-130) lies under 0.46, so a world
+  cell whose centre fell on his blade printed a creature-grid letter in the steel's raw HDR colour (4 – 6) beside it,
+  and it bloomed. The bosses' window (0.46 – 0.49) was always caught by the art test first. Found while filming the
+  sword options of ADR-182 (closed PR #105); left out of PR #114, which shipped the flame.
+- **Decision:** in the world grid `isArt / isProp` (the raw pixel) is tested before the creature grid
+  (`render/pipeline.js`). Always on: a defect, not a look.
+- **Consequences:** measured at the game camera (720p, before bloom), 17 – 49 px over the 0.55 threshold round the
+  resting blade in a range of poses and facings before, none after (the gem's own violet point aside). A cut, the
+  charge, the flurry and a crit light the blade as before. An addendum to ADR-130's pixel windows: a window under 0.46
+  must not be read by the creature grid.
+
+## ADR-190 — The flurry's tempo: a heavy first cut, each later cut a share of the one before, the storm by pace (2026-11-25)
+
+- **Context:** the owner, a day after the streak pass (ADR-167): "looks too fast in the early streaks. something about it just looks not epic/stunning"; asked which part: "All of it, you judge". Measured: a flash cut was 0.35 s on a man with its wind-up on screen for two frames (0.25 s round the wyrm's head, no wind-up seen), the first cut landed 0.12 s after the dodge, and the storm began at a fixed cut whatever the streak, so a streak of 4 or 5 was two full cuts, one or two blips and the art.
+- **Decision:** one tempo rule for the flurry, the riposte and the counter (`DEFENSE.flurry.tempo`, `STREAK_FX.tempo`, on with the storm piece): (1) the first cut is a heavy beat, slow / fast / slow (seen wound up 0.11 s, 0.08 round the head; the dash at its old speed; the contact frozen 0.11 s; the finish held 0.15 s, 0.11); (2) each later cut takes `r` of the one before, `r` set by the number of flash cuts (0.78 for two to 0.52 for six, never below `storm.floor`); (3) a storm cut is one whose pace is under `stormAt` (0.4), and weight falls with the pace instead of jumping; (4) a riposte's / counter's last cut is the heavy beat again; (5) timing and weight only; (6) `?tempo=0` gives ADR-167's frames exactly (pinned).
+- **Turned down:** slowing the whole flurry (a seven was already called too long at 2.9 s); starting the storm later by place (the cliff stays); a new glint on the heavy beat (timing first).
+- **Consequences:** a streak of 2 to 5 takes 0.18 - 0.35 s longer in real time (about 0.02 s of fight under the world's 0.07 hold); a seven keeps its length. integ `breach` replays at the old pace (its other seed path showed the wyrm's pounce past a gap's share, open). Open in play: the step into the storm round the head (24 -> 11 frames at seven), the riposte's last freeze (0.198 s).
+
+## ADR-191 — The flurry flows: chained passes, every slash on his path, a figure each time, cuts that tear the picture (2026-11-25)
+
+- **Context:** after ADR-190 on film the owner asked for slashes "accurate to how the character moved", for the "random 2 curved slashes at the end" to go, for no return to where he started ("A - B - C ... right now it goes back to the original A location"), for a smaller detailed burst instead of the "A" explosion, for slashes "ripping time in a cool flash instant" in variations; then for the passes not to "always form some kind of star". Causes: every cut teleported to a fresh point on a ring and the art began at the foe's front, which faces the dodge spot; on the ground the hanging line ran through the foe while he ran 0.55 m beside it; the iai art spawned two 5 m crescents beside the target; the last blow reused the slam's `A ^ V` kite shards; the planner scored the widest star first.
+- **Decision:**
+  1. **Chained passes** (`DEFENSE.flurry.chain`, `STREAK_FX.chain`, `?chain=0`): each pass starts where the last ended, the art where the last pass ended; the blink before a cut is a beat of turning where he stands. A riposte still ends where he parried.
+  2. **Every slash is his path:** a hanging line is the segment his chest ran (1.2 m over his root); the cut's stroke, star and sparks sit on it; a crescent is kept only where his blade swept (the split / vault, sampled at the blade tip); the iai's two crescents and the cuts' crescents are removed.
+  3. **Letter dust for the last blow:** about a hundred tiny white-steel letters, none over 0.09 m, under the bloom, settling as dust; the slam elsewhere keeps its shards.
+  4. **Figures** (`player/flurryFigures.js`, `DEFENSE.flurry.chain.figures`, `STREAK_FX.figure`, `?figure=`): star, zigzag, cage, spiral, cross, each a rule for every pass's offset and exit, picked per flurry from the flurry's seeded stream, never the same twice running, only where it reads (cage and spiral not round the head: a side crosses the neck) and fits (walls, the dodge spot 1.6 m clear), else the star. On a man no pass nearer than 0.55 m to his middle (ADR-101).
+  5. **The time rip** (`player/timeRip.js`, `game.fx.rip`, `?rip=`): a cut changes the picture along its own line, never beyond a thin band, never its colour. Four looks were built and filmed side by side; **the owner picked `strip`** (three frames: the letters 3 cells either side print shifted 4 / 3 / 1 cells along the cut, each side the other way, a steel seam on the line) and it is the default; `tear`, `ghosts`, `negative` stay behind the switch. It hooks in through `player:flurry` / `player:flurryHit` / `player:flurryEnd` and `flurry.lines`, a band in the ASCII pass (`uCutN`, early-out when idle), steel in the fire field.
+- **Turned down:** a fan figure (it cannot stay chained without long runs back round); ghosts through the dodge afterimage's single standing copy (one figure at a time); the four rips' first round on film (negative as flat white blocks, ghosts as a wall of digits, strip too small to see at speed), fixed before the pick.
+- **Consequences:** no new event (`player:flurry` gains `figure`); no new draw call; the rip's idle cost is one branch a pixel in the ASCII pass. Seeded fights that hold a flurry replay differently with each switch: city `win` replays with the chain off, integ `pressure` and `storm` with the star, all commented. On film the figures are 100 - 200 px across at the duel camera and the strip lasts three frames: both to be judged in play and on the phone.

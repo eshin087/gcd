@@ -52,7 +52,9 @@ follow the zoom) and `?ablaze=off|a|c` (b: the wyrm's phase 3 fire). The impact 
 a piece where it struck; the hero's blade goes clean through what it does not fell, chipping it along
 the cut) are on: `?chip=0` turns them off (ADR-132); `?cutStop=1` gives back the blade that stops there
 (ADR-177; Lab: WORLD → Blade). Floor marks (every boss blow that meets the ground leaves a mark of its
-kind until the reset; ADR-177): `?marks=0` leaves today's cracks only. The grove's bamboo: `?bamboo=0|b` (a, the owner's pick: five kinds of cane mixed in clumps;
+kind until the reset; ADR-177): `?marks=0` leaves today's cracks only. Grass the sword cuts (the hero's
+blade mows what it passes low through, every floor mark tears the grass out in its shape; ADR-180):
+`?mow=0` leaves the grass as before. The grove's bamboo: `?bamboo=0|b` (a, the owner's pick: five kinds of cane mixed in clumps;
 0 = the grove before; ADR-151). The living world (ADR-163): `?life=off|all|<pieces>` (a comma list of
 `wind, litter, steps, weather, creatures, air, arrival, answer`) and `?lifeK=0.25..2` its strength; ON by
 default (the owner's pick; `?life=off` turns it all off; Lab: WORLD → the 'life' rows and the layers' buttons).
@@ -124,7 +126,8 @@ In Claude Code the preview config is `.claude/launch.json` (`abyss-dev`).
   own drift. A new layer follows THE CONTRACT in `src/world/life/life.js` (`docs/ARCHITECTURE.md` →
   "The living world"): GPU objects only through `life.build`, on its first update with the piece on;
   never `Math.random` (`life.rand`); nothing on screen and no uniform written with its piece off; no new
-  event. A new level gets a block in each `<layer>Tuning.js`; without one it gets a quiet default:
+  event. A new one-shot sound of the world goes through `lifeSay` / `life.sound` and a recipe in
+  `LIFE_SFX` (`audio/lifeSfx.js`, its numbers in `lifeSfxTuning.js`; ADR-180), never Math.random. A new level gets a block in each `<layer>Tuning.js`; without one it gets a quiet default:
   a 0.8 m/s breeze with no fronts, no weather, litter or creatures, the steps' fallback ground, the
   answer's and the air's defaults, and an arrival shot that looks at the origin (give it a block). The
   `life` suite walks the level registry.
@@ -150,8 +153,10 @@ In Claude Code the preview config is `.claude/launch.json` (`abyss-dev`).
   history, squash/rebase merge, branches auto-delete). Flow: branch → push → `gh pr create` → CI +
   Vercel preview deployment on the PR → squash-merge → Vercel deploys `main` to production
   (gcdabyss.vercel.app). Never bypass the protection. The squash commit takes the PR's title and
-  description, so write them as the commit message. Auto-merge is allowed on the repo; set it on a
-  PR only when the owner asks.
+  description, so write them as the commit message. Every PR auto-merges: `.github/workflows/automerge.yml` sets squash
+  auto-merge when a PR is opened (the owner's call, ADR-185), so it merges as soon as `test-and-build` is
+  green on an up-to-date branch. To hold one back for the owner to look first, open it as a draft or with
+  `gh pr create --label hold`. When `main` moves, bring the PR up to date with `gh pr update-branch <n>`.
 - **Deployment hygiene (Vercel storage):** the project keeps deployments 30 days (preview,
   production, canceled, errored). `vercel.json` `ignoreCommand` skips deployments for commits that
   only touch docs / *.md / tests / .github / .claude — keep doc-only work in its own commits.
