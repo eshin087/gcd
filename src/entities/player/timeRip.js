@@ -47,8 +47,8 @@ const q = (name) => {
 };
 
 export const RIP_MODES = Object.freeze(['off', 'tear', 'strip', 'ghosts', 'negative']);
-/** The look until the owner picks (2026-11-24). */
-export const RIP_DEFAULT = 'tear';
+/** The owner's pick (2026-11-24, from the four filmed side by side): the torn strip. */
+export const RIP_DEFAULT = 'strip';
 
 /** The switch: ?rip=off|tear|strip|ghosts|negative. `mode` is live (the Lab's 'rip' button; read at every cut). */
 export const TIME_RIP = {

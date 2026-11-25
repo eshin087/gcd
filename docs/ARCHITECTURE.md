@@ -1372,7 +1372,7 @@ cinema`). Nothing stores a tier: each piece reads it at the moment.
   tier; `floor` by level id) are exported. It steps aside while the hero is in `flurry` or `plunge`,
   dead, or while `player.ghostFx` > 0.5. Its own seeded stream.
 - *The time rip* (`player/timeRip.js` `class TimeRip`, `game.fx.rip`, built in main.js after the
-  streak fx; `?rip=off|tear|strip|ghosts|negative`, default `tear` until the owner picks):
+  streak fx; `?rip=off|tear|strip|ghosts|negative`, default `strip`, the owner's pick):
   `TIME_RIP.mode` is live (read at every cut; `ripMode()` / `setRipMode(m)`, the Lab's `rip` button in
   the streak row), `RIP_LOOK` holds every number per mode, `RIP_STAT` counts (tests), `RIP_GLYPHS` the
   ghosts' digits. It listens to the flurry's start, blow and end events (no new event): on a blow it
