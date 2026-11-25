@@ -19,6 +19,13 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-25',
+        title: 'The first load is faster',
+        notes: [
+          'The loading screen now prepares all the graphics the first frame needs at once, so a first visit reaches the game in about two thirds of the time.',
+        ],
+      },
+      {
+        date: '2026-11-25',
         title: 'Your clicks reach the fight again',
         notes: [
           'After the title faded, its invisible panels sat over the game and caught your clicks: attacks and blocks did nothing, and a click could send you to another world and back to the loading screen. Fixed.',

@@ -4,7 +4,10 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Ninety-eight pieces of work since 0.4.0:
+Ninety-nine pieces of work since 0.4.0:
+- **The first load is faster** (2026-11-25). *Changed:* the loading screen's last step compiles every shader the first
+  frame needs side by side before it is drawn, instead of one after another as each first draws; a first visit (no
+  shaders cached yet) reached the game in ~8 s and now in ~5 s on a desktop GPU. `?precompile=0` as before.
 - **Your clicks reach the fight again** (2026-11-25). *Fixed:* after the title (the sword's path) faded, its panels
   stayed on the page, invisible, over the game: a left or right click landed on them instead of the fight, and a
   click on an unseen world's fire travelled there, reloading the page into the loading screen again and again.
