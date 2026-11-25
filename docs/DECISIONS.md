@@ -5642,3 +5642,11 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   **Known cost:** out of the dash into a roll or a block, the arm comes from behind him to the front inside that
   clip's short cross-fade, about twice the old jolt (the free elbow 24 cm a frame² vs 13). Those cross-fades are
   outside this pass (the roll's and the block's entries); a guard keeps it under 27.
+- **Amended (2026-11-25), the free hand's size:** the owner, trying A on the preview: "the animation looks fine but
+  the left hand size and color is standing out too much". The hand was drawn in the face's skin ink (gain 2.2) at
+  the gauntlet's size (`BODY.hand` 1.12) beside a near-black sleeve, and the new swing carries it across his coat.
+  Of five looks built for the preview (`gear/handLook.js`, `?handLook=0|a|b|c|d`: the hand before, × 0.8, × 0.8 with
+  the skin fill at about half or a third, a × 0.85 leather glove) the owner picked **a: × 0.8 in the same skin
+  ink**, now every outfit's free hand (the open hand, the sword fingers, the fist on the grip). The sword hand is
+  unchanged. The two darker inks (`HERO_INK.handShade` / `handDark`, part 1 with the skin's lines) are built only
+  when their look is drawn: a material more on the rig draws a uuid from the seeded `Math.random`.

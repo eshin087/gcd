@@ -10,7 +10,9 @@ Eighty-nine pieces of work since 0.4.0:
   and working with the stride, the hand open and loose, and as a sprint builds it sweeps back behind him into a
   swordsman's dash. Strafing and backing away (lock-on play) it keeps swinging. The owner compares three carries:
   `?runArm=a` (a runner's swing that pumps at a sprint), `b` (the dash whenever he runs forward), `c` (by speed, the
-  default), `old` the swing before; the Lab's PLAYER row `run arm` switches them live.
+  default), `old` the swing before; the Lab's PLAYER row `run arm` switches them live. The free hand is smaller
+  (× 0.8; the owner's pick of five looks, "the left hand size and color is standing out too much"):
+  `?handLook=0` is the hand before, `b` / `c` darker skin, `d` a leather glove (the Lab's `hand` row).
 - **The Cinder Wyrm wakes without a neck twist, and its head reads from above** (2026-11-24, ADR-189).
   *Fixed:* as the wyrm got up, the resting neck shape was blended point by point into a neck still curled
   back along its flank, and the head spun through ~330 degrees in half a second and turned upside down;

@@ -189,7 +189,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] `player/runArms.js`: A natural (a runner's swing, a sprint's pump), B the swordsman's dash, C by speed (default), `?runArm=a|b|c|old`, the Lab's `run arm` row
 - [x] The `herorun` scenario: every carry through one course (strafe, backpedal, turn, every transition) against the swing before
 - [x] Review films: the four side by side, game camera over the side view, the front, half speed
-- [ ] The owner's pick (films and the preview)
+- [ ] The owner's pick of the run arm (films and the preview; C stays the default)
+- [x] The free hand smaller (× 0.8), the owner's pick of five looks (`?handLook=0|a|b|c|d`, the Lab's `hand` row)
 - [ ] The roll's and the block's entries out of the dash: the free arm comes forward inside a short cross-fade (about twice the old jolt)
 ## M1.81 — Smaller combat text (2026-11-24, `claude/combat-text-smaller`, ADR-184)
 - [x] Call-outs and damage numbers at fixed, smaller sizes (the owner's option B); no growth with the window

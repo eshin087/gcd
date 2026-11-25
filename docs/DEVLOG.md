@@ -30,8 +30,8 @@ hand hanging at the hip.
 color is standing out too much"). The hand was the face's skin ink (gain 2.2) at the gauntlet's 1.12 size beside a
 near-black sleeve. Five looks rendered live, then built behind `?handLook=0|a|b|c|d` (`gear/handLook.js`; the Lab's
 `hand` row reloads): today, × 0.8, × 0.8 with the skin fill at ~half (`handShade`) or ~a third (`handDark`), a
-× 0.85 leather glove. Default today until the owner picks; the two new materials are built only for their look, so
-seeded fights do not move.
+× 0.85 leather glove. The owner tried them on the preview and picked **a, smaller** (now the default; `0` the
+hand before). The two darker materials are built only for their look, so seeded fights do not move.
 
 **Open.** Out of the dash into a roll or a block the arm comes forward inside that clip's short cross-fade: the
 free elbow jolts 24 cm a frame² (old 13). The roll's and the block's entries are outside this pass. The owner's pick
