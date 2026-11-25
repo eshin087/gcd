@@ -19,6 +19,15 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-25',
+        title: "A loading screen, and the worlds picked along the sword's path",
+        notes: [
+          'A loading screen shows from the first moment: the gcd logo, each step of the start, a progress bar and a line of lore.',
+          'The title shows the worlds as fires along the path the sword travels. Pick one to see its keeper and your best, then travel there.',
+          "The full controls list is behind CONTROLS on the title. The name over the hero's head is gcd, and it stays close to him.",
+        ],
+      },
+      {
+        date: '2026-11-25',
         title: 'The game is called gcd',
         notes: [
           'The game has a new name, gcd, written in lower case: on the title screen, in the browser tab and here.',
