@@ -4,7 +4,13 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Eighty-five pieces of work since 0.4.0:
+Eighty-six pieces of work since 0.4.0:
+- **A natural running arm, three ways to carry it** (2026-11-24, ADR-187). *Changed:* the hero's free (left) hand
+  no longer swings a stiff fist on the run. By default it swings like a runner's, the elbow bent near a right angle
+  and working with the stride, the hand open and loose, and as a sprint builds it sweeps back behind him into a
+  swordsman's dash. Strafing and backing away (lock-on play) it keeps swinging. The owner compares three carries:
+  `?runArm=a` (a runner's swing that pumps at a sprint), `b` (the dash whenever he runs forward), `c` (by speed, the
+  default), `old` the swing before; the Lab's PLAYER row `run arm` switches them live.
 - **A green flame on the sword** (2026-11-24, ADR-182). *Added:* a tight flame of tiny green marks burns round the
   hero's steel, in his own small letters: it licks up off the blade, boils, and climbs away in tongues. It is there
   with no streak and burns denser and hotter as the streak climbs (tiers 0 to 5), the point paling to green-white at

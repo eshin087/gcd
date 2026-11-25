@@ -184,6 +184,12 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.82 — The run's free arm: three carries (2026-11-24, `claude/hero-run-arms-2e2cb5`, ADR-187)
+- [x] `player/runArms.js`: A natural (a runner's swing, a sprint's pump), B the swordsman's dash, C by speed (default), `?runArm=a|b|c|old`, the Lab's `run arm` row
+- [x] The `herorun` scenario: every carry through one course (strafe, backpedal, turn, every transition) against the swing before
+- [x] Review films: the four side by side, game camera over the side view, the front, half speed
+- [ ] The owner's pick (films and the preview)
+- [ ] The roll's and the block's entries out of the dash: the free arm comes forward inside a short cross-fade (about twice the old jolt)
 ## M1.80 — The sword burns with a tight green flame (2026-11-24, `player/sword-green-flame`, ADR-182)
 - [x] A tight envelope of Matrix-green marks round the steel, in the hero's own micro letters, there with no streak and denser and hotter by tier (`?mystic=0` off)
 - [x] Picked by the owner over a day of filmed rounds (wisps, red flames, green, enveloping, smaller); scenario `swordmystic`; the Lab's `mystic` row

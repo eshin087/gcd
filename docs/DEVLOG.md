@@ -5,6 +5,33 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-24 — The run's free arm: three carries (ADR-187; branch `claude/hero-run-arms-2e2cb5`)
+
+**Owner** (the hero motion pass, three sessions: idle, the run's arm, the light chain): "when he runs i want him to
+have his left hand in a natural running pose"; asked which, "show me all 3 variations".
+
+**What.** `player/runArms.js` (new): the free arm on the run as joint angles posed by forward kinematics (the
+shoulder's swing, how far it stands off his side, the elbow, the forearm's cross), so blends travel round the
+shoulder instead of through the ribs. A natural (a runner's swing, a pump at a sprint, the hand open and loose),
+B the swordsman's dash (swept back and out behind him, riding the stride; forward only, a strafe swings as A),
+C by speed (A, sweeping into B as the sprint builds: the default). `?runArm=a|b|c|old`, the Lab's PLAYER row
+`run arm`. Four lines in `loco()`; the sword arm, the legs and `stand()` untouched (the dash adds 0.05 rad of chest
+lean).
+
+**Measured** (`herorun`, every carry through one course against `old`). The free elbow on the run 75 – 119° (old
+85 – 141°), working 44° a stride, flare 0.27 (0.35); a strafe 83 – 112° with the hand 30 cm fore and aft; A's
+sprint pump 63 – 111°, the hand 42 cm up and down. The dash: the hand 11 cm behind and 38 cm out (past the cape),
+riding ~10 cm. C's sweep into and out of the dash: wrist jolt 2.6 / 1.5 cm a frame², the hand ≤ 4.6 m/s. Out of
+the run into a light, a roll, a block, the flask, a turn: within 3 cm of the old jolts (a light and a roll less).
+How B was found: stills from three sides of five sweeps; straight back the cape hid the arm, shallower read as a
+hand hanging at the hip.
+
+**Open.** Out of the dash into a roll or a block the arm comes forward inside that clip's short cross-fade: the
+free elbow jolts 24 cm a frame² (old 13). The roll's and the block's entries are outside this pass. The owner's pick
+of the four (films in this session's scratchpad `rig/out/`).
+
+---
+
 ## 2026-11-24 — The sword's green flame (ADR-182; branch `player/sword-green-flame`)
 
 **Owner, over a day of rounds:** "i also want his sword to look a bit more mystical in a subtle way" → of four readings,
