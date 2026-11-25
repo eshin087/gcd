@@ -1092,11 +1092,10 @@ function attackPose(p, A) {
     }
   }
   // a clip with `side` (the instant cuts, swings.js): the free hand hangs loose at his side the whole
-  // swing, and goes home with the rest of him (the share of the way home: SCRATCH holds the stance)
-  if (k.kind === 'clip' && A.freeHand && swingClip(k.clip)?.side) {
-    const hx = rec > home ? clamp((rec - home) / Math.max(1e-6, 1 - home), 0, 1) : 0;
-    sideHand(p, hx * hx * hx * (hx * (6 * hx - 15) + 10));
-  }
+  // attack, its way home included: the chain may go on until its last frame, and it stays there a
+  // while after (HeroAnimator._sideLinger). (Taken home with the rest of him, a relaxed chain's hand
+  // rose to the guard's raised hand between hits and dropped again at each cut: flailing)
+  if (k.kind === 'clip' && A.freeHand && swingClip(k.clip)?.side) sideHand(p, 0);
 }
 
 // THE SIDE HAND (a clip's `side`: the instant cuts). The owner (2026-11-25): "the left hand needs to
@@ -1117,7 +1116,9 @@ function attackPose(p, A) {
 //   k, sway  how much of the pendulum's lag shows as the hand's sway, and the most it shows (m)
 //   easeIn s the hand takes from where the pose held it to the side (it must be there by the first
 //          cut: hit 1's windup is 0.11 s; at 0.3 s it was still akimbo on his waist through the coil)
-//   ease   s it takes back home to the pose's own hand
+//   ease   s it takes back home to the pose's own hand, after lingering `linger` s at his side once
+//          the attack is over (standing or moving on); easeBack s when what comes needs the hand (a
+//          swing without `side`, a guard, a roll, a hit taken: anything but loco)
 //   drop   1/s: the speed it is let go with, toward its rest (× how far it is from it)
 //   vIn    m/s: the most the hand moves against the body carrying it (the rest under it) at the side
 //   trail  how far the hand trails his travel (s × his ground speed, m; at most trailMax m)
@@ -1126,27 +1127,26 @@ function attackPose(p, A) {
 //          waist), the fingers (down), the palm (toward the thigh): body axes turned with the chest
 //          (the fingers and the palm restLoose's, idles.js); lw the hand's weight on them
 export const SIDE = {
-  hang: [0.07, -0.53, 0.06], thigh: [0.14, -0.02, 0.05], hip: 0.5, w: 10.5, z: 0.42, k: 0.35, sway: 0.07, vIn: 3.3, easeIn: 0.16, drop: 12, ease: 0.3,
+  hang: [0.07, -0.53, 0.06], thigh: [0.14, -0.02, 0.05], hip: 0.5, w: 10.5, z: 0.42, k: 0.35, sway: 0.07, vIn: 3.3, easeIn: 0.16, drop: 12, linger: 0.35, easeBack: 0.1, ease: 0.3,
   trail: 0.012, trailMax: 0.1, thighR: 0.095,
   pole: [0.15, -0.25, -0.95], ld: [0.06, -0.97, 0.2], ln: [-0.92, -0.05, 0.25], lw: 0.85,
 };
 const SIDE_CH = [P.hs, P.lk, P.twoHand, P.offAt];
-/** p[i..i+2] = v × k turned by the chest's yaw (cos c, sin s), `b` of the way to SCRATCH's. */
-function sidePut(p, i, v, k, c, s, b) {
-  p[i] = lerp(k * (v[0] * c + v[2] * s), SCRATCH[i], b);
-  p[i + 1] = lerp(k * v[1], SCRATCH[i + 1], b);
-  p[i + 2] = lerp(k * (-v[0] * s + v[2] * c), SCRATCH[i + 2], b);
+/** p[i..i+2] = v × k turned by the chest's yaw (cos c, sin s), `b` of the way to D's. */
+function sidePut(p, i, v, k, c, s, b, D) {
+  p[i] = lerp(k * (v[0] * c + v[2] * s), D[i], b);
+  p[i + 1] = lerp(k * v[1], D[i + 1], b);
+  p[i + 2] = lerp(k * (-v[0] * s + v[2] * c), D[i + 2], b);
 }
-/** The free hand's channels for a `side` clip: it hangs (sd 1) open and loose, the fingers down, the
- *  palm toward the thigh, the elbow back; `b` (0..1) of the way home to the stance (SCRATCH: it holds
- *  the stance only on the way home) as the rest of him goes there. */
-function sideHand(p, b) {
+/** The free hand's channels hanging at his side (sd 1): open and loose, the fingers down, the palm
+ *  toward the thigh, the elbow back; `b` (0..1) of the way to pose D's own (D may be p itself). */
+function sideHand(p, b, D = p) {
   if (!(b > 0)) b = 0;
   const yaw = p[P.pelvY] + p[P.spY], c = Math.cos(yaw), s = Math.sin(yaw), S = SIDE;
-  sidePut(p, P.lP, S.pole, 1, c, s, b);
-  sidePut(p, P.lD, S.ld, S.lw, c, s, b);
-  sidePut(p, P.lN, S.ln, S.lw, c, s, b);
-  for (let j = 0; j < SIDE_CH.length; j++) p[SIDE_CH[j]] = b * SCRATCH[SIDE_CH[j]];
+  sidePut(p, P.lP, S.pole, 1, c, s, b, D);
+  sidePut(p, P.lD, S.ld, S.lw, c, s, b, D);
+  sidePut(p, P.lN, S.ln, S.lw, c, s, b, D);
+  for (let j = 0; j < SIDE_CH.length; j++) p[SIDE_CH[j]] = b * D[SIDE_CH[j]];
   p[P.sd] = 1 - b;
 }
 // the bite: its length (s of the attack's clock after the hit-pause), how much of the way back to
@@ -2927,8 +2927,10 @@ export class HeroAnimator {
     this.lkState = { prev: new THREE.Vector3(), ok: false, k: 1 };
     // the side hand (_sideHand): its pendulum's place and speed (world axes from the root); the way
     // it is going (mode 1 to the side, -1 home, 0 off), how far along (e, 0..1) from where (c); where it
-    // was put last frame (world axes from the root), and p[sd] last frame (pw)
-    this.sideH = { x: new THREE.Vector3(), v: new THREE.Vector3(), r: new THREE.Vector3(), c: new THREE.Vector3(), last: new THREE.Vector3(), e: 0, mode: 0, pw: 0, ok: false };
+    // was put last frame (world axes from the root), and p[sd] last frame (pw); after a `side`
+    // attack, how long it still lingers (lg, s), how much it still holds (hold, 0..1), and whether
+    // what plays now needs the hand back quickly (quick: _sideLinger)
+    this.sideH = { x: new THREE.Vector3(), v: new THREE.Vector3(), r: new THREE.Vector3(), c: new THREE.Vector3(), last: new THREE.Vector3(), e: 0, mode: 0, pw: 0, ok: false, lg: 0, hold: 0, quick: false };
     this.lkEff = 0;
     this.gripGap = 1;
     this.rig = rig;
@@ -3166,6 +3168,7 @@ export class HeroAnimator {
     this.wristL.ok = false;
     this.lkState.ok = false;
     this.sideH.ok = false;
+    this.sideH.lg = this.sideH.hold = 0;
     this.handFX.fingers = this.handFX.fist = false;
     this.from.set(this.cur);
     this.target.set(this.cur);
@@ -3379,6 +3382,7 @@ export class HeroAnimator {
       this.cur.set(this.target);
     }
     this._feet(dt);
+    if (this.freeHand) this._sideLinger(dt);
     for (let i = 0; i < N; i++) {
       if (!Number.isFinite(this.cur[i])) {
         guard(this.cur, this); // never let a bad frame poison the rig
@@ -3984,6 +3988,32 @@ export class HeroAnimator {
     _bz.copy(_v).multiplyScalar(WRIST_COS).addScaledVector(_w, WRIST_SIN).normalize();
   }
 
+  /** After a `side` attack the free hand stays at his side SIDE.linger s more while he stands or
+   *  moves (loco: a press then starts a new chain with no way in, no drop), then the side lets go of
+   *  it over SIDE.ease s (p[sd] and its shape eased back to the pose's own); any other clip takes it
+   *  at once (SIDE.easeBack: a heavy's grip, a guard, a roll, a hit taken). On this.cur, after the
+   *  cross-fade. */
+  _sideLinger(dt) {
+    const S = this.sideH, c = this.cur;
+    if (this.key === 'attack' && this.target[P.sd] > 0.5) {
+      S.lg = SIDE.linger;
+      S.hold = 1;
+      S.quick = false;
+      return;
+    }
+    if (this.key !== 'loco') {
+      S.lg = S.hold = 0;
+      S.quick = true;
+      return;
+    }
+    S.quick = false;
+    if (S.lg > 0) S.lg = Math.max(0, S.lg - Math.max(0, fin(dt)));
+    else if (S.hold > 0) S.hold = Math.max(0, S.hold - Math.max(0, fin(dt)) / SIDE.ease);
+    if (!(S.hold > 0)) return;
+    const x = S.hold, w = x * x * x * (x * (6 * x - 15) + 10);
+    sideHand(c, 1 - w);
+  }
+
   /** The side hand (the hero only; attackPose sideHand sets p[sd]): the free wrist's target (_T,
    *  chest local) hangs at his side. Its rest (the anchor) is SIDE.hang under the left shoulder,
    *  turned with the chest, drawn SIDE.hip of the way to SIDE.thigh beside the left hip (turned with
@@ -4052,7 +4082,7 @@ export class HeroAnimator {
       S.mode = way;
       S.e = 0;
     }
-    S.e = Math.min(1, S.e + dt / (S.mode > 0 ? SIDE.easeIn : SIDE.ease));
+    S.e = Math.min(1, S.e + dt / (S.mode > 0 ? SIDE.easeIn : S.quick ? SIDE.easeBack : SIDE.ease));
     // (to the side: how far the body has taken the hand up from the free pendulum, an ease out: it lets
     // go of where it was at once (a smoothstep kept it planted on the waist through hit 1's windup);
     // home: how far it is back on the pose's hand, smootherstep)
