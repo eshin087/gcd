@@ -18,6 +18,15 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-25',
+        title: 'Every fire comes from the wyrm; it roars up spells and a brood of fire; a forest you can walk into',
+        notes: [
+          'The Cinder Wyrm\'s fire always comes from the wyrm now: the chasing lava pillars follow a glowing crack that runs out of its feet, its second wall of fire is laid out from the first, and its meteors pour out of a burning vortex above it.',
+          'It roars up new spells over a ring of burning dragon script: fire drakelings that circle and bite (cut them down), wisps that tear off its body and dive at you, a fire serpent that burns a path through the forest, and a firestorm that drifts at you and bursts.',
+          'No more invisible walls in Cinderwood: walk out among the trees to the forest\'s real end. The forest is thicker and more alive, and it all breaks and burns.',
+        ],
+      },
+      {
         date: '2026-11-24',
         title: 'The bosses look built from letters, like the hero',
         notes: [

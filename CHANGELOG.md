@@ -4,7 +4,23 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Ninety-four pieces of work since 0.4.0:
+Ninety-five pieces of work since 0.4.0:
+- **Every fire comes from the wyrm; it roars up spells and a brood of fire; a forest you can walk into** (2026-11-25, ADR-195).
+  *Changed:* no fire of the wyrm's appears out of nowhere: the phase-3 lava pillars chase the hero along a glowing
+  crack that runs out of its forefeet (the crack's arrival is part of their tell), the phase-3 second flame wall is
+  laid out from the first, and Armageddon's meteors leave a burning vortex over the wyrm (`?meteorSource=a|b`,
+  `?wallSource=a|b`; `?fireTrail=off` the fire as before). *Added:* four roar-cast moves, each opening with a ring
+  of burning dragon script on the ground or before its jaws (`?incant=a|b`): **fire drakelings** (3 - 5 small
+  winged drakes that circle the hero and bite, normal or blue, die to a cut or two and dive in red when their time
+  runs out; `?drakeling=a|b`), **kamikaze wisps** (they tear off its body and home in, each bursting red on
+  arrival; one cut each), the **fire serpent** (it slithers out of the circle, burns and fells a lane through the
+  forest, rears and strikes red; `?serpent=a|b`) and the **firestorm** (a spinning column that drifts at the hero,
+  tears trees up into its spin and bursts red; `?vortex=a|b`). The wyrm fights lighter while its brood lives; the
+  brood's cues never land within 0.3 s of a cue that needs another answer. *Changed:* Cinderwood has no invisible
+  wall: the hero walks out among the trees wherever there is room, to the map's true end (`?forestEnd=a|b|c`: a
+  rock ridge, a thicket wall, a deadfall), and the wyrm follows him in. The forest is denser and layered (young
+  trees and snags in front of the old crowns, undergrowth, logs, stumps, mossy rocks, hanging moss), every piece
+  breakable and burnable; the phone draws the far wood and the thicket thinner. The looks are the owner's to pick.
 - **The bosses look built from letters, like the hero** (2026-11-24, ADR-194). *Changed:* every human boss is printed
   the way the hero is: a body of lit letters in his own colours (no more dark fill inside a thin outline, or flat
   bright colour), the hero's blocky outline strokes and dotted rim, and below the knee his clothes break into the

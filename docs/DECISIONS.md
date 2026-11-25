@@ -5803,3 +5803,52 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
 - **Consequences / open:** the boss's pushers still snap back with no wake; the shader's `trailBend` and
   the CPU's `bendAt` are kept in step by hand; close up a lying blade is a long sheared stroke (as the
   pusher's always was); the phone's frame cost is the owner's to confirm.
+
+## ADR-195 — Every wyrm fire travels from it; roar-cast spells and a brood of fire; a forest you can walk into (2026-11-25)
+
+- **Context:** the owner: "some of the dragon fire attacks seem to come out of nowhere. all the fire should be coming
+  from the dragon itself ... add new dragon attacks where the dragon does some kind of cool dynamic fire spell through
+  it roaring and it shows some dragon incantation symbols ... maybe like fire mini dragons that must be beaten or
+  kamikaze ... make the map not have invisible walls ... more forest tree background and a more living forest detail
+  for the dragon to rip and burn through. ensure performance is good". Asked first, they picked: a visible trail for
+  every fire; all four spells (drakelings, wisps, serpent, firestorm); walk into the forest; smooth on their iPhone.
+  The survey: three fires had no visible cause (the phase-3 second flame wall started 12 m beside the hero; the
+  phase-3 chase pillars rose under him for seconds after the slam; Armageddon's meteors fell long after its bolts);
+  Cinderwood's ground was a fixed 31 m circle that looked walkable between the trees.
+- **Decision:** built by four Opus agents in two rounds on stubs the lead committed first (incantation.js, brood.js,
+  broodAttacks.js, spellsFire.js and their tuning files), then an integration and a docs agent.
+  - **Trails** (fireTrails.js; `?fireTrail=off`): the chase pillars burst at the head of a crack that runs out of the
+    forefeet (18 m/s to the hero, then 9 m/s after him: the crack's arrival is part of the tell, about 0.45 s at 14 m);
+    the second wall is laid out from the first wall's line (`?wallSource=a`; b: breathed by a runner); the meteors
+    leave a vortex of fire over the wyrm (`?meteorSource=b`; a: its bolts hang as seeds). No draws added.
+  - **The incantation** (incantation.js): a seal written on the letter grid in the fire field (rings, a band of sigils
+    from an eight-shape dragon script, a {7/3} star), written in, turning, flaring, released, burnt out; on the ground
+    or before the jaws; `?incant=a|b` (flat seal / standing runes), `?incantInk=script|fire|blood`.
+  - **The brood** (brood.js, broodAttacks.js): drakelings (3 / 4 / 5 from phase 2, orbit and bite one at a time, normal
+    or blue, a parry kills one, 1 - 2 cuts, a red dive when their time runs out; `?drakeling=a|b`) and wisps (from phase
+    1 below 75 % HP, torn off the body, home in, commit red, burst 0.68 s later). The blade reaches them through its
+    swept quad once per swing (player.feelCut gives the cut its stop, sparks and shake). Fairness: a brood cue holds
+    (up to 1.8 s) while a cue needing another answer is due within 0.45 s, while the wyrm still has a blow to come,
+    and red ones while bullets fly; while a brood lives the director weighs spells, flights and heavy blows by
+    PR.layer (0) and counts live wisps as sky emitters.
+  - **The spells** (spellsFire.js, spellsFx.js): roar-cast channels. The serpent (out of the circle, 6.4 m/s, turn
+    1.35 rad/s, fells and burns its lane, strikes 1 / 2 / 3 times: a 0.78 s red rear, then a lunge) and the firestorm
+    (a column that drifts at <= 2.5 m/s, lifts light trees into its spin, gathers 1.15 s red and bursts r 7 m);
+    `?serpent=a|b`, `?vortex=a|b`. A stagger, the phase roar, the reset or death ends them harmlessly. A beat may carry
+    its own place: Dragon.partPos 'point'.
+  - **The walk edge** (edge.js WALK mode, forest.js, undergrowth.js, forestTuning.js): the hero's ground is the whole
+    forest to the end (`?forestEnd=a|b|c`: a rock ridge 48.5 m out, a thicket wall, a deadfall), trunks and rocks
+    block; a torn lane is the boss's ground only; the boss follows him in (+2 m, falling back at 3 m/s, never within
+    7 m of the end). The forest: 1632 breakables (was 664), a treeline of young trees and snags in front of the old
+    crowns, undergrowth (bushes, ferns, brambles), logs, stumps, mossy rocks, hanging moss; the wood past 60 m and the
+    thicket on a deep mesh the phone does not draw.
+  - Found on the way: `Dragon.onParried` dropped a second parry within 0.1 s whatever the attack (a drakeling bite
+    parried 0.085 s after a tail lash got no dragon:parried and no posture): the guard is now per attack. The breach
+    check now measures the share of time the wyrm spends in a move (the firestorm is one cue in 8.6 s: cues a minute
+    no longer measure fighting).
+- **Consequences:** ATTACKS 46 -> 50; the attack table hashes to c08725a9 (103cbc42 without the four new moves: no
+  existing attack changed). Perf, headless Edge on the desktop GPU: draws 91 -> 97 desktop / 90 -> 93 `?touch`, the
+  fight's triangles 1.21M -> 1.69M / 0.87M -> 1.11M, GPU time within noise; each spell or brood +0 - 5 draws, under
+  0.2 ms. The phone's frame time is not measured on the device. Open: the looks are the owner's to pick; the wyrm
+  fights at range when the hero stands out among the trees (closing in is an ai.js change); the drakelings' heads are
+  their weakest part; the lane's grass fire can burn in bright knots after the serpent sinks.
