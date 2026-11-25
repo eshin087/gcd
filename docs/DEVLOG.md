@@ -5,6 +5,44 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-25 — Frame cost: a measured review, then three fixes that leave the picture alone (ADR-199; branch `render/perf-ground-steps`)
+
+**Owner:** "the game runs pretty slow on less powerful machines. review the game and code to see how we can
+improve performance. i want this to be at least 60 fps on every device"; then "yes do the 3 fixes and it was a
+laptop with intel core ultra 7 255u with onboard 128 mb intel graphics".
+
+**The review** (latest main, all eight levels and `?touch`; headless Edge on the RTX 4090, so GPU numbers are
+shares, taken at 4K / 5K where the fill cost shows; script by the CDP profiler and CPU throttle):
+- Nothing lowers the load: a desktop starts on HIGH at up to 2x device pixels, and GPU cost is linear in pixels
+  (0.22 - 0.39 ms per megapixel on the 4090). The presets differ only by resolution and shadow size now.
+- The scene pass is 75 - 80 % of the GPU frame; the ground 1.1 - 1.45 ms and the paving 0.3 - 1.1 ms of a
+  2.4 - 3.9 ms frame at 4K. The dragon print costs about 1.7x the look before per pixel on Cinderwood, for
+  520 000 fewer grass triangles.
+- Script: about 2.2 ms a frame on the i9; half is three.js draw submission (about 0.5 ms re-uploading the shared
+  uniforms to 34 programs). CPU throttled 4x / 6x / 10x: 84 / 42 / 10 fps, the catch-up steps at 1 / 1.7 / 5.8.
+- The phone preset still draws about 930 000 triangles a frame, half of them into the shadow map.
+
+**What changed.**
+- `world/ground.js`: the ground is drawn last (`GROUND_ORDER`, a strict depth test); `bakeRelief` bakes the
+  relief once per cell on the GPU into two float textures (`DP_BAKE`), called by `world.js` (again on a restored
+  context; `?bake=0` off). The relief's GLSL is one chunk (`RELIEF_GLSL`) both read.
+- `core/timestep.js` `STEP.world`, `runFrame(…, world)`; `main.js` `simulateWorld`: the world, the lights and the
+  particles step once for two of the fighters' steps.
+- Tests: integ `timestep` (the world's place in a frame of 1, 2, 3, 6 steps), world `worldstep` (a felled tree,
+  the ground fire and its burns at 16.7 / 33.3 / 41.7 ms).
+
+**Measured** (old against new alternating in one page; other sessions were on the GPU and CPU, so ratios):
+the picture differs in at most 9 of 2 073 600 pixels by at most 2 / 255 in every level; the frame at 4K costs
+17 - 45 % less, at 1080p 10 - 25 %; a two-step frame's simulation 19 - 28 % less. A context lost and restored
+comes back with the ground as it was.
+
+**Not done / open.** The floors' relief cannot be baked without changing the picture (a cell is lit on its
+facet; the slabs lie at many heights), and drawing the floors later would risk ties with what stands on them:
+the floors' shader is as it was. The CPU cliff is lower, not gone. No weak GPU, no phone and not the owner's
+laptop were measured. Next, in the review's order: automatic quality (resolution following frame time: the
+one that makes "every device" reachable; its floor is a look choice for the owner), the shadow map and the
+trees' triangles, the uniforms' upload, the hitches.
+
 ## 2026-11-25 — The hero's name tag much higher (ADR-196)
 
 **Owner:** the tag was "still way too close" at 0.75 m. `HERO_TAG.over` (ui/nameTags.js) is now 1.25 m over
