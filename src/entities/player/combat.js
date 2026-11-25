@@ -136,8 +136,8 @@ export const LIGHT = [
  * every hit's timing, damage, reach, tells and its heavy branch are the same in both. The animator
  * reads them as each hit starts (anim.js _pickVariant).
  */
-export const LIGHTS_IDS = ['new', 'old'];
-export const LIGHTS_NAMES = { new: 'weighted', old: 'before' };
+export const LIGHTS_IDS = ['new', 'old', 'fresh'];
+export const LIGHTS_NAMES = { new: 'weighted', old: 'before', fresh: 'brand new' };
 const LIGHT_OLD = [
   {
     anim: { kind: 'clip', clip: 'fallingCutOld' },
@@ -154,14 +154,25 @@ const LIGHT_OLD = [
   { anim: { kind: 'clip', clip: 'lungeOld' }, variants: [{ kind: 'clip', clip: 'risingThrustOld' }] },
   { anim: { kind: 'clip', clip: 'slam', hop: 0.26, tuck: 1.2 }, variants: [{ kind: 'clip', clip: 'slam', hop: 0.09 }] },
 ];
+/** `?lights=fresh`: a brand-new chain to compare (lightsFresh.js: new sword paths and body shapes),
+ *  on the same clock: a high flat ring, a kneeling sweep along the grass (a pivot carries it on), a
+ *  leap with a rising cut, a full turn to his left into a side-on thrust (or a skip into it, its second
+ *  look), and a two-handed leap that turns once in the air and chops into the ground. */
+const LIGHT_FRESH = [
+  { anim: { kind: 'clip', clip: 'freshCloudRing' }, variants: [] },
+  { anim: { kind: 'clip', clip: 'freshKneelSweep', turn: -0.5 }, variants: [] },
+  { anim: { kind: 'clip', clip: 'freshDragonLeap', hop: 0.3, tuck: 1.25 }, variants: [] },
+  { anim: { kind: 'clip', clip: 'freshSwallowThrust', spin: 1, spinFeet: 'hop' }, variants: [{ kind: 'clip', clip: 'freshTwoStepThrust', hop: 0.08, tuck: 0.6 }] },
+  { anim: { kind: 'clip', clip: 'freshTornadoSlam', spin: -1, spinFeet: 'hop', hop: 0.3, tuck: 1.2 }, variants: [] },
+];
 const LIGHT_NEW = LIGHT.map((L) => ({ anim: L.anim, variants: L.variants }));
 let lightsNow = 'new';
-/** The chain's look now: 'new' (the default) or 'old'. */
+/** The chain's look now: 'new' (the default), 'old' or 'fresh'. */
 export const lightsMode = () => lightsNow;
-/** Switch the chain's look ('new' | 'old'); false for anything else. */
+/** Switch the chain's look ('new' | 'old' | 'fresh'); false for anything else. */
 export function setLights(mode) {
   if (!LIGHTS_IDS.includes(mode)) return false;
-  const src = mode === 'old' ? LIGHT_OLD : LIGHT_NEW;
+  const src = mode === 'old' ? LIGHT_OLD : mode === 'fresh' ? LIGHT_FRESH : LIGHT_NEW;
   LIGHT.forEach((L, i) => {
     L.anim = src[i].anim;
     L.variants = src[i].variants;
@@ -171,7 +182,7 @@ export function setLights(mode) {
 }
 {
   const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('lights') : null;
-  if (q === 'old') setLights('old');
+  if (q === 'old' || q === 'fresh') setLights(q);
 }
 
 /**

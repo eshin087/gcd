@@ -44,6 +44,9 @@ if (process.env.ABYSS_WYRMFACE && !(await imp('src/entities/dragon/heads.js')).s
 // ABYSS_ARCS: the light chain's bigger-arc strength for this run (?arcs=, swings.js setArcs)
 if (process.env.ABYSS_ARCS && !(await imp('src/entities/player/swings.js')).setArcs(process.env.ABYSS_ARCS)) { process.stdout.write(`ABYSS_ARCS: unknown strength '${process.env.ABYSS_ARCS}'
 `); process.exit(2); }
+// ABYSS_LIGHTS: the light chain's look for this run (?lights=, combat.js setLights: new, old, fresh)
+if (process.env.ABYSS_LIGHTS && !(await imp('src/entities/player/combat.js')).setLights(process.env.ABYSS_LIGHTS)) { process.stdout.write(`ABYSS_LIGHTS: unknown look '${process.env.ABYSS_LIGHTS}'
+`); process.exit(2); }
 const { TUNING, SCALE } = await imp('src/entities/dragon/tuning.js');
 const { ATTACKS } = await imp('src/entities/dragon/attacks.js');
 const { attackWeight } = await imp('src/entities/dragon/ai.js');
@@ -7680,8 +7683,8 @@ async function scenarioHeroLights() {
   setLights('old');
   const sigOld = sig(), clipsOld = clipsOf();
   setLights('new');
-  assert(sigNew === sigOld && LIGHTS_IDS.join() === 'new,old' && lightsMode() === 'new' && !setLights('x') && lightsMode() === 'new',
-    'the chain\'s looks switch (setLights new / old) and nothing else: every hit\'s timing, damage, reach, tells and weight are the same in both');
+  assert(sigNew === sigOld && LIGHTS_IDS.join() === 'new,old,fresh' && lightsMode() === 'new' && !setLights('x') && lightsMode() === 'new',
+    'the chain\'s looks switch (setLights new / old / fresh) and nothing else: every hit\'s timing, damage, reach, tells and weight are the same in both');
   assert(clipsOld.every((c) => SWINGS[c]) && clipsNew.every((c) => SWINGS[c]) && clipsOld.every((c, i) => c !== clipsNew[i]) && clipsOld.includes('drawCut') && clipsOld.includes('slam'),
     `?lights=old plays the clips before the pass (${[...new Set(clipsOld)].join(', ')}), the default the reworked ones (${[...new Set(clipsNew)].join(', ')})`);
   {
@@ -7698,7 +7701,7 @@ async function scenarioHeroLights() {
     G.tick(DT);
     input.tap('F1');
     G.tick(DT);
-    assert(btns.length === 2 && newOn && oldOk && lightsMode() === 'new' && LIGHT[0].anim.clip === 'fallingCut', `the Lab's \`lights\` row: weighted / before, live (${btns.length} buttons)`);
+    assert(btns.length === 3 && newOn && oldOk && lightsMode() === 'new' && LIGHT[0].anim.clip === 'fallingCut', `the Lab's \`lights\` row: weighted / before / brand new, live (${btns.length} buttons)`);
   }
 
   // (2) the sampler: one frame in the root's frame (metres, unscaled), after a tick

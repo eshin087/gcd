@@ -1300,7 +1300,7 @@ export class Lab {
     // the light chain's look (ADR-188: the weighted chain; ?lights=old the chain before it), live: the next
     // swing plays it. Only the looks change, never a hit's timing, damage or reach (combat.js setLights)
     const lir = el('div', 'lab-row', null, body);
-    el('span', 'lab-lbl', 'lights', lir).title = "the light chain's motion: weighted (the default) or before (?lights=old)";
+    el('span', 'lab-lbl', 'lights', lir).title = "the light chain's motion: weighted (the default), before (?lights=old) or brand new (?lights=fresh)";
     const liGrid = el('div', 'lab-grid', null, lir);
     liGrid.style.flex = '1';
     this.ui.lightsBtns = LIGHTS_IDS.map((m) => {
@@ -1308,7 +1308,7 @@ export class Lab {
         setLights(m);
         this._syncCutBtns();
       });
-      b.title = m === 'old' ? '?lights=old: the chain before the weight pass' : 'the weighted chain (the default)';
+      b.title = m === 'old' ? '?lights=old: the chain before the weight pass' : m === 'fresh' ? '?lights=fresh: a brand-new chain (new sword paths)' : 'the weighted chain (the default)';
       return { m, el: b };
     });
     // the bigger-arc strengths (swings.js ARCS, ?arcs=a|b|c: a prototype for the owner to pick from), live

@@ -91,6 +91,7 @@
 // in one frame: the arm-snap test bounds it.
 
 import { LIGHTS_OLD } from './lightsOld.js';
+import { LIGHTS_FRESH } from './lightsFresh.js';
 
 /** The free hand's places (a key's `fh`; the key's own fields win): where it is (`l`), its elbow
  *  (`lp`), where the sword fingers point (`ld`), the palm (`pn`) and the sword wrist (`lk`). */
@@ -626,4 +627,6 @@ export const SWINGS = {
 
   // ---- the light chain before ADR-188 (?lights=old: combat.js setLights) ----------------------
   ...LIGHTS_OLD,
+  // ---- a brand-new light chain to compare (?lights=fresh: combat.js setLights) ------------------
+  ...LIGHTS_FRESH,
 };
