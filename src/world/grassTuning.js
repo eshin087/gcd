@@ -68,6 +68,87 @@ export const GRASS = Object.freeze({
    */
   arc: Object.freeze({ top: 1.05, above: 0.85, mid: 0.5, w: 0.55, wHeavy: 0.7, tex: 512 }),
   /**
+   * The grass spray (round 5, world/grassSpray.js; `?grassSpray=a|b|c`, 0 none): grass letters (`glyphs`,
+   * the house letter) thrown off every blade the drawn arc cuts, `per` a blade on average (a light, b
+   * medium, c a full burst that also cuts a bolder line: the arc's width x `wide`, its stubs paler,
+   * `fresh2`), at most `max` alive (x the quality). Along the swing `fling` m/s, `side` across, `up` m/s;
+   * `drag` /s, `gravity` m/s2, a flutter of `flutter` m/s2 at `flutterHz`; landed at `floor` m they lie
+   * `lie` s at `lieAlpha` and fade; `life` s at most in the air. Colours: `fresh` green to `straw`.
+   */
+  spray: Object.freeze({
+    look: 'm',
+    glyphs: "/\\|',;`vi1",
+    max: 1600,
+    lowQ: 0.8, // at quality q a cut blade throws per x (1 / q)^lowQ (the phone draws a third of the blades)
+    // a / a2 (round 6, the owner's pick a, closer to the grass): chips of the cut blade's OWN letter in
+    // its own colour, drawn as the grass is (world/mowFx.js _chip): `size` x the blade, `frag` of them a
+    // band of its strokes (`band` of the cell tall, at the letter's own scale), tumbling at `spin` rad/s,
+    // coloured as the blade is at `tip` of its height throughout, `lit` x its light in the air / lying.
+    // a0: round 5's a (the house letter, fresh green to straw)
+    a: Object.freeze({ per: 0.55, size: [0.75, 0.95], frag: 0.35, band: [0.2, 0.34], spin: [4, 10], tip: 0.85, lit: [1.6, 1.05] }),
+    a2: Object.freeze({ per: 0.5, size: [0.5, 0.7], frag: 0.5, band: [0.18, 0.3], spin: [5, 12], tip: 0.85, lit: [1.6, 1.05] }),
+    a0: Object.freeze({ per: 0.45 }),
+    // m / m2 / m3 (round 7, the owner: "the matrix ascii art"): a's throw, fall and counts, each chip a
+    // CODE glyph (`code`) re-rolling as it flies; m2 with a `trail` of fading code glyphs behind it;
+    // m3 the cut tops too turn to code as they leave (`tops`)
+    // m (round 8, the owner: "a bit tinier and a bit more subtle/natural ... but still enough for players
+    // to be like wow thats the grass!"): smaller glyphs, a green a step toward the grass's own, a short
+    // bright phase, a slower flicker, lying glyphs settle to the grass's darkness sooner (`col`); m4 a step
+    // more visible; m0 round 7's m
+    m: Object.freeze({
+      per: 0.5, size: [0.4, 0.55], frag: 0, band: [0.2, 0.34], spin: [0, 0], tip: 0.85, lit: [1, 1], code: true, trail: 0,
+      col: Object.freeze({ head: [0.17, 0.58, 0.26], tail: [0.06, 0.3, 0.12], deep: [0.02, 0.08, 0.04], cool: 0.18, darken: 0.35, flip: [0.09, 0.24] }),
+      // (a phone, quality under 0.75: the meadow is drawn smaller and sparser; a step up, as m4)
+      phone: Object.freeze({ size: [0.5, 0.66], col: Object.freeze({ head: [0.22, 0.76, 0.32], tail: [0.05, 0.42, 0.15], deep: [0.02, 0.11, 0.05], cool: 0.24, darken: 0.5, flip: [0.07, 0.2] }) }),
+    }),
+    m4: Object.freeze({
+      per: 0.55, size: [0.45, 0.6], frag: 0, band: [0.2, 0.34], spin: [0, 0], tip: 0.85, lit: [1, 1], code: true, trail: 0,
+      col: Object.freeze({ head: [0.22, 0.76, 0.32], tail: [0.05, 0.42, 0.15], deep: [0.02, 0.11, 0.05], cool: 0.24, darken: 0.5, flip: [0.07, 0.2] }),
+    }),
+    m0: Object.freeze({ per: 0.55, size: [0.62, 0.8], frag: 0, band: [0.2, 0.34], spin: [0, 0], tip: 0.85, lit: [1, 1], code: true, trail: 0 }),
+    m2: Object.freeze({ per: 0.55, size: [0.62, 0.8], frag: 0, band: [0.2, 0.34], spin: [0, 0], tip: 0.85, lit: [1, 1], code: true, trail: 2 }),
+    m3: Object.freeze({ per: 0.55, size: [0.62, 0.8], frag: 0, band: [0.2, 0.34], spin: [0, 0], tip: 0.85, lit: [1, 1], code: true, trail: 0, tops: true }),
+    /**
+     * The code look: the Hall of Falling Script's rain (world/scriptHall.js: its world-atlas digits, the
+     * re-roll of its heads, its greens HEAD [1, 2.4, 1.3] / TAIL [0.07, 0.85, 0.28] / the burst's end
+     * [0.02, 0.22, 0.07]) tamed under 1 (no bloom): `head` on a fresh glyph cooling to `tail` over `cool`
+     * s, to `deep` as it lies; `glyphs` its digits and a few of the atlas's code letters. A trail (m2):
+     * glyphs `trailStep` x the glyph back along its way, flickering at `trailHz`, dimmed by `trailDim`;
+     * room for `trailRoom` of them a piece. A cut top turns to code `turn` s after it leaves (m3).
+     */
+    code: Object.freeze({
+      glyphs: '0123456789ZTHKEX<>=:+*',
+      head: [0.3, 1.0, 0.4],
+      tail: [0.04, 0.55, 0.16],
+      deep: [0.02, 0.2, 0.07],
+      cool: 0.35,
+      trailStep: 0.62,
+      trailHz: 14,
+      trailDim: 0.85,
+      trailRoom: 2,
+      turn: [0.04, 0.12],
+      darken: 9, // s: a lying glyph reaches `deep` over its lie (or this, when sooner)
+      flip: [0.05, 0.16], // s between a flying glyph's re-rolls (`flip0` its first)
+      flip0: [0.04, 0.12],
+    }),
+    b: Object.freeze({ per: 0.9 }),
+    c: Object.freeze({ per: 1.6, wide: 1.45, fresh2: 1.0 }),
+    fling: [1.0, 3.0],
+    side: 0.9,
+    up: [1.4, 3.0],
+    drag: 1.6,
+    gravity: 6.5,
+    flutter: 3.0,
+    flutterHz: 9,
+    floor: 0.05,
+    life: [0.9, 1.3],
+    lie: [0.3, 0.8],
+    lieAlpha: 0.75,
+    alpha: [0.75, 0.95],
+    fresh: [0.3, 0.46, 0.19],
+    straw: [0.46, 0.44, 0.26],
+  }),
+  /**
    * The cut tops (world/mowFx.js, round 2): the upper part of each cut blade's letter leaves on the frame
    * its stub shows. `look` the default of `?mowLook=` (a thrown, b sliced, c shred, r1 round 1). At most
    * `max` pieces (x the quality), `perTear` new ones a tear call; the oldest lying one gives way first.
@@ -79,7 +160,7 @@ export const GRASS = Object.freeze({
    */
   fly: Object.freeze({
     look: 'a',
-    max: 1400,
+    max: 2000,
     touch: 4096, // cells one tear call may hand over (a slam's whole disc)
     perTear: 360,
     gravity: 9.5,

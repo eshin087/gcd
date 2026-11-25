@@ -20,6 +20,25 @@ bigger than the hero's 5 x 8.
 **Open.** The owner's pick. A, B and D hide the 3D grass, so the wind, trample, mowing and the cut tops do not show
 there yet (burn and tears do, through the scorch map): the picked look needs those wired before it can ship. B is
 busy near firelight on Ashfall.
+## 2026-11-25 — The sword's cut throws green code (ADR-192; Opus agent; PR #120)
+
+**Owner:** "Im playing the live game but not seeing the grass cut"; then "make the grass show ascii like
+grass particles when its swung at"; four rounds of previews; "Ship both".
+
+- **Found:** the cut worked on the live site (632 blades in a short fight) but read only zoomed 4x.
+- **Rounds:** a spray of house-letter grass strokes in three strengths (the owner: a); chips of each
+  blade's own letter in its own colour (liked); "the matrix ascii art instead of actual grass": code
+  glyphs from the Hall of Falling Script's set, with and without trails and dissolving tops (the owner:
+  m); m tinier and calmer (0.4 - 0.55 of a blade, a green a step toward the grass's, a 0.18 s bright
+  phase, a slower flicker, settling to the grass's darkness within 0.35 s), with a brighter, larger
+  version on the phone. All looks kept behind `?grassSpray=`.
+- **Numbers:** about 45 - 85 glyphs a swing at quality 1; about 0.05 ms a frame.
+
+**Verified.** `world.mjs . all` (the `tops` scenario: the default throws about 0.5 chips per cut blade,
+none left 3 s later, `grassSpray=0` builds none), `life.mjs . core`, the glyph check, the seeded wyrm
+fight's trace byte-identical to main; films at 1x on desktop and the phone view.
+
+**Open.** Not judged on the phone's own screen; the boss marks throw no code.
 
 ---
 

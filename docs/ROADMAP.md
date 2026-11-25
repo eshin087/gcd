@@ -185,6 +185,11 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.84 — The sword's cut throws green code (2026-11-25, `world/grass-spray`, ADR-192)
+- [x] Code glyphs off the drawn arc's cut, the Hall of Falling Script's set, calm and small (`?grassSpray=m`)
+- [x] The looks met on the way behind `?grassSpray=` (grass letters, the blade's own chips, code with trails)
+- [ ] Seen on the phone's own screen; should the boss marks' tears throw code too?
+
 ## M1.82 — The run's free arm: three carries (2026-11-24, `claude/hero-run-arms-2e2cb5`, ADR-187)
 - [x] `player/runArms.js`: A natural (a runner's swing, a sprint's pump), B the swordsman's dash, C by speed, `?runArm=a|b|c|old`, the Lab's `run arm` row
 - [x] The `herorun` scenario: every carry through one course (strafe, backpedal, turn, every transition) against the swing before

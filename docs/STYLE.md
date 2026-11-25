@@ -138,6 +138,14 @@ the wyrm next to it, it is wrong, however good it looks alone.
     pale blotch round the steel with a few flying bits ("doesn't look good"), a bright spray of every top
     (too busy). `?mowLook=b` (the tops lean off and lie), `c` (a burst of strokes) and `r1` (the first
     round) remain.
+  - **The code spray** (2026-11-25, ADR-192; `?grassSpray=`): the cut also throws small GREEN CODE GLYPHS,
+    the Hall of Falling Script's digits and code letters, in the world atlas, about half a blade tall,
+    one for every other cut blade; a calm code green (a step toward the grass's own, never neon), bright
+    only for a moment, flickering to another glyph as it flies and settling to the grass's darkness when
+    it lands. The owner: "make the ascii text a bit tinier and a bit more subtle/natural and not SO
+    sticking out but still enough for players to be like wow thats the grass!". Turned down on the way:
+    tiny house-letter specks (unseen at the game camera), the grass's own letters in its own colour (liked,
+    then "the matrix ascii art instead of actual grass"), and the first code look (too bright).
   - **Torn out** (a blow's mark: every kind tears its own shape first, the slam's disc, the gash's line,
     the claws' three, the furrow, the beam's strip): the grass goes to the root and the floor shows bare
     under the mark, nothing lies; the mark's glyphs then lie ON THE FLOOR, not on the blade tips, so a
@@ -1098,6 +1106,7 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?marks=` | the floor's marks (every level; read per blow; ADR-177) | today's cracks and crater rims only | `1`: a mark of each blow's kind (slam, cut, thrust, dash, blast, beam, step) that stays until the reset | - | - | **1** (2026-11-23) |
 | `?mow=` | grass the sword cuts (every level with grass; read per tear; ADR-180; a new thing, so `?looks=old` keeps it; no Lab row) | the grass as before: nothing is mown or torn | `1`: the blade cuts the grass under its drawn arc (stubs of each blade's own letter, the tops leaving by `?mowLook=`), every floor mark tears the grass out in its shape (bare floor under the mark) | - | - | **1** (2026-11-23: built at the owner's "Build top three"; the cut redone three times, 2026-11-24) |
 | `?mowLook=` | how a cut blade's top leaves (read once; ADR-180; no Lab row) | `r1`: the first round (a pale blotch of stubs round the steel, a few flying bits) | `a`: thrown, quiet (half the tops tossed low along the swing, the rest topple) | `b`: sliced (the tops lean off their stubs and lie) | `c`: shred (a burst of the grass's strokes) | **a** (2026-11-24, the owner: "i like the thrown effect the most but make the thrown effect more subtle") |
+| `?grassSpray=` | what the sword's cut throws (read once; ADR-192; no Lab row) | `0`: nothing but the cut tops | `a`: chips of the blade's own letter in its own colour (`a2` smaller; `a0`, `b`, `c` house-letter sprays) | `m0`: the first code look (`m2` with trails, `m3` the tops turn to code) | `m4`: the code a step more visible | **m** (2026-11-25: tinier, calmer code glyphs; the owner: "Ship both") |
 | `?ashLook=` | Shen Hui's body (read when his rig is built) | today's figure | the dragon look (the wyrm's art path) | today's figure dressed by phase | both | **b** |
 | `?lordLook=` | Varr Nihil's body (read when his rig is built) | today's figure | the dragon look | today's figure dressed by form | both | **b** |
 | `?outskirts=` | what lies round the Obsidian Throne's crater (ADR-133; read when the level is built; `m` all of them) | the felled forest | the shrine the star fell on | the star's debris | those who came for him | **c** |
