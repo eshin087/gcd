@@ -5,6 +5,13 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-25 — The hero's name tag much higher (ADR-196)
+
+**Owner:** the tag was "still way too close" at 0.75 m. `HERO_TAG.over` (ui/nameTags.js) is now 1.25 m over
+the head bone: about 18 px clear of his hair at the default camera (it was about 7), 11 px zoomed far out,
+29 px zoomed in. The title's old address (the project's first domain) was removed from Vercel at the
+owner's word; the site is https://thegcd.vercel.app (project `thegcd`, repo `eshin087/gcd`).
+
 ## 2026-11-25 — The dragon print: the world printed in the wyrm's digits, now the default (ADR-198; branch `render/ground-looks`, PR #125; planned by the lead, Opus agents built)
 
 **Owner** (picked look B of the four): "i really like the dragon ground look ... it allows the ground to look 3d, can
