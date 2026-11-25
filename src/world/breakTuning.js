@@ -222,7 +222,10 @@ export const BREAK = Object.freeze({
    * `seal`: a lane nothing has fallen in opens beside open ground only if that frees more than this
    * many m of it (a natural gap in the wall; a lane with a tree at the line stays shut).
    */
-  edge: Object.freeze({ lanes: 120, crown: 0.6, minBlock: 1.1, margin: 1.0, outer: 62, body: 3, slope: 2, every: 0.2, seal: 2 }),
+  // `walk` (the fire-and-forest pass, edge.js WALK mode: a set whose hero walks out into its forest): a
+  // boss follows him out to `lead` m past how far beyond the base he stands, at once; when he comes back
+  // its gain falls at `ease` m/s; never past `bossIn` m short of the set's end
+  edge: Object.freeze({ lanes: 120, crown: 0.6, minBlock: 1.1, margin: 1.0, outer: 62, body: 3, slope: 2, every: 0.2, seal: 2, walk: Object.freeze({ lead: 2, ease: 3, bossIn: 7 }) }),
   /**
    * Wind and shock on wood (destructibles.wind, 2026-11-16): a front rolls out at `speed` m/s; a tree
    * it reaches takes power x (1 - d / reach)^fall as a blast's wear, nothing under `min`, never below

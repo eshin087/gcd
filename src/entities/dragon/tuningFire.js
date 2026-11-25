@@ -168,3 +168,40 @@ export const FLIGHT = {
   dive: { alt: 12, hoverBack: 9, hover: [0.95, 0.8, 0.7], dive: 0.5, track: 2.6, lead: 0.35, radius: 7.5, damage: 34, burn: 1.0, knockback: 7 },
 };
 
+
+// Fire trails (ADR-197, the fire-and-forest pass: "all the fire should be coming from the dragon
+// itself"; fireTrails.js, skyFx.js sources). Every fire visibly travels from the wyrm to where it
+// burns. Visual except where noted (the crack's run IS the chase's tell: its first pillar waits for it).
+export const TRAILS = {
+  // the eruptions' crack (fireTrails.js): it runs from the forefeet's slam. The P2 line: its head
+  // reaches each pillar as it bursts. The P3 chase: it runs out at `speed` m/s to the led hero (the
+  // first pillar is laid where it catches him: `arrive` m), then follows him at `follow` m/s (over
+  // his sprint, 7.2: it keeps up) and each pillar bursts at its head. `maxRun` s: past it, a hero it
+  // has not caught (off in a corner) gets the first pillar where the head is.
+  crack: {
+    speed: 18, follow: 9, arrive: 0.3, maxRun: 1.6,
+    step: 0.7, jag: 0.32, // m between the crack's points, how far each kinks to the side
+    glow: 1.6, runnerGlow: 0.7, // s a stretch keeps glowing after the head passed (a runner: its flames)
+    rate: 320, headRate: 50, frontRate: 70, heat: 0.75, y: 0.55, // blobs / s (x 0.6 on a phone: phoneK), peak heat
+    markEvery: 2.0, markPower: 0.75, // a floor mark (`cut`) every this many m it runs; its power
+    scorchR: 0.8, scorchChar: 0.25, scorchHeat: 0.7, // and the scorch map along it
+    phoneK: 0.6,
+  },
+  // the P3 second flame wall (?wallSource=a|b): its line is laid from where it meets the wyrm's fire
+  // at `laySpeed` m/s each way. b: the breath runs `breath` s (after the first wall's cast) toward
+  // that point and a runner crosses the ground at `runSpeed` from where it strikes (`strikeDelay` s
+  // after the first wall lights; as far out as the first wall, at most 0.8 of the way to that point:
+  // fireAttacks.js wallLay) to the line
+  wall: { laySpeed: 45, runSpeed: 32, breath: 0.6, strikeDelay: 0.15 },
+  // Armageddon's meteors (skyFx.js METEOR_SOURCE, ?meteorSource=a|b|off): every meteor falls from the
+  // wyrm's own fire in the sky, visible for its whole warning (`fall` 0: the warning; capped here)
+  meteor: {
+    fall: 1.35, lob: 2.5, // s of visible flight at most (the rest of the warning it waits at its source), m of arc
+    // a: the salvo's bolts climb and fan out into burning seeds hung along the top of the frame (deck
+    // height); each meteor drops from the seed nearest its spot
+    seeds: { fly: 0.75, band: [0.62, 0.9], width: 0.85, rate: 26, life: 14 },
+    // b: a vortex of fire over the wyrm, fed by a column of heat off its back the whole barrage;
+    // meteors are flung out of its rim toward their spots
+    vortex: { r: 4.2, spin: 1.7, rate: 150, column: 60, follow: 1.5, maxV: 0.78 },
+  },
+};

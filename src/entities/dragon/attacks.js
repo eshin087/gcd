@@ -5,6 +5,8 @@ import { clamp, lerp, smoothstep, easeInOutSine, easeOutCubic, easeInCubic, turn
 import { FIRE } from './fireAttacks.js';
 import { BULLET_HELL } from './bulletAttacks.js';
 import { TERRAIN_MOVES } from './terrainAttacks.js';
+import { BROOD_MOVES } from './broodAttacks.js';
+import { FIRE_SPELLS } from './spellsFire.js';
 import { snapFire, snapSmoke, rakeSparks, wingSlamBurst, tailSlamLine } from './meleeFx.js';
 import { wallWind } from './wallReach.js';
 
@@ -1307,6 +1309,8 @@ function makeRoar(name, toPhase = 0) {
       try {
         d.hazards?.clear?.();
         d.bullets?.clear?.();
+        d.brood?.clear?.();
+        d.incantation?.reset?.();
       } catch (err) {
         console.error('[dragon] hazards.clear failed', err);
       }
@@ -2761,6 +2765,8 @@ export const ATTACKS = {
   ...FIRE, // fireAttacks.js: the short flights and the fire spells (contract 3)
   ...BULLET_HELL, // bulletAttacks.js: the bullet-hell patterns (ADR-039)
   ...TERRAIN_MOVES, // terrainAttacks.js: it takes a tree or a boulder and uses it (ADR-110)
+  ...BROOD_MOVES, // broodAttacks.js: roar-cast, it calls up drakelings and wisps (ADR-197)
+  ...FIRE_SPELLS, // spellsFire.js: roar-cast, the fire serpent and the firestorm vortex (ADR-197)
 };
 
 /** Parryable close-range swings (+ every string, `def.melee`): a parry on the last hit recoils. */

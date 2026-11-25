@@ -1002,6 +1002,8 @@ export class Destructibles {
     this.sceneHome = typeof set?.scenes?.ids?.[0] === 'string' ? set.scenes.ids[0] : null;
     this.sceneNow = this.sceneHome;
 
+    // (a set's own phone share: `set.setQuality(k)`, called with the budget: Cinderwood's deep forest)
+    this._setQ = typeof set?.setQuality === 'function' ? set.setQuality : null;
     const defs = Array.isArray(set?.breakables) ? set.breakables : [];
     if (!defs.length) return;
     const U = game.U;
@@ -1022,7 +1024,7 @@ export class Destructibles {
     }
     this._buildGrid();
     // where the hero and the boss may go follows what stands of the set's wall (a set with `edge`)
-    if (set.edge) this.edge = new Edge(this.list, set.edge);
+    if (set.edge) this.edge = new Edge(this.list, set.edge, game);
     if (this.floor.length) this._buildCarry(set);
     // what the fight leaves lying (wreckage.js): its pools share the breakables' batch
     if (set.wreckage !== false) {
@@ -1733,6 +1735,7 @@ export class Destructibles {
   /** The phone budget (0.3 .. 1; world.setQuality from the quality preset). */
   setQuality(k) {
     if (Number.isFinite(k)) this.q = clamp(k, 0.3, 1);
+    this._setQ?.(this.q);
   }
 
   /** A floor slab speaks once per blow (the first the blow strikes); every other piece always. */
