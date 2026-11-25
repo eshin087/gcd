@@ -41,24 +41,28 @@ import { swingPhase } from './anim.js';
  *  colour it cools to); `ext` the share of the recorded stretch it is carried on past each end, `min` the
  *  shortest line (m: at a high frame rate the two frames are close), `max` the longest; `rows` strokes
  *  side by side (`gap` m apart on the screen's plane; the outer ones thinner and shorter, `outer` × the
- *  size, in `edge`'s colour: the heavy arc's violet veil round a hot middle); `kick` the camera's kick along the cut (m) and the shake (trauma) on the frame the line is
- *  drawn; `over` (m): carried on no higher than this over the higher of its two points (a cut down
- *  from over his head is not a pillar of light into the sky). `floor` (m) the line never goes under. */
+ *  size, in `edge`'s colour: the heavy arc's violet round a hot middle); `hold` the share of its size a
+ *  stroke still has at the end of its life and `fade` its opacity then (a heavy line stays thick for
+ *  the first eight to ten frames instead of thinning at once); `kick` the camera's kick along the cut
+ *  (m) and the shake (trauma) on the frame the line is drawn; `over` (m): carried on no higher than this
+ *  over the higher of its two points, × (1 − its steepness²) (a level cut runs on freely; a cut straight
+ *  down from over his head stops where the point was, never a pillar into the sky). `floor` (m) the
+ *  line never goes under. */
 export const SLASH = {
   light: {
     n: 30, size: 0.13, life: [0.14, 0.3], flash: { size: 0.19, life: 0.05 }, hair: { size: 0.045, life: 0.95, alpha: 0.7 },
     hot: [3.0, 3.5, 4.3], core: ARC_TONE.light.core, end: ARC_TONE.light.end, ext: 0.35, min: 1.5, max: 4.2,
-    rows: 1, gap: 0, outer: 1, kick: null,
+    rows: 1, gap: 0, outer: 1, hold: 0.12, fade: 0, kick: null,
   },
   strong: {
-    n: 36, size: 0.17, life: [0.17, 0.36], flash: { size: 0.25, life: 0.06 }, hair: { size: 0.06, life: 1.1, alpha: 0.75 },
-    hot: [3.1, 3.5, 4.3], core: ARC_TONE.light.core, end: ARC_TONE.light.end, ext: 0.42, min: 2.1, max: 5.0,
-    rows: 1, gap: 0, outer: 1, kick: null,
+    n: 32, size: 0.16, life: [0.15, 0.32], flash: { size: 0.21, life: 0.05 }, hair: { size: 0.05, life: 1.0, alpha: 0.72 },
+    hot: [3.0, 3.5, 4.3], core: ARC_TONE.light.core, end: ARC_TONE.light.end, ext: 0.38, min: 1.8, max: 5.0,
+    rows: 1, gap: 0, outer: 1, hold: 0.12, fade: 0, kick: null,
   },
   heavy: {
-    n: 46, size: 0.2, life: [0.2, 0.45], flash: { size: 0.26, life: 0.05 }, hair: { size: 0.075, life: 1.5, alpha: 0.85 },
-    hot: [2.6, 2.6, 3.6], core: ARC_TONE.heavy.core, end: ARC_TONE.heavy.end, ext: 0.65, min: 4.8, max: 7.5,
-    rows: 3, gap: 0.07, outer: 0.75, edge: ARC_TONE.heavy.veil, kick: { m: 0.11, shake: 0.16 }, over: 0.9,
+    n: 48, size: 0.22, life: [0.26, 0.44], flash: { size: 0.28, life: 0.05 }, hair: { size: 0.08, life: 1.5, alpha: 0.85 },
+    hot: [2.6, 2.6, 3.6], core: ARC_TONE.heavy.core, end: ARC_TONE.heavy.end, ext: 1.0, min: 6.0, max: 9.0,
+    rows: 5, gap: 0.075, outer: 0.8, edge: [0.95, 0.32, 2.5], hold: 0.8, fade: 0.3, kick: { m: 0.11, shake: 0.16 }, over: 2.4,
   },
   floor: 0.08,
 };
@@ -232,7 +236,7 @@ export class BlinkFx {
       else s0 = Math.max(s0, sF);
     } else if (y0 < SLASH.floor) return;
     if (L.over != null && Math.abs(dy) > 1e-6) {
-      const sT = (Math.max(y0, y1) + L.over - y0) / dy; // where it reaches its ceiling
+      const sT = (Math.max(y0, y1) + L.over * (1 - dy * dy) - y0) / dy; // where it reaches its ceiling
       if (dy > 0) s1 = Math.min(s1, sT);
       else s0 = Math.max(s0, sT);
     }
@@ -338,7 +342,8 @@ export class BlinkFx {
     o.colorEnd = Lk.end;
     for (let r = 0; r < rows; r++) {
       // (the middle row is the line; the rows beside it thinner, shorter, no flash, no hairline)
-      const off = rows > 1 ? (r - (rows - 1) / 2) * Lk.gap : 0, side = off !== 0, k = side ? k0 * Lk.outer : k0;
+      const mid = (rows - 1) / 2, off = rows > 1 ? (r - mid) * Lk.gap : 0, side = off !== 0, k = side ? k0 * Lk.outer : k0;
+      const wMin = side ? 0.3 + (0.25 * Math.abs(r - mid)) / mid : 0; // (the outer rows the shorter)
       for (let pass = 0; pass < 3; pass++) {
         if (side && pass > 0) break;
         for (let i = 0; i < n; i++) {
@@ -347,16 +352,17 @@ export class BlinkFx {
           if (y < SLASH.floor) continue;
           // sharp at both ends (a thrust: full at the point, sharp at its far end)
           const w = thrust ? Math.pow(Math.max(0, 1 - f), 0.6) : chord ? 0.85 : Math.pow(Math.sin(Math.PI * f), 0.7);
-          if (side && w < 0.45) continue;
+          if (side && w < wMin) continue;
           o.x = cx + dx * s + px * off;
           o.y = y;
           o.z = cz + dz * s + pz * off;
           if (pass === 0) {
             const size = Lk.size * k * (0.25 + 0.75 * w);
             o.size = size;
-            o.sizeEnd = size * 0.12;
+            o.sizeEnd = size * (Lk.hold ?? 0.12);
             o.stretch = Math.min(30, (seg / size) * 1.8);
-            o.life = (Lk.life[0] + (Lk.life[1] - Lk.life[0]) * w) * (side ? 0.8 : 1);
+            o.life = (Lk.life[0] + (Lk.life[1] - Lk.life[0]) * w) * (side ? 0.9 : 1);
+            o.alphaEnd = Lk.fade ?? 0;
             o.color = side ? Lk.edge ?? Lk.core : w > 0.92 ? Lk.hot : Lk.core;
             o.alpha = (0.55 + 0.45 * w) * (side ? 0.7 : 1);
           } else if (pass === 2) {
@@ -368,6 +374,7 @@ export class BlinkFx {
             o.life = Lk.flash.life;
             o.color = Lk.hot;
             o.alpha = 1;
+            o.alphaEnd = 0;
           } else {
             // the hairline: thinner, fainter, the last of it to go (the lines of a chain hang together)
             o.size = Lk.hair.size * k;
@@ -376,6 +383,7 @@ export class BlinkFx {
             o.life = Lk.hair.life * (0.6 + 0.4 * w);
             o.color = Lk.core;
             o.alpha = Lk.hair.alpha * w;
+            o.alphaEnd = 0;
           }
           fx.spawn(o);
         }

@@ -1115,15 +1115,20 @@ function attackPose(p, A) {
 //          taken (0 under the shoulder … 1 beside the hip: the shoulders swing round the hips in a cut)
 //   w, z   the pendulum's spring (rad/s, damping ratio): under-damped, so it sways once and settles
 //   k, sway  how much of the pendulum's lag shows as the hand's sway, and the most it shows (m)
-//   ease   s the hand takes from where the pose held it to the side, and back home
+//   easeIn s the hand takes from where the pose held it to the side (it must be there by the first
+//          cut: hit 1's windup is 0.11 s; at 0.3 s it was still akimbo on his waist through the coil)
+//   ease   s it takes back home to the pose's own hand
+//   drop   1/s: the speed it is let go with, toward its rest (× how far it is from it)
+//   vIn    m/s: the most the hand moves against the body carrying it (the rest under it) at the side
 //   trail  how far the hand trails his travel (s × his ground speed, m; at most trailMax m)
 //   thighR the free wrist keeps this far from the left thigh's line (m: the thigh, the coat, the hand)
-//   pole, ld, ln  the elbow's way (back and a little out), the fingers (down), the palm (toward the
-//          thigh): body axes turned with the chest (restLoose's, idles.js); lw the hand's weight on them
+//   pole, ld, ln  the elbow's way (back, hardly out: out, it stood akimbo as the hand left the
+//          waist), the fingers (down), the palm (toward the thigh): body axes turned with the chest
+//          (the fingers and the palm restLoose's, idles.js); lw the hand's weight on them
 export const SIDE = {
-  hang: [0.07, -0.53, 0.06], thigh: [0.14, -0.02, 0.05], hip: 0.5, w: 10.5, z: 0.42, k: 0.35, sway: 0.07, ease: 0.3,
+  hang: [0.07, -0.53, 0.06], thigh: [0.14, -0.02, 0.05], hip: 0.5, w: 10.5, z: 0.42, k: 0.35, sway: 0.07, vIn: 3.3, easeIn: 0.16, drop: 12, ease: 0.3,
   trail: 0.012, trailMax: 0.1, thighR: 0.095,
-  pole: [0.35, -0.2, -0.9], ld: [0.06, -0.97, 0.2], ln: [-0.92, -0.05, 0.25], lw: 0.85,
+  pole: [0.15, -0.25, -0.95], ld: [0.06, -0.97, 0.2], ln: [-0.92, -0.05, 0.25], lw: 0.85,
 };
 const SIDE_CH = [P.hs, P.lk, P.twoHand, P.offAt];
 /** p[i..i+2] = v × k turned by the chest's yaw (cos c, sin s), `b` of the way to SCRATCH's. */
@@ -2843,9 +2848,12 @@ const LOCK_REACH = 0.98;
 // length past which it is set on its rest
 const SIDE_HZ = 240, SIDE_SNAP = 0.1;
 // … and the nearest and furthest it may hang from the shoulder (model m: its rod; the soft reach,
-// HERO_SOFT, draws 0.58 as an elbow of ~155°)
-const SIDE_NEAR = 0.25, SIDE_REACH = 0.58;
-const _shO = new THREE.Vector3(), _shQ = new THREE.Vector3(), _shG = new THREE.Vector3(), _shA = new THREE.Vector3(), _shB = new THREE.Vector3(), _shC = new THREE.Vector3();
+// HERO_SOFT, draws 0.58 as an elbow of ~155°; 0.5 keeps the elbow open past ~133° as a cut drops the
+// shoulder onto the hand: at 0.25 hit 1 bent it to 127° at the cut and 48° on the way in), eased in
+// from SIDE_FOLD (a hand held folded at the chest is not thrown out in a frame)
+const SIDE_NEAR = 0.5, SIDE_REACH = 0.58, SIDE_FOLD = 0.25;
+const SIDE_FREE = 1.5; // m: the pendulum's lag on its way in (no limit: the hand falls from wherever it was)
+const _shR = new THREE.Vector3(), _shO = new THREE.Vector3(), _shQ = new THREE.Vector3(), _shG = new THREE.Vector3(), _shA = new THREE.Vector3(), _shB = new THREE.Vector3(), _shC = new THREE.Vector3();
 const _hG = new THREE.Vector3(), _hd = new THREE.Vector3(), _hn = new THREE.Vector3(), _hy = new THREE.Vector3(), _hp = new THREE.Vector3();
 const _hz = new THREE.Vector3(), _hq1 = new THREE.Quaternion(), _hq2 = new THREE.Quaternion(), _hqs = new THREE.Quaternion();
 // the cloak in the charge's updraft: extra outward flare (tan) at full charge of a sheet on his
@@ -2920,7 +2928,7 @@ export class HeroAnimator {
     // the side hand (_sideHand): its pendulum's place and speed (world axes from the root); the way
     // it is going (mode 1 to the side, -1 home, 0 off), how far along (e, 0..1) from where (c); where it
     // was put last frame (world axes from the root), and p[sd] last frame (pw)
-    this.sideH = { x: new THREE.Vector3(), v: new THREE.Vector3(), c: new THREE.Vector3(), last: new THREE.Vector3(), e: 0, mode: 0, pw: 0, ok: false };
+    this.sideH = { x: new THREE.Vector3(), v: new THREE.Vector3(), r: new THREE.Vector3(), c: new THREE.Vector3(), last: new THREE.Vector3(), e: 0, mode: 0, pw: 0, ok: false };
     this.lkEff = 0;
     this.gripGap = 1;
     this.rig = rig;
@@ -3983,10 +3991,12 @@ export class HeroAnimator {
    *  pendulum hangs: a spring (SIDE.w / SIDE.z) that follows the anchor; SIDE.k of how far it lags is
    *  the hand's sway (at most SIDE.sway), so it trails the body's turn and drop a little and swings
    *  back past its rest before it settles.
-   *  It goes to the side as p[sd] rises and home to the pose's own hand as it falls, over SIDE.ease s
-   *  each way (smootherstep), from wherever the hand was as the way began (the pose's own hand
-   *  crossed to the swing's in a few frames, and went home in the swing's last tenth of a second). Kept clear of the left thigh, within the arm's reach of the shoulder and above
-   *  the ground. World axes from the root (a root that turns or travels drags nothing; his drawn body
+   *  It goes to the side as p[sd] rises, by the first cut: it is let go where it was as a free
+   *  pendulum that falls onto its rest, the body taking it up over SIDE.easeIn s, never faster than
+   *  SIDE.vIn against the rest (the arm drops, it does not snap); home to the pose's own hand as p[sd] falls,
+   *  over SIDE.ease s; each way from wherever the hand was as it began (the pose's own hand crossed to
+   *  the swing's in a few frames, and went home in the swing's last tenth of a second). Kept clear of
+   *  the left thigh, within the arm's reach of the shoulder and above the ground. World axes from the root (a root that turns or travels drags nothing; his drawn body
    *  does), in sub-steps whatever the frame's length, nothing in a frozen frame (hit-stop, a posed
    *  contact). Off (p[sd] 0 and home) it changes nothing. Allocates nothing, never throws. */
   _sideHand(r, p) {
@@ -4031,15 +4041,22 @@ export class HeroAnimator {
     // windup's turn of the chest flung it 30 cm in a frame)
     const way = want > pw + 1e-6 || want >= 0.999 ? 1 : want < pw - 1e-6 || !(want > 1e-4) ? -1 : S.mode || 1;
     if (way !== S.mode) {
-      if (S.mode === 0) {
-        S.x.copy(_shA); // (the pendulum starts still on its rest)
-        S.v.set(0, 0, 0);
+      if (way > 0) {
+        // (the pendulum starts still where the hand is, and the hand is all pendulum: the arm drops
+        // onto its rest as a pendulum falls, and only as it gets there does the body take it up)
+        S.x.copy(S.last);
+        S.v.subVectors(_shA, S.last).multiplyScalar(SIDE.drop); // (let go already falling toward its rest)
       }
       S.c.copy(S.last);
+      if (way > 0) S.r.subVectors(S.last, _shA);
       S.mode = way;
       S.e = 0;
     }
-    S.e = Math.min(1, S.e + dt / SIDE.ease);
+    S.e = Math.min(1, S.e + dt / (S.mode > 0 ? SIDE.easeIn : SIDE.ease));
+    // (to the side: how far the body has taken the hand up from the free pendulum, an ease out: it lets
+    // go of where it was at once (a smoothstep kept it planted on the waist through hit 1's windup);
+    // home: how far it is back on the pose's hand, smootherstep)
+    const x = S.e, ew = S.mode > 0 ? 1 - (1 - x) * (1 - x) : x * x * x * (x * (6 * x - 15) + 10), kIn = S.mode > 0 ? ew : 1;
     // the pendulum on the anchor
     if (dt > SIDE_SNAP) {
       S.x.copy(_shA); // (a frame that long is no motion to follow: a hidden tab)
@@ -4054,7 +4071,7 @@ export class HeroAnimator {
       }
       // (it lags at most what shows as the most sway: a body that snaps further drags it along)
       _shC.subVectors(S.x, _shA);
-      const lag = _shC.length(), most = (SIDE.sway / SIDE.k) * sc;
+      const lag = _shC.length(), most = lerp(SIDE_FREE, SIDE.sway / SIDE.k, kIn) * sc;
       if (lag > most) {
         S.x.copy(_shA).addScaledVector(_shC, most / lag);
         _shC.multiplyScalar(1 / lag);
@@ -4064,10 +4081,10 @@ export class HeroAnimator {
     }
     // where it goes: the side (its rest, the sway, the trail of his travel), or home
     if (S.mode > 0) {
-      _shG.subVectors(S.x, _shA).multiplyScalar(SIDE.k).add(_shA);
+      _shG.subVectors(S.x, _shA).multiplyScalar(lerp(1, SIDE.k, kIn)).add(_shA);
       const gv = this.player?.groundVel;
       if (gv) {
-        let tx = -SIDE.trail * fin(gv.x), tz = -SIDE.trail * fin(gv.z);
+        let tx = -SIDE.trail * kIn * fin(gv.x), tz = -SIDE.trail * kIn * fin(gv.z);
         const tl = Math.hypot(tx, tz), cap = SIDE.trailMax * sc;
         if (tl > cap) {
           tx *= cap / tl;
@@ -4076,20 +4093,27 @@ export class HeroAnimator {
         _shG.x += tx;
         _shG.z += tz;
       }
-    } else _shG.copy(_shQ);
-    // … from where the way began, by the ease
-    const x = S.e, ew = x * x * x * (x * (6 * x - 15) + 10);
-    if (ew < 1) _shG.lerpVectors(S.c, _shG, ew);
+      _shR.copy(_shA);
+    } else if (ew < 1) _shG.lerpVectors(S.c, _shQ, ew); // home: from where the way began, by the ease
+    else _shG.copy(_shQ);
     if (S.mode < 0 && ew >= 1 && !(want > 1e-4)) {
       S.mode = 0; // home: the pose's own hand, untouched
       return;
     }
-    // within the arm's reach of the shoulder (and no nearer than it folds)
+    // within the arm's reach of the shoulder, and hanging open (eased in from no nearer than it folds)
     _shA.setFromMatrixPosition(r.arms.L.upper.matrixWorld).sub(_shO);
     _shC.subVectors(_shG, _shA);
     {
-      const d = _shC.length(), lo = SIDE_NEAR * sc, hi = SIDE_REACH * sc;
+      const d = _shC.length(), lo = (S.mode > 0 ? lerp(SIDE_FOLD, SIDE_NEAR, ew) : SIDE_FOLD) * sc, hi = SIDE_REACH * sc;
       if (d > 1e-5 && (d > hi || d < lo)) _shG.copy(_shA).addScaledVector(_shC, (d > hi ? hi : lo) / d);
+    }
+    if (S.mode > 0) {
+      // … at most SIDE.vIn against the body carrying it (its rest; the pendulum let go 60 cm from
+      // there, out of a sprint, and the arm opening onto it stepped 13 cm a frame)
+      _shC.subVectors(_shG, _shR).sub(S.r);
+      const st = _shC.length(), most = SIDE.vIn * sc * dt;
+      if (st > most) _shG.addScaledVector(_shC, most / st - 1);
+      S.r.subVectors(_shG, _shR);
     }
     // clear of the left thigh (its line from the hip to the knee, as the legs stood last frame), the
     // way it already is from it (pushed out to his left instead, a thigh lifted out to the side in a
