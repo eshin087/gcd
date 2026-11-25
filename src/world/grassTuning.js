@@ -88,6 +88,32 @@ export const GRASS = Object.freeze({
     a: Object.freeze({ per: 0.55, size: [0.75, 0.95], frag: 0.35, band: [0.2, 0.34], spin: [4, 10], tip: 0.85, lit: [1.6, 1.05] }),
     a2: Object.freeze({ per: 0.5, size: [0.5, 0.7], frag: 0.5, band: [0.18, 0.3], spin: [5, 12], tip: 0.85, lit: [1.6, 1.05] }),
     a0: Object.freeze({ per: 0.45 }),
+    // m / m2 / m3 (round 7, the owner: "the matrix ascii art"): a's throw, fall and counts, each chip a
+    // CODE glyph (`code`) re-rolling as it flies; m2 with a `trail` of fading code glyphs behind it;
+    // m3 the cut tops too turn to code as they leave (`tops`)
+    m: Object.freeze({ per: 0.55, size: [0.62, 0.8], frag: 0, band: [0.2, 0.34], spin: [0, 0], tip: 0.85, lit: [1, 1], code: true, trail: 0 }),
+    m2: Object.freeze({ per: 0.55, size: [0.62, 0.8], frag: 0, band: [0.2, 0.34], spin: [0, 0], tip: 0.85, lit: [1, 1], code: true, trail: 2 }),
+    m3: Object.freeze({ per: 0.55, size: [0.62, 0.8], frag: 0, band: [0.2, 0.34], spin: [0, 0], tip: 0.85, lit: [1, 1], code: true, trail: 0, tops: true }),
+    /**
+     * The code look: the Hall of Falling Script's rain (world/scriptHall.js: its world-atlas digits, the
+     * re-roll of its heads, its greens HEAD [1, 2.4, 1.3] / TAIL [0.07, 0.85, 0.28] / the burst's end
+     * [0.02, 0.22, 0.07]) tamed under 1 (no bloom): `head` on a fresh glyph cooling to `tail` over `cool`
+     * s, to `deep` as it lies; `glyphs` its digits and a few of the atlas's code letters. A trail (m2):
+     * glyphs `trailStep` x the glyph back along its way, flickering at `trailHz`, dimmed by `trailDim`;
+     * room for `trailRoom` of them a piece. A cut top turns to code `turn` s after it leaves (m3).
+     */
+    code: Object.freeze({
+      glyphs: '0123456789ZTHKEX<>=:+*',
+      head: [0.3, 1.0, 0.4],
+      tail: [0.04, 0.55, 0.16],
+      deep: [0.02, 0.2, 0.07],
+      cool: 0.35,
+      trailStep: 0.62,
+      trailHz: 14,
+      trailDim: 0.85,
+      trailRoom: 2,
+      turn: [0.04, 0.12],
+    }),
     b: Object.freeze({ per: 0.9 }),
     c: Object.freeze({ per: 1.6, wide: 1.45, fresh2: 1.0 }),
     fling: [1.0, 3.0],
