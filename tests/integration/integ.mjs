@@ -5895,6 +5895,9 @@ async function scenarioHeroLife() {
     const bad = [], whip = [];
     for (const [name, C] of Object.entries(SWINGS)) {
       if (C.line === 'point') continue; // a thrust has no plane
+      // (the instant cuts, ?lights=blink: the blade is at the coil, then across, then at the finish; it does not
+      // whip through a diagonal, and its line is measured on the blade's own path by `blinkslash`)
+      if (/^(blink|fin)[A-Z]/.test(name)) continue;
       const ks = C.keys.filter((k) => Array.isArray(k.a) && k.u > 1.001 && k.u <= 2.001);
       const steep = Math.max(...ks.map((k) => Math.abs(k.a[1])));
       // the key where the blade is nearest to pointing ahead: its elevation is the cut's height there
@@ -11370,7 +11373,8 @@ async function scenarioBlinkSlash() {
         cur.arcN = arcs.n - cur.arcs;
       } else cur = null;
       // the free hand, the light hits on the belt: the wrist in the chest's frame, its step a frame, the elbow
-      if (on && d.button !== 'heavy' && SWINGS[an.clip]?.belt) {
+      // (not the chain's first quarter second: the hand comes to the belt from the guard, which holds it off the belt)
+      if (on && d.button !== 'heavy' && SWINGS[an.clip]?.belt && !(d.combo === 1 && a.t < 0.27)) {
         r.chest.worldToLocal(wC.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.L.fore.matrixWorld));
         r.chest.worldToLocal(sC.setFromMatrixPosition(r.arms.L.upper.matrixWorld));
         r.chest.worldToLocal(eC.setFromMatrixPosition(r.arms.L.fore.matrixWorld));

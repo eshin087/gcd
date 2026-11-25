@@ -1816,6 +1816,10 @@ async function scenarioParryFx() {
   for (const mode of ['0', 'a']) {
     PS.setParryFx(mode);
     PFX.perfectClear();
+    // (each spit is seeded by how many came before it, module state: without this the spit measured here
+    // depended on how many perfect parries the scenarios before it in the same process had made, and one
+    // spit of the series keeps 10 of its 12 sparks near, 83 %, under the 90 % asked below)
+    L.n = 0;
     G = build();
     duel(G, { dist: 2.0 });
     const { game } = G;

@@ -1088,7 +1088,7 @@ function attackPose(p, A) {
     }
   }
   // a clip with `belt` (the blink chain, swings.js): the free hand rests on the belt the whole swing
-  if (k.kind === 'clip' && A.freeHand && swingClip(k.clip)?.belt) beltHand(p);
+  if (k.kind === 'clip' && A.freeHand && swingClip(k.clip)?.belt) beltHand(p, A);
 }
 
 // the stances' belt (stances.js BELT) in the chest's own frame: there the stances hold it whatever
@@ -1101,11 +1101,27 @@ const _beQ = new THREE.Quaternion(), _beQ2 = new THREE.Quaternion(), _beE = new 
 /** The free hand on the belt in the chest's frame (the pelvis and the spine as this pose turns
  *  them): however the body turns, leans and snaps through a cut, the hand stays where it rests,
  *  low by his left hip, open, the fingers round the front of the hip (the stances' own hand). */
-function beltHand(p) {
+// (the hand comes to the belt from where the swing found it: the guard holds it off the belt since
+// ADR-186, and set there at once it jumped 17 cm in the swing's first frame. Eased in the chest's own
+// frame, so the chest's turn through the windup does not drag it)
+const BELT_EASE = 0.26; // s
+const _beQ3 = new THREE.Quaternion(), _beV2 = new THREE.Vector3();
+function beltHand(p, A) {
+  const F = A?.from, x = clamp(fin(A?.t, 1) / BELT_EASE, 0, 1), w = F ? x * x * x * (x * (6 * x - 15) + 10) : 1;
+  if (w < 1) {
+    _beQ3.setFromEuler(_beE.set(F[P.pelvX], F[P.pelvY], F[P.pelvZ], 'YXZ'));
+    _beQ3.multiply(_beQ2.setFromEuler(_beE.set(F[P.spX], F[P.spY], F[P.spZ], 'YXZ'))).invert();
+  }
   _beQ.setFromEuler(_beE.set(p[P.pelvX], p[P.pelvY], p[P.pelvZ], 'YXZ')); // (the rig's joints turn YXZ: model.js)
   _beQ.multiply(_beQ2.setFromEuler(_beE.set(p[P.spX], p[P.spY], p[P.spZ], 'YXZ')));
   const put = (i, v) => {
-    _beV.set(v[0], v[1], v[2]).applyQuaternion(_beQ);
+    _beV.set(v[0], v[1], v[2]);
+    if (w < 1) {
+      // from where it was, in the chest's frame as the swing began
+      _beV2.set(F[i], F[i + 1], F[i + 2]).applyQuaternion(_beQ3);
+      _beV.lerpVectors(_beV2, _beV, w);
+    }
+    _beV.applyQuaternion(_beQ);
     p[i] = _beV.x;
     p[i + 1] = _beV.y;
     p[i + 2] = _beV.z;
