@@ -1237,13 +1237,14 @@ async function scenarioBreach() {
   assert(lane >= 0, `a stretch of ordinary wall to tear open (lane ${lane} of ${E.n}: 17 lanes with a tree within 3.5 m of the line)`);
   const a0 = E.laneAngle(lane), ax = Math.cos(a0), az = Math.sin(a0);
   const pin = Math.round(d.maxHp * 0.5);
-  let cues = 0;
+  let cues = 0, moves = 0;
   G.watch = (n, e) => {
     if (n === 'combat:tell' && e?.source !== 'world') cues++;
+    if (n === 'dragon:windup') moves++;
   };
-  const stat = () => ({ cues: 0, blows: 0, heroOff: 0, wyrmOff: 0, airOver: 0, heroFar: 0, wyrmFar: 0, gap: 0, n: 0, nan: 0 });
+  const stat = () => ({ cues: 0, busy: 0, moves: 0, blows: 0, heroOff: 0, wyrmOff: 0, airOver: 0, heroFar: 0, wyrmFar: 0, gap: 0, n: 0, nan: 0 });
   const phase = (secs, goalR, s) => {
-    const cues0 = cues, hits0 = G.hits.length;
+    const cues0 = cues, moves0 = moves, hits0 = G.hits.length;
     for (let i = 0; i < Math.round(secs / DT); i++) {
       bot(G, { god: true, defend: true, attack: false });
       if (!G.input.pressedKeys.has('Space') && p.state !== 'roll') {
@@ -1271,9 +1272,14 @@ async function scenarioBreach() {
         else s.wyrmOff++;
       }
       s.gap += Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z);
+      // (in one of its moves: a windup, a channel, a flight, a recovery; not walking between them, not staggered)
+      const act = d.brain.action?.name;
+      if (act && act !== 'stagger') s.busy++;
       s.n++;
     }
     s.cues = cues - cues0;
+    s.moves = moves - moves0;
+    s.busyK = s.busy / Math.max(1, s.n);
     for (let i = hits0; i < G.hits.length; i++) if (G.hits[i].attack !== 'fallingDebris') s.blows++;
     s.perMin = (s.cues / secs) * 60;
     s.gap /= Math.max(1, s.n);
@@ -1302,7 +1308,7 @@ async function scenarioBreach() {
   // 3. he walks out and stays; the wyrm comes after him
   const after = phase(BREACH_SECS, 60, stat());
   const down1 = D.list.filter((b) => b.def.edge > 0 && b.state !== PIECE.INTACT).length;
-  const f = (s) => `${s.perMin.toFixed(0)} cues a minute, ${s.blows} blows on him, he reached ${s.heroFar.toFixed(1)} m, its root ${s.wyrmFar.toFixed(1)} m, ${s.gap.toFixed(1)} m apart on average`;
+  const f = (s) => `${s.perMin.toFixed(0)} cues a minute (${s.moves} moves, in one ${(s.busyK * 100).toFixed(0)} % of the time), ${s.blows} blows on him, he reached ${s.heroFar.toFixed(1)} m, its root ${s.wyrmFar.toFixed(1)} m, ${s.gap.toFixed(1)} m apart on average`;
   out(`   before the gap (${BREACH_SECS} s): ${f(before)}`);
   out(`   ${felled} trees felled in a wedge ${(2 * BREACH_HALF).toFixed(2)} rad wide out to ${BREACH_DEEP} m: his ground ends at ${open.toFixed(1)} m there, the root may go ${gain.toFixed(1)} m past its ${d.bound} m`);
   out(`   out in the gap (${BREACH_SECS} s): ${f(after)} · trees of the wall down ${down0} > ${down0 + felled} > ${down1}`);
@@ -1323,7 +1329,14 @@ async function scenarioBreach() {
   // 4242 among them), mean ~6 m on both, while the hero held ~60 m and the root's ground on his line
   // ended 15.5 m short of him: the wyrm fights him from the end of its share, nothing wrong in it
   const hold = Math.min(60, (game.world.heroBound?.(ax, az) ?? 31) - 3), short = Math.max(6, hold - (d.bound + gain));
-  assert(after.perMin >= before.perMin * 0.6 && after.blows > 0 && after.gap < before.gap + short, `... and goes on fighting him out there: ${after.perMin.toFixed(0)} cues a minute (${before.perMin.toFixed(0)} with the wall standing; >= 60 % of it), ${after.blows} blows reach him, ${after.gap.toFixed(1)} m apart on average (${before.gap.toFixed(1)} in the clearing; + ${short.toFixed(1)} m: he holds ${hold.toFixed(1)} m out, its share ends at ${(d.bound + gain).toFixed(1)} m)`);
+  // (fighting = in one of its moves. Was cues a minute >= 60 % of the clearing's; ADR-195: at range it
+  // picks the long ranged moves, the firestorm's channel (8.6 s, ONE red cue), the sky furnace (~10 s),
+  // the ember rain, and seed 4242 read 24 cues a minute out there against 47 in the clearing while the
+  // wyrm was in a move 94 % of the time out there and 86 % in the clearing: the cue count measures the
+  // mix of moves, not whether it fights. So: in a move >= 80 % of the share it is in the clearing, and
+  // still a live rate of cues (> 8 a minute, as forestedge). Seeds 1337, 7, 99, 2026: 85 - 94 % out
+  // there against 84 - 93 % in the clearing, 44 - 63 cues a minute)
+  assert(after.busyK >= before.busyK * 0.8 && after.perMin > 8 && after.blows > 0 && after.gap < before.gap + short, `... and goes on fighting him out there: in a move ${(after.busyK * 100).toFixed(0)} % of the time (${(before.busyK * 100).toFixed(0)} % with the wall standing; >= 80 % of it), ${after.perMin.toFixed(0)} cues a minute (${before.perMin.toFixed(0)}), ${after.blows} blows reach him, ${after.gap.toFixed(1)} m apart on average (${before.gap.toFixed(1)} in the clearing; + ${short.toFixed(1)} m: he holds ${hold.toFixed(1)} m out, its share ends at ${(d.bound + gain).toFixed(1)} m)`);
   G.watch = null;
   // 4. the reset shuts the wall: both are back inside the circles on the next step
   game.world.restore();
@@ -1510,7 +1523,11 @@ async function scenarioForestEdge() {
     {
       const hx = p.position.x, hz = p.position.z, hr = Math.hypot(hx, hz);
       if (hr > E.base + 1) {
-        const want = Math.min(hr - E.base + BREAK.edge.walk.lead, E.heroAt(hx, hz) - E.base - BREAK.edge.walk.bossIn);
+        // (the cap as bossGain reads it: the lesser of the two lanes whose middles bracket him, so the
+        // wyrm stays bossIn m short of the ridge on both sides of where it reads; ADR-195 integration:
+        // one lane's line alone left a 0.27 m step between two lanes, 50.75 / 50.48 m, read as a miss)
+        const u = (Math.atan2(hz, hx) + Math.PI) / E.step - 0.5, li = ((Math.floor(u) % E.n) + E.n) % E.n;
+        const want = Math.min(hr - E.base + BREAK.edge.walk.lead, Math.min(E.W[li], E.W[(li + 1) % E.n]) - E.base - BREAK.edge.walk.bossIn);
         capMiss = Math.max(capMiss, want - (d.boundAt(hx, hz) - d.bound));
         capN++;
       }
@@ -1536,8 +1553,8 @@ async function scenarioForestEdge() {
   // forest), and its share is never what holds it (at its bound ~0 % of the time). So the check is the
   // follow's CAPACITY, frame by frame (its ground reaches as far toward him as he asks), its never
   // being off it or in the ridge, and that it does come past its own bound; 2b measures the melee)
-  // (0.25 m: the cap is read across two lanes, the ridge line between them)
-  assert(capN > 60 && capMiss < 0.25 && wyrmFar > d.bound && !wyrmOff && !overRidge && !nan, `the wyrm may follow him into the forest: its ground reaches toward him all he asks (short by ${capMiss.toFixed(2)} m at worst over ${capN} frames out), its root came ${wyrmFar.toFixed(1)} m out (bound ${d.bound} m), never off its ground on its feet (${wyrmOff} frames), never within ${BREAK.edge.walk.bossIn} m of the ridge (${overRidge})`);
+  // (the cap is read as bossGain reads it, across the two lanes: only float noise is allowed)
+  assert(capN > 60 && capMiss < 0.02 && wyrmFar > d.bound && !wyrmOff && !overRidge && !nan, `the wyrm may follow him into the forest: its ground reaches toward him all he asks (short by ${capMiss.toFixed(2)} m at worst over ${capN} frames out), its root came ${wyrmFar.toFixed(1)} m out (bound ${d.bound} m), never off its ground on its feet (${wyrmOff} frames), never within ${BREAK.edge.walk.bossIn} m of the ridge (${overRidge})`);
   assert(cues / secs * 60 > 8 && blows > 0, `... and fights him there: ${((cues / secs) * 60).toFixed(0)} cues a minute, ${blows} blows reach him`);
   // 2b. he fences it among the trees (the bot as in the clearing: up to its chest, answering the tells):
   // its melee reaches him there, its body through the young wood
