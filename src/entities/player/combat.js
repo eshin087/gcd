@@ -174,7 +174,7 @@ const LIGHT_FRESH = [
 const LIGHT_STRIKER = [
   { anim: { kind: 'clip', clip: 'strikeFalling' }, variants: [{ kind: 'clip', clip: 'strikeDraw', turn: 0.3 }, { kind: 'clip', clip: 'strikeRising' }] },
   { anim: { kind: 'clip', clip: 'strikeBackhand' }, variants: [{ kind: 'clip', clip: 'strikeFlatBack', turn: -0.4 }, { kind: 'clip', clip: 'strikeFallingBack' }] },
-  { anim: { kind: 'clip', clip: 'strikeCleave', turn: 0.35 }, variants: [{ kind: 'clip', clip: 'strikeLowCut' }] },
+  { anim: { kind: 'clip', clip: 'strikeCleave', turn: 0.35 }, variants: [{ kind: 'clip', clip: 'strikeHew' }, { kind: 'clip', clip: 'strikeLowCut' }] },
   { anim: { kind: 'clip', clip: 'strikeLunge' }, variants: [{ kind: 'clip', clip: 'strikeRisingThrust' }] },
   { anim: FINISHER_ANIMS[finisherId()], variants: [] },
 ];

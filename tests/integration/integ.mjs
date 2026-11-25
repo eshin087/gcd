@@ -7683,8 +7683,8 @@ async function scenarioHeroLights() {
   setLights('old');
   const sigOld = sig(), clipsOld = clipsOf();
   setLights('new');
-  assert(sigNew === sigOld && LIGHTS_IDS.join() === 'new,old,fresh' && lightsMode() === 'new' && !setLights('x') && lightsMode() === 'new',
-    'the chain\'s looks switch (setLights new / old / fresh) and nothing else: every hit\'s timing, damage, reach, tells and weight are the same in both');
+  assert(sigNew === sigOld && LIGHTS_IDS.join() === 'new,old,fresh,striker' && lightsMode() === 'new' && !setLights('x') && lightsMode() === 'new',
+    'the chain\'s looks switch (setLights new / old / fresh / striker) and nothing else: every hit\'s timing, damage, reach, tells and weight are the same in both');
   assert(clipsOld.every((c) => SWINGS[c]) && clipsNew.every((c) => SWINGS[c]) && clipsOld.every((c, i) => c !== clipsNew[i]) && clipsOld.includes('drawCut') && clipsOld.includes('slam'),
     `?lights=old plays the clips before the pass (${[...new Set(clipsOld)].join(', ')}), the default the reworked ones (${[...new Set(clipsNew)].join(', ')})`);
   {
@@ -7701,7 +7701,7 @@ async function scenarioHeroLights() {
     G.tick(DT);
     input.tap('F1');
     G.tick(DT);
-    assert(btns.length === 3 && newOn && oldOk && lightsMode() === 'new' && LIGHT[0].anim.clip === 'fallingCut', `the Lab's \`lights\` row: weighted / before / brand new, live (${btns.length} buttons)`);
+    assert(btns.length === 4 && newOn && oldOk && lightsMode() === 'new' && LIGHT[0].anim.clip === 'fallingCut', `the Lab's \`lights\` row: weighted / before / brand new / striker, live (${btns.length} buttons)`);
   }
 
   // (2) the sampler: one frame in the root's frame (metres, unscaled), after a tick
