@@ -5,6 +5,24 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-24 — Session 92: smaller combat text
+
+**Owner:** "the combat text that shows up next to the character (counter, deflect, dmg numbers, etc) size and font
+changed. make it look small like the original version before it got much larger." Branch `claude/combat-text-smaller`.
+ADR-184 / M1.81.
+
+**Finding.** No commit had changed the call-out CSS since v0.2.0, and the live site drew the same font (JetBrains
+Mono, loaded) at the same sizes as the dev server. The owner plays on desktop; the sizes were `clamp(.., vw, ..)`,
+so a wide window grew them (1920 wide: DEFLECT 22 px, CRIT 19 px, the cut counter 34 px). Three options were
+rendered at 1920x1080 in headless Edge (A today, B about two thirds, C HUD size and lighter); the owner picked B.
+
+**What shipped.** `src/ui/hudStyle.js` only: fixed sizes, call-outs 11 / 12 px (BLOCK 9), numbers 10 / 11 / 12 px,
+the cut counter 15 px, letter spacing 0.2em. Measured after: identical at 1280x720 and 1920x1080.
+
+**Note.** This checkout had no `node_modules/` (the dev server answered 404 for three, so `__game` never appeared):
+`npm install` fixed it.
+
+**Open:** not yet seen by the owner on their own screen or the iPhone.
 ## 2026-11-24 — Faster PRs: CI's long checks split, auto-merge on every PR (ADR-185; branch `build/ci-faster`)
 
 **Owner:** "it takes a while for new changes to get pushed through. is there anyway to speed up the prs to be
