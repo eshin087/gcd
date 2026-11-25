@@ -1379,7 +1379,7 @@ cinema`). Nothing stores a tier: each piece reads it at the moment.
   pass's `cutBand` (render/pipeline.js): `uCutN` (0 = the pass reads nothing; set to 0 once when the last
   cut ends, nothing written while idle), `uCutA[2]` = a cut's two ends in frame px (y up), `uCutB[2]` =
   (1 strip | 2 negative, half-width in art cells, shift in cells, the negative's weight), `uCutTone` (the
-  negative's pale cell rgb, letter contrast). `TimeRip.write(pipeline)` fills them, from `update` and
+  negative's pale cell rgb, w: a pixel brighter than the scene x uBg x w is a letter's stroke and prints dark); the strip and the negative run along the WHOLE line (k = 1), and their first frame is the contact's (a cut ages from the next step). `TimeRip.write(pipeline)` fills them, from `update` and
   again from the pipeline right before the pass (`pipeline.setTimeRip(rip)`, as the impact ripple).
   `clear()` with the other fx (flow `_resetWorld`, world `setVisible`). `busy`, `ghostAnchors` /
   `ghostAnchorN` (the newest copies' chests) for the tests (`timerip` in integ.mjs and duel.mjs,

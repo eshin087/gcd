@@ -50,7 +50,8 @@ export async function timeRipCheck(o) {
     const blobs = [];
     const fs = game.fx.fire.spawn.bind(game.fx.fire), as = game.fx.add.spawn.bind(game.fx.add);
     game.fx.fire.spawn = (b) => { if (inRip) { spawns++; blobs.push(b.x, b.y, b.z); } return fs(b); };
-    game.fx.add.spawn = (b) => { if (inRip) spawns++; return as(b); };
+    const still = [];
+    game.fx.add.spawn = (b) => { if (inRip) { spawns++; if (b.vx === 0 && b.vy === 0 && b.vz === 0) still.push(b.x, b.y, b.z); } return as(b); };
     const onHit = rip._onHit.bind(rip);
     rip._onHit = (e) => { inRip = true; try { onHit(e); } finally { inRip = false; } };
     // main.js's order: the rip steps before the pools and the field age (the sims age them on game dt)
@@ -60,7 +61,7 @@ export async function timeRipCheck(o) {
     const p = game.player, d = game.dragon;
     RIP_STAT.peak = 0;
     const st0 = { ...RIP_STAT };
-    const tr = { mode, hits: [], f: 0, lastF: -1, endF: -1, idleF: -1, dmg: 0, maxCell: 0, ghostM: 0, ghostN: 0, bandA: 0, bandHalf: 0, maxN: 0, nan: false, uniWrites: 0, ok: false };
+    const tr = { mode, hits: [], f: 0, lastF: -1, endF: -1, idleF: -1, dmg: 0, maxCell: 0, ghostM: 0, ghostN: 0, bandA: 0, bandHalf: 0, maxN: 0, nan: false, uniWrites: 0, ok: false, firstLive: -1, firstRun: 0, gapMin: Infinity, overBoss: 0, stillN: 0, perCopy: 0 };
     const segs = [];
     const w0 = G.watch;
     G.watch = (n, e) => {
@@ -78,6 +79,8 @@ export async function timeRipCheck(o) {
     let ghosts0 = RIP_STAT.ghosts, lastN = 0;
     for (let i = 0; i < Math.round(10 / DT); i++) {
       blobs.length = 0;
+      still.length = 0;
+      const g0 = RIP_STAT.ghosts;
       frame(G);
       tr.f++;
       camSync();
@@ -100,6 +103,27 @@ export async function timeRipCheck(o) {
         if (![blobs[b], blobs[b + 1], blobs[b + 2]].every(Number.isFinite)) tr.nan = true;
       }
       // the ghosts' chests: within 0.3 m of the line they hang on
+      if (RIP_STAT.ghosts > g0) {
+        // the copies born this frame: never over the target's body (its hurt spheres on screen)
+        for (let b = 0; b < still.length; b += 3) {
+          const [x, y, ok] = proj(still[b], still[b + 1], still[b + 2]);
+          if (!ok) continue;
+          tr.stillN++;
+          for (const h of d.hurtSpheres ?? []) {
+            const [hx, hy] = proj(h.x, h.y, h.z), [ex, ey] = proj(h.x + cam.matrixWorld.elements[0] * h.r, h.y + cam.matrixWorld.elements[1] * h.r, h.z + cam.matrixWorld.elements[2] * h.r);
+            const r = Math.hypot(ex - hx, ey - hy);
+            if (Math.hypot(x - hx, y - hy) < r * 0.95) { tr.overBoss++; break; }
+          }
+        }
+        // apart: consecutive chests, and the last one from the contact (the line's drawn end)
+        const fl = p.flurry, L = fl?.lines?.[(fl?.nLines | 0) - 1];
+        const n = rip.ghostAnchorN, an = rip.ghostAnchors;
+        for (let a = 1; a < n; a++) tr.gapMin = Math.min(tr.gapMin, Math.hypot(an[a * 3] - an[a * 3 - 3], an[a * 3 + 1] - an[a * 3 - 2], an[a * 3 + 2] - an[a * 3 - 1]));
+        if (L && n) {
+          const k = L.k, cx = L.ax + (L.bx - L.ax) * k, cy = L.ay + (L.by - L.ay) * k, cz = L.az + (L.bz - L.az) * k, a = (n - 1) * 3;
+          tr.gapMin = Math.min(tr.gapMin, Math.hypot(an[a] - cx, an[a + 1] - cy, an[a + 2] - cz));
+        }
+      }
       if (RIP_STAT.ghosts > ghosts0) {
         for (let a = 0; a < rip.ghostAnchorN; a++) {
           const x = rip.ghostAnchors[a * 3], y = rip.ghostAnchors[a * 3 + 1], z = rip.ghostAnchors[a * 3 + 2];
@@ -128,6 +152,9 @@ export async function timeRipCheck(o) {
         tr.bandA = Math.max(tr.bandA, m);
         tr.bandHalf = Math.max(tr.bandHalf, B.y);
       }
+      // the first cut's band: how many frames it is live (its contact's frame on)
+      if (n > 0 && tr.firstLive < 0) tr.firstLive = tr.f;
+      if (tr.firstLive >= 0 && tr.firstRun >= 0) { if (n > 0) tr.firstRun++; else tr.firstRun = -tr.firstRun; }
       if (tr.lastF >= 0 && tr.idleF < 0 && n === 0) tr.idleF = tr.f;
       if (tr.lastF >= 0 && n > 0) tr.idleF = -1;
       if (tr.endF >= 0 && !busy(G) && !rip.busy && tr.f > tr.endF + 30) break;
@@ -141,6 +168,8 @@ export async function timeRipCheck(o) {
     tr.ghosts = RIP_STAT.ghosts - st0.ghosts;
     tr.torn = RIP_STAT.torn - st0.torn;
     tr.peak = RIP_STAT.peak;
+    tr.firstRun = Math.abs(tr.firstRun);
+    tr.perCopy = tr.ghosts > 0 ? (RIP_STAT.ghostPts - st0.ghostPts) / tr.ghosts : 0;
     tr.G = G;
     tr.errCount = [...(G.errorCounts?.values?.() ?? [])].reduce((a, b) => a + b, 0);
     return tr;
@@ -163,9 +192,13 @@ export async function timeRipCheck(o) {
   assert(off.spawns === 0 && off.writes === 0 && off.uniWrites === 0 && off.maxN === 0, `${label} off: nothing spawned (${off.spawns}), nothing written (${off.writes} writes)`);
   const tearOff = Math.max(...RIP_LOOK.tear.frames.map((f) => f.off));
   assert(R.tear.splits >= 4 && R.tear.spawns > 0 && R.tear.maxCell <= tearOff + 1, `${label} tear: ${R.tear.splits} splits, every steel cell within ${tearOff + 1} cells of its line (the lips at most ${tearOff} off it: ${R.tear.maxCell.toFixed(2)})`);
-  assert(R.strip.spawns > 0 && R.strip.maxCell <= 1 && R.strip.maxN >= 1 && R.strip.bandA <= 1 && 2 * R.strip.bandHalf + 1 <= 4, `${label} strip: the seam within a cell of the line (${R.strip.maxCell.toFixed(2)}), the band's ends on it (${R.strip.bandA.toFixed(2)} cells), at most ${2 * R.strip.bandHalf + 1} cells wide`);
-  assert(R.negative.spawns === 0 && R.negative.maxN >= 1 && R.negative.bandA <= 1 && 2 * R.negative.bandHalf + 0.5 <= 2, `${label} negative: the band's ends on the line (${R.negative.bandA.toFixed(2)} cells), at most 2 cells wide (half ${R.negative.bandHalf}), no steel`);
-  assert(R.ghosts.ghosts >= 4 && R.ghosts.ghostN > 0 && R.ghosts.ghostM <= 0.3 && R.ghosts.torn > 0 && R.ghosts.maxN === 0, `${label} ghosts: ${R.ghosts.ghosts} copies, their chests ≤ ${R.ghosts.ghostM.toFixed(3)} m off the line, ${R.ghosts.torn} letters torn off, no screen pass`);
+  const SL = RIP_LOOK.strip, NL = RIP_LOOK.negative, GL = RIP_LOOK.ghosts;
+  assert(R.strip.spawns > 0 && R.strip.maxCell <= 1 && R.strip.maxN >= 1 && R.strip.bandA <= 1 && R.strip.bandHalf === 3 && SL.shift.join() === '4,3,1', `${label} strip: the seam within a cell of the line (${R.strip.maxCell.toFixed(2)}), the band's ends on the WHOLE line's (${R.strip.bandA.toFixed(2)} cells), 3 cells each side (6 across), shifted ${SL.shift.join(' / ')} cells`);
+  assert(R.strip.firstRun === SL.shift.length, `${label} strip: the first cut's band is live ${R.strip.firstRun} frames (${SL.shift.length})`);
+  assert(R.negative.spawns === 0 && R.negative.maxN >= 1 && R.negative.bandA <= 1 && 2 * R.negative.bandHalf <= 1.2 + 1e-9, `${label} negative: the band's ends on the whole line (${R.negative.bandA.toFixed(2)} cells), 1 - 2 cells across (half ${R.negative.bandHalf}), no steel`);
+  assert(R.negative.firstRun === NL.frames, `${label} negative: the first cut's band is live ${R.negative.firstRun} frames (${NL.frames})`);
+  assert(R.ghosts.ghosts >= 3 && R.ghosts.ghostN > 0 && R.ghosts.ghostM <= 0.3 && R.ghosts.torn > 0 && R.ghosts.maxN === 0, `${label} ghosts: ${R.ghosts.ghosts} copies, their chests ≤ ${R.ghosts.ghostM.toFixed(3)} m off the line, ${R.ghosts.torn} letters torn off, no screen pass`);
+  assert(R.ghosts.gapMin >= GL.apart - 1e-6 && R.ghosts.overBoss === 0 && R.ghosts.stillN > 0 && R.ghosts.perCopy <= 60, `${label} ghosts: at most ${GL.count} a cut, ${R.ghosts.gapMin.toFixed(2)} m apart at least (${GL.apart}), ${R.ghosts.perCopy.toFixed(1)} digits a copy (outline + one inner in ${GL.inner}; <= 60), ${R.ghosts.overBoss} of ${R.ghosts.stillN} over the boss's body`);
   for (const m of ['strip', 'negative']) {
     const r = R[m], idleS = (r.idleF - r.lastF) * DT;
     assert(r.idleF >= 0 && idleS <= 0.25, `${label} ${m}: the screen pass is idle ${idleS.toFixed(3)} s after the last blow (<= 0.25)`);

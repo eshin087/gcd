@@ -8,15 +8,16 @@ import { FIRE_KIND } from '../../render/firePalettes.js';
 //             later (RIP_LOOK.tear.delay real s; in a storm a share of the gap between cuts) it splits
 //             open along its whole length at once: a bright seam of fine letters, two lips parting a
 //             cell or two (a lens: pinched at the ends), closing, gone
-//   strip     the torn strip: for three frames the letters already printed in a band 3 - 4 cells wide
-//             along the cut are printed SHIFTED along it (one side one way, the other the other way,
-//             whole cells), then snap back; a crisp seam of steel on the line itself
-//   ghosts    frozen afterimages: on each cut 4 still copies of him (1 in a storm; RIP_LOOK.ghosts.cap
-//             alive at most) hang along the line from where the pass began to the contact, printed as
-//             the Ghostep's afterimage is (fine digits, one to a cell); they stand still for a beat,
-//             then shatter into their letters thrown along the cut (on the last blow: all at once)
-//   negative  the inverted line: a strip 1 - 2 cells wide along the cut prints in negative for two
-//             frames (the letters dark on a pale steel cell), then gone
+//   strip     the torn strip: for three frames the letters already printed in a band 3 cells each side
+//             of the WHOLE line are printed SHIFTED along it by 4, 3, 1 cells (one side one way, the
+//             other the other way, whole cells), then snap back; a crisp seam of steel on the line
+//   ghosts    frozen afterimages: on each cut 3 still copies of him (1 in a storm; fewer when the run
+//             is too short for them 0.75 m apart; RIP_LOOK.ghosts.cap alive at most) along the line
+//             from where the pass began toward the contact, printed as the Ghostep's afterimage is but
+//             only his OUTLINE and a few inner digits, dim, never over the target's body; they stand
+//             still for a beat, then tear off quickly along the cut (on the last blow: all at once)
+//   negative  the inverted line: a strip 1 - 2 cells wide along the whole cut prints in negative for
+//             two frames (each letter's own strokes dark on a pale steel cell), then gone
 // Every mark sits on the line the blade travelled: `player.flurry.lines[i]` (world; `k` the drawn
 // share), read live while that flurry runs. Nothing here touches a rule: the damage, the frames the
 // blows land on and where the hero goes are the flurry's (tests/integration integ / duel `timerip`).
@@ -75,14 +76,18 @@ const deepFreeze = (o) => {
  *         middle (pinched to 0 at the ends), h = their heat, seam = the line's own heat between them,
  *         keep = the share of cells printed
  * strip:  half (the band's half-width in cells: |distance| <= half), shift (cells along the cut per
- *         frame; 0 = back), hold (s a frame), seam (the steel seam's heat per frame)
- * negative: half, frames, hold, tone (the pale steel cell, linear rgb), k (how hard a lit letter
- *         darkens it)
+ *         frame; 0 = back), hold (s a frame), seam (the steel seam's heat per frame); over the WHOLE
+ *         line (not only the part drawn at the contact)
+ * negative: half, frames, hold, tone (the pale steel cell, linear rgb), lit (a pixel is a letter's
+ *         stroke when it is brighter than the scene's colour there x the background's share x lit:
+ *         the stroke prints dark, the rest of the cell pale); over the whole line
  * ghosts: count (copies a shown cut), storm (a storm cut), cap (alive at most; the oldest shatters
- *         first), hold (s they stand), holdMin / gapK (in a storm: the share of the gap), tear (s over
+ *         first), apart (m: copies at least this far apart and from the contact, else fewer), hold (s they stand), holdMin / gapK (in a storm: the share of the gap), tear (s over
  *         which a copy shatters, from where he started toward the contact), speed / life (the torn
  *         letters), alpha (a standing copy's), cell (m: one digit to a cell of this grid on the
- *         screen, the afterimage's GHOST_CELL), size, step (every step-th point of his body), col /
+ *         screen, the afterimage's GHOST_CELL), size, inner (his outline cells all, one inner cell in
+ *         this many), hiEvery (one digit in this many brighter), spareR (m round each of the target's
+ *         hurt spheres no digit is printed: never over the boss), col /
  *         hi / colEnd (the afterimage's colours: COL.ghostDim, COL.ghost, COL.ghostEnd), chest (m: the
  *         line crosses him this high, flurry.js CHEST)
  */
@@ -105,25 +110,28 @@ export const RIP_LOOK = deepFreeze({
       { off: 0, h: 0.4, seam: 0, keep: 0.5 },
     ],
   },
-  strip: { half: 1.5, shift: [3, 3, 1], hold: 1 / 60, seam: [1.15, 0.9, 0.55] },
-  negative: { half: 0.75, frames: 2, hold: 1 / 60, tone: [0.5, 0.55, 0.62], k: 1.6 },
+  strip: { half: 3, shift: [4, 3, 1], hold: 1 / 60, seam: [1.15, 0.9, 0.55] },
+  negative: { half: 0.6, frames: 2, hold: 1 / 60, tone: [0.46, 0.5, 0.56], lit: 2.5 },
   ghosts: {
-    count: 4,
+    count: 3,
     storm: 1,
-    cap: 10,
+    cap: 7,
+    apart: 0.75,
     hold: 0.12,
     holdMin: 0.04,
     gapK: 0.6,
-    tear: 0.08,
+    tear: 0.045,
     speed: [3, 8],
-    life: [0.08, 0.2],
-    alpha: 0.55,
+    life: [0.06, 0.14],
+    alpha: 0.38,
     cell: 0.13,
-    size: 0.16,
-    step: 2,
-    col: [0.42, 0.68, 1.3],
-    hi: [1.3, 1.75, 2.6],
-    colEnd: [0.12, 0.25, 0.75],
+    size: 0.15,
+    inner: 7,
+    hiEvery: 17,
+    spareR: 0.12,
+    col: [0.3, 0.5, 0.98],
+    hi: [0.9, 1.25, 1.9],
+    colEnd: [0.1, 0.2, 0.6],
     chest: 1.2,
   },
 });
@@ -139,6 +147,9 @@ const MAXC = 900; // steel cells a frame
 const HASH = 2048; // the cell table (open addressing, cleared by stamp)
 const GPTS = 240; // points a ghost keeps (420 body points, every other one)
 const GCAP = 12; // ghost slots (RIP_LOOK.ghosts.cap <= this)
+const TMAX = 420; // a copy's figure cells before the outline is taken (player.js GHOST_PTS)
+const TI = new Int32Array(TMAX), TJ = new Int32Array(TMAX), TP = new Float32Array(TMAX * 3);
+const BOSS_C = 32; // the target's hurt spheres spared at most
 
 // ---- the screen (perfectFx's), reused
 const SCR = { mpp: 0.025, px: 0, py: 0, cw: 5, ch: 8, ok: false };
@@ -198,6 +209,8 @@ export class TimeRip {
     /** The chests of the ghosts spawned last (tests: on the line). */
     this.ghostAnchors = new Float32Array(GCAP * 3);
     this.ghostAnchorN = 0;
+    this._bossC = new Float32Array(BOSS_C * 3);
+    this._bossN = 0;
     // the hero's figure on screen this frame (never written over)
     this._hx = this._hy = this._hrx = this._hry = 0;
     const ev = game?.events;
@@ -256,6 +269,7 @@ export class TimeRip {
       c.age = 0;
       c.split = false;
       c.drawn = false;
+      c.born = mode !== 'tear'; // (its first frame is the contact's: it starts ageing on the next step)
       c.seq = ++this._seq;
       c.L = null;
       if (mode === 'tear') {
@@ -317,7 +331,8 @@ export class TimeRip {
       let steel = false;
       for (const c of this.cuts) {
         if (!c.alive) continue;
-        c.age += r;
+        if (c.born) c.born = false;
+        else c.age += r;
         this._refresh(c);
         if (this._done(c)) { c.alive = false; continue; }
         if (c.mode === 'tear' || c.mode === 'strip') steel = true;
@@ -341,8 +356,9 @@ export class TimeRip {
       const T = RIP_LOOK.tear;
       return c.age >= c.delay + T.frames.length * T.hold;
     }
-    if (c.mode === 'strip') return c.age >= RIP_LOOK.strip.shift.length * RIP_LOOK.strip.hold;
-    if (c.mode === 'negative') return c.age >= RIP_LOOK.negative.frames * RIP_LOOK.negative.hold;
+    // (whole frames of real time: a frame's age is counted from the step after the contact's)
+    if (c.mode === 'strip') return c.age >= RIP_LOOK.strip.shift.length * RIP_LOOK.strip.hold - 1e-4;
+    if (c.mode === 'negative') return c.age >= RIP_LOOK.negative.frames * RIP_LOOK.negative.hold - 1e-4;
     return true;
   }
 
@@ -406,8 +422,8 @@ export class TimeRip {
         } else this._seg(game, A, c, 0, Fr.h, Fr.keep);
       } else if (c.mode === 'strip') {
         const S = RIP_LOOK.strip;
-        const f = Math.min(S.seam.length - 1, Math.floor(c.age / S.hold));
-        this._seg(game, A, c, 0, S.seam[f], 1);
+        const f = Math.min(S.seam.length - 1, Math.floor(c.age / S.hold + 1e-4));
+        this._seg(game, A, c, 0, S.seam[f], 1, 1);
       }
     }
     let w = 0;
@@ -445,9 +461,9 @@ export class TimeRip {
    * Cut c's drawn line as cells of the letter grid, `off` cells to one side (pinched to the line at
    * both ends: a lens), heat h (a little lower at the ends), `keep` of its cells.
    */
-  _seg(game, A, c, off, h, keep) {
+  _seg(game, A, c, off, h, keep, kk = c.k) {
     const pull = RIP_LOOK.pull, cam = game.camera?.position;
-    const k = c.k;
+    const k = kk;
     if (!(k > 0.03)) return;
     let ax = c.ax, ay = c.ay, az = c.az;
     let bx = ax + (c.bx - ax) * k, by = ay + (c.by - ay) * k, bz = az + (c.bz - az) * k;
@@ -563,7 +579,7 @@ export class TimeRip {
     }
     if (u.uCutTone) {
       const N = RIP_LOOK.negative;
-      u.uCutTone.value.set(N.tone[0], N.tone[1], N.tone[2], N.k);
+      u.uCutTone.value.set(N.tone[0], N.tone[1], N.tone[2], N.lit);
     }
     u.uCutN.value = n;
     this._lastN = n;
@@ -573,8 +589,7 @@ export class TimeRip {
 
   /** One cut into slot (A, B); false when it is off screen. */
   _slot(c, cam, W, H, Av, Bv) {
-    const k = c.k;
-    if (!(k > 0.03)) return false;
+    const k = 1; // (the band runs along the whole line, as the white line will hang)
     const a = this._proj(cam, W, H, c.ax, c.ay, c.az);
     if (!a) return false;
     const ax = this._sx, ay = this._sy;
@@ -582,7 +597,7 @@ export class TimeRip {
     if (!b) return false;
     Av.set(ax, ay, this._sx, this._sy);
     if (c.mode === 'strip') {
-      const S = RIP_LOOK.strip, f = Math.min(S.shift.length - 1, Math.floor(c.age / S.hold));
+      const S = RIP_LOOK.strip, f = Math.min(S.shift.length - 1, Math.floor(c.age / S.hold + 1e-4));
       Bv.set(1, S.half, S.shift[f], 0);
     } else {
       Bv.set(2, RIP_LOOK.negative.half, 0, 1);
@@ -609,7 +624,12 @@ export class TimeRip {
     if (!game?.fx?.add?.spawn || !P || typeof P._sampleBody !== 'function') return;
     const nB = P._sampleBody() | 0, pts = P._ghostPts;
     if (!(nB >= 24) || !pts) return;
-    const want = last ? 0 : storm ? G.storm : G.count;
+    const k = Math.min(1, Math.max(0, fin(L.k) ? L.k : 1));
+    const ex = L.bx - L.ax, ey = L.by - L.ay, ez = L.bz - L.az;
+    let dl = Math.hypot(ex, ey, ez);
+    // as many copies as fit the run so far G.apart m apart (and from him at the contact)
+    const run = fin(dl) ? dl * k : 0;
+    const want = last ? 0 : Math.min(storm ? G.storm : G.count, Math.floor(run / G.apart + 1e-6));
     if (!(want > 0)) return;
     // the cap: the oldest standing copies shatter now
     let alive = 0;
@@ -622,39 +642,54 @@ export class TimeRip {
       o.hold = o.age; // (it shatters this step; its slot frees when its letters are thrown)
       alive--;
     }
-    const k = Math.min(1, Math.max(0, fin(L.k) ? L.k : 1));
-    const ex = L.bx - L.ax, ey = L.by - L.ay, ez = L.bz - L.az;
     // his chest at the contact: the drawn end of the line; the copies' chests along it before that
     const hx = L.ax + ex * k, hy = L.ay + ey * k, hz = L.az + ez * k;
-    let dl = Math.hypot(ex, ey, ez);
     let dx = 1, dy = 0, dz = 0;
     if (dl > 1e-4 && fin(dl)) { dx = ex / dl; dy = ey / dl; dz = ez / dl; }
     else dl = 0;
     const hold = storm || gap > 0 ? Math.min(G.hold, Math.max(G.holdMin, gap * G.gapK)) : G.hold;
     // the cell grid on the screen (the afterimage's: one digit to a cell of G.cell m)
     const A = axes(game), qc = 1 / G.cell;
+    this._spareBoss(game, G.spareR);
     this.ghostAnchorN = 0;
     for (let j = 0; j < want; j++) {
-      const t = want > 1 ? (k * j) / want : k * 0.5;
+      // (evenly from where the pass began; the last one run / want before the contact)
+      const t = (k * j) / want;
       const cx = L.ax + ex * t, cy = L.ay + ey * t, cz = L.az + ez * t;
       const g = this._takeGhost();
       if (!g) break;
       const gi = this.ghosts.indexOf(g), base = gi * GPTS;
       const ox = cx - hx, oy = cy - hy, oz = cz - hz;
-      let m = 0;
-      // (cells already taken in this copy are dropped: digits on top of one another bloom)
+      // his figure as cells of a G.cell grid on the screen (one point a cell: digits on top of one
+      // another bloom), then only its OUTLINE (a cell with an empty side) and one inner cell in
+      // G.inner: the copy reads as his shape, as the Ghostep's afterimage does, not a block of digits
       stamp = (stamp + 1) >>> 0 || 1;
-      for (let i = 0; i < nB && m < GPTS; i += G.step) {
+      let nt = 0;
+      for (let i = 0; i < nB && nt < TMAX; i++) {
         const px = pts[i * 3] + ox, py = pts[i * 3 + 1] + oy, pz = pts[i * 3 + 2] + oz;
         if (!fin(px + py + pz)) continue;
         const sx = px * A.rx + py * A.ry + pz * A.rz, sy = px * A.ux + py * A.uy + pz * A.uz;
         const ci = Math.round(sx * qc), cj = Math.round(sy * qc);
         if (this._seen(ci, cj)) continue;
         const mx = ci * G.cell - sx, my = cj * G.cell - sy;
+        TI[nt] = ci;
+        TJ[nt] = cj;
+        TP[nt * 3] = px + A.rx * mx + A.ux * my;
+        TP[nt * 3 + 1] = py + A.ry * mx + A.uy * my;
+        TP[nt * 3 + 2] = pz + A.rz * mx + A.uz * my;
+        nt++;
+      }
+      let m = 0;
+      for (let q = 0; q < nt && m < GPTS; q++) {
+        const ci = TI[q], cj = TJ[q];
+        const edge = !this._has(ci + 1, cj) || !this._has(ci - 1, cj) || !this._has(ci, cj + 1) || !this._has(ci, cj - 1);
+        if (!edge && (((ci * 7 + cj * 13) % G.inner) + G.inner) % G.inner !== 0) continue;
+        const x = TP[q * 3], y = TP[q * 3 + 1], z = TP[q * 3 + 2];
+        if (this._overBoss(game, x, y, z)) continue;
         const b = (base + m) * 3;
-        this._gpos[b] = px + A.rx * mx + A.ux * my;
-        this._gpos[b + 1] = py + A.ry * mx + A.uy * my;
-        this._gpos[b + 2] = pz + A.rz * mx + A.uz * my;
+        this._gpos[b] = x;
+        this._gpos[b + 1] = y;
+        this._gpos[b + 2] = z;
         this._gdone[base + m] = 0;
         m++;
       }
@@ -694,6 +729,49 @@ export class TimeRip {
     // (the new copies are drawn by this step's update, which runs before the pools age)
   }
 
+  /** (the ghost's cell table, read only: is (i, j) part of this copy's figure) */
+  _has(i, j) {
+    let s = ((Math.imul(i, 73856093) ^ Math.imul(j, 19349663)) >>> 0) & (HASH - 1);
+    for (let p = 0; p < HASH; p++) {
+      if (HS[s] !== stamp) return false;
+      if (HK[s] === i && HV[s] === j) return true;
+      s = (s + 1) & (HASH - 1);
+    }
+    return false;
+  }
+
+  /** The target's body on screen (its hurt spheres as circles, pad m wider) → this._bossC. */
+  _spareBoss(game, pad) {
+    this._bossN = 0;
+    const hs = game.player?.flurry?.att?.hurtSpheres ?? game.boss?.hurtSpheres ?? game.dragon?.hurtSpheres;
+    if (!hs?.length) return;
+    const C = this._bossC;
+    for (const h of hs) {
+      if (this._bossN >= BOSS_C) break;
+      if (!h || !fin(h.x + h.y + h.z + h.r)) continue;
+      const P = screen(game, h.x, h.y, h.z);
+      if (!P.ok) continue;
+      const k = this._bossN * 3;
+      C[k] = P.px;
+      C[k + 1] = P.py;
+      C[k + 2] = (h.r + pad) / P.mpp;
+      this._bossN++;
+    }
+  }
+
+  /** Does (x, y, z) print over the target's body (its circles on screen, spareBoss)? */
+  _overBoss(game, x, y, z) {
+    if (!this._bossN) return false;
+    const P = screen(game, x, y, z);
+    if (!P.ok) return false;
+    const C = this._bossC;
+    for (let i = 0; i < this._bossN; i++) {
+      const dx = P.px - C[i * 3], dy = P.py - C[i * 3 + 1], r = C[i * 3 + 2];
+      if (dx * dx + dy * dy < r * r) return true;
+    }
+    return false;
+  }
+
   /** (the ghost's cell table: true when (i, j) is taken in this copy) */
   _seen(i, j) {
     let s = ((Math.imul(i, 73856093) ^ Math.imul(j, 19349663)) >>> 0) & (HASH - 1);
@@ -727,6 +805,8 @@ export class TimeRip {
     const fresh = this._now >= this._gdl;
     const life = fresh ? Math.max(0.0101, step * 1.5) : Math.max(0.0101, this._gdl - this._now + step);
     if (fresh) this._gdl = this._now - step + life;
+    // (the target reels under the cut: its body is spared again every frame a copy is printed)
+    this._spareBoss(this.game, G.spareR);
     for (let gi = 0; gi < GCAP; gi++) {
       const g = this.ghosts[gi];
       if (!g.alive) continue;
@@ -761,11 +841,12 @@ export class TimeRip {
         }
         left++;
         if (!fresh && g.drawn) continue;
-        // standing: perfectly still, one copy for this frame
+        // standing: perfectly still, one copy for this frame (a digit the boss has moved over waits)
+        if (this._overBoss(this.game, GP.x, GP.y, GP.z)) continue;
         GP.vx = GP.vy = GP.vz = 0;
         GP.life = life;
         GP.sizeEnd = G.size;
-        GP.color = GP.colorEnd = i % 11 === 0 ? G.hi : G.col;
+        GP.color = GP.colorEnd = i % G.hiEvery === 0 ? G.hi : G.col;
         GP.alpha = GP.alphaEnd = G.alpha;
         GP.drag = 0;
         GP.stretch = 1;

@@ -369,11 +369,12 @@ export class Pipeline {
         // printed letters, for two or three frames. uCutN = live cuts (0: the pass reads nothing); per
         // cut uCutA = its two ends (frame px, y up), uCutB = (1 strip | 2 negative, the band's
         // half-width in art cells, the strip's shift in cells, the negative's weight); uCutTone = the
-        // negative's pale cell (rgb) and how hard a lit letter darkens it (all set by TimeRip.write)
+        // negative's pale cell (rgb) and w: a pixel brighter than the scene x uBg x w is a letter's
+        // stroke (printed dark) (all set by TimeRip.write)
         uCutN: { value: 0 },
         uCutA: { value: Array.from({ length: CUT_SLOTS }, () => new THREE.Vector4()) },
         uCutB: { value: Array.from({ length: CUT_SLOTS }, () => new THREE.Vector4()) },
-        uCutTone: { value: new THREE.Vector4(0.5, 0.55, 0.62, 1.6) },
+        uCutTone: { value: new THREE.Vector4(0.46, 0.5, 0.56, 2.5) },
         uTime: U.uTime ?? { value: 0 },
         // LETTING GO (letGo.js): the dying wyrm's letters let go cell by cell and fall; shared with
         // its materials (uWyrmGrid: the art cell and the grid anchor; uWyrmLetGo.x: 0 = off)
@@ -1250,10 +1251,16 @@ export class Pipeline {
           if (uCutN > 0.5) cutBand(gCutPx);
           cellMain();
           if (uWyrmLetGo.x > 0.0) letGoFall();
-          // the time rip's negative: the letters dark on a pale steel cell (the band only)
+          // the time rip's negative (the band only): the letter that was printed here, inverted. A
+          // pixel of a letter's stroke is brighter than the cell's background (black on a figure, the
+          // scene's colour x uBg on the floor): above that x uCutTone.w it is a stroke and prints
+          // dark, everything else in the cell prints the pale steel. The glyph's mask, not a fill.
           if (gCutNeg > 0.0) {
-            vec3 ink = uCutTone.rgb * clamp(1.0 - luma(gl_FragColor.rgb) * uCutTone.w, 0.0, 1.0);
-            gl_FragColor.rgb = mix(gl_FragColor.rgb, ink, clamp(gCutNeg, 0.0, 1.0));
+            vec3 col = gl_FragColor.rgb;
+            float bg = luma(texture2D(tScene, gl_FragCoord.xy / uRes).rgb) * uBg * uCutTone.w;
+            float lit = step(max(0.004, bg), luma(col));
+            vec3 neg = mix(uCutTone.rgb, uCutTone.rgb * 0.05, lit);
+            gl_FragColor.rgb = mix(col, neg, clamp(gCutNeg, 0.0, 1.0));
           }
         }
       `,

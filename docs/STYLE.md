@@ -1788,16 +1788,23 @@ ink on black, never over the hero.
     0.05 s) it splits along its whole length at once: a bright seam (1.2), two lips a cell then two
     cells off it (a lens, pinched to the line at both ends), closing to one cell, then a broken trail of
     specks; five frames of 0.035 s. The last blow splits every hairline still waiting.
-  - `strip`, the torn strip: for three frames (1/60 s each) the letters already printed within 1.5
-    cells of the line (3 - 4 cells across) are printed from 3, 3, then 1 cells along it, each side the
-    other way (whole 5 x 8 cells), then back; the cells on the line stay and carry a crisp steel seam
-    (1.15, 0.9, 0.55). Only displacement: no tint, no light.
-  - `ghosts`, frozen afterimages: on each cut 4 still copies of him (1 a storm cut, 10 alive at most)
-    on the line from where the pass began to the contact, his pose at the contact, printed as the
-    Ghostep's afterimage (one fine digit to a 0.13 m cell, its cold blue-white, alpha 0.55, one digit
-    in eleven brighter); they stand still 0.12 s (a storm: 0.6 x the gap, at least 0.04 s), then
-    shatter over 0.08 s from the start of the pass toward the contact, each digit thrown along the
-    cut; the last blow shatters them all at once.
-  - `negative`, the inverted line: for two frames the cells within 0.75 cells of the line (1 - 2
-    across) print in negative: a pale steel cell (0.5, 0.55, 0.62) with the letters dark in it, a crack
-    of light in the picture. Then gone.
+  - `strip`, the torn strip: for three frames (1/60 s each, the contact's frame the first) the
+    letters already printed within 3 cells of the line on either side (6 across), along the WHOLE line
+    (not only the part drawn at the contact), are printed from 4, 3, then 1 cells along it, each side
+    the other way (whole 5 x 8 cells), then back; the cells on the line stay and carry a crisp steel
+    seam (1.15, 0.9, 0.55). Only displacement: no tint, no light.
+  - `ghosts`, frozen afterimages: on each cut 3 still copies of him (1 a storm cut, 7 alive at most;
+    fewer when the run so far is too short to hold them 0.75 m apart, from each other and from him at
+    the contact) on the line from where the pass began toward the contact, his pose at the contact.
+    Each reads as HIM, not a block: his figure on a 0.13 m cell grid, of which only the outline cells
+    (a cell with an empty side) and one inner cell in seven print, one fine digit each (about 40 - 50
+    a copy), dim cold blue (0.3, 0.5, 0.98), alpha 0.38, one digit in seventeen brighter; no digit
+    within 0.12 m of the target's hurt spheres on screen (checked every frame: the boss reels). They
+    stand still 0.12 s (a storm: 0.6 x the gap, at least 0.04 s), then tear off in 0.045 s from the
+    start of the pass toward the contact, each digit thrown along the cut; the last blow tears them
+    all at once.
+  - `negative`, the inverted line: for two frames (the contact's the first) the cells within 0.6
+    cells of the whole line (1 - 2 across) print in negative: each pixel of a letter's stroke (brighter
+    than the cell's background: black on a figure, the scene x uBg on the floor, x 2.5) prints dark, the
+    rest of the cell a pale steel (0.46, 0.5, 0.56): the letter that was there, inverted, never a flat
+    fill. A cell with no letter in it prints pale. Then gone.
