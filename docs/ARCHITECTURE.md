@@ -301,6 +301,12 @@ Render helpers for creature modules:
     exactly what `setSize` gives (it records `_heroPx`), so a boss without the flag is drawn as before; one
     grid serves every boss pixel, so his paper selves share his cell. (`foxLetters` is read for every boss that sets `letters`: it
     stays 'b' on Tian Lei's level, which never sets it.)
+    **The bosses printed the hero's way** (ADR-194): main.js writes `U.uBossPrint` (x on, y own colours 1 / the
+    hero's greys 0, z the boss's feet in world y, w the hem's height above them) and the pass's `uBossLike` (x his
+    ink lines per font pixel, y the player's part tables for plates 12 - 16) every frame from
+    `lookOf('bossPrint', '0', 'b')`. Every ink-line material reads `uBossPrint` (`HERO_ART_SHARED`) except the
+    player's (`heroSelf` compiles `SG_HERO_SELF`): the fill is lifted in the shader, so whoever writes `uArtFill`
+    needs no change.
     Ink lines are drawn per pixel by the pass, not from glyphs. `U.uArtHeroCel` (vec3: step from
     shadow to lit between x and y, z = share of the step) cel-shades the art source;
     `U.uHeroPartRim[20]` (vec4: tint × gain) is each part's silhouette ink; fill style + 8 = a

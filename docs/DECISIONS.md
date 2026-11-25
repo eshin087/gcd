@@ -5513,6 +5513,40 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   him and a green sword at tiers 1+ (the owner may want the aura green too). On-device frame rate is unverified (one
   more batch, up to ~160 instances, one draw call).
 
+## ADR-194 — The human bosses are printed the hero's way, in their own colours (2026-11-24)
+
+**Context.** The owner sent the hero at the game camera, enlarged ("i especially love the gray colored details
+to make the bottom of the cape look flowing and to show different shades on the upper top"), and asked for
+every boss to look "all built with ascii" like him; Wen Yao was the closest. Six of the seven human bosses
+already printed in the hero's ink-line art, through the same letters and cells. What set them apart was the
+SOURCE they handed the art pass: flat dark fills (the Lord and Xin Yi printed as faint `+` marks inside a thin
+bright outline) or flat bright colours (Wen Yao's amber, Halcyon's red), a 1 px hairline outline where the
+hero's strokes step with his font pixels, and no pale hem. Lu Wusheng printed in the wyrm's digits.
+
+A first sheet only darkened the fills and added a faint hem; the owner: "im not really seeing the difference
+besides a reshade". The second sheet (lit letter bodies, the hero's strokes and rims, the hem; grey or each
+boss's own colours) was picked: "Yes, own colours".
+
+**Decision.** `?bossPrint=0|a|b`, default `b` (lookSwitch PICKED; Lab LOOKS row `bossPrint`, live):
+- **The fills** (materials.js, `uBossPrint`, a shared uniform; every ink-line material but the player's, which
+  compiles `SG_HERO_SELF`): each cloth / hair / plate part (parts 3 - 16; the face, the eyes and what glows keep
+  theirs) is lifted to the hero's lit letter body: its brightness mapped to 0.1 - 0.24 like his coat, then
+  lifted (× 1.5); its hue kept at 75 % (`b`) or at 35 % with his greys (`a`). Done in the shader, so every
+  writer of `uArtFill` (forms, phases, the fox's clones, the Lab) goes through it unchanged.
+- **The hem:** below his knee (his feet, `uBossPrint.z`, followed every frame by main.js, + 0.62 m) along a
+  ragged line, every part but the trousers, the hair, the plate and the crest prints as the hero's `hem` part
+  (16: pale lavender, dotted edges), tinted toward the boss's own colour in `b`.
+- **The lines** (pipeline.js `uBossLike`): his ink lines are found per font pixel (the hero's blocky strokes),
+  and his plates (parts 12 - 16) read the player's part tables (HERO_SELF: the cloth's dim dotted rim, not a
+  white outline). Not the blade: the player's blade entry is dimmed and lit by his own cuts every frame.
+- **Lu Wusheng** prints in the ink-line art by default (`sheathArt` a, was 2): the owner picked the sheet that
+  showed him so. ADR-152's note ("a read as a 3D model") was before this print.
+
+**Not changed.** Shapes and outfits: the bosses wear slimmer clothes than the hero's broad cloak, so they show
+fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the animals: next, in this direction.
+
+**Cost.** A few ALU per boss fragment, two uniforms; no new draw call, texture or pass.
+
 ## ADR-184 — Combat text at fixed, smaller sizes (2026-11-24)
 
 - **Context:** the owner noticed the combat text next to the hero (counter, deflect, damage numbers) looked much

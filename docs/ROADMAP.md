@@ -185,6 +185,13 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.86 — The bosses printed the hero's way (2026-11-24, `render/boss-hero-ink`, ADR-194)
+- [x] Why they looked apart: same letters, but flat dark / flat bright fills, a hairline outline, no hem
+- [x] `?bossPrint=0|a|b` (the shader: lit letter bodies, the hem below the knee; the art pass: his strokes and rims); b the owner's pick
+- [x] Lu Wusheng in the hero's letters by default (`sheathArt` a)
+- [ ] Seen by the owner in play and on the iPhone
+- [ ] The Cinder Wyrm, the props and the animals in this direction (their own art paths)
+- [ ] Outfits nearer the hero's mass (a cloak or long cloth per boss) if the owner wants more letters across
 ## M1.85 — The grass bends round the hero's wake (2026-11-25, `world/grass-bend`, ADR-193)
 - [x] The hero's wake as a path in the shader: blades bend along his way and spring back, no dark trail (`?bend=b`)
 - [x] The steps' trample only with `?bend=0`; a sprint or landing presses a wider wake
