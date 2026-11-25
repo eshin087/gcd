@@ -46,7 +46,7 @@ export const DP_FIGHTERS = 10;
 /** The outline's strokes, in dpRidge's order. */
 export const DP_RIDGE_CHARS = '_-/\\()|';
 
-const v4s = (n) => Array.from({ length: n }, () => new THREE.Vector4());
+const v4s = (n) => Array.from({ length: n }, () => new THREE.Vector4(0, 0, 0, 0));
 
 export const DP_FX_U = {
   uDpFxOn: { value: [0, 0, 0, 0] }, // cloud, contact, ripple, ridge: 0 off, 1 'a', 2 'b'
