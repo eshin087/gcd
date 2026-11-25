@@ -19,6 +19,14 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-24',
+        title: 'A heavier light combo',
+        notes: [
+          'Your light combo hits on the same beat as before, but it now looks heavy: you load your hips before the cut, plant your front foot, sink into every blow and hold the finish a moment before you recover.',
+          'The finisher slams down deeper. Prefer the old motion? Add ?lights=old to the address.',
+        ],
+      },
+      {
+        date: '2026-11-24',
         title: 'Smaller combat text',
         notes: [
           'The words over your hero (PARRY, DEFLECT, COUNTER and the rest) and the damage numbers are smaller, closer to the HUD\'s own text.',

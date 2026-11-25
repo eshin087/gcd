@@ -5675,7 +5675,7 @@ async function scenarioHeroLife() {
       const crosses = Math.abs(front.a[0]) <= 45;
       if (!(steep <= 50) || (crosses && !(Math.abs(front.a[1]) <= 20))) bad.push(`${name} (steepest ${steep}°, ${front.a[1]}° as it crosses his front)`);
       const mid = C.keys.find((k) => Array.isArray(k.a) && Math.abs(k.u - 1.5) < 0.06);
-      if (mid && !C.keys.some((k) => k.two === 1) && name !== 'whirl' && name !== 'risingWhirl') whip.push([name, Math.abs(mid.a[0])]);
+      if (mid && !C.keys.some((k) => k.two === 1) && !/^(whirl|risingWhirl)(Old)?$/.test(name)) whip.push([name, Math.abs(mid.a[0])]);
     }
     out(`   planes: ${Object.keys(SWINGS).length} clips, upright ones: ${bad.join('; ') || 'none'}; blade behind the hand at mid-cut: ${whip.map(([n, v]) => `${n} ${v}°`).join(' · ')}`);
     assert(!bad.length, `every cut is a diagonal: the blade under 50° of elevation in the active frames and within 20° of level as it crosses his front (${bad.join('; ') || 'all'})`);
@@ -7122,7 +7122,8 @@ async function scenarioHeroWeight() {
     }
     return m - p.position.y;
   };
-  const L10 = ['fallingCut', 'drawCut', 'risingSlash', 'risingBackhand', 'flatBackhand', 'fallingBackhand', 'lowSweep', 'lunge', 'risingThrust', 'rollCut'];
+  // (the chain's looks; ADR-188: the draw slash is the chain's draw cut, `drawCut` is the flurry's and One Breath's now)
+  const L10 = ['fallingCut', 'drawSlash', 'risingSlash', 'risingBackhand', 'flatBackhand', 'fallingBackhand', 'lowSweep', 'lunge', 'risingThrust', 'rollCut'];
   const wrapA = (x) => Math.atan2(Math.sin(x), Math.cos(x));
   const inv = new THREE.Matrix4(), invB = new THREE.Matrix4(), invP = new THREE.Matrix4(), v = new THREE.Vector3(), w = new THREE.Vector3();
   // a joint's facing (its local +z) in the root's frame, as a yaw
@@ -7647,6 +7648,240 @@ async function scenarioHeroWeight() {
 // drawn figure is lean-sheared and scaled: world angles lie): the charged blade's pass by his head;
 // the elbows opening at a cut's contact and a thrust's end, and never locking; the elbows kept in
 // beside the ribs on the run; the shoulders riding with the reach; a hanging arm that hangs.
+// The light chain's weight pass (ADR-188; ?lights=old plays the clips before it). The same hits, the
+// same clock: what changes is the body. Every look of the chain is swung in both modes (mashed chains,
+// each hit's look forced, and the four light → heavy branches), sampled per frame in the hero's own
+// frame: the pop audit (the largest per-frame second difference of the wrists, elbows, blade point,
+// feet and head), the elbows' interior angles, the blade's gap from the hood, the blade drawn toward
+// the game camera; the weight (the hips' sink at the contact and at the finish, the finish held). And
+// the hit test: at 2.5 m from the wyrm's chest each hit lands on the same frame as before.
+// ABYSS_DUMP=<file>: every sampled frame of both modes as JSON (the review films' measurements).
+async function scenarioHeroLights() {
+  out('\n== scenario HEROLIGHTS (the light chain\'s weight pass, ADR-188: the same hits on the same clock, the body heavier; ?lights=old) ==');
+  const CB = await imp('src/entities/player/combat.js');
+  const { LIGHT, setLights, lightsMode, LIGHTS_IDS } = CB;
+  const { SWINGS } = await imp('src/entities/player/swings.js');
+  const G = build();
+  const { game, input } = G;
+  fightSetup(G);
+  const p = game.player, d = game.dragon, A = p.anim, r = p.rig, HD = HERO_DIM;
+  p.debug.god = true;
+  const far = () => { p.debug.teleport(d.position.x + 14, d.position.z + 14); p.yaw = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z); aimAt(G); };
+  const go = (s, each) => { for (let i = 0, n = Math.round(s / DT); i < n; i++) { G.tick(DT); each?.(); } };
+  const DEG = 180 / Math.PI, S = p.drawScale || 1;
+  // (1) the switch changes only the looks: every number of every hit is the same in both modes
+  const NUM = ['windup', 'active', 'recovery', 'chain', 'damage', 'poise', 'lunge', 'reach', 'hitstop', 'shake', 'bite', 'punch', 'kick', 'combo', 'kind', 'contact', 'heavy', 'up'];
+  const sig = () => JSON.stringify(LIGHT.map((L) => NUM.map((k) => L[k] ?? null)));
+  const clipsOf = () => LIGHT.flatMap((L) => [L.anim, ...(L.variants ?? [])].map((an) => an.clip));
+  const sigNew = sig(), clipsNew = clipsOf();
+  setLights('old');
+  const sigOld = sig(), clipsOld = clipsOf();
+  setLights('new');
+  assert(sigNew === sigOld && LIGHTS_IDS.join() === 'new,old' && lightsMode() === 'new' && !setLights('x') && lightsMode() === 'new',
+    'the chain\'s looks switch (setLights new / old) and nothing else: every hit\'s timing, damage, reach, tells and weight are the same in both');
+  assert(clipsOld.every((c) => SWINGS[c]) && clipsNew.every((c) => SWINGS[c]) && clipsOld.every((c, i) => c !== clipsNew[i]) && clipsOld.includes('drawCut') && clipsOld.includes('slam'),
+    `?lights=old plays the clips before the pass (${[...new Set(clipsOld)].join(', ')}), the default the reworked ones (${[...new Set(clipsNew)].join(', ')})`);
+  {
+    // the Lab's PLAYER → `lights` row switches it live and lights the button
+    input.tap('F1');
+    G.tick(DT);
+    const btns = game.lab.ui.lightsBtns ?? [];
+    const B = (m) => btns.find((x) => x.m === m);
+    const newOn = !!B('new')?.el.classList.contains('on');
+    B('old')?.el.dispatch('click');
+    G.tick(DT);
+    const oldOk = lightsMode() === 'old' && LIGHT[0].anim.clip === 'fallingCutOld' && !!B('old')?.el.classList.contains('on') && !B('new').el.classList.contains('on');
+    B('new')?.el.dispatch('click');
+    G.tick(DT);
+    input.tap('F1');
+    G.tick(DT);
+    assert(btns.length === 2 && newOn && oldOk && lightsMode() === 'new' && LIGHT[0].anim.clip === 'fallingCut', `the Lab's \`lights\` row: weighted / before, live (${btns.length} buttons)`);
+  }
+
+  // (2) the sampler: one frame in the root's frame (metres, unscaled), after a tick
+  const inv = new THREE.Matrix4(), v = new THREE.Vector3(), w = new THREE.Vector3(), q = new THREE.Vector3();
+  const loc = (o, x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z).applyMatrix4(o.matrixWorld).applyMatrix4(inv).divideScalar(S);
+  const camDir = new THREE.Vector3();
+  const sample = () => {
+    inv.copy(r.root.matrixWorld).invert();
+    const a = p.atk, def = a?.def;
+    const clip = def && (p.state === 'attack' || p.state === 'heavy') && !a.pending ? (A.atkDef === def && A.atkAnim ? A.atkAnim : def.anim)?.clip ?? null : null;
+    const F = {
+      clip, t: a?.t ?? 0, dt: game.dt, kind: def?.kind ?? null, name: def?.name ?? null, W: def?.windup ?? 0, Ac: def?.active ?? 0, R: def?.recovery ?? 0,
+      wR: loc(r.arms.R.fore, 0, -HD.foreArm, 0), wL: loc(r.arms.L.fore, 0, -HD.foreArm, 0),
+      eR: loc(r.arms.R.fore), eL: loc(r.arms.L.fore), sR: loc(r.arms.R.upper), sL: loc(r.arms.L.upper),
+      hilt: loc(r.sword, 0, 0, HD.bladeBase), tip: loc(r.sword, 0, 0, HD.bladeTip),
+      fR: loc(r.legs.R.foot), fL: loc(r.legs.L.foot), head: loc(r.head), hip: loc(r.pelvis),
+    };
+    // the chest's and the hips' facing (yaw in the root's frame)
+    F.ch = Math.atan2((q.set(0, 0, 1).applyMatrix4(r.chest.matrixWorld).applyMatrix4(inv).x - loc(r.chest).x * S), q.z - loc(r.chest).z * S);
+    F.pel = Math.atan2((q.set(0, 0, 1).applyMatrix4(r.pelvis.matrixWorld).applyMatrix4(inv).x - F.hip.x * S), q.z - F.hip.z * S);
+    // the blade drawn toward the camera: the screen length of the steel over its length (1 = across the view)
+    camDir.subVectors(v.setFromMatrixPosition(r.sword.matrixWorld), game.camera.position).normalize();
+    w.set(0, 0, HD.bladeBase).applyMatrix4(r.sword.matrixWorld);
+    q.set(0, 0, HD.bladeTip).applyMatrix4(r.sword.matrixWorld).sub(w).normalize();
+    F.screen = Math.sqrt(Math.max(0, 1 - q.dot(camDir) ** 2));
+    // elbows' interior angles (deg)
+    const ang = (s, e, h) => Math.acos(clamp(v.subVectors(s, e).normalize().dot(w.subVectors(h, e).normalize()), -1, 1)) * DEG;
+    F.elR = ang(F.sR, F.eR, F.wR);
+    F.elL = ang(F.sL, F.eL, F.wL);
+    // the blade's least gap from the head's centre (the hood is ~0.13-0.17 m round it)
+    let g = Infinity;
+    for (let k = 0; k <= 8; k++) g = Math.min(g, q.lerpVectors(F.hilt, F.tip, k / 8).distanceTo(F.head));
+    F.hood = g;
+    return F;
+  };
+  const PTS = ['wR', 'wL', 'eR', 'eL', 'tip', 'fR', 'fL', 'head'];
+  const runs = {};
+  const record = (mode, tag) => { const list = runs[mode]; return () => { const F = sample(); F.tag = tag; list.push(F); }; };
+  const swingAll = (mode) => {
+    setLights(mode);
+    runs[mode] = [];
+    // mashed chains, each look of each hit forced
+    for (let look = 0; look < 3; look++) {
+      far();
+      go(0.8);
+      A.forceVariant = look;
+      for (let k = 0; k < 5; k++) { input.click(0); go(k === 4 ? 1.1 : CHAIN_EVERY, record(mode, `chain${look}`)); }
+      go(0.5, record(mode, `chain${look}`));
+    }
+    // each light alone, from rest (a hit 2-5 alone: the chain before it, unrecorded, then a calm spell
+    // is not possible - the chain resets - so the single ones are hit 1's looks)
+    for (let look = 0; look < 3; look++) {
+      far();
+      go(1.0);
+      A.forceVariant = look;
+      input.click(0);
+      go(1.0, record(mode, `single${look}`));
+    }
+    // the branches: n lights, then the heavy in the n-th one's recovery
+    A.forceVariant = 0;
+    for (let n = 1; n <= 4; n++) {
+      far();
+      go(1.0);
+      for (let k = 0; k < n; k++) { input.click(0); go(CHAIN_EVERY, record(mode, `branch${n}`)); }
+      input.click(2);
+      go(1.3, record(mode, `branch${n}`));
+    }
+    A.forceVariant = null;
+    setLights('new');
+  };
+  swingAll('old');
+  swingAll('new');
+
+  // (3) the measures, per clip (the light looks) and over the whole of each run
+  const pop = (list, filt) => {
+    // the largest second difference of a point between three frames of equal steps (no freeze frames)
+    let worst = 0, at = '';
+    for (let i = 1; i + 1 < list.length; i++) {
+      const a = list[i - 1], b = list[i], c = list[i + 1];
+      if (a.tag !== b.tag || b.tag !== c.tag || Math.abs(a.dt - DT) > 1e-4 || Math.abs(b.dt - DT) > 1e-4 || Math.abs(c.dt - DT) > 1e-4) continue;
+      if (filt && !filt(b)) continue;
+      for (const k of PTS) {
+        const dd = Math.hypot(c[k].x - 2 * b[k].x + a[k].x, c[k].y - 2 * b[k].y + a[k].y, c[k].z - 2 * b[k].z + a[k].z);
+        if (dd > worst) { worst = dd; at = `${k} ${b.clip ?? b.tag} t ${b.t.toFixed(2)}`; }
+      }
+    }
+    return { worst, at };
+  };
+  const LOOKS = [...new Set(clipsNew)], LOOKS_OLD = [...new Set(clipsOld)];
+  const per = (mode, clip) => {
+    const fr = runs[mode].filter((F) => F.clip === clip && (F.kind === 'light' || F.kind === 'slam'));
+    if (!fr.length) return null;
+    const ph = (F) => (F.t < F.W ? F.t / F.W : F.t < F.W + F.Ac ? 1 + (F.t - F.W) / F.Ac : 2 + (F.t - F.W - F.Ac) / F.R);
+    const at = (u0, u1) => fr.filter((F) => ph(F) >= u0 && ph(F) <= u1);
+    const mean = (xs) => xs.reduce((s, x) => s + x, 0) / Math.max(1, xs.length);
+    const contact = at(1.4, 1.6), finish = at(2.0, 2.35), hold = at(2.12, 2.3);
+    const tipSpeed = (xs) => mean(xs.map((F) => { const i = fr.indexOf(F); return i > 0 && fr[i - 1].tag === F.tag ? F.tip.distanceTo(fr[i - 1].tip) / Math.max(1e-4, F.dt) : NaN; }).filter(Number.isFinite));
+    return {
+      n: fr.length,
+      pop: pop(runs[mode], (F) => F.clip === clip).worst,
+      sinkHit: mean(contact.map((F) => F.hip.y)), sinkEnd: Math.min(...finish.map((F) => F.hip.y)),
+      elR: [Math.min(...fr.map((F) => F.elR)), Math.max(...fr.map((F) => F.elR))], elL: [Math.min(...fr.map((F) => F.elL)), Math.max(...fr.map((F) => F.elL))],
+      hood: Math.min(...fr.map((F) => F.hood)), screen: Math.min(...finish.map((F) => F.screen)),
+      cut: tipSpeed(at(1.0, 2.0)), held: tipSpeed(hold),
+    };
+  };
+  const PAIRS = LOOKS.map((c, i) => [clipsOld[clipsNew.indexOf(c)], c]);
+  const rows = PAIRS.map(([o, n]) => ({ o, n, A: per('old', o), B: per('new', n) })).filter((R) => R.A && R.B);
+  const f2 = (x) => (Number.isFinite(x) ? x.toFixed(2) : '-'), cm = (x) => (Number.isFinite(x) ? (x * 100).toFixed(0) : '-');
+  for (const R of rows) {
+    out(`   ${R.n.padEnd(15)} pop ${cm(R.A.pop)}→${cm(R.B.pop)} cm · hips at the contact ${cm(R.A.sinkHit)}→${cm(R.B.sinkHit)} cm, lowest finish ${cm(R.A.sinkEnd)}→${cm(R.B.sinkEnd)} · elbow R ${R.A.elR.map((x) => x.toFixed(0)).join('-')}→${R.B.elR.map((x) => x.toFixed(0)).join('-')}°, L ${R.A.elL.map((x) => x.toFixed(0)).join('-')}→${R.B.elL.map((x) => x.toFixed(0)).join('-')}° · hood gap ${cm(R.A.hood)}→${cm(R.B.hood)} cm · finish on screen ${f2(R.A.screen)}→${f2(R.B.screen)} · point ${f2(R.A.cut)}→${f2(R.B.cut)} m/s in the cut, ${f2(R.A.held)}→${f2(R.B.held)} held`);
+  }
+  const whole = { old: pop(runs.old), new: pop(runs.new) };
+  const trans = { old: pop(runs.old, (F) => !F.clip || F.kind === 'heavy' || F.t < F.W * 0.5), new: pop(runs.new, (F) => !F.clip || F.kind === 'heavy' || F.t < F.W * 0.5) };
+  out(`   pop audit (largest per-frame second difference, cm): whole runs ${cm(whole.old.worst)} (${whole.old.at}) → ${cm(whole.new.worst)} (${whole.new.at}); the joins (entries, heavies, the way home) ${cm(trans.old.worst)} (${trans.old.at}) → ${cm(trans.new.worst)} (${trans.new.at})`);
+  {
+    // per point over the whole runs (the blade point's whip dominates the single worst number)
+    const by = (list) => {
+      const o = Object.fromEntries(PTS.map((k) => [k, 0]));
+      for (let i = 1; i + 1 < list.length; i++) {
+        const a = list[i - 1], b = list[i], c = list[i + 1];
+        if (a.tag !== b.tag || b.tag !== c.tag || [a, b, c].some((F) => Math.abs(F.dt - DT) > 1e-4)) continue;
+        for (const k of PTS) o[k] = Math.max(o[k], Math.hypot(c[k].x - 2 * b[k].x + a[k].x, c[k].y - 2 * b[k].y + a[k].y, c[k].z - 2 * b[k].z + a[k].z));
+      }
+      return o;
+    };
+    const O = by(runs.old), N = by(runs.new);
+    out(`   pop audit per point (cm, old → new): ${PTS.map((k) => `${k} ${cm(O[k])}→${cm(N[k])}`).join(' · ')}`);
+  }
+  assert(rows.length === LOOKS.length && LOOKS_OLD.length === LOOKS.length, `every look of the chain swung in both modes (${rows.length} of ${LOOKS.length})`);
+  assert(rows.every((R) => R.B.pop <= Math.max(R.A.pop * 1.25, R.A.pop + 0.02)) && whole.new.worst <= Math.max(whole.old.worst * 1.25, whole.old.worst + 0.02),
+    `no new pops: per look and over the whole runs the largest per-frame second difference stays within 25 % (or 2 cm) of the chain before (${rows.filter((R) => !(R.B.pop <= Math.max(R.A.pop * 1.25, R.A.pop + 0.02))).map((R) => `${R.n} ${cm(R.A.pop)}→${cm(R.B.pop)}`).join(', ') || 'all'})`);
+  const one = rows.filter((R) => R.n !== 'groundSlam');
+  assert(rows.every((R) => R.B.elR[0] >= 38 && R.B.elL[0] >= 38 && R.B.elR[1] <= 166) && one.every((R) => R.B.hood >= Math.min(0.2, R.A.hood - 0.01)),
+    `the joints: elbows open ≥ 38° (the solver folds them to 40) and never past 166° (one-handed), the blade ≥ 20 cm from the head's centre or no nearer than before (${one.filter((R) => !(R.B.hood >= Math.min(0.2, R.A.hood - 0.01))).map((R) => `${R.n} ${cm(R.B.hood)} cm`).join(', ') || 'all'})`);
+  assert(rows.every((R) => R.B.screen >= Math.min(0.5, R.A.screen - 0.05)), `the finishes are not drawn down the screen at the camera: the steel at least half its length across the view, or no shorter than before (${rows.filter((R) => !(R.B.screen >= Math.min(0.5, R.A.screen - 0.05))).map((R) => `${R.n} ${f2(R.B.screen)}`).join(', ') || 'all'})`);
+  // (4) the weight: the hips lower at the contact and lower still through the finish
+  const deeper = rows.filter((R) => R.B.sinkHit <= R.A.sinkHit - 0.015 && R.B.sinkEnd <= R.A.sinkEnd - 0.015);
+  assert(deeper.length >= rows.length - 2, `he sinks into the blows: the hips ≥ 1.5 cm lower at the contact and at the finish than before in ${deeper.length} of ${rows.length} looks (${rows.filter((R) => !deeper.includes(R)).map((R) => R.n).join(', ') || 'all'})`);
+  const slamR = rows.find((R) => R.n === 'groundSlam');
+  assert(slamR && slamR.B.sinkEnd <= slamR.A.sinkEnd - 0.04, `the finisher lands deeper: the hips ${cm(slamR?.A.sinkEnd)}→${cm(slamR?.B.sinkEnd)} cm at their lowest (≥ 4 cm lower)`);
+
+  // (5) the hit test reads the same blade: at 2.5 m from the chest each hit lands on the frame it did
+  {
+    const fxD = Math.sin(d.yaw), fzD = Math.cos(d.yaw);
+    const chest = () => d.hurtSpheres.filter((h) => h.part === 'body').reduce((a, h) => ((h.x - d.position.x) * fxD + (h.z - d.position.z) * fzD > (a.x - d.position.x) * fxD + (a.z - d.position.z) * fzD ? h : a));
+    const hitAt = (mode, n, look, gap) => {
+      setLights(mode);
+      d.hp = d.maxHp; d.posture = 0; run(G, 1.0, { passive: true }); settle(G);
+      if (n > 1) { p.debug.teleport(d.position.x + fxD * 40, d.position.z + fzD * 40); aimAt(G); }
+      let hit = null;
+      A.forceVariant = look;
+      for (let k = 0; k < n; k++) {
+        if (k === n - 1) {
+          const c = chest();
+          p.debug.teleport(c.x + fxD * (c.r + gap), c.z + fzD * (c.r + gap));
+          p.yaw = Math.atan2(c.x - p.position.x, c.z - p.position.z);
+          G.watch = (nn, dd) => { if (nn === 'player:hitDragon' && !hit) hit = { t: p.atk?.t ?? NaN, y: dd.point?.y ?? NaN }; };
+        }
+        aimAt(G);
+        input.click(0);
+        run(G, k < n - 1 ? CHAIN_EVERY : 1.2, { passive: true });
+      }
+      G.watch = null;
+      A.forceVariant = null;
+      setLights('new');
+      return hit;
+    };
+    const res = [];
+    for (let n = 1; n <= 5; n++) {
+      for (let look = 0; look <= (LIGHT[n - 1].variants?.length ?? 0); look++) {
+        for (const gap of [0.5, 2.5]) res.push({ n, look, gap, o: hitAt('old', n, look, gap), w: hitAt('new', n, look, gap) });
+      }
+    }
+    const fr = (R) => (R.o && R.w ? Math.round((R.w.t - R.o.t) / DT) : NaN);
+    out(`   the hit frame (new − old, frames; at 0.5 / 2.5 m): ${res.map((R) => `L${R.n}#${R.look}@${R.gap} ${R.o ? (R.w ? fr(R) : 'MISS') : 'old miss'}`).join(' · ')}`);
+    assert(res.every((R) => !R.o || (R.w && Math.abs(fr(R)) <= 1)), `every look of every hit lands where it did, within a frame of the same moment (${res.filter((R) => R.o && !(R.w && Math.abs(fr(R)) <= 1)).map((R) => `L${R.n}#${R.look}@${R.gap}`).join(', ') || 'all'})`);
+  }
+  if (process.env.ABYSS_DUMP) {
+    const ser = (F) => { const o = {}; for (const k in F) o[k] = F[k]?.isVector3 ? [F[k].x, F[k].y, F[k].z].map((x) => +x.toFixed(4)) : F[k]; return o; };
+    fs.writeFileSync(process.env.ABYSS_DUMP, JSON.stringify({ old: runs.old.map(ser), new: runs.new.map(ser) }));
+    out(`   dumped ${runs.old.length + runs.new.length} frames to ${process.env.ABYSS_DUMP}`);
+  }
+  return G;
+}
+
 async function scenarioHeroArms() {
   out('\n== scenario HEROARMS (the arms open and close; the elbows stay in; the charged blade clear of his head) ==');
   const { DIM: HD } = await imp('src/entities/player/model.js');
@@ -12535,6 +12770,7 @@ const SCENARIOS = {
   swordmystic: scenarioSwordMystic,
   herohand: scenarioHeroHand,
   heroweight: scenarioHeroWeight,
+  herolights: scenarioHeroLights,
   heroarms: scenarioHeroArms,
   herostance: scenarioHeroStance,
   looks: scenarioLooks,

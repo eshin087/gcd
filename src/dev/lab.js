@@ -20,6 +20,7 @@ import { sfxMode, setSfxMode, chainMode, setChainMode, CHAIN_MODES } from '../au
 import { PARRY_CHAIN } from '../audio/parryChain.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { MYSTIC_IDS, MYSTIC_NAMES, mysticMode, setMystic } from '../entities/player/swordMystic.js';
+import { LIGHTS_IDS, LIGHTS_NAMES, lightsMode, setLights } from '../entities/player/combat.js';
 import { buildLooks } from './labLooks.js';
 import { lookOf, setLook } from '../entities/enemies/duelist/lookSwitch.js';
 import { LIFE, setLife, setLifeK } from '../world/life/lifeSwitch.js';
@@ -1295,6 +1296,20 @@ export class Lab {
       b.title = `?mystic=${m}: ${MYSTIC_NAMES[m]}`;
       return { m, el: b };
     });
+    // the light chain's look (ADR-188: the weighted chain; ?lights=old the chain before it), live: the next
+    // swing plays it. Only the looks change, never a hit's timing, damage or reach (combat.js setLights)
+    const lir = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'lights', lir).title = "the light chain's motion: weighted (the default) or before (?lights=old)";
+    const liGrid = el('div', 'lab-grid', null, lir);
+    liGrid.style.flex = '1';
+    this.ui.lightsBtns = LIGHTS_IDS.map((m) => {
+      const b = button(liGrid, LIGHTS_NAMES[m], () => {
+        setLights(m);
+        this._syncCutBtns();
+      });
+      b.title = m === 'old' ? '?lights=old: the chain before the weight pass' : 'the weighted chain (the default)';
+      return { m, el: b };
+    });
     // the wyrm's heads (entities/dragon/heads.js, ?wyrmFace=): a build-time choice, so a page reload
     const wfr = el('div', 'lab-row', null, body);
     el('span', 'lab-lbl', 'head', wfr).title = "the Cinder Wyrm's heads (?wyrmFace=; reloads the page): drake as it ships, old = the head before, the rest shown and passed on";
@@ -1374,6 +1389,7 @@ export class Lab {
     for (const { s, el: b } of this.ui.impactBtns ?? []) setClass(b, 'on', IMPACT.on[s] === true);
     for (const { s, el: b } of this.ui.streakBtns ?? []) setClass(b, 'on', STREAK_FX.on[s] === true);
     for (const { m, el: b } of this.ui.mysticBtns ?? []) setClass(b, 'on', mysticMode() === m);
+    for (const { m, el: b } of this.ui.lightsBtns ?? []) setClass(b, 'on', lightsMode() === m);
     if (this.ui.perfectBtn) this.ui.perfectBtn.textContent = `perfect: ${perfectMode()}`;
     if (this.ui.parryFxBtn) this.ui.parryFxBtn.textContent = `parryFx ${parryFxMode()}`;
     if (this.ui.burstBtn) this.ui.burstBtn.textContent = `burst ${burstLevel()}`;

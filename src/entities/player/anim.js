@@ -679,6 +679,10 @@ const SW_VEC = { h: P.rH, l: P.lH, rp: P.rP, lp: P.lP, f: P.swF, pn: P.lN };
 const SW_DEG = Math.PI / 180;
 const SW_ENTRY = 1.3; // the entry's tangent (× the straight rate): he leaves the last pose at speed
 const SW_COIL = 0.35; // the blade's rate into the coil (× the straight rate) as it gets there
+// a clip's `gather` [leave, arrive] (ADR-188, the weighted chain): the sword hand and the blade LEAVE the
+// last pose slowly (× the straight rate; SW_ENTRY / the blade's 1.65 without it) and arrive at the coil
+// still moving (the blade's rate; SW_COIL without it). The chain's finishes brake and hold, so the next
+// coil gathers out of a still pose instead of snapping away from it at full speed
 // (0.21, and the slam's and the cleave's 0.385: with 0.3 / 0.55 and a smoothstep both arms whipped
 // home at 6-7 m/s and stopped dead on one frame, a freeze - snap - freeze after every swing)
 const SW_HOME = 0.21; // the fraction of a recovery after which he starts back to the ready stance (a clip's `home`)
@@ -763,6 +767,7 @@ function swingClip(name) {
       rF: def.rF ?? null, lF: def.lF ?? null, step: def.step ?? null, drag: def.drag ?? 0.22, home: def.home ?? SW_HOME,
       lead: Array.isArray(def.lead) ? def.lead : SW_LEAD, fy: Array.isArray(def.fy) ? def.fy : null,
       fold: Number.isFinite(def.fold) ? def.fold : 1, // × the bite's chest fold and head nod (attackPose)
+      gather: Array.isArray(def.gather) ? def.gather : null, // [leave, arrive]: the windup's ease (SW_COIL's note)
       hipCoil: keys.find((k) => k.hip != null && k.u >= 0.9 && k.u <= 1.0)?.hip ?? null, // the hips' turn at the coil
     };
     // (with lungeFeet the feet are its own too: it starts them from where they stood, A.entry, and
@@ -778,7 +783,7 @@ function swingClip(name) {
 }
 
 /** A track at phase u → o[off..] (Catmull-Rom through the keys; the entry leaves at speed). */
-function swingTrack(T, u, o, off) {
+function swingTrack(T, u, o, off, entry = SW_ENTRY) {
   const { U, V, n, len } = T;
   if (u >= U[len - 1]) {
     for (let c = 0; c < n; c++) o[off + c] = V[(len - 1) * n + c];
@@ -791,7 +796,7 @@ function swingTrack(T, u, o, off) {
   const h00 = 2 * s3 - 3 * s2 + 1, h10 = s3 - 2 * s2 + s, h01 = -2 * s3 + 3 * s2, h11 = s3 - s2;
   for (let c = 0; c < n; c++) {
     const a = V[j * n + c], b = V[(j + 1) * n + c];
-    const m0 = j === 0 ? (SW_ENTRY * (b - a)) / h : (b - V[(j - 1) * n + c]) / (t1 - U[j - 1]);
+    const m0 = j === 0 ? (entry * (b - a)) / h : (b - V[(j - 1) * n + c]) / (t1 - U[j - 1]);
     const m1 = j === len - 2 ? 0 : (V[(j + 2) * n + c] - a) / (U[j + 2] - t0);
     o[off + c] = h00 * a + h10 * h * m0 + h01 * b + h11 * h * m1;
   }
@@ -811,7 +816,9 @@ function swingDir(C, F, u, o, off) {
   if (u < U[1]) {
     // (it leaves the last pose at speed and is still moving as it reaches the coil: a dead stop
     // there read as a hitch between two hits of a chain)
-    const x = clamp(u / Math.max(1e-6, U[1]), 0, 1), e = SW_COIL * x + (1 - SW_COIL) * (1 - (1 - x) * (1 - x));
+    const x = clamp(u / Math.max(1e-6, U[1]), 0, 1), G = C.gather;
+    // (`gather`: a cubic leaving at G[0] and arriving at G[1] × the straight rate)
+    const e = G ? 3 * x * x - 2 * x * x * x + G[0] * (x * x * x - 2 * x * x + x) + G[1] * (x * x * x - x * x) : SW_COIL * x + (1 - SW_COIL) * (1 - (1 - x) * (1 - x));
     const fx = F[P.swD], fy = F[P.swD + 1], fz = F[P.swD + 2], fl = Math.hypot(fx, fy, fz) || 1;
     const e0 = Math.asin(clamp(fy / fl, -1, 1)), e1 = Math.asin(clamp(V[4], -1, 1));
     if (Math.max(Math.abs(e0), Math.abs(e1)) > 1.3) {
@@ -912,7 +919,8 @@ function swingPose(p, A, k, t, W, Ac, R) {
   for (const T of C.tracks) {
     for (let c = 0; c < T.n; c++) T.V[c] = F[T.ch + c];
     if (T.Vk) for (let i = 1; i < T.len; i++) T.V[i] = side * T.Vk[i];
-    swingTrack(T, T.grp === 1 ? uH : T.grp === 2 ? uC : u, p, T.ch);
+    // (`gather`: the arms leave a held finish slowly; the hips and the chest still run ahead at speed)
+    swingTrack(T, T.grp === 1 ? uH : T.grp === 2 ? uC : u, p, T.ch, C.gather && T.grp === 0 ? C.gather[0] : SW_ENTRY);
   }
   const H = C.hand;
   if (H && u < H.U[1]) {

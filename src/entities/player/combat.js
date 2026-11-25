@@ -71,7 +71,7 @@ export const LIGHT = [
     hitstop: 0.055, shake: 0.12, bite: 1, contact: 'light', punch: 0.35, kick: 0.08,
     anim: { kind: 'clip', clip: 'fallingCut' }, // high right → low left
     variants: [
-      { kind: 'clip', clip: 'drawCut', turn: 0.3 }, // low and flat from the right hip, pivoting into it
+      { kind: 'clip', clip: 'drawSlash', turn: 0.3 }, // low and flat from the right hip, pivoting into it
       { kind: 'clip', clip: 'risingSlash', hop: 0.12 }, // a skip in, from the right knee up to high left
     ],
   },
@@ -120,14 +120,59 @@ export const LIGHT = [
     hitstop: 0.12, shake: 0.42, bite: 1.3, contact: 'slam', punch: 1.6, kick: 0.2,
     up: 1.0, // reach band above the blade: lower than the sweeps' so the raise can't tag the neck overhead
     shards: { radius: 1.7, height: 3.2 }, // ground burst at the impact point (hits if the blade missed)
-    // a clip like the lights (swings.js `slam`): a gather at the right hip, a leap as the blade
+    // a clip like the lights (swings.js `groundSlam`): a gather at the right hip, a leap as the blade
     // sweeps up his right side and cocks over the shoulder, one diagonal down into the ground ahead
-    anim: { kind: 'clip', clip: 'slam', hop: 0.26, tuck: 1.2 }, // a leap through the raise, the knees drawn up, landing on the blow
+    anim: { kind: 'clip', clip: 'groundSlam', hop: 0.26, tuck: 1.2 }, // a leap through the raise, the knees drawn up, landing on the blow
     variants: [
-      { kind: 'clip', clip: 'slam', hop: 0.09 }, // nearly grounded: he rises onto his toes and stamps into it
+      { kind: 'clip', clip: 'groundSlam', hop: 0.09 }, // nearly grounded: he rises onto his toes and stamps into it
     ],
   },
 ];
+
+/**
+ * The chain's looks (ADR-188, the weight pass). `?lights=old` (or the Lab's PLAYER → `lights` row,
+ * live) plays the clips it had before (swings.js / lightsOld.js `…Old`, and the `drawCut` and `slam`
+ * it shared with the flurry, One Breath and Earthbreaker); only LIGHT's `anim` / `variants` change, so
+ * every hit's timing, damage, reach, tells and its heavy branch are the same in both. The animator
+ * reads them as each hit starts (anim.js _pickVariant).
+ */
+export const LIGHTS_IDS = ['new', 'old'];
+export const LIGHTS_NAMES = { new: 'weighted', old: 'before' };
+const LIGHT_OLD = [
+  {
+    anim: { kind: 'clip', clip: 'fallingCutOld' },
+    variants: [{ kind: 'clip', clip: 'drawCut', turn: 0.3 }, { kind: 'clip', clip: 'risingSlashOld', hop: 0.12 }],
+  },
+  {
+    anim: { kind: 'clip', clip: 'risingBackhandOld' },
+    variants: [{ kind: 'clip', clip: 'flatBackhandOld', turn: -0.4 }, { kind: 'clip', clip: 'fallingBackhandOld' }],
+  },
+  {
+    anim: { kind: 'clip', clip: 'whirlOld', spin: -1, spinFeet: 'hop' },
+    variants: [{ kind: 'clip', clip: 'risingWhirlOld', spin: -1, spinFeet: 'hop' }, { kind: 'clip', clip: 'lowSweepOld' }],
+  },
+  { anim: { kind: 'clip', clip: 'lungeOld' }, variants: [{ kind: 'clip', clip: 'risingThrustOld' }] },
+  { anim: { kind: 'clip', clip: 'slam', hop: 0.26, tuck: 1.2 }, variants: [{ kind: 'clip', clip: 'slam', hop: 0.09 }] },
+];
+const LIGHT_NEW = LIGHT.map((L) => ({ anim: L.anim, variants: L.variants }));
+let lightsNow = 'new';
+/** The chain's look now: 'new' (the default) or 'old'. */
+export const lightsMode = () => lightsNow;
+/** Switch the chain's look ('new' | 'old'); false for anything else. */
+export function setLights(mode) {
+  if (!LIGHTS_IDS.includes(mode)) return false;
+  const src = mode === 'old' ? LIGHT_OLD : LIGHT_NEW;
+  LIGHT.forEach((L, i) => {
+    L.anim = src[i].anim;
+    L.variants = src[i].variants;
+  });
+  lightsNow = mode;
+  return true;
+}
+{
+  const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('lights') : null;
+  if (q === 'old') setLights('old');
+}
 
 /**
  * The heavy BRANCHES (ADR-115; owner: "Heavy branches"): HEAVY[0] is the heavy pressed on its own,
