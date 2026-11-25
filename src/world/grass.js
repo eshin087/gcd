@@ -1,10 +1,14 @@
 import * as THREE from 'three';
-import { COMMON_GLSL, WIND_GLSL, WIND_FRONTS_LEN, TRAIL_N, TRAIL_CH, TRAIL_SEG } from '../render/shaderLib.js';
+import { COMMON_GLSL, WIND_GLSL, WIND_FRONTS_LEN, TRAIL_N, TRAIL_CH } from '../render/shaderLib.js';
 import { gi, gis } from '../render/glyphs.js';
 import { mulberry32, pickWeighted, fbm2 } from '../core/rng.js';
 import { GRASS } from './grassTuning.js';
 import { mowOn } from './scorch.js';
 import { mowLook } from './mowFx.js';
+import { TRAIL_BEND_GLSL } from './grassTrail.js';
+import { DRAGON_PRINT_GLSL, dragonPrintUniforms } from '../render/dragonPrint.js';
+import { groundLook } from './ground.js';
+import { dgGrassOpt, DG } from './dragonGrass.js';
 
 // Hundreds of thousands of grass blades, each ONE glyph stroke ( | / \ ' Y V ... ) standing
 // on the ground, leaning with the wind, pushed aside by feet, flattened by wing gusts and
@@ -24,6 +28,12 @@ const FLOWERS = [['o', 4], ['*', 3], ['·', 5], ['°', 2], ['.', 3]];
  */
 export function createGrass(U, { count = 260000, extent = 150, density, height, seed = 7, ash = 0, lattice = null } = {}) {
   const rng = mulberry32(seed);
+  // the dragon ground's standing digit blades (`?ground=b&dgGrass=b|c`, world/dragonGrass.js DG.blades):
+  // the blades on a checkerboard of the print's cells, each a short column of lit digits (none of this
+  // drawn or built otherwise: the define DG_PRINT)
+  const dgo = groundLook() === 'b' ? dgGrassOpt() : '0';
+  const pr = dgo === 'b' ? DG.blades : dgo === 'c' ? DG.sparse : null;
+  if (pr && !lattice) lattice = [pr.lattice[0], pr.lattice[1], 0];
   // `?ground=c` (world/ground.js): one blade per lattice cell, all one size, upright (a prototype look)
   if (lattice) count = Math.ceil(extent / lattice[0]) * Math.ceil(extent / lattice[1]);
   const root = new Float32Array(count * 4);
@@ -39,17 +49,17 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
     if (lattice) {
       if (++li >= count) break;
       const row = Math.floor(li / lcols);
-      x = -extent / 2 + ((li % lcols) + 0.5 + (row % 2) * 0.5) * lattice[0];
+      x = -extent / 2 + ((li % lcols) + 0.5 + (pr ? 0 : (row % 2) * 0.5)) * lattice[0];
       z = -extent / 2 + (row + 0.5) * lattice[1];
       // thinner where the meadow is thin, and a cell or two bare in the thick of it
-      if (rng() > Math.min(1, density(x, z) * 1.15)) continue;
+      if (rng() > Math.min(1, density(x, z) * (pr ? pr.keep : 1.15))) continue;
     } else {
       x = (rng() - 0.5) * extent;
       z = (rng() - 0.5) * extent;
       if (rng() > density(x, z)) continue;
     }
-    const flower = rng() < (lattice ? 0.012 : 0.028);
-    const h = lattice ? lattice[2] * (0.92 + 0.08 * rng()) : height(x, z, rng);
+    const flower = rng() < (lattice ? 0.012 : 0.028) && !pr;
+    const h = lattice && !pr ? lattice[2] * (0.92 + 0.08 * rng()) : height(x, z, rng);
     root[n * 4] = x;
     root[n * 4 + 1] = z;
     root[n * 4 + 2] = h;
@@ -109,7 +119,9 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
       uBendE: U.uBendE ?? { value: new THREE.Vector4(0, 1, 0, 0) },
       uFresh: { value: new THREE.Vector3(...B.fresh) },
       uFreshAsh: { value: new THREE.Vector3(...B.freshAsh) },
+      ...(pr ? dragonPrintUniforms() : {}),
     },
+    defines: { DG_PRINT: pr ? 1 : 0 },
     vertexShader: /* glsl */ `
       ${COMMON_GLSL}
       ${WIND_GLSL}
@@ -137,58 +149,20 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
       uniform vec4 uBend, uBendT, uBendS, uBendE;
       varying vec2 vUv;
 
-      // The hero's wake (world/grassTrail.js; its bendAt is this function on the CPU: keep the two the
-      // same). The nearest stretch of his last positions (the newest wins where two cross): there the blade
-      // bends along his way and out from his path, falling off smoothly to the stretch's radius; it holds,
-      // then springs back by its own time (edges sooner). Returns the tip's push (xz, in blade heights) and
-      // in w how bent it is (0..1: the drop and the shade).
-      vec4 trailBend(vec2 p, float hsh) {
-        float best = 0.0, bf = 0.0, bs = 0.0, bage = 0.0;
-        vec2 bo = vec2(0.0), bt = vec2(0.0);
-        int n = int(uBend.y + 0.5);
-        for (int c = 0; c < ${TRAIL_CH}; c++) {
-          vec4 C = uTrailBox[c];
-          if (C.z <= 0.0 || distance(p, C.xy) > C.z) continue;
-          for (int k = 0; k < ${TRAIL_SEG}; k++) {
-            int i = c * ${TRAIL_SEG} + k;
-            if (i + 1 >= n) break;
-            vec4 A = uTrail[i], D = uTrail[i + 1];
-            vec2 e = D.xy - A.xy;
-            float l2 = dot(e, e);
-            float t = l2 > 1e-6 ? clamp(dot(p - A.xy, e) / l2, 0.0, 1.0) : 1.0;
-            float r = mix(A.w, D.w, t);
-            if (r <= 0.01) continue;
-            vec2 q = p - (A.xy + e * t);
-            float ql = length(q);
-            float s = ql / r;
-            if (s >= 1.0) continue;
-            float age = mix(A.z, D.z, t);
-            float f = 1.0 - s * s;
-            f *= f;
-            float w = f * exp(-max(0.0, age - uBendT.x) / (uBendT.y * 2.0));
-            if (w > best) {
-              best = w; bf = f; bs = s; bage = age;
-              float l = sqrt(l2);
-              bt = l > 1e-3 ? e / l : vec2(0.0);
-              bo = ql > 1e-4 ? q / ql : bt;
-            }
-          }
-        }
-        if (best <= 0.0) return vec4(0.0);
-        float tau = uBendT.y * (1.0 - uBendT.w + 2.0 * uBendT.w * hsh) * (1.0 + (uBendE.y - 1.0) * bs);
-        float x = max(0.0, bage - uBendT.x);
-        float ex = exp(-x / tau);
-        float R = uBendT.z > 0.01 ? ex * (cos(uBendT.z * x) + sin(uBendT.z * x) / (uBendT.z * tau)) : ex * (1.0 + x / tau);
-        vec2 d = bt * uBendS.y + bo * (uBendS.z * smoothstep(0.0, 0.45, bs));
-        float ja = (fract(hsh * 9.13 + 0.27) - 0.5) * uBendE.z;
-        float ca = cos(ja), sa = sin(ja);
-        d = vec2(d.x * ca - d.y * sa, d.x * sa + d.y * ca);
-        float dl = length(d);
-        d = dl > 1e-3 ? d / dl : bo;
-        return vec4(d * (bf * R * uBendS.x), 0.0, bf * max(R, 0.0));
-      }
+      // The hero's wake (world/grassTrail.js TRAIL_BEND_GLSL: one chunk, shared with the printed tufts;
+      // GrassTrail.bendAt is its CPU copy)
+      ${TRAIL_BEND_GLSL}
       varying vec3 vCol;
       varying float vGlyph;
+#if DG_PRINT == 1
+      const vec4 DG_TIPS = vec4(${gis('|/\\-').map((v) => v.toFixed(1)).join(', ')}); // upright, right, left, laid
+      // the printed blade (world/dragonGrass.js DG.blades): its root / tip tone, body (lit), the cell's dark
+      // ground, the fire's glow, how many digits, its hash, the fog, burnt
+      varying vec2 vPT, vPT2;
+      varying vec3 vPBody, vPLa, vPAdd;
+      varying vec4 vPRoot;
+      varying float vPN, vPH, vPFog, vPBurnt, vPTip, vPMown;
+#endif
       void main() {
         vec3 root = vec3(iRoot.x, 0.0, iRoot.y);
         vec2 rel = root.xz - uFocus.xz;
@@ -242,6 +216,17 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
           if (burn > 0.3 || torn > 0.4) { w = h = 0.0; }
         }
 
+#if DG_PRINT == 1
+        // a column of whole digits, each the print's cell; a cut blade keeps its root digit (a few, cut to the
+        // root, none): the digits stay whole, the column shortens
+        float nd = clamp(floor(h * (0.6 + 0.8 * fract(iRoot.w * 2.31)) / ${(pr ?? DG.blades).cell[1].toFixed(3)} + 0.5), 1.0, ${(pr ?? DG.blades).rows.toFixed(1)});
+        h = nd * ${(pr ?? DG.blades).cell[1].toFixed(3)};
+        w = ${(pr ?? DG.blades).cell[0].toFixed(3)};
+        lying = 0.0;
+        baseY = 0.0;
+        tilt = 0.0;
+        cutV = mown > 0.5 ? (fract(iRoot.w * 7.31) < max(uMow.z, bare * 0.85) ? 0.0 : 1.0 / nd) : 1.0;
+#endif
         vec2 q = vec2(position.x * w, position.y * h * cutV);
         q = vec2(cos(tilt) * q.x - sin(tilt) * q.y, sin(tilt) * q.x + cos(tilt) * q.y);
         vec3 wp = root + vec3(0.0, baseY, 0.0) + uCamRight * q.x + uBladeUp * q.y;
@@ -280,6 +265,10 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
           float b = min(length(bend), 0.9);
           off = vec3(bend.x, -0.5 * b * b, bend.y) * h;
         }
+#if DG_PRINT == 1
+        off *= ${(pr ?? DG.blades).sway.toFixed(2)};
+        vec3 offW = off;
+#endif
         // trodden (the scorch map's b: world/life/steps.js): it lies flatter, every way
         if (trample > 0.004) {
           float a = iRoot.w * 6.2832;
@@ -349,10 +338,81 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
           float r = fract(iRoot.w * 13.1);
           vGlyph = r < 0.4 ? uBurnt.x : r < 0.75 ? uBurnt.y : uBurnt.z;
         }
+#if DG_PRINT == 1
+        // the dragon print (render/dragonPrint.js): the tone of its root and its tip from the moon on its lean
+        // (the wake, a foot, a gust: never the wind's sway, or the digits would flicker), its shadow there and
+        // the fire's light; dark at the root, bright only where the light catches the tip
+        vec2 ln = (off.xz - offW.xz) / max(h, 1e-3) + (vec2(fract(iRoot.w * 3.7), fract(iRoot.w * 5.3)) - 0.5) * 0.3;
+        vec3 Nb = normalize(vec3(ln.x * 0.8, 1.0, ln.y * 0.8));
+        float tm = smoothstep(uMoonDir.y - 0.3, uMoonDir.y + 0.25, max(dot(Nb, uMoonDir), 0.0));
+        vec3 PLp = pointLights(root + vec3(0.0, 0.35, 0.0), Nb, 0.5);
+        float pl = luma(PLp) * 2.0;
+        // (the moon's share of the tone and of the light is shadowed row by row in the fragment shader, at each
+        // digit's own height: a shadow's edge falls cell by cell, as on the printed ground)
+        vec2 tMoon = vec2(tm * 0.85 * ${(pr ?? DG.blades).root.toFixed(2)}, tm * 0.85);
+        vec2 tRest = vec2(pl * 0.7 - 0.04, pl + 0.05);
+        // (laid by the wake: its whole length catches the moon, a sheen; a mown stub pale at its cut)
+        tRest.y += 0.2 * bendK;
+        tMoon.x = mix(tMoon.x, tMoon.y, bendK);
+        tRest.x = mix(tRest.x, tRest.y, bendK);
+        if (mown > 0.5) {
+          tMoon = vec2(tMoon.y);
+          tRest = vec2(tRest.y + 0.1);
+        }
+        vec3 bodyP = mix(vec3(0.07, 0.11, 0.06), vec3(0.085, 0.08, 0.072), uAsh) * (0.85 + 0.3 * iData.z);
+        bodyP = mix(bodyP, vec3(0.05, 0.045, 0.04), burn);
+        bodyP = mix(bodyP, mix(uFresh, uFreshAsh, uAsh) * 0.42, 0.6 * mown * (1.0 - burn));
+        bodyP *= 1.0 - uBendE.x * bendK;
+        vPT = tMoon;
+        vPT2 = tRest;
+        vPBody = bodyP * 1.15;
+        vPLa = ambientAt(vec3(0.0, 1.0, 0.0)) + PLp;
+        vPRoot = vec4(root, h / nd);
+        vPAdd = vec3(1.0, 0.3, 0.05) * heat * heat * 1.6 * flick;
+        vPN = nd;
+        vPH = iRoot.w;
+        vPFog = smoothstep(uFogNear, uFogFar, length(wp.xz - uFocus.xz));
+        vPBurnt = burn > 0.55 ? 1.0 : 0.0;
+        vPMown = mown;
+        // its tip a stroke the way it leans on screen (its own lean, the wake's, a foot's: not the wind's)
+        float lx = ln.x * 1.4 + (fract(iRoot.w * 11.3) - 0.5) * 0.9;
+        vPTip = abs(lx) > 1.1 ? DG_TIPS.w : lx > 0.3 ? DG_TIPS.y : lx < -0.3 ? DG_TIPS.z : DG_TIPS.x;
+#endif
         gl_Position = projectionMatrix * viewMatrix * vec4(wp, 1.0);
       }
     `,
     fragmentShader: /* glsl */ `
+#if DG_PRINT == 1
+      ${COMMON_GLSL}
+      ${DRAGON_PRINT_GLSL}
+      const float DG_STUBS[3] = float[3](${gis('.:·').map((v) => v.toFixed(1)).join(', ')});
+      varying vec2 vUv;
+      varying float vGlyph;
+      varying vec2 vPT, vPT2;
+      varying vec3 vPBody, vPLa, vPAdd;
+      varying vec4 vPRoot;
+      varying float vPN, vPH, vPFog, vPBurnt, vPTip, vPMown;
+      // the column's digits: row by row up the blade, each picked by its tone (the root's to the tip's, the
+      // moon's share shadowed at the digit's own height); every cell filled (its dark ground drawn: a blade in
+      // front hides the one behind, digits never overlap)
+      void main() {
+        float rf = vUv.y * vPN;
+        float row = clamp(floor(rf), 0.0, vPN - 1.0);
+        vec2 f = vec2(clamp(vUv.x, 0.0, 1.0), rf - row);
+        float s = vPN > 1.0 ? row / (vPN - 1.0) : 1.0;
+        float shr = shadowAt(vec3(vPRoot.x, (row + 0.5) * vPRoot.w * 0.9, vPRoot.z));
+        float t = clamp(mix(vPT.x, vPT.y, s) * shr + mix(vPT2.x, vPT2.y, s), 0.0, 1.0);
+        vec3 L = vPLa + uMoonColor * uMoonDir.y * shr * 0.85;
+        float idx = vPBurnt > 0.5 ? vGlyph : dpGlyph(t, hash12(vec2(vPH * 97.0, row)));
+        if (vPBurnt < 0.5 && vPN > 1.5 && row > vPN - 1.5) idx = vPTip;
+        // a mown stub: a pale short mark, not a digit (world/dragonGrass.js's stubble)
+        if (vPBurnt < 0.5 && vPMown > 0.5) idx = DG_STUBS[int(fract(vPH * 11.3) * 3.0)];
+        vec2 gc = vec2(vUv.x, rf);
+        float m = glyphGrad(idx, f, dFdx(gc), dFdy(gc));
+        vec3 col = vec3(0.008, 0.01, 0.01) * L + (vPBody * L * (0.2 + 1.5 * t) + vPAdd) * m;
+        gl_FragColor = vec4(mix(col, uFogColor, vPFog), 0.0);
+      }
+#else
       uniform sampler2D uGlyphAtlas;
       varying vec2 vUv;
       varying vec3 vCol;
@@ -365,6 +425,7 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
         if (m < 0.42) discard;
         gl_FragColor = vec4(vCol * (0.55 + 0.45 * m), 0.0);
       }
+#endif
     `,
     blending: THREE.NoBlending,
     side: THREE.DoubleSide,
