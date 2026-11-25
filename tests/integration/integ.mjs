@@ -688,6 +688,13 @@ function steadyDefender(G) {
 
 async function scenarioPressure() {
   out('\n== scenario PRESSURE (defender bot in god mode vs the AI, per phase: cues, gaps, mix, chains, fire) ==');
+  // (the seeded fights replay with the flurry's star (?figure=star; 2026-11-24, the chain's figures):
+  // another figure ends each flurry somewhere else, the bot's fight then runs another way and seed
+  // 1337's phase 3 showed a 4.95 s gap between cues (4.5 the bound) with the same blows. The scenario
+  // measures the wyrm's director, not the hero's flurry)
+  const { STREAK_FX: SFXP } = await imp('src/combat/streak.js');
+  const figureP = SFXP.figure;
+  SFXP.figure = 'star';
   const aiMod = await imp('src/entities/dragon/ai.js');
   const P = TUNING.pressure ?? null;
   const SECS = Number(process.env.ABYSS_PSECS ?? 120);
@@ -977,6 +984,7 @@ async function scenarioPressure() {
   // before) with nothing wrong in it: emberStorm, two breaths and 11 cinders instead of 18, the
   // other seeds 55.1 and 54.0, the mean 52.0
   if (A.minRate) for (let ph = 1; ph <= 3; ph++) assert(mean(ph, 'perMin') >= perPhase(A.minRate, ph), `P${ph}: ${mean(ph, 'perMin').toFixed(1)} cues a minute over the seeds (${rows.filter((x) => x.ph === ph).map((x) => x.perMin.toFixed(1)).join(', ')}) >= ${perPhase(A.minRate, ph)}`);
+  SFXP.figure = figureP;
   return lastG;
 }
 
@@ -1196,6 +1204,14 @@ async function scenarioBreach() {
   const { game } = G;
   const D = game.world.destructibles, E = game.world.edge, d = game.dragon, p = game.player;
   G.defend = steadyDefender(G);
+  // (the seeded fight is replayed at the storm's old pace: the defender earns one flurry before the
+  // gap is torn, and with the tempo (2026-11-24) it lasts longer in real time, so seed 4242 ran
+  // another fight from there: a pounce carried the root 0.5 m past its share of the gap for 56
+  // frames and the cues out there read 33 a minute. This scenario is about the wall, not the flurry;
+  // the pounce over the gap's corner is recorded as open in the DEVLOG)
+  const { STREAK_FX: SFX } = await imp('src/combat/streak.js');
+  const tempo0 = SFX.tempo;
+  SFX.tempo = false;
   fightSetup(G, { ai: true });
   Math.random = mulberry32(4242);
   d.debug.setHp(TUNING.phaseAt[1] - 0.01);
@@ -1307,6 +1323,7 @@ async function scenarioBreach() {
   const hr = Math.hypot(p.position.x, p.position.z), wr = Math.hypot(d.position.x, d.position.z);
   const downAgain = D.list.filter((b) => b.def.edge > 0 && b.state !== PIECE.INTACT).length;
   assert(shut && (!E.open || downAgain > 0) && hr <= 31 - p.radius + 0.05 && wr <= d.bound + 0.05, `world.restore(): the wall stands (open after it: ${shut ? 'no' : 'YES'}; ${downAgain} of its trees down again by the fight in the ${(game.time - t0).toFixed(1)} s after, the edge ${E.open ? 'open' : 'shut'}), the hero is back within ${31 - p.radius} m (${hr.toFixed(2)}), the wyrm within ${d.bound} m (${wr.toFixed(2)})`);
+  SFX.tempo = tempo0;
   return G;
 }
 
@@ -2856,9 +2873,13 @@ async function scenarioStorm() {
   const d = game.dragon, p = game.player, F = DEFENSE.flurry, S = F.storm;
   const on0 = { ...STREAK_FX.on }, k0 = { ...STREAK_FX.k };
   /** One flurry of `n` blows (Severing Line): the frame of every blow, where the hero was, the lines. */
-  const take = (n, storm, tiers = true, streak = n) => {
+  const tempo0 = STREAK_FX.tempo, figure0 = STREAK_FX.figure;
+  // (the storm is about pace; its lines are the chain's star: ?figure=star. The figures: integ `chain`)
+  STREAK_FX.figure = 'star';
+  const take = (n, storm, tiers = true, streak = n, tempo = false) => {
     STREAK_FX.on.storm = storm;
     STREAK_FX.on.tiers = tiers;
+    STREAK_FX.tempo = tempo;
     run(G, 2.5, { passive: true });
     settle(G);
     d.hp = d.maxHp;
@@ -2873,13 +2894,14 @@ async function scenarioStorm() {
         let sep = 1;
         const lj = fl.nLines - 1, aj = Math.atan2(L[lj].ax - L[lj].bx, L[lj].az - L[lj].bz);
         for (let a = 0; a < lj; a++) if (!L[a].last) sep = Math.min(sep, Math.abs(Math.sin(aj - Math.atan2(L[a].ax - L[a].bx, L[a].az - L[a].bz))));
-        tr.hits.push({ f: tr.frames, n: e.n, last: e.last, damage: e.damage, gap: e.gap, storm: e.storm, hidden: fl.hidden, d: Math.hypot(p.position.x - T.x, p.position.z - T.z), freeze: fl.freeze, sep });
+        tr.hits.push({ f: tr.frames, n: e.n, last: e.last, damage: e.damage, gap: e.gap, storm: e.storm, hidden: fl.hidden, d: Math.hypot(p.position.x - T.x, p.position.z - T.z), freeze: fl.freeze, sep, hang: fl.hang, w: fl._weight(fl.i) });
       }
       if (nm === 'player:flurryArt' && tr.artF < 0) tr.artF = tr.frames;
       if (nm === 'player:flurryEnd') tr.end = { ...e };
       if (nm === 'player:flurry') tr.ev = { ...e };
     };
     const ok = p.debug.flurry(streak, 'severing');
+    tr.tempo = p.flurry.tempo;
     tr.echo = p.flurry.fx.echo;
     tr.tier = p.flurry.tier;
     for (let i = 0; i < Math.round(9 / DT) && (p.state === 'flurry' || p.state === 'plunge'); i++) {
@@ -2905,12 +2927,13 @@ async function scenarioStorm() {
     return tr;
   };
   // the table: the flash cuts' real time (from the dodge to the art), before / after, N = 2..7
+  // (a: the storm off; b: the storm of ADR-167, its tempo off (?tempo=0); c: the storm with its tempo, the default)
   const rows = [];
+  const fr = (t) => t.hits.filter((h) => !h.last).map((h, i, A) => h.f - (i ? A[i - 1].f : 0)).join(',');
   for (let n = 2; n <= F.max; n++) {
-    const a = take(n, false), b = take(n, true);
-    rows.push({ n, a, b });
-    const fr = (t) => t.hits.filter((h) => !h.last).map((h, i, A) => h.f - (i ? A[i - 1].f : 0)).join(',');
-    out(`   N=${n}: flash cuts ${a.cutsT.toFixed(2)} s → ${b.cutsT.toFixed(2)} s · frames between blows ${fr(a) || '-'} → ${fr(b) || '-'} · damage ${a.dmg} / ${b.dmg} · star |sin| ${(a.star ?? 1).toFixed(2)} / ${(b.star ?? 1).toFixed(2)}`);
+    const a = take(n, false), b = take(n, true), c = take(n, true, true, n, true);
+    rows.push({ n, a, b, c });
+    out(`   N=${n}: flash cuts ${a.cutsT.toFixed(2)} s → ${b.cutsT.toFixed(2)} s → tempo ${c.cutsT.toFixed(2)} s · frames between blows ${fr(a) || '-'} → ${fr(b) || '-'} → ${fr(c) || '-'} · damage ${a.dmg} / ${b.dmg} / ${c.dmg} · star |sin| ${(a.star ?? 1).toFixed(2)} / ${(b.star ?? 1).toFixed(2)} / ${(c.star ?? 1).toFixed(2)}`);
   }
   const R7 = rows.find((r) => r.n === F.max);
   // off: the old pace (a long flurry's last cuts at `rush`, nothing collapses into a storm)
@@ -2947,6 +2970,40 @@ async function scenarioStorm() {
   out(`   tiers: streak 7 tier ${t7.tier} echo ${t7.echo} · streak 15 tier ${t15.tier} echo ${t15.echo} (tiers off: ${t15off.echo}) · damage ${t7.dmg} / ${t15.dmg} / ${t15off.dmg}`);
   assert(t7.echo === 0 && t15.tier === 5 && t15.echo === 2 && t15off.echo === 0, `the cuts echo from tier 4 (streak 15: ${t15.echo} echoes a cut; 7: ${t7.echo}; tiers off: ${t15off.echo})`);
   assert(t15.hits.length === F.max && t15.dmg === t7.dmg && t15off.dmg === t7.dmg && t15.cutsT === t7.cutsT, `a streak of 15 strikes the same ${t15.hits.length} blows for the same ${t15.dmg} damage in the same time`);
+  // THE TEMPO (DEFENSE.flurry.tempo; STREAK_FX.tempo, the default): heavy first, then faster by
+  // ratio. Round the wyrm's head here; on the ground: duel.mjs `tempo`
+  {
+    const TP = F.tempo;
+    assert(rows.every((r) => r.c.ok && r.c.finite && r.c.tempo === true && r.b.tempo === false), 'with the tempo every flurry starts and stays finite (and ?tempo=0 turns it off)');
+    // the storm piece off is the pace before ADR-167 whatever the tempo says
+    for (const n of [3, F.max]) {
+      const z = take(n, false, true, n, true), a = rows.find((r) => r.n === n).a;
+      assert(z.tempo === false && z.artF === a.artF && z.hits.map((h) => h.f).join() === a.hits.map((h) => h.f).join(), `N=${n}, the storm piece off: the tempo changes nothing (blows on frames ${z.hits.map((h) => h.f).join(',')})`);
+    }
+    for (const r of rows) {
+      const h = r.c.hits, cuts = h.filter((x) => !x.last), g = cuts.map((x, i) => (i ? x.f - cuts[i - 1].f : null)).slice(1);
+      // the heavy beat: the first contact no sooner than 0.18 s after the start, seen wound up first (round the head too), its whole freeze
+      assert(h[0].f * DT >= 0.18 - 1e-9 && h[0].hang > 0 && Math.abs(h[0].freeze - TP.air.stop) < 1e-9 && h[0].w === 1, `N=${r.n}: the first cut is the heavy beat: its contact ${(h[0].f * DT).toFixed(3)} s after the start (>= 0.18), seen wound up (${(h[0].hang * 100).toFixed(0)}% of its pass), frozen ${h[0].freeze.toFixed(3)} s on the contact`);
+      // the same blows, in order, each in a frame of its own, the same damage as before
+      assert(h.length === r.n && h.every((x, i) => x.n === i + 1) && h[r.n - 1].last && r.c.dmg === r.a.dmg && r.c.end?.damage === r.a.end?.damage && h.every((x, i) => i === 0 || x.f > h[i - 1].f), `N=${r.n}: with the tempo ${h.length} blows in order, each in a frame of its own, ${r.c.dmg} damage as before (${r.a.dmg})`);
+      // faster by ratio: the frames between blows never grow from one cut to the next (one frame of rounding)
+      assert(g.every((x, i) => i === 0 || x <= g[i - 1] + 1), `N=${r.n}: the gaps between blows never grow (${g.join(', ') || '-'} frames)`);
+      // no cliff: no gap is more than 2.25x the next (the old storm went 23 -> 17 -> 10 frames, then whole-weight cuts became weightless blips)
+      assert(g.every((x, i) => i === g.length - 1 || x <= 2.25 * g[i + 1]), `N=${r.n}: no cliff between neighbouring gaps: each at most 2.25x the next (${g.join(', ') || '-'} frames)`);
+      // the weight falls with the pace, never rises; the freeze too; a storm cut's freeze at least stopMin
+      assert(cuts.every((x, i) => i === 0 || (x.w <= cuts[i - 1].w + 1e-9 && x.freeze <= cuts[i - 1].freeze + 1e-9)) && cuts.every((x) => !(x.storm > 0) || (x.w === 0 && x.freeze >= S.stopMin - 1e-9)), `N=${r.n}: the weight (${cuts.map((x) => x.w.toFixed(2)).join(' ')}) and the freeze (${cuts.map((x) => x.freeze.toFixed(3)).join(' ')} s) fall cut by cut`);
+      // the storm comes by pace, never by place: on every storm blow he is drawn at the contact
+      const st = cuts.filter((x) => x.storm > 0);
+      assert(st.every((x) => !x.hidden && x.d < 1.2) && r.c.ev?.storm === st.length > 0 && r.c.ev?.at?.length === r.n - 1, `N=${r.n}: ${st.length} storm cuts, each drawn at the contact; player:flurry says so (storm ${r.c.ev?.storm}, ${r.c.ev?.at?.length} planned contacts)`);
+    }
+    const C2 = rows.filter((r) => r.n <= 3), C7 = rows.find((r) => r.n === F.max).c;
+    assert(C2.every((r) => r.c.hits.every((x) => !(x.storm > 0))), 'N=2 and N=3: no storm cut, every cut a weighted one');
+    const g7 = C7.hits.filter((x) => !x.last).map((x, i, A) => (i ? x.f - A[i - 1].f : null)).slice(1);
+    assert(g7[g7.length - 1] <= 4 && C7.hits.filter((x) => x.storm > 0).every((x) => x.sep > 0.3), `N=7 still ends in a storm a few frames apart (${g7.join(', ')} frames; the last <= 4), its lines crossing like a star`);
+    const u15 = take(F.max, true, true, 15, true), u7 = take(F.max, true, true, 7, true);
+    assert(u15.hits.length === F.max && u15.dmg === u7.dmg && u15.cutsT === u7.cutsT && u15.hits.map((h) => h.f).join() === u7.hits.map((h) => h.f).join(), `with the tempo a streak of 15 strikes the same ${u15.hits.length} blows for the same ${u15.dmg} damage in the same time as 7`);
+  }
+  STREAK_FX.tempo = tempo0;
   // the burst as lines (flurryBurst.js): level 0 is today; each level lowers what it names, with the
   // same random draws (a recorder in place of the particles and the lights; the same lines each time)
   {
@@ -2989,6 +3046,140 @@ async function scenarioStorm() {
   }
   Object.assign(STREAK_FX.on, on0);
   Object.assign(STREAK_FX.k, k0);
+  STREAK_FX.figure = figure0;
+  return G;
+}
+
+// ================================================================== scenario: chain (the flurry's path, round the head)
+// THE CHAIN (STREAK_FX.chain, DEFENSE.flurry.chain; ?chain=0 off): round the wyrm's head every pass
+// starts where the one before ended, every hanging line is the path he ran, the art starts where the
+// last cut ended (the iai through the middle, the split rising from there, the plunge rising over the
+// side he is on), no 'A' shard. Off: the ring-teleport paths exactly. On a man: duel.mjs `chain`.
+async function scenarioChain() {
+  out('\n== scenario CHAIN (round the head: each pass from where the last ended; its figures; the slashes on his path; no shards) ==');
+  const { STREAK_FX } = await imp('src/combat/streak.js');
+  const FIG = await imp('src/entities/player/flurryFigures.js');
+  const { shapeOf, dumpFigure } = await import(pathToFileURL(`${ROOT}/tests/integration/figures.mjs`).href);
+  const figure0 = STREAK_FX.figure;
+  const G = build();
+  fightSetup(G);
+  const { game } = G;
+  const d = game.dragon, p = game.player, F = DEFENSE.flurry, CH = 1.2;
+  const chain0 = STREAK_FX.chain;
+  const take = (n, art, chain = true, figure = 'any') => {
+    STREAK_FX.chain = chain;
+    STREAK_FX.figure = figure;
+    run(G, 2.5, { passive: true });
+    settle(G);
+    d.hp = d.maxHp;
+    place(G, 6);
+    const hp0 = d.hp, fl = p.flurry;
+    const tr = { passes: [], art: null, hits: [], f: 0, glyphs: new Set(), lineErr: 0, near: Infinity, ok: false, minY: Infinity };
+    const o0 = { cs: fl._cutStarts, va: fl._vanish, ba: fl._beginArt };
+    fl._cutStarts = function () { tr.passes.push({ ax: p.position.x, ay: p.position.y, az: p.position.z, L: fl.nLines - 1, tx: fl.T.x, tz: fl.T.z }); return o0.cs.call(this); };
+    fl._vanish = function (b) {
+      const ps = tr.passes[tr.passes.length - 1];
+      if (ps && ps.bx === undefined && fl.i < fl.cuts) {
+        ps.bx = p.position.x;
+        ps.by = p.position.y;
+        ps.bz = p.position.z;
+        const L = fl.lines[ps.L];
+        if (L) tr.lineErr = Math.max(tr.lineErr, Math.hypot(L.ax - ps.ax, L.ay - ps.ay - CH, L.az - ps.az), Math.hypot(L.bx - ps.bx, L.by - ps.by - CH, L.bz - ps.bz));
+      }
+      return o0.va.call(this, b);
+    };
+    fl._beginArt = function () {
+      const sx = p.position.x, sy = p.position.y, sz = p.position.z;
+      const r = o0.ba.call(this);
+      tr.art = { sx, sy, sz, ax: fl.A.x, ay: fl.A.y, az: fl.A.z, bx: fl.B.x, bz: fl.B.z, state: p.state, px: p.position.x, py: p.position.y, pz: p.position.z, plx: p.pl.ox, plz: p.pl.oz, ptx: p.pl.pt.x, ptz: p.pl.pt.z };
+      return r;
+    };
+    const spy = [];
+    for (const pool of new Set([game.fx?.add, game.fx?.alpha, p.fx?.add, p.fx?.alpha].filter(Boolean))) {
+      const s0 = pool.spawn;
+      spy.push([pool, s0]);
+      pool.spawn = function (o) { if (p.state === 'flurry' && typeof o?.glyph === 'string') tr.glyphs.add(o.glyph); return s0.call(this, o); };
+    }
+    G.watch = (nm, e) => {
+      if (nm === 'player:flurryHit') tr.hits.push({ f: tr.f, last: e.last, damage: e.damage });
+      if (nm === 'player:flurry') tr.ev = { ...e };
+    };
+    tr.ok = p.debug.flurry(n, art);
+    tr.figure = fl.figure;
+    tr.fit = fl.figureFit;
+    tr.neck = [d.position.x - fl.T.x, d.position.z - fl.T.z];
+    tr.ox = fl.ox;
+    tr.oz = fl.oz;
+    for (let i = 0; i < Math.round(9 / DT) && (p.state === 'flurry' || p.state === 'plunge'); i++) {
+      aimAt(G);
+      tr.f++;
+      G.tick(DT);
+      // (where he is, against the spot he dodged on: in the air he passes metres over it)
+      if (p.state === 'flurry' && tr.passes[0]?.bx !== undefined && fl.i < fl.cuts) tr.near = Math.min(tr.near, Math.hypot(p.position.x - tr.ox, p.position.y, p.position.z - tr.oz));
+    }
+    G.watch = null;
+    delete fl._cutStarts;
+    delete fl._vanish;
+    delete fl._beginArt;
+    for (const [pool, s0] of spy) pool.spawn = s0;
+    tr.dmg = hp0 - d.hp;
+    tr.jumps = tr.passes.slice(1).map((q, i) => Math.hypot(q.ax - tr.passes[i].bx, q.ay - tr.passes[i].by, q.az - tr.passes[i].bz));
+    const lp = tr.passes[tr.passes.length - 1];
+    tr.artJump = tr.art && lp ? Math.hypot(tr.art.sx - lp.bx, tr.art.sy - lp.by, tr.art.sz - lp.bz) : 0;
+    const T = fl.T, rel = (x, y, z) => `(${(x - T.x).toFixed(1)},${(y - T.y).toFixed(1)},${(z - T.z).toFixed(1)})`;
+    tr.seq = `O${rel(tr.ox, 0, tr.oz)} ` + tr.passes.map((q) => `${rel(q.ax, q.ay, q.az)}->${rel(q.bx, q.by, q.bz)}`).join(' ') + (tr.art ? ` | art from ${rel(tr.art.sx, tr.art.sy, tr.art.sz)}${tr.art.state === 'plunge' ? ` (plunge: hangs at ${rel(tr.art.px, tr.art.py, tr.art.pz)})` : ` to ${rel(tr.art.ax, tr.art.ay, tr.art.az)} -> ${rel(tr.art.bx, 0, tr.art.bz)}`}` : '') + ` | lands ${rel(p.position.x, 0, p.position.z)}`;
+    tr.seq = `${tr.figure}: ${tr.seq}`;
+    return tr;
+  };
+  const shard = (t) => [...t.glyphs].some((g) => g.includes('A'));
+  for (const art of ['severing', 'heavensplit', 'skyfall']) {
+    for (let n = 2; n <= F.max; n++) {
+      const on = take(n, art), off = take(n, art, false);
+      if ([3, 7].includes(n)) out(`   ${art} N=${n}: ${on.seq}`);
+      const hf = (t) => t.hits.map((h) => h.f);
+      const df = hf(on).map((f, i) => Math.abs(f - (hf(off)[i] ?? -99)));
+      assert(on.ok && off.ok && on.hits.length === n && on.dmg === off.dmg && df.every((x) => x <= 1), `${art} N=${n}: ${on.hits.length} blows, ${on.dmg} damage as with the chain off (${off.dmg}), every blow within a frame of it (${hf(on).join(',')} / ${hf(off).join(',')})`);
+      assert(on.jumps.every((j) => j < 0.3) && (art === 'skyfall' || on.artJump < 0.3), `${art} N=${n}: each pass starts where the last ended (${on.jumps.map((j) => j.toFixed(2)).join(' ') || '-'} m)${art === 'skyfall' ? '' : `, the art too (${on.artJump.toFixed(2)} m)`}`);
+      assert(n < 3 || on.near >= 1.5, `${art} N=${n}: never back within 1.5 m of his dodge spot after the first pass (${on.near === Infinity ? '-' : on.near.toFixed(2)} m)`);
+      assert(on.lineErr < 0.35, `${art} N=${n}: every hanging line runs from his chest at the pass's start to its end (off by ${on.lineErr.toFixed(3)} m at most)`);
+      // (the plunge is left alone: its own impact and landing are the plunge's, chain or not)
+      assert(!shard(on), `${art} N=${n}: no 'A' shard in the flurry with the chain (${[...on.glyphs].filter((g) => g.includes('A')).join(' ') || 'none'})`);
+      if (art === 'skyfall') {
+        // the plunge rises over the side of the head he is on (from behind the head: its side in
+        // front, as the plunge always turns it): never over the far side from where the last cut ended
+        const lp = on.passes[on.passes.length - 1], A = on.art;
+        const hx = A.px - A.ptx, hz = A.pz - A.ptz, lx = lp.bx - A.ptx, lz = lp.bz - A.ptz;
+        const cos = (hx * lx + hz * lz) / (Math.hypot(hx, hz) * Math.hypot(lx, lz) || 1);
+        const behind = (lx * Math.sin(d.yaw) + lz * Math.cos(d.yaw)) / (Math.hypot(lx, lz) || 1) < -0.3; // (_plungeDir's own rule)
+        const from = Math.hypot(A.plx - lp.bx, A.plz - lp.bz);
+        assert(A && A.state === 'plunge' && from < 0.3 && (behind || cos > -0.1), `skyfall N=${n}: the plunge comes from where the last cut ended (${from.toFixed(2)} m) and hangs over that side of the head (${(Math.acos(Math.max(-1, Math.min(1, cos))) * 57.3).toFixed(0)} degrees round from it${behind ? '; it ended behind the head, which the plunge turns to its front' : ''})`);
+      }
+    }
+  }
+  // THE FIGURES round the head: each pinned (?figure=) at five blows (and every count it is offered
+  // at): laid (or the star where it does not fit), read as its name, chained
+  const FG = F.chain.figures;
+  for (const name of FIG.FIGURE_NAMES) {
+    for (let n = 2; n <= F.max; n++) {
+      if (n - 1 < (FG[name]?.min ?? 1)) continue;
+      const t = take(n, 'severing', true, name);
+      // (the cage and the spiral are not offered round the head: the star stands in)
+      if (FG[name]?.air === false) {
+        assert(t.figure === 'star', `${name} N=${n}: not offered round the head, the star stands in (${t.figure})`);
+        continue;
+      }
+      const sh = shapeOf(t.figure, t.passes, true);
+      if (n === 5) out(`   ${name} N=${n}: ${t.seq}`);
+      assert(t.figure === name || n !== 5, `${name} N=${n}: the figure laid is ${t.figure} (its cost ${t.fit.toFixed(2)})`);
+      assert(sh.ok && t.jumps.every((j) => j < 0.3) && t.near >= 1.5 && t.lineErr < 0.35 && t.ev?.figure === t.figure, `${name} N=${n}: a ${t.figure} (${sh.why}), chained, clear of the dodge spot, its lines on his path`);
+      if (n === 5) {
+        const T = { x: t.passes[0].tx, z: t.passes[0].tz };
+        dumpFigure({ name, N: n, air: true, R: F.reach.air, O: [t.ox - T.x, t.oz - T.z], neck: t.neck, passes: t.passes.map((q) => [q.ax - T.x, q.az - T.z, q.bx - T.x, q.bz - T.z]), art: t.art && t.art.state !== 'plunge' ? [t.art.sx - T.x, t.art.sz - T.z, t.art.bx - T.x, t.art.bz - T.z] : null, label: sh.why });
+      }
+    }
+  }
+  STREAK_FX.figure = figure0;
+  STREAK_FX.chain = chain0;
   return G;
 }
 
@@ -5280,6 +5471,30 @@ async function scenarioWyrmLook() {
   assert(wyrmLookId() === prev && H.wyrmFace() === face0, `the build and the head in use are restored (${prev}, ${face0})`);
   assert(errors.length === e0, `no errors through the builds (${errors.length - e0})`);
   return G;
+}
+
+// ================================================================== scenario: timerip (?rip=)
+// The flurry's cuts rip the picture (player/timeRip.js): a flurry of five on the wyrm in each look
+// (tests/integration/timerip.mjs has the checks): off adds nothing, every mark sits on its cut's line,
+// the screen pass is idle again at once, the blows and the damage are those of off.
+async function scenarioTimeRip() {
+  out("\n== scenario TIMERIP (the flurry's cuts rip the picture: off | tear | strip | ghosts | negative, on the wyrm) ==");
+  const { timeRipCheck } = await import('./timerip.mjs');
+  const R = await timeRipCheck({
+    THREE, build, assert, out, DT, label: 'wyrm',
+    setup: (G) => {
+      fightSetup(G);
+      run(G, 2.5, { passive: true });
+      settle(G);
+      G.game.dragon.hp = G.game.dragon.maxHp;
+      place(G, 6);
+      G.game.player.debug.god = true;
+    },
+    go: (G) => G.game.player.debug.flurry(5, 'severing'),
+    frame: (G) => { aimAt(G); G.tick(DT); },
+    busy: (G) => G.game.player.state === 'flurry' || G.game.player.state === 'plunge',
+  });
+  return R.negative.G;
 }
 
 async function scenarioStreakFx() {
@@ -12504,6 +12719,7 @@ const SCENARIOS = {
   plunge: scenarioPlunge,
   flurry: scenarioFlurry,
   storm: scenarioStorm,
+  chain: scenarioChain,
   riposte: scenarioRiposte,
   flare: scenarioFlare,
   stamp: scenarioStamp,
@@ -12531,6 +12747,7 @@ const SCENARIOS = {
   wyrmlook: scenarioWyrmLook,
   herolife: scenarioHeroLife,
   streakfx: scenarioStreakFx,
+  timerip: scenarioTimeRip,
   swordmystic: scenarioSwordMystic,
   herohand: scenarioHeroHand,
   heroweight: scenarioHeroWeight,

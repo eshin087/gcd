@@ -75,6 +75,50 @@ export const TIER_LOOK = Object.freeze({
     keep: Object.freeze([0, 1, 0.7, 0.35]),
   }),
 });
+/**
+ * The chain's last blow on the ground (STREAK_FX.chain; DEFENSE.flurry.chain): WHITE-STEEL LETTER
+ * DUST in place of the slam's big 'A' shards. Many tiny letters, each about one letter cell, steel
+ * white to a pale blue-grey, never brighter than the bloom threshold (CONFIG.render.bloomThreshold
+ * 0.55; normal blending, the alpha pool: crisp letters, no glow, as combat/parrySparks.js keeps its
+ * sparks): most thrown out low and fast along the blow and to its sides, slowed hard by their drag
+ * into a faint drift that thins out; a few heavier dots fall to the floor.
+ *   n / heavy  letters / heavier dots (x `k`: a landing's is smaller)
+ *   size       m, [min, max] (sizeEnd the same or less: no letter grows)
+ *   ahead      the share thrown along the blow (+- `cone` rad round it); most of the rest to its
+ *              sides (+- `side` rad round square to it), a few back
+ *   speed      m/s [min, max]; `up` m/s up; `drag` 1/s; `gravity` m/s2 (the drift's: it barely sinks)
+ *   life       s [min, max]
+ *   y          m, the height they are thrown from [min, max]
+ *   heavyLife / heavySpeed / heavyUp / heavyGravity: the dots that fall
+ *   col / colBlue / colEnd  steel white, a pale blue-grey (`blue` of them) -> a faint grey (linear; <= 0.55)
+ *   alpha      at the start (fades to 0)
+ *   glyphs     small strokes and dots of the world atlas
+ */
+export const DUST = Object.freeze({
+  n: 96,
+  heavy: 8,
+  size: Object.freeze([0.05, 0.09]),
+  ahead: 0.6,
+  cone: 0.7,
+  side: 0.5,
+  speed: Object.freeze([4, 11]),
+  up: Object.freeze([0.2, 1.8]),
+  drag: Object.freeze([4.5, 7.5]),
+  gravity: -0.8,
+  life: Object.freeze([0.6, 0.9]),
+  y: Object.freeze([0.06, 0.45]),
+  heavyLife: Object.freeze([0.45, 0.65]),
+  heavySpeed: Object.freeze([2, 4.5]),
+  heavyUp: Object.freeze([1.5, 3]),
+  heavyGravity: -12,
+  col: Object.freeze([0.5, 0.53, 0.55]),
+  colBlue: Object.freeze([0.36, 0.43, 0.54]),
+  colEnd: Object.freeze([0.2, 0.23, 0.28]),
+  blue: 0.4,
+  alpha: 0.85,
+  glyphs: ".,'`:;-_*+x",
+  heavyGlyphs: '.·',
+});
 const K_STEEL = FIRE_KIND.steel;
 const ONE2 = Object.freeze([1, 1]);
 /** The burst level's [a, b] for `key` (flurryBurst.js; today [1, 1]). */
@@ -156,6 +200,11 @@ export class FlurryFx {
     this._bK = 1;
     this.stormClones = 0; // storm cuts' clones printed (the tests read it)
     this._cr = 1; // the crescents' alpha (the art's, at a burst level)
+    // the chain (STREAK_FX.chain; the flurry sets it as it starts): every slash on the path he ran.
+    // No crescent bowed off it, the split's / vault's crescent his blade's sampled path, the burst's
+    // thin lines no longer than the cuts, letter dust for the last blow's shards
+    this.chain = false;
+    this.dustStat = { n: 0, maxSize: 0, maxCol: 0 }; // the last dust thrown (tests)
     /** The last burst's counts (tests): light intensity, bright spawns, thin lines. */
     this.burstStat = { light: 0, thin: 0, flare: 0, star: 0 };
     /** Counts for the tests (reused): steel cells written in the last drawn frame, in all, the most. */
@@ -384,15 +433,18 @@ export class FlurryFx {
   }
 
   /** A flash cut bites at (x, y, z), the blade travelling (dx, dz): a white stroke across it, a star,
-   *  sparks thrown on along the cut. `i` of `n`: each cut of a flurry bites harder than the last. */
-  cut(x, y, z, dx, dz, i = 0, n = 1, st = 0) {
+   *  sparks thrown on along the cut. `i` of `n`: each cut of a flurry bites harder than the last.
+   *  `wk` (the storm's tempo: 1 at a heavy beat down to storm.fx near the storm): the flare (the
+   *  stroke, the star, the light) and the sparks are scaled by it; the crescent keeps its size. */
+  cut(x, y, z, dx, dz, i = 0, n = 1, st = 0, wk = 1) {
     const fx = this.add;
     if (!fx || !Number.isFinite(x + y + z)) return;
     if (st > 0) {
       this._stormCut(fx, x, y, z, dx, dz, i, st);
       return;
     }
-    const k = n > 1 ? i / (n - 1) : 0, s = (1 + 0.5 * k) * this.k;
+    if (!(wk > 0) || !Number.isFinite(wk)) wk = 1;
+    const k = n > 1 ? i / (n - 1) : 0, s = (1 + 0.5 * k) * this.k * (wk < 1 ? wk : 1);
     const hot = k > 0.6, c0 = hot ? COL.gold : COL.spark, c1 = hot ? COL.goldEnd : COL.sparkEnd;
     const rot = this._rot(dx, 0, dz);
     // the stroke: bright for two frames, along the cut
@@ -402,10 +454,11 @@ export class FlurryFx {
     const sg = i % 2 ? -1 : 1, tilt = (i % 3) * 0.3 - 0.3;
     const vx = -dz * sg * Math.cos(tilt), vy = Math.sin(tilt), vz = dx * sg * Math.cos(tilt);
     const r = (2.3 + 0.5 * k) * this.k;
-    this._crescent(fx, x - vx * r, y - vy * r, z - vz * r, dx, 0, dz, vx, vy, vz, r, Math.PI / 2 + 0.95, Math.PI / 2 - 0.95, (0.4 + 0.15 * k) * this.k, 0.22, COL.hot, hot ? COL.gold : COL.ice, 0.1 * Math.sqrt(this.k));
+    // (the chain: no crescent, it bows off the path he ran; his hanging line is the slash)
+    if (!this.chain) this._crescent(fx, x - vx * r, y - vy * r, z - vz * r, dx, 0, dz, vx, vy, vz, r, Math.PI / 2 + 0.95, Math.PI / 2 - 0.95, (0.4 + 0.15 * k) * this.k, 0.22, COL.hot, hot ? COL.gold : COL.ice, 0.1 * Math.sqrt(this.k));
     const CL = burstLook()?.cut, cs = CL?.star ?? ONE2, cl = CL ? CL.light ?? 1 : 1;
     if (cs[0] > 0) fx.spawn({ x, y, z, life: 0.09, size: 0.7 * s * cs[1], sizeEnd: 0.15 * cs[1], glyph: '+', rot: rot + 0.785, color: COL.hot, colorEnd: c0, alpha: cs[0], alphaEnd: 0 });
-    const m = 8 + Math.round(6 * k);
+    const m = wk < 1 ? Math.max(3, Math.round((8 + 6 * k) * wk)) : 8 + Math.round(6 * k);
     for (let j = 0; j < m; j++) {
       const sp = R(5, 13) * s, vx = dx * sp + R(-3, 3), vy = R(-1, 4.5), vz = dz * sp + R(-3, 3);
       fx.spawn({
@@ -413,7 +466,7 @@ export class FlurryFx {
         glyph: "|'", rot: this._rot(vx, vy, vz), color: c0, colorEnd: c1, alpha: 1, alphaEnd: 0, drag: 3.5, gravity: -5,
       });
     }
-    if (cl > 0) this._light({ x, y, z, color: hot ? [1.3, 0.95, 0.45] : [0.6, 0.85, 1.4], intensity: (2.4 + 1.2 * k) * cl, radius: 5, life: 0.14, fade: 0.12 });
+    if (cl > 0) this._light({ x, y, z, color: hot ? [1.3, 0.95, 0.45] : [0.6, 0.85, 1.4], intensity: (2.4 + 1.2 * k) * cl * (wk < 1 ? wk : 1), radius: 5, life: 0.14, fade: 0.12 });
   }
 
   /** A storm cut bites: the stroke and a thin, short crescent (its line is the look), a small star,
@@ -424,7 +477,7 @@ export class FlurryFx {
     const sg = i % 2 ? -1 : 1, tilt = (i % 3) * 0.3 - 0.3;
     const vx = -dz * sg * Math.cos(tilt), vy = Math.sin(tilt), vz = dx * sg * Math.cos(tilt);
     const r = 2.5 * this.k;
-    this._crescent(fx, x - vx * r, y - vy * r, z - vz * r, dx, 0, dz, vx, vy, vz, r, Math.PI / 2 + 0.8, Math.PI / 2 - 0.8, 0.22 * this.k, 0.15, COL.hot, hot ? COL.gold : COL.ice, 0.08 * Math.sqrt(this.k));
+    if (!this.chain) this._crescent(fx, x - vx * r, y - vy * r, z - vz * r, dx, 0, dz, vx, vy, vz, r, Math.PI / 2 + 0.8, Math.PI / 2 - 0.8, 0.22 * this.k, 0.15, COL.hot, hot ? COL.gold : COL.ice, 0.08 * Math.sqrt(this.k));
     const cs = burstLook()?.cut?.star ?? ONE2;
     if (cs[0] > 0) fx.spawn({ x, y, z, life: 0.06, size: 0.4 * s * cs[1], sizeEnd: 0.1 * cs[1], glyph: '+', rot: rot + 0.785, color: COL.hot, colorEnd: hot ? COL.gold : COL.spark, alpha: 0.9 * cs[0], alphaEnd: 0 });
     for (let j = 0; j < 4; j++) {
@@ -449,7 +502,8 @@ export class FlurryFx {
     const va = burstLook()?.veil ?? 1;
     for (let li = 0; li < n; li++) {
       const L = lines[li], k = Math.min(1, Math.max(0, L.k));
-      if (!(k > 0.02)) continue;
+      // (held back by the time rip's tear: only its hairline shows until it splits; timeRip.js)
+      if (!(k > 0.02) || L.hold === true) continue;
       const dx = (L.bx - L.ax) * k, dy = (L.by - L.ay) * k, dz = (L.bz - L.az) * k;
       const len = Math.hypot(dx, dy, dz);
       if (!(len > 0.2) || !Number.isFinite(len + L.ax + L.ay + L.az)) continue;
@@ -536,7 +590,7 @@ export class FlurryFx {
    * The last blow lands at (x, y, z), its cut travelling (dx, dz). `kind`: 'iai' (the level cut
    * opens: a lens of light across the target), 'split' (a falling crescent), 'vault' (a rising one).
    */
-  artHit(x, y, z, dx, dz, kind = 'iai') {
+  artHit(x, y, z, dx, dz, kind = 'iai', sw = null, swN = 0) {
     const fx = this.add;
     if (!fx || !Number.isFinite(x + y + z)) return;
     // (small cores: stacked with the burst's they bloom into a white blot over the target)
@@ -550,15 +604,21 @@ export class FlurryFx {
     // of: an upright plane along the view is drawn as one fat bar up the screen
     const C = this.cam, side = C && px * C[0] + pz * C[2] < 0 ? -1 : 1;
     const ty = 0.77, tx = px * side * 0.64, tz = pz * side * 0.64;
-    if (kind === 'split') this._crescent(fx, x, y + 0.2, z, dx, 0, dz, tx, ty, tz, 2.7 * s, 2.5, -0.75, 0.5 * s, 0.34, COL.hot, COL.last, 0.13);
+    if (this.chain) {
+      // the chain: the iai's lens is gone (two arcs beside the line, where he never ran); the split's
+      // and the vault's crescent is the path his blade swept (`sw`: swN points, sampled)
+      if (kind !== 'iai' && sw && swN >= 2) this._swept(fx, sw, swN, 0.34, COL.hot, COL.last, 0.13);
+    } else if (kind === 'split') this._crescent(fx, x, y + 0.2, z, dx, 0, dz, tx, ty, tz, 2.7 * s, 2.5, -0.75, 0.5 * s, 0.34, COL.hot, COL.last, 0.13);
     else if (kind === 'vault') this._crescent(fx, x - dx * 0.4, y - 0.3, z - dz * 0.4, dx, 0, dz, tx, ty, tz, 2.3 * s, -0.9, 2.2, 0.45 * s, 0.34, COL.hot, COL.last, 0.13);
     else {
       // the lens: two shallow arcs bowing apart on either side of the line
       for (const sg of [-1, 1]) this._crescent(fx, x + px * sg * 5.2 * s, y, z + pz * sg * 5.2 * s, -px * sg, 0, -pz * sg, dx, 0, dz, 5.7 * s, -0.62, 0.62, 0.5 * s, 0.3, COL.hot, COL.last, 0.12);
     }
     this._cr = 1;
-    // shards fanned out of it, most along the cut
-    for (let i = 0; i < 18; i++) {
+    // shards fanned out of it, most along the cut (the chain: letter dust instead; on the ground the
+    // flurry throws it from the floor, round the wyrm's head it is thrown here)
+    if (this.chain && this.pull > 0) this.dust(x, y, z, dx, dz, 0.5);
+    for (let i = 0; i < (this.chain ? 0 : 18); i++) {
       const a = Math.atan2(dz, dx) + R(-1.3, 1.3) + (i % 3 === 0 ? Math.PI : 0), sp = R(4, 10), up = R(0.1, 1.1);
       const vx = Math.cos(a) * sp * Math.cos(up), vy = Math.sin(up) * sp, vz = Math.sin(a) * sp * Math.cos(up);
       const life = R(0.35, 0.6), size = R(0.18, 0.36), spin = R(-2, 2);
@@ -579,6 +639,75 @@ export class FlurryFx {
     if (li[0] > 0) {
       this._light({ x, y: Math.max(2.2, y + 0.8), z, color: [0.7, 0.95, 1.5], intensity: 2.4 * li[0], radius: 6.5 * li[1], life: 0.26, fade: 0.22 });
       this._light({ x, y: Math.max(2.2, y + 0.4), z, color: [1.0, 0.55, 1.5], intensity: 1.4 * li[0], radius: 5 * li[1], life: 0.5, fade: 0.42 });
+    }
+  }
+
+  /** A crescent along a sampled path (`pts`: n points x, y, z): the edge strokes laid segment by
+   *  segment along it, pointed at both ends, bright `core` fading to `end`, living `life` s. */
+  _swept(fx, pts, n, life, core, end, stroke = 0.1) {
+    let total = 0;
+    for (let i = 1; i < n; i++) total += Math.hypot(pts[i * 3] - pts[i * 3 - 3], pts[i * 3 + 1] - pts[i * 3 - 2], pts[i * 3 + 2] - pts[i * 3 - 1]);
+    if (!(total > 0.2) || !Number.isFinite(total)) return;
+    let run = 0;
+    for (let i = 1; i < n; i++) {
+      const ax = pts[i * 3 - 3], ay = pts[i * 3 - 2], az = pts[i * 3 - 1];
+      const ex = pts[i * 3] - ax, ey = pts[i * 3 + 1] - ay, ez = pts[i * 3 + 2] - az, l = Math.hypot(ex, ey, ez);
+      if (!(l > 1e-3)) continue;
+      const rot = this._rot(ex, ey, ez), m = Math.max(1, Math.ceil(l / 0.32)), seg = l / m;
+      for (let j = 0; j < m; j++) {
+        const f = (j + 0.5) / m, at = (run + f * l) / total, taper = Math.sin(Math.PI * Math.min(1, at));
+        const size = stroke * 1.5 * (0.3 + 0.7 * taper);
+        fx.spawn({
+          x: ax + ex * f, y: ay + ey * f, z: az + ez * f, life: life * R(0.9, 1.1), size, sizeEnd: size * 0.2, stretch: (seg / size) * 1.35, glyph: '|', rot,
+          color: core, colorEnd: end, alpha: (0.35 + 0.65 * taper) * this._cr, alphaEnd: 0,
+        });
+      }
+      run += l;
+    }
+  }
+
+  /**
+   * White-steel letter dust (DUST) thrown from (x, y, z) by a blow travelling (dx, dz): y <= 0.05 is
+   * the floor (thrown from DUST.y above it). `k` x the count. Normal blending (the alpha pool), never
+   * brighter than the bloom threshold, round the wyrm's head pulled toward the camera as the rest.
+   */
+  dust(x, y, z, dx, dz, k = 1) {
+    const fa = this.game.fx?.alpha ?? null, D = DUST, st = this.dustStat;
+    st.n = 0;
+    st.maxSize = 0;
+    st.maxCol = 0;
+    if (!fa || !Number.isFinite(x + y + z + dx + dz)) return;
+    this.cam = this.game.camera?.matrixWorld?.elements ?? null;
+    const floor = !(y > 0.05), base = Math.atan2(dz, dx);
+    const n = Math.round(D.n * k), nh = Math.round(D.heavy * k);
+    for (let i = 0; i < n + nh; i++) {
+      const heavy = i >= n, q = rnd();
+      // most along the blow, the rest to its sides, a few back
+      let a;
+      if (heavy) a = base + R(-1.6, 1.6);
+      else if (q < D.ahead) a = base + R(-D.cone, D.cone);
+      else if (q < 0.93) a = base + (rnd() < 0.5 ? -1 : 1) * (Math.PI / 2 + R(-D.side, D.side));
+      else a = base + Math.PI + R(-0.6, 0.6);
+      const sp = heavy ? R(D.heavySpeed[0], D.heavySpeed[1]) : R(D.speed[0], D.speed[1]);
+      const vy = heavy ? R(D.heavyUp[0], D.heavyUp[1]) : R(D.up[0], D.up[1]);
+      const size = R(D.size[0], D.size[1]);
+      const c = rnd() < D.blue ? D.colBlue : D.col;
+      let px = x + Math.cos(a) * R(0.05, 0.3), py = floor ? R(D.y[0], D.y[1]) : y + R(-0.3, 0.3), pz = z + Math.sin(a) * R(0.05, 0.3);
+      if (this.pull > 0) {
+        const q3 = this._pulled(px, py, pz);
+        px = q3[0];
+        py = q3[1];
+        pz = q3[2];
+      }
+      fa.spawn({
+        x: px, y: py, z: pz, vx: Math.cos(a) * sp, vy, vz: Math.sin(a) * sp,
+        life: heavy ? R(D.heavyLife[0], D.heavyLife[1]) : R(D.life[0], D.life[1]), size, sizeEnd: size * (heavy ? 0.8 : R(0.6, 1)),
+        glyph: heavy ? D.heavyGlyphs : D.glyphs, color: c, colorEnd: D.colEnd, alpha: D.alpha, alphaEnd: 0,
+        drag: heavy ? 1.2 : R(D.drag[0], D.drag[1]), gravity: heavy ? D.heavyGravity : D.gravity,
+      });
+      st.n++;
+      if (size > st.maxSize) st.maxSize = size;
+      st.maxCol = Math.max(st.maxCol, c[0], c[1], c[2]);
     }
   }
 
@@ -656,10 +785,12 @@ export class FlurryFx {
         const L = lines[li];
         const dx = L.bx - L.ax, dy = L.by - L.ay, dz = L.bz - L.az, len = Math.hypot(dx, dy, dz);
         if (!(len > 0.2) || !Number.isFinite(len + L.ax + L.ay + L.az)) continue;
-        const rot = this._rot(dx, dy, dz), e = (TH.ext - 1) * 0.5;
-        const m = Math.max(4, Math.ceil((len * TH.ext) / 0.5)), seg = (len * TH.ext) / m;
+        // (the chain: no longer than the cut itself: past its ends is where he never ran)
+        const ext = this.chain ? 1 : TH.ext;
+        const rot = this._rot(dx, dy, dz), e = (ext - 1) * 0.5;
+        const m = Math.max(4, Math.ceil((len * ext) / 0.5)), seg = (len * ext) / m;
         for (let j = 0; j < m; j++) {
-          const f = -e + ((j + 0.5) / m) * TH.ext, tp = Math.sqrt(Math.max(0.05, Math.sin(Math.PI * (j + 0.5) / m)));
+          const f = -e + ((j + 0.5) / m) * ext, tp = Math.sqrt(Math.max(0.05, Math.sin(Math.PI * (j + 0.5) / m)));
           const size = TH.size * this.k * tp;
           fx.spawn({
             x: L.ax + dx * f, y: L.ay + dy * f, z: L.az + dz * f, life: TH.life * (0.7 + 0.3 * tp), size, sizeEnd: size * 0.5, stretch: (seg / size) * 1.3, glyph: '|', rot,

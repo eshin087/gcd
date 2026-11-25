@@ -4,7 +4,17 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Eighty-eight pieces of work since 0.4.0:
+Eighty-nine pieces of work since 0.4.0:
+- **The streak's answer: a heavy first cut, a path that flows, cuts that tear the picture** (2026-11-25, ADR-190, ADR-191). *Changed:*
+  the flash cuts that answer a perfect dodge of a red blow, a parry's riposte and the counter. The first cut is a beat
+  you can read (he is seen wound up, crosses as fast as before, is held on the contact), each later one comes faster,
+  gently for a short streak and steeply for a long one, so a 7 still ends in the storm in the same time. Each pass now
+  starts where the last one ended (no jump back toward where he dodged), every white slash lies on the path he ran,
+  the two curved slashes that appeared from nowhere at the end are gone, and the last blow's big `A` shards are a fine
+  spray of white-steel letter dust. *Added:* the passes draw a different figure each time (star, zigzag, cage, spiral,
+  cross), and each cut tears the picture: for three frames the letters on either side of it slide apart like a torn
+  page (the owner's pick of four looks). Damage and rules are unchanged. `?tempo=0`, `?chain=0`, `?figure=`, `?rip=`
+  (`tear`, `ghosts`, `negative`, `off`) and the Lab's streak row compare.
 - **The Cinder Wyrm wakes without a neck twist, and its head reads from above** (2026-11-24, ADR-189).
   *Fixed:* as the wyrm got up, the resting neck shape was blended point by point into a neck still curled
   back along its flank, and the head spun through ~330 degrees in half a second and turned upside down;

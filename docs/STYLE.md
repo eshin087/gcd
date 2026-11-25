@@ -1860,3 +1860,32 @@ ink on black, never over the hero.
   (TRIPLE ... THOUSANDFOLD) sits under it once, in small spaced gold capitals. A lost streak: grey,
   struck through in red, the digits parting as they fall. The flurry's banner at tiers 4 - 5 gains
   thin gold rules, never size.
+- **The time rip** (2026-11-24, `player/timeRip.js`, `?rip=`; four looks for the owner to pick from
+  film, `tear` until then): what each flash cut of the flurry does to the picture, always exactly on
+  the line the blade travelled, steel-white, never a colour change or a brightening outside the cut's
+  thin band, never a blob. All its frames are held in REAL time (a cut's freeze does not stretch them).
+  - `tear`, the delayed tear: on the contact only a hairline of dim steel specks (heat 0.36) hangs on
+    the line; 0.16 s later (in a storm or a quick string 0.55 x the gap since the blow before, at least
+    0.05 s) it splits along its whole length at once: a bright seam (1.2), two lips a cell then two
+    cells off it (a lens, pinched to the line at both ends), closing to one cell, then a broken trail of
+    specks; five frames of 0.035 s. The last blow splits every hairline still waiting.
+  - `strip`, the torn strip: for three frames (1/60 s each, the contact's frame the first) the
+    letters already printed within 3 cells of the line on either side (6 across), along the WHOLE line
+    (not only the part drawn at the contact), are printed from 4, 3, then 1 cells along it, each side
+    the other way (whole 5 x 8 cells), then back; the cells on the line stay and carry a crisp steel
+    seam (1.15, 0.9, 0.55). Only displacement: no tint, no light.
+  - `ghosts`, frozen afterimages: on each cut 3 still copies of him (1 a storm cut, 7 alive at most;
+    fewer when the run so far is too short to hold them 0.75 m apart, from each other and from him at
+    the contact) on the line from where the pass began toward the contact, his pose at the contact.
+    Each reads as HIM, not a block: his figure on a 0.13 m cell grid, of which only the outline cells
+    (a cell with an empty side) and one inner cell in seven print, one fine digit each (about 40 - 50
+    a copy), dim cold blue (0.3, 0.5, 0.98), alpha 0.38, one digit in seventeen brighter; no digit
+    within 0.12 m of the target's hurt spheres on screen (checked every frame: the boss reels). They
+    stand still 0.12 s (a storm: 0.6 x the gap, at least 0.04 s), then tear off in 0.045 s from the
+    start of the pass toward the contact, each digit thrown along the cut; the last blow tears them
+    all at once.
+  - `negative`, the inverted line: for two frames (the contact's the first) the cells within 0.6
+    cells of the whole line (1 - 2 across) print in negative: each pixel of a letter's stroke (brighter
+    than the cell's background: black on a figure, the scene x uBg on the floor, x 2.5) prints dark, the
+    rest of the cell a pale steel (0.46, 0.5, 0.56): the letter that was there, inverted, never a flat
+    fill. A cell with no letter in it prints pale. Then gone.
