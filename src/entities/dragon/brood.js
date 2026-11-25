@@ -299,11 +299,12 @@ export class Brood {
       case 'circle': {
         this._orbit(c, dt, p);
         // its time is up: it climbs and dives onto him (one dive at a time)
-        if (c.t >= c.life && this.lunger !== c && this.time - this.lastDive >= DV.gap) {
+        const busy = this._wyrmBusy();
+        if (c.t >= c.life && this.lunger !== c && this.time - this.lastDive >= DV.gap && (!busy || c.t >= c.life + BROOD.busyWait)) {
           this._startDive(c, p);
           break;
         }
-        if (!this.lunger && this.time >= this.nextLunge && c.t >= DR.emerge + 0.3) this._tryLunge(c, p);
+        if (!this.lunger && this.time >= this.nextLunge && c.t >= DR.emerge + 0.3 && (!busy || this.time >= this.nextLunge + BROOD.busyWait)) this._tryLunge(c, p);
         break;
       }
       case 'windup': {
@@ -403,6 +404,8 @@ export class Brood {
           c.flashed = true;
           this._flash(c, TELL.RED, p.x, 0.6, p.z);
         }
+        // (a dive whose flash is still to come waits here too: its first frame flashes)
+        if (c.st >= DV.windup && !c.flashed && this._hold(c, dt, fall, 'dodge', 'drakelings')) break;
         if (c.st >= DV.windup) {
           c.tx = p.x;
           c.tz = p.z;
@@ -514,6 +517,32 @@ export class Brood {
     c.z += c.vz * dt;
   }
 
+  /** Does a blow of the wyrm's running move, told or still to be told (a string's later hits are
+   *  told only at their own windup: the ledger does not know them yet), land within HOLD.sep of
+   *  `tti` s from now asking for the other answer? */
+  _beatNear(tti, ans) {
+    const a = this.d.brain?.action, B = a?.beats;
+    if (!B || !B.length) return false;
+    for (let i = 0; i < B.length; i++) {
+      const b = B[i];
+      const at = b.at + b.impactIn - a.T;
+      if (at < -0.1) continue;
+      const other = b.tell === TELL.RED || b.tell === TELL.BLACK ? 'dodge' : 'guard';
+      if (other !== ans && Math.abs(at - tti) < HOLD.sep) return true;
+    }
+    return false;
+  }
+
+  /** Has the wyrm's running move a blow still to come (a beat not yet flashed)? */
+  _wyrmBusy() {
+    const d = this.d;
+    if (d.state === 'airborne') return true; // (a flight's blows are timed as it goes)
+    const a = d.brain?.action, B = a?.beats;
+    if (!B || !B.length) return false;
+    for (let i = 0; i < B.length; i++) if (!B[i].flashed) return true;
+    return false;
+  }
+
   /** Pick this one to lunge (blue by the phase's share), unless a cue of the other answer is due then. */
   _tryLunge(c, p) {
     const d = this.d;
@@ -556,7 +585,10 @@ export class Brood {
   _hold(c, dt, tti, ans, attack) {
     if (c.held >= HOLD.max) return false;
     const now = this.game.time ?? this.time;
-    if (!this.d.brain?._clash?.(now + tti, ans, HOLD.sep, attack)) return false;
+    // (bullets in flight cue themselves only flashLead s ahead: a red brood cue waits for the air to
+    // clear of them, as the wyrm's own dodge blows wait for its shots)
+    const B = this.d.bullets, shots = ans === 'dodge' && !!B && B.count(0) + B.count(1) + B.count(2) > 0;
+    if (!shots && !this._beatNear(tti, ans) && !this.d.brain?._clash?.(now + tti, ans, HOLD.sep, attack)) return false;
     c.held += dt;
     c.st -= dt;
     return true;

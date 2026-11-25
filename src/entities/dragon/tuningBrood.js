@@ -103,7 +103,10 @@ export const BROOD = {
   },
 
   // a brood cue waits (up to `max` s) while one of the other answer is due within `sep` s of it
-  hold: { sep: 0.45, max: 0.9 },
+  hold: { sep: 0.5, max: 1.8 }, // (a cue of the wyrm's can follow another every 0.35 s: 0.9 ran out under one)
+  // a lunge or a dive does not start while the wyrm's running move has a blow still to come (it
+  // fights lighter beside its brood, and its blows and theirs do not land together); at most `wait` s
+  busyWait: 2.5,
 
   // ------------------------------------------------------------------ the moves (broodAttacks.js)
   moves: {
@@ -119,8 +122,10 @@ export const BROOD = {
       windup: 1.25, cast: 1.1, recovery: 0.8,
       r: 2.6, // m: the seal before its jaws
       minDist: 7,
-      weight: [0.35, 0.5, 0.5], cooldown: 24,
-      lateP1: 0.75, // phase 1: only once it is below this share of its life
+      weight: [0, 0.5, 0.5], cooldown: 24,
+      // late in phase 1: below this share of its life, at this weight (kept out of `weight`: the
+      // director's checks read a phase's weight as 'the phase has it', and early P1 never does)
+      lateP1: [0.75, 0.35],
     },
   },
 };
