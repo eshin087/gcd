@@ -5,6 +5,28 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-25 — The grass bends round the hero's wake and springs back (ADR-193; Opus agent; PR #124)
+
+**Owner:** "when the player runs through the grass, the ground/grass around it becomes too dark too
+quickly and doesn't look natural and bad transition. make the grass bend and come back to normal after
+the player moves through it"; three options filmed; "Ship both".
+
+- **Found:** every footfall wrote a full trample into the scorch map's blue (0.625 m cells, blades every
+  way, up to 0.7 darker at once, 10 s linear); a dark band still plain 3 s after he passed.
+- **Built:** `world/grassTrail.js`, the hero's wake as 32 points in a uniform array; the grass shader's
+  `trailBend` bends each blade along his way and out from the path and springs it back (b: hold 0.35 s,
+  rising over 2 - 2.6 s, at most 10 % darker); the steps write no blue while it is on, a sprint or a
+  landing presses a wider wake. `?bend=a|b|c|0`.
+
+**Verified.** `world.mjs . all`, `life.mjs . core,steps` (new `steps.wake` / `steps.noTrample`: bends
+along and outward, recovers by its time, darkens no more than its limit, no per-frame pops, a reset leaves
+nothing bent, `?bend=0` writes no wake), the glyph check; the seeded wyrm fight's trace byte-identical;
+films at the game camera, close and on the phone view.
+
+**Open.** The boss's pushers have no wake; the phone's frame cost on the device.
+
+---
+
 ## 2026-11-25 — The sword's cut throws green code (ADR-192; Opus agent; PR #120)
 
 **Owner:** "Im playing the live game but not seeing the grass cut"; then "make the grass show ascii like
