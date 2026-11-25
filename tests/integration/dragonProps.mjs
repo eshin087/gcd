@@ -87,7 +87,10 @@ const S = {
   // ---- the switches off: what ships today, shader for shader
   off() {
     looks(null, null);
-    assert(dpPropsLook() === '0' && dpTreesLook() === '0', 'no switch in the URL: both pieces are off');
+    assert(dpPropsLook() === 'a' && dpTreesLook() === 'a', 'no switch in the URL: both pieces at a (the dragon print is the default)');
+    // switched off ('0', what ?dragon=0 gives): the materials of before, shader for shader
+    looks('0', '0');
+    assert(dpPropsLook() === '0' && dpTreesLook() === '0', 'switched off: both pieces are off');
     const U = createSharedUniforms();
     const p = createPropArtMaterial(U, { fadeNearPlayer: true });
     assert(!p.userData.dragonPrint && !/dpEncode|vO = position/.test(p.fragmentShader + p.vertexShader) && p.fragmentShader.includes('FLAG') === false && p.fragmentShader.includes('0.57)'),
@@ -98,6 +101,7 @@ const S = {
     const f = createForest(createSharedUniforms(), new Colliders());
     const trees = f.group.children.find((m) => m.name === 'trees');
     assert(trees && !trees.material.userData.dragonPrint && trees.material.fragmentShader === a.fragmentShader, "the forest's trees off: the screen grid's material of before");
+    looks(null, null);
   },
 
   // ---- the tone's windows: clear of every flag the art pass reads (pipeline.js isArt / isProp / LEAF / STONE)

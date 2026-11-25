@@ -105,40 +105,45 @@ const first = {
     T.assert(ms < 1500, `ring: 100000 surfaceAt calls in ${ms.toFixed(0)} ms (${n} stone)`);
   },
 
-  /** A step on ash leaves a print that fills in; a print on earth fades sooner. */
-  prints(T) {
-    const w = T.build('ash', 'steps');
-    w.step(0.5);
-    w.life.steps.step(0, 0, { side: 1, vx: 0, vz: -4.6 });
-    w.step(0.2);
-    T.assert(w.life.steps.prints === 1 && w.counts().pools === 1, `ash: a step leaves a print in its own pool (${w.life.steps.prints}, ${w.counts().pools} pool)`);
-    T.assert(w.counts().own === 1, `ash: the print is drawn (${w.counts().own})`);
-    const a0 = w.life.steps.pool.iColor.array[3];
-    w.step(8);
-    const a1 = w.life.steps.pool.iColor.array[3];
-    T.assert(w.life.steps.prints === 1 && a1 < a0, `ash: the print fills in (alpha ${a0.toFixed(2)} -> ${a1.toFixed(2)} at 8 s)`);
-    w.step(6.5);
-    T.assert(w.life.steps.prints === 0 && w.counts().own === 0, `ash: gone after ~14 s (${w.life.steps.prints})`);
-    // earth: ~5 s
+  /** `?prints=0` (the prints before the flash): a step on ash leaves a print that fills in; a print on earth
+   *  fades sooner. */
+  async prints(T) {
+    const { setLook } = await T.imp('src/entities/enemies/duelist/lookSwitch.js');
+    setLook('prints', '0');
+    try {
+      prints0(T);
+    } finally {
+      setLook('prints', null);
+    }
+  },
+
+  /** The flash print (the default, STEPS.flash): a step on EVERY surface leaves one, gone in under a second;
+   *  with the dragon ground (world/ground.js look b) the floor's own cells print it (render/dragonStep.js). */
+  async flash(T) {
+    const { STEPS } = await T.imp('src/world/life/stepsTuning.js');
+    const { DP_STEP_U } = await T.imp('src/render/dragonStep.js');
     const c = T.build('cinderwood', 'steps');
-    c.life.steps.step(0, 25.5, { side: -1, vx: 4.6, vz: 0 });
-    c.step(4);
-    const e4 = c.life.steps.prints;
-    c.step(1.5);
-    T.assert(e4 === 1 && c.life.steps.prints === 0, `earth: a print lasts ~5 s (${e4} at 4 s, ${c.life.steps.prints} at 5.5 s)`);
-    // grass and stone leave none
-    c.life.steps.step(0, 15, { sprint: true });
-    c.life.steps.step(c.set.slabs[0].x, c.set.slabs[0].z, { sprint: true });
-    T.assert(c.life.steps.prints === 0, `grass and stone leave no print (${c.life.steps.prints})`);
-    // a reset takes them
-    w.life.steps.step(1, 1, {});
-    w.life.clear('reset');
-    w.step(0.2);
-    T.assert(w.life.steps.prints === 0 && w.counts().own === 0, 'a reset takes the prints');
-    // the pool is capped
-    for (let i = 0; i < 400; i++) w.life.steps.step((i % 20) - 10, Math.floor(i / 20) - 10, {});
-    w.step(0.2);
-    T.assert(w.life.steps.prints <= 120 && w.counts().own <= 120, `at most 120 prints (${w.life.steps.prints})`);
+    c.step(0.2);
+    const spots = [['grass', 0, 15], ['stone', c.set.slabs[0].x, c.set.slabs[0].z], ['earth', 0, 25.5]];
+    for (const [name, x, z] of spots) {
+      const n0 = c.life.steps.prints;
+      c.life.steps.step(x, z, { side: 1, vx: 4.6, vz: 0 });
+      T.assert(c.life.steps.prints === n0 + 1, `${name} (${c.life.steps.surfaceAt(x, z)}): a step leaves a flash print (${c.life.steps.prints - n0})`);
+      c.step(0.05);
+    }
+    c.step(0.1);
+    T.assert(c.counts().own > 0, `the flash is drawn (${c.counts().own} letters; no dragon ground here: on the floor as letters)`);
+    c.step(STEPS.flash.life + 0.1);
+    T.assert(c.life.steps.prints === 0 && c.counts().own === 0, `gone ${STEPS.flash.life + 0.1} s on (${c.life.steps.prints})`);
+    // on a dragon ground the floor prints it: the shared uniforms carry the newest prints, the batch draws none
+    c.world.ground = { userData: { look: 'b' } };
+    c.life.steps.step(0, 15, { side: 1, vx: 4.6, vz: 0 });
+    c.step(0.1);
+    const S = DP_STEP_U.uDpSteps.value[0];
+    T.assert(DP_STEP_U.uDpStepK.value.w === 1 && Math.abs(S.x) < 0.5 && Math.abs(S.y - 15) < 0.5 && S.z > 0, `dragon ground: the floor's uniforms carry the print (${S.x.toFixed(2)}, ${S.y.toFixed(2)}, age ${S.z.toFixed(2)})`);
+    T.assert(c.counts().own === 0, `dragon ground: no letters of its own (${c.counts().own})`);
+    c.step(STEPS.flash.life + 0.2);
+    T.assert(DP_STEP_U.uDpStepK.value.w === 0, 'dragon ground: off again once the print is gone');
   },
 
   /** The trample (`?bend=0`: today's trodden trail): blue rises at the foot, red and green untouched, it
@@ -256,7 +261,7 @@ const more = {
   },
 
   /** Each surface answers in its own way. */
-  answers(T) {
+  async answers(T) {
     const n = (id, x, z, o, sec = 0.02) => {
       const w = T.build(id, 'steps');
       w.step(0.1);
@@ -277,7 +282,10 @@ const more = {
     T.assert(sum > 0 && sum <= 30, `grass at a sprint: a torn blade or two (${(sum / 10).toFixed(1)} a step)`);
     const st = n('ring', 0, 0, {});
     T.assert(st.d === 0, `stone at a run: nothing (${st.d})`);
-    // obsidian: no dust, a glint on the floor (a mark of the prints' batch) gone in 0.3 s
+    // obsidian: no dust, a glint on the floor (a mark of the prints' batch) gone in 0.3 s (`?prints=0`: the
+    // flash print would add its own marks; the flash scenario checks it)
+    const { setLook } = await T.imp('src/entities/enemies/duelist/lookSwitch.js');
+    setLook('prints', '0');
     const ob = T.build('starless', 'steps');
     ob.step(0.1);
     const oa = ob.counts().spawned.alpha;
@@ -287,6 +295,7 @@ const more = {
     T.assert(ob.counts().spawned.alpha === oa && g0 >= 2 && g0 <= 8, `obsidian: no dust, a glint or two (${g0} marks, +${ob.counts().spawned.alpha - oa} dust)`);
     ob.step(0.8);
     T.assert(ob.life.steps.prints === 0 && ob.counts().own === 0, `obsidian: the glint is gone in 0.8 s (${ob.life.steps.prints})`);
+    setLook('prints', null);
     // sand: the puff goes downwind
     const w = T.build('ring', 'steps,wind');
     w.step(0.5);
@@ -402,6 +411,42 @@ function trail0(T) {
     T.assert(on.mid > 0 && on.end === 0, `it stands up again (${on.mid} cells still trodden 5 s after, ${on.end} at 11 s)`);
     T.assert(off.n === 0 && off.max === 0, `steps off: no trail (${off.n})`);
   }
+}
+
+/** The prints before the flash (`?prints=0`): ash fills in, earth fades sooner, grass and stone none. */
+function prints0(T) {
+  const w = T.build('ash', 'steps');
+  w.step(0.5);
+  w.life.steps.step(0, 0, { side: 1, vx: 0, vz: -4.6 });
+  w.step(0.2);
+  T.assert(w.life.steps.prints === 1 && w.counts().pools === 1, `ash: a step leaves a print in its own pool (${w.life.steps.prints}, ${w.counts().pools} pool)`);
+  T.assert(w.counts().own === 1, `ash: the print is drawn (${w.counts().own})`);
+  const a0 = w.life.steps.pool.iColor.array[3];
+  w.step(8);
+  const a1 = w.life.steps.pool.iColor.array[3];
+  T.assert(w.life.steps.prints === 1 && a1 < a0, `ash: the print fills in (alpha ${a0.toFixed(2)} -> ${a1.toFixed(2)} at 8 s)`);
+  w.step(6.5);
+  T.assert(w.life.steps.prints === 0 && w.counts().own === 0, `ash: gone after ~14 s (${w.life.steps.prints})`);
+  // earth: ~5 s
+  const c = T.build('cinderwood', 'steps');
+  c.life.steps.step(0, 25.5, { side: -1, vx: 4.6, vz: 0 });
+  c.step(4);
+  const e4 = c.life.steps.prints;
+  c.step(1.5);
+  T.assert(e4 === 1 && c.life.steps.prints === 0, `earth: a print lasts ~5 s (${e4} at 4 s, ${c.life.steps.prints} at 5.5 s)`);
+  // grass and stone leave none
+  c.life.steps.step(0, 15, { sprint: true });
+  c.life.steps.step(c.set.slabs[0].x, c.set.slabs[0].z, { sprint: true });
+  T.assert(c.life.steps.prints === 0, `grass and stone leave no print (${c.life.steps.prints})`);
+  // a reset takes them
+  w.life.steps.step(1, 1, {});
+  w.life.clear('reset');
+  w.step(0.2);
+  T.assert(w.life.steps.prints === 0 && w.counts().own === 0, 'a reset takes the prints');
+  // the pool is capped
+  for (let i = 0; i < 400; i++) w.life.steps.step((i % 20) - 10, Math.floor(i / 20) - 10, {});
+  w.step(0.2);
+  T.assert(w.life.steps.prints <= 120 && w.counts().own <= 120, `at most 120 prints (${w.life.steps.prints})`);
 }
 
 export default { ...first, ...more };
