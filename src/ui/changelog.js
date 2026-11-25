@@ -18,6 +18,15 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-24',
+        title: 'The bosses look built from letters, like the hero',
+        notes: [
+          'Every human boss is drawn the way your hero is: a body of lit letters in his own colours, the same outline, and below the knee his clothes break into a pale, ragged hem that flows like your cape.',
+          'Lu Wusheng now prints in those letters too, not in big digits.',
+          'To compare: ?bossPrint=a draws them in the hero\'s greys, ?bossPrint=0 as before.',
+        ],
+      },
+      {
         date: '2026-11-25',
         title: 'The grass bends as you run through it and springs back',
         notes: [

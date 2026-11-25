@@ -64,7 +64,7 @@ export const LOOK_SWITCHES = Object.freeze([
   ['oneLetters', ['0', 'a'], '0', 'a', false, ['code'], 'Xin Yi\'s letters: 0 the bosses\' fine cell, a they follow his size as the hero\'s do (the default; live)'],
   ['onePrint', ['0', 'a', 'b'], '0', 'a', true, ['code'], 'Xin Yi\'s print: 0 the lifted print and the shapes he shipped with; a the hero\'s quiet print, simpler shapes, a coat that stirs from phase 1 (the default); b a, and one letter size bolder on a small screen (a reload)'],
   // --- grove: Lu Wusheng readable (ADR-152): the palette picked; the print's five steps and the mark wait for the owner
-  ['sheathArt', ['0', '1', '2', '3', 'a'], '0', '2', true, ['grove'], 'Lu Wusheng\'s print, five steps: 0 the wyrm\'s digits as shipped, 1 digits in his colours, 2 digits lit and outlined, 3 ink-line flattened, a the hero\'s ink-line art (a reload)'],
+  ['sheathArt', ['0', '1', '2', '3', 'a'], '0', 'a', true, ['grove'], 'Lu Wusheng\'s print, five steps: 0 the wyrm\'s digits as shipped, 1 digits in his colours, 2 digits lit and outlined, 3 ink-line flattened, a the hero\'s ink-line art (the default since ADR-194; a reload)'],
   ['sheathTone', ['a', 'b', 'c'], 'a', 'a', true, ['grove'], 'the Wanderer\'s palette: a indigo and sand, b pale and cold, c moss and rust (a reload)'],
   ['sheathMark', ['a', 'b', '0'], 'a', 'a', true, ['grove'], 'his mark: a a torn strip on the scabbard, b a white streak in the hair, 0 none (a reload)', 'awaiting'],
   // --- city: Halcyon Plaza and Halcyon (ADR-161; every one waits for the owner, read when built: a reload)
@@ -75,6 +75,8 @@ export const LOOK_SWITCHES = Object.freeze([
   ['halCapeSize', ['0', 'a', 'b', 'c'], 'b', 'b', true, ['city'], 'his cape\'s size: 0 as picked, a ~80 %, b ~65 %, c ~50 % (to the back of his knees) (a reload)'],
   ['glare', ['a', 'b', 'c'], 'a', 'a', true, ['city'], 'his eyes\' heat: a crimson, white core; b crimson alone; c orange fire (a reload)'],
   ['city', ['a', 'b', 'c'], 'a', 'a', true, ['city'], 'the city: a neon rain, b golden hour, c lockdown (a reload)'],
+  // --- every human boss (ADR-194)
+  ['bossPrint', ['0', 'a', 'b'], '0', 'b', false, ['ash', 'starless', 'ring', 'fox', 'grove', 'code', 'city'], 'the bosses printed the hero\'s way: b in their own colours (the default), a in the hero\'s greys, 0 as before (lit letter bodies, his strokes and dotted rims, the pale hem below the knee)'],
 ]);
 
 const NAMES = LOOK_SWITCHES.map((s) => s[0]);
