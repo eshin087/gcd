@@ -1,6 +1,9 @@
 import * as THREE from 'three';
-import { COMMON_GLSL, BASIC_VERT } from '../render/shaderLib.js';
+import { COMMON_GLSL, BASIC_VERT, TRAIL_N, TRAIL_CH } from '../render/shaderLib.js';
 import { gis } from '../render/glyphs.js';
+import { DRAGON_PRINT_GLSL, DP_CELL, dragonPrintUniforms, dragonAllOn } from '../render/dragonPrint.js';
+import { DRAGON_PRINT_FX_GLSL, DP_FX_U } from '../render/dragonPrintFx.js';
+import { DG_GRASS_GLSL, dgGrassLook } from './dragonGrass.js';
 
 /**
  * The ground's look (a prototype switch, `?ground=`): none = today's soil under the 3D grass;
@@ -16,7 +19,9 @@ import { gis } from '../render/glyphs.js';
 export function groundLook() {
   try {
     const v = new URLSearchParams(globalThis.location?.search ?? '').get('ground');
-    return v === 'a' || v === 'b' || v === 'c' || v === 'd' ? v : null;
+    if (v === 'a' || v === 'b' || v === 'c' || v === 'd') return v;
+    // ?dragon=1: every dragon-print piece at once, the ground's look b first (render/dragonPrint.js)
+    return dragonAllOn() ? 'b' : null;
   } catch {
     return null;
   }
@@ -32,8 +37,6 @@ export function createGround(U, look = groundLook()) {
   const ash = gis(".,:;~");
   // a: the meadow's letters, thin to thick (4 levels x 4)
   const mead = gis(".,.'" + ",';." + "';\"," + "\"v';");
-  // b: the dragon's digit ramp, dim to bright
-  const digs = gis('.:-=17402#%8@');
   // d: strokes by direction (0, 45, 90, 135 degrees) + the curl
   const comb = gis('-/|\\~');
   const mat = new THREE.ShaderMaterial({
@@ -46,30 +49,48 @@ export function createGround(U, look = groundLook()) {
       uSoil: { value: soil },
       uAsh: { value: ash },
       uMead: { value: mead },
-      uDigs: { value: digs },
       uComb: { value: comb },
       uMeadow: { value: null },
       uMeadowExt: { value: 150 },
       uMeadowOn: { value: 0 },
       uDry: { value: 0 },
+      // look b: the dragon print (render/dragonPrint.js), its upgrades (dragonPrintFx.js, one shared object)
+      // and the hero's wake (world/grassTrail.js) for the printed grass (world/dragonGrass.js)
+      ...dragonPrintUniforms(),
+      ...DP_FX_U,
+      uTrail: U.uTrail ?? { value: Array.from({ length: TRAIL_N }, () => new THREE.Vector4()) },
+      uTrailBox: U.uTrailBox ?? { value: Array.from({ length: TRAIL_CH }, () => new THREE.Vector4()) },
+      uBend: U.uBend ?? { value: new THREE.Vector4(0, 0, 0, 0) },
+      uBendT: U.uBendT ?? { value: new THREE.Vector4(0, 1, 0, 0) },
+      uBendS: U.uBendS ?? { value: new THREE.Vector4(0, 0, 0, 0) },
+      uBendE: U.uBendE ?? { value: new THREE.Vector4(0, 1, 0, 0) },
     },
-    defines: { GROUND_LOOK: look ? LOOK_ID[look] : 0 },
+    defines: { GROUND_LOOK: look ? LOOK_ID[look] : 0, DG_GRASS: look === 'b' ? { 0: 0, a: 1, b: 2 }[dgGrassLook()] : 0, TRAIL_N, TRAIL_CH },
     vertexShader: BASIC_VERT,
     fragmentShader: /* glsl */ `
       ${COMMON_GLSL}
       uniform float uSoil[6];
       uniform float uAsh[5];
       uniform float uMead[16];
-      uniform float uDigs[13];
       uniform float uComb[5];
       uniform sampler2D uMeadow;
       uniform float uMeadowExt, uMeadowOn, uDry;
+      uniform vec4 uTrail[TRAIL_N];
+      uniform vec4 uTrailBox[TRAIL_CH];
+      uniform vec4 uBend, uBendT, uBendS, uBendE;
+#if GROUND_LOOK == 2
+      ${DRAGON_PRINT_GLSL}
+      // the base relief: soft mounds, tussocks where the meadow is thick (height in m-ish units)
+      float groundRelief(vec2 p, float d) { return dpFbm(p * 0.3) * 0.9 + dpFbm(p * 1.6) * 0.3 * (0.3 + d); }
+      #define DP_RELIEF groundRelief
+      ${DRAGON_PRINT_FX_GLSL}
+      ${DG_GRASS_GLSL}
+#endif
       varying vec3 vW;
       varying vec3 vN;
       varying vec2 vUv;
       float pick6(float a[6], int i) { float r = a[0]; for (int k = 0; k < 6; k++) if (k == i) r = a[k]; return r; }
       float pick5(float a[5], int i) { float r = a[0]; for (int k = 0; k < 5; k++) if (k == i) r = a[k]; return r; }
-      float pick13(float a[13], int i) { float r = a[0]; for (int k = 0; k < 13; k++) if (k == i) r = a[k]; return r; }
       float pick16(float a[16], int i) { float r = a[0]; for (int k = 0; k < 16; k++) if (k == i) r = a[k]; return r; }
       float vnoise(vec2 p) {
         vec2 i = floor(p), f = fract(p);
@@ -130,34 +151,51 @@ export function createGround(U, look = groundLook()) {
         float sheen = 0.8 + 0.35 * fbm(cw.xz * 0.12 + vec2(uTime * 0.03, 0.0));
         col = soilC * L + ink * Lg * m * 2.4 * sheen;
 #elif GROUND_LOOK == 2
-        // --- b: the dragon ground (cells 5 x 8 px at 720p, every cell filled)
-        vec2 size = vec2(0.135, 0.25);
+        // --- b: the dragon ground (render/dragonPrint.js: the wyrm's 5 x 8 px cell at 720p, every cell filled)
+        vec2 size = vec2(${DP_CELL[0]}, ${DP_CELL[1]});
         vec2 f, g;
-        vec2 cell = lattice(vW.xz, size, f, g);
+        vec2 cell = dpLattice(vW.xz, size, f, g);
         h = hash12(cell);
-        vec3 cw = cellWorld(cell, size);
-        float d = meadowAt(cw.xz) * (1.0 - burn);
-        // a lit bumpy source: soft mounds + tussocks where the meadow is thick
-        vec2 p = cw.xz;
+        vec2 cxz = dpCellCenter(cell, size);
+        vec3 cw = vec3(cxz.x, 0.0, cxz.y);
+        float d = meadowAt(cxz) * (1.0 - burn);
+        float torn = tornAt(cxz);
+        // a lit bumpy source: the relief's normal at the cell's centre
         float e = 0.12;
-        float hc = fbm(p * 0.3) * 0.9 + fbm(p * 1.6) * 0.3 * (0.3 + d);
-        float hx = fbm((p + vec2(e, 0.0)) * 0.3) * 0.9 + fbm((p + vec2(e, 0.0)) * 1.6) * 0.3 * (0.3 + d);
-        float hz = fbm((p + vec2(0.0, e)) * 0.3) * 0.9 + fbm((p + vec2(0.0, e)) * 1.6) * 0.3 * (0.3 + d);
+        float hc = groundRelief(cxz, d);
+        float hx = groundRelief(cxz + vec2(e, 0.0), d);
+        float hz = groundRelief(cxz + vec2(0.0, e), d);
         vec3 N = normalize(vec3(-(hx - hc) / e * 1.4, 1.0, -(hz - hc) / e * 1.4));
-        float shc = shadowAt(cw + vec3(0.0, 0.05, 0.0));
-        float lam = max(dot(N, uMoonDir), 0.0);
-        vec3 Lc = ambientAt(N) + uMoonColor * lam * shc + pointLights(cw + vec3(0.0, 0.05, 0.0), N, 0.0);
-        // the tone: how the relief faces the moon (troughs dark, crests caught), the fire's light on top
-        float t = smoothstep(uMoonDir.y - 0.3, uMoonDir.y + 0.25, lam) * shc;
-        t = clamp(t * 0.85 + luma(pointLights(cw + vec3(0.0, 0.05, 0.0), N, 0.0)) * 2.0, 0.0, 1.0);
-        float lvf = clamp(t * 12.0 + (h - 0.5) * 1.5, 0.0, 12.0);
-        float idx = pick13(uDigs, int(lvf));
-        if (burn > 0.35) idx = pick5(uAsh, int(fract(h * 7.1) * 5.0));
-        m = glyphGrad(idx, f, dFdx(g), dFdy(g));
         vec3 body = mix(vec3(0.06, 0.062, 0.058), vec3(0.07, 0.11, 0.06), d);
         body = mix(body, vec3(0.085, 0.08, 0.072), uDry);
         body = mix(body, vec3(0.05, 0.045, 0.04), burn);
-        col = vec3(0.008, 0.01, 0.01) * L + body * (0.2 + 1.5 * t) * L * m * 1.15;
+        float idx = -1.0;
+        // [grass] the printed tufts lean the normal, the wake lays them over, a cut mows them (world/dragonGrass.js)
+        float tone0 = 0.0;
+        dgGrass(cxz, h, d, burn, torn, N, body, tone0, idx);
+        // [fx] drifting cloud shadows dim the moon; contact shadows darken the feet of things
+        float cloud = dpCloud(cxz);
+        float shc = shadowAt(cw + vec3(0.0, 0.05, 0.0)) * cloud;
+        float lam = max(dot(N, uMoonDir), 0.0);
+        vec3 PL = pointLights(cw + vec3(0.0, 0.05, 0.0), N, 0.0);
+        // the tone: how the relief faces the moon (troughs dark, crests caught), the fire's light on top
+        float t = smoothstep(uMoonDir.y - 0.3, uMoonDir.y + 0.25, lam) * shc;
+        t = clamp(t * 0.85 + luma(PL) * 2.0 + tone0, 0.0, 1.0);
+        t *= 1.0 - dpContact(cxz);
+        // [fx] a ripple re-prints the cell (another digit, a flash brighter)
+        float rip = dpRipple(cxz, h);
+        float hh = fract(h + rip * 0.37);
+        if (idx < 0.0) idx = dpGlyph(clamp(t + rip * 0.35, 0.0, 1.0), hh);
+        // [fx] a lit crest prints an outline stroke
+        if (uDpFxOn[3] > 0.5) {
+          vec4 nb = vec4(groundRelief(cxz + vec2(size.x, 0.0), d), groundRelief(cxz - vec2(size.x, 0.0), d),
+                         groundRelief(cxz - vec2(0.0, size.y), d), groundRelief(cxz + vec2(0.0, size.y), d)) - hc;
+          float ridx;
+          if (dpRidge(cxz, N, t, nb, h, ridx)) idx = ridx;
+        }
+        if (burn > 0.35) idx = pick5(uAsh, int(fract(h * 7.1) * 5.0));
+        m = glyphGrad(idx, f, dFdx(g), dFdy(g));
+        col = vec3(0.008, 0.01, 0.01) * L + body * (0.2 + 1.5 * t + rip * 0.8) * L * m * 1.15;
 #elif GROUND_LOOK == 3
         // --- c: tidy tufts: a fine soil dot lattice under the 3D blades (cells 0.16 x 0.28)
         vec2 size = vec2(0.16, 0.28);
