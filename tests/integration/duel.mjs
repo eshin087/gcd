@@ -1178,6 +1178,29 @@ async function scenarioDeflect() {
 // before, the storm where the pace falls under `stormAt`. ?tempo=0: the storm of ADR-167 exactly; the
 // storm piece off: the pace before it, whatever the tempo says. A riposte's last cut is the heavy beat
 // again. Damage, the blows and where he ends: as before.
+// ================================================================== scenario: timerip (?rip=)
+// The flurry's cuts rip the picture (player/timeRip.js) on a man: a flurry of five (Passing Cut) in
+// each look (tests/integration/timerip.mjs has the checks; integ.mjs `timerip` runs it on the wyrm).
+async function scenarioTimeRip() {
+  out("\n== scenario TIMERIP (the flurry's cuts rip the picture: off | tear | strip | ghosts | negative, on a duelist) ==");
+  const { timeRipCheck } = await import('./timerip.mjs');
+  const R = await timeRipCheck({
+    THREE, build: () => build(), assert, out, DT, label: 'duelist',
+    setup: (G) => {
+      duel(G, { dist: 4 });
+      settle(G);
+      place(G, 2.5);
+      run(G, 0.3);
+      G.game.dragon.hp = G.game.dragon.maxHp;
+      G.game.player.debug.god = true;
+    },
+    go: (G) => G.game.player.debug.flurry(5, 'passing'),
+    frame: (G) => G.tick(DT),
+    busy: (G) => G.game.player.state === 'flurry' || G.game.player.state === 'plunge',
+  });
+  return R.negative.G;
+}
+
 async function scenarioTempo() {
   out('\n== scenario TEMPO (the flurry on a man: heavy first, then faster by ratio; ?tempo=0 the storm as it was) ==');
   const { STREAK_FX } = await imp('src/combat/streak.js');
@@ -4819,6 +4842,7 @@ const SCENARIOS = {
   ghostep: scenarioGhostep,
   tempo: scenarioTempo,
   chain: scenarioChain,
+  timerip: scenarioTimeRip,
   perfectfx: scenarioPerfectFx,
   parryfx: scenarioParryFx,
   streak: scenarioStreak,

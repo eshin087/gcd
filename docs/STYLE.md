@@ -1779,3 +1779,25 @@ ink on black, never over the hero.
   (TRIPLE ... THOUSANDFOLD) sits under it once, in small spaced gold capitals. A lost streak: grey,
   struck through in red, the digits parting as they fall. The flurry's banner at tiers 4 - 5 gains
   thin gold rules, never size.
+- **The time rip** (2026-11-24, `player/timeRip.js`, `?rip=`; four looks for the owner to pick from
+  film, `tear` until then): what each flash cut of the flurry does to the picture, always exactly on
+  the line the blade travelled, steel-white, never a colour change or a brightening outside the cut's
+  thin band, never a blob. All its frames are held in REAL time (a cut's freeze does not stretch them).
+  - `tear`, the delayed tear: on the contact only a hairline of dim steel specks (heat 0.36) hangs on
+    the line; 0.16 s later (in a storm or a quick string 0.55 x the gap since the blow before, at least
+    0.05 s) it splits along its whole length at once: a bright seam (1.2), two lips a cell then two
+    cells off it (a lens, pinched to the line at both ends), closing to one cell, then a broken trail of
+    specks; five frames of 0.035 s. The last blow splits every hairline still waiting.
+  - `strip`, the torn strip: for three frames (1/60 s each) the letters already printed within 1.5
+    cells of the line (3 - 4 cells across) are printed from 3, 3, then 1 cells along it, each side the
+    other way (whole 5 x 8 cells), then back; the cells on the line stay and carry a crisp steel seam
+    (1.15, 0.9, 0.55). Only displacement: no tint, no light.
+  - `ghosts`, frozen afterimages: on each cut 4 still copies of him (1 a storm cut, 10 alive at most)
+    on the line from where the pass began to the contact, his pose at the contact, printed as the
+    Ghostep's afterimage (one fine digit to a 0.13 m cell, its cold blue-white, alpha 0.55, one digit
+    in eleven brighter); they stand still 0.12 s (a storm: 0.6 x the gap, at least 0.04 s), then
+    shatter over 0.08 s from the start of the pass toward the contact, each digit thrown along the
+    cut; the last blow shatters them all at once.
+  - `negative`, the inverted line: for two frames the cells within 0.75 cells of the line (1 - 2
+    across) print in negative: a pale steel cell (0.5, 0.55, 0.62) with the letters dark in it, a crack
+    of light in the picture. Then gone.

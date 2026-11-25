@@ -13,6 +13,7 @@ import { TrainingPanel } from './trainingPanel.js';
 import { setCutStyle, cutStyle } from '../combat/cutFx.js';
 import { IMPACT } from '../combat/impact.js';
 import { STREAK_FX, setPerfectMode, perfectMode } from '../combat/streak.js';
+import { RIP_MODES, ripMode, setRipMode } from '../entities/player/timeRip.js';
 import { PARRY_FX, parryFxMode, setParryFx } from '../combat/parrySparks.js';
 import { BURST_LOOK, setBurst, burstLevel } from '../entities/player/flurryBurst.js';
 import { CALM_LOOK, setCalm, calmLevel } from '../combat/impactCalm.js';
@@ -1219,6 +1220,12 @@ export class Lab {
       this._syncCutBtns();
     });
     this.ui.chainBtn.title = "the flurry's chain (?chain=0 off): each pass starts where the last ended (A -> B -> C), every slash on the path he ran, letter dust on the last blow; off = the ring-teleport paths, the crescents and the 'A' shards as before. Read as a flurry starts";
+    // the time rip (player/timeRip.js; ?rip=): cycles off / tear / strip / ghosts / negative, read at every cut
+    this.ui.ripBtn = button(stkGrid, `rip: ${ripMode()}`, () => {
+      setRipMode(RIP_MODES[(RIP_MODES.indexOf(ripMode()) + 1) % RIP_MODES.length]);
+      this._syncCutBtns();
+    });
+    this.ui.ripBtn.title = "what a flurry's flash cut does to the picture (?rip=): off, tear (a hairline that splits open a beat later), strip (the letters along the cut slide apart for three frames), ghosts (still copies of him along the line, then they shatter), negative (the line prints in negative for two frames)";
     this.ui.perfectBtn = button(stkGrid, `perfect: ${perfectMode()}`, () => {
       const M = STREAK_FX.perfectModes;
       setPerfectMode(M[(M.indexOf(perfectMode()) + 1) % M.length]);
@@ -1370,6 +1377,10 @@ export class Lab {
     for (const { s, el: b } of this.ui.streakBtns ?? []) setClass(b, 'on', STREAK_FX.on[s] === true);
     if (this.ui.tempoBtn) setClass(this.ui.tempoBtn, 'on', STREAK_FX.tempo !== false);
     if (this.ui.chainBtn) setClass(this.ui.chainBtn, 'on', STREAK_FX.chain !== false);
+    if (this.ui.ripBtn) {
+      this.ui.ripBtn.textContent = `rip: ${ripMode()}`;
+      setClass(this.ui.ripBtn, 'on', ripMode() !== 'off');
+    }
     if (this.ui.perfectBtn) this.ui.perfectBtn.textContent = `perfect: ${perfectMode()}`;
     if (this.ui.parryFxBtn) this.ui.parryFxBtn.textContent = `parryFx ${parryFxMode()}`;
     if (this.ui.burstBtn) this.ui.burstBtn.textContent = `burst ${burstLevel()}`;
