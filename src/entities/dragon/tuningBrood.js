@@ -32,7 +32,6 @@ export const BROOD = {
     licks: 22, // tongues / s climbing off the lines while it burns (x flare)
     standSize: 2.0, // m: look b, a standing sigil's height
     standY: 1.6, // m: ... the height of its middle
-    stream: 90, // look c: motes / s streaming off the body into the circle while it is written
     jawOffset: 1.3, // m (x SCALE): a jaws seal hangs this far before the mouth
     // the `script` ink (?incantInk): the fire's own colours, its turbulence turned down so a line of
     // it holds its shape (lick / erode / warp: firePalettes.js), boiling a little faster
@@ -70,6 +69,18 @@ export const BROOD = {
     // the end of its time: it climbs, glows white-hot and dives onto him (red: roll through it)
     dive: { windup: 1.05, rise: 3.6, speed: 18, radius: 2.4, damage: 16, burn: 1.5, knockback: 6, gap: 0.8 },
     burnWorld: 0.5, // fire k on the grass where it bursts (world.ignite)
+    // how it is drawn (brood.js _drawDrake): m; heats in the script ink (a hot rim, a dim core)
+    look: {
+      snout: 0.55, head: 0.26, horn: 0.5, spade: 0.32,
+      width: [0, 0.14, 0.32, 0.42, 0.38, 0.28, 0.18, 0.1, 0.05], // the body's half width at each link (its mass)
+      span: 2.6, // m: one wing's reach, fully open
+      swept: 0.5, // its share open in a dash
+      beat: 8, beatFast: 5, // rad/s
+      rim: 0.72, spar: 0.78, edge: 0.45, eye: 0.85, core: 0.13, smoke: 1.5,
+      darkSpine: 0.4, // b: the spine's heat share (red strokes: a seam, not a body of fire)
+      root: 0.3, // m off the spine a wing's spars and edge start
+      windHeat: 0.25, // + share of the heat at the end of a windup
+    },
   },
 
   // ------------------------------------------------------------------ kamikaze wisps
@@ -83,11 +94,12 @@ export const BROOD = {
     height: 1.35, // m it homes in at
     arm: 3.0, // m from him: it commits (the red tell) and flies through where he stands
     fuse: 0.68, // s from commit to the burst (>= flashLead + a reaction)
+    reaim: 16, // m/s at most while a committed one turns onto him (until its flash)
     sep: 0.75, // s at least between two commits (the next one wheels round him till then)
     radius: 0.38, // its body; the cut reaches `cut` further
     cut: 0.4,
     blast: 1.9, damage: 12, burn: 1.0, knockback: 4,
-    life: 7, // s: a wisp that never reaches him gutters out
+    life: 7, // s from tearing off: a wisp that never reaches him gutters out
   },
 
   // a brood cue waits (up to `max` s) while one of the other answer is due within `sep` s of it

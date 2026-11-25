@@ -2,7 +2,23 @@ import { TUNING, SCALE } from './tuning.js';
 import { BROOD } from './tuningBrood.js';
 import { TELL, RESULT } from '../../combat/rules.js';
 import { distPointSegment } from '../../core/math.js';
-import { K_FIRE, K_SMOKE } from '../enemies/duelist/fx.js';
+import { K_FIRE, K_SMOKE, K_VOID } from '../enemies/duelist/fx.js';
+import { incantInk } from './incantation.js';
+
+// The drakeling's look (`?drakeling=a|b`, a the default; _drawDrake): a a body of fire (a dim core in
+// a hot rim), b a dark wyrm of smoke with burning seams. Read once (headless runs have no location).
+const DRAKE_LOOKS = ['a', 'b'];
+let DRAKE_LOOK = 'a';
+try {
+  const q = new URLSearchParams(globalThis.location?.search ?? '').get('drakeling');
+  if (DRAKE_LOOKS.includes(q)) DRAKE_LOOK = q;
+} catch {
+  /* headless */
+}
+export const drakelingLook = () => DRAKE_LOOK;
+export const setDrakelingLook = (k) => {
+  if (DRAKE_LOOKS.includes(k)) DRAKE_LOOK = k;
+};
 
 // The wyrm's brood (ADR-190): small fire creatures it calls up with a roar, which fight on their own
 // beside it, like the hazards (hazards.js): fire drakelings (burst out of the incantation's circle,
@@ -33,12 +49,12 @@ import { K_FIRE, K_SMOKE } from '../enemies/duelist/fx.js';
 // within `dive.gap` s, and a lunge waits while a cue of the other answer is due near its impact
 // (brain._clash: the wyrm's own blows, bullets, hazards).
 
-const DR = BROOD.drakeling, WP = BROOD.wisp, LG = DR.lunge, DV = DR.dive, HOLD = BROOD.hold;
+const DR = BROOD.drakeling, WP = BROOD.wisp, LG = DR.lunge, DV = DR.dive, HOLD = BROOD.hold, DK = DR.look;
 const S = SCALE;
 const MAXD = 6;
 const MAXW = 8;
-const SEGS = 7; // a drakeling's body: head + 6 links
-const LINK = 0.3; // m between them
+const SEGS = 9; // a drakeling's body: head + 8 links (neck, chest, tail)
+const LINK = 0.44; // m between them (head to tail tip ~4 m: 60 - 80 px at the game camera)
 const TAU = Math.PI * 2;
 const EMBER = ".'`*";
 const SPARK = "'`.";
@@ -92,6 +108,15 @@ export class Brood {
   }
   get fx() {
     return this.d.fx?.tells ?? null;
+  }
+  get look() {
+    return DRAKE_LOOK;
+  }
+  /** The kind its lines are written in: the incantation's script ink (the void slot, dressed). */
+  get _ink() {
+    const I = this.d.incantation, ink = incantInk() === 'blood' ? 'blood' : 'script';
+    I?._dress?.(ink);
+    return I?._inkSet ? K_VOID : K_FIRE;
   }
   get low() {
     return (this.game.settings?.quality ?? 2) === 0;
@@ -658,14 +683,29 @@ export class Brood {
         this._move(c, dt);
         // (one commits at a time, `sep` s apart: the next one wheels round him until its turn)
         if (ready && ((hl <= WP.arm && Math.abs(da) < 1.2) || (hl <= WP.arm * 1.5 && c.st > 1.5))) this._commit(c, p);
-        else if (c.t >= c.life) {
+        else if (c.st >= c.life) {
+          // (its life counts from the moment it tears off: one queued late on the body, or wheeling
+          // round him for its turn, used to gutter out before it came in)
           this._die(c, false);
           return;
         }
         break;
       }
       case 'commit': {
-        // straight through where he stood; it bursts when its fuse runs out
+        // at him: until its flash it keeps turning onto where he is (he may have been thrown by the
+        // burst before it), then straight through that spot; it bursts when its fuse runs out
+        if (!c.flashed) {
+          const left = Math.max(0.12, WP.fuse - c.st);
+          let dx = p.x - c.x, dz = p.z - c.z;
+          const l = Math.hypot(dx, dz) || 1, sp = Math.min(WP.reaim, l / left);
+          c.tx = p.x;
+          c.tz = p.z;
+          const k = Math.min(1, dt * 10);
+          dx /= l;
+          dz /= l;
+          c.vx += (dx * sp - c.vx) * k;
+          c.vz += (dz * sp - c.vz) * k;
+        }
         this._move(c, dt);
         c.vy += (WP.height - c.y) * dt * 4;
         if (!c.flashed && WP.fuse - c.st <= TUNING.flashLead + 0.1 && this._hold(c, dt, WP.fuse - c.st, 'dodge', 'wisps')) {
@@ -819,58 +859,92 @@ export class Brood {
   }
 
   /**
-   * A drakeling: a small wyrm of fire. A hot head with a snout, a body that tapers link by link, two
-   * wings written as lines of fire on the letter grid that beat, and a trail of flame off its tail.
-   * Its windup heats it toward white; its dive burns white-hot.
+   * A drakeling: a tiny dragon, drawn so its silhouette holds in one still at the game camera (it flies
+   * at ~1.9 m, ~40 m from the camera: 50 - 70 px). Its lines are written on the letter grid in the
+   * script ink (the incantation's: the fire's colours with the tongues kept short, so it does not
+   * dissolve into flame): a wedge of a head with horns and two hot eyes, an outline that follows the
+   * body link by link (a neck, a chest, a tail that whips to a spade), and two wings seen from above,
+   * each a hot leading spar to the wrist and tip, two finger spars and a scalloped trailing edge, the
+   * span opening and closing as they beat. The look (`?drakeling=a|b`):
+   *   a  a body of fire: a dim core of the same ink inside a hot rim (the wyrm's dark body, bright edge)
+   *   b  a dark wyrm with burning seams: a body of smoke (dim grey letters) inside the burning outline
+   * Its windup heats it toward white; its dive burns white-hot. A short trail of flame off the tail.
    */
   _drawDrake(c, dt) {
     const fx = this.fx;
     if (!fx || !this.game.fx?.fire) return;
-    const C = c.chain;
+    const C = c.chain, low = this.low, K = DK;
     const windK = c.state === 'windup' ? clamp01(c.st / (c.tell === TELL.BLUE ? LG.blue.windup : LG.normal.windup)) : c.state === 'rise' ? clamp01(c.st / DV.windup) : c.state === 'dive' || c.state === 'lunge' ? 1 : 0;
-    const hk = 1 + 0.55 * windK + (c.state === 'rise' || c.state === 'dive' ? 0.35 : 0);
-    // the head: a hot knot, the snout ahead of it (the jaws open in the lunge)
-    const hx = c.x, hy = c.y, hz = c.z;
-    fx._dot(hx, hy, hz, 0.62, 0.95 * hk, K_FIRE);
-    fx._dot(hx + c.fx * 0.32, hy - 0.05, hz + c.fz * 0.32, 0.42, 0.8 * hk, K_FIRE);
-    if (c.state === 'lunge' || windK > 0.6) {
-      fx._dot(hx + c.fx * 0.55, hy + 0.12, hz + c.fz * 0.55, 0.3, 0.6 * hk, K_FIRE);
-      fx._dot(hx + c.fx * 0.55, hy - 0.2, hz + c.fz * 0.55, 0.3, 0.6 * hk, K_FIRE);
+    const hk = 1 + K.windHeat * windK + (c.state === 'rise' || c.state === 'dive' ? 0.3 : 0);
+    const ink = this._ink, rim = K.rim * hk, spar = K.spar * hk, edge = K.edge * hk;
+    // its frame: forward along the head link, flat right
+    let fx0 = C[0] - C[3], fz0 = C[2] - C[5];
+    let fl = Math.hypot(fx0, fz0);
+    if (!(fl > 1e-3)) { fx0 = c.fx; fz0 = c.fz; fl = 1; }
+    const f_x = fx0 / fl, f_z = fz0 / fl, r_x = f_z, r_z = -f_x;
+    const hx = C[0], hy = C[1], hz = C[2];
+    const dark = this.look === 'b';
+    // ONE line down its length (the letters of a soft line add up: two outlines a few cells apart
+    // printed as one white knot at this size), snout to tail tip: hot at the head, cooling to the tail
+    const sx = hx + f_x * K.snout, sz = hz + f_z * K.snout;
+    const sp0 = rim * (dark ? K.darkSpine : 1); // (b: the spine a seam of low red strokes in a smoke body)
+    fx._ink(sx, hy, sz, hx, hy, hz, 0, sp0, 0, sp0, 0, ink);
+    const n = SEGS;
+    for (let i = 1; i < n; i++) {
+      const j = i * 3, u = i / (n - 1);
+      fx._ink(C[j - 3], C[j - 2], C[j - 1], C[j], C[j + 1], C[j + 2], 0, sp0 * (1 - 0.35 * u), 0, sp0 * (1 - 0.35 * u), 1, ink);
+      // the body's mass: a dim core (a) or a dark body of smoke (b), as wide as the body there
+      const w = K.width[i] ?? 0;
+      if (w > 0.12 && (dark || i !== 2) && (!low || i % 2)) {
+        if (dark) fx._dot(C[j], C[j + 1], C[j + 2], w * 3.2, K.smoke, K_SMOKE);
+        else fx._dot(C[j], C[j + 1], C[j + 2], w * 2.2, K.core * hk, ink);
+      }
     }
-    // the body, tapering
-    for (let i = 1; i < SEGS; i++) {
-      const j = i * 3, u = i / (SEGS - 1);
-      fx._dot(C[j], C[j + 1], C[j + 2], 0.56 - 0.3 * u, (0.95 - 0.5 * u) * hk, K_FIRE);
-    }
-    // the wings: from the shoulders (link 1), beating; leading edge hot, trailing edge to link 3
-    const sx = C[3], sy = C[4], sz = C[5];
-    let bx = C[0] - C[6], bz = C[2] - C[8];
-    const bl = Math.hypot(bx, bz) || 1;
-    bx /= bl;
-    bz /= bl;
-    const rx = bz, rz = -bx; // its right (flat)
-    const fast = c.state === 'lunge' || c.state === 'dive';
-    const beat = Math.sin(c.t * (fast ? 7 : 11) + c.seed);
-    const lift = fast ? -0.35 : 0.15 + 0.75 * beat; // swept back in the dash
-    const span = fast ? 0.9 : 1.25;
-    const ex = C[9], ey = C[10], ez = C[11];
-    const hw = 0.8 * hk;
+    // horns swept back off the head, two hot eyes (one cell each)
+    const jw = K.head;
     for (let side = -1; side <= 1; side += 2) {
-      const ox = rx * side, oz = rz * side;
-      const elx = sx + ox * span * 0.5, ely = sy + lift * span * 0.35 + 0.1, elz = sz + oz * span * 0.5;
-      const tpx = sx + ox * span - bx * 0.35, tpy = sy + lift * span, tpz = sz + oz * span - bz * 0.35;
-      fx._ink(sx, sy, sz, elx, ely, elz, 0, hw, 0, hw, 0, K_FIRE);
-      fx._ink(elx, ely, elz, tpx, tpy, tpz, 0, hw, 0, hw * 0.8, 1, K_FIRE);
-      fx._ink(tpx, tpy, tpz, ex, ey, ez, 0, hw * 0.55, 0, hw * 0.4, 1, K_FIRE);
+      const ox = r_x * side * jw, oz = r_z * side * jw;
+      fx._ink(hx + ox * 0.5, hy, hz + oz * 0.5, hx + ox * 1.6 - f_x * K.horn, hy + 0.15, hz + oz * 1.6 - f_z * K.horn, 0, rim * 0.75, 0, rim * 0.5, 0, ink);
     }
-    // the trail of flame off its tail (more as it flies fast)
-    const sp = Math.hypot(c.vx, c.vy, c.vz);
-    c.acc += dt * (this.low ? 14 : 26) * (0.5 + Math.min(1.5, sp / 8));
-    const L = (SEGS - 1) * 3;
+    fx._dot(hx + f_x * 0.12, hy + 0.08, hz + f_z * 0.12, 0.14, K.eye * hk, ink);
+    // the spade at the tail's tip
+    const T = (n - 1) * 3, T2 = (n - 2) * 3;
+    let tx = C[T] - C[T2], tz = C[T + 2] - C[T2 + 2];
+    const tl = Math.hypot(tx, tz) || 1;
+    tx /= tl; tz /= tl;
+    const ex = C[T] + tx * K.spade, ey = C[T + 1], ez = C[T + 2] + tz * K.spade;
+    fx._ink(C[T2] + tz * K.spade, ey, C[T2 + 2] - tx * K.spade, ex, ey, ez, 0, rim * 0.7, 0, rim * 0.7, 0, ink);
+    fx._ink(C[T2] - tz * K.spade, ey, C[T2 + 2] + tx * K.spade, ex, ey, ez, 0, rim * 0.7, 0, rim * 0.7, 0, ink);
+    // the wings, from the shoulders (link 2), beating: seen from above the span opens and closes and
+    // the tips lift; each a hot leading spar (shoulder, wrist, tip), one finger, a trailing edge back
+    // to the body (link 5)
+    const W = 2 * 3, wx = C[W], wy = C[W + 1], wz = C[W + 2];
+    const fast = c.state === 'lunge' || c.state === 'dive';
+    const ph = c.t * (fast ? K.beatFast : K.beat) + c.seed;
+    const sp = fast ? K.swept : 0.7 + 0.3 * Math.cos(ph);
+    const lift = 0.6 * Math.sin(ph);
+    const back = Math.min(T, 5 * 3);
+    for (let side = -1; side <= 1; side += 2) {
+      const ox = r_x * side, oz = r_z * side;
+      const wrx = wx + ox * K.span * 0.5 * sp + f_x * 0.35, wry = wy + lift * 0.5, wrz = wz + oz * K.span * 0.5 * sp + f_z * 0.35;
+      const tpx = wx + ox * K.span * sp - f_x * 0.5, tpy = wy + lift, tpz = wz + oz * K.span * sp - f_z * 0.5;
+      // (the spar starts a little off the spine: where every line met, the heat added up to white)
+      fx._ink(wx + ox * K.root, wy, wz + oz * K.root, wrx, wry, wrz, 0, spar * 0.8, 0, spar, 0, ink);
+      fx._ink(wrx, wry, wrz, tpx, tpy, tpz, 0, spar, 0, spar * 0.85, 1, ink);
+      fx._ink(tpx, tpy, tpz, C[back] + ox * K.root, C[back + 1], C[back + 2] + oz * K.root, 0, edge, 0, edge * 0.7, 1, ink);
+      if (!low) {
+        const mx = (tpx + C[back]) * 0.5, my = (tpy + C[back + 1]) * 0.5, mz = (tpz + C[back + 2]) * 0.5;
+        fx._ink(wrx, wry, wrz, mx, my, mz, 0, edge * 0.9, 0, edge * 0.6, 1, ink);
+        if (dark) fx._dot((wrx + mx + wx) / 3, (wry + my + wy) / 3, (wrz + mz + wz) / 3, K.span * 0.5 * sp, K.smoke * 0.85, K_SMOKE);
+      }
+    }
+    // a short trail of flame off the tail (more as it flies fast)
+    const spd = Math.hypot(c.vx, c.vy, c.vz);
+    c.acc += dt * (low ? 8 : 14) * (0.4 + Math.min(1.5, spd / 8));
     let k = 0;
-    while (c.acc >= 1 && k++ < 6) {
+    while (c.acc >= 1 && k++ < 4) {
       c.acc -= 1;
-      fx._blob(C[L] + this.lrand(-0.12, 0.12), C[L + 1], C[L + 2] + this.lrand(-0.12, 0.12), c.vx * -0.1, this.lrand(0.4, 1.4), c.vz * -0.1, this.lrand(0.22, 0.4), 0.45, 0.85, 0.55, 0, K_FIRE, 2, 2.5);
+      fx._blob(ex + this.lrand(-0.1, 0.1), ey, ez + this.lrand(-0.1, 0.1), c.vx * -0.1, this.lrand(0.3, 1), c.vz * -0.1, this.lrand(0.18, 0.3), 0.4, 0.7, 0.5, 0, K_FIRE, 2, 2);
     }
   }
 
