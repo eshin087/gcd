@@ -27,6 +27,14 @@ export const RELEASES = [
       },
       {
         date: '2026-11-24',
+        title: 'Smaller combat text',
+        notes: [
+          'The words over your hero (PARRY, DEFLECT, COUNTER and the rest) and the damage numbers are smaller, closer to the HUD\'s own text.',
+          'They no longer grow with a bigger window: the same size on any screen.',
+        ],
+      },
+      {
+        date: '2026-11-24',
         title: 'A green flame on the sword',
         notes: [
           'A tight flame of tiny green marks now burns round your sword, licking up off the blade. It is there even with no streak and burns denser and hotter as your streak climbs. Add ?mystic=0 to the address to turn it off.',

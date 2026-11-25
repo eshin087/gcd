@@ -4,13 +4,18 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Eighty-six pieces of work since 0.4.0:
+Eighty-seven pieces of work since 0.4.0:
 - **A natural running arm, three ways to carry it** (2026-11-24, ADR-187). *Changed:* the hero's free (left) hand
   no longer swings a stiff fist on the run. By default it swings like a runner's, the elbow bent near a right angle
   and working with the stride, the hand open and loose, and as a sprint builds it sweeps back behind him into a
   swordsman's dash. Strafing and backing away (lock-on play) it keeps swinging. The owner compares three carries:
   `?runArm=a` (a runner's swing that pumps at a sprint), `b` (the dash whenever he runs forward), `c` (by speed, the
   default), `old` the swing before; the Lab's PLAYER row `run arm` switches them live.
+- **Smaller combat text** (2026-11-24, ADR-184). *Changed:* the call-outs over the hero (PARRY, DEFLECT, COUNTER,
+  GHOSTEP ...) and the damage numbers are smaller and keep one size at every window width. They grew with the
+  window before, so a 1920-wide window drew DEFLECT at 22 px and the flurry's cut counter at 34 px. Now: call-outs
+  11 - 12 px (BLOCK 9 px), damage numbers 10 / 11 / 12 px (plain / heavy / crit), the cut counter 15 px. The owner
+  picked this size from three rendered options. Colours, glow and motion are unchanged.
 - **A green flame on the sword** (2026-11-24, ADR-182). *Added:* a tight flame of tiny green marks burns round the
   hero's steel, in his own small letters: it licks up off the blade, boils, and climbs away in tongues. It is there
   with no streak and burns denser and hotter as the streak climbs (tiers 0 to 5), the point paling to green-white at
@@ -1110,6 +1115,10 @@ Eighty-six pieces of work since 0.4.0:
   thuds onto its side, the head slaps down last and the wings crumple).
 
 ### Changed
+- **CI's long checks split; every PR auto-merges when green** (2026-11-24, ADR-185): the Starless Lord's
+  look check and the living world's suite each run in parallel processes (`ABYSS_FX`, `ABYSS_SKIP` in
+  life.mjs) and the shares are re-dealt on measured times: a PR's check should take ~5-6 minutes (was 8-10).
+  `.github/workflows/automerge.yml` sets squash auto-merge on every PR (not drafts, not `hold`).
 - **CI runs the tests as four parallel jobs** (2026-11-23, ADR-153, PR #92): `tests/run.mjs --shard I/N`
   deals the tasks to N shares; the Starless Lord suite runs in three parts; a PR's check takes ~4
   minutes (was 12-15). A PR that only changes docs/, *.md or .claude/ skips the tests and the build.

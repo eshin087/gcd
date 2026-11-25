@@ -402,6 +402,8 @@ const CSS = `
 }
 
 /* ---------- call-outs over the player + damage numbers ---------- */
+/* Fixed pixel sizes, the owner's pick (ADR-184): they no longer grow with the window width
+   (a 1920-wide window drew DEFLECT at 22px and the flurry's counter at 34px). */
 .ab-calls { position: absolute; inset: 0; overflow: hidden; z-index: 2; }
 .ab-call, .ab-num {
   position: absolute;
@@ -420,7 +422,7 @@ const CSS = `
   font-weight: 800;
   text-shadow: 0 0 2px #000, 0 1px 2px #000;
 }
-.ab-call > .t { font-size: clamp(14px, 1.15vw, 19px); letter-spacing: 0.24em; padding-left: 0.24em; }
+.ab-call > .t { font-size: 11px; letter-spacing: 0.2em; padding-left: 0.2em; }
 .ab-call > .streak {
   position: absolute;
   left: -70px;
@@ -432,18 +434,18 @@ const CSS = `
   box-shadow: 0 0 8px ${rgba(CYAN, 0.9)};
 }
 .ab-call.k-parry > .t { color: #fff6e6; text-shadow: 0 0 10px rgba(255, 226, 170, 0.95), 0 0 2px #000, 0 1px 2px #000; }
-.ab-call.k-return > .t { color: #ffd98a; font-size: clamp(16px, 1.3vw, 22px); text-shadow: 0 0 12px rgba(255, 196, 90, 1), 0 0 24px rgba(255, 150, 40, 0.6), 0 0 2px #000; }
-.ab-call.k-danger > .t { color: #ffd6c8; font-size: clamp(15px, 1.2vw, 20px); text-shadow: 0 0 12px rgba(255, 96, 40, 1), 0 0 24px rgba(255, 60, 20, 0.6), 0 0 2px #000; }
-.ab-call.k-deflect > .t { color: #e8f4ff; font-size: clamp(16px, 1.3vw, 22px); text-shadow: 0 0 12px ${rgba(BLUE, 1)}, 0 0 24px ${rgba(BLUE, 0.6)}, 0 0 2px #000; }
-.ab-call.k-ghostep > .t { color: ${CYAN}; font-size: clamp(16px, 1.3vw, 22px); font-style: italic; text-shadow: 0 0 12px ${rgba(CYAN, 1)}, -8px 0 10px ${rgba(CYAN, 0.45)}, 0 0 2px #000; }
+.ab-call.k-return > .t { color: #ffd98a; font-size: 12px; text-shadow: 0 0 12px rgba(255, 196, 90, 1), 0 0 24px rgba(255, 150, 40, 0.6), 0 0 2px #000; }
+.ab-call.k-danger > .t { color: #ffd6c8; font-size: 12px; text-shadow: 0 0 12px rgba(255, 96, 40, 1), 0 0 24px rgba(255, 60, 20, 0.6), 0 0 2px #000; }
+.ab-call.k-deflect > .t { color: #e8f4ff; font-size: 12px; text-shadow: 0 0 12px ${rgba(BLUE, 1)}, 0 0 24px ${rgba(BLUE, 0.6)}, 0 0 2px #000; }
+.ab-call.k-ghostep > .t { color: ${CYAN}; font-size: 12px; font-style: italic; text-shadow: 0 0 12px ${rgba(CYAN, 1)}, -8px 0 10px ${rgba(CYAN, 0.45)}, 0 0 2px #000; }
 .ab-call.k-gbreak > .t { color: #ff6a55; text-shadow: 0 0 10px ${rgba(RED, 0.95)}, 0 0 2px #000, 0 1px 2px #000; }
-.ab-call.k-block > .t { color: #b9c3d8; font-size: 11px; font-weight: 700; letter-spacing: 0.3em; }
-.ab-num > .t { font-size: 12px; color: #f2e9d8; font-variant-numeric: tabular-nums; }
-.ab-num.k-heavy > .t { font-size: 14px; color: #ffd08a; }
-.ab-num.k-crit > .t { font-size: clamp(15px, 1.2vw, 19px); color: ${CYAN}; text-shadow: 0 0 9px ${rgba(CYAN, 0.95)}, 0 0 2px #000, 0 1px 2px #000; }
+.ab-call.k-block > .t { color: #b9c3d8; font-size: 9px; font-weight: 700; letter-spacing: 0.3em; }
+.ab-num > .t { font-size: 10px; color: #f2e9d8; font-variant-numeric: tabular-nums; }
+.ab-num.k-heavy > .t { font-size: 11px; color: #ffd08a; }
+.ab-num.k-crit > .t { font-size: 12px; color: ${CYAN}; text-shadow: 0 0 9px ${rgba(CYAN, 0.95)}, 0 0 2px #000, 0 1px 2px #000; }
 /* a flurry's cut counter over its target */
 .ab-num.k-count > .t {
-  font-size: clamp(22px, 2vw, 34px);
+  font-size: 15px;
   font-style: italic;
   letter-spacing: 0.04em;
   color: #fff;

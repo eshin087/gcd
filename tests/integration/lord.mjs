@@ -1590,6 +1590,20 @@ function terrainAnswers() {
 // ================================================================== scenario: flare (ADR-118)
 // His moments: the flare is the only sign; Severance parried is countered; Nightfall (the charged
 // blow) on a held guard; every form has the three new moves.
+// ABYSS_FX=a,b,... runs only those parts of FXLOOKS (tests/run.mjs runs them as processes of their
+// own: the scenario is the longest task of the suite): a switch's name (every option of it through
+// the moves it draws), spy (main's look at '0', the picks with nothing set), fight-before /
+// fight-shipped (fight: both; 60 s of form 4 with the AI on), same (SPELLS + TERRAIN print the same under every
+// look; same-spells / same-terrain: one of the two; same-terrain@a, @b, @ship: TERRAIN under '0' and
+// that one look). Unset: all of them. `!part` leaves a part out of the rest (run.mjs's main fxlooks
+// task: `!same-terrain@a,...`, so a new part lands there by itself). The check of the defaults at the
+// top runs in every part.
+const FX_LIST = (process.env.ABYSS_FX ?? '').split(',').filter(Boolean);
+const FX_ONLY = new Set(FX_LIST.filter((k) => !k.startsWith('!')));
+const FX_NOT = new Set(FX_LIST.filter((k) => k.startsWith('!')).map((k) => k.slice(1)));
+// a part, named from the widest to the narrowest (same, same-terrain, same-terrain@a): picked when any
+// of its names is asked for (or nothing is), left out when any is excluded
+const fxPart = (...keys) => (!FX_ONLY.size || keys.some((k) => FX_ONLY.has(k))) && !keys.some((k) => FX_NOT.has(k));
 async function scenarioFxlooks() {
   out('\n== scenario FXLOOKS (his look options: ?star= ?sky= ?ignite= ?void= ?presence=; every option runs, its peak, and no look moves the game; the picks as the defaults) ==');
   const { setLook, lookOf, PICKED } = await imp('src/entities/enemies/duelist/lookSwitch.js');
@@ -1620,7 +1634,7 @@ async function scenarioFxlooks() {
   // star a 544, sky a 1211, ignite a 1504, void a 1211, presence a 952; about 1.5x each
   const CAP_SHIPPED = { star: 900, sky: 1900, ignite: 2300, void: 1900, presence: 1450 };
   const peaks = {};
-  for (const name of NAMES) {
+  for (const name of NAMES.filter((n) => fxPart(n))) {
     for (const opt of OPTS[name]) {
       force({ [name]: opt });
       let fire = 0, add = 0, ok = true;
@@ -1691,7 +1705,7 @@ async function scenarioFxlooks() {
     run(G, 2);
     return calls;
   };
-  {
+  if (fxPart('spy')) {
     const calls = spy(BEFORE);
     const today = calls._drawStar > 0 && calls._starBurst === 1 && calls._drawMark > 0;
     const none = !calls._drawStarA && !calls._drawMarkA && !calls._starBurstA && !calls._strikeA && !calls._drawCrescentA && !calls._bladeField && !calls.gather && !calls._igniteA;
@@ -1703,7 +1717,7 @@ async function scenarioFxlooks() {
   }
   // 2b. a form-4 fight with the AI on, every look before this pass and as shipped: the fire field's
   //     and the additive pool's peaks (the room the fourth form's weather has to work in)
-  for (const lk of ['before', 'shipped']) {
+  for (const lk of ['before', 'shipped'].filter((k) => fxPart('fight', `fight-${k}`))) {
     force(lk === 'before' ? BEFORE : {});
     const G = build();
     duel(G, { dist: 3, ai: true, form: 4 });
@@ -1718,14 +1732,14 @@ async function scenarioFxlooks() {
   force({});
   // 3. no look moves the game: the SPELLS and TERRAIN scenarios print the same numbers (every
   //    damage, distance and count) with every look at '0', at 'a', and at 'b' where there is one
+  let SAME = [];
   const capture = async (o) => {
     force(o);
     const w = process.stdout.write.bind(process.stdout), f0 = fails;
     let text = '';
     process.stdout.write = (s) => { text += s; return true; };
     try {
-      await scenarioSpells();
-      await scenarioTerrain();
+      for (const sc of SAME) await sc();
     } finally {
       process.stdout.write = w;
     }
@@ -1733,17 +1747,28 @@ async function scenarioFxlooks() {
     fails = f0;
     return { text, f };
   };
-  const base = await capture(BEFORE);
-  const allA = await capture({ ...Object.fromEntries(NAMES.map((n) => [n, 'a'])), qi: 'b', lordLook: 'c' });
-  const allB = await capture({ star: 'b', sky: 'b', ignite: 'b', void: 'a', presence: 'a', qi: 'c', lordLook: 'a' });
-  const ship = await capture({});
-  const diff = (x) => {
-    const A = base.text.split('\n'), B = x.text.split('\n');
-    const i = A.findIndex((l, k) => l !== B[k]);
-    return i < 0 ? 'same' : `first difference: "${A[i]}" / "${B[i]}"`;
+  // (each scenario is compared on its own, and each look against '0' on its own, so tests/run.mjs can
+  // run them as processes of their own: `same-spells`, `same-terrain@a` ...; `same`: all of them)
+  const LOOKS = {
+    a: { ...Object.fromEntries(NAMES.map((n) => [n, 'a'])), qi: 'b', lordLook: 'c' },
+    b: { star: 'b', sky: 'b', ignite: 'b', void: 'a', presence: 'a', qi: 'c', lordLook: 'a' },
+    ship: {},
   };
-  assert(base.text.length > 500 && base.text === allA.text && base.text === allB.text && base.text === ship.text, `SPELLS + TERRAIN print the same before this pass ('0'), as shipped, and at 'a' / 'b' (his body and the qi too) (${base.text.split('\n').length} lines; a: ${diff(allA)}; b: ${diff(allB)}; shipped: ${diff(ship)})`);
-  assert(base.f === 0 && allA.f === 0 && allB.f === 0 && ship.f === 0, `and they pass under every look (${base.f} / ${allA.f} / ${allB.f} / ${ship.f} failed)`);
+  for (const [key, title, fn] of [['spells', 'SPELLS', scenarioSpells], ['terrain', 'TERRAIN', scenarioTerrain]]) {
+    const looks = Object.keys(LOOKS).filter((l) => fxPart('same', `same-${key}`, `same-${key}@${l}`));
+    if (!looks.length) continue;
+    SAME = [fn];
+    const base = await capture(BEFORE);
+    const diff = (x) => {
+      const A = base.text.split('\n'), B = x.text.split('\n');
+      const i = A.findIndex((l, k) => l !== B[k]);
+      return i < 0 ? 'same' : `first difference: "${A[i]}" / "${B[i]}"`;
+    };
+    const got = looks.map((l) => [l, null]);
+    for (const g of got) g[1] = await capture(LOOKS[g[0]]);
+    assert(base.text.length > 500 && got.every(([, x]) => x.text === base.text), `${title} prints the same before this pass ('0') as under ${looks.map((l) => (l === 'ship' ? 'the shipped looks' : `every look at '${l}'`)).join(', ')} (his body and the qi too) (${base.text.split('\n').length} lines; ${got.map(([l, x]) => `${l}: ${diff(x)}`).join('; ')})`);
+    assert(base.f === 0 && got.every(([, x]) => x.f === 0), `and it passes under every one (${[base, ...got.map(([, x]) => x)].map((x) => x.f).join(' / ')} failed)`);
+  }
   force({});
   out(`    fire field peaks: ${JSON.stringify(peaks)}`);
 }

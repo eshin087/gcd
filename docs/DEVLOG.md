@@ -31,6 +31,41 @@ free elbow jolts 24 cm a frame² (old 13). The roll's and the block's entries ar
 of the four (films in this session's scratchpad `rig/out/`).
 
 ---
+## 2026-11-24 — Session 92: smaller combat text
+
+**Owner:** "the combat text that shows up next to the character (counter, deflect, dmg numbers, etc) size and font
+changed. make it look small like the original version before it got much larger." Branch `claude/combat-text-smaller`.
+ADR-184 / M1.81.
+
+**Finding.** No commit had changed the call-out CSS since v0.2.0, and the live site drew the same font (JetBrains
+Mono, loaded) at the same sizes as the dev server. The owner plays on desktop; the sizes were `clamp(.., vw, ..)`,
+so a wide window grew them (1920 wide: DEFLECT 22 px, CRIT 19 px, the cut counter 34 px). Three options were
+rendered at 1920x1080 in headless Edge (A today, B about two thirds, C HUD size and lighter); the owner picked B.
+
+**What shipped.** `src/ui/hudStyle.js` only: fixed sizes, call-outs 11 / 12 px (BLOCK 9), numbers 10 / 11 / 12 px,
+the cut counter 15 px, letter spacing 0.2em. Measured after: identical at 1280x720 and 1920x1080.
+
+**Note.** This checkout had no `node_modules/` (the dev server answered 404 for three, so `__game` never appeared):
+`npm install` fixed it.
+
+**Open:** not yet seen by the owner on their own screen or the iPhone.
+## 2026-11-24 — Faster PRs: CI's long checks split, auto-merge on every PR (ADR-185; branch `build/ci-faster`)
+
+**Owner:** "it takes a while for new changes to get pushed through. is there anyway to speed up the prs to be
+merged faster without sacrificing anything important?" → "yes split it and also have every pr set to auto merge
+automatically".
+
+- **Where the time went:** CI 8 - 10 min, set by one task (`lord fxlooks`, 539 s; the other shares 3.7 - 7
+  min), then `life` (430 s). One run took 42 min because a share waited 33 min for a runner (GitHub's
+  concurrent-job limit with several PRs open). Most of a PR's life (0.2 - 17 h) was waiting for the merge.
+- **Split:** lord.mjs `ABYSS_FX` parts; fxlooks' TERRAIN-under-every-look check (about 90 % of it) runs one
+  look per process; life.mjs `ABYSS_SKIP`, its files in three processes; every est in run.mjs re-measured.
+  Locally (32 cores) fxlooks went from 248 s to its longest part 84 s; every part passed on its own.
+- **Auto-merge:** `.github/workflows/automerge.yml` runs `gh pr merge --auto --squash` on opened / reopened /
+  ready PRs (same repo, not draft, no `hold` label). CLAUDE.md's PR rule now says so.
+- **Next / open:** confirm the CI wall on this PR's run (expected ~5-6 min). A PR behind `main` still needs
+  `gh pr update-branch` (a bot push starts no CI). The open PRs before this one (#112, #113) were opened
+  before the workflow and have no auto-merge unless set by hand.
 
 ## 2026-11-24 — The sword's green flame (ADR-182; branch `player/sword-green-flame`)
 

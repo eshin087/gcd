@@ -153,8 +153,10 @@ In Claude Code the preview config is `.claude/launch.json` (`abyss-dev`).
   history, squash/rebase merge, branches auto-delete). Flow: branch → push → `gh pr create` → CI +
   Vercel preview deployment on the PR → squash-merge → Vercel deploys `main` to production
   (gcdabyss.vercel.app). Never bypass the protection. The squash commit takes the PR's title and
-  description, so write them as the commit message. Auto-merge is allowed on the repo; set it on a
-  PR only when the owner asks.
+  description, so write them as the commit message. Every PR auto-merges: `.github/workflows/automerge.yml` sets squash
+  auto-merge when a PR is opened (the owner's call, ADR-185), so it merges as soon as `test-and-build` is
+  green on an up-to-date branch. To hold one back for the owner to look first, open it as a draft or with
+  `gh pr create --label hold`. When `main` moves, bring the PR up to date with `gh pr update-branch <n>`.
 - **Deployment hygiene (Vercel storage):** the project keeps deployments 30 days (preview,
   production, canceled, errored). `vercel.json` `ignoreCommand` skips deployments for commits that
   only touch docs / *.md / tests / .github / .claude — keep doc-only work in its own commits.

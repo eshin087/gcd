@@ -190,6 +190,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Review films: the four side by side, game camera over the side view, the front, half speed
 - [ ] The owner's pick (films and the preview)
 - [ ] The roll's and the block's entries out of the dash: the free arm comes forward inside a short cross-fade (about twice the old jolt)
+## M1.81 — Smaller combat text (2026-11-24, `claude/combat-text-smaller`, ADR-184)
+- [x] Call-outs and damage numbers at fixed, smaller sizes (the owner's option B); no growth with the window
+- [ ] Seen on the owner's desktop and iPhone
 ## M1.80 — The sword burns with a tight green flame (2026-11-24, `player/sword-green-flame`, ADR-182)
 - [x] A tight envelope of Matrix-green marks round the steel, in the hero's own micro letters, there with no streak and denser and hotter by tier (`?mystic=0` off)
 - [x] Picked by the owner over a day of filmed rounds (wisps, red flames, green, enveloping, smaller); scenario `swordmystic`; the Lab's `mystic` row
