@@ -1,7 +1,7 @@
 // The living world, headless (src/world/life/; `?life=`): the REAL LivingWorld and Atmosphere on every
 // level's REAL set, with the real particle pools, fire field, scorch map and grass density, wired like
 // src/world/world.js; the hero is a stand-in that can be walked.
-// usage: node life.mjs <repoRoot> [scenario]
+// usage: node life.mjs <repoRoot> [scenario]   (env: ABYSS_SKIP=a,b leaves those files / scenarios out of `all`)
 //   scenario: all | a comma list of `<file>.<name>` (core.off) or `<file>` (every scenario of that file)
 // The scenarios live one file per piece in tests/integration/life/<piece>.mjs: each exports
 //   export default { name(T) { ... }, ... }      T: the toolbox below (build, assert, out, near, ...)
@@ -203,7 +203,11 @@ for (const f of FILES) {
   }
 }
 
-const wanted = SCEN === 'all' ? Object.keys(S) : SCEN.split(',').flatMap((n) => (S[n] ? [n] : Object.keys(S).filter((k) => k.startsWith(`${n}.`))));
+// ABYSS_SKIP=a,b (files or scenarios) leaves those out of `all`: tests/run.mjs runs them as processes of
+// their own, so a new file lands in `all` by itself
+const SKIP = (process.env.ABYSS_SKIP ?? '').split(',').filter(Boolean);
+const skipped = (k) => SKIP.some((s) => k === s || k.startsWith(`${s}.`));
+const wanted = SCEN === 'all' ? Object.keys(S).filter((k) => !skipped(k)) : SCEN.split(',').flatMap((n) => (S[n] ? [n] : Object.keys(S).filter((k) => k.startsWith(`${n}.`))));
 if (!wanted.length) { out(`unknown scenario ${SCEN}`); process.exit(2); }
 for (const n of wanted) {
   out(`\n== LIFE ${n.toUpperCase()}`);

@@ -1,0 +1,33 @@
+name: Auto-merge
+
+# Every PR is set to squash-merge by itself once `test-and-build` is green and the branch is up to date
+# with `main` (the owner's call, 2026-11-24; ADR-185). Nothing is skipped: branch protection still
+# decides when it merges. To hold one back: open it as a draft, give it the `hold` label before it is
+# opened (gh pr create --label hold), or press "Disable auto-merge" on the PR.
+#
+# Only a PR from this repo (not a fork) and not a draft; `ready_for_review` covers a draft made ready.
+# When `main` moves, the PR is behind and waits: `gh pr update-branch <n>` (run as you, not this bot:
+# a push by the Actions token starts no CI) brings it up to date and it merges when CI is green.
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  enable:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      !github.event.pull_request.draft &&
+      !contains(github.event.pull_request.labels.*.name, 'hold')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # --squash: the commit takes the PR's title and description (CLAUDE.md; the repo's squash
+      # message setting). A later push re-runs CI, and it merges only when that run is green.
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge "$PR" --auto --squash

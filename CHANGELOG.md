@@ -1104,6 +1104,10 @@ Eighty-five pieces of work since 0.4.0:
   thuds onto its side, the head slaps down last and the wings crumple).
 
 ### Changed
+- **CI's long checks split; every PR auto-merges when green** (2026-11-24, ADR-185): the Starless Lord's
+  look check and the living world's suite each run in parallel processes (`ABYSS_FX`, `ABYSS_SKIP` in
+  life.mjs) and the shares are re-dealt on measured times: a PR's check should take ~5-6 minutes (was 8-10).
+  `.github/workflows/automerge.yml` sets squash auto-merge on every PR (not drafts, not `hold`).
 - **CI runs the tests as four parallel jobs** (2026-11-23, ADR-153, PR #92): `tests/run.mjs --shard I/N`
   deals the tasks to N shares; the Starless Lord suite runs in three parts; a PR's check takes ~4
   minutes (was 12-15). A PR that only changes docs/, *.md or .claude/ skips the tests and the build.

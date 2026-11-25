@@ -5,6 +5,24 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-24 — Faster PRs: CI's long checks split, auto-merge on every PR (ADR-185; branch `build/ci-faster`)
+
+**Owner:** "it takes a while for new changes to get pushed through. is there anyway to speed up the prs to be
+merged faster without sacrificing anything important?" → "yes split it and also have every pr set to auto merge
+automatically".
+
+- **Where the time went:** CI 8 - 10 min, set by one task (`lord fxlooks`, 539 s; the other shares 3.7 - 7
+  min), then `life` (430 s). One run took 42 min because a share waited 33 min for a runner (GitHub's
+  concurrent-job limit with several PRs open). Most of a PR's life (0.2 - 17 h) was waiting for the merge.
+- **Split:** lord.mjs `ABYSS_FX` parts; fxlooks' TERRAIN-under-every-look check (about 90 % of it) runs one
+  look per process; life.mjs `ABYSS_SKIP`, its files in three processes; every est in run.mjs re-measured.
+  Locally (32 cores) fxlooks went from 248 s to its longest part 84 s; every part passed on its own.
+- **Auto-merge:** `.github/workflows/automerge.yml` runs `gh pr merge --auto --squash` on opened / reopened /
+  ready PRs (same repo, not draft, no `hold` label). CLAUDE.md's PR rule now says so.
+- **Next / open:** confirm the CI wall on this PR's run (expected ~5-6 min). A PR behind `main` still needs
+  `gh pr update-branch` (a bot push starts no CI). The open PRs before this one (#112, #113) were opened
+  before the workflow and have no auto-merge unless set by hand.
+
 ## 2026-11-24 — The sword's green flame (ADR-182; branch `player/sword-green-flame`)
 
 **Owner, over a day of rounds:** "i also want his sword to look a bit more mystical in a subtle way" → of four readings,
