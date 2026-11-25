@@ -1027,7 +1027,11 @@ async function scenarioWreckage() {
     fightSetup(G, { ai: true });
     const d = game.dragon;
     Math.random = mulberry32(seed * 11 + 3);
-    const inside = D.list.filter((b) => Math.hypot(b.x, b.z) < BOUND);
+    // (ADR-190: the undergrowth at the treeline is kindling, there to be burnt and torn up; the meter is
+    // the clearing's own pieces, as it was tuned: the undergrowth is reported apart)
+    const UNDER = new Set(['bush', 'fern', 'bramble']);
+    const inside = D.list.filter((b) => Math.hypot(b.x, b.z) < BOUND && !UNDER.has(b.kind));
+    const under = D.list.filter((b) => UNDER.has(b.kind) && Math.hypot(b.x, b.z) < BOUND + 4);
     const count = () => {
       const by = {};
       let n = 0, lift = 0, burnt = 0;
@@ -1154,6 +1158,7 @@ async function scenarioWreckage() {
     edges.push(edgeNow());
     const falls = G.hits.filter((h) => h.attack === 'fallingDebris').slice(heroFall0);
     const heroFall = `${falls.length}${falls.length ? ` (at ${falls.map((h) => Math.hypot(h.fx, h.fz).toFixed(1)).join(', ')} m from the centre)` : ''}`;
+    out(`   seed ${seed}: the treeline's undergrowth (${under.length}): ${under.filter((b) => b.state !== PIECE.INTACT).length} torn up or burnt, ${under.filter((b) => b.burnt).length} of them burnt through`);
     rows.push({ seed, total: inside.length, at, cause, lit, wood0, walls, front: front.length, wallBy, heroFall, stat: { ...(D.stat ?? {}) }, edges, far, edgeR: E ? Array.from(E.R) : [] });
   }
   const fmt = (c) => `${String(c.n).padStart(4)} (lift ${String(c.lift).padStart(2)}, burnt ${String(c.burnt).padStart(2)})`;
@@ -1271,9 +1276,10 @@ async function scenarioBreach() {
   // 1. the wall standing: he waits at the line, the old circles hold
   const before = phase(BREACH_SECS, 26, stat());
   const down0 = D.list.filter((b) => b.def.edge > 0 && b.state !== PIECE.INTACT).length;
-  // (the fight's own fire may have felled a tree or two of the wall by now: what that opened is theirs too)
+  // (the fight's own fire may have felled a tree or two of the wall by now: what that opened is theirs too;
+  // ADR-190: the torn ground is E.T, the boss's, on a walk edge, where the hero's is the forest)
   let slack = 0;
-  for (let i = 0; i < E.n; i++) slack = Math.max(slack, E.R[i] - E.base);
+  for (let i = 0; i < E.n; i++) slack = Math.max(slack, (E.T ?? E.R)[i] - E.base);
   // 2. the gap
   let felled = 0;
   for (const b of D.list) {
@@ -1294,8 +1300,10 @@ async function scenarioBreach() {
   out(`   before the gap (${BREACH_SECS} s): ${f(before)}`);
   out(`   ${felled} trees felled in a wedge ${(2 * BREACH_HALF).toFixed(2)} rad wide out to ${BREACH_DEEP} m: his ground ends at ${open.toFixed(1)} m there, the root may go ${gain.toFixed(1)} m past its ${d.bound} m`);
   out(`   out in the gap (${BREACH_SECS} s): ${f(after)} · trees of the wall down ${down0} > ${down0 + felled} > ${down1}`);
-  assert(before.heroFar <= 31 + slack - p.radius + 0.05 && before.wyrmFar <= d.bound + slack + 0.05 && !before.heroOff && !before.wyrmOff && before.airOver < 6,
-    `before the gap: the hero within his ground (${before.heroFar.toFixed(2)} m; the circle is ${31 - p.radius}), the wyrm's root within its own (${before.wyrmFar.toFixed(2)} m; its circle is ${d.bound}); the fight's own fire had opened ${slack.toFixed(1)} m at most by then`);
+  // (ADR-190: on a walk edge nothing holds the hero at the circle any more, the forest is his ground; he
+  // holds 26 m out and is never off it. The wyrm's circle holds while he stands inside it)
+  assert((E.walk || before.heroFar <= 31 + slack - p.radius + 0.05) && before.wyrmFar <= d.bound + slack + 0.05 && !before.heroOff && !before.wyrmOff && before.airOver < 6,
+    `before the gap: the hero within his ground (${before.heroFar.toFixed(2)} m; ${E.walk ? 'the forest is his' : `the circle is ${31 - p.radius}`}), the wyrm's root within its own (${before.wyrmFar.toFixed(2)} m; its circle is ${d.bound}); the fight's own fire had opened ${slack.toFixed(1)} m at most by then`);
   assert(felled >= 20 && open > 31 + 12 && gain > 6, `the gap: ${felled} trees down, his ground out to ${open.toFixed(1)} m, the root's share ${gain.toFixed(1)} m`);
   assert(after.heroFar > 31 + 8 && !after.heroOff && !after.nan, `he walks out through it (${after.heroFar.toFixed(1)} m from the centre) and is never off his ground (${after.heroOff} frames)`);
   assert(after.wyrmFar > d.bound + 4 && !after.wyrmOff && after.airOver < 6, `the wyrm follows: its root ${after.wyrmFar.toFixed(1)} m out (its bound in the clearing is ${d.bound}), on the ground never past its share of the gap (${after.wyrmOff} frames; in mid-leap ${after.airOver.toFixed(1)} m over a corner of the wall at most)`);
@@ -1317,13 +1325,142 @@ async function scenarioBreach() {
   // blows at the line may fell a tree of it again (ADR-154, 2026-11-22: one full run ended with the
   // edge open again, the hero and the wyrm both inside): what stands is read at the restore, what the
   // fight felled after it is counted apart)
-  const shut = !E.open, t0 = game.time;
-  // (the hero is put back by his next step; the wyrm by its next step on the ground: a flight ends first)
-  run(G, 12, { god: true, defend: true, attack: false }, () => Math.hypot(d.position.x, d.position.z) <= d.bound + 0.05 && Math.hypot(p.position.x, p.position.z) <= 31 - p.radius + 0.05);
+  // (ADR-190: on a walk edge the restore shuts the torn lanes, the boss's; the hero out there stays on
+  // his ground, the forest, and walks back in; the wyrm's ground comes back in after him)
+  const shut = E.walk ? E.lanes === 0 : !E.open, t0 = game.time;
+  // (classic: the hero is put back by his next step; the wyrm by its next step on the ground: a flight ends first)
+  run(G, E.walk ? 0 : 12, { god: true, defend: true, attack: false }, () => Math.hypot(d.position.x, d.position.z) <= d.bound + 0.05 && Math.hypot(p.position.x, p.position.z) <= 31 - p.radius + 0.05);
+  if (E.walk) {
+    for (let i = 0; i < Math.round(30 / DT); i++) {
+      bot(G, { god: true, defend: true, attack: false });
+      if (!G.input.pressedKeys.has('Space') && p.state !== 'roll') {
+        const dx = ax * 18 - p.position.x, dz = az * 18 - p.position.z, l = Math.hypot(dx, dz);
+        G.input.axis = l > 1 ? { x: dx / l, y: -dz / l } : { x: 0, y: 0 };
+      }
+      G.tick(DT);
+      if (d.hp < pin) d.hp = pin;
+      if (Math.hypot(d.position.x, d.position.z) <= Math.max(d.bound, d.boundAt(d.position.x, d.position.z)) + 0.05 && E.follow === 0 && Math.hypot(p.position.x, p.position.z) <= 31 - p.radius) break;
+    }
+  }
   const hr = Math.hypot(p.position.x, p.position.z), wr = Math.hypot(d.position.x, d.position.z);
+  // (walk edge: what the fight felled again after the restore is the wyrm's to stand on: its bound there)
+  const wb = E.walk ? Math.max(d.bound, d.boundAt(d.position.x, d.position.z)) : d.bound;
   const downAgain = D.list.filter((b) => b.def.edge > 0 && b.state !== PIECE.INTACT).length;
-  assert(shut && (!E.open || downAgain > 0) && hr <= 31 - p.radius + 0.05 && wr <= d.bound + 0.05, `world.restore(): the wall stands (open after it: ${shut ? 'no' : 'YES'}; ${downAgain} of its trees down again by the fight in the ${(game.time - t0).toFixed(1)} s after, the edge ${E.open ? 'open' : 'shut'}), the hero is back within ${31 - p.radius} m (${hr.toFixed(2)}), the wyrm within ${d.bound} m (${wr.toFixed(2)})`);
+  assert(shut && (!E.open || downAgain > 0) && hr <= 31 - p.radius + 0.05 && wr <= wb + 0.05, `world.restore(): the wall stands (open after it: ${shut ? 'no' : 'YES'}; ${downAgain} of its trees down again by the fight in the ${(game.time - t0).toFixed(1)} s after, the edge ${E.open ? 'open' : 'shut'}), the hero is back within ${31 - p.radius} m (${hr.toFixed(2)}${E.walk ? ', walked back in' : ''}), the wyrm within ${wb.toFixed(1)} m (${wr.toFixed(2)})`);
   SFX.tempo = tempo0;
+  return G;
+}
+
+// ================================================================== scenario: forestedge (no invisible walls: he walks into the forest, ADR-190)
+// The REAL Cinderwood (world/edge.js WALK mode). 1. Exploring, the hero walks from the bonfire out
+// west and north-west through the treeline into the forest: nothing holds him at the old 31 m circle,
+// the trunks and rocks turn him, the ridge's crags stop him at the true end, and he is never off his
+// ground. 2. In the fight (the AI on, a god-mode hero who answers the tells) he holds a spot 42 m out
+// among the intact trees: the wyrm follows him into the forest (its root past its own bound) and
+// fights him there, never past its share (`bossIn` m short of the ridge), and when he comes back in
+// its ground comes back in with him.
+async function scenarioForestEdge() {
+  out('\n== scenario FORESTEDGE (no invisible walls: into the forest, to the ridge; the wyrm follows) ==');
+  const { RIDGE, ridgeAt } = await imp('src/world/forestTuning.js');
+  const { BREAK } = await imp('src/world/breakTuning.js');
+  const G = build({ terrain: 'forest' });
+  const { game } = G;
+  const E = game.world.edge, p = game.player, d = game.dragon;
+  assert(E?.walk === true && E.count > 400, `Cinderwood's edge is a walk edge (the forest to the ridge: ${E ? Math.min(...E.W).toFixed(1) : '-'} - ${E ? Math.max(...E.W).toFixed(1) : '-'} m)`);
+  run(G, 0.3);
+  assert(game.flow.debug.toState('explore') === true && game.state === 'explore', 'flow.debug.toState(explore)');
+  // a player's way through the trees: the way to the goal, or the nearest turn of it that no trunk or
+  // rock blocks for the next 2.5 m (a probe of the colliders, the hero's width added)
+  const C = game.world.colliders.circles;
+  const clear = (x, z, dx, dz) => {
+    for (const c of C) {
+      const t = Math.max(0, Math.min(2.5, (c.x - x) * dx + (c.z - z) * dz));
+      if (Math.hypot(x + dx * t - c.x, z + dz * t - c.z) < c.r + p.radius + 0.1) return false;
+    }
+    return true;
+  };
+  const steer = (gx, gz) => {
+    const a0 = Math.atan2(gz - p.position.z, gx - p.position.x);
+    for (const k of [0, 0.35, -0.35, 0.7, -0.7, 1.05, -1.05, 1.4, -1.4, 1.75, -1.75, 2.2, -2.2]) {
+      const dx = Math.cos(a0 + k), dz = Math.sin(a0 + k);
+      if (clear(p.position.x, p.position.z, dx, dz)) return { x: dx, y: -dz };
+    }
+    return { x: Math.cos(a0), y: -Math.sin(a0) };
+  };
+  // 1. walking out
+  const walk = (gx, gz, secs, s) => {
+    for (let i = 0; i < Math.round(secs / DT); i++) {
+      const dx = gx - p.position.x, dz = gz - p.position.z, l = Math.hypot(dx, dz);
+      if (l < 0.8) break;
+      G.input.axis = steer(gx, gz);
+      G.tick(DT);
+      const r = Math.hypot(p.position.x, p.position.z);
+      if (!Number.isFinite(r)) s.nan++;
+      if (r > game.world.heroBound(p.position.x, p.position.z) - p.radius + 0.05) s.off++;
+      s.far = Math.max(s.far, r);
+    }
+    G.input.axis = { x: 0, y: 0 };
+    return s;
+  };
+  const s1 = walk(-22, 22, 8, { far: 0, off: 0, nan: 0 });
+  // ... on out to the south-west, through the trees, until the ridge stops him (clear of the landmarks:
+  // the Cinder Tree west, the elder's bones east)
+  const aSW = Math.atan2(30, -33);
+  walk(Math.cos(aSW) * 62, Math.sin(aSW) * 62, 40, s1);
+  const r1 = Math.hypot(p.position.x, p.position.z), a1 = Math.atan2(p.position.z, p.position.x), line = ridgeAt(a1);
+  out(`   he walked out to ${s1.far.toFixed(1)} m (ended ${r1.toFixed(1)} m out, the ridge's line there ${line.toFixed(1)} m); the wyrm ${game.state === 'explore' ? 'sleeps on' : 'woke'}`);
+  assert(s1.far > 40 && !s1.off && !s1.nan, `nothing holds him at the old 31 m circle: he walks out among the trees to ${s1.far.toFixed(1)} m, never off his ground`);
+  assert(r1 > line - 3 && r1 <= E.heroAt(p.position.x, p.position.z) - p.radius + 1e-3, `the ridge is the end: he stands ${(line - r1).toFixed(1)} m short of its line (${r1.toFixed(1)} m out), and no further`);
+  // 2. the fight, out among the trees
+  p.debug.teleport(0, 20);
+  assert(game.flow.debug.toState('boss') === true, 'flow.debug.toState(boss)');
+  G.defend = steadyDefender(G);
+  Math.random = mulberry32(4242);
+  run(G, 3, { god: true, defend: true, attack: false });
+  const aOut = Math.atan2(30, -33); // (south-west: clear of the landmarks, the Cinder Tree west, the elder's bones east)
+  const hold = 42;
+  let wyrmFar = 0, wyrmOff = 0, overRidge = 0, cues = 0, blows0 = G.hits.length, nan = 0, gap = 0, n = 0;
+  G.watch = (nm, e) => {
+    if (nm === 'combat:tell' && e?.source !== 'world') cues++;
+  };
+  const pin = Math.round(d.maxHp * 0.5);
+  const secs = Number(process.env.ABYSS_FESECS ?? 40);
+  for (let i = 0; i < Math.round(secs / DT); i++) {
+    bot(G, { god: true, defend: true, attack: false });
+    if (!G.input.pressedKeys.has('Space') && p.state !== 'roll') {
+      const gx = Math.cos(aOut) * hold, gz = Math.sin(aOut) * hold;
+      G.input.axis = Math.hypot(gx - p.position.x, gz - p.position.z) > 1.5 ? steer(gx, gz) : { x: 0, y: 0 };
+    }
+    G.tick(DT);
+    if (d.hp < pin) d.hp = pin;
+    const wr = Math.hypot(d.position.x, d.position.z);
+    if (!Number.isFinite(wr)) nan++;
+    wyrmFar = Math.max(wyrmFar, wr);
+    const over = wr - d.boundAt(d.position.x, d.position.z);
+    // (a leap or a dive carries its root through the air: counted on the ground only)
+    // (+ a frame of the follow's fall: the edge reads the hero after the wyrm has stepped, BREAK.edge.walk.ease)
+    if (over > 0.05 + BREAK.edge.walk.ease * DT && d.state !== 'airborne' && d.brain.action?.name !== 'leap' && d.brain.action?.name !== 'diveBomb' && !(d.brain.action?.name === 'pounce' && d.brain.action?.phase === 'active')) wyrmOff++;
+    if (wr > E.heroAt(d.position.x, d.position.z) - BREAK.edge.walk.bossIn + 0.05) overRidge++;
+    gap += Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z);
+    n++;
+  }
+  G.watch = null;
+  const heroR = Math.hypot(p.position.x, p.position.z), blows = G.hits.length - blows0;
+  out(`   ${secs} s out among the trees (he holds ${heroR.toFixed(1)} m out): its root reached ${wyrmFar.toFixed(1)} m (its bound in the clearing ${d.bound} m), ${((cues / secs) * 60).toFixed(0)} cues a minute, ${blows} blows on him, ${(gap / Math.max(1, n)).toFixed(1)} m apart on average`);
+  assert(heroR > 36 && wyrmFar > d.bound + 6 && !wyrmOff && !overRidge && !nan, `the wyrm follows him into the forest: its root ${wyrmFar.toFixed(1)} m out (bound ${d.bound} m), never off its ground on its feet (${wyrmOff} frames), never within ${BREAK.edge.walk.bossIn} m of the ridge (${overRidge})`);
+  assert(cues / secs * 60 > 8 && blows > 0, `... and fights him there: ${((cues / secs) * 60).toFixed(0)} cues a minute, ${blows} blows reach him`);
+  // 3. back in: its ground comes back with him
+  let inside = false;
+  for (let i = 0; i < Math.round(25 / DT) && !inside; i++) {
+    bot(G, { god: true, defend: true, attack: false });
+    if (!G.input.pressedKeys.has('Space') && p.state !== 'roll') {
+      G.input.axis = Math.hypot(p.position.x, p.position.z - 8) > 1.5 ? steer(0, 8) : { x: 0, y: 0 };
+    }
+    G.tick(DT);
+    if (d.hp < pin) d.hp = pin;
+    inside = Math.hypot(p.position.x, p.position.z) < 25 && E.follow === 0 && Math.hypot(d.position.x, d.position.z) <= d.bound + 0.05;
+  }
+  assert(inside && !E.out, `he walks back in: the edge's follow falls to 0, the wyrm is back within its ${d.bound} m bound (${Math.hypot(d.position.x, d.position.z).toFixed(1)} m)`);
   return G;
 }
 
@@ -12766,6 +12903,7 @@ const SCENARIOS = {
   budget: scenarioBudget,
   wreckage: scenarioWreckage,
   breach: scenarioBreach,
+  forestedge: scenarioForestEdge,
   probe: scenarioProbe,
 };
 const runs = [];
