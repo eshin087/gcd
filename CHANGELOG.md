@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and two pieces of work since 0.4.0:
+One hundred and four pieces of work since 0.4.0:
 - **The resolution follows the frame rate** (2026-11-25, ADR-200). *Added:* a new quality setting, AUTO, on by
   default: the game times its frames and, when the graphics chip cannot hold 60 fps, draws the picture at a lower
   resolution (2x, 1.5x, 1.25x, down to 1x of the window's pixels; never lower, so the letters stay as many as today), and climbs back when there is room, only outside a
@@ -12,6 +12,15 @@ One hundred and two pieces of work since 0.4.0:
   resolution would not help it). F2 and the pause menu cycle AUTO, LOW, MEDIUM, HIGH; a preset turns AUTO off.
   *Added:* a 60 FPS CAP in the pause menu, on by default on touch devices (heat, battery): a 120 Hz screen draws every
   second refresh. `?autoq=0` starts with AUTO off, `?autoqFloor=` sets its lowest step, `?fpscap=0|1` the cap.
+- **The sword hand looks natural in the idle tricks** (2026-11-25, ADR-186). *Fixed:* in the wrist spin, the
+  figure-eight, the salute and the rite and breath spells, the hero's sword fist no longer twists off his wrist:
+  his forearm now leads the blade, which stays close to its line, as it does in his stances; in the salute and the
+  spells the fist rises before his chest, so the raised forearm no longer shows as a jagged stick from the game camera.
+- **Shadows cost less, and their edges stop crawling** (2026-11-25, ADR-201). *Changed:* the moon's shadows are the
+  same, but what does not move (trees, rocks, walls, the broken pieces at rest) is no longer drawn into them
+  again every frame, only when something in it changes: the shadow pass draws 15 - 79 % fewer triangles a
+  frame, depending on the level. The shadows' edges, and the letters along them, no longer shimmer as you
+  walk. `?shadowCache=0` as before.
 - **The game runs faster on weaker machines** (2026-11-25, ADR-199). *Changed:* the picture is the same and costs
   less to draw: the ground is drawn after everything that covers it, and its relief is worked out once when the
   level loads instead of for every pixel of every frame (a frame at 4K costs a fifth to two fifths less on the
