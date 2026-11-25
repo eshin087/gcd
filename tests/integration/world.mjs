@@ -2302,8 +2302,7 @@ const S = {
       const T4 = W4.world.scorch.tops;
       const n4 = T4.cutArc(-8, 0.3, 1, -6, 0.3, 1, false);
       let fly4 = 0;
-      for (let j = 0; j < T4.n; j++) if (T4.state[j] === 0) fly4++;
-      fly4 -= T4.chipped; // (the spray's chips fly too: count the tops alone)
+      for (let j = 0; j < T4.n; j++) if (T4.state[j] === 0 && T4.tipMin[j] === 0) fly4++; // (the tops alone: a chip's colour is its blade's top's)
       W4.world.scorch.update(1 / 60);
       let lit4 = 0;
       for (let j = 0; j < T4.n; j++) if (T4.tipMin[j] === 0) lit4 = Math.max(lit4, T4.aC.array[j * 4 + 3]); // (the tops; a chip is a touch lighter in the air)
@@ -2311,8 +2310,8 @@ const S = {
       // the grass spray (round 5): letters thrown off the blades the arc cut, then gone
       // (round 6, the default a: chips of the cut blades' own letters, in the tops' batch, the grass's colour)
       const SPT = GRASS.spray, per = SPT[SPT.look].per;
-      assert(SPT.look === 'a' && T4.spray === null && T4.chipped >= n4 * per * 0.8 && T4.chipped <= n4 * per + 1, `the grass spray (a) throws ${T4.chipped} chips of the ${n4} cut blades' own letters (about ${per} a blade)`);
-      assert(T4.look === 'a' && n4 > 20 && fly4 > 0 && fly4 < n4 * 0.6 && lit4 <= 1.16 && T4.n === 0, `a (the default) cuts along the arc too (${n4} blades), tosses ${fly4} of the tops, no brighter than x ${lit4.toFixed(2)}, all gone 3 s on (${T4.n} left)`);
+      assert(['a', 'a2', 'm', 'm2', 'm3'].includes(SPT.look) && T4.spray === null && T4.chipped >= n4 * per * 0.8 && T4.chipped <= n4 * per + 1, `the grass spray (${SPT.look}) throws ${T4.chipped} chips off the ${n4} cut blades (about ${per} a blade)`);
+      assert(T4.look === 'a' && n4 > 20 && fly4 > n4 * 0.25 && fly4 < n4 * 0.75 && lit4 <= 1.16 && T4.n === 0, `a (the default) cuts along the arc too (${n4} blades), tosses ${fly4} of the tops, no brighter than x ${lit4.toFixed(2)}, all gone 3 s on (${T4.n} left)`);
     }
     // `?grassSpray=0`: no spray (today's grass, exactly)
     setLook('grassSpray', '0');

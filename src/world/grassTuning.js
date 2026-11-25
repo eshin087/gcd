@@ -76,7 +76,7 @@ export const GRASS = Object.freeze({
    * `lie` s at `lieAlpha` and fade; `life` s at most in the air. Colours: `fresh` green to `straw`.
    */
   spray: Object.freeze({
-    look: 'a',
+    look: 'm2',
     glyphs: "/\\|',;`vi1",
     max: 1600,
     lowQ: 0.8, // at quality q a cut blade throws per x (1 / q)^lowQ (the phone draws a third of the blades)
