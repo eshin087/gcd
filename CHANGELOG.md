@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Ninety-eight pieces of work since 0.4.0:
+One hundred pieces of work since 0.4.0:
 - **The world is printed like the dragon** (2026-11-25, ADR-198). *Changed:* every level's ground, floors, grass,
   rocks, pillars, walls and trees are printed in the wyrm's own fine digits: a lit relief, dark where it turns
   from the moon and bright where the light catches it, in letters fixed to the world, so the ground looks
@@ -16,6 +16,13 @@ Ninety-eight pieces of work since 0.4.0:
   glows a moment and a dark swath stays. Fallen leaves lie as small lit leaves, not letters.
   `?dragon=0` gives the world before; one piece: `?dgGrass=0`, `?dpFloor=0`, `?dpProps=0`, `?dpTrees=0`,
   `?dpCloud=0`, `?dpContact=0`, `?dpRipple=0`, `?dpRidge=0`, `?prints=0`.
+- **The first load is faster** (2026-11-25). *Changed:* the loading screen's last step compiles every shader the first
+  frame needs side by side before it is drawn, instead of one after another as each first draws; a first visit (no
+  shaders cached yet) reached the game in ~8 s and now in ~5 s on a desktop GPU. `?precompile=0` as before.
+- **Your clicks reach the fight again** (2026-11-25). *Fixed:* after the title (the sword's path) faded, its panels
+  stayed on the page, invisible, over the game: a left or right click landed on them instead of the fight, and a
+  click on an unseen world's fire travelled there, reloading the page into the loading screen again and again.
+  The faded title now takes no click and leaves the page.
 - **Every fire comes from the wyrm; it roars up spells and a brood of fire; a forest you can walk into** (2026-11-25, ADR-197).
   *Changed:* no fire of the wyrm's appears out of nowhere: the phase-3 lava pillars chase the hero along a glowing
   crack that runs out of its forefeet (the crack's arrival is part of their tell), the phase-3 second flame wall is

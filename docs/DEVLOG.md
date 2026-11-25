@@ -76,6 +76,30 @@ bigger than the hero's 5 x 8.
 **Open.** The owner's pick. A, B and D hide the 3D grass, so the wind, trample, mowing and the cut tops do not show
 there yet (burn and tears do, through the scorch map): the picked look needs those wired before it can ship. B is
 busy near firelight on Ashfall.
+## 2026-11-25 — The first frame's shaders compiled side by side (`render/precompile.js`; branch `render/precompile`)
+
+**Owner** (testing a preview): "the preview links take a really long time on shaders to load the game for the first
+time. is this normal?" **Measured** (headless Edge on the RTX 4090, the GPU's shader disk cache off: a first visit):
+the boot reached `gcd:shaders` in ~2 s and the first frame ~6 s later; each program compiled as it first drew, one
+after another, the art pass alone ~2.5 s in D3D's compiler. **Change:** the loading screen's last step starts every
+program of the visible scene, the fx scene and the pipeline's passes at once (`WebGLRenderer.compile` per visible
+object, a full-screen quad per pass; KHR_parallel_shader_compile), waits for them (30 s at most), then draws.
+Hidden objects are left out. Cold load ~8 s → ~5.3 s (two runs each). `?precompile=0` as before; `game.precompiled`
+{ programs, ms }. Safari without the extension: compiles queued as before, no wait.
+## 2026-11-25 — The faded title caught every click (hotfix; branch `ui/title-clicks`)
+
+**Owner** (testing a preview): "i cant press left or right click in the preview and it keeps looping me".
+**Cause.** The new title (ADR-196, `?menu=c` default) fades with `.ab-title.off` (opacity 0) and should leave with
+`.gone` (display none), but `.ab-title.gm { display: flex }` (titleMenuStyle.js, injected after hudStyle.js, the
+same specificity) outranked `.ab-title.gone`, and its panels set `pointer-events: auto`: the invisible body
+(`.gm-body`, `.gm-detail`, the worlds' buttons) stayed over the canvas, so mouse buttons never reached the game and
+a click on an unseen world's fire travelled (a reload into the loader: the loop). Keys worked.
+**Fix.** `.ab-title.gm.off` and everything in it take no pointer; `.ab-title.gm.gone` is display none. Checked with
+real CDP mouse events on headless Edge: after Enter the point under the cursor is the canvas, a left click starts an
+attack, a right click reaches the game, the page does not reload.
+
+---
+
 ## 2026-11-25 — Every wyrm fire travels from it; roar-cast spells and a brood of fire; a forest you can walk into (ADR-197; planned by the lead, built by Opus agents)
 
 **Owner:** fire "out of nowhere" must come from the dragon; new roar spells with "dragon incantation symbols" (mini
