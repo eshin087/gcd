@@ -1345,9 +1345,9 @@ export class Lab {
       b.title = `equip ${SWORD_PARAM[k]}`;
       return { k, el: b };
     });
-    // the free arm on the run (player/runArms.js, ADR-187; ?runArm=a|b|c|old, default a), live
+    // the free arm on the run (player/runArms.js, ADR-187, ADR-202; ?runArm=a|b|c|d|old), live
     const rar = el('div', 'lab-row', null, body);
-    el('span', 'lab-lbl', 'run arm', rar).title = "the free (left) arm on the run (?runArm=): natural = a runner's swing, pumping at a sprint (default); dash = swept back behind him; by speed = natural, the dash at a sprint; before = the swing before";
+    el('span', 'lab-lbl', 'run arm', rar).title = "the free (left) arm on the run (?runArm=): natural = a runner's swing, pumping at a sprint; full pump = a runner's pump, the fist before the belly and the elbow high behind him; dash = swept back behind him; by speed = natural, the dash at a sprint; before = the swing before";
     const raGrid = el('div', 'lab-grid', null, rar);
     raGrid.style.flex = '1';
     this.ui.runArmBtns = RUN_ARM_IDS.map((m) => {
@@ -1358,9 +1358,9 @@ export class Lab {
       b.title = `?runArm=${m}: ${RUN_ARM_NAMES[m]}`;
       return { m, el: b };
     });
-    // the sword arm on the run (player/runSword.js, ADR-200; ?runSword=a|b|old), live
+    // the sword arm on the run (player/runSword.js, ADR-202; ?runSword=hip|old), live
     const rsr = el('div', 'lab-row', null, body);
-    el('span', 'lab-lbl', 'run sword', rsr).title = "the sword arm on the run (?runSword=): in line = the blade carries on the arm's line and swings with it; swept low = the arm back, the blade low behind; before = the carry before";
+    el('span', 'lab-lbl', 'run sword', rsr).title = "the sword arm on the run (?runSword=): forward at the hip = the blade points ahead, low at the right hip, and rocks with the forearm; before = the carry before (the blade trailing back)";
     const rsGrid = el('div', 'lab-grid', null, rsr);
     rsGrid.style.flex = '1';
     this.ui.runSwordBtns = RUN_SWORD_IDS.map((m) => {

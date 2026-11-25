@@ -13,6 +13,12 @@
 //        arm in a sideways run reads as a broken one.
 //   c    BY SPEED: (a) at the run, sweeping back into (b) as a sprint builds (A.sprintW, eased),
 //        forward only, as in (b).
+//   d    FULL PUMP (ADR-202, measured off the owner's reference beside the sword carry `hip`): a
+//        sprinter's arm against the sword arm. Forward, the upper arm ~22° ahead of the torso and the
+//        elbow near a right angle, the hand before the belly, near the midline but not across it; back,
+//        the upper arm ~58° behind, the elbow high behind his back and the forearm hanging, the hand
+//        behind the hip at the waist. Its angles are against the torso's own line (he leans into the
+//        run). The run is the same shape at ~60 % of the swing.
 //   old  the swing before this pass (anim.js loco(), kept there).
 //
 // Why angles: every variant is written as joint angles (the upper arm's swing and how far it stands
@@ -29,10 +35,12 @@
 import { clamp, damp, lerp, smoothstep } from '../../core/math.js';
 import { DIM } from './heroDims.js';
 
-const IDS = ['a', 'b', 'c', 'old'];
+const IDS = ['a', 'b', 'c', 'd', 'old'];
 export const RUN_ARM_IDS = Object.freeze(IDS.slice());
-export const RUN_ARM_NAMES = Object.freeze({ a: 'natural (default)', b: 'dash', c: 'by speed', old: 'before' });
-const DEFAULT = 'a'; // the owner's pick (2026-11-25): they approved A on the preview; C shipped first and was reverted
+export const RUN_ARM_NAMES = Object.freeze({ a: 'natural', b: 'dash', c: 'by speed', d: 'full pump', old: 'before' });
+// (the owner's pick on main is 'a', 2026-11-25: they approved A on the preview; C shipped first and was
+// reverted. On this draft branch 'd', beside the sword carry `hip`, for the owner's look)
+const DEFAULT = 'd';
 
 const q = (name) => {
   try {
@@ -46,7 +54,7 @@ const PICK = { mode: (() => {
   return IDS.includes(v) ? v : DEFAULT;
 })() };
 
-/** The carry in use ('a' | 'b' | 'c' | 'old'). */
+/** The carry in use ('a' | 'b' | 'c' | 'd' | 'old'). */
 export const runArmMode = () => PICK.mode;
 /** Lab / tests: switch it live. Returns the id now set (anything unknown: the default). */
 export function setRunArm(id) {
@@ -85,6 +93,11 @@ export const RUN_ARMS = {
   byS: [0.15, 0.85],
   // (b, c) 1/s: how fast the dash comes and goes (~0.6 s to settle)
   dashRate: 5,
+  // (d) the full pump, against the torso's line (the walk is (a)'s): back and forward of the swing
+  pump: {
+    run: { phi: [-7, 24], ab: 9, el: [120, 88], cross: 32, curl: 0.12, droop: 0.04 },
+    sprint: { phi: [-11, 39], ab: 10, el: [99, 98], cross: 45, curl: 0.08, droop: 0 },
+  },
 };
 
 // one carry, as angles (rad), filled per frame: A = the swing, B = the dash, O = the blend
@@ -92,8 +105,8 @@ const A_ = { phi: 0, ab: 0, el: 0, cross: 0, curl: 0, droop: 0 };
 const B_ = { phi: 0, ab: 0, el: 0, cross: 0, curl: 0, droop: 0 };
 const U = [0, 0, 0], F = [0, 0, 0], H = [0, 0, 0];
 
-function swingAngles(o, sw, runK, walkK, s) {
-  const R = RUN_ARMS, W = R.walk, Rn = R.run, S = R.sprint;
+function swingAngles(o, sw, runK, walkK, s, pump) {
+  const R = RUN_ARMS, W = R.walk, Rn = pump ? R.pump.run : R.run, S = pump ? R.pump.sprint : R.sprint;
   const pick = (k, i) => {
     const wv = i === undefined ? W[k] : W[k][i], rv = i === undefined ? Rn[k] : Rn[k][i], sv = i === undefined ? S[k] : S[k][i];
     return lerp(lerp(wv, rv, runK), sv, s);
@@ -129,9 +142,10 @@ export function runArm(p, P, A, ph, armF, s, runK, w, mz) {
   const cs = Math.cos(2 * Math.PI * (ph - R.lag));
   const sw = clamp(-cs * (Number.isFinite(armF) ? armF : 1), -1, 1);
   const walkK = clamp(fin(A.speedS) / 1.6, 0, 1);
-  swingAngles(A_, sw, runK, walkK, s);
+  const pump = mode === 'd';
+  swingAngles(A_, sw, runK, walkK, s, pump);
   let want = 0;
-  if (mode !== 'a') {
+  if (mode === 'b' || mode === 'c') {
     const fw = smoothstep(R.fwd[0], R.fwd[1], fin(mz));
     want = mode === 'b' ? fw : fw * smoothstep(R.byS[0], R.byS[1], s);
   }
@@ -171,6 +185,12 @@ export function runArm(p, P, A, ph, armF, s, runK, w, mz) {
   F[1] = fy;
   F[2] = fz * cc;
   normalize(F);
+  // (d: the angles are against the torso's line: the arm turns with his lean, about x)
+  if (pump) {
+    const tl = clamp(fin(p[P.spX]) + fin(p[P.pelvX]), -0.6, 1.0);
+    tiltX(U, tl);
+    tiltX(F, tl);
+  }
   const a = DIM.upperArm, b = DIM.foreArm;
   for (let i = 0; i < 3; i++) H[i] = a * U[i] + b * F[i];
   to3(p, P.lH, H[0], H[1], H[2], w);
@@ -210,6 +230,11 @@ export function runArm(p, P, A, ph, armF, s, runK, w, mz) {
   return true;
 }
 
+function tiltX(v, t) {
+  const c = Math.cos(t), s = Math.sin(t), y = v[1], z = v[2];
+  v[1] = y * c - z * s;
+  v[2] = y * s + z * c;
+}
 function fin(v, d = 0) {
   return Number.isFinite(v) ? v : d;
 }
