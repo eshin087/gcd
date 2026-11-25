@@ -334,6 +334,12 @@ export class TimeRip {
         if (c.born) c.born = false;
         else c.age += r;
         this._refresh(c);
+        // (a tear gives its line back once its delay is over, here as well as where the split is drawn:
+        // a frame may never draw the split, and a mark that ends must never leave its line hidden)
+        if (c.L && (c.age >= c.delay || this._done(c))) {
+          if (c.gen === this._gen) c.L.hold = false;
+          c.L = null;
+        }
         if (this._done(c)) { c.alive = false; continue; }
         if (c.mode === 'tear' || c.mode === 'strip') steel = true;
       }
