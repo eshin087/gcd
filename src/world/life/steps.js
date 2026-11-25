@@ -2,6 +2,11 @@ import { GlyphParticles } from '../../render/particles.js';
 import { CONFIG } from '../../core/config.js';
 import { STEPS } from './stepsTuning.js';
 import { bendLook } from '../grassTrail.js';
+import { dragonLook } from '../../render/dragonPrint.js';
+import { DP_STEP_U, DP_STEPS } from '../../render/dragonStep.js';
+
+/** The prints' look (`?prints=a`: the matrix flash, STEPS.flash; '0' the prints before). */
+export const printLook = () => (dragonLook('prints') === 'a' ? 'a' : '0');
 
 // THE STEPS (piece 'steps'): a footstep answers the surface it lands on (stepsTuning.js has every number).
 //
@@ -37,6 +42,7 @@ export const SURFACES = Object.freeze(['grass', 'earth', 'stone', 'ash', 'obsidi
 const SIN_PITCH = Math.sin(CONFIG.camera.pitch);
 /** The on-screen angle of a ground direction (dx, dz) at the fixed camera (north up): scars.js's. */
 const groundRot = (dx, dz) => Math.atan2(-dz * SIN_PITCH, dx);
+const fract = (v) => v - Math.floor(v);
 const GRASS_BIT = 0x80;
 
 const inShape = (s, x, z) => {
@@ -246,11 +252,13 @@ export class Steps {
     }
     if (A.flick) this._burst(A.flick, mode, q, x, z, 0);
     if (A.print) {
+      // (`?prints=a`: a flash of code letters in the foot's shape, gone in under a second)
+      const P = printLook() === 'a' ? STEPS.flash : A.print;
       if (heavy) {
         // both feet, side by side across the way he came down
-        this._print(A.print, x - dz * 0.16, z + dx * 0.16, dx, dz);
-        this._print(A.print, x + dz * 0.16, z - dx * 0.16, dx, dz);
-      } else this._print(A.print, x, z, dx, dz);
+        this._print(P, x - dz * 0.16, z + dx * 0.16, dx, dz);
+        this._print(P, x + dz * 0.16, z - dx * 0.16, dx, dz);
+      } else this._print(P, x, z, dx, dz);
     }
     // trodden grass, wherever grass grows (`?bend=0`: today's trodden trail in the scorch map's B; else
     // the grass bends round the hero's wake, world/grassTrail.js, which a sprint and a landing widen)
@@ -327,7 +335,7 @@ export class Steps {
     if (this.pool.uniforms?.uSoft) this.pool.uniforms.uSoft.value = STEPS.prints.soft;
     g.pipeline?.registerParticles?.(this.pool);
     this.pool.mesh.visible = this._visible;
-    for (let i = 0; i < max; i++) this._recs.push({ x: 0, z: 0, rot: 0, age: 0, spec: null });
+    for (let i = 0; i < max; i++) this._recs.push({ x: 0, z: 0, rot: 0, age: 0, spec: null, dx: 0, dz: 1, seed: 0 });
     return this.pool;
   }
 
@@ -347,7 +355,47 @@ export class Steps {
     r.rot = dx || dz ? groundRot(dx, dz) - Math.PI / 2 + (this.life.rand() - 0.5) * 0.3 : this.life.rand() * 6.283;
     r.age = 0;
     r.spec = spec;
+    r.dx = dx || 0;
+    r.dz = dx || dz ? dz : 1;
+    r.seed = this.life.rand();
     this._stale = true;
+  }
+
+  /** One flash print (STEPS.flash): its code letters in the foot's oval, heel to toe, flashing and gone. */
+  _flash(r, s, pr) {
+    const P = this.pool;
+    const n = s.n[0] + Math.floor(fract(r.seed * 7.31) * (s.n[1] - s.n[0] + 1));
+    const ax = r.dx, az = r.dz, cx = -az, cz = ax;
+    const G = s.glyphs, col = this._fc ?? (this._fc = [0, 0, 0]);
+    for (let i = 0; i < n; i++) {
+      const a = r.age - i * s.cascade;
+      if (a < 0 || a >= s.life) continue;
+      // heel to toe along the way he went, a little scatter across (the foot's oval)
+      const u = (n > 1 ? i / (n - 1) : 0.5) - 0.5;
+      const w = (fract(r.seed * 13.7 + i * 0.618) - 0.5) * Math.sqrt(Math.max(0, 1 - 4 * u * u));
+      const along = u * s.foot[0], across = w * s.foot[1] * 2;
+      pr.x = r.x + ax * along + cx * across;
+      pr.y = STEPS.prints.y;
+      pr.z = r.z + az * along + cz * across;
+      // the letter re-rolls every `flicker` s
+      const roll = Math.floor(a / s.flicker);
+      pr.glyph = G[Math.floor(fract(r.seed * 91.7 + i * 7.13 + roll * 0.379) * G.length)];
+      // hot white-green on the flash, cooling to code green, then dimming away
+      const k = a / s.life;
+      if (a < s.hotT) {
+        const t = a / s.hotT;
+        for (let c = 0; c < 3; c++) col[c] = s.hot[c] + (s.color[c] - s.hot[c]) * t;
+      } else {
+        const t = (a - s.hotT) / (s.life - s.hotT);
+        for (let c = 0; c < 3; c++) col[c] = s.color[c] + (s.colorEnd[c] - s.color[c]) * t;
+      }
+      pr.color = pr.colorEnd = col;
+      pr.alpha = pr.alphaEnd = s.alpha * (1 - k * k);
+      pr.size = pr.sizeEnd = s.size;
+      pr.rot = 0;
+      pr.stretch = 0;
+      P.spawn(pr);
+    }
   }
 
   _redraw() {
@@ -357,6 +405,11 @@ export class Steps {
     const pr = this._pr, Y = STEPS.prints.y;
     for (let i = 0; i < this._n; i++) {
       const r = this._recs[i], s = r.spec;
+      if (s.glyphs) {
+        // (on a dragon-printed floor the floor's own cells flash: render/dragonStep.js, _stepUniforms)
+        if (!this._floorPrints()) this._flash(r, s, pr);
+        continue;
+      }
       const f = 1 - r.age / s.life;
       // it holds a while, then fills in
       const a = s.alpha * Math.min(1, (s.hold ?? 1) * f);
@@ -374,11 +427,34 @@ export class Steps {
     this._refresh = 0;
   }
 
+  /** Does the floor print the flash itself (the dragon ground, world/ground.js look b)? */
+  _floorPrints() {
+    return this.life.game?.world?.ground?.userData?.look === 'b';
+  }
+
+  /** The newest flash prints into the dragon print's uniforms (DP_STEP_U); none: off. */
+  _stepUniforms() {
+    const S = DP_STEP_U.uDpSteps.value, F = STEPS.flash;
+    let k = 0;
+    if (this._floorPrints()) {
+      for (let i = this._n - 1; i >= 0 && k < DP_STEPS; i--) {
+        const r = this._recs[i];
+        if (!r.spec?.glyphs) continue;
+        S[k++].set(r.x, r.z, r.age, Math.atan2(r.dz, r.dx));
+      }
+    }
+    for (let i = k; i < DP_STEPS; i++) S[i].z = -1;
+    DP_STEP_U.uDpStepK.value.set(F.life, F.hotT, F.flicker, k > 0 ? 1 : 0);
+    DP_STEP_U.uDpStepF.value.set(F.cells[0] / 2, F.cells[1] / 2, F.cascade * (F.n[1] - 1), 0);
+  }
+
   update(dt) {
     if (!this.life.on('steps')) {
       if (this._n || this.pool?.count) this._wipe();
+      if (DP_STEP_U.uDpStepK.value.w) this._stepUniforms();
       return;
     }
+    this._stepUniforms();
     if (!this._n) return;
     // the marks age; the ones that are gone leave the list (the live keep their order, oldest first;
     // a gone record is swapped to the back, ready for reuse)
