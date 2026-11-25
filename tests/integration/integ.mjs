@@ -9580,6 +9580,158 @@ async function scenarioMelee() {
 // the flash after the tell, in all three phases); the deflect chain on Rending flurry with every
 // parryable hit parried (the string goes on after each non-final parry, recoils after the last, the
 // posture adds up, combat:deflectChain counts); a red hit inside a string breaks a held guard.
+async function scenarioBrood() {
+  out('\n== scenario BROOD (the incantation, fire drakelings and kamikaze wisps: ADR-190) ==');
+  const G = build();
+  const { game, input } = G;
+  fightSetup(G);
+  const d = game.dragon, p = game.player, B = d.brood, I = d.incantation;
+  const { BROOD } = await imp('src/entities/dragon/tuningBrood.js');
+  const { categoryOf } = await imp('src/entities/dragon/ai.js');
+  const lead = TUNING.flashLead;
+  const listed = new Set(d.debug.abilities().map((a) => a.name));
+  assert(B && I && B.count() === 0 && listed.has('drakelings') && listed.has('wisps'), 'dragon.brood / dragon.incantation exist, empty; the two moves are Lab abilities');
+  assert(categoryOf('drakelings') === 'spell' && categoryOf('wisps') === 'spell', 'both moves are spells to the director');
+
+  // --- the drakelings: phase 2; the circle is cast round its feet, they burst out of its sigil ring
+  settle(G);
+  d.enterPhase(2);
+  run(G, 0.2, { passive: true });
+  settle(G, 14);
+  place(G, 13);
+  const spawns = [];
+  const spawn0 = B.spawn.bind(B);
+  B.spawn = (kind, o) => { spawns.push({ kind, x: o?.x, z: o?.z, t: game.time }); return spawn0(kind, o); };
+  let circle = null;
+  const cast0 = I.cast.bind(I);
+  I.cast = (o) => { const id = cast0(o); const at = {}; I.at(id, at); circle = { ...o, ...at, id, t: game.time }; return id; };
+  const n2 = BROOD.drakeling.count[1];
+  assert(d.debug.trigger('drakelings') === true, 'Lab: drakelings forced');
+  run(G, 0.05, { passive: true });
+  assert(circle && circle.kind === 'ground' && I.live === 1, `the incantation is cast on the ground (${JSON.stringify(circle && { kind: circle.kind, r: circle.r })})`);
+  run(G, 3.2, { passive: true }, () => spawns.length >= n2);
+  const onRing = spawns.every((s) => s.kind === 'drakeling' && Math.abs(Math.hypot(s.x - circle.x, s.z - circle.z) - circle.r * BROOD.incant.sigilAt) < 0.05);
+  out(`   circle r ${circle?.r} · ${spawns.length} drakelings at ${spawns.map((s) => Math.hypot(s.x - circle.x, s.z - circle.z).toFixed(2)).join(' ')} m from its centre · live ${B.count('drakeling')}`);
+  assert(spawns.length === n2 && B.count('drakeling') === n2, `phase 2 calls up ${n2} drakelings (${spawns.length})`);
+  assert(onRing, 'each one bursts out of the circle (on its sigil ring)');
+  assert(attackWeight(ATTACKS.drakelings, 'drakelings', d, d.sense) === 0 && attackWeight(ATTACKS.wisps, 'wisps', d, { ...d.sense, dist: 20 }) === 0, 'no new brood is picked while one lives');
+  // they lunge, one at a time, each lunge told (normal / blue) and flashed before it can land
+  const tells = [], flashes = [];
+  G.watch = (nm, e) => {
+    if (nm === 'combat:tell' && e?.attack === 'drakeling') tells.push({ t: game.time, tell: e.tell, impactIn: e.impactIn });
+    if (nm === 'combat:flash' && e?.attack === 'drakeling') flashes.push({ t: game.time, tell: e.tell });
+  };
+  const h0 = G.hits.length;
+  let maxLunging = 0;
+  run(G, 6, { passive: true }, () => {
+    let k = 0;
+    for (const c of B.drakes) if (c.alive && (c.state === 'windup' || c.state === 'lunge')) k++;
+    maxLunging = Math.max(maxLunging, k);
+    p.hp = p.maxHp;
+    return false;
+  });
+  const bites = G.hits.slice(h0).filter((h) => h.attack === 'drakeling');
+  out(`   6 s: ${tells.length} tells (${tells.map((x) => x.tell[0]).join('')}) · ${flashes.length} flashes · ${bites.length} bites (${bites.map((h) => h.r).join(' ')}) · at most ${maxLunging} lunging at once`);
+  assert(tells.length >= 2 && tells.every((x) => x.tell === TELL.NORMAL || x.tell === TELL.BLUE) && tells.every((x) => x.impactIn >= 0.6), 'the drakelings lunge with a normal / blue tell and a windup >= 0.6 s');
+  assert(flashes.length >= 2, 'each lunge is flashed before it can land');
+  assert(maxLunging === 1, 'one lunge at a time');
+  assert(bites.length >= 1 && bites.every((h) => h.tell === TELL.NORMAL || h.tell === TELL.BLUE), 'a standing hero is bitten (their blows go through hitPlayer with their tell)');
+  // a cut kills one: hold it in the blade's path through a swing
+  G.watch = null;
+  run(G, 0.8, { passive: true });
+  const c = B.drakes.find((x) => x.alive);
+  const cut0 = B.stats.cut, live0 = B.count('drakeling');
+  c.hp = 1;
+  B._to(c, 'reel');
+  c.delay = 9;
+  if (B.lunger === c) B.lunger = null;
+  let felt = 0;
+  const feel0 = p.feelCut.bind(p);
+  p.feelCut = (...a) => { felt++; return feel0(...a); };
+  aimAt(G);
+  input.click(0);
+  for (let i = 0; i < 60 && c.alive; i++) {
+    if (p.sweep?.valid) { c.x = (p.sweep.a.x + p.sweep.b.x) / 2; c.y = (p.sweep.a.y + p.sweep.b.y) / 2; c.z = (p.sweep.a.z + p.sweep.b.z) / 2; c.vx = c.vy = c.vz = 0; }
+    G.tick(DT);
+  }
+  out(`   a cut: alive ${c.alive} · cut ${B.stats.cut - cut0} · hero felt it ${felt}x · live ${live0} -> ${B.count('drakeling')}`);
+  assert(!c.alive && B.stats.cut === cut0 + 1 && B.count('drakeling') === live0 - 1, 'one cut kills a drakeling (hp 1)');
+  assert(felt === 1, 'the hero feels the cut once (player.feelCut: hit-stop, sparks)');
+  // the rest: when their time runs out they dive in (red) and burst
+  const reds = [];
+  G.watch = (nm, e) => { if (nm === 'combat:tell' && e?.attack === 'drakeling' && e.tell === TELL.RED) reds.push(game.time); };
+  run(G, BROOD.drakeling.life + n2 * BROOD.drakeling.lifeStep + 4, { passive: true }, () => { p.hp = p.maxHp; return B.count('drakeling') === 0; });
+  G.watch = null;
+  out(`   their time out: ${reds.length} red dives · live ${B.count('drakeling')} · stats ${JSON.stringify(B.stats)}`);
+  assert(B.count('drakeling') === 0 && reds.length >= 1, 'the drakelings left at the end of their time dive in with a red tell and burst');
+
+  // --- the wisps: they ride the body, tear off, home in; an unanswered one bursts on time with its red tell
+  settle(G);
+  place(G, 14);
+  const wt = [], wf = [];
+  G.watch = (nm, e) => {
+    if (nm === 'combat:tell' && e?.attack === 'wisp') wt.push({ t: game.time, impactIn: e.impactIn, tell: e.tell });
+    if (nm === 'combat:flash' && e?.attack === 'wisp') wf.push({ t: game.time, tell: e.tell });
+  };
+  const h1 = G.hits.length;
+  spawns.length = 0;
+  circle = null;
+  assert(d.debug.trigger('wisps') === true, 'Lab: wisps forced');
+  run(G, 0.05, { passive: true });
+  assert(circle && circle.kind === 'jaws', 'the wisps incantation hangs before its jaws');
+  const nw = BROOD.wisp.count[1];
+  run(G, 10, { passive: true }, () => { p.hp = p.maxHp; return B.count('wisp') === 0 && spawns.length > 0; });
+  G.watch = null;
+  const blasts = G.hits.slice(h1).filter((h) => h.attack === 'wisp');
+  const first = blasts[0];
+  const tl = wt[0], fl = wf[0];
+  out(`   ${spawns.length} wisps · ${wt.length} tells (${wt.map((x) => x.tell[0]).join('')}) · ${wf.length} flashes · ${blasts.length} bursts on him (${blasts.map((h) => h.r).join(' ')}) · first: told ${(first?.t - tl?.t).toFixed(3)} s, flashed ${(first?.t - fl?.t).toFixed(3)} s before`);
+  assert(spawns.length === nw && spawns.every((s) => s.kind === 'wisp'), `phase 2 sends ${nw} wisps`);
+  assert(wt.length >= 1 && wt.every((x) => x.tell === TELL.RED) && wf.every((x) => x.tell === TELL.RED), 'every wisp is told red');
+  assert(first && first.tell === TELL.RED && first.r === RESULT.HIT && near(first.t - tl.t, BROOD.wisp.fuse, 2.5 * DT) && near(first.t - fl.t, lead, 2.5 * DT), 'an unanswered wisp bursts on him on time: its fuse after its tell, flashLead after its flash');
+  const gaps = [];
+  for (let i = 1; i < blasts.length; i++) gaps.push(blasts[i].t - blasts[i - 1].t);
+  assert(blasts.length >= 2 && gaps.every((g) => g >= 0.3), `they come staggered (${gaps.map((g) => g.toFixed(2)).join(' ')} s apart)`);
+  // a wisp is cut down mid-air
+  run(G, 0.8, { passive: true });
+  B.spawn('wisp', { src: 0, delay: 0 });
+  const w = B.wisps.find((x) => x.alive);
+  run(G, BROOD.wisp.gather + 0.1, { passive: true });
+  const wc0 = B.stats.cut;
+  aimAt(G);
+  input.click(0);
+  for (let i = 0; i < 60 && w.alive; i++) {
+    if (p.sweep?.valid) { w.x = (p.sweep.a.x + p.sweep.b.x) / 2; w.y = (p.sweep.a.y + p.sweep.b.y) / 2; w.z = (p.sweep.a.z + p.sweep.b.z) / 2; w.vx = w.vz = 0; w.st = 0; w.state = 'fly'; w.t = 0; }
+    G.tick(DT);
+  }
+  assert(!w.alive && B.stats.cut === wc0 + 1, 'one cut kills a wisp in the air');
+
+  // --- nothing is left after clear() / a phase change / reset
+  for (let i = 0; i < 3; i++) B.spawn('drakeling', { x: d.position.x + 6, y: 0.8, z: d.position.z });
+  B.spawn('wisp', { src: 1, delay: 0 });
+  I.cast({ x: 0, z: 0, r: 5, dur: 4 });
+  run(G, 0.3, { passive: true });
+  const before = B.count();
+  B.clear();
+  assert(before === 4 && B.count() === 0, `clear(): all burst harmlessly (${before} -> ${B.count()})`);
+  for (let i = 0; i < 2; i++) B.spawn('drakeling', { x: d.position.x + 6, y: 0.8, z: d.position.z });
+  run(G, 0.2, { passive: true });
+  settle(G);
+  const live1 = B.count();
+  assert(d.debug.phase3() === true, 'the phase 3 roar starts');
+  run(G, 3, { passive: true });
+  out(`   phase roar: live ${live1} -> ${B.count()} · circles ${I.live} · phase ${d.phase}`);
+  assert(live1 === 2 && B.count() === 0 && I.live === 0 && d.phase === 3, 'the phase roar clears the brood and the incantation');
+  B.spawn('drakeling', { x: d.position.x + 6, y: 0.8, z: d.position.z });
+  I.cast({ kind: 'jaws', r: 2 });
+  d.reset();
+  assert(B.count() === 0 && I.live === 0, 'reset leaves nothing');
+  B.spawn = spawn0;
+  I.cast = cast0;
+  p.feelCut = feel0;
+  return G;
+}
+
 async function scenarioStrings() {
   out('\n== scenario STRINGS (deflect chain: Rending flurry parried hit by hit; a red hit in a string vs a held guard) ==');
   const G = build();
@@ -12728,6 +12880,7 @@ const SCENARIOS = {
   deflect: scenarioDeflect,
   lab: scenarioLab,
   bullets: scenarioBullets,
+  brood: scenarioBrood,
   strings: scenarioStrings,
   plungeReact: scenarioPlungeReact,
   wyrmreact: scenarioWyrmReact,
