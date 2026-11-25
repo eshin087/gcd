@@ -12357,7 +12357,7 @@ async function scenarioBlinkHand() {
       rows.push({
         i, rec: on ? a : null, clip: on ? an?.clip ?? `(${an?.kind ?? '?'})` : p.state, side: on && !!SWINGS[an?.clip]?.side,
         sd: A.cur[AP.sd], on: (A.sideH?.mode ?? 0) !== 0, mode: `${A.sideH?.mode ?? '-'}${(A.sideH?.e ?? 0).toFixed(2)}`, w: LW.clone(), sh: LS.clone(), pos: p.position.clone(), yaw: p.yaw, gy: p.position.y, el, thigh, two: A.cur[AP.twoHand],
-        stop: game.hitstopTimer > 0, cut: on && a.t >= d.windup + 0.5 * d.active, hp: r.pelvis.worldToLocal(LW.clone()), th: TH.clone(), kn: r.pelvis.worldToLocal(KN.clone()), // the wrist in the pelvis's own frame (model m: +x his left, +z ahead); the hip joint
+        stop: game.hitstopTimer > 0, off: (A.sideH?.mode ?? 0) === 0, two: A.cur[AP.twoHand], fist: !!A.handFX?.fist, heavy: on && d.button === 'heavy', cut: on && a.t >= d.windup + 0.5 * d.active, hp: r.pelvis.worldToLocal(LW.clone()), th: TH.clone(), kn: r.pelvis.worldToLocal(KN.clone()), // the wrist in the pelvis's own frame (model m: +x his left, +z ahead); the hip joint
       });
     }
     return rows;
@@ -12462,6 +12462,34 @@ async function scenarioBlinkHand() {
       sw.push(...swingsOf(rows).map((x, k) => ({ ...x, take: 'roll', first: k === 0 })));
       steps.push({ take: 'roll cut', ...stepOf(rows.slice(36)) });
       lows.push(low(rows));
+    }
+    // between hits the hand stays at his side (the owner: the hand rising to the guard's and dropping again
+    // at each cut is flailing): a relaxed chain (each press as the hit before ends) and a mashed one, from
+    // the first cut to the last hit's end; then home to the stance's hand within 0.8 s
+    const hang = [];
+    for (const [nm, at] of [['relaxed', [0, 0.43, 0.87, 1.37, 1.78]], ['mashed', [0, 0.3, 0.6, 0.9, 1.2]]]) {
+      const G = setup(), plan = at.map((s) => Math.round(s / DT));
+      const rows = take(G, (i, G) => { if (plan.includes(i)) { aimAt(G); G.input.click(0); } }, at.at(-1) + 2.2);
+      dump(`${nm} chain`, rows);
+      const i0 = rows.findIndex((q) => q.cut), i1 = rows.findLastIndex((q) => q.rec), R = rows.slice(i0, i1 + 1);
+      const home = rows.slice(i1 + 1).findIndex((q) => q.off);
+      const top = Math.max(...R.map((q) => q.hp.y)), box = [0, 2].map((c) => [Math.min(...R.map((q) => (c ? q.hp.z : q.hp.x))), Math.max(...R.map((q) => (c ? q.hp.z : q.hp.x)))]);
+      const n = new Set(R.map((q) => q.rec).filter(Boolean)).size;
+      hang.push({ nm, n, top, box, home: home < 0 ? Infinity : (home + 1) * DT });
+      out(`   ${nm} chain (${n} hits): from the first cut to the last hit's end the wrist at most ${top.toFixed(2)} m above the hip joint, out ${box[0].map((x) => x.toFixed(2)).join('-')} m, ahead ${box[1].map((x) => x.toFixed(2)).join('-')} m; home ${((home + 1) * DT).toFixed(2)} s after`);
+    }
+    // (its rest is ~5 cm under the hip joint: +7 cm is 12 cm above it)
+    assert(hang.every((h) => h.n === 5 && h.top < 0.07 && h.box[0][0] > 0.1 && h.box[0][1] < 0.38 && h.box[1][0] > -0.12 && h.box[1][1] < 0.3),
+      `through a relaxed chain and a mashed one the free hand stays at his side from the first cut to the last hit's end: never 12 cm over its rest, in its box beside the hip (${hang.map((h) => `${h.nm} ${h.n} hits, top ${h.top.toFixed(2)}, out ${h.box[0].map((x) => x.toFixed(2)).join('-')}, ahead ${h.box[1].map((x) => x.toFixed(2)).join('-')}`).join('; ')})`);
+    assert(hang.every((h) => h.home <= 0.8), `after the last swing the free hand is back on the stance's own within 0.8 s (${hang.map((h) => `${h.nm} ${h.home.toFixed(2)} s`).join(', ')})`);
+    // a light then the heavy: the free hand on the grip the moment the heavy's pose puts it there (it lingers
+    // only into loco, never into a swing that needs it)
+    {
+      const G = setup(), plan = [0, 0.3].map((s) => Math.round(s / DT));
+      const rows = take(G, (i, G) => { if (i === plan[0]) { aimAt(G); G.input.click(0); } if (i === plan[1]) { aimAt(G); G.input.click(2); } }, 1.6);
+      const h0 = rows.findIndex((q) => q.heavy), t2 = rows.findIndex((q, j) => j >= h0 && q.two > 0.95), tf = rows.findIndex((q, j) => j >= h0 && q.fist);
+      out(`   a light then the heavy: the heavy from frame ${h0}, its pose's grip (twoHand > 0.95) at ${t2}, the fist on the grip at ${tf}`);
+      assert(h0 >= 0 && t2 >= 0 && tf >= 0 && tf - t2 <= 2, `a light then the heavy: both hands on the grip within 2 frames of the heavy's pose asking (grip asked at frame ${t2}, the fist at ${tf})`);
     }
     // a chain that lands (the frame freezes on each landed hit)
     {
