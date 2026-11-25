@@ -1146,7 +1146,12 @@ async function scenarioWin() {
     out(`     seed ${seed}: ${won ? 'won' : 'NOT won'} in ${T.toFixed(0)} s: phases at ${phAt.map((t) => (t - t0 > 0 ? (t - t0).toFixed(0) : '0')).join(' / ')} s, ${taken} hits taken (god mode), crashes ${d.flight.stats.crashes} + skids ${d.flight.stats.skids}, returned ${d.glare.stats.returned}; phase ${d.phase}, hp ${Math.round(d.hp)}`);
     marksCheck(MK, 'city', out, assert);
     assert(won && d.phase === 3, `seed ${seed}: the fencing bot wins through all three phases`);
-    const [lo, hi] = (process.env.ABYSS_WRANGE ?? '140,250').split(',').map(Number);
+    // (the floor was 140 s. The fight is a seeded chaos of a bot against Halcyon, who aims at the
+    // hero's DRAWN chest, so any change to the hero's motion reshuffles it. Eight seeds on main
+    // (2026-11-24, 78e21cb): 167, 143, 144, 148, 147, 137, 159, 148 s, so main itself fell under 140 s on
+    // seed 3. The weighted light chain (ADR-188): 158, 140, 147, 142, 144, 138, 146, 153 s. 130 s leaves
+    // margin under main's own spread; the bound guards against a fight that collapses, not against noise)
+    const [lo, hi] = (process.env.ABYSS_WRANGE ?? '130,250').split(',').map(Number);
     assert(T > lo && T < hi, `seed ${seed}: the fight takes ${T.toFixed(0)} s (${lo} - ${hi})`);
   }
 }
