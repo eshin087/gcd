@@ -58,6 +58,15 @@ export const DG = Object.freeze({
    * `drop` of its height gone, a `sheen` where it lies away from the eye.
    */
   tuft: Object.freeze({ rows: 3, h: [1.4, 1.8], show: [0.1, 0.35], clump: 0.9, tip: 0.4, clumpTone: 0.2, floor: 0.22, lean: 0.4, laid: 0.15, lit: 0.3, layAt: [0.1, 0.3], sheen: 0.16 }),
+  /**
+   * b, the standing digit blades (world/grass.js): rooted on a checkerboard `lattice` [x, z] m of the print's
+   * cells (alternate rows a cell over), where `keep` x the meadow's density lets one grow; each a column of
+   * 1 .. `rows` digits by its height, a digit `cell` [w, h] m (the wyrm's 5 x 8 px at 720p along the blade's
+   * billboard); the wind sways it `sway` x as much as a blade; lit as the print is, its root `root` x its
+   * tip's light. c: the same blades, `sparse` over the relief.
+   */
+  blades: Object.freeze({ lattice: [0.135, 0.5], keep: 1.15, cell: [0.135, 0.229], rows: 3, sway: 0.6, root: 0.45 }),
+  sparse: Object.freeze({ lattice: [0.27, 0.5], keep: 0.4, cell: [0.135, 0.229], rows: 3, sway: 0.6, root: 0.45 }),
   /** the tussocks: a jittered lattice `ts` m apart, each `r` x ts across (by its hash) */
   ts: 1.0,
   r: [0.55, 0.35],
