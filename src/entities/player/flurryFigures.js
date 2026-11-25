@@ -15,7 +15,9 @@
 //           through his middle
 //   cross   every other pass straight through his middle, between them one round his side `off` off
 //           it, each on the other side: the straight cuts cross on him in an X (and again)
-// `min`: the fewest flash cuts a figure is offered at (it does not read with fewer).
+// `min`: the fewest flash cuts a figure is offered at (it does not read with fewer). `body`: on a man
+// no pass comes nearer his middle than this (past his side, never through his body: ADR-101); his
+// "through the middle" passes run there.
 
 export const FIGURE_NAMES = Object.freeze(['star', 'zigzag', 'cage', 'spiral', 'cross']);
 
@@ -63,8 +65,11 @@ export function figureSteps(name, n, air, FG, R, mirror, out) {
         ei = R;
       }
     }
+    // (on a man never nearer his middle than `body`: past his side, never through him, ADR-101)
+    const b = FG?.body?.[k] ?? 0;
+    if (Math.abs(oi) < b) oi = (oi < 0 ? -1 : 1) * b;
     o[i] = m * oi;
-    e[i] = ei;
+    e[i] = Math.max(ei, Math.abs(oi));
   }
   return out;
 }

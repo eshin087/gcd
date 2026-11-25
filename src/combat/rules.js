@@ -233,7 +233,10 @@ export const DEFENSE = Object.freeze({
       // m from it where a pass ends, `sides` the cage's polygon by the cut count (the spiral's
       // corners as a square's). A figure that does not fit (a wall, the dodge spot, the
       // neck: its cost over `fit`) is passed over; the star always fits.
+      // `body`: on a man no pass nearer his middle than his side (ADR-101; the spiral's and the cross's
+      // "through the middle" run past his side there); round the head right through it.
       figures: {
+        body: { ground: 0.55, air: 0 },
         star: { min: 1 },
         zigzag: { min: 2, off: { ground: 1.15, air: 1.5 } },
         // (the cage and the spiral go round him on every side: round the wyrm's head one side would
