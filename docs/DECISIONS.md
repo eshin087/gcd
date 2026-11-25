@@ -6052,3 +6052,64 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
     world redrawn every frame), lighter trees on LOW (the presets' grass counts do nothing under the
     dragon print), the shared uniforms' upload (about 0.5 ms of script a frame), the worst frames'
     hitches. The floors' shader is as it was: its relief is most of its cost.
+
+## ADR-200 — The instant cuts: every attack crosses in two or three frames; behind `?lights=blink` until the owner's call (2026-11-25)
+
+**Context.** ADR-188 gave the light chain weight in the body and left the sword's path alone. The owner
+could not tell it from the chain before ("the attack sword animation itself is the same and thats what i
+want changed"), turned down wider arcs, a brand-new chain and every effect finisher, and then named what
+they wanted: "sharper angles and faster attacks, almost like the main character is doing instant slashes to
+show how fast he is". A first instant chain was the feel ("this is the feel i was looking for"), with
+faults they listed over two rounds: the slash lines did not sit on the cut, "the right arm angle and motion
+is stiff and doesn't look like how an arm should look when doing that sword motion", the left hand was
+"weird and flailing" and then, parked on the belt, should "stop holding the hip and be on the side how a
+sword fighter would normally have and not stiff", "the light auto attack arm/body animation seems too short
+and stiff", "the heavy attack also needs to be instant and feel weight", "make the last 5th attack just be
+a more stronger light attack but have it always be a different stroke", and "pretty much all attacks needs
+to follow the instant attack style".
+
+**Decision.**
+1. **A look set, not a new move set.** `?lights=blink` (the Lab's `lights` row) changes what every attack
+   LOOKS like and nothing it does: `combat.js` `setLights` wears a look on each def through `wear`, and a
+   look may change only `anim`, `variants`, `contact` and `glint`. Windup, active, recovery, chain, damage,
+   posture, reach, travel and every window stay. The weighted chain of ADR-188 stays the default until the
+   owner has played this one and says so (the rule: the default is what the owner approved in the game).
+2. **The cut is two or three frames and leaves one straight line.** `blinkFx.js` records the blade's point
+   on the frame the cut starts across his front and on the frame it has crossed, and draws one line through
+   the two, in the sword arc's own strokes. The round arc is not drawn behind such a cut.
+3. **The arm is written by hand; the line is the cut's chord.** The first instant clips were SOLVED so the
+   blade's point ran a straight path. That pulled the hand in to the chest mid-cut (an elbow of 44° at 0.41
+   of reach on the worst hit) and bent wrists to 98-135°: the stiff arm the owner saw. A straight tip path
+   buys nothing: the line is drawn through two frames whatever lies between them, and the hit test sweeps
+   the blade between frames in straight lines too. So the arm cuts as an arm does (it opens through the cut
+   to near straight, the wrist under 60°, the elbow keyed, the hips ahead of the chest), and the line is
+   the chord of that cut.
+4. **Lights flow, heavies land.** A light: a short still coil, the cut, then the blade, the hand and the
+   body carry on along the cut and slow for about ten frames (most of it in the first four, which a mashed
+   chain still shows). A heavy: a long still hold, the cut, two or three frames of the body dropping and
+   driving on, a hard stop, a long hold, a slow way home; its line is three rows of strokes, longer and
+   thicker, and drawing it kicks the camera a little, hit or miss (no hit-stop on a miss: that is timing).
+5. **No turn anywhere.** Piercing Gale is a dash into a falling two-handed slash, drawn as a sweep.
+   Whirling Tempest is one level cut that unwinds the whole torso (211° round him): its job goes from "a
+   blade all round him" to "a blade across his whole front and both sides". Earthbreaker keeps its leap.
+6. **The last hit is a stronger light, never the same twice.** Five one-handed strokes on five lines
+   (`lastHits.js`), a deeper coil, a longer step and follow-through, a bolder white line, no ground shards;
+   `_pickVariant` already picks a look at random and never repeats one. The effect finishers and
+   `?finisher=` are removed.
+7. **The free hand hangs at his side.** A clip's `side` sets a pose channel (`P.sd`); the animator places
+   the hand between under the left shoulder and beside the hip, open, the fingers down, with a small damped
+   sway that trails each turn. A free pendulum from the shoulder was tried and dropped: an instant cut
+   moves the shoulder half a metre in three frames, and the arm flailed.
+8. **Every other attack too**: the sprint slash, the roll cut, the charged cleave, One Breath and the
+   execution (`specialsBlink.js`). The execution keeps `kind: 'thrust'`, so its kill, its freeze and its
+   camera are untouched; only its pose is a clip.
+
+**Why.** The owner's words above. Behind a switch because the look is theirs to approve in the game, and
+because the weighted chain is what they last accepted as the default.
+
+**Consequences.** Inside the active frames some hits land a few frames earlier or later than today's
+(measured per attack in `blinkspecials` / `blinklights`). The sounds are today's: a cut with no swing may
+want its own (the owner picks sounds by ear). `?lights=fresh` and `?arcs=` are still in the tree, to be
+removed with the owner's pick. Tests: one scenario per part (`blinklights`, `blinkhand`, `blinkheavies`,
+`blinkspecials`, `blinklast`), `blinkslash` for the lines, and the opt-in `armaudit` that prints the sword
+arm, the body and the free hand through any swing.

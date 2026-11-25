@@ -5,6 +5,49 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-25 — The instant cuts: arms, weight, every attack (ADR-200; branch `claude/hero-light-chain-12a97a`, PR #118, held)
+
+**Owner** (after the second instant-slash films): "the right arm angle and motion is stiff and doesn't look
+like how an arm should look when doing that sword motion. the left hand needs to stop holding the hip and
+be on the side how a sword fighter would normally have and not stiff as well. review it and fix the arms.
+the light auto attack arm/body animation seems too short and stiff. the heavy attack also needs to be
+instant and feel weight. make the last 5th attack just be a more stronger light attack but have it always
+be a different stroke", then "also make dash attack instant. pretty much all attacks needs to follow the
+instant attack style". Answers to four questions: the left hand loose at his side; a follow-through after
+the cut; the roll cut, the charged heavy, One Breath and the execution too; the heavies need more weight,
+a more obvious cut, the lone heavy as a slash and no whirl.
+
+**What changed** (all behind `?lights=blink`; the default chain is ADR-188's, untouched).
+- A measuring tool first: the opt-in `armaudit` (integ.mjs) plays presses and prints the sword arm's elbow,
+  reach and wrist, the body's turn and the free hand, frame by frame. It showed the cause of the stiff arm:
+  the cut keys had been solved for a straight tip path, which pulled the hand in to the chest mid-cut and
+  broke the wrist, and he stood still five frames after the cut.
+- `combat.js`: a look per attack def (`wear`, `LOOK_KEYS`); tables in `lightsBlink.js`, `lastHits.js`,
+  `heaviesBlink.js`, `specialsBlink.js`.
+- Hits 1-4 rewritten by hand: the arm opens through the cut (end of cut 0.97-0.99 of reach, elbows
+  154-163°, wrists at most 52°), ten to thirteen moving frames after it, no still frame before the way home.
+- The free hand: `P.sd` and `HeroAnimator._sideHand` (anim.js); the belt hand removed.
+- The five heavies on one rhythm (a still coil, the cut, the landing, a stop, a hold); Gale a dash into a
+  slash, Tempest one level cut with no turn; the heavy line three rows of strokes, a camera kick on the cut.
+- The last hit: five strokes; `finishers.js`, `?finisher=` and the Lab's row removed.
+- The sprint slash, the roll cut, the charged cleave, One Breath and the execution as instant clips; the
+  execution's cyan streak and One Breath's pass mark are left out beside their own lines.
+
+**How.** One plan, a shared brief with the arm rules as numbers, then five agents in this worktree at once,
+each on its own files (the look tables and an empty scenario per part were wired first, so nobody had to
+edit `setLights` or the scenario table). A sixth filmed the result.
+
+**Verification.** `blinkslash`, `blinklights`, `blinkhand`, `blinkheavies`, `blinkspecials`, `blinklast`;
+the hero suites in the default look; `sheath.mjs . reward` and `duel.mjs . execute` under blink; `npm test`.
+
+**Open / next.** The owner's judgement of the films and the preview. The audit's `ext` is measured in the
+world, where the drawn hero is scaled and leaned toward the camera: the scenarios measure in the chest's
+own frame instead. Known soft spots: the free hand is still on its way to his side through hit 1's windup;
+two pairs of last-hit strokes are close from the game camera (rise / drop, sweep / low); Mountain Splitter
+is 28° off hit 3; the sounds are still a swing's.
+
+---
+
 ## 2026-11-25 — Frame cost: a measured review, then three fixes that leave the picture alone (ADR-199; branch `render/perf-ground-steps`)
 
 **Owner:** "the game runs pretty slow on less powerful machines. review the game and code to see how we can
@@ -153,7 +196,7 @@ of 26 on the same frame as before and 5 one frame off; on the Ash Disciple all f
 the first (one earlier). The hero scenarios' bounds are unchanged; their lists that name the chain's clips now name
 `drawSlash`, and the whip check's whirl exemption covers the `…Old` copies.
 
-**How.** Numbers first, from the headless harness (`ABYSS_DUMP=<file>` dumps every sampled frame of both modes), then
+**How.** Numbers first, from the headless harness (`GCD_DUMP=<file>` dumps every sampled frame of both modes), then
 films from headless Edge on the GPU: each take filmed four times on one seeded page load (old / new × the game camera /
 a close 3/4 view through `game.viewOverride`, the grass hidden there so the feet show), composed before | after.
 Tuning that the tests caught: a stronger `lead` doubled the hips' speed while it ramped in (20° a frame, bound 15);

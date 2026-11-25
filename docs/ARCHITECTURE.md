@@ -1156,7 +1156,19 @@ the coil along a cubic that leaves at `gather[0]` and arrives at `gather[1]` (wi
 `LIGHTS_NAMES`; `?lights=old` at load; the Lab's PLAYER → `lights` row, live) swaps `LIGHT[i].anim` /
 `variants` and nothing else between the weighted clips (`swings.js`: `fallingCut` … `risingThrust`,
 `drawSlash`, `groundSlam`) and the ones before them (`lightsOld.js` `LIGHTS_OLD`, spread into `SWINGS` as
-`<name>Old`, plus the `drawCut` and `slam` the flurry, One Breath and Earthbreaker still play). Feet: `lungeFeet`: the foot that is behind as the swing starts steps through to the front
+`<name>Old`, plus the `drawCut` and `slam` the flurry, One Breath and Earthbreaker still play).
+**The instant look set** (ADR-200; `?lights=blink`, the Lab's `lights` row; to compare, not the default):
+`setLights` wears a LOOK on every attack def through `wear` (`LOOK_KEYS`: `anim`, `variants`, `contact`,
+`glint`; never a number of the hit): hits 1-4 from `lightsBlink.js`, hit 5 from `lastHits.js`
+(`LAST_HIT_BLINK`: five strokes as its `anim` and `variants`, picked by `_pickVariant`), the heavy branches
+from `heaviesBlink.js` (`HEAVY_BLINK`), and the sprint slash, the roll cut, the charged cleave, One Breath
+and the execution from `specialsBlink.js` (`SPECIAL_BLINK`, by the names in `combat.js` `SPECIAL_DEFS`).
+A clip's `slash` is drawn by `blinkFx.js` (`BlinkFx`: one straight line through the blade's point on the
+cut's first and last frame; the looks `light` / `strong` / `heavy` by the clip's `slashLook`; a heavy line
+kicks the camera, hit or miss; `owns(atk)` / `draws(def)` tell `player.js` to leave out the round arc, the
+thrust's cyan streak and One Breath's pass mark). A clip's `side` hangs the free hand at his side (below);
+`plain` keeps a slam-kind hit from bursting shards. `?lights=fresh` and `?arcs=` are earlier comparisons,
+kept until the owner's pick. Feet: `lungeFeet`: the foot that is behind as the swing starts steps through to the front
 (so the lead foot alternates down a chain) and stays on the spot it planted on, while the other
 stays planted where it stood, its heel peeling (it no longer settles sideways onto the stance line);
 once stretched `drag` m past the stance's rear spot, or past its leg's reach from the hips the clip
@@ -1229,7 +1241,9 @@ the left shoulder, the flat to the enemy; `locoGuard` carries `twoHand` and `off
 Pose channel `offAt` (m): with `twoHand`, how far up the blade from the grip the off hand sits (0 =
 on the grip; above 0.04 the hand stays open: a palm braced on the flat; no clip uses it yet). At
 rest and on the move he carries the sword in one hand. The free-hand channels (`P.lD` 53, `P.lN` 56:
-vec3 body axes, length = weight; `P.hs` 59; `P.lk` 60; the pose has `N` = 61 channels, exported, and
+vec3 body axes, length = weight; `P.hs` 59; `P.lk` 60; `P.sd` 61: 0..1 the free hand hanging loose at his side, written by a clip's `side`
+(`sideHand`) and placed by `HeroAnimator._sideHand` between under the shoulder and beside the hip with a
+small damped sway, `SIDE`; the pose has `N` = 62 channels, exported, and
 a duelist's scratch poses are sized from it) are read only with `opts.freeHand`: `guard()` writes
 the hero's rest (sword fingers low by the left hip, pointing ahead and down), so every other
 animator carries the hero's values in them too and ignores them; `locoGuard` carries them in

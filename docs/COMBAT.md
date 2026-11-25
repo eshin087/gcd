@@ -432,6 +432,18 @@ window). A red or black blow lands on him in the stance. Not learned, the same i
   a little further round in the same time, brakes and holds the finish (`home` 0.3, a hold key), and the
   next windup gathers out of it (`gather`: the arms leave slowly while the hips lead) instead of
   snapping away. The hit frames are the ones they were (at most one frame off; scenario `herolights`).
+- **The instant cuts** (ADR-200, `?lights=blink`; to compare, not the default): every attack keeps its
+  numbers and its job, and its cut crosses in two or three frames and leaves one straight line where the
+  blade passed. A light: a short still coil, the cut, a follow-through that slows over about ten frames.
+  A heavy: a long still hold, the cut, the weight landing (the body drops and drives on), a hard stop and
+  a long hold; its line is longer and thicker and kicks the camera. Two heavies read differently there:
+  Piercing Gale is a dash into a falling two-handed slash (drawn as a sweep, not a thrust), and Whirling
+  Tempest is one level cut that unwinds the torso, a blade across his whole front and both sides (211°
+  round him) where today's turn puts it all round him. Hit 5 is one of five one-handed strokes, a
+  different one each time, with no ground shards. The sprint slash, the roll cut, the charged cleave, One
+  Breath and the execution are instant too. Inside the active frames some hits land a few frames earlier
+  or later than today's (the sprint slash as its frames open, One Breath earlier up close and later at
+  the end of its step); damage, posture, reach and every window are the same.
 - **Reach against giant targets** (`REACH`): the wyrm's chest hangs 2–4 m above the grass, above a
   sword swung at a 1.75 m hero's chest, so the blade hits through a **vertical band**: a hurt sphere
   counts when it overlaps the blade's swept wall extended `up` 2.6 m above (the slam: 1.0 m) and
