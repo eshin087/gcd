@@ -3,6 +3,7 @@ import { clamp, lerp, smoothstep, damp, easeOutCubic, wrapAngle, TAU } from '../
 import { DIM, BODY, HAIR_CLUSTERS, HERO_SCALE, sheetOffset } from './model.js';
 import { SWINGS, FH } from './swings.js';
 import { atEase, fencerGuard } from './stances.js';
+import { idlesOld, easeArms, guardArms, newRests, tickRests, pickEase, actStart, lowRest, toLowRest, trailing, EASE_HABITS, EASE_TRICKS, FIGHT_ACTS, EASE_RESTS, FIGHT_RESTS, IDLES } from './idles.js';
 
 // Procedural animation for the Wanderer, keyed to the owner's concept sheets ("Movement" / "Combat
 // key poses"). Every frame a target POSE (a flat Float32Array) is built for the current clip as a
@@ -342,12 +343,18 @@ export function stand(p, A) {
   guard(p, A);
   if (!A.freeHand) return;
   const f = clamp(fin(A.fightW), 0, 1);
-  if (f >= 0.999) fencerGuard(p, P, A);
-  else {
+  // (ADR-186, idles.js: the arms in one of several rests over each stance; `?idles=old` the belt)
+  const rests = !idlesOld();
+  if (f >= 0.999) {
+    fencerGuard(p, P, A);
+    if (rests) guardArms(p, P, A);
+  } else {
     atEase(p, P, A);
+    if (rests) easeArms(p, P, A);
     if (f > 0.001) {
       for (let i = 0; i < N; i++) SCR_FIGHT[i] = p[i];
       fencerGuard(SCR_FIGHT, P, A);
+      if (rests) guardArms(SCR_FIGHT, P, A);
       blend(p, p, SCR_FIGHT, f * f * (3 - 2 * f));
     }
   }
@@ -2538,12 +2545,22 @@ const FIDGETS = [
   { name: 'shoulder', dur: 3.6, fn: fidgetShoulder },
   { name: 'lean', dur: 4.2, fn: fidgetLean },
 ];
+// The idle actions of ADR-186 (idles.js): at ease its habits (both arms) with two of the ones above
+// (they already moved both arms: the look, the blade inspected), and a trick
+// every few; in the fight only the small habits that keep the guard. idles.js's functions take P.
+const withP = (D) => ({ ...D, fn: (p, A, u, e) => D.fn(p, P, A, u, e) });
+// (the lean on the pommel stays with the old ones: cut by a light or a roll it whipped the point 0.9-1.4 m a frame)
+const EASE_LIST = [...EASE_HABITS.map(withP), FIDGETS[0], { ...FIDGETS[2], blade: true }, ...EASE_TRICKS.map(withP)];
+const CUT_SLOW = new Set(['block', 'parry', 'heal', 'charge']); // (_idleLife: clips whose entry may take longer out of a trick)
+const FIGHT_LIST = FIGHT_ACTS.map(withP);
+/** The list an idle action's index refers to (A.fidget.pool: 0 the old ones, 1 at ease, 2 the fight). */
+const actList = (pool) => (pool === 1 ? EASE_LIST : pool === 2 ? FIGHT_LIST : FIDGETS);
 /** The current idle action's layer (A.fidget, timed in HeroAnimator._idleLife). */
 function idleLife(p, A) {
   const F = A.fidget;
   if (!F || F.k < 0 || !(F.w > 0.001)) return;
-  const D = FIDGETS[F.k];
-  D.fn(p, A, clamp(F.t / D.dur, 0, 1), F.w);
+  const D = actList(F.pool)[F.k];
+  if (D) D.fn(p, A, clamp(F.t / D.dur, 0, 1), F.w);
 }
 
 const POSES = {
@@ -3322,42 +3339,129 @@ export class HeroAnimator {
    *  when he moves, attacks or guards. */
   _idleLife(dt, sp) {
     const F = this.fidget, pl = this.player;
-    const calm = this.key === 'loco' && pl.state === 'idle' && sp < 0.1 && this.moveW < 0.05 && !pl.lockOn && !(this.fightW > 0.05) && !(fin(pl.guardHold) > 0.001);
+    const still = this.key === 'loco' && pl.state === 'idle' && sp < 0.1 && this.moveW < 0.05 && !(fin(pl.guardHold) > 0.001);
+    const old = idlesOld();
+    // which actions may play now (F.pool): the old ones at ease; ADR-186's at ease, or in the fight
+    // (also locked on: the small habits of the guard), never while the stance is changing
+    const pool = old ? (still && !pl.lockOn && !(this.fightW > 0.05) ? 0 : -1) : still && this.fightW > 0.95 ? 2 : still && !pl.lockOn && this.fightW < 0.05 ? 1 : -1;
+    const calm = pool >= 0;
+    if (!old) {
+      if (!this.rests) this.rests = newRests();
+      // a rest changes only standing still with no action running (idles.js)
+      tickRests(this, dt, pool, F.k < 0);
+    }
     if (this.key !== 'loco' && F.k >= 0) {
-      // another clip took over (its cross-fade starts from this pose)
+      // another clip took over (its cross-fade starts from this pose). Out of one of ADR-186's actions
+      // that swings the blade (at ease: never in a fight), a block, a drink or a charge brings the blade
+      // home over IDLES.cutFade s at least: from a blade behind his back their own fade whipped the point
+      // up to 1.4 m a frame
+      if (F.pool === 1 && actList(1)[F.k]?.blade && CUT_SLOW.has(this.key) && this.blendT < this.blendDur) this.blendDur = Math.max(this.blendDur, IDLES.cutFade);
       F.k = -1;
       F.w = 0;
+    } else if (!old && this.key !== this.idleKey && this.idleKey === 'loco' && CUT_SLOW.has(this.key) && this.fightW < 0.05 && trailing(this) && this.blendT < this.blendDur) {
+      // … and out of the trailing rest (its blade 170° round from a block's: in the block's 0.08 s the
+      // point swept 1 m a frame). At ease only: in a fight he never trails the blade
+      this.blendDur = Math.max(this.blendDur, IDLES.cutFade);
     }
+    this.idleKey = this.key;
     if (F.k >= 0) {
-      const D = FIDGETS[F.k];
+      const D = actList(F.pool)[F.k];
       F.t += dt;
       const env = smoothstep(0, IDLE_LIFE.fadeIn, F.t) * (1 - smoothstep(D.dur - IDLE_LIFE.fadeOut, D.dur, F.t));
-      if (!calm) F.cut = true;
-      F.w = F.cut ? Math.max(0, Math.min(env, F.w - dt / IDLE_LIFE.cancel)) : env;
+      if (!calm || pool !== F.pool) F.cut = true;
+      // (one that swings the blade lets go a little slower: cut in 0.16 s, a trick's blade swept 0.5 m a frame)
+      F.w = F.cut ? Math.max(0, Math.min(env, F.w - dt / (D.blade ? IDLES.cancelBlade : IDLE_LIFE.cancel))) : env;
       if (F.t >= D.dur || (F.cut && F.w <= 0)) {
         F.k = -1;
         F.w = 0;
         F.name = '';
         F.still = 0;
-        F.wait = lerp(IDLE_LIFE.gap[0], IDLE_LIFE.gap[1], this.noise());
+        const gap = F.pool === 1 ? IDLES.gapEase : F.pool === 2 ? IDLES.gapFight : IDLE_LIFE.gap;
+        F.wait = lerp(gap[0], gap[1], this.noise());
       }
       return;
     }
     if (!calm) {
       F.still = 0;
-      F.wait = Math.max(F.wait, IDLE_LIFE.after);
+      F.wait = Math.max(F.wait, old ? IDLE_LIFE.after : this.fightW > 0.5 ? IDLES.afterFight : IDLES.afterEase);
       return;
+    }
+    if (pool !== F.lastPool) {
+      // (into the other stance: its own first wait, and no "last action" from the other list)
+      F.lastPool = pool;
+      F.last = -1;
+      F.still = 0;
+      F.wait = pool === 0 ? IDLE_LIFE.after : pool === 2 ? IDLES.afterFight : IDLES.afterEase;
     }
     F.still += dt;
     if (F.still < F.wait) return;
-    let k = Math.min(FIDGETS.length - 1, Math.floor(this.noise() * FIDGETS.length));
-    if (k === F.last) k = (k + 1 + Math.floor(this.noise() * (FIDGETS.length - 1))) % FIDGETS.length;
+    const list = actList(pool);
+    let k;
+    if (pool === 1 && F.queued) {
+      // (the Lab's pick of one that swings the blade: it waits for the low rest it starts from)
+      k = list.findIndex((D) => D.name === F.queued);
+      if (k >= 0 && list[k].blade && !lowRest(this)) return;
+      F.queued = '';
+      if (k < 0) return;
+    } else if (pool === 1) {
+      F.sinceTrick ??= 0;
+      F.trickDue ??= IDLES.trickEvery[0];
+      k = pickEase(F, list, this);
+      if (k < 0) {
+        // (a trick due in a high rest: the rest goes low first, then it plays)
+        F.wait = F.still + IDLES.restMove + 0.25;
+        return;
+      }
+    } else {
+      k = Math.min(list.length - 1, Math.floor(this.noise() * list.length));
+      if (k === F.last) k = (k + 1 + Math.floor(this.noise() * (list.length - 1))) % list.length;
+    }
     F.k = F.last = k;
+    F.pool = pool;
     F.t = 0;
     F.w = 0;
     F.cut = false;
     F.count++;
-    F.name = FIDGETS[k].name;
+    F.name = list[k].name;
+    actStart();
+  }
+
+  /** Lab / tests (ADR-186): play the idle action `name` now (from the list of the stance he stands in:
+   *  at ease or the fight; ignored with `?idles=old` for a new one's name, and while he is not standing
+   *  still). Returns whether it started. */
+  playIdle(name) {
+    const F = this.fidget, pool = idlesOld() ? 0 : this.fightW > 0.5 ? 2 : 1;
+    const list = actList(pool), k = list.findIndex((D) => D.name === name);
+    if (k < 0 || this.key !== 'loco') return false;
+    if (pool === 1 && list[k].blade && !lowRest(this)) {
+      // (from the carry or the trail: to a low rest first, then it plays)
+      toLowRest(this);
+      Object.assign(F, { k: -1, w: 0, queued: name, still: 0, wait: IDLES.restMove + 0.25, lastPool: pool });
+      return true;
+    }
+    Object.assign(F, { k, last: k, pool, lastPool: pool, t: 0, w: 0, cut: false, name, queued: '' });
+    F.count++;
+    actStart();
+    return true;
+  }
+  /** Lab / tests (ADR-186): move to the rest `name` (idles.js EASE_RESTS / FIGHT_RESTS, by the stance
+   *  he stands in) now, over the rest's change (`atOnce`: no change), and stay in it `hold` s (then the
+   *  rests change as before). Returns whether it is one. */
+  setRest(name, atOnce = false, hold = IDLES.restHold[1]) {
+    if (!this.rests) this.rests = newRests();
+    const fight = this.fightW > 0.5, S = fight ? this.rests.fight : this.rests.ease;
+    const k = (fight ? FIGHT_RESTS : EASE_RESTS).findIndex((R) => R.name === name);
+    if (k < 0) return false;
+    if (atOnce) Object.assign(S, { a: k, b: k, u: 1 });
+    else Object.assign(S, { b: k, u: S.a === k ? 1 : 0 });
+    S.mem.ok = false;
+    S.hold = hold;
+    return true;
+  }
+  /** Lab / tests: the names of the idle actions and rests of a stance (fight: the guard's). */
+  idleNames(fight = false) {
+    const list = idlesOld() ? FIDGETS : fight ? FIGHT_LIST : EASE_LIST;
+    return { acts: list.map((D) => D.name), tricks: list.filter((D) => D.trick).map((D) => D.name), rests: idlesOld() ? [] : (fight ? FIGHT_RESTS : EASE_RESTS).map((R) => R.name) };
   }
 
   /** The root travel recorded the first frame this clip reached time t0 (slot 0/1); before that,
