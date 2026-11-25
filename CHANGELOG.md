@@ -5,14 +5,14 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 
 ## [Unreleased]
 One hundred and two pieces of work since 0.4.0:
-- **The dragon's neck and head move naturally: no upside-down head, no flips** (2026-11-25, ADR-200). *Fixed:* every one of the
+- **The dragon's neck and head move naturally: no upside-down head, no flips** (2026-11-25, ADR-203). *Fixed:* every one of the
   Cinder Wyrm's 50 moves was measured frame by frame (how fast each neck joint and the head turn, how far the
   head rolls off level, where it looks). Its head no longer rolls upside down in flight (the sky dive's climb,
   the hunting flights' wheels, the hover barrage's rise), it no longer looks straight back over its own spine
   (the meteors' roar now goes up at the sky facing forward), its neck no longer snaps 60 - 150° in a frame as a
   foe crosses behind it (the tail lash, the tail sweep, the rakes), the last bite of the storm flurry no longer
   buckles the neck sideways and draws the head apart from it, and a bite's first frame no longer flicks the
-  head 75° in one go. The head stays upright against its own body in every move, the neck twisting with it (`?neck=c|b|0`).
+  head 75° in one go. The head stays upright against its own body in every move, the neck twisting with it, and through the hero's flurry it no longer chases his blinks (`?neck=c|b|0`).
 - **The game runs faster on weaker machines** (2026-11-25, ADR-199). *Changed:* the picture is the same and costs
   less to draw: the ground is drawn after everything that covers it, and its relief is worked out once when the
   level loads instead of for every pixel of every frame (a frame at 4K costs a fifth to two fifths less on the

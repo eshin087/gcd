@@ -2005,7 +2005,7 @@ brain writes them):
   round-2 limits apply (rest shape at most `TAIL_SINK` 0.55 segments under the ground, segments at
   most `TAIL_DEV` [0.6 soft, 1.2] rad from their rest direction), easing back in after a sweep.
 - `headExact` (bool): the head aims without the `HEAD_AIM_RATE` (11 rad/s) turn limit, at most
-  `HEAD_EXACT_RATE` (45 rad/s: a bite's first frame turned the head alone 75°; ADR-200). Set on
+  `HEAD_EXACT_RATE` (45 rad/s: a bite's first frame turned the head alone 75°; ADR-203). Set on
   the frames whose hit spheres ride on the snout / mouth: bite and combo-lunge active, charge
   active, breath active, fireball.
 - `headLead` (Vector3, world): an offset of the SHOWN head only. `strikeLead` (attacks.js) sets it
@@ -2039,9 +2039,9 @@ spheres), blended toward the resting S by `s.rest`. While an attack drives the h
 The pin is released only while `headLead` is non-zero. A shown chain that misses the measured head by more
 than `SWING_MISS[0]` × scale takes the measured shape, all of it from `SWING_MISS[1]` (a strike's
 first frame moves the head metres: FABRIK under the bend limits buckled the shown neck 2 m to one side
-and left the pinned head 3 m from its end; ADR-200).
+and left the pinned head 3 m from its end; ADR-203).
 
-Where the head looks and how it is held (ADR-200, `_updateNeck`; `?neck=c|b|0`, default c):
+Where the head looks and how it is held (ADR-203, `_updateNeck`; `?neck=c|b|0`, default c):
 - c: it looks where its move points it, over a shoulder at most `HEAD_YAW_MAX` (2.35 rad, in the
   chest's frame); a foe straight behind is watched over the shoulder it was on until he is
   `HEAD_SIDE_SWAP` past straight back on the other side; a look point nearly straight overhead
@@ -2053,7 +2053,11 @@ Where the head looks and how it is held (ADR-200, `_updateNeck`; `?neck=c|b|0`, 
   shown neck takes the same roll spread down its joints (`Chain.apply(parentQ, out, twist)`: each joint
   turns about its own bone, no point moves); resting, only what passes `HEAD_ROLL_REST`.
 - b (the first pass): upright against the sky, the heading held while the look point is under or
-  over it. 0: as before ADR-200 (level at rest only, against the sky).
+  over it. 0: as before ADR-203 (level at rest only, against the sky).
+- c and b: while the hero's flurry runs (`player.state === 'flurry'`: the perfect dodge's answer and
+  the riposte) the wyrm loses him: `Dragon._sensePlayer` keeps `sense.pos / chest` where it last saw
+  him (`vel` 0; `dist / yawTo / ang` from that point), so neither its head nor its body chases each
+  blink; once he stops it finds him at its own turn rates. 0: it tracked every blink.
 
 `REST_POSE` (exported from rig/anim.js, tunable live from the console): `neck` (the resting S:
 head low and forward), `lookDown` 0.45 / `headDip` 0.22, `stance` (`frontOut`, `frontFwd`,
@@ -2081,7 +2085,7 @@ Rig helpers (internal to the dragon module):
   Infinity = off), `buildRest({ ..., dipAmp, dipAt, dipWidth, sinkMax })` (a dip that bends a
   stretch of segments down, and a cap on how deep the rest shape may dive under the ground),
   `endQuat(parentQ, out)` (the last joint's world rotation without touching the joints).
-  `apply(parentQ, out, twist = 0)`: `twist` rad of roll spread evenly down the chain (ADR-200).
+  `apply(parentQ, out, twist = 0)`: `twist` rad of roll spread evenly down the chain (ADR-203).
   `aimJointStable` keeps a joint's twist continuous near the −Z singularity (no 180° wing flips).
 - `solveTwoBone(A, T, l1, l2, pole, outMid, outEnd, bend = null, soft = 0)` (rig/ik.js): `bend`
   (per limb, persistent) keeps last frame's bend direction when the pole runs along the limb; `soft`

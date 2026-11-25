@@ -5997,7 +5997,7 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
     dragon print), the shared uniforms' upload (about 0.5 ms of script a frame), the worst frames'
     hitches. The floors' shader is as it was: its relief is most of its cost.
 
-## ADR-200 — The wyrm's head held level and kept where a neck can look; the shown neck never leaves its head (2026-11-25)
+## ADR-203 — The wyrm's head held level and kept where a neck can look; the shown neck never leaves its head (2026-11-25)
 
 - **Context:** the owner: "the dragon does weird neck movements when hes flying as well. in general review all the
   dragon neck movements and make sure it looks natural and accurate and not buggy". An audit stepped every one of
@@ -6024,7 +6024,7 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
     point was under or over it. The owner played it: "the head got worse when flying and when it does a ground
     perfect parry attack" (it rolled oddly and looked the wrong way): a banking body with a head held flat to
     the horizon reads as a twisted neck, and a flight's head held its old heading while the hero was under it.
-    `?neck=0` is the wyrm before ADR-200. Also tried and dropped: fading the leveling out near vertical (it
+    `?neck=0` is the wyrm before ADR-203. Also tried and dropped: fading the leveling out near vertical (it
     flipped the dives again); a 24 rad/s leveling rate (the wheels' head spun 25 - 30° a frame).
 - **Consequences:** (c against main, the audit) no head flipped upside down by the neck's curl in flight (the
   sky dive's climb roll 72 -> 35°, the wheels 57 - 60 -> 18 - 25°, the hover rise 67 -> 13°); the flips of the
@@ -6032,7 +6032,10 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   flurry's neck 128 -> 85° on the strike's first frame (the measured solve's own step, kept: it carries the hit
   spheres) with no sideways buckle; the plunge and the parry recoil as before. The resting stance and the side
   view the owner chose are unchanged. Hit spheres: the neck's joints do not move; the snout rolls about itself
-  and turns at most 45 rad/s on an exact strike's first frame. Seeded fights drift (the mouth sits a little
+  and turns at most 45 rad/s on an exact strike's first frame. While the hero's flurry runs (a perfect dodge's
+  answer, the riposte) the wyrm keeps where it last saw him (`_sensePlayer`, c and b): the owner played c and saw
+  its head "home into the players teleporting movement"; its look point travelled 12 - 28 m chasing his blinks,
+  now none. Seeded fights drift (the mouth sits a little
   differently, so the bullet cues shift a frame). Open: the owner's pick of c / b / 0; the rear attacks (tail
   lash, rakes, cataclysm) still curl the neck back over the spine, where 'upright against the body' is ill
   defined and the head can sit rolled; the leap's and pounce's neck strikes stay fast.

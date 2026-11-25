@@ -5,7 +5,7 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
-## 2026-11-25 — The wyrm's neck and head reviewed move by move (ADR-200; branch `dragon/neck-motion`)
+## 2026-11-25 — The wyrm's neck and head reviewed move by move (ADR-203; branch `dragon/neck-motion`)
 
 **Owner:** "the dragon does weird neck movements when hes flying as well. in general review all the dragon neck
 movements and make sure it looks natural and accurate and not buggy".
@@ -13,7 +13,7 @@ movements and make sure it looks natural and accurate and not buggy".
 **How.** An audit in headless Edge (a scratch module stepping each of the 50 moves, the stagger and both phase
 roars from a fresh page, frame by frame) against an untouched main checkout served side by side; the numbers
 first, then films of the flagged moves (the wings hidden for a clean view of the neck, then the real look). Four
-faults (ADR-200): the head leveled only at rest (upside down in flight), look points under / behind / over it
+faults (ADR-203): the head leveled only at rest (upside down in flight), look points under / behind / over it
 swinging it round, the driven shown neck buckling away from its pinned head on a strike's first frame, and
 `headExact` with no turn limit. Fixed in `_updateNeck` and `Chain.apply` (a twist spread down the chain).
 
@@ -21,6 +21,12 @@ swinging it round, the driven shown neck buckling away from its pinned head on a
 ground perfect parry attack": it rolled oddly and looked the wrong way. The default (`?neck=c`) holds the head
 upright against its own body, not the sky, and lets it look where its move points it (a shoulder limit, the side
 swapped once a foe is clearly round the other side); `?neck=0` is the wyrm before. The owner picks.
+
+**Owner, round 3** (played c): "c is almost all good but ... during a perfect dodge/parry slow time effect the
+dragon seems to home into the players teleporting movement and makes it do a bad angle". Its sense of the hero
+read his chest every frame, so through his flurry its look point chased each blink round and over its head
+(12 - 28 m of travel, its body turning up to 46° after him). Now it keeps where it last saw him until the flurry
+ends (`Dragon._sensePlayer`, c and b; 0 as before): 0 m, 0°. The head still flinches at each cut, as on main.
 
 **Lessons.** Leveling needs an unwrapped, rate-limited correction: the plain shortest angle swapped between +180
 and -180 and spun the neck 50° a frame; fading it out near vertical brought the flips back. 'Up' for a head
