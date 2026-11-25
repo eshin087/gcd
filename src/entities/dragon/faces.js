@@ -1,5 +1,5 @@
 import { ellipsoidGeometry } from '../../render/glyphGeometry.js';
-import { HEADS, FACE_ART, V, add, both, interpRow, bentPath, sweepTube } from './heads.js';
+import { HEADS, FACE_ART, V, add, both, interpRow, bentPath, sweepTube, wyrmFace } from './heads.js';
 
 // The four faces of 2026-11-20 (?wyrmFace=drake|tyrant|viper|revenant), for the owner to pick from
 // rendered sheets. The owner: "I really dont like how the dragon face looks. It doesnt look realistic
@@ -113,28 +113,76 @@ const DRAKE = {
   nostril: SK.nostril,
   nape: [0.3, 0.45, 0.65, 0.85],
 };
+// The drake from above (2026-11-24, ADR-189; the owner: the side view "has the evil scary look", from
+// the top "the dragon head looks goofy"). From the game camera the pale bone of the brow, the two horns
+// and the cheek fins joined into one big pale V that hid the dark face under it, and the eye glints
+// (fx.eyeGlints: a round orange dot pulled toward the camera over each eye) read as two cartoon pupils.
+// The owner picked top `c`: no glints (the burning slits are the eyes), the horns, brow and fins dark
+// obsidian lit at the edges and tips, the horns slimmer and swept tighter to the neck, a dark crest
+// down the skull. ?wyrmTop= keeps the others: '0' the drake before, 'a' no glints only, 'b' a + the
+// dark horns. Only the drake wears a top; every other face keeps its glints.
+export const WYRM_TOPS = ['0', 'a', 'b', 'c'];
+/** The top the drake wears with nothing set (the owner's pick, ADR-189). */
+export const WYRM_TOP_SHIPPED = 'c';
+let TOP = WYRM_TOP_SHIPPED;
+try {
+  const v = String(new URLSearchParams(globalThis.location?.search ?? '').get('wyrmTop') ?? '').toLowerCase();
+  if (WYRM_TOPS.includes(v)) TOP = v;
+} catch {
+  /* headless */
+}
+export const wyrmTop = () => TOP;
+/** Pick the top the NEXT built wyrm wears (tests, the Lab). */
+export function setWyrmTop(k) {
+  if (!WYRM_TOPS.includes(k)) return false;
+  TOP = k;
+  return true;
+}
+/**
+ * Each top's knobs. glint: the eye glints on (dragon.js); horn: the horns and fins (and the brow, when
+ * `brow` says so) in their own darker material (FACE_ART.drake `horn`: obsidian lit at the edges and
+ * tips instead of pale planks); spread / fins: the horns' and the fins' sideways sweep (x 1 before);
+ * r: the horns' girth; brow: the brow ridge's material; crest: a dark spine down the skull.
+ */
+const TOPS = {
+  0: { glint: true, horn: false, spread: 1, fins: 1, r: 1, brow: 'bone', crest: false },
+  a: { glint: false, horn: false, spread: 1, fins: 1, r: 1, brow: 'bone', crest: false },
+  b: { glint: false, horn: true, spread: 1, fins: 1, r: 1, brow: 'horn', crest: false },
+  c: { glint: false, horn: true, spread: 0.5, fins: 0.55, r: 0.7, brow: 'head', crest: true },
+};
+/** The knobs of the top in use (dragon.js reads `glint`); a face other than the drake: the drake before's. */
+export const wyrmTopKnobs = () => (wyrmFace() === 'drake' ? TOPS[TOP] : TOPS[0]);
 /** The drake's brow: low over the nose, rising steeply out and back over the eye (steeper than the eye's own slant: a scowl), set inboard of the eye so the eye shows from above. */
 const DRAKE_BROW = [[0.07, 0.235, 0.86], [0.15, 0.3, 0.72], [0.225, 0.365, 0.58], [0.295, 0.425, 0.43], [0.38, 0.455, 0.27], [0.46, 0.42, 0.1]];
 DRAKE.extras = (S, up, jp) => {
+  const T = TOPS[TOP];
+  const sp = (d, k) => [d[0] * k, d[1], d[2]];
+  const HK = T.horn ? 'horn' : 'bone';
   // the brow: a bony shelf low over the snout, high and out behind the eye (a frown); the cheekbone
-  add(up, 'bone', ...both(tube(DRAKE_BROW, (t) => 0.078 * (0.5 + 0.5 * Math.sin(Math.PI * Math.min(1, 0.08 + t * 1.0))), { radial: 5, flat: 0.66 })));
+  add(up, T.brow, ...both(tube(DRAKE_BROW, (t) => 0.078 * (0.5 + 0.5 * Math.sin(Math.PI * Math.min(1, 0.08 + t * 1.0))), { radial: 5, flat: 0.66 })));
   // the orbit's rear rim: bone from the brow down to the cheekbone behind the eye, standing proud, so
   // the eye (turned forward) lies IN a socket from every side
   add(up, 'head', ...both(tube([[0.4, 0.45, 0.3], [0.49, 0.36, 0.33], [0.53, 0.22, 0.35], [0.53, 0.08, 0.34]], (t) => 0.06 * (0.6 + 0.4 * Math.sin(Math.PI * t)), { radial: 5, flat: 0.7 })));
   add(up, 'head', ...both(tube(SK.cheek, (t) => 0.065 * (0.5 + 0.5 * Math.sin(Math.PI * Math.min(1, t * 1.15))), { radial: 5, flat: 0.55 })));
   // two long horns swept back over the neck, their tips rising; a shorter pair under them
-  const main = horn([0.21, 0.38, 0.02], [0.42, 0.12, -1], 2.3, 0.135, { bend: -0.95, n: 10, bendPow: 1.15, radial: 7, ridge: [7, 0.07], taper: 0.8 });
+  const main = horn([0.21, 0.38, 0.02], sp([0.42, 0.12, -1], T.spread), 2.3, 0.135 * T.r, { bend: -0.95, n: 10, bendPow: 1.15, radial: 7, ridge: [7, 0.07], taper: 0.8 });
   const L = [main.geo];
-  L.push(horn([0.34, 0.2, -0.02], [0.66, -0.06, -1], 1.3, 0.095, { bend: -0.6, n: 7, bendPow: 1.1, taper: 0.8 }).geo);
+  L.push(horn([0.34, 0.2, -0.02], sp([0.66, -0.06, -1], T.spread), 1.3, 0.095 * T.r, { bend: -0.6, n: 7, bendPow: 1.1, taper: 0.8 }).geo);
   // a horn over each eye
   L.push(horn([0.3, 0.44, 0.42], [0.4, 0.6, -1], 0.5, 0.06, { bend: -0.35, n: 4, flat: 0.7, radial: 5 }).geo);
   // cheek fins: three long flat blades off the jaw's hinge, fanned back and out
   [[0.07, [0.8, 0.28, -1], 1.05], [-0.03, [0.92, -0.04, -1], 0.88], [-0.11, [0.85, -0.34, -1], 0.66]].forEach(([y, d, len], k) =>
-    L.push(horn([0.5, y, 0.2 - 0.07 * k], d, len, 0.085, { bend: 0.3, axis: [0, 1, 0], n: 5, flat: 0.3, radial: 5 }).geo));
-  for (const g of L) add(up, 'bone', ...both(g));
+    L.push(horn([0.5, y, 0.2 - 0.07 * k], sp(d, T.fins), len, 0.085, { bend: 0.3, axis: [0, 1, 0], n: 5, flat: 0.3, radial: 5 }).geo));
+  for (const g of L) add(up, HK, ...both(g));
   // a small horn on the nose, a low crest on the back of the skull
   add(up, 'bone', horn([0, 0.25, 1.2], [0, 1, -0.4], 0.22, 0.055, { bend: -0.3, n: 3, radial: 5, up: [1, 0, 0] }).geo);
   [[0.1, 0.45, 0.24], [-0.08, 0.4, 0.3]].forEach(([z, y, len]) => add(up, 'bone', horn([0, y, z], [0, 0.7, -1], len, 0.06, { bend: -0.3, n: 3, radial: 5, flat: 0.45, up: [1, 0, 0] }).geo));
+  if (T.crest) {
+    // a dark crest down the middle of the skull, nose horn to nape: from above a spine splits the
+    // head, so it reads as a narrow blade, not one pale plate
+    [[1.0, 0.27, 0.12], [0.82, 0.31, 0.15], [0.64, 0.36, 0.17], [0.46, 0.41, 0.19], [0.28, 0.45, 0.2]].forEach(([z, y, len]) =>
+      add(up, 'head', horn([0, y, z], [0, 0.75, -1], len, 0.05, { bend: -0.35, n: 3, radial: 5, flat: 0.4, up: [1, 0, 0] }).geo));
+  }
   jawSpikes(S, jp, [[0.3, 0.2], [0.08, 0.26], [-0.1, 0.3]], [[0.07, 1.05, 0.16], [0.1, 0.85, 0.13]]);
   mouthKit(S, up, jp);
   return { hornTip: main.tip.toArray() };
@@ -356,7 +404,14 @@ REVENANT.extras = (S, up, jp) => {
 // ---------------------------------------------------------------- registration
 Object.assign(HEADS, { drake: DRAKE, tyrant: TYRANT, viper: VIPER, revenant: REVENANT });
 Object.assign(FACE_ART, {
-  drake: { ...KIT_ART, eye: { emit: [1.3, 0.38, 0.045] } },
+  drake: {
+    ...KIT_ART,
+    eye: { emit: [1.3, 0.38, 0.045] },
+    // the dark tops' horns (?wyrmTop= b, c): the bone's obsidian with its pale ink dimmed, lit at the edges and tips
+    get horn() {
+      return TOPS[TOP].horn ? { ink: [0.13, 0.125, 0.12], light: [1.0, 0.2, 2.2, 0.0] } : undefined;
+    },
+  },
   tyrant: KIT_ART,
   viper: KIT_ART,
   revenant: {

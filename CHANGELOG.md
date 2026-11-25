@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Eighty-seven pieces of work since 0.4.0:
+Ninety-seven pieces of work since 0.4.0:
 - **A heavier light combo** (2026-11-24, ADR-188). *Changed:* the five light attacks and their looks keep their
   timing, damage, reach and combo length, but the body now carries the weight: he loads his hips and shoulders
   before the hand goes, the front foot plants before the blade lands, he sinks 5-8 cm deeper into each cut and
@@ -12,6 +12,79 @@ Eighty-seven pieces of work since 0.4.0:
   beat before he comes back; out of a held finish the next swing gathers instead of snapping away. The finisher lands
   7 cm deeper over the planted blade. The heavy branches, the sprint slash, the roll cut, the flurry and the
   charged cleave are unchanged. `?lights=old` (and the Lab's PLAYER row `lights`) plays the chain as it was.
+- **A loading screen, and the worlds picked along the sword's path** (2026-11-25, ADR-196). *Added:* a loading
+  screen from the very first paint: the gcd logo, each step of the start with its real time, a progress bar and a
+  line of lore; picking a world says where the sword takes you. *Changed:* the title shows the worlds as fires
+  along the path the sword travels; the one in focus opens with its keeper, your best and the way there (keys,
+  mouse, pad and touch). The full controls list moved behind CONTROLS. The name over the hero's head is gcd and
+  stays just over his head, even in a roll. `?menu=0` gives back the old title, `?loader=a` the centred loader.
+- **The game is called gcd** (2026-11-25, ADR-195). *Changed:* the game has a new name, gcd, written lowercase
+  everywhere you see it: the title logo (a small lowercase "gcd" in the same block letters), the browser tab, the
+  WHAT'S NEW header. gcd is also the hero: a mysterious being who wields the most powerful sword in all universes,
+  the sword that lets him defeat these legendary bosses and carries him between campfires in different worlds and
+  universes. The game moves with the name to https://thegcd.vercel.app (repo `eshin087/gcd`). The browser keys
+  now start `gcd.` (`gcd.bindings.v2`, `gcd.records.v1`, `gcd.unlocks.v1`, ...): with no migration, saved
+  bindings, records, learned techniques, the touch pad's size and WHAT'S NEW's read marks start fresh (the new
+  address could not read them anyway). For developers: the tests' env vars are `GCD_*`, the touch / pad classes
+  `html.gcd-touch` / `html.gcd-pad`, the preview config `gcd-dev`.
+- **The bosses look built from letters, like the hero** (2026-11-24, ADR-194). *Changed:* every human boss is printed
+  the way the hero is: a body of lit letters in his own colours (no more dark fill inside a thin outline, or flat
+  bright colour), the hero's blocky outline strokes and dotted rim, and below the knee his clothes break into the
+  hero's pale, ragged, dotted hem. Lu Wusheng now prints in the hero's letters instead of the big digits.
+  `?bossPrint=a` the hero's greys, `?bossPrint=0` as before (the Lab's LOOKS row `bossPrint`); `?sheathArt=2` gives
+  Lu Wusheng his digits back.
+- **The grass bends as you run through it and springs back** (2026-11-25, ADR-193). *Changed:* running through the
+  grass no longer leaves a dark trail that appears at once and lingers for ten seconds. The blades bend along
+  your way and out from your path, lie down a moment and rise again over two or three seconds; a sprint or a
+  landing presses a wider wake. `?bend=0` gives the trail before.
+- **The sword's cut throws green code** (2026-11-25, ADR-192). *Added:* where your swing's arc cuts the grass,
+  small green code glyphs (the Hall of Falling Script's digits and letters) burst off the cut, flicker as they
+  fly, fall and settle into the grass; calm, about half a blade tall, so you see the meadow answer the sword
+  at the normal camera. `?grassSpray=0` throws none; the other looks shown on the way stay behind `?grassSpray=`.
+- **The hero comes alive standing still** (2026-11-24, ADR-186). *Changed:* the hero no longer stands with his free
+  hand on his hip all the time. At ease he moves between several rests (the free arm hanging loose, the sword
+  fingers low by his hip, a hand holding his cloak at the chest, the hand on the belt now and then; the sword always
+  held as before), does small things with both arms (re-grips the sword, rolls his shoulders, flexes the free hand,
+  brushes his coat, looks round, checks the edge) and every few actions a sword trick (a wrist spin, a figure-eight,
+  a salute with the blade upright before his face, a flick of the blade clean) or a quiet SPELL in the sword's green
+  flame: his fingers drawn up the blade with the flame climbing behind them, a ring of green marks written round
+  him, a thread of them circling him and returning into the steel. In a fight his free hand comes off the belt into a
+  guard (sword fingers at the foe, beside his face, an open guard hand, or floating low) that changes as he waits,
+  with small guard shifts and grip adjustments and never a trick. `?idles=old` brings back the hand on the belt
+  (the Lab's PLAYER rows `idles` and `idle ▸`).
+- **A natural running arm, three ways to carry it** (2026-11-24, ADR-187). *Changed:* the hero's free (left) hand
+  no longer swings a stiff fist on the run. It swings like a runner's, the elbow bent near a right angle and working
+  with the stride, the hand open and loose, pumping harder at a sprint; strafing and backing away (lock-on play) it
+  keeps swinging. That is `?runArm=a`, the owner's pick and the default (2026-11-25: the first merge shipped `c` as
+  the default, the owner had approved `a`; it was reverted and re-shipped). `b` the swordsman's dash (swept back
+  behind him whenever he runs forward), `c` natural then the dash at a sprint, `old` the swing before; the Lab's PLAYER row `run arm` switches them live. The free hand is smaller
+  (× 0.8; the owner's pick of five looks, "the left hand size and color is standing out too much"):
+  `?handLook=0` is the hand before, `b` / `c` darker skin, `d` a leather glove (the Lab's `hand` row).
+- **The streak's answer: a heavy first cut, a path that flows, cuts that tear the picture** (2026-11-25, ADR-190, ADR-191). *Changed:*
+  the flash cuts that answer a perfect dodge of a red blow, a parry's riposte and the counter. The first cut is a beat
+  you can read (he is seen wound up, crosses as fast as before, is held on the contact), each later one comes faster,
+  gently for a short streak and steeply for a long one, so a 7 still ends in the storm in the same time. Each pass now
+  starts where the last one ended (no jump back toward where he dodged), every white slash lies on the path he ran,
+  the two curved slashes that appeared from nowhere at the end are gone, and the last blow's big `A` shards are a fine
+  spray of white-steel letter dust. *Added:* the passes draw a different figure each time (star, zigzag, cage, spiral,
+  cross), and each cut tears the picture: for three frames the letters on either side of it slide apart like a torn
+  page (the owner's pick of four looks). Damage and rules are unchanged. `?tempo=0`, `?chain=0`, `?figure=`, `?rip=`
+  (`tear`, `ghosts`, `negative`, `off`) and the Lab's streak row compare.
+- **The Cinder Wyrm wakes without a neck twist, and its head reads from above** (2026-11-24, ADR-189).
+  *Fixed:* as the wyrm got up, the resting neck shape was blended point by point into a neck still curled
+  back along its flank, and the head spun through ~330 degrees in half a second and turned upside down;
+  the resting shape now waits until the curl is nearly out, and the head stays upright and on the hero
+  (within ~30 degrees) all the way up. *Changed:* the drake head from the game camera (the owner: "from the
+  top center view, the dragon head looks goofy"): no round eye glints (they read as two cartoon pupils; the
+  burning slits are the eyes), the horns, brow and cheek fins dark obsidian lit at the edges and tips instead
+  of one big pale V, the horns slimmer and swept tighter to the neck, a dark crest down the skull. The side
+  view keeps its look. Picked by the owner from three options; `?wyrmTop=0|a|b` keep the head before and the
+  other two (the Lab's `top` row). *Fixed:* the pounce's hop no longer lands the wyrm past the standing tree wall
+  beside a gap it has torn.
+- **The resting blade no longer glows** (2026-11-25, ADR-183). *Fixed:* a white halo the size of his head bloomed
+  round the hero's sword at some poses and facings while he stood still, and the point left a pale block where it
+  rested in the grass. A world letter centred on his blade printed the steel's raw brightness; it now shows the pixel
+  underneath, as it always did for every boss.
 - **Smaller combat text** (2026-11-24, ADR-184). *Changed:* the call-outs over the hero (PARRY, DEFLECT, COUNTER,
   GHOSTEP ...) and the damage numbers are smaller and keep one size at every window width. They grew with the
   window before, so a 1920-wide window drew DEFLECT at 22 px and the flurry's cut counter at 34 px. Now: call-outs
@@ -30,7 +103,7 @@ Eighty-seven pieces of work since 0.4.0:
   grade and time and a **BOSS RUSH** entry: all eight levels in order, each its own page, health and
   flasks full at every fight, a death retries the boss with the clock running, a reload mid-fight is a
   death, a `3 / 8` timer under the minimap, and a rush record with every split. Saved per browser
-  (`abyss.records.v1`: per level and the rush, best time and best grade, the last 24 run records in full,
+  (`gcd.records.v1`: per level and the rush, best time and best grade, the last 24 run records in full,
   shaped for a later online leaderboard; `game:record` is the seam an uploader subscribes to). Runs with
   the Lab, a cheat, `__tick`, `?stage=lab`, `?tech=` or a gameplay URL switch are not recorded.
   The grade's and the title's looks were picked by the owner from three options each: the grade in block
@@ -82,7 +155,7 @@ Eighty-seven pieces of work since 0.4.0:
   recordings each, every sound placed in eleven scripted fight moments) and picked. Now recorded: the
   parry (a Norse sword on a katana), the blue / perfect parry (a spear on a katana), getting hurt (a body
   punch), two blades clashing (a sword meeting a katana), the slam (a distant boom), the plunge's dive and
-  landing (a slowed swoosh, a heavy punch). Designed for ABYSS: your cut landing on the wyrm (a scale clack),
+  landing (a slowed swoosh, a heavy punch). Designed for gcd: your cut landing on the wyrm (a scale clack),
   the blade layer of a light and of a heavy cut (a dry slice, a deep cleaving bite), the flurry's flash cut
   and coil (a razor flick, a held breath fitted to the coil), the boss holding your strike (a lacquered
   wood guard). Back to the original synth: the blue warning, the hero's heavy cut and execution thrust.
@@ -740,7 +813,7 @@ Eighty-seven pieces of work since 0.4.0:
     characters (`HP [################........] 104 / 160`), drawn straight on the game with no
     panel behind them. The piece you just lost shows pale for a moment before it drains.
   - **Big words are block letters.** YOU DIED, the victory line, area names and phase calls are
-    built from characters in the style of the ABYSS title logo, and stack word by word on a narrow
+    built from characters in the style of the gcd title logo, and stack word by word on a narrow
     screen. The serif font is gone from the HUD.
   - *Removed:* the name / "Lv 12" / class lines of the player frame (they were decoration).
   - **The minimap barely exists:** a small faint disc (72 px on desktop, 40 px on phones) with no
@@ -1117,17 +1190,17 @@ Eighty-seven pieces of work since 0.4.0:
 
 ### Changed
 - **CI's long checks split; every PR auto-merges when green** (2026-11-24, ADR-185): the Starless Lord's
-  look check and the living world's suite each run in parallel processes (`ABYSS_FX`, `ABYSS_SKIP` in
+  look check and the living world's suite each run in parallel processes (`GCD_FX`, `GCD_SKIP` in
   life.mjs) and the shares are re-dealt on measured times: a PR's check should take ~5-6 minutes (was 8-10).
   `.github/workflows/automerge.yml` sets squash auto-merge on every PR (not drafts, not `hold`).
 - **CI runs the tests as four parallel jobs** (2026-11-23, ADR-153, PR #92): `tests/run.mjs --shard I/N`
   deals the tasks to N shares; the Starless Lord suite runs in three parts; a PR's check takes ~4
   minutes (was 12-15). A PR that only changes docs/, *.md or .claude/ skips the tests and the build.
-  lord.mjs, duel.mjs and asc.mjs take a comma list of scenarios and `ABYSS_SKIP`.
+  lord.mjs, duel.mjs and asc.mjs take a comma list of scenarios and `GCD_SKIP`.
 - **`npm test` runs its suites side by side** (2026-11-15): `tests/run.mjs` starts the four
   integration suites and the two static checks as separate processes, with `integ` in five parts
   (its TIMING scenario in three), and prints each task's output whole and a summary of times. The
-  same checks run. `integ.mjs` takes a comma list of scenarios, `ABYSS_SKIP` and `ABYSS_TM_SHARD`.
+  same checks run. `integ.mjs` takes a comma list of scenarios, `GCD_SKIP` and `GCD_TM_SHARD`.
   CI cancels a PR's superseded run.
 - **The sword arc** (ADR-074): `PlayerFx.trail` draws an edge line, a faint veil and motes, gated
   by how far the blade turned in the frame (was 4–5 rows of bright strokes under `A` / `8` letters

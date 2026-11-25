@@ -2,7 +2,7 @@
 // AshDisciple, Hud, GameFlow, AudioEngine and Lab (+ real LightPool, GlyphParticles, CameraRig,
 // Events) wired like src/main.js for `?level=ash`; the world is a light mock on the real Colliders
 // with the courtyard's ring of pillars. A bot drives the input.
-// usage: node duel.mjs <repoRoot> [scenario]   (env: ABYSS_SEED=n reseeds the AI)
+// usage: node duel.mjs <repoRoot> [scenario]   (env: GCD_SEED=n reseeds the AI)
 //   scenario: levels | data | timing | terrain | guard | clash | trade | deflect | ghostep | execute | phase | flow | win | sfx | all
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -46,7 +46,7 @@ const out = (...a) => process.stdout.write(a.join(' ') + '\n');
 let fails = 0;
 const assert = (c, m) => { if (!c) { fails++; out('FAIL', m); } else out('ok  ', m); };
 const mulberry32 = (a) => () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-const SEED = Number(process.env.ABYSS_SEED ?? 4242);
+const SEED = Number(process.env.GCD_SEED ?? 4242);
 const DT = 1 / 60;
 
 // the event catalogue (docs/ARCHITECTURE.md → "Event catalogue"): what this level emits must be in it
@@ -447,11 +447,11 @@ async function scenarioMoves() {
         const h0 = G.hits.length;
         d.debug.trigger(name);
         const mtrace = [];
-        run(G, 9, (GG) => { if (process.env.ABYSS_MTRACE) mtrace.push([+GG.game.time.toFixed(2), `${p.state}/${d.brain.act?.beats?.findIndex((b) => d.brain.act.t < b.end) ?? '-'}`]); GG.input.axis = { x: 0, y: 0 }; GG.defend.act(); GG.game.mouseGround.set(d.position.x, 0, d.position.z); }, () => d.mode === 'foot' && !d.fx.crescentsAlive);
+        run(G, 9, (GG) => { if (process.env.GCD_MTRACE) mtrace.push([+GG.game.time.toFixed(2), `${p.state}/${d.brain.act?.beats?.findIndex((b) => d.brain.act.t < b.end) ?? '-'}`]); GG.input.axis = { x: 0, y: 0 }; GG.defend.act(); GG.game.mouseGround.set(d.position.x, 0, d.position.z); }, () => d.mode === 'foot' && !d.fx.crescentsAlive);
         G.defend = null;
         input.up(1);
         const landed = G.hits.slice(h0).filter((h) => h.attack === name && h.r === RESULT.HIT);
-        if (process.env.ABYSS_MTRACE && landed.length) out('     trace', name, JSON.stringify(G.hits.slice(h0).map((h) => [h.attack, h.r, h.tell, +(h.t).toFixed(2)])), JSON.stringify(mtrace.filter((x, i, A) => i === 0 || x[1] !== A[i - 1][1])));
+        if (process.env.GCD_MTRACE && landed.length) out('     trace', name, JSON.stringify(G.hits.slice(h0).map((h) => [h.attack, h.r, h.tell, +(h.t).toFixed(2)])), JSON.stringify(mtrace.filter((x, i, A) => i === 0 || x[1] !== A[i - 1][1])));
         tried.push(`${name}/P${ph}/${style}:${landed.length}`);
         if (landed.length) assert(false, `${name} P${ph}: answered by a ${style === 'dodge' ? 'rolling' : 'parrying'} bot, ${landed.length} blow(s) landed (${landed.map((h) => h.tell).join(',')})`);
       }
@@ -1172,6 +1172,275 @@ async function scenarioDeflect() {
   return G;
 }
 
+// ================================================================== scenario: tempo (the storm's tempo on a man; integ `storm` round the wyrm's head)
+// DEFENSE.flurry.tempo (STREAK_FX.tempo, the default with the storm piece on): the first flash cut is a
+// heavy beat (seen wound up, held on the contact, the finish held), each later one a share of the one
+// before, the storm where the pace falls under `stormAt`. ?tempo=0: the storm of ADR-167 exactly; the
+// storm piece off: the pace before it, whatever the tempo says. A riposte's last cut is the heavy beat
+// again. Damage, the blows and where he ends: as before.
+// ================================================================== scenario: timerip (?rip=)
+// The flurry's cuts rip the picture (player/timeRip.js) on a man: a flurry of five (Passing Cut) in
+// each look (tests/integration/timerip.mjs has the checks; integ.mjs `timerip` runs it on the wyrm).
+async function scenarioTimeRip() {
+  out("\n== scenario TIMERIP (the flurry's cuts rip the picture: off | tear | strip | ghosts | negative, on a duelist) ==");
+  const { timeRipCheck } = await import('./timerip.mjs');
+  const R = await timeRipCheck({
+    THREE, build: () => build(), assert, out, DT, label: 'duelist',
+    setup: (G) => {
+      duel(G, { dist: 4 });
+      settle(G);
+      place(G, 2.5);
+      run(G, 0.3);
+      G.game.dragon.hp = G.game.dragon.maxHp;
+      G.game.player.debug.god = true;
+    },
+    go: (G) => G.game.player.debug.flurry(5, 'passing'),
+    frame: (G) => G.tick(DT),
+    busy: (G) => G.game.player.state === 'flurry' || G.game.player.state === 'plunge',
+  });
+  return R.negative.G;
+}
+
+async function scenarioTempo() {
+  out('\n== scenario TEMPO (the flurry on a man: heavy first, then faster by ratio; ?tempo=0 the storm as it was) ==');
+  const { STREAK_FX } = await imp('src/combat/streak.js');
+  const G = build();
+  duel(G, { dist: 4 });
+  const { game } = G;
+  const d = game.dragon, p = game.player, F = DEFENSE.flurry, S = F.storm, TP = F.tempo;
+  const on0 = STREAK_FX.on.storm, tempo0 = STREAK_FX.tempo;
+  /** One flurry of `n` blows (Passing Cut), or a riposte of `n` cuts: the frame of every blow. */
+  const take = (n, { storm = true, tempo = true, riposte = false } = {}) => {
+    STREAK_FX.on.storm = storm;
+    STREAK_FX.tempo = tempo;
+    settle(G);
+    place(G, 2.5);
+    run(G, 0.3);
+    d.hp = d.maxHp;
+    const hp0 = d.hp;
+    const tr = { hits: [], art: -1, f: 0, ev: null, ok: false };
+    G.watch = (nm, e) => {
+      const fl = p.flurry;
+      if (nm === 'player:flurryHit') tr.hits.push({ f: tr.f, last: e.last, storm: e.storm, freeze: fl.freeze, hang: fl.hang, w: fl._weight(fl.i), hidden: fl.hidden });
+      if (nm === 'player:flurryArt' && tr.art < 0) tr.art = tr.f;
+      if (nm === 'player:flurry') tr.ev = { ...e };
+    };
+    tr.ok = riposte ? p.flurry.start(d, false, n, null, TELL.NORMAL, { riposte: true }) : p.debug.flurry(n, 'passing');
+    tr.tempo = p.flurry.tempo;
+    run(G, 8, () => { tr.f++; }, () => p.state !== 'flurry');
+    G.watch = null;
+    tr.dmg = hp0 - d.hp;
+    tr.frames = tr.hits.map((h) => h.f).join(',');
+    return tr;
+  };
+  const gaps = (t) => t.hits.filter((h) => !h.last).map((h, i, A) => (i ? h.f - A[i - 1].f : null)).slice(1);
+  const rows = [];
+  for (let n = 2; n <= F.max; n++) {
+    const off = take(n, { tempo: false }), on = take(n), bare = take(n, { storm: false }), bareT = take(n, { storm: false, tempo: false });
+    rows.push({ n, off, on, bare, bareT });
+    out(`   N=${n}: blows on frames ${off.frames} (art ${off.art}) → tempo ${on.frames} (art ${on.art}) · storm cuts ${off.hits.filter((h) => h.storm > 0).length} → ${on.hits.filter((h) => h.storm > 0).length} · damage ${off.dmg} / ${on.dmg}`);
+  }
+  assert(rows.every((r) => r.off.ok && r.on.ok && r.on.tempo === true && r.off.tempo === false && r.bare.tempo === false), 'every flurry starts; the tempo is on by default and ?tempo=0 / the storm piece off turn it off');
+  assert(rows.every((r) => r.bare.frames === r.bareT.frames && r.bare.art === r.bareT.art), `the storm piece off: the pace before the storm, whatever the tempo says (N=7 on frames ${rows[rows.length - 1].bare.frames})`);
+  for (const r of rows) {
+    const h = r.on.hits, cuts = h.filter((x) => !x.last), g = gaps(r.on);
+    assert(h.length === r.n && h[r.n - 1].last && r.on.dmg === r.off.dmg && r.on.dmg === r.bare.dmg && h.every((x, i) => i === 0 || x.f > h[i - 1].f), `N=${r.n}: ${h.length} blows, each in a frame of its own, ${r.on.dmg} damage as before (${r.off.dmg})`);
+    assert(h[0].f * DT >= 0.18 - 1e-9 && h[0].hang > 0 && Math.abs(h[0].freeze - TP.ground.stop) < 1e-9 && h[0].w === 1, `N=${r.n}: the first cut is the heavy beat: its contact ${(h[0].f * DT).toFixed(3)} s after the start (>= 0.18), seen wound up, frozen ${h[0].freeze.toFixed(3)} s`);
+    assert(g.every((x, i) => i === 0 || x <= g[i - 1] + 1), `N=${r.n}: the gaps between blows never grow (${g.join(', ') || '-'} frames)`);
+    assert(g.every((x, i) => i === g.length - 1 || x <= 2.25 * g[i + 1]), `N=${r.n}: no cliff between neighbouring gaps: each at most 2.25x the next (${g.join(', ') || '-'} frames)`);
+    assert(cuts.every((x, i) => i === 0 || (x.w <= cuts[i - 1].w + 1e-9 && x.freeze <= cuts[i - 1].freeze + 1e-9)) && cuts.every((x) => !(x.storm > 0) || (x.w === 0 && x.freeze >= S.stopMin - 1e-9 && !x.hidden)), `N=${r.n}: the weight (${cuts.map((x) => x.w.toFixed(2)).join(' ')}) and the freeze (${cuts.map((x) => x.freeze.toFixed(3)).join(' ')} s) fall cut by cut`);
+    assert(r.on.ev?.storm === cuts.some((x) => x.storm > 0) && r.on.ev?.at?.length === r.n - 1, `N=${r.n}: player:flurry plans ${r.on.ev?.at?.length} contacts (storm ${r.on.ev?.storm})`);
+  }
+  assert(rows.filter((r) => r.n <= 3).every((r) => r.on.hits.every((x) => !(x.storm > 0))), 'N=2 and N=3: no storm cut');
+  const g7 = gaps(rows[rows.length - 1].on);
+  assert(g7[g7.length - 1] <= 4 && rows[rows.length - 1].on.hits.some((x) => x.storm > 0), `N=7 still ends in a storm a few frames apart (${g7.join(', ')} frames; the last <= 4)`);
+  // ?tempo=0 is the storm of ADR-167 (the frames measured when the tempo was built, 2026-11-24)
+  const OLD = { 2: '8,62', 3: '8,30,80', 4: '8,31,48,95', 5: '8,31,48,58,102', 6: '8,31,49,59,65,107', 7: '8,31,49,60,66,70,112' };
+  assert(rows.every((r) => r.off.frames === OLD[r.n]), `?tempo=0: the storm's frames as they were (${rows.map((r) => r.off.frames).join(' / ')})`);
+  // the riposte: its cuts paced by the tempo, its last the heavy beat again (pace 1, whole weight, its 1.8x freeze)
+  for (const n of [1, 3, 5]) {
+    const r = take(n, { riposte: true }), o = take(n, { riposte: true, tempo: false }), L = r.hits[r.hits.length - 1];
+    out(`   riposte of ${n}: frames ${o.frames} → tempo ${r.frames} · damage ${o.dmg} / ${r.dmg}`);
+    assert(r.ok && r.hits.length === n && r.dmg === o.dmg && L.w === 1 && L.hang > 0 && Math.abs(L.freeze - TP.ground.stop * 1.8) < 1e-9 && !(L.storm > 0), `a riposte of ${n}: ${r.hits.length} cuts for ${r.dmg} damage as before, its last the heavy beat (frozen ${L.freeze.toFixed(3)} s)`);
+  }
+  STREAK_FX.on.storm = on0;
+  STREAK_FX.tempo = tempo0;
+  return G;
+}
+
+// ================================================================== scenario: chain (the flurry's path, on a man)
+// THE CHAIN (STREAK_FX.chain, DEFENSE.flurry.chain; ?chain=0 off): every pass starts where the one
+// before ended (A -> B -> C, never back to the start), every hanging line is the path he ran, the
+// arts start where the last cut ended, the last blow throws letter dust, not the 'A' shards. Off: the
+// ring-teleport paths exactly. Round the wyrm's head: integ.mjs `chain`.
+async function scenarioChain() {
+  out('\n== scenario CHAIN (the flurry on a man: each pass from where the last ended; its figures; the slashes on his path; letter dust) ==');
+  const { STREAK_FX } = await imp('src/combat/streak.js');
+  const FIG = await imp('src/entities/player/flurryFigures.js'), FL = await imp('src/entities/player/flurry.js');
+  const { shapeOf, dumpFigure, measure } = await import(pathToFileURL(`${ROOT}/tests/integration/figures.mjs`).href);
+  const figure0 = STREAK_FX.figure;
+  const FX = await imp('src/entities/player/flurryFx.js');
+  const G = build();
+  duel(G, { dist: 4 });
+  const { game } = G;
+  const d = game.dragon, p = game.player, F = DEFENSE.flurry, CH = 1.2;
+  const chain0 = STREAK_FX.chain;
+  const rel = (x, z) => `(${(x - d.position.x).toFixed(2)},${(z - d.position.z).toFixed(2)})`;
+  /** One flurry of `n` blows ending in `art` (or a riposte of `n` cuts): its passes, lines, blows. */
+  const take = (n, art, { chain = true, riposte = false, dist = 2.5, figure = 'any' } = {}) => {
+    STREAK_FX.chain = chain;
+    STREAK_FX.figure = figure;
+    settle(G);
+    place(G, dist);
+    run(G, 0.3);
+    d.hp = d.maxHp;
+    const hp0 = d.hp, fl = p.flurry;
+    const tr = { passes: [], art: null, hits: [], f: 0, glyphs: new Set(), lineErr: 0, near: Infinity, ok: false, end: null };
+    const o0 = { cs: fl._cutStarts, va: fl._vanish, ba: fl._beginArt };
+    fl._cutStarts = function () { tr.passes.push({ ax: p.position.x, az: p.position.z, i: fl.i, L: fl.nLines - 1, tx: fl.T.x, tz: fl.T.z }); return o0.cs.call(this); };
+    fl._vanish = function (b) {
+      const ps = tr.passes[tr.passes.length - 1];
+      if (ps && ps.bx === undefined && fl.i < fl.cuts) {
+        ps.bx = p.position.x;
+        ps.bz = p.position.z;
+        const L = fl.lines[ps.L];
+        // the hanging line's ends against where his chest was as the pass began / ended
+        if (L) tr.lineErr = Math.max(tr.lineErr, Math.hypot(L.ax - ps.ax, L.ay - CH, L.az - ps.az), Math.hypot(L.bx - ps.bx, L.by - CH, L.bz - ps.bz));
+      }
+      return o0.va.call(this, b);
+    };
+    fl._beginArt = function () {
+      const sx = p.position.x, sz = p.position.z;
+      const r = o0.ba.call(this);
+      tr.art = { sx, sz, ax: fl.A.x, az: fl.A.z, bx: fl.B.x, bz: fl.B.z, tx: fl.T.x, tz: fl.T.z };
+      return r;
+    };
+    const spy = [];
+    for (const pool of new Set([game.fx?.add, game.fx?.alpha, p.fx?.add, p.fx?.alpha].filter(Boolean))) {
+      const s0 = pool.spawn;
+      spy.push([pool, s0]);
+      pool.spawn = function (o) { if (p.state === 'flurry' && typeof o?.glyph === 'string') tr.glyphs.add(o.glyph); return s0.call(this, o); };
+    }
+    G.watch = (nm, e) => {
+      if (nm === 'player:flurryHit') tr.hits.push({ f: tr.f, last: e.last, damage: e.damage });
+      if (nm === 'player:flurryEnd') tr.end = { ...e };
+      if (nm === 'player:flurry') tr.ev = { ...e };
+    };
+    tr.ok = riposte ? fl.start(d, false, n, null, TELL.NORMAL, { riposte: true }) : p.debug.flurry(n, art);
+    tr.ox = fl.ox;
+    tr.oz = fl.oz;
+    run(G, 8, () => {
+      tr.f++;
+      // (from the end of the first pass to the end: never back on his dodge spot)
+      // (the flash cuts; where the art leaves him is told apart: tr.artNear)
+      if (p.state === 'flurry' && tr.passes[0]?.bx !== undefined && p.flurry.i < p.flurry.cuts) tr.near = Math.min(tr.near, Math.hypot(p.position.x - tr.ox, p.position.y, p.position.z - tr.oz));
+    }, () => p.state !== 'flurry');
+    G.watch = null;
+    delete fl._cutStarts;
+    delete fl._vanish;
+    delete fl._beginArt;
+    for (const [pool, s0] of spy) pool.spawn = s0;
+    tr.endX = p.position.x;
+    tr.endZ = p.position.z;
+    tr.dmg = hp0 - d.hp;
+    tr.artNear = tr.art ? Math.hypot(tr.art.bx - tr.ox, tr.art.bz - tr.oz) : Infinity;
+    // the jump from each pass's end to the next one's start (and into the art)
+    tr.jumps = tr.passes.slice(1).map((q, i) => Math.hypot(q.ax - tr.passes[i].bx, q.az - tr.passes[i].bz));
+    const lp = tr.passes[tr.passes.length - 1];
+    tr.artJump = tr.art && lp ? Math.hypot(tr.art.sx - lp.bx, tr.art.sz - lp.bz) : 0;
+    tr.seq = `O${rel(tr.ox, tr.oz)} ` + tr.passes.map((q) => `${rel(q.ax, q.az)}->${rel(q.bx, q.bz)}`).join(' ') + (tr.art ? ` | art ${rel(tr.art.sx, tr.art.sz)}->${rel(tr.art.bx, tr.art.bz)}` : '') + ` | end ${rel(tr.endX, tr.endZ)}`;
+    tr.figure = fl.figure;
+    tr.fit = fl.figureFit;
+    tr.seq = `${tr.figure}: ${tr.seq}`;
+    return tr;
+  };
+  const shard = (t) => [...t.glyphs].some((g) => g.includes('A'));
+  for (const art of ['passing', 'falling', 'rising']) {
+    for (let n = 2; n <= F.max; n++) {
+      const on = take(n, art), off = take(n, art, { chain: false });
+      if ([2, 3, 5, 7].includes(n)) out(`   ${art} N=${n}: ${on.seq} · the art ends ${on.artNear.toFixed(2)} m from his dodge spot`);
+      const hf = (t) => t.hits.map((h) => h.f);
+      const df = hf(on).map((f, i) => Math.abs(f - (hf(off)[i] ?? -99)));
+      assert(on.ok && off.ok && on.hits.length === n && on.dmg === off.dmg && df.every((x) => x <= 1), `${art} N=${n}: ${on.hits.length} blows, ${on.dmg} damage as with the chain off (${off.dmg}), every blow within a frame of it (${hf(on).join(',')} / ${hf(off).join(',')})`);
+      assert(on.jumps.every((j) => j < 0.3) && on.artJump < 0.3, `${art} N=${n}: each pass starts where the last ended (${on.jumps.map((j) => j.toFixed(2)).join(' ') || '-'} m), the art too (${on.artJump.toFixed(2)} m)`);
+      assert(n < 3 || on.near >= 1.5, `${art} N=${n}: through the flash cuts never back within 1.5 m of his dodge spot after the first pass (${on.near === Infinity ? '-' : on.near.toFixed(2)} m)`);
+      assert(on.lineErr < 0.35, `${art} N=${n}: every hanging line runs from his chest at the pass's start to its end (off by ${on.lineErr.toFixed(3)} m at most)`);
+      assert(!shard(on) && shard(off), `${art} N=${n}: no 'A' shard with the chain (glyphs ${[...on.glyphs].filter((g) => g.includes('A')).join(' ') || 'none'}); the chain off throws them as before`);
+      // (off: the ring teleport, as before: a pass starts away from where the last ended)
+      if (n >= 3) assert(off.jumps.some((j) => j > 0.5), `${art} N=${n}, the chain off: the passes teleport round the ring as before (${off.jumps.map((j) => j.toFixed(2)).join(' ')} m)`);
+    }
+  }
+  // THE FIGURES: each pinned (?figure=), at every cut count it is offered at: it is the figure laid
+  // (or, where it does not fit, the star), it reads as its name, and the chain's rules hold
+  const FG = F.chain.figures;
+  for (const name of FIG.FIGURE_NAMES) {
+    for (let n = 2; n <= F.max; n++) {
+      if (n - 1 < (FG[name]?.min ?? 1)) continue;
+      // (3.5 m off him: a cage or a cross round a man drawn 2.5 m from the dodge spot passes within
+      // 1.5 m of it, and so is passed over there for the star: below)
+      const t = take(n, 'passing', { figure: name, dist: 3.5 });
+      const sh = shapeOf(t.figure, t.passes);
+      if ([3, 5, 7].includes(n)) out(`   ${name} N=${n}: ${t.seq}`);
+      assert(t.figure === name, `${name} N=${n}: the figure laid is ${t.figure} (its cost ${t.fit.toFixed(2)})`);
+      assert(sh.ok, `${name} N=${n}: it reads as a ${t.figure}: ${sh.why}`);
+      // (ADR-101: past his side, never through his body, whatever the figure)
+      const near = Math.min(...measure(t.passes).map((q) => q.abs));
+      assert(near >= F.chain.figures.body.ground - 0.05, `${name} N=${n}: every pass runs past his side, ${near.toFixed(2)} m off his middle at the nearest`);
+      assert(t.jumps.every((j) => j < 0.3) && t.artJump < 0.3 && t.near >= 1.5 && t.lineErr < 0.35 && t.ev?.figure === t.figure, `${name} N=${n}: chained (${t.jumps.map((j) => j.toFixed(2)).join(' ') || '-'} m), never back within 1.5 m of the dodge spot (${t.near === Infinity ? '-' : t.near.toFixed(2)} m), its lines on his path, player:flurry says ${t.ev?.figure}`);
+      if ([3, 5, 7].includes(n)) {
+        const T = { x: t.passes[0].tx, z: t.passes[0].tz };
+        dumpFigure({ name, N: n, air: false, R: F.ground.reach, O: [t.ox - T.x, t.oz - T.z], passes: t.passes.map((q) => [q.ax - T.x, q.az - T.z, q.bx - T.x, q.bz - T.z]), art: t.art ? [t.art.sx - T.x, t.art.sz - T.z, t.art.bx - T.x, t.art.bz - T.z] : null, label: sh.why });
+      }
+    }
+  }
+  // a figure that does not fit is passed over for the star: a hexagon cage round a man with the dodge
+  // spot 2.5 m off him would pass within 1.3 m of it
+  {
+    const t = take(F.max, 'passing', { figure: 'cage', dist: 2.5 });
+    assert(t.figure === 'star' && t.near >= 1.5, `a cage of six that would pass the dodge spot 2.5 m off him is passed over for the ${t.figure} (never within ${t.near.toFixed(2)} m of it)`);
+  }
+  // the pick: a different figure each flurry, never the same twice running, several of them
+  {
+    FL.setFigureSeed(12345);
+    p.flurry.lastFigure = '';
+    const seen = [];
+    for (let k = 0; k < 20; k++) seen.push(take(5, 'passing').figure);
+    const kinds = new Set(seen), twice = seen.some((f, k) => k > 0 && f === seen[k - 1]);
+    out(`   twenty flurries of five: ${seen.join(' ')}`);
+    assert(kinds.size >= 4 && !twice, `twenty flurries of five draw ${kinds.size} figures (>= 4), never the same twice running (${twice ? 'twice' : 'never'})`);
+  }
+  // ?figure=star is the chain as it was: the same frames, the lines spread like a star
+  {
+    const s7 = take(F.max, 'passing', { figure: 'star' }), o7 = take(F.max, 'passing', { chain: false });
+    const sh = shapeOf('star', s7.passes);
+    assert(s7.figure === 'star' && s7.hits.map((h) => h.f).join() === o7.hits.map((h) => h.f).join() && sh.ok, `?figure=star: seven blows on the frames as before (${s7.hits.map((h) => h.f).join(',')}), ${sh.why}`);
+  }
+  // the dust: tiny letters, under the bloom threshold
+  {
+    const ds = p.flurry.fx.dustStat;
+    take(3, 'passing');
+    out(`   the last blow's dust: ${ds.n} letters, the biggest ${ds.maxSize.toFixed(3)} m, the brightest channel ${ds.maxCol.toFixed(2)}`);
+    assert(ds.n >= 60 && ds.n <= 120 && ds.maxSize <= 0.09 + 1e-9 && ds.maxCol <= 0.55 + 1e-9, `the last blow throws ${ds.n} letters of white-steel dust (60 - 120), none over 0.09 m, none brighter than the bloom threshold`);
+  }
+  // the riposte: its cuts chain, its end is where he parried (the rule kept)
+  for (const n of [3, 5]) {
+    const r = take(n, null, { riposte: true, dist: 3.5 }), o = take(n, null, { riposte: true, chain: false, dist: 3.5 });
+    const back = Math.hypot(r.endX - r.ox, r.endZ - r.oz);
+    out(`   riposte N=${n}: ${r.seq}`);
+    assert(r.ok && r.hits.length === n && r.dmg === o.dmg && r.jumps.every((j) => j < 0.3) && back < 1.2, `a riposte of ${n}: its cuts chain (${r.jumps.map((j) => j.toFixed(2)).join(' ')} m), ${r.dmg} damage as before, and he is back where he parried (${back.toFixed(2)} m)`);
+  }
+  // N = 1 (the art alone): the chain changes nothing but the dust
+  {
+    const a = take(1, 'passing'), b = take(1, 'passing', { chain: false });
+    // (which side of him the iai passes is the animator's draw, as it always was: the distance is the same)
+    const ra = Math.hypot(a.art.bx - a.art.tx, a.art.bz - a.art.tz), rb = Math.hypot(b.art.bx - b.art.tx, b.art.bz - b.art.tz);
+    assert(a.hits.map((h) => h.f).join() === b.hits.map((h) => h.f).join() && a.dmg === b.dmg && Math.abs(ra - rb) < 0.05 && a.artJump === 0, `the art alone (N = 1): the same blow on the same frame, ending as far past him (${ra.toFixed(2)} / ${rb.toFixed(2)} m)`);
+  }
+  STREAK_FX.chain = chain0;
+  STREAK_FX.figure = figure0;
+  return G;
+}
+
 // ================================================================== scenario: ghostep
 async function scenarioGhostep() {
   out('\n== scenario GHOSTEP (a perfect dodge is answered by the flurry: an art through him that leaves the hero at his back; a streak adds flash cuts) ==');
@@ -1180,6 +1449,18 @@ async function scenarioGhostep() {
   const { game, input } = G;
   const d = game.dragon, p = game.player, F = DEFENSE.flurry;
   const behindOf = () => -((p.position.x - d.position.x) * Math.sin(d.yaw) + (p.position.z - d.position.z) * Math.cos(d.yaw));
+  // THE CHAIN (STREAK_FX.chain, the default): the art runs on from where the last flash cut ended,
+  // so after one cut (N = 2) it goes through him from his back and leaves the hero past him at his
+  // FRONT. The rule kept is "past him": as far beyond him as his ghostepBehind, on the far side from
+  // where the art began (?chain=0: at his back, as before). The crit window opens either way.
+  const { STREAK_FX } = await imp('src/combat/streak.js');
+  const chained = () => STREAK_FX.chain !== false;
+  /** Past him along the art: m beyond him on the far side of where its coil began (chain), else behindOf(). */
+  const pastOf = () => {
+    if (!chained()) return behindOf();
+    const C = p.flurry.C0, ex = p.position.x - d.position.x, ez = p.position.z - d.position.z, cx = C.x - d.position.x, cz = C.z - d.position.z;
+    return ex * cx + ez * cz < 0 ? Math.hypot(ex, ez) : -Math.hypot(ex, ez);
+  };
   /** Tick until the flurry is over: its blows, whether it stayed invulnerable and finite. */
   const ride = (max = 6) => {
     const tr = { hits: [], end: null, frames: 0, iframes: true, finite: true, maxY: 0, shove: 0, close: Infinity };
@@ -1238,10 +1519,10 @@ async function scenarioGhostep() {
   got = dodge('lotus');
   assert(got === 1 && p.state === 'flurry' && p.streak === st0 + 1 && p.flurry.air === false, `a perfect dodge of his sweep (a red blow) starts the flurry on the ground: he offers no plunge (${p.state}, streak ${p.streak})`);
   const t0 = ride();
-  const behind = behindOf();
+  const behind = pastOf();
   out(`   ${t0.hits.length} blows (${p.flurry.art}): he lost ${hp01 - d.hp} · the hero ${behind.toFixed(2)} m behind him, y ${p.position.y}, ${p.state}, crit ${p.critTimer.toFixed(2)}`);
   assert(t0.hits.length === 2 && t0.hits[1].last === true && hp01 - d.hp === F.cut.damage + F.last.damage, `the streak of two is a flash cut and the art: ${hp01 - d.hp} damage (${F.cut.damage} + ${F.last.damage}, past his guard)`);
-  assert(p.state === 'ghostep' && Math.abs(behind - TUNING.ghostepBehind) < 0.6 && p.critTimer > DEFENSE.ghostep.critWindowWhite && p.position.y === 0, `it leaves the hero ${behind.toFixed(2)} m behind him (his ghostepBehind ${TUNING.ghostepBehind}: within sword reach) with the full crit window`);
+  assert(p.state === 'ghostep' && Math.abs(behind - TUNING.ghostepBehind) < 0.6 && p.critTimer > DEFENSE.ghostep.critWindowWhite && p.position.y === 0, `it leaves the hero ${behind.toFixed(2)} m ${chained() ? 'past him along the art' : 'behind him'} (his ghostepBehind ${TUNING.ghostepBehind}: within sword reach) with the full crit window`);
   assert(t0.iframes && t0.finite, 'invulnerable and finite throughout');
   // the old rule is one switch away (DEFENSE.flurry.on 'any'; the Lab's debug.flurryAny)
   settle(G);
@@ -1261,7 +1542,7 @@ async function scenarioGhostep() {
   input.click(0);
   // (he may still be in a freeze: 0.9 s of real time)
   run(G, 0.9, () => trace.push(`${p.state}${p.atk?.hit ? '!' : ''}`));
-  if (process.env.ABYSS_TRACE) out('     trace', back0.toFixed(2), d.mode, d.brain.act?.name ?? '-', trace.filter((s, i, a) => s !== a[i - 1]).join(' '));
+  if (process.env.GCD_TRACE) out('     trace', back0.toFixed(2), d.mode, d.brain.act?.name ?? '-', trace.filter((s, i, a) => s !== a[i - 1]).join(' '));
   assert(d.hp < hp0, `a cut at his back after it lands (hp ${hp0} → ${d.hp}; ${back0.toFixed(2)} m behind him, ${d.mode})`);
 
   // each of the arts against a foe on the ground, two blows: a flash cut through him, then the art
@@ -1272,10 +1553,10 @@ async function scenarioGhostep() {
     const hpA = d.hp;
     const ok = p.debug.flurry(2, art);
     const tr = ride();
-    const b = behindOf(), want = F.cut.damage + F.last.damage;
+    const b = pastOf(), want = F.cut.damage + F.last.damage;
     out(`   ${art}: started ${ok} · blows ${tr.hits.length} · he lost ${hpA - d.hp} · max y ${tr.maxY.toFixed(1)} · ${(tr.frames * DT).toFixed(2)} s · ${b.toFixed(2)} m behind him · ${p.state}`);
     assert(ok === true && p.flurry.art === art && tr.hits.length === 2 && tr.hits[1].last && hpA - d.hp === want && tr.end?.damage === want, `${art}: a flash cut and the art, ${hpA - d.hp} damage (${want})`);
-    assert(p.state !== 'flurry' && p.position.y === 0 && Math.abs(b - TUNING.ghostepBehind) < 0.75 && p.critTimer > 0 && tr.iframes && tr.finite, `${art}: the hero lands ${b.toFixed(2)} m behind him, the crit window open`);
+    assert(p.state !== 'flurry' && p.position.y === 0 && Math.abs(b - TUNING.ghostepBehind) < 0.75 && p.critTimer > 0 && tr.iframes && tr.finite, `${art}: the hero lands ${b.toFixed(2)} m ${chained() ? 'past him along the art' : 'behind him'} (${behindOf().toFixed(2)} m behind his back), the crit window open`);
     assert((art === 'passing') === (tr.maxY < 0.05), `${art}: ${art === 'passing' ? 'run on the ground' : `through the air (${tr.maxY.toFixed(1)} m up)`}`);
   }
   // a streak of five: four cuts cross on him before the art
@@ -1411,7 +1692,7 @@ async function scenarioPerfectFx() {
     answerMove(G, 'ashRain', press(0.04), 12);
     MOVES.ashRain.beats.forEach((bt, i) => (bt.lock = locks[i]));
     G.watch = null;
-    if (process.env.ABYSS_TRACE) out('     ashRain', G.hits.slice(h0).map((h) => `${h.r}/${h.tell}@${h.t.toFixed(2)}`).join(' '), d.mode, d.brain.react?.kind, d.posture, d.maxPosture, d.broken);
+    if (process.env.GCD_TRACE) out('     ashRain', G.hits.slice(h0).map((h) => `${h.r}/${h.tell}@${h.t.toFixed(2)}`).join(' '), d.mode, d.brain.react?.kind, d.posture, d.maxPosture, d.broken);
     r.stringReal = game.realTime - rs;
     r.stringGame = game.time - gs;
     r.perf = perf;
@@ -1802,7 +2083,7 @@ async function scenarioTraining() {
     while (T.ph !== 'done' && frames < Math.round(40 / DT)) { G.tick(DT); frames++; }
     const r = T.lastResult;
     const ok = T.ph === 'done' && r?.id === s.id && r.ok;
-    if (!ok || process.env.ABYSS_TRACE) out(`   ${ok ? 'ok ' : 'BAD'} ${s.cat} · ${s.name}: ${T.ph} in ${(frames * DT).toFixed(1)} s · missing ${JSON.stringify(r?.missing ?? '?')} · hero ${game.player.state} streak ${game.player.streak} · boss ${game.dragon.state}`);
+    if (!ok || process.env.GCD_TRACE) out(`   ${ok ? 'ok ' : 'BAD'} ${s.cat} · ${s.name}: ${T.ph} in ${(frames * DT).toFixed(1)} s · missing ${JSON.stringify(r?.missing ?? '?')} · hero ${game.player.state} streak ${game.player.streak} · boss ${game.dragon.state}`);
     if (!ok) bad.push(s.id);
   }
   T.stop();
@@ -1949,7 +2230,7 @@ async function scenarioFlow() {
 // the guard held through a normal / blue blow, a roll 0.28 s before a red / black one (out of a
 // hazard's ring: away from its centre). The hero roams between standoffs (2.5 / 5 / 9 m, a new one
 // every 4 s), on the REAL courtyard (the terrain moves are in). Per seed and per phase (every phase
-// the kit has), ABYSS_PSECS s each (default 120), seeds ABYSS_PSEEDS (default 4242,7,99): cues a
+// the kit has), GCD_PSECS s each (default 120), seeds GCD_PSEEDS (default 4242,7,99): cues a
 // minute (combat:flash from 'dragon' or 'world'), the longest gap between cues (a black blow's charge
 // counts as activity), the mix by category, the moves chained (started straight out of another, no
 // footwork between) and the longest chain, conflicts (two flashes under 0.3 s apart needing
@@ -2004,8 +2285,8 @@ async function scenarioPace() {
   out('\n== scenario PACE (a steady defender in god mode vs his AI, per phase: cues, gaps, mix, chains, conflicts) ==');
   const DIR = await imp('src/entities/enemies/duelist/director.js');
   const P = TUNING.pressure ?? null;
-  const SECS = Number(process.env.ABYSS_PSECS ?? 120);
-  const SEEDS = (process.env.ABYSS_PSEEDS ?? '4242,7,99').split(',').map(Number).filter(Number.isFinite);
+  const SECS = Number(process.env.GCD_PSECS ?? 120);
+  const SEEDS = (process.env.GCD_PSEEDS ?? '4242,7,99').split(',').map(Number).filter(Number.isFinite);
   const pp = (v, ph) => (Array.isArray(v) ? v[Math.min(v.length, Math.max(1, ph)) - 1] : v);
   const CATS = DIR.CATEGORIES;
   const answer = (tell) => (tell === TELL.RED || tell === TELL.BLACK ? 'dodge' : 'guard');
@@ -2035,7 +2316,7 @@ async function scenarioPace() {
       const s0 = { ...(d.brain.stats ?? {}) };
       const dbg = [];
       G.watch = (n, e) => {
-        if ((process.env.ABYSS_PDBG || process.env.ABYSS_PGAP) && /dragon:windup|combat:flash|combat:tell|dragon:parried|dragon:guard/.test(n)) dbg.push([game.time, `${n.split(':')[1]} ${e?.name ?? e?.attack ?? ''} ${e?.tell ?? ''}${n === 'combat:tell' ? ` in ${e.impactIn?.toFixed(2)}` : ''} [${d.mode} ${d.brain.act?.name ?? ''} h${d.brain.stats?.holds} d${d.brain.stats?.delays}]`]);
+        if ((process.env.GCD_PDBG || process.env.GCD_PGAP) && /dragon:windup|combat:flash|combat:tell|dragon:parried|dragon:guard/.test(n)) dbg.push([game.time, `${n.split(':')[1]} ${e?.name ?? e?.attack ?? ''} ${e?.tell ?? ''}${n === 'combat:tell' ? ` in ${e.impactIn?.toFixed(2)}` : ''} [${d.mode} ${d.brain.act?.name ?? ''} h${d.brain.stats?.holds} d${d.brain.stats?.delays}]`]);
         if (n === 'combat:flash' && (e?.source === 'dragon' || e?.source === 'world')) flashes.push([game.time, e.tell, e.attack, e.source]);
         if (n === 'combat:charge' && Number.isFinite(e?.dur)) for (let k = 0; k < e.dur; k += 0.1) busyT.push(game.time + k);
         if (n === 'dragon:windup' && !skip(e?.name)) { acts.push([game.time, e.name]); const c = DIR.categoryOf(MOVES[e.name]); cats[c] = (cats[c] || 0) + 1; }
@@ -2080,8 +2361,8 @@ async function scenarioPace() {
       for (let i = 1; i < ts.length; i++) {
         const g = ts[i] - ts[i - 1];
         if (g > gapMax) { gapMax = g; gapAt = `${(ts[i - 1] - t0).toFixed(0)} s: ${acts.filter((w) => w[0] > ts[i - 1] - 0.5 && w[0] < ts[i]).map((w) => w[1]).join(', ') || 'no move'}`; }
-        // ABYSS_PGAP=1: the event log through each gap over 2.8 s
-        if (process.env.ABYSS_PGAP && g > 2.8) out(`      GAP P${ph} seed ${seed} ${g.toFixed(2)} s at ${(ts[i - 1] - t0).toFixed(2)}: ${dbg.filter((x) => x[0] > ts[i - 1] - 0.3 && x[0] < ts[i] + 0.1).map((x) => `${(x[0] - t0).toFixed(2)} ${x[1]}`).join(' | ')}`);
+        // GCD_PGAP=1: the event log through each gap over 2.8 s
+        if (process.env.GCD_PGAP && g > 2.8) out(`      GAP P${ph} seed ${seed} ${g.toFixed(2)} s at ${(ts[i - 1] - t0).toFixed(2)}: ${dbg.filter((x) => x[0] > ts[i - 1] - 0.3 && x[0] < ts[i] + 0.1).map((x) => `${(x[0] - t0).toFixed(2)} ${x[1]}`).join(' | ')}`);
       }
       let conflicts = 0, inner = 0;
       const conflictAt = [], innerAt = new Set();
@@ -2091,8 +2372,8 @@ async function scenarioPace() {
           if (flashes[i][2] === flashes[j][2]) { inner++; innerAt.add(flashes[i][2]); } else {
             conflicts++;
             conflictAt.push(`${flashes[i][2]}/${flashes[j][2]} @${(flashes[i][0] - t0).toFixed(1)}`);
-            // ABYSS_PDBG=1: what happened round each conflict
-            if (process.env.ABYSS_PDBG) out(`      CONFLICT P${ph} ${(flashes[i][0] - t0).toFixed(2)}: ${dbg.filter((x) => x[0] > flashes[i][0] - 2.5 && x[0] < flashes[j][0] + 0.4).map((x) => `${(x[0] - t0).toFixed(2)} ${x[1]}`).join(' | ')}`);
+            // GCD_PDBG=1: what happened round each conflict
+            if (process.env.GCD_PDBG) out(`      CONFLICT P${ph} ${(flashes[i][0] - t0).toFixed(2)}: ${dbg.filter((x) => x[0] > flashes[i][0] - 2.5 && x[0] < flashes[j][0] + 0.4).map((x) => `${(x[0] - t0).toFixed(2)} ${x[1]}`).join(' | ')}`);
           }
         }
       }
@@ -2107,15 +2388,15 @@ async function scenarioPace() {
       const st = d.brain.stats ?? {};
       const dlt = (k) => (st[k] ?? 0) - (s0[k] ?? 0);
       rows.push({ seed, ph, T, cues: flashes.length, perMin: (flashes.length * 60) / T, gapMax, gapAt, cats, picks: acts.length, chained, chainMax, conflicts, conflictAt, inner, innerAt: [...innerAt], busy: busy / frames, burn: burnF / frames, dodge: dodges / (flashes.length || 1), runMax, holds: dlt('holds'), feints: dlt('feints'), told: dlt('toldFeints'), delays: dlt('delays'), links: dlt('links'), cuts: dlt('cuts'), rests: dlt('rests'), hurt, modeT });
-      // ABYSS_PGUARD=1: what the fairness guard would not let through (feints, faded marks, strikes
+      // GCD_PGUARD=1: what the fairness guard would not let through (feints, faded marks, strikes
       // not called), each with the impact it collided with (brain.guardLog)
-      if (process.env.ABYSS_PGUARD) {
+      if (process.env.GCD_PGUARD) {
         const tally = {};
         for (const e of d.brain.guardLog ?? []) if (e.t >= t0) tally[`${e.kind} ${e.what} x ${e.with}`] = (tally[`${e.kind} ${e.what} x ${e.with}`] || 0) + 1;
         out(`      P${ph} seed ${seed} guard: ${Object.entries(tally).sort((x, y) => y[1] - x[1]).map(([k, v]) => `${k} ${v}`).join(' · ') || '-'}`);
       }
-      // ABYSS_PATT=1: where the phase's time went, move by move (s in it, picks, its cues, cues a second)
-      if (process.env.ABYSS_PATT) {
+      // GCD_PATT=1: where the phase's time went, move by move (s in it, picks, its cues, cues a second)
+      if (process.env.GCD_PATT) {
         const fl = {}, pk = {};
         for (const f of flashes) fl[f[2]] = (fl[f[2]] || 0) + 1;
         for (const w of acts) pk[w[1]] = (pk[w[1]] || 0) + 1;
@@ -2249,7 +2530,7 @@ async function scenarioPressure() {
   const ktrace = [];
   run(G, 9, () => {
     speedWin();
-    if (process.env.ABYSS_TRACE) ktrace.push(`${d.mode === 'act' ? d.brain.act.name : d.mode === 'react' ? d.brain.react.kind : d.mode}`);
+    if (process.env.GCD_TRACE) ktrace.push(`${d.mode === 'act' ? d.brain.act.name : d.mode === 'react' ? d.brain.react.kind : d.mode}`);
     const R = Math.hypot(p.position.x, p.position.z) || 1;
     const tx = -p.position.z / R, tz = p.position.x / R; // the tangent of a circle round the middle
     const rr = (8 - R) * 0.6; // and back toward radius 8
@@ -2260,7 +2541,7 @@ async function scenarioPressure() {
   input.release('ShiftLeft');
   input.axis = { x: 0, y: 0 };
   const caught = G.hits.length - k0;
-  if (process.env.ABYSS_TRACE) out('     kite', ktrace.filter((x, i, A) => x !== A[i - 1]).join(' '));
+  if (process.env.GCD_TRACE) out('     kite', ktrace.filter((x, i, A) => x !== A[i - 1]).join(' '));
   // (a hero sprinting sideways at full speed beats a thrust's line now and then: seeds land 1–7 blows)
   assert(topSpeed > 7.4 && minD < 1.5 && caught >= 1, `a hero sprinting circles is run down: his top speed ${topSpeed.toFixed(1)} m/s (the hero's sprint 7.2), closest ${minD.toFixed(2)} m, ${caught} blows reached him in 9 s`);
   settle(G);
@@ -3083,7 +3364,7 @@ async function scenarioTerrain() {
   ev = answer('flagVolley', 'stand', 0, -3, 0, 5, 2, true);
   hit = ev.hits.filter((h) => h.attack === 'flagVolley');
   const nV = ev.tells.length;
-  if (process.env.ABYSS_TDBG) out('     volley', JSON.stringify({ hits: ev.hits.map((h) => [h.attack, h.r, +h.t.toFixed(2)]), flashes: ev.flashes.map((f) => +f.t.toFixed(2)), tells: ev.tells.map((f) => +f.t.toFixed(2)), impacts: ev.impacts.filter((e) => e.kind === 'throw' || e.kind === 'crash').map((e) => [e.kind, e.id, +e.t.toFixed(2)]) }));
+  if (process.env.GCD_TDBG) out('     volley', JSON.stringify({ hits: ev.hits.map((h) => [h.attack, h.r, +h.t.toFixed(2)]), flashes: ev.flashes.map((f) => +f.t.toFixed(2)), tells: ev.tells.map((f) => +f.t.toFixed(2)), impacts: ev.impacts.filter((e) => e.kind === 'throw' || e.kind === 'crash').map((e) => [e.kind, e.id, +e.t.toFixed(2)]) }));
   assert(ev.ok && nV >= 2 && nV <= 3 && ev.tells.every((t) => t.tell === TELL.BLUE) && ev.flashes.length === nV && ev.marks === 0, `Flagstone Volley (phase 2): ${nV} slabs, each levered and kicked, each with its flare; nothing on the ground`);
   assert(hit.length === nV && hit.every((h) => h.r === RESULT.HIT) && worst(ev, 'flagVolley') <= 0.085 && hit.slice(1).every((h, i) => h.t - hit[i].t >= TUNING.minHitGap), `each strikes a hero who stands, ${ms(worst(ev, 'flagVolley'))} ms off its flare + lead, ${hit.slice(1).map((h, i) => (h.t - hit[i].t).toFixed(2)).join(' / ')} s apart`);
   ev = answer('flagVolley', 'parry', 0, -3, 0, 5, 2, true);
@@ -3188,14 +3469,14 @@ async function scenarioTerrain() {
 /**
  * The tuning pass's measuring bots (2026-11-16; not pass / fail: it measures). On the REAL set, mortal
  * (no god mode), each its own random stream for what it misses (the AI's stream stays the seed's):
- * - fencers that answer 95 / 85 / 70 % of the cues (ABYSS_BSKILLS) and cut in his openings, whole
- *   fights (ABYSS_BSECS, default 420 s), three seeds (ABYSS_BSEEDS): won, the time, the time in each
+ * - fencers that answer 95 / 85 / 70 % of the cues (GCD_BSKILLS) and cut in his openings, whole
+ *   fights (GCD_BSECS, default 420 s), three seeds (GCD_BSEEDS): won, the time, the time in each
  *   phase, hits, damage, flasks, the worst blow and the worst second (damage inside any 1 s);
- * - a pure defender (never attacks, answers 95 %), two minutes (ABYSS_BDSECS) in each phase, mortal,
+ * - a pure defender (never attacks, answers 95 %), two minutes (GCD_BDSECS) in each phase, mortal,
  *   drinking when low: survived, damage, flasks; and the same with its guard held in burning ground
  *   (`stand`: it does not step off; the owner's question about the guard's 1 HP a tick).
  * The bots answer the world's cues too (a felled piece, rolled out of its strip) and step off a burning
- * line (the hero sees it), unless `stand`. ABYSS_BOTS=fight|defend|stand picks a part (default all).
+ * line (the hero sees it), unless `stand`. GCD_BOTS=fight|defend|stand picks a part (default all).
  */
 function probeDefender(G, { skill = 1, seed = 1 } = {}) {
   const pend = [];
@@ -3255,10 +3536,10 @@ function stepOffFire(G) {
 }
 async function scenarioBots() {
   out('\n== scenario BOTS (mortal fencers at 95 / 85 / 70 %, a pure defender per phase; the real set) ==');
-  const SEEDS = (process.env.ABYSS_BSEEDS ?? '4242,7,99').split(',').map(Number).filter(Number.isFinite);
-  const SKILLS = (process.env.ABYSS_BSKILLS ?? '0.95,0.85,0.7').split(',').map(Number).filter(Number.isFinite);
-  const SECS = Number(process.env.ABYSS_BSECS ?? 420), DSECS = Number(process.env.ABYSS_BDSECS ?? 120);
-  const PART = process.env.ABYSS_BOTS ?? 'all';
+  const SEEDS = (process.env.GCD_BSEEDS ?? '4242,7,99').split(',').map(Number).filter(Number.isFinite);
+  const SKILLS = (process.env.GCD_BSKILLS ?? '0.95,0.85,0.7').split(',').map(Number).filter(Number.isFinite);
+  const SECS = Number(process.env.GCD_BSECS ?? 420), DSECS = Number(process.env.GCD_BDSECS ?? 120);
+  const PART = process.env.GCD_BOTS ?? 'all';
   let last = null;
   const worst = (hits) => {
     let blow = 0, sec = 0, blowBy = '', secBy = '';
@@ -3366,14 +3647,14 @@ async function scenarioBots() {
 }
 
 // ================================================================== scenario: answer (opt-in)
-/** The fairness sweep of the tuning pass: every AI move (or ABYSS_AMOVES) in every phase it is in,
+/** The fairness sweep of the tuning pass: every AI move (or GCD_AMOVES) in every phase it is in,
  *  triggered from 5 distances across its band (left and right of his facing), against the parrying
  *  bot (white / blue parried, red / black rolled across) with the hero standing, or walking in at him
- *  (ABYSS_AWALK=1: what the pure defender does past 3.4 m). Prints every blow that lands. */
+ *  (GCD_AWALK=1: what the pure defender does past 3.4 m). Prints every blow that lands. */
 async function scenarioAnswer() {
   out('\n== scenario ANSWER (every move from across its band against the parrying bot) ==');
-  const pick = process.env.ABYSS_AMOVES ? process.env.ABYSS_AMOVES.split(',') : MOVE_NAMES.filter((n) => !MOVES[n].counter && !MOVES[n].transition && !MOVES[n].terrain);
-  const walk = !!process.env.ABYSS_AWALK;
+  const pick = process.env.GCD_AMOVES ? process.env.GCD_AMOVES.split(',') : MOVE_NAMES.filter((n) => !MOVES[n].counter && !MOVES[n].transition && !MOVES[n].terrain);
+  const walk = !!process.env.GCD_AWALK;
   const G = build();
   duel(G, { dist: 4 });
   const { game, input } = G;
@@ -3419,10 +3700,10 @@ const perPhaseW = (w, ph) => (Array.isArray(w) ? w[Math.min(w.length, ph) - 1] :
 
 // ================================================================== scenario: ranged (opt-in)
 /** The sword qi moves at each range of their band (a standing, guarding hero): the cues they give and
- *  the crescents thrown / fizzled. ABYSS_RMOVES picks the moves. */
+ *  the crescents thrown / fizzled. GCD_RMOVES picks the moves. */
 async function scenarioRanged() {
   out('\n== scenario RANGED (the qi moves: cues by range) ==');
-  const names = (process.env.ABYSS_RMOVES ?? 'ashCrescent,emberFan,qiStorm,partingWind,chaseRain').split(',');
+  const names = (process.env.GCD_RMOVES ?? 'ashCrescent,emberFan,qiStorm,partingWind,chaseRain').split(',');
   const G = build();
   duel(G, { dist: 4 });
   const { game, input } = G;
@@ -3457,10 +3738,10 @@ async function scenarioRanged() {
 }
 
 // ================================================================== scenario: probe (opt-in)
-/** A mortal fencer that reads only a share of the tells (ABYSS_SKILL, default 0.85). Not a pass /
+/** A mortal fencer that reads only a share of the tells (GCD_SKILL, default 0.85). Not a pass /
  *  fail check: it measures how dangerous he is. node duel.mjs . probe */
 async function scenarioProbe() {
-  const skill = Number(process.env.ABYSS_SKILL ?? 0.85);
+  const skill = Number(process.env.GCD_SKILL ?? 0.85);
   out(`\n== scenario PROBE (a mortal fencer reading ${Math.round(skill * 100)} % of the tells) ==`);
   const G = build();
   const { game } = G;
@@ -4109,10 +4390,10 @@ async function scenarioHeavy() {
 
 // ================================================================== scenario: strategy (opt-in)
 /** Which defence wins? Three bots that differ only in how they answer a tell (makeDefender `style`),
- *  each in god mode (how fast it kills, how often it is struck) and mortal at ABYSS_SKILL (does it
+ *  each in god mode (how fast it kills, how often it is struck) and mortal at GCD_SKILL (does it
  *  live). Not a pass / fail check: node duel.mjs . strategy */
 async function scenarioStrategy() {
-  const skill = Number(process.env.ABYSS_SKILL ?? 0.85);
+  const skill = Number(process.env.GCD_SKILL ?? 0.85);
   out(`
 == scenario STRATEGY (mixed / parry-only / dodge-only; god mode, then mortal at ${Math.round(skill * 100)} %) ==`);
   let last = null;
@@ -4590,6 +4871,9 @@ const SCENARIOS = {
   trade: scenarioTrade,
   deflect: scenarioDeflect,
   ghostep: scenarioGhostep,
+  tempo: scenarioTempo,
+  chain: scenarioChain,
+  timerip: scenarioTimeRip,
   perfectfx: scenarioPerfectFx,
   parryfx: scenarioParryFx,
   streak: scenarioStreak,
@@ -4604,13 +4888,13 @@ const SCENARIOS = {
 };
 const runs = [];
 const OPT_IN = new Set(['probe', 'strategy', 'bots', 'ranged', 'answer']); // run only when named
-// `all`, one scenario or a comma list; ABYSS_SKIP (a comma list) leaves scenarios out of `all`
+// `all`, one scenario or a comma list; GCD_SKIP (a comma list) leaves scenarios out of `all`
 // (tests/run.mjs runs the long ones as processes of their own, so a new scenario lands in `all`)
-const SKIP = new Set((process.env.ABYSS_SKIP ?? '').split(',').map((s) => s.trim()).filter(Boolean));
-for (const k of SKIP) if (!SCENARIOS[k]) { out(`unknown scenario in ABYSS_SKIP: ${k}`); process.exit(2); }
+const SKIP = new Set((process.env.GCD_SKIP ?? '').split(',').map((s) => s.trim()).filter(Boolean));
+for (const k of SKIP) if (!SCENARIOS[k]) { out(`unknown scenario in GCD_SKIP: ${k}`); process.exit(2); }
 const WANT = SCEN === 'all' ? [] : SCEN.split(',');
 for (const k of WANT) if (!SCENARIOS[k]) { out(`unknown scenario '${k}' (${Object.keys(SCENARIOS).join(' | ')} | all)`); process.exit(2); }
-if (SCEN === 'all' && SKIP.size) out(`\n(not run here, ABYSS_SKIP: ${[...SKIP].join(', ')})`);
+if (SCEN === 'all' && SKIP.size) out(`\n(not run here, GCD_SKIP: ${[...SKIP].join(', ')})`);
 for (const [name, fn] of Object.entries(SCENARIOS)) if (WANT.includes(name) || (SCEN === 'all' && !OPT_IN.has(name) && !SKIP.has(name))) runs.push(await fn());
 if (!runs.length) { out(`unknown scenario '${SCEN}' (${Object.keys(SCENARIOS).join(' | ')} | all)`); process.exit(2); }
 

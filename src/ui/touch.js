@@ -103,7 +103,7 @@ const setVar = (node, name, v) => {
 export const PAD_POS = ['low', 'mid', 'high'];
 export const PAD_SIZE = ['s', 'm', 'l'];
 export const PAD_LAYOUT = ['classic', 'split'];
-const PAD_KEY = 'abyss.touchPad';
+const PAD_KEY = 'gcd.touchPad';
 const GUARD_STEPS = 25; // the BLOCK tile's guard gauge is written in this many steps
 
 export class TouchControls {
@@ -194,7 +194,7 @@ export class TouchControls {
       globalThis.document,
       'touchmove',
       (e) => {
-        if (!this.active || e.target?.closest?.('.lab-root, .ab-pause-panel, .ab-news-list')) return; // scrollable panels
+        if (!this.active || e.target?.closest?.('.lab-root, .ab-pause-panel, .ab-news-list, .gm-scroll')) return; // scrollable panels (gm-scroll: the title's new layouts, ?menu=)
         if (e.cancelable !== false) e.preventDefault?.();
       },
       { passive: false },
@@ -210,7 +210,7 @@ export class TouchControls {
     if (on === this.active) return;
     this.active = on;
     if (on) this._build();
-    globalThis.document?.documentElement?.classList?.toggle('abyss-touch', on);
+    globalThis.document?.documentElement?.classList?.toggle('gcd-touch', on);
     this.game.hud?.root?.classList?.toggle('ab-touch', on);
     if (this.ui) this.ui.root.style.display = on ? '' : 'none';
     const s = this.game.settings;

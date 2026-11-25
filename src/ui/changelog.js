@@ -18,6 +18,73 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-25',
+        title: "A loading screen, and the worlds picked along the sword's path",
+        notes: [
+          'A loading screen shows from the first moment: the gcd logo, each step of the start, a progress bar and a line of lore.',
+          'The title shows the worlds as fires along the path the sword travels. Pick one to see its keeper and your best, then travel there.',
+          "The full controls list is behind CONTROLS on the title. The name over the hero's head is gcd, and it stays close to him.",
+        ],
+      },
+      {
+        date: '2026-11-25',
+        title: 'The game is called gcd',
+        notes: [
+          'The game has a new name, gcd, written in lower case: on the title screen, in the browser tab and here.',
+          'gcd is the hero too: a mysterious being who wields the most powerful sword in all universes. The sword lets him defeat these legendary bosses, and it carries him between campfires in different worlds and universes.',
+          'The game moves to a new address with its name, so your key bindings, records and learned techniques start fresh.',
+        ],
+      },
+      {
+        date: '2026-11-24',
+        title: 'The bosses look built from letters, like the hero',
+        notes: [
+          'Every human boss is drawn the way your hero is: a body of lit letters in his own colours, the same outline, and below the knee his clothes break into a pale, ragged hem that flows like your cape.',
+          'Lu Wusheng now prints in those letters too, not in big digits.',
+          'To compare: ?bossPrint=a draws them in the hero\'s greys, ?bossPrint=0 as before.',
+        ],
+      },
+      {
+        date: '2026-11-25',
+        title: 'The grass bends as you run through it and springs back',
+        notes: [
+          'Running through the grass no longer leaves a dark trail behind you. The blades bend out of your way and rise again a moment after you pass.',
+          'To see the old trail, add ?bend=0 to the address.',
+        ],
+      },
+      {
+        date: '2026-11-25',
+        title: "The sword's cut throws green code",
+        notes: [
+          'Where your sword cuts the grass, small green code glyphs burst off the cut, flicker as they fly and settle into the grass.',
+          'To turn it off, add ?grassSpray=0 to the address.',
+        ],
+      },
+      {
+        date: '2026-11-25',
+        title: 'The resting blade no longer glows',
+        notes: [
+          'A bright white halo no longer blooms round your sword while you stand still at some angles.',
+        ],
+      },
+      {
+        date: '2026-11-24',
+        title: 'The hero comes alive standing still',
+        notes: [
+          'Standing still, the hero no longer keeps his hand on his hip. He shifts between rests, re-grips his sword, rolls his shoulders, brushes his coat, and every few moments shows a sword trick (a wrist spin, a figure-eight, a salute, a flick of the blade) or quietly works a spell in the sword\'s green flame: a ring of marks round him, the flame climbing the blade under his fingers, a thread of light circling him.',
+          'In a boss fight his free hand comes off the belt into a guard that changes as he waits, with small shifts of the blade, and no tricks. Add ?idles=old to the address for the stance before.',
+        ],
+      },
+      {
+        date: '2026-11-24',
+        title: 'A natural running arm, three ways to carry it',
+        notes: [
+          "Your free hand swings like a runner's now: the elbow bent and working with the stride, the hand open and loose. At a sprint it pumps harder. Strafing round a boss it keeps swinging.",
+          'His free hand is smaller too, so it no longer stands out against his dark coat.',
+          "Other ways to carry it: add ?runArm=b (a swordsman's dash, swept back behind him) or ?runArm=c (natural, then the dash at a sprint) to the address; ?runArm=old is the swing before.",
+        ],
+      },
+      {
         date: '2026-11-24',
         title: 'A heavier light combo',
         notes: [
@@ -35,9 +102,27 @@ export const RELEASES = [
       },
       {
         date: '2026-11-24',
+        title: 'The Cinder Wyrm wakes without a neck twist, and its head reads from above',
+        notes: [
+          'When the fight starts the wyrm now lifts its head, rises and turns to you in one motion: no more neck snapping round and the head flipping over.',
+          'Seen from above, its head is a dark blade with burning slits for eyes: dark horns swept back, no glowing dots, a crest down the skull. From the side it looks as before.',
+        ],
+      },
+      {
+        date: '2026-11-24',
         title: 'A green flame on the sword',
         notes: [
           'A tight flame of tiny green marks now burns round your sword, licking up off the blade. It is there even with no streak and burns denser and hotter as your streak climbs. Add ?mystic=0 to the address to turn it off.',
+        ],
+      },
+      {
+        date: '2026-11-25',
+        title: "The streak's answer: a heavy first cut, a path that flows, cuts that tear the picture",
+        notes: [
+          'The cuts that answer a perfect dodge or a parry no longer flick by at low streaks: the first one is a beat you can read, and each cut after it comes faster, so a streak of 7 still ends in a storm.',
+          'He flows from cut to cut: each pass starts where the last one ended, and every white slash is exactly where he ran. The stray curved slashes at the end are gone, and the last blow bursts into fine letter dust.',
+          'Every streak draws a different figure round the boss (a star, a zigzag, a cage, a spiral, a cross), and each cut tears the picture: the letters on either side of it slide apart for an instant.',
+          'Damage and rules are the same.',
         ],
       },
       {

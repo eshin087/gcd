@@ -177,7 +177,7 @@ const GHOST_PTS = 420; // points of his body an afterimage is drawn from (_sampl
 export class Player {
   constructor(game) {
     this.game = game;
-    this.name = 'Wanderer';
+    this.name = 'gcd'; // the hero (ADR-195): the name tag over his head
     /** His drawn size (model metres → world; model.js PLAYER_SCALE, ADR-064): the lean and the
      *  animator's foot planner read it. */
     this.drawScale = PLAYER_SCALE;

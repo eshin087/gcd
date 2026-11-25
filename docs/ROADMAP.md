@@ -85,6 +85,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
       blade with a depth pull (ADR-019 … ADR-022)
 - [x] Wyrm motion: flip-free rig, planted feet, the painting's resting display, idle life, strike
       lead, parry arc, weighted death (ADR-025)
+- [x] Wyrm wakes without the neck twist; the drake head drawn for the view from above (ADR-189)
 - [x] Hero motion: world-planted feet, blade paths, portrait idle, new windups, two-step dash,
       sliding kneel, crescent trails (ADR-023)
 - [x] Gameplay unchanged: hit-tested frames identical / within cm (ADR-024); `npm test` + build green
@@ -184,11 +185,58 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
-## M1.82 — A heavier light chain, on the same clock (2026-11-24, `claude/hero-light-chain-12a97a`, ADR-188)
+## M1.88 — A heavier light chain, on the same clock (2026-11-24, `claude/hero-light-chain-12a97a`, ADR-188)
 - [x] The five lights and their looks: a load, a planted step before the contact, a deeper sink, a wider arc, a braked and held finish, a gather out of it; the finisher lands deeper (`swings.js`; `gather` in anim.js)
 - [x] Timing, damage, reach, tells, combo length and the heavy branches unchanged; `?lights=old` and the Lab's `lights` row; scenario `herolights` (both modes, the pop audit, the hit frame)
 - [ ] The owner judges the films and the preview (keep, tune, or more)
 - [ ] The sprint slash and the roll cut in the same style? (they start the chain from a run or a roll)
+## M1.87 — The front: the sword's path and a loading screen (2026-11-25, `ui/gcd-front`, ADR-196)
+- [x] A loading screen from the first paint, an honest bar of the boot's steps (`?loader=a|b`; b the owner's pick)
+- [x] Three title layouts (`?menu=a|b|c`; c the owner's pick, `0` the title before), CONTROLS behind a button
+- [x] The hero's tag reads gcd and rides his head; the HUD name off (`?heroName=a|b`)
+- [ ] Seen on the iPhone (notch, home bar, upright and landscape) and with a real pad
+- [ ] The path past ten worlds (scroll or shrink)
+
+## M1.86 — The bosses printed the hero's way (2026-11-24, `render/boss-hero-ink`, ADR-194)
+- [x] Why they looked apart: same letters, but flat dark / flat bright fills, a hairline outline, no hem
+- [x] `?bossPrint=0|a|b` (the shader: lit letter bodies, the hem below the knee; the art pass: his strokes and rims); b the owner's pick
+- [x] Lu Wusheng in the hero's letters by default (`sheathArt` a)
+- [ ] Seen by the owner in play and on the iPhone
+- [ ] The Cinder Wyrm, the props and the animals in this direction (their own art paths)
+- [ ] Outfits nearer the hero's mass (a cloak or long cloth per boss) if the owner wants more letters across
+## M1.85 — The grass bends round the hero's wake (2026-11-25, `world/grass-bend`, ADR-193)
+- [x] The hero's wake as a path in the shader: blades bend along his way and spring back, no dark trail (`?bend=b`)
+- [x] The steps' trample only with `?bend=0`; a sprint or landing presses a wider wake
+- [ ] The boss's footsteps leave a wake too; measured on the phone
+
+## M1.84 — The sword's cut throws green code (2026-11-25, `world/grass-spray`, ADR-192)
+- [x] Code glyphs off the drawn arc's cut, the Hall of Falling Script's set, calm and small (`?grassSpray=m`)
+- [x] The looks met on the way behind `?grassSpray=` (grass letters, the blade's own chips, code with trails)
+- [ ] Seen on the phone's own screen; should the boss marks' tears throw code too?
+
+## M1.83 — The hero's idles: rests, habits with both arms, sword tricks (2026-11-24, `claude/hero-idles-2776d8`, ADR-186)
+- [x] At ease: four rests, six habits with both arms, five tricks every 3 - 4 actions; in the fight: the free hand off the belt (four guard hands), five small habits, no tricks (`?idles=old`: the belt)
+- [x] Measured in his own frame (joints, the blade's gaps, the coat, pops) and every move from every rest and every action against the stance before; scenario `heroidles`; the Lab's `idles` / `idle ▸` rows
+- [x] Films before | after sent to the owner (exploring, the fight, the cuts; and the in-game view)
+- [x] Round 2 at the owner's call: the sword arm as picked in every rest (hilt, trail and the flip dropped); three sword spells in the green flame (rite, sigil, breath)
+- [ ] The owner's picks (which rests / tricks to keep, their pace); played on the iPhone
+- [ ] The pass behind his back into the left hand (the sword must be able to change hands: a rig change)
+- [ ] The block's / roll's / charge's own short entries out of a far blade (the whips left are theirs)
+## M1.82 — The run's free arm: three carries (2026-11-24, `claude/hero-run-arms-2e2cb5`, ADR-187)
+- [x] `player/runArms.js`: A natural (a runner's swing, a sprint's pump), B the swordsman's dash, C by speed, `?runArm=a|b|c|old`, the Lab's `run arm` row
+- [x] The `herorun` scenario: every carry through one course (strafe, backpedal, turn, every transition) against the swing before
+- [x] Review films: the four side by side, game camera over the side view, the front, half speed
+- [x] The owner's pick of the run arm: A, natural, the default (2026-11-25; C shipped first by mistake, reverted in #122)
+- [x] The free hand smaller (× 0.8), the owner's pick of five looks (`?handLook=0|a|b|c|d`, the Lab's `hand` row)
+- [ ] The roll's and the block's entries out of the dash: the free arm comes forward inside a short cross-fade (about twice the old jolt)
+## M1.82 — The streak's answer: a heavy first cut, a path that flows, cuts that tear the picture (2026-11-25, `combat/streak-pace`, ADR-190, ADR-191)
+- [x] The tempo: a heavy first cut, each later one a share of the one before, the storm by pace (`?tempo=0`)
+- [x] The chain: each pass from where the last ended, every slash on his path, the stray crescents gone, letter dust for the `A` shards (`?chain=0`)
+- [x] Five figures, one a flurry, never twice running (`?figure=`)
+- [x] The time rip: four looks filmed side by side; the owner picked the torn strip (`?rip=`)
+- [ ] Played, and seen on the iPhone
+- [ ] Judged in play: the step into the storm round the head, the riposte's last freeze (0.198 s), the figures' size at the duel camera
+- [ ] The wyrm's `pounce` past its share of a gap in the tree wall (integ `breach` replays at the old pace until then)
 
 ## M1.81 — Smaller combat text (2026-11-24, `claude/combat-text-smaller`, ADR-184)
 - [x] Call-outs and damage numbers at fixed, smaller sizes (the owner's option B); no growth with the window

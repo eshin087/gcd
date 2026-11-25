@@ -1,4 +1,4 @@
-# ABYSS — Architecture & Module Contracts
+# gcd — Architecture & Module Contracts
 
 Browser game, Three.js 0.180 (WebGL2), plain ES modules, no framework. `npm run dev` serves the
 repo at http://localhost:5173 ; `npm run build` emits a single-file `dist/index.html`.
@@ -103,7 +103,7 @@ ADR-120).
 | `lights` | `add({x,y,z,color:[r,g,b],intensity,radius,life,fade,fadeIn,flicker,low,slotFade})` → light (mutable `x,y,z`, `.set()`, `.kill()`). The pool (`render/lights.js` `LightPool`) fills the shader's `MAX_PL` slots with the best-scoring lights (intensity × radius over distance to the focus). A **low** light (`low: true`, 2026-11-23, ADR-180: the living world's lanterns, the Skybreak Ring's braziers) takes only the slots the others leave free: its rank among the low lights (without the flicker; one holding a slot keeps it against a light only up to 1.25 × better) picks which; it fades INTO a slot it is given and OUT of one it must give up over `slotFade` s (default 0.3; it holds the slot while fading, so for that moment the least of the others waits), never a pop. With no low light alive the pool picks exactly as before. `pool.used` / `pool.usedLow`: slots the last update wrote, all and low (tests, the Lab) |
 | `fx.add` / `fx.alpha` | glyph particles, additive-HDR / alpha-blended. `spawn({x,y,z,vx,vy,vz,life,size,sizeEnd,glyph,color,colorEnd,alpha,alphaEnd,gravity,drag,spin,rot,flicker,stretch})`. `glyph`: char, string of chars (random pick) or atlas index. |
 | `fx.ripple` / `fx.stamp` | the impact pass (ADR-149): `fx.ripple` = `ImpactRipple` (`render/impactRipple.js`: `hit(x, y, z, o, k)`, `update(dt)`, `clear()`, `write(pipeline)`; `n`, `live`), `fx.stamp` = `{ clear }` (`combat/impactStamp.js`: `stampHit`, `stampUpdate`, `stampClear`). Both run on fx time and are cleared on a level reset (flow, `world.debug.setVisible`) |
-| `world` | `resolve(pos, radius, bound, soft = false, who = null)` circle collision (`who` 'hero': on a set with an edge the hero's ground replaces the `bound` circle; `edge` is that edge or null and `heroBound(x, z)` how far out he may stand that way: Destruction → "The edge of the open ground", ADR-125; `soft`: pass through the circles marked `soft`, the trunks and stumps of breakable wood: the wyrm's body, ADR-119); `setQuality(k)` (the destruction's phone budget 0.3 .. 1; `setGrassQuality` sets it from the preset, `QUALITY` in breakTuning.js); `setPusher(slot, x, y, z, r)` grass trample (slot 0 = player, 1–9 = dragon; y > 1.5 = airborne, ignored); `clearPushers(from, to)`; `gust(x, z, strength 0..2, radius)` (also `life.gust`: the living world's air takes the same push); `scorch.burnCircle(x, z, r, burn 0..1, heat 0..1)`, `scorch.reset()`; the scorch map's channels: R burn, G heat, B **trample** (`scorch.trample(x, z, r, k)` max-blended, `scorch.trampleAt(x, z)`; the living world's steps write it, the grass lies flatter and darker by it, it stands up over `STEPS.trample.decay` s; GLSL `scorch3At(xz)`, `trampleAt(xz)` in COMMON_GLSL), A **torn** (2026-11-23, ADR-180: grass the sword mowed or a blow's mark tore out, 0..1, kept until `scorch.reset()`; `scorch.tear(x, z, r, k)`, `scorch.tearLine(ax, az, bx, bz, w, k, k2)`, `scorch.tornAt(x, z)`, `scorch.tornCells`; `?mow=0` none (`mowOn()` in scorch.js); GLSL `scorch4At(xz)` (all four channels, the same single fetch) and `tornAt(xz)`; see Destruction → "Grass the sword cuts"); `grass` (`createGrass`'s record: `mesh`, `total`, `setCount(c)`, and since ADR-180 `densityAt(x, z)` 0..1 and `heightAt(x, z)` the meadow's typical blade height there, m: the mow reads them); **`life`** (`world/life/life.js` `LivingWorld`, `?life=`; null if it failed to build: see "The living world"); `colliders.blocked(ax,az,bx,bz)`; `setGrassQuality(count)` (instanced grass blades drawn; main.js applies the quality preset); **destruction** (ADR-107, see Destruction): `impact(x, z, r, power, o)`, `ignite(x, z, r, k, grass = true)` (both also reach the living world: `life.impact` / `life.ignite`, ADR-177), `groundBlow(x, z, o)` (a blow met the floor: a mark of its kind, `scars.mark`, and `life.impact`; it damages nothing; ADR-177), `restore()`, `destructibles`, `fire`, `scars` (the tests' world mocks lack them: every caller outside `src/world` guards with `?.`); `bonfire {x,z}`; `nest {x,z}`; `atmosphere` (the bonfire's flames, smoke and embers; the default night's fireflies, low mist and falling leaves, or a set's `ash` / `ambience`: with the living world on, it skips the leaves, fireflies, mist or ash a layer draws itself, `life.takes(what)`, and while the wind piece is on its smoke, embers, mist, leaves and ash drift on `life.wind.at` instead of their fixed drift; their Math.random draws are unchanged); `atmosphere.setBonfireLit(bool)`; `atmosphere.skyGlow(k 0..1)` (the sky over the clearing glows orange: warms the shared ambient and fog colours; call every frame while it should show, it eases in and out and lets go 0.2 s after the last call; Armageddon, ADR-053); Lab only: `debug.setVisible(bool)` hides / restores the environment (ground, grass, forest group = trees, stones, flagstones, nest bones, bonfire; atmosphere paused and in-flight particles in `fx.*` dropped; the exact previous `visible` flags come back; lights, scorch and colliders untouched), `debug.visible` |
+| `world` | `resolve(pos, radius, bound, soft = false, who = null)` circle collision (`who` 'hero': on a set with an edge the hero's ground replaces the `bound` circle; `edge` is that edge or null and `heroBound(x, z)` how far out he may stand that way: Destruction → "The edge of the open ground", ADR-125; `soft`: pass through the circles marked `soft`, the trunks and stumps of breakable wood: the wyrm's body, ADR-119); `setQuality(k)` (the destruction's phone budget 0.3 .. 1; `setGrassQuality` sets it from the preset, `QUALITY` in breakTuning.js); `setPusher(slot, x, y, z, r)` grass trample (slot 0 = player, 1–9 = dragon; y > 1.5 = airborne, ignored); `clearPushers(from, to)`; `gust(x, z, strength 0..2, radius)` (also `life.gust`: the living world's air takes the same push); `scorch.burnCircle(x, z, r, burn 0..1, heat 0..1)`, `scorch.reset()`; the scorch map's channels: R burn, G heat, B **trample** (`scorch.trample(x, z, r, k)` max-blended, `scorch.trampleAt(x, z)`; the living world's steps write it with `?bend=0` only, the grass lies flatter and darker by it, it stands up over `STEPS.trample.decay` s; with the wake on (ADR-193) `world.trail` bends the grass instead: `update(dt, P)`, `press(x, z, r)`, `clear()`, `bendAt`, `count`; GLSL `scorch3At(xz)`, `trampleAt(xz)` in COMMON_GLSL), A **torn** (2026-11-23, ADR-180: grass the sword mowed or a blow's mark tore out, 0..1, kept until `scorch.reset()`; `scorch.tear(x, z, r, k)`, `scorch.tearLine(ax, az, bx, bz, w, k, k2)`, `scorch.tornAt(x, z)`, `scorch.tornCells`; `?mow=0` none (`mowOn()` in scorch.js); GLSL `scorch4At(xz)` (all four channels, the same single fetch) and `tornAt(xz)`; see Destruction → "Grass the sword cuts"); `grass` (`createGrass`'s record: `mesh`, `total`, `setCount(c)`, and since ADR-180 `densityAt(x, z)` 0..1 and `heightAt(x, z)` the meadow's typical blade height there, m: the mow reads them); **`life`** (`world/life/life.js` `LivingWorld`, `?life=`; null if it failed to build: see "The living world"); `colliders.blocked(ax,az,bx,bz)`; `setGrassQuality(count)` (instanced grass blades drawn; main.js applies the quality preset); **destruction** (ADR-107, see Destruction): `impact(x, z, r, power, o)`, `ignite(x, z, r, k, grass = true)` (both also reach the living world: `life.impact` / `life.ignite`, ADR-177), `groundBlow(x, z, o)` (a blow met the floor: a mark of its kind, `scars.mark`, and `life.impact`; it damages nothing; ADR-177), `restore()`, `destructibles`, `fire`, `scars` (the tests' world mocks lack them: every caller outside `src/world` guards with `?.`); `bonfire {x,z}`; `nest {x,z}`; `atmosphere` (the bonfire's flames, smoke and embers; the default night's fireflies, low mist and falling leaves, or a set's `ash` / `ambience`: with the living world on, it skips the leaves, fireflies, mist or ash a layer draws itself, `life.takes(what)`, and while the wind piece is on its smoke, embers, mist, leaves and ash drift on `life.wind.at` instead of their fixed drift; their Math.random draws are unchanged); `atmosphere.setBonfireLit(bool)`; `atmosphere.skyGlow(k 0..1)` (the sky over the clearing glows orange: warms the shared ambient and fog colours; call every frame while it should show, it eases in and out and lets go 0.2 s after the last call; Armageddon, ADR-053); Lab only: `debug.setVisible(bool)` hides / restores the environment (ground, grass, forest group = trees, stones, flagstones, nest bones, bonfire; atmosphere paused and in-flight particles in `fx.*` dropped; the exact previous `visible` flags come back; lights, scorch and colliders untouched), `debug.visible` |
 | `player`, `dragon`, `hud`, `audio`, `flow`, `lab` | the modules below. `dragon` is **the boss slot** (the wyrm in Cinderwood, the Ash Disciple in Ashfall; see Levels and the boss slot); `boss` is the same object |
 | `level`, `levels`, `pickLevel(id)` | the level this page load built (`levels/index.js` definition), every level as `{ id, name }` (the title's stage picker, the Lab's LEVEL row), and a reload into another one (`?level=<id>`, other parameters kept). Tests may leave them out: flow falls back to Cinderwood's lines |
 | `heroLook`, `heroLooks`, `pickHeroLook(id)` | the hero's outfit option (kept for later use: the owner, 2026-11-14, keeps today's look as the default; `player/gear/looks.js`): the id main.js read from `?heroLook=` (the Player wears it), every option as `{ id, name }` (the Lab's OUTFIT row), and a live switch (`player.setLook(id)`, the URL updated in place; `pickLevel` keeps the parameter). Tests may leave them out: the Player wears the default look |
@@ -301,6 +301,12 @@ Render helpers for creature modules:
     exactly what `setSize` gives (it records `_heroPx`), so a boss without the flag is drawn as before; one
     grid serves every boss pixel, so his paper selves share his cell. (`foxLetters` is read for every boss that sets `letters`: it
     stays 'b' on Tian Lei's level, which never sets it.)
+    **The bosses printed the hero's way** (ADR-194): main.js writes `U.uBossPrint` (x on, y own colours 1 / the
+    hero's greys 0, z the boss's feet in world y, w the hem's height above them) and the pass's `uBossLike` (x his
+    ink lines per font pixel, y the player's part tables for plates 12 - 16) every frame from
+    `lookOf('bossPrint', '0', 'b')`. Every ink-line material reads `uBossPrint` (`HERO_ART_SHARED`) except the
+    player's (`heroSelf` compiles `SG_HERO_SELF`): the fill is lifted in the shader, so whoever writes `uArtFill`
+    needs no change.
     Ink lines are drawn per pixel by the pass, not from glyphs. `U.uArtHeroCel` (vec3: step from
     shadow to lit between x and y, z = share of the step) cel-shades the art source;
     `U.uHeroPartRim[20]` (vec4: tint × gain) is each part's silhouette ink; fill style + 8 = a
@@ -842,7 +848,8 @@ Events: `player:plunge {execution}` as the dive starts, `player:plungeHit {damag
 strikes, attack, tell)`. `strikes` = the streak, at most `DEFENSE.flurry.max`. All but the last are
 flash cuts (phases `FP.BLINK` hidden → `DASH` from one side of the target point through it to the
 other, the hit half way → `HOLD`), each along a new line (turned from the far end of the last, clear
-of the lines already hanging and of the wyrm's neck); the last is an art (`COIL` → `STRIKE` →
+of the lines already hanging and of the wyrm's neck; with the chain, `STREAK_FX.chain`, each pass
+starts where the last ended: below); the last is an art (`COIL` → `STRIKE` →
 `AFTER`), picked at random with the animator's noise, never the same twice running
 (`player.debug.flurryArt` pins one). Kinds: `plunge` (the plunge itself: `_startPlunge(..., chain)`
 takes over in its own state), `iai`, `split`, `vault`. Target point: the head's middle
@@ -881,7 +888,7 @@ cut, `flurry.reelT`); a cut passes `reel: 1` to `takeHit`, the last blow `reel: 
 `_guardOpen(attack, nx, nz, true)` (no health, the whole guard meter, the guard knocked open, thrown back, as a black
 blow does to a guard) and returns BLOCKED; a parry press still parries; god mode is untouched.
 **One Breath** (ADR-146; combat.js `ONE_BREATH`): `game.unlocks` (`game/unlocks.js` `Unlocks`: `has(id)`,
-`grant(id)` → true when new, `toggle(id, on)`, `all()`, `clear()`; localStorage `abyss.unlocks.v1`; `?tech=draw|none`;
+`grant(id)` → true when new, `toggle(id, on)`, `all()`, `clear()`; localStorage `gcd.unlocks.v1`; `?tech=draw|none`;
 absent in the tests' worlds = nothing learned). A HEAVY press begun with the guard up or within 0.2 s of lowering it
 (`hb.guard`) and held past CHARGE.hold: `_startCharge` takes the draw stance instead (state `iai`, the animator's
 `flurry` clip with `flurryAnim.pose = 'coil'`) while `oneBreath` is learned, else the charge as before. In the stance he
@@ -1228,6 +1235,14 @@ around and the blade's point; none a multiple of another). In a fight the sword 
 on the move (`FIGHT_RUN`; a sprint trails the blade); a roll and a backstep ease the sword arm out
 of the pose they began in (`swordFromEntry`, `SWORD_ENTRY` 0.16 s) and the loco clip settles the
 blade into the stance over `LOCO_SETTLE` (0.24 s).
+**The run's free arm** (ADR-187, `runArms.js`): in the hero's `loco()` the free (left) arm is
+`runArm(p, P, A, phase, armF, sprint, runK, moveW, mz)`'s: one of three carries (`?runArm=a|b|c|old`,
+`runArmMode()` / `setRunArm(id)`, default `a`, the owner's pick), written as joint angles (`RUN_ARMS`: the shoulder's swing, how
+far the arm stands off his side, the elbow, the forearm's cross) and posed by forward kinematics into `lH`, `lP`,
+`lD`, `lN` and `hs`, with weight `moveW`. `a` swings like a runner (a pump at a sprint), `b` holds the dash (swept
+back behind him; forward only: a strafe or a backpedal swings as `a`), `c` is `a` on the run blending into `b` as
+the sprint builds. The dash's weight eases on `A.time` (`A.runArmS`), so `loco()` may run more than once a frame.
+`old` returns false and `loco()` writes the swing before ADR-187. A duelist's footwork never calls it.
 **Idle life** (ADR-047): in the loco clip, standing still in the `idle` state, at ease (not locked
 on, not in the fight stance: `fightW` ≤ 0.05), with no guard held, for `IDLE_LIFE.after` (2.5 s), `HeroAnimator._idleLife` starts an action from `FIDGETS`
 every `IDLE_LIFE.gap` (2–4.5 s after the last one ends), picked with the animator's own noise (never
@@ -1236,6 +1251,25 @@ every `IDLE_LIFE.gap` (2–4.5 s after the last one ends), picked with the anima
 0.45 s fade in and 0.55 s out; anything else (a move, a lock-on, a guard, another clip) cuts it within
 `IDLE_LIFE.cancel` (0.16 s). State: `anim.fidget = { k, t, w, cut, still, wait, last, count, name }`.
 Visual only: no hit test runs outside attacks.
+**The idles** (ADR-186, `idles.js`; `?idles=old` = the paragraph above as it was, live through `setIdles`): `stand()`
+writes a REST's arms over each stance (`easeArms` over `atEase`, `guardArms` over `fencerGuard`): at ease one of
+`EASE_RESTS` (`loose`, `fingers`, `cloak`, `belt`: the free arm only, the sword arm stays `atEase`'s), in the guard one of `FIGHT_RESTS` (`point`, `eye`, `hand`, `low`: the
+free hand off the belt). The state is `anim.rests = { ease, fight }`, each `{ a, b, u, hold, mem }` (from rest a to
+b, `u` 0..1 of the change, smootherstep, the blade by `dirLerp` with its own memory); `tickRests` (in `_idleLife`)
+runs a stance's hold down while he stands still in it and starts a change only between actions (`IDLES.restHold`
+7-12 s / `restMove` 1.3 s at ease, `guardHold` 4-7 s / `guardMove` 0.75 s in the guard). The actions: `F.pool` 0 =
+`FIDGETS` (old), 1 = `EASE_LIST` (`EASE_HABITS`, `look`, `inspect`, `EASE_TRICKS`), 2 = `FIGHT_LIST` (`FIGHT_ACTS`);
+at ease a trick every `IDLES.trickEvery` (3-4) actions (`pickEase`), and one marked `blade` starts only from a `low`
+rest (a trick due in the trail first moves him to `loose`); in the guard (`fightW` > 0.95, also locked on) only
+`FIGHT_ACTS`, never a trick; during the stance's change, none. A cut lets a `blade` action go over
+`IDLES.cancelBlade` (0.26 s), and at ease a block / parry / drink / charge out of a `blade` action or the trail rest
+enters over at least `IDLES.cutFade` (0.24 s). Lab / tests: `anim.playIdle(name)` (a `blade` one from a high rest
+queues behind a move to `loose`), `anim.setRest(name, atOnce?, hold?)`, `anim.idleNames(fight)`. The trick pool's
+three SPELLS (`rite`, `sigil`, `breath`; `spell: true`) publish `anim.spell = { kind, u, w }` (in `_idleLife`, w 0
+otherwise); `swordMystic.js` reads it: the flame swells toward the top tier (`SPELL.surge`, every cell lit, hotter,
+longer tongues), the rite's flame waits above the fingers' front, and each writes the flame's marks through the same
+batch (`SPELL`: the rite's embers, the sigil's ring at knee height, the breath's thread). The idles draw on
+`anim.idleNoise`, never `anim.noise` (which picks an attack's look).
 **Idle** (`guard`, ADR-041; ADR-040 put the blade out to his side, where the game camera sees it):
 weight on the left leg, the right foot a shoulder's width out and forward with the knee soft, the
 upper arm hanging by the ribs with the elbow a little back, the grip beside the right hip and
@@ -1297,14 +1331,22 @@ catch (a throw is logged, the cut still draws). `cutBurst` calls `takeStampRepla
 its slash line and cross when the stamp just drew in 'instead' mode.
 
 **The streak pass** (`combat/streak.js`, ADR-167). `STREAK_FX = { pieces: ['storm', 'tiers', 'aura',
-'counter', 'sound', 'world'], on, k, perfectModes, perfect }`; `streakK(piece)` = `k[piece]` while on,
+'counter', 'sound', 'world'], on, k, perfectModes, perfect, tempo, chain, figure, figures }` (`tempo`: the storm's tempo, a
+live boolean, `?tempo=0` false; the Lab's `tempo` button; `chain`: the flurry's chained paths, a live
+boolean, `?chain=0` false; the Lab's `chain` button; `figure`: 'any' or a figure's name, `?figure=`,
+`figures` the list the Lab cycles); `streakK(piece)` = `k[piece]` while on,
 else 0 (`?streakfx=` absent, empty or 'all': every piece; a list: those named; 'off': none; the Lab's
 'streak' row flips `on` live). `STREAK_TIERS` [3, 5, 7, 10, 15], `streakTier(n)` 0 - 5, `streakHeat(n)`
 0..1. `PERFECT_DEFAULT` 'sharp', `perfectMode()` / `setPerfectMode(m)` (`?perfect=today | sharp |
 cinema`). Nothing stores a tier: each piece reads it at the moment.
 - *The storm* (`DEFENSE.flurry.storm`; `flurry.js`): `start` reads `streakN` (the streak, past the cap of
   blows), `tier`, `stormK` = `streakK('storm')` once. `_stormStep(i)` (0 a shown cut, then 1, 2, ...),
-  `_pace(i)`, `_stop(i)`, `_cutTime(i)`, `_plannedHits()`. A storm cut's beats may be shorter than a
+  `_pace(i)`, `_stop(i)`, `_cutTime(i)`, `_plannedHits()`. With the tempo (`DEFENSE.flurry.tempo`;
+  `tempo` = `stormK > 0 && STREAK_FX.tempo`, read once at `start`, with its ratio `_r`): `_beat()` the
+  heavy beat's numbers (ground / air), `_paced()` the cuts it paces, `_final(i)` a riposte's last cut,
+  `_pace(i)` = max(floor, r^(k i)) (1 for `_final`), `_stormStep(i)` counts the cuts up to i whose pace
+  is under `stormAt`, `_weight(i)` 0..1 (the camera's and the flare's share), `hang` > 0 in the air too;
+  `FlurryFx.cut(..., st, wk)` scales the flare and the sparks by `wk`. A storm cut's beats may be shorter than a
   frame: `update` runs on through them (at most 8 steps) until a blow lands or a cut's finish is
   reached, so each blow lands in a frame of its own; `_cloneAt` prints its speed clone in `draw` once
   he is posed on the contact; `_stormAngle` picks its line (24 candidates); `camera()` keeps the target
@@ -1313,6 +1355,30 @@ cinema`). Nothing stores a tier: each piece reads it at the moment.
   `streak(a, b, up, dx, dz)` lays a storm cut's run; `cut`, `appear`, `vanish` take `st` (0..1, how deep
   into the storm). `flurryFx.js` draws on its own seeded stream (`fxSeed()`, `setFxSeed(v)`), never
   `Math.random`.
+- *The chain* (`DEFENSE.flurry.chain`; `flurry.js`; `chain` = `STREAK_FX.chain`, read once at `start`,
+  also set on `flurry.fx.chain`): `_planFigure()` at `start` picks the FIGURE (`flurry.figure`;
+  `player/flurryFigures.js`: `FIGURE_NAMES` star / zigzag / cage / spiral / cross, `figureSteps(name, n,
+  air, figures, R, mirror, out)` → each pass's signed offset `o` and end radius `e`, `tracePass(ax, az,
+  o, e, out)` one pass with the target at the origin; pure, no three.js). `STREAK_FX.figure` pins one
+  ('any': this module's own seeded stream, `setFigureSeed(v)` for the tests, orders the figures offered
+  at this many cuts, never the last one first; `lastFigure`). `_layFigure` tries it at every
+  `chain.turns` x both hands, costed by `_figureCost` (the dodge spot along every pass, a wall, the
+  neck, the art's end); one costing `chain.fit` or more is passed over; the star is `_planChain()` (a
+  depth-first search, at most `chain.nodes` steps: `_planS[i]` / `_planOff[i]`, `planGap` its spread).
+  Either fills `_planA0` (where round the target the first cut starts), `_planO[i]` / `_planE[i]`
+  (`figureFit` the cost, the tests read it). `_beginCut` → `_chainPath()` (A = where he is, or for the first cut `reach` out at
+  `_planA0`; B = `_chainExit(A, B, R)`; its hanging line `_line(A, B, CHEST)`: the path his chest
+  runs) → `_cutStarts()` (the shared tail). `_onPath(out)`: the point of the pass nearest the target
+  (where `fx.cut` and `fx.pass` draw). An art after cuts (`_artChain`) starts where the last cut ended
+  (`C0`): `_chainArt(D)` sets A / B / X / d from there; `_tickCoil` carries him from `C0` to A; a split /
+  vault samples its blade point every strike step into `_sw` (`_swN` points) and `fx.artHit(..., sw,
+  swN)` draws its crescent along them (`_swept`). Skyfall: `_startPlunge(..., chain)` gets `_from`
+  ({ ox, oz } = where he is) instead of the flurry, so the plunge hangs over his side of the head.
+  `FlurryFx.chain`: no crescent in `cut` / `_stormCut`, no lens in `artHit`, the burst's thin lines
+  at `ext` 1, and `dust(x, y, z, dx, dz, k)` (`DUST`, the alpha pool, `dustStat` for the tests) in
+  place of `PlayerFx.slamShards` on the ground's last blow and of `artHit`'s 'A' shards (round the
+  head, and the Heaven Splitter's landing). The `lines` entries keep their shape (`ax ay az bx by bz k
+  last`) and `player:flurryHit` fires as before.
 - *The burst* (`player/flurryBurst.js`): `BURST_LOOK.levels` (null = today, then 1 - 3), `BURST_DEFAULT`
   2, `setBurst(n)` (0..3, or a custom level object: `burstLevel()` -1), `burstLevel()`, `burstLook()`
   (null at 0), `burstScreen()` ({ cut, last, dip }; all 1 at 0), `pair(L, key)`. Read at the blow by
@@ -1359,7 +1425,29 @@ uniform. The Lab's PLAYER row `mystic` (off / flame) sits after `sword`. The `li
   `steel` kind in tint zone 735101. `STREAK_AURA`, `STREAK_FIRE`, `STREAK_WORLD` (gust, ring, rise per
   tier; `floor` by level id) are exported. It steps aside while the hero is in `flurry` or `plunge`,
   dead, or while `player.ghostFx` > 0.5. Its own seeded stream.
-- *Payload fields added* (no new event): the flurry's start event gains `streak`, `tier`, `storm`
+- *The time rip* (`player/timeRip.js` `class TimeRip`, `game.fx.rip`, built in main.js after the
+  streak fx; `?rip=off|tear|strip|ghosts|negative`, default `strip`, the owner's pick):
+  `TIME_RIP.mode` is live (read at every cut; `ripMode()` / `setRipMode(m)`, the Lab's `rip` button in
+  the streak row), `RIP_LOOK` holds every number per mode, `RIP_STAT` counts (tests), `RIP_GLYPHS` the
+  ghosts' digits. It listens to the flurry's start, blow and end events (no new event): on a blow it
+  reads the newest hanging line `player.flurry.lines[nLines - 1]` (once per line: an art's last blow
+  draws none and marks nothing new), and the blow's `storm` / `gap` / `last`; a line is re-read live
+  (its `k`) while its flurry runs, then kept as copied. `update(fxDt, realDt)` runs in main.js's
+  simulation step after the world and BEFORE the lights, the particle pools and the fire field age (what
+  it draws shows this frame); its marks step in real time, its blobs and particles live on fx time with
+  one copy alive a frame. Steel (`game.fx.fire`, kind `steel`) for the tear's hairline and split and
+  the strip's seam; glyph digits (`game.fx.add`) for the ghosts, from `player._sampleBody()` /
+  `player._ghostPts` (the afterimage's points; no randomness). The strip and the negative are the ASCII
+  pass's `cutBand` (render/pipeline.js): `uCutN` (0 = the pass reads nothing; set to 0 once when the last
+  cut ends, nothing written while idle), `uCutA[2]` = a cut's two ends in frame px (y up), `uCutB[2]` =
+  (1 strip | 2 negative, half-width in art cells, shift in cells, the negative's weight), `uCutTone` (the
+  negative's pale cell rgb, w: a pixel brighter than the scene x uBg x w is a letter's stroke and prints dark); the strip and the negative run along the WHOLE line (k = 1), and their first frame is the contact's (a cut ages from the next step). `TimeRip.write(pipeline)` fills them, from `update` and
+  again from the pipeline right before the pass (`pipeline.setTimeRip(rip)`, as the impact ripple).
+  `clear()` with the other fx (flow `_resetWorld`, world `setVisible`). `busy`, `ghostAnchors` /
+  `ghostAnchorN` (the newest copies' chests) for the tests (`timerip` in integ.mjs and duel.mjs,
+  `tests/integration/timerip.mjs`).
+- *Payload fields added* (no new event): the flurry's start event gains `figure` (the chain's figure,
+  `flurry.figure`; '' with the chain off), `streak`, `tier`, `storm`
   (true when its later cuts are a storm) and `at` (the real s from now each flash cut is planned to
   land); each flurry blow's event gains `gap` (real s since the blow before) and `storm` (0 a shown
   cut, else how deep into the storm); the parry event gains `feel` (the perfect look's mode, 'today'
@@ -1809,7 +1897,7 @@ charge spheres, the breath / fireball origin) are unscaled; `rig.pt.eyes`, `pt.n
 **The build** (2026-11-20, ADR-123; `looks.js`): `?wyrmLook=0|a|b|c` (read once; default `c`, the
 owner's pick: lean, a fierce head carried high, a mane of quills; `0` = the wyrm before, `a` / `b`
 the steps between). Exports: `WYRM_LOOKS`, `WYRM_LOOK_SHIPPED`, `wyrmLookId()`, `wyrmLook()` (the
-build's numbers or null for `0`), `setWyrmLook(k)` (the NEXT built wyrm; tests, `ABYSS_WYRMLOOK`).
+build's numbers or null for `0`), `setWyrmLook(k)` (the NEXT built wyrm; tests, `GCD_WYRMLOOK`).
 A build changes what is drawn and nothing else: `buildDrake` bakes the trunk's and limbs' meshes
 into their joint's frame and scales them there (`slim`, `slimBone`), scales the neck's and tail's
 drawn radii, spine, quill and talon lengths, `headVis` (its size and width) and the old head's
@@ -2298,7 +2386,7 @@ showTitle() / hideTitle();  showPause(bool);  toggleHelp()
 [string] }] }`; `version: null` is the LATEST release, the work since the last version) and
 `entryId(entry)` (`date|title`). `ui/changelogPanel.js` `ChangelogPanel` (`hud.newsUi`): `open()`,
 `close()` (marks every entry read), `toggle()`, `on`, `unseenCount()`, `onChange(fn)` (after a read),
-`markAllSeen()`, `scroll(px)`. Read ids live in localStorage `abyss.whatsnew.seen`; with none, only the
+`markAllSeen()`, `scroll(px)`. Read ids live in localStorage `gcd.whatsnew.seen`; with none, only the
 newest day's entries are unread. Esc (capture phase, swallowed), the pad's B / Menu / A and BACK close it;
 while it is open `flow._title` does not start the game and the gamepad drives only the panel (the stick /
 D-pad scroll). Badges: the title button's `.ab-news-badge` ("N NEW") and the pause item's value
@@ -2318,7 +2406,7 @@ when on).
 the boss's rows under them, the prompt and banners above the thumbs, the pause panel in the upper half so the pad shows below it, the title's logo and
 lists to the screen's width.
 Desktop (no `.ab-touch`) is unchanged.
-**Gamepad layout:** while a pad is the device in use, `html.abyss-pad` (and `.ab-pad` on the HUD root)
+**Gamepad layout:** while a pad is the device in use, `html.gcd-pad` (and `.ab-pad` on the HUD root)
 hides `kb-only` and `tp-only` elements and shows `pad-only` ones (title "PRESS ANY BUTTON", the
 pause / help pad grid); `ab-nontouch` elements (the title's controls line, the corner hint, the
 CONTROLS item) hide on touch unless a pad is in use. Action chips relabel to the pad's buttons (and
@@ -2372,12 +2460,45 @@ three colours.
 
 **The streak counter** (`ui/streakCounter.js` `class StreakCounter`, `COUNTER`, `TIER_WORDS`, `COUNTER_LOOKS`; ADR-167): `hud.streakUi`, built in the call-outs' layer; `onStreak(d)` (from `player:streak`: a rise to 2 or more shows the number, a loss of 2 or more shows it struck), `handoff()` (on `player:flurry`), `clear()` (with the call-outs: title, death, retry), `update(realDt)`; `shown` ({ n, tier, word, lost }; tests). Its DOM is built on the first number. `?streakCount=lines | brackets | ticks` (default lines). With `streakK('counter')` > 0 `Callouts.ghostep` / `riposte` drop their ×N, and `Callouts.count` ticks a live count in place while its pop is younger than 0.2 s. `Callouts.banner(text, sub, tier)` passes `tier` to `MiniBanner.show(text, sub, tier)`: 4 and 5 add thin rules (classes `t4` / `t5`, `long` for a long name), never size. `hud.js` exports `FLURRY_TIER_NAMES` ({ 4: 'HUNDREDFOLD FLASH', 5: 'THOUSANDFOLD FLASH' }): a full flurry's banner takes it from the streak's tier (read on `player:flurry`) while `streakK('tiers')` > 0.
 
+### The loading screen and the title's layouts (ADR-196)
+**The loading screen** is plain HTML, CSS and a small classic script at the top of `<body>` in `index.html`
+(`#gcd-load`, its style `#gcd-load-css`), so it paints before the bundle has arrived; `scripts/build.mjs`
+carries it into `dist/index.html` as is. Until the boot reports, its bar is a CSS-only waiting run (the main
+thread is busy parsing). `src/main.js` breaks its boot into named steps with fixed shares of the bar
+(`BOOT`: fonts, renderer, world, hero, boss, interface, shaders; measured on a 4x-slowed CPU, the world is
+most of it) and yields one frame between them, only while a loader is on the page and the tab is visible.
+`ui/bootLoader.js`: `bootStep(word, frac, to)`, `bootDone()`, `bootFail()` drive the page's
+`window.__gcdLoad.step / done / fail` (all no-ops with no loader: the headless tests);
+`fontSheetReady(ms = 3000)` waits for the web fonts' sheet, which `index.html` loads without blocking the
+first paint, so the glyph atlas is drawn with the same fonts as before; `travelNote(id, name)` writes
+sessionStorage `gcd.travel` on a stage pick and the next page's loader names the world it travels to.
+`?loader=b` (default, the console: the finished steps with their real times) or `a` (centred); `-hold`
+(or `hold`) keeps it on screen at the world step. Nothing in it calls `Math.random`.
+
+**The title's layouts** (`ui/titleMenu.js` `class TitleMenu`, `menuNow()`; styles `ui/titleMenuStyle.js`,
+scoped under `.ab-title.gm`; the logo `ui/gcdLogo.js` `GCD_LOGO`, the same rows as the loader's, kept in
+step by hand): `?menu=c` (default, the sword's path), `a` (the world list), `b` (the campfire grid), `0`
+the title before (`TitleScreen` builds it as it was). The picker reads each level's `name`, `sub` and
+`boss` (levels/*.js: the boss's full name, "NAME, THE EPITHET") from `game.levels`. One selection serves
+every device: hover, the arrow keys, the pad's focus or a first tap select; a click, Enter, A or a second
+tap acts (travel: `stage.pick(id)`, a page load; begin: `stage.begin()` → `flow.beginFromTitle()`).
+`TitleScreen.eatsKey(code)` (a key the menu used this frame: the flow's "press any key" skips it),
+`holdsStart()` (the CONTROLS panel is open: neither the flow nor the pad starts), `navigate(el, dx, dy)`
+(the pad's 2D walk: the nearest entry by its place on screen, `ui/gamepad.js`). CONTROLS opens the full
+keyboard / pad / touch grids and the tell legend. The title's shimmer and its pinned `Math.random` draws
+(`STREAM_COLS`, ADR-195) run for every layout.
+
+**The hero's name**: the tag over his head (`ui/nameTags.js`) reads `player.name` ('gcd') and rides his
+head bone (`HERO_TAG`: `over` m above it, eased at `follow` /s; `fallback` m over his feet without a rig).
+`?heroName=a|b` puts the name by his meters too (a: a line over the HP row; b: at the head of the flask
+row); off by default.
+
 ### Flow — `src/game/flow.js` exports `class GameFlow`
 **Move telemetry** (ADR-108, `game/telemetry.js` `MoveLog`): `flow.moves` logs every `combat:answer` per boss move:
 `attempt` (a Map id → { seen, hit, blocked, parried, perfectParry, clashed, dodged, perfectDodge, damage, kills },
 counted in BLOWS; a contact stream is one blow per 1.5 s), `killedBy` ({ attack, tell }; 'burn' when no blow dealt
 the death), `worst(n)`, `commit('death' | 'victory')` (adds the attempt to the level's totals in localStorage
-`abyss.telemetry.v1`: { [level]: { attempts, deaths, wins, killedBy, moves } }), `reset()` on every respawn,
+`gcd.telemetry.v1`: { [level]: { attempts, deaths, wins, killedBy, moves } }), `reset()` on every respawn,
 `table(level, label)` and `totals()` / `clear()`. `flow.moveLabel(id)` names a move (the boss's `attackLabel`, else the
 id spelled out); `flow.deathRecap()` is the death screen's lines ("SLAIN BY …", then up to three moves with "n of m
 blows landed"), shown with `hud.bannerRecap`. The victory record gains "Struck most by". Console:
@@ -2711,14 +2832,17 @@ in the grass.) A button's status line is what its `run` returned. `_syncLifeBtns
 **Blade** (ADR-177; WORLD, beside Bites): `Blade: through` / `Blade: stops` flips `?cutStop` live
 (`setLook('cutStop', ...)`; read at each swing).
 **The 'streak' row** (ADR-167): one on / off toggle per piece of `STREAK_FX.pieces` (storm, tiers, aura,
-counter, sound, world), a `perfect: <mode>` button that cycles today / sharp / cinema
+counter, sound, world), `tempo` (flips `STREAK_FX.tempo`: the storm's tempo, read as a flurry starts), `chain` (flips
+`STREAK_FX.chain`: the flurry's chained paths, read as a flurry starts), `figure: any` (cycles
+`STREAK_FX.figure` through 'any' and the figures),
+a `perfect: <mode>` button that cycles today / sharp / cinema
 (`setPerfectMode`), and `burst N` that cycles the burst level 0 - 3 (`setBurst`). `_syncCutBtns` lights
 and labels them.
 
 ### Bindings — `src/core/bindings.js` (ADR-067)
 ```
 ACTIONS                     // [{ id, label, kb: [codes] | null, pad: [buttons] | null, fixed? }] — the defaults
-new Bindings(storage = localStorage)   // loads 'abyss.bindings.v2' (ADR-115: a v1 save is not read); storage null = defaults, nothing saved
+new Bindings(storage = localStorage)   // loads 'gcd.bindings.v2' (ADR-115: a v1 save is not read); storage null = defaults, nothing saved
 codes(a) / buttons(a)       // the keyboard-mouse codes / pad button indices bound to action a
 bindKey(a, code) / bindPad(a, i)   // replace a's binding; false when refused (reserved, fixed, wrong device)
 reset(save, 'kb' | 'pad' | null);  isDefault(which);  onChange(fn) → unsubscribe;  version
@@ -2821,7 +2945,7 @@ the nearest tile, and a thumb that **slides** onto another tile releases the fir
 second without lifting (release edge first; it must leave its tile by `stick`, 10 px; a slide that
 wanders further than `reach` from every tile keeps what it holds). Each finger holds its own tile.
 The player places the cluster in the pause menu: PAD POSITION (low / mid / high: `pad.pos`) and
-PAD SIZE (small / medium / large: `pad.size`), kept in `localStorage` (`abyss.touchPad`); the
+PAD SIZE (small / medium / large: `pad.size`), kept in `localStorage` (`gcd.touchPad`); the
 controls show through the pause screen, inert, while they are stepped (`.tc-root.peek`). Screens
 taller than 560 px get everything × `pad.tall`. API: `padPos`, `padSize`, `cyclePad('pos' | 'size')`,
 `padPoint(id)` (the screen point at a tile's middle), `padGeo`.
@@ -2862,7 +2986,7 @@ the stick rests level with it, and the camera takes the upright profile
 (`cameraRig.setMobile(phone, portrait)`). Turning the phone releases every held control.
 **Look** (ADR-097): the controls are drawn on the game, not over it: no filled panels, faint
 outlines and glyphs at rest (stick 40 %, buttons 62 %), full strength under a thumb. Activation
-also: `html.abyss-touch` (touch-action none, no callouts, crisp `image-rendering: pixelated`),
+also: `html.gcd-touch` (touch-action none, no callouts, crisp `image-rendering: pixelated`),
 `.ab-touch` on the HUD, the phone camera profile, and `CONFIG.defaultQualityTouch` when the
 quality is still the default. Pointer Events with multi-touch (each control captures its own
 pointer); long-press menus, iOS gesture zoom and page panning are blocked while active (the Lab
@@ -3440,6 +3564,20 @@ shape, so the marks read on a meadow too. Cosmetic only: no hit, no clock, no da
   tops). A mark's tear hands its blades over the same way (`scorch.tear` → `tops`), at most `perTear` a
   call. Cost at quality 1: `cutArc` ≈ 0.03 ms a frame of a swing, the batch ≈ 0.03 ms; about 130 tops a
   swing (65 thrown), half that at quality 0.5.
+- **The code spray** (`?grassSpray=`, `GRASS.spray`, ADR-192; read once): on the frame `cutArc` cuts a
+  blade it also throws CHIPS into the cut tops' batch (`MowFx._chip`; the pool is `fly.max` 2000 x quality),
+  `per` 0.5 a cut blade (x (1 / q)^`lowQ` 0.8 on a lower quality: the phone draws a third of the blades).
+  Today's default `m`: each chip is ONE CODE GLYPH from `GRASS.spray.code.glyphs` (the Hall of Falling
+  Script's digits plus `ZTHKEX<>=:+*`, all world-atlas glyphs), `size` 0.4 - 0.55 x the blade, unlit and
+  fogged (attribute `aK`), fresh `col.head` green cooling to `col.tail` over `cool` 0.18 s, settling to
+  `col.deep` (the grass's own darkness) within `darken` 0.35 s of landing, re-rolling to another code glyph
+  every `flip` 0.09 - 0.24 s while it flies, near upright; thrown, falling, lying and thinning as the cut
+  tops do. Under quality 0.75 it takes `m4`'s greens and a size 0.5 - 0.66 (it vanished on the phone).
+  The others: `m4` a step more visible, `m0` / `m2` (each glyph trailing two fading ones) / `m3` (the cut
+  tops turn to code too) the earlier code looks, `a` / `a2` chips of the blade's own letter in its own
+  colour, `a0` / `b` / `c` letters in the house letter (`world/grassSpray.js`, a `LetterBatch`), `0` none.
+  No allocation per frame, no `Math.random` (the tops' own stream). Cost at quality 1: the tops and chips
+  about 0.05 ms a frame; `cutArc` with the spawning about 2.4 ms over a whole four-swing string.
 - **The marks tear first** (`scars.mark` with `world.scorch.tearLine`, a density function and `mowOn()`):
   before its glyphs are laid, each kind tears its shape (`GRASS.mark`, depth `k` from a light blow to the
   hardest by its power, (power − 0.3) / 1.5): a `slam` a disc `r` 1.05 × its round (the crater's radius
@@ -3827,6 +3965,24 @@ its `update()` is a no-op: its owner writes it).
   grass in the same fetch; `trampleAt`): a trodden blade lies
   flatter every way and is drawn darker (up to 0.7 × darker). scorch.js imports `STEPS` for the decay and
   the cap.
+  **Since ADR-193 all of this is `?bend=0` only.** With the wake on (the default), the steps write no B:
+  a sprint step or a heavy landing calls `world.trail.press(x, z, r)` to widen the wake for 0.3 s.
+- **The hero's wake** (`world/grassTrail.js` `GrassTrail`, `world.trail`; ADR-193; `?bend=0|a|b|c`, default
+  `b`, `GRASS.bend` in grassTuning.js; read once, `bendLook()`): `world.update` calls `trail.update(dt, P)`
+  after the player with pusher slot 0. It keeps the hero's last `TRAIL_N` 32 points (x, z, age, r): a new
+  one every 0.35 m and 0.08 s (at once past 1 m; a jump over 3 m starts afresh; standing keeps the point
+  under him pressed; airborne, y > 1.5, radius 0; full, the straightest older point goes). It writes the
+  shared uniforms `uTrail[32]`, `uTrailBox[4]` (a bounding circle per `TRAIL_CH` chunk of `TRAIL_SEG` 8, so
+  the shader skips what is far), `uBend`, `uBendT`, `uBendS`, `uBendE` (shaderLib.js). The grass shader's
+  `trailBend` finds each blade's nearest stretch of the path and bends it ALONG his way and OUT from the
+  path with a smooth (1 - s²)² falloff (no map cells; ± 10° per blade), holds, then springs back by a
+  per-blade damped spring (blades at the edge sooner); a bent blade is at most 5 - 10 % darker by how bent
+  it is. With the wake on it replaces pusher slot 0; the boss's pushers (1 - 9) are unchanged. b (default):
+  hold 0.35 s, critically damped, rises over 2 - 2.6 s; a: a quick spring with a 10 % overshoot, back in
+  about 1 s; c: combed along his way, closing from the edges in, 0.8 - 2 s. `trail.clear()` on
+  `world.restore()`; `trail.bendAt()` is the shader's maths on the CPU (the tests'; keep the two in step by
+  hand). With `?life=off` the wake still bends (it belongs to the world, like the pusher). No random draw,
+  no event, about 1.4 µs a frame on the CPU; the grass draw 0.27 → 0.31 - 0.53 ms at quality 1 (desktop).
 - **The hooks**: player.js `_footstep` (the payload gains `surface` and today's dust is skipped while the
   piece is on), the plunge's landing and flurry.js's touchdown (heavy), the roll's landing (heavy; today's
   dust when footfall says nothing). sfx.js `footstep` plays a recipe per surface when `o.surface` is set
@@ -4620,7 +4776,7 @@ data and a subclass with a few hooks.
     ADR-133: a blow told before the piece began to fall and that no hold could clear).
   - `stats` `{ picks, links, chains, cuts, rests, holds, holdTime, feints, toldFeints, delays, fizzles, floors,
     seeks }`; `guardLog`: a ring of 64 `{ t, kind: 'feint' | 'toldFeint' | 'fade' | 'uncalled', what, with }`
-    (what the guard stepped in for; `ABYSS_PGUARD=1` prints the tally); `ledger` (the `CueLedger`).
+    (what the guard stepped in for; `GCD_PGUARD=1` prints the tally); `ledger` (the `CueLedger`).
   - Internals the tests and the Lab read: `_announce` / `_tellRisk` (a blow at risk keeps its
     `combat:tell` until the guard clears it at its cue, then tell and flash go out together; a blow that
     becomes a feint sends neither), `_worldCue(at, ans)` (a world warning grounds his uncued things in
@@ -5583,7 +5739,7 @@ shipped value (`stage`, `tech`, `lab`, `training`, `cutStop`, `apoc`, `ring`, `b
 proves a run was played. Validating a submitted record (plausible times per boss, the record's version
 against the game's, rate limits, replays if ever) is the server's job when there is one.
 
-**The store** (`game.records`, `Records(storage)`; localStorage `abyss.records.v1`, injectable):
+**The store** (`game.records`, `Records(storage)`; localStorage `gcd.records.v1`, injectable):
 `{ v: 1, levels: { [id]: { clears, bestTime, bestGrade } }, rush: { clears, bestTime, bestGrade } | null,
 recent: [record, ...] }` (a best: `{ timeMs, grade, marks, id, at }`). `best(id)`, `rushBest()`,
 `recent()` (the last `RECENT` = 24 records, oldest first: the queue a later uploader drains),
@@ -5593,7 +5749,7 @@ clear. Corrupt or another version's data in the key reads as empty (a later vers
 and carries it forward); a full storage drops the queue to its newest six and tries again; blocked or
 missing storage keeps everything for the page load. Nothing throws.
 
-**The boss rush** (`game.rush`, `Rush(sessionStorage, search)`; sessionStorage `abyss.rush.v1`, this tab):
+**The boss rush** (`game.rush`, `Rush(sessionStorage, search)`; sessionStorage `gcd.rush.v1`, this tab):
 `{ v, id, order, index, levelMs, deaths, flasks, live, splits, void, startedAt, done }`. The title's BOSS
 RUSH calls `game.startRush()` → `Rush.start(session, order, id)` and loads `rushUrl(order[0], href)`
 (`?level=<id>&rush=1`, the other parameters kept; `levelUrl` drops `?rush`). Every level in `LEVELS`

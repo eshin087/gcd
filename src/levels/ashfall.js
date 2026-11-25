@@ -1,5 +1,6 @@
 import { createCourtyard, COURTYARD } from '../world/courtyard.js';
 import { AshDisciple } from '../entities/enemies/ashDisciple/disciple.js';
+import { TUNING as BOSS_TUNING } from '../entities/enemies/ashDisciple/tuning.js';
 
 // The Ashfall Courtyard: the ruins of a sword sect, and the Ash Disciple who still keeps its vigil
 // (docs/specs/ash-disciple.md). The courtyard's paving is centred on the origin; the bonfire waits
@@ -11,6 +12,7 @@ export const ASHFALL = Object.freeze({
   aliases: ['ashfall', 'disciple', 'courtyard'],
   name: 'Ashfall Courtyard',
   sub: 'where the last disciple keeps his vigil',
+  boss: BOSS_TUNING.name, // the boss's full name (the title's world list; the HUD reads the boss's own)
   world: Object.freeze({
     arenaRadius: C.half,
     playerBound: 40, // round the origin: the courtyard, the path and the bonfire landing

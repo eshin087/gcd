@@ -18,6 +18,7 @@ import { Terrain } from './terrain.js';
 import { Ablaze, ablazeLook, setAblazeLook } from './ablaze.js';
 import { wallWind } from './wallReach.js';
 import { WyrmReact } from './react.js';
+import { wyrmTopKnobs } from './faces.js';
 
 // VAELGRIM, THE CINDER WYRM — the boss. Public contract: see docs/ARCHITECTURE.md (Dragon).
 // Wiring: Brain (ai.js) writes pose targets + root motion and runs the attack tell beats, Rig
@@ -912,7 +913,7 @@ export class Dragon {
     this.terrain.update(dt); // (guarded inside: never throws)
     this.ablaze.update(dt); // (phase 3's fire on its wings, claws and tail; goes out while it dies)
     if (this.state !== 'dying') {
-      this.fx.eyeGlints(dt, this.react.eyes(this.rig.pt.eyes), this.rig.s.eyes);
+      if (wyrmTopKnobs().glint) this.fx.eyeGlints(dt, this.react.eyes(this.rig.pt.eyes), this.rig.s.eyes);
       // phase 2 smoulders, phase 3 burns (TUNING.phaseEmbers)
       const embers = perPhase(TUNING.phaseEmbers, this.phase);
       if (embers > 0) this.fx.bodyEmbers(dt, this.hurtSpheres, embers, this.phase >= 3);

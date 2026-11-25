@@ -506,7 +506,17 @@ export class GameFlow {
       return;
     }
     if (this.game.hud?.newsUi?.on) return; // reading WHAT'S NEW: a key or click must not start the game
+    if (this.game.hud?.titleUi?.holdsStart?.()) return; // the title's CONTROLS panel is open (?menu=)
     if (this.stateTime > TUNE.title.minTime && this._dismissPressed()) this._startGame();
+  }
+
+  /** The title's BEGIN (a button on the new title layouts, ?menu=; ui/titleMenu.js): start at this
+   *  level's fire, as any key would. False when not on the title. */
+  beginFromTitle() {
+    if (this.game.state !== 'title' || this.recorder?.inRush) return false;
+    if (this.stateTime <= TUNE.title.minTime) return false;
+    this._startGame();
+    return true;
   }
 
   _titleShot() {
@@ -961,6 +971,7 @@ export class GameFlow {
       g.fx?.shed?.clear?.();
       g.fx?.ripple?.clear?.();
       g.fx?.streak?.clear?.();
+      g.fx?.rip?.clear?.();
       g.fx?.stamp?.clear?.();
       perfectClear();
       g.fx?.alpha?.clear?.();
@@ -1238,7 +1249,9 @@ export class GameFlow {
     const inp = this.game.input;
     if (!inp) return false;
     const B = inp.bindings;
-    const skip = (code) => NON_DISMISS_ACTIONS.some((a) => code === `@${a}` || !!B?.codes?.(a)?.includes(code));
+    // (a key the title's new layouts used to walk or pick, ?menu=: not a "press any key")
+    const T = this.game.state === 'title' ? this.game.hud?.titleUi : null;
+    const skip = (code) => !!T?.eatsKey?.(code) || NON_DISMISS_ACTIONS.some((a) => code === `@${a}` || !!B?.codes?.(a)?.includes(code));
     for (let b = 0; b < 3; b++) if (inp.mousePressed?.(b) && !skip(MOUSE_CODES[b])) return true;
     const keys = inp.pressedKeys;
     if (keys && typeof keys[Symbol.iterator] === 'function') {

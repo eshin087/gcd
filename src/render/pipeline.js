@@ -8,6 +8,9 @@ import { HERO_ART } from './materials.js';
 import { LET_GO_GLSL, letGoUniforms } from './letGo.js';
 import { RIPPLE } from './impactRipple.js';
 
+/** The time rip's live cuts at once (player/timeRip.js; the ASCII pass's uCutA / uCutB size). */
+const CUT_SLOTS = 2;
+
 // Frame pipeline:
 //   0. one scene-graph matrix update, then the rigid batches' bone matrices (rigidBatch.js)
 //   1. moon shadow map  (casters = objects on LAYER_CASTER, then the batched actors' shadow
@@ -229,6 +232,10 @@ export class Pipeline {
         // letters on every screen and at every camera distance; uSelfBox = the box round his
         // screen point that holds him (xy centre px, z half-size px, w = 1 once it is known)
         tSelfArt: { value: null },
+        // a human boss printed the hero's way (ADR-194; main.js sets it from ?bossPrint=, 0 = as before):
+        // x his ink lines found per font pixel (the hero's blocky strokes, not a hairline), y the
+        // player's part tables (HERO_SELF: the dotted cloth rim round his plates too)
+        uBossLike: { value: new THREE.Vector4(0, 0, 0, 0) },
         uSelfCell: { value: this.selfCell },
         uSelfPx: { value: 1 },
         uSelfBox: { value: new THREE.Vector4(0, 0, 0, 0) },
@@ -362,6 +369,16 @@ export class Pipeline {
         uRipC: { value: Array.from({ length: RIPPLE.slots }, () => new THREE.Vector4()) },
         uRip: { value: new THREE.Vector4(0, 0, 6, 0) },
         uRip2: { value: new THREE.Vector4() },
+        // THE TIME RIP (player/timeRip.js; ?rip=strip | negative): a flash cut's thin band of the
+        // printed letters, for two or three frames. uCutN = live cuts (0: the pass reads nothing); per
+        // cut uCutA = its two ends (frame px, y up), uCutB = (1 strip | 2 negative, the band's
+        // half-width in art cells, the strip's shift in cells, the negative's weight); uCutTone = the
+        // negative's pale cell (rgb) and w: a pixel brighter than the scene x uBg x w is a letter's
+        // stroke (printed dark) (all set by TimeRip.write)
+        uCutN: { value: 0 },
+        uCutA: { value: Array.from({ length: CUT_SLOTS }, () => new THREE.Vector4()) },
+        uCutB: { value: Array.from({ length: CUT_SLOTS }, () => new THREE.Vector4()) },
+        uCutTone: { value: new THREE.Vector4(0.46, 0.5, 0.56, 2.5) },
         uTime: U.uTime ?? { value: 0 },
         // LETTING GO (letGo.js): the dying wyrm's letters let go cell by cell and fall; shared with
         // its materials (uWyrmGrid: the art cell and the grid anchor; uWyrmLetGo.x: 0 = off)
@@ -434,6 +451,7 @@ export class Pipeline {
         uniform sampler2D tHeroArt;
         uniform vec2 uHeroCell;
         uniform sampler2D tSelfArt;
+        uniform vec4 uBossLike;
         uniform vec2 uSelfCell;
         uniform float uSelfPx;
         uniform vec4 uSelfBox;
@@ -485,6 +503,10 @@ export class Pipeline {
         uniform vec4 uRipC[${RIPPLE.slots}];
         uniform vec4 uRip;
         uniform vec4 uRip2;
+        uniform float uCutN;
+        uniform vec4 uCutA[${CUT_SLOTS}];
+        uniform vec4 uCutB[${CUT_SLOTS}];
+        uniform vec4 uCutTone;
         uniform float uTime;
         uniform vec4 uLetGoInk;
         ${LET_GO_GLSL}
@@ -501,6 +523,10 @@ export class Pipeline {
         // (0 '-', 1 '/', 2 '|', 3 '\\') the cell prints along the front, -1 none
         vec4 gRip = vec4(0.0);
         float gRipS = -1.0;
+        // the time rip (uCutN > 0 only, cutBand): gCutPx = the pixel this one prints (a strip's band
+        // reads the letters a few whole cells along the cut), gCutNeg = how far it prints in negative
+        vec2 gCutPx = vec2(0.0);
+        float gCutNeg = 0.0;
 
         float hash12(vec2 p) {
           vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -710,6 +736,10 @@ export class Pipeline {
         bool gSelf;
         vec2 gCell; // the letter cell (px)
         float gLine; // one font pixel (px)
+        // the player's part tables (HERO_SELF) for this part: always for him; for a boss printed the
+        // hero's way (uBossLike.y) only where HERO_SELF differs from HERO_INK, the plates (parts 12 - 16),
+        // so the hero's blade, dimmed and lit by his own cuts (player.js bladeLook), never reaches a boss's
+        bool selfTab(int pid) { return gSelf || (uBossLike.y > 0.5 && pid >= 12 && pid <= 16); }
         bool isWho(float a) { return gSelf ? isSelf(a) : (a > 0.46 && a < 0.49); }
         float heroGlyph(float idx, vec2 local) {
           vec2 uv = vec2((idx + local.x) / uHeroCols, local.y);
@@ -841,7 +871,7 @@ export class Pipeline {
           bool cHero = isWho(cH.a);
           // (his ink lines are found per FONT pixel, gLine screen px: on a large screen they keep the
           // letters' own blocky step instead of turning into a hairline round big letters)
-          vec2 uvP = gSelf ? (floor(px / gLine) + 0.5) * gLine / uRes : px / uRes;
+          vec2 uvP = (gSelf || uBossLike.x > 0.5) ? (floor(px / gLine) + 0.5) * gLine / uRes : px / uRes;
           vec4 sP = texture2D(tScene, uvP);
           bool pHero = isWho(sP.a); // this pixel itself shows the hero (its ink line is found here)
           bool hCell = cHero || hhits >= 2.0; // the cell prints one of his fill letters
@@ -879,7 +909,7 @@ export class Pipeline {
               // the blade / gem keep their glow (capped far away: uHeroFar.w)
               float hdr = mix(1.0, clamp(mx, 1.0, mix(64.0, uHeroFar.w, far)), smoothstep(0.25, 0.6, sat));
               int pid = int(clamp(heroPartOf(aC), 0.0, ${(HERO_PARTS - 1).toFixed(1)}));
-              vec4 pf = gSelf ? uSelfPartFill[pid] : uHeroPartFill[pid];
+              vec4 pf = selfTab(pid) ? uSelfPartFill[pid] : uHeroPartFill[pid];
               if (uHeroDebug > 0.5 && uHeroDebug < 1.5) {
                 col = c; // look-dev: the raw art source
               } else if (uHeroDebug < 1.5) {
@@ -937,13 +967,13 @@ export class Pipeline {
                 vec2 pg = vec2(step(0.1, eR) - step(0.1, eL), step(0.1, eU) - step(0.1, eD));
                 bool vRun = abs(pg.x) > abs(pg.y), hRun = abs(pg.y) > abs(pg.x);
                 int pidP = int(clamp(heroPartOf(sP.a), 0.0, ${(HERO_PARTS - 1).toFixed(1)}));
-                vec4 pInk = gSelf ? uSelfPartInk[pidP] : uHeroPartInk[pidP];
-                vec4 pfP = gSelf ? uSelfPartFill[pidP] : uHeroPartFill[pidP];
+                vec4 pInk = selfTab(pidP) ? uSelfPartInk[pidP] : uHeroPartInk[pidP];
+                vec4 pfP = selfTab(pidP) ? uSelfPartFill[pidP] : uHeroPartFill[pidP];
                 // stroke style (pfP.y): 0 one stroke per cell (a 1-px gap at the letter spacing),
                 // 1 dotted (a short dash per cell: the torn tails' and the hair's specks), 2 unbroken
                 // (far away the strokes join up: a crisp, unbroken silhouette at the game camera)
                 bool outer = pl > 0.9;
-                vec4 pRim = gSelf ? uSelfPartRim[pidP] : uHeroPartRim[pidP];
+                vec4 pRim = selfTab(pidP) ? uSelfPartRim[pidP] : uHeroPartRim[pidP];
                 float on = 1.0, style = outer && pfP.y > 7.5 ? 1.0 : mod(pfP.y, 4.0);
                 if (style > 1.5) on = 1.0;
                 else if (style > 0.5) on = vRun ? step(abs(local.y - 0.5), 0.2) : hRun ? step(abs(local.x - 0.5), 0.2) : 1.0;
@@ -983,8 +1013,34 @@ export class Pipeline {
           return drew;
         }
 
+        // ---- the time rip (timeRip.js): is this pixel's art cell in a live cut's band? Measured in
+        // cells (5 x 8) from the cell's centre to the cut's segment; a strip moves what the band
+        // prints by whole cells along the cut, each side the other way (the cells ON the line stay:
+        // the seam is the fire field's steel); a negative marks the band.
+        void cutBand(vec2 px) {
+          vec2 c = floor(px / uArtCell) + 0.5;
+          for (int i = 0; i < ${CUT_SLOTS}; i++) {
+            if (float(i) >= uCutN) break;
+            vec4 A = uCutA[i];
+            vec4 B = uCutB[i];
+            vec2 a = A.xy / uArtCell, ab = A.zw / uArtCell - a;
+            float L2 = dot(ab, ab);
+            if (L2 < 0.25) continue;
+            float t = dot(c - a, ab) / L2;
+            if (t < 0.0 || t > 1.0) continue;
+            float L = sqrt(L2);
+            vec2 dir = ab / L;
+            float s = dot(c - a, vec2(-dir.y, dir.x));
+            if (abs(s) > B.y) continue;
+            if (B.x < 1.5) {
+              if (abs(s) < 0.5) continue;
+              gCutPx = px - floor(dir * B.z * sign(s) + 0.5) * uArtCell;
+            } else gCutNeg = max(gCutNeg, B.w);
+          }
+        }
+
         void cellMain() {
-          vec2 px = gl_FragCoord.xy;
+          vec2 px = gCutPx;
           // the hero first: his own pixel-font grid, drawn as ink-line art. The player on the grid
           // that follows his size (only the box round him is searched), then the human bosses on theirs
           vec2 dS = abs(px - uSelfBox.xy);
@@ -1152,10 +1208,14 @@ export class Pipeline {
           vec3 col;
           if (a < 0.03) {
             col = texture2D(tScene, px / uRes).rgb; // untagged: pass through
+          } else if (isArt(a) || isProp(a)) {
+            // world cell centred on a creature / prop edge: raw pixel. (Checked BEFORE the creature
+            // grid: the player's own window (isSelf, 0.42 - 0.45) lies under 0.46, so a world cell whose
+            // centre fell on his blade printed a creature-grid letter in the steel's raw HDR colour (4 - 6)
+            // beside it: a bright letter that bloomed round a resting blade. ADR-183)
+            col = texture2D(tScene, px / uRes).rgb;
           } else if (a < 0.46) {
             col = creatureCell(c, cell, local);
-          } else if (isArt(a) || isProp(a)) {
-            col = texture2D(tScene, px / uRes).rgb; // world cell centred on a creature / prop edge: raw pixel
           } else if (a < 0.8) {
             float l = 1.0 - exp(-luma(c.rgb) * uLumMap);
             float level = clamp(floor(l * 14.0), 0.0, 13.0);
@@ -1200,8 +1260,21 @@ export class Pipeline {
         }
 
         void main() {
+          gCutPx = gl_FragCoord.xy;
+          if (uCutN > 0.5) cutBand(gCutPx);
           cellMain();
           if (uWyrmLetGo.x > 0.0) letGoFall();
+          // the time rip's negative (the band only): the letter that was printed here, inverted. A
+          // pixel of a letter's stroke is brighter than the cell's background (black on a figure, the
+          // scene's colour x uBg on the floor): above that x uCutTone.w it is a stroke and prints
+          // dark, everything else in the cell prints the pale steel. The glyph's mask, not a fill.
+          if (gCutNeg > 0.0) {
+            vec3 col = gl_FragColor.rgb;
+            float bg = luma(texture2D(tScene, gl_FragCoord.xy / uRes).rgb) * uBg * uCutTone.w;
+            float lit = step(max(0.004, bg), luma(col));
+            vec3 neg = mix(uCutTone.rgb, uCutTone.rgb * 0.05, lit);
+            gl_FragColor.rgb = mix(col, neg, clamp(gCutNeg, 0.0, 1.0));
+          }
         }
       `,
       depthTest: false,
@@ -1552,6 +1625,16 @@ export class Pipeline {
         this.ripple = null;
       }
     }
+    // the time rip's live cuts (strip / negative), projected with the same camera (setTimeRip)
+    if (this.timeRip) {
+      try {
+        this.timeRip.write(this);
+      } catch (err) {
+        u.uCutN.value = 0;
+        console.error('[timeRip] write failed', err);
+        this.timeRip = null;
+      }
+    }
     // (the wyrm's grid anchor: _updateWyrmGrid, before the scene pass)
     // the props' grid anchor: where the world's ground origin would be on screen if the whole ground
     // moved like the ground at the focus (the screen position of the focus, minus the focus's world
@@ -1588,6 +1671,12 @@ export class Pipeline {
   setRipple(ripple) {
     this.ripple = ripple ?? null;
     if (!this.ripple) this.asciiMat.uniforms.uRipN.value = 0;
+  }
+
+  /** The time rip (player/timeRip.js; null: none): its write(pipeline) fills uCutN / uCutA / uCutB right before the ASCII pass. */
+  setTimeRip(rip) {
+    this.timeRip = rip ?? null;
+    if (!this.timeRip) this.asciiMat.uniforms.uCutN.value = 0;
   }
 
   /** The fire field (render/fireField.js): its heat passes run after the scene pass, its letters draw first in the FX pass. */

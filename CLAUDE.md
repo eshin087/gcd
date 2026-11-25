@@ -1,6 +1,9 @@
-# gcdAbyss — instructions for Claude agents
+# gcd — instructions for Claude agents
 
-ABYSS is a long-term browser game: a **wuxia skill boss rush** in the vein of Phantom Blade Zero,
+gcd is a long-term browser game (the name is written lowercase wherever a player sees it; ADR-195),
+named for its hero: gcd, a mysterious being who wields the most powerful sword in all universes, the
+sword that lets him defeat these legendary bosses and carries him between campfires in different worlds
+and universes. It is a **wuxia skill boss rush** in the vein of Phantom Blade Zero,
 with some exploring and RPG elements and fixed rewards (techniques, weapons, abilities; ADR-059),
 rendered in its own ASCII look. Today: eight levels, each its own
 page load (`?level=`): Cinderwood Hollow (the Cinder Wyrm), the Ashfall Courtyard (the Ash Disciple,
@@ -14,7 +17,7 @@ Second, is the second learned technique) and Halcyon Plaza (Halcyon, the Last Sa
 fights in sword reach, his eyes, a city his moves tear down; no reward yet).
 Read this file first, every session.
 
-- Repo: https://github.com/eshin087/gcdAbyss · Live: https://gcdabyss.vercel.app (auto-deploys `main`)
+- Repo: https://github.com/eshin087/gcd · Live: https://thegcd.vercel.app (auto-deploys `main`)
 - Stack: Three.js 0.180 (WebGL2), plain ES modules, no framework, esbuild only for the release bundle.
 
 ## Start-of-session checklist
@@ -35,7 +38,7 @@ npm test         # headless integration sims (real game modules, mocked DOM/WebG
                  # side by side (tests/run.mjs; --serial or --jobs N after `npm test --`;
                  #  --shard I/N one of CI's parallel shares, --list shows the shares; ADR-153)
                  # (one suite: node tests/integration/lord.mjs . <scenario>, also integ.mjs / duel.mjs / world.mjs / asc.mjs / fox.mjs / city.mjs;
-                 #  `duel.mjs . pace` / `lord.mjs . pace`: the duelists' pressure meter, ABYSS_PSEEDS / ABYSS_PSECS;
+                 #  `duel.mjs . pace` / `lord.mjs . pace`: the duelists' pressure meter, GCD_PSEEDS / GCD_PSECS;
                  #  woke.mjs: Xin Yi, `woke.mjs . strategy` opt-in)
 npm run build    # single-file dist/index.html (what Vercel serves)
 npm run hero-parts  # regenerate src/entities/player/heroParts.js (needs Blender 4.2+; ADR-037)
@@ -43,12 +46,12 @@ npm run hero-parts  # regenerate src/entities/player/heroParts.js (needs Blender
 Levels: `?level=ash` loads the Ashfall Courtyard, `?level=starless` the Obsidian Throne, `?level=ring` the Skybreak Ring, `?level=fox` the Foxfire Terrace, `?level=grove` the Windless Grove (`?tech=draw`: One Breath without the kill), `?level=code` the Hall of Falling Script (`?tech=lean`: the Long Second without the kill), `?level=city` Halcyon Plaza (default:
 Cinderwood); the title screen and the Lab pick one too. Kept for later use (ADR-089; today's look is the default): `?heroLook=robe|swallow|warden`
 (`-shade`: the face in shadow) and `?sword=sheet|ribbon|crescent` dress the hero (Lab: OUTFIT, sword);
-`?wyrmFace=old` gives the wyrm the face it had before the drake (ADR-124), `skull|loong|demon` (ADR-120)
+`?wyrmTop=0|a|b` the drake head from above before the owner's pick `c` (ADR-189); `?wyrmFace=old` gives the wyrm the face it had before the drake (ADR-124), `skull|loong|demon` (ADR-120)
 and `tyrant|viper|revenant` (ADR-124) the heads the owner passed on. The owner's picks with the options turned down behind them: `?wyrmLook=0|a|b` (c: the
 wyrm's lean build; 0 = the wyrm before; ADR-123), `?zoomArt=a|c` (b: the letters
 follow the zoom) and `?ablaze=off|a|c` (b: the wyrm's phase 3 fire). The impact pass's pieces (ADR-149): `?impact=off|all|stamp,ripple,react,thump` (default all; Lab: the 'impact' row), and
 `?calm=0..3` the light at the contact (default 1; 0 = as before; Lab: the row's `calm` button). The streak pass's switches (ADR-167): `?streakfx=off|all|storm,tiers,aura,counter,sound,world`,
-`?perfect=today|sharp|cinema` (default sharp), `?burst=0..3` (default 2), `?streakCount=` and `?auraFire=` (Lab: the 'streak' row); the perfect parry's spark spit `?parryFx=0|a` (default a; ADR-181; Lab: the streak row's `parryFx`); the sword's green flame (tiny marks burning round the steel, in the hero's own letters; ADR-182) is ON by default, `?mystic=0` turns it off (Lab: PLAYER → `mystic`). Bites (a blow knocks the bricks, the letters, out of
+`?tempo=0` (the storm without its tempo: the pace of ADR-167), `?chain=0` (the flurry's passes teleport round the ring again, with the crescents and the 'A' shards: the paths before the chain), `?figure=any|star|zigzag|cage|spiral|cross` (the shape the chained passes draw; default any: a different one each flurry), `?perfect=today|sharp|cinema` (default sharp), `?burst=0..3` (default 2), `?streakCount=` and `?auraFire=` (Lab: the 'streak' row); the flurry's cuts ripping the picture `?rip=off|tear|strip|ghosts|negative` (default strip, the owner's pick; player/timeRip.js; Lab: the streak row's `rip`); the perfect parry's spark spit `?parryFx=0|a` (default a; ADR-181; Lab: the streak row's `parryFx`). Bites (a blow knocks the bricks, the letters, out of
 a piece where it struck; the hero's blade goes clean through what it does not fell, chipping it along
 the cut) are on: `?chip=0` turns them off (ADR-132); `?cutStop=1` gives back the blade that stops there
 (ADR-177; Lab: WORLD → Blade). Floor marks (every boss blow that meets the ground leaves a mark of its
@@ -65,7 +68,7 @@ parameter draws the owner's picks, `?looks=old` the looks before that pass, one 
 (Lab: LOOKS); the table is STYLE.md → "The look switches". In the dev server: append `?lab` to the URL (or press **F1**) for the **Lab** — trigger any boss
 ability / phase / transition, god mode, time scale, hitbox overlay. Console: `__game` (everything),
 `__tick(dt, frames)` (step the sim even when the tab is hidden), `__inspect(x, y, w, h)` (magnify).
-In Claude Code the preview config is `.claude/launch.json` (`abyss-dev`).
+In Claude Code the preview config is `.claude/launch.json` (`gcd-dev`).
 
 ## Rules
 - **Contracts first.** Cross-module APIs and event names live in `docs/ARCHITECTURE.md`. If you
@@ -152,7 +155,7 @@ In Claude Code the preview config is `.claude/launch.json` (`abyss-dev`).
   an up-to-date branch, passed at once for a docs-only PR (docs/, *.md, .claude/; ADR-153); linear
   history, squash/rebase merge, branches auto-delete). Flow: branch → push → `gh pr create` → CI +
   Vercel preview deployment on the PR → squash-merge → Vercel deploys `main` to production
-  (gcdabyss.vercel.app). Never bypass the protection. The squash commit takes the PR's title and
+  (thegcd.vercel.app). Never bypass the protection. The squash commit takes the PR's title and
   description, so write them as the commit message. Every PR auto-merges: `.github/workflows/automerge.yml` sets squash
   auto-merge when a PR is opened (the owner's call, ADR-185), so it merges as soon as `test-and-build` is
   green on an up-to-date branch. To hold one back for the owner to look first, open it as a draft or with

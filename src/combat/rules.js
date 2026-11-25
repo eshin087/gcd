@@ -177,6 +177,77 @@ export const DEFENSE = Object.freeze({
     // the camera's kick and shake x `cam`, its flare and sparks x `fx`. The last shown cut and the art
     // keep their whole weight. A riposte is all flash cuts: the same rule.
     storm: { shown: { air: 3, ground: 2 }, fall: 0.56, floor: 0.12, stopMin: 0.018, cam: 0.35, fx: 0.45 },
+    // THE TEMPO (STREAK_FX.tempo, on by default, ?tempo=0 off; only with the storm piece on: it
+    // replaces `shown` / `fall` above): "heavy first, then faster by ratio". The first flash cut is a
+    // HEAVY BEAT that can be read: hidden `blink`, SEEN wound up where he appears `hang`, the pass
+    // `dash` (as fast as ever: the contrast is the point), frozen on the contact `stop`, the finish
+    // held `hold` (real s; on the ground round a foe / in the air round the wyrm's head). Every later
+    // cut takes `ratio` of the one before: r = lerp(ratio[0], ratio[1], (c - 2) / 4 clamped), c the
+    // flash cuts paced (a flurry's all; a riposte's all but its last), pace(i) = max(storm.floor,
+    // r ^ (k i)) at the storm piece's strength k: a short flurry stays weighty, a long one runs into
+    // the storm. A cut whose pace is under `stormAt` is a STORM cut (as above: no wind-up seen, the
+    // freeze `stop` x pace but at least storm.stopMin). The camera's kick and shake and the cut's
+    // flare and sparks fall with the pace, from 1 at pace 1 to storm.cam / storm.fx at `stormAt`;
+    // a cut's freeze is `stop` x its pace. A riposte's last cut is the heavy beat again.
+    tempo: {
+      ground: { blink: 0.06, hang: 0.11, dash: 0.12, stop: 0.11, hold: 0.15 },
+      air: { blink: 0.06, hang: 0.08, dash: 0.1, stop: 0.11, hold: 0.11 },
+      ratio: [0.78, 0.52],
+      stormAt: 0.4,
+    },
+    // THE CHAIN (STREAK_FX.chain, on by default, ?chain=0 off: the ring-teleport paths above exactly):
+    // every pass starts where the one before ended (A -> B -> C, never back to the start). The first
+    // cut starts on the side he dodged on (`reach` out, as before); each pass then runs from where he
+    // stands past the target, `off` m off its middle (on the ground past his side; round the head
+    // across it), on out to `reach` beyond it. The whole run is planned as the flurry starts (a
+    // depth-first search over both sides x the `off` candidates of every cut, pruned by its bound, at
+    // most `nodes` steps). Its score: the lines' spread (the smallest |sin| between two of them, the
+    // wyrm's neck kept clear as before; counted up to `gap`: past it a star is a star), less `near`
+    // for a pass that ends within `keepOff` m of his dodge spot (never back to the start), `artNear`
+    // if the art on the ground would end there too, `artNeck` if round the head the iai would run
+    // along the neck (its coil then carries him round the head to where it does not), `same` for a turn the other way (a zigzag lays lines side by side); plus
+    // `front` when on the ground the last flash cut ends before the foe's face (the art through him
+    // then leaves the hero at his back, as before).
+    // The first cut may start `start` rad round from straight toward the dodge spot (still on his
+    // side), whichever spreads the star best (round the head the neck takes a place in it).
+    // A run of 2, 4 or 6 flash cuts whose lines spread cannot also end before his face: the art then
+    // leaves the hero past the foe on his front side. The art starts where the last cut ended: the iai from there, the split
+    // rises from there, the vault steps in from there (during its coil). Every hanging line is the
+    // path his chest ran (CHEST m over his root); the flash cuts' crescents and the iai's lens are gone
+    // (the line is the slash), the split's / vault's crescent follows his blade's sampled path, the
+    // ground's last blow throws white-steel letter dust (flurryFx.js DUST) instead of the 'A' shards.
+    chain: {
+      off: { ground: [0.55, 0.67, 0.79, 0.9], air: [0.85, 0.95, 1.05, 1.15] },
+      start: [0, 0.2, -0.2, 0.4, -0.4],
+      nodes: 8000,
+      gap: 0.45,
+      keepOff: 1.6,
+      near: 1,
+      artNear: 0.1,
+      artNeck: 0.15,
+      front: 0.05,
+      same: 0.04,
+      // THE FIGURES (player/flurryFigures.js; STREAK_FX.figure, ?figure=): the shape the passes draw,
+      // one picked for each flurry (the flurry's own seeded stream, never the same twice running).
+      // `min` the fewest flash cuts it reads at; `off` m off the target's middle (ground / air), `end`
+      // m from it where a pass ends, `sides` the cage's polygon by the cut count (the spiral's
+      // corners as a square's). A figure that does not fit (a wall, the dodge spot, the
+      // neck: its cost over `fit`) is passed over; the star always fits.
+      // `body`: on a man no pass nearer his middle than his side (ADR-101; the spiral's and the cross's
+      // "through the middle" run past his side there); round the head right through it.
+      figures: {
+        body: { ground: 0.55, air: 0 },
+        star: { min: 1 },
+        zigzag: { min: 2, off: { ground: 1.15, air: 1.5 } },
+        // (the cage and the spiral go round him on every side: round the wyrm's head one side would
+        // run over its neck, through its body: on the ground only)
+        cage: { min: 3, air: false, off: { ground: 1.2, air: 1.5 }, sides: [3, 6] },
+        spiral: { min: 3, air: false, off: { ground: 1.3, air: 1.6 }, end: { ground: 1.0, air: 2.0 }, sides: 4 },
+        cross: { min: 3, off: { ground: 1.3, air: 1.6 } },
+      },
+      fit: 0.5,
+      turns: [0, 0.35, -0.35, 0.7, -0.7, 1.05, -1.05],
+    },
     last: { damage: 60, posture: 22 },
     keepStreak: 0,
   },

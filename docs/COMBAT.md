@@ -1,6 +1,6 @@
 # Combat design
 
-ABYSS is an action RPG, not a stamina-gated soulslike. Fights are about **reading tells** and
+gcd is an action RPG, not a stamina-gated soulslike. Fights are about **reading tells** and
 answering them with **block, parry or a perfectly timed dodge** — inspired by Phantom Blade Zero's
 attack tells, read from the enemy itself rather than from HUD text, and by Sekiro's deflect
 exchanges: an enemy's combo is met blow by blow. Numbers live in `src/combat/rules.js` (shared) and
@@ -581,7 +581,78 @@ same 258 damage in the same time as a streak of 7 (integ `storm`).
   star: 19 - 23° from the nearest at seven). The camera holds the target, not the hero. Against the
   wyrm, the flash cuts of 5 / 6 / 7 blows: 1.02 / 1.25 / 1.52 s → 0.97 / 1.08 / 1.18 s, the seven's
   blows 6, 17, 16, 14, 8, 4 frames apart; 4 blows or fewer unchanged (3 or fewer on a man). A riposte
-  (all flash cuts) follows the same rule.
+  (all flash cuts) follows the same rule. This rule is still one switch away (`?tempo=0`, the Lab's
+  `tempo` button); by default the storm runs on its tempo:
+- **The tempo** (2026-11-24; `DEFENSE.flurry.tempo`, `STREAK_FX.tempo`; only with the storm piece on).
+  Owner: the storm "looks too fast in the early streaks ... not epic". One rule, **heavy first, then
+  faster by ratio**. The first flash cut is a HEAVY BEAT that can be read: hidden 0.06 s, SEEN wound up
+  where he appears 0.11 s (0.08 round the head: the air cut has its wind-up now too), the pass as fast
+  as ever (0.12 s; 0.10), frozen on the contact 0.11 s, the finish held 0.15 s (0.11): its contact
+  0.2 - 0.22 s after the dodge. Every later cut takes a share r of the one before, r = 0.78 with 2
+  paced cuts falling to 0.52 with 6 (`ratio`; a riposte paces all its cuts but its last), never under
+  12 % (`floor`): paces 1 / .78 (2 cuts), 1 / .72 / .51 (3), 1 / .65 / .42 / .27 (4),
+  1 / .59 / .34 / .20 / .12 (5), 1 / .52 / .27 / .14 / .12 / .12 (6). A cut whose pace is under 0.4
+  (`stormAt`) is a storm cut (as above), so the storm is a speed, not a place: none at 2 or 3 blows,
+  1 at 5, 4 at 7. A cut's freeze is 0.11 s × its pace; its camera kick / shake and its flare and
+  sparks fall with the pace from whole at 1 to the storm's ×0.35 / ×0.45 at 0.4, no cliff. A riposte's
+  last cut is the heavy beat again (its freeze ×1.8). Frames at 60 fps from the start, a man (the Ash
+  Disciple) / the wyrm's head: 7 blows 14, 41, 55, 62, 67, 71, last 113 / 12, 36, 47, 53, 57, 61, last
+  101 (gaps 27, 14, 7, 5, 4 / 24, 11, 6, 4, 4); 3 blows 14, 45, last 101 / 12, 39, last 90. Damage, the
+  blows, the world's hold, the crit window and where he ends are as before (integ `storm`, duel
+  `tempo`).
+- **The chain** (2026-11-24; `DEFENSE.flurry.chain`, `STREAK_FX.chain`; `?chain=0` and the Lab's
+  `chain` button give the paths above exactly). Owner: "the 2 streak the character should quickly move
+  2 times from A - B - C but right now it goes back to the original A location"; "make sure all the
+  white slashes ... is accurate to how the character moved". **Every pass starts where the one before
+  ended.** The first flash cut starts on the side he dodged on, `reach` out (2.3 m on a man, 4.6 m round
+  the head); each pass runs from where he stands past the target (on a man 0.55 - 0.9 m off his middle,
+  past his side; round the head 0.85 - 1.15 m off its middle) and on out to `reach` beyond it, where the
+  next starts. The blink between two cuts stays (the afterimage, the arrival flash), but he reappears
+  where he already is, turned to the next line. **The passes draw a FIGURE, a different one each
+  flurry** (owner: "not always form some kind of star ... always be dynamic with different figures";
+  `DEFENSE.flurry.chain.figures`, `player/flurryFigures.js`; `?figure=` / the Lab's `figure` button pin
+  one, default `any`): picked from the flurry's own seeded stream among those offered at that many
+  flash cuts, never the same twice running:
+  - **star** (any count): every pass to the same side, the lines crossing on him; its offsets
+    searched for the widest spread (at seven blows the six lines 21 - 28° apart at least).
+  - **zigzag** (2 cuts and up): each pass runs back across him, each crossing him farther along one
+    way (offsets swept from -1.15 to +1.15 m; 1.5 round the head): a lightning bolt that travels
+    across him.
+  - **cage** (3 cuts and up, on the ground): every pass skims the same side of him 1.2 m off his
+    middle, corner to corner of a triangle / square / pentagon / hexagon (by the cut count): he
+    circles him with cuts.
+  - **spiral** (3 cuts and up, on the ground): the cage turning inward, each pass nearer (1.3 m down
+    to his side), the last straight past his middle.
+  - **cross** (3 cuts and up): every other pass straight through his middle, one round his side
+    between them (1.3 m off; 1.6 round the head), each on the other side: the straight cuts cross in
+    an X (an hourglass with its sides).
+  On a man no pass of any figure comes nearer his middle than his side, 0.55 m (`figures.body`,
+  ADR-101: never through his body); the spiral's and the cross's "through the middle" run there.
+  A figure is laid at the turn round him (up to 60° off straight toward the dodge spot) and the hand
+  that cost least; one that would pass within 1.6 m of the dodge spot (anywhere along a pass after the
+  first), run into a wall, or round the head along its neck is passed over, and the star always fits
+  (a hexagon cage round a man the dodge spot 2.5 m off him does not: it comes at 3.5 m). The cage
+  and the spiral are not offered round the wyrm's head (one side would run over its neck, through its
+  body). The storm's late cuts follow the figure. No pass ends within 1.6 m of the dodge spot, and on
+  a man the last cut ends before his face when the figure allows it. **The art starts where the last cut ended**: the iai from there through the target
+  (round the head, if that line runs along the neck, its coil carries him round the head first), the
+  split rises from there during its coil to its height and falls through, the vault steps in from
+  there during its coil; Skyfall's plunge rises over the side of the head he is on. With one blow (the
+  art alone) nothing moves. On a man he still ends past the foe, `ghostepBehind` beyond him along the
+  art, and the foe staggers away from there; **after an odd number of flash cuts (2 blows, and 4 or 6
+  when the star needs it) that is at the foe's FRONT**, not his back (a run of 2 / 4 / 6 cuts whose
+  lines spread cannot also end before his face). The crit window opens either way. A riposte's cuts
+  chain the same way and he is back where he parried at the end, as before. **Every slash is on his
+  path:** each hanging cut is the path his chest ran (A to B, 1.2 m over his root), not a short line
+  through the foe; a flash cut's bite (its stroke, star and sparks) and the iai's crossing flash are
+  drawn where his path passes the target; the flash cuts' crescents and the iai's two-arc lens are gone;
+  the split's / vault's crescent is drawn along his blade's sampled path through the strike; the burst's
+  thin lines are no longer than the cuts. **The last blow on a man throws white-steel letter dust**
+  (`flurryFx.js` `DUST`: 96 tiny letters and 8 falling dots, 0.05 - 0.09 m, steel white to a pale
+  blue-grey under the bloom threshold, thrown low and fast along the blow and to its sides, dragged
+  down into a drift that thins out in 0.6 - 0.9 s) instead of the slam's big 'A' shards; round the
+  head the art's shards are dust too. Damage, the blows and their frames, the world's hold and the
+  crit window are as before (duel / integ `chain`).
 - **Past seven** (`tiers`): at tier 4 every hanging cut has a fine echo line beside it, at tier 5 two;
   on the last blow they split away and rings open where they cross. The banner names the full flurry
   of a tier-4 / 5 streak HUNDREDFOLD FLASH / THOUSANDFOLD FLASH (SEVENFOLD below), a rule more, never
@@ -2930,7 +3001,7 @@ singles ~25 %; P3 strings ~42 %, fire ~41 %.
 
 **Difficulty (measured, ADR-033).** Integration bots (`tests/integration/integ.mjs`): `win` is a
 god-mode defender that answers every tell; the opt-in `probe` is a mortal bot that answers a share
-of them (`ABYSS_SKILL`, default 0.8; `node tests/integration/integ.mjs . probe`) and fights until it
+of them (`GCD_SKILL`, default 0.8; `node tests/integration/integ.mjs . probe`) and fights until it
 wins or dies. The v0.5 probe runs were at 4200 HP, before the last bump to 4500 (+~7 % fight length);
 the v0.6 runs are one run each at 4500 HP (the sims are seeded, but one run is one sample).
 

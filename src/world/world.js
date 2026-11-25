@@ -5,6 +5,7 @@ import { createGround } from './ground.js';
 import { createForest } from './forest.js';
 import { createGrass, meadowDensity, meadowHeight } from './grass.js';
 import { Scorch } from './scorch.js';
+import { GrassTrail } from './grassTrail.js';
 import { Atmosphere } from './atmosphere.js';
 import { LivingWorld } from './life/life.js';
 import { GroundFire } from './fire.js';
@@ -19,6 +20,9 @@ import { resolveOn } from './edge.js';
 //   world.edge                              the edge of the open ground (edge.js, ADR-125) or null
 //   world.heroBound(x, z)                   how far out the hero may stand in that direction (m)
 //   world.setPusher(slot, x, y, z, radius)  grass trample (slot 0 = player, 1..9 = dragon)
+//   world.trail                             the hero's wake through the grass (grassTrail.js, `?bend=`): his
+//                                           pusher's last positions, which the grass bends round and springs
+//                                           back from; trail.press(x, z, r) a hard step widens it
 //   world.gust(x, z, strength, radius)      radial wind impulse (wing beats, landings)
 //   world.life                              the living world (life/life.js; `?life=`): the shared wind, what
 //                                           falls and lies, footsteps, weather, creatures. null if it failed to build
@@ -70,6 +74,7 @@ export class World {
     if (Number.isFinite(this.forest.groundY) && this.forest.groundY !== 0) this.ground.position.y = this.forest.groundY;
     applySky(U, this.forest.sky);
     this.scorch = new Scorch(U, game);
+    this.trail = new GrassTrail(U);
     const extent = 150;
     const meadow = meadowDensity(this.colliders, this.forest.treeSpots, this.forest.bare, extent, this.forest.slabs);
     // a set may thin and shorten its grass (`grass: { density(x, z) → 0..1 factor, height, ash }`):
@@ -129,6 +134,7 @@ export class World {
       this.game.fx?.shed?.clear?.();
       this.game.fx?.ripple?.clear?.();
       this.game.fx?.streak?.clear?.();
+      this.game.fx?.rip?.clear?.();
       this.game.fx?.stamp?.clear?.();
     } else if (on && this._hidden !== null) {
       for (const [o, v] of this._hidden) o.visible = v;
@@ -198,6 +204,7 @@ export class World {
 
   /** The fight's reset: what broke stands again, what burns goes out, the marks are gone. */
   restore() {
+    this.trail?.clear();
     this.fire.reset();
     this.scars.reset();
     this.destructibles.reset();
@@ -264,6 +271,8 @@ export class World {
     this.fire.update(dt);
     this.scars.update(this.game.fxDt ?? dt, this.game.time);
     this.scorch.update(dt);
+    // (after the hero: his pusher is this frame's)
+    this.trail?.update(dt, this.game.U.uPushers.value[0]);
     if (this._hidden === null) {
       // (before the atmosphere: its smoke and embers read this frame's wind)
       this.life?.update(dt);

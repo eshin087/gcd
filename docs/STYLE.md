@@ -1,6 +1,6 @@
-# ABYSS — Visual Style Bible
+# gcd — Visual Style Bible
 
-ABYSS draws everything in characters. This document sets out the look and how this codebase
+gcd draws everything in characters. This document sets out the look and how this codebase
 produces it.
 
 ## The house style: the dragon look (read this first)
@@ -138,6 +138,14 @@ the wyrm next to it, it is wrong, however good it looks alone.
     pale blotch round the steel with a few flying bits ("doesn't look good"), a bright spray of every top
     (too busy). `?mowLook=b` (the tops lean off and lie), `c` (a burst of strokes) and `r1` (the first
     round) remain.
+  - **The code spray** (2026-11-25, ADR-192; `?grassSpray=`): the cut also throws small GREEN CODE GLYPHS,
+    the Hall of Falling Script's digits and code letters, in the world atlas, about half a blade tall,
+    one for every other cut blade; a calm code green (a step toward the grass's own, never neon), bright
+    only for a moment, flickering to another glyph as it flies and settling to the grass's darkness when
+    it lands. The owner: "make the ascii text a bit tinier and a bit more subtle/natural and not SO
+    sticking out but still enough for players to be like wow thats the grass!". Turned down on the way:
+    tiny house-letter specks (unseen at the game camera), the grass's own letters in its own colour (liked,
+    then "the matrix ascii art instead of actual grass"), and the first code look (too bright).
   - **Torn out** (a blow's mark: every kind tears its own shape first, the slam's disc, the gash's line,
     the claws' three, the furrow, the beam's strip): the grass goes to the root and the floor shows bare
     under the mark, nothing lies; the mark's glyphs then lie ON THE FLOOR, not on the blade tips, so a
@@ -207,7 +215,7 @@ straight on the game with a dark halo.
   posture is a run of `=` growing from the middle of a row of `-`. Colour says which meter it is
   (red HP, steel guard, cyan crit, gold posture); the characters say how much.
 - **Big words are block letters** (`ui/blockText.js`): YOU DIED, the victory line, area names and
-  phase calls are built from the same six-row letterforms as the ABYSS title logo, sized to the
+  phase calls are built from the same six-row block face as the title logo, sized to the
   screen and stacked word by word on a narrow one. Names that are too long for that (the boss's)
   are wide-spaced capitals in the game's monospace. There is no serif font in the HUD.
 - **No name plate** (name, level, class): it was decoration. **The minimap** is a small faint disc
@@ -462,6 +470,11 @@ them, "not too detailed but has enough ascii features and style". That count is 
   the fire at the back of the throat (a lit orange mouth read as a painted board); the neck's quills
   stop short of the skull so its outline is free. At the game camera the head is a wedge with two
   burning eyes; the detail is for close shots.
+- **The drake from above** (2026-11-24, ADR-189): from the game camera its pale bone (brow, horns, cheek
+  fins) read as one big pale V and the eye glints as round pupils. The head now has no glints (the burning
+  slits are the eyes), the horns, fins and brow are dark obsidian lit only at the edges and tips (`mats.horn`),
+  the horns slimmer and swept tighter, a dark crest down the skull. `?wyrmTop=0|a|b` keep the head before and
+  the two options passed on.
 - **Heads kept for later** (2026-11-16, ADR-120): three sculpted heads (`skull`, `loong` with two
   springy whiskers, `demon`; `dragon/heads.js`) were built and filmed: lofted skulls with sockets,
   brow ridges and cheekbones, drawn with flat facets and smaller scales (`FACE_ART`) so the form
@@ -1093,6 +1106,8 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?marks=` | the floor's marks (every level; read per blow; ADR-177) | today's cracks and crater rims only | `1`: a mark of each blow's kind (slam, cut, thrust, dash, blast, beam, step) that stays until the reset | - | - | **1** (2026-11-23) |
 | `?mow=` | grass the sword cuts (every level with grass; read per tear; ADR-180; a new thing, so `?looks=old` keeps it; no Lab row) | the grass as before: nothing is mown or torn | `1`: the blade cuts the grass under its drawn arc (stubs of each blade's own letter, the tops leaving by `?mowLook=`), every floor mark tears the grass out in its shape (bare floor under the mark) | - | - | **1** (2026-11-23: built at the owner's "Build top three"; the cut redone three times, 2026-11-24) |
 | `?mowLook=` | how a cut blade's top leaves (read once; ADR-180; no Lab row) | `r1`: the first round (a pale blotch of stubs round the steel, a few flying bits) | `a`: thrown, quiet (half the tops tossed low along the swing, the rest topple) | `b`: sliced (the tops lean off their stubs and lie) | `c`: shred (a burst of the grass's strokes) | **a** (2026-11-24, the owner: "i like the thrown effect the most but make the thrown effect more subtle") |
+| `?grassSpray=` | what the sword's cut throws (read once; ADR-192; no Lab row) | `0`: nothing but the cut tops | `a`: chips of the blade's own letter in its own colour (`a2` smaller; `a0`, `b`, `c` house-letter sprays) | `m0`: the first code look (`m2` with trails, `m3` the tops turn to code) | `m4`: the code a step more visible | **m** (2026-11-25: tinier, calmer code glyphs; the owner: "Ship both") |
+| `?bend=` | the grass round the hero's wake (read once; ADR-193; no Lab row) | the dark trodden trail (the scorch map's blue, 10 s) | quick spring (about 1 s, a small overshoot) | **soft lay-down, rising over 2 - 3 s** | combed wake, closing from the edges | **b** (2026-11-25, the owner: "Ship both") |
 | `?ashLook=` | Shen Hui's body (read when his rig is built) | today's figure | the dragon look (the wyrm's art path) | today's figure dressed by phase | both | **b** |
 | `?lordLook=` | Varr Nihil's body (read when his rig is built) | today's figure | the dragon look | today's figure dressed by form | both | **b** |
 | `?outskirts=` | what lies round the Obsidian Throne's crater (ADR-133; read when the level is built; `m` all of them) | the felled forest | the shrine the star fell on | the star's debris | those who came for him | **c** |
@@ -1508,9 +1523,13 @@ what lies under it; a running hero kicks what is at his feet; a blow throws it.
 
 **Prints and the trodden grass.** A step on earth or ash leaves a print: a dim stretched `0` lying on the
 floor (earth 0.2 m, gone in 5 s; ash 0.3 m, darker than the ash, filling in over 14 s), turned to the way
-he walked. The obsidian answers with a dim red glint (`'`, `*` or a backtick, 0.26 m, 0.75 s; before the fight only, so no red sits beside a red tell), never dust. Grass is TRODDEN (the
-scorch map's blue): a run leaves a trail about 1.3 m wide where the blades lie flatter and darker (up to
-0.7 darker), standing up over 10 s; a narrower trail was lost among the blades. Puffs: earth small and
+he walked. The obsidian answers with a dim red glint (`'`, `*` or a backtick, 0.26 m, 0.75 s; before the fight only, so no red sits beside a red tell), never dust. Grass BENDS ROUND HIS
+WAKE (2026-11-25, ADR-193, `?bend=`): as he runs, the blades within about 0.9 m bend along his way and out
+from the path, lie down a moment and rise again over 2 - 3 s (b, the default), at most 10 % darker while
+bent, with no edge of a map cell anywhere; a sprint or a landing presses a wider wake. The owner turned
+down the trail before it ("too dark too quickly and doesn't look natural and bad transition": a 1.3 m
+band up to 0.7 darker at once, blades every way, standing up over 10 s; `?bend=0`). `a` springs back in
+about a second with a small overshoot, `c` combs the blades along his way and closes from the edges in. Puffs: earth small and
 low, sand a pale puff the wind carries off, ash a soft grey puff that hangs and sinks, stone a grit puff on
 a sprint only; a wet step a tiny splash.
 
@@ -1644,6 +1663,15 @@ round it, and mist printed in it came out as dark-backed slabs). Still faint (op
 glint, the Ring's far flicker, the moths, the ash's drifts against the paving's own strokes, the roar's
 answer at the game camera on Ashfall and in the Grove; after the owner's verdict the drizzle may be too
 faint, the Ring's devils need luck to be in view, and the Foxfire Terrace's calm shows little.
+
+### The bosses printed the hero's way (2026-11-24, ADR-194; `?bossPrint=`, default b)
+The owner's rule since then: a human boss looks "all built with ascii" like the hero. In the ink-line art
+that takes a lit letter body, not a dark fill inside an outline or a flat bright colour: every cloth part of
+a boss prints at about the hero's coat brightness (0.1 - 0.24 linear before the lift), in its own hue at 75 %
+(`a`: the hero's greys), with the hero's blocky strokes and dotted cloth rim, and below the knee his cloth
+breaks into the hero's pale dotted hem along a ragged line (materials.js `uBossPrint`, pipeline.js
+`uBossLike`). Done in the shader: a new boss in the ink-line art gets it with no change; pick his fills for
+hue, not for brightness. The face, the eyes and what glows (parts 1, 2, 17 - 19) keep their own fill.
 
 ### The Hall of Falling Script and Xin Yi (2026-11-22, ADR-156, ADR-157; `world/scriptHall.js`, `enemies/wokenOne/`, `?level=code`)
 "More extra ASCII" (the owner) is four layers INSIDE the game's letter systems: none of it is a pass over the
@@ -1855,3 +1883,32 @@ ink on black, never over the hero.
   (TRIPLE ... THOUSANDFOLD) sits under it once, in small spaced gold capitals. A lost streak: grey,
   struck through in red, the digits parting as they fall. The flurry's banner at tiers 4 - 5 gains
   thin gold rules, never size.
+- **The time rip** (2026-11-24, `player/timeRip.js`, `?rip=`; four looks for the owner to pick from
+  film, `tear` until then): what each flash cut of the flurry does to the picture, always exactly on
+  the line the blade travelled, steel-white, never a colour change or a brightening outside the cut's
+  thin band, never a blob. All its frames are held in REAL time (a cut's freeze does not stretch them).
+  - `tear`, the delayed tear: on the contact only a hairline of dim steel specks (heat 0.36) hangs on
+    the line; 0.16 s later (in a storm or a quick string 0.55 x the gap since the blow before, at least
+    0.05 s) it splits along its whole length at once: a bright seam (1.2), two lips a cell then two
+    cells off it (a lens, pinched to the line at both ends), closing to one cell, then a broken trail of
+    specks; five frames of 0.035 s. The last blow splits every hairline still waiting.
+  - `strip`, the torn strip: for three frames (1/60 s each, the contact's frame the first) the
+    letters already printed within 3 cells of the line on either side (6 across), along the WHOLE line
+    (not only the part drawn at the contact), are printed from 4, 3, then 1 cells along it, each side
+    the other way (whole 5 x 8 cells), then back; the cells on the line stay and carry a crisp steel
+    seam (1.15, 0.9, 0.55). Only displacement: no tint, no light.
+  - `ghosts`, frozen afterimages: on each cut 3 still copies of him (1 a storm cut, 7 alive at most;
+    fewer when the run so far is too short to hold them 0.75 m apart, from each other and from him at
+    the contact) on the line from where the pass began toward the contact, his pose at the contact.
+    Each reads as HIM, not a block: his figure on a 0.13 m cell grid, of which only the outline cells
+    (a cell with an empty side) and one inner cell in seven print, one fine digit each (about 40 - 50
+    a copy), dim cold blue (0.3, 0.5, 0.98), alpha 0.38, one digit in seventeen brighter; no digit
+    within 0.12 m of the target's hurt spheres on screen (checked every frame: the boss reels). They
+    stand still 0.12 s (a storm: 0.6 x the gap, at least 0.04 s), then tear off in 0.045 s from the
+    start of the pass toward the contact, each digit thrown along the cut; the last blow tears them
+    all at once.
+  - `negative`, the inverted line: for two frames (the contact's the first) the cells within 0.6
+    cells of the whole line (1 - 2 across) print in negative: each pixel of a letter's stroke (brighter
+    than the cell's background: black on a figure, the scene x uBg on the floor, x 2.5) prints dark, the
+    rest of the cell a pale steel (0.46, 0.5, 0.56): the letter that was there, inverted, never a flat
+    fill. A cell with no letter in it prints pale. Then gone.

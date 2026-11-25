@@ -24,13 +24,13 @@ const root = resolve(args.find((a, i) => !a.startsWith('--') && !VALUED.has(args
 
 // integ's TIMING scenario (a grid of placements per wyrm attack) is about two thirds of that suite,
 // so it runs beside the rest of integ, in TIMING_PARTS parts: integ.mjs takes every n-th attack of
-// its own list (ABYSS_TM_SHARD), so an attack added there is covered without a change here.
+// its own list (GCD_TM_SHARD), so an attack added there is covered without a change here.
 const TIMING_PARTS = 3;
 const INTEG = 'tests/integration/integ.mjs';
 // The rest of integ is still the longest task, so these scenarios (the hero's model and the world:
 // about half of it) run as a second process. `integ` runs `all` without them, so a new scenario
 // lands there by itself, and it keeps the checks across scenarios (the event catalogue).
-const INTEG_2 = ['hero', 'herolife', 'herolook', 'herohand', 'heroweight', 'herolights', 'heroarms', 'herostance', 'looks', 'terrain', 'fire', 'bullets'];
+const INTEG_2 = ['hero', 'herolife', 'herolook', 'herohand', 'heroweight', 'herolights', 'heroarms', 'herorun', 'herostance', 'heroidles', 'looks', 'terrain', 'fire', 'bullets'];
 // lord's longest scenarios, each a process of its own (`fxlooks` replays SPELLS and TERRAIN under four
 // looks: about half the suite; `pace` plays every form for minutes per seed). `lord` runs the rest.
 const LORD = 'tests/integration/lord.mjs';
@@ -39,10 +39,10 @@ const LORD_OWN = ['fxlooks', 'pace'];
 const CITY = 'tests/integration/city.mjs';
 const CITY_OWN = ['pace', 'win'];
 // fxlooks' TERRAIN check (TERRAIN under '0', then under one look) was nearly all of it: about 9 min,
-// the whole CI run's wall. Each look is a process of its own (lord.mjs ABYSS_FX); the main fxlooks task
+// the whole CI run's wall. Each look is a process of its own (lord.mjs GCD_FX); the main fxlooks task
 // leaves those out, so a part added there runs in it by itself.
 const FX_TERRAIN = ['a', 'b', 'ship'].map((l) => `same-terrain@${l}`);
-// life's files in three processes (ABYSS_SKIP leaves the first two groups out of `life`, so a new file
+// life's files in three processes (GCD_SKIP leaves the first two groups out of `life`, so a new file
 // lands there by itself); as one, it was the longest task after fxlooks (about 7 min)
 const LIFE = 'tests/integration/life.mjs';
 const LIFE_OWN = [['core', 'steps', 'answer', 'hang'], ['weather', 'creatures', 'lamps', 'tremor']];
@@ -51,23 +51,23 @@ const LIFE_OWN = [['core', 'steps', 'answer', 'hang'], ['weather', 'creatures', 
 // parts scaled from local timings; four tasks beside each other on a 4-core runner); it only deals the shares, a stale one costs balance,
 // never coverage. Slowest first, so the long ones start at once when there are fewer cores than tasks.
 const TASKS = [
-  ['integ', [INTEG, '.', 'all'], { ABYSS_SKIP: ['timing', ...INTEG_2].join(',') }, 295],
-  ['lord', [LORD, '.', 'all'], { ABYSS_SKIP: LORD_OWN.join(',') }, 255],
+  ['integ', [INTEG, '.', 'all'], { GCD_SKIP: ['timing', ...INTEG_2].join(',') }, 295],
+  ['lord', [LORD, '.', 'all'], { GCD_SKIP: LORD_OWN.join(',') }, 255],
   ['woke', ['tests/integration/woke.mjs', '.', 'all'], {}, 245],
   ['asc', ['tests/integration/asc.mjs', '.', 'all'], {}, 225],
-  ...Array.from({ length: TIMING_PARTS }, (_, i) => [`integ timing ${i + 1}/${TIMING_PARTS}`, [INTEG, '.', 'timing'], { ABYSS_TM_SHARD: `${i + 1}/${TIMING_PARTS}` }, [165, 220, 205][i] ?? 200]),
+  ...Array.from({ length: TIMING_PARTS }, (_, i) => [`integ timing ${i + 1}/${TIMING_PARTS}`, [INTEG, '.', 'timing'], { GCD_TM_SHARD: `${i + 1}/${TIMING_PARTS}` }, [165, 220, 205][i] ?? 200]),
   ['duel', ['tests/integration/duel.mjs', '.', 'all'], {}, 217],
   ['fox', ['tests/integration/fox.mjs', '.', 'all'], {}, 194],
-  ...FX_TERRAIN.map((k) => [`lord fxlooks ${k.split('@')[1]}`, [LORD, '.', 'fxlooks'], { ABYSS_FX: k }, 185]),
-  ['life', [LIFE, '.', 'all'], { ABYSS_SKIP: LIFE_OWN.flat().join(',') }, 150],
+  ...FX_TERRAIN.map((k) => [`lord fxlooks ${k.split('@')[1]}`, [LORD, '.', 'fxlooks'], { GCD_FX: k }, 185]),
+  ['life', [LIFE, '.', 'all'], { GCD_SKIP: LIFE_OWN.flat().join(',') }, 150],
   ...LIFE_OWN.map((g) => [`life ${g[0]} +`, [LIFE, '.', g.join(',')], {}, 150]),
-  ['city', [CITY, '.', 'all'], { ABYSS_SKIP: CITY_OWN.join(',') }, 149],
+  ['city', [CITY, '.', 'all'], { GCD_SKIP: CITY_OWN.join(',') }, 149],
   ['lord pace', [LORD, '.', 'pace'], {}, 142],
-  ['world', ['tests/integration/world.mjs', '.', 'all'], { ABYSS_SKIP: 'budget' }, 110],
+  ['world', ['tests/integration/world.mjs', '.', 'all'], { GCD_SKIP: 'budget' }, 110],
   ['city pace', [CITY, '.', 'pace'], {}, 108],
-  ['integ hero + world', [INTEG, '.', INTEG_2.join(',')], {}, 108],
+  ['integ hero + world', [INTEG, '.', INTEG_2.join(',')], {}, 150],
   ['sheath', ['tests/integration/sheath.mjs', '.', 'all'], {}, 102],
-  ['lord fxlooks', [LORD, '.', 'fxlooks'], { ABYSS_FX: FX_TERRAIN.map((k) => `!${k}`).join(',') }, 80],
+  ['lord fxlooks', [LORD, '.', 'fxlooks'], { GCD_FX: FX_TERRAIN.map((k) => `!${k}`).join(',') }, 80],
   ['city win', [CITY, '.', 'win'], {}, 69],
   ['records', ['tests/integration/records.mjs', '.', 'all'], {}, 1],
   ['glyphcheck', ['tests/glyphcheck.mjs', '.'], {}, 1],
@@ -82,7 +82,7 @@ const ALONE = [
   ['world budget', ['tests/integration/world.mjs', '.', 'budget'], {}, 5],
 ];
 // what a task must not inherit from the caller's shell: these narrow what a suite runs
-const NARROWING = ['ABYSS_SKIP', 'ABYSS_TM', 'ABYSS_TM_SHARD', 'ABYSS_FX'];
+const NARROWING = ['GCD_SKIP', 'GCD_TM', 'GCD_TM_SHARD', 'GCD_FX'];
 
 // --shard I/N: deal every task (ALONE ones too) to N shares, longest first, each to the lightest share
 function deal(n) {

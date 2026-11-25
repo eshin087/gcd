@@ -115,6 +115,7 @@ export const GLOW = {
   wingBone: [0.15, 0.35, 0],
   spine: [0.3, 0.8, 0],
   bone: [0.08, 0.5, 0],
+  horn: [0.08, 0.5, 0], // a face's own horns (faces.js `horn`): as bone
   claw: [0, 0, 0],
   teeth: [0, 0, 0.5],
   maw: [0.55, 0.6, 1.3],
@@ -224,6 +225,24 @@ export const WYRM_ART = {
  */
 export const ART_GAIN = 0.28;
 
+/** The bone material's options (horns, spikes, shards); a face's own horns (faces.js `horn` art) share them. */
+const BONE_MAT = {
+  levels: BONE_LEVELS,
+  cell: [0.1, 0.16],
+  base: [0.07, 0.068, 0.075],
+  lumScale: 2.8,
+  ink: [0.48, 0.46, 0.45],
+  inkAlt: [0.85, 0.3, 0.07],
+  altChance: 0.1,
+  gain: 1.9,
+  rim: 0.25,
+  outline: 0,
+  inkGlow: 0.02, // dark obsidian: the eye and the maw are the head's bright points
+  emissive: [1.0, 0.34, 0.05],
+  glowMask: 0.5,
+  seed: 7.7,
+};
+
 export function createDragonMaterials(U) {
   // every part also carries its ASCII-art source (WYRM_ART): what the letters are made from
   // (a sculpted head (?wyrmFace=, heads.js) tunes its own parts' art entries: FACE_ART)
@@ -305,22 +324,7 @@ export function createDragonMaterials(U) {
       seed: 31.3,
     }),
     // horns, head spikes, limb / shoulder shards, neck shingles: dark obsidian, silver edges
-    bone: mat('bone', {
-      levels: BONE_LEVELS,
-      cell: [0.1, 0.16],
-      base: [0.07, 0.068, 0.075],
-      lumScale: 2.8,
-      ink: [0.48, 0.46, 0.45],
-      inkAlt: [0.85, 0.3, 0.07],
-      altChance: 0.1,
-      gain: 1.9,
-      rim: 0.25,
-      outline: 0,
-      inkGlow: 0.02, // dark obsidian: the eye and the maw are the head's bright points
-      emissive: [1.0, 0.34, 0.05],
-      glowMask: 0.5,
-      seed: 7.7,
-    }),
+    bone: mat('bone', BONE_MAT),
     // claws, thumb hooks, finger-tip claws: heavy ivory
     claw: mat('claw', {
       levels: CLAW_LEVELS,
@@ -392,6 +396,9 @@ export function createDragonMaterials(U) {
       wyrm: faceArt.pit,
     });
   }
+  // a face whose horns are drawn apart from the body's bone (faces.js `horn` art; the drake's
+  // darker tops, ?wyrmTop=): the bone's material, its own ASCII-art source
+  if (faceArt.horn) mats.horn = createSurfaceGlyphMaterial(U, { ...BONE_MAT, wyrm: { ...WYRM_ART.bone, ...faceArt.horn } });
   // a face with a bare-bone mask (faces.js `mask` art; the revenant) draws it with a material of its
   // own: the claws' ivory, its ASCII-art source the face's
   if (faceArt.mask) {

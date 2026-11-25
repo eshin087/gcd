@@ -8,11 +8,13 @@ import { TimingTrainer, tellName } from './timingTrainer.js';
 import { ModelViewer, VIEW_ANGLES, VIEW_LOOKS } from './modelView.js';
 import { Training } from './training.js';
 import { WYRM_FACES, wyrmFace } from '../entities/dragon/heads.js';
+import { WYRM_TOPS, wyrmTop } from '../entities/dragon/faces.js';
 import { WYRM_LOOKS, wyrmLookId } from '../entities/dragon/looks.js';
 import { TrainingPanel } from './trainingPanel.js';
 import { setCutStyle, cutStyle } from '../combat/cutFx.js';
 import { IMPACT } from '../combat/impact.js';
 import { STREAK_FX, setPerfectMode, perfectMode } from '../combat/streak.js';
+import { RIP_MODES, ripMode, setRipMode } from '../entities/player/timeRip.js';
 import { PARRY_FX, parryFxMode, setParryFx } from '../combat/parrySparks.js';
 import { BURST_LOOK, setBurst, burstLevel } from '../entities/player/flurryBurst.js';
 import { CALM_LOOK, setCalm, calmLevel } from '../combat/impactCalm.js';
@@ -23,6 +25,9 @@ import { MYSTIC_IDS, MYSTIC_NAMES, mysticMode, setMystic } from '../entities/pla
 import { LIGHTS_IDS, LIGHTS_NAMES, lightsMode, setLights, setFinisherLook } from '../entities/player/combat.js';
 import { FINISHER_IDS, FINISHER_NAMES, finisherId } from '../entities/player/finishers.js';
 import { ARC_IDS, ARC_K, arcsMode, setArcs } from '../entities/player/swings.js';
+import { IDLES_IDS, IDLES_NAMES, idlesMode, setIdles, EASE_RESTS, FIGHT_RESTS, EASE_HABITS, EASE_TRICKS, FIGHT_ACTS } from '../entities/player/idles.js';
+import { RUN_ARM_IDS, RUN_ARM_NAMES, runArmMode, setRunArm } from '../entities/player/runArms.js';
+import { HAND_LOOK_IDS, HAND_LOOK_NAMES, handLook } from '../entities/player/gear/handLook.js';
 import { buildLooks } from './labLooks.js';
 import { lookOf, setLook } from '../entities/enemies/duelist/lookSwitch.js';
 import { LIFE, setLife, setLifeK } from '../world/life/lifeSwitch.js';
@@ -50,7 +55,7 @@ const LAB_KEY = /^(?:(?:Digit|Numpad)([1-9])|BracketLeft|BracketRight)$/;
 const REFRESH = 1 / 12; // readout refresh period (real s)
 const ABILITY_POLL = 1.0; // re-read debug.abilities() while open (real s)
 const BADGE_POLL = 0.5; // closed-state badge check (real s)
-const STORE_KEY = 'abyss.lab.v1';
+const storeKey = 'gcd.lab.v1'; // (not an UPPER_CASE const: the glyph check reads those as glyph strings)
 const BAR_CELLS = 30;
 const BAR_SPAN = 0.9; // s before impact covered by the timing bar
 
@@ -71,7 +76,7 @@ function urlWantsLab() {
 
 function loadPrefs() {
   try {
-    const raw = globalThis.localStorage?.getItem(STORE_KEY);
+    const raw = globalThis.localStorage?.getItem(storeKey);
     const o = raw ? JSON.parse(raw) : null;
     return o && typeof o === 'object' ? o : {};
   } catch {
@@ -690,7 +695,7 @@ export class Lab {
 
   _savePrefs() {
     try {
-      globalThis.localStorage?.setItem(STORE_KEY, JSON.stringify(this.prefs));
+      globalThis.localStorage?.setItem(storeKey, JSON.stringify(this.prefs));
     } catch {
       /* private mode / no storage: prefs are a convenience only */
     }
@@ -806,6 +811,10 @@ export class Lab {
     if (this.prefs.collapsed && !('looks' in this.prefs.collapsed)) this.prefs.collapsed.looks = true;
     const { body } = this._section(root, 'looks', 'LOOKS');
     this.ui.looksSync = buildLooks(body, id, (t) => this._status(t, 'ok'));
+  }
+
+  _syncIdleBtns() {
+    for (const { m, el: b } of this.ui.idleBtns ?? []) setClass(b, 'on', idlesMode() === m);
   }
 
   _syncStanceBtns() {
@@ -1155,6 +1164,34 @@ export class Lab {
       return { v, el: btn };
     });
     this._syncStanceBtns();
+    // the hero's idles (player/idles.js, ADR-186; ?idles=old): rests, habits and tricks, or the hand on the
+    // belt as before; and a button for each, to play it now (the rests and the actions of the stance he
+    // stands in: at ease, or the fight's)
+    const idr = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'idles', idr).title = "the hero's idles: rests he moves between, habits with both arms and a trick every few (new), or the hand on the belt (?idles=old)";
+    const idg = el('div', 'lab-grid', null, idr);
+    idg.style.flex = '1';
+    this.ui.idleBtns = IDLES_IDS.map((m) => {
+      const b = button(idg, m, () => {
+        setIdles(m);
+        this._syncIdleBtns();
+      });
+      b.title = `?idles=${m}: ${IDLES_NAMES[m]}`;
+      return { m, el: b };
+    });
+    const idp = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'idle ▸', idp).title = 'play one now (stand still; at ease or in the fight stance: the stance row holds either)';
+    const idpg = el('div', 'lab-grid', null, idp);
+    idpg.style.flex = '1';
+    const playIdle = (name, rest) => {
+      const A = this.game.player?.anim;
+      const ok = rest ? A?.setRest?.(name) : A?.playIdle?.(name);
+      this._status(`${rest ? 'rest' : 'idle'} ${name}${ok ? '' : ': not in this stance (or he is moving)'}`, ok ? 'ok' : 'warn');
+    };
+    for (const [list, rest, tip] of [[EASE_RESTS, true, 'at ease: move to this rest'], [EASE_HABITS, false, 'at ease: a habit'], [EASE_TRICKS, false, 'at ease: a trick'], [FIGHT_RESTS, true, 'in the fight: this guard hand'], [FIGHT_ACTS, false, 'in the fight: a habit']]) {
+      for (const D of list) button(idpg, D.name, () => playIdle(D.name, rest)).title = tip;
+    }
+    this._syncIdleBtns();
     // the look of a landed cut (combat/cutFx.js; the owner's pick): the slash line, or a fan of sparks
     const cut = el('div', 'lab-row', null, body);
     el('span', 'lab-lbl', 'cut', cut).title = 'the look of a landed cut (combat/cutFx.js)';
@@ -1213,6 +1250,28 @@ export class Lab {
       });
       return { s, el: b };
     });
+    this.ui.tempoBtn = button(stkGrid, 'tempo', () => {
+      STREAK_FX.tempo = !STREAK_FX.tempo;
+      this._syncCutBtns();
+    });
+    this.ui.tempoBtn.title = "the storm's tempo (?tempo=0 off): the first cut a heavy beat, each later one a share of the one before; off = the storm as it was (ADR-167). Only with 'storm' on; read as a flurry starts";
+    this.ui.chainBtn = button(stkGrid, 'chain', () => {
+      STREAK_FX.chain = !STREAK_FX.chain;
+      this._syncCutBtns();
+    });
+    this.ui.figureBtn = button(stkGrid, `figure: ${STREAK_FX.figure}`, () => {
+      const L = STREAK_FX.figures;
+      STREAK_FX.figure = L[(L.indexOf(STREAK_FX.figure) + 1) % L.length];
+      this._syncCutBtns();
+    });
+    this.ui.figureBtn.title = "the shape the flurry's chained passes draw (?figure=): 'any' a different one each flurry, or one pinned (star, zigzag, cage, spiral, cross). Read as a flurry starts";
+    this.ui.chainBtn.title = "the flurry's chain (?chain=0 off): each pass starts where the last ended (A -> B -> C), every slash on the path he ran, letter dust on the last blow; off = the ring-teleport paths, the crescents and the 'A' shards as before. Read as a flurry starts";
+    // the time rip (player/timeRip.js; ?rip=): cycles off / tear / strip / ghosts / negative, read at every cut
+    this.ui.ripBtn = button(stkGrid, `rip: ${ripMode()}`, () => {
+      setRipMode(RIP_MODES[(RIP_MODES.indexOf(ripMode()) + 1) % RIP_MODES.length]);
+      this._syncCutBtns();
+    });
+    this.ui.ripBtn.title = "what a flurry's flash cut does to the picture (?rip=): off, tear (a hairline that splits open a beat later), strip (the letters along the cut slide apart for three frames), ghosts (still copies of him along the line, then they shatter), negative (the line prints in negative for two frames)";
     this.ui.perfectBtn = button(stkGrid, `perfect: ${perfectMode()}`, () => {
       const M = STREAK_FX.perfectModes;
       setPerfectMode(M[(M.indexOf(perfectMode()) + 1) % M.length]);
@@ -1284,6 +1343,38 @@ export class Lab {
       b.title = `equip ${SWORD_PARAM[k]}`;
       return { k, el: b };
     });
+    // the free arm on the run (player/runArms.js, ADR-187; ?runArm=a|b|c|old, default a), live
+    const rar = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'run arm', rar).title = "the free (left) arm on the run (?runArm=): natural = a runner's swing, pumping at a sprint (default); dash = swept back behind him; by speed = natural, the dash at a sprint; before = the swing before";
+    const raGrid = el('div', 'lab-grid', null, rar);
+    raGrid.style.flex = '1';
+    this.ui.runArmBtns = RUN_ARM_IDS.map((m) => {
+      const b = button(raGrid, RUN_ARM_NAMES[m], () => {
+        setRunArm(m);
+        this._syncCutBtns();
+      });
+      b.title = `?runArm=${m}: ${RUN_ARM_NAMES[m]}`;
+      return { m, el: b };
+    });
+    // the free hand's look (player/gear/handLook.js, ?handLook=0|a|b|c|d): built with the rig, so a reload
+    const hlr = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'hand', hlr).title = "the free (left) hand's size and ink (?handLook=; reloads the page): before, a smaller (the default, the owner's pick), b smaller and shaded, c smaller and dark, d a leather glove";
+    const hlGrid = el('div', 'lab-grid', null, hlr);
+    hlGrid.style.flex = '1';
+    for (const id of HAND_LOOK_IDS) {
+      const b = button(hlGrid, `${id === '0' ? 'before' : id}`, () => {
+        try {
+          const u = new URL(globalThis.location.href);
+          if (id === 'a') u.searchParams.delete('handLook');
+          else u.searchParams.set('handLook', id);
+          globalThis.location.href = u.toString();
+        } catch (err) {
+          this._status(`error: ${err?.message ?? err}`, 'err');
+        }
+      });
+      b.title = `?handLook=${id}: ${HAND_LOOK_NAMES[id]}`;
+      setClass(b, 'on', handLook().id === id);
+    }
     // the sword's flame (player/swordMystic.js: green marks burning round the steel, on by default; ?mystic=0 is
     // today's blade), live
     const myr = el('div', 'lab-row', null, body);
@@ -1357,6 +1448,24 @@ export class Lab {
       b.title = `the wyrm wears the ${f} head (?wyrmFace=${f})`;
       if (f === wyrmFace()) b.classList?.add('on');
     }
+    // the drake's head from above (entities/dragon/faces.js, ?wyrmTop=; ADR-189): a build-time choice too
+    const wtr = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'top', wtr).title = "the drake head from above (?wyrmTop=; reloads the page): c as it ships (no eye glints, dark slim horns, a crest), 0 the head before, a no glints, b a + dark horns";
+    const wtg = el('div', 'lab-grid', null, wtr);
+    wtg.style.flex = '1';
+    for (const t of WYRM_TOPS) {
+      const b = button(wtg, t, () => {
+        try {
+          const u = new URL(globalThis.location.href);
+          u.searchParams.set('wyrmTop', t);
+          globalThis.location.href = u.toString();
+        } catch (err) {
+          this._status(`error: ${err?.message ?? err}`, 'err');
+        }
+      });
+      b.title = `the drake wears top ${t} (?wyrmTop=${t})`;
+      if (t === wyrmTop()) b.classList?.add('on');
+    }
     // the builds of the wyrm (entities/dragon/looks.js, ?wyrmLook=): a build-time choice too
     const wlr = el('div', 'lab-row', null, body);
     el('span', 'lab-lbl', 'build', wlr).title = 'the build of the Cinder Wyrm (?wyrmLook=; reloads the page): c as it ships (lean + ragged), 0 the wyrm before, a lean, b lean + fierce head';
@@ -1417,6 +1526,14 @@ export class Lab {
     setClass(this.ui.shudBtn, 'on', !!d && 'shudderK' in d && d.shudderK > 0);
     for (const { s, el: b } of this.ui.impactBtns ?? []) setClass(b, 'on', IMPACT.on[s] === true);
     for (const { s, el: b } of this.ui.streakBtns ?? []) setClass(b, 'on', STREAK_FX.on[s] === true);
+    for (const { m, el: b } of this.ui.runArmBtns ?? []) setClass(b, 'on', runArmMode() === m);
+    if (this.ui.tempoBtn) setClass(this.ui.tempoBtn, 'on', STREAK_FX.tempo !== false);
+    if (this.ui.chainBtn) setClass(this.ui.chainBtn, 'on', STREAK_FX.chain !== false);
+    if (this.ui.figureBtn) this.ui.figureBtn.textContent = `figure: ${STREAK_FX.figure}`;
+    if (this.ui.ripBtn) {
+      this.ui.ripBtn.textContent = `rip: ${ripMode()}`;
+      setClass(this.ui.ripBtn, 'on', ripMode() !== 'off');
+    }
     for (const { m, el: b } of this.ui.mysticBtns ?? []) setClass(b, 'on', mysticMode() === m);
     for (const { m, el: b } of this.ui.lightsBtns ?? []) setClass(b, 'on', lightsMode() === m);
     for (const { m, el: b } of this.ui.finisherBtns ?? []) setClass(b, 'on', finisherId() === m);

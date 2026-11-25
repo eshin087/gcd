@@ -51,7 +51,7 @@ export const PICKED = Object.freeze({
   grove: 'a', // the grove's light: a moonlit mist (the owner's pick)
   sheathLook: 'd', // his body: the Wanderer (the owner's pick, 2026-11-22, over a, mourning white)
   drawCut: 'a', // the draw's cut: one white line (the owner's pick)
-  sheathArt: '2', // his print: the digits in his colours, lit and outlined (the owner's pick, 2026-11-23, of five steps; a, the ink-line art, read as a 3D model; ADR-152)
+  sheathArt: 'a', // his print: the hero's ink-line art (the owner's pick, 2026-11-24, with the bosses' print, ADR-194; was 2, the digits lit and outlined, 2026-11-23, ADR-152)
   sheathTone: 'a', // his palette: indigo and sand (the owner's pick, 2026-11-23, of three)
   // (sheathMark: rendered for the owner, not picked yet: its Lab row is 'awaiting')
   // Halcyon Plaza and Halcyon, the Last Saviour
@@ -65,6 +65,10 @@ export const PICKED = Object.freeze({
   // the Hall of Falling Script and Xin Yi, the One Who Woke
   oneLetters: 'a', // his letters: the hero's size (the owner's pick, 2026-11-23, "Print a", ADR-170; 0 the bosses' fine cell)
   onePrint: 'a', // his print: the hero's quiet print and the simpler shapes (the owner's pick, 2026-11-23, "Print a", ADR-170; b one cell bolder on a phone, 0 as he shipped)
+  // every human boss
+  bossPrint: 'b', // printed the hero's way, in his own colours (the owner's pick, 2026-11-24, of three: 0 as before, a the hero's greys; ADR-194)
+  // the title
+  menu: 'c', // the sword's path: the worlds as fires along one line (the owner's pick, 2026-11-25, of three; 0 the title before; ADR-196)
 });
 
 /** Switches the owner has not picked yet (their rendered options wait for the owner): in the Lab's LOOKS
