@@ -90,6 +90,9 @@ export const BROOD = {
     life: 7, // s: a wisp that never reaches him gutters out
   },
 
+  // a brood cue waits (up to `max` s) while one of the other answer is due within `sep` s of it
+  hold: { sep: 0.45, max: 0.9 },
+
   // ------------------------------------------------------------------ the moves (broodAttacks.js)
   moves: {
     drakelings: {

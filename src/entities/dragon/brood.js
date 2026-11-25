@@ -33,7 +33,7 @@ import { K_FIRE, K_SMOKE } from '../enemies/duelist/fx.js';
 // within `dive.gap` s, and a lunge waits while a cue of the other answer is due near its impact
 // (brain._clash: the wyrm's own blows, bullets, hazards).
 
-const DR = BROOD.drakeling, WP = BROOD.wisp, LG = DR.lunge, DV = DR.dive;
+const DR = BROOD.drakeling, WP = BROOD.wisp, LG = DR.lunge, DV = DR.dive, HOLD = BROOD.hold;
 const S = SCALE;
 const MAXD = 6;
 const MAXW = 8;
@@ -56,7 +56,7 @@ function blank(kind) {
     x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, fx: 0, fz: 1,
     tx: 0, ty: 0, tz: 0, // a locked target (lunge, dive, commit)
     slot: 0, wing: 0, swing: null, told: false, flashed: false, tell: TELL.NORMAL, hitDone: false,
-    src: 0, delay: 0, acc: 0, seed: 0,
+    src: 0, delay: 0, acc: 0, seed: 0, held: 0,
     chain: kind === 'drakeling' ? new Float32Array(SEGS * 3) : null,
   };
 }
@@ -293,6 +293,7 @@ export class Brood {
         c.vy += (DR.height + 0.4 - c.y - c.vy * 0.3) * dt * 6;
         this._move(c, dt);
         const tti = W - c.st + Math.max(0, hl - 0.8) / LG.speed;
+        if (!c.flashed && tti <= lead + 0.1 && this._hold(c, dt, tti, 'guard', 'drakelings')) break;
         if (!c.flashed && tti <= lead) {
           c.flashed = true;
           this._flash(c, c.tell);
@@ -372,6 +373,7 @@ export class Brood {
         c.vy += (DV.rise - c.y) * dt * 5 - c.vy * dt * 3;
         this._move(c, dt);
         const fall = Math.hypot(DV.rise, Math.hypot(hx, hz)) / DV.speed;
+        if (!c.flashed && DV.windup - c.st + fall <= lead + 0.1 && this._hold(c, dt, DV.windup - c.st + fall, 'dodge', 'drakelings')) break;
         if (!c.flashed && DV.windup - c.st + fall <= lead) {
           c.flashed = true;
           this._flash(c, TELL.RED, p.x, 0.6, p.z);
@@ -420,7 +422,10 @@ export class Brood {
   _to(c, state, cue = false) {
     c.state = state;
     c.st = 0;
-    if (cue) c.told = c.flashed = false;
+    if (cue) {
+      c.told = c.flashed = false;
+      c.held = 0;
+    }
   }
 
   _reel(c, s) {
@@ -516,6 +521,20 @@ export class Brood {
     c.told = true;
     const fall = Math.hypot(DV.rise, Math.hypot(p.x - c.x, p.z - c.z)) / DV.speed;
     d.emit?.('combat:tell', { source: 'dragon', attack: 'drakelings', tell: TELL.RED, impactIn: DV.windup + fall, x: p.x, z: p.z, hazard: true, brood: true });
+  }
+
+  /**
+   * Its cue waits (its clock held back this frame) while a cue that asks for the other answer is due
+   * within `sep` s of its impact (the wyrm's own blows, bullets, hazards: brain._clash, the ledger the
+   * wyrm's blows hold on too), at most `maxHold` s per cue. True while it holds.
+   */
+  _hold(c, dt, tti, ans, attack) {
+    if (c.held >= HOLD.max) return false;
+    const now = this.game.time ?? this.time;
+    if (!this.d.brain?._clash?.(now + tti, ans, HOLD.sep, attack)) return false;
+    c.held += dt;
+    c.st -= dt;
+    return true;
   }
 
   /** The cue flashLead s before it can land: 'combat:flash' + the shared design (a white cross for a
@@ -649,6 +668,11 @@ export class Brood {
         // straight through where he stood; it bursts when its fuse runs out
         this._move(c, dt);
         c.vy += (WP.height - c.y) * dt * 4;
+        if (!c.flashed && WP.fuse - c.st <= TUNING.flashLead + 0.1 && this._hold(c, dt, WP.fuse - c.st, 'dodge', 'wisps')) {
+          c.vx *= Math.exp(-6 * dt); // (it hangs, throbbing, until its turn)
+          c.vz *= Math.exp(-6 * dt);
+          break;
+        }
         if (!c.flashed && WP.fuse - c.st <= TUNING.flashLead) {
           c.flashed = true;
           this._flash(c, TELL.RED, c.tx, 1.0, c.tz);
