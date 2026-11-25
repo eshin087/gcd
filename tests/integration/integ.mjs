@@ -45,8 +45,6 @@ if (process.env.GCD_WYRMFACE && !(await imp('src/entities/dragon/heads.js')).set
 if (process.env.GCD_ARCS && !(await imp('src/entities/player/swings.js')).setArcs(process.env.GCD_ARCS)) { process.stdout.write(`GCD_ARCS: unknown strength '${process.env.GCD_ARCS}'\n`); process.exit(2); }
 // GCD_LIGHTS: the light chain's look for this run (?lights=, combat.js setLights: new, old, fresh, striker)
 if (process.env.GCD_LIGHTS && !(await imp('src/entities/player/combat.js')).setLights(process.env.GCD_LIGHTS)) { process.stdout.write(`GCD_LIGHTS: unknown look '${process.env.GCD_LIGHTS}'\n`); process.exit(2); }
-// GCD_FINISHER: the blink chain's last hit for this run (?finisher=, combat.js setFinisherLook)
-if (process.env.GCD_FINISHER && !(await imp('src/entities/player/combat.js')).setFinisherLook(process.env.GCD_FINISHER)) { process.stdout.write(`GCD_FINISHER: unknown finisher '${process.env.GCD_FINISHER}'\n`); process.exit(2); }
 const { TUNING, SCALE } = await imp('src/entities/dragon/tuning.js');
 const { ATTACKS } = await imp('src/entities/dragon/attacks.js');
 const { attackWeight } = await imp('src/entities/dragon/ai.js');
@@ -6342,7 +6340,7 @@ async function scenarioHeroLife() {
       if (C.line === 'point') continue; // a thrust has no plane
       // (the instant cuts, ?lights=blink: the blade is at the coil, then across, then at the finish; it does not
       // whip through a diagonal, and its line is measured on the blade's own path by `blinkslash`)
-      if (/^(blink|fin)[A-Z]/.test(name)) continue;
+      if (/^(blink|last)[A-Z]/.test(name)) continue; // (lastHits.js: the last hit's strokes)
       const ks = C.keys.filter((k) => Array.isArray(k.a) && k.u > 1.001 && k.u <= 2.001);
       const steep = Math.max(...ks.map((k) => Math.abs(k.a[1])));
       // the key where the blade is nearest to pointing ahead: its elevation is the cut's height there
@@ -7460,8 +7458,8 @@ async function scenarioHeroHand() {
   // (H1) the contract
   assert(W?.parent === r.arms.L.fore && Math.abs(W.position.y + (HD.foreArm - 0.03)) < 1e-6 && Math.hypot(W.position.x, W.position.z) < 1e-9 && r.arms.L.point?.parent === W
     && !!H?.fingers && H.fingers.parent === W && H.open.parent === W && H.grip.parent === r.sword
-    && P.lD === 53 && P.lN === 56 && P.hs === 59 && P.lk === 60 && N === 61 && N <= 64 && A.freeHand === true && OFF_SNAP[0] < OFF_SNAP[1],
-    `the free hand's contract: arms.L.wrist on the forearm ${(HD.foreArm - 0.03).toFixed(2)} m down and arms.L.point on it; offHand { open, grip, fingers }, open and fingers on the wrist; channels lD 53, lN 56, hs 59, lk 60 (N ${N} ≤ 64); the hero's animator has the free hand`);
+    && P.lD === 53 && P.lN === 56 && P.hs === 59 && P.lk === 60 && P.sd === 61 && N === 62 && N <= 64 && A.freeHand === true && OFF_SNAP[0] < OFF_SNAP[1],
+    `the free hand's contract: arms.L.wrist on the forearm ${(HD.foreArm - 0.03).toFixed(2)} m down and arms.L.point on it; offHand { open, grip, fingers }, open and fingers on the wrist; channels lD 53, lN 56, hs 59, lk 60, sd 61 (N ${N} ≤ 64); the hero's animator has the free hand`);
 
   // every frame of the set: chest-local points (model metres: the drawn hero is lean-sheared and scaled)
   const { ell, cap, shell } = heroShapes(BODY, HD);
@@ -11908,21 +11906,20 @@ async function scenarioHeroIdles() {
 
 // ================================================================== scenario: the sword's green flame
 // ================================================================== scenario: the blink look set's slash lines
-// ?lights=blink (player/lightsBlink.js, finishers.js, heaviesBlink.js; blinkFx.js): every instant cut's line
+// ?lights=blink (player/lightsBlink.js, lastHits.js, heaviesBlink.js; blinkFx.js): every instant cut's line
 // lies on the blade's own path (through the point where it was on the frames of the cut, at chest height,
 // never under the ground, the blade at rest after the cut near its continuation), the thrusts a short
-// streak off the point; the round arc stays off on them; the free hand rests on the belt through a mashed
-// chain (still in the chest's frame, no flailing, a natural elbow); nothing at all on today's chain.
+// streak off the point; the round arc stays off on them; nothing at all on today's chain. (The free hand
+// through the instant cuts is `blinkhand`'s.)
 // GCD_SLASHDUMP=1 prints every cut's point frame by frame (the hero's frame at the swing's start: left,
 // up, ahead), for authoring the clips.
 async function scenarioBlinkSlash() {
-  out("\n== scenario BLINKSLASH (?lights=blink: each slash line is the blade's own path; the heavies' lines heavier; the free hand still on the belt) ==");
+  out("\n== scenario BLINKSLASH (?lights=blink: each slash line is the blade's own path; the heavies' lines heavier) ==");
   const CB = await imp('src/entities/player/combat.js');
-  const FN = await imp('src/entities/player/finishers.js');
   const { SWINGS } = await imp('src/entities/player/swings.js');
   const { swingPhase } = await imp('src/entities/player/anim.js');
   const { DIM: HD } = await imp('src/entities/player/model.js');
-  const lights0 = CB.lightsMode(), fin0 = FN.finisherId();
+  const lights0 = CB.lightsMode();
   const DUMP = !!process.env.GCD_SLASHDUMP;
   const DEG = 180 / Math.PI;
   let last = null;
@@ -11938,7 +11935,7 @@ async function scenarioBlinkSlash() {
     return G;
   };
   const tip = new THREE.Vector3(), hilt = new THREE.Vector3();
-  /** One take: `plan` [[s, 'L' | 'H'], ...] presses at those times; returns the swings and the free hand. */
+  /** One take: `plan` [[s, 'L' | 'H'], ...] presses at those times; returns the swings. */
   const take = (G, plan, secs) => {
     const { game, input } = G, p = game.player, A = p.anim, F = p.blinkFx, r = p.rig;
     const swings = []; // per attack: { clip, def, frames: [{ u, tip, hilt }], lines: [] }
@@ -11949,8 +11946,6 @@ async function scenarioBlinkSlash() {
     G.watch = (nm) => { if (nm === 'player:slam') slam.ev++; };
     const arcs0 = p.fx.trail, arcs = { n: 0 };
     p.fx.trail = function (...a) { if (cur) arcs.n++; return arcs0.apply(this, a); };
-    const hand = { n: 0, min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity], step: 0, stepAt: '', el: [Infinity, -Infinity], prev: null };
-    const wC = new THREE.Vector3(), sC = new THREE.Vector3(), eC = new THREE.Vector3(), t1 = new THREE.Vector3(), t2 = new THREE.Vector3();
     let k = 0;
     for (let i = 0, n = Math.round(secs / DT); i < n; i++) {
       while (k < plan.length && i >= Math.round(plan[k][0] / DT)) { aimAt(G); input.click(plan[k][1] === 'H' ? 2 : 0); k++; }
@@ -11970,26 +11965,12 @@ async function scenarioBlinkSlash() {
         for (const L of cur.lines) if (L.frame === cur.frames.length - 2 && L.late !== false) { L.frame = cur.frames.length - 1; L.late = false; }
         cur.arcN = arcs.n - cur.arcs;
       } else cur = null;
-      // the free hand, the light hits on the belt: the wrist in the chest's frame, its step a frame, the elbow
-      // (not the chain's first quarter second: the hand comes to the belt from the guard, which holds it off the belt)
-      if (on && d.button !== 'heavy' && SWINGS[an.clip]?.side && !(d.combo === 1 && a.t < 0.27)) {
-        r.chest.worldToLocal(wC.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.L.fore.matrixWorld));
-        r.chest.worldToLocal(sC.setFromMatrixPosition(r.arms.L.upper.matrixWorld));
-        r.chest.worldToLocal(eC.setFromMatrixPosition(r.arms.L.fore.matrixWorld));
-        for (let c = 0; c < 3; c++) { hand.min[c] = Math.min(hand.min[c], wC.getComponent(c)); hand.max[c] = Math.max(hand.max[c], wC.getComponent(c)); }
-        if (hand.prev) { const s = hand.prev.distanceTo(wC); if (s > hand.step) { hand.step = s; hand.stepAt = an.clip; } }
-        hand.prev = (hand.prev ?? new THREE.Vector3()).copy(wC);
-        const el = Math.acos(clamp(t1.subVectors(sC, eC).normalize().dot(t2.subVectors(wC, eC).normalize()), -1, 1)) * DEG;
-        hand.el[0] = Math.min(hand.el[0], el);
-        hand.el[1] = Math.max(hand.el[1], el);
-        hand.n++;
-      } else hand.prev = null;
     }
     F.onLine = null;
     p.fx.trail = arcs0;
     p.fx.slamShards = sh0;
     G.watch = null;
-    return { swings, hand, slam };
+    return { swings, slam };
   };
   // a world point in the hero's frame at the swing's start: [left, up, ahead]
   const loc = (S, v) => { const dx = v.x - S.pos.x, dz = v.z - S.pos.z, fx = Math.sin(S.yaw), fz = Math.cos(S.yaw); return [dx * fz - dz * fx, v.y - S.pos.y, dx * fx + dz * fz]; };
@@ -12035,41 +12016,29 @@ async function scenarioBlinkSlash() {
   };
   try {
     CB.setLights('blink');
-    const rows = [], hands = [], all = [], lastSlam = [];
+    const rows = [], all = [], lastSlam = [];
     let plainBad = false;
-    // the last hits' clips: plain one-handed blade hits, no spin, no hop, no turn, the hand on the belt,
-    // the chest at most ~40° on the hips
+    // (the last hit's own strokes: scenario `blinklast`)
     {
-      const bad = [];
-      for (const id of FN.FINISHER_IDS) {
-        const an = FN.FINISHER_ANIMS[id], C = SWINGS[an.clip];
-        if (!C) { bad.push(`${id}: no clip`); continue; }
-        if (an.spin || an.hop || an.turn || an.feet) bad.push(`${id}: spin/hop/turn/dash`);
-        if (C.keys.some((k) => k.two != null && k.two !== 0)) bad.push(`${id}: two hands`);
-        if (!C.plain || !C.side || !C.slash?.length) bad.push(`${id}: not plain / belt / slash`);
-        const tw = Math.max(...C.keys.filter((k) => k.sy != null).map((k) => Math.abs(k.sy)));
-        if (tw > 0.7) bad.push(`${id}: chest ${((tw * 180) / Math.PI).toFixed(0)}° on the hips`);
-      }
-      assert(!bad.length && FN.FINISHER_IDS.join() === 'flurry,delayed,double', `the three last hits (flurry, delayed, double) are plain one-handed instant cuts: no spin, hop, turn or dash, the hand on the belt, the chest at most 40° on the hips (${bad.join(', ') || 'all'})`);
-      const lines = Object.fromEntries(FN.FINISHER_IDS.map((id) => [id, SWINGS[FN.FINISHER_ANIMS[id].clip].slash.length]));
-      assert(lines.flurry >= 4 && lines.flurry <= 5 && lines.delayed === 1 && SWINGS.finDelayed.slash[0][2] >= 0.1 && lines.double === 2, `the flurry cuts four or five lines, the delayed cut one a beat late, the double two (${JSON.stringify(lines)})`);
       CB.setLights('blink');
       const hb = CB.HEAVY.map((H) => H.anim);
       CB.setLights('new');
       const hn = CB.HEAVY.map((H) => H.anim.clip);
       CB.setLights('blink');
       const twoOk = hb.every((an) => SWINGS[an.clip]?.slashLook === 'heavy' && SWINGS[an.clip].keys.filter((k) => k.two != null).every((k) => k.two === 1));
-      assert(hn.join() === 'heavyThrust,heavyRise,heavySpin,heavyCrush,slam' && hb.every((an, i) => an.clip !== hn[i]) && twoOk && hb[0].feet === 'dash' && hb[2].spin === -1 && hb[4].hop === 0.36,
-        `?lights=blink swaps the five heavies to two-handed instant cuts with heavy lines (${hb.map((a) => a.clip).join(', ')}), keeping Gale's dash, Tempest's turn and Earthbreaker's leap; every other look keeps today's (${hn.join(', ')})`);
+      assert(hn.join() === 'heavyThrust,heavyRise,heavySpin,heavyCrush,slam' && hb.every((an, i) => an.clip !== hn[i]) && twoOk && hb[0].feet === 'dash' && !hb[2].spin && hb[4].hop === 0.36,
+        `?lights=blink swaps the five heavies to two-handed instant cuts with heavy lines (${hb.map((a) => a.clip).join(', ')}), keeping Gale's dash and Earthbreaker's leap, Whirling Tempest one cut without its turn (scenario blinkheavies); every other look keeps today's (${hn.join(', ')})`);
     }
-    for (const fin of FN.FINISHER_IDS) {
-      CB.setFinisherLook(fin);
+    // a chain of five for each of the last hit's strokes (lastHits.js; anim.js forceVariant pins it): hits 1-4
+    // once, the last hit every time
+    for (let v = 0; v < 5; v++) {
       const G = setup();
+      G.game.player.anim.forceVariant = v;
       const R = take(G, [0, 1, 2, 3, 4].map((i) => [i * CHAIN_EVERY, 'L']), 4 * CHAIN_EVERY + 1.6);
-      hands.push({ fin, ...R.hand });
-      lastSlam.push(`${fin} ${R.slam.shards}/${R.slam.ev}`);
+      G.game.player.anim.forceVariant = null;
+      lastSlam.push(`${R.swings[4]?.clip} ${R.slam.shards}/${R.slam.ev}`);
       if (R.slam.shards || R.slam.ev) plainBad = true;
-      all.push(...R.swings.filter((S, i) => fin === FN.FINISHER_IDS[0] || i === 4));
+      all.push(...R.swings.filter((S, i) => !v || i === 4));
     }
     for (let n = 0; n <= 4; n++) {
       const G = setup();
@@ -12087,15 +12056,16 @@ async function scenarioBlinkSlash() {
       out(`   ${S.clip.padEnd(16)} ${m.map((x) => (x.miss ? 'NO LINE' : x.ring ? `ring of ${x.n} straight cuts on the point's frames (${x.on ? 'all' : 'NOT all'}), ${x.turn.toFixed(0)}° round him, ${x.rMin.toFixed(2)}-${x.rMax.toFixed(2)} m out, ${x.low.toFixed(2)}-${x.high.toFixed(2)} m up` : x.thrust ? `streak ${x.len.toFixed(2)} m off the point (${x.gap.toFixed(3)} m), ${x.ang.toFixed(1)}° off the blade, at ${x.mid.toFixed(2)} m` : `line ${x.len.toFixed(2)} m, ${x.ang.toFixed(1)}° off the point's travel (${x.travel.toFixed(2)} m), ${(x.d0 * 100).toFixed(1)} / ${(x.d1 * 100).toFixed(1)} cm off its two frames, the finish ${(x.dFin * 100).toFixed(0)} cm off it, mid ${x.mid.toFixed(2)} m, lowest ${x.low.toFixed(2)} m`)).join(' | ')}; round arcs ${S.arcN}`);
     }
     assert(!plainBad, `the blink last hits burst no shards and send no player:slam (${lastSlam.join(', ')})`);
-    for (const h of hands) out(`   free hand (${h.fin} chain, ${h.n} frames): the wrist in the chest's frame spans ${((h.max[0] - h.min[0]) * 100).toFixed(1)} x ${((h.max[1] - h.min[1]) * 100).toFixed(1)} x ${((h.max[2] - h.min[2]) * 100).toFixed(1)} cm, at most ${(h.step * 100).toFixed(1)} cm a frame (${h.stepAt}), the elbow ${h.el[0].toFixed(0)}-${h.el[1].toFixed(0)}°`);
     const cutsOk = rows.every((r) => r.m.length && r.m.every((x) => !x.miss && (x.ring ? x.on && x.turn > 300 && x.low > 0.3 : x.thrust ? x.gap < 0.01 && x.ang < 2 && x.len >= 0.7 && x.len <= 1.6 : x.ang < 1 && x.d0 < 0.1 && x.d1 < 0.1 && x.low >= 0)));
     assert(cutsOk, "every instant cut draws its line on the blade's own path (along the point's travel, within 10 cm of it on both frames, never under the ground); every thrust a short streak straight off the point");
     // (≤ 1.6: the last hit's cut that has to land rises high, combat.js LIGHT[4]'s low reach band `up` 1)
-    const midOk = rows.every((r) => r.m.every((x) => x.miss || x.thrust || x.ring || (x.mid >= 0.9 && x.mid <= 1.6) || r.S.def.name === 'earthbreaker'));
-    assert(midOk, "the lines cross his front at chest height (their middle 0.9-1.6 m up; Earthbreaker's cuts down into the ground)");
+    // (a heavy's wide stroke runs from over his head or shoulder down to the ground, or up past his head, so
+    // its middle may sit higher: it may cross chest height instead, its low end under 1.2 m and its high end
+    // over 1.3 m; heaviesBlink.js, scenario blinkheavies)
+    const midBad = rows.filter((r) => !r.m.every((x) => x.miss || x.thrust || x.ring || r.S.def.name === 'earthbreaker' || (x.mid >= 0.9 && x.mid <= 1.6) || (r.S.def.button === 'heavy' && x.low <= 1.2 && 2 * x.mid - x.low >= 1.3)));
+    assert(!midBad.length, `the lines cross his front at chest height (the middle 0.9-1.6 m up, or a heavy's line through 1.2-1.3 m; Earthbreaker's cuts down into the ground)${midBad.length ? `: not ${midBad.map((r) => r.S.clip).join(', ')}` : ''}`);
     assert(rows.every((r) => !(r.S.arcN > 0)), 'no round arc behind an instant cut');
     assert(rows.every((r) => r.m.every((x) => x.miss || x.heavy === (r.S.def.button === 'heavy'))), "the heavies' lines in the heavy look, the lights' in the light one");
-    assert(hands.every((h) => h.n > 60 && Math.max(h.max[0] - h.min[0], h.max[1] - h.min[1], h.max[2] - h.min[2]) < 0.12 && h.step < 0.04 && h.el[0] >= 65 && h.el[1] <= 125), "the free hand rests on the belt through a mashed chain: under 12 cm of travel in the chest's frame, under 4 cm a frame, the elbow 65-125°");
     // today's chain: no line at all
     CB.setLights('new');
     {
@@ -12106,49 +12076,1161 @@ async function scenarioBlinkSlash() {
     }
   } finally {
     CB.setLights(lights0);
-    CB.setFinisherLook(fin0);
   }
   return last;
 }
 
 // ================================================================== `blinklights`: the instant chain's hits 1-4: the sword arm opens through the cut, the body follows through (lightsBlink.js)
+// The arm is read in the chest's own frame (model units: the drawn hero's camera lean, model.js LEAN,
+// shears the world positions, so a world distance over the arm's length reads 0.8-1.3 for the same arm),
+// the speeds and the chest's turn in his own frame, as the arm audit (`armaudit`) reads them. Each of the
+// four clips, in a mashed chain (a press every 0.30 s) and a slow one (every 0.42 s):
+//   the coil (the frame before the cut) folded (elbow 70-115°; the thrust's 60-115°), the wrist never
+//   broken (≤ 60° outside the cut, ≤ 75° in it), the cut 1-3 frames in which the arm opens (the elbow
+//   never closes by more than a few degrees frame to frame) to 145-170° at its end (the thrust: ≥ 155°,
+//   the wrist ≤ 25°), the elbow never over the shoulder by more than 10 cm nor behind his back;
+//   after it the hand still moving on at least 6 frames (4 in the mashed chain, where the next hit takes
+//   over) and slowing frame to frame with most of it in the first four, no still frame before u 2.5 in
+//   the slow chain, the blade turned on ≥ 25° past the frame its line ended on, the chest round ≥ 50°
+//   from the coil (a cut) and on 8-25° past the cut's end.
+// Each hit lands on the wyrm standing 2 m in front, inside its active frames, in both chains; the
+// default look still plays today's clips. GCD_LIGHTSDUMP=1 prints every frame.
 async function scenarioBlinkLights() {
   out('\n== scenario BLINKLIGHTS (the instant chain’s hits 1-4: the sword arm opens through the cut, the body follows through (lightsBlink.js)) ==');
-  const G = build();
-  out('   (stub: its checks are still to be written)');
-  return G;
+  const CB = await imp('src/entities/player/combat.js');
+  const { SWINGS } = await imp('src/entities/player/swings.js');
+  const { swingPhase } = await imp('src/entities/player/anim.js');
+  const { DIM: HD, PLAYER_SCALE: PS } = await imp('src/entities/player/model.js');
+  const lights0 = CB.lightsMode(), DEG = 180 / Math.PI, DUMP = !!process.env.GCD_LIGHTSDUMP;
+  const CLIPS = ['blinkFall', 'blinkFlat', 'blinkCross', 'blinkThrust'];
+  const L = HD.upperArm + HD.foreArm;
+  let last = null;
+  const setup = () => {
+    const G = (last = build());
+    fightSetup(G);
+    const p = G.game.player, d = G.game.dragon;
+    p.debug.god = true;
+    p.debug.teleport(d.position.x + 14, d.position.z + 14);
+    p.yaw = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z);
+    aimAt(G);
+    for (let i = 0; i < 40; i++) G.tick(DT);
+    return G;
+  };
+  const S = new THREE.Vector3(), E = new THREE.Vector3(), W = new THREE.Vector3(), T = new THREE.Vector3(), Hh = new THREE.Vector3();
+  const a1 = new THREE.Vector3(), a2 = new THREE.Vector3();
+  const ang = (u, v) => Math.acos(clamp(u.normalize().dot(v.normalize()), -1, 1)) * DEG;
+  /** Presses at `every` s; per swing its frames: the arm in the chest's frame, the rest in his own. */
+  const take = (every, n) => {
+    const G = setup(), { game, input } = G, p = game.player, r = p.rig, A = p.anim;
+    const swings = [];
+    let cur = null, k = 0;
+    for (let i = 0, N = Math.round(((n - 1) * every + 1.2) / DT); i < N; i++) {
+      if (k < n && i >= Math.round((k * every) / DT)) { aimAt(G); input.click(0); k++; }
+      G.tick(DT);
+      const a = p.atk, d = a?.def, an = d && A.atkDef === d ? A.atkAnim : null;
+      if (!(d && p.state === 'attack' && !a.pending && an?.clip)) { cur = null; continue; }
+      if (!cur || cur.rec !== a) swings.push((cur = { rec: a, clip: an.clip, def: d, yaw: p.yaw, f: [] }));
+      const fx = Math.sin(cur.yaw), fz = Math.cos(cur.yaw);
+      const loc = (v) => { const dx = v.x - p.position.x, dz = v.z - p.position.z; return [dx * fz - dz * fx, v.y - p.position.y, dx * fx + dz * fz]; };
+      S.setFromMatrixPosition(r.arms.R.upper.matrixWorld);
+      E.setFromMatrixPosition(r.arms.R.fore.matrixWorld);
+      W.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.R.fore.matrixWorld);
+      T.set(0, 0, HD.drawnTip).applyMatrix4(r.sword.matrixWorld);
+      Hh.set(0, 0, HD.bladeBase).applyMatrix4(r.sword.matrixWorld);
+      const elUp = (E.y - S.y) / PS, wl = loc(W), tl = loc(T), hl = loc(Hh);
+      for (const v of [S, E, W, T, Hh]) r.chest.worldToLocal(v);
+      const ce = r.chest.matrixWorld.elements;
+      let cy = Math.atan2(ce[8], ce[10]) - p.yaw;
+      while (cy > Math.PI) cy -= 2 * Math.PI;
+      while (cy < -Math.PI) cy += 2 * Math.PI;
+      cur.f.push({
+        u: swingPhase(a.t, d.windup, d.active, d.recovery), t: a.t,
+        elbow: ang(a1.subVectors(S, E), a2.subVectors(W, E)), ext: S.distanceTo(W) / L, wrist: ang(a1.subVectors(W, E), a2.subVectors(T, Hh)),
+        elUp, elZ: E.z, w: wl, tip: tl, dir: tl.map((x, c) => x - hl[c]), chest: cy * DEG,
+      });
+    }
+    const dist = (x, y) => Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]);
+    for (const sw of swings) {
+      const F = sw.f;
+      F.forEach((q, i) => { const pr = F[i - 1] ?? q; q.vh = dist(q.w, pr.w) / DT; q.vt = dist(q.tip, pr.tip) / DT; q.vc = Math.abs(q.chest - pr.chest) / DT; });
+    }
+    return swings;
+  };
+  /** One swing's numbers (the audit's reading of the cut and the follow-through). */
+  const judge = (sw) => {
+    const F = sw.f, C = SWINGS[sw.clip], thrust = C.line === 'point';
+    const peak = Math.max(...F.map((q) => q.vt)), iPk = F.findIndex((q) => q.vt === peak);
+    let i0 = iPk, i1 = iPk;
+    while (i0 > 0 && F[i0 - 1].vt > 0.4 * peak) i0--;
+    while (i1 < F.length - 1 && F[i1 + 1].vt > 0.4 * peak) i1++;
+    const coil = F[Math.max(0, i0 - 1)], cut = F.slice(i0, i1 + 1), after = F.slice(i1 + 1);
+    const live = (q) => q.vh > 0.25 || q.vt > 0.6 || q.vc > 40;
+    let ft = 0;
+    while (ft < after.length && live(after[ft])) ft++;
+    const dead = after.slice(ft).filter((q) => q.u < 2.5 && !live(q)).length;
+    // the arm through the cut: from the coil to the end of the cut (for the thrust, the frame it is full)
+    const iEnd = thrust ? F.findIndex((q) => q.u >= C.slash[0][0]) : i1;
+    let close = 0;
+    for (let i = i0; i <= iEnd; i++) close = Math.max(close, F[i - 1].elbow - F[i].elbow);
+    const wrOut = Math.max(...F.filter((q, i) => i < i0 || i > i1).map((q) => q.wrist)), wrCut = Math.max(...cut.map((q) => q.wrist));
+    // the blade past the frame its line ended on
+    const iLine = thrust ? iEnd : F.findIndex((q) => q.u >= C.slash[0][1]);
+    const turn = Math.max(0, ...F.slice(iLine + 1).filter((q) => q.u < 2.5).map((q) => ang(a1.set(...F[iLine].dir), a2.set(...q.dir))));
+    const c5 = (after[Math.min(5, after.length - 1)] ?? F[i1]).chest;
+    const hv = after.slice(0, 6).map((q) => q.vh);
+    const smooth = hv.every((v, i) => i === 0 || v <= hv[i - 1] * 1.15 + 0.3);
+    const first4 = hv.slice(0, 4).reduce((s, v) => s + v, 0) / Math.max(1e-6, after.slice(0, ft).reduce((s, q) => s + q.vh, 0));
+    return {
+      clip: sw.clip, nCut: i1 - i0 + 1, coilEl: coil.elbow, endEl: F[iEnd].elbow, endExt: F[iEnd].ext, endWr: F[iEnd].wrist, close, wrOut, wrCut,
+      elUp: Math.max(...F.map((q) => q.elUp)), elZ: Math.min(...F.map((q) => q.elZ)), ft, dead, smooth, first4, turn,
+      chestTurn: Math.abs(c5 - coil.chest), carry: Math.abs(c5 - F[i1].chest), hv, thrust,
+    };
+  };
+  const fmt = (j) => `${j.clip.padEnd(12)} cut ${j.nCut} fr, coil elbow ${j.coilEl.toFixed(0)}°, end elbow ${j.endEl.toFixed(0)}° ext ${j.endExt.toFixed(2)} wrist ${j.endWr.toFixed(0)}°, closes ≤ ${j.close.toFixed(0)}°, wrist ≤ ${j.wrOut.toFixed(0)}° (cut ${j.wrCut.toFixed(0)}°), elbow ≤ ${(j.elUp * 100).toFixed(0)} cm over the shoulder, ${j.elZ.toFixed(2)} m ahead | follow ${j.ft} live fr (${j.hv.map((v) => v.toFixed(1)).join(' ')} m/s, ${(j.first4 * 100).toFixed(0)} % in 4), ${j.dead} still before u 2.5, blade on ${j.turn.toFixed(0)}° | chest ${j.chestTurn.toFixed(0)}°, on ${j.carry.toFixed(0)}° past the cut`;
+  try {
+    // the clips: the free hand hangs at his side (no free-hand keys), the lines on the keys' frames
+    {
+      const FREE = ['l', 'ld', 'lw', 'lp', 'pn', 'hs', 'lk', 'fh', 'two', 'offAt'];
+      const bad = CLIPS.filter((n) => { const C = SWINGS[n]; return !C?.side || C.keys.some((k) => FREE.some((f) => k[f] != null)) || C.slash?.length !== 1; });
+      assert(!bad.length, `the four clips hang the free hand at his side and key no free hand, one line each (${bad.join(', ') || 'all'})`);
+    }
+    CB.setLights('blink');
+    const rows = { mashed: [], slow: [] };
+    for (const [nm, every] of [['mashed', 0.3], ['slow', 0.42]]) {
+      const sw = take(every, 4).filter((s) => CLIPS.includes(s.clip));
+      if (DUMP) for (const s of sw) { out(`   -- ${s.clip} (${nm})`); s.f.forEach((q, i) => out(`      #${i} u ${q.u.toFixed(2)} elbow ${q.elbow.toFixed(0)}° ext ${q.ext.toFixed(2)} wrist ${q.wrist.toFixed(0)}° hand ${q.vh.toFixed(1)} tip ${q.vt.toFixed(1)} chest ${q.chest.toFixed(0)}° elbow ${(q.elUp * 100).toFixed(0)} cm up`)); }
+      rows[nm] = sw.map(judge);
+      assert(sw.map((s) => s.clip).join() === CLIPS.join(), `the ${nm} chain plays the four clips in order (${sw.map((s) => s.clip).join(', ')})`);
+      for (const j of rows[nm]) out(`   ${nm.padEnd(6)} ${fmt(j)}`);
+    }
+    const all = [...rows.mashed, ...rows.slow];
+    assert(all.every((j) => j.nCut >= 1 && j.nCut <= 3), `each cut crosses in 1-3 frames (${all.map((j) => j.nCut).join(' ')})`);
+    assert(all.every((j) => j.coilEl >= (j.thrust ? 60 : 70) && j.coilEl <= 115), `the coil is folded: elbow 70-115° (the thrust's at the ribs 60-115°) (${all.map((j) => j.coilEl.toFixed(0)).join(' ')})`);
+    assert(all.every((j) => (j.thrust ? j.endEl >= 155 && j.endWr <= 25 : j.endEl >= 145 && j.endEl <= 170) && j.close <= 8),
+      `the arm opens through the cut and never folds back (≤ 8° a frame) to 145-170° at its end; the thrust's to ≥ 155° with the wrist ≤ 25° (${all.map((j) => `${j.endEl.toFixed(0)}/${j.close.toFixed(0)}`).join(' ')})`);
+    assert(all.every((j) => j.endExt >= 0.95), `the hand at the end of the cut is at ≥ 0.95 of the arm's reach, in the chest's frame (${all.map((j) => j.endExt.toFixed(2)).join(' ')})`);
+    assert(all.every((j) => j.wrOut <= 60 && j.wrCut <= 75), `the wrist never breaks: ≤ 60° on every frame, ≤ 75° in the cut (${all.map((j) => `${j.wrOut.toFixed(0)}/${j.wrCut.toFixed(0)}`).join(' ')})`);
+    assert(all.every((j) => j.elUp <= 0.1 && j.elZ >= -0.15), `the elbow stays under the shoulder's height + 10 cm and in front of his back (${all.map((j) => `${(j.elUp * 100).toFixed(0)}cm/${j.elZ.toFixed(2)}`).join(' ')})`);
+    assert(rows.slow.every((j) => j.ft >= 6 && j.dead === 0) && rows.mashed.every((j) => j.ft >= 4), `the follow-through lives: ≥ 6 frames after the cut and no still frame before u 2.5 in a slow chain, ≥ 4 before the next hit in a mashed one (${rows.slow.map((j) => `${j.ft}/${j.dead}`).join(' ')} | ${rows.mashed.map((j) => j.ft).join(' ')})`);
+    assert(all.every((j) => j.smooth && (j.thrust || j.first4 >= 0.75)), `the hand slows frame to frame after the cut, the cuts' with ≥ 75 % of it in the first four frames (${all.map((j) => (j.first4 * 100).toFixed(0)).join(' ')} %)`);
+    assert(all.every((j) => j.thrust || j.turn >= 25), `the blade turns on ≥ 25° past the frame its line ended on (${all.filter((j) => !j.thrust).map((j) => j.turn.toFixed(0)).join(' ')}°)`);
+    assert(all.every((j) => j.thrust || (j.chestTurn >= 50 && j.carry >= 8 && j.carry <= 25)), `the chest turns ≥ 50° from the coil and carries on 8-25° past the cut (${all.filter((j) => !j.thrust).map((j) => `${j.chestTurn.toFixed(0)}/${j.carry.toFixed(0)}`).join(' ')})`);
+    // each hit lands on the wyrm 2 m in front, in its active frames, mashed and slow (the hits before
+    // it swung in open air)
+    {
+      const res = [];
+      for (const every of [0.3, 0.42]) {
+        for (let n = 1; n <= 4; n++) {
+          const G = (last = build());
+          fightSetup(G);
+          settle(G);
+          const { game, input } = G, d = game.dragon, p = game.player;
+          const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
+          const chest = () => d.hurtSpheres.filter((h) => h.part === 'body').reduce((a, h) => ((h.x - d.position.x) * fx + (h.z - d.position.z) * fz > (a.x - d.position.x) * fx + (a.z - d.position.z) * fz ? h : a));
+          p.debug.teleport(d.position.x + fx * 40, d.position.z + fz * 40);
+          p.debug.god = true;
+          aimAt(G);
+          let hit = null;
+          for (let k = 0; k < n; k++) {
+            if (k === n - 1) {
+              const c = chest();
+              p.debug.teleport(c.x + fx * (c.r + 2), c.z + fz * (c.r + 2));
+              p.yaw = Math.atan2(c.x - p.position.x, c.z - p.position.z);
+              G.watch = (nn, e) => { if (nn === 'player:hitDragon' && !hit) hit = { combo: p.atk?.def?.combo, t: p.atk?.t ?? NaN, def: p.atk?.def, guarded: e.guarded }; };
+            }
+            aimAt(G);
+            input.click(0);
+            run(G, k < n - 1 ? every : 1.0, { passive: true });
+          }
+          G.watch = null;
+          const ok = hit && hit.combo === n && !hit.guarded && hit.t >= hit.def.windup - 1e-6 && hit.t <= hit.def.windup + hit.def.active + 1e-6;
+          res.push({ every, n, ok, at: hit ? `${hit.combo}@${((hit.t - hit.def.windup) / hit.def.active).toFixed(2)}` : 'MISS' });
+        }
+      }
+      assert(res.every((x) => x.ok), `each hit lands on the wyrm 2 m in front inside its active frames, mashed and slow (${res.map((x) => `${x.every}s#${x.n} ${x.at}`).join(', ')})`);
+    }
+    // the default look: today's clips, untouched
+    CB.setLights('new');
+    {
+      const G = setup(), A = G.game.player.anim;
+      A.forceVariant = 0;
+      const played = [];
+      const { input } = G, p = G.game.player;
+      for (let i = 0, k = 0; i < Math.round(1.9 / DT); i++) {
+        if (k < 4 && i >= Math.round((k * CHAIN_EVERY) / DT)) { aimAt(G); input.click(0); k++; }
+        G.tick(DT);
+        const c = p.atk?.def && A.atkDef === p.atk.def ? A.atkAnim?.clip : null;
+        if (c && played.at(-1) !== c) played.push(c);
+      }
+      A.forceVariant = null;
+      assert(played.join() === 'fallingCut,risingBackhand,whirl,lunge' && CLIPS.every((n) => !played.includes(n)), `the default look still plays today's clips (${played.join(', ')})`);
+    }
+  } finally {
+    CB.setLights(lights0);
+  }
+  return last;
 }
 
 // ================================================================== `blinkhand`: the free hand hangs loose at his side through the instant cuts (anim.js, a clip's `side`)
+// The owner (2026-11-25): "the left hand needs to stop holding the hip and be on the side how a sword
+// fighter would normally have and not stiff as well"; asked where: loose at his side, beside the left
+// thigh, the elbow a little bent, swaying a little with each cut, no belt, no flailing. anim.js
+// sideHand / HeroAnimator._sideHand: a damped pendulum from the left shoulder. Through a mashed chain,
+// the chain's other strokes, a sprint slash and a cut out of a roll: in each swing the wrist (in his
+// own frame as the swing began, carried with his root: the arm audit's FREE HAND) stays in a box
+// beside the thigh, moves at a hand's pace and still moves; the elbow stays bent but open; no frame
+// jumps it (the chain's first frames and the way home included); it never goes into the thigh or the
+// ground. Today's chain (`?lights=new`) never hangs it. GCD_HANDDUMP=1 prints every frame.
 async function scenarioBlinkHand() {
   out('\n== scenario BLINKHAND (the free hand hangs loose at his side through the instant cuts (anim.js, a clip’s `side`)) ==');
-  const G = build();
-  out('   (stub: its checks are still to be written)');
-  return G;
+  const CB = await imp('src/entities/player/combat.js');
+  const { SWINGS } = await imp('src/entities/player/swings.js');
+  const { P: AP } = await imp('src/entities/player/anim.js');
+  const { DIM: HD } = await imp('src/entities/player/model.js');
+  const lights0 = CB.lightsMode(), DEG = 180 / Math.PI, DUMP = !!process.env.GCD_HANDDUMP;
+  let last = null;
+  const setup = () => {
+    const G = (last = build());
+    fightSetup(G);
+    const p = G.game.player, d = G.game.dragon;
+    p.debug.god = true;
+    p.debug.teleport(d.position.x + 14, d.position.z + 14);
+    p.yaw = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z);
+    aimAt(G);
+    for (let i = 0; i < 40; i++) G.tick(DT);
+    return G;
+  };
+  const LW = new THREE.Vector3(), LS = new THREE.Vector3(), LE = new THREE.Vector3(), TH = new THREE.Vector3(), KN = new THREE.Vector3(), a1 = new THREE.Vector3(), a2 = new THREE.Vector3();
+  /** Play `steps` (a function of the frame index that drives the input) for `secs`; returns per-frame rows. */
+  const take = (G, steps, secs) => {
+    const { game } = G, p = game.player, A = p.anim, r = p.rig, rows = [];
+    for (let i = 0, n = Math.round(secs / DT); i < n; i++) {
+      steps(i, G);
+      G.tick(DT);
+      const a = p.atk, d = a?.def, an = d && A.atkDef === d ? A.atkAnim : null;
+      const on = !!d && (p.state === 'attack' || p.state === 'heavy') && !a.pending;
+      LW.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.L.fore.matrixWorld);
+      LS.setFromMatrixPosition(r.arms.L.upper.matrixWorld);
+      LE.setFromMatrixPosition(r.arms.L.fore.matrixWorld);
+      TH.setFromMatrixPosition(r.legs.L.thigh.matrixWorld);
+      KN.setFromMatrixPosition(r.legs.L.shin.matrixWorld);
+      // the wrist's distance from the thigh's line (hip → knee)
+      const ab = a2.subVectors(KN, TH), k = clamp(a1.subVectors(LW, TH).dot(ab) / ab.lengthSq(), 0, 1), thigh = a1.subVectors(LW, TH).addScaledVector(ab, -k).length();
+      const el = Math.acos(clamp(a1.subVectors(LS, LE).normalize().dot(a2.subVectors(LW, LE).normalize()), -1, 1)) * DEG;
+      rows.push({
+        i, rec: on ? a : null, clip: on ? an?.clip ?? `(${an?.kind ?? '?'})` : p.state, side: on && !!SWINGS[an?.clip]?.side,
+        sd: A.cur[AP.sd], on: (A.sideH?.mode ?? 0) !== 0, mode: `${A.sideH?.mode ?? '-'}${(A.sideH?.e ?? 0).toFixed(2)}`, w: LW.clone(), sh: LS.clone(), pos: p.position.clone(), yaw: p.yaw, gy: p.position.y, el, thigh, two: A.cur[AP.twoHand],
+        stop: game.hitstopTimer > 0, hp: r.pelvis.worldToLocal(LW.clone()), th: TH.clone(), kn: r.pelvis.worldToLocal(KN.clone()), // the wrist in the pelvis's own frame (model m: +x his left, +z ahead); the hip joint
+      });
+    }
+    return rows;
+  };
+  /** The swings of a take (side clips only), measured as the arm audit measures the free hand. */
+  const swingsOf = (rows) => {
+    const out_ = [];
+    let cur = null;
+    for (const q of rows) {
+      if (!q.rec) { cur = null; continue; }
+      if (!cur || cur.rec !== q.rec) out_.push((cur = { rec: q.rec, clip: q.clip, side: q.side, yaw: q.yaw, f: [] }));
+      const fx = Math.sin(cur.yaw), fz = Math.cos(cur.yaw), dx = q.w.x - q.pos.x, dz = q.w.z - q.pos.z;
+      cur.f.push({ l: [dx * fz - dz * fx, q.w.y - q.pos.y, dx * fx + dz * fz], h: [q.hp.x, q.hp.y, q.hp.z], el: q.el, thigh: q.thigh, two: q.two, q });
+    }
+    const box = (F, k) => [0, 1, 2].map((c) => Math.max(...F.map((v) => v[k][c])) - Math.min(...F.map((v) => v[k][c])));
+    const speed = (F, k) => { let v = 0; for (let j = 1; j < F.length; j++) v = Math.max(v, Math.hypot(F[j][k][0] - F[j - 1][k][0], F[j][k][1] - F[j - 1][k][1], F[j][k][2] - F[j - 1][k][2]) / DT); return v; };
+    return out_.filter((S) => S.side).map((S) => {
+      // (where it hangs: the swing's middle third, past the way in from the guard or a roll (anim.js SIDE.ease,
+      // 0.3 s) and before the way home)
+      const F = S.f, i0 = Math.min(F.length - 3, Math.max(Math.floor(F.length / 3), 18)), F2 = F.slice(i0, Math.max(i0 + 3, Math.ceil((2 * F.length) / 3))), at = (c) => F2.reduce((s, q) => s + q.h[c], 0) / F2.length;
+      // the hand's step over the body's under it (the shoulder's or the hip's, the larger; world, his root's travel out)
+      let over = 0;
+      for (let j = 1; j < F.length; j++) {
+        const a = F[j - 1].q, b = F[j].q, d = (u, v) => Math.hypot(v.x - b.pos.x - (u.x - a.pos.x), v.y - b.pos.y - (u.y - a.pos.y), v.z - b.pos.z - (u.z - a.pos.z));
+        over = Math.max(over, d(a.w, b.w) - Math.max(d(a.sh, b.sh), d(a.th, b.th)));
+      }
+      return { clip: S.clip, n: F.length, span: box(F, 'l'), v: speed(F, 'l'), hspan: box(F, 'h'), hv: speed(F, 'h'), over, el: [Math.min(...F.map((q) => q.el)), Math.max(...F.map((q) => q.el))], mid: [at(0), at(1), at(2)], thigh: Math.min(...F.map((q) => q.thigh)) };
+    });
+  };
+  /** Over a whole take (the chain's first frames and the way home too): the wrist's largest step in a
+   *  frame (world, his root's travel taken out), and the most it stepped past the body under it (the
+   *  shoulder's step or the hip's, the larger); in the frozen frames (hit-stop) its largest step. */
+  const stepOf = (rows) => {
+    let s = 0, at = '', o = 0, oAt = '', fz = 0, nz = 0;
+    for (let j = 1; j < rows.length; j++) {
+      const a = rows[j - 1], b = rows[j], d = (u, v) => Math.hypot(v.x - b.pos.x - (u.x - a.pos.x), v.y - b.pos.y - (u.y - a.pos.y), v.z - b.pos.z - (u.z - a.pos.z));
+      const w = d(a.w, b.w), ov = w - Math.max(d(a.sh, b.sh), d(a.th, b.th));
+      if (w > s) { s = w; at = `#${j} ${b.clip}${b.rec ? '' : ' (after)'}`; }
+      if (ov > o) { o = ov; oAt = `#${j} ${b.clip}${b.rec ? '' : ' (after)'}`; }
+      if (a.stop && b.stop) { fz = Math.max(fz, ov); nz++; }
+    }
+    return { s, at, o, oAt, fz, nz };
+  };
+  const low = (rows) => Math.min(...rows.map((q) => q.w.y - q.gy));
+  const dump = (name, rows) => {
+    if (!DUMP) return;
+    out(`   -- ${name}`);
+    for (const q of rows) {
+      const fx = Math.sin(q.yaw), fz = Math.cos(q.yaw), dx = q.w.x - q.pos.x, dz = q.w.z - q.pos.z, sx = q.sh.x - q.pos.x, sz = q.sh.z - q.pos.z;
+      out(`     #${String(q.i).padStart(3)}${q.stop ? '!' : ' '}${String(q.clip).padEnd(14)} sd ${q.sd.toFixed(4)} ${q.mode} wrist ${[dx * fz - dz * fx, q.w.y - q.pos.y, dx * fx + dz * fz].map((x) => x.toFixed(2)).join(',')} shoulder ${[sx * fz - sz * fx, q.sh.y - q.pos.y, sx * fx + sz * fz].map((x) => x.toFixed(2)).join(',')} elbow ${q.el.toFixed(0)}° thigh ${q.thigh.toFixed(2)} | by the hips ${[q.hp.x, q.hp.y, q.hp.z].map((x) => x.toFixed(2)).join(',')} knee ${[q.kn.x, q.kn.y, q.kn.z].map((x) => x.toFixed(2)).join(',')}`);
+    }
+  };
+  const cm = (v) => v.map((x) => (x * 100).toFixed(0)).join(' x ');
+  const fmt = (S) => `${S.clip.padEnd(14)} ${S.n} frames: by the hips ${cm(S.hspan)} cm round ${S.mid.map((x) => x.toFixed(2)).join(',')}, ${S.hv.toFixed(1)} m/s | his frame ${cm(S.span)} cm, ${S.v.toFixed(1)} m/s, ${(S.over * 100).toFixed(1)} cm a frame over the body's | elbow ${S.el[0].toFixed(0)}-${S.el[1].toFixed(0)}°, ${(S.thigh * 100).toFixed(0)} cm off the thigh's line`;
+  try {
+    CB.setLights(process.env.GCD_HANDLOOK || 'blink');
+    const sw = [], steps = [], lows = [];
+    // a mashed chain (a press every 0.3 s), then the way home
+    {
+      const G = setup(), plan = [0, 0.3, 0.6, 0.9, 1.2].map((s) => Math.round(s / DT));
+      const rows = take(G, (i, G) => { if (plan.includes(i)) { aimAt(G); G.input.click(0); } }, 1.2 + 1.7);
+      dump('mashed chain', rows);
+      const S = swingsOf(rows);
+      sw.push(...S.map((x) => ({ ...x, take: 'mashed' })));
+      steps.push({ take: 'mashed chain', ...stepOf(rows) });
+      lows.push(low(rows));
+      assert(S.length === 5, `the mashed chain's five hits all hang the free hand (${S.map((x) => x.clip).join(', ')})`);
+    }
+    // the chain at its own pace (the other strokes of each hit), twice round
+    for (let v = 0; v < 2; v++) {
+      const G = setup(), plan = [0, 1, 2, 3, 4].map((k) => Math.round((k * CHAIN_EVERY + (k === 4 ? 0 : 0)) / DT));
+      const rows = take(G, (i, G) => { if (plan.includes(i)) { aimAt(G); G.input.click(0); } }, 4 * CHAIN_EVERY + 1.7);
+      dump(`chain ${v}`, rows);
+      sw.push(...swingsOf(rows).map((x) => ({ ...x, take: 'chain' })));
+      steps.push({ take: `chain ${v}`, ...stepOf(rows) });
+      lows.push(low(rows));
+    }
+    // a sprint slash, and a cut out of a forward roll
+    {
+      const G = setup(), { input } = G;
+      const rows = take(G, (i) => {
+        if (i === 0) { input.axis = { x: 0, y: 1 }; input.hold('ShiftLeft'); }
+        if (i === 54) { input.click(0); input.release('ShiftLeft'); input.axis = { x: 0, y: 0 }; }
+      }, 0.9 + 1.4);
+      dump('sprint slash', rows);
+      sw.push(...swingsOf(rows).map((x) => ({ ...x, take: 'sprint' })));
+      steps.push({ take: 'sprint slash', ...stepOf(rows.slice(50)) });
+      lows.push(low(rows));
+    }
+    {
+      const G = setup(), { input } = G;
+      const rows = take(G, (i) => {
+        if (i === 0) input.axis = { x: 0, y: 1 };
+        if (i === 18) input.tap('Space');
+        if (i === 39) { input.axis = { x: 0, y: 0 }; input.click(0); }
+      }, 0.65 + 1.4);
+      dump('roll cut', rows);
+      sw.push(...swingsOf(rows).map((x) => ({ ...x, take: 'roll' })));
+      steps.push({ take: 'roll cut', ...stepOf(rows.slice(36)) });
+      lows.push(low(rows));
+    }
+    // a chain that lands (the frame freezes on each landed hit)
+    {
+      const G = setup();
+      place(G, 2.4);
+      for (let i = 0; i < 20; i++) G.tick(DT);
+      const plan = [0, 0.3, 0.6, 0.9, 1.2].map((s) => Math.round(s / DT));
+      const rows = take(G, (i, G) => { if (plan.includes(i)) { aimAt(G); G.input.click(0); } }, 1.2 + 1.7);
+      dump('a landing chain', rows);
+      sw.push(...swingsOf(rows).map((x) => ({ ...x, take: 'landing' })));
+      steps.push({ take: 'landing chain', ...stepOf(rows) });
+      lows.push(low(rows));
+    }
+    for (const S of sw) out(`   ${S.take.padEnd(7)} ${fmt(S)}`);
+    for (const s of steps) out(`   ${s.take}: the wrist's largest step in a frame ${(s.s * 100).toFixed(1)} cm (${s.at}), ${(s.o * 100).toFixed(1)} cm past the body's (${s.oAt || '-'})${s.nz ? `; ${s.nz} frozen frames, the most it stepped past the body in one ${(s.fz * 100).toFixed(2)} cm` : ''}`);
+    out(`   the wrist at least ${Math.min(...lows).toFixed(2)} m above the ground`);
+    // the hand hangs beside the left thigh: on average out to his left of the hips, about their height, a
+    // little ahead of their seam (the pelvis's own frame)
+    const side = sw.filter((S) => !(S.mid[0] > 0.14 && S.mid[0] < 0.34 && S.mid[1] > -0.15 && S.mid[1] < 0.18 && S.mid[2] > -0.05 && S.mid[2] < 0.25));
+    assert(!side.length, `the free hand hangs beside the left thigh in every instant cut: on average 14-34 cm out to his left of the hips, within 15 cm of their height, 0-25 cm ahead (${side.map((S) => `${S.take} ${S.clip} ${S.mid.map((x) => x.toFixed(2)).join(',')}`).join('; ') || 'all'})`);
+    // the chain's middle hits (no way in from the guard or a roll, no last hit's low stance): loose, not
+    // flailing: a small box beside the hips, at a hand's pace, the elbow open but bent, never past the body
+    const mid = sw.filter((S) => /^blink(Flat|Cross|Thrust)$/.test(S.clip));
+    // (5 cm: a landed hit's bite drops the hips a frame after the contact, and the pendulum shows it)
+    const midBad = mid.filter((S) => Math.max(...S.hspan) > 0.3 || S.hv > 6.5 || S.over > 0.05 || S.el[0] < 115 || S.el[1] > 170);
+    assert(mid.length >= 9 && !midBad.length, `through the chain's middle hits the free hand stays in a box of 30 cm beside the hips, under 6.5 m/s against them, never more than 5 cm a frame past the body carrying it, the elbow 115-170° (${midBad.map(fmt).join('; ') || `${mid.length} swings`})`);
+    // … and it is not stiff: it moves against the hips in every cut
+    const dead = sw.filter((S) => Math.max(...S.hspan) < 0.03);
+    assert(!dead.length, `the free hand sways in every instant cut: at least 3 cm against the hips (${dead.map((S) => `${S.take} ${S.clip}`).join(', ') || 'all'})`);
+    // every take (the way in from the guard, a sprint, a roll; the last hit; the way home): no jump, the elbow
+    // never locked, clear of the thigh and the ground, and still through a frozen frame
+    const jumpy = steps.filter((s) => s.o > 0.12);
+    assert(!jumpy.length, `the free hand never steps more than 12 cm a frame past the body carrying it, on the way in, through every cut and on the way home (${jumpy.map((s) => `${s.take} ${(s.o * 100).toFixed(1)} cm at ${s.oAt}`).join(', ') || 'all'})`);
+    assert(sw.every((S) => S.el[1] <= 172 && S.thigh > 0.035), `the free elbow never locks (at most 172°) and the wrist keeps clear of the thigh's line (${sw.map((S) => `${S.el[1].toFixed(0)}°/${(S.thigh * 100).toFixed(0)}cm`).join(' ')})`);
+    assert(Math.min(...lows) > 0.1, `the free wrist stays above the ground (lowest ${Math.min(...lows).toFixed(2)} m)`);
+    const land = steps.find((s) => s.take === 'landing chain');
+    // (the contact frame is posed at once and the bite drops the hips: the body moves in a frozen frame, the hand with it)
+    assert(land && land.nz >= 2 && land.fz < 0.01, `on a landed hit the frame freezes and the free hand does not move on its own (${land?.nz ?? 0} frozen frames, at most ${((land?.fz ?? 0) * 100).toFixed(2)} cm past the body in one)`);
+    // today's chain: the hand never hangs
+    CB.setLights('new');
+    {
+      const G = setup(), plan = [0, 1, 2, 3, 4].map((k) => Math.round((k * CHAIN_EVERY) / DT));
+      const rows = take(G, (i, G) => { if (plan.includes(i)) { aimAt(G); G.input.click(0); } }, 4 * CHAIN_EVERY + 1.4);
+      const hung = rows.filter((q) => q.sd !== 0 || q.on).length;
+      assert(hung === 0, `today's chain (?lights=new) never hangs the free hand (${hung} frames)`);
+    }
+  } finally {
+    CB.setLights(lights0);
+  }
+  return last;
 }
 
 // ================================================================== `blinkheavies`: the instant heavies: weight, a cut that cannot be missed, the lone heavy a slash, no whirl (heaviesBlink.js)
+// ?lights=blink's five heavy branches (player/heaviesBlink.js; their line and kick, blinkFx.js). The owner
+// (2026-11-25): "the heavy attack also needs to be instant and feel weight", with more weight, a more
+// obvious cut, the lone heavy as a slash and no whirl. Pinned: the looks (no spin anywhere, the dash and
+// the leap kept, Gale drawn as a slash, two hands on every key, the default look's heavies untouched); per
+// heavy, played after 0-4 lights in open air, the rhythm (a still hold before the cut, the cut in two or
+// three frames, the weight landing: the hips dropping and the chest driving on, a hard stop, a still hold
+// of the finish), the sweep (wide; Whirling Tempest's level cut over 200° round him), the sword arm (long
+// at the end of the cut, the wrist under 60° on every frame), five different strokes, each unlike the
+// light before it; the heavy line longer and thicker than a light's; the camera kick on a whiff (one per
+// heavy, along the cut, no hit-stop) smaller than a hit's; and that each heavy still lands from the front
+// wherever today's look lands it, Earthbreaker with its shards.
 async function scenarioBlinkHeavies() {
   out('\n== scenario BLINKHEAVIES (the instant heavies: weight, a cut that cannot be missed, the lone heavy a slash, no whirl (heaviesBlink.js)) ==');
-  const G = build();
-  out('   (stub: its checks are still to be written)');
-  return G;
+  const CB = await imp('src/entities/player/combat.js');
+  const HB = await imp('src/entities/player/heaviesBlink.js');
+  const { SLASH } = await imp('src/entities/player/blinkFx.js');
+  const { SWINGS } = await imp('src/entities/player/swings.js');
+  const { swingPhase } = await imp('src/entities/player/anim.js');
+  const { DIM: HD } = await imp('src/entities/player/model.js');
+  const DEG = 180 / Math.PI, look0 = CB.lightsMode();
+  const NAMES = ['piercingGale', 'risingCrescent', 'whirlingTempest', 'mountainSplitter', 'earthbreaker'];
+  const lookOfH = () => CB.HEAVY.map((H) => ({ anim: H.anim, contact: H.contact, glint: H.glint }));
+  let last = null;
+  try {
+    // ---- the looks
+    CB.setLights('new');
+    const base = JSON.stringify(lookOfH());
+    CB.setLights('blink');
+    const bl = lookOfH(), clips = bl.map((b) => SWINGS[b.anim?.clip]);
+    CB.setLights('new');
+    assert(JSON.stringify(lookOfH()) === base && CB.HEAVY[0].anim.clip === 'heavyThrust' && CB.HEAVY[0].contact === 'point' && CB.HEAVY[0].glint === 'ridge' && CB.HEAVY[2].anim.spin === -1,
+      `the default look's heavies are today's, before and after the blink look (${CB.HEAVY.map((H) => H.anim.clip).join(', ')}; Gale a thrust with its ridge glint, Tempest's turn)`);
+    CB.setLights('blink');
+    assert(CB.HEAVY.map((H) => H.name).join() === NAMES.join() && clips.every(Boolean) && bl.every((b, i) => b.anim === HB.HEAVY_BLINK_ANIMS[i]), `?lights=blink plays heaviesBlink.js's five clips (${bl.map((b) => b.anim.clip).join(', ')})`);
+    const spinFree = bl.every((b) => !b.anim.spin && !b.anim.spinFeet && !b.anim.turn) && clips.every((C) => !C.spin && !C.turn && (C.slash ?? []).every((c) => c[2] !== 'ring'));
+    assert(spinFree, 'no whirl: no heavy spins or turns (Whirling Tempest is one cut), and no ring line');
+    assert(bl[0].anim.feet === 'dash' && bl[0].anim.dashW === true && bl[4].anim.hop === 0.36 && bl[4].anim.tuck === 1.3, "Piercing Gale keeps its dash, Earthbreaker its leap (hop 0.36, tuck 1.3)");
+    assert(bl[0].contact === 'sweep' && !bl[0].glint && clips[0].slash.every((c) => c[2] !== 'point'), `the lone heavy is a slash: drawn as a sweep, no ridge glint, no thrust streak (contact ${bl[0].contact}, glint ${bl[0].glint})`);
+    const twoOk = clips.every((C) => C.slashLook === 'heavy' && C.keys.every((k) => (k.two == null || k.two === 1) && (!k.h || k.two === 1)));
+    assert(twoOk, 'every heavy two-handed: `two: 1` on every key that places the hand, and no key lets go');
+    assert(new Set(clips.slice(1).map((C) => C.line)).size === 4, `the four heavies of the chain each on their own line (${clips.map((C) => C.line).join(', ')}; Gale's falling diagonal and the Rising Crescent share 'right' and are told apart below)`);
+    const L = SLASH.light, S = SLASH.strong, H = SLASH.heavy;
+    // (thick by rows of the same small strokes side by side, not by a bigger letter: its width is the rows' span)
+    const wide = (Lk) => (Lk.rows - 1) * Lk.gap + Lk.size;
+    assert(H.size >= 1.4 * L.size && H.rows >= 3 && wide(H) >= 2.5 * wide(L) && H.min >= 2 * L.min && H.max >= 1.6 * L.max && H.n > L.n && S && S.size > L.size && S.size < H.size && S.min > L.min && S.min < H.min,
+      `the heavy line: ${H.rows} rows of strokes ${(H.size / L.size).toFixed(1)}x a light's, ${(wide(H) / wide(L)).toFixed(1)}x as wide, ${H.min}-${H.max} m long (a light's ${L.min}-${L.max}); the strong look between`);
+    const kMin = Math.min(...CB.HEAVY.map((h) => h.kick)), sMin = Math.min(...CB.HEAVY.map((h) => h.shake));
+    assert(H.kick && H.kick.m > 0 && H.kick.m < kMin && H.kick.shake > 0 && H.kick.shake < sMin && !L.kick && !S.kick, `the heavy line kicks the camera ${H.kick?.m} m (a landed heavy's own kick ${kMin}+) and shakes it ${H.kick?.shake} (a hit's ${sMin}+); the light lines do not`);
+
+    // ---- the takes: n lights, then the heavy, in open air
+    const tip = new THREE.Vector3(), hilt = new THREE.Vector3(), Sh = new THREE.Vector3(), El = new THREE.Vector3(), Wr = new THREE.Vector3(), Pv = new THREE.Vector3(), a1 = new THREE.Vector3(), a2 = new THREE.Vector3();
+    const ang = (u, v) => Math.acos(clamp(u.normalize().dot(v.normalize()), -1, 1)) * DEG;
+    const rows = [];
+    for (let n = 0; n <= 4; n++) {
+      const G = (last = build());
+      fightSetup(G);
+      const { game, input } = G, p = game.player, d = game.dragon, r = p.rig, A = p.anim, F = p.blinkFx;
+      p.debug.god = true;
+      p.debug.teleport(d.position.x + 14, d.position.z + 14);
+      p.yaw = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z);
+      aimAt(G);
+      for (let i = 0; i < 40; i++) G.tick(DT);
+      const kicks = [], stops = [];
+      const k0 = game.kick, s0 = game.shake, h0 = game.hitstop;
+      let shakes = 0, cur = null;
+      game.kick = function (x, y, z, m) { kicks.push({ m, dir: [x, y, z], heavy: cur?.def.button === 'heavy' }); return k0.call(this, x, y, z, m); };
+      game.shake = function (a) { if (cur?.def.button === 'heavy') shakes++; return s0.call(this, a); };
+      game.hitstop = function (...a) { stops.push(a[0]); return h0.apply(this, a); };
+      const sw = [];
+      F.onLine = (ax, ay, az, bx, by, bz, heavy, thrust, chord, look) => cur?.lines.push({ a: new THREE.Vector3(ax, ay, az), b: new THREE.Vector3(bx, by, bz), heavy, look });
+      const plan = [];
+      for (let i = 0; i < n; i++) plan.push([i * CHAIN_EVERY, 'L']);
+      plan.push([n * CHAIN_EVERY, 'H']);
+      let k = 0;
+      for (let i = 0, N = Math.round((n * CHAIN_EVERY + 1.8) / DT); i < N; i++) {
+        while (k < plan.length && i >= Math.round(plan[k][0] / DT)) { aimAt(G); input.click(plan[k][1] === 'H' ? 2 : 0); k++; }
+        G.tick(DT);
+        const a = p.atk, df = a?.def, an = df && A.atkDef === df ? A.atkAnim : null;
+        if (!(df && (p.state === 'attack' || p.state === 'heavy') && !a.pending)) { cur = null; continue; }
+        if (!cur || cur.rec !== a) sw.push((cur = { rec: a, def: df, clip: an?.clip, yaw: p.yaw, f: [], lines: [] }));
+        const fx = Math.sin(cur.yaw), fz = Math.cos(cur.yaw), px = p.position.x, pz = p.position.z;
+        const loc = (v) => { const dx = v.x - px, dz = v.z - pz; return [dx * fz - dz * fx, v.y - p.position.y, dx * fx + dz * fz]; };
+        tip.set(0, 0, HD.drawnTip).applyMatrix4(r.sword.matrixWorld);
+        hilt.set(0, 0, HD.bladeBase).applyMatrix4(r.sword.matrixWorld);
+        Sh.setFromMatrixPosition(r.arms.R.upper.matrixWorld);
+        El.setFromMatrixPosition(r.arms.R.fore.matrixWorld);
+        Wr.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.R.fore.matrixWorld);
+        Pv.setFromMatrixPosition(r.pelvis.matrixWorld);
+        const ce = r.chest.matrixWorld.elements;
+        let cy = Math.atan2(ce[8], ce[10]) - cur.yaw;
+        while (cy > Math.PI) cy -= 2 * Math.PI;
+        while (cy < -Math.PI) cy += 2 * Math.PI;
+        // (the point and the grip against the pelvis: a leap or a dash carries the body, not the arms)
+        const T = loc(tip), Hh = loc(hilt), Pl = loc(Pv), W = loc(Wr);
+        cur.f.push({
+          u: swingPhase(a.t, df.windup, df.active, df.recovery), tip: T, rt: T.map((x, c) => x - Pl[c]), w: W.map((x, c) => x - Pl[c]), pelv: Pv.y - p.position.y, chest: cy * DEG,
+          blade: [T[0] - Hh[0], T[1] - Hh[1], T[2] - Hh[2]], ext: Sh.distanceTo(Wr) / (HD.upperArm + HD.foreArm),
+          wrist: ang(a1.subVectors(Wr, El), a2.subVectors(tip, hilt)),
+        });
+      }
+      F.onLine = null;
+      game.kick = k0;
+      game.shake = s0;
+      game.hitstop = h0;
+      const hv = sw.at(-1), lights = sw.slice(0, -1);
+      rows.push({ n, hv, prev: lights.at(-1) ?? null, lights, kicks, stops, shakes });
+    }
+    const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+    const unit = (v) => { const l = Math.hypot(...v) || 1; return v.map((x) => x / l); };
+    const angV = (a, b) => Math.acos(clamp(unit(a).reduce((s, x, i) => s + x * unit(b)[i], 0), -1, 1)) * DEG;
+    // a line's direction in the hero's frame at his swing's start (left, up, ahead), along the cut
+    const lineDir = (S, Ln) => { const fx = Math.sin(S.yaw), fz = Math.cos(S.yaw), dx = Ln.b.x - Ln.a.x, dz = Ln.b.z - Ln.a.z; return unit([dx * fz - dz * fx, Ln.b.y - Ln.a.y, dx * fx + dz * fz]); };
+    const res = [];
+    for (const R of rows) {
+      const S = R.hv, Fr = S?.f ?? [];
+      if (!S || S.def.name !== NAMES[R.n] || Fr.length < 20) { res.push({ R, bad: `no ${NAMES[R.n]} swing (${S?.def.name})` }); continue; }
+      for (let i = 0; i < Fr.length; i++) {
+        const q = Fr[i], pr = Fr[i - 1] ?? q;
+        q.vt = dist(q.rt, pr.rt) / DT;
+        q.vh = dist(q.w, pr.w) / DT;
+        q.vc = Math.abs(q.chest - pr.chest) / DT;
+      }
+      const peak = Math.max(...Fr.map((q) => q.vt)), iPk = Fr.findIndex((q) => q.vt === peak);
+      let i0 = iPk, i1 = iPk;
+      while (i0 > 0 && Fr[i0 - 1].vt > 0.4 * peak) i0--;
+      while (i1 < Fr.length - 1 && Fr[i1 + 1].vt > 0.4 * peak) i1++;
+      // the still hold before the cut (the frame just before it already gathers), the stop, the hold after
+      const still = (q) => q.vt < 2.5 && q.vh < 1.2;
+      let before = 0;
+      for (let i = i0 - 2; i >= 0 && still(Fr[i]); i--) before++;
+      let iStop = i1 + 1;
+      while (iStop < Fr.length && Fr[iStop].vt > 1.5) iStop++;
+      let after = 0;
+      // (from the frame after the stop: the point and the grip still, the chest at most a slow settle)
+      for (let i = iStop + 1; i < Fr.length && Fr[i].u < 2.6 && Fr[i].vt <= 1.5 && Fr[i].vh < 0.6 && Fr[i].vc < 40; i++) after++;
+      // the weight landing: from the end of the cut to the stop, the hips drop and the chest turns on
+      const seg = Fr.slice(i1, Math.min(Fr.length, iStop + 2));
+      const drop = Fr[i1].pelv - Math.min(...seg.map((q) => q.pelv));
+      const turnOn = Math.abs(Fr[Math.min(Fr.length - 1, iStop)].chest - Fr[i1].chest);
+      // the sweep: the blade's turn from the coil to the stop, and its heading's turn round him
+      let sweep = 0, yawSw = 0;
+      for (let i = Math.max(1, i0 - 1); i <= Math.min(Fr.length - 1, iStop); i++) {
+        sweep += angV(Fr[i - 1].blade, Fr[i].blade);
+        let dh = Math.atan2(Fr[i].blade[0], Fr[i].blade[2]) - Math.atan2(Fr[i - 1].blade[0], Fr[i - 1].blade[2]);
+        while (dh > Math.PI) dh -= 2 * Math.PI;
+        while (dh < -Math.PI) dh += 2 * Math.PI;
+        yawSw += dh * DEG;
+      }
+      const hl = S.lines.filter((x) => x.heavy), ll = R.lights.flatMap((x) => x.lines).filter((x) => !x.heavy && x.look === 'light');
+      res.push({
+        R, S, i0, i1, iStop, cut: i1 - i0 + 1, before, after, land: iStop - i1 - 1, drop, turnOn, sweep, yawSw: Math.abs(yawSw),
+        wrist: Math.max(...Fr.map((q) => q.wrist)), extEnd: Fr[i1].ext, line: hl[0], nLines: S.lines.length, dir: hl[0] ? lineDir(S, hl[0]) : null,
+        len: hl[0] ? hl[0].a.distanceTo(hl[0].b) : 0, lightLen: ll.length ? Math.max(...ll.map((x) => x.a.distanceTo(x.b))) : NaN,
+        prevDir: R.prev?.lines[0] ? lineDir(R.prev, R.prev.lines[0]) : null,
+        kicksH: R.kicks.filter((x) => x.heavy), kicksL: R.kicks.filter((x) => !x.heavy), cutDir: hl[0] ? unit([hl[0].b.x - hl[0].a.x, hl[0].b.y - hl[0].a.y, hl[0].b.z - hl[0].a.z]) : null,
+      });
+    }
+    for (const x of res) {
+      if (x.bad) { out(`   ${x.bad}`); continue; }
+      // (GCD_HEAVYDUMP=<clip,...>: its frames, for authoring)
+      if ((process.env.GCD_HEAVYDUMP || '').split(',').includes(x.S.clip)) x.S.f.forEach((q, i) => out(`      #${i} u ${q.u.toFixed(2)} point ${q.vt.toFixed(1)} grip ${q.vh.toFixed(1)} m/s chest ${q.chest.toFixed(0)}° (${q.vc.toFixed(0)}°/s) hips ${q.pelv.toFixed(2)} wrist ${q.wrist.toFixed(0)}° ext ${q.ext.toFixed(2)}${i === x.i0 ? ' <- cut' : i === x.i1 ? ' <- its end' : i === x.iStop ? ' <- stop' : ''}`));
+      out(`   ${x.S.clip.padEnd(13)} hold ${x.before} still frames | cut ${x.cut} frames (u ${x.S.f[x.i0].u.toFixed(2)}-${x.S.f[x.i1].u.toFixed(2)}) | lands ${x.land} frames: hips -${(x.drop * 100).toFixed(1)} cm, chest on ${x.turnOn.toFixed(0)}° | stop, then ${x.after} still frames | blade ${x.sweep.toFixed(0)}° (round him ${x.yawSw.toFixed(0)}°) | arm ${x.extEnd.toFixed(2)} at the cut's end, wrist ≤ ${x.wrist.toFixed(0)}° | line ${x.len.toFixed(2)} m (a light's ${x.lightLen.toFixed(2)}), dir ${x.dir?.map((v) => v.toFixed(2)).join(',')}${x.prevDir ? `, ${angV(x.dir, x.prevDir).toFixed(0)}° off the light before` : ''} | kicks ${x.kicksH.length} (${x.kicksH.map((q) => q.m).join(',')}), shakes ${x.R.shakes}, hit-stops ${x.R.stops.length}`);
+    }
+    const ok = res.filter((x) => !x.bad);
+    // (the lone heavy follows no light: it is held against the longest light line of the takes)
+    const lightMax = Math.max(...ok.map((x) => x.lightLen).filter(Number.isFinite));
+    for (const x of ok) if (!Number.isFinite(x.lightLen)) x.lightLen = lightMax;
+    assert(ok.length === 5, `all five heavies were played and measured (${res.filter((x) => x.bad).map((x) => x.bad).join('; ') || 'all'})`);
+    assert(ok.every((x) => x.before >= 8), `a long still hold before each cut: at least 8 frames (${ok.map((x) => x.before).join(', ')})`);
+    assert(ok.every((x) => x.cut >= 2 && x.cut <= 3), `each cut is two or three frames (${ok.map((x) => x.cut).join(', ')})`);
+    assert(ok.every((x) => x.land >= 1 && x.land <= 3 && x.drop >= 0.03 && x.turnOn >= 3), `the weight lands after each cut: one to three frames of the blade braking (${ok.map((x) => x.land).join(', ')}), the hips dropping at least 3 cm (${ok.map((x) => (x.drop * 100).toFixed(1)).join(', ')}) and the chest driving on at least 3° (${ok.map((x) => x.turnOn.toFixed(0)).join(', ')})`);
+    assert(ok.every((x) => x.after >= 12), `a hard stop and a long still hold of the finish: at least 12 still frames (${ok.map((x) => x.after).join(', ')})`);
+    assert(ok.every((x) => x.sweep >= 140) && ok[2].yawSw >= 200, `wide cuts: the blade turns at least 140° from the coil to the stop (${ok.map((x) => x.sweep.toFixed(0)).join(', ')}); Whirling Tempest's level cut over 200° round him (${ok[2].yawSw.toFixed(0)}°)`);
+    assert(ok.every((x) => x.wrist < 60 && x.extEnd >= 0.8), `two-handed arms: the wrist under 60° on every frame (${ok.map((x) => x.wrist.toFixed(0)).join(', ')}), at least 0.8 of the reach at the cut's end (${ok.map((x) => x.extEnd.toFixed(2)).join(', ')})`);
+    // five different strokes: pairwise the lines' directions in his frame at least 30° apart
+    let minPair = 180;
+    for (let i = 0; i < ok.length; i++) for (let j = i + 1; j < ok.length; j++) if (ok[i].dir && ok[j].dir) minPair = Math.min(minPair, angV(ok[i].dir, ok[j].dir));
+    assert(ok.every((x) => x.dir) && minPair >= 30, `five different strokes: every two heavies' lines at least 30° apart in his frame (closest ${minPair.toFixed(0)}°)`);
+    const offPrev = ok.filter((x) => x.prevDir).map((x) => angV(x.dir, x.prevDir));
+    assert(offPrev.length === 4 && offPrev.every((a) => a >= 20), `each heavy of the chain cuts unlike the light before it: its line at least 20° off that light's (${offPrev.map((a) => a.toFixed(0)).join(', ')}°)`);
+    // (a line shorter than SLASH.heavy.min was cut short where it meets the floor or its ceiling over his head,
+    // blinkFx.js _cut: those are held to 2.8 m; Earthbreaker's is about 3)
+    const clip = (x) => x.len < H.min - 0.01;
+    assert(ok.every((x) => x.nLines === 1 && x.len >= 2.8 && (clip(x) || x.len >= 1.1 * x.lightLen)), `one heavy line a heavy, longer than the light lines before it by a tenth, or at least 2.8 m where the floor or its ceiling cuts it short (${ok.map((x) => `${x.len.toFixed(1)}${clip(x) ? ' cut short' : ''}/${x.lightLen.toFixed(1)}`).join(', ')} m)`);
+    // (Earthbreaker's slam shakes the ground on a whiff too, as today: player.js _slamImpact)
+    assert(ok.every((x) => x.kicksH.length === 1 && x.kicksH[0].m === H.kick.m && x.R.shakes >= 1 && x.kicksL.length === 0 && x.R.stops.length === 0),
+      `in open air each heavy kicks the camera once with its line (${ok.map((x) => x.kicksH.length).join(', ')}) and shakes it (${ok.map((x) => x.R.shakes).join(', ')}), the light lines never; no hit-stop on a whiff (${ok.map((x) => x.R.stops.length).join(', ')})`);
+    const along = ok.map((x) => { const q = x.kicksH[0]?.dir; return q && x.cutDir ? Math.abs(unit(q).reduce((s, v, i) => s + v * x.cutDir[i], 0)) : 0; });
+    assert(along.every((c) => c > 0.999), `the kick runs along the cut (${along.map((c) => c.toFixed(3)).join(', ')})`);
+
+    // ---- the hits: each heavy lands from the front wherever today's look lands it (scenarioReach's trial)
+    const reach = (look) => {
+      CB.setLights(look);
+      const G = (last = build());
+      const { game, input } = G;
+      fightSetup(G);
+      const d = game.dragon, p = game.player;
+      settle(G);
+      const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
+      const chest = () => d.hurtSpheres.filter((h) => h.part === 'body').reduce((a, h) => ((h.x - d.position.x) * fx + (h.z - d.position.z) * fz > (a.x - d.position.x) * fx + (a.z - d.position.z) * fz ? h : a));
+      const stand = (gap) => { const c = chest(); p.debug.teleport(c.x + fx * (c.r + gap), c.z + fz * (c.r + gap)); p.yaw = Math.atan2(c.x - p.position.x, c.z - p.position.z); p.debug.heal(); aimAt(G); };
+      const out_ = {};
+      for (let n = 0; n <= 4; n++) {
+        for (const gap of [0, 2, 2.5, 3, 3.5]) {
+          d.hp = d.maxHp; d.posture = 0; run(G, 1.0, { passive: true }); settle(G);
+          if (n > 0) { p.debug.teleport(d.position.x + fx * 40, d.position.z + fz * 40); aimAt(G); }
+          for (let i = 0; i < n; i++) { aimAt(G); input.click(0); run(G, CHAIN_EVERY, { passive: true }); }
+          stand(gap);
+          let hit = null, slam = 0, kick = 0;
+          const k0 = game.kick;
+          game.kick = function (x, y, z, m) { if (hit) kick = Math.max(kick, m); return k0.call(this, x, y, z, m); };
+          G.watch = (nn, dd) => { if (nn === 'player:hitDragon' && !hit) hit = dd; if (nn === 'player:slam') slam++; };
+          aimAt(G);
+          input.click(2);
+          run(G, 1.5, { passive: true });
+          G.watch = null;
+          game.kick = k0;
+          out_[`${n}@${gap}`] = { hit: !!hit && !hit.guarded, slam, kick };
+        }
+      }
+      return out_;
+    };
+    const today = reach('new'), now = reach('blink');
+    CB.setLights('blink');
+    const miss = Object.keys(today).filter((k) => today[k].hit && !now[k].hit);
+    out(`   reach (heavy after n lights @ gap m from the chest surface): ${Object.keys(now).map((k) => `${k} ${today[k].hit ? 'hit' : '-'}/${now[k].hit ? 'hit' : '-'}`).join('  ')}`);
+    assert(Object.values(today).some((x) => x.hit) && !miss.length, `every heavy lands from the front wherever today's look lands it (${Object.values(now).filter((x) => x.hit).length} of ${Object.values(today).filter((x) => x.hit).length}; missed: ${miss.join(', ') || 'none'})`);
+    const eb = Object.keys(now).filter((k) => k.startsWith('4@') && now[k].hit);
+    assert(eb.length && eb.every((k) => now[k].slam === 1), `Earthbreaker still bursts its shards and sends player:slam once (${eb.map((k) => `${k}: ${now[k].slam}`).join(', ')})`);
+    // (a hit kicks where the blade's contact is drawn, player.js _onHit; the hits that kick)
+    const hk = Object.values(now).filter((x) => x.hit && x.kick > 0).map((x) => x.kick);
+    assert(hk.length >= 15 && hk.every((m) => m > H.kick.m), `a landed heavy's own kick tops the whiff's ${H.kick.m} m (${hk.length} hits kick, ${Math.min(...hk).toFixed(2)}-${Math.max(...hk).toFixed(2)} m)`);
+  } finally {
+    CB.setLights(look0);
+  }
+  return last;
 }
 
 // ================================================================== `blinkspecials`: the sprint slash, the roll cut, the charged cleave, One Breath and the execution as instant cuts (specialsBlink.js)
+// ?lights=blink swaps the five attacks outside the chain to instant clips (specialsBlink.js SPECIAL_BLINK) and
+// every other look keeps today's; only the look changes (every number of the defs stays). Each instant clip:
+// one-handed (the sprint slash, the roll cut, One Breath) with the free hand at his side, or two-handed (the
+// cleave, the execution) with heavy lines; no spin, hop or turn. In open air (the real presses, auditPresses):
+// each draws exactly its one line on the blade's own path (a thrust's streak off the point) and no round arc;
+// the arm rules of the instant cuts (the one-handed: a coil, an arm that opens through the cut, a long arm at
+// its end, a follow-through with no dead frames; the two-handed: a long arm at the end of the cut, the weight
+// landing in a hard stop and a still hold; the execution: the point out along the arms on the kill frame). In
+// front of the wyrm (or of a broken duelist's stand-in): each lands where today's does, inside its active
+// frames; the execution kills on the same frame. Today's look draws no line.
 async function scenarioBlinkSpecials() {
   out('\n== scenario BLINKSPECIALS (the sprint slash, the roll cut, the charged cleave, One Breath and the execution as instant cuts (specialsBlink.js)) ==');
-  const G = build();
-  out('   (stub: its checks are still to be written)');
-  return G;
+  const CB = await imp('src/entities/player/combat.js');
+  const { SWINGS } = await imp('src/entities/player/swings.js');
+  const { SPECIAL_BLINK } = await imp('src/entities/player/specialsBlink.js');
+  const { swingPhase } = await imp('src/entities/player/anim.js');
+  const { DIM: HD } = await imp('src/entities/player/model.js');
+  const look0 = CB.lightsMode(), DEG = 180 / Math.PI;
+  const KEYS = ['sprint', 'roll', 'cleave', 'draw', 'exec'];
+  const DEFS = { sprint: CB.SPRINT_ATK, roll: CB.ROLL_ATK, cleave: CB.CLEAVE, draw: CB.ONE_BREATH, exec: CB.THRUST };
+  const PRESS = { sprint: 'S', roll: 'R', cleave: 'C', draw: 'D', exec: 'X' };
+  const ONE = new Set(['sprint', 'roll', 'draw']);
+  const FREE = ['l', 'lp', 'ld', 'lw', 'pn', 'hs', 'lk', 'fh'];
+  let last = null;
+  try {
+    // ---- the swap: the clips under blink, today's under every other look, every number the same
+    const numsOf = (d) => JSON.stringify(Object.entries(d).filter(([k]) => !['anim', 'variants', 'contact', 'glint'].includes(k)));
+    CB.setLights('new');
+    const anim0 = Object.fromEntries(KEYS.map((k) => [k, JSON.stringify(DEFS[k].anim)])), nums0 = KEYS.map((k) => numsOf(DEFS[k]));
+    CB.setLights('blink');
+    const animB = Object.fromEntries(KEYS.map((k) => [k, DEFS[k].anim])), numsB = KEYS.map((k) => numsOf(DEFS[k]));
+    CB.setLights('old');
+    const animO = KEYS.map((k) => JSON.stringify(DEFS[k].anim));
+    CB.setLights('new');
+    const animN = KEYS.map((k) => JSON.stringify(DEFS[k].anim));
+    const swapped = KEYS.every((k) => animB[k].kind === 'clip' && animB[k].clip === SPECIAL_BLINK[k]?.anim?.clip && SWINGS[animB[k].clip] && JSON.stringify(animB[k]) !== anim0[k]);
+    const dashKept = ['sprint', 'cleave', 'draw', 'exec'].every((k) => animB[k].feet === 'dash') && ['cleave', 'draw', 'exec'].every((k) => animB[k].dashW === true) && !animB.roll.feet;
+    assert(swapped && dashKept, `?lights=blink swaps the five to their instant clips (${KEYS.map((k) => animB[k].clip).join(', ')}), the dash feet kept (the execution's thrust pose had them too)`);
+    assert(KEYS.every((k, i) => animN[i] === anim0[k] && animO[i] === anim0[k]) && JSON.parse(anim0.exec).kind === 'thrust', `today's look and the old one keep today's (${KEYS.map((k) => JSON.parse(anim0[k]).clip ?? JSON.parse(anim0[k]).kind).join(', ')})`);
+    assert(nums0.every((s, i) => s === numsB[i]), 'only the look changes: every number of the five defs (windup, active, recovery, damage, travel, keepYaw, counter...) is the same under blink');
+    // ---- the clips: one-handed with the hand at his side, or two-handed with heavy lines; no spin, hop, turn
+    {
+      const bad = [];
+      for (const k of KEYS) {
+        const an = animB[k], C = SWINGS[an.clip];
+        if (an.spin || an.hop || an.turn) bad.push(`${k}: spin/hop/turn`);
+        if (!Array.isArray(C.slash) || C.slash.length !== 1) bad.push(`${k}: ${C.slash?.length ?? 0} cuts`);
+        if (ONE.has(k)) {
+          if (!C.side || C.slashLook === 'heavy') bad.push(`${k}: not side / a heavy line`);
+          if (C.keys.some((q) => (q.two ?? 0) > 0)) bad.push(`${k}: two hands`);
+          if (C.keys.some((q) => FREE.some((f) => q[f] != null))) bad.push(`${k}: free-hand keys`);
+        } else {
+          if (C.side || C.slashLook !== 'heavy') bad.push(`${k}: side / not heavy`);
+          const tw = C.keys.filter((q) => q.two != null);
+          if (!tw.length || tw.some((q) => q.two !== 1)) bad.push(`${k}: not both hands`);
+        }
+      }
+      assert(!bad.length && SWINGS[animB.exec.clip].slash[0][2] === 'point', `the sprint slash, the roll cut and One Breath one-handed with the free hand at his side (no free-hand keys), the cleave and the execution two-handed in the heavy look (One Breath's a strong white line); one cut each, the execution's a streak off the point; no spin, hop or turn (${bad.join(', ') || 'all'})`);
+    }
+
+    // ---- open air, the real presses (auditPresses): the frames, the lines, the arcs
+    const S = new THREE.Vector3(), E = new THREE.Vector3(), W = new THREE.Vector3(), T = new THREE.Vector3(), Hh = new THREE.Vector3(), a1 = new THREE.Vector3(), a2 = new THREE.Vector3();
+    const ang = (u, v) => Math.acos(clamp(u.normalize().dot(v.normalize()), -1, 1)) * DEG;
+    const air = (look, k) => {
+      CB.setLights(look);
+      const G = (last = build());
+      fightSetup(G);
+      const { game } = G, p = game.player, d0 = game.dragon, r = p.rig;
+      p.debug.god = true;
+      p.debug.teleport(d0.position.x + 14, d0.position.z + 14);
+      p.yaw = Math.atan2(d0.position.x - p.position.x, d0.position.z - p.position.z);
+      aimAt(G);
+      for (let i = 0; i < 40; i++) G.tick(DT);
+      const def = DEFS[k], F = [], lines = [];
+      let arcs = 0, killU = null, killF = -1;
+      const tr0 = p.fx.trail;
+      p.fx.trail = function (...x) { if (p.atk?.def === def) arcs++; return tr0.apply(this, x); };
+      p.blinkFx.onLine = (ax, ay, az, bx, by, bz, heavy, thrust, chord, look) => lines.push({ a: new THREE.Vector3(ax, ay, az), b: new THREE.Vector3(bx, by, bz), heavy, thrust, look: look ?? (heavy ? 'heavy' : 'light'), frame: F.length });
+      const acts = auditPresses(G, [[0, PRESS[k]]]);
+      const ex0 = G.execs;
+      let j = 0, prevEx = 0;
+      for (let i = 0, n = Math.round((acts.end + 1.7) / DT); i < n; i++) {
+        while (j < acts.length && i >= Math.round(acts[j][0] / DT)) acts[j++][1]();
+        G.tick(DT);
+        const a = p.atk;
+        if (!(a?.def === def && (p.state === 'attack' || p.state === 'heavy') && !a.pending)) continue;
+        const pos = p.position, fx = Math.sin(p.yaw), fz = Math.cos(p.yaw);
+        S.setFromMatrixPosition(r.arms.R.upper.matrixWorld);
+        E.setFromMatrixPosition(r.arms.R.fore.matrixWorld);
+        W.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.R.fore.matrixWorld);
+        T.set(0, 0, HD.drawnTip).applyMatrix4(r.sword.matrixWorld);
+        Hh.set(0, 0, HD.bladeBase).applyMatrix4(r.sword.matrixWorld);
+        const loc = (v) => [(v.x - pos.x) * fz - (v.z - pos.z) * fx, v.y - pos.y, (v.x - pos.x) * fx + (v.z - pos.z) * fz];
+        const ce = r.chest.matrixWorld.elements;
+        let cy = Math.atan2(ce[8], ce[10]) - p.yaw;
+        while (cy > Math.PI) cy -= 2 * Math.PI;
+        while (cy < -Math.PI) cy += 2 * Math.PI;
+        const bd = a2.subVectors(T, Hh).normalize().clone();
+        F.push({ u: swingPhase(a.t, def.windup, def.active, def.recovery), elbow: ang(a1.subVectors(S, E), a2.subVectors(W, E)), ext: S.distanceTo(W) / (HD.upperArm + HD.foreArm), wrist: ang(a1.subVectors(W, E), a2.subVectors(T, Hh)), w: loc(W), tip: loc(T), tipW: T.clone(), hiltW: Hh.clone(), bd, chest: cy * DEG, y0: pos.y });
+        if (G.execs > prevEx) { prevEx = G.execs; killU = F.at(-1).u; killF = F.length - 1; }
+      }
+      p.fx.trail = tr0;
+      p.blinkFx.onLine = null;
+      for (let i = 0; i < F.length; i++) {
+        const q = F[i], pr = F[i - 1] ?? q, dist = (x, y) => Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]);
+        q.vh = dist(q.w, pr.w) / DT;
+        q.vt = dist(q.tip, pr.tip) / DT;
+        q.vc = Math.abs(q.chest - pr.chest) / DT;
+      }
+      return { k, look, clip: animB[k].clip, def, F, lines, arcs, kills: G.execs - ex0, killU, killF };
+    };
+    const takes = {};
+    for (const k of KEYS) takes[k] = { blink: air('blink', k), new: air('new', k) };
+    // the cut: the run of frames round the point's peak speed at over 40 % of it (the audit's)
+    const cutOf = (F, from = 0.5) => {
+      let pk = -1;
+      for (let i = 0; i < F.length; i++) if (F[i].u >= from && (pk < 0 || F[i].vt > F[pk].vt)) pk = i;
+      let i0 = pk, i1 = pk;
+      while (i0 > 0 && F[i0 - 1].vt > 0.4 * F[pk].vt) i0--;
+      while (i1 < F.length - 1 && F[i1 + 1].vt > 0.4 * F[pk].vt) i1++;
+      return { i0, i1 };
+    };
+    const live = (q) => q.vh > 0.25 || q.vt > 0.6 || q.vc > 40;
+    const distLine = (q, a, b) => { const ab = b.clone().sub(a), t = q.clone().sub(a).dot(ab) / ab.lengthSq(); return q.clone().sub(a.clone().addScaledVector(ab, t)).length(); };
+    const rowsBad = [];
+    for (const k of KEYS) {
+      const R = takes[k].blink, F = R.F, C = SWINGS[R.clip], c = C.slash[0];
+      const bad = [];
+      // the lines: exactly one, on the blade's path, at his chest's height, in its look; no round arc
+      if (R.lines.length !== 1) bad.push(`${R.lines.length} lines`);
+      if (R.arcs) bad.push(`${R.arcs} round arcs`);
+      if (takes[k].new.lines.length) bad.push(`today's look drew ${takes[k].new.lines.length} lines`);
+      let lineTxt = 'no line';
+      const L = R.lines[0];
+      if (L) {
+        if (L.look !== (C.slashLook ?? 'light') || L.heavy !== (C.slashLook === 'heavy') || L.thrust !== (c[2] === 'point')) bad.push(`the wrong look (${L.look})`);
+        if (c[2] === 'point') {
+          const f = F[Math.min(F.length - 1, L.frame)], gap = L.a.distanceTo(f.tipW), off = Math.acos(clamp(f.bd.dot(L.b.clone().sub(L.a).normalize()), -1, 1)) * DEG;
+          lineTxt = `a streak ${L.a.distanceTo(L.b).toFixed(2)} m off the point (${(gap * 100).toFixed(1)} cm), ${off.toFixed(1)}° off the blade`;
+          if (!(gap < 0.03 && off < 3)) bad.push('the streak off the point');
+        } else {
+          const i0 = F.findIndex((q) => q.u >= c[0]), i1 = F.findIndex((q) => q.u >= c[1]);
+          const q0 = F[i0 === i1 ? i0 - 1 : i0].tipW, q1 = F[i1].tipW, d0 = distLine(q0, L.a, L.b), d1 = distLine(q1, L.a, L.b);
+          // (the cut's middle: between the point's two frames; the drawn line runs on past both, blinkFx.js)
+          const mid = (q0.y + q1.y) / 2 - F[i1].y0;
+          lineTxt = `a ${L.look} line ${L.a.distanceTo(L.b).toFixed(2)} m through the point on its two frames (${(d0 * 100).toFixed(1)} / ${(d1 * 100).toFixed(1)} cm off), the cut's middle ${mid.toFixed(2)} m up`;
+          if (!(d0 < 0.1 && d1 < 0.1)) bad.push('the line off the point');
+          if (!(mid >= 0.7 && mid <= 1.7)) bad.push(`the cut's middle ${mid.toFixed(2)} m up`);
+        }
+      }
+      // the arm (past u 0.5: before it the swing is still leaving the move before, the run, the roll, the
+      // draw stance, whose own pose it starts from)
+      const { i0, i1 } = cutOf(F, k === 'exec' ? 0.5 : 1.0);
+      const coil = F[Math.max(0, i0 - 1)], cut = F.slice(i0, i1 + 1), after = F.slice(i1 + 1), end = F[i1], mid = F[Math.round((i0 + i1) / 2)];
+      const wrOut = Math.max(...F.filter((q, i) => q.u >= 0.5 && (i < i0 || i > i1)).map((q) => q.wrist)), wrCut = Math.max(...cut.map((q) => q.wrist));
+      const wrIn = Math.max(...F.filter((q) => q.u < 0.5).map((q) => q.wrist), 0);
+      let txt;
+      if (ONE.has(k)) {
+        let ft = 0;
+        while (ft < after.length && live(after[ft])) ft++;
+        const dead = after.slice(ft).filter((q) => q.u < 2.5 && !live(q)).length;
+        const opens = cut.every((q, i) => !i || q.ext >= cut[i - 1].ext - 0.01);
+        const turn = ang(end.bd.clone(), (after[Math.min(5, after.length - 1)] ?? end).bd.clone());
+        const fall = after.slice(0, 6).every((q, i) => i === 0 || q.vh <= after[i - 1].vh + 0.3);
+        const chest = Math.max(...F.slice(i1).filter((q) => q.u < 2.4).map((q) => q.chest)) - Math.min(...F.slice(0, i0).filter((q) => q.u >= 0.5).map((q) => q.chest), coil.chest);
+        txt = `coil elbow ${coil.elbow.toFixed(0)}° wrist ${coil.wrist.toFixed(0)}° | the cut #${i0}-#${i1} (u ${F[i0].u.toFixed(2)}-${end.u.toFixed(2)}) ext ${cut.map((q) => q.ext.toFixed(2)).join(' ')}, its end elbow ${end.elbow.toFixed(0)}° | wrist at most ${wrOut.toFixed(0)}° (the cut ${wrCut.toFixed(0)}°; leaving the move before ${wrIn.toFixed(0)}°) | follow-through ${ft} live frames, ${dead} still before u 2.5, the blade on ${turn.toFixed(0)}°, the chest turned ${chest.toFixed(0)}°`;
+        if (!(coil.elbow >= 68 && coil.elbow <= 118 && coil.wrist <= 62)) bad.push('the coil');
+        if (!(opens && mid.ext >= 0.85 && end.ext >= 0.95 && end.elbow >= 145 && end.elbow <= 166)) bad.push('the arm through the cut');
+        if (!(wrOut <= 62 && wrCut <= 75)) bad.push('the wrist');
+        if (!(ft >= 6 && dead === 0 && turn >= 25 && fall && chest >= 50)) bad.push('the follow-through');
+      } else if (k === 'cleave') {
+        // the weight lands: within four frames of the cut the hands stop dead, then a long still hold
+        const stop = after.findIndex((q) => q.vh < 0.5);
+        let hold = 0;
+        for (let i = Math.max(0, stop); i < after.length && after[i].vh < 0.3; i++) hold++;
+        txt = `the cut #${i0}-#${i1} (u ${F[i0].u.toFixed(2)}-${end.u.toFixed(2)}), its end ext ${end.ext.toFixed(2)} | wrist at most ${Math.max(wrOut, wrCut).toFixed(0)}° (leaving the charge ${wrIn.toFixed(0)}°) | the weight lands: the hands stop ${stop + 1} frames after the cut, held still ${hold} frames`;
+        if (!(end.ext >= 0.8 && Math.max(wrOut, wrCut) <= 60)) bad.push('the arms');
+        if (!(stop >= 0 && stop <= 3 && hold >= 8)) bad.push('the landing');
+      } else {
+        const q = F[R.killF] ?? F[0], fwd = q.tip[2];
+        txt = `the kill on frame #${R.killF} (u ${R.killU?.toFixed(2)}): the point ${fwd.toFixed(2)} m ahead, ext ${q.ext.toFixed(2)}, wrist ${q.wrist.toFixed(0)}° | wrist at most ${wrOut.toFixed(0)}° past u 0.5`;
+        if (!(R.kills === 1 && q.ext >= 0.85 && q.wrist <= 35 && fwd >= 1.6 && wrOut <= 60)) bad.push('the point on the kill frame');
+        const N = takes.exec.new;
+        if (!(N.kills === 1 && N.killF === R.killF)) bad.push(`today's kills ${N.kills} on frame #${N.killF}`);
+      }
+      out(`   ${R.clip.padEnd(12)} ${lineTxt}; ${R.arcs} round arcs`);
+      out(`                ${txt}`);
+      if (bad.length) rowsBad.push(`${k}: ${bad.join(', ')}`);
+    }
+    assert(!rowsBad.length, `each instant clip draws its one line on the blade's path (no round arc; none in today's look) and keeps the arm rules: the one-handed cut opens to a long arm and follows through, the cleave lands, the execution's point is out on the kill frame (${rowsBad.join('; ') || 'all'})`);
+
+    // ---- in front of the wyrm: each lands where today's does, inside its active frames
+    const hitTake = (look, k, gap) => {
+      CB.setLights(look);
+      const G = (last = build());
+      const { game, input } = G;
+      fightSetup(G);
+      const d = game.dragon, p = game.player;
+      settle(G);
+      p.debug.god = true;
+      const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
+      const c = d.hurtSpheres.filter((h) => h.part === 'body').reduce((a, h) => ((h.x - d.position.x) * fx + (h.z - d.position.z) * fz > (a.x - d.position.x) * fx + (a.z - d.position.z) * fz ? h : a));
+      p.debug.teleport(c.x + fx * (c.r + gap), c.z + fz * (c.r + gap));
+      p.yaw = Math.atan2(c.x - p.position.x, c.z - p.position.z);
+      aimAt(G);
+      const def = DEFS[k];
+      let hitU = null;
+      G.watch = (n) => { if (n === 'player:hitDragon' && hitU === null && p.atk?.def === def) hitU = swingPhase(p.atk.t, def.windup, def.active, def.recovery); };
+      if (k === 'sprint' || k === 'roll') p._startAttack(def);
+      else if (k === 'cleave') { input.press(2); run(G, 1.3, { passive: true }); aimAt(G); input.up(2); }
+      else if (k === 'draw') { game.unlocks = { has: (x) => x === 'oneBreath' }; input.press(1); run(G, 0.25, { passive: true }); input.press(2); run(G, 0.5, { passive: true }); aimAt(G); input.up(2); input.up(1); }
+      run(G, 1.4, { passive: true });
+      G.watch = null;
+      return hitU;
+    };
+    const GAPS = { sprint: [0.5, 1.5, 2.5], roll: [0, 1, 2], cleave: [0.5, 2, 3.5], draw: [0.5, 2.5, 4] };
+    const hitRows = [], hitBad = [];
+    for (const k of ['sprint', 'roll', 'cleave', 'draw']) {
+      const row = GAPS[k].map((g) => ({ g, n: hitTake('new', k, g), b: hitTake('blink', k, g) }));
+      hitRows.push(`${k} ${row.map((x) => `${x.g} m: today ${x.n === null ? 'miss' : `u ${x.n.toFixed(2)}`} / blink ${x.b === null ? 'miss' : `u ${x.b.toFixed(2)}`}`).join(', ')}`);
+      for (const x of row) if ((x.n === null) !== (x.b === null) || (x.b !== null && !(x.b >= 1 && x.b <= 2))) hitBad.push(`${k} at ${x.g} m`);
+      if (!row.some((x) => x.b !== null)) hitBad.push(`${k} never lands`);
+    }
+    for (const h of hitRows) out(`   ${h}`);
+    assert(!hitBad.length, `in front of the wyrm each lands where today's does (and misses where it misses), inside its active frames; the execution kills on today's frame (${hitBad.join(', ') || 'all'})`);
+  } finally {
+    CB.setLights(look0);
+  }
+  return last;
 }
 
 // ================================================================== `blinklast`: the instant chain's last hit: a stronger light stroke, a different one each time (lastHits.js)
+// The owner (2026-11-25): "make the last 5th attack just be a more stronger light attack but have it always be
+// a different stroke to make it look dynamic and random". Five one-handed strokes on five lines; the animator
+// picks one each chain, never the one before; each lands on a target 2 m off; the arm and the body follow the
+// instant cuts' rules (the arm audit's numbers: scenarioArmAudit); nothing of the old slam's burst; the
+// default look's hit 5 is still the slam with its shards.
 async function scenarioBlinkLast() {
   out('\n== scenario BLINKLAST (the instant chain’s last hit: a stronger light stroke, a different one each time (lastHits.js)) ==');
-  const G = build();
-  out('   (stub: its checks are still to be written)');
+  const CB = await imp('src/entities/player/combat.js');
+  const { LAST_HIT_BLINK, LAST_HITS_BLINK } = await imp('src/entities/player/lastHits.js');
+  const { SWINGS } = await imp('src/entities/player/swings.js');
+  const { swingPhase } = await imp('src/entities/player/anim.js');
+  const { DIM: HD, PLAYER_SCALE: PS } = await imp('src/entities/player/model.js');
+  const lights0 = CB.lightsMode(), DEG = 180 / Math.PI;
+  const looks = [LAST_HIT_BLINK.anim, ...LAST_HIT_BLINK.variants];
+  const names = looks.map((an) => an.clip);
+  let G = null;
+  try {
+    // ---- what they are: five strokes, one hand, plain, the free hand at his side, one slash each, five lines
+    {
+      const bad = [];
+      const FREE = ['l', 'ld', 'lw', 'pn', 'hs', 'lk', 'fh', 'lp'];
+      for (const an of looks) {
+        const C = SWINGS[an.clip], id = an.clip;
+        if (!C || C !== LAST_HITS_BLINK[id]) { bad.push(`${id}: not in SWINGS`); continue; }
+        if (an.kind !== 'clip' || an.spin || an.hop || an.turn || an.feet || an.tuck) bad.push(`${id}: spin/hop/turn/dash`);
+        if (C.keys.some((k) => k.two != null && k.two !== 0)) bad.push(`${id}: two hands`);
+        if (C.keys.some((k) => FREE.some((f) => k[f] !== undefined))) bad.push(`${id}: free-hand keys`);
+        if (!C.plain || !C.side || C.slashLook !== 'strong') bad.push(`${id}: not plain / side / strong`);
+        if (!(C.slash?.length === 1 && C.slash[0].length === 2 && C.slash[0][0] >= 1 && C.slash[0][1] <= 2)) bad.push(`${id}: not one slash in the active frames`);
+        if (!C.line || C.line === 'point') bad.push(`${id}: line ${C.line}`);
+      }
+      const lines = looks.map((an) => SWINGS[an.clip]?.line);
+      assert(!bad.length && looks.length === 5 && new Set(names).size === 5 && new Set(lines).size === 5,
+        `five last-hit strokes (${names.join(', ')}), one-handed, plain, the free hand at his side, one strong slash each in the active frames, no hop / spin / turn, five lines (${lines.join(', ')}) and none a thrust's (${bad.join('; ') || 'all'})`);
+      CB.setLights('blink');
+      const L5 = CB.LIGHT[4];
+      const on = L5.anim === LAST_HIT_BLINK.anim && L5.variants === LAST_HIT_BLINK.variants && L5.contact === 'sweep';
+      const kept = L5.windup === 0.28 && L5.active === 0.13 && L5.recovery === 0.42 && L5.kind === 'slam' && L5.up === 1.0 && L5.damage === 66;
+      CB.setLights('new');
+      const L5n = CB.LIGHT[4];
+      const back = L5n.anim.clip === 'groundSlam' && L5n.contact === 'slam' && L5n.variants.length === 1 && L5n.variants[0].clip === 'groundSlam';
+      assert(on && kept && back, `?lights=blink puts them on hit 5 with a strong slash's contact ('sweep'), its numbers as they were (${L5.windup}/${L5.active}/${L5.recovery}, ${L5.damage}); the default look's hit 5 is the slam again (${L5n.anim.clip}, ${L5n.contact})`);
+    }
+    CB.setLights('blink');
+    // ---- the arm and the body, stroke by stroke (the arm audit's numbers; the presses CHAIN_EVERY apart)
+    const S = new THREE.Vector3(), E = new THREE.Vector3(), W = new THREE.Vector3(), T = new THREE.Vector3(), Hh = new THREE.Vector3();
+    const a1 = new THREE.Vector3(), a2 = new THREE.Vector3();
+    const ang = (u, v) => Math.acos(clamp(u.normalize().dot(v.normalize()), -1, 1)) * DEG;
+    const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+    const fresh = () => {
+      const g = build();
+      fightSetup(g);
+      const p = g.game.player, d = g.game.dragon;
+      p.debug.god = true;
+      p.debug.teleport(d.position.x + 14, d.position.z + 14);
+      p.yaw = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z);
+      aimAt(g);
+      for (let i = 0; i < 40; i++) g.tick(DT);
+      return g;
+    };
+    const rows = [];
+    for (let v = 0; v < 5; v++) {
+      G = fresh();
+      const { game, input } = G, p = game.player, r = p.rig, A = p.anim;
+      A.forceVariant = v;
+      const F = [];
+      let rec = null, yaw0 = 0, k = 0;
+      for (let i = 0, n = Math.round((4 * CHAIN_EVERY + 1.6) / DT); i < n; i++) {
+        if (k < 5 && i >= Math.round((k * CHAIN_EVERY) / DT)) { aimAt(G); input.click(0); k++; }
+        G.tick(DT);
+        const a = p.atk, d = a?.def;
+        if (!(d === CB.LIGHT[4] && p.state === 'attack' && A.atkDef === d)) { if (rec) break; continue; }
+        if (!rec) { rec = a; yaw0 = p.yaw; }
+        const fx = Math.sin(yaw0), fz = Math.cos(yaw0), px = p.position.x, pz = p.position.z;
+        const loc = (q) => { const dx = q.x - px, dz = q.z - pz; return [dx * fz - dz * fx, q.y - p.position.y, dx * fx + dz * fz]; };
+        S.setFromMatrixPosition(r.arms.R.upper.matrixWorld);
+        E.setFromMatrixPosition(r.arms.R.fore.matrixWorld);
+        W.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.R.fore.matrixWorld);
+        T.set(0, 0, HD.drawnTip).applyMatrix4(r.sword.matrixWorld);
+        Hh.set(0, 0, HD.bladeBase).applyMatrix4(r.sword.matrixWorld);
+        const elUp = (E.y - S.y) / PS, w = loc(W), tip = loc(T), bd = a2.subVectors(T, Hh).normalize().toArray();
+        // (the arm read in the chest's own frame, as blinklights does: the drawn hero is sheared toward the
+        // camera, model.js LEAN, which in the world shortens an arm reaching low and to his right)
+        for (const q of [S, E, W, T, Hh]) r.chest.worldToLocal(q);
+        const ce = r.chest.matrixWorld.elements;
+        let cy = Math.atan2(ce[8], ce[10]) - p.yaw;
+        while (cy > Math.PI) cy -= 2 * Math.PI;
+        while (cy < -Math.PI) cy += 2 * Math.PI;
+        F.push({
+          u: swingPhase(a.t, d.windup, d.active, d.recovery), clip: A.atkAnim?.clip,
+          elbow: ang(a1.subVectors(S, E), a2.subVectors(W, E)), ext: S.distanceTo(W) / (HD.upperArm + HD.foreArm),
+          wrist: ang(a1.subVectors(W, E), a2.subVectors(T, Hh)), w, tip, bd, chest: cy * DEG, elUp, elZ: E.z,
+        });
+      }
+      A.forceVariant = null;
+      for (let i = 0; i < F.length; i++) {
+        const q = F[i], pr = F[i - 1] ?? q;
+        q.vh = dist(q.w, pr.w) / DT;
+        q.vt = dist(q.tip, pr.tip) / DT;
+        q.vc = Math.abs(q.chest - pr.chest) / DT;
+      }
+      const peak = Math.max(...F.map((q) => q.vt)), iPk = F.findIndex((q) => q.vt === peak);
+      let i0 = iPk, i1 = iPk;
+      while (i0 > 0 && F[i0 - 1].vt > 0.4 * peak) i0--;
+      while (i1 < F.length - 1 && F[i1 + 1].vt > 0.4 * peak) i1++;
+      const cut = F.slice(i0, i1 + 1), coil = F[Math.max(0, i0 - 1)], after = F.slice(i1 + 1);
+      const live = (q) => q.vh > 0.25 || q.vt > 0.6 || q.vc > 40;
+      let ft = 0;
+      while (ft < after.length && live(after[ft])) ft++;
+      const dead = after.slice(ft).filter((q) => q.u < 2.5 && !live(q)).length;
+      const wrOut = Math.max(...F.filter((q, i) => i < i0 || i > i1).map((q) => q.wrist)), wrCut = Math.max(...cut.map((q) => q.wrist));
+      // the arm opens through the cut (frame over frame, 5° of slack for the drawn lean's skew)
+      const opens = cut.every((q, i) => !i || q.elbow >= cut[i - 1].elbow - 5);
+      const slows = after.slice(0, 6).every((q, i, X) => !i || q.vh <= X[i - 1].vh + 0.05);
+      const bdEnd = F[i1].bd, turnOn = Math.max(...after.filter((q) => q.u <= 2.4).map((q) => Math.acos(clamp(q.bd[0] * bdEnd[0] + q.bd[1] * bdEnd[1] + q.bd[2] * bdEnd[2], -1, 1)) * DEG));
+      const chestTurn = Math.abs((after[Math.min(5, after.length - 1)] ?? F[i1]).chest - coil.chest);
+      const elUp = Math.max(...F.map((q) => q.elUp)), elZ = Math.min(...F.map((q) => q.elZ)), elZu = F.find((q) => q.elZ === elZ).u;
+      const R = { v, clip: F[0]?.clip, n: F.length, cutN: cut.length, cutU: [F[i0].u, F[i1].u], coil, endEl: F[i1].elbow, endExt: F[i1].ext, midExt: cut[Math.floor(cut.length / 2)].ext, wrOut, wrCut, opens, ft, dead, slows, turnOn, chestTurn, elUp, elZ };
+      rows.push(R);
+      // (GCD_LASTDUMP=1: every frame, the arm in the chest's frame, for authoring the clips)
+      if (process.env.GCD_LASTDUMP) for (const q of F) out(`      u ${q.u.toFixed(2)} elbow ${q.elbow.toFixed(0)}° ext ${q.ext.toFixed(2)} wrist ${q.wrist.toFixed(0)}° tip ${q.vt.toFixed(1)} m/s chest ${q.chest.toFixed(0)}° elbow ${(q.elUp * 100).toFixed(0)} cm up, ${(q.elZ * 100).toFixed(0)} cm ahead`);
+      out(`   ${String(R.clip).padEnd(10)} cut ${R.cutN} frames (u ${R.cutU[0].toFixed(2)}-${R.cutU[1].toFixed(2)}); coil elbow ${coil.elbow.toFixed(0)}° wrist ${coil.wrist.toFixed(0)}°; end of cut elbow ${R.endEl.toFixed(0)}° ext ${R.endExt.toFixed(2)} (mid ${R.midExt.toFixed(2)})${opens ? '' : ' CLOSES'}; wrist ≤ ${wrOut.toFixed(0)}° (the cut ${wrCut.toFixed(0)}°); ${ft} live frames after, ${dead} still before u 2.5${slows ? '' : ' (JUMPS)'}; the blade on ${turnOn.toFixed(0)}°, the chest ${chestTurn.toFixed(0)}°; the elbow ≤ ${(elUp * 100).toFixed(0)} cm over the shoulder, ≥ ${(elZ * 100).toFixed(0)} cm in front of the chest's centre (u ${elZu.toFixed(2)})`);
+    }
+    assert(rows.every((R, i) => R.clip === names[i]), `each look pinned plays its own stroke (${rows.map((R) => R.clip).join(', ')})`);
+    assert(rows.every((R) => R.cutN >= 2 && R.cutN <= 3), `each cut is two or three frames (${rows.map((R) => R.cutN).join(', ')})`);
+    assert(rows.every((R) => R.coil.elbow >= 70 && R.coil.elbow <= 117 && R.coil.wrist < 60), `the coil: the elbow 70-117°, the wrist under 60° (${rows.map((R) => `${R.coil.elbow.toFixed(0)}/${R.coil.wrist.toFixed(0)}`).join(', ')})`);
+    assert(rows.every((R) => R.opens && R.endEl >= 145 && R.endEl <= 170 && R.endExt >= 0.95 && R.midExt >= 0.9), `through the cut the arm opens and ends long, not locked: the elbow 145-170°, ext ≥ 0.9 mid-cut and ≥ 0.95 at its end (${rows.map((R) => `${R.endEl.toFixed(0)}°/${R.endExt.toFixed(2)}`).join(', ')})`);
+    // (≤ 64 off the cut in the chest's frame: the arm audit, in the world, reads every stroke at ≤ 59°; in the
+    // chest's frame the rising forehand's windup, the blade swinging down from the thrust to behind his hip, reads 63°)
+    assert(rows.every((R) => R.wrOut <= 64 && R.wrCut <= 75), `the wrist at most ~60° off the cut and 75° on it (${rows.map((R) => `${R.wrOut.toFixed(0)}/${R.wrCut.toFixed(0)}`).join(', ')})`);
+    assert(rows.every((R) => R.ft >= 6 && R.dead === 0 && R.slows), `the follow-through: ≥ 6 live frames after the cut, the hand slowing frame by frame, no still frame before u 2.5 (${rows.map((R) => `${R.ft}/${R.dead}`).join(', ')})`);
+    assert(rows.every((R) => R.turnOn >= 25 && R.chestTurn >= 50), `the blade turns on ≥ 25° past the line's end and the chest ≥ 50° through the cut and after (${rows.map((R) => `${R.turnOn.toFixed(0)}°/${R.chestTurn.toFixed(0)}°`).join(', ')})`);
+    // (the falling cut's coil, the blade cocked over his right shoulder with the chest turned away, holds the
+    // elbow 15 cm behind the chest's centre: at his back, not past it)
+    assert(rows.every((R) => R.elUp <= 0.1 && R.elZ >= -0.16), `the sword elbow never more than 10 cm over the shoulder nor behind his back (${rows.map((R) => `${(R.elUp * 100).toFixed(0)} / ${(R.elZ * 100).toFixed(0)}`).join(', ')} cm)`);
+    // ---- each lands, from a mashed chain and a slow one, on the wyrm 2 m off (the chain's first four in open air)
+    {
+      const misses = [], seen = [];
+      G = build();
+      fightSetup(G);
+      const { game, input } = G, d = game.dragon, p = game.player, A = p.anim;
+      p.debug.god = true;
+      settle(G);
+      const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
+      const chest = () => d.hurtSpheres.filter((h) => h.part === 'body').reduce((a, h) => ((h.x - d.position.x) * fx + (h.z - d.position.z) * fz > (a.x - d.position.x) * fx + (a.z - d.position.z) * fz ? h : a));
+      const stand = (gap) => {
+        const c = chest();
+        p.debug.teleport(c.x + fx * (c.r + gap), c.z + fz * (c.r + gap));
+        p.yaw = Math.atan2(c.x - p.position.x, c.z - p.position.z);
+        aimAt(G);
+      };
+      for (let v = 0; v < 5; v++) {
+        for (const [plan, every] of [['mashed', 0.1], ['slow', 0.42]]) {
+          d.hp = d.maxHp;
+          d.posture = 0;
+          run(G, 1.0, { passive: true });
+          settle(G);
+          p.debug.teleport(d.position.x + fx * 40, d.position.z + fz * 40);
+          aimAt(G);
+          A.forceVariant = v;
+          let hit = null, slamEv = 0, sh = 0, near = false, clip = null;
+          const sh0 = p.fx.slamShards;
+          p.fx.slamShards = function (...a) { sh++; return sh0.apply(this, a); };
+          G.watch = (nn, dd) => { if (nn === 'player:hitDragon' && near && !hit) hit = dd; if (nn === 'player:slam') slamEv++; };
+          let clicks = 0;
+          for (let i = 0; i < Math.round(3.4 / DT); i++) {
+            const in5 = p.atk?.def === CB.LIGHT[4] && p.state === 'attack';
+            if (!near && clicks < 5 + (every < 0.2 ? 20 : 0) && i >= Math.round((clicks * every) / DT) && !in5) { aimAt(G); input.click(0); clicks++; }
+            if (in5 && !near) { near = true; clip = A.atkAnim?.clip; stand(2); }
+            G.tick(DT);
+            if (near && !(p.atk?.def === CB.LIGHT[4])) break;
+          }
+          p.fx.slamShards = sh0;
+          G.watch = null;
+          A.forceVariant = null;
+          seen.push(`${clip}/${plan} ${hit ? `${hit.kind} ${hit.weight} ${Math.round(hit.damage)}${hit.shards ? ' (shards)' : ''}` : 'MISS'}${sh || slamEv ? ` shards ${sh} slam ${slamEv}` : ''}`);
+          if (clip !== names[v] || !hit || hit.kind !== 'slam' || hit.shards || hit.weight !== 'sweep' || sh || slamEv) misses.push(`${names[v]}/${plan}`);
+        }
+      }
+      out(`   on the wyrm 2 m off: ${seen.join(' | ')}`);
+      assert(!misses.length, `every stroke lands with its blade from a mashed chain and a slow one, 2 m off, drawn as a strong slash ('sweep'), no shards and no player:slam (${misses.join(', ') || 'all ten'})`);
+    }
+    // ---- the animator's own pick over 40 chains: every stroke comes up, never the same one twice running
+    {
+      G = fresh();
+      const { game, input } = G, p = game.player, A = p.anim;
+      const got = [];
+      let sh = 0, slamEv = 0;
+      const sh0 = p.fx.slamShards;
+      p.fx.slamShards = function (...a) { sh++; return sh0.apply(this, a); };
+      G.watch = (nn) => { if (nn === 'player:slam') slamEv++; };
+      const d0 = game.dragon;
+      for (let c = 0; c < 40; c++) {
+        // (back to the same spot each chain: the lunges would walk him into the wyrm)
+        p.debug.teleport(d0.position.x + 14, d0.position.z + 14);
+        p.yaw = Math.atan2(d0.position.x - p.position.x, d0.position.z - p.position.z);
+        let in5 = false;
+        for (let i = 0, clicks = 0; i < Math.round(3.2 / DT); i++) {
+          const now5 = p.atk?.def === CB.LIGHT[4] && p.state === 'attack';
+          if (now5 && !in5) got.push(A.atkAnim?.clip);
+          if (in5 && !now5) break;
+          in5 = now5;
+          if (!in5 && clicks < 30 && i % 6 === 0) { aimAt(G); input.click(0); clicks++; }
+          G.tick(DT);
+        }
+        run(G, 0.8, { passive: true });
+      }
+      p.fx.slamShards = sh0;
+      G.watch = null;
+      const count = Object.fromEntries(names.map((nm) => [nm, got.filter((x) => x === nm).length]));
+      const twice = got.filter((x, i) => i && x === got[i - 1]).length;
+      out(`   40 chains: ${JSON.stringify(count)}, twice running ${twice}, shards ${sh}, player:slam ${slamEv}`);
+      assert(got.length === 40 && names.every((nm) => count[nm] >= 2) && twice === 0, `over 40 mashed chains the animator's own pick plays every stroke (each ≥ 2 times) and never the same one twice running (${got.length} last hits)`);
+      assert(sh === 0 && slamEv === 0, `no last hit bursts shards or sends player:slam (${sh} / ${slamEv})`);
+    }
+    // ---- the default look: hit 5 is the slam with its shards
+    {
+      CB.setLights('new');
+      G = fresh();
+      const { game, input } = G, p = game.player;
+      let sh = 0, slamEv = 0, clip = null;
+      const sh0 = p.fx.slamShards;
+      p.fx.slamShards = function (...a) { sh++; return sh0.apply(this, a); };
+      G.watch = (nn) => { if (nn === 'player:slam') slamEv++; };
+      for (let i = 0, k = 0; i < Math.round((4 * CHAIN_EVERY + 1.6) / DT); i++) {
+        if (k < 5 && i >= Math.round((k * CHAIN_EVERY) / DT)) { aimAt(G); input.click(0); k++; }
+        G.tick(DT);
+        if (p.atk?.def === CB.LIGHT[4] && p.anim.atkDef === p.atk.def) clip = p.anim.atkAnim?.clip;
+      }
+      p.fx.slamShards = sh0;
+      G.watch = null;
+      assert(clip === 'groundSlam' && sh === 1 && slamEv === 1, `the default look's hit 5 is still the slam with its shards (${clip}, ${sh} bursts, ${slamEv} player:slam)`);
+    }
+  } finally {
+    CB.setLights(lights0);
+  }
   return G;
+}
+
+/** The arm audit's plan (GCD_AUDIT_PLAN): `B` or `B@t` or `B@t:hold`, one every CHAIN_EVERY s by default. */
+function parseAuditPlan(s) {
+  return s.split(',').map((x, i) => {
+    const [b, rest] = x.trim().split('@');
+    const [t, hold] = (rest ?? '').split(':');
+    return [t ? Number(t) : i * CHAIN_EVERY, b.toUpperCase(), hold ? Number(hold) : undefined];
+  });
+}
+/** A plan's presses as timed actions [[s, fn], ...] (sorted; `end`: the last press). L / H a click; S a
+ *  sprint (0.9 s at a run, Shift held) and LMB; R a forward roll 0.4 s before LMB; C the heavy held
+ *  `hold` s (its swing starts at the release); D One Breath (unlocked for the take: guard and the heavy
+ *  held 0.65 s before, both let go at t); X the execution thrust on a stand-in for a broken duelist 3 m
+ *  ahead (player.js _startExecuteThrust; `G.execs` counts its kills). A run-up shifts the whole plan. */
+function auditPresses(G, plan) {
+  const { game, input } = G, p = game.player;
+  const LEAD = { S: 0.9, R: 0.4, D: 0.65 };
+  const shift = Math.max(0, ...plan.map(([t, b]) => (LEAD[b] ?? 0) - t));
+  const acts = [];
+  G.execs = 0;
+  for (const [t0, b, hold] of plan) {
+    const t = t0 + shift;
+    if (b === 'L' || b === 'H') acts.push([t, () => { aimAt(G); input.click(b === 'H' ? 2 : 0); }]);
+    else if (b === 'S') {
+      acts.push([t - LEAD.S, () => { aimAt(G); input.axis = { x: 0, y: 1 }; input.hold('ShiftLeft'); }]);
+      acts.push([t, () => { input.click(0); input.release('ShiftLeft'); input.axis = { x: 0, y: 0 }; }]);
+    } else if (b === 'R') {
+      acts.push([t - LEAD.R, () => { aimAt(G); input.axis = { x: 0, y: 1 }; input.tap('Space'); }]);
+      acts.push([t - 0.05, () => { input.axis = { x: 0, y: 0 }; }]);
+      acts.push([t, () => { input.click(0); }]);
+    } else if (b === 'C') {
+      acts.push([t, () => { aimAt(G); input.press(2); }]);
+      acts.push([t + (Number.isFinite(hold) ? hold : 1.2), () => { aimAt(G); input.up(2); }]);
+    } else if (b === 'D') {
+      acts.push([t - LEAD.D, () => { aimAt(G); game.unlocks = { has: (k) => k === 'oneBreath' }; input.press(1); }]);
+      acts.push([t - LEAD.D + 0.25, () => { input.press(2); }]);
+      acts.push([t, () => { aimAt(G); input.up(2); input.up(1); }]);
+    } else if (b === 'X') {
+      acts.push([t, () => {
+        const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw);
+        const stand = { state: 'broken', execRange: 3.2, position: new THREE.Vector3(p.position.x + fx * 3, 0, p.position.z + fz * 3), onExecute: () => { G.execs++; return 1; } };
+        p._startExecuteThrust(stand);
+      }]);
+    }
+  }
+  acts.sort((a, b) => a[0] - b[0]);
+  acts.end = Math.max(...plan.map(([t, b, hold]) => t + shift + (b === 'C' ? (Number.isFinite(hold) ? hold : 1.2) : 0)));
+  return acts;
 }
 
 // ================================================================== opt-in: the arm audit (the instant cuts)
@@ -12159,6 +13241,10 @@ async function scenarioBlinkLast() {
 // the body and the FREE HAND do, frame by frame, with a summary line a clip can be judged by.
 //   GCD_AUDIT_PLAN  the presses, comma separated, one every CHAIN_EVERY s (or `L@0.30` for its own time):
 //                   L light, H heavy. Default `L,L,L,L,L`. `L,L,H` = the heavy after two lights.
+//                   The attacks outside the chain (auditPresses): S the sprint attack, R the roll attack,
+//                   C the charged heavy (`C@t:hold`, held `hold` s, default 1.2: its swing starts at the
+//                   release), D One Breath (unlocked for the take), X the execution thrust (on a stand-in
+//                   for a broken duelist 3 m ahead). `S`, `R`, `D` are the press; their run-up comes first.
 //   GCD_AUDIT_LOOK  the look set (default blink);  GCD_AUDIT_ONLY=<clip,...> prints only those swings
 //   GCD_AUDIT_FRAMES=1  every frame's row (default: the summary only);  GCD_AUDIT_VAR=<n> pins the look
 //                   picked (anim.js forceVariant: 0 = `anim`, 1.. = `variants`)
@@ -12177,7 +13263,7 @@ async function scenarioArmAudit() {
   const look0 = CB.lightsMode(), DEG = 180 / Math.PI;
   const ONLY = (process.env.GCD_AUDIT_ONLY || '').split(',').filter(Boolean);
   const ROWS = !!process.env.GCD_AUDIT_FRAMES;
-  const plan = (process.env.GCD_AUDIT_PLAN || 'L,L,L,L,L').split(',').map((s, i) => { const [b, t] = s.trim().split('@'); return [t != null ? Number(t) : i * CHAIN_EVERY, b.toUpperCase()]; });
+  const plan = parseAuditPlan(process.env.GCD_AUDIT_PLAN || 'L,L,L,L,L');
   let G = null;
   try {
     CB.setLights(process.env.GCD_AUDIT_LOOK || 'blink');
@@ -12194,9 +13280,10 @@ async function scenarioArmAudit() {
     const ang = (u, v) => Math.acos(clamp(u.normalize().dot(v.normalize()), -1, 1)) * DEG;
     const swings = [];
     let cur = null, k = 0;
-    const secs = plan.at(-1)[0] + 1.7;
+    const acts = auditPresses(G, plan);
+    const secs = acts.end + 1.7;
     for (let i = 0, n = Math.round(secs / DT); i < n; i++) {
-      while (k < plan.length && i >= Math.round(plan[k][0] / DT)) { aimAt(G); input.click(plan[k][1] === 'H' ? 2 : 0); k++; }
+      while (k < acts.length && i >= Math.round(acts[k][0] / DT)) acts[k++][1]();
       G.tick(DT);
       const a = p.atk, d = a?.def, an = d && A.atkDef === d ? A.atkAnim : null;
       const on = d && (p.state === 'attack' || p.state === 'heavy') && !a.pending;
@@ -12266,7 +13353,7 @@ async function scenarioArmAudit() {
 
 // ================================================================== opt-in: solving the instant cuts' keys
 // `node tests/integration/integ.mjs . blinksolve` (not part of `all`; GCD_SOLVE=<clip,...> for some,
-// GCD_SOLVE_ITER=n): the authoring tool behind the blink look set's cuts (lightsBlink.js, finishers.js,
+// GCD_SOLVE_ITER=n): the authoring tool behind the blink look set's cuts (lightsBlink.js,
 // heaviesBlink.js). A cut is written as its keys' phases and the blade's direction at its first and last
 // key; the sword hand at those two keys is as the clip writes it. The blade's drawn point there is then
 // the cut's start and end, and at every key between the point is put on the straight line through them
@@ -12277,7 +13364,6 @@ async function scenarioArmAudit() {
 async function scenarioBlinkSolve() {
   out("\n== BLINKSOLVE (authoring: the instant cuts' keys, so each point runs one straight line) ==");
   const CB = await imp('src/entities/player/combat.js');
-  const FN = await imp('src/entities/player/finishers.js');
   const { SWINGS } = await imp('src/entities/player/swings.js');
   const { swingPhase } = await imp('src/entities/player/anim.js');
   const { DIM: HD, PLAYER_SCALE } = await imp('src/entities/player/model.js');
@@ -12288,25 +13374,13 @@ async function scenarioBlinkSolve() {
     blinkFall: [{ keys: steps(1.34, 1.7, 6), from: [-18, 16], to: [28, -18] }],
     blinkFlat: [{ keys: steps(1.34, 1.7, 6), from: [50, 3], to: [-10, 6] }],
     blinkCross: [{ keys: steps(1.34, 1.7, 6), from: [44, 16], to: [-8, -18] }],
-    finFlurry: [
-      { keys: [0.6, 0.66, 0.72], from: [-10, 22], to: [30, -16] },
-      { keys: [0.79, 0.86, 0.93], from: [36, 22], to: [-6, -16] },
-      { keys: [1.0, 1.12, 1.24], from: [40, 6], to: [-12, 8] },
-      { keys: [1.38, 1.465, 1.55], from: [8, -24], to: [14, 26] },
-      { keys: [1.66, 1.81, 1.96], from: [36, -24], to: [-20, 32] },
-    ],
-    finDelayed: [{ keys: [1.24, 1.28, 1.32, 1.36, 1.4, 1.46, 1.52], from: [42, -16], to: [-22, 22] }],
-    finDouble: [
-      { keys: [1.1, 1.18, 1.26, 1.34, 1.42], from: [-14, 26], to: [30, -20] },
-      { keys: [1.5, 1.6, 1.7, 1.8, 1.9], from: [-24, -32], to: [4, 44] },
-    ],
     blinkRise: [{ keys: steps(1.32, 1.68, 6), from: [42, -20], to: [-18, 20] }],
     blinkCrush: [{ keys: steps(1.28, 1.64, 6), from: [40, 22], to: [-16, -24] }],
     blinkBreak: [{ keys: [1.2, 1.26, 1.33, 1.39, 1.46, 1.52, 1.58], from: [12, 40], to: [6, -32] }],
   };
   const ITER = Number(process.env.GCD_SOLVE_ITER) || 8;
   const want = (process.env.GCD_SOLVE || '').split(',').filter(Boolean);
-  const lights0 = CB.lightsMode(), fin0 = FN.finisherId();
+  const lights0 = CB.lightsMode();
   const tip = new THREE.Vector3(), grip = new THREE.Vector3();
   const azEl = (v) => [Math.atan2(v[0], v[2]) * DEG, Math.asin(clamp(v[1] / Math.hypot(...v), -1, 1)) * DEG];
   const unit = (d) => { const a = d[0] / DEG, e = d[1] / DEG; return [Math.cos(e) * Math.sin(a), Math.sin(e), Math.cos(e) * Math.cos(a)]; };
@@ -12341,9 +13415,8 @@ async function scenarioBlinkSolve() {
   }
   let ver = 0;
   /** One run: `plan` presses, the anims pointed at fresh copies of the working clips; the swings' fine frames. */
-  const play = (fin, plan, secs) => {
+  const play = (plan, secs) => {
     CB.setLights('blink');
-    CB.setFinisherLook(fin);
     const names = {};
     ver++;
     for (const n of Object.keys(work)) { names[n] = `${n}~${ver}`; SWINGS[names[n]] = { ...SWINGS[n], keys: work[n].map((k) => ({ ...k })) }; }
@@ -12389,17 +13462,15 @@ async function scenarioBlinkSolve() {
     return { tip: lt(a.tip, b.tip), grip: lt(a.grip, b.grip) };
   };
   const jobs = [
-    { fin: 'flurry', plan: [0, 1, 2, 3, 4].map((i) => [i * CHAIN_EVERY, 'L']), secs: 4 * CHAIN_EVERY + 1.4 },
-    { fin: 'delayed', plan: [0, 1, 2, 3, 4].map((i) => [i * CHAIN_EVERY, 'L']), secs: 4 * CHAIN_EVERY + 1.4, only: ['finDelayed'] },
-    { fin: 'double', plan: [0, 1, 2, 3, 4].map((i) => [i * CHAIN_EVERY, 'L']), secs: 4 * CHAIN_EVERY + 1.4, only: ['finDouble'] },
-    ...[1, 3, 4].map((n) => ({ fin: 'flurry', plan: [...Array.from({ length: n }, (_, i) => [i * CHAIN_EVERY, 'L']), [n * CHAIN_EVERY, 'H']], secs: n * CHAIN_EVERY + 1.4, only: [['', 'blinkRise', '', 'blinkCrush', 'blinkBreak'][n]] })),
-  ].filter((J) => !want.length || (J.only ?? ['blinkFall', 'blinkFlat', 'blinkCross', 'finFlurry']).some((c) => want.includes(c)));
+    { plan: [0, 1, 2, 3].map((i) => [i * CHAIN_EVERY, 'L']), secs: 3 * CHAIN_EVERY + 1.4 },
+    ...[1, 3, 4].map((n) => ({ plan: [...Array.from({ length: n }, (_, i) => [i * CHAIN_EVERY, 'L']), [n * CHAIN_EVERY, 'H']], secs: n * CHAIN_EVERY + 1.4, only: [['', 'blinkRise', '', 'blinkCrush', 'blinkBreak'][n]] })),
+  ].filter((J) => !want.length || (J.only ?? ['blinkFall', 'blinkFlat', 'blinkCross']).some((c) => want.includes(c)));
   const S0 = PLAYER_SCALE;
   try {
     for (let it = 0; it < ITER; it++) {
       const report = [];
       for (const J of jobs) {
-        const sw = play(J.fin, J.plan, J.secs);
+        const sw = play(J.plan, J.secs);
         for (const S of sw) {
           const cuts = TGT[S.clip];
           if (!cuts || (J.only && !J.only.includes(S.clip)) || (want.length && !want.includes(S.clip))) continue;
@@ -12449,7 +13520,6 @@ async function scenarioBlinkSolve() {
     }
   } finally {
     CB.setLights(lights0);
-    CB.setFinisherLook(fin0);
   }
   return build();
 }
