@@ -347,7 +347,7 @@ const HEAD_SIDE_SWAP = 0.6; // c: rad past straight back a foe must be before th
 /** The head's nose-up limit (rad), and the look point's own pitch from which it rises to the third. */
 const HEAD_LOOK_UP = [0.6, 0.9, 1.2];
 /**
- * ?neck= (ADR-200; read once): how the head is held and where it may look.
+ * ?neck= (ADR-203; read once): how the head is held and where it may look.
  *   c (default)  the head upright against its own body (the chest's up) in every move, the level
  *                correction unwrapped and rate-limited, the neck twisting with it; it looks where its
  *                move points it (only a look point nearly overhead keeps the chest's heading)
@@ -355,11 +355,11 @@ const HEAD_LOOK_UP = [0.6, 0.9, 1.2];
  *                its heading kept while the look point is under or over it (the owner: "the head got
  *                worse when flying and when it does a ground perfect parry attack": it rolled against
  *                the banking body and looked the wrong way)
- *   0            as before ADR-200 (level at rest only, no turn limit on exact strikes, the shown neck
+ *   0            as before ADR-203 (level at rest only, no turn limit on exact strikes, the shown neck
  *                free to miss its head)
  * The shown-neck catch-up (SWING_MISS) and the exact strikes' turn limit are in c and b.
  */
-const NECK_MODE = (() => {
+export const NECK_MODE = (() => {
   const v = String(new URLSearchParams(globalThis.location?.search ?? '').get('neck') ?? '').toLowerCase();
   return v === '0' || v === 'b' ? v : 'c';
 })();
@@ -877,7 +877,7 @@ export class Rig {
         vis.solve(E, 4);
         // a step it cannot follow (a strike's first frame moves the head metres): FABRIK under the bend
         // limits missed it by up to 3 m, buckling 2 m out to one side, while the pinned head was drawn
-        // at the measured end (a head apart from its neck for a frame or two; ADR-200). The further it
+        // at the measured end (a head apart from its neck for a frame or two; ADR-203). The further it
         // misses, the more it takes the measured shape, which always reaches
         const miss = vis.p[n].distanceTo(E);
         if (NECK_MODE !== '0' && miss > SWING_MISS[0] * S) {
@@ -901,7 +901,7 @@ export class Rig {
     const dir = this._v[2].subVectors(lv, hc.p[n]);
     if (dir.lengthSq() < 1e-6) dir.copy(last);
     dir.normalize();
-    // where a neck can look, in the chest's frame (ADR-200): over a shoulder at most HEAD_YAW_MAX,
+    // where a neck can look, in the chest's frame (ADR-203): over a shoulder at most HEAD_YAW_MAX,
     // and a foe crossing straight behind does not swap the shoulder it looks over; a look point nearly
     // straight above or below (the hero under a wheeling flight, the meteors' sky overhead) has no
     // heading worth following, so the last one holds. (The head looked ~180° back over its own spine
@@ -960,7 +960,7 @@ export class Rig {
       const ld = s.lookDown + Math.max(0, REST_POSE.lookDown - s.lookDown) * s.rest;
       const dip = (0.05 + ((this.m.build?.rest?.headDip ?? REST_POSE.headDip) - 0.05) * s.rest) * awakeW;
       // (at most 0.6 rad nose-up, unless the look point is set high on purpose: the meteors' roar to
-      // the sky; ADR-200. Its look 40 m up but behind the snout used to swing the head round to face
+      // the sky; ADR-203. Its look 40 m up but behind the snout used to swing the head round to face
       // backward, which is what lifted it; a forward head holds the roar now)
       const raw = Math.atan2(dir.y, h);
       const up = NECK_MODE === '0' ? HEAD_LOOK_UP[0] : HEAD_LOOK_UP[0] + clamp((raw - HEAD_LOOK_UP[1]) / (HEAD_LOOK_UP[2] - HEAD_LOOK_UP[1]), 0, 1) * (HEAD_LOOK_UP[2] - HEAD_LOOK_UP[0]);
@@ -984,14 +984,14 @@ export class Rig {
     // active frames (the bite, the combo's lunge, the charge, the breath, the fireball's spit)
     const hd = this._headDir;
     // (exact, still at most HEAD_EXACT_RATE: a bite's first frame turned the head alone 75° as its
-    // look jumped onto the hero; two frames now, the snout on its mark from the next; ADR-200)
+    // look jumped onto the hero; two frames now, the snout on its mark from the next; ADR-203)
     if (!snap && hd.lengthSq() > 0.5 && !(pose.headExact && NECK_MODE === '0')) constrainDir(dir, hd, (pose.headExact ? HEAD_EXACT_RATE : HEAD_AIM_RATE) * dt);
     hd.copy(dir);
     aimJoint(m.head, dir, qEnd, this._qHead);
     // the head is held level about its own snout (the brow up, toward the sky and a little toward the
     // chest's back), awake, in every move: the minimal rotation down a curved neck carries the roll
     // the neck's bends add up to, ~40° resting with a foe off to one side, and 60 - 130° in a flight's
-    // climb or turn (an upside-down head; ADR-200). The brow's 'up' leans along the snout's heading as
+    // climb or turn (an upside-down head; ADR-203). The brow's 'up' leans along the snout's heading as
     // it points down (a diving head keeps its brow toward where it looks) and back as it points up, so
     // it never loses its meaning. Driven, the neck takes the same roll spread down
     // its joints (each turns about its own bone: no point moves), so the head never twists on the
@@ -1002,7 +1002,7 @@ export class Rig {
     const lv0 = NECK_MODE === '0' ? s.rest * awakeW * (1 - limp) : awakeW * (1 - limp);
     let leveled = false;
     if (NECK_MODE === '0' && lv0 > 1e-3) {
-      // (as before ADR-200: resting only, the sky's level, the head alone)
+      // (as before ADR-203: resting only, the sky's level, the head alone)
       const ax = this._v[3].set(1, 0, 0).applyQuaternion(this._qHead);
       const lvl = this._v[4].crossVectors(UP, dir);
       if (lvl.lengthSq() > 1e-4) {
