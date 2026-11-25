@@ -19,6 +19,16 @@ const NO_SEEN = (() => {
   }
 })();
 
+// `?shadowCache=0` in the URL (read once): draw the moon's shadow map whole every frame, as before the still
+// map (render/shadowCache.js, ADR-201). An A/B switch for frame-rate and image checks.
+const NO_SHADOW_CACHE = (() => {
+  try {
+    return typeof location !== 'undefined' && new URLSearchParams(location.search).get('shadowCache') === '0';
+  } catch {
+    return false;
+  }
+})();
+
 export const CONFIG = {
   seed: 1337,
 
@@ -156,6 +166,14 @@ export const CONFIG = {
     maxPixelRatio: 2,
     shadowSize: 2048, // default moon shadow map size (texels); the quality presets set their own
     shadowExtent: 80, // half-size in meters of the moon's orthographic shadow frustum
+    // The still shadow map (render/shadowCache.js, ADR-201; `on` false with ?shadowCache=0): what has not
+    // moved for `settle` frames is drawn into a map of its own only when it changes, and each frame starts
+    // from a copy of it. `snap`: while it is on, the shadow camera follows the view in steps of this many
+    // of its own texels, in its own plane (32: 2.5 m at 2048, 5 m at 1024; pipeline.js updateShadowCamera),
+    // so walking redraws it a few times a second, not every frame, and a texel never moves on the world. A caster of more than `big` triangles (a level's merged tree run, cut by a
+    // blow) rejoins the still map after `settleBig` quiet frames: drawing it moving costs about what drawing
+    // the still map again does.
+    shadowCache: { on: !NO_SHADOW_CACHE, settle: 20, settleBig: 3, big: 60000, snap: 32 },
     batch: !NO_BATCH, // rigid batching of the hero and the wyrm (false with ?nobatch)
     // The hero printed through whatever covers him on screen (pipeline.js, ADR-106; `on` false with
     // ?noseen). `reach`: half-size (m) of the box round him that is drawn a second time (his figure

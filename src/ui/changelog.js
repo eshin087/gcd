@@ -29,6 +29,22 @@ export const RELEASES = [
       },
       {
         date: '2026-11-25',
+        title: 'The sword hand looks natural in the idle tricks',
+        notes: [
+          "In the wrist spin, the figure-eight, the salute and the sword spells, the hero's forearm now leads the blade, so his sword fist no longer twists off his wrist.",
+          'In the salute and the spells the fist rises before his chest, so his raised arm no longer looks jagged from the game camera.',
+        ],
+      },
+      {
+        date: '2026-11-25',
+        title: 'Shadows cost less, and their edges stop crawling',
+        notes: [
+          'The moon\'s shadows look the same, but the trees, rocks and walls that do not move are no longer drawn into them again every frame: the game does far less work for them.',
+          'The edges of the shadows, and the letters along them, no longer shimmer while you walk.',
+        ],
+      },
+      {
+        date: '2026-11-25',
         title: 'The game runs faster on weaker machines',
         notes: [
           'The picture is the same, and it costs less to draw: the ground is drawn after the things that cover it, and its relief is worked out once when a level loads instead of for every pixel of every frame.',

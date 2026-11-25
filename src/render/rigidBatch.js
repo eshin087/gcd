@@ -23,7 +23,10 @@ import { LAYER_CASTER, LAYER_CASTER_RIGID, RIGID_TEX, RIGID_ROWS_MAX, RIGID_MAX 
 // Shadows: the depth pass does not care about materials, so each actor also gets one SHADOW mesh
 // (positions + bone slots of its casters, drawn only by the shadow camera on LAYER_CASTER_RIGID).
 // It casts while one of its sources is a caster (LAYER_CASTER in its mask, read every sync, so
-// markCaster / dragon.setShadowCasting work before or after the build).
+// markCaster / dragon.setShadowCasting work before or after the build). Its `userData.rigidStamp` goes up
+// whenever what it casts may have changed (a bone's matrix, one shown or hidden, the actor starting or
+// stopping to cast), and the set's `vacated` spheres say where the moved bones were: the still shadow map
+// (shadowCache.js) redraws only then, and only there.
 //
 // Not batched (left as ordinary meshes): materials without `userData.rigid` (only
 // createSurfaceGlyphMaterial sets it), instanced / skinned meshes, geometry that is rewritten at
@@ -44,6 +47,14 @@ class HiddenLayers extends THREE.Layers {
   test() {
     return false;
   }
+}
+
+// a set's shadow mesh -> the set (the still shadow map asks where an actor's casters are: shadowCache.js)
+const SHADOW_SETS = new WeakMap();
+
+/** The rigid batch set whose shadow mesh `mesh` is (its `sources`, its `root`), or null. */
+export function rigidShadowSet(mesh) {
+  return SHADOW_SETS.get(mesh) ?? null;
 }
 
 /** True for a mesh that is drawn through a rigid batch (kept in the graph, never drawn itself). */
@@ -118,7 +129,8 @@ class RigidBones {
     for (let s = 0; s < S.length; s++) {
       const set = S[s], root = set.root, B = set._batches;
       if (root.visible === false) continue; // three skips the whole actor
-      let cast = false;
+      let cast = false, moved = false;
+      set.vacatedN = 0;
       for (let b = 0; b < B.length; b++) {
         const batch = B[b], slots = batch.slots, sources = batch.sources;
         let world = false, shown = false;
@@ -135,10 +147,24 @@ class RigidBones {
           }
           if (vis) {
             const e = src.matrixWorld.elements;
-            for (let k = 0; k < 16; k++) d[at + k] = e[k];
-            shown = true;
             if (mask & CASTER_BIT) cast = true;
-          } else {
+            // (the texture holds float32: compared as float32, a bone at rest is unchanged)
+            let ch = false;
+            for (let k = 0; k < 16; k++) {
+              if (d[at + k] !== Math.fround(e[k])) {
+                ch = true;
+                break;
+              }
+            }
+            if (ch) {
+              moved = true;
+              vacate(set, src, d, at);
+              for (let k = 0; k < 16; k++) d[at + k] = e[k];
+            }
+            shown = true;
+          } else if (d[at + 15] !== 0 || d[at] !== 0) {
+            moved = true;
+            vacate(set, src, d, at);
             for (let k = 0; k < 16; k++) d[at + k] = 0;
           }
         }
@@ -147,6 +173,7 @@ class RigidBones {
       }
       const shadow = set.shadow;
       if (shadow) {
+        if (moved || shadow.visible !== cast) shadow.userData.rigidStamp = (shadow.userData.rigidStamp ?? 0) + 1;
         shadow.visible = cast;
         shadow.layers.mask = cast ? RIGID_CASTER_BIT : 0;
         if (cast) casting = true;
@@ -156,6 +183,37 @@ class RigidBones {
     this.casting = casting;
     if (wrote) this.texture.needsUpdate = true;
   }
+}
+
+/**
+ * A bone moved or was hidden: the sphere its mesh filled at its OLD matrix (still in the texture, `d` at
+ * `at`) joins the set's `vacated` list (x, y, z, r per sphere; `vacatedN` of them this sync), where the still
+ * shadow map wipes the frame's map back (shadowCache.js). A slot never drawn (all zero) left nothing.
+ */
+function vacate(set, src, d, at) {
+  if (d[at + 15] === 0 && d[at] === 0 && d[at + 5] === 0) return;
+  const g = src.geometry;
+  if (!g.boundingSphere) g.computeBoundingSphere();
+  const c = g.boundingSphere.center, r0 = g.boundingSphere.radius;
+  const x = d[at] * c.x + d[at + 4] * c.y + d[at + 8] * c.z + d[at + 12];
+  const y = d[at + 1] * c.x + d[at + 5] * c.y + d[at + 9] * c.z + d[at + 13];
+  const z = d[at + 2] * c.x + d[at + 6] * c.y + d[at + 10] * c.z + d[at + 14];
+  const sx = d[at] * d[at] + d[at + 1] * d[at + 1] + d[at + 2] * d[at + 2];
+  const sy = d[at + 4] * d[at + 4] + d[at + 5] * d[at + 5] + d[at + 6] * d[at + 6];
+  const sz = d[at + 8] * d[at + 8] + d[at + 9] * d[at + 9] + d[at + 10] * d[at + 10];
+  const r = r0 * Math.sqrt(Math.max(sx, sy, sz));
+  const n = set.vacatedN | 0;
+  let V = set.vacated;
+  if (!V || V.length < (n + 1) * 4) {
+    const W = new Float32Array(Math.max(64, (n + 1) * 8));
+    if (V) W.set(V);
+    set.vacated = V = W;
+  }
+  V[n * 4] = x;
+  V[n * 4 + 1] = y;
+  V[n * 4 + 2] = z;
+  V[n * 4 + 3] = r;
+  set.vacatedN = n + 1;
 }
 
 const REGISTRIES = new WeakMap();
@@ -381,6 +439,7 @@ class RigidBatchSet {
     mesh.layers.mask = anyCaster ? RIGID_CASTER_BIT : 0;
     this.root.add(mesh);
     this.shadow = mesh;
+    SHADOW_SETS.set(mesh, this);
   }
 
   /** The sources stop drawing themselves; the set starts syncing. */
