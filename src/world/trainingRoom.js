@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { FLAG, createAsciiObjectMaterial, createCarvedGlyphMaterial, createPropArtMaterial } from '../render/materials.js';
 import { markCaster } from '../render/pipeline.js';
+import { addSlabRims } from '../render/dragonFloor.js';
 import { GlyphParticles } from '../render/particles.js';
 import { mulberry32 } from '../core/rng.js';
 import { CONFIG } from '../core/config.js';
@@ -150,6 +151,7 @@ export function createTrainingRoom(U, colliders) {
   addMesh(wallGeos, wallMat, 'walls');
   addMesh(propGeos, mat, 'props');
   markCaster(group);
+  addSlabRims(group, slabMat); // (the dragon print's rims: only under ?dpFloor)
 
   // ---- the room's life: the lit grid, the pylons' lights, motes
   let glowSys = null;

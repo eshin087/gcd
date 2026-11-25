@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { DP_FLOOR_GLSL, DP_FLOOR_MAIN, DP_FLOOR_PRINT, dpFloorLook, dpFloorUniforms, lazySlabRim } from './dragonFloor.js';
 import { COMMON_GLSL, HERO_PARTS, RIGID_VERT_GLSL, WIND_GLSL, WIND_FRONTS_LEN } from './shaderLib.js';
 import { gi } from './glyphs.js';
 import { LET_GO_GLSL, letGoUniforms } from './letGo.js';
@@ -1404,8 +1405,14 @@ const HANG_NORMAL_GLSL = /* glsl */ `
  * glyphs faintly visible), base (dark slab brightness vs ink), mossInk [r,g,b], crackAmount 0..1,
  * edge (chamfer line strength), glyphZoom, fadeNearPlayer (dither away in front of the player),
  * side (THREE side, default DoubleSide).
+ *
+ * THE DRAGON PRINT (`?dpFloor=a|b`, render/dragonFloor.js): the floor printed as the dragon ground is, on
+ * the ground's own lattice (the ramps, strokes, cell and glyphZoom above are then unused; gain, crackAmount,
+ * mossInk, edge-band attributes and the script wave still count). `dpFloor`: '0' | 'a' | 'b' (default:
+ * the switch), `dp`: the set's own numbers (DP_FLOOR's keys).
  */
 export function createCarvedGlyphMaterial(U, o = {}) {
+  const dpLook = o.dpFloor != null ? ({ a: 1, b: 2 }[o.dpFloor] ?? 0) : dpFloorLook();
   const toRamp = (rows) => {
     const out = [];
     for (let l = 0; l < CARVED_LEVELS; l++) {
@@ -1420,7 +1427,7 @@ export function createCarvedGlyphMaterial(U, o = {}) {
     return new THREE.Vector4(g[0], g[1], g[2], g[3]);
   };
   const pitch = o.viewPitch ?? (58 * Math.PI) / 180;
-  return new THREE.ShaderMaterial({
+  const mat = new THREE.ShaderMaterial({
     uniforms: {
       ...pickShared(U, SHARED),
       uPlayerScreen: U.uPlayerScreen,
@@ -1445,7 +1452,9 @@ export function createCarvedGlyphMaterial(U, o = {}) {
       uEdge: { value: o.edge ?? 0 },
       uGlyphZoom: { value: o.glyphZoom ?? 0.72 },
       ...scriptUniforms(U),
+      ...(dpLook ? dpFloorUniforms(dpLook, o.dp, pitch) : {}),
     },
+    defines: { DP_FLOOR: dpLook },
     vertexShader: /* glsl */ `
       ${SCRIPT_VERT}
       attribute vec3 aCol;
@@ -1460,6 +1469,10 @@ export function createCarvedGlyphMaterial(U, o = {}) {
       varying float vMoss;
       varying float vInk;
       varying float vEdge;
+#if DP_FLOOR > 0
+      attribute float aRim;
+      varying float vRim;
+#endif
       void main() {
         vec4 wp = modelMatrix * vec4(position, 1.0);
         vW = wp.xyz;
@@ -1469,6 +1482,9 @@ export function createCarvedGlyphMaterial(U, o = {}) {
         vMoss = aMoss;
         vInk = aInk;
         vEdge = aEdge;
+#if DP_FLOOR > 0
+        vRim = aRim;
+#endif
         gl_Position = projectionMatrix * viewMatrix * wp;
         ${SCRIPT_SHIFT}
       }
@@ -1505,6 +1521,9 @@ export function createCarvedGlyphMaterial(U, o = {}) {
       varying float vMoss;
       varying float vInk;
       varying float vEdge;
+#if DP_FLOOR > 0
+      ${DP_FLOOR_GLSL}
+#endif
 
       // smooth value noise on the lattice plane (cell-centre lookups keep each cell's glyph whole)
       float cgNoise(vec2 p) {
@@ -1527,6 +1546,9 @@ export function createCarvedGlyphMaterial(U, o = {}) {
           }
         }
         vec3 n = normalize(gl_FrontFacing ? vN : -vN);
+#if DP_FLOOR > 0
+        ${DP_FLOOR_MAIN}
+#else
 
         // world-fixed lattice on the view-aligned plane; each row slides by a random amount
         vec2 q = vec2(dot(vW, uLatU), dot(vW, uLatV));
@@ -1581,6 +1603,7 @@ export function createCarvedGlyphMaterial(U, o = {}) {
             ink = vCol * uGain * vInk * 0.8;
           }
         }
+#endif
 
         float sk = 0.0;
         vec3 sw = vec3(0.0);
@@ -1594,6 +1617,10 @@ export function createCarvedGlyphMaterial(U, o = {}) {
           ink = mix(ink, SCRIPT_GREEN * (luma(ink) + 0.05), min(sk, 1.0) * 0.8) * (1.0 + sk * (1.2 * sw.x + 1.8 * sw.y));
         }
         float m = 0.0;
+#if DP_FLOOR > 0
+        vec3 col;
+        ${DP_FLOOR_PRINT}
+#else
         if (idx >= 0.0) {
           // small sideways nudge per cell: glyphs never sit in perfect typeset columns
           vec2 fz = (f - vec2((fract(h * 7.13) - 0.5) * 0.2, 0.0) - 0.5) * uGlyphZoom + 0.5;
@@ -1604,6 +1631,7 @@ export function createCarvedGlyphMaterial(U, o = {}) {
         // moonlit chamfer: a thin edge that catches the light, chipped (broken per cell)
         float chip = step(0.3, hash12(cell + 3.3));
         col += vCol * (L + uInkFloor) * uGain * 0.45 * vEdge * uEdge * chip;
+#endif
 
         // dragon fire scorches low stones; embers glow in the glyphs
         vec2 sc = scorchAt(vW.xz);
@@ -1618,4 +1646,8 @@ export function createCarvedGlyphMaterial(U, o = {}) {
     side: o.side ?? THREE.DoubleSide,
     blending: THREE.NoBlending,
   });
+  // the dragon print's rim (dragonFloor.js addSlabRim): a set gives its meshes theirs when it builds them;
+  // any other geometry drawn with this material gets it on its first draw
+  if (dpLook) mat.onBeforeRender = (renderer, scene, camera, geometry) => lazySlabRim(scene, geometry);
+  return mat;
 }

@@ -14,6 +14,7 @@ import {
   carved, landmarkPoint, frustum, limb, facetCol, buildGreatFox, buildSpiritGate, GREAT_FOX_COLLIDERS, SPIRIT_GATE_COLLIDERS,
 } from './landmarks.js';
 import { breakableFloor } from './floor.js';
+import { addSlabRims } from '../render/dragonFloor.js';
 import { hangFrom } from './hang.js';
 
 // The Foxfire Terrace (levels/foxfire.js; ADR-147): a moonlit hill shrine. South to north (the player
@@ -70,6 +71,8 @@ const PAVING_LOOK = {
   edge: 0.3,
   inkFloor: 0.035,
   topGlyphs: ['.   ', '. . ', '.:. ', ':.;.', ';:=.', '=;%:'],
+  // the dragon print (`?dpFloor=`, render/dragonFloor.js): the courtyard's paving's numbers
+  dp: { k: 0.55, top: 0.06 },
 };
 /** The terrace's stone: moonlit grey, mottled, a little moss toward the rim (not scorched). */
 const pavingCol = (px, py, pz) => mul(STONE, (0.6 + 0.35 * fbm2(px * 1.6, pz * 1.6, 2)) * (0.8 + 0.2 * fbm2(px * 0.15 + 4, pz * 0.15, 2)));
@@ -502,6 +505,7 @@ function buildTerrace(U, colliders) {
   group.add(...meshes);
   markCaster(group);
   breakables.push(...breakableFloor({ slabs: floor, slabGeos, slabMesh, mat: slabMat, rng: mulberry32(CONFIG.seed + 7131), group }).defs);
+  addSlabRims(group, slabMat); // (the dragon print's rims: only under ?dpFloor)
 
   const S = CONFIG.world.dragonSleep ?? { x: 0, z: 0 };
   return {

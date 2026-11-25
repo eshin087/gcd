@@ -8,6 +8,7 @@ import { TAU } from '../core/math.js';
 import { prep, lumpy, carve, slabGeometry, mul, SLAB_LOOK, buildFlagstone, buildBonfire, buildRubble, buildBoulder, buildDeadTree, buildStump, geosHeight, STONE } from './forest.js';
 import { buildButte, buildHoodoo, buildRingPost, buildSpike, facetCol, BADLAND, RING_BRONZE } from './landmarks.js';
 import { breakableFloor } from './floor.js';
+import { addSlabRims } from '../render/dragonFloor.js';
 import { createGround } from './ground.js';
 import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
 import { hangFrom } from './hang.js';
@@ -124,7 +125,12 @@ const edgeBand = (px, py, pz, nx, ny) => (ny > 0.5 && ny < 0.95 ? 1 : 0);
  *  floor stays this dark (the stage pass) or is brightened: the answer is FLOOR_GAIN[0] (0.74 now; the
  *  paving before the stage pass printed at about 1.0). Only the floor: the figures' light is PALETTE's. */
 export const FLOOR_GAIN = Object.freeze([0.74, 0.74, 0.74]);
-const PAVING_LOOK = { gain: FLOOR_GAIN[0], lumScale: 1.5, edge: 0.18, inkFloor: 0.02, base: 0.05, crackAmount: 0.08, strokeLevels: [9, 9], topGlyphs: ['    ', '.   ', '. . ', '.:. ', ':.:.', ';:.:'] };
+const PAVING_LOOK = {
+  gain: FLOOR_GAIN[0], lumScale: 1.5, edge: 0.18, inkFloor: 0.02, base: 0.05, crackAmount: 0.08, strokeLevels: [9, 9], topGlyphs: ['    ', '.   ', '. . ', '.:. ', ':.:.', ';:.:'],
+  // the dragon print (`?dpFloor=`, render/dragonFloor.js): the sandstone's own warm hue kept (FLOOR_GAIN still
+  // sets its brightness by form: the print reads uGain)
+  dp: { k: 0.85, sat: 0.85, tint: [1, 1, 1], top: 0.08 },
+};
 const smooth = (a, b, x) => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
@@ -735,6 +741,7 @@ export function createSkybreakRing(U, colliders) {
   // the floor breaks (world/floor.js): every tile, kerb stone and plate a breakable 'range' piece of the
   // paving mesh; the cracked and broken looks in two more meshes, hidden until first used
   breakables.push(...breakableFloor({ slabs: floor, slabGeos, slabMesh, mat: slabMat, rng: fr, group, earth: EARTH }).defs);
+  addSlabRims(group, slabMat); // (the dragon print's rims: only under ?dpFloor)
 
   return {
     group, treeSpots, bare, slabs, nest: { x: RING.wait.x, z: RING.wait.z }, bonfire: { x: BF.x, z: BF.z },

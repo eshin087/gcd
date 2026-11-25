@@ -9,6 +9,7 @@ import { TAU } from '../core/math.js';
 import { prep, lumpy, carve, slabGeometry, mul, SLAB_LOOK, buildDeadTree, buildFlagstone, buildBonfire, buildRubble, geosHeight } from './forest.js';
 import { buildSpike, buildFallenStar, starCleft, facetCol, STAR_GLASS, STAR_COLLIDERS } from './landmarks.js';
 import { breakableFloor } from './floor.js';
+import { addSlabRims } from '../render/dragonFloor.js';
 import { STONE } from './forest.js';
 import { OUTSKIRTS, kindBag, buildOutskirt } from './starfallProps.js';
 import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
@@ -432,6 +433,8 @@ export function createThroneHall(U, colliders) {
   // a whole floor under the duel must stay calm: sparse, dim glyphs
   const slabMat = createCarvedGlyphMaterial(U, {
     ...SLAB_LOOK, gain: 1.55, lumScale: 2.2, edge: 0.42, inkFloor: 0.03, crackAmount: 0.3, topGlyphs: ['.   ', '. . ', '.:. ', ':.;.', ';:=.', '=;%:'], viewPitch: CONFIG.camera.pitch,
+    // the dragon print (`?dpFloor=`, render/dragonFloor.js): black glass plates, their own violet-black kept
+    dp: { k: 0.75, sat: 0.7, top: 0.08 },
   });
   const add = (geos, m, name) => {
     if (!geos.length) return; // (no trees round the crater but under ?outskirts=0)
@@ -449,6 +452,7 @@ export function createThroneHall(U, colliders) {
   {
     const slabMesh = group.children[group.children.length - 1];
     breakables.push(...breakableFloor({ slabs: floor, slabGeos, slabMesh, mat: slabMat, rng: fr, group, earth: [0.12, 0.068, 0.062] }).defs); // (the star's scorched ground: a dark ember brown)
+    addSlabRims(group, slabMat); // (the dragon print's rims: only under ?dpFloor)
   }
 
   // ---- the crater's life: the vents' flames and lights, wisps, motes, the inlay
