@@ -17,6 +17,11 @@ faults (ADR-200): the head leveled only at rest (upside down in flight), look po
 swinging it round, the driven shown neck buckling away from its pinned head on a strike's first frame, and
 `headExact` with no turn limit. Fixed in `_updateNeck` and `Chain.apply` (a twist spread down the chain).
 
+**Owner, round 2** (played the first pass, now `?neck=b`): "the head got worse when flying and when it does a
+ground perfect parry attack": it rolled oddly and looked the wrong way. The default (`?neck=c`) holds the head
+upright against its own body, not the sky, and lets it look where its move points it (a shoulder limit, the side
+swapped once a foe is clearly round the other side); `?neck=0` is the wyrm before. The owner picks.
+
 **Lessons.** Leveling needs an unwrapped, rate-limited correction: the plain shortest angle swapped between +180
 and -180 and spun the neck 50° a frame; fading it out near vertical brought the flips back. 'Up' for a head
 pointing down must lean along the heading the head holds, not the chest's forward (that leaned a head glancing

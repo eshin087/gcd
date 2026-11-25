@@ -23,7 +23,7 @@ export const RELEASES = [
         notes: [
           'The Cinder Wyrm no longer turns its head upside down when it flies, climbs or wheels round, and no longer looks straight back over its own spine.',
           'Its neck no longer snaps round in a single frame as you get behind it, its last bite in the storm flurry no longer bends its neck sideways away from its head, and its bites no longer flick the head round at the start.',
-          'Its head stays level in every move, with the neck twisting naturally to keep it there.',
+          'Its head stays upright with its body in every move, with the neck twisting naturally to keep it there.',
         ],
       },
       {

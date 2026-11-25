@@ -12,7 +12,7 @@ One hundred and two pieces of work since 0.4.0:
   (the meteors' roar now goes up at the sky facing forward), its neck no longer snaps 60 - 150° in a frame as a
   foe crosses behind it (the tail lash, the tail sweep, the rakes), the last bite of the storm flurry no longer
   buckles the neck sideways and draws the head apart from it, and a bite's first frame no longer flicks the
-  head 75° in one go. The head stays level in every move, the neck twisting with it.
+  head 75° in one go. The head stays upright against its own body in every move, the neck twisting with it (`?neck=c|b|0`).
 - **The game runs faster on weaker machines** (2026-11-25, ADR-199). *Changed:* the picture is the same and costs
   less to draw: the ground is drawn after everything that covers it, and its relief is worked out once when the
   level loads instead of for every pixel of every frame (a frame at 4K costs a fifth to two fifths less on the

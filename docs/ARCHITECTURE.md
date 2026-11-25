@@ -2041,17 +2041,19 @@ than `SWING_MISS[0]` × scale takes the measured shape, all of it from `SWING_MI
 first frame moves the head metres: FABRIK under the bend limits buckled the shown neck 2 m to one side
 and left the pinned head 3 m from its end; ADR-200).
 
-Where the head looks and how it is held (ADR-200, `_updateNeck`):
-- In the chest's frame it looks over a shoulder at most `HEAD_YAW_MAX` (2.35 rad), keeps the shoulder
-  it looks over as a foe crosses behind, holds its heading while the look point is nearly straight
-  above or below (`HEAD_STEEP`), and pitches at most `HEAD_PITCH_MAX`. Nose-up it stops at 0.6 rad
-  unless the look point itself is set high (`HEAD_LOOK_UP`: the meteors' roar to the sky).
-- It is held level about its own snout in every move while awake (it was only at rest): its brow's
-  'up' is the sky plus a quarter of the chest's up, leaning along the held heading as the snout
-  points down. The correction is unwrapped against the last frame, moves at most `HEAD_LEVEL_RATE`,
-  and holds where 'up' lines up with the snout (`HEAD_LEVEL_CONF`). Driven, the shown neck takes the
-  same roll spread down its joints (`Chain.apply(parentQ, out, twist)`: each joint turns about its own
-  bone, no point moves); resting, only what passes `HEAD_ROLL_REST`.
+Where the head looks and how it is held (ADR-200, `_updateNeck`; `?neck=c|b|0`, default c):
+- c: it looks where its move points it, over a shoulder at most `HEAD_YAW_MAX` (2.35 rad, in the
+  chest's frame); a foe straight behind is watched over the shoulder it was on until he is
+  `HEAD_SIDE_SWAP` past straight back on the other side; a look point nearly straight overhead
+  (`HEAD_STEEP`) takes the chest's heading. Nose-up it stops at 0.6 rad unless the look point itself is
+  set high (`HEAD_LOOK_UP`: the meteors' roar to the sky).
+- c: it is held upright about its own snout against its own body (the chest's up; the sky's at rest)
+  in every move while awake. The correction is unwrapped against the last frame, moves at most
+  `HEAD_LEVEL_RATE`, and holds where 'up' lines up with the snout (`HEAD_LEVEL_CONF`). Driven, the
+  shown neck takes the same roll spread down its joints (`Chain.apply(parentQ, out, twist)`: each joint
+  turns about its own bone, no point moves); resting, only what passes `HEAD_ROLL_REST`.
+- b (the first pass): upright against the sky, the heading held while the look point is under or
+  over it. 0: as before ADR-200 (level at rest only, against the sky).
 
 `REST_POSE` (exported from rig/anim.js, tunable live from the console): `neck` (the resting S:
 head low and forward), `lookDown` 0.45 / `headDip` 0.22, `stance` (`frontOut`, `frontFwd`,
