@@ -29,13 +29,13 @@ https://thegcd.vercel.app (the owner renames GitHub and Vercel after this merges
 
 **Verified.** `npm run build`; a repo-wide `grep -ri` for the old name (only the track); the glyph
 check (three storage / style consts lost their UPPER_CASE names: the check reads those as glyph strings and
-'g' is not in the atlas). **Not green:** the title shimmer draws `Math.random()` once per '█' a tick, and
-the seeded sims share that stream; the new logo has 55 blocks (118 before), so seeded fights shift and
-`city win`, `woke pace`, `lord pace` (main passes all three; confirmed by swapping only `screens.js`),
-probably `duel` and `lord fxlooks` too, fail on their margins. Fix awaiting the owner: give the shimmer
-its own generator (a line in `screens.js` outside LOGO).
+'g' is not in the atlas); `npm test` ALL 27 PASSED. The title shimmer drew `Math.random()` once per '█'
+a tick, and the seeded sims share that stream: the new logo (55 blocks, 118 before) moved every seeded fight
+and five jobs failed on their margins (`city win`, `city pace`, `sheath`, `woke`, `duel`). Now the sparkle has
+its own xorshift, and the title still draws the first logo's count from `Math.random` (its blocks per column,
+`STREAM_COLS`), so no logo or title layout can move a fight; the sims replay as on main.
 
-**Open.** The shimmer's RNG (above). After the merge the live site's saved data resets (new keys) until the address moves; the title
+**Open.** After the merge the live site's saved data resets (new keys) until the address moves; the title
 screen's layout is being redesigned on another branch, which will meet this LOGO change.
 
 ---

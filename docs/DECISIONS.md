@@ -5822,6 +5822,11 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
 - **Why:** localStorage and sessionStorage belong to an origin; on the new address nothing saved under the
   old one can be read, whatever the keys are called, so migration code would never run where it matters.
   Renaming every key now keeps one name through the code.
+- **The title's random draws are pinned:** the logo's shimmer drew `Math.random` once per solid block a
+  tick, from the stream the seeded sims share, so the shorter logo moved every seeded fight (five suites
+  failed on their margins). The sparkle now has its own xorshift, and `TitleScreen.update` still draws the
+  first logo's count from `Math.random` (`STREAM_COLS`, its blocks per column, skipping the sweep), so the
+  sims replay as before and no later logo or title layout can move a fight.
 - **Exceptions (left as they are):** third-party work titles and their file names: the music track
   "Ambience of a Fallen Age (The Abyss)" by Umplix (`assets/audio/CREDITS.md`, the `trackList.js` comment,
   `build-music.py`'s `the_abyss.wav`, ADR-117's track list), since a credit must stay accurate; the local
