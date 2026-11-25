@@ -5996,3 +5996,42 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
     world redrawn every frame), lighter trees on LOW (the presets' grass counts do nothing under the
     dragon print), the shared uniforms' upload (about 0.5 ms of script a frame), the worst frames'
     hitches. The floors' shader is as it was: its relief is most of its cost.
+
+## ADR-201 — The still shadow map: only what moves is drawn into it each frame (2026-11-25)
+
+- **Context:** the owner wants 60 fps on every device, starting from a laptop on integrated graphics (Intel
+  Core Ultra 7 255U). ADR-199's review found the moon's shadow map drawn whole every frame: 110 000 - 570 000
+  triangles a frame (Cinderwood: its trees, stumps and rocks, half a million triangles that never move), and
+  the shadow camera following the view on a grid of the world's x and z, so it moved at each 8 cm of a walk.
+  The owner chose this as the next step after ADR-199 ("lets do #2").
+- **Decision:** a still map (`render/shadowCache.js`). A caster unchanged for 20 frames (3 for one of more
+  than 60 000 triangles) is drawn into a map of its own only when that map must change; the frame's map
+  keeps last frame's picture, the texels the changed moving casters covered are copied back from the still
+  map (depth blits: a batched actor's moved bones at their old place, a plain mesh's last sphere, a big
+  mesh's edited ranges at their old positions), and only the moving casters are drawn. With the cache on the
+  shadow camera moves only in its own plane, in steps of 32 of its own texels.
+- **Why this way:** the map is unchanged (0 of 4.2 million texels differ from a whole draw in 480 samples
+  over the eight levels), the work left is what actually moves, and nothing outside the pipeline must tell
+  it what moved: the state each caster already has (its matrix, its geometry's versions, the bones' texture)
+  says it. Sampling two maps in every receiver would have cost every pixel of every surface instead.
+  Copying the whole still map each frame (the first version) moved 32 MB of memory a frame, which an
+  integrated GPU pays for; three's `copyTextureToTexture` reads the GL state back (about 0.7 ms of CPU a
+  frame in Chrome), so the blit is made directly.
+- **Alternatives:** two maps sampled by every receiver (per-pixel cost on every surface); the old world-axis
+  snap with a coarser step (a visible jump of the shadows' edges at each step, measured: most of the frame's
+  pixels changed); excluding by hand what the levels know to be static (a list to keep up in every level).
+- **Consequences:**
+  - Shadow triangles a frame, a scripted fight on each level at 1080p (HIGH, a 2048 map): Cinderwood
+    571 633 -> 122 369 (-79 %), the grove 328 389 -> 99 181 (-70 %), the terrace -64 %, the hall -54 %,
+    Ashfall -48 %, the Ring -46 %, the city -40 %, the throne -15 % (the Lord's own body is most of it);
+    draws in the shadow pass about halved. Copied texels: 4 - 8 % of the map a frame on average, mostly on
+    the 2 - 7 % of frames that redraw the still map. CPU: 70 - 115 us a frame for the bookkeeping.
+  - A frame that redraws the still map costs what a frame cost before, plus one copy of the map.
+  - The shadows' edges no longer crawl while the hero walks: a step of the camera changes at most a few
+    pixels by a few levels, where one texel's step of the old camera changed about 93 % of the frame's
+    pixels (the letters along every shadow's edge). `?shadowCache=0` gives back the camera and the pass as
+    they were.
+  - The frame time on the RTX 4090 does not move (its shadow pass was 0.05 - 0.1 ms); what it buys on an
+    integrated GPU is not measured (none here). Memory: one more depth map (16 MB at 2048, 4 MB at 1024);
+    a big mesh that has moved keeps a copy of its positions on the CPU (Cinderwood's tree run: 11 MB).
+
