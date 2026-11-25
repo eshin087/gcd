@@ -27,7 +27,7 @@ const B = GRASS.bend;
 /** The option drawn now ('0' today; the default is GRASS.bend.look). */
 export const bendLook = () => {
   const v = lookOf('bend', B.look);
-  return v === '0' || v === 'b' || v === 'c' ? v : 'a';
+  return v === '0' || v === 'a' || v === 'b' || v === 'c' ? v : B.look;
 };
 
 /** A blade's spring back: 1 while held, then to 0 (past it when omega > 0). */

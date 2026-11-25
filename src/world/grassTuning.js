@@ -216,7 +216,7 @@ export const GRASS = Object.freeze({
    */
   bend: Object.freeze({
     /** the default option (the recommendation; `?bend=0` is today) */
-    look: 'a',
+    look: 'b',
     n: 32,
     spacing: 0.35,
     gap: 0.08,

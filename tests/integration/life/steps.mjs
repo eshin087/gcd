@@ -153,7 +153,7 @@ const first = {
     }
   },
 
-  /** With the grass's wake on (`?bend=a|b|c`, the default a) a step writes no trodden trail (B stays 0):
+  /** With the grass's wake on (`?bend=a|b|c`, the default b) a step writes no trodden trail (B stays 0):
    *  a sprint step and a landing widen the wake instead. */
   async noTrample(T) {
     const LS = await T.imp('src/entities/enemies/duelist/lookSwitch.js');
