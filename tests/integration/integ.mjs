@@ -13034,6 +13034,221 @@ async function scenarioSfx() {
 }
 const num0 = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 
+// ================================================================== scenario: spells (ADR-190)
+// The roar-cast fire spells (spellsFire.js): the fire serpent and the firestorm. Each is a Lab ability
+// with a red tell; forced on the hand-built field (dead trees, boulders) it opens with the incantation
+// and the roar, then HAPPENS: the serpent reaches the hero, strikes on its red beats (one flash per
+// tell, a roll at the cue answers it), fells and burns what is on its lane and marks the floor; the
+// firestorm moves, tears at what it crosses, bursts on time after its red tell (out of its reach: no
+// blow); a stagger, a phase roar and the reset end either spell with nothing left (no serpent, no
+// column, nothing held in its spin).
+async function scenarioSpells() {
+  out('\n== scenario SPELLS (the fire serpent and the firestorm: the incantation, the roar, the lane it burns, the strikes, the column that drifts and bursts; nothing left after a stagger, a phase change, the reset) ==');
+  const { spellState } = await imp('src/entities/dragon/spellsFire.js');
+  const lead = TUNING.flashLead;
+  const { INTACT, HELD } = PIECE;
+  const f1 = (v) => (Number.isFinite(v) ? v.toFixed(1) : String(v));
+  const G = build({ terrain: 'field' });
+  fightSetup(G);
+  const { game } = G;
+  const d = game.dragon, p = game.player, D = game.world.destructibles;
+  const ab = new Map(d.debug.abilities().map((x) => [x.name, x]));
+  assert(ab.get('fireSerpent')?.tell === TELL.RED && ab.get('firestorm')?.tell === TELL.RED && ab.get('fireSerpent').phase === 2 && ab.get('firestorm').phase === 2, 'fireSerpent and firestorm are Lab abilities (red, phase 2) with tuning data');
+  // what the world was asked (the field's mock has no floor marks: counted here)
+  const marks = [], ign = [], casts = [], flares = [], ends = [];
+  game.world.groundBlow = (x, z, o) => marks.push({ x, z, kind: o?.kind });
+  const ig = game.world.ignite;
+  game.world.ignite = (x, z, r, k) => { ign.push({ x, z, r, k }); return ig(x, z, r, k); };
+  const I = d.incantation;
+  const c0 = I.cast.bind(I), fl0 = I.flare.bind(I), e0 = I.end.bind(I);
+  I.cast = (o) => { casts.push({ ...o, t: game.time }); return c0(o); };
+  I.flare = (id, k) => { flares.push(k); return fl0(id, k); };
+  I.end = (id) => { ends.push(id); return e0(id); };
+
+  /** The wyrm at (x, z) facing `yaw` in phase `ph`, the hero at (hx, hz), the field standing again. */
+  const stage = (x, z, yaw, hx, hz, ph = 2) => {
+    settle(G);
+    game.world.restore();
+    d.hazards.clear();
+    d.phase = ph;
+    d.position.set(x, 0, z);
+    d.yaw = yaw;
+    d.rig.snap();
+    p.debug.teleport(hx, hz);
+    p.debug.heal();
+    run(G, 0.2, { passive: true });
+    d.position.set(x, 0, z);
+    d.yaw = yaw;
+    p.debug.teleport(hx, hz);
+    marks.length = ign.length = casts.length = flares.length = ends.length = 0;
+  };
+  /** Force `name` and follow it to its end; `each(rec)` runs every frame before the tick (move, roll). */
+  const follow = (name, each = null, max = 14) => {
+    const rec = { tells: [], flashes: [], roars: 0, spells: 0, explosions: 0, phases: [], a: null };
+    const h0 = G.hits.length, er0 = errors.length;
+    G.watch = (n, e) => {
+      if (n === 'dragon:roar') rec.roars++;
+      if (n === 'dragon:spell' && e?.name === name) rec.spells++;
+      if (n === 'dragon:explosion') rec.explosions++;
+      if (e?.attack !== name) return;
+      if (n === 'combat:tell') rec.tells.push({ t: game.time, tell: e.tell, impactIn: e.impactIn });
+      if (n === 'combat:flash') rec.flashes.push({ t: game.time, tell: e.tell, x: e.x, z: e.z });
+    };
+    rec.trigger = game.lab.trigger(name);
+    let started = false;
+    for (let i = 0; i < Math.round(max / DT); i++) {
+      G.input.axis = { x: 0, y: 0 };
+      aimAt(G);
+      const a = d.brain.action;
+      if (a?.name === name) {
+        started = true;
+        rec.a = a;
+        if (rec.phases[rec.phases.length - 1] !== a.phase) rec.phases.push(a.phase);
+      } else if (started) break;
+      each?.(rec, a);
+      G.tick(DT);
+    }
+    G.watch = null;
+    rec.hits = G.hits.slice(h0).filter((h) => h.attack === name);
+    rec.red = rec.hits.filter((h) => h.tell === TELL.RED);
+    rec.ticks = rec.hits.filter((h) => h.tell === TELL.NORMAL);
+    rec.errors = errors.slice(er0);
+    return rec;
+  };
+  const tree = (x, z) => D.list.find((b) => b.mat === 'wood' && Math.hypot(b.x - x, b.z - z) < 0.5);
+
+  // ---- the serpent, phase 2: the wyrm west of the dead tree at (12, 0) facing east, the hero beyond it
+  {
+    stage(-3, 0, Math.PI / 2, 22, 0.5);
+    const t12 = tree(12, 0);
+    const r = follow('fireSerpent');
+    const s = spellState(d).serpent;
+    assert(r.trigger && r.phases.join(' ') === 'windup channel recovery' && r.errors.length === 0, `serpent: forced, windup -> channel -> recovery, no error (${r.phases.join(' ')}${r.errors.length ? ' ' + r.errors[0] : ''})`);
+    assert(casts.length === 1 && casts[0].kind === 'ground' && Math.hypot(casts[0].x - 4.5, casts[0].z) < 0.6 && flares.some((k) => k >= 1) && ends.length >= 1, `   the incantation: one ground circle at ${f1(casts[0]?.x)}, ${f1(casts[0]?.z)} before the wyrm, flared to 1 as it bursts out, ended (${ends.length})`);
+    assert(r.roars >= 1 && r.spells === 1, `   the roar (${r.roars}) and dragon:spell fireSerpent (${r.spells})`);
+    assert(s.stat.travel > 15 && s.stat.closest < 1.2, `   it slithered ${f1(s.stat.travel)} m and came within ${s.stat.closest.toFixed(2)} m of the hero`);
+    assert(t12 && (t12.state !== INTACT || t12.hp < t12.hpMax), `   the dead tree on its lane was struck (state ${t12?.state}, structure ${t12?.hp?.toFixed?.(2)} / ${t12?.hpMax?.toFixed?.(2)})`);
+    const beams = marks.filter((m) => m.kind === 'beam').length;
+    assert(s.stat.swept >= 1 && ign.length >= 6 && beams >= 4, `   it burnt a lane: ${s.stat.swept} pieces swept, ${ign.length} fires lit, ${beams} trench marks`);
+    const T = TUNING.attacks.fireSerpent;
+    assert(r.tells.length === 2 && r.tells.every((x) => x.tell === TELL.RED) && r.flashes.length === r.tells.length, `   phase 2: ${r.tells.length} strikes, each one red tell and one flash (${r.flashes.length})`);
+    const lag = r.tells.map((x, i) => (r.flashes[i] ? r.flashes[i].t - x.t : NaN));
+    assert(lag.length > 0 && lag.every((x) => x >= T.rear - lead - 0.05), `   each flash comes at least the rear less the lead after its tell (${lag.map((x) => x.toFixed(2)).join(', ')} s)`);
+    assert(r.red.length >= 1 && r.red.every((h) => h.r !== RESULT.IGNORED), `   a hero who stands still is struck (${r.red.map((h) => h.r).join(', ')})`);
+    assert(s.mode === 'gone' && s.glow === 0, `   nothing left after it (mode ${s.mode})`);
+  }
+  // ---- answered: the hero rolls at every cue (a roll through the lunge: no red blow lands)
+  {
+    stage(-3, 0, Math.PI / 2, 18, 0.5);
+    let rolled = 0;
+    const r = follow('fireSerpent', (rec) => {
+      const f = rec.flashes[rolled];
+      if (f && game.time >= f.t + lead - 0.12) {
+        rolled++;
+        G.input.axis = { x: 0, y: 1 };
+        G.input.tap('Space');
+      }
+    });
+    const landed = r.red.filter((h) => h.r === RESULT.HIT || h.r === RESULT.BLOCKED);
+    assert(r.tells.length >= 1 && landed.length === 0, `serpent answered: a roll at each of its ${r.tells.length} cues, no red blow lands (${r.red.map((h) => h.r).join(', ') || 'none reached him'})`);
+  }
+  // ---- outrun (phase 1: one strike): a hero sprinting across its nose; its hunt ends in one strike
+  {
+    stage(-3, 0, Math.PI / 2, 14, 6, 1);
+    const r = follow('fireSerpent', () => {
+      const s = spellState(d).serpent;
+      if (!s || s.mode !== 'hunt') return;
+      const dx = p.position.x - s.x, dz = p.position.z - s.z, l = Math.hypot(dx, dz) || 1;
+      G.input.axis = { x: (-dz / l) * 0.8 + (dx / l) * 0.6, y: -((dx / l) * 0.8 + (dz / l) * 0.6) };
+      G.input.hold('ShiftLeft');
+    });
+    G.input.release('ShiftLeft');
+    const s = spellState(d).serpent;
+    assert(r.tells.length === 1 && s.mode === 'gone', `serpent outrun (phase 1): one strike (tells ${r.tells.length}), then it is gone (${s.mode})`);
+  }
+  // ---- cut short in its hunt: a stagger, a phase roar, the reset; nothing left, no blow after
+  for (const how of ['stagger', 'phase', 'reset']) {
+    stage(-3, 0, Math.PI / 2, 22, 0.5);
+    game.lab.trigger('fireSerpent');
+    run(G, TUNING.attacks.fireSerpent.windup * d.tScale + 0.6, { passive: true });
+    const s = spellState(d).serpent;
+    const was = s.mode;
+    const h0 = G.hits.length;
+    if (how === 'stagger') d.debug.stagger();
+    else if (how === 'phase') d.debug.phase3();
+    else d.reset();
+    run(G, 1.0, { passive: true });
+    const late = G.hits.slice(h0).filter((h) => h.attack === 'fireSerpent').length;
+    assert(was === 'hunt' && s.mode === 'gone' && s.n === 0 && late === 0, `serpent cut short by ${how} in its hunt: gone at once (was ${was}, now ${s.mode}), no blow after (${late})`);
+    if (how === 'reset') fightSetup(G);
+  }
+
+  // ---- the firestorm, phase 2: rises before the wyrm, drifts to the hero across the tree at (12, 0)
+  {
+    stage(-3, 0, Math.PI / 2, 17, 0.4);
+    const t12 = tree(12, 0);
+    const pos = [];
+    const r = follow('firestorm', () => { const v = spellState(d).vortex; if (v && v.mode !== 'wait' && v.mode !== 'gone') pos.push([v.x, v.z]); });
+    const v = spellState(d).vortex;
+    const T = TUNING.attacks.firestorm;
+    assert(r.trigger && r.phases.join(' ') === 'windup channel recovery' && r.errors.length === 0, `firestorm: forced, windup -> channel -> recovery, no error (${r.phases.join(' ')}${r.errors.length ? ' ' + r.errors[0] : ''})`);
+    assert(casts.length === 1 && r.roars >= 1 && r.spells === 1, `   the incantation (${casts.length}), the roar (${r.roars}), dragon:spell firestorm (${r.spells})`);
+    const moved = pos.length ? Math.hypot(pos[pos.length - 1][0] - pos[0][0], pos[pos.length - 1][1] - pos[0][1]) : 0;
+    assert(v.stat.travel > 5 && moved > 5, `   it drifted ${f1(v.stat.travel)} m (${f1(moved)} m from where it rose) toward the hero`);
+    assert(t12 && (t12.state !== INTACT || t12.hp < t12.hpMax) && v.stat.swept + v.stat.grazed + v.stat.lifted >= 1 && ign.length >= 3, `   it tore at the tree in its way (state ${t12?.state}; swept ${v.stat.swept}, grazed ${v.stat.grazed}, lifted ${v.stat.lifted}, flung ${v.stat.flung}) and burned (${ign.length})`);
+    const lag = r.flashes.length && r.tells.length ? r.flashes[0].t - r.tells[0].t : NaN;
+    assert(r.tells.length === 1 && r.tells[0].tell === TELL.RED && r.flashes.length === 1 && near(lag, T.gather - lead, 0.05), `   one red tell as it gathers, its flash ${f1(lag)} s later (the gather ${T.gather} less the lead)`);
+    assert(v.stat.burst === 1 && r.explosions >= 1 && r.red.length === 1, `   it burst on time (${v.stat.burst}), the hero in its reach took the blow (${r.red.map((h) => h.r).join(', ')})`);
+    assert(v.mode === 'gone' && v.held.every((h) => !h.b), '   nothing left after it: the column gone, nothing held in its spin');
+  }
+  // ---- out of its reach at the burst: no blow
+  {
+    stage(-3, 0, Math.PI / 2, 15, 0.4);
+    const r = follow('firestorm', (rec) => {
+      const v = spellState(d).vortex;
+      if (!v || rec.tells.length === 0) return;
+      const dx = p.position.x - v.x, dz = p.position.z - v.z, l = Math.hypot(dx, dz) || 1;
+      G.input.axis = { x: dx / l, y: -dz / l };
+      G.input.hold('ShiftLeft');
+    });
+    G.input.release('ShiftLeft');
+    assert(r.tells.length === 1 && r.red.length === 0, `firestorm: a hero who sprints out of its reach at the tell takes no blow (${r.red.length})`);
+  }
+  // ---- cut short in its drift: a stagger drops what it holds; the reset leaves nothing
+  for (const how of ['stagger', 'reset']) {
+    stage(-3, 0, Math.PI / 2, 17, 0.4);
+    game.lab.trigger('firestorm');
+    run(G, TUNING.attacks.firestorm.windup * d.tScale + TUNING.attacks.firestorm.rise + 2.5, { passive: true });
+    const v = spellState(d).vortex;
+    const was = v.mode, h0 = G.hits.length;
+    if (how === 'stagger') d.debug.stagger();
+    else d.reset();
+    run(G, 1.5, { passive: true });
+    const late = G.hits.slice(h0).filter((h) => h.attack === 'firestorm' && h.tell === TELL.RED).length;
+    const heldNow = D.list.filter((b) => b.state === HELD).length;
+    assert(was === 'drift' && v.mode === 'gone' && v.held.every((h) => !h.b) && heldNow === 0 && late === 0, `firestorm cut short by ${how} in its drift: gone (was ${was}), nothing held (${heldNow}), no burst (${late})`);
+    if (how === 'reset') fightSetup(G);
+  }
+  // ---- the AI: never in phase 1, both in phase 3, never with Armageddon up, not one right after the other
+  {
+    settle(G);
+    const sense = { ...d.sense, dist: 14 };
+    d.phase = 1;
+    const w1 = attackWeight(ATTACKS.fireSerpent, 'fireSerpent', d, sense) + attackWeight(ATTACKS.firestorm, 'firestorm', d, sense);
+    d.phase = 3;
+    const w3 = attackWeight(ATTACKS.fireSerpent, 'fireSerpent', d, sense) * attackWeight(ATTACKS.firestorm, 'firestorm', d, sense);
+    const cnt = d.hazards.count;
+    d.hazards.count = (k) => (k === 'barrage' ? 1 : cnt.call(d.hazards, k));
+    const wb = attackWeight(ATTACKS.fireSerpent, 'fireSerpent', d, sense) + attackWeight(ATTACKS.firestorm, 'firestorm', d, sense);
+    d.hazards.count = cnt;
+    d.brain.cooldowns.fireSerpent = TUNING.attacks.fireSerpent.cooldown;
+    const wc = attackWeight(ATTACKS.firestorm, 'firestorm', d, sense);
+    d.brain.cooldowns.fireSerpent = 0;
+    d.phase = 2;
+    assert(w1 === 0 && w3 > 0 && wb === 0 && wc === 0, `AI: weight 0 in phase 1 (${w1}), > 0 in phase 3, 0 with Armageddon up (${wb}), the firestorm 0 just after a serpent (${wc})`);
+  }  return G;
+}
+
 const SCENARIOS = {
   timestep: scenarioTimestep,
   strategy: scenarioStrategy,
@@ -13073,6 +13288,7 @@ const SCENARIOS = {
   firesource: scenarioFireSource,
   ablaze: scenarioAblaze,
   terrain: scenarioTerrain,
+  spells: scenarioSpells,
   bladestop: scenarioBladeStop,
   cut: scenarioBladeStop,
   win: scenarioWin,
