@@ -28,12 +28,12 @@ import { FIRE_PALETTES } from '../../render/firePalettes.js';
 // releases and tears up into tongues as it burns out. The dragon script is a table of small shapes
 // made of 2 - 5 strokes (SIGILS): claws, fangs, an eye, horns, a flame, a hook; not a font.
 //
-// THE LOOKS (`?incant=a|b|c`, the owner picks; a is the default):
+// THE LOOKS (`?incant=a|b`, the owner picks; a is the default):
 //   a  the seal: everything flat on the ground (a 'jaws' seal stands upright before the mouth)
 //   b  standing script: the rings and star flat, the sigils stand up on the ring as burning letters
 //      that face the camera (they read at the game camera, where flat ones are 2 - 3 rows tall)
-//   c  the seal, and while it is written the script streams off the wyrm's body into it: motes of
-//      fire fly from its spine and wings to each sigil's place, and the sigil lights where they land
+//   (c, script streaming off its body into the seal as motes of fire, was dropped in round 2: at the
+//    game camera the motes did not read, and bigger ones were a second effect on top of the seal)
 // The ink (`?incantInk=script|fire|blood`, script the default). The field's `fire` kind tears a thin
 // line into climbing tongues, so the script is written in the fire field's void slot (free on the
 // wyrm's level), re-dressed once: `script` the fire's own colours with little turbulence (BROOD.ink:
@@ -46,7 +46,7 @@ import { FIRE_PALETTES } from '../../render/firePalettes.js';
 const I = BROOD.incant;
 const TAU = Math.PI * 2;
 const MAX = 4;
-const LOOKS = ['a', 'b', 'c'];
+const LOOKS = ['a', 'b'];
 const INKS = ['script', 'fire', 'blood'];
 let LOOK = 'a';
 let INK = 'script';
@@ -57,7 +57,7 @@ try {
 } catch {
   /* headless */
 }
-/** The incantation's look in use ('a' | 'b' | 'c'). */
+/** The incantation's look in use ('a' | 'b'). */
 export const incantLook = () => LOOK;
 export const setIncantLook = (k) => {
   if (LOOKS.includes(k)) LOOK = k;
@@ -94,7 +94,7 @@ function blank() {
     alive: false, id: 0, kind: 'ground', follow: false, look: 'a', ink: 'fire',
     x: 0, y: 0, z: 0, r: 4, dur: 3, t: 0, k: 0, kPrev: 0, flashT: 9, ending: false, endT: 0,
     // the plane: u (right) and v (up / outward) axes; ground: u = +x, v = +z
-    ux: 1, uy: 0, uz: 0, vx: 0, vy: 0, vz: 1, rot0: 0, rot1: 0, seed: 0, streamAcc: 0, lickAcc: 0,
+    ux: 1, uy: 0, uz: 0, vx: 0, vy: 0, vz: 1, rot0: 0, rot1: 0, seed: 0, lickAcc: 0,
   };
 }
 
@@ -143,7 +143,6 @@ export class Incantation {
     c.seed = (c.id * 7.31) % 13;
     c.rot0 = hash(c.id, 1) * TAU;
     c.rot1 = hash(c.id, 2) * TAU;
-    c.streamAcc = 0;
     c.lickAcc = 0;
     c.follow = c.kind === 'jaws' && !Number.isFinite(o.x);
     if (c.follow) this._toJaws(c);
@@ -381,7 +380,6 @@ export class Incantation {
       if (!low || jaws) this._ring(c, r * I.heart, spin1, ws, jaws ? 10 : 14, hS, kind);
     }
     this._licks(c, dt, low);
-    if (c.look === 'c' && !jaws && !c.ending && w < 1) this._stream(c, dt, ns, spin0, low);
   }
 
   /** A sigil lying on the circle's plane at (cu, cv), its up pointing out from the centre. */
@@ -428,28 +426,6 @@ export class Incantation {
       const a = h1 * TAU, rr = c.r * (h2 < 0.6 ? 1 : h2 < 0.85 ? I.band : I.star * (0.4 + h2 * 0.6));
       const p = this._map(c, Math.cos(a) * rr, Math.sin(a) * rr, 0);
       fx._blob(p.x, p.y, p.z, 0, 0.6 + h2, 0, 0.3 + 0.25 * h1, 0.45, 0.8, 0.5 + 0.3 * c.k, 0.05, K_FIRE, 0.5, 2.2);
-    }
-  }
-
-  /** Look c: motes of fire stream off the wyrm's body into the sigils' places as they are written. */
-  _stream(c, dt, ns, spin0, low) {
-    const H = this.d.hurtSpheres, fx = this._fx;
-    if (!Array.isArray(H) || !H.length) return;
-    c.streamAcc += I.stream * (low ? 0.5 : 1) * dt;
-    let i = 0;
-    while (c.streamAcc >= 1 && i++ < 8) {
-      c.streamAcc -= 1;
-      const h1 = hash(c.t * 31.3 + i, c.id * 3.1), h2 = hash(c.t * 17.9 + i, c.id * 1.7);
-      const src = H[Math.floor(h1 * H.length) % H.length];
-      if (!src || !Number.isFinite(src.x + src.y + src.z)) continue;
-      const si = Math.floor(h2 * ns) % ns;
-      const a = spin0 + ((si + 0.5) / ns) * TAU + 0.12;
-      const p = this._map(c, Math.cos(a) * c.r * I.sigilAt, Math.sin(a) * c.r * I.sigilAt, 0);
-      const T = 0.45 + 0.25 * h1;
-      // (flies there in T s, arcing up: launched with the lift it loses to the field's gravity)
-      const g = -6;
-      const vx = (p.x - src.x) / T, vz = (p.z - src.z) / T, vy = (p.y - src.y) / T - 0.5 * g * T;
-      fx._blob(src.x, src.y, src.z, vx, vy, vz, T, 0.6, 0.4, 0.95, 0.7, this._kind(c), 0, g);
     }
   }
 

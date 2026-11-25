@@ -138,7 +138,7 @@ const wisps = {
   beats: () => [],
   weight: (d, s) => {
     if (live(d) || !(s?.dist >= MW.minDist)) return 0;
-    if ((d.phase ?? 1) <= 1 && !(d.hp <= d.maxHp * MW.lateP1)) return 0;
+    if ((d.phase ?? 1) <= 1) return d.hp <= d.maxHp * MW.lateP1[0] ? MW.lateP1[1] : 0;
     return perPhase(MW.weight, d.phase);
   },
   start(d, a) {

@@ -830,7 +830,8 @@ export class Brain {
     if (d.state !== 'combat' || d.broken || this.pendingBreak || this.pendingPhase > d.phase) return null;
     if (this.chain >= perPhase(PR.chainDepth ?? 2, d.phase)) return null;
     const s = d.sense;
-    const sky = this._emitterLive(), shots = this._bulletsLive();
+    // (kamikaze wisps in the air are red blows at times nobody knows yet, like meteors: ADR-190)
+    const sky = this._emitterLive() || (d.brood?.count?.('wisp') ?? 0) > 0, shots = this._bulletsLive();
     for (const L of links) {
       const def = L && ATTACKS[L.to];
       if (!def || !linkWhen(L.when, s)) continue;
@@ -1376,7 +1377,8 @@ export class Brain {
     // blows that would land among cues of the other answer at times nobody knows yet wait: moves
     // that ask for a guard while meteors / a chase come down, moves that ask for a dodge while
     // bullets (embers, orbs) fly
-    const sky = this._emitterLive(), shots = this._bulletsLive();
+    // (kamikaze wisps in the air are red blows at times nobody knows yet, like meteors: ADR-190)
+    const sky = this._emitterLive() || (d.brood?.count?.('wisp') ?? 0) > 0, shots = this._bulletsLive();
     // a category absent past floorForce x its floor that can be used from here is the pick (the floor
     // boost alone does not bring it back once every category is past its floor: with about fifty
     // attacks, a category of three, the terrain moves, was a few % of a phase-3 pick). The most
