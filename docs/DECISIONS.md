@@ -5551,3 +5551,18 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   so a run should take about 5 - 6 minutes (was 8 - 10). A PR merges the moment its check is green: the
   Vercel preview is no longer a gate before production, so a PR the owner wants to see first is opened as a
   draft or with `--label hold`. Re-measure `est` when a suite grows a lot.
+
+## ADR-183 — The world grid tests a creature or prop edge before the creature grid's bound (2026-11-25)
+
+- **Context:** a bright halo bloomed round the hero's RESTING blade at some poses and facings, and the point left a
+  pale block where it rested in the grass. In the ASCII pass's world grid the creature-grid branch (alpha < 0.46) came
+  before `isArt(a) || isProp(a)`. The player's own pixel window (0.42 – 0.45, ADR-130) lies under 0.46, so a world
+  cell whose centre fell on his blade printed a creature-grid letter in the steel's raw HDR colour (4 – 6) beside it,
+  and it bloomed. The bosses' window (0.46 – 0.49) was always caught by the art test first. Found while filming the
+  sword options of ADR-182 (closed PR #105); left out of PR #114, which shipped the flame.
+- **Decision:** in the world grid `isArt / isProp` (the raw pixel) is tested before the creature grid
+  (`render/pipeline.js`). Always on: a defect, not a look.
+- **Consequences:** measured at the game camera (720p, before bloom), 17 – 49 px over the 0.55 threshold round the
+  resting blade in a range of poses and facings before, none after (the gem's own violet point aside). A cut, the
+  charge, the flurry and a crit light the blade as before. An addendum to ADR-130's pixel windows: a window under 0.46
+  must not be read by the creature grid.

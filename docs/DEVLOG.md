@@ -5,6 +5,16 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-25 — The resting blade no longer glows (ADR-183; branch `render/sword-neon-wisps`)
+
+A white halo the size of the hero's head bloomed round his sword at some poses and facings while he stood still (and a
+pale block where the point rested in the grass). Cause: the world grid's creature-grid branch (alpha < 0.46) ran before
+the art / prop test, and the player's own pixel window (0.42 – 0.45) sits under that bound, so a world cell centred on
+his blade printed the steel's raw HDR colour. The art / prop test now comes first (`render/pipeline.js`). Found while
+filming the sword options for ADR-182 (closed PR #105); PR #114 shipped the flame without it. Measured before / after at
+the game camera: 17 – 49 px over the bloom threshold round the resting blade, then none. Verified: the whole
+`npm test` and `npm run build`.
+
 ## 2026-11-24 — Session 92: smaller combat text
 
 **Owner:** "the combat text that shows up next to the character (counter, deflect, dmg numbers, etc) size and font
