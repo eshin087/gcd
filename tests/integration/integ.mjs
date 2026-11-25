@@ -10485,22 +10485,24 @@ async function scenarioHeroStance() {
 }
 
 // ================================================================== scenario: the sword's green flame
-// The sword's layer (ADR-182): a tight green flame in the hero's own micro letters, on by default; off (?mystic=0) = today's
-// blade frame by frame; only its marks; its budgets; green; never a glow; grows by tier; nothing after death.
-// ================================================================== scenario: the blink chain's last hit
-// Hit 5 of ?lights=blink (player/finishers.js, ?finisher=flurry|delayed|flick) is a one-handed instant
-// cut with slash lines and an ending in ASCII art (player/finisherFx.js, ?ender=blade|array|rift|dragon):
-// nothing on today's chain; each last hit draws its lines and sets its ending off once; each ending is a
-// large picture within budget and gone within ~2 s; it replaces the shard burst; nothing after death; its
-// own random stream. The little extra reach: it lands a hit ~1 m past the blade's reach (only when the
-// blade missed), not 2 m past it, once a swing, never on today's chain.
-async function scenarioFinisherFx() {
-  out('\n== scenario FINISHERFX (the blink last hit: three instant cuts, four endings in ASCII art, nothing elsewhere, the budget, no shards, the extra reach) ==');
-  const FX = await imp('src/entities/player/finisherFx.js');
-  const FN = await imp('src/entities/player/finishers.js');
+// ================================================================== scenario: the blink look set's slash lines
+// ?lights=blink (player/lightsBlink.js, finishers.js, heaviesBlink.js; blinkFx.js): every instant cut's line
+// lies on the blade's own path (through the point where it was on the frames of the cut, at chest height,
+// never under the ground, the blade at rest after the cut near its continuation), the thrusts a short
+// streak off the point; the round arc stays off on them; the free hand rests on the belt through a mashed
+// chain (still in the chest's frame, no flailing, a natural elbow); nothing at all on today's chain.
+// ABYSS_SLASHDUMP=1 prints every cut's point frame by frame (the hero's frame at the swing's start: left,
+// up, ahead), for authoring the clips.
+async function scenarioBlinkSlash() {
+  out("\n== scenario BLINKSLASH (?lights=blink: each slash line is the blade's own path; the heavies' lines heavier; the free hand still on the belt) ==");
   const CB = await imp('src/entities/player/combat.js');
+  const FN = await imp('src/entities/player/finishers.js');
   const { SWINGS } = await imp('src/entities/player/swings.js');
-  const lights0 = CB.lightsMode(), fin0 = FN.finisherId(), end0 = FX.enderId();
+  const { swingPhase } = await imp('src/entities/player/anim.js');
+  const { DIM: HD } = await imp('src/entities/player/model.js');
+  const lights0 = CB.lightsMode(), fin0 = FN.finisherId();
+  const DUMP = !!process.env.ABYSS_SLASHDUMP;
+  const DEG = 180 / Math.PI;
   let last = null;
   const setup = () => {
     const G = (last = build());
@@ -10508,159 +10510,376 @@ async function scenarioFinisherFx() {
     const p = G.game.player, d = G.game.dragon;
     p.debug.god = true;
     p.debug.teleport(d.position.x + 14, d.position.z + 14);
-    Object.assign(G.game.pipeline, { width: 1280, height: 720, artCell: { x: 5, y: 8 }, heroCell: { x: 4, y: 4 } });
-    for (let i = 0; i < 30; i++) G.tick(DT);
+    p.yaw = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z);
+    aimAt(G);
+    for (let i = 0; i < 40; i++) G.tick(DT);
     return G;
   };
-  const allowed = new Set([...FX.FINISHER_GLYPHS]);
-  const watch = (G) => {
-    const p = G.game.player, F = p.finisherFx, rec = { marks: 0, bad: 0, nan: 0, hot: 0, wMax: 0, nMax: 0, npMax: 0, slams: 0, shards: 0, strikeAt: -1, quietAt: -1, frame: 0 };
-    F.onEmit = (kind, ch, a, col) => {
-      rec.marks++;
-      if (!allowed.has(ch)) rec.bad++;
-      if (!Number.isFinite(a + col)) rec.nan++;
-      rec.hot = Math.max(rec.hot, col);
-    };
-    const upd = F.update.bind(F);
-    F.update = (dt) => {
-      upd(dt);
-      rec.wMax = Math.max(rec.wMax, F.w);
-      rec.nMax = Math.max(rec.nMax, F.n);
-      rec.npMax = Math.max(rec.npMax, F.lb?.np ?? 0);
-    };
-    const sh = p.fx.slamShards.bind(p.fx);
-    p.fx.slamShards = (...a) => { rec.shards++; return sh(...a); };
-    G.watch = (n) => { if (n === 'player:slam') rec.slams++; };
-    return rec;
-  };
-  const chain = (G, rec) => {
-    const p = G.game.player, F = p.finisherFx;
-    const step = () => { G.tick(DT); rec.frame++; if ((F.lb?.count ?? 0) > 0) rec.quietAt = rec.frame; if (rec.strikeAt < 0 && F.strikes > 0) rec.strikeAt = rec.frame; };
-    for (let k = 0; k < 5; k++) {
-      p._buffer('light');
-      for (let i = 0, n = Math.round((k === 4 ? 0.9 : CHAIN_EVERY) / DT); i < n; i++) step();
+  const tip = new THREE.Vector3(), hilt = new THREE.Vector3();
+  /** One take: `plan` [[s, 'L' | 'H'], ...] presses at those times; returns the swings and the free hand. */
+  const take = (G, plan, secs) => {
+    const { game, input } = G, p = game.player, A = p.anim, F = p.blinkFx, r = p.rig;
+    const swings = []; // per attack: { clip, def, frames: [{ u, tip, hilt }], lines: [] }
+    let cur = null;
+    F.onLine = (ax, ay, az, bx, by, bz, heavy, thrust, chord) => cur?.lines.push({ a: new THREE.Vector3(ax, ay, az), b: new THREE.Vector3(bx, by, bz), heavy, thrust, chord, frame: cur.frames.length - 1 });
+    const slam = { shards: 0, ev: 0 }, sh0 = p.fx.slamShards;
+    p.fx.slamShards = function (...a) { slam.shards++; return sh0.apply(this, a); };
+    G.watch = (nm) => { if (nm === 'player:slam') slam.ev++; };
+    const arcs0 = p.fx.trail, arcs = { n: 0 };
+    p.fx.trail = function (...a) { if (cur) arcs.n++; return arcs0.apply(this, a); };
+    const hand = { n: 0, min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity], step: 0, stepAt: '', el: [Infinity, -Infinity], prev: null };
+    const wC = new THREE.Vector3(), sC = new THREE.Vector3(), eC = new THREE.Vector3(), t1 = new THREE.Vector3(), t2 = new THREE.Vector3();
+    let k = 0;
+    for (let i = 0, n = Math.round(secs / DT); i < n; i++) {
+      while (k < plan.length && i >= Math.round(plan[k][0] / DT)) { aimAt(G); input.click(plan[k][1] === 'H' ? 2 : 0); k++; }
+      // (the frame's own phase before the tick: the line is decided inside it)
+      G.tick(DT);
+      const a = p.atk, d = a?.def, an = d && A.atkDef === d ? A.atkAnim : null;
+      const on = d && (p.state === 'attack' || p.state === 'heavy') && !a.pending && an?.clip;
+      if (on) {
+        if (!cur || cur.rec !== a) {
+          cur = { rec: a, clip: an.clip, def: d, frames: [], lines: [], pos: p.position.clone(), yaw: p.yaw, arcs: arcs.n, arcN: 0 };
+          swings.push(cur);
+        }
+        tip.set(0, 0, HD.drawnTip).applyMatrix4(r.sword.matrixWorld);
+        hilt.set(0, 0, HD.bladeBase).applyMatrix4(r.sword.matrixWorld);
+        cur.frames.push({ u: swingPhase(a.t, d.windup, d.active, d.recovery), tip: tip.clone(), hilt: hilt.clone() });
+        // (the lines decided this frame were pushed with the frame before's index: fix them up)
+        for (const L of cur.lines) if (L.frame === cur.frames.length - 2 && L.late !== false) { L.frame = cur.frames.length - 1; L.late = false; }
+        cur.arcN = arcs.n - cur.arcs;
+      } else cur = null;
+      // the free hand, the light hits on the belt: the wrist in the chest's frame, its step a frame, the elbow
+      if (on && d.button !== 'heavy' && SWINGS[an.clip]?.belt) {
+        r.chest.worldToLocal(wC.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.L.fore.matrixWorld));
+        r.chest.worldToLocal(sC.setFromMatrixPosition(r.arms.L.upper.matrixWorld));
+        r.chest.worldToLocal(eC.setFromMatrixPosition(r.arms.L.fore.matrixWorld));
+        for (let c = 0; c < 3; c++) { hand.min[c] = Math.min(hand.min[c], wC.getComponent(c)); hand.max[c] = Math.max(hand.max[c], wC.getComponent(c)); }
+        if (hand.prev) { const s = hand.prev.distanceTo(wC); if (s > hand.step) { hand.step = s; hand.stepAt = an.clip; } }
+        hand.prev = (hand.prev ?? new THREE.Vector3()).copy(wC);
+        const el = Math.acos(clamp(t1.subVectors(sC, eC).normalize().dot(t2.subVectors(wC, eC).normalize()), -1, 1)) * DEG;
+        hand.el[0] = Math.min(hand.el[0], el);
+        hand.el[1] = Math.max(hand.el[1], el);
+        hand.n++;
+      } else hand.prev = null;
     }
-    for (let i = 0; i < 180; i++) step();
+    F.onLine = null;
+    p.fx.trail = arcs0;
+    p.fx.slamShards = sh0;
+    G.watch = null;
+    return { swings, hand, slam };
+  };
+  // a world point in the hero's frame at the swing's start: [left, up, ahead]
+  const loc = (S, v) => { const dx = v.x - S.pos.x, dz = v.z - S.pos.z, fx = Math.sin(S.yaw), fz = Math.cos(S.yaw); return [dx * fz - dz * fx, v.y - S.pos.y, dx * fx + dz * fz]; };
+  const f2 = (v) => v.map((x) => x.toFixed(2)).join(',');
+  const distLine = (q, a, b) => { const ab = b.clone().sub(a), t = q.clone().sub(a).dot(ab) / ab.lengthSq(); return q.clone().sub(a.clone().addScaledVector(ab, t)).length(); };
+  /** The measures of one swing's lines against its point's path. */
+  const measure = (S) => {
+    const C = SWINGS[S.clip], res = [];
+    let li = 0;
+    for (const c of C?.slash ?? []) {
+      if (c[2] === 'ring') {
+        // the ring: the straight cuts between the point's frames through the turn, all at once
+        const ch = [];
+        while (S.lines[li]?.chord) ch.push(S.lines[li++]);
+        if (!ch.length) { res.push({ miss: true }); continue; }
+        const r = (v) => Math.hypot(v.x - S.pos.x, v.z - S.pos.z);
+        const on = ch.every((L) => S.frames.some((f) => f.tip.distanceTo(L.a) < 1e-3) && S.frames.some((f) => f.tip.distanceTo(L.b) < 1e-3));
+        let turn = 0;
+        for (const L of ch) { const a0 = Math.atan2(L.a.x - S.pos.x, L.a.z - S.pos.z), a1 = Math.atan2(L.b.x - S.pos.x, L.b.z - S.pos.z); let d = a1 - a0; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; turn += d; }
+        res.push({ ring: true, n: ch.length, on, turn: Math.abs(turn) * DEG, rMin: Math.min(...ch.map((L) => r(L.a))), rMax: Math.max(...ch.map((L) => r(L.a))), low: Math.min(...ch.map((L) => L.a.y)) - S.pos.y, high: Math.max(...ch.map((L) => L.a.y)) - S.pos.y, heavy: ch[0].heavy });
+        continue;
+      }
+      const L = S.lines[li++];
+      if (!L) { res.push({ miss: true }); continue; }
+      if (c[2] === 'point') {
+        const f = S.frames[L.frame], bd = f.tip.clone().sub(f.hilt).normalize(), ld = L.b.clone().sub(L.a);
+        res.push({ thrust: true, len: ld.length(), ang: Math.acos(clamp(bd.dot(ld.normalize()), -1, 1)) * DEG, gap: L.a.distanceTo(f.tip), mid: (L.a.y + L.b.y) / 2 - S.pos.y, low: Math.min(L.a.y, L.b.y) - S.pos.y, heavy: L.heavy });
+        continue;
+      }
+      const i0 = S.frames.findIndex((f) => f.u >= c[0]), i1 = S.frames.findIndex((f) => f.u >= c[1]);
+      const q0 = S.frames[i0 === i1 ? i0 - 1 : i0].tip, q1 = S.frames[i1].tip, ld = L.b.clone().sub(L.a).normalize(), td = q1.clone().sub(q0).normalize();
+      // the blade at rest after the cut (the last frame before u 2.0): how far its point is off the line
+      const fin = S.frames.filter((f) => f.u <= 2.0).at(-1);
+      res.push({ len: L.a.distanceTo(L.b), ang: Math.acos(clamp(Math.abs(ld.dot(td)), -1, 1)) * DEG, d0: distLine(q0, L.a, L.b), d1: distLine(q1, L.a, L.b), dFin: distLine(fin.tip, L.a, L.b), mid: (L.a.y + L.b.y) / 2 - S.pos.y, low: Math.min(L.a.y, L.b.y) - S.pos.y, travel: q0.distanceTo(q1), heavy: L.heavy });
+    }
+    return res;
+  };
+  const show = (S) => {
+    const C = SWINGS[S.clip];
+    out(`   -- ${S.clip} (${S.def.name}): ${S.frames.length} frames, slash ${JSON.stringify(C?.slash)}`);
+    S.frames.forEach((f, i) => { if (f.u >= 0.9 && f.u <= 2.3) out(`      #${i} u ${f.u.toFixed(3)}  tip ${f2(loc(S, f.tip))}  hilt ${f2(loc(S, f.hilt))}`); });
+    for (const L of S.lines) out(`      line ${f2(loc(S, L.a))} → ${f2(loc(S, L.b))} (frame #${L.frame}${L.heavy ? ', heavy' : ''}${L.thrust ? ', thrust' : ''})`);
   };
   try {
-    // (1) the three last hits' clips: one-handed, no spin, no hop, no leap; the flick's turn of the
-    // shoulder under 90°; the chest no more than ~40° on the hips
+    CB.setLights('blink');
+    const rows = [], hands = [], all = [], lastSlam = [];
+    let plainBad = false;
+    // the last hits' clips: plain one-handed blade hits, no spin, no hop, no turn, the hand on the belt,
+    // the chest at most ~40° on the hips
     {
       const bad = [];
       for (const id of FN.FINISHER_IDS) {
         const an = FN.FINISHER_ANIMS[id], C = SWINGS[an.clip];
         if (!C) { bad.push(`${id}: no clip`); continue; }
-        if (an.spin || an.hop || !(Math.abs(an.turn ?? 0) <= Math.PI / 2)) bad.push(`${id}: spin/hop/turn`);
+        if (an.spin || an.hop || an.turn || an.feet) bad.push(`${id}: spin/hop/turn/dash`);
         if (C.keys.some((k) => k.two != null && k.two !== 0)) bad.push(`${id}: two hands`);
+        if (!C.plain || !C.belt || !C.slash?.length) bad.push(`${id}: not plain / belt / slash`);
         const tw = Math.max(...C.keys.filter((k) => k.sy != null).map((k) => Math.abs(k.sy)));
         if (tw > 0.7) bad.push(`${id}: chest ${((tw * 180) / Math.PI).toFixed(0)}° on the hips`);
       }
-      assert(!bad.length, `the three last hits are one-handed instant cuts: no spin, no hop, a turn of the shoulder under 90°, the chest at most 40° on the hips (${bad.join(', ') || 'all'})`);
+      assert(!bad.length && FN.FINISHER_IDS.join() === 'flurry,delayed,double', `the three last hits (flurry, delayed, double) are plain one-handed instant cuts: no spin, hop, turn or dash, the hand on the belt, the chest at most 40° on the hips (${bad.join(', ') || 'all'})`);
+      const lines = Object.fromEntries(FN.FINISHER_IDS.map((id) => [id, SWINGS[FN.FINISHER_ANIMS[id].clip].slash.length]));
+      assert(lines.flurry >= 4 && lines.flurry <= 5 && lines.delayed === 1 && SWINGS.finDelayed.slash[0][2] >= 0.1 && lines.double === 2, `the flurry cuts four or five lines, the delayed cut one a beat late, the double two (${JSON.stringify(lines)})`);
+      CB.setLights('blink');
+      const hb = CB.HEAVY.map((H) => H.anim);
+      CB.setLights('new');
+      const hn = CB.HEAVY.map((H) => H.anim.clip);
+      CB.setLights('blink');
+      const twoOk = hb.every((an) => SWINGS[an.clip]?.slashLook === 'heavy' && SWINGS[an.clip].keys.filter((k) => k.two != null).every((k) => k.two === 1));
+      assert(hn.join() === 'heavyThrust,heavyRise,heavySpin,heavyCrush,slam' && hb.every((an, i) => an.clip !== hn[i]) && twoOk && hb[0].feet === 'dash' && hb[2].spin === -1 && hb[4].hop === 0.36,
+        `?lights=blink swaps the five heavies to two-handed instant cuts with heavy lines (${hb.map((a) => a.clip).join(', ')}), keeping Gale's dash, Tempest's turn and Earthbreaker's leap; every other look keeps today's (${hn.join(', ')})`);
     }
-    // (2) today's chain: nothing, the shards as before
+    for (const fin of FN.FINISHER_IDS) {
+      CB.setFinisherLook(fin);
+      const G = setup();
+      const R = take(G, [0, 1, 2, 3, 4].map((i) => [i * CHAIN_EVERY, 'L']), 4 * CHAIN_EVERY + 1.6);
+      hands.push({ fin, ...R.hand });
+      lastSlam.push(`${fin} ${R.slam.shards}/${R.slam.ev}`);
+      if (R.slam.shards || R.slam.ev) plainBad = true;
+      all.push(...R.swings.filter((S, i) => fin === FN.FINISHER_IDS[0] || i === 4));
+    }
+    for (let n = 0; n <= 4; n++) {
+      const G = setup();
+      const plan = [];
+      for (let i = 0; i < n; i++) plan.push([i * CHAIN_EVERY, 'L']);
+      plan.push([n * CHAIN_EVERY, 'H']);
+      const R = take(G, plan, n * CHAIN_EVERY + 1.8);
+      const S = R.swings.at(-1);
+      if (S) all.push(S);
+    }
+    for (const S of all) {
+      if (DUMP) show(S);
+      const m = measure(S);
+      rows.push({ S, m });
+      out(`   ${S.clip.padEnd(16)} ${m.map((x) => (x.miss ? 'NO LINE' : x.ring ? `ring of ${x.n} straight cuts on the point's frames (${x.on ? 'all' : 'NOT all'}), ${x.turn.toFixed(0)}° round him, ${x.rMin.toFixed(2)}-${x.rMax.toFixed(2)} m out, ${x.low.toFixed(2)}-${x.high.toFixed(2)} m up` : x.thrust ? `streak ${x.len.toFixed(2)} m off the point (${x.gap.toFixed(3)} m), ${x.ang.toFixed(1)}° off the blade, at ${x.mid.toFixed(2)} m` : `line ${x.len.toFixed(2)} m, ${x.ang.toFixed(1)}° off the point's travel (${x.travel.toFixed(2)} m), ${(x.d0 * 100).toFixed(1)} / ${(x.d1 * 100).toFixed(1)} cm off its two frames, the finish ${(x.dFin * 100).toFixed(0)} cm off it, mid ${x.mid.toFixed(2)} m, lowest ${x.low.toFixed(2)} m`)).join(' | ')}; round arcs ${S.arcN}`);
+    }
+    assert(!plainBad, `the blink last hits burst no shards and send no player:slam (${lastSlam.join(', ')})`);
+    for (const h of hands) out(`   free hand (${h.fin} chain, ${h.n} frames): the wrist in the chest's frame spans ${((h.max[0] - h.min[0]) * 100).toFixed(1)} x ${((h.max[1] - h.min[1]) * 100).toFixed(1)} x ${((h.max[2] - h.min[2]) * 100).toFixed(1)} cm, at most ${(h.step * 100).toFixed(1)} cm a frame (${h.stepAt}), the elbow ${h.el[0].toFixed(0)}-${h.el[1].toFixed(0)}°`);
+    const cutsOk = rows.every((r) => r.m.length && r.m.every((x) => !x.miss && (x.ring ? x.on && x.turn > 300 && x.low > 0.3 : x.thrust ? x.gap < 0.01 && x.ang < 2 && x.len >= 0.7 && x.len <= 1.6 : x.ang < 1 && x.d0 < 0.1 && x.d1 < 0.1 && x.low >= 0)));
+    assert(cutsOk, "every instant cut draws its line on the blade's own path (along the point's travel, within 10 cm of it on both frames, never under the ground); every thrust a short streak straight off the point");
+    // (≤ 1.6: the last hit's cut that has to land rises high, combat.js LIGHT[4]'s low reach band `up` 1)
+    const midOk = rows.every((r) => r.m.every((x) => x.miss || x.thrust || x.ring || (x.mid >= 0.9 && x.mid <= 1.6) || r.S.def.name === 'earthbreaker'));
+    assert(midOk, "the lines cross his front at chest height (their middle 0.9-1.6 m up; Earthbreaker's cuts down into the ground)");
+    assert(rows.every((r) => !(r.S.arcN > 0)), 'no round arc behind an instant cut');
+    assert(rows.every((r) => r.m.every((x) => x.miss || x.heavy === (r.S.def.button === 'heavy'))), "the heavies' lines in the heavy look, the lights' in the light one");
+    assert(hands.every((h) => h.n > 60 && Math.max(h.max[0] - h.min[0], h.max[1] - h.min[1], h.max[2] - h.min[2]) < 0.12 && h.step < 0.04 && h.el[0] >= 65 && h.el[1] <= 125), "the free hand rests on the belt through a mashed chain: under 12 cm of travel in the chest's frame, under 4 cm a frame, the elbow 65-125°");
+    // today's chain: no line at all
     CB.setLights('new');
     {
-      const G = setup(), rec = watch(G), F = G.game.player.finisherFx;
-      chain(G, rec);
-      assert(rec.marks === 0 && F.total === 0 && F.plays === 0 && F.strikes === 0 && F.enders === 0 && F.lb === null && rec.slams === 1 && rec.shards === 1, `on today's chain nothing is drawn or built and the slam bursts its shards as before (${rec.marks} letters, ${F.strikes} strikes, ${rec.shards} shard bursts)`);
+      const G = setup(), F = G.game.player.blinkFx, n0 = F.lines;
+      const R = take(G, [0, 1, 2, 3, 4].map((i) => [i * CHAIN_EVERY, 'L']), 4 * CHAIN_EVERY + 1.6);
+      assert(F.lines === n0 && F.np === 0, `nothing on today's chain (${F.lines - n0} lines)`);
+      assert(R.slam.shards === 1 && R.slam.ev === 1, `today's slam bursts its shards as before (${R.slam.shards} bursts, ${R.slam.ev} player:slam)`);
     }
-    CB.setLights('blink');
-    const run1 = (id, ender) => {
-      CB.setFinisherLook(id);
-      FX.setEnder(ender);
-      FX.setFinisherSeed(0x2468);
-      const G = setup(), rec = watch(G), F = G.game.player.finisherFx;
-      chain(G, rec);
-      return { id, ender, rec, plays: F.plays, enders: F.enders, total: F.total, strikes: F.strikes, busy: F.busy, count: F.lb?.count ?? -1, after: rec.quietAt - rec.strikeAt };
-    };
-    const rows = [];
-    for (const id of FN.FINISHER_IDS) rows.push(run1(id, 'blade'));
-    for (const e of FX.ENDER_IDS) if (e !== 'blade') rows.push(run1('flurry', e));
-    out(`   ${rows.map((r) => `${r.id} + ${r.ender}: ${r.total} letters, ≤ ${r.rec.wMax} written / ${r.rec.nMax} spawned a frame, ≤ ${r.rec.npMax} alive, peak col x a ${r.rec.hot.toFixed(2)}, on the screen until ${(r.after * DT).toFixed(2)} s after the impact`).join('\n   ')}`);
-    assert(rows.every((r) => r.plays === 1 && r.strikes === 1 && r.enders === 1), `each last hit plays once, takes the impact once and sets its ending off once (${rows.map((r) => `${r.id}+${r.ender} ${r.plays}/${r.strikes}/${r.enders}`).join(', ')})`);
-    assert(rows.every((r) => r.rec.shards === 0 && r.rec.slams === 0), `it replaces the shard burst: no shards, no player:slam`);
-    assert(rows.every((r) => r.rec.bad === 0 && r.rec.nan === 0), `only the house letters it lists (${FX.FINISHER_GLYPHS}), all finite`);
-    assert(rows.every((r) => r.rec.wMax <= FX.FIN.cells && r.rec.npMax <= FX.FIN.spawned && r.rec.nMax <= FX.FIN.perFrame), `within budget: ≤ ${FX.FIN.cells} written, ≤ ${FX.FIN.perFrame} spawned a frame, ≤ ${FX.FIN.spawned} alive (peaks ${rows.map((r) => `${r.rec.wMax}/${r.rec.nMax}/${r.rec.npMax}`).join(', ')})`);
-    assert(rows.every((r) => r.rec.wMax >= 120), `each ending is a large picture: ≥ 120 letters in a frame at the game camera (${rows.map((r) => `${r.ender} ${r.rec.wMax}`).join(', ')})`);
-    assert(rows.every((r) => r.rec.hot <= 1.0), `bright, no more (colour x alpha ≤ 1; peak ${Math.max(...rows.map((r) => r.rec.hot)).toFixed(2)})`);
-    assert(rows.every((r) => !r.busy && r.count === 0 && r.after * DT <= 2.2), `each is gone within 2.2 s of the impact and leaves nothing (${rows.map((r) => `${r.id}+${r.ender} ${(r.after * DT).toFixed(2)} s`).join(', ')})`);
-    // (3) nothing after death: killed while the ending plays
-    {
-      CB.setFinisherLook('flurry');
-      FX.setEnder('blade');
-      const G = setup(), rec = watch(G), p = G.game.player, F = p.finisherFx;
-      for (let k = 0; k < 5; k++) { p._buffer('light'); for (let i = 0, n = Math.round((k === 4 ? 0.62 : CHAIN_EVERY) / DT); i < n; i++) { G.tick(DT); rec.frame++; } }
-      const before = F.lb?.count ?? 0;
-      p.debug.god = false;
-      p.debug.kill();
-      G.tick(DT);
-      const m0 = rec.marks;
-      for (let i = 0; i < 60; i++) G.tick(DT);
-      assert(before > 0 && !p.alive && (F.lb?.count ?? 0) === 0 && rec.marks === m0, `nothing after death (${before} letters up as he died, ${F.lb?.count ?? 0} after, ${rec.marks - m0} more drawn)`);
-    }
-    // (4) the extra reach (the step-in assist off, so the blade's reach is its own)
-    const AS = CB.REACH.assist, range0 = AS.range;
-    AS.range = 0;
-    try {
-      const G = setup(), { game, input } = G, p = game.player, d = game.dragon, F = p.finisherFx;
-      fightSetup(G);
-      p.debug.god = true;
-      settle(G);
-      const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
-      const chest = () => d.hurtSpheres.filter((h) => h.part === 'body').reduce((a, h) => ((h.x - d.position.x) * fx + (h.z - d.position.z) * fz > (a.x - d.position.x) * fx + (a.z - d.position.z) * fz ? h : a));
-      const trial = (mode, gap) => {
-        CB.setLights(mode);
-        d.hp = d.maxHp; d.posture = 0; run(G, 1.0, { passive: true }); settle(G);
-        p.debug.teleport(d.position.x + fx * 40, d.position.z + fz * 40);
-        aimAt(G);
-        const hits = [];
-        for (let k = 0; k < 5; k++) {
-          if (k === 4) {
-            const c = chest();
-            p.debug.teleport(c.x + fx * (c.r + gap), c.z + fz * (c.r + gap));
-            p.yaw = Math.atan2(c.x - p.position.x, c.z - p.position.z);
-            G.watch = (n, e) => { if (n === 'player:hitDragon' && p.atk?.def === CB.LIGHT[4]) hits.push(e.shards ? 'spell' : 'blade'); };
-          }
-          aimAt(G);
-          input.click(0);
-          run(G, k < 4 ? CHAIN_EVERY : 1.3, { passive: true });
-        }
-        G.watch = null;
-        return hits;
-      };
-      const res = [];
-      for (const id of FN.FINISHER_IDS) {
-        CB.setFinisherLook(id);
-        let gb = -1;
-        const scan = [];
-        for (let gap = 0.5; gap <= 4.01; gap += 0.25) {
-          const h = trial('blink', gap);
-          scan.push(`${gap}:${h.join('+') || '-'}`);
-          if (h.includes('blade')) gb = gap;
-        }
-        out(`   ${id} scan (gap: hits) ${scan.join(' ')}`);
-        const s0 = F.spellHits;
-        const near = trial('blink', gb + 0.75), s1 = F.spellHits, far = trial('blink', gb + 2.0), s2 = F.spellHits, today = trial('new', gb + 0.75);
-        res.push({ id, gb, near, far, today, sNear: s1 - s0, sFar: s2 - s1, sToday: F.spellHits - s2 });
-      }
-      out(`   reach: ${res.map((r) => `${r.id}: blade to ${r.gb.toFixed(2)} m; +0.75 m: ${r.near.join('+') || 'miss'}; +2 m: ${r.far.join('+') || 'miss'}`).join(' · ')}`);
-      assert(res.every((r) => r.gb > 0 && r.near.length === 1 && r.near[0] === 'spell'), `the spell lands once ~1 m past the blade's farthest reach, where the blade misses (${res.map((r) => `${r.id} ${r.near.join('+') || 'miss'}`).join(', ')})`);
-      assert(res.every((r) => r.far.length === 0), `… and not 2 m past it (${res.map((r) => `${r.id} ${r.far.join('+') || 'miss'}`).join(', ')})`);
-      assert(res.every((r) => r.sNear === 1 && r.sFar === 0 && r.sToday === 0), `one spell hit a swing, none 2 m past, never on today's chain (its slam keeps its shards)`);
-    } finally {
-      AS.range = range0;
-    }
-    // (5) its own random stream
-    const src = fs.readFileSync(`${ROOT}/src/entities/player/finisherFx.js`, 'utf8');
-    assert(!/Math\.random\(\)/.test(src), 'the last hit\'s pictures draw on their own stream (no Math.random call)');
   } finally {
     CB.setLights(lights0);
     CB.setFinisherLook(fin0);
-    FX.setEnder(end0);
   }
   return last;
 }
 
+// ================================================================== opt-in: solving the instant cuts' keys
+// `node tests/integration/integ.mjs . blinksolve` (not part of `all`; ABYSS_SOLVE=<clip,...> for some,
+// ABYSS_SOLVE_ITER=n): the authoring tool behind the blink look set's cuts (lightsBlink.js, finishers.js,
+// heaviesBlink.js). A cut is written as its keys' phases and the blade's direction at its first and last
+// key; the sword hand at those two keys is as the clip writes it. The blade's drawn point there is then
+// the cut's start and end, and at every key between the point is put on the straight line through them
+// (at the share of the way its phase is), the blade turning evenly from the first direction to the last,
+// the hand where that puts the grip. It plays the swing at 480 frames a second, reads where the grip and
+// the point are at each key, moves the keys' `h` and `a` toward that, and does it again; then it prints
+// the keys to paste into the clip.
+async function scenarioBlinkSolve() {
+  out("\n== BLINKSOLVE (authoring: the instant cuts' keys, so each point runs one straight line) ==");
+  const CB = await imp('src/entities/player/combat.js');
+  const FN = await imp('src/entities/player/finishers.js');
+  const { SWINGS } = await imp('src/entities/player/swings.js');
+  const { swingPhase } = await imp('src/entities/player/anim.js');
+  const { DIM: HD, PLAYER_SCALE } = await imp('src/entities/player/model.js');
+  const DEG = 180 / Math.PI, FDT = DT / 8;
+  const steps = (a, b, n) => Array.from({ length: n + 1 }, (_, i) => Math.round((a + ((b - a) * i) / n) * 1000) / 1000);
+  // per clip, its cuts: the keys' phases, the blade's [az, el] at the first and the last
+  const TGT = {
+    blinkFall: [{ keys: steps(1.34, 1.7, 6), from: [-18, 16], to: [28, -18] }],
+    blinkFlat: [{ keys: steps(1.34, 1.7, 6), from: [50, 3], to: [-10, 6] }],
+    blinkCross: [{ keys: steps(1.34, 1.7, 6), from: [44, 16], to: [-8, -18] }],
+    finFlurry: [
+      { keys: [0.6, 0.66, 0.72], from: [-10, 22], to: [30, -16] },
+      { keys: [0.79, 0.86, 0.93], from: [36, 22], to: [-6, -16] },
+      { keys: [1.0, 1.12, 1.24], from: [40, 6], to: [-12, 8] },
+      { keys: [1.38, 1.465, 1.55], from: [8, -24], to: [14, 26] },
+      { keys: [1.66, 1.81, 1.96], from: [36, -24], to: [-20, 32] },
+    ],
+    finDelayed: [{ keys: [1.24, 1.28, 1.32, 1.36, 1.4, 1.46, 1.52], from: [42, -16], to: [-22, 22] }],
+    finDouble: [
+      { keys: [1.1, 1.18, 1.26, 1.34, 1.42], from: [-14, 26], to: [30, -20] },
+      { keys: [1.5, 1.6, 1.7, 1.8, 1.9], from: [-24, -32], to: [4, 44] },
+    ],
+    blinkRise: [{ keys: steps(1.32, 1.68, 6), from: [42, -20], to: [-18, 20] }],
+    blinkCrush: [{ keys: steps(1.28, 1.64, 6), from: [40, 22], to: [-16, -24] }],
+    blinkBreak: [{ keys: [1.2, 1.26, 1.33, 1.39, 1.46, 1.52, 1.58], from: [12, 40], to: [6, -32] }],
+  };
+  const ITER = Number(process.env.ABYSS_SOLVE_ITER) || 8;
+  const want = (process.env.ABYSS_SOLVE || '').split(',').filter(Boolean);
+  const lights0 = CB.lightsMode(), fin0 = FN.finisherId();
+  const tip = new THREE.Vector3(), grip = new THREE.Vector3();
+  const azEl = (v) => [Math.atan2(v[0], v[2]) * DEG, Math.asin(clamp(v[1] / Math.hypot(...v), -1, 1)) * DEG];
+  const unit = (d) => { const a = d[0] / DEG, e = d[1] / DEG; return [Math.cos(e) * Math.sin(a), Math.sin(e), Math.cos(e) * Math.cos(a)]; };
+  const wrap = (d) => { while (d > 180) d -= 360; while (d < -180) d += 360; return d; };
+  const sub = (a, b) => a.map((x, i) => x - b[i]);
+  const add = (a, b) => a.map((x, i) => x + b[i]);
+  const mul = (a, s) => a.map((x) => x * s);
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const len = (a) => Math.sqrt(dot(a, a));
+  const r3 = (v) => v.map((x) => Math.round(x * 1000) / 1000);
+  // the working copies, with every cut key present (a missing `h` lerped from its neighbours' keys,
+  // a missing `a` from the cut's two directions)
+  const work = {};
+  for (const n of Object.keys(TGT)) {
+    const K = SWINGS[n].keys.map((k) => JSON.parse(JSON.stringify(k)));
+    for (const C of TGT[n]) {
+      C.keys.forEach((u, i) => {
+        let k = K.find((x) => Math.abs(x.u - u) < 1e-6);
+        if (!k) K.push((k = { u }));
+        if (!Array.isArray(k.a)) { const f = i / (C.keys.length - 1); k.a = [C.from[0] + (C.to[0] - C.from[0]) * f, C.from[1] + (C.to[1] - C.from[1]) * f]; }
+        if (i === 0) k.a = [...C.from];
+        if (i === C.keys.length - 1) k.a = [...C.to];
+      });
+      K.sort((x, y) => x.u - y.u);
+      for (const k of K) {
+        if (Array.isArray(k.h) || !C.keys.some((u) => Math.abs(u - k.u) < 1e-6)) continue;
+        const lo = [...K].reverse().find((x) => x.u < k.u && Array.isArray(x.h)), hi = K.find((x) => x.u > k.u && Array.isArray(x.h));
+        k.h = lo && hi ? r3(add(lo.h, mul(sub(hi.h, lo.h), (k.u - lo.u) / (hi.u - lo.u)))) : [...(lo ?? hi).h];
+      }
+    }
+    work[n] = K;
+  }
+  let ver = 0;
+  /** One run: `plan` presses, the anims pointed at fresh copies of the working clips; the swings' fine frames. */
+  const play = (fin, plan, secs) => {
+    CB.setLights('blink');
+    CB.setFinisherLook(fin);
+    const names = {};
+    ver++;
+    for (const n of Object.keys(work)) { names[n] = `${n}~${ver}`; SWINGS[names[n]] = { ...SWINGS[n], keys: work[n].map((k) => ({ ...k })) }; }
+    const repoint = (an) => (an && names[an.clip] ? { ...an, clip: names[an.clip] } : an);
+    CB.LIGHT.forEach((L) => { L.anim = repoint(L.anim); });
+    CB.HEAVY.forEach((H) => { H.anim = repoint(H.anim); });
+    const G = build();
+    fightSetup(G);
+    const { game, input } = G, p = game.player, d = game.dragon, A = p.anim, r = p.rig;
+    p.debug.god = true;
+    p.debug.teleport(d.position.x + 14, d.position.z + 14);
+    p.yaw = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z);
+    aimAt(G);
+    for (let i = 0; i < 40; i++) G.tick(DT);
+    const swings = [];
+    let cur = null, k = 0;
+    for (let i = 0, n = Math.round(secs / FDT); i < n; i++) {
+      while (k < plan.length && i * FDT >= plan[k][0] - 1e-9) { aimAt(G); input.click(plan[k][1] === 'H' ? 2 : 0); k++; }
+      G.tick(FDT);
+      const a = p.atk, df = a?.def, an = df && A.atkDef === df ? A.atkAnim : null;
+      if (df && (p.state === 'attack' || p.state === 'heavy') && !a.pending && an?.clip) {
+        if (!cur || cur.rec !== a) {
+          cur = { rec: a, clip: an.clip.split('~')[0], frames: [], pos: p.position.clone(), yaw: p.yaw };
+          swings.push(cur);
+        }
+        tip.set(0, 0, HD.drawnTip).applyMatrix4(r.sword.matrixWorld);
+        grip.setFromMatrixPosition(r.sword.matrixWorld);
+        cur.frames.push({ u: swingPhase(a.t, df.windup, df.active, df.recovery), tip: tip.clone(), grip: grip.clone() });
+      } else cur = null;
+    }
+    CB.setLights(lights0);
+    return swings;
+  };
+  const loc = (S, v) => { const dx = v.x - S.pos.x, dz = v.z - S.pos.z, fx = Math.sin(S.yaw), fz = Math.cos(S.yaw); return [dx * fz - dz * fx, v.y - S.pos.y, dx * fx + dz * fz]; };
+  /** the point and the grip (hero frame) at phase u, between the fine frames */
+  const at = (S, u) => {
+    const F = S.frames;
+    let j = F.findIndex((f) => f.u >= u);
+    if (j < 0) j = F.length - 1;
+    if (j === 0) return { tip: loc(S, F[0].tip), grip: loc(S, F[0].grip) };
+    const a = F[j - 1], b = F[j], s = (u - a.u) / Math.max(1e-9, b.u - a.u);
+    const lt = (pa, pb) => { const A = loc(S, pa), B = loc(S, pb); return A.map((x, c) => x + (B[c] - x) * s); };
+    return { tip: lt(a.tip, b.tip), grip: lt(a.grip, b.grip) };
+  };
+  const jobs = [
+    { fin: 'flurry', plan: [0, 1, 2, 3, 4].map((i) => [i * CHAIN_EVERY, 'L']), secs: 4 * CHAIN_EVERY + 1.4 },
+    { fin: 'delayed', plan: [0, 1, 2, 3, 4].map((i) => [i * CHAIN_EVERY, 'L']), secs: 4 * CHAIN_EVERY + 1.4, only: ['finDelayed'] },
+    { fin: 'double', plan: [0, 1, 2, 3, 4].map((i) => [i * CHAIN_EVERY, 'L']), secs: 4 * CHAIN_EVERY + 1.4, only: ['finDouble'] },
+    ...[1, 3, 4].map((n) => ({ fin: 'flurry', plan: [...Array.from({ length: n }, (_, i) => [i * CHAIN_EVERY, 'L']), [n * CHAIN_EVERY, 'H']], secs: n * CHAIN_EVERY + 1.4, only: [['', 'blinkRise', '', 'blinkCrush', 'blinkBreak'][n]] })),
+  ].filter((J) => !want.length || (J.only ?? ['blinkFall', 'blinkFlat', 'blinkCross', 'finFlurry']).some((c) => want.includes(c)));
+  const S0 = PLAYER_SCALE;
+  try {
+    for (let it = 0; it < ITER; it++) {
+      const report = [];
+      for (const J of jobs) {
+        const sw = play(J.fin, J.plan, J.secs);
+        for (const S of sw) {
+          const cuts = TGT[S.clip];
+          if (!cuts || (J.only && !J.only.includes(S.clip)) || (want.length && !want.includes(S.clip))) continue;
+          const keys = work[S.clip];
+          for (const C of cuts) {
+            const P = C.keys.map((u) => at(S, u));
+            // (the drawn hero is leaned, model.js LEAN: a sheared blade's length in the world changes with
+            // its direction, so the ends are the points as drawn and each key's own length is used)
+            const T0 = P[0].tip, T1 = P.at(-1).tip;
+            let err = 0, dip = 0;
+            C.keys.forEach((u, i) => {
+              const f = i / (C.keys.length - 1);
+              const T = add(T0, mul(sub(T1, T0), f));
+              const D = [C.from[0] + (C.to[0] - C.from[0]) * f, C.from[1] + (C.to[1] - C.from[1]) * f];
+              const Gt = sub(T, mul(unit(D), len(sub(P[i].tip, P[i].grip))));
+              const have = azEl(sub(P[i].tip, P[i].grip));
+              err = Math.max(err, len(sub(T, P[i].tip)));
+              const K = keys.find((k) => Math.abs(k.u - u) < 1e-6);
+              // the hand: only between the ends (the ends' hands are the clip's own)
+              if (i > 0 && i < C.keys.length - 1) {
+                const g = add(P[0].grip, mul(sub(P.at(-1).grip, P[0].grip), f));
+                dip = Math.max(dip, len(sub(Gt, g)));
+                K.h = r3(add(K.h, mul(sub(Gt, P[i].grip), 0.6 / S0)));
+              }
+              K.a = [Math.round((K.a[0] + 0.6 * wrap(D[0] - have[0])) * 10) / 10, Math.round(clamp(K.a[1] + 0.6 * (D[1] - have[1]), -85, 85) * 10) / 10];
+              if (process.env.ABYSS_SOLVE_DBG) out(`      ${S.clip} u ${u}: a ${K.a}, h ${K.h}, drawn ${have.map((x) => x.toFixed(1))}, want ${D.map((x) => x.toFixed(1))}, tip off ${(len(sub(T, P[i].tip)) * 100).toFixed(0)} cm`);
+            });
+            // the straightness: the worst of the fine frames between the first and the last key off the line
+            let off = 0;
+            for (const fr of S.frames) {
+              if (fr.u < C.keys[0] || fr.u > C.keys.at(-1)) continue;
+              const q = loc(S, fr.tip), D = sub(T1, T0), t = dot(sub(q, T0), D) / dot(D, D);
+              off = Math.max(off, len(sub(q, add(T0, mul(D, t)))));
+            }
+            report.push(`${S.clip}@${C.keys[0]}: keys ≤ ${(err * 100).toFixed(0)} cm off the line, the path ≤ ${(off * 100).toFixed(0)} cm off it, the hand ≤ ${(dip * 100).toFixed(0)} cm off its own straight way, ${T0.map((x) => x.toFixed(2))} → ${T1.map((x) => x.toFixed(2))}`);
+          }
+        }
+      }
+      out(`   iteration ${it + 1}:\n      ${report.join('\n      ')}`);
+    }
+    for (const n of Object.keys(work)) {
+      if (want.length && !want.includes(n)) continue;
+      out(`   ${n}:`);
+      // the whole clip's keys, in the source's own form (to paste over its `keys`)
+      const fmt = (v) => (Array.isArray(v) ? `[${v.join(', ')}]` : typeof v === 'string' ? `'${v}'` : `${v}`);
+      for (const k of work[n]) out(`      { ${['u', 'h', 'a', ...Object.keys(k).filter((f) => !['u', 'h', 'a'].includes(f))].filter((f) => k[f] !== undefined).map((f) => `${f}: ${fmt(k[f])}`).join(', ')} },`);
+    }
+  } finally {
+    CB.setLights(lights0);
+    CB.setFinisherLook(fin0);
+  }
+  return build();
+}
+
+// The sword's layer (ADR-182): a tight green flame in the hero's own micro letters, on by default; off (?mystic=0) = today's
+// blade frame by frame; only its marks; its budgets; green; never a glow; grows by tier; nothing after death.
 async function scenarioSwordMystic() {
   out('\n== scenario SWORDMYSTIC (the sword\'s green flame, on by default (?mystic=0 = off): off = today, allowed glyphs, budget, monotone by tier, green, faint, nothing after death) ==');
   const SM = await imp('src/entities/player/swordMystic.js');
@@ -12948,7 +13167,8 @@ const SCENARIOS = {
   herolife: scenarioHeroLife,
   streakfx: scenarioStreakFx,
   swordmystic: scenarioSwordMystic,
-  finisherfx: scenarioFinisherFx,
+  blinkslash: scenarioBlinkSlash,
+  blinksolve: scenarioBlinkSolve,
   herohand: scenarioHeroHand,
   heroweight: scenarioHeroWeight,
   herolights: scenarioHeroLights,
@@ -12970,7 +13190,7 @@ const SCENARIOS = {
   probe: scenarioProbe,
 };
 const runs = [];
-const OPT_IN = new Set(['probe', 'strategy']); // run only when named
+const OPT_IN = new Set(['probe', 'strategy', 'blinksolve']); // run only when named
 // ABYSS_SKIP: scenarios left out of `all` because the caller runs them beside this process
 const SKIP = new Set((process.env.ABYSS_SKIP || '').split(',').filter(Boolean));
 for (const name of SKIP) if (!SCENARIOS[name]) { out(`ABYSS_SKIP: unknown scenario '${name}'`); process.exit(2); }
