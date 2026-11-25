@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { clamp, lerp } from '../../core/math.js';
 import { DIM } from './model.js';
 import { FINISHER_ANIMS, finisherId, pickFinisher } from './finishers.js';
+import { HEAVY_BLINK_ANIMS } from './heaviesBlink.js';
 
 // Attack data + the blade sweep used for hit detection. No stamina: pacing comes from windup /
 // recovery only (docs/COMBAT.md). Moveset (ADR-041; owner concept sheet "Combat key poses"):
@@ -137,7 +138,8 @@ export const LIGHT = [
  * every hit's timing, damage, reach, tells and its heavy branch are the same in both. The animator
  * reads them as each hit starts (anim.js _pickVariant). Two more to compare while the owner picks:
  * `?lights=fresh` (lightsFresh.js) and `?lights=blink` (lightsBlink.js, hit 5 from finishers.js,
- * `?finisher=lance|cross|talisman|flash`; the blink chain's finisher spell replaces the slam's shards).
+ * `?finisher=flurry|delayed|double`: a plain blade hit, no shards; the five heavy branches too:
+ * heaviesBlink.js).
  */
 export const LIGHTS_IDS = ['new', 'old', 'fresh', 'blink'];
 export const LIGHTS_NAMES = { new: 'weighted', old: 'before', fresh: 'brand new', blink: 'instant cuts' };
@@ -160,8 +162,7 @@ const LIGHT_OLD = [
 /** `?lights=fresh`: a brand-new chain to compare (lightsFresh.js: new sword paths and body shapes),
  *  on the same clock: a high flat ring, a kneeling sweep along the grass (a pivot carries it on), a
  *  leap with a rising cut, a full turn to his left into a side-on thrust (or a skip into it, its second
- *  look), and a two-handed diagonal from over the right shoulder into the ground, with a touch of
- *  magic on the cut (finisherFx.js). */
+ *  look), and a two-handed diagonal from over the right shoulder into the ground. */
 const LIGHT_FRESH = [
   { anim: { kind: 'clip', clip: 'freshCloudRing' }, variants: [] },
   { anim: { kind: 'clip', clip: 'freshKneelSweep', turn: -0.5 }, variants: [] },
@@ -171,9 +172,10 @@ const LIGHT_FRESH = [
 ];
 /** `?lights=blink` (the owner, 2026-11-25: "sharper angles and faster attacks, almost like the main
  *  character is doing instant slashes to show how fast he is"): the hits on today's clock, each cut
- *  instant (lightsBlink.js: hold, snap, cross, snap, stand; blinkFx.js draws each as one straight line):
- *  a falling diagonal, a flat backhand, the other diagonal, a thrust, and hit 5 the finisher picked in
- *  finishers.js (`?finisher=`). One look per hit, no spin, no hop. */
+ *  instant (lightsBlink.js: hold, snap, cross, snap, stand; blinkFx.js draws each as one straight line
+ *  where the blade's point passed): a falling diagonal, a flat backhand, the other diagonal, a thrust,
+ *  and hit 5 the last hit picked in finishers.js (`?finisher=`). One look per hit, no spin, no hop. The
+ *  heavy branches swap to instant two-handed cuts with it (HEAVY_BLINK; heaviesBlink.js). */
 const LIGHT_BLINK = [
   { anim: { kind: 'clip', clip: 'blinkFall' }, variants: [] },
   { anim: { kind: 'clip', clip: 'blinkFlat' }, variants: [] },
@@ -183,9 +185,11 @@ const LIGHT_BLINK = [
 ];
 const LIGHT_NEW = LIGHT.map((L) => ({ anim: L.anim, variants: L.variants }));
 let lightsNow = 'new';
-/** The chain's look now: 'new' (the default), 'old' or 'fresh'. */
+/** The chain's look now: 'new' (the default), 'old', 'fresh' or 'blink'. */
 export const lightsMode = () => lightsNow;
-/** Switch the chain's look ('new' | 'old' | 'fresh'); false for anything else. */
+/** Switch the chain's look ('new' | 'old' | 'fresh' | 'blink'); false for anything else. 'blink' also
+ *  swaps the five heavy branches' `anim` to its instant cuts (HEAVY_BLINK); every other look keeps
+ *  today's heavies. Only the looks change: every number of every hit and heavy stays. */
 export function setLights(mode) {
   if (!LIGHTS_IDS.includes(mode)) return false;
   if (mode === 'blink') LIGHT_BLINK[4].anim = FINISHER_ANIMS[finisherId()];
@@ -194,12 +198,11 @@ export function setLights(mode) {
     L.anim = src[i].anim;
     L.variants = src[i].variants;
   });
+  HEAVY.forEach((H, i) => {
+    H.anim = mode === 'blink' ? HEAVY_BLINK_ANIMS[i] : HEAVY_NEW[i];
+  });
   lightsNow = mode;
   return true;
-}
-{
-  const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('lights') : null;
-  if (q === 'old' || q === 'fresh' || q === 'blink') setLights(q);
 }
 /** Pick the blink chain's finisher (finishers.js; the Lab, the film rig): re-points hit 5 when the
  *  blink chain is on. False for an unknown id. */
@@ -261,6 +264,13 @@ export const HEAVY = [
     anim: { kind: 'clip', clip: 'slam', hop: 0.36, tuck: 1.3 },
   },
 ];
+
+/** Today's heavies' looks (setLights puts them back for every look set but 'blink'). */
+const HEAVY_NEW = HEAVY.map((H) => H.anim);
+{
+  const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('lights') : null;
+  if (q === 'old' || q === 'fresh' || q === 'blink') setLights(q);
+}
 
 /** The heavy that a heavy press makes after `def` (the attack in whose recovery it comes): after the
  *  n-th light (n 1-4) its branch HEAVY[n]; after anything else (the slam, a heavy, nothing) HEAVY[0]. */

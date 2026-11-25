@@ -46,7 +46,11 @@
 //   stance's foot yaws; `drag` (default 0.22: m the holding foot may stretch past the stance's rear
 //   spot before its toe drags after the body); `fold` (0..1, default 1: × the chest's fold and the
 //   head's nod in the bite after a landed hit, anim.js BITE: 0 for a blade held upright before the
-//   face, which they would put his head into).
+//   face, which they would put his head into). The blink look set's (lightsBlink.js, finishers.js,
+//   heaviesBlink.js): `belt` (the free hand rests on the belt the whole swing, still in the chest's
+//   frame: anim.js beltHand; its keys' free-hand fields are ignored), `slash` / `slashLook` (the slash
+//   lines blinkFx.js draws on the blade's path), `plain` (a slam-kind hit that bursts no shards:
+//   player.js _slamImpact).
 //
 // Authoring notes: a cut reads as powered by the body when the hips lead (their turn is ahead of the
 // chest's at mid-cut), the hand is furthest from the shoulder as the blade crosses his front, and the
@@ -94,6 +98,7 @@ import { LIGHTS_OLD } from './lightsOld.js';
 import { LIGHTS_FRESH } from './lightsFresh.js';
 import { LIGHTS_BLINK } from './lightsBlink.js';
 import { FINISHER_CLIPS } from './finishers.js';
+import { HEAVIES_BLINK } from './heaviesBlink.js';
 
 /** The free hand's places (a key's `fh`; the key's own fields win): where it is (`l`), its elbow
  *  (`lp`), where the sword fingers point (`ld`), the palm (`pn`) and the sword wrist (`lk`). */
@@ -631,7 +636,8 @@ export const SWINGS = {
   ...LIGHTS_OLD,
   // ---- a brand-new light chain to compare (?lights=fresh: combat.js setLights) ------------------
   ...LIGHTS_FRESH,
-  // ---- the striker chain (?lights=blink: lightsBlink.js) and its finishers (finishers.js) ----
+  // ---- the instant cuts (?lights=blink: lightsBlink.js), its last hits (finishers.js), its heavies --
   ...LIGHTS_BLINK,
   ...FINISHER_CLIPS,
+  ...HEAVIES_BLINK,
 };

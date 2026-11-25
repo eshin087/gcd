@@ -17,8 +17,7 @@
 //                     Its second look, the Two-Step Thrust: a skip in, wound far round with the point
 //                     already on the foe, then one long lunge, the free hand drawn back high
 //   5 Splitter        both hands: gathered low, cocked over the right shoulder on a short rise, one
-//                     committed diagonal down into the ground ahead, the finisher's magic on the cut
-//                     (finisherFx.js, `?finisher=a|b|c|d`); he lands folded over the planted blade
+//                     committed diagonal down into the ground ahead; he lands folded over the planted blade
 // Each starts on the side where the hit before it left the blade, and no two hits in a row cut along
 // the same line (anim.js _pickVariant reads `line`).
 
@@ -140,8 +139,8 @@ export const LIGHTS_FRESH = {
    *  his right side, where the camera behind him sees it, and cocks it back over the right shoulder.
    *  Then one committed diagonal: the hips unwind first, the chest after them, the hands leading and
    *  the steel whipping over after them, from high right across his front down into the ground ahead
-   *  and a little left, where the shards burst (player.js) and the finisher's magic plays
-   *  (finisherFx.js, `?finisher=`). He lands folded over the planted blade and holds it. The chest
+   *  and a little left, where the shards burst (player.js). He lands folded over the planted blade
+   *  and holds it. The chest
    *  never turns more than ~30° on the hips (the owner: the tornado's turn "looks like its breaking
    *  its back twisting around so unnaturally"). */
   freshSplitter: {

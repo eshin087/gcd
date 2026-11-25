@@ -14,8 +14,8 @@ import { CLASH, clashBurst, clashGrind, closestOnSegments } from '../../combat/c
 import { CUT_LOOK } from '../../combat/cutFx.js';
 import { Flurry } from './flurry.js';
 import { SwordMystic } from './swordMystic.js';
-import { FinisherFx } from './finisherFx.js';
 import { BlinkFx } from './blinkFx.js';
+import { SWINGS } from './swings.js';
 import { BREAK, SCAR } from '../../world/breakTuning.js';
 import { chipLook, cutStops } from '../../world/destructibles.js';
 import { mowSwing } from '../../world/grass.js';
@@ -344,7 +344,6 @@ export class Player {
     this.fx = new PlayerFx(game, this.rig);
     this.mystic = new SwordMystic(this); // the sword's green flame (on by default; ?mystic=0 = nothing drawn)
     this.blinkFx = new BlinkFx(this); // an instant cut's straight slash line (?lights=blink; nothing otherwise)
-    this.finisherFx = new FinisherFx(this); // the striker chain's finisher spell (?lights=blink, ?finisher=)
     this.flurry = new Flurry(this, TUNE);
     // camera lean (model.js LEAN): visual only; hits and the dragon's aim use unleaned positions
     this.lean = installLean(this.object3d, this.drawScale);
@@ -3303,9 +3302,8 @@ export class Player {
   /** The slam meets the ground: crystal shards burst at the blade's point (and hit, if the blade
    *  itself missed: d.shards = { radius, height }), a gust, a heavy shake. */
   _slamImpact(a) {
-    // the striker chain's finisher: its spell takes the impact over (a little extra reach in place of the
-    // shards; finisherFx.js strike)
-    if (this.finisherFx?.strike(a)) return;
+    // the blink chain's last hits are plain blade hits (finishers.js `plain`): no shards, no burst
+    if (this.anim?.atkDef === a.def && SWINGS[this.anim.atkAnim?.clip]?.plain) return;
     const d = a.def, g = this.game;
     this.sweep.point(1, this._tip);
     const x = this._tip.x, z = this._tip.z;
@@ -3725,8 +3723,7 @@ export class Player {
       }
     }
     this.mystic?.update(dt); // (swordMystic.js; returns at once with ?mystic=0)
-    this.blinkFx?.update(); // (blinkFx.js; returns at once outside the blink chain)
-    this.finisherFx?.update(dt); // (finisherFx.js; nothing until a striker finisher swings)
+    this.blinkFx?.update(dt); // (blinkFx.js; returns at once outside the blink look set)
   }
 
   _updateMaterials(dt) {
