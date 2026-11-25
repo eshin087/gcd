@@ -460,6 +460,7 @@ SCENARIOS.screens = async () => {
     // (the option is read from the URL through lookOf; the tests set it live)
     const { setLook } = globalThis.__lookMod;
     setLook('recLook', look);
+    setLook('menu', '0'); // the record looks dress the title before (the new layouts: scenario MENUS)
     const T = new TitleScreen(ui, true, stage, null, { bestFor: (id) => best[id] ?? null, startRush: () => started++ });
     const ashB = T.stageButtons.find((b) => b.dataset.level === 'ash');
     const rushB = T.stageButtons.find((b) => b.dataset.level === 'rush');
@@ -477,6 +478,7 @@ SCENARIOS.screens = async () => {
     rushB.click();
     assert(started === 1, `look ${look}: BOSS RUSH starts the rush`);
     setLook('recLook', null);
+    setLook('menu', null);
   }
   for (const look of ['a', 'b', 'c']) {
     const P = new StatsPanel(ui, look);
@@ -488,7 +490,9 @@ SCENARIOS.screens = async () => {
   // the owner's picks (2026-11-24) ship with no parameter: the grade a, the title b
   const { gradeLookNow, recLookNow } = await imp('src/ui/recordLooks.js');
   assert(gradeLookNow() === 'a' && recLookNow() === 'b', `the shipped looks are the owner's picks: grade ${gradeLookNow()}, title ${recLookNow()}`);
+  globalThis.__lookMod.setLook('menu', '0'); // (the title before: the record looks dress it)
   const T0 = new TitleScreen(ui, true, { levels: LEVELS.map((L) => ({ id: L.id, name: L.name })), current: 'cinderwood', pick() {} }, null, { bestFor: (id) => (id === 'ash' ? { grade: 'S', marks: [], timeMs: 83456, clears: 1 } : null), startRush() {} });
+  globalThis.__lookMod.setLook('menu', null);
   const ash0 = T0.stageButtons.find((b) => b.dataset.level === 'ash');
   assert(T0.recLook === 'b' && ash0.find((n) => n.classList?.contains('ab-stage-grade')) && text(ash0).includes('1:23.45'), `with no parameter the title draws look b: the grade in the button (${text(ash0)})`);
   // the record panel's overflow (2026-11-24, the owner's report: "Total time", "Flasks used" outside
@@ -573,7 +577,7 @@ SCENARIOS.menus = async () => {
   setLook('menu', null);
   ui.children.length = 0;
   const T1 = new TitleScreen(ui, true, { levels, current: 'cinderwood', pick() {} }, null, { bestFor: () => null, startRush() {} });
-  assert(T1.menuLook === 'c' && T1.menu, 'with no parameter the title is the sword's path (c, the owner's pick)');
+  assert(T1.menuLook === 'c' && T1.menu, "with no parameter the title is the sword's path (c, the owner's pick)");
 };
 
 globalThis.__lookMod = await imp('src/entities/enemies/duelist/lookSwitch.js');
