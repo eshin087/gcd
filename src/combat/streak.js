@@ -8,7 +8,8 @@
 //            Its tempo (STREAK_FX.tempo; ?tempo=0 off): the first cut a heavy beat, each later one a
 //            share of the one before (DEFENSE.flurry.tempo); off = the storm of ADR-167 exactly.
 //            Its chain (STREAK_FX.chain; ?chain=0 off): the passes run A -> B -> C, each from where
-//            the one before ended, every slash on the path he ran (DEFENSE.flurry.chain)
+//            the one before ended, every slash on the path he ran (DEFENSE.flurry.chain); the shape
+//            they draw is one of its figures (STREAK_FX.figure; ?figure=)
 //   tiers    past the flurry's 7 blows a longer streak LOOKS grander at each tier: the flurry's cuts
 //            and its last blow, the banner's name (player/flurryFx.js, ui/)
 //   aura     the streak shows on the hero and his blade between flurries (player/streakFx.js)
@@ -23,6 +24,8 @@
 // own length stops at DEFENSE.flurry.max (7) and its damage with it: tiers change looks only.
 
 const PIECES = ['storm', 'tiers', 'aura', 'counter', 'sound', 'world'];
+// (the flurry's figures: player/flurryFigures.js FIGURE_NAMES, 'any' first)
+const FIGURES = ['any', 'star', 'zigzag', 'cage', 'spiral', 'cross'];
 const PERFECT = ['today', 'sharp', 'cinema'];
 /** The look a single perfect parry / dodge gets when nothing asks for another (the owner's pick, 2026-11-23). */
 export const PERFECT_DEFAULT = 'sharp';
@@ -74,6 +77,11 @@ export const STREAK_FX = {
    *  dust. false (?chain=0) = the ring-teleport paths, the crescents and the shards exactly as before.
    *  Read as a flurry starts. */
   chain: q('chain') !== '0',
+  /** The chain's figure (DEFENSE.flurry.chain.figures; player/flurryFigures.js): 'any' (a different
+   *  one each flurry) or a figure's name to pin it (?figure=star | zigzag | cage | spiral | cross; the
+   *  Lab's `figure` button). Read as a flurry starts. */
+  figure: FIGURES.includes(q('figure')) ? q('figure') : 'any',
+  figures: FIGURES,
 };
 
 /** A piece's strength (0 when it is off). */

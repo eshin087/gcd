@@ -4,6 +4,7 @@ import { clamp, lerp, smoothstep } from '../../core/math.js';
 import { DEFENSE } from '../../combat/rules.js';
 import { STREAK_FX, streakK, streakTier } from '../../combat/streak.js';
 import { FlurryFx } from './flurryFx.js';
+import { FIGURE_NAMES, figureSteps, tracePass } from './flurryFigures.js';
 import { burstLook } from './flurryBurst.js';
 
 // The flurry (ADR-091; rules: DEFENSE.flurry, docs/COMBAT.md → "The streak and the flurry"): what a
@@ -30,6 +31,12 @@ const G = F.ground; // the cuts against a foe on the ground (a duelist)
 const S = F.storm; // the storm: a long flurry's later cuts, each faster than the last (streakK('storm'))
 const TP = F.tempo; // the storm's tempo: heavy first, then faster by ratio (STREAK_FX.tempo)
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
+// the figures' pick (which shape a flurry's passes draw): this module's own stream, never
+// Math.random (the seeded sims replay the AI's) nor the animator's noise (the arts' pick)
+let fseed = 0x3c6ef372;
+const frnd = () => (fseed = (Math.imul(fseed, 1664525) + 1013904223) >>> 0) / 4294967296;
+/** Tests: put the figures' stream at `v`. */
+export const setFigureSeed = (v) => (fseed = v >>> 0);
 const CHEST = 1.2; // m above his root the blade crosses a target at
 const KEEP = 0.05; // s: the world's hold is re-armed for this long every frame
 const MIN_Y = 0.15; // an airborne pass never skims lower than this
@@ -107,6 +114,13 @@ export class Flurry {
     this._planOff = new Float32Array(F.max + 1); // ... and how far off the target's middle it passes (m)
     this.planGap = 1; // the plan's smallest |sin| between two of its lines (tests)
     this._planA0 = NaN; // the plan: the angle round the target the first cut starts at
+    this.figure = 'star'; // the figure this flurry's passes draw (flurryFigures.js; STREAK_FX.figure)
+    this.lastFigure = '';
+    this.figureFit = 0; // the chosen figure's cost (tests)
+    this._planO = new Float64Array(F.max + 1); // the plan: each flash cut's signed offset (m) ...
+    this._planE = new Float64Array(F.max + 1); // ... and how far from the target it ends (m)
+    this._st = { o: new Float64Array(F.max + 1), e: new Float64Array(F.max + 1) };
+    this._tp = { x: 0, z: 0, a: NaN, off: 0 };
     this.planNodes = 0; // the plan's search steps (tests)
     this._pa = new Float64Array(F.max + 1); // the search's path: each line's heading, side, off
     this._ps = new Int8Array(F.max + 1);
@@ -265,7 +279,8 @@ export class Flurry {
     this.tell = tell;
     this.ox = p.x;
     this.oz = p.z;
-    if (this.chain) this._planChain();
+    this.figure = 'star';
+    if (this.chain) this._planFigure();
     this.on = true;
     this.pending = true;
     this.fx.pull = this.air ? AIR_PULL : 0;
@@ -304,7 +319,7 @@ export class Flurry {
     }
     // (extra fields for the HUD and the sound: the streak it answers, its tier, the real time each
     // flash cut's contact is planned at from now (`at`), and whether its later cuts are a storm)
-    P._emit('player:flurry', { strikes: n, art, air: this.air, dur: this._planned(), streak: streakN, tier: this.tier, storm: this._stormStep(this.cuts - (riposte ? 2 : 1)) > 0, at: this._plannedHits() });
+    P._emit('player:flurry', { strikes: n, art, air: this.air, dur: this._planned(), streak: streakN, tier: this.tier, storm: this._stormStep(this.cuts - (riposte ? 2 : 1)) > 0, at: this._plannedHits(), figure: this.chain ? this.figure : '' });
     return true;
   }
 
@@ -855,24 +870,136 @@ export class Flurry {
     this.planNodes = nodes;
   }
 
-  /** The chain: where the pass from A ends (-> out, y 0): past the target on the side and as far off
-   *  its middle as planned (_planChain), `R` m beyond it; on the ground resolved against the walls. */
-  _chainExit(A, out, R) {
-    const P = this.p, g = P.game, T = this.T, offs = this.air ? F.chain.off.air : F.chain.off.ground;
-    let tx = T.x - A.x, tz = T.z - A.z;
-    const r = Math.max(0.3, Math.hypot(tx, tz));
-    if (Math.hypot(tx, tz) > 0.3) {
-      tx /= r;
-      tz /= r;
-    } else {
-      tx = Math.sin(P.yaw);
-      tz = Math.cos(P.yaw);
+  /**
+   * The chain's figure (DEFENSE.flurry.chain.figures, flurryFigures.js), as the flurry starts: which
+   * shape the passes draw. STREAK_FX.figure pins one ('any': this module's stream picks among those
+   * offered at this many flash cuts, never the last one again). A figure is laid round the target at
+   * the turn (`turns`, rad off straight toward the dodge spot) and the hand (mirrored or not) that
+   * cost least (_figureCost); one that costs `fit` or more is passed over for the next; the star (the
+   * search of _planChain) always fits. -> this.figure, _planA0, _planO / _planE.
+   */
+  _planFigure() {
+    const C = F.chain, FG = C.figures, n = Math.min(this.cuts, this._planO.length), R = this.air ? F.reach.air : G.reach;
+    const pin = STREAK_FX.figure;
+    let order;
+    const offered = (f) => n >= (FG[f]?.min ?? 1) && !(this.air && FG[f]?.air === false);
+    if (typeof pin === 'string' && pin !== 'any' && FIGURE_NAMES.includes(pin)) order = [pin];
+    else {
+      // (the offered ones in this stream's order: a draw for every name, the last figure at the back)
+      order = FIGURE_NAMES.filter(offered);
+      const key = order.map(() => frnd());
+      order = order.map((f, q) => [f, key[q] + (f === this.lastFigure ? 2 : 0)]).sort((a, b) => a[1] - b[1]).map((q) => q[0]);
     }
-    const k = Math.min(this.i, this._planS.length - 1), sg = this._planS[k] || 1;
-    const off = Math.min(fin(this._planOff[k], offs[0]) || offs[0], r * 0.85);
-    const a = Math.atan2(tx, tz) + sg * Math.asin(off / r);
-    const run = Math.sqrt(Math.max(0, r * r - off * off)) + Math.sqrt(Math.max(0, R * R - off * off));
-    out.set(A.x + Math.sin(a) * run, 0, A.z + Math.cos(a) * run);
+    for (const f of order) {
+      if (f === 'star' || !offered(f)) {
+        if (f === 'star') break;
+        continue;
+      }
+      if (this._layFigure(f, n, R)) {
+        this.figure = f;
+        this.lastFigure = f;
+        return;
+      }
+    }
+    this._planChain();
+    for (let k = 0; k < n; k++) {
+      this._planO[k] = (this._planS[k] || 1) * this._planOff[k];
+      this._planE[k] = R;
+    }
+    this.figure = 'star';
+    this.lastFigure = 'star';
+    this.figureFit = 0;
+  }
+
+  /** Lay figure `f` (n flash cuts, reach R) at its cheapest turn and hand: true if it fits. */
+  _layFigure(f, n, R) {
+    const C = F.chain, T = this.T, st = this._st;
+    const o0 = Math.atan2(this.ox - T.x, this.oz - T.z);
+    let best = Infinity, bt = 0, bm = 1;
+    for (let mi = 0; mi < 2; mi++) {
+      const m = mi ? -1 : 1;
+      figureSteps(f, n, this.air, C.figures, R, m, st);
+      for (let q = 0; q < C.turns.length; q++) {
+        const a0 = this._offNeck(o0 + C.turns[q]);
+        const c = this._figureCost(a0, st, n, R) + 0.001 * q;
+        if (c < best) {
+          best = c;
+          bt = a0;
+          bm = m;
+        }
+      }
+    }
+    if (!(best < C.fit)) return false;
+    figureSteps(f, n, this.air, C.figures, R, bm, st);
+    this._planA0 = bt;
+    for (let k = 0; k < n; k++) {
+      this._planO[k] = st.o[k];
+      this._planE[k] = st.e[k];
+    }
+    this.figureFit = best;
+    return true;
+  }
+
+  /**
+   * What a figure laid from `a0` costs (its passes traced with the target where it stands now): `near`
+   * for a pass that ends near the dodge spot, a pass whose end a wall moves (`near` too), round the
+   * head a line along the neck (into the body) or a corner inside the head; on the ground less
+   * `front` if the last ends before the foe's face, `artNear` if the art would end near the dodge
+   * spot; round the head `artNeck` if the iai would run along the neck.
+   */
+  _figureCost(a0, st, n, R) {
+    const P = this.p, g = P.game, T = this.T, C = F.chain, tp = this._tp, V = this._q;
+    const ox = this.ox - T.x, oz = this.oz - T.z, dy = this.air ? Math.max(0, T.y - CHEST) : 0;
+    const k2 = C.keepOff * C.keepOff - dy * dy;
+    const ap = this.att?.position, nx = ap ? ap.x - T.x : 0, nz = ap ? ap.z - T.z : 0;
+    const hasNeck = this.air && !!ap && Number.isFinite(nx + nz) && nx * nx + nz * nz >= 1, neck = hasNeck ? Math.atan2(nx, nz) : 0;
+    let x = Math.sin(a0) * R, z = Math.cos(a0) * R, c = 0;
+    tp.a = a0 + Math.PI;
+    for (let k = 0; k < n; k++) {
+      tracePass(x, z, st.o[k], st.e[k], tp);
+      if (!Number.isFinite(tp.x + tp.z)) return Infinity;
+      // (the first pass starts on his side: its end only; every later pass all along its run)
+      const sx = tp.x - x, sz = tp.z - z, l2 = sx * sx + sz * sz;
+      const f = k === 0 || !(l2 > 1e-6) ? 1 : clamp(((ox - x) * sx + (oz - z) * sz) / l2, 0, 1);
+      const qx = x + sx * f - ox, qz = z + sz * f - oz;
+      if (qx * qx + qz * qz < k2) c += C.near;
+      if (!this.air) {
+        V.set(T.x + tp.x, 0, T.z + tp.z);
+        g.world?.resolve?.(V, P.radius, CONFIG.world.playerBound, false, 'hero');
+        if (!Number.isFinite(V.x + V.z) || Math.hypot(V.x - T.x - tp.x, V.z - T.z - tp.z) > 0.5) c += C.near;
+      } else if (hasNeck) {
+        if (Math.abs(Math.sin(tp.a - neck)) < 0.3) c += 0.5;
+        // (a corner behind the head, over the neck, is inside the body)
+        const el = Math.hypot(tp.x, tp.z);
+        if (el > 0.1 && (tp.x * nx + tp.z * nz) / (el * Math.hypot(nx, nz)) > 0.6) c += C.near;
+      }
+      x = tp.x;
+      z = tp.z;
+    }
+    const D = ARTS[this.art];
+    if (D.kind !== 'return') {
+      const el = Math.max(0.3, Math.hypot(x, z)), ux = -x / el, uz = -z / el;
+      if (!this.air) {
+        const fy = fin(this.att?.yaw, NaN), behind = fin(this.att?.ghostepBehind, 1.5);
+        if (Number.isFinite(fy) && x * Math.sin(fy) + z * Math.cos(fy) > 0) c -= C.front;
+        if ((ux * behind - ox) ** 2 + (uz * behind - oz) ** 2 < k2) c += C.artNear;
+      } else if (D.kind === 'iai' && hasNeck && Math.abs(Math.sin(Math.atan2(ux, uz) - neck)) < 0.55) c += C.artNeck;
+    }
+    return Math.max(0, c);
+  }
+
+  /** The chain: where the pass from A ends (-> out, y 0): past the target as far off its middle and
+   *  on the side the plan says (_planFigure), as far from it as planned; on the ground resolved
+   *  against the walls. */
+  _chainExit(A, out, R) {
+    const P = this.p, g = P.game, T = this.T, tp = this._tp;
+    const k = Math.min(this.i, this._planO.length - 1);
+    let o = fin(this._planO[k], 0), e = fin(this._planE[k], R);
+    if (!(e > 0.3)) e = R;
+    if (o === 0) o = 0.05;
+    tp.a = Math.atan2(this.d.x, this.d.z);
+    tracePass(A.x - T.x, A.z - T.z, o, e, tp);
+    out.set(T.x + tp.x, 0, T.z + tp.z);
     if (!this.air) g.world?.resolve?.(out, P.radius, CONFIG.world.playerBound, false, 'hero');
     return out;
   }

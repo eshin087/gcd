@@ -227,6 +227,23 @@ export const DEFENSE = Object.freeze({
       artNeck: 0.15,
       front: 0.05,
       same: 0.04,
+      // THE FIGURES (player/flurryFigures.js; STREAK_FX.figure, ?figure=): the shape the passes draw,
+      // one picked for each flurry (the flurry's own seeded stream, never the same twice running).
+      // `min` the fewest flash cuts it reads at; `off` m off the target's middle (ground / air), `end`
+      // m from it where a pass ends, `sides` the cage's polygon by the cut count (the spiral's
+      // corners as a square's). A figure that does not fit (a wall, the dodge spot, the
+      // neck: its cost over `fit`) is passed over; the star always fits.
+      figures: {
+        star: { min: 1 },
+        zigzag: { min: 2, off: { ground: 1.15, air: 1.5 } },
+        // (the cage and the spiral go round him on every side: round the wyrm's head one side would
+        // run over its neck, through its body: on the ground only)
+        cage: { min: 3, air: false, off: { ground: 1.2, air: 1.5 }, sides: [3, 6] },
+        spiral: { min: 3, air: false, off: { ground: 1.3, air: 1.6 }, end: { ground: 1.0, air: 2.0 }, sides: 4 },
+        cross: { min: 3, off: { ground: 1.3, air: 1.6 } },
+      },
+      fit: 0.5,
+      turns: [0, 0.35, -0.35, 0.7, -0.7, 1.05, -1.05],
     },
     last: { damage: 60, posture: 22 },
     keepStreak: 0,
