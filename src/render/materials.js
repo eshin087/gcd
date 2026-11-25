@@ -1161,6 +1161,12 @@ function scriptUniforms(U) {
   };
 }
 
+// (the dragon print's props and trees: render/dragonProps.js. Imported here, under names of their own, so
+// another piece of this file may import the same modules without a clash)
+import { DRAGON_PRINT_GLSL as DPP_PRINT_GLSL, dragonPrintUniforms as dppPrintUniforms } from './dragonPrint.js';
+import { DRAGON_PRINT_FX_GLSL as DPP_FX_GLSL, DP_FX_U as DPP_FX_U } from './dragonPrintFx.js';
+import { DP_PROPS, DP_TREES, DP_RELIEF_GLSL, DP_FX_PRELUDE_GLSL, DP_ENCODE_GLSL, dpPropsLook, dpTreesLook } from './dragonProps.js';
+
 /**
  * Prop art source (FLAG.ART_PROP, ADR-100): the smooth lit image of a background object, which the
  * art pass prints in the wyrm's fine letters (a dark body, brighter letters where a face or an edge
@@ -1174,9 +1180,15 @@ function scriptUniforms(U) {
  * Options: gain (source brightness, default 1), key (camera-fixed key light from the viewer's upper
  * left, default 0.5: the form reads the same from every side, like the wyrm's), edge (aEdge band
  * strength, default 1), fadeNearPlayer (dither away in front of the player), side.
+ *
+ * `dp` ('0' | 'a' | 'b', default the `?dpProps` switch, render/dragonProps.js): the DRAGON PRINT's source
+ * instead (dragonPropFrag): a relief (chisel facets, bumps, cracks) lit by the moon and the shadow map
+ * by the dragon ground's law, its ink in rgb and its tone in alpha. '0' draws exactly the source above.
  */
 export function createPropArtMaterial(U, o = {}) {
   const hang = o.hang ?? null;
+  const dpk = o.dp ?? dpPropsLook();
+  const DP = DP_PROPS[dpk] ?? null;
   const mat = new THREE.ShaderMaterial({
     uniforms: {
       ...pickShared(U, SHARED),
@@ -1191,6 +1203,7 @@ export function createPropArtMaterial(U, o = {}) {
       uBoneTex: U.uBoneTex ?? { value: null }, // rigid batches' bone matrices (RIGID_VERT_GLSL)
       ...(hang ? hangUniforms(U, hang) : {}),
       ...scriptUniforms(U),
+      ...(DP ? dragonPropUniforms(DP) : {}),
     },
     vertexShader: /* glsl */ `
       ${RIGID_VERT_GLSL}${hang ? HANG_VERT_GLSL : ''}
@@ -1202,7 +1215,7 @@ export function createPropArtMaterial(U, o = {}) {
       varying vec3 vN;
       varying vec3 vCol;
       varying float vAO;
-      varying float vEdge;
+      varying float vEdge;${DP ? DP_VARYINGS : ''}
       void main() {
         mat4 mm = rigidMatrix();
         vec4 wp = mm * vec4(position, 1.0);${hang ? HANG_MAIN_GLSL : ''}
@@ -1210,12 +1223,12 @@ export function createPropArtMaterial(U, o = {}) {
         vN = normalize(mat3(mm) * normal);${hang ? HANG_NORMAL_GLSL : ''}
         vCol = aCol;
         vAO = aAO;
-        vEdge = aEdge;
+        vEdge = aEdge;${DP ? DP_VARYINGS_MAIN : ''}
         gl_Position = projectionMatrix * viewMatrix * wp;
         ${SCRIPT_SHIFT}
       }
     `,
-    fragmentShader: /* glsl */ `
+    fragmentShader: DP ? dragonPropFrag() : /* glsl */ `
       ${COMMON_GLSL}
       ${SCRIPT_GLSL}
       uniform vec2 uScriptCell;
@@ -1276,6 +1289,227 @@ export function createPropArtMaterial(U, o = {}) {
   });
   rigidCapable(mat, o.rigid === true);
   if (hang) mat.defaultAttributeValues = { ...mat.defaultAttributeValues, aHang: [0, 0] };
+  if (DP) mat.userData.dragonPrint = dpk;
+  return mat;
+}
+
+// ---- THE DRAGON PRINT's sources (render/dragonProps.js): a material hands the art pass its INK (rgb) and its
+// TONE (alpha, inside the props' flag window), lit by the dragon ground's law on a relief of its own
+/** GLSL (vertex): the piece's own position (the relief rides with it) and its turn into the world. */
+const DP_VARYINGS = `
+      varying vec3 vO;
+      varying mat3 vR;`;
+const DP_VARYINGS_MAIN = `
+        vO = position;
+        vR = mat3(mm);`;
+/** The uniforms dragonPropFrag reads (a prop look of DP_PROPS). */
+function dragonPropUniforms(P) {
+  return {
+    ...dppPrintUniforms(),
+    ...DPP_FX_U,
+    uDpRelief: { value: new THREE.Vector4(P.facet, P.size, P.bump, P.bumpF) },
+    uDpCrack: { value: new THREE.Vector4(P.crack, P.crackK, P.crackDark, 0) },
+    uDpLaw: { value: new THREE.Vector4(P.law[0], P.law[1], P.edge, P.ao) },
+    uDpInk: { value: P.ink },
+  };
+}
+/**
+ * GLSL (fragment, createPropArtMaterial's `dp`): the dragon ground's law (world/ground.js look b) on a prop.
+ * The tone = how the relief's normal meets the moon (from uDpLaw.x to .y), x the shadow map, x a drifting
+ * cloud's shade, + the fire's light; the ink = the body x (0.2 + 1.5 tone) x the light there, so a lit face
+ * prints dense bright digits and a face turned away dim dots, like a crest and a trough of the ground. The
+ * fx hooks (dpCloud, dpContact, dpRipple) reach it as they reach the ground.
+ */
+function dragonPropFrag() {
+  return /* glsl */ `
+      ${COMMON_GLSL}
+      ${SCRIPT_GLSL}
+      ${DPP_PRINT_GLSL}
+      ${DP_FX_PRELUDE_GLSL}
+      ${DPP_FX_GLSL}
+      ${DP_RELIEF_GLSL}
+      ${DP_ENCODE_GLSL}
+      uniform vec2 uScriptCell;
+      uniform vec2 uScriptAnchor;
+      uniform vec4 uPlayerScreen;
+      uniform vec2 uResolution;
+      uniform float uFadeOn;
+      uniform float uGain;
+      uniform float uEdge;
+      uniform vec4 uDpRelief;
+      uniform vec4 uDpCrack;
+      uniform vec4 uDpLaw;
+      uniform float uDpInk;
+      varying vec3 vW;
+      varying vec3 vN;
+      varying vec3 vCol;
+      varying float vAO;
+      varying float vEdge;
+      varying vec3 vO;
+      varying mat3 vR;
+      void main() {
+        if (uFadeOn > 0.5) {
+          vec2 sp = gl_FragCoord.xy / uResolution;
+          vec2 d = (sp - uPlayerScreen.xy) * vec2(uResolution.x / uResolution.y, 1.0);
+          float viewDepth = 1.0 / gl_FragCoord.w;
+          if (viewDepth < uPlayerScreen.z - 1.5) {
+            float t = smoothstep(0.17, 0.07, length(d));
+            if (bayer4(gl_FragCoord.xy * 0.5) < t * 0.92) discard;
+          }
+        }
+        vec3 n = normalize(gl_FrontFacing ? vN : -vN);
+        // the relief, in the piece's own space (it rides with a carried or falling piece)
+        vec3 no = normalize(transpose(vR) * n);
+        float crack;
+        vec3 s = dpStone(vO, no, uDpRelief, uDpCrack, crack);
+        vec3 N = dpBump(n, vR * s);
+        float sh = shadowAt(vW + n * 0.12);
+        float cloud = dpCloud(vW.xz);
+        vec3 PL = pointLights(vW + n * 0.05, N, 0.5);
+        float t = clamp((dot(N, uMoonDir) - uDpLaw.x) / (uDpLaw.y - uDpLaw.x), 0.0, 1.0) * sh * cloud;
+        t = t * 0.85 + luma(PL) * 2.0;
+        // a chamfer or a rim catches the moon; the hollows low on the piece stay dim
+        t += vEdge * uEdge * uDpLaw.z * sh;
+        t *= mix(1.0, vAO, uDpLaw.w);
+        t *= 1.0 - crack * uDpCrack.z;
+        float low = 1.0 - smoothstep(0.0, 0.6, vW.y);
+        t *= 1.0 - dpContact(vW.xz) * low;
+        float rip = dpRipple(vW.xz, hash13(floor(vO * 7.0)));
+        t = clamp(t + rip * 0.35, 0.0, 1.0);
+        vec3 L = ambientAt(N) + uMoonColor * (max(uMoonDir.y, 0.0) * 0.85 * sh * cloud) + PL;
+        vec3 col = vCol * uGain * (0.2 + 1.5 * t + rip * 0.8) * L * uDpInk;
+        // dragon fire scorches low stones; embers glow on them
+        vec2 sc = scorchAt(vW.xz);
+        float lowS = 1.0 - smoothstep(0.3, 1.4, vW.y);
+        col *= 1.0 - sc.x * 0.55 * lowS;
+        t *= 1.0 - sc.x * 0.4 * lowS;
+        col += vec3(1.0, 0.28, 0.04) * sc.y * sc.y * lowS * 0.3;
+        if (uScript.x > 0.0 || uScriptF.y > 0.0) {
+          // THE SCRIPT WAVE (SCRIPT_GLSL): the letter cell this pixel prints in, its column's wave
+          float k = scriptK(vW);
+          vec3 w = scriptWaveAt(floor((gl_FragCoord.xy - uScriptAnchor) / max(uScriptCell, vec2(1.0))));
+          float Lc = luma(col);
+          col = mix(col, SCRIPT_GREEN * (Lc * 1.5 + 0.004), min(k, 1.0) * 0.85);
+          col *= 1.0 + k * (2.4 * w.x + 2.6 * w.y);
+          col += SCRIPT_GREEN * k * (0.012 * w.x + 0.03 * w.y);
+          t = clamp(t + k * (0.5 * w.x + 0.5 * w.y), 0.0, 1.0);
+        }
+        col = applyFog(col, vW);
+        gl_FragColor = vec4(col, dpEncode(t));
+      }
+    `;
+}
+
+/**
+ * The dragon print for what the ascii-object material draws (render/dragonProps.js): the trees (FLAG.STONE trunks,
+ * boughs and stumps: bark; FLAG.LEAF crowns: leaves) under `trees` (default the `?dpTrees` switch), the prop art
+ * painted on a set's mesh (FLAG.ART_PROP: bones, the bonfire, the landmarks) under `props` (default `?dpProps`).
+ * It IS createAsciiObjectMaterial (same options, same vertex shader: the wind's sway, the rigid batch), with two
+ * varyings added for the relief and its own fragment; a part whose switch is off draws exactly that material's
+ * source. Both off: createAsciiObjectMaterial itself is returned.
+ */
+export function createDragonObjectMaterial(U, o = {}) {
+  const T = DP_TREES[o.trees ?? dpTreesLook()] ?? null;
+  const P = DP_PROPS[o.props ?? dpPropsLook()] ?? null;
+  const mat = createAsciiObjectMaterial(U, o);
+  if (!T && !P) return mat;
+  const vs = mat.vertexShader, a = 'varying vec3 vW;', b = 'vW = wp.xyz;';
+  if (!vs.includes(a) || !vs.includes(b)) throw new Error('createDragonObjectMaterial: the ascii-object vertex shader has changed');
+  mat.vertexShader = vs.replace(a, a + DP_VARYINGS).replace(b, b + DP_VARYINGS_MAIN);
+  const t = T ?? DP_TREES.a, p = P ?? DP_PROPS.a;
+  Object.assign(mat.uniforms, dragonPropUniforms(p), {
+    uDpBark: { value: new THREE.Vector4(t.bark, t.barkF, t.furrow, t.inkBark) },
+    uDpLeaf: { value: new THREE.Vector4(t.leaf, t.leafF, t.sprig, t.hollow) },
+    uDpTreeLaw: { value: new THREE.Vector4(t.barkLaw[0], t.barkLaw[1], t.leafLaw[0], t.leafLaw[1]) },
+    uDpTreeInk: { value: new THREE.Vector4(t.inkLeaf, t.ao, t.shade, 0) },
+  });
+  mat.defines = { ...(mat.defines ?? {}), DP_T: T ? 1 : 0, DP_P: P ? 1 : 0 };
+  mat.fragmentShader = /* glsl */ `
+      ${COMMON_GLSL}
+      ${DPP_PRINT_GLSL}
+      ${DP_FX_PRELUDE_GLSL}
+      ${DPP_FX_GLSL}
+      ${DP_RELIEF_GLSL}
+      ${DP_ENCODE_GLSL}
+      uniform vec4 uPlayerScreen;
+      uniform vec2 uResolution;
+      uniform float uFadeOn;
+      uniform vec4 uDpRelief;
+      uniform vec4 uDpCrack;
+      uniform vec4 uDpLaw;
+      uniform float uDpInk;
+      uniform vec4 uDpBark;
+      uniform vec4 uDpLeaf;
+      uniform vec4 uDpTreeLaw;
+      uniform vec4 uDpTreeInk;
+      varying vec3 vW;
+      varying vec3 vN;
+      varying vec3 vCol;
+      varying float vFlag;
+      varying float vAO;
+      varying vec3 vO;
+      varying mat3 vR;
+      void main() {
+        if (uFadeOn > 0.5) {
+          vec2 sp = gl_FragCoord.xy / uResolution;
+          vec2 d = (sp - uPlayerScreen.xy) * vec2(uResolution.x / uResolution.y, 1.0);
+          float viewDepth = 1.0 / gl_FragCoord.w;
+          if (viewDepth < uPlayerScreen.z - 1.5) {
+            float t = smoothstep(0.17, 0.07, length(d));
+            if (bayer4(gl_FragCoord.xy * 0.5) < t * 0.92) discard;
+          }
+        }
+        vec3 n = normalize(gl_FrontFacing ? vN : -vN);
+        bool leaf = abs(vFlag - ${FLAG.LEAF.toFixed(2)}) < 0.02;
+        bool bark = vFlag > 0.9;
+        bool prop = abs(vFlag - ${FLAG.ART_PROP.toFixed(2)}) < 0.01;
+        if (!((DP_T == 1 && (leaf || bark)) || (DP_P == 1 && prop))) {
+          // (this part's switch is off: createAsciiObjectMaterial's source)
+          float sh = shadowAt(vW + n * 0.18);
+          vec3 L = lightAt(vW, n, 0.3, sh);
+          vec3 col = vCol * L * vAO;
+          col = applyFog(col, vW);
+          gl_FragColor = vec4(col, vFlag);
+          return;
+        }
+        // the relief, in the piece's own space (at rest: a crown keeps its clumps as it sways)
+        vec3 no = normalize(transpose(vR) * n);
+        float deep = 0.0;
+        vec3 s = vec3(0.0), No = no;
+        vec2 law;
+        float ink, ao, wrap = 0.5, shade = 1.0;
+        if (leaf) {
+          No = dpLeaf(vO, no, uDpLeaf.x, 1.0 / uDpLeaf.y, uDpLeaf.z, deep);
+          deep *= uDpLeaf.w;
+          law = uDpTreeLaw.zw; ink = uDpTreeInk.x; ao = uDpTreeInk.y; wrap = 0.7; shade = uDpTreeInk.z;
+        } else if (bark) {
+          s = dpBark(vO, no, uDpBark.x, uDpBark.y, deep);
+          deep *= uDpBark.z;
+          law = uDpTreeLaw.xy; ink = uDpBark.w; ao = uDpTreeInk.y;
+        } else {
+          s = dpStone(vO, no, uDpRelief, uDpCrack, deep);
+          deep *= uDpCrack.z;
+          law = uDpLaw.xy; ink = uDpInk; ao = uDpLaw.w;
+        }
+        vec3 N = leaf ? normalize(vR * No) : dpBump(n, vR * s);
+        float sh = mix(1.0, shadowAt(vW + n * 0.18), shade);
+        float cloud = dpCloud(vW.xz);
+        vec3 PL = pointLights(vW + n * 0.05, N, wrap);
+        float t = clamp((dot(N, uMoonDir) - law.x) / (law.y - law.x), 0.0, 1.0) * sh * cloud;
+        t = t * 0.85 + luma(PL) * 2.0;
+        t *= mix(1.0, vAO, ao);
+        t *= 1.0 - deep;
+        float low = 1.0 - smoothstep(0.0, 0.6, vW.y);
+        t *= 1.0 - dpContact(vW.xz) * low;
+        float rip = dpRipple(vW.xz, hash13(floor(vO * 7.0)));
+        t = clamp(t + rip * 0.35, 0.0, 1.0);
+        vec3 L = ambientAt(N) + uMoonColor * (max(uMoonDir.y, 0.0) * 0.85 * sh * cloud) + PL;
+        vec3 col = vCol * (0.2 + 1.5 * t + rip * 0.8) * L * ink;
+        col = applyFog(col, vW);
+        gl_FragColor = vec4(col, dpEncode(t));
+      }
+    `;
+  mat.userData.dragonPrint = { trees: T ? (o.trees ?? dpTreesLook()) : '0', props: P ? (o.props ?? dpPropsLook()) : '0' };
   return mat;
 }
 
