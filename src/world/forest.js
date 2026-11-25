@@ -8,8 +8,8 @@ import { TAU } from '../core/math.js';
 import { buildElderWyrm, buildCinderTree, buildCinderStump, landmarkPoint, ELDER_COLLIDERS } from './landmarks.js';
 import { BREAK } from './breakTuning.js';
 import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
-import { RIDGE, GROWTH, ridgeAt } from './forestTuning.js';
-import { buildBush, buildFern, buildBramble, buildLog, buildMossRock, buildCrag, buildRoots, buildMoss } from './undergrowth.js';
+import { RIDGE, GROWTH, THICKET, DEADFALL, ridgeAt } from './forestTuning.js';
+import { DEAD_WOOD, buildBush, buildFern, buildBramble, buildLog, buildLeaner, buildRootPlate, buildMossRock, buildCrag, buildRoots, buildMoss } from './undergrowth.js';
 
 // Procedural forest ring around a moonlit clearing: blob oaks and pines (leaf-ramp ASCII),
 // a broken standing-stone circle, boulders, flagstones, the bones of past challengers near
@@ -841,6 +841,9 @@ export function createForest(U, colliders) {
   // and rewritten as it shudders, leans, falls or is carried (destructibles.js RangeBody). Its stump is a
   // run of the stump mesh, folded away until it shows.
   const treeRuns = new Runs(), stumpRuns = new Runs(), propRuns = new Runs();
+  // (ADR-190: wood past GROWTH.phoneFar m stands on the deep mesh, which the phone does not draw: its
+  // closer camera never sees that far from the end of the map)
+  const deepRuns = new Runs();
   const brFar = mulberry32(CONFIG.seed + 6007); // (the stumps of the trees past the old 42 m line)
   const WALL = BREAK.wall;
   /** The parts a tree drops as it wears down (its crown from the outside in) and how many by each stage. */
@@ -855,10 +858,11 @@ export function createForest(U, colliders) {
   };
   const treeBreakable = (t, g, c, rng = br) => {
     const rad = Math.hypot(t.x, t.z), h = geosHeight(g);
+    const runs = rad > GROWTH.phoneFar ? deepRuns : treeRuns;
     return {
       kind: t.type === 'dead' ? 'deadTree' : 'tree', mat: 'wood', look: 'range', x: t.x, z: t.z, r: 0.45 * t.s, h,
       // (bricks: finer where the fight goes, BREAK.chip.near; twice as coarse in the deep forest)
-      range: treeRuns.add(g, t.type === 'dead' ? null : (i) => i > 0, Math.hypot(t.x, t.z) < BREAK.chip.near ? 1 : BREAK.chip.far),
+      range: runs.add(g, t.type === 'dead' ? null : (i) => i > 0, Math.hypot(t.x, t.z) < BREAK.chip.near ? 1 : BREAK.chip.far),
       colliders: c ? [c] : [], broken: { range: stumpRuns.add(buildStump(rng, t.x, t.z, t.s), null, 0), r: c ? 0.38 * t.s : 0 },
       leafy: t.type === 'dead' ? 0 : 0.6, lift: 1, wear: wearOf(t.type, g.length),
       // (the wall: tougher, and it falls away from the arena; BREAK.wall)
@@ -872,7 +876,7 @@ export function createForest(U, colliders) {
   const onRidge = (x, z, pad = 0) => Math.abs(Math.hypot(x, z) - ridgeAt(Math.atan2(z, x)) - RIDGE.out) < RIDGE.size[1] + 0.6 + pad;
   // what grows on and round the old trees and in the forest draws on a stream of its own (ADR-190)
   const gr = mulberry32(CONFIG.seed + 5023);
-  const GW = GROWTH;
+  const kept = []; // (the old trees standing in the walkable band: a dead trunk may lean on one)
   for (const t of trees) {
     const g = t.type === 'pine' ? buildPine(rng, t.x, t.z, t.s) : t.type === 'dead' ? buildDeadTree(rng, t.x, t.z, t.s) : buildOak(rng, t.x, t.z, t.s);
     if (inLandmark(t.x, t.z)) continue;
@@ -883,6 +887,7 @@ export function createForest(U, colliders) {
     // (a trunk out to where the opened ground can reach: BREAK.edge.outer; it was 42 m, what a hero held at 31 m could touch)
     const c = rad < Math.max(42, BREAK.edge.outer + 3) ? colliders.add(t.x, t.z, 0.45 * t.s, 'trunk') : null;
     breakables.push(treeBreakable(t, g, c, rad < 36.5 ? br : rad < BREAK_R ? brOut : brFar));
+    if (t.type !== 'dead' && c) kept.push(t);
   }
 
   // broken stone circle (gap to the south for the entrance)
@@ -1075,8 +1080,8 @@ export function createForest(U, colliders) {
   // the forest he walks in and its end (ADR-190, forestTuning.js): the ridge's crags, young trees, the
   // undergrowth, fallen logs, old stumps, mossy rocks; beyond the ridge a thicket (the deep mesh: not
   // drawn on the phone). Their breakables are listed after every other (the ids of what was there stay)
-  const rockRuns = new Runs(), rubbleRuns = new Runs(), brushRuns = new Runs(), deepRuns = new Runs();
-  const grown = growForest({ gr, colliders, treeRuns, stumpRuns, rockRuns, rubbleRuns, brushRuns, deepRuns, treeSpots, buckets, tooClose, inLandmark, open, onRidge, treeBreakable, wearOf, WALL });
+  const rockRuns = new Runs(), rubbleRuns = new Runs(), brushRuns = new Runs();
+  const grown = growForest({ gr, colliders, treeRuns, stumpRuns, rockRuns, rubbleRuns, brushRuns, deepRuns, treeSpots, buckets, tooClose, inLandmark, open, onRidge, treeBreakable, wearOf, WALL, kept });
 
   const mat = createAsciiObjectMaterial(U, { fadeNearPlayer: true, side: THREE.DoubleSide });
   // (the trees, their stumps, the landmarks' pieces: runs of these meshes, rewritten as they break, so
@@ -1167,11 +1172,92 @@ function growOn(gr, t, g) {
 }
 
 /**
+ * The end b: a thicket wall of dead trunks shoulder to shoulder on the line (THICKET), brambles between
+ * the rows. The first row's trunks are its colliders; a trunk felled or burnt leaves a stump that keeps
+ * one (a burnt stretch stays shut).
+ */
+function endThicket(o, out, mark) {
+  const { gr, colliders, treeRuns, stumpRuns, brushRuns, deepRuns, wearOf, WALL } = o;
+  const T = THICKET;
+  T.rows.forEach((row, ri) => {
+    const step = T.step * (ri === 0 ? 1 : 1.5);
+    let a = -Math.PI + (ri * step * 0.5) / RIDGE.r;
+    while (a < Math.PI) {
+      const line = ridgeAt(a), rr = line + row + (gr() - 0.5) * 0.25 * ri;
+      const x = Math.cos(a) * rr, z = Math.sin(a) * rr;
+      const s = range(gr, T.s[0], T.s[1]);
+      const g = buildDeadTree(gr, x, z, s);
+      const c = ri === 0 ? colliders.add(x, z, T.r, 'trunk') : null;
+      out.push({
+        kind: 'deadTree', mat: 'wood', look: 'range', x, z, r: T.r, h: geosHeight(g), range: (ri === 0 ? treeRuns : deepRuns).add(g, null, BREAK.chip.far), // (the rows behind the first: the phone's share drops them)
+        colliders: c ? [c] : [], broken: { range: stumpRuns.add(buildStump(gr, x, z, s * 1.1), null, 0), r: c ? T.r * T.stub : 0 },
+        leafy: 0, lift: 0, wear: wearOf('dead', g.length), wall: true, hpK: WALL.hp, edge: 0, wreck: false,
+      });
+      mark(x, z);
+      // (brambles in the rows' gaps)
+      if (ri > 0 && gr() < T.bramble) {
+        const ba = a + (step * 0.5) / line, br2 = line + row - 0.5;
+        const bx = Math.cos(ba) * br2, bz = Math.sin(ba) * br2, bs = range(gr, 1.1, 1.6);
+        const geos = buildBramble(gr, bx, bz, bs);
+        out.push({
+          kind: 'bramble', mat: 'wood', look: 'range', x: bx, z: bz, r: 0.65 * bs, h: Math.max(0.3, geosHeight(geos)),
+          range: brushRuns.add(geos, (j) => j > 0), colliders: [], topples: false, cover: false, lift: 0, wreck: false, leafy: 0.4, wall: true,
+        });
+      }
+      a += step / line;
+    }
+  });
+}
+
+/**
+ * The end c: a deadfall, giant trunks fallen along the line and piled two high (DEADFALL), their root
+ * plates torn up at the ends. Colliders along each trunk of the first row; a broken one leaves a stub
+ * that still blocks; they are too wet and too big to burn through.
+ */
+function endDeadfall(o, out, mark) {
+  const { gr, colliders, treeRuns, stumpRuns } = o;
+  const D = DEADFALL;
+  for (let row = 0; row < 2; row++) {
+    let a = -Math.PI + (row * D.step * 0.5) / RIDGE.r;
+    while (a < Math.PI) {
+      const line = ridgeAt(a);
+      if (row === 1 && gr() > D.top) {
+        a += D.step / line;
+        continue;
+      }
+      const rad = range(gr, D.rad[0], D.rad[1]) * (row ? 0.85 : 1), len = range(gr, D.len[0], D.len[1]);
+      const rr = line + D.out + rad * 0.3 + row * rad * 0.4;
+      const x = Math.cos(a) * rr, z = Math.sin(a) * rr, yaw = a + Math.PI / 2 + (gr() - 0.5) * 0.25;
+      const L = buildLog(gr, x, z, len, rad, yaw, mul(DEAD_WOOD, D.grey));
+      if (row) for (const g of L.geos) g.translate(0, rad * D.up, 0);
+      const geos = L.geos;
+      if (gr() < D.plates) geos.push(...buildRootPlate(gr, L.ends[gr() < 0.5 ? 0 : 1], yaw, range(gr, D.plate[0], D.plate[1])));
+      const cs = [];
+      if (row === 0) {
+        const n = Math.max(2, Math.ceil(len / 0.9));
+        for (let j = 0; j < n; j++) {
+          const f = j / (n - 1) - 0.5;
+          cs.push(colliders.add(x + Math.cos(yaw) * len * f * 0.95, z + Math.sin(yaw) * len * f * 0.95, rad + 0.05, 'trunk'));
+        }
+      }
+      out.push({
+        kind: 'log', mat: 'wood', look: 'range', x, z, r: Math.min(1.8, len * 0.5), h: rad * (row ? 2 + D.up : 2) + 0.2,
+        range: treeRuns.add(geos, null, BREAK.chip.far), colliders: cs, hp: RIDGE.hp, burns: false, topples: false, cover: true, lift: 0, wreck: false,
+        broken: row === 0 ? { range: stumpRuns.add(buildLog(gr, x, z, len * 0.6, rad * 0.8, yaw).geos, null, 0), r: len * D.stub * 0.5 } : undefined,
+      });
+      mark(x, z);
+      a += D.step / line;
+    }
+  }
+}
+
+/**
  * Places the forest's growth (forestTuning.js GROWTH, RIDGE) and returns its breakables' definitions.
  * Draws on `gr` only. `o`: the set's runs, colliders, spacing test and its spots (forest.js).
  */
 function growForest(o) {
-  const { gr, colliders, treeRuns, stumpRuns, rockRuns, rubbleRuns, brushRuns, deepRuns, treeSpots, buckets, tooClose, inLandmark, open, onRidge, treeBreakable, wearOf, WALL } = o;
+  const { gr, colliders, treeRuns, stumpRuns, rockRuns, rubbleRuns, brushRuns, deepRuns, treeSpots, buckets, tooClose, inLandmark, open, onRidge, treeBreakable, wearOf, WALL, kept } = o;
+  const far = (r) => r > G.phoneFar;
   const G = GROWTH, out = [];
   const cellOf = (x, z) => `${Math.floor(x / 4)},${Math.floor(z / 4)}`;
   const mark = (x, z) => {
@@ -1192,8 +1278,12 @@ function growForest(o) {
   };
   const wallOf = (r) => r > WALL.from;
 
-  // 1. the ridge: a ring of crags, the true end (they chip and crumble, and their rubble still blocks)
-  for (const row of [RIDGE, RIDGE.back]) {
+  // 1. the end of the map (`?forestEnd=a|b|c`, forestTuning.js): a the ridge, b a thicket wall, c a deadfall
+  const END = lookOf('forestEnd', 'a', 'a');
+  if (END === 'b') endThicket(o, out, mark);
+  else if (END === 'c') endDeadfall(o, out, mark);
+  // a: the ridge, a ring of crags (they chip and crumble, and their rubble still blocks)
+  else for (const row of [RIDGE, RIDGE.back]) {
     let a = -Math.PI + (row === RIDGE ? 0 : (0.5 * RIDGE.step) / RIDGE.r);
     while (a < Math.PI) {
       const line = ridgeAt(a), rr = line + row.out;
@@ -1215,11 +1305,37 @@ function growForest(o) {
   }
 
   // 2. young trees between the old ones (walkable band: colliders; they do not close the boss's lanes)
-  for (let i = 0, k = 0; i < 6000 && k < G.young.n; i++) {
-    const [x, z, r] = spot(G.young.band);
+  // (a young crown: lighter leaves, fresh growth, so the layers read under the old crowns)
+  const fresh = (g) => {
+    for (let j = 1; j < g.length; j++) {
+      const c = g[j].attributes.aCol, f = g[j].attributes.aFlag;
+      if (!c || !f || f.array[0] !== FLAG.LEAF) continue;
+      for (let v = 0; v < c.array.length; v++) c.array[v] *= G.youngLeaf;
+    }
+    return g;
+  };
+  // the treeline's edge: young trees and snags in front of the old crowns
+  for (let i = 0, k = 0; i < 6000 && k < G.edge.n; i++) {
+    const [x, z] = spot(G.edge.band);
+    if (!offPath(x, z) || inLandmark(x, z, 1) || tooClose(x, z, G.edge.gap) || !clearOf(x, z, G.edge.clear)) continue;
+    const roll = gr();
+    const type = roll < G.edge.snag ? 'dead' : roll < G.edge.snag + G.edge.pine ? 'pine' : 'oak';
+    const t = { x, z, s: range(gr, G.edge.s[0], G.edge.s[1]) * (type === 'dead' ? 1.2 : 1), type };
+    const g = type === 'pine' ? fresh(buildPine(gr, x, z, t.s)) : type === 'dead' ? buildDeadTree(gr, x, z, t.s) : fresh(buildOak(gr, x, z, t.s));
+    const c = colliders.add(x, z, 0.38 * t.s, 'trunk');
+    const def = treeBreakable(t, g, c, gr);
+    def.edge = 0;
+    out.push(def);
+    if (type !== 'dead') treeSpots.push({ x, z, r: (type === 'pine' ? 2.2 : 3.0) * t.s });
+    mark(x, z);
+    k++;
+  }
+  const atRimY = Math.round(G.young.n * G.young.rimShare);
+  for (let i = 0, k = 0; i < 12000 && k < G.young.n; i++) {
+    const [x, z, r] = spot(k < atRimY ? G.young.rim : G.young.band);
     if (!offPath(x, z) || inLandmark(x, z, 0.5) || onRidge(x, z, 1) || tooClose(x, z, G.young.gap) || !clearOf(x, z, 1.2)) continue;
     const t = { x, z, s: range(gr, G.young.s[0], G.young.s[1]), type: gr() < G.young.pine ? 'pine' : 'oak' };
-    const g = t.type === 'pine' ? buildPine(gr, x, z, t.s) : buildOak(gr, x, z, t.s);
+    const g = fresh(t.type === 'pine' ? buildPine(gr, x, z, t.s) : buildOak(gr, x, z, t.s));
     const c = colliders.add(x, z, 0.4 * t.s, 'trunk');
     const def = treeBreakable(t, g, c, gr);
     def.edge = 0;
@@ -1227,6 +1343,62 @@ function growForest(o) {
     treeSpots.push({ x, z, r: (t.type === 'pine' ? 2.2 : 3.0) * t.s });
     mark(x, z);
     k++;
+  }
+  // tall old pines over the crowns (the forest's height varies) and snags, dead trees standing
+  for (const [K, kind] of [[G.tall, 'tall'], [G.snag, 'snag']]) {
+    for (let i = 0, k = 0; i < 8000 && k < K.n; i++) {
+      const [x, z] = spot(K.band);
+      if (!offPath(x, z) || inLandmark(x, z, 0.5) || onRidge(x, z, 1) || tooClose(x, z, K.gap) || !clearOf(x, z, 1.2)) continue;
+      const type = kind === 'snag' ? 'dead' : gr() < K.pine ? 'pine' : 'oak';
+      const t = { x, z, s: range(gr, K.s[0], K.s[1]), type };
+      const g = type === 'pine' ? buildPine(gr, x, z, t.s) : type === 'dead' ? buildDeadTree(gr, x, z, t.s) : buildOak(gr, x, z, t.s);
+      if (type === 'oak') growOn(gr, t, g);
+      const c = colliders.add(x, z, (type === 'dead' ? 0.38 : 0.45) * t.s, 'trunk');
+      const def = treeBreakable(t, g, c, gr);
+      def.edge = 0;
+      out.push(def);
+      if (type !== 'dead') treeSpots.push({ x, z, r: (type === 'pine' ? 2.2 : 3.0) * t.s });
+      if (type !== 'dead') kept.push(t);
+      mark(x, z);
+      k++;
+    }
+  }
+  // dead trunks fallen against a standing tree: the foot on the ground, the top resting on its trunk
+  {
+    const L = G.leaner;
+    const cands = kept.filter((t) => {
+      const r = Math.hypot(t.x, t.z);
+      return r > L.band[0] && r < L.band[1] && t.s > 0.8;
+    });
+    for (let i = 0, k = 0; i < 600 && k < L.n && cands.length; i++) {
+      const t = cands[Math.floor(gr() * cands.length)];
+      if (t.leant) continue;
+      const len = range(gr, L.len[0], L.len[1]), rad = range(gr, L.rad[0], L.rad[1]), up = range(gr, L.at[0], L.at[1]);
+      const a = gr() * TAU, dx = Math.cos(a), dz = Math.sin(a);
+      const flat = Math.sqrt(Math.max(1, len * len - up * up));
+      const tx = t.x + dx * 0.38 * t.s, tz = t.z + dz * 0.38 * t.s, fx = tx + dx * flat, fz = tz + dz * flat;
+      let ok = true;
+      for (const f of [0.35, 0.7, 1]) {
+        const px = tx + dx * flat * f, pz = tz + dz * flat * f;
+        if (!offPath(px, pz) || inLandmark(px, pz, 0.5) || onRidge(px, pz, 1) || !clearOf(px, pz, f < 0.5 ? 0.2 : 0.6)) ok = false;
+      }
+      if (!ok) continue;
+      t.leant = true;
+      const geos = buildLeaner(gr, fx, fz, tx, up, tz, rad);
+      // (colliders along its low end: where it is under 1.6 m it is a wall to step round)
+      const cs = [];
+      for (let f = 1; f > 0; f -= 0.9 / flat) {
+        if (up * (1 - f) > 1.6) break;
+        cs.push(colliders.add(tx + dx * flat * f, tz + dz * flat * f, rad + 0.08, 'trunk'));
+      }
+      const mx = (tx + fx) / 2, mz = (tz + fz) / 2;
+      out.push({
+        kind: 'log', mat: 'wood', look: 'range', x: mx, z: mz, r: Math.min(1.8, flat * 0.5), h: up + rad,
+        range: treeRuns.add(geos), colliders: cs, topples: false, cover: false, lift: 0, wreck: false, wall: wallOf(Math.hypot(mx, mz)),
+      });
+      mark(mx, mz);
+      k++;
+    }
   }
 
   // 3. the thicket pressed behind the ridge (deep mesh: no collider, out of his reach)
@@ -1239,7 +1411,7 @@ function growForest(o) {
     const h = geosHeight(g);
     out.push({
       kind: t.type === 'dead' ? 'deadTree' : 'tree', mat: 'wood', look: 'range', x, z, r: 0.45 * t.s, h,
-      range: deepRuns.add(g, t.type === 'dead' ? null : (j) => j > 0, BREAK.chip.far),
+      range: (far(Math.hypot(x, z)) ? deepRuns : treeRuns).add(g, t.type === 'dead' ? null : (j) => j > 0, BREAK.chip.far),
       colliders: [], broken: { range: stumpRuns.add(buildStump(gr, x, z, t.s), null, 0), r: 0 },
       leafy: t.type === 'dead' ? 0 : 0.6, lift: 1, wear: wearOf(t.type, g.length), wall: true, hpK: WALL.hp, edge: 0,
     });
@@ -1326,7 +1498,7 @@ function growForest(o) {
         const geos = build(gr, x, z, s);
         out.push({
           kind, mat: 'wood', look: 'range', x, z, r: rk * s, h: Math.max(0.3, geosHeight(geos)),
-          range: (deep ? deepRuns : brushRuns).add(geos, leaf), colliders: [], topples: false, cover: false, lift: 0, wreck: false,
+          range: (far(r) ? deepRuns : brushRuns).add(geos, leaf), colliders: [], topples: false, cover: false, lift: 0, wreck: false,
           leafy, wall: wallOf(r),
         });
         treeSpots.push({ x, z, r: G.grass * s });

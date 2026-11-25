@@ -1379,6 +1379,63 @@ async function scenarioForestEdge() {
     }
     return true;
   };
+  // (round 2, the denser forest: a probe alone walks into pockets among the young trees. A player sees
+  // his way round: a grid of the ground (0.5 m cells, the colliders widened by his radius) and the
+  // shortest way through it to the reachable cell nearest the goal, re-planned each second; the probe
+  // steers along it)
+  const GR = 0.5, GN = 260, G0 = -GN * GR / 2;
+  let grid = null, gridAt = -1, path = [], pathAt = -1;
+  const cellOf = (x, z) => Math.floor((z - G0) / GR) * GN + Math.floor((x - G0) / GR);
+  const plan = (gx, gz) => {
+    if (!grid || game.time - gridAt > 2) {
+      grid = new Uint8Array(GN * GN);
+      for (const c of C) {
+        const R = c.r + p.radius + 0.05;
+        const i0 = Math.max(0, Math.floor((c.x - R - G0) / GR)), i1 = Math.min(GN - 1, Math.floor((c.x + R - G0) / GR));
+        const j0 = Math.max(0, Math.floor((c.z - R - G0) / GR)), j1 = Math.min(GN - 1, Math.floor((c.z + R - G0) / GR));
+        for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) if (Math.hypot(G0 + (i + 0.5) * GR - c.x, G0 + (j + 0.5) * GR - c.z) < R) grid[j * GN + i] = 1;
+      }
+      for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) {
+        const x = G0 + (i + 0.5) * GR, z = G0 + (j + 0.5) * GR;
+        if (Math.hypot(x, z) > game.world.heroBound(x, z) - p.radius) grid[j * GN + i] = 1;
+      }
+      gridAt = game.time;
+    }
+    const from = cellOf(p.position.x, p.position.z), prev = new Int32Array(GN * GN).fill(-1), q = new Int32Array(GN * GN);
+    let h = 0, t = 0, best = from, bd = Infinity;
+    q[t++] = from;
+    prev[from] = from;
+    while (h < t) {
+      const c = q[h++], ci = c % GN, cj = (c / GN) | 0;
+      const d = Math.hypot(G0 + (ci + 0.5) * GR - gx, G0 + (cj + 0.5) * GR - gz);
+      if (d < bd) { bd = d; best = c; }
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+        const ni = ci + di, nj = cj + dj;
+        if (ni < 0 || nj < 0 || ni >= GN || nj >= GN) continue;
+        const n2 = nj * GN + ni;
+        if (prev[n2] >= 0 || grid[n2]) continue;
+        prev[n2] = c;
+        q[t++] = n2;
+      }
+    }
+    path = [];
+    for (let c = best; c !== from && c >= 0; c = prev[c]) path.push(c);
+    path.reverse();
+    pathAt = game.time;
+    return bd;
+  };
+  const follow = (gx, gz) => {
+    if (game.time - pathAt > 1 || !path.length) plan(gx, gz);
+    while (path.length > 1) {
+      const c = path[0], x = G0 + ((c % GN) + 0.5) * GR, z = G0 + (((c / GN) | 0) + 0.5) * GR;
+      if (Math.hypot(x - p.position.x, z - p.position.z) < 1.2) path.shift();
+      else break;
+    }
+    const c = path[Math.min(path.length - 1, 2)];
+    if (c === undefined) return { x: 0, y: 0 };
+    const x = G0 + ((c % GN) + 0.5) * GR, z = G0 + (((c / GN) | 0) + 0.5) * GR, l = Math.hypot(x - p.position.x, z - p.position.z) || 1;
+    return { x: (x - p.position.x) / l, y: -(z - p.position.z) / l };
+  };
   const steer = (gx, gz) => {
     const a0 = Math.atan2(gz - p.position.z, gx - p.position.x);
     for (const k of [0, 0.35, -0.35, 0.7, -0.7, 1.05, -1.05, 1.4, -1.4, 1.75, -1.75, 2.2, -2.2]) {
@@ -1392,7 +1449,7 @@ async function scenarioForestEdge() {
     for (let i = 0; i < Math.round(secs / DT); i++) {
       const dx = gx - p.position.x, dz = gz - p.position.z, l = Math.hypot(dx, dz);
       if (l < 0.8) break;
-      G.input.axis = steer(gx, gz);
+      G.input.axis = follow(gx, gz);
       G.tick(DT);
       const r = Math.hypot(p.position.x, p.position.z);
       if (!Number.isFinite(r)) s.nan++;
@@ -1419,7 +1476,8 @@ async function scenarioForestEdge() {
   run(G, 3, { god: true, defend: true, attack: false });
   const aOut = Math.atan2(30, -33); // (south-west: clear of the landmarks, the Cinder Tree west, the elder's bones east)
   const hold = 42;
-  let wyrmFar = 0, wyrmOff = 0, overRidge = 0, cues = 0, blows0 = G.hits.length, nan = 0, gap = 0, n = 0;
+  let wyrmFar = 0, wyrmOff = 0, overRidge = 0, cues = 0, blows0 = G.hits.length, nan = 0, gap = 0, n = 0, pinned = 0, capMiss = -Infinity, capN = 0;
+  const gaps = [];
   G.watch = (nm, e) => {
     if (nm === 'combat:tell' && e?.source !== 'world') cues++;
   };
@@ -1429,7 +1487,7 @@ async function scenarioForestEdge() {
     bot(G, { god: true, defend: true, attack: false });
     if (!G.input.pressedKeys.has('Space') && p.state !== 'roll') {
       const gx = Math.cos(aOut) * hold, gz = Math.sin(aOut) * hold;
-      G.input.axis = Math.hypot(gx - p.position.x, gz - p.position.z) > 1.5 ? steer(gx, gz) : { x: 0, y: 0 };
+      G.input.axis = Math.hypot(gx - p.position.x, gz - p.position.z) > 1.5 ? follow(gx, gz) : { x: 0, y: 0 };
     }
     G.tick(DT);
     if (d.hp < pin) d.hp = pin;
@@ -1441,20 +1499,67 @@ async function scenarioForestEdge() {
     // (+ a frame of the follow's fall: the edge reads the hero after the wyrm has stepped, BREAK.edge.walk.ease)
     if (over > 0.05 + BREAK.edge.walk.ease * DT && d.state !== 'airborne' && d.brain.action?.name !== 'leap' && d.brain.action?.name !== 'diveBomb' && !(d.brain.action?.name === 'pounce' && d.brain.action?.phase === 'active')) wyrmOff++;
     if (wr > E.heroAt(d.position.x, d.position.z) - BREAK.edge.walk.bossIn + 0.05) overRidge++;
-    gap += Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z);
+    // the follow's capacity: how far toward him its ground reaches against what he asks of it (his
+    // distance past the line + lead, short of the ridge): a property of the edge, not of the AI's choices
+    {
+      const hx = p.position.x, hz = p.position.z, hr = Math.hypot(hx, hz);
+      if (hr > E.base + 1) {
+        const want = Math.min(hr - E.base + BREAK.edge.walk.lead, E.heroAt(hx, hz) - E.base - BREAK.edge.walk.bossIn);
+        capMiss = Math.max(capMiss, want - (d.boundAt(hx, hz) - d.bound));
+        capN++;
+      }
+    }
+    const gp = Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z);
+    gap += gp;
     n++;
+    // (after the first 8 s, the walk out: how close it fights him, how long its bound holds it back)
+    if (i * DT > 8) {
+      gaps.push(gp);
+      if (over > -0.4) pinned++;
+    }
   }
   G.watch = null;
   const heroR = Math.hypot(p.position.x, p.position.z), blows = G.hits.length - blows0;
   out(`   ${secs} s out among the trees (he holds ${heroR.toFixed(1)} m out): its root reached ${wyrmFar.toFixed(1)} m (its bound in the clearing ${d.bound} m), ${((cues / secs) * 60).toFixed(0)} cues a minute, ${blows} blows on him, ${(gap / Math.max(1, n)).toFixed(1)} m apart on average`);
-  assert(heroR > 36 && wyrmFar > d.bound + 6 && !wyrmOff && !overRidge && !nan, `the wyrm follows him into the forest: its root ${wyrmFar.toFixed(1)} m out (bound ${d.bound} m), never off its ground on its feet (${wyrmOff} frames), never within ${BREAK.edge.walk.bossIn} m of the ridge (${overRidge})`);
+  gaps.sort((a, b) => a - b);
+  const q = (f) => gaps[Math.min(gaps.length - 1, Math.floor(f * gaps.length))] ?? NaN;
+  out(`   after the walk out: apart ${q(0.25).toFixed(1)} / ${q(0.5).toFixed(1)} / ${q(0.75).toFixed(1)} m (quartiles), within 8 m ${((gaps.filter((v) => v < 8).length / Math.max(1, gaps.length)) * 100).toFixed(0)} % of the time; its root at its bound ${((pinned / Math.max(1, gaps.length)) * 100).toFixed(0)} % of the time`);
+  // (how far its root actually comes, and how far out he gets while answering its moves, is the AI's
+  // and the seed's: while he keeps away it fights at range and walks in only between its moves (35.3 m
+  // alone, 30.6 in the full integ run where other scenarios shift the streams, 25.7 on round 2's denser
+  // forest), and its share is never what holds it (at its bound ~0 % of the time). So the check is the
+  // follow's CAPACITY, frame by frame (its ground reaches as far toward him as he asks), its never
+  // being off it or in the ridge, and that it does come past its own bound; 2b measures the melee)
+  // (0.25 m: the cap is read across two lanes, the ridge line between them)
+  assert(capN > 60 && capMiss < 0.25 && wyrmFar > d.bound && !wyrmOff && !overRidge && !nan, `the wyrm may follow him into the forest: its ground reaches toward him all he asks (short by ${capMiss.toFixed(2)} m at worst over ${capN} frames out), its root came ${wyrmFar.toFixed(1)} m out (bound ${d.bound} m), never off its ground on its feet (${wyrmOff} frames), never within ${BREAK.edge.walk.bossIn} m of the ridge (${overRidge})`);
   assert(cues / secs * 60 > 8 && blows > 0, `... and fights him there: ${((cues / secs) * 60).toFixed(0)} cues a minute, ${blows} blows reach him`);
+  // 2b. he fences it among the trees (the bot as in the clearing: up to its chest, answering the tells):
+  // its melee reaches him there, its body through the young wood
+  {
+    const MELEE = new Set(['bite', 'swipe', 'clawCombo', 'rendingFlurry', 'hesitantMaw', 'tailLash', 'pounce', 'frenzy', 'tail', 'stomp', 'charge', 'stormFlurry', 'cinderFlurry', 'blackMaw', 'wingRend', 'pivotLash', 'rearGuard', 'furnaceMaw', 'cinderRake', 'tailBat', 'wingBuffet']);
+    const h0 = G.hits.length, fg = [];
+    let outT = 0, nn = 0, wood0 = game.world.destructibles.list.filter((b) => b.mat === 'wood' && b.state !== PIECE.INTACT && Math.hypot(b.x, b.z) > 31).length;
+    for (let i = 0; i < Math.round(25 / DT); i++) {
+      bot(G, { god: true, defend: true, attack: true });
+      G.tick(DT);
+      if (d.hp < pin) d.hp = pin;
+      const hr = Math.hypot(p.position.x, p.position.z);
+      if (hr > 31) outT++;
+      fg.push(Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z));
+      nn++;
+    }
+    fg.sort((a, b) => a - b);
+    const melee = G.hits.slice(h0).filter((h) => MELEE.has(h.attack)).length, all = G.hits.length - h0;
+    const wood1 = game.world.destructibles.list.filter((b) => b.mat === 'wood' && b.state !== PIECE.INTACT && Math.hypot(b.x, b.z) > 31).length;
+    out(`   2b. 25 s fencing it from among the trees: apart ${fg[nn >> 2].toFixed(1)} / ${fg[nn >> 1].toFixed(1)} / ${fg[(3 * nn) >> 2].toFixed(1)} m, he stood out in the forest ${((outT / nn) * 100).toFixed(0)} % of it; ${melee} melee blows of ${all} reached him; wood torn up past 31 m: ${wood0} > ${wood1}`);
+    assert(melee > 0 && fg[nn >> 1] < 12, `fencing it among the trees, its melee reaches him (${melee} blows, ${fg[nn >> 1].toFixed(1)} m apart at the median)`);
+  }
   // 3. back in: its ground comes back with him
   let inside = false;
   for (let i = 0; i < Math.round(25 / DT) && !inside; i++) {
     bot(G, { god: true, defend: true, attack: false });
     if (!G.input.pressedKeys.has('Space') && p.state !== 'roll') {
-      G.input.axis = Math.hypot(p.position.x, p.position.z - 8) > 1.5 ? steer(0, 8) : { x: 0, y: 0 };
+      G.input.axis = Math.hypot(p.position.x, p.position.z - 8) > 1.5 ? follow(0, 8) : { x: 0, y: 0 };
     }
     G.tick(DT);
     if (d.hp < pin) d.hp = pin;

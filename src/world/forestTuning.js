@@ -32,6 +32,19 @@ export const RIDGE = Object.freeze({
   brick: 2,
 });
 
+/**
+ * The end's other looks (`?forestEnd=a|b|c`, the owner picks; a: the RIDGE above). The same line, the
+ * same backstop (edge.js W); what stands on it differs:
+ *   b THICKET  a wall of dead trunks shoulder to shoulder (`step` m apart along the line, `rows` deep,
+ *              `out` m beyond it, trunk `r`), brambles between; wood that burns, but its stumps keep the
+ *              colliders (a burnt stretch stays shut, a row of black stumps)
+ *   c DEADFALL giant trunks fallen along the line, piled two high (`rad` m thick, `len` m long, `step`
+ *              m apart), their upturned root plates at the ends (`plate` m across); a stub that still
+ *              blocks when one is broken
+ */
+export const THICKET = Object.freeze({ step: 1.05, rows: Object.freeze([0.9, 2.0, 3.1]), r: 0.42, s: Object.freeze([0.95, 1.35]), bramble: 0.8, stub: 1 });
+export const DEADFALL = Object.freeze({ step: 2.9, len: Object.freeze([3.2, 3.5]), rad: Object.freeze([0.95, 1.25]), out: 1.4, up: 1.3, top: 0.85, plate: Object.freeze([2.4, 3.2]), plates: 0.5, stub: 0.9, grey: 1.5 });
+
 /** The ridge's line at angle `a` (rad, atan2(z, x)): m from the centre. */
 export function ridgeAt(a) {
   let r = RIDGE.r;
@@ -54,7 +67,18 @@ export function ridgeAt(a) {
  *   moss     hanging moss under an oak's crown: a share `chance` of the oaks get `n` strands, `len` m
  */
 export const GROWTH = Object.freeze({
-  young: Object.freeze({ n: 90, band: Object.freeze([30, 46.5]), s: Object.freeze([0.5, 0.78]), gap: 2.3, pine: 0.45 }),
+  // (round 2, 2026-11-25: the lead's "the rim views look almost the same": the forest made visibly
+  // denser at the game camera, layered: young trees between the old crowns, half of them at the
+  // treeline, tall old pines over them, snags, trunks fallen against the living)
+  young: Object.freeze({ n: 240, band: Object.freeze([28, 46.5]), rim: Object.freeze([28, 36]), rimShare: 0.45, s: Object.freeze([0.45, 0.85]), gap: 1.9, pine: 0.45 }),
+  /** the treeline steps into the clearing: young trees and snags at its edge, in front of the old crowns (the fight's treeline) */
+  edge: Object.freeze({ n: 70, band: Object.freeze([25.5, 31.5]), s: Object.freeze([0.45, 0.8]), gap: 2.4, pine: 0.45, snag: 0.2, clear: 1.6 }),
+  /** a young tree's crown is fresh growth: its leaves x this (lighter than the old crowns: the layers read) */
+  youngLeaf: 1.25,
+  tall: Object.freeze({ n: 40, band: Object.freeze([33, 46]), s: Object.freeze([1.35, 1.7]), gap: 3.0, pine: 0.6 }),
+  snag: Object.freeze({ n: 50, band: Object.freeze([28.5, 46]), s: Object.freeze([0.7, 1.15]), gap: 2.0 }),
+  /** dead trunks fallen against a standing old tree: `len` m, `rad` m thick, resting `at` [lo, hi] of the way up its trunk */
+  leaner: Object.freeze({ n: 18, band: Object.freeze([32, 45]), len: Object.freeze([4.5, 6.5]), rad: Object.freeze([0.2, 0.32]), at: Object.freeze([2.2, 3.4]) }),
   thicket: Object.freeze({ n: 170, band: Object.freeze([50.5, 60]), s: Object.freeze([0.75, 1.15]), gap: 2.0, pine: 0.5, dead: 0.12 }),
   bush: Object.freeze({ n: 150, band: Object.freeze([27.5, 46.5]), deep: 60, s: Object.freeze([1.0, 1.6]) }),
   fern: Object.freeze({ n: 120, band: Object.freeze([27.5, 46.5]), deep: 40, s: Object.freeze([1.1, 1.7]) }),
@@ -70,8 +94,11 @@ export const GROWTH = Object.freeze({
   brushGap: 2.1,
   /** m of grass thinned round a piece of undergrowth, x its scale */
   grass: 1.1,
-  /** the quality (destructibles' q) below which the deep mesh (beyond the ridge) is not drawn */
+  /** the quality (destructibles' q) below which the deep mesh is not drawn (the phone) */
   phoneDeep: 0.7,
+  /** m from the centre past which wood stands on the deep mesh (the phone's closer camera never sees
+   *  past this from the end of the map; the old forest's far trees included) */
+  phoneFar: 60,
   /** keep clear of the bonfire's path: m either side of x = 0 south of z 27 (the path's own width + this) */
   pathPad: 0.6,
 });
