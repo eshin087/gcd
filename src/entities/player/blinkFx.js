@@ -4,10 +4,10 @@
 // cut read as instant: the eye gets the line, not the swing. Drawn with the sword arc's own strokes
 // (fx.js `|` strokes in the additive pool, its colours), so it is the same ink as the arc beside it.
 //
-// A clip's `slash` [u0, u1, len, 'point'?]: the blade's point is read as the attack's phase passes u0
-// and u1 (the two frames it crosses his front), and the line runs through both, `len` m long, centred
-// between them; with 'point' (the thrust) it runs along the blade, ahead of the point. One line per
-// attack. Nothing outside the blink chain, nothing on a dead hero, no allocation, no Math.random.
+// A clip's `slash` [u, len, left, up]: as the attack's phase passes u (the blade crossing his front) the
+// line appears before him at chest height, `len` m long, in the plane he faces, along (left, up): a
+// placed line at a chosen sharp angle, not the blade's own curved path. [u, len, 'point'] (the thrust):
+// along the blade, on past the point. One line per attack. Nothing outside the blink chain, nothing on a dead hero, no allocation, no Math.random.
 
 import { SWINGS } from './swings.js';
 import { lightsMode } from './combat.js';
@@ -16,8 +16,9 @@ import { DIM } from './model.js';
 /** The line's look: strokes, their size at the middle (m), life (s) at the ends … the middle, the
  *  hairline that outlasts it, the colours (the arc's: white-hot → its core → the indigo it cools to). */
 export const SLASH = {
-  n: 28, size: 0.09, life: [0.16, 0.3], hair: { size: 0.035, life: 0.42, alpha: 0.5 },
+  n: 30, size: 0.13, life: [0.14, 0.3], flash: { size: 0.19, life: 0.05 }, hair: { size: 0.045, life: 0.95, alpha: 0.7 },
   hot: [3.0, 3.5, 4.3], core: [1.5, 2.1, 2.8], end: [0.14, 0.1, 0.8], floor: 0.05,
+  ahead: 1.35, height: 1.15, // where a cut's line is centred: m before him, m up (x his drawn scale)
 };
 
 export class BlinkFx {
@@ -26,7 +27,6 @@ export class BlinkFx {
     this.game = player.game;
     this.rec = null; // the attack record the line belongs to
     this.st = 0; // 0 waiting for u0, 1 for u1, 2 drawn
-    this.A = [0, 0, 0];
     this.T = [0, 0, 0];
     this.H = [0, 0, 0];
     this.lines = 0; // drawn so far (tests)
@@ -46,6 +46,14 @@ export class BlinkFx {
     return Number.isFinite(T[0] + T[1] + T[2] + H[0] + H[1] + H[2]);
   }
 
+  /** Is this attack an instant cut that draws its own line (player.js: then no round arc behind the blade)? */
+  owns(at) {
+    const P = this.p, d = at?.def;
+    if (!d || lightsMode() !== 'blink') return false;
+    const an = P.anim?.atkDef === d ? P.anim.atkAnim : null;
+    return !!(an?.clip && SWINGS[an.clip]?.slash);
+  }
+
   /** Per frame (player._updateFx). */
   update() {
     const P = this.p, at = P.atk, d = at?.def;
@@ -62,24 +70,17 @@ export class BlinkFx {
     }
     if (this.st === 2 || !(at.t >= d.windup)) return;
     const u = 1 + (at.t - d.windup) / Math.max(1e-4, d.active);
-    if (!this._blade()) return;
-    if (this.st === 0 && u >= S[0]) {
-      this.A[0] = this.T[0];
-      this.A[1] = this.T[1];
-      this.A[2] = this.T[2];
-      this.st = 1;
-    } else if (this.st === 1 && u >= S[1]) {
-      this.st = 2;
-      this._draw(S);
-    }
+    if (u < S[0] || !this._blade()) return;
+    this.st = 2;
+    this._draw(S);
   }
 
   _draw(S) {
-    const fx = this.p.fx?.add;
+    const P = this.p, fx = P.fx?.add;
     if (!fx?.spawn) return;
-    const A = this.A, T = this.T, H = this.H, len = S[2];
+    const T = this.T, H = this.H, len = S[1];
     let dx, dy, dz, cx, cy, cz;
-    if (S[3] === 'point') {
+    if (S[2] === 'point') {
       // along the blade, from mid-blade on past the point
       dx = T[0] - H[0];
       dy = T[1] - H[1];
@@ -92,17 +93,15 @@ export class BlinkFx {
       cy = T[1] + dy * len * 0.2;
       cz = T[2] + dz * len * 0.2;
     } else {
-      dx = T[0] - A[0];
-      dy = T[1] - A[1];
-      dz = T[2] - A[2];
-      const l = Math.hypot(dx, dy, dz);
-      if (!(l > 0.05)) return;
-      dx /= l;
-      dy /= l;
-      dz /= l;
-      cx = (A[0] + T[0]) / 2;
-      cy = (A[1] + T[1]) / 2;
-      cz = (A[2] + T[2]) / 2;
+      // before him, at chest height, in the plane he faces: S[2] to his left (+), S[3] up (+)
+      const yaw = Number(P.yaw) || 0, fwx = Math.sin(yaw), fwz = Math.cos(yaw), lx = fwz, lz = -fwx;
+      const k = P.drawScale || 1, l = Math.hypot(S[2], S[3]) || 1, a = S[2] / l, b = S[3] / l;
+      dx = lx * a;
+      dy = b;
+      dz = lz * a;
+      cx = P.position.x + fwx * SLASH.ahead * k;
+      cy = (P.position.y || 0) + SLASH.height * k;
+      cz = P.position.z + fwz * SLASH.ahead * k;
     }
     // the stroke's turn on the screen (as fx.js alongRot)
     const C = this.game.camera?.matrixWorld?.elements;
@@ -113,7 +112,7 @@ export class BlinkFx {
     }
     const o = this._o, n = SLASH.n, seg = len / n;
     o.rot = rot;
-    for (let pass = 0; pass < 2; pass++) {
+    for (let pass = 0; pass < 3; pass++) {
       for (let i = 0; i < n; i++) {
         const f = (i + 0.5) / n, s = (f - 0.5) * len;
         const y = cy + dy * s;
@@ -128,10 +127,19 @@ export class BlinkFx {
           o.sizeEnd = size * 0.12;
           o.stretch = Math.min(30, (seg / size) * 1.8);
           o.life = SLASH.life[0] + (SLASH.life[1] - SLASH.life[0]) * w;
-          o.color = w > 0.8 ? SLASH.hot : SLASH.core;
+          o.color = w > 0.92 ? SLASH.hot : SLASH.core;
           o.alpha = 0.55 + 0.45 * w;
+        } else if (pass === 2) {
+          // the flash: for four frames the middle of the line is a blade of light
+          if (w < 0.55) continue;
+          o.size = SLASH.flash.size * w;
+          o.sizeEnd = SLASH.size;
+          o.stretch = Math.min(30, (seg / o.size) * 1.8);
+          o.life = SLASH.flash.life;
+          o.color = SLASH.hot;
+          o.alpha = 1;
         } else {
-          // the hairline: thinner, fainter, the last of it to go
+          // the hairline: thinner, fainter, the last of it to go (the lines of a chain hang together)
           o.size = SLASH.hair.size;
           o.sizeEnd = SLASH.hair.size * 0.5;
           o.stretch = Math.min(40, (seg / SLASH.hair.size) * 1.6);

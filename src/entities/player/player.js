@@ -3213,7 +3213,8 @@ export class Player {
         // the blade meets the world too (ADR-107): what it sweeps through is chipped, cut down, felled
         if (prevT <= end) this._cutWorld(a, sw, prevT);
         // (the arc bites as a cut lands: white-hot for 0.06 s of the attack clock after the contact)
-        this.fx.trail(sw.pa, sw.pb, sw.a, sw.b, d.kind, crit, true, a.hit && a.hitAt >= 0 && a.t - a.hitAt < 0.06);
+        // (an instant cut, ?lights=blink, draws one straight line instead of the round arc: blinkFx.js)
+        if (!this.blinkFx?.owns(a)) this.fx.trail(sw.pa, sw.pb, sw.a, sw.b, d.kind, crit, true, a.hit && a.hitAt >= 0 && a.t - a.hitAt < 0.06);
         // a glint on the arc's edge as the cut comes through (the cleave cuts late in its dash). The
         // edge runs just past the steel's point (fx.arcAt), not at the end of the reach. A landed
         // cut's core is the beat's one star: a whiff keeps the glint
