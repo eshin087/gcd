@@ -5706,6 +5706,9 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   forearm's: the spin, the figure-eight, the salute, the rite and the breath turned the blade 66-129° off the forearm
   and the fist off the wrist. They now lead with the forearm (`armAlong`: the elbow placed, the forearm aimed where the
   blade goes, the blade a little off it): 31-52° at worst, and `heroidles` holds every idle action to 60°.
+  Then, at the game camera, "the right hand ... looks very jagged": the forearm stood upright beside his head showed
+  as a ragged column of vambrace letters. The raised moves (salute, rite, breath) bring the fist before his chest
+  instead (`RAISE`), the forearm at ~32° and the wrist cocked 40-54°, his head and shoulder covering the forearm.
 
 ## ADR-187 — The run's free arm: three carries for the owner to compare, by speed the default (2026-11-24)
 

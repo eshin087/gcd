@@ -22,6 +22,14 @@ off it. The spin is a quick swirl of the point round the forearm (±28° / ±24�
 Worst blade-to-forearm angle: spin 129 → 45°, figure-eight 101 → 52°, salute 82 → 31°, rite 66 → 33°, breath 80 →
 39° (the rests 16-17°, as before). `heroidles` now holds every action to 60°.
 
+**Then, at the game camera** (the owner: "something about the right hand from normal camera angle makes it look
+very jagged and weird looking"): stood upright beside his head, the raised forearm showed from behind and above as a
+ragged column of the vambrace's tan letters (hiding the forearm in a render took it away). The salute, the rite and
+the breath now bring the fist up before his chest near his middle (`RAISE`, `armRaise`), the forearm rising at ~32°
+toward it and the wrist cocked the rest of the way, where his head and shoulder cover the forearm as they did before
+the forearm led. Wrist 54 / 40 / 49° (under the 60° bar), elbows ≥ 61°. `armPath` no longer allocates per frame.
+Film: the three moves at the game camera, main | the forearm upright | now.
+
 **Measured.** heroidles passes: elbows R ≥ 62°, the blade ≥ 22 cm off his body; every move from every rest and from
 inside every action within the stance before. Films: four close angles of every idle (camera lean off), and the five
 moves before | after.
