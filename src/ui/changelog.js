@@ -18,6 +18,15 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-25',
+        title: 'The game is called gcd',
+        notes: [
+          'The game has a new name, gcd, written in lower case: on the title screen, in the browser tab and here.',
+          'gcd is the hero too: a mysterious being who wields the most powerful sword in all universes. The sword lets him defeat these legendary bosses, and it carries him between campfires in different worlds and universes.',
+          'The game moves to a new address with its name, so your key bindings, records and learned techniques start fresh.',
+        ],
+      },
+      {
         date: '2026-11-24',
         title: 'The bosses look built from letters, like the hero',
         notes: [

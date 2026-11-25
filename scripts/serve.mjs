@@ -39,4 +39,4 @@ http
       res.end(data);
     });
   })
-  .listen(port, () => console.log(`ABYSS dev server: http://localhost:${port}`));
+  .listen(port, () => console.log(`gcd dev server: http://localhost:${port}`));

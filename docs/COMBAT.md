@@ -1,6 +1,6 @@
 # Combat design
 
-ABYSS is an action RPG, not a stamina-gated soulslike. Fights are about **reading tells** and
+gcd is an action RPG, not a stamina-gated soulslike. Fights are about **reading tells** and
 answering them with **block, parry or a perfectly timed dodge** — inspired by Phantom Blade Zero's
 attack tells, read from the enemy itself rather than from HUD text, and by Sekiro's deflect
 exchanges: an enemy's combo is met blow by blow. Numbers live in `src/combat/rules.js` (shared) and
@@ -2995,7 +2995,7 @@ singles ~25 %; P3 strings ~42 %, fire ~41 %.
 
 **Difficulty (measured, ADR-033).** Integration bots (`tests/integration/integ.mjs`): `win` is a
 god-mode defender that answers every tell; the opt-in `probe` is a mortal bot that answers a share
-of them (`ABYSS_SKILL`, default 0.8; `node tests/integration/integ.mjs . probe`) and fights until it
+of them (`GCD_SKILL`, default 0.8; `node tests/integration/integ.mjs . probe`) and fights until it
 wins or dies. The v0.5 probe runs were at 4200 HP, before the last bump to 4500 (+~7 % fight length);
 the v0.6 runs are one run each at 4500 HP (the sims are seeded, but one run is one sample).
 

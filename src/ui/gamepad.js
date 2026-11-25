@@ -19,7 +19,7 @@ import { relabelChips } from './dom.js';
 // the D-pad / stick moves a focus over its buttons, A presses one, B or Menu resumes; in the CONTROLS
 // panel LB / RB switch tabs, A picks a row and the next button press is its new binding.
 // Active = the pad is the device in use (its last input is newer than the last keyboard / mouse /
-// touch event): `html.abyss-pad` swaps the on-screen hints to pad buttons. A button held across a
+// touch event): `html.gcd-pad` swaps the on-screen hints to pad buttons. A button held across a
 // screen change (menu ↔ play, the CONTROLS panel) counts only once it is let go, so the A that
 // closes the title never rolls, the Menu that resumes never pauses again. Rumble where supported.
 
@@ -356,7 +356,7 @@ export class GamepadControls {
 
   _setActive(on) {
     this.active = on;
-    globalThis.document?.documentElement?.classList?.toggle('abyss-pad', on);
+    globalThis.document?.documentElement?.classList?.toggle('gcd-pad', on);
     this.game.hud?.root?.classList?.toggle('ab-pad', on);
     relabelChips(); // every "[@action]" chip now shows the pad button (or the key again)
     if (!on) this._clearFocus();

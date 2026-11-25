@@ -5,6 +5,41 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-25 — The game is called gcd (ADR-195; Opus agent)
+
+**Owner:** the game and its hero are now **gcd**, lowercase wherever a player sees it; the lore: a
+mysterious being with the most powerful sword in all universes, the sword that beats the bosses and carries
+him between campfires in different worlds and universes. New repo `eshin087/gcd`, new site
+https://thegcd.vercel.app (the owner renames GitHub and Vercel after this merges; no redirect).
+
+- **Renamed (text only, no behaviour):** the tab title (`gcd`, the stale "Ember Wyrm Demo" dropped), the
+  start-failure text, WHAT'S NEW's header (`gcd v0.4.0`), the dev server's log line; the title `LOGO`
+  redrawn as a small lowercase "gcd" in the same block / box-drawing face, six rows, every row 26 columns
+  (the shimmer still finds its '█'); env vars `GCD_*` (suites, `tests/run.mjs`, docs); classes
+  `gcd-touch` / `gcd-pad`, style ids `gcd-lab-style` / `gcd-training-style`, the hero-parts temp file,
+  `.claude/launch.json` `gcd-dev`; storage keys `gcd.*` (no migration: the new address cannot read the old
+  site's storage); `package.json` name / repo / homepage / description, the lock file's name; every doc,
+  the credits and their generator (`build-sfx.py`: "made for gcd"). The Hall's and the Plaza's comments
+  now describe worlds and universes gcd's sword carries him to. No player-visible boss or level line named
+  the old world.
+- **Kept:** the music track "Ambience of a Fallen Age (The Abyss)" by Umplix (its credit, its `trackList.js`
+  comment, its source file `the_abyss.wav` in `build-music.py`, the ADR-117 track list): a credit stays
+  accurate. The banners' block letterforms are unchanged (the logo's comment no longer claims them); the
+  block-letter test now checks the face on GCD.
+
+**Verified.** `npm run build`; a repo-wide `grep -ri` for the old name (only the track); the glyph
+check (three storage / style consts lost their UPPER_CASE names: the check reads those as glyph strings and
+'g' is not in the atlas); `npm test` ALL 27 PASSED. The title shimmer drew `Math.random()` once per '█'
+a tick, and the seeded sims share that stream: the new logo (55 blocks, 118 before) moved every seeded fight
+and five jobs failed on their margins (`city win`, `city pace`, `sheath`, `woke`, `duel`). Now the sparkle has
+its own xorshift, and the title still draws the first logo's count from `Math.random` (its blocks per column,
+`STREAM_COLS`), so no logo or title layout can move a fight; the sims replay as on main.
+
+**Open.** After the merge the live site's saved data resets (new keys) until the address moves; the title
+screen's layout is being redesigned on another branch, which will meet this LOGO change.
+
+---
+
 ## 2026-11-25 — The grass bends round the hero's wake and springs back (ADR-193; Opus agent; PR #124)
 
 **Owner:** "when the player runs through the grass, the ground/grass around it becomes too dark too
@@ -268,8 +303,8 @@ automatically".
 - **Where the time went:** CI 8 - 10 min, set by one task (`lord fxlooks`, 539 s; the other shares 3.7 - 7
   min), then `life` (430 s). One run took 42 min because a share waited 33 min for a runner (GitHub's
   concurrent-job limit with several PRs open). Most of a PR's life (0.2 - 17 h) was waiting for the merge.
-- **Split:** lord.mjs `ABYSS_FX` parts; fxlooks' TERRAIN-under-every-look check (about 90 % of it) runs one
-  look per process; life.mjs `ABYSS_SKIP`, its files in three processes; every est in run.mjs re-measured.
+- **Split:** lord.mjs `GCD_FX` parts; fxlooks' TERRAIN-under-every-look check (about 90 % of it) runs one
+  look per process; life.mjs `GCD_SKIP`, its files in three processes; every est in run.mjs re-measured.
   Locally (32 cores) fxlooks went from 248 s to its longest part 84 s; every part passed on its own.
 - **Auto-merge:** `.github/workflows/automerge.yml` runs `gh pr merge --auto --squash` on opened / reopened /
   ready PRs (same repo, not draft, no `hold` label). CLAUDE.md's PR rule now says so.
@@ -438,7 +473,7 @@ rush health and flasks refill and a death retries the boss with the clock runnin
 - `game/rank.js` + `rankTuning.js`: `rankRun` (S / A / B / C, marks UNTOUCHED / DEATHLESS / NO FLASK) and
   `compareRank` (grade, then time). Not `grade.js` (that is the screen's colour grade).
 - `game/records.js`: `buildRecord` (the one writer of the run record, `v: 1`) and the `Records` store
-  (`abyss.records.v1`: per level and the rush, clears + best time + best grade; the last 24 records).
+  (`gcd.records.v1`: per level and the rush, clears + best time + best grade; the last 24 records).
 - `game/eligibility.js`: what voids a run (the Lab, cheats, `__tick`, `debug.toState`, `?stage=lab`,
   `?tech=`, fourteen gameplay URL switches found by a sweep of every parameter the game reads).
 - `game/rush.js`: the rush across page loads in sessionStorage; `game/recorder.js` (`flow.recorder`):
@@ -1250,7 +1285,7 @@ now **public** (the 2026-11-22 CI entry below says private), so standard runners
   share), longest first, each to the lightest share: every task in exactly one share, a new task dealt
   by itself. `--list` prints the shares.
 - lord runs as three tasks: `fxlooks` (it replays SPELLS and TERRAIN under four looks: about half the
-  suite), `pace`, and the rest. lord.mjs, duel.mjs and asc.mjs take a comma list and `ABYSS_SKIP`.
+  suite), `pace`, and the rest. lord.mjs, duel.mjs and asc.mjs take a comma list and `GCD_SKIP`.
 - ci.yml: `changes` (is anything outside docs/, *.md, .claude/ changed?), four `tests I/4` jobs
   (fail-fast off), `build`, and `test-and-build`, which waits for them and is still the one required
   check (no protection change). Docs only: tests and build skip, `test-and-build` passes in seconds.
@@ -1837,7 +1872,7 @@ own plates and shards are drawn in). From the game camera it read as a ring of m
   `Math.random`) and `lord.mjs` pace seed 4242 form 2 met a void push told at 109.68 s and a rim shard
   his crescent felled at 110.07 s, their flashes 0.25 s apart (main passes the seed on its own
   sequence). The push's hold could not clear it, so now the piece lands uncued and harmless when a
-  blow of his already cued needs the other answer near its landing. `ABYSS_PDBG=1` showed the order.
+  blow of his already cued needs the other answer near its landing. `GCD_PDBG=1` showed the order.
 
 **Options, rendered for the owner** (in-game sheets, kept locally and not committed: on the
 path, both sides of the crater and pulled back, and a close-up of each piece): A the shrine the star
@@ -2079,7 +2114,7 @@ a storm with lightning and rain; arenas b and c behind `?ring=`); `src/entities/
   suite of that run 1.5 - 1.8x slower than `main`'s. Measured here: the same 0.3 - 0.6 ms on `main` and on
   this branch, alone, beside four suites, and with the whole run pinned to 4 cores. His suite made the
   4-core runner's pool heavier, so `tests/run.mjs` now runs that one wall-clock scenario ALONE after the
-  parallel tasks (`ALONE`; world.mjs takes `ABYSS_SKIP` and a comma list). The budget itself is unchanged.
+  parallel tasks (`ALONE`; world.mjs takes `GCD_SKIP` and a comma list). The budget itself is unchanged.
 
 **Verification:** `npm test` (11 suites: integ x5, lord, asc, duel, world, glyph check, changelog check)
 and `npm run build`: see the PR. Browser (headless Edge on the real GPU, 1280 x 720 and 852 x 393): every
@@ -2728,7 +2763,7 @@ machine has cores (`--jobs N`, `--serial`), each task's output printed whole whe
 with every task's time, exit 1 if any failed. Ten tasks: `integ` (`all` without the scenarios
 below), `integ hero + world` (11 scenarios as a comma list), TIMING in three parts, `lord`, `duel`,
 `world`, the glyph check, the changelog check. `integ.mjs` gained three options for it: a comma
-list of scenarios, `ABYSS_SKIP` (left out of `all`) and `ABYSS_TM_SHARD=k/n` (every n-th attack of
+list of scenarios, `GCD_SKIP` (left out of `all`) and `GCD_TM_SHARD=k/n` (every n-th attack of
 TIMING's own list). A new scenario or a new attack is covered without touching the runner; a name
 the runner lists that no longer exists fails the run.
 
@@ -2736,8 +2771,8 @@ the runner lists that no longer exists fails the run.
 
 **Verification:** the split run passes the same number of checks per scenario as the single run
 (compared scenario by scenario; TIMING's four and the five end-of-run checks repeat per process).
-`npm test` green four at a time, `npm run build` green. Bad values (`ABYSS_TM_SHARD=4/3`, an unknown
-name in a list or in `ABYSS_SKIP`) fail.
+`npm test` green four at a time, `npm run build` green. Bad values (`GCD_TM_SHARD=4/3`, an unknown
+name in a list or in `GCD_SKIP`) fail.
 
 **Open:** the check across scenarios (the event catalogue's "every event has a consumer") runs in
 the `integ` task only; if a new event's only consumer lives in a scenario of the second
@@ -5707,7 +5742,7 @@ glyphs for the creatures; a brighter outline to find the hero; red flash + white
 **Goal:** the owner's v0.2 feedback (see Session 1) plus a long-term repo/deploy setup.
 
 **Done**
-- GitHub repo `eshin087/gcdAbyss` (public) + Vercel project `gcdabyss` (Git integration, `main` =
+- GitHub repo `eshin087/gcd` (public) + Vercel project `thegcd` (Git integration, `main` =
   production, PR previews, 30-day retention). `main` is protected: PR + green `test-and-build`
   required, even for admins (ADR-006).
 - Rendering: one screen-space ASCII grid for everything (ADR-007) — procedural grass meadow, stone

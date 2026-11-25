@@ -1,10 +1,11 @@
 import { createScriptHall, HALL } from '../world/scriptHall.js';
 import { WokenOne } from '../entities/enemies/wokenOne/wokenOne.js';
 
-// The Hall of Falling Script: a written world the Abyss dreams, and Xin Yi, the One Who Woke, who woke
-// inside it and stayed to keep it from being unwritten (ADR-156, ADR-157; ARCHITECTURE.md → "The One
-// Who Woke"). One arena on the origin whose three scenes morph into each other (world/scriptHall.js
-// `scenes`); the bonfire waits at the foot of the path to the south.
+// The Hall of Falling Script: a written world, a universe of its own that gcd's sword carries him to,
+// and Xin Yi, the One Who Woke, who woke inside it and stayed to keep it from being unwritten
+// (ADR-156, ADR-157; ARCHITECTURE.md → "The One Who Woke"). One arena on the origin whose three
+// scenes morph into each other (world/scriptHall.js `scenes`); the bonfire waits at the foot of the
+// path to the south.
 const H = HALL;
 
 export const SCRIPTHALL = Object.freeze({

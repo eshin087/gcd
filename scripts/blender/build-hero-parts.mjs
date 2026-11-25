@@ -24,7 +24,7 @@ const candidates = [
 ].filter(Boolean);
 const blender = candidates.find((c) => c === 'blender' || existsSync(c));
 
-const dims = path.join(os.tmpdir(), `abyss-hero-dims-${process.pid}.json`);
+const dims = path.join(os.tmpdir(), `gcd-hero-dims-${process.pid}.json`);
 await fs.writeFile(dims, JSON.stringify({ DIM, BODY, HAIR_CLUSTERS, REST, CAPE_SHEETS }));
 const out = path.join(root, 'src', 'entities', 'player', 'heroParts.js');
 const r = spawnSync(blender, ['--background', '--factory-startup', '--python-exit-code', '1', '--python', path.join(here, 'hero_parts.py'), '--', dims, out, ...process.argv.slice(2)], { stdio: 'inherit' });

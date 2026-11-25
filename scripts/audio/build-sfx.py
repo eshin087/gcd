@@ -1,6 +1,6 @@
 """Builds the game's recorded / designed combat one-shots (assets/audio/sfx/): the attack sounds, the blue /
 red cues and the combat core (parries, hurt, the hero's cuts and their landings, the flurry, the plunge, the
-clash, the boss's guard). Recorded clips are CC0 from OpenGameArt; designed ones were made for ABYSS.
+clash, the boss's guard). Recorded clips are CC0 from OpenGameArt; designed ones were made for gcd.
 
     python scripts/audio/build-sfx.py --picks <picks.json> --manifest <recorded.json> [--manifest ...]
                                       [--designed <designed.json> ...] [--cand <dir>]
@@ -14,7 +14,7 @@ clash, the boss's guard). Recorded clips are CC0 from OpenGameArt; designed ones
             licence_check, start_s, dur_s, ... }. `file` is the candidate clip (a WAV), absolute or
             relative to --cand (default: that manifest's folder, then its cand/<slot>/).
 --designed  a manifest of DESIGNED clips (repeatable; { "files": [...] } of { file, slot, name, idea,
-            recipe, ... }): sounds made for ABYSS, credited as such (no licence check).
+            recipe, ... }): sounds made for gcd, credited as such (no licence check).
 
 Needs ffmpeg on PATH, numpy. For each picked clip: decoded to mono 44.1 kHz, head and tail silence
 trimmed, a 6 ms fade at the end, loudness-matched inside its slot (the loudest 100 ms window's RMS to
@@ -220,7 +220,7 @@ def write_credits(built):
             e = x['src']
             if e['_designed']:
                 idea = md(e.get('name'))
-                rows.append(f"| {WHAT.get(slot, slot)} | Made for ABYSS: \"{idea}\" ({md(e.get('idea'))}) | ABYSS | made for ABYSS | (designed for the game) | `{x['file']}` |")
+                rows.append(f"| {WHAT.get(slot, slot)} | Made for gcd: \"{idea}\" ({md(e.get('idea'))}) | gcd | made for gcd | (designed for the game) | `{x['file']}` |")
                 continue
             page = e.get('source_page', '')
             slug = page.rstrip('/').rsplit('/', 1)[-1].replace('-', ' ')
@@ -235,7 +235,7 @@ def write_credits(built):
         '',
         'The recorded combat sounds (the attack sounds, the blue / red cues, the parries, the hurt, the slam,',
         'the plunge, the clash) are one-shots from OpenGameArt.org, used under **CC0 1.0**; the "Licence check"',
-        'column is what was checked on each page. The designed ones were made for ABYSS (procedural, no',
+        'column is what was checked on each page. The designed ones were made for gcd (procedural, no',
         'outside source). The owner picks them by ear; `scripts/audio/build-sfx.py` trims, loudness-matches and',
         'encodes them into `assets/audio/sfx/` (the game plays its synth sounds for any slot without a file).',
         '',

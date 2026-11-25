@@ -1,4 +1,7 @@
-# ABYSS — ASCII action RPG demo: *The Cinder Wyrm*
+# gcd — an ASCII wuxia boss rush
+
+gcd is a mysterious being who wields the most powerful sword in all universes: it is what lets him
+defeat these legendary bosses, and what carries him between campfires in different worlds and universes.
 
 A playable vertical slice of a long-term browser action RPG: a black-coat swordsman, a moonlit forest
 clearing, a ring of broken standing stones, and a sleeping wyvern curled in the bones of the last ones
@@ -8,7 +11,7 @@ stamina — see [docs/COMBAT.md](docs/COMBAT.md).
 
 ## Play it
 
-**Online:** https://gcdabyss.vercel.app
+**Online:** https://thegcd.vercel.app
 
 **Offline:** open `dist/index.html` in Chrome or Edge (double-click; it's one self-contained file).
 

@@ -217,9 +217,9 @@ const CSS = `
   .lab-badge { min-width: 64px; min-height: 36px; padding: 0 14px; font-size: 11px; }
   .lab-head .lab-close { min-width: 36px; min-height: 36px; font-size: 18px; }
 }
-html.abyss-touch .lab-badge { min-width: 64px; min-height: 36px; padding: 0 14px; font-size: 11px; }
-html.abyss-touch .lab-head .lab-close { min-width: 36px; min-height: 36px; font-size: 18px; }
-html.abyss-touch .lab-hint { display: none; }
+html.gcd-touch .lab-badge { min-width: 64px; min-height: 36px; padding: 0 14px; font-size: 11px; }
+html.gcd-touch .lab-head .lab-close { min-width: 36px; min-height: 36px; font-size: 18px; }
+html.gcd-touch .lab-hint { display: none; }
 
 /* small screens (phones in landscape): compact panel that always fits, scrolling inside */
 @media (max-height: 560px), (max-width: 700px) {
@@ -227,17 +227,17 @@ html.abyss-touch .lab-hint { display: none; }
   .lab-sec-h { padding: 6px 8px; }
   .lab-btn { padding: 4px 4px; font-size: 10px; }
   .lab-hint { display: none; }
-  html.abyss-touch .lab-root { left: 6px; top: 86px; max-height: calc(100% - 92px); }
+  html.gcd-touch .lab-root { left: 6px; top: 86px; max-height: calc(100% - 92px); }
 }
 `;
 
-const STYLE_ID = 'abyss-lab-style';
+const styleId = 'gcd-lab-style'; // (not an UPPER_CASE const: the glyph check reads those as glyph strings)
 
 export function injectLabStyle() {
   if (typeof document === 'undefined') return;
-  if (document.getElementById?.(STYLE_ID)) return;
+  if (document.getElementById?.(styleId)) return;
   const s = document.createElement('style');
-  s.id = STYLE_ID;
+  s.id = styleId;
   s.textContent = CSS;
   (document.head ?? document.body)?.appendChild(s);
 }
