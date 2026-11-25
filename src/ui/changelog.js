@@ -19,6 +19,24 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-25',
+        title: "The dragon's neck and head move naturally: no upside-down head, no flips",
+        notes: [
+          'The Cinder Wyrm no longer turns its head upside down when it flies, climbs or wheels round, and no longer looks straight back over its own spine.',
+          'Its neck no longer snaps round in a single frame as you get behind it, its last bite in the storm flurry no longer bends its neck sideways away from its head, and its bites no longer flick the head round at the start.',
+          'Its head stays upright with its body in every move, with the neck twisting naturally to keep it there.',
+          'Through your flurry it loses you: its head no longer chases each blink.',
+        ],
+      },
+      {
+        date: '2026-11-25',
+        title: 'The sword hand looks natural in the idle tricks',
+        notes: [
+          "In the wrist spin, the figure-eight, the salute and the sword spells, the hero's forearm now leads the blade, so his sword fist no longer twists off his wrist.",
+          'In the salute and the spells the fist rises before his chest, so his raised arm no longer looks jagged from the game camera.',
+        ],
+      },
+      {
+        date: '2026-11-25',
         title: 'Shadows cost less, and their edges stop crawling',
         notes: [
           'The moon\'s shadows look the same, but the trees, rocks and walls that do not move are no longer drawn into them again every frame: the game does far less work for them.',

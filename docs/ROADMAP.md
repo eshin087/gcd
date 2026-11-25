@@ -86,6 +86,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Wyrm motion: flip-free rig, planted feet, the painting's resting display, idle life, strike
       lead, parry arc, weighted death (ADR-025)
 - [x] Wyrm wakes without the neck twist; the drake head drawn for the view from above (ADR-189)
+- [x] The wyrm's neck and head reviewed move by move: level head, no flips, no detached head (ADR-203)
 - [x] Every wyrm fire travels from it; roar-cast spells and a brood of fire; a walk-out forest (ADR-197)
 - [x] The owner's picks for ADR-197's looks (incant, drakeling, serpent, vortex, forestEnd, meteorSource, wallSource): the defaults kept (2026-11-25)
 - [ ] The wyrm presses in when the hero stands out among the trees (it fights at range there)
@@ -237,6 +238,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Measured in his own frame (joints, the blade's gaps, the coat, pops) and every move from every rest and every action against the stance before; scenario `heroidles`; the Lab's `idles` / `idle ▸` rows
 - [x] Films before | after sent to the owner (exploring, the fight, the cuts; and the in-game view)
 - [x] Round 2 at the owner's call: the sword arm as picked in every rest (hilt, trail and the flip dropped); three sword spells in the green flame (rite, sigil, breath)
+- [x] The sword hand in the tricks and spells: the forearm leads the blade (≤ 60° off it, was up to 129°)
 - [ ] The owner's picks (which rests / tricks to keep, their pace); played on the iPhone
 - [ ] The pass behind his back into the left hand (the sword must be able to change hands: a rig change)
 - [ ] The block's / roll's / charge's own short entries out of a far blade (the whips left are theirs)

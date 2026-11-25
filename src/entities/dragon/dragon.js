@@ -8,7 +8,7 @@ import { damp, lerp, clamp, turnToward, yawTo, angleDiff, wrapAngle } from '../.
 import { TELL, TELL_STYLE, RESULT, POSTURE, tellDefaults, dodgeOnly, isFlare } from '../../combat/rules.js';
 import { TUNING, SCALE } from './tuning.js';
 import { buildDrake, SHED } from './model.js';
-import { Rig, createPose, resetPose } from './rig/anim.js';
+import { Rig, createPose, resetPose, NECK_MODE } from './rig/anim.js';
 import { Brain, SEQ, NO_PLUNGE } from './ai.js';
 import { ATTACKS, MELEE, perPhase, wyrmMark } from './attacks.js';
 import { DragonFx } from './fx.js';
@@ -860,9 +860,14 @@ export class Dragon {
   _sensePlayer(dt) {
     const s = this.sense, p = this.game.player;
     if (!p?.position) return;
-    const pos = p.position;
+    // (while his flurry blinks round it the wyrm cannot follow him: it keeps where it last saw him,
+    // its head and body no longer chasing each blink to a new spot round and over its head; once he
+    // stops it finds him again at its own turn rates. ?neck=0: it tracked every blink, as before)
+    const lost = NECK_MODE !== '0' && p.state === 'flurry' && s.hasLast;
+    const pos = lost ? s.pos : p.position;
     if (!Number.isFinite(pos.x + pos.z)) return;
-    if (s.hasLast && dt > 0) {
+    if (lost) s.vel.set(0, 0, 0);
+    else if (s.hasLast && dt > 0) {
       const vx = (pos.x - s.last.x) / dt, vz = (pos.z - s.last.z) / dt;
       if (vx * vx + vz * vz > 400) {
         // a teleport (Ghostep, respawn, Lab): don't fling the aim / timing predictions
@@ -878,8 +883,10 @@ export class Dragon {
     s.last.copy(pos);
     s.hasLast = true;
     s.pos.copy(pos);
-    if (typeof p.getChestPos === 'function') p.getChestPos(s.chest);
-    else s.chest.set(pos.x, pos.y + 1.2, pos.z);
+    if (!lost) { // (lost: the chest where it was last seen)
+      if (typeof p.getChestPos === 'function') p.getChestPos(s.chest);
+      else s.chest.set(pos.x, pos.y + 1.2, pos.z);
+    }
     if (!Number.isFinite(s.chest.x + s.chest.y + s.chest.z)) s.chest.set(pos.x, 1.2, pos.z);
     const dx = pos.x - this.position.x, dz = pos.z - this.position.z;
     s.dist = Math.hypot(dx, dz);

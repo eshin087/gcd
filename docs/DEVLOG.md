@@ -5,6 +5,75 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-25 — The wyrm's neck and head reviewed move by move (ADR-203; branch `dragon/neck-motion`)
+
+**Owner:** "the dragon does weird neck movements when hes flying as well. in general review all the dragon neck
+movements and make sure it looks natural and accurate and not buggy".
+
+**How.** An audit in headless Edge (a scratch module stepping each of the 50 moves, the stagger and both phase
+roars from a fresh page, frame by frame) against an untouched main checkout served side by side; the numbers
+first, then films of the flagged moves (the wings hidden for a clean view of the neck, then the real look). Four
+faults (ADR-203): the head leveled only at rest (upside down in flight), look points under / behind / over it
+swinging it round, the driven shown neck buckling away from its pinned head on a strike's first frame, and
+`headExact` with no turn limit. Fixed in `_updateNeck` and `Chain.apply` (a twist spread down the chain).
+
+**Owner, round 2** (played the first pass, now `?neck=b`): "the head got worse when flying and when it does a
+ground perfect parry attack": it rolled oddly and looked the wrong way. The default (`?neck=c`) holds the head
+upright against its own body, not the sky, and lets it look where its move points it (a shoulder limit, the side
+swapped once a foe is clearly round the other side); `?neck=0` is the wyrm before.
+
+**Owner, round 3** (played c): "c is almost all good but ... during a perfect dodge/parry slow time effect the
+dragon seems to home into the players teleporting movement and makes it do a bad angle". Its sense of the hero
+read his chest every frame, so through his flurry its look point chased each blink round and over its head
+(12 - 28 m of travel, its body turning up to 46° after him). Now it keeps where it last saw him until the flurry
+ends (`Dragon._sensePlayer`, c and b; 0 as before): 0 m, 0°. The head still flinches at each cut, as on main. The owner: "Ship c": c is the default, b and 0 stay behind `?neck=`.
+
+**Lessons.** Leveling needs an unwrapped, rate-limited correction: the plain shortest angle swapped between +180
+and -180 and spun the neck 50° a frame; fading it out near vertical brought the flips back. 'Up' for a head
+pointing down must lean along the heading the head holds, not the chest's forward (that leaned a head glancing
+back against the sky) nor the snout's own heading (it spins as a wheeling flight's snout points past its foe).
+Runs must start from a fresh page: one move after another left each starting where the last ended.
+
+**Verified.** The audit before / after (every move), films before / after, `npm test`. The pressure scenario's
+seeded fights drift (the mouth sits a little differently); a 20-seed sweep on main and the branch compared the
+gaps between cues.
+
+**Open.** The tail lash's windup level lags up to ~60° for a few frames as the head swings over the top; the
+leap's and pounce's neck strikes stay fast (the measured solve's own steps).
+
+---
+
+## 2026-11-25 — The idles' sword hand: the forearm leads the blade (ADR-186 amended)
+
+**Owner:** "something about the idle animations on the right hand looks weird in terms of angle and unnatural feel.
+show me close angles", then, on the four-angle review films: "Fix the big angles".
+
+**Cause.** The sword fist is built on the SWORD's frame (gear/wanderer.js, so the fingers wrap the grip in every
+pose) while the back of the hand and the cuff are the forearm's. The owner's stances keep the blade within ~7° of
+the forearm's line; the spin, the figure-eight, the salute, the rite and the breath turned it 66-129° off it, so the
+fist twisted off the wrist.
+
+**Fix.** `idles.js armAlong / armPath`: those moves place the elbow and aim the forearm where the blade goes, the hand
+a forearm's length on along that aim (from the at-ease arm, `EASE_ELBOW` / `EASE_AIM`); the blade leans only a little
+off it. The spin is a quick swirl of the point round the forearm (±28° / ±24°), the figure-eight an 8 round its line
+(±26° / ±19°); the salute, the rite and the breath raise the forearm with the blade, the elbow forward of the ribs.
+Worst blade-to-forearm angle: spin 129 → 45°, figure-eight 101 → 52°, salute 82 → 31°, rite 66 → 33°, breath 80 →
+39° (the rests 16-17°, as before). `heroidles` now holds every action to 60°.
+
+**Then, at the game camera** (the owner: "something about the right hand from normal camera angle makes it look
+very jagged and weird looking"): stood upright beside his head, the raised forearm showed from behind and above as a
+ragged column of the vambrace's tan letters (hiding the forearm in a render took it away). The salute, the rite and
+the breath now bring the fist up before his chest near his middle (`RAISE`, `armRaise`), the forearm rising at ~32°
+toward it and the wrist cocked the rest of the way, where his head and shoulder cover the forearm as they did before
+the forearm led. Wrist 54 / 40 / 49° (under the 60° bar), elbows ≥ 61°. `armPath` no longer allocates per frame.
+Film: the three moves at the game camera, main | the forearm upright | now.
+
+**Measured.** heroidles passes: elbows R ≥ 62°, the blade ≥ 22 cm off his body; every move from every rest and from
+inside every action within the stance before. Films: four close angles of every idle (camera lean off), and the five
+moves before | after.
+
+---
+
 ## 2026-11-25 — The still shadow map (ADR-201; branch `render/shadow-cache`)
 
 **Owner:** "is there anything we can change to ensure that laptop has 60 fps without sacrificing much?";

@@ -4,7 +4,19 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and two pieces of work since 0.4.0:
+One hundred and four pieces of work since 0.4.0:
+- **The dragon's neck and head move naturally: no upside-down head, no flips** (2026-11-25, ADR-203). *Fixed:* every one of the
+  Cinder Wyrm's 50 moves was measured frame by frame (how fast each neck joint and the head turn, how far the
+  head rolls off level, where it looks). Its head no longer rolls upside down in flight (the sky dive's climb,
+  the hunting flights' wheels, the hover barrage's rise), it no longer looks straight back over its own spine
+  (the meteors' roar now goes up at the sky facing forward), its neck no longer snaps 60 - 150° in a frame as a
+  foe crosses behind it (the tail lash, the tail sweep, the rakes), the last bite of the storm flurry no longer
+  buckles the neck sideways and draws the head apart from it, and a bite's first frame no longer flicks the
+  head 75° in one go. The head stays upright against its own body in every move, the neck twisting with it, and through the hero's flurry it no longer chases his blinks (`?neck=c|b|0`).
+- **The sword hand looks natural in the idle tricks** (2026-11-25, ADR-186). *Fixed:* in the wrist spin, the
+  figure-eight, the salute and the rite and breath spells, the hero's sword fist no longer twists off his wrist:
+  his forearm now leads the blade, which stays close to its line, as it does in his stances; in the salute and the
+  spells the fist rises before his chest, so the raised forearm no longer shows as a jagged stick from the game camera.
 - **Shadows cost less, and their edges stop crawling** (2026-11-25, ADR-201). *Changed:* the moon's shadows are the
   same, but what does not move (trees, rocks, walls, the broken pieces at rest) is no longer drawn into them
   again every frame, only when something in it changes: the shadow pass draws 15 - 79 % fewer triangles a

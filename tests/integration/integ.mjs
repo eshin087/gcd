@@ -11705,7 +11705,10 @@ async function scenarioHeroIdles() {
   }
   for (const R of actRow) {
     const where = `${R.fight ? 'the guard' : 'at ease'}, ${R.name}`;
-    assert(R.played > 30 && R.eR >= 60 && R.eL >= 40 && R.kMax <= 145, `${where}: plays (${R.played} frames); the elbows ≥ R ${R.eR.toFixed(0)}° (60) L ${R.eL.toFixed(0)}° (40), the sword wrist ≤ ${R.kMax.toFixed(0)}° (145: anim.js WRIST_BACK, 128°, and the point's floor after it)`);
+    // (the sword wrist: the fist is built on the sword's frame, the back of the hand on the forearm's; past ~60°
+    // off the forearm's line the fist turns off the wrist, "the right hand looks weird in terms of angle": the
+    // moves that swing or raise the blade lead with the forearm, idles.js armAlong)
+    assert(R.played > 30 && R.eR >= 60 && R.eL >= 40 && R.kMax <= 60, `${where}: plays (${R.played} frames); the elbows ≥ R ${R.eR.toFixed(0)}° (60) L ${R.eL.toFixed(0)}° (40), the sword wrist ≤ ${R.kMax.toFixed(0)}° off the forearm (60; the spin reached 129, the figure-eight 101)`);
     // (the inspect wipes the flat with the free hand, the rite lays the sword fingers on it: the arm meets
     // the steel there on purpose)
     assert(R.core <= -0.08 && (R.arm <= -0.08 || ((R.name === 'inspect' || R.name === 'rite') && R.arm <= 0)) && R.cross <= R.frames * 0.02,
