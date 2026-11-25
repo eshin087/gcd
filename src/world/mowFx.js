@@ -4,6 +4,8 @@ import { gis } from '../render/glyphs.js';
 import { GRASS } from './grassTuning.js';
 import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
 import { GrassSpray, sprayLook } from './grassSpray.js';
+import { dgGrassOpt } from './dragonGrass.js';
+import { groundLook } from './ground.js';
 
 // The cut tops (ADR: grass the sword cuts, round 2). When a tear (world/scorch.js: the sword's mow, a
 // mark's blow) cuts a blade, the blade's stub stays in the meadow (grass.js: the lower part of its own
@@ -215,6 +217,12 @@ export class MowFx {
     this.spray = sl === '0' || this.look === 'r1' || this.chips ? null : new GrassSpray(game, sl);
     this._wide = this.spray?.T.wide ?? 1;
     if (this.spray?.T.fresh2 != null && gu.uMowFresh2) gu.uMowFresh2.value = this.spray.T.fresh2;
+    // the dragon ground's printed tufts (world/dragonGrass.js, `?ground=b&dgGrass=a|a2|c`) read the scorch
+    // map's A, not the blades' bytes: the arc's cut is written there too; with no 3D blades drawn (a, a2)
+    // no cut top of a hidden blade flies (the chips still do)
+    const dgo = groundLook() === 'b' ? dgGrassOpt() : '0';
+    this._printTear = dgo === 'a' || dgo === 'a2' || dgo === 'c';
+    this._noTops = dgo === 'a' || dgo === 'a2';
   }
 
   /** The swing's way for the cuts that follow (grass.js mowSwing): unit (ux, uz), k its strength. */
@@ -372,6 +380,7 @@ export class MowFx {
   }
 
   _spawn(i, x, z, v0, cx, cz, bare) {
+    if (this._noTops) return;
     const B = this.grass.blades, U = this.game.U, F = GRASS.fly, look = this.look;
     const h = B.root[i * 4 + 2], tilt = B.data[i * 4 + 1];
     const rx = U.uCamRight.value, up = U.uBladeUp.value;
@@ -515,6 +524,8 @@ export class MowFx {
       }
     }
     f.on = false;
+    // (the printed tufts: the strip the arc cut, mown in A, after the blades so their chips fly first)
+    if (this._printTear) this.sc.tearLine(ax, az, bx, bz, hw, GRASS.mow.maxK);
     this.arcCut += n;
     return n;
   }

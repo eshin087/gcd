@@ -1,10 +1,11 @@
 import * as THREE from 'three';
-import { COMMON_GLSL, WIND_GLSL, WIND_FRONTS_LEN, TRAIL_N, TRAIL_CH, TRAIL_SEG } from '../render/shaderLib.js';
+import { COMMON_GLSL, WIND_GLSL, WIND_FRONTS_LEN, TRAIL_N, TRAIL_CH } from '../render/shaderLib.js';
 import { gi, gis } from '../render/glyphs.js';
 import { mulberry32, pickWeighted, fbm2 } from '../core/rng.js';
 import { GRASS } from './grassTuning.js';
 import { mowOn } from './scorch.js';
 import { mowLook } from './mowFx.js';
+import { TRAIL_BEND_GLSL } from './grassTrail.js';
 
 // Hundreds of thousands of grass blades, each ONE glyph stroke ( | / \ ' Y V ... ) standing
 // on the ground, leaning with the wind, pushed aside by feet, flattened by wing gusts and
@@ -137,56 +138,9 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
       uniform vec4 uBend, uBendT, uBendS, uBendE;
       varying vec2 vUv;
 
-      // The hero's wake (world/grassTrail.js; its bendAt is this function on the CPU: keep the two the
-      // same). The nearest stretch of his last positions (the newest wins where two cross): there the blade
-      // bends along his way and out from his path, falling off smoothly to the stretch's radius; it holds,
-      // then springs back by its own time (edges sooner). Returns the tip's push (xz, in blade heights) and
-      // in w how bent it is (0..1: the drop and the shade).
-      vec4 trailBend(vec2 p, float hsh) {
-        float best = 0.0, bf = 0.0, bs = 0.0, bage = 0.0;
-        vec2 bo = vec2(0.0), bt = vec2(0.0);
-        int n = int(uBend.y + 0.5);
-        for (int c = 0; c < ${TRAIL_CH}; c++) {
-          vec4 C = uTrailBox[c];
-          if (C.z <= 0.0 || distance(p, C.xy) > C.z) continue;
-          for (int k = 0; k < ${TRAIL_SEG}; k++) {
-            int i = c * ${TRAIL_SEG} + k;
-            if (i + 1 >= n) break;
-            vec4 A = uTrail[i], D = uTrail[i + 1];
-            vec2 e = D.xy - A.xy;
-            float l2 = dot(e, e);
-            float t = l2 > 1e-6 ? clamp(dot(p - A.xy, e) / l2, 0.0, 1.0) : 1.0;
-            float r = mix(A.w, D.w, t);
-            if (r <= 0.01) continue;
-            vec2 q = p - (A.xy + e * t);
-            float ql = length(q);
-            float s = ql / r;
-            if (s >= 1.0) continue;
-            float age = mix(A.z, D.z, t);
-            float f = 1.0 - s * s;
-            f *= f;
-            float w = f * exp(-max(0.0, age - uBendT.x) / (uBendT.y * 2.0));
-            if (w > best) {
-              best = w; bf = f; bs = s; bage = age;
-              float l = sqrt(l2);
-              bt = l > 1e-3 ? e / l : vec2(0.0);
-              bo = ql > 1e-4 ? q / ql : bt;
-            }
-          }
-        }
-        if (best <= 0.0) return vec4(0.0);
-        float tau = uBendT.y * (1.0 - uBendT.w + 2.0 * uBendT.w * hsh) * (1.0 + (uBendE.y - 1.0) * bs);
-        float x = max(0.0, bage - uBendT.x);
-        float ex = exp(-x / tau);
-        float R = uBendT.z > 0.01 ? ex * (cos(uBendT.z * x) + sin(uBendT.z * x) / (uBendT.z * tau)) : ex * (1.0 + x / tau);
-        vec2 d = bt * uBendS.y + bo * (uBendS.z * smoothstep(0.0, 0.45, bs));
-        float ja = (fract(hsh * 9.13 + 0.27) - 0.5) * uBendE.z;
-        float ca = cos(ja), sa = sin(ja);
-        d = vec2(d.x * ca - d.y * sa, d.x * sa + d.y * ca);
-        float dl = length(d);
-        d = dl > 1e-3 ? d / dl : bo;
-        return vec4(d * (bf * R * uBendS.x), 0.0, bf * max(R, 0.0));
-      }
+      // The hero's wake (world/grassTrail.js TRAIL_BEND_GLSL: one chunk, shared with the printed tufts;
+      // GrassTrail.bendAt is its CPU copy)
+      ${TRAIL_BEND_GLSL}
       varying vec3 vCol;
       varying float vGlyph;
       void main() {
