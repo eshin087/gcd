@@ -101,6 +101,43 @@ fight's trace byte-identical to main; films at 1x on desktop and the phone view.
 
 ---
 
+## 2026-11-24 — The idles, round 2: the sword arm as picked in every rest; three sword spells (ADR-186 amended)
+
+**Owner** (on a still of the `hilt` rest beside the belt): "some of the new idle animations have worse unnatural
+poses or angles ... the old one was holding the sword correctly in both angles. analyze all the new idle animations
+and ensure it all looks good and natural. also add more dynamic interesting cool idle moments like the main character
+casting some kind of cool subtle spell with his swords, to make the player curious about the true power of the sword".
+
+**Audit** (every rest, habit and trick at the game camera and from the side and front, strips and full frames):
+- `hilt` (both hands on the hilt before him): from the game camera behind him the blade vanished behind his body, and
+  the wrist turned the steel out of the fist. Dropped.
+- `trail` (the blade low behind him): the sword wrist bent 50-60° off the forearm. Dropped.
+- `flip` (the reverse-grip flip): the wrist folded to 143°. Dropped.
+- `regrip` brought the blade before him with both hands (hidden from behind): now the grip eases and closes where the
+  blade hangs, the blade turning a quarter and dipping through the fingers, the free hand shaking out.
+- Rule kept from now on: every rest keeps the at-ease sword arm the owner picked (ADR-114: the blade on the forearm's
+  line, out at his front-right); the rests change only the free arm, the weight and the head. New: `fingers` (sword
+  fingers low by the hip, guard()'s old rest) and `cloak` (the hand at the cloak's edge on his breast).
+
+**Spells** (idles.js SPELLS, drawn by `swordMystic.js` from `anim.spell`; motion alone with `?mystic=0`), in the
+trick pool: the **rite** (the blade raised beside his shoulder, his sword fingers drawn up the flat, the flame burning
+up behind them and embers lifting off the point), the **sigil** (the point lowered, a ring of the flame's marks written
+round him at knee height, fading together), the **breath** (the blade upright, head bowed, the flame swells and a
+thread of marks circles him once and a half and returns into the steel). In the flame's own tiny green letters: a
+ring of 52 read as specks at the game camera, 150 (a mark every ~3.5 cm) reads as a line; on the ground or at the
+shin the grass hid it.
+
+**Measured.** Rests: the sword wrist ≤ 17° in all four (was 28-64° in hilt / trail), elbows R ≥ 128°. Actions: the
+blade ≥ 16 cm off his body; the rite's free forearm lies 5 cm from the flat (its fingers are on it, as the inspect's).
+Every move from every rest and from inside every action within the stance before (at ease: run 9.0, light 80, roll
+41, block 53, drink 6, charge 13 cm a frame²). Left alone 90 s: 17 actions, 4 of them tricks or spells, all four rests.
+Suites: heroidles, swordmystic, herolife, herohand, heroarms, herostance, hero, herolook, lord `moves`.
+
+**Films:** the close review (before | after, game camera over the close side view) and the in-game one (the whole
+720p frame at the real game camera), both re-shot.
+
+---
+
 ## 2026-11-24 — The run's free arm: three carries (ADR-187; branch `claude/hero-run-arms-2e2cb5`)
 
 **Owner** (the hero motion pass, three sessions: idle, the run's arm, the light chain): "when he runs i want him to
@@ -172,6 +209,89 @@ his blade printed the steel's raw HDR colour. The art / prop test now comes firs
 filming the sword options for ADR-182 (closed PR #105); PR #114 shipped the flame without it. Measured before / after at
 the game camera: 17 – 49 px over the bloom threshold round the resting blade, then none. Verified: the whole
 `npm test` and `npm run build`.
+
+---
+
+## 2026-11-24 — The hero's idles: rests, habits with both arms, sword tricks; the guard hand off the belt (ADR-186; branch `claude/hero-idles-2776d8`)
+
+**Owner:** "make the main character and several idle positions instead of having the same holding his left hand on his
+hip all the time. i want him to move both his arms around naturally and doing cool sword tricks during idle". Asked by
+the lead: a MIX (mostly natural habits with both arms, a flashy trick every few cycles); BOTH stances, the fight
+tighter with the hand off the belt and no big tricks. One of three parallel sessions (idle, run arm ADR-187, lights
+ADR-188), each in its own region of `anim.js`.
+
+**What.** `player/idles.js` (new) layers three things over the two stances (`stances.js`, `stand()`):
+- **Rests** at ease (`loose`: the free arm hanging, the hand open and heavy; `hilt`: both hands low on the hilt, the
+  point to the grass; `trail`: the blade low behind his right side; `belt`: the hand on the belt as before), one held
+  7 - 12 s and changed over 1.3 s. In the guard the free hand leaves the belt for one of four (`point`: sword
+  fingers at the foe; `eye`: beside his face; `hand`: an open guard hand; `low`: floating by the hip), 4 - 7 s each.
+- **Habits** with both arms at ease (re-grip, the shoulders, flex the free hand, brush the coat, plus the old look
+  and inspect), and in the guard small ones (grip, guard shift, loosen, beckon, a flick of the point), locked on too.
+- **Tricks** every 3 - 4 actions at ease, never in a fight: the wrist spin, the figure-eight, the salute (the blade
+  upright before his face, palm over fist, a bow), the chiburi flick, the reverse-grip flip.
+`?idles=old` (and the Lab's PLAYER `idles` row) is the belt with the six old actions; the `idle ▸` row plays any
+rest or action now. Scenario `heroidles`.
+
+**How it got here (measured, not judged from stills).** Every rest and action measured in his own frame: elbows,
+the sword wrist, the drawn blade's gap to body and arms, the coat sheets, the point over the grass, the free hand,
+the pop audit; and every move (run, light, roll, block, drink, charge) from every rest and from a third and two
+thirds into every action, against the stance before. What the numbers threw out:
+- A fifth rest, the blade carried on the shoulder: the elbow at the fold limit (43°), the blade 1 cm in the torso,
+  and leaving it for a run / roll / charge swung the point 0.7 - 1.4 m a frame. Dropped.
+- The guard hand raised over his head: the free elbow whipped down 0.4 m a frame into a block or a charge. Now
+  beside his face.
+- Actions that swing the blade started from the trail rest crossed his body: they start only from a low rest (a
+  trick due in the trail first moves him to the loose rest). The blade keeps its way round through an action
+  (`dirLerp`'s memory): a spin's target past the far side flipped the sweep.
+- A block's own 0.08 s entry from a blade far round him (the trail, the spin's high back quarter) took the way
+  behind his head through the wrist's limit: 1.0 - 1.8 m a frame. At ease only, out of a trick or the trail, a
+  block, a drink or a charge now enters over 0.24 s, and the spin's plane leans out 46° (its high back quarter now
+  goes round the front).
+- The pass behind his back to the left hand: the sword is the right hand's alone (`apply()` poses it from the sword
+  arm), and from behind his back a block's entry turned the blade past the wrist's limit (1.5 m a frame). Replaced
+  by the salute; a true hand-off needs a rig change (follow-up).
+- The old lean on the pommel whipped a light from it by 1.4 m a frame (as before this pass): kept for `?idles=old`.
+
+**Measured (worst, cm a frame²; the stance before: bare / with its old actions).** At ease into a run 9.6 (1.2 /
+12.4), light 80 (61-80 / 195), roll 38 (29 / 201), block 54 (53 / 98), drink 10 (4 / 24), charge 14 (9 / 22). In
+the guard every move within the bare guard's own (light 80 / 72-80, roll 25 / 25, block 23 / 21). Rests: elbows
+R ≥ 95°, L ≥ 53°, the blade 19 - 54 cm off his body; actions: the blade ≥ 11 cm off his body (the salute's upright
+blade before his cheek), never through the coat, pops ≤ 8 cm. Left alone 90 s at ease: 17 actions, 4 of them
+tricks, all four rests; 40 s in the guard: 9 habits, all four guard hands, no trick.
+
+**Films** (sent to the owner, before | after, the game camera over a close side view, half-speed copies): the
+scratchpad's `rig/out/idle_explore`, `idle_fight`, `idle_cuts` (.mp4, -half.mp4).
+
+**Open.** The owner's taste on each rest / trick (the films); the behind-the-back pass needs the sword to change
+hands (a rig change); the block's / roll's / charge's own short entries out of a far blade (outside this session's
+files; the run session saw the same with the free arm); on-device feel unverified.
+
+---
+
+## 2026-11-24 — The bosses printed the hero's way (ADR-194; branch `render/boss-hero-ink`)
+
+**Owner:** sent the hero at the game camera: "the bosses need to look more like my character look where my character
+looks like its all built with ascii ... i especially love the gray colored details to make the bottom of the cape look
+flowing and to show different shades on the upper top ... show me what the bosses would look like". After the first
+sheet: "im not really seeing the difference besides a reshade". After the second: "Yes, own colours".
+
+**Finding.** Six of the seven human bosses already print in the hero's ink-line art, same letters and cells. Apart
+were their fills (flat dark: the Lord and Xin Yi a faint `+` mass in a thin bright outline; flat bright: Wen Yao,
+Halcyon), the outline (a 1 px hairline; the hero's steps with his font pixels), the plate rims (white; his dotted
+lavender) and the hem (none). Lu Wusheng printed in the wyrm's digits.
+
+**What shipped.** `?bossPrint=0|a|b` (b default). materials.js: the shared `uBossPrint` lifts every boss part's fill
+(3 - 16) to the hero's lit body in the shader (so forms, phases, clones and the Lab all go through it) and prints the
+cloth below the knee as the hem part along a ragged line; `SG_HERO_SELF` keeps the player out. pipeline.js
+`uBossLike`: his lines per font pixel and the player's tables for plates 12 - 16 (not the blade, which the hero's
+cuts light). main.js writes both every frame (the feet followed). `sheathArt` default a. Lab LOOKS row.
+
+**How.** Prototyped live (a scratch module patching each boss's `uArtFill` + a per-material hem uniform), rendered
+at 1920x1080 in headless Edge, the game's 58 degree camera from 36 m, crops x4; then moved into the shaders and
+rendered again against `?bossPrint=0`: the same as the prototype for all seven.
+
+**Open:** the owner has not seen it in play or on the phone. The wyrm, the props and the animals are next in this
+direction (their own art paths). The bosses' slimmer outfits still show fewer letters across than the hero's cloak.
 
 ## 2026-11-24 — Session 92: smaller combat text
 

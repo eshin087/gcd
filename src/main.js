@@ -293,6 +293,17 @@ async function boot() {
     // ... and a kit may ask for them a cell or two bolder on a small frame (`kit.letterBias`: Xin Yi's
     // ?onePrint=b; undefined = 0)
     pipeline.bossLetterBias = game.dragon?.kit?.letterBias | 0;
+    // the human bosses printed the hero's way (ADR-194, `?bossPrint=0|a|b`; b, his own colours, the
+    // owner's pick): the materials lift his fills and break his cloth into the hem below his knee
+    // (shaderLib.js uBossPrint, the feet followed every frame), the art pass draws his ink lines with
+    // the hero's blocky strokes and the player's part tables (pipeline.js uBossLike)
+    {
+      const bpk = lookOf('bossPrint', '0', 'b');
+      const on = bpk === 'a' || bpk === 'b' ? 1 : 0;
+      const fy = game.dragon?.position?.y;
+      U.uBossPrint.value.set(on, bpk === 'a' ? 0 : 1, Number.isFinite(fy) ? fy : 0, 0.62);
+      pipeline.asciiMat?.uniforms?.uBossLike?.value.set(on, on, 0, 0);
+    }
   };
 
   // --- loop

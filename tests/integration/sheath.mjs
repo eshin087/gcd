@@ -1201,18 +1201,27 @@ async function scenarioTraining() {
 
 // ================================================================== scenario: look (ADR-152: the print, the palettes, the mark, the motion)
 async function scenarioLook() {
-  out('\n== scenario LOOK (print 2 by default: the digits in his colours; the five steps, the palettes, the mark, his hands and feet) ==');
+  out('\n== scenario LOOK (print a by default since ADR-194: the hero\'s ink-line art in his colours; the five steps, the palettes, the mark, his hands and feet) ==');
   const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
   const { SHEATH_TONE, SHEATH_MARK, SHEATH_STEP } = await imp('src/entities/enemies/sheathed/look.js');
   const fillOf = (m) => { const c = m?.uniforms?.uArtFill?.value; return c ? [c.r, c.g, c.b].map((x) => +x.toFixed(3)) : null; };
   const same = (a, b) => !!a && !!b && a.every((x, i) => Math.abs(x - b[i]) < 1e-3);
   const meshesOf = (d, mat) => { const o = []; d.rig.root.traverse((m) => { if (m.isMesh && m.material === mat) o.push(m); }); return o; };
-  // the shipped print: step 2 (the digits in palette a, lit and outlined), mark a
+  // the shipped print: a, the hero's ink-line art in palette a (ADR-194; was step 2, the digits), mark a
   {
     const G = build();
     const d = G.game.dragon, M = d.rig.materials;
-    { const c = M.coat.uniforms.uWInk?.value, want = SHEATH_TONE.a.coat.map((x) => x * SHEATH_STEP['2'].ink);
-      assert(!!c && !M.coat.uniforms.uArtFill && same([c.r, c.g, c.b].map((x) => +x.toFixed(3)), want), `print 2 by default: the digits in palette a (robe ink ${c ? [c.r, c.g, c.b].map((x) => x.toFixed(2)) : '?'})`); }
+    assert(!M.coat.uniforms.uWInk && same(fillOf(M.coat), SHEATH_TONE.a.coat), `print a by default (ADR-194): the hero's ink-line art in palette a (robe ${fillOf(M.coat)})`);
+    // the bosses printed the hero's way (ADR-194): his materials share U.uBossPrint and compile the print;
+    // the player's compile SG_HERO_SELF and so never take it; the switch's default is b, his own colours
+    {
+      const { lookOf } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+      const U = G.game.U;
+      let selfMats = 0, selfOk = 0;
+      G.game.player.rig?.root?.traverse?.((o) => { if (o.isMesh && o.material?.uniforms?.uArtFill) { selfMats++; if (o.material.defines?.SG_HERO_SELF != null) selfOk++; } });
+      assert(!!U.uBossPrint && M.coat.uniforms.uBossPrint === U.uBossPrint && M.coat.defines?.SG_HERO_SELF == null && selfMats > 0 && selfOk === selfMats && lookOf('bossPrint', '0', 'b') === 'b',
+        `?bossPrint=b by default: his materials share U.uBossPrint, the player's ${selfOk} / ${selfMats} compile SG_HERO_SELF`);
+    }
     assert(d._offStrip?.length === 2 && d.rig.streamers.length === d.anim.streamState.length, `mark a by default: the strip's springs on the hip piece (${d._offStrip?.length})`);
     // ADR-126's audit through One Breath (the cut's one frame is the draw itself): no hand jumps
     const p = G.game.player;
@@ -1255,7 +1264,10 @@ async function scenarioLook() {
     d.rig.root.traverse((o) => { if (o.isMesh && o.material === M.coat) lines += o.geometry.attributes.aPart?.array.some((x) => x > 0) ? 1 : 0; });
     assert(!M.coat.uniforms.uWInk && !!M.coat.uniforms.uArtFill && lines === 0 && M.coat.uniforms.uArtSpec.value.x === 0, `?sheathArt=3: the ink-line art, flat (robe meshes with inner lines: ${lines})`);
   });
+  // (the palettes against the digits' ink: on print 2, no longer the default)
+  setLook('sheathArt', '2');
   for (const t of ['b', 'c']) opt('sheathTone', t, (d, M) => { const c = M.coat.uniforms.uWInk?.value; assert(!!c && same([c.r, c.g, c.b].map((x) => +x.toFixed(3)), SHEATH_TONE[t].coat.map((x) => x * SHEATH_STEP['2'].ink)), `?sheathTone=${t}: its robe (the digits' ink)`); });
+  setLook('sheathArt', null);
   opt('sheathMark', 'b', (d, M) => assert(meshesOf(d, M.piping).length === 0 && !d._offStrip?.length && d.rig.streamers.length === d.anim.streamState.length, '?sheathMark=b: no strip (the streak instead)'));
   opt('sheathMark', '0', (d, M) => assert(meshesOf(d, M.piping).length === 0 && !d._offStrip?.length, '?sheathMark=0: no mark'));
 }

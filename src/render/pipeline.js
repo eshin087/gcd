@@ -233,6 +233,10 @@ export class Pipeline {
         // letters on every screen and at every camera distance; uSelfBox = the box round his
         // screen point that holds him (xy centre px, z half-size px, w = 1 once it is known)
         tSelfArt: { value: null },
+        // a human boss printed the hero's way (ADR-194; main.js sets it from ?bossPrint=, 0 = as before):
+        // x his ink lines found per font pixel (the hero's blocky strokes, not a hairline), y the
+        // player's part tables (HERO_SELF: the dotted cloth rim round his plates too)
+        uBossLike: { value: new THREE.Vector4(0, 0, 0, 0) },
         uSelfCell: { value: this.selfCell },
         uSelfPx: { value: 1 },
         uSelfBox: { value: new THREE.Vector4(0, 0, 0, 0) },
@@ -455,6 +459,7 @@ export class Pipeline {
         uniform sampler2D tHeroArt;
         uniform vec2 uHeroCell;
         uniform sampler2D tSelfArt;
+        uniform vec4 uBossLike;
         uniform vec2 uSelfCell;
         uniform float uSelfPx;
         uniform vec4 uSelfBox;
@@ -758,6 +763,10 @@ export class Pipeline {
         bool gSelf;
         vec2 gCell; // the letter cell (px)
         float gLine; // one font pixel (px)
+        // the player's part tables (HERO_SELF) for this part: always for him; for a boss printed the
+        // hero's way (uBossLike.y) only where HERO_SELF differs from HERO_INK, the plates (parts 12 - 16),
+        // so the hero's blade, dimmed and lit by his own cuts (player.js bladeLook), never reaches a boss's
+        bool selfTab(int pid) { return gSelf || (uBossLike.y > 0.5 && pid >= 12 && pid <= 16); }
         bool isWho(float a) { return gSelf ? isSelf(a) : (a > 0.46 && a < 0.49); }
         float heroGlyph(float idx, vec2 local) {
           vec2 uv = vec2((idx + local.x) / uHeroCols, local.y);
@@ -889,7 +898,7 @@ export class Pipeline {
           bool cHero = isWho(cH.a);
           // (his ink lines are found per FONT pixel, gLine screen px: on a large screen they keep the
           // letters' own blocky step instead of turning into a hairline round big letters)
-          vec2 uvP = gSelf ? (floor(px / gLine) + 0.5) * gLine / uRes : px / uRes;
+          vec2 uvP = (gSelf || uBossLike.x > 0.5) ? (floor(px / gLine) + 0.5) * gLine / uRes : px / uRes;
           vec4 sP = texture2D(tScene, uvP);
           bool pHero = isWho(sP.a); // this pixel itself shows the hero (its ink line is found here)
           bool hCell = cHero || hhits >= 2.0; // the cell prints one of his fill letters
@@ -927,7 +936,7 @@ export class Pipeline {
               // the blade / gem keep their glow (capped far away: uHeroFar.w)
               float hdr = mix(1.0, clamp(mx, 1.0, mix(64.0, uHeroFar.w, far)), smoothstep(0.25, 0.6, sat));
               int pid = int(clamp(heroPartOf(aC), 0.0, ${(HERO_PARTS - 1).toFixed(1)}));
-              vec4 pf = gSelf ? uSelfPartFill[pid] : uHeroPartFill[pid];
+              vec4 pf = selfTab(pid) ? uSelfPartFill[pid] : uHeroPartFill[pid];
               if (uHeroDebug > 0.5 && uHeroDebug < 1.5) {
                 col = c; // look-dev: the raw art source
               } else if (uHeroDebug < 1.5) {
@@ -985,13 +994,13 @@ export class Pipeline {
                 vec2 pg = vec2(step(0.1, eR) - step(0.1, eL), step(0.1, eU) - step(0.1, eD));
                 bool vRun = abs(pg.x) > abs(pg.y), hRun = abs(pg.y) > abs(pg.x);
                 int pidP = int(clamp(heroPartOf(sP.a), 0.0, ${(HERO_PARTS - 1).toFixed(1)}));
-                vec4 pInk = gSelf ? uSelfPartInk[pidP] : uHeroPartInk[pidP];
-                vec4 pfP = gSelf ? uSelfPartFill[pidP] : uHeroPartFill[pidP];
+                vec4 pInk = selfTab(pidP) ? uSelfPartInk[pidP] : uHeroPartInk[pidP];
+                vec4 pfP = selfTab(pidP) ? uSelfPartFill[pidP] : uHeroPartFill[pidP];
                 // stroke style (pfP.y): 0 one stroke per cell (a 1-px gap at the letter spacing),
                 // 1 dotted (a short dash per cell: the torn tails' and the hair's specks), 2 unbroken
                 // (far away the strokes join up: a crisp, unbroken silhouette at the game camera)
                 bool outer = pl > 0.9;
-                vec4 pRim = gSelf ? uSelfPartRim[pidP] : uHeroPartRim[pidP];
+                vec4 pRim = selfTab(pidP) ? uSelfPartRim[pidP] : uHeroPartRim[pidP];
                 float on = 1.0, style = outer && pfP.y > 7.5 ? 1.0 : mod(pfP.y, 4.0);
                 if (style > 1.5) on = 1.0;
                 else if (style > 0.5) on = vRun ? step(abs(local.y - 0.5), 0.2) : hRun ? step(abs(local.x - 0.5), 0.2) : 1.0;

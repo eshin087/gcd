@@ -18,6 +18,23 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-24',
+        title: 'The bosses look built from letters, like the hero',
+        notes: [
+          'Every human boss is drawn the way your hero is: a body of lit letters in his own colours, the same outline, and below the knee his clothes break into a pale, ragged hem that flows like your cape.',
+          'Lu Wusheng now prints in those letters too, not in big digits.',
+          'To compare: ?bossPrint=a draws them in the hero\'s greys, ?bossPrint=0 as before.',
+        ],
+      },
+      {
+        date: '2026-11-25',
+        title: 'The grass bends as you run through it and springs back',
+        notes: [
+          'Running through the grass no longer leaves a dark trail behind you. The blades bend out of your way and rise again a moment after you pass.',
+          'To see the old trail, add ?bend=0 to the address.',
+        ],
+      },
+      {
         date: '2026-11-25',
         title: 'The grass bends as you run through it and springs back',
         notes: [
@@ -38,6 +55,14 @@ export const RELEASES = [
         title: 'The resting blade no longer glows',
         notes: [
           'A bright white halo no longer blooms round your sword while you stand still at some angles.',
+        ],
+      },
+      {
+        date: '2026-11-24',
+        title: 'The hero comes alive standing still',
+        notes: [
+          'Standing still, the hero no longer keeps his hand on his hip. He shifts between rests, re-grips his sword, rolls his shoulders, brushes his coat, and every few moments shows a sword trick (a wrist spin, a figure-eight, a salute, a flick of the blade) or quietly works a spell in the sword\'s green flame: a ring of marks round him, the flame climbing the blade under his fingers, a thread of light circling him.',
+          'In a boss fight his free hand comes off the belt into a guard that changes as he waits, with small shifts of the blade, and no tricks. Add ?idles=old to the address for the stance before.',
         ],
       },
       {

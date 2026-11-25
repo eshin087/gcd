@@ -301,6 +301,12 @@ Render helpers for creature modules:
     exactly what `setSize` gives (it records `_heroPx`), so a boss without the flag is drawn as before; one
     grid serves every boss pixel, so his paper selves share his cell. (`foxLetters` is read for every boss that sets `letters`: it
     stays 'b' on Tian Lei's level, which never sets it.)
+    **The bosses printed the hero's way** (ADR-194): main.js writes `U.uBossPrint` (x on, y own colours 1 / the
+    hero's greys 0, z the boss's feet in world y, w the hem's height above them) and the pass's `uBossLike` (x his
+    ink lines per font pixel, y the player's part tables for plates 12 - 16) every frame from
+    `lookOf('bossPrint', '0', 'b')`. Every ink-line material reads `uBossPrint` (`HERO_ART_SHARED`) except the
+    player's (`heroSelf` compiles `SG_HERO_SELF`): the fill is lifted in the shader, so whoever writes `uArtFill`
+    needs no change.
     Ink lines are drawn per pixel by the pass, not from glyphs. `U.uArtHeroCel` (vec3: step from
     shadow to lit between x and y, z = share of the step) cel-shades the art source;
     `U.uHeroPartRim[20]` (vec4: tint × gain) is each part's silhouette ink; fill style + 8 = a
@@ -1236,6 +1242,25 @@ every `IDLE_LIFE.gap` (2–4.5 s after the last one ends), picked with the anima
 0.45 s fade in and 0.55 s out; anything else (a move, a lock-on, a guard, another clip) cuts it within
 `IDLE_LIFE.cancel` (0.16 s). State: `anim.fidget = { k, t, w, cut, still, wait, last, count, name }`.
 Visual only: no hit test runs outside attacks.
+**The idles** (ADR-186, `idles.js`; `?idles=old` = the paragraph above as it was, live through `setIdles`): `stand()`
+writes a REST's arms over each stance (`easeArms` over `atEase`, `guardArms` over `fencerGuard`): at ease one of
+`EASE_RESTS` (`loose`, `fingers`, `cloak`, `belt`: the free arm only, the sword arm stays `atEase`'s), in the guard one of `FIGHT_RESTS` (`point`, `eye`, `hand`, `low`: the
+free hand off the belt). The state is `anim.rests = { ease, fight }`, each `{ a, b, u, hold, mem }` (from rest a to
+b, `u` 0..1 of the change, smootherstep, the blade by `dirLerp` with its own memory); `tickRests` (in `_idleLife`)
+runs a stance's hold down while he stands still in it and starts a change only between actions (`IDLES.restHold`
+7-12 s / `restMove` 1.3 s at ease, `guardHold` 4-7 s / `guardMove` 0.75 s in the guard). The actions: `F.pool` 0 =
+`FIDGETS` (old), 1 = `EASE_LIST` (`EASE_HABITS`, `look`, `inspect`, `EASE_TRICKS`), 2 = `FIGHT_LIST` (`FIGHT_ACTS`);
+at ease a trick every `IDLES.trickEvery` (3-4) actions (`pickEase`), and one marked `blade` starts only from a `low`
+rest (a trick due in the trail first moves him to `loose`); in the guard (`fightW` > 0.95, also locked on) only
+`FIGHT_ACTS`, never a trick; during the stance's change, none. A cut lets a `blade` action go over
+`IDLES.cancelBlade` (0.26 s), and at ease a block / parry / drink / charge out of a `blade` action or the trail rest
+enters over at least `IDLES.cutFade` (0.24 s). Lab / tests: `anim.playIdle(name)` (a `blade` one from a high rest
+queues behind a move to `loose`), `anim.setRest(name, atOnce?, hold?)`, `anim.idleNames(fight)`. The trick pool's
+three SPELLS (`rite`, `sigil`, `breath`; `spell: true`) publish `anim.spell = { kind, u, w }` (in `_idleLife`, w 0
+otherwise); `swordMystic.js` reads it: the flame swells toward the top tier (`SPELL.surge`, every cell lit, hotter,
+longer tongues), the rite's flame waits above the fingers' front, and each writes the flame's marks through the same
+batch (`SPELL`: the rite's embers, the sigil's ring at knee height, the breath's thread). The idles draw on
+`anim.idleNoise`, never `anim.noise` (which picks an attack's look).
 **Idle** (`guard`, ADR-041; ADR-040 put the blade out to his side, where the game camera sees it):
 weight on the left leg, the right foot a shoulder's width out and forward with the knee soft, the
 upper arm hanging by the ribs with the elbow a little back, the grip beside the right hip and
