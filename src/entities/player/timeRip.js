@@ -185,7 +185,7 @@ export class TimeRip {
     this._gdl = -1; // when the standing ghosts alive now die
     this.cuts = Array.from({ length: CUTS }, () => ({
       alive: false, mode: 'off', gen: 0, li: -1, ax: 0, ay: 0, az: 0, bx: 0, by: 0, bz: 0, k: 0,
-      age: 0, delay: 0, split: false, drawn: false, seq: 0,
+      age: 0, delay: 0, split: false, drawn: false, seq: 0, L: null,
     }));
     this._seq = 0;
     // the screen pass's slots (live strip / negative cuts), what was written last
@@ -247,6 +247,7 @@ export class TimeRip {
         return;
       }
       const c = this._take();
+      if (c.L) c.L.hold = false; // (a slot taken from a mark still holding its line lets it go)
       c.alive = true;
       c.mode = mode;
       c.gen = this._gen;
@@ -256,9 +257,15 @@ export class TimeRip {
       c.split = false;
       c.drawn = false;
       c.seq = ++this._seq;
+      c.L = null;
       if (mode === 'tear') {
         const T = RIP_LOOK.tear;
         c.delay = e?.last ? 0 : gap > 0 ? Math.min(T.delay, Math.max(T.min, gap * T.gapK)) : T.delay;
+        // the flurry's own white line is held back until the tear splits: the beat is only a hairline
+        if (c.delay > 0) {
+          L.hold = true;
+          c.L = L;
+        }
       } else c.delay = 0;
       this._writeNow();
     } catch {
@@ -341,7 +348,11 @@ export class TimeRip {
 
   /** Drop everything (a level reset). */
   clear() {
-    for (const c of this.cuts) c.alive = false;
+    for (const c of this.cuts) {
+      if (c.L) c.L.hold = false;
+      c.L = null;
+      c.alive = false;
+    }
     for (const g of this.ghosts) g.alive = false;
     this._dl = this._gdl = -1;
     const u = this.game?.pipeline?.asciiMat?.uniforms;
@@ -384,6 +395,9 @@ export class TimeRip {
         if (!c.split) {
           c.split = true;
           RIP_STAT.splits++;
+          // (the line it held comes back as it opens; a later flurry's reuse of it has its own gen)
+          if (c.L && c.gen === this._gen) c.L.hold = false;
+          c.L = null;
         }
         if (Fr.off > 0) {
           this._seg(game, A, c, Fr.off, Fr.h, Fr.keep);

@@ -737,6 +737,7 @@ export class Flurry {
     L.by = this.air ? B.y + CHEST : lineY;
     L.k = 0;
     L.last = false;
+    L.hold = false; // (the time rip's tear holds a line back until it splits: timeRip.js)
     this._cutStarts();
   }
 
@@ -1200,6 +1201,7 @@ export class Flurry {
     L.bz = b.z;
     L.k = 0;
     L.last = last;
+    L.hold = false;
     return L;
   }
 

@@ -502,7 +502,8 @@ export class FlurryFx {
     const va = burstLook()?.veil ?? 1;
     for (let li = 0; li < n; li++) {
       const L = lines[li], k = Math.min(1, Math.max(0, L.k));
-      if (!(k > 0.02)) continue;
+      // (held back by the time rip's tear: only its hairline shows until it splits; timeRip.js)
+      if (!(k > 0.02) || L.hold === true) continue;
       const dx = (L.bx - L.ax) * k, dy = (L.by - L.ay) * k, dz = (L.bz - L.az) * k;
       const len = Math.hypot(dx, dy, dz);
       if (!(len > 0.2) || !Number.isFinite(len + L.ax + L.ay + L.az)) continue;
