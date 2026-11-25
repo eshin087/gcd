@@ -27,6 +27,35 @@ inside every action within the stance before. Films: four close angles of every 
 moves before | after.
 
 ---
+
+## 2026-11-25 — The still shadow map (ADR-201; branch `render/shadow-cache`)
+
+**Owner:** "is there anything we can change to ensure that laptop has 60 fps without sacrificing much?";
+of the options given, "ok lets do #2 and show me #1 previews for me to review" (#2: the shadow map's static
+world not redrawn every frame; #1: AUTO quality, PR 137, whose previews were sent from its session's sheets).
+
+**What.** `render/shadowCache.js`: what has not moved is drawn into a still map only when it changes; each
+frame the texels that changed casters covered last frame are copied back from it (depth blits) and only the
+moving casters are drawn. `rigidBatch.js` sync stamps a shadow mesh when its bones move and keeps the moved
+bones' old spheres (`vacated`). `pipeline.js`: `_renderShadowCached`, and the shadow camera, with the cache
+on, moves in its own plane by 32 of its texels. `CONFIG.render.shadowCache` (`?shadowCache=0` off). World
+test `shadowcache` (a stand-in renderer: what is drawn where, when the still map is redrawn and why, the
+rects copied back, the masks put back, a big mesh's edited range, off without blits).
+
+**Steps that did not work.** Copying the whole still map each frame: 32 MB moved a frame, too much for an
+integrated GPU; three's `copyTextureToTexture` cost 0.7 ms of CPU a frame (it reads GL state back). The old
+world-axis snap made coarser: the shadows' letters jumped at each step (most of the frame's pixels changed);
+the old snap already changed about 93 % of them at each 8 cm of a walk.
+
+**Measured** (headless Edge, RTX 4090, every level, a scripted fight at 1080p): the shadow map equals a
+whole draw texel for texel (480 samples, 0 differ); shadow triangles a frame -15 % (the throne) to -79 %
+(Cinderwood); shadow draws about halved; 4 - 8 % of the map copied a frame; 70 - 115 us of CPU. The frame
+time on the 4090 does not change (its shadow pass was under 0.1 ms).
+
+**Open.** Not measured on the owner's laptop or any integrated GPU. A frame that redraws the still map
+(2 - 7 % of frames in a fight) costs what every frame cost before. Lighter trees on LOW, the floors'
+shader, the uniforms' upload and the hitches are still open (M1.89).
+
 ## 2026-11-25 — Frame cost: a measured review, then three fixes that leave the picture alone (ADR-199; branch `render/perf-ground-steps`)
 
 **Owner:** "the game runs pretty slow on less powerful machines. review the game and code to see how we can
@@ -64,6 +93,10 @@ the floors' shader is as it was. The CPU cliff is lower, not gone. No weak GPU, 
 laptop were measured. Next, in the review's order: automatic quality (resolution following frame time: the
 one that makes "every device" reachable; its floor is a look choice for the owner), the shadow map and the
 trees' triangles, the uniforms' upload, the hitches.
+
+## 2026-11-25 — One click travels (ADR-196)
+
+**Owner:** the title made you click a world twice (select, then go). `TitleMenu._click` now selects and acts in one click or tap; hover, arrows and pad focus still only select. The records `menus` test is updated.
 
 ## 2026-11-25 — The hero's name tag much higher (ADR-196)
 

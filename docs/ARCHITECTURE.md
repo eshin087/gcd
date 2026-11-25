@@ -73,7 +73,8 @@ gamepad, touch, flow, lab — constructors must not dereference modules built la
 scene.updateMatrixWorld()            once for both scene passes (scene.matrixWorldAutoUpdate is off while they draw)
 → rigid bone sync                    every batched mesh's matrixWorld → U.uBoneTex (render/rigidBatch.js)
 → moon shadow map                    LAYER_CASTER with the depth material, then LAYER_CASTER_RIGID (one shadow
-                                     mesh per batched actor) with the bone-reading depth material, same map
+                                     mesh per batched actor) with the bone-reading depth material, same map;
+                                     through the still shadow map (below) only what moves is drawn each frame
 → world → sceneRT
 → the hero where something covers him   a probe, then (only while it finds cover) the hero alone → seenRT,
                                      minus what the scene shows of him, the rest back into sceneRT (ADR-106)
@@ -604,6 +605,26 @@ Render helpers for creature modules:
   the object and its descendants. Works before or after rigid batching (below); `LAYER_CASTER` and
   `LAYER_CASTER_RIGID` (2, reserved for the batch meshes: never set it yourself) are exported from
   `pipeline.js` (defined in `shaderLib.js`).
+- **The still shadow map** (`render/shadowCache.js`, ADR-201; `CONFIG.render.shadowCache`, `?shadowCache=0`
+  off). Every caster the shadow passes would draw (visible, on `LAYER_CASTER` or `LAYER_CASTER_RIGID`, not
+  a rigid source) is STILL once its state has not changed for `settle` frames (20; `settleBig` 3 for one
+  of more than `big` triangles) and is then drawn into `stillRT` only when that map must change: a still
+  caster changes or leaves, one settles, the view's key changes (the camera's place, the moon's way, the
+  map's size), or a reset (a restored context, a resize). Each frame the moving casters are drawn into
+  `shadowRT`, which keeps last frame's picture: first the texels the casters that changed since covered
+  are copied back from `stillRT` (a depth blit): a batched actor's moved bones at their OLD matrices
+  (`rigidBatch.js` sync: the set's `vacated` spheres), a plain mesh's last bounding sphere, a big mesh's
+  edited ranges at their old positions (its position copy and the attribute's `updateRanges`), the whole
+  map after a redraw or when a moving caster leaves. The map is the one a whole draw gives, texel for
+  texel. A caster's STATE: `matrixWorld`, `material.visible`, the geometry's id, position and index
+  versions, draw range and groups, an instanced mesh's count and matrices, a rigid shadow mesh's
+  `userData.rigidStamp` (sync bumps it when a bone moves or is shown / hidden, or the actor starts or stops
+  casting). So: something that changes a caster's shape without any of these (a vertex shader's sway: the
+  depth pass draws with an override material and never sees one) is not supported, as before. With the
+  cache on, `updateShadowCamera` moves the shadow camera only in its own plane, in steps of `snap` (32)
+  of its own texels: every texel keeps its place and depth in the world, so a step changes nothing in the
+  picture (the world-axis snap before moved every texel at each 8 cm of a walk: the shadows' edges
+  crawled). `pipeline.shadowCache.stats`: frames, redraws, why, moving / still counts, texels copied.
 - **Rigid batching** (`render/rigidBatch.js`) — an actor made of many small rigid meshes is drawn
   with one draw call per material in the world pass and ONE in the shadow pass, instead of one per
   mesh in each (the hero: 138 meshes → 23 + 1 draws, the wyrm: 181 → 14 + 1, plus its 2 wing
@@ -2633,8 +2654,7 @@ scoped under `.ab-title.gm`; the logo `ui/gcdLogo.js` `GCD_LOGO`, the same rows 
 step by hand): `?menu=c` (default, the sword's path), `a` (the world list), `b` (the campfire grid), `0`
 the title before (`TitleScreen` builds it as it was). The picker reads each level's `name`, `sub` and
 `boss` (levels/*.js: the boss's full name, "NAME, THE EPITHET") from `game.levels`. One selection serves
-every device: hover, the arrow keys, the pad's focus or a first tap select; a click, Enter, A or a second
-tap acts (travel: `stage.pick(id)`, a page load; begin: `stage.begin()` → `flow.beginFromTitle()`).
+every device: hover, the arrow keys, the pad's focus select; a click, a tap, Enter or A acts at once (travel: `stage.pick(id)`, a page load; begin: `stage.begin()` → `flow.beginFromTitle()`).
 `TitleScreen.eatsKey(code)` (a key the menu used this frame: the flow's "press any key" skips it),
 `holdsStart()` (the CONTROLS panel is open: neither the flow nor the pad starts), `navigate(el, dx, dy)`
 (the pad's 2D walk: the nearest entry by its place on screen, `ui/gamepad.js`). CONTROLS opens the full

@@ -4,10 +4,15 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and two pieces of work since 0.4.0:
+One hundred and three pieces of work since 0.4.0:
 - **The sword hand looks natural in the idle tricks** (2026-11-25, ADR-186). *Fixed:* in the wrist spin, the
   figure-eight, the salute and the rite and breath spells, the hero's sword fist no longer twists off his wrist:
   his forearm now leads the blade, which stays close to its line, as it does in his stances.
+- **Shadows cost less, and their edges stop crawling** (2026-11-25, ADR-201). *Changed:* the moon's shadows are the
+  same, but what does not move (trees, rocks, walls, the broken pieces at rest) is no longer drawn into them
+  again every frame, only when something in it changes: the shadow pass draws 15 - 79 % fewer triangles a
+  frame, depending on the level. The shadows' edges, and the letters along them, no longer shimmer as you
+  walk. `?shadowCache=0` as before.
 - **The game runs faster on weaker machines** (2026-11-25, ADR-199). *Changed:* the picture is the same and costs
   less to draw: the ground is drawn after everything that covers it, and its relief is worked out once when the
   level loads instead of for every pixel of every frame (a frame at 4K costs a fifth to two fifths less on the
