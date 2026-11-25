@@ -7,6 +7,7 @@
 import { pathToFileURL } from 'node:url';
 import v8 from 'node:v8';
 import vm from 'node:vm';
+import { PerformanceObserver, constants } from 'node:perf_hooks';
 import './shim.mjs';
 
 const ROOT = process.argv[2];
@@ -141,14 +142,26 @@ const SCENARIOS = {
     assert(r0 > reach * 0.9 && r0 <= reach + 1e-6, `it runs out to its reach (${r0.toFixed(2)} of ${reach.toFixed(2)} m)`);
     assert(life > reach / T.speed && life < (reach / T.speed) * 2, `it lives ${life.toFixed(2)} s (over reach / speed ${(reach / T.speed).toFixed(2)} s, under twice that)`);
     assert(fx.rings === 0 && R.w === 0, 'then its slot is free (strength 0)');
-    // several at once; more than the slots: the oldest gives way
+    // a run of blows close together (a fissure's crack every 1.3 m): one ring carries them
+    const M = GFX.ripple.merge;
+    fx.blow(-20, 0, 1);
+    step(1 / 60);
+    fx.blow(-20 + M.r * 0.8, 0, 1);
+    step(1 / 60);
+    assert(fx.rings === 1, `a blow ${(M.r * 0.8).toFixed(1)} m from a ring ${(1 / 60).toFixed(2)} s old sends none (merge ${M.r} m, ${M.age} s)`);
+    step(M.age);
+    fx.blow(-20 + M.r * 0.8, 0, 1);
+    step(1 / 60);
+    assert(fx.rings === 2, `... once that ring is ${M.age} s old, it sends its own`);
+    fx.clear();
+    // several at once; more than the slots: the weakest (the oldest) gives way
     for (let i = 0; i < DP_RIP_N + 3; i++) {
-      fx.blow(i, 0, 1);
+      fx.blow(i * 3, 0, 1);
       step(0.05);
     }
     assert(fx.rings === DP_RIP_N, `${DP_RIP_N + 3} blows in a row: ${DP_RIP_N} rings live at once (the slots)`);
     const xs = DP_FX_U.uDpRip.value.map((v) => v.x).sort((a, b) => a - b);
-    assert(xs[0] === 3 && xs[DP_RIP_N - 1] === DP_RIP_N + 2, 'the newest live; the oldest gave their slots');
+    assert(xs[0] === 9 && xs[DP_RIP_N - 1] === (DP_RIP_N + 2) * 3, 'the newest live; the weakest (oldest) gave their slots');
     // the switch off mid-ring: gone; the reset: gone
     setLook('dpRipple', '0');
     step(1 / 60);
@@ -189,6 +202,14 @@ const SCENARIOS = {
     step(GFX.contact.rebake + 2 / 60);
     const fall = fx.contactAt(t.x + t.r + 0.1, t.z);
     assert(fx.bakes === 2 && fall < before, `a tree felled: baked again (${fx.bakes}); its ring at its foot ${before.toFixed(2)} -> ${fall.toFixed(2)}`);
+    // only the ground round it, and the same texels as a whole bake
+    const part = fx.lastBake, copy = fx._data.slice();
+    fx._full = fx._dirty = true;
+    fx._since = 1e9;
+    step(1 / 60);
+    let same = 0;
+    for (let k = 0; k < copy.length; k++) if (copy[k] === fx._data[k]) same++;
+    assert(part < fx.lastBake / 50 && same === copy.length, `... only round it (${part} of ${fx.lastBake} texels), the same as a whole bake (${copy.length - same} texels differ)`);
     for (let i = 0; i < 300 && t.state === STATE.FALLING; i++) step(1 / 60);
     step(GFX.contact.rebake + 2 / 60);
     const stub = t.stubR > 0 ? fx.contactAt(t.x + t.stubR + 0.05, t.z) : 0;
@@ -279,41 +300,44 @@ const SCENARIOS = {
   },
 
   // ---------------------------------------------------------------- nothing allocated a frame
-  alloc() {
+  // (counted as the young generation's collections: a heap-size reading over a few thousand frames is
+  // mostly the JIT's own noise here; 300k frames that allocate even 50 bytes each would fill it many times)
+  async alloc() {
     looks({ dpCloud: 'a', dpContact: 'a', dpRipple: 'a', dpRidge: 'a' });
     const { fx, game, world } = build();
     world.life = { wind: { dirX: 0.6, dirZ: 0.8, speed: 1.2, still: false } };
     game.boss.bodyCircles = [{ x: 1, z: 2, r: 1 }, { x: 2, z: 3, r: 1 }];
     let i = 0;
-    const loop = (n, hot) => {
+    const loop = (n) => {
       for (let k = 0; k < n; k++, i++) {
-        if (hot) {
-          game.player.position.x = Math.sin(i * 0.01) * 5;
-          if (i % 30 === 0) fx.blow((i % 7) - 3, (i % 5) - 2, 0.6 + (i % 3) * 0.5);
-          fx.update(1 / 60);
-        }
+        game.player.position.x = Math.sin(i * 0.01) * 5;
+        if (i % 30 === 0) fx.blow((i % 7) * 2 - 6, (i % 5) * 2 - 4, 0.6 + (i % 3) * 0.5);
+        fx.update(1 / 60);
       }
     };
-    loop(2000, true);
-    loop(2000, false);
+    loop(20000);
     gc();
-    let h0 = process.memoryUsage().heapUsed;
-    loop(3000, false);
-    const base = process.memoryUsage().heapUsed - h0;
-    gc();
-    h0 = process.memoryUsage().heapUsed;
-    loop(3000, true);
-    const grew = process.memoryUsage().heapUsed - h0 - base;
-    assert(grew / 3000 < 512, `3000 frames, all four on, a blow every 30 frames: ${(grew / 3000).toFixed(0)} bytes a frame over the bare loop (< 512: no object, array or closure a frame)`);
+    await new Promise((r) => setTimeout(r, 50));
+    let minor = 0;
+    const obs = new PerformanceObserver((list) => { for (const e of list.getEntries()) if (e.detail?.kind === constants.NODE_PERFORMANCE_GC_MINOR) minor++; });
+    obs.observe({ entryTypes: ['gc'] });
     const t0 = performance.now();
-    for (let k = 0; k < 3000; k++) fx.update(1 / 60);
-    const ms = (performance.now() - t0) / 3000;
+    loop(300000);
+    const ms = (performance.now() - t0) / 300000;
+    await new Promise((r) => setTimeout(r, 50));
+    obs.disconnect();
+    assert(minor <= 1, `300000 frames, all four on, a blow every 30 frames: ${minor} young-generation collection(s) (none: nothing allocated a frame)`);
     assert(ms < 0.1, `its frame on the CPU: ${(ms * 1000).toFixed(1)} us (< 100 us, the forest's ${world.destructibles.list.length} pieces checked)`);
     world.destructibles.topple(world.destructibles.list.find((b) => b.kind === 'deadTree' && b.state === STATE.INTACT), 1, 0, 'boss');
     const t1 = performance.now();
     fx._since = 1e9;
     fx.update(1 / 60);
-    out(`   a bake of the forest (${fx._N} x ${fx._N} texels): ${(performance.now() - t1).toFixed(2)} ms`);
+    out(`   a tree falls: a bake of the ground round it (${fx.lastBake} of ${fx._N * fx._N} texels): ${(performance.now() - t1).toFixed(2)} ms`);
+    fx._full = fx._dirty = true;
+    fx._since = 1e9;
+    const t2 = performance.now();
+    fx.update(1 / 60);
+    out(`   a whole bake of the forest (the first, an option, the reset): ${(performance.now() - t2).toFixed(2)} ms`);
   },
 
   // ---------------------------------------------------------------- every level (the registry)
@@ -344,7 +368,7 @@ for (const s of run) {
   }
   out(`\n== scenario ${s.toUpperCase()} ==`);
   try {
-    SCENARIOS[s]();
+    await SCENARIOS[s]();
   } catch (err) {
     fails++;
     out('FAIL', s, 'threw', err?.stack ?? err);

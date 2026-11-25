@@ -11,7 +11,7 @@ export const GFX = Object.freeze({
   // cloud takes away. They drift with the wind at `k` x its speed, never slower than `min` nor faster than
   // `max` m/s; a level with no wind of its own (the Windless Grove, or ?life=off) drifts at `still`.
   cloud: Object.freeze({
-    a: Object.freeze({ scale: 0.06, warp: 1.1, cover: 0.64, soft: 0.09, depth: 0.55, k: 1.4, min: 0.7, max: 3.2 }),
+    a: Object.freeze({ scale: 0.06, warp: 1.1, cover: 0.64, soft: 0.09, depth: 0.6, k: 1, min: 0.6, max: 2.5 }),
     // (b: smaller broken cloud, sharper edged, quicker: a windier sky)
     b: Object.freeze({ scale: 0.12, warp: 0.9, cover: 0.63, soft: 0.04, depth: 0.6, k: 2.4, min: 1.2, max: 5 }),
     still: Object.freeze({ dir: 35, speed: 0.6 }), // (deg from +x toward +z, m/s)
@@ -29,6 +29,7 @@ export const GFX = Object.freeze({
     texel: 0.25,
     maxSize: 1024,
     rebake: 0.2,
+    margin: 2.5, // m round a piece that changed, baked again with it (its colliders may stand off its centre)
     minH: 0.3,
     hRef: 1.2,
     stub: 0.7,
@@ -51,13 +52,16 @@ export const GFX = Object.freeze({
   // to `reach[0]` + `reach[1]` x power m (at most `reachMax`) at `speed` m/s, easing out; its strength
   // is `amp[0]` + `amp[1]` x power (at most 1), fading as it goes. `front` / `back` m: the band's width
   // ahead of and behind its edge; `jitter` m: how ragged the edge is cell to cell (each cell flips on its
-  // own beat). `slots` rings live at once (a new one takes the oldest's slot when all are busy).
+  // own beat). `slots` rings live at once (a new one takes the weakest's slot when all are busy). A blow
+  // within `merge.r` m of a ring younger than `merge.age` s sends none of its own (a fissure's crack every
+  // 1.3 m, a run of steps: one ring carries them, not a ring a segment).
   // The print (each surface re-prints the same way, render/dragonPrintFx.js): over `flip` of strength a
   // cell takes another digit, its tone rises by `tone` x the strength (a denser digit) and its light by
   // `light` x it (added to the print's 0.2 + 1.5 x tone: about twice as bright at full strength).
   ripple: Object.freeze({
     slots: 6,
     minPower: 0.45,
+    merge: Object.freeze({ r: 1.6, age: 0.3 }),
     a: Object.freeze({ speed: 6, reach: [2.5, 3.2], reachMax: 9, amp: [0.5, 0.35], front: 0.3, back: 0.7, jitter: 0.35, flip: 0.2, tone: 0.6, light: 2 }),
     // (b: a slower, wider swell: the ground heaves rather than flips)
     b: Object.freeze({ speed: 3.5, reach: [2, 2.6], reachMax: 7, amp: [0.35, 0.35], front: 0.8, back: 1.6, jitter: 0.6, flip: 0.35, tone: 0.3, light: 1.1 }),

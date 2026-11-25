@@ -15,7 +15,7 @@ import { GFX } from './groundFxTuning.js';
 //   fx.update(dt)        once a frame: the switches, the cloud's drift, the fighters' rings, the ripples,
 //                        and the contact texture baked again when a piece fell / stood again
 //   fx.blow(x, z, power) a blow met the ground (world.groundBlow calls it): a re-print ring from there
-//                        (none under GFX.ripple.minPower)
+//                        (none under GFX.ripple.minPower, none beside a ring just sent: GFX.ripple.merge)
 //   fx.clear()           the fight's reset: the rings gone, the contact baked again next frame
 //   fx.on                { cloud, contact, ripple, ridge }: each '0' | 'a' | 'b' (this frame's switches)
 //   fx.rings             how many re-print rings are live (the tests)
@@ -57,8 +57,13 @@ export class GroundFx {
     this._colV = -1;
     this._seen = null; // each piece's state as last baked (Uint8Array, one a piece)
     this._dirty = true;
+    this._full = true; // the next bake redoes the whole map (else only the dirty rect: _q*)
+    this._qx0 = this._qz0 = Infinity;
+    this._qx1 = this._qz1 = -Infinity;
     this._since = 1e9;
     this._bakedOpt = '';
+    this._ci0 = this._ci1 = this._cj0 = this._cj1 = 0; // the bake's clip (texels)
+    this.lastBake = 0; // texels the last bake redid (the tests)
     this.bakes = 0;
   }
 
@@ -91,17 +96,22 @@ export class GroundFx {
     if (!Number.isFinite(x + z + power)) return;
     const o = this.on.ripple === '0' ? opt(dragonLook(KEYS[2])) : this.on.ripple;
     if (o === '0' || !(power >= GFX.ripple.minPower)) return;
-    const T = GFX.ripple[o];
-    // a free slot, else the oldest ring's
-    let s = -1, old = -1;
+    const T = GFX.ripple[o], M = GFX.ripple.merge;
+    // a young ring close by carries it; else a free slot, else the weakest ring's
+    let s = -1, weak = -1, wk = Infinity;
     for (let i = 0; i < DP_RIP_N; i++) {
       if (this._rp[i] <= 0) {
-        s = i;
-        break;
+        if (s < 0) s = i;
+        continue;
       }
-      if (old < 0 || this._ra[i] > this._ra[old]) old = i;
+      if (this._ra[i] < M.age && Math.hypot(x - this._rx[i], z - this._rz[i]) < M.r) return;
+      const k = this.U.uDpRip.value[i].w;
+      if (k < wk) {
+        wk = k;
+        weak = i;
+      }
     }
-    if (s < 0) s = old;
+    if (s < 0) s = weak;
     const reach = Math.min(T.reachMax, T.reach[0] + T.reach[1] * power);
     this._rx[s] = x;
     this._rz[s] = z;
@@ -116,7 +126,7 @@ export class GroundFx {
   /** The fight's reset. */
   clear() {
     this._clearRings();
-    this._dirty = true;
+    this._dirty = this._full = true;
     this._since = 1e9;
   }
 
@@ -159,24 +169,38 @@ export class GroundFx {
     if (!this._tex) this._make();
     // what stands: the colliders' version, and each piece's state (a piece with no collider falls too)
     const W = this.world;
-    const cv = W?.colliders?.version ?? 0;
-    if (cv !== this._colV) this._dirty = true;
     const L = W?.destructibles?.list;
+    let moved = false;
     if (L) {
       if (!this._seen || this._seen.length !== L.length) {
         this._seen = new Uint8Array(L.length);
-        this._dirty = true;
+        this._dirty = this._full = true;
       }
       const seen = this._seen;
       for (let i = 0; i < L.length; i++) {
-        const s = this._standing(L[i]);
+        const b = L[i], s = this._standing(b);
         if (s !== seen[i]) {
           seen[i] = s;
-          this._dirty = true;
+          this._dirty = moved = true;
+          // (only the ground round it is baked again: its ring, its colliders, its stump's)
+          const m = Math.max(fin(b.r, 0.4), fin(b.stubR)) * (1 + C.spreadR) + C.spread + GFX.contact.margin;
+          if (Number.isFinite(b.x + b.z)) {
+            if (b.x - m < this._qx0) this._qx0 = b.x - m;
+            if (b.x + m > this._qx1) this._qx1 = b.x + m;
+            if (b.z - m < this._qz0) this._qz0 = b.z - m;
+            if (b.z + m > this._qz1) this._qz1 = b.z + m;
+          } else this._full = true;
         }
       }
     }
-    if (this._bakedOpt !== o) this._dirty = true;
+    // (a collider changed with no piece's state: the whole map)
+    const cv = W?.colliders?.version ?? 0;
+    if (cv !== this._colV) {
+      this._colV = cv;
+      this._dirty = true;
+      if (!moved && !(this._qx1 >= this._qx0)) this._full = true;
+    }
+    if (this._bakedOpt !== o) this._dirty = this._full = true;
     if (this._dirty && this._since >= GFX.contact.rebake) this._bake(C, o);
     U.uDpContactBox.value.set(this._min, this._min, this._size, C.lean);
     // the fighters: the hero, then the boss's body circles (its footprint on the ground)
@@ -220,16 +244,37 @@ export class GroundFx {
     t.minFilter = THREE.LinearFilter;
     t.generateMipmaps = false;
     t.flipY = false;
+    t.unpackAlignment = 1; // (one byte a texel: a row of any width)
     t.needsUpdate = true;
     this._tex = t;
     this.U.uDpContactTex.value = t;
   }
 
-  /** Bake every standing piece's ring and every collider's into the texture (rare: a piece falls). */
+  /**
+   * Bake every standing piece's ring and every collider's into the texture (rare: a piece falls). Only the
+   * dirty rect round what changed (cleared, then every ring that reaches into it splatted again, clipped to
+   * it: the same texels a whole bake would give), unless the whole map is due (the first bake, an option,
+   * the reset, a collider that changed by itself).
+   */
   _bake(C, o) {
     const data = this._data;
     if (!data) return;
-    data.fill(0);
+    const N = this._N, t = this._size / N, m = this._min;
+    let i0 = 0, i1 = N - 1, j0 = 0, j1 = N - 1;
+    if (this._full || !(this._qx1 >= this._qx0)) {
+      data.fill(0);
+    } else {
+      i0 = Math.max(0, Math.floor((this._qx0 - m) / t));
+      i1 = Math.min(N - 1, Math.ceil((this._qx1 - m) / t));
+      j0 = Math.max(0, Math.floor((this._qz0 - m) / t));
+      j1 = Math.min(N - 1, Math.ceil((this._qz1 - m) / t));
+      for (let j = j0; j <= j1; j++) data.fill(0, j * N + i0, j * N + i1 + 1);
+    }
+    this._ci0 = i0;
+    this._ci1 = i1;
+    this._cj0 = j0;
+    this._cj1 = j1;
+    this.lastBake = (i1 - i0 + 1) * (j1 - j0 + 1);
     const K = GFX.contact;
     const W = this.world;
     // the colliders (everything that stands in the way: stones, trunks, the bonfire, landmarks' feet)
@@ -248,18 +293,22 @@ export class GroundFx {
     }
     this._tex.needsUpdate = true;
     this._colV = W?.colliders?.version ?? 0;
-    this._dirty = false;
+    this._dirty = this._full = false;
+    this._qx0 = this._qz0 = Infinity;
+    this._qx1 = this._qz1 = -Infinity;
     this._since = 0;
     this._bakedOpt = o;
     this.bakes++;
   }
 
+  /** One ring into the texture (the max of what is there), clipped to the bake's rect (_ci0 .. _cj1). */
   _splat(x, z, r, k, spread) {
     if (!(k > 0) || !(r >= 0)) return;
     const N = this._N, t = this._size / N, m = this._min, data = this._data;
     const R = r + spread;
-    const i0 = Math.max(0, Math.floor((x - R - m) / t)), i1 = Math.min(N - 1, Math.ceil((x + R - m) / t));
-    const j0 = Math.max(0, Math.floor((z - R - m) / t)), j1 = Math.min(N - 1, Math.ceil((z + R - m) / t));
+    const i0 = Math.max(this._ci0, Math.floor((x - R - m) / t)), i1 = Math.min(this._ci1, Math.ceil((x + R - m) / t));
+    const j0 = Math.max(this._cj0, Math.floor((z - R - m) / t)), j1 = Math.min(this._cj1, Math.ceil((z + R - m) / t));
+    if (i0 > i1 || j0 > j1) return;
     const k255 = k * 255, inv = 1 / Math.max(spread, 1e-3);
     for (let j = j0; j <= j1; j++) {
       const dz = m + (j + 0.5) * t - z;
