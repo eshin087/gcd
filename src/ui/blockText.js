@@ -1,6 +1,6 @@
-// Big words built from characters: the banners' block letters, in the same six-row letterforms as
-// the ABYSS title logo (ui/screens.js). blockLines('YOU DIED') → six strings; `plain` gives the
-// same shapes in '#' alone (the logo's box-drawing shadow strokes left out).
+// Big words built from characters: the banners' block letters, six rows high, in the title logo's
+// block face (ui/screens.js draws "gcd" in it, small and lowercase). blockLines('YOU DIED') → six
+// strings; `plain` gives the same shapes in '#' alone (the logo's box-drawing shadow strokes left out).
 
 const ROWS = 6;
 const F = {

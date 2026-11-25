@@ -469,6 +469,6 @@ boot().catch((err) => {
   console.error(err);
   const el = document.createElement('pre');
   el.style.cssText = 'position:fixed;inset:0;margin:0;padding:24px;color:#f88;background:#000;font:14px monospace;white-space:pre-wrap;z-index:99';
-  el.textContent = `ABYSS failed to start:\n\n${err?.stack || err}`;
+  el.textContent = `gcd failed to start:\n\n${err?.stack || err}`;
   document.body.appendChild(el);
 });

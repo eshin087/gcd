@@ -8,7 +8,7 @@ import { CATEGORIES, ANSWERS } from './training.js';
 // game). Toggle: F4, the Lab's TRAINING button, or load with ?training. The stage and the boss are
 // page reloads (`?stage=lab`, `?level=`), kept with ?training.
 
-const styleId = 'abyss-training-style'; // (not an UPPER_CASE const: the glyph check reads those as glyph strings)
+const styleId = 'gcd-training-style'; // (not an UPPER_CASE const: the glyph check reads those as glyph strings)
 const CSS = `
 .trn-root {
   position: absolute; right: 14px; top: 150px; z-index: 41; width: 340px; max-height: calc(100% - 170px);

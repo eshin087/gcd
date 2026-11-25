@@ -8,7 +8,7 @@ import { compareRank, rankRun } from './rank.js';
 //     rush (a boss fought inside a rush: the rush's id; else null), splits (a rush: one per level) }
 // Plain JSON, no player name, no network code. Only an ELIGIBLE run (game/eligibility.js) is stored.
 //
-// THE STORE (`Records`, the pattern of unlocks.js): localStorage key `abyss.records.v1`, an injectable
+// THE STORE (`Records`, the pattern of unlocks.js): localStorage key `gcd.records.v1`, an injectable
 // storage for tests; blocked, corrupt or full storage never throws (what cannot be saved is kept for
 // this page load). It keeps:
 //   levels[id]  { clears, bestTime, bestGrade }    a boss's bests (from a rush's fights too)
@@ -22,7 +22,7 @@ import { compareRank, rankRun } from './rank.js';
 //   .add(record) → { newBestTime, newBestGrade, prevTime, prevGrade }   .recent() → [records]
 //   .clear()
 
-export const RECORDS_KEY = 'abyss.records.v1';
+export const RECORDS_KEY = 'gcd.records.v1';
 export const RECORD_VERSION = 1;
 export const RECENT = 24; // a full rush (eight fights and the rush) and the runs before it
 

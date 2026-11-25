@@ -5,15 +5,17 @@ import { dressStageButton, gradeHead, recLookNow, sharedLine } from './recordLoo
 
 // Full-screen / panel UI: title, pause menu, help panel, victory record.
 
-// "ABYSS" in a block/box-drawing figlet face. The <pre> uses a font stack that has the box glyphs
+// "gcd", lowercase, in a block/box-drawing figlet face (the banners' face, ui/blockText.js, drawn
+// small: d's stem rises a row above the bowls, g's tail drops a row below them). Every row is one
+// width. The <pre> uses a font stack that has the box glyphs
 // itself (JetBrains Mono from Google Fonts is subset without them, which would misalign columns).
 const LOGO = [
-  ' █████╗ ' + '██████╗ ' + '██╗   ██╗' + '███████╗' + '███████╗',
-  '██╔══██╗' + '██╔══██╗' + '╚██╗ ██╔╝' + '██╔════╝' + '██╔════╝',
-  '███████║' + '██████╔╝' + ' ╚████╔╝ ' + '███████╗' + '███████╗',
-  '██╔══██║' + '██╔══██╗' + '  ╚██╔╝  ' + '╚════██║' + '╚════██║',
-  '██║  ██║' + '██████╔╝' + '   ██║   ' + '███████║' + '███████║',
-  '╚═╝  ╚═╝' + '╚═════╝ ' + '   ╚═╝   ' + '╚══════╝' + '╚══════╝',
+  '        ' + ' ' + '        ' + ' ' + '     ██╗',
+  ' ██████╗' + ' ' + ' ██████╗' + ' ' + ' ██████║',
+  '██╔══██║' + ' ' + '██╔════╝' + ' ' + '██╔══██║',
+  '╚██████║' + ' ' + '╚██████╗' + ' ' + '╚██████║',
+  ' ╚═══██║' + ' ' + ' ╚═════╝' + ' ' + ' ╚═════╝',
+  ' █████╔╝' + ' ' + '        ' + ' ' + '        ',
 ];
 const LOGO_W = LOGO[0].length;
 const SHIMMER_HZ = 12;
