@@ -19,6 +19,15 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-25',
+        title: "The dragon's neck and head move naturally: no upside-down head, no flips",
+        notes: [
+          'The Cinder Wyrm no longer turns its head upside down when it flies, climbs or wheels round, and no longer looks straight back over its own spine.',
+          'Its neck no longer snaps round in a single frame as you get behind it, its last bite in the storm flurry no longer bends its neck sideways away from its head, and its bites no longer flick the head round at the start.',
+          'Its head stays level in every move, with the neck twisting naturally to keep it there.',
+        ],
+      },
+      {
+        date: '2026-11-25',
         title: 'The game runs faster on weaker machines',
         notes: [
           'The picture is the same, and it costs less to draw: the ground is drawn after the things that cover it, and its relief is worked out once when a level loads instead of for every pixel of every frame.',

@@ -5996,3 +5996,38 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
     world redrawn every frame), lighter trees on LOW (the presets' grass counts do nothing under the
     dragon print), the shared uniforms' upload (about 0.5 ms of script a frame), the worst frames'
     hitches. The floors' shader is as it was: its relief is most of its cost.
+
+## ADR-200 — The wyrm's head held level and kept where a neck can look; the shown neck never leaves its head (2026-11-25)
+
+- **Context:** the owner: "the dragon does weird neck movements when hes flying as well. in general review all the
+  dragon neck movements and make sure it looks natural and accurate and not buggy". An audit stepped every one of
+  the wyrm's 50 moves (plus the stagger and both phase roars) frame by frame from the same start, logging each
+  neck joint's and the head's turn per frame, the head's roll off level, its up vector, where it looks in the
+  chest's frame and its twist on the neck's end. Main showed four faults: (1) the head was leveled only at rest,
+  so it carried the roll the curved neck adds up to: 57 - 79° in flights and upside down (up vector to -0.9) in
+  the sky dive's climb, the wheels, the hover rise and the meteors' cast; (2) look points under, behind or over
+  the head swung it round: ~180° back over the spine (tail attacks, rakes, the wheels; the meteors' look 40 m up
+  but behind the snout turned the head backward), 60 - 156° in one frame; (3) the driven shown neck (ADR-025's
+  swing) could not follow a strike's first step under its bend limits: FABRIK buckled it 2 m to one side while
+  the head, pinned to the measured neck, was drawn 3 m from its end (the storm flurry's lunging bite); (4)
+  `headExact` had no turn limit: a bite's first frame turned the head alone ~75°.
+- **Decision** (rig/anim.js `_updateNeck`, rig/chain.js `apply`): the head is held level about its snout in every
+  move (brow 'up' = the sky + 0.25 x the chest's up, leaning along the held heading as the snout points down),
+  by a correction unwrapped against the last frame, at most 14 rad/s, holding where 'up' lines up with the snout;
+  the driven neck takes the same roll spread down its joints (no point moves; resting, only what passes 0.6 rad).
+  The look is kept, in the chest's frame, within 135° over a shoulder (the side held as a foe crosses behind)
+  with the heading held when the look point is nearly straight up or down; a look point set high on purpose
+  lifts the 0.6 rad nose-up limit to 1.2 (the meteors' roar, now facing forward). A shown neck missing the
+  measured head by more than 0.35 x scale m blends to the measured shape (all of it from 1.0 x scale).
+  `headExact` turns at most 45 rad/s. Tried and dropped: fading the leveling out near vertical (it flipped the
+  dives again); a 24 rad/s leveling rate (the wheels' head spun 25 - 30° a frame chasing the neck's roll).
+- **Consequences:** no head upside down (worst up -0.9 -> -0.4, a diving head with its brow forward); the head
+  level with the world while the body banks (the roll measured against the chest stays ~50° in the wheels); the
+  flips of the tail lash, tail sweep, rakes and cataclysm 63 - 150 -> 23 - 30° a frame; bite snaps 68 - 80 ->
+  43 - 45°; the storm flurry's neck 128 -> 85° on the strike's first frame (the measured solve's own step, kept:
+  it carries the hit spheres) with no sideways buckle. The resting stance and the side view the owner chose are
+  unchanged (head roll at rest 2 - 5°). Hit spheres: the neck's joints do not move; the snout rolls about itself
+  and turns at most 45 rad/s on an exact strike's first frame. Seeded fights drift (the mouth sits a little
+  differently, so the bullet cues shift a frame and the fight diverges). Open: the tail lash's windup swings the
+  head over the top and the level lags up to ~60° for a few frames; the leap's and pounce's neck strikes stay
+  fast (the measured solve's own steps).

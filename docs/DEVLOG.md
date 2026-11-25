@@ -5,6 +5,33 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-25 — The wyrm's neck and head reviewed move by move (ADR-200; branch `dragon/neck-motion`)
+
+**Owner:** "the dragon does weird neck movements when hes flying as well. in general review all the dragon neck
+movements and make sure it looks natural and accurate and not buggy".
+
+**How.** An audit in headless Edge (a scratch module stepping each of the 50 moves, the stagger and both phase
+roars from a fresh page, frame by frame) against an untouched main checkout served side by side; the numbers
+first, then films of the flagged moves (the wings hidden for a clean view of the neck, then the real look). Four
+faults (ADR-200): the head leveled only at rest (upside down in flight), look points under / behind / over it
+swinging it round, the driven shown neck buckling away from its pinned head on a strike's first frame, and
+`headExact` with no turn limit. Fixed in `_updateNeck` and `Chain.apply` (a twist spread down the chain).
+
+**Lessons.** Leveling needs an unwrapped, rate-limited correction: the plain shortest angle swapped between +180
+and -180 and spun the neck 50° a frame; fading it out near vertical brought the flips back. 'Up' for a head
+pointing down must lean along the heading the head holds, not the chest's forward (that leaned a head glancing
+back against the sky) nor the snout's own heading (it spins as a wheeling flight's snout points past its foe).
+Runs must start from a fresh page: one move after another left each starting where the last ended.
+
+**Verified.** The audit before / after (every move), films before / after, `npm test`. The pressure scenario's
+seeded fights drift (the mouth sits a little differently); a 20-seed sweep on main and the branch compared the
+gaps between cues.
+
+**Open.** The tail lash's windup level lags up to ~60° for a few frames as the head swings over the top; the
+leap's and pounce's neck strikes stay fast (the measured solve's own steps).
+
+---
+
 ## 2026-11-25 — Frame cost: a measured review, then three fixes that leave the picture alone (ADR-199; branch `render/perf-ground-steps`)
 
 **Owner:** "the game runs pretty slow on less powerful machines. review the game and code to see how we can
