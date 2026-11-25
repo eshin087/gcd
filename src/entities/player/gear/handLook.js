@@ -8,11 +8,12 @@
 //   c  smaller, a fill at about a third (HERO_INK.handDark)
 //   d  a leather glove (× 0.85): the brown of his arm wraps (HERO_INK.leather)
 //   e  a hand reshaped (gear/handShape.js), open and relaxed;  f  the same, a loose fist
+//   g  a closed fist by its overall shape (no fingers), the skin ink;  h  the same as a dark glove, a cuff
 // Every outfit's free hand (gear/hands.js) follows it: the open hand, the sword fingers, the fist on
 // the grip and the skin of the wrist. The sword hand is not changed.
-const IDS = ['0', 'a', 'b', 'c', 'd', 'e', 'f'];
+const IDS = ['0', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 export const HAND_LOOK_IDS = Object.freeze(IDS.slice());
-export const HAND_LOOK_NAMES = Object.freeze({ 0: 'before', a: 'smaller (default)', b: 'smaller, shaded', c: 'smaller, dark', d: 'leather glove', e: 'a hand, open', f: 'a hand, loose fist' });
+export const HAND_LOOK_NAMES = Object.freeze({ 0: 'before', a: 'smaller (default)', b: 'smaller, shaded', c: 'smaller, dark', d: 'leather glove', e: 'a hand, open', f: 'a hand, loose fist', g: 'a fist', h: 'a gauntlet fist' });
 const LOOKS = {
   0: { k: 1, mat: 'skin' },
   a: { k: 0.8, mat: 'skin' },
@@ -24,6 +25,10 @@ const LOOKS = {
   // (k sizes the reshaped open hand; the sword fingers and the fist on the grip keep the size before: kRest)
   e: { k: 1.1, kRest: 1, mat: 'skin', shape: 0.22 },
   f: { k: 1.1, kRest: 1, mat: 'skin', shape: 0.75 },
+  // (the owner, after e / f: the reference runner's hand by its overall shape, no fingers: gear/handShape.js
+  // fistHand. g in the skin ink; h a dark glove with a flared cuff, as the reference's armoured fist)
+  g: { k: 1, kRest: 1, mat: 'skin', fist: 0 },
+  h: { k: 1, kRest: 1, mat: 'leather', fist: 1 },
 };
 const DEFAULT = 'a';
 const read = () => {
