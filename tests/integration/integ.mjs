@@ -4530,7 +4530,9 @@ async function scenarioAblaze() {
   // the attack table at the base (fc17317): every attack's damage, timings, tells and reach
   // (103cbc42 since the merge with the duelists' second pass, ADR-122: furnaceMaw's bite impact 0.09 → 0.118,
   // the lead's timing fix for its mirrored side; ADR-120 alone left 47e0a683. Nothing of ablaze changes it)
-  const BASE_ATTACKS = '103cbc42';
+  // (2843b004 since ADR-190: the table gained the roar-cast spells and the brood's moves, fireSerpent,
+  // firestorm, drakelings, wisps; no existing attack changed)
+  const BASE_ATTACKS = '2843b004';
   const table0 = JSON.stringify(TUNING.attacks);
   M.setAblazeLook('b');
   const G = build();
