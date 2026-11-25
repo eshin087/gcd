@@ -426,6 +426,12 @@ window). A red or black blow lands on him in the stance. Not learned, the same i
   the cut and the way home and comes home at about half the cut's speed (it stopped for two frames
   and then snapped home in 0.12 s, as fast as it had cut). The slam and the cleave hold their finish
   (`home` 0.55).
+- **The weight is the body's** (ADR-188, `?lights=old` the chain before it): on the same clock, each
+  light loads (hips and chest wound past the coil, the weight back), plants the front foot before the
+  contact, sinks 5-8 cm deeper into the cut and 6-13 cm deeper through the finish, swings the blade
+  a little further round in the same time, brakes and holds the finish (`home` 0.3, a hold key), and the
+  next windup gathers out of it (`gather`: the arms leave slowly while the hips lead) instead of
+  snapping away. The hit frames are the ones they were (at most one frame off; scenario `herolights`).
 - **Reach against giant targets** (`REACH`): the wyrm's chest hangs 2–4 m above the grass, above a
   sword swung at a 1.75 m hero's chest, so the blade hits through a **vertical band**: a hurt sphere
   counts when it overlaps the blade's swept wall extended `up` 2.6 m above (the slam: 1.0 m) and

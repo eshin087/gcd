@@ -4,13 +4,19 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Eighty-six pieces of work since 0.4.0:
+Eighty-seven pieces of work since 0.4.0:
+- **A heavier light combo** (2026-11-24, ADR-188). *Changed:* the five light attacks and their looks keep their
+  timing, damage, reach and combo length, but the body now carries the weight: he loads his hips and shoulders
+  before the hand goes, the front foot plants before the blade lands, he sinks 5-8 cm deeper into each cut and
+  6-13 cm deeper through the finish, the blade swings a wider arc in the same time, and the finish brakes and holds a
+  beat before he comes back; out of a held finish the next swing gathers instead of snapping away. The finisher lands
+  7 cm deeper over the planted blade. The heavy branches, the sprint slash, the roll cut, the flurry and the
+  charged cleave are unchanged. `?lights=old` (and the Lab's PLAYER row `lights`) plays the chain as it was.
 - **Smaller combat text** (2026-11-24, ADR-184). *Changed:* the call-outs over the hero (PARRY, DEFLECT, COUNTER,
   GHOSTEP ...) and the damage numbers are smaller and keep one size at every window width. They grew with the
   window before, so a 1920-wide window drew DEFLECT at 22 px and the flurry's cut counter at 34 px. Now: call-outs
   11 - 12 px (BLOCK 9 px), damage numbers 10 / 11 / 12 px (plain / heavy / crit), the cut counter 15 px. The owner
   picked this size from three rendered options. Colours, glow and motion are unchanged.
-Eighty-five pieces of work since 0.4.0:
 - **A green flame on the sword** (2026-11-24, ADR-182). *Added:* a tight flame of tiny green marks burns round the
   hero's steel, in his own small letters: it licks up off the blade, boils, and climbs away in tongues. It is there
   with no streak and burns denser and hotter as the streak climbs (tiers 0 to 5), the point paling to green-white at

@@ -1127,7 +1127,16 @@ the release. `bx` is across toward the foot that steps (`anim.stepL`, set by `pl
 further back along his facing; the keys are mirrored when it is the right one); a clip's `fy`
 [front, rear] gives the stance's foot yaws (rad, for a left-front stance, mirrored by
 `lungeFeet`). Every light clip keys a body-only anticipation (u 0.5-0.8) and overshoot (u 2.1-2.15)
-round its coil and finish (swings.js header). Feet: `lungeFeet`: the foot that is behind as the swing starts steps through to the front
+round its coil and finish (swings.js header). A clip's `gather` [leave, arrive] (ADR-188: the chain's clips; `SW_COIL`'s note) eases
+the windup out of a held pose: the arms' tracks (the sword hand, the free hand, its fingers) leave the
+entry pose at `gather[0]` × the straight rate (`SW_ENTRY` 1.3 without it) and the blade turns into
+the coil along a cubic that leaves at `gather[0]` and arrives at `gather[1]` (without it it leaves at
+1.65 and arrives at `SW_COIL` 0.35); the hips and the chest keep `SW_ENTRY`, so they load first.
+**The chain's looks** (ADR-188): `combat.js` `setLights('new' | 'old')` / `lightsMode()` (`LIGHTS_IDS`,
+`LIGHTS_NAMES`; `?lights=old` at load; the Lab's PLAYER → `lights` row, live) swaps `LIGHT[i].anim` /
+`variants` and nothing else between the weighted clips (`swings.js`: `fallingCut` … `risingThrust`,
+`drawSlash`, `groundSlam`) and the ones before them (`lightsOld.js` `LIGHTS_OLD`, spread into `SWINGS` as
+`<name>Old`, plus the `drawCut` and `slam` the flurry, One Breath and Earthbreaker still play). Feet: `lungeFeet`: the foot that is behind as the swing starts steps through to the front
 (so the lead foot alternates down a chain) and stays on the spot it planted on, while the other
 stays planted where it stood, its heel peeling (it no longer settles sideways onto the stance line);
 once stretched `drag` m past the stance's rear spot, or past its leg's reach from the hips the clip
@@ -1326,7 +1335,7 @@ disposes them; registered with `pipeline.registerParticles`), built the first ti
 stream (`setMysticSeed(v)`; never `Math.random`). The flame needs `pipeline.width` / `height` (nothing without them). Budgets a
 frame: `MYSTIC.budget` (6) licks, `MYSTIC.cells` (110) flame marks; `onEmit` (tests) sees every one ('spawn' | 'flame'); `n`,
 `w`, `heat`, `total` count them. Nothing on a dead, hidden or unarmed hero, none over his torso's column; none of it writes a
-uniform. The Lab's PLAYER row `mystic` (off / flame) sits after `sword`.
+uniform. The Lab's PLAYER row `mystic` (off / flame) sits after `sword`. The `lights` row (weighted / before; ADR-188, `setLights`) sits after `mystic`.
 - *A single perfect parry / dodge* (`combat/perfectFx.js`): `PERFECT_FEEL` (today null; sharp; cinema,
   with `full` / `short` beats, `gap` 0.9 s, `echoTier` 3), `perfectFeel(mode)`, `perfectBeat(mode, last,
   realTime)`, `MARK_LOOK` (tint zone id 800101), `PERFECT_LAST` (tests), `PERFECT_GLYPHS`;

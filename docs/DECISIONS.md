@@ -5551,3 +5551,59 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
   so a run should take about 5 - 6 minutes (was 8 - 10). A PR merges the moment its check is green: the
   Vercel preview is no longer a gate before production, so a PR the owner wants to see first is opened as a
   draft or with `--label hold`. Re-measure `est` when a suite grows a lot.
+## ADR-188 — The light chain's weight: the body loads, plants, sinks and holds; the pace stays (2026-11-24)
+
+- **Context:** the owner (2026-11-24): "lets also change his auto attack animation and combo to look more weighty,
+  cool looking ... for me to review by video and also test it out on a preview". Asked whether the chain's timing
+  may change they chose LOOK ONLY, KEEP PACE: every hit's windup, active frames, recovery, damage, reach, tells, combo
+  length and the heavy that branches from it stay as they are. On record: 0.25 s a hit was too fast to follow, 0.42 s
+  too slow (Session 25 / 26); they want speed AND weight, so the weight has to come from the body, the held ends and
+  the arc, not from a slower blade. One of three parallel sessions (the idle: ADR-186, the run's free arm: ADR-187).
+  What the clips did before: the hand and the blade left the last pose at full speed (`SW_ENTRY` 1.3, the blade at
+  1.65 × the straight rate), so from rest the windup was a snap back to the coil (96 cm a frame at the point on its
+  first frame); the follow-through ran straight into the way home; the hips sank a few centimetres.
+- **Decision:**
+  1. **The chain's clips are reworked in place** (`swings.js`: `fallingCut`, `risingSlash`, `risingBackhand`,
+     `flatBackhand`, `fallingBackhand`, `whirl`, `risingWhirl`, `lowSweep`, `lunge`, `risingThrust`) and the two it
+     shared get their own (`drawSlash` for the draw cut, `groundSlam` for the finisher), so `drawCut` (the flurry,
+     One Breath) and `slam` (Earthbreaker) stay exactly as they were. Each light: a LOAD key (the hips and chest wound
+     past the coil, the weight back and down), the COIL with the blade drawn 4-8° further round (a wider arc in the
+     same time), a PLANT (`step` [0.1, 1.3]: the front foot lands before the contact, not at it), the DRIVE (the hips
+     5-8 cm lower at the contact than before, further onto the front foot, the chest folded into it), the FINISH
+     carried 8-10° further, a BRAKE key (u 2.15: three quarters of the follow-through's last stretch done), the
+     OVERSHOOT (the hips' lowest point), and a HOLD (u 2.45, `home` 0.3 instead of 0.21: he holds it, drifting, a
+     beat longer before he comes back to the ready stance). The free hand goes further each way. The finisher gathers
+     lower, arches further back at the top of its leap and lands 7 cm deeper over the planted blade (hips 45 cm off
+     the grass at their lowest, 52 before; deeper put the robe look's hem through the grass), holding it while he comes up.
+  2. **`gather` [leave, arrive]** (a clip option, anim.js: `swingClip`, `swingTrack`'s entry rate, `swingDir`'s
+     windup ease; the chain's clips give [0.4, 0.8]): the arms' tracks leave the entry pose at 0.4 × the straight
+     rate and the blade turns into the coil along a cubic that leaves at 0.4 and arrives at 0.8; the hips and the
+     chest keep `SW_ENTRY`, so the body loads before the hand goes. The finishes now brake and hold, so a snap out of
+     them would be the freeze-snap-freeze the owner turned down in Session 26; the gather is its other half.
+  3. **`?lights=old` and the Lab's PLAYER → `lights` row** (weighted / before, live: `combat.js` `setLights`,
+     `lightsMode`) swap `LIGHT[i].anim` / `variants` back to the clips before the pass, kept as data in `lightsOld.js`
+     (spread into `SWINGS` as `<name>Old`). Nothing else changes between the two (the scenario checks every number).
+  4. **The variants, `turn`, `hop`, `spin` and the lines are kept** (combat.js): the chain already alternates sides,
+     rises, thrusts and spins; it was the body that was light, not the choreography.
+- **Measured** (scenario `herolights`, both modes swung the same way: 12 looks, mashed chains, single taps, the four
+  light → heavy branches): the hips 5-8 cm lower at the contact and 6-13 cm lower through the finish in every look
+  (4-7 cm in the rising cuts, which end high by design); the point's speed in the cut 1-5 % higher (the wider arc in
+  the same time), and 26-58 % lower in the held window after it (11 against 17 m/s for the falling cut); the pop
+  audit (the largest per-frame second difference) per point, old → new: the sword wrist 21 → 21 cm, the free wrist
+  27 → 24, the elbows 25 → 26 and 21 → 23, the feet 20 → 20, the head 17 → 19, the point 112 → 118 (its whip
+  through the cut); the thrusts' worst jolt 60-72 → 24-34 cm (the gather); the free hand's jolt at the first frame
+  of the backhand (ROADMAP M1.40) 27 → 19 cm. Elbows 40-163° (the solver's floor and ceiling, as before), the blade's
+  gap from the head no nearer than before, the finishes no more drawn down the screen than before (the rising
+  slash's 0.33 → 0.53 of the steel across the view). The hit: at 0.5 and 2.5 m from the wyrm's chest every look of
+  every hit lands, 21 of 26 on the same frame as before, 5 one frame earlier or later; on the Ash Disciple the
+  filmed chain lands its five blows on the same frames but the first (one frame earlier). Every hero scenario
+  passes with its bounds unchanged (the test lists that name the chain's clips now name `drawSlash`).
+- **Tests changed:** Halcyon's seeded bot fight (city `win`) floor 140 → 130 s: Halcyon aims at the hero's drawn
+  chest, so the fight's length is noise under any change to his motion (main: 137-167 s over eight seeds, under 140 on
+  seed 3; this branch 138-158 s). integ's `build()` reseeds the world's break streams (`reseedBreaks`): they leaked
+  between scenarios of one process, and BREACH failed in `all` only (51 m; 41 m alone; 45.4 m either way now).
+- **Consequences:** the chain plays the same clock with a heavier body; a single tap shows a held finish (about five
+  frames) and a mashed chain shows the brake and the gather between hits. The look of the hero, his sword, the arc
+  and the cut effects are untouched (the arc follows the new paths by itself). Open: the owner judges the films and
+  the preview; the whirls keep their own overshoot (`SPIN_OV`) and got no brake key; the sprint slash and the roll
+  cut are unchanged (they start the chain from a run or a roll, not from the chain's finishes).

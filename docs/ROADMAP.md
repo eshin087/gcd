@@ -184,6 +184,12 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.82 — A heavier light chain, on the same clock (2026-11-24, `claude/hero-light-chain-12a97a`, ADR-188)
+- [x] The five lights and their looks: a load, a planted step before the contact, a deeper sink, a wider arc, a braked and held finish, a gather out of it; the finisher lands deeper (`swings.js`; `gather` in anim.js)
+- [x] Timing, damage, reach, tells, combo length and the heavy branches unchanged; `?lights=old` and the Lab's `lights` row; scenario `herolights` (both modes, the pop audit, the hit frame)
+- [ ] The owner judges the films and the preview (keep, tune, or more)
+- [ ] The sprint slash and the roll cut in the same style? (they start the chain from a run or a roll)
+
 ## M1.81 — Smaller combat text (2026-11-24, `claude/combat-text-smaller`, ADR-184)
 - [x] Call-outs and damage numbers at fixed, smaller sizes (the owner's option B); no growth with the window
 - [ ] Seen on the owner's desktop and iPhone
@@ -711,7 +717,8 @@ The first of the changes from the genre review (owner: "lets implement your sugg
   - [ ] The owner's look at the heavies in motion; tune their numbers from play
   - [ ] The rising backhand's first frame flings the free hand ~64° (from the falling cut's finish to
         the sword wrist; on `main` too, unmeasured there: that frame was 'pending'). integ HEROLIFE
-        measures from a swing's second frame
+        measures from a swing's second frame. (ADR-188: with the chain's `gather` the free wrist's jolt on
+        that frame is 19 cm, 27 before; its turn not re-measured)
   - [ ] HP-linked posture (the Lord's rule) for every boss
   - [ ] Save file, a hub at the bonfire, a boss order that starts on Shen Hui, ranks, difficulty tiers,
         a reduce-flashes option

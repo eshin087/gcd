@@ -5,6 +5,51 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-24 — A heavier light chain on the same clock (ADR-188; branch `claude/hero-light-chain-12a97a`)
+
+**Owner:** "lets also change his auto attack animation and combo to look more weighty, cool looking ... for me to
+review by video and also test it out on a preview"; asked about the pace: LOOK ONLY, KEEP PACE. One of three parallel
+sessions (idle ADR-186, the run's free arm ADR-187; this one owns the swing clips and the swing machinery).
+
+**What.** The chain's clips reworked in place in `swings.js` (the ten light looks) plus `drawSlash` and `groundSlam`
+(the draw cut and the finisher had been shared with the flurry, One Breath and Earthbreaker, which keep `drawCut` /
+`slam` untouched). Per light: a LOAD key, the coil 4-8° further round, the front foot planted before the contact
+(`step` [0.1, 1.3]), the hips 5-8 cm lower at the contact and 6-13 cm lower through the finish, the finish 8-10°
+further, a BRAKE key (u 2.15), the overshoot, a HOLD (u 2.45, `home` 0.3). A new clip option `gather` [leave, arrive]
+in `anim.js` (`swingClip` / `swingTrack` / `swingDir`, inside the swing machinery): the arms leave a held pose at
+0.4 × the straight rate and the blade arrives at the coil at 0.8, while the hips and chest still lead at speed: the
+finishes hold, so the next windup gathers instead of snapping (the old windup left at 96 cm a frame at the point).
+`?lights=old` and the Lab's PLAYER → `lights` row (live) swap `LIGHT[i].anim` / `variants` to the old clips
+(`lightsOld.js`, spread into `SWINGS` as `<name>Old`); `combat.js` `setLights` changes nothing else.
+
+**Measured** (new scenario `herolights`, both modes, 12 looks, mashed chains, single taps, the four light → heavy
+branches): every look sinks deeper; the held window's point speed 26-58 % lower; pop audit per point old → new:
+sword wrist 21 → 21 cm, free wrist 27 → 24, elbows 25 → 26 / 21 → 23, feet 20 → 20, head 17 → 19, point 112 → 118
+(the whip); the thrusts' worst jolt 60-72 → 24-34 cm; at 0.5 / 2.5 m from the wyrm every look of every hit lands, 21
+of 26 on the same frame as before and 5 one frame off; on the Ash Disciple all five blows land on the same frames but
+the first (one earlier). The hero scenarios' bounds are unchanged; their lists that name the chain's clips now name
+`drawSlash`, and the whip check's whirl exemption covers the `…Old` copies.
+
+**How.** Numbers first, from the headless harness (`ABYSS_DUMP=<file>` dumps every sampled frame of both modes), then
+films from headless Edge on the GPU: each take filmed four times on one seeded page load (old / new × the game camera /
+a close 3/4 view through `game.viewOverride`, the grass hidden there so the feet show), composed before | after.
+Tuning that the tests caught: a stronger `lead` doubled the hips' speed while it ramped in (20° a frame, bound 15);
+a deeper load pulled the hips round too fast at the start of a chain; the deeper lunge stretched the assisted stab's
+stance 2 cm past its bound (the rear spot moved 4 cm in); the low sweep's chest peaked after the hand.
+
+**Tests changed (own commits; the lead's call).** (1) city `win`: the floor 140 → 130 s. A seeded bot fight
+against Halcyon, who aims at the hero's DRAWN chest, so any change to his motion reshuffles it; eight seeds on main
+167 / 143 / 144 / 148 / 147 / 137 / 159 / 148 s (main itself fails seed 3), this branch 158 / 140 / 147 / 142 / 144 /
+138 / 146 / 153 s. (2) integ's `build()` now calls `reseedBreaks()` (destructibles.js): the world's break streams
+(how a felled tree lies, how its fire spreads) leaked from scenario to scenario in one process, so BREACH read 41 m
+alone, 44.7 m in `all` on main, 51 m (a FAIL) here; now 45.4 m either way, and the whole `integ` process passes on
+main and here with it.
+
+**Open.** The owner's review of the films and the preview. The whirls keep their own overshoot (no brake key). The
+sprint slash and the roll cut are unchanged. The head's jolt into the rising thrust (17 → 19 cm) is older than this.
+
+---
+
 ## 2026-11-24 — Session 92: smaller combat text
 
 **Owner:** "the combat text that shows up next to the character (counter, deflect, dmg numbers, etc) size and font
