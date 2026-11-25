@@ -4,7 +4,13 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Ninety-five pieces of work since 0.4.0:
+Ninety-six pieces of work since 0.4.0:
+- **A loading screen, and the worlds picked along the sword's path** (2026-11-25, ADR-196). *Added:* a loading
+  screen from the very first paint: the gcd logo, each step of the start with its real time, a progress bar and a
+  line of lore; picking a world says where the sword takes you. *Changed:* the title shows the worlds as fires
+  along the path the sword travels; the one in focus opens with its keeper, your best and the way there (keys,
+  mouse, pad and touch). The full controls list moved behind CONTROLS. The name over the hero's head is gcd and
+  stays just over his head, even in a roll. `?menu=0` gives back the old title, `?loader=a` the centred loader.
 - **The game is called gcd** (2026-11-25, ADR-195). *Changed:* the game has a new name, gcd, written lowercase
   everywhere you see it: the title logo (a small lowercase "gcd" in the same block letters), the browser tab, the
   WHAT'S NEW header. gcd is also the hero: a mysterious being who wields the most powerful sword in all universes,

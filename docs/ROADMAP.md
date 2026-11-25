@@ -185,6 +185,13 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.87 — The front: the sword's path and a loading screen (2026-11-25, `ui/gcd-front`, ADR-196)
+- [x] A loading screen from the first paint, an honest bar of the boot's steps (`?loader=a|b`; b the owner's pick)
+- [x] Three title layouts (`?menu=a|b|c`; c the owner's pick, `0` the title before), CONTROLS behind a button
+- [x] The hero's tag reads gcd and rides his head; the HUD name off (`?heroName=a|b`)
+- [ ] Seen on the iPhone (notch, home bar, upright and landscape) and with a real pad
+- [ ] The path past ten worlds (scroll or shrink)
+
 ## M1.86 — The bosses printed the hero's way (2026-11-24, `render/boss-hero-ink`, ADR-194)
 - [x] Why they looked apart: same letters, but flat dark / flat bright fills, a hairline outline, no hem
 - [x] `?bossPrint=0|a|b` (the shader: lit letter bodies, the hem below the knee; the art pass: his strokes and rims); b the owner's pick

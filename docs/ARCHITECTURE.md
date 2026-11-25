@@ -2451,6 +2451,39 @@ three colours.
 
 **The streak counter** (`ui/streakCounter.js` `class StreakCounter`, `COUNTER`, `TIER_WORDS`, `COUNTER_LOOKS`; ADR-167): `hud.streakUi`, built in the call-outs' layer; `onStreak(d)` (from `player:streak`: a rise to 2 or more shows the number, a loss of 2 or more shows it struck), `handoff()` (on `player:flurry`), `clear()` (with the call-outs: title, death, retry), `update(realDt)`; `shown` ({ n, tier, word, lost }; tests). Its DOM is built on the first number. `?streakCount=lines | brackets | ticks` (default lines). With `streakK('counter')` > 0 `Callouts.ghostep` / `riposte` drop their ×N, and `Callouts.count` ticks a live count in place while its pop is younger than 0.2 s. `Callouts.banner(text, sub, tier)` passes `tier` to `MiniBanner.show(text, sub, tier)`: 4 and 5 add thin rules (classes `t4` / `t5`, `long` for a long name), never size. `hud.js` exports `FLURRY_TIER_NAMES` ({ 4: 'HUNDREDFOLD FLASH', 5: 'THOUSANDFOLD FLASH' }): a full flurry's banner takes it from the streak's tier (read on `player:flurry`) while `streakK('tiers')` > 0.
 
+### The loading screen and the title's layouts (ADR-196)
+**The loading screen** is plain HTML, CSS and a small classic script at the top of `<body>` in `index.html`
+(`#gcd-load`, its style `#gcd-load-css`), so it paints before the bundle has arrived; `scripts/build.mjs`
+carries it into `dist/index.html` as is. Until the boot reports, its bar is a CSS-only waiting run (the main
+thread is busy parsing). `src/main.js` breaks its boot into named steps with fixed shares of the bar
+(`BOOT`: fonts, renderer, world, hero, boss, interface, shaders; measured on a 4x-slowed CPU, the world is
+most of it) and yields one frame between them, only while a loader is on the page and the tab is visible.
+`ui/bootLoader.js`: `bootStep(word, frac, to)`, `bootDone()`, `bootFail()` drive the page's
+`window.__gcdLoad.step / done / fail` (all no-ops with no loader: the headless tests);
+`fontSheetReady(ms = 3000)` waits for the web fonts' sheet, which `index.html` loads without blocking the
+first paint, so the glyph atlas is drawn with the same fonts as before; `travelNote(id, name)` writes
+sessionStorage `gcd.travel` on a stage pick and the next page's loader names the world it travels to.
+`?loader=b` (default, the console: the finished steps with their real times) or `a` (centred); `-hold`
+(or `hold`) keeps it on screen at the world step. Nothing in it calls `Math.random`.
+
+**The title's layouts** (`ui/titleMenu.js` `class TitleMenu`, `menuNow()`; styles `ui/titleMenuStyle.js`,
+scoped under `.ab-title.gm`; the logo `ui/gcdLogo.js` `GCD_LOGO`, the same rows as the loader's, kept in
+step by hand): `?menu=c` (default, the sword's path), `a` (the world list), `b` (the campfire grid), `0`
+the title before (`TitleScreen` builds it as it was). The picker reads each level's `name`, `sub` and
+`boss` (levels/*.js: the boss's full name, "NAME, THE EPITHET") from `game.levels`. One selection serves
+every device: hover, the arrow keys, the pad's focus or a first tap select; a click, Enter, A or a second
+tap acts (travel: `stage.pick(id)`, a page load; begin: `stage.begin()` → `flow.beginFromTitle()`).
+`TitleScreen.eatsKey(code)` (a key the menu used this frame: the flow's "press any key" skips it),
+`holdsStart()` (the CONTROLS panel is open: neither the flow nor the pad starts), `navigate(el, dx, dy)`
+(the pad's 2D walk: the nearest entry by its place on screen, `ui/gamepad.js`). CONTROLS opens the full
+keyboard / pad / touch grids and the tell legend. The title's shimmer and its pinned `Math.random` draws
+(`STREAM_COLS`, ADR-195) run for every layout.
+
+**The hero's name**: the tag over his head (`ui/nameTags.js`) reads `player.name` ('gcd') and rides his
+head bone (`HERO_TAG`: `over` m above it, eased at `follow` /s; `fallback` m over his feet without a rig).
+`?heroName=a|b` puts the name by his meters too (a: a line over the HP row; b: at the head of the flask
+row); off by default.
+
 ### Flow — `src/game/flow.js` exports `class GameFlow`
 **Move telemetry** (ADR-108, `game/telemetry.js` `MoveLog`): `flow.moves` logs every `combat:answer` per boss move:
 `attempt` (a Map id → { seen, hit, blocked, parried, perfectParry, clashed, dodged, perfectDodge, damage, kills },
