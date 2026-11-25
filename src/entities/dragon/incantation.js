@@ -17,7 +17,7 @@ import { FIRE_PALETTES } from '../../render/firePalettes.js';
 //   end(id)           the circle burns out (its lines tear up into tongues over a short tail)
 //   update(dt)        every frame (Dragon.update; never throws)
 //   reset()           nothing left (death, phase change, the level's reset)
-//   at(id, out)       where it stands now ({ x, y, z, r, alive }), false when gone
+//   at(id, out)       fills out.{x, y, z, r} with where it stands now and returns true; false when gone
 //   point(id, i, n, out)  the i-th of n points round its sigil ring (where things burst out of it)
 //
 // THE DRAWING. Its lines are WRITTEN ON THE LETTER GRID (the duelists' DuelFx._ink: one blob per cell
@@ -62,7 +62,7 @@ export const incantLook = () => LOOK;
 export const setIncantLook = (k) => {
   if (LOOKS.includes(k)) LOOK = k;
 };
-/** The incantation's ink ('fire' | 'blood'). */
+/** The incantation's ink ('script' | 'fire' | 'blood'; ?incantInk, 'script' the default). */
 export const incantInk = () => INK;
 export const setIncantInk = (k) => {
   if (INKS.includes(k)) INK = k;

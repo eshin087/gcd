@@ -2207,7 +2207,7 @@ head watches the crack's head), and phase 3's second flame wall is laid (`wallLa
 first wall crosses its line, as the first springs up; `b` the head swings round and breathes at that
 point for `TRAILS.wall.breath` 0.6 s, the fire striking the ground where the first wall stands (or
 0.8 of the way there, if nearer) `strikeDelay` 0.15 s after the first wall's cast, and a runner
-carrying it at `runSpeed` 32 m/s to the line; `TRAILS.wall.strike` is not read); Armageddon's meteors
+carrying it at `runSpeed` 32 m/s to the line); Armageddon's meteors
 fall out of `skyFrom`.
 - **Flying combos** (2026-11-15, ADR-119; `makeFlightCombo(key)`): one take-off, then the parts of
   `TUNING.attacks[key].parts` in order (`'pass'`, `'barrage'`, `'dive'`), joined by a `wheel`

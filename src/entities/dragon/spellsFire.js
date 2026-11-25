@@ -29,8 +29,8 @@ import { spellFx } from './spellsFx.js';
 // outruns it); the column drifts at 2.5 m/s at most (he walks out of its way).
 //
 // The flash's place: a beat's `part` is 'point' with its own (px, py, pz) (the serpent's head, the
-// column's foot). Until Dragon.partPos knows 'point', the cue falls back on the chest and this file
-// draws the in-world cue at the point itself (`cueAt`).
+// column's foot), kept up to date here every frame. Dragon.partPos('point') reads it, so the tell and
+// the in-world flash (announceTell / flashTell) sit on the head or the foot, not on the wyrm's chest.
 
 const S_T = SPELLS.fireSerpent;
 const V_T = SPELLS.firestorm;
@@ -117,20 +117,6 @@ function blow(d, a, o, spec, fx, fz, y) {
   o.point.y = y;
   o.point.z = p?.position.z ?? fz;
   return d.strike(a, o);
-}
-
-/** The cue in the world at the beat's own point (while Dragon.partPos does not know 'point'). */
-function cueAt(d, a, b) {
-  if (!b?.flashed || b.cued) return;
-  b.cued = true;
-  let own = false;
-  try {
-    const q = d.partPos?.('point', a, b, d._part);
-    own = !!q && Math.hypot(q.x - b.px, q.z - b.pz) < 0.5;
-  } catch {
-    own = false;
-  }
-  if (!own) d.fx?.tellFlash?.(b.tell, b.px, b.py, b.pz);
 }
 
 /** The circle's place: `ahead` m before the root. */
@@ -791,8 +777,6 @@ function serpentStep(d, a, s, dt) {
       if (s.fade[i] > 0.1) hush.call(g.world.fire, s.px[i], s.pz[i], 3.2, 0.25);
     }
   }
-  // the cue at the head (the beat's flash)
-  if (a.sb) cueAt(d, a, a.sb);
   // draw
   F.serpent(s, dt, SL, a.share);
   F.lane(s, dt, LANE_LIFE, a.share, spec.world.igniteDelay);
@@ -1140,7 +1124,6 @@ function vortexStep(d, a, v, dt) {
       tick(d, v.hit, spec, v.x, v.z);
     }
   }
-  if (a.vb) cueAt(d, a, a.vb);
   g.world?.fire?.hush?.(v.x, v.z, VL.reach + 2.5, 0.25); // (the grass's flames under it burn low)
   F.vortex(v, dt, VL, a.share);
 }

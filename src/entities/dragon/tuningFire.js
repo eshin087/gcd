@@ -189,9 +189,10 @@ export const TRAILS = {
   },
   // the P3 second flame wall (?wallSource=a|b): its line is laid from where it meets the wyrm's fire
   // at `laySpeed` m/s each way. b: the breath runs `breath` s (after the first wall's cast) toward
-  // that point and a runner crosses the ground at `runSpeed` from where it strikes (`strike` m ahead
-  // of the jaws) to the line
-  wall: { laySpeed: 45, runSpeed: 32, breath: 0.6, strike: 7, strikeDelay: 0.15 },
+  // that point and a runner crosses the ground at `runSpeed` from where it strikes (`strikeDelay` s
+  // after the first wall lights; as far out as the first wall, at most 0.8 of the way to that point:
+  // fireAttacks.js wallLay) to the line
+  wall: { laySpeed: 45, runSpeed: 32, breath: 0.6, strikeDelay: 0.15 },
   // Armageddon's meteors (skyFx.js METEOR_SOURCE, ?meteorSource=a|b|off): every meteor falls from the
   // wyrm's own fire in the sky, visible for its whole warning (`fall` 0: the warning; capped here)
   meteor: {
