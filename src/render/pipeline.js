@@ -7,6 +7,7 @@ import { createWyrmArtAtlas, wyrmArtLadder, zoomArtStep } from './wyrmGlyphs.js'
 import { HERO_ART } from './materials.js';
 import { LET_GO_GLSL, letGoUniforms } from './letGo.js';
 import { RIPPLE } from './impactRipple.js';
+import { ShadowCache } from './shadowCache.js';
 import { DP_TONE, dpPropsLook, dpTreesLook } from './dragonProps.js';
 
 /** The time rip's live cuts at once (player/timeRip.js; the ASCII pass's uCutA / uCutB size). */
@@ -15,7 +16,9 @@ const CUT_SLOTS = 2;
 // Frame pipeline:
 //   0. one scene-graph matrix update, then the rigid batches' bone matrices (rigidBatch.js)
 //   1. moon shadow map  (casters = objects on LAYER_CASTER, then the batched actors' shadow
-//      meshes on LAYER_CASTER_RIGID with a depth material that reads the bone texture)
+//      meshes on LAYER_CASTER_RIGID with a depth material that reads the bone texture); what has not
+//      moved lies in a still map drawn only when it changes, and only the moving casters are drawn
+//      each frame (shadowCache.js, ADR-201)
 //   2. world -> sceneRT (HDR colour, alpha = ASCII flag, + depth texture)
 //   2b. the hero alone -> seenRT, minus what the scene shows of him; the rest (the hero where
 //      something covers him) is put back into sceneRT so the ASCII pass prints him through (ADR-106)
@@ -175,6 +178,11 @@ export class Pipeline {
     this.shadowBias = new THREE.Matrix4().set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1);
     U.uShadowMap.value = this.shadowRT.depthTexture;
     this.shadowCenter = new THREE.Vector3();
+    // the still shadow map (shadowCache.js, ADR-201): null with ?shadowCache=0; off by itself on a renderer
+    // that cannot copy depth (the map is then drawn whole every frame)
+    const SC = CONFIG.render.shadowCache;
+    this.shadowCache = SC?.on ? new ShadowCache(renderer, this.shadowRT, { settle: SC.settle, settleBig: SC.settleBig, big: SC.big }) : null;
+    this._shadowKey = new Float64Array(6);
 
     // --- ASCII grid pass (see FLAG in materials.js and GRID_ROW in glyphs.js)
     this.cell = new THREE.Vector2(7, 12);
@@ -1944,18 +1952,39 @@ export class Pipeline {
     if (!Number.isFinite(S) || S < 16 || S === this.shadowSize) return;
     this.shadowSize = S;
     this.shadowRT.setSize(S, S);
+    this.shadowCache?.setSize(S, S);
     this.U.uShadowTexel.value = 1 / S;
   }
 
   updateShadowCamera(center) {
     const E = CONFIG.render.shadowExtent;
     const dir = this.U.uMoonDir.value;
-    // snap to texel grid to avoid shimmering when the center moves
+    const cam = this.shadowCam;
     const texel = (2 * E) / this.shadowSize;
-    this.shadowCenter.set(Math.round(center.x / texel) * texel, 0, Math.round(center.z / texel) * texel);
-    this.shadowCam.position.copy(this.shadowCenter).addScaledVector(dir, 160);
-    this.shadowCam.lookAt(this.shadowCenter);
-    this.shadowCam.updateMatrixWorld();
+    if (this.shadowCache && !this.shadowCache.off) {
+      // With the still map (ADR-201) the camera moves only in its OWN plane, by whole texels of its own
+      // grid (CONFIG.render.shadowCache.snap of them a step): every texel then lies on the same spot of the
+      // world, at the same depth, wherever the camera is, so the map just slides and nothing in the picture
+      // changes when it steps; it is drawn again only then. (The snap below, on the world's x and z, moved the
+      // texels across the world and changed every depth a little at each 8 cm of a walk: the shadows' edges
+      // and the letters along them crawled while the hero moved.)
+      const step = texel * Math.max(1, CONFIG.render.shadowCache.snap | 0);
+      cam.position.copy(dir).multiplyScalar(160);
+      cam.lookAt(0, 0, 0);
+      cam.updateMatrixWorld();
+      const m = cam.matrixWorld.elements; // its right (m[0..2]) and up (m[4..6]) in the world
+      const u = Math.round((center.x * m[0] + center.y * m[1] + center.z * m[2]) / step) * step;
+      const v = Math.round((center.x * m[4] + center.y * m[5] + center.z * m[6]) / step) * step;
+      if (Number.isFinite(u + v)) cam.position.set(dir.x * 160 + m[0] * u + m[4] * v, dir.y * 160 + m[1] * u + m[5] * v, dir.z * 160 + m[2] * u + m[6] * v);
+      this.shadowCenter.copy(cam.position).addScaledVector(dir, -160);
+      cam.updateMatrixWorld();
+    } else {
+      // snap to texel grid to avoid shimmering when the center moves
+      this.shadowCenter.set(Math.round(center.x / texel) * texel, 0, Math.round(center.z / texel) * texel);
+      cam.position.copy(this.shadowCenter).addScaledVector(dir, 160);
+      cam.lookAt(this.shadowCenter);
+      cam.updateMatrixWorld();
+    }
     this.U.uShadowMatrix.value
       .copy(this.shadowBias)
       .multiply(this.shadowCam.projectionMatrix)
@@ -2048,6 +2077,33 @@ export class Pipeline {
     }
   }
 
+  /**
+   * Step 1 through the still shadow map (shadowCache.js, ADR-201): false when it is off or failed (the
+   * caller then draws the map whole). Leaves the override material and the shadow camera's layers for the
+   * caller's finally to put back.
+   */
+  _renderShadowCached() {
+    const C = this.shadowCache;
+    if (!C || C.off) return false;
+    const r = this.renderer, scene = this.scene, cam = this.shadowCam, m = this.U.uMoonDir.value, k = this._shadowKey;
+    k[0] = this.shadowCenter.x;
+    k[1] = this.shadowCenter.z;
+    k[2] = m.x;
+    k[3] = m.y;
+    k[4] = m.z;
+    k[5] = this.shadowSize;
+    const draw = (this._shadowDraw ??= () => {
+      r.autoClear = false;
+      scene.overrideMaterial = this.shadowMat;
+      cam.layers.set(LAYER_CASTER);
+      r.render(scene, cam);
+      scene.overrideMaterial = this.rigidShadowMat;
+      cam.layers.set(LAYER_CASTER_RIGID);
+      r.render(scene, cam);
+    });
+    return C.render(scene, k, draw, cam);
+  }
+
   render() {
     const r = this.renderer, scene = this.scene;
     const prevAutoClear = r.autoClear;
@@ -2061,17 +2117,20 @@ export class Pipeline {
     this.rigid.sync();
     scene.matrixWorldAutoUpdate = false;
     try {
-      // 1. shadows: the plain casters, then the batched actors (one draw each) into the same map
-      scene.overrideMaterial = this.shadowMat;
-      r.setRenderTarget(this.shadowRT);
-      r.setClearColor(0xffffff, 1);
-      r.clear();
-      r.render(scene, this.shadowCam);
-      if (this.rigid.casting) {
-        scene.overrideMaterial = this.rigidShadowMat;
-        this.shadowCam.layers.set(LAYER_CASTER_RIGID);
-        r.autoClear = false;
+      // 1. shadows: the plain casters, then the batched actors (one draw each) into the same map; with the
+      // still map (shadowCache.js) only what moves is drawn, over a copy of what does not
+      if (!this._renderShadowCached()) {
+        scene.overrideMaterial = this.shadowMat;
+        r.setRenderTarget(this.shadowRT);
+        r.setClearColor(0xffffff, 1);
+        r.clear();
         r.render(scene, this.shadowCam);
+        if (this.rigid.casting) {
+          scene.overrideMaterial = this.rigidShadowMat;
+          this.shadowCam.layers.set(LAYER_CASTER_RIGID);
+          r.autoClear = false;
+          r.render(scene, this.shadowCam);
+        }
       }
 
       // 2. world

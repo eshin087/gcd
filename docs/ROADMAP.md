@@ -193,7 +193,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] The ground drawn last; its relief baked once per cell (the same picture: at most 9 pixels of 2 million differ)
 - [x] The world, the lights and the particles on their own step: a catch-up step runs the fighters only
 - [ ] Automatic quality: the render resolution follows the measured frame time (the owner picks its floor from rendered options); a 60 fps cap on touch
-- [ ] The shadow map: the static world redrawn only when it moves or something breaks; lighter trees on LOW (the presets' grass counts do nothing now)
+- [x] The shadow map: what does not move is drawn only when it changes; the shadows' edges no longer crawl as the hero walks (ADR-201)
+- [ ] Lighter trees on LOW (the presets' grass counts do nothing now)
 - [ ] The floors' shader (its relief is most of its cost; not bakeable as it is drawn)
 - [ ] Script: the shared uniforms' upload (about 0.5 ms a frame), the worst frames' hitches
 - [ ] Measured on the owner's laptop (Intel Core Ultra 7 255U, integrated graphics) and on a phone
