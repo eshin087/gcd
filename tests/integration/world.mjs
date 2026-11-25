@@ -2171,7 +2171,18 @@ const S = {
   },
 
   // ---------------------------------------------------------------- the cut tops (round 2, world/mowFx.js)
+  // (the 3D grass's cut, as ?dragon=0 draws it: dgGrass 0; the dragon print's own cut, which ships, is
+  // tests/integration/dgGrass.mjs)
   tops() {
+    setLook('dgGrass', '0');
+    try {
+      topsOld();
+    } finally {
+      setLook('dgGrass', null);
+    }
+  },
+};
+function topsOld() {
     // the meadow on the west, paving on the east; a real grass of 30k blades over 24 m
     const dens = (x, z) => (x < 0 ? 1 : 0);
     setLook('mowLook', 'a'); // (the thrown look first: its tops fly up and along; b, the default, below)
@@ -2333,8 +2344,7 @@ const S = {
     } finally {
       setLook('mowLook', null);
     }
-  },
-};
+}
 const near = (a, b, eps) => Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) <= eps;
 function near0(a, b, eps = 1e-6) {
   return near(a, b, eps);
