@@ -51,6 +51,39 @@ automatically".
   `gh pr update-branch` (a bot push starts no CI). The open PRs before this one (#112, #113) were opened
   before the workflow and have no auto-merge unless set by hand.
 
+---
+
+## 2026-11-24 — The Cinder Wyrm's wake without the neck twist; its head from above (ADR-189)
+
+**Owner:** "when the fight starts the dragon does an unnatural neck twist as it wakes up. make it look natural and
+good transition when its waking up. also i really like how the dragons face looks like from the side ... but from
+the top center view, the dragon head looks goofy." Branch `dragon/wake-and-face`.
+
+**The twist.** Filmed the intro from fixed cameras with per-frame numbers: in `rise` the head's heading went round
+~330 degrees in half a second and turned upside down. The combat stance's resting S (`s.rest`) faded in on the pose's
+sleep target while the neck was still curled back along the flank, and the two chains were blended point by point.
+Now the resting S waits for the curl (`WAKE_REST_SLEEP`): heading within +-30 degrees, head upright, all the way up.
+
+**The head from above.** Hiding materials one by one showed the cause: the pale bone (brow, horns, cheek fins) makes
+one big V from above, and the eye glints sit as two round dots. Three tops rendered (`docs/looks/wyrm/`); the owner
+picked C: no glints, dark obsidian horns / fins / brow (a `horn` material of its own), horns slimmer and swept
+tighter, a dark crest. `?wyrmTop=0|a|b` and the Lab's `top` row keep the rest.
+
+**Verified.** Films and numbers in headless Edge (a before / after clip went to the owner); the default build
+checked in the page (top c, glints off, the Lab row); `npm test` and the build.
+
+**Found by the tests.** The dark horns add a material, and three.js draws its ids from `Math.random`, so the seeded
+fights ran differently (the memory note on seeded RNG). Two old edges came up: (1) the pounce's hop could land its
+root 2.4 m past its ground beside a gap in the tree wall and stand there through the next blow; the landing now
+settles the root on its ground (`d._collide()`, attacks.js), and the breach check counts the hop's active phase as
+in the air, like a leap; (2) the terrain fight's world reset (every 30 s) takes back a piece still in flight, so
+its flash never comes: the check now excuses a tell open at a reset. The draw budget for the drake is old + 2.
+
+**Open.** The owner has not played it. The eyes without the glint are smaller at the game camera: if they read too
+little, brighten the slits rather than bring the dots back. The phone view is not checked.
+
+---
+
 ## 2026-11-24 — The sword's green flame (ADR-182; branch `player/sword-green-flame`)
 
 **Owner, over a day of rounds:** "i also want his sword to look a bit more mystical in a subtle way" → of four readings,

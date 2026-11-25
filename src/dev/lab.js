@@ -8,6 +8,7 @@ import { TimingTrainer, tellName } from './timingTrainer.js';
 import { ModelViewer, VIEW_ANGLES, VIEW_LOOKS } from './modelView.js';
 import { Training } from './training.js';
 import { WYRM_FACES, wyrmFace } from '../entities/dragon/heads.js';
+import { WYRM_TOPS, wyrmTop } from '../entities/dragon/faces.js';
 import { WYRM_LOOKS, wyrmLookId } from '../entities/dragon/looks.js';
 import { TrainingPanel } from './trainingPanel.js';
 import { setCutStyle, cutStyle } from '../combat/cutFx.js';
@@ -1312,6 +1313,24 @@ export class Lab {
       });
       b.title = `the wyrm wears the ${f} head (?wyrmFace=${f})`;
       if (f === wyrmFace()) b.classList?.add('on');
+    }
+    // the drake's head from above (entities/dragon/faces.js, ?wyrmTop=; ADR-189): a build-time choice too
+    const wtr = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'top', wtr).title = "the drake head from above (?wyrmTop=; reloads the page): c as it ships (no eye glints, dark slim horns, a crest), 0 the head before, a no glints, b a + dark horns";
+    const wtg = el('div', 'lab-grid', null, wtr);
+    wtg.style.flex = '1';
+    for (const t of WYRM_TOPS) {
+      const b = button(wtg, t, () => {
+        try {
+          const u = new URL(globalThis.location.href);
+          u.searchParams.set('wyrmTop', t);
+          globalThis.location.href = u.toString();
+        } catch (err) {
+          this._status(`error: ${err?.message ?? err}`, 'err');
+        }
+      });
+      b.title = `the drake wears top ${t} (?wyrmTop=${t})`;
+      if (t === wyrmTop()) b.classList?.add('on');
     }
     // the builds of the wyrm (entities/dragon/looks.js, ?wyrmLook=): a build-time choice too
     const wlr = el('div', 'lab-row', null, body);
