@@ -193,7 +193,8 @@ function restFingers(p, P, A, m) {
  *  closed in the wind; the elbow down at his side. The weight even, the head a little tilted. */
 function restCloak(p, P, A, m) {
   const yaw = p[P.pelvY] + p[P.spY];
-  freeTo(p, P.lH, -0.05 + 0.004 * m.sw, -0.21 + 0.008 * m.brL, 0.17, yaw, 1);
+  // (on the coat: 0.17 ahead of the shoulder the smaller hand (ADR-187) floated in front of it, seen from his side)
+  freeTo(p, P.lH, -0.06 + 0.004 * m.sw, -0.22 + 0.008 * m.brL, 0.115, yaw, 1);
   set3(p, P.lP, 0.35, -0.9, -0.2);
   p[P.hs] = 0;
   // the fingers up and in along the cloak's edge, the palm on it
