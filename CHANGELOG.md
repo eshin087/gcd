@@ -4,7 +4,11 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Ninety pieces of work since 0.4.0:
+Ninety-one pieces of work since 0.4.0:
+- **The sword's cut throws green code** (2026-11-25, ADR-192). *Added:* where your swing's arc cuts the grass,
+  small green code glyphs (the Hall of Falling Script's digits and letters) burst off the cut, flicker as they
+  fly, fall and settle into the grass; calm, about half a blade tall, so you see the meadow answer the sword
+  at the normal camera. `?grassSpray=0` throws none; the other looks shown on the way stay behind `?grassSpray=`.
 - **A natural running arm, three ways to carry it** (2026-11-24, ADR-187). *Changed:* the hero's free (left) hand
   no longer swings a stiff fist on the run. It swings like a runner's, the elbow bent near a right angle and working
   with the stride, the hand open and loose, pumping harder at a sprint; strafing and backing away (lock-on play) it

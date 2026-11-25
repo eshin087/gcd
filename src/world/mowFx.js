@@ -3,6 +3,7 @@ import { COMMON_GLSL } from '../render/shaderLib.js';
 import { gis } from '../render/glyphs.js';
 import { GRASS } from './grassTuning.js';
 import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
+import { GrassSpray, sprayLook } from './grassSpray.js';
 
 // The cut tops (ADR: grass the sword cuts, round 2). When a tear (world/scorch.js: the sword's mow, a
 // mark's blow) cuts a blade, the blade's stub stays in the meadow (grass.js: the lower part of its own
@@ -57,11 +58,16 @@ export class MowFx {
     this.vx = new Float32Array(M); this.vy = new Float32Array(M); this.vz = new Float32Array(M);
     this.rot = new Float32Array(M); this.spin = new Float32Array(M); this.rot0 = new Float32Array(M);
     this.lieRot = new Float32Array(M); this.age = new Float32Array(M); this.lie = new Float32Array(M);
-    this.w = new Float32Array(M); this.h = new Float32Array(M); this.v0 = new Float32Array(M);
+    this.w = new Float32Array(M); this.h = new Float32Array(M); this.v0 = new Float32Array(M); this.v1 = new Float32Array(M);
+    // (a chip of the spray: its colour is the blade's top's throughout, `tipMin`, and its own light)
+    this.tipMin = new Float32Array(M); this.lit0 = new Float32Array(M); this.lit1 = new Float32Array(M);
+    this.grav = new Float32Array(M); // (m/s2: a top falls as GRASS.fly.gravity, a chip lighter, GRASS.spray.gravity)
+    // (code, `?grassSpray=m|m2|m3`: 1 a code glyph, 2 a top that turns to code at `turnAt` s; the next re-roll)
+    this.code = new Uint8Array(M); this.flipT = new Float32Array(M); this.turnAt = new Float32Array(M);
     this.glyph = new Float32Array(M); this.colv = new Float32Array(M); this.fade = new Float32Array(M);
     this.state = new Uint8Array(M); this.t0 = new Float32Array(M); this.y0 = new Float32Array(M);
     this.born = new Float32Array(M); // (game time it was cut: the oldest lying piece gives way first)
-    this._all = [this.px, this.py, this.pz, this.vx, this.vy, this.vz, this.rot, this.spin, this.rot0, this.lieRot, this.age, this.lie, this.w, this.h, this.v0, this.glyph, this.colv, this.fade, this.state, this.t0, this.y0, this.born];
+    this._all = [this.px, this.py, this.pz, this.vx, this.vy, this.vz, this.rot, this.spin, this.rot0, this.lieRot, this.age, this.lie, this.w, this.h, this.v0, this.v1, this.tipMin, this.lit0, this.lit1, this.grav, this.code, this.flipT, this.turnAt, this.glyph, this.colv, this.fade, this.state, this.t0, this.y0, this.born];
     this.thrown = 0; // pieces spawned since the last read (mowStats)
     this.total = 0;
     this.dropped = 0;
@@ -107,12 +113,19 @@ export class MowFx {
     geo.index = quad.index;
     geo.setAttribute('position', quad.attributes.position);
     geo.setAttribute('uv', quad.attributes.uv);
-    this.aP = new THREE.InstancedBufferAttribute(new Float32Array(M * 4), 4).setUsage(THREE.DynamicDrawUsage);
-    this.aS = new THREE.InstancedBufferAttribute(new Float32Array(M * 4), 4).setUsage(THREE.DynamicDrawUsage);
-    this.aC = new THREE.InstancedBufferAttribute(new Float32Array(M * 4), 4).setUsage(THREE.DynamicDrawUsage);
+    // (instances: the pieces, and after them the code trails' glyphs, `?grassSpray=m2`)
+    const MI = (this.maxI = M * (1 + GRASS.spray.code.trailRoom));
+    this.aP = new THREE.InstancedBufferAttribute(new Float32Array(MI * 4), 4).setUsage(THREE.DynamicDrawUsage);
+    this.aS = new THREE.InstancedBufferAttribute(new Float32Array(MI * 4), 4).setUsage(THREE.DynamicDrawUsage);
+    this.aC = new THREE.InstancedBufferAttribute(new Float32Array(MI * 4), 4).setUsage(THREE.DynamicDrawUsage);
+    // (a code glyph's own colour, rgb and 1; 0: the grass's colour path)
+    this.aK = new THREE.InstancedBufferAttribute(new Float32Array(MI * 4), 4).setUsage(THREE.DynamicDrawUsage);
     geo.setAttribute('aP', this.aP);
     geo.setAttribute('aS', this.aS);
     geo.setAttribute('aC', this.aC);
+    this.aT = new THREE.InstancedBufferAttribute(new Float32Array(MI), 1).setUsage(THREE.DynamicDrawUsage);
+    geo.setAttribute('aT', this.aT);
+    geo.setAttribute('aK', this.aK);
     geo.instanceCount = 0;
     this.geo = geo;
     const U = game.U;
@@ -130,7 +143,9 @@ export class MowFx {
         ${COMMON_GLSL}
         attribute vec4 aP; // base x, y, z, screen-plane rotation
         attribute vec4 aS; // the blade's quad w, h, the cut (share of the quad under it), glyph
-        attribute vec4 aC; // colour var, thinning (0..1), lying (0..1), brightness (the cut catching the light)
+        attribute vec4 aC; // colour var, thinning (0..1), the band's top (uv; 1 = the letter's top), brightness
+        attribute float aT; // the lowest height on the blade its colour is taken from (a chip: the blade's top)
+        attribute vec4 aK;  // a code glyph's colour (w 1), else the grass's
         uniform vec3 uCamRight;
         uniform vec3 uBladeUp;
         uniform float uAsh;
@@ -141,12 +156,13 @@ export class MowFx {
         void main() {
           float v0 = aS.z;
           // the upper part of the blade's letter: its quad from the cut up, its uv the same rows
-          vec2 q = vec2(position.x * aS.x, position.y * aS.y * (1.0 - v0));
+          float span = aC.z - v0;
+          vec2 q = vec2(position.x * aS.x, position.y * aS.y * span);
           float c = cos(aP.w), s = sin(aP.w);
           q = vec2(c * q.x - s * q.y, s * q.x + c * q.y);
           vec3 wp = aP.xyz + uCamRight * q.x + uBladeUp * q.y;
           // the grass's own colour at that height (grass.js), lit as the blades are
-          float tip = v0 + (1.0 - v0) * position.y;
+          float tip = max(aT, v0 + span * position.y);
           vec3 rootC = vec3(0.010, 0.018, 0.013);
           vec3 tipC = mix(vec3(0.1, 0.16, 0.072), vec3(0.132, 0.188, 0.08), aC.x);
           tipC = mix(tipC, vec3(0.12, 0.144, 0.104), step(0.82, aC.x));
@@ -156,8 +172,8 @@ export class MowFx {
           vec3 at = vec3(aP.x, max(aP.y, 0.0) + 0.3, aP.z);
           float sh = shadowAtFast(at);
           vec3 L = uAmbient * 1.6 + uMoonColor * 0.62 * sh + pointLights(at, vec3(0.0, 1.0, 0.0), 1.0);
-          vCol = applyFog(alb * L * aC.w, wp);
-          vUv = vec2(uv.x, v0 + (1.0 - v0) * uv.y);
+          vCol = applyFog(aK.w > 0.5 ? aK.rgb : alb * L * aC.w, wp);
+          vUv = vec2(uv.x, v0 + span * uv.y);
           vGlyph = aS.w;
           vFade = aC.y;
           gl_Position = projectionMatrix * viewMatrix * vec4(wp, 1.0);
@@ -186,6 +202,19 @@ export class MowFx {
     this.mesh.frustumCulled = false;
     this.mesh.name = 'grassTops';
     this._fling = { on: false, ux: 0, uz: 0, k: 1 };
+    // the grass spray (round 5, `?grassSpray=`): letters thrown off what the arc cuts; c cuts a bolder line
+    const sl = sprayLook();
+    this.chips = ['a', 'a2', 'm', 'm0', 'm2', 'm3', 'm4'].includes(sl) && this.look !== 'r1' ? GRASS.spray[sl] : null;
+    // the code look (the Hall of Falling Script's rain, world/scriptHall.js: its glyphs, its greens)
+    this._code = this.chips?.code ? gis(GRASS.spray.code.glyphs) : null;
+    this._codeTops = !!this.chips?.tops;
+    // (the code's colours and flicker: the variant's own, else GRASS.spray.code's)
+    this._cc = this.chips?.col ?? GRASS.spray.code;
+    this._chipAcc = 0;
+    this.chipped = 0; // chips thrown (the tests', the Lab's)
+    this.spray = sl === '0' || this.look === 'r1' || this.chips ? null : new GrassSpray(game, sl);
+    this._wide = this.spray?.T.wide ?? 1;
+    if (this.spray?.T.fresh2 != null && gu.uMowFresh2) gu.uMowFresh2.value = this.spray.T.fresh2;
   }
 
   /** The swing's way for the cuts that follow (grass.js mowSwing): unit (ux, uz), k its strength. */
@@ -278,6 +307,70 @@ export class MowFx {
     return best;
   }
 
+  /**
+   * The grass spray in the grass's own letters (`?grassSpray=a|a2`; GRASS.spray[look]): the blade at
+   * instance i, cut at (x, z) by a stroke going (ux, uz), throws `per` chips on average: small pieces of
+   * ITS letter (its glyph, its colour field, lit as the grass is), a whole small letter or a band of its
+   * strokes (`frag` of them), `size` x the blade, thrown along the swing and up, tumbling, landing to
+   * lie a moment and thin away. A phone throws more a blade (GRASS.spray.lowQ).
+   */
+  _chip(i, x, z, ux, uz) {
+    const T = this.chips, S = GRASS.spray, B = this.grass.blades, q = this._q();
+    this._chipAcc += T.per * Math.pow(1 / Math.max(0.4, q), S.lowQ);
+    const h = B.root[i * 4 + 2], G = GRASS.blade;
+    while (this._chipAcc >= 1) {
+      this._chipAcc -= 1;
+      const j = this._slot();
+      if (j < 0) return;
+      this.total++;
+      this.chipped++;
+      // (a phone draws the meadow smaller: the variant's `phone` sizes, when it has them)
+      const Z = q < 0.75 && T.phone ? T.phone.size : T.size;
+      const frag = !this._code && rnd() < T.frag, k = R(Z[0], Z[1]);
+      let v0 = 0, v1 = 1;
+      if (frag) {
+        // a band of the letter's strokes (its ink spans GRASS.blade.ink of the cell)
+        const band = R(T.band[0], T.band[1]);
+        v0 = R(G.ink[0], G.ink[1] - band);
+        v1 = v0 + band;
+      }
+      this.px[j] = x + R(-0.1, 0.1);
+      this.py[j] = h * R(0.35, 0.85);
+      this.pz[j] = z + R(-0.1, 0.1);
+      this.w[j] = h * 0.92 * k;
+      this.h[j] = h * k; // (a band is drawn at the letter's own scale: its strokes, not stretched)
+      this.v0[j] = v0;
+      this.v1[j] = v1;
+      this.tipMin[j] = T.tip;
+      this.grav[j] = S.gravity;
+      this.lit0[j] = T.lit[0];
+      this.lit1[j] = T.lit[1];
+      this.glyph[j] = this._code ? this._codeGlyph() : B.data[i * 4];
+      this.code[j] = this._code ? 1 : 0;
+      this.flipT[j] = R((this._cc.flip0 ?? this._cc.flip)[0], (this._cc.flip0 ?? this._cc.flip)[1]);
+      this.colv[j] = B.data[i * 4 + 2];
+      this.fade[j] = 0;
+      this.age[j] = 0;
+      this.born[j] = this.game.time ?? 0;
+      // (a code glyph stays near upright, as the rain's do: it flickers rather than tumbles)
+      this.rot[j] = this.rot0[j] = this._code ? R(-0.15, 0.15) : B.data[i * 4 + 1] + R(-0.5, 0.5);
+      this.y0[j] = this.py[j];
+      this.lieRot[j] = (rnd() < 0.5 ? -1 : 1) * (Math.PI * 0.5 + R(-0.6, 0.6));
+      const fl = R(S.fling[0], S.fling[1]), side = R(-1, 1) * S.side;
+      this.state[j] = FLY;
+      this.vx[j] = ux * fl - uz * side;
+      this.vz[j] = uz * fl + ux * side;
+      this.vy[j] = R(S.up[0], S.up[1]);
+      this.spin[j] = this._code ? R(-0.6, 0.6) : R(T.spin[0], T.spin[1]) * (rnd() < 0.5 ? -1 : 1);
+      if (this._code) this.lieRot[j] = R(-0.2, 0.2); // (a code glyph lies upright, darkening)
+      this.lie[j] = R(S.lie[0], S.lie[1]);
+    }
+  }
+
+  _codeGlyph() {
+    return this._code[Math.floor(rnd() * this._code.length)];
+  }
+
   _spawn(i, x, z, v0, cx, cz, bare) {
     const B = this.grass.blades, U = this.game.U, F = GRASS.fly, look = this.look;
     const h = B.root[i * 4 + 2], tilt = B.data[i * 4 + 1];
@@ -305,6 +398,14 @@ export class MowFx {
       this.w[j] = h * 0.92 * (frag ? F.shred.size : 1);
       this.h[j] = h * (frag ? F.shred.size : 1);
       this.v0[j] = frag ? 0 : v0;
+      this.v1[j] = 1;
+      this.code[j] = this._codeTops && !frag ? 2 : 0;
+      this.turnAt[j] = R(GRASS.spray.code.turn[0], GRASS.spray.code.turn[1]);
+      this.flipT[j] = 0;
+      this.tipMin[j] = 0;
+      this.grav[j] = F.gravity;
+      this.lit0[j] = this._lit[0];
+      this.lit1[j] = this._lit[1];
       this.glyph[j] = frag ? this._frag[Math.floor(rnd() * this._frag.length)] : B.data[i * 4];
       this.colv[j] = B.data[i * 4 + 2];
       this.fade[j] = 0;
@@ -341,6 +442,7 @@ export class MowFx {
   clear() {
     this.n = 0;
     this.geo.instanceCount = 0;
+    this.spray?.clear();
     if (this._cutAny) {
       this.cut.fill(0);
       this._texDirty = true;
@@ -379,7 +481,7 @@ export class MowFx {
       bx = cam.x + (bx - cam.x) * t; bz = cam.z + (bz - cam.z) * t;
     }
     const ex = bx - ax, ez = bz - az, l2 = ex * ex + ez * ez, el = Math.sqrt(l2);
-    const hw = (heavy ? A.wHeavy : A.w) * 0.5;
+    const hw = (heavy ? A.wHeavy : A.w) * 0.5 * this._wide;
     const f = this._fling;
     f.on = el > 1e-4;
     f.ux = f.on ? ex / el : 0;
@@ -404,6 +506,8 @@ export class MowFx {
           this._cutAny = true;
           this._texDirty = true;
           if (this.sc.burnAt(x, z) > 0.55) continue;
+          if (this.spray) this.spray.cut(x, B.root[k * 4 + 2], z, f.ux, f.uz);
+          else if (this.chips) this._chip(k, x, z, f.ux, f.uz);
           const r2 = fract(B.root[k * 4 + 3] * 7.31);
           const stubK = r2 < G.low ? 0.04 : G.stub + G.jitter * (r2 - 0.5) * 2;
           if (n++ < cap) this._spawn(k, x, z, G.ink[0] + (G.ink[1] - G.ink[0]) * stubK, ax, az, 0);
@@ -420,6 +524,9 @@ export class MowFx {
       this.cutTex.needsUpdate = true;
       this._texDirty = false;
     }
+    this.spray?.update(dt);
+    // (the code's colours: on a phone the variant's `phone` ones, when it has them)
+    if (this.chips) this._cc = (this._q() < 0.75 && this.chips.phone?.col) || this.chips.col || GRASS.spray.code;
     if (!(dt > 0)) return;
     const F = GRASS.fly, g = F.gravity, drag = Math.exp(-F.drag * dt);
     const P = this.aP.array, Sa = this.aS.array, C = this.aC.array;
@@ -428,7 +535,7 @@ export class MowFx {
       this.age[j] += dt;
       const st = this.state[j];
       if (st === FLY) {
-        this.vy[j] -= g * dt;
+        this.vy[j] -= this.grav[j] * dt;
         this.vx[j] *= drag;
         this.vz[j] *= drag;
         this.px[j] += this.vx[j] * dt;
@@ -467,23 +574,93 @@ export class MowFx {
           continue;
         }
       }
+      // code: the glyph re-rolls now and then while it flies (the rain's head); a top turns to code
+      const cd = this.code[j];
+      if (cd === 2 && this.age[j] >= this.turnAt[j] && this.state[j] !== LIE) {
+        // (the cut top leaves as code: the whole cell, at the height it had)
+        this.code[j] = 1;
+        this.h[j] *= this.v1[j] - this.v0[j];
+        this.w[j] = this.h[j] * 0.92;
+        this.v0[j] = 0;
+        this.v1[j] = 1;
+        this.glyph[j] = this._codeGlyph();
+        this.flipT[j] = this.age[j] + R((this._cc.flip0 ?? this._cc.flip)[0], (this._cc.flip0 ?? this._cc.flip)[1]);
+        this.lieRot[j] = R(-0.2, 0.2);
+        this.spin[j] *= 0.15;
+      } else if (cd === 1 && this.age[j] >= this.flipT[j] && this.state[j] !== LIE) {
+        this.glyph[j] = this._codeGlyph();
+        this.flipT[j] = this.age[j] + R(this._cc.flip[0], this._cc.flip[1]);
+      }
       const o = j * 4;
       P[o] = this.px[j]; P[o + 1] = this.py[j]; P[o + 2] = this.pz[j]; P[o + 3] = this.rot[j];
       Sa[o] = this.w[j]; Sa[o + 1] = this.h[j]; Sa[o + 2] = this.v0[j]; Sa[o + 3] = this.glyph[j];
       // (a top in the air catches the light; lying it calms to the grass's own tone over `calm` s)
       const lying = this.state[j] === LIE;
-      C[o] = this.colv[j]; C[o + 1] = Math.min(1, this.fade[j]); C[o + 2] = lying ? 1 : 0;
-      const Lt = this._lit;
-      C[o + 3] = lying ? Lt[1] + (Lt[0] - Lt[1]) * Math.max(0, 1 - this.age[j] / F.calm) : Lt[0];
+      C[o] = this.colv[j]; C[o + 1] = Math.min(1, this.fade[j]); C[o + 2] = this.v1[j];
+      const L0 = this.lit0[j], L1 = this.lit1[j];
+      C[o + 3] = lying ? L1 + (L0 - L1) * Math.max(0, 1 - this.age[j] / F.calm) : L0;
+      this.aT.array[j] = this.tipMin[j];
+      if (this.code[j] === 1) this._codeCol(j, 0, this.aK.array, o);
+      else this.aK.array[o + 3] = 0;
       j++;
     }
     this.n = n;
-    this.geo.instanceCount = n;
-    if (n) {
-      this._up(this.aP, n);
-      this._up(this.aS, n);
-      this._up(this.aC, n);
+    // the code trails (m2): behind each code glyph in the air, a few fading glyphs back along its way
+    const tr = this.chips?.trail | 0;
+    const ni = tr > 0 ? this._trails(n, tr) : n;
+    this.geo.instanceCount = ni;
+    if (ni) {
+      this._up(this.aP, ni);
+      this._up(this.aS, ni);
+      this._up(this.aC, ni);
+      this._up(this.aK, ni);
+      this.aT.clearUpdateRanges();
+      this.aT.addUpdateRange(0, ni);
+      this.aT.needsUpdate = true;
     }
+  }
+
+  /** A code glyph's colour (GRASS.spray.code: the hall's rain, tamed): the head's bright green, cooling
+   *  to the tail's as it flies, to the deep green as it lies; `k` dims a trail's glyphs. */
+  _codeCol(j, k, K, o) {
+    const CO = this._cc, lying = this.state[j] === LIE;
+    let a, b, t;
+    if (lying) {
+      a = CO.tail; b = CO.deep; t = Math.min(1, this.age[j] / Math.max(0.05, Math.min(this.lie[j], CO.darken)));
+    } else {
+      a = CO.head; b = CO.tail; t = Math.min(1, this.age[j] / CO.cool);
+    }
+    const m = 1 - k;
+    K[o] = (a[0] + (b[0] - a[0]) * t) * m;
+    K[o + 1] = (a[1] + (b[1] - a[1]) * t) * m;
+    K[o + 2] = (a[2] + (b[2] - a[2]) * t) * m;
+    K[o + 3] = 1;
+  }
+
+  /** m2's trails: `tr` glyphs behind each flying code glyph, back along its way, fading; written after
+   *  the pieces (instances n ..). Returns the instance count. */
+  _trails(n, tr) {
+    const P = this.aP.array, Sa = this.aS.array, C = this.aC.array, K = this.aK.array, T = this.aT.array;
+    const CO = GRASS.spray.code, L = this._code.length;
+    let w = n;
+    for (let j = 0; j < n && w + tr <= this.maxI; j++) {
+      if (this.code[j] !== 1 || this.state[j] !== FLY) continue;
+      const vx = this.vx[j], vy = this.vy[j], vz = this.vz[j], vl = Math.hypot(vx, vy, vz);
+      if (!(vl > 0.3)) continue;
+      const step = (this.h[j] * CO.trailStep) / vl;
+      for (let i = 1; i <= tr; i++) {
+        const o = w * 4;
+        P[o] = this.px[j] - vx * step * i; P[o + 1] = this.py[j] - vy * step * i; P[o + 2] = this.pz[j] - vz * step * i; P[o + 3] = 0;
+        Sa[o] = this.w[j]; Sa[o + 1] = this.h[j]; Sa[o + 2] = 0;
+        // (each trail glyph flickers through the set on its own clock)
+        Sa[o + 3] = this._code[(j * 7 + i * 3 + Math.floor((this.age[j] + i * 0.37) * CO.trailHz)) % L];
+        C[o] = 0; C[o + 1] = 0; C[o + 2] = 1; C[o + 3] = 1;
+        T[w] = 0;
+        this._codeCol(j, (i / (tr + 1)) * CO.trailDim, K, o);
+        w++;
+      }
+    }
+    return w;
   }
 
   _up(a, n) {
