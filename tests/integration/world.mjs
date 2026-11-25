@@ -1097,7 +1097,8 @@ const S = {
     game.player.position.set(0, 0, 0);
     const A = BREAK.wear.at;
     // an oak, a pine and a dead tree of the wall, struck again and again with a tail's power along the way out
-    const pick = (fn) => D.list.filter((b) => b.wall && b.state === STATE.INTACT && fn(b)).sort((p, q) => Math.hypot(p.x, p.z) - Math.hypot(q.x, q.z))[0];
+    // (an old tree of the wall, one that closes its lanes: ADR-190's young trees between them are slight)
+    const pick = (fn) => D.list.filter((b) => b.wall && b.def.edge > 0 && b.state === STATE.INTACT && fn(b)).sort((p, q) => Math.hypot(p.x, p.z) - Math.hypot(q.x, q.z))[0];
     const trees = [pick((b) => b.kind === 'tree' && b.body.parts > 5), pick((b) => b.kind === 'tree' && b.cut[0] === 2 && b.body.parts === 5), pick((b) => b.kind === 'deadTree')];
     for (const t of trees) {
       const R = Math.hypot(t.x, t.z), ox = t.x / R, oz = t.z / R;
