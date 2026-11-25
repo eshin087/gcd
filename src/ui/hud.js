@@ -84,7 +84,8 @@ export class Hud {
     const hint = el('div', 'ab-hint ab-play ab-nontouch', null, this.root);
     fillKeyText(hint, '[@help] help  [@pause] pause');
     // the stage picker: game.levels / game.pickLevel (main.js; levels/index.js)
-    const stage = Array.isArray(game.levels) ? { levels: game.levels, current: game.level?.id, pick: (id) => game.pickLevel?.(id) } : null;
+    // (begin: the new title layouts' BEGIN button, ?menu=; ui/titleMenu.js)
+    const stage = Array.isArray(game.levels) ? { levels: game.levels, current: game.level?.id, pick: (id) => game.pickLevel?.(id), begin: () => game.flow?.beginFromTitle?.() } : null;
     // WHAT'S NEW (ui/changelogPanel.js): opened from the title and the pause menu, both show its badge
     this.newsUi = new ChangelogPanel(game, this.root);
     // each level's best and the BOSS RUSH entry (game/recorder.js; ADR-179): read through the flow's

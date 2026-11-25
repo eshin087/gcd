@@ -505,6 +505,72 @@ SCENARIOS.screens = async () => {
   assert(/minmax\(0, auto\)/.test(rule('.ab-stats.has-head .ab-stats-body')) && /text-overflow: ellipsis;/.test(rule('.ab-stats.has-head .row .k')), "its columns may shrink and a label that does not fit is cut short, never drawn past the border");
 };
 
+// ---------------------------------------------------------------- the title's new layouts (?menu=a|b|c)
+SCENARIOS.menus = async () => {
+  out('\n== scenario MENUS (?menu=a|b|c: every world, its keeper and best; pick, travel, begin, keys) ==');
+  const { fireWin } = await import('./shim.mjs');
+  const { setLook } = globalThis.__lookMod;
+  const text = (n) => n.textContent;
+  const levels = LEVELS.map((L) => ({ id: L.id, name: L.name, sub: L.sub, boss: L.boss }));
+  assert(LEVELS.every((L) => typeof L.boss === 'string' && L.boss.includes(',') && typeof L.sub === 'string'), 'every level names its boss ("NAME, THE EPITHET") and its line (levels/*.js)');
+  const best = { ash: { grade: 'S', marks: ['DEATHLESS'], timeMs: 83456, clears: 2 }, rush: { grade: 'B', marks: [], timeMs: 1234567, clears: 1 } };
+  for (const look of ['a', 'b', 'c']) {
+    ui.children.length = 0;
+    resetWindow();
+    setLook('menu', look);
+    const picked = [], begun = [];
+    let rushes = 0, opened = 0;
+    const stage = { levels, current: 'cinderwood', pick: (id) => picked.push(id), begin: () => begun.push(1) };
+    const news = { open: () => opened++, unseenCount: () => 2, onChange() {}, on: false };
+    const T = new TitleScreen(ui, true, stage, news, { bestFor: (id) => best[id] ?? null, startRush: () => rushes++ });
+    assert(T.menuLook === look && T.menu, `look ${look}: the new layout is built`);
+    assert(T.stageButtons.length === LEVELS.length + 1 && T.navButtons.length === LEVELS.length + 3, `look ${look}: every world, BOSS RUSH, WHAT'S NEW and CONTROLS are walkable (${T.navButtons.length})`);
+    const ash = T.navButtons.find((b) => b.dataset.level === 'ash');
+    const city = T.navButtons.find((b) => b.dataset.level === 'city');
+    const gradeOf = (b) => text(b.find((n) => n.classList?.contains('gm-g')) ?? { textContent: '?' });
+    assert(gradeOf(ash) === 'S' && gradeOf(city) === '', `look ${look}: a beaten world shows its grade, an unbeaten one none (${gradeOf(ash)}|${gradeOf(city)})`);
+    // the detail of the selection: the keeper's name and epithet, the line, the best
+    T.menu.select('ash');
+    const d = text(T.menu.detail);
+    assert(d.includes('Shen Hui') && d.includes('the Ash Disciple') && d.includes('1:23.45') && /TRAVEL/.test(d), `look ${look}: the detail names the keeper and the best (${d.slice(0, 90)})`);
+    // a tap on another world selects it; a second (or a click on the selected one) travels
+    city.click();
+    assert(picked.length === 0 && T.menu.sel === 'city', `look ${look}: the first tap on another world selects it`);
+    city.click();
+    assert(picked[0] === 'city', `look ${look}: the second travels there`);
+    const here = T.navButtons.find((b) => b.dataset.level === 'cinderwood');
+    T.menu.select('cinderwood');
+    here.click();
+    assert(begun.length === 1 && picked.length === 1, `look ${look}: the current world begins, never reloads`);
+    T.menu.select('rush');
+    T.navButtons.find((b) => b.dataset.level === 'rush').click();
+    assert(rushes === 1, `look ${look}: BOSS RUSH starts the rush`);
+    T.navButtons.find((b) => b.dataset.level === 'news').click();
+    assert(opened === 1, `look ${look}: WHAT'S NEW opens the panel`);
+    T.navButtons.find((b) => b.dataset.level === 'ctrl').click();
+    assert(T.holdsStart() && text(T.menu.drawerEl).includes('ATTACK TELLS'), `look ${look}: CONTROLS opens the full list (and holds the start)`);
+    fireWin('keydown', { code: 'Escape' });
+    assert(!T.holdsStart(), `look ${look}: Escape closes it`);
+    // the arrow keys walk and are not a "press any key"; Enter on the selection acts
+    T.menu.select('cinderwood');
+    fireWin('keydown', { code: 'ArrowDown' });
+    assert(T.eatsKey('ArrowDown') && T.menu.sel === 'ash', `look ${look}: an arrow walks to the next world (${T.menu.sel}) and is eaten`);
+    fireWin('keydown', { code: 'Enter' });
+    assert(T.eatsKey('Enter') && picked[1] === 'ash', `look ${look}: Enter on another world travels`);
+    T.update(0.1);
+    assert(!T.eatsKey('ArrowDown'), `look ${look}: the eaten keys last one frame`);
+    T.menu.select('cinderwood');
+    fireWin('keydown', { code: 'Enter' });
+    assert(!T.eatsKey('Enter'), `look ${look}: Enter on the current world is a "press any key" (it begins)`);
+    for (let i = 0; i < 4; i++) T.update(0.25); // the fires step without throwing
+    setLook('menu', null);
+  }
+  // no parameter: the title as before
+  ui.children.length = 0;
+  const T0 = new TitleScreen(ui, true, { levels, current: 'cinderwood', pick() {} }, null, { bestFor: () => null, startRush() {} });
+  assert(!T0.menu && !T0.navButtons && T0.stageButtons.length === LEVELS.length + 1, 'with no ?menu= the title is the old one');
+};
+
 globalThis.__lookMod = await imp('src/entities/enemies/duelist/lookSwitch.js');
 const WANT = SCEN === 'all' ? Object.keys(SCENARIOS) : SCEN.split(',');
 for (const name of WANT) {

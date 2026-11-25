@@ -194,7 +194,7 @@ export class TouchControls {
       globalThis.document,
       'touchmove',
       (e) => {
-        if (!this.active || e.target?.closest?.('.lab-root, .ab-pause-panel, .ab-news-list')) return; // scrollable panels
+        if (!this.active || e.target?.closest?.('.lab-root, .ab-pause-panel, .ab-news-list, .gm-scroll')) return; // scrollable panels (gm-scroll: the title's new layouts, ?menu=)
         if (e.cancelable !== false) e.preventDefault?.();
       },
       { passive: false },
