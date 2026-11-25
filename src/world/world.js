@@ -15,6 +15,7 @@ import { Scars } from './scars.js';
 import { Destructibles } from './destructibles.js';
 import { BLOW, SCAR, QUALITY } from './breakTuning.js';
 import { resolveOn } from './edge.js';
+import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
 
 // Owns the static environment and the shared environment-interaction APIs:
 //   world.resolve(pos, radius, bound, soft, who)  circle collision vs stones/trunks + arena bound; who 'hero':
@@ -66,6 +67,21 @@ export class World {
     this.colliders = new Colliders();
     this.ground = createGround(U);
     game.scene.add(this.ground);
+    // the dragon ground's relief, worked out once per cell on the GPU instead of for every pixel
+    // (ground.js bakeRelief, ADR-199; `?bake=0` leaves the shader working it out as before); again when the
+    // browser gives the context back
+    this.groundBaked = false;
+    if (lookOf('bake', 'a') !== '0') {
+      const bake = () => {
+        try {
+          this.groundBaked = this.ground.userData.bakeRelief?.(game.renderer) ?? false;
+        } catch (err) {
+          console.warn('ground: the relief was not baked', err);
+        }
+      };
+      bake();
+      game.renderer?.domElement?.addEventListener?.('webglcontextrestored', bake);
+    }
     // the level's static set (levels/index.js: createForest by default, createCourtyard for Ashfall);
     // both return the same shape, kept under the name `forest`
     const buildSet = typeof game.level?.buildSet === 'function' ? game.level.buildSet : createForest;

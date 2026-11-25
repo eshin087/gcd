@@ -4,10 +4,16 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and one pieces of work since 0.4.0:
+One hundred and two pieces of work since 0.4.0:
 - **The sword hand looks natural in the idle tricks** (2026-11-25, ADR-186). *Fixed:* in the wrist spin, the
   figure-eight, the salute and the rite and breath spells, the hero's sword fist no longer twists off his wrist:
   his forearm now leads the blade, which stays close to its line, as it does in his stances.
+- **The game runs faster on weaker machines** (2026-11-25, ADR-199). *Changed:* the picture is the same and costs
+  less to draw: the ground is drawn after everything that covers it, and its relief is worked out once when the
+  level loads instead of for every pixel of every frame (a frame at 4K costs a fifth to two fifths less on the
+  desktop GPU, at 1080p a tenth to a quarter). A machine that falls under 50 fps no longer re-runs the whole world
+  for each catch-up step, only the hero and the boss (a catch-up frame's simulation costs about a quarter less).
+  `?bake=0` leaves the ground's relief worked out per pixel, as before.
 - **The world is printed like the dragon** (2026-11-25, ADR-198). *Changed:* every level's ground, floors, grass,
   rocks, pillars, walls and trees are printed in the wyrm's own fine digits: a lit relief, dark where it turns
   from the moon and bright where the light catches it, in letters fixed to the world, so the ground looks

@@ -21,7 +21,9 @@ the plunge, three phases, fire hazards, keep-in-view camera, and now the bullet 
 wheel zoom → mouse ray (mouseGround) → gamepad.update(realDt) → touch.update(realDt)
 → 1 – 6 simulation steps (core/timestep.js), each of stepDt real seconds:
     clocks → lab.update(stepDt) → flow.update(dt, stepDt) → player.update(dt) → dragon.update(dt)
-    → world.update(dt) → lights.update → fx.update (alpha, add, fire, shed, ripple, stamp)
+  and after every SECOND step, and after the last (the world's step, ADR-199), with the time of the
+  steps since its last run:
+    world.update(dt) → fx.rip → lights.update → fx.update (alpha, add, fire, shed, ripple, streak, stamp)
       (world.update: … scorch.update → life.update → atmosphere.update: the living world first, so
        the atmosphere's smoke and embers read this frame's wind; neither while the Lab hides the world)
     (input.endFrame() after the FIRST step: the frame's presses and releases are seen once)
@@ -38,6 +40,17 @@ them. So no machine simulates a longer step than the headless tests do (they ste
 `game.realDt` is the STEP's real time; `game.frameDt` is the frame's and `game.simSteps` how many
 steps it took. `window.__tick(dt, frames)` runs one exact step of `dt` per frame (film strips);
 `window.__tick(dt, frames, true)` runs each as a rendered frame of `dt`, cut as the real loop cuts it.
+**The world's step** (ADR-199, `STEP.world` 2): only what the timing windows hang on is stepped at
+1 / 60 s: the Lab, the flow, the hero, the boss. The world (what breaks and burns, scars, the scorch map,
+the grass's wake, the living world, the atmosphere), the time rip, the light pool, both particle pools,
+the fire field, the shed digits, the ripple, the streak and the stamp run once for every two of those
+steps and once more after the last: `runFrame(…, world)` calls `world()` there, and main.js hands it
+the game time, FX time and real time of the steps since its last run (`game.dt`, `game.fxDt`,
+`game.realDt` read that while it runs). A frame of one step runs exactly as before (the fighters, then
+the world, on the same time); at 30 fps the world steps once with 33 ms, at 20 fps twice; its longest
+step is 41.7 ms. A slow machine so pays twice for the fighters only (the world and the effects were
+about 40 % of a step). New per-frame code that is not part of the duel's timing goes in the world's
+step, not in `simulate`; anything in it must be stable at a 42 ms step (world test `worldstep`).
 **View override** (`game.viewOverride`, Lab model viewer only): when it is
 `{ pos, target, focus? }` (Vector3-likes, world metres), main.js places the camera at `pos` looking
 at `target` right after the rig update, and the fog centre (`U.uFocus`), the light-pool selection
@@ -96,7 +109,7 @@ ADR-120).
 | `shake(a)` | camera trauma (0.15 light hit … 0.7 huge slam) |
 | `punch(m)` | a zoom punch: the camera jumps `m` metres closer and springs back in ~0.25 s (`cameraRig.punch`: stacks to 6 m, eased at 11/s, scaled for the phone's closer camera). A blade's clash (1.5 – 3.6), a guard (0.7 – 2.4), every landed cut (lights 0.35 – 0.6, the slam 1.6, the cleave 1.2 – 2.0, the execution 2.0; a crit + 0.6). Optional: callers use `game.punch?.()` |
 | `kick(x, y, z, m)` | a directional kick: the picture is thrown `m` metres (≤ 0.5; at the desktop distance, scaled for the phone like the punch) along world direction (x, y, z) as seen on screen and springs back with one ~12 % overshoot in ~0.25 s, in real time (it plays through a freeze). A landed cut throws it along the blade's travel (lights 0.08 ≈ 4 px at 36 m … the full cleave 0.24). Optional: callers use `game.kick?.()` |
-| `fxDt` | this frame's FX time step (see Frame order): particles and lights run on through a hit-stop |
+| `fxDt` | the running step's FX time (see Frame order): particles and lights run on through a hit-stop. In the world's step it is the FX time of every fighters' step since the last one, as `dt` and `realDt` are |
 | `hitstop(sec, scale=0.04)` | brief time-scale dip measured in real seconds (also the perfect-dodge slow-mo, the plunge's included: `hitstop(0.6, 0.3)`) |
 | `debugTimeScale` | Lab multiplier on game time (1 = normal). Only the Lab writes it. |
 | `viewOverride` | `null` or `{ pos, target, focus? }` — camera override applied by main.js after the rig (see Frame order). Only the Lab model viewer writes it. |
@@ -4689,7 +4702,22 @@ today's; `a` / `c` / `d` the first round's other looks), `dgGrass`, `dpFloor`, `
   `glyphGrad`), `dpCellCenter(cell, size)`, `dpVnoise` / `dpFbm`, `dpGlyph(tone, hash)` (the ramp `DP_RAMP`
   `.:-=17402#%8@`). `DP_CELL` = [0.135, 0.25] m. `dragonPrintUniforms()` per material. A cell is lit ONCE, at
   its centre.
-- **The ground — `world/ground.js` look b (`GROUND_LOOK == 2`).** Per cell: the meadow's density
+- **The ground — `world/ground.js` look b (`GROUND_LOOK == 2`).** Drawn LAST of the solid things
+  (`renderOrder` `GROUND_ORDER` 100, a strict depth test; ADR-199): the floors, trees and fighters that
+  cover it are drawn first, so the depth test drops its pixels there unshaded. An opaque thing that writes
+  no depth and must show over the ground would need a higher `renderOrder`; there is none today (every
+  solid material writes depth). **The baked relief** (`bakeRelief`, `DP_BAKE` 1; ADR-199): the relief is
+  fixed in the world and a cell is lit once, at its centre, so world.js has the GPU work it out once per
+  cell at load, with the shader's own noise, into two float textures the ground reads with `texelFetch`
+  (`uReliefN`: the two parts' steps to +x and +z, for the normal; `uReliefR`: the four neighbours less
+  the cell, for the ridge; `uReliefBox`: the first cell and the cell counts, 1779 x 961; 27 MB each as
+  32-bit floats, half floats where the renderer can only draw into those). `groundRelief(p, d)` = `reliefA`
+  + `reliefB` x (0.3 + d): the meadow's share `d` stays live. `?bake=0`, a renderer with no float targets
+  and the headless tests keep the shader working it out per pixel (`DP_BAKE` 0: the same picture). A change
+  to the relief's GLSL (`RELIEF_GLSL`) changes both at once; a new use of the relief at another offset
+  needs its own baked value. The floors' relief is NOT baked: a floor cell is lit on its facet, whose
+  height varies from slab to slab, so its sample point is not a function of the cell alone. Per cell: the
+  meadow's density
   (`setMeadow`: the grass's density baked into a texture by world.js), the relief `groundRelief(p, d)` and
   its normal, then in this order: `[grass]` `dgGrass(...)` (world/dragonGrass.js), `[fx]` `dpCloud` on the
   moon's term, the tone, `dpContact`, `dpRipple` (another digit, brighter), `dpRidge` (a stroke on a lit
