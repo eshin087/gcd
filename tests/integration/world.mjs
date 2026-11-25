@@ -15,6 +15,8 @@ const SCEN = process.argv[3] || 'all';
 const imp = (p) => import(pathToFileURL(`${ROOT}/${p}`).href);
 const THREE = await import(pathToFileURL(`${ROOT}/node_modules/three/build/three.module.js`).href);
 const { CONFIG } = await imp('src/core/config.js');
+const { ShadowCache } = await imp('src/render/shadowCache.js');
+const { LAYER_CASTER } = await imp('src/render/shaderLib.js');
 const { Events } = await imp('src/core/events.js');
 const { createSharedUniforms } = await imp('src/render/shaderLib.js');
 const { LightPool } = await imp('src/render/lights.js');
@@ -180,6 +182,127 @@ function wyrm() {
 }
 
 const S = {
+  // ---------------------------------------------------------------- the still shadow map (ADR-201)
+  // render/shadowCache.js with a stand-in renderer that records what each pass draws and every depth blit:
+  // what is drawn where (the still map only when it changes, the moving casters every frame), why the still
+  // map is drawn again (new, settled, moved, left, the view), which texels are wiped back (the rect a moving
+  // caster covered last frame, the whole map after a redraw or when a moving caster leaves), the layer masks
+  // put back after every frame, a big mesh's edited range, off on a renderer that cannot blit.
+  shadowcache() {
+    const S = 1024;
+    const target = new THREE.WebGLRenderTarget(S, S, { depthTexture: new THREE.DepthTexture(S, S) });
+    let cur = null;
+    const log = [];
+    const gl = {
+      READ_FRAMEBUFFER: 0x8ca8, DRAW_FRAMEBUFFER: 0x8ca9, DEPTH_BUFFER_BIT: 0x100, NEAREST: 0x2600,
+      blitFramebuffer(x0, y0, x1, y1) { log.push({ blit: [x0, x1, y0, y1] }); },
+    };
+    const renderer = {
+      getContext: () => gl,
+      state: { bindFramebuffer() {} },
+      properties: { get: (rt) => ({ __webglFramebuffer: rt }) },
+      setRenderTarget(rt) { cur = rt; },
+      setClearColor() {},
+      clear() { log.push({ clear: cur }); },
+    };
+    const cache = new ShadowCache(renderer, target, { settle: 5, settleBig: 2, big: 1000 });
+    const scene = new THREE.Scene();
+    const mk = (name, x, z, tris = 12) => {
+      const geo = new THREE.BufferGeometry();
+      const p = new Float32Array(tris * 9);
+      for (let i = 0; i < p.length; i += 3) { p[i] = (i % 7) * 0.1; p[i + 1] = (i % 5) * 0.2; p[i + 2] = (i % 3) * 0.1; }
+      geo.setAttribute('position', new THREE.BufferAttribute(p, 3));
+      const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial());
+      m.name = name;
+      m.position.set(x, 0, z);
+      m.layers.enable(LAYER_CASTER);
+      scene.add(m);
+      return m;
+    };
+    const rock = mk('rock', -20, 0), hero = mk('hero', 10, 5), crate = mk('crate', 0, -15), trees = mk('trees', 30, 30, 2000);
+    const off = mk('ghost', 5, 5);
+    off.layers.disable(LAYER_CASTER); // not a caster: never drawn, never counted
+    const cam = new THREE.OrthographicCamera(-80, 80, 80, -80, 1, 320);
+    cam.position.set(0, 160, 0.01);
+    cam.lookAt(0, 0, 0);
+    cam.updateMatrixWorld();
+    const key = [0, 0, 0, 1, 0, S];
+    // the pipeline's draw: what three would draw on the shadow layers, into the target set now
+    const draw = () => {
+      const drawn = [];
+      scene.traverseVisible((o) => { if (o.isMesh && o.layers.mask & (1 << LAYER_CASTER)) drawn.push(o.name); });
+      log.push({ draw: drawn.sort().join(','), into: cur === target ? 'frame' : 'still' });
+    };
+    const masks = () => scene.children.map((o) => o.layers.mask).join(',');
+    let t = 0;
+    const frame = () => {
+      t++;
+      hero.position.x = 10 + Math.sin(t * 0.3); // the hero moves every frame
+      scene.updateMatrixWorld();
+      log.length = 0;
+      const m0 = masks();
+      const ok = cache.render(scene, key, draw, cam);
+      const D = log.filter((e) => e.draw !== undefined), B = log.filter((e) => e.blit).map((e) => e.blit);
+      return { ok, why: cache.stats.why, still: D.find((d) => d.into === 'still')?.draw ?? null, frame: D.find((d) => d.into === 'frame')?.draw ?? null, blits: B, masks: masks() === m0 };
+    };
+    const full = (b) => b.length === 1 && b[0][0] === 0 && b[0][1] === S && b[0][2] === 0 && b[0][3] === S;
+    // 1. the first frame: everything new, nothing still yet: the still map drawn empty, everything moving
+    let f = frame();
+    assert(f.ok && f.why !== '' && f.still === '' && f.frame === 'crate,hero,rock,trees' && full(f.blits) && f.masks,
+      `the first frame: the still map drawn (empty), the whole map copied, every caster drawn moving (${f.frame}), the masks put back`);
+    // 2. the big one settles after settleBig quiet frames, the rest after settle
+    const seq = [];
+    for (let i = 0; i < 6; i++) { f = frame(); seq.push(f.why || '-'); }
+    assert(seq[1] === 'settled' && seq[4] === 'settled' && seq.filter((w) => w !== '-').length === 2, `a caster of more than \`big\` triangles joins the still map after settleBig frames, the others after settle (${seq.join(' ')})`);
+    // 3. at rest: only the hero is drawn, into the frame's map; the still map is not drawn; the wipe is the hero's rect alone
+    f = frame();
+    const area = (b) => b.reduce((a, r) => a + (r[1] - r[0]) * (r[3] - r[2]), 0);
+    assert(f.ok && !f.why && f.still === null && f.frame === 'hero' && f.blits.length === 1 && area(f.blits) > 0 && area(f.blits) < S * S * 0.01 && f.masks,
+      `at rest: only the moving hero is drawn (${f.frame}), the still map is left alone, one wipe of ${area(f.blits)} texels (his rect, under 1 % of the map)`);
+    // 4. a still caster moves: the still map is drawn again without it, the whole map copied, it is drawn moving
+    crate.position.x += 2;
+    f = frame();
+    assert(f.why === 'moved' && f.still === 'rock,trees' && f.frame === 'crate,hero' && full(f.blits), `a still caster that moves leaves the still map at once (still: ${f.still}; moving: ${f.frame})`);
+    // ... and while it moves, its own old rect is wiped with the hero's
+    crate.position.x += 2;
+    f = frame();
+    assert(!f.why && f.frame === 'crate,hero' && f.blits.length === 2, `each moving caster that changed has its last rect wiped (${f.blits.length} rects)`);
+    // 5. the view changes (the camera stepped, the moon turned): the still map is drawn again
+    key[0] = 2.5;
+    f = frame();
+    assert(f.why === 'view' && f.still === 'rock,trees' && full(f.blits), `a new view draws the still map again (${f.why})`);
+    // 6. a still caster is hidden: drawn again without it
+    rock.visible = false;
+    f = frame();
+    assert(f.why === 'left' && f.still === 'trees', `a still caster hidden: the still map without it (${f.still})`);
+    // 7. a moving caster is hidden: the whole frame map is wiped back (its last place is not drawn again)
+    crate.visible = false;
+    f = frame();
+    assert(!f.why && full(f.blits) && f.frame === 'hero', `a moving caster hidden: the whole map is copied back (${f.blits.length} blit, ${area(f.blits)} texels)`);
+    // 8. a big mesh edited in place (a cut tree run): it leaves the still map, then only its edited range's old place is wiped
+    const pos = trees.geometry.attributes.position;
+    pos.array[0] += 0.5;
+    pos.addUpdateRange(0, 9);
+    pos.needsUpdate = true;
+    f = frame();
+    pos.clearUpdateRanges();
+    assert(f.why === 'moved' && f.frame === 'hero,trees', `a big mesh edited: drawn moving (${f.frame})`);
+    pos.array[0] += 0.5;
+    pos.addUpdateRange(0, 9);
+    pos.needsUpdate = true;
+    f = frame();
+    pos.clearUpdateRanges();
+    assert(!f.why && f.blits.length === 2 && area(f.blits) < S * S * 0.01, `... edited again: only its edited triangle's old place and the hero's are wiped (${f.blits.length} rects, ${area(f.blits)} texels)`);
+    const st = cache.stats;
+    assert(st.frames === t && st.redraws >= 6, `stats: ${st.frames} frames, ${st.redraws} still redraws, ${st.full} whole copies`);
+    // 9. off: a renderer that cannot blit draws the map whole (the pipeline's old path)
+    const plain = new ShadowCache({ setRenderTarget() {}, clear() {} }, target);
+    assert(plain.off === true && plain.render(scene, key, draw, cam) === false, 'a renderer without depth blits: the cache is off and the map is drawn whole');
+    assert(CONFIG.render.shadowCache.on === true && CONFIG.render.shadowCache.snap >= 1, `CONFIG.render.shadowCache on by default (?shadowCache=0 off), snap ${CONFIG.render.shadowCache.snap} texels`);
+    cache.dispose();
+    plain.dispose();
+  },
+
   // ---------------------------------------------------------------- the world on its own, longer step (ADR-199)
   // main.js steps the world once for two of the fighters' steps (core/timestep.js STEP.world): 1 / 30 s at
   // 30 fps, up to 2 x 20.8 ms. What falls, burns and marks must come out the same at those steps as at
