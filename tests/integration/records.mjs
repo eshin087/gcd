@@ -565,10 +565,15 @@ SCENARIOS.menus = async () => {
     for (let i = 0; i < 4; i++) T.update(0.25); // the fires step without throwing
     setLook('menu', null);
   }
-  // no parameter: the title as before
+  // ?menu=0: the title as before (no parameter: the owner's pick, c)
   ui.children.length = 0;
+  setLook('menu', '0');
   const T0 = new TitleScreen(ui, true, { levels, current: 'cinderwood', pick() {} }, null, { bestFor: () => null, startRush() {} });
-  assert(!T0.menu && !T0.navButtons && T0.stageButtons.length === LEVELS.length + 1, 'with no ?menu= the title is the old one');
+  assert(!T0.menu && !T0.navButtons && T0.stageButtons.length === LEVELS.length + 1, 'with ?menu=0 the title is the old one');
+  setLook('menu', null);
+  ui.children.length = 0;
+  const T1 = new TitleScreen(ui, true, { levels, current: 'cinderwood', pick() {} }, null, { bestFor: () => null, startRush() {} });
+  assert(T1.menuLook === 'c' && T1.menu, 'with no parameter the title is the sword's path (c, the owner's pick)');
 };
 
 globalThis.__lookMod = await imp('src/entities/enemies/duelist/lookSwitch.js');

@@ -125,8 +125,8 @@ html { background: #04060a; }
     if (!R) return;
     var q = String(location.search || '');
     var m = /[?&]loader=([a-z-]+)/i.exec(q);
-    var v = m ? m[1].toLowerCase() : 'a';
-    var look = v.charAt(0) === 'b' ? 'b' : 'a';
+    var v = m ? m[1].toLowerCase() : 'b'; // b, the console: the owner's pick (2026-11-25, ADR-196)
+    var look = v.charAt(0) === 'a' ? 'a' : 'b';
     var hold = v.indexOf('hold') >= 0;
     R.className = 'gl-' + look;
     var N = 32;
