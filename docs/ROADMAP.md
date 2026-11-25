@@ -190,7 +190,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] The core (`render/dragonPrint.js`) and the default in every level (`?dragon=0` the world before)
 - [x] Floors of every level, props and trees, four upgrades (cloud, contact, ripple, ridge), flash footprints on every surface
 - [x] Grass printed as tufts (a) over standing digit blades (b: lost)
-- [~] Grass a with more depth and a cut that shows in the ground; fallen leaves that read as leaves (round 3)
+- [x] A cut that shows in the printed grass (dgCut b); fallen leaves as lit lenses (leafLook a)
+- [ ] Grass a with more depth: the owner's pick of a3d1 / a3d2 / a3d3
 - [ ] The phone's frame cost; remove the first round's looks a / c / d
 
 ## M1.86 — The bosses printed the hero's way (2026-11-24, `render/boss-hero-ink`, ADR-194)

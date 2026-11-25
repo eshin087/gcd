@@ -4477,6 +4477,16 @@ today's; `a` / `c` / `d` the first round's other looks), `dgGrass`, `dpFloor`, `
   `TRAIL_BEND_GLSL` (world/grassTrail.js; `GrassTrail.bendAt` its CPU copy), used by grass.js and the tufts.
   With a printed option the sword's arc (`mowFx.cutArc`) also mows the scorch map's A along its clipped
   stroke (the tufts read A), and no cut tops fly (the green chips do).
+- **The cut in the print (`dgCut`, default `b`):** `mowFx.cutArc` stamps the arc's exact strip into a fine cut
+  map (`uDgCut`, 1024² over the scorch map's extent, ~0.16 m; re-uploaded on the frames it changes); the
+  ground (and `world/dragonTufts.js`, the standing tufts of `a3d3`) reads it on the same frame: shorn tufts,
+  chips of their glyphs, the swath; `b` adds the line's glow (the map stores each texel's frame). Its uniforms
+  ride in `DP_FX_U` (`DG_U`). A reset empties it.
+- **Fallen leaves — `render/dragonLeaf.js` `LeafPrint`** (`leafLook`, default `a`), built by `life.litter`: one
+  instanced draw, a small quad per lying leaf at y 0.11 m whose fragment casts the camera ray to y = 0 (any
+  dragon-printed floor under it; b finds the ground's own cell there), transparent queue, no depth write,
+  never the scene's alpha flag, hidden with nothing to draw. Its numbers come from each piece's existing draws
+  (the litter's own stream): the look never moves the world.
 - **The floors — `render/dragonFloor.js`**, inside `createCarvedGlyphMaterial` (`DP_FLOOR` define; `0` the carved
   glyphs of before, shader for shader). The lattice is the ground's seen along the camera (z - y cot(pitch)).
   `aRim` (per vertex: the distance to the edge of a slab's top; `addSlabRim(geo, crack)`, `addSlabRims(group,

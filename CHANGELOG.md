@@ -12,6 +12,8 @@ Ninety-five pieces of work since 0.4.0:
   and rise again; slabs have a lit lip; cloud shadows drift with the wind, things sit in soft contact
   shadows, heavy blows send a ring of digits through the ground, lit crests carry outline strokes.
   Footprints are a quick flash of green code under each step on every surface, gone in under a second.
+  Your sword cuts the grass you can see: the tufts along the blade's path are shorn and fly, the line
+  glows a moment and a dark swath stays. Fallen leaves lie as small lit leaves, not letters.
   `?dragon=0` gives the world before; one piece: `?dgGrass=0`, `?dpFloor=0`, `?dpProps=0`, `?dpTrees=0`,
   `?dpCloud=0`, `?dpContact=0`, `?dpRipple=0`, `?dpRidge=0`, `?prints=0`.
 - **The bosses look built from letters, like the hero** (2026-11-24, ADR-194). *Changed:* every human boss is printed

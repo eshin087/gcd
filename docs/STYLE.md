@@ -60,7 +60,18 @@ The owner, shown four ground looks: "i really like the dragon ground look ... it
   ramp, `dragonLook`), `world/ground.js` look b (the ground; `?ground=0` today's soil and grass).
 - **The grass** (`dgGrass`, `world/dragonGrass.js`): printed tufts, `\ | /` tips over a dark digit root,
   rising north of their root, the clumps lit on their moon side; the hero's wake lays them (`= ~`) and
-  they rise back on the wake's spring; mown, they are stubble. No 3D blades with it on.
+  they rise back on the wake's spring. The sword's cut shows IN the ground (`dgCut`, default b; the owner:
+  "right now it looks like the main character is just cutting air"): the tufts under the arc's exact path
+  are shorn on that frame and throw their tips as chips of their own glyphs, the line glows a moment, and a
+  dark swath of bare ground with sparse stubs stays (`?dgCut=a` no glow, `0` round 2's). More depth, the
+  owner's to pick: `?dgGrass=a3d1 | a3d2` (moon side lit, cast shadows, taller overlapping tufts), `a3d3`
+  (the tufts stand up as billboards over the hero's feet). No 3D blades with it on.
+- **Fallen leaves** (`leafLook`, `render/dragonLeaf.js`; the owner: leaves lying as `c`, `s` "dont look like
+  leaves"): a lens, the atlas's slashed zero laid flat along the leaf (the oval the blade, the slash the
+  midrib, a `-` stem), lit per pixel as the ground is (moon, shadow, cloud and contact, the fire's light),
+  charred by fire; a falling leaf is the same lens turning over. Other levels' litter keeps its kind's
+  colour (`print` per kind in `litterTuning.js`). `?leafLook=b` the leaf in the ground's own cells, `c`
+  tiny house letters, `0` the letters before.
 - **The floors** (`dpFloor`, `render/dragonFloor.js` inside `createCarvedGlyphMaterial`, every level):
   the lattice seen along the camera (a slab's top, chamfer and wall sit on the ground's lattice), a
   lip one cell wide lit toward the moon at every slab edge (`aRim`), cracks as grooves and seams. Each
