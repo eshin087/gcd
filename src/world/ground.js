@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { COMMON_GLSL, BASIC_VERT, TRAIL_N, TRAIL_CH } from '../render/shaderLib.js';
+import { COMMON_GLSL, BASIC_VERT, FS_VERT, TRAIL_N, TRAIL_CH } from '../render/shaderLib.js';
 import { gis } from '../render/glyphs.js';
 import { DRAGON_PRINT_GLSL, DP_CELL, dragonPrintUniforms, dragonAllOn } from '../render/dragonPrint.js';
 import { DRAGON_PRINT_FX_GLSL, DP_FX_U } from '../render/dragonPrintFx.js';
@@ -31,9 +31,115 @@ export function groundLook() {
 
 const LOOK_ID = { a: 1, b: 2, c: 3, d: 4 };
 
+/** The ground's place in the draw order: after every other solid thing (createGround). */
+export const GROUND_ORDER = 100;
+/** The ground plane's side (m). */
+const GROUND_SIZE = 240;
+/** The relief's step for its normal (m; GLSL). */
+const RELIEF_E = '0.12';
+// The dragon ground's relief (look b) in its two parts: the broad mounds (A) and the tussocks, which stand
+// taller where the meadow is thick (B): groundRelief(p, d) = A + B x (0.3 + d). Shared by the ground's
+// shader and the bake below, so both run the very same noise.
+const RELIEF_GLSL = /* glsl */ `
+      float reliefA(vec2 p) { return dpFbm(p * 0.3) * 0.9; }
+      float reliefB(vec2 p) { return dpFbm(p * 1.6) * 0.3; }
+      // the base relief: soft mounds, tussocks where the meadow is thick (height in m-ish units)
+      float groundRelief(vec2 p, float d) { return reliefA(p) + reliefB(p) * (0.3 + d); }
+`;
+/** The cells the plane covers (dpLattice's ids): the first column and row, how many of each. One texel of
+ *  the baked relief per cell. */
+const BAKE = (() => {
+  const h = GROUND_SIZE / 2;
+  const i0 = Math.floor(-h / DP_CELL[0]), j0 = Math.floor(-h / DP_CELL[1]);
+  // (a row is shifted by up to one cell: dpLattice)
+  return Object.freeze({ i0, j0, cols: Math.floor(h / DP_CELL[0] + 1) - i0 + 1, rows: Math.floor(h / DP_CELL[1]) - j0 + 1 });
+})();
+
+/**
+ * THE BAKED RELIEF (look b; ADR-199). The relief is fixed in the world and a cell prints ONE digit, lit at
+ * its centre, yet the shader worked the relief out again for every pixel: eight times (three for the normal,
+ * five for the crest outline), 48 value-noise lookups, about half of what the ground cost to draw. Here the
+ * GPU works them out once per CELL, with the shader's own functions, into two float textures the ground
+ * then reads (one texel a cell, no filtering; 1779 x 961 cells, 27 MB each as 32-bit floats):
+ *   uReliefN   the two parts' steps toward +x and +z (A, B, A, B): the normal, the meadow's share still live
+ *   uReliefR   the relief at the four neighbours less the cell's own, the meadow left out: the outline's
+ * Differences, not heights, so a half float would still do. Returns the two render targets once drawn (the
+ * ground's uniforms point at them); null, and the ground as it was, on a renderer that cannot draw into
+ * float textures (or has no context: the headless tests). `targets`: the two render targets of an
+ * earlier bake, drawn again (a restored context).
+ */
+function bakeRelief(renderer, mat, targets = null) {
+  const gl = renderer?.getContext?.();
+  const ext = renderer?.extensions;
+  if (!gl || typeof gl.checkFramebufferStatus !== 'function' || typeof ext?.has !== 'function') return null;
+  // (32-bit floats where the renderer can draw into them: the picture is then the unbaked one to the pixel;
+  // half floats keep one part in 2000 of each step, and about 0.04 % of the ground's pixels print a
+  // neighbouring digit)
+  const full = ext.has('EXT_color_buffer_float');
+  if (!full && !ext.has('EXT_color_buffer_half_float')) return null;
+  const opts = { type: full ? THREE.FloatType : THREE.HalfFloatType, format: THREE.RGBAFormat, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, depthBuffer: false, stencilBuffer: false, generateMipmaps: false };
+  const rts = targets ?? [new THREE.WebGLRenderTarget(BAKE.cols, BAKE.rows, opts), new THREE.WebGLRenderTarget(BAKE.cols, BAKE.rows, opts)];
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute([-1, -1, 0, 3, -1, 0, -1, 3, 0], 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 2, 0, 0, 2], 2));
+  const bake = new THREE.ShaderMaterial({
+    uniforms: { ...dragonPrintUniforms(), uPart: { value: 0 }, uBox: { value: new THREE.Vector2(BAKE.i0, BAKE.j0) } },
+    vertexShader: FS_VERT,
+    fragmentShader: /* glsl */ `
+      ${COMMON_GLSL}
+      ${DRAGON_PRINT_GLSL}
+      ${RELIEF_GLSL}
+      uniform float uPart;
+      uniform vec2 uBox;
+      void main() {
+        vec2 size = vec2(${DP_CELL[0]}, ${DP_CELL[1]});
+        vec2 c = dpCellCenter(floor(gl_FragCoord.xy) + uBox, size);
+        float e = ${RELIEF_E};
+        if (uPart < 0.5) {
+          float a = reliefA(c), b = reliefB(c);
+          gl_FragColor = vec4(reliefA(c + vec2(e, 0.0)) - a, reliefB(c + vec2(e, 0.0)) - b, reliefA(c + vec2(0.0, e)) - a, reliefB(c + vec2(0.0, e)) - b);
+        } else {
+          float hr = groundRelief(c, 0.0);
+          gl_FragColor = vec4(groundRelief(c + vec2(size.x, 0.0), 0.0), groundRelief(c - vec2(size.x, 0.0), 0.0),
+                              groundRelief(c - vec2(0.0, size.y), 0.0), groundRelief(c + vec2(0.0, size.y), 0.0)) - hr;
+        }
+      }
+    `,
+    depthTest: false,
+    depthWrite: false,
+    blending: THREE.NoBlending,
+  });
+  const quad = new THREE.Mesh(geo, bake);
+  quad.frustumCulled = false;
+  const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  const prev = renderer.getRenderTarget?.() ?? null;
+  let ok = true;
+  try {
+    for (let k = 0; k < 2 && ok; k++) {
+      bake.uniforms.uPart.value = k;
+      renderer.setRenderTarget(rts[k]);
+      if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) ok = false;
+      else renderer.render(quad, cam);
+    }
+  } catch {
+    ok = false;
+  } finally {
+    renderer.setRenderTarget(prev);
+    geo.dispose();
+    bake.dispose();
+  }
+  if (!ok) {
+    if (!targets) for (const rt of rts) rt.dispose();
+    return null;
+  }
+  mat.uniforms.uReliefN.value = rts[0].texture;
+  mat.uniforms.uReliefR.value = rts[1].texture;
+  return rts;
+}
+
 // Near-black soil carrying a faint world-space field of dim glyphs, scorch marks and ash.
 export function createGround(U, look = groundLook()) {
-  const geo = new THREE.PlaneGeometry(240, 240, 1, 1);
+  const geo = new THREE.PlaneGeometry(GROUND_SIZE, GROUND_SIZE, 1, 1);
   geo.rotateX(-Math.PI / 2);
   const soil = gis(".,'`:-");
   const ash = gis(".,:;~");
@@ -67,8 +173,12 @@ export function createGround(U, look = groundLook()) {
       uBendT: U.uBendT ?? { value: new THREE.Vector4(0, 1, 0, 0) },
       uBendS: U.uBendS ?? { value: new THREE.Vector4(0, 0, 0, 0) },
       uBendE: U.uBendE ?? { value: new THREE.Vector4(0, 1, 0, 0) },
+      // look b: the relief's slopes, baked one texel a cell (bakeRelief below; DP_BAKE 1 once they are)
+      uReliefN: { value: null },
+      uReliefR: { value: null },
+      uReliefBox: { value: new THREE.Vector4(BAKE.i0, BAKE.j0, BAKE.cols, BAKE.rows) },
     },
-    defines: { GROUND_LOOK: look ? LOOK_ID[look] : 0, DG_GRASS: look === 'b' ? { 0: 0, a: 1, b: 2 }[dgGrassLook()] : 0, TRAIL_N, TRAIL_CH },
+    defines: { DP_BAKE: 0, GROUND_LOOK: look ? LOOK_ID[look] : 0, DG_GRASS: look === 'b' ? { 0: 0, a: 1, b: 2 }[dgGrassLook()] : 0, TRAIL_N, TRAIL_CH },
     vertexShader: BASIC_VERT,
     fragmentShader: /* glsl */ `
       ${COMMON_GLSL}
@@ -84,9 +194,12 @@ export function createGround(U, look = groundLook()) {
 #if GROUND_LOOK == 2
       ${DRAGON_PRINT_GLSL}
       ${DRAGON_STEP_GLSL}
-      // the base relief: soft mounds, tussocks where the meadow is thick (height in m-ish units)
-      float groundRelief(vec2 p, float d) { return dpFbm(p * 0.3) * 0.9 + dpFbm(p * 1.6) * 0.3 * (0.3 + d); }
+      ${RELIEF_GLSL}
       #define DP_RELIEF groundRelief
+#if DP_BAKE == 1
+      uniform sampler2D uReliefN, uReliefR;
+      uniform vec4 uReliefBox;
+#endif
       ${DRAGON_PRINT_FX_GLSL}
       ${DG_GRASS_GLSL}
 #endif
@@ -165,11 +278,19 @@ export function createGround(U, look = groundLook()) {
         float d = meadowAt(cxz) * (1.0 - burn);
         float torn = tornAt(cxz);
         // a lit bumpy source: the relief's normal at the cell's centre
-        float e = 0.12;
+        float e = ${RELIEF_E};
+#if DP_BAKE == 1
+        // (baked: the two parts' steps to +x and +z, one texel a cell; the meadow's part scales with d)
+        ivec2 rt = clamp(ivec2(cell) - ivec2(uReliefBox.xy), ivec2(0), ivec2(uReliefBox.zw) - 1);
+        vec4 rn = texelFetch(uReliefN, rt, 0);
+        vec2 rs = rn.xz + rn.yw * (0.3 + d);
+        vec3 N = normalize(vec3(-rs.x / e * 1.4, 1.0, -rs.y / e * 1.4));
+#else
         float hc = groundRelief(cxz, d);
         float hx = groundRelief(cxz + vec2(e, 0.0), d);
         float hz = groundRelief(cxz + vec2(0.0, e), d);
         vec3 N = normalize(vec3(-(hx - hc) / e * 1.4, 1.0, -(hz - hc) / e * 1.4));
+#endif
         vec3 body = mix(vec3(0.06, 0.062, 0.058), vec3(0.07, 0.11, 0.06), d);
         body = mix(body, vec3(0.085, 0.08, 0.072), uDry);
         body = mix(body, vec3(0.05, 0.045, 0.04), burn);
@@ -193,9 +314,13 @@ export function createGround(U, look = groundLook()) {
         // [fx] a lit crest prints an outline stroke
         // (on the broad relief: the meadow's small tussocks would print a stroke round every one)
         if (uDpFxOn[3] > 0.5) {
+#if DP_BAKE == 1
+          vec4 nb = texelFetch(uReliefR, rt, 0);
+#else
           float hr = groundRelief(cxz, 0.0);
           vec4 nb = vec4(groundRelief(cxz + vec2(size.x, 0.0), 0.0), groundRelief(cxz - vec2(size.x, 0.0), 0.0),
                          groundRelief(cxz - vec2(0.0, size.y), 0.0), groundRelief(cxz + vec2(0.0, size.y), 0.0)) - hr;
+#endif
           float ridx, rg;
           if (dpRidge(cxz, N, t, nb, size, h, ridx, rg)) { idx = ridx; t += rg; }
         }
@@ -281,6 +406,29 @@ export function createGround(U, look = groundLook()) {
   const mesh = new THREE.Mesh(geo, mat);
   mesh.name = 'ground';
   mesh.userData.look = look;
+  // The ground is drawn LAST of the solid things (ADR-199): it is the largest surface, its shader the
+  // dearest, and the floors, the trees and the fighters cover much of it; drawn first (as its material's
+  // low id had it) every one of those pixels was shaded and then painted over. Drawn last, the depth test
+  // throws them out unshaded. A strict test keeps the picture as it was where something lies exactly in
+  // the ground's plane: whatever else is there still wins, as it did when it was drawn over the ground.
+  mesh.renderOrder = GROUND_ORDER;
+  mat.depthFunc = THREE.LessDepth;
+  /**
+   * Bake the relief once on the GPU (look b; bakeRelief above) and have the ground read it. Call before the
+   * ground's first draw (world.js; the renderer's context restored: again). True when the ground reads it.
+   */
+  let reliefTargets = null;
+  mesh.userData.bakeRelief = (renderer) => {
+    if (look !== 'b') return false;
+    const rts = bakeRelief(renderer, mat, reliefTargets);
+    if (!rts) return mat.defines.DP_BAKE === 1;
+    reliefTargets = rts;
+    if (mat.defines.DP_BAKE !== 1) {
+      mat.defines.DP_BAKE = 1;
+      mat.needsUpdate = true;
+    }
+    return true;
+  };
   /** Bake the meadow's density (world/grass.js) into the ground (looks a, b, d print the grass). */
   mesh.userData.setMeadow = (density, extent = 150, dry = 0) => {
     if (!look || look === 'c') return;
