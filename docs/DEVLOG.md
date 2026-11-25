@@ -50,6 +50,54 @@ sprint slash and the roll cut are unchanged. The head's jolt into the rising thr
 
 ---
 
+## 2026-11-25 — The first frame's shaders compiled side by side (`render/precompile.js`; branch `render/precompile`)
+
+**Owner** (testing a preview): "the preview links take a really long time on shaders to load the game for the first
+time. is this normal?" **Measured** (headless Edge on the RTX 4090, the GPU's shader disk cache off: a first visit):
+the boot reached `gcd:shaders` in ~2 s and the first frame ~6 s later; each program compiled as it first drew, one
+after another, the art pass alone ~2.5 s in D3D's compiler. **Change:** the loading screen's last step starts every
+program of the visible scene, the fx scene and the pipeline's passes at once (`WebGLRenderer.compile` per visible
+object, a full-screen quad per pass; KHR_parallel_shader_compile), waits for them (30 s at most), then draws.
+Hidden objects are left out. Cold load ~8 s → ~5.3 s (two runs each). `?precompile=0` as before; `game.precompiled`
+{ programs, ms }. Safari without the extension: compiles queued as before, no wait.
+## 2026-11-25 — The faded title caught every click (hotfix; branch `ui/title-clicks`)
+
+**Owner** (testing a preview): "i cant press left or right click in the preview and it keeps looping me".
+**Cause.** The new title (ADR-196, `?menu=c` default) fades with `.ab-title.off` (opacity 0) and should leave with
+`.gone` (display none), but `.ab-title.gm { display: flex }` (titleMenuStyle.js, injected after hudStyle.js, the
+same specificity) outranked `.ab-title.gone`, and its panels set `pointer-events: auto`: the invisible body
+(`.gm-body`, `.gm-detail`, the worlds' buttons) stayed over the canvas, so mouse buttons never reached the game and
+a click on an unseen world's fire travelled (a reload into the loader: the loop). Keys worked.
+**Fix.** `.ab-title.gm.off` and everything in it take no pointer; `.ab-title.gm.gone` is display none. Checked with
+real CDP mouse events on headless Edge: after Enter the point under the cursor is the canvas, a left click starts an
+attack, a right click reaches the game, the page does not reload.
+
+---
+
+## 2026-11-25 — Every wyrm fire travels from it; roar-cast spells and a brood of fire; a forest you can walk into (ADR-197; planned by the lead, built by Opus agents)
+
+**Owner:** fire "out of nowhere" must come from the dragon; new roar spells with "dragon incantation symbols" (mini
+dragons, kamikaze ...); no invisible walls; more forest to rip and burn; good performance. Their picks (asked first):
+visible trails, all four spells, walk into the forest, smooth on the iPhone. Branch `dragon/fire-forest`.
+
+**How.** Stubs with the interfaces fixed, then four agents (fire, brood, spells, forest) in their own worktrees; the
+lead merged them (no conflicts), made their seams (partPos 'point', the tuning merges, the director's brood rule) and
+sent three back for a second round judged at the game camera (the serpent read as a band of fire, the firestorm as a
+blob, the drakelings as winged flames, the forest's rim barely changed). Then a docs agent and an integration agent.
+Lessons for the next pass: the stubs' ADR number was already taken on the base (renumbered to 195, then to 197 when main took 195 and 196 for the rename and the loading screen);
+fire under ~1.5 m sinks into the meadow, a shape in the fire field needs many big cool blobs; seeded fight checks that
+count cues a minute stop measuring once a long channel is in the mix.
+
+**Verified.** Every agent's scenarios (firesource, brood, spells, forestedge, pressure, lab, breach, wreckage,
+terrain), world and life suites, and the whole `npm test` on the final merge with `origin/main`; films of every move
+at the game camera, before and after; perf A/B on headless Edge (desktop GPU).
+
+**Picked.** The owner kept every default (incant a, drakeling a, serpent a, vortex a, forestEnd a, meteorSource
+b, wallSource a).
+
+**Open.** The phone's
+fps on the device; the wyrm fighting at range in the forest; the drakelings' heads; grass fire knots after the
+serpent; `world.restore()` alone leaves a hero out in the forest (the level's resets and the Lab's Restore respawn him).
 ## 2026-11-25 — The front: the sword's path, a loading screen, the hero's tag (ADR-196)
 
 **Owner:** an ASCII loading progress with the gcd branding, a title where the stages are easy to pick; plan

@@ -1,7 +1,9 @@
 import { TUNING } from './tuning.js';
 import { TELL, RESULT } from '../../combat/rules.js';
 import { clamp, smoothstep } from '../../core/math.js';
-import { skyMeteor, skyImpact, skyCrater, skyDeck, skyUpdate, skyReset } from './skyFx.js';
+import { skyMeteor, skyImpact, skyCrater, skyDeck, skyUpdate, skyReset, skyFeed, skyFrom } from './skyFx.js';
+import { trailStart, trailHead, trailRelease, trailUpdate, trailReset, layFront } from './fireTrails.js';
+import { TRAILS } from './tuningFire.js';
 
 // Fire hazards (contract 3): pooled world-space threats that run on their own, independent of the
 // wyrm's current action, so it can fight while meteors fall. Dragon.update calls update(dt) every
@@ -24,6 +26,14 @@ import { skyMeteor, skyImpact, skyCrater, skyDeck, skyUpdate, skyReset } from '.
 // covered by the spawning attack's own tell beat (announce: false; the attack re-times its flash
 // with timeTo()). Groups cap how many hits a whole rain / barrage / chase may deal.
 // No per-frame allocations: pooled hazard records, reused hit / event scratch.
+//
+// Every fire comes from the wyrm (ADR-197, fireTrails.js): a line / chase given an origin (`cx, cz`:
+// the forefeet's slam) opens a glowing crack from it (the line's pillars burst as its head reaches
+// them; the chase's head runs out to the hero and every pillar bursts where it is); a wall given
+// `lay` is laid along its line from `layS` (and a runner may carry the fire there first: `run`);
+// the barrage's meteors fall out of the wyrm's fire in the sky (skyFx.skyFrom: its seeds / vortex).
+const TC = TRAILS.crack, TM = TRAILS.meteor;
+const _src = { x: 0, y: 0, z: 0 };
 
 export const SHAPE = Object.freeze({ CIRCLE: 0, STRIP: 1, RING: 2, WALL: 3, LINE: 4, RAIN: 5, CHASE: 6, BARRAGE: 7 });
 // (an Armageddon wave keeps ~10 meteors in the air plus up to two waves of burning craters, while
@@ -228,6 +238,9 @@ function blank(i) {
     // emitters
     count: 0, done: 0, first: 0, span: 0, warn: 0, warnLed: 0, ledEvery: 0, lo: 0, hi: 0, every: 0, until: 0,
     lead: 0, linkFirst: false,
+    // the trail from the wyrm (fireTrails.js): a crack's origin and head, its run; a laid wall; a meteor's arc
+    trail: null, crack: false, cx: 0, cz: 0, hx: 0, hz: 0, arrived: false, arriveT: 0, firstAt: -1,
+    lay: false, layS: 0, layAt: 0, laySpeed: 0, rx0: 0, rz0: 0, rx1: 0, rz1: 0, rAt: 0, rSpeed: 0, lfA: 0, lfB: 0, lob: 0,
     // burning pools a line of pillars / a chase leaves (s, radius; ticks: tickDamage / tickBurn)
     pool: 0, poolR: 0,
     // fx scratch (accumulators, held sprites, scorch-heat stamp timer, pillars burst bitmask, lights)
@@ -286,6 +299,7 @@ export class Hazards {
   clear() {
     for (const h of this.list) if (h.alive) this._kill(h);
     skyReset(this.d.fx);
+    trailReset(this.d.fx);
     for (const g of this.groups) g.hits = 0;
     this.alive = 0;
   }
@@ -350,6 +364,7 @@ export class Hazards {
     h.size = Math.max(0.3, num(o.size, 1));
     h.great = !!o.great;
     h.dark = !!o.dark;
+    h.lob = Math.max(0, num(o.lob, 0));
     // a meteor's crater may burn on (`craterBurn` s): blockable contact ticks like a burning strip
     // (2nd pass: a pillar may leave a burning pool too, and a 'pool' is only that: no blow of its own)
     h.linger = h.kind === 'meteor' || h.kind === 'pillar' || h.kind === 'pool' ? Math.max(0, num(o.craterBurn, 0)) : 0;
@@ -415,6 +430,28 @@ export class Hazards {
     h.speed = Math.max(0.5, num(o.speed, 10));
     h.dist = Math.max(1, num(o.dist, 30));
     h.end = h.impact + h.dist / h.speed + FADE;
+    // laid from the wyrm's fire (`lay` { s, at, speed, run? { x, z, at, speed } }): its warning shows
+    // only over the stretch laid so far, which grows both ways from `s` (m along it from its centre)
+    // from `at` s at `speed` m/s; fast enough to be laid whole by its ignition
+    const L = o.lay;
+    if (L && Number.isFinite(num(L.s, NaN))) {
+      const half = h.len / 2;
+      h.lay = true;
+      h.layS = clamp(num(L.s, 0), -half, half);
+      h.layAt = clamp(num(L.at, 0), 0, h.impact);
+      const far = half + Math.abs(h.layS);
+      h.laySpeed = Math.max(num(L.speed, 45), far / Math.max(0.1, h.impact - h.layAt - 0.05));
+      const R = L.run;
+      if (R && Number.isFinite(num(R.x, NaN) + num(R.z, NaN))) {
+        const qx = -h.dz, qz = h.dx;
+        h.rx0 = num(R.x, 0);
+        h.rz0 = num(R.z, 0);
+        h.rx1 = h.x + qx * h.layS;
+        h.rz1 = h.z + qz * h.layS;
+        h.rAt = Math.max(0, num(R.at, 0));
+        h.rSpeed = Math.max(1, num(R.speed, 30));
+      }
+    }
     return this._ref(h);
   }
 
@@ -437,6 +474,12 @@ export class Hazards {
     h.tickDamage = num(o.tickDamage, 0);
     h.tickBurn = num(o.tickBurn, 0);
     h.end = h.impact + (h.n - 1) * h.delay + PILLAR_BURN + 0.6;
+    // a crack from (cx, cz) (the slam) whose head reaches each pillar as it bursts
+    if (o.crack && Number.isFinite(num(o.cx, NaN) + num(o.cz, NaN))) {
+      h.crack = true;
+      h.cx = h.hx = num(o.cx, 0);
+      h.cz = h.hz = num(o.cz, 0);
+    }
     return this._ref(h);
   }
 
@@ -539,6 +582,15 @@ export class Hazards {
     h.tickBurn = num(o.tickBurn, 0);
     h.acc = 0; // s until the next pillar
     h.end = h.until + 0.05;
+    // a crack from (cx, cz) (the slam): its head runs out to the led hero at TC.speed (the pillars
+    // wait for it: the first is laid where it catches him), then follows him and each pillar bursts
+    // at its head; `until` counts from the catch
+    if (o.crack && Number.isFinite(num(o.cx, NaN) + num(o.cz, NaN))) {
+      h.crack = true;
+      h.cx = h.hx = num(o.cx, 0);
+      h.cz = h.hz = num(o.cz, 0);
+      h.end = TC.maxRun + h.until + 0.05;
+    }
     return this._ref(h);
   }
 
@@ -602,6 +654,13 @@ export class Hazards {
       }
       case SHAPE.CIRCLE:
         return Math.max(0, t0);
+      case SHAPE.CHASE: {
+        // (the crack: until it has caught him, its run to him plus the pillar's warning)
+        if (!h.crack) return Math.max(0, h.warn - h.t);
+        if (h.firstAt >= 0) return Math.max(0, h.firstAt - h.t);
+        const run = Math.max(0, Math.hypot(px + vx * h.lead - h.hx, pz + vz * h.lead - h.hz) - TC.arrive) / TC.speed;
+        return Math.min(run, Math.max(0, TC.maxRun - h.t)) + h.warn;
+      }
       default:
         return left;
     }
@@ -611,6 +670,7 @@ export class Hazards {
   update(dt) {
     if (!(dt > 0)) return;
     skyUpdate(this.d.fx, dt); // (the salvo's columns and the sky deck: skyFx.js, guarded on its own)
+    trailUpdate(this.d.fx, dt); // (the cracks and runners cooling: fireTrails.js, guarded on its own)
     try {
       this._update(dt);
     } catch (err) {
@@ -673,6 +733,8 @@ export class Hazards {
 
   _kill(h) {
     h.alive = false;
+    if (h.trail) trailRelease(this.d.fx, h.trail);
+    h.trail = null;
     h.l0?.kill?.();
     h.l1?.kill?.();
     h.l2?.kill?.();
@@ -772,7 +834,11 @@ export class Hazards {
         }
         const u = 1 - left / h.fall;
         const e = u * (0.75 + 0.25 * u); // a little acceleration
-        if (h.kind === 'meteor') skyMeteor(fx, life, h, dt, h.ox + (h.x - h.ox) * e, h.oy * (1 - e), h.oz + (h.z - h.oz) * e, h.x - h.ox, -h.oy, h.z - h.oz, h.size);
+        if (h.kind === 'meteor') {
+          // (from its source: an arc, `lob` m over the straight line, its tail along the way it goes)
+          const de = 0.75 + 0.5 * u, arc = h.lob * 4 * u * (1 - u);
+          skyMeteor(fx, life, h, dt, h.ox + (h.x - h.ox) * e, h.oy * (1 - e) + arc, h.oz + (h.z - h.oz) * e, (h.x - h.ox) * de, -h.oy * de + h.lob * 4 * (1 - 2 * u), (h.z - h.oz) * de, h.size);
+        }
         else if (h.shell) fx.meteor(life, h, dt, h.ox + (h.x - h.ox) * e, h.oy * (1 - e), h.oz + (h.z - h.oz) * e, h.x - h.ox, -h.oy, h.z - h.oz, false);
       }
       return;
@@ -890,8 +956,14 @@ export class Hazards {
     const run = h.t - h.impact;
     const life = fx.holdLife(h, dt);
     if (run < 0) {
-      fx.wallWarn(life, h, dt, clamp(1 - -run / Math.max(0.3, h.impact), 0, 1), -run <= TUNING.flashLead);
+      const k = clamp(1 - -run / Math.max(0.3, h.impact), 0, 1), hot = -run <= TUNING.flashLead;
+      if (h.lay) this._lay(h, dt, life, k, hot);
+      else fx.wallWarn(life, h, dt, k, hot);
       return;
+    }
+    if (h.trail) {
+      trailRelease(fx, h.trail);
+      h.trail = null;
     }
     const s = Math.min(h.dist, run * h.speed);
     const fading = run * h.speed >= h.dist;
@@ -916,10 +988,63 @@ export class Hazards {
     h.f = s;
   }
 
+  /** A laid wall before its ignition: the runner carrying the fire to its line, the stretch laid so far, its ends burning. */
+  _lay(h, dt, life, k, hot) {
+    const fx = this.d.fx;
+    const half = h.len / 2, qx = -h.dz, qz = h.dx;
+    if (h.rSpeed > 0 && h.t >= h.rAt && h.t < h.layAt + 0.05) {
+      // (?wallSource=b: the fire runs over the ground from the breath's strike to the line)
+      if (!h.trail) h.trail = trailStart(fx, h.rx0, h.rz0, 'runner');
+      const L = Math.hypot(h.rx1 - h.rx0, h.rz1 - h.rz0) || 1;
+      const u = clamp(((h.t - h.rAt) * h.rSpeed) / L, 0, 1);
+      trailHead(fx, h.trail, h.rx0 + (h.rx1 - h.rx0) * u, h.rz0 + (h.rz1 - h.rz0) * u);
+    }
+    if (h.t < h.layAt) return;
+    const e = (h.t - h.layAt) * h.laySpeed;
+    const lo = Math.max(-half, h.layS - e), hi = Math.min(half, h.layS + e);
+    if (!(hi > lo)) return;
+    fx.heatBand(life, h, dt, h.x - qx * half, h.z - qz * half, qx, qz, lo + half, hi + half, h.w / 2, k, hot, h.seed);
+    if (lo > -half) layFront(fx, h, 'lfA', dt, h.x + qx * lo, h.z + qz * lo, 1);
+    if (hi < half) layFront(fx, h, 'lfB', dt, h.x + qx * hi, h.z + qz * hi, 1);
+  }
+
+  /** Where a crack's head is `tt` s into a line (it reaches pillar k just as it bursts), into _src. */
+  _lineHead(h, tt) {
+    const lead = 0.02; // (s: the head gets to a pillar just before it bursts)
+    const t0 = Math.max(0.05, h.impact - lead);
+    if (tt <= t0) {
+      const u = clamp(tt / t0, 0, 1);
+      _src.x = h.cx + (h.ax - h.cx) * u;
+      _src.z = h.cz + (h.az - h.cz) * u;
+      return;
+    }
+    const k = h.delay > 0 ? (tt - t0) / h.delay : h.n;
+    const s = clamp(k, 0, h.n - 1) * h.step;
+    _src.x = h.ax + h.dx * s;
+    _src.z = h.az + h.dz * s;
+  }
+
   _line(h, dt, px, pz) {
     const fx = this.d.fx;
     const pr = this._pr();
     const life = fx.holdLife(h, dt);
+    if (h.crack) {
+      if (!h.trail && !h.arrived) {
+        h.trail = trailStart(fx, h.cx, h.cz, 'crack');
+        h.arrived = !h.trail; // (no free trail: none, never again)
+      }
+      if (h.trail) {
+        this._lineHead(h, h.t);
+        h.hx = _src.x;
+        h.hz = _src.z;
+        trailHead(fx, h.trail, h.hx, h.hz);
+        if (h.t >= h.impact + (h.n - 1) * h.delay) {
+          trailRelease(fx, h.trail);
+          h.trail = null;
+          h.arrived = true;
+        }
+      }
+    }
     let burst = false;
     for (let k = 0; k < h.n; k++) {
       const x = h.ax + h.dx * k * h.step, z = h.az + h.dz * k * h.step;
@@ -1001,6 +1126,8 @@ export class Hazards {
       const k = smoothstep(h.deckAt, h.deckAt + 0.6, h.t) * (1 - smoothstep(h.end - 1.0, h.end, h.t));
       skyDeck(d.fx, k, h.dcx, h.dcz, h.deckGrow > 0 ? clamp((h.t - h.deckAt) / h.deckGrow, 0, 1) : 1);
     }
+    // the wyrm's fire in the sky the meteors fall out of (skyFx: its seeds / its vortex), from the cast
+    if (h.t >= h.glowAt * 0.5 && h.t < h.finAt + 0.3) skyFeed(d.fx, smoothstep(h.glowAt * 0.5, h.glowAt + 0.4, h.t), d);
     if (!h.skyDone && h.t >= h.glowAt) {
       h.skyDone = true;
       d.emit('dragon:hazard', { kind: 'meteor', stage: 'sky', x: d.position.x, z: d.position.z, radius: ARENA_R });
@@ -1062,15 +1189,19 @@ export class Hazards {
     const d = this.d;
     const left = Math.max(0.6, impact - h.t);
     const wx = d.position.x, wz = d.position.z;
+    // out of the wyrm's own fire in the sky (its seeds / its vortex: skyFx.skyFrom), seen leaving it as
+    // its spot starts to heat; or (no source: ?meteorSource=off) on a slant from the sky over the wyrm
+    const src = skyFrom(d.fx, x, z, great, _src);
     this.circle({
       kind: 'meteor', attack: h.attack, x, z, r, delay: left, damage, burn, knockback, group, active: 0.12,
-      fall: Math.min(fall, left - 0.05), size, dark, great, craterBurn: crater, tickDamage: h.tickDamage, tickBurn: h.tickBurn,
-      // they come down on a slant from the sky over the wyrm: the bolts it fired
-      from: { x: wx + (x - wx) * 0.25, y: h.fallY, z: wz + (z - wz) * 0.25 },
+      fall: src ? Math.min(TM.fall * (great ? 1.15 : 1), left - 0.05) : Math.min(fall, left - 0.05), size, dark, great, craterBurn: crater, tickDamage: h.tickDamage, tickBurn: h.tickBurn,
+      lob: src ? TM.lob : 0,
+      from: src ? { x: _src.x, y: _src.y, z: _src.z } : { x: wx + (x - wx) * 0.25, y: h.fallY, z: wz + (z - wz) * 0.25 },
     });
   }
 
   _chase(h, dt, px, pz) {
+    if (h.crack) return this._chaseCrack(h, dt, px, pz);
     if (h.t > h.until) return;
     h.acc -= dt;
     if (h.acc > 0) return;
@@ -1087,6 +1218,57 @@ export class Hazards {
     h.done++;
     this.circle({
       kind: 'pillar', attack: h.attack, x, z, r: h.r, delay: h.warn, damage: h.damage, burn: h.burn, knockback: h.knockback,
+      group: h.group, active: h.active, announce: !(first && h.linkFirst),
+      craterBurn: h.pool, tickDamage: h.tickDamage, tickBurn: h.tickBurn,
+    });
+  }
+
+  /** The chase along its crack: the head runs out to the led hero, then follows him; a pillar bursts at it every `every` s. */
+  _chaseCrack(h, dt, px, pz) {
+    const d = this.d, s = d.sense, fx = d.fx;
+    if (h.arrived && h.t - h.arriveT > h.until) {
+      if (h.trail) {
+        trailRelease(fx, h.trail);
+        h.trail = null;
+      }
+      return;
+    }
+    if (!h.trail && h.t < 0.1) h.trail = trailStart(fx, h.cx, h.cz, 'crack');
+    // where it wants to be: the led hero (inside the clearing, or the ground the wall opened)
+    let x = h.hx, z = h.hz;
+    if (px < 1e5) {
+      x = px + (s?.vel?.x ?? 0) * h.lead;
+      z = pz + (s?.vel?.z ?? 0) * h.lead;
+      const rl = Math.hypot(x, z), Ra = d.arenaAt?.(x, z, ARENA_R) ?? ARENA_R;
+      if (rl > Ra) {
+        x *= Ra / rl;
+        z *= Ra / rl;
+      }
+    }
+    const ex = x - h.hx, ez = z - h.hz, el = Math.hypot(ex, ez);
+    const v = (h.arrived ? TC.follow : TC.speed) * dt;
+    if (el > 1e-4) {
+      const m = Math.min(el, v) / el;
+      h.hx += ex * m;
+      h.hz += ez * m;
+    }
+    if (!h.arrived && (el <= TC.arrive + v || h.t >= TC.maxRun)) {
+      // it has caught him: the pillars start here
+      h.arrived = true;
+      h.arriveT = h.t;
+      h.acc = 0;
+      h.end = h.t + h.until + 0.05;
+    }
+    if (h.trail) trailHead(fx, h.trail, h.hx, h.hz);
+    if (!h.arrived) return;
+    h.acc -= dt;
+    if (h.acc > 0) return;
+    h.acc += h.every;
+    const first = h.done === 0;
+    h.done++;
+    if (first) h.firstAt = h.t + h.warn;
+    this.circle({
+      kind: 'pillar', attack: h.attack, x: h.hx, z: h.hz, r: h.r, delay: h.warn, damage: h.damage, burn: h.burn, knockback: h.knockback,
       group: h.group, active: h.active, announce: !(first && h.linkFirst),
       craterBurn: h.pool, tickDamage: h.tickDamage, tickBurn: h.tickBurn,
     });

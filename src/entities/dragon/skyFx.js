@@ -27,6 +27,25 @@
 //   c  the flight: it takes off, hangs over the clearing and rains the salvo up from the air
 
 import { TUNING } from './tuning.js';
+import { TRAILS } from './tuningFire.js';
+import { trailRand } from './fireTrails.js';
+
+// Where the meteors fall from (ADR-197: "all the fire should be coming from the dragon itself"):
+// ?meteorSource=a|b|off (read once; ?fireTrail=off: off). a (seeds): the salvo's bolts arc over and
+// hang as burning seeds along the top of the frame, and each meteor drops out of the seed nearest its
+// spot; b (vortex): a vortex of fire turns over the wyrm, fed by a column of heat off its back for the
+// whole barrage, and the meteors are flung out of its rim; off: from the empty sky as before.
+export const METEOR_SOURCE = (() => {
+  try {
+    const q = new URLSearchParams(globalThis.location?.search ?? '');
+    if (q.get('fireTrail') === 'off') return 'off';
+    const v = q.get('meteorSource');
+    return v === 'a' || v === 'off' ? v : 'b';
+  } catch {
+    return 'b';
+  }
+})();
+const SRC = TRAILS.meteor;
 
 export const APOC_LOOK = (() => {
   try {
@@ -55,7 +74,7 @@ function sky(fx) {
   let s = fx._sky;
   if (!s) {
     s = fx._sky = {
-      bolts: Array.from({ length: MAX_BOLTS }, () => ({ alive: false, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, age: 0, hold: 0, acc: 0, seed: 0, k: 1 })),
+      bolts: Array.from({ length: MAX_BOLTS }, () => ({ alive: false, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, age: 0, hold: 0, acc: 0, seed: 0, k: 1, T: 0, sd: -1, p0x: 0, p0y: 0, p0z: 0, p1x: 0, p1y: 0, p1z: 0, p2x: 0, p2y: 0, p2z: 0 })),
       deck: 0, // the deck's strength shown (eases toward want)
       want: 0, // asked this frame (skyDeck), cleared every update
       wantHold: 0,
@@ -73,6 +92,10 @@ function sky(fx) {
       light: null,
       ray: { x: 0, y: 0, z: 0 },
       m: new Float64Array(16),
+      // the meteors' source (METEOR_SOURCE): fed every frame by the barrage (skyFeed)
+      feed: 0, feedHold: 0, src: 0, nSeed: 0,
+      seeds: Array.from({ length: MAX_BOLTS }, () => ({ alive: false, x: 0, y: 0, z: 0, age: 0, hold: 0, acc: 0, flare: 0, k: 0 })),
+      vx: 0, vy: 0, vz: 0, vOn: false, vAcc: 0, cAcc: 0, fx0: NaN, fy0: 0, fz0: NaN, spin: 0,
     };
   }
   return s;
@@ -83,7 +106,11 @@ export function skyReset(fx) {
   const s = fx?._sky;
   if (!s) return;
   for (const b of s.bolts) b.alive = false;
+  for (const e of s.seeds) e.alive = false;
   s.deck = s.want = s.wantHold = 0;
+  s.feed = s.feedHold = s.src = 0;
+  s.vOn = false;
+  s.nSeed = 0;
   s.light?.kill?.();
   s.light = null;
 }
@@ -111,6 +138,9 @@ export function skyBolt(fx, x, y, z, vx, vy, vz, k = 1) {
   b.acc = 0;
   b.seed = Math.random() * 100;
   b.k = k;
+  b.T = 0;
+  b.sd = -1;
+  if (METEOR_SOURCE === 'a') seedPath(fx, s, b);
   // the muzzle: a gout of fire torn off the jaws as it leaves, sparks flung out
   for (let i = 0; i < 10; i++) {
     fx._blob(x + rand(-0.3, 0.3), y + rand(-0.2, 0.4), z + rand(-0.3, 0.3), vx * 0.12 + rand(-4, 4), vy * 0.1 + rand(0, 4), vz * 0.12 + rand(-4, 4), rand(0.2, 0.38), rand(0.8, 1.1), rand(1.6, 2.2), 0.34, 0, 3, 1);
@@ -132,9 +162,34 @@ function updateBolts(fx, s, dt) {
   for (const b of s.bolts) {
     if (!b.alive) continue;
     b.age += dt;
-    b.x += b.vx * dt;
-    b.y += b.vy * dt;
-    b.z += b.vz * dt;
+    if (b.T > 0) {
+      // (a: it climbs, arcs over and comes down onto its seed's spot, where it hangs burning)
+      const u = Math.min(1, b.age / b.T), w = 1 - u;
+      b.x = w * w * b.p0x + 2 * w * u * b.p1x + u * u * b.p2x;
+      b.y = w * w * b.p0y + 2 * w * u * b.p1y + u * u * b.p2y;
+      b.z = w * w * b.p0z + 2 * w * u * b.p1z + u * u * b.p2z;
+      b.vx = (2 * w * (b.p1x - b.p0x) + 2 * u * (b.p2x - b.p1x)) / b.T;
+      b.vy = (2 * w * (b.p1y - b.p0y) + 2 * u * (b.p2y - b.p1y)) / b.T;
+      b.vz = (2 * w * (b.p1z - b.p0z) + 2 * u * (b.p2z - b.p1z)) / b.T;
+      if (u >= 1) {
+        const e = s.seeds[b.sd];
+        if (e) {
+          e.alive = true;
+          e.x = b.p2x;
+          e.y = b.p2y;
+          e.z = b.p2z;
+          e.age = e.hold = e.acc = 0;
+          e.flare = 1;
+          e.k = b.k;
+        }
+        b.alive = false;
+        continue;
+      }
+    } else {
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+      b.z += b.vz * dt;
+    }
     if (b.age > 1.4 || b.y > 70 || !Number.isFinite(b.x + b.y + b.z)) {
       b.alive = false;
       continue;
@@ -356,9 +411,224 @@ export function skyUpdate(fx, dt) {
   try {
     updateBolts(fx, s, dt);
     updateDeck(fx, s, dt);
+    updateSource(fx, s, dt);
   } catch (err) {
     console.error('[dragon] sky update failed', err);
     skyReset(fx);
+  }
+}
+
+// ------------------------------------------------------------------ the meteors' source
+/** World point -> NDC y of the game camera (NaN when there is no camera). */
+function ndcY(fx, x, y, z) {
+  const cam = fx.game.camera;
+  const v = cam?.matrixWorldInverse?.elements, p = cam?.projectionMatrix?.elements;
+  if (!v || !p) return NaN;
+  const ex = v[0] * x + v[4] * y + v[8] * z + v[12], ey = v[1] * x + v[5] * y + v[9] * z + v[13];
+  const ez = v[2] * x + v[6] * y + v[10] * z + v[14], ew = v[3] * x + v[7] * y + v[11] * z + v[15];
+  const cy = p[1] * ex + p[5] * ey + p[9] * ez + p[13] * ew, cw = p[3] * ex + p[7] * ey + p[11] * ez + p[15] * ew;
+  return Math.abs(cw) > 1e-9 ? cy / cw : NaN;
+}
+
+/** The deck's height (half way up to the camera, 6 - 15 m), as updateDeck. */
+function deckH(fx) {
+  const camY = fx.game.camera?.matrixWorld?.elements?.[13];
+  return Number.isFinite(camY) ? Math.max(6, Math.min(15, camY * 0.48)) : 12;
+}
+
+/** (a) One salvo bolt's path to its seed: up past the deck, over, and down onto a spot along the top of the frame. */
+function seedPath(fx, s, b) {
+  let k = -1;
+  for (let i = 0; i < s.seeds.length && k < 0; i++) {
+    if (s.seeds[i].alive) continue;
+    let taken = false;
+    for (const o of s.bolts) if (o.alive && o !== b && o.sd === i) taken = true;
+    if (!taken) k = i;
+  }
+  if (k < 0) return;
+  const S = SRC.seeds, H = deckH(fx) - 1;
+  // spread over the width of the frame (a golden walk: a dozen never bunch), in a band of heights
+  const f = (s.nSeed++ * 0.618034 + 0.31) % 1;
+  const u = -S.width + 2 * S.width * f, v = S.band[0] + (S.band[1] - S.band[0]) * trailRand(0, 1);
+  let x, z;
+  if (rayAt(fx, s, u, v, H)) {
+    x = s.ray.x;
+    z = s.ray.z;
+  } else {
+    const a = f * TAU;
+    x = b.x + Math.cos(a) * 12;
+    z = b.z + Math.sin(a) * 12;
+  }
+  b.sd = k;
+  b.T = S.fly;
+  b.p0x = b.x;
+  b.p0y = b.y;
+  b.p0z = b.z;
+  b.p1x = b.x + (x - b.x) * 0.25;
+  b.p1y = Math.max(b.y, H) + 12;
+  b.p1z = b.z + (z - b.z) * 0.25;
+  b.p2x = x;
+  b.p2y = H;
+  b.p2z = z;
+}
+
+/**
+ * The barrage asks for its source this frame (strength k 0..1); `d` the wyrm (b: the vortex hangs over
+ * it, the column rises off its back). Called every frame while the barrage lives; it fades when not.
+ */
+export function skyFeed(fx, k, d) {
+  if (METEOR_SOURCE === 'off' || !fx || !(k > 0)) return;
+  const s = sky(fx);
+  s.feed = Math.max(s.feedHold > 0 ? s.feed : 0, Math.min(1, k));
+  s.feedHold = 0.25;
+  const p = d?.rig?.pt?.neckBase ?? d?.rig?.pt?.chest;
+  if (p && Number.isFinite(p.x + p.y + p.z)) {
+    s.fx0 = p.x;
+    s.fy0 = p.y;
+    s.fz0 = p.z;
+  } else if (d?.position && Number.isFinite(d.position.x + d.position.z)) {
+    s.fx0 = d.position.x;
+    s.fy0 = 4;
+    s.fz0 = d.position.z;
+  }
+}
+
+/**
+ * Where a meteor aimed at (tx, tz) leaves the wyrm's fire in the sky, into `out` {x, y, z}: the seed
+ * nearest the spot (a), the vortex's rim toward it (b; `great`: its heart). False: no source (off,
+ * nothing hung yet): the caller keeps the old sky. The source flares as it lets one go.
+ */
+export function skyFrom(fx, tx, tz, great, out) {
+  if (METEOR_SOURCE === 'off' || !fx || !Number.isFinite(tx + tz)) return false;
+  const s = sky(fx);
+  if (METEOR_SOURCE === 'a') {
+    let best = null, bd = Infinity;
+    for (const e of s.seeds) {
+      if (!e.alive) continue;
+      const dd = Math.hypot(e.x - tx, e.z - tz) + (great ? 0 : e.flare * 6); // (a seed that just let one go waits its turn)
+      if (dd < bd) {
+        bd = dd;
+        best = e;
+      }
+    }
+    if (!best) return false;
+    out.x = best.x;
+    out.y = best.y;
+    out.z = best.z;
+    best.flare = 1;
+    burst(fx, out.x, out.y, out.z, great ? 2 : 1);
+    return true;
+  }
+  if (!s.vOn) placeVortex(fx, s, 1);
+  if (!s.vOn) return false;
+  let a = Math.atan2(tz - s.vz, tx - s.vx);
+  if (!Number.isFinite(a)) a = 0;
+  const rr = great ? 0 : SRC.vortex.r;
+  out.x = s.vx + Math.cos(a) * rr;
+  out.y = s.vy;
+  out.z = s.vz + Math.sin(a) * rr;
+  burst(fx, out.x, out.y, out.z, great ? 2.4 : 1);
+  return true;
+}
+
+/** A meteor torn out of its source: a gout of fire where it leaves. */
+function burst(fx, x, y, z, k) {
+  const n = Math.round(8 * k);
+  for (let i = 0; i < n; i++) {
+    const a = trailRand(0, TAU);
+    fx._blob(x + Math.cos(a) * 0.4, y + trailRand(-0.3, 0.3), z + Math.sin(a) * 0.4, Math.cos(a) * trailRand(1, 4) * k, trailRand(-3, 1), Math.sin(a) * trailRand(1, 4) * k, trailRand(0.3, 0.5), trailRand(1.0, 1.5) * k, trailRand(1.6, 2.2) * k, 0.38, 0, 2, 0);
+  }
+}
+
+/** (b) Move the vortex toward its place over the wyrm, kept inside the top of the frame. */
+function placeVortex(fx, s, rate) {
+  if (!Number.isFinite(s.fx0 + s.fz0)) return;
+  let H = deckH(fx);
+  // (lowered until it shows: the camera looks down on the wyrm; a phone's close camera: lower)
+  for (let i = 0; i < 6; i++) {
+    const v = ndcY(fx, s.fx0, H + 1.5, s.fz0);
+    if (!(v > SRC.vortex.maxV) || H <= 5.5) break;
+    H -= 1.5;
+  }
+  if (!s.vOn) {
+    s.vOn = true;
+    s.vx = s.fx0;
+    s.vy = H;
+    s.vz = s.fz0;
+    return;
+  }
+  const e = Math.min(1, rate);
+  s.vx += (s.fx0 - s.vx) * e;
+  s.vy += (H - s.vy) * e;
+  s.vz += (s.fz0 - s.vz) * e;
+}
+
+function updateSource(fx, s, dt) {
+  s.feedHold -= dt;
+  const want = s.feedHold > 0 ? s.feed : 0;
+  if (s.feedHold <= 0) s.feed = 0;
+  s.src += (want - s.src) * (1 - Math.exp(-(want > s.src ? 3 : 1.6) * dt));
+  const k = s.src;
+  const K = (fx.game?.settings?.quality ?? 2) === 0 ? TRAILS.crack.phoneK : 1;
+  // (a) the seeds hang and burn until the barrage is over
+  for (const e of s.seeds) {
+    if (!e.alive) continue;
+    e.age += dt;
+    e.flare = Math.max(0, e.flare - dt * 2.5);
+    const kk = want > 0 || e.age < 3 ? 1 : k;
+    if (kk < 0.04 || e.age > SRC.seeds.life) {
+      e.alive = false;
+      continue;
+    }
+    const life = fx._hold(e, 'hold', dt);
+    if (life) {
+      const t = e.age, q = e.k * (0.75 + 0.25 * kk) * (1 + 0.5 * e.flare);
+      fx._blob(e.x, e.y, e.z, 0, 0, 0, life, 0.6 * q, 0.6 * q, 0.4 * kk, 0.4 * kk);
+      for (let i = 0; i < 3; i++) {
+        const a = t * 4 + i * 2.094;
+        fx._blob(e.x + Math.cos(a) * 0.45 * q, e.y + Math.sin(a * 1.3) * 0.3, e.z + Math.sin(a) * 0.45 * q, 0, 0, 0, life, 1.1 * q, 1.1 * q, 0.24 * kk, 0.24 * kk);
+      }
+    }
+    // it drips fire and smoulders upward
+    e.acc += dt * SRC.seeds.rate * kk * K;
+    let n = Math.min(4, Math.floor(e.acc));
+    e.acc -= n;
+    while (n-- > 0) {
+      const down = trailRand(0, 1) < 0.4;
+      fx._blob(e.x + trailRand(-0.4, 0.4), e.y + trailRand(-0.3, 0.3), e.z + trailRand(-0.4, 0.4), trailRand(-0.4, 0.4), down ? trailRand(-4, -2) : trailRand(0.5, 2), trailRand(-0.4, 0.4), trailRand(0.35, 0.6), trailRand(0.8, 1.2), down ? 0.5 : 1.8, down ? 0.32 : 0.22, 0, 0.6, down ? -6 : 1);
+    }
+  }
+  if (METEOR_SOURCE !== 'b') return;
+  // (b) the vortex over the wyrm, the column feeding it
+  if (k < 0.03) {
+    s.vOn = false;
+    return;
+  }
+  placeVortex(fx, s, dt * SRC.vortex.follow);
+  if (!s.vOn) return;
+  const V = SRC.vortex, R = V.r;
+  s.spin += dt * V.spin;
+  s.vAcc += dt * V.rate * k * K;
+  let n = Math.min(14, Math.floor(s.vAcc));
+  s.vAcc -= n;
+  while (n-- > 0) {
+    // a turning ring of fire, drawn inward: cool at its rim, a hotter knot now and then
+    const a = trailRand(0, TAU), rr = R * trailRand(0.55, 1.15), ca = Math.cos(a), sa = Math.sin(a);
+    const tv = V.spin * rr * 1.6, hot = trailRand(0, 1) < 0.18;
+    fx._blob(s.vx + ca * rr, s.vy + trailRand(-0.5, 0.5), s.vz + sa * rr, -sa * tv - ca * 1.2, trailRand(-0.3, 0.3), ca * tv - sa * 1.2, trailRand(0.4, 0.65), trailRand(1.2, 1.7), trailRand(1.6, 2.2), (hot ? 0.36 : 0.22) * (0.6 + 0.4 * k), 0, 0.5, 0);
+  }
+  // its eye: a dark, smoking heart
+  if (trailRand(0, 1) < dt * 10 * k) fx._blob(s.vx, s.vy + 0.5, s.vz, 0, 0.5, 0, trailRand(1.0, 1.5), 2.2, 3.2, 0.5, 0.2, 0.4, 0, 1);
+  // the column: heat torn up off its back into the vortex
+  const dx = s.vx - s.fx0, dy = s.vy - s.fy0, dz = s.vz - s.fz0, L = Math.hypot(dx, dy, dz);
+  if (!(L > 1)) return;
+  const sp = 16;
+  s.cAcc += dt * V.column * k * K;
+  n = Math.min(8, Math.floor(s.cAcc));
+  s.cAcc -= n;
+  while (n-- > 0) {
+    const u = trailRand(0, 0.85), j = 0.25 + 0.35 * u;
+    fx._blob(s.fx0 + dx * u + trailRand(-j, j), s.fy0 + dy * u, s.fz0 + dz * u + trailRand(-j, j), (dx / L) * sp, (dy / L) * sp, (dz / L) * sp, Math.min(0.5, ((1 - u) * L) / sp), trailRand(0.6, 0.9), trailRand(1.0, 1.4), 0.28, 0.2, 0, 0);
   }
 }
 

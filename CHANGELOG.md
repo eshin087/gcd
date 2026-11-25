@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Ninety-seven pieces of work since 0.4.0:
+One hundred pieces of work since 0.4.0:
 - **A heavier light combo** (2026-11-24, ADR-188). *Changed:* the five light attacks and their looks keep their
   timing, damage, reach and combo length, but the body now carries the weight: he loads his hips and shoulders
   before the hand goes, the front foot plants before the blade lands, he sinks 5-8 cm deeper into each cut and
@@ -12,6 +12,29 @@ Ninety-seven pieces of work since 0.4.0:
   beat before he comes back; out of a held finish the next swing gathers instead of snapping away. The finisher lands
   7 cm deeper over the planted blade. The heavy branches, the sprint slash, the roll cut, the flurry and the
   charged cleave are unchanged. `?lights=old` (and the Lab's PLAYER row `lights`) plays the chain as it was.
+- **The first load is faster** (2026-11-25). *Changed:* the loading screen's last step compiles every shader the first
+  frame needs side by side before it is drawn, instead of one after another as each first draws; a first visit (no
+  shaders cached yet) reached the game in ~8 s and now in ~5 s on a desktop GPU. `?precompile=0` as before.
+- **Your clicks reach the fight again** (2026-11-25). *Fixed:* after the title (the sword's path) faded, its panels
+  stayed on the page, invisible, over the game: a left or right click landed on them instead of the fight, and a
+  click on an unseen world's fire travelled there, reloading the page into the loading screen again and again.
+  The faded title now takes no click and leaves the page.
+- **Every fire comes from the wyrm; it roars up spells and a brood of fire; a forest you can walk into** (2026-11-25, ADR-197).
+  *Changed:* no fire of the wyrm's appears out of nowhere: the phase-3 lava pillars chase the hero along a glowing
+  crack that runs out of its forefeet (the crack's arrival is part of their tell), the phase-3 second flame wall is
+  laid out from the first, and Armageddon's meteors leave a burning vortex over the wyrm (`?meteorSource=a|b`,
+  `?wallSource=a|b`; `?fireTrail=off` the fire as before). *Added:* four roar-cast moves, each opening with a ring
+  of burning dragon script on the ground or before its jaws (`?incant=a|b`): **fire drakelings** (3 - 5 small
+  winged drakes that circle the hero and bite, normal or blue, die to a cut or two and dive in red when their time
+  runs out; `?drakeling=a|b`), **kamikaze wisps** (they tear off its body and home in, each bursting red on
+  arrival; one cut each), the **fire serpent** (it slithers out of the circle, burns and fells a lane through the
+  forest, rears and strikes red; `?serpent=a|b`) and the **firestorm** (a spinning column that drifts at the hero,
+  tears trees up into its spin and bursts red; `?vortex=a|b`). The wyrm fights lighter while its brood lives; the
+  brood's cues never land within 0.3 s of a cue that needs another answer. *Changed:* Cinderwood has no invisible
+  wall: the hero walks out among the trees wherever there is room, to the map's true end (`?forestEnd=a|b|c`: a
+  rock ridge, a thicket wall, a deadfall), and the wyrm follows him in. The forest is denser and layered (young
+  trees and snags in front of the old crowns, undergrowth, logs, stumps, mossy rocks, hanging moss), every piece
+  breakable and burnable; the phone draws the far wood and the thicket thinner. The owner kept the default looks.
 - **A loading screen, and the worlds picked along the sword's path** (2026-11-25, ADR-196). *Added:* a loading
   screen from the very first paint: the gcd logo, each step of the start with its real time, a progress bar and a
   line of lore; picking a world says where the sword takes you. *Changed:* the title shows the worlds as fires

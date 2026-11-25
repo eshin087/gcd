@@ -180,10 +180,11 @@ export const FAUNA_TUNE = Object.freeze({
   levels: Object.freeze({
     cinderwood: Object.freeze({
       keepOut: 22,
-      roosts: { kinds: ['tree'], r: [29, 42], minH: 7, n: 11, birds: [30, 44], yK: 0.78, inK: 1.6 },
+      // (ADR-197: the forest he walks in, out to the ridge at ~48 m: roosts and animals live in it too)
+      roosts: { kinds: ['tree'], r: [29, 45], minH: 7, n: 13, birds: [30, 44], yK: 0.78, inK: 1.6 },
       animals: [
-        { kind: 'rabbit', n: 6, r: [24.5, 29], cover: 9 },
-        { kind: 'deer', n: 3, group: true, r: [30.5, 32.5], cover: 10 },
+        { kind: 'rabbit', n: 8, r: [24.5, 38], cover: 9 },
+        { kind: 'deer', n: 4, group: true, r: [30.5, 40], cover: 10 },
       ],
     }),
     ash: Object.freeze({
