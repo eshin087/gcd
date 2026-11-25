@@ -120,3 +120,8 @@ export const HEAVY_BLINK_ANIMS = [
   { kind: 'clip', clip: 'blinkCrush' },
   { kind: 'clip', clip: 'blinkBreak', hop: 0.36, tuck: 1.3 },
 ];
+
+/** The LOOK each heavy branch wears under `?lights=blink` (combat.js setLights `wear`): its `anim`, and
+ *  any of `contact` / `glint` it changes (a thrust turned into a slash is drawn as one; `glint: null`
+ *  clears the ridge glint). Never a number of the hit. */
+export const HEAVY_BLINK = HEAVY_BLINK_ANIMS.map((anim) => ({ anim }));

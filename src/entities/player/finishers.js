@@ -30,7 +30,7 @@ export const FINISHER_ANIMS = Object.freeze({
 });
 
 const ONE = { two: 0 };
-const LAST = { plain: true, belt: true };
+const LAST = { plain: true, side: true };
 
 /** The last hits' clips (swings.js format), spread into SWINGS. Hit 5's clock (combat.js LIGHT[4]:
  *  windup 0.28, active 0.13) puts the frames, at 60 a second, at u ≈ 0.60 0.66 0.72 0.79 0.86 0.94,

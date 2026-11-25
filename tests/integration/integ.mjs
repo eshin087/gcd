@@ -11972,7 +11972,7 @@ async function scenarioBlinkSlash() {
       } else cur = null;
       // the free hand, the light hits on the belt: the wrist in the chest's frame, its step a frame, the elbow
       // (not the chain's first quarter second: the hand comes to the belt from the guard, which holds it off the belt)
-      if (on && d.button !== 'heavy' && SWINGS[an.clip]?.belt && !(d.combo === 1 && a.t < 0.27)) {
+      if (on && d.button !== 'heavy' && SWINGS[an.clip]?.side && !(d.combo === 1 && a.t < 0.27)) {
         r.chest.worldToLocal(wC.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.L.fore.matrixWorld));
         r.chest.worldToLocal(sC.setFromMatrixPosition(r.arms.L.upper.matrixWorld));
         r.chest.worldToLocal(eC.setFromMatrixPosition(r.arms.L.fore.matrixWorld));
@@ -12046,7 +12046,7 @@ async function scenarioBlinkSlash() {
         if (!C) { bad.push(`${id}: no clip`); continue; }
         if (an.spin || an.hop || an.turn || an.feet) bad.push(`${id}: spin/hop/turn/dash`);
         if (C.keys.some((k) => k.two != null && k.two !== 0)) bad.push(`${id}: two hands`);
-        if (!C.plain || !C.belt || !C.slash?.length) bad.push(`${id}: not plain / belt / slash`);
+        if (!C.plain || !C.side || !C.slash?.length) bad.push(`${id}: not plain / belt / slash`);
         const tw = Math.max(...C.keys.filter((k) => k.sy != null).map((k) => Math.abs(k.sy)));
         if (tw > 0.7) bad.push(`${id}: chest ${((tw * 180) / Math.PI).toFixed(0)}° on the hips`);
       }
@@ -12109,6 +12109,159 @@ async function scenarioBlinkSlash() {
     CB.setFinisherLook(fin0);
   }
   return last;
+}
+
+// ================================================================== `blinklights`: the instant chain's hits 1-4: the sword arm opens through the cut, the body follows through (lightsBlink.js)
+async function scenarioBlinkLights() {
+  out('\n== scenario BLINKLIGHTS (the instant chain’s hits 1-4: the sword arm opens through the cut, the body follows through (lightsBlink.js)) ==');
+  const G = build();
+  out('   (stub: its checks are still to be written)');
+  return G;
+}
+
+// ================================================================== `blinkhand`: the free hand hangs loose at his side through the instant cuts (anim.js, a clip's `side`)
+async function scenarioBlinkHand() {
+  out('\n== scenario BLINKHAND (the free hand hangs loose at his side through the instant cuts (anim.js, a clip’s `side`)) ==');
+  const G = build();
+  out('   (stub: its checks are still to be written)');
+  return G;
+}
+
+// ================================================================== `blinkheavies`: the instant heavies: weight, a cut that cannot be missed, the lone heavy a slash, no whirl (heaviesBlink.js)
+async function scenarioBlinkHeavies() {
+  out('\n== scenario BLINKHEAVIES (the instant heavies: weight, a cut that cannot be missed, the lone heavy a slash, no whirl (heaviesBlink.js)) ==');
+  const G = build();
+  out('   (stub: its checks are still to be written)');
+  return G;
+}
+
+// ================================================================== `blinkspecials`: the sprint slash, the roll cut, the charged cleave, One Breath and the execution as instant cuts (specialsBlink.js)
+async function scenarioBlinkSpecials() {
+  out('\n== scenario BLINKSPECIALS (the sprint slash, the roll cut, the charged cleave, One Breath and the execution as instant cuts (specialsBlink.js)) ==');
+  const G = build();
+  out('   (stub: its checks are still to be written)');
+  return G;
+}
+
+// ================================================================== `blinklast`: the instant chain's last hit: a stronger light stroke, a different one each time (lastHits.js)
+async function scenarioBlinkLast() {
+  out('\n== scenario BLINKLAST (the instant chain’s last hit: a stronger light stroke, a different one each time (lastHits.js)) ==');
+  const G = build();
+  out('   (stub: its checks are still to be written)');
+  return G;
+}
+
+// ================================================================== opt-in: the arm audit (the instant cuts)
+// `node tests/integration/integ.mjs . armaudit` (not part of `all`): the yardstick the instant cuts' arms
+// are written against (the owner, 2026-11-25: "the right arm angle and motion is stiff and doesn't look
+// like how an arm should look when doing that sword motion", "the light auto attack arm/body animation
+// seems too short and stiff"). It plays presses in the real game and prints, per swing, what the SWORD ARM,
+// the body and the FREE HAND do, frame by frame, with a summary line a clip can be judged by.
+//   GCD_AUDIT_PLAN  the presses, comma separated, one every CHAIN_EVERY s (or `L@0.30` for its own time):
+//                   L light, H heavy. Default `L,L,L,L,L`. `L,L,H` = the heavy after two lights.
+//   GCD_AUDIT_LOOK  the look set (default blink);  GCD_AUDIT_ONLY=<clip,...> prints only those swings
+//   GCD_AUDIT_FRAMES=1  every frame's row (default: the summary only);  GCD_AUDIT_VAR=<n> pins the look
+//                   picked (anim.js forceVariant: 0 = `anim`, 1.. = `variants`)
+// The numbers (body frame: +x his left, +y up, +z ahead, from where the swing began):
+//   elbow   the sword arm's elbow angle, degrees (180 = straight)
+//   ext     shoulder to grip over the arm's length (1 = at full reach)
+//   wrist   degrees between the forearm and the blade (0 = the blade carries the forearm's line on)
+//   hand / tip   m/s of the grip and of the blade's drawn point, in his own frame
+//   chest   the chest's turn against his facing, degrees (+ = to his left)
+//   free    the free wrist in his own frame, and its m/s
+async function scenarioArmAudit() {
+  out('\n== ARMAUDIT (opt-in: the sword arm, the body and the free hand through each swing) ==');
+  const CB = await imp('src/entities/player/combat.js');
+  const { swingPhase } = await imp('src/entities/player/anim.js');
+  const { DIM: HD } = await imp('src/entities/player/model.js');
+  const look0 = CB.lightsMode(), DEG = 180 / Math.PI;
+  const ONLY = (process.env.GCD_AUDIT_ONLY || '').split(',').filter(Boolean);
+  const ROWS = !!process.env.GCD_AUDIT_FRAMES;
+  const plan = (process.env.GCD_AUDIT_PLAN || 'L,L,L,L,L').split(',').map((s, i) => { const [b, t] = s.trim().split('@'); return [t != null ? Number(t) : i * CHAIN_EVERY, b.toUpperCase()]; });
+  let G = null;
+  try {
+    CB.setLights(process.env.GCD_AUDIT_LOOK || 'blink');
+    G = build();
+    fightSetup(G);
+    const { game, input } = G, p = game.player, d0 = game.dragon, r = p.rig, A = p.anim;
+    p.debug.god = true;
+    p.debug.teleport(d0.position.x + 14, d0.position.z + 14);
+    p.yaw = Math.atan2(d0.position.x - p.position.x, d0.position.z - p.position.z);
+    aimAt(G);
+    if (process.env.GCD_AUDIT_VAR != null) A.forceVariant = Number(process.env.GCD_AUDIT_VAR);
+    for (let i = 0; i < 40; i++) G.tick(DT);
+    const S = new THREE.Vector3(), E = new THREE.Vector3(), W = new THREE.Vector3(), T = new THREE.Vector3(), Hh = new THREE.Vector3(), LW = new THREE.Vector3(), LS = new THREE.Vector3(), LE = new THREE.Vector3(), a1 = new THREE.Vector3(), a2 = new THREE.Vector3();
+    const ang = (u, v) => Math.acos(clamp(u.normalize().dot(v.normalize()), -1, 1)) * DEG;
+    const swings = [];
+    let cur = null, k = 0;
+    const secs = plan.at(-1)[0] + 1.7;
+    for (let i = 0, n = Math.round(secs / DT); i < n; i++) {
+      while (k < plan.length && i >= Math.round(plan[k][0] / DT)) { aimAt(G); input.click(plan[k][1] === 'H' ? 2 : 0); k++; }
+      G.tick(DT);
+      const a = p.atk, d = a?.def, an = d && A.atkDef === d ? A.atkAnim : null;
+      const on = d && (p.state === 'attack' || p.state === 'heavy') && !a.pending;
+      if (!on) { cur = null; continue; }
+      if (!cur || cur.rec !== a) swings.push((cur = { rec: a, clip: an?.clip ?? `(${an?.kind ?? '?'})`, def: d, pos: p.position.clone(), yaw: p.yaw, f: [] }));
+      // his own frame as the swing began, carried with his root (so a lunge or a dash is not hand speed)
+      const fx = Math.sin(cur.yaw), fz = Math.cos(cur.yaw), px = p.position.x, pz = p.position.z;
+      const loc = (v) => { const dx = v.x - px, dz = v.z - pz; return [dx * fz - dz * fx, v.y - p.position.y, dx * fx + dz * fz]; };
+      S.setFromMatrixPosition(r.arms.R.upper.matrixWorld);
+      E.setFromMatrixPosition(r.arms.R.fore.matrixWorld);
+      W.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.R.fore.matrixWorld);
+      T.set(0, 0, HD.drawnTip).applyMatrix4(r.sword.matrixWorld);
+      Hh.set(0, 0, HD.bladeBase).applyMatrix4(r.sword.matrixWorld);
+      LS.setFromMatrixPosition(r.arms.L.upper.matrixWorld);
+      LE.setFromMatrixPosition(r.arms.L.fore.matrixWorld);
+      LW.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.L.fore.matrixWorld);
+      const ce = r.chest.matrixWorld.elements;
+      let cy = Math.atan2(ce[8], ce[10]) - p.yaw;
+      while (cy > Math.PI) cy -= 2 * Math.PI;
+      while (cy < -Math.PI) cy += 2 * Math.PI;
+      cur.f.push({
+        u: swingPhase(a.t, d.windup, d.active, d.recovery), t: a.t,
+        elbow: ang(a1.subVectors(S, E), a2.subVectors(W, E)), ext: S.distanceTo(W) / (HD.upperArm + HD.foreArm),
+        wrist: ang(a1.subVectors(W, E), a2.subVectors(T, Hh)), w: loc(W), tip: loc(T), el: loc(E), sh: loc(S), chest: cy * DEG,
+        lw: loc(LW), lel: ang(a1.subVectors(LS, LE), a2.subVectors(LW, LE)), two: an?.clip ? undefined : undefined,
+      });
+    }
+    const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+    const f2 = (v) => v.map((x) => x.toFixed(2)).join(',');
+    for (const sw of swings) {
+      if (ONLY.length && !ONLY.includes(sw.clip)) continue;
+      const F = sw.f, d = sw.def;
+      for (let i = 0; i < F.length; i++) {
+        const q = F[i], pr = F[i - 1] ?? q;
+        q.vh = dist(q.w, pr.w) / DT;
+        q.vt = dist(q.tip, pr.tip) / DT;
+        q.vl = dist(q.lw, pr.lw) / DT;
+        q.vc = Math.abs(q.chest - pr.chest) / DT;
+      }
+      const peak = Math.max(...F.map((q) => q.vt)), iPk = F.findIndex((q) => q.vt === peak);
+      // the cut: the run of frames round the peak whose point moves at over 40 % of it
+      let i0 = iPk, i1 = iPk;
+      while (i0 > 0 && F[i0 - 1].vt > 0.4 * peak) i0--;
+      while (i1 < F.length - 1 && F[i1 + 1].vt > 0.4 * peak) i1++;
+      const cut = F.slice(i0, i1 + 1), coil = F[Math.max(0, i0 - 1)], after = F.slice(i1 + 1);
+      // the follow-through: frames after the cut in which the hand, the point or the chest still moves
+      const live = (q) => q.vh > 0.25 || q.vt > 0.6 || q.vc > 40;
+      let ft = 0;
+      while (ft < after.length && live(after[ft])) ft++;
+      const iHome = F.findIndex((q) => q.u >= 2 + (0.5)), dead = after.slice(ft).filter((q) => q.u < 2.5 && !live(q)).length;
+      const wr = Math.max(...F.map((q) => q.wrist)), iWr = F.findIndex((q) => q.wrist === wr);
+      const fl = F.map((q) => q.lw), span = [0, 1, 2].map((c) => Math.max(...fl.map((v) => v[c])) - Math.min(...fl.map((v) => v[c])));
+      out(`-- ${sw.clip} (${d.name}; windup ${d.windup} active ${d.active} recovery ${d.recovery}, chain ${d.chain ?? '-'}): ${F.length} frames`);
+      out(`   CUT frames #${i0}-#${i1} (u ${F[i0].u.toFixed(2)}-${F[i1].u.toFixed(2)}), the point at most ${peak.toFixed(0)} m/s, the hand ${Math.max(...cut.map((q) => q.vh)).toFixed(1)} m/s`);
+      out(`   SWORD ARM  coil: elbow ${coil.elbow.toFixed(0)}° ext ${coil.ext.toFixed(2)}  |  through the cut: elbow ${Math.min(...cut.map((q) => q.elbow)).toFixed(0)}-${Math.max(...cut.map((q) => q.elbow)).toFixed(0)}° ext ${Math.min(...cut.map((q) => q.ext)).toFixed(2)}-${Math.max(...cut.map((q) => q.ext)).toFixed(2)}  |  end of cut: elbow ${F[i1].elbow.toFixed(0)}° ext ${F[i1].ext.toFixed(2)}  |  wrist at most ${wr.toFixed(0)}° (u ${F[iWr].u.toFixed(2)})`);
+      out(`   FOLLOW-THROUGH  ${ft} live frames after the cut (hand ${after.slice(0, 6).map((q) => q.vh.toFixed(1)).join(' ')} m/s; chest ${after.slice(0, 6).map((q) => q.vc.toFixed(0)).join(' ')} °/s), then ${dead} still frames before u 2.5; chest ${coil.chest.toFixed(0)}° → ${F[i1].chest.toFixed(0)}° → ${(after[Math.min(5, after.length - 1)] ?? F[i1]).chest.toFixed(0)}°`);
+      out(`   FREE HAND  spans ${span.map((x) => (x * 100).toFixed(0)).join(' x ')} cm (left x up x ahead), at most ${Math.max(...F.map((q) => q.vl)).toFixed(1)} m/s, elbow ${Math.min(...F.map((q) => q.lel)).toFixed(0)}-${Math.max(...F.map((q) => q.lel)).toFixed(0)}°, at the cut ${f2(F[iPk].lw)}`);
+      if (ROWS) for (let i = 0; i < F.length; i++) { const q = F[i]; out(`     #${String(i).padStart(2)} u ${q.u.toFixed(2)} elbow ${q.elbow.toFixed(0).padStart(3)}° ext ${q.ext.toFixed(2)} wrist ${q.wrist.toFixed(0).padStart(3)}° hand ${q.vh.toFixed(1).padStart(5)} tip ${q.vt.toFixed(1).padStart(5)} chest ${q.chest.toFixed(0).padStart(4)}° | grip ${f2(q.w)} elbow@ ${f2(q.el)} tip ${f2(q.tip)} | free ${f2(q.lw)} ${q.vl.toFixed(1)} m/s${i === i0 ? '  <- cut' : i === i1 ? '  <- cut ends' : ''}`); }
+      void iHome;
+    }
+    assert(swings.length > 0, `the audit saw ${swings.length} swings (${swings.map((s) => s.clip).join(', ')})`);
+  } finally {
+    CB.setLights(look0);
+  }
+  return G;
 }
 
 // ================================================================== opt-in: solving the instant cuts' keys
@@ -14813,7 +14966,13 @@ const SCENARIOS = {
   timerip: scenarioTimeRip,
   swordmystic: scenarioSwordMystic,
   blinkslash: scenarioBlinkSlash,
+  blinklights: scenarioBlinkLights,
+  blinkhand: scenarioBlinkHand,
+  blinkheavies: scenarioBlinkHeavies,
+  blinkspecials: scenarioBlinkSpecials,
+  blinklast: scenarioBlinkLast,
   blinksolve: scenarioBlinkSolve,
+  armaudit: scenarioArmAudit,
   herohand: scenarioHeroHand,
   heroweight: scenarioHeroWeight,
   herolights: scenarioHeroLights,
@@ -14838,7 +14997,7 @@ const SCENARIOS = {
   probe: scenarioProbe,
 };
 const runs = [];
-const OPT_IN = new Set(['probe', 'strategy', 'blinksolve']); // run only when named
+const OPT_IN = new Set(['probe', 'strategy', 'blinksolve', 'armaudit']); // run only when named
 // GCD_SKIP: scenarios left out of `all` because the caller runs them beside this process
 const SKIP = new Set((process.env.GCD_SKIP || '').split(',').filter(Boolean));
 for (const name of SKIP) if (!SCENARIOS[name]) { out(`GCD_SKIP: unknown scenario '${name}'`); process.exit(2); }

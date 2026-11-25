@@ -17,7 +17,7 @@
 // straight line (integ.mjs `blinksolve`); the hand keys and the body are written by hand.
 // Clip format: swings.js's header. `slash`: blinkFx.js's header. Spread into SWINGS.
 
-const HOLD = { home: 0.5, step: [0.08, 1.2], gather: [0.7, 0.5], belt: true };
+const HOLD = { home: 0.5, step: [0.08, 1.2], gather: [0.7, 0.5], side: true };
 
 export const LIGHTS_BLINK = {
   /** hit 1: from high on the right, one straight diagonal down across his front to low left */
@@ -83,7 +83,7 @@ export const LIGHTS_BLINK = {
   /** hit 4: the thrust: drawn back at the ribs, then the point is simply there, and he holds the line;
    *  a short streak runs on off the point (blinkFx.js) */
   blinkThrust: {
-    line: 'point', home: 0.5, gather: [0.7, 0.5], belt: true, slash: [[1.4, 0.9, 'point']],
+    line: 'point', home: 0.5, gather: [0.7, 0.5], side: true, slash: [[1.4, 0.9, 'point']],
     rF: [-0.17, -0.46], fy: [0.1, -0.8], drag: 0.12,
     lF: [0.14, 0.56],
     keys: [

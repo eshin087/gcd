@@ -783,6 +783,7 @@ function swingClip(name) {
       lead: Array.isArray(def.lead) ? def.lead : SW_LEAD, fy: Array.isArray(def.fy) ? def.fy : null,
       fold: Number.isFinite(def.fold) ? def.fold : 1, // × the bite's chest fold and head nod (attackPose)
       belt: !!def.belt, // the free hand stays on the belt, still in the chest's frame (attackPose, beltHand)
+      side: !!def.side, // the free hand hangs loose at his side through the swing (attackPose)
       gather: Array.isArray(def.gather) ? def.gather : null, // [leave, arrive]: the windup's ease (SW_COIL's note)
       hipCoil: keys.find((k) => k.hip != null && k.u >= 0.9 && k.u <= 1.0)?.hip ?? null, // the hips' turn at the coil
     };
@@ -1088,7 +1089,8 @@ function attackPose(p, A) {
     }
   }
   // a clip with `belt` (the blink chain, swings.js): the free hand rests on the belt the whole swing
-  if (k.kind === 'clip' && A.freeHand && swingClip(k.clip)?.belt) beltHand(p, A);
+  // (`side`: loose at his side; until it has its own hand it is the belt's)
+  if (k.kind === 'clip' && A.freeHand && (swingClip(k.clip)?.belt || swingClip(k.clip)?.side)) beltHand(p, A);
 }
 
 // the stances' belt (stances.js BELT) in the chest's own frame: there the stances hold it whatever

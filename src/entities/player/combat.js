@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import { clamp, lerp } from '../../core/math.js';
 import { DIM } from './model.js';
 import { FINISHER_ANIMS, finisherId, pickFinisher } from './finishers.js';
-import { HEAVY_BLINK_ANIMS } from './heaviesBlink.js';
+import { HEAVY_BLINK } from './heaviesBlink.js';
+import { LAST_HIT_BLINK } from './lastHits.js';
+import { SPECIAL_BLINK } from './specialsBlink.js';
 
 // Attack data + the blade sweep used for hit detection. No stamina: pacing comes from windup /
 // recovery only (docs/COMBAT.md). Moveset (ADR-041; owner concept sheet "Combat key poses"):
@@ -181,9 +183,22 @@ const LIGHT_BLINK = [
   { anim: { kind: 'clip', clip: 'blinkFlat' }, variants: [] },
   { anim: { kind: 'clip', clip: 'blinkCross' }, variants: [] },
   { anim: { kind: 'clip', clip: 'blinkThrust' }, variants: [] },
-  { anim: FINISHER_ANIMS[finisherId()], variants: [] },
+  // (lastHits.js: one of several strokes, a different one each time; until it has them, the finisher pick)
+  LAST_HIT_BLINK ?? { anim: FINISHER_ANIMS[finisherId()], variants: [] },
 ];
-const LIGHT_NEW = LIGHT.map((L) => ({ anim: L.anim, variants: L.variants }));
+/** What a look set may change on an attack def (setLights): the clip it plays, its other looks, and how
+ *  its contact is drawn (`contact`, `glint`: a thrust turned into a slash is drawn as a slash). Never a
+ *  number of the hit. A look gives the fields it changes; `null` clears one (`glint: null`). */
+const LOOK_KEYS = ['anim', 'variants', 'contact', 'glint'];
+const lookOf = (def) => Object.fromEntries(LOOK_KEYS.map((k) => [k, def[k]]));
+function wear(def, base, look) {
+  for (const k of LOOK_KEYS) {
+    const v = look && look[k] !== undefined ? look[k] : base[k];
+    if (v === undefined) delete def[k];
+    else def[k] = v;
+  }
+}
+const LIGHT_NEW = LIGHT.map(lookOf);
 let lightsNow = 'new';
 /** The chain's look now: 'new' (the default), 'old', 'fresh' or 'blink'. */
 export const lightsMode = () => lightsNow;
@@ -192,15 +207,13 @@ export const lightsMode = () => lightsNow;
  *  today's heavies. Only the looks change: every number of every hit and heavy stays. */
 export function setLights(mode) {
   if (!LIGHTS_IDS.includes(mode)) return false;
-  if (mode === 'blink') LIGHT_BLINK[4].anim = FINISHER_ANIMS[finisherId()];
-  const src = mode === 'old' ? LIGHT_OLD : mode === 'fresh' ? LIGHT_FRESH : mode === 'blink' ? LIGHT_BLINK : LIGHT_NEW;
-  LIGHT.forEach((L, i) => {
-    L.anim = src[i].anim;
-    L.variants = src[i].variants;
-  });
-  HEAVY.forEach((H, i) => {
-    H.anim = mode === 'blink' ? HEAVY_BLINK_ANIMS[i] : HEAVY_NEW[i];
-  });
+  const blink = mode === 'blink';
+  if (blink && !LAST_HIT_BLINK) LIGHT_BLINK[4].anim = FINISHER_ANIMS[finisherId()];
+  const src = mode === 'old' ? LIGHT_OLD : mode === 'fresh' ? LIGHT_FRESH : blink ? LIGHT_BLINK : null;
+  LIGHT.forEach((L, i) => wear(L, LIGHT_NEW[i], src ? src[i] : null));
+  HEAVY.forEach((H, i) => wear(H, HEAVY_NEW[i], blink ? HEAVY_BLINK[i] : null));
+  // (the sprint slash, the roll cut, the charged cleave, One Breath, the execution: specialsBlink.js)
+  for (const k in SPECIAL_DEFS) wear(SPECIAL_DEFS[k], SPECIAL_NEW[k], blink ? SPECIAL_BLINK[k] : null);
   lightsNow = mode;
   return true;
 }
@@ -208,6 +221,7 @@ export function setLights(mode) {
  *  blink chain is on. False for an unknown id. */
 export function setFinisherLook(id) {
   if (!pickFinisher(id)) return false;
+  if (LAST_HIT_BLINK) return true; // (lastHits.js has the last hit now)
   LIGHT_BLINK[4].anim = FINISHER_ANIMS[finisherId()];
   if (lightsNow === 'blink') LIGHT[4].anim = LIGHT_BLINK[4].anim;
   return true;
@@ -266,11 +280,7 @@ export const HEAVY = [
 ];
 
 /** Today's heavies' looks (setLights puts them back for every look set but 'blink'). */
-const HEAVY_NEW = HEAVY.map((H) => H.anim);
-{
-  const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('lights') : null;
-  if (q === 'old' || q === 'fresh' || q === 'blink') setLights(q);
-}
+const HEAVY_NEW = HEAVY.map(lookOf);
 
 /** The heavy that a heavy press makes after `def` (the attack in whose recovery it comes): after the
  *  n-th light (n 1-4) its branch HEAVY[n]; after anything else (the slam, a heavy, nothing) HEAVY[0]. */
@@ -342,6 +352,16 @@ export const ONE_BREATH = {
   hitstop: 0.12, shake: 0.35, bite: 1.2, contact: 'cleave', punch: [1.2, 1.6], kick: [0.12, 0.18],
   anim: { kind: 'clip', clip: 'drawCut', feet: 'dash', dashW: true },
 };
+
+/** The attacks outside the chain and its heavy branches that `?lights=blink` also turns into instant cuts
+ *  (specialsBlink.js SPECIAL_BLINK, by these names; a `null` there keeps today's look), and today's looks. */
+const SPECIAL_DEFS = { sprint: SPRINT_ATK, roll: ROLL_ATK, cleave: CLEAVE, draw: ONE_BREATH, exec: THRUST };
+const SPECIAL_NEW = Object.fromEntries(Object.keys(SPECIAL_DEFS).map((k) => [k, lookOf(SPECIAL_DEFS[k])]));
+{
+  // (after every def a look set touches)
+  const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('lights') : null;
+  if (q === 'old' || q === 'fresh' || q === 'blink') setLights(q);
+}
 
 export const CHARGE = {
   hold: 0.3, // s the HEAVY button must be held before a press becomes a charge (shorter = a heavy on release)
