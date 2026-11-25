@@ -200,4 +200,36 @@ export const GRASS = Object.freeze({
    *  (0.625 m cells: a line narrower than a cell still mows the cells it crosses), falling off over `soft` m */
   full: 0.25,
   soft: 0.3,
+
+  /**
+   * The grass bends round the hero and springs back after him (world/grassTrail.js, the grass shader;
+   * `?bend=a|b|c`, `?bend=0` today: the trodden trail in the scorch map's B, darker, 10 s). The hero's
+   * pusher (world.setPusher slot 0) leaves a short WAKE: his last positions, `n` points at most (a new one
+   * every `spacing` m and `gap` s, or at once past `far` m; a jump over `jump` m in a frame starts afresh;
+   * when full, the straightest older point goes), each with its time and the pusher's radius (0 in the
+   * air). Each blade finds the nearest stretch of it: there it bends ALONG the way he went (`along`) and
+   * OUT from his path (`out`), `amp` blade heights at the path, falling off smoothly to `r` x the pusher's
+   * radius, sinking `drop` heights; it holds `hold` s, then springs back with time constant `tau` s
+   * (each blade's own: x 1 +- `stagger`, the edges sooner: x `edge` at the rim), swinging past upright at
+   * `omega` rad/s (0: no overshoot, a soft rise). A bent blade is at most `dark` darker. A step's sprint
+   * and a heavy landing widen the wake (`press`: the steps' radii, held `hold` s).
+   */
+  bend: Object.freeze({
+    /** the default option (the recommendation; `?bend=0` is today) */
+    look: 'b',
+    n: 32,
+    spacing: 0.35,
+    gap: 0.08,
+    far: 1.0,
+    jump: 3,
+    press: Object.freeze({ hold: 0.3 }),
+    options: Object.freeze({
+      // a) quick and springy: down as he passes, up in about a second with a small swing past upright
+      a: Object.freeze({ hold: 0.12, tau: 0.32, omega: 4.3, stagger: 0.3, edge: 0.7, amp: 1.05, along: 0.75, out: 1.0, drop: 0.55, r: 1.15, dark: 0.06, jitter: 0.35 }),
+      // b) a soft lay-down: the blades lie flatter, hold, and rise over two to three seconds, no swing
+      b: Object.freeze({ hold: 0.35, tau: 0.38, omega: 0, stagger: 0.3, edge: 0.8, amp: 1.05, along: 0.65, out: 1.0, drop: 0.72, r: 1.1, dark: 0.1, jitter: 0.35 }),
+      // c) the wake: combed along his way, closing from the edges in, each blade at its own pace (0.8 - 2 s)
+      c: Object.freeze({ hold: 0.15, tau: 0.45, omega: 3.4, stagger: 0.5, edge: 0.45, amp: 1.05, along: 1.3, out: 0.75, drop: 0.6, r: 1.15, dark: 0.05, jitter: 0.3 }),
+    }),
+  }),
 });

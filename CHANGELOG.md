@@ -4,7 +4,11 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Ninety-one pieces of work since 0.4.0:
+Ninety-two pieces of work since 0.4.0:
+- **The grass bends as you run through it and springs back** (2026-11-25, ADR-193). *Changed:* running through the
+  grass no longer leaves a dark trail that appears at once and lingers for ten seconds. The blades bend along
+  your way and out from your path, lie down a moment and rise again over two or three seconds; a sprint or a
+  landing presses a wider wake. `?bend=0` gives the trail before.
 - **The sword's cut throws green code** (2026-11-25, ADR-192). *Added:* where your swing's arc cuts the grass,
   small green code glyphs (the Hall of Falling Script's digits and letters) burst off the cut, flicker as they
   fly, fall and settle into the grass; calm, about half a blade tall, so you see the meadow answer the sword

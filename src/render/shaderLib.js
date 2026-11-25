@@ -129,8 +129,23 @@ export function createSharedUniforms() {
     // field's travel (x, z, 0, 0); [10] the grass's answer (lean, wave, front, patch); [11] the trees'
     // (lean, rock, front, stir)
     uWindFronts: { value: Array.from({ length: WIND_FRONTS_LEN }, () => new THREE.Vector4(0, 0, 0, 0)) },
+    // the hero's wake through the grass (world/grassTrail.js writes them once a frame; `?bend=`): his last
+    // positions, oldest first (x, z, age s, radius m; 0 = no contact); each chunk of TRAIL_SEG segments'
+    // bounding circle (x, z, radius; 0 = empty); uBend (on 0 / 1, points, 0, 0), uBendT (hold, tau, omega,
+    // stagger), uBendS (amp, along, out, drop), uBendE (dark, edge, jitter, 0). uBend.x 0: the grass as before
+    uTrail: { value: Array.from({ length: TRAIL_N }, () => new THREE.Vector4(0, 0, 0, 0)) },
+    uTrailBox: { value: Array.from({ length: TRAIL_CH }, () => new THREE.Vector4(0, 0, 0, 0)) },
+    uBend: { value: new THREE.Vector4(0, 0, 0, 0) },
+    uBendT: { value: new THREE.Vector4(0, 1, 0, 0) },
+    uBendS: { value: new THREE.Vector4(0, 0, 0, 0) },
+    uBendE: { value: new THREE.Vector4(0, 1, 0, 0) },
   };
 }
+
+/** The hero's wake (world/grassTrail.js): points at most, chunks, segments a chunk (TRAIL_CH x TRAIL_SEG >= TRAIL_N - 1). */
+export const TRAIL_N = 32;
+export const TRAIL_CH = 4;
+export const TRAIL_SEG = 8;
 
 /** Front slots in uWindFronts (wind.js keeps as many) and the array's length. */
 export const WIND_SLOTS = 4;

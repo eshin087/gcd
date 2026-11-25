@@ -185,6 +185,11 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.85 — The grass bends round the hero's wake (2026-11-25, `world/grass-bend`, ADR-193)
+- [x] The hero's wake as a path in the shader: blades bend along his way and spring back, no dark trail (`?bend=b`)
+- [x] The steps' trample only with `?bend=0`; a sprint or landing presses a wider wake
+- [ ] The boss's footsteps leave a wake too; measured on the phone
+
 ## M1.84 — The sword's cut throws green code (2026-11-25, `world/grass-spray`, ADR-192)
 - [x] Code glyphs off the drawn arc's cut, the Hall of Falling Script's set, calm and small (`?grassSpray=m`)
 - [x] The looks met on the way behind `?grassSpray=` (grass letters, the blade's own chips, code with trails)
