@@ -41,6 +41,9 @@ const { Dragon } = await imp('src/entities/dragon/dragon.js');
 if (process.env.ABYSS_WYRMLOOK && !(await imp('src/entities/dragon/looks.js')).setWyrmLook(process.env.ABYSS_WYRMLOOK)) { process.stdout.write(`ABYSS_WYRMLOOK: unknown build '${process.env.ABYSS_WYRMLOOK}'\n`); process.exit(2); }
 // ABYSS_WYRMFACE: every wyrm built in this run wears that head (?wyrmFace=, heads.js)
 if (process.env.ABYSS_WYRMFACE && !(await imp('src/entities/dragon/heads.js')).setWyrmFace(process.env.ABYSS_WYRMFACE)) { process.stdout.write(`ABYSS_WYRMFACE: unknown head '${process.env.ABYSS_WYRMFACE}'\n`); process.exit(2); }
+// ABYSS_ARCS: the light chain's bigger-arc strength for this run (?arcs=, swings.js setArcs)
+if (process.env.ABYSS_ARCS && !(await imp('src/entities/player/swings.js')).setArcs(process.env.ABYSS_ARCS)) { process.stdout.write(`ABYSS_ARCS: unknown strength '${process.env.ABYSS_ARCS}'
+`); process.exit(2); }
 const { TUNING, SCALE } = await imp('src/entities/dragon/tuning.js');
 const { ATTACKS } = await imp('src/entities/dragon/attacks.js');
 const { attackWeight } = await imp('src/entities/dragon/ai.js');

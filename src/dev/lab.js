@@ -21,6 +21,7 @@ import { PARRY_CHAIN } from '../audio/parryChain.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { MYSTIC_IDS, MYSTIC_NAMES, mysticMode, setMystic } from '../entities/player/swordMystic.js';
 import { LIGHTS_IDS, LIGHTS_NAMES, lightsMode, setLights } from '../entities/player/combat.js';
+import { ARC_IDS, ARC_K, arcsMode, setArcs } from '../entities/player/swings.js';
 import { buildLooks } from './labLooks.js';
 import { lookOf, setLook } from '../entities/enemies/duelist/lookSwitch.js';
 import { LIFE, setLife, setLifeK } from '../world/life/lifeSwitch.js';
@@ -1310,6 +1311,19 @@ export class Lab {
       b.title = m === 'old' ? '?lights=old: the chain before the weight pass' : 'the weighted chain (the default)';
       return { m, el: b };
     });
+    // the bigger-arc strengths (swings.js ARCS, ?arcs=a|b|c: a prototype for the owner to pick from), live
+    const arr = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'arcs', arr).title = 'the chain cuts swing further round him: off (today), a x1.2, b x1.4, c x1.6 (?arcs=)';
+    const arGrid = el('div', 'lab-grid', null, arr);
+    arGrid.style.flex = '1';
+    this.ui.arcsBtns = ARC_IDS.map((m) => {
+      const b = button(arGrid, m === '0' ? 'off' : `${m} x${ARC_K[m]}`, () => {
+        setArcs(m);
+        this._syncCutBtns();
+      });
+      b.title = `?arcs=${m}`;
+      return { m, el: b };
+    });
     // the wyrm's heads (entities/dragon/heads.js, ?wyrmFace=): a build-time choice, so a page reload
     const wfr = el('div', 'lab-row', null, body);
     el('span', 'lab-lbl', 'head', wfr).title = "the Cinder Wyrm's heads (?wyrmFace=; reloads the page): drake as it ships, old = the head before, the rest shown and passed on";
@@ -1390,6 +1404,7 @@ export class Lab {
     for (const { s, el: b } of this.ui.streakBtns ?? []) setClass(b, 'on', STREAK_FX.on[s] === true);
     for (const { m, el: b } of this.ui.mysticBtns ?? []) setClass(b, 'on', mysticMode() === m);
     for (const { m, el: b } of this.ui.lightsBtns ?? []) setClass(b, 'on', lightsMode() === m);
+    for (const { m, el: b } of this.ui.arcsBtns ?? []) setClass(b, 'on', arcsMode() === m);
     if (this.ui.perfectBtn) this.ui.perfectBtn.textContent = `perfect: ${perfectMode()}`;
     if (this.ui.parryFxBtn) this.ui.parryFxBtn.textContent = `parryFx ${parryFxMode()}`;
     if (this.ui.burstBtn) this.ui.burstBtn.textContent = `burst ${burstLevel()}`;

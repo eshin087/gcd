@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { clamp, lerp, smoothstep, damp, easeOutCubic, wrapAngle, TAU } from '../../core/math.js';
 import { DIM, BODY, HAIR_CLUSTERS, HERO_SCALE, sheetOffset } from './model.js';
-import { SWINGS, FH } from './swings.js';
+import { SWINGS, FH, ARCS, widenArcs } from './swings.js';
 import { atEase, fencerGuard } from './stances.js';
 
 // Procedural animation for the Wanderer, keyed to the owner's concept sheets ("Movement" / "Combat
@@ -701,13 +701,15 @@ const SW_PICK = new Uint8Array(8); // _pickVariant: the looks it may choose from
 
 /** Compile a swings.js clip into tracks (slot 0 of each = the entry pose, filled at play time). */
 function swingClip(name) {
-  let C = SW_CACHE.get(name);
-  if (C !== undefined) return C;
   const def = SWINGS[name];
+  // (a clip marked `arcs` compiles once per bigger-arc strength, swings.js ARCS)
+  const ak = def?.arcs ? ARCS.k : 1, ck = ak > 1 ? `${name}|${ak}` : name;
+  let C = SW_CACHE.get(ck);
+  if (C !== undefined) return C;
   C = null;
   if (def && Array.isArray(def.keys)) {
     // (a key's free-hand preset, swings.js FH `fh: 'aim'`, lies under the key's own fields)
-    const keys = def.keys.filter((k) => k && Number.isFinite(k.u) && k.u > 0).map((k) => (k.fh && FH[k.fh] ? { ...FH[k.fh], ...k } : k)).sort((a, b) => a.u - b.u);
+    const keys = widenArcs(def.keys, ak).filter((k) => k && Number.isFinite(k.u) && k.u > 0).map((k) => (k.fh && FH[k.fh] ? { ...FH[k.fh], ...k } : k)).sort((a, b) => a.u - b.u);
     const track = (ch, n, get) => {
       const ks = keys.filter((k) => get(k) != null);
       if (!ks.length) return null;
@@ -778,7 +780,7 @@ function swingClip(name) {
       if (T.ch === P.bodyX) T.Vk = T.V.slice(); // the keyed values, mirrored per swing (swingPose)
     }
   }
-  SW_CACHE.set(name, C);
+  SW_CACHE.set(ck, C);
   return C;
 }
 

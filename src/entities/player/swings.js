@@ -109,6 +109,80 @@ export const FH = {
   high: { l: [0.2, 0.3, -0.1], lp: [0.85, -0.3, 0.4], ld: [-10, 75], pn: [0.2, 0, 1], lk: 0 }, // RARE (the low sweep only): beside the head, never over the crown
 };
 
+/**
+ * Bigger arcs (`?arcs=a|b|c`, the Lab's PLAYER → `arcs` row; a prototype for the owner to pick a
+ * strength from, ADR-188): every chain cut marked `arcs: true` swings its blade further round his
+ * body. The blade's azimuth is stretched × k away from its azimuth at the contact key (the key in
+ * the active frames that points nearest ahead), so the coil starts further behind him and the finish
+ * carries further past; the hand's path after the contact is stretched less (1 + 0.45 (k − 1)), its reach capped. The
+ * contact pose stays where it was, so the cut still crosses his front inside the active frames;
+ * the steel covers more ground in the same time, so it moves faster and the arc behind it is longer.
+ * '0' = the clips as written.
+ */
+export const ARC_IDS = ['0', 'a', 'b', 'c'];
+export const ARC_K = { 0: 1, a: 1.2, b: 1.4, c: 1.6 };
+export const ARCS = { mode: '0', k: 1 };
+/** The bigger-arc strength now ('0', 'a', 'b', 'c'). */
+export const arcsMode = () => ARCS.mode;
+/** Set it; false for an unknown id. anim.js compiles a clip per strength. */
+export function setArcs(mode) {
+  const m = String(mode);
+  if (!ARC_IDS.includes(m)) return false;
+  ARCS.mode = m;
+  ARCS.k = ARC_K[m];
+  return true;
+}
+{
+  const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('arcs') : null;
+  if (q) setArcs(q);
+}
+const ARC_REACH = 0.56; // m: the stretched hand stays within this of the shoulder
+const ARC_BACK = [95, 150, 165]; // deg: the furthest round a stretched blade goes: raised over 25° (it would point up at the camera behind him) / raised / low
+/** A clip's keys with the blade's arc stretched × k (see ARCS). Returns new key objects. */
+export function widenArcs(keys, k) {
+  if (!(k > 1)) return keys;
+  const out = keys.map((K) => ({ ...K }));
+  const A = out.filter((K) => Array.isArray(K.a)).sort((x, y) => x.u - y.u);
+  if (A.length < 2) return out;
+  // unwrap the azimuths along the cut, so a cut through behind him stretches the right way
+  const un = [A[0].a[0]];
+  for (let i = 1; i < A.length; i++) {
+    let d = A[i].a[0] - A[i - 1].a[0];
+    while (d > 180) d -= 360;
+    while (d < -180) d += 360;
+    un.push(un[i - 1] + d);
+  }
+  let c = -1;
+  A.forEach((K, i) => { if (K.u >= 1 && K.u <= 2 && (c < 0 || Math.abs(A[i].a[0]) < Math.abs(A[c].a[0]))) c = i; });
+  if (c < 0) return out;
+  const az0 = un[c], hc = A[c].h;
+  const kh = 1 + 0.45 * (k - 1);
+  // (the keys after the cut, the brake and the hold, take half of the finish's shift: stretched in
+  // full, the follow-through swung the steel round behind his head, 6-15 cm from its centre)
+  const fin = A.reduce((b, K, i) => (K.u <= 2.001 ? i : b), c);
+  const shift = (k - 1) * (un[fin] - az0);
+  A.forEach((K, i) => {
+    const az = K.u <= 2.001 ? az0 + k * (un[i] - az0) : un[i] + 0.5 * shift;
+    // never further round behind him than ARC_BACK (or than the key was written), on the key's own
+    // side: measured from the key's own azimuth, so a stretch past straight behind him stops at the
+    // limit instead of coming round onto his other shoulder
+    const lim = ARC_BACK[K.a[1] > 25 ? 0 : K.a[1] > 0 ? 1 : 2];
+    const orig = ((((un[i] + 180) % 360) + 360) % 360) - 180; // (−180, 180)
+    let s = orig + (az - un[i]);
+    const cap = Math.max(lim, Math.abs(orig));
+    if (Math.abs(s) > cap) s = (orig < 0 ? -1 : 1) * cap;
+    K.a = [s, K.a[1]];
+    // (the hand only on the follow-through side: stretched before the contact it ran the sword hand
+    // into the free hand gathered on its wrist, and an arm turned 64° in a frame)
+    if (K.u > A[c].u && Array.isArray(K.h) && Array.isArray(hc)) {
+      const h = K.h.map((v, j) => hc[j] + kh * (v - hc[j]));
+      const l = Math.hypot(h[0], h[1], h[2]);
+      K.h = l > ARC_REACH ? h.map((v) => (v * ARC_REACH) / l) : h;
+    }
+  });
+  return out;
+}
+
 export const SWINGS = {
   // ---- the light chain (ADR-188: the weight pass; the clips before it: lightsOld.js, ?lights=old) ---
   // The same hits on the same clock (combat.js LIGHT: windup, active frames and recovery as they were;
@@ -136,7 +210,7 @@ export const SWINGS = {
   /** The falling cut: cocked beside the head, a diagonal from high right across his chest down
    *  past the left hip. */
   fallingCut: {
-    line: 'right', gather: [0.4, 0.8],
+    line: 'right', gather: [0.4, 0.8], arcs: true,
     lF: [0.15, 0.52], rF: [-0.17, -0.46], fy: [0.15, -0.75], drag: 0.16,
     home: 0.3, step: [0.1, 1.3],
     keys: [
@@ -154,7 +228,7 @@ export const SWINGS = {
   /** The draw slash: low from behind the right hip, sinking into it, rising a little as it ends (the
    *  chain's draw cut: `drawCut` below is the flurry's and One Breath's, as it was). */
   drawSlash: {
-    line: 'flat', gather: [0.4, 0.8],
+    line: 'flat', gather: [0.4, 0.8], arcs: true,
     lF: [0.18, 0.42], fy: [0.55, -0.6],
     home: 0.3, step: [0.1, 1.3],
     keys: [
@@ -172,7 +246,7 @@ export const SWINGS = {
   /** The rising slash: a skip in (combat.js `hop`), from behind the right knee up across his front
    *  to high left: the falling cut's other diagonal. */
   risingSlash: {
-    line: 'left', gather: [0.4, 0.8],
+    line: 'left', gather: [0.4, 0.8], arcs: true,
     fy: [0.3, -0.6],
     home: 0.3,
     keys: [
@@ -192,7 +266,7 @@ export const SWINGS = {
   // ---- hit 2: left to right ------------------------------------------------------------------
   /** The rising backhand: from the left hip up across his front to high on the right. */
   risingBackhand: {
-    line: 'right', gather: [0.4, 0.8],
+    line: 'right', gather: [0.4, 0.8], arcs: true,
     fy: [0.45, -0.6],
     home: 0.3, step: [0.1, 1.3],
     keys: [
@@ -210,7 +284,7 @@ export const SWINGS = {
   },
   /** The flat backhand: at chest height, rising a little, the whole body pivoting round with it. */
   flatBackhand: {
-    line: 'flat', gather: [0.4, 0.8],
+    line: 'flat', gather: [0.4, 0.8], arcs: true,
     lF: [0.2, 0.38], fy: [0.7, -0.55],
     home: 0.3, step: [0.1, 1.3],
     keys: [
@@ -229,7 +303,7 @@ export const SWINGS = {
   /** The falling backhand: lifted over the left shoulder, a diagonal across his chest down to the
    *  right hip. */
   fallingBackhand: {
-    line: 'left', gather: [0.4, 0.8],
+    line: 'left', gather: [0.4, 0.8], arcs: true,
     lF: [0.15, 0.52], rF: [-0.17, -0.46], fy: [0.15, -0.75], drag: 0.16,
     home: 0.3, step: [0.1, 1.3],
     keys: [
@@ -280,7 +354,7 @@ export const SWINGS = {
   /** The low sweep: dropping from the backhand's finish into a crouch, the blade skimming the grass
    *  right to left and lifting as it ends, the free hand up for balance. */
   lowSweep: {
-    line: 'low', gather: [0.4, 0.8],
+    line: 'low', gather: [0.4, 0.8], arcs: true,
     lF: [0.2, 0.46], rF: [-0.19, -0.44], fy: [0.5, -0.85],
     home: 0.3,
     keys: [
