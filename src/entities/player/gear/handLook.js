@@ -7,17 +7,22 @@
 //   b  smaller, the skin's letters with a fill at about half (HERO_INK.handShade)
 //   c  smaller, a fill at about a third (HERO_INK.handDark)
 //   d  a leather glove (× 0.85): the brown of his arm wraps (HERO_INK.leather)
+//   e  a hand reshaped (gear/handShape.js), open and relaxed;  f  the same, a loose fist
 // Every outfit's free hand (gear/hands.js) follows it: the open hand, the sword fingers, the fist on
 // the grip and the skin of the wrist. The sword hand is not changed.
-const IDS = ['0', 'a', 'b', 'c', 'd'];
+const IDS = ['0', 'a', 'b', 'c', 'd', 'e', 'f'];
 export const HAND_LOOK_IDS = Object.freeze(IDS.slice());
-export const HAND_LOOK_NAMES = Object.freeze({ 0: 'before', a: 'smaller (default)', b: 'smaller, shaded', c: 'smaller, dark', d: 'leather glove' });
+export const HAND_LOOK_NAMES = Object.freeze({ 0: 'before', a: 'smaller (default)', b: 'smaller, shaded', c: 'smaller, dark', d: 'leather glove', e: 'a hand, open', f: 'a hand, loose fist' });
 const LOOKS = {
   0: { k: 1, mat: 'skin' },
   a: { k: 0.8, mat: 'skin' },
   b: { k: 0.8, mat: 'handShade' },
   c: { k: 0.8, mat: 'handDark' },
   d: { k: 0.85, mat: 'leather' },
+  // (2026-11-25, the owner: "make the left hand ... look like a hand ... right now it looks like a weird
+  // stump": the hand reshaped, gear/handShape.js: a palm as wide as the bracer, jointed fingers, a thumb)
+  e: { k: 1.1, mat: 'skin', shape: 0.22 },
+  f: { k: 1.1, mat: 'skin', shape: 0.75 },
 };
 const DEFAULT = 'a';
 const read = () => {

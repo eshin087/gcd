@@ -1,5 +1,6 @@
 import { mergeGeometries, limb, looseHand, gripFist, swordFingers } from '../heroGeo.js';
 import { handLook } from './handLook.js';
+import { shapedHand } from './handShape.js';
 
 // The free (left) hand, one builder for every `arms` item (gear/README.md): every outfit's sleeves
 // end in the same bare hand, so a change to the hand (its pose, the sword fingers) reaches them all.
@@ -26,7 +27,8 @@ export function buildFreeHand({ arms, sword, M, DIM, BODY, mesh }, mat = null) {
   // hand turns on it), else on the forearm. looseHand is built in forearm space: shift it into the
   // wrist's (a wrist joint hangs on the forearm, unturned at build time)
   const wj = arms.L.wrist ?? fore, wp = arms.L.wrist?.position;
-  const H = looseHand(DIM.foreArm - 0.03, 1, HK);
+  // (a reshaped hand when the look asks for one: `shape` is its curl, 0 open … 1 a fist)
+  const H = look.shape != null ? shapedHand(DIM.foreArm - 0.03, 1, look.k, look.shape) : looseHand(DIM.foreArm - 0.03, 1, HK);
   const hand = mergeGeometries([H.palm, H.fingers, H.tips, H.thumb]);
   if (wp) hand.translate(-wp.x, -wp.y, -wp.z);
   const open = mesh(wj, hand, mat);

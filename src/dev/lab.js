@@ -24,6 +24,7 @@ import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { MYSTIC_IDS, MYSTIC_NAMES, mysticMode, setMystic } from '../entities/player/swordMystic.js';
 import { IDLES_IDS, IDLES_NAMES, idlesMode, setIdles, EASE_RESTS, FIGHT_RESTS, EASE_HABITS, EASE_TRICKS, FIGHT_ACTS } from '../entities/player/idles.js';
 import { RUN_ARM_IDS, RUN_ARM_NAMES, runArmMode, setRunArm } from '../entities/player/runArms.js';
+import { RUN_SWORD_IDS, RUN_SWORD_NAMES, runSwordMode, setRunSword } from '../entities/player/runSword.js';
 import { HAND_LOOK_IDS, HAND_LOOK_NAMES, handLook } from '../entities/player/gear/handLook.js';
 import { buildLooks } from './labLooks.js';
 import { lookOf, setLook } from '../entities/enemies/duelist/lookSwitch.js';
@@ -1357,6 +1358,19 @@ export class Lab {
       b.title = `?runArm=${m}: ${RUN_ARM_NAMES[m]}`;
       return { m, el: b };
     });
+    // the sword arm on the run (player/runSword.js, ADR-200; ?runSword=a|b|old), live
+    const rsr = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'run sword', rsr).title = "the sword arm on the run (?runSword=): in line = the blade carries on the arm's line and swings with it; swept low = the arm back, the blade low behind; before = the carry before";
+    const rsGrid = el('div', 'lab-grid', null, rsr);
+    rsGrid.style.flex = '1';
+    this.ui.runSwordBtns = RUN_SWORD_IDS.map((m) => {
+      const b = button(rsGrid, RUN_SWORD_NAMES[m], () => {
+        setRunSword(m);
+        this._syncCutBtns();
+      });
+      b.title = `?runSword=${m}: ${RUN_SWORD_NAMES[m]}`;
+      return { m, el: b };
+    });
     // the free hand's look (player/gear/handLook.js, ?handLook=0|a|b|c|d): built with the rig, so a reload
     const hlr = el('div', 'lab-row', null, body);
     el('span', 'lab-lbl', 'hand', hlr).title = "the free (left) hand's size and ink (?handLook=; reloads the page): before, a smaller (the default, the owner's pick), b smaller and shaded, c smaller and dark, d a leather glove";
@@ -1487,6 +1501,7 @@ export class Lab {
     for (const { s, el: b } of this.ui.impactBtns ?? []) setClass(b, 'on', IMPACT.on[s] === true);
     for (const { s, el: b } of this.ui.streakBtns ?? []) setClass(b, 'on', STREAK_FX.on[s] === true);
     for (const { m, el: b } of this.ui.runArmBtns ?? []) setClass(b, 'on', runArmMode() === m);
+    for (const { m, el: b } of this.ui.runSwordBtns ?? []) setClass(b, 'on', runSwordMode() === m);
     if (this.ui.tempoBtn) setClass(this.ui.tempoBtn, 'on', STREAK_FX.tempo !== false);
     if (this.ui.chainBtn) setClass(this.ui.chainBtn, 'on', STREAK_FX.chain !== false);
     if (this.ui.figureBtn) this.ui.figureBtn.textContent = `figure: ${STREAK_FX.figure}`;

@@ -465,6 +465,9 @@ function gaitParams(G, sp, sprintW) {
  *  world by the foot planner (HeroAnimator._feet). */
 // (imported here, beside its one caller: the hero's free arm on the run, ADR-187)
 import { runArm } from './runArms.js';
+// … and his sword arm on the run (ADR-200)
+import { runSword } from './runSword.js';
+const RSW = { h: [0, 0, 0], p: [0, 0, 0], d: [0, 0, -1], f: [0, 1, 0] };
 export function loco(p, A) {
   stand(p, A);
   const w = A.moveW;
@@ -551,15 +554,20 @@ export function loco(p, A) {
   const fw = hero ? clamp(fin(A.fightW), 0, 1) * (1 - s) : 0, FR = FIGHT_RUN;
   // (backing away the grip was one constant: the sword elbow stood at 123° for the whole backpedal
   // beside a free arm that pumps; it rides the stride now)
-  to3(p, P.rH, lerp(lerp(lerp(-0.13, -0.15, s), -0.02, bw), FR.h[0], fw), lerp(lerp(lerp(-0.44, -0.37, s) + 0.02 * st, -0.38 + 0.025 * st, bw), FR.h[1] + 0.022 * st, fw),
-    lerp(lerp(lerp(-0.08 + amp, -0.28 + amp * 0.6, s), 0.3 + amp * 0.6, bw), FR.h[2] + amp * 0.5, fw), ws);
+  // the carry at ease (run → sprint): runSword.js's (ADR-200, `?runSword=`), or the one before ('old')
+  const rs = hero && runSword(RSW, ph, armF, s), RH = RSW.h, RP = RSW.p, RD = RSW.d;
+  const h0 = rs ? RH[0] : lerp(-0.13, -0.15, s), h1 = rs ? RH[1] : lerp(-0.44, -0.37, s) + 0.02 * st, h2 = rs ? RH[2] : lerp(-0.08 + amp, -0.28 + amp * 0.6, s);
+  to3(p, P.rH, lerp(lerp(h0, -0.02, bw), FR.h[0], fw), lerp(lerp(h1, -0.38 + 0.025 * st, bw), FR.h[1] + 0.022 * st, fw),
+    lerp(lerp(h2, 0.3 + amp * 0.6, bw), FR.h[2] + amp * 0.5, fw), ws);
   // (Session 30: both elbows pointed 0.5-0.7 out to the side through the run, arms akimbo from the
   // front: they point back beside the ribs now)
-  to3(p, P.rP, lerp(lerp(lerp(-0.4, -0.5, s), -0.85, bw), FR.p[0], fw), lerp(lerp(lerp(-0.3, 0.2, s), -0.3, bw), FR.p[1], fw), lerp(lerp(-0.95, -0.5, bw), FR.p[2], fw), ws);
-  dirLerp(SW_T, 0, lerp(-0.42, -0.36, s), lerp(-0.56, -0.2, s) - 0.03 * st * (1 - s), lerp(-0.71, -0.91, s), -0.15, -0.22, 1, bw);
+  const p0 = rs ? RP[0] : lerp(-0.4, -0.5, s), p1 = rs ? RP[1] : lerp(-0.3, 0.2, s), p2 = rs ? RP[2] : -0.95;
+  to3(p, P.rP, lerp(lerp(p0, -0.85, bw), FR.p[0], fw), lerp(lerp(p1, -0.3, bw), FR.p[1], fw), lerp(lerp(p2, -0.5, bw), FR.p[2], fw), ws);
+  if (rs) dirLerp(SW_T, 0, RD[0], RD[1], RD[2], -0.15, -0.22, 1, bw);
+  else dirLerp(SW_T, 0, lerp(-0.42, -0.36, s), lerp(-0.56, -0.2, s) - 0.03 * st * (1 - s), lerp(-0.71, -0.91, s), -0.15, -0.22, 1, bw);
   if (fw > 0.001) dirLerp(SW_T, 0, SW_T[0], SW_T[1], SW_T[2], FR.d[0], FR.d[1] + 0.035 * st, FR.d[2], fw);
   dirTo(p, P.swD, SW_T[0], SW_T[1], SW_T[2], ws);
-  to3(p, P.swF, lerp(lerp(-0.3, 0, bw), 0.25, fw), 1, lerp(lerp(0, 0.2, bw), 0, fw), ws);
+  to3(p, P.swF, lerp(lerp(rs ? RSW.f[0] : -0.3, 0, bw), 0.25, fw), rs ? lerp(lerp(RSW.f[1], 1, bw), 1, fw) : 1, lerp(lerp(rs ? RSW.f[2] : 0, 0.2, bw), 0, fw), ws);
   // free arm swings opposite the legs: ahead of the belt (run) → a pumping fist chin ↔ hip (sprint)
   const k = 0.5 - 0.5 * cs * armF; // 1 = fist forward
   // (ADR-187: the hero's free arm is runArms.js's, one of three carries, `?runArm=`; 'old' is this)
