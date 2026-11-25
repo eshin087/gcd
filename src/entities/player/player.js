@@ -2768,7 +2768,8 @@ export class Player {
       const D = ONE_BREATH;
       this._startHeavy(D, { k: 1, damage: D.damage, poise: D.poise, travel: D.travel });
       this.getChestPos(this._v, true);
-      this.flurry?.fx?.pass?.(this._v.x + Math.sin(this.yaw) * D.travel * 0.5, this._v.y, this._v.z + Math.cos(this.yaw) * D.travel * 0.5, Math.sin(this.yaw), Math.cos(this.yaw));
+      // (the instant draw, ?lights=blink, draws its own line along the cut: blinkFx.js; no pass mark beside it)
+      if (!this.blinkFx?.draws(D)) this.flurry?.fx?.pass?.(this._v.x + Math.sin(this.yaw) * D.travel * 0.5, this._v.y, this._v.z + Math.cos(this.yaw) * D.travel * 0.5, Math.sin(this.yaw), Math.cos(this.yaw));
       this._emit('player:draw', { phase: 'cut' });
     }
   }
@@ -3282,8 +3283,9 @@ export class Player {
           this.fx.release(p.x, p.z, a.charge);
           sw.point(1, this._tipPrev);
         }
-        // the long cyan streak behind the driving point
-        if (t >= W && prevT <= end + 0.02) {
+        // the long cyan streak behind the driving point (not behind an instant thrust, ?lights=blink: the
+        // point is simply there, and its own streak runs on off it: blinkFx.js)
+        if (t >= W && prevT <= end + 0.02 && !this.blinkFx?.owns(a)) {
           sw.point(1, this._tip);
           this.fx.thrustStreak(this._tipPrev, this._tip, a.charge, crit);
           this._tipPrev.copy(this._tip);

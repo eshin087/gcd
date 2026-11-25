@@ -126,6 +126,13 @@ export class BlinkFx {
     return !!this._clip(at);
   }
 
+  /** Does this attack def draw its own line in the look set now (asked as the attack starts, before the
+   *  animator has picked its clip up: player.js, One Breath's pass mark)? */
+  draws(def) {
+    const c = lightsMode() === 'blink' ? def?.anim?.clip : null;
+    return !!(c && SWINGS[c]?.slash);
+  }
+
   /** Per frame (player._updateFx). */
   update(dt = 0) {
     const P = this.p;
