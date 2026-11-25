@@ -11,6 +11,7 @@ import {
 } from './forest.js';
 import { buildSectGate, buildColossus, buildCauldron, carved, landmarkPoint, GATE_COLLIDERS, GATE_FOOTPRINT, COLOSSUS_COLLIDERS, COLOSSUS_FALLEN_HEAD, CAULDRON_COLLIDERS } from './landmarks.js';
 import { breakableFloor } from './floor.js';
+import { addSlabRims } from '../render/dragonFloor.js';
 import { BREAK } from './breakTuning.js';
 
 // The Ashfall Courtyard (docs/specs/ash-disciple.md §2): the ruins of a sword sect on a burned
@@ -61,6 +62,9 @@ const PAVING_LOOK = {
   edge: 0.3,
   inkFloor: 0.035,
   topGlyphs: ['.   ', '. . ', '.:. ', ':.;.', ';:=.', '=;%:'],
+  // the dragon print (`?dpFloor=`, render/dragonFloor.js): the ash-grey paving a touch dimmer than the
+  // scattered flagstones, its slabs' tops flat (the hero and the boss stay the brightest)
+  dp: { k: 0.55, top: 0.06 },
 };
 const BRONZE = [0.2, 0.15, 0.08];
 const CHAR = [0.07, 0.065, 0.065];
@@ -471,6 +475,7 @@ export function createCourtyard(U, colliders) {
   // the floor breaks (world/floor.js): every slab a breakable 'range' piece of the paving mesh; its
   // cracked and broken looks in two more meshes, hidden until first used (and no shadow: added after)
   breakables.push(...breakableFloor({ slabs: floor, slabGeos, slabMesh, mat: slabMat, rng: mulberry32(CONFIG.seed + 7177), group }).defs);
+  addSlabRims(group, slabMat); // (the dragon print's rims: only under ?dpFloor)
 
   const S = CONFIG.world.dragonSleep ?? { x: 0, z: 0 };
   return {

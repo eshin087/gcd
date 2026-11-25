@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { FLAG, createAsciiObjectMaterial, createCarvedGlyphMaterial, createPropArtMaterial } from '../render/materials.js';
 import { markCaster } from '../render/pipeline.js';
+import { addSlabRims } from '../render/dragonFloor.js';
 import { GlyphParticles } from '../render/particles.js';
 import { mulberry32 } from '../core/rng.js';
 import { CONFIG } from '../core/config.js';
@@ -136,6 +137,7 @@ export function createTrainingRoom(U, colliders) {
   const pitch = CONFIG.camera.pitch;
   const slabMat = createCarvedGlyphMaterial(U, {
     ...SLAB_LOOK, gain: 1.4, lumScale: 2.0, edge: 0.55, inkFloor: 0.03, crackAmount: 0.08, topGlyphs: ['.   ', '. . ', '.:. ', ':.:.', ':;:.', ';:;:'], viewPitch: pitch,
+    dp: { k: 0.6, top: 0.04 }, // (the dragon print, `?dpFloor=`: the room's floor stays dim under its lit grid)
   });
   // the walls and the pylons are printed like the wyrm (prop art, the house style: ADR-100); the
   // floor stays carved, as every level's does. A dark room: a higher source gain
@@ -150,6 +152,7 @@ export function createTrainingRoom(U, colliders) {
   addMesh(wallGeos, wallMat, 'walls');
   addMesh(propGeos, mat, 'props');
   markCaster(group);
+  addSlabRims(group, slabMat); // (the dragon print's rims: only under ?dpFloor)
 
   // ---- the room's life: the lit grid, the pylons' lights, motes
   let glowSys = null;

@@ -8,6 +8,7 @@ import { TAU } from '../core/math.js';
 import { prep, lumpy, paint, carve, slabGeometry, mul, STONE, SLAB_LOOK, buildBoulder, buildStandingStone, buildFlagstone, buildBonfire, buildRubble, geosHeight } from './forest.js';
 import { buildGreatSword, carved } from './landmarks.js';
 import { breakableFloor } from './floor.js';
+import { addSlabRims } from '../render/dragonFloor.js';
 import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
 
 // The Windless Grove (ADR-145): a bamboo grove at night with a round clearing, where Lu Wusheng, the
@@ -655,12 +656,14 @@ export function createWindlessGrove(U, colliders) {
   const stoneMat = createPropArtMaterial(U, { fadeNearPlayer: true });
   const stoneMesh = new THREE.Mesh(mergeGeometries(stoneGeos), stoneMat);
   stoneMesh.name = 'stones';
-  const slabMat = createCarvedGlyphMaterial(U, { ...SLAB_LOOK, gain: 1.6, lumScale: 2.0, edge: 0.3, inkFloor: 0.04, viewPitch: CONFIG.camera.pitch });
+  // (the dragon print, `?dpFloor=`: the worn round keeps the sky's light in the stalks' shadow, so it still reads)
+  const slabMat = createCarvedGlyphMaterial(U, { ...SLAB_LOOK, gain: 1.6, lumScale: 2.0, edge: 0.3, inkFloor: 0.04, viewPitch: CONFIG.camera.pitch, dp: { k: 2.2, top: 0.12, sky: 0.36 } });
   const slabMesh = new THREE.Mesh(mergeGeometries(slabGeos), slabMat);
   slabMesh.name = 'paving';
   group.add(bambooMesh, stumpMesh, propMesh, stoneMesh, slabMesh);
   markCaster(group);
   breakables.push(...breakableFloor({ slabs: floor, slabGeos, slabMesh, mat: slabMat, rng: fr, group }).defs);
+  addSlabRims(group, slabMat); // (the dragon print's rims: only under ?dpFloor)
   for (const t of stalkAt) treeSpots.push({ x: t[0], z: t[1], r: 0.9 });
 
   const S = CONFIG.world.dragonSleep ?? C.wait;
