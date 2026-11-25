@@ -4,7 +4,11 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Ninety-seven pieces of work since 0.4.0:
+Ninety-eight pieces of work since 0.4.0:
+- **Your clicks reach the fight again** (2026-11-25). *Fixed:* after the title (the sword's path) faded, its panels
+  stayed on the page, invisible, over the game: a left or right click landed on them instead of the fight, and a
+  click on an unseen world's fire travelled there, reloading the page into the loading screen again and again.
+  The faded title now takes no click and leaves the page.
 - **Every fire comes from the wyrm; it roars up spells and a brood of fire; a forest you can walk into** (2026-11-25, ADR-197).
   *Changed:* no fire of the wyrm's appears out of nowhere: the phase-3 lava pillars chase the hero along a glowing
   crack that runs out of its forefeet (the crack's arrival is part of their tell), the phase-3 second flame wall is
