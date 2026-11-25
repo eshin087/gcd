@@ -93,7 +93,8 @@ export const BROOD = {
   // ------------------------------------------------------------------ the moves (broodAttacks.js)
   moves: {
     drakelings: {
-      label: 'Fire drakelings', tell: TELL.BLUE, phase: 1, category: 'spell',
+      label: 'Fire drakelings', tell: TELL.NORMAL, // (their bites: normal, blue from phase 2; their dives red)
+      phase: 1, category: 'spell',
       windup: 1.7, cast: 0.55, recovery: 0.9,
       r: 10, // m: the circle round its feet (x 1, not SCALE): wider than the wyrm, so it is seen round it
       weight: [0, 0.55, 0.6], cooldown: 34,

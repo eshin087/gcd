@@ -25,7 +25,8 @@ import { K_FIRE, K_SMOKE } from '../enemies/duelist/fx.js';
 // costs 1 hp (a heavy swing 2); the hero feels it through player.feelCut (a short hit-stop, sparks, a
 // jolt). A parried lunge kills the drakeling outright.
 //
-// THEIR BLOWS go through dragon.hitPlayer with a tell, like every boss blow: a drakeling's lunge is
+// THEIR BLOWS go through dragon.hitPlayer with a tell, like every boss blow (their `attack` is the move
+// that called them: 'drakelings', 'wisps'): a drakeling's lunge is
 // normal or blue (block / parry; 'combat:tell' at its windup, 'combat:flash' + the white cue flashLead
 // s before it can land), its dive and every wisp's burst red (dodge; the red blaze where it lands:
 // fx.tells.hazardFlash, the cue of a thing away from its thrower). One lunge at a time, never two dives
@@ -76,7 +77,7 @@ export class Brood {
     this._ls = 0x2b7e15; // the look's own stream (never Math.random: the sims replay that one)
     this._from = { x: 0, z: 0 };
     this._pt = { x: 0, y: 0, z: 0 };
-    this._hit = { damage: 0, from: this._from, point: this._pt, knockback: 0, knockdown: false, kind: 'fire', burn: 0, tell: TELL.NORMAL, parryable: true, blockable: true, attack: 'drakeling', plunge: false };
+    this._hit = { damage: 0, from: this._from, point: this._pt, knockback: 0, knockdown: false, kind: 'fire', burn: 0, tell: TELL.NORMAL, parryable: true, blockable: true, attack: 'drakelings', plunge: false };
     this._b = { x: 0, y: 0, z: 0 };
     this.stats = { spawned: 0, cut: 0, burst: 0, hits: 0, lunges: 0, dives: 0 };
   }
@@ -327,7 +328,7 @@ export class Brood {
         if (!c.hitDone && this._touches(c, p, LG.hitR)) {
           c.hitDone = true;
           const L = c.tell === TELL.BLUE ? LG.blue : LG.normal;
-          const r = this._blow(c, c.tell, L.damage, L.knockback, 0, 'drakeling');
+          const r = this._blow(c, c.tell, L.damage, L.knockback, 0, 'drakelings');
           if (r === RESULT.PARRIED) {
             // a parried bite: it is thrown back into embers
             this.stats.cut++;
@@ -394,7 +395,7 @@ export class Brood {
         }
         this._move(c, dt);
         if (c.y <= 0.45 || l < DV.speed * dt || c.st > 1.2) {
-          this._burst(c, c.tx, c.tz, DV.radius, DV.damage, DV.burn, DV.knockback, 'drakeling');
+          this._burst(c, c.tx, c.tz, DV.radius, DV.damage, DV.burn, DV.knockback, 'drakelings');
           return;
         }
         break;
@@ -415,11 +416,11 @@ export class Brood {
     this._drawDrake(c, dt);
   }
 
-  _to(c, state) {
+  /** A new state (a new cue starts with `cue`: its tell and flash not yet out). */
+  _to(c, state, cue = false) {
     c.state = state;
     c.st = 0;
-    c.told = false;
-    c.flashed = false;
+    if (cue) c.told = c.flashed = false;
   }
 
   _reel(c, s) {
@@ -502,26 +503,26 @@ export class Brood {
     }
     c.tell = tell;
     this.lunger = c;
-    this._to(c, 'windup');
+    this._to(c, 'windup', true);
     c.told = true;
-    d.emit?.('combat:tell', { source: 'dragon', attack: 'drakeling', tell, impactIn, x: c.x, z: c.z, hazard: true, brood: true });
+    d.emit?.('combat:tell', { source: 'dragon', attack: 'drakelings', tell, impactIn, x: c.x, z: c.z, hazard: true, brood: true });
   }
 
   _startDive(c, p) {
     const d = this.d;
     this.lastDive = this.time;
     if (this.lunger === c) this.lunger = null;
-    this._to(c, 'rise');
+    this._to(c, 'rise', true);
     c.told = true;
     const fall = Math.hypot(DV.rise, Math.hypot(p.x - c.x, p.z - c.z)) / DV.speed;
-    d.emit?.('combat:tell', { source: 'dragon', attack: 'drakeling', tell: TELL.RED, impactIn: DV.windup + fall, x: p.x, z: p.z, hazard: true, brood: true });
+    d.emit?.('combat:tell', { source: 'dragon', attack: 'drakelings', tell: TELL.RED, impactIn: DV.windup + fall, x: p.x, z: p.z, hazard: true, brood: true });
   }
 
   /** The cue flashLead s before it can land: 'combat:flash' + the shared design (a white cross for a
    *  normal bite, the star for a blue one, the red blaze where a dive or a wisp will burst). */
   _flash(c, tell, x = c.x, y = c.y, z = c.z) {
     const d = this.d;
-    d.emit?.('combat:flash', { source: 'dragon', attack: c.kind, tell, x, y, z, hazard: true, brood: true });
+    d.emit?.('combat:flash', { source: 'dragon', attack: c.kind === 'wisp' ? 'wisps' : 'drakelings', tell, x, y, z, hazard: true, brood: true });
     this.fx?.hazardFlash?.(tell, x, y, z, tell === TELL.RED ? 1.2 : 1.1);
   }
 
@@ -653,7 +654,7 @@ export class Brood {
           this._flash(c, TELL.RED, c.tx, 1.0, c.tz);
         }
         if (c.st >= WP.fuse) {
-          this._burst(c, c.x, c.z, WP.blast, WP.damage, WP.burn, WP.knockback, 'wisp');
+          this._burst(c, c.x, c.z, WP.blast, WP.damage, WP.burn, WP.knockback, 'wisps');
           return;
         }
         break;
@@ -682,9 +683,9 @@ export class Brood {
     c.tx = p.x;
     c.tz = p.z;
     this.lastCommit = this.time;
-    this._to(c, 'commit');
+    this._to(c, 'commit', true);
     c.told = true;
-    this.d.emit?.('combat:tell', { source: 'dragon', attack: 'wisp', tell: TELL.RED, impactIn: WP.fuse, x: p.x, z: p.z, hazard: true, brood: true });
+    this.d.emit?.('combat:tell', { source: 'dragon', attack: 'wisps', tell: TELL.RED, impactIn: WP.fuse, x: p.x, z: p.z, hazard: true, brood: true });
   }
 
   /** A point of the wyrm's body a wisp rides before it tears off: along the spine, the wing arms. */
