@@ -19,6 +19,22 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-25',
+        title: 'The grass bends as you run through it and springs back',
+        notes: [
+          'Running through the grass no longer leaves a dark trail behind you. The blades bend out of your way and rise again a moment after you pass.',
+          'To see the old trail, add ?bend=0 to the address.',
+        ],
+      },
+      {
+        date: '2026-11-25',
+        title: "The sword's cut throws green code",
+        notes: [
+          'Where your sword cuts the grass, small green code glyphs burst off the cut, flicker as they fly and settle into the grass.',
+          'To turn it off, add ?grassSpray=0 to the address.',
+        ],
+      },
+      {
+        date: '2026-11-25',
         title: 'The resting blade no longer glows',
         notes: [
           'A bright white halo no longer blooms round your sword while you stand still at some angles.',

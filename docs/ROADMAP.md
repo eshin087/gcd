@@ -185,6 +185,16 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.85 — The grass bends round the hero's wake (2026-11-25, `world/grass-bend`, ADR-193)
+- [x] The hero's wake as a path in the shader: blades bend along his way and spring back, no dark trail (`?bend=b`)
+- [x] The steps' trample only with `?bend=0`; a sprint or landing presses a wider wake
+- [ ] The boss's footsteps leave a wake too; measured on the phone
+
+## M1.84 — The sword's cut throws green code (2026-11-25, `world/grass-spray`, ADR-192)
+- [x] Code glyphs off the drawn arc's cut, the Hall of Falling Script's set, calm and small (`?grassSpray=m`)
+- [x] The looks met on the way behind `?grassSpray=` (grass letters, the blade's own chips, code with trails)
+- [ ] Seen on the phone's own screen; should the boss marks' tears throw code too?
+
 ## M1.83 — The hero's idles: rests, habits with both arms, sword tricks (2026-11-24, `claude/hero-idles-2776d8`, ADR-186)
 - [x] At ease: four rests, six habits with both arms, five tricks every 3 - 4 actions; in the fight: the free hand off the belt (four guard hands), five small habits, no tricks (`?idles=old`: the belt)
 - [x] Measured in his own frame (joints, the blade's gaps, the coat, pops) and every move from every rest and every action against the stance before; scenario `heroidles`; the Lab's `idles` / `idle ▸` rows

@@ -48,7 +48,7 @@ function sprint(w, sec, vx, vz, o = {}, probe = null) {
   return peak;
 }
 
-export default {
+const first = {
   /** A top-down map of every level's surfaces (60 x 60 m, 1 m a letter, north up). */
   map(T) {
     const show = !!process.env.ABYSS_STEPS_MAP;
@@ -141,8 +141,50 @@ export default {
     T.assert(w.life.steps.prints <= 120 && w.counts().own <= 120, `at most 120 prints (${w.life.steps.prints})`);
   },
 
-  /** The trample: blue rises at the foot, red and green untouched, it stands up again, reset clears it. */
-  trample(T) {
+  /** The trample (`?bend=0`: today's trodden trail): blue rises at the foot, red and green untouched, it
+   *  stands up again, reset clears it. */
+  async trample(T) {
+    const LS = await T.imp('src/entities/enemies/duelist/lookSwitch.js');
+    LS.setLook('bend', '0');
+    try {
+      trample0(T);
+    } finally {
+      LS.setLook('bend', null);
+    }
+  },
+
+  /** With the grass's wake on (`?bend=a|b|c`, the default b) a step writes no trodden trail (B stays 0):
+   *  a sprint step and a landing widen the wake instead. */
+  async noTrample(T) {
+    const LS = await T.imp('src/entities/enemies/duelist/lookSwitch.js');
+    for (const look of [null, 'a', 'b', 'c']) {
+      LS.setLook('bend', look);
+      try {
+        const w = T.build('cinderwood', 'steps');
+        const pressed = [];
+        w.world.trail = { press: (x, z, r) => pressed.push(r) };
+        sprint(w, 2, 7, 0);
+        w.life.steps.step(w.game.player.position.x, 15, { heavy: true });
+        const sc = w.world.scorch;
+        let b = 0;
+        for (let i = 2; i < sc.data.length; i += 4) b = Math.max(b, sc.data[i]);
+        T.assert(b === 0 && sc._tramN === 0, `bend ${look ?? 'default'}: no trodden cells in B (max ${b}, ${sc._tramN} cells)`);
+        T.assert(pressed.length >= 5 && pressed.includes(1.2), `bend ${look ?? 'default'}: the sprint's steps and the landing widen the wake instead (${pressed.length} presses: ${[...new Set(pressed)].join(', ')} m)`);
+      } finally {
+        LS.setLook('bend', null);
+      }
+    }
+  },
+
+  /** The grass's wake itself: world/grassTrail.js on its own, as world.js drives it (bend.mjs). */
+  async wake(T) {
+    const m = await T.imp('tests/integration/life/bend.mjs');
+    await m.default(T);
+  },
+};
+
+function trample0(T) {
+  {
     const w = T.build('cinderwood', 'steps');
     const sc = w.world.scorch;
     sc.burnCircle(5, 10, 2, 0.5, 1);
@@ -186,7 +228,10 @@ export default {
       Math.random = R;
     }
     T.assert(calls === 0, `the trample draws nothing from Math.random (${calls})`);
-  },
+  }
+}
+
+const more = {
 
   /** With the piece off a step draws nothing and footfall says nothing. */
   off(T) {
@@ -264,32 +309,18 @@ export default {
 
   /** The trail through the meadow (the hero's feet, as player.js brings them down): the grass is trodden
    *  where he ran (the scorch map's blue, which the grass shader reads with the wind on or off), it
-   *  stands up again within ~10 s, and with the steps off there is no trail at all. */
-  trail(T) {
-    const trail = (spec) => {
-      const w = T.build('cinderwood', spec, { feet: true });
-      w.place(-8, 16);
-      w.walk(5, 0);
-      w.step(3.2);
-      w.walk(0, 0);
-      const sc = w.world.scorch;
-      let n = 0, max = 0;
-      for (let x = -8; x <= 8; x += 0.25) {
-        const v = sc.trampleAt(x, 16);
-        if (v > 0.05) n++;
-        max = Math.max(max, v);
-      }
-      w.step(5);
-      const mid = sc._tramN;
-      w.step(6);
-      return { n, max, mid, end: sc._tramN };
-    };
-    const on = trail('steps'), both = trail('steps,wind'), off = trail('wind');
-    T.assert(on.n >= 8 && on.max > 0.5, `steps on, wind off: a trail of trodden cells along the run (${on.n} of 65 probes, deepest ${on.max.toFixed(2)})`);
-    T.assert(both.n >= 8, `steps and wind on: the same trail (${both.n})`);
-    T.assert(on.mid > 0 && on.end === 0, `it stands up again (${on.mid} cells still trodden 5 s after, ${on.end} at 11 s)`);
-    T.assert(off.n === 0 && off.max === 0, `steps off: no trail (${off.n})`);
+   *  stands up again within ~10 s, and with the steps off there is no trail at all. (`?bend=0`: today's
+   *  trail; with the wake on there is none, noTrample) */
+  async trail(T) {
+    const LS = await T.imp('src/entities/enemies/duelist/lookSwitch.js');
+    LS.setLook('bend', '0');
+    try {
+      trail0(T);
+    } finally {
+      LS.setLook('bend', null);
+    }
   },
+
 
   /** A 30 s sprint on every level: inside the steps' budget (fx.alpha 60, own 120), no NaN, no Math.random. */
   budget(T) {
@@ -343,3 +374,34 @@ export default {
     T.assert((src.match(/steps\?\.footfall\?\.\(/g) ?? []).length === 4, 'the hero’s four landings ask the steps (_footstep, the plunge landing, the flurry touchdown, the roll’s landing)');
   },
 };
+
+/** (today's trail, under `?bend=0`) */
+function trail0(T) {
+  {
+    const trail = (spec) => {
+      const w = T.build('cinderwood', spec, { feet: true });
+      w.place(-8, 16);
+      w.walk(5, 0);
+      w.step(3.2);
+      w.walk(0, 0);
+      const sc = w.world.scorch;
+      let n = 0, max = 0;
+      for (let x = -8; x <= 8; x += 0.25) {
+        const v = sc.trampleAt(x, 16);
+        if (v > 0.05) n++;
+        max = Math.max(max, v);
+      }
+      w.step(5);
+      const mid = sc._tramN;
+      w.step(6);
+      return { n, max, mid, end: sc._tramN };
+    };
+    const on = trail('steps'), both = trail('steps,wind'), off = trail('wind');
+    T.assert(on.n >= 8 && on.max > 0.5, `steps on, wind off: a trail of trodden cells along the run (${on.n} of 65 probes, deepest ${on.max.toFixed(2)})`);
+    T.assert(both.n >= 8, `steps and wind on: the same trail (${both.n})`);
+    T.assert(on.mid > 0 && on.end === 0, `it stands up again (${on.mid} cells still trodden 5 s after, ${on.end} at 11 s)`);
+    T.assert(off.n === 0 && off.max === 0, `steps off: no trail (${off.n})`);
+  }
+}
+
+export default { ...first, ...more };
