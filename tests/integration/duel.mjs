@@ -1277,7 +1277,7 @@ async function scenarioChain() {
   out('\n== scenario CHAIN (the flurry on a man: each pass from where the last ended; its figures; the slashes on his path; letter dust) ==');
   const { STREAK_FX } = await imp('src/combat/streak.js');
   const FIG = await imp('src/entities/player/flurryFigures.js'), FL = await imp('src/entities/player/flurry.js');
-  const { shapeOf, dumpFigure } = await import(pathToFileURL(`${ROOT}/tests/integration/figures.mjs`).href);
+  const { shapeOf, dumpFigure, measure } = await import(pathToFileURL(`${ROOT}/tests/integration/figures.mjs`).href);
   const figure0 = STREAK_FX.figure;
   const FX = await imp('src/entities/player/flurryFx.js');
   const G = build();
@@ -1383,6 +1383,9 @@ async function scenarioChain() {
       if ([3, 5, 7].includes(n)) out(`   ${name} N=${n}: ${t.seq}`);
       assert(t.figure === name, `${name} N=${n}: the figure laid is ${t.figure} (its cost ${t.fit.toFixed(2)})`);
       assert(sh.ok, `${name} N=${n}: it reads as a ${t.figure}: ${sh.why}`);
+      // (ADR-101: past his side, never through his body, whatever the figure)
+      const near = Math.min(...measure(t.passes).map((q) => q.abs));
+      assert(near >= F.chain.figures.body.ground - 0.05, `${name} N=${n}: every pass runs past his side, ${near.toFixed(2)} m off his middle at the nearest`);
       assert(t.jumps.every((j) => j < 0.3) && t.artJump < 0.3 && t.near >= 1.5 && t.lineErr < 0.35 && t.ev?.figure === t.figure, `${name} N=${n}: chained (${t.jumps.map((j) => j.toFixed(2)).join(' ') || '-'} m), never back within 1.5 m of the dodge spot (${t.near === Infinity ? '-' : t.near.toFixed(2)} m), its lines on his path, player:flurry says ${t.ev?.figure}`);
       if ([3, 5, 7].includes(n)) {
         const T = { x: t.passes[0].tx, z: t.passes[0].tz };

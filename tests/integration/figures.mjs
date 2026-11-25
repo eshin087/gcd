@@ -42,12 +42,14 @@ export function shapeOf(name, passes, air = false) {
     case 'spiral': {
       const offs = m.map((q) => q.abs);
       const inward = offs.every((o, i) => i === 0 || o <= offs[i - 1] + 0.15);
-      return { ok: oneWay && inward && offs[n - 1] < 0.35, why: `turning one way (${oneWay}), each pass nearer (${fmt(offs)} m), the last through his middle` };
+      const mid = air ? 0.35 : 0.7; // (on a man "through his middle" is past his side: figures.body)
+      return { ok: oneWay && inward && offs[n - 1] < mid, why: `turning one way (${oneWay}), each pass nearer (${fmt(offs)} m), the last through his middle` };
     }
     case 'cross': {
       const straight = m.filter((_, i) => i % 2 === 0).map((q) => q.abs);
       const x = n >= 3 ? sinBetween(m[0], m[2]) : 0;
-      return { ok: straight.every((o) => o < 0.35) && x > 0.5, why: `every other pass through his middle (${fmt(straight)} m), the first two crossing at ${(Math.asin(Math.min(1, x)) * 57.3).toFixed(0)} degrees` };
+      const mid = air ? 0.35 : 0.7;
+      return { ok: straight.every((o) => o < mid) && x > 0.5, why: `every other pass through his middle (${fmt(straight)} m), the first two crossing at ${(Math.asin(Math.min(1, x)) * 57.3).toFixed(0)} degrees` };
     }
     default:
       return { ok: false, why: `no figure ${name}` };

@@ -688,6 +688,13 @@ function steadyDefender(G) {
 
 async function scenarioPressure() {
   out('\n== scenario PRESSURE (defender bot in god mode vs the AI, per phase: cues, gaps, mix, chains, fire) ==');
+  // (the seeded fights replay with the flurry's star (?figure=star; 2026-11-24, the chain's figures):
+  // another figure ends each flurry somewhere else, the bot's fight then runs another way and seed
+  // 1337's phase 3 showed a 4.95 s gap between cues (4.5 the bound) with the same blows. The scenario
+  // measures the wyrm's director, not the hero's flurry)
+  const { STREAK_FX: SFXP } = await imp('src/combat/streak.js');
+  const figureP = SFXP.figure;
+  SFXP.figure = 'star';
   const aiMod = await imp('src/entities/dragon/ai.js');
   const P = TUNING.pressure ?? null;
   const SECS = Number(process.env.ABYSS_PSECS ?? 120);
@@ -977,6 +984,7 @@ async function scenarioPressure() {
   // before) with nothing wrong in it: emberStorm, two breaths and 11 cinders instead of 18, the
   // other seeds 55.1 and 54.0, the mean 52.0
   if (A.minRate) for (let ph = 1; ph <= 3; ph++) assert(mean(ph, 'perMin') >= perPhase(A.minRate, ph), `P${ph}: ${mean(ph, 'perMin').toFixed(1)} cues a minute over the seeds (${rows.filter((x) => x.ph === ph).map((x) => x.perMin.toFixed(1)).join(', ')}) >= ${perPhase(A.minRate, ph)}`);
+  SFXP.figure = figureP;
   return lastG;
 }
 
