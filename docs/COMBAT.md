@@ -616,10 +616,12 @@ same 258 damage in the same time as a streak of 7 (integ `storm`).
     middle, corner to corner of a triangle / square / pentagon / hexagon (by the cut count): he
     circles him with cuts.
   - **spiral** (3 cuts and up, on the ground): the cage turning inward, each pass nearer (1.3 m down
-    to 0), the last straight through his middle.
+    to his side), the last straight past his middle.
   - **cross** (3 cuts and up): every other pass straight through his middle, one round his side
     between them (1.3 m off; 1.6 round the head), each on the other side: the straight cuts cross in
     an X (an hourglass with its sides).
+  On a man no pass of any figure comes nearer his middle than his side, 0.55 m (`figures.body`,
+  ADR-101: never through his body); the spiral's and the cross's "through the middle" run there.
   A figure is laid at the turn round him (up to 60° off straight toward the dodge spot) and the hand
   that cost least; one that would pass within 1.6 m of the dodge spot (anywhere along a pass after the
   first), run into a wall, or round the head along its neck is passed over, and the star always fits
