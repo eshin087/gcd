@@ -94,7 +94,7 @@ export class Brood {
     return this.d.fx?.tells ?? null;
   }
   get low() {
-    return this.game.settings?.quality === 'low';
+    return (this.game.settings?.quality ?? 2) === 0;
   }
 
   // ---------------------------------------------------------------- the interface

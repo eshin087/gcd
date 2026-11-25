@@ -344,7 +344,7 @@ export class Incantation {
   _draw(c, dt) {
     const fx = this._fx;
     if (!fx || !this.game.fx?.fire) return;
-    const low = this.game.settings?.quality === 'low';
+    const low = (this.game.settings?.quality ?? 2) === 0; // (the LOW preset: CONFIG.quality[0], a phone's default)
     const kind = this._kind(c);
     const life = Math.max(0.2, c.dur);
     const w = clamp01(c.t / Math.max(0.15, life * I.write)); // written so far
