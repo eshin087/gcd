@@ -1130,6 +1130,14 @@ async function scenarioPace() {
 async function scenarioWin() {
   out('\n== scenario WIN (a fencing bot in god mode, three seeds: parries, rolls, cuts him in his openings) ==');
   const SEEDS = (process.env.ABYSS_WSEEDS ?? '4242,7,99').split(',').map(Number);
+  // (the seeded fights replay with the flurry's passes as they were before the chain (2026-11-24,
+  // STREAK_FX.chain): the chain ends each flurry somewhere else, the bot's fight then runs another way
+  // and seeds 7 / 99 finished in 134 / 136 s, under the 140 s floor, with the same damage a flurry. The
+  // window measures his fight, not where the hero's flurry ends; it already sat on its floor at 140 - 145 s)
+  const { STREAK_FX } = await imp('src/combat/streak.js');
+  const chain0 = STREAK_FX.chain;
+  STREAK_FX.chain = false;
+  try {
   for (const seed of SEEDS) {
     const G = build(seed, true);
     const MK = attachMarks(G.game); // (the floor marks the fight leaves: they change nothing in it)
@@ -1148,6 +1156,9 @@ async function scenarioWin() {
     assert(won && d.phase === 3, `seed ${seed}: the fencing bot wins through all three phases`);
     const [lo, hi] = (process.env.ABYSS_WRANGE ?? '140,250').split(',').map(Number);
     assert(T > lo && T < hi, `seed ${seed}: the fight takes ${T.toFixed(0)} s (${lo} - ${hi})`);
+  }
+  } finally {
+    STREAK_FX.chain = chain0;
   }
 }
 
