@@ -10,6 +10,12 @@ const CSS = `
     radial-gradient(ellipse 90% 80% at 50% 50%, rgba(3, 5, 9, 0.5), rgba(3, 5, 9, 0.86) 85%),
     linear-gradient(180deg, rgba(3, 5, 9, 0.55), rgba(3, 5, 9, 0.35) 40%, rgba(3, 5, 9, 0.8));
 }
+/* hidden (the game began: TitleScreen.hide adds .off, then .gone): the faded title takes no click (its
+   panels set pointer-events back on, so a click in the fight landed on a world's button and travelled:
+   the page reloaded into the loader), and it leaves the page once gone (.ab-title.gm's display: flex
+   outranked hudStyle's .ab-title.gone) */
+.ab-title.gm.off, .ab-title.gm.off * { pointer-events: none !important; }
+.ab-title.gm.gone { display: none; }
 .gm .gm-top { flex: none; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
 .gm .gm-logo { font-size: 11px; line-height: 1.04; filter: drop-shadow(0 0 10px rgba(255, 120, 40, 0.22)); }
 .gm .gm-corner { display: flex; gap: 8px; pointer-events: auto; }

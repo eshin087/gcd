@@ -15,6 +15,17 @@ program of the visible scene, the fx scene and the pipeline's passes at once (`W
 object, a full-screen quad per pass; KHR_parallel_shader_compile), waits for them (30 s at most), then draws.
 Hidden objects are left out. Cold load ~8 s → ~5.3 s (two runs each). `?precompile=0` as before; `game.precompiled`
 { programs, ms }. Safari without the extension: compiles queued as before, no wait.
+## 2026-11-25 — The faded title caught every click (hotfix; branch `ui/title-clicks`)
+
+**Owner** (testing a preview): "i cant press left or right click in the preview and it keeps looping me".
+**Cause.** The new title (ADR-196, `?menu=c` default) fades with `.ab-title.off` (opacity 0) and should leave with
+`.gone` (display none), but `.ab-title.gm { display: flex }` (titleMenuStyle.js, injected after hudStyle.js, the
+same specificity) outranked `.ab-title.gone`, and its panels set `pointer-events: auto`: the invisible body
+(`.gm-body`, `.gm-detail`, the worlds' buttons) stayed over the canvas, so mouse buttons never reached the game and
+a click on an unseen world's fire travelled (a reload into the loader: the loop). Keys worked.
+**Fix.** `.ab-title.gm.off` and everything in it take no pointer; `.ab-title.gm.gone` is display none. Checked with
+real CDP mouse events on headless Edge: after Enter the point under the cursor is the canvas, a left click starts an
+attack, a right click reaches the game, the page does not reload.
 
 ---
 
