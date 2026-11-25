@@ -236,6 +236,9 @@ export class MowFx {
     const dgo = groundLook() === 'b' ? dgGrassOpt() : '0';
     this._printTear = dgo === 'a' || dgo === 'a2' || dgo === 'c' || dgo.startsWith('a3d');
     this._noTops = dgo !== '0';
+    // (the printed grass: smaller chips, DG.cut.chipK / tipK; 1 with the 3D blades)
+    this._chipK = dgo !== '0' ? DG.cut.chipK : 1;
+    this._tipK = dgo !== '0' ? DG.cut.tipK : 1;
     // the cut IN the printed tufts (dgCut a / b, world/dragonGrass.js): the arc's exact path is cut into a
     // fine map of its own (not the coarse A), its last strokes kept for the line's flash, and the tufts it
     // shears throw their tips as chips of their own letters
@@ -373,8 +376,8 @@ export class MowFx {
     this.px[j] = x + R(-0.06, 0.06);
     this.py[j] = Math.max(0.05, y * R(0.55, 1));
     this.pz[j] = z + R(-0.06, 0.06);
-    this.w[j] = C.cell[0];
-    this.h[j] = C.cell[1];
+    this.w[j] = C.cell[0] * this._tipK;
+    this.h[j] = C.cell[1] * this._tipK;
     this.v0[j] = 0;
     this.v1[j] = 1;
     this.tipMin[j] = 0.85;
@@ -520,8 +523,8 @@ export class MowFx {
       this.px[j] = x + R(-0.1, 0.1);
       this.py[j] = h * R(0.35, 0.85);
       this.pz[j] = z + R(-0.1, 0.1);
-      this.w[j] = h * 0.92 * k;
-      this.h[j] = h * k; // (a band is drawn at the letter's own scale: its strokes, not stretched)
+      this.w[j] = h * 0.92 * k * this._chipK;
+      this.h[j] = h * k * this._chipK; // (a band is drawn at the letter's own scale: its strokes, not stretched)
       this.v0[j] = v0;
       this.v1[j] = v1;
       this.tipMin[j] = T.tip;

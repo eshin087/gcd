@@ -63,9 +63,11 @@ The owner, shown four ground looks: "i really like the dragon ground look ... it
   they rise back on the wake's spring. The sword's cut shows IN the ground (`dgCut`, default b; the owner:
   "right now it looks like the main character is just cutting air"): the tufts under the arc's exact path
   are shorn on that frame and throw their tips as chips of their own glyphs, the line glows a moment, and a
-  dark swath of bare ground with sparse stubs stays (`?dgCut=a` no glow, `0` round 2's). More depth, the
-  owner's to pick: `?dgGrass=a3d1 | a3d2` (moon side lit, cast shadows, taller overlapping tufts), `a3d3`
-  (the tufts stand up as billboards over the hero's feet). No 3D blades with it on.
+  dark swath of bare ground with sparse stubs stays (`?dgCut=a` no glow, `0` round 2's). The chips a cut
+  throws are small (the owner: "make the grass ascii particles more smaller"): the code chips 0.6 x, the
+  tufts' tips 0.7 x a cell (`DG.cut.chipK`, `tipK`). The owner kept a over three steps of more depth, which
+  stay behind switches: `?dgGrass=a3d1 | a3d2` (moon side lit, cast shadows, taller overlapping tufts),
+  `a3d3` (the tufts stand up as billboards over the hero's feet). No 3D blades with it on.
 - **Fallen leaves** (`leafLook`, `render/dragonLeaf.js`; the owner: leaves lying as `c`, `s` "dont look like
   leaves"): a lens, the atlas's slashed zero laid flat along the leaf (the oval the blade, the slash the
   midrib, a `-` stem), lit per pixel as the ground is (moon, shadow, cloud and contact, the fire's light),

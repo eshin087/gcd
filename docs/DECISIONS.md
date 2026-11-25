@@ -5934,8 +5934,9 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   (`DP_FX_U`, `DP_STEP_U`) means one CPU writer for every surface.
 - **Consequences / open:** grass b (standing digit blades) lost to a; round 3 (the owner, same day) made the
   sword's cut show in the printed grass (`dgCut` b, the default), gave the fallen leaves a lit lens
-  (`leafLook` a) instead of letters, and rendered three steps of more depth for grass a (`a3d1`-`a3d3`, the
-  owner's to pick; `a` stays the default until then); the
+  (`leafLook` a) instead of letters, and rendered three steps of more depth for grass a (`a3d1`-`a3d3`); the
+  owner kept a ("lets go with the new default") and asked for smaller grass chips (0.6 x the code chips,
+  0.7 x the tufts' tips); the
   floors' and trees' looks before (carved glyphs, round letters), once "do not restyle", are now behind
   `?dragon=0`; the phone's frame cost is the owner's to confirm (desktop: the print, floors and upgrades
   add well under 1 ms at 720p); first-round looks a / c / d stay behind `?ground=` until removed.

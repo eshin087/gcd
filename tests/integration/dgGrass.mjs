@@ -149,8 +149,8 @@ for (const [o, c] of [['a', 'a'], ['a3d1', 'a'], ['a3d2', 'b'], ['a3d3', 'b']]) 
   ok(DG_U.uDgCut.value === T.cutMapTex && inStrip > want * 0.85 && inStrip < want * 1.15 && outStrip === 0 && sc.tornCells === 0, `${o}, dgCut ${c}: the arc's exact strip in the fine map (${inStrip} texels, ~${want} wanted, ${outStrip} beside it), none in A (${sc.tornCells})`);
   ok(T.cutPrintAt(0, 1) && !T.cutPrintAt(0, 1.6) && !T.cutPrintAt(3, 1), `${o}, dgCut ${c}: cut on the line, standing 0.6 m beside it and past its end`);
   let tuftGlyph = 0;
-  for (let j = 0; j < T.n; j++) if (T.code[j] === 0 && Math.abs(T.w[j] - DG.cut.cell[0]) < 1e-6) tuftGlyph++;
-  ok(T.tuftChipped > 5 && tuftGlyph === T.tuftChipped && tops(T) === 0, `${o}, dgCut ${c}: the shorn tufts throw ${T.tuftChipped} tips, each one print cell of their own letters in the grass's colour (${tuftGlyph}); no cut top (${tops(T)})`);
+  for (let j = 0; j < T.n; j++) if (T.code[j] === 0 && Math.abs(T.w[j] - DG.cut.cell[0] * DG.cut.tipK) < 1e-6) tuftGlyph++;
+  ok(T.tuftChipped > 5 && tuftGlyph === T.tuftChipped && tops(T) === 0, `${o}, dgCut ${c}: the shorn tufts throw ${T.tuftChipped} tips, each tipK x a print cell of their own letters in the grass's colour (${tuftGlyph}); no cut top (${tops(T)})`);
   ok(draws === 0, `${o}, dgCut ${c}: the cut draws nothing from Math.random (${draws})`);
   const n2 = T.tuftChipped;
   T.cutArc(-2, 0.3, 1, 2, 0.3, 1, false);

@@ -95,9 +95,11 @@ export const DG = Object.freeze({
    * the arc's edge stroke; its floor `dark` darker (tone), `stubs` of its cells a pale stub mark (`pale`
    * brighter, `fresh` the share of straw in it); the line's glow (b) fades over `flash` s from `bright`
    * (tone) in `glow` (its body; the drawn arc covers it its first moments); the tips thrown: `chips` a cut tuft (x the quality),
-   * at most `maxChips` a stroke, each the print's `cell` (m), along the swing `fling` m/s, `up` m/s.
+   * at most `maxChips` a stroke, each the print's `cell` (m), along the swing `fling` m/s, `up` m/s. With the
+   * printed grass every chip a cut throws is smaller (the owner, 2026-11-25: "make the grass ascii particles more
+   * smaller. its too big right now"): the code chips `chipK` x their size, the tufts' tips `tipK` x a cell.
    */
-  cut: Object.freeze({ size: 1024, w: 0.7, dark: 1.2, stubs: 0.3, pale: 0.22, fresh: 0.85, flash: 0.55, bright: 0.6, glow: [0.2, 0.3, 0.13], chips: 1.6, maxChips: 40, cell: [0.135, 0.229], fling: [1.2, 3.2], up: [1.6, 3.2] }),
+  cut: Object.freeze({ chipK: 0.6, tipK: 0.7, size: 1024, w: 0.7, dark: 1.2, stubs: 0.3, pale: 0.22, fresh: 0.85, flash: 0.55, bright: 0.6, glow: [0.2, 0.3, 0.13], chips: 1.6, maxChips: 40, cell: [0.135, 0.229], fling: [1.2, 3.2], up: [1.6, 3.2] }),
   /**
    * b, the standing digit blades (world/grass.js): rooted on a checkerboard `lattice` [x, z] m of the print's
    * cells (alternate rows a cell over), where `keep` x the meadow's density lets one grow; each a column of

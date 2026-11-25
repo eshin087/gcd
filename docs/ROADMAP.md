@@ -194,7 +194,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Floors of every level, props and trees, four upgrades (cloud, contact, ripple, ridge), flash footprints on every surface
 - [x] Grass printed as tufts (a) over standing digit blades (b: lost)
 - [x] A cut that shows in the printed grass (dgCut b); fallen leaves as lit lenses (leafLook a)
-- [ ] Grass a with more depth: the owner's pick of a3d1 / a3d2 / a3d3
+- [x] The owner kept grass a (the depth steps stay behind `?dgGrass=a3d1..3`); the cut's chips made smaller
 - [ ] The phone's frame cost; remove the first round's looks a / c / d
 
 ## M1.87 — The front: the sword's path and a loading screen (2026-11-25, `ui/gcd-front`, ADR-196)

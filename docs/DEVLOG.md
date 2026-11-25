@@ -47,6 +47,13 @@ billboards in `world/dragonTufts.js`) for the owner to pick; fallen leaves as a 
 the piece's '0'; new `life` `steps.flash`, `leaves`. Main moved four PRs meanwhile (#124, #126, #119, #128-#129:
 the game is now gcd); the ADR became 197.
 
+**Round 4** (the owner: "lets go with the new default and make the grass ascii particles more smaller. its too
+big right now"). Grass a stays the default; the chips a cut throws in the printed grass are scaled down (the code
+chips 0.6 x, sized from the hidden blades they came from; the tufts' tips 0.7 x a print cell; `DG.cut.chipK` /
+`tipK`; 0.5 / 0.6 was filmed too and the chips nearly vanished: small letters lose their ink). `?dragon=0` keeps
+the 3D grass's chips as they were. Before that turn: the click / loop bug (#130: the faded title caught every
+click) and the slow first load (#131: shaders compiled side by side, ~11 s → ~5 s cold here) were fixed on main.
+
 **Open (round 2).** Weak by their builders' own account: the grass's wake and stubble read quietly;
 Cinderwood's flagstones lose their crisp outline; the props / trees print darker than today (a second round is on it:
 Ashfall's boulders and dead trees printed as outlines only); ridge strokes are faint. Docs (STYLE, ARCHITECTURE),
