@@ -16,8 +16,9 @@
 //                     it; it comes round onto the foe and he drives it home side-on, forward and up.
 //                     Its second look, the Two-Step Thrust: a skip in, wound far round with the point
 //                     already on the foe, then one long lunge, the free hand drawn back high
-//   5 Tornado Slam    both hands: a leap with one full turn to his right, the blade ringing level out
-//                     past his reach, and a chop down into the ground ahead (the shards burst there)
+//   5 Splitter        both hands: gathered low, cocked over the right shoulder on a short rise, one
+//                     committed diagonal down into the ground ahead, the finisher's magic on the cut
+//                     (finisherFx.js, `?finisher=a|b|c|d`); he lands folded over the planted blade
 // Each starts on the side where the hit before it left the blade, and no two hits in a row cut along
 // the same line (anim.js _pickVariant reads `line`).
 
@@ -133,26 +134,31 @@ export const LIGHTS_FRESH = {
     ],
   },
 
-  // ---- hit 5: the tornado slam (combat.js LIGHT[4], kind 'slam') -------------------------------------
-  /** Both hands. He gathers low at the right hip, the blade trailing out behind him, leaps (combat.js
-   *  `hop`) and turns once to his right in the air (`spin`, the feet carried round) with the blade
-   *  level out past his reach, ringing all round him; it crosses his front late in the turn and, as he
-   *  comes down, the hands chop it down into the ground ahead, where the shards burst. He lands folded
-   *  over it and holds it. */
-  freshTornadoSlam: {
+  // ---- hit 5: the heaven splitter (combat.js LIGHT[4], kind 'slam') --------------------------------
+  /** Both hands. He GATHERS low, the blade drawn down and back past the right hip, the hips wound round
+   *  to his right and the chest after them; rises (combat.js `hop`, a short one) as the blade sweeps up
+   *  his right side, where the camera behind him sees it, and cocks it back over the right shoulder.
+   *  Then one committed diagonal: the hips unwind first, the chest after them, the hands leading and
+   *  the steel whipping over after them, from high right across his front down into the ground ahead
+   *  and a little left, where the shards burst (player.js) and the finisher's magic plays
+   *  (finisherFx.js, `?finisher=`). He lands folded over the planted blade and holds it. The chest
+   *  never turns more than ~30° on the hips (the owner: the tornado's turn "looks like its breaking
+   *  its back twisting around so unnaturally"). */
+  freshSplitter: {
     line: 'down',
     home: 0.42,
     step: [0.45, 1.5],
     drag: 0.25,
     keys: [
-      { u: 0.38, h: [-0.14, -0.36, 0.04], a: [-124, -26], two: 1, lp: [0.7, -0.6, 0.3], by: -0.34, hip: -0.3, sy: -0.44, sx: 0.42, sz: 0.06, hx: 0.12, hy: 0.5, hs: 0 },
-      { u: 0.7, h: [-0.2, -0.12, 0.14], a: [-112, -2], two: 1, by: -0.18, hip: -0.22, sy: -0.32, sx: 0.22, hx: -0.04, hy: 0.42, hs: 0 },
-      { u: 1.0, h: [-0.22, -0.08, 0.14], a: [-110, 4], two: 1, by: -0.2, hip: -0.2, sy: -0.3, sx: 0.22, bx: -0.04, hx: -0.04, hy: 0.4, hs: 0 },
-      { u: 1.5, h: [-0.16, -0.1, 0.28], a: [-96, 2], two: 1, by: -0.26, hip: -0.12, sy: -0.18, sx: 0.28, hx: 0.0, hy: 0.24 },
-      { u: 1.8, h: [-0.02, -0.14, 0.4], a: [-16, -18] },
-      { u: 2.0, h: [0.12, -0.32, 0.38], a: [-20, -47], two: 1, by: -0.42, bz: 0.14, hip: 0.14, sy: 0.18, sx: 0.68, sz: -0.04, hx: 0.14, hy: -0.2, hs: 0, bx: 0.05 },
-      { u: 2.2, h: [0.12, -0.34, 0.37], a: [-18, -49], two: 1, by: -0.46, bz: 0.15, hip: 0.15, sy: 0.19, sx: 0.73, sz: -0.04, hx: 0.3, hy: -0.2, hs: 0 },
-      { u: 2.65, h: [0.12, -0.34, 0.37], a: [-18, -49], two: 1, by: -0.44, bz: 0.14, hip: 0.14, sy: 0.18, sx: 0.71, sz: -0.04, hx: 0.22, hy: -0.2, hs: 0 },
+      { u: 0.38, h: [-0.16, -0.34, -0.04], a: [-146, -22], two: 1, lp: [0.7, -0.6, 0.3], by: -0.36, bz: -0.05, hip: -0.36, sy: -0.46, sx: 0.44, sz: 0.06, hx: 0.14, hy: 0.42, hs: 0 },
+      { u: 0.7, h: [-0.08, 0.08, 0.18], a: [-106, 64], two: 1, by: -0.06, hip: -0.4, sy: -0.42, sx: -0.06, sz: 0.04, hx: -0.16, hy: 0.36, hs: 0 },
+      { u: 1.0, h: [-0.08, 0.21, 0.13], a: [-150, 45], two: 1, by: -0.04, bz: -0.08, hip: -0.42, sy: -0.48, sx: -0.16, sz: 0.06, hx: -0.2, hy: 0.52, hs: 0 },
+      { u: 1.25, h: [0.05, 0.22, 0.3], a: [-104, 42] },
+      { u: 1.5, h: [0.13, 0.1, 0.45], a: [-33, 22], two: 1, by: -0.16, bz: 0.07, hip: 0.08, sy: 0.0, sx: 0.32, sz: 0.0, hx: 0.0, hy: 0.0, hs: 0 },
+      { u: 1.75, h: [0.19, -0.16, 0.46], a: [9, -18] },
+      { u: 2.0, h: [0.2, -0.35, 0.37], a: [17, -46], two: 1, by: -0.45, bz: 0.17, hip: 0.27, sy: 0.3, sx: 0.72, sz: -0.05, hx: 0.16, hy: -0.3, hs: 0 },
+      { u: 2.2, h: [0.2, -0.37, 0.36], a: [17, -48], two: 1, by: -0.49, bz: 0.18, hip: 0.28, sy: 0.31, sx: 0.77, sz: -0.05, hx: 0.34, hy: -0.3, hs: 0 },
+      { u: 2.65, h: [0.2, -0.37, 0.36], a: [17, -48], two: 1, by: -0.47, bz: 0.17, hip: 0.27, sy: 0.3, sx: 0.75, sz: -0.05, hx: 0.26, hy: -0.3, hs: 0 },
     ],
   },
 };

@@ -157,13 +157,14 @@ const LIGHT_OLD = [
 /** `?lights=fresh`: a brand-new chain to compare (lightsFresh.js: new sword paths and body shapes),
  *  on the same clock: a high flat ring, a kneeling sweep along the grass (a pivot carries it on), a
  *  leap with a rising cut, a full turn to his left into a side-on thrust (or a skip into it, its second
- *  look), and a two-handed leap that turns once in the air and chops into the ground. */
+ *  look), and a two-handed diagonal from over the right shoulder into the ground, with a touch of
+ *  magic on the cut (finisherFx.js). */
 const LIGHT_FRESH = [
   { anim: { kind: 'clip', clip: 'freshCloudRing' }, variants: [] },
   { anim: { kind: 'clip', clip: 'freshKneelSweep', turn: -0.5 }, variants: [] },
   { anim: { kind: 'clip', clip: 'freshDragonLeap', hop: 0.3, tuck: 1.25 }, variants: [] },
   { anim: { kind: 'clip', clip: 'freshSwallowThrust', spin: 1, spinFeet: 'hop' }, variants: [{ kind: 'clip', clip: 'freshTwoStepThrust', hop: 0.08, tuck: 0.6 }] },
-  { anim: { kind: 'clip', clip: 'freshTornadoSlam', spin: -1, spinFeet: 'hop', hop: 0.3, tuck: 1.2 }, variants: [] },
+  { anim: { kind: 'clip', clip: 'freshSplitter', hop: 0.18, tuck: 1.1 }, variants: [] },
 ];
 const LIGHT_NEW = LIGHT.map((L) => ({ anim: L.anim, variants: L.variants }));
 let lightsNow = 'new';
