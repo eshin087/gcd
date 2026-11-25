@@ -26,8 +26,10 @@ first guess read 10 ms on the 4090 with 2 warm frames (the first frames after th
 back up on the title once removed, no step up in a fight; CPU throttled 8x: no step. The trace tests caught a
 vsync trap (33 and 23 ms of GPU both read 30 fps) that undid good steps: fixed (ADR-200).
 
-**Open.** The floor is the owner's pick (sheets of every step for the wyrm fight, Ashfall's paving and the phone in
-`.claude/autoq-review/`, 0.75x until then; the PR is held for it). Not measured: any weak GPU or phone, a step's
+**Decided.** The owner picked the 1x floor from the sheets of every step (the wyrm fight, Ashfall's paving, the phone;
+`.claude/autoq-review/`): below 1x the letters get fewer and bigger, so AUTO trades only crispness.
+
+**Open.** Not measured: any weak GPU or phone, a step's
 hitch there, the GPU timer's presence on the owner's laptop and on iOS (Safari has none: the probe path).
 
 ## 2026-11-25 — Frame cost: a measured review, then three fixes that leave the picture alone (ADR-199; branch `render/perf-ground-steps`)

@@ -6005,7 +6005,7 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   The owner's slow machine is GPU-bound (Intel Core Ultra 7 255U, integrated graphics).
 - **Decision:** a controller (`render/autoQuality.js` `AutoQuality`, numbers in `CONFIG.autoQuality`) that steps the
   render scale through 2, 1.5, 1.25, 1, 0.75 (and 0.5 for reviews) device pixels per CSS pixel, capped by the
-  screen's ratio and `maxPixelRatio`, floored at `floor` (0.75 until the owner picks).
+  screen's ratio and `maxPixelRatio`, floored at `floor`: 1, the owner's pick (2026-11-25), so AUTO never draws fewer letters than 1x.
   - It judges frames in 1.5 s windows. Two slow windows in a row (under ~54.5 fps) while the GPU is the limit step
     one down, at any moment. The GPU is the limit by its timer (`EXT_disjoint_timer_query_webgl2`: longer than the
     script and at least 60 % of the frame) or, without one, when the script takes under 80 % of the frame.
@@ -6036,7 +6036,7 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
     step is not judged.
   - Below a frame height of 810 px the letter cells stay 9 px (`Pipeline.setSize`), so on a 1280 x 800 window 2x to
     1x keep ~89 rows of letters with finer or coarser strokes, 0.75x has 67 rows and 0.5x 44; on a phone 1x
-    (today's default) has 44 and 0.75x 33. The floor is the owner's pick (`.claude/autoq-review/`).
+    (today's default) has 44 and 0.75x 33. The owner picked the 1x floor from those sheets (`.claude/autoq-review/`): AUTO trades crispness, never the letter count; a device too slow for 60 fps at 1x stays under 60.
   - A phone may now draw above today's 1x when its GPU has room (more letters, more heat): the cap is on there.
   - Live checks in headless Edge on the 4090 with a GPU load in proportion to the pixels: 30 fps at 2x stepped to
     1.5x then 1.25x (68 - 77 fps) in 7 s and held; with the load gone it climbed back on the title; in a boss fight

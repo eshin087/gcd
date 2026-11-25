@@ -30,7 +30,8 @@ const mulberry32 = (a) => () => {
   t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 };
-const C = CONFIG.autoQuality;
+// the controller's logic is tested on a ladder down to 0.75x; the game ships with the owner's 1x floor
+const C = { ...CONFIG.autoQuality, floor: 0.75 };
 const scales = (a) => a.steps.map((s) => s.scale).join(' ');
 
 /** A device: per frame the GPU's ms at scale s (`gpu(s)`), the script's ms (`cpu`), the display's
@@ -222,7 +223,8 @@ SCENARIOS.switches = () => {
   out('\n== the URL switches, the cap default and the labels');
   assert(autoFromSearch('') === C.on && autoFromSearch('?autoq=0') === false && autoFromSearch('?autoq=1') === true, '?autoq: default, 0, 1');
   assert(capFromSearch('') === null && capFromSearch('?fpscap=0') === false && capFromSearch('?fpscap=1') === true, '?fpscap: automatic, 0, 1');
-  assert(floorFromSearch('') === C.floor && floorFromSearch('?autoqFloor=0.5') === 0.5 && floorFromSearch('?autoqFloor=x') === C.floor, '?autoqFloor');
+  assert(CONFIG.autoQuality.floor === 1, 'the shipped floor is 1x (the owner picked it: fewer, bigger letters below)');
+  assert(floorFromSearch('') === CONFIG.autoQuality.floor && floorFromSearch('?autoqFloor=0.5') === 0.5 && floorFromSearch('?autoqFloor=x') === CONFIG.autoQuality.floor, '?autoqFloor');
   const g = { settings: { fpsCap: null }, touch: { active: false } };
   assert(fpsCapOn(g) === false, 'desktop: no cap by default');
   g.touch.active = true;

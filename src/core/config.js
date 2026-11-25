@@ -205,7 +205,7 @@ export const CONFIG = {
       { scale: 0.75, shadow: 1024, grass: 90000 },
       { scale: 0.5, shadow: 1024, grass: 90000 },
     ],
-    floor: 0.75, // the lowest scale AUTO may use: coarser letters below it (the owner's call; ?autoqFloor=)
+    floor: 1, // the lowest scale AUTO may use: below 1x the letters get fewer and bigger (the owner picked 1x; ?autoqFloor=)
     target: 60, // fps
     window: 1.5, // s of frames per decision
     downAt: 1.1, // a window whose mean frame is over target frame × this is slow (under ~54.5 fps)
