@@ -10,18 +10,21 @@ import { dragonLook } from './dragonPrint.js';
 //   dpProps  rocks, pillars, walls, bones, every prop-art object (createPropArtMaterial, FLAG.ART_PROP)
 //            a  calm relief: chisel facets, soft bumps, a few cracks; lit by the moon and the shadow map only
 //            b  stronger relief: bigger facets, deeper cracks, harder shadows
-//   dpTrees  tree trunks, stumps and canopies (the screen grid's FLAG.STONE / FLAG.LEAF until now)
-//            a  bark as vertical grain, canopies as lit masses of leaf clumps (the moon on the tops, dark under)
-//            b  the same with bigger, rounder clumps and deeper furrows
+//   dpTrees  tree trunks, stumps and canopies (the screen grid's FLAG.STONE / FLAG.LEAF until now; on every level:
+//            the art pass takes them over), and in Cinderwood (world/forest.js) their relief:
+//            a  bark as vertical grain, crowns lit as masses (the moon on the tops, dark under) with soft clumps
+//            b  the clumps stronger and bigger (round puffs, dark gaps), the furrows deeper
 //
 // HOW THE PRINT TRAVELS. A dragon-printed source writes its colour = the cell's INK (body x the ground's light law,
 // what world/ground.js multiplies its glyph by) and, in alpha, its TONE (0..1, the relief's light: the digit's
 // density) inside the props' flag window: alpha = DP_TONE.a0 + tone x DP_TONE.span (below DP_TONE.top; FLAG.ART_PROP
-// itself is 0.57, above it). The art pass averages ink and tone over a cell's four samples and prints the ramp's
-// digit for that tone from the WORLD atlas (the ground's own letters, at the ground's cell size), ink x the glyph:
-// one whole digit per cell, outlined in stroke glyphs as the props were (ADR-100). A prop or a tree still drawn by
-// a material that does not encode its tone (createAsciiObjectMaterial: the bones, the bonfire, the landmarks of
-// another level, its dead trees) is printed the same way with a tone read from its brightness (uDpLegacy).
+// itself is 0.57, above it); a crown's leaves in a window of their own (DP_TONE.leaf0). The art pass averages ink and
+// tone over a cell's four samples and prints the ramp's digit for that tone from the WORLD atlas (the ground's own
+// letters, at the ground's cell size), ink x the glyph, over the ground's near-black backing: one whole digit per
+// cell, outlined in the props' own crisp stroke glyphs as before (ADR-100); a crown has no outline (its edge is the
+// ragged edge of its digits). A prop or a tree still drawn by a material that does not encode its tone
+// (createAsciiObjectMaterial in the other levels: their bones, bonfires, landmarks, bamboo, dead trees) is printed
+// the same way with a tone read from its brightness (DP_ART.legacy), without a relief of its own.
 //
 // The relief is computed on the geometry's OWN position (the rest pose: it rides with a swaying crown, a carried
 // pillar, a falling piece), turned into the world by the piece's matrix.
