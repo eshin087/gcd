@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-Ninety-three pieces of work since 0.4.0:
+Ninety-four pieces of work since 0.4.0:
 - **The bosses look built from letters, like the hero** (2026-11-24, ADR-194). *Changed:* every human boss is printed
   the way the hero is: a body of lit letters in his own colours (no more dark fill inside a thin outline, or flat
   bright colour), the hero's blocky outline strokes and dotted rim, and below the knee his clothes break into the
@@ -19,6 +19,17 @@ Ninety-three pieces of work since 0.4.0:
   small green code glyphs (the Hall of Falling Script's digits and letters) burst off the cut, flicker as they
   fly, fall and settle into the grass; calm, about half a blade tall, so you see the meadow answer the sword
   at the normal camera. `?grassSpray=0` throws none; the other looks shown on the way stay behind `?grassSpray=`.
+- **The hero comes alive standing still** (2026-11-24, ADR-186). *Changed:* the hero no longer stands with his free
+  hand on his hip all the time. At ease he moves between several rests (the free arm hanging loose, the sword
+  fingers low by his hip, a hand holding his cloak at the chest, the hand on the belt now and then; the sword always
+  held as before), does small things with both arms (re-grips the sword, rolls his shoulders, flexes the free hand,
+  brushes his coat, looks round, checks the edge) and every few actions a sword trick (a wrist spin, a figure-eight,
+  a salute with the blade upright before his face, a flick of the blade clean) or a quiet SPELL in the sword's green
+  flame: his fingers drawn up the blade with the flame climbing behind them, a ring of green marks written round
+  him, a thread of them circling him and returning into the steel. In a fight his free hand comes off the belt into a
+  guard (sword fingers at the foe, beside his face, an open guard hand, or floating low) that changes as he waits,
+  with small guard shifts and grip adjustments and never a trick. `?idles=old` brings back the hand on the belt
+  (the Lab's PLAYER rows `idles` and `idle ▸`).
 - **A natural running arm, three ways to carry it** (2026-11-24, ADR-187). *Changed:* the hero's free (left) hand
   no longer swings a stiff fist on the run. It swings like a runner's, the elbow bent near a right angle and working
   with the stride, the hand open and loose, pumping harder at a sprint; strafing and backing away (lock-on play) it

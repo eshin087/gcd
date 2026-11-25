@@ -51,6 +51,14 @@ export const RELEASES = [
       },
       {
         date: '2026-11-24',
+        title: 'The hero comes alive standing still',
+        notes: [
+          'Standing still, the hero no longer keeps his hand on his hip. He shifts between rests, re-grips his sword, rolls his shoulders, brushes his coat, and every few moments shows a sword trick (a wrist spin, a figure-eight, a salute, a flick of the blade) or quietly works a spell in the sword\'s green flame: a ring of marks round him, the flame climbing the blade under his fingers, a thread of light circling him.',
+          'In a boss fight his free hand comes off the belt into a guard that changes as he waits, with small shifts of the blade, and no tricks. Add ?idles=old to the address for the stance before.',
+        ],
+      },
+      {
+        date: '2026-11-24',
         title: 'A natural running arm, three ways to carry it',
         notes: [
           "Your free hand swings like a runner's now: the elbow bent and working with the stride, the hand open and loose. At a sprint it pumps harder. Strafing round a boss it keeps swinging.",
