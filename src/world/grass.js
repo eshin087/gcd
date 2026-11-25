@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { COMMON_GLSL, WIND_GLSL, WIND_FRONTS_LEN } from '../render/shaderLib.js';
+import { COMMON_GLSL, WIND_GLSL, WIND_FRONTS_LEN, TRAIL_N, TRAIL_CH, TRAIL_SEG } from '../render/shaderLib.js';
 import { gi, gis } from '../render/glyphs.js';
 import { mulberry32, pickWeighted, fbm2 } from '../core/rng.js';
 import { GRASS } from './grassTuning.js';
@@ -100,6 +100,13 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
       uCutOn: { value: 0 },
       uMowFresh2: { value: B.fresh2 },
       uFlat: { value: lattice ? 1 : 0 },
+      // the hero's wake (world/grassTrail.js; an older uniforms object without it: no wake, the grass as before)
+      uTrail: U.uTrail ?? { value: Array.from({ length: TRAIL_N }, () => new THREE.Vector4()) },
+      uTrailBox: U.uTrailBox ?? { value: Array.from({ length: TRAIL_CH }, () => new THREE.Vector4()) },
+      uBend: U.uBend ?? { value: new THREE.Vector4(0, 0, 0, 0) },
+      uBendT: U.uBendT ?? { value: new THREE.Vector4(0, 1, 0, 0) },
+      uBendS: U.uBendS ?? { value: new THREE.Vector4(0, 0, 0, 0) },
+      uBendE: U.uBendE ?? { value: new THREE.Vector4(0, 1, 0, 0) },
       uFresh: { value: new THREE.Vector3(...B.fresh) },
       uFreshAsh: { value: new THREE.Vector3(...B.freshAsh) },
     },
@@ -125,7 +132,61 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
       uniform sampler2D uCutTex;
       uniform float uCutOn; // 1: round 2 (the tops leave as letters, world/mowFx.js); its paleness share  // the cut tops lying: share of the mown blades, their size, their paleness
       uniform vec3 uFresh, uFreshAsh;
+      uniform vec4 uTrail[${TRAIL_N}];
+      uniform vec4 uTrailBox[${TRAIL_CH}];
+      uniform vec4 uBend, uBendT, uBendS, uBendE;
       varying vec2 vUv;
+
+      // The hero's wake (world/grassTrail.js; its bendAt is this function on the CPU: keep the two the
+      // same). The nearest stretch of his last positions (the newest wins where two cross): there the blade
+      // bends along his way and out from his path, falling off smoothly to the stretch's radius; it holds,
+      // then springs back by its own time (edges sooner). Returns the tip's push (xz, in blade heights) and
+      // in w how bent it is (0..1: the drop and the shade).
+      vec4 trailBend(vec2 p, float hsh) {
+        float best = 0.0, bf = 0.0, bs = 0.0, bage = 0.0;
+        vec2 bo = vec2(0.0), bt = vec2(0.0);
+        int n = int(uBend.y + 0.5);
+        for (int c = 0; c < ${TRAIL_CH}; c++) {
+          vec4 C = uTrailBox[c];
+          if (C.z <= 0.0 || distance(p, C.xy) > C.z) continue;
+          for (int k = 0; k < ${TRAIL_SEG}; k++) {
+            int i = c * ${TRAIL_SEG} + k;
+            if (i + 1 >= n) break;
+            vec4 A = uTrail[i], D = uTrail[i + 1];
+            vec2 e = D.xy - A.xy;
+            float l2 = dot(e, e);
+            float t = l2 > 1e-6 ? clamp(dot(p - A.xy, e) / l2, 0.0, 1.0) : 1.0;
+            float r = mix(A.w, D.w, t);
+            if (r <= 0.01) continue;
+            vec2 q = p - (A.xy + e * t);
+            float ql = length(q);
+            float s = ql / r;
+            if (s >= 1.0) continue;
+            float age = mix(A.z, D.z, t);
+            float f = 1.0 - s * s;
+            f *= f;
+            float w = f * exp(-max(0.0, age - uBendT.x) / (uBendT.y * 2.0));
+            if (w > best) {
+              best = w; bf = f; bs = s; bage = age;
+              float l = sqrt(l2);
+              bt = l > 1e-3 ? e / l : vec2(0.0);
+              bo = ql > 1e-4 ? q / ql : bt;
+            }
+          }
+        }
+        if (best <= 0.0) return vec4(0.0);
+        float tau = uBendT.y * (1.0 - uBendT.w + 2.0 * uBendT.w * hsh) * (1.0 + (uBendE.y - 1.0) * bs);
+        float x = max(0.0, bage - uBendT.x);
+        float ex = exp(-x / tau);
+        float R = uBendT.z > 0.01 ? ex * (cos(uBendT.z * x) + sin(uBendT.z * x) / (uBendT.z * tau)) : ex * (1.0 + x / tau);
+        vec2 d = bt * uBendS.y + bo * (uBendS.z * smoothstep(0.0, 0.45, bs));
+        float ja = (fract(hsh * 9.13 + 0.27) - 0.5) * uBendE.z;
+        float ca = cos(ja), sa = sin(ja);
+        d = vec2(d.x * ca - d.y * sa, d.x * sa + d.y * ca);
+        float dl = length(d);
+        d = dl > 1e-3 ? d / dl : bo;
+        return vec4(d * (bf * R * uBendS.x), 0.0, bf * max(R, 0.0));
+      }
       varying vec3 vCol;
       varying float vGlyph;
       void main() {
@@ -225,10 +286,18 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
           off.xz += vec2(cos(a), sin(a)) * trample * h * 0.6;
           off.y -= trample * h * 0.72;
         }
+        // the hero's wake (?bend=: it takes his pusher's place, slot 0)
+        float bendK = 0.0;
+        if (uBend.x > 0.5) {
+          vec4 tb = trailBend(root.xz, iRoot.w);
+          off.xz += tb.xy * h;
+          off.y -= uBendS.w * tb.w * h;
+          bendK = tb.w;
+        }
         // trample / pushers (ignore airborne ones: y > 1.5)
         for (int i = 0; i < MAX_PUSH; i++) {
           vec4 P = uPushers[i];
-          if (P.w <= 0.0 || P.y > 1.5) continue;
+          if (P.w <= 0.0 || P.y > 1.5 || (i == 0 && uBend.x > 0.5)) continue;
           vec2 d = root.xz - P.xz;
           float dist = length(d);
           if (dist < P.w) {
@@ -260,6 +329,8 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
         alb = mix(alb, vec3(0.014, 0.012, 0.011) * (0.6 + tip), burn);
         // trodden blades a little darker
         if (trample > 0.004) alb *= 1.0 - 0.7 * trample;
+        // (a bent blade a shade darker at most: uBendE.x, by how bent it is)
+        alb *= 1.0 - uBendE.x * bendK;
         // a mown stub is paler at its cut (fresh: never the burnt grass's black)
         if (mown > 0.0) alb = mix(alb, mix(uFresh, uFreshAsh, uAsh), uMowFresh * mix(1.0, uMowFresh2, uMowMode) * mown * (1.0 - burn) * (1.0 - 0.75 * bare) * (lying > 0.5 ? uMowLie.z : 0.45 + 0.55 * position.y));
         float sh = shadowAtFast(vec3(root.x, 0.3, root.z));

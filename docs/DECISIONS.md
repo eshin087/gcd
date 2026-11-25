@@ -5694,3 +5694,23 @@ and `CONFIG.touch.hold` hold the numbers. The defaults play exactly as before.
 - **Consequences / open:** the code green is a new colour in the meadow; the phone gets a brighter,
   larger version (at the desktop strength it vanished); the boss marks throw none; nobody has judged it
   on the phone's own screen.
+
+## ADR-193 — The grass bends round the hero's wake and springs back (2026-11-25)
+
+- **Context:** the owner: "when the player runs through the grass, the ground/grass around it becomes
+  too dark too quickly and doesn't look natural and bad transition. make the grass bend and come back to
+  normal after the player moves through it". Every grass footfall wrote a full trample into the scorch
+  map's blue channel (0.625 m cells): blades every way, up to 0.7 darker at once, standing up over 10 s;
+  the live pusher had no memory, so blades snapped upright the frame he left them.
+- **Decision:** a polyline of the hero's last 32 points (with their time and radius) goes to the grass
+  shader as a uniform array, like the wind's fronts; each blade bends along his way and out from the
+  path by its nearest stretch, holds, and springs back by a damped spring of its own, at most 10 %
+  darker while bent. The steps stop writing the blue channel while it is on. Three tastes filmed; the
+  owner shipped b (a soft lay-down rising over 2 - 3 s). `?bend=0` is the trail before.
+- **Why this way:** a path needs no map, so there are no cells to see, and it knows which way he went;
+  each blade's own spring makes the recovery natural; the blue channel stays free; fire and the seeded
+  fights read nothing new (the trace replays byte for byte). 32 points in four chunks keep the shader's
+  loop short (the grass draw went from 0.27 to at most 0.53 ms on desktop).
+- **Consequences / open:** the boss's pushers still snap back with no wake; the shader's `trailBend` and
+  the CPU's `bendAt` are kept in step by hand; close up a lying blade is a long sheared stroke (as the
+  pusher's always was); the phone's frame cost is the owner's to confirm.
