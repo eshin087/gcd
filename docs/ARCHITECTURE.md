@@ -921,7 +921,9 @@ invulnerable (`takeHit` → `RESULT.IGNORED`), places him itself (no collision u
 `cameraRig.keep` for him and the target; `flow.cinematic({ slowmo: 1, kind: 'flurry' })` leans the
 camera in. If the target dies or disappears he comes down where he is (`_bail`). The cuts hang as
 `flurry.lines` (drawn every frame from `_updateFx`) until the last blow lands: `flurry.burst`,
-called by the art or by the plunge's impact. Events: `player:flurry`, `player:flurryHit` per blow,
+called by the art or by the plunge's impact. (A planted answer, ADR-211: `player/riposteCut.js` and
+`player/deathblow.js` emit the same events with the field planted true and the art riposte, counter or
+deathblow, no flash cuts; flow.js leaves the grade alone for them.) Events: `player:flurry`, `player:flurryHit` per blow,
 `player:flurryArt` as the art's coil starts, `player:flurryEnd`; the air arts also emit
 `player:plunge` / `player:plungeHit`. The animator's clip `flurry` reads `player.flurryAnim`
 ({ pose: 'cut' | 'coil' | 'raise' | 'crouch' | 'flip', clip, u, air, k }): a flash cut plays one of

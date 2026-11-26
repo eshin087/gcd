@@ -6367,3 +6367,22 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   loaded by other sessions and runs varied +-25 %. The load step takes ~1 frame more for the warm draw.
   Next: the owner's `?perf` report from the iPhone in a fight on each of the three levels, then the parts
   it names. Not measured: any phone.
+
+## ADR-211 — The perfect parry earns its own reward: the posture break's deathblow (2026-11-26)
+
+- **Context:** a parried last blow of a string answered with the perfect dodge's flurry (vanish, flash cuts round
+  him, leaping arts), every string, so the parry had no reward of its own and it came too often. The owner gave a
+  reference clip of a sword-deflect chain and picked, when asked: the reward on a posture break, a recoil and the
+  hero's own cut after each string, a deathblow, the parry's count apart from the dodge streak, the chain growing
+  gently. A planted single riposte was tried first (kept as `planted`).
+- **Decision:** against a duelist, parries fill posture and `player.parryRun` (perfect parries since he was last
+  hurt or the posture emptied), not the dodge streak. A string's last blow parried opens the counter-cut window
+  (`DEFENSE.perfectParry.cutWindow`), nothing automatic; the blue flare's counter is the planted single cut. The
+  parry that breaks posture starts the DEATHBLOW (`player/deathblow.js`, `DEFENSE.deathblow`): a 0.35 s real
+  slow-motion beat with no zoom and no grade, a heavy cut (40 %) and an uncharged thrust (60 %), within 0.6 m of
+  where he parried, invulnerable, 100 + 20 x min(parryRun, 7) final damage, the break's window kept. The chain's
+  sparks grow by tier (`?parryGrow=a`). Event names unchanged: `player:flurry` / `player:flurryHit` carry
+  `planted: true`, art 'deathblow'. Defaults: `?parryRiposte=deathblow`, `?parryGrow=a` (the owner tried both).
+- **Consequences:** the dodge streak and its flurry are the dodge's alone; the wyrm keeps the flurry riposte. The
+  deathblow is the strongest answer in the game (240 against the flurry's 228 at 7). `?parryRiposte=old|planted`
+  and `?parryGrow=0` give the earlier behaviour back.

@@ -19,6 +19,16 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-26',
+        title: 'The perfect parry earns its own reward: the deathblow',
+        notes: [
+          'Parrying the human bosses now builds toward a reward of its own: every parry fills his gold posture bar, blue blows and perfect parries most.',
+          'Parry the last blow of a string and he recoils: strike back in that moment with your own counter cut.',
+          'Break his posture with a parry and the hero answers with a DEATHBLOW where he stands: a heavy cut and a thrust, stronger for every perfect parry that led to it.',
+          'A chain of perfect parries throws more sparks and falling embers with every link. Parries no longer count toward the perfect-dodge streak.',
+        ],
+      },
+      {
+        date: '2026-11-26',
         title: 'A performance readout on your phone, and smoother first breaks',
         notes: [
           'Add ?perf to the address to see the frame rate and what each frame costs at the foot of the screen. REPORT shares or copies a summary you can send.',

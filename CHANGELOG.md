@@ -4,7 +4,16 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and eight pieces of work since 0.4.0:
+One hundred and nine pieces of work since 0.4.0:
+- **The perfect parry earns its own reward: the deathblow** (2026-11-26, ADR-211). *Changed:* a perfect parry no
+  longer answers with the perfect dodge's flurry. Against the human bosses, parries fill the gold posture bar (blue
+  blows most, a perfect parry x1.5) and no longer count in the dodge streak; a string's last blow parried makes him
+  recoil and opens a short window for your own counter cut. The parry that BREAKS his posture is answered by the
+  DEATHBLOW: a beat of slow motion, then a heavy cut and a thrust through him where the hero stands, 100 damage +
+  20 for each perfect parry that built it (up to 240), and he stays broken. *Added:* a chain of perfect parries
+  grows, after the owner's reference footage: more sparks each tier, embers that fall and drift on the wind, a
+  short orange heat flash at the blades. Switches: `?parryRiposte=deathblow|planted|old`, `?parryGrow=a|0`; the
+  Lab's streak row; TRAINING: Deathblow x3 / x7.
 - **A performance readout on your phone, and smoother first breaks** (2026-11-26, ADR-209). *Added:* `?perf` in the
   address shows the frame rate and the frame's cost at the foot of the screen, with a REPORT button that shares
   or copies what each part of the game spent and the slowest frames. *Changed:* the cracked and broken floors

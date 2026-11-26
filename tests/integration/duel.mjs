@@ -2063,7 +2063,7 @@ async function scenarioParryGrow() {
   assert(!threw, `no throw (${threw?.stack ?? 'ok'})`);
   if (threw) return G;
   out(`   today ${R.n0.join(',')} · a at streak 0,1,2 ${R.nA.map((q) => q[1]).join(',')} · tiers ${Object.entries(R.tier).map(([s, v]) => `${s}:${v.n}(+${v.embers} embers, ${v.cells} cells)`).join(' ')} · last blow at 7: ${R.last7} · flash ${R.flashBlobs0} blobs, peak ${R.peak0.toFixed(2)}, alive after 1 frame ${R.alive1}, ended at ${R.goneAt.toFixed(3)} s real (slow motion: ${R.slowAge.toFixed(3)} s in ${R.slowSteps} steps) · embers alive after 0.5 s: ${R.emberAt}, all gone at ${R.emberEnd.toFixed(2)} s · chain peak ${R.maxAlive} alive`);
-  assert(PS.PARRY_GROW_DEFAULT === '0', 'the growth is off by default (?parryGrow=a turns it on)');
+  assert(PS.PARRY_GROW_DEFAULT === 'a', 'the growth is on by default (the owner\'s pick; ?parryGrow=0 turns it off)');
   assert(R.nA.every(([a, b]) => a === b) && R.n0.every((n) => n >= 12 && n <= 16), `0: today's count (${R.n0.join(',')}); a at streak 0 / 1 / 2 (tier 0) throws the same count, from the same seed (${R.nA.map((q) => q.join('=')).join(', ')})`);
   assert(R.flashesMade === 3 && R.blobsOff > 0, `a flash is made only with the switch on (${R.flashesMade} of 6 spits, ${R.blobsOff} blobs)`);
   assert(R.tier[1].tier === 0 && R.tier[3].tier === 1 && R.tier[7].tier === 3 && R.tier[15].tier === 5 && R.tier[1].n <= 16 && R.tier[3].n >= 15 && R.tier[7].n >= 21 && R.tier[15].n >= 27, `a: more sparks with the tier (streak 1: ${R.tier[1].n}, 7: ${R.tier[7].n}, 15: ${R.tier[15].n})`);
@@ -4036,7 +4036,7 @@ async function scenarioRipostePlanted() {
   out(`   old n=3: flurry ${o.flurry} · states ${[...o.stateSeen].join(',')} · hits ${o.hits.length}`);
   assert(o.flurry && o.stateSeen.has('flurry') && o.hits.length === 3 && !o.ev?.planted, `old: today's riposte flurry still runs (${o.hits.length} flash cuts)`);
   RC.setRiposteMode(RC.RIPOSTE_DEFAULT);
-  assert(RC.RIPOSTE_DEFAULT === 'old', 'the default is old');
+  assert(RC.RIPOSTE_DEFAULT === 'deathblow', 'the default is deathblow (the owner\'s pick)');
   return G;
 }
 
@@ -4156,7 +4156,7 @@ async function scenarioDeathblow() {
     assert(t.streaks.length > 0 && t.runAfter === 0 && t.ev?.art !== 'deathblow', `(d) ${mode}: the parry counts in the streak, no deathblow`);
   }
   RC.setRiposteMode(RC.RIPOSTE_DEFAULT);
-  assert(RC.RIPOSTE_CUT.opts.includes('deathblow') && RC.RIPOSTE_DEFAULT === 'old', 'deathblow is an option; the default stays old');
+  assert(RC.RIPOSTE_CUT.opts.includes('old') && RC.RIPOSTE_DEFAULT === 'deathblow', 'deathblow is the default; old stays an option');
   return G;
 }
 

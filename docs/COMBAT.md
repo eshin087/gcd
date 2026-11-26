@@ -480,6 +480,20 @@ An EXECUTION call-out shows it. A plunge that lands during a transition roar (or
 deals its damage; a dying wyrm can't be plunged. Numbers: `DEFENSE.plunge` (`rules.js`),
 `TUNING.plunged` (dragon).
 
+## The deathblow (2026-11-26, ADR-211)
+Against a duelist (`?parryRiposte=deathblow`, the default; `planted` / `old` the earlier answers):
+- Parries fill his **posture** (26, 48 for a blue blow, a perfect parry x1.5) and count in `player.parryRun`
+  (perfect parries; back to 0 when he is hurt, when the posture has drained to 0, after a deathblow), **not** in
+  the dodge streak.
+- A string's **last blow** parried: he recoils and the counter-cut window opens (0.9 s: a light started in it
+  winds up twice as fast and crits). Nothing is automatic. The blue flare's counter is one planted cut.
+- The parry that **breaks** his posture: the **DEATHBLOW** once the parry's freeze ends. A beat of slow motion
+  (0.35 s real), a heavy cut (40 %), an uncharged thrust through him (60 %), at most 0.6 m from where he parried,
+  unhurtable; 100 + 20 per perfect parry in the run (7 at most: 240), final; he stays broken (the break's window).
+- A chain of perfect parries grows (`?parryGrow=a`): +3 sparks a streak tier (read on `parryRun + 1`), longer
+  lives, embers from tier 2 that fall and drift on the wind, a 0.08 s orange heat flash of 2 - 5 letter cells.
+- The wyrm keeps the flurry riposte.
+
 ## The streak and the flurry (2026-11-14, ADR-091)
 Owner: "more different perfect dodge animations instead of the same one ... if the player keeps doing
 more successful perfect dodges in a streak, make the attack also hit the # of attacks the player is
@@ -488,7 +502,8 @@ on a streak ... epic anime". Numbers: `DEFENSE.flurry` (`rules.js`), the arts in
 
 **The streak** counts perfect defences in a row (`player.streak`, the STREAK row of pips under the
 HP bar): a perfect dodge, a **parry or deflect** of a blow of the body or the blade (not a deflected
-bullet), a **trade clash** and a mikiri each count one (ADR-094; until then only perfect dodges). It
+bullet), a **trade clash** and a mikiri each count one (ADR-094; until then only perfect dodges; since ADR-211 a parry of
+a duelist's blow counts in `player.parryRun` instead, see "The deathblow" above). It
 ends when a blow **hurts** him (a plain hit, a guard break, death). A blocked blow, a plain dodge, a
 burn's ticks and time leave it alone (`keepStreak: 0`; a number there would let it run out).
 
