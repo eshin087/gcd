@@ -354,7 +354,7 @@
    "period_hi": 1.0,
    "takes": [
     {
-     "t0": "1:42.95",
+     "t0": "1:42.85",
      "t1": "1:44.50",
      "view": "right"
     },
@@ -458,6 +458,33 @@
    ]
   },
   {
+   "name": "sprintStart",
+   "title": "Sprint (start)",
+   "src": "move 3:09-3:39",
+   "kind": "oneshot",
+   "fps": 30,
+   "search": 0.4,
+   "takes": [
+    {
+     "t0": "3:10.70",
+     "t1": "3:12.10",
+     "view": "right"
+    },
+    {
+     "t0": "3:27.90",
+     "t1": "3:29.30",
+     "view": "back"
+    },
+    {
+     "t0": "3:35.00",
+     "t1": "3:36.40",
+     "view": "front"
+    }
+   ],
+   "from": "idle",
+   "to": "sprint"
+  },
+  {
    "name": "sprint",
    "title": "Sprint",
    "src": "move 2:48-3:09",
@@ -469,19 +496,81 @@
    "period_hi": 0.8,
    "takes": [
     {
+     "t0": "3:00.07",
+     "t1": "3:02.90",
+     "view": "back"
+    },
+    {
      "t0": "2:50.30",
      "t1": "2:51.05",
      "view": "right"
+    }
+   ],
+   "from": "sprint",
+   "to": "sprint"
+  },
+  {
+   "name": "sprintStop",
+   "title": "Sprint to stop (right foot forward)",
+   "src": "move 3:09-3:39",
+   "kind": "oneshot",
+   "fps": 30,
+   "search": 0.4,
+   "takes": [
+    {
+     "t0": "3:29.70",
+     "t1": "3:31.20",
+     "view": "back"
     },
     {
-     "t0": "3:00.30",
-     "t1": "3:03.50",
+     "t0": "3:37.30",
+     "t1": "3:38.85",
+     "view": "front",
+     "drop": [
+      [
+       "3:37.30",
+       "3:37.65"
+      ]
+     ]
+    }
+   ],
+   "from": "sprint",
+   "to": "idle"
+  },
+  {
+   "name": "sprintStopL",
+   "title": "Sprint to stop (left foot forward)",
+   "src": "move 3:09-3:39",
+   "kind": "oneshot",
+   "fps": 30,
+   "search": 0.3,
+   "takes": [
+    {
+     "t0": "3:12.50",
+     "t1": "3:14.15",
+     "view": "right"
+    }
+   ],
+   "from": "sprint",
+   "to": "idle"
+  },
+  {
+   "name": "sprintPivot",
+   "title": "Sprint to pivot",
+   "src": "move 3:39-3:56",
+   "kind": "oneshot",
+   "fps": 30,
+   "search": 0.4,
+   "turn": -180,
+   "takes": [
+    {
+     "t0": "3:51.55",
+     "t1": "3:53.50",
      "view": "back"
     }
    ],
    "from": "sprint",
-   "to": "sprint",
-   "period": 0.63
+   "to": "sprint"
   }
  ]
 }
