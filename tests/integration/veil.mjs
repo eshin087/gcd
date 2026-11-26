@@ -2410,7 +2410,7 @@ async function scenarioNull() {
     d.brain.trigger('violetNull');
     untilFoot(G, 5);
     const t0 = S.lastNullT;
-    const w = (name) => { S.lastWasSpell = false; return S.weigh(name, MOVES[name], 1, 9); };
+    const w = (name) => { S.lastWasSpell = false; S.since = 9; return S.weigh(name, MOVES[name], 1, 9); };
     const soon = w('violetNull');
     run(G, T.gap - (game.time - t0) - 0.5);
     const before = w('violetNull');
@@ -2461,7 +2461,8 @@ async function scenarioSpellFight() {
     duel(G, { dist: 3, ai: true });
     G.defend = makeDefender(G, { world: true });
     const used = {}, nulls = [];
-    G.watch = (n, e) => { if (n === 'dragon:windup' && LIST.includes(e?.name)) { used[e.name] = (used[e.name] || 0) + 1; if (e.name === 'violetNull' || e.name === 'lastNull') nulls.push(game.time); } };
+    const p2 = [];
+    G.watch = (n, e) => { if (n === 'dragon:windup' && LIST.includes(e?.name)) { used[e.name] = (used[e.name] || 0) + 1; if (e.name === 'violetNull' || e.name === 'lastNull') nulls.push(game.time); if (e.name === 'violetNull' && d.phase === 2) p2.push(game.time); } };
     const t0 = game.time;
     const won = run(G, Number(process.env.GCD_FSECS ?? 600), () => fencer(G), () => d.mode === 'dead' || game.state === 'victory');
     G.watch = null;
@@ -2471,7 +2472,7 @@ async function scenarioSpellFight() {
     // (a fencer stays inside 2.6 m and is answered mostly by counters: of his free picks the spells take their share)
     const kinds = Object.keys(used).length, picks = d.brain.stats.picks ?? 0, spells = Object.values(used).reduce((a, n) => a + n, 0);
     assert(kinds >= 3 && spells >= 0.1 * picks, `his spells come up in a close fight: ${kinds} kinds, ${spells} of his ${picks} free picks`);
-    assert((used.violetNull ?? 0) >= 1, 'the Violet Null is seen');
+    assert(p2.length >= 1, `the Violet Null is seen in phase 2 (${p2.length}; seed ${process.env.GCD_SEED ?? 4242})`);
     assert(gaps.every((g) => g >= TUNING.spells.null.gap - 1e-6), `the Nulls are never inside ${TUNING.spells.null.gap} s of each other (${gaps.map((g) => g.toFixed(1)).join(', ')})`);
     marksCheck(M, 'veil', out, assert);
     assert(G.payload.size === 0, `no NaN in any event (${[...G.payload].join(', ')})`);

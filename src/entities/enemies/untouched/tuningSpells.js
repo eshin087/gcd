@@ -9,9 +9,13 @@ export const TUNING_SPELLS = {
   // never two spells back to back; none while one of his spells still lives on the floor
   choice: {
     far: 6, farK: 1.5, // the hero beyond `far` m: x farK
-    near: 2.6, nearK: 1, // ... inside `near` m: x nearK (1: a spell is weighed UP far, never down near)
+    near: 2.6, nearK: 0.75, // ... inside `near` m: x nearK
+    midK: 0.6, // ... between: x midK (the integration pass: one cue over a long windup costs the pace;
+    // measured with veil.mjs PACE, the spells took 30 - 40 % of his picks at range and phase 2 fell to 51
+    // cues a minute; a hero who keeps his distance or his guard still draws them: farK, blockK)
     blockAt: 1.2, blockK: 2.2, // the hero's guard held this many s of the last few: x blockK
     blockMax: 4, blockFall: 0.5, // (the count's cap; it falls at this rate a second while he does not guard)
+    between: 2, // other moves of his between two spells at least (the integration pass, for the pace; 1: never two back to back)
   },
 
   // ---- AZURE DRAW, the knot (P1 on): one finger; a blue knot opens BEYOND the hero, drags him for its
@@ -92,7 +96,8 @@ export const TUNING_SPELLS = {
     after: 3, every: 0.3, // s: the strip is swept again (a tower's base under its falling top goes too)
     trench: { power: 2.4, seg: 14, reach: 30 }, // the trench mark (scars `beam`, half-width w / 2), laid in seg m pieces out to `reach` m from the middle
     gap: 20, // s: never twice inside this
-    first: 5, firstK: 6, // in phase 2: after `first` s, until the first one, x firstK (the player sees it early)
+    first: 5, firstK: 12, // in phase 2: after `first` s, until the first one, x firstK (the player sees it early)
+    due: 16, // ... and `due` s into phase 2 with none yet, the next time he is on his feet he fires it (spells.js _nullDue)
   },
   // ---- THE LAST NULL (P3, once below `below` of his bar): the cue longer, 7 m wide, turning `turn` deg
   lastNull: {
