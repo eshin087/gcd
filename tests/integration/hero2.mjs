@@ -1060,7 +1060,7 @@ async function scenPlay() {
       run(1.2);
     };
     // the lone heavy, again straight after it (the footage's second heavy), then let go: the second's
-    // recovery, and the quarter turn it ends in turned back on the spot
+    // recovery, which brings him back to the stance (a recovery that ends turned is turned back on the spot)
     home();
     input.click(2);
     const mA = watch(0.6);
@@ -1070,7 +1070,7 @@ async function scenPlay() {
     const face = hipsYawW() - (lib.get('swordIdle') ? (() => { const p = createPose(); sampleClip(lib.get('swordIdle'), 0, p); const q = p.q, i = JI.hips * 4; return Math.atan2(2 * (q[i] * q[i + 2] + q[i + 3] * q[i + 1]), 1 - 2 * (q[i] * q[i] + q[i + 1] * q[i + 1])); })() : 0);
     out(`     heavies: ${[...mA, ...mB].join(' > ')}; ends ${deg(face).toFixed(0)} deg off the guard; the largest hips-yaw step ${deg(pop).toFixed(1)} deg (${popAt})`);
     assert(mA.includes('attack:heavy1') && mB.includes('attack:heavy2'), `a heavy, then a heavy straight after it: heavy1 > heavy2`);
-    assert(mB.includes('tail:heavyRecover2') && mB.some((k) => k.startsWith('turn:turnL90')) && mB[mB.length - 1].startsWith('loco:') && Math.abs(face) < 0.2, `  let go: heavyRecover2, then the quarter turn back to his facing (the end facing kept as drawn; ${deg(face).toFixed(0)} deg left)`);
+    assert(mB.includes('tail:heavyRecover2') && mB[mB.length - 1].startsWith('loco:') && Math.abs(face) < 0.2, `  let go: heavyRecover2 brings him back to his facing (by itself since the recovery was retyped, or with the quarter turn; ${deg(face).toFixed(0)} deg left)`);
     assert(pop < (12 * Math.PI) / 180, `  no pop in the facing through the hand-backs (the largest step of the hips' yaw ${deg(pop).toFixed(1)} deg, under 12)`);
     // the charge: held, released (the release goes on from the frame the coil reached); a second charge
     // straight after the first's swing plays charge2
