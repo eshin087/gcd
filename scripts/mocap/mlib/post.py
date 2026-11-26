@@ -13,7 +13,7 @@ Z = np.array([0, 0, 1.0])
 
 # ---------- 1. facing -> root yaw ----------
 
-def facing_yaw(b, fps, sigma_s=0.12):
+def facing_yaw(b, fps, sigma_s=0.12, absolute=False):
     """his facing per frame (rad, about +Y, 0 = the clip's +Z) from the fused landmarks: the hip and
     shoulder lines, the feet (heel -> toe) and the nose, unwrapped and smoothed"""
     from .takes import facing
@@ -25,7 +25,7 @@ def facing_yaw(b, fps, sigma_s=0.12):
     v = v / np.maximum(np.linalg.norm(v, axis=1, keepdims=True), 1e-9)
     v = smooth_time(v, sigma_s * fps)
     yaw = np.unwrap(np.arctan2(v[:, 0], v[:, 2]))
-    return yaw - yaw[0]
+    return yaw if absolute else yaw - yaw[0]
 
 
 def rotate_y(b, yaw):
@@ -268,4 +268,26 @@ def two_hand(q, hips, root, fps, t_ref0=None, gap=0.11, free=(), blend=4):
         for jn, val in (('upperArmL', new_u), ('foreArmL', new_f), ('handL', new_h)):
             j = JI[jn]
             q[k, j] = skel.qslerp(q[k, j], val, w[k])
+    return skel.continuous(q)
+
+
+# ---------- 7c. easing the feet's turn (spec "foot_ease") ----------
+
+def ease_joints(q, names, max_deg, loop=False):
+    """limit each named joint's turn per frame to max_deg (a forward and a backward pass, averaged), so
+    the sole-levelling at a plant or a lost foot does not snap it in one frame"""
+    q = q.copy()
+    lim = np.radians(max_deg)
+    for nm in names:
+        j = JI[nm]
+        passes = []
+        for rev in (False, True):
+            a = q[::-1, j].copy() if rev else q[:, j].copy()
+            for k in range(1, len(a)):
+                d = abs(float(np.sum(a[k] * a[k - 1])))
+                ang = 2 * np.arccos(min(1.0, d))
+                if ang > lim:
+                    a[k] = skel.qslerp(a[k - 1], a[k], lim / ang)
+            passes.append(a[::-1] if rev else a)
+        q[:, j] = skel.qslerp(passes[0], passes[1], 0.5)
     return skel.continuous(q)

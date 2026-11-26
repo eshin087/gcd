@@ -222,8 +222,10 @@ class Take:
       b (n,33,3) body-frame 3D (pelvis-centred); R (3,3) body -> camera rotation; yaw, pitch (deg);
       wax (3,) how well this camera sees his X / Y / Z axes; gap (n,) seconds since a real frame."""
 
-    def __init__(self, film, t0, t1, view, name='', flip=None, pitch=None, yaw=None, log=print, calm=None):
+    def __init__(self, film, t0, t1, view, name='', flip=None, pitch=None, yaw=None, log=print, calm=None,
+                 swing=False, yaw2d=False, facing_prior=None):
         self.film, self.t0, self.t1, self.view, self.name = film, t0, t1, view, name
+        self.yaw2d = bool(yaw2d)
         tk, l2, w, note = load(film, t0, t1)
         self.note = note
         # mirror the whole body if the spec says the tool got this take's sides wrong
@@ -236,6 +238,8 @@ class Take:
         self.t, self.l2, self.gap = resample(tk, l2, t0, t1)
         _, w, _ = resample(tk, w, t0, t1)
         self.c = to_cam(w)
+        if facing_prior in ('away', 'toward'):
+            self._facing_prior(facing_prior, log)
         # the frames the camera's yaw / pitch are measured on: all, or (one-shots: tumbles, lunges) only
         # the calm ends of the take, `calm` seconds at each end, where he stands
         self.calm = np.ones(len(self.t), bool)
@@ -243,17 +247,45 @@ class Take:
             k = int(calm * FPS)
             self.calm[:] = False
             self.calm[:k] = True  # the start only: a pivot or a turn ends facing another way
+        # the camera's own swing per frame (spec "swing": true), from the picture's background
+        n = len(self.t)
+        self.dyaw = np.zeros(n)
+        self.dpitch = np.zeros(n)
+        self.swing = bool(swing)
+        try:
+            from . import camflow
+            cy, cp, share = camflow.camera_angles(film, t0, t1, self.t, log=log)
+            self.cam_swing = float(np.ptp(cy))
+            if swing:
+                # the camera swinging round to his left by a makes HIM look turned by -a in its picture
+                self.dyaw, self.dpitch = -cy, -cp
+                self.cam_note = 'camera swings %.0f deg, pitch %.0f (background found in %d%% of pairs)' % (
+                    np.ptp(cy), np.ptp(cp), 100 * share)
+            elif self.cam_swing > 10:
+                log('  ! take %s: the camera swings %.0f deg during the take: add "swing": true' % (name, self.cam_swing))
+        except Exception as e:  # never fail a build on the background measure
+            self.cam_swing = 0.0
+            if swing:
+                log('  ! take %s: camera swing not measured (%s)' % (name, e))
         self.solve_camera(pitch, yaw, log)
 
     def solve_camera(self, pitch=None, yaw=None, log=print):
         c = self.c
-        # pitch: his standing axis (mid-ankle -> mid-shoulder), median; it should be straight up
+        n = len(c)
+        dyaw = getattr(self, 'dyaw', np.zeros(n))
+        dpitch = getattr(self, 'dpitch', np.zeros(n))
+        # pitch: his standing axis (mid-ankle -> mid-shoulder), median; it should be straight up. With a
+        # swinging camera every frame is first brought back to the calm frames' camera
         ax = _mid(c, 11, 12) - _mid(c, 27, 28)
         ax /= np.linalg.norm(ax, axis=-1, keepdims=True)
         m = np.median(ax[self.calm], 0)
         self.pitch = float(np.degrees(np.arctan2(m[2], m[1]))) if pitch is None else float(pitch)
         Rp = rot_x(np.radians(self.pitch))  # tilts the camera frame so his axis is up
         cl = c @ Rp  # level camera frame: rows v -> Rp^T v
+        if self.swing:
+            # undo each calm frame's own swing against the calm frames' mean before measuring the yaw
+            ref = np.mean(dyaw[self.calm])
+            cl = np.einsum('nkj,nji->nki', cl, np.stack([rot_y(np.radians(d - ref)) for d in dyaw]))  # rows: Ry(-(d - ref)) v
         f1, feet, nose = facing(cl[self.calm])
         yaws = []
         for f in (f1, feet, nose):
@@ -284,18 +316,77 @@ class Take:
         if hint is not None and dd(y, hint) > 50:
             log('  ! take %s: measured yaw %.0f vs hint %s (%.0f): using the hint' % (self.name, y, self.view, hint))
             y = hint
+        if getattr(self, 'yaw2d', False) and yaw is None:
+            y = self._yaw_from_widths(y, log)
         if yaw is not None:
             y = float(yaw)
         self.yaw = y
         # body -> camera: R = Rp * Ry(yaw); a body vector v is v_cam = R v
         self.R = Rp @ rot_y(np.radians(y))
         pel = _mid(c, 23, 24)
-        self.b = hampel((c - pel[:, None]) @ self.R)  # rows: R^T v
+        if self.swing:
+            # per frame: the calm frames' camera turned by that frame's own swing (yaw about his up, then
+            # the pitch), so a camera that swings round him is not read as his body turning
+            ref = np.mean(dyaw[self.calm])
+            refp = np.mean(dpitch[self.calm])
+            self.Rs = np.stack([rot_x(np.radians(self.pitch + dp - refp)) @ rot_y(np.radians(y + dy - ref))
+                                for dy, dp in zip(dyaw, dpitch)])
+            self.b = hampel(np.einsum('nkj,nji->nki', c - pel[:, None], self.Rs))  # rows: R_t^T v
+        else:
+            self.Rs = np.broadcast_to(self.R, (n, 3, 3))
+            self.b = hampel((c - pel[:, None]) @ self.R)  # rows: R^T v
         depth = self.R.T @ np.array([0, 0, 1.0])  # the camera ray in his frame
         self.wax = np.clip(1 - depth ** 2, 0.02, 1)
+
+    # his shoulder / hip line's picture width over his torso's picture length, seen square on (calibrated
+    # on the SWORD film's idle: front 0:03.9-0:05.5 and 1:06.5, back 0:08.8-0:10.2 and 1:10-1:15)
+    W0 = {'front': (0.74, 0.45), 'back': (0.63, 0.40)}
+
+    def _yaw_from_widths(self, y, log=print):
+        """spec "yaw2d": the camera's yaw from the PICTURE: how wide his shoulder and hip lines look against
+        his torso's length gives |cos(yaw)| (the tool's 3D depth, which the pooled yaw rests on, is its
+        guess); the pooled yaw only picks the branch (front / back, his left / right side)"""
+        l2 = self.l2[self.calm]
+        tor = np.linalg.norm((l2[:, 11, :2] + l2[:, 12, :2]) / 2 - (l2[:, 23, :2] + l2[:, 24, :2]) / 2, axis=1)
+        rs = np.median(np.abs(l2[:, 11, 0] - l2[:, 12, 0]) / np.maximum(tor, 1))
+        rh = np.median(np.abs(l2[:, 23, 0] - l2[:, 24, 0]) / np.maximum(tor, 1))
+        cands = []
+        for half, sgn in (('front', 1), ('back', -1)):
+            s0, h0 = self.W0[half]
+            a = np.degrees((2 * np.arccos(np.clip(rs / s0, 0, 1)) + np.arccos(np.clip(rh / h0, 0, 1))) / 3)
+            for side in (1, -1):
+                cands.append(side * a if sgn > 0 else side * (180 - a))
+        best = min(cands, key=lambda c: abs((c - y + 180) % 360 - 180))
+        log('  take %s: yaw from the picture widths (shoulders %.2f, hips %.2f of the torso): %.0f (pooled %.0f)'
+            % (self.name, rs, rh, best, y))
+        self.yaw2d_note = 'yaw2d %.0f (pooled %.0f)' % (best, y)
+        return float(best)
+
+    def _facing_prior(self, fp, log=print):
+        """spec take "facing": "away" (or "toward"): a HARD prior that he faces away from (toward) the camera
+        through the whole take (a lock-on camera behind him). The tool sometimes reads a back view as a
+        front view, frame by frame: every frame whose own facing (hips, shoulders, feet, nose) points the
+        other way is mirrored (sides swapped, depth reversed), decided with a 7-frame majority so a single
+        noisy frame does not flip"""
+        f1, feet, nose = facing(self.c)
+        v = f1 + feet + nose
+        y = np.degrees(np.arctan2(v[:, 0], v[:, 2]))
+        want = 180.0 if fp == 'away' else 0.0
+        wrong = np.abs((y - want + 180) % 360 - 180) > 90
+        n = len(wrong)
+        wrong = np.array([np.mean(wrong[max(0, i - 3):i + 4]) > 0.5 for i in range(n)])
+        if wrong.any():
+            self.l2[wrong] = self.l2[wrong][:, MIRROR]
+            self.c[wrong] = self.c[wrong][:, MIRROR] * np.array([1, 1, -1.0])
+        self._flipped = True  # the whole-take mirror test is settled by the prior
+        self.mirrored = False
+        if self.view is None or self.view in ('front', 'back'):
+            self.view = 'back' if fp == 'away' else 'front'
+        log('  take %s: facing %s (a hard prior): %d of %d frames mirrored back' % (self.name, fp, int(wrong.sum()), n))
 
     def summary(self):
         return ('%s %s %.2f-%.2f view %s: yaw %.0f (hips %.0f feet %.0f nose %.0f) pitch %.0f, sees X %.2f Y %.2f '
                 'Z %.2f, swaps legs %d arms %d, %s%s' % (self.name, self.film, self.t0, self.t1, self.view, self.yaw,
                                                          *self.yaw_parts, self.pitch, *self.wax, *self.swaps, self.note,
-                                                         ', MIRRORED by the tool' if self.mirrored else ''))
+                                                         ', MIRRORED by the tool' if self.mirrored else '')
+                + (', ' + self.cam_note if self.swing and getattr(self, 'cam_note', None) else ''))
