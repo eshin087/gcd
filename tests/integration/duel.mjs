@@ -1941,6 +1941,144 @@ async function scenarioParryFx() {
   return G;
 }
 
+// ================================================================== scenario: parrygrow (?parryGrow=0|a)
+// The perfect parry's chain grows (combat/parrySparks.js PARRY_GROW; 0 = today's spit, the default): with 0
+// the spit is today's count and nothing else is drawn; with a, tier 0 / 1 (streak < 5) throws today's count,
+// streak 7 (tier 3) more, a string's last blow still more, embers outlive the spit, and a heat flash at the
+// crossing is alive the frame after contact and gone by 0.12 s of REAL time (also in slow motion); no NaN.
+async function scenarioParryGrow() {
+  out('\n== scenario PARRYGROW (the perfect parry chain grows with the streak: sparks, embers, a heat flash; ?parryGrow=0|a) ==');
+  const PFX = await imp('src/combat/perfectFx.js');
+  const STK = await imp('src/combat/streak.js');
+  const PS = await imp('src/combat/parrySparks.js');
+  const L = PS.PARRY_SPARKS_LAST, GL = PS.PARRY_GROW_LAST;
+  const G = build();
+  duel(G, { dist: 2.0 });
+  const { game } = G;
+  const p = game.player;
+  STK.setPerfectMode('sharp');
+  PS.setParryFx('a');
+  // a screen for the flash (the mock has no canvas: a 1280 x 720 frame, the camera's matrices current)
+  const pl = game.pipeline, pl0 = { width: pl.width, height: pl.height, artCell: pl.artCell };
+  pl.width = 1280;
+  pl.height = 720;
+  pl.artCell = { x: 5, y: 8 };
+  game.camera.updateMatrixWorld(true);
+  game.camera.updateProjectionMatrix();
+  const x = p.position.x, y = 1.25, z = p.position.z - 1.0;
+  const e1 = { x: 0.3, y: 0.5, z: 0.8 }, e2 = { x: 0.9, y: 0.1, z: -0.3 };
+  const spit = (streak, last, mode) => {
+    PFX.perfectClear();
+    return PS.parrySparks(game, x, y, z, { e1, e2, met: true, streak, last, grow: mode });
+  };
+  const MR = Math.random;
+  let drew = 0, threw = null;
+  Math.random = () => (drew++, MR());
+  const R = {};
+  const sp0 = game.fx.fire.spawn;
+  try {
+    // today's spit, and the same with the switch on at tiers 0 and 1: the same count (own seeded stream)
+    PS.setParryGrow('0');
+    R.n0 = [];
+    R.nA = [];
+    for (const s of [0, 1, 2]) R.n0.push((L.n = 500 + s, spit(s, true)));
+    const f0 = GL.flashes;
+    let blobs0 = 0;
+    game.fx.fire.spawn = (b) => (blobs0++, sp0(b));
+    for (const s of [0, 1, 2]) R.nA.push([(L.n = 500 + s, PS.parrySparks(game, x, y, z, { e1, e2, met: true, streak: s, last: true, grow: '0' })), (PFX.perfectClear(), L.n = 500 + s, spit(s, true, 'a'))]);
+    R.flashesMade = GL.flashes - f0;
+    R.blobsOff = blobs0;
+    PS.setParryGrow('a');
+    R.tier = {};
+    for (const s of [1, 3, 5, 7, 10, 15]) {
+      const n = spit(s, false);
+      R.tier[s] = { n, tier: GL.tier, embers: GL.embers, cells: GL.flashCells };
+    }
+    R.last7 = spit(7, true);
+    R.cells7L = GL.flashCells;
+    // the heat flash: alive the frame after contact (real clock), gone by 0.12 s real, also in slow fx time
+    spit(7, true);
+    R.flashBlobs0 = GL.flashBlobs;
+    R.peak0 = GL.flashPeak;
+    const fxDt0 = game.fxDt;
+    PFX.perfectUpdate(game, DT, DT);
+    R.alive1 = GL.flashAlive;
+    for (let i = 0; i < 3; i++) PFX.perfectUpdate(game, DT, DT);
+    R.aliveMid = GL.flashAlive;
+    for (let i = 0; i < 6 && GL.flashAlive; i++) PFX.perfectUpdate(game, DT, DT);
+    R.goneAt = GL.flashAge;
+    R.aliveEnd = GL.flashAlive;
+    // slow motion: fx time at a tenth of real time, the flash still ends on the real clock
+    spit(7, true);
+    game.fxDt = DT * 0.1;
+    let steps = 0;
+    while (GL.flashAlive && steps < 30) {
+      PFX.perfectUpdate(game, DT * 0.1, DT);
+      steps++;
+    }
+    R.slowSteps = steps;
+    R.slowAge = GL.flashAge;
+    game.fxDt = fxDt0;
+    // embers: a streak-7 spit, run on: some are still alive after the spit's own flight (about half a second)
+    spit(7, true);
+    let t = 0, em = 0, maxAlive = 0;
+    while (PS.parrySparksBusy() && t < 1.5) {
+      PFX.perfectUpdate(game, DT, DT);
+      t += DT;
+      if (t > 0.5) em = Math.max(em, GL.embersAlive);
+    }
+    R.emberAt = em;
+    R.emberEnd = t;
+    // a long chain (a spit every 0.32 s at streak 15): never past the pool, nothing left over
+    PFX.perfectClear();
+    L.white = 0;
+    L.maxCh = 0;
+    L.bad = 0;
+    for (let i = 0; i < 12; i++) {
+      PS.parrySparks(game, x, y, z, { e1, e2, met: true, streak: 15, last: i === 11 });
+      maxAlive = Math.max(maxAlive, L.alive);
+      for (let j = 0; j < 19; j++) {
+        PFX.perfectUpdate(game, DT, DT);
+        maxAlive = Math.max(maxAlive, L.alive);
+      }
+    }
+    for (let j = 0; j < 120; j++) PFX.perfectUpdate(game, DT, DT);
+    R.maxAlive = maxAlive;
+    R.ended = !PS.parrySparksBusy() && !GL.flashAlive;
+    R.white = L.white;
+    R.maxCh = L.maxCh;
+    R.bad = L.bad;
+  } catch (e) {
+    threw = e;
+  }
+  game.fx.fire.spawn = sp0;
+  Math.random = MR;
+  pl.width = pl0.width;
+  pl.height = pl0.height;
+  pl.artCell = pl0.artCell;
+  PS.setParryGrow(PS.PARRY_GROW_DEFAULT);
+  PS.setParryFx(PS.PARRY_FX_DEFAULT);
+  PFX.perfectClear();
+  STK.setPerfectMode('today');
+  assert(!threw, `no throw (${threw?.stack ?? 'ok'})`);
+  if (threw) return G;
+  out(`   today ${R.n0.join(',')} · a at streak 0,1,2 ${R.nA.map((q) => q[1]).join(',')} · tiers ${Object.entries(R.tier).map(([s, v]) => `${s}:${v.n}(+${v.embers} embers, ${v.cells} cells)`).join(' ')} · last blow at 7: ${R.last7} · flash ${R.flashBlobs0} blobs, peak ${R.peak0.toFixed(2)}, alive after 1 frame ${R.alive1}, ended at ${R.goneAt.toFixed(3)} s real (slow motion: ${R.slowAge.toFixed(3)} s in ${R.slowSteps} steps) · embers alive after 0.5 s: ${R.emberAt}, all gone at ${R.emberEnd.toFixed(2)} s · chain peak ${R.maxAlive} alive`);
+  assert(PS.PARRY_GROW_DEFAULT === '0', 'the growth is off by default (?parryGrow=a turns it on)');
+  assert(R.nA.every(([a, b]) => a === b) && R.n0.every((n) => n >= 12 && n <= 16), `0: today's count (${R.n0.join(',')}); a at streak 0 / 1 / 2 (tier 0) throws the same count, from the same seed (${R.nA.map((q) => q.join('=')).join(', ')})`);
+  assert(R.flashesMade === 3 && R.blobsOff > 0, `a flash is made only with the switch on (${R.flashesMade} of 6 spits, ${R.blobsOff} blobs)`);
+  assert(R.tier[1].tier === 0 && R.tier[3].tier === 1 && R.tier[7].tier === 3 && R.tier[15].tier === 5 && R.tier[1].n <= 16 && R.tier[3].n >= 15 && R.tier[7].n >= 21 && R.tier[15].n >= 27, `a: more sparks with the tier (streak 1: ${R.tier[1].n}, 7: ${R.tier[7].n}, 15: ${R.tier[15].n})`);
+  assert(R.tier[1].embers === 0 && R.tier[3].embers === 0 && R.tier[5].embers === 4 && R.tier[7].embers === 5 && R.tier[15].embers === 7, `a: embers from tier 2 (2 + tier): ${Object.entries(R.tier).map(([s, v]) => `${s}:${v.embers}`).join(' ')}`);
+  assert(R.last7 > R.tier[7].n, `a: a string's last blow throws more (${R.last7} against ${R.tier[7].n})`);
+  assert(Object.values(R.tier).map((v) => v.cells).join() === '2,3,3,4,4,5' && R.cells7L === 5, `a: the flash grows by a cell per two tiers, five at most (${Object.values(R.tier).map((v) => v.cells).join(',')})`);
+  assert(R.flashBlobs0 > 0 && R.peak0 < 1 && R.peak0 > 0.4, `a: the heat flash is written in the fire field (${R.flashBlobs0} blobs, hottest ${R.peak0.toFixed(2)}: orange, under 1)`);
+  assert(R.alive1 && R.aliveMid && R.aliveEnd === false && R.goneAt < 0.12 && R.goneAt >= 0.07, `a: the flash is alive the frame after contact and gone by 0.12 s real (${R.goneAt.toFixed(3)} s)`);
+  assert(R.slowAge < 0.12 && R.slowSteps < 12, `a: in slow motion the flash still ends on the real clock (${R.slowAge.toFixed(3)} s, ${R.slowSteps} steps)`);
+  assert(R.emberAt >= 1 && R.emberEnd <= 1.2, `a: embers still fall after the spit's own flight (${R.emberAt} alive after 0.5 s) and are gone by ${R.emberEnd.toFixed(2)} s`);
+  assert(R.maxAlive <= 104 && R.ended && R.white === 0 && R.maxCh <= 0.55 + 1e-6 && R.bad === 0, `a: a long chain stays inside the pool (${R.maxAlive} <= 104), all gone after, none white, none over the bloom threshold (${R.maxCh.toFixed(3)})`);
+  assert(drew === 0, `no Math.random drawn (${drew})`);
+  return G;
+}
+
 // ================================================================== scenario: streak (ADR-094)
 // The shared streak (parries and clashes count in it), the riposte a parried last blow is answered
 // with, his own streak of guards and the flurry it brings.
@@ -4876,6 +5014,7 @@ const SCENARIOS = {
   timerip: scenarioTimeRip,
   perfectfx: scenarioPerfectFx,
   parryfx: scenarioParryFx,
+  parrygrow: scenarioParryGrow,
   streak: scenarioStreak,
   training: scenarioTraining,
   execute: scenarioExecute,
