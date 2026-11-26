@@ -162,7 +162,17 @@ def world_rotations(b, blade=None, tumble=False, clip=None, bladeL=None, relax=N
         elif s == 'R' and blade is not None:
             # the blade leaves the fist along the hand's +Z (the thumb side); the hand's long axis stays as
             # near the forearm as the blade allows
-            R[:, JI['hand' + s]] = skel.frame_q(Z, rest_dir, blade, _n(fo))
+            sec = _n(fo)
+            if relax is not None:
+                # spec "arm_keys": where the keyed blade runs nearly along the forearm the hand's roll is
+                # undefined: hold the last frame's (no 90-degree flip in one frame)
+                sec = sec.copy()
+                for i in range(1, n):
+                    p_ = sec[i] - blade[i] * (blade[i] @ sec[i])
+                    if np.linalg.norm(p_) < 0.45:
+                        q_ = sec[i - 1] - blade[i] * (blade[i] @ sec[i - 1])
+                        sec[i] = q_ / max(np.linalg.norm(q_), 1e-9)
+            R[:, JI['hand' + s]] = skel.frame_q(Z, rest_dir, blade, sec)
         elif clip is not None and clip.get('free_hand'):
             R[:, JI['hand' + s]] = free_hand(b, s, R[:, JI['foreArm' + s]], clip['free_hand'])
         else:
@@ -273,7 +283,7 @@ def _spans(mask, min_len=3, fill=2):
     return out, spans
 
 
-def ground_and_contact(q, fps, loop=False, ground='feet', travel='free', log=print, clip_opts={}, yaw=None):
+def ground_and_contact(q, fps, loop=False, ground='feet', travel='free', log=print, clip_opts={}, yaw=None, air=None):
     """From local rotations (hips at the origin): the hips' height, foot contact and the root travel.
     Returns hipsY (n,), hips_xz (n,2) (hips over the root), root (n,3), contact {L: spans, R: spans}, speed."""
     n = len(q)
@@ -366,6 +376,15 @@ def ground_and_contact(q, fps, loop=False, ground='feet', travel='free', log=pri
                 k = np.argmin(g[none], 1)
                 newc[np.where(none)[0], k] = vg[np.where(none)[0], k] < 2 * tol[none]
             contact = newc
+        if air is not None:
+            # spec "air_marks": the clip's `air` / `land` events are hard marks: no foot is planted from
+            # `air` to `land` - 1; outside, the lower foot is planted wherever no foot is
+            f0, f1 = air
+            contact[f0:f1] = False
+            for a_, b_ in ((0, f0), (f1, n)):  # on the ground before and after the flight
+                for i in range(a_, b_):
+                    if not contact[i].any():
+                        contact[i, int(np.argmin(g[i]))] = True
     # the hips' travel: integrate the planted feet (their mean step), coast through flight
     vel_i = np.zeros((n, 2))
     for i in range(n):
@@ -407,7 +426,16 @@ def ground_and_contact(q, fps, loop=False, ground='feet', travel='free', log=pri
                     j += 1
                 T = (j - i + 1) / fps
                 tt = (np.arange(i, j) - i + 1) / fps
-                hy[i:j] += 0.5 * 9.8 * tt * (T - tt)
+                pk = clip_opts.get('air_peak_m') if air is not None and i <= air[0] + 2 and j >= air[1] - 2 else None
+                if pk is not None:
+                    # spec "air_peak_m": a parabola whose top is that far above the take-off hips
+                    u = tt / T
+                    base = hy[i:j].copy()
+                    top = hy[max(i - 1, 0)] + float(pk)
+                    A = top - base[int(np.argmax(u * (1 - u)))]
+                    hy[i:j] = base + 4 * A * u * (1 - u)
+                else:
+                    hy[i:j] += 0.5 * 9.8 * tt * (T - tt)
                 i = j
             else:
                 i += 1
