@@ -333,6 +333,15 @@ def blade_dirs(spec, clip, B, Ts, log=print, side='R'):
             out[k] = d
             bconf[k] = planes[0][1]
         B.blade_conf = bconf
+    # spec take "arm_keys": the keyed blade (hilt + tip, triangulated where two takes are keyed) wins
+    keyed = np.zeros(nb, bool)
+    kb = getattr(B, 'key_blade', None) if side == 'R' else None
+    if kb is not None and len(kb) == nb:
+        kw = B.key_blade_w
+        for k in np.where(kw > 0)[0]:
+            v = kb[k] if np.isnan(out[k, 0]) else out[k] * (1 - kw[k]) + kb[k] * kw[k]
+            out[k] = v / max(np.linalg.norm(v), 1e-9)
+        keyed = kw >= 0.999
     # fill unknown frames: interpolate directions (normalised lerp), hold at the ends
     ok = ~np.isnan(out[:, 0])
     if not ok.any():
@@ -348,6 +357,8 @@ def blade_dirs(spec, clip, B, Ts, log=print, side='R'):
     # forearm's frame, where the blade barely moves) is a wrong ray; drop it
     ki = np.where(ok)[0]
     for j, k in enumerate(ki):
+        if keyed[k]:
+            continue
         nb_ = ki[max(0, j - 4):j + 5]
         med = np.median(loc[nb_], 0)
         med /= np.linalg.norm(med) + 1e-9
@@ -361,7 +372,7 @@ def blade_dirs(spec, clip, B, Ts, log=print, side='R'):
     for k in range(1, nb):
         c = np.clip(loc[k] @ loc[k - 1], -1, 1)
         a = np.arccos(c)
-        if a > lim:  # turn at most `lim` toward the measured direction this frame
+        if a > lim and not keyed[k]:  # turn at most `lim` toward the measured direction this frame
             axis = np.cross(loc[k - 1], loc[k])
             if np.linalg.norm(axis) > 1e-9:
                 axis /= np.linalg.norm(axis)

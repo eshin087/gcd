@@ -27,6 +27,9 @@ def _take(spec, clip, tk, pad=0.0, log=print):
     if clip.get('sword') and not clip.get('swordL') and not clip.get('grip') and not tk.get('no_arm_check'):
         from . import sword
         sword.fix_sword_arm(T, log, whole=tk.get('arm_fix', clip.get('arm_fix')) == 'whole')
+    if tk.get('arm_keys') or tk.get('limb_keys') or tk.get('lose'):
+        from . import armkeys
+        armkeys.apply(T, tk, log)
     log('  take ' + T.summary())
     return T
 
@@ -58,6 +61,7 @@ def leave_one_out(parts, takes_, mapping):
 
 def build_clip(spec, clip, log=print):
     kind = clip.get('kind', 'oneshot')
+    checks = []
     fps = float(clip.get('fps', 30))
     loop = kind == 'loop'
     B = Built()
@@ -136,10 +140,21 @@ def build_clip(spec, clip, log=print):
         vw = bool(clip.get('vis_weight'))
         parts = [(ref.b, ref.wax, fuse.validity(ref.gap), ref.l2[:, :, 3] if vw else None)]
         B.offsets = [0]
+        checks = []  # spec take "check": true: aligned and drawn on the sheet, never fused
         for tk in clip['takes'][1:]:
             T = _take(spec, clip, tk, pad=search + 0.05, log=log)
-            s, cost = fuse.align(ref, T, search)
+            if tk.get('sync') is not None and clip.get('sync') is not None:
+                # spec "sync": the same moment by hand (clip "sync" in the first take = take "sync" here)
+                s = int(round((cfg.parse_time(tk['sync']) - (cfg.parse_time(clip['sync']) - ref.t[0]) - T.t[0]) * takes.FPS))
+                cost = float('nan')
+            else:
+                s, cost = fuse.align(ref, T, search)
             n = len(ref.b)
+            if tk.get('check'):
+                checks.append((T, s))
+                log('  %s: a CHECK take (not fused), %s %+.3f s from its given start' % (
+                    T.name, 'synced' if tk.get('sync') is not None else 'aligned', T.t[int(np.clip(s, 0, len(T.t) - 1))] - cfg.parse_time(tk['t0'])))
+                continue
             # a take may cover only part of the move (a camera cut ends it): the rest gets no weight
             idx = np.arange(n) + s
             inside = (idx >= 0) & (idx < len(T.b))
@@ -167,12 +182,22 @@ def build_clip(spec, clip, log=print):
             return f
         B.loo = leave_one_out(parts, Ts, mapping) if len(parts) > 1 else []
         fused = fuse.fuse(parts)
+        if any(getattr(T, 'ak', None) is not None for T in Ts):
+            # spec take "arm_keys": the keyed arms and blade replace the fused arm points (two views
+            # triangulated where two takes are keyed at that moment)
+            from . import armkeys
+            fused = armkeys.override_fused(B, Ts, fused, log)
         sig = retarget.adaptive_sigma(fused, fps=takes.FPS)
         b = retarget.smooth_time(fused, sig)
         # decimate to the clip's rate
         step = int(round(takes.FPS / fps))
         b = b[::step]
         B.t_ref = ref.t[::step]
+        if getattr(B, 'key_relax', None) is not None:
+            B.key_relax = B.key_relax[::step]
+            B.key_blade_w = B.key_blade_w[::step]
+            if B.key_blade is not None:
+                B.key_blade = B.key_blade[::step]
     for line in B.loo:
         log('  reprojection ' + line)
     B.takes = [dict(T.spec, film=T.film, name=T.name, yaw=T.yaw, pitch=T.pitch, t_lo=T.t0, t_hi=T.t1) for T in Ts]
@@ -233,7 +258,8 @@ def build_clip(spec, clip, log=print):
         log('  turn: he turns %.0f degrees (root yaw follows his facing)' % np.degrees(yaw[-1]))
     elif abs(np.degrees(yaw_all[-1])) > 45 and not loop:
         log('  ! he ends facing %.0f degrees from his start: set "turn": true if this is a turn' % np.degrees(yaw_all[-1]))
-    Rw = retarget.world_rotations(b, blade, tumble=clip.get('ground') == 'body', clip=clip, bladeL=getattr(B, 'bladeL', None))
+    Rw = retarget.world_rotations(b, blade, tumble=clip.get('ground') == 'body', clip=clip, bladeL=getattr(B, 'bladeL', None),
+                                  relax=getattr(B, 'key_relax', None))
     q = skel.world_to_local(Rw)
     q = skel.continuous(q)
     # light quaternion smoothing (positions were smoothed already)
@@ -251,8 +277,9 @@ def build_clip(spec, clip, log=print):
     q = retarget.limit_joint(q, JI['neck'], 45, 1.0 * k, loop)
     if clip.get('clavicles', 0.3):
         q = post.clavicles(q, float(clip.get('clavicles', 0.3)), loop)
+    prot = key_protect(B, len(q))
     if clip.get('despike', True):
-        q = post.despike(q, fps, clip.get('qa', {}).get('maxStepDeg'), loop)
+        q = post.despike(q, fps, clip.get('qa', {}).get('maxStepDeg'), loop, protect=prot)
     for pk in clip.get('pose_keys', []):
         q = keys.apply_pose_key(q, pk, fps, B)
     q = skel.continuous(q)
@@ -308,7 +335,7 @@ def build_clip(spec, clip, log=print):
         log('  breath: SYNTHESIZED (period %.1f s), not measured' % br.get('period', 3.6))
     if clip.get('despike', True):  # again after the feet were pinned (not the legs: they hold the plants)
         q = post.despike(q, fps, clip.get('qa', {}).get('maxStepDeg'), loop,
-                         skip=('thighL', 'shinL', 'footL', 'toeL', 'thighR', 'shinR', 'footR', 'toeR'))
+                         skip=('thighL', 'shinL', 'footL', 'toeL', 'thighR', 'shinR', 'footR', 'toeR'), protect=prot)
     ws, wj, wf = post.worst_step(q, fps)
     lim = clip.get('qa', {}).get('maxStepDeg', post.step_limit(fps))
     B.qa = dict(maxStepDeg=round(ws, 1), at='%s@%d' % (wj, wf), limit=round(lim, 1), reason=clip.get('qa', {}).get('reason'))
@@ -345,6 +372,11 @@ def build_clip(spec, clip, log=print):
                 setattr(B, nm, post.rotate_y(getattr(B, nm)[:, None], np.full(len(q), a0))[:, 0])
         log('  face travel: turned %.0f degrees so his travel to the active frame (%.2f m) is +Z' % (np.degrees(a0), np.hypot(d[0], d[2])))
     # marks: video times on the first take -> clip frames
+    if not loop and kind != 'hold' and checks:
+        for T, s in checks:
+            Ts.append(T)
+            B.offsets.append(s)
+            B.takes.append(dict(T.spec, film=T.film, name=T.name, yaw=T.yaw, pitch=T.pitch, t_lo=T.t0, t_hi=T.t1))
     B.events, B.phases = [], {}
     if not loop:
         t0 = B.t_ref[0]
@@ -353,6 +385,23 @@ def build_clip(spec, clip, log=print):
         for ev in clip.get('events', []):
             B.events.append({'f': int(round((cfg.parse_time(ev['t']) - t0) * fps)), 'name': ev['name']})
     return B, Ts
+
+
+def key_protect(B, n):
+    """(n, J) bool: the arm joints of frames the author keyed (spec take "arm_keys"), which despike keeps"""
+    kr = getattr(B, 'key_relax', None)
+    if kr is None or len(kr) != n or not (kr > 0).any():
+        return None
+    m = np.zeros((n, J), bool)
+    for f, s in enumerate(('L', 'R')):
+        on = kr[:, f] > 0.5
+        for nm in ('clav', 'upperArm', 'foreArm', 'hand', 'weapon'):
+            m[:, JI[nm + s]] |= on
+    kb = getattr(B, 'key_blade_w', None)
+    if kb is not None and len(kb) == n:
+        for nm in ('handR', 'weaponR', 'foreArmR'):
+            m[:, JI[nm]] |= kb > 0.5
+    return m
 
 
 def save(B, set_id):

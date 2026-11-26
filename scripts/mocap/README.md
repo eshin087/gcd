@@ -63,6 +63,7 @@ Other tools (all light):
 | `"$PY" -I camcal.py <film> <t0> <t1> [...]` | calibrates the focal length of `swing` on spans where he stands while the camera orbits |
 | `"$PY" -I proportions.py [config.json]` | his build from standing takes; writes `$H2/mocap/proportions.json` and an HDIM proposal |
 | `"$PY" -I keysheet.py specs/<set>.json <clip> [take] [--from t] [--to t] [--every 3] [--box x,y,side]` | a labelled ruler sheet of one take's frames for 2D hand keys (see the roll example) |
+| `"$PY" -I armsheet.py specs/<set>.json <clip> [take] --from t --to t [--every 3] [--cell 440] [--cols 4] [--box x,y,side] [--emit]` | the KEY sheet for `limb_keys`: big tiles with a full-frame pixel GRID (20 px; 100s labelled), the tracker's arms thin, its blade, the current keys thick (right arm orange, left lime, blade white; circled + named on a key frame, the spline between). `--emit` writes `<clip>_armkeys_take<k>.json`: one key per tile, pre-filled with the tracker's points and the detected blade, to paste and correct |
 | `bash "$H2/lock.sh" <you> "$PY" -I track.py <film> <t0> <t1> --forget` | HEAVY: drop and re-track a span (after a tracking fix, or when a crop latched onto a phantom); if it runs out of budget, run it again WITHOUT `--forget` |
 
 Look at a span's raw tracking before you trust it: a sheet of the tool's own landmarks over the frames
@@ -133,6 +134,10 @@ Clip keys:
 | take `facing` | `"away"` / `"toward"`: a HARD prior that he faces away from (toward) this camera through the whole take (a lock-on camera behind him). Every frame the tool read the other way round is mirrored back (7-frame majority); the log prints how many |
 | `free_hand` | true or `{"sigma": 2.0, "flex": 12}`: the free hand from the tool's hand points where they look like a hand, a relaxed hand along the forearm where not |
 | `vis_weight` | true: in the fusion each landmark also counts by the tool's VISIBILITY in that take (a far arm hidden behind the body in a side take hardly counts; one-shots and loops) |
+| take `limb_keys` (alias `arm_keys`) | KEY-FIRST (attacks, jumps, anything the tracker loses): `{"blend": 3, "keys": [{"t": "1:15.34", "pts": {"shoulderR": [x, y], "elbowR": .., "wristR": .., "hilt": .., "tip": .., "kneeL": .., ...}, "near": ["elbowR"], "far": ["tip"]}, ...]}`. Each given point REPLACES the tracker (in 3D, not only the picture) from its first key to its last, on a smooth spline between keys, easing back over `blend` frames. Depth from ONE take: roots (shoulders, hips, nose, ears) keep the tracker's depth; every other point hangs off its parent at the bone's length (shoulder>elbow>wrist, hip>knee>ankle>heel/toe, hilt>tip); `near` / `far`: that point is nearer / farther from the camera than its parent (else the tracker's sign). The keyed blade wins over the detector; a keyed free hand relaxes along the forearm; despike leaves keyed arm joints alone. Points: nose, earL/R, shoulder/elbow/wrist L/R, hip/knee/ankle/heel/toe L/R, hilt, tip. Keys in two takes at one moment are triangulated |
+| take `lose` | `[{"t0": "1:15.41", "t1": "1:15.78", "limbs": ["armL", "armR"]}]`: the tracker's points of those limbs are thrown away over the span and bridged (3D and picture) from the frames round it; other limbs stay tracked (unlike `drop`, which bridges every point). Limbs: `armL`, `armR`, `legL`, `legR`, `torso` (shoulders, hips; the picture fit is bridged too), `head`, `body`. `limb_keys` inside the span give the motion |
+| take `check` | true: the take is aligned (or synced) and drawn on the pair sheet from its own camera, but NOT fused: a second view to judge the clip by (attacks: the follow-camera takes turn with the camera, so fusing them is wrong) |
+| `sync` (clip) + take `sync` | the same moment by hand: clip `"sync": "1:15.342"` (a video time in the first take) = take `"sync": "0:56.456"`; that take is placed by it instead of the automatic alignment (which was 0.1-0.3 s off on attacks) |
 | `blade_color`, `blade_color_L` | `"rust"` (default) or `"steel"` (a bright grey blade: the paired set's left sword) |
 
 ## Author's checklist (every clip)
@@ -234,6 +239,26 @@ so start it while he still stands) and a hint more than 50 degrees off replaces 
 light1's first take measured -5 on a view that the other three performances measure at 69-76, so it has
 `"yaw": 70`. Then `"face": "hit"` turns the finished clip so the cut is aimed along +Z (the engine aims a
 clip by its +Z; without it light1 was built 171 degrees off).
+
+**Attacks, KEY-FIRST from one take (light1; `specs/_examples.json` `light1Keyed`)**: the follow-camera takes of
+an attack cannot be fused (he turns toward the camera at the first hit) and every view fails inside the
+cut, so build the attack from ONE clean take (the fixed back rounds) and key it:
+1. the clip: the one take (`"view": "back"`), plus the other views as `"check": true` takes placed by
+   `"sync"` (clip `"sync": "1:15.342"`, take `"sync": "0:56.456"`): they are drawn on the sheet, not fused.
+2. `armsheet.py specs/<set>.json light1 0 --from 1:15.05 --to 1:15.80 --every 3 --emit` (add `--box x,y,side`
+   to zoom on him when he is small: tiles should show at least 1.5 sheet px per frame px). Read the sheet:
+   the tracker's arms thin, its blade cyan.
+3. paste the emitted JSON as the take's `"limb_keys"`; fix every wrong point by reading the grid (only the
+   wrong ones: the pre-fill is the tracker's own); drop tiles you do not need (a key every 2-3 frames in
+   the cut, 4-6 in the coil and the follow-through). Give `hilt` and `tip` where the blade is seen; where
+   it is only a smear, key the tip along the smear's leading edge or leave it out (it follows the arm).
+4. where the tracker loses whole limbs (labels the coiling arm as the other one, loses him, a close-up):
+   `"lose": [{"t0": .., "t1": .., "limbs": ["armL", "armR"]}]` (or `legL` / `body`) and key those limbs there.
+5. build; check the depth on the check takes' rows; flip a bone with `"near"` / `"far"` in a key where it
+   points the wrong way, or a `pose_keys` `"dir"`; give the lunge's travel with `travel_m` / `root_keys` when
+   the one take cannot see it (a back view does not see travel along its axis); `reach.py` must say YES
+   at 1.9 m; `"qa": {"maxStepDeg": .., "reason": "keyed cut ..."}` for the real speed of the cut.
+Rebuild after each pass (20-40 s); the sheet's thin lines on the reference rows are now YOUR keys.
 
 **Blurred cuts and arm swaps (light1)**: `"blade_blur": true, "arm_fix": "whole"`; check with
 `bladesheet.py specs/swordOne.json light1 0 --every 1 --from 0:26.80 --to 0:27.05 --cell 400 --cols 4`;
