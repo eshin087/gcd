@@ -1145,6 +1145,7 @@ export class AudioEngine {
     on('dragon:tower', (d) => this.play('crash', { x: d?.x, z: d?.z, mat: 'stone', power: 3 }));
     on('dragon:split', (d) => this.play('crash', { x: d?.x, z: d?.z, mat: 'metal', power: 1.5 }));
     on('dragon:statue', () => this.play('crash', { ...this._atDragon(), mat: 'stone', power: 1 }));
+    // Bai Wuji (the Veiled Crossing; the fx agent's sounds go here: on('dragon:barrier' ...), on('dragon:domain' ...))
     // the world breaks (ADR-107): a blow on wood / stone / metal, something coming down, fire catching
     on('world:impact', (d) => {
       const o = { x: d.x, z: d.z, mat: d.mat, power: num(d.power, 0.5) };

@@ -805,7 +805,7 @@ export class Lab {
    *  reload. Only in a duelist's level; collapsed by default (it is long). */
   _buildLooks(root) {
     const id = this.game.level?.id;
-    if (id !== 'ash' && id !== 'starless' && id !== 'ring' && id !== 'fox' && id !== 'grove' && id !== 'city') return;
+    if (id !== 'ash' && id !== 'starless' && id !== 'ring' && id !== 'fox' && id !== 'grove' && id !== 'city' && id !== 'veil') return;
     if (this.prefs.collapsed && !('looks' in this.prefs.collapsed)) this.prefs.collapsed.looks = true;
     const { body } = this._section(root, 'looks', 'LOOKS');
     this.ui.looksSync = buildLooks(body, id, (t) => this._status(t, 'ok'));
@@ -912,6 +912,18 @@ export class Lab {
       button(grid, 'Explode', () => D().explode(1)).title = 'the car nearest the hero breaks (by the hero): its fuse, then it goes up';
       button(grid, 'Crash', () => D().crash()).title = 'THE CRASH now: thrown off his line into the first cover on it';
       for (const n of [1, 2, 3]) button(grid, `City ${n}`, () => D().cityPhase(n)).title = `the city's light as in his phase ${n} (1 neon, 2 crimson screens, 3 dark)`;
+    }
+    // Bai Wuji, the Untouched: the barrier, the domain, the pull, the blink
+    if (typeof this.game.dragon?.debug?.domain === 'function' && typeof this.game.dragon?.debug?.barrier === 'function') {
+      const D = () => this.game.dragon.debug;
+      button(grid, 'Barrier open', () => D().barrier('open')).title = 'the Unreached opens now (as after a perfect parry)';
+      button(grid, 'Barrier up', () => D().barrier('up')).title = 'the Unreached closes again now';
+      button(grid, 'Crack', () => D().barrier('crack')).title = 'one crack in the barrier (as an ordinary parry)';
+      button(grid, 'Domain escape', () => D().domain('escape')).title = 'the Measureless: the hero dodged through the wall (into the void, the barrier open)';
+      button(grid, 'Domain caught', () => D().domain('caught')).title = 'the Measureless: the hero is caught (held, one blow, never lethal), into the void';
+      button(grid, 'Void break', () => D().domain('break')).title = 'the void breaks: the crossing returns';
+      button(grid, 'Pull', () => D().pull()).title = 'an Azure Draw knot where the hero stands (it drags him)';
+      button(grid, 'Blink', () => D().blink('behind')).title = 'he is behind the hero now';
     }
     const row = el('div', 'lab-row', null, body);
     el('span', 'lab-lbl', 'HP', row);

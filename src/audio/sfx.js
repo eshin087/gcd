@@ -1707,4 +1707,5 @@ export const SFX = {
       for (const [f, dt] of seq) ping(v, t + dt, 'triangle', f, 0.09, k === 'start' ? 0.35 : 0.07, 0.003);
     },
   },
+  // Bai Wuji (the Veiled Crossing; the fx agent's recipes go here)
 };
