@@ -2180,7 +2180,7 @@
      "name": "hit"
     }
    ],
-   "face": "hit",
+   "face": 20,
    "free_hand": true,
    "swing": true,
    "root": {
