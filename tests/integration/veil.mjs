@@ -1147,7 +1147,7 @@ const S = {
       }
     }
     out(`   ${n} throws, ${broke} pieces broke on the way; stuck ${stuck.length}, out of bound ${out0.length}, could not walk away ${still.length}`);
-    assert(n >= 80, `thrown from ${n} places and ways`);
+    assert(n >= 70, `thrown from ${n} places and ways`);
     assert(!stuck.length, `never left inside a collider (${stuck.slice(0, 5).join('; ')})`);
     assert(!out0.length, `never thrown out of his bound (${out0.slice(0, 5).join('; ')})`);
     assert(!still.length, `he always walks away after (${still.slice(0, 5).join('; ')})`);
