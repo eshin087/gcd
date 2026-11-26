@@ -1705,28 +1705,6 @@
    "search": 0.4,
    "takes": [
     {
-     "t0": "2:07.50",
-     "t1": "2:09.30",
-     "view": "right"
-    },
-    {
-     "t0": "2:20.10",
-     "t1": "2:21.90",
-     "view": "back"
-    }
-   ],
-   "from": "run",
-   "to": "idle"
-  },
-  {
-   "name": "runStopL",
-   "title": "Run to stop (left foot forward)",
-   "src": "move 2:02-2:29",
-   "kind": "oneshot",
-   "fps": 30,
-   "search": 0.4,
-   "takes": [
-    {
      "t0": "2:04.30",
      "t1": "2:06.10",
      "view": "right"
@@ -1743,7 +1721,353 @@
     }
    ],
    "from": "run",
-   "to": "idle"
+   "to": "idle",
+   "pose_keys": [
+    {
+     "f": 0,
+     "joint": "upperArmR",
+     "dir": [
+      -0.243,
+      -0.473,
+      -0.847
+     ],
+     "blend": 3
+    },
+    {
+     "f": 0,
+     "joint": "foreArmR",
+     "dir": [
+      0.196,
+      -0.845,
+      0.497
+     ],
+     "blend": 3
+    },
+    {
+     "f": 0,
+     "joint": "upperArmL",
+     "dir": [
+      0.243,
+      -0.967,
+      0.082
+     ],
+     "blend": 3
+    },
+    {
+     "f": 0,
+     "joint": "foreArmL",
+     "dir": [
+      -0.196,
+      -0.527,
+      0.827
+     ],
+     "blend": 3
+    },
+    {
+     "f": 3,
+     "joint": "upperArmR",
+     "dir": [
+      -0.243,
+      -0.686,
+      -0.686
+     ],
+     "blend": 3
+    },
+    {
+     "f": 3,
+     "joint": "foreArmR",
+     "dir": [
+      0.196,
+      -0.783,
+      0.59
+     ],
+     "blend": 3
+    },
+    {
+     "f": 3,
+     "joint": "upperArmL",
+     "dir": [
+      0.243,
+      -0.952,
+      -0.185
+     ],
+     "blend": 3
+    },
+    {
+     "f": 3,
+     "joint": "foreArmL",
+     "dir": [
+      -0.196,
+      -0.617,
+      0.762
+     ],
+     "blend": 3
+    },
+    {
+     "f": 6,
+     "joint": "upperArmR",
+     "dir": [
+      -0.243,
+      -0.916,
+      -0.319
+     ],
+     "blend": 3
+    },
+    {
+     "f": 6,
+     "joint": "foreArmR",
+     "dir": [
+      0.196,
+      -0.661,
+      0.724
+     ],
+     "blend": 3
+    },
+    {
+     "f": 6,
+     "joint": "upperArmL",
+     "dir": [
+      0.243,
+      -0.777,
+      -0.581
+     ],
+     "blend": 3
+    },
+    {
+     "f": 6,
+     "joint": "foreArmL",
+     "dir": [
+      -0.196,
+      -0.747,
+      0.635
+     ],
+     "blend": 3
+    },
+    {
+     "f": 9,
+     "joint": "upperArmR",
+     "dir": [
+      -0.243,
+      -0.97,
+      0.024
+     ],
+     "blend": 3
+    },
+    {
+     "f": 9,
+     "joint": "foreArmR",
+     "dir": [
+      0.196,
+      -0.547,
+      0.814
+     ],
+     "blend": 3
+    },
+    {
+     "f": 9,
+     "joint": "upperArmL",
+     "dir": [
+      0.243,
+      -0.522,
+      -0.818
+     ],
+     "blend": 3
+    },
+    {
+     "f": 9,
+     "joint": "foreArmL",
+     "dir": [
+      -0.196,
+      -0.833,
+      0.518
+     ],
+     "blend": 3
+    }
+   ]
+  },
+  {
+   "name": "runStopL",
+   "title": "Run to stop (left foot forward)",
+   "src": "move 2:02-2:29",
+   "kind": "oneshot",
+   "fps": 30,
+   "search": 0.4,
+   "takes": [
+    {
+     "t0": "2:07.50",
+     "t1": "2:09.30",
+     "view": "right"
+    },
+    {
+     "t0": "2:20.10",
+     "t1": "2:21.90",
+     "view": "back"
+    }
+   ],
+   "from": "run",
+   "to": "idle",
+   "pose_keys": [
+    {
+     "f": 0,
+     "joint": "upperArmR",
+     "dir": [
+      -0.243,
+      -0.473,
+      -0.847
+     ],
+     "blend": 3
+    },
+    {
+     "f": 0,
+     "joint": "foreArmR",
+     "dir": [
+      0.196,
+      -0.845,
+      0.497
+     ],
+     "blend": 3
+    },
+    {
+     "f": 0,
+     "joint": "upperArmL",
+     "dir": [
+      0.243,
+      -0.967,
+      0.082
+     ],
+     "blend": 3
+    },
+    {
+     "f": 0,
+     "joint": "foreArmL",
+     "dir": [
+      -0.196,
+      -0.527,
+      0.827
+     ],
+     "blend": 3
+    },
+    {
+     "f": 3,
+     "joint": "upperArmR",
+     "dir": [
+      -0.243,
+      -0.686,
+      -0.686
+     ],
+     "blend": 3
+    },
+    {
+     "f": 3,
+     "joint": "foreArmR",
+     "dir": [
+      0.196,
+      -0.783,
+      0.59
+     ],
+     "blend": 3
+    },
+    {
+     "f": 3,
+     "joint": "upperArmL",
+     "dir": [
+      0.243,
+      -0.952,
+      -0.185
+     ],
+     "blend": 3
+    },
+    {
+     "f": 3,
+     "joint": "foreArmL",
+     "dir": [
+      -0.196,
+      -0.617,
+      0.762
+     ],
+     "blend": 3
+    },
+    {
+     "f": 6,
+     "joint": "upperArmR",
+     "dir": [
+      -0.243,
+      -0.916,
+      -0.319
+     ],
+     "blend": 3
+    },
+    {
+     "f": 6,
+     "joint": "foreArmR",
+     "dir": [
+      0.196,
+      -0.661,
+      0.724
+     ],
+     "blend": 3
+    },
+    {
+     "f": 6,
+     "joint": "upperArmL",
+     "dir": [
+      0.243,
+      -0.777,
+      -0.581
+     ],
+     "blend": 3
+    },
+    {
+     "f": 6,
+     "joint": "foreArmL",
+     "dir": [
+      -0.196,
+      -0.747,
+      0.635
+     ],
+     "blend": 3
+    },
+    {
+     "f": 9,
+     "joint": "upperArmR",
+     "dir": [
+      -0.243,
+      -0.97,
+      0.024
+     ],
+     "blend": 3
+    },
+    {
+     "f": 9,
+     "joint": "foreArmR",
+     "dir": [
+      0.196,
+      -0.547,
+      0.814
+     ],
+     "blend": 3
+    },
+    {
+     "f": 9,
+     "joint": "upperArmL",
+     "dir": [
+      0.243,
+      -0.522,
+      -0.818
+     ],
+     "blend": 3
+    },
+    {
+     "f": 9,
+     "joint": "foreArmL",
+     "dir": [
+      -0.196,
+      -0.833,
+      0.518
+     ],
+     "blend": 3
+    }
+   ]
   },
   {
    "name": "runPivot",
