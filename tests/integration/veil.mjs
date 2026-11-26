@@ -356,7 +356,7 @@ function answer(G, how, name = null) {
   G.ans = { at: 0, done: false };
   G.watch = (n, e) => {
     if (n !== 'combat:flash' || e?.source !== 'dragon' || (name && e.attack !== name) || G.ans.done || G.ans.at) return;
-    const lead = { parry: 0.15, perfect: 0.04, dodge: 0.08, early: 0.45 }[how];
+    const lead = { parry: 0.25, perfect: 0.04, dodge: 0.08, early: 0.45 }[how]; // (ADR-227: an ordinary parry is pressed 0.20 - 0.22 s before the impact; the press registers a frame later, the impact ~0.25 s after the flash)
     if (lead !== undefined) G.ans.at = game.time + TUNING.flashLead - lead;
   };
   return () => {
@@ -573,7 +573,7 @@ async function scenarioBarrier() {
       blowAnd(G, 'flick', 'parry');
       seen.push(d.barrier.up ? d.barrier.cracks : 'open');
     }
-    assert(seen.join(',') === [...Array.from({ length: B.cracks - 1 }, (_, i) => i + 1), 'open'].join(',') && d.barrier.why === 'cracks' && Math.abs(d.barrier.openDur - B.openCracked[0]) < 1e-9, `ordinary parries crack it: ${seen.join(', ')}; open for ${d.barrier.openDur} s`);
+    assert(seen.join(',') === [...Array.from({ length: B.cracks - 1 }, (_, i) => i + 1), 'open'].join(',') && d.barrier.why === 'cracks' && Math.abs(d.barrier.openDur - B.openCracked[0]) < 1e-9, `ordinary parries crack it: ${seen.join(', ')}; open for ${d.barrier.openDur} s (${d.barrier.why}; ${JSON.stringify(d.barrier.stats.opens)})`);
     run(G, B.openCracked[0] + 0.5);
     d.barrier.crack();
     run(G, B.crackFade + 0.5);
@@ -1834,7 +1834,7 @@ function trRun(G, name, hows, { dist = 8, max = 10, god = false, ang = 0 } = {})
     if (n !== 'combat:flash') return;
     const i = flashes.length, how = hows[Math.min(i, hows.length - 1)];
     flashes.push({ t: game.time, tell: e.tell, hazard: !!e.hazard, x: e.x, z: e.z });
-    const lead = { parry: 0.15, perfect: 0.04, dodge: 0.1 }[how];
+    const lead = { parry: 0.25, perfect: 0.04, dodge: 0.1 }[how]; // (ADR-227: an ordinary parry 0.20 - 0.22 s before the impact; the press lands a frame later)
     if (lead !== undefined) due.push({ at: game.time + TUNING.flashLead - lead, how, x: e.x, z: e.z, hazard: !!e.hazard });
   };
   const hp0 = p.hp, h0 = G.hits.length, g0 = G.counts['player:guardOpen'] ?? 0;
