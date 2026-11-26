@@ -5,6 +5,19 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-26 — The tell mark over a boss through a blue / red windup (ADR-224; branch `claude/combat-tell-mark-cc1cd5`)
+
+**Owner's ask** (through the session that started this one): every boss's blue and red attacks clearly
+announced; of the options they picked a mark over the boss and held windup poses. This session: the mark only
+(the poses are other sessions'). **What:** `combat/tellMark.js` on `combat:tell` (main.js init + update after
+the stamp), three looks in the fire field (`?tellMark=bang|chevron|diamond|off`, Lab `tellMark`), `clone: true`
+on Wen Yao's copies' cue. Found on the way: a duelist's head world point projects onto his drawn chest (the
+lean): the anchor goes through `drawnPoint`; a mark ending at `impact - 0.3 x T` overlapped the glint on short
+windups: it now ends 0.36 s before the impact (before every boss's cue), min 0.2 s. **Checked:** `tellmark`, duel
+`win` (7 of 20 windups marked, none missed, none wrong). Sheets at 1080p (Shen Hui, the wyrm, Halcyon in flight,
+Wen Yao's copies) and on the phone, and a film strip through Piercing Ash, sent to the owner. **Next:** the
+owner's pick as the default; their read on the iPhone. **Open:** a together pack (A Thousand at Once) sends one
+cue, so only its first self is marked.
 ## 2026-11-26 — The lite world on a phone at AUTO's floor (ADR-216; branch `render/phone-lite`)
 
 **Owner:** the BENCH from their iPhone (fox: the world pass 11.8 of 13.3 ms; half the pixels only 32 % less);

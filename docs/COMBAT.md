@@ -234,6 +234,23 @@ normal animation only (no cue sound: the    a white cross on the letter grid (no
 hazard the ground heats up from its spawn     its edge shows, the heat flares, a warm light
        audio: a lighter hazard cue           no screen-edge flash
 ```
+- **The tell mark (2026-11-26, ADR-224; `combat/tellMark.js`, `?tellMark=bang|chevron|diamond|off`).** The
+  owner asked that every boss's blue and red blows be clearly announced; of the ways offered they picked a mark
+  over the boss and a held windup pose (the poses are each boss's own work). From the START of the windup of a
+  blue, red or black blow (`combat:tell`) a short mark stands over the head of the one who throws it: the boss,
+  or a paper copy of Wen Yao's (it rides the copy). It says WHAT the answer is; the glint / flare still says
+  WHEN. The count is the answer and the colour says it again: ONE mark = parry (blue), TWO = dodge (red; black,
+  a charged blow, is a dodge too, in the black flare's violet). White blows have none, and nor does anything
+  that lands away from the boss (hazards, bullets, the brood, the world's falling pieces: they warn on the
+  ground). It is gone `TELL_MARK.lead` (0.36 s) before the impact, so before every boss's glint / flare
+  (`flashLead` 0.26 - 0.35); a windup too short for that keeps it 0.2 s, or 60 % of its time, and it is always
+  gone before the impact. A stagger, a posture break, a death or a reset drops it. Game time: slow motion
+  stretches it with the blow. **It changes no timing, window or rule** (it only listens). Over a head near the
+  frame's edge it is moved inside the frame. Looks: `bang` `!` / `!!`, `chevron` one / two `V` pointing down,
+  `diamond` one / two rings round a hot heart (STYLE.md "The tell mark"). Checked by `npm test`: `tellmark`
+  (the drawing of every look, the rules) and every boss suite's bot fight (`win`: each blue / red / black
+  windup raised the mark, no white one or hazard did, every mark gone before its impact and, with room, before
+  the cue; on the fox, a paper copy's blow marks the copy).
 - **The flare (ADR-118; owner: "exactly like Phantom Blade Zero ... a red flash to give you a
   tell/sign to dodge at that exact moment").** The cue of a moment is one wide streak of light
   through the striking part, across the screen, with a white-hot heart: a row of `-` strokes written

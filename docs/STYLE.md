@@ -1077,6 +1077,24 @@ The looks are behind switches (the table above); the owner has not picked any of
   strands wound round it and forks that die in the air: one stroke per segment, laid along it on
   screen and stretched to its length (`LordFx._stroke`).
 
+### The tell mark (2026-11-26, ADR-224; `combat/tellMark.js`, `?tellMark=`)
+A short mark over a boss's head through the windup of a blue / red / black blow (COMBAT.md "Tell
+presentation"). It is a timing cue, so it is heat in the fire field, written the impact stamp's way:
+steel, one blob per letter cell snapped to the cell's centre (a column prints `|`, a diagonal `/` `\`, a
+hot cell a white digit), re-drawn every frame with one copy alive, dyed in the flare's own colour
+(`TELL_STYLE[tell].flare.tint`: blue, red, the black flare's violet) on black cells (`fireField.tint`,
+`dark` 1, zone ids 810001 +), never printed over the hero, never below 0.7 m. Its size is whole cells (the
+wyrm's x 1.5), so it reads the same at 720p, 1080p and on a phone. No screen tint, no sprite, no HUD text.
+- **Where:** `gap` (2) cells over the top of the head sphere as the boss is DRAWN (`dragon.drawnPoint`:
+  the duelists are leaned up the screen and scaled; a head's world point projects onto his chest), pulled
+  1.5 m toward the camera; a paper copy's over its own chest sphere; moved inside the frame (3 % / 4 %).
+- **The looks** (one = parry, two = dodge): `bang` a column of `|` over a gap and a hot digit (`!`, `!!`);
+  `chevron` a `V` of `\` `/` to a hot tip pointing down at him (two stacked); `diamond` a small diamond of
+  strokes round a hot heart (a dodge rings it with a wider, dimmer one). It appears at full (one cell taller
+  for its first 0.06 s), grows a little hotter toward its end and dims over its last 0.08 s.
+- **Heat:** strokes 0.95 (+0.12 by its end), the heart 1.24 (a white digit), the outer ring 0.7. The bloom
+  stays small at these; hotter strokes glowed into bars.
+
 ### The duelists' effects (2026-11-16, ADR-122)
 The two human bosses' second pass redrew what they do in the house style: everything that strikes,
 burns, glows or breaks as a body is heat in the fire field, in the small letters; glyph particles

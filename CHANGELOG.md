@@ -4,7 +4,11 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and ten pieces of work since 0.4.0:
+One hundred and eleven pieces of work since 0.4.0:
+- **A mark over the boss before a blow you must parry or dodge** (2026-11-26, ADR-224). *Added:* from the start of
+  every boss's blue or red windup, a short mark of the game's own letters stands over his head (or over the paper
+  copy that throws it): one mark means parry, two mean dodge, in blue or red. It is gone before the blow's own
+  flash, which still says when. Three looks to choose from (`?tellMark=bang|chevron|diamond`, `off` for none).
 - **A lighter world on phones that need it** (2026-11-26, ADR-216). *Changed:* on a phone that still drops frames at the
   lowest resolution, the ground's extras (ridge strokes, drifting cloud shadows, contact shadows, the floor ripple)
   turn off and the stone floors' relief is drawn more simply, for the rest of the visit. `?lite=0` keeps the full

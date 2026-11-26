@@ -189,6 +189,13 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.93 — The tell mark: a mark over the boss through a blue / red windup (2026-11-26, `claude/combat-tell-mark`, ADR-224)
+- [x] One module for every boss (`combat/tellMark.js`) on `combat:tell`: the wyrm, the seven duelists, Wen Yao's paper copies, Halcyon in the air
+- [x] Three looks in the fire field's letters (`?tellMark=bang|chevron|diamond|off`, Lab button), rendered at 1080p and on the phone
+- [x] Tests: `tellmark` and every boss suite's bot fight
+- [ ] The owner's pick as the default
+- [ ] The owner's read of it on the iPhone in play
+
 ## M1.92 — The melee animation engine: boss blows from reference footage (2026-11-26, `enemies/fists-ref`, ADR-208)
 - [x] `scripts/mocap` on `main` as a tool; `scripts/mocap/duelist/fit.mjs` fits a clip onto a duelist's blows (`--check` through the real animator); the guide
 - [x] Tian Lei from the bare-handed film, shown behind `?fists=ref`: turned down by the owner (stiff arms; the lunges and feet); not merged

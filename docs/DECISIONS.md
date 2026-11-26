@@ -6398,4 +6398,26 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   (the sheets' runs gave 31 - 34 % less; this machine was shared and noisy). The picture with it on matches the
   sheet's C in the same page (474 of 580 000 pixels differ, from the relief alone). The look changes once, when
   it turns on, mid-page (one frame). Not measured on the phone; the next `?perf` BENCH there says how much.
+## ADR-224 — The tell mark: a mark over a boss's head through a blue / red windup (2026-11-26)
+
+- **Context:** the owner wants every boss's blue (parry) and red (dodge) blows clearly announced. Until now a
+  windup was read from the boss's body alone and cued at its instant by the glint / the flare (ADR-118: "no
+  HUD text, icons or rings"). Asked how, they picked two things: a mark over the boss at the windup's start,
+  and a readable held windup pose per blue / red blow. The poses are each boss's own work (other sessions);
+  this is the mark, one system for the wyrm and all seven human bosses.
+- **Decision:** `combat/tellMark.js` listens to the cue every attacker already sends at a windup's start,
+  `combat:tell` (no new event), and prints a short mark over the head of whoever throws the blow (the boss,
+  or one of Wen Yao's paper copies: their cue now carries `clone: true`). It is heat in the fire field (a
+  timing cue is a body of light in the house style), steel written cell by cell like the impact stamp, dyed
+  in the flare's own colour on black. ONE mark = parry, TWO = dodge (black, a charged blow, is a dodge, in
+  violet). Gone 0.36 s before the impact, so before every boss's glint / flare: the mark says WHAT, the cue
+  says WHEN. Never on a white blow or on anything that lands away from the boss. Three looks for the owner to
+  pick (`?tellMark=bang|chevron|diamond|off`, a Lab button); their pick is the default, the rest stay behind
+  the switch.
+- **Consequences:** the first world-anchored cue that shows before the instant to act; it narrows ADR-118's
+  "nothing shows through the windup" for blue / red / black blows only, at the owner's request. It changes no
+  timing, window or rule (it only listens; the suites' bot fights pass unchanged with it attached). A few
+  dozen blobs a frame at most while a mark stands, one of the fire field's two tint zones. Every boss suite's
+  `win` checks each blue / red / black windup raised the mark and no white one or hazard did. Not measured:
+  whether players answer better with it (no bot reads it), and how it reads on the owner's iPhone in play.
 

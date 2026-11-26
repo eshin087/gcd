@@ -550,6 +550,20 @@ Render helpers for creature modules:
     thrower: never the flare (red: the ragged blaze, `TELL_BLAZE`). `charge(x, y, z, u, dt, k)`: a
     black blow's windup, called every frame of it (`TELL_CHARGE`). `DragonFx.tellFlash` / `charge`
     forward to a `DuelFx` it owns (`this.tells`, k 1.5) and age its glints and flares in `update`.
+  - **The tell mark** (ADR-224; `combat/tellMark.js`, one module for every boss): `tellMarkInit(game)`
+    (main.js, once) subscribes to `combat:tell` and raises a mark for a boss's own blue / red / black
+    blow (`marksTell(e)`: `source 'dragon'`, not `hazard` / `bullet` / `brood`), and drops every mark on
+    `dragon:stagger` / `dragon:postureBreak` / `dragon:death` / `game:retry` and a `state` change to the
+    title / dead / victory / a fresh explore. `tellMarkUpdate(game, dt, fxDt)` (main.js `simulateWorld`,
+    after `stampUpdate`): ages the marks in GAME time and draws them (fire field, one copy alive). It
+    reads `game.dragon.hurtSpheres` (the highest `part 'head'`), `dragon.drawnPoint(v)` (where a point
+    is drawn), `dragon.rig.pt.head` (only to tell the wyrm, k 1.5), `dragon.lean` / `drawScale` and
+    `dragon.clones.list` (Wen Yao's copies: a `clone: true` tell marks the self nearest its x / z, over
+    `hs[0]`). Also `tellMarkRaise(game, e)`, `tellMarkClear()`, `tellMarks()`, `markEnd(impactIn)`
+    (`max(T - lead, min(T x 0.6, 0.2))`: before the cue when it can, always before the impact),
+    `markCount(tell)`, `TELL_MARK` (the numbers), `TELL_MARK_LAST` (the last one: tell, look, end, counts,
+    where it stood), `TELL_MARK_LOOKS`, `tellMarkLook()` / `setTellMarkLook(k)` (`?tellMark=`, the Lab's
+    `tellMark` button; read when a mark is raised). It writes nothing a fight reads.
 - **Text effects** (ADR-113):
   - *Heat haze*: ASCII pass uniforms `uHaze`, `uHazeRoll`, `uTime`; `hazeCell()` runs for wyrm and
     prop cells only while `uFlame.z > 0.5` (six nearest reads of the flame texture, then). The colour
@@ -6213,7 +6227,8 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
 - `combat:tell {source:'dragon', attack, tell, impactIn, x, z, flare}` (windup start, per hit, so once per hit of a
   string; x/z = the striking part; impactIn is a first estimate in game seconds; tell: normal / blue / red /
   black; flare: the blow is a moment, cued by the flare: every red and black blow, a blue one marked so in its
-  data, ADR-118),
+  data, ADR-118; `clone: true` on a cue of one of Wen Yao's paper copies, clones.js: the tell mark rides
+  the copy, ADR-224),
   `combat:flash {source:'dragon', attack, tell, x, y, z, perilous, flare}` (~0.35 s before impact — the **authoritative**
   timing cue: moving targets (charge, fireball) and hazard-dealt blows re-time it after the tell; perilous:
   a duelist's mikiri thrust, roll into it; flare as above: the HUD flashes the screen edge in the flare's colour;
