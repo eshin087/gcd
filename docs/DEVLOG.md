@@ -56,6 +56,34 @@ was 14° from the new dodge spot, the search complete) are measured as ADR-206 s
 steel look set (`?lights=steel`, unmerged) has its own stand: when it lands it keeps it (its own hook in `stand()`).
 
 ---
+
+## 2026-11-25 — AUTO quality: the resolution follows the frame time; a 60 fps cap on touch (ADR-200; branch `render/auto-quality`)
+
+**Task** (the next item of M1.89, from the perf review's session): automatic quality so "60 fps on every device" is
+reachable; the owner picks the floor from rendered steps.
+
+**What changed.**
+- `render/autoQuality.js`: `AutoQuality` (the decision, pure), `gpuTimer(gl)`, `FramePacer` (the cap), the URL
+  switches, `qualityLabel`, `fpsCapOn`; numbers in `CONFIG.autoQuality` / `CONFIG.fpsCap`.
+- `main.js`: `applyQuality` takes the AUTO step's scale / shadow / grass; the loop times each drawn frame's script and
+  GPU, feeds the controller (`autoStep`), and first times 11 title frames (after 20 warm ones) for a guess; the cap
+  skips refreshes before anything runs.
+- `flow.cycleQuality`: AUTO → LOW → MEDIUM → HIGH → AUTO; `flow.toggleFpsCap`; the pause menu's 60 FPS CAP; the fps
+  readout and the menu show `AUTO 1.25x`; touch keeps its LOW default only with AUTO off.
+- Tests: new suite `autoq` (in `npm test`).
+
+**Measured** (RTX 4090 / i9, headless Edge): a step costs 2 - 9 ms in `setSize` + 5 - 19 ms on the next frame. The
+first guess read 10 ms on the 4090 with 2 warm frames (the first frames after the load are slow), 3.0 ms with 20
+(steady state 3.1). Live: a GPU load in proportion to the pixels at 2x (30 fps) → 1.5x → 1.25x (68 - 77 fps) in 7 s,
+back up on the title once removed, no step up in a fight; CPU throttled 8x: no step. The trace tests caught a
+vsync trap (33 and 23 ms of GPU both read 30 fps) that undid good steps: fixed (ADR-200).
+
+**Decided.** The owner picked the 1x floor from the sheets of every step (the wyrm fight, Ashfall's paving, the phone;
+`.claude/autoq-review/`): below 1x the letters get fewer and bigger, so AUTO trades only crispness.
+
+**Open.** Not measured: any weak GPU or phone, a step's
+hitch there, the GPU timer's presence on the owner's laptop and on iOS (Safari has none: the probe path).
+
 ## 2026-11-25 — Local test runs go easy on the PC (ADR-205; branch `test/local-load-cap`)
 
 **Owner:** the PC ran at 100% CPU from agents' test runs; make future gcdAbyss agents close what they no
