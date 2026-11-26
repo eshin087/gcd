@@ -610,7 +610,7 @@ async function scenarioBarrier() {
 
 // ================================================================== scenario: weight (R2)
 async function scenarioWeight() {
-  out('\n== scenario WEIGHT (every landed blow throws; a block slides >= 3 m and costs no health; three blocks break the guard) ==');
+  out('\n== scenario WEIGHT (every landed blow throws; a block slides >= 3 m and costs no health; two blocks in a row break the guard) ==');
   const G = build();
   const d = G.game.dragon, p = G.game.player;
   duel(G, { dist: 2 });
@@ -640,8 +640,8 @@ async function scenarioWeight() {
   out(`   blocks: ${blocks.map((b) => `slid ${b.slid.toFixed(2)} m, guard -${b.cost.toFixed(0)}, hp -${b.dhp}`).join(' · ')}`);
   assert(blocks.every((b) => b.dhp === 0), 'a block never costs health');
   assert(blocks.slice(0, 2).every((b) => b.slid >= 3 - 0.05), `a blocked blow slides him >= 3 m (${blocks.map((b) => b.slid.toFixed(2)).join(', ')})`);
-  assert(blocks.every((b) => b.cost >= 0.38 * 100), `each block takes ~40 % of the meter (${blocks.map((b) => b.cost.toFixed(0)).join(', ')})`);
-  // three in a row (a string: inside the meter's regen delay) break the guard
+  assert(blocks.every((b) => b.cost >= TUNING.wjWeight.guardCost * 100 - 2), `each block takes ${TUNING.wjWeight.guardCost * 100} % of the meter (${blocks.map((b) => b.cost.toFixed(0)).join(', ')})`);
+  // two in a row (a string: inside the meter's regen delay) break the guard (the tuning pass: guardCost 0.5; three at 0.4)
   p.guard = 100;
   broke = false;
   G.watch = (n, e) => w(n, e);
@@ -656,7 +656,7 @@ async function scenarioWeight() {
   }
   G.watch = null;
   G.input.up(1);
-  assert(broke && gs[2] === 0, `three blocked blows in a row break the guard (meter ${gs.join(' -> ')})`);
+  assert(broke && gs[1] === 0, `two blocked blows in a row break the guard (meter ${gs.join(' -> ')})`);
 }
 
 // ================================================================== scenario: crash (R3)
