@@ -104,6 +104,7 @@ def build_clip(spec, clip, log=print):
             folded.append(fuse.fold(bs, P, 0.0, n, takes.FPS))
             fvis.append(fuse.fold(T.l2[:, :, 3:4], P, 0.0, n, takes.FPS)[:, :, 0] if vw else None)
         # align every fold to the first (circular), then fuse
+        fvis = [limb_w(T, V, n) for T, V in zip(Ts, fvis)]
         parts = [(folded[0], Ts[0].wax, None, fvis[0])]
         B.shift = [0]
         for T, F, V in zip(Ts[1:], folded[1:], fvis[1:]):
@@ -130,7 +131,13 @@ def build_clip(spec, clip, log=print):
         B.loo = leave_one_out(parts, Ts, mapping)
         b = fused
         if clip.get('symmetric'):
-            b = fuse.symmetrize(b, float(clip.get('symmetric')))
+            sv = None
+            if clip.get('sym_vis'):
+                # the folded visibility of every take, aligned and weighted like the fusion
+                vv = [fuse.fold(T.l2[:, :, 3:4], P, 0.0, n, takes.FPS)[:, :, 0] for T in Ts]
+                vv = [np.roll(V, -s_, 0) for V, s_ in zip(vv, B.shift)]
+                sv = np.max(vv, 0)
+            b = fuse.symmetrize(b, float(clip.get('symmetric')), clip.get('sym_parts'), sv)
         sig = 1.0
         b = retarget.smooth_time(b, sig, loop=True)
     else:
@@ -138,7 +145,7 @@ def build_clip(spec, clip, log=print):
         Ts = [_take(spec, clip, clip['takes'][0], log=log)]
         ref = Ts[0]
         vw = bool(clip.get('vis_weight'))
-        parts = [(ref.b, ref.wax, fuse.validity(ref.gap), ref.l2[:, :, 3] if vw else None)]
+        parts = [(ref.b, ref.wax, fuse.validity(ref.gap), limb_w(ref, ref.l2[:, :, 3] if vw else None, len(ref.b)))]
         B.offsets = [0]
         checks = []  # spec take "check": true: aligned and drawn on the sheet, never fused
         for tk in clip['takes'][1:]:
@@ -165,7 +172,7 @@ def build_clip(spec, clip, log=print):
             seg = T.b[ic]
             val = fuse.validity(T.gap[ic]) * inside
             Ts.append(T)
-            parts.append((seg, T.wax, val, T.l2[ic, :, 3] if vw else None))
+            parts.append((seg, T.wax, val, limb_w(T, T.l2[ic, :, 3] if vw else None, len(ic))))
             B.offsets.append(s)
             log('  %s: aligned %+.3f s from its given start (cost %.4f)' % (T.name, T.t[s] - cfg.parse_time(tk['t0']), cost))
 
@@ -407,6 +414,20 @@ def build_clip(spec, clip, log=print):
         for ev in clip.get('events', []):
             B.events.append({'f': int(round((cfg.parse_time(ev['t']) - t0) * fps)), 'name': ev['name']})
     return B, Ts
+
+
+def limb_w(T, V, n):
+    """take "limb_weight": {"armL": 0.1, "armR": 1, "legs": 0.5, ...}: those landmark groups count this much
+    in the fusion (an arm's bend from the view that sees it side-on; groups as fuse.GROUPS). Multiplies the
+    visibility weights (vis_weight) when both are on; None when neither is given (the fusion as before)"""
+    lw = (T.spec or {}).get('limb_weight') if hasattr(T, 'spec') else None
+    if not lw:
+        return V
+    w = np.ones(33)
+    for nm, v in lw.items():
+        w[fuse.GROUPS[nm]] = float(v)
+    base = np.ones((n, 33)) if V is None else V
+    return base * w[None]
 
 
 def key_protect(B, n):
