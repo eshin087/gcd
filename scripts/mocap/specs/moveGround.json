@@ -1,8 +1,8 @@
 {
- "set": "moveBasic",
- "title": "Movement: the basics",
+ "set": "moveGround",
+ "title": "Movement: idle, walk, run, sprint, stops and pivots",
  "film": "move",
- "out": "src/entities/hero2/clips/moveBasic.js",
+ "out": "src/entities/hero2/clips/moveGround.js",
  "clips": [
   {
    "name": "idle",

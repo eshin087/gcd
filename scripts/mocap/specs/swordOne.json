@@ -1,8 +1,8 @@
 {
- "set": "swordBasic",
- "title": "One-handed sword: the basics",
+ "set": "swordOne",
+ "title": "One-handed sword: stance, light, heavy, charged and running attacks",
  "film": "sword",
- "out": "src/entities/hero2/clips/swordBasic.js",
+ "out": "src/entities/hero2/clips/swordOne.js",
  "clips": [
   {
    "name": "swordIdle",
