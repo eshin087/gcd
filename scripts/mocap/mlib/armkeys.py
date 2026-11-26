@@ -135,6 +135,49 @@ def picture_fit(T, lost=None):
     return S, Tr
 
 
+OURS = {'elbow': HDIM['upperArm'], 'wrist': HDIM['foreArm'], 'knee': HDIM['thigh'], 'ankle': HDIM['shin']}
+
+
+def zoom_fix(T, S, Tr, tor, lost=None):
+    """the picture scale per frame where the camera ZOOMS: the take's cleaning drops a zoomed frame as an
+    odd size and interpolates it from its unzoomed neighbours, so its fitted scale is wrong for keys read off
+    that very frame (heavy2, charge2: blades of 1.5-1.8 m; a key in a drop span: 5.6 m). Every cached frame of
+    the span (odd ones too) gives his torso's picture length and pelvis; where that scale differs from the
+    fit by more than 15 %, it wins (and the pelvis sets the shift). Returns S, Tr, frames changed"""
+    from . import track
+    c = track.load_cache(T.film, T.t[0], T.t[-1])
+    ts = sorted(t for t, v in c.items() if v[3])
+    if len(ts) < 2 or tor <= 0:
+        return S, Tr, 0
+    L = np.array([c[t][1] for t in ts])
+    pel = (L[:, 23, :2] + L[:, 24, :2]) / 2
+    tp = np.linalg.norm((L[:, 11, :2] + L[:, 12, :2]) / 2 - pel, axis=1)
+    ts = np.array(ts)
+    near = np.abs(T.t[:, None] - ts[None]).min(1) < 0.02
+    St = np.interp(T.t, ts, tp) / tor
+    bad = near & (np.abs(St / np.maximum(S, 1e-9) - 1) > 0.15)
+    if lost is not None:
+        bad &= ~lost[:, [11, 12, 23, 24]].any(1)  # a torso the spec says the tracker lost is no measure
+    if not bad.any():
+        return S, Tr, 0
+    S, Tr = S.copy(), Tr.copy()
+    S[bad] = St[bad]
+    Tr[bad, 0] = np.interp(T.t[bad], ts, pel[:, 0])
+    Tr[bad, 1] = np.interp(T.t[bad], ts, pel[:, 1])
+    return S, Tr, int(bad.sum())
+
+
+def _cap_len(xy, base, L, w):
+    """a keyed point whose picture offset from its parent is longer than the bone (a zoom, a misread) is
+    pulled in to the bone's length along the same picture direction"""
+    d = xy - base
+    ln = np.linalg.norm(d, axis=1)
+    over = (ln > L) & (w > 0)
+    xy = xy.copy()
+    xy[over] = base[over] + d[over] / ln[over, None] * L
+    return xy, int(over.sum())
+
+
 def _interp_keys(T, keys, blend):
     """per keyed name: (pixel positions on T.t (n, 2), weight (n,)); and the hint signs per name (n,)"""
     n = len(T.t)
@@ -226,6 +269,8 @@ def apply(T, tk, log=print):
     gt = good[:, [11, 12, 23, 24]].all(1)
     tor = np.median(np.linalg.norm((rel[gt, 11] + rel[gt, 12]) / 2 - (rel[gt, 23] + rel[gt, 24]) / 2, axis=1)) if gt.any() else 0.5
     k_m = tor / TORSO_M
+    zf = bool(tk.get('zoom_fix'))  # take "zoom_fix": true (opt-in: it changes the depths a take's hints were set for)
+    S, Tr, nz = zoom_fix(T, S, Tr, tor, lost) if zf else (S, Tr, 0)
     # lost points: bridged in 3D and in the picture from the frames round each span
     if lost.any():
         rel = _bridge(rel, lost)
@@ -242,6 +287,7 @@ def apply(T, tk, log=print):
 
     zt = smooth_time(rel[:, :, 2], 2.0)  # the depths (tracked or bridged), smoothed: roots and signs
     notes = []
+    long_n = 0
     for nm in ROOTS:
         if nm not in kp:
             continue
@@ -261,7 +307,13 @@ def apply(T, tk, log=print):
         L3 = np.median(np.linalg.norm(rel[ok if ok.any() else slice(None), cj] - rel[ok if ok.any() else slice(None), pj], axis=1))
         d2 = np.linalg.norm(xy - new[:, pj, :2], axis=1)
         full = w >= 0.999
+        Lref = max(L3, OURS.get(cn[:-1], 0) * k_m)  # the tracker under-reads an armoured arm: never cap below ours
         L = max(L3, float(d2[full].max()) * 1.02 if full.any() else L3)
+        if zf:
+            L = min(L, 1.15 * Lref)
+            xy, nl = _cap_len(xy, new[:, pj, :2], L, w)
+            d2 = np.linalg.norm(xy - new[:, pj, :2], axis=1)
+            long_n += nl
         mag = np.sqrt(np.maximum(L * L - d2 * d2, 0))
         dz = _signed_depth(mag, L, zt[:, cj] - zt[:, pj], hints[cn], w)
         new[:, cj, :2] = rel[:, cj, :2] * (1 - w[:, None]) + xy * w[:, None]
@@ -284,7 +336,13 @@ def apply(T, tk, log=print):
         hz = new[:, 16, 2]  # the hilt at the sword wrist's depth
         d2 = np.linalg.norm(txy - hxy, axis=1)
         full = wt >= 0.999
-        L = max(HDIM['blade'] * k_m, float(d2[full].max()) * 1.02 if full.any() else 0)
+        Lb = HDIM['blade'] * k_m
+        L = max(Lb, float(d2[full].max()) * 1.02 if full.any() else 0)
+        if zf:
+            L = min(L, 1.15 * Lb)
+            txy, nl = _cap_len(txy, hxy, L, wt)
+            d2 = np.linalg.norm(txy - hxy, axis=1)
+            long_n += nl
         mag = np.sqrt(np.maximum(L * L - d2 * d2, 0))
         trk = new[:, 16, 2] - new[:, 14, 2]  # no tracked blade: the sword forearm's own sign
         dz = _signed_depth(mag, L, trk, hints['tip'], wt)
@@ -315,6 +373,10 @@ def apply(T, tk, log=print):
     T.ak = dict(W=W, S=S, Tr=Tr, pix=pix.copy(), k=k_m, tor=tor, lost=lost)
     T.solve_camera(T.spec.get('pitch'), T.spec_yaw, lambda s: None)
     msg = '  limb keys %s: ' % T.name
+    if nz:
+        msg += 'zoom: %d frames scaled by his torso in the picture; ' % nz
+    if long_n:
+        msg += '%d keyed bone frames longer than the bone in the picture (capped at 1.15x); ' % long_n
     if lost.any():
         msg += '%d frames lose points (%s); ' % (int(lost.any(1).sum()), ', '.join(sorted(set(
             lb for ls in tk.get('lose', []) for lb in ls.get('limbs', ['body'])))))

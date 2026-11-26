@@ -151,7 +151,14 @@ def world_rotations(b, blade=None, tumble=False, clip=None, bladeL=None, relax=N
         fo = b[:, wr] - b[:, el]
         rest_dir = k * X
         rest_h = np.cross(rest_dir, Z)
-        h = _held_hinge(_n(np.cross(up, fo)), _bend(up, fo), _n(np.cross(up, Z)))
+        if clip is not None and clip.get('hinge', 'held') == 'transport':
+            # spec "hinge": "transport" (default "held"): through a near-straight elbow the hinge is
+            # carried along the upper arm's turn from both sides and the roll spread over the straight frames
+            # (the held hinge's two directions averaged to a 70-degree roll of the arm in one frame: charge2)
+            from .bonekeys import hinge_path
+            h = hinge_path(_n(np.cross(up, fo)), _bend(up, fo), _n(up), _n(np.cross(up, Z)))
+        else:
+            h = _held_hinge(_n(np.cross(up, fo)), _bend(up, fo), _n(np.cross(up, Z)))
         R[:, JI['upperArm' + s]] = skel.frame_q(rest_dir, rest_h, up, h)
         R[:, JI['foreArm' + s]] = skel.frame_q(rest_dir, rest_h, fo, h)
         fing = _mid(b, pk, ix) - b[:, wr]
@@ -173,6 +180,11 @@ def world_rotations(b, blade=None, tumble=False, clip=None, bladeL=None, relax=N
                         q_ = sec[i - 1] - blade[i] * (blade[i] @ sec[i - 1])
                         sec[i] = q_ / max(np.linalg.norm(q_), 1e-9)
             R[:, JI['hand' + s]] = skel.frame_q(Z, rest_dir, blade, sec)
+            if clip is not None and clip.get('roll_dps', 1000.0):
+                # the hand's roll about the blade continuous (a blade that crosses the forearm's line flipped
+                # the hand 60-178 degrees in one frame); only steps over the limit are touched
+                from .bonekeys import roll_continuity
+                R[:, JI['hand' + s]] = roll_continuity(R[:, JI['hand' + s]], float(clip.get('roll_dps', 1000.0)) / clip.get('fps', 30))
         elif clip is not None and clip.get('free_hand'):
             R[:, JI['hand' + s]] = free_hand(b, s, R[:, JI['foreArm' + s]], clip['free_hand'])
         else:
@@ -366,6 +378,9 @@ def ground_and_contact(q, fps, loop=False, ground='feet', travel='free', log=pri
     else:
         # a one-shot: start from "the lower foot is planted", then planted = low and still over the ground
         contact = (g - g.min(1, keepdims=True)) < 0.03
+        # spec "lift_h" (m): the lower foot counts as a contact candidate only within this of its own floor
+        # (a keyed leap lifts both feet 0.02-0.25 m: the lower one stayed "planted"); default: no limit
+        lift = float(clip_opts.get('lift_h', 1e9))
         for it in range(3):
             vel = np.zeros((n, 2))
             for i in range(n):
@@ -375,7 +390,7 @@ def ground_and_contact(q, fps, loop=False, ground='feet', travel='free', log=pri
             vg = np.linalg.norm(vF + vroot[:, None], axis=2)
             sp = np.linalg.norm(vroot, axis=1)
             tol = 0.25 + 0.3 * sp
-            newc = (((g - lowf) < 0.05) | ((g - g.min(1, keepdims=True)) < 0.02)) & (vg < tol[:, None])
+            newc = (((g - lowf) < 0.05) | (((g - g.min(1, keepdims=True)) < 0.02) & ((g - lowf) < lift))) & (vg < tol[:, None])
             if ground != 'body':
                 none = ~newc.any(1)
                 k = np.argmin(g[none], 1)
