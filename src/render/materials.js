@@ -285,7 +285,7 @@ const SHARED = [
 // shared by surface-glyph materials only (declared in their own shader, not COMMON_GLSL)
 const SURFACE_SHARED = ['uArtSolid', 'uArtHeroEdge', 'uArtHeroKey'];
 // ... and by the hero's ink-line art source only (`heroArt`)
-const HERO_ART_SHARED = ['uCamRight', 'uCamUp', 'uArtHeroLight', 'uArtHeroRim', 'uArtHeroCel', 'uHeroSolid', 'uBossPrint'];
+const HERO_ART_SHARED = ['uCamRight', 'uCamUp', 'uArtHeroLight', 'uArtHeroRim', 'uArtHeroCel', 'uHeroSolid', 'uBossPrint', 'uBossHero'];
 
 /**
  * Geometry attributes required: position, normal, aCol (vec3 albedo, linear), aFlag (float),
@@ -597,6 +597,7 @@ export function createSurfaceGlyphMaterial(U, o = {}) {
       uniform float uArtSub;
       uniform float uArtPart;
       uniform vec4 uBossPrint;
+      uniform vec4 uBossHero;
       uniform vec3 uCamRight;
       uniform vec3 uCamUp;
       uniform vec4 uArtHeroLight;
@@ -997,6 +998,7 @@ export function createSurfaceGlyphMaterial(U, o = {}) {
         // dotted hem along a ragged line. The face, the eyes and what glows keep their own fill.
         vec3 artFill = uArtFill;
         float hemK = 0.0;
+        float bossCloth = 0.0;
 #ifndef SG_HERO_SELF
         if (uBossPrint.x > 0.5) {
           float pidB = floor(uArtPart * 0.5 + 0.25);
@@ -1014,10 +1016,25 @@ export function createSurfaceGlyphMaterial(U, o = {}) {
               vec3 lav = vec3(0.486, 0.459, 0.675);
               artFill = mix(artFill, mix(lav, lav * 0.55 + hueB * 0.189, uBossPrint.y), hemK);
             }
+            bossCloth = 1.0;
           }
         }
 #endif
         vec3 fillC = artFill * (uArtHeroLight.x + uArtHeroLight.y * kn + L * uArtHeroLight.z);
+#ifndef SG_HERO_SELF
+        // shaded like the hero (ADR-220, uBossHero.x; a boss's cloth / hair / plate only): his own colours
+        // and brightness where the key light (upper left) catches him and on his shoulders, falling off
+        // toward dark marks on the shadow side and down his body, as the hero's cloak does (a grey upper
+        // top over a dark body). The hem keeps its pale letters; his head and hat, the face, the eyes and
+        // what glows: untouched.
+        if (bossCloth > 0.5 && uBossHero.x > 0.0) {
+          float shLit = smoothstep(0.12, 0.62, kn);
+          float shUp = clamp((vW.y - uBossPrint.z - 0.55) / 1.0, 0.0, 1.0);
+          float shHead = smoothstep(1.45, 1.6, vW.y - uBossPrint.z); // (his head and what he wears on it: as they are)
+          float shK = max(max(shLit * mix(0.45, 1.0, shUp), hemK), shHead);
+          fillC *= mix(1.0 - 0.85 * uBossHero.x, 1.0, shK);
+        }
+#endif
 #ifdef SG_HERO_FOLDS
         // cloth folds (the reference's coat: dark fold streaks running down it between lit ridges):
         // bands across aGUV x that wander down y. The art pass prints a dark band as sparse letters

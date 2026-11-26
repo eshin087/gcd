@@ -76,6 +76,12 @@ export const PICKED = Object.freeze({
   sheathQuick: 'a', // Before the Word
   foxQuick: 'a', // Fox Snap, Fox Knee
   wyrmQuick: 'a', // Snap swipe
+  // drawn in the hero's style (the owner's picks, 2026-11-26, ADR-220; 0 each as he shipped)
+  ashHero: 'c', // Shen Hui: the hero's shading and his outline (a the shading, b the outline)
+  lordHero: 'c', // Varr Nihil: the hero's shading and his outline
+  sheathHero: 'c', // Lu Wusheng: the hero's shading and his outline
+  ascHero: 'a', // Tian Lei: the hero's shading (his lines are the hero's already: his letters follow his size)
+  halHero: 'a', // Halcyon: the hero's shading (likewise)
   // the title
   menu: 'c', // the sword's path: the worlds as fires along one line (the owner's pick, 2026-11-25, of three; 0 the title before; ADR-196)
 });

@@ -31,6 +31,38 @@ clearing's burn budget 9 -> 12.
 
 **Open.** Lu Wusheng's free hand in the scabbard cuts; the same foot ease for Shen Hui and Varr Nihil (their
 session).
+## 2026-11-26 — The bosses drawn in the hero's style: his shading and his outline (ADR-220; branch `claude/render-boss-hero-look-631f37`)
+
+**Ask.** Make Shen Hui, Varr Nihil, Tian Lei, Lu Wusheng and Halcyon look like the hero's ASCII art (the Cinder
+Wyrm, Wen Yao and Xin Yi out of scope).
+
+**Analysis** (the hero beside each boss at the game camera, 720p / 1440p / the phone, x4 crops): the bosses
+printed almost every cell as an equally bright dense letter (ADR-194's lift saturates the ramp), inside a 1 px
+line; the hero runs from a near-black core through grey shoulders to a lit lavender edge and the pale hem,
+inside a 2 px (1440p) chunky dotted line. Three bosses also use letters half his size from 1080p up; their
+skirts are slim.
+
+**Round 1, turned down.** Options a (his letter size, his dark cloak values in each boss's hue, the pale hem to
+the thigh) and b (a + skirts flared and torn): "i dont like any of these new bosses. i didnt mean make it the
+same color or cloth texture as the main character. i meant the style and engine look. for example, shen hui i
+like that his original hat has its own color and detailed ascii look". Asked which part of his look, they
+picked **his shading** and **his outlines and rim** (not his letter size).
+
+**Round 2, picked.** `?ashHero= / lordHero / ascHero / sheathHero / halHero = 0 | a | b | c`: a his shading
+(`U.uBossHero.x`: a boss's cloth light falls off away from the key light and down his body; colours, head and
+hat, face, hem kept), b his outline (`uBossLike.z`: the boss's ink lines at the hero's line width `uSelfPx`, the
+letters his own), c both. **Picks:** c for Shen Hui, Varr Nihil and Lu Wusheng; a for Tian Lei and Halcyon
+(their letters follow their size already, so their lines are the hero's width: b does nothing on them).
+
+**Tests.** `bosshero` (new, in run.mjs): the table, the Lab rows, the picks as defaults, no allocation per
+frame, the shader levers only on a boss and only on his light (never `artFill`, never his head), every boss's rig
+builds sharing the uniform. duel `fxlooks` (PICKED against the Lab) green.
+
+**Cost.** A few ALU per boss fragment; the outline taps the same pixels at a wider step. No new texture, pass or
+draw call; no geometry (the cost budget is unchanged).
+
+**Next.** The owner sees them in play and on the iPhone (the outline only shows from 1080p up; the phone and 720p
+get the shading alone).
 ## 2026-11-26 — A brood cue whose wait ran out keeps the cue spacing (ADR-237; branch `claude/vigorous-wilbur-3c128e`)
 
 **Task** (the follow-up from ADR-227): the brood's dive after `busyWait` landed within 0.3 s of a wyrm cue of
