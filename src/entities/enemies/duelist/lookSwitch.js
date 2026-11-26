@@ -81,6 +81,7 @@ export const PENDING = Object.freeze([
   'wjLook', 'wjHair', // his outfit (a the black coat, b the indigo robe and a white band, c the bone-white coat) and his hair's shape (a a tall swept crown, b a shorter spikier one; each with its fallen version)
 
   // Bai Wuji: fx rows
+  'wjShell', 'wjNull', // his barrier's look (a / b / c) and the Violet Null's body (a / b): untouched/fx.js, fxSpells.js
 
   // Bai Wuji: world rows
 

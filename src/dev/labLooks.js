@@ -81,6 +81,8 @@ export const LOOK_SWITCHES = Object.freeze([
   ['wjHair', ['a', 'b'], 'a', 'a', true, ['veil'], 'his white hair: a a tall swept crown over the band (phase 1), long soft locks once it falls; b a shorter spikier burst, a choppier fringe (a reload)'],
 
   // Bai Wuji: fx rows
+  ['wjShell', ['a', 'b', 'c'], 'a', 'a', false, ['veil'], 'his barrier while up: a all but invisible, it shows where the blade comes at it; b a faint standing shell of sparse strokes; c two faint rings that breathe (live)', 'awaiting'],
+  ['wjNull', ['a', 'b'], 'a', 'a', false, ['veil'], 'the Violet Null\'s body: a a hard-edged slab, crisp strokes along both edges; b a round bore, brightest at its core, rings running down it (live)', 'awaiting'],
 
   // Bai Wuji: world rows
 
