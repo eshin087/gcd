@@ -283,7 +283,8 @@ def _spans(mask, min_len=3, fill=2):
     return out, spans
 
 
-def ground_and_contact(q, fps, loop=False, ground='feet', travel='free', log=print, clip_opts={}, yaw=None, air=None):
+def ground_and_contact(q, fps, loop=False, ground='feet', travel='free', log=print, clip_opts={}, yaw=None, air=None,
+                       v_given=None):
     """From local rotations (hips at the origin): the hips' height, foot contact and the root travel.
     Returns hipsY (n,), hips_xz (n,2) (hips over the root), root (n,3), contact {L: spans, R: spans}, speed."""
     n = len(q)
@@ -325,6 +326,9 @@ def ground_and_contact(q, fps, loop=False, ground='feet', travel='free', log=pri
         mlow = vF[lowmask].mean(0) if lowmask.any() else m
         if np.linalg.norm(mlow) > 0.3:
             m = mlow / np.linalg.norm(mlow) * max(np.linalg.norm(m), np.linalg.norm(mlow))
+        if v_given is not None:
+            # spec "speed": the travel is given (m/s, his frame x, z): a planted foot moves at minus it
+            m = -np.asarray(v_given, float)
         sp0 = max(np.linalg.norm(m), 1e-6)
         d = m / sp0
         contact = np.zeros((n, 2), bool)
@@ -351,7 +355,8 @@ def ground_and_contact(q, fps, loop=False, ground='feet', travel='free', log=pri
                 mid = order[int(0.2 * L):max(int(0.8 * L), int(0.2 * L) + 1)]
                 vs += list((vF[mid, f] * d).sum(1))
             v_st = float(np.median(vs))
-            m = d * v_st
+            if v_given is None:
+                m = d * v_st
             # ... and only while the foot is down (a run's stance is short: the rest is flight)
             contact &= (g - lowf) < float(clip_opts.get('contact_h', 0.04))
         else:
