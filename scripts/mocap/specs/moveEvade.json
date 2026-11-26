@@ -14369,24 +14369,5896 @@
    "search": 0.5,
    "takes": [
     {
-     "t0": "13:56.30",
-     "t1": "13:57.60",
-     "view": "right"
-    },
-    {
-     "t0": "14:00.70",
+     "t0": "14:01.10",
      "t1": "14:02.00",
      "view": "left"
-    },
-    {
-     "t0": "13:58.50",
-     "t1": "13:59.80",
-     "view": "right"
     }
    ],
    "from": "crouchSprint",
    "to": "crouchIdle",
-   "draft": true
+   "despike": false,
+   "pose_keys": [
+    {
+     "f": 0,
+     "joint": "hips",
+     "euler": [
+      52.63,
+      -6.07,
+      12.11
+     ],
+     "blend": 0
+    },
+    {
+     "f": 0,
+     "joint": "spine",
+     "euler": [
+      8.82,
+      3.27,
+      -6.31
+     ],
+     "blend": 0
+    },
+    {
+     "f": 0,
+     "joint": "chest",
+     "euler": [
+      0.82,
+      3.27,
+      -6.31
+     ],
+     "blend": 0
+    },
+    {
+     "f": 0,
+     "joint": "neck",
+     "euler": [
+      -12.62,
+      -1.2,
+      -1.52
+     ],
+     "blend": 0
+    },
+    {
+     "f": 0,
+     "joint": "head",
+     "euler": [
+      -4.62,
+      -1.2,
+      -1.52
+     ],
+     "blend": 0
+    },
+    {
+     "f": 0,
+     "joint": "clavL",
+     "euler": [
+      0.0,
+      -2.59,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 0,
+     "joint": "upperArmL",
+     "euler": [
+      -5.45,
+      -5.04,
+      -58.73
+     ],
+     "blend": 0
+    },
+    {
+     "f": 0,
+     "joint": "foreArmL",
+     "euler": [
+      0.0,
+      -31.35,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 0,
+     "joint": "handL",
+     "euler": [
+      -32.72,
+      -17.82,
+      14.46
+     ],
+     "blend": 0
+    },
+    {
+     "f": 0,
+     "joint": "clavR",
+     "euler": [
+      -0.0,
+      2.42,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 0,
+     "joint": "upperArmR",
+     "euler": [
+      -9.02,
+      -2.49,
+      63.77
+     ],
+     "blend": 0
+    },
+    {
+     "f": 0,
+     "joint": "foreArmR",
+     "euler": [
+      -0.0,
+      36.54,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 0,
+     "joint": "handR",
+     "euler": [
+      -18.68,
+      20.17,
+      -16.95
+     ],
+     "blend": 0
+    },
+    {
+     "f": 0,
+     "joint": "thighL",
+     "euler": [
+      -129.69,
+      21.33,
+      15.96
+     ],
+     "blend": 0
+    },
+    {
+     "f": 0,
+     "joint": "shinL",
+     "euler": [
+      93.62,
+      0.11,
+      -0.11
+     ],
+     "blend": 0
+    },
+    {
+     "f": 0,
+     "joint": "footL",
+     "euler": [
+      11.6,
+      10.34,
+      1.86
+     ],
+     "blend": 0
+    },
+    {
+     "f": 0,
+     "joint": "toeL",
+     "euler": [
+      -0.0,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 0,
+     "joint": "thighR",
+     "euler": [
+      -60.38,
+      6.96,
+      -0.4
+     ],
+     "blend": 0
+    },
+    {
+     "f": 0,
+     "joint": "shinR",
+     "euler": [
+      71.63,
+      -1.38,
+      0.95
+     ],
+     "blend": 0
+    },
+    {
+     "f": 0,
+     "joint": "footR",
+     "euler": [
+      -2.31,
+      -19.56,
+      -1.5
+     ],
+     "blend": 0
+    },
+    {
+     "f": 0,
+     "joint": "toeR",
+     "euler": [
+      -28.98,
+      -14.0,
+      14.22
+     ],
+     "blend": 0
+    },
+    {
+     "f": 1,
+     "joint": "hips",
+     "euler": [
+      52.41,
+      -7.16,
+      14.76
+     ],
+     "blend": 0
+    },
+    {
+     "f": 1,
+     "joint": "spine",
+     "euler": [
+      8.95,
+      3.32,
+      -7.83
+     ],
+     "blend": 0
+    },
+    {
+     "f": 1,
+     "joint": "chest",
+     "euler": [
+      0.95,
+      3.32,
+      -7.83
+     ],
+     "blend": 0
+    },
+    {
+     "f": 1,
+     "joint": "neck",
+     "euler": [
+      -11.62,
+      -1.02,
+      -1.09
+     ],
+     "blend": 0
+    },
+    {
+     "f": 1,
+     "joint": "head",
+     "euler": [
+      -3.62,
+      -1.02,
+      -1.09
+     ],
+     "blend": 0
+    },
+    {
+     "f": 1,
+     "joint": "clavL",
+     "euler": [
+      0.0,
+      -2.4,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 1,
+     "joint": "upperArmL",
+     "euler": [
+      -5.3,
+      -4.57,
+      -61.27
+     ],
+     "blend": 0
+    },
+    {
+     "f": 1,
+     "joint": "foreArmL",
+     "euler": [
+      0.0,
+      -31.94,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 1,
+     "joint": "handL",
+     "euler": [
+      -31.71,
+      -18.21,
+      14.02
+     ],
+     "blend": 0
+    },
+    {
+     "f": 1,
+     "joint": "clavR",
+     "euler": [
+      -0.0,
+      2.53,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 1,
+     "joint": "upperArmR",
+     "euler": [
+      -9.76,
+      -3.9,
+      66.68
+     ],
+     "blend": 0
+    },
+    {
+     "f": 1,
+     "joint": "foreArmR",
+     "euler": [
+      -0.0,
+      37.71,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 1,
+     "joint": "handR",
+     "euler": [
+      -16.13,
+      21.48,
+      -15.17
+     ],
+     "blend": 0
+    },
+    {
+     "f": 1,
+     "joint": "thighL",
+     "euler": [
+      -121.69,
+      23.15,
+      13.65
+     ],
+     "blend": 0
+    },
+    {
+     "f": 1,
+     "joint": "shinL",
+     "euler": [
+      85.11,
+      -2.12,
+      1.83
+     ],
+     "blend": 0
+    },
+    {
+     "f": 1,
+     "joint": "footL",
+     "euler": [
+      -0.08,
+      7.62,
+      4.22
+     ],
+     "blend": 0
+    },
+    {
+     "f": 1,
+     "joint": "toeL",
+     "euler": [
+      -0.0,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 1,
+     "joint": "thighR",
+     "euler": [
+      -52.09,
+      10.26,
+      -3.88
+     ],
+     "blend": 0
+    },
+    {
+     "f": 1,
+     "joint": "shinR",
+     "euler": [
+      68.05,
+      -1.36,
+      0.87
+     ],
+     "blend": 0
+    },
+    {
+     "f": 1,
+     "joint": "footR",
+     "euler": [
+      7.25,
+      -21.43,
+      -2.38
+     ],
+     "blend": 0
+    },
+    {
+     "f": 1,
+     "joint": "toeR",
+     "euler": [
+      -9.71,
+      -6.28,
+      8.51
+     ],
+     "blend": 0
+    },
+    {
+     "f": 2,
+     "joint": "hips",
+     "euler": [
+      53.21,
+      -7.4,
+      15.5
+     ],
+     "blend": 0
+    },
+    {
+     "f": 2,
+     "joint": "spine",
+     "euler": [
+      8.87,
+      3.05,
+      -8.5
+     ],
+     "blend": 0
+    },
+    {
+     "f": 2,
+     "joint": "chest",
+     "euler": [
+      0.87,
+      3.05,
+      -8.51
+     ],
+     "blend": 0
+    },
+    {
+     "f": 2,
+     "joint": "neck",
+     "euler": [
+      -11.0,
+      -0.75,
+      -0.49
+     ],
+     "blend": 0
+    },
+    {
+     "f": 2,
+     "joint": "head",
+     "euler": [
+      -3.0,
+      -0.75,
+      -0.49
+     ],
+     "blend": 0
+    },
+    {
+     "f": 2,
+     "joint": "clavL",
+     "euler": [
+      0.0,
+      -2.42,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 2,
+     "joint": "upperArmL",
+     "euler": [
+      -5.92,
+      -3.78,
+      -63.43
+     ],
+     "blend": 0
+    },
+    {
+     "f": 2,
+     "joint": "foreArmL",
+     "euler": [
+      0.0,
+      -33.23,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 2,
+     "joint": "handL",
+     "euler": [
+      -29.14,
+      -18.23,
+      14.1
+     ],
+     "blend": 0
+    },
+    {
+     "f": 2,
+     "joint": "clavR",
+     "euler": [
+      -0.0,
+      2.78,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 2,
+     "joint": "upperArmR",
+     "euler": [
+      -10.43,
+      -4.1,
+      69.13
+     ],
+     "blend": 0
+    },
+    {
+     "f": 2,
+     "joint": "foreArmR",
+     "euler": [
+      -0.0,
+      38.27,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 2,
+     "joint": "handR",
+     "euler": [
+      -14.08,
+      21.89,
+      -13.71
+     ],
+     "blend": 0
+    },
+    {
+     "f": 2,
+     "joint": "thighL",
+     "euler": [
+      -114.56,
+      22.7,
+      10.95
+     ],
+     "blend": 0
+    },
+    {
+     "f": 2,
+     "joint": "shinL",
+     "euler": [
+      82.38,
+      -2.55,
+      2.1
+     ],
+     "blend": 0
+    },
+    {
+     "f": 2,
+     "joint": "footL",
+     "euler": [
+      -17.24,
+      3.2,
+      7.97
+     ],
+     "blend": 0
+    },
+    {
+     "f": 2,
+     "joint": "toeL",
+     "euler": [
+      -0.0,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 2,
+     "joint": "thighR",
+     "euler": [
+      -45.52,
+      9.67,
+      -7.67
+     ],
+     "blend": 0
+    },
+    {
+     "f": 2,
+     "joint": "shinR",
+     "euler": [
+      65.16,
+      -0.74,
+      0.45
+     ],
+     "blend": 0
+    },
+    {
+     "f": 2,
+     "joint": "footR",
+     "euler": [
+      13.18,
+      -23.27,
+      -1.53
+     ],
+     "blend": 0
+    },
+    {
+     "f": 2,
+     "joint": "toeR",
+     "euler": [
+      -1.43,
+      -1.2,
+      1.92
+     ],
+     "blend": 0
+    },
+    {
+     "f": 3,
+     "joint": "hips",
+     "euler": [
+      54.57,
+      -8.15,
+      14.14
+     ],
+     "blend": 0
+    },
+    {
+     "f": 3,
+     "joint": "spine",
+     "euler": [
+      8.75,
+      3.09,
+      -8.05
+     ],
+     "blend": 0
+    },
+    {
+     "f": 3,
+     "joint": "chest",
+     "euler": [
+      0.75,
+      3.08,
+      -8.05
+     ],
+     "blend": 0
+    },
+    {
+     "f": 3,
+     "joint": "neck",
+     "euler": [
+      -10.93,
+      -0.55,
+      0.26
+     ],
+     "blend": 0
+    },
+    {
+     "f": 3,
+     "joint": "head",
+     "euler": [
+      -2.93,
+      -0.55,
+      0.27
+     ],
+     "blend": 0
+    },
+    {
+     "f": 3,
+     "joint": "clavL",
+     "euler": [
+      0.0,
+      -2.51,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 3,
+     "joint": "upperArmL",
+     "euler": [
+      -6.7,
+      -2.87,
+      -64.58
+     ],
+     "blend": 0
+    },
+    {
+     "f": 3,
+     "joint": "foreArmL",
+     "euler": [
+      0.0,
+      -34.14,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 3,
+     "joint": "handL",
+     "euler": [
+      -26.49,
+      -17.59,
+      14.64
+     ],
+     "blend": 0
+    },
+    {
+     "f": 3,
+     "joint": "clavR",
+     "euler": [
+      -0.0,
+      3.17,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 3,
+     "joint": "upperArmR",
+     "euler": [
+      -11.3,
+      -3.34,
+      69.97
+     ],
+     "blend": 0
+    },
+    {
+     "f": 3,
+     "joint": "foreArmR",
+     "euler": [
+      -0.0,
+      38.16,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 3,
+     "joint": "handR",
+     "euler": [
+      -13.42,
+      21.43,
+      -12.94
+     ],
+     "blend": 0
+    },
+    {
+     "f": 3,
+     "joint": "thighL",
+     "euler": [
+      -112.9,
+      21.04,
+      10.83
+     ],
+     "blend": 0
+    },
+    {
+     "f": 3,
+     "joint": "shinL",
+     "euler": [
+      87.63,
+      -1.85,
+      1.66
+     ],
+     "blend": 0
+    },
+    {
+     "f": 3,
+     "joint": "footL",
+     "euler": [
+      -30.72,
+      -0.26,
+      9.67
+     ],
+     "blend": 0
+    },
+    {
+     "f": 3,
+     "joint": "toeL",
+     "euler": [
+      -0.0,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 3,
+     "joint": "thighR",
+     "euler": [
+      -50.42,
+      8.69,
+      -7.29
+     ],
+     "blend": 0
+    },
+    {
+     "f": 3,
+     "joint": "shinR",
+     "euler": [
+      71.93,
+      0.44,
+      -0.16
+     ],
+     "blend": 0
+    },
+    {
+     "f": 3,
+     "joint": "footR",
+     "euler": [
+      17.24,
+      -24.85,
+      -0.12
+     ],
+     "blend": 0
+    },
+    {
+     "f": 3,
+     "joint": "toeR",
+     "euler": [
+      -0.1,
+      -0.1,
+      0.17
+     ],
+     "blend": 0
+    },
+    {
+     "f": 4,
+     "joint": "hips",
+     "euler": [
+      56.28,
+      -8.61,
+      10.48
+     ],
+     "blend": 0
+    },
+    {
+     "f": 4,
+     "joint": "spine",
+     "euler": [
+      8.51,
+      3.1,
+      -6.24
+     ],
+     "blend": 0
+    },
+    {
+     "f": 4,
+     "joint": "chest",
+     "euler": [
+      0.51,
+      3.11,
+      -6.24
+     ],
+     "blend": 0
+    },
+    {
+     "f": 4,
+     "joint": "neck",
+     "euler": [
+      -11.33,
+      -0.52,
+      1.05
+     ],
+     "blend": 0
+    },
+    {
+     "f": 4,
+     "joint": "head",
+     "euler": [
+      -3.33,
+      -0.52,
+      1.05
+     ],
+     "blend": 0
+    },
+    {
+     "f": 4,
+     "joint": "clavL",
+     "euler": [
+      0.0,
+      -2.62,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 4,
+     "joint": "upperArmL",
+     "euler": [
+      -7.19,
+      -2.57,
+      -64.47
+     ],
+     "blend": 0
+    },
+    {
+     "f": 4,
+     "joint": "foreArmL",
+     "euler": [
+      0.0,
+      -34.2,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 4,
+     "joint": "handL",
+     "euler": [
+      -24.58,
+      -16.3,
+      15.51
+     ],
+     "blend": 0
+    },
+    {
+     "f": 4,
+     "joint": "clavR",
+     "euler": [
+      -0.0,
+      3.62,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 4,
+     "joint": "upperArmR",
+     "euler": [
+      -12.5,
+      -2.56,
+      69.05
+     ],
+     "blend": 0
+    },
+    {
+     "f": 4,
+     "joint": "foreArmR",
+     "euler": [
+      -0.0,
+      37.58,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 4,
+     "joint": "handR",
+     "euler": [
+      -14.18,
+      20.53,
+      -12.89
+     ],
+     "blend": 0
+    },
+    {
+     "f": 4,
+     "joint": "thighL",
+     "euler": [
+      -110.44,
+      18.44,
+      10.66
+     ],
+     "blend": 0
+    },
+    {
+     "f": 4,
+     "joint": "shinL",
+     "euler": [
+      90.65,
+      -1.53,
+      1.44
+     ],
+     "blend": 0
+    },
+    {
+     "f": 4,
+     "joint": "footL",
+     "euler": [
+      -38.57,
+      -1.18,
+      9.57
+     ],
+     "blend": 0
+    },
+    {
+     "f": 4,
+     "joint": "toeL",
+     "euler": [
+      -0.0,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 4,
+     "joint": "thighR",
+     "euler": [
+      -66.24,
+      5.87,
+      -2.52
+     ],
+     "blend": 0
+    },
+    {
+     "f": 4,
+     "joint": "shinR",
+     "euler": [
+      86.74,
+      0.53,
+      -0.28
+     ],
+     "blend": 0
+    },
+    {
+     "f": 4,
+     "joint": "footR",
+     "euler": [
+      17.13,
+      -25.74,
+      -0.1
+     ],
+     "blend": 0
+    },
+    {
+     "f": 4,
+     "joint": "toeR",
+     "euler": [
+      -0.0,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 5,
+     "joint": "hips",
+     "euler": [
+      58.18,
+      -8.07,
+      5.84
+     ],
+     "blend": 0
+    },
+    {
+     "f": 5,
+     "joint": "spine",
+     "euler": [
+      8.19,
+      2.9,
+      -3.65
+     ],
+     "blend": 0
+    },
+    {
+     "f": 5,
+     "joint": "chest",
+     "euler": [
+      0.19,
+      2.9,
+      -3.65
+     ],
+     "blend": 0
+    },
+    {
+     "f": 5,
+     "joint": "neck",
+     "euler": [
+      -11.98,
+      -0.58,
+      1.61
+     ],
+     "blend": 0
+    },
+    {
+     "f": 5,
+     "joint": "head",
+     "euler": [
+      -3.99,
+      -0.58,
+      1.61
+     ],
+     "blend": 0
+    },
+    {
+     "f": 5,
+     "joint": "clavL",
+     "euler": [
+      0.0,
+      -2.86,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 5,
+     "joint": "upperArmL",
+     "euler": [
+      -7.93,
+      -2.57,
+      -63.48
+     ],
+     "blend": 0
+    },
+    {
+     "f": 5,
+     "joint": "foreArmL",
+     "euler": [
+      0.0,
+      -34.09,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 5,
+     "joint": "handL",
+     "euler": [
+      -22.74,
+      -14.98,
+      16.67
+     ],
+     "blend": 0
+    },
+    {
+     "f": 5,
+     "joint": "clavR",
+     "euler": [
+      -0.0,
+      4.06,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 5,
+     "joint": "upperArmR",
+     "euler": [
+      -13.82,
+      -1.89,
+      66.51
+     ],
+     "blend": 0
+    },
+    {
+     "f": 5,
+     "joint": "foreArmR",
+     "euler": [
+      -0.0,
+      36.62,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 5,
+     "joint": "handR",
+     "euler": [
+      -16.02,
+      19.62,
+      -13.39
+     ],
+     "blend": 0
+    },
+    {
+     "f": 5,
+     "joint": "thighL",
+     "euler": [
+      -107.11,
+      14.52,
+      9.22
+     ],
+     "blend": 0
+    },
+    {
+     "f": 5,
+     "joint": "shinL",
+     "euler": [
+      91.75,
+      -1.01,
+      0.97
+     ],
+     "blend": 0
+    },
+    {
+     "f": 5,
+     "joint": "footL",
+     "euler": [
+      -44.96,
+      0.78,
+      8.47
+     ],
+     "blend": 0
+    },
+    {
+     "f": 5,
+     "joint": "toeL",
+     "euler": [
+      -0.0,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 5,
+     "joint": "thighR",
+     "euler": [
+      -90.0,
+      -0.69,
+      0.98
+     ],
+     "blend": 0
+    },
+    {
+     "f": 5,
+     "joint": "shinR",
+     "euler": [
+      102.73,
+      0.17,
+      -0.12
+     ],
+     "blend": 0
+    },
+    {
+     "f": 5,
+     "joint": "footR",
+     "euler": [
+      13.51,
+      -25.48,
+      -0.24
+     ],
+     "blend": 0
+    },
+    {
+     "f": 5,
+     "joint": "toeR",
+     "euler": [
+      -0.0,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 6,
+     "joint": "hips",
+     "euler": [
+      59.3,
+      -6.74,
+      2.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 6,
+     "joint": "spine",
+     "euler": [
+      7.96,
+      2.56,
+      -1.31
+     ],
+     "blend": 0
+    },
+    {
+     "f": 6,
+     "joint": "chest",
+     "euler": [
+      -0.04,
+      2.56,
+      -1.31
+     ],
+     "blend": 0
+    },
+    {
+     "f": 6,
+     "joint": "neck",
+     "euler": [
+      -12.65,
+      -0.53,
+      1.77
+     ],
+     "blend": 0
+    },
+    {
+     "f": 6,
+     "joint": "head",
+     "euler": [
+      -4.66,
+      -0.53,
+      1.77
+     ],
+     "blend": 0
+    },
+    {
+     "f": 6,
+     "joint": "clavL",
+     "euler": [
+      0.0,
+      -3.14,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 6,
+     "joint": "upperArmL",
+     "euler": [
+      -9.14,
+      -1.96,
+      -62.43
+     ],
+     "blend": 0
+    },
+    {
+     "f": 6,
+     "joint": "foreArmL",
+     "euler": [
+      0.0,
+      -34.31,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 6,
+     "joint": "handL",
+     "euler": [
+      -20.45,
+      -14.41,
+      17.94
+     ],
+     "blend": 0
+    },
+    {
+     "f": 6,
+     "joint": "clavR",
+     "euler": [
+      -0.0,
+      4.29,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 6,
+     "joint": "upperArmR",
+     "euler": [
+      -14.23,
+      -0.72,
+      63.14
+     ],
+     "blend": 0
+    },
+    {
+     "f": 6,
+     "joint": "foreArmR",
+     "euler": [
+      -0.0,
+      35.38,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 6,
+     "joint": "handR",
+     "euler": [
+      -18.69,
+      18.83,
+      -14.26
+     ],
+     "blend": 0
+    },
+    {
+     "f": 6,
+     "joint": "thighL",
+     "euler": [
+      -102.25,
+      10.56,
+      6.74
+     ],
+     "blend": 0
+    },
+    {
+     "f": 6,
+     "joint": "shinL",
+     "euler": [
+      91.75,
+      -0.41,
+      0.39
+     ],
+     "blend": 0
+    },
+    {
+     "f": 6,
+     "joint": "footL",
+     "euler": [
+      -50.87,
+      4.76,
+      6.99
+     ],
+     "blend": 0
+    },
+    {
+     "f": 6,
+     "joint": "toeL",
+     "euler": [
+      -0.0,
+      -0.0,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 6,
+     "joint": "thighR",
+     "euler": [
+      -102.77,
+      -7.5,
+      -0.05
+     ],
+     "blend": 0
+    },
+    {
+     "f": 6,
+     "joint": "shinR",
+     "euler": [
+      108.9,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 6,
+     "joint": "footR",
+     "euler": [
+      7.61,
+      -23.63,
+      -0.42
+     ],
+     "blend": 0
+    },
+    {
+     "f": 6,
+     "joint": "toeR",
+     "euler": [
+      -0.0,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 7,
+     "joint": "hips",
+     "euler": [
+      58.8,
+      -4.18,
+      -1.26
+     ],
+     "blend": 0
+    },
+    {
+     "f": 7,
+     "joint": "spine",
+     "euler": [
+      7.89,
+      1.6,
+      0.71
+     ],
+     "blend": 0
+    },
+    {
+     "f": 7,
+     "joint": "chest",
+     "euler": [
+      -0.11,
+      1.6,
+      0.71
+     ],
+     "blend": 0
+    },
+    {
+     "f": 7,
+     "joint": "neck",
+     "euler": [
+      -13.23,
+      -0.23,
+      1.67
+     ],
+     "blend": 0
+    },
+    {
+     "f": 7,
+     "joint": "head",
+     "euler": [
+      -5.23,
+      -0.23,
+      1.67
+     ],
+     "blend": 0
+    },
+    {
+     "f": 7,
+     "joint": "clavL",
+     "euler": [
+      0.0,
+      -3.15,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 7,
+     "joint": "upperArmL",
+     "euler": [
+      -9.83,
+      -0.74,
+      -62.02
+     ],
+     "blend": 0
+    },
+    {
+     "f": 7,
+     "joint": "foreArmL",
+     "euler": [
+      0.0,
+      -34.55,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 7,
+     "joint": "handL",
+     "euler": [
+      -18.62,
+      -14.74,
+      18.95
+     ],
+     "blend": 0
+    },
+    {
+     "f": 7,
+     "joint": "clavR",
+     "euler": [
+      -0.0,
+      4.13,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 7,
+     "joint": "upperArmR",
+     "euler": [
+      -12.76,
+      1.31,
+      60.19
+     ],
+     "blend": 0
+    },
+    {
+     "f": 7,
+     "joint": "foreArmR",
+     "euler": [
+      -0.0,
+      34.04,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 7,
+     "joint": "handR",
+     "euler": [
+      -22.1,
+      18.09,
+      -15.2
+     ],
+     "blend": 0
+    },
+    {
+     "f": 7,
+     "joint": "thighL",
+     "euler": [
+      -95.16,
+      7.01,
+      3.55
+     ],
+     "blend": 0
+    },
+    {
+     "f": 7,
+     "joint": "shinL",
+     "euler": [
+      90.57,
+      0.2,
+      -0.18
+     ],
+     "blend": 0
+    },
+    {
+     "f": 7,
+     "joint": "footL",
+     "euler": [
+      -56.02,
+      9.42,
+      5.49
+     ],
+     "blend": 0
+    },
+    {
+     "f": 7,
+     "joint": "toeL",
+     "euler": [
+      -0.0,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 7,
+     "joint": "thighR",
+     "euler": [
+      -108.64,
+      -12.95,
+      -3.04
+     ],
+     "blend": 0
+    },
+    {
+     "f": 7,
+     "joint": "shinR",
+     "euler": [
+      109.46,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 7,
+     "joint": "footR",
+     "euler": [
+      1.85,
+      -20.38,
+      -0.4
+     ],
+     "blend": 0
+    },
+    {
+     "f": 7,
+     "joint": "toeR",
+     "euler": [
+      -0.0,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 8,
+     "joint": "hips",
+     "euler": [
+      57.06,
+      -0.73,
+      -4.45
+     ],
+     "blend": 0
+    },
+    {
+     "f": 8,
+     "joint": "spine",
+     "euler": [
+      8.03,
+      -0.08,
+      2.51
+     ],
+     "blend": 0
+    },
+    {
+     "f": 8,
+     "joint": "chest",
+     "euler": [
+      0.03,
+      -0.08,
+      2.51
+     ],
+     "blend": 0
+    },
+    {
+     "f": 8,
+     "joint": "neck",
+     "euler": [
+      -13.64,
+      0.31,
+      1.66
+     ],
+     "blend": 0
+    },
+    {
+     "f": 8,
+     "joint": "head",
+     "euler": [
+      -5.64,
+      0.31,
+      1.66
+     ],
+     "blend": 0
+    },
+    {
+     "f": 8,
+     "joint": "clavL",
+     "euler": [
+      0.0,
+      -2.84,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 8,
+     "joint": "upperArmL",
+     "euler": [
+      -9.22,
+      0.04,
+      -62.01
+     ],
+     "blend": 0
+    },
+    {
+     "f": 8,
+     "joint": "foreArmL",
+     "euler": [
+      0.0,
+      -34.48,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 8,
+     "joint": "handL",
+     "euler": [
+      -18.63,
+      -15.64,
+      19.36
+     ],
+     "blend": 0
+    },
+    {
+     "f": 8,
+     "joint": "clavR",
+     "euler": [
+      -0.0,
+      3.71,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 8,
+     "joint": "upperArmR",
+     "euler": [
+      -10.04,
+      3.58,
+      58.27
+     ],
+     "blend": 0
+    },
+    {
+     "f": 8,
+     "joint": "foreArmR",
+     "euler": [
+      -0.0,
+      32.89,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 8,
+     "joint": "handR",
+     "euler": [
+      -25.93,
+      17.53,
+      -15.76
+     ],
+     "blend": 0
+    },
+    {
+     "f": 8,
+     "joint": "thighL",
+     "euler": [
+      -86.26,
+      3.86,
+      1.05
+     ],
+     "blend": 0
+    },
+    {
+     "f": 8,
+     "joint": "shinL",
+     "euler": [
+      87.64,
+      0.6,
+      -0.54
+     ],
+     "blend": 0
+    },
+    {
+     "f": 8,
+     "joint": "footL",
+     "euler": [
+      -59.79,
+      13.72,
+      3.86
+     ],
+     "blend": 0
+    },
+    {
+     "f": 8,
+     "joint": "toeL",
+     "euler": [
+      -0.16,
+      0.02,
+      -0.03
+     ],
+     "blend": 0
+    },
+    {
+     "f": 8,
+     "joint": "thighR",
+     "euler": [
+      -114.9,
+      -17.14,
+      -7.11
+     ],
+     "blend": 0
+    },
+    {
+     "f": 8,
+     "joint": "shinR",
+     "euler": [
+      108.89,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 8,
+     "joint": "footR",
+     "euler": [
+      -1.51,
+      -16.74,
+      -0.2
+     ],
+     "blend": 0
+    },
+    {
+     "f": 8,
+     "joint": "toeR",
+     "euler": [
+      -0.0,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 9,
+     "joint": "hips",
+     "euler": [
+      55.29,
+      2.0,
+      -6.95
+     ],
+     "blend": 0
+    },
+    {
+     "f": 9,
+     "joint": "spine",
+     "euler": [
+      8.27,
+      -1.59,
+      3.8
+     ],
+     "blend": 0
+    },
+    {
+     "f": 9,
+     "joint": "chest",
+     "euler": [
+      0.27,
+      -1.59,
+      3.8
+     ],
+     "blend": 0
+    },
+    {
+     "f": 9,
+     "joint": "neck",
+     "euler": [
+      -13.75,
+      0.84,
+      1.77
+     ],
+     "blend": 0
+    },
+    {
+     "f": 9,
+     "joint": "head",
+     "euler": [
+      -5.75,
+      0.85,
+      1.77
+     ],
+     "blend": 0
+    },
+    {
+     "f": 9,
+     "joint": "clavL",
+     "euler": [
+      0.0,
+      -2.52,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 9,
+     "joint": "upperArmL",
+     "euler": [
+      -8.32,
+      0.26,
+      -61.88
+     ],
+     "blend": 0
+    },
+    {
+     "f": 9,
+     "joint": "foreArmL",
+     "euler": [
+      0.0,
+      -34.62,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 9,
+     "joint": "handL",
+     "euler": [
+      -19.76,
+      -16.86,
+      19.16
+     ],
+     "blend": 0
+    },
+    {
+     "f": 9,
+     "joint": "clavR",
+     "euler": [
+      -0.0,
+      3.31,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 9,
+     "joint": "upperArmR",
+     "euler": [
+      -7.75,
+      5.04,
+      57.16
+     ],
+     "blend": 0
+    },
+    {
+     "f": 9,
+     "joint": "foreArmR",
+     "euler": [
+      -0.0,
+      32.11,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 9,
+     "joint": "handR",
+     "euler": [
+      -29.33,
+      17.3,
+      -15.71
+     ],
+     "blend": 0
+    },
+    {
+     "f": 9,
+     "joint": "thighL",
+     "euler": [
+      -76.49,
+      1.32,
+      0.35
+     ],
+     "blend": 0
+    },
+    {
+     "f": 9,
+     "joint": "shinL",
+     "euler": [
+      81.76,
+      0.7,
+      -0.57
+     ],
+     "blend": 0
+    },
+    {
+     "f": 9,
+     "joint": "footL",
+     "euler": [
+      -61.0,
+      18.1,
+      2.23
+     ],
+     "blend": 0
+    },
+    {
+     "f": 9,
+     "joint": "toeL",
+     "euler": [
+      -1.88,
+      0.29,
+      -0.54
+     ],
+     "blend": 0
+    },
+    {
+     "f": 9,
+     "joint": "thighR",
+     "euler": [
+      -121.28,
+      -19.61,
+      -11.31
+     ],
+     "blend": 0
+    },
+    {
+     "f": 9,
+     "joint": "shinR",
+     "euler": [
+      108.14,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 9,
+     "joint": "footR",
+     "euler": [
+      -2.13,
+      -13.73,
+      -0.03
+     ],
+     "blend": 0
+    },
+    {
+     "f": 9,
+     "joint": "toeR",
+     "euler": [
+      -0.0,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 10,
+     "joint": "hips",
+     "euler": [
+      53.83,
+      3.61,
+      -8.83
+     ],
+     "blend": 0
+    },
+    {
+     "f": 10,
+     "joint": "spine",
+     "euler": [
+      8.46,
+      -2.43,
+      4.71
+     ],
+     "blend": 0
+    },
+    {
+     "f": 10,
+     "joint": "chest",
+     "euler": [
+      0.46,
+      -2.43,
+      4.71
+     ],
+     "blend": 0
+    },
+    {
+     "f": 10,
+     "joint": "neck",
+     "euler": [
+      -13.36,
+      1.18,
+      1.75
+     ],
+     "blend": 0
+    },
+    {
+     "f": 10,
+     "joint": "head",
+     "euler": [
+      -5.36,
+      1.18,
+      1.74
+     ],
+     "blend": 0
+    },
+    {
+     "f": 10,
+     "joint": "clavL",
+     "euler": [
+      0.0,
+      -2.38,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 10,
+     "joint": "upperArmL",
+     "euler": [
+      -8.24,
+      1.0,
+      -62.26
+     ],
+     "blend": 0
+    },
+    {
+     "f": 10,
+     "joint": "foreArmL",
+     "euler": [
+      0.0,
+      -35.33,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 10,
+     "joint": "handL",
+     "euler": [
+      -20.1,
+      -18.42,
+      18.35
+     ],
+     "blend": 0
+    },
+    {
+     "f": 10,
+     "joint": "clavR",
+     "euler": [
+      -0.0,
+      2.96,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 10,
+     "joint": "upperArmR",
+     "euler": [
+      -6.27,
+      5.52,
+      57.18
+     ],
+     "blend": 0
+    },
+    {
+     "f": 10,
+     "joint": "foreArmR",
+     "euler": [
+      -0.0,
+      31.56,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 10,
+     "joint": "handR",
+     "euler": [
+      -31.74,
+      17.39,
+      -15.19
+     ],
+     "blend": 0
+    },
+    {
+     "f": 10,
+     "joint": "thighL",
+     "euler": [
+      -65.95,
+      -1.3,
+      0.63
+     ],
+     "blend": 0
+    },
+    {
+     "f": 10,
+     "joint": "shinL",
+     "euler": [
+      71.76,
+      0.63,
+      -0.44
+     ],
+     "blend": 0
+    },
+    {
+     "f": 10,
+     "joint": "footL",
+     "euler": [
+      -56.47,
+      23.6,
+      0.94
+     ],
+     "blend": 0
+    },
+    {
+     "f": 10,
+     "joint": "toeL",
+     "euler": [
+      -6.38,
+      1.27,
+      -2.47
+     ],
+     "blend": 0
+    },
+    {
+     "f": 10,
+     "joint": "thighR",
+     "euler": [
+      -124.38,
+      -20.86,
+      -13.36
+     ],
+     "blend": 0
+    },
+    {
+     "f": 10,
+     "joint": "shinR",
+     "euler": [
+      106.28,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 10,
+     "joint": "footR",
+     "euler": [
+      -1.01,
+      -11.74,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 10,
+     "joint": "toeR",
+     "euler": [
+      -0.0,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 11,
+     "joint": "hips",
+     "euler": [
+      52.64,
+      4.94,
+      -11.01
+     ],
+     "blend": 0
+    },
+    {
+     "f": 11,
+     "joint": "spine",
+     "euler": [
+      8.64,
+      -2.81,
+      5.82
+     ],
+     "blend": 0
+    },
+    {
+     "f": 11,
+     "joint": "chest",
+     "euler": [
+      0.65,
+      -2.81,
+      5.82
+     ],
+     "blend": 0
+    },
+    {
+     "f": 11,
+     "joint": "neck",
+     "euler": [
+      -12.48,
+      1.25,
+      1.49
+     ],
+     "blend": 0
+    },
+    {
+     "f": 11,
+     "joint": "head",
+     "euler": [
+      -4.49,
+      1.25,
+      1.49
+     ],
+     "blend": 0
+    },
+    {
+     "f": 11,
+     "joint": "clavL",
+     "euler": [
+      0.0,
+      -2.38,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 11,
+     "joint": "upperArmL",
+     "euler": [
+      -8.93,
+      2.62,
+      -64.05
+     ],
+     "blend": 0
+    },
+    {
+     "f": 11,
+     "joint": "foreArmL",
+     "euler": [
+      0.0,
+      -36.4,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 11,
+     "joint": "handL",
+     "euler": [
+      -18.67,
+      -20.14,
+      16.89
+     ],
+     "blend": 0
+    },
+    {
+     "f": 11,
+     "joint": "clavR",
+     "euler": [
+      -0.0,
+      2.61,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 11,
+     "joint": "upperArmR",
+     "euler": [
+      -5.25,
+      5.48,
+      58.69
+     ],
+     "blend": 0
+    },
+    {
+     "f": 11,
+     "joint": "foreArmR",
+     "euler": [
+      -0.0,
+      31.27,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 11,
+     "joint": "handR",
+     "euler": [
+      -32.78,
+      17.71,
+      -14.51
+     ],
+     "blend": 0
+    },
+    {
+     "f": 11,
+     "joint": "thighL",
+     "euler": [
+      -56.22,
+      -5.03,
+      1.47
+     ],
+     "blend": 0
+    },
+    {
+     "f": 11,
+     "joint": "shinL",
+     "euler": [
+      62.94,
+      0.61,
+      -0.36
+     ],
+     "blend": 0
+    },
+    {
+     "f": 11,
+     "joint": "footL",
+     "euler": [
+      -42.93,
+      30.71,
+      -0.87
+     ],
+     "blend": 0
+    },
+    {
+     "f": 11,
+     "joint": "toeL",
+     "euler": [
+      -15.39,
+      4.17,
+      -7.71
+     ],
+     "blend": 0
+    },
+    {
+     "f": 11,
+     "joint": "thighR",
+     "euler": [
+      -127.36,
+      -20.82,
+      -13.37
+     ],
+     "blend": 0
+    },
+    {
+     "f": 11,
+     "joint": "shinR",
+     "euler": [
+      98.27,
+      -0.33,
+      0.36
+     ],
+     "blend": 0
+    },
+    {
+     "f": 11,
+     "joint": "footR",
+     "euler": [
+      8.6,
+      -10.74,
+      -0.66
+     ],
+     "blend": 0
+    },
+    {
+     "f": 11,
+     "joint": "toeR",
+     "euler": [
+      -0.0,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 12,
+     "joint": "hips",
+     "euler": [
+      52.27,
+      6.3,
+      -13.68
+     ],
+     "blend": 0
+    },
+    {
+     "f": 12,
+     "joint": "spine",
+     "euler": [
+      8.81,
+      -2.98,
+      7.34
+     ],
+     "blend": 0
+    },
+    {
+     "f": 12,
+     "joint": "chest",
+     "euler": [
+      0.81,
+      -2.98,
+      7.34
+     ],
+     "blend": 0
+    },
+    {
+     "f": 12,
+     "joint": "neck",
+     "euler": [
+      -11.55,
+      1.08,
+      1.07
+     ],
+     "blend": 0
+    },
+    {
+     "f": 12,
+     "joint": "head",
+     "euler": [
+      -3.55,
+      1.08,
+      1.07
+     ],
+     "blend": 0
+    },
+    {
+     "f": 12,
+     "joint": "clavL",
+     "euler": [
+      0.0,
+      -2.51,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 12,
+     "joint": "upperArmL",
+     "euler": [
+      -9.72,
+      3.98,
+      -66.85
+     ],
+     "blend": 0
+    },
+    {
+     "f": 12,
+     "joint": "foreArmL",
+     "euler": [
+      0.0,
+      -37.51,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 12,
+     "joint": "handL",
+     "euler": [
+      -16.2,
+      -21.48,
+      15.14
+     ],
+     "blend": 0
+    },
+    {
+     "f": 12,
+     "joint": "clavR",
+     "euler": [
+      -0.0,
+      2.37,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 12,
+     "joint": "upperArmR",
+     "euler": [
+      -4.99,
+      4.96,
+      61.16
+     ],
+     "blend": 0
+    },
+    {
+     "f": 12,
+     "joint": "foreArmR",
+     "euler": [
+      -0.0,
+      31.82,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 12,
+     "joint": "handR",
+     "euler": [
+      -31.86,
+      18.08,
+      -14.05
+     ],
+     "blend": 0
+    },
+    {
+     "f": 12,
+     "joint": "thighL",
+     "euler": [
+      -49.94,
+      -8.59,
+      3.31
+     ],
+     "blend": 0
+    },
+    {
+     "f": 12,
+     "joint": "shinL",
+     "euler": [
+      62.76,
+      0.71,
+      -0.41
+     ],
+     "blend": 0
+    },
+    {
+     "f": 12,
+     "joint": "footL",
+     "euler": [
+      -19.91,
+      35.97,
+      -5.13
+     ],
+     "blend": 0
+    },
+    {
+     "f": 12,
+     "joint": "toeL",
+     "euler": [
+      -29.82,
+      19.39,
+      -21.8
+     ],
+     "blend": 0
+    },
+    {
+     "f": 12,
+     "joint": "thighR",
+     "euler": [
+      -124.57,
+      -21.52,
+      -12.03
+     ],
+     "blend": 0
+    },
+    {
+     "f": 12,
+     "joint": "shinR",
+     "euler": [
+      90.72,
+      0.9,
+      -0.85
+     ],
+     "blend": 0
+    },
+    {
+     "f": 12,
+     "joint": "footR",
+     "euler": [
+      7.79,
+      -9.28,
+      -1.61
+     ],
+     "blend": 0
+    },
+    {
+     "f": 12,
+     "joint": "toeR",
+     "euler": [
+      -0.0,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 13,
+     "joint": "hips",
+     "euler": [
+      52.71,
+      7.03,
+      -14.91
+     ],
+     "blend": 0
+    },
+    {
+     "f": 13,
+     "joint": "spine",
+     "euler": [
+      8.68,
+      -2.9,
+      8.24
+     ],
+     "blend": 0
+    },
+    {
+     "f": 13,
+     "joint": "chest",
+     "euler": [
+      0.8,
+      -2.89,
+      8.24
+     ],
+     "blend": 0
+    },
+    {
+     "f": 13,
+     "joint": "neck",
+     "euler": [
+      -10.98,
+      0.76,
+      0.59
+     ],
+     "blend": 0
+    },
+    {
+     "f": 13,
+     "joint": "head",
+     "euler": [
+      -3.1,
+      0.77,
+      0.6
+     ],
+     "blend": 0
+    },
+    {
+     "f": 13,
+     "joint": "clavL",
+     "euler": [
+      0.0,
+      -2.78,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 13,
+     "joint": "upperArmL",
+     "euler": [
+      -10.19,
+      3.67,
+      -68.99
+     ],
+     "blend": 0
+    },
+    {
+     "f": 13,
+     "joint": "foreArmL",
+     "euler": [
+      -0.0,
+      -38.1,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 13,
+     "joint": "handL",
+     "euler": [
+      -14.07,
+      -21.8,
+      13.64
+     ],
+     "blend": 0
+    },
+    {
+     "f": 13,
+     "joint": "clavR",
+     "euler": [
+      -0.0,
+      2.38,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 13,
+     "joint": "upperArmR",
+     "euler": [
+      -5.84,
+      3.71,
+      63.46
+     ],
+     "blend": 0
+    },
+    {
+     "f": 13,
+     "joint": "foreArmR",
+     "euler": [
+      -0.0,
+      33.42,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 13,
+     "joint": "handR",
+     "euler": [
+      -28.76,
+      18.25,
+      -14.06
+     ],
+     "blend": 0
+    },
+    {
+     "f": 13,
+     "joint": "thighL",
+     "euler": [
+      -45.68,
+      -8.83,
+      5.86
+     ],
+     "blend": 0
+    },
+    {
+     "f": 13,
+     "joint": "shinL",
+     "euler": [
+      64.61,
+      0.93,
+      -0.56
+     ],
+     "blend": 0
+    },
+    {
+     "f": 13,
+     "joint": "footL",
+     "euler": [
+      2.94,
+      32.15,
+      -5.46
+     ],
+     "blend": 0
+    },
+    {
+     "f": 13,
+     "joint": "toeL",
+     "euler": [
+      -23.81,
+      37.56,
+      -41.03
+     ],
+     "blend": 0
+    },
+    {
+     "f": 13,
+     "joint": "thighR",
+     "euler": [
+      -117.27,
+      -21.6,
+      -10.3
+     ],
+     "blend": 0
+    },
+    {
+     "f": 13,
+     "joint": "shinR",
+     "euler": [
+      85.46,
+      2.01,
+      -1.74
+     ],
+     "blend": 0
+    },
+    {
+     "f": 13,
+     "joint": "footR",
+     "euler": [
+      -7.14,
+      -5.47,
+      -5.23
+     ],
+     "blend": 0
+    },
+    {
+     "f": 13,
+     "joint": "toeR",
+     "euler": [
+      0.0,
+      -0.0,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 14,
+     "joint": "hips",
+     "euler": [
+      52.79,
+      7.71,
+      -13.28
+     ],
+     "blend": 0
+    },
+    {
+     "f": 14,
+     "joint": "spine",
+     "euler": [
+      8.24,
+      -3.0,
+      7.7
+     ],
+     "blend": 0
+    },
+    {
+     "f": 14,
+     "joint": "chest",
+     "euler": [
+      0.68,
+      -2.98,
+      7.69
+     ],
+     "blend": 0
+    },
+    {
+     "f": 14,
+     "joint": "neck",
+     "euler": [
+      -10.94,
+      0.5,
+      0.21
+     ],
+     "blend": 0
+    },
+    {
+     "f": 14,
+     "joint": "head",
+     "euler": [
+      -3.38,
+      0.53,
+      0.21
+     ],
+     "blend": 0
+    },
+    {
+     "f": 14,
+     "joint": "clavL",
+     "euler": [
+      0.0,
+      -3.1,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 14,
+     "joint": "upperArmL",
+     "euler": [
+      -10.33,
+      1.84,
+      -69.11
+     ],
+     "blend": 0
+    },
+    {
+     "f": 14,
+     "joint": "foreArmL",
+     "euler": [
+      -0.0,
+      -37.79,
+      -0.01
+     ],
+     "blend": 0
+    },
+    {
+     "f": 14,
+     "joint": "handL",
+     "euler": [
+      -13.28,
+      -20.99,
+      12.83
+     ],
+     "blend": 0
+    },
+    {
+     "f": 14,
+     "joint": "clavR",
+     "euler": [
+      -0.0,
+      2.49,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 14,
+     "joint": "upperArmR",
+     "euler": [
+      -6.83,
+      2.51,
+      64.62
+     ],
+     "blend": 0
+    },
+    {
+     "f": 14,
+     "joint": "foreArmR",
+     "euler": [
+      -0.0,
+      34.92,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 14,
+     "joint": "handR",
+     "euler": [
+      -24.85,
+      17.82,
+      -14.55
+     ],
+     "blend": 0
+    },
+    {
+     "f": 14,
+     "joint": "thighL",
+     "euler": [
+      -43.65,
+      -6.69,
+      6.64
+     ],
+     "blend": 0
+    },
+    {
+     "f": 14,
+     "joint": "shinL",
+     "euler": [
+      63.82,
+      0.88,
+      -0.53
+     ],
+     "blend": 0
+    },
+    {
+     "f": 14,
+     "joint": "footL",
+     "euler": [
+      12.53,
+      25.77,
+      -0.32
+     ],
+     "blend": 0
+    },
+    {
+     "f": 14,
+     "joint": "toeL",
+     "euler": [
+      -11.88,
+      22.48,
+      -30.55
+     ],
+     "blend": 0
+    },
+    {
+     "f": 14,
+     "joint": "thighR",
+     "euler": [
+      -111.47,
+      -19.94,
+      -10.42
+     ],
+     "blend": 0
+    },
+    {
+     "f": 14,
+     "joint": "shinR",
+     "euler": [
+      85.64,
+      1.64,
+      -1.43
+     ],
+     "blend": 0
+    },
+    {
+     "f": 14,
+     "joint": "footR",
+     "euler": [
+      -24.83,
+      -0.78,
+      -8.2
+     ],
+     "blend": 0
+    },
+    {
+     "f": 14,
+     "joint": "toeR",
+     "euler": [
+      0.0,
+      -0.0,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 15,
+     "joint": "hips",
+     "euler": [
+      52.1,
+      8.09,
+      -9.48
+     ],
+     "blend": 0
+    },
+    {
+     "f": 15,
+     "joint": "spine",
+     "euler": [
+      7.55,
+      -3.22,
+      5.9
+     ],
+     "blend": 0
+    },
+    {
+     "f": 15,
+     "joint": "chest",
+     "euler": [
+      0.49,
+      -3.19,
+      5.89
+     ],
+     "blend": 0
+    },
+    {
+     "f": 15,
+     "joint": "neck",
+     "euler": [
+      -11.28,
+      0.39,
+      0.05
+     ],
+     "blend": 0
+    },
+    {
+     "f": 15,
+     "joint": "head",
+     "euler": [
+      -4.23,
+      0.46,
+      0.05
+     ],
+     "blend": 0
+    },
+    {
+     "f": 15,
+     "joint": "clavL",
+     "euler": [
+      0.0,
+      -3.4,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 15,
+     "joint": "upperArmL",
+     "euler": [
+      -10.2,
+      -0.45,
+      -67.2
+     ],
+     "blend": 0
+    },
+    {
+     "f": 15,
+     "joint": "foreArmL",
+     "euler": [
+      -0.0,
+      -36.75,
+      -0.02
+     ],
+     "blend": 0
+    },
+    {
+     "f": 15,
+     "joint": "handL",
+     "euler": [
+      -13.74,
+      -19.6,
+      12.72
+     ],
+     "blend": 0
+    },
+    {
+     "f": 15,
+     "joint": "clavR",
+     "euler": [
+      -0.0,
+      2.57,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 15,
+     "joint": "upperArmR",
+     "euler": [
+      -7.22,
+      2.17,
+      64.44
+     ],
+     "blend": 0
+    },
+    {
+     "f": 15,
+     "joint": "foreArmR",
+     "euler": [
+      -0.0,
+      35.73,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 15,
+     "joint": "handR",
+     "euler": [
+      -21.42,
+      16.8,
+      -15.3
+     ],
+     "blend": 0
+    },
+    {
+     "f": 15,
+     "joint": "thighL",
+     "euler": [
+      -52.32,
+      -4.28,
+      4.4
+     ],
+     "blend": 0
+    },
+    {
+     "f": 15,
+     "joint": "shinL",
+     "euler": [
+      73.31,
+      0.45,
+      -0.32
+     ],
+     "blend": 0
+    },
+    {
+     "f": 15,
+     "joint": "footL",
+     "euler": [
+      8.21,
+      21.43,
+      1.75
+     ],
+     "blend": 0
+    },
+    {
+     "f": 15,
+     "joint": "toeL",
+     "euler": [
+      -4.74,
+      6.17,
+      -9.74
+     ],
+     "blend": 0
+    },
+    {
+     "f": 15,
+     "joint": "thighR",
+     "euler": [
+      -108.31,
+      -16.89,
+      -11.7
+     ],
+     "blend": 0
+    },
+    {
+     "f": 15,
+     "joint": "shinR",
+     "euler": [
+      90.15,
+      1.16,
+      -1.09
+     ],
+     "blend": 0
+    },
+    {
+     "f": 15,
+     "joint": "footR",
+     "euler": [
+      -35.45,
+      1.17,
+      -8.07
+     ],
+     "blend": 0
+    },
+    {
+     "f": 15,
+     "joint": "toeR",
+     "euler": [
+      -0.0,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 16,
+     "joint": "hips",
+     "euler": [
+      50.61,
+      7.44,
+      -5.45
+     ],
+     "blend": 0
+    },
+    {
+     "f": 16,
+     "joint": "spine",
+     "euler": [
+      6.69,
+      -3.25,
+      3.75
+     ],
+     "blend": 0
+    },
+    {
+     "f": 16,
+     "joint": "chest",
+     "euler": [
+      0.27,
+      -3.23,
+      3.74
+     ],
+     "blend": 0
+    },
+    {
+     "f": 16,
+     "joint": "neck",
+     "euler": [
+      -11.68,
+      0.31,
+      0.37
+     ],
+     "blend": 0
+    },
+    {
+     "f": 16,
+     "joint": "head",
+     "euler": [
+      -5.26,
+      0.43,
+      0.38
+     ],
+     "blend": 0
+    },
+    {
+     "f": 16,
+     "joint": "clavL",
+     "euler": [
+      0.0,
+      -3.6,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 16,
+     "joint": "upperArmL",
+     "euler": [
+      -9.45,
+      -3.0,
+      -63.9
+     ],
+     "blend": 0
+    },
+    {
+     "f": 16,
+     "joint": "foreArmL",
+     "euler": [
+      -0.0,
+      -35.38,
+      -0.03
+     ],
+     "blend": 0
+    },
+    {
+     "f": 16,
+     "joint": "handL",
+     "euler": [
+      -14.78,
+      -18.21,
+      12.99
+     ],
+     "blend": 0
+    },
+    {
+     "f": 16,
+     "joint": "clavR",
+     "euler": [
+      -0.0,
+      2.68,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 16,
+     "joint": "upperArmR",
+     "euler": [
+      -7.64,
+      2.01,
+      63.74
+     ],
+     "blend": 0
+    },
+    {
+     "f": 16,
+     "joint": "foreArmR",
+     "euler": [
+      -0.0,
+      36.61,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 16,
+     "joint": "handR",
+     "euler": [
+      -17.89,
+      16.02,
+      -16.05
+     ],
+     "blend": 0
+    },
+    {
+     "f": 16,
+     "joint": "thighL",
+     "euler": [
+      -75.2,
+      -0.73,
+      1.74
+     ],
+     "blend": 0
+    },
+    {
+     "f": 16,
+     "joint": "shinL",
+     "euler": [
+      94.82,
+      -0.08,
+      0.09
+     ],
+     "blend": 0
+    },
+    {
+     "f": 16,
+     "joint": "footL",
+     "euler": [
+      -2.6,
+      17.76,
+      1.43
+     ],
+     "blend": 0
+    },
+    {
+     "f": 16,
+     "joint": "toeL",
+     "euler": [
+      -1.3,
+      1.29,
+      -2.17
+     ],
+     "blend": 0
+    },
+    {
+     "f": 16,
+     "joint": "thighR",
+     "euler": [
+      -104.56,
+      -13.02,
+      -12.21
+     ],
+     "blend": 0
+    },
+    {
+     "f": 16,
+     "joint": "shinR",
+     "euler": [
+      93.37,
+      0.68,
+      -0.68
+     ],
+     "blend": 0
+    },
+    {
+     "f": 16,
+     "joint": "footR",
+     "euler": [
+      -41.35,
+      0.32,
+      -6.26
+     ],
+     "blend": 0
+    },
+    {
+     "f": 16,
+     "joint": "toeR",
+     "euler": [
+      -0.0,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 17,
+     "joint": "hips",
+     "euler": [
+      47.9,
+      6.28,
+      -2.64
+     ],
+     "blend": 0
+    },
+    {
+     "f": 17,
+     "joint": "spine",
+     "euler": [
+      5.81,
+      -3.23,
+      2.15
+     ],
+     "blend": 0
+    },
+    {
+     "f": 17,
+     "joint": "chest",
+     "euler": [
+      0.15,
+      -3.22,
+      2.13
+     ],
+     "blend": 0
+    },
+    {
+     "f": 17,
+     "joint": "neck",
+     "euler": [
+      -11.88,
+      0.16,
+      1.15
+     ],
+     "blend": 0
+    },
+    {
+     "f": 17,
+     "joint": "head",
+     "euler": [
+      -6.21,
+      0.31,
+      1.16
+     ],
+     "blend": 0
+    },
+    {
+     "f": 17,
+     "joint": "clavL",
+     "euler": [
+      0.0,
+      -3.57,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 17,
+     "joint": "upperArmL",
+     "euler": [
+      -7.55,
+      -5.92,
+      -60.41
+     ],
+     "blend": 0
+    },
+    {
+     "f": 17,
+     "joint": "foreArmL",
+     "euler": [
+      -0.0,
+      -34.03,
+      -0.04
+     ],
+     "blend": 0
+    },
+    {
+     "f": 17,
+     "joint": "handL",
+     "euler": [
+      -15.78,
+      -16.95,
+      13.33
+     ],
+     "blend": 0
+    },
+    {
+     "f": 17,
+     "joint": "clavR",
+     "euler": [
+      -0.0,
+      2.74,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 17,
+     "joint": "upperArmR",
+     "euler": [
+      -8.09,
+      1.54,
+      63.29
+     ],
+     "blend": 0
+    },
+    {
+     "f": 17,
+     "joint": "foreArmR",
+     "euler": [
+      -0.0,
+      37.8,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 17,
+     "joint": "handR",
+     "euler": [
+      -14.2,
+      15.95,
+      -16.59
+     ],
+     "blend": 0
+    },
+    {
+     "f": 17,
+     "joint": "thighL",
+     "euler": [
+      -91.52,
+      2.71,
+      2.37
+     ],
+     "blend": 0
+    },
+    {
+     "f": 17,
+     "joint": "shinL",
+     "euler": [
+      104.69,
+      0.08,
+      -0.09
+     ],
+     "blend": 0
+    },
+    {
+     "f": 17,
+     "joint": "footL",
+     "euler": [
+      -6.9,
+      13.11,
+      1.69
+     ],
+     "blend": 0
+    },
+    {
+     "f": 17,
+     "joint": "toeL",
+     "euler": [
+      -0.27,
+      0.2,
+      -0.33
+     ],
+     "blend": 0
+    },
+    {
+     "f": 17,
+     "joint": "thighR",
+     "euler": [
+      -100.09,
+      -9.77,
+      -12.6
+     ],
+     "blend": 0
+    },
+    {
+     "f": 17,
+     "joint": "shinR",
+     "euler": [
+      95.53,
+      0.26,
+      -0.27
+     ],
+     "blend": 0
+    },
+    {
+     "f": 17,
+     "joint": "footR",
+     "euler": [
+      -45.05,
+      -1.33,
+      -4.04
+     ],
+     "blend": 0
+    },
+    {
+     "f": 17,
+     "joint": "toeR",
+     "euler": [
+      -0.02,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 18,
+     "joint": "hips",
+     "euler": [
+      44.18,
+      4.92,
+      -0.94
+     ],
+     "blend": 0
+    },
+    {
+     "f": 18,
+     "joint": "spine",
+     "euler": [
+      4.96,
+      -3.13,
+      1.17
+     ],
+     "blend": 0
+    },
+    {
+     "f": 18,
+     "joint": "chest",
+     "euler": [
+      0.1,
+      -3.15,
+      1.13
+     ],
+     "blend": 0
+    },
+    {
+     "f": 18,
+     "joint": "neck",
+     "euler": [
+      -11.88,
+      -0.04,
+      2.15
+     ],
+     "blend": 0
+    },
+    {
+     "f": 18,
+     "joint": "head",
+     "euler": [
+      -7.03,
+      0.13,
+      2.17
+     ],
+     "blend": 0
+    },
+    {
+     "f": 18,
+     "joint": "clavL",
+     "euler": [
+      0.0,
+      -3.37,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 18,
+     "joint": "upperArmL",
+     "euler": [
+      -4.73,
+      -8.94,
+      -57.38
+     ],
+     "blend": 0
+    },
+    {
+     "f": 18,
+     "joint": "foreArmL",
+     "euler": [
+      -0.0,
+      -32.84,
+      -0.05
+     ],
+     "blend": 0
+    },
+    {
+     "f": 18,
+     "joint": "handL",
+     "euler": [
+      -16.42,
+      -15.84,
+      13.54
+     ],
+     "blend": 0
+    },
+    {
+     "f": 18,
+     "joint": "clavR",
+     "euler": [
+      -0.0,
+      2.7,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 18,
+     "joint": "upperArmR",
+     "euler": [
+      -8.21,
+      1.01,
+      63.19
+     ],
+     "blend": 0
+    },
+    {
+     "f": 18,
+     "joint": "foreArmR",
+     "euler": [
+      -0.0,
+      39.12,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 18,
+     "joint": "handR",
+     "euler": [
+      -10.84,
+      16.37,
+      -16.83
+     ],
+     "blend": 0
+    },
+    {
+     "f": 18,
+     "joint": "thighL",
+     "euler": [
+      -98.05,
+      4.5,
+      4.21
+     ],
+     "blend": 0
+    },
+    {
+     "f": 18,
+     "joint": "shinL",
+     "euler": [
+      107.53,
+      0.23,
+      -0.29
+     ],
+     "blend": 0
+    },
+    {
+     "f": 18,
+     "joint": "footL",
+     "euler": [
+      -11.81,
+      8.02,
+      1.49
+     ],
+     "blend": 0
+    },
+    {
+     "f": 18,
+     "joint": "toeL",
+     "euler": [
+      -0.03,
+      0.01,
+      -0.02
+     ],
+     "blend": 0
+    },
+    {
+     "f": 18,
+     "joint": "thighR",
+     "euler": [
+      -95.51,
+      -7.59,
+      -13.44
+     ],
+     "blend": 0
+    },
+    {
+     "f": 18,
+     "joint": "shinR",
+     "euler": [
+      96.91,
+      -0.03,
+      0.03
+     ],
+     "blend": 0
+    },
+    {
+     "f": 18,
+     "joint": "footR",
+     "euler": [
+      -46.86,
+      -2.49,
+      -1.87
+     ],
+     "blend": 0
+    },
+    {
+     "f": 18,
+     "joint": "toeR",
+     "euler": [
+      -0.14,
+      -0.01,
+      0.01
+     ],
+     "blend": 0
+    },
+    {
+     "f": 19,
+     "joint": "hips",
+     "euler": [
+      39.96,
+      3.71,
+      -0.12
+     ],
+     "blend": 0
+    },
+    {
+     "f": 19,
+     "joint": "spine",
+     "euler": [
+      4.12,
+      -3.05,
+      0.7
+     ],
+     "blend": 0
+    },
+    {
+     "f": 19,
+     "joint": "chest",
+     "euler": [
+      0.12,
+      -3.1,
+      0.65
+     ],
+     "blend": 0
+    },
+    {
+     "f": 19,
+     "joint": "neck",
+     "euler": [
+      -11.73,
+      -0.24,
+      3.24
+     ],
+     "blend": 0
+    },
+    {
+     "f": 19,
+     "joint": "head",
+     "euler": [
+      -7.73,
+      -0.07,
+      3.25
+     ],
+     "blend": 0
+    },
+    {
+     "f": 19,
+     "joint": "clavL",
+     "euler": [
+      0.0,
+      -3.08,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 19,
+     "joint": "upperArmL",
+     "euler": [
+      -1.5,
+      -11.76,
+      -54.85
+     ],
+     "blend": 0
+    },
+    {
+     "f": 19,
+     "joint": "foreArmL",
+     "euler": [
+      -0.0,
+      -31.86,
+      -0.07
+     ],
+     "blend": 0
+    },
+    {
+     "f": 19,
+     "joint": "handL",
+     "euler": [
+      -16.55,
+      -14.86,
+      13.55
+     ],
+     "blend": 0
+    },
+    {
+     "f": 19,
+     "joint": "clavR",
+     "euler": [
+      -0.0,
+      2.58,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 19,
+     "joint": "upperArmR",
+     "euler": [
+      -8.04,
+      0.56,
+      63.32
+     ],
+     "blend": 0
+    },
+    {
+     "f": 19,
+     "joint": "foreArmR",
+     "euler": [
+      -0.0,
+      40.46,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 19,
+     "joint": "handR",
+     "euler": [
+      -7.86,
+      17.01,
+      -16.82
+     ],
+     "blend": 0
+    },
+    {
+     "f": 19,
+     "joint": "thighL",
+     "euler": [
+      -98.05,
+      4.95,
+      5.93
+     ],
+     "blend": 0
+    },
+    {
+     "f": 19,
+     "joint": "shinL",
+     "euler": [
+      107.28,
+      0.3,
+      -0.37
+     ],
+     "blend": 0
+    },
+    {
+     "f": 19,
+     "joint": "footL",
+     "euler": [
+      -18.09,
+      3.14,
+      0.52
+     ],
+     "blend": 0
+    },
+    {
+     "f": 19,
+     "joint": "toeL",
+     "euler": [
+      -0.0,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 19,
+     "joint": "thighR",
+     "euler": [
+      -91.52,
+      -6.36,
+      -14.83
+     ],
+     "blend": 0
+    },
+    {
+     "f": 19,
+     "joint": "shinR",
+     "euler": [
+      98.01,
+      -0.19,
+      0.21
+     ],
+     "blend": 0
+    },
+    {
+     "f": 19,
+     "joint": "footR",
+     "euler": [
+      -47.27,
+      -2.81,
+      0.09
+     ],
+     "blend": 0
+    },
+    {
+     "f": 19,
+     "joint": "toeR",
+     "euler": [
+      -0.3,
+      -0.01,
+      0.03
+     ],
+     "blend": 0
+    },
+    {
+     "f": 20,
+     "joint": "hips",
+     "euler": [
+      35.65,
+      2.87,
+      0.09
+     ],
+     "blend": 0
+    },
+    {
+     "f": 20,
+     "joint": "spine",
+     "euler": [
+      3.33,
+      -3.05,
+      0.62
+     ],
+     "blend": 0
+    },
+    {
+     "f": 20,
+     "joint": "chest",
+     "euler": [
+      0.18,
+      -3.11,
+      0.56
+     ],
+     "blend": 0
+    },
+    {
+     "f": 20,
+     "joint": "neck",
+     "euler": [
+      -11.48,
+      -0.42,
+      4.29
+     ],
+     "blend": 0
+    },
+    {
+     "f": 20,
+     "joint": "head",
+     "euler": [
+      -8.33,
+      -0.25,
+      4.3
+     ],
+     "blend": 0
+    },
+    {
+     "f": 20,
+     "joint": "clavL",
+     "euler": [
+      0.0,
+      -2.78,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 20,
+     "joint": "upperArmL",
+     "euler": [
+      1.69,
+      -14.21,
+      -52.84
+     ],
+     "blend": 0
+    },
+    {
+     "f": 20,
+     "joint": "foreArmL",
+     "euler": [
+      -0.0,
+      -31.12,
+      -0.08
+     ],
+     "blend": 0
+    },
+    {
+     "f": 20,
+     "joint": "handL",
+     "euler": [
+      -16.16,
+      -14.06,
+      13.32
+     ],
+     "blend": 0
+    },
+    {
+     "f": 20,
+     "joint": "clavR",
+     "euler": [
+      -0.0,
+      2.41,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 20,
+     "joint": "upperArmR",
+     "euler": [
+      -7.61,
+      0.36,
+      63.56
+     ],
+     "blend": 0
+    },
+    {
+     "f": 20,
+     "joint": "foreArmR",
+     "euler": [
+      -0.0,
+      41.72,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 20,
+     "joint": "handR",
+     "euler": [
+      -5.44,
+      17.69,
+      -16.56
+     ],
+     "blend": 0
+    },
+    {
+     "f": 20,
+     "joint": "thighL",
+     "euler": [
+      -97.02,
+      4.33,
+      7.31
+     ],
+     "blend": 0
+    },
+    {
+     "f": 20,
+     "joint": "shinL",
+     "euler": [
+      106.73,
+      0.37,
+      -0.45
+     ],
+     "blend": 0
+    },
+    {
+     "f": 20,
+     "joint": "footL",
+     "euler": [
+      -23.15,
+      -1.2,
+      -0.59
+     ],
+     "blend": 0
+    },
+    {
+     "f": 20,
+     "joint": "toeL",
+     "euler": [
+      -0.0,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 20,
+     "joint": "thighR",
+     "euler": [
+      -88.44,
+      -5.94,
+      -16.81
+     ],
+     "blend": 0
+    },
+    {
+     "f": 20,
+     "joint": "shinR",
+     "euler": [
+      98.86,
+      -0.22,
+      0.24
+     ],
+     "blend": 0
+    },
+    {
+     "f": 20,
+     "joint": "footR",
+     "euler": [
+      -46.17,
+      -2.15,
+      1.73
+     ],
+     "blend": 0
+    },
+    {
+     "f": 20,
+     "joint": "toeR",
+     "euler": [
+      -0.83,
+      -0.05,
+      0.13
+     ],
+     "blend": 0
+    },
+    {
+     "f": 21,
+     "joint": "hips",
+     "euler": [
+      31.7,
+      2.52,
+      -0.05
+     ],
+     "blend": 0
+    },
+    {
+     "f": 21,
+     "joint": "spine",
+     "euler": [
+      2.56,
+      -3.24,
+      0.75
+     ],
+     "blend": 0
+    },
+    {
+     "f": 21,
+     "joint": "chest",
+     "euler": [
+      0.23,
+      -3.29,
+      0.69
+     ],
+     "blend": 0
+    },
+    {
+     "f": 21,
+     "joint": "neck",
+     "euler": [
+      -11.19,
+      -0.52,
+      5.3
+     ],
+     "blend": 0
+    },
+    {
+     "f": 21,
+     "joint": "head",
+     "euler": [
+      -8.86,
+      -0.38,
+      5.3
+     ],
+     "blend": 0
+    },
+    {
+     "f": 21,
+     "joint": "clavL",
+     "euler": [
+      0.0,
+      -2.53,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 21,
+     "joint": "upperArmL",
+     "euler": [
+      4.49,
+      -16.24,
+      -51.11
+     ],
+     "blend": 0
+    },
+    {
+     "f": 21,
+     "joint": "foreArmL",
+     "euler": [
+      -0.0,
+      -30.56,
+      -0.1
+     ],
+     "blend": 0
+    },
+    {
+     "f": 21,
+     "joint": "handL",
+     "euler": [
+      -15.33,
+      -13.38,
+      13.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 21,
+     "joint": "clavR",
+     "euler": [
+      -0.0,
+      2.29,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 21,
+     "joint": "upperArmR",
+     "euler": [
+      -7.24,
+      0.26,
+      63.8
+     ],
+     "blend": 0
+    },
+    {
+     "f": 21,
+     "joint": "foreArmR",
+     "euler": [
+      -0.0,
+      42.93,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 21,
+     "joint": "handR",
+     "euler": [
+      -3.18,
+      18.26,
+      -16.25
+     ],
+     "blend": 0
+    },
+    {
+     "f": 21,
+     "joint": "thighL",
+     "euler": [
+      -95.28,
+      3.19,
+      8.32
+     ],
+     "blend": 0
+    },
+    {
+     "f": 21,
+     "joint": "shinL",
+     "euler": [
+      106.23,
+      0.43,
+      -0.52
+     ],
+     "blend": 0
+    },
+    {
+     "f": 21,
+     "joint": "footL",
+     "euler": [
+      -27.59,
+      -4.85,
+      -1.76
+     ],
+     "blend": 0
+    },
+    {
+     "f": 21,
+     "joint": "toeL",
+     "euler": [
+      -0.0,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 21,
+     "joint": "thighR",
+     "euler": [
+      -86.66,
+      -5.88,
+      -19.04
+     ],
+     "blend": 0
+    },
+    {
+     "f": 21,
+     "joint": "shinR",
+     "euler": [
+      100.19,
+      -0.19,
+      0.21
+     ],
+     "blend": 0
+    },
+    {
+     "f": 21,
+     "joint": "footR",
+     "euler": [
+      -45.0,
+      -0.99,
+      3.04
+     ],
+     "blend": 0
+    },
+    {
+     "f": 21,
+     "joint": "toeR",
+     "euler": [
+      -1.02,
+      -0.06,
+      0.17
+     ],
+     "blend": 0
+    },
+    {
+     "f": 22,
+     "joint": "hips",
+     "euler": [
+      28.23,
+      2.57,
+      -0.39
+     ],
+     "blend": 0
+    },
+    {
+     "f": 22,
+     "joint": "spine",
+     "euler": [
+      1.86,
+      -3.55,
+      1.02
+     ],
+     "blend": 0
+    },
+    {
+     "f": 22,
+     "joint": "chest",
+     "euler": [
+      0.27,
+      -3.6,
+      0.97
+     ],
+     "blend": 0
+    },
+    {
+     "f": 22,
+     "joint": "neck",
+     "euler": [
+      -10.89,
+      -0.57,
+      6.22
+     ],
+     "blend": 0
+    },
+    {
+     "f": 22,
+     "joint": "head",
+     "euler": [
+      -9.31,
+      -0.46,
+      6.22
+     ],
+     "blend": 0
+    },
+    {
+     "f": 22,
+     "joint": "clavL",
+     "euler": [
+      0.0,
+      -2.34,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 22,
+     "joint": "upperArmL",
+     "euler": [
+      6.83,
+      -17.87,
+      -49.67
+     ],
+     "blend": 0
+    },
+    {
+     "f": 22,
+     "joint": "foreArmL",
+     "euler": [
+      -0.0,
+      -30.16,
+      -0.11
+     ],
+     "blend": 0
+    },
+    {
+     "f": 22,
+     "joint": "handL",
+     "euler": [
+      -14.24,
+      -12.84,
+      12.62
+     ],
+     "blend": 0
+    },
+    {
+     "f": 22,
+     "joint": "clavR",
+     "euler": [
+      -0.0,
+      2.19,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 22,
+     "joint": "upperArmR",
+     "euler": [
+      -6.95,
+      0.23,
+      64.03
+     ],
+     "blend": 0
+    },
+    {
+     "f": 22,
+     "joint": "foreArmR",
+     "euler": [
+      -0.0,
+      44.04,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 22,
+     "joint": "handR",
+     "euler": [
+      -1.15,
+      18.73,
+      -15.93
+     ],
+     "blend": 0
+    },
+    {
+     "f": 22,
+     "joint": "thighL",
+     "euler": [
+      -93.17,
+      1.77,
+      9.04
+     ],
+     "blend": 0
+    },
+    {
+     "f": 22,
+     "joint": "shinL",
+     "euler": [
+      105.82,
+      0.49,
+      -0.59
+     ],
+     "blend": 0
+    },
+    {
+     "f": 22,
+     "joint": "footL",
+     "euler": [
+      -31.38,
+      -7.83,
+      -2.91
+     ],
+     "blend": 0
+    },
+    {
+     "f": 22,
+     "joint": "toeL",
+     "euler": [
+      -0.0,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 22,
+     "joint": "thighR",
+     "euler": [
+      -85.87,
+      -6.02,
+      -21.31
+     ],
+     "blend": 0
+    },
+    {
+     "f": 22,
+     "joint": "shinR",
+     "euler": [
+      101.78,
+      -0.14,
+      0.16
+     ],
+     "blend": 0
+    },
+    {
+     "f": 22,
+     "joint": "footR",
+     "euler": [
+      -43.71,
+      0.42,
+      4.01
+     ],
+     "blend": 0
+    },
+    {
+     "f": 22,
+     "joint": "toeR",
+     "euler": [
+      -1.08,
+      -0.07,
+      0.2
+     ],
+     "blend": 0
+    },
+    {
+     "f": 23,
+     "joint": "hips",
+     "euler": [
+      25.35,
+      2.82,
+      -0.77
+     ],
+     "blend": 0
+    },
+    {
+     "f": 23,
+     "joint": "spine",
+     "euler": [
+      1.26,
+      -3.91,
+      1.32
+     ],
+     "blend": 0
+    },
+    {
+     "f": 23,
+     "joint": "chest",
+     "euler": [
+      0.31,
+      -3.94,
+      1.29
+     ],
+     "blend": 0
+    },
+    {
+     "f": 23,
+     "joint": "neck",
+     "euler": [
+      -10.62,
+      -0.59,
+      7.01
+     ],
+     "blend": 0
+    },
+    {
+     "f": 23,
+     "joint": "head",
+     "euler": [
+      -9.68,
+      -0.51,
+      7.01
+     ],
+     "blend": 0
+    },
+    {
+     "f": 23,
+     "joint": "clavL",
+     "euler": [
+      0.0,
+      -2.2,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 23,
+     "joint": "upperArmL",
+     "euler": [
+      8.73,
+      -19.15,
+      -48.5
+     ],
+     "blend": 0
+    },
+    {
+     "f": 23,
+     "joint": "foreArmL",
+     "euler": [
+      -0.0,
+      -29.88,
+      -0.12
+     ],
+     "blend": 0
+    },
+    {
+     "f": 23,
+     "joint": "handL",
+     "euler": [
+      -13.12,
+      -12.41,
+      12.25
+     ],
+     "blend": 0
+    },
+    {
+     "f": 23,
+     "joint": "clavR",
+     "euler": [
+      -0.0,
+      2.12,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 23,
+     "joint": "upperArmR",
+     "euler": [
+      -6.73,
+      0.23,
+      64.23
+     ],
+     "blend": 0
+    },
+    {
+     "f": 23,
+     "joint": "foreArmR",
+     "euler": [
+      -0.0,
+      44.99,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 23,
+     "joint": "handR",
+     "euler": [
+      0.61,
+      19.09,
+      -15.64
+     ],
+     "blend": 0
+    },
+    {
+     "f": 23,
+     "joint": "thighL",
+     "euler": [
+      -91.07,
+      0.36,
+      9.58
+     ],
+     "blend": 0
+    },
+    {
+     "f": 23,
+     "joint": "shinL",
+     "euler": [
+      105.5,
+      0.54,
+      -0.65
+     ],
+     "blend": 0
+    },
+    {
+     "f": 23,
+     "joint": "footL",
+     "euler": [
+      -34.54,
+      -10.16,
+      -3.95
+     ],
+     "blend": 0
+    },
+    {
+     "f": 23,
+     "joint": "toeL",
+     "euler": [
+      -0.0,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 23,
+     "joint": "thighR",
+     "euler": [
+      -85.69,
+      -6.22,
+      -23.38
+     ],
+     "blend": 0
+    },
+    {
+     "f": 23,
+     "joint": "shinR",
+     "euler": [
+      103.39,
+      -0.08,
+      0.1
+     ],
+     "blend": 0
+    },
+    {
+     "f": 23,
+     "joint": "footR",
+     "euler": [
+      -42.69,
+      1.82,
+      4.72
+     ],
+     "blend": 0
+    },
+    {
+     "f": 23,
+     "joint": "toeR",
+     "euler": [
+      -0.92,
+      -0.07,
+      0.19
+     ],
+     "blend": 0
+    },
+    {
+     "f": 24,
+     "joint": "hips",
+     "euler": [
+      23.14,
+      3.1,
+      -1.1
+     ],
+     "blend": 0
+    },
+    {
+     "f": 24,
+     "joint": "spine",
+     "euler": [
+      0.78,
+      -4.23,
+      1.59
+     ],
+     "blend": 0
+    },
+    {
+     "f": 24,
+     "joint": "chest",
+     "euler": [
+      0.34,
+      -4.24,
+      1.57
+     ],
+     "blend": 0
+    },
+    {
+     "f": 24,
+     "joint": "neck",
+     "euler": [
+      -10.41,
+      -0.58,
+      7.63
+     ],
+     "blend": 0
+    },
+    {
+     "f": 24,
+     "joint": "head",
+     "euler": [
+      -9.96,
+      -0.54,
+      7.63
+     ],
+     "blend": 0
+    },
+    {
+     "f": 24,
+     "joint": "clavL",
+     "euler": [
+      0.0,
+      -2.1,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 24,
+     "joint": "upperArmL",
+     "euler": [
+      10.17,
+      -20.09,
+      -47.6
+     ],
+     "blend": 0
+    },
+    {
+     "f": 24,
+     "joint": "foreArmL",
+     "euler": [
+      -0.0,
+      -29.68,
+      -0.13
+     ],
+     "blend": 0
+    },
+    {
+     "f": 24,
+     "joint": "handL",
+     "euler": [
+      -12.17,
+      -12.09,
+      11.96
+     ],
+     "blend": 0
+    },
+    {
+     "f": 24,
+     "joint": "clavR",
+     "euler": [
+      -0.0,
+      2.08,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 24,
+     "joint": "upperArmR",
+     "euler": [
+      -6.57,
+      0.25,
+      64.39
+     ],
+     "blend": 0
+    },
+    {
+     "f": 24,
+     "joint": "foreArmR",
+     "euler": [
+      -0.0,
+      45.74,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 24,
+     "joint": "handR",
+     "euler": [
+      2.0,
+      19.36,
+      -15.42
+     ],
+     "blend": 0
+    },
+    {
+     "f": 24,
+     "joint": "thighL",
+     "euler": [
+      -89.28,
+      -0.8,
+      9.98
+     ],
+     "blend": 0
+    },
+    {
+     "f": 24,
+     "joint": "shinL",
+     "euler": [
+      105.27,
+      0.58,
+      -0.69
+     ],
+     "blend": 0
+    },
+    {
+     "f": 24,
+     "joint": "footL",
+     "euler": [
+      -37.03,
+      -11.87,
+      -4.84
+     ],
+     "blend": 0
+    },
+    {
+     "f": 24,
+     "joint": "toeL",
+     "euler": [
+      -0.0,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 24,
+     "joint": "thighR",
+     "euler": [
+      -85.81,
+      -6.37,
+      -25.02
+     ],
+     "blend": 0
+    },
+    {
+     "f": 24,
+     "joint": "shinR",
+     "euler": [
+      104.81,
+      -0.04,
+      0.05
+     ],
+     "blend": 0
+    },
+    {
+     "f": 24,
+     "joint": "footR",
+     "euler": [
+      -42.16,
+      2.98,
+      5.24
+     ],
+     "blend": 0
+    },
+    {
+     "f": 24,
+     "joint": "toeR",
+     "euler": [
+      -0.51,
+      -0.04,
+      0.11
+     ],
+     "blend": 0
+    },
+    {
+     "f": 25,
+     "joint": "hips",
+     "euler": [
+      21.72,
+      3.32,
+      -1.32
+     ],
+     "blend": 0
+    },
+    {
+     "f": 25,
+     "joint": "spine",
+     "euler": [
+      0.47,
+      -4.45,
+      1.76
+     ],
+     "blend": 0
+    },
+    {
+     "f": 25,
+     "joint": "chest",
+     "euler": [
+      0.36,
+      -4.45,
+      1.76
+     ],
+     "blend": 0
+    },
+    {
+     "f": 25,
+     "joint": "neck",
+     "euler": [
+      -10.27,
+      -0.57,
+      8.03
+     ],
+     "blend": 0
+    },
+    {
+     "f": 25,
+     "joint": "head",
+     "euler": [
+      -10.15,
+      -0.56,
+      8.03
+     ],
+     "blend": 0
+    },
+    {
+     "f": 25,
+     "joint": "clavL",
+     "euler": [
+      0.0,
+      -2.04,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 25,
+     "joint": "upperArmL",
+     "euler": [
+      11.1,
+      -20.69,
+      -47.01
+     ],
+     "blend": 0
+    },
+    {
+     "f": 25,
+     "joint": "foreArmL",
+     "euler": [
+      -0.0,
+      -29.55,
+      -0.13
+     ],
+     "blend": 0
+    },
+    {
+     "f": 25,
+     "joint": "handL",
+     "euler": [
+      -11.51,
+      -11.88,
+      11.77
+     ],
+     "blend": 0
+    },
+    {
+     "f": 25,
+     "joint": "clavR",
+     "euler": [
+      -0.0,
+      2.05,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 25,
+     "joint": "upperArmR",
+     "euler": [
+      -6.48,
+      0.26,
+      64.49
+     ],
+     "blend": 0
+    },
+    {
+     "f": 25,
+     "joint": "foreArmR",
+     "euler": [
+      -0.0,
+      46.22,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 25,
+     "joint": "handR",
+     "euler": [
+      2.92,
+      19.52,
+      -15.28
+     ],
+     "blend": 0
+    },
+    {
+     "f": 25,
+     "joint": "thighL",
+     "euler": [
+      -88.06,
+      -1.57,
+      10.25
+     ],
+     "blend": 0
+    },
+    {
+     "f": 25,
+     "joint": "shinL",
+     "euler": [
+      105.13,
+      0.6,
+      -0.72
+     ],
+     "blend": 0
+    },
+    {
+     "f": 25,
+     "joint": "footL",
+     "euler": [
+      -38.66,
+      -12.95,
+      -5.44
+     ],
+     "blend": 0
+    },
+    {
+     "f": 25,
+     "joint": "toeL",
+     "euler": [
+      -0.0,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 25,
+     "joint": "thighR",
+     "euler": [
+      -85.98,
+      -6.47,
+      -26.1
+     ],
+     "blend": 0
+    },
+    {
+     "f": 25,
+     "joint": "shinR",
+     "euler": [
+      105.79,
+      -0.01,
+      0.01
+     ],
+     "blend": 0
+    },
+    {
+     "f": 25,
+     "joint": "footR",
+     "euler": [
+      -41.92,
+      3.76,
+      5.57
+     ],
+     "blend": 0
+    },
+    {
+     "f": 25,
+     "joint": "toeR",
+     "euler": [
+      -0.14,
+      -0.01,
+      0.03
+     ],
+     "blend": 0
+    },
+    {
+     "f": 26,
+     "joint": "hips",
+     "euler": [
+      21.21,
+      3.4,
+      -1.4
+     ],
+     "blend": 0
+    },
+    {
+     "f": 26,
+     "joint": "spine",
+     "euler": [
+      0.36,
+      -4.53,
+      1.83
+     ],
+     "blend": 0
+    },
+    {
+     "f": 26,
+     "joint": "chest",
+     "euler": [
+      0.36,
+      -4.53,
+      1.83
+     ],
+     "blend": 0
+    },
+    {
+     "f": 26,
+     "joint": "neck",
+     "euler": [
+      -10.21,
+      -0.57,
+      8.17
+     ],
+     "blend": 0
+    },
+    {
+     "f": 26,
+     "joint": "head",
+     "euler": [
+      -10.21,
+      -0.57,
+      8.17
+     ],
+     "blend": 0
+    },
+    {
+     "f": 26,
+     "joint": "clavL",
+     "euler": [
+      0.0,
+      -2.02,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 26,
+     "joint": "upperArmL",
+     "euler": [
+      11.43,
+      -20.9,
+      -46.8
+     ],
+     "blend": 0
+    },
+    {
+     "f": 26,
+     "joint": "foreArmL",
+     "euler": [
+      -0.0,
+      -29.51,
+      -0.14
+     ],
+     "blend": 0
+    },
+    {
+     "f": 26,
+     "joint": "handL",
+     "euler": [
+      -11.28,
+      -11.81,
+      11.7
+     ],
+     "blend": 0
+    },
+    {
+     "f": 26,
+     "joint": "clavR",
+     "euler": [
+      -0.0,
+      2.04,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 26,
+     "joint": "upperArmR",
+     "euler": [
+      -6.44,
+      0.27,
+      64.53
+     ],
+     "blend": 0
+    },
+    {
+     "f": 26,
+     "joint": "foreArmR",
+     "euler": [
+      -0.0,
+      46.39,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 26,
+     "joint": "handR",
+     "euler": [
+      3.25,
+      19.58,
+      -15.23
+     ],
+     "blend": 0
+    },
+    {
+     "f": 26,
+     "joint": "thighL",
+     "euler": [
+      -87.62,
+      -1.85,
+      10.34
+     ],
+     "blend": 0
+    },
+    {
+     "f": 26,
+     "joint": "shinL",
+     "euler": [
+      105.08,
+      0.61,
+      -0.73
+     ],
+     "blend": 0
+    },
+    {
+     "f": 26,
+     "joint": "footL",
+     "euler": [
+      -39.25,
+      -13.32,
+      -5.67
+     ],
+     "blend": 0
+    },
+    {
+     "f": 26,
+     "joint": "toeL",
+     "euler": [
+      -0.0,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 26,
+     "joint": "thighR",
+     "euler": [
+      -86.05,
+      -6.5,
+      -26.49
+     ],
+     "blend": 0
+    },
+    {
+     "f": 26,
+     "joint": "shinR",
+     "euler": [
+      106.15,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 26,
+     "joint": "footR",
+     "euler": [
+      -41.84,
+      4.04,
+      5.68
+     ],
+     "blend": 0
+    },
+    {
+     "f": 26,
+     "joint": "toeR",
+     "euler": [
+      0.0,
+      -0.0,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 27,
+     "joint": "hips",
+     "euler": [
+      21.21,
+      3.4,
+      -1.4
+     ],
+     "blend": 0
+    },
+    {
+     "f": 27,
+     "joint": "spine",
+     "euler": [
+      0.36,
+      -4.53,
+      1.83
+     ],
+     "blend": 0
+    },
+    {
+     "f": 27,
+     "joint": "chest",
+     "euler": [
+      0.36,
+      -4.53,
+      1.83
+     ],
+     "blend": 0
+    },
+    {
+     "f": 27,
+     "joint": "neck",
+     "euler": [
+      -10.21,
+      -0.57,
+      8.17
+     ],
+     "blend": 0
+    },
+    {
+     "f": 27,
+     "joint": "head",
+     "euler": [
+      -10.21,
+      -0.57,
+      8.17
+     ],
+     "blend": 0
+    },
+    {
+     "f": 27,
+     "joint": "clavL",
+     "euler": [
+      0.0,
+      -2.02,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 27,
+     "joint": "upperArmL",
+     "euler": [
+      11.43,
+      -20.9,
+      -46.8
+     ],
+     "blend": 0
+    },
+    {
+     "f": 27,
+     "joint": "foreArmL",
+     "euler": [
+      -0.0,
+      -29.51,
+      -0.14
+     ],
+     "blend": 0
+    },
+    {
+     "f": 27,
+     "joint": "handL",
+     "euler": [
+      -11.28,
+      -11.81,
+      11.7
+     ],
+     "blend": 0
+    },
+    {
+     "f": 27,
+     "joint": "clavR",
+     "euler": [
+      -0.0,
+      2.04,
+      0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 27,
+     "joint": "upperArmR",
+     "euler": [
+      -6.44,
+      0.27,
+      64.53
+     ],
+     "blend": 0
+    },
+    {
+     "f": 27,
+     "joint": "foreArmR",
+     "euler": [
+      -0.0,
+      46.39,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 27,
+     "joint": "handR",
+     "euler": [
+      3.25,
+      19.58,
+      -15.23
+     ],
+     "blend": 0
+    },
+    {
+     "f": 27,
+     "joint": "thighL",
+     "euler": [
+      -87.62,
+      -1.85,
+      10.34
+     ],
+     "blend": 0
+    },
+    {
+     "f": 27,
+     "joint": "shinL",
+     "euler": [
+      105.08,
+      0.61,
+      -0.73
+     ],
+     "blend": 0
+    },
+    {
+     "f": 27,
+     "joint": "footL",
+     "euler": [
+      -39.25,
+      -13.32,
+      -5.67
+     ],
+     "blend": 0
+    },
+    {
+     "f": 27,
+     "joint": "toeL",
+     "euler": [
+      -0.0,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 27,
+     "joint": "thighR",
+     "euler": [
+      -86.05,
+      -6.5,
+      -26.49
+     ],
+     "blend": 0
+    },
+    {
+     "f": 27,
+     "joint": "shinR",
+     "euler": [
+      106.15,
+      0.0,
+      -0.0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 27,
+     "joint": "footR",
+     "euler": [
+      -41.84,
+      4.04,
+      5.68
+     ],
+     "blend": 0
+    },
+    {
+     "f": 27,
+     "joint": "toeR",
+     "euler": [
+      0.0,
+      -0.0,
+      0.0
+     ],
+     "blend": 0
+    }
+   ]
   },
   {
    "name": "walkToCrouch",
