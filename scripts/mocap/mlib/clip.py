@@ -339,6 +339,15 @@ def build_clip(spec, clip, log=print):
         q = post.despike(q, fps, clip.get('qa', {}).get('maxStepDeg'), loop, protect=prot)
     for pk in clip.get('pose_keys', []):
         q = keys.apply_pose_key(q, pk, fps, B)
+    if clip.get('protect_keys') and clip.get('pose_keys'):
+        # spec "protect_keys": the joints pose keys set (over their blend) are left alone by the despike
+        # after the feet (it rolled a fully keyed hand 45-120 degrees: lights2 light1)
+        pm = np.zeros((len(q), J), bool)
+        for pk in clip['pose_keys']:
+            f = int(pk['f']) if 'f' in pk else int(round((cfg.parse_time(pk['t']) - B.t_ref[0]) * fps))
+            w_ = int(pk.get('blend', 4))
+            pm[max(0, f - w_):f + w_ + 1, JI[pk['joint']]] = True
+        prot = pm if prot is None else (prot | pm)
     q = skel.continuous(q)
     hips_off = None
     if clip.get('bone_keys'):

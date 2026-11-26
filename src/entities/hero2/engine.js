@@ -104,7 +104,7 @@ export function createClipPlayer(lib, { dims = HDIM, warn = (m) => console.warn(
   // caller's clock; transition(): a fade from the pose as drawn now, over whatever plays next
   const mix = { on: false, w: 0 };
   const outer = { active: false, t: 0, dur: 0, q: new Float32Array(J * 4), hips: new Float32Array(3), cL: 0, cR: 0 };
-  const overlay = { mask: new Float32Array(J), w: 0, target: 0, rate: 0 };
+  const overlay = { mask: new Float32Array(J), w: 0, target: 0, rate: 0, out: 0 };
   const warned = new Set();
   const events = Array.from({ length: EV_MAX }, () => ({ name: '', clip: '', f: 0, side: '' }));
   let evN = 0;
@@ -252,9 +252,33 @@ export function createClipPlayer(lib, { dims = HDIM, warn = (m) => console.warn(
       cur.target = Math.max(0, fin(t, 0)) * cur.clip.fps;
       cur.manual = true;
     },
+    /** The overlay's clip (decoded) while it shows, else null. */
+    get overlayClip() {
+      return over.clip && overlay.w > 0 ? over.clip : null;
+    },
+    /** The overlay's weight now (0..1). */
+    get overlayWeight() {
+      return overlay.w;
+    },
+    /** The overlay's time (s). */
+    get overlayTime() {
+      return over.clip ? frameIn(over.clip, over.u, over.loop) / over.clip.fps : 0;
+    },
+    /** Put the overlay on the caller's clock (its time set each step, s); null: back to its own speed. */
+    layerTime(t) {
+      if (!over.clip) return;
+      if (t == null) {
+        over.manual = false;
+        over.target = null;
+        return;
+      }
+      over.target = Math.max(0, fin(t, 0)) * over.clip.fps;
+      over.manual = true;
+    },
     /** Overlay a clip on some joints (mask: 'upper' | 'arms' | 'legs' | names): weight 0..1, faded in
-     *  over `fade` s. name null fades the overlay out. */
-    layer(name, { mask = 'upper', weight = 1, fade: fd = 0.2, speed = 1, loop, at = 0 } = {}) {
+     *  over `fade` s; `out` (s, a one-shot): it fades itself out over that when it reaches its end.
+     *  name null fades the overlay out (over `fade` s). */
+    layer(name, { mask = 'upper', weight = 1, fade: fd = 0.2, speed = 1, loop, at = 0, out = 0 } = {}) {
       if (name == null) {
         overlay.target = 0;
         overlay.rate = fd > 0 ? 1 / fd : 1e9;
@@ -273,6 +297,9 @@ export function createClipPlayer(lib, { dims = HDIM, warn = (m) => console.warn(
       over.loop = loop ?? c.loop;
       over.u = at * c.fps;
       over.done = false;
+      over.manual = false;
+      over.target = null;
+      overlay.out = Math.max(0, fin(out, 0));
       overlay.mask = makeMask(mask);
       overlay.target = Math.max(0, Math.min(1, weight));
       overlay.rate = fd > 0 ? 1 / fd : 1e9;
@@ -410,6 +437,10 @@ export function createClipPlayer(lib, { dims = HDIM, warn = (m) => console.warn(
     }
     if (over.clip && overlay.w > 0) {
       advance(over, k, dO, false);
+      if (over.done && overlay.out > 0 && overlay.target > 0) {
+        overlay.target = 0;
+        overlay.rate = 1 / overlay.out;
+      }
       sampleClip(over.clip, frameIn(over.clip, over.u, over.loop), O, over.loop);
       const M = overlay.mask, ow = smooth01(overlay.w);
       for (let j = 0; j < J; j++) if (M[j] > 0) qslerp(pose.q, j * 4, pose.q, j * 4, O.q, j * 4, M[j] * ow);
@@ -510,7 +541,8 @@ export function createHero2(game, { body, library, dims = HDIM, applyRoot = true
   const listeners = new Map();
   const place = { x: 0, z: 0, yaw: 0, s: 1 };
   const obj = body?.object3d ?? null;
-  let lastProps = { R: undefined, L: undefined };
+  const sheathed = { R: false, L: false };
+  let lastProps = { R: undefined, L: undefined }, lastHands = { R: undefined, L: undefined };
   solveFK(player.pose, rest, world);
 
   const fire = (list, e) => {
@@ -560,7 +592,13 @@ export function createHero2(game, { body, library, dims = HDIM, applyRoot = true
     applyRoot,
     play(name, opts) {
       const ok = player.play(name, opts);
-      if (ok) syncProps();
+      if (ok) {
+        // a clip that draws the sword (a `draw` event) starts with it sheathed; one without draw or
+        // sheathe events shows what its props say
+        const ev = player.clip?.events ?? [];
+        sheathed.R = ev.some((e) => e.name === 'draw');
+        syncProps();
+      }
       return ok;
     },
     cut(name, opts) {
@@ -582,7 +620,15 @@ export function createHero2(game, { body, library, dims = HDIM, applyRoot = true
     onPose: null,
     syncProps: () => syncProps(),
     setTime: (t) => player.setTime(t),
-    layer: (name, opts) => player.layer(name, opts),
+    layer(name, opts) {
+      const ok = player.layer(name, opts);
+      syncProps();
+      return ok;
+    },
+    layerTime: (t) => player.layerTime(t),
+    get overlayClip() {
+      return player.overlayClip;
+    },
     /** fitTime for the current clip: H.setTime(H.fit(gameT, { windup, active, recovery })) */
     fit(t, win, out) {
       return player.clip ? fitTime(player.clip, t, win, out) : 0;
@@ -652,7 +698,13 @@ export function createHero2(game, { body, library, dims = HDIM, applyRoot = true
           player.contact.R *= cs;
         }
         pinFeet(feet, player.pose, world, rest, player, wA, wB, place, dt, dims);
-        for (let i = 0; i < player.eventCount; i++) emit(player.events[i]);
+        for (let i = 0; i < player.eventCount; i++) {
+          const e = player.events[i];
+          // `draw` shows the right hand's prop, `sheathe` hides it (equip / unequip)
+          if (e.name === 'draw') sheathed.R = false;
+          else if (e.name === 'sheathe') sheathed.R = true;
+          emit(e);
+        }
         // the blade lights while it cuts (body.hot, optional): 1 from the coil to the cut's end, eased
         if (body && 'hot' in body) {
           const c = player.clip, f = c?.phases ? player.time * c.fps : -1;
@@ -660,6 +712,7 @@ export function createHero2(game, { body, library, dims = HDIM, applyRoot = true
           const h = fin(body.hot, 0);
           body.hot = want > h ? Math.min(1, h + dt * 30) : Math.max(0, h - dt * 4);
         }
+        syncProps();
         body?.update?.(world, dt);
       } catch (err) {
         warn(`[hero2] update failed: ${err?.message ?? err}`);
@@ -707,16 +760,35 @@ export function createHero2(game, { body, library, dims = HDIM, applyRoot = true
     out[1] = oy + y * sc;
     out[2] = place.z + (-s * x + c * z) * sc;
   }
+  /** What a hand holds and its shape: H.props[side] when the owner fixes it (a side it leaves
+   *  undefined, or no H.props: the clips'), else the overlay's clip while it shows (it says what it holds
+   *  or how the hand closes), else the playing clip's. Called every step (it compares, then tells the body). */
+  function clipSide(c, field, s) {
+    const v = c?.[field]?.[s];
+    return v === undefined ? null : v;
+  }
   function syncProps() {
-    const p = H.props ?? player.clip?.props;
-    if (!p || !body?.setProp) return;
-    for (const s of ['R', 'L']) {
-      if (lastProps[s] !== p[s]) {
-        lastProps[s] = p[s];
+    const oc = player.overlayClip, cc = player.clip;
+    for (let i = 0; i < 2; i++) {
+      const s = i ? 'L' : 'R';
+      const fixed = H.props ? H.props[s] : undefined;
+      let p = fixed !== undefined ? fixed : oc && clipSide(oc, 'props', s) != null ? clipSide(oc, 'props', s) : clipSide(cc, 'props', s);
+      if (sheathed[s]) p = null;
+      let h = oc && clipSide(oc, 'hands', s) != null ? clipSide(oc, 'hands', s) : clipSide(cc, 'hands', s);
+      if (lastProps[s] !== p && body?.setProp) {
+        lastProps[s] = p;
         try {
-          body.setProp(s, p[s]);
+          body.setProp(s, p);
         } catch {
           /* a body without that prop */
+        }
+      }
+      if (lastHands[s] !== h && body?.setHand) {
+        lastHands[s] = h;
+        try {
+          body.setHand(s, h);
+        } catch {
+          /* a body without hand shapes */
         }
       }
     }

@@ -35,6 +35,8 @@ def clip_entry(c, B):
     if c.get('qa', {}).get('maxStepDeg'):
         e['qa'] = {'maxStepDeg': c['qa']['maxStepDeg'], 'reason': c['qa'].get('reason', '')}
     e['props'] = c.get('props', {'R': None, 'L': None})
+    if c.get('hands') is not None:
+        e['hands'] = c['hands']  # e.g. {"L": "fist"}: the two-handed clips' off hand
     e['from'] = c.get('from', 'idle')
     e['to'] = c.get('to', 'idle')
     return e
