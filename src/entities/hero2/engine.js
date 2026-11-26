@@ -597,6 +597,7 @@ export function createHero2(game, { body, library, dims = HDIM, applyRoot = true
         // sheathe events shows what its props say
         const ev = player.clip?.events ?? [];
         sheathed.R = ev.some((e) => e.name === 'draw');
+        sheathed.L = ev.some((e) => e.name === 'drawL');
         syncProps();
       }
       return ok;
@@ -707,9 +708,12 @@ export function createHero2(game, { body, library, dims = HDIM, applyRoot = true
         pinFeet(feet, player.pose, world, rest, player, wA, wB, place, dt, dims);
         for (let i = 0; i < player.eventCount; i++) {
           const e = player.events[i];
-          // `draw` shows the right hand's prop, `sheathe` hides it (equip / unequip)
+          // `draw` shows the right hand's prop, `sheathe` hides it (equip / unequip); `drawL` /
+          // `sheatheL` the left hand's (the paired swords)
           if (e.name === 'draw') sheathed.R = false;
           else if (e.name === 'sheathe') sheathed.R = true;
+          else if (e.name === 'drawL') sheathed.L = false;
+          else if (e.name === 'sheatheL') sheathed.L = true;
           emit(e);
         }
         // the blade lights while it cuts (body.hot, optional): 1 from the coil to the cut's end, eased

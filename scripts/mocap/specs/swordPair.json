@@ -27098,12 +27098,7 @@
      "pitch": 10
     }
    ],
-   "events": [
-    {
-     "t": "15:35.083",
-     "name": "draw"
-    }
-   ],
+   "events": [{"t": "15:35.083", "name": "draw"}, {"t": "15:35.083", "name": "drawL"}],
    "face": 0,
    "props": {
     "R": "sword",
