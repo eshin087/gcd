@@ -46,28 +46,63 @@
    "search": 0.45,
    "takes": [
     {
-     "t0": "0:26.05",
-     "t1": "0:27.25",
+     "t0": "0:26.45",
+     "t1": "0:27.45",
+     "view": "right",
+     "yaw": 70
+    },
+    {
+     "t0": "0:29.35",
+     "t1": "0:30.35",
      "view": "right"
+    },
+    {
+     "t0": "1:02.76",
+     "t1": "1:03.55",
+     "view": "back",
+     "yaw": 175
     }
    ],
    "phases": {
-    "windup": "0:26.55",
-    "active": "0:26.85",
-    "recover": "0:27.20"
+    "windup": "0:26.76",
+    "active": "0:27.00",
+    "recover": "0:27.40"
    },
    "events": [
     {
-     "t": "0:26.75",
+     "t": "0:26.95",
      "name": "hit"
     }
    ],
+   "face": "travel",
+   "blade_blur": true,
+   "free_hand": true,
    "props": {
     "R": "sword",
     "L": null
    },
    "from": "swordIdle",
-   "to": "swordIdle"
+   "to": "swordIdle",
+   "swing": true,
+   "root": {
+    "smooth": 0.1,
+    "max_off": 0.15
+   },
+   "blade_keys": [
+    {
+     "take": 0,
+     "keys": [
+      [
+       "0:26.89",
+       930,
+       410,
+       845,
+       325
+      ]
+     ]
+    }
+   ],
+   "foot_ease": 14
   },
   {
    "name": "light2",
@@ -101,43 +136,6 @@
    },
    "from": "light1",
    "to": "swordIdle"
-  },
-  {
-   "name": "pairIdle",
-   "title": "Idle (paired swords)",
-   "src": "sword 15:22-15:31",
-   "kind": "hold",
-   "fps": 30,
-   "n": 108,
-   "sword": true,
-   "swordL": true,
-   "breath": {
-    "period": 3.6
-   },
-   "takes": [
-    {
-     "t0": "15:22.45",
-     "t1": "15:24.60",
-     "view": "right"
-    },
-    {
-     "t0": "15:24.70",
-     "t1": "15:26.85",
-     "view": "front"
-    },
-    {
-     "t0": "15:26.95",
-     "t1": "15:29.10",
-     "view": "left"
-    }
-   ],
-   "props": {
-    "R": "sword",
-    "L": "sword"
-   },
-   "from": "pairIdle",
-   "to": "pairIdle",
-   "draft": true
   }
  ]
 }

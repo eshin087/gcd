@@ -123,7 +123,7 @@ def track_span(film, t0, t1, box0=None, budget=420.0, log=print):
     done = 0
     last_t = None
     for t, f in todo:
-        if time.time() - start > budget:
+        if time.time() - start > budget - 2:  # a frame takes well under 2 s: stop before the budget
             break
         im = Image.open(f).convert('RGB')
         W, H = im.size
