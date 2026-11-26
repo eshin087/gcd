@@ -23,8 +23,10 @@ moves / tuning; Lab LOOKS rows (awaiting). Tests: sheath / fox `motion`, integ `
 **Verified.** The suites' scenarios; films at the game camera and a side view (headless Edge, `__tick`): before
 | a | b for four blows a boss, the quick blows, sent to the owner.
 
-**Open.** The owner's picks (then the defaults, the PICKED table, and the PACE suites with the picks); Lu
-Wusheng's free hand in the scabbard cuts; the same foot ease for Shen Hui and Varr Nihil (their session).
+**The owner's picks** (from the films): `a` for all three bosses, every quick blow: the defaults (PICKED).
+
+**Open.** Lu Wusheng's free hand in the scabbard cuts; the same foot ease for Shen Hui and Varr Nihil (their
+session).
 
 ## 2026-11-26 — The lite world on a phone at AUTO's floor (ADR-216; branch `render/phone-lite`)
 

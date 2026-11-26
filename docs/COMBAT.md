@@ -2608,11 +2608,12 @@ rests of 0.12 - 0.28 s; idle gaps 0.03 - 0.1 s.
 WIN (the fencing bot in god mode): 157 - 164 s on three seeds (the plan asked 150 - 210; 156 - 183 s before the review fixes). The bar was sized
 for it: 3400 hp gave 40 - 46 s (a crash is a long opening), 7000 / 700 posture 81 s.
 
-## Held tells and quick blows (2026-11-26, ADR-223; behind switches, waiting for the owner's pick)
+## Held tells and quick blows (2026-11-26, ADR-223; the owner's picks: `a` and every quick blow, the default)
 The owner asked for every boss's motion to be audited, for every blue and red blow to have a **readable held
 windup pose**, and for a few **much faster normal blows**. This pass covers Lu Wusheng, Wen Yao and the Cinder
 Wyrm (`?sheathMotion=` `?foxMotion=` `?wyrmMotion=` `0|a|b`, `?sheathQuick=` `?foxQuick=` `?wyrmQuick=` `0|a`;
-the Lab's LOOKS rows; `0` is the game as it shipped and stays the default until the owner picks).
+the Lab's LOOKS rows). The owner picked `a` for all three and every quick blow from the films (2026-11-26):
+they are the default; `0` gives the bosses as they were before, `b` the hold without the posture.
 
 **What the audit measured** (`tests/integration/motionAudit.mjs`: `node tests/integration/sheath.mjs . audit`,
 `fox.mjs . audit`, `integ.mjs . wyrmaudit`; every move once from the same start, the joints in the boss's own

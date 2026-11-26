@@ -194,7 +194,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Held blue / red windups, coloured (blue tall, red low), behind `?sheathMotion=` `?foxMotion=` `?wyrmMotion=`
 - [x] Wen Yao's lifted feet no longer jump (the release ease)
 - [x] A quick white blow each behind `?sheathQuick=` `?foxQuick=` `?wyrmQuick=`
-- [ ] The owner's picks made the defaults
+- [x] The owner's picks made the defaults (a for all three, every quick blow)
 - [ ] Lu Wusheng's free hand in the scabbard cuts; the foot ease for Shen Hui and Varr Nihil
 
 ## M1.92 — The melee animation engine: boss blows from reference footage (2026-11-26, `enemies/fists-ref`, ADR-208)

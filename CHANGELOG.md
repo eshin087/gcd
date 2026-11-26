@@ -5,12 +5,13 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 
 ## [Unreleased]
 One hundred and eleven pieces of work since 0.4.0:
-- **Blue and red blows you can read, and quick blows (to try)** (2026-11-26, ADR-223). *Added:* behind switches
-  for the owner to try (the game is unchanged without them): Lu Wusheng, Wen Yao and the Cinder Wyrm stop and hold
-  their pose for a moment before every blue or red blow, standing tall for blue and sinking low for red
-  (`?sheathMotion=a`, `?foxMotion=a`, `?wyrmMotion=a`; `b` holds without the posture); Wen Yao's feet no longer jump
-  as he steps into a blow. A quick white blow each, from their stance with no wind-up (`?sheathQuick=a`,
-  `?foxQuick=a`, `?wyrmQuick=a`): block it or parry it on the glint.
+- **Blue and red blows you can read, and quick blows** (2026-11-26, ADR-223). *Changed:* Lu Wusheng, Wen Yao and the
+  Cinder Wyrm stop and hold their pose for a moment before every blue or red blow, standing tall for blue and sinking
+  low for red (the wyrm rears its head for blue, crouches with its tail up for red); the blow lands that moment later,
+  its cue and timing windows as before. Wen Yao's feet no longer jump as he steps into a blow. *Added:* a quick white
+  blow each, straight from the stance with no wind-up: Lu Wusheng's Before the Word, Wen Yao's Fox Snap and Fox Knee,
+  the wyrm's Snap swipe; block it or parry it on the glint. `?sheathMotion=0`, `?foxMotion=0`, `?wyrmMotion=0` and
+  `?sheathQuick=0`, `?foxQuick=0`, `?wyrmQuick=0` give the fights before.
 - **A lighter world on phones that need it** (2026-11-26, ADR-216). *Changed:* on a phone that still drops frames at the
   lowest resolution, the ground's extras (ridge strokes, drifting cloud shadows, contact shadows, the floor ripple)
   turn off and the stone floors' relief is drawn more simply, for the rest of the visit. `?lite=0` keeps the full

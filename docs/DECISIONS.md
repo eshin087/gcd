@@ -6411,7 +6411,7 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   strike (held 0.00 - 0.13 s); the wyrm's blue and white windups of a kind looked the same; Wen Yao's planted foot
   jumped 0.41 - 0.53 m in a frame when his clip lifted it after his root had closed in under it (anim.js
   `_feetClip` handed it to the clip's key at once). The facing at the impact was right (within 2°).
-- **Decision** (behind switches, '0' as shipped the default until the owner picks):
+- **Decision** (behind switches; the owner's picks, below, the default):
   1. `?sheathMotion=` / `?foxMotion=` `a|b` (duelist/heldTells.js): such a blow holds its cock `HELD.hold` (0.16
      s) more, through the realiser's bait hold (the cocked pose repeated as the hold ends, so the strike leaves it
      from rest). `realise.js` `keysOf` may now return `{ keys, hold }`. The cock is the last key at or before the
@@ -6444,4 +6444,7 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   `_feetClip`): their kits can pass `animOpts`. Open: the owner's picks; Lu Wusheng's scabbard cuts swing the free
   hand forward in one frame (0.32 m a frame), left for a pass on his arms; the wyrm's tail is a spring and never
   quite still while the body pivots.
+- **Outcome (the owner, 2026-11-26, from the films before | a | b at the game camera and a side view):** `a` for
+  Lu Wusheng, Wen Yao and the wyrm, and every quick blow: `PICKED` sheathMotion / foxMotion / wyrmMotion /
+  sheathQuick / foxQuick / wyrmQuick = 'a'. The seeded fights and pace meters of those suites run with them.
 
