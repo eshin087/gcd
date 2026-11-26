@@ -6399,7 +6399,7 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   sheet's C in the same page (474 of 580 000 pixels differ, from the relief alone). The look changes once, when
   it turns on, mid-page (one frame). Not measured on the phone; the next `?perf` BENCH there says how much.
 
-## ADR-230 — Bai Wuji, the Untouched: a barrier opened by perfect answers, weight on every blow, the domain broken or caught, moves routed to three handlers (2026-11-26)
+## ADR-237 — Bai Wuji, the Untouched: a barrier opened by perfect answers, weight on every blow, the domain broken or caught, moves routed to three handlers (2026-11-26)
 
 - **Context:** the owner asked for a white-haired, blindfolded sorcerer after a famous character (the reference;
   ADR-160's line holds: his names, the series' and its techniques' appear nowhere), "very hard in terms of skill
@@ -6436,14 +6436,14 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
      past 1.2 s in a row becomes a silent feint (`TUNING.melee.mercy.lockCap`); `Player.hold` is capped at 1.2 s.
      Tells no lower than Tian Lei's (`flashLead` 0.26, `minFirstWindup` 0.40, `minHitGap` 0.34; the suite's DATA
      asserts it); the engine's fairness guard, cue ledger and pursuit stay on.
-- **Consequences:** a hero who only blocks loses; one who never attacks lives (ADR-232). Six agents built it with
+- **Consequences:** a hero who only blocks loses; one who never attacks lives (ADR-239). Six agents built it with
   no conflict inside his folder; the merges met only in shared files (`player.js`, `destructibles.js`, `scars.js`).
   Looks behind `?wjLook`, `?wjHair`, `?wjCity`, `?wjVoid`, `?wjShell`, `?wjNull`, the owner's picks in `PICKED`
   (sheets in `docs/looks/veil/`). Events `dragon:barrier`, `dragon:domain`; his sounds ride `dragon:spell
   { name: 'wj...' }`. No reward yet (the owner has not chosen one). The hero's own knockdown (1.3 s, the
   engine's) is longer than the cap his blows keep.
 
-## ADR-231 — Pieces a boss throws can land on the floor; a held piece can be cut; Halcyon's throws land on the road (2026-11-26)
+## ADR-238 — Pieces a boss throws can land on the floor; a held piece can be cut; Halcyon's throws land on the road (2026-11-26)
 
 - **Context:** Bai Wuji throws raised pieces (a tower's top, the void's floating slabs). `throwTo` landed a piece
   at its own base height, so a tower top burst about 6 m up in the air (Halcyon's Falling Sky did the same, 6.5
@@ -6459,7 +6459,7 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   bore reads as a gap. Tests: veil `down` (a raised tower top comes down to the floor and lands there), `heldbreak`, `orbit` (a held
   piece chipped by a cut it can take).
 
-## ADR-232 — Bai Wuji tuned on a bench of mortal bots; floor marks thinned per level and hidden in the void (2026-11-26)
+## ADR-239 — Bai Wuji tuned on a bench of mortal bots; floor marks thinned per level and hidden in the void (2026-11-26)
 
 - **Context:** "very hard", fairly: the god-mode fencing bot of the other suites says nothing about how hard a
   fight is. Before the pass a bot that rolled every red and blocked the rest beat him 6 of 6 and the perfect

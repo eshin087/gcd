@@ -5,7 +5,7 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 
 ## [Unreleased]
 One hundred and eleven pieces of work since 0.4.0:
-- **A ninth level: the Veiled Crossing and Bai Wuji, the Untouched** (2026-11-26, ADR-230 – ADR-232). *Added:* a ninth
+- **A ninth level: the Veiled Crossing and Bai Wuji, the Untouched** (2026-11-26, ADR-237 – ADR-239). *Added:* a ninth
   level, `?level=veil` (the title screen lists it). **The Veiled Crossing**: a city crossing at night after the fight
   has already levelled it, under a black veil: cracked asphalt with a great diagonal crossing's white bars, craters,
   an old wide trench, tower stumps with their tops still standing, a fallen tower lying across the north, a broken

@@ -189,7 +189,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
-## M1.93 — A ninth level: the Veiled Crossing and Bai Wuji, the Untouched (2026-11-26, `enemies/untouched`, ADR-230 – ADR-232)
+## M1.94 — A ninth level: the Veiled Crossing and Bai Wuji, the Untouched (2026-11-26, `enemies/untouched`, ADR-237 – ADR-239)
 - [x] `?level=veil`: a levelled city crossing at night, every piece breakable, tower tops that come down, the
       fallen tower in sections, two scenes (`crossing`, `void`: the city's pieces let go, the void's float),
       `setPhase`, the living world's blocks; `?wjCity=a|b|c`, `?wjVoid=a|b|c`
@@ -1262,7 +1262,7 @@ map, the cost budget, `npm run perf`); its open items stay there. This list is o
       Ash Disciple's technique first (the next PR). The store it can read exists: `game/unlocks.js` (ADR-146)
 - [~] Fixed rewards per boss: the first, One Breath (the Sheathed's draw-slash, ADR-146), and the second, the Long Second (Xin Yi's lean, ADR-158), ship; the rest (techniques, weapons, abilities, elements); weapons of other lengths
   - [ ] Halcyon's reward: the owner has not chosen one yet (ADR-161)
-  - [ ] Bai Wuji's reward: the owner has not chosen one yet (ADR-230)
+  - [ ] Bai Wuji's reward: the owner has not chosen one yet (ADR-237)
   - [ ] The Thousand-Body Fox's Paper Double (a decoy the foe strikes instead of the hero): recorded on the level, not usable (ADR-148); needs the technique slot, a button on every input, a target indirection in every boss's AI
       (the animator, the hit segment and the blade FX read `DIM`)
 - [ ] A hub that links the levels (the bonfire)

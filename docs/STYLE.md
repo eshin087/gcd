@@ -1227,10 +1227,10 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?halCapeSize=` | Halcyon's cape's size (ADR-166; read when his rig is built) | as picked (1.54 m) | ~80 % | ~65 % (1.00 m, past his knees) | ~50 %, to the back of his knees | **b** (the owner's pick, 2026-11-23) |
 | `?glare=` | his eyes' heat: the beams, the eyes, the crimson screens (a palette swapped into the void slot) | - | crimson with a white-hot steel core | crimson alone | the engine's orange fire with a steel core | **a**, the owner's pick (2026-11-23) |
 | `?city=` | Halcyon Plaza's light (ADR-159; read when the level is built) | - | Neon Rain: night, rain, wet dark asphalt, pale neon | Golden Hour: his perfect city at dusk, warm, no rain | Lockdown: red emergency light, two search beams sweeping the plaza | **a**, the owner's pick (2026-11-23) |
-| `?wjLook=` | Bai Wuji's coat (ADR-230; read when his rig is built; ink-line art) | - | a black high-collared coat, a black band, pure white hair, ice-blue eyes | a long indigo-black robe with a crossed front and a sash, a white cloth band | a bone-white coat, its collar dark, a dark band | **c**, the owner's pick (2026-11-25) |
+| `?wjLook=` | Bai Wuji's coat (ADR-237; read when his rig is built; ink-line art) | - | a black high-collared coat, a black band, pure white hair, ice-blue eyes | a long indigo-black robe with a crossed front and a sash, a white cloth band | a bone-white coat, its collar dark, a dark band | **c**, the owner's pick (2026-11-25) |
 | `?wjHair=` | Bai Wuji's hair, up (phase 1) and fallen (phases 2 - 3) (read when his rig is built) | - | a tall swept crown / long soft locks | a short spiky burst / a choppy fringe | - | **b**, the owner's pick (2026-11-25) |
 | `?wjLetters=` | Bai Wuji's letters (live) | the bosses' fixed fine cell | they follow his size on screen by the hero's rule | - | - | **a** |
-| `?wjShell=` | his barrier while it stands (ADR-230) | - | all but invisible: only the side a blade nears lights | a faint standing shell of sparse strokes crawling round it | two dashed rings that breathe | **a**, the owner's pick (2026-11-25) |
+| `?wjShell=` | his barrier while it stands (ADR-237) | - | all but invisible: only the side a blade nears lights | a faint standing shell of sparse strokes crawling round it | two dashed rings that breathe | **a**, the owner's pick (2026-11-25) |
 | `?wjNull=` | the Violet Null's line | - | a hard-edged slab of violet: crisp strokes along both edges, a pale core | a round bore: a soft body brightest at its core, rings of light running down it | - | **a**, the owner's pick (2026-11-25) |
 | `?wjCity=` | the Veiled Crossing's reading (read when the level is built) | - | ash moon: cold moonlit ash-grey, pale bars | last lamps: the last sodium lamps' amber, two dead screens' glow, warm grey asphalt | black wet: wet black asphalt, pale bars, a cold blue moon | **a**, the owner's pick (2026-11-25) |
 | `?wjVoid=` | the void (read when the level is built) | - | drifts: star clumps and drifts only | the ring: the stars and one great pale ring lying on the floor round the fight | the fall: the stars falling slowly as fine streaks, a line of light where the floor ends | **b**, the owner's pick (2026-11-25) |
@@ -1808,7 +1808,7 @@ down"), and none of it touches the hero, the boss or the HUD.
   one bright cell. At ~40 px the homage is the silhouette: the long coat to the ankles with split tails that
   stream behind him when he runs (from phase 2), the high collar. `?oneLook=a` the Long Coat, `b` the Cassock,
   `c` the Grey Coat.
-### The Veiled Crossing and Bai Wuji (2026-11-26, ADR-230; `world/veiledCrossing.js`, `enemies/untouched/`, `?level=veil`)
+### The Veiled Crossing and Bai Wuji (2026-11-26, ADR-237; `world/veiledCrossing.js`, `enemies/untouched/`, `?level=veil`)
 - **The crossing** (prop art throughout): a rubble plain, not a standing city (Halcyon Plaza is that): cracked
   asphalt with the scramble's white bars carved in its slabs, craters, an old wide trench, the fallen tower
   lying across the north, tower stumps and low ruins, wrecks; nothing tall south of the fight. `?wjCity=a` ash
