@@ -13,7 +13,7 @@
 // Exit code: 0 when every task passed, 1 otherwise. One suite on its own is still
 // `node tests/integration/<suite>.mjs . <scenario>`.
 //
-// On the owner's machine (no CI env; ADR-204) the run is kept light so the PC stays usable while agents
+// On the owner's machine (no CI env; ADR-205) the run is kept light so the PC stays usable while agents
 // test: every worker runs at below-normal priority (a game or the browser gets the CPU first), and all
 // runs on the machine share one pool of ABYSS_JOBS slots (default 8): two agents' `npm test` queue in
 // it instead of starting 48 processes. --only <names> runs only the tasks whose name starts with one of
@@ -136,7 +136,7 @@ if (onlyArg !== undefined) {
   label += ` (only ${names.join(', ')})`;
 }
 
-// the owner's machine (ADR-204): low priority and one pool of slots shared by every run; CI: as before
+// the owner's machine (ADR-205): low priority and one pool of slots shared by every run; CI: as before
 const LOCAL = !process.env.CI;
 const POOL = Math.max(1, Math.floor(Number(process.env.ABYSS_JOBS)) || 8);
 const SLOTS = join(tmpdir(), 'abyss-test-slots');

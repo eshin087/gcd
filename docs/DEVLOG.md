@@ -5,7 +5,7 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
-## 2026-11-25 — Local test runs go easy on the PC (ADR-204; branch `test/local-load-cap`)
+## 2026-11-25 — Local test runs go easy on the PC (ADR-205; branch `test/local-load-cap`)
 
 **Owner:** the PC ran at 100% CPU from agents' test runs; make future gcdAbyss agents close what they no
 longer need and stop straining the machine, so it can game beside them.
@@ -20,6 +20,33 @@ longer need and stop straining the machine, so it can game beside them.
 - Next: re-measure a full local run's wall time at 8 slots; raise the default if it hurts.
 
 ---
+## 2026-11-25 — The run carried like the owner's reference: the blade forward at the hip, a full pump, a fist (ADR-204; PR 138)
+
+**Owner:** "make the right angle hold the sword at a proper natural angle. make the left hand fist look like a hand";
+two rounds of options (a relaxed trail, a low sweep; an open hand, a loose fist) were turned down: "the running and
+sword placement still looks off. use this video ... as reference from 2:48 - 3:51". The reference: a knight sprinting
+with a straight sword.
+
+**What the reference showed.** Frames grabbed from the video in the user's Chrome (a canvas sheet of seeked frames,
+side and back views). The blade is carried FORWARD, low at the right hip, rocking -20° (arm back) to +25° (arm
+forward) with the forearm, the wrist quiet (a hammer grip, 60 - 70° between forearm and blade); every carry we had,
+`old` included, pointed it back (azimuth -150°) on a wrist cocked 62 - 87°. The free arm pumps fully (fist before the
+belly; elbow high behind the back); the free hand is a compact closed fist as wide as the forearm.
+
+**Changed.** `runSword.js`: the carry `hip` (planned by Fable, built and measured by an Opus subagent): forward
+kinematics against the torso's line turned by its lean, the blade the forearm's line plus a grip angle; at a sprint
+it rocks -21 … +23°, never behind him, its flat rolled 40° toward the game camera (edge-down printed as a one-cell
+line). `runArms.js`: the carry `d`, the full pump. `gear/handShape.js` `fistHand`: the free hand as a closed fist by
+its overall shape (`?handLook=g`, skin; `h` a dark glove with a cuff). The owner played the new run ("the new run
+looks great but the hand still needs work"), then picked hand g. Defaults: `hip`, `d`, `g`; the sword carries `a` /
+`b` removed.
+
+**Verified.** `herorun` checks `hip` (blade ahead, elevation -30 … +32°, point off the grass, grip on his right, no
+pops) and `d`; a side-by-side sheet against the reference stride, films at the game camera from four sides; `npm test`.
+
+**Open.** Running away from the camera the forward blade is mostly hidden under the cape (so is the reference's); a
+larger `out` yaw is the knob. The run start from standing still jumps the point ~26 cm in one frame (the idle rest's
+hand-over to `loco()`'s base, any carry). The torso leans 24 - 25° at a sprint against the reference's 20°.
 
 ## 2026-11-25 — The wyrm's neck and head reviewed move by move (ADR-203; branch `dragon/neck-motion`)
 
