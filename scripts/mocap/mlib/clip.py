@@ -18,6 +18,10 @@ def _take(spec, clip, tk, pad=0.0, log=print):
                    flip=tk.get('flip'), pitch=tk.get('pitch'), yaw=tk.get('yaw'), log=log,
                    calm=tk.get('calm', clip.get('calm', 0.35 if clip.get('kind', 'oneshot') == 'oneshot' else None)))
     T.spec = tk
+    T.spec_yaw = tk.get('yaw')
+    if clip.get('sword'):
+        from . import sword
+        sword.fix_sword_arm(T, log)
     log('  take ' + T.summary())
     return T
 
@@ -195,6 +199,16 @@ def build_clip(spec, clip, log=print):
     if g['speed'] is not None:
         log('  speed %.2f m/s, period %.3f s, %d frames' % (g['speed'], B.period, len(q)))
     B.q, B.hips, B.root, B.contact, B.speed, B.cmask = q, hips, root, g['contact'], g['speed'], g['cmask']
+    if blade is not None and not loop:
+        # a hint for the marks: the blade tip's speed (our skeleton, root travel removed)
+        P, R = skel.fk(q, hips, np.zeros_like(root))
+        tip = P[:, JI['weaponR']] + skel.qrot(R[:, JI['weaponR']], np.array([0, 0, HDIM['blade']]))
+        sp = np.linalg.norm(np.gradient(tip, axis=0), axis=1) * fps
+        k = int(np.argmax(sp))
+        fast = np.where(sp > 0.5 * sp.max())[0]
+        log('  blade tip: fastest %.1f m/s at frame %d (video %s); above half speed frames %d-%d (video %s-%s)'
+            % (sp.max(), k, cfg.fmt_time(B.t_ref[0] + k / fps), fast[0], fast[-1],
+               cfg.fmt_time(B.t_ref[0] + fast[0] / fps), cfg.fmt_time(B.t_ref[0] + fast[-1] / fps)))
     # marks: video times on the first take -> clip frames
     B.events, B.phases = [], {}
     if not loop:

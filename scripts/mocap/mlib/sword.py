@@ -28,18 +28,43 @@ ANG = np.arange(NA) * 2 * np.pi / NA
 def rust_mask(rgb):
     r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
     s = r + g + b + 1
-    return ((r - g) > 16) & ((r - b) > 22) & (r / s > 0.40) & (s > 60) & (s < 600)
+    # dark rust red: red above green and blue, little green (the gold leaves have a lot), not bright
+    return ((r - g) > 18) & ((r - b) > 22) & (r / s > 0.42) & (g / s < 0.30) & (s > 60) & (s < 450)
 
 
-def fist_of(l2):
+def fist_of(l2, side='R'):
+    if side == 'L':
+        return (l2[15, :2] * 0.4 + l2[19, :2] * 0.35 + l2[17, :2] * 0.25)
     return (l2[16, :2] * 0.4 + l2[20, :2] * 0.35 + l2[18, :2] * 0.25)
 
 
-def ray_scores(img, l2):
+def fix_sword_arm(T, log=print, margin=0.12):
+    """The sword is in his RIGHT hand: where the blade leaves the tool's LEFT fist clearly better than its
+    right one, the tool swapped his arms in that frame; swap them back (5-frame majority)."""
+    from .takes import ARM_L, ARM_R
+    n = len(T.t)
+    vote = np.zeros(n)
+    for i in range(n):
+        _, path = cfg.frame_at(T.film, T.t[i])
+        img = np.asarray(Image.open(path).convert('RGB'), np.int16)
+        sr = ray_scores(img, T.l2[i], 'R')[0].max()
+        sl = ray_scores(img, T.l2[i], 'L')[0].max()
+        vote[i] = 1 if sl > sr + margin else 0
+    sw = np.array([np.median(vote[max(0, i - 2):i + 3]) > 0.5 for i in range(n)])
+    if sw.any():
+        for a, b in zip(ARM_L, ARM_R):
+            T.l2[sw, a], T.l2[sw, b] = T.l2[sw, b].copy(), T.l2[sw, a].copy()
+            T.c[sw, a], T.c[sw, b] = T.c[sw, b].copy(), T.c[sw, a].copy()
+        T.solve_camera(None, T.spec_yaw, lambda s: None)
+    log('  sword %s: arms swapped back in %d frames (the blade was in the tool-labelled left fist)' % (T.name, int(sw.sum())))
+    return int(sw.sum())
+
+
+def ray_scores(img, l2, side='R'):
     """scores (NA,) and the visible length (px) per direction, from his right fist"""
     H = np.linalg.norm((l2[11, :2] + l2[12, :2]) / 2 - (l2[27, :2] + l2[28, :2]) / 2) * 1.25
     H = max(H, 40)
-    f = fist_of(l2)
+    f = fist_of(l2, side)
     rr = np.linspace(0.06 * H, 0.42 * H, 26)
     m = rust_mask(img)
     h, w = m.shape
@@ -49,7 +74,7 @@ def ray_scores(img, l2):
         d = np.array([np.cos(a), np.sin(a)])
         nrm = np.array([-d[1], d[0]])
         hits = np.zeros(len(rr))
-        for o in (-2.0, 0.0, 2.0):
+        for o in (-3.0, -1.5, 0.0, 1.5, 3.0):
             p = f[None] + rr[:, None] * d[None] + o * nrm[None]
             x = np.clip(p[:, 0].round().astype(int), 0, w - 1)
             y = np.clip(p[:, 1].round().astype(int), 0, h - 1)
@@ -63,7 +88,7 @@ def ray_scores(img, l2):
     return sc, ln
 
 
-def track_2d(T, idx, max_step_deg=30.0, min_score=0.28):
+def track_2d(T, idx, max_step_deg=30.0, min_score=0.2):
     """2D blade angles for take T's frames `idx` (indices into T.t): angle (rad, image axes: x right,
     y down), confidence (0 = unknown), and the raw best score"""
     S = []
@@ -153,17 +178,36 @@ def blade_dirs(spec, clip, B, Ts, log=print):
         log('  sword %s: blade found in %d%% of frames (median score %.2f)' % (T.name, 100 * (conf > 0).mean(), np.median(best)))
     out = np.full((nb, 3), np.nan)
     if kind != 'oneshot':
-        # a held pose: every take's frames vote (single-view planes + prior), averaged
-        acc = []
+        # a held pose: each take's median picture angle gives a plane; two takes from different sides
+        # intersect in the blade (else one take + the prior)
+        planes = []
         for T, idx, ang, conf in per:
-            for j, i in enumerate(idx):
-                if conf[j] <= 0:
-                    continue
-                acc.append(_one_view(T, i, ang[j], B.b[0]))
-        if acc:
-            d = np.median(np.array(acc), 0)
-            out[:] = d / np.linalg.norm(d)
-        B.blade_conf = np.ones(nb) * (1.0 if acc else 0.0)
+            ok = conf > 0
+            if ok.sum() < 3:
+                continue
+            a_med = np.arctan2(np.median(np.sin(ang[ok])), np.median(np.cos(ang[ok])))
+            u = np.array([np.cos(a_med), -np.sin(a_med), 0.0])
+            planes.append((T.R.T @ np.cross(u, [0, 0, 1.0]), ok.mean(), T, u, idx[ok]))
+        d = None
+        best = None
+        for i in range(len(planes)):
+            for j in range(i + 1, len(planes)):
+                c = np.cross(planes[i][0], planes[j][0])
+                if np.linalg.norm(c) > 0.5 and (best is None or np.linalg.norm(c) > best[0]):
+                    best = (np.linalg.norm(c), c / np.linalg.norm(c), planes[i])
+        if best is not None:
+            d = best[1]
+            T0, u0 = best[2][2], best[2][3]
+            if (T0.R @ d)[:2] @ u0[:2] < 0:
+                d = -d
+            log('  sword: held blade from two takes (planes intersected)')
+        elif planes:
+            p0 = max(planes, key=lambda p: p[1])
+            d = _in_plane(p0[2], p0[3], prior_dir(B.b, 0))
+            log('  sword: held blade from one take + the prior')
+        if d is not None:
+            out[:] = d
+        B.blade_conf = np.ones(nb) * (1.0 if d is not None else 0.0)
     else:
         bconf = np.zeros(nb)
         for k in range(nb):
@@ -198,15 +242,37 @@ def blade_dirs(spec, clip, B, Ts, log=print):
     if not ok.any():
         log('  ! sword: no blade found; the hand keeps its measured roll')
         return None
+    # the blade is rigid in the fist: unknown frames are filled in the FOREARM's frame (forearm axis +
+    # the thumb side), so a fast cut the camera blurs follows the arm instead of a straight blend
     idx = np.arange(nb)
+    Fm = forearm_frames(B.b)  # (nb, 3, 3) columns = forearm axes in the body frame
+    loc = np.full((nb, 3), np.nan)
+    loc[ok] = np.einsum('nji,nj->ni', Fm[ok], out[ok])
     for c in range(3):
-        out[:, c] = np.interp(idx, idx[ok], out[ok, c])
+        loc[:, c] = np.interp(idx, idx[ok], loc[ok, c])
+    out = np.einsum('nij,nj->ni', Fm, loc)
     out /= np.linalg.norm(out, axis=1, keepdims=True)
     from .retarget import smooth_time
     out = smooth_time(out, 1.0)
     out /= np.linalg.norm(out, axis=1, keepdims=True)
     log('  sword: %d of %d clip frames measured, the rest interpolated' % (ok.sum(), nb))
     return out
+
+
+def forearm_frames(b):
+    """per frame a right-handed frame on his right forearm: x along it (elbow -> wrist), y the thumb side"""
+    x = b[:, 16] - b[:, 14]
+    x /= np.linalg.norm(x, axis=1, keepdims=True) + 1e-9
+    y = b[:, 20] - b[:, 18]
+    y -= x * np.sum(x * y, 1, keepdims=True)
+    bad = np.linalg.norm(y, axis=1) < 1e-4
+    y[bad] = np.array([0, 0, 1.0])
+    from .retarget import smooth_time
+    y = smooth_time(y / (np.linalg.norm(y, axis=1, keepdims=True) + 1e-9), 2.0)
+    y -= x * np.sum(x * y, 1, keepdims=True)
+    y /= np.linalg.norm(y, axis=1, keepdims=True) + 1e-9
+    z = np.cross(x, y)
+    return np.stack([x, y, z], 2)
 
 
 def _in_plane(T, u, prior):
