@@ -71,10 +71,14 @@ export class GroundFx {
     if (!Number.isFinite(dt) || dt < 0) return;
     dt = Math.min(dt, 0.1);
     const U = this.U, on = this.on;
-    on.cloud = opt(dragonLook(KEYS[0]));
-    on.contact = opt(dragonLook(KEYS[1]));
-    on.ripple = opt(dragonLook(KEYS[2]));
-    on.ridge = opt(dragonLook(KEYS[3]));
+    // the lite world (ADR-216: a phone whose AUTO has no step left): the four upgrades off, the floors'
+    // relief cheaper (uDpLite)
+    const lite = !!this.game?.liteWorld;
+    on.cloud = lite ? '0' : opt(dragonLook(KEYS[0]));
+    on.contact = lite ? '0' : opt(dragonLook(KEYS[1]));
+    on.ripple = lite ? '0' : opt(dragonLook(KEYS[2]));
+    on.ridge = lite ? '0' : opt(dragonLook(KEYS[3]));
+    if (U.uDpLite) U.uDpLite.value = lite ? 1 : 0;
     const F = U.uDpFxOn.value;
     F[0] = on.cloud === '0' ? 0 : on.cloud === 'a' ? 1 : 2;
     F[1] = on.contact === '0' ? 0 : on.contact === 'a' ? 1 : 2;
