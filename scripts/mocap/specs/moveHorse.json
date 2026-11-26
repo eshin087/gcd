@@ -1,0 +1,397 @@
+{
+ "set": "moveHorse",
+ "title": "Movement: the horse",
+ "film": "move",
+ "out": "src/entities/hero2/clips/moveHorse.js",
+ "note": "The rider on the horse. Built by H2/rider/py/rgen.py (kind 'ride': the whole body typed in 3D from the footage's cameras; the tracker cannot see a rider whose legs the horse hides). Seated convention: hips (0, hipsY, 0) = on the saddle; horse/rider.js adds the per-gait lean, the stirrups and the reins.",
+ "clips": [
+  {
+   "name": "rideIdle",
+   "title": "Riding: the seat at a stand",
+   "src": "move 25:21-25:55",
+   "kind": "ride",
+   "fps": 30,
+   "n": 180,
+   "loop": true,
+   "props": {
+    "R": null,
+    "L": null
+   },
+   "hands": {
+    "L": "fist",
+    "R": "fist"
+   },
+   "from": "ride",
+   "to": "ride",
+   "ride_keys": {
+    "keys": [
+     {
+      "phase": 0,
+      "note": "25:25.6-26.2 side view: upright, forearms forward and down to the reins at the saddle's front, thighs forward and down, heels under the knees"
+     },
+     {
+      "phase": 0.25,
+      "chest": [
+       0,
+       1.5,
+       0
+      ],
+      "hp": [
+       0,
+       1.059,
+       0.0
+      ]
+     },
+     {
+      "phase": 0.5,
+      "chest": [
+       0,
+       0,
+       0
+      ],
+      "hp": [
+       0,
+       1.057,
+       0
+      ]
+     },
+     {
+      "phase": 0.75,
+      "chest": [
+       0,
+       1.5,
+       0
+      ],
+      "hp": [
+       0,
+       1.059,
+       0.0
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "rideWalk",
+   "title": "Riding: the walk",
+   "src": "move 26:27-27:07",
+   "kind": "ride",
+   "fps": 30,
+   "n": 33,
+   "loop": true,
+   "props": {
+    "R": null,
+    "L": null
+   },
+   "hands": {
+    "L": "fist",
+    "R": "fist"
+   },
+   "from": "ride",
+   "to": "ride",
+   "ride_keys": {
+    "keys": [
+     {
+      "phase": 0,
+      "note": "26:29.4-26:30.5 side, 26:47-26:55 back: upright, the hips roll with the horse's back once a cycle, the trunk balances it; head steady",
+      "hips": [
+       3,
+       2,
+       -3
+      ],
+      "chest": [
+       -1,
+       4,
+       1.5
+      ],
+      "head": [
+       0,
+       -2,
+       0
+      ],
+      "hp": [
+       0.01,
+       1.057,
+       0.0
+      ]
+     },
+     {
+      "phase": 0.25,
+      "hips": [
+       0,
+       4,
+       0
+      ],
+      "chest": [
+       0,
+       5,
+       0
+      ],
+      "head": [
+       0,
+       -2,
+       0
+      ],
+      "hp": [
+       0,
+       1.047,
+       0.015
+      ]
+     },
+     {
+      "phase": 0.5,
+      "hips": [
+       -3,
+       2,
+       3
+      ],
+      "chest": [
+       1,
+       4,
+       -1.5
+      ],
+      "head": [
+       0,
+       -2,
+       0
+      ],
+      "hp": [
+       -0.01,
+       1.057,
+       0.0
+      ]
+     },
+     {
+      "phase": 0.75,
+      "hips": [
+       0,
+       4,
+       0
+      ],
+      "chest": [
+       0,
+       5,
+       0
+      ],
+      "head": [
+       0,
+       -2,
+       0
+      ],
+      "hp": [
+       0,
+       1.047,
+       0.015
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "rideRun",
+   "title": "Riding: the run (a canter)",
+   "src": "move 27:07-27:47",
+   "kind": "ride",
+   "fps": 60,
+   "n": 36,
+   "loop": true,
+   "props": {
+    "R": null,
+    "L": null
+   },
+   "hands": {
+    "L": "fist",
+    "R": "fist"
+   },
+   "from": "ride",
+   "to": "ride",
+   "ride_keys": {
+    "keys": [
+     {
+      "phase": 0,
+      "note": "27:10.4-27:11.0 side (the horse's pair sheet syncs the cycle: clip phase 0 = 27:10.41), 27:27-27:34 back: he sits deep and rocks with the horse: the pelvis swings forward as the horse's back rises, the trunk balances it, the head stays level",
+      "hips": [
+       0,
+       -4,
+       0
+      ],
+      "chest": [
+       0,
+       10,
+       0
+      ],
+      "head": [
+       0,
+       -8,
+       0
+      ],
+      "hp": [
+       0,
+       1.06,
+       -0.01
+      ]
+     },
+     {
+      "phase": 0.25,
+      "hips": [
+       0,
+       4,
+       0
+      ],
+      "chest": [
+       0,
+       6,
+       0
+      ],
+      "head": [
+       0,
+       -4,
+       0
+      ],
+      "hp": [
+       0,
+       1.045,
+       0.025
+      ]
+     },
+     {
+      "phase": 0.5,
+      "hips": [
+       0,
+       8,
+       0
+      ],
+      "chest": [
+       0,
+       12,
+       0
+      ],
+      "head": [
+       0,
+       -9,
+       0
+      ],
+      "hp": [
+       0,
+       1.05,
+       0.03
+      ]
+     },
+     {
+      "phase": 0.75,
+      "hips": [
+       0,
+       0,
+       0
+      ],
+      "chest": [
+       0,
+       14,
+       0
+      ],
+      "head": [
+       0,
+       -10,
+       0
+      ],
+      "hp": [
+       0,
+       1.065,
+       0.0
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "rideSprint",
+   "title": "Riding: the sprint (a gallop)",
+   "src": "move 27:47-28:37",
+   "kind": "ride",
+   "fps": 60,
+   "n": 28,
+   "loop": true,
+   "props": {
+    "R": null,
+    "L": null
+   },
+   "hands": {
+    "L": "fist",
+    "R": "fist"
+   },
+   "from": "ride",
+   "to": "ride",
+   "ride_keys": {
+    "keys": [
+     {
+      "phase": 0,
+      "note": "27:52.4-27:52.8 side, 28:0x back: forward and up out of the saddle (the seat layer lifts and leans him), knees bent deeper, the hands forward low along the neck; the trunk pumps a little with each stride, the head stays level",
+      "hips": [
+       0,
+       10,
+       0
+      ],
+      "chest": [
+       0,
+       6,
+       0
+      ],
+      "head": [
+       0,
+       -22,
+       0
+      ],
+      "hp": [
+       0,
+       1.057,
+       -0.06
+      ],
+      "uaL": [
+       0.1,
+       -0.75,
+       0.65
+      ],
+      "faL": [
+       -0.2,
+       -0.35,
+       0.92
+      ],
+      "uaR": [
+       -0.1,
+       -0.75,
+       0.65
+      ],
+      "faR": [
+       0.2,
+       -0.35,
+       0.92
+      ]
+     },
+     {
+      "phase": 0.5,
+      "hips": [
+       0,
+       14,
+       0
+      ],
+      "chest": [
+       0,
+       9,
+       0
+      ],
+      "head": [
+       0,
+       -25,
+       0
+      ],
+      "hp": [
+       0,
+       1.035,
+       -0.04
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}
