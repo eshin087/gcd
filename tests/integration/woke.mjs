@@ -7,6 +7,7 @@
 //   scenario: levels | data | timing | scenes | cover | bend | stop | stance | flight | rising | dejavu |
 //             reward | flow | looks | herolike | flurry | nolock | wall | gear | training | pace | win | motionfix | pursuit | all
 //             (opt-in: smoke, strategy, cost, audit)
+//   env GCD_LOOKS=oneMoves=a,oneBody=b sets look switches for the whole run (the audit of a redraw)
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { ui, AUDIO, resetWindow } from './shim.mjs';
@@ -1249,6 +1250,110 @@ async function scenarioSmoke() {
     run(G, 60, () => { G.defend.act(); game.mouseGround.set(d.position.x, 0, d.position.z); });
     out(`   P${d.phase} (${game.world.forest.scenes.now}): ${JSON.stringify(moves)} · flashes ${G.defend.stats.flashes} · hits ${G.hits.length}`);
   }
+}
+
+// ================================================================== scenario: rebuild (?oneBody=, ?oneMoves=; 2026-11-26)
+async function scenarioRebuild() {
+  out('\n== scenario REBUILD (his figure redraws build and print the hero\'s way; the rebuilt moves: the rules, the held tells, the aim, the fast strings) ==');
+  const LS = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const MM = await imp('src/entities/enemies/wokenOne/moves.js');
+  const LK = await imp('src/entities/enemies/wokenOne/look.js');
+  assert(!('oneBody' in (LS.PICKED ?? {})) || LS.PICKED.oneBody !== undefined, 'his figure switch reads (PICKED or its default)');
+  // ---- the figure
+  for (const v of ['a', 'b', 'c']) {
+    LS.setLook('oneBody', v);
+    try {
+      const G = build();
+      const { game } = G;
+      const d = game.dragon;
+      const D = d.rig.root.userData.dress;
+      const seen = {};
+      for (const ph of [1, 2, 3]) {
+        d.debug.setPhase(ph);
+        run(G, 0.25);
+        seen[ph] = { az: D.fronts[0].C.def.az, finite: [d.position.x, d.position.z, d._tip.x].every(Number.isFinite) };
+      }
+      const F = D.fronts[0];
+      const open1 = v !== 'a';
+      assert(D.body === v && [1, 2, 3].every((p) => seen[p].finite) && Math.abs(seen[1].az - (open1 ? F.open : F.closed)) < 1e-6 && Math.abs(seen[2].az - F.open) < 1e-6,
+        `?oneBody=${v} builds; the coat ${open1 ? 'open in every phase' : 'closed in phase 1, open from phase 2'}`);
+      const ok = [1, 2, 3].every((ph) => {
+        const T = LK.oneInkTable('a', ph, 'a', v);
+        return [3, 4, 5, 6, 12].every((k) => T[k].ink[3] <= 1.5 && T[k].rim[3] <= 1.5 && (T[k].fill[1] & 8) && T[k].fill[3] <= 0.6);
+      });
+      assert(ok, `?oneBody=${v}: printed the hero's way (no ink gain over 1.5, the cloth's dotted rim, far fills at or under 0.6)`);
+      const low = Math.min(...d.rig.coat.map((C) => { C.segs[1].updateWorldMatrix(true, true); const b = new THREE.Box3().setFromObject(C.segs[1]); return b.min.y; }));
+      assert(v !== 'c' ? low < 0.35 : low > 0.25 && low < 0.6, `?oneBody=${v}: the coat's hem ${low.toFixed(2)} m over the floor (${v === 'c' ? 'mid-shin' : 'to the ankle'})`);
+    } catch (e) { assert(false, `?oneBody=${v}: ${e.message}`); }
+  }
+  LS.setLook('oneBody', null);
+  // ---- the moves
+  LS.setLook('oneMoves', 'a');
+  try {
+    let same = 0, held = 0, diff = [];
+    for (const name of MOVE_NAMES) {
+      for (const f of phasesOf(name)) {
+        LS.setLook('oneMoves', '0');
+        const A0 = realise(name, f, () => 0.5);
+        LS.setLook('oneMoves', 'a');
+        const A1 = realise(name, f, () => 0.5);
+        const t0 = A0.beats.map((b) => b.impact.toFixed(3)).join(), t1 = A1.beats.map((b) => b.impact.toFixed(3)).join();
+        if (t0 === t1 && A0.end === A1.end) same++; else diff.push(`${name} P${f}`);
+      }
+    }
+    assert(!diff.length, `the rebuild keeps every move's timing (impacts and end, ${same} realisations)${diff.length ? ' ' + diff.slice(0, 6).join(', ') : ''}`);
+    const H = TUNING.held;
+    const bad = [];
+    for (const [name, def] of Object.entries(MM.MOVES_A)) {
+      if (def.transition) continue;
+      for (const raw of def.beats) for (const b of raw.pick ?? [raw]) {
+        if (!b.keys || b.feint || b.hold || ![TELL.BLUE, TELL.RED, TELL.BLACK].includes(b.tell)) continue;
+        // (the coil: the key the hold repeats, at `from` when the blow's coil sits on its cock, earlier when it is authored before it)
+        const i1 = b.keys.findIndex(([u]) => Math.abs(u - H.to) < 1e-6), k1 = b.keys[i1], k0 = i1 > 0 && b.keys[i1 - 1][0] <= H.from + 1e-6 ? b.keys[i1 - 1] : null;
+        const strip = (k) => JSON.stringify(Object.fromEntries(Object.entries(k ?? {}).filter(([f]) => !['e', 'gather', 'settle'].includes(f))));
+        if (k0 && k1 && strip(k0[1]) === strip(k1[1]) && b.cock === H.to) held++; else bad.push(name);
+      }
+    }
+    assert(held > 30 && !bad.length, `every blue / red / black blow holds its coil from ${H.from} (or before) to ${H.to} of its windup (${held} blows)${bad.length ? ' not: ' + [...new Set(bad)].join(', ') : ''}`);
+    // the fast strings: picked only on the rebuild; their windups on the floors
+    {
+      const G = build();
+      const d = G.game.dragon;
+      duel(G, { dist: 2 });
+      const w1 = d.weigh('snapHands', MOVES.snapHands, 1, 2);
+      LS.setLook('oneMoves', '0');
+      const w0 = d.weigh('snapHands', MOVES.snapHands, 1, 2);
+      LS.setLook('oneMoves', 'a');
+      const S = realise('snapHands', 3, () => 0.5), Q = realise('quickFoot', 3, () => 0.5);
+      const gaps = (A) => A.beats.slice(1).map((b, i) => b.impact - A.beats[i].impact);
+      assert(w1 > 0 && w0 === 0 && Math.abs(S.beats[0].impact - TUNING.fast.first) < 1e-6 && gaps(S).every((g) => g >= TUNING.minHitGap) && gaps(Q).every((g) => g >= TUNING.minHitGap) && S.beats.every((b) => b.flash >= b.tellAt),
+        `the fast strings: only on the rebuild (weight ${w0} → ${w1.toFixed(2)}), ${TUNING.fast.first} s then ${TUNING.fast.next} s in phase 3 too, impacts ${gaps(S).map((g) => g.toFixed(2)).join(' / ')} s apart, the glint after the tell`);
+    }
+    // the aim: Two Thunders' first shot down the arm at the hero
+    {
+      const G = build();
+      const { game } = G;
+      const d = game.dragon, p = game.player;
+      duel(G, { dist: 4, form: 2 });
+      p.debug.god = true;
+      d.debug.trigger('twoThunders');
+      const A = d.brain.act;
+      let err = null;
+      run(G, 1.2, null, () => {
+        if (err == null && A && d.brain.act === A && A.t >= A.beats[0].impact) {
+          const V = () => new THREE.Vector3();
+          const s0 = d.rig.arms.R.upper.getWorldPosition(V()), h = d.rig.sword.getWorldPosition(V());
+          const t = (p.rig?.chest ?? p.object3d).getWorldPosition(V());
+          const a = Math.atan2(h.x - s0.x, h.z - s0.z), b = Math.atan2(t.x - s0.x, t.z - s0.z);
+          err = Math.abs(((a - b + Math.PI * 3) % (Math.PI * 2)) - Math.PI) * 57.3;
+          return true;
+        }
+        return false;
+      });
+      assert(err != null && err < 12, `Two Thunders: the gun arm points at the hero at the shot (${err?.toFixed(0)} deg off; the old aim: 36)`);
+    }
+  } catch (e) { assert(false, `the rebuilt moves: ${e.stack}`); }
+  LS.setLook('oneMoves', null);
 }
 
 // ================================================================== scenario: looks
@@ -2530,11 +2635,19 @@ const S = {
   pursuit: scenarioPursuit,
   smoke: scenarioSmoke,
   looks: scenarioLooks,
+  rebuild: scenarioRebuild,
   herolike: scenarioHeroLike,
   scenes: scenarioScenes,
 };
 const OPT_IN = new Set(['smoke', 'cost', 'strategy', 'audit']);
 const list = SCEN === 'all' ? Object.keys(S).filter((k) => !OPT_IN.has(k)) : SCEN.split(',');
+if (process.env.GCD_LOOKS) {
+  const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  for (const kv of process.env.GCD_LOOKS.split(',')) {
+    const [k, v] = kv.split('=');
+    if (k) setLook(k, v ?? null);
+  }
+}
 for (const k of list) {
   if (!S[k]) { out(`unknown scenario ${k}`); process.exit(2); }
   await S[k]();

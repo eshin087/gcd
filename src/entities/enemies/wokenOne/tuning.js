@@ -24,6 +24,12 @@ export const TUNING = {
   flashLead: 0.26,
   minFirstWindup: 0.42,
   minHitGap: 0.32,
+  // the rebuild (?oneMoves=a, moves.js): a blue / red / black blow reaches its coil by `from` of the windup
+  // and holds it to `to` (heldTell); the fast strings' windups (the first at minFirstWindup, the next at
+  // `next`, both unscaled by the phase (`fixed`): next is the floor of flashLead + a frame, and next + a
+  // blow's 0.08 active clears minHitGap) and their damage
+  held: { from: 0.46, to: 0.84 },
+  fast: { first: 0.42, next: 0.28, damage: 7 },
   windupScale: [1, 0.96, 0.92], // (the first windups are authored >= 0.46 s: x 0.92 keeps them over minFirstWindup)
   recoveryScale: [0.8, 0.82, 0.76],
   close: { first: 3.0, next: 1.5, speed: 13 },

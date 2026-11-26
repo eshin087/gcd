@@ -3,6 +3,7 @@ import { makeRealise } from '../duelist/realise.js';
 import { X as ASC, CLIPS as ASC_CLIPS } from '../ascendant/moves.js';
 import { PHASE_POSES, GEAR2_POSES, BEHIND } from './poses.js';
 import { TUNING, GEARED } from './tuning.js';
+import { oneMovesNow } from './look.js';
 import { spinBack, spinFist, tornado, butterfly, flash, aerial, bicycle, dropHeel, flyKnee, burstKeys, BURST_PART } from './strikes.js';
 
 // Xin Yi's moves and reaction clips, as data (ADR-156; COMBAT.md → "The One Who Woke"). He fights
@@ -156,11 +157,11 @@ const stance = (P) => ({
 /** A shot from the right gun (`both`: both guns): a cast that cues itself as it nears the hero. */
 const shotBeat = (tell, windup, damage, o = {}) => {
   const { both = false, cock = 0.7, ...extra } = o;
-  return { tell, windup, active: 0.06, damage, knockback: 1.2, cast: { kind: 'shot', selfCue: true }, part: 'fistR', close: 0, track: 0.92, keys: aimKeys(both, cock), ...extra };
+  return { tell, windup, active: 0.06, damage, knockback: 1.2, cast: { kind: 'shot', selfCue: true }, part: 'fistR', close: 0, track: 0.92, keys: aimKeys(both, cock), aim: both ? 2 : 1, cock, ...extra };
 };
 /** A palm bolt (phase 3): a cast that cues itself; returnable. */
 const boltBeat = (windup, damage, o = {}) => ({
-  tell: B, windup, active: 0.06, damage, knockback: 1.4, cast: { kind: 'bolt', selfCue: true }, bolt: true, part: 'fistR', close: 0, track: 0.92, keys: boltKeys(), ...o,
+  tell: B, windup, active: 0.06, damage, knockback: 1.4, cast: { kind: 'bolt', selfCue: true }, bolt: true, part: 'fistR', close: 0, track: 0.92, keys: boltKeys(), cock: 0.72, ...o,
 });
 /** A transition: down on one knee, then the ring (red), as every transition. */
 const transitionBeat = (C, keys) => ({
@@ -199,6 +200,19 @@ const burst = (kind, tell, windup, damage, n = 7, dur = 0.7, o = {}) => {
     zone: kind === 'kicks' ? { kind: 'sector', r: 2.0, ang: 0.7 } : { kind: 'sector', r: 1.9, ang: 0.8 }, part: BURST_PART[kind] ?? 'fistR',
     track: 0.85, keys: burstKeys(kind, n, cock, left), ...extra, cock,
   };
+};
+/** A fast blow (the fast strings): its windup unscaled by the phase (TUNING.fast sits on the floors), the
+ *  coil reached early and held, so the blow itself is a snap out of a still chamber. */
+const fast = (b) => {
+  const cock = b.cock ?? 0.7;
+  const keys = b.keys.map(([u, k]) => [u <= cock + 1e-6 ? (u * 0.5) / cock : u <= 1 ? 0.82 + ((u - cock) * 0.18) / (1 - cock) : u, k]);
+  const coil = b.keys.filter(([u]) => u <= cock + 1e-6).reduce((a, k) => (k[0] > a[0] ? k : a), [-1, null]);
+  if (coil[1]) {
+    const { e, gather, settle, ...pose } = coil[1];
+    keys.push([0.82, pose]);
+  }
+  keys.sort((x, y) => x[0] - y[0]);
+  return { ...b, fixed: true, keys, cock: 0.82 };
 };
 /** His low sweep (red, knockdown, a ring 2.2): Tian Lei's. */
 const sweep = (windup, damage, o = {}) => ({ ...kick('sweep', R, windup, damage, o), knockdown: true, ring: 2.2 });
@@ -399,7 +413,7 @@ export const MOVES = {
   /** Pushing Hands: two palm bolts in the code's green, both returnable (a returned one hangs: the stop). */
   pushingHands: {
     label: 'Pushing Hands', phase: 3, weight: [0, 0, 1.6], cooldown: 5, band: [3, 13], recovery: 0.6, cat: 'ranged', ranged: true,
-    beats: [boltBeat(0.6, 16), boltBeat(0.5, 16, { keys: boltKeys(0.7) })],
+    beats: [boltBeat(0.6, 16), boltBeat(0.5, 16, { keys: boltKeys(0.7), cock: 0.7 })],
   },
   /** Return to Sender: three hanging bolts turn and fly at you together: ONE blue flare, one result. */
   sentBack: {
@@ -415,7 +429,7 @@ export const MOVES = {
   leaveFloor: {
     label: 'Leaving the Floor', phase: 3, weight: [0, 0, 1.1], cooldown: 10, band: [0, 12], recovery: 0.6, cat: 'area',
     beats: [
-      { tell: R, windup: 0.8, active: 0.15, damage: T.flight.burst.damage, knockback: T.flight.burst.knockback, rise: true, air: true, zone: { kind: 'ring', r: T.flight.burst.r }, ring: T.flight.burst.r, part: 'feet', close: 0, track: 0.5, keys: riseKeys(), lift: [[0.9, 0], [1.0, 1.0], [2.0, T.flight.hover]] },
+      { tell: R, windup: 0.8, active: 0.15, damage: T.flight.burst.damage, knockback: T.flight.burst.knockback, rise: true, air: true, zone: { kind: 'ring', r: T.flight.burst.r }, ring: T.flight.burst.r, part: 'feet', close: 0, track: 0.5, keys: riseKeys(), cock: 0.7, lift: [[0.9, 0], [1.0, 1.0], [2.0, T.flight.hover]] },
       { feint: true, windup: 0.9, active: 0.05, close: 0, track: 1, keys: hoverKeys(), lift: [[0, T.flight.hover], [1.0, T.flight.hover + 0.2], [2.0, T.flight.hover + 0.2]] },
       {
         pick: [
@@ -441,6 +455,20 @@ export const MOVES = {
     beats: [transitionBeat(T.rising, risingKeys())],
   },
 
+  // ================================================================ the fast strings (?oneMoves=a; weight 0 on '0': wokenOne.weigh)
+  /** Snapping Hands: the right hand three times, quick: the first windup at the floor of a fair read
+   *  (TUNING.minFirstWindup), the next two at TUNING.fast.next (impacts minHitGap apart). White: block or
+   *  parry each. */
+  snapHands: {
+    label: 'Snapping Hands', phase: 1, fast: true, weight: [1.6, 1.3, 1.2], cooldown: 5, band: [0, 2.6], recovery: 0.45, cat: 'string',
+    beats: [fast(punch('backfist', N, T.fast.first, T.fast.damage)), fast(punch('cross', N, T.fast.next, T.fast.damage)), fast(punch('backfist', N, T.fast.next, T.fast.damage))],
+  },
+  /** Quick Foot: a low front kick out of the guard and the right hand straight after it, both quick. */
+  quickFoot: {
+    label: 'Quick Foot', phase: 1, fast: true, weight: [1.3, 1.1, 1.1], cooldown: 5, band: [0, 2.8], recovery: 0.5, cat: 'string',
+    beats: [fast(kick('front', N, T.fast.first, T.fast.damage + 1)), fast(punch('cross', N, T.fast.next, T.fast.damage))],
+  },
+
   // ================================================================ counters (out of his guard)
   answer: { label: 'Answer', phase: 1, weight: 0, counter: true, cooldown: 0, band: [0, 5], recovery: 0.55, beats: [spinBack(N, 0.46, 12, { track: 0.7 }), punch('palm', B, 0.4, 18)] },
   answer2: { label: 'Answer (iron)', phase: 2, weight: 0, counter: true, cooldown: 0, band: [0, 5], recovery: 0.55, beats: [elbow(N, 0.46, 12, { track: 0.7 }), { ...punch('cross', B, 0.4, 18), iron: 'point', zone: { kind: 'line', r: 3.0, w: 0.9 } }] },
@@ -464,6 +492,46 @@ function flurry(ph, kinds) {
 }
 
 export const MOVE_NAMES = Object.keys(MOVES);
+
+// ---------------------------------------------------------------- the rebuild (?oneMoves=a, look.js oneMovesNow)
+/** One gun aimed side-on: the right shoulder toward the hero, the arm straight down the line to him (the
+ *  sight line), the head turned along it, the left hand easy at his side. The old aim (yaw -0.9 with the
+ *  hand ahead of the chest) put the right arm 36 degrees off the hero, the forearm across his face; this
+ *  one is within 5 (measured at the impact: the shoulder to the fist against the shoulder to his chest). */
+const AIM_SIDE = { yaw: 0.8, bY: -0.1, hdY: -0.68, rH: [-0.5, 0.1, 0.36], rP: [-0.9, -0.3, -0.2], lH: [0.1, -0.5, -0.05], lP: [0.9, -0.2, -0.3], sw: [0.0, 0.0] }; // (the left hand hangs: not on the hip)
+const aimSideKeys = (cock = 0.7) => strikeKeys({
+  cock,
+  coil: { ...AIM_SIDE, rH: [-0.22, -0.12, 0.26], ...FT.OR },
+  hit: { ...AIM_SIDE, ...FT.OR },
+  after: { ...AIM_SIDE, rH: [-0.48, 0.2, 0.32], bZ: -0.05, pitch: -0.06, ...FT.OR },
+});
+/** The held windup of a blue / red / black blow: he reaches the blow's coil by `T.held.from` of the
+ *  windup and HOLDS it (the realiser's bait-hold rule: the cocked pose keyed again) until `T.held.to`;
+ *  the strike runs in what is left. The windup is no longer (cue, flash and impact stay where they
+ *  were): the time comes out of the slow drift into the coil, so the pose that says blue or red stands
+ *  still long enough to read, and the strike out of it is a snap. A beat with a bait hold of its own
+ *  (the Dive Within) or no keys is left alone. */
+function heldTell(b) {
+  if (!b?.keys || b.feint || b.hold || !(b.tell === B || b.tell === R || b.tell === K)) return b;
+  const cock = b.cock ?? 0.8;
+  const { from, to } = T.held;
+  if (!(cock > from + 0.02 && cock < 1)) return b;
+  const pre = b.keys.filter(([u]) => u <= cock + 1e-6);
+  if (!pre.length) return b;
+  const coil = pre.reduce((a, k) => (k[0] > a[0] ? k : a));
+  const { e, gather, settle, ...pose } = coil[1];
+  const keys = b.keys.map(([u, k]) => [u <= cock + 1e-6 ? (u * from) / cock : u <= 1 ? to + ((u - cock) * (1 - to)) / (1 - cock) : u, k]);
+  keys.push([to, pose]);
+  keys.sort((x, y) => x[0] - y[0]);
+  return { ...b, keys, cock: to };
+}
+function beatA(b) {
+  let o = b;
+  if (o.aim === 1) o = { ...o, keys: aimSideKeys(o.cock ?? 0.7) };
+  return heldTell(o);
+}
+/** The moves as the rebuild plays them (transitions as authored: their kneel is their windup). */
+export const MOVES_A = Object.fromEntries(Object.entries(MOVES).map(([k, d]) => [k, d.transition ? d : { ...d, beats: d.beats.map((b) => (b.pick ? { ...b, pick: b.pick.map(beatA) } : beatA(b))) }]));
 export const TRANSITIONS = Object.freeze({ 2: 'ironSeeds', 3: 'rising' });
 export const COUNTERS = Object.freeze(['answer', 'answer2', 'answer3']);
 export const STREAKS = Object.freeze(['streakHands', 'streakHands2', 'streakHands3']);
@@ -474,6 +542,7 @@ const oneHandBeat = (b) => (b?.keys ? { ...b, keys: b.keys.map(([u, p]) => [u, {
 const oneHand = (def) => ({ ...def, beats: def.beats.map((b) => (b.pick ? { ...b, pick: b.pick.map(oneHandBeat) } : oneHandBeat(b))) });
 /** The moves as realised in phase 1 (the left hand behind his back; transitions as authored). */
 const MOVES_P1 = Object.fromEntries(Object.entries(MOVES).map(([k, d]) => [k, d.transition || d.twoHand ? d : oneHand(d)]));
+const MOVES_P1_A = Object.fromEntries(Object.entries(MOVES_A).map(([k, d]) => [k, d.transition || d.twoHand ? d : oneHand(d)]));
 
 // ---------------------------------------------------------------- reaction clips
 // Tian Lei's bare-handed clips, with his own on top: THE LEAN (his ward clips: a slip back and aside, the
@@ -551,6 +620,9 @@ export const CLIPS_GEAR2 = (() => {
 const REALISERS = PHASE_POSES.map((P, i) => makeRealise({ TUNING, MOVES: i === 0 ? MOVES_P1 : MOVES, compileClip: (keys, dur) => P.compileClip(keys, dur), completeBeat: P.completeBeat }));
 /** Phase 1 in gear 2 (both hands, ADR-168): the moves two-handed, round gear 2's guard. */
 const REALISE_G2 = makeRealise({ TUNING, MOVES, compileClip: (keys, dur) => GEAR2_POSES.compileClip(keys, dur), completeBeat: GEAR2_POSES.completeBeat });
+/** ... and the rebuild's (`?oneMoves=a`). */
+const REALISERS_A = PHASE_POSES.map((P, i) => makeRealise({ TUNING, MOVES: i === 0 ? MOVES_P1_A : MOVES_A, compileClip: (keys, dur) => P.compileClip(keys, dur), completeBeat: P.completeBeat }));
+const REALISE_G2_A = makeRealise({ TUNING, MOVES: MOVES_A, compileClip: (keys, dur) => GEAR2_POSES.compileClip(keys, dur), completeBeat: GEAR2_POSES.completeBeat });
 
 /**
  * A move as it will play this time (duelist/realise.js), round the guard of the phase it is used in; a
@@ -575,7 +647,9 @@ export function realise(name, phase = 1, rnd = Math.random, opts = null) {
   if (replay) REPLAY.name = REPLAY.draws = null;
   // (phase 1 in gear 2, and gear 2's own opening: two-handed, round gear 2's guard)
   const g2 = ph === 1 && !def.transition && (GEARED.now >= 2 || def.twoHand);
-  const A = (g2 ? REALISE_G2 : REALISERS[Math.min(REALISERS.length, Math.max(1, ph)) - 1])(name, phase, r, opts);
+  const reb = oneMovesNow() === 'a';
+  const RS = reb ? REALISERS_A : REALISERS;
+  const A = (g2 ? (reb ? REALISE_G2_A : REALISE_G2) : RS[Math.min(RS.length, Math.max(1, ph)) - 1])(name, phase, r, opts);
   if (A) {
     A.draws = draws;
     A.replay = !!replay;

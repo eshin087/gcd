@@ -7,7 +7,7 @@ import { DuelBrain } from '../duelist/brain.js';
 import { GUARD_KINDS } from '../duelist/guard.js';
 import { planFeet, feetPose } from '../duelist/feetPlan.js';
 import { ONE_LOADOUT, ONE_FIST } from './gear.js';
-import { tintOne, dressOne, oneLettersOn, oneLetterBias } from './look.js';
+import { tintOne, dressOne, oneLettersOn, oneLetterBias, oneMovesNow } from './look.js';
 import { WokenFx } from './fx.js';
 import { posesOf } from './poses.js';
 import { MOVES, MOVE_NAMES, CLIP, CLIPS_BY_PHASE, CLIPS_GEAR2, TRANSITIONS, COUNTERS, STREAKS, REPLAY, INTRO_BECKON, realise } from './moves.js';
@@ -537,6 +537,7 @@ export class WokenOne extends Duelist {
   weigh(name, def, w, dist) {
     // the gears (phase 1): gear 2's moves wait for it; gear 1's lighter once it is on
     if (def.gear === 2 && (this.phase !== 1 || this.gear < 2)) return 0;
+    if (def.fast && oneMovesNow() !== 'a') return 0; // (the rebuild's fast strings: ?oneMoves=a)
     if (this.phase === 1 && this.gear >= 2 && def.phase === 1 && !def.gear) w *= 0.55;
     if (def.needs === 'held3' && (this.source?.held.length ?? 0) < this.T.stop.max) return 0;
     if (this.source?.held.length >= this.T.stop.max && !def.transition && def.needs !== 'held3') w *= 0.15; // (three hang: he sends them)
