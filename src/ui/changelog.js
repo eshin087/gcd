@@ -19,6 +19,15 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-26',
+        title: "The remade hero: a new animation engine that mirrors the owner's reference films (an experiment, ?hero=new)",
+        notes: [
+          'Add ?hero=new to the address to play as a remade hero: a new skeleton and body in the same costume and letters, moving with animations taken from two reference films.',
+          'He has real starts, stops and turns, rolls to every side, jumps, crouches and strafes, and his sword attacks follow the films one-handed, two-handed and with a sword in each hand.',
+          'Add ?hero=new&show=all to play every animation in order, close up and from the game camera. Without the switch nothing changes.',
+        ],
+      },
+      {
+        date: '2026-11-26',
         title: "Parrying is easier: the perfect parry's timing widened",
         notes: ['A parry pressed up to 0.2 s before the blow lands is now perfect, the same window as the perfect dodge (it was 0.08 s). Its extra posture damage, the fast critical counter cut, the blade lock and returned shots come far more easily.'],
       },

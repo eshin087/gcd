@@ -5,6 +5,50 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-26 — The remade hero: a new skeleton and clip engine mirroring the owner's two reference films, behind `?hero=new` (ADR-230; branch `player/hero-remake`)
+
+**Owner:** two reference films (a one-handed / two-handed / paired straight-sword moveset, 19 min, and an
+unarmed movement set with a horse, 31 min): "watch both full videos to capture and mirror this games animation
+for all the different categories and weapon ... remake the main character to have the new animation engine and
+mirror both video order of animation for me to review. show me the video clip of it close up and also normal
+player perspective", the character to look as today from the game camera, the reference character's
+proportions. Their answers: everything, the horse too; a pose-tracking tool allowed; the reference's speed in
+the films, today's attack timings in the game; the reference's build under our costume.
+
+**What.** A second hero in `src/entities/hero2/`, only behind `?hero=new` (the game played with it) and
+`?hero=new&show=<clip>|all` (the review mode); today's hero, `player/anim.js` and every boss untouched.
+- A 24-joint FK skeleton (`skeleton.js`) in the reference character's measured build (`dims.js`: long legs,
+  high shoulders), recorded clips (format: `hero2/README.md`), a clip engine (`engine.js`, `clip.js`, `feet.js`:
+  foot pinning, `fit.js`: attacks fitted to the game's windup / active / recovery), a new body in today's costume
+  and letter look (`body.js`, `bodyParts.js`, `cloth.js`: spring-chain cloth), the game adapter (`adapter.js`,
+  `moves.js`: game state / attack to clip; the hit test reads the new blade), the review mode (`showcase.js`).
+- 176 clips in 15 sets in the films' order (`clips/`): movement 105 (idle, turns, walk / run / sprint with
+  starts, stops and pivots, quarter turns, spins, jumps, backstep, rolls, crouch, strafes, strafe jumps, flasks,
+  the summons, hits, falls, deaths, riding), sword 71 (one-handed 31, two-handed 30, paired 18, mounted 2).
+- A horse (`horse/`: 41 joints, our own design in the creature print, 21 hand-keyed clips: walk, canter,
+  gallop, starts, stops, turns, jumps, mount, the rider's attacks) and the rider's seat (`horse/rider.js`).
+- The capture tool (`scripts/mocap/`): pose tracking of the footage (MediaPipe, in a scratch venv), fusion of
+  takes, retarget by bone direction, foot contact, hand keys, 3D bone keys, airborne marks, and a checker.
+- The release page keeps the clip data out (fetched as JSON from `assets/hero2/` only with the switch on):
+  4.46 MB against main's 4.30.
+
+**How the motion was made.** Tracking worked for the plain gaits (walk, run, sprint, stops, crouches) after
+two fixes (the arms are under-read on the armoured figure; the stride came out two thirds of the real one). It
+failed wherever the films cut, zoom, blur or hide him: every attack, rolls, jumps, lying, riding. Those are
+typed in 3D by the authors, read from two or three of the footage's cameras at once, and checked by reach
+(1.9 m at chest height), blade against body and floor, and on film.
+
+**Verification.** `tests/integration/hero2.mjs` (now in `npm test`): every clip decodes and keeps the format;
+the engine, fitting, foot pinning; the play scenario (the game played with the remade hero: gaits at 0.00 cm
+slide, starts, stops, pivots, turns on the spot, strafes, rolls, the flask, hits, knockdown, death, every attack
+hitting at 1.2 / 1.9 / 2.6 m); the switch off (no hero2 module loaded). With the switch off `integ hero` and
+`reach` are unchanged. Review films of every set in the films' order (close view and the game camera).
+
+**Open.** The owner's review of the films. Rough clips named in the films' amber lines and the authors' notes
+(several mounted and strafe clips are typed by formula, not matched pose by pose; the recoveries are
+generated). Moves the films never show whole are modelled and labelled (the sprint pivot). A summon effect for
+the horse; a shield prop (the one-handed guard). Not played on the iPhone.
+
 ## 2026-11-26 — The perfect parry widened to the perfect dodge's window (ADR-227; branch `claude/combat-perfect-parry-window-d6503b`)
 
 **Owner:** parrying is very hard, the timing too tight; make it like the perfect dodge's window. They picked

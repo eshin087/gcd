@@ -6421,3 +6421,31 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   their 0.12 s press (now perfect) and their expectations moved (posture x 1.5, a lock, Halcyon's fight
   137 - 142 s). The wyrm's PRESSURE measurement keeps the old 0.08 s for its guard bot's stray parries: the
   new path met a brood gap that exists on main (`BROOD.busyWait`), a separate task. Not played by a human yet.
+
+## ADR-230 — The remade hero: a second hero on a recorded-clip engine, behind `?hero=new` (2026-11-26)
+- **Context:** four rounds of hand-posed attacks were turned down ("stiff", "not how an arm should look"), and
+  the owner gave two reference films (a straight-sword moveset one-handed, two-handed and paired, and an
+  unarmed movement set with riding) to mirror, every category in the films' order, on a hero remade from
+  scratch: the same look from the game camera, the reference character's proportions. Today's animator builds
+  each pose by formula from a 61-float pose; about twenty boss files import it.
+- **Decision:**
+  1. A second hero in `src/entities/hero2/`, only behind `?hero=new`: a 24-joint FK skeleton (T-pose rest, local
+     quaternions) in the reference's measured build, playing RECORDED clips (`hero2/README.md` format: Int16
+     quaternions, hips, root motion, contacts, phases, events, props, hands). Today's hero, `player/anim.js` and
+     the bosses are untouched; with the switch off no hero2 module loads (the `hero2` suite checks it).
+  2. Clips are made offline by `scripts/mocap/` from the footage: pose tracking where it holds (the gaits);
+     where it does not (every attack, rolls, jumps, lying, riding) the pose is typed in 3D by an author reading
+     several of the footage's cameras at once, then checked (reach, blade against body and floor, film).
+  3. In play the adapter stands in for `player.anim`; gameplay still moves the root and owns every number:
+     attacks are fitted to the game's windup / active / recovery and aimed by their `hit` frame; the hit test
+     reads the new blade through today's sword node.
+  4. A new body in today's costume through the same hero materials and art path: rigid parts per joint plus a
+     spring-chain cloth, sized from the skeleton's table.
+  5. The horse is our own design in the creature print, hand-keyed against the footage's gaits.
+  6. The release page does not inline the clip data (3.7 MB): JSON beside the page, fetched with the switch on.
+- **Not taken:** replacing `player/anim.js` (every boss shares it); fusing camera takes of an attack (the
+  follow cameras turn with him: takes disagree by up to 160 degrees); 2D pixel keys from one view (a back view
+  cannot see reach); a horse wider than life to read from behind (the owner's call).
+- **Consequences:** two heroes to keep while the owner judges; the page is 0.16 MB larger (the engine, body and
+  horse code). Some moves the films never show whole are modelled and labelled (the sprint pivot). The owner's
+  review decides whether `?hero=new` becomes the hero.

@@ -189,6 +189,15 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.94 — The remade hero: a new skeleton and clip engine mirroring the owner's two reference films (2026-11-26, `player/hero-remake`, ADR-230)
+- [x] `src/entities/hero2/`: a skeleton in the reference's build, the clip engine, foot pinning, attack fitting, a new body in today's costume, spring-chain cloth, `?hero=new` (play) and `&show=` (review)
+- [x] `scripts/mocap/`: footage to clips (tracking, fusion, retarget, hand keys, 3D bone keys, airborne marks, the checker)
+- [x] 176 clips, every chapter of both films in order; the horse (21 clips) and the rider's seat
+- [x] The game played with it: gaits, starts, stops, pivots, turns, strafes, rolls by direction, the flask, hits, knockdown, death, every attack; `hero2` in `npm test`
+- [x] Review films of every set, close view and the game camera
+- [ ] The owner's review of the films; then the rough clips they name
+- [ ] Played on the iPhone; a summon effect for the horse; a shield prop
+
 ## M1.93 — The perfect parry gets the perfect dodge's window (2026-11-26, `claude/combat-perfect-parry-window-d6503b`, ADR-227)
 - [x] `DEFENSE.perfectParryWindow` 0.08 → 0.20 s (the owner's pick); the plain parry window 0.22 s unchanged
 - [x] Every perfect reward (posture, counter cut, blade lock, returned bullets, clashes) follows the one number; tests timed for a plain parry moved to 0.21 s

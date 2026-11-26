@@ -4,7 +4,15 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and eleven pieces of work since 0.4.0:
+One hundred and twelve pieces of work since 0.4.0:
+- **The remade hero: a new animation engine that mirrors the owner's reference films (an experiment, ?hero=new)**
+  (2026-11-26, ADR-230). *Added:* behind `?hero=new` the hero is remade on a new skeleton in the reference
+  character's build, in today's costume and letters, playing 176 clips taken from the owner's two reference films:
+  walking, running, sprinting with real starts, stops and pivots, turns, rolls to every side, jumps, crouching,
+  strafing, drinking, being hit, falling and dying, and the sword's light, heavy, charged, running, rolling,
+  jumping and counter attacks one-handed, two-handed and with a sword in each hand, plus a horse to ride.
+  `?hero=new&show=all` plays every clip in the films' order for review, close up and from the game camera.
+  Without the switch nothing changes.
 - **Parrying is easier: the perfect parry's timing widened** (2026-11-26, ADR-227). *Changed:* a parry pressed up to
   0.2 s before the blow lands is now perfect (it was 0.08 s), the same window as the perfect dodge: its extra posture,
   the fast critical counter cut, the blade lock and the returned shots come far more easily. A parry pressed earlier
