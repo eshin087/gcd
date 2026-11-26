@@ -6,6 +6,7 @@ import {
   gridGeometry, shellGeometry, bandGeometry, mergeGeometries, sub, foldLines, lerp, limb, gripFist, orient, orientTo, clumpGeometry,
   partGeometry,
 } from '../../player/heroGeo.js';
+import { HAIR_CLUSTERS } from '../../player/model.js';
 import { wjLookNow, wjHairNow, dressOf, at } from './look.js';
 
 // Bai Wuji's gear: the hero's skeleton (buildHero(U, loadout), the same animator) in the hero's
@@ -103,22 +104,22 @@ const lock = (az, el, { o = 0, u = 0, b = 0, s = 0, f = 0 }, L, w, opt = {}) => 
 function hairUpA() {
   const sharp = { taper: 1.25, curl: 0.06, bend: mix3([UP, 1], [BACK, 0.3]) };
   const one = [
-    lock(0.22, 0.62, { u: 1, b: 0.08, s: 0.1, f: 0.12 }, 0.27, 0.088, sharp),
-    lock(0.62, 0.55, { u: 1, s: 0.38, b: 0.06, o: 0.2 }, 0.26, 0.086, sharp),
-    lock(1.08, 0.45, { u: 1, s: 0.55, b: 0.1 }, 0.24, 0.084, { ...sharp, bend: [0.3, 0.5, -0.6] }),
-    lock(1.55, 0.38, { u: 0.9, s: 0.68, b: 0.2 }, 0.21, 0.08, { ...sharp, bend: [0.4, 0.5, -0.6] }),
-    lock(2.05, 0.42, { u: 0.9, s: 0.45, b: 0.4 }, 0.2, 0.08, sharp),
-    lock(2.6, 0.5, { u: 0.9, s: 0.18, b: 0.5 }, 0.2, 0.08, sharp),
-    lock(0.42, 1.05, { u: 1, s: 0.15, b: 0.1 }, 0.32, 0.09, sharp),
-    lock(1.3, 0.95, { u: 1, s: 0.32, b: 0.15 }, 0.29, 0.086, sharp),
-    lock(2.3, 0.95, { u: 1, s: 0.18, b: 0.3 }, 0.26, 0.084, sharp),
+    lock(0.22, 0.62, { u: 1, b: 0.08, s: 0.1, f: 0.12 }, 0.23, 0.088, sharp),
+    lock(0.62, 0.55, { u: 1, s: 0.38, b: 0.06, o: 0.2 }, 0.221, 0.086, sharp),
+    lock(1.08, 0.45, { u: 1, s: 0.55, b: 0.1 }, 0.204, 0.084, { ...sharp, bend: [0.3, 0.5, -0.6] }),
+    lock(1.55, 0.38, { u: 0.9, s: 0.68, b: 0.2 }, 0.178, 0.08, { ...sharp, bend: [0.4, 0.5, -0.6] }),
+    lock(2.05, 0.42, { u: 0.9, s: 0.45, b: 0.4 }, 0.17, 0.08, sharp),
+    lock(2.6, 0.5, { u: 0.9, s: 0.18, b: 0.5 }, 0.17, 0.08, sharp),
+    lock(0.42, 1.05, { u: 1, s: 0.15, b: 0.1 }, 0.272, 0.09, sharp),
+    lock(1.3, 0.95, { u: 1, s: 0.32, b: 0.15 }, 0.246, 0.086, sharp),
+    lock(2.3, 0.95, { u: 1, s: 0.18, b: 0.3 }, 0.221, 0.084, sharp),
   ];
   return [
     ...both(one),
-    lock(0, 0.75, { u: 1, b: 0.05, f: 0.15 }, 0.3, 0.092, sharp),
-    lock(0, 1.3, { u: 1, b: 0.08 }, 0.35, 0.095, sharp),
-    lock(Math.PI, 0.75, { u: 0.9, b: 0.5 }, 0.24, 0.084, sharp),
-    lock(Math.PI, 0.3, { u: 0.6, b: 0.9 }, 0.16, 0.078, sharp),
+    lock(0, 0.75, { u: 1, b: 0.05, f: 0.15 }, 0.255, 0.092, sharp),
+    lock(0, 1.3, { u: 1, b: 0.08 }, 0.297, 0.095, sharp),
+    lock(Math.PI, 0.75, { u: 0.9, b: 0.5 }, 0.204, 0.084, sharp),
+    lock(Math.PI, 0.3, { u: 0.6, b: 0.9 }, 0.136, 0.078, sharp),
   ];
 }
 // b  a shorter, spikier burst: more and thinner spikes, standing out from the head on every side
@@ -126,59 +127,25 @@ function hairUpA() {
 function hairUpB() {
   const sharp = { taper: 1.45, curl: 0.03, bend: mix3([UP, 1], [BACK, 0.4]) };
   const one = [];
-  const rows = [[0.55, [0.2, 0.75, 1.3, 1.85, 2.4, 2.9], 0.18, { u: 0.9, o: 0.75, b: 0.1 }], [1.05, [0.35, 1.1, 1.9, 2.65], 0.2, { u: 1, o: 0.45, b: 0.12 }]];
+  const rows = [[0.5, [0.2, 0.7, 1.2, 1.7, 2.2, 2.7], 0.13, { u: 0.75, o: 0.9, b: 0.1 }], [0.95, [0.35, 1.05, 1.8, 2.55], 0.15, { u: 1, o: 0.6, b: 0.12 }]];
   for (const [el, azs, L, d] of rows) for (const az of azs) one.push(lock(az, el, d, L, 0.06, sharp));
   return [
     ...both(one),
-    lock(0, 0.7, { u: 0.9, o: 0.5, f: 0.15 }, 0.2, 0.066, sharp),
-    lock(0, 1.35, { u: 1, b: 0.1 }, 0.22, 0.068, sharp),
-    lock(Math.PI, 0.65, { u: 0.7, o: 0.6, b: 0.4 }, 0.17, 0.062, sharp),
+    lock(0, 0.65, { u: 0.8, o: 0.6, f: 0.2 }, 0.14, 0.066, sharp),
+    lock(0, 1.35, { u: 1, b: 0.1 }, 0.16, 0.068, sharp),
+    lock(Math.PI, 0.6, { u: 0.6, o: 0.8, b: 0.4 }, 0.13, 0.062, sharp),
   ];
 }
 
 // --- the hair FALLEN (phases 2 - 3): the same white hair down, soft, lower and rounder in outline: a
 // fringe over the brow (it stops above the eyes), the sides over the ears, the back to the nape
-/** A lock that HANGS from the scalp at (az, el): straight down (`f` forward, `o` out from the head),
- *  its tip curling down and a little out: hair lying as it grows, never standing off the head. */
-const hang = (az, el, L, w, { o = 0.12, f = 0, curl = 0.16, taper = 0.85, k = 0.97 } = {}) => ({
-  at: scalp(az, el, k), dir: mix3([DOWN, 1], [outAt(az, 0), o], [FWD, f]), L, w, th: w * 0.45, curl, taper, bend: mix3([DOWN, 0.6], [outAt(az, 0), 0.8]),
-});
-// a  long and soft: the fringe in loose locks to the brows (one longer between the eyes), the sides
-//    over the ears to the jaw, the back to the nape
-function hairDownA() {
-  const one = [
-    hang(0.2, 0.58, 0.09, 0.06, { f: 0.3, o: 0 }),
-    hang(0.55, 0.52, 0.1, 0.06, { f: 0.2, o: 0.08 }),
-    hang(0.95, 0.45, 0.13, 0.062, { o: 0.1 }),
-    hang(1.35, 0.38, 0.16, 0.064, { o: 0.1 }),
-    hang(1.8, 0.38, 0.16, 0.066, { o: 0.08 }),
-    hang(2.3, 0.4, 0.17, 0.068, { o: 0.06 }),
-    hang(2.8, 0.42, 0.17, 0.068, { o: 0.05 }),
-    // layers from higher on the head, through the skull: they show where they leave it (no brim)
-    hang(0.6, 0.85, 0.2, 0.07, { o: 0.02, f: 0.1 }),
-    hang(1.5, 0.8, 0.22, 0.07, { o: 0.02 }),
-    hang(2.5, 0.8, 0.22, 0.07, { o: 0.02 }),
-  ];
-  return [...both(one), hang(0, 0.6, 0.12, 0.05, { f: 0.35, o: 0 }), hang(Math.PI, 0.42, 0.17, 0.07, { o: 0.05 }), hang(Math.PI, 0.85, 0.22, 0.07, { o: 0.02 })];
-}
-// b  shorter and choppier: a ragged fringe to the brow, the ears half showing, sharp tips
-function hairDownB() {
-  const c = { curl: 0.08, taper: 1.3 };
-  const one = [
-    hang(0.18, 0.6, 0.075, 0.052, { ...c, f: 0.35, o: 0 }),
-    hang(0.5, 0.55, 0.08, 0.052, { ...c, f: 0.25, o: 0.1 }),
-    hang(0.9, 0.48, 0.1, 0.054, { ...c, o: 0.16 }),
-    hang(1.3, 0.45, 0.1, 0.056, { ...c, o: 0.16 }),
-    hang(1.75, 0.45, 0.11, 0.058, { ...c, o: 0.14 }),
-    hang(2.25, 0.48, 0.12, 0.06, { ...c, o: 0.12 }),
-    hang(2.75, 0.5, 0.12, 0.06, { ...c, o: 0.1 }),
-    hang(0.7, 0.85, 0.17, 0.062, { ...c, o: 0.04, f: 0.1 }),
-    hang(1.7, 0.8, 0.18, 0.062, { ...c, o: 0.04 }),
-  ];
-  return [...both(one), hang(0, 0.62, 0.08, 0.05, { ...c, f: 0.4, o: 0 }), hang(Math.PI, 0.5, 0.13, 0.062, { ...c, o: 0.1 }), hang(Math.PI, 0.85, 0.18, 0.062, { ...c, o: 0.04 })];
-}
 const HAIR_UP = { a: hairUpA, b: hairUpB };
-const HAIR_DOWN = { a: hairDownA, b: hairDownB };
+/** The fallen mop's clusters scaled (x, y, z) from the hero's: a the fringe and the nape a little
+ *  longer; b shorter and a little wider. */
+const DROP = {
+  a: { fringe: [1.05, 1.15, 1.0], nape: [1.05, 1.15, 1.05], left: [1.05, 1.08, 1.0], right: [1.05, 1.08, 1.0], crown: [1.0, 0.9, 1.0] },
+  b: { fringe: [1.12, 0.8, 1.05], nape: [1.12, 0.78, 1.1], left: [1.15, 0.8, 1.05], right: [1.15, 0.8, 1.05], crown: [1.1, 0.85, 1.05] },
+};
 
 /**
  * The band over his eyes (head space): a strip round the head, its middle at height `y`, `h` tall,
@@ -228,11 +195,19 @@ function buildHead(ctx) {
   // the scalp: white in every phase (the hair cap)
   mesh(head, partGeometry('hair.cap'), M.hair);
   // the hair up (phase 1), the hair fallen (phases 2 - 3)
-  const up = lockGeometry(HAIR_UP[hair]()), down = lockGeometry(HAIR_DOWN[hair]());
+  const up = lockGeometry(HAIR_UP[hair]());
   put(head, up.mass, M.hair, 1, 1, 'wj.hairUp');
   put(head, up.tips, M.hairTip, 1, 1, 'wj.hairUp');
-  put(head, down.mass, M.hair, 2, 3, 'wj.hairDown');
-  put(head, down.tips, M.hairTip, 2, 3, 'wj.hairDown');
+  // fallen: a soft mop (the hero's sculpted clusters, heroParts.js, at their pivots, in white): a longer
+  // at the fringe and the nape, b shorter and wider (a choppier mop)
+  for (const c of HAIR_CLUSTERS) {
+    for (const [k, m] of [['mass', M.hair], ['tip', M.hairTip]]) {
+      const x = put(head, partGeometry(`hair.${c.name}.${k}`), m, 2, 3, 'wj.hairDown');
+      x.position.set(...c.pivot);
+      const L = DROP[hair][c.name];
+      if (L) x.scale.set(L[0], L[1], L[2]);
+    }
+  }
   // the band: over the eyes (phase 1), down round his neck on the collar (phases 2 - 3); a dark band
   // (the `eye` part: it keeps its own dark fill under the boss print) or b's white cloth (`facing`)
   const bandMat = look === 'b' ? M.facing : M.eye;
@@ -243,7 +218,7 @@ function buildHead(ctx) {
   // (one mesh each, centred on its eye: look.js grows them with the camera's distance, so at the game
   // camera each still fills a letter cell)
   for (const ex of [0.033, -0.033]) {
-    const e = put(head, ellipsoidGeometry(0.025, 0.013, 0.007, { widthSegs: 8, heightSegs: 4 }), M.flask, 2, 3, 'wj.eye');
+    const e = put(head, ellipsoidGeometry(0.02, 0.011, 0.007, { widthSegs: 8, heightSegs: 4 }), M.flask, 2, 3, 'wj.eye');
     e.position.set(ex, 0.128, 0.104);
     D.eyes.push(e);
   }
@@ -323,11 +298,15 @@ function buildArms(ctx) {
       sub(limb({ length: 0.03, r0: fa1 + 0.012 + wide, r1: fa1 + 0.011 + wide, radial: 12, rings: 1, capSegs: 1 }).translate(0, y1 + 0.03, 0), 1),
     ]), M.coat);
   }
+  // the right fist on the sword joint, the wrist under it (kept apart: look.js hides a hand that is
+  // in its pocket, so the sleeve ends at the coat)
   const F = gripFist(HK);
-  mesh(sword, mergeGeometries([F.fingers, F.thumb, F.ridge]), M.skin);
-  mesh(arms.R.fore, ellipsoidGeometry(0.03 * HK, 0.04 * HK, 0.034 * HK, { widthSegs: 10, heightSegs: 6 }), M.skin, 0, -DIM.foreArm + 0.025, 0.004);
+  const fist = mesh(sword, mergeGeometries([F.fingers, F.thumb, F.ridge]), M.skin);
+  const wrist = mesh(arms.R.fore, ellipsoidGeometry(0.03 * HK, 0.04 * HK, 0.034 * HK, { widthSegs: 10, heightSegs: 6 }), M.skin, 0, -DIM.foreArm + 0.025, 0.004);
   const free = buildFreeHand(ctx, M.skin);
-  return { offHand: free.offHand, keep: free.keep };
+  const D = dressOf(ctx.root, look);
+  D.handR = [fist, wrist];
+  return { offHand: free.offHand, keep: [fist, wrist, ...free.keep] };
 }
 
 // ================================================================= the legs

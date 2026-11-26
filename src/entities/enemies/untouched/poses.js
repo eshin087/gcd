@@ -38,14 +38,18 @@ import * as TR from './posesTerrain.js';
 //   KNEEL     on one knee (the posture break, the death)
 
 const ANK = DIM.ankle;
+/** The right fist's grip axis while the hand hangs or sits in its pocket: straight UP. (The coat's
+ *  springs take the sword joint's +Z for a blade, anim.js _bladePts: pointing down out of a pocket that
+ *  phantom steel ran through the skirt and threw a panel out behind him. Up, it runs inside his torso.) */
+const FIST_UP = Object.freeze([0, 1.45]);
 
 /** Both hands in the coat's pockets: the fists at the front of the hips, the elbows out and back. */
 export const POCKETS = Object.freeze({
-  rH: [0.065, -0.43, 0.05], rP: [-1, -0.1, -0.45], lH: [-0.065, -0.43, 0.05], lP: [1, -0.1, -0.45], sw: [0.1, -1.25],
+  rH: [0.065, -0.43, 0.05], rP: [-1, -0.1, -0.45], lH: [-0.065, -0.43, 0.05], lP: [1, -0.1, -0.45], sw: FIST_UP,
 });
 /** Out of the pockets, loose at his sides, the fingers half curled (phases 2 - 3). */
 export const LOOSE = Object.freeze({
-  rH: [-0.02, -0.5, 0.05], rP: [-0.9, -0.1, -0.35], lH: [0.03, -0.49, 0.06], lP: [0.9, -0.1, -0.35], sw: [0.1, -1.35],
+  rH: [-0.02, -0.5, 0.05], rP: [-0.9, -0.1, -0.35], lH: [0.03, -0.49, 0.06], lP: [0.9, -0.1, -0.35], sw: FIST_UP,
 });
 
 /** His stance: upright and tall, the weight on his left leg, the hip out, the head tilted; the hands

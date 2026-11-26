@@ -1,3 +1,4 @@
+import { Matrix4, Vector3 } from 'three';
 import { lookOf } from '../duelist/lookSwitch.js';
 import { setFill } from '../ashDisciple/bodyArt.js';
 import { DIM } from '../../player/model.js';
@@ -46,7 +47,7 @@ export function wjHairNow() {
 
 /** The dressing record on his rig (gear.js registers the switched pieces in it). */
 export function dressOf(root, look = 'a') {
-  return (root.userData.dress ??= { kind: 'wj', look, phase: 0, at: [], fronts: [], panels: [], eyes: [], eyeK: 0, sign: false });
+  return (root.userData.dress ??= { kind: 'wj', look, phase: 0, at: [], fronts: [], panels: [], eyes: [], eyeK: 0, sign: false, handR: null, pocket: [false, false] });
 }
 /** Show mesh `m` from phase `from` to phase `to` (hidden until then; phase 1 is the build's state). */
 export function at(D, m, from, to = 9) {
@@ -78,7 +79,7 @@ export const WJ_TINT = {
 /** The cool edge of light on the screen's left (× the material's own), per part name. */
 const RIM = { coat: 0.6, collar: 0.6, pants: 0.5, armor: 0.5, lining: 0.5, hair: 1.0, hairTip: 1.0 };
 /** The eyes' light (the `flask` part): ice blue. */
-const EYES = { fill: [0.35, 0.75, 1.4], ink: [0.6, 1.15, 1.8], em: [0.4, 0.85, 1.7] };
+const EYES = { fill: [0.5, 1.0, 1.8], ink: [0.65, 1.2, 1.9], em: [0.45, 0.95, 1.9] };
 
 // ---------------------------------------------------------------- the ink (shared per part)
 // Per part id: the inner ink line [r, g, b, gain], the silhouette's ink [r, g, b, gain], and the pass's
@@ -180,7 +181,7 @@ function clampCoat(d) {
 
 const fin = (x, d = 0) => (Number.isFinite(x) ? x : d);
 /** The eyes' size at the game camera (x across, y up: × their close size), from `near` to `far` m. */
-export const EYE_FAR = Object.freeze({ near: 6, far: 26, x: 1.35, y: 2.3 });
+export const EYE_FAR = Object.freeze({ near: 6, far: 26, x: 1.7, y: 2.7 });
 
 /** The hand sign is being made (the P2 -> P3 transition's beats: domain.js `wjDomain`). */
 function signing(d) {
@@ -216,7 +217,7 @@ export function dressUntouched(d) {
   if (fu) {
     const dead = d.mode === 'dead' || (d.mode === 'dying' && fin(d.brain?.modeT) > 1.6);
     const e = Math.min(1, Math.max(0, fin(d.eyesK)));
-    const k = dead || n < 2 ? 0 : (n >= 3 ? 1.25 : 0.9) * (0.55 + 0.45 * e) + 0.06 * Math.sin(fin(d.time) * 2.2);
+    const k = dead || n < 2 ? 0 : (n >= 3 ? 1.6 : 1.2) * (0.55 + 0.45 * e) + 0.06 * Math.sin(fin(d.time) * 2.2);
     if (fu.uGlow) fu.uGlow.value = k;
     if (fu.uInkGlow) fu.uInkGlow.value = k;
   }
@@ -239,7 +240,31 @@ export function dressUntouched(d) {
     oh.fingers.visible = sign;
     oh.open.visible = !sign && !oh.grip?.visible;
   }
+  // a hand in its pocket is hidden (the sleeve ends at the coat's side): the hand's point in his
+  // pelvis's own frame, inside the pocket's box
+  const pel = d.rig.pelvis;
+  if (pel?.matrixWorld && D.handR) {
+    _inv.copy(pel.matrixWorld).invert();
+    for (let i = 0; i < 2; i++) {
+      const side = i === 0 ? 'R' : 'L';
+      handPoint(d, side, _hp).applyMatrix4(_inv);
+      const sx = i === 0 ? -_hp.x : _hp.x;
+      const inP = sx > POCKET_BOX.x[0] && sx < POCKET_BOX.x[1] && _hp.y > POCKET_BOX.y[0] && _hp.y < POCKET_BOX.y[1] && _hp.z > POCKET_BOX.z[0] && _hp.z < POCKET_BOX.z[1];
+      if (i === 0) {
+        if (inP !== D.pocket[0]) for (const m of D.handR) m.visible = !inP;
+      } else if (inP && oh) {
+        oh.open.visible = false;
+        if (oh.grip) oh.grip.visible = false;
+        if (oh.fingers) oh.fingers.visible = false;
+      } else if (D.pocket[1] && oh && !sign) oh.open.visible = !oh.grip?.visible && !oh.fingers?.visible;
+      D.pocket[i] = inP;
+    }
+  }
 }
+/** The pocket (his pelvis's frame, metres: x out to his side, y up from the pelvis joint, z forward):
+ *  a hand whose point is in this box is in its pocket. */
+export const POCKET_BOX = Object.freeze({ x: [0.03, 0.16], y: [0.02, 0.18], z: [-0.06, 0.16] });
+const _inv = new Matrix4(), _hp = new Vector3();
 
 /** His eyes as drawn (world): out a Vector3; finite even before the rig has a matrix. */
 export function eyePoint(d, out) {
