@@ -161,6 +161,8 @@ def world_rotations(b, blade=None, tumble=False, clip=None, bladeL=None):
             # the blade leaves the fist along the hand's +Z (the thumb side); the hand's long axis stays as
             # near the forearm as the blade allows
             R[:, JI['hand' + s]] = skel.frame_q(Z, rest_dir, blade, _n(fo))
+        elif clip is not None and clip.get('free_hand'):
+            R[:, JI['hand' + s]] = free_hand(b, s, R[:, JI['foreArm' + s]], clip['free_hand'])
         else:
             # the tool's hand points are rough: lean the hand's axis toward the forearm
             fing = _n(_n(fing) + 0.6 * _n(fo))
@@ -177,6 +179,34 @@ def world_rotations(b, blade=None, tumble=False, clip=None, bladeL=None):
         R[:, JI['foot' + s]] = skel.frame_q(Z, X, ff, h)
         R[:, JI['toe' + s]] = R[:, JI['foot' + s]]
     return R
+
+
+def free_hand(b, s, Rfore, opt=True):
+    """spec "free_hand": a free hand from the tool's hand points WHERE THEY ARE PLAUSIBLE, else a relaxed hand
+    that follows the forearm. Per frame the measured palm (wrist -> index / pinky = the fingers, index -
+    pinky = the thumb side) counts by a confidence: the hand's length in the tool's 3D near a real hand's
+    (0.06-0.16 m), the fingers within 75 degrees of the forearm, the thumb side not along the fingers;
+    the confidence is smoothed, the measured and the relaxed rotations are blended by it, and the result
+    is smoothed (`{"sigma": 2.0, "flex": 12}`: frames, and the relaxed wrist's bend in degrees)"""
+    opt = opt if isinstance(opt, dict) else {}
+    sh, el, wr = (11, 13, 15) if s == 'L' else (12, 14, 16)
+    pk, ix = (17, 19) if s == 'L' else (18, 20)
+    k = 1 if s == 'L' else -1
+    fo = _n(b[:, wr] - b[:, el])
+    fing_raw = _mid(b, pk, ix) - b[:, wr]
+    ln = np.linalg.norm(fing_raw, axis=1)
+    fing = _n(fing_raw)
+    thumb = b[:, ix] - b[:, pk]
+    c1 = np.clip(1 - np.abs(ln - 0.1) / 0.06, 0, 1)
+    c2 = np.clip((np.sum(fing * fo, 1) - np.cos(np.radians(75))) / 0.3, 0, 1)
+    c3 = np.clip(1 - np.abs(np.sum(_n(thumb) * fing, 1)) / 0.7, 0, 1)
+    conf = smooth_time((c1 * c2 * c3)[:, None], 3.0)[:, 0]
+    meas = skel.frame_q(k * X, Z, _n(fing + 0.25 * fo), thumb)
+    flex = skel.qaxis(Z, np.full(len(b), -k * np.radians(float(opt.get('flex', 12)))))
+    relaxed = skel.qmul(Rfore, flex)
+    out = skel.qslerp(relaxed, skel.continuous(meas), conf)
+    out = skel.qnorm(smooth_time(skel.continuous(out), float(opt.get('sigma', 2.0))))
+    return out
 
 
 # ---------- ground, contact, root ----------
@@ -394,7 +424,17 @@ def ground_and_contact(q, fps, loop=False, ground='feet', travel='free', log=pri
         hips_xz = np.zeros((n, 2))
         speed = float(np.linalg.norm(v))
     else:
-        root_xz = smooth_time(H, 0.25 * fps, False)
+        # spec "root": {"smooth": s, "max_off": m}: the root is the ground point under his hips smoothed
+        # over s seconds (default 0.25), and never more than m metres from it (default: no limit)
+        ro = clip_opts.get('root', {}) if isinstance(clip_opts.get('root'), dict) else {}
+        root_xz = smooth_time(H, float(ro.get('smooth', 0.25)) * fps, False)
+        if ro.get('max_off') is not None:
+            mo = float(ro['max_off'])
+            for _ in range(3):
+                d = H - root_xz
+                ln = np.linalg.norm(d, axis=1, keepdims=True)
+                root_xz = root_xz + d * np.clip(1 - mo / np.maximum(ln, 1e-9), 0, None)
+                root_xz = smooth_time(root_xz, 2.0, False)
         root_xz -= root_xz[0]
         off = H - H[0] - root_xz  # hips over the root, fixed frame -> the root's own (turning) frame
         if yaw is not None:
