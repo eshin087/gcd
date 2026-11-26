@@ -31,6 +31,7 @@ const { createFoxTerrace } = await imp('src/world/foxTerrace.js');
 const { createWindlessGrove } = await imp('src/world/windlessGrove.js');
 const { createScriptHall } = await imp('src/world/scriptHall.js');
 const { createHalcyonPlaza } = await imp('src/world/halcyonPlaza.js');
+const { createVeiledCrossing } = await imp('src/world/veiledCrossing.js');
 const { createTrainingRoom } = await imp('src/world/trainingRoom.js');
 
 const out = (...a) => process.stdout.write(a.join(' ') + '\n');
@@ -41,7 +42,7 @@ const near = (a, b, e = 1e-3) => Math.abs(a - b) <= e;
 const SETS = [
   ['Ashfall', createCourtyard], ['the Obsidian Throne', createThroneHall], ['the Skybreak Ring', createSkybreakRing],
   ['the Foxfire Terrace', createFoxTerrace], ['the Windless Grove', createWindlessGrove], ['the Hall of Falling Script', createScriptHall],
-  ['Halcyon Plaza', createHalcyonPlaza], ['the training room', createTrainingRoom],
+  ['Halcyon Plaza', createHalcyonPlaza], ['the Veiled Crossing', createVeiledCrossing], ['the training room', createTrainingRoom],
 ];
 
 /** The meshes of a set's group drawn with its carved (slab) material. */

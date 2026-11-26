@@ -2,6 +2,7 @@ import { COURTYARD } from '../courtyard.js';
 import { THRONE } from '../throneHall.js';
 import { RING } from '../skybreakRing.js';
 import { GROVE } from '../windlessGrove.js';
+import { CROSSING } from '../veiledCrossing.js';
 
 // THE STEPS' numbers (steps.js reads them): what the ground is where, and how each surface answers a
 // foot. Every per-level choice is a block under `levels`; a level without one gets `fallback`.
@@ -47,6 +48,9 @@ export const STEPS = freeze({
     // the bamboo grove: the paving round the grave, packed earth to the clearing's edge, a floor of
     // fallen bamboo leaves beyond it (the stepping stones are slabs)
     grove: { areas: [{ disc: GROVE.clearR, surface: 'earth' }], slab: 'stone', grass: 'leaf', ground: 'leaf' },
+    // the Veiled Crossing: the asphalt, its painted bars and the corners' kerbs are slabs (stone taps);
+    // where a slab is gone, and past the floor, rubble and ash (a gritty scuff)
+    veil: { slab: 'stone', grass: 'ash', ground: 'ash', areas: [{ square: CROSSING.outer, surface: 'ash' }] },
   },
   fallback: { slab: 'stone', grass: 'grass', ground: 'earth' },
 

@@ -86,6 +86,7 @@ export const PENDING = Object.freeze([
   'wjShell', 'wjNull', // his barrier's look (a / b / c) and the Violet Null's body (a / b): untouched/fx.js, fxSpells.js
 
   // Bai Wuji: world rows
+  'wjCity', 'wjVoid', // the crossing's reading (a ash moon, b last lamps, c black wet) and the void's (a drifts, b the ring, c the fall): world/veiledCrossing.js
 
 ]);
 

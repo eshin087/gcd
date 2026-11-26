@@ -95,6 +95,16 @@ export const AIR_TUNE = Object.freeze({
       crickets: { voices: [[3900, 0.25, 0.03]], period: [0.85, 1.2], pulses: 2, on: [5, 14], off: [4, 11], rev: 0.25 },
       hushWind: 1,
     }),
+    // the Veiled Crossing: a low moan down the empty streets under the veil, deep and slow, grit in
+    // the gusts; no creature, no water. A faint drone under it (the veil itself)
+    veil: Object.freeze({
+      old: { wind: 0, voices: 0 },
+      wind: { gain: 0.22, base: 0.35, level: 0.45, gust: 0.6, idle: 0.4, sway: [0.15, 16], lp: [180, 520], hp: 30, q: 1.1, rate: [0.8, 0.95], pan: 0.45 },
+      whistle: { gain: 0.012, f: 620, rise: 0.12, q: 10 },
+      grit: { gain: 0.008, hp: 3600, level: 0.2 },
+      drone: { f: 41, fifth: 61.5, gain: 0.01, sway: [0.25, 18] },
+      hushWind: 0.45,
+    }),
   }),
 
   /** a level with no block of its own: a low breeze, nothing else */

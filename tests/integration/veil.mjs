@@ -1182,6 +1182,55 @@ const S = {
   // spells: scenarios
   // terrain: scenarios
   // world: scenarios
+  // (the crossing never traps a thrown hero: thrown 10 m from 24 places, four ways each, through whatever
+  // stands there; he ends outside every collider, inside his bound, and walks away)
+  throws: async () => {
+    out('\n== scenario THROWS (the crossing never traps a hero thrown 10 m: 24 places, 4 ways each) ==');
+    const G = build();
+    const d = G.game.dragon, p = G.game.player, C = G.game.world.colliders;
+    duel(G, { dist: 4 });
+    const inside = (x, z, pad = 0.05) => C.circles.find((c) => c.on !== false && Math.hypot(x - c.x, z - c.z) < c.r + p.radius - pad) ?? null;
+    let n = 0, broke = 0;
+    const stuck = [], out0 = [], still = [];
+    for (const r of [7, 12, 16]) for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2 + r * 0.1, x = Math.sin(a) * r, z = Math.cos(a) * r;
+      for (const [ux, uz] of [[Math.sin(a), Math.cos(a)], [-Math.sin(a), -Math.cos(a)], [Math.cos(a), -Math.sin(a)], [-Math.cos(a), Math.sin(a)]]) {
+        if (inside(x, z, -0.2)) continue;
+        p.debug.teleport(x, z);
+        p.debug.heal();
+        p.debug.god = true;
+        d.position.set(x - ux * 2, 0, z - uz * 2);
+        G.input.axis = { x: 0, y: 0 };
+        run(G, 0.05);
+        const b0 = G.game.world.destructibles.list.filter((b) => b.state !== 0).length;
+        p.takeHit({ damage: 1, knockback: 10, from: { x: d.position.x, z: d.position.z }, tell: TELL.NORMAL, parryable: false, blockable: false, attack: 'test', attacker: d, wjCrash: TUNING.wjCrash.power, wjCrashDamage: TUNING.wjCrash.damage });
+        run(G, 1.6);
+        n++;
+        broke += G.game.world.destructibles.list.filter((b) => b.state !== 0).length - b0;
+        const c = inside(p.position.x, p.position.z);
+        if (c) stuck.push(`${x.toFixed(0)},${z.toFixed(0)}→${p.position.x.toFixed(1)},${p.position.z.toFixed(1)} in ${c.tag} ${c.x.toFixed(1)},${c.z.toFixed(1)}`);
+        if (Math.hypot(p.position.x, p.position.z) > CONFIG.world.playerBound + 0.02) out0.push(`${x.toFixed(0)},${z.toFixed(0)}`);
+        // ... and he walks away (one of four ways takes him a metre in 0.6 s)
+        const sx = p.position.x, sz = p.position.z;
+        let moved = 0;
+        for (const [ax, ay] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          p.position.set(sx, 0, sz);
+          G.input.axis = { x: ax, y: ay };
+          run(G, 0.6);
+          moved = Math.max(moved, Math.hypot(p.position.x - sx, p.position.z - sz));
+          if (moved > 1) break;
+        }
+        G.input.axis = { x: 0, y: 0 };
+        if (moved <= 1) still.push(`${sx.toFixed(1)},${sz.toFixed(1)} (${moved.toFixed(2)} m)`);
+        // (the next throw from the next place: what broke stays broken, as in a fight)
+      }
+    }
+    out(`   ${n} throws, ${broke} pieces broke on the way; stuck ${stuck.length}, out of bound ${out0.length}, could not walk away ${still.length}`);
+    assert(n >= 70, `thrown from ${n} places and ways`);
+    assert(!stuck.length, `never left inside a collider (${stuck.slice(0, 5).join('; ')})`);
+    assert(!out0.length, `never thrown out of his bound (${out0.slice(0, 5).join('; ')})`);
+    assert(!still.length, `he always walks away after (${still.slice(0, 5).join('; ')})`);
+  },
   // body: scenarios
   body: scenarioBody,
   // fx: scenarios
