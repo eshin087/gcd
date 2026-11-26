@@ -54,7 +54,10 @@
 //   player.js _slamImpact). The steel look set's: `settle` (seconds, default 0.16: how long he takes from
 //   the clip's last pose to the standing pose once the attack is over, player.js _tickAttack; he is free
 //   to act the whole time, so it changes no timing: with a late `home` the finish is held to the end of
-//   the recovery and he rises out of it slowly, as the owner's reference footage does).
+//   the recovery and he rises out of it slowly, as the owner's reference footage does); `dashPlant` (a
+//   `feet: 'dash'` clip: the rear foot the root's travel leaves stretched behind the lunge steps in and
+//   stays on the grass within the leg's reach, anim.js dashFeet / DASH_PLANT, instead of hanging off the
+//   ground behind him).
 //
 // Authoring notes: a cut reads as powered by the body when the hips lead (their turn is ahead of the
 // chest's at mid-cut), the hand is furthest from the shoulder as the blade crosses his front, and the

@@ -1015,7 +1015,7 @@ function attackPose(p, A) {
   else swingPose(p, A, k, t, W, Ac, R);
   // footwork: the lunge is a real step (feet never skate with the root)
   if (k.kind === 'thrust') dashFeet(p, A, W);
-  else if (k.feet === 'dash') dashFeet(p, A, k.dashW ? W : 0.04);
+  else if (k.feet === 'dash') dashFeet(p, A, k.dashW ? W : 0.04, !!SWINGS[k.clip]?.dashPlant); // (the compiled clip keeps only its own fields)
   else {
     const C = swingClip(k.clip), st = C?.step;
     // (a whirl that hops round its turn takes its own last step: no follow step)
@@ -1472,7 +1472,40 @@ const DASH = {
   rSpot: [-0.16, 0.2], lSpot: [0.15, 0.58], // touchdown spots (model x, z)
   rReach: -0.5, // model z: the stretched rear leg drags its toe from here on
 };
-function dashFeet(p, A, W) {
+// a clip's `dashPlant` (swings.js): the rear foot is never left stretched off the grass behind the lunge.
+// Left past `reach` (model z) by the root's travel, it STEPS in (over `dur` s, the ankle lifted on a
+// `lift` m arc) to `land` and is held on that spot of the ground from there: the rear leg long and
+// nearly straight, the sole on the grass, as in the owner's reference lunge
+const DASH_PLANT = { reach: -0.62, land: -0.46, dur: 0.12, lift: 0.07 };
+const _pf = [0, 0, 0, 0];
+/** `dashPlant`: foot `slot` (0 rear / right, 1 front / left) held on the ground at model (x, z) by the
+ *  dash; left behind past DASH_PLANT.reach by the root's travel it steps (A.plantFeet[slot]) to
+ *  (toX, toZ) and is held on that spot of the ground from there. out = [x, y, z, step 0..1]. */
+function plantFoot(A, slot, t, tr, x, z, toX, toZ, out) {
+  const F = (A.plantFeet ??= [null, null]);
+  const S = (F[slot] ??= { on: false, held: false, t0: 0, x0: 0, z0: 0, x: 0, z: 0, tx: 0, tz: 0 });
+  let y = ANK, e = 1;
+  if (S.held) {
+    x = S.x - (tr.x - S.tx);
+    z = S.z - (tr.z - S.tz);
+  }
+  if (!S.on && z < DASH_PLANT.reach) Object.assign(S, { on: true, t0: t, x0: x, z0: z });
+  if (S.on) {
+    const ss = clamp((t - S.t0) / DASH_PLANT.dur, 0, 1);
+    e = ss * ss * (3 - 2 * ss);
+    x = lerp(S.x0, toX, e);
+    z = lerp(S.z0, toZ, e);
+    y = ANK + DASH_PLANT.lift * Math.sin(Math.PI * ss);
+    if (ss >= 1) Object.assign(S, { on: false, held: true, x, z, tx: tr.x, tz: tr.z });
+  }
+  out[0] = x;
+  out[1] = y;
+  out[2] = z;
+  out[3] = e;
+}
+function dashFeet(p, A, W, plant = false) {
+  // (the clip's own stance for the front foot, before it is overwritten: a `dashPlant` step's spot)
+  const lfx = p[P.lF], lfz = p[P.lF + 2];
   const t = A.t, E = A.entry, tr = A.trav;
   // (this attack's own charge: the stale releaseK, set only by a heavy, gave the sprint slash the last
   // cleave's timing)
@@ -1497,7 +1530,12 @@ function dashFeet(p, A, W) {
     z = DASH.rSpot[1] - (tr.z - m2.z);
     y = ANK;
     fl = 1;
-    if (z < DASH.rReach) {
+    if (plant) {
+      // (`dashPlant`: re-planted on the grass within the leg's reach, by a step)
+      plantFoot(A, 0, t, tr, x, z, DASH.rSpot[0], DASH_PLANT.land, _pf);
+      [x, y, z] = _pf;
+      fl = _pf[1] > ANK + 0.005 ? lerp(0.5, 1, _pf[3]) : 1;
+    } else if (z < DASH.rReach) {
       // stretched: the toe drags behind the lunge (the ankle rises as the straight leg tilts)
       y += 0.35 * (DASH.rReach - z);
       z = DASH.rReach - 0.4 * (DASH.rReach - z);
@@ -1526,6 +1564,12 @@ function dashFeet(p, A, W) {
     z = DASH.lSpot[1] - (tr.z - m3.z);
     y = ANK;
     fl = 1;
+    if (plant) {
+      // (a long dash runs the body past the landed front foot too: it steps back into the clip's stance)
+      plantFoot(A, 1, t, tr, x, z, fin(lfx, DASH.lSpot[0]), fin(lfz, DASH.lSpot[1]), _pf);
+      [x, y, z] = _pf;
+      fl = _pf[1] > ANK + 0.005 ? lerp(0.5, 1, _pf[3]) : 1;
+    }
   }
   p[P.lF] = x;
   p[P.lF + 1] = y;
@@ -3096,6 +3140,7 @@ export class HeroAnimator {
     this.trav.x = this.trav.z = 0;
     for (const M of this.marks) M.set = false;
     this.dashStep = 0;
+    this.plantFeet = null; // a `dashPlant` clip's feet re-planted by a step (dashFeet / plantFoot)
     // where the feet are as the clip starts (model space): push-offs keep them on these spots
     const E = this.entry, c0 = this.cur;
     E[0] = c0[P.rF];

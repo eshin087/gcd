@@ -23,6 +23,7 @@ export const STEEL_HEAVIES_C = {
     flat: [1, 0, 0],
     home: 1.0,
     settle: 0.5,
+    dashPlant: true, // (agent e: the rear foot steps in and stays on the grass through the held lunge)
     fold: 0,
     keys: [
       // the turn begins: the hand back toward the hip, the blade swinging down
@@ -49,6 +50,7 @@ export const STEEL_HEAVIES_C = {
     flat: [1, 0, 0],
     home: 1.0,
     settle: 0.5,
+    dashPlant: true, // (agent e: the rear foot steps in and stays on the grass through the held lunge)
     fold: 0,
     keys: [
       // the hold's own pose (steelStance.js STEEL_CHARGE): the hand drawn back at his right, the blade down behind

@@ -35,7 +35,7 @@ export const STEEL_STAND = {
   rH: [-0.06, -0.535, 0.09], // the sword hand: at the hip, a fist outside the thigh, a little ahead
   rP: [0.45, -0.25, -0.85], // its elbow soft, a little back
   sw: [-16, -26], // the blade: [azimuth (+ his left), elevation], forward, down and out to his right
-  lH: [0.14, -0.51, 0.09], // the free hand: hanging by the left thigh, a fist off it
+  lH: [0.18, -0.5, 0.09], // the free hand: hanging by the left thigh, a fist off it
   lP: [0.3, -0.15, -0.95], // its elbow soft, back
   rF: [-0.23, -0.13], // the feet [x, z]: a little over shoulder width, the left a short step ahead
   lF: [0.23, 0.14],

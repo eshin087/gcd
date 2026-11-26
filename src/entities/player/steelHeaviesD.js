@@ -97,8 +97,9 @@ export const STEEL_HEAVIES_D = {
     lF: [0.26, 0.42], fy: [0.45, -0.6],
     fold: 0,
     keys: [
-      // the take-off crouch, the blade still low ahead
-      { u: 0.18, h: [-0.08, -0.34, 0.24], a: [-30, -24], by: -0.2, bz: -0.04, hip: -0.1, sy: -0.12, sx: 0.22, l: [0.04, -0.4, 0.14], hs: 0 },
+      // the take-off crouch, the blade still low ahead (at u 0.34, not earlier: the hips sinking and
+      // turning before the leaping foot was ready slid the other foot 17 cm across the grass)
+      { u: 0.34, h: [-0.08, -0.34, 0.24], a: [-30, -24], by: -0.2, bz: -0.04, hip: -0.1, sy: -0.12, sx: 0.22, l: [0.04, -0.4, 0.14], hs: 0 },
       // swept back past his right side at the chest as he leaves the ground, the arm going back with it
       { u: 0.42, h: [-0.24, -0.1, -0.1], a: [-125, 0], by: -0.06, hip: -0.16, sy: -0.22, sx: 0.08 },
       { u: 0.66, h: [-0.18, 0.08, -0.18], a: [180, 34], l: [-0.02, -0.16, 0.4] },

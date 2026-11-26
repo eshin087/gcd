@@ -19,7 +19,7 @@
 export const STEEL_CHAIN_A = {
   /** hit 1: the leaping falling diagonal, high right to low left */
   steelFall: {
-    line: 'right', home: 0.6, settle: 0.42, gather: [0.3, 0.9], step: [0.45, 1.45],
+    line: 'right', home: 1.0, settle: 0.42, gather: [0.3, 0.9], step: [0.45, 1.45],
     lF: [0.16, 0.7], rF: [-0.17, -0.52], fy: [0.1, -0.8], drag: 0.18,
     keys: [
       { u: 0.35, h: [-0.3, -0.1, 0.2], a: [-80, 15], rp: [-0.7, -0.7, -0.1], l: [0.04, -0.44, 0.12], lp: [0.35, -0.85, -0.3], hs: 0 },
@@ -38,7 +38,7 @@ export const STEEL_CHAIN_A = {
   },
   /** hit 2: the level backhand, his left hip to out at his right, carrying on behind the shoulder */
   steelSweep: {
-    line: 'flat', home: 0.76, settle: 0.42, gather: [0.3, 0.9], step: [0.4, 1.4],
+    line: 'flat', home: 1.0, settle: 0.42, gather: [0.3, 0.9], step: [0.4, 1.4],
     lF: [0.2, 0.34], rF: [-0.2, -0.5], fy: [0.5, -0.6], drag: 0.22,
     keys: [
       { u: 0.5, hy: -0.35, h: [0.36, -0.36, 0.06], a: [140, -18], rp: [0.0, -0.7, 0.7], by: -0.22, bz: -0.03, hip: 0.62, sy: 0.6, sx: 0.26, l: [0.02, -0.34, 0.24], lp: [0.4, -0.85, -0.2], hs: 0 },
@@ -55,7 +55,7 @@ export const STEEL_CHAIN_A = {
   },
   /** hit 3: from behind his right shoulder, upright by the head, then the falling diagonal again */
   steelFall3: {
-    line: 'right', home: 0.42, settle: 0.42, gather: [0.3, 0.9], step: [0.45, 1.45],
+    line: 'right', home: 1.0, settle: 0.42, gather: [0.3, 0.9], step: [0.45, 1.45],
     lF: [0.16, 0.7], rF: [-0.17, -0.52], fy: [0.1, -0.8], drag: 0.18,
     keys: [
       { u: 0.4, h: [-0.2, 0.18, -0.06], a: [-152, 48], rp: [-0.8, -0.5, 0.2], l: [0.28, -0.38, 0.1], lp: [0.3, -0.85, -0.3], hs: 0 },

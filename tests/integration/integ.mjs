@@ -14143,7 +14143,7 @@ async function scenarioSteelE() {
         if (end < 0 && p.atk?.def !== def && rows.length) end = rows.length;
         if (p.atk?.def === def || rows.length) {
           if (rec < 0 && p.atk?.def === def && !p.atk.pending && swingPhase(p.atk.t, def.windup, def.active, def.recovery) >= 2) rec = rows.length;
-          rows.push({ st: p.state, key: A.key, f: FT.map((f) => { const v = new THREE.Vector3().setFromMatrixPosition(f.matrixWorld); return [v.x, v.y, v.z]; }), lock: A.feet.map((F) => !!F.lock) });
+          rows.push({ u: p.atk?.def === def ? swingPhase(p.atk.t, def.windup, def.active, def.recovery) : 9, st: p.state, key: A.key, f: FT.map((f) => { const v = new THREE.Vector3().setFromMatrixPosition(f.matrixWorld); return [v.x, v.y, v.z]; }), lock: A.feet.map((F) => !!F.lock) });
         }
       }
       // from the recovery's start (the held finish), through the settle, to 1.2 s after the attack: a
@@ -14156,11 +14156,14 @@ async function scenarioSteelE() {
           moved += d;
           const h = Math.max(a0[1], a1[1]) - y0;
           lift = Math.max(lift, h);
-          if (S[i - 1].lock[fi] && S[i].lock[fi] && h < 0.025) slide += d; // planted (bearing weight) and on the ground
+          if (S[i - 1].key === 'loco' && S[i].key === 'loco' && S[i - 1].lock[fi] && S[i].lock[fi] && h < 0.025) slide += d; // planted (bearing weight) and on the ground
         }
         return { slide, lift, moved };
       });
-      return { out, n: S.length, trace: S };
+      // the rear (right) ankle through the held lunge (from u 2.35: the dash's travel and the step that
+      // follows it done; to the attack's end), above the grass
+      const held = S.filter((q) => q.u >= 2.35 && q.u < 9), rearUp = held.length ? Math.max(...held.map((q) => Math.max(q.f[0][1], q.f[1][1]) - y0)) : NaN;
+      return { out, n: S.length, trace: S, rearUp };
     };
     const settleBad = [];
     const ST = KEYS.map((k) => [k, DEFS[k], PRESS[k], animS[k].clip, true]);
@@ -14174,6 +14177,14 @@ async function scenarioSteelE() {
         if (o.slide > 0.06) settleBad.push(`${k} ${fi ? 'left' : 'right'} foot slides ${(o.slide * 100).toFixed(1)} cm`);
         if (o.moved > 0.1 && o.lift < 0.03) settleBad.push(`${k} ${fi ? 'left' : 'right'} foot moves ${(o.moved * 100).toFixed(0)} cm without leaving the ground`);
       }
+    }
+    // ---- `dashPlant` (swings.js, anim.js dashFeet): the dashing thrusts' rear foot on the grass through the held lunge
+    {
+      CB.setLights('steel');
+      const DP = [['the lone heavy', CB.HEAVY[0], 'H'], ['the charged release', CB.CLEAVE, 'C']].filter(([, d]) => SWINGS[d.anim?.clip]?.dashPlant);
+      const rows = DP.map(([nm, d, pr]) => { const R = settleTake(d, pr); if (process.env.GCD_SETTLE_TRACE) for (let i = 0; i < R.trace.length; i += 2) { const q = R.trace[i]; out(`     ${q.u.toFixed(2)} ${q.key} R ${q.f[0].map((v) => v.toFixed(2)).join(',')} L ${q.f[1].map((v) => v.toFixed(2)).join(',')}`); } return { nm, clip: d.anim.clip, up: R.rearUp, out: R.out }; });
+      out(`   dashPlant: ${rows.map((r) => `${r.nm} (${r.clip}) both ankles at most ${(r.up * 100).toFixed(1)} cm above the grass through the held lunge, ${(Math.max(r.out[0].slide, r.out[1].slide) * 100).toFixed(1)} cm planted-slide`).join('; ') || 'no clip has it'}`);
+      assert(rows.length === 2 && rows.every((r) => r.up <= 0.04 && Math.max(r.out[0].slide, r.out[1].slide) <= 0.06), `a \`dashPlant\` clip keeps both feet on the grass through its held lunge (the one the dash left behind steps in): each ankle within 4 cm of it, no planted slide over 6 cm (${rows.map((r) => `${r.clip} ${(r.up * 100).toFixed(1)} cm`).join(', ')})`);
     }
     assert(!settleBad.length, `rising out of the held finish (\`settle\`) the feet step home: no foot slides over 6 cm on the ground, and each that moves over 10 cm leaves it (${settleBad.join(', ') || 'all'})`);
 
