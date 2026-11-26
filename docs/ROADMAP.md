@@ -1134,11 +1134,9 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
 - [ ] A test or sheet script so a new boss is checked against the look before it ships
 - [ ] Done alongside S2: a boss whose look changes for the legal review is redrawn once, not twice
 
-### P2 — Every boss's swings and motion, natural and polished from the reference footage
+### P2 — Every boss's swings and motion, natural and polished
 - [ ] An audit per boss and per move: windup, swing, follow-through, recovery and footwork, measured
       (arm snaps, hand speed, pops) and filmed at the game camera from four sides
-- [ ] The reference footage the hero was built from (ADR-202, ADR-204, ADR-207) applied to the
-      bosses that fight with a blade or bare hands: weight, stance, steps, the blade's path
 - [ ] Hit reactions, staggers, phase changes and deaths audited the same way
 - [ ] Tells kept readable: a move's windup and its blue / red timing do not change unless the owner
       asks (COMBAT.md); the pace meters and the duel suites stay green
