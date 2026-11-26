@@ -51,7 +51,7 @@ import { perPhase } from './tuning.js';
 // No per-frame allocation: fixed records, reused. Look jitter from the effects' own stream (fx.lrand).
 
 const GROUND = Object.freeze({ ground: true });
-const CHIP = Object.freeze({ chip: true }); // (held: bitten by the hero's blade, never broken while carried) // (a raised piece let go comes down to the floor: destructibles.drop)
+const CHIP = Object.freeze({ chip: true }); // (held: bitten by the hero's blade; cut under 1 hp it breaks and is let go) // (a raised piece let go comes down to the floor: destructibles.drop)
 const INTACT = 0, HELD = 3, FLYING = 4;
 const TAU = Math.PI * 2;
 const ease = (u) => u * u * (3 - 2 * u);

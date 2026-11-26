@@ -1264,6 +1264,7 @@ const S = {
   spent: scenarioSpent,
   letgo: scenarioLetgo,
   into: scenarioInto,
+  heldbreak: scenarioHeldBreak, // (the tuning pass)
   // world: scenarios
   // (the crossing never traps a thrown hero: thrown 10 m from 24 places, four ways each, through whatever
   // stands there; he ends outside every collider, inside his bound, and walks away)
@@ -1320,7 +1321,9 @@ const S = {
   fx: scenarioFx,
 };
 // (run by tests/run.mjs as processes of their own; `all` leaves them out: GCD_SKIP)
-const OPT_IN = new Set([]);
+// (the tuning pass: the bench, tests/integration/bench.mjs: mortal bots, whole fights, opt-in)
+S.bench = async () => { const { benchScenario } = await import('./bench.mjs'); return benchScenario({ build, duel, run, TUNING, TELL, DT, THREE, out, mulberry32 }, 'veil'); };
+const OPT_IN = new Set(['bench']);
 const SKIP = new Set((process.env.GCD_SKIP ?? '').split(',').map((x) => x.trim()).filter(Boolean));
 const list = SCEN === 'all' ? Object.keys(S).filter((k) => !OPT_IN.has(k) && !SKIP.has(k)) : SCEN.split(',');
 for (const k of list) {
@@ -1977,6 +1980,35 @@ async function scenarioOrbit() {
   assert(r.dhp === 0, `parried, parried, rolled: no health lost (${r.hits.map((h) => h.r).join(',')})`);
   assert(trStanding(G, kinds).length <= n0 - 3 && !t.busy, `the three pieces are spent (and what they broke landing: ${n0} -> ${trStanding(G, kinds).length})`);
   assert(chip && chip.n === 1 && chip.bit > 0 && chip.state0 === 3 && chip.hp >= 1, `the hero's blade chips a piece he holds, the carry goes on (struck ${chip?.n}, ${chip?.bit} letters off, state ${chip?.state0}, hp ${chip?.hp?.toFixed(2)})`);
+}
+
+// (the tuning pass) A piece he holds, cut by the hero's blade: bitten while it has hp to spare; the cut that
+// would leave it under 1 hp breaks it (let go where it hangs, it bursts where it lands; no longer held)
+async function scenarioHeldBreak() {
+  out('\n== scenario HELDBREAK (a held piece cut under 1 hp breaks: let go, it bursts where it lands) ==');
+  const G = build();
+  duel(G, { dist: 7, form: 2 });
+  const W = G.game.world.destructibles, d = G.game.dragon;
+  const pc = W.list.find((b) => b.state === 0 && !b.absent && b.lift > 0 && b.hpMax < Infinity && b.hpMax >= 2 && !b.floor && b.bricks);
+  assert(!!pc && W.take(pc, { chip: true }), `a loose piece is taken, held for the blade (${pc?.kind}, hp ${pc?.hpMax?.toFixed(1)})`);
+  if (!pc) return;
+  const hx = d.position.x + 3, hz = d.position.z;
+  W.carry(pc, hx, 1.2, hz, 0, 0);
+  const cut = (power) => {
+    const y = pc.y0 + pc.py + pc.h * 0.5;
+    return W.sweep(hx - 1.2, hz, hx + 1.2, hz, 0.3, power, { kind: 'blunt', by: 'player', dx: 1, dz: 0, y, ya: y, yb: y, src: W.swing(), tx: 1, tz: 0 });
+  };
+  const small = Math.max(0.3, (pc.hp - 1) * 0.4) / (pc.M.take.blunt ?? 1);
+  cut(small);
+  const hp1 = pc.hp, st1 = pc.state;
+  run(G, 0.1, () => W.carry(pc, hx, 1.2, hz, 0, 0));
+  cut((pc.hp + 1) / (pc.M.take.blunt ?? 1));
+  const st2 = pc.state;
+  run(G, 2.5);
+  out(`   ${pc.kind}: hp ${pc.hpMax.toFixed(1)} -> ${hp1.toFixed(2)} after a small cut (state ${st1}); a cut past its hp: state ${st2}, then ${pc.state}`);
+  assert(st1 === 3 && hp1 >= 1 && hp1 < pc.hpMax, 'a cut it can take bites it and the carry goes on (held, hp >= 1)');
+  assert(st2 === 4, 'the cut that would leave it under 1 hp breaks it: let go (flying, no longer held)');
+  assert(pc.state === 5, 'it bursts where it lands (gone)');
 }
 
 async function scenarioRoad() {

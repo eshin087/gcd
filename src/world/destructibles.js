@@ -71,7 +71,7 @@ import { HANG } from './hangTuning.js';
 //                                          (o: { kind, whole: true (not cracked), max }) → how many
 //   floor                                 the floor's slabs (pieces with `floor`)
 //   take(obj, o) / carry(obj, x, y, z, tilt, yaw) / throwTo(obj, tx, tz, o) / drop(obj, o)   lift and throw
-//                                         (take o.chip: the hero's blade bites it while it is held; throwTo /
+//                                         (take o.chip: the hero's blade bites it while it is held, under 1 hp it breaks; throwTo /
 //                                         drop o.ground: a raised piece (y0 > 0) comes down to the floor)
 //   topple(obj, dx, dz, by)               fell it that way
 //   reserve(obj, sec)                     incidental blows (o.incidental: a body walking) leave it alone
@@ -128,6 +128,8 @@ const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 /** Eased 0..1 (smoothstep of a 0..1 argument). */
 const smooth01 = (t) => t * t * (3 - 2 * t);
 const NONE = Object.freeze({});
+/** (a held piece broken by a blow: let go to the floor) */
+const HELD_BREAK = Object.freeze({ ground: true });
 const NO_PIECES = Object.freeze([]);
 const LEAVES = 'o0O8@&';
 // (under ?dpTrees a crown is printed in digits, render/dragonProps.js: it bursts into the digits it is drawn in, the
@@ -1537,7 +1539,7 @@ export class Destructibles {
     return n;
   }
 
-  /** The held pieces (take o.chip) on the segment: bitten, never broken (the carry goes on). */
+  /** The held pieces (take o.chip) on the segment: bitten; one bitten under 1 hp breaks (let go, bursts). */
   _sweepHeld(ax, az, bx, bz, r, power, o, ya, yb, tilted) {
     const H = this._heldChips, s = this._seg2;
     let n = 0;
@@ -1563,7 +1565,8 @@ export class Destructibles {
   }
 
   /** A blow on a held piece: its bite where it struck (taken back to its rest frame through the carry's
-   *  pivot), the chips, the sound; what it takes leaves it at least 1 hp (it breaks where it lands). */
+   *  pivot), the chips, the sound. A blow that would leave it under 1 hp BREAKS it: it is let go where it
+   *  hangs and bursts where it lands (drop; the carry's owner sees it is no longer held). */
   _heldHit(b, power, o, px, py, pz, dx, dz) {
     const now = this.game.time ?? 0, src = o.src ?? -1;
     if (src >= 0 ? b.src === src : now - b.srcT < BREAK.rehit) return false;
@@ -1574,6 +1577,7 @@ export class Destructibles {
     dz /= l;
     const kind = o.kind ?? BLOW.BLUNT, dmg = power * (b.M.take[kind] ?? 1);
     const took = b.hpMax === Infinity || dmg < BREAK.scratch ? 0 : Math.min(dmg, Math.max(0, b.hp - 1));
+    const breaks = b.hpMax !== Infinity && dmg >= BREAK.scratch && b.hp - dmg < 1;
     const tx = o.tx, along = tx !== undefined && Number.isFinite(tx + o.tz) && tx * tx + o.tz * o.tz > 0.25;
     this._tx = along ? tx : 0;
     this._tz = along ? o.tz : 0;
@@ -1618,9 +1622,14 @@ export class Destructibles {
       e.x = px;
       e.y = py;
       e.z = pz;
-      e.broke = false;
+      e.broke = breaks;
     }
     this._tx = this._tz = 0;
+    if (breaks) {
+      b.hp = 0;
+      this._emit('break', b, px, py, pz, power, o.by ?? 'world');
+      this.drop(b, HELD_BREAK);
+    }
     return true;
   }
 
@@ -2670,8 +2679,8 @@ export class Destructibles {
 
   // ------------------------------------------------------------------ lifting and throwing
   /** A boss lifts a piece: it leaves the ground (no collider, no nicks). The caller moves it with carry().
-   *  `o.chip`: while it is held the hero's blade bites it where it passes (letters off, never broken:
-   *  the carry goes on; sweepRec's held pass); absent, a held piece is out of every blow's reach. */
+   *  `o.chip`: while it is held the hero's blade bites it where it passes (letters off; a cut that would
+   *  leave it under 1 hp breaks it: let go, it bursts where it lands; sweepRec's held pass); absent, a held piece is out of every blow's reach. */
   take(b, o = NONE) {
     if (!b || b.state !== INTACT || !(b.lift > 0)) return false;
     b.heldChip = o.chip === true;
