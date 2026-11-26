@@ -43,6 +43,8 @@ npm test         # headless integration sims (real game modules, mocked DOM/WebG
                  #  woke.mjs: Xin Yi, `woke.mjs . strategy` opt-in)
                  # --only integ,life: only those tasks (names from --list). Locally every run
                  # shares 8 slots machine-wide (ABYSS_JOBS) at low priority; CI is unchanged (ADR-205)
+npm run perf     # what a frame costs on THIS machine's GPU: draw calls / triangles by pass, GPU ms at 1080p and the phone's size,
+                 # script ms by module (--all, --levels ash,city, --4k, --save a baseline, --check; ADR-206)
 npm run build    # single-file dist/index.html (what Vercel serves)
 npm run hero-parts  # regenerate src/entities/player/heroParts.js (needs Blender 4.2+; ADR-037)
 ```
@@ -147,6 +149,15 @@ In Claude Code the preview config is `.claude/launch.json` (`gcd-dev`).
   guard optional references and avoid NaN. No heavy per-frame allocations.
 - **Verify visually.** Rendering/feel changes need a browser check (dev server + screenshots, the
   Lab, `__tick`). Logic changes need `npm test` green. Add/extend tests in `tests/` for new systems.
+- **Performance is a budget (ADR-206): the owner wants 60 fps on every device.** `npm test` holds a cost
+  budget per level (`tests/integration/cost.mjs`, `tests/cost-baseline.json`: triangles, shadow triangles,
+  meshes, bones, breakables, colliders, geometry memory, counted from the real build, never timed). A
+  change that makes a level heavier by more than 3 % fails it. Lighten the change first; raise the
+  budget (`node tests/integration/cost.mjs . update`, commit the file) only on purpose, and say in the PR
+  what it buys and what it costs. A change that draws something new (a look, an effect, a level, a boss)
+  also runs `npm run perf` before and after (`--save` before, then compare) and reports the GPU ms and
+  script ms it adds in the PR; the target is a frame under 16.7 ms of GPU and of script on a weak device,
+  and AUTO quality (ADR-200) is the safety net, not a licence to spend. A new level gets a baseline row.
 - **Go easy on the owner's PC (ADR-205).** Many agents share one machine, and the owner games on it.
   - While working, test only what you changed: one suite (`node tests/integration/<suite>.mjs . <scenario>`)
     or `npm test -- --only <names>`. Run the full `npm test` once, before opening the PR; CI runs

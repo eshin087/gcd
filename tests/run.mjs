@@ -82,6 +82,7 @@ const TASKS = [
   ['dpfloor', ['tests/integration/dpfloor.mjs', '.', 'all'], {}, 15],
   ['records', ['tests/integration/records.mjs', '.', 'all'], {}, 1],
   ['autoq', ['tests/integration/autoq.mjs', '.', 'all'], {}, 1],
+  ['cost', ['tests/integration/cost.mjs', '.', 'all'], {}, 12],
   ['glyphcheck', ['tests/glyphcheck.mjs', '.'], {}, 1],
   ['changelogcheck', ['tests/changelogcheck.mjs', '.'], {}, 1],
 ];

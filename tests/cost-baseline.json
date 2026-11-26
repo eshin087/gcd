@@ -1,0 +1,146 @@
+{
+  "cinderwood": {
+    "meshes": 9,
+    "tris": 498153,
+    "shadowTris": 498153,
+    "bones": 228,
+    "breakables": 1632,
+    "colliders": 1164,
+    "geoMB": 80.54
+  },
+  "cinderwood@phone": {
+    "meshes": 8,
+    "tris": 391521,
+    "shadowTris": 362121,
+    "bones": 228,
+    "breakables": 1632,
+    "colliders": 1164,
+    "geoMB": 80.54
+  },
+  "ash": {
+    "meshes": 6,
+    "tris": 97964,
+    "shadowTris": 97964,
+    "bones": 443,
+    "breakables": 456,
+    "colliders": 215,
+    "geoMB": 29.52
+  },
+  "ash@phone": {
+    "meshes": 6,
+    "tris": 97964,
+    "shadowTris": 97964,
+    "bones": 443,
+    "breakables": 456,
+    "colliders": 215,
+    "geoMB": 29.52
+  },
+  "starless": {
+    "meshes": 4,
+    "tris": 78990,
+    "shadowTris": 78990,
+    "bones": 368,
+    "breakables": 255,
+    "colliders": 143,
+    "geoMB": 22.47
+  },
+  "starless@phone": {
+    "meshes": 4,
+    "tris": 78990,
+    "shadowTris": 78990,
+    "bones": 368,
+    "breakables": 255,
+    "colliders": 143,
+    "geoMB": 22.47
+  },
+  "ring": {
+    "meshes": 5,
+    "tris": 63989,
+    "shadowTris": 63989,
+    "bones": 218,
+    "breakables": 579,
+    "colliders": 46,
+    "geoMB": 33.47
+  },
+  "ring@phone": {
+    "meshes": 5,
+    "tris": 63989,
+    "shadowTris": 63989,
+    "bones": 218,
+    "breakables": 579,
+    "colliders": 46,
+    "geoMB": 33.47
+  },
+  "fox": {
+    "meshes": 6,
+    "tris": 80459,
+    "shadowTris": 80459,
+    "bones": 380,
+    "breakables": 445,
+    "colliders": 192,
+    "geoMB": 27.75
+  },
+  "fox@phone": {
+    "meshes": 6,
+    "tris": 80459,
+    "shadowTris": 80459,
+    "bones": 380,
+    "breakables": 445,
+    "colliders": 192,
+    "geoMB": 27.75
+  },
+  "grove": {
+    "meshes": 5,
+    "tris": 247596,
+    "shadowTris": 247596,
+    "bones": 208,
+    "breakables": 788,
+    "colliders": 674,
+    "geoMB": 45.1
+  },
+  "grove@phone": {
+    "meshes": 5,
+    "tris": 247596,
+    "shadowTris": 247596,
+    "bones": 208,
+    "breakables": 788,
+    "colliders": 674,
+    "geoMB": 45.1
+  },
+  "code": {
+    "meshes": 3,
+    "tris": 102700,
+    "shadowTris": 102700,
+    "bones": 370,
+    "breakables": 397,
+    "colliders": 119,
+    "geoMB": 32.3
+  },
+  "code@phone": {
+    "meshes": 3,
+    "tris": 102700,
+    "shadowTris": 102700,
+    "bones": 370,
+    "breakables": 397,
+    "colliders": 119,
+    "geoMB": 32.3
+  },
+  "city": {
+    "meshes": 5,
+    "tris": 139595,
+    "shadowTris": 139595,
+    "bones": 298,
+    "breakables": 369,
+    "colliders": 93,
+    "geoMB": 36.07
+  },
+  "city@phone": {
+    "meshes": 5,
+    "tris": 139595,
+    "shadowTris": 139595,
+    "bones": 298,
+    "breakables": 369,
+    "colliders": 93,
+    "geoMB": 36.07
+  }
+}
