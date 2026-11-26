@@ -1207,6 +1207,17 @@ the windup out of a held pose: the arms' tracks (the sword hand, the free hand, 
 entry pose at `gather[0]` × the straight rate (`SW_ENTRY` 1.3 without it) and the blade turns into
 the coil along a cubic that leaves at `gather[0]` and arrives at `gather[1]` (without it it leaves at
 1.65 and arrives at `SW_COIL` 0.35); the hips and the chest keep `SW_ENTRY`, so they load first.
+**The arm by its joints** (ADR-240, `player/armFK.js`; `?lights=blink&arm=fk`, the Lab's `arm` row, combat.js
+`setArm` / `armMode` / `ARM_IDS`): a clip whose keys give `j: [az, el, turn, elbow, twist, dev, flex]` (degrees,
+the chest's frame: the upper arm's direction and its turn about itself, the elbow's flexion, the forearm's
+pronation, the wrist's deviation and flexion; each clamped to `LIMITS`, the blade leaving the fist `GRIP` off the
+forearm) poses the sword arm through those joints (anim.js `fkArm`, run in `attackPose` once the hips, the chest
+and the step's lean are set, so the torso carries the arm) and writes the channels the IK reads (`rH` through
+the soft reach's inverse, `rP`, `swD`, `swF`) and the shoulder girdle `P.clR` (chest axes, m; `apply` moves
+`arms.R.upper` and the pauldron by it; 0 in every other pose, cleared before each). `armChest` (joints → the
+arm), `armToPose` (→ the pose), `poseToArm` (any pose → joints: the windup leaves the entry pose at the joints).
+A clip's `fkLag` [shoulder, elbow, wrist] s plays each joint group ahead of (+) or behind the clip's clock;
+the elbow's rate limit (`ELBOW_RATE`) is off for it. The pose has `N` = 65 channels.
 **The chain's looks** (ADR-188): `combat.js` `setLights('new' | 'old')` / `lightsMode()` (`LIGHTS_IDS`,
 `LIGHTS_NAMES`; `?lights=old` at load; the Lab's PLAYER → `lights` row, live) swaps `LIGHT[i].anim` /
 `variants` and nothing else between the weighted clips (`swings.js`: `fallingCut` … `risingThrust`,

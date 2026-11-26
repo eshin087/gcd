@@ -6676,3 +6676,49 @@ arm, the body and the free hand through any swing.
   hero is about 34 px tall, so the lines read more than the bodies; a few hit-5 strokes were checked in
   tests only (the film rig pins one look). Found on the way: a clip's `h` and `a` are in the body's axes,
   not the chest's (a 90° chest turn only moves the shoulder they hang from). Tests: `cutsa` … `cutsd`.
+
+## ADR-240 — The sword arm is posed by its joints, not by three keyed splines; light hit 1 as the prototype, behind `?lights=blink&arm=fk` (2026-11-26)
+
+- **Context:** after the instant cuts (ADR-233), the steel set (ADR-234) and four instant-cut combos (ADR-235),
+  the owner: "all of these suck. both hand arm sword swings and animation look so unnatural and unrealistic.
+  spend time making sure the characters anatomy, angles, motions, attack swings, etc look like normal sword
+  swings and add the instant slash effect to it." Five rounds of hand keys had failed, so the cause was looked
+  for in the animation model, measured (`integ.mjs . armaudit`) and filmed with the arm's bones drawn over.
+- **The cause:** a swing clip keyed three unrelated things for the sword arm, the grip's place (`h`, from a
+  shoulder fixed on the chest, in the body's axes), the blade's direction (`a`) and the elbow's side (`rp`),
+  and the two-bone IK joined them. (1) The wrist took whatever angle was left: blink hit 1 holds the blade
+  9-25° off the forearm through its coil and cut, a stick on the end of the arm (a fist round a grip cannot
+  bring the blade under ~31° of its forearm), and the fist, a mesh on the sword joint, turned with the steel:
+  no forearm roll, no cock and uncock. (2) The chest's ~100° turn through a cut did not carry the arm. (3) The
+  grip ran chords between keys through the sphere round the shoulder and the elbow came from its own spline,
+  lagged by `ELBOW_RATE`: folds and pops. (4) The shoulder never moved. (5) The instant cut was the arm itself
+  jumping from the coil to the finish in one frame (the elbow 105° → 157°, the point at 123 m/s).
+- **Options weighed:** (a) an arm posed by its joints, inside their ranges, hung from the chest; (b) a swing
+  generated from a few parameters (the plane, the coil, the release) on top of (a); (c) motion capture
+  retargeted onto the rig (the owner gave the reference-footage approach up the same day; it would also need a
+  licence and a download). (a) was chosen: it removes the cause, and (b) can be built on it later if the
+  remaining attacks call for it.
+- **Decision:** `armFK.js`: the sword arm as the upper arm's direction and turn about itself, the elbow, the
+  forearm's twist (pronation) and the wrist's deviation and flexion, each clamped to a human range
+  (`LIMITS`), the blade leaving the fist `GRIP` 66° off the forearm (the handshake grip, the edge on the
+  knuckles' side), and a shoulder girdle that rises with the arm and comes forward and in with the reach
+  (`GIRDLE`, a new pose channel `P.clR`: `N` 62 → 65; `apply` moves `arms.R.upper` and the pauldron by it).
+  A clip key `j: [az, el, turn, elbow, twist, dev, flex]` (degrees, the chest's frame) plays the arm through
+  its joints: anim.js `fkArm`, run in `attackPose` after the hips, the chest and the step's lean are set, so the
+  torso carries the arm; it hands the animator the channels the IK already reads (`rH` through the soft
+  reach's inverse, `rP`, `swD`, `swF`), so the drawn arm is exactly the joints' and nothing downstream
+  changes. `poseToArm` inverts any pose into joints, so the windup turns at the joints from wherever he stood
+  (a straight blend of the grip folded the arm to 39°). The elbow's rate limit is off for it; a per-joint lead
+  (`fkLag`) can play the shoulder ahead and the wrist behind. The keys were authored with a scratch solver:
+  per key a grip place and a blade direction in the body's axes, the forearm's twist prescribed (palm up at
+  the coil rolling to palm down at the finish), the joints inside their ranges and near the last key's.
+  Light hit 1 (`natFall`, `lightsNatural.js`) is the prototype: the coil by his right ear with the elbow out
+  and the wrist cocked, the elbow dropping and leading, the blade lagging high on his right, the arm reaching
+  as the blade comes through ahead of him level with the target, the follow-through low on his left with the
+  arm open; the cut over about four frames, the slash line where the point passed. `combat.js` `setArm`
+  (`ARM_IDS`, `?arm=fk`, the Lab's `arm` row), worn under `?lights=blink`; only the look changes.
+- **Consequences:** a prototype for the owner's verdict before the rest of the chain and the heavies are
+  posed this way. Every other clip is unchanged (`P.clR` is 0 outside a joint-keyed clip; the lean moves
+  earlier only for one). Known: the bite on a landed hit still drags the blade in the body's axes, which can
+  bring it a few degrees nearer the forearm than the wrist allows for a frame; a per-frame keyed cut wants
+  the clip's `lead` at 0 (the hips' 0.03 s lead is a quarter of a light's active window).

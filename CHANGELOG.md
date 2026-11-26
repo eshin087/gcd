@@ -102,6 +102,13 @@ One hundred and thirteen pieces of work since 0.4.0:
   lunging draws that reach far, c wide sweeping arcs, d a relentless flurry. Each winds up deep, commits
   the body, swings both arms, holds its finish and rises slowly; hit 5 is a different stronger stroke each
   time. Every number is the same.
+  *Added, to compare (not the default; ADR-240):* `?lights=blink&arm=fk` (the Lab's `arm` row) swings light hit 1
+  with a real arm: the sword arm is posed by its joints (the shoulder girdle, the upper arm and its turn, the
+  elbow, the forearm's twist and the wrist, each inside a human range, the blade gripped at a fixed angle in
+  the fist), hung from the chest so the body's turn carries it, and played joint by joint, so the elbow leads,
+  the forearm rolls from palm up to palm down and the wrist uncocks as the blade comes through. The cut takes
+  about four frames instead of one and leaves the same straight slash line. Only hit 1 for now; every number
+  is the same.
   *Added, to compare (not the default; ADR-234):* `?lights=steel` (the same row, 'steel') plays every
   attack after the owner's reference footage, pose for pose, out of the stances that footage also gave
   him (ADR-207): the five lights, the five heavies, the

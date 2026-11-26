@@ -5,6 +5,27 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-26 — Why the sword arm looks unnatural, and an arm posed by its joints (ADR-240; branch `claude/hero-natural-swings-0577f9`, held)
+
+**Owner:** "all of these suck. both hand arm sword swings and animation look so unnatural and unrealistic.
+spend time making sure the characters anatomy, angles, motions, attack swings, etc look like normal sword
+swings and add the instant slash effect to it."
+
+**Found:** the animation model, not the keys. A clip keyed the grip's place, the blade's direction and the
+elbow's side separately; the wrist took what was left (blink hit 1's blade 9-25° off the forearm, under what a
+fist allows), the chest's turn did not carry the arm, the grip ran chords through the shoulder, the shoulder
+never moved, and the instant cut was the arm jumping from coil to finish in one frame (ADR-240 has the list).
+
+**What changed:** `armFK.js` (the arm by its joints, their ranges, a shoulder girdle, the exact inverse); anim.js
+`j` keys and `fkArm`, the `P.clR` channel (N 65); `lightsNatural.js` `natFall`, light hit 1 as the prototype;
+`?arm=fk` under `?lights=blink` (combat.js `setArm`, the Lab's `arm` row); `armaudit` takes `GCD_AUDIT_ARM`.
+
+**Verification:** `armaudit` on hit 1 (the cut over 6 frames, the point at most 77-127 m/s against 123, the
+wrist 28-56° off the forearm); films from the front, his right side and the game camera, today's hit 1 beside
+the new one, full and quarter speed, and the front with the bones drawn over.
+
+**Open / next:** the owner's verdict on the one swing. Then hits 2-5 and the heavies the same way.
+
 ## 2026-11-26 — Four instant-cut light combos to compare (ADR-235; branch `claude/hero-light-chain-12a97a`, PR #118, held)
 
 **Owner:** "i dont like any of the latest ones [the steel set]. lets go back on iterating on the instant cut

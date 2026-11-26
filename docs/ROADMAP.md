@@ -198,6 +198,11 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] The steel look set to compare, `?lights=steel` (ADR-234): every attack after the owner's reference footage (out of ADR-207's stances), pose for pose, on today's timings; a lone hit holds its finish and rises slowly (`settle`), its feet stepping home; scenarios `steelstance`, `steela` … `steele`
 - [x] The owner turned steel down; four instant-cut light combos to compare, `?lights=blink&cuts=a|b|c|d` (ADR-235); scenarios `cutsa` … `cutsd`
 - [ ] The owner's pick of the four (or another round)
+- [x] The owner on all of them: "unnatural and unrealistic"; root cause found (ADR-240: the sword arm was three
+      unrelated splines, the wrist whatever was left); the arm by its joints (`armFK.js`), light hit 1 as a
+      prototype behind `?lights=blink&arm=fk`, films to the owner
+- [ ] The owner's verdict on the prototype hit 1; then hits 2-5 (hit 5 one stronger fixed stroke) and the five
+      heavies (two-handed, arcs that read from behind) by joints, every number unchanged
 - [ ] ~~The owner's pick: steel as the default?~~ turned down: Then `?lights=blink`, `?lights=fresh` and `?arcs=` go, and the weighted chain stays behind a switch or goes
 - [ ] Steel's known gaps (ADR-234): shorter lunges than the reference, hit 3 into hit 4, the two upright cuts from the game camera, the execution
 - [ ] If steel becomes the default: the flurry, the plunge, the guard and the block in the same hand
