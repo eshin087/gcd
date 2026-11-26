@@ -196,10 +196,16 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] A quick white blow each behind `?sheathQuick=` `?foxQuick=` `?wyrmQuick=`
 - [x] The owner's picks made the defaults (a for all three, every quick blow)
 - [ ] Lu Wusheng's free hand in the scabbard cuts; the foot ease for Shen Hui and Varr Nihil
+## M1.93 — The perfect parry gets the perfect dodge's window (2026-11-26, `claude/combat-perfect-parry-window-d6503b`, ADR-227)
+- [x] `DEFENSE.perfectParryWindow` 0.08 → 0.20 s (the owner's pick); the plain parry window 0.22 s unchanged
+- [x] Every perfect reward (posture, counter cut, blade lock, returned bullets, clashes) follows the one number; tests timed for a plain parry moved to 0.21 s
+- [ ] Played by the owner; their call on the slow-motion beat now that most parries are perfect
+- [ ] The brood's busyWait dive (`BROOD.busyWait` 2.5 s) never cues within 0.3 s of a wyrm cue needing another answer (integ PRESSURE seed 4242: fanVolley / drakelings P2, breath / drakelings P3; on main too)
 
 ## M1.92 — The melee animation engine: boss blows from reference footage (2026-11-26, `enemies/fists-ref`, ADR-208)
 - [x] `scripts/mocap` on `main` as a tool; `scripts/mocap/duelist/fit.mjs` fits a clip onto a duelist's blows (`--check` through the real animator); the guide
 - [x] Tian Lei from the bare-handed film, shown behind `?fists=ref`: turned down by the owner (stiff arms; the lunges and feet); not merged
+- [x] Removed again (2026-11-26, ADR-236): the owner scrapped every reference-footage approach; `scripts/mocap`, `src/entities/hero2` and the `keysOf` hook are gone
 - [ ] A reference of clean technique that tracks (boxing / kung-fu sets, fixed cameras), rendered for the owner before any wiring
 
 ## M1.91 — The hero's idles and guard after the owner's reference footage (2026-11-25, `claude/idles-reference`, ADR-207)
@@ -293,6 +299,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] The chain: each pass from where the last ended, every slash on his path, the stray crescents gone, letter dust for the `A` shards (`?chain=0`)
 - [x] Five figures, one a flurry, never twice running (`?figure=`)
 - [x] The time rip: four looks filmed side by side; the owner picked the torn strip (`?rip=`)
+- [x] Four dodge looks: smear, floor sparks, aerial cuts, and a / b / c / d (`?dodgefx=`, ADR-210)
+- [x] The owner's pick: a, the Thunder Thrust, is the default (`?dodgefx=off` the flurry before)
+- [ ] Played, and seen on the iPhone (the dodge looks)
 - [ ] Played, and seen on the iPhone
 - [ ] Judged in play: the step into the storm round the head, the riposte's last freeze (0.198 s), the figures' size at the duel camera
 - [ ] The wyrm's `pounce` past its share of a gap in the tree wall (integ `breach` replays at the old pace until then)
@@ -1132,11 +1141,9 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
 - [ ] A test or sheet script so a new boss is checked against the look before it ships
 - [ ] Done alongside S2: a boss whose look changes for the legal review is redrawn once, not twice
 
-### P2 — Every boss's swings and motion, natural and polished from the reference footage
+### P2 — Every boss's swings and motion, natural and polished
 - [ ] An audit per boss and per move: windup, swing, follow-through, recovery and footwork, measured
       (arm snaps, hand speed, pops) and filmed at the game camera from four sides
-- [ ] The reference footage the hero was built from (ADR-202, ADR-204, ADR-207) applied to the
-      bosses that fight with a blade or bare hands: weight, stance, steps, the blade's path
 - [ ] Hit reactions, staggers, phase changes and deaths audited the same way
 - [ ] Tells kept readable: a move's windup and its blue / red timing do not change unless the owner
       asks (COMBAT.md); the pace meters and the duel suites stay green

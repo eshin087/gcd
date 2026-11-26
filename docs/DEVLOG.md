@@ -28,6 +28,39 @@ moves / tuning; Lab LOOKS rows (awaiting). Tests: sheath / fox `motion`, integ `
 **Open.** Lu Wusheng's free hand in the scabbard cuts; the same foot ease for Shen Hui and Varr Nihil (their
 session).
 
+## 2026-11-26 — The reference-footage tools removed (ADR-236; branch `build/remove-mocap`)
+
+**Owner**, after reviewing the hero remade from two reference films (`?hero=new`, PR 162, closed): "It looks all
+meh. Scrap everything. Lets not use any of the reference video stuff ... we will just go back to how we made
+animations on our own", then to remove the tool on main and the motion guide too.
+
+**What.** Deleted `scripts/mocap/` (the footage tracker, the duelist fitter, the recorder, the specs) and
+`src/entities/hero2/` (the skeleton / clip contract and the two bare-hand clip sets it carried); the
+duelist realiser's unused `keysOf` hook (no boss used it: behaviour unchanged); the `.gitignore` lines for
+footage frames. PR 162 (the remade hero) and PR 148 (the refstudy kit and `docs/MOTION.md`) closed. The
+game's animation stays hand-authored (`player/anim.js`, `swings.js`, the bosses' move data).
+
+**Verification.** `npm run build`; the duel suite (the realiser's main user) all passed; the rest on CI.
+
+## 2026-11-26 — The perfect parry widened to the perfect dodge's window (ADR-227; branch `claude/combat-perfect-parry-window-d6503b`)
+
+**Owner:** parrying is very hard, the timing too tight; make it like the perfect dodge's window. They picked
+the PERFECT parry 0.08 → 0.20 s; the plain parry (0.22 s) stays. **What:** `DEFENSE.perfectParryWindow` 0.20
+(`combat/rules.js`); every perfect reward reads `deflect.perfect`, set from that one number, so nothing else in
+the rules moved; the Lab training card reads the number. A plain parry is now a 0.20 - 0.22 s press only:
+one frame at 60 fps (13/60 s). A blow that is both a blue flare and a `lock`
+(Severance, Hundred Hands' palm, Rain of Ashes' last) now nearly always locks the blades instead of the flare
+counter (the rule as it was; a perfect parry is simply the norm now). **Tests:** a `PLAIN_LEAD` per suite for
+the checks of a plain parry (that one frame; checked with a per-parry gap print), duel's `makeDefender` a
+`lead`; bots that play like a player keep 0.12 s (now perfect): integ STRINGS posture x 1.5, asc Hundred Hands
+may end in the lock, city WIN floor 140 → 130 s (137 - 142 s now). **Finding (a separate task):** integ
+PRESSURE seed 4242 met a director gap once the steady bot's stray parries turned perfect: the brood's
+busyWait dive (`brood.js`, `BROOD.busyWait` 2.5 s: a drakeling dives anyway after waiting that long on a busy
+wyrm) landed within 0.3 s of a wyrm cue needing another answer: fanVolley / drakelings in P2 (at 60.6 s) and,
+with 4242 run alone, breath / drakelings in P3 (63.5 s). It exists on main (the seeds just miss it); the
+scenario keeps the old 0.08 s perfect window for the steady bot's stray parries, so it measures the director
+on its old path. **Open:** played by the owner; whether the slow-motion beat on every parried blow of a string
+is too much now (the `short` beat, `combat/perfectFx.js`); the brood fix.
 ## 2026-11-26 — The lite world on a phone at AUTO's floor (ADR-216; branch `render/phone-lite`)
 
 **Owner:** the BENCH from their iPhone (fox: the world pass 11.8 of 13.3 ms; half the pixels only 32 % less);
@@ -104,6 +137,26 @@ the engine, its guide (with why this try failed), the recorder and the realiser'
 Frames, caches and sheets stay in this session's scratchpad (never committed).
 
 ---
+
+## 2026-11-25 — Four looks for the perfect dodge flurry (ADR-210; branch `claude/dodge-rework-fc5eae`)
+- **Why:** the owner: no "random hops over the character", "more epic cooler looking". Split off the parry
+  streak's session (PR 145) so both run in parallel.
+- **Reference:** the owner's animation compilation has no labelled perfect-dodge section; its dash thrust (a low set,
+  one smeared frame, a bloom at the point breaking into floor tendrils, the lunge held) and its close strings (a small
+  bloom per contact, sparks that fall and gather) were carded.
+- **Round 1:** `?dash=1` (no blinks, every pass from where he stands, always the Passing Cut, smear + floor kicks).
+  The owner preferred the old vanish and all three finishers (filmed one by one to check; none dropped), kept the
+  new effects, wanted aerial cuts in a streak and four variations built on what the footage taught.
+- **Round 2 (this):** `?dodgefx=a|b|c|d` replaces `?dash`: the old flurry + smear + kicks + an aerial cut (2nd from
+  4 flash cuts, the 1st too from 6, never a storm cut), and a) the Thunder Thrust, b) point bloom + tendrils,
+  c) spark cloud, d) heavy finish. Built by Sonnet subagents from the lead's briefs; filmed side by side.
+- **Tests:** duel `dodgefx` (every variant x streaks 2 / 5 / 7: blows, damage = off, feet down at the end, the aerial
+  cut's height, the thrust's pick), duel `chain` / `tempo`, integ `chain` / `storm`, cost, glyphcheck.
+- **The pick (2026-11-26):** the owner chose **a**, the Thunder Thrust, as the default. Fallout: the aerial cut's
+  hanging line was drawn through the foe's chest; it now runs along his own path (the chain's rule), and the chain
+  test measures from his real height. The pace sims (duel / lord `pace`, city's win window, duel `pressure`) measure
+  the boss with the looks off: the held lunge holds the world longer, a gap in his cues that is not his pace.
+- **Next / open:** played on the iPhone; aerial cuts only on the chain's paths (`?chain=0` has none).
 
 ## 2026-11-25 — A roadmap to Steam and the app stores (docs only; branch `docs/ship-roadmap`)
 

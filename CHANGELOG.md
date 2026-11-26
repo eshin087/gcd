@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and eleven pieces of work since 0.4.0:
+One hundred and thirteen pieces of work since 0.4.0:
 - **Blue and red blows you can read, and quick blows** (2026-11-26, ADR-223). *Changed:* Lu Wusheng, Wen Yao and the
   Cinder Wyrm stop and hold their pose for a moment before every blue or red blow, standing tall for blue and sinking
   low for red (the wyrm rears its head for blue, crouches with its tail up for red); the blow lands that moment later,
@@ -12,6 +12,17 @@ One hundred and eleven pieces of work since 0.4.0:
   blow each, straight from the stance with no wind-up: Lu Wusheng's Before the Word, Wen Yao's Fox Snap and Fox Knee,
   the wyrm's Snap swipe; block it or parry it on the glint. `?sheathMotion=0`, `?foxMotion=0`, `?wyrmMotion=0` and
   `?sheathQuick=0`, `?foxQuick=0`, `?wyrmQuick=0` give the fights before.
+- **Four looks for the perfect dodge flurry** (2026-11-25, ADR-210). *Added, behind `?dodgefx=a|b|c|d` (the Lab's
+  `dodgefx` button; the owner picked a, the Thunder Thrust, as the default; `?dodgefx=off` is the flurry before):* against a man the flurry keeps its vanish and all three
+  finishers, and adds faint smeared copies of him along each cut, tiny sparks kicked off the floor, and an aerial cut
+  from above in a streak of 5 or more. Each look adds one lesson from the owner's reference footage: a) the Thunder
+  Thrust, a fourth finisher (a low set, one smeared lunge, the lunge held, letter tendrils over the floor); b) a bloom
+  at the blade's point breaking into floor tendrils on every contact; c) a cloud of slow falling sparks that builds
+  through the streak; d) a heavier wind-up and a held landing for every finisher. Same blows and damage.
+- **Parrying is easier: the perfect parry's timing widened** (2026-11-26, ADR-227). *Changed:* a parry pressed up to
+  0.2 s before the blow lands is now perfect (it was 0.08 s), the same window as the perfect dodge: its extra posture,
+  the fast critical counter cut, the blade lock and the returned shots come far more easily. A parry pressed earlier
+  than that still works, as before, up to 0.22 s.
 - **A lighter world on phones that need it** (2026-11-26, ADR-216). *Changed:* on a phone that still drops frames at the
   lowest resolution, the ground's extras (ridge strokes, drifting cloud shadows, contact shadows, the floor ripple)
   turn off and the stone floors' relief is drawn more simply, for the rest of the visit. `?lite=0` keeps the full

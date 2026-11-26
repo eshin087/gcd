@@ -6334,7 +6334,6 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   If the hero remake's branch later lands, its copies of `scripts/mocap` and `src/entities/hero2/*` should
   be taken over these (check `check.mjs`'s film list keeps `fist`).
 
-
 ## ADR-209 — The phone's frame: a readout on the device, and three of its spikes taken out (2026-11-26)
 
 - **Context:** the owner saw the frame rate dip in fights on their iPhone ("pretty powerful"), on the fox,
@@ -6367,6 +6366,23 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   loaded by other sessions and runs varied +-25 %. The load step takes ~1 frame more for the warm draw.
   Next: the owner's `?perf` report from the iPhone in a fight on each of the three levels, then the parts
   it names. Not measured: any phone.
+
+## ADR-210 — The perfect dodge's flurry: smear, floor sparks, aerial cuts and four looks behind `?dodgefx` (2026-11-25)
+
+- **Context:** the owner: the perfect dodge should not have "random like hops over the character and should be
+  more epic cooler looking". A first round (`?dash=1`: no blinks, every pass from where he stands, always the Passing
+  Cut) was filmed; the owner preferred the old vanish and all three finishers, kept the new smear and floor sparks,
+  asked for aerial cuts in a streak, and for four variations that use what the reference footage taught (a dash
+  thrust: a low set, one smeared frame, a bloom at the point breaking into floor tendrils, the lunge held; close
+  strings: a small bloom per contact, sparks that fall and gather).
+- **Decision:** `STREAK_FX.dodgefx` (`?dodgefx=a|b|c|d`, the Lab's `dodgefx`; '' = today), only against a ground foe
+  and not a riposte / counter: today's flurry plus smear copies (`_afterimage`'s `smear`), floor kicks
+  (`FlurryFx.kick`) and aerial cuts (`Flurry._isAerial`: from 2.2 m down through him), and a) a fourth art, the
+  Thunder Thrust; b) `FlurryFx.bloom` + `tendrils` at every contact; c) `FlurryFx.sparks`, a lingering cloud;
+  d) a longer coil, a held finish / landing and a camera push. Numbers: `DEFENSE.flurry.dodgefx`. Blows and damage
+  unchanged (duel `dodgefx`). `?dash` is gone (git history keeps it). The owner watched the four side by side and picked **a** (the Thunder Thrust) as the default (2026-11-26); `?dodgefx=off` gives the flurry before. The pace sims (duel / lord `pace`, city's win window, duel `pressure`) measure the boss with the dodge looks off: the thrust's held lunge holds the world longer, a gap in his cues that is not his pace.
+- **Consequences:** aerial cuts exist only on the chain's paths; d delays the art (its blows' frames move).
+
 
 ## ADR-215 — BENCH: each pipeline step's GPU cost, measured on the owner's phone (2026-11-26)
 
@@ -6414,7 +6430,8 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
 - **Decision** (behind switches; the owner's picks, below, the default):
   1. `?sheathMotion=` / `?foxMotion=` `a|b` (duelist/heldTells.js): such a blow holds its cock `HELD.hold` (0.16
      s) more, through the realiser's bait hold (the cocked pose repeated as the hold ends, so the strike leaves it
-     from rest). `realise.js` `keysOf` may now return `{ keys, hold }`. The cock is the last key at or before the
+     from rest). `realise.js` `keysOf` (ADR-236 had removed it while nothing used it; it is back) returns the keys
+     or `{ keys, hold }`. The cock is the last key at or before the
      beat's `cock` mark that is not the gather, else the first non-strike key after it (moved onto the mark).
      `a` colours the cock: blue +3.5 cm, leaning back, chin up; red sinks 4 - 10 cm (to -0.6 at most), leans in,
      eyes down, the feet 7 cm wider. A first try played the way to the cock faster to make room for the hold in the
@@ -6448,3 +6465,37 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   Lu Wusheng, Wen Yao and the wyrm, and every quick blow: `PICKED` sheathMotion / foxMotion / wyrmMotion /
   sheathQuick / foxQuick / wyrmQuick = 'a'. The seeded fights and pace meters of those suites run with them.
 
+## ADR-227 — The perfect parry gets the perfect dodge's window: 0.20 s (2026-11-26)
+
+- **Context:** the owner: parrying is very hard and the timing feels too tight; make the parry window like
+  the perfect dodge's. Asked which window, they picked the PERFECT parry, 0.08 s → 0.20 s
+  (`DEFENSE.perfectDodgeWindow`); the plain parry window (`parryWindow`, 0.22 s) stays.
+- **Decision:** `DEFENSE.perfectParryWindow` 0.20. It is the one number every perfect parry reads
+  (`player.js` sets `deflect.perfect` from it; the duelists' blade lock, the returned bullets, embers, ki
+  bolts, the beam clash, the lantern push, Halcyon's glare and the streak's double pip all read
+  `deflect.perfect`), so nothing else changes. The Lab's training card reads the number instead of
+  spelling 0.08.
+- **What a plain parry is now:** a press 0.20 – 0.22 s before the blow, about one frame at 60 fps. In
+  practice every parry is perfect: x 1.5 posture, the counter cut, the gold clash and its short slow
+  motion, a `lock` blow locks, a bullet comes back. The plain parry stays in the rules (its window, its
+  sound and look, the riposte and the blue flare's counter, which any parry earns) rather than being
+  removed: if the owner wants a gap between the two again, it is this one number. A held guard (block)
+  is now the only defensive answer short of perfect besides the 0.02 s sliver.
+- **Consequences:** parrying is easier by 2.5x of window for every perfect reward; the fights get more
+  slow-motion beats (one per parried blow of a string in the default `sharp` look) and more blade locks.
+  Tests that check a plain parry press on the one plain frame (13/60 s); bots that play like a player keep
+  their 0.12 s press (now perfect) and their expectations moved (posture x 1.5, a lock, Halcyon's fight
+  137 - 142 s). The wyrm's PRESSURE measurement keeps the old 0.08 s for its guard bot's stray parries: the
+  new path met a brood gap that exists on main (`BROOD.busyWait`), a separate task. Not played by a human yet.
+
+## ADR-236 — No reference-footage animation: the mocap tools removed (2026-11-26)
+- **Context:** four tries at animating from the owner's reference films (the `?lights=steel` attacks, Tian
+  Lei's blows fitted from a bare-handed film (ADR-208), the refstudy kit, and the hero remade on a
+  recorded-clip engine behind `?hero=new`) ended with the owner's verdict on the last: "It looks all meh.
+  Scrap everything. Lets not use any of the reference video stuff ... we will just go back to how we made
+  animations on our own".
+- **Decision:** remove the tooling from `main`: `scripts/mocap/` and `src/entities/hero2/`, the realiser's
+  `keysOf` hook (unused), the footage `.gitignore` lines. The remade hero (PR 162) and the refstudy kit with
+  `docs/MOTION.md` (PR 148) are closed unmerged. Animation is authored by hand as before.
+- **Consequences:** ADR-208's engine is gone (its decision record stays as history). No game behaviour
+  changes: nothing in the game read these files.

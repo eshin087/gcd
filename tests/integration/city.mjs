@@ -1135,8 +1135,9 @@ async function scenarioWin() {
   // and seeds 7 / 99 finished in 134 / 136 s, under the 140 s floor, with the same damage a flurry. The
   // window measures his fight, not where the hero's flurry ends; it already sat on its floor at 140 - 145 s)
   const { STREAK_FX } = await imp('src/combat/streak.js');
-  const chain0 = STREAK_FX.chain;
+  const chain0 = STREAK_FX.chain, dodge0 = STREAK_FX.dodgefx;
   STREAK_FX.chain = false;
+  STREAK_FX.dodgefx = ''; // (likewise the dodge looks, 2026-11-25: the window measures his fight)
   try {
   for (const seed of SEEDS) {
     const G = build(seed, true);
@@ -1154,11 +1155,14 @@ async function scenarioWin() {
     out(`     seed ${seed}: ${won ? 'won' : 'NOT won'} in ${T.toFixed(0)} s: phases at ${phAt.map((t) => (t - t0 > 0 ? (t - t0).toFixed(0) : '0')).join(' / ')} s, ${taken} hits taken (god mode), crashes ${d.flight.stats.crashes} + skids ${d.flight.stats.skids}, returned ${d.glare.stats.returned}; phase ${d.phase}, hp ${Math.round(d.hp)}`);
     marksCheck(MK, 'city', out, assert);
     assert(won && d.phase === 3, `seed ${seed}: the fencing bot wins through all three phases`);
-    const [lo, hi] = (process.env.GCD_WRANGE ?? '140,250').split(',').map(Number);
+    // (130 since ADR-227: the bot's parries, pressed 0.12 s early, are perfect now (x 1.5 posture, the
+    // counter cut, his glare returned): the three seeds won in 140 / 137 / 142 s instead of 140 - 145)
+    const [lo, hi] = (process.env.GCD_WRANGE ?? '130,250').split(',').map(Number);
     assert(T > lo && T < hi, `seed ${seed}: the fight takes ${T.toFixed(0)} s (${lo} - ${hi})`);
   }
   } finally {
     STREAK_FX.chain = chain0;
+    STREAK_FX.dodgefx = dodge0;
   }
 }
 

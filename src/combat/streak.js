@@ -77,6 +77,12 @@ export const STREAK_FX = {
    *  dust. false (?chain=0) = the ring-teleport paths, the crescents and the shards exactly as before.
    *  Read as a flurry starts. */
   chain: q('chain') !== '0',
+  /** The dodge looks (?dodgefx=a|b|c|d, default a; ?dodgefx=off = '' = the flurry as above exactly; the Lab's `dodgefx`): the
+   *  flurry on a man on the ground (not a riposte) gains smeared copies along each dash, floor kicks and
+   *  aerial cuts (DEFENSE.flurry.dodgefx), and one of: a Thunder Thrust art (a), a bloom and tendrils at
+   *  each contact (b), a cloud of falling sparks (c), a heavier art (d). Read as a flurry starts. */
+  // (the owner's pick, 2026-11-25: a, the Thunder Thrust, is the default; ?dodgefx=off = the flurry before)
+  dodgefx: ['a', 'b', 'c', 'd'].includes(q('dodgefx')) ? q('dodgefx') : q('dodgefx') === 'off' || q('dodgefx') === '0' ? '' : 'a',
   /** The chain's figure (DEFENSE.flurry.chain.figures; player/flurryFigures.js): 'any' (a different
    *  one each flurry) or a figure's name to pin it (?figure=star | zigzag | cage | spiral | cross; the
    *  Lab's `figure` button). Read as a flurry starts. */
