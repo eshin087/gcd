@@ -17,8 +17,9 @@ import { wjLookNow, wjHairNow, dressOf, at } from './look.js';
 // sign on him anywhere (ADR-160's line on the homage).
 //
 // One `wj.*` item per slot:
-//   wj.head    the hair (white: up in phase 1, fallen from phase 2: `?wjHair=a|b` two shapes, each with
-//              its fallen version), the band (over the eyes in phase 1, round the neck from phase 2), the
+//   wj.head    the hair (white: up in phase 1, `?wjHair=a|b` a tall swept crown / a shorter spiky burst of
+//              clumps; fallen from phase 2: the hero's sculpted mop clusters in white, a longer / b
+//              shorter), the band (over the eyes in phase 1, round the neck from phase 2), the
 //              eyes (two points of ice-blue light, phases 2 - 3)
 //   wj.coat    the coat's torso and its high stand collar (chest slot)
 //   wj.arms    the coat's slim sleeves to the wrist, bare hands (the right fist on the sword joint)
@@ -38,8 +39,8 @@ import { wjLookNow, wjHairNow, dressOf, at } from './look.js';
 // is kept out of the static merge and registered with the phases it shows in (look.js `at`).
 //
 // BODY POINTS (head space, before BODY.headScale; look.js eyePoint / handPoint read the rig):
-//   the eyes at (+-0.033, 0.128, 0.104), the band's middle at y 0.131 (phase 1), the hair's top at about
-//   y 0.43 (`?wjHair=a`, up) / 0.3 (fallen)
+//   the eyes at (+-0.033, 0.128, 0.104) (they grow with the camera's distance: look.js EYE_FAR), the
+//   band's middle at y 0.131 (phase 1); the right fist on the sword joint, the left hand on arms.L.wrist
 
 //
 // THE BODY CONTRACT (what the rules, the fx and the moves read; kept from wave 0, names unchanged):

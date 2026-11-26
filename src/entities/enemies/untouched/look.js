@@ -138,9 +138,11 @@ export const COAT_DRESS = Object.freeze([
   { open: false, flare: 0.07, breeze: 0.035, idle: 0.035, tail: 0.16, front: 0.45 },
   { open: true, flare: 0.12, breeze: 0.07, idle: 0.07, tail: 0.26, front: 0.8 },
 ]);
-/** How far a coat panel may swing in all (rad, both segments; Xin Yi's limits: his flips and kicks
- *  would throw a panel across his chest or through his legs). */
-export const COAT_SWING = Object.freeze({ out: 0.87, in: 0.3 });
+/** How far a coat panel may swing in all (rad, both segments), by phase. Xin Yi's limits (his flips
+ *  and kicks would throw a panel across his chest or through his legs), tighter in phase 1: with the
+ *  right fist in its pocket the coat's springs take the fist (the sword joint) for steel under the
+ *  cloth and threw the back panel out over it (anim.js _coat). */
+export const COAT_SWING = Object.freeze({ out: [0, 0.4, 0.7, 0.87], in: 0.3 });
 
 /** A coat anchor turned to `az` round the pelvis (sheet.js panelSkirt's placement, the same numbers). */
 function turnFront(F, az) {
@@ -154,14 +156,15 @@ function turnFront(F, az) {
 }
 
 /** After the animator: hold each panel inside COAT_SWING (the spring's state too). */
-function clampCoat(d) {
+function clampCoat(d, n) {
   const st = d.anim?.coatState, coat = d.rig?.coat;
   if (!st || !coat) return;
+  const out = COAT_SWING.out[n] ?? COAT_SWING.out[3];
   for (let i = 0; i < coat.length; i++) {
     const s = st[i], C = coat[i];
     if (!s || !C?.segs) continue;
     const a = s[0], b = s[1], tot = a.x + b.x;
-    const want = tot < -COAT_SWING.out ? -COAT_SWING.out : tot > COAT_SWING.in ? COAT_SWING.in : tot;
+    const want = tot < -out ? -out : tot > COAT_SWING.in ? COAT_SWING.in : tot;
     if (want === tot || !Number.isFinite(tot) || Math.abs(tot) < 1e-6) continue;
     const k = want / tot;
     a.x *= k;
@@ -211,7 +214,7 @@ export function dressUntouched(d) {
       P.def.idleFlare = S.idle * (P.tail ? 1.4 : P.front ? 0.3 * S.front : 1);
     }
   }
-  clampCoat(d);
+  clampCoat(d, n);
   // the eyes: dark behind the band (phase 1 shows none: the band covers them)
   const fu = d.rig.materials?.flask?.uniforms;
   if (fu) {
