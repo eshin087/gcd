@@ -792,7 +792,9 @@ export class WjSpells {
     const W = this.game.world;
     if (!W?.groundBlow) return;
     const T = L.T, N = this.T.null.trench, g = this._gb;
-    const angs = [L.last && L.turn ? L.a0 + L.turn * 0.5 : L.ang]; // (the Last Null: one trench down the middle of its turn)
+    // (the Last Null: a trench along each side of the fan it turned through, the wedge between them erased;
+    // two, not three: the floor marks' glyph cap)
+    const angs = L.last && L.turn ? [L.a0, L.a0 + L.turn] : [L.ang];
     for (const ang of angs) {
       const dx = Math.sin(ang), dz = Math.cos(ang);
       for (let s = 0.8; s < T.len - 0.5; s += N.seg) {

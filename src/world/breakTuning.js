@@ -405,7 +405,11 @@ export const SCAR = Object.freeze({
      *  half-width (`o.w`, m, `w` .. `wMax`: Bai Wuji's Null, 2.5): then its edges are that far out every
      *  `wideStep` m with rubble on `rubble` of them, the glass in rows `rows` m apart across the floor
      *  between (none given: as before) */
-    beam: Object.freeze({ step: 0.32, w: 0.32, len: [0.5, 30], glass: [0.15, 0.16, 0.19], glassAlpha: 0.45, wMax: 4, wideStep: 0.45, rows: 1.4, glassK: 0.4, rubble: 0.25 }),
+    beam: Object.freeze({ step: 0.32, w: 0.32, len: [0.5, 30], glass: [0.15, 0.16, 0.19], glassAlpha: 0.45, wMax: 4, wideStep: 0.45, rows: 1.4, glassK: 0.4, rubble: 0.25,
+      // the wide trench READS (the integration pass: a dim lip vanished on the Crossing's night asphalt):
+      // its two edges in `edge` (a pale violet-grey, the lit ones x `lit`), `edgeA`, `edgeSize`; its glass
+      // rows `wideGlass` / `wideGlassA`, `wideGlassK` of the cells (the narrow beam: as before)
+      edge: [0.5, 0.46, 0.62], lit: 1.3, edgeA: 0.95, edgeSize: 0.42, wideGlass: [0.38, 0.34, 0.56], wideGlassA: 0.9, wideGlassK: 0.55 }),
     /** a heavy footfall: a faint print, only above `min` power, at most one in `gap` m of the last */
     step: Object.freeze({ min: 0.5, gap: 2.6, alpha: 0.5 }),
     /** the scorch map, charred ONLY where no grass grows (paving: the cells' fuel is under
