@@ -406,7 +406,10 @@ def build_clip(spec, clip, log=print):
         root[:, :2] -= root[0, :2]
         if clip.get('flight') == 'picture' and not clip.get('turn'):
             root = flight_from_picture(B, Ts, root, g['cmask'], fps, log)
+        yaw0 = root[:, 2].copy()
         root = root_overrides(clip, B, root, fps, log)
+        if np.abs(root[:, 2] - yaw0).max() > 0:
+            q, hips = keep_world(q, hips, root[:, 2] - yaw0)
     # planted feet: flat soles, toes bending at push-off, the ankle at exactly HDIM.ankle
     q, Wflat = post.flatten_feet(q, hips, root, g['cmask'], loop)
     if clip.get('foot_ease'):
@@ -426,7 +429,8 @@ def build_clip(spec, clip, log=print):
     if clip.get('hips_keys'):
         hips, g['cmask'] = hips_keys(clip, B, q, hips, root, g['cmask'], fps, log)
         g['contact'] = {s_: spans_of(g['cmask'][:, f]) for f, s_ in enumerate(('L', 'R'))}
-    q, before, after = retarget.pin_feet(q, hips, root, g['cmask'], loop=loop, flat=Wflat, soft=strided)
+    q, before, after = retarget.pin_feet(q, hips, root, g['cmask'], loop=loop, flat=Wflat, soft=strided,
+                                         opt=retarget.pin_opts(clip.get('pin_blend'), fps))
     q = skel.continuous(q)
     # last guard: nothing through the ground after the feet were pinned
     h0 = hips.copy()
@@ -803,8 +807,35 @@ def root_overrides(clip, B, root, fps, log):
             out[seg] = (np.array([xa, za]) * (1 - u) + np.array([xb, zb]) * u)[seg]
         out[np.arange(n) > ks[-1][0]] = ks[-1][1:]
         root[:, :2] = out
+        # a 4th column: the root's YAW (deg, + = toward his left), eased the same way between the keys that
+        # give it (before the first: the start, 0); the body keeps its pose in the world (keep_world)
+        ky = sorted([(fr(k[0]), float(k[3])) for k in clip['root_keys'] if len(k) > 3])
+        if ky:
+            ky = [(0, 0.0)] + [k for k in ky if k[0] > 0]
+            yo = np.zeros(n)
+            for (fa, ya), (fb, yb) in zip(ky[:-1], ky[1:]):
+                u = _smoothstep((np.arange(n) - fa) / max(fb - fa, 1))
+                seg = (np.arange(n) >= fa) & (np.arange(n) <= fb)
+                yo[seg] = (ya * (1 - u) + yb * u)[seg]
+            yo[np.arange(n) > ky[-1][0]] = ky[-1][1]
+            root[:, 2] = np.radians(yo)
+            log('  root keys: yaw from %d keys, %.0f degrees at the end' % (len(ky) - 1, yo[-1]))
         log('  root keys: %d given' % (len(ks) - 1))
     return root
+
+
+def keep_world(q, hips, dyaw):
+    """the root's yaw changed by dyaw (n,) radians: the hips' local rotation and offset are turned back so
+    the body keeps its pose in the world (spec `root_keys` with a yaw column)"""
+    q = q.copy()
+    hips = hips.copy()
+    rq = skel.qaxis([0, 1.0, 0], -dyaw)
+    q[:, JI['hips']] = skel.qmul(rq, q[:, JI['hips']])
+    c, s = np.cos(-dyaw), np.sin(-dyaw)
+    x, z = hips[:, 0].copy(), hips[:, 2].copy()
+    hips[:, 0] = c * x + s * z
+    hips[:, 2] = -s * x + c * z
+    return q, hips
 
 
 def flight_from_picture(B, Ts, root, cmask, fps, log):

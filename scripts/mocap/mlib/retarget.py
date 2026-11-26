@@ -50,6 +50,20 @@ def smooth_time(x, sig, loop=False):
     return out.reshape(x.shape)
 
 
+def smooth_ends(x, sig, loop=False):
+    """smooth_time on a one-shot with its ends extended by point reflection (x0 - (x_k - x0)): a ramp stays
+    a ramp to the last frame, where the truncated kernel bent it toward the inside (spec root "ends")"""
+    if loop:
+        return smooth_time(x, sig, True)
+    n = len(x)
+    r = int(min(np.ceil(3 * max(float(np.max(sig)), 1e-3)), n - 1))
+    if r < 1:
+        return smooth_time(x, sig, False)
+    a = 2 * x[:1] - x[r:0:-1]
+    b = 2 * x[-1:] - x[-2:-r - 2:-1]
+    return smooth_time(np.concatenate([a, x, b]), sig, False)[r:r + n]
+
+
 def adaptive_sigma(b, slow=2.5, fast=0.7, v_fast=4.0, fps=60.0, loop=False):
     """per-frame smoothing width: wide when he is still, narrow when limbs move fast (keeps the snap)"""
     v = np.linalg.norm(np.gradient(b[:, [15, 16, 27, 28, 13, 14]], axis=0), axis=2).max(1) * fps
@@ -484,14 +498,17 @@ def ground_and_contact(q, fps, loop=False, ground='feet', travel='free', log=pri
         # spec "root": {"smooth": s, "max_off": m}: the root is the ground point under his hips smoothed
         # over s seconds (default 0.25), and never more than m metres from it (default: no limit)
         ro = clip_opts.get('root', {}) if isinstance(clip_opts.get('root'), dict) else {}
-        root_xz = smooth_time(H, float(ro.get('smooth', 0.25)) * fps, False)
+        # "ends": "reflect": the series is extended past both ends (point reflection: a steady motion goes
+        # on) before smoothing, so a clip that starts moving keeps its root under the hips at frame 0
+        sm = smooth_ends if ro.get('ends') == 'reflect' else smooth_time
+        root_xz = sm(H, float(ro.get('smooth', 0.25)) * fps, False)
         if ro.get('max_off') is not None:
             mo = float(ro['max_off'])
             for _ in range(3):
                 d = H - root_xz
                 ln = np.linalg.norm(d, axis=1, keepdims=True)
                 root_xz = root_xz + d * np.clip(1 - mo / np.maximum(ln, 1e-9), 0, None)
-                root_xz = smooth_time(root_xz, 2.0, False)
+                root_xz = sm(root_xz, 2.0, False)
         root_xz -= root_xz[0]
         off = H - H[0] - root_xz  # hips over the root, fixed frame -> the root's own (turning) frame
         if yaw is not None:
@@ -560,11 +577,47 @@ def soft_reach(hip, target, lo=0.9, span=0.07):
     return hip + dv / L * Lmax * (lo + span * np.tanh((u - lo) / span))
 
 
-def pin_feet(q, hips, root, cmask, blend=3, loop=False, flat=None, soft=False):
+def _edge_blend(P, s, idx0, step, tgt, opt, n, loop, wrap0, cyc):
+    """spec "pin_blend": the frames one span edge blends over. opt = {"frames": b or "s": sec (the base),
+    "dist": m, "max": frames or "max_s": sec}: with "dist", the edge widens until the foot's distance from its
+    plant at the blend's outer frame, spread over the blend, is at most `dist` metres a frame"""
+    b = int(opt['b'])
+    if not opt.get('dist'):
+        return b
+    while b < opt['bmax']:
+        k = idx0 + step * (b + 1)
+        w = wrap0
+        if loop:
+            w = w + (1 if k >= n else 0) - (1 if k < 0 else 0)
+            k = k % n
+        elif k < 0 or k >= n:
+            break
+        d = np.linalg.norm((P[k, JI['foot' + s]] - (tgt - w * cyc))[[0, 2]])
+        if d / (b + 1) <= opt['dist']:
+            break
+        b += 1
+    return b
+
+
+def pin_opts(spec, fps):
+    """spec "pin_blend" -> {"b": base frames, "dist": m a frame or None, "bmax": frames, "ease": bool}, or None"""
+    if spec is None:
+        return None
+    if isinstance(spec, (int, float)) and not isinstance(spec, bool):
+        return dict(b=int(spec), dist=None, bmax=int(spec), ease=False)
+    b = int(spec['frames']) if 'frames' in spec else int(round(float(spec.get('s', 0.1)) * fps))
+    bmax = int(spec['max']) if 'max' in spec else int(round(float(spec.get('max_s', 0.4)) * fps))
+    return dict(b=max(b, 1), dist=float(spec['dist']) if spec.get('dist') else None, bmax=max(bmax, b),
+                ease=bool(spec.get('ease', True)))
+
+
+def pin_feet(q, hips, root, cmask, blend=3, loop=False, flat=None, soft=False, opt=None):
     """Make planted feet stand still: within each contact span the ankle is held at its mean ground
     position (each frame keeps its own height: a heel may rise) by re-solving thigh + shin; the edges blend
     over `blend` frames. A loop's span that runs over the end is one span (the next cycle is one cycle's
-    travel further on). Returns new q and the worst slide before / after (cm)."""
+    travel further on). `opt` (pin_opts, spec "pin_blend"): each edge's own blend (frames or seconds, widened
+    by the foot's distance from its plant) with smoothstep weights. Returns new q and the worst slide
+    before / after (cm)."""
     n = len(q)
     q = q.copy()
     P, R = skel.fk(q, hips, root)
@@ -582,9 +635,16 @@ def pin_feet(q, hips, root, cmask, blend=3, loop=False, flat=None, soft=False):
             tgt = an.mean(0)
             # the frames to touch: the span plus `blend` frames either side (wrapping in a loop)
             ext = []
-            for e in range(1, blend + 1):
-                ext.append((idx[0] - e, wrap[0], 1 - e / (blend + 1)))
-                ext.append((idx[-1] + e, wrap[-1], 1 - e / (blend + 1)))
+            if opt is None:
+                for e in range(1, blend + 1):
+                    ext.append((idx[0] - e, wrap[0], 1 - e / (blend + 1)))
+                    ext.append((idx[-1] + e, wrap[-1], 1 - e / (blend + 1)))
+            else:
+                for k0, w0, st in ((idx[0], wrap[0], -1), (idx[-1], wrap[-1], 1)):
+                    bb = _edge_blend(P, s, k0, st, tgt, opt, n, loop, w0, cyc)
+                    for e in range(1, bb + 1):
+                        u = 1 - e / (bb + 1)
+                        ext.append((k0 + st * e, w0, u * u * (3 - 2 * u) if opt['ease'] else u))
             frames = [(k, w, 1.0) for k, w in zip(idx, wrap)] + ext
             jobs.append((s, tgt, frames))
     done = {}
@@ -609,7 +669,7 @@ def pin_feet(q, hips, root, cmask, blend=3, loop=False, flat=None, soft=False):
                 target[1] = cur[1] * (1 - fw) + HDIM['ankle'] * fw
             hip = P[k, JI['thigh' + s]]
             hinge = skel.qrot(R[k, JI['thigh' + s]], X)
-            if soft and wgt < 1:  # spec "speed" with a scaled stride: the blend into a plant reaches softly
+            if (soft or opt is not None) and wgt < 1:  # a scaled stride ("speed") or "pin_blend": the blend reaches softly
                 target = soft_reach(hip, target)
             thigh, shin = _two_bone(hip, HDIM['thigh'], HDIM['shin'], target, hinge)
             Rt = skel.frame_q(-Y, X, thigh[None], hinge[None])[0]
