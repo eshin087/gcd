@@ -14667,19 +14667,577 @@ async function scenarioSteelE() {
 async function scenarioCutsA() {
   out('\n== scenario CUTSA (?lights=blink&cuts=a: the reference strokes, instant) ==');
   const CB = await imp('src/entities/player/combat.js');
-  const G = build();
+  const { CUTS_A, LIGHT_CUTS_A } = await imp('src/entities/player/cutsA.js');
+  const { SWINGS } = await imp('src/entities/player/swings.js');
+  const { swingPhase } = await imp('src/entities/player/anim.js');
+  const { DIM: HD, PLAYER_SCALE: PS } = await imp('src/entities/player/model.js');
+  const lights0 = CB.lightsMode(), cuts0 = CB.cutsMode(), DEG = 180 / Math.PI;
+  const CHAIN = ['cutA1', 'cutA2', 'cutA3', 'cutA4'], LAST5 = ['cutA5', 'cutA5b', 'cutA5c'];
+  const OURS = new Set([...CHAIN, ...LAST5]);
+  const NUMS = ['windup', 'active', 'recovery', 'chain', 'damage', 'poise', 'lunge', 'reach', 'hitstop', 'kind', 'combo', 'heavy', 'up', 'shards', 'bite', 'punch'];
+  let last = null;
   assert(CB.CUTS_IDS.includes('a'), 'the variant is registered');
-  return G;
+  assert([...OURS].every((n) => SWINGS[n] === CUTS_A[n] && SWINGS[n].keys.length >= 10 && SWINGS[n].home === 1 && SWINGS[n].settle >= 0.4 && SWINGS[n].slash?.length === 1),
+    `the seven clips are in SWINGS, 10+ keys each, a held finish (home 1, a settle) and one slash (${[...OURS].map((n) => `${n} ${SWINGS[n]?.keys?.length ?? '-'}/${SWINGS[n]?.home}/${SWINGS[n]?.settle}`).join(' ')})`);
+  assert(LAST5.every((n) => SWINGS[n].plain && SWINGS[n].slashLook === 'strong') && new Set(LAST5.map((n) => SWINGS[n].line)).size === 3 && !LAST5.some((n) => SWINGS[n].line === SWINGS.cutA4.line),
+    `hit 5's three strokes are plain, strong lines, on three lines none of them hit 4's (${LAST5.map((n) => SWINGS[n].line).join(', ')} / ${SWINGS.cutA4.line})`);
+  assert(LIGHT_CUTS_A.every((L) => !L.anim.spin && !L.anim.turn && !L.anim.feet && (L.anim.hop ?? 0) <= 0.15 && (L.variants ?? []).every((v) => !v.spin && (v.hop ?? 0) <= 0.15)), 'no spin, no turn, no dash, no hop over 0.15 m');
+  try {
+    // ---- the looks: worn under blink + cuts a, the blink set's own under cuts 0; no number changes
+    CB.setLights('new');
+    const base = CB.LIGHT.map((d) => NUMS.map((k) => JSON.stringify(d[k])).join());
+    CB.setLights('blink');
+    CB.setCuts('0');
+    const blink0 = CB.LIGHT.map((d) => d.anim.clip);
+    CB.setCuts('a');
+    const worn = CB.LIGHT.map((d) => d.anim.clip), v5 = (CB.LIGHT[4].variants ?? []).map((v) => v.clip);
+    assert(worn.join() === [...CHAIN, 'cutA5'].join() && v5.join() === 'cutA5b,cutA5c' && CB.LIGHT.slice(0, 4).every((d) => !d.variants?.length),
+      `blink + cuts a wears ${worn.join(', ')} (hit 5's others ${v5.join(', ')})`);
+    assert(CB.LIGHT[3].contact === 'light' && !CB.LIGHT[3].glint && CB.LIGHT[4].contact === 'sweep', `hit 4 is drawn as a slash (${CB.LIGHT[3].contact}/${CB.LIGHT[3].glint}), hit 5 as a strong one (${CB.LIGHT[4].contact})`);
+    assert(CB.LIGHT.every((d, i) => NUMS.map((k) => JSON.stringify(d[k])).join() === base[i]), 'every number of the five hits is unchanged');
+    CB.setCuts('0');
+    assert(CB.LIGHT.map((d) => d.anim.clip).join() === blink0.join() && blink0[0] === 'blinkFall', `cuts 0 gives the blink set's own chain back (${CB.LIGHT.map((d) => d.anim.clip).join(', ')})`);
+    CB.setLights('new');
+    assert(CB.LIGHT[0].anim.clip === 'fallingCut', 'the default look keeps its own');
+
+    // ---- played: mashed and relaxed, from the fight hold and at ease; the same read of the blink set's own
+    // chain (cuts 0) is the bound for the hand's snaps
+    const S = new THREE.Vector3(), E = new THREE.Vector3(), W = new THREE.Vector3(), T = new THREE.Vector3(), Hh = new THREE.Vector3(), LW = new THREE.Vector3(), M = new THREE.Vector3();
+    const Hd = new THREE.Vector3(), a1 = new THREE.Vector3(), a2 = new THREE.Vector3();
+    const ang = (u, v) => Math.acos(clamp(u.normalize().dot(v.normalize()), -1, 1)) * DEG;
+    const spikes = (st) => st.map((v, i) => (v === null || st[i - 1] == null || st[i + 1] == null ? 0 : v - Math.max(st[i - 1], st[i + 1])));
+    const spike = (st) => Math.max(0, ...spikes(st));
+    const spikeAt = (st, lab) => { const s = spikes(st), m = Math.max(0, ...s); return m > 0 ? lab[s.indexOf(m)] : '-'; };
+    const play = (cuts, nm, every, fight, v5 = null) => {
+      CB.setLights('blink');
+      CB.setCuts(cuts);
+      const G = (last = build());
+      fightSetup(G);
+      const { game, input } = G, p = game.player, d0 = game.dragon, r = p.rig;
+      p.debug.god = true;
+      p.debug.fightStance = fight;
+      p.debug.teleport(d0.position.x + 14, d0.position.z + 14);
+      p.yaw = Math.atan2(d0.position.x - p.position.x, d0.position.z - p.position.z);
+      aimAt(G);
+      for (let i = 0; i < 70; i++) G.tick(DT);
+      if (v5 !== null) p.anim.forceVariant = v5;
+      const R = { played: [], nan: 0, wr: 0, wrAt: '', wrCut: 0, elMin: 999, elAt: '', elEnd: 999, tipY: 9, body: 9, head: 9, reach: 0, cross: [], cutN: [], slide: {} };
+      const stR = [], stL = [], lab = [];
+      let pw = null, pl = null, k = 0, cur = null;
+      const FT = [r.legs.R.foot, r.legs.L.foot], fp = FT.map(() => new THREE.Vector3()), f0 = FT.map(() => new THREE.Vector3());
+      FT.forEach((f, q) => f0[q].setFromMatrixPosition(f.matrixWorld));
+      const fy0 = f0.map((v) => v.y);
+      for (let i = 0, N = Math.round((4 * every + 2.4) / DT); i < N; i++) {
+        if (k < 5 && i >= Math.round((k * every) / DT)) { aimAt(G); input.click(0); k++; }
+        G.tick(DT);
+        const a = p.atk, d = a?.def, an = d && p.anim.atkDef === d ? p.anim.atkAnim : null;
+        S.setFromMatrixPosition(r.arms.R.upper.matrixWorld);
+        E.setFromMatrixPosition(r.arms.R.fore.matrixWorld);
+        W.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.R.fore.matrixWorld);
+        LW.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.L.fore.matrixWorld);
+        T.set(0, 0, HD.drawnTip).applyMatrix4(r.sword.matrixWorld);
+        Hh.set(0, 0, HD.bladeBase).applyMatrix4(r.sword.matrixWorld);
+        Hd.setFromMatrixPosition(r.head.matrixWorld);
+        if (![S, E, W, T, LW, Hd].every((v) => Number.isFinite(v.x + v.y + v.z))) R.nan++;
+        const rel = (v) => [v.x - p.position.x, v.y - p.position.y, v.z - p.position.z];
+        const w = rel(W), l = rel(LW), tp = rel(T);
+        const live = !!(d && p.state === 'attack' && !a.pending && an?.clip);
+        const mine = live && (cuts === '0' ? d.kind === 'light' || d.combo === 5 : OURS.has(an.clip));
+        if (mine && pw) { stR.push(Math.hypot(w[0] - pw[0], w[1] - pw[1], w[2] - pw[2]) / PS); stL.push(Math.hypot(l[0] - pl[0], l[1] - pl[1], l[2] - pl[2]) / PS); lab.push(`${an.clip} u ${swingPhase(a.t, d.windup, d.active, d.recovery).toFixed(2)}`); }
+        else if (stR.at(-1) !== null) { stR.push(null); stL.push(null); lab.push(''); }
+        // the feet on the grass: a foot that bears (no higher than it stood) slides or drags, per swing
+        FT.forEach((f, q) => fp[q].setFromMatrixPosition(f.matrixWorld));
+        if (mine) {
+          const sv = (R.slide[`#${d.combo}`] ??= [0, 0]);
+          for (let q = 0; q < 2; q++) if (fp[q].y <= fy0[q] + 0.012 && f0[q].y <= fy0[q] + 0.012) {
+            const ds = Math.hypot(fp[q].x - f0[q].x, fp[q].z - f0[q].z) / PS;
+            sv[q] += ds;
+            if (ds > (R.slideTop?.v ?? 0.005)) R.slideTop = { v: ds, at: `${q ? 'L' : 'R'} ${an.clip} u ${swingPhase(a.t, d.windup, d.active, d.recovery).toFixed(2)}` };
+          }
+        }
+        FT.forEach((f, q) => f0[q].copy(fp[q]));
+        if (live && R.played.at(-1) !== an.clip) R.played.push(an.clip);
+        if (!mine) { pw = w; pl = l; continue; }
+        const uu = swingPhase(a.t, d.windup, d.active, d.recovery);
+        const inCut = uu >= 1 && uu <= 2;
+        // (the cut's frames: the point's speed in his own frame; where it is furthest ahead)
+        if (!cur || cur.rec !== a) { cur = { rec: a, clip: an.clip, sp: [], fwd: -9, fwdU: 0 }; R.cutN.push(cur); }
+        const ptp = cur.ptp;
+        if (ptp) cur.sp.push({ u: uu, v: Math.hypot(tp[0] - ptp[0], tp[1] - ptp[1], tp[2] - ptp[2]) / PS });
+        cur.ptp = tp;
+        const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw), ahead = (tp[0] * fx + tp[2] * fz) / PS;
+        (cur.tips ??= []).push({ u: uu, x: (tp[0] * fz - tp[2] * fx) / PS, y: tp[1] / PS, z: ahead });
+        if (uu >= 0.8 && uu <= 2.2 && ahead > cur.fwd) { cur.fwd = ahead; cur.fwdU = uu; }
+        const wr = ang(a1.subVectors(W, E), a2.subVectors(T, Hh)), el = ang(a1.subVectors(S, E), a2.subVectors(W, E));
+        if (!inCut && uu >= 0.5 && uu < 2.6 && wr > R.wr) { R.wr = wr; R.wrAt = `${an.clip} u ${uu.toFixed(2)}`; }
+        if (inCut) R.wrCut = Math.max(R.wrCut, wr);
+        if (uu >= 0.5 && el < R.elMin) { R.elMin = el; R.elAt = `${an.clip} u ${uu.toFixed(2)}`; }
+        // (the elbow as the cut ends: from the slash line's end, 0.15 of a phase on)
+        const s1 = SWINGS[an.clip]?.slash?.[0]?.[1] ?? 1.45;
+        if (uu >= s1 && uu <= s1 + 0.15) R.elEnd = Math.min(R.elEnd, el);
+        R.tipY = Math.min(R.tipY, tp[1] / PS);
+        if (inCut) R.reach = Math.max(R.reach, ahead);
+        for (const f of [0.35, 0.65, 1]) {
+          M.lerpVectors(Hh, T, f);
+          const hy = M.y - p.position.y;
+          if (hy > 0.45 * PS && hy < 1.5 * PS) R.body = Math.min(R.body, Math.hypot(M.x - p.position.x, M.z - p.position.z) / PS);
+          R.head = Math.min(R.head, M.distanceTo(Hd) / PS);
+        }
+        pw = w;
+        pl = l;
+      }
+      p.anim.forceVariant = null;
+      p.debug.fightStance = null;
+      R.snapR = spike(stR);
+      R.snapL = spike(stL);
+      R.snapRAt = spikeAt(stR, lab);
+      R.snapLAt = spikeAt(stL, lab);
+      // the cut: the frames whose point speed is over 40 % of the swing's peak, inside u 0.9-2.2
+      for (const c of R.cutN) {
+        const sp = c.sp.filter((q) => q.u >= 0.9 && q.u <= 2.2), pk = Math.max(0, ...sp.map((q) => q.v));
+        c.n = sp.filter((q) => q.v > 0.4 * pk).length;
+        c.pk = pk;
+        // the slash line as the game camera sees it (behind him, 58° down): its tilt on screen (0 level, 90 upright)
+        const sl = SWINGS[c.clip]?.slash?.[0], T0 = sl && c.tips.find((q) => q.u >= sl[0]), T1 = sl && c.tips.find((q) => q.u >= sl[1]);
+        if (T0 && T1) {
+          const CP = (58 * Math.PI) / 180;
+          let tilt = Math.atan2((T1.y - T0.y) * Math.cos(CP) + (T1.z - T0.z) * Math.sin(CP), -(T1.x - T0.x)) * DEG;
+          while (tilt < 0) tilt += 180;
+          while (tilt >= 180) tilt -= 180;
+          c.tilt = tilt;
+          c.mid = (T0.y + T1.y) / 2;
+          c.ends = `u ${T0.u.toFixed(2)} (${[T0.x, T0.y, T0.z].map((v) => v.toFixed(2))}) → u ${T1.u.toFixed(2)} (${[T1.x, T1.y, T1.z].map((v) => v.toFixed(2))})`;
+        }
+      }
+      return R;
+    };
+    const rows = [];
+    for (const [nm, every] of [['mashed', 0.3], ['relaxed', 0.433]]) {
+      for (const fight of [true, false]) {
+        const tag = `${nm}/${fight ? 'fight' : 'ease'}`;
+        const R = play('a', nm, every, fight), B = play('0', nm, every, fight);
+        rows.push(R);
+        const sv = Object.entries(R.slide).map(([c, v]) => `${c} ${v.map((x) => (x * 100).toFixed(0)).join('/')}`);
+        out(`   ${tag.padEnd(13)} ${R.played.join(', ')} | wrist ≤ ${R.wr.toFixed(0)}° (${R.wrAt}) (cut ${R.wrCut.toFixed(0)}°), elbow ≥ ${R.elMin.toFixed(0)}° (${R.elAt}), ≥ ${R.elEnd.toFixed(0)}° at the cut's end; snaps (a tick over both neighbours): the sword hand ${(R.snapR * 100).toFixed(1)} cm (${R.snapRAt}; blink ${(B.snapR * 100).toFixed(1)}), the free hand ${(R.snapL * 100).toFixed(1)} cm (${R.snapLAt}; blink ${(B.snapL * 100).toFixed(1)}); the point ≥ ${R.tipY.toFixed(2)} m up, ${R.reach.toFixed(2)} m ahead in the cut; the steel ≥ ${R.body.toFixed(2)} m off his spine, ${R.head.toFixed(2)} m off his head; feet ${sv.join(', ')} cm`);
+        out(`   ${''.padEnd(13)} cuts: ${R.cutN.map((c) => `${c.clip} ${c.n} fr (peak ${c.pk.toFixed(2)} m/f), ahead most at u ${c.fwdU.toFixed(2)}, the line ${c.tilt?.toFixed(0)}° on screen`).join('; ')}`);
+        const want = [...CHAIN, 'cutA5'];
+        assert(R.played.length === 5 && R.played.slice(0, 4).join() === CHAIN.join() && LAST5.includes(R.played[4]), `the ${tag} chain plays its five hits in order (${R.played.join(', ')}; want ${want.join(', ')} or another hit 5)`);
+        assert(!R.nan, `no NaN, ${tag} (${R.nan})`);
+        assert(R.wr <= 65 && R.wrCut <= 75 && R.elMin >= 40 && R.elEnd >= 120, `the wrist ≤ 65° out of the cut (≤ 75° in it), the elbow never under 40° and open (≥ 120°) as the cut ends, ${tag} (${R.wr.toFixed(0)}° / ${R.wrCut.toFixed(0)}° / ${R.elMin.toFixed(0)}° / ${R.elEnd.toFixed(0)}°)`);
+        assert(R.snapR <= Math.max(0.1, 1.1 * B.snapR) && R.snapL <= Math.max(0.06, 1.1 * B.snapL), `no single-tick snap past the blink set's own (the sword hand ≤ ${(Math.max(0.1, 1.1 * B.snapR) * 100).toFixed(1)} cm, the free hand ≤ ${(Math.max(0.06, 1.1 * B.snapL) * 100).toFixed(1)} cm), ${tag} (${(R.snapR * 100).toFixed(1)} / ${(R.snapL * 100).toFixed(1)} cm)`);
+        assert(R.tipY >= 0.03 && R.body >= 0.12 && R.head >= 0.15, `the steel off the grass and out of his body and head, ${tag} (${R.tipY.toFixed(2)} / ${R.body.toFixed(2)} / ${R.head.toFixed(2)} m)`);
+        assert(R.reach >= 0.9, `the point is out in front of him in the cut, ${tag} (${R.reach.toFixed(2)} m)`);
+        assert(R.cutN.length === 5 && R.cutN.every((c) => c.n >= 2 && c.n <= 3 && c.fwdU >= 1 && c.fwdU <= 2), `every cut crosses in two or three frames, furthest ahead inside its active frames, ${tag} (${R.cutN.map((c) => `${c.n}/${c.fwdU.toFixed(2)}`).join(' ')})`);
+        assert(Object.values(R.slide).every((v) => Math.max(...v) <= 0.12), `the feet on the grass slide or drag ≤ 12 cm a swing, ${tag} (${sv.join(', ')} cm)`);
+      }
+    }
+    // hit 5's three strokes, each pinned, from a relaxed chain (the arm, the steel, the cut)
+    const tilt5 = [];
+    for (let v = 0; v < 3; v++) {
+      const R = play('a', `hit5 ${v}`, 0.433, true, v), c = R.cutN[4];
+      tilt5.push([c?.tilt ?? NaN, c?.mid ?? NaN]);
+      out(`   hit 5 #${v} ${R.played[4]}: cut ${c?.n} fr, ahead most at u ${c?.fwdU.toFixed(2)}, the line ${c?.tilt?.toFixed(0)}° on screen at ${c?.mid?.toFixed(2)} m (${c?.ends}); wrist ≤ ${R.wr.toFixed(0)}° (${R.wrAt}) / cut ${R.wrCut.toFixed(0)}°, elbow ≥ ${R.elMin.toFixed(0)}° (${R.elAt}); the point ≥ ${R.tipY.toFixed(2)} m, the steel ≥ ${R.body.toFixed(2)} / ${R.head.toFixed(2)} m; feet #5 ${(R.slide['#5'] ?? [0, 0]).map((x) => (x * 100).toFixed(0)).join('/')} cm (the most a tick ${((R.slideTop?.v ?? 0) * 100).toFixed(1)} cm, ${R.slideTop?.at ?? '-'})`);
+      assert(R.played[4] === LAST5[v] && !R.nan && c && c.n >= 2 && c.n <= 3 && c.fwdU >= 1 && c.fwdU <= 2 && R.wr <= 65 && R.wrCut <= 75 && R.elMin >= 40 && R.tipY >= 0.03 && R.body >= 0.12 && R.head >= 0.15 && Math.max(...(R.slide['#5'] ?? [0])) <= 0.12,
+        `hit 5's stroke ${LAST5[v]} plays sound: a 2-3 frame cut ahead of him in its active frames, the arm in range, the steel clear, the feet planted (${R.played[4]})`);
+    }
+
+    {
+      // (blinklast's rule: every two lines ≥ 25° apart on screen, or ≥ 0.3 m apart in height)
+      const apart = ([t0, m0], [t1, m1]) => { const dA = Math.abs(t0 - t1); return Math.min(dA, 180 - dA) >= 25 || Math.abs(m0 - m1) >= 0.3; };
+      assert(apart(tilt5[0], tilt5[1]) && apart(tilt5[0], tilt5[2]) && apart(tilt5[1], tilt5[2]), `hit 5's three lines differ on screen: 25° or more apart, or 0.3 m in height (${tilt5.map(([t, m]) => `${t.toFixed(0)}° at ${m.toFixed(2)} m`).join(', ')})`);
+    }
+    // (GCD_CUTS_QUICK=1: the poses only, while authoring)
+    if (process.env.GCD_CUTS_QUICK) return last;
+    // ---- each hit lands on the wyrm 2 m off inside its active frames, and reaches as far as today's (within 0.15 m)
+    const hitAt = (look, n, gap, every, v5 = null, cuts = 'a') => {
+      CB.setLights(look);
+      CB.setCuts(cuts);
+      const G = (last = build());
+      fightSetup(G);
+      settle(G);
+      const { game, input } = G, d = game.dragon, p = game.player;
+      const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
+      const chest = () => d.hurtSpheres.filter((h) => h.part === 'body').reduce((a, h) => ((h.x - d.position.x) * fx + (h.z - d.position.z) * fz > (a.x - d.position.x) * fx + (a.z - d.position.z) * fz ? h : a));
+      p.debug.teleport(d.position.x + fx * 40, d.position.z + fz * 40);
+      p.debug.god = true;
+      if (v5 !== null) p.anim.forceVariant = v5;
+      aimAt(G);
+      let hit = null;
+      for (let k = 0; k < n; k++) {
+        if (k === n - 1) {
+          const c = chest();
+          p.debug.teleport(c.x + fx * (c.r + gap), c.z + fz * (c.r + gap));
+          p.yaw = Math.atan2(c.x - p.position.x, c.z - p.position.z);
+          G.watch = (nn, e) => { if (nn === 'player:hitDragon' && !hit) hit = { combo: p.atk?.def?.combo, t: p.atk?.t ?? NaN, def: p.atk?.def, guarded: e.guarded, shards: e.shards }; };
+        }
+        aimAt(G);
+        input.click(0);
+        run(G, k < n - 1 ? every : 1.2, { passive: true });
+      }
+      G.watch = null;
+      p.anim.forceVariant = null;
+      if (!hit || hit.combo !== n || hit.guarded) return null;
+      return (hit.t - hit.def.windup) / hit.def.active;
+    };
+    const inAct = (s) => s !== null && s >= -1e-6 && s <= 1 + 1e-6;
+    const reachOf = (look, n, every, v5, cuts = 'a') => {
+      let g = 2.0;
+      while (g < 3.2 && inAct(hitAt(look, n, g + 0.1, every, v5, cuts))) g += 0.1;
+      return g;
+    };
+    const hr = [], bad = [];
+    for (let n = process.env.GCD_CUTS_N5 ? 5 : 1; n <= 5; n++) {
+      const rt = reachOf('new', n, 0.433, null);
+      for (const v5 of n === 5 ? [0, 1, 2] : [null]) {
+        const s2 = hitAt('blink', n, 2.0, 0.3, v5), rs = reachOf('blink', n, 0.433, v5);
+        const rb = n === 5 && v5 === 0 && process.env.GCD_CUTS_N5 ? [0, 1, 2, 3, 4].map((k) => reachOf('blink', 5, 0.433, k, '0').toFixed(1)).join('/') : '';
+        hr.push(`#${n}${v5 === null ? '' : `/${LAST5[v5]}`}: 2 m (mashed) u ${s2 === null ? 'miss' : s2.toFixed(2)}, lands out to ${rs.toFixed(1)} m (today ${rt.toFixed(1)} m${rb ? `; the blink set's last hits ${rb} m` : ''})`);
+        if (!inAct(s2) || Math.abs(rs - rt) > 0.15 + 1e-6) bad.push(`#${n}${v5 === null ? '' : `/${v5}`}`);
+      }
+    }
+    out(`   hits (active-frame fraction): ${hr.join('; ')}`);
+    assert(!bad.length, `every hit lands 2 m off inside its active frames and reaches as far as today's within 0.15 m (${bad.join(', ') || 'all'})`);
+
+    // ---- hit 5 over 30 mashed chains: every stroke comes up, never the same one twice running, no shards
+    {
+      CB.setLights('blink');
+      CB.setCuts('a');
+      const G = (last = build());
+      fightSetup(G);
+      const { game, input } = G, p = game.player, A = p.anim, d0 = game.dragon;
+      p.debug.god = true;
+      const got = [];
+      let sh = 0, slamEv = 0;
+      const sh0 = p.fx.slamShards;
+      p.fx.slamShards = function (...a) { sh++; return sh0.apply(this, a); };
+      G.watch = (nn) => { if (nn === 'player:slam') slamEv++; };
+      for (let c = 0; c < 30; c++) {
+        p.debug.teleport(d0.position.x + 14, d0.position.z + 14);
+        p.yaw = Math.atan2(d0.position.x - p.position.x, d0.position.z - p.position.z);
+        let in5 = false;
+        for (let i = 0, clicks = 0; i < Math.round(3.2 / DT); i++) {
+          const now5 = p.atk?.def === CB.LIGHT[4] && p.state === 'attack';
+          if (now5 && !in5) got.push(A.atkAnim?.clip);
+          if (in5 && !now5) break;
+          in5 = now5;
+          if (!in5 && clicks < 30 && i % 6 === 0) { aimAt(G); input.click(0); clicks++; }
+          G.tick(DT);
+        }
+        run(G, 0.8, { passive: true });
+      }
+      p.fx.slamShards = sh0;
+      G.watch = null;
+      const count = Object.fromEntries(LAST5.map((nm) => [nm, got.filter((x) => x === nm).length]));
+      const twice = got.filter((x, i) => i && x === got[i - 1]).length;
+      out(`   30 chains: ${JSON.stringify(count)}, twice running ${twice}, shards ${sh}, player:slam ${slamEv}`);
+      assert(got.length === 30 && LAST5.every((nm) => count[nm] >= 3) && twice === 0, `over 30 mashed chains hit 5 plays every stroke (each ≥ 3 times), never the same one twice running (${got.length})`);
+      assert(sh === 0 && slamEv === 0, `hit 5 bursts no shards and sends no player:slam (${sh} / ${slamEv})`);
+    }
+  } finally {
+    CB.setCuts(cuts0);
+    CB.setLights(lights0);
+  }
+  return last;
 }
 
 // ================================================================== `cutsb`: the instant chain's variant b, lunging draws
 // ?lights=blink&cuts=b (cutsB.js; ADR-215). Filled by the variant's author.
+// Lunging draws: each hit coiled low and tight at a hip or a shoulder, one long step, the cut out at full
+// reach ahead, a far low finish held (`home` 1, `settle`). Measured: the five clips worn (and the blink set's
+// back with `cuts=0`), no number of a hit changed; mashed and relaxed chains from the fight hold play in order,
+// no NaN; each cut crosses his front inside its active frames in 2-4 frames; the wrist ≤ 65° off the cut (75° on
+// it), the elbow never folded under 45° and open (≥ 140°) as the cut ends; no single-tick snap of either hand;
+// the steel off the grass and off his spine; the feet on the grass slide ≤ 12 cm a swing; the hand and the point
+// further ahead at the finish than the blink set's; each hit lands 2 m off inside its active frames and reaches
+// as far as the blink set's within 0.15 m; hit 5 one of three strokes, never the same twice running, no shards.
+// GCD_CUTSB_DUMP=1 prints every frame of the relaxed chain; GCD_CUTSB_QUICK=1 skips the hit and the 24-chain checks.
 async function scenarioCutsB() {
   out('\n== scenario CUTSB (?lights=blink&cuts=b: lunging draws) ==');
   const CB = await imp('src/entities/player/combat.js');
-  const G = build();
+  const { SWINGS } = await imp('src/entities/player/swings.js');
+  const { swingPhase } = await imp('src/entities/player/anim.js');
+  const { CUTS_B, LIGHT_CUTS_B } = await imp('src/entities/player/cutsB.js');
+  const { DIM: HD, PLAYER_SCALE: PS } = await imp('src/entities/player/model.js');
+  const lights0 = CB.lightsMode(), cuts0 = CB.cutsMode(), DEG = 180 / Math.PI, DUMP = !!process.env.GCD_CUTSB_DUMP, QUICK = !!process.env.GCD_CUTSB_QUICK;
+  const CLIPS = ['cutB1', 'cutB2', 'cutB3', 'cutB4'], LASTS = ['cutB5Draw', 'cutB5Kesa', 'cutB5Low'];
+  const OURS = new Set([...CLIPS, ...LASTS]);
+  const numsOf = (d) => JSON.stringify(Object.entries(d).filter(([k]) => !['anim', 'variants', 'contact', 'glint'].includes(k)));
+  let last = null;
   assert(CB.CUTS_IDS.includes('b'), 'the variant is registered');
-  return G;
+  try {
+    // ---- what they are
+    {
+      const bad = [];
+      for (const n of OURS) {
+        const C = SWINGS[n];
+        if (!C || C !== CUTS_B[n]) { bad.push(`${n}: not in SWINGS`); continue; }
+        if (!(C.keys?.length >= 10)) bad.push(`${n}: ${C.keys?.length} keys`);
+        if (C.home !== 1 || !(C.settle >= 0.4 && C.settle <= 0.5)) bad.push(`${n}: home ${C.home} settle ${C.settle}`);
+        if (C.side) bad.push(`${n}: side`);
+        if (!(C.slash?.length === 1)) bad.push(`${n}: slash`);
+        else if (C.line === 'point' ? C.slash[0][2] !== 'point' : !(C.slash[0][0] >= 1 && C.slash[0][1] <= 2)) bad.push(`${n}: slash outside the active frames`);
+        if (C.keys.some((k) => k.u > 2.96)) bad.push(`${n}: a key past 2.96`);
+      }
+      for (const n of LASTS) if (!CUTS_B[n]?.plain || CUTS_B[n]?.slashLook !== 'strong') bad.push(`${n}: not plain / strong`);
+      const lines = LASTS.map((n) => SWINGS[n]?.line);
+      assert(!bad.length && new Set(lines).size === 3 && !lines.includes('point'), `the clips: 10+ keys each, the finish held (home 1, settle 0.4-0.5), the free hand keyed, one slash in the active frames; hit 5's three plain strong strokes on three lines (${lines.join(', ')}) (${bad.join('; ') || 'all'})`);
+    }
+    // ---- the looks: worn under blink + cuts b, the blink set's back with cuts 0; no number changes
+    CB.setLights('blink');
+    CB.setCuts('0');
+    const base = CB.LIGHT.map((d) => ({ clip: d.anim.clip, n: numsOf(d), contact: d.contact, glint: d.glint }));
+    CB.setCuts('b');
+    const wb = CB.LIGHT;
+    const worn = wb.map((d) => d.anim.clip);
+    assert(worn.join() === [...CLIPS, LASTS[0]].join() && wb[4].variants.map((v) => v.clip).join() === LASTS.slice(1).join() && wb.slice(0, 4).every((d) => !d.variants.length && !d.anim.spin && !d.anim.hop),
+      `cuts=b wears ${worn.join(', ')} (hit 5's others: ${wb[4].variants.map((v) => v.clip).join(', ')}), no spin, no hop`);
+    assert(wb.every((d, i) => numsOf(d) === base[i].n), 'every number of the five hits is unchanged under cuts=b');
+    assert(wb[3].contact === 'point' && wb[3].glint === 'ridge' && wb[4].contact === 'sweep', `hit 4 keeps the thrust's contact and glint (${wb[3].contact}, ${wb[3].glint}), hit 5 is drawn as a strong slash (${wb[4].contact})`);
+    CB.setCuts('0');
+    assert(CB.LIGHT.map((d) => d.anim.clip).join() === base.map((b) => b.clip).join() && base[0].clip === 'blinkFall', `cuts=0 gives the blink set's own back (${CB.LIGHT.map((d) => d.anim.clip).join(', ')})`);
+
+    // ---- played from the fight hold: mashed (0.3 s) and relaxed (0.433 s)
+    const S = new THREE.Vector3(), E = new THREE.Vector3(), W = new THREE.Vector3(), T = new THREE.Vector3(), Hh = new THREE.Vector3(), LW = new THREE.Vector3(), M = new THREE.Vector3();
+    const a1 = new THREE.Vector3(), a2 = new THREE.Vector3();
+    const ang = (u, v) => Math.acos(clamp(u.normalize().dot(v.normalize()), -1, 1)) * DEG;
+    const play = (cuts, nm, every, force = null) => {
+      CB.setLights('blink');
+      CB.setCuts(cuts);
+      const G = (last = build());
+      fightSetup(G);
+      const { game, input } = G, p = game.player, d0 = game.dragon, r = p.rig, A = p.anim;
+      p.debug.god = true;
+      // (measured on the upright body in metres, as the animator poses it: without the drawn lean toward the
+      // camera and the drawn scale, model.js installLean)
+      const PS = 1;
+      p.debug.teleport(d0.position.x + 14, d0.position.z + 14);
+      p.yaw = Math.atan2(d0.position.x - p.position.x, d0.position.z - p.position.z);
+      aimAt(G);
+      for (let i = 0; i < 40; i++) G.tick(DT);
+      A.forceVariant = force;
+      const played = [], R = { wr: 0, wrCut: 0, elMin: 999, elAt: '', wrAt: '', tipY: 9, tipAt: '', body: 9, nan: 0 };
+      const per = {}; // per hit: frames
+      const FT = [r.legs.R.foot, r.legs.L.foot], fp = FT.map(() => new THREE.Vector3()), f0 = FT.map(() => new THREE.Vector3());
+      const fy0 = FT.map((f) => f0[0].setFromMatrixPosition(f.matrixWorld).y);
+      const slide = {};
+      let pw = null, pl = null, k = 0, fprev = false;
+      const stR = [], stL = [], stAt = [], slideAt = {};
+      for (let i = 0, n = Math.round((4 * every + 2.2) / DT); i < n; i++) {
+        if (k < 5 && i >= Math.round((k * every) / DT)) { aimAt(G); input.click(0); k++; }
+        if (!p.lean.on) { p.lean.on = true; p.object3d.updateMatrixWorld(true); }
+        G.tick(DT);
+        p.lean.on = false;
+        p.object3d.updateMatrixWorld(true);
+        const a = p.atk, d = a?.def, an = d && A.atkDef === d ? A.atkAnim : null;
+        S.setFromMatrixPosition(r.arms.R.upper.matrixWorld);
+        E.setFromMatrixPosition(r.arms.R.fore.matrixWorld);
+        W.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.R.fore.matrixWorld);
+        LW.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.L.fore.matrixWorld);
+        T.set(0, 0, HD.drawnTip).applyMatrix4(r.sword.matrixWorld);
+        Hh.set(0, 0, HD.bladeBase).applyMatrix4(r.sword.matrixWorld);
+        if (![S, E, W, T, LW].every((v) => Number.isFinite(v.x + v.y + v.z))) R.nan++;
+        const rel = (v) => [v.x - p.position.x, v.y - p.position.y, v.z - p.position.z];
+        const w = rel(W), l = rel(LW);
+        const live = !!(d && p.state === 'attack' && !a.pending && an?.clip);
+        const mine = live && OURS.has(an.clip);
+        if (mine && pw) { stR.push(Math.hypot(w[0] - pw[0], w[1] - pw[1], w[2] - pw[2]) / PS); stL.push(Math.hypot(l[0] - pl[0], l[1] - pl[1], l[2] - pl[2]) / PS); stAt.push(`${an.clip} u ${swingPhase(a.t, d.windup, d.active, d.recovery).toFixed(2)}`); }
+        else if (stR.at(-1) !== null) { stR.push(null); stL.push(null); stAt.push(''); }
+        pw = w;
+        pl = l;
+        // the feet on the grass: how far a foot that bears slides or drags its toe, per swing
+        FT.forEach((f, q) => fp[q].setFromMatrixPosition(f.matrixWorld));
+        if (fprev && live) {
+          const sv = (slide[`#${d.combo}`] ??= [0, 0]);
+          for (let q = 0; q < 2; q++) if (fp[q].y <= fy0[q] + 0.012 && f0[q].y <= fy0[q] + 0.012) {
+            const ds = Math.hypot(fp[q].x - f0[q].x, fp[q].z - f0[q].z);
+            sv[q] += ds;
+            if (ds / PS > 0.01) (slideAt[`#${d.combo}`] ??= []).push(`${'RL'[q]} ${((ds / PS) * 100).toFixed(0)}@${swingPhase(a.t, d.windup, d.active, d.recovery).toFixed(2)}`);
+          }
+        }
+        FT.forEach((f, q) => f0[q].copy(fp[q]));
+        fprev = true;
+        if (live && played.at(-1) !== an.clip) played.push(an.clip);
+        if (!live) continue;
+        const uu = swingPhase(a.t, d.windup, d.active, d.recovery), inCut = a.t >= d.windup && a.t <= d.windup + d.active;
+        const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw);
+        const loc = (v) => { const dx = v.x - p.position.x, dz = v.z - p.position.z; return [(dx * fz - dz * fx) / PS, (v.y - p.position.y) / PS, (dx * fx + dz * fz) / PS]; };
+        const wr = ang(a1.subVectors(W, E), a2.subVectors(T, Hh)), el = ang(a1.subVectors(S, E), a2.subVectors(W, E));
+        const tip = loc(T), hand = loc(W);
+        const F = (per[`#${d.combo}`] ??= { clip: an.clip, rows: [] });
+        F.rows.push({ u: uu, t: a.t, inCut, wr, el, tip, hand, rootZ: 0 });
+        if (DUMP && nm === 'relaxed') out(`      ${an.clip} u ${uu.toFixed(2)} step ${((stR.at(-1) ?? 0) * 100).toFixed(0)}/${((stL.at(-1) ?? 0) * 100).toFixed(0)} cm elbow ${el.toFixed(0)}° wrist ${wr.toFixed(0)}° hand ${hand.map((x) => x.toFixed(2)).join(',')} tip ${tip.map((x) => x.toFixed(2)).join(',')} feet L ${loc(fp[1]).map((x) => x.toFixed(2)).join(',')} R ${loc(fp[0]).map((x) => x.toFixed(2)).join(',')} sh ${loc(S).map((x) => x.toFixed(2)).join(',')} el ${loc(E).map((x) => x.toFixed(2)).join(',')} pelvis ${loc(M.setFromMatrixPosition(r.pelvis.matrixWorld)).map((x) => x.toFixed(2)).join(',')} lean ${p.lean?.on}`);
+        if (!mine) continue;
+        // (before u 0.5 the swing is still leaving the pose it started from; past u 2.96 he is on his way home)
+        if (!inCut && uu >= 0.5 && uu <= 2.96 && wr > R.wr) { R.wr = wr; R.wrAt = `${an.clip} u ${uu.toFixed(2)}`; }
+        if (inCut && wr > R.wrCut) { R.wrCut = wr; R.wrCutAt = `${an.clip} u ${uu.toFixed(2)}`; }
+        if (el < R.elMin) { R.elMin = el; R.elAt = `${an.clip} u ${uu.toFixed(2)}`; }
+        if (tip[1] < R.tipY) { R.tipY = tip[1]; R.tipAt = `${an.clip} u ${uu.toFixed(2)}`; }
+        for (const f of [0.5, 1]) {
+          M.lerpVectors(Hh, T, f);
+          const hy = M.y - p.position.y;
+          const bd = Math.hypot(M.x - p.position.x, M.z - p.position.z) / PS;
+          if (hy > 0.45 * PS && hy < 1.5 * PS && bd < R.body) { R.body = bd; R.bodyAt = `${an.clip} u ${uu.toFixed(2)} f ${f}`; }
+        }
+      }
+      A.forceVariant = null;
+      p.lean.on = true;
+      const spike = (st) => Math.max(0, ...st.map((v, i) => (v === null || st[i - 1] == null || st[i + 1] == null ? 0 : v - Math.max(st[i - 1], st[i + 1]))));
+      R.snapR = spike(stR);
+      R.snapL = spike(stL);
+      const spAt = (st, m) => stAt[st.findIndex((v, i) => v !== null && st[i - 1] != null && st[i + 1] != null && Math.abs(v - Math.max(st[i - 1], st[i + 1]) - m) < 1e-9)] ?? '';
+      R.snapRAt = spAt(stR, R.snapR);
+      R.snapLAt = spAt(stL, R.snapL);
+      // per hit: the cut (frames the point moves ≥ 40 % of its fastest), where it crosses his front, the elbow as
+      // it ends, the hand and the point ahead at the finish
+      const H = [];
+      for (let c = 1; c <= 5; c++) {
+        const F = per[`#${c}`];
+        if (!F) { H.push(null); continue; }
+        const X = F.rows, v = X.map((q, i) => (i ? Math.hypot(q.tip[0] - X[i - 1].tip[0], q.tip[1] - X[i - 1].tip[1], q.tip[2] - X[i - 1].tip[2]) : 0));
+        const pk = Math.max(...v), ip = v.indexOf(pk);
+        let i0 = ip, i1 = ip;
+        while (i0 > 1 && v[i0 - 1] > 0.4 * pk) i0--;
+        while (i1 < v.length - 1 && v[i1 + 1] > 0.4 * pk) i1++;
+        const isPoint = SWINGS[F.clip]?.line === 'point';
+        // (the front: where the point crosses his centre line, the tick before and after; a thrust: its furthest point)
+        let cross = null;
+        for (let i = 1; i < X.length && cross === null; i++) if (X[i - 1].u >= 0.9 && Math.sign(X[i].tip[0]) !== Math.sign(X[i - 1].tip[0]) && X[i].tip[2] > 0.3) cross = X[i].u;
+        if (isPoint) { const zz = X.filter((q) => q.u < 2.05).map((q) => q.tip[2]), mz = Math.max(...zz); cross = X[zz.findIndex((z) => z >= mz - 0.05)].u; }
+        const fin = X.filter((q) => q.u >= 2.3 && q.u <= 2.6).at(-1) ?? X.at(-1);
+        H.push({ clip: F.clip, cutN: i1 - i0 + 1, cutU: [X[i0].u, X[i1].u], cross, endEl: isPoint ? Math.max(...X.filter((q) => q.inCut).map((q) => q.el)) : X[i1].el, coilEl: X[Math.max(0, i0 - 1)].el, handZ: fin.hand[2], tipZ: fin.tip[2], tipY: fin.tip[1], finU: fin.u });
+      }
+      out(`   ${cuts} ${nm.padEnd(8)} ${played.join(', ')} | wrist ≤ ${R.wr.toFixed(0)}° (${R.wrAt}) (cut ${R.wrCut.toFixed(0)}°, ${R.wrCutAt}), elbow ≥ ${R.elMin.toFixed(0)}° (${R.elAt}), a tick's step above both its neighbours' ≤ ${(R.snapR * 100).toFixed(1)} cm (${R.snapRAt}) (the free hand ${(R.snapL * 100).toFixed(1)} cm, ${R.snapLAt}), the point ≥ ${R.tipY.toFixed(2)} m up (${R.tipAt}), the steel ≥ ${R.body.toFixed(2)} m off his spine (${R.bodyAt}); feet slide/drag ${[1, 2, 3, 4, 5].map((c) => `#${c} ${(slide[`#${c}`] ?? [0, 0]).map((x) => ((x / PS) * 100).toFixed(0)).join('/')}`).join(' ')} cm`);
+      out(`      ${H.map((h, c) => (h ? `#${c + 1} ${h.clip}: cut ${h.cutN} fr (u ${h.cutU[0].toFixed(2)}-${h.cutU[1].toFixed(2)}), front at u ${h.cross?.toFixed(2) ?? '-'}, coil elbow ${h.coilEl.toFixed(0)}° → ${h.endEl.toFixed(0)}°, finish (u ${h.finU.toFixed(2)}) hand ${h.handZ.toFixed(2)} / point ${h.tipZ.toFixed(2)} m ahead, point ${h.tipY.toFixed(2)} m up` : `#${c + 1} -`)).join('\n      ')}`);
+      if (cuts === 'b') for (const c in slideAt) if (slideAt[c].length) out(`      slides ${c}: ${slideAt[c].join(' ')}`);
+      return { played, R, H, slide };
+    };
+    const runs = {};
+    for (const [nm, every] of [['mashed', 0.3], ['relaxed', 26 / 60]]) {
+      const P0 = play('0', nm, every), Pb = (runs[nm] = play('b', nm, every));
+      const { played, R, H, slide } = Pb;
+      assert(played.length === 5 && played.slice(0, 4).join() === CLIPS.join() && LASTS.includes(played[4]), `the ${nm} chain plays ${CLIPS.join(', ')} and one of hit 5's strokes (${played.join(', ')})`);
+      assert(!R.nan, `no NaN, ${nm} (${R.nan} frames)`);
+      assert(R.wr <= 65 && R.wrCut <= 75 && R.elMin >= 45, `the sword wrist ≤ 65° off the cut (≤ 75° in it), the elbow never folded under 45°, ${nm} (${R.wr.toFixed(0)}° / ${R.wrCut.toFixed(0)}° / ${R.elMin.toFixed(0)}°)`);
+      assert(R.snapR <= 0.08 && R.snapL <= 0.06, `no single-tick snap: no tick moves the sword hand 8 cm past both its neighbours (the free hand 6 cm), ${nm} (${(R.snapR * 100).toFixed(1)} / ${(R.snapL * 100).toFixed(1)} cm)`);
+      assert(R.tipY >= 0.05 && R.body >= 0.12, `the steel off the grass and off his spine, ${nm} (the point ≥ ${R.tipY.toFixed(2)} m, ≥ ${R.body.toFixed(2)} m off the spine)`);
+      const sv = [1, 2, 3, 4, 5].map((c) => slide[`#${c}`] ?? [0, 0]);
+      assert(sv.every((v) => Math.max(...v) / PS <= 0.12), `the feet on the grass slide or drag their toe ≤ 12 cm a swing, ${nm} (${sv.map((v) => v.map((x) => ((x / PS) * 100).toFixed(0)).join('/')).join(', ')} cm)`);
+      assert(H.every((h) => h && h.cross !== null && h.cross >= 1 && h.cross <= 2), `each blade crosses his front (a thrust: its furthest point) inside the active frames, ${nm} (${H.map((h) => h?.cross?.toFixed(2)).join(', ')})`);
+      assert(H.every((h) => h.cutN >= 2 && h.cutN <= 4 && h.cutU[0] >= 0.95 && h.cutU[1] <= 2), `each cut is two to four frames, inside the active frames, ${nm} (${H.map((h) => `${h.cutN}@${h.cutU[0].toFixed(2)}`).join(', ')})`);
+      assert(H.every((h) => h.endEl >= 140), `the arm opens as the cut ends (the elbow ≥ 140°), ${nm} (${H.map((h) => h.endEl.toFixed(0)).join(', ')})`);
+      if (nm === 'relaxed') {
+        // (the variant's point: further ahead than the blink set's at the held finish)
+        const far = H.map((h, c) => h.handZ - P0.H[c].handZ);
+        out(`      the hand further ahead at the finish than blink's by ${far.map((x) => (x * 100).toFixed(0)).join(' / ')} cm (blink ${P0.H.map((h) => h.handZ.toFixed(2)).join(' / ')} m)`);
+        assert(far.slice(0, 3).every((x) => x >= 0.05) && far[4] >= 0.0, `the finishes reach further ahead than the blink set's (the hand ${far.map((x) => (x * 100).toFixed(0)).join(' / ')} cm)`);
+      }
+    }
+    // hit 5's other strokes, pinned, relaxed
+    for (const v of [1, 2]) {
+      const { played, R, H } = play('b', `hit5 #${v}`, 26 / 60, v);
+      assert(played[4] === LASTS[v] && !R.nan && R.wr <= 65 && R.wrCut <= 75 && R.elMin >= 45 && R.snapR <= 0.08 && R.snapL <= 0.06 && R.tipY >= 0.05 && R.body >= 0.12 && H[4].cross >= 1 && H[4].cross <= 2 && H[4].cutN >= 2 && H[4].cutN <= 4 && H[4].endEl >= 140,
+        `${LASTS[v]} pinned: plays, the arm, the snaps, the steel and the cut as above (${played[4]}, ${R.wr.toFixed(0)}°/${R.wrCut.toFixed(0)}°/${R.elMin.toFixed(0)}°, ${(R.snapR * 100).toFixed(1)}/${(R.snapL * 100).toFixed(1)} cm, ${R.tipY.toFixed(2)} m, ${R.body.toFixed(2)} m, front u ${H[4].cross?.toFixed(2)}, ${H[4].cutN} fr, ${H[4].endEl.toFixed(0)}°)`);
+    }
+
+    // ---- each hit lands where the blink set's does, inside its active frames (GCD_CUTSB_QUICK=1: skipped, with the 24 chains)
+    if (QUICK) return last;
+    const hitAt = (cuts, n, gap, every, force = null) => {
+      CB.setLights('blink');
+      CB.setCuts(cuts);
+      const G = (last = build());
+      fightSetup(G);
+      settle(G);
+      const { game, input } = G, d = game.dragon, p = game.player;
+      const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
+      const chest = () => d.hurtSpheres.filter((h) => h.part === 'body').reduce((a, h) => ((h.x - d.position.x) * fx + (h.z - d.position.z) * fz > (a.x - d.position.x) * fx + (a.z - d.position.z) * fz ? h : a));
+      p.debug.teleport(d.position.x + fx * 40, d.position.z + fz * 40);
+      p.debug.god = true;
+      p.anim.forceVariant = force;
+      aimAt(G);
+      let hit = null;
+      for (let k = 0; k < n; k++) {
+        if (k === n - 1) {
+          const c = chest();
+          p.debug.teleport(c.x + fx * (c.r + gap), c.z + fz * (c.r + gap));
+          p.yaw = Math.atan2(c.x - p.position.x, c.z - p.position.z);
+          G.watch = (nn, e) => { if (nn === 'player:hitDragon' && !hit) hit = { combo: p.atk?.def?.combo, t: p.atk?.t ?? NaN, def: p.atk?.def, guarded: e.guarded, shards: e.shards }; };
+        }
+        aimAt(G);
+        input.click(0);
+        run(G, k < n - 1 ? every : 1.2, { passive: true });
+      }
+      G.watch = null;
+      p.anim.forceVariant = null;
+      if (!hit || hit.combo !== n || hit.guarded) return null;
+      return (hit.t - hit.def.windup) / hit.def.active;
+    };
+    const inAct = (s) => s !== null && s >= -1e-6 && s <= 1 + 1e-6;
+    const reachOf = (cuts, n, every, force = null) => {
+      let g = 2.0;
+      while (g < 3.9 && inAct(hitAt(cuts, n, g + 0.25, every, force))) g += 0.25;
+      return g;
+    };
+    {
+      const rows = [], bad = [], t0 = Date.now();
+      // (hit 5: the blink set's five strokes span a range of reaches; each of ours inside it, ± 0.15 m)
+      const r5 = [0, 1, 2, 3, 4].map((f) => reachOf('0', 5, 26 / 60, f));
+      const b5 = [0, 1, 2, 3, 4].map((f) => hitAt('0', 5, 2.0, 0.3, f));
+      for (let n = 1; n <= 5; n++) {
+        const fs = n === 5 ? [0, 1, 2] : [null];
+        for (const f of fs) {
+          const s1 = hitAt('b', n, 2.0, 0.3, f), s2 = hitAt('b', n, 2.0, 26 / 60, f);
+          const s0 = n === 5 ? null : hitAt('0', n, 2.0, 0.3);
+          const rb = reachOf('b', n, 26 / 60, f), r0 = n === 5 ? null : reachOf('0', n, 26 / 60);
+          rows.push(`#${n}${f === null ? '' : `/${LASTS[f]}`}: 2 m u ${s1 === null ? 'miss' : s1.toFixed(2)} / ${s2 === null ? 'miss' : s2.toFixed(2)}${n < 5 ? ` (blink mashed ${s0 === null ? 'miss' : s0.toFixed(2)})` : ''}, lands out to ${rb.toFixed(2)} m (blink ${n === 5 ? r5.map((x) => x.toFixed(2)).join('/') : r0.toFixed(2)} m)`);
+          const mashOk = n === 5 ? inAct(s1) || !b5.some(inAct) : inAct(s1) || !inAct(s0);
+          const reachOk = n === 5 ? rb >= Math.min(...r5) - 0.25 - 1e-6 && rb <= Math.max(...r5) + 0.25 + 1e-6 : Math.abs(rb - r0) <= 0.25 + 1e-6;
+          if (!mashOk || !inAct(s2) || !reachOk) bad.push(`#${n}${f === null ? '' : `/${f}`}`);
+        }
+      }
+      out(`   hits (active-frame fraction, mashed / relaxed): ${rows.join('; ')}; blink's hit 5 mashed at 2 m: ${b5.map((x) => (x === null ? 'miss' : x.toFixed(2))).join('/')} (${((Date.now() - t0) / 1000).toFixed(0)} s)`);
+      assert(!bad.length, `every hit lands 2 m off inside its active frames (relaxed; mashed where the blink set's does), and reaches as far as the blink set's within one 0.25 m step (hit 5: inside its five strokes' range, ± one step) (${bad.join(', ') || 'all'})`);
+    }
+
+    // ---- hit 5 over 24 mashed chains: every stroke comes up, never the same one twice running, no shards
+    {
+      CB.setLights('blink');
+      CB.setCuts('b');
+      const G = (last = build());
+      fightSetup(G);
+      const { game, input } = G, p = game.player, A = p.anim, d0 = game.dragon;
+      p.debug.god = true;
+      const got = [];
+      let sh = 0, slamEv = 0;
+      const sh0 = p.fx.slamShards;
+      p.fx.slamShards = function (...a) { sh++; return sh0.apply(this, a); };
+      G.watch = (nn) => { if (nn === 'player:slam') slamEv++; };
+      for (let c = 0; c < 24; c++) {
+        p.debug.teleport(d0.position.x + 14, d0.position.z + 14);
+        p.yaw = Math.atan2(d0.position.x - p.position.x, d0.position.z - p.position.z);
+        let in5 = false;
+        for (let i = 0, clicks = 0; i < Math.round(3.2 / DT); i++) {
+          const now5 = p.atk?.def === CB.LIGHT[4] && p.state === 'attack';
+          if (now5 && !in5) got.push(A.atkAnim?.clip);
+          if (in5 && !now5) break;
+          in5 = now5;
+          if (!in5 && clicks < 30 && i % 6 === 0) { aimAt(G); input.click(0); clicks++; }
+          G.tick(DT);
+        }
+        run(G, 0.8, { passive: true });
+      }
+      p.fx.slamShards = sh0;
+      G.watch = null;
+      const count = Object.fromEntries(LASTS.map((nm) => [nm, got.filter((x) => x === nm).length]));
+      const twice = got.filter((x, i) => i && x === got[i - 1]).length;
+      out(`   24 chains: ${JSON.stringify(count)}, twice running ${twice}, shards ${sh}, player:slam ${slamEv}`);
+      assert(got.length === 24 && LASTS.every((nm) => count[nm] >= 2) && twice === 0, `over 24 mashed chains hit 5 plays every stroke (each ≥ 2 times) and never the same one twice running (${got.length})`);
+      assert(sh === 0 && slamEv === 0, `hit 5 bursts no shards and sends no player:slam (${sh} / ${slamEv})`);
+    }
+  } finally {
+    CB.setCuts(cuts0);
+    CB.setLights(lights0);
+  }
+  return last;
 }
 
 // ================================================================== `cutsc`: the instant chain's variant c, wide committed arcs
@@ -14687,9 +15245,367 @@ async function scenarioCutsB() {
 async function scenarioCutsC() {
   out('\n== scenario CUTSC (?lights=blink&cuts=c: wide committed arcs) ==');
   const CB = await imp('src/entities/player/combat.js');
-  const G = build();
+  const { SWINGS } = await imp('src/entities/player/swings.js');
+  const { CUTS_C, LIGHT_CUTS_C } = await imp('src/entities/player/cutsC.js');
+  const { swingPhase } = await imp('src/entities/player/anim.js');
+  const { DIM: HD, PLAYER_SCALE: PS } = await imp('src/entities/player/model.js');
+  const lights0 = CB.lightsMode(), cuts0 = CB.cutsMode(), DEG = 180 / Math.PI;
+  const HITS = ['cutC1', 'cutC2', 'cutC3', 'cutC4'], LASTS = ['cutC5Wheel', 'cutC5Sweep', 'cutC5Low'], ALL = [...HITS, ...LASTS];
+  const numsOf = (d) => JSON.stringify(Object.entries(d).filter(([k]) => !['anim', 'variants', 'contact', 'glint'].includes(k)));
+  let last = null;
   assert(CB.CUTS_IDS.includes('c'), 'the variant is registered');
-  return G;
+  try {
+    // ---- what they are: seven clips in SWINGS, an instant slash each in the active frames, a held finish and a slow
+    // rise (home 1, settle 0.4-0.5), no spin / hop / turn; hit 5's three strokes plain and strong, three lines, none hit 4's
+    {
+      const bad = [];
+      for (const n of ALL) {
+        const C = SWINGS[n];
+        if (!C || C !== CUTS_C[n]) { bad.push(`${n}: not in SWINGS`); continue; }
+        if (C.home !== 1 || !(C.settle >= 0.4 && C.settle <= 0.5)) bad.push(`${n}: home ${C.home} settle ${C.settle}`);
+        if (!(C.slash?.length === 1 && C.slash[0][0] >= 1 && C.slash[0][1] <= 2)) bad.push(`${n}: slash`);
+        if (C.side) bad.push(`${n}: side`);
+        if (LASTS.includes(n) && (!C.plain || C.slashLook !== 'strong')) bad.push(`${n}: not plain / strong`);
+        if (C.keys.some((k) => Array.isArray(k.a) && k.a[1] > 50)) bad.push(`${n}: a key stands the blade over 50°`);
+      }
+      const looks = LIGHT_CUTS_C.flatMap((L) => [L.anim, ...(L.variants ?? [])]);
+      if (looks.some((an) => an.spin || an.hop || an.turn || an.feet)) bad.push('spin/hop/turn/dash');
+      const l5 = LASTS.map((n) => SWINGS[n]?.line);
+      assert(!bad.length && new Set(l5).size === 3 && !l5.includes(SWINGS.cutC4.line),
+        `seven clips, one slash each in the active frames, a held finish (home 1, settle 0.4-0.5), no blade over 50°, no spin / hop / turn; hit 5's strokes plain and strong on three lines (${l5.join(', ')}), none hit 4's (${SWINGS.cutC4.line}) (${bad.join('; ') || 'all'})`);
+    }
+    // ---- the looks: worn under blink + cuts c; the blink set's own back under cuts 0; no number of a def changes
+    {
+      CB.setCuts('0');
+      CB.setLights('new');
+      const base = CB.LIGHT.map(numsOf);
+      CB.setLights('blink');
+      CB.setCuts('c');
+      const L = CB.LIGHT;
+      const on = L.slice(0, 4).map((d) => d.anim.clip).join() === HITS.join() && L.slice(0, 4).every((d) => !d.variants?.length)
+        && L[4].anim.clip === LASTS[0] && L[4].variants.map((v) => v.clip).join() === LASTS.slice(1).join() && L[4].contact === 'sweep' && L[3].contact === 'light' && !L[3].glint;
+      const same = L.every((d, i) => numsOf(d) === base[i]);
+      CB.setCuts('0');
+      const back = CB.LIGHT.map((d) => d.anim.clip).join() === 'blinkFall,blinkFlat,blinkCross,blinkThrust,lastRise' && CB.LIGHT[3].contact === 'point';
+      CB.setCuts('c');
+      assert(on && same && back, `?lights=blink&cuts=c wears ${HITS.join(', ')} and ${LASTS[0]} (+ ${LASTS.slice(1).join(', ')}), hit 4 drawn as a slash; every number unchanged (${same}); cuts=0 gives the blink set's back (${back})`);
+    }
+
+    // ---- played: the chain mashed (0.3 s) and relaxed (0.43 s) from the fight hold, hit 5 pinned to each stroke
+    const S = new THREE.Vector3(), E = new THREE.Vector3(), W = new THREE.Vector3(), T = new THREE.Vector3(), Hh = new THREE.Vector3(), LW = new THREE.Vector3(), M = new THREE.Vector3(), Hd = new THREE.Vector3(), Pv = new THREE.Vector3();
+    const a1 = new THREE.Vector3(), a2 = new THREE.Vector3();
+    const ang = (u, v) => Math.acos(clamp(u.normalize().dot(v.normalize()), -1, 1)) * DEG;
+    const OURS = new Set(ALL);
+    const play = (look, nm, every, v5) => {
+      CB.setLights('blink');
+      CB.setCuts(look);
+      const G = (last = build());
+      fightSetup(G);
+      const { game, input } = G, p = game.player, d0 = game.dragon, r = p.rig, A = p.anim;
+      p.debug.god = true;
+      p.debug.teleport(d0.position.x + 14, d0.position.z + 14);
+      p.yaw = Math.atan2(d0.position.x - p.position.x, d0.position.z - p.position.z);
+      aimAt(G);
+      for (let i = 0; i < 40; i++) G.tick(DT);
+      A.forceVariant = v5;
+      const played = [], R = { wr: 0, wrAt: '', wrCut: 0, elMin: 999, elAt: '', elEnd: 999, snapR: 0, snapL: 0, tipY: 9, body: 9, head: 9, nan: 0, cross: [], cutN: [], tilt: [] };
+      const stR = [], stL = [], stW = [];
+      let pw = null, pl = null, k = 0;
+      const FT = [r.legs.R.foot, r.legs.L.foot], fp = FT.map(() => new THREE.Vector3()), f0 = FT.map(() => new THREE.Vector3());
+      const fy0 = FT.map((f) => f0[0].setFromMatrixPosition(f.matrixWorld).y);
+      const slide = {};
+      let fprev = false, cur = null;
+      const flush = () => {
+        if (!cur) return;
+        // the blade crosses his front: the point's sideways offset (his frame at the swing's start) changes sign while ahead of him
+        const F = cur.F, x = F.findIndex((q, i) => i && q.tb[2] > 0 && Math.sign(q.tb[0]) !== Math.sign(F[i - 1].tb[0]));
+        R.cross.push(x < 0 ? `${cur.clip} none` : `${cur.clip} u ${F[x].u.toFixed(2)}`);
+        if (process.env.GCD_CUTSC_DUMP && nm === 'mashed' && v5 === 0) out(`      ${cur.clip}: ${F.map((q) => `${q.u.toFixed(2)}(${q.tip.map((t) => t.toFixed(2)).join(',')})`).join(' ')}
+        ${F.map((q) => q.dbg).join(' ')}`);
+        cur.crossOk = x >= 0 && F[x].u >= 1 && F[x].u <= 2;
+        // the cut: the frames whose point speed is ≥ 40 % of the peak, round the peak
+        const vt = F.map((q, i) => (i ? Math.hypot(q.tip[0] - F[i - 1].tip[0], q.tip[1] - F[i - 1].tip[1], q.tip[2] - F[i - 1].tip[2]) : 0));
+        const pk = Math.max(...vt), ip = vt.indexOf(pk);
+        let i0 = ip, i1 = ip;
+        while (i0 > 1 && vt[i0 - 1] > 0.4 * pk) i0--;
+        while (i1 < vt.length - 1 && vt[i1 + 1] > 0.4 * pk) i1++;
+        R.cutN.push(`${cur.clip} ${i1 - i0 + 1}`);
+        cur.cutN = i1 - i0 + 1;
+        R.elEnd = Math.min(R.elEnd, F[i1].elbow);
+        // the line as the game camera sees it (from behind him, 58° down), between the point's frames at the slash's ends
+        const sl = SWINGS[cur.clip]?.slash?.[0] ?? [1.2, 1.5], j0 = F.findIndex((q) => q.u >= sl[0]), j1 = F.findIndex((q) => q.u >= sl[1]);
+        if (j0 >= 0 && j1 > j0) {
+          const ld = [0, 1, 2].map((c) => F[j1].tip[c] - F[j0].tip[c]), CP = (58 * Math.PI) / 180;
+          let tl = Math.atan2(ld[1] * Math.cos(CP) + ld[2] * Math.sin(CP), -ld[0]) * DEG;
+          while (tl < 0) tl += 180;
+          while (tl >= 180) tl -= 180;
+          R.tilt.push(`${cur.clip} ${tl.toFixed(0)}° at ${((F[j0].tip[1] + F[j1].tip[1]) / 2).toFixed(2)} m`);
+        }
+        R.done.push(cur);
+        cur = null;
+      };
+      R.done = [];
+      for (let i = 0, N = Math.round((4 * every + 2.4) / DT); i < N; i++) {
+        if (k < 5 && i >= Math.round((k * every) / DT)) { aimAt(G); input.click(0); k++; }
+        G.tick(DT);
+        const a = p.atk, d = a?.def, an = d && A.atkDef === d ? A.atkAnim : null;
+        S.setFromMatrixPosition(r.arms.R.upper.matrixWorld);
+        E.setFromMatrixPosition(r.arms.R.fore.matrixWorld);
+        W.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.R.fore.matrixWorld);
+        LW.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.L.fore.matrixWorld);
+        T.set(0, 0, HD.drawnTip).applyMatrix4(r.sword.matrixWorld);
+        Hh.set(0, 0, HD.bladeBase).applyMatrix4(r.sword.matrixWorld);
+        if (![S, E, W, T, LW].every((v) => Number.isFinite(v.x + v.y + v.z))) R.nan++;
+        const rel = (v) => [v.x - p.position.x, v.y - p.position.y, v.z - p.position.z];
+        const w = rel(W), l = rel(LW);
+        const live = !!(d && p.state === 'attack' && !a.pending && an?.clip);
+        const mine = live && (look !== 'c' || OURS.has(an.clip)) && d.combo >= 1 && d.combo <= 5;
+        if (mine && pw) { stR.push(Math.hypot(w[0] - pw[0], w[1] - pw[1], w[2] - pw[2]) / PS); stL.push(Math.hypot(l[0] - pl[0], l[1] - pl[1], l[2] - pl[2]) / PS); stW.push(`${an.clip} u ${swingPhase(a.t, d.windup, d.active, d.recovery).toFixed(2)}`); }
+        else if (stR.at(-1) !== null) { stR.push(null); stL.push(null); stW.push(''); }
+        pw = w;
+        pl = l;
+        // the feet on the grass: how far a bearing foot slides or drags, per swing
+        FT.forEach((f, q) => fp[q].setFromMatrixPosition(f.matrixWorld));
+        if (fprev && mine) {
+          const sv = (slide[an.clip] ??= [0, 0]);
+          for (let q = 0; q < 2; q++) if (fp[q].y <= fy0[q] + 0.012 && f0[q].y <= fy0[q] + 0.012) sv[q] += Math.hypot(fp[q].x - f0[q].x, fp[q].z - f0[q].z) / PS;
+        }
+        FT.forEach((f, q) => f0[q].copy(fp[q]));
+        fprev = true;
+        if (live && played.at(-1) !== an.clip) played.push(an.clip);
+        if (!mine) { flush(); continue; }
+        if (!cur || cur.rec !== a) { flush(); cur = { rec: a, clip: an.clip, F: [], yaw: p.yaw, x: p.position.x, z: p.position.z }; }
+        const uu = swingPhase(a.t, d.windup, d.active, d.recovery), inCut = a.t >= d.windup && a.t <= d.windup + d.active;
+        const wr = ang(a1.subVectors(W, E), a2.subVectors(T, Hh)), el = ang(a1.subVectors(S, E), a2.subVectors(W, E));
+        {
+          const fx = Math.sin(cur.yaw), fz = Math.cos(cur.yaw), dx = T.x - p.position.x, dz = T.z - p.position.z;
+          const bt = r.body.worldToLocal(M.copy(T));
+          cur.F.push({ u: uu, tip: [(dx * fz - dz * fx) / PS, (T.y - p.position.y) / PS, (dx * fx + dz * fz) / PS], tb: [bt.x, bt.y, bt.z], elbow: el });
+          if (process.env.GCD_CUTSC_DUMP && nm === 'mashed' && v5 === 0) {
+            // the blade in the body's own axes (r.body: what a clip's `a` is keyed in), the root's turn since the swing began
+            const bt = r.body.worldToLocal(T.clone()), bh = r.body.worldToLocal(Hh.clone()), bd = bt.sub(bh).normalize();
+            cur.F.at(-1).dbg = `${uu.toFixed(2)}[a ${(Math.atan2(bd.x, bd.z) * DEG).toFixed(0)},${(Math.asin(clamp(bd.y, -1, 1)) * DEG).toFixed(0)} dyaw ${((p.yaw - cur.yaw) * DEG).toFixed(0)}]`;
+          }
+        }
+        // (the wrist off the cut from u 0.5 (the swing still leaving the pose before) to the end of its keys)
+        if (!inCut && uu >= 0.5 && uu <= 2.95 && wr > R.wr) { R.wr = wr; R.wrAt = `${an.clip} u ${uu.toFixed(2)}`; }
+        if (inCut) R.wrCut = Math.max(R.wrCut, wr);
+        if (uu >= 0.5 && el < R.elMin) { R.elMin = el; R.elAt = `${an.clip} u ${uu.toFixed(2)}`; }
+        R.tipY = Math.min(R.tipY, (T.y - p.position.y) / PS);
+        Hd.setFromMatrixPosition(r.head.matrixWorld);
+        Pv.setFromMatrixPosition(r.pelvis.matrixWorld);
+        for (let s = 0; s <= 6; s++) {
+          M.copy(Hh).lerp(T, s / 6);
+          const q = clamp(a1.subVectors(M, Pv).dot(a2.subVectors(Hd, Pv)) / a2.lengthSq(), 0, 1);
+          R.body = Math.min(R.body, M.distanceTo(a2.multiplyScalar(q).add(Pv)) / PS);
+          R.head = Math.min(R.head, M.distanceTo(Hd) / PS);
+        }
+      }
+      flush();
+      A.forceVariant = null;
+      const spikes = (st) => st.map((v, i) => (v === null || st[i - 1] == null || st[i + 1] == null ? 0 : v - Math.max(st[i - 1], st[i + 1])));
+      const sR = spikes(stR), sL = spikes(stL);
+      R.snapR = Math.max(0, ...sR);
+      R.snapL = Math.max(0, ...sL);
+      R.snapAt = `${stW[sR.indexOf(R.snapR)] ?? ''} / ${stW[sL.indexOf(R.snapL)] ?? ''}`;
+      if (process.env.GCD_CUTSC_DUMP && nm === 'mashed' && v5 === 0) out(`      the free hand's steps (cm): ${stL.map((v, i) => (v === null ? '|' : `${stW[i].replace('cutC', '').replace(' u ', '@')}:${(v * 100).toFixed(0)}`)).join(' ')}`);
+      R.played = played;
+      R.slide = slide;
+      return R;
+    };
+    const rows = [], SNAP0 = {};
+    for (const [nm, every] of [['mashed', 0.3], ['relaxed', 0.43]]) {
+      const R0 = play('0', nm, every, 0);
+      SNAP0[nm] = R0;
+      out(`   blink's own ${nm}: snaps: the sword hand ${(R0.snapR * 100).toFixed(1)}, the free hand ${(R0.snapL * 100).toFixed(1)} cm (${R0.snapAt}); feet ${Object.entries(R0.slide).map(([c, s]) => `${c} ${s.map((x) => (x * 100).toFixed(0)).join('/')}`).join(', ')}`);
+      for (let v5 = 0; v5 < 3; v5++) {
+        const R = play('c', nm, every, v5);
+        const want = [...HITS, LASTS[v5]];
+        const slideTxt = Object.entries(R.slide).map(([c, s]) => `${c} ${s.map((x) => (x * 100).toFixed(0)).join('/')}`).join(', ');
+        out(`   ${nm.padEnd(7)} ${R.played.join(', ')} | wrist ≤ ${R.wr.toFixed(0)}° (${R.wrAt}) (cut ${R.wrCut.toFixed(0)}°), elbow ≥ ${R.elMin.toFixed(0)}° (${R.elAt}), at the cut's end ≥ ${R.elEnd.toFixed(0)}°, snaps: the sword hand ${(R.snapR * 100).toFixed(1)}, the free hand ${(R.snapL * 100).toFixed(1)} cm (${R.snapAt}), the point ≥ ${R.tipY.toFixed(2)} m up, the steel ≥ ${R.body.toFixed(2)} m off his spine, ${R.head.toFixed(2)} m off his head`);
+        out(`           crosses his front: ${R.cross.join(', ')}; cut frames: ${R.cutN.join(', ')}; lines: ${R.tilt.join(', ')}; feet slide/drag cm: ${slideTxt}`);
+        rows.push({ nm, v5, R, want, R0: SNAP0[nm] });
+        assert(R.played.join() === want.join(), `the ${nm} chain plays ${want.join(', ')} (${R.played.join(', ')})`);
+      }
+    }
+    const all = (f) => rows.every(({ R }) => f(R));
+    assert(all((R) => !R.nan), 'no NaN in any chain');
+    assert(all((R) => R.done.every((c) => c.crossOk)), `the blade crosses his front inside the active frames, every hit (${rows.map(({ R }) => R.cross.join(' ')).filter((x) => x.includes('none')).join('; ') || 'all'})`);
+    assert(all((R) => R.done.every((c) => c.cutN >= 2 && c.cutN <= 4)), `each cut is instant: two to four frames of fast steel (${rows[0].R.cutN.join(', ')})`);
+    assert(all((R) => R.wr <= 65 && R.wrCut <= 75 && R.elMin >= 40 && R.elEnd >= 140), `the sword wrist ≤ 65° off the cut and ≤ 75° on it, the elbow never folded under 40°, open (≥ 140°) as the cut ends (${rows.map(({ R }) => `${R.wr.toFixed(0)}/${R.wrCut.toFixed(0)}/${R.elMin.toFixed(0)}/${R.elEnd.toFixed(0)}`).join(', ')})`);
+    // (an instant cut is a jump in the sword hand's step by its nature: bounded by the blink set's own chain, as steela bounds by today's)
+    assert(rows.every(({ R, R0 }) => R.snapR <= Math.max(0.08, 1.1 * R0.snapR) && R.snapL <= Math.max(0.08, 1.1 * R0.snapL)), `no single-tick snap past the blink set's own chain (× 1.1; 8 cm at least): the sword hand, the free hand (${rows.map(({ R, R0 }) => `${(R.snapR * 100).toFixed(1)}/${(R.snapL * 100).toFixed(1)} vs ${(R0.snapR * 100).toFixed(1)}/${(R0.snapL * 100).toFixed(1)}`).join(', ')})`);
+    assert(all((R) => R.tipY >= 0.03 && R.body >= 0.1 && R.head >= 0.15), `the steel off the grass and out of his body and head (${rows.map(({ R }) => `${R.tipY.toFixed(2)}/${R.body.toFixed(2)}/${R.head.toFixed(2)}`).join(', ')})`);
+    assert(all((R) => Object.values(R.slide).every((s) => Math.max(...s) <= 0.12)), `the feet on the grass slide or drag ≤ 12 cm a swing (${rows.map(({ R }) => Math.max(0, ...Object.values(R.slide).flat()).toFixed(2)).join(', ')} m)`);
+
+    // ---- each hit lands on the wyrm where the blink set's does (2 m: lands inside its active frames; 2.45 m: the same answer)
+    const hitAt = (look, n, gap, every, v5) => {
+      CB.setLights('blink');
+      CB.setCuts(look);
+      const G = (last = build());
+      fightSetup(G);
+      settle(G);
+      const { game, input } = G, d = game.dragon, p = game.player;
+      const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
+      const chest = () => d.hurtSpheres.filter((h) => h.part === 'body').reduce((a, h) => ((h.x - d.position.x) * fx + (h.z - d.position.z) * fz > (a.x - d.position.x) * fx + (a.z - d.position.z) * fz ? h : a));
+      p.debug.teleport(d.position.x + fx * 40, d.position.z + fz * 40);
+      p.debug.god = true;
+      p.anim.forceVariant = v5;
+      aimAt(G);
+      let hit = null;
+      for (let k = 0; k < n; k++) {
+        if (k === n - 1) {
+          const c = chest();
+          p.debug.teleport(c.x + fx * (c.r + gap), c.z + fz * (c.r + gap));
+          p.yaw = Math.atan2(c.x - p.position.x, c.z - p.position.z);
+          G.watch = (nn, e) => { if (nn === 'player:hitDragon' && !hit) hit = { combo: p.atk?.def?.combo, t: p.atk?.t ?? NaN, def: p.atk?.def, guarded: e.guarded }; };
+        }
+        aimAt(G);
+        input.click(0);
+        if (k < n - 1) run(G, every, { passive: true });
+        else {
+          // (the last hit: where its blade is through the active frames, against the chest sphere it is aimed at)
+          const c = chest(), D = (hitAt.diag = { top: -9, gap: 9, cl: '', fr: [] });
+          for (let i = 0; i < Math.round(1.2 / DT); i++) {
+            bot(G, { passive: true });
+            G.tick(DT);
+            const a = p.atk, df = a?.def;
+            if (!(df && df.combo === n && a.t >= df.windup && a.t <= df.windup + df.active)) continue;
+            D.cl = p.anim.atkAnim?.clip ?? '';
+            const m = p.rig.sword.matrixWorld;
+            let ft = -9, fg = 9;
+            for (const f of [0.16, 0.5, 0.93, 1.3]) {
+              M.set(0, 0, f).applyMatrix4(m);
+              ft = Math.max(ft, M.y - c.y + c.r);
+              fg = Math.min(fg, Math.hypot(M.x - c.x, M.z - c.z) - c.r);
+            }
+            D.top = Math.max(D.top, ft);
+            D.gap = Math.min(D.gap, fg);
+            D.fr.push(`${swingPhase(a.t, df.windup, df.active, df.recovery).toFixed(2)}:${ft.toFixed(2)}/${fg.toFixed(2)}`);
+          }
+        }
+      }
+      G.watch = null;
+      p.anim.forceVariant = null;
+      if (!hit || hit.combo !== n || hit.guarded) return null;
+      return (hit.t - hit.def.windup) / hit.def.active;
+    };
+    {
+      const rowsH = [], bad = [];
+      const inAct = (s) => s !== null && s >= -1e-6 && s <= 1 + 1e-6;
+      const dg = () => (process.env.GCD_CUTSC_DUMP && hitAt.diag ? ` [${hitAt.diag.cl} blade top ${hitAt.diag.top.toFixed(2)} m over the sphere's foot, ${hitAt.diag.gap.toFixed(2)} m off it in plan; per frame u:top/plan ${hitAt.diag.fr.join(' ')}]` : '');
+      // (the furthest gap, in 0.1 m steps from 2 m, at which the hit still lands inside its active frames)
+      const reachOf = (look, n, every, v5) => {
+        let g = 2.0;
+        while (g < 3.0 && inAct(hitAt(look, n, g + 0.1, every, v5))) g += 0.1;
+        return g;
+      };
+      // hit 5 as blinklast lands it: the chain from far off, and he is stood `gap` m from the chest as hit 5 starts
+      const land5 = (look, v, gap, every) => {
+        CB.setLights('blink');
+        CB.setCuts(look);
+        const G = (last = build());
+        fightSetup(G);
+        const { game, input } = G, d = game.dragon, p = game.player, A = p.anim;
+        p.debug.god = true;
+        settle(G);
+        const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
+        const c = d.hurtSpheres.filter((h) => h.part === 'body').reduce((x, h) => ((h.x - d.position.x) * fx + (h.z - d.position.z) * fz > (x.x - d.position.x) * fx + (x.z - d.position.z) * fz ? h : x));
+        p.debug.teleport(d.position.x + fx * 40, d.position.z + fz * 40);
+        aimAt(G);
+        A.forceVariant = v;
+        let hit = null, near = false, clicks = 0;
+        G.watch = (nn, e) => { if (nn === 'player:hitDragon' && near && !hit) hit = { t: p.atk?.t ?? NaN, def: p.atk?.def, guarded: e.guarded }; };
+        for (let i = 0; i < Math.round(3.4 / DT); i++) {
+          const in5 = p.atk?.def === CB.LIGHT[4] && p.state === 'attack';
+          if (!near && clicks < 5 && i >= Math.round((clicks * every) / DT) && !in5) { aimAt(G); input.click(0); clicks++; }
+          if (in5 && !near) {
+            near = true;
+            p.debug.teleport(c.x + fx * (c.r + gap), c.z + fz * (c.r + gap));
+            p.yaw = Math.atan2(c.x - p.position.x, c.z - p.position.z);
+            aimAt(G);
+          }
+          G.tick(DT);
+          if (near && !(p.atk?.def === CB.LIGHT[4])) break;
+        }
+        G.watch = null;
+        A.forceVariant = null;
+        if (!hit || hit.guarded || hit.def !== CB.LIGHT[4]) return null;
+        return (hit.t - hit.def.windup) / hit.def.active;
+      };
+      const reach5 = (look, v, every) => {
+        let g = 2.0;
+        while (g < 3.0 && inAct(land5(look, v, g + 0.1, every))) g += 0.1;
+        return g;
+      };
+      // (each stroke against the blink set's stroke of its kind: the rising backhand for the wheel, its level sweep, its low cut)
+      const rt5 = [0, 2, 4].map((v) => reach5('0', v, 0.43));
+      for (const every of [0.3, 0.43]) {
+        for (let n = 1; n <= 5; n++) {
+          for (const v5 of n === 5 ? [0, 1, 2] : [null]) {
+            const s = n === 5 ? null : hitAt('c', n, 2.0, every, v5), d1 = dg();
+            if (n <= 3) {
+              const s2 = hitAt('c', n, 2.45, every, v5), t = hitAt('0', n, 2.45, every, null);
+              rowsH.push(`${every}s#${n}: 2 m ${s === null ? 'miss' : s.toFixed(2)}, 2.45 m ${s2 === null ? 'miss' : s2.toFixed(2)}/blink ${t === null ? 'miss' : t.toFixed(2)}`);
+              if (!inAct(s) || (s2 === null) !== (t === null) || (s2 !== null && !inAct(s2))) bad.push(`${every}s#${n}`);
+            } else if (n === 5) {
+              const s5 = land5('c', v5, 2.0, every), rs = every > 0.4 ? reach5('c', v5, every) : NaN;
+              rowsH.push(`${every}s#5${LASTS[v5].slice(5)} (stood 2 m off as it starts): ${s5 === null ? 'miss' : s5.toFixed(2)}${every > 0.4 ? `, lands out to ${rs.toFixed(1)} m (blink's ${['lastRise', 'lastSweep', 'lastLow'][v5]} ${rt5[v5].toFixed(1)} m)` : ''}`);
+              if (!inAct(s5) || rs < rt5[v5] - 0.15 - 1e-6) bad.push(`${every}s#5${LASTS[v5]}`);
+            } else {
+              // (hit 4: the reach, read at the relaxed pace as steelb does, against the blink set's thrust)
+              if (process.env.GCD_CUTSC_DUMP && n === 5) { const sb = hitAt('0', 5, 2.0, every, [0, 2, 4][v5]); out(`      (blink ${[0, 2, 4][v5]}: 2 m ${sb === null ? 'miss' : sb.toFixed(2)}${dg()})`); }
+              const rs = every > 0.4 ? reachOf('c', n, every, v5) : NaN, rt = every > 0.4 ? reachOf('0', n, every, n === 5 ? 0 : null) : NaN;
+              rowsH.push(`${every}s#${n}${n === 5 ? LASTS[v5].slice(5) : ''}: 2 m ${s === null ? 'miss' : s.toFixed(2)}${d1}${every > 0.4 ? `, lands out to ${rs.toFixed(1)} m (blink ${rt.toFixed(1)} m)` : ''}`);
+              if (!inAct(s) || rs < rt - 0.15 - 1e-6) bad.push(`${every}s#${n}${n === 5 ? LASTS[v5] : ''}`);
+            }
+          }
+        }
+      }
+      out(`   hits (active-frame fraction):\n      ${rowsH.join('\n      ')}`);
+      assert(!bad.length, `each hit lands 2 m in front inside its active frames; at 2.45 m hits 1-3 land where the blink set's do, hits 4-5 reach at least as far as its (within 0.15 m) (${bad.join(', ') || 'all'})`);
+    }
+
+    // ---- hit 5 over 30 mashed chains: every stroke comes up, never the same one twice running, no shards
+    {
+      CB.setLights('blink');
+      CB.setCuts('c');
+      const G = (last = build());
+      fightSetup(G);
+      const { game, input } = G, p = game.player, A = p.anim, d0 = game.dragon;
+      p.debug.god = true;
+      const got = [];
+      let sh = 0, slamEv = 0;
+      const sh0 = p.fx.slamShards;
+      p.fx.slamShards = function (...a) { sh++; return sh0.apply(this, a); };
+      G.watch = (nn) => { if (nn === 'player:slam') slamEv++; };
+      for (let c = 0; c < 30; c++) {
+        p.debug.teleport(d0.position.x + 14, d0.position.z + 14);
+        p.yaw = Math.atan2(d0.position.x - p.position.x, d0.position.z - p.position.z);
+        let in5 = false;
+        for (let i = 0, clicks = 0; i < Math.round(3.2 / DT); i++) {
+          const now5 = p.atk?.def === CB.LIGHT[4] && p.state === 'attack';
+          if (now5 && !in5) got.push(A.atkAnim?.clip);
+          if (in5 && !now5) break;
+          in5 = now5;
+          if (!in5 && clicks < 30 && i % 6 === 0) { aimAt(G); input.click(0); clicks++; }
+          G.tick(DT);
+        }
+        run(G, 0.8, { passive: true });
+      }
+      p.fx.slamShards = sh0;
+      G.watch = null;
+      const count = Object.fromEntries(LASTS.map((nm) => [nm, got.filter((x) => x === nm).length]));
+      const twice = got.filter((x, i) => i && x === got[i - 1]).length;
+      out(`   30 chains: ${JSON.stringify(count)}, twice running ${twice}, shards ${sh}, player:slam ${slamEv}`);
+      assert(got.length === 30 && LASTS.every((nm) => count[nm] >= 3) && twice === 0, `over 30 mashed chains hit 5 plays every stroke (each ≥ 3 times) and never the same one twice running (${got.length})`);
+      assert(sh === 0 && slamEv === 0, `hit 5 bursts no shards and sends no player:slam (${sh} / ${slamEv})`);
+    }
+  } finally {
+    CB.setCuts(cuts0);
+    CB.setLights(lights0);
+  }
+  return last;
 }
 
 // ================================================================== `cutsd`: the instant chain's variant d, a relentless flurry
@@ -14697,8 +15613,291 @@ async function scenarioCutsC() {
 async function scenarioCutsD() {
   out('\n== scenario CUTSD (?lights=blink&cuts=d: a relentless flurry) ==');
   const CB = await imp('src/entities/player/combat.js');
-  const G = build();
+  const { SWINGS } = await imp('src/entities/player/swings.js');
+  const { CUTS_D, LIGHT_CUTS_D } = await imp('src/entities/player/cutsD.js');
+  const { swingPhase } = await imp('src/entities/player/anim.js');
+  const { DIM: HD, PLAYER_SCALE: PS } = await imp('src/entities/player/model.js');
+  const lights0 = CB.lightsMode(), cuts0 = CB.cutsMode(), DEG = 180 / Math.PI;
+  const NAMES = ['cutD1', 'cutD2', 'cutD3', 'cutD4'], LAST5 = ['cutD5Rise', 'cutD5Fall', 'cutD5Low'];
+  const OURS = new Set([...NAMES, ...LAST5]);
+  const NUMS = ['windup', 'active', 'recovery', 'chain', 'damage', 'poise', 'lunge', 'reach', 'hitstop', 'kind', 'combo', 'heavy', 'up', 'shards'];
+  let G = null;
   assert(CB.CUTS_IDS.includes('d'), 'the variant is registered');
+  // (GCD_CUTSD_AUDIT=1: the arm audit (armaudit's env vars) on this variant, then stop)
+  if (process.env.GCD_CUTSD_AUDIT) {
+    CB.setCuts('d');
+    try { return await scenarioArmAudit(); } finally { CB.setCuts(cuts0); }
+  }
+  try {
+    // ---- what they are: in SWINGS, a held finish with a slow way home, one slash in the active frames, hit 5 plain
+    {
+      const bad = [];
+      for (const n of OURS) {
+        const C = SWINGS[n];
+        if (!C || C !== CUTS_D[n]) { bad.push(`${n}: not in SWINGS`); continue; }
+        if (C.home !== 1 || !(C.settle >= 0.38 && C.settle <= 0.56)) bad.push(`${n}: home ${C.home} settle ${C.settle}`);
+        if (C.side) bad.push(`${n}: side`);
+        if (!(C.slash?.length === 1 && C.slash[0].length === 2 && C.slash[0][0] >= 1 && C.slash[0][1] <= 2)) bad.push(`${n}: not one slash in the active frames`);
+        if (!C.line || C.line === 'point') bad.push(`${n}: line ${C.line}`);
+        if (C.keys.some((k) => k.two != null && k.two !== 0)) bad.push(`${n}: two hands`);
+        if (LAST5.includes(n) !== !!C.plain || LAST5.includes(n) !== (C.slashLook === 'strong')) bad.push(`${n}: plain / strong`);
+      }
+      const l5 = LAST5.map((n) => SWINGS[n]?.line);
+      assert(!bad.length && new Set(l5).size === 3, `seven clips, each held to the end of its recovery (home 1, settle 0.4-0.55), one slash in the active frames, one hand; hit 5's three plain and strong on three lines (${l5.join(', ')}) (${bad.join('; ') || 'all'})`);
+      // the pendulum: each hit's coil is where the hit before it stops (the last key's hand and blade)
+      const gap = [];
+      for (let i = 1; i < 4; i++) {
+        const a = CUTS_D[NAMES[i - 1]].keys.at(-1), c = CUTS_D[NAMES[i]].keys.find((k) => k.u === 1);
+        const dh = Math.hypot(...a.h.map((x, j) => x - c.h[j])), da = Math.hypot(a.a[0] - c.a[0], a.a[1] - c.a[1]);
+        if (dh > 0.04 || da > 6) gap.push(`${NAMES[i]} ${(dh * 100).toFixed(0)} cm ${da.toFixed(0)}°`);
+      }
+      assert(!gap.length, `each hit's coil is the finish the hit before it holds (within 4 cm and 6°) (${gap.join(', ') || 'hits 2-4'})`);
+    }
+    // ---- the looks: worn under blink + cuts d, the blink set's back with cuts 0; no number of a def changes
+    {
+      CB.setLights('blink');
+      CB.setCuts('0');
+      const base = CB.LIGHT.map((d) => ({ clip: d.anim.clip, n: NUMS.map((k) => JSON.stringify(d[k])) }));
+      CB.setCuts('d');
+      const L = CB.LIGHT;
+      const on = L.slice(0, 4).every((d, i) => d.anim.clip === NAMES[i] && !d.variants?.length && !d.anim.spin && !d.anim.hop)
+        && L[4].anim.clip === LAST5[0] && L[4].variants.map((v) => v.clip).join() === LAST5.slice(1).join() && L[4].contact === 'sweep'
+        && L[3].contact === 'light' && !L[3].glint;
+      assert(on, `blink + cuts d wears ${L.map((d) => [d.anim.clip, ...(d.variants ?? []).map((v) => v.clip)].join('|')).join(', ')} (hit 4 a slash: contact ${L[3].contact}, glint ${L[3].glint})`);
+      assert(L.every((d, i) => NUMS.every((k, j) => JSON.stringify(d[k]) === base[i].n[j])), 'every number of the five defs is unchanged under cuts d');
+      CB.setCuts('0');
+      assert(CB.LIGHT.map((d) => d.anim.clip).join() === base.map((b) => b.clip).join() && base[0].clip === 'blinkFall', `cuts 0 gives the blink set's own chain back (${CB.LIGHT.map((d) => d.anim.clip).join(', ')})`);
+      CB.setCuts('d');
+    }
+
+    // ---- played from the fight hold, mashed (0.3 s) and relaxed (0.433 s): order, the arm, the steel, the feet
+    const S = new THREE.Vector3(), E = new THREE.Vector3(), W = new THREE.Vector3(), T = new THREE.Vector3(), Hh = new THREE.Vector3(), LW = new THREE.Vector3(), M = new THREE.Vector3(), Hd = new THREE.Vector3(), Pv = new THREE.Vector3();
+    const a1 = new THREE.Vector3(), a2 = new THREE.Vector3();
+    const ang = (u, v) => Math.acos(clamp(u.normalize().dot(v.normalize()), -1, 1)) * DEG;
+    const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+    const fresh = () => {
+      const g = (G = build());
+      fightSetup(g);
+      const p = g.game.player, d = g.game.dragon;
+      p.debug.god = true;
+      p.debug.teleport(d.position.x + 14, d.position.z + 14);
+      p.yaw = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z);
+      aimAt(g);
+      for (let i = 0; i < 60; i++) g.tick(DT);
+      return g;
+    };
+    const play = (nm, every, v = null, set = OURS) => {
+      const g = fresh();
+      const { game, input } = g, p = game.player, r = p.rig, A = p.anim;
+      if (v !== null) A.forceVariant = v;
+      const FT = [r.legs.R.foot, r.legs.L.foot], fp = FT.map(() => new THREE.Vector3()), f0 = FT.map(() => new THREE.Vector3());
+      const fy0 = FT.map((f) => f0[0].setFromMatrixPosition(f.matrixWorld).y);
+      FT.forEach((f, q) => f0[q].setFromMatrixPosition(f.matrixWorld));
+      const R = { wr: 0, wrAt: '', wrCut: 0, elMin: 999, elAt: '', tipY: 9, tipAt: '', body: 9, head: 9, nan: 0, reach: 9, two: 0 };
+      const sw = [], slide = {}, stR = [], stL = [], stAt = [], stCut = [];
+      let cur = null, pw = null, pl = null, k = 0;
+      for (let i = 0, n = Math.round((4 * every + 2.2) / DT); i < n; i++) {
+        if (k < 5 && i >= Math.round((k * every) / DT)) { aimAt(g); input.click(0); k++; }
+        g.tick(DT);
+        const a = p.atk, d = a?.def, an = d && A.atkDef === d ? A.atkAnim : null;
+        S.setFromMatrixPosition(r.arms.R.upper.matrixWorld);
+        E.setFromMatrixPosition(r.arms.R.fore.matrixWorld);
+        W.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.R.fore.matrixWorld);
+        LW.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.L.fore.matrixWorld);
+        T.set(0, 0, HD.drawnTip).applyMatrix4(r.sword.matrixWorld);
+        Hh.set(0, 0, HD.bladeBase).applyMatrix4(r.sword.matrixWorld);
+        if (![S, E, W, T, LW].every((q) => Number.isFinite(q.x + q.y + q.z))) R.nan++;
+        const live = !!(d && p.state === 'attack' && !a.pending && an?.clip), mine = live && set.has(an.clip);
+        if (!live) { cur = null; } else if (!cur || cur.rec !== a) sw.push((cur = { rec: a, clip: an.clip, combo: d.combo, yaw: p.yaw, F: [] }));
+        // (his frame as the swing began, carried with the root: a lunge is not hand speed)
+        const yw = cur ? cur.yaw : p.yaw, fx = Math.sin(yw), fz = Math.cos(yw), px = p.position.x, pz = p.position.z;
+        const loc = (q) => { const dx = q.x - px, dz = q.z - pz; return [dx * fz - dz * fx, q.y - p.position.y, dx * fx + dz * fz]; };
+        const w = loc(W), l = loc(LW);
+        // (a snap: one tick's step standing out above both its neighbours', inside these clips. The instant cut
+        // itself is such a tick by design: the sword hand's are read outside the slash window, a frame either side)
+        if (mine && pw) {
+          const u0 = swingPhase(a.t, d.windup, d.active, d.recovery), sl = SWINGS[an.clip]?.slash?.[0] ?? [1.1, 1.5];
+          stR.push(dist(w, pw) / PS); stL.push(dist(l, pl) / PS); stAt.push(`${an.clip} u ${u0.toFixed(2)}`); stCut.push(u0 >= sl[0] - 0.12 && u0 <= sl[1] + 0.2);
+        } else if (stR.at(-1) !== null) { stR.push(null); stL.push(null); stAt.push(''); stCut.push(false); }
+        pw = w;
+        pl = l;
+        // the feet on the grass: how far a foot that bears slides or drags, per swing
+        FT.forEach((f, q) => fp[q].setFromMatrixPosition(f.matrixWorld));
+        if (mine) {
+          const sv = (slide[`#${d.combo}`] ??= [0, 0]);
+          for (let q = 0; q < 2; q++) if (fp[q].y <= fy0[q] + 0.012 && f0[q].y <= fy0[q] + 0.012) sv[q] += Math.hypot(fp[q].x - f0[q].x, fp[q].z - f0[q].z);
+        }
+        FT.forEach((f, q) => f0[q].copy(fp[q]));
+        if (!mine) continue;
+        const uu = swingPhase(a.t, d.windup, d.active, d.recovery), inCut = a.t >= d.windup && a.t <= d.windup + d.active;
+        const wr = ang(a1.subVectors(W, E), a2.subVectors(T, Hh)), el = ang(a1.subVectors(S, E), a2.subVectors(W, E));
+        cur.F.push({ u: uu, tip: loc(T), w, el, wr });
+        if (uu >= 0.5 && uu <= 2.95 && wr > (inCut ? R.wrCut : R.wr)) { if (inCut) R.wrCut = wr; else { R.wr = wr; R.wrAt = `${an.clip} u ${uu.toFixed(2)}`; } }
+        if (uu >= 0.5 && el < R.elMin) { R.elMin = el; R.elAt = `${an.clip} u ${uu.toFixed(2)}`; }
+        if (T.y - p.position.y < R.tipY) { R.tipY = T.y - p.position.y; R.tipAt = `${an.clip} u ${uu.toFixed(2)}`; }
+        // the steel out of his body: points along the blade, from his spine (pelvis to head) and his head
+        Hd.setFromMatrixPosition(r.head.matrixWorld);
+        Pv.setFromMatrixPosition(r.pelvis.matrixWorld);
+        for (let s = 0; s <= 6; s++) {
+          M.copy(Hh).lerp(T, s / 6);
+          const q = clamp(a1.subVectors(M, Pv).dot(a2.subVectors(Hd, Pv)) / a2.lengthSq(), 0, 1);
+          R.body = Math.min(R.body, M.distanceTo(a2.multiplyScalar(q).add(Pv)));
+          R.head = Math.min(R.head, M.distanceTo(Hd));
+        }
+        if (inCut) cur.reach = Math.max(cur.reach ?? 0, loc(T)[2] / PS);
+      }
+      A.forceVariant = null;
+      const spike = (st, skip) => {
+        let m = 0, at = '';
+        st.forEach((x, i) => {
+          if (x === null || st[i - 1] == null || st[i + 1] == null || (skip && skip[i])) return;
+          const s = x - Math.max(st[i - 1], st[i + 1]);
+          if (s > m) { m = s; at = stAt[i]; }
+        });
+        return [m, at];
+      };
+      [R.snapR, R.snapRAt] = spike(stR, stCut);
+      [R.snapL, R.snapLAt] = spike(stL, null);
+      // per swing: the cut (the frames round the point's fastest whose speed is over 40 % of it), the arm at its end
+      const rows = [];
+      for (const s of sw) {
+        const F = s.F;
+        if (F.length < 4) continue;
+        for (let i = 0; i < F.length; i++) F[i].vt = i ? dist(F[i].tip, F[i - 1].tip) / DT : 0;
+        const pk = Math.max(...F.map((q) => q.vt)), iPk = F.findIndex((q) => q.vt === pk);
+        let i0 = iPk, i1 = iPk;
+        while (i0 > 0 && F[i0 - 1].vt > 0.4 * pk) i0--;
+        while (i1 < F.length - 1 && F[i1 + 1].vt > 0.4 * pk) i1++;
+        const e = F[i1], at = (m) => F[Math.min(F.length - 1, i1 + m)];
+        const handOn = dist(e.w, at(10).w), prog = [2, 4].map((m) => dist(e.w, at(m).w) / Math.max(1e-6, handOn));
+        rows.push({ clip: s.clip, combo: s.combo, cutN: i1 - i0 + 1, cutU: [F[i0].u, F[i1].u], endEl: e.el, coilEl: F[Math.max(0, i0 - 1)].el, handOn, prog, reach: s.reach ?? 0 });
+      }
+      const played = rows.map((x) => x.clip);
+      out(`   ${nm.padEnd(8)} ${played.join(', ')} | wrist ≤ ${R.wr.toFixed(0)}° (${R.wrAt}; the cut ${R.wrCut.toFixed(0)}°), elbow ≥ ${R.elMin.toFixed(0)}° (${R.elAt}), snaps: the sword hand ${(R.snapR * 100).toFixed(1)} (${R.snapRAt}), the free hand ${(R.snapL * 100).toFixed(1)} cm (${R.snapLAt}), the point ≥ ${R.tipY.toFixed(2)} m up (${R.tipAt}), the steel ≥ ${R.body.toFixed(2)} m off his spine, ${R.head.toFixed(2)} m off his head`);
+      for (const x of rows) out(`      ${x.clip.padEnd(10)} cut ${x.cutN} frames (u ${x.cutU[0].toFixed(2)}-${x.cutU[1].toFixed(2)}), elbow ${x.coilEl.toFixed(0)}° → ${x.endEl.toFixed(0)}°, the point ${x.reach.toFixed(2)} m ahead; on 10 frames the hand ${(x.handOn * 100).toFixed(0)} cm, ${x.prog.map((q) => (q * 100).toFixed(0)).join('/')} % by +2/+4; feet ${(slide[`#${x.combo}`] ?? [0, 0]).map((q) => (q * 100).toFixed(0)).join('/')} cm`);
+      return { R, rows, slide, played };
+    };
+    const BLINK = { has: (c) => /^(blink|last)[A-Z]/.test(c) };
+    const B = {};
+    for (const [nm, every] of [['mashed', 0.3], ['relaxed', 26 / 60]]) {
+      CB.setCuts('0');
+      const b = (B[nm] = play(`(blink) ${nm}`, every, null, BLINK));
+      CB.setCuts('d');
+      const { R, rows, slide, played } = play(nm, every);
+      const limR = Math.max(0.08, 1.1 * b.R.snapR), limL = Math.max(0.06, 1.1 * b.R.snapL);
+      assert(played.length === 5 && played.slice(0, 4).join() === NAMES.join() && LAST5.includes(played[4]), `the ${nm} chain plays the five in order (${played.join(', ')})`);
+      assert(!R.nan, `no NaN, ${nm} (${R.nan} frames)`);
+      assert(rows.every((x) => x.cutN >= 2 && x.cutN <= 3), `each cut crosses in two or three frames, ${nm} (${rows.map((x) => x.cutN).join(', ')})`);
+      assert(rows.every((x) => x.cutU[0] >= 0.95 && x.cutU[1] <= 2.0), `each cut is inside its active frames, ${nm} (${rows.map((x) => x.cutU.map((q) => q.toFixed(2)).join('-')).join(', ')})`);
+      assert(R.wr <= 65 && R.wrCut <= 75 && R.elMin >= 45, `the sword wrist ≤ 65° off the cut (≤ 75° on it), the elbow never folded under 45°, ${nm} (${R.wr.toFixed(0)}° / ${R.wrCut.toFixed(0)}° / ${R.elMin.toFixed(0)}°)`);
+      assert(rows.every((x) => x.endEl >= 140), `the arm opens through every cut (the elbow ≥ 140° as it ends), ${nm} (${rows.map((x) => x.endEl.toFixed(0)).join(', ')}°)`);
+      assert(R.snapR <= limR && R.snapL <= limL, `no single-tick snap outside the instant cut (a tick's step past both its neighbours': the sword hand ≤ ${(limR * 100).toFixed(1)} cm, the free hand ≤ ${(limL * 100).toFixed(1)}, 8 / 6 cm or the blink chain's), ${nm} (${(R.snapR * 100).toFixed(1)} / ${(R.snapL * 100).toFixed(1)} cm)`);
+      assert(R.tipY >= 0.03 && R.body >= 0.1 && R.head >= 0.15, `the steel off the grass and out of his body and head, ${nm} (${R.tipY.toFixed(2)} / ${R.body.toFixed(2)} / ${R.head.toFixed(2)} m)`);
+      assert(rows.every((x) => x.reach >= 0.9), `the point is out in front of him in every cut, ${nm} (${rows.map((x) => x.reach.toFixed(2)).join(', ')} m)`);
+      if (every > 0.4) assert(rows.every((x) => x.handOn >= 0.15 && x.prog[1] >= 0.5), `the follow-through carries on (the hand ≥ 15 cm over 10 frames, half of it by +4), ${nm} (${rows.map((x) => `${(x.handOn * 100).toFixed(0)} cm ${(x.prog[1] * 100).toFixed(0)} %`).join(', ')})`);
+      const sv = [1, 2, 3, 4, 5].map((c) => Math.max(...(slide[`#${c}`] ?? [0, 0]))), sb = [1, 2, 3, 4, 5].map((c) => Math.max(...(b.slide[`#${c}`] ?? [0, 0])));
+      assert(sv.every((x, i) => x <= Math.max(0.12, sb[i] + 0.02)), `the feet on the grass slide or drag ≤ 12 cm a swing (or within 2 cm of the blink chain's hit), ${nm} (${sv.map((x, i) => `${(x * 100).toFixed(0)} (blink ${(sb[i] * 100).toFixed(0)})`).join(', ')} cm)`);
+    }
+    // hit 5's three strokes, each pinned, relaxed
+    for (let v = 0; v < 3; v++) {
+      const { R, rows, slide } = play(`5:${LAST5[v]}`, 26 / 60, v);
+      const x = rows[4];
+      const b = B.relaxed.R, f5 = Math.max(...(slide['#5'] ?? [0]));
+      assert(x?.clip === LAST5[v] && !R.nan && x.cutN >= 2 && x.cutN <= 3 && x.endEl >= 140 && x.reach >= 0.9 && R.wr <= 65 && R.wrCut <= 75 && R.elMin >= 45 && R.snapR <= Math.max(0.08, 1.1 * b.snapR) && R.snapL <= Math.max(0.06, 1.1 * b.snapL) && R.tipY >= 0.03 && R.body >= 0.1 && R.head >= 0.15 && f5 <= 0.12,
+        `hit 5 ${LAST5[v]}: two or three frames, the arm open, no snap, the steel clear (${x?.clip} ${x?.cutN} frames, elbow ${x?.endEl.toFixed(0)}°, wrist ${R.wr.toFixed(0)}/${R.wrCut.toFixed(0)}°, snaps ${(R.snapR * 100).toFixed(1)}/${(R.snapL * 100).toFixed(1)} cm, point ≥ ${R.tipY.toFixed(2)} m)`);
+    }
+
+    // ---- each hit lands on the wyrm where the blink set's does (2 m: inside its active frames; 2.45 m: the same answer)
+    // (GCD_CUTSD_FAST=1 skips it while authoring)
+    if (!process.env.GCD_CUTSD_FAST) {
+      const hitAt = (cuts, n, gap, every, v = null) => {
+        CB.setCuts(cuts);
+        const g = (G = build());
+        fightSetup(g);
+        settle(g);
+        const { game, input } = g, d = game.dragon, p = game.player;
+        const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
+        const chest = () => d.hurtSpheres.filter((h) => h.part === 'body').reduce((a, h) => ((h.x - d.position.x) * fx + (h.z - d.position.z) * fz > (a.x - d.position.x) * fx + (a.z - d.position.z) * fz ? h : a));
+        p.debug.teleport(d.position.x + fx * 40, d.position.z + fz * 40);
+        p.debug.god = true;
+        if (v !== null) p.anim.forceVariant = v;
+        aimAt(g);
+        let hit = null;
+        for (let k = 0; k < n; k++) {
+          if (k === n - 1) {
+            const c = chest();
+            p.debug.teleport(c.x + fx * (c.r + gap), c.z + fz * (c.r + gap));
+            p.yaw = Math.atan2(c.x - p.position.x, c.z - p.position.z);
+            g.watch = (nn, e) => { if (nn === 'player:hitDragon' && !hit) hit = { combo: p.atk?.def?.combo, t: p.atk?.t ?? NaN, def: p.atk?.def, guarded: e.guarded }; };
+          }
+          aimAt(g);
+          input.click(0);
+          run(g, k < n - 1 ? every : 1.2, { passive: true });
+        }
+        g.watch = null;
+        p.anim.forceVariant = null;
+        if (!hit || hit.combo !== n || hit.guarded) return null;
+        return (hit.t - hit.def.windup) / hit.def.active;
+      };
+      const rows = [], bad = [];
+      const inAct = (s) => s !== null && s >= -1e-6 && s <= 1 + 1e-6;
+      // (hit 5 at the edge is read at the relaxed pace against the blink set's five strokes, each pinned: a
+      // mashed last hit's lunge is cut short, the blink set's misses there too)
+      let blink5 = null;
+      for (const every of [0.3, 26 / 60]) {
+        for (let n = 1; n <= 5; n++) {
+          for (const v of n === 5 ? [0, 1, 2] : [null]) {
+            for (const gap of n === 5 && every < 0.4 ? [2.0] : [2.0, 2.45]) {
+              const s = hitAt('d', n, gap, every, v);
+              let t = 0, tl = false;
+              if (gap > 2 && n < 5) { t = hitAt('0', n, gap, every); tl = t !== null; }
+              if (gap > 2 && n === 5) { blink5 ??= [0, 1, 2, 3, 4].map((b) => hitAt('0', 5, gap, every, b)); t = blink5.map((x) => (x === null ? 'miss' : x.toFixed(2))).join('/'); tl = blink5.filter((x) => x !== null).length >= 3; }
+              rows.push(`${every.toFixed(2)}s#${n}${v === null ? '' : `/${v}`}@${gap} ${s === null ? 'miss' : s.toFixed(2)}${gap === 2.0 ? '' : `/blink ${typeof t === 'string' ? t : t === null ? 'miss' : t.toFixed(2)}`}`);
+              if (gap === 2.0 ? !inAct(s) : (s !== null) !== tl || (s !== null && !inAct(s))) bad.push(rows.at(-1));
+            }
+          }
+        }
+      }
+      CB.setCuts('d');
+      out(`   hits (active-frame fraction): ${rows.join(', ')}`);
+      assert(!bad.length, `each hit lands 2 m in front inside its active frames, and at 2.45 m lands where the blink set's does (${bad.join(', ') || 'all'})`);
+    }
+
+    // ---- hit 5: the animator's own pick over 30 mashed chains: every stroke comes up, never the same twice running, no shards
+    {
+      const g = fresh();
+      const { game, input } = g, p = game.player, A = p.anim, d0 = game.dragon;
+      const got = [];
+      let sh = 0, slamEv = 0;
+      const sh0 = p.fx.slamShards;
+      p.fx.slamShards = function (...a) { sh++; return sh0.apply(this, a); };
+      g.watch = (nn) => { if (nn === 'player:slam') slamEv++; };
+      for (let c = 0; c < 30; c++) {
+        p.debug.teleport(d0.position.x + 14, d0.position.z + 14);
+        p.yaw = Math.atan2(d0.position.x - p.position.x, d0.position.z - p.position.z);
+        let in5 = false;
+        for (let i = 0, clicks = 0; i < Math.round(3.2 / DT); i++) {
+          const now5 = p.atk?.def === CB.LIGHT[4] && p.state === 'attack';
+          if (now5 && !in5) got.push(A.atkAnim?.clip);
+          if (in5 && !now5) break;
+          in5 = now5;
+          if (!in5 && clicks < 30 && i % 6 === 0) { aimAt(g); input.click(0); clicks++; }
+          g.tick(DT);
+        }
+        run(g, 0.8, { passive: true });
+      }
+      p.fx.slamShards = sh0;
+      g.watch = null;
+      const count = Object.fromEntries(LAST5.map((nm) => [nm, got.filter((x) => x === nm).length]));
+      const twice = got.filter((x, i) => i && x === got[i - 1]).length;
+      out(`   30 chains: ${JSON.stringify(count)}, twice running ${twice}, shards ${sh}, player:slam ${slamEv}`);
+      assert(got.length === 30 && LAST5.every((nm) => count[nm] >= 2) && twice === 0, `over 30 chains hit 5 plays each of its three strokes (each ≥ 2 times) and never the same one twice running (${got.length})`);
+      assert(sh === 0 && slamEv === 0, `hit 5 bursts no shards and sends no player:slam (${sh} / ${slamEv})`);
+    }
+  } finally {
+    CB.setCuts(cuts0);
+    CB.setLights(lights0);
+  }
   return G;
 }
 
