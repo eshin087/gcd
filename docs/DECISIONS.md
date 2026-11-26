@@ -6596,4 +6596,7 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   moves), the worst jolt in a move 776 → 449 mm a frame² on average, the roll's jolts gone. The pace meters (`duel.mjs`
   / `lord.mjs . pace`) pass on and off. Test `swordmotion` in both suites (on and off). Open: the feet still slide a
   little where a planted foot is handed to the clip (another session's `kit.animOpts.liftEase` may serve), the
-  crossing legs inside spins and sweeps.
+  crossing legs inside spins and sweeps; a heavy thrust landed on Shen Hui inside Falling Ash's held raised blade
+  makes the hit reaction jump 0.077 m in a frame (0.055 over the old pose; `duel.mjs . react` measures the layer
+  with the switch off). A held pose's strike keeps the hand as the strike holds it (keyed or blade-driven), and a
+  counter out of his guard gets no held pose.

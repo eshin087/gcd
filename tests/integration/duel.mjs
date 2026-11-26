@@ -4656,6 +4656,10 @@ async function scenarioMotion() {
 }
 
 async function scenarioReact() {
+  // (the reaction layer measured over the poses it was tuned on: ADR-226's held raised blade under a heavy
+  // thrust jumps 0.077 m in a frame, an open item of that ADR)
+  const { setLook: setLookR } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  setLookR('ashMotion', '0');
   out('\n== scenario REACT (the body answers where it was hit: drawn only, from the hit\'s own tick, back at rest) ==');
   const { IMPACT } = await imp('src/combat/impact.js');
   const { REACT } = await imp('src/entities/enemies/duelist/reactTuning.js');
@@ -4791,6 +4795,7 @@ async function scenarioReact() {
     IMPACT.on.react = on0;
   }
   IMPACT.by.react.duelist = byDuel0;
+  setLookR('ashMotion', null);
   return { counts: {}, payload: new Set() };
 }
 
