@@ -201,6 +201,12 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [ ] ~~The owner's pick: steel as the default?~~ turned down: Then `?lights=blink`, `?lights=fresh` and `?arcs=` go, and the weighted chain stays behind a switch or goes
 - [ ] Steel's known gaps (ADR-234): shorter lunges than the reference, hit 3 into hit 4, the two upright cuts from the game camera, the execution
 - [ ] If steel becomes the default: the flurry, the plunge, the guard and the block in the same hand
+## M1.93 — The perfect parry gets the perfect dodge's window (2026-11-26, `claude/combat-perfect-parry-window-d6503b`, ADR-227)
+- [x] `DEFENSE.perfectParryWindow` 0.08 → 0.20 s (the owner's pick); the plain parry window 0.22 s unchanged
+- [x] Every perfect reward (posture, counter cut, blade lock, returned bullets, clashes) follows the one number; tests timed for a plain parry moved to 0.21 s
+- [ ] Played by the owner; their call on the slow-motion beat now that most parries are perfect
+- [ ] The brood's busyWait dive (`BROOD.busyWait` 2.5 s) never cues within 0.3 s of a wyrm cue needing another answer (integ PRESSURE seed 4242: fanVolley / drakelings P2, breath / drakelings P3; on main too)
+
 ## M1.92 — The melee animation engine: boss blows from reference footage (2026-11-26, `enemies/fists-ref`, ADR-208)
 - [x] `scripts/mocap` on `main` as a tool; `scripts/mocap/duelist/fit.mjs` fits a clip onto a duelist's blows (`--check` through the real animator); the guide
 - [x] Tian Lei from the bare-handed film, shown behind `?fists=ref`: turned down by the owner (stiff arms; the lunges and feet); not merged
@@ -236,7 +242,11 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Guards so the cost cannot creep back: a cost budget per level in `npm test` (`cost.mjs`) and `npm run perf` on a real GPU (ADR-206, `perf/cost-budget`)
 - [ ] Measured on the owner's laptop (Intel Core Ultra 7 255U, integrated graphics) and on a phone (`npm run perf --save` there gives the first baseline)
 - [x] An in-game readout for the owner's devices: `?perf` (ADR-209: frame and script ms by part, missed frames, AUTO's step, a report to share)
-- [ ] The owner's `?perf` reports from the iPhone: a fight on fox, grove and code
+- [x] The owner's `?perf` reports from the iPhone: a fight on fox, grove and code (GPU-bound: script 3.5 ms, 6 - 20 % of frames over 20 ms, AUTO at its floor)
+- [x] BENCH in `?perf`: each pipeline step's GPU cost on the device (ADR-215)
+- [x] The owner's BENCH from a busy moment on fox and grove; the step it names cut at AUTO's floor (options shown first): the world pass; the lite world, the owner's pick C (ADR-216)
+- [ ] BENCH on the iPhone with the lite world on: fox and grove
+- [ ] AUTO's own step hitch on the phone (17 - 32 ms: the letter atlases rebuilt)
 - [ ] A starting step per level for a heavy level (so AUTO does not find it by a slow stretch)
 
 ## M1.88 — The dragon print: the world printed in the wyrm's digits (2026-11-25, `render/ground-looks`, ADR-198)
@@ -293,6 +303,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] The chain: each pass from where the last ended, every slash on his path, the stray crescents gone, letter dust for the `A` shards (`?chain=0`)
 - [x] Five figures, one a flurry, never twice running (`?figure=`)
 - [x] The time rip: four looks filmed side by side; the owner picked the torn strip (`?rip=`)
+- [x] Four dodge looks: smear, floor sparks, aerial cuts, and a / b / c / d (`?dodgefx=`, ADR-210)
+- [x] The owner's pick: a, the Thunder Thrust, is the default (`?dodgefx=off` the flurry before)
+- [ ] Played, and seen on the iPhone (the dodge looks)
 - [ ] Played, and seen on the iPhone
 - [ ] Judged in play: the step into the storm round the head, the riposte's last freeze (0.198 s), the figures' size at the duel camera
 - [ ] The wyrm's `pounce` past its share of a gap in the tree wall (integ `breach` replays at the old pace until then)

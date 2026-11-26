@@ -1135,8 +1135,9 @@ async function scenarioWin() {
   // and seeds 7 / 99 finished in 134 / 136 s, under the 140 s floor, with the same damage a flurry. The
   // window measures his fight, not where the hero's flurry ends; it already sat on its floor at 140 - 145 s)
   const { STREAK_FX } = await imp('src/combat/streak.js');
-  const chain0 = STREAK_FX.chain;
+  const chain0 = STREAK_FX.chain, dodge0 = STREAK_FX.dodgefx;
   STREAK_FX.chain = false;
+  STREAK_FX.dodgefx = ''; // (likewise the dodge looks, 2026-11-25: the window measures his fight)
   try {
   for (const seed of SEEDS) {
     const G = build(seed, true);
@@ -1159,11 +1160,14 @@ async function scenarioWin() {
     // (2026-11-24, 78e21cb): 167, 143, 144, 148, 147, 137, 159, 148 s, so main itself fell under 140 s on
     // seed 3. The weighted light chain (ADR-188): 158, 140, 147, 142, 144, 138, 146, 153 s. 130 s leaves
     // margin under main's own spread; the bound guards against a fight that collapses, not against noise)
+    // (130 since ADR-227: the bot's parries, pressed 0.12 s early, are perfect now (x 1.5 posture, the
+    // counter cut, his glare returned): the three seeds won in 140 / 137 / 142 s instead of 140 - 145)
     const [lo, hi] = (process.env.GCD_WRANGE ?? '130,250').split(',').map(Number);
     assert(T > lo && T < hi, `seed ${seed}: the fight takes ${T.toFixed(0)} s (${lo} - ${hi})`);
   }
   } finally {
     STREAK_FX.chain = chain0;
+    STREAK_FX.dodgefx = dodge0;
   }
 }
 

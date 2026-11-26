@@ -386,6 +386,11 @@ async function boot() {
   // the frame-rate cap (touch by default): every n-th refresh is drawn (an even pace)
   const pacer = new FramePacer(CONFIG.fpsCap.fps);
   game.pacer = pacer;
+  const liteForce = (() => {
+    const v = new URLSearchParams(location.search).get('lite');
+    return v === '1' ? true : v === '0' ? false : null;
+  })();
+  game.liteWorld = liteForce ?? false;
   // the performance readout (`?perf`, dev/perfReadout.js, ADR-209): every part of each drawn frame timed;
   // null (and nothing timed) without it
   const perf = perfFromSearch(location.search) ? new PerfReadout(game) : null;
@@ -411,6 +416,9 @@ async function boot() {
     tick(realDt);
     gpuT?.end();
     if (shown) safe('autoQuality', () => autoStep(rawDt, t0));
+    // the lite world (ADR-216, the owner's pick): on a touch device once AUTO has no step left to give
+    // (world/groundFx.js); `?lite=1` always, `?lite=0` never
+    game.liteWorld = liteForce ?? (!!game.touch?.active && !!game.settings.autoQuality && !!game.autoQ?.wantsLess);
     perf?.endFrame(rawDt, performance.now() - t0);
     if (!shown) {
       shown = true;
