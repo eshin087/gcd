@@ -625,6 +625,14 @@ Render helpers for creature modules:
   step's draws skipped by wrapping `renderer.render`), the still shadow map redrawn every frame, then at ~0.7x
   the device pixels and back through `applyQuality`; the results go in the report. A new pipeline pass gets a
   line in its `is` table.
+- **The lite world** (ADR-216, the owner's pick C of three rendered options): `game.liteWorld` (main.js, each
+  frame) is true on a touch device with AUTO on once `game.autoQ.wantsLess` (render/autoQuality.js: a slow
+  window came while AUTO had no step down left; kept for the page load, so the look does not flicker), or
+  always with `?lite=1` (never with `?lite=0`). world/groundFx.js then holds the dragon print's four upgrades
+  off (cloud, contact, ripple, ridge: `uDpFxOn` all 0) and sets `DP_FX_U.uDpLite` = 1, which makes the floors'
+  relief (render/dragonFloor.js `floorRelief`) one value-noise octave a layer instead of a three-octave fbm.
+  Desktop never turns it on by itself. A new per-pixel extra of the world should read `game.liteWorld` /
+  `uDpLite` the same way.
 - **The warm draw** (`render/precompile.js` `warmDraw`, ADR-209): after the shaders' precompile, every mesh
   of the scene that is hidden with `userData.foldAway` or `userData.autoHide` (a set's remains:
   destructibles.js shows them when a piece first cracks or breaks) gets its bounding sphere and is drawn

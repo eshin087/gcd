@@ -226,7 +226,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] An in-game readout for the owner's devices: `?perf` (ADR-209: frame and script ms by part, missed frames, AUTO's step, a report to share)
 - [x] The owner's `?perf` reports from the iPhone: a fight on fox, grove and code (GPU-bound: script 3.5 ms, 6 - 20 % of frames over 20 ms, AUTO at its floor)
 - [x] BENCH in `?perf`: each pipeline step's GPU cost on the device (ADR-215)
-- [ ] The owner's BENCH from a busy moment on fox and grove; the step it names cut at AUTO's floor (options shown first)
+- [x] The owner's BENCH from a busy moment on fox and grove; the step it names cut at AUTO's floor (options shown first): the world pass; the lite world, the owner's pick C (ADR-216)
+- [ ] BENCH on the iPhone with the lite world on: fox and grove
 - [ ] AUTO's own step hitch on the phone (17 - 32 ms: the letter atlases rebuilt)
 - [ ] A starting step per level for a heavy level (so AUTO does not find it by a slow stretch)
 

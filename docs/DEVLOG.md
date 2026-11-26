@@ -5,6 +5,17 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-26 — The lite world on a phone at AUTO's floor (ADR-216; branch `render/phone-lite`)
+
+**Owner:** the BENCH from their iPhone (fox: the world pass 11.8 of 13.3 ms; half the pixels only 32 % less);
+of three rendered options (A today, B the four upgrades off, C B plus a one-octave floor relief) they picked "C".
+**What:** `autoQ.wantsLess` (slow with no step down left, kept for the page), `game.liteWorld` (touch + AUTO +
+wantsLess, `?lite=1|0`), groundFx holds the upgrades off and writes `uDpLite`, the floors' relief branches on it.
+Tests: autoq `wantsless`, groundfx `lite`. **Checked:** lite equals the sheet's C in one page (474 px differ:
+the relief); the world pass 13 - 22 % cheaper in this run on the desktop GPU (31 - 34 % in the sheets' run).
+The sheets' grove A / C differed in the bamboo too: that was the frame, not the option (one page shows the
+same bamboo). **Next:** the owner's BENCH on fox and grove with it on.
+
 ## 2026-11-26 — BENCH in `?perf`: each pipeline step's GPU cost on the phone (ADR-215; branch `perf/phone-bench`)
 
 **Owner's iPhone reports** (fox, grove, code; Safari 27.3, iOS 18.7, screen 414 x 896 at 3x, the page at 669 x
