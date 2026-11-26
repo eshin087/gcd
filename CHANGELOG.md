@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and twelve pieces of work since 0.4.0:
+One hundred and thirteen pieces of work since 0.4.0:
 - **The remade hero: a new animation engine that mirrors the owner's reference films (an experiment, ?hero=new)**
   (2026-11-26, ADR-230). *Added:* behind `?hero=new` the hero is remade on a new skeleton in the reference
   character's build, in today's costume and letters, playing 176 clips taken from the owner's two reference films:
@@ -13,6 +13,13 @@ One hundred and twelve pieces of work since 0.4.0:
   jumping and counter attacks one-handed, two-handed and with a sword in each hand, plus a horse to ride.
   `?hero=new&show=all` plays every clip in the films' order for review, close up and from the game camera.
   Without the switch nothing changes.
+- **Four looks for the perfect dodge flurry** (2026-11-25, ADR-210). *Added, behind `?dodgefx=a|b|c|d` (the Lab's
+  `dodgefx` button; the owner picked a, the Thunder Thrust, as the default; `?dodgefx=off` is the flurry before):* against a man the flurry keeps its vanish and all three
+  finishers, and adds faint smeared copies of him along each cut, tiny sparks kicked off the floor, and an aerial cut
+  from above in a streak of 5 or more. Each look adds one lesson from the owner's reference footage: a) the Thunder
+  Thrust, a fourth finisher (a low set, one smeared lunge, the lunge held, letter tendrils over the floor); b) a bloom
+  at the blade's point breaking into floor tendrils on every contact; c) a cloud of slow falling sparks that builds
+  through the streak; d) a heavier wind-up and a held landing for every finisher. Same blows and damage.
 - **Parrying is easier: the perfect parry's timing widened** (2026-11-26, ADR-227). *Changed:* a parry pressed up to
   0.2 s before the blow lands is now perfect (it was 0.08 s), the same window as the perfect dodge: its extra posture,
   the fast critical counter cut, the blade lock and the returned shots come far more easily. A parry pressed earlier

@@ -6334,7 +6334,6 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   If the hero remake's branch later lands, its copies of `scripts/mocap` and `src/entities/hero2/*` should
   be taken over these (check `check.mjs`'s film list keeps `fist`).
 
-
 ## ADR-209 — The phone's frame: a readout on the device, and three of its spikes taken out (2026-11-26)
 
 - **Context:** the owner saw the frame rate dip in fights on their iPhone ("pretty powerful"), on the fox,
@@ -6367,6 +6366,23 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   loaded by other sessions and runs varied +-25 %. The load step takes ~1 frame more for the warm draw.
   Next: the owner's `?perf` report from the iPhone in a fight on each of the three levels, then the parts
   it names. Not measured: any phone.
+
+## ADR-210 — The perfect dodge's flurry: smear, floor sparks, aerial cuts and four looks behind `?dodgefx` (2026-11-25)
+
+- **Context:** the owner: the perfect dodge should not have "random like hops over the character and should be
+  more epic cooler looking". A first round (`?dash=1`: no blinks, every pass from where he stands, always the Passing
+  Cut) was filmed; the owner preferred the old vanish and all three finishers, kept the new smear and floor sparks,
+  asked for aerial cuts in a streak, and for four variations that use what the reference footage taught (a dash
+  thrust: a low set, one smeared frame, a bloom at the point breaking into floor tendrils, the lunge held; close
+  strings: a small bloom per contact, sparks that fall and gather).
+- **Decision:** `STREAK_FX.dodgefx` (`?dodgefx=a|b|c|d`, the Lab's `dodgefx`; '' = today), only against a ground foe
+  and not a riposte / counter: today's flurry plus smear copies (`_afterimage`'s `smear`), floor kicks
+  (`FlurryFx.kick`) and aerial cuts (`Flurry._isAerial`: from 2.2 m down through him), and a) a fourth art, the
+  Thunder Thrust; b) `FlurryFx.bloom` + `tendrils` at every contact; c) `FlurryFx.sparks`, a lingering cloud;
+  d) a longer coil, a held finish / landing and a camera push. Numbers: `DEFENSE.flurry.dodgefx`. Blows and damage
+  unchanged (duel `dodgefx`). `?dash` is gone (git history keeps it). The owner watched the four side by side and picked **a** (the Thunder Thrust) as the default (2026-11-26); `?dodgefx=off` gives the flurry before. The pace sims (duel / lord `pace`, city's win window, duel `pressure`) measure the boss with the dodge looks off: the thrust's held lunge holds the world longer, a gap in his cues that is not his pace.
+- **Consequences:** aerial cuts exist only on the chain's paths; d delays the art (its blows' frames move).
+
 
 ## ADR-215 — BENCH: each pipeline step's GPU cost, measured on the owner's phone (2026-11-26)
 
