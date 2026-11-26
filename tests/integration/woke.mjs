@@ -7,6 +7,7 @@
 //   scenario: levels | data | timing | scenes | cover | bend | stop | stance | flight | rising | dejavu |
 //             reward | flow | looks | herolike | flurry | nolock | wall | gear | training | pace | win | motionfix | pursuit | all
 //             (opt-in: smoke, strategy, cost, audit)
+//   env GCD_LOOKS=oneMoves=a,oneBody=b sets look switches for the whole run (the audit of a redraw)
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { ui, AUDIO, resetWindow } from './shim.mjs';
@@ -1251,6 +1252,188 @@ async function scenarioSmoke() {
   }
 }
 
+// ================================================================== scenario: rebuild (?oneBody=, ?oneMoves=; 2026-11-26)
+async function scenarioRebuild() {
+  out('\n== scenario REBUILD (his figure redraws build and print the hero\'s way; the rebuilt moves: the rules, the held tells, the aim, the fast strings) ==');
+  const LS = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const MM = await imp('src/entities/enemies/wokenOne/moves.js');
+  const LK = await imp('src/entities/enemies/wokenOne/look.js');
+  assert(LS.PICKED?.oneBody === 'b' && !LS.PENDING.includes('oneBody'), '?oneBody= is the owner\'s pick, b, the open coat (PICKED, not PENDING; 2026-11-26)');
+  // ---- the figure
+  for (const v of ['a', 'b', 'c']) {
+    LS.setLook('oneBody', v);
+    try {
+      const G = build();
+      const { game } = G;
+      const d = game.dragon;
+      const D = d.rig.root.userData.dress;
+      const seen = {};
+      for (const ph of [1, 2, 3]) {
+        d.debug.setPhase(ph);
+        run(G, 0.25);
+        seen[ph] = { az: D.fronts[0].C.def.az, finite: [d.position.x, d.position.z, d._tip.x].every(Number.isFinite) };
+      }
+      const F = D.fronts[0];
+      const open1 = v !== 'a';
+      assert(D.body === v && [1, 2, 3].every((p) => seen[p].finite) && Math.abs(seen[1].az - (open1 ? F.open : F.closed)) < 1e-6 && Math.abs(seen[2].az - F.open) < 1e-6,
+        `?oneBody=${v} builds; the coat ${open1 ? 'open in every phase' : 'closed in phase 1, open from phase 2'}`);
+      const ok = [1, 2, 3].every((ph) => {
+        const T = LK.oneInkTable('a', ph, 'a', v);
+        return [3, 4, 5, 6, 12].every((k) => T[k].ink[3] <= 1.5 && T[k].rim[3] <= 1.5 && (T[k].fill[1] & 8) && T[k].fill[3] <= 0.6);
+      });
+      assert(ok, `?oneBody=${v}: printed the hero's way (no ink gain over 1.5, the cloth's dotted rim, far fills at or under 0.6)`);
+      // ONE coat: its panels overlap all round at the hem (no gap, no vent), no ragged edge, no pale hem
+      {
+        const C = d.rig.coat;
+        const tw = (C2) => C2.def.w[2], az = C.map((c) => c.def.az);
+        const ok1 = C.length === 5 && C.every((c) => c.def.jag === 0 && !c.def.hemFrom) && az.includes(Math.PI);
+        const M = d.rig.materials;
+        assert(ok1 && M.coat.uniforms.uArtPart.value === 10 && M.lining.uniforms.uArtPart.value === 10 && M.lining.uniforms.uArtFill.value.equals(M.coat.uniforms.uArtFill.value),
+          `?oneBody=${v}: one coat: five overlapping panels and one back (no vent), a straight hem, its inside the same cloth, printed as part 5 (no hero's hem)`);
+      }
+      const low = Math.min(...d.rig.coat.map((C) => { C.segs[1].updateWorldMatrix(true, true); const b = new THREE.Box3().setFromObject(C.segs[1]); return b.min.y; }));
+      assert(v !== 'c' ? low < 0.35 : low > 0.25 && low < 0.6, `?oneBody=${v}: the coat's hem ${low.toFixed(2)} m over the floor (${v === 'c' ? 'mid-shin' : 'to the ankle'})`);
+      {
+        // it swings 30 degrees at most (one coat through his flips, not a crown of boards)
+        const LKm = await imp('src/entities/enemies/wokenOne/look.js');
+        d.debug.setPhase(1);
+        run(G, 0.1);
+        d.debug.trigger('moonOver');
+        let worst = 0;
+        run(G, 2.4, () => { for (const s of d.anim.coatState ?? []) if (s?.[0] && s?.[1]) worst = Math.min(worst, s[0].x + s[1].x); });
+        assert(worst >= -LKm.COAT_SWING_ONE.out - 1e-3, `?oneBody=${v}: through the flash kick's flip the coat swings ${(-worst * 57.3).toFixed(0)} deg out at most (<= ${(LKm.COAT_SWING_ONE.out * 57.3).toFixed(0)})`);
+      }
+    } catch (e) { assert(false, `?oneBody=${v}: ${e.message}`); }
+  }
+  LS.setLook('oneBody', null);
+  // ---- the moves
+  assert(LS.PICKED?.oneMoves === 'a' && !LS.PENDING.includes('oneMoves'), '?oneMoves= is the owner\'s pick, a, the rebuilt moves (PICKED, not PENDING; 2026-11-26)');
+  LS.setLook('oneMoves', 'a');
+  try {
+    let same = 0, held = 0, diff = [];
+    for (const name of MOVE_NAMES) {
+      for (const f of phasesOf(name)) {
+        LS.setLook('oneMoves', '0');
+        const A0 = realise(name, f, () => 0.5);
+        LS.setLook('oneMoves', 'a');
+        const A1 = realise(name, f, () => 0.5);
+        const t0 = A0.beats.map((b) => b.impact.toFixed(3)).join(), t1 = A1.beats.map((b) => b.impact.toFixed(3)).join();
+        if (t0 === t1 && A0.end === A1.end) same++; else diff.push(`${name} P${f}`);
+      }
+    }
+    assert(!diff.length, `the rebuild keeps every move's timing (impacts and end, ${same} realisations)${diff.length ? ' ' + diff.slice(0, 6).join(', ') : ''}`);
+    const H = TUNING.held;
+    const bad = [];
+    for (const [name, def] of Object.entries(MM.MOVES_A)) {
+      if (def.transition) continue;
+      for (const raw of def.beats) for (const b of raw.pick ?? [raw]) {
+        if (!b.keys || b.feint || b.hold || ![TELL.BLUE, TELL.RED, TELL.BLACK].includes(b.tell)) continue;
+        // (the coil: the key the hold repeats, at `from` when the blow's coil sits on its cock, earlier when it is authored before it)
+        const to = b.cock, i1 = b.keys.findIndex(([u]) => Math.abs(u - to) < 1e-6), k1 = b.keys[i1], k0 = i1 > 0 && b.keys[i1 - 1][0] < to - 0.08 ? b.keys[i1 - 1] : null;
+        const strip = (k) => JSON.stringify(Object.fromEntries(Object.entries(k ?? {}).filter(([f]) => !['e', 'gather', 'settle'].includes(f))));
+        if (k0 && k1 && strip(k0[1]) === strip(k1[1]) && to <= H.to + 1e-9) held++; else bad.push(name);
+      }
+    }
+    assert(held > 30 && !bad.length, `every blue / red / black blow holds its coil (reached in ${H.drift} of its draw) to ${H.to} of its windup at most (the strike keeping ${H.keep} of its time) (${held} blows)${bad.length ? ' not: ' + [...new Set(bad)].join(', ') : ''}`);
+    // the fast strings: picked only on the rebuild; their windups on the floors
+    {
+      const G = build();
+      const d = G.game.dragon;
+      duel(G, { dist: 2 });
+      const w1 = d.weigh('snapHands', MOVES.snapHands, 1, 2);
+      LS.setLook('oneMoves', '0');
+      const w0 = d.weigh('snapHands', MOVES.snapHands, 1, 2);
+      LS.setLook('oneMoves', 'a');
+      const S = realise('snapHands', 3, () => 0.5), Q = realise('quickFoot', 3, () => 0.5);
+      const gaps = (A) => A.beats.slice(1).map((b, i) => b.impact - A.beats[i].impact);
+      assert(w1 > 0 && w0 === 0 && Math.abs(S.beats[0].impact - TUNING.fast.first) < 1e-6 && gaps(S).every((g) => g >= TUNING.minHitGap) && gaps(Q).every((g) => g >= TUNING.minHitGap) && S.beats.every((b) => b.flash >= b.tellAt),
+        `the fast strings: only on the rebuild (weight ${w0} → ${w1.toFixed(2)}), ${TUNING.fast.first} s then ${TUNING.fast.next} s in phase 3 too, impacts ${gaps(S).map((g) => g.toFixed(2)).join(' / ')} s apart, the glint after the tell`);
+    }
+    // straight kicks and long punches (the owner, 2026-11-26: "a straight line when his kick is out")
+    {
+      const { KICKS, STRAIGHT, hipOf } = MM.REBUILD;
+      const { DIM } = await imp('src/entities/player/model.js');
+      const L = DIM.thigh + DIM.shin;
+      let kicks = 0, punches = 0;
+      const shortK = [], shortP = [];
+      for (const [name, def] of Object.entries(MM.MOVES_A)) {
+        if (def.transition) continue;
+        for (const raw of def.beats) for (const b of raw.pick ?? [raw]) {
+          const hit = b.keys?.find(([u]) => Math.abs(u - 1) < 1e-6)?.[1];
+          const b0 = (MOVES[name]?.beats ?? []).flatMap((x) => x.pick ?? [x]).find((x) => x.blow === b.blow && x.part === b.part);
+          const hit0 = b0?.keys?.find(([u]) => Math.abs(u - 1) < 1e-6)?.[1];
+          if (!hit) continue;
+          if (KICKS.has(b.blow) && (b.part === 'footR' || b.part === 'footL')) {
+            const f = b.part === 'footL' ? 'lF' : 'rF', v = hit[f];
+            if (!Array.isArray(v) || v.length !== 3) continue;
+            const h = hipOf(hit, f === 'lF' ? 1 : -1), l = Math.hypot(v[0] - h[0], v[1] - h[1], v[2] - h[2]);
+            kicks++;
+            if (!(l >= TUNING.legReach * L * 0.97 || v[1] <= DIM.ankle + 1e-6)) shortK.push(`${name}:${b.blow} ${l.toFixed(2)}`);
+          }
+          if (STRAIGHT.has(b.blow) && hit0) {
+            const h = b.part === 'fistL' ? 'lH' : 'rH';
+            punches++;
+            if (!(Math.hypot(...hit[h]) >= Math.hypot(...hit0[h]) * TUNING.reach * 0.999)) shortP.push(`${name}:${b.blow}`);
+          }
+        }
+      }
+      assert(kicks > 25 && !shortK.length, `every kick's contact key puts the foot ${TUNING.legReach} x the leg from its hip (or along the floor): ${kicks} kicks${shortK.length ? ' short: ' + shortK.slice(0, 6).join(', ') : ''}`);
+      assert(punches > 20 && !shortP.length, `every straight punch's hand reaches ${TUNING.reach} x as far at contact: ${punches} blows${shortP.length ? ' short: ' + shortP.slice(0, 6).join(', ') : ''}`);
+      // the animator: straight legs and long arms on the rebuild only (read live)
+      const G = build();
+      const d = G.game.dragon;
+      duel(G, { dist: 3 });
+      run(G, 0.1);
+      const on = d.anim.kickStretch === TUNING.kickStretch && d.anim.legSoft === TUNING.legSoftA && d.anim.armSoft === TUNING.armSoftA;
+      LS.setLook('oneMoves', '0');
+      run(G, 0.1);
+      const off = d.anim.kickStretch === null && d.anim.legSoft === TUNING.legSoft && d.anim.armSoft === TUNING.armSoft;
+      LS.setLook('oneMoves', 'a');
+      assert(on && off, 'his legs reach straight and his arms long on the rebuild, as shipped on 0 (anim kickStretch / legSoft / armSoft, live)');
+      // a kick lands straight: the knee at Climbing the Stair's front kick, in the animator
+      d.debug.trigger('stairKick');
+      const A = d.brain.act;
+      let knee = null;
+      const V = () => new THREE.Vector3();
+      run(G, 1.2, null, () => {
+        if (knee == null && A && d.brain.act === A && A.t >= A.beats[0].impact) {
+          const leg = d.rig.legs.R;
+          const a = leg.thigh.getWorldPosition(V()), k = leg.shin.getWorldPosition(V()), f = leg.foot.getWorldPosition(V());
+          const u = a.sub(k).normalize(), w = f.sub(k).normalize();
+          knee = Math.acos(Math.max(-1, Math.min(1, u.dot(w)))) * 57.3;
+          return true;
+        }
+        return false;
+      });
+      assert(knee != null && knee > 165, `the front kick lands with the leg straight (knee ${knee?.toFixed(0)} deg; it was ~130)`);
+    }
+    // the aim: Two Thunders' first shot down the arm at the hero
+    {
+      const G = build();
+      const { game } = G;
+      const d = game.dragon, p = game.player;
+      duel(G, { dist: 4, form: 2 });
+      p.debug.god = true;
+      d.debug.trigger('twoThunders');
+      const A = d.brain.act;
+      let err = null;
+      run(G, 1.2, null, () => {
+        if (err == null && A && d.brain.act === A && A.t >= A.beats[0].impact) {
+          const V = () => new THREE.Vector3();
+          const s0 = d.rig.arms.R.upper.getWorldPosition(V()), h = d.rig.sword.getWorldPosition(V());
+          const t = (p.rig?.chest ?? p.object3d).getWorldPosition(V());
+          const a = Math.atan2(h.x - s0.x, h.z - s0.z), b = Math.atan2(t.x - s0.x, t.z - s0.z);
+          err = Math.abs(((a - b + Math.PI * 3) % (Math.PI * 2)) - Math.PI) * 57.3;
+          return true;
+        }
+        return false;
+      });
+      assert(err != null && err < 12, `Two Thunders: the gun arm points at the hero at the shot (${err?.toFixed(0)} deg off; the old aim: 36)`);
+    }
+  } catch (e) { assert(false, `the rebuilt moves: ${e.stack}`); }
+  LS.setLook('oneMoves', null);
+}
+
 // ================================================================== scenario: looks
 async function scenarioLooks() {
   out('\n== scenario LOOKS (each ?oneLook= builds; his body dressed by phase: the coat, the guns, the edge) ==');
@@ -1264,6 +1447,7 @@ async function scenarioLooks() {
   LS.setLook('ascLook', 'h');
   const asc = countMeshes(buildHero(createSharedUniforms(), ASC_LOADOUT).root);
   LS.setLook('ascLook', null);
+  LS.setLook('oneBody', '0'); // (the outfits of ADR-156 on the figure they were built on; the rebuild: scenario REBUILD)
   for (const v of ['a', 'b', 'c']) {
     LS.setLook('oneLook', v);
     let ok = true, meshes = 0, rigMeshes = 0, D = null, row = '';
@@ -1301,6 +1485,7 @@ async function scenarioLooks() {
     if (row) out(`     ${v}: ${row}`);
   }
   LS.setLook('oneLook', null);
+  LS.setLook('oneBody', null);
 }
 
 // ================================================================== scenario: scenes (the set's helper)
@@ -1781,6 +1966,8 @@ async function scenarioHeroLike() {
   const LOOK = await imp('src/entities/enemies/wokenOne/look.js');
   const { Pipeline, HERO_CELLS, BOSS_BIAS_H } = await imp('src/render/pipeline.js');
   const { HERO_INK, heroPartValues } = await imp('src/entities/player/model.js');
+  // (the print of ADR-170 on the figure it was made for; the rebuild's figure: scenario REBUILD)
+  setLook('oneBody', '0');
   assert(['oneLetters', 'onePrint'].every((n) => !PENDING.includes(n) && pickedOf(n) === 'a') && LOOK.oneLettersOn() && LOOK.onePrintNow() === 'a',
     'oneLetters and onePrint are the owner pick, a (PICKED, not PENDING; 2026-11-23: "Print a"); they draw a by default');
   const G = build();
@@ -1902,6 +2089,7 @@ async function scenarioHeroLike() {
   const w0 = swing('0'), wa = swing('a'), CS = LOOK.COAT_SWING;
   assert(wa.out <= CS.out + 1e-6 && wa.inw <= CS.in + 1e-6 && (w0.out > CS.out || w0.inw > CS.in),
     `the cartwheel: every panel inside its swing (out ${(wa.out * 57.3).toFixed(0)} deg <= ${(CS.out * 57.3).toFixed(0)}, in ${(wa.inw * 57.3).toFixed(0)} deg <= ${(CS.in * 57.3).toFixed(0)}; as shipped out ${(w0.out * 57.3).toFixed(0)}, in ${(w0.inw * 57.3).toFixed(0)})`);
+  setLook('oneBody', null);
 }
 
 // ================================================================== the motion audit (ADR-162's, for him: ADR-168)
@@ -2242,17 +2430,29 @@ async function scenarioAudit() {
  */
 async function scenarioMotionFix() {
   out('\n== scenario MOTIONFIX (his strings with the hero circling: punches with an open arm, feet that stay planted, no pops) ==');
+  const LS = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  // (the moves of ADR-168 as shipped; then the rebuild, ADR-221, its own bounds: straight limbs travel
+  // further, the spin kick after a straight kick jolts more)
+  for (const mv of ['0', 'a']) {
+    LS.setLook('oneMoves', mv);
+    out(`   -- ?oneMoves=${mv}`);
+    await motionFixRun(mv);
+  }
+  LS.setLook('oneMoves', null);
+}
+async function motionFixRun(mv) {
+  const JOLT = mv === 'a' ? 700 : 480, ELBOW = mv === 'a' ? 145 : 140;
   const names = MOVE_NAMES.filter((n) => MOVES[n].cat === 'string' && !MOVES[n].mirrorOf && !MOVES[n].transition && phasesOf(n).length);
   const { rows } = auditMoves(names.map((name) => ({ name, ph: phasesOf(name)[0] })), [true]);
   const ok = rows.filter((r) => !r.fail);
   assert(ok.length === names.length && names.length >= 4, `${ok.length} of ${names.length} strings run (${names.join(', ')})`);
   const fists = ok.flatMap((r) => r.contact.filter((c) => c.part === 'fistR' || c.part === 'fistL').map((c) => ({ ...c, name: r.name })));
-  const low = fists.filter((c) => c.elbow < 140);
-  assert(fists.length >= 8 && !low.length, `${fists.length} punches land with the arm open: elbows ${Math.min(...fists.map((c) => c.elbow))} - ${Math.max(...fists.map((c) => c.elbow))}° (main: 126 - 131°)${low.length ? `; under 140: ${low.map((c) => `${c.name}#${c.i} ${c.elbow}`).join(', ')}` : ''}`);
+  const low = fists.filter((c) => c.elbow < ELBOW);
+  assert(fists.length >= 8 && !low.length, `${fists.length} punches land with the arm open (>= ${ELBOW}): elbows ${Math.min(...fists.map((c) => c.elbow))} - ${Math.max(...fists.map((c) => c.elbow))}° (main: 126 - 131°)${low.length ? `; under 140: ${low.map((c) => `${c.name}#${c.i} ${c.elbow}`).join(', ')}` : ''}`);
   const feet = ok.map((r) => `${r.name} ${r.slide.toFixed(2)} m / ${r.slideMax}`).join(', ');
   assert(ok.every((r) => r.slideMax < 300 && r.slide < 2.5), `planted feet hold through his tracking turn: under 2.5 m of sliding a string and 300 mm in a frame (${feet}; main: 1.8 - 11.3 m, up to 711 mm)`);
   const jolt = (r) => Math.round(Math.max(r.pb.v, r.pw.v));
-  assert(ok.every((r) => jolt(r) < 480), `no joint jolts past 480 mm/f² in a string: ${ok.map((r) => `${r.name} ${jolt(r)}`).join(', ')} (main: 353 - 653)`);
+  assert(ok.every((r) => jolt(r) < JOLT), `no joint jolts past ${JOLT} mm/f² in a string: ${ok.map((r) => `${r.name} ${jolt(r)}`).join(', ')} (main: 353 - 653)`);
 }
 
 // ================================================================== the pursuit (pressure.pursue)
@@ -2530,11 +2730,19 @@ const S = {
   pursuit: scenarioPursuit,
   smoke: scenarioSmoke,
   looks: scenarioLooks,
+  rebuild: scenarioRebuild,
   herolike: scenarioHeroLike,
   scenes: scenarioScenes,
 };
 const OPT_IN = new Set(['smoke', 'cost', 'strategy', 'audit']);
 const list = SCEN === 'all' ? Object.keys(S).filter((k) => !OPT_IN.has(k)) : SCEN.split(',');
+if (process.env.GCD_LOOKS) {
+  const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  for (const kv of process.env.GCD_LOOKS.split(',')) {
+    const [k, v] = kv.split('=');
+    if (k) setLook(k, v ?? null);
+  }
+}
 for (const k of list) {
   if (!S[k]) { out(`unknown scenario ${k}`); process.exit(2); }
   await S[k]();

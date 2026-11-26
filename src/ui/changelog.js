@@ -27,6 +27,23 @@ export const RELEASES = [
       },
       {
         date: '2026-11-26',
+        title: 'A ninth level: the Veiled Crossing and Bai Wuji, the Untouched',
+        notes: [
+          'A new level, the Veiled Crossing: a city crossing levelled before you came, at night under a black veil. Pick it on the title screen.',
+          'Its boss is Bai Wuji, the Untouched: a tall man in a white coat, his eyes covered, his hands in his pockets. Your blade stops short of him. A perfect parry or a perfect dodge opens his barrier for a few seconds.',
+          'Every blow of his throws you, through whatever stands behind you. A block costs no health but slides you back and takes a big share of your guard: the third in a row knocks it open. His spells cannot be blocked at all.',
+          'He waits for you to come to him: if your blade has not reached him for 30 seconds, his eyes burn and every block costs your whole guard until it does.',
+          'At two thirds the blindfold comes off. At one third he makes a hand sign and a dark sphere closes on the arena: dodge through its wall at the last moment, or be caught. The last phase is fought inside the void, and the bonfire goes out until the city comes back.',
+          "Halcyon's thrown pieces now land on the road instead of bursting in mid-air, and the metal rubble in his city lies grey instead of glowing orange.",
+        ],
+      },
+      {
+        date: '2026-11-26',
+        title: 'Xin Yi rebuilt: a man in a coat, readable windups, faster hands',
+        notes: ['Xin Yi now looks like a man in one long open coat, drawn like the hero.', 'His kicks land with the leg straight and his punches with the arm long, every blue or red blow has a windup pose you can read, his gun is aimed down his arm, and he has two new quick strings.'],
+      },
+      {
+        date: '2026-11-26',
         title: 'Shen Hui and Varr Nihil hold their swords like swordsmen',
         notes: [
           'Shen Hui and Varr Nihil hold their blades in line with the hand and arm, and their arms open at the end of a blow.',

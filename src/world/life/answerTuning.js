@@ -43,6 +43,8 @@ export const ANSWER_TUNING = Object.freeze({
   fox: level(),
   // the Windless Grove: the fight is the only thing that ever moves the air here. The fronts are the
   // same; the hush is deeper and longer (there is no breeze to come back, only the bamboo settling)
+  // the Veiled Crossing: the defaults (a blow's breath across the rubble)
+  veil: level(),
   grove: level({
     roar: { ...DEFAULT.roar, front: { strength: 1.4, speed: 12, width: 8 } },
     wake: { ...DEFAULT.wake, front: { strength: 0.5, speed: 7, width: 6 } },

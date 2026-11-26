@@ -34,7 +34,7 @@ export class Terrain {
     this.tower = { piece: null, x: 0, y: 0, z: 0, moving: false };
     this.sky = { piece: null, moving: false, lastAt: -Infinity, tx: 0, tz: 0 };
     this.stats = { lifted: 0, thrown: 0, split: 0, towers: 0, skies: 0, arms: 0, lamps: 0 };
-    this._throw = { time: 0.6, power: 1.6, radius: 2.4, by: 'boss', onLand: null };
+    this._throw = { time: 0.6, power: 1.6, radius: 2.4, by: 'boss', onLand: null, ground: true }; // every piece he throws lands on the floor, not at its own base height (the owner's call, 2026-11-25)
     this._o = { kind: 'blunt', by: 'boss', dx: NaN, dz: NaN, y: 1.2, src: -1, scar: true };
     this._from = { x: 0, z: 0 };
     this._flash = { source: 'dragon', attack: '', tell: TELL.BLUE, x: 0, y: 0, z: 0, flare: false };

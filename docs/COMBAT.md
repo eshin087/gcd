@@ -2592,6 +2592,28 @@ blobs (of 6000) in phase 3. Phase 2 reads the busiest because each of Iron Rain'
 fencing bot (god mode) wins through both bars in 84 s (seed 4242: phase 2 at 27 s, the rising at 53 s).
 STRATEGY (opt-in, god mode, seeds 4242 and 7): mixed 75 – 84 s, parry 95 – 96 s, block-only 89 – 122 s (mortal: alive, it wins), the Long Second bot (every cue answered with the lean) 138 s, dodge-only 142 – 164 s: neither dodging nor leaning is the fastest way through. On the Sheathed with the Long Second learned (sheath.mjs `lean`): mixed 33, parry 42, dodge 64, lean 82 s.
 
+
+### The rebuild (`?oneMoves=a`, 2026-11-26, ADR-221; the owner's pick, the default; `?oneMoves=0` as before)
+- **Held windups.** Every blue, red and black blow reaches its coil in 0.75 of the time its draw had and HOLDS it
+  (the realiser's bait-hold rule: the cocked pose keyed again) until 0.84 of the windup at most, the strike keeping
+  0.7 of its time (`TUNING.held`). The windup, the cue and the impact are where they were; only the shape inside
+  changes: the pose that means blue or red stands still long enough to read, and the blow out of it is a snap
+  (the blue palm: crouched, the palm drawn back to the hip; the spin kick: his back to you, his head over his
+  shoulder; the sweep: dropped low, the leg tucked). A beat with its own bait hold (the Dive Within) keeps it.
+- **The aim.** One gun is aimed side-on, the right shoulder toward you and the arm straight down the line (the
+  old aim pointed it 36 degrees off you, across his face). Two guns stay as they were (within 4 - 13).
+- **Two fast strings** (white, never picked on `?oneMoves=0`): **Snapping Hands** (backfist 0.42, cross 0.28,
+  backfist 0.28; 7 each) and **Quick Foot** (a low front kick 0.42, 8, then the cross 0.28, 7). Unscaled by the
+  phase (`fixed`): 0.42 is his first-windup floor, 0.28 the shortest windup whose glint still comes after its
+  tell (flashLead 0.26); impacts 0.36 s apart (>= minHitGap). Each blow's coil is reached early and held, the
+  blow a snap out of a still chamber. Band 0 - 2.6 / 2.8 m, cooldown 5.
+- **Straight kicks, long punches** (the owner: "a straight line when his kick is out"). Every kick lands with the
+  leg straight (knee 166 - 173 degrees at contact; the sweep 118 - 156 along the floor) and every straight punch with
+  the arm long (elbow ~169); hooks, uppercuts, elbows and knee strikes keep their bend. The zones are unchanged;
+  the butterfly kicks carry him 0.7 m less, since the longer leg reaches what the travel did.
+- **A cued shot is never too fast to answer:** it takes at least `shotCue` 0.26 s from the gun to you (fired close,
+  it flies a little slower), so its cue always counts (a shot cued under 0.2 s fizzles, the shots' own rule).
+
 ## Halcyon (2026-11-22, ADR-160; `?level=city`)
 
 Halcyon, the Last Saviour: a flying strongman from a future that has not happened yet, BARE-HANDED
@@ -2680,6 +2702,121 @@ leans on Blink of an Eye and Meet and Greet (weights 1.8, 1.6), The Stare and Re
 rests of 0.12 - 0.28 s; idle gaps 0.03 - 0.1 s.
 WIN (the fencing bot in god mode): 157 - 164 s on three seeds (the plan asked 150 - 210; 156 - 183 s before the review fixes). The bar was sized
 for it: 3400 hp gave 40 - 46 s (a crash is a long opening), 7000 / 700 posture 81 s.
+
+## Bai Wuji (2026-11-26, ADR-241; `?level=veil`)
+
+Bai Wuji, the Untouched: a tall, relaxed man in a bone-white coat, his eyes covered, his hands in his pockets,
+BARE-HANDED (untouched/; Tian Lei's strike builders). One health bar (26000), three phases at 66 % (THE
+BLINDFOLD COMES OFF) and 30 % (THE MEASURELESS). Tian Lei's minimums: `flashLead` 0.26, first windups at
+least 0.40 s, hits 0.34 s apart at least; `windupScale` [1, 0.92, 0.84], `recoveryScale` [0.8, 0.7, 0.64];
+posture [1000, 1150, 1300]; `damageScale` 1.54 (35 - 60 % over Halcyon's for the same kind of blow); the
+pressure block on (the director, the fairness guard, the pursuit). Very hard by damage, pace, reach and the
+barrier, never by a blow without a cue.
+
+**The barrier.** While it stands his hurt spheres grow by 0.14 m and the hero's blade stops there: no health,
+no posture, a short bounce (0.9 m) he may cancel with a guard or a roll at once; a ripple where it stopped.
+The hero's flurry, the flash counter and the execution pass (`exact`). It OPENS:
+- on a PERFECT parry or a PERFECT dodge of any blow of his: at once, 4.0 / 3.2 / 2.6 s by phase;
+- on the flash counter, and on a posture break (open through the break);
+- by cracks: each ordinary parry adds one, four open it for 2.4 / 2.0 / 1.6 s; they fade after 9 s without a
+  new one.
+Open, a ring on the floor runs out with the time left and blinks in its last 0.5 s; it closes on the timer,
+never while a cut that landed is still in its active frames. Two strikes on the shell inside 2.2 s bring his
+counter (Not Even Close). The first cut that lands through an open barrier surprises him (once a fight).
+
+**Weight.** Every blow of his that lands throws the hero (2.5 - 12 m); a throw of 3 m or more goes through
+the breakable pieces behind him (each takes a `world.impact`, power 3.2; the slide keeps 0.6 of its speed;
+6 damage, never the last HP; at most six pieces). A BLOCK costs no health, but slides the hero 3.4 m (a
+beat's own `blockPush` wins) and costs 45 % of the guard meter: two blocks in a row leave 10, the THIRD knocks
+the guard open (the owner's "3 blocks"; it holds for blocks up to about 1 s apart: 1.3 s apart, the meter's regen
+puts back 27 between). His strings follow the slide (a step-in of up to 4.6 m or a blink to his side late in the
+windup).
+
+**Patience.** He waits for the hero to come to him (the owner: a defender who never attacks must not outlast
+him). If no cut of the hero's has reached him for 30 s (a cut that lands, one stopped on the barrier, the
+flurry), with the fight on and him himself (not in a transition, a break or the domain's hold), he STOPS
+WAITING: one cue, his eyes burning 1.2 s (through the band in phase 1 too) and the unveiling's sound; then,
+until a cut reaches him again, every blocked blow costs the whole guard meter (one block opens the guard).
+Every blow keeps its tell and its windup, a block still costs no health, the mercy rules hold. A hero who
+fights never sees it (`untouched/patience.js`, `TUNING.wjPatience { after 30, cue 1.2, guardCost 1 }`).
+
+**Spells cannot be blocked.** Azure Draw's collapse, Crimson Cast's burst, the Wrecking Knot and the Null are
+RED (roll, or leave the place: each is fixed before it fires); a piece he throws and the Yank's fist are BLUE.
+A held guard against any of them is opened (`breaksGuard`), never paid in health. The Draw's knot drags the
+hero toward it (4.6 m/s at its heart, nothing past 8.5 m): he walks out at about half speed, and a roll is
+not dragged.
+
+**The domain (30 %).** The hand sign (1.5 s, a feint), then a dark sphere closes on the arena: one RED cue
+(1.0 s) over a ring of 40 m. A PERFECT dodge through its wall: the hero is inside unharmed and the barrier
+opens for 5.2 s. Anything else (no answer, an early roll, a guard): CAUGHT, held 0.95 s (nothing cancels it)
+and struck once inside it for 30 % of his max health, never lethal (at least 1 HP), thrown 6 m. A hero who is
+down at the impact is spared. Either way the city is gone: phase 3 is fought in the void (its floating pieces
+are his weapons), and his death brings the crossing back.
+
+**Mercy.** No blow, spell or falling piece of his reaches a hero who is down: a beat that would becomes a
+silent feint. A beat that would keep the hero out of his own hands longer than 1.2 s in a row is not thrown
+(0.2 s free ends the row). The domain's hold is capped at 1.2 s (`Player.hold`). Nothing else reaches a held
+hero.
+
+### His moves (N white, B blue, R red; `+` a flare; windups at phase 1; damage before x1.54)
+
+| Move | From | Beats | Band (m) · cooldown |
+|---|---|---|---|
+| Flick | 1 | N 0.56, 15 (a flicked kick, hands in his pockets) | 0 – 3.6 · 2.6 |
+| Knee and Shove | 1 | N 0.55, 14 · N 0.42, 16, knockback 4.5 | 0 – 3.2 · 4 |
+| Behind You | 1 | a blink behind the hero, then B+ 0.72 side kick, 22, or R 0.80 axe heel, 26 (read the cue, not the blink) | 0 – 10 · 5 |
+| Three Count | 1 | N 0.55 front kick · N 0.42 round kick (follows the slide) · from his flank B+ 0.52, 22 or R 0.62, 26 | 0 – 3.4 · 4.5 |
+| Axe Heel | 1 | R 0.80, 30: the heel down through the road, a crater; pieces within 3 m shudder or topple | 0 – 3.4 · 6 |
+| Lazy Step | 1 | no blow: he is at the hero's flank | 3.6 – 14 · 4 |
+| Long Step | 1 | R 0.70, 30, knockback 8, knockdown: one step that is ten, a side kick through him | 2.4 – 8 · 7 |
+| Open Palm | 2 | B+ 0.62, 22 | 0 – 3.2 · 3.5 |
+| Azure Draw | 1 | R 1.95, 30, knockdown: a knot opens 3.4 m beyond the hero (fixed), drags him and loose cars and slabs, then collapses (2.3 m) | any · 7 |
+| The Yank | 1 | B+ 1.05, 24: the hero pulled to 1.3 m before him in a fixed 0.5 s, set down 0.05 s before the fist | 2.8 – 14 · 6 |
+| Curb Pull | 1 | a car or a road slab lifted into a blue knot, thrown: B 0.62, 22 (cued on the piece). Parried: cut in two, its halves burst behind the hero | 3.5 – 20 · 10 |
+| Not Even Close | counter | B 0.50, 20, block push 4 (two strikes on his shell in a row) | |
+| Too Slow | counter | his flurry: four kicks, N 0.60 / 0.48 / 0.48 / 0.48, 14 each | |
+| Dark Spark | 2 | R 1.15 (a held cue: sparks gather on the fist), 36, knockback 10, thrown through the first piece behind (crash 4.6); a miss buries the fist in what stands on its line (11 m) | 0 – 6 · 9 |
+| Four Sides | 2 | N 0.55 · N 0.44 · B 0.46, 20 · R 0.60, 28: the last three each out of a blink from another side | 0 – 3.4 · 6 |
+| Passing Through | 2 | B+ 0.74, 24, out of a blink | 2.4 – 12 · 7 |
+| Rise and Plant | 2 | N 0.55 · R 0.66, 30, knockdown: a downward palm, a crater | 0 – 3.2 · 7 |
+| The Stomp | 2 | R 0.80, 26, ring 3.4: everything loose thrown outward, the crossing's bars crack | 0 – 3.2 · 8 |
+| Two Hands | 2 | N 0.60, 8, knockback 8: a shove | 0 – 3 · 6 |
+| The Feint | 2 | a feint, then B+ 0.56, 22 | 0 – 3.2 · 14 |
+| Crimson Cast | 2 | R 1.25, 34, knockback 9, knockdown: the place fixed at 0.35 of the windup, a red point flies there; the burst (2.4 m), a crater, loose pieces thrown | any · 6 |
+| Point Blank | 2 | out of a blink behind the hero, R 0.78, 30: Cast held at the palm, burst 0.9 m ahead of him | 0 – 9 · 8 |
+| The Wrecking Knot | 2 | R 1.90, 30: a 16 m path through the hero's place, fixed and shown 0.7 s before it moves; the knot runs it in 1.4 s, crossing his place at the impact (a 1.5 m half-strip; it strikes only from the impact to +0.15 s), chewing the road and every piece on its way | 2 – 40 · 14 |
+| Violet Null | 2 | R 1.65 (a long, loud cue: the two charges merge over his fingers): a line 5 m wide and 46 m long, fixed at 0.42 of the windup and shown on the road; 70 (108 of 160 HP; never more than 0.78 of max health), knockback 12. Everything on the strip is erased; a wide trench. Never twice inside 20 s; the first in phase 2 comes early | 0 – 46 · 24 |
+| Bring It Down | 2 | the standing tower top nearest the hero torn off, carried over him; R 1.40, 36, ring 3.2: the place fixed and marked 0.85 s before it lands, a crater | any · 18 |
+| The Orbit | 2 | three loose pieces turn round him 4.5 m out; B 0.70, 18 · B 0.62, 18 · R 0.80, 28 (the last bursts on the road) | 2.5 – 14 · 16 |
+| The Road Itself | 2 | R 0.85, 24: the road's slabs burst up in a line toward the hero (fixed at the stomp, drawn as a red strip), one blow | 3.5 – 14 · 12 |
+| Everywhere | 3 | he vanishes; three afterimages stand round the hero from the move's start and strike in turn: B 0.78, 22 · B 0.60, 22 · R 0.72, 30 | 0 – 12 · 9 |
+| Five Sides | 3 | N 0.56 · B 0.44 · N 0.42 · B 0.44 · R 0.58, 28: each after the first out of a blink | 0 – 3.4 · 7 |
+| Dark Spark, Twice | 3 | Dark Spark, and if it was dodged a second from behind: R 0.62, 36 | 0 – 6 · 12 |
+| Overhead | 3 | a floating piece drifts over the hero and is dropped: R 1.10, 30 (the place fixed 0.8 s before) | any · 8 |
+| Cast Off | 3 | two floating pieces drawn to his sides, cast in turn: B 0.60, 20 · B 0.56, 20 | 3 – 24 · 8 |
+| The Last Null | 3, below 12 % | R 2.30, 80: wider (7 m), turning 24 deg over its contact (the end of its turn shown as a second line); once | any |
+
+Terrain moves: at most one per 12 s, none while a piece of his is in the air or the scene is morphing; a move
+whose piece is gone is refused (the arena runs out of big things). Spells: two other moves between two spells
+at least; more likely when the hero is far or has been guarding.
+
+### The transitions
+- **The Blindfold Comes Off (66 %)**: he hooks a finger in the band and pulls it down to his neck (N 1.8,
+  fixed); the hair falls, the eyes kindle blue; a burst from where he stands throws the hero 7 m (no damage,
+  blockable, block push 4) and flattens what stands within 8 m.
+- **The Measureless (30 %)**: the domain, above.
+
+### The numbers measured (the bench, `veil.mjs . bench`, 2026-11-26, round 2)
+Six seeds, god mode off, 600 s cap (wins of 6): the perfect answerer 6, in 229 - 241 s, no hit taken; the
+fencing bot (answers 90 % of the cues; since ADR-227 its 0.12 s parries are all perfect) 2, in 264 - 290 s, 4
+dead; the roller (perfect-dodges every red, guards the rest) 6, in 374 - 427 s (the third-block rule made it
+easier: at 0.5 a block it won none); the blocker dead at 89 s mean; the pace defender (never attacks) dead in
+all six, 203 - 488 s (mean 302; without patience it lived in all six). Patience's settings tried: after 20 s
+dead in 102 - 383 s, 30 s (shipped) 201 - 525 s, 40 s 83 - 518 s; a two-block cost (0.7) alive. Round one's
+bench, Halcyon: perfect 133 - 155 s, fencing 6, roller 3, blocker dead at 309 s, pace dead at 422 s; Tian Lei:
+perfect 42 - 60 s, fencing 6, roller 6, blocker dead at 78 s, pace alive. PACE (the integration pass, the steady defender): 51.3 / 58.5 / 66.9 cues a minute by
+phase; the first Null at 73 - 89 s of the fight. DOWNTIME: the hero's knockdown 1.30 s (the engine's); the
+longest stretch out of his hands 1.43 s; standing up to the next cue, median 0.43 - 0.88 s.
 
 ## The duelists' pressure and the fairness guard (2026-11-16, ADR-122)
 The human bosses run one engine (`enemies/duelist/`: `brain.js`, `director.js`, `ledger.js`;
