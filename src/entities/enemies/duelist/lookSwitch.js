@@ -72,6 +72,8 @@ export const PICKED = Object.freeze({
   // Bai Wuji, the Untouched (the owner's picks, 2026-11-25, from the body sheets)
   wjLook: 'c', // the bone-white coat
   wjHair: 'b', // the short spiky burst, the choppy mop once it falls
+  wjCity: 'a', // the crossing: cold moonlit ash-grey
+  wjVoid: 'b', // the void: the stars and one great pale ring on the floor
 });
 
 /** Switches the owner has not picked yet (their rendered options wait for the owner): in the Lab's LOOKS
@@ -86,7 +88,6 @@ export const PENDING = Object.freeze([
   'wjShell', 'wjNull', // his barrier's look (a / b / c) and the Violet Null's body (a / b): untouched/fx.js, fxSpells.js
 
   // Bai Wuji: world rows
-  'wjCity', 'wjVoid', // the crossing's reading (a ash moon, b last lamps, c black wet) and the void's (a drifts, b the ring, c the fall): world/veiledCrossing.js
 
 ]);
 
