@@ -186,7 +186,7 @@ def build_clip(spec, clip, log=print):
     # clip: "start" = his facing over the first 0.2 s (hips, shoulders, feet, nose), "hit" = the blade's
     # horizontal direction at the first `hit` event (attacks: the way the cut is aimed), or a number (deg)
     face = clip.get('face')
-    if face is not None:
+    if face is not None and face != 'travel':
         if face == 'hit' and blade is not None and clip.get('events'):
             t0r = B.t_ref[0] if hasattr(B, 't_ref') else 0
             ev = [e for e in clip['events'] if e['name'] == 'hit'] or clip['events']
@@ -261,6 +261,9 @@ def build_clip(spec, clip, log=print):
         root[:, :2] -= root[0, :2]
     # planted feet: flat soles, toes bending at push-off, the ankle at exactly HDIM.ankle
     q, Wflat = post.flatten_feet(q, hips, root, g['cmask'], loop)
+    if clip.get('foot_ease'):
+        # spec "foot_ease": degrees a frame (e.g. 12 at 60 fps): the feet and toes turn no faster
+        q = post.ease_joints(q, ('footL', 'footR', 'toeL', 'toeR'), float(clip['foot_ease']), loop)
     lb = None
     if clip.get('ground') == 'body':
         h0 = hips.copy()
@@ -313,6 +316,26 @@ def build_clip(spec, clip, log=print):
         log('  blade tip: fastest %.1f m/s at frame %d (video %s); above half speed frames %d-%d (video %s-%s)'
             % (sp.max(), k, cfg.fmt_time(B.t_ref[0] + k / fps), fast[0], fast[-1],
                cfg.fmt_time(B.t_ref[0] + fast[0] / fps), cfg.fmt_time(B.t_ref[0] + fast[-1] / fps)))
+    if face == 'travel' and not loop and not clip.get('turn'):
+        # "face": "travel": his travel from the start to the active phase (a lunge's direction) is +Z
+        fa = int(round((cfg.parse_time(clip['phases']['active']) - B.t_ref[0]) * fps)) if clip.get('phases', {}).get('active') else len(q) - 1
+        fa = int(np.clip(fa, 1, len(q) - 1))
+        P0, _ = skel.fk(B.q[[0, fa]], B.hips[[0, fa]], B.root[[0, fa]])
+        d = P0[1, JI['hips']] - P0[0, JI['hips']]
+        a0 = float(np.arctan2(d[0], d[2]))
+        rq = skel.qaxis([0, 1, 0], np.full(len(q), -a0))
+        B.q = q = q.copy()
+        q[:, JI['hips']] = skel.qmul(rq, q[:, JI['hips']])
+        c_, s_ = np.cos(-a0), np.sin(-a0)
+        for arr, ix, iz in ((B.hips, 0, 2), (B.root, 0, 1)):
+            x, z = arr[:, ix].copy(), arr[:, iz].copy()
+            arr[:, ix] = c_ * x + s_ * z
+            arr[:, iz] = -s_ * x + c_ * z
+        B.face_rot = getattr(B, 'face_rot', 0.0) + a0
+        for nm in ('blade', 'bladeL'):
+            if getattr(B, nm, None) is not None:
+                setattr(B, nm, post.rotate_y(getattr(B, nm)[:, None], np.full(len(q), a0))[:, 0])
+        log('  face travel: turned %.0f degrees so his travel to the active frame (%.2f m) is +Z' % (np.degrees(a0), np.hypot(d[0], d[2])))
     # marks: video times on the first take -> clip frames
     B.events, B.phases = [], {}
     if not loop:

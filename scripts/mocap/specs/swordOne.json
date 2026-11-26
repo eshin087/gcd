@@ -74,8 +74,7 @@
      "name": "hit"
     }
    ],
-   "face": "hit",
-   "arm_fix": "whole",
+   "face": "travel",
    "blade_blur": true,
    "free_hand": true,
    "props": {
@@ -88,7 +87,22 @@
    "root": {
     "smooth": 0.1,
     "max_off": 0.15
-   }
+   },
+   "blade_keys": [
+    {
+     "take": 0,
+     "keys": [
+      [
+       "0:26.89",
+       930,
+       410,
+       845,
+       325
+      ]
+     ]
+    }
+   ],
+   "foot_ease": 14
   },
   {
    "name": "light2",

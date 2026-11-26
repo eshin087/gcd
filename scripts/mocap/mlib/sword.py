@@ -42,7 +42,7 @@ def fist_of(l2, side='R'):
     return (l2[16, :2] * 0.4 + l2[20, :2] * 0.35 + l2[18, :2] * 0.25)
 
 
-def fix_sword_arm(T, log=print, margin=0.12, whole=False, switch=2.5):
+def fix_sword_arm(T, log=print, margin=0.12, whole=False, switch=6.0):
     """The sword is in his RIGHT hand: where the blade leaves the tool's LEFT fist clearly better than its
     right one, the tool swapped his arms in that frame; swap them back (5-frame majority).
     whole=True (spec "arm_fix": "whole"): decided over the WHOLE take at once: a two-state path (labels kept
@@ -59,7 +59,7 @@ def fix_sword_arm(T, log=print, margin=0.12, whole=False, switch=2.5):
         sr = ray_scores(img, T.l2[i], 'R')[0].max()
         sl = ray_scores(img, T.l2[i], 'L')[0].max()
         vote[i] = 1 if sl > sr + margin else 0
-        ev[i] = (sr - sl) if max(sr, sl) > 0.15 else 0.0
+        ev[i] = (sr - sl) if max(sr, sl) > 0.25 and abs(sr - sl) > 0.1 else 0.0
     if whole:
         cost = np.array([0.0, switch])
         back = np.zeros((n, 2), int)

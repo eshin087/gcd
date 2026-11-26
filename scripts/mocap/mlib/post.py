@@ -269,3 +269,25 @@ def two_hand(q, hips, root, fps, t_ref0=None, gap=0.11, free=(), blend=4):
             j = JI[jn]
             q[k, j] = skel.qslerp(q[k, j], val, w[k])
     return skel.continuous(q)
+
+
+# ---------- 7c. easing the feet's turn (spec "foot_ease") ----------
+
+def ease_joints(q, names, max_deg, loop=False):
+    """limit each named joint's turn per frame to max_deg (a forward and a backward pass, averaged), so
+    the sole-levelling at a plant or a lost foot does not snap it in one frame"""
+    q = q.copy()
+    lim = np.radians(max_deg)
+    for nm in names:
+        j = JI[nm]
+        passes = []
+        for rev in (False, True):
+            a = q[::-1, j].copy() if rev else q[:, j].copy()
+            for k in range(1, len(a)):
+                d = abs(float(np.sum(a[k] * a[k - 1])))
+                ang = 2 * np.arccos(min(1.0, d))
+                if ang > lim:
+                    a[k] = skel.qslerp(a[k - 1], a[k], lim / ang)
+            passes.append(a[::-1] if rev else a)
+        q[:, j] = skel.qslerp(passes[0], passes[1], 0.5)
+    return skel.continuous(q)
