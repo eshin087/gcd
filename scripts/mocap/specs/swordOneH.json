@@ -2691,6 +2691,364 @@
     "maxStepDeg": 86,
     "reason": "keyed cut: from the held crouch he springs up and spins toward the camera while the blade goes from behind him, low in front and over his head in 0.2 s (video 2:17.60-2:17.90), smeared"
    }
+  },
+  {
+   "name": "runLight",
+   "title": "Running light attack",
+   "src": "sword 2:48-3:20",
+   "kind": "oneshot",
+   "fps": 60,
+   "sword": true,
+   "takes": [
+    {
+     "t0": "2:49.55",
+     "t1": "2:51.80",
+     "view": "front-right",
+     "yaw": 90,
+     "limb_keys": {
+      "blend": 3,
+      "keys": [
+       {
+        "t": "2:50.25",
+        "pts": {
+         "shoulderL": [
+          1027,
+          470
+         ],
+         "shoulderR": [
+          996,
+          463
+         ],
+         "elbowL": [
+          1004,
+          472
+         ],
+         "elbowR": [
+          955,
+          471
+         ],
+         "wristL": [
+          987,
+          469
+         ],
+         "wristR": [
+          931,
+          474
+         ],
+         "hilt": [
+          927,
+          475
+         ],
+         "tip": [
+          757,
+          475
+         ]
+        }
+       },
+       {
+        "t": "2:50.30",
+        "pts": {
+         "shoulderL": [
+          1038,
+          466
+         ],
+         "shoulderR": [
+          990,
+          442
+         ],
+         "elbowL": [
+          1026,
+          463
+         ],
+         "elbowR": [
+          942,
+          439
+         ],
+         "wristL": [
+          1029,
+          455
+         ],
+         "wristR": [
+          903,
+          455
+         ],
+         "hilt": [
+          894,
+          458
+         ],
+         "tip": [
+          723,
+          458
+         ]
+        }
+       },
+       {
+        "t": "2:50.35",
+        "pts": {
+         "shoulderL": [
+          1032,
+          426
+         ],
+         "shoulderR": [
+          971,
+          409
+         ],
+         "elbowL": [
+          1070,
+          435
+         ],
+         "elbowR": [
+          920,
+          428
+         ],
+         "wristL": [
+          1105,
+          427
+         ],
+         "wristR": [
+          876,
+          450
+         ],
+         "hilt": [
+          868,
+          452
+         ],
+         "tip": [
+          697,
+          452
+         ]
+        }
+       },
+       {
+        "t": "2:50.40",
+        "pts": {
+         "shoulderL": [
+          978,
+          398
+         ],
+         "shoulderR": [
+          931,
+          388
+         ],
+         "elbowL": [
+          1018,
+          388
+         ],
+         "elbowR": [
+          892,
+          409
+         ],
+         "wristL": [
+          1066,
+          379
+         ],
+         "wristR": [
+          873,
+          428
+         ],
+         "hilt": [
+          873,
+          428
+         ],
+         "tip": [
+          1041,
+          351
+         ]
+        }
+       },
+       {
+        "t": "2:50.45",
+        "pts": {
+         "shoulderL": [
+          950,
+          385
+         ],
+         "shoulderR": [
+          902,
+          382
+         ],
+         "elbowL": [
+          959,
+          384
+         ],
+         "elbowR": [
+          852,
+          386
+         ],
+         "wristL": [
+          970,
+          372
+         ],
+         "wristR": [
+          819,
+          388
+         ],
+         "hilt": [
+          819,
+          388
+         ],
+         "tip": [
+          634,
+          390
+         ]
+        }
+       },
+       {
+        "t": "2:50.50",
+        "pts": {
+         "shoulderL": [
+          920,
+          403
+         ],
+         "shoulderR": [
+          867,
+          386
+         ],
+         "elbowL": [
+          926,
+          447
+         ],
+         "elbowR": [
+          807,
+          385
+         ],
+         "wristL": [
+          948,
+          474
+         ],
+         "wristR": [
+          749,
+          385
+         ],
+         "hilt": [
+          740,
+          384
+         ],
+         "tip": [
+          569,
+          384
+         ]
+        }
+       },
+       {
+        "t": "2:50.60",
+        "pts": {
+         "shoulderL": [
+          900,
+          423
+         ],
+         "shoulderR": [
+          851,
+          400
+         ],
+         "elbowL": [
+          915,
+          463
+         ],
+         "elbowR": [
+          792,
+          402
+         ],
+         "wristL": [
+          946,
+          494
+         ],
+         "wristR": [
+          735,
+          397
+         ],
+         "hilt": [
+          723,
+          396
+         ],
+         "tip": [
+          552,
+          397
+         ]
+        }
+       },
+       {
+        "t": "2:50.70",
+        "pts": {
+         "shoulderL": [
+          871,
+          439
+         ],
+         "shoulderR": [
+          818,
+          404
+         ],
+         "elbowL": [
+          889,
+          473
+         ],
+         "elbowR": [
+          755,
+          405
+         ],
+         "wristL": [
+          931,
+          496
+         ],
+         "wristR": [
+          697,
+          404
+         ],
+         "hilt": [
+          685,
+          403
+         ],
+         "tip": [
+          514,
+          412
+         ]
+        }
+       }
+      ]
+     },
+     "lose": [
+      {
+       "t0": "2:50.27",
+       "t1": "2:50.48",
+       "limbs": [
+        "armL",
+        "armR"
+       ]
+      }
+     ]
+    }
+   ],
+   "phases": {
+    "windup": "2:50.30",
+    "active": "2:50.52",
+    "recover": "2:51.60"
+   },
+   "events": [
+    {
+     "t": "2:50.43",
+     "name": "hit"
+    }
+   ],
+   "face": "travel",
+   "free_hand": true,
+   "swing": true,
+   "flight": "picture",
+   "root": {
+    "smooth": 0.1,
+    "max_off": 0.15
+   },
+   "foot_ease": 14,
+   "props": {
+    "R": "sword",
+    "L": null
+   },
+   "from": "run",
+   "to": "swordIdle",
+   "qa": {
+    "maxStepDeg": 34,
+    "reason": "the run's push-off into the cut (video 1:49.93): the back shin snaps from the stride; and the keyed rising cut (2:50.35-2:50.45)"
+   },
+   "draft": true
   }
  ]
 }
