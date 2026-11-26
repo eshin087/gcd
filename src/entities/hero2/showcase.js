@@ -114,7 +114,7 @@ export const MODELLED = {
 };
 /** Per-entry close camera sides (deg) where the default draws a blade across his legs although it is
  *  clear in 3D (the blade points at the lens). */
-export const AZ_ENTRY = { pairIdle: 20, light4: 100 };
+export const AZ_ENTRY = { pairIdle: 20, light4: 100, '2hCharge1': 100, pairLight5: 45 };
 
 /** The close camera's side (deg from his front toward his right) when the entry gives none: a
  *  three-quarter view from his right-front (both arms and the blade in view); a turn is seen from a side
