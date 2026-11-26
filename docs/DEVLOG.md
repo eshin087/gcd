@@ -5,6 +5,28 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-25 — A roadmap to Steam and the app stores (docs only; branch `docs/ship-roadmap`)
+
+**Owner:** plans to sell the game on Steam (Windows / Mac) and the iOS / Android stores; asked whether the
+engine is good enough, then for a roadmap with performance first and a separate legal review of the homages.
+
+**What changed.** `docs/ROADMAP.md`: a new section "Ship" (S1 performance on the target devices, S2 the legal
+review, S3 saves, S4 Steam, S5 mobile, S6 localisation / accessibility / release). And a section "Polish" from the
+owner's asks: P1 every boss in the house ASCII look (some still are not), P2 every boss's swings and motion
+polished from the reference footage, P3 arenas that are part of the fight, better backgrounds, cooler destruction. The engine stays: the web
+build ships inside a wrapper (Electron or Tauri on desktop, Capacitor on mobile). Measured sizes: 1.35 MB of
+code gzipped, ~15 MB of music fetched per level.
+
+**Not redone.** The frame's cost is the performance session's (M1.89: AUTO quality, the still shadow map, the
+cost budget). S1 lists only what shipping adds: named target devices and a floor, a mid-range Android baseline,
+heat and memory on a phone, a lost WebGL context (`webglcontextlost` is not handled), 120 Hz, the WebKit path.
+Those items were sent to that session.
+
+**Next.** The legal review runs in its own session (report in `.claude/legal-review/REPORT.md`, untracked); the
+owner's picks per boss follow it. The wrapper trials wait for the content.
+
+---
+
 ## 2026-11-25 — The hero's idles and guard after the owner's reference footage (ADR-207; branch `claude/idles-reference`)
 
 **Owner:** "review these sections on the videos for all the idle animation and poses for you to mirror to this
