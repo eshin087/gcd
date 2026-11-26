@@ -654,7 +654,7 @@ export const SWINGS = {
   ...HEAVIES_BLINK,
   ...LAST_HITS_BLINK,
   ...SPECIALS_BLINK,
-  // ---- the steel look set (?lights=steel, ADR-210: the owner's reference footage, pose for pose) ----
+  // ---- the steel look set (?lights=steel, ADR-214: the owner's reference footage, pose for pose) ----
   ...STEEL_CHAIN_A,
   ...STEEL_CHAIN_B,
   ...STEEL_HEAVIES_C,

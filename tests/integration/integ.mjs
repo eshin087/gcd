@@ -13635,10 +13635,10 @@ async function scenarioBlinkSpecials() {
 }
 
 // ================================================================== `steelstance`: the steel look set, how he stands (steelStance.js)
-// ?lights=steel (ADR-210). Filled by the part's author.
+// ?lights=steel (ADR-214). Filled by the part's author.
 async function scenarioSteelStance() {
   out('\n== scenario STEELSTANCE (?lights=steel: how he stands, the charge hold (steelStance.js)) ==');
-  // (ADR-210: how he STANDS is every look's, ADR-207 refStance.js: under steel he stands exactly as under
+  // (ADR-214: how he STANDS is every look's, ADR-207 refStance.js: under steel he stands exactly as under
   // the default look; the look set's own is the charge hold, steelCharge)
   const CB = await imp('src/entities/player/combat.js');
   const { STEEL } = await imp('src/entities/player/steelStance.js');
@@ -13737,7 +13737,7 @@ async function scenarioSteelStance() {
 }
 
 // ================================================================== `steela`: the steel look set, the chain's hits 1-3 (steelChainA.js)
-// ?lights=steel (ADR-210). Filled by the part's author.
+// ?lights=steel (ADR-214). Filled by the part's author.
 async function scenarioSteelA() {
   out('\n== scenario STEELA (?lights=steel: the chain, hits 1-3 (steelChainA.js)) ==');
   const CB = await imp('src/entities/player/combat.js');
@@ -13890,7 +13890,7 @@ async function scenarioSteelA() {
 }
 
 // ================================================================== `steelb`: the steel look set, the chain's hits 4-5, the sprint slash, the roll cut (steelChainB.js)
-// ?lights=steel (ADR-210). Filled by the part's author.
+// ?lights=steel (ADR-214). Filled by the part's author.
 async function scenarioSteelB() {
   out('\n== scenario STEELB (?lights=steel: the chain, hits 4-5, the sprint slash, the roll cut (steelChainB.js)) ==');
   const CB = await imp('src/entities/player/combat.js');
@@ -14087,7 +14087,7 @@ async function scenarioSteelB() {
 }
 
 // ================================================================== `steelc`: the steel look set, the lone heavy, the heavy after one light, the charged heavy (steelHeaviesC.js)
-// ?lights=steel (ADR-210). Filled by the part's author.
+// ?lights=steel (ADR-214). Filled by the part's author.
 async function scenarioSteelC() {
   out('\n== scenario STEELC (?lights=steel: the lone heavy, the heavy after one light, the charged heavy (steelHeaviesC.js)) ==');
   const CB = await imp('src/entities/player/combat.js');
@@ -14245,7 +14245,7 @@ async function scenarioSteelC() {
 }
 
 // ================================================================== `steeld`: the steel look set, the heavies after two, three and four lights (steelHeaviesD.js)
-// ?lights=steel (ADR-210). Filled by the part's author.
+// ?lights=steel (ADR-214). Filled by the part's author.
 async function scenarioSteelD() {
   out('\n== scenario STEELD (?lights=steel: the heavies after two, three and four lights (steelHeaviesD.js)) ==');
   const CB = await imp('src/entities/player/combat.js');
@@ -14422,7 +14422,7 @@ async function scenarioSteelD() {
 }
 
 // ================================================================== `steele`: the steel look set, the execution and One Breath (steelSpecialsE.js)
-// ?lights=steel (ADR-210). Filled by the part's author.
+// ?lights=steel (ADR-214). Filled by the part's author.
 async function scenarioSteelE() {
   out('\n== scenario STEELE (?lights=steel: the execution and One Breath (steelSpecialsE.js)) ==');
   const CB = await imp('src/entities/player/combat.js');

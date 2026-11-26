@@ -1,4 +1,4 @@
-// The steel look set (`?lights=steel`, combat.js setLights; ADR-210): the execution and One Breath.
+// The steel look set (`?lights=steel`, combat.js setLights; ADR-214): the execution and One Breath.
 // Every clip here follows the owner's reference footage pose for pose (both arms, the body, the feet),
 // fitted to this game's own clock: no number of any attack changes. Clip format: swings.js.
 //

@@ -1630,7 +1630,7 @@ const CHARGE_SW = [-82, 80, 74]; // the blade: azimuth, elevation at no charge â
 function chargePose(p, A) {
   const k = clamp(A.chargeK, 0, 1), s = smoothstep(0, 0.25, A.t), w = s * k;
   stance(p, A, 0);
-  // (?lights=steel, ADR-210: the hold after the owner's reference, steelStance.js)
+  // (?lights=steel, ADR-214: the hold after the owner's reference, steelStance.js)
   if (STEEL.on && steelCharge(p, P, A, k, s, walkLegs)) return;
   v3(p, P.rF, -0.18, ANK, -0.47);
   v3(p, P.lF, 0.17, ANK, 0.44);

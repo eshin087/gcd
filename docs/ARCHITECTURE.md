@@ -1182,7 +1182,7 @@ the coil along a cubic that leaves at `gather[0]` and arrives at `gather[1]` (wi
 `variants` and nothing else between the weighted clips (`swings.js`: `fallingCut` … `risingThrust`,
 `drawSlash`, `groundSlam`) and the ones before them (`lightsOld.js` `LIGHTS_OLD`, spread into `SWINGS` as
 `<name>Old`, plus the `drawCut` and `slam` the flurry, One Breath and Earthbreaker still play).
-**The steel look set** (ADR-210; `?lights=steel`, the Lab's `lights` row; to compare, not the default):
+**The steel look set** (ADR-214; `?lights=steel`, the Lab's `lights` row; to compare, not the default):
 the same `wear` over every attack def, from `steelChainA.js` (`LIGHT_STEEL_A`: hits 1-3), `steelChainB.js`
 (`LIGHT_STEEL_B`: hits 4-5; `SPECIAL_STEEL_B`: the sprint slash, the roll cut), `steelHeaviesC.js`
 (`HEAVY_STEEL_C`: the lone heavy, the heavy after one light; `SPECIAL_STEEL_C`: the charged release),
@@ -1195,7 +1195,7 @@ A clip's `settle` (seconds; any clip may give one) is the blend player.js `_tick
 still, `HeroAnimator._feet` brings the feet home by stepping (`_settleStep`, `SETTLE_STEP`: one at a time,
 the furthest first, an 8 cm lift, onto the standing pose's spots). A dash clip's `dashPlant` makes
 `dashFeet` step a foot the root's travel left behind onto the grass (`DASH_PLANT`, `plantFoot`).
-**The instant look set** (ADR-209; `?lights=blink`, the Lab's `lights` row; to compare, not the default):
+**The instant look set** (ADR-213; `?lights=blink`, the Lab's `lights` row; to compare, not the default):
 `setLights` wears a LOOK on every attack def through `wear` (`LOOK_KEYS`: `anim`, `variants`, `contact`,
 `glint`; never a number of the hit): hits 1-4 from `lightsBlink.js`, hit 5 from `lastHits.js`
 (`LAST_HIT_BLINK`: five strokes as its `anim` and `variants`, picked by `_pickVariant`), the heavy branches

@@ -6349,7 +6349,7 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   passes (`chain`) is checked against the widest its complete search finds from where he dodged (the new stance
   moved the seeded fight before it: from that dodge spot the search's best is 14°, from the old one 21°; seeds 1338-
   1340 pass the 17° bar either way).
-## ADR-209 — The instant cuts: every attack crosses in two or three frames; behind `?lights=blink` until the owner's call (2026-11-25)
+## ADR-213 — The instant cuts: every attack crosses in two or three frames; behind `?lights=blink` until the owner's call (2026-11-25)
 
 **Context.** ADR-188 gave the light chain weight in the body and left the sword's path alone. The owner
 could not tell it from the chain before ("the attack sword animation itself is the same and thats what i
@@ -6421,9 +6421,9 @@ removed with the owner's pick. Tests: one scenario per part (`blinklights`, `bli
 `blinkspecials`, `blinklast`), `blinkslash` for the lines, and the opt-in `armaudit` that prints the sword
 arm, the body and the free hand through any swing.
 
-## ADR-210 — The steel look set: every attack follows the owner's reference footage, pose for pose; behind `?lights=steel` until the owner's call (2026-11-25)
+## ADR-214 — The steel look set: every attack follows the owner's reference footage, pose for pose; behind `?lights=steel` until the owner's call (2026-11-25)
 
-- **Context:** the instant cuts (ADR-209) went through three rounds of the owner's notes and were turned
+- **Context:** the instant cuts (ADR-213) went through three rounds of the owner's notes and were turned
   down whole: "this all still looks bad to me". Every round had failed on the same things, all of them
   invented by hand: the sword arm's angles ("doesn't look like how an arm should look when doing that
   sword motion"), the free arm (flailing, then rigid, then parked on the hip), motion "too short and
@@ -6442,7 +6442,7 @@ arm, the body and the free hand through any swing.
      its own file and test scenario, the look set pre-wired first with every slot empty (`null` = today's
      look) so the five could work in one checkout. Each: find the move in every camera view; write a pose
      table before any key; key it; film our hero from the same views; pair; list the differences; repeat.
-  2. **The clock.** Every number stays (`wear` / `LOOK_KEYS`, as ADR-209). The reference's wind-up to its
+  2. **The clock.** Every number stays (`wear` / `LOOK_KEYS`, as ADR-213). The reference's wind-up to its
      deepest point is our windup (the key at u = 1), its swing our active frames, its follow-through and
      settle our recovery. Its swings take about three times as long as ours.
   3. **`settle`.** At our clock a lone hit had a quarter of a second to hold its finish AND stand up, which

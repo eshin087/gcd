@@ -67,14 +67,14 @@ One hundred and eight pieces of work since 0.4.0:
   beat before he comes back; out of a held finish the next swing gathers instead of snapping away. The finisher lands
   7 cm deeper over the planted blade. The heavy branches, the sprint slash, the roll cut, the flurry and the
   charged cleave are unchanged. `?lights=old` (and the Lab's PLAYER row `lights`) plays the chain as it was.
-  *Added, to compare (not the default; ADR-209):* `?lights=blink` (the same row, 'instant cuts') plays every
+  *Added, to compare (not the default; ADR-213):* `?lights=blink` (the same row, 'instant cuts') plays every
   attack as an instant cut: the blade crosses in two or three frames and leaves one straight slash line. The
   sword arm opens through the cut and follows through, the free hand hangs loose at his side, the heavies
   land their weight under a longer, thicker line (the lone heavy is a dash into a slash; the heavy after two
   lights is one wide cut, no turn), the fifth hit is one of five stronger strokes, a different one each
   time, and the sprint slash, the roll cut, the charged cleave, One Breath and the execution follow the
   same style. Every number of every attack is the same.
-  *Added, to compare (not the default; ADR-210):* `?lights=steel` (the same row, 'steel') plays every
+  *Added, to compare (not the default; ADR-214):* `?lights=steel` (the same row, 'steel') plays every
   attack after the owner's reference footage, pose for pose, out of the stances that footage also gave
   him (ADR-207): the five lights, the five heavies, the
   charged heavy, the sprint and roll attacks, the execution and One Breath each follow one move of the
