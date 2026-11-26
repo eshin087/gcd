@@ -4,7 +4,11 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and nine pieces of work since 0.4.0:
+One hundred and ten pieces of work since 0.4.0:
+- **A lighter world on phones that need it** (2026-11-26, ADR-216). *Changed:* on a phone that still drops frames at the
+  lowest resolution, the ground's extras (ridge strokes, drifting cloud shadows, contact shadows, the floor ripple)
+  turn off and the stone floors' relief is drawn more simply, for the rest of the visit. `?lite=0` keeps the full
+  look, `?lite=1` forces the light one.
 - **BENCH in the performance readout** (2026-11-26, ADR-215). *Added:* with `?perf`, BENCH holds the game still for a
   few seconds and measures what each drawing step (shadows, world, letters, fire, glow, effects) costs your
   device's graphics chip; REPORT then includes it.

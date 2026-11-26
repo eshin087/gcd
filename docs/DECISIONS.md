@@ -6383,3 +6383,19 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   overlap on the GPU can share time, so the shares need not add up to the frame (the rest line shows the gap).
   On the RTX 4090 the whole frame at the phone's size is ~2 ms; the numbers mean something on the phone only.
 
+## ADR-216 — The lite world: a phone with no resolution step left draws a cheaper world (2026-11-26)
+
+- **Context:** the owner's BENCH on their iPhone (ADR-215), fox in a fight at 669 x 867 and AUTO's 1x floor:
+  a frame 13.3 ms, the world pass 11.8 ms of it; ~0.7x the pixels gave only 32 % less. The world's per-pixel
+  print is what costs. Three options rendered at the phone's size on fox and grove: A as today, B the four
+  upgrades off (ridge strokes, cloud shadows, contact rings, the ripple), C B plus the floors' relief in one
+  octave; on the desktop GPU the world pass was 69 - 80 % (B) and 66 - 69 % (C) of A's. The owner picked C.
+- **Decision:** `game.liteWorld`: on a touch device, once AUTO is slow with no step down left
+  (`autoQ.wantsLess`), for the rest of the page load; `?lite=1|0` to force. groundFx holds the four upgrades
+  off and `uDpLite` turns the floors' cheap relief on (a uniform branch: no second program).
+- **Consequences:** a phone that holds 60 fps at its floor never sees it; the owner's iPhone on fox and grove
+  will. The world pass in one page, lite against full, 4K desktop GPU: fox 2.48 -> 2.16 ms, grove 1.99 -> 1.56
+  (the sheets' runs gave 31 - 34 % less; this machine was shared and noisy). The picture with it on matches the
+  sheet's C in the same page (474 of 580 000 pixels differ, from the relief alone). The look changes once, when
+  it turns on, mid-page (one frame). Not measured on the phone; the next `?perf` BENCH there says how much.
+
