@@ -2,7 +2,7 @@
 root -> clean -> a Built result (saved under <WORK>/built/<set>/<clip>.npz)."""
 import json, os
 import numpy as np
-from . import cfg, skel, takes, fuse, retarget
+from . import cfg, skel, takes, fuse, retarget, post, keys
 from .skel import JI, J, HDIM
 
 
@@ -19,7 +19,10 @@ def _take(spec, clip, tk, pad=0.0, log=print):
                    calm=tk.get('calm', clip.get('calm', 0.35 if clip.get('kind', 'oneshot') == 'oneshot' else None)))
     T.spec = tk
     T.spec_yaw = tk.get('yaw')
-    if clip.get('sword'):
+    if tk.get('drop') or tk.get('keys'):
+        keys.apply_take_keys(T, tk, log)
+        T.solve_camera(tk.get('pitch'), tk.get('yaw'), lambda s: None)
+    if clip.get('sword') and not clip.get('swordL') and not clip.get('grip') and not tk.get('no_arm_check'):
         from . import sword
         sword.fix_sword_arm(T, log)
     log('  take ' + T.summary())
@@ -174,7 +177,25 @@ def build_clip(spec, clip, log=print):
         from . import sword
         blade = sword.blade_dirs(spec, clip, B, Ts, log=log)
         B.blade = blade
-    Rw = retarget.world_rotations(b, blade, tumble=clip.get('ground') == 'body')
+    B.bladeL = None
+    if clip.get('swordL'):
+        from . import sword
+        B.bladeL = sword.blade_dirs(spec, clip, B, Ts, log=log, side='L')
+    # his facing: the root's yaw when he turns (pivots, turns, turning in place); the body is then
+    # retargeted in the frame that faces with him and his hips / spine keep their own twist on top
+    yaw = None
+    yaw_all = post.facing_yaw(b, fps)
+    if clip.get('turn'):
+        yaw = yaw_all
+        b = post.rotate_y(b, yaw)
+        if blade is not None:
+            blade = post.rotate_y(blade[:, None], yaw)[:, 0]
+        if getattr(B, 'bladeL', None) is not None:
+            B.bladeL = post.rotate_y(B.bladeL[:, None], yaw)[:, 0]
+        log('  turn: he turns %.0f degrees (root yaw follows his facing)' % np.degrees(yaw[-1]))
+    elif abs(np.degrees(yaw_all[-1])) > 45 and not loop:
+        log('  ! he ends facing %.0f degrees from his start: set "turn": true if this is a turn' % np.degrees(yaw_all[-1]))
+    Rw = retarget.world_rotations(b, blade, tumble=clip.get('ground') == 'body', clip=clip, bladeL=getattr(B, 'bladeL', None))
     q = skel.world_to_local(Rw)
     q = skel.continuous(q)
     # light quaternion smoothing (positions were smoothed already)
@@ -185,12 +206,19 @@ def build_clip(spec, clip, log=print):
     for nm in ('footL', 'footR'):
         q = retarget.limit_joint(q, JI[nm], 55, 1.5 * k, loop)
     for nm in ('handL', 'handR'):
-        if not (nm == 'handR' and blade is not None):
-            q = retarget.limit_joint(q, JI[nm], 70, 1.2 * k, loop)
+        held = (nm == 'handR' and blade is not None) or (nm == 'handL' and getattr(B, 'bladeL', None) is not None)
+        if not held:
+            q = retarget.limit_joint(q, JI[nm], 80, 1.0 * k, loop)
     q = retarget.limit_joint(q, JI['head'], 60, 1.0 * k, loop)
     q = retarget.limit_joint(q, JI['neck'], 45, 1.0 * k, loop)
+    if clip.get('clavicles', 0.3):
+        q = post.clavicles(q, float(clip.get('clavicles', 0.3)), loop)
+    if clip.get('despike', True):
+        q = post.despike(q, fps, clip.get('qa', {}).get('maxStepDeg'), loop)
+    for pk in clip.get('pose_keys', []):
+        q = keys.apply_pose_key(q, pk, fps, B)
     q = skel.continuous(q)
-    g = retarget.ground_and_contact(q, fps, loop, clip.get('ground', 'feet'), clip.get('travel', 'free'), log, clip)
+    g = retarget.ground_and_contact(q, fps, loop, clip.get('ground', 'feet'), clip.get('travel', 'free'), log, clip, yaw)
     hips = np.zeros((len(q), 3))
     hips[:, 0] = g['hips_xz'][:, 0]
     hips[:, 1] = g['hipsY']
@@ -198,11 +226,46 @@ def build_clip(spec, clip, log=print):
     root = g['root']
     if not loop:
         root[:, :2] -= root[0, :2]
-    q, before, after = retarget.pin_feet(q, hips, root, g['cmask'], loop=loop)
+    # planted feet: flat soles, toes bending at push-off, the ankle at exactly HDIM.ankle
+    q, Wflat = post.flatten_feet(q, hips, root, g['cmask'], loop)
+    lb = None
+    if clip.get('ground') == 'body':
+        h0 = hips.copy()
+        h0[:, 1] = 0
+        lb = retarget.body_low(skel.fk(q, h0, root)[0])
+    hips = post.hips_from_flat(q, hips, root, g['cmask'], Wflat, lb)
+    # in the air: the hips' height from a fixed side camera's picture (jumps, falls)
+    if clip.get('air') and not loop:
+        hips = air_hips(clip, B, Ts, hips, g['cmask'], log)
+    q, before, after = retarget.pin_feet(q, hips, root, g['cmask'], loop=loop, flat=Wflat)
     q = skel.continuous(q)
+    # last guard: nothing through the ground after the feet were pinned
+    h0 = hips.copy()
+    h0[:, 1] = 0
+    Pf = skel.fk(q, h0, root)[0]
+    lowf = np.minimum.reduce([Pf[:, JI['footL'], 1] - HDIM['ankle'], Pf[:, JI['toeL'], 1], Pf[:, JI['footR'], 1] - HDIM['ankle'], Pf[:, JI['toeR'], 1]])
+    hips[:, 1] = np.maximum(hips[:, 1], -lowf)
+    if clip.get('grip') and blade is not None:
+        gr = clip['grip']
+        t0r = B.t_ref[0] if hasattr(B, 't_ref') else 0
+        free = [(int(round((cfg.parse_time(a) - t0r) * fps)), int(round((cfg.parse_time(b_) - t0r) * fps)))
+                for a, b_ in gr.get('free', [])]
+        q = post.two_hand(q, hips, root, fps, gap=float(gr.get('gap', 0.11)), free=free)
+        log('  grip: the left hand on the grip %.2f m below the right%s' % (gr.get('gap', 0.11), ', off in %s' % free if free else ''))
     log('  feet: planted slide %.1f cm before cleaning, %.1f cm after; contact L %s R %s' % (before, after, g['contact']['L'], g['contact']['R']))
     if g['speed'] is not None:
         log('  speed %.2f m/s, period %.3f s, %d frames' % (g['speed'], B.period, len(q)))
+        sp_px = speed_from_picture(clip, Ts, B)
+        if sp_px is not None:
+            log('  speed from the picture (fixed camera, his pixel height): %.2f m/s' % sp_px)
+    if clip.get('breath'):
+        br = clip['breath'] if isinstance(clip['breath'], dict) else {}
+        q = post.breathe(q, fps, br.get('period', 3.6), br.get('chest_deg', 1.2), br.get('shoulder_deg', 1.0))
+        log('  breath: SYNTHESIZED (period %.1f s), not measured' % br.get('period', 3.6))
+    ws, wj, wf = post.worst_step(q, fps)
+    lim = clip.get('qa', {}).get('maxStepDeg', post.step_limit(fps))
+    B.qa = dict(maxStepDeg=round(ws, 1), at='%s@%d' % (wj, wf), limit=round(lim, 1), reason=clip.get('qa', {}).get('reason'))
+    log('  step check: worst %.1f deg (%s frame %d), limit %.1f%s' % (ws, wj, wf, lim, '' if ws <= lim else '  ** OVER **'))
     B.q, B.hips, B.root, B.contact, B.speed, B.cmask = q, hips, root, g['contact'], g['speed'], g['cmask']
     if blade is not None and not loop:
         # a hint for the marks: the blade tip's speed (our skeleton, root travel removed)
@@ -231,7 +294,10 @@ def save(B, set_id):
                 phases=B.phases, takes=B.takes, loo=B.loo, period=getattr(B, 'period', None),
                 shift=getattr(B, 'shift', None), offsets=getattr(B, 'offsets', None),
                 t_ref0=float(B.t_ref[0]) if hasattr(B, 't_ref') else None)
+    meta['qa'] = getattr(B, 'qa', None)
     extra = {}
+    if getattr(B, 'bladeL', None) is not None:
+        extra['bladeL'] = B.bladeL
     if getattr(B, 'blade', None) is not None:
         extra['blade'] = B.blade
     np.savez_compressed(p, q=B.q, hips=B.hips, root=B.root, b=B.b, meta=json.dumps(meta), **extra)
@@ -247,4 +313,61 @@ def load(set_id, name):
         setattr(B, k, v)
     B.q, B.hips, B.root, B.b = z['q'], z['hips'], z['root'], z['b']
     B.blade = z['blade'] if 'blade' in z else None
+    B.bladeL = z['bladeL'] if 'bladeL' in z else None
     return B
+
+
+def air_hips(clip, B, Ts, hips, cmask, log):
+    """frames with no planted foot take the pelvis' height from a fixed side take's picture, offset so it
+    meets the contact heights at take-off and landing (spec "air": {"take": i, "stand": ["t0", "t1"]}: the
+    stand span is a moment in that take where he stands on both feet, for the ground line and the scale)"""
+    a = clip['air']
+    ti = int(a.get('take', 0))
+    T = Ts[ti]
+    step = int(round(60.0 / B.fps))
+    s = B.offsets[ti] if getattr(B, 'offsets', None) else 0
+    n = len(hips)
+    idx = np.clip(np.arange(n) * step + s, 0, len(T.t) - 1)
+    st0, st1 = cfg.parse_time(a['stand'][0]), cfg.parse_time(a['stand'][1])
+    stand = np.where((T.t >= st0) & (T.t <= st1))[0]
+    if not len(stand):
+        log('  ! air: the stand span is not in take %d' % ti)
+        return hips
+    h = post.air_height(T, idx, stand)
+    out = hips.copy()
+    air = ~cmask.any(1)
+    if not air.any():
+        log('  air: no frame without a planted foot')
+        return out
+    i = 0
+    while i < n:
+        if not air[i]:
+            i += 1
+            continue
+        j = i
+        while j < n and air[j]:
+            j += 1
+        a0 = max(i - 1, 0)
+        a1 = min(j, n - 1)
+        d0 = hips[a0, 1] - h[a0]
+        d1 = hips[a1, 1] - h[a1]
+        for k in range(i, j):
+            u = (k - a0) / max(a1 - a0, 1)
+            out[k, 1] = h[k] + d0 * (1 - u) + d1 * u
+        log('  air: frames %d-%d from the picture, peak %.2f m above take-off' % (i, j - 1, out[i:j, 1].max() - hips[a0, 1]))
+        i = j
+    return out
+
+
+def speed_from_picture(clip, Ts, B):
+    """a loop's speed from a FIXED-camera take (take key "fixed": true) that sees him cross the frame:
+    his pelvis' pixel speed over his pixel height, times his height, corrected for the view's angle"""
+    for T in Ts:
+        if not T.spec.get('fixed'):
+            continue
+        pel = (T.l2[:, 23, :2] + T.l2[:, 24, :2]) / 2
+        tall = np.median(np.maximum(T.l2[:, [29, 30, 31, 32], 1].max(1), T.l2[:, [27, 28], 1].max(1)) - T.l2[:, 0, 1])
+        px_h = tall / 0.9105  # nose height / height (proportions.py)
+        v = np.polyfit(T.t, pel[:, 0], 1)[0]
+        return abs(v) / px_h * HDIM['height'] / max(abs(np.sin(np.radians(T.yaw))), 0.3)
+    return None

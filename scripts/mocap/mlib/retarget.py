@@ -116,7 +116,7 @@ def _line_tumble(v):
     return _n(smooth_time(v, 1.5))
 
 
-def world_rotations(b, blade=None, tumble=False):
+def world_rotations(b, blade=None, tumble=False, clip=None, bladeL=None):
     """b (n,33,3) body-frame landmarks -> world rotations (n,J,4) in the root's frame.
     blade (n,3) optional: the sword's direction (unit) in the body frame; sets the right hand's roll."""
     n = len(b)
@@ -154,7 +154,10 @@ def world_rotations(b, blade=None, tumble=False):
         R[:, JI['foreArm' + s]] = skel.frame_q(rest_dir, rest_h, fo, h)
         fing = _mid(b, pk, ix) - b[:, wr]
         thumb = b[:, ix] - b[:, pk]
-        if s == 'R' and blade is not None:
+        if s == 'L' and bladeL is not None:
+            # a second sword in the left fist: the same rule as the right
+            R[:, JI['hand' + s]] = skel.frame_q(Z, rest_dir, bladeL, _n(fo))
+        elif s == 'R' and blade is not None:
             # the blade leaves the fist along the hand's +Z (the thumb side); the hand's long axis stays as
             # near the forearm as the blade allows
             R[:, JI['hand' + s]] = skel.frame_q(Z, rest_dir, blade, _n(fo))
@@ -232,12 +235,15 @@ def _spans(mask, min_len=3, fill=2):
     return out, spans
 
 
-def ground_and_contact(q, fps, loop=False, ground='feet', travel='free', log=print, clip_opts={}):
+def ground_and_contact(q, fps, loop=False, ground='feet', travel='free', log=print, clip_opts={}, yaw=None):
     """From local rotations (hips at the origin): the hips' height, foot contact and the root travel.
     Returns hipsY (n,), hips_xz (n,2) (hips over the root), root (n,3), contact {L: spans, R: spans}, speed."""
     n = len(q)
     zero = np.zeros((n, 3))
-    P, _ = skel.fk(q, zero)
+    rootyaw = np.zeros((n, 3))
+    if yaw is not None:
+        rootyaw[:, 2] = yaw  # feet in a fixed frame while he turns
+    P, _ = skel.fk(q, zero, rootyaw)
     g = foot_points(P)  # (n, 2) foot bottoms with the hips at height 0
     lowest = g.min(1)
     if ground == 'body':
@@ -377,6 +383,10 @@ def ground_and_contact(q, fps, loop=False, ground='feet', travel='free', log=pri
         total = v * T
         if travel == 'forward':
             v = np.array([0.0, np.linalg.norm(v) * np.sign(v[1] if abs(v[1]) > 1e-6 else 1)])
+        elif isinstance(travel, (int, float)) and not isinstance(travel, bool):
+            # a direction in degrees (0 forward, 90 his left, -90 his right, 180 backward): strafes
+            a = np.radians(float(travel))
+            v = np.linalg.norm(v) * np.array([np.sin(a), np.cos(a)])
         t = np.arange(n) / fps
         root_xz = t[:, None] * v[None]
         # the hips sway over the planted feet: the hips' position against the root follows the planted
@@ -386,11 +396,18 @@ def ground_and_contact(q, fps, loop=False, ground='feet', travel='free', log=pri
     else:
         root_xz = smooth_time(H, 0.25 * fps, False)
         root_xz -= root_xz[0]
-        hips_xz = H - H[0] - root_xz
+        off = H - H[0] - root_xz  # hips over the root, fixed frame -> the root's own (turning) frame
+        if yaw is not None:
+            c, s_ = np.cos(-yaw), np.sin(-yaw)
+            hips_xz = np.stack([c * off[:, 0] + s_ * off[:, 1], -s_ * off[:, 0] + c * off[:, 1]], 1)
+        else:
+            hips_xz = off
         speed = None
     root = np.zeros((n, 3))
     root[:, 0] = root_xz[:, 0]
     root[:, 1] = root_xz[:, 1]
+    if yaw is not None:
+        root[:, 2] = yaw
     return dict(hipsY=hy, hips_xz=hips_xz, root=root, contact=cs, cmask=cmask, speed=speed, g=g)
 
 
@@ -435,7 +452,7 @@ def _span_lists(m, loop):
     return out
 
 
-def pin_feet(q, hips, root, cmask, blend=3, loop=False):
+def pin_feet(q, hips, root, cmask, blend=3, loop=False, flat=None):
     """Make planted feet stand still: within each contact span the ankle is held at its mean ground
     position (each frame keeps its own height: a heel may rise) by re-solving thigh + shin; the edges blend
     over `blend` frames. A loop's span that runs over the end is one span (the next cycle is one cycle's
@@ -478,6 +495,10 @@ def pin_feet(q, hips, root, cmask, blend=3, loop=False):
             t_here = tgt - w * cyc  # the target in this frame's cycle
             target = cur.copy()
             target[[0, 2]] = cur[[0, 2]] * (1 - wgt) + t_here[[0, 2]] * wgt
+            if flat is not None:
+                # a flat planted foot: its ankle exactly HDIM.ankle above the ground
+                fw = flat[k, 0 if s == 'L' else 1] * wgt
+                target[1] = cur[1] * (1 - fw) + HDIM['ankle'] * fw
             hip = P[k, JI['thigh' + s]]
             hinge = skel.qrot(R[k, JI['thigh' + s]], X)
             thigh, shin = _two_bone(hip, HDIM['thigh'], HDIM['shin'], target, hinge)

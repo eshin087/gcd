@@ -32,6 +32,8 @@ def clip_entry(c, B):
         e['phases'] = B.phases
     if B.events:
         e['events'] = B.events
+    if c.get('qa', {}).get('maxStepDeg'):
+        e['qa'] = {'maxStepDeg': c['qa']['maxStepDeg'], 'reason': c['qa'].get('reason', '')}
     e['props'] = c.get('props', {'R': None, 'L': None})
     e['from'] = c.get('from', 'idle')
     e['to'] = c.get('to', 'idle')

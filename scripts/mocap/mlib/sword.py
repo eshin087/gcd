@@ -25,6 +25,10 @@ NA = 120
 ANG = np.arange(NA) * 2 * np.pi / NA
 
 
+
+ARMIDX = {'R': (14, 16, 18, 20), 'L': (13, 15, 17, 19)}  # elbow, wrist, pinky, index
+
+
 def rust_mask(rgb):
     r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
     s = r + g + b + 1
@@ -88,14 +92,14 @@ def ray_scores(img, l2, side='R'):
     return sc, ln
 
 
-def track_2d(T, idx, max_step_deg=30.0, min_score=0.2):
+def track_2d(T, idx, max_step_deg=30.0, min_score=0.2, side='R'):
     """2D blade angles for take T's frames `idx` (indices into T.t): angle (rad, image axes: x right,
     y down), confidence (0 = unknown), and the raw best score"""
     S = []
     for i in idx:
         _, path = cfg.frame_at(T.film, T.t[i])
         img = np.asarray(Image.open(path).convert('RGB'), np.int16)
-        S.append(ray_scores(img, T.l2[i])[0])
+        S.append(ray_scores(img, T.l2[i], side)[0])
     S = np.array(S)
     n = len(S)
     best = S.max(1)
@@ -127,34 +131,52 @@ def track_2d(T, idx, max_step_deg=30.0, min_score=0.2):
     return ang, conf, best
 
 
-def keyed_2d(T, idx, keys):
-    """angles from hand keys (tip pixel positions at video times), interpolated"""
-    ks = sorted((cfg.parse_time(k[0]), k[1], k[2]) for k in keys)
+def keyed_2d(T, idx, keys, side='R'):
+    """angles from hand keys at video times: [t, x_tip, y_tip] (from the tool's fist) or
+    [t, x_hilt, y_hilt, x_tip, y_tip] (the blade itself: use it when the tool's fist is wrong);
+    the ANGLE is interpolated between keys (normalised vector lerp)"""
+    ks = []
+    for k in keys:
+        t = cfg.parse_time(k[0])
+        if len(k) >= 5:
+            ks.append((t, k[1], k[2], k[3], k[4]))
+        else:
+            ks.append((t, None, None, k[1], k[2]))
+    ks.sort(key=lambda k: k[0])
     kt = np.array([k[0] for k in ks])
-    tip = np.array([[k[1], k[2]] for k in ks])
     out = np.full(len(idx), np.nan)
+    # each key's direction at its own frame
+    dirs = []
+    for t, hx, hy, tx, ty in ks:
+        if hx is None:
+            i = int(np.argmin(np.abs(T.t - t)))
+            f = fist_of(T.l2[i], side)
+            hx, hy = f
+        d = np.array([tx - hx, ty - hy])
+        dirs.append(d / (np.linalg.norm(d) + 1e-9))
+    dirs = np.array(dirs)
     for j, i in enumerate(idx):
         t = T.t[i]
         if t < kt[0] - 1e-3 or t > kt[-1] + 1e-3:
             continue
-        p = np.array([np.interp(t, kt, tip[:, 0]), np.interp(t, kt, tip[:, 1])])
-        d = p - fist_of(T.l2[i])
-        out[j] = np.arctan2(d[1], d[0])
+        v = np.array([np.interp(t, kt, dirs[:, 0]), np.interp(t, kt, dirs[:, 1])])
+        out[j] = np.arctan2(v[1], v[0])
     return out
 
 
-def prior_dir(b, k):
+def prior_dir(b, k, side='R'):
     """the blade's likely direction from the hand landmarks: across the forearm, on the thumb side"""
-    fo = b[k, 16] - b[k, 14]
+    el, wr, pk, ix = ARMIDX[side]
+    fo = b[k, wr] - b[k, el]
     fo /= np.linalg.norm(fo) + 1e-9
-    th = b[k, 20] - b[k, 18]
+    th = b[k, ix] - b[k, pk]
     th = th - fo * (th @ fo)
     if np.linalg.norm(th) < 1e-6:
         th = np.array([0, 0, 1.0]) - fo * fo[2]
     return th / (np.linalg.norm(th) + 1e-9)
 
 
-def blade_dirs(spec, clip, B, Ts, log=print):
+def blade_dirs(spec, clip, B, Ts, log=print, side='R'):
     """the blade's unit direction (n, 3) in his body frame per clip frame (after decimation)"""
     kind = clip.get('kind', 'oneshot')
     nb = len(B.b)
@@ -167,10 +189,10 @@ def blade_dirs(spec, clip, B, Ts, log=print):
             idx = np.clip(np.arange(nb) * step + s, 0, len(T.t) - 1)
         else:
             idx = np.arange(len(T.t))
-        ang, conf, best = track_2d(T, idx)
-        for kk in clip.get('blade_keys', []):
+        ang, conf, best = track_2d(T, idx, side=side)
+        for kk in clip.get('blade_keys' if side == 'R' else 'blade_keys_L', []):
             if kk.get('take', 0) == ti:
-                ka = keyed_2d(T, idx, kk['keys'])
+                ka = keyed_2d(T, idx, kk['keys'], side)
                 ok = ~np.isnan(ka)
                 ang[ok] = ka[ok]
                 conf[ok] = 1.0
@@ -203,7 +225,7 @@ def blade_dirs(spec, clip, B, Ts, log=print):
             log('  sword: held blade from two takes (planes intersected)')
         elif planes:
             p0 = max(planes, key=lambda p: p[1])
-            d = _in_plane(p0[2], p0[3], prior_dir(B.b, 0))
+            d = _in_plane(p0[2], p0[3], prior_dir(B.b, 0, side))
             log('  sword: held blade from one take + the prior')
         if d is not None:
             out[:] = d
@@ -233,7 +255,7 @@ def blade_dirs(spec, clip, B, Ts, log=print):
                         d = -d
             if d is None:
                 T0, u0 = planes[0][2], planes[0][3]
-                d = _in_plane(T0, u0, prior_dir(B.b, k))
+                d = _in_plane(T0, u0, prior_dir(B.b, k, side))
             out[k] = d
             bconf[k] = planes[0][1]
         B.blade_conf = bconf
@@ -245,7 +267,7 @@ def blade_dirs(spec, clip, B, Ts, log=print):
     # the blade is rigid in the fist: unknown frames are filled in the FOREARM's frame (forearm axis +
     # the thumb side), so a fast cut the camera blurs follows the arm instead of a straight blend
     idx = np.arange(nb)
-    Fm = forearm_frames(B.b)  # (nb, 3, 3) columns = forearm axes in the body frame
+    Fm = forearm_frames(B.b, side)  # (nb, 3, 3) columns = forearm axes in the body frame
     loc = np.full((nb, 3), np.nan)
     loc[ok] = np.einsum('nji,nj->ni', Fm[ok], out[ok])
     # outliers: a measured direction far (> 50 deg) from the median of its measured neighbours (in the
@@ -260,20 +282,32 @@ def blade_dirs(spec, clip, B, Ts, log=print):
     loc[~ok] = np.nan
     for c in range(3):
         loc[:, c] = np.interp(idx, idx[ok], loc[ok, c])
+    lim = np.radians(float(clip.get('blade_max_dps', 1500.0)) / B.fps)
+    loc /= np.linalg.norm(loc, axis=1, keepdims=True)
+    for k in range(1, nb):
+        c = np.clip(loc[k] @ loc[k - 1], -1, 1)
+        a = np.arccos(c)
+        if a > lim:  # turn at most `lim` toward the measured direction this frame
+            axis = np.cross(loc[k - 1], loc[k])
+            if np.linalg.norm(axis) > 1e-9:
+                axis /= np.linalg.norm(axis)
+                v = loc[k - 1]
+                loc[k] = v * np.cos(lim) + np.cross(axis, v) * np.sin(lim) + axis * (axis @ v) * (1 - np.cos(lim))
     out = np.einsum('nij,nj->ni', Fm, loc)
     out /= np.linalg.norm(out, axis=1, keepdims=True)
     from .retarget import smooth_time
-    out = smooth_time(out, 1.0 if B.fps <= 30 else 2.0)
+    out = smooth_time(out, 1.0 if B.fps <= 30 else 1.5)
     out /= np.linalg.norm(out, axis=1, keepdims=True)
     log('  sword: %d of %d clip frames measured, the rest interpolated' % (ok.sum(), nb))
     return out
 
 
-def forearm_frames(b):
-    """per frame a right-handed frame on his right forearm: x along it (elbow -> wrist), y the thumb side"""
-    x = b[:, 16] - b[:, 14]
+def forearm_frames(b, side='R'):
+    """per frame a right-handed frame on his forearm: x along it (elbow -> wrist), y the thumb side"""
+    el, wr, pk, ix = ARMIDX[side]
+    x = b[:, wr] - b[:, el]
     x /= np.linalg.norm(x, axis=1, keepdims=True) + 1e-9
-    y = b[:, 20] - b[:, 18]
+    y = b[:, ix] - b[:, pk]
     y -= x * np.sum(x * y, 1, keepdims=True)
     bad = np.linalg.norm(y, axis=1) < 1e-4
     y[bad] = np.array([0, 0, 1.0])

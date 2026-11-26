@@ -242,8 +242,7 @@ class Take:
         if calm:
             k = int(calm * FPS)
             self.calm[:] = False
-            self.calm[:k] = True
-            self.calm[-k:] = True
+            self.calm[:k] = True  # the start only: a pivot or a turn ends facing another way
         self.solve_camera(pitch, yaw, log)
 
     def solve_camera(self, pitch=None, yaw=None, log=print):

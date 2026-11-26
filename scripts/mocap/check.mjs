@@ -58,6 +58,10 @@ for (const c of set.clips) {
   }
   if (c.loop) for (let j = 0; j < nj; j++) wrap = Math.max(wrap, ang(c.n - 1, 0, j).a);
   if (normErr > 2e-3) bad(`quaternion norm off by ${normErr.toFixed(4)}`);
+  // one frame's joint step: 1500 deg/s unless the clip overrides it with a reason (qa.maxStepDeg)
+  const stepLimit = c.qa?.maxStepDeg ?? 1500 / c.fps;
+  if (c.qa && !c.qa.reason) bad('qa.maxStepDeg override without a reason');
+  if (maxStep * 57.2958 > stepLimit + 0.05) bad(`a joint turns ${(maxStep * 57.2958).toFixed(1)} deg in one frame (${stepAt}), limit ${stepLimit.toFixed(1)}`);
   if (flips) bad(`${flips} quaternion sign flips between frames`);
   // FK per frame: feet, contact, slide
   const pose = createPose(HDIM);
