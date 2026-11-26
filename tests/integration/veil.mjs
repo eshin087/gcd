@@ -1105,6 +1105,7 @@ const S = {
   // world: scenarios
   // body: scenarios
   // fx: scenarios
+  fx: scenarioFx,
 };
 // (run by tests/run.mjs as processes of their own; `all` leaves them out: GCD_SKIP)
 const OPT_IN = new Set([]);
@@ -1120,3 +1121,137 @@ out(`\n\nconsole errors/warnings: ${errors.length}${errors.length ? '\n  ' + [..
 if (errors.length) fails++;
 out(fails ? `\nVEIL: ${fails} FAILED` : '\nVEIL: ALL PASSED');
 process.exit(fails ? 1 : 0);
+
+// fx: the fx scenario's body (a function declaration: hoisted, so it can live down here, out of the others' way)
+/** Every WjFx method called with the contract's arguments for 120 frames (no throw, no NaN: the harness's
+ *  pools throw on a NaN), every debug driver played through, and the slots: crimson fire in the fight,
+ *  azure void at rest, violet under the Null, both back on a reset and from his death. */
+async function scenarioFx() {
+  out('\n== scenario FX (every WjFx method, 120 frames; the drivers; the three slots restored) ==');
+  const { FIRE_PALETTES } = await imp('src/render/firePalettes.js');
+  const { VIOLET } = await imp('src/entities/enemies/untouched/fx.js');
+  const FXD = await imp('src/entities/enemies/untouched/fxDebug.js');
+  const G = build();
+  const d = G.game.dragon, p = G.game.player, F = d.fx, fire = G.game.fx.fire;
+  const PALS = ['fire', 'void', 'steel'];
+  /** Does slot `kind` hold palette `pal` (its stops x hdr in the print's uniforms)? */
+  const holds = (kind, pal) => {
+    const i = PALS.indexOf(kind), S = fire.printMat.uniforms.uStops.value, h = pal.hdr ?? 0.6;
+    for (let j = 0; j < 5; j++) {
+      const v = S[i * 5 + j], st = pal.stops[j];
+      if (Math.abs(v.x - st[0] * h) > 1e-4 || Math.abs(v.y - st[1] * h) > 1e-4 || Math.abs(v.z - st[2] * h) > 1e-4) return false;
+    }
+    return true;
+  };
+  assert(holds('void', FIRE_PALETTES.azure) && holds('fire', FIRE_PALETTES.fire), `built: void azure, fire the engine's (${F.slots.void}, ${F.slots.fire})`);
+  duel(G, { dist: 4 });
+  p.debug.god = true;
+  assert(holds('fire', FIRE_PALETTES.crimson) && F.slots.fire === 'crimson', `in the fight: the fire slot crimson (${F.slots.fire})`);
+  const x0 = d.position.x, z0 = d.position.z;
+  const knot = { on: true, x: x0, z: z0 + 3, r: 7, strength: 3, falloff: 1, life: 2, t: 0, k: 0, id: 77 };
+  const seg = { ax: x0, az: z0 + 0.8, bx: x0, bz: z0 + 40, w: 5 };
+  const pt = { x: x0, y: 1.2, z: z0 + 2, k: 1 };
+  const once = () => {
+    F.barrierStop({ x: x0, y: 1.2, z: z0 + 0.6 }, { x: 0, z: -1 }, false);
+    F.barrierStop({ x: x0, y: 1.4, z: z0 + 0.6 }, { x: 0, z: -1 }, true);
+    F.barrierCrack(1, 3);
+    F.barrierCrack(2, 3);
+    F.barrierOpen(d);
+    F.barrierClose(d);
+    F.blinkOut(d);
+    F.afterimage(d, 0.5, 0, 0.4);
+    F.vanish(d, x0, z0, x0 + 1, z0);
+    F.blinkIn(d);
+    F.drawCollapse(knot);
+    F.castBurst(x0, z0 + 3, 4.5, 1.5);
+    F.nullEnd(seg);
+    F.domainBreak(x0, z0 + 2);
+    F.shove(p.position.x, p.position.z, 0, 1, 3.6);
+    F.crash(p.position.x, p.position.z, 0, 1, 1.5);
+    for (const k of ['light', 'heavy', 'huge', 'spell', 'null', 'block', 'nope']) F.weight(k, 0, 1);
+  };
+  let threw = null, peak = 0, violet = false;
+  const err0 = errors.length;
+  for (let i = 0; i < 120; i++) {
+    const k = i / 119;
+    try {
+      F.barrierIdle(d, DT);
+      F.eyes(d, 1);
+      knot.t = k * knot.life;
+      knot.k = k;
+      F.drawKnot(knot, DT);
+      F.castPoint(pt, DT);
+      F.nullCharge(d, Math.min(1, k * 1.3), null, i % 2 ? { x: x0 + 0.3, y: 1.6, z: z0 } : null);
+      F.nullBeam(seg, k);
+      if (holds('void', VIOLET)) violet = true;
+      F.domainSign(d, k);
+      F.domainWall(x0, z0, 40 * (1 - k) + 1, k);
+      F.domainCaught(p, k);
+      if (i === 10) once();
+      // (the bad arguments a caller might pass: nothing drawn, nothing thrown)
+      F.drawKnot(null, DT);
+      F.drawKnot({ x: NaN, z: 0 }, DT);
+      F.castPoint({ x: 0, y: NaN, z: 0 }, DT);
+      F.nullBeam({ ax: 0, az: 0, bx: 0, bz: 0 }, k);
+      F.nullBeam(null, k);
+      F.domainWall(NaN, 0, 40, k);
+      F.domainCaught(null, k);
+      F.shove(0, 0, 0, 0, 3);
+      F.crash(NaN, 0, 1, 0, 1);
+      F.barrierStop(null, null, false);
+      G.tick(DT);
+    } catch (e) {
+      threw = e;
+      break;
+    }
+    peak = Math.max(peak, fire.count);
+  }
+  assert(!threw, `120 frames of every method: no throw, no NaN (${threw?.stack?.split('\n').slice(0, 2).join(' | ') ?? ''})`);
+  assert(errors.length === err0, `no console errors (${errors.slice(err0, err0 + 3).join(' / ')})`);
+  assert(violet, 'the void slot turns violet under the Null');
+  out(`     fire blobs alive at the peak, everything at once: ${peak} of ${fire.max}`);
+  assert(peak < fire.max, `the pool never fills with everything at once (${peak} < ${fire.max})`);
+  // the drivers (dragon.debug.fx): each plays through
+  let bad = [];
+  for (const n of FXD.NAMES) {
+    if (n === 'stopAll') continue;
+    const ok = d.debug.fx(n, {});
+    let thrown = null;
+    try {
+      run(G, (F._drive?.T ?? 0.2) + 0.3);
+    } catch (e) {
+      thrown = e;
+    }
+    if (!ok || thrown || F._drive) bad.push(`${n}${thrown ? ': ' + thrown.message : ''}`);
+    d.barrier.close();
+  }
+  assert(!bad.length && d.debug.fx('nope') === false, `every driver plays through and ends (${FXD.NAMES.length - 1}); an unknown name is false ${JSON.stringify(bad)}`);
+  // the slots come back: a reset, his death
+  F.nullBeam(seg, 0.5);
+  F.castPoint(pt, DT);
+  d.reset();
+  assert(holds('void', FIRE_PALETTES.azure) && holds('fire', FIRE_PALETTES.fire), `reset: void azure, fire the engine's again (${F.slots.void}, ${F.slots.fire})`);
+  duel(G, { dist: 4 });
+  F.nullBeam(seg, 0.5);
+  run(G, 0.1);
+  assert(F.slots.fire === 'crimson' && F.slots.void === 'violet', `back in the fight: crimson, violet under a Null (${F.slots.fire}, ${F.slots.void})`);
+  run(G, 0.6);
+  assert(holds('void', FIRE_PALETTES.azure), `the Null over: void azure again (${F.slots.void})`);
+  d.debug.kill();
+  run(G, 0.3);
+  assert(holds('fire', FIRE_PALETTES.fire), `his death: the fire slot the engine's again (${F.slots.fire}, mode ${d.mode})`);
+  // the sounds: every name an effect emits has its recipe
+  const { SFX } = await imp('src/audio/sfx.js');
+  const said = new Set();
+  const G2 = build();
+  G2.watch = (n, e) => { if (n === 'dragon:spell' && String(e?.name).startsWith('wj')) said.add(e.name); };
+  duel(G2, { dist: 4 });
+  G2.game.player.debug.god = true;
+  for (const n of ['stop', 'barrier', 'blink', 'draw', 'cast', 'null', 'sign', 'wall', 'shove']) {
+    G2.game.dragon.debug.fx(n, {});
+    run(G2, (G2.game.dragon.fx._drive?.T ?? 0.2) + 0.3);
+  }
+  const missing = [...said].filter((n) => !SFX[n]);
+  assert(said.size >= 9 && !missing.length, `every effect's sound has a recipe (${[...said].join(' ')}; missing ${JSON.stringify(missing)})`);
+  return G;
+}

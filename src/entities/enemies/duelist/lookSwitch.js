@@ -80,6 +80,7 @@ export const PENDING = Object.freeze([
   // Bai Wuji: body rows
 
   // Bai Wuji: fx rows
+  'wjShell', 'wjNull', // his barrier's look (a / b / c) and the Violet Null's body (a / b): untouched/fx.js, fxSpells.js
 
   // Bai Wuji: world rows
 
