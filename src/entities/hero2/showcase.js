@@ -415,6 +415,20 @@ export async function mount(game, params) {
     }
     return (RIDE_PATH = best);
   }
+  /** m he travels on foot through an entry (his clips' root travel over the time shown). */
+  const WALK_AWAY = 5;
+  function footTravel(e) {
+    const one = (name, len) => {
+      const c = lib.get(name);
+      if (!c?.root || !(c.n > 1)) return 0;
+      if (c.loop) return (Math.hypot(c.cyc?.[0] ?? 0, c.cyc?.[1] ?? 0) / Math.max(1e-3, c.dur)) * len;
+      const k = (c.n - 1) * 3;
+      return Math.hypot(c.root[k], c.root[k + 1]);
+    };
+    if (e?.kind === 'clip') return one(e.play ?? e.name, showLength(e));
+    if (e?.kind === 'chain') return e.steps.reduce((a, st) => a + (st.ride ? 0 : one(st.name, st.len)), 0);
+    return 0;
+  }
   const rideAt = { x: 0, z: 0, yaw: 0 };
   function rideOn(e) {
     if (!ride || !horse) return false;
@@ -449,14 +463,21 @@ export async function mount(game, params) {
     S.pre = e.kind === 'chain' || ((e.kind === 'clip' || e.kind === 'ride') && !e.loop) ? HOLD : 0;
     const riding = isRide(e) && rideOn(e);
     if (!riding) rideOff();
-    if (riding) place(rideAt.x, rideAt.z, rideAt.yaw);
-    else place(home.x, home.z, home.yaw);
+    // a travelling entry on foot (a run, a chain of runs and jumps: more than WALK_AWAY m) starts back
+    // along the riding line too, so it ends by home: from home it ran on into the courtyard's set
+    let at = riding ? rideAt : home;
+    const walkT = riding ? 0 : footTravel(e);
+    if (walkT > WALK_AWAY) {
+      const R = ridePath(), back = Math.min(R.len, walkT);
+      at = { x: R.x - Math.sin(R.yaw) * back, z: R.z - Math.cos(R.yaw) * back, yaw: R.yaw };
+    }
+    place(at.x, at.z, at.yaw);
     if (e.kind === 'card') hero.play(lib.has(e.idle) ? e.idle : 'idle', { fade: 0 });
     else if (e.kind === 'chain') startStep(e.steps[0].name, !!e.steps[0].ride && riding, 0);
     else startStep(e.play ?? e.name, e.kind === 'ride' && riding, 0);
     if (riding) ride.update(0);
     hero.update(0);
-    S.view.yaw = riding ? rideAt.yaw : home.yaw;
+    S.view.yaw = at.yaw;
     S.view.azNow = azOf(e);
     S.view.fit = riding ? null : boundsOf(e);
     S.follow.ok = false;
