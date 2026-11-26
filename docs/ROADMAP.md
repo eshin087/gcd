@@ -194,8 +194,6 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] `player/runArms.js` `d`: the full pump (the default)
 - [x] `gear/handShape.js` `fistHand`: the free hand a closed fist (`?handLook=g`, the default; `h` a dark glove)
 - [x] `herorun` checks the carry: the blade always ahead, its elevation in range, the point off the grass, no pops
-- [ ] The run start from standing still: the point jumps ~26 cm on loco's first frame (the idle rest's hand-over)
-- [ ] The forward blade hidden under the cape running away from the camera (the owner's call)
 
 ## M1.89 — 60 fps on every device: the frame's cost (2026-11-25, `render/perf-ground-steps`, ADR-199)
 - [x] A measured review: every level and the phone preset, GPU by pass and by object, script by function, the loop under a throttled CPU
