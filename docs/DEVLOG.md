@@ -37,18 +37,21 @@ Frames, caches and sheets stay in this session's scratchpad (never committed).
 
 ---
 
-## 2026-11-25 — The perfect dodge on the ground, no hops (ADR-210; branch `claude/dodge-rework-fc5eae`)
+## 2026-11-25 — Four looks for the perfect dodge flurry (ADR-210; branch `claude/dodge-rework-fc5eae`)
 - **Why:** the owner: no "random hops over the character", "more epic cooler looking". Split off the parry
   streak's session (PR 145) so both run in parallel.
-- **Reference:** the owner's animation compilation has no labelled perfect-dodge section; its lightning dash thrust
-  (a low set, one smeared frame, floor sparks, the lunge held) was carded. No further clip from the owner.
-- **What:** `?dash=1` (default off): against a man no blinks (he stays in view, turns, every pass from where he
-  stands), always the Passing Cut, 2 smear copies per pass, tiny floor kicks. Same blows / frames / damage. Built
-  by a Sonnet subagent from the lead's brief; reviewed (the push-off kick's direction fixed).
-- **Tests:** duel `dash` (never hidden, feet <= 0.02 m, still during the set, same blows and damage as off),
-  duel `chain` / `tempo`, integ `chain` / `storm`.
-- **Next / open:** the owner's verdict on the films; the pose still snaps from the held finish into the next cut
-  (blend 0): watch for a pop; the first pass of a figure is approximate.
+- **Reference:** the owner's animation compilation has no labelled perfect-dodge section; its dash thrust (a low set,
+  one smeared frame, a bloom at the point breaking into floor tendrils, the lunge held) and its close strings (a small
+  bloom per contact, sparks that fall and gather) were carded.
+- **Round 1:** `?dash=1` (no blinks, every pass from where he stands, always the Passing Cut, smear + floor kicks).
+  The owner preferred the old vanish and all three finishers (filmed one by one to check; none dropped), kept the
+  new effects, wanted aerial cuts in a streak and four variations built on what the footage taught.
+- **Round 2 (this):** `?dodgefx=a|b|c|d` replaces `?dash`: the old flurry + smear + kicks + an aerial cut (2nd from
+  4 flash cuts, the 1st too from 6, never a storm cut), and a) the Thunder Thrust, b) point bloom + tendrils,
+  c) spark cloud, d) heavy finish. Built by Sonnet subagents from the lead's briefs; filmed side by side.
+- **Tests:** duel `dodgefx` (every variant x streaks 2 / 5 / 7: blows, damage = off, feet down at the end, the aerial
+  cut's height, the thrust's pick), duel `chain` / `tempo`, integ `chain` / `storm`, cost, glyphcheck.
+- **Next / open:** the owner's pick; aerial cuts only on the chain's paths (`?chain=0` has none).
 
 ## 2026-11-25 — A roadmap to Steam and the app stores (docs only; branch `docs/ship-roadmap`)
 

@@ -249,6 +249,34 @@ export const DEFENSE = Object.freeze({
       turns: [0, 0.35, -0.35, 0.7, -0.7, 1.05, -1.05],
     },
     last: { damage: 60, posture: 22 },
+    // THE DODGE LOOKS (STREAK_FX.dodgefx, ?dodgefx=a|b|c|d; '' = off: the flurry above exactly). Against a
+    // man on the ground (not a riposte) any variant adds: a smeared copy or two of him along each dash and
+    // each art's strike, tiny floor letters kicked at the push-off (behind) and the finish (ahead), and
+    // AERIAL CUTS (the chain's paths only): with `aerial.few` flash cuts or more cut 1 starts `air` m up on
+    // the near end of its path and falls through the foe to the floor at the far end (the Falling Cut's
+    // clip); with `aerial.many` or more cut 0 does too; never a storm cut. All steel white, tiny, under the
+    // bloom threshold (flurryFx.js DUST).
+    //   thrust  (a) a fourth ground art, Thunder Thrust: a visible low set `coil` s, the strike in ONE step
+    //           `strike` s with `copies` smear copies, the lunge held `hold` s, `back` m (an alone art's
+    //           start), passing his side as the Passing Cut does; a bloom at the blade's point and
+    //           `tendrils` crawling over the floor as it lands
+    //   bloom   (b) every flash cut's contact and every art's landing: `n` letters puffing out of the blade's
+    //           point in `life` s (`size` m, `speed` m/s), then `tendrils` [min, max] thin chains of
+    //           `len` [min, max] letters crawling over the floor `reach` m, a letter every `step` s along
+    //           it, each living `tlife` s; `art` x a cut's size on the last blow, `storm` x for a storm cut
+    //   cloud   (c) every contact throws `n` letters (`art` x on the last blow) that fall slowly (`gravity`,
+    //           `drag`) for `life` s, so a streak builds a cloud of them round the foe; thinned to `thin` of
+    //           the count when the particle pool is over `cap` full
+    //   heavy   (d) every ground art's wind-up x `coil`, the Passing Cut's finish held `hold` s, the Falling
+    //           Leaf's and the Rising Moon's landing held `land` s; on the landing a `shake` / `punch` more
+    dodgefx: {
+      air: 2.2,
+      aerial: { few: 4, many: 6 },
+      thrust: { coil: 0.25, strike: 0.06, hold: 0.5, back: 3.4, copies: 3, tendrils: 6 },
+      bloom: { n: 25, size: [0.05, 0.09], speed: [1.2, 3.2], life: [0.1, 0.15], tendrils: [3, 5], len: [6, 8], reach: [0.9, 1.5], step: 0.03, tlife: [0.1, 0.16], art: 1.4, storm: 0.5 },
+      cloud: { n: 18, art: 2, size: [0.04, 0.07], speed: [0.5, 2.2], life: [1.2, 2], gravity: -0.5, drag: 2.5, cap: 0.7, thin: 0.3 },
+      heavy: { coil: 1.6, hold: 0.5, land: 0.35, shake: 0.18, punch: 1.2 },
+    },
     keepStreak: 0,
   },
   // --- a foe's streak (ADR-094; a duelist: duelist.js): every strike of the hero's his guard turns

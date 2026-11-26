@@ -19,11 +19,11 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-25',
-        title: 'The perfect dodge on the ground, no hops',
+        title: 'Four looks for the perfect dodge flurry',
         notes: [
-          'To try: add ?dash=1 to the address. Against a duelist the flurry no longer blinks or leaps over him.',
-          'Every cut is a low dash from where the hero stands, a smear of him left along the run, sparks off the floor.',
-          'The last blow is always the Passing Cut.',
+          'To try: add ?dodgefx=a, b, c or d to the address (or the dodgefx button in the Lab).',
+          'Every look: a smear of the hero along each cut, sparks off the floor, and in a long streak a cut from above.',
+          'a: a fourth finisher, the Thunder Thrust. b: a bloom at the blade point. c: a cloud of falling sparks. d: heavier finishers.',
         ],
       },
       {

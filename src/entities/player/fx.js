@@ -1111,7 +1111,7 @@ export class PlayerFx {
    * bare test rig) it is strokes along his bones, as it used to be.
    * `o`: { dx, dz } the way he left (unit, ground plane; 0, 0 = unknown), `light`: a lesser one (a
    * clone left mid-pass: every other point, shorter-lived), `smear`: a copy of him left along a dash
-   * (the flurry's ?dash=1): much shorter-lived (x 0.3), fainter (0.55), its cells drifting a little
+   * (the flurry's ?dodgefx): much shorter-lived (x 0.3), fainter (0.55), its cells drifting a little
    * against the way he moves (o.dx, o.dz).
    * (Three looks were built; the owner picked this one, "Digits", over an "Echo" of fainter copies
    * stepping off the way he left and a "Shatter" that burst the figure into its characters.)

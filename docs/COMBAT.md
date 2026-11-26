@@ -653,18 +653,32 @@ same 258 damage in the same time as a streak of 7 (integ `storm`).
   down into a drift that thins out in 0.6 - 0.9 s) instead of the slam's big 'A' shards; round the
   head the art's shards are dust too. Damage, the blows and their frames, the world's hold and the
   crit window are as before (duel / integ `chain`).
-- **The dash** (2026-11-25; `?dash=1`, the Lab's `dash` button; default off: the flurry as above). Owner: the
-  flurry's blinks read as random hops over the character; it should be more epic. Against a man on the
-  ground (not a riposte; the wyrm's flurry, the plunge, the riposte and the counter are unchanged) he
-  **never blinks**: where the flurry vanished him he stays in view in the pose he held, for the same beat
-  (so the timing, the frames the blows land on and the damage are as before), and turns smoothly to the
-  next pass. **Every pass starts where he stands**, the first one too (the chain is forced on); the art
-  is always the Passing Cut (no Falling Leaf, no Rising Moon) and his feet stay on the floor. **The
-  smear**: along each dash (and the iai's strike) two short-lived, faint copies of him are printed behind
-  him as he runs, before the contact (one on a storm cut); a dash is sold by the smeared frame and the
-  held finish, not by teleporting. **Floor sparks**: ten tiny steel-white letters kicked low off the floor
-  behind him as each pass starts, a smaller puff forward as he slows into the held finish. No screen
-  tint, nothing on the background (duel `dash`).
+- **The dodge looks** (2026-11-25; `?dodgefx=a|b|c|d`, the Lab's `dodgefx`; default off: as above). Owner: the
+  flurry's blinks and arts stay, but it should read as a dash, after their reference footage. Against a man on
+  the ground (not a riposte; the wyrm's flurry, the plunge, the riposte and the counter are unchanged) every
+  variant adds three shared pieces, and the blows, the frames they land on and the damage stay the flurry's
+  (duel `dodgefx`). Everything new is tiny steel-white letters under the bloom threshold, like the dust; no
+  screen tint, nothing on the background. **The smear**: along each dash and each art's strike one or two
+  short-lived, faint copies of him are printed behind him as he runs, before the contact (a storm cut one; the
+  Thunder Thrust three). **Floor kicks**: ten tiny letters kicked low off the floor behind him as a pass
+  starts, a smaller puff ahead as he slows into the held finish. **Aerial cuts** (the chain's paths): in a
+  flurry of 4 flash cuts or more (a streak of 5) flash cut 1 starts 2.2 m up on the near end of its path and
+  falls through the foe to the floor on the far end (the Falling Cut's clip, a slash down through his chest
+  hangs where it crosses him); with 6 or more (a streak of 7) cut 0 does too; a storm cut stays on the ground,
+  and he ends every flurry on the floor.
+  **a, Thunder Thrust**: a fourth ground art, picked among the others with a only. A visible low set (the draw
+  stance, 0.25 s), then the strike in one step (0.06 s, three smear copies) passing his side as the Passing
+  Cut does, the lunge held 0.5 s. The cut lands as he passes the foe, not after the held finish; a bloom
+  at the blade's point and six tendrils crawl out over the floor from under it.
+  **b, Point bloom**: every flash cut's contact and every art's landing: about 25 tiny letters puff out of the
+  blade's point and are gone in 0.1 - 0.15 s, then 3 - 5 thin tendrils (6 - 8 letters each, a letter every
+  0.03 s along a jagged line, so they crawl) spread over the floor round his feet, gone by about 0.4 s.
+  **c, Spark cloud**: every contact throws about 18 tiny sparks (twice that on the last blow) that fall slowly
+  (low gravity, high drag) for 1.2 - 2 s, so a string of cuts builds a cloud of falling sparks round the foe
+  (thinned when the particle pool is over 70 % full).
+  **d, Heavy finish**: every ground art's wind-up is 1.6 times longer, the Passing Cut's finish is held 0.5 s,
+  the Falling Leaf's and the Rising Moon's landing 0.35 s, and the art's landing adds a little camera push and
+  shake. Only d changes the art's timing (the blows and damage are the same).
 - **Past seven** (`tiers`): at tier 4 every hanging cut has a fine echo line beside it, at tier 5 two;
   on the last blow they split away and rings open where they cross. The banner names the full flurry
   of a tier-4 / 5 streak HUNDREDFOLD FLASH / THOUSANDFOLD FLASH (SEVENFOLD below), a rule more, never

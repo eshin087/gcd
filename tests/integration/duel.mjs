@@ -1441,75 +1441,107 @@ async function scenarioChain() {
   return G;
 }
 
-// ================================================================== scenario: dash (the flurry without blinks, on a man)
-// STREAK_FX.dash (?dash=1): he stays in view between the cuts, every pass starts where he stands, the art
-// is always the Passing Cut, his feet stay on the floor; the blows, their frames and the damage are as
-// with it off.
-async function scenarioDash() {
-  out('\n== scenario DASH (the flurry on a man without blinks: always in view, from where he stands, the Passing Cut) ==');
+// ================================================================== scenario: dodgefx (the dodge looks, on a man)
+// STREAK_FX.dodgefx (?dodgefx=a|b|c|d; DEFENSE.flurry.dodgefx): smeared copies, floor kicks, aerial cuts, and
+// a Thunder Thrust / blooms / a spark cloud / a heavier finish. The blows land, the damage is the flurry's
+// with it off, he is never somewhere that is not a number, and he ends every flurry on the floor.
+async function scenarioDodgefx() {
+  out('\n== scenario DODGEFX (the dodge looks: aerial cuts, smear, kicks; a thrust, blooms, a spark cloud, a heavy finish) ==');
   const { STREAK_FX } = await imp('src/combat/streak.js');
   const FL = await imp('src/entities/player/flurry.js');
   const G = build();
   duel(G, { dist: 4 });
   const { game } = G;
-  const d = game.dragon, p = game.player;
-  const dash0 = STREAK_FX.dash;
-  const take = (n, dash) => {
-    STREAK_FX.dash = dash;
+  const d = game.dragon, p = game.player, DF = DEFENSE.flurry.dodgefx;
+  const fx0 = STREAK_FX.dodgefx;
+  const take = (n, v, art = 'passing') => {
+    STREAK_FX.dodgefx = v;
     FL.setFigureSeed(777);
     settle(G);
     place(G, 2.5);
     run(G, 0.3);
     d.hp = d.maxHp;
     const hp0 = d.hp, fl = p.flurry;
-    const tr = { hits: [], hidden: 0, maxY: 0, blinkMove: 0, jump: 0, arts: new Set(), frames: 0, ok: false };
-    let last = null;
-    G.watch = (nm, e) => {
+    const tr = { hits: [], bad: 0, maxY: 0, maxY1: 0, maxY0: 0, frames: 0, arts: new Set(), ok: false, landHold: 0 };
+    G.watch = (nm) => {
       if (nm === 'player:flurryHit') tr.hits.push(tr.frames);
     };
-    tr.ok = p.debug.flurry(n, 'passing');
-    tr.art = fl.art;
-    run(G, 8, () => {
+    const st = fl.fx.dodgeStat;
+    const s0 = { ...st };
+    tr.ok = p.debug.flurry(n, art);
+    tr.fxv = fl.fxv;
+    run(G, 10, () => {
       tr.frames++;
-      if (p.state !== 'flurry' || !fl.on) {
-        last = null;
-        return;
-      }
+      const q = p.position;
+      if (!Number.isFinite(q.x + q.y + q.z + p.yaw)) tr.bad++;
+      if (p.state !== 'flurry' || !fl.on) return;
       tr.arts.add(fl.art);
-      if (fl.hidden) tr.hidden++;
-      tr.maxY = Math.max(tr.maxY, p.position.y);
-      if (last && fl.ph === 0 && last.ph === 0 && last.seq === fl._seq) tr.blinkMove = Math.max(tr.blinkMove, Math.hypot(p.position.x - last.x, p.position.z - last.z));
-      last = { x: p.position.x, z: p.position.z, ph: fl.ph, seq: fl._seq };
+      tr.maxY = Math.max(tr.maxY, q.y);
+      if (fl.ph === FL.FP.LAND) tr.landHold++;
+      if (fl.i === 1 && fl.ph <= FL.FP.HOLD) tr.maxY1 = Math.max(tr.maxY1, q.y);
+      if (fl.i === 0 && fl.ph <= FL.FP.HOLD) tr.maxY0 = Math.max(tr.maxY0, q.y);
     }, () => p.state !== 'flurry');
     G.watch = null;
+    tr.endY = p.position.y;
     tr.dmg = hp0 - d.hp;
+    tr.stat = { bloom: st.bloom - s0.bloom, tendrils: st.tendrils - s0.tendrils, sparks: st.sparks - s0.sparks, maxSize: st.maxSize, maxCol: st.maxCol };
     return tr;
   };
-  for (const n of [1, 2, 4, 7]) {
-    const on = take(n, true), off = take(n, false);
-    out(`   N=${n}: blows on frames ${on.hits} / ${off.hits}, damage ${on.dmg} / ${off.dmg}, art ${[...on.arts]}`);
-    assert(on.ok && on.hits.length === n && on.hits.join() === off.hits.join() && on.dmg === off.dmg && on.dmg > 0, `dash N=${n}: ${on.hits.length} blows on the frames of the flurry without it (${on.hits.join(',')} / ${off.hits.join(',')}), ${on.dmg} damage as with it off (${off.dmg})`);
-    assert(on.hidden === 0, `dash N=${n}: never hidden (${on.hidden} frames)`);
-    assert(on.maxY <= 0.02, `dash N=${n}: his feet stay on the floor (up to ${on.maxY.toFixed(3)} m)`);
-    assert(on.blinkMove < 1e-6, `dash N=${n}: he does not move during the set (${on.blinkMove.toFixed(4)} m)`);
-    assert([...on.arts].join() === 'passing', `dash N=${n}: the art is the Passing Cut (${[...on.arts]})`);
-  }
-  // off: the others are still in the pool
+  // the off pool is the three; with a, four
   {
-    STREAK_FX.dash = false;
-    const seen = new Set();
-    for (let k = 0; k < 24; k++) {
-      settle(G);
-      place(G, 2.5);
-      run(G, 0.3);
-      p.flurry.lastArt.ground = '';
-      p.debug.flurryArt = null;
-      p.flurry.clear();
-      seen.add(p.flurry._pickArt(false, false));
-    }
-    assert(seen.size >= 2, `the dash off: the art pick still draws from all the ground arts (${[...seen]})`);
+    const fl = p.flurry;
+    fl.fxv = '';
+    assert(fl.artPool(false).join() === 'passing,falling,rising' && fl.artPool(true).length === 3, 'dodgefx off: the ground arts are exactly the three (' + fl.artPool(false) + ')');
+    fl.fxv = 'a';
+    assert(fl.artPool(false).includes('thrust') && fl.artPool(false).length === 4, 'dodgefx a: the Thunder Thrust joins the pool');
+    fl.fxv = '';
   }
-  STREAK_FX.dash = dash0;
+  for (const v of ['a', 'b', 'c', 'd']) {
+    for (const n of [2, 5, 7]) {
+      const on = take(n, v), off = take(n, '');
+      out('   ' + v + ' N=' + n + ': blows on frames ' + on.hits + ' (off ' + off.hits + '), damage ' + on.dmg + ' / ' + off.dmg + ', highest ' + on.maxY.toFixed(2) + ' m, ends at y ' + on.endY.toFixed(3) + ', letters bloom ' + on.stat.bloom + ' tendrils ' + on.stat.tendrils + ' sparks ' + on.stat.sparks);
+      assert(on.ok && on.fxv === v && on.hits.length === n && off.hits.length === n && on.dmg === off.dmg && on.dmg > 0, v + ' N=' + n + ': the flurry ends, all ' + n + ' blows land (' + on.hits.length + '), ' + on.dmg + ' damage as with it off (' + off.dmg + ')');
+      assert(on.bad === 0, v + ' N=' + n + ': never a non-finite position or heading (' + on.bad + ' frames)');
+      assert(on.endY <= 0.02 && on.endY >= -0.02 && p.state !== 'flurry', v + ' N=' + n + ': he ends the flurry on the floor (y ' + on.endY.toFixed(3) + ')');
+      if (n >= 5) assert(on.maxY1 > 1.5, v + ' N=' + n + ': flash cut 1 is aerial (up to ' + on.maxY1.toFixed(2) + ' m)');
+      else assert(on.maxY <= 0.02, v + ' N=' + n + ': a short flurry stays on the floor (' + on.maxY.toFixed(3) + ' m)');
+      if (n >= 7) assert(on.maxY0 > 1.5, v + ' N=' + n + ': flash cut 0 is aerial too (up to ' + on.maxY0.toFixed(2) + ' m)');
+      else if (n >= 5) assert(on.maxY0 <= 0.02, v + ' N=' + n + ': cut 0 stays on the floor (' + on.maxY0.toFixed(3) + ' m)');
+      assert(off.maxY <= 0.02, v + ' N=' + n + ': off, no cut leaves the floor (' + off.maxY.toFixed(3) + ' m)');
+      if (v === 'b') assert(on.stat.bloom >= n && on.stat.tendrils >= 3 * n, 'b N=' + n + ': a bloom and tendrils on every blow (' + on.stat.bloom + ' blooms, ' + on.stat.tendrils + ' tendrils)');
+      if (v === 'c') assert(on.stat.sparks >= 18 * (n - 1), 'c N=' + n + ': a spray of sparks on every blow (' + on.stat.sparks + ')');
+      if (v === 'b' || v === 'c') assert(on.stat.maxSize <= 0.09 + 1e-9 && on.stat.maxCol <= 0.55 + 1e-9, v + ' N=' + n + ': tiny letters (' + on.stat.maxSize.toFixed(3) + ' m) under the bloom threshold (' + on.stat.maxCol.toFixed(2) + ')');
+      if (v === 'd' && n === 5) {
+        const fall = take(n, v, 'falling'), fall0 = take(n, '', 'falling');
+        assert(fall.landHold >= Math.floor(DF.heavy.land / DT) - 2 && fall.dmg === fall0.dmg && fall.hits.length === n && fall.endY <= 0.02, 'd: the Falling Leaf holds its landing (' + fall.landHold + ' frames), the same damage (' + fall.dmg + ' / ' + fall0.dmg + ')');
+      }
+    }
+  }
+  // the thrust itself (pinned): its blows, the same damage, a bloom and its tendrils, he ends on the floor
+  for (const n of [1, 3, 5]) {
+    const t = take(n, 'a', 'thrust'), o = take(n, '', 'passing');
+    out('   thrust N=' + n + ': blows on frames ' + t.hits + ', damage ' + t.dmg + ' / ' + o.dmg + ', art ' + [...t.arts] + ', bloom ' + t.stat.bloom + ', tendrils ' + t.stat.tendrils);
+    assert(t.ok && [...t.arts].join() === 'thrust' && t.hits.length === n && t.dmg === o.dmg && t.bad === 0 && t.endY <= 0.02, 'thrust N=' + n + ': the art is the Thunder Thrust, ' + n + ' blows (' + t.hits.length + '), ' + t.dmg + ' damage as the Passing Cut (' + o.dmg + '), he ends on the floor');
+    assert(t.stat.bloom >= 1 && t.stat.tendrils >= DF.thrust.tendrils && t.stat.maxSize <= 0.09 + 1e-9, 'thrust N=' + n + ': a bloom and ' + DF.thrust.tendrils + ' tendrils as it lands (' + t.stat.bloom + ', ' + t.stat.tendrils + ')');
+  }
+  // the pick: with a, the Thunder Thrust now and then; with it off, never
+  {
+    const fl = p.flurry;
+    const seen = (v) => {
+      const got = [];
+      fl.fxv = v;
+      fl.lastArt.ground = '';
+      p.debug.flurryArt = null;
+      for (let k = 0; k < 24; k++) got.push(fl._pickArt(false));
+      fl.fxv = '';
+      return got;
+    };
+    const on = seen('a'), off = seen('');
+    out('   24 picks with a: ' + on.join(' ') + ' | off: ' + [...new Set(off)]);
+    assert(on.includes('thrust') && new Set(on).size >= 3, 'with a the pick draws the Thunder Thrust (' + on.filter((x) => x === 'thrust').length + ' of 24) among the others');
+    assert(!off.includes('thrust') && new Set(off).size === 3, 'off the pick never draws it: ' + [...new Set(off)]);
+  }
+  STREAK_FX.dodgefx = fx0;
   return G;
 }
 
@@ -4945,7 +4977,7 @@ const SCENARIOS = {
   ghostep: scenarioGhostep,
   tempo: scenarioTempo,
   chain: scenarioChain,
-  dash: scenarioDash,
+  dodgefx: scenarioDodgefx,
   timerip: scenarioTimeRip,
   perfectfx: scenarioPerfectFx,
   parryfx: scenarioParryFx,

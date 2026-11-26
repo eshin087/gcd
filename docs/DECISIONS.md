@@ -6334,20 +6334,18 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   If the hero remake's branch later lands, its copies of `scripts/mocap` and `src/entities/hero2/*` should
   be taken over these (check `check.mjs`'s film list keeps `fist`).
 
-## ADR-210 — The perfect dodge on the ground: no blinks, no leaping arts, behind `?dash=1` (2026-11-25)
+## ADR-210 — The perfect dodge's flurry: smear, floor sparks, aerial cuts and four looks behind `?dodgefx` (2026-11-25)
 
 - **Context:** the owner: the perfect dodge should not have "random like hops over the character and should be
-  more epic cooler looking". Against a duelist the flurry blinked him between cuts (vanish, reappear, the first
-  pass from a ring spot `reach` out) and ended one time in three on Falling Leaf (down from 3.9 m) or Rising Moon (a
-  somersault over him). The owner's reference compilation's dash thrust sells speed with ONE smeared frame and a
-  held finish, feet on the floor. The owner's answers: both the blinks and the leaping arts go; "smear dash + held
-  finish"; build without a further clip.
-- **Decision:** `STREAK_FX.dash` (`?dash=1`, the Lab's `dash`; read as a flurry starts), only on the ground and not
-  for a riposte / counter: the blink phases keep their length but he stays in view and turns (`Flurry._set`); every
-  pass, the first and the art's included, runs from where he stands (the chain forced on); the art is always the
-  Passing Cut; each pass prints 2 short, faint body copies behind him (1 on a storm cut; `_afterimage`'s `smear`)
-  and kicks tiny floor letters at the push-off and the finish (`FlurryFx.kick`). Blows, their frames and damage are
-  unchanged (duel `dash`). Default off until the owner picks from the films.
-- **Consequences:** the figure plan still lays the first pass from a ring spot; with dash its first pass starts at
-  the dodge spot, so a figure is approximate on its first line. The wyrm's flurry is untouched.
-
+  more epic cooler looking". A first round (`?dash=1`: no blinks, every pass from where he stands, always the Passing
+  Cut) was filmed; the owner preferred the old vanish and all three finishers, kept the new smear and floor sparks,
+  asked for aerial cuts in a streak, and for four variations that use what the reference footage taught (a dash
+  thrust: a low set, one smeared frame, a bloom at the point breaking into floor tendrils, the lunge held; close
+  strings: a small bloom per contact, sparks that fall and gather).
+- **Decision:** `STREAK_FX.dodgefx` (`?dodgefx=a|b|c|d`, the Lab's `dodgefx`; '' = today), only against a ground foe
+  and not a riposte / counter: today's flurry plus smear copies (`_afterimage`'s `smear`), floor kicks
+  (`FlurryFx.kick`) and aerial cuts (`Flurry._isAerial`: from 2.2 m down through him), and a) a fourth art, the
+  Thunder Thrust; b) `FlurryFx.bloom` + `tendrils` at every contact; c) `FlurryFx.sparks`, a lingering cloud;
+  d) a longer coil, a held finish / landing and a camera push. Numbers: `DEFENSE.flurry.dodgefx`. Blows and damage
+  unchanged (duel `dodgefx`). `?dash` is gone (git history keeps it). Default off until the owner picks.
+- **Consequences:** aerial cuts exist only on the chain's paths; d delays the art (its blows' frames move).

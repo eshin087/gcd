@@ -30,6 +30,7 @@
 import { FIRE_KIND } from '../../render/firePalettes.js';
 import { axes } from '../../combat/clashFx.js';
 import { burstLook } from './flurryBurst.js';
+import { DEFENSE } from '../../combat/rules.js';
 
 // cosmetic noise from this module's own stream (never Math.random: the seeded sims replay the AI's)
 let seed = 0x5f3759df;
@@ -120,6 +121,10 @@ export const DUST = Object.freeze({
   heavyGlyphs: '.·',
 });
 const K_STEEL = FIRE_KIND.steel;
+const DF = DEFENSE.flurry.dodgefx; // the dodge looks (?dodgefx): the blooms, the tendrils, the spark cloud
+const BLOOM_GLYPHS = "*+.:'";
+const TENDRIL_GLYPHS = ".:,'-";
+const PCAP = 192, PW = 9; // the crawling tendrils' letters not yet due (delay, x, z, vx, vz, life, size, glyph, colour)
 const ONE2 = Object.freeze([1, 1]);
 /** The burst level's [a, b] for `key` (flurryBurst.js; today [1, 1]). */
 const lk = (L, key) => (L && Array.isArray(L[key]) ? L[key] : ONE2);
@@ -205,6 +210,10 @@ export class FlurryFx {
     // thin lines no longer than the cuts, letter dust for the last blow's shards
     this.chain = false;
     this.dustStat = { n: 0, maxSize: 0, maxCol: 0 }; // the last dust thrown (tests)
+    this._pq = new Float32Array(PCAP * PW); // letters waiting their turn (tendrils crawl: a letter every DF.bloom.step s)
+    this._pn = 0;
+    /** The dodge looks' counts (tests): blooms, tendrils, sparks thrown; the biggest size; the brightest channel. */
+    this.dodgeStat = { bloom: 0, tendrils: 0, sparks: 0, maxSize: 0, maxCol: 0 };
     /** The last burst's counts (tests): light intensity, bright spawns, thin lines. */
     this.burstStat = { light: 0, thin: 0, flare: 0, star: 0 };
     /** Counts for the tests (reused): steel cells written in the last drawn frame, in all, the most. */
@@ -295,7 +304,7 @@ export class FlurryFx {
     if (storm) this.stormClones++;
   }
 
-  /** The dash (?dash=1): a smeared copy of him along a pass (`segs`: PlayerFx._afterimage), moving
+  /** The dodge looks (?dodgefx): a smeared copy of him along a pass (`segs`: PlayerFx._afterimage), moving
    *  the way (dx, dz): short-lived and faint, the cells drifting back along the run. */
   smear(segs, nSegs, dx, dz) {
     if (!this.add) return;
@@ -316,6 +325,120 @@ export class FlurryFx {
         drag: R(3, 5), gravity: -2.5,
       });
     }
+  }
+
+  /**
+   * The dodge looks (?dodgefx=b, and the Thunder Thrust): a small steel-white BLOOM at the blade's point
+   * (x, y, z) as a blow lands: DF.bloom.n x `k` tiny letters puffing out and gone in 0.1 - 0.15 s. Tiny
+   * and under the bloom threshold, like DUST.
+   */
+  bloom(x, y, z, dx, dz, k = 1) {
+    const fa = this.game.fx?.alpha ?? null, B = DF.bloom, st = this.dodgeStat;
+    if (!fa || !Number.isFinite(x + y + z + dx + dz + k)) return;
+    const n = Math.round(B.n * k);
+    st.bloom++;
+    for (let i = 0; i < n; i++) {
+      // (a puff in every direction, a little more of it up and along the blow)
+      const a = R(0, 6.2832), up = R(-0.4, 1), sp = R(B.speed[0], B.speed[1]), size = R(B.size[0], B.size[1]);
+      const c = i % 3 ? DUST.col : DUST.colBlue;
+      fa.spawn({
+        x: x + R(-0.04, 0.04), y: y + R(-0.04, 0.04), z: z + R(-0.04, 0.04), vx: Math.cos(a) * sp + dx * 0.6, vy: up * sp * 0.6, vz: Math.sin(a) * sp + dz * 0.6,
+        life: R(B.life[0], B.life[1]), size, sizeEnd: size * R(0.5, 0.9), glyph: BLOOM_GLYPHS, color: c, colorEnd: DUST.colEnd, alpha: 0.85, alphaEnd: 0, drag: R(6, 9), gravity: 0,
+      });
+      this._stat(size, c);
+    }
+  }
+
+  /**
+   * `n` thin TENDRILS of tiny letters crawling outward over the floor from (x, z) (under the blow's
+   * point): each a jagged line of DF.bloom.len letters over DF.bloom.reach m, the letters coming a
+   * DF.bloom.step s apart from the root out (so it reads as crawling), each living DF.bloom.tlife s; all
+   * gone by about 0.4 s. `k` x their length. The letters wait in a fixed queue (flush).
+   */
+  tendrils(x, z, dx, dz, n, k = 1) {
+    const B = DF.bloom, st = this.dodgeStat;
+    if (!this.game.fx?.alpha || !Number.isFinite(x + z + dx + dz + n + k)) return;
+    const base = Math.atan2(dz, dx);
+    for (let j = 0; j < n; j++) {
+      let h = base + (j + R(-0.3, 0.3)) * (6.2832 / Math.max(1, n));
+      const m = Math.round(R(B.len[0], B.len[1])), step = (R(B.reach[0], B.reach[1]) * Math.max(0.4, k)) / m;
+      let px = x, pz = z;
+      for (let i = 0; i < m; i++) {
+        h += R(-0.55, 0.55); // (jagged: it kinks as it goes)
+        px += Math.cos(h) * step;
+        pz += Math.sin(h) * step;
+        if (this._pn >= PCAP) break;
+        const q = this._pq, o = this._pn++ * PW;
+        q[o] = i * B.step + R(0, 0.012);
+        q[o + 1] = px;
+        q[o + 2] = pz;
+        q[o + 3] = Math.cos(h) * R(0.3, 0.9);
+        q[o + 4] = Math.sin(h) * R(0.3, 0.9);
+        q[o + 5] = R(B.tlife[0], B.tlife[1]);
+        q[o + 6] = R(0.045, 0.07);
+        q[o + 7] = (Math.floor(rnd() * TENDRIL_GLYPHS.length)) | 0;
+        q[o + 8] = i % 3 ? 0 : 1;
+      }
+      st.tendrils++;
+    }
+  }
+
+  /** Throw the tendrils' letters that are due (`dt`: fx s since the last frame; Flurry.draw, every frame). */
+  flush(dt) {
+    if (this._pn <= 0) return;
+    const fa = this.game.fx?.alpha ?? null, q = this._pq;
+    if (!fa || !(dt >= 0)) {
+      this._pn = 0;
+      return;
+    }
+    for (let i = 0; i < this._pn; ) {
+      const o = i * PW;
+      q[o] -= dt;
+      if (q[o] > 0) {
+        i++;
+        continue;
+      }
+      const size = q[o + 6], c = q[o + 8] ? DUST.colBlue : DUST.col;
+      fa.spawn({
+        x: q[o + 1], y: R(0.03, 0.07), z: q[o + 2], vx: q[o + 3], vy: 0, vz: q[o + 4],
+        life: q[o + 5], size, sizeEnd: size * 0.7, glyph: TENDRIL_GLYPHS[q[o + 7] | 0] ?? '.', color: c, colorEnd: DUST.colEnd, alpha: 0.8, alphaEnd: 0, drag: 2.5, gravity: 0,
+      });
+      this._stat(size, c);
+      // (the last queued letter takes this one's place)
+      this._pn--;
+      if (i < this._pn) {
+        const l = this._pn * PW;
+        for (let f = 0; f < PW; f++) q[o + f] = q[l + f];
+      }
+    }
+  }
+
+  /**
+   * The dodge looks (?dodgefx=c): a spray of DF.cloud.n x `k` tiny steel sparks round a contact (x, y, z)
+   * that fall slowly and live 1.2 - 2 s, so a streak of blows builds a cloud of them round the foe.
+   * Thinned when the particle pool is more than DF.cloud.cap full.
+   */
+  sparks(x, y, z, k = 1) {
+    const fa = this.game.fx?.alpha ?? null, C = DF.cloud, st = this.dodgeStat;
+    if (!fa || !Number.isFinite(x + y + z + k)) return;
+    let n = Math.round(C.n * k);
+    if (fa.max > 0 && fa.count > fa.max * C.cap) n = Math.round(n * C.thin);
+    for (let i = 0; i < n; i++) {
+      const a = R(0, 6.2832), sp = R(C.speed[0], C.speed[1]), size = R(C.size[0], C.size[1]);
+      const c = i % 3 ? DUST.col : DUST.colBlue;
+      fa.spawn({
+        x: x + R(-0.35, 0.35), y: y + R(-0.3, 0.4), z: z + R(-0.35, 0.35), vx: Math.cos(a) * sp, vy: R(-0.2, 1.2), vz: Math.sin(a) * sp,
+        life: R(C.life[0], C.life[1]), size, sizeEnd: size * R(0.6, 1), glyph: ".,'`:;*+", color: c, colorEnd: DUST.colEnd, alpha: 0.8, alphaEnd: 0, drag: C.drag, gravity: C.gravity, flicker: 0.3,
+      });
+      st.sparks++;
+      this._stat(size, c);
+    }
+  }
+
+  _stat(size, c) {
+    const st = this.dodgeStat;
+    if (size > st.maxSize) st.maxSize = size;
+    st.maxCol = Math.max(st.maxCol, c[0], c[1], c[2]);
   }
 
   /** A storm cut's run in: from where it started (a: root, `up` m under the blade) to where it lands
