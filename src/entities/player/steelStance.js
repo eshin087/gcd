@@ -1,4 +1,4 @@
-// The steel look set's charge hold (`?lights=steel`, ADR-214): what the hero stands in while the heavy
+// The steel look set's charge hold (`?lights=steel`, ADR-234): what the hero stands in while the heavy
 // button is held, after the owner's reference footage. anim.js chargePose calls steelCharge while the look
 // set is on (STEEL.on: combat.js setLights flips it). How he STANDS is not the look set's: the standing
 // pose, the two-handed hold of the fight and the guard follow the same footage for every look (ADR-207,

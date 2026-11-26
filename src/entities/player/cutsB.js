@@ -1,4 +1,4 @@
-// Instant-cut light combo, variant b (`?lights=blink&cuts=b`, combat.js setCuts; ADR-215): LUNGING DRAWS.
+// Instant-cut light combo, variant b (`?lights=blink&cuts=b`, combat.js setCuts; ADR-235): LUNGING DRAWS.
 // Hits 1-5 only; the heavies and the specials stay the blink set's. Clip format: swings.js. Data only.
 //
 // A sword-drawing feel (iai): every hit gathers LOW AND TIGHT, at a hip or a shoulder, as if the blade

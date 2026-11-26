@@ -1,4 +1,4 @@
-// Instant-cut light combo, variant d (`?lights=blink&cuts=d`, combat.js setCuts; ADR-215): a relentless flurry.
+// Instant-cut light combo, variant d (`?lights=blink&cuts=d`, combat.js setCuts; ADR-235): a relentless flurry.
 // Hits 1-5 only; the heavies and the specials stay the blink set's. Clip format: swings.js. Data only.
 //
 // THE PENDULUM. The blade swings like one: every cut falls (or sweeps) through his front in two or three

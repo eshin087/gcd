@@ -1,4 +1,4 @@
-// Instant-cut light combo, variant a (`?lights=blink&cuts=a`, combat.js setCuts; ADR-215): the reference's own five strokes, instant.
+// Instant-cut light combo, variant a (`?lights=blink&cuts=a`, combat.js setCuts; ADR-235): the reference's own five strokes, instant.
 // Hits 1-5 only; the heavies and the specials stay the blink set's. Clip format: swings.js. Data only.
 //
 // The owner's reference footage's light chain (its poses as the steel set measured them, steelChainA.js /

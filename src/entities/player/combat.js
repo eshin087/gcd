@@ -194,7 +194,7 @@ const LIGHT_BLINK = [
   { anim: { kind: 'clip', clip: 'blinkThrust' }, variants: [] },
   LAST_HIT_BLINK, // (lastHits.js: one of five strokes, never the same one twice running)
 ];
-/** `?cuts=a|b|c|d` under `?lights=blink` (ADR-215; the owner, 2026-11-26: "lets go back on iterating on
+/** `?cuts=a|b|c|d` under `?lights=blink` (ADR-235; the owner, 2026-11-26: "lets go back on iterating on
  *  the instant cut ... the attacks feel short and animation motion look bad. using your new learned
  *  knowledge from the reference video give me 4 different variations for the light attack combo"): four
  *  light chains in the instant style, written with what the reference footage taught (a deep coil, the
@@ -216,7 +216,7 @@ export function setCuts(m) {
   return true;
 }
 const blinkLights = () => (cutsNow === '0' ? LIGHT_BLINK : LIGHT_BLINK.map((L, i) => CUT_SETS[cutsNow][i] ?? L));
-/** `?lights=steel` (ADR-214; the owner, 2026-11-25, on the instant cuts: "this all still looks bad",
+/** `?lights=steel` (ADR-234; the owner, 2026-11-25, on the instant cuts: "this all still looks bad",
  *  and a reference film of a one-handed straight sword: "both arm angles, placement, animation etc is
  *  exactly what i want so mirror this"): every attack's poses and arm paths follow that footage, on
  *  this game's clock, with today's curved trail. Hits 1-5 (steelChainA.js, steelChainB.js), the five

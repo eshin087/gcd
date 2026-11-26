@@ -1,4 +1,4 @@
-// Instant-cut light combo, variant c (`?lights=blink&cuts=c`, combat.js setCuts; ADR-215): wide committed arcs.
+// Instant-cut light combo, variant c (`?lights=blink&cuts=c`, combat.js setCuts; ADR-235): wide committed arcs.
 // Hits 1-5 only; the heavies and the specials stay the blink set's. Clip format: swings.js. Data only.
 //
 // The biggest motion of the four. Every hit is one instant cut (the blade crosses his front in two or three

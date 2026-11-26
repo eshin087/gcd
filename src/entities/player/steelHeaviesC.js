@@ -1,4 +1,4 @@
-// The steel look set (`?lights=steel`, combat.js setLights; ADR-214): the lone heavy, the heavy after one light, and the charged heavy.
+// The steel look set (`?lights=steel`, combat.js setLights; ADR-234): the lone heavy, the heavy after one light, and the charged heavy.
 // Every clip here follows the owner's reference footage pose for pose (both arms, the body, the feet),
 // fitted to this game's own clock: no number of any attack changes. Clip format: swings.js.
 //
