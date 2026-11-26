@@ -215,6 +215,8 @@ export class GameFlow {
     ev?.on('player:flurryHit', (d) => {
       // the burst level (player/flurryBurst.js; ?burst=): 1 / 1 / 1 at level 0, as before
       const B = burstScreen();
+      // (the planted answers, a riposte's cut or a deathblow's beats, never touch the screen's grade)
+      if (d?.planted) return;
       if (!d?.last) {
         if (B.cut > 0) this.grade.flashPulse(Math.min(0.32, 0.14 + 0.03 * finite(d?.n)) * B.cut); // every cut a little brighter
         return;

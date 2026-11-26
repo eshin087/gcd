@@ -1,5 +1,6 @@
 import { CONFIG } from '../core/config.js';
-import { DEFENSE } from '../combat/rules.js';
+import { DEFENSE, POSTURE } from '../combat/rules.js';
+import { riposteMode, setRiposteMode } from '../entities/player/riposteCut.js';
 import { ARTS } from '../entities/player/flurry.js';
 import { TUNING as WYRM, SCALE as WYRM_SCALE } from '../entities/dragon/tuning.js';
 
@@ -18,7 +19,9 @@ import { TUNING as WYRM, SCALE as WYRM_SCALE } from '../entities/dragon/tuning.j
 // A situation: { id, cat, name, desc, boss (kinds it applies to: 'wyrm' | 'duel' | 'ash' | 'lord' |
 //   'asc' (Tian Lei) | 'fox' (Wen Yao) | 'woke' (Xin Yi) | 'halcyon' (Halcyon) | 'any'), dist (m from the boss; omit = the boss's default), ang (rad off his facing), side (put the
 //   hero beside him, for the camera), streak (the hero's, set before), foe (his streak), art (pin the
-//   flurry's art), hp (the hero's), god (default true), answer (mode, or (i, T) → mode for blow i),
+//   flurry's art), riposte (the parry's answer, 'old' | 'planted' | 'deathblow': set for the situation, the
+//   Lab's own restored after), parryRun (the deathblow's count, set before), postureNear (his posture set to
+//   just under what ONE perfect parry of his next blow breaks), hp (the hero's), god (default true), answer (mode, or (i, T) → mode for blow i),
 //   go(T) (start it), tick(T, dt) (every frame while it runs), until(T) (done; default: the boss's
 //   move is over and the hero is free), tail (s held after), max (s at most), expect [events]
 //   (what must have happened: the sims check), pieces (it needs the level's breakables), clear (it is
@@ -109,6 +112,15 @@ add('PARRY & RIPOSTE', [
   { id: 'parry', name: 'Parry a single blow', boss: 'any', streak: 0, role: 'single', answer: 'parry', desc: 'A single blow parried: the clash, then the riposte (one flash cut) and back where you stood.', expect: ['player:parry', 'player:flurryEnd'] },
   { id: 'perfectParry', name: 'Perfect parry', boss: 'any', streak: 0, role: 'single', answer: 'perfect', desc: 'Pressed within 0.08 s of the impact: the gold clash and a beat of slow motion.', expect: ['player:parry'] },
   ...[3, 7].map((n) => ({ id: `riposte${n}`, name: `Riposte ${N(n)}`, boss: 'any', streak: n - 1, role: 'single', answer: 'parry', desc: `A parry at a streak of ${n}: ${n} flash cuts.`, expect: ['player:flurryEnd'] })),
+  // the deathblow (?parryRiposte=deathblow): parries build his posture; the perfect one that breaks it is answered
+  ...[3, 7].map((n) => ({ id: `deathblow${n}`, name: `Deathblow ${N(n)}`, boss: 'duel', streak: 0, role: 'single', answer: 'perfect', riposte: 'deathblow', parryRun: n - 1, postureNear: true, desc: `${n - 1} perfect parries behind him, his posture one parry from breaking: the perfect parry breaks it, a beat of slow motion, a heavy cut and a thrust through him (${100 + 20 * Math.min(n, 7)} damage).`, expect: ['player:parry', 'player:flurryEnd'] })),
+  {
+    id: 'parryCounter', name: 'Parry a string: recoil + counter cut', boss: 'duel', streak: 0, role: 'string', answer: 'parry', riposte: 'deathblow',
+    desc: 'A string parried blow for blow: no automatic riposte. The last parry recoils him and opens a short window; the training presses attack in it for your own quick counter cut.',
+    go: (T) => { T._ctr = false; T.d.debug?.trigger?.(T._roles().string); },
+    tick: (T) => { if (!T._ctr && T.p.quickUntil > T.game.time) { T._ctr = true; T.tap('@attack'); } },
+    expect: ['player:parry'],
+  },
   { id: 'deflect', name: 'Deflect a string', boss: 'any', streak: 0, role: 'string', answer: 'parry', desc: 'Every blow of a string parried in rhythm: each counts in the streak, the last is answered by the riposte.', expect: ['player:parry'] },
   { id: 'deflectLong', name: 'Deflect a long string', boss: 'any', streak: 0, role: 'long', answer: 'parry', desc: 'A long string parried blow for blow: watch the streak climb and the riposte at the end.', expect: ['player:parry'] },
   { id: 'blockString', name: 'Block a string', boss: 'any', role: 'string', answer: 'block', desc: 'The guard held through a string: chip damage, pushback, no riposte.', expect: ['player:block'] },
@@ -530,6 +542,18 @@ export class Training {
       p.debug.flurryArt = s.art ?? null;
       p.debug.noRiposte = false;
     }
+    // (a situation names the parry's answer; the Lab's own comes back with the next one that does not)
+    if (s.riposte) {
+      if (this._riposteSaved == null) this._riposteSaved = riposteMode();
+      setRiposteMode(s.riposte);
+    } else if (this._riposteSaved != null) {
+      setRiposteMode(this._riposteSaved);
+      this._riposteSaved = null;
+    }
+    if (p) {
+      p.parryRun = 0;
+      if (p.db) p.db.phase = '';
+    }
     this._phase('settle');
   }
 
@@ -604,11 +628,18 @@ export class Training {
     p.debug.heal?.();
     if (Number.isFinite(s.hp)) p.hp = clamp(s.hp, 1, p.maxHp);
     if (Number.isFinite(s.streak)) p.debug.streak(s.streak);
+    if (Number.isFinite(s.parryRun)) p.parryRun = s.parryRun;
     if (typeof d.debug?.streak === 'function') d.debug.streak(fin(s.foe, 0));
     // fresh enough to take the situation: half his bar at least, no posture
     if (d.hp < d.maxHp * 0.5) d.hp = d.maxHp;
     if (Number.isFinite(d.posture) && !d.broken) {
       d.posture = 0;
+      d.emitPosture?.(true);
+    }
+    // one perfect parry of his next blow (a white one is the smaller) breaks it
+    if (s.postureNear && Number.isFinite(d.posture) && !d.broken) {
+      d.posture = Math.max(0, d.maxPosture - POSTURE.parry.normal * POSTURE.perfect + 1);
+      d.postureTimer = 0;
       d.emitPosture?.(true);
     }
     if (s.ai && d.brain) {

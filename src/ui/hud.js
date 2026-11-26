@@ -177,9 +177,14 @@ export class Hud {
       }
     });
     on('player:flurryHit', (d) => {
-      if (num(d.of) >= 2) this.calls.count(d.n, this.game.player?.flurry?.T);
+      if (num(d.of) >= 2 && !d.planted) this.calls.count(d.n, this.game.player?.flurry?.T); // (a planted answer has no flurry target)
     });
     on('player:flurryEnd', (d) => {
+      // the deathblow (?parryRiposte=deathblow): its own banner and its damage, whatever the run
+      if (d.art === 'deathblow') {
+        this.calls.banner('DEATHBLOW', `${Math.round(num(d.damage))} damage`);
+        return;
+      }
       const n = Math.round(num(d.strikes));
       if (n < 2) return;
       // a full flurry from a long streak: the tier's name and a rule more (the streak pass's 'tiers')

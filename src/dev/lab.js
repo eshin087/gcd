@@ -1297,7 +1297,7 @@ export class Lab {
       setRiposteMode(M[(M.indexOf(riposteMode()) + 1) % M.length]);
       this._syncCutBtns();
     });
-    this.ui.riposteBtn.title = "the answer to a parried last blow against a duelist (?parryRiposte=): old (the default) the flurry's flash cuts, planted: he stays where he parried and cuts once, the foe reels. Read as the riposte starts";
+    this.ui.riposteBtn.title = "the answer to a parried last blow against a duelist (?parryRiposte=): old (the default) the flurry's flash cuts, planted: he stays where he parried and cuts once, the foe reels; deathblow: parries build posture (not the dodge streak), the one that breaks him is answered by a slow beat, a heavy cut and a thrust. Read as the riposte starts";
     this.ui.burstBtn = button(stkGrid, `burst ${burstLevel()}`, () => {
       setBurst((Math.max(0, burstLevel()) + 1) % BURST_LOOK.levels.length);
       this._syncCutBtns();

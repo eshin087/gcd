@@ -11,7 +11,7 @@ import { streakTier } from '../../combat/streak.js';
 import { HEAVY } from './combat.js';
 
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
-const OPTS = ['old', 'planted'];
+const OPTS = ['old', 'planted', 'deathblow'];
 const q = (name) => {
   try {
     return typeof location !== 'undefined' ? new URLSearchParams(location.search).get(name) : null;

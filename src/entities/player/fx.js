@@ -834,7 +834,7 @@ export class PlayerFx {
       clashBurst(this.game, x, y, z, { pal: CLASH.perfect, power: (1 + 0.12 * (n - 1)) * PF.clash.power, spray, e1: o?.e1 ?? null, e2: o?.e2 ?? null, ring: PF.clash.ring, cross: PF.clash.cross, light: PF.clash.light, embers: PF.clash.embers });
       perfectParryMark(this.game, x, y, z, { e1: o?.e1 ?? null, e2: o?.e2 ?? null, mode: o.feel.mode, beat: o.feel.beat, streak: o.feel.streak });
       // ?parryFx= (combat/parrySparks.js; '0' as shipped): a spit of orange sparks off the crossed steel
-      if (parryFxSpec()) parrySparks(this.game, x, y, z, { e1: o?.e1 ?? null, e2: o?.e2 ?? null, spray, met: !!o?.met, fdx, fdz, last: !!o?.last });
+      if (parryFxSpec()) parrySparks(this.game, x, y, z, { e1: o?.e1 ?? null, e2: o?.e2 ?? null, spray, met: !!o?.met, fdx, fdz, last: !!o?.last, streak: o?.streak });
       return;
     }
     clashBurst(this.game, x, y, z, {

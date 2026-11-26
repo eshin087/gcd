@@ -4040,6 +4040,126 @@ async function scenarioRipostePlanted() {
   return G;
 }
 
+// ================================================================== scenario: deathblow (?parryRiposte=deathblow)
+// Against a duelist, in deathblow mode: a parry of a blow no longer counts in the dodge streak
+// (`player.parryRun` counts the PERFECT ones); a parried last blow recoils him and opens the counter cut's
+// window, with no automatic riposte; the parry that BREAKS his posture is answered where the hero stands by
+// a slow beat, a heavy cut and a thrust: 100 + 20 x min(parryRun, 7) damage, never hurt, he stays broken.
+// old / planted: unchanged (the parries still count in the streak).
+async function scenarioDeathblow() {
+  out('\n== scenario DEATHBLOW (?parryRiposte=deathblow: posture break -> slow beat, heavy cut, thrust) ==');
+  const RC = await imp('src/entities/player/riposteCut.js');
+  const SP = await imp('src/combat/parrySparks.js');
+  const ST = await imp('src/combat/streak.js');
+  const G = build();
+  duel(G, { dist: 2.0 });
+  const { game, input } = G;
+  const d = game.dragon, p = game.player, DB = DEFENSE.deathblow;
+  run(G, 0.4);
+  const nearBreak = () => d.maxPosture - POSTURE.parry.normal * POSTURE.perfect + 1;
+  const take = (mode, o = {}) => {
+    RC.setRiposteMode(mode);
+    settle(G, 8);
+    home(G);
+    place(G, 2.0);
+    run(G, 0.3);
+    d.posture = o.near ? nearBreak() : 0;
+    d.postureTimer = 0;
+    d.hp = d.maxHp;
+    p.hp = p.maxHp;
+    p.debug.god = !o.hurt;
+    p.streak = o.streak ?? 0;
+    p.streakT = 0;
+    p.parryRun = o.run ?? 0;
+    const t = { parry: null, ev: null, hits: [], end: null, flurry: false, ox: 0, oz: 0, far: 0, hurt: 0, hp0: d.hp, states: new Set(), tEnd: -1, quick: false, atk: null, brokenAtEnd: null, streaks: [], sparks: 0, tier: -1, last: false, cine: null, run1: -1, streakAfter: -1, runAfter: -1, sc: 0 };
+    let flashT = null, pressed = false, pressedAtk = false;
+    G.watch = (nm, e) => {
+      if (nm === 'combat:flash' && e?.attack === 'plumThrust' && flashT === null) flashT = game.time;
+      if (nm === 'player:parry' && !t.parry) { t.parry = { ...e }; t.ox = p.position.x; t.oz = p.position.z; t.run1 = p.parryRun; }
+      if (nm === 'player:flurry') t.ev = { ...e };
+      if (nm === 'player:flurryHit') t.hits.push({ ...e });
+      if (nm === 'player:flurryEnd') t.end = { ...e };
+      if (nm === 'player:hurt') t.hurt++;
+      if (nm === 'player:streak') t.streaks.push(e.count);
+      if (nm === 'game:cinematic' && e?.kind === 'deathblow') t.cine = { ...e };
+    };
+    d.debug.trigger('plumThrust');
+    const lead = o.perfect === false ? TUNING.flashLead - 0.2 : TUNING.flashLead - 0.04 - DT;
+    run(G, o.secs ?? 4, () => {
+      game.mouseGround.set(d.position.x, 0, d.position.z);
+      if (!o.hurt && flashT !== null && !pressed && game.time >= flashT + lead) { pressed = true; input.up(1); input.click(1); }
+      if (t.parry) {
+        t.far = Math.max(t.far, Math.hypot(p.position.x - t.ox, p.position.z - t.oz));
+        t.states.add(p.state);
+        if (p.flurry?.on) t.flurry = true;
+        if (p.quickUntil > game.time) t.quick = true;
+        if (o.press && t.quick && !pressedAtk && p.quickUntil > game.time && p.state !== 'attack') { pressedAtk = true; input.click(0); }
+        if (p.atk?.quick) t.atk = true;
+        if (t.end && t.tEnd < 0) { t.tEnd = game.time; t.brokenAtEnd = d.broken; }
+        if (!isFinite(p.position.x + p.position.z)) t.nan = true;
+        if (t.hits.length === 2 && !t.sc) { t.sc = 1; t.tier = SP.PARRY_GROW_LAST.tier; t.last = SP.PARRY_GROW_LAST.last; t.sparks = SP.PARRY_GROW_LAST.sparks; }
+      }
+    }, o.until ?? (() => !!t.end && game.time > t.tEnd + 1.2 && p.state !== 'attack' && p.state !== 'heavy'));
+    G.watch = null;
+    t.hpLost = t.hp0 - d.hp;
+    t.state = p.state;
+    t.streakAfter = p.streak;
+    t.runAfter = p.parryRun;
+    return t;
+  };
+  // (a) a parried blow, posture not broken: no automatic riposte, the counter window opens, the dodge streak is untouched
+  {
+    const t = take('deathblow', { perfect: false, press: true, secs: 2.2, until: () => false });
+    out(`   (a) plain parry: parry ${JSON.stringify({ p: t.parry?.perfect, last: t.parry?.last })} · flurry events ${t.ev ? 1 : 0} · hits ${t.hits.length} · window ${t.quick} · quick cut ${t.atk} · streak ${t.streakAfter} (events ${t.streaks.join(',')}) · parryRun ${t.runAfter}`);
+    assert(t.parry && t.parry.perfect === false && t.parry.last === true, '(a) the blow was parried (not perfect), its last');
+    assert(!t.ev && !t.hits.length && !t.flurry, '(a) no automatic riposte: no flurry event, no flash cut');
+    assert(t.quick, '(a) the counter cut window opens on a parried last blow');
+    assert(t.atk === true, '(a) a press in the window starts the quick counter cut');
+    assert(t.streakAfter === 0 && !t.streaks.length, `(a) the parry did not count in the dodge streak (streak ${t.streakAfter}, events ${t.streaks.join(',')})`);
+    assert(t.runAfter === 0, '(a) a plain parry is no perfect parry: parryRun 0');
+  }
+  // (b) perfect parries count in parryRun, not the streak; a hurt resets it; his posture back to 0 resets it
+  {
+    const t = take('deathblow', { run: 0, secs: 1.6, until: () => false });
+    out(`   (b) perfect parry (no break): parryRun ${t.run1} · streak ${t.streakAfter} · hits ${t.hits.length} · posture ${d.posture.toFixed(1)}`);
+    assert(t.parry?.perfect === true && t.run1 === 1 && t.streakAfter === 0, `(b) a perfect parry: parryRun 1, the dodge streak untouched (${t.run1}, ${t.streakAfter})`);
+    assert(!t.ev && !t.hits.length && !d.broken, '(b) no break, no deathblow');
+    p.parryRun = 3;
+    d.posture = 0;
+    run(G, 0.2);
+    assert(p.parryRun === 0, `(b) his posture empty again: parryRun reset (${p.parryRun})`);
+    const h = take('deathblow', { run: 4, hurt: true, secs: 2.5, until: () => false });
+    out(`   (b) hurt: hurts ${h.hurt} · parryRun ${h.runAfter}`);
+    assert(h.hurt >= 1 && h.runAfter === 0, `(b) a blow that hurts resets parryRun (hurts ${h.hurt}, run ${h.runAfter})`);
+  }
+  // (c) the deathblow: n perfect parries behind it, posture one parry from breaking
+  for (const n of [1, 3, 7, 9]) {
+    const t = take('deathblow', { near: true, run: n - 1 });
+    const exp = DB.base + DB.per * Math.min(n, DB.cap);
+    out(`   (c) n=${n}: event ${JSON.stringify(t.ev && { strikes: t.ev.strikes, art: t.ev.art, tier: t.ev.tier, planted: t.ev.planted })} · hits ${JSON.stringify(t.hits.map((h) => [h.n, h.of, h.last, h.damage]))} · hp lost ${t.hpLost} (expected ${exp}) · far ${t.far.toFixed(2)} m · cinematic ${!!t.cine} · sparks tier ${t.tier} n ${t.sparks} · end ${JSON.stringify(t.end)} · broken at end ${t.brokenAtEnd}`);
+    assert(t.parry?.perfect === true && t.ev?.art === 'deathblow' && t.ev.planted === true && t.ev.strikes === n && t.ev.air === false && t.ev.storm === false, `(c) n=${n}: player:flurry art deathblow (strikes ${t.ev?.strikes})`);
+    assert(t.hits.length === 2 && t.hits[0].n === 1 && t.hits[0].last === false && t.hits[1].n === 2 && t.hits[1].last === true && t.hits.every((h) => h.of === 2 && h.planted === true), `(c) n=${n}: two flurryHits (heavy cut, thrust)`);
+    assert(Math.abs(t.hpLost - exp) < 0.51 && Math.abs(t.hits[0].damage + t.hits[1].damage - exp) < 0.51, `(c) n=${n}: ${t.hpLost} damage = 100 + 20 x min(run, 7) = ${exp}`);
+    assert(Math.abs(t.hits[0].damage - Math.round(exp * DB.share)) < 0.51, `(c) n=${n}: beat 1 deals ${DB.share * 100}% (${t.hits[0].damage})`);
+    assert(t.far <= 0.7 && !t.nan, `(c) n=${n}: within 0.7 m of where he parried (${t.far.toFixed(2)} m)`);
+    assert(t.hurt === 0 && !t.flurry && !t.states.has('flurry') && !t.states.has('ghostep') && !t.states.has('plunge'), `(c) n=${n}: never hurt, no flurry / ghostep (states ${[...t.states].join(',')})`);
+    assert(t.end?.art === 'deathblow' && t.end.label === 'Deathblow' && t.end.strikes === n && Math.abs(t.end.damage - exp) < 0.51, `(c) n=${n}: flurryEnd Deathblow ${t.end?.damage}`);
+    assert(t.brokenAtEnd === true, `(c) n=${n}: he stays broken after it`);
+    assert(t.cine && t.streakAfter === 0 && t.runAfter === 0, `(c) n=${n}: the slow beat ran; the dodge streak untouched (${t.streakAfter}); parryRun spent (${t.runAfter})`);
+    assert(t.tier === ST.streakTier(DB.burst.base + DB.burst.per * n) && t.last === true && t.sparks > 0, `(c) n=${n}: the burst grew to tier ${t.tier} (${t.sparks} sparks, last)`);
+  }
+  assert(DB.base + DB.per * DB.cap > DEFENSE.flurry.cut.damage * 7, `the deathblow's top (${DB.base + DB.per * DB.cap}) is above the flurry x7 (${DEFENSE.flurry.cut.damage * 7})`);
+  // (d) old / planted: parries still count in the streak, nothing of the deathblow runs
+  for (const mode of ['old', 'planted']) {
+    const t = take(mode, { run: 0, streak: 0, secs: 1.6, until: () => false });
+    out(`   (d) ${mode}: streak events ${t.streaks.join(',')} · parryRun ${t.runAfter} · art ${t.ev?.art}`);
+    assert(t.streaks.length > 0 && t.runAfter === 0 && t.ev?.art !== 'deathblow', `(d) ${mode}: the parry counts in the streak, no deathblow`);
+  }
+  RC.setRiposteMode(RC.RIPOSTE_DEFAULT);
+  assert(RC.RIPOSTE_CUT.opts.includes('deathblow') && RC.RIPOSTE_DEFAULT === 'old', 'deathblow is an option; the default stays old');
+  return G;
+}
+
 // ================================================================== scenario: flare (ADR-118)
 // The flare is the only sign of a moment (no glow through the windup, no ring on the floor); a parry
 // of a blue flare blow is answered by the hero's counter; the black (charged) blow.
@@ -5082,6 +5202,7 @@ const SCENARIOS = {
   answer: scenarioAnswer,
   perfect: scenarioPerfect,
   riposteplanted: scenarioRipostePlanted,
+  deathblow: scenarioDeathblow,
   flare: scenarioFlare,
   fxlooks: scenarioFxLooks,
   telemetry: scenarioTelemetry,

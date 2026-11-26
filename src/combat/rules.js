@@ -286,6 +286,26 @@ export const DEFENSE = Object.freeze({
   // plunge.impactStop, the shake plunge.impactShake + `shakePerN` n, the punch `punch` + `punchPerN` n),
   // scaled by flurry.ground. He cannot be hurt from the start to `iframePad` s after the end.
   riposteCut: Object.freeze({ step: 0.6, minGap: 1.0, wind: 0.14, active: 0.1, recover: 0.32, iframePad: 0.05, stopK: 1.25, shakePerN: 0.06, punch: 2.2, punchPerN: 0.25, flash: 0.7 }),
+  // --- THE DEATHBLOW (?parryRiposte=deathblow; src/entities/player/deathblow.js): against a duelist, a parry
+  // whose posture damage BREAKS him is answered where the hero stands by two planted beats: a heavy cut,
+  // then a thrust through him. Parries of blows no longer count in the dodge streak: `player.parryRun`
+  // counts the PERFECT parries (reset when hurt, when his posture is back to 0, after a deathblow).
+  // base / per / cap: total damage = base + per x min(parryRun, cap) (final, crit; 100 .. 240); share:
+  // beat 1's part of it (beat 2 the rest); step / minGap: as riposteCut (the whole finisher moves the
+  // hero at most `step` m toward him, never nearer than `minGap` m); slow: the cinematic beat at the
+  // start (real s, the camera's lean `weight`, no zoom); cut: beat 1's timeline (s; contact at the end
+  // of the wind); gap: beat 2 starts this many s after beat 1's active window and its freeze are over;
+  // w1 / w2: each beat's weight x riposteCut's (freeze, shake, punch; scaled by run as the riposte's n);
+  // flash: the foe's hurt flash; iframePad: s he stays unhurt after the end; burst: beat 2's spark burst
+  // is parrySparks' growing spit read at a streak of burst.base + burst.per x run (tier 5 from 15), `last`;
+  // reach: the contact's height above his feet (m)
+  deathblow: Object.freeze({
+    base: 100, per: 20, cap: 7, share: 0.4, step: 0.6, minGap: 1.0,
+    slow: Object.freeze({ slowmo: 0.3, dur: 0.35, zoom: 0, weight: 0.3 }),
+    cut: Object.freeze({ wind: 0.16, active: 0.1, recover: 0.3 }),
+    gap: 0.02, w1: 0.55, w2: 1.35, flash: 0.8, iframePad: 0.05, reach: 1.2,
+    burst: Object.freeze({ base: 3, per: 2 }),
+  }),
 });
 
 /**
