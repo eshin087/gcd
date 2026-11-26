@@ -19,6 +19,16 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-25',
+        title: 'The hero stands, holds and guards like the reference',
+        notes: [
+          'At ease the hero stands tall with his sword in one hand, its point forward and down by his right foot.',
+          'In a fight he takes the sword in both hands before him, the point raised above his head.',
+          'Now and then he puts the sword away at his hip, where it burns out in its green flame, and draws it back out of the flame.',
+          'His guard is a braced crouch, both hands up before his chin and the blade across his face. Blocking and parrying work exactly as before.',
+        ],
+      },
+      {
+        date: '2026-11-25',
         title: "The dragon's neck and head move naturally: no upside-down head, no flips",
         notes: [
           'The Cinder Wyrm no longer turns its head upside down when it flies, climbs or wheels round, and no longer looks straight back over its own spine.',

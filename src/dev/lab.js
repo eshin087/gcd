@@ -22,7 +22,8 @@ import { sfxMode, setSfxMode, chainMode, setChainMode, CHAIN_MODES } from '../au
 import { PARRY_CHAIN } from '../audio/parryChain.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { MYSTIC_IDS, MYSTIC_NAMES, mysticMode, setMystic } from '../entities/player/swordMystic.js';
-import { IDLES_IDS, IDLES_NAMES, idlesMode, setIdles, EASE_RESTS, FIGHT_RESTS, EASE_HABITS, EASE_TRICKS, FIGHT_ACTS } from '../entities/player/idles.js';
+import { IDLES_IDS, IDLES_NAMES, idlesMode, setIdles, EASE_RESTS, FIGHT_RESTS, EASE_HABITS, EASE_TRICKS, EASE_REF_EXTRA, FIGHT_ACTS } from '../entities/player/idles.js';
+import { GUARD_IDS, GUARD_NAMES, guardMode, setGuard } from '../entities/player/refStance.js';
 import { RUN_ARM_IDS, RUN_ARM_NAMES, runArmMode, setRunArm } from '../entities/player/runArms.js';
 import { HAND_LOOK_IDS, HAND_LOOK_NAMES, handLook } from '../entities/player/gear/handLook.js';
 import { buildLooks } from './labLooks.js';
@@ -812,6 +813,7 @@ export class Lab {
 
   _syncIdleBtns() {
     for (const { m, el: b } of this.ui.idleBtns ?? []) setClass(b, 'on', idlesMode() === m);
+    for (const { m, el: b } of this.ui.guardBtns ?? []) setClass(b, 'on', guardMode() === m);
   }
 
   _syncStanceBtns() {
@@ -1169,7 +1171,7 @@ export class Lab {
     // belt as before; and a button for each, to play it now (the rests and the actions of the stance he
     // stands in: at ease, or the fight's)
     const idr = el('div', 'lab-row', null, body);
-    el('span', 'lab-lbl', 'idles', idr).title = "the hero's idles: rests he moves between, habits with both arms and a trick every few (new), or the hand on the belt (?idles=old)";
+    el('span', 'lab-lbl', 'idles', idr).title = "the hero's idles: the reference's stand and two-handed hold (ref, the default), ADR-186's rests, habits with both arms and a trick every few (new), or the hand on the belt (old)";
     const idg = el('div', 'lab-grid', null, idr);
     idg.style.flex = '1';
     this.ui.idleBtns = IDLES_IDS.map((m) => {
@@ -1180,8 +1182,22 @@ export class Lab {
       b.title = `?idles=${m}: ${IDLES_NAMES[m]}`;
       return { m, el: b };
     });
+    // the hero's guard (player/refStance.js, ADR-204; ?guard=ward): the reference's braced guard, the blade
+    // upright, or the cross ward before it
+    const gdr = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'guard', gdr).title = "the hero's block: the braced guard with the blade upright (ref, the default) or the cross ward before it (?guard=ward)";
+    const gdg = el('div', 'lab-grid', null, gdr);
+    gdg.style.flex = '1';
+    this.ui.guardBtns = GUARD_IDS.map((m) => {
+      const b = button(gdg, m, () => {
+        setGuard(m);
+        this._syncIdleBtns();
+      });
+      b.title = `?guard=${m}: ${GUARD_NAMES[m]}`;
+      return { m, el: b };
+    });
     const idp = el('div', 'lab-row', null, body);
-    el('span', 'lab-lbl', 'idle ▸', idp).title = 'play one now (stand still; at ease or in the fight stance: the stance row holds either)';
+    el('span', 'lab-lbl', 'idle ▸', idp).title = 'play one now (stand still; at ease or in the fight stance: the stance row holds either; a rest or a moment of another idles mode says so)';
     const idpg = el('div', 'lab-grid', null, idp);
     idpg.style.flex = '1';
     const playIdle = (name, rest) => {
@@ -1189,7 +1205,7 @@ export class Lab {
       const ok = rest ? A?.setRest?.(name) : A?.playIdle?.(name);
       this._status(`${rest ? 'rest' : 'idle'} ${name}${ok ? '' : ': not in this stance (or he is moving)'}`, ok ? 'ok' : 'warn');
     };
-    for (const [list, rest, tip] of [[EASE_RESTS, true, 'at ease: move to this rest'], [EASE_HABITS, false, 'at ease: a habit'], [EASE_TRICKS, false, 'at ease: a trick'], [FIGHT_RESTS, true, 'in the fight: this guard hand'], [FIGHT_ACTS, false, 'in the fight: a habit']]) {
+    for (const [list, rest, tip] of [[EASE_RESTS, true, 'at ease (new): move to this rest'], [EASE_HABITS, false, 'at ease: a habit'], [EASE_TRICKS, false, 'at ease: a trick'], [EASE_REF_EXTRA, false, 'at ease (ref): the put-away and the draw'], [FIGHT_RESTS, true, 'in the fight (new): this guard hand'], [FIGHT_ACTS, false, 'in the fight: a habit (ref: grip, shift, loosen)']]) {
       for (const D of list) button(idpg, D.name, () => playIdle(D.name, rest)).title = tip;
     }
     this._syncIdleBtns();

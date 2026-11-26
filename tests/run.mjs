@@ -30,7 +30,7 @@ const INTEG = 'tests/integration/integ.mjs';
 // The rest of integ is still the longest task, so these scenarios (the hero's model and the world:
 // about half of it) run as a second process. `integ` runs `all` without them, so a new scenario
 // lands there by itself, and it keeps the checks across scenarios (the event catalogue).
-const INTEG_2 = ['hero', 'herolife', 'herolook', 'herohand', 'heroweight', 'heroarms', 'herorun', 'herostance', 'heroidles', 'looks', 'terrain', 'fire', 'bullets'];
+const INTEG_2 = ['hero', 'herolife', 'herolook', 'herohand', 'heroweight', 'heroarms', 'herorun', 'herostance', 'heroidles', 'heroref', 'looks', 'terrain', 'fire', 'bullets'];
 // lord's longest scenarios, each a process of its own (`fxlooks` replays SPELLS and TERRAIN under four
 // looks: about half the suite; `pace` plays every form for minutes per seed). `lord` runs the rest.
 const LORD = 'tests/integration/lord.mjs';
