@@ -102,7 +102,7 @@ const orange = (c) => Array.isArray(c) && c[0] > 0.85 && c[1] > 0.3 && c[1] < 0.
 
 // every drawing method of this class runs on LordFx's drawing stream (see ascendant/fx.js ASC_DRAW)
 const WJ_DRAW = [
-  'barrierIdle', 'barrierStop', 'barrierCrack', 'barrierOpen', 'barrierClose', 'blinkOut', 'blinkIn', 'eyes', 'afterimage', 'vanish',
+  'barrierIdle', 'barrierStop', 'barrierCrack', 'barrierOpen', 'barrierClose', 'blinkOut', 'blinkIn', 'eyes', 'unveil', 'afterimage', 'vanish',
   'drawKnot', 'drawCollapse', 'castPoint', 'castBurst', 'nullCharge', 'nullLine', 'nullBeam', 'nullEnd', 'domainSign', 'domainWall', 'domainCaught',
   'domainBreak', 'shove', 'crash', '_wjUpdate',
 ];
@@ -116,6 +116,13 @@ const SHELL = Object.freeze({
   sign: { r: 0.55, heat: 0.44, blink: 0.5 }, // the open sign: a ring on the floor this far outside the shell
   knit: 0.45, // s the knit-back lasts
 });
+
+// his eyes at the game camera (round 2), in letter cells of the screen: each eye's core, the gap from the
+// eyes' middle to each (so they never print as one smear), the soft glow round each; heats (the azure
+// slot; `heart` is steel, kept under the 1.2 at which a cell prints a white digit); below `profile` (|his
+// right . the camera's right|) one point
+const EYE_C = [0.55, 1.25, 3.2];
+const EYES = Object.freeze({ glyph: 'O', core: 1.8, apart: 1.0, glow: 2.4, heat: 0.4, heart: 0.0, halo: 0.07, profile: 0.3, lift: 0.35, light: 0.25 });
 
 export class WjFx extends AscFx {
   constructor(d) {
@@ -664,19 +671,30 @@ export class WjFx extends AscFx {
     this.dust(x1, z1, 0.55);
   }
 
-  /** His eyes: two points of blue (the void slot), white hearts as k rises; a short blue trail when his head turns fast. */
+  /** His eyes (round 2): two points of blue, each one letter cell at least and at least a cell apart on
+   *  the screen (at 30 m the true 9 cm between them is under one cell: they would print as one smear),
+   *  a small white heart that stays under the white-digit heat, a short soft glow; one point in profile;
+   *  a short blue trail when his head moves fast. Sized by the screen's cell, so the phone reads too. */
   eyes(d, k) {
     if (!this.fire || !d || !(k > 0.02)) return;
     const e = d.eyePoint?.(this._eye);
     if (!e || !Number.isFinite(e.x + e.y + e.z)) return;
     const life = this._frame();
     if (!(life > 0)) return;
-    const rx = Math.cos(d.yaw), rz = -Math.sin(d.yaw);
+    const S = this._screen(e.x, e.y, e.z), cell = S.ok ? Math.max(0.03, S.cw * S.mpp) : 0.12, A = this._axes();
+    const fx = Math.cos(d.yaw), fz = -Math.sin(d.yaw), sr = fx * A.rx + fz * A.rz;
     const fdt = Math.max(1e-3, fin(this.game.fxDt, 0.016));
-    for (const s of [-1, 1]) {
-      const ex = e.x + rx * 0.045 * s, ez = e.z + rz * 0.045 * s;
-      this._blob(ex, e.y, ez, 0, 0, 0, life, 0.1 + 0.1 * k, 0.1 + 0.1 * k, 0.45 + 0.5 * k, 0.45 + 0.5 * k, K_VOID);
-      if (k > 0.4) this._blob(ex, e.y, ez, 0, 0, 0, life, 0.06, 0.06, 0.5 + 0.4 * (k - 0.4), 0.5, K_STEEL);
+    const two = Math.abs(sr) > EYES.profile, half = two ? Math.max(0.045 * Math.abs(sr), cell * EYES.apart) * Math.sign(sr) : 0;
+    for (const s of two ? [-1, 1] : [0]) {
+      const P = this._eyeAt(e.x + A.rx * half * s, e.y + A.ry * half * s, e.z + A.rz * half * s);
+      // the point itself: a glyph of one cell (printed after the letter pass, so the face's own letters
+      // never cover it, as they cover heat), and the heat round it
+      const o = this._rec(P.x, P.y, P.z, life, cell * EYES.core, cell * EYES.core, EYES.glyph, EYE_C, EYE_C);
+      o.alpha = o.alphaEnd = 0.55 + 0.45 * k;
+      this._spawn(this.add, o);
+      this._blob(P.x, P.y, P.z, 0, 0, 0, life, cell * 1.2, cell * 1.2, EYES.heat * k, EYES.heat * k, K_VOID);
+      if (EYES.heart > 0) this._blob(P.x, P.y, P.z, 0, 0, 0, life, cell * 0.7, cell * 0.7, EYES.heart * k, EYES.heart * k, K_STEEL);
+      this._blob(P.x, P.y, P.z, 0, 0, 0, life, cell * EYES.glow, cell * EYES.glow, EYES.halo * k, EYES.halo * k, K_VOID);
     }
     if (this._eyeOk) {
       const P = this._eyePrev, mv = Math.hypot(e.x - P.x, e.y - P.y, e.z - P.z), sp = mv / fdt;
@@ -690,7 +708,71 @@ export class WjFx extends AscFx {
     }
     this._eyePrev.copy(e);
     this._eyeOk = true;
-    if (k > 0.3) this._keep('wjEyes', e.x, e.y, e.z, L_AZURE, 0.3 + 1.0 * k, 1.6 + 2 * k, 0.1);
+    if (k > 0.3) this._keep('wjEyes', e.x, e.y, e.z, L_AZURE, EYES.light * k, 1.2 + 1.2 * k, 0.1);
+  }
+
+  /** A point a little toward the camera (0.35 m: in front of his face, not so far that the field's
+   *  near fade takes it). */
+  _eyeAt(x, y, z) {
+    const P = this._pt, cam = this.game.camera?.position;
+    P.x = x;
+    P.y = y;
+    P.z = z;
+    if (cam) {
+      const dx = cam.x - x, dy = cam.y - y, dz = cam.z - z, l = Math.hypot(dx, dy, dz);
+      if (l > 1.5 && Number.isFinite(l)) {
+        P.x += (dx / l) * EYES.lift;
+        P.y += (dy / l) * EYES.lift;
+        P.z += (dz / l) * EYES.lift;
+      }
+    }
+    return P;
+  }
+
+  /** (round 2) THE UNVEILING, per frame while the band comes down (k 0..1 through its pull): blue light
+   *  leaking under the band as it slips; as k reaches 1, once: a blue flare from the eyes (rays of strokes
+   *  in the camera's plane, blue sparks, a ring of air, a flash of light). Core calls it from afterPose
+   *  through the `unveil` transition's beat: k = clamp01((u - 0.6) / 0.3), u = the beat's time / windup. */
+  unveil(d, k) {
+    if (!this.fire || !d) return;
+    k = clamp01(fin(k, 0));
+    const U = (this._unv ??= { seen: -9, flared: false }), now = this._now();
+    if (now - U.seen > 0.4) U.flared = false;
+    U.seen = now;
+    const e = d.eyePoint?.(this._eye);
+    if (!e || !Number.isFinite(e.x + e.y + e.z)) return;
+    const life = this._frame(), A = this._axes();
+    const S = this._screen(e.x, e.y, e.z), cell = S.ok ? Math.max(0.03, S.cw * S.mpp) : 0.12;
+    if (life > 0 && k > 0.05 && !U.flared) {
+      // the light leaking under the band: a thin bar of blue across his eyes, brighter as it slips
+      const w = Math.max(0.12, cell * 2.2) * (0.6 + 0.4 * k), h = 0.25 + 0.6 * k;
+      const P = this._toCamera(e.x, e.y - 0.03, e.z);
+      this._ink(P.x - A.rx * w, P.y - A.ry * w, P.z - A.rz * w, P.x + A.rx * w, P.y + A.ry * w, P.z + A.rz * w, 0, h, 0, h, 0, K_VOID);
+      this._blob(P.x, P.y, P.z, 0, 0, 0, life, cell * 3, cell * 3, 0.12 * k, 0.12 * k, K_VOID);
+    }
+    if (k >= 0.98 && !U.flared) {
+      U.flared = true;
+      const P = this._toCamera(e.x, e.y, e.z), cx = P.x, cy = P.y, cz = P.z;
+      // rays of blue strokes thrown out of the eyes in the camera's plane, the two along his eyes longest
+      for (let i = 0; i < 14; i++) {
+        const a = (i / 14) * TAU + this.lrand(-0.12, 0.12), ca = Math.cos(a), sa = Math.sin(a);
+        const L = (Math.abs(sa) < 0.3 ? 1.9 : 0.7) * this.lrand(0.8, 1.2), r0 = 0.12;
+        this._ink(cx + (A.rx * ca + A.ux * sa) * r0, cy + (A.ry * ca + A.uy * sa) * r0, cz + (A.rz * ca + A.uz * sa) * r0, cx + (A.rx * ca + A.ux * sa) * L, cy + (A.ry * ca + A.uy * sa) * L, cz + (A.rz * ca + A.uz * sa) * L, this.lrand(0.22, 0.34), 1.0, 0, 0.35, 0, K_VOID);
+      }
+      this._blob(cx, cy, cz, 0, 0, 0, 0.16, cell * 3, cell * 1.5, 0.7, 0, K_VOID);
+      this._shock(cx, cy, cz, 1.6, 18, 0.22, 0.24, 0.4, 0.45, K_VOID, 0.2, 3);
+      for (let i = 0; i < 22; i++) {
+        const a = this.lr() * TAU, sp = this.lrand(2, 6);
+        const o = this._rec(cx, cy, cz, this.lrand(0.3, 0.6), 0.14, 0.05, "*'.+", AZURE_G, AZURE_G_END);
+        o.vx = (A.rx * Math.cos(a) + A.ux * Math.sin(a)) * sp;
+        o.vy = (A.ry * Math.cos(a) + A.uy * Math.sin(a)) * sp;
+        o.vz = (A.rz * Math.cos(a) + A.uz * Math.sin(a)) * sp;
+        o.drag = 3;
+        this._spawn(this.add, o);
+      }
+      this._light({ x: e.x, y: e.y, z: e.z, color: L_AZURE, intensity: 2.2, radius: 6, life: 0.4, fade: 0.35 });
+      this._say('wjUnveil', d.position?.x, d.position?.z);
+    }
   }
 
   /** A figure of steel left where he was (DuelFx.ghost), drifting the way he went. */

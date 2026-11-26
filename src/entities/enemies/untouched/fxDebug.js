@@ -13,6 +13,7 @@
 //   'near'      the shell lit as if the hero's blade came at it (2.0)       k (0..1)
 //   'blink'     he blinks to the hero's side (the real blinkTo) (0.6)       -
 //   'eyes'      his eyes lit, his head turned fast left and right (2.0)     -
+//   'unveil'    the band's light leaking (0.6 s), the flare, then his eyes on  -
 //   'draw'      a knot 3 m ahead of him for 2.4 s, then its collapse        x, z, r, life
 //   'cast'      a point flicked from his hand to the hero (0.5 s), the burst  x, z, r, power
 //   'null'      the merge (1.6 s), held 0.3 s, the line 1.3 s, its end       len, w
@@ -88,6 +89,10 @@ const DRIVERS = {
     if (d.object3d) d.object3d.rotation.y = d.yaw;
   }, end(d, D) {
     if (D.yaw0 !== undefined) d.yaw = D.yaw0;
+  } },
+  unveil: { T: 1.4, step(d, D, t) {
+    if (t < 0.62) d.fx.unveil(d, clamp01(t / 0.6));
+    else d.eyesK = 1;
   } },
   draw: { T: 2.7, step(d, D, t, dt) {
     const F = d.fx, life = fin(D.opts.life, 2.4);
