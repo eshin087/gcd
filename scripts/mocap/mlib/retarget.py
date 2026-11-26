@@ -409,7 +409,8 @@ def ground_and_contact(q, fps, loop=False, ground='feet', travel='free', log=pri
     for i in range(n):
         if cmask[i].any():
             hy[i] = -min(g[i, f] for f in (0, 1) if cmask[i, f])
-        if ground == 'body':
+        if ground == 'body' and not (air is not None and air[0] <= i < air[1]):
+            # (with "air_marks" the flight takes the arc below; only the no-penetration guard applies)
             hy[i] = -lowest[i] if np.isnan(hy[i]) else max(hy[i], -lowest[i])
     ok = ~np.isnan(hy)
     if ok.sum() == 0:

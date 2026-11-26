@@ -59,7 +59,36 @@ def leave_one_out(parts, takes_, mapping):
     return out
 
 
+ROOT_DEFAULT = {'smooth': 0.1, 'max_off': 0.15}
+
+
+def defaults(clip, log=print):
+    """the defaults of a one-shot (a copy of the spec entry; the spec's own keys always win):
+      every one-shot that does not turn, fly (`flight`) or tumble (`ground` "body"): `root` {"smooth": 0.1,
+          "max_off": 0.15} (the hips stay over the root: moveGround's stops had them 0.2-0.8 m off, the
+          engine needs them near); `"root": false` keeps the plain smoothed root
+      an attack (`phases` given): `"face": "travel"` (a lunge's travel to its active frame is +Z; a cut that
+          travels under 0.15 m keeps its facing)"""
+    if clip.get('kind', 'oneshot') != 'oneshot':
+        return clip
+    c = dict(clip)
+    notes = []
+    if 'root' not in c and not c.get('turn') and not c.get('flight') and c.get('ground') != 'body':
+        c['root'] = dict(ROOT_DEFAULT)
+        notes.append('root %s' % ROOT_DEFAULT)
+    if c.get('root') is False:
+        c.pop('root')
+    if c.get('phases') and 'face' not in c and not c.get('turn'):
+        c['face'] = 'travel'
+        c['_face_default'] = True
+        notes.append('face travel')
+    if notes:
+        log('  defaults: ' + ', '.join(notes))
+    return c
+
+
 def build_clip(spec, clip, log=print):
+    clip = defaults(clip, log)
     kind = clip.get('kind', 'oneshot')
     checks = []
     fps = float(clip.get('fps', 30))
@@ -140,6 +169,19 @@ def build_clip(spec, clip, log=print):
             b = fuse.symmetrize(b, float(clip.get('symmetric')), clip.get('sym_parts'), sv)
         sig = 1.0
         b = retarget.smooth_time(b, sig, loop=True)
+        if clip.get('cycle') is not None or clip.get('time_scale') is not None:
+            # spec "cycle" (s) / "time_scale": the cycle plays in another time (crouchSprint from the crouch
+            # run's takes at 0.72 s instead of 0.83): the fused cycle is resampled round the loop; the
+            # travel per cycle stays, so the speed follows
+            P2 = float(clip['cycle']) if clip.get('cycle') is not None else P * float(clip['time_scale'])
+            n2 = max(4, int(round(P2 * fps)))
+            x = np.arange(n2) * n / n2
+            i0 = np.floor(x).astype(int) % n
+            a_ = (x - np.floor(x))[:, None, None]
+            b = b[i0] * (1 - a_) + b[(i0 + 1) % n] * a_
+            B.shift = [int(round(s_ * n2 / n)) % n2 for s_ in B.shift]
+            log('  cycle: %.3f s (%d frames) from the footage cycle of %.3f s (%d frames)' % (P2, n2, P, n))
+            n = n2
     else:
         search = float(clip.get('search', 0.5))
         Ts = [_take(spec, clip, clip['takes'][0], log=log)]
@@ -290,6 +332,16 @@ def build_clip(spec, clip, log=print):
     for pk in clip.get('pose_keys', []):
         q = keys.apply_pose_key(q, pk, fps, B)
     q = skel.continuous(q)
+    hips_off = None
+    if clip.get('bone_keys'):
+        # spec "bone_keys": the author's 3D bone directions, splined, replace the keyed bones (mlib/bonekeys.py)
+        from . import bonekeys
+        q, hips_off, kb = bonekeys.apply(q, clip, B, fps, loop, log)
+        if kb is not None and blade is not None:
+            blade = kb
+            B.blade = kb
+        km = bonekeys.keyed_mask(clip, B, fps, loop, len(q))
+        prot = km if prot is None else (prot | km)  # despike (after the feet) leaves the keyed bones alone
     airm = None
     if clip.get('air_marks') and not loop:
         ev = {e['name']: e['t'] for e in clip.get('events', [])}
@@ -352,6 +404,11 @@ def build_clip(spec, clip, log=print):
     # in the air: the hips' height from a fixed side camera's picture (jumps, falls)
     if clip.get('air') and not loop:
         hips = air_hips(clip, B, Ts, hips, g['cmask'], log)
+    if hips_off is not None:
+        hips = hips + hips_off  # spec "bone_keys" hips dx / dy / dz
+    if clip.get('hips_keys'):
+        hips, g['cmask'] = hips_keys(clip, B, q, hips, root, g['cmask'], fps, log)
+        g['contact'] = {s_: spans_of(g['cmask'][:, f]) for f, s_ in enumerate(('L', 'R'))}
     q, before, after = retarget.pin_feet(q, hips, root, g['cmask'], loop=loop, flat=Wflat, soft=strided)
     q = skel.continuous(q)
     # last guard: nothing through the ground after the feet were pinned
@@ -385,6 +442,9 @@ def build_clip(spec, clip, log=print):
     B.qa = dict(maxStepDeg=round(ws, 1), at='%s@%d' % (wj, wf), limit=round(lim, 1), reason=clip.get('qa', {}).get('reason'))
     log('  step check: worst %.1f deg (%s frame %d), limit %.1f%s' % (ws, wj, wf, lim, '' if ws <= lim else '  ** OVER **'))
     B.q, B.hips, B.root, B.contact, B.speed, B.cmask = q, hips, root, g['contact'], g['speed'], g['cmask']
+    if loop and clip.get('start') is not None:
+        loop_start(B, clip['start'], log)
+        q, hips = B.q, B.hips
     if blade is not None and not loop:
         # a hint for the marks: the blade tip's speed (our skeleton, root travel removed)
         P, R = skel.fk(q, hips, np.zeros_like(root))
@@ -402,6 +462,8 @@ def build_clip(spec, clip, log=print):
         P0, _ = skel.fk(B.q[[0, fa]], B.hips[[0, fa]], B.root[[0, fa]])
         d = P0[1, JI['hips']] - P0[0, JI['hips']]
         a0 = float(np.arctan2(d[0], d[2]))
+        if clip.get('_face_default') and np.hypot(d[0], d[2]) < 0.15:
+            a0 = 0.0  # a default "travel" on a cut that hardly travels: keep its facing
         rq = skel.qaxis([0, 1, 0], np.full(len(q), -a0))
         B.q = q = q.copy()
         q[:, JI['hips']] = skel.qmul(rq, q[:, JI['hips']])
@@ -429,6 +491,83 @@ def build_clip(spec, clip, log=print):
         for ev in clip.get('events', []):
             B.events.append({'f': int(round((cfg.parse_time(ev['t']) - t0) * fps)), 'name': ev['name']})
     return B, Ts
+
+
+def spans_of(m):
+    """[[first, last], ...] of the True runs of a mask"""
+    sp, i, n = [], 0, len(m)
+    while i < n:
+        if m[i]:
+            j = i
+            while j < n and m[j]:
+                j += 1
+            sp.append([i, j - 1])
+            i = j
+        else:
+            i += 1
+    return sp
+
+
+def hips_keys(clip, B, q, hips, root, cmask, fps, log):
+    """spec "hips_keys": [[frame or "t", y], ...]: the hips' height (m) at those frames, eased (smoothstep)
+    between keys; before the first and after the last the built height is kept (one key in a hold / loop: the
+    whole clip). Applied after the ground rule; a foot is then planted only where it still touches the ground
+    (a fall that starts in the air, an airborne hold); the last guard keeps every foot above the ground"""
+    n = len(hips)
+    t0r = B.t_ref[0] if hasattr(B, 't_ref') else 0
+
+    def fr(v):
+        return int(np.clip(v if isinstance(v, int) else round((cfg.parse_time(v) - t0r) * fps), 0, n - 1))
+    ks = sorted((fr(k[0]), float(k[1])) for k in clip['hips_keys'])
+    out = hips.copy()
+    if len(ks) == 1:
+        lo, hi = (0, n - 1) if B.loop else (ks[0][0], ks[0][0])
+        out[lo:hi + 1, 1] = ks[0][1]
+    else:
+        for (fa, ya), (fb, yb) in zip(ks[:-1], ks[1:]):
+            u = _smoothstep((np.arange(fa, fb + 1) - fa) / max(fb - fa, 1))
+            out[fa:fb + 1, 1] = ya * (1 - u) + yb * u
+        lo, hi = ks[0][0], ks[-1][0]
+    h0 = out.copy()
+    P = skel.fk(q, h0, root)[0]
+    cm = cmask.copy()
+    for f, s_ in enumerate(('L', 'R')):
+        low = np.minimum(P[:, JI['foot' + s_], 1] - HDIM['ankle'], P[:, JI['toe' + s_], 1])
+        rng = np.zeros(n, bool)
+        rng[lo:hi + 1] = True
+        cm[:, f] &= ~rng | (low < 0.05)
+    log('  hips keys: %d given (frames %d-%d), planted frames there L %d R %d' % (len(ks), lo, hi, cm[lo:hi + 1, 0].sum(), cm[lo:hi + 1, 1].sum()))
+    return out, cm
+
+
+def loop_start(B, st, log):
+    """spec "start" (loops): which frame is frame 0: "plantR" / "plantL" (the first frame of that foot's
+    plant) or a phase 0..1 of the cycle as built. The cycle is rolled (pose, hips, contact); the root's
+    travel keeps starting at 0; the sheets follow"""
+    n = len(B.q)
+    if isinstance(st, str):
+        f = 0 if st.endswith('L') else 1
+        m = B.cmask[:, f]
+        if not m.any():
+            log('  ! start %s: that foot is never planted; the loop keeps its frame 0' % st)
+            return
+        starts = [i for i in range(n) if m[i] and not m[i - 1]]
+        r = starts[0] if starts else 0
+    else:
+        r = int(round(float(st) * n)) % n
+    if not r:
+        return
+    B.q = np.roll(B.q, -r, 0)
+    B.hips = np.roll(B.hips, -r, 0)
+    B.cmask = np.roll(B.cmask, -r, 0)
+    B.b = np.roll(B.b, -r, 0)
+    for nm in ('blade', 'bladeL'):
+        if getattr(B, nm, None) is not None and len(getattr(B, nm)) == n:
+            setattr(B, nm, np.roll(getattr(B, nm), -r, 0))
+    cs = {s_: spans_of(B.cmask[:, f]) for f, s_ in enumerate(('L', 'R'))}
+    B.contact = cs
+    B.shift = [(s_ + r) % n for s_ in B.shift]
+    log('  start %s: frame 0 is the built frame %d; contact L %s R %s' % (st, r, cs['L'], cs['R']))
 
 
 def limb_w(T, V, n):

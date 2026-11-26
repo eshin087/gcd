@@ -59,6 +59,7 @@ Other tools (all light):
 | command | does |
 |---|---|
 | `"$PY" -I bladesheet.py specs/<set>.json <clip> [take] [--every 2] [--from t] [--to t]` | the blade as detected in one take's frames (cyan = found, grey = unknown, filled later), with a full-frame pixel ruler for hand keys |
+| `"$PY" -I reach.py specs/<set>.json [clip ...] [--aim d y]` | attacks: the hips' offset from the root, whether the blade's gameplay segment passes points 1.2 / 1.9 / 2.6 m ahead at chest height between windup and active, and where the sweep passes the aim point (default 1.9 m ahead, 1.3 m up): how far it misses and on which side |
 | `"$PY" -I find.py <film> <t0> <t1> <s0> <s1> [--top 12] [--min-gap 0.6]` | every other performance of the move you found at s0-s1, in the chapter t0-t1, whatever the camera |
 | `"$PY" -I camcal.py <film> <t0> <t1> [...]` | calibrates the focal length of `swing` on spans where he stands while the camera orbits |
 | `"$PY" -I proportions.py [config.json]` | his build from standing takes; writes `$H2/mocap/proportions.json` and an HDIM proposal |
@@ -98,6 +99,8 @@ Clip keys:
 | `fps` | 30 for locomotion, 60 for attacks and anything fast |
 | `takes` | list of `{t0, t1, view}`; `view` is a HINT of where the camera sees him from: `front`, `back`, `right` (he faces picture-right: the camera sees his left side), `left`, or the diagonals `front-right` ... The tool measures the real yaw and uses it when it is within 50 degrees of the hint. Optional per take: `film`, `flip: true` (the tool mirrored him: swap sides and depth), `yaw`, `pitch` (degrees, force), `name` |
 | `period`, `period_lo`, `period_hi` | loops: force the cycle (s) or the search range (the default 0.4-2.5 s can lock onto one step instead of two: give a range round the true cycle) |
+| `cycle`, `time_scale` | loops: the cycle plays in `cycle` seconds (or the footage's period times `time_scale`): the fused cycle is resampled round the loop before the retarget; the travel per cycle stays, the speed follows (check it, or give `speed`). Example: `crouchSprint` from the crouch run's takes, `"cycle": 0.72` (22 frames at 30 fps instead of 25) |
+| `start` | loops: frame 0 = `"plantR"` / `"plantL"` (the first frame of that foot's plant) or a phase `0.25` of the cycle as built: the cycle is rolled (pose, hips, contact), the sheets follow. Replaces shifting the first take's start time. Example: crouchRun with `"start": "plantR"` -> contact R [[0, 8]], L [[9, 20]] |
 | `symmetric` | loops: 0..1, average the cycle with its mirror half a cycle on (unarmed gaits; it fixes a side take's leg mix-ups; never for a move with a held sword) |
 | `sym_parts` | loops with `symmetric`: only these landmark groups are symmetrized: `["legs", "torso"]` keeps each arm's own swing (the far arm of a side take is noise that `symmetric` averaged 50/50 into the near one). Groups: `armL armR arms legL legR legs torso head`. Measured (moveGround, no pose keys, elbow bend min-max): run 32-50 both arms -> L 29-65 / R 25-45; sprint 29-49 -> L 41-70 / R 6-47 |
 | `sym_vis` | loops with `symmetric`: each landmark and its mirror count by the tool's visibility (folded over the takes) instead of 50/50. On moveGround it changed little (the side takes see both arms at similar visibility) |
@@ -115,12 +118,14 @@ Clip keys:
 | `turn` | true: he turns during the clip (pivots, 90 degree turns, turning in place, turnaround). The root's yaw follows his facing (hips, shoulders, feet, nose; smoothed) so the clip ENDS facing the new way; the body is retargeted in the frame that turns with him, his hips' and spine's own twist on top. Without it a one-shot that ends turned more than 45 degrees prints a hint |
 | `travel` (loops) | `forward`, `free` (the measured direction) or a NUMBER: the travel direction in degrees in his frame (0 forward, 90 his left, -90 his right, 180 backward): strafes face their aim while travelling sideways |
 | `air` | jumps and falls: `{"take": 0, "stand": ["6:40.10", "6:40.40"]}`: frames with no planted foot take the pelvis' height from that take's PICTURE (a FIXED side camera: his pelvis above the ground line, metres per pixel from his standing pelvis height in the `stand` span, which must be in that take), joined to the contact heights at take-off and landing |
-| `air_marks` | one-shots (jumps, falls): true = the clip's `air` and `land` events are HARD marks: no foot is planted from `air` to `land` - 1 (the lower foot used to stay "planted" through the flight and the hips sank), and outside the flight the lower foot is planted wherever no foot was found (the landing crouch stands on the ground). Example `jump`: `"air_marks": true, "air_peak_m": 0.45` flies frames 18-29 with the hips 0.43 m over take-off, lands in its keyed crouch |
+| `air_marks` | one-shots (jumps, falls; also with `"ground": "body"`: the flight takes the arc, only the no-penetration guard applies; hitStrong now rises 0.30 m and lands lying at 0.15 m): true = the clip's `air` and `land` events are HARD marks: no foot is planted from `air` to `land` - 1 (the lower foot used to stay "planted" through the flight and the hips sank), and outside the flight the lower foot is planted wherever no foot was found (the landing crouch stands on the ground). Example `jump`: `"air_marks": true, "air_peak_m": 0.45` flies frames 18-29 with the hips 0.43 m over take-off, lands in its keyed crouch |
+| `hips_keys` | `[[frame or "t", y], ...]`: the hips' height (m) at those frames, eased between them (before the first and after the last key the built height stays: key the frame where the ground takes over too); one key in a hold or loop sets the whole clip (`fall`: `[[0, 1.6]]` floats the airborne pose instead of standing it on its lower foot). Inside the keyed frames a foot is planted only where it still touches the ground. Example `fallLand`: `[[0, 1.5], [4, 0.9]]` drops from 1.5 m onto the feet |
 | `air_peak_m` | with `air_marks`: the hips' rise at the top of the flight over the take-off hips (m): a parabola between take-off and landing (default: an arc whose height comes from the flight's length only) |
 | `qa` | `{"maxStepDeg": 30, "reason": "..."}`: raises the one-frame joint step limit (default 1500 deg/s: 50 at 30 fps, 25 at 60 fps) for this clip; the checker FAILS a clip over its limit, and an override without a reason |
 | `despike` | default true: a joint that jumps beyond the step limit for a frame or two and comes back (the tool losing a limb) is bridged by slerp; false keeps the raw data |
 | `clavicles` | default 0.3: each clavicle takes this share of its upper arm's lift (a shrug when the arm goes up) and forward swing (a reach); 0 = clavicles at rest |
 | `breath` | holds: `true` or `{"period": 3.6, "chest_deg": 1.2, "shoulder_deg": 1.0}`: a SYNTHESIZED slow breath (the tool's noise hides the real one): chest and shoulders rise. Give the hold `n` = a whole number of periods at its fps (3.6 s at 30 fps = 108). The build log says "SYNTHESIZED" |
+| `bone_keys` | 3D KEYS (attacks first; any clip): `{"blend": 4, "space": "root", "keys": [{"t": "1:15.34" or "f": 30 (loops: "f" or "phase"), "upperArmR": [x, y, z], "foreArmR": .., "blade": .., "flat": .., "chest": {"lean": 30, "side": 0, "twist": -5}, "hips": {"lean": 10, "dy": -0.15}, "thighR": .., "upperArmL": {"dir": [..], "space": "chest"}, ...}]}`: bone directions typed in the ROOT's frame (or the chest's), splined through the keys, REPLACING the tracked bones; bones not keyed stay tracked. Full rules: "Attacks, 3D keys" below and `mlib/bonekeys.py` |
 | `pose_keys` | `[{"t": "11:19.55" or "f": 12, "joint": "thighL", "euler": [x, y, z] or "dir": [x, y, z], "blend": 4}]`: a joint's local rotation (degrees, XYZ, rest = 0) or a bone's direction in his root frame (+X his left, +Y up, +Z front), reached at that frame and eased over `blend` frames each side. For what 2D keys cannot settle (a hand's roll, a flask's angle, a foot behind the body) |
 | take `drop` | `[["t0", "t1"], ...]`: spans of THAT take the tracker lost (tumbles, lying down, blur, a cut). Inside, every point is interpolated from the frames round the span (through the take's `keys`), and the span hardly counts in the fusion |
 | take `keys` | `[{"t": "11:19.43", "pts": {"hipL": [835, 522], "kneeL": [791, 440], ...}}]`: 2D hand keys, full-frame pixels read off `keysheet.py`. The point's depth comes from the tracked frames round the span; frames near a key count fully in the fusion. Names: nose, earL/R, shoulderL/R, elbowL/R, wristL/R, pinkyL/R, indexL/R, thumbL/R, hipL/R, kneeL/R, ankleL/R, heelL/R, toeL/R. When a side is hidden, give both sides the same point (the body's middle) |
@@ -138,7 +143,8 @@ Clip keys:
 | `flight` | one-shots: `"picture"` = through frames with NO planted foot (a hop back, a roll, a leap) the root travels as his pelvis moves against the FLOOR round his feet in each take's picture (a panning or dollying camera is taken out by the floor's own shift); two takes from different sides give both ground directions, one take its sideways one. The log prints `flight frames a-b: travel from the picture X m (coasted Y m)`. Not with `turn` |
 | `travel_m`, `travel_dir`, `travel_span` | one-shots, when travel cannot be measured: the root travels `travel_m` metres toward `travel_dir` (deg in his frame: 0 forward, 90 his left, 180 back), eased over `travel_span` (two video times; default the whole clip). Replaces the measured travel |
 | `root_keys` | one-shots: `[["10:58.20", x, z], [frame, x, z], ...]`: the root's ground position (m, his start frame: +x his left, +z his front) at those moments, eased between (the start is 0, 0). Replaces the measured travel |
-| `root` | one-shots: `{"smooth": 0.1, "max_off": 0.15}`: the root is the ground point under his hips smoothed over `smooth` s (default 0.25) and never more than `max_off` m from it, so the hips stay over the root (the engine needs it; a lunge left them 0.5-0.9 m off) |
+| `root` | one-shots: `{"smooth": 0.1, "max_off": 0.15}`: the root is the ground point under his hips smoothed over `smooth` s (default 0.25) and never more than `max_off` m from it, so the hips stay over the root (the engine needs it; a lunge left them 0.5-0.9 m off). THE DEFAULT for every one-shot without `turn`, `flight` or `"ground": "body"` (since tool3; `"root": false` = the plain 0.25 s smoothing as before). Proof: moveGround's 9 starts / stops and moveEvade's 6 crouch clips rebuilt with it: checker numbers identical (steps, slide), the hips' worst offset from the root 0.16-0.77 -> 0.09-0.50 m (runStop 0.77 -> 0.50, sprintToCrouch 1.01 -> 0.51); backstep (flight) and the turns unchanged; tried on backstep it went over the step limit, hence the exclusion |
+| (attack defaults) | a one-shot with `phases` and no `face` gets `"face": "travel"` (a cut that travels under 0.15 m to its active frame keeps its facing) |
 | `foot_ease` | degrees a frame (e.g. 14 at 60 fps): the feet and toes turn no faster (the sole-levelling at a plant or a lost foot snapped them 79-138 degrees in one frame) |
 | take `facing` | `"away"` / `"toward"`: a HARD prior that he faces away from (toward) this camera through the whole take (a lock-on camera behind him). Every frame the tool read the other way round is mirrored back (a 3-frame majority of the tool's own frames, BEFORE the left / right swap fix, which is then told that his left hip and shoulder are on the picture's left (away) or right (toward)); the log prints how many |
 | take `below`, `exclude` | phantoms: `"below": 300` = a cached frame whose pelvis is higher in the picture than y 300 px is not him (dropped as a miss); `"exclude": [[x0, y0, x1, y1]]` = nor one whose pelvis is in that region (px). The log's note says how many. The same keys steer `track.py specs/<set>.json` |
@@ -273,6 +279,47 @@ cut, so build the attack from ONE clean take (the fixed back rounds) and key it:
    the one take cannot see it (a back view does not see travel along its axis); `reach.py` must say YES
    at 1.9 m; `"qa": {"maxStepDeg": .., "reason": "keyed cut ..."}` for the real speed of the cut.
 Rebuild after each pass (20-40 s); the sheet's thin lines on the reference rows are now YOUR keys.
+
+**Attacks, 3D keys (`bone_keys`; `specs/_examples.json` `light1Bone`)**: the authors who got the hard moves
+right (the roll, the run's arms, the crouches, the jump) did it by TYPING BONE DIRECTIONS in his own frame, not
+by keying pixels in one blurred view. `bone_keys` makes that the attack path:
+- A key gives, at one frame, any of: `upperArmL/R`, `foreArmL/R`, `handL/R` (wrist -> fingers), `thighL/R`,
+  `shinL/R`, `footL/R` as a direction `[x, y, z]` (any length; +X his LEFT, +Y up, +Z his FRONT, in the clip's
+  frame: with `"face": "travel"` the clip is turned AFTER the keys, by the angle the log prints (a few degrees
+  for a straight lunge); with `"face": "hit"` / a number, before); `blade` (the sword's +Z) and `flat` (the
+  normal of its flats; without it the hand's long axis stays near the forearm); `chest`, `hips`, `head` as
+  `{"lean": deg forward, "side": deg to his left, "twist": deg toward his left}` (absolute in the root frame;
+  a given dict's missing angles are 0; the spine / neck take half of the chest's / head's turn); `hips` also
+  `dx / dy / dz` (m): offsets of the hips (a lunge's drop: `"dy": -0.15`). `"space": "chest"` (whole set, or
+  per bone as `{"dir": [..], "space": "chest"}`) reads a bone in the chest's frame (an arm that turns with
+  the shoulders).
+- Each channel is a cubic spline through the keys that give it: no stop at a key (two EQUAL keys in a row
+  hold), eased from / to the tracked motion over `blend` frames before its first and after its last key
+  (a loop's channel with two or more keys wraps the cycle: "pose keys for both arms through a loop" is
+  `"bone_keys": {"keys": [{"phase": 0, "upperArmR": .., "foreArmR": .., ..}, {"phase": 0.5, ..}]}`).
+- Two keys of a bone more than 45 degrees apart are joined on the GREAT CIRCLE (not the chord). A swing of
+  more than about 120 degrees can take either way round: add a key in between (a loop's arm swing wants
+  four keys a cycle: back, down, front, down).
+- An arm or leg keyed with both bones at a frame takes its elbow / knee hinge from them; otherwise the
+  hinge stays continuous with the frame before (no flip). Keyed bones are kept from `despike`.
+- Legs: key the STEPPING leg; leave a planted leg to the foot pinning (it is re-solved as the hips move:
+  keying a planted leg against a given `travel_m` makes it slide). Give the lunge's travel with `travel_m`
+  / `travel_span` ending when the front foot lands.
+Workflow (light1Bone, the back take + two `check` takes, 7 keys, about 30 minutes):
+1. the clip as for KEY-FIRST above (one fused take, the others `"check": true` + `"sync"`); `lose` the arms
+   over the cut so nothing tracked fights the keys.
+2. read the frames of the coil, the cut and the follow-through on the pair sheet's rows (a key every 3-6
+   frames: the spline carries between); type the directions: e.g. frame 29 (the deepest coil) `"upperArmR":
+   [-0.9, 0.3, 0.2], "foreArmR": [-0.8, 0.2, -0.5], "blade": [-0.8, 0.5, -0.3], "chest": {"twist": -35, "lean": 15}`
+   (arm out to his right, forearm and blade cocked back), frame 33 (mid-cut) `"upperArmR": [-0.4, 0.1, 0.9],
+   "blade": [0.3, 0, 0.95], "chest": {"twist": -5, "lean": 30}, "hips": {"lean": 10, "dy": -0.15},
+   "thighR": [0, -0.55, 0.84], "shinR": [0, -1, 0.05]` (the lunge).
+3. build (20-40 s) and read the sheet: OUR skeleton is drawn from EVERY take's camera (the check takes
+   too), so a wrong direction shows at once in the view that sees it side-on.
+4. `"$PY" -I reach.py specs/<set>.json <clip>` prints `blade reaches ... 1.9 m frames 33-34` and `aim at 1.9 m
+   ahead, 1.3 m up: nearest 0.10 m at frame 34 (0.09 m below)`: turn the `blade` keys round the hit toward
+   the side it names (light1Bone's first pass was 0.12 m below and 0.08 m to his right: the blade at frames
+   33 / 37 went from y -0.1 / -0.4 to 0 / -0.3) and rebuild. `--aim d y` aims elsewhere.
 
 **Blurred cuts and arm swaps (light1)**: `"blade_blur": true, "arm_fix": "whole"`; check with
 `bladesheet.py specs/swordOne.json light1 0 --every 1 --from 0:26.80 --to 0:27.05 --cell 400 --cols 4`;
