@@ -104,6 +104,11 @@ export const BROOD = {
 
   // a brood cue waits (up to `max` s) while one of the other answer is due within `sep` s of it
   hold: { sep: 0.5, max: 1.8 }, // (a cue of the wyrm's can follow another every 0.35 s: 0.9 ran out under one)
+  // past `max` (a long busy spell of the wyrm's: a dive that went after busyWait, ADR-237) it goes at
+  // the first free slot: it still waits while a cue of the other answer is due within `clear` s of its
+  // impact (the spacing rule's 0.3 s, and a frame), up to `drop` s held in all; then it gutters out
+  // without its blow (never a cue onto one of the other answer)
+  late: { clear: 0.36, drop: 4.5 },
   // a lunge or a dive does not start while the wyrm's running move has a blow still to come (it
   // fights lighter beside its brood, and its blows and theirs do not land together); at most `wait` s
   busyWait: 2.5,

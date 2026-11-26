@@ -4,7 +4,11 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and twelve pieces of work since 0.4.0:
+One hundred and thirteen pieces of work since 0.4.0:
+- **The drakelings never dive on top of the wyrm's blows** (2026-11-26, ADR-237). *Fixed:* in a long flurry of the
+  Cinder Wyrm's, a drakeling that had waited out its turn could dive in the same instant as one of the wyrm's
+  blows that needed the other answer (a roll against a parry). Now it waits for a clear moment however long the
+  flurry runs, or burns out harmlessly, and the wyrm's embers never come due beside a drakeling's dive.
 - **Four looks for the perfect dodge flurry** (2026-11-25, ADR-210). *Added, behind `?dodgefx=a|b|c|d` (the Lab's
   `dodgefx` button; the owner picked a, the Thunder Thrust, as the default; `?dodgefx=off` is the flurry before):* against a man the flurry keeps its vanish and all three
   finishers, and adds faint smeared copies of him along each cut, tiny sparks kicked off the floor, and an aerial cut

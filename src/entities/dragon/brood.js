@@ -47,9 +47,12 @@ export const setDrakelingLook = (k) => {
 // s before it can land), its dive and every wisp's burst red (dodge; the red blaze where it lands:
 // fx.tells.hazardFlash, the cue of a thing away from its thrower). One lunge at a time, never two dives
 // within `dive.gap` s, and a lunge waits while a cue of the other answer is due near its impact
-// (brain._clash: the wyrm's own blows, bullets, hazards).
+// (brain._clash: the wyrm's own blows, bullets, hazards). A cue whose wait (hold.max) ran out still
+// never lands within late.clear s of a cue of the other answer: it goes at the first free slot,
+// or gutters out after late.drop s held; its flash bars the wyrm's bullets of the other answer from
+// cueing beside it (bullets.bar: they come as duds, ADR-237).
 
-const DR = BROOD.drakeling, WP = BROOD.wisp, LG = DR.lunge, DV = DR.dive, HOLD = BROOD.hold, DK = DR.look;
+const DR = BROOD.drakeling, WP = BROOD.wisp, LG = DR.lunge, DV = DR.dive, HOLD = BROOD.hold, LATE = BROOD.late, DK = DR.look;
 const S = SCALE;
 const MAXD = 6;
 const MAXW = 8;
@@ -72,7 +75,7 @@ function blank(kind) {
     x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, fx: 0, fz: 1,
     tx: 0, ty: 0, tz: 0, // a locked target (lunge, dive, commit)
     slot: 0, wing: 0, swing: null, told: false, flashed: false, tell: TELL.NORMAL, hitDone: false,
-    src: 0, delay: 0, acc: 0, seed: 0, held: 0,
+    src: 0, delay: 0, acc: 0, seed: 0, held: 0, late: false,
     chain: kind === 'drakeling' ? new Float32Array(SEGS * 3) : null,
   };
 }
@@ -95,7 +98,7 @@ export class Brood {
     this._pt = { x: 0, y: 0, z: 0 };
     this._hit = { damage: 0, from: this._from, point: this._pt, knockback: 0, knockdown: false, kind: 'fire', burn: 0, tell: TELL.NORMAL, parryable: true, blockable: true, attack: 'drakelings', plunge: false };
     this._b = { x: 0, y: 0, z: 0 };
-    this.stats = { spawned: 0, cut: 0, burst: 0, hits: 0, lunges: 0, dives: 0 };
+    this.stats = { spawned: 0, cut: 0, burst: 0, hits: 0, lunges: 0, dives: 0, late: 0, dropped: 0 };
   }
 
   /** look jitter 0..1 */
@@ -433,6 +436,7 @@ export class Brood {
       default:
         this._to(c, 'circle');
     }
+    if (!c.alive) return; // (it guttered out while it held: _hold)
     if (!Number.isFinite(c.x + c.y + c.z)) {
       c.alive = false;
       return;
@@ -451,7 +455,7 @@ export class Brood {
     c.state = state;
     c.st = 0;
     if (cue) {
-      c.told = c.flashed = false;
+      c.told = c.flashed = c.late = false;
       c.held = 0;
     }
   }
@@ -520,7 +524,7 @@ export class Brood {
   /** Does a blow of the wyrm's running move, told or still to be told (a string's later hits are
    *  told only at their own windup: the ledger does not know them yet), land within HOLD.sep of
    *  `tti` s from now asking for the other answer? */
-  _beatNear(tti, ans) {
+  _beatNear(tti, ans, sep = HOLD.sep) {
     const a = this.d.brain?.action, B = a?.beats;
     if (!B || !B.length) return false;
     for (let i = 0; i < B.length; i++) {
@@ -528,7 +532,7 @@ export class Brood {
       const at = b.at + b.impactIn - a.T;
       if (at < -0.1) continue;
       const other = b.tell === TELL.RED || b.tell === TELL.BLACK ? 'dodge' : 'guard';
-      if (other !== ans && Math.abs(at - tti) < HOLD.sep) return true;
+      if (other !== ans && Math.abs(at - tti) < sep) return true;
     }
     return false;
   }
@@ -580,15 +584,33 @@ export class Brood {
   /**
    * Its cue waits (its clock held back this frame) while a cue that asks for the other answer is due
    * within `sep` s of its impact (the wyrm's own blows, bullets, hazards: brain._clash, the ledger the
-   * wyrm's blows hold on too), at most `maxHold` s per cue. True while it holds.
+   * wyrm's blows hold on too), at most `HOLD.max` s per cue. Past that (a long busy spell of the
+   * wyrm's) it goes at the first free slot: it holds on only while a cue of the other answer is due
+   * within LATE.clear s of its impact, and after LATE.drop s held in all it gutters out without its
+   * blow (c.alive false). True while it holds (or once it gutters out).
    */
   _hold(c, dt, tti, ans, attack) {
-    if (c.held >= HOLD.max) return false;
     const now = this.game.time ?? this.time;
-    // (bullets in flight cue themselves only flashLead s ahead: a red brood cue waits for the air to
-    // clear of them, as the wyrm's own dodge blows wait for its shots)
-    const B = this.d.bullets, shots = ans === 'dodge' && !!B && B.count(0) + B.count(1) + B.count(2) > 0;
-    if (!shots && !this._beatNear(tti, ans) && !this.d.brain?._clash?.(now + tti, ans, HOLD.sep, attack)) return false;
+    let wait;
+    if (c.held < HOLD.max) {
+      // (bullets in flight cue themselves only flashLead s ahead: a red brood cue waits for the air to
+      // clear of them, as the wyrm's own dodge blows wait for its shots)
+      const B = this.d.bullets, shots = ans === 'dodge' && !!B && B.count(0) + B.count(1) + B.count(2) > 0;
+      wait = shots || this._beatNear(tti, ans) || !!this.d.brain?._clash?.(now + tti, ans, HOLD.sep, attack);
+    } else {
+      // (the shots still in the air: its flash bars their cues of the other answer, bullets.bar)
+      wait = this._beatNear(tti, ans, LATE.clear) || !!this.d.brain?._clash?.(now + tti, ans, LATE.clear, attack);
+      if (wait && !c.late) {
+        c.late = true;
+        this.stats.late++;
+      }
+      if (wait && c.held >= LATE.drop) {
+        this.stats.dropped++;
+        this._die(c, false);
+        return true;
+      }
+    }
+    if (!wait) return false;
     c.held += dt;
     c.st -= dt;
     return true;
@@ -598,6 +620,8 @@ export class Brood {
    *  normal bite, the star for a blue one, the red blaze where a dive or a wisp will burst). */
   _flash(c, tell, x = c.x, y = c.y, z = c.z) {
     const d = this.d;
+    // (a bullet of the other answer due beside it comes as a dud, without a cue)
+    d.bullets?.bar?.(tell, TUNING.flashLead);
     d.emit?.('combat:flash', { source: 'dragon', attack: c.kind === 'wisp' ? 'wisps' : 'drakelings', tell, x, y, z, hazard: true, brood: true });
     this.fx?.hazardFlash?.(tell, x, y, z, tell === TELL.RED ? 1.2 : 1.1);
   }
@@ -758,6 +782,7 @@ export class Brood {
       default:
         this._to(c, 'fly');
     }
+    if (!c.alive) return; // (it guttered out while it held: _hold)
     if (!Number.isFinite(c.x + c.y + c.z)) {
       c.alive = false;
       return;

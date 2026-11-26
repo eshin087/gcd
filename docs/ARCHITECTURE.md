@@ -2408,6 +2408,8 @@ posture break. No per-frame allocations. `bullets.js` must not import `attacks.j
   `LATE` (too late to react to: the caller makes it a dud or lets it hit) or **`CLASH`** (an announced
   impact of the other answer, an ember beside an orb, is within `clashSep` 0.35 s: not announced, the
   caller makes the bullet a dud). `cover(kind, tti)` registers an impact something else announces.
+  `bar(tell, tti)` registers an impact announced outside the field (the brood's cues): a bullet of the
+  other answer due within `clashSep` of it is a `CLASH` (a dud); it covers nothing (ADR-237).
   A bullet cue stands for one predicted impact (`cueAt`, in the bullet's own time).
 - **The ground tongues** (2026-11-15; they replaced the fire wheel's `startWheel` / `stopWheel` /
   `aimWheel` / `wheel`): `scour({ attack, x, z, times, angs, r0, r1, speed, hold, width, damage,
@@ -2559,7 +2561,7 @@ its death and the phase roar.
   jitter from a hash, never `Math.random`; nothing drawn while no seal burns.
 
 **The brood** (`brood.js` `class Brood`, `dragon.brood`; numbers `BROOD.drakeling`, `BROOD.wisp`,
-`BROOD.hold`, `BROOD.busyWait`): pooled fire creatures (6 drakelings, 8 wisps) that fight beside the
+`BROOD.hold`, `BROOD.late`, `BROOD.busyWait`): pooled fire creatures (6 drakelings, 8 wisps) that fight beside the
 wyrm on their own, like the hazards.
 - `spawn(kind, o)` → an id (0 when the pool is full): kind `'drakeling'` (`o`: `x, y, z` where it
   bursts out, `slot` its place on the ring round the hero, `hp`, `life`) or `'wisp'` (`o.src` the body
@@ -2567,7 +2569,7 @@ wyrm on their own, like the hazards.
   `count(kind?)` live ones (no kind: both); `update(dt)` (every frame, never throws: an error drops that
   creature); `clear()` (all burst harmlessly: the phase roar; also when the wyrm is dying, dead or
   asleep); `reset()` (nothing left: the wyrm's reset and death). `stats` {spawned, cut, burst, hits,
-  lunges, dives}; `nextLunge` (the drakelings' move sets the first lunge `firstLunge` 1.4 s after it ends).
+  lunges, dives, late (cues that waited past `hold.max`), dropped (creatures that guttered out holding)}; `nextLunge` (the drakelings' move sets the first lunge `firstLunge` 1.4 s after it ends).
 - **Their blows** go through `dragon.hitPlayer(o, null)` with a tell and the move's name as `attack`
   (`'drakelings'`, `'wisps'`): a drakeling's lunge normal or blue (block / parry; a parry kills it and,
   as any parried non-bullet blow, calls `dragon.onParried`), its dive and every wisp's burst red. Each
@@ -2581,7 +2583,13 @@ wyrm on their own, like the hazards.
   (`_hold`), while a cue of the other answer is due within `hold.sep` 0.5 s of it (the ledger, the
   wyrm's running move's beats told or not, `_beatNear`; for a red one also any bullet in the air), at
   most `hold.max` 1.8 s per cue. No lunge or dive starts while the wyrm is airborne or its running move
-  has a beat not yet flashed (`_wyrmBusy`), for at most `busyWait` 2.5 s.
+  has a beat not yet flashed (`_wyrmBusy`), for at most `busyWait` 2.5 s. **Past `hold.max`** (a long
+  busy spell: a dive that went after `busyWait`; ADR-237) the cue goes at the first free slot: it holds
+  on only while a cue of the other answer is due within `late.clear` 0.36 s of its impact (the ledger,
+  `_beatNear`; the bullets in the air no longer hold it), and after `late.drop` 4.5 s held in all it
+  gutters out without its blow (`_die`, no cue). Every brood flash calls `bullets.bar(tell, flashLead)`,
+  so a bullet of the other answer due beside it is a dud (`CUE.CLASH`): a brood cue never shares 0.3 s
+  with a cue that asks for the other answer, whichever comes first.
 - **The blade seam.** The brood reads the hero's swing as `bullets.js` does: while
   `player.isSwinging()` and `player.sweep.valid`, the blade's swept quad (`sweep.a`, `b` this frame,
   `pa`, `pb` the last) is tested against each creature (its radius + `cut`), **once per swing**
