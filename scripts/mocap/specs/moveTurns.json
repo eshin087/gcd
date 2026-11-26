@@ -86,14 +86,15 @@
    "search": 0.15,
    "takes": [
     {
-     "t0": "5:50.30",
-     "t1": "5:51.20",
-     "view": "back"
+     "t0": "6:00.45",
+     "t1": "6:01.35",
+     "view": "front",
+     "flip": true
     }
    ],
    "from": "sprintT",
    "to": "sprintT",
-   "draft": true
+   "note": "the MIRROR of sprintTurnR90: the footage's left and right sprint turns are mirror images (6:04.1-6:04.7 left: the left leg trails while the right plants; 6:00.9-6:01.3 right: the right trails). The right turn's take with flip + a front hint mirrors him exactly (sides swapped, x negated). The left takes tried directly (5:50.30, 6:03.60 back, 5:39.00 side) mirrored, lost a foot or swung the yaw both ways"
   },
   {
    "name": "sprintTurnR90",
@@ -105,13 +106,14 @@
    "search": 0.15,
    "takes": [
     {
-     "t0": "6:00.20",
+     "t0": "6:00.45",
      "t1": "6:01.35",
      "view": "back"
     }
    ],
    "from": "sprintT",
-   "to": "sprintT"
+   "to": "sprintT",
+   "note": "starts at 6:00.45: from 6:00.20 the back view's facing swung 39 degrees the wrong way first. No swing (with it the mirrored twin floated). Travel is under-measured (a back view does not see the stride's depth)"
   },
   {
    "name": "rotateL",
