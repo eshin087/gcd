@@ -30,7 +30,7 @@ import { setFill } from '../ashDisciple/bodyArt.js';
 
 // (oneLetters and onePrint are redraws: their call-site default is '0', as he shipped, so `?looks=old` shows
 // it; the owner's pick, a, comes from lookSwitch.js PICKED, 2026-11-23, ADR-170)
-export const ONE_LOOKS = Object.freeze({ oneLook: 'a', oneLetters: '0', onePrint: '0' });
+export const ONE_LOOKS = Object.freeze({ oneLook: 'a', oneLetters: '0', onePrint: '0', oneBody: '0' });
 export const oneLook = (name = 'oneLook') => lookOf(name, ONE_LOOKS[name] ?? 'a');
 /** The outfit chosen ('a' | 'b' | 'c'; anything else draws a), read when his rig is built. */
 export function oneLookNow() {
@@ -55,6 +55,19 @@ export function onePrintNow() {
   const o = oneLook('onePrint');
   return o === '0' || o === 'b' ? o : 'a';
 }
+/** His figure (`?oneBody=0|a|b|c`, the rebuild of 2026-11-26; read when his rig is built, the ink also on
+ *  every phase change). '0' the figure he shipped with (a jade outline round a near-black fill, a coat
+ *  flaring from the chest). The redraws print him the hero's way (BODY_INK: a lit body of letters, the
+ *  cloth's dim dotted rim, no bright outline) on a man's build (gear.js CUT: broader square shoulders, a
+ *  belted waist, the skirt hanging near straight, fuller hair, a lower collar):
+ *    a  the Long Coat, closed in phase 1 (today's homage, redrawn)
+ *    b  the Open Coat: open in every phase, the legs walking in the split, the sleeves edged apart
+ *    c  the Duster: b cut to mid-shin, the boots below it, the hero's pale ragged hem along its edge */
+export function oneBodyNow() {
+  const o = oneLook('oneBody');
+  return o === 'a' || o === 'b' || o === 'c' ? o : '0';
+}
+
 /** His letter cell's bias (kit.letterBias: steps along the hero's cells; pipeline.js
  *  _updateBossLetters applies it only where the hero's rule rests on its floor cell: a small screen). */
 export function oneLetterBias() {
@@ -63,7 +76,7 @@ export function oneLetterBias() {
 
 /** The dressing record on his rig (gear.js registers the switched pieces in it). */
 export function dressOf(root, look = 'a') {
-  return (root.userData.dress ??= { kind: 'one', look, print: onePrintNow(), phase: 0, at: [], guns: [], fronts: [], panels: [], inked: false, reload: false });
+  return (root.userData.dress ??= { kind: 'one', look, print: onePrintNow(), body: oneBodyNow(), phase: 0, at: [], guns: [], fronts: [], panels: [], inked: false, reload: false });
 }
 /** Show mesh `m` from phase `from` to phase `to` (hidden until then; phase 1 is the build's state). */
 export function at(D, m, from, to = 9) {
@@ -112,7 +125,8 @@ const RIM = { coat: 0.5, collar: 0.5, pants: 0.5, armor: 0.6, hair: 0.6, hairTip
 // shipped with (`?onePrint=0`); the quiet one (a, b) is quietTable below.
 const JADE = [0.62, 1.0, 0.84], WHITE_JADE = [0.86, 1.0, 0.94];
 const line = (c, s, a) => [c[0] * s, c[1] * s, c[2] * s, a];
-function inkTable(look, phase, print = onePrintNow()) {
+function inkTable(look, phase, print = onePrintNow(), body = oneBodyNow()) {
+  if (body !== '0') return bodyTable(look, phase, body);
   if (print !== '0') return quietTable(look, phase);
   const rim = look === 'c' ? WHITE_JADE : JADE;
   const k = phase >= 3 ? 1.35 : 1; // phase 3: the coat's edge brighter
@@ -161,14 +175,42 @@ function quietTable(look, phase) {
     19: { ink: [0.75, 1.0, 0.88, 1.0], rim: [0.75, 1.0, 0.88, 1.0], fill: [1, 2, 0, 1.0] },
   };
 }
+/** The redraws' print (`?oneBody=a|b|c`): HERO_INK's cloth rules (model.js) in his jade-grey: the fill a lit
+ *  body of letters (the bosses' print lifts it, ADR-194), the silhouette the cloth's dim DOTTED rim (style
+ *  8), no ink gain over 1.5 (so nothing outlines him at the game camera: the jade outline round a dark
+ *  fill was what read as a hollow bottle), the inner lines faint; the hem (part 8, the Duster's) the
+ *  hero's pale dotted band. The far fills sit at about 0.6 of the hero's: the bosses' print lifts his
+ *  near-grey fill to ~3x the hero's own coat (ADR-194), and at the game camera he printed as bright
+ *  scattered letters round a dark middle; at these he is one dim body of letters as the hero is. Phase 3
+ *  lifts the rim by BODY_INK.p3. */
+export const BODY_INK = Object.freeze({ rim: [0.4, 0.6, 0.52, 0.8], line: [0.9, 1.0, 0.95], p3: 1.25 });
+function bodyTable(look, phase) {
+  const k = phase >= 3 ? BODY_INK.p3 : 1;
+  const R = BODY_INK.rim, L = BODY_INK.line;
+  const rim = [R[0] * k, R[1] * k, R[2] * k, R[3]];
+  const ln = (a) => [L[0], L[1], L[2], a];
+  return {
+    6: { ink: ln(0.5), rim, fill: [1, 8, 0, 0.5] },
+    4: { ink: ln(0.6), rim, fill: [1, 8, 0, 0.4] },
+    5: { ink: ln(0.45), rim, fill: [1, 8, 0, 0.3] },
+    12: { ink: ln(0.6), rim, fill: [1, 8, 0.2, 0.5] },
+    3: { ink: ln(0.45), rim, fill: [1, 8, 0, 0.28] },
+    8: { ink: [0.75, 0.95, 0.86, 0.75], rim: [0.68, 0.95, 0.84, 0.95], fill: [1, 9, 0, 1.1] },
+    11: { ink: [0.62, 0.72, 0.68, 0.8], rim: [0.66, 0.78, 0.72, 0.9], fill: [1.2, 8, 0, 1.0] },
+    1: { ink: [0.75, 0.85, 0.8, HERO_SKIN.line], rim: [0.85, 0.95, 0.9, HERO_SKIN.rim], fill: [HERO_SKIN.gain, 4, 0, HERO_SKIN.far] },
+    2: { ink: [0.2, 0.3, 0.26, 0.8], rim: [0.25, 0.35, 0.3, 0.8], fill: [1, 0, 0, 1] },
+    19: { ink: [0.75, 1.0, 0.88, 1.0], rim: [0.75, 1.0, 0.88, 1.0], fill: [1, 2, 0, 1.0] },
+  };
+}
+
 /** The table his parts are written with (tests, the Lab). */
-export const oneInkTable = (look, phase, print) => inkTable(look, phase, print);
+export const oneInkTable = (look, phase, print, body) => inkTable(look, phase, print, body);
 
 /** Write his parts' ink into the shared per-part tables (the boss rigs' only: the player reads his own). */
-function writeInk(U, look, phase, print) {
+function writeInk(U, look, phase, print, body = '0') {
   const I = U?.uHeroPartInk?.value, R = U?.uHeroPartRim?.value, F = U?.uHeroPartFill?.value;
   if (!I || !R || !F) return false;
-  const T = inkTable(look, phase, print);
+  const T = inkTable(look, phase, print, body);
   for (const p in T) {
     const t = T[p];
     I[p]?.set(t.ink[0], t.ink[1], t.ink[2], t.ink[3]);
@@ -187,6 +229,8 @@ export function tintOne(M) {
     const u = M[k]?.uniforms?.uArtRim;
     if (u) u.value *= RIM[k];
   }
+  // the redraws' hem (the Duster's pale ragged edge: part 8) in his jade-grey
+  if (oneBodyNow() !== '0') setFill(M.hem, 0.3, 0.36, 0.33);
   const quiet = onePrintNow() !== '0';
   // (the quiet print: the face and hands held down as Tian Lei's were, ADR-155: lit, they printed as a
   // shaded 3D face; they stay the palest thing on him)
@@ -280,12 +324,14 @@ export function dressOne(d, dt) {
   const D = d?.rig?.root?.userData?.dress;
   if (!D || D.kind !== 'one') return;
   const n = Math.min(3, Math.max(1, fin(d.dressPhase ?? d.phase, 1) | 0));
-  if (!D.inked || n !== D.phase) D.inked = writeInk(d.game?.U, D.look, n, D.print);
+  if (!D.inked || n !== D.phase) D.inked = writeInk(d.game?.U, D.look, n, D.print, D.body);
   if (n !== D.phase) {
     D.phase = n;
     for (const e of D.at) e.m.visible = n >= e.from && n <= e.to;
-    const TAB = D.print === '0' ? COAT_DRESS : COAT_QUIET;
-    const S = (TAB[D.look] ?? TAB.a)[n];
+    const TAB = D.print === '0' && D.body === '0' ? COAT_DRESS : COAT_QUIET;
+    const S0 = (TAB[D.look] ?? TAB.a)[n];
+    // (the Open Coat and the Duster stand open from phase 1: the legs walk in the split)
+    const S = (D.body === 'b' || D.body === 'c') && !S0.open ? { ...S0, open: true, front: 0.8 } : S0;
     const fk = S.front ?? 1;
     for (const F of D.fronts) turnFront(F, S.open ? F.open : F.closed);
     for (const P of D.panels) {
@@ -295,7 +341,7 @@ export function dressOne(d, dt) {
     }
     D.reload = !D.reload; // (re-read the guns below)
   }
-  if (D.print !== '0') clampCoat(d);
+  if (D.print !== '0' || D.body !== '0') clampCoat(d);
   // the guns: phase 2 only; gone from the start of his reload until he draws the next pair
   const empty = !!d.iron?.reloading && fin(d.brain?.act?.t, 1) < RELOAD_EMPTY;
   if (empty !== D.reload) {

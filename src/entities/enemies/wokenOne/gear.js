@@ -6,7 +6,7 @@ import {
   gridGeometry, shellGeometry, bandGeometry, boxGeometry, mergeGeometries, sub, foldLines, lerp, limb, gripFist, orient,
   orientTo, clumpGeometry, partGeometry,
 } from '../../player/heroGeo.js';
-import { oneLookNow, onePrintNow, dressOf, at } from './look.js';
+import { oneLookNow, onePrintNow, oneBodyNow, dressOf, at } from './look.js';
 
 // Xin Yi's gear: the hero's skeleton (built by the same buildHero(U, loadout), driven by the same
 // animator) in the hero's ink-line art, bare-handed as Tian Lei (no weapon: the right fist hangs on the
@@ -56,6 +56,13 @@ const nrm = (v) => {
  *  skull down to the nape (the body's hair is left out: `hidesHair`), its front sunk inside the face. */
 function hairGeometry(DIM) {
   const [sx, sy, sz] = DIM.skull;
+  if (oneBodyNow() !== '0') {
+    // the redraws: a fuller head of short hair swept back (the head was three letters from above): the
+    // crown raised and pushed back, the sides and the nape fuller, the hairline over the brow
+    const crown = ellipsoidGeometry(0.1, 0.085, 0.112, { widthSegs: 16, heightSegs: 10 }).translate(sx, sy + 0.05, sz - 0.012);
+    const back = ellipsoidGeometry(0.098, 0.104, 0.1, { widthSegs: 16, heightSegs: 10 }).translate(sx, sy + 0.006, sz - 0.03);
+    return { cap: sub(crown, 0), back: sub(back, 1) };
+  }
   const back = ellipsoidGeometry(0.086, 0.098, 0.088, { widthSegs: 16, heightSegs: 10 }).translate(sx, sy + 0.012, sz - 0.026);
   return { cap: partGeometry('hair.cap'), back: sub(back, 1) };
 }
@@ -123,9 +130,21 @@ const SHELL = [
   { y: 1.475, rx: 0.172, rz: 0.104, cz: 0.003 },
   { y: 1.505, rx: 0.094, rz: 0.076 },
 ];
+/** The redraws' build (`?oneBody=a|b|c`; look.js): a man's torso under the coat: the shoulders broader and
+ *  squarer, the chest deeper, the waist drawn in at the belt (each ring's rx / rz grown by these, m). */
+const SHELL_MAN = [
+  { rx: -0.012, rz: -0.004 },
+  { rx: -0.004, rz: 0.0 },
+  { rx: 0.008, rz: 0.006 },
+  { rx: 0.022, rz: 0.01 },
+  { rx: 0.034, rz: 0.012 },
+  { rx: 0.042, rz: 0.012 },
+  { rx: 0.02, rz: 0.004 },
+];
+const shellOf = () => (oneBodyNow() === '0' ? SHELL : SHELL.map((r, i) => ({ ...r, rx: r.rx + SHELL_MAN[i].rx, rz: r.rz + SHELL_MAN[i].rz })));
 /** The open coat's V: wide at the collar, closing at the belt line (half-chord, m). */
 const V_GAP = [0.0, 0.006, 0.026, 0.05, 0.06, 0.05, 0.03];
-const rings = (d, gap = null) => SHELL.map((r, i) => ({ ...r, rx: r.rx + d, rz: r.rz + d, gap: gap ? gap[i] : 0, y: ySp(r.y) }));
+const rings = (d, gap = null) => shellOf().map((r, i) => ({ ...r, rx: r.rx + d, rz: r.rz + d, gap: gap ? gap[i] : 0, y: ySp(r.y) }));
 /** A crease down each side and across the back (the coat's seams). */
 const coatSeams = (x, y, z) => 0.5 + 0.7 * Math.sin(Math.atan2(x, z) * 2 + 0.6);
 
@@ -165,6 +184,19 @@ function collarFaces(ctx, args) {
   mesh(chest, sub(collarGeometry(args[0], args[1], args[2], args[3], true), 0), M.collar);
 }
 
+/** The redraws' belt (spine space): a band round the coat at the waist, just over the skirt's anchor. */
+function beltGeometry() {
+  const S = shellOf()[0], y = 1.12;
+  return gridGeometry(28, 1, (u, t, o) => {
+    const a = u * Math.PI * 2;
+    o[0] = Math.sin(a) * (S.rx + 0.02);
+    o[1] = ySp(y + (t - 0.5) * 0.045);
+    o[2] = Math.cos(a) * (S.rz + 0.02);
+    o[3] = a * 0.1;
+    o[4] = o[1];
+  });
+}
+
 /** a / c: the coat's torso (closed in phase 1, open from phase 2: two shells, one shown), the shirt in
  *  the V, the high collar. */
 function chestCoat(ctx) {
@@ -176,6 +208,13 @@ function chestCoat(ctx) {
   at(D, open, 2, 3);
   // the shirt in the V (always built: hidden behind the closed coat in phase 1)
   mesh(spine, shellGeometry(rings(0.002), { span: 0.5, cols: 8, sub: 2 }), M.shirt);
+  // the redraws: a belt at the waist (the coat drawn in: the waist reads), the collar lower and open
+  // wider (the head and the neck stand clear of it from above)
+  if (oneBodyNow() !== '0') {
+    mesh(spine, beltGeometry(), M.armor);
+    collarFaces(ctx, [1.585, 0.78, 0.012, 0.045]);
+    return { keep: [closed, open] };
+  }
   // the quiet print: the V a flat fill of shirt, no facings; the collar one shape
   if (onePrintNow() !== '0') {
     collarFaces(ctx, [1.625, 0.62, 0.016, 0.055]);
@@ -230,11 +269,12 @@ function chestCassock(ctx) {
 function buildArms(ctx) {
   const { arms, sword, M, DIM, BODY, mesh } = ctx;
   const [ua0, ua1] = BODY.upperArm, [fa0, fa1] = BODY.foreArm, HK = BODY.hand;
+  const pad = oneBodyNow() === '0' ? 0 : 0.01; // (the redraws: a coat's squared shoulder over the arm)
   for (const side of [-1, 1]) {
     const { upper, fore } = arms[side < 0 ? 'R' : 'L'];
     mesh(upper, mergeGeometries([
       sub(limb({ length: DIM.upperArm, r0: ua0 + 0.006, r1: ua1 + 0.008, bulge: 0.008 }), 1),
-      sub(ellipsoidGeometry(BODY.deltoid[0] + 0.01, BODY.deltoid[1] + 0.004, BODY.deltoid[2] + 0.01, { widthSegs: 12, heightSegs: 8 }).translate(side * 0.008, -0.018, 0), 0),
+      sub(ellipsoidGeometry(BODY.deltoid[0] + 0.01 + pad, BODY.deltoid[1] + 0.004 + pad * 0.5, BODY.deltoid[2] + 0.01 + pad, { widthSegs: 12, heightSegs: 8 }).translate(side * (0.008 + pad), -0.018 + pad * 0.6, 0), 0),
     ]), M.coat);
     // the forearm's sleeve, a little loose, ending in a cuff just above the wrist
     const y1 = -DIM.foreArm + 0.06;
@@ -295,11 +335,29 @@ const COAT_B = [
   { az: -2.55, w: [0.17, 0.2, 0.24], len: [0.49, 0.51], skew: 1.1, out: 0.008, tail: true },
 ];
 
+/** The redraws' skirts (`?oneBody=`): it hangs near straight from a belted waist (cone 0.1: the hem about
+ *  the shoulders' width, where the old cone flared it past them: the bottle), narrower panels, so the
+ *  split between them shows the legs as he moves. a and b to the ankle; c, the Duster, to mid-shin with the
+ *  hero's pale hem along its last stretch (`hemFrom`: the hem material below that share of the lower
+ *  segment). b / c stand open in every phase (look.js). */
+const COAT_MAN = {
+  a: [
+    { az: 0.36, open: 0.86, w: [0.15, 0.17, 0.2], len: [0.47, 0.48], skew: 1, out: 0.006, front: true, cone: 0.1 },
+    { az: -0.36, open: -0.86, w: [0.15, 0.17, 0.2], len: [0.47, 0.48], skew: -1, out: 0.0, front: true, cone: 0.1 },
+    { az: 1.62, w: [0.14, 0.16, 0.19], len: [0.47, 0.48], out: 0.003, cone: 0.1 },
+    { az: -1.62, w: [0.14, 0.16, 0.19], len: [0.47, 0.48], out: 0.003, cone: 0.1 },
+    { az: 2.55, w: [0.15, 0.19, 0.24], len: [0.47, 0.5], skew: -1.2, slant: 0.04, out: 0.008, tail: true, cone: 0.12 },
+    { az: -2.55, w: [0.15, 0.19, 0.24], len: [0.47, 0.5], skew: 1.2, slant: 0.04, out: 0.008, tail: true, cone: 0.12 },
+  ],
+};
+COAT_MAN.b = COAT_MAN.a;
+COAT_MAN.c = COAT_MAN.a.map((p) => ({ ...p, len: [0.42, p.tail ? 0.32 : 0.28], hemFrom: 0.55 }));
+
 function buildCoat(ctx) {
-  const look = oneLookNow();
+  const look = oneLookNow(), body = oneBodyNow();
   const D = dressOf(ctx.root, look);
   // (fresh defs per rig: look.js writes their flare and stir, and turns the front panels)
-  const defs = (look === 'b' ? COAT_B : COAT_A).map((p) => ({ ...p, strips: [], fork: [], flare: 0.06, breeze: 0, idleFlare: 0 }));
+  const defs = (body !== '0' ? COAT_MAN[body] : look === 'b' ? COAT_B : COAT_A).map((p) => ({ ...p, strips: [], fork: [], flare: 0.06, breeze: 0, idleFlare: 0 }));
   const { coat } = panelSkirt(ctx, defs, { seed: 900 });
   // a coat of heavy cloth: one or two soft folds down each panel instead of the skirt's pleats
   // (panelSkirt's fold field, redrawn: x across the panel = aGUV x, m)
