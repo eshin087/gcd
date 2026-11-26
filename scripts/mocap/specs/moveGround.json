@@ -460,6 +460,28 @@
     "maxStepDeg": 30,
     "reason": "the take-off: the right knee snaps straight as he dives (about 1700 deg/s); seen in the footage at 11:19.25"
    }
+  },
+  {
+   "name": "jumpIdle",
+   "title": "Jump idle",
+   "src": "move 6:40-7:18",
+   "kind": "oneshot",
+   "fps": 30,
+   "search": 0.4,
+   "takes": [
+    {
+     "t0": "6:41.90",
+     "t1": "6:43.90",
+     "view": "right"
+    },
+    {
+     "t0": "6:45.00",
+     "t1": "6:47.00",
+     "view": "right"
+    }
+   ],
+   "from": "idle",
+   "to": "idle"
   }
  ]
 }

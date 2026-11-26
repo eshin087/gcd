@@ -145,7 +145,9 @@ def track_span(film, t0, t1, box0=None, budget=420.0, log=print):
                 return np.linalg.norm((l[11, :2] + l[12, :2]) / 2 - (l[23, :2] + l[24, :2]) / 2) + 1e-3
             ratio = tor(res[0]) / tor(prev)
             jump = np.linalg.norm(res[0][[11, 12, 23, 24], :2].mean(0) - prev[[11, 12, 23, 24], :2].mean(0)) / tor(prev)
-            if ratio > 1.6 or ratio < 0.6 or jump > 1.5:
+            # a zoom keeps him where he was (size changes, centre stays): only a size change WITH a jump
+            # away, or a big jump, is a phantom
+            if (ratio > 1.6 or ratio < 0.6) and jump > 0.8 or jump > 1.5:
                 # search round where he was (a wide square, not the whole frame: a statue or a dome far
                 # from him can look more like a person than he does mid-blur)
                 pb = _box_round(prev, W, H)
@@ -161,7 +163,8 @@ def track_span(film, t0, t1, box0=None, budget=420.0, log=print):
                         res, box = alt, b2
                 # still a phantom: record a miss (it is interpolated later) and keep following his last place
                 r3 = tor(res[0]) / tor(prev)
-                if r3 > 1.8 or r3 < 0.5:
+                j3 = np.linalg.norm(res[0][[11, 12, 23, 24], :2].mean(0) - prev[[11, 12, 23, 24], :2].mean(0)) / tor(prev)
+                if (r3 > 1.8 or r3 < 0.5) and j3 > 0.8:
                     rows[round(t, 3)] = (np.array([0, 0, 0, 0], np.float32), np.zeros((33, 4), np.float32),
                                          np.zeros((33, 3), np.float32), False)
                     last_t = t
