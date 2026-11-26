@@ -406,6 +406,9 @@ def build_clip(spec, clip, log=print):
         hips = air_hips(clip, B, Ts, hips, g['cmask'], log)
     if hips_off is not None:
         hips = hips + hips_off  # spec "bone_keys" hips dx / dy / dz
+    if clip.get('hips_keys'):
+        hips, g['cmask'] = hips_keys(clip, B, q, hips, root, g['cmask'], fps, log)
+        g['contact'] = {s_: spans_of(g['cmask'][:, f]) for f, s_ in enumerate(('L', 'R'))}
     q, before, after = retarget.pin_feet(q, hips, root, g['cmask'], loop=loop, flat=Wflat, soft=strided)
     q = skel.continuous(q)
     # last guard: nothing through the ground after the feet were pinned
@@ -490,6 +493,53 @@ def build_clip(spec, clip, log=print):
     return B, Ts
 
 
+def spans_of(m):
+    """[[first, last], ...] of the True runs of a mask"""
+    sp, i, n = [], 0, len(m)
+    while i < n:
+        if m[i]:
+            j = i
+            while j < n and m[j]:
+                j += 1
+            sp.append([i, j - 1])
+            i = j
+        else:
+            i += 1
+    return sp
+
+
+def hips_keys(clip, B, q, hips, root, cmask, fps, log):
+    """spec "hips_keys": [[frame or "t", y], ...]: the hips' height (m) at those frames, eased (smoothstep)
+    between keys; before the first and after the last the built height is kept (one key in a hold / loop: the
+    whole clip). Applied after the ground rule; a foot is then planted only where it still touches the ground
+    (a fall that starts in the air, an airborne hold); the last guard keeps every foot above the ground"""
+    n = len(hips)
+    t0r = B.t_ref[0] if hasattr(B, 't_ref') else 0
+
+    def fr(v):
+        return int(np.clip(v if isinstance(v, int) else round((cfg.parse_time(v) - t0r) * fps), 0, n - 1))
+    ks = sorted((fr(k[0]), float(k[1])) for k in clip['hips_keys'])
+    out = hips.copy()
+    if len(ks) == 1:
+        lo, hi = (0, n - 1) if B.loop else (ks[0][0], ks[0][0])
+        out[lo:hi + 1, 1] = ks[0][1]
+    else:
+        for (fa, ya), (fb, yb) in zip(ks[:-1], ks[1:]):
+            u = _smoothstep((np.arange(fa, fb + 1) - fa) / max(fb - fa, 1))
+            out[fa:fb + 1, 1] = ya * (1 - u) + yb * u
+        lo, hi = ks[0][0], ks[-1][0]
+    h0 = out.copy()
+    P = skel.fk(q, h0, root)[0]
+    cm = cmask.copy()
+    for f, s_ in enumerate(('L', 'R')):
+        low = np.minimum(P[:, JI['foot' + s_], 1] - HDIM['ankle'], P[:, JI['toe' + s_], 1])
+        rng = np.zeros(n, bool)
+        rng[lo:hi + 1] = True
+        cm[:, f] &= ~rng | (low < 0.05)
+    log('  hips keys: %d given (frames %d-%d), planted frames there L %d R %d' % (len(ks), lo, hi, cm[lo:hi + 1, 0].sum(), cm[lo:hi + 1, 1].sum()))
+    return out, cm
+
+
 def loop_start(B, st, log):
     """spec "start" (loops): which frame is frame 0: "plantR" / "plantL" (the first frame of that foot's
     plant) or a phase 0..1 of the cycle as built. The cycle is rolled (pose, hips, contact); the root's
@@ -514,20 +564,7 @@ def loop_start(B, st, log):
     for nm in ('blade', 'bladeL'):
         if getattr(B, nm, None) is not None and len(getattr(B, nm)) == n:
             setattr(B, nm, np.roll(getattr(B, nm), -r, 0))
-    cs = {}
-    for f, s_ in enumerate(('L', 'R')):
-        m = B.cmask[:, f]
-        sp, i = [], 0
-        while i < n:
-            if m[i]:
-                j = i
-                while j < n and m[j]:
-                    j += 1
-                sp.append([i, j - 1])
-                i = j
-            else:
-                i += 1
-        cs[s_] = sp
+    cs = {s_: spans_of(B.cmask[:, f]) for f, s_ in enumerate(('L', 'R'))}
     B.contact = cs
     B.shift = [(s_ + r) % n for s_ in B.shift]
     log('  start %s: frame 0 is the built frame %d; contact L %s R %s' % (st, r, cs['L'], cs['R']))
