@@ -42,7 +42,9 @@ export function benchRun(H, seed, bot, { secs = 600, skill = 0.9 } = {}) {
   const G = build(seed, true);
   const { game, input } = G;
   const d = game.dragon, p = game.player;
-  duel(G, { dist: 3, ai: false });
+  // (GCD_BFORM=n: the fight starts in phase n, through its real transitions, and stays in it: a probe)
+  const form = Number(process.env.GCD_BFORM ?? 1);
+  duel(G, { dist: 3, ai: false, form });
   d.debug.setAI(true);
   p.debug.god = false;
   const lead = (src) => (src === 'world' ? 0.3 : Array.isArray(TUNING.flashLead) ? TUNING.flashLead[Math.max(0, d.phase - 1)] : TUNING.flashLead);
@@ -93,7 +95,8 @@ export function benchRun(H, seed, bot, { secs = 600, skill = 0.9 } = {}) {
   let curAtk = null;
   const th = p.takeHit.bind(p);
   p.takeHit = (h) => { curAtk = h?.attack ?? null; const r = th(h); curAtk = null; return r; };
-  const n = { parries: 0, perfect: 0, dodges: 0, heals: 0, blocks: 0, guardBreaks: 0, guardOpens: 0 };
+  const n = { parries: 0, perfect: 0, dodges: 0, heals: 0, blocks: 0, guardBreaks: 0, guardOpens: 0, openThenCue: 0, openThenHit: 0 };
+  const diag = { openAt: -9, openFlash: false, openHit: false, touchAt: 0, untouched: 0 };
   const phAt = [game.time];
   const w0 = G.watch;
   G.watch = (ev, e) => {
@@ -104,13 +107,24 @@ export function benchRun(H, seed, bot, { secs = 600, skill = 0.9 } = {}) {
     if (ev === 'player:heal') n.heals++;
     if (ev === 'player:block') n.blocks++;
     if (ev === 'player:guardBreak') n.guardBreaks++;
-    if (ev === 'player:guardOpen') n.guardOpens++;
+    if (ev === 'player:guardOpen') { n.guardOpens++; diag.openAt = game.time; diag.openFlash = diag.openHit = false; }
+    // (what follows a guard knocked open within 1.2 s: a cue of his, a blow that lands)
+    if (game.time - diag.openAt < 1.2) {
+      if (ev === 'combat:flash' && e?.source === 'dragon' && !diag.openFlash) { diag.openFlash = true; n.openThenCue++; }
+      if (ev === 'player:hurt' && e?.damage > 0 && !diag.openHit) { diag.openHit = true; n.openThenHit++; }
+    }
+    // (the hero's blade on him: a cut that lands or stops on the barrier)
+    if (ev === 'player:hitDragon' || (ev === 'dragon:barrier' && e?.state === 'stop')) { diag.untouched = Math.max(diag.untouched, game.time - diag.touchAt); diag.touchAt = game.time; }
     if (/^dragon:phase[234]$/.test(ev)) phAt.push(game.time);
   };
   const t0 = game.time;
+  diag.touchAt = t0;
+  // (GCD_BTOUCH=1: what reached him, each time: the hero's state and the hit's kind)
+  if (process.env.GCD_BTOUCH) { const th0 = d.takeHit.bind(d); d.takeHit = (o = {}) => { H.out(`      touch @${(game.time - t0).toFixed(1)} hero ${p.state} kind ${o.kind ?? '-'} attack ${o.attack ?? o.move ?? '-'} exact ${!!o.exact} dmg ${o.damage}`); return th0(o); }; }
   let outcome = 'time';
   const tgt = new THREE.Vector3();
   run(G, secs, () => {
+    if (form > 1 && d.brain.pendingPhase > form) d.brain.pendingPhase = 0;
     input.axis = { x: 0, y: 0 };
     if (!p.alive || game.state !== 'boss') return;
     d.lockPoint(tgt);
@@ -150,7 +164,7 @@ export function benchRun(H, seed, bot, { secs = 600, skill = 0.9 } = {}) {
   return {
     seed, bot, outcome, T, phase: d.phase, bar: Math.max(0, d.hp) / (d.maxHp ?? TUNING.hp), hp: p.hp,
     flasks: p.maxFlasks - p.flasks, hits: hurt.length, dmg: hurt.reduce((s, h) => s + h[1], 0), killer,
-    worst: worst[1], worstBy: worst[2], perPh, missed, spared: d.parts?.melee?.stats?.spared ?? null, byMove, barrier: d.barrier?.stats ? { ...d.barrier.stats } : null, ...n,
+    worst: worst[1], worstBy: worst[2], perPh, missed, spared: d.parts?.melee?.stats?.spared ?? null, untouched: Math.max(diag.untouched, game.time - diag.touchAt), turns: d.patience?.stats?.turns ?? null, byMove, barrier: d.barrier?.stats ? { ...d.barrier.stats } : null, ...n,
   };
 }
 
@@ -169,7 +183,7 @@ export async function benchScenario(H, who) {
     for (const seed of seeds) {
       const r = benchRun(H, seed, bot, { secs, skill });
       all.push(r);
-      out(`   ${bot.padEnd(8)} seed ${String(seed).padEnd(5)} ${r.outcome.padEnd(5)} ${r.T.toFixed(0).padStart(4)} s · phase ${r.phase} bar ${(r.bar * 100).toFixed(0)} % · phases ${r.perPh.map((x) => x.toFixed(0)).join(' / ')} s · hits ${r.hits} for ${r.dmg.toFixed(0)} · flasks ${r.flasks} · worst ${r.worst.toFixed(0)} (${r.worstBy}) · parries ${r.parries} (perfect ${r.perfect}) · dodges ${r.dodges} · blocks ${r.blocks} · guard opened ${r.guardOpens} · guard broken (red) ${r.guardBreaks}${r.missed ? ` · cues missed ${r.missed}` : ''}${r.spared !== null ? ` · spared ${r.spared}` : ''}${r.killer ? ` · KILLED BY ${r.killer}` : ''}${r.barrier ? ` · barrier ${JSON.stringify(r.barrier)}` : ''}`);
+      out(`   ${bot.padEnd(8)} seed ${String(seed).padEnd(5)} ${r.outcome.padEnd(5)} ${r.T.toFixed(0).padStart(4)} s · phase ${r.phase} bar ${(r.bar * 100).toFixed(0)} % · phases ${r.perPh.map((x) => x.toFixed(0)).join(' / ')} s · hits ${r.hits} for ${r.dmg.toFixed(0)} · flasks ${r.flasks} · worst ${r.worst.toFixed(0)} (${r.worstBy}) · parries ${r.parries} (perfect ${r.perfect}) · dodges ${r.dodges} · blocks ${r.blocks} · guard opened ${r.guardOpens} (then a cue ${r.openThenCue}, a landed blow ${r.openThenHit}) · longest untouched ${r.untouched.toFixed(0)} s${r.turns !== null ? ` (he stopped waiting ${r.turns}x)` : ''} · guard broken (red) ${r.guardBreaks}${r.missed ? ` · cues missed ${r.missed}` : ''}${r.spared !== null ? ` · spared ${r.spared}` : ''}${r.killer ? ` · KILLED BY ${r.killer}` : ''}${r.barrier ? ` · barrier ${JSON.stringify(r.barrier)}` : ''}`);
       if (process.env.GCD_BMOVES) out(`        damage by move: ${Object.entries(r.byMove).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v.toFixed(0)}`).join(' · ')}`);
     }
   }

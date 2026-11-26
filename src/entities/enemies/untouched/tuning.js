@@ -146,6 +146,16 @@ export const TUNING = {
     escapeOpen: 2, // the escape opens the barrier for open[2] x this
   },
 
+  // ---- HIS PATIENCE (patience.js; the tuning pass, round 2: the owner, a defender who never attacks must
+  // not outlast him): `after` s without the hero's blade reaching him (a cut that lands or stops on the
+  // barrier; a flurry) he stops waiting (the cue: his eyes burn for `cue` s, the unveiling's sound) and until
+  // it does every blocked blow costs at least `guardCost` of the meter: one block knocks the guard open and
+  // the next blow of the string lands in it. Measured (bench.mjs, the pace defender, six seeds, 600 s): without
+  // it alive in every seed; after 20: dead in 102 - 383 s; after 30: 201 - 525 s (mean 363); after 40: 83 -
+  // 518 s. guardCost 0.7 (two blocks): alive in every seed. (His later phases' moves picked early were tried as
+  // the press: they made him easier to wait out.) No other bot goes 20 s without reaching him.
+  wjPatience: { after: 30, cue: 1.2, guardCost: 1 },
+
   // ---- the beam's drawing borrows Tian Lei's (fxBeam.js reads d.T.beam.look)
   beam: { ...BEAM_TUNING },
   // ---- the moves agents' numbers

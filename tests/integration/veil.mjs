@@ -1276,6 +1276,7 @@ const S = {
   heldbreak: scenarioHeldBreak, // (the tuning pass)
   floor: scenarioFloor, // (the tuning pass)
   bonfire: scenarioBonfire, // (the tuning pass, round 2)
+  patience: scenarioPatience, // (the tuning pass, round 2)
   // world: scenarios
   // (the crossing never traps a thrown hero: thrown 10 m from 24 places, four ways each, through whatever
   // stands there; he ends outside every collider, inside his bound, and walks away)
@@ -2075,6 +2076,52 @@ async function scenarioFloor() {
   assert(inVoid && inVoid.shown === 0, `in the void none of the crossing's marks show (${inVoid?.shown} of ${inVoid?.n0})`);
   assert(back.scene === 'crossing' && back.shown >= Math.min(inVoid?.n0 ?? 0, SC.marks.length) * 0.5, `back in the crossing its marks show again (${back.shown})`);
   assert(fires[0] === 0, `no fire burns after his fight (${fires[0]} 'fire' blobs alive)`);
+}
+
+// (the tuning pass, round 2: the owner) HIS PATIENCE (patience.js): a hero whose blade has not reached him for
+// wjPatience.after s makes him stop waiting (a cue he sees and hears, once); then a single block knocks the
+// guard open; a cut that reaches him (on the shell) ends it. A block still costs no health.
+async function scenarioPatience() {
+  out('\n== scenario PATIENCE (untouched for 20 s he stops waiting: the cue; one block opens the guard; a cut ends it) ==');
+  const P = TUNING.wjPatience;
+  const G = build();
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  duel(G, { dist: 6 });
+  p.debug.god = false;
+  const cues = [];
+  G.watch = (n, e) => { if (n === 'dragon:spell' && e?.name === 'wjUnveil') cues.push(game.time); };
+  const t0 = game.time;
+  d.patience.reset();
+  let eyes = 0;
+  const look = () => { eyes = Math.max(eyes, d.patience.cueK); };
+  run(G, P.after - 0.5, look);
+  const before = d.patience.impatient;
+  run(G, 2, look);
+  const after = d.patience.impatient, cueAt = cues.map((t) => +(t - t0).toFixed(1));
+  // one block while he is impatient knocks the guard open, no health
+  p.debug.heal();
+  p.guard = 100;
+  place(G, 2);
+  run(G, 0.3, (GG) => GG.input.press(1));
+  let opened = false;
+  G.watch = (n) => { if (n === 'player:guardOpen') opened = true; };
+  p.yaw = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z);
+  const hp0 = p.hp;
+  d.hitPlayer({ damage: 18, knockback: 3, tell: TELL.NORMAL, attack: 'flick', from: { x: d.position.x, z: d.position.z } });
+  run(G, 0.1, (GG) => GG.input.press(1));
+  G.input.up(1);
+  const oneBlock = { opened, dhp: hp0 - p.hp };
+  // a cut on the shell (the barrier is up) reaches him: he waits again
+  run(G, 1);
+  swing(G, 1.6);
+  const reset = !d.patience.impatient && d.patience.idle < 1;
+  G.watch = null;
+  out(`   impatient at ${P.after - 0.5} s: ${before}, at ${P.after + 1.5} s: ${after} (cue at ${cueAt.join(', ')} s, his eyes ${eyes.toFixed(2)}); one block: guard opened ${oneBlock.opened}, hp -${oneBlock.dhp}; after a cut on the shell: impatient ${d.patience.impatient}`);
+  assert(!before && after, `untouched for ${P.after} s he stops waiting`);
+  assert(cueAt.length === 1 && eyes > 0.9, 'once, with a cue the player sees (his eyes burn) and hears (the unveiling sound)');
+  assert(oneBlock.opened && oneBlock.dhp === 0, 'while he presses one block knocks the guard open, and costs no health');
+  assert(reset, 'a cut that reaches him (on the shell) ends it');
 }
 
 // (the tuning pass, round 2: the owner) The bonfire goes out while the scene is the void (no flame, light,

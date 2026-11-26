@@ -15,6 +15,7 @@ import { WjFx } from './fx.js';
 import { Barrier } from './barrier.js';
 import { Pull } from './pull.js';
 import { Domain } from './domain.js';
+import { Patience } from './patience.js';
 import * as FX_DEBUG from './fxDebug.js';
 
 // Bai Wuji, the Untouched: the boss of the Veiled Crossing (`?level=veil`). A tall, relaxed man in a
@@ -116,6 +117,7 @@ export class Untouched extends Duelist {
     this.barrier = new Barrier(this);
     this.pull = new Pull(this);
     this.domain = new Domain(this);
+    this.patience = new Patience(this);
     this.parts = {};
     this._partList = [];
     for (const H of HANDLERS) {
@@ -189,6 +191,7 @@ export class Untouched extends Duelist {
       this.barrier.reset();
       this.pull.reset();
       this.domain.reset();
+      this.patience.reset();
       for (const { h } of this._partList) {
         try {
           h.reset?.();
@@ -353,6 +356,7 @@ export class Untouched extends Duelist {
     this.barrier.frame(dt);
     this.pull.frame(dt);
     this.domain.frame(dt);
+    this.patience.frame(dt);
     this._each((h) => h.frame?.(dt));
     this.pilot.armsK = (this.pilot.armsK ?? 1) + ((this.phase <= 1 ? 1 : 0) - (this.pilot.armsK ?? 1)) * Math.min(1, dt * 3);
   }
@@ -360,7 +364,9 @@ export class Untouched extends Duelist {
   /** After the pose: his eyes, the trail off the striking limb through a blow, the stars of a break. */
   afterPose(dt, a) {
     const fx = this.fx;
-    if (this.mode !== 'dead' && this.eyesK > 0.02) fx.eyes?.(this, this.eyesK);
+    // (his patience runs out: his eyes burn through whatever covers them, patience.js)
+    const ek = Math.max(this.eyesK, this.patience?.cueK ?? 0);
+    if (this.mode !== 'dead' && ek > 0.02) fx.eyes?.(this, ek);
     // THE BLINDFOLD COMES OFF: the band's light and the eyes' flare through the unveiling's windup (the
     // flare lands at u 0.9, just before the impact that sets eyesK; fx.unveil's only caller)
     if (a?.def?.transition && this.mode === 'act') {
@@ -385,6 +391,8 @@ export class Untouched extends Duelist {
   // ---------------------------------------------------------------- the barrier
   /** The hero's cut: the barrier first (it stops short, deals nothing), then the engine's. */
   takeHit(o = {}) {
+    // (the hero's blade reached him, on the shell or through it: he has no reason to stop waiting)
+    this.patience?.touch();
     if (this.barrier?.stops(o)) return 0;
     const first = this.barrier && !this.barrier.up && !this._wjSurprised && this._surpriseOk(o);
     const dmg = super.takeHit(o);
@@ -450,8 +458,10 @@ export class Untouched extends Duelist {
     const kb = Math.max(fin(o.knockback, 0), fin(o.damage, 0) > 0 ? fin(Wt.knockback, 0) : 0);
     const bp = Number.isFinite(D?.blockPush) ? D.blockPush : Wt.blockPush;
     const gc = Number.isFinite(D?.guardCost) ? D.guardCost : Wt.guardCost * (GUARD.max ?? 100);
+    // (his patience has run out, patience.js: a blocked blow costs at least wjPatience.guardCost of the meter)
+    const gp = this.patience?.impatient ? fin(this.T.wjPatience?.guardCost, 0) * (GUARD.max ?? 100) : 0;
     const crash = D?.wjCrash === false ? 0 : Number.isFinite(D?.wjCrash) ? D.wjCrash : kb >= C.minKb ? C.power : 0;
-    const extra = { blockPush: bp, guardCost: gc, wjCrash: crash, wjCrashDamage: C.damage, ...(D?.wjBlink ? { around: true } : null), ...(o.extra ?? null) };
+    const extra = { blockPush: bp, guardCost: Math.max(gc, gp), wjCrash: crash, wjCrashDamage: C.damage, ...(D?.wjBlink ? { around: true } : null), ...(o.extra ?? null) };
     return { ...o, knockback: kb, extra };
   }
 
