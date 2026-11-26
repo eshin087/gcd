@@ -1,0 +1,44 @@
+{
+ "set": "moveTurns",
+ "title": "Movement: turning",
+ "film": "move",
+ "out": "src/entities/hero2/clips/moveTurns.js",
+ "clips": [
+  {
+   "name": "walkTurnL90",
+   "title": "Walk to turning (90 degree turn), left",
+   "src": "move 3:56-4:48",
+   "kind": "oneshot",
+   "fps": 30,
+   "turn": 90,
+   "search": 0.15,
+   "takes": [
+    {
+     "t0": "4:01.57",
+     "t1": "4:03.05",
+     "view": "right"
+    }
+   ],
+   "from": "walk",
+   "to": "walk"
+  },
+  {
+   "name": "walkTurnR90",
+   "title": "Walk to turning (90 degree turn), right",
+   "src": "move 3:56-4:48",
+   "kind": "oneshot",
+   "fps": 30,
+   "turn": -90,
+   "search": 0.15,
+   "takes": [
+    {
+     "t0": "4:14.80",
+     "t1": "4:16.30",
+     "view": "left"
+    }
+   ],
+   "from": "walk",
+   "to": "walk"
+  }
+ ]
+}
