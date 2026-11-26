@@ -189,6 +189,11 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.93 — Tian Lei's and Halcyon's motion (2026-11-26, `claude/enemies-tian-halcyon-motion-efe595`, ADR-225)
+- [x] Audited (asc.mjs / city.mjs AUDIT); held blue / red windups, the snap blows, Halcyon's flier's legs, aim and dip,
+  behind `?ascMotion=a` / `?halMotion=a`
+- [ ] The owner's pick of both switches (then the default)
+- [ ] Tian Lei: the sweep's knee jolt and sliding feet, the dash thrusts' skating, the cross's sideways line
 ## M1.93 — The perfect parry gets the perfect dodge's window (2026-11-26, `claude/combat-perfect-parry-window-d6503b`, ADR-227)
 - [x] `DEFENSE.perfectParryWindow` 0.08 → 0.20 s (the owner's pick); the plain parry window 0.22 s unchanged
 - [x] Every perfect reward (posture, counter cut, blade lock, returned bullets, clashes) follows the one number; tests timed for a plain parry moved to 0.21 s

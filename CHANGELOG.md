@@ -4,7 +4,14 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and thirteen pieces of work since 0.4.0:
+One hundred and fourteen pieces of work since 0.4.0:
+- **Tian Lei and Halcyon: held windups, quick jabs, and Halcyon fights like a flier** (2026-11-26, ADR-225; behind `?ascMotion=a` / `?halMotion=a` until the owner picks). *Added:* every
+  blue (parry) and red (perfect-dodge) blow of Tian Lei's and Halcyon's now winds up into a pose of its own, held
+  while it tightens, so you can read which blow is coming and how to answer it; red ones sink deeper. Two quick
+  white blows each, thrown straight out of the guard with a short windup: Snap Jab and Snap Hook (Tian Lei), Flick
+  and Tap (Halcyon). *Fixed:* Halcyon no longer stands on air in a fighting stance when he strikes: his legs trail
+  like a flier's, he dips into each blow and his fists meet your chest and head instead of passing over it, with
+  his arm opening at the end. The timings of every blow are unchanged.
 - **The drakelings never dive on top of the wyrm's blows** (2026-11-26, ADR-237). *Fixed:* in a long flurry of the
   Cinder Wyrm's, a drakeling that had waited out its turn could dive in the same instant as one of the wyrm's
   blows that needed the other answer (a roll against a parry). Now it waits for a clear moment however long the
