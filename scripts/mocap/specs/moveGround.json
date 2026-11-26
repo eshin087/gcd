@@ -154,6 +154,38 @@
    "to": "idle"
   },
   {
+   "name": "walkStart",
+   "title": "Walk (start)",
+   "src": "move 0:54-1:22",
+   "kind": "oneshot",
+   "fps": 30,
+   "search": 0.4,
+   "takes": [
+    {
+     "t0": "0:55.60",
+     "t1": "0:57.20",
+     "view": "right"
+    },
+    {
+     "t0": "1:10.80",
+     "t1": "1:12.40",
+     "view": "back"
+    },
+    {
+     "t0": "1:17.60",
+     "t1": "1:19.20",
+     "view": "front"
+    },
+    {
+     "t0": "1:04.60",
+     "t1": "1:06.20",
+     "view": "left"
+    }
+   ],
+   "from": "idle",
+   "to": "walk"
+  },
+  {
    "name": "walk",
    "title": "Walk",
    "src": "move 0:32-0:54",
@@ -187,125 +219,7 @@
    "to": "walk"
   },
   {
-   "name": "run",
-   "title": "Run",
-   "src": "move 1:41-2:02",
-   "kind": "loop",
-   "fps": 30,
-   "travel": "forward",
-   "symmetric": 1,
-   "period_lo": 0.6,
-   "period_hi": 1.0,
-   "takes": [
-    {
-     "t0": "1:42.60",
-     "t1": "1:43.85",
-     "view": "right"
-    },
-    {
-     "t0": "1:53.00",
-     "t1": "1:57.10",
-     "view": "back"
-    }
-   ],
-   "from": "run",
-   "to": "run"
-  },
-  {
-   "name": "runPivot",
-   "title": "Run to pivot",
-   "src": "move 2:29-2:48",
-   "kind": "oneshot",
-   "fps": 30,
-   "turn": 180,
-   "search": 0.4,
-   "takes": [
-    {
-     "t0": "2:31.90",
-     "t1": "2:33.30",
-     "view": "right"
-    }
-   ],
-   "from": "run",
-   "to": "run"
-  },
-  {
-   "name": "sprint",
-   "title": "Sprint",
-   "src": "move 2:48-3:09",
-   "kind": "loop",
-   "fps": 30,
-   "travel": "forward",
-   "symmetric": 1,
-   "period_lo": 0.5,
-   "period_hi": 0.8,
-   "takes": [
-    {
-     "t0": "2:50.30",
-     "t1": "2:51.05",
-     "view": "right"
-    },
-    {
-     "t0": "3:00.30",
-     "t1": "3:03.50",
-     "view": "back"
-    }
-   ],
-   "from": "sprint",
-   "to": "sprint",
-   "period": 0.63
-  },
-  {
-   "name": "runStop",
-   "title": "Run to stop",
-   "src": "move 2:02-2:29",
-   "kind": "oneshot",
-   "fps": 30,
-   "search": 0.6,
-   "takes": [
-    {
-     "t0": "2:07.95",
-     "t1": "2:09.75",
-     "view": "right"
-    }
-   ],
-   "from": "run",
-   "to": "idle"
-  },
-  {
-   "name": "walkStart",
-   "title": "Walk (start)",
-   "src": "move 0:54-1:22",
-   "kind": "oneshot",
-   "fps": 30,
-   "search": 0.4,
-   "takes": [
-    {
-     "t0": "0:55.60",
-     "t1": "0:57.20",
-     "view": "right"
-    },
-    {
-     "t0": "1:10.80",
-     "t1": "1:12.40",
-     "view": "back"
-    },
-    {
-     "t0": "1:17.60",
-     "t1": "1:19.20",
-     "view": "front"
-    },
-    {
-     "t0": "1:04.60",
-     "t1": "1:06.20",
-     "view": "left"
-    }
-   ],
-   "from": "idle",
-   "to": "walk"
-  },
-  {
-   "name": "walkStopR",
+   "name": "walkStop",
    "title": "Walk to stop (right foot forward)",
    "src": "move 0:54-1:22",
    "kind": "oneshot",
@@ -395,6 +309,179 @@
    ],
    "from": "walk",
    "to": "walk"
+  },
+  {
+   "name": "runStart",
+   "title": "Run (start)",
+   "src": "move 2:02-2:29",
+   "kind": "oneshot",
+   "fps": 30,
+   "search": 0.4,
+   "takes": [
+    {
+     "t0": "2:03.30",
+     "t1": "2:04.70",
+     "view": "right"
+    },
+    {
+     "t0": "2:18.70",
+     "t1": "2:20.10",
+     "view": "back"
+    },
+    {
+     "t0": "2:24.80",
+     "t1": "2:26.20",
+     "view": "front"
+    },
+    {
+     "t0": "2:12.50",
+     "t1": "2:13.55",
+     "view": "left"
+    }
+   ],
+   "from": "idle",
+   "to": "run"
+  },
+  {
+   "name": "run",
+   "title": "Run",
+   "src": "move 1:41-2:02",
+   "kind": "loop",
+   "fps": 30,
+   "travel": "forward",
+   "symmetric": 1,
+   "period_lo": 0.6,
+   "period_hi": 1.0,
+   "takes": [
+    {
+     "t0": "1:42.95",
+     "t1": "1:44.50",
+     "view": "right"
+    },
+    {
+     "t0": "1:53.00",
+     "t1": "1:55.80",
+     "view": "back"
+    }
+   ],
+   "from": "run",
+   "to": "run"
+  },
+  {
+   "name": "runStop",
+   "title": "Run to stop (right foot forward)",
+   "src": "move 2:02-2:29",
+   "kind": "oneshot",
+   "fps": 30,
+   "search": 0.4,
+   "takes": [
+    {
+     "t0": "2:07.50",
+     "t1": "2:09.30",
+     "view": "right"
+    },
+    {
+     "t0": "2:20.10",
+     "t1": "2:21.90",
+     "view": "back"
+    }
+   ],
+   "from": "run",
+   "to": "idle"
+  },
+  {
+   "name": "runStopL",
+   "title": "Run to stop (left foot forward)",
+   "src": "move 2:02-2:29",
+   "kind": "oneshot",
+   "fps": 30,
+   "search": 0.4,
+   "takes": [
+    {
+     "t0": "2:04.30",
+     "t1": "2:06.10",
+     "view": "right"
+    },
+    {
+     "t0": "2:16.90",
+     "t1": "2:18.70",
+     "view": "back"
+    },
+    {
+     "t0": "2:22.90",
+     "t1": "2:24.70",
+     "view": "front"
+    }
+   ],
+   "from": "run",
+   "to": "idle"
+  },
+  {
+   "name": "runPivot",
+   "title": "Run to pivot",
+   "src": "move 2:29-2:48",
+   "kind": "oneshot",
+   "fps": 30,
+   "search": 0.4,
+   "turn": -180,
+   "takes": [
+    {
+     "t0": "2:38.25",
+     "t1": "2:39.62",
+     "view": "back",
+     "drop": [
+      [
+       "2:39.22",
+       "2:39.48"
+      ]
+     ]
+    },
+    {
+     "t0": "2:41.95",
+     "t1": "2:43.32",
+     "view": "back"
+    }
+   ],
+   "from": "run",
+   "to": "run",
+   "pose_keys": [
+    {
+     "f": 31,
+     "joint": "footR",
+     "euler": [
+      0,
+      0,
+      0
+     ],
+     "blend": 3
+    }
+   ]
+  },
+  {
+   "name": "sprint",
+   "title": "Sprint",
+   "src": "move 2:48-3:09",
+   "kind": "loop",
+   "fps": 30,
+   "travel": "forward",
+   "symmetric": 1,
+   "period_lo": 0.5,
+   "period_hi": 0.8,
+   "takes": [
+    {
+     "t0": "2:50.30",
+     "t1": "2:51.05",
+     "view": "right"
+    },
+    {
+     "t0": "3:00.30",
+     "t1": "3:03.50",
+     "view": "back"
+    }
+   ],
+   "from": "sprint",
+   "to": "sprint",
+   "period": 0.63
   }
  ]
 }
