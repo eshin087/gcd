@@ -13059,10 +13059,11 @@ async function scenarioBlinkHand() {
     // open, and it got there without a jump (out of a sprint it trails his travel: up to 10 cm behind the
     // hips' seam). (8 cm a frame past the body: in hit 1's windup the hips and the
     // chest turn under the hand, 27 cm out to his side, which their joints' steps do not count; against
-    // its rest the hand moves at most SIDE.vIn, 3.3 m/s)
+    // its rest the hand moves at most SIDE.vIn, 3.3 m/s; 9 cm since ADR-207: out of the reference's
+    // two-handed fight hold the hand starts on the grip, 0.2 cm a frame further from his side)
     const firsts = sw.filter((S) => S.first);
-    const late = firsts.filter((S) => !(S.atCut.h[0] > 0.14 && S.atCut.h[0] < 0.34 && Math.abs(S.atCut.h[1]) < 0.15 && S.atCut.h[2] > -0.1 && S.atCut.h[2] < 0.25 && S.atCut.el >= 135 && S.overIn < 0.08));
-    assert(firsts.length >= 6 && !late.length, `at the first cut of a chain, a sprint slash and a roll cut the free hand is beside the hip with the elbow at least 135°, having come there at most 8 cm a frame past the body (${firsts.map((S) => `${S.take} ${S.clip} ${S.atCut.h.map((x) => x.toFixed(2)).join(',')} ${S.atCut.el.toFixed(0)}° ${(S.overIn * 100).toFixed(1)}cm`).join('; ')})`);
+    const late = firsts.filter((S) => !(S.atCut.h[0] > 0.14 && S.atCut.h[0] < 0.34 && Math.abs(S.atCut.h[1]) < 0.15 && S.atCut.h[2] > -0.1 && S.atCut.h[2] < 0.25 && S.atCut.el >= 135 && S.overIn < 0.09));
+    assert(firsts.length >= 6 && !late.length, `at the first cut of a chain, a sprint slash and a roll cut the free hand is beside the hip with the elbow at least 135°, having come there at most 9 cm a frame past the body (${firsts.map((S) => `${S.take} ${S.clip} ${S.atCut.h.map((x) => x.toFixed(2)).join(',')} ${S.atCut.el.toFixed(0)}° ${(S.overIn * 100).toFixed(1)}cm`).join('; ')})`);
     // today's chain: the hand never hangs
     CB.setLights('new');
     {
