@@ -28,6 +28,8 @@ tracked landmarks, `built/` per-clip results and `build.log`, `sheets/` pair she
    stopped, so run it again until it prints `0 frames left`), then list its take candidates:
    ```bash
    bash "$H2/lock.sh" <you> "$PY" -I track.py move 168 189          # film, chapter start, end (s)
+   # it stops itself at --budget (default 360 s from its start, model load included), well inside the
+   # lock's rule (one job under 8 minutes; a lock older than 12 minutes is taken as dead)
    "$PY" -I shots.py move 168 189                                   # light
    ```
    `shots.py` prints `take k: t0-t1 (dur) view <front|right|back|left> (yaw ..)` and writes a sheet (one row
@@ -123,6 +125,13 @@ Clip keys:
 | `face` | one-shots: `"start"` (his facing over the first 0.2 s), `"hit"` (the blade's direction at the first `hit` event: attacks) or a number (deg): the clip is turned so that this is its +Z, the way the game aims it. EVERY attack needs it (the game aims a clip by its +Z) |
 | `arm_fix` | sword clips: `"whole"` = the blade decides which arm is his right over the WHOLE take (a two-state path; a lunge where the blurred blade is lost keeps the side its neighbours prove) instead of a 5-frame vote |
 | `blade_blur` | sword clips: true = where the colour finds no blade, rays score what MOVED against the neighbouring frames (the fan of a blurred cut; the middle of the fan is its direction). Check it on `bladesheet.py` (magenta = weak / fan) |
+| `flight` | one-shots: `"picture"` = through frames with NO planted foot (a hop back, a roll, a leap) the root travels as his pelvis moves against the FLOOR round his feet in each take's picture (a panning or dollying camera is taken out by the floor's own shift); two takes from different sides give both ground directions, one take its sideways one. The log prints `flight frames a-b: travel from the picture X m (coasted Y m)`. Not with `turn` |
+| `travel_m`, `travel_dir`, `travel_span` | one-shots, when travel cannot be measured: the root travels `travel_m` metres toward `travel_dir` (deg in his frame: 0 forward, 90 his left, 180 back), eased over `travel_span` (two video times; default the whole clip). Replaces the measured travel |
+| `root_keys` | one-shots: `[["10:58.20", x, z], [frame, x, z], ...]`: the root's ground position (m, his start frame: +x his left, +z his front) at those moments, eased between (the start is 0, 0). Replaces the measured travel |
+| `root` | one-shots: `{"smooth": 0.1, "max_off": 0.15}`: the root is the ground point under his hips smoothed over `smooth` s (default 0.25) and never more than `max_off` m from it, so the hips stay over the root (the engine needs it; a lunge left them 0.5-0.9 m off) |
+| `foot_ease` | degrees a frame (e.g. 14 at 60 fps): the feet and toes turn no faster (the sole-levelling at a plant or a lost foot snapped them 79-138 degrees in one frame) |
+| take `facing` | `"away"` / `"toward"`: a HARD prior that he faces away from (toward) this camera through the whole take (a lock-on camera behind him). Every frame the tool read the other way round is mirrored back (7-frame majority); the log prints how many |
+| `free_hand` | true or `{"sigma": 2.0, "flex": 12}`: the free hand from the tool's hand points where they look like a hand, a relaxed hand along the forearm where not |
 | `blade_color`, `blade_color_L` | `"rust"` (default) or `"steel"` (a bright grey blade: the paired set's left sword) |
 
 ## Author's checklist (every clip)
@@ -184,6 +193,15 @@ sides at the body's middle. A pose the picture cannot settle (a hand's roll, a f
 **Step limit**: the checker fails a clip where a joint turns more than 1500 deg/s in one frame (50 deg at 30
 fps, 25 at 60). Most such jumps are the tool losing a limb; `despike` (on by default) bridges them. A real
 fast motion: `"qa": {"maxStepDeg": 30, "reason": "the take-off: the right knee snaps straight ..."}`.
+
+**Hops and rolls (flight, travel)**: `backstep` (MOVE 10:57, three takes) coasted 0.07 m through its hop;
+with `"flight": "picture"` it travels 1.5 m back (no `swing`; with `swing` the contact test found no flight
+and it fell to 0.2 m: check the log's `flight frames` line, and give `"travel_m": 1.5, "travel_dir": 180`
+when it is missing). `roll` (MOVE 11:19, four takes) went 0.6 m: with `flight` + `swing` 2.6 m forward.
+
+**Facing away (strafes from behind)**: give every take of the lock-on camera `"facing": "away"`; do not force
+`"yaw": 180` on a take the tool read as a front view (the whole-take mirror then fights the frames it
+already had right).
 
 **Breathing holds**: `"breath": {"period": 3.6}` with `"n": 108` at 30 fps. SYNTHESIZED, logged as such.
 

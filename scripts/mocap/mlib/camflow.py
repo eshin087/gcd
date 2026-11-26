@@ -146,3 +146,46 @@ def camera_angles(film, t0, t1, grid, f_px=None, cut_px=60.0, log=print):
     gy = np.interp(grid, tt, yaw)
     gp = np.interp(grid, tt, pitch)
     return gy - gy[0], gp - gp[0], float(use.mean())
+
+
+def floor_travel(T, log=print):
+    """his travel ACROSS THE PICTURE against the floor at his own depth, per frame of take T (60 fps
+    grid): the pelvis' picture x minus the floor's own shift (a band of floor round his feet, his box
+    left out, so a camera that pans or dollies with him is taken out), in metres from his torso's picture
+    length (0.49 m). Returns (n,) metres along the camera's sideways axis (+ = picture right), or None."""
+    import cv2
+    ts, fs = cfg.frames(T.film)
+    import bisect
+    n = len(T.t)
+    l2 = T.l2
+    tor = np.linalg.norm((l2[:, 11, :2] + l2[:, 12, :2]) / 2 - (l2[:, 23, :2] + l2[:, 24, :2]) / 2, axis=1)
+    mpp = 0.49 / np.maximum(np.median(tor), 1)
+    pel = (l2[:, 23, 0] + l2[:, 24, 0]) / 2
+    # the floor's shift between consecutive real frames, on the take's span
+    a = max(bisect.bisect_left(ts, T.t[0] - 1e-3), 1)
+    b = bisect.bisect_right(ts, T.t[-1] + 1e-3)
+    sh = [0.0]
+    tt = [ts[a - 1]]
+    g0 = _gray(fs[a - 1])
+    for i in range(a, b):
+        g1 = _gray(fs[i])
+        k = int(np.clip(np.searchsorted(T.t, ts[i]), 0, n - 1))
+        h, w = g0.shape
+        m = np.zeros((h, w), np.uint8)
+        fy = l2[k, [27, 28], 1].max() * SC
+        H = tor[k] * SC * 3
+        m[int(max(0, fy - 0.25 * H)):int(min(h, fy + 0.35 * H))] = 255
+        x0, x1 = l2[k, :, 0].min() * SC, l2[k, :, 0].max() * SC
+        m[:, max(0, int(x0 - 0.3 * H)):int(x1 + 0.3 * H)] = 0
+        d = _pair(g0, g1, m)
+        sh.append(d[0] if np.isfinite(d[0]) and d[2] > 0.3 else np.nan)
+        tt.append(ts[i])
+        g0 = g1
+    sh = np.array(sh)
+    ok = np.isfinite(sh)
+    if ok.sum() < 0.5 * len(sh):
+        log('  ! floor travel: the floor was not found in most frames of %s' % T.name)
+        return None
+    sh[~ok] = np.interp(np.where(~ok)[0], np.where(ok)[0], sh[ok])
+    floor = np.interp(T.t, np.array(tt), np.cumsum(sh))
+    return (pel - pel[0] - (floor - floor[0])) * mpp

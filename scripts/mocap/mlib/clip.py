@@ -17,7 +17,8 @@ def _take(spec, clip, tk, pad=0.0, log=print):
     T = takes.Take(film, t0, t1, tk.get('view'), tk.get('name', '%s@%.2f' % (tk.get('view'), t0 + pad)),
                    flip=tk.get('flip'), pitch=tk.get('pitch'), yaw=tk.get('yaw'), log=log,
                    calm=tk.get('calm', clip.get('calm', 0.35 if clip.get('kind', 'oneshot') == 'oneshot' else None)),
-                   swing=tk.get('swing', clip.get('swing', False)), yaw2d=tk.get('yaw2d', clip.get('yaw2d', False)))
+                   swing=tk.get('swing', clip.get('swing', False)), yaw2d=tk.get('yaw2d', clip.get('yaw2d', False)),
+                   facing_prior=tk.get('facing', clip.get('facing')))
     T.spec = tk
     T.spec_yaw = tk.get('yaw')
     if tk.get('drop') or tk.get('keys'):
@@ -259,6 +260,9 @@ def build_clip(spec, clip, log=print):
     root = g['root']
     if not loop:
         root[:, :2] -= root[0, :2]
+        if clip.get('flight') == 'picture' and not clip.get('turn'):
+            root = flight_from_picture(B, Ts, root, g['cmask'], fps, log)
+        root = root_overrides(clip, B, root, fps, log)
     # planted feet: flat soles, toes bending at push-off, the ankle at exactly HDIM.ankle
     q, Wflat = post.flatten_feet(q, hips, root, g['cmask'], loop)
     if clip.get('foot_ease'):
@@ -430,3 +434,91 @@ def speed_from_picture(clip, Ts, B):
         v = np.polyfit(T.t, pel[:, 0], 1)[0]
         return abs(v) / px_h * HDIM['height'] / max(abs(np.sin(np.radians(T.yaw))), 0.3)
     return None
+
+
+def _smoothstep(u):
+    u = np.clip(u, 0, 1)
+    return u * u * (3 - 2 * u)
+
+
+def root_overrides(clip, B, root, fps, log):
+    """spec overrides of a one-shot's root travel (when it cannot be measured):
+      "travel_m": 1.4, "travel_dir": 180, ["travel_span": ["t0", "t1"]]  the root travels this far in this
+          direction (deg in his frame: 0 forward, 90 his left, 180 back), eased over the span (default the
+          whole clip); replaces the measured travel
+      "root_keys": [["t" or frame, x, z], ...]  the root's ground position (m, his start frame: +x his left,
+          +z his front) at those moments, eased between them (before the first: the start, 0, 0)"""
+    n = len(root)
+    t0r = B.t_ref[0] if hasattr(B, 't_ref') else 0
+
+    def fr(v):
+        return int(np.clip(v if isinstance(v, int) else round((cfg.parse_time(v) - t0r) * fps), 0, n - 1))
+    if clip.get('travel_m') is not None:
+        a = np.radians(float(clip.get('travel_dir', 0)))
+        d = float(clip['travel_m']) * np.array([np.sin(a), np.cos(a)])
+        f0, f1 = (fr(clip['travel_span'][0]), fr(clip['travel_span'][1])) if clip.get('travel_span') else (0, n - 1)
+        u = _smoothstep((np.arange(n) - f0) / max(f1 - f0, 1))
+        root[:, :2] = u[:, None] * d[None]
+        log('  travel: %.2f m at %.0f degrees (given in the spec), frames %d-%d' % (clip['travel_m'], np.degrees(a), f0, f1))
+    if clip.get('root_keys'):
+        ks = sorted([(fr(k[0]), float(k[1]), float(k[2])) for k in clip['root_keys']])
+        ks = [(0, 0.0, 0.0)] + [k for k in ks if k[0] > 0]
+        out = np.zeros((n, 2))
+        for (fa, xa, za), (fb, xb, zb) in zip(ks[:-1], ks[1:]):
+            u = _smoothstep((np.arange(n) - fa) / max(fb - fa, 1))[:, None]
+            seg = (np.arange(n) >= fa) & (np.arange(n) <= fb)
+            out[seg] = (np.array([xa, za]) * (1 - u) + np.array([xb, zb]) * u)[seg]
+        out[np.arange(n) > ks[-1][0]] = ks[-1][1:]
+        root[:, :2] = out
+        log('  root keys: %d given' % (len(ks) - 1))
+    return root
+
+
+def flight_from_picture(B, Ts, root, cmask, fps, log):
+    """spec "flight": "picture": through frames with no planted foot (a hop back, a roll, a leap) the root
+    travels as his pelvis moves against the FLOOR in each take's picture (camflow.floor_travel), along each
+    camera's sideways axis; two or more takes from different sides give both ground directions (least
+    squares), one take only its sideways one (the other keeps the coasted value)"""
+    from . import camflow
+    n = len(root)
+    step = int(round(60.0 / fps))
+    rows = []  # per take: (axis (n, 2), x (n,))
+    for ti, T in enumerate(Ts):
+        x = camflow.floor_travel(T, log)
+        if x is None:
+            continue
+        s = B.offsets[ti] if getattr(B, 'offsets', None) else 0
+        idx = np.clip(np.arange(n) * step + s, 0, len(T.t) - 1)
+        ax = np.stack([T.Rs[i][0, [0, 2]] for i in idx])
+        rows.append((ax, x[idx]))
+    if not rows:
+        return root
+    air = ~cmask.any(1)
+    out = root.copy()
+    i = 0
+    while i < n:
+        if not air[i]:
+            i += 1
+            continue
+        j = i
+        while j < n and air[j]:
+            j += 1
+        a, b = max(i - 1, 0), min(j, n - 1)
+        for k in range(a + 1, b + 1):
+            A = np.array([r[0][k] for r in rows])
+            y = np.array([r[1][k] - r[1][a] for r in rows])
+            cur = root[k, :2] - root[a, :2]
+            if len(rows) >= 2 and abs(np.linalg.det(A.T @ A)) > 0.05:
+                d = np.linalg.lstsq(A, y, rcond=None)[0]
+            else:
+                u = A[0] / max(np.linalg.norm(A[0]), 1e-6)
+                d = cur - u * (cur @ u) + u * (y[0] / max(np.linalg.norm(A[0]), 1e-6))
+            out[k, :2] = out[a, :2] + d
+        delta = out[b, :2] - root[b, :2]
+        out[b + 1:, :2] = root[b + 1:, :2] + delta
+        log('  flight frames %d-%d: travel from the picture %.2f m (coasted %.2f m)'
+            % (i, j - 1, np.linalg.norm(out[b, :2] - out[a, :2]), np.linalg.norm(root[b, :2] - root[a, :2])))
+        root = root.copy()
+        root[:, :2] = out[:, :2]
+        i = j
+    return out
