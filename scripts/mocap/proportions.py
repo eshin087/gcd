@@ -15,10 +15,10 @@ import numpy as np  # noqa: E402
 from mlib import cfg, takes, skel  # noqa: E402
 
 DEFAULT = {
-    'front': [['move', 3.9, 7.2], ['sword', 9.95, 10.1]],
+    'front': [['move', 3.9, 7.2]],
     'side': [['move', 7.3, 10.2], ['move', 0.1, 3.7]],
     'crown_px': 35.0, 'crown_sw_px': None, 'crown_frame': ['move', 4.96],
-    'sword_side': [['sword', 0.1, 1.9], ['sword', 26.0, 26.4]],
+
 }
 
 

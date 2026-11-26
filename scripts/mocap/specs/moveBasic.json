@@ -131,6 +131,66 @@
    ],
    "from": "run",
    "to": "idle"
+  },
+  {
+   "name": "backstep",
+   "title": "Backstep",
+   "src": "move 10:48-11:17",
+   "kind": "oneshot",
+   "fps": 30,
+   "search": 0.5,
+   "takes": [
+    {
+     "t0": "10:49.45",
+     "t1": "10:51.05",
+     "view": "front-right"
+    },
+    {
+     "t0": "11:05.25",
+     "t1": "11:06.85",
+     "view": "back"
+    },
+    {
+     "t0": "11:12.25",
+     "t1": "11:13.85",
+     "view": "front"
+    }
+   ],
+   "from": "idle",
+   "to": "idle"
+  },
+  {
+   "name": "roll",
+   "title": "Dodge roll",
+   "src": "move 11:17-11:37",
+   "kind": "oneshot",
+   "fps": 60,
+   "search": 0.4,
+   "ground": "body",
+   "takes": [
+    {
+     "t0": "11:18.95",
+     "t1": "11:20.65",
+     "view": "right"
+    },
+    {
+     "t0": "11:25.65",
+     "t1": "11:27.35",
+     "view": "left"
+    },
+    {
+     "t0": "11:31.75",
+     "t1": "11:33.45",
+     "view": "back"
+    },
+    {
+     "t0": "11:34.05",
+     "t1": "11:35.75",
+     "view": "back"
+    }
+   ],
+   "from": "idle",
+   "to": "idle"
   }
  ]
 }

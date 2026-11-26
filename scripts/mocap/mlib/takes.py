@@ -207,7 +207,7 @@ class Take:
       b (n,33,3) body-frame 3D (pelvis-centred); R (3,3) body -> camera rotation; yaw, pitch (deg);
       wax (3,) how well this camera sees his X / Y / Z axes; gap (n,) seconds since a real frame."""
 
-    def __init__(self, film, t0, t1, view, name='', flip=None, pitch=None, yaw=None, log=print):
+    def __init__(self, film, t0, t1, view, name='', flip=None, pitch=None, yaw=None, log=print, calm=None):
         self.film, self.t0, self.t1, self.view, self.name = film, t0, t1, view, name
         tk, l2, w, note = load(film, t0, t1)
         self.note = note
@@ -221,6 +221,14 @@ class Take:
         self.t, self.l2, self.gap = resample(tk, l2, t0, t1)
         _, w, _ = resample(tk, w, t0, t1)
         self.c = to_cam(w)
+        # the frames the camera's yaw / pitch are measured on: all, or (one-shots: tumbles, lunges) only
+        # the calm ends of the take, `calm` seconds at each end, where he stands
+        self.calm = np.ones(len(self.t), bool)
+        if calm:
+            k = int(calm * FPS)
+            self.calm[:] = False
+            self.calm[:k] = True
+            self.calm[-k:] = True
         self.solve_camera(pitch, yaw, log)
 
     def solve_camera(self, pitch=None, yaw=None, log=print):
@@ -228,11 +236,11 @@ class Take:
         # pitch: his standing axis (mid-ankle -> mid-shoulder), median; it should be straight up
         ax = _mid(c, 11, 12) - _mid(c, 27, 28)
         ax /= np.linalg.norm(ax, axis=-1, keepdims=True)
-        m = np.median(ax, 0)
+        m = np.median(ax[self.calm], 0)
         self.pitch = float(np.degrees(np.arctan2(m[2], m[1]))) if pitch is None else float(pitch)
         Rp = rot_x(np.radians(self.pitch))  # tilts the camera frame so his axis is up
         cl = c @ Rp  # level camera frame: rows v -> Rp^T v
-        f1, feet, nose = facing(cl)
+        f1, feet, nose = facing(cl[self.calm])
         yaws = []
         for f in (f1, feet, nose):
             yaws.append(np.degrees(np.arctan2(f[:, 0], f[:, 2])))

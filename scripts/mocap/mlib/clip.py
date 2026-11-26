@@ -15,7 +15,8 @@ def _take(spec, clip, tk, pad=0.0, log=print):
     t0 = cfg.parse_time(tk['t0']) - pad
     t1 = cfg.parse_time(tk['t1']) + pad
     T = takes.Take(film, t0, t1, tk.get('view'), tk.get('name', '%s@%.2f' % (tk.get('view'), t0 + pad)),
-                   flip=tk.get('flip'), pitch=tk.get('pitch'), yaw=tk.get('yaw'), log=log)
+                   flip=tk.get('flip'), pitch=tk.get('pitch'), yaw=tk.get('yaw'), log=log,
+                   calm=tk.get('calm', clip.get('calm', 0.35 if clip.get('kind', 'oneshot') == 'oneshot' else None)))
     T.spec = tk
     log('  take ' + T.summary())
     return T
@@ -164,7 +165,7 @@ def build_clip(spec, clip, log=print):
         from . import sword
         blade = sword.blade_dirs(spec, clip, B, Ts, log=log)
         B.blade = blade
-    Rw = retarget.world_rotations(b, blade)
+    Rw = retarget.world_rotations(b, blade, tumble=clip.get('ground') == 'body')
     q = skel.world_to_local(Rw)
     q = skel.continuous(q)
     # light quaternion smoothing (positions were smoothed already)

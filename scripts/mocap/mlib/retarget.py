@@ -96,15 +96,29 @@ def _line(v, max_yaw):
 HEAD_PITCH0 = np.radians(12.0)  # the tool's nose sits below the ears' line on a level head
 
 
-def world_rotations(b, blade=None):
+def _line_tumble(v):
+    """a left-right line through a tumble: no clamp (he turns upside down), but kept continuous: a frame
+    whose line points against the last one's had its sides swapped by the tool"""
+    v = _n(v.copy())
+    for i in range(1, len(v)):
+        if v[i] @ v[i - 1] < 0:
+            v[i] = -v[i]
+    return _n(smooth_time(v, 1.5))
+
+
+def world_rotations(b, blade=None, tumble=False):
     """b (n,33,3) body-frame landmarks -> world rotations (n,J,4) in the root's frame.
     blade (n,3) optional: the sword's direction (unit) in the body frame; sets the right hand's roll."""
     n = len(b)
     R = np.zeros((n, J, 4))
     R[:, 0] = skel.qident((n,))
     up_t = _n(_mid(b, 11, 12) - _mid(b, 23, 24))
-    hipL = _line(b[:, 23] - b[:, 24], 70)
-    shL = _line(b[:, 11] - b[:, 12], 110)
+    if tumble:
+        hipL = _line_tumble(b[:, 23] - b[:, 24])
+        shL = _line_tumble(b[:, 11] - b[:, 12])
+    else:
+        hipL = _line(b[:, 23] - b[:, 24], 70)
+        shL = _line(b[:, 11] - b[:, 12], 110)
     R[:, JI['hips']] = skel.frame_q(X, Y, hipL, up_t)
     R[:, JI['chest']] = skel.frame_q(X, Y, shL, up_t)
     R[:, JI['spine']] = skel.qslerp(R[:, JI['hips']], R[:, JI['chest']], 0.5)
