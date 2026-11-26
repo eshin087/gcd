@@ -683,6 +683,62 @@
    "from": "crouchSprint",
    "to": "crouchIdle",
    "draft": true
+  },
+  {
+   "name": "walkToCrouch",
+   "title": "Walk / run / sprint to crouch",
+   "src": "move 14:12-14:28",
+   "kind": "oneshot",
+   "fps": 30,
+   "search": 0.3,
+   "takes": [
+    {
+     "t0": "14:13.95",
+     "t1": "14:14.95",
+     "view": "right"
+    },
+    {
+     "t0": "14:15.15",
+     "t1": "14:16.15",
+     "view": "right"
+    }
+   ],
+   "from": "walk",
+   "to": "crouchWalk"
+  },
+  {
+   "name": "runToCrouch",
+   "title": "Walk / run / sprint to crouch",
+   "src": "move 14:12-14:28",
+   "kind": "oneshot",
+   "fps": 30,
+   "search": 0.3,
+   "takes": [
+    {
+     "t0": "14:18.50",
+     "t1": "14:19.50",
+     "view": "right"
+    }
+   ],
+   "from": "run",
+   "to": "crouchRun"
+  },
+  {
+   "name": "sprintToCrouch",
+   "title": "Walk / run / sprint to crouch",
+   "src": "move 14:12-14:28",
+   "kind": "oneshot",
+   "fps": 30,
+   "search": 0.4,
+   "takes": [
+    {
+     "t0": "14:25.90",
+     "t1": "14:26.90",
+     "view": "right"
+    }
+   ],
+   "from": "sprint",
+   "to": "crouchRun"
   }
  ]
 }
