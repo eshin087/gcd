@@ -19,6 +19,14 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-25',
+        title: 'The resolution follows the frame rate',
+        notes: [
+          'A new quality setting, AUTO, is on by default: when your device cannot hold 60 frames a second the game draws at a lower resolution, and climbs back when there is room (never in the middle of a fight).',
+          'F2 or the pause menu cycles AUTO, LOW, MEDIUM and HIGH. A new 60 FPS CAP in the pause menu is on by default on phones and tablets, to keep them cooler.',
+        ],
+      },
+      {
+        date: '2026-11-25',
         title: 'The hero runs like a swordsman: the blade carried forward at his hip',
         notes: [
           'On the run the hero now carries his sword forward, low at his hip, its point rocking with his arm, instead of trailing it behind him on a bent wrist.',

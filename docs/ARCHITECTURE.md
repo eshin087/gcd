@@ -30,7 +30,11 @@ wheel zoom → mouse ray (mouseGround) → gamepad.update(realDt) → touch.upda
 → lab.postUpdate() → camera (rig, realDt) → view override → shared uniforms
 → hud.update(realDt) → audio.update(realDt) → render
 → lab.postRender()   (same task: the Lab model viewer's sheet reads the drawn frame back)
+→ AUTO quality (main.js autoStep, ADR-200: the frame's interval, script ms and GPU ms into
+  game.autoQ; a step changes the size through applyQuality, for the next frame)
 ```
+Before all of it the frame-rate cap (`game.pacer.tick(now)`, a touch device by default) may skip a
+refresh; a skipped refresh runs nothing and its time joins the next drawn frame's `realDt`.
 **Simulation steps** (ADR-103, `core/timestep.js`): a frame of `realDt` s (at most `FRAME_MAX` 0.1 s) is
 simulated in `simSteps(realDt)` equal steps, none longer than `STEP.max` 1 / 60 s × (1 + `slack` 0.25)
 = 20.8 ms: one step at 50 Hz and above (as before), two steps of 1 / 60 s at 30 fps, three at 20 fps,
@@ -124,7 +128,7 @@ ADR-120).
 | `state` | owned by flow: `'title' | 'explore' | 'bossIntro' | 'boss' | 'dead' | 'victory' | 'paused'` |
 | `time`, `realTime`, `dt`, `realDt`, `timeScale`, `fps` | clocks (`dt` / `realDt` / `fxDt`: of the running simulation step) |
 | `frameDt`, `simSteps` | the rendered frame's real time and the number of simulation steps it was cut into (Frame order) |
-| `settings` | `{ quality: 0..2, showFps: bool }`; `applyQuality()` re-applies. A preset (`CONFIG.quality[i]`) is `{ name, grass, dpr, shadow }`: grass blades drawn, max device pixel ratio, moon shadow map size in texels (LOW 1024, MEDIUM / HIGH 2048; `CONFIG.render.shadowSize` 2048 is only the size before the first `applyQuality`). Touch devices start on `CONFIG.defaultQualityTouch` (LOW) unless the player picked one. |
+| `settings` | `{ quality: 0..2, showFps: bool, autoQuality: bool, fpsCap: true / false / null }`; `applyQuality()` re-applies. With `autoQuality` (default `CONFIG.autoQuality.on`; `?autoq=0|1`) the render scale, shadow map and grass are `game.autoQ.step` (`render/autoQuality.js`, ADR-200: `AutoQuality` decides from each drawn frame's interval, script ms and GPU ms where `EXT_disjoint_timer_query_webgl2` exists; steps up only in a calm state: title, explore, paused, dead, victory) instead of a preset; F2 cycles AUTO → LOW → MEDIUM → HIGH → AUTO (`flow.cycleQuality`). `fpsCap` null = capped on a touch device (`CONFIG.fpsCap`; `game.pacer`, a `FramePacer`: every n-th refresh). `game.autoBench` = the title's first-guess reading. A preset (`CONFIG.quality[i]`) is `{ name, grass, dpr, shadow }`: grass blades drawn, max device pixel ratio, moon shadow map size in texels (LOW 1024, MEDIUM / HIGH 2048; `CONFIG.render.shadowSize` 2048 is only the size before the first `applyQuality`). Touch devices start on `CONFIG.defaultQualityTouch` (LOW) unless the player picked one. |
 
 Shared combat rules: `src/combat/rules.js` — `TELL`, `RESULT`, `TELL_STYLE`, `DEFENSE`, `POSTURE`,
 `tellDefaults(tell)`, `facingDelta(...)`. Never hard-code these windows in actor code. `DEFENSE.plunge`
