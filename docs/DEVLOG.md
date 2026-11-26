@@ -5,6 +5,27 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-26 — Lu Wusheng, Wen Yao and the wyrm audited; held blue / red windups, released feet, quick blows (ADR-223; branch `claude/enemies-grove-fox-wyrm-motion-59bc46`)
+
+**Task** (from the session coordinating the boss motion pass): audit and fix Lu Wusheng's, Wen Yao's and the Cinder
+Wyrm's poses and motion; give their blue / red attacks readable held windup poses; add a few much faster normal
+blows; films before / after, the owner picks; behind switches.
+
+**Measured** (`tests/integration/motionAudit.mjs`; `sheath.mjs . audit`, `fox.mjs . audit`, `integ.mjs . wyrmaudit`,
+env `GCD_MOVES`, `GCD_LOOKS`, `GCD_TRACE`, `GCD_AUDIT_OUT`): the blue / red blows that are not draws / casts / long
+charges held 0.00 - 0.13 s; Wen Yao's planted foot jumped up to 0.53 m in a frame (his clip lifting a foot his root
+had left behind); Lu Wusheng's scabbard cuts fling the free hand 0.32 m in a frame; facing at the impact fine.
+
+**What.** `duelist/heldTells.js` (+ `realise.js` `keysOf` → `{ keys, hold }`); `anim.js` `opts.liftEase` (bosses
+only, `kit.animOpts`); `dragon/tellPose.js`, `tuningMotion.js`, attacks.js makeString; the quick blows in each boss's
+moves / tuning; Lab LOOKS rows (awaiting). Tests: sheath / fox `motion`, integ `wyrmheld`, the data floors.
+
+**Verified.** The suites' scenarios; films at the game camera and a side view (headless Edge, `__tick`): before
+| a | b for four blows a boss, the quick blows, sent to the owner.
+
+**Open.** The owner's picks (then the defaults, the PICKED table, and the PACE suites with the picks); Lu
+Wusheng's free hand in the scabbard cuts; the same foot ease for Shen Hui and Varr Nihil (their session).
+
 ## 2026-11-26 — The lite world on a phone at AUTO's floor (ADR-216; branch `render/phone-lite`)
 
 **Owner:** the BENCH from their iPhone (fox: the world pass 11.8 of 13.3 ms; half the pixels only 32 % less);

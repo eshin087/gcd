@@ -19,6 +19,11 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-26',
+        title: 'Blue and red blows you can read, and quick blows (to try)',
+        notes: ['To try (the game is unchanged without them): add ?sheathMotion=a, ?foxMotion=a or ?wyrmMotion=a to the address and Lu Wusheng, Wen Yao or the Cinder Wyrm holds still for a moment before each blue or red blow, standing tall for blue and sinking low for red. ?sheathQuick=a, ?foxQuick=a and ?wyrmQuick=a add a quick white blow straight from the stance: block it or parry it on the glint.'],
+      },
+      {
+        date: '2026-11-26',
         title: 'A lighter world on phones that need it',
         notes: ['On a phone that still drops frames at the lowest resolution, the ground\'s extra details turn off and the stone floors are drawn more simply, so fights stay smooth. Add ?lite=0 to the address to keep the full look.'],
       },

@@ -189,6 +189,14 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.93 — Boss motion: Lu Wusheng, Wen Yao, the wyrm (2026-11-26, `claude/enemies-grove-fox-wyrm-motion-59bc46`, ADR-223)
+- [x] The audit tool (`tests/integration/motionAudit.mjs`): hands, pops, sliding feet, facing, the held windup per tell
+- [x] Held blue / red windups, coloured (blue tall, red low), behind `?sheathMotion=` `?foxMotion=` `?wyrmMotion=`
+- [x] Wen Yao's lifted feet no longer jump (the release ease)
+- [x] A quick white blow each behind `?sheathQuick=` `?foxQuick=` `?wyrmQuick=`
+- [ ] The owner's picks made the defaults
+- [ ] Lu Wusheng's free hand in the scabbard cuts; the foot ease for Shen Hui and Varr Nihil
+
 ## M1.92 — The melee animation engine: boss blows from reference footage (2026-11-26, `enemies/fists-ref`, ADR-208)
 - [x] `scripts/mocap` on `main` as a tool; `scripts/mocap/duelist/fit.mjs` fits a clip onto a duelist's blows (`--check` through the real animator); the guide
 - [x] Tian Lei from the bare-handed film, shown behind `?fists=ref`: turned down by the owner (stiff arms; the lunges and feet); not merged
