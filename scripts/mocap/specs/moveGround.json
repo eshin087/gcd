@@ -133,6 +133,24 @@
    "to": "idle"
   },
   {
+   "name": "runPivot",
+   "title": "Run to pivot",
+   "src": "move 2:29-2:48",
+   "kind": "oneshot",
+   "fps": 30,
+   "turn": 180,
+   "search": 0.4,
+   "takes": [
+    {
+     "t0": "2:31.90",
+     "t1": "2:33.30",
+     "view": "right"
+    }
+   ],
+   "from": "run",
+   "to": "run"
+  },
+  {
    "name": "backstep",
    "title": "Backstep",
    "src": "move 10:48-11:17",

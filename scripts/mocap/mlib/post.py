@@ -18,9 +18,13 @@ def facing_yaw(b, fps, sigma_s=0.12):
     shoulder lines, the feet (heel -> toe) and the nose, unwrapped and smoothed"""
     from .takes import facing
     f1, feet, nose = facing(b)
-    v = 2.0 * f1 + 1.0 * feet + 0.7 * nose
+    # the feet and the nose are fair from every side; the hip / shoulder line only from the front or back
+    # (its depth flips from the side): it gets a small weight. Smooth the VECTORS, then take the angle
+    v = feet + nose + 0.4 * f1
+    v[:, 1] = 0
+    v = v / np.maximum(np.linalg.norm(v, axis=1, keepdims=True), 1e-9)
+    v = smooth_time(v, sigma_s * fps)
     yaw = np.unwrap(np.arctan2(v[:, 0], v[:, 2]))
-    yaw = smooth_time(yaw[:, None], sigma_s * fps)[:, 0]
     return yaw - yaw[0]
 
 

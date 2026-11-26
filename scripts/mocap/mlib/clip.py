@@ -187,6 +187,11 @@ def build_clip(spec, clip, log=print):
     yaw_all = post.facing_yaw(b, fps)
     if clip.get('turn'):
         yaw = yaw_all
+        if not isinstance(clip['turn'], bool):
+            # the author knows the turn (a pivot is 180, a turn +-90): scale the measured curve to it
+            want = np.radians(float(clip['turn']))
+            if abs(yaw[-1]) > 1e-3:
+                yaw = yaw * (want / yaw[-1])
         b = post.rotate_y(b, yaw)
         if blade is not None:
             blade = post.rotate_y(blade[:, None], yaw)[:, 0]
