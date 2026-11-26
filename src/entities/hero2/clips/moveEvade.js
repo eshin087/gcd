@@ -70,11 +70,11 @@ export default {
    },
    "events": [
     {
-     "f": 9,
+     "f": 8,
      "name": "air"
     },
     {
-     "f": 19,
+     "f": 17,
      "name": "land"
     }
    ],
@@ -147,7 +147,7 @@ export default {
      "name": "air"
     },
     {
-     "f": 55,
+     "f": 44,
      "name": "land"
     }
    ],
