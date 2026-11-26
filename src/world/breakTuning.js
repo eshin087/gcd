@@ -371,7 +371,7 @@ export const SCAR = Object.freeze({
     veil: Object.freeze({ grit: 0.35, rubble: 0.25, ground: 0.4, cool: true }),
     // Halcyon Plaza: no thinning; `cool` waits on the owner (the sheet of round 2: orange today vs grey;
     // `?coolRubble=1` shows it grey in the game): true to ship it
-    city: Object.freeze({ grit: 1, rubble: 1, ground: 1, cool: false }),
+    city: Object.freeze({ grit: 1, rubble: 1, ground: 1, cool: true }),
   }),
   /** at the cap this share of the oldest marks goes, fading out over `fade` s (never a pop in view) */
   evict: 0.15,
