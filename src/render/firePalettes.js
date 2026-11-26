@@ -73,6 +73,23 @@ export const FIRE_PALETTES = {
     stops: [[0.38, 0.008, 0.015], [1.1, 0.03, 0.04], [1.8, 0.12, 0.1], [2.5, 0.42, 0.34], [3.0, 0.9, 0.8]],
     hdr: 0.6, fill: 0.08, back: [0.5, 0.8], lick: 0.35, erode: 0.6, boil: 12, warp: 0.5, haze: [0.9, 0.2, 0.2],
   },
+  // AZURE (the Veiled Crossing: Bai Wuji's blue pull, his eyes from phase 2). A swap of the void slot
+  // (untouched/fx.js WjFx: the slot's resting look on that level; it turns to `void`'s violet only for
+  // the Null and the realm's edge). A deep ink-blue rim, an electric blue body, a pale ice heart: bluer
+  // and harder than `pearl` (a pull that bites, not a moon). It hardly climbs (a knot stays a knot).
+  azure: {
+    stops: [[0.02, 0.07, 0.62], [0.05, 0.28, 1.6], [0.2, 0.78, 2.5], [0.85, 1.7, 3.0], [2.3, 2.85, 3.3]],
+    hdr: 0.6, fill: 0.07, back: [0.5, 0.8], lick: 0.3, erode: 0.7, boil: 11, warp: 0.6, haze: [0.34, 0.6, 1.0],
+  },
+  // CRIMSON (the Veiled Crossing: his red push, Crimson Cast). A swap of the FIRE slot for the length of
+  // his fight (WjFx; the engine's fire is back on a reset, his death, before the fight). Its rim keeps the
+  // fire's red (the red cues, which print the fire kind at a low heat, read as they always do); the body
+  // is crimson, the heart a hot pale rose, never orange or yellow. Climbs half as far as flame (a point
+  // stays a point; the bonfire and the lamps, out of the fight's view, still flicker).
+  crimson: {
+    stops: [[0.44, 0.012, 0.03], [1.3, 0.04, 0.08], [2.2, 0.16, 0.2], [2.85, 0.8, 0.78], [3.2, 2.5, 2.45]],
+    hdr: 0.6, fill: 0.08, back: [0.5, 0.8], lick: 0.5, erode: 0.75, boil: 12, warp: 0.6,
+  },
   steel: {
     stops: [[0.5, 0.5, 0.6], [1.2, 1.2, 1.32], [1.9, 1.88, 1.85], [2.7, 2.65, 2.55], [3.5, 3.4, 3.2]],
     hdr: 0.6, fill: 0.06, back: [0.3, 0.55], lick: 0, erode: 0, boil: 12, warp: 0,
