@@ -1235,7 +1235,7 @@ the pick (tests). The blade is still the hit test, so each look is swung at the 
 **One hand, two hands** (ADR-071; it was two hands on every swing, ADR-046): the chain, the sprint
 slash and the roll cut are one-handed, the free hand keyed against the sword hand; the slam, the
 charge and the cleave hold the grip with both (`twoHand` 1, the off hand IK'd to the grip point;
-the cleave lets go in its follow-through). The block is two-handed. The hero's (ADR-204, `refStance.js` `refGuard`,
+the cleave lets go in its follow-through). The block is two-handed. The hero's (ADR-206, `refStance.js` `refGuard`,
 `guardMode()` / `setGuard(id)`, `?guard=ward`): a braced crouch (`REF_GUARD.sink` 0.3 s into it on `A.t`), the feet
 settling to `REF_GUARD.feet`, both hands on the grip before the right shoulder with the elbows out, the blade rising
 ~32° across his face to his left (upright seen from his side), the flat to the enemy. `?guard=ward` and every
@@ -1266,12 +1266,17 @@ of the pose they began in (`swordFromEntry`, `SWORD_ENTRY` 0.16 s) and the loco 
 blade into the stance over `LOCO_SETTLE` (0.24 s).
 **The run's free arm** (ADR-187, `runArms.js`): in the hero's `loco()` the free (left) arm is
 `runArm(p, P, A, phase, armF, sprint, runK, moveW, mz)`'s: one of three carries (`?runArm=a|b|c|old`,
-`runArmMode()` / `setRunArm(id)`, default `a`, the owner's pick), written as joint angles (`RUN_ARMS`: the shoulder's swing, how
+`runArmMode()` / `setRunArm(id)`, default `d`, the owner's pick, ADR-204; `d` the full pump), written as joint angles (`RUN_ARMS`: the shoulder's swing, how
 far the arm stands off his side, the elbow, the forearm's cross) and posed by forward kinematics into `lH`, `lP`,
 `lD`, `lN` and `hs`, with weight `moveW`. `a` swings like a runner (a pump at a sprint), `b` holds the dash (swept
 back behind him; forward only: a strafe or a backpedal swings as `a`), `c` is `a` on the run blending into `b` as
 the sprint builds. The dash's weight eases on `A.time` (`A.runArmS`), so `loco()` may run more than once a frame.
 `old` returns false and `loco()` writes the swing before ADR-187. A duelist's footwork never calls it.
+**The run's sword arm** (ADR-204, `runSword.js`): `runSword(OUT, phase, armF, sprint, tilt)` fills the sword
+hand's targets on the run (`OUT.h` → `rH`, `OUT.p` → `rP`, `OUT.d` the blade, `OUT.f` its flat → `swF`) from joint
+angles (`RUN_SWORDS`) posed by forward kinematics against the torso's line, turned by its lean `tilt`; `?runSword=hip|old`,
+`runSwordMode()` / `setRunSword(id)`, default `hip` (the blade forward at the hip). `old` returns false and `loco()`
+keeps the carry before. `loco()` blends the backpedal, the fight carry and the sprint over it.
 **Idle life** (ADR-047): in the loco clip, standing still in the `idle` state, at ease (not locked
 on, not in the fight stance: `fightW` ≤ 0.05), with no guard held, for `IDLE_LIFE.after` (2.5 s), `HeroAnimator._idleLife` starts an action from `FIDGETS`
 every `IDLE_LIFE.gap` (2–4.5 s after the last one ends), picked with the animator's own noise (never
@@ -1299,7 +1304,7 @@ otherwise); `swordMystic.js` reads it: the flame swells toward the top tier (`SP
 longer tongues), the rite's flame waits above the fingers' front, and each writes the flame's marks through the same
 batch (`SPELL`: the rite's embers, the sigil's ring at knee height, the breath's thread). The idles draw on
 `anim.idleNoise`, never `anim.noise` (which picks an attack's look).
-**The reference's idles** (ADR-204, `refStance.js`, the default: `idlesMode()` `'ref'`; `?idles=new` is the paragraph
+**The reference's idles** (ADR-206, `refStance.js`, the default: `idlesMode()` `'ref'`; `?idles=new` is the paragraph
 above, `?idles=old` the belt; `setIdles` takes the three): `stand()` writes `refStand` (the one-handed stand,
 `REF_STAND`) at ease and `refReady` (the two-handed hold, `REF_READY`: `twoHand` 1) in the fight, blended by `fightW`
 (the free hand takes the grip late: `twoHand` = smoothstep(0.35, 0.95, fightW); on the move it lets go by

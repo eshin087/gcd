@@ -6087,7 +6087,59 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   lash, rakes, cataclysm) still curl the neck back over the spine, where 'upright against the body' is ill
   defined and the head can sit rolled; the leap's and pounce's neck strikes stay fast.
 
-## ADR-204 — The hero's idles and guard after the owner's reference footage (2026-11-25)
+## ADR-204 — The run carried like the owner's reference: the blade forward at the hip, a full pump, a closed fist (2026-11-25)
+
+- **Context:** the owner, after the run's free arm (ADR-187): "make the right angle hold the sword at a proper
+  natural angle ... make the left hand fist look like a hand ... right now it looks like a weird stump". Two option
+  rounds were turned down (sword: a relaxed trail, a low sweep, both still pointing back; hand: an open hand and a
+  loose fist with jointed fingers). They gave a reference film (a knight sprinting with a straight sword; its name
+  stays out of the game) and asked for its arms mirrored. Measured on the carry before: the blade pointed behind
+  him (azimuth -144 … -161°) on a wrist bent 62 - 87° off the forearm, and barely moved over a stride (3° of
+  elevation on the run, none at a sprint).
+- **Decision:**
+  1. **The sword carry `hip`** (`player/runSword.js`, `?runSword=hip|old`, the Lab's `run sword` row, default):
+     the blade forward, low at the right hip, rocking with the forearm. Joint angles posed by forward kinematics
+     against the torso's own line, then turned by its lean (`runSword(OUT, ph, armF, s, tilt)`); the blade is the
+     forearm's line plus a grip angle on the thumb side (a hammer grip), floored 34° below level. `RUN_SWORDS.hip`:
+     run `{ phi: [-9, 17], ab: 11, el: [108, 134], grip: [56, 64], out: 6 }`, sprint `{ phi: [-10, 27], ab: 13,
+     el: [98, 126], grip: [58, 77], out: 5 }`. The blade's flat is rolled 40° toward the game camera: edge-down (as
+     in the reference) printed as a one-cell line at 720p. `loco()` keeps its blends over it (backpedal, the fight
+     carry FIGHT_RUN, the sprint). The relaxed trail and the low sweep are removed.
+  2. **The free-arm carry `d`, the full pump** (`player/runArms.js` `RUN_ARMS.pump`, default): the fist forward
+     before the belly (upper arm +21°, elbow 85° at a sprint), the elbow high behind the back (upper arm -57°,
+     elbow 100°), turned by the lean; the walk as `a`. `a`, `b`, `c` and `old` stay.
+  3. **The free hand as a closed fist** (`gear/handShape.js` `fistHand`, `?handLook=g`, default): the back of the
+     hand and the knuckle line as wide as the bracer, the curled fingers a roll under the palm, the thumb a bump over
+     the front; no finger detail (the owner: "we don't need to worry about the detail like fingers"). `h` is the
+     same as a dark glove with a flared cuff. The sword fingers and the fist on the grip keep their shapes. The fist is
+     built from as many geometries as the hand before it (12): each draws a uuid from the seeded Math.random, and a
+     hand of 6 pieces shifted the seeded fights (the sheath's pace check fell from x1.05 to x1.01).
+- **Consequences:** at a sprint the blade rocks -21 … +23° (reference -20 … +25), the wrist 57 - 76°, the point
+  at least 63 cm off the ground, its worst jump 2.2 cm a frame²; the run is the same shape at about 60 % of the
+  swing. Seen from the game camera running away (north) the blade is mostly hidden under the cape, as the
+  reference's is from behind; the larger `out` yaw is the knob if steel should show there. Still open: the run
+  start from standing still jumps the point ~26 cm on loco's first frame (the idle rest's hand-over, any carry);
+  the torso leans 24 - 25° at a sprint against the reference's 20°. `?runSword=old`, `?runArm=a` and
+  `?handLook=a` give the run before. The owner played the new run and picked hand g of g / h (2026-11-25).
+
+## ADR-205 — Local test runs go easy on the owner's PC: one shared pool of slots, low priority, `--only` (2026-11-25)
+
+- **Context:** the owner's PC (i9-14900KF, 32 threads, 128 GB) sat at 100% CPU: two agents' `npm test`
+  ran at once, each starting all 24 tasks side by side (~40 node processes, ~75 GB), and eight preview
+  servers from finished worktrees were still running. The owner games on the same machine and asked
+  that agents stop straining it, without slowing what it takes to get a PR merged.
+- **Decision:** with no `CI` env, `tests/run.mjs` runs every worker at below-normal priority and takes a
+  slot from one machine-wide pool (`<tmp>/abyss-test-slots`, `ABYSS_JOBS`, default 8) before starting a
+  task; a slot names its run's pid and a dead run's slot is taken over. A stopped run kills its workers.
+  `--only <names>` runs a subset of the tasks. CLAUDE.md asks agents to test only what they changed
+  while working, never to start a second `npm test`, and to stop their servers before finishing.
+- **Why this way:** a per-run cap still lets several agents pile up; a shared pool caps the machine.
+  Low priority is what keeps a game smooth beside them: Windows serves the game's threads first.
+- **Consequences:** CI is unchanged (it sets `CI`), so a PR's check takes as long as before. A full
+  local run alone takes longer (8 at a time, not 24); runs from several agents queue instead of
+  slowing each other. `ABYSS_JOBS=2` while gaming lowers it further.
+
+## ADR-206 — The hero's idles and guard after the owner's reference footage (2026-11-25)
 
 - **Context:** the owner gave three sections of their reference footage, "for all the idle animation and poses for
   you to mirror to this game", and one for "the guarding stance and animation". Asked, they answered: the

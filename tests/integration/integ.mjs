@@ -8560,23 +8560,25 @@ async function scenarioHeroArms() {
   return G;
 }
 
-// ================================================================== scenario: the run's free arm (ADR-187)
-// The hero's free (left) arm on the run, each carry of runArms.js (`?runArm=a|b|c|old`) through the
+// ================================================================== scenario: the run's arms (ADR-187, ADR-204)
+// The hero's free (left) arm on the run, each carry of runArms.js (`?runArm=a|b|c|d|old`) through the
 // same course: a run start and stop, the run, a sprint start, the sprint and its end, a strafe and a
 // backpedal in the fight (lock-on play is mostly strafing), a turn, and out of the run into a light,
 // a roll, a block and the flask. Measured in his own frames (the elbow in the chest's, the hand and
 // the elbow's point in the body's: the drawn figure is lean-sheared): the free elbow's range, how far
 // it flares from the front, the hand's path, and a pop audit (the largest frame-to-frame second
-// difference of the free wrist and elbow, and of the sword hand, which this pass does not touch).
+// difference of the free wrist and elbow, and of the sword hand). Then the sword arm on the run, each carry of
+// runSword.js (`?runSword=hip|old`, ADR-204) through stand → run → sprint → run → stop: the blade's
+// direction, the point's height, the grip's side and the pops.
 async function scenarioHeroRun() {
-  out('\n== scenario HERORUN (the free arm on the run: natural, the dash, by speed; elbows, the hand\'s path, pops, transitions) ==');
+  out('\n== scenario HERORUN (the arms on the run: the free arm\'s carries, the sword carry; elbows, the hand\'s path, the blade, pops, transitions) ==');
   const { P } = await imp('src/entities/player/anim.js');
   const RA = await imp('src/entities/player/runArms.js');
   const DEG = 180 / Math.PI;
   const LANE = [-10, 13]; // open ground (HEROARMS)
   const res = {};
   const f1 = (x) => (x * 100).toFixed(1);
-  for (const mode of ['old', 'a', 'b', 'c']) {
+  for (const mode of ['old', 'a', 'b', 'c', 'd']) {
     RA.setRunArm(mode);
     const G = build();
     const { game, input } = G;
@@ -8712,8 +8714,8 @@ async function scenarioHeroRun() {
   }
   // the checks. (Each carry's own numbers above; 'old' is the swing before ADR-187, the baseline.)
   const O = res.old, rng = (S) => S.el[1] - S.el[0], span = (S, i) => S.hi[i] - S.lo[i];
-  for (const m of ['a', 'b', 'c']) assert(Object.values(res[m]).every((S) => S.n > 10 && !S.nan), `${m}: every stretch measured, nothing NaN`);
-  for (const m of ['a', 'c']) {
+  for (const m of ['a', 'b', 'c', 'd']) assert(Object.values(res[m]).every((S) => S.n > 10 && !S.nan), `${m}: every stretch measured, nothing NaN`);
+  for (const m of ['a', 'c', 'd']) {
     const R = res[m].run, S = res[m].strafe, B = res[m].back;
     assert(R.el[0] >= 65 && R.el[1] <= 125 && rng(R) >= 35 && R.flare <= 0.45 && R.popW <= 2.5,
       `${m}, the run: a runner's arm, the free elbow ${R.el[0].toFixed(0)}-${R.el[1].toFixed(0)}° (65-125; old ${O.run.el[0].toFixed(0)}-${O.run.el[1].toFixed(0)}), working ${rng(R).toFixed(0)}° a stride (≥ 35), in beside the ribs (flare ${R.flare.toFixed(2)} ≤ 0.45), no pop (wrist ${f1(R.popW)} cm ≤ 2.5)`);
@@ -8729,6 +8731,12 @@ async function scenarioHeroRun() {
     const Sa = res.a.sprint;
     assert(Sa.el[0] >= 55 && Sa.el[1] <= 120 && Sa.flare <= 0.45 && span(Sa, 1) >= 0.3,
       `a, the sprint: a pump chin to hip, the elbow ${Sa.el[0].toFixed(0)}-${Sa.el[1].toFixed(0)}° (55-120), in (flare ${Sa.flare.toFixed(2)} ≤ 0.45), the hand ${f1(span(Sa, 1))} cm up and down (≥ 30)`);
+  }
+  {
+    // (d, ADR-204: the full pump, the fist before the belly ↔ behind the hip, the elbow near a right angle)
+    const Sd = res.d.sprint;
+    assert(Sd.el[0] >= 70 && Sd.el[1] <= 115 && Sd.flare <= 0.45 && span(Sd, 2) >= 0.35 && Sd.popW <= 2.5,
+      `d, the sprint: a full pump, the elbow ${Sd.el[0].toFixed(0)}-${Sd.el[1].toFixed(0)}° (70-115), in (flare ${Sd.flare.toFixed(2)} ≤ 0.45), the hand ${f1(span(Sd, 2))} cm fore and aft (≥ 35), no pop (${f1(Sd.popW)} cm ≤ 2.5)`);
   }
   for (const m of ['b', 'c']) {
     const S = res[m].sprint;
@@ -8751,8 +8759,103 @@ async function scenarioHeroRun() {
     assert(Math.max(rl.popW, rl.popE, bl.popW, bl.popE) <= 27, `c, out of the dash into a roll / a block: the free arm's jolt stays under 27 cm a frame² (${f1(Math.max(rl.popW, rl.popE, bl.popW, bl.popE))}; known, ADR-187)`);
   }
   // the default and the switch
-  assert(RA.runArmMode() === 'a' && RA.setRunArm('zz') === 'a' && RA.setRunArm('old') === 'old' && RA.setRunArm(null) === 'a', `?runArm= defaults to 'a' (natural, the owner's pick); unknown values fall back to it`);
+  assert(RA.runArmMode() === 'd' && RA.setRunArm('zz') === 'd' && RA.setRunArm('old') === 'old' && RA.setRunArm(null) === 'd', `?runArm= defaults to 'd' (the full pump, for the owner's look on the draft); unknown values fall back to it`);
+  await heroRunSword();
   return G;
+}
+
+// HERORUN's second half (ADR-204): the sword arm on the run, each carry of runSword.js, through stand → run →
+// sprint → run → stop, measured in his body frame (the lean shear off): the blade's direction (its forward
+// part and its elevation against level ground), the point's height over the grass, the grip's side, and the
+// pops (the largest frame-to-frame second difference of the grip and the point).
+async function heroRunSword() {
+  const RS = await imp('src/entities/player/runSword.js');
+  const DEG = 180 / Math.PI;
+  const { DIM: HD } = await imp('src/entities/player/model.js');
+  const tip = HD.drawnTip ?? HD.steelTip ?? 0.9;
+  const LANE = [-10, 13];
+  const res = {};
+  const f1 = (x) => (x * 100).toFixed(1);
+  for (const mode of RS.RUN_SWORD_IDS) {
+    RS.setRunSword(mode);
+    const G = build();
+    const { game, input } = G;
+    fightSetup(G);
+    const p = game.player, r = p.rig, A = p.anim;
+    p.debug.god = true;
+    p.debug.fightStance = false;
+    p.lean.on = false;
+    const Gp = new THREE.Vector3(), Pt = new THREE.Vector3(), PtW = new THREE.Vector3(), w = new THREE.Vector3(), q = new THREE.Quaternion();
+    const prev = { G: [new THREE.Vector3(), new THREE.Vector3()], P: [new THREE.Vector3(), new THREE.Vector3()], n: 0 };
+    const segs = {};
+    let cur = null;
+    const go = (sec, name) => {
+      cur = name;
+      if (name) segs[name] ??= { n: 0, fwd: 9, el: [90, -90], ptY: 9, gx: -9, popG: 0, popP: 0, nan: 0, ph: [A.phase, A.phase] };
+      for (let i = 0, n = Math.round(sec / DT); i < n; i++) {
+        game.mouseGround.set(p.position.x, 0, p.position.z - 60);
+        G.tick(DT);
+        r.body.worldToLocal(Gp.setFromMatrixPosition(r.sword.matrixWorld));
+        PtW.set(0, 0, tip).applyMatrix4(r.sword.matrixWorld);
+        r.body.worldToLocal(Pt.copy(PtW));
+        const S = cur && segs[cur];
+        if (S) {
+          S.n++;
+          w.set(0, 0, 1).applyQuaternion(r.sword.getWorldQuaternion(q)).applyQuaternion(r.body.getWorldQuaternion(q).invert());
+          S.fwd = Math.min(S.fwd, w.z);
+          const el = Math.asin(Math.max(-1, Math.min(1, w.y))) * DEG;
+          S.el[0] = Math.min(S.el[0], el);
+          S.el[1] = Math.max(S.el[1], el);
+          S.ptY = Math.min(S.ptY, PtW.y);
+          S.gx = Math.max(S.gx, Gp.x);
+          S.ph[1] = A.phase;
+          if (!Number.isFinite(Gp.x + Gp.y + Gp.z + Pt.x + Pt.y + Pt.z)) S.nan++;
+          if (prev.n >= 2) {
+            const d2 = (X, Q) => Math.hypot(X.x - 2 * Q[0].x + Q[1].x, X.y - 2 * Q[0].y + Q[1].y, X.z - 2 * Q[0].z + Q[1].z);
+            S.popG = Math.max(S.popG, d2(Gp, prev.G));
+            S.popP = Math.max(S.popP, d2(Pt, prev.P));
+          }
+        }
+        prev.G[1].copy(prev.G[0]); prev.G[0].copy(Gp);
+        prev.P[1].copy(prev.P[0]); prev.P[0].copy(Pt);
+        prev.n++;
+      }
+      cur = null;
+    };
+    p.debug.teleport(LANE[0], LANE[1]);
+    input.axis = { x: 0, y: 0 };
+    go(1.2, null);
+    // the whole course, its pops measured end to end; the run and the sprint each over full strides
+    input.axis = { x: 0, y: 1 };
+    go(0.6, 'start');
+    go(1.0, 'run');
+    input.hold('ShiftLeft');
+    go(0.7, 'sprintStart');
+    go(1.0, 'sprint');
+    input.release('ShiftLeft');
+    go(0.7, 'sprintEnd');
+    input.axis = { x: 0, y: 0 };
+    go(1.0, 'stop');
+    res[mode] = segs;
+  }
+  RS.setRunSword(null);
+  for (const [mode, segs] of Object.entries(res)) {
+    out(`   -- the sword carry ${mode}`);
+    for (const [k, S] of Object.entries(segs)) {
+      out(`     ${k.padEnd(11)} blade forward ≥ ${S.fwd.toFixed(2)}, elevation ${S.el[0].toFixed(0)}…${S.el[1].toFixed(0)}°, point ≥ ${f1(S.ptY)} cm over the ground, grip x ≤ ${f1(S.gx)} cm, ${(S.ph[1] - S.ph[0]).toFixed(2)} strides; pops: grip ${f1(S.popG)} point ${f1(S.popP)} cm${S.nan ? `, NaN ${S.nan}` : ''}`);
+    }
+  }
+  const H = res.hip;
+  assert(Object.values(H).every((S) => S.n > 10 && !S.nan), `hip: every stretch measured, nothing NaN`);
+  for (const k of ['run', 'sprint']) {
+    const S = H[k];
+    assert(S.ph[1] - S.ph[0] >= 1 && S.fwd > 0 && S.el[0] >= -30 && S.el[1] <= 32 && S.ptY > 0.05 && S.gx < -0.05,
+      `hip, the ${k} (${(S.ph[1] - S.ph[0]).toFixed(2)} strides ≥ 1): the blade always points ahead (its forward part ≥ ${S.fwd.toFixed(2)} > 0; the carry before trailed it behind him), its elevation ${S.el[0].toFixed(0)}…${S.el[1].toFixed(0)}° (−30…+32), the point ≥ ${f1(S.ptY)} cm over the grass, the grip on his right side (x ≤ ${f1(S.gx)} cm < −5)`);
+  }
+  const popG = Math.max(...Object.values(H).map((S) => S.popG)), popP = Math.max(...Object.values(H).map((S) => S.popP));
+  assert(popG <= 0.02 && popP <= 0.04,
+    `hip, stand → run → sprint → run → stop: no pop, the grip ${f1(popG)} cm (≤ 2) and the point ${f1(popP)} cm (≤ 4) at most a frame² (the carry before: the point ${f1(Math.max(...Object.values(res.old).map((S) => S.popP)))} cm, the blade swinging round from ahead to behind at the start)`);
+  assert(RS.runSwordMode() === 'hip' && RS.setRunSword('zz') === 'hip' && RS.setRunSword('old') === 'old' && RS.setRunSword(null) === 'hip', `?runSword= defaults to 'hip' (forward at the hip, for the owner's look on the draft); unknown values fall back to it`);
 }
 
 // ================================================================== scenario: the outfit options (?heroLook=)
@@ -11322,7 +11425,7 @@ async function scenarioHeroIdles() {
   out('\n== scenario HEROIDLES (rests, habits and tricks; the guard hand off the belt; anatomy, the blade out of the body, pops, transitions) ==');
   const { DIM: HD, BODY, sheetOffset } = await imp('src/entities/player/model.js');
   const I = await imp('src/entities/player/idles.js');
-  // (ADR-204: the reference's idles are the default now, HEROREF checks them; these are ADR-186's, `?idles=new`)
+  // (ADR-206: the reference's idles are the default now, HEROREF checks them; these are ADR-186's, `?idles=new`)
   const idles0 = I.idlesMode();
   I.setIdles('new');
   const RSG = await imp('src/entities/player/refStance.js');
@@ -11686,7 +11789,7 @@ async function scenarioHeroIdles() {
 }
 
 // Scenarios written against ADR-186's idles and the cross ward (ADR-073): they measure those poses, so they run
-// with them (`?idles=new&guard=ward`) since the reference's are the default (ADR-204, HEROREF checks those)
+// with them (`?idles=new&guard=ward`) since the reference's are the default (ADR-206, HEROREF checks those)
 const pinAdr186 = (fn) => async () => {
   const I = await imp('src/entities/player/idles.js'), RS = await imp('src/entities/player/refStance.js');
   const m = I.idlesMode(), g = RS.guardMode();
@@ -11700,7 +11803,7 @@ const pinAdr186 = (fn) => async () => {
   }
 };
 
-// ================================================================== scenario: the reference's idles and guard (ADR-204)
+// ================================================================== scenario: the reference's idles and guard (ADR-206)
 // The owner, 2026-11-25, on their reference footage: "mirror" its idle poses and its guard. idles.js `ref` (the
 // default) and refStance.js: at ease the one-handed stand, in the fight the two-handed hold, the put-away and the
 // draw (`stow`), ADR-186's habits, tricks and spells from the new stand; the block's braced guard (`?guard=ward`:

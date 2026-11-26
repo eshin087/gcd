@@ -345,7 +345,7 @@ export function stand(p, A) {
   if (!A.freeHand) return;
   const f = clamp(fin(A.fightW), 0, 1);
   if (idlesRef()) {
-    // (ADR-204, refStance.js: the reference's stand at ease, its two-handed hold in the fight)
+    // (ADR-206, refStance.js: the reference's stand at ease, its two-handed hold in the fight)
     if (f >= 0.999) refReady(p, P, A);
     else {
       refStand(p, P, A);
@@ -484,11 +484,15 @@ function gaitParams(G, sp, sprintW) {
  *  stride with the move direction while the chest stays on the aim. A grounded run: the body sinks
  *  and leans into the speed and harder into acceleration (sits back when braking), compresses on
  *  each contact, the hips swing with the stride and the shoulders counter-rotate, the head stays
- *  level. The sword arm trails the blade back and down beside the right leg (run) → nearly level
- *  behind (sprint); the free fist swings / pumps against the legs. Planted feet are held in the
+ *  level. The sword arm carries the blade ahead, low at the right hip, rocking with the forearm
+ *  (runSword.js, ADR-204; `old` trailed it back beside the right leg (run) → nearly level
+ *  behind (sprint)); the free fist swings / pumps against the legs. Planted feet are held in the
  *  world by the foot planner (HeroAnimator._feet). */
 // (imported here, beside its one caller: the hero's free arm on the run, ADR-187)
 import { runArm } from './runArms.js';
+// … and his sword arm on the run (ADR-204)
+import { runSword } from './runSword.js';
+const RSW = { h: [0, 0, 0], p: [0, 0, 0], d: [0, 0, -1], f: [0, 1, 0] };
 export function loco(p, A) {
   stand(p, A);
   const w = A.moveW;
@@ -575,15 +579,21 @@ export function loco(p, A) {
   const fw = hero ? clamp(fin(A.fightW), 0, 1) * (1 - s) : 0, FR = FIGHT_RUN;
   // (backing away the grip was one constant: the sword elbow stood at 123° for the whole backpedal
   // beside a free arm that pumps; it rides the stride now)
-  to3(p, P.rH, lerp(lerp(lerp(-0.13, -0.15, s), -0.02, bw), FR.h[0], fw), lerp(lerp(lerp(-0.44, -0.37, s) + 0.02 * st, -0.38 + 0.025 * st, bw), FR.h[1] + 0.022 * st, fw),
-    lerp(lerp(lerp(-0.08 + amp, -0.28 + amp * 0.6, s), 0.3 + amp * 0.6, bw), FR.h[2] + amp * 0.5, fw), ws);
+  // the carry at ease (run → sprint): runSword.js's (ADR-204, `?runSword=`), or the one before ('old'); its
+  // arm angles are against the torso's line, so it takes the lean set above
+  const rs = hero && runSword(RSW, ph, armF, s, p[P.spX] + p[P.pelvX]), RH = RSW.h, RP = RSW.p, RD = RSW.d;
+  const h0 = rs ? RH[0] : lerp(-0.13, -0.15, s), h1 = rs ? RH[1] : lerp(-0.44, -0.37, s) + 0.02 * st, h2 = rs ? RH[2] : lerp(-0.08 + amp, -0.28 + amp * 0.6, s);
+  to3(p, P.rH, lerp(lerp(h0, -0.02, bw), FR.h[0], fw), lerp(lerp(h1, -0.38 + 0.025 * st, bw), FR.h[1] + 0.022 * st, fw),
+    lerp(lerp(h2, 0.3 + amp * 0.6, bw), FR.h[2] + amp * 0.5, fw), ws);
   // (Session 30: both elbows pointed 0.5-0.7 out to the side through the run, arms akimbo from the
   // front: they point back beside the ribs now)
-  to3(p, P.rP, lerp(lerp(lerp(-0.4, -0.5, s), -0.85, bw), FR.p[0], fw), lerp(lerp(lerp(-0.3, 0.2, s), -0.3, bw), FR.p[1], fw), lerp(lerp(-0.95, -0.5, bw), FR.p[2], fw), ws);
-  dirLerp(SW_T, 0, lerp(-0.42, -0.36, s), lerp(-0.56, -0.2, s) - 0.03 * st * (1 - s), lerp(-0.71, -0.91, s), -0.15, -0.22, 1, bw);
+  const p0 = rs ? RP[0] : lerp(-0.4, -0.5, s), p1 = rs ? RP[1] : lerp(-0.3, 0.2, s), p2 = rs ? RP[2] : -0.95;
+  to3(p, P.rP, lerp(lerp(p0, -0.85, bw), FR.p[0], fw), lerp(lerp(p1, -0.3, bw), FR.p[1], fw), lerp(lerp(p2, -0.5, bw), FR.p[2], fw), ws);
+  if (rs) dirLerp(SW_T, 0, RD[0], RD[1], RD[2], -0.15, -0.22, 1, bw);
+  else dirLerp(SW_T, 0, lerp(-0.42, -0.36, s), lerp(-0.56, -0.2, s) - 0.03 * st * (1 - s), lerp(-0.71, -0.91, s), -0.15, -0.22, 1, bw);
   if (fw > 0.001) dirLerp(SW_T, 0, SW_T[0], SW_T[1], SW_T[2], FR.d[0], FR.d[1] + 0.035 * st, FR.d[2], fw);
   dirTo(p, P.swD, SW_T[0], SW_T[1], SW_T[2], ws);
-  to3(p, P.swF, lerp(lerp(-0.3, 0, bw), 0.25, fw), 1, lerp(lerp(0, 0.2, bw), 0, fw), ws);
+  to3(p, P.swF, lerp(lerp(rs ? RSW.f[0] : -0.3, 0, bw), 0.25, fw), rs ? lerp(lerp(RSW.f[1], 1, bw), 1, fw) : 1, lerp(lerp(rs ? RSW.f[2] : 0, 0.2, bw), 0, fw), ws);
   // free arm swings opposite the legs: ahead of the belt (run) → a pumping fist chin ↔ hip (sprint)
   const k = 0.5 - 0.5 * cs * armF; // 1 = fist forward
   // (ADR-187: the hero's free arm is runArms.js's, one of three carries, `?runArm=`; 'old' is this)
@@ -1555,7 +1565,7 @@ function chargePose(p, A) {
 const BLOCK_FEET = [-0.22, -0.33, 0.14, 0.34]; // the stance it settles into: right x, z; left x, z
 function blockPose(p, A) {
   guard(p, A);
-  // (ADR-204: the hero's guard after the owner's reference footage, refStance.js; `?guard=ward` the cross
+  // (ADR-206: the hero's guard after the owner's reference footage, refStance.js; `?guard=ward` the cross
   // ward below. A duelist's animator keeps the ward)
   const ref = A.freeHand === true && guardMode() === 'ref';
   if (ref) refGuard(p, P, A);
@@ -2272,7 +2282,7 @@ function deflectPose(p, A) {
   const n = fin(D?.n, 1), side = D?.side < 0 ? -1 : 1;
   const f = 1 - smoothstep(0.07, 0.2, t);
   if (A.freeHand === true && guardMode() === 'ref' && f > 0) {
-    // (ADR-204: the snap onto the blow is the cross ward's, body and all, and eases back into the reference's
+    // (ADR-206: the snap onto the blow is the cross ward's, body and all, and eases back into the reference's
     // guard with it: its blade and hand below are aimed from that body, and posed from the braced guard's
     // turned chest they missed the blow's steel: half the parried blows ended with the blades 0.2 m apart)
     for (let i = 0; i < WARD_BODY.length; i += 2) p[WARD_BODY[i]] += (WARD_BODY[i + 1] - p[WARD_BODY[i]]) * f;
@@ -2597,7 +2607,7 @@ const withP = (D) => ({ ...D, fn: (p, A, u, e) => D.fn(p, P, A, u, e) });
 const EASE_LIST = [...EASE_HABITS.map(withP), FIDGETS[0], { ...FIDGETS[2], blade: true }, ...EASE_TRICKS.map(withP)];
 const CUT_SLOW = new Set(['block', 'parry', 'heal', 'charge']); // (_idleLife: clips whose entry may take longer out of a trick)
 const FIGHT_LIST = FIGHT_ACTS.map(withP);
-// `?idles=ref` (the default, ADR-204): the same at ease with the put-away and the draw; in the fight the
+// `?idles=ref` (the default, ADR-206): the same at ease with the put-away and the draw; in the fight the
 // habits that keep both hands on the grip
 const EASE_LIST_REF = [...EASE_LIST, ...EASE_REF_EXTRA.map(withP)];
 const FIGHT_LIST_REF = FIGHT_ACTS_REF.map(withP);
@@ -2924,7 +2934,7 @@ export class HeroAnimator {
     // idle life: the action playing (k = FIDGETS index, -1 none), its time, weight, whether it was
     // cut, calm time since the last one ended, the wait before the next, and how many have played
     this.fidget = { k: -1, t: 0, w: 0, cut: false, still: 0, wait: IDLE_LIFE.after, last: -1, count: 0, name: '' };
-    // the put-away (idles.js STOW, ADR-204): 0 the sword whole … 1 gone (_idleLife; _stowSword shows it)
+    // the put-away (idles.js STOW, ADR-206): 0 the sword whole … 1 gone (_idleLife; _stowSword shows it)
     this.stow = 0;
     this._stowK = 0;
     this._stowScale = null;
@@ -3927,7 +3937,7 @@ export class HeroAnimator {
     if (this.freeHand) this._stowSword(this.stow);
   }
 
-  /** The put-away (idles.js STOW, ADR-204; the hero only): the weapon's own meshes (rig.slots.weapon: the
+  /** The put-away (idles.js STOW, ADR-206; the hero only): the weapon's own meshes (rig.slots.weapon: the
    *  blade, the hilt; never the fists on the grip, which are the arms') draw into the hilt as k goes 0 → 1, the
    *  steel first, and hide at 1; at 0 they are exactly as built. Nothing is added to the rig (a new object
    *  draws a uuid off the seeded Math.random). The hit test is the swept joint, never these meshes. */

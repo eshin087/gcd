@@ -21,7 +21,7 @@
 //
 // `?idles=old` keeps the idles before this pass (the belt, anim.js FIDGETS): setIdles() / the Lab.
 //
-// The default since ADR-204 is `ref` (refStance.js: the stand and the two-handed hold after the owner's
+// The default since ADR-206 is `ref` (refStance.js: the stand and the two-handed hold after the owner's
 // reference footage): ONE rest at ease (the reference's stand) and one in the fight (the hold), the same
 // habits, tricks and spells starting from and coming back to that stand (the forearm-led ones start from
 // its arm: STAND_ARM), the put-away and the draw (`stow`: the sword fades out in its green flame at his
@@ -46,7 +46,7 @@ const LEFT_FROM_RIGHT = -(DIM.shoulder[0] + DIM.gripShoulder[0]);
 // ---------------------------------------------------------------- the switch
 const IDS = ['ref', 'new', 'old'];
 export const IDLES_IDS = Object.freeze(IDS.slice());
-export const IDLES_NAMES = Object.freeze({ ref: 'the stand and the two-handed hold of the reference (ADR-204)', new: 'rests, habits and tricks (ADR-186)', old: 'the hand on the belt (before)' });
+export const IDLES_NAMES = Object.freeze({ ref: 'the stand and the two-handed hold of the reference (ADR-206)', new: 'rests, habits and tricks (ADR-186)', old: 'the hand on the belt (before)' });
 const q = (name) => {
   try {
     return typeof location !== 'undefined' ? new URLSearchParams(location.search).get(name) : null;
@@ -278,7 +278,7 @@ export const FIGHT_RESTS = [
   { name: 'low', fn: guardLow, w: 2 },
 ];
 
-// `?idles=ref` (the default, ADR-204): one rest each, the pose refStance.js already wrote (anim.js stand())
+// `?idles=ref` (the default, ADR-206): one rest each, the pose refStance.js already wrote (anim.js stand())
 const restNone = () => {};
 export const EASE_RESTS_REF = [{ name: 'stand', fn: restNone, w: 1, low: true }];
 export const FIGHT_RESTS_REF = [{ name: 'hold', fn: restNone, w: 1 }];

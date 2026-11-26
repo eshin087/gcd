@@ -1,4 +1,4 @@
-// The hero's stand, fight hold and guard after the owner's reference footage (ADR-204; the owner,
+// The hero's stand, fight hold and guard after the owner's reference footage (ADR-206; the owner,
 // 2026-11-25: "review these sections on the videos for all the idle animation and poses for you to mirror
 // to this game ... i also want you to adjust the guarding stance and animation from the reference video").
 // Their answers: the two-handed hold is the FIGHT stance (locked on, a boss fight), at ease he stands

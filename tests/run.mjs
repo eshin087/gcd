@@ -12,14 +12,21 @@
 // Each task's output is held and printed whole when the task ends, so two suites never interleave.
 // Exit code: 0 when every task passed, 1 otherwise. One suite on its own is still
 // `node tests/integration/<suite>.mjs . <scenario>`.
+//
+// On the owner's machine (no CI env; ADR-205) the run is kept light so the PC stays usable while agents
+// test: every worker runs at below-normal priority (a game or the browser gets the CPU first), and all
+// runs on the machine share one pool of ABYSS_JOBS slots (default 8): two agents' `npm test` queue in
+// it instead of starting 48 processes. --only <names> runs only the tasks whose name starts with one of
+// the comma-separated names (`--only integ,life`). On CI none of this applies: it runs as before.
 import { spawn } from 'node:child_process';
-import { availableParallelism } from 'node:os';
-import { resolve } from 'node:path';
+import { availableParallelism, constants, setPriority, tmpdir } from 'node:os';
+import { mkdirSync, openSync, writeSync, closeSync, readFileSync, unlinkSync, rmdirSync, statSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 
 const args = process.argv.slice(2);
 const flag = (name) => args.includes(name);
 const valueOf = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; };
-const VALUED = new Set(['--jobs', '--shard']);
+const VALUED = new Set(['--jobs', '--shard', '--only']);
 const root = resolve(args.find((a, i) => !a.startsWith('--') && !VALUED.has(args[i - 1])) ?? '.');
 
 // integ's TIMING scenario (a grid of placements per wyrm attack) is about two thirds of that suite,
@@ -119,19 +126,107 @@ if (shardArg !== undefined) {
   process.exit(0);
 }
 
-const asked = Number(valueOf('--jobs'));
-const jobs = flag('--serial') ? 1 : Math.max(1, Math.min(Math.max(1, tasks.length), Number.isFinite(asked) && asked > 0 ? Math.floor(asked) : availableParallelism()));
+const onlyArg = valueOf('--only');
+if (onlyArg !== undefined) {
+  const names = onlyArg.split(',').map((s) => s.trim()).filter(Boolean);
+  const pick = (t) => names.some((w) => t[0] === w || t[0].startsWith(`${w} `));
+  tasks = tasks.filter(pick);
+  alone = alone.filter(pick);
+  if (!tasks.length && !alone.length) { process.stdout.write(`--only ${onlyArg}: no task matches (see --list)\n`); process.exit(2); }
+  label += ` (only ${names.join(', ')})`;
+}
 
-function run([name, argv, taskEnv]) {
+// the owner's machine (ADR-205): low priority and one pool of slots shared by every run; CI: as before
+const LOCAL = !process.env.CI;
+const POOL = Math.max(1, Math.floor(Number(process.env.ABYSS_JOBS)) || 8);
+const SLOTS = join(tmpdir(), 'abyss-test-slots');
+const asked = Number(valueOf('--jobs'));
+const want = Number.isFinite(asked) && asked > 0 ? Math.floor(asked) : availableParallelism();
+const jobs = flag('--serial') ? 1 : Math.max(1, Math.min(Math.max(1, tasks.length), LOCAL ? Math.min(want, POOL) : want));
+if (LOCAL) {
+  try { setPriority(constants.priority.PRIORITY_BELOW_NORMAL); } catch { /* not allowed: run at normal */ }
+  mkdirSync(SLOTS, { recursive: true });
+}
+
+const alive = (pid) => { try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; } };
+const held = new Set();
+// remove a dead run's slot file, under a lock (mkdir is atomic): two waiting runs may both have read the
+// same dead pid, so the owner is read again inside the lock, and a file a live run has just made is kept
+function reclaim(f, deadPid) {
+  const lock = `${f}.reclaim`;
+  try { mkdirSync(lock); } catch {
+    // a lock left by a run killed mid-reclaim: drop it once it is old
+    try { if (Date.now() - statSync(lock).mtimeMs > 10000) rmdirSync(lock); } catch { /* gone */ }
+    return false;
+  }
+  try {
+    let pid = 0;
+    try { pid = Number(readFileSync(f, 'utf8')); } catch { return true; } // already gone: free to take
+    if (pid !== deadPid) return false;
+    try { unlinkSync(f); } catch { /* gone */ }
+    return true;
+  } finally {
+    try { rmdirSync(lock); } catch { /* gone */ }
+  }
+}
+// take one of the machine's POOL slots: a slot file names its run's pid; a dead run's slot is taken over
+async function acquire() {
+  if (!LOCAL) return null;
+  let waited = false;
+  for (;;) {
+    for (let i = 0; i < POOL; i++) {
+      const f = join(SLOTS, `slot-${i}`);
+      if (held.has(f)) continue;
+      try {
+        const fd = openSync(f, 'wx');
+        writeSync(fd, String(process.pid));
+        closeSync(fd);
+        held.add(f);
+        return f;
+      } catch {
+        let pid = 0;
+        try { pid = Number(readFileSync(f, 'utf8')); } catch { continue; }
+        if (pid && pid !== process.pid && !alive(pid) && reclaim(f, pid)) i--;
+      }
+    }
+    if (!waited) { waited = true; process.stdout.write(`(all ${POOL} test slots on this machine are busy: waiting for another run)\n`); }
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+}
+function release(f) {
+  if (!f) return;
+  held.delete(f);
+  try { unlinkSync(f); } catch { /* already gone */ }
+}
+const children = new Set();
+// a run that is stopped takes its workers and its slots with it, so nothing is left running
+for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
+  process.on(sig, () => {
+    for (const c of children) { try { c.kill(); } catch { /* gone */ } }
+    for (const f of [...held]) release(f);
+    process.exit(130);
+  });
+}
+process.on('exit', () => { for (const f of [...held]) release(f); });
+
+async function run(task) {
+  const slot = await acquire();
+  try { return await runTask(task); } finally { release(slot); }
+}
+
+function runTask([name, argv, taskEnv]) {
   return new Promise((done) => {
     const t0 = Date.now();
     const chunks = [];
     const env = { ...process.env };
     for (const k of NARROWING) delete env[k];
     const child = spawn(process.execPath, argv, { cwd: root, env: { ...env, ...taskEnv }, stdio: ['ignore', 'pipe', 'pipe'] });
+    children.add(child);
+    if (LOCAL && child.pid) { try { setPriority(child.pid, constants.priority.PRIORITY_BELOW_NORMAL); } catch { /* not allowed */ } }
     child.stdout.on('data', (c) => chunks.push(c));
     child.stderr.on('data', (c) => chunks.push(c));
     const end = (code, note) => {
+      children.delete(child);
       const secs = (Date.now() - t0) / 1000;
       process.stdout.write(`\n===== ${name} (${secs.toFixed(1)} s) ${code === 0 ? 'passed' : 'FAILED'}${note ? ` ${note}` : ''} =====\n`);
       process.stdout.write(Buffer.concat(chunks));
