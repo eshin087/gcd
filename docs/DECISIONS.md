@@ -6437,3 +6437,15 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   their 0.12 s press (now perfect) and their expectations moved (posture x 1.5, a lock, Halcyon's fight
   137 - 142 s). The wyrm's PRESSURE measurement keeps the old 0.08 s for its guard bot's stray parries: the
   new path met a brood gap that exists on main (`BROOD.busyWait`), a separate task. Not played by a human yet.
+
+## ADR-236 — No reference-footage animation: the mocap tools removed (2026-11-26)
+- **Context:** four tries at animating from the owner's reference films (the `?lights=steel` attacks, Tian
+  Lei's blows fitted from a bare-handed film (ADR-208), the refstudy kit, and the hero remade on a
+  recorded-clip engine behind `?hero=new`) ended with the owner's verdict on the last: "It looks all meh.
+  Scrap everything. Lets not use any of the reference video stuff ... we will just go back to how we made
+  animations on our own".
+- **Decision:** remove the tooling from `main`: `scripts/mocap/` and `src/entities/hero2/`, the realiser's
+  `keysOf` hook (unused), the footage `.gitignore` lines. The remade hero (PR 162) and the refstudy kit with
+  `docs/MOTION.md` (PR 148) are closed unmerged. Animation is authored by hand as before.
+- **Consequences:** ADR-208's engine is gone (its decision record stays as history). No game behaviour
+  changes: nothing in the game read these files.
