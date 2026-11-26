@@ -213,8 +213,10 @@ export async function mount(game, params) {
     const out = [];
     for (const set of lib.sets) {
       if (set.id.startsWith('_') && !test) continue;
-      if (set.clips.length) for (const c of set.clips) out.push(clipEntry(c));
-      else if (RIDE_ORDER[set.id] && ride) for (const n of RIDE_ORDER[set.id]) if (rideByName.has(n)) out.push(rideEntry(rideByName.get(n), set));
+      // a riding set plays on the horse, in the horse's chapters' order, whether or not its rider clips exist
+      if (RIDE_ORDER[set.id] && ride) {
+        for (const n of RIDE_ORDER[set.id]) if (rideByName.has(n)) out.push(rideEntry(rideByName.get(n), set));
+      } else if (set.clips.length) for (const c of set.clips) out.push(clipEntry(c));
     }
     // the chains, each after the last single play of its clips
     const at = new Map(out.map((e, i) => [e.name, i]));

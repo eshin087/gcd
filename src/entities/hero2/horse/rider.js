@@ -24,7 +24,7 @@ import { JI, J, createPose } from '../skeleton.js';
 import { HDIM } from '../dims.js';
 import { legIK } from '../feet.js';
 import { decodeClip, encodeQ, encodeF32 } from '../clip.js';
-import { qmul, qconjmul, qfromTo, qnorm } from '../qmath.js';
+import { qmul, qconjmul, qfromTo, qnorm, smooth01 } from '../qmath.js';
 import { solveFK } from '../skeleton.js';
 
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
@@ -35,12 +35,24 @@ const deg = Math.PI / 180;
 // the horse's (negative: before). reins: his hands go to the reins when the clip leaves them free.
 // events: the horse's times the rider's author lines up with (riderOn: his weight lands in the saddle;
 // riderOff: it leaves; takeoff / land / kick; hit: the cuts the horse reacts to).
+//
+// Getting on and off (the rider's clips that start or end on the ground): the clip's events say how much
+// he sits (his SEAT WEIGHT w): `seatIn` .. `riderOn` w eases 0 -> 1 (the leap onto the saddle), `riderOff`
+// .. `seatOut` w eases 1 -> 0 (the leap off); a clip with none of them sits (w = 1). At w = 0 his root
+// stands on the ground under the saddle (the clip's hips are his own height above the ground, the clip's
+// root travel on top); at w = 1 the root is placed as for every seated clip (the clip's hips = the saddle
+// at the rest hips height); between, the root is eased from one to the other, so the leap's path is the
+// clip's own hips plus w of the rise to the saddle. The seat layer, the stirrups and the reins act by w.
+// Entry options for them: lead (s: the horse holds its first frame while his clip runs first: his leap
+// starts before the horse's clock), summon { on, off } (s on his clip's clock: the horse is drawn only
+// from `on` / until `off`: in the footage it is summoned under him mid-leap and vanishes as he leaps off),
+// free (after seatOut he moves by his clip's own root: he lands running away from the halting horse).
 export const RIDES = [
   { name: 'horseStand', horse: 'horseStand', rider: 'rideIdle', offset: 0, reins: true },
-  { name: 'horseMount', horse: 'horseMount', rider: 'rideMount', offset: 0, reins: false, events: { riderOn: 0.7 } },
-  { name: 'horseDismount', horse: 'horseDismount', rider: 'rideDismount', offset: 0, reins: false, events: { riderOff: 0.5 } },
-  { name: 'rideMountRun', horse: 'horseRun', rider: 'rideMountRun', offset: 0, reins: false, events: { riderOn: 'the rider clip decides: the horse canters on (0.60 s cycle)' } },
-  { name: 'rideDismountRun', horse: 'horseRunStop', rider: 'rideDismountRun', offset: 0, reins: false, events: { riderOff: 'the rider clip decides: the horse halts under him (1.5 s)' } },
+  { name: 'horseMount', horse: 'horseMount', rider: 'rideMount', offset: 0, reins: false, events: { riderOn: 0.7 }, lead: 0.4, summon: { on: 0.62 } },
+  { name: 'horseDismount', horse: 'horseDismount', rider: 'rideDismount', offset: 0, reins: false, events: { riderOff: 0.5 }, summon: { off: 0.62 } },
+  { name: 'rideMountRun', horse: 'horseRun', rider: 'rideMountRun', offset: 0, reins: false, events: { riderOn: 'the rider clip decides: the horse canters on (0.60 s cycle)' }, summon: { on: 0.62 } },
+  { name: 'rideDismountRun', horse: 'horseRunStop', rider: 'rideDismountRun', offset: 0, reins: false, events: { riderOff: 'the rider clip decides: the horse halts under him (1.5 s)' }, summon: { off: 0.45 }, free: true },
   { name: 'horseWalkStart', horse: 'horseWalkStart', rider: 'rideWalk', offset: 0, reins: true },
   { name: 'horseWalk', horse: 'horseWalk', rider: 'rideWalk', offset: 0, reins: true },
   { name: 'horseWalkStop', horse: 'horseWalkStop', rider: 'rideWalk', offset: 0, reins: true },
@@ -143,7 +155,29 @@ export function createRide(game, { horse, hero, body, drawScale = 1.08 } = {}) {
     stL: new THREE.Vector3(), stR: new THREE.Vector3(), rein: new THREE.Vector3(),
     inv: new THREE.Matrix4(), m: new THREE.Matrix4(), v: new THREE.Vector3(),
     riderClip: null, pending: 0, rootY: 0,
+    // getting on and off: the seat weight, the horse's lead, the ground point, free (his own root)
+    w: 1, lead: 0, g: new THREE.Vector3(), free: false, marks: { a: -1, b: -1, c: -1, d: -1 },
   };
+  const hbody = () => horse?.body?.object3d ?? null;
+  /** The seat weight at clip time t (s) from the clip's marks (frames). */
+  function seatWeight(t) {
+    const m = S.marks, c = hero.clip, fps = c?.fps || 30, f = t * fps;
+    let w = 1;
+    if (m.b >= 0) w = m.a >= 0 && m.b > m.a ? smooth01((f - m.a) / (m.b - m.a)) : f >= m.b ? 1 : 0;
+    if (m.c >= 0) w = Math.min(w, m.d > m.c ? 1 - smooth01((f - m.c) / (m.d - m.c)) : f >= m.c ? 0 : 1);
+    return w;
+  }
+  function readMarks() {
+    const m = S.marks, ev = hero.clip?.events ?? [];
+    m.a = m.b = m.c = m.d = -1;
+    if (hero.clip?.name !== S.riderClip) return;
+    for (const e of ev) {
+      if (e.name === 'seatIn') m.a = e.f;
+      else if (e.name === 'riderOn') m.b = e.f;
+      else if (e.name === 'riderOff') m.c = e.f;
+      else if (e.name === 'seatOut') m.d = e.f;
+    }
+  }
   const ride = {
     S,
     get entry() {
@@ -169,6 +203,12 @@ export function createRide(game, { horse, hero, body, drawScale = 1.08 } = {}) {
       if (S.pending <= 0) hero.play(S.riderClip, { fade: opts.fade ?? 0, at: e.offset < 0 ? -e.offset : 0 });
       hero.applyRoot = false;
       S.seat.lastY = null;
+      S.lead = Math.max(0, fin(e.lead, 0));
+      S.free = false;
+      readMarks();
+      S.w = seatWeight(e.offset < 0 ? -e.offset : 0);
+      const hb = hbody();
+      if (hb) hb.visible = !(e.summon?.on > 0);
       return true;
     },
     /** The review's hook: show the rider clip `name` on the horse. */
@@ -178,18 +218,47 @@ export function createRide(game, { horse, hero, body, drawScale = 1.08 } = {}) {
     stop() {
       S.active = false;
       S.entry = null;
+      S.w = 1;
+      S.free = false;
+      const hb = hbody();
+      if (hb) hb.visible = true;
       if (obj) obj.rotation.set(0, obj.rotation.y, 0);
+    },
+    /** His seat weight now (0 on the ground, 1 in the saddle). */
+    get w() {
+      return S.w;
     },
     /** The horse steps, then he is placed on it. Call BEFORE hero.update(dt). */
     update(dt) {
       dt = Math.max(0, fin(dt));
-      horse.update(dt);
+      // (lead: the horse holds its first frame while his clip runs first)
+      if (S.active && S.lead > 0) {
+        const k = Math.min(S.lead, dt);
+        S.lead -= k;
+        horse.update(0);
+        if (dt > k) horse.update(dt - k);
+      } else horse.update(dt);
       if (!S.active || !obj) return;
       if (S.pending > 0) {
         S.pending -= dt;
-        if (S.pending <= 0) hero.play(S.riderClip, { fade: 0 });
+        if (S.pending <= 0) {
+          hero.play(S.riderClip, { fade: 0 });
+          readMarks();
+        }
       }
       S.t += dt;
+      // the seat weight (from his clip's marks, at the time his step will sample) and the summoned horse
+      if (hero.clip?.name === S.riderClip && S.marks.b < 0 && S.marks.c < 0 && S.marks.a < 0) S.w = 1;
+      else if (hero.clip?.name === S.riderClip) S.w = seatWeight(Math.min(hero.time + dt * fin(hero.timeScale, 1), hero.clip.dur ?? 1e9));
+      const sm = S.entry?.summon, hb = hbody();
+      if (sm && hb) hb.visible = S.t >= fin(sm.on, -1) && S.t < fin(sm.off, 1e9);
+      if (S.free) return; // off and away: his own clip moves him
+      if (S.entry?.free && S.w <= 0 && S.marks.c >= 0 && hero.time * (hero.clip?.fps || 30) >= S.marks.c) {
+        S.free = true;
+        obj.rotation.set(0, obj.rotation.y, 0);
+        hero.applyRoot = true;
+        return;
+      }
       // the seat follows the horse's gait (eased)
       const g = SEAT_GAITS[horse.clip?.gait] ?? SEAT_GAITS.stand, st = S.seat, k = dt > 0 ? 1 - Math.exp(-dt / 0.25) : 0;
       st.rise += (g.rise - st.rise) * k;
@@ -204,11 +273,18 @@ export function createRide(game, { horse, hero, body, drawScale = 1.08 } = {}) {
       }
       st.lastY = S.pos.y;
       S.eul.setFromQuaternion(S.quat, 'YXZ');
+      const w = S.w;
       obj.rotation.order = 'YXZ';
-      obj.rotation.set(S.eul.x * st.follow, S.eul.y, S.eul.z * 0.5);
-      // his drawn hips onto the saddle point (+ the seat's rise and lag)
+      obj.rotation.set(S.eul.x * st.follow * w, S.eul.y, S.eul.z * 0.5 * w);
+      // his drawn hips onto the saddle point (+ the seat's rise and lag) ...
       S.v.set(0, HDIM.hipsY * drawScale, 0).applyEuler(obj.rotation);
-      obj.position.set(S.pos.x - S.v.x, S.pos.y + st.rise + st.lag - S.v.y, S.pos.z - S.v.z);
+      const sx = S.pos.x - S.v.x, sy = S.pos.y + st.rise + st.lag - S.v.y, sz = S.pos.z - S.v.z;
+      if (w >= 1) obj.position.set(sx, sy, sz);
+      else {
+        // ... eased from his own stand on the ground under the saddle (getting on and off)
+        const hy = horse.object3d ? fin(horse.object3d.position.y) : 0;
+        obj.position.set(S.pos.x + (sx - S.pos.x) * w, hy + (sy - hy) * w, S.pos.z + (sz - S.pos.z) * w);
+      }
       S.rootY = obj.position.y;
       horse.stirrup('L', S.stL);
       horse.stirrup('R', S.stR);
@@ -267,10 +343,12 @@ export function createRide(game, { horse, hero, body, drawScale = 1.08 } = {}) {
     }
   }
   function adjust(world0) {
-    if (!S.active || world0 !== world) return;
+    if (!S.active || world0 !== world || S.free) return;
     try {
+      const w = S.w;
+      if (!(w > 0)) return; // on the ground: his clip alone
       // the seat layer: the trunk's lean (spine and chest share it)
-      const st = S.seat, lean = st.lean;
+      const st = S.seat, lean = st.lean * w;
       for (const [j, w] of [[JI.spine, 0.55], [JI.chest, 0.45]]) {
         _q[4] = Math.sin(lean * w * 0.5);
         _q[5] = 0;
@@ -286,7 +364,16 @@ export function createRide(game, { horse, hero, body, drawScale = 1.08 } = {}) {
       // the legs: the ankles to the stirrups (the tread is under the ball of the foot: the ankle above it)
       for (const [s, sv] of [['L', S.stL], ['R', S.stR]]) {
         toLocal(sv, _t);
-        legIK(pose, world, s, _t[0], _t[1] + HDIM.ankle * 0.8, _t[2] - 0.05, false);
+        let tx = _t[0], ty = _t[1] + HDIM.ankle * 0.8, tz = _t[2] - 0.05;
+        if (w < 1) {
+          // part way on: from where his clip has the ankle toward the stirrup (late: the legs are his
+          // own through the leap and find the stirrups as he lands)
+          const a = JI['foot' + s] * 3, P = world.p, wl = w * w * w * w;
+          tx = P[a] + (tx - P[a]) * wl;
+          ty = P[a + 1] + (ty - P[a + 1]) * wl;
+          tz = P[a + 2] + (tz - P[a + 2]) * wl;
+        }
+        legIK(pose, world, s, tx, ty, tz, false);
       }
       solveFK(pose, rest, world);
       // the hands to the reins when the entry holds them and the clip leaves the hand free
