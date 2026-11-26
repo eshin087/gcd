@@ -19,6 +19,11 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-26',
+        title: 'The bosses shaded and outlined like the hero',
+        notes: ['Shen Hui, Varr Nihil, Tian Lei, Lu Wusheng and Halcyon keep their own colours and clothes but are lit the way the hero is: bright where the light catches them, falling off into dark letters on the shadow side. Three of them also get the hero\'s thicker outline on large screens.'],
+      },
+      {
+        date: '2026-11-26',
         title: 'BENCH in the performance readout',
         notes: ['With ?perf in the address, BENCH holds the game still for a few seconds and measures what each drawing step costs your device. REPORT then includes it.'],
       },

@@ -325,6 +325,11 @@ Render helpers for creature modules:
     `lookOf('bossPrint', '0', 'b')`. Every ink-line material reads `uBossPrint` (`HERO_ART_SHARED`) except the
     player's (`heroSelf` compiles `SG_HERO_SELF`): the fill is lifted in the shader, so whoever writes `uArtFill`
     needs no change.
+    **The bosses drawn in the hero's style** (ADR-220): main.js also writes `U.uBossHero.x` (his shading: the boss's
+    cloth light falls off away from the key light and down his body; `HERO_ART_SHARED`, read inside the print's
+    `#ifndef SG_HERO_SELF`, scaling `fillC` only) and `uBossLike.z` (his ink lines at the hero's line width:
+    `gLine = max(uHeroPx.x, uSelfPx)` in `cellMain`) from `heroPrint(level.id)` (`duelist/heroPrint.js`: `HERO_PRINT`
+    level -> switch, `HERO_STYLE` a / b / c, frozen records, no allocation), both 0 with `?bossPrint=0`.
     Ink lines are drawn per pixel by the pass, not from glyphs. `U.uArtHeroCel` (vec3: step from
     shadow to lit between x and y, z = share of the step) cel-shades the art source;
     `U.uHeroPartRim[20]` (vec4: tint × gain) is each part's silhouette ink; fill style + 8 = a

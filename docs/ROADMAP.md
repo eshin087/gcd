@@ -239,6 +239,12 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] The owner kept grass a (the depth steps stay behind `?dgGrass=a3d1..3`); the cut's chips made smaller
 - [ ] The phone's frame cost; remove the first round's looks a / c / d
 
+## M1.88 — The bosses drawn in the hero's style (2026-11-26, `claude/render-boss-hero-look-631f37`, ADR-220)
+- [x] The audit: the five human bosses beside the hero at 720p, 1440p and the phone (a report and sheets)
+- [x] Round 1 turned down (his letter size, his dark cloak values, the tall hem, flared torn skirts): not his colours or cloth
+- [x] `?<boss>Hero=0|a|b|c` (his shading, his outline, both); picks c Shen Hui / Varr Nihil / Lu Wusheng, a Tian Lei / Halcyon
+- [ ] Seen by the owner in play and on the iPhone
+
 ## M1.87 — The front: the sword's path and a loading screen (2026-11-25, `ui/gcd-front`, ADR-196)
 - [x] A loading screen from the first paint, an honest bar of the boot's steps (`?loader=a|b`; b the owner's pick)
 - [x] Three title layouts (`?menu=a|b|c`; c the owner's pick, `0` the title before), CONTROLS behind a button
@@ -1115,8 +1121,8 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
 - [ ] An audit sheet: every boss beside the hero at the game camera, at 720p and on the phone preset,
       each scored against STYLE.md "The house style" (small fine digits, a dark body lit only where
       light catches, a stroke outline, no blank cell inside a shape); the ones that do not match named
-- [ ] The human bosses printed the hero's way (ADR-194) checked boss by boss; the ones it missed or
-      only recoloured brought over in their own colours
+- [x] The human bosses printed the hero's way (ADR-194) checked boss by boss; the ones it missed or
+      only recoloured brought over in their own colours (ADR-220: his shading and outline, their colours)
 - [ ] The non-human bosses and the summons (the wyrm, the fox's paper copies, spells and bolts in the
       fire field) checked the same way
 - [ ] The fixes in order of how far each is from the look; options rendered per boss for the owner
