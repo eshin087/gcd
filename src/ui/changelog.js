@@ -24,6 +24,20 @@ export const RELEASES = [
       },
       {
         date: '2026-11-26',
+        title: 'Shen Hui and Varr Nihil hold their swords like swordsmen',
+        notes: [
+          'Shen Hui and Varr Nihil hold their blades in line with the hand and arm, and their arms open at the end of a blow.',
+          'A blow to parry is wound up with the blade raised high and held; a blow to dodge, sunk low with the blade trailing near the floor. The timings are the same.',
+          'Varr Nihil ends a string with a shake of the steel instead of a twirl. Each has two quick blows thrown straight out of the guard: block or parry them.',
+        ],
+      },
+      {
+        date: '2026-11-26',
+        title: 'The bosses shaded and outlined like the hero',
+        notes: ['Shen Hui, Varr Nihil, Tian Lei, Lu Wusheng and Halcyon keep their own colours and clothes but are lit the way the hero is: bright where the light catches them, falling off into dark letters on the shadow side. Three of them also get the hero\'s thicker outline on large screens.'],
+      },
+      {
+        date: '2026-11-26',
         title: 'Tian Lei and Halcyon: held windups, quick jabs, and Halcyon fights like a flier',
         notes: ['Every parry or perfect-dodge blow of Tian Lei and Halcyon now winds up into a held pose of its own, so you can read it before the flash. Each has two quick jabs thrown straight from his guard. Halcyon flies into his blows instead of standing on air, and his fists meet you, not the air over your head.'],
       },

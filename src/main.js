@@ -31,6 +31,7 @@ import { GameFlow } from './game/flow.js';
 import { Lab } from './dev/lab.js';
 import { Unlocks } from './game/unlocks.js';
 import { lookOf } from './entities/enemies/duelist/lookSwitch.js';
+import { heroPrint } from './entities/enemies/duelist/heroPrint.js';
 import { PerfReadout, perfFromSearch } from './dev/perfReadout.js';
 import { bootStep, bootDone, bootFail, fontSheetReady, travelNote } from './ui/bootLoader.js';
 import { precompile, warmDraw } from './render/precompile.js';
@@ -341,7 +342,11 @@ async function boot() {
       const on = bpk === 'a' || bpk === 'b' ? 1 : 0;
       const fy = game.dragon?.position?.y;
       U.uBossPrint.value.set(on, bpk === 'a' ? 0 : 1, Number.isFinite(fy) ? fy : 0, 0.62);
-      pipeline.asciiMat?.uniforms?.uBossLike?.value.set(on, on, 0, 0);
+      // drawn like the hero (ADR-220, duelist/heroPrint.js, the level's `?<boss>Hero=`): shaded as he is
+      // (U.uBossHero.x), outlined at his line width (uBossLike.z)
+      const hp = heroPrint(level.id);
+      pipeline.asciiMat?.uniforms?.uBossLike?.value.set(on, on, on && hp.lines ? 1 : 0, 0);
+      U.uBossHero.value.set(on ? hp.shade : 0, 0, 0, 0);
     }
   };
 

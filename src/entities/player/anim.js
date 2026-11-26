@@ -2804,6 +2804,13 @@ const WRIST_CLEAR_COS = Math.cos(70 * (Math.PI / 180)); // … and, there, the l
 const ELBOW_RATE = 14; // rad/s: the most an elbow swings round its shoulder → hand line (~13° a frame)
 const _eA = new THREE.Vector3(), _eW = new THREE.Vector3(), _eP = new THREE.Vector3(), _eC = new THREE.Vector3();
 const TWO_HAND_GRIP = DIM.offGrip; // m down the grip from the sword hand to the off hand (two-handed)
+// THE GRIP (a sword-wielding boss's animator only: `gripMax`, ADR-226): the most the blade turns off the
+// sword forearm's line before the forearm itself is turned toward the steel round the elbow (the hand
+// moves, the blade's direction does not; the elbow stays where the arm put it, folded no tighter than
+// GRIP_FOLD). The hero's own swings are keyed with the wrist inside 60 degrees (ADR-207); a boss keyed
+// by the blade alone bent it to WRIST_BACK, the fist turned off the wrist.
+const GRIP_FOLD = 38 * (Math.PI / 180);
+const _gE = new THREE.Vector3(), _gF = new THREE.Vector3(), _gD = new THREE.Vector3(), _gW = new THREE.Vector3(), _gT = new THREE.Vector3(), _gU = new THREE.Vector3();
 // THE FREE HAND (the hero only: opts.freeHand). Its wrist's range (rad: radial / ulnar deviation,
 // pronation / supination from the IK's neutral, flexion / extension), its spring (ω, ζ for the
 // deviation and the flex; wT, zT the heavier twist), the most each turns in a frame (rad), and the
@@ -3844,6 +3851,7 @@ export class HeroAnimator {
     _qBP.copy(_qPelvis).invert().multiply(_qBody); // body axes → pelvis local
 
     this._arm(r.arms.R, this._handTarget(r.arms.R, p, P.rH), p, P.rP, true);
+    if (this.gripMax > 0) this._gripAlign(r.arms.R, p);
     // off hand: its own target, or (twoHand) down the grip below the sword hand
     this._handTarget(r.arms.L, p, P.lH);
     let lk = 0;
@@ -4271,6 +4279,49 @@ export class HeroAnimator {
       this.rig.body.worldToLocal(_w);
       this.rig.sword.position.copy(_w);
     }
+  }
+
+  /** The sword forearm turned toward the blade (see GRIP_FOLD; `this.gripMax` rad, set by a duelist):
+   *  after the sword arm's solve, a forearm more than gripMax off the blade's line swings round the
+   *  elbow until it is gripMax off, and the hand (the grip, the sword's origin) goes with it. Chest
+   *  local throughout; allocates nothing; a non-finite step leaves the arm as it was. */
+  _gripAlign(arm, p) {
+    const S = arm.upper.position, a = DIM.upperArm, b = DIM.foreArm, max = this.gripMax;
+    _gE.set(0, -a, 0).applyQuaternion(arm.upper.quaternion).add(S); // the elbow
+    _gF.subVectors(_end, _gE);
+    if (!(_gF.lengthSq() > 1e-8)) return;
+    _gF.normalize();
+    _gD.set(p[P.swD], p[P.swD + 1], p[P.swD + 2]).applyQuaternion(_qBC);
+    if (!(_gD.lengthSq() > 1e-8)) return;
+    _gD.normalize();
+    const c = clamp(_gF.dot(_gD), -1, 1);
+    if (c >= Math.cos(max)) return;
+    _gW.copy(_gF).addScaledVector(_gD, -c);
+    if (!(_gW.lengthSq() > 1e-8)) {
+      // (the forearm straight against the blade: turn it away from the upper arm's side)
+      _gW.subVectors(_gE, S).addScaledVector(_gD, -_gD.dot(_gU.subVectors(_gE, S)));
+      if (!(_gW.lengthSq() > 1e-8)) return;
+    }
+    _gW.normalize();
+    _gF.copy(_gD).multiplyScalar(Math.cos(max)).addScaledVector(_gW, Math.sin(max)); // the forearm wanted
+    // … folded no tighter than GRIP_FOLD at the elbow: between the forearm and the elbow → shoulder line
+    _gU.subVectors(S, _gE).normalize();
+    const cf = _gF.dot(_gU);
+    if (cf > Math.cos(GRIP_FOLD)) {
+      _gW.copy(_gF).addScaledVector(_gU, -cf);
+      if (!(_gW.lengthSq() > 1e-8)) return;
+      _gW.normalize();
+      _gF.copy(_gU).multiplyScalar(Math.cos(GRIP_FOLD)).addScaledVector(_gW, Math.sin(GRIP_FOLD));
+    }
+    _gT.copy(_gE).addScaledVector(_gF, b);
+    if (!Number.isFinite(_gT.x + _gT.y + _gT.z)) return;
+    // the same elbow: the pole is the elbow's own side of the new shoulder → hand line
+    _pole.subVectors(_gE, S);
+    const beta = solveTwoBone(S, _gT, _pole, a, b, 1, arm.upper.quaternion, _end);
+    arm.fore.rotation.set(-beta, 0, 0);
+    this.rig.chest.localToWorld(_w.copy(_end));
+    this.rig.body.worldToLocal(_w);
+    this.rig.sword.position.copy(_w);
   }
 
   /** Limit how fast an elbow swings round its shoulder → hand line (ELBOW_RATE): `pole` (chest

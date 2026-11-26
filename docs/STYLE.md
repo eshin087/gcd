@@ -1763,6 +1763,20 @@ breaks into the hero's pale dotted hem along a ragged line (materials.js `uBossP
 `uBossLike`). Done in the shader: a new boss in the ink-line art gets it with no change; pick his fills for
 hue, not for brightness. The face, the eyes and what glows (parts 1, 2, 17 - 19) keep their own fill.
 
+### The bosses drawn in the hero's style (2026-11-26, ADR-220; `?ashHero=` / `lordHero` / `ascHero` / `sheathHero` / `halHero`)
+On top of ADR-194's print, each human boss is drawn in the hero's style, never in his colours or his clothes (the
+owner: "i didnt mean make it the same color or cloth texture as the main character. i meant the style and engine
+look"):
+- **His shading** (a): a boss's cloth keeps its own colour and brightness where the key light (upper left) catches
+  it and on his shoulders, and falls off toward dark letters on the shadow side and down his body, as the hero's
+  cloak does. His head and hat, his face and the pale hem print as ADR-194 left them.
+- **His outline** (b): the boss's ink lines (silhouette, dotted rim, lines between parts) step at the hero's line
+  width, two pixels at 1440p; his letters stay his own fine ones. At 720p and on the phone both are one pixel.
+- **Picks:** both (c) on Shen Hui, Varr Nihil and Lu Wusheng; the shading (a) on Tian Lei and Halcyon, whose
+  letters already follow their size and so already draw the hero's lines.
+A new human boss: give his level a switch in `duelist/heroPrint.js` and a Lab row; pick his colours for hue and
+brightness on the lit side, the shading does the dark.
+
 ### The Hall of Falling Script and Xin Yi (2026-11-22, ADR-156, ADR-157; `world/scriptHall.js`, `enemies/wokenOne/`, `?level=code`)
 "More extra ASCII" (the owner) is four layers INSIDE the game's letter systems: none of it is a pass over the
 frame (a terminal post-process and one character grid over the frame were turned down: "Tried and turned

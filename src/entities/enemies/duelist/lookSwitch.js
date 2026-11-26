@@ -69,8 +69,17 @@ export const PICKED = Object.freeze({
   onePrint: 'a', // his print: the hero's quiet print and the simpler shapes (the owner's pick, 2026-11-23, "Print a", ADR-170; b one cell bolder on a phone, 0 as he shipped)
   oneBody: 'b', // his figure: the open coat, printed like the hero on a man's build, one coat (the owner's pick, 2026-11-26, ADR-221; 0 as he shipped, a closed, c the duster)
   oneMoves: 'a', // his moves: straight kicks, long punches, held blue / red windups, the side-on aim, two fast strings (the owner's pick, 2026-11-26, ADR-221; 0 as he shipped)
+  // the sword motion pass (ADR-226; the owner's pick, 2026-11-26, from the before / after films)
+  ashMotion: 'a', // Shen Hui: the jian in line with the arm, held blue / red windups (Piercing Ash keeps its thrust), quick blows
+  lordMotion: 'a', // Varr Nihil: the same, and the end-of-string shake for the twirl
   // every human boss
   bossPrint: 'b', // printed the hero's way, in his own colours (the owner's pick, 2026-11-24, of three: 0 as before, a the hero's greys; ADR-194)
+  // drawn in the hero's style (the owner's picks, 2026-11-26, ADR-220; 0 each as he shipped)
+  ashHero: 'c', // Shen Hui: the hero's shading and his outline (a the shading, b the outline)
+  lordHero: 'c', // Varr Nihil: the hero's shading and his outline
+  sheathHero: 'c', // Lu Wusheng: the hero's shading and his outline
+  ascHero: 'a', // Tian Lei: the hero's shading (his lines are the hero's already: his letters follow his size)
+  halHero: 'a', // Halcyon: the hero's shading (likewise)
   // the title
   menu: 'c', // the sword's path: the worlds as fires along one line (the owner's pick, 2026-11-25, of three; 0 the title before; ADR-196)
 });

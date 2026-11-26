@@ -44,6 +44,9 @@ export const LOOK_SWITCHES = Object.freeze([
   ['ascOrb', ['a', 'b', 'c'], 'a', 'a', false, ['ring'], 'Heaven\'s Lantern, the great orb: a a sun, b a lantern, c the pale gathered sphere (its arms-up gather on a reload)'],
   ['ascBeamPose', ['0', 'cup'], '0', '0', true, ['ring'], 'Tian Lei\'s beams: 0 the palm thrust, cup both hands cupped at the hip (a reload)'],
   ['ascMotion', ['0', 'a'], '0', 'a', false, ['ring'], 'Tian Lei\'s motion (ADR-225): a every blue and red blow out of a held windup pose of its own, and his snap blows (Snap Jab, Snap Hook; the default); 0 as before (live, from his next move)'],
+  // --- the sword motion pass (ADR-226; live from his next move; the owner's pick: a)
+  ['ashMotion', ['0', 'a'], '0', 'a', false, ['ash'], 'Shen Hui\'s sword motion: 0 as before; a the jian held in line with his forearm, his arms opening, blue / red blows held in their tell poses, two quick blows'],
+  ['lordMotion', ['0', 'a'], '0', 'a', false, ['starless'], 'Varr Nihil\'s sword motion: 0 as before; a the blades held in line with his forearms, his arms opening, blue / red blows held in their tell poses, a shake of the steel for the end twirl, two quick blows'],
   //
   //
   // --- fox: Wen Yao (ADR-147; every one read when his rigs or his effects are built: a reload)
@@ -82,6 +85,14 @@ export const LOOK_SWITCHES = Object.freeze([
   ['halMotion', ['0', 'a'], '0', 'a', false, ['city'], 'Halcyon\'s motion (ADR-225): a a flier\'s legs in his blows, each blow aimed down at the hero (he dips into it), his arms open at the end, the held windups, his snap blows (Flick, Tap; the default); 0 as before (live, from his next move)'],
   // --- every human boss (ADR-194)
   ['bossPrint', ['0', 'a', 'b'], '0', 'b', false, ['ash', 'starless', 'ring', 'fox', 'grove', 'code', 'city'], 'the bosses printed the hero\'s way: b in their own colours (the default), a in the hero\'s greys, 0 as before (lit letter bodies, his strokes and dotted rims, the pale hem below the knee)'],
+  // --- drawn in the hero's style (ADR-220): per boss, 0 as he shipped, a shaded as the hero is, b outlined as the
+  // hero is (his line width), c both; his colours, outfit and letters kept (live). The owner's picks: c for
+  // Shen Hui, Varr Nihil and Lu Wusheng, a for Tian Lei and Halcyon (whose lines are the hero's already)
+  ['ashHero', ['0', 'a', 'b', 'c'], '0', 'c', false, ['ash'], 'Shen Hui in the style of the hero: a his shading, b his outline, c both (his colours and outfit kept)'],
+  ['lordHero', ['0', 'a', 'b', 'c'], '0', 'c', false, ['starless'], 'Varr Nihil in the style of the hero: a his shading, b his outline, c both (his colours and outfit kept)'],
+  ['ascHero', ['0', 'a', 'b', 'c'], '0', 'a', false, ['ring'], 'Tian Lei in the style of the hero: a his shading, b his outline, c both (his colours and outfit kept)'],
+  ['sheathHero', ['0', 'a', 'b', 'c'], '0', 'c', false, ['grove'], 'Lu Wusheng in the style of the hero: a his shading, b his outline, c both (his colours and outfit kept)'],
+  ['halHero', ['0', 'a', 'b', 'c'], '0', 'a', false, ['city'], 'Halcyon in the style of the hero: a his shading, b his outline, c both (his colours and outfit kept)'],
   // --- the title (ADR-196)
   ['menu', ['0', 'a', 'b', 'c'], '0', 'c', true, ['cinderwood', 'ash', 'starless', 'ring', 'fox', 'grove', 'code', 'city'], 'the title: c the sword\'s path (the default), a the world list, b the campfire grid, 0 the title before (a reload)'],
 ]);

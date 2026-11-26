@@ -308,6 +308,13 @@ Render helpers for creature modules:
     default): `[from, to, add, lift0, lift1]`: a foot off the ground (lift0 .. lift1 m) asked for past `from` of
     the leg's length is carried out along its line by up to `add` of it at `to`, so a kick lands with the leg
     straight; Xin Yi sets it, `legSoft` and `armSoft` every frame from his `?oneMoves=` switch.
+  - **A sword boss's grip** (ADR-226): `HeroAnimator.gripMax` (rad; 0 / unset = off, the hero and every other boss):
+    after the sword arm's solve, a forearm more than gripMax off the blade turns toward it round the elbow
+    (`_gripAlign`; the hand and `rig.sword.position` move, the blade's direction never). A duelist kit's optional
+    `motion()` → `{ gripMax, armSoft } | null` is read every frame by `duelist.js` `_animate` (Shen Hui and Varr
+    Nihil: their `TUNING.motion` while `?ashMotion` / `?lordMotion` is on, else null: the animator as before).
+    Their moves marked `motionOnly` are weighed 0 by the actor's `weigh` while the switch is off; a beat marked
+    `quick` (a normal tell) may wind up `TUNING.minQuickWindup` instead of `minFirstWindup` (the data rule).
   - **The bosses' letters** (ADR-154, ADR-155, ADR-170): a boss whose kit sets `letters` (today Wen Yao's `FOX_KIT`, behind
     `?foxLetters=b`, Tian Lei's `ASC_KIT`, a getter behind `?ascLetters=a`, the owner's pick; `0` the fixed cell; Halcyon's
     `HALCYON_KIT`, a getter behind `?halLetters=a`, the owner's pick, ADR-166; and Xin Yi's `WOKEN_KIT`, the same getter
@@ -328,6 +335,11 @@ Render helpers for creature modules:
     `lookOf('bossPrint', '0', 'b')`. Every ink-line material reads `uBossPrint` (`HERO_ART_SHARED`) except the
     player's (`heroSelf` compiles `SG_HERO_SELF`): the fill is lifted in the shader, so whoever writes `uArtFill`
     needs no change.
+    **The bosses drawn in the hero's style** (ADR-220): main.js also writes `U.uBossHero.x` (his shading: the boss's
+    cloth light falls off away from the key light and down his body; `HERO_ART_SHARED`, read inside the print's
+    `#ifndef SG_HERO_SELF`, scaling `fillC` only) and `uBossLike.z` (his ink lines at the hero's line width:
+    `gLine = max(uHeroPx.x, uSelfPx)` in `cellMain`) from `heroPrint(level.id)` (`duelist/heroPrint.js`: `HERO_PRINT`
+    level -> switch, `HERO_STYLE` a / b / c, frozen records, no allocation), both 0 with `?bossPrint=0`.
     Ink lines are drawn per pixel by the pass, not from glyphs. `U.uArtHeroCel` (vec3: step from
     shadow to lit between x and y, z = share of the step) cel-shades the art source;
     `U.uHeroPartRim[20]` (vec4: tint × gain) is each part's silhouette ink; fill style + 8 = a
@@ -5101,9 +5113,11 @@ data and a subclass with a few hooks.
   (per phase); a leap lands `leapLead` s and an actor's blink `blinkLead` s ahead of where the hero is
   going (`blinkKeep`: never in front of him); director.js weighs a move whose first blow cannot reach
   where the hero will be x `miss`. Not a counter, a flurry, a stance, a draw or a transformation.
-- `realise.js`: `makeRealise({ TUNING, MOVES, compileClip, completeBeat, keysOf })` (`keysOf(beat)`, optional: the keys a
-  beat plays this time, null = its own; Tian Lei's and Halcyon's motion, ADR-225) → `realise(name, phase, rnd, opts)` (`opts.count`:
-  a `streak` move, his flurry, plays that many beats); `perPhase`. The POSE keys of a beat past its
+- `realise.js`: `makeRealise({ TUNING, MOVES, compileClip, completeBeat, keysOf, recoveryKeysOf })` → `realise(name, phase, rnd, opts)` (`opts.count`:
+  a `streak` move, his flurry, plays that many beats); `perPhase`. `keysOf(beat)` (optional; ADR-225, ADR-226) gives the pose keys a beat plays this time (null: `beat.keys`): a beat's `motionKeys` (its held
+  tell pose, `duelist/tellPose.js` `tellKeys` / `motionize`: Shen Hui and Varr Nihil, `?ashMotion` / `?lordMotion`, on by
+  default). `recoveryKeysOf(move)` (optional) does the same for a move's `recoveryKeys` (the Lord's `motionRecovery`).
+  Timings never depend on either. The POSE keys of a beat past its
   impact (u 1..2) run on the beat's follow, `b.F` s (ADR-126: 72 % of the time to the next beat's
   first pose, 0.24 s at most, 0.3 s for a ring zone, `def.follow` to set it), not on the active
   frames; gameplay (`uAt`, `travel`, `lift`, the zone) keeps the active frames' clock. A key marked

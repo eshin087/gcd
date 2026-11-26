@@ -107,6 +107,9 @@ export const LINKS = {
   fallingStar: single(near('crane', [0.35, 0.35, 0.3]), near('kickBrand', [0, 0.45, 0.4]), near('ashString', [0, 0, 0.5])),
   // ---- the ones that cover ground: what waits where they land
   windStep: [near('swallow', [0.45, 0.4, 0.35]), near('burningCross', [0, 0.5, 0.4]), near('ashString', [0, 0, 0.55]), near('fallingStar', [0.35, 0.4, 0.4]), mid('glideKick', [0.4, 0.45, 0.45]), mid('plumThrust', [0.3, 0.4, 0.45])],
+  // (ADR-226: the quick blows, behind ?ashMotion: a string straight out of one)
+  needleDart: [...STRINGS, near('swallow', [0.4, 0.4, 0.35]), near('ashString', [0, 0, 0.5])],
+  wristFlick: [...STRINGS, near('partingWind', [0.35, 0.35, 0.3]), near('ashString', [0, 0, 0.5])],
   plumThrust: [...STRINGS, near('swallow', [0.45, 0.45, 0.4]), near('ashString', [0, 0, 0.55]), far('windStep', [0.4, 0.5, 0.55]), mid('glideKick', [0.35, 0.4, 0.45])],
   piercingAsh: [near('fallingStar', [0.4, 0.45, 0.4]), near('ashString', [0, 0, 0.55]), far('emberFan', [0, 0.4, 0.3]), far('qiStorm', [0, 0, 0.45]), far('ashCrescent', [0.35, 0.4, 0.4])],
   severingWind: [...STRINGS, near('fallingAsh', [0.4, 0.4, 0.35]), near('flitLotus', [0, 0, 0.5]), far('windStep', [0.35, 0.45, 0.5])],

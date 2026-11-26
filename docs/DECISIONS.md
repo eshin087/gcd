@@ -6518,7 +6518,88 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   default (lookSwitch PICKED), so the snap blows are in both bosses' pools. Not changed (for the owner to choose): the sweep's jolt, the dash thrusts'
   skating, the cross's sideways line, Fly-By's pass height. The holds are short in a string's quick beats
   (0.12 - 0.24 s): `HELD_AT` is the lever.
+## ADR-220 — The bosses drawn in the hero's style: his shading and his outline, their own colours (2026-11-26)
 
+**Context.** The owner: everything but the Cinder Wyrm and Wen Yao still does not look like the hero's ASCII.
+Beside the hero at the game camera, ADR-194's lift prints a boss's cloth as one even, bright field of dense letters,
+inside a 1 px line; the hero runs from a near-black core through grey shoulders to a lit edge and the pale hem,
+inside a line two pixels wide at 1440p. A first round (the hero's letter size, his dark cloak values in each boss's
+hue, the pale hem up to the thigh, skirts flared and torn) was turned down: "i didnt mean make it the same color or
+cloth texture as the main character. i meant the style and engine look ... shen hui i like that his original hat
+has its own color and detailed ascii look". Asked which part, the owner picked his shading and his outlines and
+rim (not his letter size).
+
+**Decision.** One live switch per boss, duelist/heroPrint.js (`HERO_PRINT` level -> switch, `HERO_STYLE`), read every
+frame by main.js: `?ashHero=` `?lordHero=` `?ascHero=` `?sheathHero=` `?halHero=` = `0` as shipped, `a` his shading,
+`b` his outline, `c` both.
+- **Shading** (`U.uBossHero.x`, materials.js, inside the bosses' print, `#ifndef SG_HERO_SELF`): the boss's cloth /
+  hair / plate light (`fillC`, never `artFill`: his colours) is scaled by `mix(0.15, 1, k)`, `k` = the key light's
+  cel step x a rise toward his shoulders (0.45 at 0.55 m above his feet to 1 at 1.55 m), never below 1 on the hem
+  or from 1.45 m up (his head and hat as they are).
+- **Outline** (`uBossLike.z`, pipeline.js `cellMain`): a boss's ink-line step `gLine` = max(his, the hero's
+  `uSelfPx`): his silhouette, dotted rim and inner lines at the hero's width, his letters on his own cell. On a
+  boss whose letters follow his size (Tian Lei, Halcyon) it already is: b changes nothing there.
+- **Picks:** c for Shen Hui, Varr Nihil and Lu Wusheng; a for Tian Lei and Halcyon (lookSwitch PICKED; Lab LOOKS
+  rows, live). `?looks=old` draws `0`.
+
+**Not changed.** Colours, outfits, letter cells, the hem, the face: ADR-194's print. The wyrm, Wen Yao and Xin Yi
+have no switch. Turned down and removed: the dark cloak values, the tall hem, the flared and torn skirts.
+
+**Cost.** A few ALU per boss fragment and a wider tap step for his lines; no texture, pass, draw call or geometry.
+
+## ADR-226 — The sword duelists' motion pass: the sword in the hand, held tell poses, quick blows (2026-11-26)
+
+- **Context:** the owner: Shen Hui's and Varr Nihil's positioning angles look weird and their weapons are held
+  awkwardly; every blue and red blow should have its own readable held windup pose; and some much faster normal
+  blows ("instant attacks": short windups, read from the stance). The hero's stance and swings were rebuilt from the
+  owner's reference footage (ADR-207, ADR-214): the bar a straight sword is held to. Measured first (a new audit,
+  `tests/integration/swordAudit.mjs`, opt-in `audit` in `duel.mjs` / `lord.mjs`: every move once, joints in his own
+  frame): the blade is keyed on its own and the hand follows a circle round the shoulder, so the angle between the
+  forearm and the blade averaged 45° (Shen Hui) / 64° (Varr Nihil) and reached the animator's fold limit, 128°
+  (`WRIST_BACK`): the fist turned off the wrist (the hero holds his ≤ 60°). Varr Nihil's form-1 guard sat at 75 - 110°
+  all the time, his staff and form 4 at 90 - 128°. The blade passed through their heads in overheads (Shen Hui: Crane,
+  Heaven-Splitting Fall, the leaping string, Kick Brand; Varr Nihil: Falling Star, Lightning Verse, Cyclone, Grinding
+  Wheel, Thunder Verse); the elbows never opened past 131 - 145° (the bosses' soft reach); Varr Nihil's end-of-string
+  roll of the blade round the wrist stopped with a jolt of 1.0 - 2.5 m a frame² at the point, the largest in either
+  boss. At the blow itself his chest was square to the hero (within ~20°), so the facing at an impact is not the fault.
+- **Decision** (`?ashMotion` / `?lordMotion`, `duelist/lookSwitch.js`, Lab LOOKS rows; 'a' the owner's pick and the
+  default since 2026-11-26, from the before / after films: "i like the new timings and changes"; '0' as before):
+  - **The grip**: `HeroAnimator.gripMax` (rad; 0 = off, the hero and every other boss): after the sword arm's solve, a
+    forearm more than gripMax off the blade's line turns toward it round the elbow (`_gripAlign`), the hand going with
+    it, the elbow where the arm put it, folded no tighter than 38°. The blade's direction, its path and every zone are
+    untouched: only where the hand holds it. `TUNING.motion.gripMax` 0.7 (~40°) and `armSoft` [0.9, 0.985] (the arms
+    open at the end of a blow, as the hero's), read every frame through `kit.motion()` (duelist.js).
+  - **The held tell poses** (`duelist/tellPose.js`): every blue or red BLADE blow (not a feint, a cast, a thrown or
+    released thing, a somersault or a cartwheel; and Piercing Ash, which the owner kept as it was: "the old animation of
+    thrusting the sword instead of bending it") gets `motionKeys`, its keys with a family pose reached at 0.36 of the
+    windup (before the flare) and held to 0.8, the strike from there. Two silhouettes to learn, one per answer: blue
+    **high** (the blade raised over the sword shoulder, point to the sky, tall on the legs, the free hand out at the
+    foe) or **aim** for a thrust (drawn back level by the cheek, the point on the foe); red **coil** (sunk low and
+    coiled away, the blade trailing low behind the hip near the floor, the free hand reaching). Played through the
+    realiser's `keysOf`: the windups, impacts and ends are the same to the frame on and off.
+  - **Varr Nihil's string ends**: `motionRecovery` (the realiser's new `recoveryKeysOf`): the steel shaken off down and
+    out and held a beat (both blades in form 2, the staff swept level in form 3; form 4's was already a shake)
+    instead of the roll round the wrist.
+  - **Quick blows** (`quick` beats, `motionOnly` moves: his `weigh` gives them 0 with the switch off): a normal tell,
+    a fixed windup of `TUNING.minQuickWindup` (Shen Hui 0.34 s, Varr Nihil 0.30 s; their openers today 0.42 - 0.6 s),
+    each glint 0.04 s into it, thrown from the guard with no draw: Shen Hui's Darting Needle (the jian already
+    pointed at the foe, a hand's width back and in) and Flicking Willow (the point flicks up and cuts down across);
+    Varr Nihil's Rising Ember (forms 1 - 3, up from the blade hung low at his side) and Vigil's Fall (form 4, down from
+    the blade upright before his face). The data rule: a quick blow is a normal one and its windup ≥ minQuickWindup
+    (the 0.42 / 0.40 s floor stays for every other first blow). Each links into a string.
+- **Why a solver and families, not hand keys**: hand-invented arm choreography failed with this owner again and
+  again (stiff sword arms, flailing hands); here the arm is measured into line with the steel the moves already
+  swing, and the tell is one learnable silhouette per answer rather than forty separate poses.
+- **Consequences** (the audit, switch on): Shen Hui, all 38 moves: the wrist at most 60° (before 58 - 128), the blade
+  ≥ 18 cm from his head and 21 cm from his body (before 0), elbows open to 150 - 167°. Varr Nihil, 62 moves: wrist
+  ≤ 60° in all but one spell pose (91°, Starless Night's cast), blade ≥ 7 cm from his head (before through it in five
+  moves), the worst jolt in a move 776 → 449 mm a frame² on average, the roll's jolts gone. The pace meters (`duel.mjs`
+  / `lord.mjs . pace`) pass on and off. Test `swordmotion` in both suites (on and off). Open: the feet still slide a
+  little where a planted foot is handed to the clip (another session's `kit.animOpts.liftEase` may serve), the
+  crossing legs inside spins and sweeps; a heavy thrust landed on Shen Hui inside Falling Ash's held raised blade
+  makes the hit reaction jump 0.077 m in a frame (0.055 over the old pose; `duel.mjs . react` measures the layer
+  with the switch off). A held pose's strike keeps the hand as the strike holds it (keyed or blade-driven), and a
+  counter out of his guard gets no held pose.
 ## ADR-221 — Xin Yi rebuilt: printed like the hero on a man's build; held windups, a true aim, fast strings (2026-11-26)
 
 - **Context:** the owner: "the neo boss anatomy and attacks are all weird too ... fix the neo character details

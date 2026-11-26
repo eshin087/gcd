@@ -4,13 +4,26 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and fifteen pieces of work since 0.4.0:
+One hundred and seventeen pieces of work since 0.4.0:
 - **Xin Yi rebuilt: a man in a coat, readable windups, faster hands** (2026-11-26, ADR-221). *Changed:* Xin Yi is
   drawn like the hero on a man's build: square shoulders, a belted waist, fuller hair, and one long open coat that
   hangs instead of flaring, with a straight hem (the owner's pick; `?oneBody=0` as before, `a` closed, `c` a duster).
   His kicks land with the leg straight and his punches with the arm long, his single gun is aimed down a straight
   arm, every blue and red blow is held in a windup pose you can read before the snap (the same timing). *Added:* two
   fast strings, Snapping Hands and Quick Foot (`?oneMoves=0`: his moves as before).
+- **Shen Hui and Varr Nihil hold their swords like swordsmen** (2026-11-26, ADR-226). *Changed (the owner's pick; `?ashMotion=0` /
+  `?lordMotion=0` give back the motion before):* the second and third
+  bosses hold their blades in line with the forearm (it bent up to 128° off it) and their arms open at the end of a
+  blow; every blue blow is wound up in a held pose with the blade raised high (or drawn back level for a thrust), every
+  red one sunk low with the blade trailing near the floor (Piercing Ash keeps its drawn-back thrust), the timings unchanged; Varr Nihil ends his strings with a
+  shake of the steel instead of a twirl that snapped; two quick blows each, thrown straight out of the guard
+  (Darting Needle, Flicking Willow; Rising Ember, Vigil's Fall). A sword motion audit for both (`audit`).
+- **The bosses shaded and outlined like the hero** (2026-11-26, ADR-220). *Changed:* Shen Hui, Varr Nihil, Tian Lei,
+  Lu Wusheng and Halcyon keep their own colours, clothes and letters, but are now lit the way the hero is: bright
+  where the light catches them and on their shoulders, falling off into dark letters on the shadow side and down
+  the body. Shen Hui, Varr Nihil and Lu Wusheng also get the hero's thicker, blockier outline on large screens.
+  Each boss's switch (`?ashHero=`, `?lordHero=`, `?ascHero=`, `?sheathHero=`, `?halHero=`: 0 as before, a the
+  shading, b the outline, c both) is in the Lab's LOOKS.
 - **Tian Lei and Halcyon: held windups, quick jabs, and Halcyon fights like a flier** (2026-11-26, ADR-225; the owner's pick: `?ascMotion=0` / `?halMotion=0` play them as before). *Added:* every
   blue (parry) and red (perfect-dodge) blow of Tian Lei's and Halcyon's now winds up into a pose of its own, held
   while it tightens, so you can read which blow is coming and how to answer it; red ones sink deeper. Two quick
