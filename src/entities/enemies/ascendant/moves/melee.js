@@ -1,3 +1,5 @@
+import { SNAP_KEYS } from '../motion.js';
+
 // Tian Lei's blows (MOVES.md): the three forms' strings, closers and areas, his counters, his flurries
 // and the transformations. Data only, built with the builders `X` (ascendant/moves.js header). Weights
 // are [form 1, form 2, form 3]; numbers are MOVES.md's starting values (windups at form 1's pace:
@@ -37,7 +39,7 @@ export function signKeys(X, { coil = null, hit = null, after = null, keys = null
 export function meleeMoves(X) {
   const { TELL: { N, B, R, K }, punch, kick, elbow, shoulder, transform, strikeKeys, F, TUNING } = X;
   const RE = TUNING.reach;
-  const ST = TUNING.stance, SG = TUNING.sign;
+  const ST = TUNING.stance, SG = TUNING.sign, SN = TUNING.snap;
   /** A dash on a beat: from `from` of the windup to the impact, stopping `stop` m short, `max` m at most. */
   const dash = (max, from = 0.6, stop = 1.0) => ({ dash: { from, to: 1.0, stop, max }, close: 0 });
   /** Where a palm thrust's dash stops (m from the hero): the palm's lunge reaches ~1.35 m, so a dash to
@@ -55,7 +57,7 @@ export function meleeMoves(X) {
     const z = beat.zone, f = z?.fwd ?? 0;
     const reach = !z ? 1.5 : z.kind === 'ring' ? z.r * 0.55 + f : z.r * (z.kind === 'line' ? 0.72 : 0.66) + f;
     return {
-      ...beat, keys: signKeys(X, { keys: beat.keys, cock: beat.cock ?? 0.76 }), blink: { ...where, sign: true },
+      ...beat, keys: signKeys(X, { keys: beat.keys, cock: beat.cock ?? 0.76 }), blink: { ...where, sign: true }, mo: beat.mo ? { ...beat.mo, sign: true } : undefined,
       close: 0, track: 0.85, dash: { from: SG.stepFrom, to: 0.96, stop: reach, max: SG.step },
     };
   };
@@ -97,16 +99,16 @@ export function meleeMoves(X) {
     const BL = TUNING.shots.bolt;
     return {
       tell: B, windup, active: 0.08, damage, knockback: 1.4, ki: 'bolt', zone: { kind: 'line', r: BL.range, w: BL.width }, part: 'fistR',
-      close: 0, track: 0.92, keys: strikeKeys({ coil: BOLT.coil, hit: BOLT.hit, cock }), ...extra,
+      close: 0, track: 0.92, keys: strikeKeys({ coil: BOLT.coil, hit: BOLT.hit, cock }), mo: { fam: 'bolt', coil: BOLT.coil, hit: BOLT.hit, tell: B }, ...extra,
     };
   };
 
   /** The burst of his aura: crouched, the fists at his hips, then the arms thrown out (a ring round him). */
-  const burstKeys = (cock = 0.7) => strikeKeys({
-    cock,
+  const BURST = {
     coil: { yaw: 0, bY: -0.4, pitch: 0.14, hdX: 0.2, rH: [-0.04, -0.4, 0.0], rP: [-0.8, -0.4, -0.6], lH: [0.04, -0.4, 0.0], lP: [0.8, -0.4, -0.6], rF: [-0.32, 0.0], lF: [0.32, 0.0], rK: [-0.7, 0, 0.7], lK: [0.7, 0, 0.7], rFy: -0.3, lFy: 0.3 },
     hit: { yaw: 0, bY: -0.16, pitch: -0.16, hdX: -0.2, spX: -0.1, rH: [-0.42, 0.04, 0.16], rP: [-0.9, 0.2, -0.3], lH: [0.42, 0.04, 0.16], lP: [0.9, 0.2, -0.3], rF: [-0.32, 0.0], lF: [0.32, 0.0], rK: [-0.5, 0, 0.8], lK: [0.5, 0, 0.8], rFy: -0.3, lFy: 0.3 },
-  });
+  };
+  const burstKeys = (cock = 0.7) => strikeKeys({ cock, ...BURST });
 
   /** His answer to a streak of guards (DEFENSE.foeStreak), one per form: the first blow from where he
    *  stands, each of the others from another side of the hero (`flit`). */
@@ -217,7 +219,7 @@ export function meleeMoves(X) {
      *  have stayed on him for a while (ascendant.js weigh). */
     auraBurst: {
       label: 'Aura Burst', phase: 2, weight: [0, 1.8, 0.9], cooldown: 9, band: [0, 3], recovery: 0.6, cat: 'area',
-      beats: [{ tell: R, windup: 0.7, active: 0.14, damage: 20, knockback: 7, zone: { kind: 'ring', r: 4.5 }, ring: 4.5, part: 'feet', close: 0, track: 0.3, keys: burstKeys(0.7), burst: true }],
+      beats: [{ tell: R, windup: 0.7, active: 0.14, damage: 20, knockback: 7, zone: { kind: 'ring', r: 4.5 }, ring: 4.5, part: 'feet', close: 0, track: 0.3, keys: burstKeys(0.7), burst: true, mo: { fam: 'burst', ...BURST, tell: R } }],
     },
     /** Sunbreaker: the CHARGED blow of the golden form: the fist drawn back while the gold gathers, a
      *  held beat, then a rushing punch across 12 m. Black: dodge it. */
@@ -271,7 +273,7 @@ export function meleeMoves(X) {
       beats: [
         punch('uppercut', B, 0.56, 20, { knockback: 11, knockdown: true, launch: true }),
         punch('hammer', R, 0.66, 26, { blink: { land: true, side: 1.6 }, zone: { kind: 'ring', r: 3.0 }, ring: 3.0, knockdown: true, knockback: 2.6, close: 0, track: 0.5 }),
-        { tell: R, windup: 0.6, active: 0.14, damage: 20, knockback: 6, zone: { kind: 'ring', r: 4.4 }, ring: 4.4, part: 'feet', close: 0, track: 0.3, keys: burstKeys(0.7), burst: true },
+        { tell: R, windup: 0.6, active: 0.14, damage: 20, knockback: 6, zone: { kind: 'ring', r: 4.4 }, ring: 4.4, part: 'feet', close: 0, track: 0.3, keys: burstKeys(0.7), burst: true, mo: { fam: 'burst', ...BURST, tell: R } },
         { ...punch('palm', B, 0.5, 22, { flare: true }), zone: { kind: 'line', r: RE.line, w: RE.lineW }, ...dash(5, 0.55, PALM) },
       ],
     },
@@ -379,6 +381,19 @@ export function meleeMoves(X) {
     riposteBolt: {
       label: 'Riposte (bolt)', phase: 3, weight: 0, counter: true, cooldown: 0, band: [0, 6], recovery: 0.6,
       beats: [{ ...bolt(0.5, 20), travel: [[0, 0], [0.45, -SG.hop], [1, -SG.hop]] }],
+    },
+
+    // ============================================================ the snap blows (ADR-225)
+    // (white, from the guard, a short windup: weighed only under `?ascMotion=a`, ascendant.js weigh)
+    /** Snap Jab: the lead hand straight out of his guard, no wind-up to read but the shoulder. */
+    snapJab: {
+      label: 'Snap Jab', phase: 1, weight: [1.4, 1.2, 1.1], cooldown: SN.cooldown, band: [0, SN.band], recovery: SN.recovery, cat: 'single', snap: true,
+      beats: [{ ...punch('jab', N, SN.windup, SN.damage, { cock: 0.5 }), fixed: true, snap: true, close: SN.close, track: 0.8, keys: SNAP_KEYS.jab }],
+    },
+    /** Snap Hook: the rear fist turned over short, the hips snapping round behind it. */
+    snapHook: {
+      label: 'Snap Hook', phase: 1, weight: [1.0, 1.1, 1.1], cooldown: SN.cooldown + 1, band: [0, SN.band], recovery: SN.recovery, cat: 'single', snap: true,
+      beats: [{ ...punch('hook', N, SN.windup, SN.hook, { cock: 0.5 }), fixed: true, snap: true, close: SN.close, track: 0.8, keys: SNAP_KEYS.hook }],
     },
 
     // ============================================================ the transformations

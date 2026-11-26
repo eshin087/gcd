@@ -36,10 +36,11 @@ export function perPhase(v, phase) {
 const FOLLOW_MAX = 0.24; // s: the longest follow-through of a blow
 const FOLLOW_RING = 0.3; // … of a spin (a ring zone): its whole turn runs on this clock, 0.18 s was a blur
 const FOLLOW_PART = 0.72; // of the time to the next beat's first pose: the rest is his way into it
-// `keysOf(beat)` (optional): what a beat plays THIS time, read as each move is realised: its pose keys, or
-// { keys, hold }: `hold` s more of the cocked pose, added to the beat's bait hold; null or undefined =
-// `beat.keys` and no more hold. The held tells use it (ADR-223, duelist/heldTells.js: Lu Wusheng and Wen
-// Yao, `?sheathMotion=` / `?foxMotion=`; ADR-236 had removed the hook while nothing used it).
+// `keysOf(beat)` (optional): what a beat plays THIS time, read as each move is realised: its pose keys (a
+// boss whose blows have a second set behind a live look switch: Tian Lei's and Halcyon's motion, ADR-225,
+// ascendant/motion.js, halcyon/motion.js), or { keys, hold }: `hold` s more of the cocked pose, added to
+// the beat's bait hold (the held tells, ADR-223, duelist/heldTells.js: Lu Wusheng and Wen Yao); null or
+// undefined = `beat.keys` and no more hold.
 export function makeRealise({ TUNING, MOVES, compileClip, completeBeat = null, keysOf = null }) {
   return function realise(name, phase = 1, rnd = Math.random, opts = null) {
     const def = MOVES[name];

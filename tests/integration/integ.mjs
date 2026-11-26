@@ -794,15 +794,11 @@ async function scenarioPressure() {
       const { game } = G;
       G.defend = steadyDefender(G);
       // (the steady bot only guards, but now and then a guard press lands inside a later blow's parry
-      // window. Since ADR-227 (perfect parry 0.20 s) those stray parries are perfect: returned shots and
-      // x 1.5 posture send the seeded fight another way, and on seed 4242 that path met the brood's
-      // busyWait dive (brood.js, BROOD.busyWait 2.5 s) landing within 0.3 s of a wyrm cue: a director
-      // gap that exists on main too, a separate task. This measures the director on the path it was
-      // written for: the stray parries keep the old 0.08 s perfect window)
-      const parry0 = game.player._parry;
-      game.player._parry = function (tell, attack, sx, sz, light, perfect, hit) {
-        return parry0.call(this, tell, attack, sx, sz, light, perfect && this.time - this.rmb.parryT <= 0.08, hit);
-      };
+      // window, and since ADR-227 (perfect parry 0.20 s) those stray parries are perfect: returned
+      // shots and x 1.5 posture send the seeded fight another way. On seed 4242 that path met the
+      // brood's dives after busyWait whose hold ran out beside a wyrm cue of the other answer
+      // (fanVolley / drakelings P2, breath / drakelings P3); ADR-237 closed it (BROOD.late, scenario
+      // BROODBUSY), and the stray parries keep the real window again)
       fightSetup(G, { ai: true });
       const d = game.dragon;
       Math.random = mulberry32(seed * 7 + ph);
@@ -10417,6 +10413,134 @@ async function scenarioMelee() {
 // the flash after the tell, in all three phases); the deflect chain on Rending flurry with every
 // parryable hit parried (the string goes on after each non-final parry, recoils after the last, the
 // posture adds up, combat:deflectChain counts); a red hit inside a string breaks a held guard.
+// ================================================================== scenario: broodbusy (ADR-237)
+// A drakeling whose time runs out while the wyrm stays busy dives anyway after BROOD.busyWait, and its
+// hold (BROOD.hold.max) can run out too: it then goes at the first free slot, never onto a wyrm cue of
+// the other answer (within BROOD.late.clear s), gutters out after BROOD.late.drop s held rather than
+// cue onto one, and its flash bars the wyrm's bullets of the other answer (bullets.bar: duds). The
+// path seed 4242's pressure fight took with perfect stray parries (fanVolley / breath beside a dive).
+async function scenarioBroodBusy() {
+  out('\n== scenario BROODBUSY (a dive after busyWait keeps the cue spacing: ADR-237) ==');
+  const { BROOD } = await imp('src/entities/dragon/tuningBrood.js');
+  const { BULLET, CUE } = await imp('src/entities/dragon/bullets.js');
+  const answerOf = (tell) => (tell === TELL.RED || tell === TELL.BLACK ? 'dodge' : 'guard');
+  const lead = TUNING.flashLead, HM = BROOD.hold.max, LT = BROOD.late;
+  const G = build();
+  const { game } = G;
+  fightSetup(G);
+  const d = game.dragon, p = game.player, B = d.brood;
+  settle(G);
+  d.enterPhase(2);
+  run(G, 0.2, { passive: true });
+  settle(G, 14);
+  place(G, 9);
+  const flashes = [];
+  let divesBusy = 0;
+  G.watch = (nm, e) => {
+    if (nm === 'combat:flash' && e?.source === 'dragon') flashes.push({ t: game.time, tell: e.tell, attack: e.attack, brood: !!e.brood });
+    if (nm === 'combat:tell' && e?.attack === 'drakelings' && e.tell === TELL.RED && B._wyrmBusy()) divesBusy++;
+  };
+  const clashes = () => {
+    const at = [];
+    for (const a of flashes) {
+      if (!a.brood) continue;
+      for (const b of flashes) if (!b.brood && Math.abs(a.t - b.t) < 0.3 && answerOf(a.tell) !== answerOf(b.tell)) at.push(`${a.attack}/${b.attack} ${(b.t - a.t).toFixed(2)}`);
+    }
+    return at;
+  };
+
+  // --- a long busy spell of real moves (furnace maws' strings, fan volleys, a breath) back to back,
+  // with three drakelings whose time runs out as the first one starts
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2;
+    B.spawn('drakeling', { x: p.position.x + Math.cos(a) * 5, y: 1.2, z: p.position.z + Math.sin(a) * 5 });
+  }
+  run(G, 1.2, { passive: true }, () => { p.hp = p.maxHp; return false; });
+  const moves = ['furnaceMaw', 'fanVolley', 'furnaceMaw', 'fanVolley', 'furnaceMaw', 'breath', 'furnaceMaw'];
+  let k = 0, run0 = 0, spell = 0, upSet = false;
+  const st0 = { ...B.stats };
+  const t0 = game.time;
+  for (let i = 0; i < Math.round(30 / DT); i++) {
+    if (!d.brain.action && k < moves.length && d.state === 'combat') {
+      d.brain.cooldowns = {};
+      d.debug.trigger(moves[k++]);
+    }
+    if (!upSet && d.brain.action) {
+      upSet = true;
+      for (const c of B.drakes) if (c.alive) c.t = Math.max(c.t, c.life);
+    }
+    bot(G, { passive: true });
+    G.tick(DT);
+    p.hp = p.maxHp;
+    run0 = B._wyrmBusy() ? run0 + DT : 0;
+    if (B.count('drakeling')) spell = Math.max(spell, run0);
+    if (k >= moves.length && !d.brain.action && B.count('drakeling') === 0) break;
+  }
+  const st = Object.fromEntries(Object.keys(B.stats).map((x) => [x, B.stats[x] - (st0[x] ?? 0)]));
+  const c1 = clashes();
+  out(`   ${(game.time - t0).toFixed(1)} s, ${k} moves (${moves.slice(0, k).join(', ')}) · longest busy spell ${spell.toFixed(2)} s · ${flashes.length} cues (${flashes.filter((f) => f.brood).length} brood) · dives ${st.dives} (${divesBusy} told while it was busy) · late ${st.late} · guttered ${st.dropped} · live ${B.count('drakeling')}`);
+  assert(k >= 4 && spell >= BROOD.busyWait, `the wyrm is kept busy past busyWait (${BROOD.busyWait} s) while the drakelings wait: ${k} moves back to back, longest spell ${spell.toFixed(2)} s`);
+  assert(divesBusy >= 1, `a drakeling whose time ran out dives while the wyrm is busy (after busyWait ${BROOD.busyWait} s: ${divesBusy})`);
+  assert(st.late >= 1, `a brood cue's hold (${HM} s) runs out under the spell and it waits for a free slot (${st.late})`);
+  assert(c1.length === 0, `no brood cue within 0.3 s of a wyrm cue of the other answer (${c1.length}: ${c1.slice(0, 4).join(' · ')})`);
+  assert(B.count('drakeling') === 0 && st.dives + st.dropped >= 3, `every drakeling went: dived, or guttered out (${st.dives} + ${st.dropped})`);
+
+  // --- a stream of guard cues that never leaves a free slot: past its wait the dive holds on, and
+  // after late.drop s held it gutters out without a cue; once the stream stops, the next one goes in
+  // the first free slot
+  settle(G, 6);
+  place(G, 9);
+  flashes.length = 0;
+  const probe = (on) => {
+    // a guard cue every 0.25 s (as a string of the wyrm's blows tells them: told, then flashed)
+    let next = game.time;
+    return () => {
+      if (!on() || game.time < next) return;
+      next = game.time + 0.25;
+      d.emit('combat:tell', { source: 'dragon', attack: 'probe', tell: TELL.NORMAL, impactIn: lead, x: p.position.x, z: p.position.z });
+      d.emit('combat:flash', { source: 'dragon', attack: 'probe', tell: TELL.NORMAL, x: p.position.x, y: 1, z: p.position.z });
+    };
+  };
+  B.spawn('drakeling', { x: p.position.x + 5, y: 1.2, z: p.position.z });
+  run(G, 1.0, { passive: true }, () => { p.hp = p.maxHp; return false; });
+  const c = B.drakes.find((x) => x.alive);
+  const dr0 = B.stats.dropped;
+  let tick = probe(() => true);
+  B._startDive(c, p.position);
+  const tStart = game.time;
+  run(G, LT.drop + 3, { passive: true }, () => { tick(); p.hp = p.maxHp; return !c.alive; });
+  const redA = flashes.filter((f) => f.brood);
+  out(`   endless stream: alive ${c.alive} after ${(game.time - tStart).toFixed(2)} s · held ${c.held.toFixed(2)} · brood flashes ${redA.length} · guttered ${B.stats.dropped - dr0}`);
+  assert(!c.alive && B.stats.dropped === dr0 + 1 && redA.length === 0, `a dive with no free slot gutters out after ${LT.drop} s held, without a cue (held ${c.held.toFixed(2)})`);
+  flashes.length = 0;
+  B.spawn('drakeling', { x: p.position.x + 5, y: 1.2, z: p.position.z });
+  run(G, 1.0, { passive: true }, () => { p.hp = p.maxHp; return false; });
+  const c2 = B.drakes.find((x) => x.alive);
+  const stopAt = game.time + HM + 1.0; // (the stream outlasts its first wait)
+  tick = probe(() => game.time < stopAt);
+  B._startDive(c2, p.position);
+  run(G, 8, { passive: true }, () => { tick(); p.hp = p.maxHp; return !c2.alive; });
+  const own = flashes.filter((f) => f.brood), last = flashes.filter((f) => f.attack === 'probe').at(-1);
+  out(`   stream for ${(HM + 1).toFixed(1)} s: dive flashed ${own.length && last ? (own[0].t - last.t).toFixed(2) : '-'} s after the stream's last cue · held ${c2.held.toFixed(2)}`);
+  assert(own.length === 1 && own[0].tell === TELL.RED && !!last && own[0].t - last.t >= 0.3, `past its wait it goes in the first free slot (${own.length && last ? (own[0].t - last.t).toFixed(2) : '-'} s after the last guard cue)`);
+  assert(clashes().length === 0, 'and never within 0.3 s of a cue of the other answer');
+
+  // --- its flash bars the wyrm's bullets of the other answer (an ember due beside it is a dud)
+  const Bl = d.bullets;
+  B.spawn('drakeling', { x: p.position.x + 5, y: 1.2, z: p.position.z });
+  const c3 = B.drakes.find((x) => x.alive);
+  Bl.reset?.();
+  B._flash(c3, TELL.RED, p.position.x, 0.6, p.position.z);
+  const ember = Bl.cue(BULLET.EMBER, 'probe', TELL.NORMAL, lead + 0.1, p.position.x, 1, p.position.z);
+  const orb = Bl.cue(BULLET.ORB, 'probe', TELL.RED, lead + 0.1, p.position.x, 1, p.position.z);
+  const nameOf = (v) => Object.keys(CUE).find((x) => CUE[x] === v);
+  out(`   after a red brood flash: an ember due 0.1 s after it -> ${nameOf(ember)}, an orb -> ${nameOf(orb)}`);
+  assert(ember === CUE.CLASH && orb === CUE.NEW, 'a red brood cue bars embers due beside it (a dud: CLASH), not orbs (they cue themselves)');
+  B.clear();
+  G.watch = null;
+  return G;
+}
+
 async function scenarioBrood() {
   out('\n== scenario BROOD (the incantation, fire drakelings and kamikaze wisps: ADR-197) ==');
   const G = build();
@@ -14807,6 +14931,7 @@ const SCENARIOS = {
   lab: scenarioLab,
   bullets: scenarioBullets,
   brood: scenarioBrood,
+  broodbusy: scenarioBroodBusy,
   strings: scenarioStrings,
   plungeReact: scenarioPlungeReact,
   wyrmreact: scenarioWyrmReact,

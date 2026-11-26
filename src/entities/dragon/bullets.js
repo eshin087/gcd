@@ -18,7 +18,8 @@
 // around him). A bullet that could only be announced too late (K.cueMin) is a dud when it was
 // spawned point-blank (it fizzles on touch); an impact that would land within K.clashSep s of an
 // announced one of the OTHER answer (an ember beside an orb: parry vs roll) is a dud too, and sends no
-// cue (the first announced keeps its cue: two answers never land together); a HIT opens K.grace s in which every touching bullet
+// cue (the first announced keeps its cue: two answers never land together; the brood's cues bar
+// them the same way, bar()); a HIT opens K.grace s in which every touching bullet
 // fizzles, and each pattern caps its hits (group().max): a storm never melts the hero. A pattern's
 // headline flash follows its lead bullet even after the action has ended (holdFlash). The tongues
 // are announced the same way (the time until any tongue, burning or still to come from the plan,
@@ -101,6 +102,11 @@ export class Bullets {
     this._cueSmall = new Float64Array(8).fill(NEVER);
     this._cueOrb = new Float64Array(8).fill(NEVER);
     this._ci = 0;
+    // impacts announced elsewhere (the brood's cues, bar()): of the guard answer (they bar orbs), of
+    // the dodge answer (they bar the small ones)
+    this._barGuard = new Float64Array(4).fill(NEVER);
+    this._barDodge = new Float64Array(4).fill(NEVER);
+    this._bi = 0;
     this._failed = false;
     this._hit = {
       damage: 0, burn: 0, knockback: 0, kind: 'fire', tell: TELL.NORMAL, parryable: true, blockable: true,
@@ -341,6 +347,8 @@ export class Bullets {
     this._dropHeld();
     this._cueSmall.fill(NEVER);
     this._cueOrb.fill(NEVER);
+    this._barGuard.fill(NEVER);
+    this._barDodge.fill(NEVER);
   }
 
   // ---------------------------------------------------------------- the cue
@@ -412,13 +420,8 @@ export class Bullets {
     for (let i = 0; i < 8; i++) if (at >= tr[i] - pre && at <= tr[i] + K.cueGap) return CUE.COVERED;
     const ot = orb ? this._cueSmall : this._cueOrb, sep = K.clashSep ?? 0.35;
     for (let i = 0; i < 8; i++) if (Math.abs(at - ot[i]) < sep) return CUE.CLASH;
-    // ... or of another source (the brain's cue ledger: a drakeling's dive, the wyrm's own blows, a hazard)
-    // asking for the other answer (ADR-223: a slam's embers fell 0.09 s after a drakeling's red dive)
-    const L = this.d.brain?._ledger;
-    if (L) {
-      const now = this.d.game?.time ?? 0, ans = tell === TELL.RED || tell === TELL.BLACK ? 'dodge' : 'guard';
-      for (const r of L) if (r.t >= now - 0.1 && r.attack !== attack && r.ans && r.ans !== ans && Math.abs(r.t - (now + tti)) < sep) return CUE.CLASH;
-    }
+    const bar = orb ? this._barGuard : this._barDodge;
+    for (let i = 0; i < 4; i++) if (Math.abs(at - bar[i]) < sep) return CUE.CLASH;
     if (tti < K.cueMin + (orb ? 0.03 : 0)) return CUE.LATE;
     tr[this._ci++ & 7] = at;
     const d = this.d;
@@ -426,6 +429,17 @@ export class Bullets {
     d.emit('combat:flash', { source: 'dragon', attack, tell, x, y, z, hazard: true, bullet: true });
     BFX.cueGlint(d.fx, x, y, z, tell);
     return CUE.NEW;
+  }
+
+  /**
+   * An impact `tti` s from now that something outside the field announced with `tell` (a brood
+   * cue): a bullet of the other answer due within K.clashSep s of it is not announced (a dud: CLASH),
+   * as for an orb beside an ember. It covers nothing (the bullets of its answer cue themselves).
+   */
+  bar(tell, tti) {
+    if (!Number.isFinite(tti)) return;
+    const tr = tell === TELL.RED || tell === TELL.BLACK ? this._barDodge : this._barGuard;
+    tr[this._bi++ & 3] = this.time + tti;
   }
 
   /** Register an impact that something else announces (a pattern's headline tell). */

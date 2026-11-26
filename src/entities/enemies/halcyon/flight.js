@@ -3,6 +3,7 @@ import { clamp } from '../../../core/math.js';
 import { TELL, RESULT } from '../../../combat/rules.js';
 import { perPhase } from '../duelist/realise.js';
 import { TUNE as HERO_TUNE } from '../../player/player.js';
+import { halMotionOn } from './motion.js';
 
 // Halcyon's flight (ADR-160): the rule that keeps a sword fight fair, the pass, the crash, the carry.
 //
@@ -95,6 +96,7 @@ export class Flight {
         }
         // a move spent on the floor (Meteor, the falling sky): its recovery on the ground
         if (a?.def?.grounded && a.t >= a.recoveryStart) return 0;
+        if (a && halMotionOn()) return this._dip(a, F.hover);
         return F.hover;
       }
       case 'react':
@@ -102,6 +104,22 @@ export class Flight {
       default:
         return 0;
     }
+  }
+
+  /** (ADR-225, `?halMotion=a`) A builder's blow (a punch, a kick: beat.def.mo) dips him from the hover to
+   *  T.motion.dip through its strike, so the blow meets the hero's chest instead of the air over his head:
+   *  down from `from` of the windup (a snap: from its start) to the impact, held through the follow-through, back up in 0.25 s. */
+  _dip(a, hover) {
+    const M = this.T.motion;
+    let k = 0;
+    for (const b of a.beats) {
+      if (b.feint || !b.def.mo) continue;
+      // (a snap's windup is too short to wait: it dips from its start)
+      const t0 = b.start + (b.impact - b.start) * (b.def.snap ? 0 : M.from), t2 = b.impact + fin(b.F, 0.2) + 0.1;
+      if (a.t < t0 || a.t > t2 + 0.25) continue;
+      k = Math.max(k, a.t < b.impact ? ease((a.t - t0) / Math.max(0.05, b.impact - t0)) : a.t <= t2 ? 1 : 1 - ease((a.t - t2) / 0.25));
+    }
+    return hover + (M.dip - hover) * k;
   }
 
   /** Every frame, after the brain: the pass's coast, the crash, the carry, then the hover layer. */
