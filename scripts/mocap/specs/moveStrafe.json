@@ -15,22 +15,25 @@
    "period_hi": 1.6,
    "takes": [
     {
-     "t0": "14:44.30",
+     "t0": "14:44.20",
      "t1": "14:48.10",
      "view": "back",
-     "swing": true
+     "swing": true,
+     "facing": "away"
     },
     {
      "t0": "15:02.30",
      "t1": "15:07.20",
      "view": "back",
-     "swing": true
+     "swing": true,
+     "facing": "away"
     },
     {
      "t0": "15:09.30",
      "t1": "15:12.80",
      "view": "back",
-     "swing": true
+     "swing": true,
+     "facing": "away"
     }
    ],
    "from": "strafeWalk",
@@ -47,20 +50,16 @@
    "period_hi": 1.6,
    "takes": [
     {
-     "t0": "14:50.30",
-     "t1": "14:55.20",
+     "t0": "14:51.95",
+     "t1": "14:56.00",
      "view": "back",
-     "swing": true
-    },
-    {
-     "t0": "15:17.20",
-     "t1": "15:20.30",
-     "view": "back-right",
-     "swing": true
+     "swing": true,
+     "facing": "away"
     }
    ],
    "from": "strafeWalk",
-   "to": "strafeWalk"
+   "to": "strafeWalk",
+   "period": 1.32
   },
   {
    "name": "strafeWalkB",
@@ -73,15 +72,16 @@
    "period_hi": 1.6,
    "takes": [
     {
-     "t0": "14:37.40",
-     "t1": "14:42.40",
+     "t0": "14:37.17",
+     "t1": "14:42.17",
      "view": "back",
-     "swing": true
+     "swing": true,
+     "facing": "away"
     }
    ],
    "from": "strafeWalk",
    "to": "strafeWalk",
-   "contact_h": 0.02
+   "symmetric": 1
   },
   {
    "name": "strafeRunL",
@@ -97,13 +97,13 @@
      "t0": "15:40.60",
      "t1": "15:43.50",
      "view": "back",
-     "yaw": 180
+     "facing": "away"
     },
     {
      "t0": "15:56.50",
      "t1": "15:58.20",
      "view": "back",
-     "yaw": 180
+     "facing": "away"
     }
    ],
    "from": "strafeRun",
@@ -124,7 +124,7 @@
      "t0": "15:52.50",
      "t1": "15:54.30",
      "view": "back",
-     "yaw": 180
+     "facing": "away"
     }
    ],
    "from": "strafeRun",
@@ -145,7 +145,7 @@
      "t0": "15:30.90",
      "t1": "15:32.40",
      "view": "back",
-     "yaw": 180
+     "facing": "away"
     }
    ],
    "from": "strafeRun",
