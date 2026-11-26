@@ -619,20 +619,42 @@
      "t0": "13:11.20",
      "t1": "13:16.40",
      "view": "back"
-    },
-    {
-     "t0": "13:02.70",
-     "t1": "13:05.50",
-     "view": "front"
-    },
-    {
-     "t0": "13:05.70",
-     "t1": "13:07.10",
-     "view": "left"
     }
    ],
    "from": "crouchRun",
    "to": "crouchRun"
+  },
+  {
+   "name": "crouchSprint",
+   "title": "Crouch sprint",
+   "src": "move 13:23-13:56",
+   "kind": "loop",
+   "fps": 30,
+   "travel": "forward",
+   "symmetric": 1,
+   "period_lo": 0.5,
+   "period_hi": 1.2,
+   "takes": [
+    {
+     "t0": "13:23.50",
+     "t1": "13:24.40",
+     "view": "right"
+    },
+    {
+     "t0": "13:43.50",
+     "t1": "13:47.00",
+     "view": "back"
+    },
+    {
+     "t0": "13:31.75",
+     "t1": "13:32.65",
+     "view": "right"
+    }
+   ],
+   "from": "crouchSprint",
+   "to": "crouchSprint",
+   "period": 0.72,
+   "draft": true
   }
  ]
 }
