@@ -223,7 +223,7 @@ class Take:
       wax (3,) how well this camera sees his X / Y / Z axes; gap (n,) seconds since a real frame."""
 
     def __init__(self, film, t0, t1, view, name='', flip=None, pitch=None, yaw=None, log=print, calm=None,
-                 swing=False, yaw2d=False):
+                 swing=False, yaw2d=False, facing_prior=None):
         self.film, self.t0, self.t1, self.view, self.name = film, t0, t1, view, name
         self.yaw2d = bool(yaw2d)
         tk, l2, w, note = load(film, t0, t1)
@@ -238,6 +238,8 @@ class Take:
         self.t, self.l2, self.gap = resample(tk, l2, t0, t1)
         _, w, _ = resample(tk, w, t0, t1)
         self.c = to_cam(w)
+        if facing_prior in ('away', 'toward'):
+            self._facing_prior(facing_prior, log)
         # the frames the camera's yaw / pitch are measured on: all, or (one-shots: tumbles, lunges) only
         # the calm ends of the take, `calm` seconds at each end, where he stands
         self.calm = np.ones(len(self.t), bool)
@@ -359,6 +361,28 @@ class Take:
             % (self.name, rs, rh, best, y))
         self.yaw2d_note = 'yaw2d %.0f (pooled %.0f)' % (best, y)
         return float(best)
+
+    def _facing_prior(self, fp, log=print):
+        """spec take "facing": "away" (or "toward"): a HARD prior that he faces away from (toward) the camera
+        through the whole take (a lock-on camera behind him). The tool sometimes reads a back view as a
+        front view, frame by frame: every frame whose own facing (hips, shoulders, feet, nose) points the
+        other way is mirrored (sides swapped, depth reversed), decided with a 7-frame majority so a single
+        noisy frame does not flip"""
+        f1, feet, nose = facing(self.c)
+        v = f1 + feet + nose
+        y = np.degrees(np.arctan2(v[:, 0], v[:, 2]))
+        want = 180.0 if fp == 'away' else 0.0
+        wrong = np.abs((y - want + 180) % 360 - 180) > 90
+        n = len(wrong)
+        wrong = np.array([np.mean(wrong[max(0, i - 3):i + 4]) > 0.5 for i in range(n)])
+        if wrong.any():
+            self.l2[wrong] = self.l2[wrong][:, MIRROR]
+            self.c[wrong] = self.c[wrong][:, MIRROR] * np.array([1, 1, -1.0])
+        self._flipped = True  # the whole-take mirror test is settled by the prior
+        self.mirrored = False
+        if self.view is None or self.view in ('front', 'back'):
+            self.view = 'back' if fp == 'away' else 'front'
+        log('  take %s: facing %s (a hard prior): %d of %d frames mirrored back' % (self.name, fp, int(wrong.sum()), n))
 
     def summary(self):
         return ('%s %s %.2f-%.2f view %s: yaw %.0f (hips %.0f feet %.0f nose %.0f) pitch %.0f, sees X %.2f Y %.2f '
