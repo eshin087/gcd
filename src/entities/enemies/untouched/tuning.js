@@ -119,10 +119,11 @@ export const TUNING = {
   wjWeight: {
     knockback: { hand: 3, big: 7 }, // the floor of a landed blow's throw (a beat's own knockback wins when larger)
     blockPush: 3.4, // m a blocked blow slides the hero (a beat's `blockPush` wins)
-    // of the hero's guard meter per blocked blow (a beat's `guardCost` wins: absolute points). The tuning
-    // pass: 0.5 (0.4 before: a bot that rolled every red and blocked the rest won 6 of 6; at 0.5 the second
-    // block in a row knocks the guard open, and it wins 1 of 6). A block still costs no health.
-    guardCost: 0.5,
+    // of the hero's guard meter per blocked blow (a beat's `guardCost` wins: absolute points). The owner
+    // (round 2): the THIRD block in a row knocks the guard open, never the second: 0.45 (two leave 10; the
+    // third opens it up to 1 s after the second: the meter refills 60 a second from 0.8 s after a block, and
+    // no cost breaks a third 1.3 s on without breaking a second 0.34 s on; veil.mjs WEIGHT). (0.4 at first; 0.5 in the first tuning pass opened it on the second.) A block costs no health.
+    guardCost: 0.45,
   },
   // ---- R3 THROWN THROUGH THE WORLD (player.js reads the hit fields; these are his)
   wjCrash: { power: 3.2, damage: 6, minKb: 3 }, // (power: Halcyon's crash's 3.2, BLUNT: a car (2.4, metal) and a wall break behind him)

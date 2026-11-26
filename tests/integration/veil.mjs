@@ -610,7 +610,7 @@ async function scenarioBarrier() {
 
 // ================================================================== scenario: weight (R2)
 async function scenarioWeight() {
-  out('\n== scenario WEIGHT (every landed blow throws; a block slides >= 3 m and costs no health; two blocks in a row break the guard) ==');
+  out('\n== scenario WEIGHT (every landed blow throws; a block slides >= 3 m and costs no health; two hold, the third in a row breaks the guard) ==');
   const G = build();
   const d = G.game.dragon, p = G.game.player;
   duel(G, { dist: 2 });
@@ -641,22 +641,31 @@ async function scenarioWeight() {
   assert(blocks.every((b) => b.dhp === 0), 'a block never costs health');
   assert(blocks.slice(0, 2).every((b) => b.slid >= 3 - 0.05), `a blocked blow slides him >= 3 m (${blocks.map((b) => b.slid.toFixed(2)).join(', ')})`);
   assert(blocks.every((b) => b.cost >= TUNING.wjWeight.guardCost * 100 - 2), `each block takes ${TUNING.wjWeight.guardCost * 100} % of the meter (${blocks.map((b) => b.cost.toFixed(0)).join(', ')})`);
-  // two in a row (a string: inside the meter's regen delay) break the guard (the tuning pass: guardCost 0.5; three at 0.4)
-  p.guard = 100;
-  broke = false;
-  G.watch = (n, e) => w(n, e);
-  const gs = [];
-  place(G, 2);
-  run(G, 0.3, (GG) => GG.input.press(1));
-  for (let i = 0; i < 3; i++) {
-    p.yaw = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z);
-    d.hitPlayer({ damage: 18, knockback: 3, tell: TELL.NORMAL, attack: 'flick', from: { x: d.position.x, z: d.position.z } });
-    gs.push(Math.round(p.guard));
-    run(G, 0.2, (GG) => GG.input.press(1));
+  // a string's blocks (the owner, round 2: the THIRD block in a row knocks the guard open, never the second),
+  // with the gap between them up to 1 s (a string's; the meter refills 60 a second from 0.8 s after a block, so
+  // blows 1.3 s apart leave 19: no cost can break the third there and spare the second at 0.34 s): 0.45
+  const rows = [];
+  for (const gap of [0.34, 0.7, 1.0]) {
+    p.debug.heal();
+    p.guard = 100;
+    run(G, 1.2);
+    let opened = -1, k = 0;
+    G.watch = (n) => { if ((n === 'player:guardOpen' || n === 'player:guardBreak') && opened < 0) opened = k; };
+    const gs = [];
+    place(G, 2);
+    run(G, 0.3, (GG) => GG.input.press(1));
+    for (k = 0; k < 3; k++) {
+      p.yaw = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z);
+      d.hitPlayer({ damage: 18, knockback: 3, tell: TELL.NORMAL, attack: 'flick', from: { x: d.position.x, z: d.position.z } });
+      gs.push(Math.round(p.guard));
+      run(G, gap, (GG) => GG.input.press(1));
+    }
+    G.watch = null;
+    G.input.up(1);
+    rows.push({ gap, opened, gs });
   }
-  G.watch = null;
-  G.input.up(1);
-  assert(broke && gs[1] === 0, `two blocked blows in a row break the guard (meter ${gs.join(' -> ')})`);
+  out(`   three blocks in a row: ${rows.map((r) => `${r.gap} s apart: meter ${r.gs.join(' -> ')}, open at block ${r.opened + 1}`).join(' · ')}`);
+  assert(rows.every((r) => r.opened === 2), `two blocks in a row hold, the third knocks the guard open (${rows.map((r) => `${r.gap} s: block ${r.opened + 1}`).join(', ')})`);
 }
 
 // ================================================================== scenario: crash (R3)
