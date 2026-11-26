@@ -54,7 +54,7 @@
     "max_off": 0.12
    },
    "foot_ease": 14,
-   "draft": true,
+   "draft": false,
    "sheet_k": 12,
    "pose_keys": [
     {
@@ -722,8 +722,8 @@
      "joint": "thighL",
      "dir": [
       0.12,
-      -0.6428,
-      0.766
+      -0.7071,
+      0.7071
      ],
      "blend": 3,
      "sk": 1
@@ -733,8 +733,8 @@
      "joint": "shinL",
      "dir": [
       0.03,
-      -0.6428,
-      -0.766
+      -0.8192,
+      -0.5736
      ],
      "blend": 3,
      "sk": 1
@@ -777,8 +777,8 @@
      "joint": "thighR",
      "dir": [
       -0.12,
-      -0.6428,
-      0.766
+      -0.4695,
+      0.8829
      ],
      "blend": 3,
      "sk": 1
@@ -788,8 +788,8 @@
      "joint": "shinR",
      "dir": [
       -0.03,
-      -0.6428,
-      -0.766
+      -0.5736,
+      -0.8192
      ],
      "blend": 3,
      "sk": 1
@@ -876,8 +876,8 @@
      "joint": "thighL",
      "dir": [
       0.12,
-      -0.309,
-      0.9511
+      -0.5299,
+      0.848
      ],
      "blend": 3,
      "sk": 1
@@ -887,8 +887,8 @@
      "joint": "shinL",
      "dir": [
       0.03,
-      -0.788,
-      -0.6157
+      -0.9397,
+      -0.342
      ],
      "blend": 3,
      "sk": 1
@@ -931,8 +931,8 @@
      "joint": "thighR",
      "dir": [
       -0.12,
-      -0.309,
-      0.9511
+      -0.1392,
+      0.9903
      ],
      "blend": 3,
      "sk": 1
@@ -942,8 +942,8 @@
      "joint": "shinR",
      "dir": [
       -0.03,
-      -0.788,
-      -0.6157
+      -0.6428,
+      -0.766
      ],
      "blend": 3,
      "sk": 1
@@ -1030,8 +1030,8 @@
      "joint": "thighL",
      "dir": [
       0.12,
-      -0.5,
-      0.866
+      -0.6428,
+      0.766
      ],
      "blend": 3,
      "sk": 1
@@ -1041,8 +1041,8 @@
      "joint": "shinL",
      "dir": [
       0.03,
-      -0.9903,
-      -0.1392
+      -0.9962,
+      -0.0872
      ],
      "blend": 3,
      "sk": 1
@@ -1085,8 +1085,8 @@
      "joint": "thighR",
      "dir": [
       -0.12,
-      -0.5,
-      0.866
+      -0.3746,
+      0.9272
      ],
      "blend": 3,
      "sk": 1
@@ -1096,8 +1096,8 @@
      "joint": "shinR",
      "dir": [
       -0.03,
-      -0.9903,
-      -0.1392
+      -0.9063,
+      -0.4226
      ],
      "blend": 3,
      "sk": 1
@@ -1547,8 +1547,8 @@
      "joint": "thighR",
      "dir": [
       -0.3,
-      -0.3746,
-      0.9272
+      -0.4695,
+      0.8829
      ],
      "blend": 3,
      "sk": 1
@@ -1558,8 +1558,8 @@
      "joint": "shinR",
      "dir": [
       -0.03,
-      -0.9659,
-      -0.2588
+      -0.9816,
+      -0.1908
      ],
      "blend": 3,
      "sk": 1
@@ -1701,8 +1701,8 @@
      "joint": "thighR",
      "dir": [
       -0.35,
-      -0.0872,
-      0.9962
+      -0.1908,
+      0.9816
      ],
      "blend": 3,
      "sk": 1
@@ -1712,8 +1712,8 @@
      "joint": "shinR",
      "dir": [
       -0.03,
-      -0.848,
-      -0.5299
+      -0.8829,
+      -0.4695
      ],
      "blend": 3,
      "sk": 1
@@ -1855,8 +1855,8 @@
      "joint": "thighR",
      "dir": [
       -0.35,
-      -0.1392,
-      0.9903
+      -0.2419,
+      0.9703
      ],
      "blend": 3,
      "sk": 1
@@ -1866,8 +1866,8 @@
      "joint": "shinR",
      "dir": [
       -0.03,
-      -0.866,
-      -0.5
+      -0.8988,
+      -0.4384
      ],
      "blend": 3,
      "sk": 1
@@ -2009,8 +2009,8 @@
      "joint": "thighR",
      "dir": [
       -0.25,
-      -0.4695,
-      0.8829
+      -0.5592,
+      0.829
      ],
      "blend": 3,
      "sk": 1
@@ -2020,8 +2020,8 @@
      "joint": "shinR",
      "dir": [
       -0.03,
-      -0.9135,
-      -0.4067
+      -0.9397,
+      -0.342
      ],
      "blend": 3,
      "sk": 1
@@ -2163,8 +2163,8 @@
      "joint": "thighR",
      "dir": [
       -0.12,
-      -0.766,
-      0.6428
+      -0.829,
+      0.5592
      ],
      "blend": 3,
      "sk": 1
@@ -2174,8 +2174,8 @@
      "joint": "shinR",
      "dir": [
       -0.03,
-      -0.9563,
-      -0.2924
+      -0.9744,
+      -0.225
      ],
      "blend": 3,
      "sk": 1
@@ -2368,7 +2368,9 @@
      "sk": 1
     }
    ],
-   "note": "side take (6:41.70) + front take (7:09.83); the landing crouch is dropped in both and keyed (bin/sidekeys.py: crouch 6:42.10-6:42.24, flight 6:42.30-6:42.72, heavy landing 6:42.78-6:43.29). Flight 6:42.27-6:42.78 (air.py over the chapter: 0.41-0.65 s, median 0.51). DRAFT until TOOLQUEUE 8a: the lower foot counts as planted through the flight, so he squats on the ground where the footage flies"
+   "note": "side take (6:41.70) + front take (7:09.83); the landing crouch is dropped in both and keyed (bin/sidekeys.py: crouch 6:42.10-6:42.24, flight 6:42.30-6:42.72, heavy landing 6:42.78-6:43.29). Flight 6:42.27-6:42.78 (air.py over the chapter: 0.41-0.65 s, median 0.51). air_marks; air_peak_m 0.45: in the front take at the top (7:10.6) his lower foot is ~90 px over its shadow at ~215 px for his 1.85 m (0.77 m), the hanging leg ~0.3 m shorter than standing",
+   "air_marks": true,
+   "air_peak_m": 0.45
   },
   {
    "name": "walkJumpStop",
