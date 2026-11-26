@@ -6464,14 +6464,11 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
 - **Outcome (the owner, 2026-11-26, from the films before | a | b at the game camera and a side view):** `a` for
   Lu Wusheng, Wen Yao and the wyrm, and every quick blow: `PICKED` sheathMotion / foxMotion / wyrmMotion /
   sheathQuick / foxQuick / wyrmQuick = 'a'. The seeded fights and pace meters of those suites run with them.
-  With them on, the wyrm's seeded fights drifted into three latent faults, fixed here: (1) a held cue of the
-  brood (a drakeling's dive waiting on another blow) kept its old time in the brain's cue ledger, so later cues
-  could not see where it would land: its record now moves with it (brood.js `_hold`); (2) a dive that has held
-  its longest (`BROOD.hold.max`) with a cue of the other answer still due burns out in the air (no red flash,
-  no dive: `_burnsOut`) instead of landing on it; (3) a slam's embers cue themselves against that ledger too
-  and fizzle as duds when a cue of the other answer is due within `clashSep` (bullets.js `cue`). And the sky
-  hunt's crash landing is kept on its ground (fireAttacks.js `crash`: `inReach`), not up to its radius past
-  it. A hit with its own bait hold (the Hesitant Maw's rear bite) is not held again.
+  With them on, the wyrm's seeded fights drifted into latent faults: a drakeling's dive released onto a
+  string's blow after its longest hold (fixed on `main` the same day by ADR-237, which this branch takes), and
+  the sky hunt's crash landing up to its radius off its ground (fixed here: fireAttacks.js `crash` keeps the
+  spot `inReach`). A hit with its own bait hold (the Hesitant Maw's rear bite) is not held again. The clearing's
+  burn budget (`TUNING.world.meter.burnt`) 9 -> 12: seed 1337 rolls other moves and burns 11 of 184 pieces.
 
 ## ADR-227 — The perfect parry gets the perfect dodge's window: 0.20 s (2026-11-26)
 

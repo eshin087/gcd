@@ -24,9 +24,10 @@ moves / tuning; Lab LOOKS rows (awaiting). Tests: sheath / fox `motion`, integ `
 | a | b for four blows a boss, the quick blows, sent to the owner.
 
 **The owner's picks** (from the films): `a` for all three bosses, every quick blow: the defaults (PICKED).
-With them on, `npm test` found three latent wyrm faults through the seeded fights' drift (a held drakeling
-dive's ledger time, a dive released onto a white blow, a slam's embers on a red dive) and the sky hunt landing
-up to its radius off its ground: fixed (ADR-223 consequences). The attack table's hash re-pinned (the Snap swipe).
+With them on, `npm test` found latent wyrm faults through the seeded fights' drift: a drakeling's dive released
+onto a blow (fixed on `main` by ADR-237 meanwhile; my own fix for it dropped in the merge) and the sky hunt
+landing up to its radius off its ground (fixed here). The attack table's hash re-pinned (the Snap swipe); the
+clearing's burn budget 9 -> 12.
 
 **Open.** Lu Wusheng's free hand in the scabbard cuts; the same foot ease for Shen Hui and Varr Nihil (their
 session).
