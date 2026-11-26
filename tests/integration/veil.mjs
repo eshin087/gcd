@@ -1965,7 +1965,9 @@ async function scenarioOrbit() {
     // the hero's blade through one of them (once): it is bitten where it passes, and stays in his hold
     if (H.length && !chip) {
       const W = G.game.world.destructibles, pc = H[0].piece, b0 = W.bitten, y = pc.y0 + pc.py + pc.h * 0.5;
-      const n = W.sweep(pc.px - 1.2, pc.pz, pc.px + 1.2, pc.pz, 0.3, 0.9, { kind: 'blunt', by: 'player', dx: 1, dz: 0, y, ya: y, yb: y, src: W.swing(), tx: 1, tz: 0 });
+      // (a cut it can take: one that would leave it under 1 hp breaks it, scenario heldbreak)
+      const pw = Math.min(0.9, Math.max(0.12, (pc.hp - 1) * 0.6) / (pc.M.take.blunt ?? 1));
+      const n = W.sweep(pc.px - 1.2, pc.pz, pc.px + 1.2, pc.pz, 0.3, pw, { kind: 'blunt', by: 'player', dx: 1, dz: 0, y, ya: y, yb: y, src: W.swing(), tx: 1, tz: 0 });
       chip = { n, bit: W.bitten - b0, piece: pc, state0: pc.state, hp: pc.hp };
     }
   };
