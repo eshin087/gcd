@@ -29,7 +29,7 @@ One hundred and two pieces of work since 0.4.0:
   beat before he comes back; out of a held finish the next swing gathers instead of snapping away. The finisher lands
   7 cm deeper over the planted blade. The heavy branches, the sprint slash, the roll cut, the flurry and the
   charged cleave are unchanged. `?lights=old` (and the Lab's PLAYER row `lights`) plays the chain as it was.
-  *Added, to compare (not the default; ADR-200):* `?lights=blink` (the same row, 'instant cuts') plays every
+  *Added, to compare (not the default; ADR-206):* `?lights=blink` (the same row, 'instant cuts') plays every
   attack as an instant cut: the blade crosses in two or three frames and leaves one straight slash line. The
   sword arm opens through the cut and follows through, the free hand hangs loose at his side, the heavies
   land their weight under a longer, thicker line (the lone heavy is a dash into a slash; the heavy after two

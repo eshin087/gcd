@@ -6053,7 +6053,7 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
     dragon print), the shared uniforms' upload (about 0.5 ms of script a frame), the worst frames'
     hitches. The floors' shader is as it was: its relief is most of its cost.
 
-## ADR-200 — The instant cuts: every attack crosses in two or three frames; behind `?lights=blink` until the owner's call (2026-11-25)
+## ADR-206 — The instant cuts: every attack crosses in two or three frames; behind `?lights=blink` until the owner's call (2026-11-25)
 
 **Context.** ADR-188 gave the light chain weight in the body and left the sword's path alone. The owner
 could not tell it from the chain before ("the attack sword animation itself is the same and thats what i

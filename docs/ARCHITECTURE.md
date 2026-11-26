@@ -1157,7 +1157,7 @@ the coil along a cubic that leaves at `gather[0]` and arrives at `gather[1]` (wi
 `variants` and nothing else between the weighted clips (`swings.js`: `fallingCut` … `risingThrust`,
 `drawSlash`, `groundSlam`) and the ones before them (`lightsOld.js` `LIGHTS_OLD`, spread into `SWINGS` as
 `<name>Old`, plus the `drawCut` and `slam` the flurry, One Breath and Earthbreaker still play).
-**The instant look set** (ADR-200; `?lights=blink`, the Lab's `lights` row; to compare, not the default):
+**The instant look set** (ADR-206; `?lights=blink`, the Lab's `lights` row; to compare, not the default):
 `setLights` wears a LOOK on every attack def through `wear` (`LOOK_KEYS`: `anim`, `variants`, `contact`,
 `glint`; never a number of the hit): hits 1-4 from `lightsBlink.js`, hit 5 from `lastHits.js`
 (`LAST_HIT_BLINK`: five strokes as its `anim` and `variants`, picked by `_pickVariant`), the heavy branches

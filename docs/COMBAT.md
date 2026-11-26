@@ -432,7 +432,7 @@ window). A red or black blow lands on him in the stance. Not learned, the same i
   a little further round in the same time, brakes and holds the finish (`home` 0.3, a hold key), and the
   next windup gathers out of it (`gather`: the arms leave slowly while the hips lead) instead of
   snapping away. The hit frames are the ones they were (at most one frame off; scenario `herolights`).
-- **The instant cuts** (ADR-200, `?lights=blink`; to compare, not the default): every attack keeps its
+- **The instant cuts** (ADR-206, `?lights=blink`; to compare, not the default): every attack keeps its
   numbers and its job, and its cut crosses in two or three frames and leaves one straight line where the
   blade passed. A light: a short still coil, the cut, a follow-through that slows over about ten frames.
   A heavy: a long still hold, the cut, the weight landing (the body drops and drives on), a hard stop and

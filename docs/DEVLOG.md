@@ -5,7 +5,7 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
-## 2026-11-25 — The instant cuts: arms, weight, every attack (ADR-200; branch `claude/hero-light-chain-12a97a`, PR #118, held)
+## 2026-11-25 — The instant cuts: arms, weight, every attack (ADR-206; branch `claude/hero-light-chain-12a97a`, PR #118, held)
 
 **Owner** (after the second instant-slash films): "the right arm angle and motion is stiff and doesn't look
 like how an arm should look when doing that sword motion. the left hand needs to stop holding the hip and
