@@ -3,10 +3,10 @@
 // film rig; the rider's author can try the saddle here.
 //
 // URL: ?hero2=horse [&hshow=<clip>|all] [&hview=close|game] [&haz=deg] [&hdist=m] [&hup=m] [&hspeed=k]
-//      [&hlook=ascii|solid] [&hcam=0 (leave the camera alone)]
+//      [&hlook=ascii|solid] [&hcam=0 (leave the camera alone)] [&hrider=1 (the remade hero rides it: rider.js)]
 // Console: __game.hero2horse = { list(), play(name), playAll(opts), view(opts), speed(k), pause(on),
 //      step(dt), status(), title(), look(mode), place(x, z, yaw), travel(on), horse (the animator),
-//      body, lib, home }
+//      body, lib, home, ride (with hrider=1), hero }
 // The game keeps running as the hero2 showcase runs it (showcase.js): the explore state, the boss asleep,
 // today's hero hidden and deaf, carried to where the camera looks so the game camera, the lights, the fog
 // and the grass follow.
@@ -14,6 +14,7 @@ import { loadHorseLibrary } from './clips/index.js';
 import { createHorse } from './hengine.js';
 import { buildHorseBody } from './hbody.js';
 import { HJI } from './hskeleton.js';
+import { createRide } from './rider.js';
 
 const num = (v, d) => {
   const x = Number(v);
@@ -35,6 +36,37 @@ export async function mount(game, params) {
   const horse = createHorse(game, { body, library: lib });
   const obj = body.object3d;
   if (P.get('hlook') === 'solid') body.look('solid');
+  // the rider (?hrider=1): the remade hero, his real body, seated by rider.js
+  let ride = null, hero = null, heroBody = null;
+  if (P.get('hrider') === '1') {
+    try {
+      const [{ loadLibrary }, { createHero2 }, bodyModule] = await Promise.all([import('../clips/index.js'), import('../engine.js'), import('../body.js')]);
+      const hlib = await loadLibrary();
+      heroBody = bodyModule.buildBody(game, {});
+      game.scene.add(heroBody.object3d);
+      hero = createHero2(game, { body: heroBody, library: hlib, applyRoot: false });
+      ride = createRide(game, { horse, hero, body: heroBody, drawScale: Number(game.player?.drawScale) || 1.08 });
+      game.pipeline?.setSeenThrough?.(heroBody.object3d);
+    } catch (e) {
+      console.warn('[horse] the rider failed:', e);
+      ride = null;
+    }
+  }
+  // every render: the lean toward the camera that draws it (off in the close view: true anatomy)
+  const pl = game.pipeline;
+  if (pl && typeof pl.render === 'function') {
+    const render0 = pl.render.bind(pl);
+    pl.render = (...a) => {
+      try {
+        const opts = S.view.mode === 'close' ? { lean: false } : { lean: true };
+        if (ride) ride.prepareView(game.camera, opts);
+        else body.prepareView(game.camera, opts);
+      } catch {
+        /* never freeze the frame */
+      }
+      return render0(...a);
+    };
+  }
 
   const W = game.CONFIG?.world;
   if (W) {
@@ -49,6 +81,7 @@ export async function mount(game, params) {
     obj.position.set(x, 0, z);
     obj.rotation.y = yaw;
     horse.teleported();
+    hero?.teleported?.();
   };
   place(home.x, home.z, home.yaw);
 
@@ -65,7 +98,7 @@ export async function mount(game, params) {
     const dx = obj.position.x - home.x, dz = obj.position.z - home.z;
     const turned = Math.abs(Math.atan2(Math.sin(obj.rotation.y - home.yaw), Math.cos(obj.rotation.y - home.yaw))) > 0.05;
     if (Math.hypot(dx, dz) > (S.view.mode === 'close' ? 0.05 : S.farR) || turned) place(home.x, home.z, home.yaw);
-    horse.play(c.name, { fade: 0 });
+    if (!(ride && ride.play(c.name))) horse.play(c.name, { fade: 0 });
     S.view.yaw = obj.rotation.y;
     S.t = 0;
     S.len = horseShowLength(c);
@@ -73,7 +106,7 @@ export async function mount(game, params) {
   };
 
   const api = {
-    lib, horse, body, home,
+    lib, horse, body, home, ride, hero,
     list() {
       return S.list.map((c, i) => ({ i, name: c.name, set: c.set, title: c.title, seconds: +c.dur.toFixed(3), loop: c.loop, src: c.src, speed: c.speed, show: +horseShowLength(c).toFixed(3) }));
     },
@@ -212,7 +245,10 @@ export async function mount(game, params) {
           else S.onEnd?.();
         }
       }
-      horse.update(k);
+      if (ride) {
+        ride.update(k);
+        hero.update(k);
+      } else horse.update(k);
       camera();
     },
   };
