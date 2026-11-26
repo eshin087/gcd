@@ -410,6 +410,8 @@ def build_clip(spec, clip, log=print):
         root = root_overrides(clip, B, root, fps, log)
         if np.abs(root[:, 2] - yaw0).max() > 0:
             q, hips = keep_world(q, hips, root[:, 2] - yaw0)
+        if clip.get('hips_path'):
+            hips = hips_path(clip, B, hips, root, fps, log)
     # planted feet: flat soles, toes bending at push-off, the ankle at exactly HDIM.ankle
     q, Wflat = post.flatten_feet(q, hips, root, g['cmask'], loop)
     if clip.get('foot_ease'):
@@ -822,6 +824,33 @@ def root_overrides(clip, B, root, fps, log):
             log('  root keys: yaw from %d keys, %.0f degrees at the end' % (len(ky) - 1, yo[-1]))
         log('  root keys: %d given' % (len(ks) - 1))
     return root
+
+
+def hips_path(clip, B, hips, root, fps, log):
+    """spec "hips_path": [[t or frame, x, z], ...]: the hips' ground point in his START frame (m, +x his left,
+    +z his front, the start point 0, 0), eased between the keys (before the first / after the last: held);
+    the hips' offset over the (keyed, turning) root is set so the hips are there. For typed clips (l2pose):
+    the typed pelvis path instead of the one integrated from the planted feet"""
+    n = len(hips)
+    t0r = B.t_ref[0] if hasattr(B, 't_ref') else 0
+
+    def fr(v):
+        return int(np.clip(v if isinstance(v, int) else round((cfg.parse_time(v) - t0r) * fps), 0, n - 1))
+    ks = sorted([(fr(k[0]), float(k[1]), float(k[2])) for k in clip['hips_path']])
+    out = np.zeros((n, 2))
+    out[:] = ks[0][1:]
+    for (fa, xa, za), (fb, xb, zb) in zip(ks[:-1], ks[1:]):
+        u = _smoothstep((np.arange(n) - fa) / max(fb - fa, 1))[:, None]
+        seg = (np.arange(n) >= fa) & (np.arange(n) <= fb)
+        out[seg] = (np.array([xa, za]) * (1 - u) + np.array([xb, zb]) * u)[seg]
+    out[np.arange(n) > ks[-1][0]] = ks[-1][1:]
+    d = out - root[:, :2]
+    c, s = np.cos(-root[:, 2]), np.sin(-root[:, 2])
+    hips = hips.copy()
+    hips[:, 0] = c * d[:, 0] + s * d[:, 1]
+    hips[:, 2] = -s * d[:, 0] + c * d[:, 1]
+    log('  hips path: %d keys, the hips end %.2f m from the root' % (len(ks), float(np.linalg.norm(d[-1]))))
+    return hips
 
 
 def keep_world(q, hips, dyaw):
