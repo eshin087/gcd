@@ -6171,6 +6171,73 @@ async function scenarioStreakFx() {
   }
 }
 
+// FEEL (ADR-240; `?feel=snap|weight|flow`, feel.js): the same clips on another clock, the body's sink and turn
+// scaled. Under each feel every light hit of the combo (relaxed, a press every 0.42 s) and every heavy branch
+// lands on the wyrm 2 m ahead inside its own active frames, unguarded, as production's do; the clock is
+// monotone and keeps each phase's ends; each feel wears its own free hand when `?offhand=` is 'auto'.
+async function scenarioFeel() {
+  out('\n== scenario FEEL (the swings on another clock: feel.js, ?feel=) ==');
+  const FE = await imp('src/entities/player/feel.js');
+  const OH = await imp('src/entities/player/offHand.js');
+  const CB = await imp('src/entities/player/combat.js');
+  const feel0 = FE.feelMode(), off0 = OH.offHandMode();
+  let last = null;
+  try {
+    {
+      const bad = [];
+      for (const id of FE.FEEL_IDS.slice(1)) {
+        let prev = -1;
+        for (let i = 0; i <= 300; i++) {
+          const u = i / 100, w = FE.warpPhase(u, FE.FEELS[id]);
+          if (!(w >= prev - 1e-9) || (i % 100 === 0 && Math.abs(w - u) > 1e-9)) bad.push(`${id} @${u}`);
+          prev = w;
+        }
+      }
+      assert(!bad.length, `each feel's clock is monotone and keeps the phases' ends (${bad.slice(0, 4).join(', ') || 'all'})`);
+      OH.setOffHand('auto');
+      const hands = FE.FEEL_IDS.map((id) => { FE.setFeel(id); return OH.offHandLook() === null ? '0' : Object.keys(OH.OFFHAND).find((k) => OH.OFFHAND[k] === OH.offHandLook()); });
+      assert(hands.join() === '0,back,side,quiet', `auto wears each feel's own hand (${FE.FEEL_IDS.map((f, i) => `${f}: ${hands[i]}`).join(', ')})`);
+    }
+    const land = (plan) => {
+      const G = (last = build());
+      fightSetup(G);
+      settle(G);
+      const { game, input } = G, d = game.dragon, p = game.player;
+      const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
+      const chest = () => d.hurtSpheres.filter((h) => h.part === 'body').reduce((a, h) => ((h.x - d.position.x) * fx + (h.z - d.position.z) * fz > (a.x - d.position.x) * fx + (a.z - d.position.z) * fz ? h : a));
+      p.debug.teleport(d.position.x + fx * 40, d.position.z + fz * 40);
+      p.debug.god = true;
+      aimAt(G);
+      let hit = null;
+      plan.forEach((b, k) => {
+        if (k === plan.length - 1) {
+          const c = chest();
+          p.debug.teleport(c.x + fx * (c.r + 2), c.z + fz * (c.r + 2));
+          p.yaw = Math.atan2(c.x - p.position.x, c.z - p.position.z);
+          G.watch = (nn, e) => { if (nn === 'player:hitDragon' && !hit) hit = { name: p.atk?.def?.name, t: p.atk?.t ?? NaN, def: p.atk?.def, guarded: e.guarded }; };
+        }
+        aimAt(G);
+        if (b === 'L') input.click(0);
+        else p._buffer('heavy');
+        run(G, k < plan.length - 1 ? 0.42 : 1.2, { passive: true });
+      });
+      G.watch = null;
+      const ok = hit && !hit.guarded && hit.t >= hit.def.windup - 1e-6 && hit.t <= hit.def.windup + hit.def.active + 1e-6;
+      return ok ? `${hit.name}@${((hit.t - hit.def.windup) / hit.def.active).toFixed(2)}` : `MISS(${plan.join('')}${hit ? ` ${hit.name}@${((hit.t - hit.def.windup) / hit.def.active).toFixed(2)}` : ''})`;
+    };
+    const PLANS = [['L'], ['L', 'L'], ['L', 'L', 'L'], ['L', 'L', 'L', 'L'], ['L', 'L', 'L', 'L', 'L'], ['H'], ['L', 'H'], ['L', 'L', 'H'], ['L', 'L', 'L', 'H'], ['L', 'L', 'L', 'L', 'H']];
+    for (const id of FE.FEEL_IDS.slice(1)) {
+      FE.setFeel(id);
+      const r = PLANS.map(land);
+      assert(r.every((x) => !x.startsWith('MISS')), `feel ${id}: the five lights and the five heavy branches land in their active frames (${r.join(', ')})`);
+    }
+  } finally {
+    FE.setFeel(feel0);
+    OH.setOffHand(off0);
+  }
+  return last;
+}
+
 // INSTANTSLASH (ADR-240; the owner, 2026-11-26: "remove the curvy slashes with the instant slashes", every
 // attack and the flurry): with the default `slash` look every swing draws its straight line (slashFx.js) and
 // no crescent (fx.trail is never called through an attack); the light combo's five hits (their first looks)
@@ -6202,7 +6269,7 @@ async function scenarioInstantSlash() {
     const tr = p.fx.trail.bind(p.fx);
     p.fx.trail = (...a) => { if (p.state === 'attack' || p.state === 'heavy') trails++; return tr(...a); };
     const lines = [];
-    p.slashFx.onLine = (ax, ay, az, bx, by, bz, look, kind) => lines.push({ combo: p.atk?.def?.combo, name: p.atk?.def?.name, look, kind, len: Math.hypot(bx - ax, by - ay, bz - az), ok: Number.isFinite(ax + ay + az + bx + by + bz) });
+    p.slashFx.onLine = (ax, ay, az, bx, by, bz, look, kind) => lines.push({ combo: p.atk?.def?.combo, name: p.atk?.def?.name, look, kind, at: (p.atk.t - p.atk.def.windup) / p.atk.def.active, len: Math.hypot(bx - ax, by - ay, bz - az), ok: Number.isFinite(ax + ay + az + bx + by + bz) });
     const hits = [];
     G.watch = (nn) => { if (nn === 'player:hitDragon') hits.push(p.atk?.def?.name); };
     const kicks0 = p.slashFx.kicks;
@@ -6221,7 +6288,7 @@ async function scenarioInstantSlash() {
       const per = [1, 2, 3, 4, 5].map((c) => r.lines.filter((l) => l.combo === c));
       const ok = per[0].length === 1 && per[1].length === 1 && per[2].length === 3 && per[2].every((l) => l.kind === 1) && per[3].length === 1 && per[3][0].kind === 2 && per[4].length === 1 && per[4][0].look === 'heavy'
         && r.lines.every((l) => l.ok && l.len > 0.2 && l.len <= 7.01) && r.trails === 0 && r.kicks >= 1;
-      assert(ok, `the combo draws straight lines, no crescent: hits 1-5 ${per.map((x) => x.length).join(', ')} line(s) (the whirl 3, the stab a streak, the slam heavy), ${r.trails} crescent calls, ${r.kicks} camera kick(s), lengths ${r.lines.map((l) => l.len.toFixed(1)).join(' ')}`);
+      assert(ok, `the combo draws straight lines, no crescent: hits 1-5 ${per.map((x) => x.length).join(', ')} line(s) (the whirl 3, the stab a streak, the slam heavy), ${r.trails} crescent calls, ${r.kicks} camera kick(s), lengths ${r.lines.map((l) => l.len.toFixed(1)).join(' ')}, drawn at ${r.lines.map((l) => l.at.toFixed(2)).join(' ')} of the active window`);
     }
     {
       const r = play('line', [[0, 'L'], [0.42, 'L'], [0.84, 'H']]);
@@ -14976,6 +15043,7 @@ const SCENARIOS = {
   wyrmlook: scenarioWyrmLook,
   herolife: pinAdr186(scenarioHeroLife),
   instantslash: scenarioInstantSlash,
+  feel: scenarioFeel,
   offhand: scenarioOffHand,
   streakfx: scenarioStreakFx,
   timerip: scenarioTimeRip,
