@@ -18,7 +18,7 @@ def _take(spec, clip, tk, pad=0.0, log=print):
                    flip=tk.get('flip'), pitch=tk.get('pitch'), yaw=tk.get('yaw'), log=log,
                    calm=tk.get('calm', clip.get('calm', 0.35 if clip.get('kind', 'oneshot') == 'oneshot' else None)),
                    swing=tk.get('swing', clip.get('swing', False)), yaw2d=tk.get('yaw2d', clip.get('yaw2d', False)),
-                   facing_prior=tk.get('facing', clip.get('facing')))
+                   facing_prior=tk.get('facing', clip.get('facing')), below=tk.get('below'), exclude=tk.get('exclude'))
     T.spec = tk
     T.spec_yaw = tk.get('yaw')
     if tk.get('drop') or tk.get('keys'):

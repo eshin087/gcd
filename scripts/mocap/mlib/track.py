@@ -101,10 +101,29 @@ def _box_round(l2, W, H, grow=1.8, lo=160):
     return np.array([cx - s / 2, cy - s / 2, s], np.float32)
 
 
-def track_span(film, t0, t1, box0=None, budget=420.0, log=print):
+def plausible(l2, below=None, exclude=None):
+    """a detection is HIM, not a phantom: `below` (px): his pelvis lower in the picture than this y (a statue
+    or a building behind him stands higher); `exclude`: [[x0, y0, x1, y1], ...] (px): his pelvis outside
+    every such region"""
+    pel = (l2[23, :2] + l2[24, :2]) / 2
+    if below is not None and pel[1] <= below:
+        return False
+    for x0, y0, x1, y1 in (exclude or []):
+        if x0 <= pel[0] <= x1 and y0 <= pel[1] <= y1:
+            return False
+    return True
+
+
+def track_span(film, t0, t1, box0=None, budget=420.0, log=print, below=None, exclude=None):
     """Track every untracked frame of [t0, t1] in time order. box0: (x, y, w, h) as 0-1 fractions of the
     frame round him at t0 (else the whole frame). Stops after `budget` seconds (saving what it did);
-    returns the number of frames still untracked."""
+    returns the number of frames still untracked.
+    With box0 (or `below` / `exclude`) the tracker never falls back to the WHOLE frame: on a miss it retries
+    round his last place at a few sizes and records a miss (interpolated later) when that fails; any
+    detection that is not `plausible` (below / exclude) is refused (MOVE 15:22-17:34: the whole-frame
+    fallback found the giant statue behind him again and again)."""
+    strict = box0 is not None or below is not None or bool(exclude)
+    last_box = None
     ts, fs = cfg.frames_in(film, t0, t1)
     have = load_cache(film, t0, t1)
     todo = [(t, f) for t, f in zip(ts, fs) if round(t, 3) not in have]
@@ -131,6 +150,8 @@ def track_span(film, t0, t1, box0=None, budget=420.0, log=print):
             prev = None
         if prev is not None:
             box = _box_round(prev, W, H)
+        elif strict and last_box is not None:
+            box = last_box  # lost him (or a gap): keep looking where he was last
         elif box0 is not None:
             bx, by, bw, bh = box0
             s = max(bw * W, bh * H) * 1.15
@@ -138,6 +159,19 @@ def track_span(film, t0, t1, box0=None, budget=420.0, log=print):
         else:
             box = None
         res = _detect(im, box) if box is not None else None
+        if strict:
+            if res is not None and not plausible(res[0], below, exclude):
+                res = None
+            if res is None and box is not None:
+                c_ = box[:2] + box[2] / 2
+                for k_ in (0.8, 1.3, 0.65, 1.7):
+                    s2 = max(box[2] * k_, 200)
+                    r_ = _detect(im, np.array([c_[0] - s2 / 2, c_[1] - s2 / 2, s2], np.float32))
+                    if r_ is not None and plausible(r_[0], below, exclude):
+                        b2 = _box_round(r_[0], W, H)
+                        r2_ = _detect(im, b2)
+                        res, box = (r2_ if r2_ is not None and plausible(r2_[0], below, exclude) else r_), b2
+                        break
         # a follow crop can latch onto a phantom (a statue, the building) when he moves fast: a size jump
         # or a jump away from his last place sends it back to the whole frame, keeping the nearer answer
         if res is not None and prev is not None:
@@ -155,6 +189,8 @@ def track_span(film, t0, t1, box0=None, budget=420.0, log=print):
                 cx, cy = pb[0] + pb[2] / 2, pb[1] + pb[2] / 2
                 wide = np.array([cx - side / 2, cy - side / 2, side], np.float32)
                 alt = _detect(im, wide)
+                if alt is not None and strict and not plausible(alt[0], below, exclude):
+                    alt = None
                 if alt is not None:
                     b2 = _box_round(alt[0], W, H)
                     alt = _detect(im, b2) or alt
@@ -170,7 +206,7 @@ def track_span(film, t0, t1, box0=None, budget=420.0, log=print):
                     last_t = t
                     done += 1
                     continue
-        if res is None:
+        if res is None and not strict:
             # whole frame (padded square), then a crop round that result
             full = np.array([0, (H - W) / 2, W], np.float32)
             res = _detect(im, full)
@@ -185,6 +221,7 @@ def track_span(film, t0, t1, box0=None, budget=420.0, log=print):
         else:
             rows[round(t, 3)] = (np.array([box[0], box[1], box[2], box[2]], np.float32), res[0], res[1], True)
             prev = res[0]
+            last_box = _box_round(res[0], W, H)
         last_t = t
         done += 1
         if done % 200 == 0:
