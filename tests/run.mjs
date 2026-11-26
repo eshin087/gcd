@@ -20,7 +20,7 @@
 // the comma-separated names (`--only integ,life`). On CI none of this applies: it runs as before.
 import { spawn } from 'node:child_process';
 import { availableParallelism, constants, setPriority, tmpdir } from 'node:os';
-import { mkdirSync, openSync, writeSync, closeSync, readFileSync, unlinkSync } from 'node:fs';
+import { mkdirSync, openSync, writeSync, closeSync, readFileSync, unlinkSync, rmdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 const args = process.argv.slice(2);
@@ -150,6 +150,25 @@ if (LOCAL) {
 
 const alive = (pid) => { try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; } };
 const held = new Set();
+// remove a dead run's slot file, under a lock (mkdir is atomic): two waiting runs may both have read the
+// same dead pid, so the owner is read again inside the lock, and a file a live run has just made is kept
+function reclaim(f, deadPid) {
+  const lock = `${f}.reclaim`;
+  try { mkdirSync(lock); } catch {
+    // a lock left by a run killed mid-reclaim: drop it once it is old
+    try { if (Date.now() - statSync(lock).mtimeMs > 10000) rmdirSync(lock); } catch { /* gone */ }
+    return false;
+  }
+  try {
+    let pid = 0;
+    try { pid = Number(readFileSync(f, 'utf8')); } catch { return true; } // already gone: free to take
+    if (pid !== deadPid) return false;
+    try { unlinkSync(f); } catch { /* gone */ }
+    return true;
+  } finally {
+    try { rmdirSync(lock); } catch { /* gone */ }
+  }
+}
 // take one of the machine's POOL slots: a slot file names its run's pid; a dead run's slot is taken over
 async function acquire() {
   if (!LOCAL) return null;
@@ -167,7 +186,7 @@ async function acquire() {
       } catch {
         let pid = 0;
         try { pid = Number(readFileSync(f, 'utf8')); } catch { continue; }
-        if (pid && pid !== process.pid && !alive(pid)) { try { unlinkSync(f); } catch { /* another run took it */ } i--; }
+        if (pid && pid !== process.pid && !alive(pid) && reclaim(f, pid)) i--;
       }
     }
     if (!waited) { waited = true; process.stdout.write(`(all ${POOL} test slots on this machine are busy: waiting for another run)\n`); }
