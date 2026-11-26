@@ -64,7 +64,9 @@ const CAPS = [
   [COL.BLADE_L, JI.weaponL, -1, 0.03],
 ];
 
-const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _x = new THREE.Vector3(), _y = new THREE.Vector3(), _z = new THREE.Vector3();
+const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _x = new THREE.Vector3(), _y = new THREE.Vector3(), _z = new THREE.Vector3(), _up = new THREE.Vector3();
+/** m: a stretch whose top is this near the floor lies flat on it (its width turned level). */
+const FLAT = 0.16;
 
 /** Rotate (x, y, z) by the quaternion at q[o..o+3] into out[k..k+2]. */
 function rot(q, o, x, y, z, out, k) {
@@ -397,6 +399,10 @@ export class Cloth {
     iq[2] = -Q[2];
     iq[3] = Q[3];
     const t = this.v3;
+    // straight up in the body's frame (a stretch lying on the floor turns its width level: a body on its
+    // back turns a side sheet's width upright, and the sheet stood up off the floor as a fin)
+    rot(iq, 0, 0, 1, 0, t, 0);
+    _up.set(t[0], t[1], t[2]);
     for (const s of this.S) {
       const p = s.p;
       // the across axis, carried down from the anchor (body frame)
@@ -412,6 +418,8 @@ export class Cloth {
         _y.set(t[0], t[1], t[2]);
         if (_y.lengthSq() < 1e-10) _y.set(0, 1, 0);
         _y.normalize();
+        const gN = 1 - (Math.min(p[k + 1], p[k + 4]) - this.ground) / FLAT;
+        if (gN > 0) _x.addScaledVector(_up, -_x.dot(_up) * Math.min(1, gN));
         _x.addScaledVector(_y, -_x.dot(_y));
         if (_x.lengthSq() < 1e-8) _x.set(1, 0, 0).addScaledVector(_y, -_y.x);
         _x.normalize();
