@@ -53,7 +53,10 @@ import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
 //                            comes back as that stump (quietly: no debris, no sound), one felled, thrown,
 //                            taken or gone stays gone; the wreckage on the floor sank with the front and
 //                            stays gone (the destructibles can only bring a piece back whole: `present`).
-//                            The floor is the floor of both scenes: its cracks and holes stay.
+//                            The floor is the floor of both scenes: its cracks and holes stay. Its MARKS
+//                            (world.scars) are the scene's: the city's are hidden as the front to the void
+//                            passes them (scars.shade) and shown again as the front back passes them; what is
+//                            fought in the void marks the void (scars.layer), and stays on the way back.
 //   set.air                  the void's air (the stars): { count, budget, on } (the Lab, the tests)
 //   THROWABLES (the terrain agent finds them by kind, never by place: destructibles.nearest(x, z,
 //   { kind }) or list.filter(b => b.kind === ...)): the kinds in THROWABLE. In the crossing 'car' (`lift:
@@ -1147,6 +1150,14 @@ function makeScenes(light) {
     _des() {
       return game?.world?.destructibles ?? null;
     },
+    /** The floor's marks follow the scene: those not made in the void hidden in it (out to r from the front's
+     *  centre; Infinity: all), shown again in the city (scars.shade / scars.layer). */
+    _marks(r) {
+      const SC = game?.world?.scars;
+      if (!SC?.shade) return;
+      SC.layer = this.now;
+      SC.shade(this.m.x, this.m.z, r, this.now !== home, this.now === home ? null : this.now);
+    },
     _index() {
       if (this._pieces) return true;
       const D = this._des();
@@ -1250,6 +1261,7 @@ function makeScenes(light) {
       for (; m.i < q.length; m.i++) this._step(q[m.i], false);
       m.on = false;
       this.k = 1;
+      this._marks(Infinity);
       light.endBlend();
     },
     /** What each city piece is as the void comes (the way back brings it back so). */
@@ -1266,6 +1278,7 @@ function makeScenes(light) {
       if (!this._index()) {
         if (id === this.now) return false;
         this.now = id;
+        this._marks(Infinity);
         light.scene(id);
         return true;
       }
@@ -1300,6 +1313,7 @@ function makeScenes(light) {
       m.front = 0;
       m.on = true;
       this.k = 0;
+      this._marks(0);
       light.scene(id);
       light.blend(from, id, 0);
       this.stat.morphs++;
@@ -1313,6 +1327,7 @@ function makeScenes(light) {
       this.now = id;
       this.m.from = this.m.to = id;
       this.k = 1;
+      this._marks(Infinity);
       light.scene(id);
       light.snap();
       if (!this._index()) return true;
@@ -1337,6 +1352,7 @@ function makeScenes(light) {
       q.length = 0;
       this.now = home;
       this.k = 1;
+      this._marks(Infinity);
       this.left.clear();
       const D = this._des();
       if (D && this._index()) {
@@ -1363,10 +1379,12 @@ function makeScenes(light) {
       const live = this._des()?.wreck?.live;
       if (live) for (const e of live) if (e.sink <= 0 && Math.hypot(e.x - m.x, e.z - m.z) <= m.front) e.sink = 1e-3;
       this.k = m.front / m.R;
+      this._marks(m.front);
       light.blend(m.from, m.to, smooth(this.k));
       if (m.front >= m.R && m.i >= q.length) {
         m.on = false;
         this.k = 1;
+        this._marks(Infinity);
         light.endBlend();
       }
     },

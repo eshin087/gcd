@@ -610,7 +610,7 @@ async function scenarioBarrier() {
 
 // ================================================================== scenario: weight (R2)
 async function scenarioWeight() {
-  out('\n== scenario WEIGHT (every landed blow throws; a block slides >= 3 m and costs no health; three blocks break the guard) ==');
+  out('\n== scenario WEIGHT (every landed blow throws; a block slides >= 3 m and costs no health; two blocks in a row break the guard) ==');
   const G = build();
   const d = G.game.dragon, p = G.game.player;
   duel(G, { dist: 2 });
@@ -640,8 +640,8 @@ async function scenarioWeight() {
   out(`   blocks: ${blocks.map((b) => `slid ${b.slid.toFixed(2)} m, guard -${b.cost.toFixed(0)}, hp -${b.dhp}`).join(' · ')}`);
   assert(blocks.every((b) => b.dhp === 0), 'a block never costs health');
   assert(blocks.slice(0, 2).every((b) => b.slid >= 3 - 0.05), `a blocked blow slides him >= 3 m (${blocks.map((b) => b.slid.toFixed(2)).join(', ')})`);
-  assert(blocks.every((b) => b.cost >= 0.38 * 100), `each block takes ~40 % of the meter (${blocks.map((b) => b.cost.toFixed(0)).join(', ')})`);
-  // three in a row (a string: inside the meter's regen delay) break the guard
+  assert(blocks.every((b) => b.cost >= TUNING.wjWeight.guardCost * 100 - 2), `each block takes ${TUNING.wjWeight.guardCost * 100} % of the meter (${blocks.map((b) => b.cost.toFixed(0)).join(', ')})`);
+  // two in a row (a string: inside the meter's regen delay) break the guard (the tuning pass: guardCost 0.5; three at 0.4)
   p.guard = 100;
   broke = false;
   G.watch = (n, e) => w(n, e);
@@ -656,7 +656,7 @@ async function scenarioWeight() {
   }
   G.watch = null;
   G.input.up(1);
-  assert(broke && gs[2] === 0, `three blocked blows in a row break the guard (meter ${gs.join(' -> ')})`);
+  assert(broke && gs[1] === 0, `two blocked blows in a row break the guard (meter ${gs.join(' -> ')})`);
 }
 
 // ================================================================== scenario: crash (R3)
@@ -1264,6 +1264,8 @@ const S = {
   spent: scenarioSpent,
   letgo: scenarioLetgo,
   into: scenarioInto,
+  heldbreak: scenarioHeldBreak, // (the tuning pass)
+  floor: scenarioFloor, // (the tuning pass)
   // world: scenarios
   // (the crossing never traps a thrown hero: thrown 10 m from 24 places, four ways each, through whatever
   // stands there; he ends outside every collider, inside his bound, and walks away)
@@ -1320,7 +1322,9 @@ const S = {
   fx: scenarioFx,
 };
 // (run by tests/run.mjs as processes of their own; `all` leaves them out: GCD_SKIP)
-const OPT_IN = new Set([]);
+// (the tuning pass: the bench, tests/integration/bench.mjs: mortal bots, whole fights, opt-in)
+S.bench = async () => { const { benchScenario } = await import('./bench.mjs'); return benchScenario({ build, duel, run, TUNING, TELL, DT, THREE, out, mulberry32 }, 'veil'); };
+const OPT_IN = new Set(['bench']);
 const SKIP = new Set((process.env.GCD_SKIP ?? '').split(',').map((x) => x.trim()).filter(Boolean));
 const list = SCEN === 'all' ? Object.keys(S).filter((k) => !OPT_IN.has(k) && !SKIP.has(k)) : SCEN.split(',');
 for (const k of list) {
@@ -1961,7 +1965,9 @@ async function scenarioOrbit() {
     // the hero's blade through one of them (once): it is bitten where it passes, and stays in his hold
     if (H.length && !chip) {
       const W = G.game.world.destructibles, pc = H[0].piece, b0 = W.bitten, y = pc.y0 + pc.py + pc.h * 0.5;
-      const n = W.sweep(pc.px - 1.2, pc.pz, pc.px + 1.2, pc.pz, 0.3, 0.9, { kind: 'blunt', by: 'player', dx: 1, dz: 0, y, ya: y, yb: y, src: W.swing(), tx: 1, tz: 0 });
+      // (a cut it can take: one that would leave it under 1 hp breaks it, scenario heldbreak)
+      const pw = Math.min(0.9, Math.max(0.12, (pc.hp - 1) * 0.6) / (pc.M.take.blunt ?? 1));
+      const n = W.sweep(pc.px - 1.2, pc.pz, pc.px + 1.2, pc.pz, 0.3, pw, { kind: 'blunt', by: 'player', dx: 1, dz: 0, y, ya: y, yb: y, src: W.swing(), tx: 1, tz: 0 });
       chip = { n, bit: W.bitten - b0, piece: pc, state0: pc.state, hp: pc.hp };
     }
   };
@@ -1977,6 +1983,117 @@ async function scenarioOrbit() {
   assert(r.dhp === 0, `parried, parried, rolled: no health lost (${r.hits.map((h) => h.r).join(',')})`);
   assert(trStanding(G, kinds).length <= n0 - 3 && !t.busy, `the three pieces are spent (and what they broke landing: ${n0} -> ${trStanding(G, kinds).length})`);
   assert(chip && chip.n === 1 && chip.bit > 0 && chip.state0 === 3 && chip.hp >= 1, `the hero's blade chips a piece he holds, the carry goes on (struck ${chip?.n}, ${chip?.bit} letters off, state ${chip?.state0}, hp ${chip?.hp?.toFixed(2)})`);
+}
+
+// (the tuning pass) THE FLOOR AFTER A WHOLE FIGHT (a god-mode fencing bot, the real set, the floor marks as
+// world.js lays them): how many mark glyphs are left and of what (the crossing's floor must read as a fought-on
+// road, not snow), the crossing's marks hidden in the void and back on the return, and no fire left burning
+// (his fight has no fire). GCD_FDBG=1: where the fire-field blobs of kind 'fire' came from.
+async function scenarioFloor() {
+  out('\n== scenario FLOOR (a whole fight: the marks left, the void hides the crossing\'s marks, no fire left) ==');
+  const { STREAK_FX } = await imp('src/combat/streak.js');
+  const chain0 = STREAK_FX.chain;
+  STREAK_FX.chain = false;
+  const G = build(Number(process.env.GCD_SEED ?? 4242), true);
+  const { game } = G;
+  const d = game.dragon, W = game.world, SC = W.scars, F = game.fx.fire;
+  // (the floor marks as world.js lays them: the harness's world has neither)
+  const { SCAR } = await imp('src/world/breakTuning.js');
+  W.groundBlow = (x, z, o) => { if (Number.isFinite(x + z) && o && o.power > 0) SC.mark(x, z, o); };
+  const imp0 = W.impact;
+  W.impact = (x, z, r, power, o) => { const n = imp0(x, z, r, power, o); if (o?.scar !== false && power >= SCAR.ground.min) SC.impactMark(x, z, r, power, o); return n; };
+  const src = {};
+  for (const k of ['mark', 'ground', 'crater', 'object', 'rubble']) {
+    const f0 = SC[k].bind(SC);
+    SC[k] = (...a) => { const n0 = SC.marks.length; const r = f0(...a); const key = k === 'mark' ? `mark:${a[2]?.kind}` : k; src[key] = (src[key] || 0) + Math.max(0, SC.marks.length - n0); return r; };
+  }
+  const fireBy = {}, outBy = {};
+  let outlive = 0, orangeF = 0, orangeMax = 0;
+  const fin0 = (v) => (Number.isFinite(v) ? v : 0);
+  const sp = F.spawn.bind(F);
+  F.spawn = (o) => {
+    if (o?.kind === 'fire' || o?.kind === 0) {
+      const at = process.env.GCD_FDBG ? new Error().stack.split('\n').slice(2, 5).map((l) => l.trim().replace(/^at /, '').replace(/\(.*[\\/]/, '(')).join(' < ') : 'fire';
+      fireBy[at] = (fireBy[at] || 0) + 1;
+      // (one that outlives the crimson the fire slot holds now prints in the fire slot's own orange)
+      if (fin0(o.life) > fin0(d.fx?._crimsonT)) { outlive++; outBy[at] = (outBy[at] || 0) + 1; }
+    }
+    return sp(o);
+  };
+  duel(G, { dist: 3, ai: true });
+  G.defend = makeDefender(G, { world: true });
+  let inVoid = null, back = null, voidAt = -1;
+  const shown = (n) => { let v = 0; const D = SC.sys?.data; if (!D) return -1; for (let i = 0; i < Math.min(n, SC.sys.count); i++) if (D[i * 26 + 16] > 0.01) v++; return v; };
+  let n0 = 0;
+  G.watch = (n, e) => { if (n === 'world:scene' && e?.id === 'void') { voidAt = game.time; n0 = SC.marks.length; } };
+  const won = run(G, 600, () => {
+    fencer(G);
+    if (d.fx?.slots?.fire === 'fire') { let k = 0; for (let i = 0; i < F.count; i++) if ((F.data[i * 15 + 12] | 0) === 0) k++; if (k) { orangeF++; orangeMax = Math.max(orangeMax, k); } }
+    if (voidAt > 0 && inVoid === null && game.time > voidAt + 3) { W.scars.update(0, game.time); inVoid = { n0, shown: shown(n0), total: SC.marks.length, scene: W.forest.scenes.now }; }
+  }, () => d.mode === 'dead' || game.state === 'victory');
+  run(G, 4);
+  W.scars.update(0, game.time);
+  back = { shown: shown(n0), scene: W.forest.scenes.now };
+  const lip = SC.lip, ink = SC.lineInk;
+  const cls = { lip: 0, ink: 0, other: 0 };
+  let bright = 0;
+  for (const m of SC.marks) {
+    const c = m.color, L = 0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2];
+    if (Math.abs(c[0] - lip[0]) < 1e-3 && Math.abs(c[1] - lip[1]) < 1e-3) cls.lip++;
+    else if (Math.abs(c[0] - ink[0]) < 1e-3 && Math.abs(c[1] - ink[1]) < 1e-3) cls.ink++;
+    else cls.other++;
+    if (L * m.alpha > 0.2) bright++;
+  }
+  const fires = [0, 0, 0, 0];
+  for (let i = 0; i < F.count; i++) fires[F.data[i * 15 + 12] | 0]++;
+  STREAK_FX.chain = chain0;
+  out(`   won ${won} at ${game.time.toFixed(0)} s; marks left ${SC.marks.length} of ${SC.cap} (lit-lip colour ${cls.lip}, ink ${cls.ink}, other ${cls.other}; bright ${bright})`);
+  out(`   laid by: ${Object.entries(src).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(' · ')}`);
+  out(`   in the void (3 s in): ${inVoid ? `${inVoid.shown} of the ${inVoid.n0} crossing marks shown (scene ${inVoid.scene}; ${inVoid.total} marks in all)` : 'never'}; back in the crossing: ${back.shown} of them shown (scene ${back.scene})`);
+  out(`   fire-field blobs alive after the fight: fire ${fires[0]}, smoke ${fires[1]}, void ${fires[2]}, steel ${fires[3]}; 'fire' blobs spawned: ${Object.entries(fireBy).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => `${k} ${v}`).join(' · ') || 'none'}`);
+  out(`   'fire' blobs printed while the fire slot was orange: in ${orangeF} frames, at most ${orangeMax} at once; spawned outliving the crimson: ${outlive}${process.env.GCD_FDBG ? ` (${Object.entries(outBy).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, v]) => `${k} ${v}`).join(' · ')})` : ''}`);
+  assert(won, 'the fencing bot wins the fight');
+  const ember = SC.marks.filter((m) => m.color[0] > 0.2 && m.color[0] > 1.8 * m.color[1]).length;
+  out(`   ember-coloured marks on the floor (metal rubble before the cooling): ${ember}`);
+  assert(ember === 0, `nothing on the floor glows like an ember after the fight (${ember} orange marks)`);
+  assert(orangeF === 0, `none of his red heat prints orange (${orangeF} frames with 'fire' blobs under the orange slot, at most ${orangeMax})`);
+  // (the tuning pass, seed 4242: 3524 glyphs before, 3577 in the filmed fight: the cap; of them 2482 not the
+  // Null's trenches; with SCAR.thin.veil 2223, 1139)
+  const trench = src['mark:beam'] ?? 0;
+  assert(SC.marks.length < SC.cap * 0.75, `a whole fight leaves the floor a fought-on road, not snow: ${SC.marks.length} mark glyphs < 75 % of the ${SC.cap} kept (never at the cap)`);
+  assert(SC.marks.length - trench <= SC.cap * 0.4, `its grit, rubble and cracks (all but the Null's trenches) are thinned: ${SC.marks.length - trench} <= 40 % of the cap`);
+  assert(inVoid && inVoid.shown === 0, `in the void none of the crossing's marks show (${inVoid?.shown} of ${inVoid?.n0})`);
+  assert(back.scene === 'crossing' && back.shown >= Math.min(inVoid?.n0 ?? 0, SC.marks.length) * 0.5, `back in the crossing its marks show again (${back.shown})`);
+  assert(fires[0] === 0, `no fire burns after his fight (${fires[0]} 'fire' blobs alive)`);
+}
+
+// (the tuning pass) A piece he holds, cut by the hero's blade: bitten while it has hp to spare; the cut that
+// would leave it under 1 hp breaks it (let go where it hangs, it bursts where it lands; no longer held)
+async function scenarioHeldBreak() {
+  out('\n== scenario HELDBREAK (a held piece cut under 1 hp breaks: let go, it bursts where it lands) ==');
+  const G = build();
+  duel(G, { dist: 7, form: 2 });
+  const W = G.game.world.destructibles, d = G.game.dragon;
+  const pc = W.list.find((b) => b.state === 0 && !b.absent && b.lift > 0 && b.hpMax < Infinity && b.hpMax >= 2 && !b.floor && b.bricks);
+  assert(!!pc && W.take(pc, { chip: true }), `a loose piece is taken, held for the blade (${pc?.kind}, hp ${pc?.hpMax?.toFixed(1)})`);
+  if (!pc) return;
+  const hx = d.position.x + 3, hz = d.position.z;
+  W.carry(pc, hx, 1.2, hz, 0, 0);
+  const cut = (power) => {
+    const y = pc.y0 + pc.py + pc.h * 0.5;
+    return W.sweep(hx - 1.2, hz, hx + 1.2, hz, 0.3, power, { kind: 'blunt', by: 'player', dx: 1, dz: 0, y, ya: y, yb: y, src: W.swing(), tx: 1, tz: 0 });
+  };
+  const small = Math.max(0.3, (pc.hp - 1) * 0.4) / (pc.M.take.blunt ?? 1);
+  cut(small);
+  const hp1 = pc.hp, st1 = pc.state;
+  run(G, 0.1, () => W.carry(pc, hx, 1.2, hz, 0, 0));
+  cut((pc.hp + 1) / (pc.M.take.blunt ?? 1));
+  const st2 = pc.state;
+  run(G, 2.5);
+  out(`   ${pc.kind}: hp ${pc.hpMax.toFixed(1)} -> ${hp1.toFixed(2)} after a small cut (state ${st1}); a cut past its hp: state ${st2}, then ${pc.state}`);
+  assert(st1 === 3 && hp1 >= 1 && hp1 < pc.hpMax, 'a cut it can take bites it and the carry goes on (held, hp >= 1)');
+  assert(st2 === 4, 'the cut that would leave it under 1 hp breaks it: let go (flying, no longer held)');
+  assert(pc.state === 5, 'it bursts where it lands (gone)');
 }
 
 async function scenarioRoad() {
@@ -2382,6 +2499,23 @@ async function scenarioWreck() {
   assert(path && movedAt - fixedAt >= 0.5 && !moved, `the path is fixed and shown ${(movedAt - fixedAt).toFixed(2)} s before it moves, and never moves`);
   assert(flash === TELL.RED && h.length === 1 && h[0].r === RESULT.HIT && p.hp > 0, `red on its strip: one hit on a hero who stood (${h.map((x) => x.r).join(',')})`);
   assert(M.made.dash - dash0 >= 3, `it furrows the road along its way (${M.made.dash - dash0})`);
+  // (the tuning pass) a roll timed to its cue (a perfect dodge, either way along the path) is never met by the
+  // knot after: it strikes only at the impact (the perfect bot was hit 46 by a knot dragged onto it, seed 4242)
+  const res = [];
+  for (let k = 0; k < 2; k++) {
+    p.debug.heal();
+    d.debug.tidy();
+    run(G, 1);
+    p.debug.teleport(d.position.x, d.position.z + 7);
+    const t0 = game.time;
+    const step = answer(G, 'dodge', 'wreckingKnot');
+    d.brain.trigger('wreckingKnot');
+    untilFoot(G, 5, step); // (the knot's path flips side every cast: one roll toward it, one away)
+    G.watch = null;
+    res.push(hitsOf(G, 'wreckingKnot', t0).map((x) => x.r).join(',') || 'none');
+  }
+  out(`     answered with a perfect dodge (the path one way, then the other): ${res.join(' / ')}`);
+  assert(res.every((r) => !r.split(',').includes(RESULT.HIT)), `a perfect dodge of the knot is never hit after it (${res.join(' / ')})`);
 }
 
 async function scenarioNull() {

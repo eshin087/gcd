@@ -15,8 +15,10 @@ import { TUNING_TERRAIN } from './tuningTerrain.js';
 
 export const TUNING = {
   name: 'BAI WUJI, THE UNTOUCHED',
-  // the bar: the tuning agent sizes it so the fencing bot wins in 180 - 260 s (tests/integration/veil.mjs)
-  hp: 20000,
+  // the bar (the tuning pass, tests/integration/bench.mjs, god mode off, six seeds): 26000 puts the perfect
+  // answerer's fight at 234 - 245 s (20000: 176 - 186 s) and the fencing bot that answers 90 % of his cues
+  // at 2 wins in 6, in 260 - 272 s (20000 with the rest as before: 3 in 6, 184 - 209 s)
+  hp: 26000,
   // one bar, three phases: 66 % THE BLINDFOLD COMES OFF, 30 % THE MEASURELESS
   phaseAt: [1, 0.66, 0.3],
   radius: 0.45,
@@ -105,7 +107,7 @@ export const TUNING = {
     // the shell: this much off his body's hurt spheres (a hand's width): the blade stops there
     shell: 0.14,
     open: [4.0, 3.2, 2.6], // s open after a perfect parry / a perfect dodge of any blow of his
-    cracks: 3, // ordinary parries that open it (0: off)
+    cracks: 4, // ordinary parries that open it (0: off; the tuning pass: 3 before, the fencing bot opened it mostly by cracks)
     openCracked: [2.4, 2.0, 1.6], // s open by cracks
     crackFade: 9, // s without a new crack: the cracks are gone
     // the stop on the hero's side: he is thrown back off the shell by this much (player.onGuarded push)
@@ -117,7 +119,10 @@ export const TUNING = {
   wjWeight: {
     knockback: { hand: 3, big: 7 }, // the floor of a landed blow's throw (a beat's own knockback wins when larger)
     blockPush: 3.4, // m a blocked blow slides the hero (a beat's `blockPush` wins)
-    guardCost: 0.4, // of the hero's guard meter per blocked blow (a beat's `guardCost` wins: absolute points)
+    // of the hero's guard meter per blocked blow (a beat's `guardCost` wins: absolute points). The tuning
+    // pass: 0.5 (0.4 before: a bot that rolled every red and blocked the rest won 6 of 6; at 0.5 the second
+    // block in a row knocks the guard open, and it wins 1 of 6). A block still costs no health.
+    guardCost: 0.5,
   },
   // ---- R3 THROWN THROUGH THE WORLD (player.js reads the hit fields; these are his)
   wjCrash: { power: 3.2, damage: 6, minKb: 3 }, // (power: Halcyon's crash's 3.2, BLUNT: a car (2.4, metal) and a wall break behind him)
