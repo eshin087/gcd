@@ -472,7 +472,7 @@ async function scenarioData() {
   const { TUNING: ASC_T } = await imp('src/entities/enemies/ascendant/tuning.js');
   assert(TUNING.flashLead >= ASC_T.flashLead && TUNING.minFirstWindup >= ASC_T.minFirstWindup && TUNING.minHitGap >= ASC_T.minHitGap, `his minimums are no lower than Tian Lei's (${TUNING.flashLead} / ${TUNING.minFirstWindup} / ${TUNING.minHitGap})`);
   // every new field is `wj`-prefixed: the beat and move fields in use (MAP-engine's list), the rest must start with wj
-  const ENGINE = new Set(('tell flare feint windup hold cock active chance fixed pick damage knockback knockdown zone ring part track close travel dash lift leap air release cast sustain selfHit stance draw stopOn mikiri lock flit follow keys bolt pull grip noWorld groundMark blink dive hazard burn whoosh blockPush guardCost '
+  const ENGINE = new Set(('tell flare feint windup hold cock active chance fixed pick damage knockback knockdown zone ring part track close travel dash lift leap air release cast sustain selfHit stance draw stopOn mikiri lock flit follow keys bolt pull grip noWorld groundMark blink dive hazard burn whoosh blockPush guardCost mo '
     + 'label phase weight cooldown band recovery recoveryKeys counter transition manual hidden cat terrain gapCloser streak recoverOpen').split(' '));
   const bad = new Set();
   for (const name of MOVE_NAMES) {
