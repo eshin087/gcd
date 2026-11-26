@@ -6791,3 +6791,14 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   line is drawn from the drawn blade, the hit is the swept blade). The pose has one more channel (`P.sd`, `N`
   62). After the pick: the picked hand becomes the default and the other looks go; PRs #118 / #166 stay closed
   (their branches remain on GitHub for reference).
+- **Round 2 (same day):** the owner: "the slashes that come out look out of place and a bit lagged. it should
+  show as soon as the animation swing ends to match with the swing. also make variations of different combos and
+  left hand ... same with the heavy attack on the lagginess and attack variation"; asked, they chose the feel of
+  today's moves, three variations, each with its own hand, the heavies faster and weightier. (1) The line is
+  drawn on the first frame the blade's point slows under 0.8 of its fastest step (the fastest from the active window
+  on; `slashFx.js` SWING), from where the point was as the fast stretch began; it was drawn at the end of the
+  active window from the frame before it (the follow-through ran on, so it came late and long). (2)
+  `feel.js` (`?feel=snap|weight|flow`): production's clips on another clock inside the same phases (a curve
+  per phase), the keyed sink, turn and lean scaled and the body's lead stretched, each with its own hand
+  (`?offhand=auto`, the default, wears it: snap back, weight side, flow quiet). Every light hit and heavy
+  branch still lands in its active frames (scenario `feel`).

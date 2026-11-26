@@ -1202,7 +1202,12 @@ heavy look (`def.heavy`) with `game.kick` / `game.shake`. `owns(at)` tells `_com
 (`swingClip().two`) through `sideHand(p, b, D, L)`, which sets the pose channel `P.sd` (61; `N` 62; cleared before
 each pose) and the hand's elbow, fingers, palm and shape where the look gives them; `HeroAnimator._sideHand`
 (in `apply`, after the free hand's target) moves the free wrist's target onto the look's rest with a damped
-pendulum on it, `_sideLinger` keeps it there a moment after the attack. '0' leaves production's free hand.
+pendulum on it, `_sideLinger` keeps it there a moment after the attack. '0' leaves production's free hand; 'auto' (the default) wears the feel's own.
+**The swings' feel** (ADR-240, `player/feel.js`: `FEELS`, `setFeel` / `feelMode` / `feelLook`, `warpPhase`; `?feel=`, the
+Lab's `feel` row): `swingPose` plays the clip at `warpPhase(swingPhase(t))` (each phase's 0..1 through the feel's curve,
+the phases' ends kept), the hips' and chest's lead × `lead`, and scales the keyed `by`, `hip`, `sy`, `sx` by `gain`
+(eased in over the windup's first half). Every clip attack; the hit test reads the drawn blade, so the contact moves
+inside the active window (scenario `feel`).
 duelists' footwork: the hero's free-arm numbers in them are gated on `A.freeHand`. **Swing clips** (ADR-071, `player/swings.js`): every light swing (the chain's hits 1–4 and
 their looks, the sprint slash, the roll cut) and the charged cleave is a keyframed clip. An attack's
 `anim: { kind: 'clip', clip: '<name>' }` names a `SWINGS` entry: a list of keys over the attack's own

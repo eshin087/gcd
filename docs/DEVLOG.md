@@ -24,7 +24,12 @@ clip that never keys `two`; '0' (production) stays the default until the owner p
 **Verification:** the scenarios; `herolife`, `herohand`; films: crescent vs line (the combo; light-light-heavy)
 from the game camera, and the four left hands close and from the game camera.
 
-**Open / next:** the owner's pick of the left hand (then it becomes the default and the others go).
+**Round 2:** the owner found the lines "out of place and a bit lagged" and asked for variations of the combo's and
+the heavies' feel with their own left hands. The line now comes as the visible swing ends (`SWING`); `feel.js`
+`?feel=snap|weight|flow` (+ `?offhand=auto` pairs each with its hand); scenario `feel`; films of the four (the
+combo from the game camera and close, Piercing Gale, light-light-Whirling Tempest).
+
+**Open / next:** the owner's pick of a feel and a hand (then they become the default and the others go).
 
 ## 2026-11-26 — A ninth level: the Veiled Crossing and Bai Wuji, the Untouched (ADR-241 – ADR-243; branch `enemies/untouched`; planned by the lead, built by Opus agents)
 

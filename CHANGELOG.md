@@ -13,6 +13,13 @@ One hundred and nineteen pieces of work since 0.4.0:
   *Added, to compare (not the default):* `?offhand=side`, `back` or `quiet` (the Lab's `offhand` row) for the free
   hand in a one-handed swing: loose at his side, behind his back, or today's gestures pulled in close to the body;
   two-handed blows keep it on the grip. Every number of every attack is the same.
+  The slash line now appears the moment the visible swing ends (the blade slows after its fastest frame), from
+  where the swing began, instead of at the end of the attack's hit window from where it opened.
+  *Added, to compare (not the default):* `?feel=snap`, `weight` or `flow` (the Lab's `feel` row) plays every sword
+  attack, the light combo and the heavies alike, with the same moves on another clock and its own free hand: snap
+  reaches the coil early, holds it and cuts fast and clean (the hand behind his back); weight loads slowly,
+  accelerates into the blow, sinks and turns deeper and holds the finish (the hand loose at his side); flow runs
+  without holds (today's hand moves pulled in). Every hit lands in its same frames.
 - **A ninth level: the Veiled Crossing and Bai Wuji, the Untouched** (2026-11-26, ADR-241 – ADR-243). *Added:* a ninth
   level, `?level=veil` (the title screen lists it). **The Veiled Crossing**: a city crossing at night after the fight
   has already levelled it, under a black veil: cracked asphalt with a great diagonal crossing's white bars, craters,
