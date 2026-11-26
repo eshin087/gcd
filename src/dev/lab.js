@@ -1376,6 +1376,37 @@ export class Lab {
       b.title = `?handLook=${id}: ${HAND_LOOK_NAMES[id]}`;
       setClass(b, 'on', handLook().id === id);
     }
+    // the remade hero (src/entities/hero2/, an experiment): today's hero, the remade one played, or its
+    // review mode (?hero=new, ?hero=new&show=all; reloads the page)
+    {
+      const h2r = el('div', 'lab-row', null, body);
+      el('span', 'lab-lbl', 'hero', h2r).title = 'the remade hero (?hero=new: played; &show: the review mode of its clips; reloads the page)';
+      const h2Grid = el('div', 'lab-grid', null, h2r);
+      h2Grid.style.flex = '1';
+      let cur = 'today';
+      try {
+        const q = new URL(globalThis.location.href).searchParams;
+        cur = q.get('hero') !== 'new' ? 'today' : q.has('show') ? 'review' : 'remade';
+      } catch {
+        /* no location */
+      }
+      for (const id of ['today', 'remade', 'review']) {
+        const b = button(h2Grid, id, () => {
+          try {
+            const u = new URL(globalThis.location.href);
+            u.searchParams.delete('show');
+            if (id === 'today') u.searchParams.delete('hero');
+            else u.searchParams.set('hero', 'new');
+            if (id === 'review') u.searchParams.set('show', 'all');
+            globalThis.location.href = u.toString();
+          } catch (err) {
+            this._status(`error: ${err?.message ?? err}`, 'err');
+          }
+        });
+        b.title = id === 'today' ? "today's hero" : id === 'remade' ? '?hero=new: the remade hero, played' : '?hero=new&show=all: every clip in order';
+        setClass(b, 'on', cur === id);
+      }
+    }
     // the sword's flame (player/swordMystic.js: green marks burning round the steel, on by default; ?mystic=0 is
     // today's blade), live
     const myr = el('div', 'lab-row', null, body);

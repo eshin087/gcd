@@ -100,6 +100,10 @@ export function createClipPlayer(lib, { dims = HDIM, warn = (m) => console.warn(
   const cur = layer(), prev = layer(), over = layer();
   const dA = new Float64Array(3), dB = new Float64Array(3), dO = new Float64Array(3);
   const fade = { t: 0, dur: 0, live: false, active: false };
+  // drive(): two clips mixed by a weight the caller sets every step (a gait blend), both on the
+  // caller's clock; transition(): a fade from the pose as drawn now, over whatever plays next
+  const mix = { on: false, w: 0 };
+  const outer = { active: false, t: 0, dur: 0, q: new Float32Array(J * 4), hips: new Float32Array(3), cL: 0, cR: 0 };
   const overlay = { mask: new Float32Array(J), w: 0, target: 0, rate: 0 };
   const warned = new Set();
   const events = Array.from({ length: EV_MAX }, () => ({ name: '', clip: '', f: 0, side: '' }));
@@ -171,6 +175,7 @@ export function createClipPlayer(lib, { dims = HDIM, warn = (m) => console.warn(
         fade.dur = f;
         fade.active = true;
       } else fade.active = false;
+      mix.on = false;
       cur.clip = c;
       cur.speed = fin(opts.speed, 1);
       cur.loop = opts.loop ?? c.loop;
@@ -184,6 +189,59 @@ export function createClipPlayer(lib, { dims = HDIM, warn = (m) => console.warn(
       return true;
     },
     /** Cut to a clip at once (no fade). */
+    /**
+     * Mix two clips on the caller's clock (a gait blend): clip a at frame position ua, clip b at ub
+     * (frames; a loop's may run on past n), weight w of b. Each step's call sets the next times; the
+     * events and footfalls are b's. Returns false when b is missing (a missing a: b alone).
+     */
+    drive(a, ua, b, ub, w) {
+      const cb = lib?.get?.(b);
+      if (!cb) {
+        if (!warned.has(b)) {
+          warned.add(b);
+          warn(`[hero2] no clip '${b}': holding the pose`);
+        }
+        return false;
+      }
+      const ca = lib?.get?.(a) ?? cb;
+      if (!mix.on || cur.clip !== cb) {
+        cur.clip = cb;
+        cur.loop = cb.loop;
+        cur.u = fin(ub, 0);
+        cur.done = false;
+        cur.started = true;
+      }
+      if (!mix.on || prev.clip !== ca) {
+        prev.clip = ca;
+        prev.loop = ca.loop;
+        prev.u = fin(ua, 0);
+        prev.done = false;
+      }
+      cur.manual = prev.manual = true;
+      cur.target = fin(ub, cur.u);
+      prev.target = fin(ua, prev.u);
+      mix.on = true;
+      mix.w = Math.max(0, Math.min(1, fin(w, 1)));
+      fade.active = false;
+      return true;
+    },
+    /** From the pose as it is drawn now, fade over `dur` s into whatever plays next (a state change). */
+    transition(dur = 0.15) {
+      dur = fin(dur, 0);
+      if (dur <= 0) {
+        outer.active = false;
+        return;
+      }
+      outer.q.set(pose.q);
+      outer.hips.set(pose.hips);
+      outer.cL = P.contact.L;
+      outer.cR = P.contact.R;
+      outer.t = 0;
+      outer.dur = dur;
+      outer.active = true;
+      P.fadeSerial++;
+      P.fadeLive = false;
+    },
     cut(name, opts = {}) {
       return P.play(name, { ...opts, fade: 0 });
     },
@@ -229,6 +287,11 @@ export function createClipPlayer(lib, { dims = HDIM, warn = (m) => console.warn(
       const rd = P.rootDelta;
       rd.dx = rd.dz = rd.dyaw = 0;
       if (!cur.clip) return; // nothing played yet: the pose holds (rest at first)
+      if (mix.on) {
+        driveStep(k);
+        finish(k);
+        return;
+      }
       // the current clip
       advance(cur, k, dA, true);
       sampleClip(cur.clip, frameIn(cur.clip, cur.u, cur.loop), A, cur.loop);
@@ -276,30 +339,82 @@ export function createClipPlayer(lib, { dims = HDIM, warn = (m) => console.warn(
         pose.q.set(A.q);
         pose.hips.set(A.hips);
       }
-      // the overlay, on its joints only (its root motion and contacts are not used)
-      if (overlay.target !== overlay.w) {
-        const st = overlay.rate * k;
-        overlay.w = overlay.target > overlay.w ? Math.min(overlay.target, overlay.w + st) : Math.max(overlay.target, overlay.w - st);
-      }
-      if (over.clip && overlay.w > 0) {
-        advance(over, k, dO, false);
-        sampleClip(over.clip, frameIn(over.clip, over.u, over.loop), O, over.loop);
-        const M = overlay.mask, ow = smooth01(overlay.w);
-        for (let j = 0; j < J; j++) if (M[j] > 0) qslerp(pose.q, j * 4, pose.q, j * 4, O.q, j * 4, M[j] * ow);
-      } else if (overlay.w <= 0) over.clip = null;
       rd.dx = mx;
       rd.dz = mz;
       rd.dyaw = my;
       P.contact.L = cL;
       P.contact.R = cR;
+      finish(k);
     },
     /** Reset to nothing playing (the pose kept). */
     stop() {
       cur.clip = prev.clip = over.clip = null;
       fade.active = false;
+      mix.on = false;
+      outer.active = false;
       overlay.w = overlay.target = 0;
     },
   };
+
+  /** A drive() step: both clips to the caller's times, mixed. */
+  function driveStep(k) {
+    advance(cur, k, dA, true);
+    advance(prev, k, dB, false);
+    const w = mix.w, ub = frameIn(cur.clip, cur.u, cur.loop), ua = frameIn(prev.clip, prev.u, prev.loop);
+    sampleClip(cur.clip, ub, A, cur.loop);
+    sampleClip(prev.clip, ua, B, prev.loop);
+    for (let j = 0; j < J; j++) qslerp(pose.q, j * 4, B.q, j * 4, A.q, j * 4, w);
+    for (let i = 0; i < 3; i++) pose.hips[i] = B.hips[i] + (A.hips[i] - B.hips[i]) * w;
+    const aL = contactWeight(prev.clip, 'L', ua, prev.loop), aR = contactWeight(prev.clip, 'R', ua, prev.loop);
+    const bL = contactWeight(cur.clip, 'L', ub, cur.loop), bR = contactWeight(cur.clip, 'R', ub, cur.loop);
+    P.contact.L = aL + (bL - aL) * w;
+    P.contact.R = aR + (bR - aR) * w;
+    const rd = P.rootDelta;
+    rd.dx = dB[0] + (dA[0] - dB[0]) * w;
+    rd.dz = dB[1] + (dA[1] - dB[1]) * w;
+    rd.dyaw = dB[2] + (dA[2] - dB[2]) * w;
+    // for the pin the mix is ONE source (its plants are phase-synced): its own pose is the mix
+    A.q.set(pose.q);
+    A.hips.set(pose.hips);
+    P.cA.L = P.contact.L;
+    P.cA.R = P.contact.R;
+    P.cB.L = P.cB.R = 0;
+    P.fadeW = 1;
+    P.fadeLive = false;
+  }
+
+  /** After the clips: the transition fade from the drawn pose, then the overlay. */
+  function finish(k) {
+    if (outer.active) {
+      outer.t += k;
+      const w = outer.dur > 0 ? smooth01(outer.t / outer.dur) : 1;
+      // the pin: the playing clips' own pose (slot A) against the pose faded from (frozen, slot B)
+      A.q.set(pose.q);
+      A.hips.set(pose.hips);
+      P.cA.L = P.contact.L;
+      P.cA.R = P.contact.R;
+      P.cB.L = outer.cL;
+      P.cB.R = outer.cR;
+      P.fadeW = Math.min(P.fadeW, w);
+      P.fadeLive = false;
+      for (let j = 0; j < J; j++) qslerp(pose.q, j * 4, outer.q, j * 4, pose.q, j * 4, w);
+      for (let i = 0; i < 3; i++) pose.hips[i] = outer.hips[i] + (pose.hips[i] - outer.hips[i]) * w;
+      P.contact.L = outer.cL + (P.contact.L - outer.cL) * w;
+      P.contact.R = outer.cR + (P.contact.R - outer.cR) * w;
+      if (outer.t >= outer.dur) outer.active = false;
+    }
+    // the overlay, on its joints only (its root motion and contacts are not used)
+    if (overlay.target !== overlay.w) {
+      const st = overlay.rate * k;
+      overlay.w = overlay.target > overlay.w ? Math.min(overlay.target, overlay.w + st) : Math.max(overlay.target, overlay.w - st);
+    }
+    if (over.clip && overlay.w > 0) {
+      advance(over, k, dO, false);
+      sampleClip(over.clip, frameIn(over.clip, over.u, over.loop), O, over.loop);
+      const M = overlay.mask, ow = smooth01(overlay.w);
+      for (let j = 0; j < J; j++) if (M[j] > 0) qslerp(pose.q, j * 4, pose.q, j * 4, O.q, j * 4, M[j] * ow);
+    } else if (overlay.w <= 0) over.clip = null;
+  }
 
   /** Advance one layer by k s of clip time; root motion into d; events / footfalls queued when `emit`. */
   function advance(L, k, d, emit) {
@@ -309,6 +424,8 @@ export function createClipPlayer(lib, { dims = HDIM, warn = (m) => console.warn(
     if (L.manual && L.target != null) {
       u1 = L.target;
       L.target = null;
+      // a loop driven by hand runs on through its wrap (a time set just past it is the next cycle)
+      if (L.loop && u1 < u0 - n * 0.5) u1 += n * Math.ceil((u0 - u1 - n * 0.5) / n);
     } else if (L.manual) u1 = u0;
     else u1 = u0 + k * L.speed * c.fps;
     if (!L.loop) {
@@ -449,6 +566,21 @@ export function createHero2(game, { body, library, dims = HDIM, applyRoot = true
     cut(name, opts) {
       return H.play(name, { ...opts, fade: 0 });
     },
+    /** A gait blend on the caller's clock (clip.js frames): see createClipPlayer().drive. */
+    drive(a, ua, b, ub, w) {
+      const ok = player.drive(a, ua, b, ub, w);
+      if (ok) syncProps();
+      return ok;
+    },
+    /** Fade from the pose as drawn now into what plays next (a state change), over dur s. */
+    transition: (dur) => player.transition(dur),
+    /** null, or { R, L }: what the hands hold whatever the clips say (the game's hero never lets go of his sword). */
+    props: null,
+    /** 0..1: how much the planted feet are pinned (1: fully). */
+    contactScale: 1,
+    /** Optional (pose, dt) => void, called after sampling, before the forward kinematics and the pin. */
+    onPose: null,
+    syncProps: () => syncProps(),
     setTime: (t) => player.setTime(t),
     layer: (name, opts) => player.layer(name, opts),
     /** fitTime for the current clip: H.setTime(H.fit(gameT, { windup, active, recovery })) */
@@ -482,6 +614,8 @@ export function createHero2(game, { body, library, dims = HDIM, applyRoot = true
       dt = fin(dt, 0);
       try {
         player.update(dt);
+        // the owner's last word on the sampled pose (the adapter turns the legs to the travel there)
+        if (H.onPose) H.onPose(player.pose, dt);
         const rd = player.rootDelta;
         if (obj) {
           if (H.applyRoot) {
@@ -505,6 +639,17 @@ export function createHero2(game, { body, library, dims = HDIM, applyRoot = true
             solveFK(player.poseB, rest, worldB);
             wB = worldB;
           }
+        }
+        // contactScale (0..1): how much the plants are pinned (the owner lowers it where its own movement
+        // runs away from the clip's, e.g. a roll that travels four times the clip's distance)
+        const cs = Math.max(0, Math.min(1, fin(H.contactScale, 1)));
+        if (cs < 1) {
+          player.cA.L *= cs;
+          player.cA.R *= cs;
+          player.cB.L *= cs;
+          player.cB.R *= cs;
+          player.contact.L *= cs;
+          player.contact.R *= cs;
         }
         pinFeet(feet, player.pose, world, rest, player, wA, wB, place, dt, dims);
         for (let i = 0; i < player.eventCount; i++) emit(player.events[i]);
@@ -536,7 +681,7 @@ export function createHero2(game, { body, library, dims = HDIM, applyRoot = true
     /** The gameplay blade segment of hand `side` (dims.bladeBase .. bladeTip along the socket's +Z) in
      *  WORLD space into a / b ({ x, y, z }). False when that hand holds no sword. */
     bladeSegment(side, a, b) {
-      const props = player.clip?.props;
+      const props = H.props ?? player.clip?.props;
       if (!props || props[side] !== 'sword') return false;
       const j = side === 'L' ? JI.weaponL : JI.weaponR;
       qrot(_bv, 0, world.r, j * 4, 0, 0, dims.bladeBase);
@@ -563,7 +708,7 @@ export function createHero2(game, { body, library, dims = HDIM, applyRoot = true
     out[2] = place.z + (-s * x + c * z) * sc;
   }
   function syncProps() {
-    const p = player.clip?.props;
+    const p = H.props ?? player.clip?.props;
     if (!p || !body?.setProp) return;
     for (const s of ['R', 'L']) {
       if (lastProps[s] !== p[s]) {
