@@ -5,15 +5,16 @@
 // with the arc's own strokes (fx.js `|` strokes in the additive pool, its colours), so it is the same ink as
 // the arc it replaces. `?slash=arc` (the Lab's `slash` button) draws the crescent as before.
 //
-// The line IS the blade's cut: the blade's drawn point is recorded on the frame before the attack's active
-// window and on its last frame, and the line runs through both, carried on past each end. Its angle, height
-// and place are the blade's own, from every side. Per attack, from what it is (combat.js defs, the look the
-// animator picked):
-//   a cut     the chord of the active window (above)
+// The line IS the blade's cut, and it comes WITH the swing: the blade's drawn point is followed frame by frame;
+// on the first frame the swing has ended (the point slows past its fastest step: SWING) the line is
+// drawn through where the point was as the swing began and where it is now, carried on past each end. Its
+// angle, height and place are the blade's own, from every side. Per attack, from what it is (combat.js defs,
+// the look the animator picked):
+//   a cut     the chord of the swing (above)
 //   a turn    (the picked look's `spin`: the whirl, the rising whirl, Whirling Tempest) three straight cuts
-//             round him, the chords between the point at a third of the window apart, drawn together at its end
+//             round him between points evenly along the swing, drawn together as it ends
 //   a thrust  (a clip whose `line` is 'point', or a `thrust` def: the stab, the heavy thrust, the execution)
-//             a short streak straight on off the point, along the blade, as the thrust lands
+//             a short streak straight on off the point, along the blade, as the thrust stops
 // The look (SLASH): 'light' for a light attack, 'heavy' for a heavy one (`heavy` on the def: the slam, the
 // heavies, the charged cleave, One Breath, the execution): the heavy arc's violet, longer and thicker, the
 // camera kicked along the cut with a small shake. Nothing on a dead hero, no allocation a frame, no
@@ -64,7 +65,14 @@ export const SLASH = {
   ring: 3,
 };
 const LOOKS = ['light', 'heavy'];
-const NR = 4; // the turn's points (SLASH.ring + 1)
+/** When the line is drawn: the swing is followed from `from` × the windup; its fastest frame is looked for
+ *  from `peakFrom` × the windup (the active window on); the swing has ended on the first frame after it whose point moves under `end`
+ *  of that (the line is drawn then, with the blade); the line starts where the point was just before the
+ *  first frame moving `start` of it; at the latest `late` of the recovery in. (The owner, 2026-11-26: the
+ *  lines "look out of place and a bit lagged. it should show as soon as the animation swing ends": they
+ *  were drawn at the end of the active window, from the frame before it opened.) */
+export const SWING = { from: 0.5, peakFrom: 1, end: 0.8, start: 0.3, late: 0.35 };
+const NB = 64; // frames of the point kept (a swing from late in its windup to its end)
 
 export class SlashFx {
   constructor(player) {
@@ -73,14 +81,15 @@ export class SlashFx {
     this.rec = null; // the attack record the line belongs to
     this.kind = 0; // 0 a cut, 1 a turn, 2 a thrust
     this.look = 0;
-    this.st = 0; // 0 waiting, 1 the first point taken, 2 drawn
-    this.ri = 0; // a turn's points taken
+    this.st = 0; // 0 following the swing, 2 drawn
     this.T = [0, 0, 0];
     this.H = [0, 0, 0];
-    this.prev = [0, 0, 0];
-    this.hasPrev = false;
-    this.P0 = [0, 0, 0];
-    this.ring = new Float32Array(NR * 3);
+    this.buf = new Float32Array(NB * 3); // the point, frame by frame
+    this.spd = new Float32Array(NB); // … and how far it moved that frame
+    this.nb = 0;
+    this.peak = 0; // the fastest frame's step, and its index
+    this.pi = -1;
+    this.lastT = -1;
     this.lines = 0; // drawn so far (tests)
     this.last = new Float32Array(8); // the last line drawn: its ends, heavy, the kind (tests)
     this.kicks = 0;
@@ -113,61 +122,59 @@ export class SlashFx {
     const P = this.p, at = P.atk, d = at?.def;
     if (slashNow !== 'line' || !(P.hp > 0) || !d || (P.state !== 'attack' && P.state !== 'heavy') || at.pending) {
       this.rec = null;
-      this.hasPrev = false;
       return;
     }
     if (!this._blade()) return;
     if (this.rec !== at) {
       this.rec = at;
       this.st = 0;
-      this.ri = 0;
-      this.hasPrev = false;
+      this.nb = 0;
+      this.peak = 0;
+      this.pi = -1;
+      this.lastT = -1;
       // what it is: the look the animator picked (a variant may turn or not)
       const an = P.anim?.atkDef === d && P.anim.atkAnim ? P.anim.atkAnim : d.anim;
       const C = an?.clip ? SWINGS[an.clip] : null;
       this.kind = d.kind === 'thrust' || an?.kind === 'thrust' || C?.line === 'point' ? 2 : an?.spin ? 1 : 0;
       this.look = d.heavy ? 1 : 0;
     }
-    const T = this.T, W = d.windup, Ac = d.active, t = at.t;
-    if (this.st < 2) {
-      if (this.kind === 2) {
-        if (t >= W + 0.55 * Ac) {
-          this.st = 2;
-          this._streak(SLASH.thrust * (this.look ? 1.4 : 1));
-        }
-      } else if (this.kind === 1) {
-        // a turn: the point at 0, 1/3, 2/3 and the end of the window; the straight cuts between them
-        const n = SLASH.ring;
-        while (this.ri <= n && t >= W + (Ac * this.ri) / n) {
-          const o = this.ri++ * 3;
-          this.ring[o] = T[0];
-          this.ring[o + 1] = T[1];
-          this.ring[o + 2] = T[2];
-        }
-        if (this.ri > n) {
-          this.st = 2;
-          const R = this.ring;
-          for (let j = 1; j <= n; j++) this._cut(R[j * 3 - 3], R[j * 3 - 2], R[j * 3 - 1], R[j * 3], R[j * 3 + 1], R[j * 3 + 2], j === 1);
-        }
-      } else {
-        // a cut: the point on the frame before the window opens (or its first, if he started inside it)
-        if (this.st === 0 && t >= W) {
-          const S = this.hasPrev ? this.prev : T;
-          this.P0[0] = S[0];
-          this.P0[1] = S[1];
-          this.P0[2] = S[2];
-          this.st = 1;
-        }
-        if (this.st === 1 && t >= W + Ac) {
-          this.st = 2;
-          this._cut(this.P0[0], this.P0[1], this.P0[2], T[0], T[1], T[2], true);
-        }
-      }
+    const W = d.windup, Ac = d.active, R = d.recovery, t = at.t;
+    // (the point is followed from late in the windup; a frozen frame, the hit-pause, moves nothing)
+    if (this.st === 2 || t < SWING.from * W || t === this.lastT) return;
+    this.lastT = t;
+    const T = this.T, B = this.buf, n = this.nb;
+    const sp = n > 0 ? Math.hypot(T[0] - B[n * 3 - 3], T[1] - B[n * 3 - 2], T[2] - B[n * 3 - 1]) : 0;
+    if (n < NB) {
+      B[n * 3] = T[0];
+      B[n * 3 + 1] = T[1];
+      B[n * 3 + 2] = T[2];
+      this.spd[n] = sp;
+      this.nb = n + 1;
     }
-    this.prev[0] = T[0];
-    this.prev[1] = T[1];
-    this.prev[2] = T[2];
-    this.hasPrev = true;
+    // the swing: its fastest frame from the windup's end on; it has ENDED on the first frame after that
+    // peak (the cut proper: from the active window on) whose point moves under SWING.end of it (at the latest SWING.late of the recovery in)
+    if (t >= SWING.peakFrom * W && sp > this.peak) {
+      this.peak = sp;
+      this.pi = this.nb - 1;
+    }
+    const ended = this.pi >= 0 && this.nb - 1 > this.pi && sp < SWING.end * this.peak;
+    if (!ended && t < W + Ac + SWING.late * R && this.nb < NB) return;
+    this.st = 2;
+    if (!(this.peak > 0)) return;
+    // the fast stretch: back from the peak to the first frame moving at least SWING.start of it; the line
+    // runs from the point before that frame to where it is now
+    let s = this.pi;
+    while (s > 0 && this.spd[s - 1] >= SWING.start * this.peak) s--;
+    const a = Math.max(0, s - 1), e = this.nb - 1;
+    if (this.kind === 2) this._streak(SLASH.thrust * (this.look ? 1.4 : 1));
+    else if (this.kind === 1) {
+      // a turn: three straight cuts between points evenly along the stretch
+      const k = SLASH.ring;
+      for (let j = 1; j <= k; j++) {
+        const i0 = Math.round(a + ((e - a) * (j - 1)) / k), i1 = Math.round(a + ((e - a) * j) / k);
+        if (i1 > i0) this._cut(B[i0 * 3], B[i0 * 3 + 1], B[i0 * 3 + 2], B[i1 * 3], B[i1 * 3 + 1], B[i1 * 3 + 2], j === 1);
+      }
+    } else this._cut(B[a * 3], B[a * 3 + 1], B[a * 3 + 2], B[e * 3], B[e * 3 + 1], B[e * 3 + 2], true);
   }
 
   /** The line through the point's two places, carried on past both (no shorter than its min), kept off

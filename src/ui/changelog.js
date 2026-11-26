@@ -23,6 +23,7 @@ export const RELEASES = [
         notes: [
           'Every sword attack now leaves one straight slash line where the blade passed, instead of the curved arc: a turning cut leaves three straight cuts around you, a thrust a short streak, a heavy blow a thicker violet line. Add ?slash=arc to the address for the arc as before.',
           'Being tried out: add ?offhand=side, ?offhand=back or ?offhand=quiet and your free hand hangs loose at your side, rests behind your back, or keeps its moves close to your body during one-handed attacks.',
+          'Also being tried out: add ?feel=snap, ?feel=weight or ?feel=flow for the same attacks with a crisper, heavier or more fluid feel, light and heavy alike. The slash line now appears the moment your swing ends.',
         ],
       },
       {

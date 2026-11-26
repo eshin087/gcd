@@ -10,7 +10,8 @@
 //          (the one-handed fencer's hand, hidden from the front)
 //   quiet  production's own gestures kept, pulled in: the hand goes `keep` of the way to where the clip sends
 //          it from its rest at his side, the sword fingers as keyed
-// '0' (the default until the owner picks) is production's free hand, untouched.
+// 'auto' (the default) wears the swings' feel's own hand (feel.js), production's free hand without a feel; '0' is
+// production's free hand, untouched.
 //
 // A look's fields (body axes: +x his left, +y up, +z ahead; m):
 //   hang   the wrist's rest from the left shoulder, turned with the chest
@@ -22,6 +23,8 @@
 //          timings and bounds)
 //   pole, ld, ln  the elbow's way, the fingers, the palm (body axes turned with the chest); lw their weight
 //   hs     the hand's shape (0 open, 1 sword fingers); `keep` (quiet) how far toward the clip's own hand
+
+import { feelLook } from './feel.js';
 
 const COMMON = { easeIn: 0.16, ease: 0.3, easeBack: 0.1, linger: 0.35, drop: 12, vIn: 3.3, trail: 0.012, trailMax: 0.1, thighR: 0.095 };
 export const OFFHAND = {
@@ -38,12 +41,16 @@ export const OFFHAND = {
     pole: null, ld: null, ln: null, lw: 0, hs: null, keep: 0.35,
   },
 };
-export const OFFHAND_IDS = ['0', 'side', 'back', 'quiet'];
-let offNow = '0';
-/** The free hand's look now ('0' production's, or an OFFHAND key). */
+export const OFFHAND_IDS = ['auto', '0', 'side', 'back', 'quiet'];
+let offNow = 'auto';
+/** The free hand's look now ('auto': the swings' feel's own hand, feel.js, or production's without a feel; '0'
+ *  production's; or an OFFHAND key). */
 export const offHandMode = () => offNow;
 /** The look's data, or null for production's. */
-export const offHandLook = () => (offNow === '0' ? null : OFFHAND[offNow]);
+export const offHandLook = () => {
+  const m = offNow === 'auto' ? feelLook()?.hand ?? '0' : offNow;
+  return m === '0' ? null : OFFHAND[m] ?? null;
+};
 /** Pick the look (live from the next swing); false for an unknown id. */
 export function setOffHand(m) {
   const id = String(m);

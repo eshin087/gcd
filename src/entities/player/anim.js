@@ -6,6 +6,7 @@ import { atEase, fencerGuard } from './stances.js';
 import { idlesOld, idlesRef, idlesMode, easeArms, guardArms, newRests, tickRests, pickEase, actStart, lowRest, toLowRest, trailing, easeRests, fightRests, stowHidden, EASE_HABITS, EASE_TRICKS, FIGHT_ACTS, FIGHT_ACTS_REF, EASE_REF_EXTRA, IDLES } from './idles.js';
 import { refStand, refReady, refGuard, guardMode, REF_GUARD } from './refStance.js';
 import { offHandLook } from './offHand.js';
+import { feelLook, warpPhase } from './feel.js';
 
 // Procedural animation for the Wanderer, keyed to the owner's concept sheets ("Movement" / "Combat
 // key poses"). Every frame a target POSE (a flat Float32Array) is built for the current clip as a
@@ -951,20 +952,28 @@ function swingPose(p, A, k, t, W, Ac, R) {
   const act = clamp((t - W) / Ac, 0, 1), lunge = t < W ? 0 : act * act * (3 - 2 * act);
   stance(p, A, lunge);
   if (!C) return;
-  const u = swingPhase(t, W, Ac, R);
+  // (the swings' feel, feel.js `?feel=`: the same keys on another clock inside the same phases, the body's
+  // sink and turn scaled, its lead stretched; production's without one)
+  const Fl = feelLook();
+  const u = warpPhase(swingPhase(t, W, Ac, R), Fl);
   const F = A.from;
   // the body runs AHEAD of the hand: the hips by lead[0] s, the chest by lead[1] (the kinetic chain:
   // hips, then chest, then arm, then blade). It ramps in through the windup (later when the entry's
   // hips stand on the far side: they would whip round). A held light's hips settle back (A.leadK)
   const L = C.lead, far = C.hipCoil != null && Math.abs(wrapAngle(F[P.pelvY]) - C.hipCoil) > SW_LEAD_FAR;
-  const ramp = smoothstep(SW_LEAD_IN0[far ? 1 : 0] * W, W, t) * clamp(fin(A.leadK, 1), 0, 1);
-  const uH = ramp > 0 ? swingPhase(t + L[0] * ramp, W, Ac, R) : u, uC = ramp > 0 && L[1] > 0 ? swingPhase(t + L[1] * ramp, W, Ac, R) : u;
+  const ramp = smoothstep(SW_LEAD_IN0[far ? 1 : 0] * W, W, t) * clamp(fin(A.leadK, 1), 0, 1) * (Fl ? Fl.lead : 1);
+  const uH = ramp > 0 ? warpPhase(swingPhase(t + L[0] * ramp, W, Ac, R), Fl) : u, uC = ramp > 0 && L[1] > 0 ? warpPhase(swingPhase(t + L[1] * ramp, W, Ac, R), Fl) : u;
+  const gIn = Fl ? smoothstep(0, 0.5, u) : 0; // (the feel's gains ease in over the windup's first half)
   // `bx` is toward the foot that steps (+): mirrored when the right foot steps (the entry slot keeps its own)
   const side = k.feet === 'dash' || A.stepL !== false ? 1 : -1;
   for (const T of C.tracks) {
     for (let c = 0; c < T.n; c++) T.V[c] = F[T.ch + c];
     if (T.Vk) for (let i = 1; i < T.len; i++) T.V[i] = side * T.Vk[i];
     swingTrack(T, T.grp === 1 ? uH : T.grp === 2 ? uC : u, p, T.ch);
+    if (gIn > 0) {
+      const G = Fl.gain, g = T.ch === P.bodyY ? G.by : T.ch === P.pelvY ? G.hip : T.ch === P.spY ? G.sy : T.ch === P.spX ? G.sx : 1;
+      if (g !== 1) p[T.ch] *= 1 + (g - 1) * gIn;
+    }
   }
   const H = C.hand;
   if (H && u < H.U[1]) {
