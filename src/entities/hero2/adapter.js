@@ -18,10 +18,10 @@
 // second axis: until the strafe clips exist (moves.js STRAFE) the forward gait plays with the legs
 // turned to the travel at the hips (the chest keeps his aim) and backward travel runs it in reverse.
 import * as THREE from 'three';
-import { createHero2 } from './engine.js';
+import { createHero2, createClipPlayer } from './engine.js';
 import { fitTime } from './fit.js';
-import { JI } from './skeleton.js';
-import { qmul, qconjmul, qaxis, smooth01, fin } from './qmath.js';
+import { JI, createWorld, restOffsets, solveFK } from './skeleton.js';
+import { qmul, qconjmul, qaxis, qrot, smooth01, fin } from './qmath.js';
 import { LOCO, ATTACKS, ATTACK_DEFAULT, STATES, STATE_DEFAULT, resolveClip } from './moves.js';
 
 const TAU = Math.PI * 2;
@@ -38,6 +38,61 @@ function settleFrame(c, left = 0.1) {
   const R = c.root, ex = c.cyc[0], ez = c.cyc[1];
   for (let f = 0; f < c.n; f++) if (Math.hypot(ex - R[f * 3], ez - R[f * 3 + 1]) < left) return f;
   return 0;
+}
+
+
+const _T = new Float64Array(8);
+/** The whole figure turned by a about his root (the hips, and with them everything). */
+export function turnAll(pose, a) {
+  const q = pose.q, hi = JI.hips * 4, T = _T;
+  qaxis(T, 0, 0, 1, 0, a);
+  qmul(T, 4, T, 0, q, hi);
+  q[hi] = T[4];
+  q[hi + 1] = T[5];
+  q[hi + 2] = T[6];
+  q[hi + 3] = T[7];
+  const c = Math.cos(a), s = Math.sin(a), x = pose.hips[0], z = pose.hips[2];
+  pose.hips[0] = c * x + s * z;
+  pose.hips[2] = -s * x + c * z;
+}
+
+/** An attack clip's aim: the turn that puts its blade straight ahead of him at its hit (the footage's
+ *  swings are not all filmed toward the camera's axis); measured once per clip. */
+const _aims = new WeakMap(), _aps = new WeakMap();
+const _aw = createWorld(), _arest = restOffsets(), _av = new Float64Array(3);
+export function aimOf(lib, c) {
+  let aims = _aims.get(lib);
+  if (!aims) _aims.set(lib, (aims = new Map()));
+  if (aims.has(c.name)) return aims.get(c.name);
+  let _ap = _aps.get(lib);
+  if (!_ap) _aps.set(lib, (_ap = createClipPlayer(lib, { warn: () => {} })));
+  let a = 0;
+  try {
+    const f = c.events.find((e) => e.name === 'hit')?.f ?? (c.phases ? (c.phases.windup + c.phases.active) * 0.5 : c.n * 0.5);
+    _ap.play(c.name, { fade: 0, manual: true });
+    _ap.setTime(f / c.fps);
+    _ap.update(0);
+    _ap.pose.hips[0] = c.hips[0];
+    _ap.pose.hips[2] = c.hips[2];
+    solveFK(_ap.pose, _arest, _aw);
+    const j = JI.weaponR;
+    qrot(_av, 0, _aw.r, j * 4, 0, 0, 1.2);
+    const x = _aw.p[j * 3] + _av[0], z = _aw.p[j * 3 + 2] + _av[2];
+    a = -Math.atan2(x - c.hips[0], z - c.hips[2]);
+    if (!Number.isFinite(a)) a = 0;
+  } catch {
+    a = 0;
+  }
+  aims.set(c.name, a);
+  return a;
+}
+
+/** The attack correction the game plays (and the suite measures): the hips held over his root where the
+ *  clip began (the game moves him), the clip turned by its aim. */
+export function fixAttackPose(pose, c, aim) {
+  pose.hips[0] = c.hips[0];
+  pose.hips[2] = c.hips[2];
+  if (Math.abs(aim) > 1e-3) turnAll(pose, aim);
 }
 
 /**
@@ -67,7 +122,7 @@ export function createAdapter(game, player, old, { lib, body }) {
   // ---- state
   const S = {
     mode: 'loco', key: 'loco', entry: null, clip: null,
-    phi: 0, vs: 0, legYaw: 0, idleU: 0, peak: 0, gait: 'walk', cs: 1, csWant: 1,
+    phi: 0, vs: 0, legYaw: 0, aim: 0, idleU: 0, peak: 0, gait: 'walk', cs: 1, csWant: 1,
   };
   let A = null; // the proxy (set below)
   let oldAnim = old;
@@ -92,6 +147,7 @@ export function createAdapter(game, player, old, { lib, body }) {
         S.mode = 'attack';
         S.entry = e;
         S.clip = c;
+        S.aim = e.aim ?? aimOf(lib, c);
         hero.cut(c.name, { manual: true });
         setContact(e.contact ?? 1);
         return;
@@ -177,7 +233,7 @@ export function createAdapter(game, player, old, { lib, body }) {
         const T = a.c.dur + (b.c.dur - a.c.dur) * w, vb = a.v + (b.v - a.v) * w;
         rate = vs / vb / T;
       }
-      S.gait = gaits.length >= 3 ? ['walk', 'run', 'sprint'][Math.min(2, gaits.indexOf(w > 0.5 ? b : a))] : 'run';
+      S.gait = ['walk', 'run', 'sprint'][Math.min(2, gaits.indexOf(w > 0.5 ? b : a))] ?? 'run';
     }
     S.phi = (((S.phi + sign * rate * dt) % 1) + 1) % 1;
     const u = (g) => ((((S.phi + g.off) % 1) + 1) % 1) * g.c.n;
@@ -188,6 +244,16 @@ export function createAdapter(game, player, old, { lib, body }) {
   // ---- the legs turned to the travel (onPose): the hips turn, the spine turns back
   const T = new Float64Array(12);
   hero.onPose = (pose) => {
+    if (S.mode === 'attack' || S.mode === 'roll' || S.mode === 'stop') {
+      // the clip's own travel (in its hips) is the game's to make: the hips stay over his root
+      const c = S.clip;
+      if (c) {
+        pose.hips[0] = c.hips[0];
+        pose.hips[2] = c.hips[2];
+      }
+      if (S.mode === 'attack' && Math.abs(S.aim) > 1e-3) turnAll(pose, S.aim);
+      return;
+    }
     const a = S.mode === 'loco' ? S.legYaw : 0;
     if (Math.abs(a) < 1e-3) return;
     const q = pose.q, hi = JI.hips * 4, si = JI.spine * 4;
@@ -275,15 +341,18 @@ export function createAdapter(game, player, old, { lib, body }) {
   let pairs = [];
   const collectPairs = () => {
     const r = rig();
+    // parents before children: each is set through its LOCAL transform (whatever recomputes the rig's
+    // world matrices from its locals, getWorldPosition included, then lands on the remade hero)
     pairs = [
-      [r.sword, JI.weaponR], [r.chest, JI.chest], [r.pelvis, JI.hips], [r.head, JI.head],
+      [r.pelvis, JI.hips], [r.chest, JI.chest], [r.head, JI.head],
       [r.arms?.R?.upper, JI.upperArmR], [r.arms?.L?.upper, JI.upperArmL],
       [r.legs?.L?.thigh, JI.thighL], [r.legs?.L?.shin, JI.shinL], [r.legs?.L?.foot, JI.footL],
       [r.legs?.R?.thigh, JI.thighR], [r.legs?.R?.shin, JI.shinR], [r.legs?.R?.foot, JI.footR],
-    ].filter(([n]) => n && n.matrixWorld);
+      [r.sword, JI.weaponR],
+    ].filter(([n]) => n && n.matrixWorld && n.parent);
   };
   collectPairs();
-  const _m = new THREE.Matrix4(), _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _one = new THREE.Vector3(1, 1, 1);
+  const _m = new THREE.Matrix4(), _t = new THREE.Matrix4(), _inv = new THREE.Matrix4(), _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _sc = new THREE.Vector3(), _one = new THREE.Vector3(1, 1, 1);
   function mirror() {
     for (let i = 0; i < hidden.length; i++) hidden[i].visible = false;
     const M = player.object3d.matrixWorld, P = hero.world.p, R = hero.world.r;
@@ -292,11 +361,14 @@ export function createAdapter(game, player, old, { lib, body }) {
       _p.set(P[j * 3], P[j * 3 + 1], P[j * 3 + 2]);
       _q.set(R[j * 4], R[j * 4 + 1], R[j * 4 + 2], R[j * 4 + 3]);
       _m.compose(_p, _q, _one);
-      node.matrixWorld.multiplyMatrices(M, _m);
+      _t.multiplyMatrices(M, _m); // where it must be (drawn: the player's lean and drawn scale in M)
+      _inv.copy(node.parent.matrixWorld).invert();
+      _m.multiplyMatrices(_inv, _t);
+      _m.decompose(_p, _q, _sc);
+      node.position.copy(_p);
+      node.quaternion.copy(_q);
+      node.updateMatrixWorld(true); // itself and what hangs from it
     }
-    // the sword's children (the gem) follow it
-    const sw = rig().sword;
-    if (sw) for (let i = 0; i < sw.children.length; i++) sw.children[i].updateMatrixWorld(true);
   }
 
   // ---- the surface player.js expects (everything else reads through to today's animator)
@@ -388,6 +460,19 @@ export async function mount(game, params) {
   const ad = createAdapter(game, player, player.anim, { lib, body });
   player.anim = ad.proxy;
   game.pipeline?.setSeenThrough?.(body.object3d);
+  // the body's lean and letter size from the camera that renders the frame (set right before it)
+  const pl = game.pipeline;
+  if (pl && typeof pl.render === 'function' && typeof body.prepareView === 'function') {
+    const render0 = pl.render.bind(pl), LEAN = { lean: true };
+    pl.render = (...a) => {
+      try {
+        body.prepareView(game.camera, LEAN);
+      } catch {
+        /* a body without it */
+      }
+      return render0(...a);
+    };
+  }
   return {
     adapter: ad,
     body,

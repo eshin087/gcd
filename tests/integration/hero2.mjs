@@ -511,6 +511,7 @@ function scenOff() {
 async function scenSweep() {
   out("-- sweep: the mapped attacks' blades against a target in front of him");
   const { ATTACKS, resolveClip } = await imp(H2 + 'moves.js');
+  const { aimOf, fixAttackPose } = await imp(H2 + 'adapter.js');
   const C = await imp('src/entities/player/combat.js');
   const defs = [...C.LIGHT, ...C.HEAVY, C.SPRINT_ATK, C.ROLL_ATK, C.CLEAVE, C.THRUST, C.ONE_BREATH].filter(Boolean);
   const rows = [];
@@ -525,6 +526,9 @@ async function scenSweep() {
     mapped++;
     const h = createHero2(null, { body: standIn(), library: lib, applyRoot: false });
     h.props = { R: 'sword', L: null };
+    // as the game plays it (adapter.js): the hips held over his root, the clip turned to aim at its hit
+    const aim = aimOf(lib, c);
+    h.onPose = (pose) => fixAttackPose(pose, c, aim);
     h.play(c.name, { fade: 0, manual: true });
     const D = [1.2, 1.9, 2.6], hit = [Infinity, Infinity, Infinity];
     let a0 = null, a1 = null, sweep = 0, prevA = null;
@@ -556,7 +560,7 @@ async function scenSweep() {
     const R = 0.45 + C.REACH.radius; // a body's hurt radius + the blade's
     const tag = hit.map((d) => (d <= R ? 'HIT' : `${d.toFixed(2)}`)).join(' / ');
     if (hit[0] <= R || hit[1] <= R) crossing++;
-    rows.push(`${def.name.padEnd(17)} ${c.name.padEnd(8)} active ${t0.toFixed(2)}-${t1.toFixed(2)} s  target 1.2 / 1.9 / 2.6 m: ${tag}  tip ${((a0 ?? 0) * 57.3).toFixed(0)} -> ${((a1 ?? 0) * 57.3).toFixed(0)} deg, swept ${(sweep * 57.3).toFixed(0)} deg`);
+    rows.push(`${def.name.padEnd(17)} ${c.name.padEnd(8)} active ${t0.toFixed(2)}-${t1.toFixed(2)} s  target 1.2 / 1.9 / 2.6 m: ${tag}  tip ${((a0 ?? 0) * 57.3).toFixed(0)} -> ${((a1 ?? 0) * 57.3).toFixed(0)} deg, swept ${(sweep * 57.3).toFixed(0)} deg, aim ${(aim * 57.3).toFixed(0)} deg`);
   }
   for (const r of rows) out('     ' + r);
   assert(mapped === defs.length, `every game attack def plays a clip (${mapped} of ${defs.length})`);
