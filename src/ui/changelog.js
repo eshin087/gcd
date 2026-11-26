@@ -19,6 +19,11 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-26',
+        title: 'BENCH in the performance readout',
+        notes: ['With ?perf in the address, BENCH holds the game still for a few seconds and measures what each drawing step costs your device. REPORT then includes it.'],
+      },
+      {
+        date: '2026-11-26',
         title: 'A performance readout on your phone, and smoother first breaks',
         notes: [
           'Add ?perf to the address to see the frame rate and what each frame costs at the foot of the screen. REPORT shares or copies a summary you can send.',

@@ -6367,3 +6367,19 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   loaded by other sessions and runs varied +-25 %. The load step takes ~1 frame more for the warm draw.
   Next: the owner's `?perf` report from the iPhone in a fight on each of the three levels, then the parts
   it names. Not measured: any phone.
+
+## ADR-215 — BENCH: each pipeline step's GPU cost, measured on the owner's phone (2026-11-26)
+
+- **Context:** the owner's `?perf` reports from their iPhone (ADR-209): the script is 3.5 ms of a frame (p99
+  7 - 12 ms), yet 6 % (fox, code hall) to 20 % (grove) of fight frames run over 20 ms, the long ones 46 - 69 ms
+  with 3 - 4 catch-up steps, and AUTO already sat at the owner's 1x floor on fox and grove. The GPU is the limit,
+  and Safari has no GPU timer, so which step costs is unknown. The owner said yes to a BENCH button.
+- **Decision:** BENCH in the readout: the frame on screen drawn whole and with each step left out in turn, each
+  reading ended by a 1-pixel read (it waits for the GPU); a step's share is the difference. Also the still
+  shadow map redrawn every frame, and the frame at ~0.7x the pixels (how much a resolution step gives). ~4 s
+  on a phone, the game holding still; everything is put back.
+- **Consequences:** the report names the step to cut at AUTO's floor (a smaller shadow map, a cheaper glow,
+  fewer effect letters), to be shown to the owner as before / after options. A difference method: steps that
+  overlap on the GPU can share time, so the shares need not add up to the frame (the rest line shows the gap).
+  On the RTX 4090 the whole frame at the phone's size is ~2 ms; the numbers mean something on the phone only.
+

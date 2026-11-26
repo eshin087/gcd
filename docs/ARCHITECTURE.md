@@ -619,7 +619,12 @@ Render helpers for creature modules:
   canvas), the level, AUTO's step and the cap, the frame intervals' percentiles, the missed frames (over
   20 / 34 / 100 ms), the script's, each part's mean / p95 / max, and the 16 longest frames with their parts,
   the hero's state and the boss's move. A new per-frame module run through `safe` is timed with no change;
-  one outside it should add its own `perf?.add`.
+  one outside it should add its own `perf?.add`. BENCH (`perf.bench()`, ADR-215): the frame on screen drawn
+  again and again in one task, each reading ended by a 1-pixel `readPixels` (it waits for the GPU), whole and
+  with each pipeline step left out (shadows, world, hero see-through, fire field, letters, effects, glow: the
+  step's draws skipped by wrapping `renderer.render`), the still shadow map redrawn every frame, then at ~0.7x
+  the device pixels and back through `applyQuality`; the results go in the report. A new pipeline pass gets a
+  line in its `is` table.
 - **The warm draw** (`render/precompile.js` `warmDraw`, ADR-209): after the shaders' precompile, every mesh
   of the scene that is hidden with `userData.foldAway` or `userData.autoHide` (a set's remains:
   destructibles.js shows them when a piece first cracks or breaks) gets its bounding sphere and is drawn

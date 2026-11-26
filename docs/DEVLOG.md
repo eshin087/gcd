@@ -5,6 +5,16 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-26 — BENCH in `?perf`: each pipeline step's GPU cost on the phone (ADR-215; branch `perf/phone-bench`)
+
+**Owner's iPhone reports** (fox, grove, code; Safari 27.3, iOS 18.7, screen 414 x 896 at 3x, the page at 669 x
+867): 52 - 59 fps; script mean 3.5 ms, p99 7 - 12 ms; 6 - 20 % of frames over 20 ms, the long ones 46 - 69 ms in
+the fight's busiest moments (the flurry on a staggered boss, the fox's twin fall, perfect dodges); AUTO at its
+1x floor on fox and grove (1.25x on code); an AUTO step's own hitch 17 - 32 ms. So the GPU is the limit, not the
+script. **What:** BENCH (`perf.bench()`, a button): each step's share of the frame, the still map redrawn, the
+frame at ~0.7x pixels. Test: world `perfreadout`. **Next:** the owner's BENCH from a busy moment on fox and grove;
+then the step it names, cut at AUTO's floor, shown as options; AUTO's step hitch (the letter atlases rebuilt).
+
 ## 2026-11-26 — The phone's frame: `?perf` on the device; the first break's upload and two spikes out (ADR-209; branch `perf/phone-spikes`)
 
 **Owner:** "i tried playing a few levels like the neo, bamboo, and fox level and the fps does dip during the
