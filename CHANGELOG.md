@@ -5,6 +5,11 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 
 ## [Unreleased]
 One hundred and seven pieces of work since 0.4.0:
+- **The perfect dodge on the ground, no hops** (2026-11-25, ADR-210). *Added, behind `?dash=1` (the Lab's `dash`
+  button; off by default until the owner picks):* against a man the flurry no longer blinks him round the foe or
+  leaps: he stays in view, turns, and runs every cut as a low dash from where he stands, smeared copies of him left
+  along the run and tiny sparks kicked off the floor; the last blow is always the Passing Cut. Same blows, frames
+  and damage. The wyrm's flurry, the riposte and the counter are unchanged.
 - **The hero stands, holds and guards like the reference** (2026-11-25, ADR-207). *Changed:* after the owner's
   reference footage, at ease the hero now stands tall with the sword in one hand, its point forward and down by his
   right foot, the free arm hanging; in a fight (locked on, a boss) he takes the sword in both hands before him, the

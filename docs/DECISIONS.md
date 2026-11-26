@@ -6333,3 +6333,21 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   clean technique that tracks, the boss's own footwork, and a render for the owner before wiring.
   If the hero remake's branch later lands, its copies of `scripts/mocap` and `src/entities/hero2/*` should
   be taken over these (check `check.mjs`'s film list keeps `fist`).
+
+## ADR-210 — The perfect dodge on the ground: no blinks, no leaping arts, behind `?dash=1` (2026-11-25)
+
+- **Context:** the owner: the perfect dodge should not have "random like hops over the character and should be
+  more epic cooler looking". Against a duelist the flurry blinked him between cuts (vanish, reappear, the first
+  pass from a ring spot `reach` out) and ended one time in three on Falling Leaf (down from 3.9 m) or Rising Moon (a
+  somersault over him). The owner's reference compilation's dash thrust sells speed with ONE smeared frame and a
+  held finish, feet on the floor. The owner's answers: both the blinks and the leaping arts go; "smear dash + held
+  finish"; build without a further clip.
+- **Decision:** `STREAK_FX.dash` (`?dash=1`, the Lab's `dash`; read as a flurry starts), only on the ground and not
+  for a riposte / counter: the blink phases keep their length but he stays in view and turns (`Flurry._set`); every
+  pass, the first and the art's included, runs from where he stands (the chain forced on); the art is always the
+  Passing Cut; each pass prints 2 short, faint body copies behind him (1 on a storm cut; `_afterimage`'s `smear`)
+  and kicks tiny floor letters at the push-off and the finish (`FlurryFx.kick`). Blows, their frames and damage are
+  unchanged (duel `dash`). Default off until the owner picks from the films.
+- **Consequences:** the figure plan still lays the first pass from a ring spot; with dash its first pass starts at
+  the dodge spot, so a figure is approximate on its first line. The wyrm's flurry is untouched.
+

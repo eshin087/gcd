@@ -19,6 +19,15 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-25',
+        title: 'The perfect dodge on the ground, no hops',
+        notes: [
+          'To try: add ?dash=1 to the address. Against a duelist the flurry no longer blinks or leaps over him.',
+          'Every cut is a low dash from where the hero stands, a smear of him left along the run, sparks off the floor.',
+          'The last blow is always the Passing Cut.',
+        ],
+      },
+      {
+        date: '2026-11-25',
         title: 'The hero stands, holds and guards like the reference',
         notes: [
           'At ease the hero stands tall with his sword in one hand, its point forward and down by his right foot.',

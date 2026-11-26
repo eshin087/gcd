@@ -1277,6 +1277,11 @@ export class Lab {
       STREAK_FX.chain = !STREAK_FX.chain;
       this._syncCutBtns();
     });
+    this.ui.dashBtn = button(stkGrid, 'dash', () => {
+      STREAK_FX.dash = !STREAK_FX.dash;
+      this._syncCutBtns();
+    });
+    this.ui.dashBtn.title = "the dash (?dash=1): against a man on the ground he does not blink between the cuts: he stays in view, turns to the next pass and runs it from where he stands; always the Passing Cut; smeared copies along the run and sparks off the floor. Read as a flurry starts";
     this.ui.figureBtn = button(stkGrid, `figure: ${STREAK_FX.figure}`, () => {
       const L = STREAK_FX.figures;
       STREAK_FX.figure = L[(L.indexOf(STREAK_FX.figure) + 1) % L.length];
@@ -1520,6 +1525,7 @@ export class Lab {
     for (const { m, el: b } of this.ui.runSwordBtns ?? []) setClass(b, 'on', runSwordMode() === m);
     if (this.ui.tempoBtn) setClass(this.ui.tempoBtn, 'on', STREAK_FX.tempo !== false);
     if (this.ui.chainBtn) setClass(this.ui.chainBtn, 'on', STREAK_FX.chain !== false);
+    if (this.ui.dashBtn) setClass(this.ui.dashBtn, 'on', STREAK_FX.dash === true);
     if (this.ui.figureBtn) this.ui.figureBtn.textContent = `figure: ${STREAK_FX.figure}`;
     if (this.ui.ripBtn) {
       this.ui.ripBtn.textContent = `rip: ${ripMode()}`;

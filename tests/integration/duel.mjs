@@ -1441,6 +1441,78 @@ async function scenarioChain() {
   return G;
 }
 
+// ================================================================== scenario: dash (the flurry without blinks, on a man)
+// STREAK_FX.dash (?dash=1): he stays in view between the cuts, every pass starts where he stands, the art
+// is always the Passing Cut, his feet stay on the floor; the blows, their frames and the damage are as
+// with it off.
+async function scenarioDash() {
+  out('\n== scenario DASH (the flurry on a man without blinks: always in view, from where he stands, the Passing Cut) ==');
+  const { STREAK_FX } = await imp('src/combat/streak.js');
+  const FL = await imp('src/entities/player/flurry.js');
+  const G = build();
+  duel(G, { dist: 4 });
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  const dash0 = STREAK_FX.dash;
+  const take = (n, dash) => {
+    STREAK_FX.dash = dash;
+    FL.setFigureSeed(777);
+    settle(G);
+    place(G, 2.5);
+    run(G, 0.3);
+    d.hp = d.maxHp;
+    const hp0 = d.hp, fl = p.flurry;
+    const tr = { hits: [], hidden: 0, maxY: 0, blinkMove: 0, jump: 0, arts: new Set(), frames: 0, ok: false };
+    let last = null;
+    G.watch = (nm, e) => {
+      if (nm === 'player:flurryHit') tr.hits.push(tr.frames);
+    };
+    tr.ok = p.debug.flurry(n, 'passing');
+    tr.art = fl.art;
+    run(G, 8, () => {
+      tr.frames++;
+      if (p.state !== 'flurry' || !fl.on) {
+        last = null;
+        return;
+      }
+      tr.arts.add(fl.art);
+      if (fl.hidden) tr.hidden++;
+      tr.maxY = Math.max(tr.maxY, p.position.y);
+      if (last && fl.ph === 0 && last.ph === 0 && last.seq === fl._seq) tr.blinkMove = Math.max(tr.blinkMove, Math.hypot(p.position.x - last.x, p.position.z - last.z));
+      last = { x: p.position.x, z: p.position.z, ph: fl.ph, seq: fl._seq };
+    }, () => p.state !== 'flurry');
+    G.watch = null;
+    tr.dmg = hp0 - d.hp;
+    return tr;
+  };
+  for (const n of [1, 2, 4, 7]) {
+    const on = take(n, true), off = take(n, false);
+    out(`   N=${n}: blows on frames ${on.hits} / ${off.hits}, damage ${on.dmg} / ${off.dmg}, art ${[...on.arts]}`);
+    assert(on.ok && on.hits.length === n && on.hits.join() === off.hits.join() && on.dmg === off.dmg && on.dmg > 0, `dash N=${n}: ${on.hits.length} blows on the frames of the flurry without it (${on.hits.join(',')} / ${off.hits.join(',')}), ${on.dmg} damage as with it off (${off.dmg})`);
+    assert(on.hidden === 0, `dash N=${n}: never hidden (${on.hidden} frames)`);
+    assert(on.maxY <= 0.02, `dash N=${n}: his feet stay on the floor (up to ${on.maxY.toFixed(3)} m)`);
+    assert(on.blinkMove < 1e-6, `dash N=${n}: he does not move during the set (${on.blinkMove.toFixed(4)} m)`);
+    assert([...on.arts].join() === 'passing', `dash N=${n}: the art is the Passing Cut (${[...on.arts]})`);
+  }
+  // off: the others are still in the pool
+  {
+    STREAK_FX.dash = false;
+    const seen = new Set();
+    for (let k = 0; k < 24; k++) {
+      settle(G);
+      place(G, 2.5);
+      run(G, 0.3);
+      p.flurry.lastArt.ground = '';
+      p.debug.flurryArt = null;
+      p.flurry.clear();
+      seen.add(p.flurry._pickArt(false, false));
+    }
+    assert(seen.size >= 2, `the dash off: the art pick still draws from all the ground arts (${[...seen]})`);
+  }
+  STREAK_FX.dash = dash0;
+  return G;
+}
+
 // ================================================================== scenario: ghostep
 async function scenarioGhostep() {
   out('\n== scenario GHOSTEP (a perfect dodge is answered by the flurry: an art through him that leaves the hero at his back; a streak adds flash cuts) ==');
@@ -4873,6 +4945,7 @@ const SCENARIOS = {
   ghostep: scenarioGhostep,
   tempo: scenarioTempo,
   chain: scenarioChain,
+  dash: scenarioDash,
   timerip: scenarioTimeRip,
   perfectfx: scenarioPerfectFx,
   parryfx: scenarioParryFx,

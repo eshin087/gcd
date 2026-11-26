@@ -295,6 +295,29 @@ export class FlurryFx {
     if (storm) this.stormClones++;
   }
 
+  /** The dash (?dash=1): a smeared copy of him along a pass (`segs`: PlayerFx._afterimage), moving
+   *  the way (dx, dz): short-lived and faint, the cells drifting back along the run. */
+  smear(segs, nSegs, dx, dz) {
+    if (!this.add) return;
+    this.pfx?._afterimage?.(this._fx, segs, nSegs, { light: true, smear: true, dx, dz });
+  }
+
+  /** The dash: a few tiny letters kicked off the floor at his feet (x, z), thrown low along (dx, dz)
+   *  (the way they fly: -dir at a push-off, +dir as he slows into the finish). `k` x the count. */
+  kick(x, z, dx, dz, k = 1) {
+    const fa = this.game.fx?.alpha ?? this._fx;
+    if (!fa || !Number.isFinite(x + z + dx + dz)) return;
+    const base = Math.atan2(dz, dx), n = Math.round(10 * k);
+    for (let i = 0; i < n; i++) {
+      const a = base + R(-0.45, 0.45), sp = R(2.5, 6), size = R(0.05, 0.09);
+      fa.spawn({
+        x: x + R(-0.12, 0.12), y: R(0.04, 0.16), z: z + R(-0.12, 0.12), vx: Math.cos(a) * sp, vy: R(0.2, 1.1), vz: Math.sin(a) * sp,
+        life: R(0.2, 0.35), size, sizeEnd: size * R(0.6, 1), glyph: i % 3 ? '.,:' : "·'+", color: i % 2 ? DUST.col : DUST.colBlue, colorEnd: DUST.colEnd, alpha: 0.8, alphaEnd: 0,
+        drag: R(3, 5), gravity: -2.5,
+      });
+    }
+  }
+
   /** A storm cut's run in: from where it started (a: root, `up` m under the blade) to where it lands
    *  (b: root), a few fast thin strokes along it (the pass he was too fast to be drawn in). */
   streak(a, b, up, dx, dz) {

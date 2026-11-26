@@ -77,6 +77,12 @@ export const STREAK_FX = {
    *  dust. false (?chain=0) = the ring-teleport paths, the crescents and the shards exactly as before.
    *  Read as a flurry starts. */
   chain: q('chain') !== '0',
+  /** The dash (?dash=1; default off = the flurry as above): against a man on the ground (not a riposte) he
+   *  no longer blinks between the cuts: he stays in view where he is, turns to the next pass and runs it from
+   *  where he stands (every pass starts there; the art is always the Passing Cut, his feet on the floor).
+   *  A dash is sold by smeared copies of him along the run and sparks kicked off the floor. Read as a
+   *  flurry starts. */
+  dash: q('dash') === '1',
   /** The chain's figure (DEFENSE.flurry.chain.figures; player/flurryFigures.js): 'any' (a different
    *  one each flurry) or a figure's name to pin it (?figure=star | zigzag | cage | spiral | cross; the
    *  Lab's `figure` button). Read as a flurry starts. */

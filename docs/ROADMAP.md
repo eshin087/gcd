@@ -277,6 +277,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] The chain: each pass from where the last ended, every slash on his path, the stray crescents gone, letter dust for the `A` shards (`?chain=0`)
 - [x] Five figures, one a flurry, never twice running (`?figure=`)
 - [x] The time rip: four looks filmed side by side; the owner picked the torn strip (`?rip=`)
+- [x] The dash: no blinks, no leaping arts, a smear and floor sparks (`?dash=1`, ADR-210)
+- [ ] The owner's pick for the dash (default off until then)
 - [ ] Played, and seen on the iPhone
 - [ ] Judged in play: the step into the storm round the head, the riposte's last freeze (0.198 s), the figures' size at the duel camera
 - [ ] The wyrm's `pounce` past its share of a gap in the tree wall (integ `breach` replays at the old pace until then)

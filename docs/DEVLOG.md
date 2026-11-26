@@ -37,6 +37,19 @@ Frames, caches and sheets stay in this session's scratchpad (never committed).
 
 ---
 
+## 2026-11-25 — The perfect dodge on the ground, no hops (ADR-210; branch `claude/dodge-rework-fc5eae`)
+- **Why:** the owner: no "random hops over the character", "more epic cooler looking". Split off the parry
+  streak's session (PR 145) so both run in parallel.
+- **Reference:** the owner's animation compilation has no labelled perfect-dodge section; its lightning dash thrust
+  (a low set, one smeared frame, floor sparks, the lunge held) was carded. No further clip from the owner.
+- **What:** `?dash=1` (default off): against a man no blinks (he stays in view, turns, every pass from where he
+  stands), always the Passing Cut, 2 smear copies per pass, tiny floor kicks. Same blows / frames / damage. Built
+  by a Sonnet subagent from the lead's brief; reviewed (the push-off kick's direction fixed).
+- **Tests:** duel `dash` (never hidden, feet <= 0.02 m, still during the set, same blows and damage as off),
+  duel `chain` / `tempo`, integ `chain` / `storm`.
+- **Next / open:** the owner's verdict on the films; the pose still snaps from the held finish into the next cut
+  (blend 0): watch for a pop; the first pass of a figure is approximate.
+
 ## 2026-11-25 — A roadmap to Steam and the app stores (docs only; branch `docs/ship-roadmap`)
 
 **Owner:** plans to sell the game on Steam (Windows / Mac) and the iOS / Android stores; asked whether the

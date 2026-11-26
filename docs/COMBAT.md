@@ -653,6 +653,18 @@ same 258 damage in the same time as a streak of 7 (integ `storm`).
   down into a drift that thins out in 0.6 - 0.9 s) instead of the slam's big 'A' shards; round the
   head the art's shards are dust too. Damage, the blows and their frames, the world's hold and the
   crit window are as before (duel / integ `chain`).
+- **The dash** (2026-11-25; `?dash=1`, the Lab's `dash` button; default off: the flurry as above). Owner: the
+  flurry's blinks read as random hops over the character; it should be more epic. Against a man on the
+  ground (not a riposte; the wyrm's flurry, the plunge, the riposte and the counter are unchanged) he
+  **never blinks**: where the flurry vanished him he stays in view in the pose he held, for the same beat
+  (so the timing, the frames the blows land on and the damage are as before), and turns smoothly to the
+  next pass. **Every pass starts where he stands**, the first one too (the chain is forced on); the art
+  is always the Passing Cut (no Falling Leaf, no Rising Moon) and his feet stay on the floor. **The
+  smear**: along each dash (and the iai's strike) two short-lived, faint copies of him are printed behind
+  him as he runs, before the contact (one on a storm cut); a dash is sold by the smeared frame and the
+  held finish, not by teleporting. **Floor sparks**: ten tiny steel-white letters kicked low off the floor
+  behind him as each pass starts, a smaller puff forward as he slows into the held finish. No screen
+  tint, nothing on the background (duel `dash`).
 - **Past seven** (`tiers`): at tier 4 every hanging cut has a fine echo line beside it, at tier 5 two;
   on the last blow they split away and rings open where they cross. The banner names the full flurry
   of a tier-4 / 5 streak HUNDREDFOLD FLASH / THOUSANDFOLD FLASH (SEVENFOLD below), a rule more, never
