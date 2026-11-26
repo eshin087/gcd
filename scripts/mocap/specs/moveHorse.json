@@ -6,6 +6,365 @@
  "note": "The rider on the horse. Built by H2/rider/py/rgen.py (kind 'ride': the whole body typed in 3D from the footage's cameras; the tracker cannot see a rider whose legs the horse hides). Seated convention: hips (0, hipsY, 0) = on the saddle; horse/rider.js adds the per-gait lean, the stirrups and the reins.",
  "clips": [
   {
+   "name": "rideMount",
+   "title": "Riding: summon the horse and mount",
+   "src": "move 25:21-25:55",
+   "kind": "ride",
+   "fps": 30,
+   "n": 60,
+   "loop": false,
+   "props": {
+    "R": null,
+    "L": null
+   },
+   "hands": {
+    "L": "fist",
+    "R": "fist"
+   },
+   "from": "idle",
+   "to": "ride",
+   "events": [
+    {
+     "f": 10,
+     "name": "seatIn"
+    },
+    {
+     "f": 33,
+     "name": "riderOn"
+    }
+   ],
+   "ride_keys": {
+    "keys": [
+     {
+      "f": 0,
+      "base": {
+       "set": "moveGround",
+       "clip": "idle",
+       "f": 0,
+       "yaw": 14
+      },
+      "note": "25:22.95 (side view, the horse not yet there): standing"
+     },
+     {
+      "f": 4,
+      "base": {
+       "set": "moveGround",
+       "clip": "idle",
+       "f": 0,
+       "yaw": 14
+      },
+      "hp": [
+       0,
+       1.0,
+       0.0
+      ]
+     },
+     {
+      "f": 7,
+      "note": "25:23.18 the hop's gather: leaning in, the right knee coming up, the left foot planted",
+      "hp": [
+       0,
+       0.93,
+       0.06
+      ],
+      "hips": [
+       0,
+       15,
+       0
+      ],
+      "chest": [
+       0,
+       22,
+       0
+      ],
+      "head": [
+       0,
+       -10,
+       0
+      ],
+      "footL": [
+       0.12,
+       -0.03,
+       5,
+       0.0,
+       0
+      ],
+      "footR": [
+       -0.12,
+       0.22,
+       -5,
+       0.22,
+       25
+      ]
+     },
+     {
+      "f": 10,
+      "note": "25:23.28 take-off: the left leg drives, the right knee high",
+      "hp": [
+       0,
+       1.15,
+       0.1
+      ],
+      "hips": [
+       0,
+       18,
+       0
+      ],
+      "chest": [
+       0,
+       26,
+       0
+      ],
+      "footL": [
+       0.12,
+       -0.22,
+       5,
+       0.12,
+       45
+      ],
+      "footR": [
+       -0.12,
+       0.32,
+       -5,
+       0.45,
+       20
+      ],
+      "uaL": [
+       0.25,
+       -0.85,
+       0.45
+      ],
+      "faL": [
+       0.1,
+       -0.3,
+       0.95
+      ],
+      "uaR": [
+       -0.25,
+       -0.85,
+       0.45
+      ],
+      "faR": [
+       -0.1,
+       -0.3,
+       0.95
+      ],
+      "handL": [
+       15
+      ],
+      "handR": [
+       15
+      ]
+     },
+     {
+      "f": 17,
+      "note": "25:23.52 rising, the legs drawn up",
+      "hp": [
+       0,
+       1.45,
+       0.08
+      ],
+      "hips": [
+       0,
+       22,
+       0
+      ],
+      "chest": [
+       0,
+       28,
+       0
+      ],
+      "head": [
+       0,
+       -15,
+       0
+      ],
+      "footL": [
+       0.13,
+       -0.22,
+       5,
+       0.75,
+       35
+      ],
+      "footR": [
+       -0.15,
+       0.25,
+       -8,
+       0.82,
+       10
+      ],
+      "uaL": [
+       0.35,
+       -0.6,
+       0.7
+      ],
+      "faL": [
+       0.1,
+       -0.1,
+       1.0
+      ],
+      "uaR": [
+       -0.35,
+       -0.6,
+       0.7
+      ],
+      "faR": [
+       -0.1,
+       -0.1,
+       1.0
+      ]
+     },
+     {
+      "f": 24,
+      "note": "25:23.8 the top, over the saddle: leaning forward, the left leg thrown back straight, the right bent forward to come down astride",
+      "hp": [
+       0,
+       1.5,
+       0.05
+      ],
+      "hips": [
+       0,
+       25,
+       0
+      ],
+      "chest": [
+       0,
+       30,
+       0
+      ],
+      "head": [
+       0,
+       -18,
+       0
+      ],
+      "footL": [
+       0.14,
+       -0.45,
+       5,
+       0.66,
+       60
+      ],
+      "footR": [
+       -0.22,
+       0.2,
+       -12,
+       0.88,
+       10
+      ],
+      "uaL": [
+       0.45,
+       -0.55,
+       0.7
+      ],
+      "faL": [
+       0.1,
+       -0.2,
+       0.97
+      ],
+      "uaR": [
+       -0.45,
+       -0.55,
+       0.7
+      ],
+      "faR": [
+       -0.1,
+       -0.2,
+       0.97
+      ]
+     },
+     {
+      "f": 30,
+      "note": "25:24.0 coming down astride",
+      "hp": [
+       0,
+       1.2,
+       0.02
+      ],
+      "hips": [
+       0,
+       10,
+       0
+      ],
+      "chest": [
+       0,
+       16,
+       0
+      ],
+      "head": [
+       0,
+       -8,
+       0
+      ],
+      "footL": [
+       0.25,
+       -0.1,
+       8,
+       0.45,
+       10
+      ],
+      "footR": [
+       -0.25,
+       0.0,
+       -8,
+       0.45,
+       0
+      ]
+     },
+     {
+      "f": 33,
+      "base": "seat",
+      "note": "25:24.15 in the saddle (the horse's riderOn)",
+      "hp": [
+       0,
+       1.035,
+       0.0
+      ],
+      "hips": [
+       0,
+       4,
+       0
+      ],
+      "chest": [
+       0,
+       12,
+       0
+      ],
+      "head": [
+       0,
+       -6,
+       0
+      ]
+     },
+     {
+      "f": 38,
+      "hp": [
+       0,
+       1.05,
+       0
+      ],
+      "chest": [
+       0,
+       4,
+       0
+      ],
+      "hips": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "f": 46,
+      "base": "seat"
+     },
+     {
+      "f": 59,
+      "base": "seat"
+     }
+    ]
+   }
+  },
+  {
    "name": "rideIdle",
    "title": "Riding: the seat at a stand",
    "src": "move 25:21-25:55",
@@ -67,6 +426,317 @@
        1.059,
        0.0
       ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "rideDismount",
+   "title": "Riding: dismount",
+   "src": "move 25:21-25:55",
+   "kind": "ride",
+   "fps": 30,
+   "n": 48,
+   "loop": false,
+   "props": {
+    "R": null,
+    "L": null
+   },
+   "hands": {
+    "L": "fist",
+    "R": "fist"
+   },
+   "from": "ride",
+   "to": "idle",
+   "events": [
+    {
+     "f": 13,
+     "name": "riderOff"
+    },
+    {
+     "f": 34,
+     "name": "seatOut"
+    }
+   ],
+   "ride_keys": {
+    "keys": [
+     {
+      "f": 0,
+      "base": "seat",
+      "note": "25:25.95 seated (side view)"
+     },
+     {
+      "f": 9,
+      "base": "seat"
+     },
+     {
+      "f": 12,
+      "note": "25:26.3 the spring: rising in the stirrups, leaning in",
+      "hp": [
+       0,
+       1.1,
+       0.02
+      ],
+      "hips": [
+       0,
+       12,
+       0
+      ],
+      "chest": [
+       0,
+       18,
+       0
+      ],
+      "head": [
+       0,
+       -10,
+       0
+      ]
+     },
+     {
+      "f": 19,
+      "note": "25:26.55 over the saddle: leaning forward, the left leg thrown back straight, the right bent under him (the horse vanishes)",
+      "hp": [
+       0,
+       1.43,
+       0.04
+      ],
+      "hips": [
+       0,
+       22,
+       0
+      ],
+      "chest": [
+       0,
+       26,
+       0
+      ],
+      "head": [
+       0,
+       -15,
+       0
+      ],
+      "footL": [
+       0.14,
+       -0.5,
+       5,
+       0.6,
+       60
+      ],
+      "footR": [
+       -0.2,
+       0.18,
+       -10,
+       0.83,
+       10
+      ],
+      "uaL": [
+       0.5,
+       -0.5,
+       0.7
+      ],
+      "faL": [
+       0.2,
+       -0.2,
+       0.95
+      ],
+      "uaR": [
+       -0.5,
+       -0.5,
+       0.7
+      ],
+      "faR": [
+       -0.2,
+       -0.2,
+       0.95
+      ]
+     },
+     {
+      "f": 26,
+      "note": "25:26.85 dropping, the legs coming under him",
+      "hp": [
+       0,
+       1.38,
+       0.03
+      ],
+      "hips": [
+       0,
+       12,
+       0
+      ],
+      "chest": [
+       0,
+       14,
+       0
+      ],
+      "head": [
+       0,
+       -6,
+       0
+      ],
+      "footL": [
+       0.13,
+       -0.1,
+       5,
+       0.45,
+       30
+      ],
+      "footR": [
+       -0.13,
+       0.15,
+       -5,
+       0.6,
+       10
+      ]
+     },
+     {
+      "f": 31,
+      "note": "25:27.05 about to land: the left foot reaching down, the right knee up",
+      "hp": [
+       0,
+       1.2,
+       0.02
+      ],
+      "hips": [
+       0,
+       8,
+       0
+      ],
+      "chest": [
+       0,
+       10,
+       0
+      ],
+      "footL": [
+       0.12,
+       -0.04,
+       5,
+       0.2,
+       25
+      ],
+      "footR": [
+       -0.12,
+       0.18,
+       -5,
+       0.4,
+       10
+      ]
+     },
+     {
+      "f": 35,
+      "note": "25:27.2 landed on the left foot, the right knee still up, the right fist up in front",
+      "hp": [
+       0,
+       0.9,
+       0.02
+      ],
+      "hips": [
+       0,
+       14,
+       0
+      ],
+      "chest": [
+       0,
+       16,
+       0
+      ],
+      "head": [
+       0,
+       -8,
+       0
+      ],
+      "footL": [
+       0.12,
+       -0.04,
+       5,
+       0.0,
+       0
+      ],
+      "footR": [
+       -0.13,
+       0.2,
+       -5,
+       0.22,
+       20
+      ],
+      "uaL": [
+       0.4,
+       -0.85,
+       0.2
+      ],
+      "faL": [
+       0.2,
+       -0.6,
+       0.75
+      ],
+      "uaR": [
+       -0.3,
+       -0.75,
+       0.5
+      ],
+      "faR": [
+       -0.1,
+       0.6,
+       0.8
+      ]
+     },
+     {
+      "f": 40,
+      "note": "25:27.4 both feet down, rising",
+      "hp": [
+       0,
+       0.96,
+       0.0
+      ],
+      "hips": [
+       0,
+       6,
+       0
+      ],
+      "chest": [
+       0,
+       8,
+       0
+      ],
+      "head": [
+       0,
+       -4,
+       0
+      ],
+      "footL": [
+       0.13,
+       -0.04,
+       8,
+       0.0,
+       0
+      ],
+      "footR": [
+       -0.14,
+       0.06,
+       -10,
+       0.0,
+       0
+      ],
+      "uaR": [
+       -0.25,
+       -0.85,
+       0.4
+      ],
+      "faR": [
+       -0.1,
+       0.2,
+       0.95
+      ]
+     },
+     {
+      "f": 47,
+      "base": {
+       "set": "moveGround",
+       "clip": "idle",
+       "f": 0,
+       "yaw": 14
+      },
+      "note": "25:27.6 standing"
      }
     ]
    }
