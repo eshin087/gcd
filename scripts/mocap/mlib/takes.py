@@ -74,6 +74,14 @@ def load(film, t0, t1, log=print):
     tor = np.linalg.norm((L2[:, 11, :2] + L2[:, 12, :2]) / 2 - (L2[:, 23, :2] + L2[:, 24, :2]) / 2, axis=1)
     med = np.array([np.median(tor[max(0, k - 30):k + 31]) for k in range(len(tor))])
     odd = np.abs(tor / np.maximum(med, 1) - 1) > 0.3
+    # his feet or hands out of the picture: the tool guesses them
+    Hpx, Wpx = 720, 1280
+    try:
+        Wpx, Hpx = Image.open(fs[ts[0]]).size
+    except Exception:
+        pass
+    ends = L2[:, [27, 28, 31, 32, 15, 16], :2]
+    odd |= ((ends[..., 1] > Hpx - 2) | (ends[..., 0] < 1) | (ends[..., 0] > Wpx - 2)).any(1)
     keep = [k for k in range(len(ts)) if not frozen[k] and not odd[k]]
     note = 'frames %d, missed %d, frozen %d, odd size %d' % (len(ts_all), len(ts_all) - len(ts), int(frozen.sum()), int(odd.sum()))
     tk = np.array([ts[k] for k in keep])

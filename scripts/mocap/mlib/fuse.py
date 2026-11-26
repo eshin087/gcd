@@ -31,17 +31,18 @@ def offset_cost(A, wa, B, wb, s):
     return d.sum() / ((i1 - i0) * len(LIMBS) * w.sum())
 
 
-def align(ref, take, search=0.5, fps=FPS):
-    """frame offset s so take.b[i + s] matches ref.b[i]. take.b must cover ref's span +- search."""
+def align(ref, take, search=0.5, pad=None, fps=FPS):
+    """frame offset s so take.b[i + s] matches ref.b[i]. The take was loaded `pad` seconds before its
+    nominal start (default: `search` + 0.05), so s is searched round that start +- search."""
     A, wa = _feat(ref.b, ref.wax)
     B, wb = _feat(take.b, take.wax)
-    pad = int(round((take.t[0] - ref.t[0]) * fps))  # take frame 0 sits at ref frame `pad`
-    best = (np.inf, 0)
+    p0 = int(round((search + 0.05 if pad is None else pad) * fps))
+    best = (np.inf, p0)
     m = int(search * fps)
-    for s in range(-m, m + 1):
-        c = offset_cost(A, wa, B, wb, s - pad)
+    for s in range(p0 - m, p0 + m + 1):
+        c = offset_cost(A, wa, B, wb, s)
         if c < best[0]:
-            best = (c, s - pad)
+            best = (c, s)
     return best[1], best[0]
 
 

@@ -81,6 +81,18 @@ def _bend(a, b):
     return np.arccos(np.clip(np.sum(_n(a) * _n(b), -1), -1, 1))
 
 
+def _line(v, max_yaw):
+    """a left-right line (hips, shoulders) with its turn about the vertical kept within +-max_yaw degrees of
+    his left and median-filtered over 5 frames: from the side its depth is the tool's guess and flips"""
+    yaw = np.degrees(np.arctan2(-v[:, 2], v[:, 0]))
+    n = len(yaw)
+    med = np.array([np.median(yaw[max(0, i - 2):i + 3]) for i in range(n)])
+    med = np.clip(med, -max_yaw, max_yaw)
+    h = np.hypot(v[:, 0], v[:, 2])
+    out = np.stack([np.cos(np.radians(med)) * h, v[:, 1], -np.sin(np.radians(med)) * h], 1)
+    return _n(out)
+
+
 HEAD_PITCH0 = np.radians(12.0)  # the tool's nose sits below the ears' line on a level head
 
 
@@ -91,8 +103,8 @@ def world_rotations(b, blade=None):
     R = np.zeros((n, J, 4))
     R[:, 0] = skel.qident((n,))
     up_t = _n(_mid(b, 11, 12) - _mid(b, 23, 24))
-    hipL = _n(b[:, 23] - b[:, 24])
-    shL = _n(b[:, 11] - b[:, 12])
+    hipL = _line(b[:, 23] - b[:, 24], 70)
+    shL = _line(b[:, 11] - b[:, 12], 110)
     R[:, JI['hips']] = skel.frame_q(X, Y, hipL, up_t)
     R[:, JI['chest']] = skel.frame_q(X, Y, shL, up_t)
     R[:, JI['spine']] = skel.qslerp(R[:, JI['hips']], R[:, JI['chest']], 0.5)
@@ -196,7 +208,7 @@ def _spans(mask, min_len=3, fill=2):
     return out, spans
 
 
-def ground_and_contact(q, fps, loop=False, ground='feet', travel='free', log=print):
+def ground_and_contact(q, fps, loop=False, ground='feet', travel='free', log=print, clip_opts={}):
     """From local rotations (hips at the origin): the hips' height, foot contact and the root travel.
     Returns hipsY (n,), hips_xz (n,2) (hips over the root), root (n,3), contact {L: spans, R: spans}, speed."""
     n = len(q)
@@ -230,8 +242,13 @@ def ground_and_contact(q, fps, loop=False, ground='feet', travel='free', log=pri
         # planted = from the foot's most forward point along the travel (the strike) to its most backward
         # one (the push-off): the stance of a gait cycle, symmetric by construction and robust to the
         # tool's wobbly foot speeds. A loop that hardly travels (an idle) uses the height only.
+        # the direction a planted foot moves (backward under him): the mean velocity of the feet while low
+        lowmask = (g - lowf) < 0.03
+        mlow = vF[lowmask].mean(0) if lowmask.any() else m
+        if np.linalg.norm(mlow) > 0.3:
+            m = mlow / np.linalg.norm(mlow) * max(np.linalg.norm(m), np.linalg.norm(mlow))
         sp0 = max(np.linalg.norm(m), 1e-6)
-        d = m / sp0  # the direction a planted foot moves (backward)
+        d = m / sp0
         contact = np.zeros((n, 2), bool)
         if sp0 > 0.3:
             for f in (0, 1):
@@ -257,8 +274,11 @@ def ground_and_contact(q, fps, loop=False, ground='feet', travel='free', log=pri
                 vs += list((vF[mid, f] * d).sum(1))
             v_st = float(np.median(vs))
             m = d * v_st
+            # ... and only while the foot is down (a run's stance is short: the rest is flight)
+            contact &= (g - lowf) < float(clip_opts.get('contact_h', 0.04))
         else:
             contact = (g - lowf) < 0.03
+            m = np.zeros(2)
         vel = np.broadcast_to(-m / fps, (n, 2)).copy()
     else:
         # a one-shot: start from "the lower foot is planted", then planted = low and still over the ground
@@ -449,3 +469,20 @@ def pin_feet(q, hips, root, cmask, blend=3, loop=False):
             an = P2[idx, JI['foot' + s]] + wrap[:, None] * cyc
             after.append(np.linalg.norm(an[:, [0, 2]] - an[:, [0, 2]].mean(0), axis=1).max() * 100)
     return q, (max(before) if before else 0), (max(after) if after else 0)
+
+
+def limit_joint(q, j, max_deg, sig=0.0, loop=False):
+    """clamp a joint's local rotation to max_deg away from rest, then smooth it (the tool's heel / toe /
+    hand points are the least reliable: an ankle that flips 40 degrees in one frame is the tool, not him)"""
+    qj = skel.continuous(q[:, j].copy())
+    qj = np.where(qj[:, 3:4] < 0, -qj, qj)
+    ang = 2 * np.arccos(np.clip(qj[:, 3], -1, 1))
+    lim = np.radians(max_deg)
+    k = np.where(ang > lim, lim / np.maximum(ang, 1e-9), 1.0)
+    ax = qj[:, :3] / np.maximum(np.linalg.norm(qj[:, :3], axis=1, keepdims=True), 1e-9)
+    na = ang * k
+    qj = np.concatenate([ax * np.sin(na / 2)[:, None], np.cos(na / 2)[:, None]], 1)
+    if sig > 0:
+        qj = skel.qnorm(smooth_time(skel.continuous(qj), sig, loop))
+    q[:, j] = qj
+    return q

@@ -25,7 +25,7 @@ def clip_entry(c, B):
         'hips': b64(B.hips.astype('<f4').reshape(-1)),
         'root': b64(B.root.astype('<f4').reshape(-1)),
     }
-    if B.loop and B.speed is not None:
+    if B.loop and B.speed is not None and B.speed > 0.05:
         e['speed'] = round(float(B.speed), 3)
     e['contact'] = {'L': [[int(a), int(b)] for a, b in B.contact['L']], 'R': [[int(a), int(b)] for a, b in B.contact['R']]}
     if B.phases:
