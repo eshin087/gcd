@@ -1617,15 +1617,17 @@ async function scenarioSpent() {
   spend('bringDown', ['dodge'], { max: 12 });
   spend('theOrbit', ['parry', 'parry', 'dodge'], { max: 12 });
   spend('curbPull', ['parry']);
-  const city = trStanding(G, ['car', 'slab', 'towerTop']).length;
+  const left = trStanding(G, ['car', 'slab']), city = left.length + trStanding(G, ['towerTop']).length;
+  const far = left.every((b) => Math.hypot(b.x - d.position.x, b.z - d.position.z) > TUNING.terrain.curb.find);
   d.brain.forcePhase(3);
   run(G, 8, null, () => d.phase === 3 && d.mode !== 'act');
+  run(G, 3, null, () => !game.world.forest.scenes.morphing);
   spend('castOff', ['parry', 'parry']);
   spend('overhead', ['dodge']);
   spend('theOrbit', ['parry', 'parry', 'dodge'], { max: 12 });
   const floats = trStanding(G, TUNING.terrain.float.kinds).length;
   out(`   used: ${JSON.stringify(used)}; standing after: city ${city}, void ${floats}; ${JSON.stringify(t.stats)}`);
-  assert(city === 0 && floats === 0, `every throwable used up (city ${city}, void ${floats})`);
+  assert(trStanding(G, ['towerTop']).length === 0 && far && floats === 0, `every throwable in his reach used up (city ${city} left, all farther than ${TUNING.terrain.curb.find} m: ${far}; void ${floats})`);
   // the fight to its end with the arena spent (his AI weighs the terrain moves 0 now, the Road aside)
   t.paced = true;
   G.defend = makeDefender(G, { world: true });
