@@ -24,6 +24,11 @@ export const RELEASES = [
       },
       {
         date: '2026-11-26',
+        title: "Parrying is easier: the perfect parry's timing widened",
+        notes: ['A parry pressed up to 0.2 s before the blow lands is now perfect, the same window as the perfect dodge (it was 0.08 s). Its extra posture damage, the fast critical counter cut, the blade lock and returned shots come far more easily.'],
+      },
+      {
+        date: '2026-11-26',
         title: 'A lighter world on phones that need it',
         notes: ['On a phone that still drops frames at the lowest resolution, the ground\'s extra details turn off and the stone floors are drawn more simply, so fights stay smooth. Add ?lite=0 to the address to keep the full look.'],
       },

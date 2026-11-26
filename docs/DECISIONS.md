@@ -6399,6 +6399,28 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   sheet's C in the same page (474 of 580 000 pixels differ, from the relief alone). The look changes once, when
   it turns on, mid-page (one frame). Not measured on the phone; the next `?perf` BENCH there says how much.
 
+## ADR-227 — The perfect parry gets the perfect dodge's window: 0.20 s (2026-11-26)
+
+- **Context:** the owner: parrying is very hard and the timing feels too tight; make the parry window like
+  the perfect dodge's. Asked which window, they picked the PERFECT parry, 0.08 s → 0.20 s
+  (`DEFENSE.perfectDodgeWindow`); the plain parry window (`parryWindow`, 0.22 s) stays.
+- **Decision:** `DEFENSE.perfectParryWindow` 0.20. It is the one number every perfect parry reads
+  (`player.js` sets `deflect.perfect` from it; the duelists' blade lock, the returned bullets, embers, ki
+  bolts, the beam clash, the lantern push, Halcyon's glare and the streak's double pip all read
+  `deflect.perfect`), so nothing else changes. The Lab's training card reads the number instead of
+  spelling 0.08.
+- **What a plain parry is now:** a press 0.20 – 0.22 s before the blow, about one frame at 60 fps. In
+  practice every parry is perfect: x 1.5 posture, the counter cut, the gold clash and its short slow
+  motion, a `lock` blow locks, a bullet comes back. The plain parry stays in the rules (its window, its
+  sound and look, the riposte and the blue flare's counter, which any parry earns) rather than being
+  removed: if the owner wants a gap between the two again, it is this one number. A held guard (block)
+  is now the only defensive answer short of perfect besides the 0.02 s sliver.
+- **Consequences:** parrying is easier by 2.5x of window for every perfect reward; the fights get more
+  slow-motion beats (one per parried blow of a string in the default `sharp` look) and more blade locks.
+  Tests that check a plain parry press on the one plain frame (13/60 s); bots that play like a player keep
+  their 0.12 s press (now perfect) and their expectations moved (posture x 1.5, a lock, Halcyon's fight
+  137 - 142 s). The wyrm's PRESSURE measurement keeps the old 0.08 s for its guard bot's stray parries: the
+  new path met a brood gap that exists on main (`BROOD.busyWait`), a separate task. Not played by a human yet.
 ## ADR-221 — Xin Yi rebuilt: printed like the hero on a man's build; held windups, a true aim, fast strings (2026-11-26)
 
 - **Context:** the owner: "the neo boss anatomy and attacks are all weird too ... fix the neo character details

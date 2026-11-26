@@ -40,10 +40,14 @@ each actor's `tuning`.
    plunge" needs an attacker with a head to stab (the wyrm) within range; otherwise a perfect dodge
    gives the slow-mo and the crit window where you dodged (rule 5).
 4. **Parry** = RMB pressed ≤ `parryWindow` (0.22 s) before impact, attacker within the front arc.
-   Pressed ≤ `perfectParryWindow` (0.08 s) before impact it is a **perfect parry**
+   Pressed ≤ `perfectParryWindow` (0.20 s, the perfect dodge's window; 0.08 s until ADR-227) before
+   impact it is a **perfect parry**
    (`player:parry.perfect`): a perfectly parried bullet comes back as a damaging shot (ADR-051,
    *Bullets* below); a perfectly parried blow of the body or the blade deals × 1.5 posture and readies
    the **counter cut** (the first light started within 0.9 s winds up twice as fast and crits; ADR-102).
+   Since ADR-227 (the owner: parrying felt too tight) nearly every parry is perfect: a plain parry is
+   only a press 0.20 – 0.22 s early. The plain parry's own answers (a string's riposte, the counter
+   of a blue flare blow) are unchanged and come with a perfect parry too.
    Mashing is prevented: RMB must be released `parryRearm` (0.25 s) before a new press counts —
    **except right after a successful parry**: a deflect re-arms at once, so the next press counts as
    soon as RMB was released, even when the guard was held between blows (ADR-032). A press that
@@ -123,7 +127,7 @@ The riskier the answer, the more it pays. From safest to riskiest:
 | Parry | white, heavy | posture (26 / 48), guard back, a streak pip; the last blow: his recoil and the riposte |
 | Parry | a blue flare blow (a parry moment) | the same, wherever in his string it came: his string ends, and the counter: the streak's flash cuts, the last one the counter blow (64 damage, 30 posture) |
 | Perfect dodge | red, black | the flurry (the plunge on the wyrm): as many blows as the streak counts, the crit window |
-| Perfect parry (≤ 0.08 s) | white, heavy | posture × 1.5, the counter cut; a blade lock on a `lock` blow; a bullet returned |
+| Perfect parry (≤ 0.20 s; ADR-227) | white, heavy | posture × 1.5, the counter cut; a blade lock on a `lock` blow; a bullet returned |
 | Flash counter (attack ≤ ~0.14 s before his blow) | a blade's white or heavy blow | 70 damage and 60 posture at once, he reels, the crit window; too late and his blow lands |
 | Held guard (ADR-144) | the Sheathed's draw | no health; the whole guard meter, the guard knocked open 0.8 s, thrown back; he re-sheathes unpunished |
 | Parry (ADR-144) | the Sheathed's draw | as any blue flare blow (the counter), and he is caught with the blade out for 1.5 s |

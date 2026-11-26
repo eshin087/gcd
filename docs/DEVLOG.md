@@ -30,6 +30,25 @@ the draw now keeps 0.75 of its time).
 **Open:** the owner's picks (figure a / b / c, moves a); phase 1's hand behind the back; the sweep's tuck (Tian
 Lei's builder: the motion-tian-halcyon session owns it).
 
+## 2026-11-26 — The perfect parry widened to the perfect dodge's window (ADR-227; branch `claude/combat-perfect-parry-window-d6503b`)
+
+**Owner:** parrying is very hard, the timing too tight; make it like the perfect dodge's window. They picked
+the PERFECT parry 0.08 → 0.20 s; the plain parry (0.22 s) stays. **What:** `DEFENSE.perfectParryWindow` 0.20
+(`combat/rules.js`); every perfect reward reads `deflect.perfect`, set from that one number, so nothing else in
+the rules moved; the Lab training card reads the number. A plain parry is now a 0.20 - 0.22 s press only:
+one frame at 60 fps (13/60 s). A blow that is both a blue flare and a `lock`
+(Severance, Hundred Hands' palm, Rain of Ashes' last) now nearly always locks the blades instead of the flare
+counter (the rule as it was; a perfect parry is simply the norm now). **Tests:** a `PLAIN_LEAD` per suite for
+the checks of a plain parry (that one frame; checked with a per-parry gap print), duel's `makeDefender` a
+`lead`; bots that play like a player keep 0.12 s (now perfect): integ STRINGS posture x 1.5, asc Hundred Hands
+may end in the lock, city WIN floor 140 → 130 s (137 - 142 s now). **Finding (a separate task):** integ
+PRESSURE seed 4242 met a director gap once the steady bot's stray parries turned perfect: the brood's
+busyWait dive (`brood.js`, `BROOD.busyWait` 2.5 s: a drakeling dives anyway after waiting that long on a busy
+wyrm) landed within 0.3 s of a wyrm cue needing another answer: fanVolley / drakelings in P2 (at 60.6 s) and,
+with 4242 run alone, breath / drakelings in P3 (63.5 s). It exists on main (the seeds just miss it); the
+scenario keeps the old 0.08 s perfect window for the steady bot's stray parries, so it measures the director
+on its old path. **Open:** played by the owner; whether the slow-motion beat on every parried blow of a string
+is too much now (the `short` beat, `combat/perfectFx.js`); the brood fix.
 ## 2026-11-26 — The lite world on a phone at AUTO's floor (ADR-216; branch `render/phone-lite`)
 
 **Owner:** the BENCH from their iPhone (fox: the world pass 11.8 of 13.3 ms; half the pixels only 32 % less);

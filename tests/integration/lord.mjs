@@ -22,7 +22,7 @@ const { LightPool } = await imp('src/render/lights.js');
 const { GlyphParticles } = await imp('src/render/particles.js');
 const { FireField } = await imp('src/render/fireField.js');
 const { Colliders } = await imp('src/world/colliders.js');
-const { TELL, RESULT, POSTURE } = await imp('src/combat/rules.js');
+const { TELL, RESULT, POSTURE, DEFENSE: DEF } = await imp('src/combat/rules.js');
 const { LEVELS, getLevel, levelFromSearch, applyLevel } = await imp('src/levels/index.js');
 const { createThroneHall, THRONE } = await imp('src/world/throneHall.js');
 const { Destructibles, STATE } = await imp('src/world/destructibles.js');
@@ -51,6 +51,9 @@ const assert = (c, m) => { if (!c) { fails++; out('FAIL', m); } else out('ok  ',
 const mulberry32 = (a) => () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 const SEED = Number(process.env.GCD_SEED ?? 4242);
 const DT = 1 / 60;
+// a PLAIN parry's press (ADR-227): the perfect window is 0.20 s of the parry's 0.22, so a test that means
+// a plain parry presses in that sliver (a `left <= lead` check lands the press one step inside it: 13 / 60 s)
+const PLAIN_LEAD = (DEF.perfectParryWindow + DEF.parryWindow) / 2 + DT / 2;
 const FORMS = TUNING.forms;
 const weightIn = (def, f) => (Array.isArray(def.weight) ? def.weight[f - 1] ?? 0 : def.weight ?? 0);
 /** The forms a move is used in (its weight; a counter: its own form; a transition: the form it begins). */
@@ -870,7 +873,7 @@ async function scenarioSpells() {
   {
     const G = stage(1, 8);
     Math.random = () => 0.9;
-    G.defend = makeDefender(G);
+    G.defend = makeDefender(G, { early: PLAIN_LEAD + DT }); // a plain parry (a perfect one sends the bolt back; the bolt lands a step after its cue's lead)
     const d = G.game.dragon;
     const p0 = d.posture, hp0 = d.hp;
     const r = cast(G, 'voidBolt', 6, () => G.defend.act());
@@ -1824,7 +1827,8 @@ async function scenarioFlare() {
   assert(mf.length === 2 && mf.every((e) => e.tell === TELL.RED && e.flare === true) && mer.rings === 0 && mer.warnPre === 0, `Red Meridian: two red flares (${mf.length}), no ring on the floor (${mer.rings}), no glow before the first cue (${mer.warnPre.toFixed(2)})`);
   // Severance parried: the counter
   let pressed = false;
-  const sev = play('severance', 5.0, (fT) => { if (!pressed && at(fT, 0.12)) { pressed = true; input.up(1); input.click(1); } });
+  // a plain parry: Severance is also a `lock` blow, and a perfect parry of it locks the blades first
+  const sev = play('severance', 5.0, (fT) => { if (!pressed && at(fT, PLAIN_LEAD + DT)) { pressed = true; input.up(1); input.click(1); } });
   const cnt = sev.get('player:flareCounter');
   assert(sev.get('combat:flash')?.flare === true && sev.get('player:parry')?.flare === true && sev.get('dragon:parried')?.last === true && !!cnt && cnt.damage > 0 && sev.lost === 0,
     `Severance (a blue flare) parried: his move ends and the hero counters (${cnt?.strikes} blow(s), the last ${cnt?.damage?.toFixed(0)}; DEFENSE.flareCounter ${DEFENSE.flareCounter.damage} before his posture rule)`);

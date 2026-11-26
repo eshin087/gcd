@@ -48,6 +48,9 @@ const assert = (c, m) => { if (!c) { fails++; out('FAIL', m); } else out('ok  ',
 const mulberry32 = (a) => () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 const SEED = Number(process.env.GCD_SEED ?? 4242);
 const DT = 1 / 60;
+// a PLAIN parry's press (ADR-227): the perfect window is 0.20 s of the parry's 0.22, so a test that means
+// a plain parry presses in that sliver (a `left <= lead` check lands the press one step inside it: 13 / 60 s)
+const PLAIN_LEAD = (DEFENSE.perfectParryWindow + DEFENSE.parryWindow) / 2 + DT / 2;
 
 // the event catalogue (docs/ARCHITECTURE.md → "Event catalogue"): what this level emits must be in it
 const CATALOGUE = (() => {
@@ -262,7 +265,7 @@ function settle(G, max = 6) {
 // ---- the defender bot: answers his tells from the flash (parry normal / blue, roll through red)
 // style (the STRATEGY measurement): 'mixed' = the above; 'dodge' = a perfect dodge of EVERY tell and
 // never a parry; 'parry' = parries, and a red blow rolled EARLY (i-frames, outside the perfect window)
-function makeDefender(G, { skill = 1, style = 'mixed' } = {}) {
+function makeDefender(G, { skill = 1, style = 'mixed', lead = 0.12 } = {}) {
   const pend = [];
   const stats = { flashes: 0, parryTry: 0, dodgeTry: 0 };
   return {
@@ -288,7 +291,7 @@ function makeDefender(G, { skill = 1, style = 'mixed' } = {}) {
             input.tap('Space');
             stats.dodgeTry++;
           }
-        } else if (left <= 0.12) {
+        } else if (left <= lead) {
           e.done = true;
           input.up(1);
           input.click(1);
@@ -948,7 +951,7 @@ async function scenarioClash() {
     place(G, 2.2);
     run(G, 0.3);
     G.watch = (n) => { if (n === 'player:parry') { gaps.push(p.deflect.gap); backs.push(d.brain.back.off); stops.push(game.hitstopTimer); } };
-    G.defend = makeDefender(G);
+    G.defend = makeDefender(G, { lead: PLAIN_LEAD }); // plain parries: a perfect one ends the string (a lock, his posture)
     d.brain.trigger(mv);
     run(G, 5, (GG) => { GG.game.mouseGround.set(d.position.x, 0, d.position.z); GG.defend.act(); }, () => d.mode !== 'act');
     G.defend = null;
@@ -1832,7 +1835,7 @@ async function scenarioParryFx() {
     G.watch = (n, e) => {
       if (n === 'player:parry') perf = !!e?.perfect;
     };
-    answerMove(G, 'plumThrust', press(0.17), 3);
+    answerMove(G, 'plumThrust', press(PLAIN_LEAD), 3);
     G.watch = null;
     r.normal = { perfect: perf, sparks: L.n - n0 };
     // 2) a perfect parry
@@ -1990,7 +1993,7 @@ async function scenarioStreak() {
   p.debug.streak(0);
   d.debug.streak(4);
   const c2 = { ...G.counts };
-  G.defend = makeDefender(G);
+  G.defend = makeDefender(G, { lead: PLAIN_LEAD }); // plain parries: perfect ones break his posture before the fourth blow
   const ok2 = d.debug.flurry();
   const a2 = d.brain.act;
   const beats2 = a2?.beats.length, flit2 = a2?.beats.filter((b) => b.def.flit).length;
@@ -2647,7 +2650,7 @@ async function scenarioImpact() {
     const q0 = G.hits.length;
     G.watch = (n, e) => { if (n === 'game:cinematic') seen.push(e?.kind); };
     answerMove(G, 'swallow', (left) => {
-      if (left > (perfect ? 0.05 : 0.12)) return false;
+      if (left > (perfect ? 0.05 : PLAIN_LEAD)) return false;
       input.up(1);
       input.click(1);
       return true;
@@ -2830,7 +2833,7 @@ async function scenarioMoments() {
   G.watch = log;
   let reeled = false;
   const ok3 = answerMove(G, 'ashRain', (left) => {
-    if (left > 0.12) return false;
+    if (left > PLAIN_LEAD) return false; // plain parries: a perfect one of its last blow locks the blades
     input.up(1);
     input.click(1);
     return true;
@@ -3786,8 +3789,11 @@ async function scenarioPerfect() {
     G.watch = null;
     return { parry, posture: d.posture };
   };
-  const plain = parryAt(0.16);
-  assert(plain.parry && !plain.parry.perfect && Math.abs(plain.posture - POSTURE.parry.normal) < 0.5 && !(p.quickUntil > game.time), `a parry pressed 0.16 s early is a plain one: ${plain.posture.toFixed(0)} posture (${POSTURE.parry.normal}), no counter cut readied`);
+  // a plain parry: pressed between the perfect window (0.20 s since ADR-227) and the parry window (0.22 s),
+  // in the middle of that sliver (the press lands within one step after the lead)
+  const plainLead = PLAIN_LEAD;
+  const plain = parryAt(plainLead);
+  assert(plain.parry && !plain.parry.perfect && Math.abs(plain.posture - POSTURE.parry.normal) < 0.5 && !(p.quickUntil > game.time), `a parry pressed ${plainLead.toFixed(3)} s early is a plain one: ${plain.posture.toFixed(0)} posture (${POSTURE.parry.normal}), no counter cut readied`);
   const perf = parryAt(0.04);
   assert(perf.parry?.perfect === true && Math.abs(perf.posture - POSTURE.parry.normal * POSTURE.perfect) < 0.5, `pressed 0.04 s before the blow it is perfect: ${perf.posture.toFixed(0)} posture (${POSTURE.parry.normal} x ${POSTURE.perfect})`);
   assert(p.quickUntil > game.time && p.quickUntil <= game.time + PP.cutWindow + 1e-6, `... and the counter cut is ready for ${PP.cutWindow} s`);
@@ -4137,10 +4143,10 @@ async function scenarioFlare() {
 
   // --- a blue flare parried: the counter
   let pressed = false;
-  const blue = play('fallingAsh', 2.0, (fT) => { if (!pressed && at(fT, 0.14)) { pressed = true; input.up(1); input.click(1); } });
+  const blue = play('fallingAsh', 2.0, (fT) => { if (!pressed && at(fT, PLAIN_LEAD)) { pressed = true; input.up(1); input.click(1); } });
   const par = blue.get('player:parry'), dpar = blue.get('dragon:parried'), cnt = blue.get('player:flareCounter'), fend = blue.get('player:flurryEnd');
   assert(blue.get('combat:flash')?.flare === true && blue.get('combat:flash')?.tell === TELL.BLUE, 'Falling Ash is a parry moment: a blue cue marked flare');
-  assert(par?.flare === true && par.perfect === false && dpar?.flare === true && dpar.last === true, `a plain parry of it (0.14 s early) is the moment's: player:parry flare, dragon:parried last (${JSON.stringify(dpar)})`);
+  assert(par?.flare === true && par.perfect === false && dpar?.flare === true && dpar.last === true, `a plain parry of it (0.20 - 0.22 s early) is the moment's: player:parry flare, dragon:parried last (${JSON.stringify(dpar)})`);
   assert(!!cnt && cnt.damage >= DEFENSE.flareCounter.damage - 0.5 && fend?.art === 'counter', `... and the hero counters by himself: ${cnt?.strikes} blow(s), the last ${cnt?.damage?.toFixed(0)} (${DEFENSE.flareCounter.damage}), art ${fend?.art}`);
   assert(blue.lost === 0 && blue.has('player:flurry'), 'the parry cost no HP and the counter ran as flash cuts (player:flurry)');
   // (an ordinary heavy blow, not marked: the plain deflect, no counter)
