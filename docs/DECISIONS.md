@@ -6568,3 +6568,29 @@ arm, the body and the free hand through any swing.
   its clips and the default gets its own back; every number unchanged; the blade crosses his front and
   the hit lands at today's distances; no NaN; wrist, elbow and hand-snap bounds; the steel out of the
   ground and the body; settling feet lift and do not slide).
+
+## ADR-235 — Four instant-cut light combos to compare, written with what the reference footage taught; behind `?lights=blink&cuts=a|b|c|d` until the owner's call (2026-11-26)
+
+- **Context:** the owner turned the steel set (ADR-234) down ("i dont like any of the latest ones") and went
+  back to the instant cuts (ADR-233): "the last instant cut the attacks feel short and animation motion look
+  bad. using your new learned knowledge from the reference video give me 4 different variations for the
+  light attack combo to review".
+- **Decision:** keep the instant cut itself (the blade crosses in two or three frames under one straight
+  line, `blinkFx.js`) and change everything around it, four ways, for the five light hits only:
+  a. the reference footage's own five strokes, its coils and finishes, the crossing made instant;
+  b. lunging draws: a tight coil at a hip or a shoulder, a long step, the cut out at full reach, a far low
+     held extension (the hand 25-61 cm further ahead at the finish than the blink chain's);
+  c. wide committed arcs: coils wound behind him, the widest sweeps (about 270-300° of blade a hit), pivot
+     steps, the free arm along the shoulder line as a counterweight;
+  d. a relentless flurry: each cut's finish is the next hit's coil (a pendulum), a small step each hit.
+  What the footage taught is in all four: a deep coil, the body committed into a lunge, both arms keyed
+  (the free arm against the blade), the follow-through moving for about ten frames, and the finish held to
+  the end of the recovery with a slow rise (`home: 1.0`, `settle`, ADR-234). Hit 5 in each is one of three
+  stronger strokes on different lines, never the same twice running, a plain blade hit (the owner's
+  earlier ask). `combat.js` `setCuts` (`CUTS_IDS`, `?cuts=`, the Lab's `cuts` row): '0' plays the blink
+  chain; a null slot falls back to it. The heavies and the specials stay the blink set's.
+- **Consequences:** a comparison; the default is still the weighted chain (ADR-188). After the owner's
+  pick the others go (and `?lights=fresh`, `?arcs=`, the steel set). Known: from the game camera the
+  hero is about 34 px tall, so the lines read more than the bodies; a few hit-5 strokes were checked in
+  tests only (the film rig pins one look). Found on the way: a clip's `h` and `a` are in the body's axes,
+  not the chest's (a 90° chest turn only moves the shoulder they hang from). Tests: `cutsa` … `cutsd`.

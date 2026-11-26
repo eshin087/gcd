@@ -79,6 +79,11 @@ One hundred and nine pieces of work since 0.4.0:
   lights is one wide cut, no turn), the fifth hit is one of five stronger strokes, a different one each
   time, and the sprint slash, the roll cut, the charged cleave, One Breath and the execution follow the
   same style. Every number of every attack is the same.
+  *Added, to compare (not the default; ADR-235):* `?lights=blink&cuts=a`, `b`, `c` or `d` (the Lab's `cuts`
+  row) plays one of four new instant-cut light combos: a the reference footage's strokes made instant, b
+  lunging draws that reach far, c wide sweeping arcs, d a relentless flurry. Each winds up deep, commits
+  the body, swings both arms, holds its finish and rises slowly; hit 5 is a different stronger stroke each
+  time. Every number is the same.
   *Added, to compare (not the default; ADR-234):* `?lights=steel` (the same row, 'steel') plays every
   attack after the owner's reference footage, pose for pose, out of the stances that footage also gave
   him (ADR-207): the five lights, the five heavies, the

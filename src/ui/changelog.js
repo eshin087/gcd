@@ -192,6 +192,7 @@ export const RELEASES = [
           'Your light combo hits on the same beat as before, but it now looks heavy: you load your hips before the cut, plant your front foot, sink into every blow and hold the finish a moment before you recover.',
           'The finisher slams down deeper. Prefer the old motion? Add ?lights=old to the address.',
           'Being tried out: add ?lights=blink and every attack is an instant cut that leaves one straight slash line.',
+          'And four new takes on the instant cuts: add ?lights=blink&cuts=a (or b, c, d) to try each light combo.',
           'Also being tried out: add ?lights=steel for a whole new set of sword attacks, with both arms and the body moving the way a swordsman would.',
         ],
       },

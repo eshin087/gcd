@@ -5,6 +5,23 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-26 — Four instant-cut light combos to compare (ADR-235; branch `claude/hero-light-chain-12a97a`, PR #118, held)
+
+**Owner:** "i dont like any of the latest ones [the steel set]. lets go back on iterating on the instant cut
+... the attacks feel short and animation motion look bad. using your new learned knowledge from the reference
+video give me 4 different variations for the light attack combo to review".
+
+**What changed:** `?lights=blink&cuts=a|b|c|d` (combat.js `setCuts`, the Lab's `cuts` row): a the reference's
+strokes made instant, b lunging draws, c wide committed arcs, d a relentless flurry (`cutsA.js` … `cutsD.js`);
+the five light hits only, every number unchanged; scenarios `cutsa` … `cutsd`. Four authors, one file each,
+on one checkout, one heavy job at a time behind a lock.
+
+**Verification:** each variant's scenario and `herolights`, `heroweight`, `blinklast`, `blinkhand`; review
+films of today's chain and the four from the game camera (relaxed, mashed), his right side and the front, all
+from the fight hold.
+
+**Open / next:** the owner's pick. Each variant's own faults are in ADR-235.
+
 ## 2026-11-25 — The steel look set: every attack and the stance after the owner's reference (ADR-234; branch `claude/hero-light-chain-12a97a`, PR #118, held)
 
 **Owner**, on the instant cuts after three rounds: "this all still looks bad to me", with reference footage

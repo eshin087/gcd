@@ -1199,6 +1199,10 @@ the coil along a cubic that leaves at `gather[0]` and arrives at `gather[1]` (wi
 `variants` and nothing else between the weighted clips (`swings.js`: `fallingCut` … `risingThrust`,
 `drawSlash`, `groundSlam`) and the ones before them (`lightsOld.js` `LIGHTS_OLD`, spread into `SWINGS` as
 `<name>Old`, plus the `drawCut` and `slam` the flurry, One Breath and Earthbreaker still play).
+**The instant chain's variants** (ADR-235; `?cuts=a|b|c|d`, the Lab's `cuts` row; to compare): `setCuts`
+(`CUTS_IDS`, `cutsMode`) picks which five looks the blink look set wears on `LIGHT`: '0' its own
+(`LIGHT_BLINK`), else `cutsA.js` … `cutsD.js` `LIGHT_CUTS_<X>` slot by slot (a null slot keeps the blink
+hit); `setCuts` re-wears at once while the look set is 'blink'. Clips `cut<X>…`, spread into `SWINGS`.
 **The steel look set** (ADR-234; `?lights=steel`, the Lab's `lights` row; to compare, not the default):
 the same `wear` over every attack def, from `steelChainA.js` (`LIGHT_STEEL_A`: hits 1-3), `steelChainB.js`
 (`LIGHT_STEEL_B`: hits 4-5; `SPECIAL_STEEL_B`: the sprint slash, the roll cut), `steelHeaviesC.js`

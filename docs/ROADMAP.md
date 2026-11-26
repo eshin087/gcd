@@ -196,7 +196,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] The instant look set to compare, `?lights=blink` (ADR-233): every attack's cut in 2-3 frames under one straight line; the sword arm written by hand (it opens through the cut, then follows through), the free hand loose at his side, heavies that land their weight (the lone heavy a dash into a slash, no turn), five last-hit strokes picked at random, and the sprint slash / roll cut / charged cleave / One Breath / execution; scenarios `blinkslash`, `blinklights`, `blinkhand`, `blinkheavies`, `blinkspecials`, `blinklast`, the opt-in `armaudit`
 - [x] The owner on the instant cuts: "this all still looks bad"; a reference to mirror instead
 - [x] The steel look set to compare, `?lights=steel` (ADR-234): every attack after the owner's reference footage (out of ADR-207's stances), pose for pose, on today's timings; a lone hit holds its finish and rises slowly (`settle`), its feet stepping home; scenarios `steelstance`, `steela` … `steele`
-- [ ] The owner's pick: steel as the default? Then `?lights=blink`, `?lights=fresh` and `?arcs=` go, and the weighted chain stays behind a switch or goes
+- [x] The owner turned steel down; four instant-cut light combos to compare, `?lights=blink&cuts=a|b|c|d` (ADR-235); scenarios `cutsa` … `cutsd`
+- [ ] The owner's pick of the four (or another round)
+- [ ] ~~The owner's pick: steel as the default?~~ turned down: Then `?lights=blink`, `?lights=fresh` and `?arcs=` go, and the weighted chain stays behind a switch or goes
 - [ ] Steel's known gaps (ADR-234): shorter lunges than the reference, hit 3 into hit 4, the two upright cuts from the game camera, the execution
 - [ ] If steel becomes the default: the flurry, the plunge, the guard and the block in the same hand
 ## M1.92 — The melee animation engine: boss blows from reference footage (2026-11-26, `enemies/fists-ref`, ADR-208)
