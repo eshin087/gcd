@@ -37,6 +37,12 @@ const num = (v, d) => {
   return v != null && v !== '' && Number.isFinite(x) ? x : d;
 };
 
+/** "1:41.5" / "move 1:41-2:02" -> seconds (the first m:ss in it), else NaN. */
+export function secOf(s) {
+  const m = /(\d+):(\d+(?:\.\d+)?)/.exec(String(s ?? ''));
+  return m ? +m[1] * 60 + +m[2] : NaN;
+}
+
 /** The review's home: metres ahead of the level's spawn (open ground, away from the spawn's bonfire). */
 export const AHEAD = 8;
 
@@ -91,6 +97,24 @@ export const RIDE_TITLES = {
   rideMountRun: ['Mount while moving (the horse cantering)', 'move 25:55-26:27'],
   rideDismountRun: ['Dismount while moving (the horse halting)', 'move 25:55-26:27'],
 };
+
+/** Chapters of the footage with no clip of their own because the footage plays a plain move there, his
+ *  whole body turned to the travel: the review plays that move under the chapter's title, with a note.
+ *  [host set, entry name, the move played, the chapter's title, the chapter's footage time]. */
+export const TURNED = [
+  ['moveStrafe', 'strafeSprint', 'sprint', 'Strafe sprint', 'move 16:01-16:43'],
+  ['moveStrafeB', 'strafeSprintJumpStop', 'sprintJumpStop', 'Strafe sprint to jump idle', 'move 20:17-21:05'],
+  ['moveStrafeB', 'strafeSprintJump', 'sprintJump', 'Strafe sprint to jump moving', 'move 21:05-21:54'],
+  ['moveStrafeB', 'strafeCrouchSprint', 'crouchSprint', 'Strafe crouch sprint', 'move 23:29-24:11'],
+];
+const TURNED_STATE = 'no clip of its own: the footage plays this plain move, turned';
+/** Clips built by modelling where the footage shows no take of the move: the amber line says so. */
+export const MODELLED = {
+  sprintPivot: 'modelled on the run pivot: the footage cuts away',
+};
+/** Per-entry close camera sides (deg) where the default draws a blade across his legs although it is
+ *  clear in 3D (the blade points at the lens). */
+export const AZ_ENTRY = { pairIdle: 20, light4: 100 };
 
 /** The close camera's side (deg from his front toward his right) when the entry gives none: a
  *  three-quarter view from his right-front (both arms and the blade in view); a turn is seen from a side
@@ -207,23 +231,66 @@ export async function mount(game, params) {
   const withTest = P.get('test') === '1';
   // a clip beside an as-filmed twin (`<name>Right`: the footage's hand) is the game's own version
   const titleOf = (c) => (lib.has(c.name + 'Right') ? `${c.title}, as the game plays it (left hand)` : ON_ENEMY.has(c.name) ? `${c.title} (on an enemy in the footage; played here on none)` : c.title);
-  const clipEntry = (c) => ({ kind: 'clip', name: c.name, clip: c, set: c.set, setTitle: c.setTitle, title: titleOf(c), src: c.src, loop: !!c.loop, dur: c.dur, yaw: c.loop ? 0 : (c.cyc?.[2] ?? 0) });
+  const clipEntry = (c) => ({
+    kind: 'clip', name: c.name, clip: c, set: c.set, setTitle: c.setTitle, title: titleOf(c), src: c.src, loop: !!c.loop, dur: c.dur, yaw: c.loop ? 0 : (c.cyc?.[2] ?? 0),
+    ...(MODELLED[c.name] ? { state: MODELLED[c.name] } : {}), ...(Number.isFinite(AZ_ENTRY[c.name]) ? { az: AZ_ENTRY[c.name] } : {}),
+  });
+  // the footage's take times per clip (scripts/mocap/specs/<set>.json, served by the dev server): the
+  // order inside a chapter. Without them (the release page) a chapter keeps its set's own order.
+  const takeAt = new Map();
+  await Promise.all(lib.sets.map(async (set) => {
+    try {
+      const r = await fetch(`/scripts/mocap/specs/${set.id}.json`);
+      if (!r.ok) return;
+      for (const c of (await r.json()).clips ?? []) {
+        const ts = (c.takes ?? []).map((t) => secOf(t.t0)).filter(Number.isFinite);
+        if (ts.length) takeAt.set(c.name, Math.min(...ts));
+      }
+    } catch {
+      /* no specs: the set's order */
+    }
+  }));
   const rideByName = new Map(RIDES.map((r) => [r.name, r]));
   const rideEntry = (r, set) => ({
     kind: 'ride', name: r.name, ride: r, set: set.id, setTitle: set.title, title: RIDE_TITLES[r.name]?.[0] ?? r.hclip.title, src: RIDE_TITLES[r.name]?.[1] ?? r.hclip.src, loop: !!r.hclip.loop, dur: r.hclip.dur,
     yaw: r.hclip.loop ? 0 : (r.hclip.cyc?.[2] ?? 0),
     state: lib.has(r.rider) ? '' : 'the rider: seated placeholder (his riding clips are not built yet)',
   });
+  /** A set's entries in the footage's order: by the chapter's start (the src), then by the take's time
+   *  in the footage (the spec's), the set's own order where those tie or are missing. */
+  function footageOrder(list) {
+    let prev = -Infinity;
+    const keyed = list.map((e, i) => {
+      const ch = secOf(e.src);
+      const c = Number.isFinite(ch) ? ch : prev; // (no src: stays beside the entry before it)
+      prev = c;
+      const tk = takeAt.get(e.play ?? e.name);
+      return { e, i, c, t: Number.isFinite(tk) && tk >= c ? tk : c };
+    });
+    keyed.sort((a, b) => a.c - b.c || a.t - b.t || a.i - b.i);
+    return keyed.map((k) => k.e);
+  }
   function buildList(test) {
     const out = [];
     for (const set of lib.sets) {
       if (set.id.startsWith('_') && !test) continue;
       // a riding set plays on the horse, in the horse's chapters' order, whether or not its rider clips exist
       if (RIDE_ORDER[set.id] && ride) {
-        for (const n of RIDE_ORDER[set.id]) if (rideByName.has(n)) out.push(rideEntry(rideByName.get(n), set));
-      } else if (set.clips.length) for (const c of set.clips) out.push(clipEntry(c));
+        const rides = [];
+        for (const n of RIDE_ORDER[set.id]) if (rideByName.has(n)) rides.push(rideEntry(rideByName.get(n), set));
+        out.push(...footageOrder(rides));
+      } else {
+        const es = set.clips.map(clipEntry);
+        // a chapter the footage plays as a plain move turned to the travel: that move, under its title
+        for (const [host, name, play, title, src] of TURNED) {
+          if (host !== set.id || !lib.has(play)) continue;
+          const c = lib.get(play);
+          es.push({ ...clipEntry(c), name, play, set: set.id, setTitle: set.title, title: `${title} (the plain ${play}, turned to the travel)`, src, state: TURNED_STATE, az: undefined });
+        }
+        out.push(...footageOrder(es));
+      }
     }
-    // the chains, each after the last single play of its clips
+    // the chains, each after the chapter of the last single play of its clips
     const at = new Map(out.map((e, i) => [e.name, i]));
     const after = new Map(); // index -> the chains that follow it (the table's order)
     for (const names of CHAINS) {
@@ -234,7 +301,9 @@ export async function mount(game, params) {
         // a loop: whole cycles; the last clip: whole (a loop at the end: two cycles)
         len: e.loop ? Math.ceil((i === parts.length - 1 ? 2 * LOOP_IN_CHAIN : LOOP_IN_CHAIN) / e.dur) * e.dur : e.dur,
       }));
-      const last = Math.max(...names.map((n) => at.get(n)));
+      let last = Math.max(...names.map((n) => at.get(n)));
+      const chOf = (e) => (e ? `${e.set} ${secOf(e.src)}` : '');
+      while (last + 1 < out.length && chOf(out[last + 1]) === chOf(out[last])) last++;
       const first = parts.find((e) => !e.loop) ?? parts[0];
       if (!after.has(last)) after.set(last, []);
       after.get(last).push({
@@ -295,29 +364,68 @@ export async function mount(game, params) {
     hero.applyRoot = true;
     if (hero.feet) hero.feet.enabled = true;
   }
-  /** m the horse travels through a riding entry (its clips' root travel over the time shown). */
+  /** m the horse travels through a riding entry (its clips' root travel over the time shown; a loop: its
+   *  cycle's travel, the root's last frame, per second shown). */
   function rideTravel(e) {
     const one = (h, len) => {
       if (!h?.root || !(h.n > 1)) return 0;
-      if (h.loop) return (Math.hypot(h.cyc?.[0] ?? 0, h.cyc?.[1] ?? 0) / Math.max(1e-3, h.dur)) * len;
-      const k = (h.n - 1) * 3;
-      return Math.hypot(h.root[k], h.root[k + 1]);
+      const k = (h.n - 1) * 3, d = Math.hypot(h.root[k], h.root[k + 1]);
+      return h.loop ? (d / Math.max(1e-3, h.dur)) * len : d;
     };
     if (e?.kind === 'ride') return one(e.ride?.hclip, showLength(e));
     if (e?.kind === 'chain') return e.steps.reduce((a, st) => a + (st.ride ? one(st.ride.hclip, st.len) : 0), 0);
     return 0;
   }
-  /** m back along his facing a riding entry starts, so its run is centred on home (the open ground:
-   *  a long canter from home reached the courtyard's set about 14 m out) */
-  const RIDE_BACK_MAX = 14;
-  let rideBack = 0;
+  /** The riding line: where every ride ENDS (within 3 m of home) and the heading it runs on, picked once
+   *  from the level's standing objects (its breakables but the floor, its colliders, a keep-out round the
+   *  sleeping boss) as the straight run, as long as the longest ride, with the most room on both sides
+   *  (a little preference for his own facing, so the game camera sees him ride up the screen as in
+   *  play). A ride starts its travel back along the line from that end: the long gallops run on open
+   *  ground and every ride comes back to it. { x, z, yaw, len, room } */
+  let RIDE_PATH = null;
+  function ridePath() {
+    if (RIDE_PATH) return RIDE_PATH;
+    let L = 10;
+    for (const e of fullList()) if (isRide(e)) L = Math.max(L, rideTravel(e));
+    L += 3; // (the horse's length)
+    const obs = [];
+    const near = (x, z) => Number.isFinite(x) && Number.isFinite(z) && Math.hypot(x - home.x, z - home.z) < L + 12;
+    for (const p of game.world?.destructibles?.list ?? []) if (!p.floor && p.kind !== 'flagstone' && near(p.x, p.z)) obs.push(p.x, p.z, fin(p.r, 0.5));
+    for (const c of game.world?.colliders?.circles ?? []) if (near(c.x, c.z)) obs.push(c.x, c.z, fin(c.r, 0.5));
+    const bp = game.boss?.position ?? game.boss?.object3d?.position;
+    if (bp && near(bp.x, bp.z)) obs.push(bp.x, bp.z, 10);
+    let best = { x: home.x, z: home.z, yaw: home.yaw, len: L, room: -Infinity }, bestS = -Infinity;
+    for (let a = 0; a < 72; a++) {
+      const yaw = (a * Math.PI) / 36, dx = Math.sin(yaw), dz = Math.cos(yaw);
+      const pen = 0.4 * (1 - Math.cos(yaw - home.yaw));
+      for (let ox = -3; ox <= 3; ox++) {
+        for (let oz = -3; oz <= 3; oz++) {
+          const ex = home.x + ox, ez = home.z + oz, sx = ex - dx * L, sz = ez - dz * L, p2 = pen + 0.05 * Math.hypot(ox, oz);
+          let m = Infinity;
+          for (let i = 0; i < obs.length && m - p2 > bestS; i += 3) {
+            const t = Math.max(0, Math.min(L, (obs[i] - sx) * dx + (obs[i + 1] - sz) * dz));
+            m = Math.min(m, Math.hypot(obs[i] - sx - dx * t, obs[i + 1] - sz - dz * t) - obs[i + 2]);
+          }
+          if (m - p2 > bestS) {
+            bestS = m - p2;
+            best = { x: ex, z: ez, yaw, len: L, room: +m.toFixed(2) };
+          }
+        }
+      }
+    }
+    return (RIDE_PATH = best);
+  }
+  const rideAt = { x: 0, z: 0, yaw: 0 };
   function rideOn(e) {
     if (!ride || !horse) return false;
     const ho = horseBody.object3d;
     ho.visible = true;
-    rideBack = Math.min(RIDE_BACK_MAX, rideTravel(e) * 0.5);
-    ho.position.set(home.x - Math.sin(home.yaw) * rideBack, 0, home.z - Math.cos(home.yaw) * rideBack);
-    ho.rotation.set(0, home.yaw, 0);
+    const R = ridePath(), back = Math.min(R.len, rideTravel(e));
+    rideAt.x = R.x - Math.sin(R.yaw) * back;
+    rideAt.z = R.z - Math.cos(R.yaw) * back;
+    rideAt.yaw = R.yaw;
+    ho.position.set(rideAt.x, 0, rideAt.z);
+    ho.rotation.set(0, R.yaw, 0);
     horse.teleported?.();
     if (hero.feet) hero.feet.enabled = false;
     return true;
@@ -341,14 +449,14 @@ export async function mount(game, params) {
     S.pre = e.kind === 'chain' || ((e.kind === 'clip' || e.kind === 'ride') && !e.loop) ? HOLD : 0;
     const riding = isRide(e) && rideOn(e);
     if (!riding) rideOff();
-    const back = riding ? rideBack : 0;
-    place(home.x - Math.sin(home.yaw) * back, home.z - Math.cos(home.yaw) * back, home.yaw);
+    if (riding) place(rideAt.x, rideAt.z, rideAt.yaw);
+    else place(home.x, home.z, home.yaw);
     if (e.kind === 'card') hero.play(lib.has(e.idle) ? e.idle : 'idle', { fade: 0 });
     else if (e.kind === 'chain') startStep(e.steps[0].name, !!e.steps[0].ride && riding, 0);
-    else startStep(e.name, e.kind === 'ride' && riding, 0);
+    else startStep(e.play ?? e.name, e.kind === 'ride' && riding, 0);
     if (riding) ride.update(0);
     hero.update(0);
-    S.view.yaw = home.yaw;
+    S.view.yaw = riding ? rideAt.yaw : home.yaw;
     S.view.azNow = azOf(e);
     S.view.fit = riding ? null : boundsOf(e);
     S.follow.ok = false;
@@ -390,6 +498,8 @@ export async function mount(game, params) {
     body,
     bodyKind,
     home,
+    /** The riding line (ridePath above). */
+    ridePath: () => ridePath(),
     get ride() {
       return ride;
     },
@@ -490,7 +600,7 @@ export async function mount(game, params) {
    *  the farthest point from the hips' vertical (the blade's point included when a hand holds a sword). */
   const _bp = createClipPlayer(lib, { warn: () => {} }), _bw = createWorld(), _brest = restOffsets(), _bv = new Float64Array(3);
   function boundsOf(e) {
-    const names = e.kind === 'chain' ? e.steps.map((s) => s.name) : [e.kind === 'card' ? (lib.has(e.idle) ? e.idle : 'idle') : e.name];
+    const names = e.kind === 'chain' ? e.steps.map((s) => s.name) : [e.kind === 'card' ? (lib.has(e.idle) ? e.idle : 'idle') : e.play ?? e.name];
     let ymin = Infinity, ymax = -Infinity, r = 0;
     try {
       for (const n of names) {
