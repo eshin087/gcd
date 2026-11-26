@@ -16,6 +16,7 @@
 //   'unveil'    the band's light leaking (0.6 s), the flare, then his eyes on  -
 //   'spark'     Dark Spark: held on his right fist (0.9), then the hit     landed (false: a miss)
 //   'ghosts'    Everywhere: three afterimages round the hero strike in turn a (the first one's angle)
+//   'marks'     castMark, drawPath, liftGlow and fallMark at once (1.6)      r
 //   'draw'      a knot 3 m ahead of him for 2.4 s, then its collapse        x, z, r, life
 //   'cast'      a point flicked from his hand to the hero (0.5 s), the burst  x, z, r, power
 //   'null'      the merge (1.6 s), held 0.3 s, the line 1.3 s, its end       len, w
@@ -114,6 +115,15 @@ const DRIVERS = {
       const a = (D.opts.a ?? 0.4) + i * 2.1, r = 2.4, x = p.x + Math.cos(a) * r, z = p.z + Math.sin(a) * r;
       d.fx.ghostStrike(x, z, Math.atan2(p.x - x, p.z - z), u);
     }
+  } },
+  marks: { T: 1.6, step(d, D, t) {
+    // the four marks at once: Cast's at the hero, the knot's path from him past the hero, a piece held up
+    // behind him, a piece's landing beside the hero (k 0..1 over 1.5 s)
+    const F = d.fx, f = frame(d), k = clamp01(t / 1.5), p = f.p, b = d.position;
+    F.castMark(p.x, p.z, fin(D.opts.r, 4.5), k);
+    F.drawPath({ ax: b.x + f.hz * 3, az: b.z - f.hx * 3, bx: p.x + f.hz * 3 + f.hx * 6, bz: p.z - f.hx * 3 + f.hz * 6, w: 3 }, k);
+    F.liftGlow(b.x - f.hx * 2.5, 3.0, b.z - f.hz * 2.5, 1.2, k);
+    F.fallMark(p.x - f.hz * 4, p.z + f.hx * 4, 2, k);
   } },
   draw: { T: 2.7, step(d, D, t, dt) {
     const F = d.fx, life = fin(D.opts.life, 2.4);

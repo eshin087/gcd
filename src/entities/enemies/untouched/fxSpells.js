@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { K_FIRE, K_VOID, K_STEEL, GROUND_Y, GROUND_GAIN } from '../duelist/fx.js';
+import { K_FIRE, K_SMOKE, K_VOID, K_STEEL, GROUND_Y, GROUND_GAIN } from '../duelist/fx.js';
 import { lookOf } from '../duelist/lookSwitch.js';
 
 // Bai Wuji's spells' effects (the FX AGENT's file): the Draw's knot, Cast's point and burst, the Null's
@@ -60,6 +60,8 @@ export function createState() {
     knots: Array.from({ length: 4 }, () => ({ id: -1, seen: -9, t: 0, acc: 0, accG: 0, accF: 0, accB: 0, fresh: false })),
     seg: { ax: 0, az: 0, bx: 0, bz: 0, L: 1, w: 5, y: NaN },
     seg2: { ax: 0, az: 0, bx: 0, bz: 0, L: 1, w: 5, y: NaN },
+    seg3: { ax: 0, az: 0, bx: 0, bz: 0, L: 1, w: 5, y: NaN },
+    liftAcc: 0,
     c: new THREE.Vector3(),
     collapses: Array.from({ length: 3 }, () => ({ alive: false, t: 0, x: 0, y: 0, z: 0, r: 4, burst: false })),
     bursts: Array.from({ length: 3 }, () => ({ alive: false, t: 0, T: 0.4, x: 0, z: 0, r: 4, ph: 0 })),
@@ -779,6 +781,111 @@ function trenchDraw(F, S, tr, fdt) {
     o.alpha = 0.7;
     F._spawn(F.add, o);
   }
+}
+
+// ======================================================================= THE MARKS (round 2)
+/** A ring of `_ink` on the floor round (x, z), radius r, every other piece left out when `dash`. */
+function floorRing(F, x, z, r, h, kind, dash = false, spin = 0, step = 0.45) {
+  if (!(r > 0.05) || !(h > 0.005)) return;
+  const n = Math.max(10, Math.min(160, Math.round((TAU * r) / step)));
+  for (let i = 0; i < n; i++) {
+    if (dash && i % 2) continue;
+    const a = (i / n) * TAU + spin, b = ((i + 1) / n) * TAU + spin;
+    F._ink(x + Math.cos(a) * r, GROUND_Y, z + Math.sin(a) * r, x + Math.cos(b) * r, GROUND_Y, z + Math.sin(b) * r, 0, h, 0, h, 1, kind);
+  }
+}
+
+/** Where Cast will burst (per frame, k 0..1 to the burst): a faint dashed ring at r (how far it throws),
+ *  a thin red ring closing from r to the point as k nears 1, a red point at the middle. */
+export function castMark(F, x, z, r, k) {
+  if (!F.fire || !Number.isFinite(x + z)) return;
+  if (!(F._frame() > 0)) return;
+  k = clamp01(fin(k, 0));
+  r = Math.max(0.5, Math.min(14, fin(r, 4.5)));
+  F._crimson(0.5);
+  const t = F._now(), g = GROUND_GAIN;
+  floorRing(F, x, z, r, (0.14 + 0.1 * k) * g, K_FIRE, true, t * 0.5);
+  const rc = r * (1 - k) + 0.25;
+  floorRing(F, x, z, rc, (0.26 + 0.24 * k) * g, K_FIRE, false, 0, 0.35);
+  F._ring(x, GROUND_Y, z, 0.35, 8, 0.32, (0.2 + 0.3 * k) * g, K_FIRE, 2, t * 6);
+}
+
+/** The wrecking knot's path shown before it moves (per frame, k 0..1 to its start): seg {ax, az, bx, bz
+ *  [, w]} (w default 3): its edges on the road in blue, chevrons running along it toward b, brighter as k
+ *  nears 1. */
+export function drawPath(F, seg, k) {
+  const S = F._spellState, G = segOf(seg, S?.seg3);
+  if (!G || !S || !F.fire || !(F._frame() > 0)) return;
+  k = clamp01(fin(k, 0));
+  F._azure();
+  const { ax, az, bx, bz, L } = G, w = Number.isFinite(Number(seg.w)) ? G.w : 3, ux = (bx - ax) / L, uz = (bz - az) / L, cx = -uz, cz = ux, hw = w * 0.5;
+  const V = visible(F, ax, GROUND_Y, az, bx, GROUND_Y, bz, S.vis);
+  if (!V) return;
+  const s0 = V[0] * L, s1 = V[1] * L, t = F._now(), he = (0.2 + 0.26 * k) * GROUND_GAIN;
+  // its two edges on the road, solid
+  for (const sd of [-1, 1]) F._ink(ax + ux * s0 + cx * sd * hw, GROUND_Y, az + uz * s0 + cz * sd * hw, ax + ux * s1 + cx * sd * hw, GROUND_Y, az + uz * s1 + cz * sd * hw, 0, he, 0, he, 0, K_VOID);
+  const step = 1.8, off = (t * 5) % step, hc = (0.2 + 0.3 * k) * GROUND_GAIN;
+  for (let s = s0 + off; s < s1 - 0.5; s += step) {
+    const x0 = ax + ux * s, z0 = az + uz * s;
+    for (const sd of [-1, 1]) F._ink(x0 + cx * sd * hw * 0.8, GROUND_Y, z0 + cz * sd * hw * 0.8, x0 + ux * 1.0, GROUND_Y, z0 + uz * 1.0, 0, hc, 0, hc, 0, K_VOID);
+  }
+  // its end: a ring where it will stop
+  floorRing(F, bx, bz, Math.max(0.8, hw), (0.12 + 0.2 * k) * GROUND_GAIN, K_VOID, true, -t);
+}
+
+/** A lifted piece held in a blue knot under it (per frame, k 0..1 how hard it is held): the piece's
+ *  centre (x, y, z), its radius r. A small knot under it, a ring of blue turning under the piece, threads
+ *  of letters rising from the floor to it, a blue pool on the floor below. */
+export function liftGlow(F, x, y, z, r, k) {
+  if (!F.fire || !Number.isFinite(x + y + z)) return;
+  const lf = F._frame();
+  if (!(lf > 0)) return;
+  k = clamp01(fin(k, 1));
+  r = Math.max(0.3, Math.min(6, fin(r, 1.2)));
+  F._azure();
+  const S = F._spellState, t = F._now(), ky = Math.max(0.6, y - r * 0.75), I = 0.5 + 0.5 * k;
+  F._disc(x, ky, z, 0.18 + 0.1 * k, 12, 0.2, 0.5 * I, K_VOID);
+  const P = F._toCamera(x, ky, z);
+  F._blob(P.x, P.y, P.z, 0, 0, 0, lf, 0.1, 0.1, 0.85 * I, 0.85 * I, K_STEEL);
+  F._ring(x, ky + 0.1, z, r * 0.8, Math.max(10, Math.round(r * 9)), 0.28, 0.3 * I, K_VOID, 3, t * 3);
+  F._ring(x, GROUND_Y, z, r * 0.9, Math.max(10, Math.round(r * 8)), 0.5, 0.14 * GROUND_GAIN * I, K_VOID, 2, -t * 2);
+  // threads of letters rising from the floor into it
+  if (S) {
+    const fdt = Math.max(0, Math.min(0.1, fin(F.game.fxDt, 0.016)));
+    S.liftAcc = (S.liftAcc ?? 0) + fdt * (14 + 16 * k) * Math.min(2, r);
+    while (S.liftAcc >= 1) {
+      S.liftAcc -= 1;
+      const a = F.lr() * TAU, rr = r * F.lrand(0.3, 1.0), T = F.lrand(0.4, 0.7);
+      const sx = x + Math.cos(a) * rr, sz = z + Math.sin(a) * rr;
+      const o = F._rec(sx, 0.1, sz, T, 0.15, 0.08, ".':-", AZ, AZ_END);
+      o.vx = (x - sx) / T * 0.6;
+      o.vy = (ky - 0.1) / T;
+      o.vz = (z - sz) / T * 0.6;
+      o.alpha = 0.4;
+      o.alphaEnd = 1;
+      F._spawn(F.add, o);
+    }
+  }
+  F._keep('wjLift', x, ky, z, L_AZURE, 0.8 * I, 3 + r, 0.1);
+}
+
+/** Where a falling piece will land (per frame, k 0..1 to the landing): a dark pool under it, a red rim at
+ *  r that brightens and a second red ring closing on it as it comes (the falling-piece cue of the plaza,
+ *  in his own heat). */
+export function fallMark(F, x, z, r, k) {
+  if (!F.fire || !Number.isFinite(x + z)) return;
+  const lf = F._frame();
+  if (!(lf > 0)) return;
+  k = clamp01(fin(k, 0));
+  r = Math.max(0.5, Math.min(10, fin(r, 2)));
+  F._crimson(0.5);
+  for (let i = 0; i < 9; i++) {
+    const rr = r * Math.sqrt((i + 0.5) / 9) * 0.8, a = i * 2.39996;
+    F._blob(x + Math.cos(a) * rr, 0.3, z + Math.sin(a) * rr, 0, 0, 0, lf, r * 0.55, r * 0.55, 0.3 + 0.35 * k, 0.3 + 0.35 * k, K_SMOKE);
+  }
+  const t = F._now(), g = GROUND_GAIN, beat = k > 0.7 ? (Math.floor(t * 10) % 2 ? 0.7 : 1) : 1;
+  floorRing(F, x, z, r, (0.22 + 0.3 * k) * g * beat, K_FIRE, false, 0, 0.4);
+  floorRing(F, x, z, r * (1.6 - 0.6 * k), (0.1 + 0.16 * k) * g, K_FIRE, true, t * 0.8);
 }
 
 /** Every frame (WjFx.update): what lives on after a call. */

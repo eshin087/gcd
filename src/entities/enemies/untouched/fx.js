@@ -104,7 +104,7 @@ const orange = (c) => Array.isArray(c) && c[0] > 0.85 && c[1] > 0.3 && c[1] < 0.
 const WJ_DRAW = [
   'barrierIdle', 'barrierStop', 'barrierCrack', 'barrierOpen', 'barrierClose', 'blinkOut', 'blinkIn', 'eyes', 'unveil', 'afterimage', 'vanish',
   'drawKnot', 'drawCollapse', 'castPoint', 'castBurst', 'nullCharge', 'nullLine', 'nullBeam', 'nullEnd', 'domainSign', 'domainWall', 'domainCaught',
-  'domainBreak', 'shove', 'crash', 'sparkCharge', 'sparkHit', 'ghostStrike', '_wjUpdate',
+  'domainBreak', 'shove', 'crash', 'sparkCharge', 'sparkHit', 'ghostStrike', 'castMark', 'drawPath', 'liftGlow', 'fallMark', '_wjUpdate',
 ];
 
 // the barrier's shell: how far its drawn edge sits off his body (m), the ripple, the open sign
@@ -943,6 +943,18 @@ export class WjFx extends AscFx {
   }
   castBurst(x, z, r, power) {
     this.spellFx.castBurst?.(this, x, z, r, power);
+  }
+  castMark(x, z, r, k) {
+    this.spellFx.castMark?.(this, x, z, r, k);
+  }
+  drawPath(seg, k) {
+    this.spellFx.drawPath?.(this, seg, k);
+  }
+  liftGlow(x, y, z, r, k) {
+    this.spellFx.liftGlow?.(this, x, y, z, r, k);
+  }
+  fallMark(x, z, r, k) {
+    this.spellFx.fallMark?.(this, x, z, r, k);
   }
   nullCharge(d, k, blue, red) {
     this.spellFx.nullCharge?.(this, d, k, blue, red);
