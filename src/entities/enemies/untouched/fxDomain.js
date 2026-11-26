@@ -76,7 +76,7 @@ export function domainSign(F, d, k) {
   }
   G.seen = now;
   F._violet(0.4);
-  const h = d.handPoint ? d.handPoint('R', S.v) : null;
+  const h = d.handPoint ? d.handPoint('L', S.v) : null; // (round 2: the body's SIGN raises the LEFT hand; the right stays pocketed)
   if (!h || !Number.isFinite(h.x + h.y + h.z)) return;
   const P = F._toCamera(h.x, h.y + 0.16, h.z), lf = F._frame(), A = F._axes();
   if (lf > 0) {
