@@ -5073,6 +5073,11 @@
     {"f": 27, "joint": "shinR", "euler": [106.15, 0.0, -0.0], "blend": 0},
     {"f": 27, "joint": "footR", "euler": [-41.84, 4.04, 5.68], "blend": 0},
     {"f": 27, "joint": "toeR", "euler": [0.0, -0.0, 0.0], "blend": 0}
+   ],
+   "hips_keys": [
+    [13, 0.763],
+    [16, 0.762],
+    [19, 0.734]
    ]
   },
   {
@@ -6420,7 +6425,12 @@
     {"f": 30, "joint": "footR", "euler": [-0.48, -18.01, -0.29], "blend": 0},
     {"f": 30, "joint": "toeR", "euler": [0.0, 0.0, -0.0], "blend": 0}
    ],
-   "despike": false
+   "despike": false,
+   "hips_keys": [
+    [5, 0.966],
+    [8, 0.992],
+    [11, 0.966]
+   ]
   },
   {
    "name": "sprintToCrouch",
