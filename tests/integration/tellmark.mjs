@@ -50,7 +50,8 @@ export function tellMarkCheck(R, tag, out, assert, { clones = false } = {}) {
   assert(overlap.length === 0, `${tag}: with room for it, every mark is gone ${L.lead} s before the impact, before the blow's own cue (${roomy.length} checked, ${overlap.length} not)`);
   if (clones) {
     const c = want.filter((t) => t.clone);
-    assert(c.length > 0 && c.every((t) => t.raised), `${tag}: a paper copy's blue / red blow raises its own mark (${c.length})`);
+    // (a short fight may end before his packs: then there is none to check)
+    assert(c.every((t) => t.raised), `${tag}: every paper copy's blue / red blow raises its own mark (${c.length} in this fight)`);
   }
 }
 
