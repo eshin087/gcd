@@ -114,6 +114,7 @@ export class Cloth {
     this.cap = new Float32Array(NCOL * 7); // ax ay az bx by bz r (sim space)
     this.bits = new Int32Array(NCOL);
     this.ground = 0;
+    this.groundY = 0; // the floor's height (body.groundY)
     this.objP = new Float32Array(3);
     this.objQ = new Float32Array(4);
     this.qTmp = new Float32Array(4);
@@ -132,7 +133,9 @@ export class Cloth {
     Q[1] = obj.quaternion.y;
     Q[2] = obj.quaternion.z;
     Q[3] = obj.quaternion.w;
-    this.ground = P[1];
+    // the ground under him: the world's floor (y = groundY; the levels are flat), not his root, which a
+    // jump or a plunge may lift
+    this.ground = Number.isFinite(this.groundY) ? this.groundY : 0;
   }
 
   /** body-frame point (x, y, z) -> sim space, into out[k..]. */
@@ -293,7 +296,8 @@ export class Cloth {
 
   /** One game step. */
   step(world, obj, dt, wind) {
-    if (!this.ready || !(dt > 0) || dt > CLOTH.maxDt) return this.settle(world, obj, wind);
+    if (!this.ready || dt > CLOTH.maxDt) return this.settle(world, obj, wind);
+    if (!(dt > 0)) return; // (no time: the cloth stays as it was)
     this._place(obj);
     this._read(world, wind);
     const n = Math.min(CLOTH.maxSub, Math.max(1, Math.ceil(dt / CLOTH.substep - 1e-6)));

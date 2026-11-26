@@ -66,7 +66,7 @@ export function mount(game, params) {
       o.position.set(p.position.x + st.ox * c + st.oz * s, p.position.y, p.position.z - st.ox * s + st.oz * c);
       o.rotation.set(0, y, 0);
     } else {
-      o.position.set(st.x, 0, st.z);
+      o.position.set(st.x, Number.isFinite(st.lift) ? st.lift : 0, st.z); // (lift: a film's drop)
       o.rotation.set(0, st.yaw, 0);
     }
   };

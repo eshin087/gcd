@@ -19,6 +19,8 @@
 // Beyond the interface (optional, for the engine and the dev stand):
 //   body.setHand(side, shape) 'fist' | 'open' | null (null: a fist round a prop, else open). A hand on
 //                            the grip with no prop of its own (two hands on one sword) is setHand(L, 'fist').
+//   body.groundY             the floor's height under him (default 0: the levels are flat); the cloth
+//                            lands on it (not on his root, which a jump lifts).
 //   body.hot                 0..1, how lit the blade is (a strike's window: 1). The engine sets it; the
 //                            steel is dark at rest and lights while it cuts, like today's (player.js).
 //   body.blade(side, a, b, drawn)  drawn = true: the DRAWN segment (the lean and the drawn scale in it);
@@ -132,6 +134,7 @@ export function buildBody(game, { dims = HDIM, look = {} } = {}) {
   const body = {
     object3d, dims, B, materials: M, mats, batch, cloth, lean, holders,
     hot: 0,
+    groundY: 0, // the floor's height under him (the cloth lands on it; the levels are flat at 0)
     setProp(side, kind) {
       if (side !== 'R' && side !== 'L') return;
       prop[side] = kind === 'sword' || kind === 'flask' ? kind : null;
@@ -159,6 +162,7 @@ export function buildBody(game, { dims = HDIM, look = {} } = {}) {
           for (let k = 0; k < 4; k++) sock[s * 7 + 3 + k] = R[j * 4 + k];
         }
         const w = wind();
+        cloth.groundY = Number.isFinite(body.groundY) ? body.groundY : 0;
         if (settle) {
           cloth.settle(world, object3d, w);
           settle = false;
