@@ -2759,9 +2759,9 @@
    "search": 0.3,
    "takes": [
     {
-     "t0": "3:12.50",
-     "t1": "3:14.15",
-     "view": "right"
+     "t0": "3:26.62",
+     "t1": "3:28.10",
+     "view": "back"
     }
    ],
    "from": "sprint",
@@ -2777,15 +2777,41 @@
    "turn": -180,
    "takes": [
     {
-     "t0": "3:51.55",
-     "t1": "3:53.50",
-     "view": "back"
+     "t0": "3:51.40",
+     "t1": "3:53.00",
+     "view": "back",
+     "drop": [
+      [
+       "3:51.85",
+       "3:52.15"
+      ],
+      [
+       "3:52.35",
+       "3:52.50"
+      ],
+      [
+       "3:52.72",
+       "3:52.98"
+      ]
+     ]
     }
    ],
    "from": "sprint",
    "to": "sprint",
+   "pose_keys": [
+    {
+     "f": 42,
+     "joint": "footL",
+     "euler": [
+      0,
+      0,
+      0
+     ],
+     "blend": 3
+    }
+   ],
    "draft": true,
-   "note": "draft: the chapter is filmed with cinematic follow cameras and a far fixed camera; the tracker loses him through the turn (a cut to a far shot at 3:52.12, a close-up at 3:52.92); re-track or hand-key before use"
+   "note": "draft: the chapter is EDITED with cuts (far shot 3:51.85-3:52.15, close-up 3:52.72-3:52.98) right through the turn; this pass interpolates over them, the right foot never plants and the left foot jumps at its plant (75 deg at f45)"
   }
  ]
 }
