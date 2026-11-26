@@ -14,10 +14,11 @@
 // Console / film API: __game.hero2.show = { list(), play(name), playAll(opts), view(opts), speed(k),
 //      pause(on), step(dt), status(), title(), stop(), hero (the animator), lib }
 import { loadLibrary } from './clips/index.js';
-import { createHero2 } from './engine.js';
+import { createHero2, createClipPlayer } from './engine.js';
 import * as bodyModule from './body.js';
 import { buildDebugBody } from './debugBody.js';
-import { JI } from './skeleton.js';
+import { JI, createWorld, restOffsets, solveFK } from './skeleton.js';
+import { qrot } from './qmath.js';
 import { HDIM } from './dims.js';
 
 const num = (v, d) => {
@@ -60,6 +61,24 @@ export async function mount(game, params) {
   // (object3d.scale stays 1: gameplay metres; each body draws its own scale, as today's hero does)
   game.scene.add(body.object3d);
   const hero = createHero2(game, { body, library: lib });
+  // the drawn scale (the body draws it in its matrix: object3d.scale stays 1)
+  const drawK = num(game.player?.drawScale, 1.08);
+  // every render sets the body's per-view state from the camera that renders it (the lean OFF in the
+  // close view: upright, true anatomy; ON, aimed at the game camera, in the game view; the letters
+  // sized from that camera): the film draws two views a frame
+  const pl = game.pipeline;
+  if (pl && typeof pl.render === 'function' && typeof body.prepareView === 'function') {
+    const render0 = pl.render.bind(pl);
+    pl.render = (...a) => {
+      try {
+        body.prepareView(game.camera, S.view.mode === 'close' ? NO_LEAN : WITH_LEAN);
+      } catch {
+        /* a body without it */
+      }
+      return render0(...a);
+    };
+  }
+  pl?.setSeenThrough?.(body.object3d);
   const obj = body.object3d;
 
   // keep the boss asleep for the whole review (the flow reads these every step)
@@ -89,7 +108,8 @@ export async function mount(game, params) {
     paused: false,
     stepQ: 0,
     speed: num(P.get('speed'), 1),
-    view: { mode: P.get('view') === 'game' ? 'game' : 'close', az: num(P.get('az'), 0), dist: num(P.get('dist'), 4.4), up: num(P.get('up'), 0.35), yaw: home.yaw },
+    // dist / up: model metres; auto: the close camera fitted to the clip's own bounds (unless &dist=)
+    view: { mode: P.get('view') === 'game' ? 'game' : 'close', az: num(P.get('az'), 0), dist: num(P.get('dist'), 4.4), up: num(P.get('up'), 0.35), yaw: home.yaw, auto: !P.has('dist'), fit: null },
     follow: { x: home.x, z: home.z, ok: false },
     started: false,
     farR: 2.5, // m from home: carried back before the next clip
@@ -109,6 +129,7 @@ export async function mount(game, params) {
     if (Math.hypot(dx, dz) > (S.view.mode === 'close' ? 0.05 : S.farR) || turned) place(home.x, home.z, home.yaw);
     hero.play(c.name, { fade: 0 });
     S.view.yaw = obj.rotation.y;
+    S.view.fit = boundsOf(c);
     S.t = 0;
     S.len = showLength(c);
     S.follow.ok = false;
@@ -149,7 +170,10 @@ export async function mount(game, params) {
       const v = S.view;
       if (o.mode === 'game' || o.mode === 'close') v.mode = o.mode;
       if (Number.isFinite(o.az)) v.az = o.az;
-      if (Number.isFinite(o.dist)) v.dist = o.dist;
+      if (Number.isFinite(o.dist)) {
+        v.dist = o.dist;
+        v.auto = false;
+      } else if (o.dist === 'auto') v.auto = true;
       if (Number.isFinite(o.up)) v.up = o.up;
       if (v.mode === 'game') game.viewOverride = null;
       S.follow.ok = false;
@@ -196,6 +220,46 @@ export async function mount(game, params) {
     else api.playAll({ repeat: P.get('loop') !== '0' });
   };
 
+  /** The clip's reach round his hips over its whole showing (model metres): lowest / highest point, the
+   *  farthest point from the hips' vertical (the blade's point included when a hand holds a sword). */
+  const _bp = createClipPlayer(lib, { warn: () => {} }), _bw = createWorld(), _brest = restOffsets(), _bv = new Float64Array(3);
+  function boundsOf(c) {
+    let ymin = 0, ymax = HDIM.height, r = 0.5;
+    try {
+      _bp.play(c.name, { fade: 0 });
+      const total = showLength(c), N = 48;
+      ymin = Infinity;
+      ymax = -Infinity;
+      r = 0;
+      for (let i = 0; i <= N; i++) {
+        _bp.update(i === 0 ? 0 : total / N);
+        solveFK(_bp.pose, _brest, _bw);
+        const P = _bw.p, hx = P[JI.hips * 3], hz = P[JI.hips * 3 + 2];
+        const top = P[JI.head * 3 + 1] + 0.25;
+        for (let j = 1; j < 24; j++) {
+          const y = j === JI.head ? top : P[j * 3 + 1];
+          ymin = Math.min(ymin, y);
+          ymax = Math.max(ymax, y);
+          r = Math.max(r, Math.hypot(P[j * 3] - hx, P[j * 3 + 2] - hz));
+        }
+        for (const s2 of ['R', 'L']) {
+          if (c.props?.[s2] !== 'sword') continue;
+          const j = s2 === 'L' ? JI.weaponL : JI.weaponR;
+          qrot(_bv, 0, _bw.r, j * 4, 0, 0, HDIM.blade + 0.1);
+          const x = P[j * 3] + _bv[0], y = P[j * 3 + 1] + _bv[1], z = P[j * 3 + 2] + _bv[2];
+          ymin = Math.min(ymin, y);
+          ymax = Math.max(ymax, y);
+          r = Math.max(r, Math.hypot(x - hx, z - hz));
+        }
+      }
+      ymin = Math.min(0, ymin);
+    } catch {
+      return null;
+    }
+    return { ymin, ymax, r };
+  }
+  const NO_LEAN = { lean: false }, WITH_LEAN = { lean: true };
+
   const hips = [0, 0, 0];
   const camPos = { x: 0, y: 0, z: 0 }, camTgt = { x: 0, y: 0, z: 0 }, camFoc = { x: 0, y: 0, z: 0 };
   const override = { pos: camPos, target: camTgt, focus: camFoc };
@@ -224,13 +288,24 @@ export async function mount(game, params) {
     // his front (sin yaw, cos yaw); his right (-cos yaw, sin yaw); az turns from the front toward his right
     const fx = Math.sin(yaw), fz = Math.cos(yaw), rx = -fz, rz = fx;
     const ox = fx * Math.cos(az) + rx * Math.sin(az), oz = fz * Math.cos(az) + rz * Math.sin(az);
-    const ty = obj.position.y + (HDIM.height * 0.52) * k;
+    let ty = obj.position.y + HDIM.height * 0.52 * drawK, dist = v.dist * drawK, up = v.up * drawK;
+    const F = v.fit;
+    if (v.auto && F) {
+      // the whole figure and the blade's reach in the panel (the film's close panel: the middle 600 of
+      // 1280 px), whatever the clip does: fitted to its bounds round his hips
+      const cam = game.camera, tv = Math.tan(((cam?.fov ?? 32) * Math.PI) / 360);
+      const th = tv * Math.min(cam?.aspect ?? 16 / 9, 16 / 9) * (600 / 1280);
+      const half = ((F.ymax - F.ymin) * 0.5 + 0.3) * drawK, rad = (F.r + 0.15) * drawK;
+      dist = Math.max(half / tv, rad / th) + rad;
+      ty = obj.position.y + (F.ymin + F.ymax) * 0.5 * drawK;
+      up = dist * 0.06;
+    }
     camTgt.x = S.follow.x;
     camTgt.y = ty;
     camTgt.z = S.follow.z;
-    camPos.x = S.follow.x + ox * v.dist * k;
-    camPos.y = ty + v.up * k;
-    camPos.z = S.follow.z + oz * v.dist * k;
+    camPos.x = S.follow.x + ox * dist;
+    camPos.y = ty + up;
+    camPos.z = S.follow.z + oz * dist;
     camFoc.x = S.follow.x;
     camFoc.y = 0;
     camFoc.z = S.follow.z;
