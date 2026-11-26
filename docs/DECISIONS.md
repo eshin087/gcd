@@ -6293,3 +6293,37 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   passes (`chain`) is checked against the widest its complete search finds from where he dodged (the new stance
   moved the seeded fight before it: from that dodge spot the search's best is 14°, from the old one 21°; seeds 1338-
   1340 pass the 17° bar either way).
+## ADR-208 — Boss blows measured from reference footage: the mocap clip fitted onto the duelist rig (`?fists=ref`, 2026-11-26)
+
+- **Context:** the owner gave a reference film of bare-handed melee attacks and asked for the bare-handed
+  bosses' attacks to move like it, starting with one boss to preview, and for what was learned to stay in
+  the repo as a melee attack animation engine for future agents. The measuring tool existed on the hero
+  remake's branch (`scripts/mocap`: pose tracking on footage, fused into clips on a 24-joint skeleton), but
+  the duelist bosses are animated by keyframes on today's hero rig (hand / foot targets, poles, body,
+  spine), not joint clips. The owner's answers: Tian Lei first; remap his existing blows (names, tells,
+  damage, AI unchanged); the reference motion at OUR windups; behind a switch, held for review.
+- **Decision:**
+  1. `scripts/mocap` (and the hero2 skeleton / clip contract it writes to) comes onto `main` as a tool.
+  2. `scripts/mocap/duelist/fit.mjs` retargets a clip onto the duelist rig by DIRECTION for the arms (our
+     shoulder + the reference's upper-arm and forearm directions at our bone lengths: arm angles kept
+     exactly), by orientation for the pelvis, spine and head (YXZ Euler, the rig's order), by scaled
+     position for the feet; travel taken out (a duelist's root motion is its beat's). The windup is laid
+     piecewise on the beat's clock: start → u 0, chamber → the beat's cock, contact → u 1, follow-through
+     → u 2. `--check` poses the real animator with every key and prints the error.
+  3. `realise.js` takes an optional `keysOf(beat)`: the keys a beat plays this time. Tian Lei's builders
+     put the measured keys on each beat as `refKeys` (refBlows.js, generated from `tianlei.json`), played
+     while the look switch `fists` is `ref` (Lab LOOKS, PENDING: the owner has not picked).
+  4. Six blows are measured: jab (mirrored), cross, hook, uppercut, backfist, hammer. The film has hand
+     strikes only, so his kicks, knee, elbow, shoulder and sweep keep their keys.
+- **Why this way:** fitting the clip onto the rig the bosses already share keeps every gameplay number and
+  every test of theirs; a joint-clip player for bosses would mean a second animator and a second body.
+  Keeping arm directions rather than positions is what the owner judges (arm angles, placement).
+- **Consequences:** through the real animator the fists land within ~5 cm of the retargeted reference,
+  elbows ~11, knees ~6, ankles ~1. The film did not fuse across camera angles (follow cameras, passes that
+  differ, 30 - 60 captured frames a second, gaps at impacts): each blow is one take with the striking arm
+  hand-keyed through the strike, so the arm paths are the footage as read frame by frame, not tracked.
+  The uppercut and the hook are the most hand-made; the jab is very low (the reference's). The reference
+  is a wild brawler (same-side lunges, spin-throughs), so with the switch on he fights in that style.
+  `asc.mjs . fists` proves timings identical on and off and fights every measured move on the real rig.
+  If the hero remake's branch later lands, its copies of `scripts/mocap` and `src/entities/hero2/*` should
+  be taken over these (check `check.mjs`'s film list keeps `fist`).
