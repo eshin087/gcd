@@ -19,6 +19,14 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-25',
+        title: 'The hero runs like a swordsman: the blade carried forward at his hip',
+        notes: [
+          'On the run the hero now carries his sword forward, low at his hip, its point rocking with his arm, instead of trailing it behind him on a bent wrist.',
+          "His free arm pumps like a runner's, and his free hand is a closed fist instead of a small knob.",
+        ],
+      },
+      {
+        date: '2026-11-25',
         title: "The dragon's neck and head move naturally: no upside-down head, no flips",
         notes: [
           'The Cinder Wyrm no longer turns its head upside down when it flies, climbs or wheels round, and no longer looks straight back over its own spine.',

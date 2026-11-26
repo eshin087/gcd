@@ -4,7 +4,13 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and four pieces of work since 0.4.0:
+One hundred and five pieces of work since 0.4.0:
+- **The hero runs like a swordsman: the blade carried forward at his hip** (2026-11-25, ADR-204). *Changed:*
+  on the run and the sprint the hero now carries his sword forward, low at his right hip, its point rocking down
+  as the arm swings back and up as it swings forward, the steel moving with his forearm; before, the blade trailed
+  behind him on a wrist bent nearly at a right angle and hardly moved. His free arm pumps like a runner's: the fist
+  up before his belly, the elbow high behind his back. His free hand is now a closed fist as wide as his forearm,
+  no longer a small knob with spiky fingers. `?runSword=old`, `?runArm=a` and `?handLook=a` give the run before.
 - **The dragon's neck and head move naturally: no upside-down head, no flips** (2026-11-25, ADR-203). *Fixed:* every one of the
   Cinder Wyrm's 50 moves was measured frame by frame (how fast each neck joint and the head turn, how far the
   head rolls off level, where it looks). Its head no longer rolls upside down in flight (the sky dive's climb,
