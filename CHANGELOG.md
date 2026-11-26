@@ -14,8 +14,10 @@ One hundred and seventeen pieces of work since 0.4.0:
   Your blade stops short of him on a barrier you cannot see until it nears him: a perfect parry or a perfect dodge
   of any of his blows opens it for a few seconds (four ordinary parries close together crack it open for less; a posture
   break opens it too). Every blow of his that lands throws you, through whatever stands behind you; a block costs
-  no health but slides you back and costs half your guard (two in a row knock it open); his spells cannot be
-  blocked at all. Azure Draw (a blue knot that drags you, then collapses), the Yank (pulled onto his fist), Crimson
+  no health but slides you back and costs a big share of your guard (the third in a row knocks it open); his spells
+  cannot be blocked at all. He waits for you to come to him: if your blade has not reached him for 30 s, his eyes
+  burn and every block costs your whole guard until it does.
+  Azure Draw (a blue knot that drags you, then collapses), the Yank (pulled onto his fist), Crimson
   Cast (a red point flicked to your place, a burst), the Wrecking Knot, the Violet Null (a line across the whole
   crossing that erases what it crosses and leaves a wide trench), wreckage lifted and thrown, a tower's top brought
   down on you, the road itself burst up in a line. At 66 % THE BLINDFOLD COMES OFF: his hair falls and his eyes
@@ -23,12 +25,13 @@ One hundred and seventeen pieces of work since 0.4.0:
   its wall and you are inside unharmed with his barrier open, or you are caught, held a moment and struck once
   (never lethally). The last phase is fought inside the void: the city gone, its pieces floating past, his blows
   out of nowhere, the Last Null below 12 %. He never strikes a hero who is down and never holds you longer than
-  1.2 s. No reward yet. His look is the owner's picks: the bone-white coat, the short spiky hair, an ash moon over
+  1.2 s. The bonfire goes out while the void stands and burns again when the city comes back. No reward yet. His look is the owner's picks: the bone-white coat, the short spiky hair, an ash moon over
   the crossing, the void's ring, the barrier all but invisible until a blade nears, the Null a hard-edged slab
   (`?wjLook=a|b`, `?wjHair=a`, `?wjCity=b|c`, `?wjVoid=a|c`, `?wjShell=b|c`, `?wjNull=b` the others). *Changed:* a
   thrown or dropped raised piece can land on the floor (`ground`), a held piece can be chipped by the hero's blade
   and breaks when cut under 1 hp; floor marks are thinner on the crossing and its metal rubble lies grey, not
-  ember-orange; the crossing's marks hide inside the void and come back with the city. *Fixed:* Halcyon's thrown
+  ember-orange; the crossing's marks hide inside the void and come back with the city. Halcyon Plaza's metal rubble
+  lies cold grey too (the owner's call; `?coolRubble=0|1` turns the grey rubble off or on in any level). *Fixed:* Halcyon's thrown
   pieces land on the road (the Falling Sky's tower top burst about 6.5 m up in the air), the owner's call.
 - **Shen Hui and Varr Nihil hold their swords like swordsmen** (2026-11-26, ADR-226). *Changed (the owner's pick; `?ashMotion=0` /
   `?lordMotion=0` give back the motion before):* the second and third

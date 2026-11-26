@@ -201,16 +201,20 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] The owner's picks: `wjLook` c, `wjHair` b, `wjCity` a, `wjVoid` b, `wjShell` a, `wjNull` a (2026-11-25;
       sheets in `docs/looks/veil/`)
 - [x] Lab, Training, `tests/integration/veil.mjs`, the cost budget; the bench (`bench.mjs`) and the tuning:
-      `hp` 26000, a block half the guard, four cracks
+      `hp` 26000, a block 45 % of the guard (the third in a row opens it), four cracks; his patience (30 s
+      untouched: one block opens the guard), so a defender who never attacks dies
 - [x] `throwTo` / `drop` `{ ground }`, `take` `{ chip }`, a held piece breaks under 1 hp; Halcyon's throws land on
-      the road; `SCAR.thin`, `scars.layer` / `shade`
+      the road; `SCAR.thin`, `scars.layer` / `shade`; Halcyon Plaza's metal rubble cold grey (`SCAR.thin.city`,
+      `?coolRubble=0|1`)
+- [x] The bonfire out in the void, lit again on the way back (`atmosphere.bonfireLit`)
+- [x] The owner's answers (2026-11-26): "3 blocks"; a defender who never attacks must not outlast him; the
+      roller's ten minutes "hard enough"; Halcyon's rubble grey; the bonfire out in the void
 - [ ] The owner's playtest, on the iPhone too (the phone's eyes merge into one point)
 - [ ] His reward: the owner has not chosen one
-- [ ] A defender who never attacks outlasts him; the roller mostly survives to 10 minutes; the fencing bot's 2 of
+- [ ] The roller now wins in six to seven minutes (`blockPush` 2.4 is the measured lever); the fencing bot's 2 of
       6 rides on the seeds
-- [ ] The owner's answers: the second block opening the guard (the brief said the third); Halcyon Plaza's metal
-      rubble cold too; the bonfire out inside the void
 - [ ] The real renderer lays ~30 % more floor marks than headless
+
 ## M1.93 — Tian Lei's and Halcyon's motion (2026-11-26, `claude/enemies-tian-halcyon-motion-efe595`, ADR-225)
 - [x] Audited (asc.mjs / city.mjs AUDIT); held blue / red windups, the snap blows, Halcyon's flier's legs, aim and dip,
   behind `?ascMotion=a` / `?halMotion=a`

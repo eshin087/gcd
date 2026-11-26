@@ -1827,20 +1827,23 @@ down"), and none of it touches the hero, the boss or the HUD.
   asphalt with the scramble's white bars carved in its slabs, craters, an old wide trench, the fallen tower
   lying across the north, tower stumps and low ruins, wrecks; nothing tall south of the fight. `?wjCity=a` ash
   moon (cold moonlit ash-grey, pale bars), the owner's pick. Floor marks are thinner here (`SCAR.thin`: a fight of
-  grit read as snow on the black asphalt) and the metal wrecks' rubble lies cold grey, not as embers. The
+  grit read as snow on the black asphalt) and the metal wrecks' rubble lies cold grey, not as embers (Halcyon Plaza's too since ADR-243: the orange
+  read as embers that never go out; `?coolRubble=0|1` on any level). The
   lamps that still burn are `steel`.
 - **The void**: the floor under a near-black light, a close black fog, a few floating pieces of the crossing; the
   stars are many tiny faint letters in clumps and drifts (a `LetterBatch`, never heat, so a slot's palette never
   recolours the sky). `?wjVoid=b` the ring (the stars and one great pale ring lying on the floor round the fight),
   the owner's pick. The morph's front lets pieces go as dim digits rising into the dark. The city's floor marks
-  hide in it and come back with the city.
+  hide in it and come back with the city; the bonfire goes out as the front passes it (flame, embers, light,
+  sound) and burns again on the way back.
 - **His figure** (`untouched/gear.js`, `look.js`): the hero's skeleton in INK-LINE art, printed the bossPrint way
   (ADR-194): lit letter bodies, a pale hem, his letters following his size on screen (`?wjLetters`). A tall,
   lean, relaxed man, a high-collared coat, hands in his pockets. Phase 1 the white hair stands up over a dark band
   across his eyes; from phase 2 the band hangs at his neck, the hair falls, the eyes burn; in phase 3 the coat's
   front parts and its hem lifts. `?wjLook=c` a bone-white coat with a dark collar and band, `?wjHair=b` a short
   spiky burst, then a choppy mop (the owner's picks). His EYES are one-cell points printed after the letter pass
-  (heat on a face is covered by his letters); on the phone the two merge into one.
+  (heat on a face is covered by his letters); on the phone the two merge into one. When his patience runs out
+  (ADR-243) they burn for 1.2 s, through the band in phase 1 too: his one cue that he has stopped waiting.
 - **His effects in the fire field** (`untouched/fx.js`, `fxSpells.js`, `fxDomain.js`; `FIRE_PALETTES.azure`,
   `crimson`): the `void` slot is AZURE at rest (Draw's knots, his eyes, the blink) and VIOLET (the void's colours
   without tongues) while the Null is merged, lit or its trench glows, and while the domain's sign, wall or break

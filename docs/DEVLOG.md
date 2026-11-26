@@ -43,39 +43,54 @@ with a bench of five mortal bots. The lead merged and wrote the docs.
   `beam` trench. Halcyon's `_throw` lands on the floor.
 - The bench: `tests/integration/bench.mjs`, opt-in scenario `bench` in `veil.mjs`, `city.mjs`, `asc.mjs`.
 
-**Decisions.** ADR-241 (the boss and his rules), ADR-242 (what changed in the destruction), ADR-243 (the tuning
-and the bench). The lead's one addition to the owner's barrier rule: cracks (ordinary parries; four open it for
-less time). The guard: the tuning pass set a block's cost to half the meter, so the SECOND block in a row knocks
-the guard open (the brief said the third): a bot that rolled every red and blocked the rest won 6 of 6 at 0.4.
+**After round one, the owner's answers** (five questions): "3 blocks" (the third block in a row opens the guard,
+not the second); a defender who never attacks must not outlast him; the roller lasting ten minutes was "hard
+enough"; Halcyon Plaza's metal rubble grey "if it looks better grey then yes" (the lead judged from a
+side-by-side sheet that it does: the orange read as embers that never go out and clashed with the plaza's blue);
+the bonfire goes out in the void: yes. Round two built them: `wjWeight.guardCost` 0.45 (two blocks leave 10 of
+the meter, the third opens it, for blocks up to about 1 s apart); his PATIENCE (`untouched/patience.js`: no cut
+has reached him for 30 s, his eyes burn 1.2 s and the unveiling's sound plays, then every blocked blow costs the
+whole meter until a cut reaches him again); the bonfire out as the front into the void passes it, lit again on
+the way back and on a reset (`atmosphere.bonfireLit`); `SCAR.thin.city` cool and `?coolRubble=0|1` on any level;
+the bench's bots stay busy until 0.25 s after each answered impact (the perfect bot had cut out of its own roll
+and lost the i-frames) and `GCD_BFORM`, `GCD_BHIT`, `GCD_BTOUCH`; the suite's ordinary parry pressed 0.25 s ahead
+after ADR-227 (main: the perfect parry window 0.20 s).
+
+**Decisions.** ADR-241 (the boss and his rules), ADR-242 (what changed in the destruction), ADR-243 (the tuning,
+the bench, patience, the floor marks, the bonfire). The lead's one addition to the owner's barrier rule: cracks
+(ordinary parries; four open it for less time). Why patience: the pace bot never damaged him (phase 1 forever);
+its guard opened ~100 times in 9 minutes, but the blow that emptied it was itself blocked, his next came after
+the 0.55 s opening, the mercy rules spared 1 - 11 more and its early rolls i-framed every red. Settings tried:
+none, alive 6 of 6; a one-block cost after 20 s, dead in 102 - 383 s; after 30 s (shipped) 201 - 525 s; after
+40 s 83 - 518 s; a two-block cost (0.7), alive.
 
 **Verified.** `veil.mjs` all (levels, data, barrier, weight, crash, pull, domain, phases, fight, pace, events,
-downtime, strings, sides, spark, mix, chase, the spells', the terrain moves', letgo, into, heldbreak, floor, body,
-fx); `world.mjs`, `city.mjs`, groundfx quick runs green after the tuning; `npm test` by the lead. The bench (6
-seeds, god mode off, 600 s cap; wins of 6):
+downtime, strings, sides, spark, mix, chase, the spells', the terrain moves', letgo, into, heldbreak, floor,
+patience, bonfire, body, fx); `world.mjs`, `city.mjs`, groundfx quick runs; `npm test` by the lead. The bench (6
+seeds, god mode off, 600 s cap; wins of 6; Halcyon and Tian Lei from round one):
 
-| Bot | before the tuning | after | Halcyon | Tian Lei |
-|---|---|---|---|---|
-| perfect | 6, 176 – 186 s | 6, 235 – 241 s, 0 hits | 6, 133 – 155 s | 6, 42 – 60 s |
-| fencing (90 %) | 3 | 2 (260 – 272 s), 4 dead | 6 | 6 |
-| roller | 6 | 1 won, 1 dead, 4 alive at 600 s with 1 – 7 % of his bar | 3 | 6 |
-| blocker | 0 | 0, dead at 83 s mean | 0, dead at 309 s | 0, dead at 78 s |
-| pace (never attacks) | alive | alive, his bar at 92 % | dead at 422 s | alive |
+| Bot | before the tuning | round one | round two (shipped) | Halcyon | Tian Lei |
+|---|---|---|---|---|---|
+| perfect | 6, 176 – 186 s | 6, 235 – 241 s, 0 hits | 6, 229 – 241 s, 0 hits | 6, 133 – 155 s | 6, 42 – 60 s |
+| fencing (90 %) | 3 | 2 (260 – 272 s), 4 dead | 2 (264 – 290 s), 4 dead | 6 | 6 |
+| roller | 6 | 1 won, 1 dead, 4 alive at 600 s | 6, 374 – 427 s | 3 | 6 |
+| blocker | 0 | 0, dead at 83 s mean | 0, dead at 89 s mean | 0, dead at 309 s | 0, dead at 78 s |
+| pace (never attacks) | alive | alive, his bar at 92 % | dead in all six, 203 – 488 s (mean 302) | dead at 422 s | alive |
 
-Set: `hp` 20000 → 26000, `wjWeight.guardCost` 0.4 → 0.5, `wjBarrier.cracks` 3 → 4; the Wrecking Knot strikes
-only from its impact to +0.15 s (a perfect roll covers it: the perfect bot took 46 from it on seed 4242 before).
-A filmed god-mode fight before the tuning: won in 187 s, phases at 64.5 / 131.8 s, 80 parries, 30 dodges, no
-error; after it, the perfect bot's fight and the domain filmed in the real renderer.
+Set: `hp` 20000 → 26000, `wjWeight.guardCost` 0.4 → 0.5 (round one) → 0.45 (round two), `wjBarrier.cracks` 3 → 4,
+`wjPatience { after 30, cue 1.2, guardCost 1 }`; the Wrecking Knot strikes only from its impact to +0.15 s (the
+perfect bot took 46 from it on seed 4242 before). The roller's win comes from the third-block rule, not from
+patience (at 0.5 it won none); `blockPush` 3.4 → 2.4 would give it 4 of 6 (measured, not shipped). The fencing
+bot's 0.12 s parries are all perfect since ADR-227. A filmed god-mode fight before the tuning: won in 187 s,
+phases at 64.5 / 131.8 s, 80 parries, 30 dodges, no error; after round one, the perfect bot's fight and the
+domain filmed in the real renderer.
 
 **Open.**
-- The roller (perfect dodges every red, holds the guard through the rest) mostly survives to 10 minutes; a pure
-  defender who never attacks survives him indefinitely (his bar at 92 %). The fencing bot's 2 of 6 depends on the
-  seeds.
-- Halcyon Plaza's metal rubble still lies ember-orange (`cool` is the Crossing's only). The bonfire burns inside
-  the void. The real renderer lays ~30 % more floor marks than headless. On the phone his two eyes merge into
-  one point. The hero's knockdown (1.3 s) is the engine's, over the 1.2 s cap his own blows keep.
+- The roller now wins in six to seven minutes (the owner called ten "hard enough"; a shorter `blockPush` is
+  the lever). The fencing bot's 2 of 6 depends on the seeds.
+- The real renderer lays ~30 % more floor marks than headless. On the phone his two eyes merge into one point.
+  The hero's knockdown (1.3 s) is the engine's, over the 1.2 s cap his own blows keep.
 - No reward yet. Not playtested by a human; not checked on the owner's iPhone.
-- For the owner: the second block opening the guard (the brief said the third)? Halcyon Plaza's rubble cold too?
-  The bonfire put out inside the void?
 
 ---
 ## 2026-11-26 — Shen Hui and Varr Nihil: the sword in the hand, held tell poses, quick blows (ADR-226; branch `claude/enemies-ash-lord-motion-0f152b`)

@@ -65,7 +65,7 @@ follow the zoom) and `?ablaze=off|a|c` (b: the wyrm's phase 3 fire). The impact 
 a piece where it struck; the hero's blade goes clean through what it does not fell, chipping it along
 the cut) are on: `?chip=0` turns them off (ADR-132); `?cutStop=1` gives back the blade that stops there
 (ADR-177; Lab: WORLD → Blade). Floor marks (every boss blow that meets the ground leaves a mark of its
-kind until the reset; ADR-177): `?marks=0` leaves today's cracks only. Grass the sword cuts (the hero's
+kind until the reset; ADR-177): `?marks=0` leaves today's cracks only; `?coolRubble=0|1` lays metal rubble orange or cold grey in any level (grey on the Crossing and Halcyon Plaza; ADR-243). Grass the sword cuts (the hero's
 blade mows what it passes low through, every floor mark tears the grass out in its shape; ADR-180):
 `?mow=0` leaves the grass as before. The grove's bamboo: `?bamboo=0|b` (a, the owner's pick: five kinds of cane mixed in clumps;
 0 = the grove before; ADR-151). The fire-and-forest pass (ADR-197; defaults first, none picked yet): `?incant=a|b`,

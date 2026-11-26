@@ -2705,8 +2705,18 @@ counter (Not Even Close). The first cut that lands through an open barrier surpr
 **Weight.** Every blow of his that lands throws the hero (2.5 - 12 m); a throw of 3 m or more goes through
 the breakable pieces behind him (each takes a `world.impact`, power 3.2; the slide keeps 0.6 of its speed;
 6 damage, never the last HP; at most six pieces). A BLOCK costs no health, but slides the hero 3.4 m (a
-beat's own `blockPush` wins) and costs half the guard meter: the second block in a row knocks the guard
-open. His strings follow the slide (a step-in of up to 4.6 m or a blink to his side late in the windup).
+beat's own `blockPush` wins) and costs 45 % of the guard meter: two blocks in a row leave 10, the THIRD knocks
+the guard open (the owner's "3 blocks"; it holds for blocks up to about 1 s apart: 1.3 s apart, the meter's regen
+puts back 27 between). His strings follow the slide (a step-in of up to 4.6 m or a blink to his side late in the
+windup).
+
+**Patience.** He waits for the hero to come to him (the owner: a defender who never attacks must not outlast
+him). If no cut of the hero's has reached him for 30 s (a cut that lands, one stopped on the barrier, the
+flurry), with the fight on and him himself (not in a transition, a break or the domain's hold), he STOPS
+WAITING: one cue, his eyes burning 1.2 s (through the band in phase 1 too) and the unveiling's sound; then,
+until a cut reaches him again, every blocked blow costs the whole guard meter (one block opens the guard).
+Every blow keeps its tell and its windup, a block still costs no health, the mercy rules hold. A hero who
+fights never sees it (`untouched/patience.js`, `TUNING.wjPatience { after 30, cue 1.2, guardCost 1 }`).
 
 **Spells cannot be blocked.** Azure Draw's collapse, Crimson Cast's burst, the Wrecking Knot and the Null are
 RED (roll, or leave the place: each is fixed before it fires); a piece he throws and the Yank's fist are BLUE.
@@ -2774,13 +2784,15 @@ at least; more likely when the hero is far or has been guarding.
   blockable, block push 4) and flattens what stands within 8 m.
 - **The Measureless (30 %)**: the domain, above.
 
-### The numbers measured (the bench, `veil.mjs . bench`, 2026-11-26)
-Six seeds, god mode off, 600 s cap (wins of 6): the perfect answerer 6, in 235 - 241 s, no hit taken; the
-fencing bot (answers 90 % of the cues) 2, in 260 - 272 s, 4 dead; the roller (perfect-dodges every red, guards
-the rest) 1 won, 1 dead, 4 alive at 600 s with 1 - 7 % of his bar left; the blocker dead at 83 s mean; the pace
-defender (never attacks) alive, his bar at 92 %. On the same bench Halcyon: perfect 133 - 155 s, fencing 6,
-roller 3, blocker dead at 309 s, pace dead at 422 s; Tian Lei: perfect 42 - 60 s, fencing 6, roller 6, blocker
-dead at 78 s, pace alive. PACE (the integration pass, the steady defender): 51.3 / 58.5 / 66.9 cues a minute by
+### The numbers measured (the bench, `veil.mjs . bench`, 2026-11-26, round 2)
+Six seeds, god mode off, 600 s cap (wins of 6): the perfect answerer 6, in 229 - 241 s, no hit taken; the
+fencing bot (answers 90 % of the cues; since ADR-227 its 0.12 s parries are all perfect) 2, in 264 - 290 s, 4
+dead; the roller (perfect-dodges every red, guards the rest) 6, in 374 - 427 s (the third-block rule made it
+easier: at 0.5 a block it won none); the blocker dead at 89 s mean; the pace defender (never attacks) dead in
+all six, 203 - 488 s (mean 302; without patience it lived in all six). Patience's settings tried: after 20 s
+dead in 102 - 383 s, 30 s (shipped) 201 - 525 s, 40 s 83 - 518 s; a two-block cost (0.7) alive. Round one's
+bench, Halcyon: perfect 133 - 155 s, fencing 6, roller 3, blocker dead at 309 s, pace dead at 422 s; Tian Lei:
+perfect 42 - 60 s, fencing 6, roller 6, blocker dead at 78 s, pace alive. PACE (the integration pass, the steady defender): 51.3 / 58.5 / 66.9 cues a minute by
 phase; the first Null at 73 - 89 s of the fight. DOWNTIME: the hero's knockdown 1.30 s (the engine's); the
 longest stretch out of his hands 1.43 s; standing up to the next cue, median 0.43 - 0.88 s.
 

@@ -6625,9 +6625,9 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
      lead's addition: `cracks` ordinary parries open it for 2.4 / 2.0 / 1.6 s; 0 turns it off). Two strikes on
      the shell in a row bring his counter.
   3. WEIGHT: every landed blow throws (2.5 - 12 m); a blocked one slides the hero (`blockPush`, 3.4 m by
-     default) and costs a share of the guard (`guardCost`); a throw of 3 m or more goes through the pieces behind
-     him (`wjCrash`: a `world.impact` each, a little damage, never the last HP). His spells are never blocked: red
-     ones are rolled, the thrown pieces and the Yank's fist are blue; a held guard is opened (`breaksGuard`), never
+     default) and costs a share of the guard (`guardCost`: the third block in a row opens it); a throw of 3 m or
+     more goes through the pieces behind him (`wjCrash`: a `world.impact` each, a little damage, never the last
+     HP). His spells are never blocked: red ones are rolled, the thrown pieces and the Yank's fist are blue; a held guard is opened (`breaksGuard`), never
      paid in health.
   4. THE DOMAIN (`domain.js`): the hand sign (a feint), then a red ring over the arena; the engine's own answer
      decides: a perfect dodge ESCAPES (inside unharmed, the barrier open twice phase 3's time), anything else is
@@ -6637,7 +6637,7 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
      past 1.2 s in a row becomes a silent feint (`TUNING.melee.mercy.lockCap`); `Player.hold` is capped at 1.2 s.
      Tells no lower than Tian Lei's (`flashLead` 0.26, `minFirstWindup` 0.40, `minHitGap` 0.34; the suite's DATA
      asserts it); the engine's fairness guard, cue ledger and pursuit stay on.
-- **Consequences:** a hero who only blocks loses; one who never attacks lives (ADR-243). Six agents built it with
+- **Consequences:** a hero who only blocks loses, and so does one who never attacks (his patience, ADR-243). Six agents built it with
   no conflict inside his folder; the merges met only in shared files (`player.js`, `destructibles.js`, `scars.js`).
   Looks behind `?wjLook`, `?wjHair`, `?wjCity`, `?wjVoid`, `?wjShell`, `?wjNull`, the owner's picks in `PICKED`
   (sheets in `docs/looks/veil/`). Events `dragon:barrier`, `dragon:domain`; his sounds ride `dragon:spell
@@ -6660,32 +6660,57 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   bore reads as a gap. Tests: veil `down` (a raised tower top comes down to the floor and lands there), `heldbreak`, `orbit` (a held
   piece chipped by a cut it can take).
 
-## ADR-243 — Bai Wuji tuned on a bench of mortal bots; floor marks thinned per level and hidden in the void (2026-11-26)
+## ADR-243 — Bai Wuji tuned on a bench of mortal bots, the third block opens the guard, his patience; floor marks thinned per level and hidden in the void; the bonfire out in the void (2026-11-26)
 
 - **Context:** "very hard", fairly: the god-mode fencing bot of the other suites says nothing about how hard a
   fight is. Before the pass a bot that rolled every red and blocked the rest beat him 6 of 6 and the perfect
   answerer won in 176 - 186 s. On the Crossing's black asphalt a whole fight of grit and rubble read as snow
-  (3577 of 3600 mark glyphs), the metal wrecks' rubble lay as orange embers, and the city's marks showed in the
-  void.
+  (3577 of 3600 mark glyphs), the metal wrecks' rubble lay as orange embers, the city's marks showed in the
+  void, and the bonfire burned inside it. After round one the owner answered five questions: "3 blocks" (the
+  third block in a row opens the guard, not the second); a defender who never attacks must NOT outlast him
+  (round one's pace bot lived in every seed); the roller lasting ten minutes was "hard enough"; Halcyon Plaza's
+  metal rubble grey "if it looks better grey then yes"; the bonfire goes out in the void: yes.
 - **Decision:**
   1. THE BENCH (`tests/integration/bench.mjs`; opt-in scenario `bench` in `veil.mjs`, `city.mjs`, `asc.mjs`):
      five mortal bots (god mode off), whole fights, any duelist: `perfect` (the ceiling), `fencing` (answers 90 %
      of his cues), `roller` (perfect-dodges reds, guards the rest), `blocker`, `pace` (never attacks). Env
-     `GCD_BSEEDS`, `GCD_BBOTS`, `GCD_BSECS`, `GCD_BSKILL`, `GCD_BMOVES`. Reported, not asserted.
-  2. TARGETS: the perfect bot wins in about four minutes untouched; the fencing bot wins some; the blocker dies;
-     the roller is held off. Set: `hp` 20000 -> 26000, `wjWeight.guardCost` 0.4 -> 0.5 (the second block in a row
-     knocks the guard open; a block still costs no health), `wjBarrier.cracks` 3 -> 4 (the fencing bot opened him
-     mostly by cracks). The Wrecking Knot strikes only from its impact to +0.15 s (it met the hero before its cue
-     or after a perfect roll's i-frames: 46 damage to the perfect bot on one seed).
-  3. FLOOR MARKS: `SCAR.thin[levelId] = { grit, rubble, ground, cool }` (breakTuning): a level keeps that share
+     `GCD_BSEEDS`, `GCD_BBOTS`, `GCD_BSECS`, `GCD_BSKILL`, `GCD_BMOVES`, `GCD_BFORM=n` (start and stay in phase
+     n), `GCD_BHIT=1` (each hit and the cues before it), `GCD_BTOUCH=1` (what reached him). Reported, not
+     asserted. Round two's fix: a bot stays busy until 0.25 s after each answered impact (the perfect bot had cut
+     0.07 s after a roll, which turned it into the roll attack and dropped its i-frames: the bot's error).
+  2. TARGETS AND NUMBERS: the perfect bot wins in about four minutes untouched; the fencing bot wins some; the
+     blocker and the pure defender die. `hp` 20000 -> 26000; `wjBarrier.cracks` 3 -> 4 (the fencing bot opened
+     him mostly by cracks); `wjWeight.guardCost` 0.4 -> 0.45 (two blocks in a row leave 10 of the meter, the third
+     opens it; it holds for blocks up to about 1 s apart, at 1.3 s the regen puts back 27 between); a block still
+     costs no health. The Wrecking Knot strikes only from its impact to +0.15 s (it met the hero before its cue or
+     after a perfect roll's i-frames: 46 damage to the perfect bot on one seed). `blockPush` 3.4 -> 2.4 would
+     give the roller 4 of 6: measured, not shipped.
+  3. PATIENCE (`untouched/patience.js`, `TUNING.wjPatience { after: 30, cue: 1.2, guardCost: 1 }`): if no cut has
+     reached him for 30 s (landed, stopped on the shell, or the flurry: `takeHit` calls `patience.touch()`), while
+     the fight is on and he is himself, he stops waiting: one cue (his eyes burn 1.2 s through `fx.eyes`, through
+     the band in phase 1 too, and the unveiling's sound `dragon:spell` 'wjUnveil'; no new event); until a cut
+     reaches him again every blocked blow costs the whole meter (`_weighted`): one block opens the guard. Every
+     blow still told, the 1.2 s lock cap and nothing on a downed hero hold. Why the pace bot lived: it never
+     damaged him (phase 1 forever); the guard opened ~100 times in 9 minutes, but the blow that emptied it was
+     itself blocked and his next came after the 0.55 s opening, mercy spared 1 - 11, and its early rolls
+     i-framed every red. Tried: no patience, alive 6 of 6; a one-block cost after 20 s, dead in 102 - 383 s; after
+     30 s (chosen) 201 - 525 s; after 40 s 83 - 518 s; a two-block cost (0.7) alive.
+  4. FLOOR MARKS: `SCAR.thin[levelId] = { grit, rubble, ground, cool }` (breakTuning): a level keeps that share
      of the grit, the rubble and the crack spokes (the veil 0.35 / 0.25 / 0.4); `cool`: a material whose rubble
-     ends in an ember's colour (metal) lies cold grey. `scars.layer` (the tag new marks carry: the set's scene)
-     and `scars.shade(x, z, r, hide, except)` (marks hidden or shown in place, no rebuild): the city's marks hide
-     as the front to the void passes and come back on the return.
-- **Consequences** (6 seeds, 600 s cap; wins of 6): perfect 6, 235 - 241 s, no hit taken; fencing 2 (260 - 272
-  s), 4 dead; roller 1 won, 1 dead, 4 alive at 600 s with 1 - 7 % of his bar left; blocker dead at 83 s mean;
-  pace alive, his bar at 92 %. Halcyon on the same bench: perfect 133 - 155 s, fencing 6, roller 3, blocker dead
-  at 309 s, pace dead at 422 s; Tian Lei: perfect 42 - 60 s, fencing 6, roller 6, blocker dead at 78 s, pace
-  alive. He is the hardest boss on the bench, and a pure defender still outlasts him. The fencing bot's 2 of 6
-  moves with the seeds. Halcyon Plaza keeps its orange rubble (`thin` is the veil's only); the real renderer lays
-  ~30 % more marks than headless.
+     ends in an ember's colour (metal) lies cold grey. Halcyon Plaza: `city { 1, 1, 1, cool: true }` (the lead
+     judged from a side-by-side sheet that grey looks better: the orange read as embers that never go out and
+     clashed with the plaza's blue). `?coolRubble=0|1` overrides `cool` on any level. `scars.layer` (the tag new
+     marks carry: the set's scene) and `scars.shade(x, z, r, hide, except)` (marks hidden or shown in place, no
+     rebuild): the city's marks hide as the front to the void passes and come back on the return.
+  5. THE BONFIRE: `atmosphere.bonfireLit` / `setBonfireLit(lit)`: the Crossing's scenes put it out as the front
+     into the void passes it and light it as the front back passes; a reset relights it. Its flame, embers,
+     light and sound (`audio/ambience.js`) follow the flag; the living world's creatures read it too.
+- **Consequences** (round two's bench: 6 seeds, 600 s cap; wins of 6): perfect 6, 229 - 241 s, no hit taken;
+  fencing 2 (264 - 290 s), 4 dead (since ADR-227 its 0.12 s parries are all perfect); roller 6, 374 - 427 s
+  (easier through the third-block rule, not through patience: at 0.5 it won none); blocker dead at 89 s mean;
+  pace dead in all six, 203 - 488 s (mean 302). Round one's bench, Halcyon: perfect 133 - 155 s, fencing 6,
+  roller 3, blocker dead at 309 s, pace dead at 422 s; Tian Lei: perfect 42 - 60 s, fencing 6, roller 6, blocker
+  dead at 78 s, pace alive. A hero who fights never meets his patience. The fencing bot's 2 of 6 moves with the
+  seeds; the real renderer lays ~30 % more marks than headless. Tests: veil `patience`, `bonfire`; the suite's
+  ordinary parry is pressed 0.25 s ahead (registering 0.20 - 0.22 s before the impact: ADR-227's 0.20 s perfect
+  window).

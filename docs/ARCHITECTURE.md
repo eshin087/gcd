@@ -3755,8 +3755,9 @@ set's scene; null by default) and `shade(x, z, r, hide, except)` (the marks with
 or shown again, their alpha in place, no rebuild; → how many changed: the Veiled Crossing's void hides the
 city's marks as its front passes; ADR-243). `SCAR.thin[levelId] = { grit, rubble, ground, cool }` (ADR-243):
 a level keeps that share of the grit, the rubble and the crack spokes (the strokes that shape a mark stay);
-`cool`: rubble whose material ends in an ember's colour (metal) lies cold grey; absent, all (the veil only:
-0.35 / 0.25 / 0.4, cool). At the cap the oldest `SCAR.evict` 0.15 of the
+`cool`: rubble whose material ends in an ember's colour (metal) lies cold grey; absent, all (the veil: 0.35 /
+0.25 / 0.4, cool; Halcyon Plaza `city`: 1 / 1 / 1, cool). `?coolRubble=0|1` (`lookOf`) turns `cool` off or on in
+any level, over the table. At the cap the oldest `SCAR.evict` 0.15 of the
 glyphs FADE out over `SCAR.fade` 1.4 s (their alpha written down in the batch; never a pop in view) and
 then go in one rebuild; new marks still come meanwhile, and only a flood past that headroom drops the
 fading share at once. The batch's buffers are written only when a mark comes or fades: a floor full of
@@ -4858,6 +4859,10 @@ wait, entryZ 17, road, clear, half, cell, outer, outerCell }` (levels/veil.js co
   `fallenTower` sections (5.3 m wide: a 5 m line bores one), `bridgeDeck` (`y0` 3.4), ruins, piers, the span, the
   gantry, the bus, the tank, heaps, signals, lamps (`lamp`, steel). The wrecks have no collider (`broken.r: 0`):
   a thrown hero goes over them. No piece that stops a blade within 5.5 m of the middle.
+- **The bonfire** (ADR-243): `world.atmosphere.bonfireLit` (true by default on every level) and
+  `setBonfireLit(lit)`: the Crossing's scenes put it out as the front into the void passes it and light it as
+  the front back passes it; a reset relights it. The flame, the embers and the light (atmosphere.js), its sound
+  (`audio/ambience.js`) and the creatures (`life/creatures.js`) read the flag.
 - **Budget**: 299 breakables, 67 rigid pieces, 268 bones, 129k triangles; the void's letters ~1300. Its blocks in
   every `world/life/*Tuning.js`, `airTuning.js`, `lifeSfxTuning.js`, `arrivalTuning.js`; `SCAR.thin.veil`.
 
@@ -6144,8 +6149,12 @@ REACT, OPEN, dress dressUntouched, letters }`. Every new beat or move field is p
   `d.pull` (Draw's knots: `add({ x, z, strength, r, life, falloff })` → a knot record the caller may move or end,
   `drift(x, z, out)`, `live`, `knots`; the drift is added to `player.kb`; nothing drags a hero who is down, rolling,
   held or in a move of his own), `d.domain` (the P2 → P3 transition: `state` 'off' | 'sign' | 'closing' | 'held' |
-  'inside', `inVoid`, `holding`, `escape()`, `caught()`, `toVoid()`, `breakVoid()`), `d.fx` (`WjFx`; its head
-  lists every method, per frame or once).
+  'inside', `inVoid`, `holding`, `escape()`, `caught()`, `toVoid()`, `breakVoid()`), `d.patience` (patience.js,
+  ADR-243: `idle` s since a cut of the hero's reached him, `impatient`, `cueK`, `stats { turns, touches }`;
+  `takeHit` calls `touch()`; after `TUNING.wjPatience.after` 30 s it turns once (his eyes through `fx.eyes` for
+  `cue` s, the sound `dragon:spell` 'wjUnveil'; no event of its own) and `_weighted` makes every blocked blow cost
+  at least `guardCost` of the meter until a cut reaches him; the clock stops in a transition, a break, the
+  domain's hold, or with the hero down), `d.fx` (`WjFx`; its head lists every method, per frame or once).
 - **THE ROUTING.** `d.parts` holds one handler per move file that exports `create(d)` (`moves.js` `HANDLERS`). A
   BEAT is routed to the handler whose file's `FIELDS` list one of the beat's own fields (melee `wjWeight`,
   `wjSpark`, `wjGhost`, `wjQuake`; spells `wjDraw`, `wjYank`, `wjCast`, `wjNull`, `wjMoment`; terrain `wjLift`,
@@ -6160,7 +6169,8 @@ REACT, OPEN, dress dressUntouched, letters }`. Every new beat or move field is p
   he vanishes and is there late in the windup; a blow out of a blink holds from any side, `around`), `wjCrash`
   (`false | power`: by default every throw of `wjCrash.minKb` 3 m or more crashes), `wjMoment` ('unveil': the
   transition's scripted beat; `afterPose` is the only caller of `fx.unveil`), `wjDomain` ('sign' | 'close').
-  The engine fields `blockPush` / `guardCost` default from `TUNING.wjWeight` (3.4 m, half the guard).
+  The engine fields `blockPush` / `guardCost` default from `TUNING.wjWeight` (3.4 m, 45 % of the guard: the third block in
+  a row opens it).
 - **The hero's side** (player.js, generic, absent on every other boss): a hit's `blockPush` (m, clamped 0 - 14:
   `_block` slides him), `wjCrash` + `wjCrashDamage` (a throw through the world: one `world.impact` per piece, at
   most six, each keeps 0.6 of the slide's speed, it stops under 3 m/s or after 1.5 s; never the last HP; `fx.crash`),
