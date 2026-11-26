@@ -43,6 +43,9 @@ def clip_entry(c, B):
 def write_set(spec, log=print):
     entries = []
     for c in spec['clips']:
+        if c.get('draft'):
+            log('  (draft, left out of the module: %s)' % c['name'])
+            continue
         try:
             B = C.load(spec['set'], c['name'])
         except FileNotFoundError:

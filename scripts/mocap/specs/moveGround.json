@@ -482,6 +482,25 @@
    ],
    "from": "idle",
    "to": "idle"
+  },
+  {
+   "name": "hitStrong",
+   "title": "Getting hit by a strong attack",
+   "src": "move 29:39-30:11",
+   "kind": "oneshot",
+   "fps": 30,
+   "search": 0.5,
+   "ground": "body",
+   "takes": [
+    {
+     "t0": "29:41.55",
+     "t1": "29:45.75",
+     "view": "right"
+    }
+   ],
+   "from": "idle",
+   "to": "idle",
+   "draft": true
   }
  ]
 }
