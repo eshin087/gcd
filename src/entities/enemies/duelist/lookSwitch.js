@@ -89,6 +89,13 @@ export const PICKED = Object.freeze({
   halHero: 'a', // Halcyon: the hero's shading (likewise)
   // the title
   menu: 'c', // the sword's path: the worlds as fires along one line (the owner's pick, 2026-11-25, of three; 0 the title before; ADR-196)
+  // Bai Wuji, the Untouched (the owner's picks, 2026-11-25, from the body sheets)
+  wjLook: 'c', // the bone-white coat
+  wjHair: 'b', // the short spiky burst, the choppy mop once it falls
+  wjCity: 'a', // the crossing: cold moonlit ash-grey
+  wjShell: 'a', // the barrier: all but invisible until a blade nears it
+  wjNull: 'a', // the Violet Null: a hard-edged slab
+  wjVoid: 'b', // the void: the stars and one great pale ring on the floor
 });
 
 /** Switches the owner has not picked yet (their rendered options wait for the owner): in the Lab's LOOKS

@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and eighteen pieces of work since 0.4.0:
+One hundred and nineteen pieces of work since 0.4.0:
 - **Blue and red blows you can read, and quick blows** (2026-11-26, ADR-223). *Changed:* Lu Wusheng, Wen Yao and the
   Cinder Wyrm stop and hold their pose for a moment before every blue or red blow, standing tall for blue and sinking
   low for red (the wyrm rears its head for blue, crouches with its tail up for red); the blow lands that moment later,
@@ -12,6 +12,34 @@ One hundred and eighteen pieces of work since 0.4.0:
   blow each, straight from the stance with no wind-up: Lu Wusheng's Before the Word, Wen Yao's Fox Snap and Fox Knee,
   the wyrm's Snap swipe; block it or parry it on the glint. `?sheathMotion=0`, `?foxMotion=0`, `?wyrmMotion=0` and
   `?sheathQuick=0`, `?foxQuick=0`, `?wyrmQuick=0` give the fights before.
+- **A ninth level: the Veiled Crossing and Bai Wuji, the Untouched** (2026-11-26, ADR-241 – ADR-243). *Added:* a ninth
+  level, `?level=veil` (the title screen lists it). **The Veiled Crossing**: a city crossing at night after the fight
+  has already levelled it, under a black veil: cracked asphalt with a great diagonal crossing's white bars, craters,
+  an old wide trench, tower stumps with their tops still standing, a fallen tower lying across the north, a broken
+  overpass, wrecked cars and a bus, bent lamps; everything in it breaks. **Bai Wuji, the Untouched**: a tall, relaxed
+  man in a bone-white high-collared coat, white hair standing up over a band across his eyes, hands in his pockets.
+  Your blade stops short of him on a barrier you cannot see until it nears him: a perfect parry or a perfect dodge
+  of any of his blows opens it for a few seconds (four ordinary parries close together crack it open for less; a posture
+  break opens it too). Every blow of his that lands throws you, through whatever stands behind you; a block costs
+  no health but slides you back and costs a big share of your guard (the third in a row knocks it open); his spells
+  cannot be blocked at all. He waits for you to come to him: if your blade has not reached him for 30 s, his eyes
+  burn and every block costs your whole guard until it does.
+  Azure Draw (a blue knot that drags you, then collapses), the Yank (pulled onto his fist), Crimson
+  Cast (a red point flicked to your place, a burst), the Wrecking Knot, the Violet Null (a line across the whole
+  crossing that erases what it crosses and leaves a wide trench), wreckage lifted and thrown, a tower's top brought
+  down on you, the road itself burst up in a line. At 66 % THE BLINDFOLD COMES OFF: his hair falls and his eyes
+  burn blue. At 30 % THE MEASURELESS: the hand sign, and a dark sphere closes on the arena: perfectly dodge through
+  its wall and you are inside unharmed with his barrier open, or you are caught, held a moment and struck once
+  (never lethally). The last phase is fought inside the void: the city gone, its pieces floating past, his blows
+  out of nowhere, the Last Null below 12 %. He never strikes a hero who is down and never holds you longer than
+  1.2 s. The bonfire goes out while the void stands and burns again when the city comes back. No reward yet. His look is the owner's picks: the bone-white coat, the short spiky hair, an ash moon over
+  the crossing, the void's ring, the barrier all but invisible until a blade nears, the Null a hard-edged slab
+  (`?wjLook=a|b`, `?wjHair=a`, `?wjCity=b|c`, `?wjVoid=a|c`, `?wjShell=b|c`, `?wjNull=b` the others). *Changed:* a
+  thrown or dropped raised piece can land on the floor (`ground`), a held piece can be chipped by the hero's blade
+  and breaks when cut under 1 hp; floor marks are thinner on the crossing and its metal rubble lies grey, not
+  ember-orange; the crossing's marks hide inside the void and come back with the city. Halcyon Plaza's metal rubble
+  lies cold grey too (the owner's call; `?coolRubble=0|1` turns the grey rubble off or on in any level). *Fixed:* Halcyon's thrown
+  pieces land on the road (the Falling Sky's tower top burst about 6.5 m up in the air), the owner's call.
 - **Xin Yi rebuilt: a man in a coat, readable windups, faster hands** (2026-11-26, ADR-221). *Changed:* Xin Yi is
   drawn like the hero on a man's build: square shoulders, a belted waist, fuller hair, and one long open coat that
   hangs instead of flaring, with a straight hem (the owner's pick; `?oneBody=0` as before, `a` closed, `c` a duster).

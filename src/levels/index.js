@@ -7,6 +7,7 @@ import { WINDLESS } from './grove.js';
 import { FOXFIRE } from './foxfire.js';
 import { SCRIPTHALL } from './scripthall.js';
 import { HALCYON } from './halcyon.js';
+import { VEIL } from './veil.js';
 import { createTrainingRoom, ROOM_WORLD } from '../world/trainingRoom.js';
 
 // Levels (docs/specs/ash-disciple.md §1, ARCHITECTURE.md → Levels). One level is built per page
@@ -20,7 +21,7 @@ import { createTrainingRoom, ROOM_WORLD } from '../world/trainingRoom.js';
 //   text               the flow's lines: arrive[], stir, phase2, phase3, victory, fallen, restReset,
 //                      phase4, again, rise (GameFlow falls back to Cinderwood's)
 
-export const LEVELS = Object.freeze([CINDERWOOD, ASHFALL, STARLESS, SKYBREAK, FOXFIRE, WINDLESS, SCRIPTHALL, HALCYON]);
+export const LEVELS = Object.freeze([CINDERWOOD, ASHFALL, STARLESS, SKYBREAK, FOXFIRE, WINDLESS, SCRIPTHALL, HALCYON, VEIL]);
 export const DEFAULT_LEVEL = CINDERWOOD;
 
 /** The level with this id or alias (case-insensitive), or null. */

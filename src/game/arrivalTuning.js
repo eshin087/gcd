@@ -47,6 +47,10 @@ export const ARRIVAL_TUNING = Object.freeze({
   fox: level({ look: { x: 0.4, z: 20.3 }, end: { x: 0.5, z: 23.3 }, zoom: 26, front: { strength: 0.8, speed: 7, width: 14, delay: 0.5 } }),
   // the Windless Grove: no wind, ever. The shot is closer and longer: the grove holds its breath
   grove: level({ look: { x: 0.4, z: 12.8 }, end: { x: 0.5, z: 15.3 }, zoom: 17, hold: 3.4, front: null }),
+  // the Veiled Crossing: the shot opens on the fallen tower lying across the north and the scramble's
+  // bars, then drifts back down the avenue to the man standing in the middle of it, hands in his
+  // pockets; a cold breath of air down the street (east to west)
+  veil: level({ look: { x: 0, z: 1 }, end: { x: 0.3, z: 7 }, zoom: 26, hold: 3.4, front: { strength: 0.6, speed: 6, width: 14, delay: 0.5, dirX: -1, dirZ: 0 } }),
 });
 
 export const arrivalTuning = (id) => ARRIVAL_TUNING[id] ?? ARRIVAL_TUNING.DEFAULT;

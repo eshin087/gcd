@@ -1707,4 +1707,286 @@ export const SFX = {
       for (const [f, dt] of seq) ping(v, t + dt, 'triangle', f, 0.09, k === 'start' ? 0.35 : 0.07, 0.003);
     },
   },
+  // Bai Wuji (the Veiled Crossing; the fx agent's recipes go here)
+  // His sounds: low and dry, serious (the owner's taste); every jitter from the audio stream (dsp.js rnd /
+  // spikes), never Math.random. The barrier's and the domain's play from their events (audio.js); the
+  // others from `dragon:spell { name: 'wj...', x, z, dur }` the effects emit (untouched/fx.js _say).
+  // `o.dur`: a held sound's length (s), or a burst's power / a slide's metres.
+  /** The blade stopped on the shell: a dull, muffled knock with a short glassy edge. */
+  wjStop: {
+    prio: 5, rev: 0.22, gap: 0.06, falloff: 0.7,
+    play(v, t, o) {
+      const k = o.heavy ? 1.3 : 1;
+      thump(v, t, 150, 62, 0.1, 0.5 * k, 0.16);
+      burst(v, t, 'brown', 'lowpass', 520, 0.9, 0.45 * k, 0.12, 0.002);
+      const f = burst(v, t + 0.004, 'white', 'bandpass', 2300, 3, 0.07 * k, 0.05, 0.001);
+      glide(f.frequency, t, 2600, 1500, 0.05);
+      ping(v, t + 0.003, 'sine', rnd(1180, 1260), 0.025 * k, 0.09);
+    },
+  },
+  /** A crack in the shell (o.n of 3): a dry crack, a little higher and louder each time. */
+  wjCrack: {
+    prio: 5, rev: 0.25, gap: 0.1, falloff: 0.7,
+    play(v, t, o) {
+      const n = clamp(num(o.n, 1), 1, 4), up = 1 + 0.12 * (n - 1);
+      burst(v, t, 'white', 'highpass', 2400 * up, 0.8, 0.28, 0.035, 0.0005);
+      const c = v.noise('pink', t, t + 0.3);
+      const bp = v.filter('bandpass', 900 * up, 1.4);
+      const g = v.gain(0);
+      spikes(g.gain, t, 0.22, 6, 0.34, 0.002, 0.01, 0.6);
+      c.connect(bp).connect(g).connect(v.out);
+      ping(v, t + 0.01, 'triangle', 420 * up, 0.05, 0.2);
+      thump(v, t, 110, 55, 0.12, 0.3, 0.18);
+    },
+  },
+  /** The shell breaks open: a low glassy shatter, falling. */
+  wjOpen: {
+    prio: 6, rev: 0.4, gap: 0.3, falloff: 0.6,
+    play(v, t) {
+      thump(v, t, 95, 34, 0.35, 0.7, 0.5);
+      burst(v, t, 'white', 'bandpass', 2800, 1.1, 0.3, 0.32, 0.001);
+      const c = v.noise('white', t, t + 0.75);
+      const bp = v.filter('bandpass', 3600, 2.2);
+      const g = v.gain(0);
+      spikes(g.gain, t + 0.02, 0.65, 18, 0.22, 0.002, 0.014, 0.8);
+      c.connect(bp).connect(g).connect(v.out);
+      const s = v.osc('sine', 900, t, t + 0.5);
+      glide(s.frequency, t, 900, 180, 0.45);
+      const sg = v.gain(0);
+      env(sg.gain, t, [[0, 0], [0.02, 0.05], [0.45, 0]]);
+      s.connect(sg).connect(v.out);
+    },
+  },
+  /** It knits back: a short rising draw of air that closes on a soft knock. */
+  wjClose: {
+    prio: 4, rev: 0.3, gap: 0.3, falloff: 0.7,
+    play(v, t) {
+      const f = swish(v, t, 'pink', 'bandpass', 500, 1.6, [[0, 0], [0.36, 0.16], [0.42, 0]]);
+      glide(f.frequency, t, 500, 2000, 0.4);
+      thump(v, t + 0.4, 120, 70, 0.08, 0.32, 0.14);
+      ping(v, t + 0.4, 'sine', 760, 0.03, 0.12);
+    },
+  },
+  /** The blink: the air displaced at once, quiet and dry. */
+  wjBlink: {
+    prio: 4, rev: 0.12, gap: 0.08, falloff: 0.8,
+    play(v, t) {
+      const f = swish(v, t, 'white', 'bandpass', 2400, 2.2, [[0, 0], [0.025, 0.14], [0.13, 0]]);
+      glide(f.frequency, t, 3000, 1300, 0.12);
+      thump(v, t, 70, 45, 0.06, 0.18, 0.1);
+    },
+  },
+  /** Azure Draw held (o.dur s): a low hum and the air drawn inward, rising as it lives. */
+  wjDraw: {
+    prio: 4, rev: 0.3, gap: 0.2, falloff: 0.6,
+    play(v, t, o) {
+      const D = clamp(num(o.dur, 2), 0.3, 4);
+      const lp = v.filter('lowpass', 220, 0.9);
+      const g = v.gain(0);
+      env(g.gain, t, [[0, 0], [0.3, 0.16], [Math.max(0.35, D - 0.1), 0.2], [D + 0.1, 0]]);
+      lp.connect(g).connect(v.out);
+      for (const [f, det] of [[55, -7], [58, 7]]) v.osc('sawtooth', f, t, t + D + 0.15, det).connect(lp);
+      glide(lp.frequency, t, 220, 520, D);
+      const n = swish(v, t, 'pink', 'bandpass', 300, 0.9, [[0, 0], [0.25, 0.1], [Math.max(0.3, D - 0.05), 0.14], [D + 0.1, 0]]);
+      glide(n.frequency, t, 300, 1100, D);
+    },
+  },
+  /** The knot folds in, then a deep crushing thud. */
+  wjCollapse: {
+    prio: 6, rev: 0.35, gap: 0.15, falloff: 0.55,
+    play(v, t) {
+      const f = swish(v, t, 'brown', 'lowpass', 300, 0.8, [[0, 0], [0.11, 0.5], [0.13, 0]]);
+      glide(f.frequency, t, 300, 1400, 0.12);
+      thump(v, t + 0.12, 110, 28, 0.5, 1.0, 0.7);
+      burst(v, t + 0.12, 'brown', 'lowpass', 280, 0.8, 0.8, 0.45, 0.003);
+      burst(v, t + 0.12, 'white', 'bandpass', 1400, 0.7, 0.12, 0.12, 0.002);
+    },
+  },
+  /** Crimson Cast's burst (o.dur its power ~1 - 2): a hard dry crack and a low boom. */
+  wjCast: {
+    prio: 6, rev: 0.35, gap: 0.1, falloff: 0.55,
+    play(v, t, o) {
+      const k = 0.75 + 0.25 * clamp(num(o.dur, 1), 0, 2);
+      burst(v, t, 'white', 'highpass', 1800, 0.7, 0.42 * k, 0.06, 0.0005);
+      thump(v, t, 92, 26, 0.45, 1.0 * k, 0.6);
+      burst(v, t + 0.01, 'brown', 'lowpass', 260, 0.8, 0.85 * k, 0.5, 0.003);
+      const c = v.noise('pink', t + 0.05, t + 0.7);
+      const bp = v.filter('bandpass', 1600, 0.8);
+      const g = v.gain(0);
+      spikes(g.gain, t + 0.06, 0.55, 10, 0.2 * k, 0.002, 0.02, 0.7);
+      c.connect(bp).connect(g).connect(v.out);
+    },
+  },
+  /** The Null's charge (o.dur s): a long, loud windup, a dark drone rising through its filter. */
+  wjNullCharge: {
+    prio: 6, rev: 0.45, gap: 0.5, falloff: 0.4,
+    play(v, t, o) {
+      const D = clamp(num(o.dur, 1.8), 0.6, 3.5);
+      const lp = v.filter('lowpass', 180, 1.2);
+      const g = v.gain(0);
+      env(g.gain, t, [[0, 0], [0.4, 0.12], [D, 0.24], [D + 0.12, 0]]);
+      lp.connect(g).connect(v.out);
+      for (const [f, det] of [[41.2, -9], [43.7, 9], [61.7, 0]]) v.osc('sawtooth', f, t, t + D + 0.2, det).connect(lp);
+      glide(lp.frequency, t, 180, 2200, D);
+      const n = swish(v, t, 'white', 'bandpass', 600, 1.4, [[0, 0], [D * 0.6, 0.05], [D, 0.16], [D + 0.1, 0]]);
+      glide(n.frequency, t, 600, 3400, D);
+    },
+  },
+  /** The blue and the red meet: a short bright snap over a low knock. */
+  wjNullMerge: {
+    prio: 6, rev: 0.4, gap: 0.3, falloff: 0.5,
+    play(v, t) {
+      burst(v, t, 'white', 'highpass', 3200, 0.8, 0.3, 0.05, 0.0005);
+      ping(v, t, 'sine', 1760, 0.08, 0.35);
+      ping(v, t, 'sine', 1176, 0.05, 0.45);
+      thump(v, t, 130, 55, 0.2, 0.55, 0.3);
+    },
+  },
+  /** The Violet Null fired (o.dur s): a tearing roar of air, a rumble under it; no fire in it. */
+  wjNullBeam: {
+    prio: 6, rev: 0.45, gap: 0.4, falloff: 0.35,
+    play(v, t, o) {
+      const D = clamp(num(o.dur, 1.2), 0.4, 3);
+      thump(v, t, 70, 24, 0.6, 1.0, 0.9);
+      const f = swish(v, t, 'pink', 'bandpass', 900, 0.6, [[0, 0], [0.04, 0.42], [D * 0.7, 0.3], [D + 0.25, 0]]);
+      glide(f.frequency, t, 1400, 600, D);
+      const lp = v.filter('lowpass', 320, 0.9);
+      const g = v.gain(0);
+      env(g.gain, t, [[0, 0], [0.05, 0.22], [D, 0.16], [D + 0.3, 0]]);
+      lp.connect(g).connect(v.out);
+      for (const [fr, det] of [[41.2, -6], [41.2, 6]]) v.osc('sawtooth', fr, t, t + D + 0.35, det).connect(lp);
+    },
+  },
+  /** The air closes on the emptied line: a dull whoomp. */
+  wjNullEnd: {
+    prio: 5, rev: 0.4, gap: 0.3, falloff: 0.5,
+    play(v, t) {
+      const f = swish(v, t, 'brown', 'lowpass', 220, 0.8, [[0, 0], [0.18, 0.45], [0.4, 0]]);
+      glide(f.frequency, t, 220, 700, 0.2);
+      thump(v, t + 0.16, 80, 38, 0.25, 0.55, 0.45);
+    },
+  },
+  /** The hand sign: one dark low tone, a held breath under it. */
+  wjSign: {
+    prio: 5, rev: 0.6, gap: 0.8, falloff: 0.4,
+    play(v, t) {
+      ping(v, t, 'sine', 98, 0.14, 1.8, 0.01);
+      ping(v, t, 'sine', 146.8, 0.06, 1.4, 0.01);
+      ping(v, t + 0.002, 'triangle', 392, 0.018, 0.9, 0.004);
+      swish(v, t, 'brown', 'lowpass', 160, 0.7, [[0, 0], [0.6, 0.1], [1.4, 0]]);
+    },
+  },
+  /** The realm closing on the arena (o.dur s): a deep swell, the air pressed, a pressure drop at the end. */
+  wjDomainClose: {
+    prio: 6, rev: 0.55, gap: 1, falloff: 0.3,
+    play(v, t, o) {
+      const D = clamp(num(o.dur, 2), 0.8, 4);
+      for (const [f, a] of [[41.2, 0.12], [61.7, 0.06]]) {
+        const s = v.osc('sine', f, t, t + D + 0.3);
+        const g = v.gain(0);
+        env(g.gain, t, [[0, 0], [D * 0.8, a], [D + 0.25, 0]]);
+        s.connect(g).connect(v.out);
+      }
+      const n = swish(v, t, 'brown', 'lowpass', 150, 0.8, [[0, 0], [D * 0.85, 0.3], [D + 0.2, 0]]);
+      glide(n.frequency, t, 150, 900, D);
+      thump(v, t + D, 60, 22, 0.5, 0.9, 0.8);
+    },
+  },
+  /** The scene goes to the void (the close's impact): the pressure falls away. */
+  wjVoid: {
+    prio: 6, rev: 0.7, gap: 1, falloff: 0.3,
+    play(v, t) {
+      const s = v.osc('sine', 110, t, t + 1.3);
+      glide(s.frequency, t, 110, 30, 1.1);
+      const g = v.gain(0);
+      env(g.gain, t, [[0, 0], [0.02, 0.24], [1.2, 0]]);
+      s.connect(g).connect(v.out);
+      burst(v, t, 'brown', 'lowpass', 200, 0.7, 0.5, 0.6, 0.004);
+    },
+  },
+  /** The hero caught and held: a crackle of static over a low knock. */
+  wjCaught: {
+    prio: 6, rev: 0.3, gap: 0.8, falloff: 0.6,
+    play(v, t) {
+      thump(v, t, 100, 40, 0.2, 0.6, 0.3);
+      const c = v.noise('white', t, t + 1.0);
+      const bp = v.filter('bandpass', 3000, 0.9);
+      const g = v.gain(0);
+      spikes(g.gain, t, 0.95, 40, 0.16, 0.001, 0.006, 0.4);
+      c.connect(bp).connect(g).connect(v.out);
+      swish(v, t, 'white', 'highpass', 5000, 0.7, [[0, 0], [0.05, 0.03], [0.9, 0.02], [1.0, 0]]);
+    },
+  },
+  /** The void breaks (his death): a great glassy shatter falling away, a low thud under it. */
+  wjBreak: {
+    prio: 6, rev: 0.7, gap: 1, falloff: 0.3,
+    play(v, t) {
+      thump(v, t, 85, 26, 0.5, 0.9, 0.9);
+      burst(v, t, 'white', 'highpass', 3800, 0.8, 0.3, 0.7, 0.001);
+      const c = v.noise('white', t, t + 1.4);
+      const bp = v.filter('bandpass', 2600, 1.6);
+      const g = v.gain(0);
+      spikes(g.gain, t + 0.05, 1.3, 42, 0.2, 0.002, 0.016, 0.8);
+      c.connect(bp).connect(g).connect(v.out);
+      const s = v.osc('sine', 1200, t, t + 1.0);
+      glide(s.frequency, t, 1200, 160, 0.9);
+      const sg = v.gain(0);
+      env(sg.gain, t, [[0, 0], [0.02, 0.04], [0.95, 0]]);
+      s.connect(sg).connect(v.out);
+    },
+  },
+  /** (round 2) The band comes off: a glassy rising ring and a breath of cold air, a low knock under it. */
+  wjUnveil: {
+    prio: 6, rev: 0.45, gap: 0.5, falloff: 0.4,
+    play(v, t) {
+      ping(v, t, 'sine', 1320, 0.06, 0.9);
+      ping(v, t + 0.04, 'sine', 1980, 0.04, 0.7);
+      const f = swish(v, t, 'white', 'bandpass', 2600, 1.6, [[0, 0], [0.05, 0.16], [0.6, 0]]);
+      glide(f.frequency, t, 1800, 4200, 0.5);
+      thump(v, t, 90, 40, 0.3, 0.45, 0.5);
+    },
+  },
+  /** (round 2) Dark Spark held (o.dur s): a dry crackle that thickens, a low hum. */
+  wjSparkCharge: {
+    prio: 5, rev: 0.25, gap: 0.3, falloff: 0.6,
+    play(v, t, o) {
+      const D = clamp(num(o.dur, 0.8), 0.2, 2);
+      const c = v.noise('white', t, t + D + 0.05);
+      const bp = v.filter('bandpass', 2400, 1.2);
+      const g = v.gain(0);
+      spikes(g.gain, t, D, Math.round(18 * D), 0.16, 0.002, 0.015, 0.6);
+      c.connect(bp).connect(g).connect(v.out);
+      const lp = v.filter('lowpass', 180, 0.8);
+      const h = v.gain(0);
+      env(h.gain, t, [[0, 0], [D * 0.8, 0.12], [D + 0.05, 0]]);
+      lp.connect(h).connect(v.out);
+      v.osc('sawtooth', 48, t, t + D + 0.1, 0).connect(lp);
+    },
+  },
+  /** (round 2) Dark Spark lands (o.dur 1 landed, 0 a miss): a black crack of thunder, a deep blow. */
+  wjSpark: {
+    prio: 7, rev: 0.4, gap: 0.15, falloff: 0.45,
+    play(v, t, o) {
+      const k = num(o.dur, 1) > 0.5 ? 1 : 0.75;
+      burst(v, t, 'white', 'highpass', 2600, 0.7, 0.55 * k, 0.05, 0.0005);
+      thump(v, t, 120, 30, 0.45, 1.1 * k, 0.5);
+      burst(v, t + 0.01, 'brown', 'lowpass', 300, 0.8, 0.8 * k, 0.45, 0.003);
+      const c = v.noise('pink', t + 0.03, t + 0.5);
+      const bp = v.filter('bandpass', 1900, 0.9);
+      const g = v.gain(0);
+      spikes(g.gain, t + 0.03, 0.4, 9, 0.22 * k, 0.002, 0.02, 0.7);
+      c.connect(bp).connect(g).connect(v.out);
+    },
+  },
+  /** The hero slid back by a blow (o.dur m): a heavy knock, his heels scraping over the asphalt. */
+  wjShove: {
+    prio: 5, rev: 0.18, gap: 0.12, falloff: 0.8,
+    play(v, t, o) {
+      const D = clamp(num(o.dur, 3.5) / 8, 0.2, 0.9);
+      thump(v, t, 85, 40, 0.15, 0.45, 0.22);
+      const f = swish(v, t, 'pink', 'bandpass', 1300, 2.5, [[0, 0], [0.02, 0.18], [D * 0.8, 0.1], [D, 0]]);
+      glide(f.frequency, t, 1500, 700, D);
+      burst(v, t, 'brown', 'bandpass', 380, 0.8, 0.3, D * 0.8, 0.003);
+    },
+  },
 };

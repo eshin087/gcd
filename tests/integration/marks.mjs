@@ -46,7 +46,7 @@ export function marksLine(sc) {
 
 // marks a whole bot fight leaves, per suite (scenario WIN): enough to read "a fight happened here",
 // not so many that the floor is noise (measured 2026-11-23; the cap holds the glyphs either way)
-const RANGE = { duel: [5, 60], lord: [10, 90], asc: [5, 60], fox: [3, 400], city: [12, 150], integ: [50, 400], sheath: [4, 40], woke: [5, 60] };
+const RANGE = { duel: [5, 60], lord: [10, 90], asc: [5, 60], fox: [3, 400], city: [12, 150], integ: [50, 400], sheath: [4, 40], woke: [5, 60], veil: [10, 400] };
 
 /** Print the fight's marks and check them: a count in its suite's range, the glyphs under the cap. */
 export function marksCheck(sc, tag, out, assert) {

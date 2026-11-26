@@ -109,6 +109,15 @@ export const WIND_TUNE = Object.freeze({
   }),
   /** the Windless Grove: none. The grove holds its breath (wind.still) */
   grove: level({ speed: 0, wander: 0, fronts: null, still: true, wisps: null }),
+  /** the Veiled Crossing: a low cold moan along the streets under the veil, slow breaths, few fronts
+   *  (east to west down the street); the wisps grey with ash */
+  veil: level({
+    dir: 180, wander: 7, speed: 1.1,
+    breath: { floor: 0.4, periods: [15, 37] },
+    fronts: { every: [16, 26], strength: [0.7, 0.95], speed: [6, 7.5], tail: [5, 7.5], spread: 8 },
+    wisps: { color: [0.46, 0.47, 0.52], rate: 0.35, gust: 2.4, alpha: 0.34 },
+    loud: 3.5,
+  }),
 });
 
 /** a level without a block: a quiet breeze, no fronts */

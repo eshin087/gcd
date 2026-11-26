@@ -3490,13 +3490,17 @@ stones is a breakable 'vent' and the vent flares as it breaks.
   `floorNear(x, z, r, out, { kind, whole, max })` → how many intact floor slabs lie within r of (x, z), nearest
   first, written into `out` (cleared first; kind 'flagstone' | 'plate'; whole: not cracked): what a floor move
   can tear up there.
-- Lifting and throwing (a boss's move): `take(piece)` → true: it is HELD (no collider);
+- Lifting and throwing (a boss's move): `take(piece, { chip })` → true: it is HELD (no collider; `chip`
+  (ADR-242): the hero's blade bites it where it passes while held, and a cut that would leave it under 1 hp
+  breaks it: let go where it hangs, it bursts where it lands; without it a held piece is out of every blow's reach);
   `carry(piece, x, y, z, tilt, yaw)` every frame while held (the wyrm flies its thrown pieces this way);
   `throwTo(piece, tx, tz, { time, power, radius, by, onLand(piece, x, z, radius) })` → it flies there
   end over end, smashing what stands in its way while it flies under `BREAK.flight.y` 7 m (power
   `BREAK.flight.power` x its weight), and bursts: a blast on the other pieces, a scar, its wreckage,
   and `onLand` for the thrower's own blow at the hero (the move's tell is the thrower's: the world
-  deals nothing to the hero for a thrown piece); `drop(piece)`. `topple(piece, dx, dz, by)`: fell it
+  deals nothing to the hero for a thrown piece); `drop(piece, { ground })`. `throwTo` / `drop` `{ ground: true }`
+  (ADR-242): a raised piece (`y0` > 0) comes down and lands on the FLOOR (its pivot `y0` down), not at its own base
+  height (Bai Wuji's throws and drops; Halcyon's `_throw`). `topple(piece, dx, dz, by)`: fell it
   that way.
 - `setQuality(k)`, `reset()`, `update(dt)` (world.js calls it).
 - A felled piece falls for `BREAK.topple.time` x sqrt(h / 5) s and lands on a strip h long: other pieces
@@ -3750,7 +3754,14 @@ mark of a kind, below; → glyphs laid), `impactMark(x, z, r, power, o)` (world.
 keep = 1, color = null)` (a rim of thrown-up earth), `object(owner, x, y, z, power, M)`, `rubble(x, z, r,
 M, n, glyphs)`, `drop(owner)`, `setQuality(k)` (at most `SCAR.max` 3600 × k glyphs, never under 60; it
 was 520 before ADR-177), `reset()`, `count` (glyphs), `on` (the kinds on: `marksOn()`), `made` (kind
-marks laid by kind since the reset), `kinds` (their sum). At the cap the oldest `SCAR.evict` 0.15 of the
+marks laid by kind since the reset), `kinds` (their sum), `layer` (a tag the marks made from now on carry: a
+set's scene; null by default) and `shade(x, z, r, hide, except)` (the marks within r not tagged `except` hidden
+or shown again, their alpha in place, no rebuild; → how many changed: the Veiled Crossing's void hides the
+city's marks as its front passes; ADR-243). `SCAR.thin[levelId] = { grit, rubble, ground, cool }` (ADR-243):
+a level keeps that share of the grit, the rubble and the crack spokes (the strokes that shape a mark stay);
+`cool`: rubble whose material ends in an ember's colour (metal) lies cold grey; absent, all (the veil: 0.35 /
+0.25 / 0.4, cool; Halcyon Plaza `city`: 1 / 1 / 1, cool). `?coolRubble=0|1` (`lookOf`) turns `cool` off or on in
+any level, over the table. At the cap the oldest `SCAR.evict` 0.15 of the
 glyphs FADE out over `SCAR.fade` 1.4 s (their alpha written down in the batch; never a pop in view) and
 then go in one rebuild; new marks still come meanwhile, and only a flood past that headroom drops the
 fading share at once. The batch's buffers are written only when a mark comes or fades: a floor full of
@@ -3768,7 +3779,7 @@ fight's reset (the owner's pick): after a fight the arena shows what was fought 
 | `thrust` | a point driven in | a short deep nick (`len` 0.4 – 0.8 m) ending in a `v` / `x`, a `spray` of 4 – 8 grit ahead of it out to `reach` 0.5 – 1.5 m |
 | `dash` | a body or a blade dragged along the floor | a shallow furrow `len` 0.8 – 6 m (default 1.5): two scuffed edges of `- ~` (`w` 0.2 m out, every `step` 0.36 m, deeper toward its end; alpha 0.62) and a heap of `. , : o` where it stopped; `arc`: an ankle sweep's scuffed arc |
 | `blast` | ki, a spell, an explosion | a scorched round (`dots` 7 – 18 of `. : ; ,`, denser at the heart; radius `r` 0.6 – 2.4, `rk` 0.8) and a star of `spokes` 5 – 8 thin cracks; `hot`: the dots in `char` ink and the scorch map charred |
-| `beam` | a beam | a long trench along its path (`len` 0.5 – 30 m, default 1.4; edges `w` 0.32 m out every `step` 0.32 m) with a glassy middle (`= ~` in `glass` at `glassAlpha` 0.45, every other cell); charred unless `hot` is false |
+| `beam` | a beam | a long trench along its path (`len` 0.5 – 30 m, default 1.4; edges `w` 0.32 m out every `step` 0.32 m) with a glassy middle (`= ~` in `glass` at `glassAlpha` 0.45, every other cell); charred unless `hot` is false. A caller may give the trench's half-width, `w` (m, 0.32 – `wMax` 4; Bai Wuji's Violet Null: 2.5, the Last Null 3.5): its edges that far out every `wideStep` 0.45 m with rubble on `rubble` 0.25 of them, the glass in rows `rows` 1 m apart across the floor between, the grass torn `2 w + GRASS.mark.beam.pad` wide; without `w` it is drawn exactly as before |
 | `step` | a heavy footfall | a faint print: a pad and three toes fanned ahead (alpha 0.5); only at `min` 0.5 power or more, and none within `gap` 2.6 m of the last print |
 - **How it is drawn.** Each line is a dark stroke `-` turned to its way on screen plus a dim **lit lip**:
   the same stroke `lipOff` 0.11 m to the north (the far edge, where the light catches it) in
@@ -4830,6 +4841,35 @@ breath is let go the next flock is heard).
   rectangle with his head and shoulders left dark. `setPhase(1 | 2 | 3)`: neon and his face; static then
   crimson (`void`, which his fx re-palettes); dead. A piece's neon goes out when the piece breaks.
 
+### The Veiled Crossing: two scenes, throwables, the light (2026-11-26, ADR-241)
+`world/veiledCrossing.js` (its head is the set's contract): `CROSSING { r 20, bound 28, dragonBound 17, bonfire,
+wait, entryZ 17, road, clear, half, cell, outer, outerCell }` (levels/veil.js copies it into `CONFIG.world`),
+`createVeiledCrossing(U, colliders)` → createForest's shape + `breakables`, `sky`, `ambience`, `grass`, `scarInk`,
+`floorCarry`, and:
+- **`set.scenes`** on the Hall's contract ("Scenes: a set that morphs"): ids `['crossing', 'void']`, `to(id, { x,
+  z, speed })` runs a front out at 18 m/s (1.8 s at most): each piece it crosses lets go as dim digits, the other
+  scene's pieces print in, the light eases with it; `world:scene` as a morph starts. A piece with `scene:
+  'crossing'` stands only in the city, `scene: 'void'` only in the void (the floating pieces, `y0` > 0, `def.float`:
+  they bob), none in both (the floor). Back to the crossing the city returns AS IT WAS LEFT: whole or chipped
+  pieces whole, a stump as its stump (quietly), felled / thrown / taken / gone stay gone; the floor's cracks stay.
+  Its marks are the scene's: `scars.shade` hides the city's as the front to the void passes and shows them on the
+  way back; `scars.layer` tags what is fought in the void.
+- **`set.setPhase(1 | 2 | 3)`**: cold and dim; his eyes' blue in the air; the void's light (near-black, fog 5 - 14
+  m round the focus; inside the void its light wins). `set.air`: the void's stars (`{ count, budget, on }`), a
+  `LetterBatch` drawn by the ambience while the void stands.
+- **Throwables, found by kind** (`THROWABLE`; `destructibles.nearest(x, z, { kind })`, never by place): `car`
+  (lift 1, 8), `slab` (lift 1, 6 loose road slabs round the middle), `towerTop` (lift 2, raised `y0` 6, held by a
+  `towerBase`, 4); in the void `floatSlab` x5, `floatCar` x2, `floatCorner` x1. Breakable, not thrown: six
+  `fallenTower` sections (5.3 m wide: a 5 m line bores one), `bridgeDeck` (`y0` 3.4), ruins, piers, the span, the
+  gantry, the bus, the tank, heaps, signals, lamps (`lamp`, steel). The wrecks have no collider (`broken.r: 0`):
+  a thrown hero goes over them. No piece that stops a blade within 5.5 m of the middle.
+- **The bonfire** (ADR-243): `world.atmosphere.bonfireLit` (true by default on every level) and
+  `setBonfireLit(lit)`: the Crossing's scenes put it out as the front into the void passes it and light it as
+  the front back passes it; a reset relights it. The flame, the embers and the light (atmosphere.js), its sound
+  (`audio/ambience.js`) and the creatures (`life/creatures.js`) read the flag.
+- **Budget**: 299 breakables, 67 rigid pieces, 268 bones, 129k triangles; the void's letters ~1300. Its blocks in
+  every `world/life/*Tuning.js`, `airTuning.js`, `lifeSfxTuning.js`, `arrivalTuning.js`; `SCAR.thin.veil`.
+
 ## The dragon print (2026-11-25, ADR-198): the ground, floors, grass, props and trees printed in the wyrm's digits
 
 The default in every level (`?dragon=0`: the game before it). STYLE.md "The dragon print" has the look; this is
@@ -4912,7 +4952,7 @@ today's; `a` / `c` / `d` the first round's other looks), `dgGrass`, `dpFloor`, `
 
 ## Levels and the boss slot (2026-11-12, ADR-058, ADR-060; the Starless level: ADR-068 – ADR-070; the Skybreak Ring: 2026-11-21, ADR-129; the Foxfire Terrace: ADR-147)
 `src/levels/index.js`: `LEVELS` (Cinderwood `cinderwood`, Ashfall `ash`, the Obsidian Throne
-`starless`, the Skybreak Ring `ring`, the Foxfire Terrace `fox`, the Windless Grove `grove`, the Hall of Falling Script `code`, Halcyon Plaza `city`), `DEFAULT_LEVEL`,
+`starless`, the Skybreak Ring `ring`, the Foxfire Terrace `fox`, the Windless Grove `grove`, the Hall of Falling Script `code`, Halcyon Plaza `city`, the Veiled Crossing `veil`), `DEFAULT_LEVEL`,
 `withStage(level, search)` (`?stage=lab`: the same level on the training
 room, `world/trainingRoom.js` `createTrainingRoom` / `ROOM_WORLD`; main.js wraps the level with it
 before `applyLevel`; ADR-099), `getLevel(id)` (id or alias, case-insensitive), `levelFromSearch(search)` (`?level=`; unknown → the
@@ -6093,6 +6133,63 @@ cover on his deflected line (`destructibles.coverAt`), the react 'crashed' held 
 30, `dragon:crash`. The carry: `grab()` (See the World's hit), the hero held in his own knockdown and
 carried by `position.y`; the slam ends it, the get-up timed so control is gone at most `grab.cap` s.
 
+### Bai Wuji, the Untouched — `src/entities/enemies/untouched/untouched.js` exports `class Untouched` (ADR-241)
+A `Duelist` with `UNTOUCHED_KIT` and his own `UntouchedBrain` (`_reach` unbounded for a blow out of a blink, and a
+routed beat's own reach; `startReact('surprised')` once a fight); COMBAT.md → "Bai Wuji" has the fight. The kit:
+`{ id: 'untouched', TUNING, MOVES, MOVE_NAMES, CLIP, realise, transitions { 2: 'unveil', 3: 'measureless' },
+counterMove () => COUNTER, streakMove () => STREAK, loadout WJ_LOADOUT, poses WJ_POSES, blade WJ_FIST, scale,
+REACT, OPEN, dress dressUntouched, letters }`. Every new beat or move field is prefixed `wj`.
+- **Files.** `untouched.js` (the class, the brain; THE ROUTING CONTRACT is the comment at its head), `tuning.js`
+  (+ `tuningMelee.js`, `tuningSpells.js`, `tuningTerrain.js`, merged as `TUNING.melee` / `spells` / `terrain`),
+  `links.js`, `barrier.js`, `pull.js`, `domain.js`; `moves.js` (the ROUTER and the two transitions) over
+  `moves/melee.js`, `moves/spells.js`, `moves/terrain.js`; the handlers `spells.js` (`WjSpells`) and
+  `terrain.js` (`WjTerrain`; melee's is `WjMelee` in `moves/melee.js`); `poses.js` (the pose router over
+  `posesMelee.js` `ml*`, `posesSpells.js` `sp*`, `posesTerrain.js` `tr*`), `gear.js`, `look.js`, `bodyArt.js`;
+  `fx.js` (`WjFx extends AscFx`), `fxSpells.js`, `fxDomain.js`, `fxDebug.js`.
+- **The rules are objects on the actor**, stepped from `brainFrame`:
+  `d.barrier` (THE UNREACHED: `takeHit` asks `barrier.stops(o)` first, every result of `d.hitPlayer` goes to
+  `barrier.answer(r, o)`, a posture break and `onCounter` open it; its hurt spheres grow by `wjBarrier.shell`
+  while up; surface `up`, `cracks`, `openT`, `openDur`, `why`, `stats`, `open(why, dur)`, `close()`, `crack()`),
+  `d.pull` (Draw's knots: `add({ x, z, strength, r, life, falloff })` → a knot record the caller may move or end,
+  `drift(x, z, out)`, `live`, `knots`; the drift is added to `player.kb`; nothing drags a hero who is down, rolling,
+  held or in a move of his own), `d.domain` (the P2 → P3 transition: `state` 'off' | 'sign' | 'closing' | 'held' |
+  'inside', `inVoid`, `holding`, `escape()`, `caught()`, `toVoid()`, `breakVoid()`), `d.patience` (patience.js,
+  ADR-243: `idle` s since a cut of the hero's reached him, `impatient`, `cueK`, `stats { turns, touches }`;
+  `takeHit` calls `touch()`; after `TUNING.wjPatience.after` 30 s it turns once (his eyes through `fx.eyes` for
+  `cue` s, the sound `dragon:spell` 'wjUnveil'; no event of its own) and `_weighted` makes every blocked blow cost
+  at least `guardCost` of the meter until a cut reaches him; the clock stops in a transition, a break, the
+  domain's hold, or with the hero down), `d.fx` (`WjFx`; its head lists every method, per frame or once).
+- **THE ROUTING.** `d.parts` holds one handler per move file that exports `create(d)` (`moves.js` `HANDLERS`). A
+  BEAT is routed to the handler whose file's `FIELDS` list one of the beat's own fields (melee `wjWeight`,
+  `wjSpark`, `wjGhost`, `wjQuake`; spells `wjDraw`, `wjYank`, `wjCast`, `wjNull`, `wjMoment`; terrain `wjLift`,
+  `wjDown`, `wjOrbit`, `wjRoad`, `wjFloat`); a MOVE to every handler one of its beats goes to. Hooks, all optional
+  and called through `?.`: per beat `beatMotion(b, u, s, dt)`, `onImpact(b, s, a)` (replaces core's own world
+  blow for it), `onRelease`, `onCast`, `onSustain(b, s, a, k)`, `hitPlayer(o) → o` (before the blow),
+  `onHit(o, r)` (after), `onParried(info, b) → true` (handled), `reach(b)` → metres, unbounded or undefined; per move
+  `weigh(name, def, w, dist) → w`, `onActStart(A) → false` (refused); every handler `frame(dt)`,
+  `afterPose(dt, a)`, `stop()` (a reaction, a break, his death), `reset()`. A new move goes in its file, never in
+  `moves.js`.
+- **Core's beat fields** (untouched.js): `wjBlink` (`{ behind: m } | { at: rad, r } | { side: ±1, r }` [, `u`]:
+  he vanishes and is there late in the windup; a blow out of a blink holds from any side, `around`), `wjCrash`
+  (`false | power`: by default every throw of `wjCrash.minKb` 3 m or more crashes), `wjMoment` ('unveil': the
+  transition's scripted beat; `afterPose` is the only caller of `fx.unveil`), `wjDomain` ('sign' | 'close').
+  The engine fields `blockPush` / `guardCost` default from `TUNING.wjWeight` (3.4 m, 45 % of the guard: the third block in
+  a row opens it).
+- **The hero's side** (player.js, generic, absent on every other boss): a hit's `blockPush` (m, clamped 0 - 14:
+  `_block` slides him), `wjCrash` + `wjCrashDamage` (a throw through the world: one `world.impact` per piece, at
+  most six, each keeps 0.6 of the slide's speed, it stops under 3 m/s or after 1.5 s; never the last HP; `fx.crash`),
+  `Player.hold(sec)` (a stagger nothing cancels, at most 1.2 s, never on a hero who is down), `onGuarded({ push })`
+  (the barrier's stop: `deflect`, push 0.9).
+- **The actor's look fields**: `dressPhase` (1..3, set at each transition's impact), `eyesK` (0..1),
+  `eyePoint(out)`, `handPoint(side, out)` (as drawn, the camera's lean included).
+- **Debug** (the Lab, the film rig): `debug.fx(name, opts)` → `fxDebug.run`, `setPhase(n)`,
+  `barrier('open' | 'up' | 'crack')`, `domain('escape' | 'caught' | 'break')`, `pull(x, z, o)`,
+  `blink('behind' | 'side')`, `tidy()`, and the engine's.
+- **Events**: `dragon:barrier`, `dragon:domain` (the catalogue); his sounds ride `dragon:spell { name: 'wj…', x,
+  z, dur }` emitted by the effects (18 recipes in `audio/sfx.js`). Tests: `tests/integration/veil.mjs`
+  (`node tests/integration/veil.mjs . <scenario>`; `pace` runs in its own process in `npm test`), the opt-in
+  `bench`.
+
 ## Records, grades and the boss rush (2026-11-23, ADR-179)
 Saved records shaped for an online leaderboard later: what is stored now is what a server will take,
 so the shapes and rules here are its contract. Modules (all `src/game/`): `rank.js` + `rankTuning.js`
@@ -6344,6 +6441,12 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   Lei's beam does. The set, Halcyon Plaza (ADR-159), emits `world:blast {x, z, r, by}` (a car goes up: its fuse
   ran out, or a thrown car landed; by = who broke it) and cues each fuse as a falling piece is cued
   (`combat:tell` / `combat:flash`, source world, attack carBomb, hazard: true).
+- Bai Wuji, the Veiled Crossing's boss, added these names: `dragon:barrier {state, why, cracks, dur}` (his
+  barrier, untouched/barrier.js: state stop = the hero's blade stopped on it, crack = an ordinary parry cracked
+  it, open = it opened (why parry / dodge / cracks / break / counter / domain / debug; dur its seconds), close
+  = it stands again) and `dragon:domain {state, x, z}` (the phase-3 transition, untouched/domain.js: state sign
+  = the hand sign, escape = the hero dodged through the closing wall, caught = he is held, void = the scene is
+  the void, break = his death broke it). His set's scenes emit `world:scene` as the Hall's do.
 Flow → hud/audio:
 - `state {from, to}`, `bonfire:rest`, `game:retry`, `game:victory`, `area {name}`,
   `game:record {kind, record, newBestTime, newBestGrade}` (a run record was stored: an eligible won fight, or a finished boss rush, ADR-179; record = the run record of "Records" below; HUD: the title's bests; the seam a future uploader subscribes to),

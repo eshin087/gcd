@@ -76,6 +76,11 @@ export const TREMOR_TUNING = Object.freeze({
   }),
   // the grove: the canes shiver and a few leaves drop straight down
   // (no gust of the tremor's own: the leaves the canes drop fall straight, and the clearing is earth)
+  veil: level({
+    tree: { ...DEFAULT.tree, leaves: 0 },
+    stone: { ...DEFAULT.stone, color: [0.46, 0.46, 0.47] },
+    floor: { ...DEFAULT.floor, color: [0.4, 0.4, 0.41] },
+  }),
   grove: level({
     gust: { ...DEFAULT.gust, min: 99 },
     stone: { ...DEFAULT.stone, color: [0.4, 0.42, 0.38] },
