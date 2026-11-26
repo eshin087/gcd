@@ -78,7 +78,7 @@ function mix(A, B, w) {
 const T_STAND = {
   T: 1, v: 0, beta: 1, ph: { HL: 0, FL: 0.25, HR: 0.5, FR: 0.75 },
   cy: 1.165, bob: [[0, 1, 0]], pitch: [[0, 1, 0]], pitch0: 0, roll: [[0, 1, 0]], surge: [[0, 1, 0]], spine: 0,
-  neck: 42 * deg, neckA: [[0, 1, 0]], neck2: -8 * deg, neck3: -14 * deg, head: -60 * deg, headA: [[0, 1, 0]],
+  neck: 38 * deg, neckA: [[0, 1, 0]], neck2: -8 * deg, neck3: -14 * deg, head: -66 * deg, headA: [[0, 1, 0]],
   tail: [-62 * deg, -14 * deg, -8 * deg, -4 * deg], tailA: [[0, 1, 0]], tailYaw: [[0, 1, 0]],
   ears: 8 * deg, jaw: 0,
   lift: { F: 0.1, H: 0.09 }, knee: 1.0, past: { F: 1.0, H: 0.8 }, pastern: 35 * deg, load: 6 * deg,
@@ -91,18 +91,18 @@ const GAITS = {
   walk: {
     ...T_STAND, T: 1.1, v: 1.31, beta: 0.62, ph: { HL: 0, FL: 0.26, HR: 0.5, FR: 0.76 },
     cy: 1.16, bob: [[0.012, 2, 0.2]], pitch: [[0.012, 2, 0.05]], roll: [[0.018, 1, 0.3]], surge: [[0.01, 2, 0.1]],
-    neck: 36 * deg, neckA: [[3.5 * deg, 2, 0.18]], head: -56 * deg, headA: [[-2 * deg, 2, 0.18]],
+    neck: 30 * deg, neckA: [[3.5 * deg, 2, 0.18]], head: -66 * deg, headA: [[-2 * deg, 2, 0.18]],
     tail: [-58 * deg, -16 * deg, -8 * deg, -4 * deg], tailA: [[2 * deg, 2, 0]], tailYaw: [[4 * deg, 1, 0.3]],
-    lift: { F: 0.13, H: 0.1 }, knee: 1.15, past: { F: 1.2, H: 0.9 }, load: 8 * deg,
-    hc: [10 * deg, -22 * deg, -48 * deg, 16 * deg], zF: 0.58, zH: -0.54,
+    lift: { F: 0.12, H: 0.08 }, knee: 1.1, past: { F: 0.7, H: 0.5 }, load: 8 * deg,
+    hc: [10 * deg, -22 * deg, -30 * deg, 16 * deg], zF: 0.58, zH: -0.54,
   },
   // the run is a CANTER on the right lead: HL, then HR with FL together, then FR, then a gathered
   // moment in the air; the body rocks (forehand up as the hinds land, down onto the leading fore)
   run: {
     ...T_STAND, T: 0.6, v: 5.8, beta: 0.3, ph: { HL: 0, HR: 0.2, FL: 0.26, FR: 0.44 },
-    cy: 1.11, bob: [[0.045, 1, 0.9]], pitch: [[0.1, 1, 0.14]], pitch0: 0.01, roll: [[0.01, 1, 0.2]], surge: [[0.05, 1, 0.2]], spine: 0.03,
-    neck: 30 * deg, neckA: [[7 * deg, 1, 0.2]], head: -50 * deg, headA: [[-4 * deg, 1, 0.25]],
-    tail: [-30 * deg, -10 * deg, -6 * deg, -4 * deg], tailA: [[8 * deg, 1, 0.6]], tailYaw: [[3 * deg, 1, 0.2]],
+    cy: 1.125, bob: [[0.045, 1, 0.9]], pitch: [[0.14, 1, 0.14]], pitch0: 0.03, roll: [[0.01, 1, 0.2]], surge: [[0.05, 1, 0.2]], spine: 0.03,
+    neck: 40 * deg, neckA: [[8 * deg, 1, 0.2]], head: -60 * deg, headA: [[-4 * deg, 1, 0.25]],
+    tail: [-40 * deg, -10 * deg, -6 * deg, -4 * deg], tailA: [[8 * deg, 1, 0.6]], tailYaw: [[3 * deg, 1, 0.2]],
     lift: { F: 0.3, H: 0.24 }, knee: 1.9, past: { F: 1.6, H: 1.3 }, load: 12 * deg,
     hc: [22 * deg, -42 * deg, -80 * deg, 30 * deg], zF: 0.6, zH: -0.42, bias: { F: 0.04, H: 0.06 },
   },
@@ -112,7 +112,7 @@ const GAITS = {
     ...T_STAND, T: 0.4667, v: 10.5, beta: 0.27, ph: { HL: 0, HR: 0.11, FL: 0.36, FR: 0.47 },
     cy: 1.1, bob: [[0.05, 1, 0.85]], pitch: [[0.085, 1, 0.12]], pitch0: -0.01, roll: [[0.008, 1, 0.2]], surge: [[0.06, 1, 0.2]], spine: 0.06,
     neck: 20 * deg, neckA: [[9 * deg, 1, 0.15]], neck2: -4 * deg, neck3: -8 * deg, head: -38 * deg, headA: [[-5 * deg, 1, 0.2]],
-    tail: [-12 * deg, -6 * deg, -4 * deg, -2 * deg], tailA: [[6 * deg, 1, 0.6]], tailYaw: [[2 * deg, 1, 0.2]],
+    tail: [-25 * deg, -6 * deg, -4 * deg, -2 * deg], tailA: [[6 * deg, 1, 0.6]], tailYaw: [[2 * deg, 1, 0.2]],
     lift: { F: 0.42, H: 0.34 }, knee: 2.2, past: { F: 1.9, H: 1.5 }, load: 14 * deg,
     hc: [28 * deg, -50 * deg, -95 * deg, 40 * deg], zF: 0.66, zH: -0.3, bias: { F: 0.06, H: 0.1 }, lane: { F: 0.14, H: 0.16 },
   },
@@ -669,7 +669,7 @@ function jumpSpec(name, title, J, more = {}) {
 }
 const jStand = {
   ...JUMP, dur: 1.3,
-  pitch: [[0, 0], [0.12, 0.08], [0.27, 0.62], [0.36, 0.55], [0.5, 0.15], [0.62, -0.05], [0.77, -0.24], [0.87, -0.08], [1.05, 0.03], [1.3, 0]],
+  pitch: [[0, 0], [0.12, 0.08], [0.27, 0.62], [0.36, 0.56], [0.5, 0.32], [0.62, 0.06], [0.77, -0.22], [0.87, -0.08], [1.05, 0.03], [1.3, 0]],
   neck: [[0, 0], [0.15, -6 * deg], [0.3, 14 * deg], [0.55, 4 * deg], [0.77, -14 * deg], [1.0, 4 * deg], [1.3, 0]],
   headK: [[0, 0], [0.3, 12 * deg], [0.6, 0], [0.77, -6 * deg], [1.3, 0]],
   tail: [[0, 0], [0.27, 10 * deg], [0.5, 30 * deg], [0.8, 35 * deg], [1.1, 5 * deg], [1.3, 0]],
@@ -762,7 +762,8 @@ function writeSet(file, set, title, specs) {
 // Authored from the owner's reference footage (the measured numbers: gen.mjs REF_NUMBERS).
 export default ${JSON.stringify({ set, title, clips }, null, 0).replace(/\},\{"name"/g, '},\n{"name"')};
 `;
-  fs.writeFileSync(path.join(ROOT, 'src/entities/hero2/horse/clips', file), body);
+  // (a run for one clip only checks it: the set files are written by a full run)
+  if (!only) fs.writeFileSync(path.join(ROOT, 'src/entities/hero2/horse/clips', file), body);
   return lines;
 }
 

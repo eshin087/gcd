@@ -29,10 +29,10 @@ const LIT = { key: [-0.5, 0.9, 1.0], envSat: 0.3 };
 export const HORSE_ART = {
   hide: { ...LIT, ink: [0.11, 0.09, 0.08], light: [1.0, 0.8, 1.0, 0.025], strokes: 'axis', strokeEdge: 0.35, vary: 0.5 },
   // the mane and tail: strands, so strokes along the hair everywhere
-  hair: { ...LIT, ink: [0.06, 0.055, 0.055], light: [0.9, 0.7, 0.8, 0.02], strokes: 'axis', strokeEdge: 0, vary: 0.4 },
+  hair: { ...LIT, ink: [0.1, 0.09, 0.085], light: [1.0, 0.8, 0.9, 0.04], strokes: 'axis', strokeEdge: 0, vary: 0.4 },
   hoof: { ...LIT, ink: [0.22, 0.21, 0.2], light: [1.0, 0.8, 1.0, 0.03], strokes: 'axis', strokeEdge: 0.3 },
   leather: { ...LIT, ink: [0.2, 0.1, 0.065], light: [1.0, 0.8, 0.9, 0.03], strokes: 'axis', strokeEdge: 0.35 },
-  cloth: { ...LIT, ink: [0.24, 0.07, 0.055], light: [1.0, 0.75, 0.7, 0.03], strokes: 'axis', strokeEdge: 0.4 },
+  cloth: { ...LIT, ink: [0.14, 0.055, 0.045], light: [1.0, 0.75, 0.7, 0.03], strokes: 'axis', strokeEdge: 0.4 },
   steel: { ...LIT, ink: [0.36, 0.36, 0.37], light: [1.0, 1.0, 1.4, 0.03], strokes: 'axis', strokeEdge: 0.3 },
   eye: { ...LIT, ink: [0.03, 0.03, 0.03], light: [0.6, 0.4, 0.4, 0.0], strokes: 'none' },
 };
@@ -97,7 +97,7 @@ export function buildHorseBody(game, { castShadow = true } = {}) {
   add(J('withers'), ellipsoidGeometry(0.13, 0.17, 0.32, { widthSegs: 10, heightSegs: 6 }), 'hide', 0, 0.15, -0.04); // the withers' ridge
   add(J('withers'), ellipsoidGeometry(0.22, 0.24, 0.16, { widthSegs: 10, heightSegs: 8 }), 'hide', 0, -0.08, 0.36); // the breast
   // ---- the neck (deep and narrow, thick at its root) and the head
-  add(J('neck1'), limbGeometry({ length: 0.36, r0: 0.25, r1: 0.18, radial: 12, rings: 3, capSegs: 2, sx: 0.62 }), 'hide', 0, -0.02, -0.12);
+  add(J('neck1'), limbGeometry({ length: 0.36, r0: 0.29, r1: 0.19, radial: 12, rings: 3, capSegs: 2, sx: 0.62 }), 'hide', 0, -0.02, -0.12);
   add(J('neck2'), limbGeometry({ length: 0.34, r0: 0.18, r1: 0.15, radial: 12, rings: 3, capSegs: 2, sx: 0.6 }), 'hide', 0, 0, -0.03);
   add(J('neck3'), limbGeometry({ length: 0.34, r0: 0.15, r1: 0.12, radial: 12, rings: 3, capSegs: 2, sx: 0.65 }), 'hide', 0, 0, -0.03);
   add(J('head'), ellipsoidGeometry(0.1, 0.12, 0.15, { widthSegs: 12, heightSegs: 8 }), 'hide', 0, 0.0, 0.08); // the skull
@@ -119,7 +119,7 @@ export function buildHorseBody(game, { castShadow = true } = {}) {
     const k = s === 'L' ? 1 : -1;
     // fore: the shoulder and arm (flat, muscled), the forearm, knee, cannon, fetlock, pastern, hoof
     add(J('shoulderF' + s), down({ length: D.humerus, r0: 0.15, r1: 0.11, radial: 10, rings: 4, capSegs: 2, sx: 0.62, bulge: 0.04 }), 'hide', 0, 0, 0.06);
-    add(J('elbowF' + s), down({ length: D.forearm, r0: 0.09, r1: 0.05, radial: 9, rings: 3, capSegs: 2, sx: 0.8 }), 'hide');
+    add(J('elbowF' + s), down({ length: D.forearm, r0: 0.11, r1: 0.055, radial: 9, rings: 3, capSegs: 2, sx: 0.8 }), 'hide');
     add(J('kneeF' + s), ellipsoidGeometry(0.052, 0.06, 0.058, { widthSegs: 8, heightSegs: 6 }), 'hide');
     add(J('kneeF' + s), down({ length: D.cannonF, r0: 0.045, r1: 0.04, radial: 8, rings: 2, capSegs: 1, sx: 0.75 }), 'hide');
     add(J('fetlockF' + s), ellipsoidGeometry(0.05, 0.052, 0.058, { widthSegs: 8, heightSegs: 6 }), 'hide');
@@ -192,7 +192,7 @@ export function buildHorseBody(game, { castShadow = true } = {}) {
   for (const [jn, off, n, len, w, lean] of MANE) {
     const segs = [];
     for (let i = 0; i < n; i++) {
-      const m = new THREE.Mesh(ribbon(len, w * (1 - i * 0.25)), mats.hair);
+      const m = new THREE.Mesh(ribbon(len, w * 1.7 * (1 - i * 0.25)), mats.hair);
       object3d.add(m);
       segs.push(m);
     }
@@ -210,7 +210,8 @@ export function buildHorseBody(game, { castShadow = true } = {}) {
   }
   for (const C of chains) {
     C.p = new Float32Array((C.n + 1) * 3); // world points (0 = the root)
-    C.o = new Float32Array((C.n + 1) * 3); // last step's
+    C.d = new Float32Array(C.n * 3); // each segment's direction (world, unit)
+    C.v = new Float32Array(C.n * 3); // ... and how fast it turns
     C.ok = false;
   }
 
@@ -242,73 +243,95 @@ export function buildHorseBody(game, { castShadow = true } = {}) {
     if (scaleLen) m.scale.set(1, 1, L / len0);
   }
 
+  // The hair: each segment's DIRECTION is a damped spring toward where it would hang now: down under its
+  // weight, along its root's line near the root (the tail's dock carries it), pushed by the air (the wind
+  // minus the horse's own speed) and swung against the body's acceleration. The tip segments are softer
+  // than the root's, so a toss runs out along the hair. Stable at any step (no position integration).
+  const vel = { x: 0, y: 0, z: 0, ax: 0, ay: 0, az: 0, px: 0, py: 0, pz: 0, ok: false };
   function stepChains(world, dt) {
     const obj = object3d;
     obj.updateMatrixWorld(true);
     _m.copy(obj.matrixWorld);
     _mi.copy(_m).invert();
     const W = game?.world?.life?.wind;
+    wind.x = wind.z = 0;
     if (W?.at) {
       try {
         W.at(obj.position.x, obj.position.z, wind);
       } catch {
         wind.x = wind.z = 0;
       }
-    } else wind.x = wind.z = 0;
+    }
     const h = Math.min(0.05, Math.max(0, dt));
+    // the body's velocity and acceleration (world, smoothed), from its middle
+    jointWorldPoint(world, HJI.spine2, 0, 0, 0, _a).applyMatrix4(_m);
+    if (!vel.ok) {
+      vel.px = _a.x;
+      vel.py = _a.y;
+      vel.pz = _a.z;
+      vel.x = vel.y = vel.z = vel.ax = vel.ay = vel.az = 0;
+      vel.ok = true;
+    } else if (h > 0) {
+      const k = 1 - Math.exp(-h / 0.08);
+      const nx = (_a.x - vel.px) / h, ny = (_a.y - vel.py) / h, nz = (_a.z - vel.pz) / h;
+      vel.ax += ((nx - vel.x) / h - vel.ax) * k;
+      vel.ay += ((ny - vel.y) / h - vel.ay) * k;
+      vel.az += ((nz - vel.z) / h - vel.az) * k;
+      vel.x += (nx - vel.x) * k;
+      vel.y += (ny - vel.y) * k;
+      vel.z += (nz - vel.z) * k;
+      vel.px = _a.x;
+      vel.py = _a.y;
+      vel.pz = _a.z;
+    }
+    const airX = (wind.x - vel.x) * 0.06, airY = -vel.y * 0.04, airZ = (wind.z - vel.z) * 0.06;
+    const accX = -vel.ax * 0.012, accY = -vel.ay * 0.012, accZ = -vel.az * 0.012;
+    // his left (world) for the mane's side lean
+    const yaw = obj.rotation.y, lx = Math.cos(yaw), lz = -Math.sin(yaw);
     for (const C of chains) {
-      const P = C.p, O = C.o;
-      // the root: the crest point (world)
+      const P = C.p, Dd = C.d, V = C.v;
       jointWorldPoint(world, C.joint, C.off[0], C.off[1], C.off[2], _a).applyMatrix4(_m);
-      // where the chain would lie at rest (its direction): the tail along its dock then down; the mane down
-      // and to its side
+      // the root's own line (the tail: along the dock; the mane: none)
       if (C.tail) {
         jointWorldPoint(world, C.joint, 0, 0, 0, _b).applyMatrix4(_m);
         _w.subVectors(_a, _b).normalize();
-      } else _w.set(0, 0, 0);
-      if (!C.ok) {
-        for (let i = 0; i <= C.n; i++) {
-          const k = i * C.len;
-          P[i * 3] = _a.x + (_w.x * 0.5) * k + C.lean * 0.3 * k;
-          P[i * 3 + 1] = _a.y - k * (C.tail ? 0.85 : 0.9);
-          P[i * 3 + 2] = _a.z + _w.z * 0.5 * k;
-        }
-        O.set(P);
-        C.ok = true;
-      }
+      } else _w.set(lx * C.lean * 1.1, 0, lz * C.lean * 1.1);
       P[0] = _a.x;
       P[1] = _a.y;
       P[2] = _a.z;
-      // verlet: gravity, the air (wind minus the point's own speed: a drag), a pull toward the rest shape
-      if (h > 0) {
-        const damp = Math.exp(-h * 2.5);
-        for (let i = 1; i <= C.n; i++) {
-          const a = i * 3;
-          const vx = (P[a] - O[a]) * damp, vy = (P[a + 1] - O[a + 1]) * damp, vz = (P[a + 2] - O[a + 2]) * damp;
-          O[a] = P[a];
-          O[a + 1] = P[a + 1];
-          O[a + 2] = P[a + 2];
-          const ax = C.drag * (wind.x - vx / h) * 0.5, az = C.drag * (wind.z - vz / h) * 0.5, ay = -9.8 * C.hang - C.drag * (vy / h) * 0.3;
-          // the stiffness: toward the previous point plus the rest direction
-          const px = P[a - 3] + (_w.x * C.len + (C.tail ? 0 : 0)), py = P[a - 2] - C.len * (C.tail ? 0.6 : 0.5), pz = P[a - 1] + _w.z * C.len;
-          const sk = C.stiff * 60;
-          P[a] += vx + (ax + (px - P[a]) * sk) * h * h;
-          P[a + 1] += vy + (ay + (py - P[a + 1]) * sk) * h * h;
-          P[a + 2] += vz + (az + (pz - P[a + 2]) * sk) * h * h;
+      for (let i = 0; i < C.n; i++) {
+        const f = C.n > 1 ? i / (C.n - 1) : 0;
+        // where this segment would hang: the root's line (strong near the root), down, the air, the swing
+        const keep = C.tail ? 1.6 * (1 - f) ** 2 : 0.6;
+        let tx = _w.x * keep + (airX + accX) * (0.6 + f), ty = -1 + _w.y * keep + (airY + accY) * (0.6 + f), tz = _w.z * keep + (airZ + accZ) * (0.6 + f);
+        const tl = Math.hypot(tx, ty, tz) || 1;
+        tx /= tl;
+        ty /= tl;
+        tz /= tl;
+        const a = i * 3;
+        if (!C.ok) {
+          Dd[a] = tx;
+          Dd[a + 1] = ty;
+          Dd[a + 2] = tz;
+          V[a] = V[a + 1] = V[a + 2] = 0;
+        } else if (h > 0) {
+          // a damped spring per segment (softer toward the tip)
+          const k = (C.tail ? 90 : 120) * (1 - 0.6 * f), c = 2 * Math.sqrt(k) * 0.55;
+          for (let q = 0; q < 3; q++) {
+            const tq = q === 0 ? tx : q === 1 ? ty : tz;
+            V[a + q] += ((tq - Dd[a + q]) * k - V[a + q] * c) * h;
+            Dd[a + q] += V[a + q] * h;
+          }
+          const dl = Math.hypot(Dd[a], Dd[a + 1], Dd[a + 2]) || 1;
+          Dd[a] /= dl;
+          Dd[a + 1] /= dl;
+          Dd[a + 2] /= dl;
         }
+        P[a + 3] = P[a] + Dd[a] * C.len;
+        P[a + 4] = Math.max(obj.position.y + 0.02, P[a + 1] + Dd[a + 1] * C.len);
+        P[a + 5] = P[a + 2] + Dd[a + 2] * C.len;
       }
-      // keep the lengths (two passes), off the ground
-      for (let it = 0; it < 2; it++)
-        for (let i = 1; i <= C.n; i++) {
-          const a = i * 3, b = a - 3;
-          let dx = P[a] - P[b], dy = P[a + 1] - P[b + 1], dz = P[a + 2] - P[b + 2];
-          const L = Math.hypot(dx, dy, dz) || 1, k = C.len / L;
-          P[a] = P[b] + dx * k;
-          P[a + 1] = P[b + 1] + dy * k;
-          P[a + 2] = P[b + 2] + dz * k;
-          const gy = obj.position.y + 0.02;
-          if (P[a + 1] < gy) P[a + 1] = gy;
-        }
+      C.ok = true;
       // draw: each segment from point i to i + 1, in object3d's frame
       for (let i = 0; i < C.n; i++) {
         _a.set(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]).applyMatrix4(_mi);
@@ -319,7 +342,7 @@ export function buildHorseBody(game, { castShadow = true } = {}) {
   }
 
   const body = {
-    object3d, mats, batch, drawn: true,
+    object3d, mats, batch, chains, drawn: true,
     update(world, dt = 1 / 60) {
       const P = world.p, R = world.r;
       for (let j = 0; j < HJ; j++) {
@@ -339,6 +362,7 @@ export function buildHorseBody(game, { castShadow = true } = {}) {
     },
     reset() {
       for (const C of chains) C.ok = false;
+      vel.ok = false;
     },
     /** 'ascii' (the game's letters) | 'solid' (the art source, no letters) */
     look(mode) {
