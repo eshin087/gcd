@@ -124,6 +124,16 @@ function knotState(F, S, id) {
   return st;
 }
 
+/** A point on arm `i` of a knot's floor spiral at u (0 = its tip at the reach, 1 = at the heart). */
+function armPt(x, z, r0, R, a0, tw, u, out) {
+  const r = R + (r0 - R) * u, a = a0 + tw * Math.log(R / Math.max(0.05, r));
+  out.x = x + Math.cos(a) * r;
+  out.z = z + Math.sin(a) * r;
+  out.r = r;
+  return out;
+}
+const _ap = { x: 0, z: 0, r: 0 }, _aq = { x: 0, z: 0, r: 0 };
+
 export function drawKnot(F, knot, dt) {
   if (!knot || knot.on === false || !F.fire) return;
   const x = Number(knot.x), z = Number(knot.z);
@@ -140,23 +150,51 @@ export function drawKnot(F, knot, dt) {
   F._azure();
   const life = Math.max(0.05, fin(knot.life, 2)), k = clamp01(fin(knot.k, fin(knot.t, st.t) / life));
   const reach = Math.max(1.5, Math.min(KNOT.reach, fin(knot.r, 6)));
-  const grow = clamp01(st.t / 0.22), fade = k > 0.94 ? clamp01((1 - k) / 0.06) : 1, I = grow * fade;
-  const str = clamp01(fin(knot.strength, 3) / 4);
+  // (round 2: whole from its first frames; brighter and bigger as k nears 1)
+  const grow = clamp01(st.t / 0.08), fade = k > 0.96 ? clamp01((1 - k) / 0.04) : 1, I = grow * fade;
+  const str = clamp01(fin(knot.strength, 3) / 4), swell = 1 + 0.5 * k * k;
   if (fresh) F._say('wjDraw', x, z, Math.max(0.3, life * (1 - k)));
   const t = F._now(), lf = F._frame();
   if (lf > 0 && I > 0.01) {
-    // the knot: a white heart, blue turning tight round it, a whirl
+    // THE HEART: a dense blue body ~0.9 m across (a disc in the camera's plane), a white core, blue
+    // turning tight round it
+    const R0 = 0.45 * swell * (0.7 + 0.3 * grow);
+    F._disc(x, y, z, R0, 44, 0.26 * swell, (0.5 + 0.25 * k) * I, K_VOID);
     const P = F._toCamera(x, y, z);
-    F._blob(P.x, P.y, P.z, 0, 0, 0, lf, 0.18, 0.18, 1.3 * I, 1.3 * I, K_STEEL);
-    F._blob(P.x, P.y, P.z, 0, 0, 0, lf, 0.5, 0.5, 0.85 * I, 0.85 * I, K_VOID);
-    for (let i = 0; i < 7; i++) {
-      const a = t * 11 + (i / 7) * TAU, rr = (0.24 + 0.1 * Math.sin(t * 7 + i * 1.7)) * grow;
-      F._blob(x + Math.cos(a) * rr, y + Math.sin(a * 2 + i) * 0.09, z + Math.sin(a) * rr, 0, 0, 0, lf, 0.3, 0.3, 0.55 * I, 0.55 * I, K_VOID);
+    F._blob(P.x, P.y, P.z, 0, 0, 0, lf, 0.2 * swell, 0.2 * swell, (1.15 + 0.25 * k) * I, (1.15 + 0.25 * k) * I, K_STEEL);
+    for (let i = 0; i < 9; i++) {
+      const a = t * (9 + 6 * k) + (i / 9) * TAU, rr = R0 * (1.05 + 0.15 * Math.sin(t * 7 + i * 1.7));
+      F._blob(x + Math.cos(a) * rr, y + Math.sin(a * 2 + i) * 0.12, z + Math.sin(a) * rr, 0, 0, 0, lf, 0.28, 0.28, 0.5 * I, 0.5 * I, K_VOID);
     }
-    F._ring(x, y, z, 0.62 * grow, 14, 0.3, 0.42 * I, K_VOID, 3, -t * 7);
-    // its place on the floor: a faint blue whirl turning in
-    F._ring(x, GROUND_Y, z, 1.0, 16, 0.34, 0.15 * GROUND_GAIN * I, K_VOID, 4, t * 3);
-    F._ring(x, GROUND_Y, z, Math.min(4, reach * 0.45), 24, 0.32, 0.08 * GROUND_GAIN * I, K_VOID, 5, t * 2);
+    F._ring(x, y, z, R0 + 0.25, 16, 0.26, 0.36 * I, K_VOID, 3, -t * 7);
+    // its shadow on the floor: a blue pool under it
+    F._ring(x, GROUND_Y, z, 0.9 * swell, 14, 0.5, 0.2 * GROUND_GAIN * I, K_VOID, 3, t * 4);
+    // THE ARMS: spirals of letters lying on the floor out to its reach, turning and tightening; dashes
+    // that flow inward at the pull's speed (the player reads the reach and the strength off them)
+    const arms = 3, r0 = 0.7, tw = 0.55 + 1.1 * k, rot = t * (0.9 + 1.6 * str + 1.2 * k), flow = 1.6 + 3.2 * str + 1.5 * k;
+    for (let i = 0; i < arms; i++) {
+      const a0 = (i / arms) * TAU + rot, n = Math.max(12, Math.round(reach * 3.2));
+      armPt(x, z, r0, reach, a0, tw, 0, _ap);
+      let s = 0;
+      for (let j = 1; j <= n; j++) {
+        armPt(x, z, r0, reach, a0, tw, j / n, _aq);
+        const seg = Math.hypot(_aq.x - _ap.x, _aq.z - _ap.z);
+        s += seg;
+        const u = j / n, on = ((s + t * flow) / 0.9) % 1 < 0.62;
+        if (on) {
+          const h = (0.22 + 0.4 * u * u) * GROUND_GAIN * I * (0.75 + 0.5 * k);
+          F._ink(_ap.x, GROUND_Y, _ap.z, _aq.x, GROUND_Y, _aq.z, 0, h * 0.85, 0, h, 0, K_VOID);
+        }
+        _ap.x = _aq.x;
+        _ap.z = _aq.z;
+      }
+    }
+    // the reach: a faint dashed ring of steel on the floor (where the pull begins)
+    const n = Math.max(24, Math.round((TAU * reach) / 0.5)), hr = 0.2 * GROUND_GAIN * I;
+    for (let i = 0; i < n; i += 2) {
+      const a = (i / n) * TAU - t * 0.4, b = ((i + 1) / n) * TAU - t * 0.4;
+      F._ink(x + Math.cos(a) * reach, GROUND_Y, z + Math.sin(a) * reach, x + Math.cos(b) * reach, GROUND_Y, z + Math.sin(b) * reach, 0, hr, 0, hr, 0, K_VOID);
+    }
   }
   if (fdt > 0 && I > 0.01) {
     // the air drawn in on spirals (heat that brightens as it arrives)
@@ -168,7 +206,7 @@ export function drawKnot(F, knot, dt) {
       F._blob(sx, h, sz, (x - sx) / T - Math.sin(a) * tw * 0.5, (y - h) / T, (z - sz) / T + Math.cos(a) * tw * 0.5, T, 0.36, 0.14, 0.16, 0.42 * I, K_VOID);
     }
     // letters of the air streaming in
-    st.accG += fdt * KNOT.letters * I;
+    st.accG += fdt * KNOT.letters * I * (1 + k);
     while (st.accG >= 1) {
       st.accG -= 1;
       const a = F.lr() * TAU, rr = F.lrand(0.6, reach * 0.8), h = F.lrand(0.2, 2.4), T = F.lrand(0.3, 0.6);
@@ -182,18 +220,22 @@ export function drawKnot(F, knot, dt) {
       o.alphaEnd = 1;
       F._spawn(F.add, o);
     }
-    // grit and litter sliding over the floor to it: its pull, read on the floor
-    st.accF += fdt * KNOT.grit * (0.5 + 0.5 * str) * I;
+    // grit and litter sliding over the floor ALONG the arms: the pull's strength in their speed
+    const arms = 3, tw = 0.55 + 1.1 * k, rot = t * (0.9 + 1.6 * str + 1.2 * k);
+    st.accF += fdt * KNOT.grit * (0.6 + 0.6 * str) * I;
     while (st.accF >= 1) {
       st.accF -= 1;
-      const a = F.lr() * TAU, rr = F.lrand(1.2, reach), sp = 1.2 + 3.4 * (1 - rr / reach) + 1.4 * str;
-      const sx = x + Math.cos(a) * rr, sz = z + Math.sin(a) * rr, T = Math.min(1.6, Math.max(0.2, (rr - 0.5) / sp));
-      const o = F._rec(sx, 0.05, sz, T, F.lrand(0.22, 0.3), 0.18, ".,:~=", GRIT, GRIT_END);
-      o.vx = (-Math.cos(a) * sp);
-      o.vz = (-Math.sin(a) * sp);
+      const i = Math.floor(F.lr() * arms), a0 = (i / arms) * TAU + rot, u = F.lr() * 0.85;
+      armPt(x, z, 0.7, reach, a0, tw, u, _ap);
+      armPt(x, z, 0.7, reach, a0, tw, Math.min(1, u + 0.04), _aq);
+      const dx = _aq.x - _ap.x, dz = _aq.z - _ap.z, l = Math.hypot(dx, dz) || 1;
+      const sp = (1.6 + 4 * str) * (0.7 + 0.9 * u) * (0.8 + 0.5 * k), T = Math.min(1.1, Math.max(0.25, (_ap.r - 0.6) / sp));
+      const o = F._rec(_ap.x + F.lrand(-0.15, 0.15), 0.05, _ap.z + F.lrand(-0.15, 0.15), T, F.lrand(0.2, 0.28), 0.16, ".,:~=", GRIT, AZ_END);
+      o.vx = (dx / l) * sp;
+      o.vz = (dz / l) * sp;
       o.rot = F._screenRot(o.vx, 0, o.vz) + Math.PI / 2;
-      o.alpha = 0.9;
-      o.alphaEnd = 0.5;
+      o.alpha = 0.95;
+      o.alphaEnd = 0.6;
       F._spawn(F.alpha, o);
     }
     // bricks torn up and flying in
@@ -210,7 +252,7 @@ export function drawKnot(F, knot, dt) {
       F._spawn(F.alpha, o);
     }
   }
-  F._keep(KNOT_KEYS[S.knots.indexOf(st)] ?? 'wjKnot0', x, y, z, L_AZURE, 1.8 * I, 4.5, 0.1);
+  F._keep(KNOT_KEYS[S.knots.indexOf(st)] ?? 'wjKnot0', x, y, z, L_AZURE, (0.9 + 0.9 * k) * I, 3.5 + 1.5 * k, 0.1);
 }
 
 export function drawCollapse(F, knot) {
@@ -269,7 +311,7 @@ function collapseBurst(F, c) {
     o.spin = F.lrand(-6, 6);
     F._spawn(F.alpha, o);
   }
-  F._light({ x, y, z, color: L_AZURE, intensity: 5.5, radius: r * 2.6, life: 0.3, fade: 0.26 });
+  F._light({ x, y, z, color: L_AZURE, intensity: 3.6, radius: r * 2.4, life: 0.3, fade: 0.26 });
 }
 
 // ======================================================================= CRIMSON CAST
