@@ -1034,12 +1034,14 @@ async function scenPlay() {
     };
     let lastPY = null;
     const popStep = () => {
-      const y = hipsYawW() + P.yaw;
+      // (the drawn hips against his root: the game's own turning of his yaw is the game's)
+      const y = hipsYawW();
       // (a step where the GAME snaps his yaw, a swing committing to its aim, is the game's, not the drawing's)
       const snap = lastPY != null && Math.abs(Math.atan2(Math.sin(P.yaw - lastPY), Math.cos(P.yaw - lastPY))) > 0.3;
       lastPY = P.yaw;
       if (process.env.H2_TRACE === 'heavy') out(`       ${ad.state.mode}:${H.clip?.name}@${(H.time * (H.clip?.fps ?? 30)).toFixed(1)} hips ${deg(hipsYawW()).toFixed(1)} yaw ${deg(P.yaw).toFixed(1)} yawOff ${deg(ad.state.yawOff).toFixed(1)} faceOff ${deg(ad.state.faceOff).toFixed(1)} aim ${deg(ad.state.tailAim).toFixed(1)}`);
-      if (lastY != null && !snap) {
+      // (a swing's own cut is fast by design: the hand-backs after it are what is watched)
+      if (lastY != null && !snap && ad.state.mode !== 'attack') {
         const s = Math.abs(Math.atan2(Math.sin(y - lastY), Math.cos(y - lastY)));
         if (s > pop) {
           pop = s;
@@ -1069,7 +1071,7 @@ async function scenPlay() {
     out(`     heavies: ${[...mA, ...mB].join(' > ')}; ends ${deg(face).toFixed(0)} deg off the guard; the largest hips-yaw step ${deg(pop).toFixed(1)} deg (${popAt})`);
     assert(mA.includes('attack:heavy1') && mB.includes('attack:heavy2'), `a heavy, then a heavy straight after it: heavy1 > heavy2`);
     assert(mB.includes('tail:heavyRecover2') && mB.some((k) => k.startsWith('turn:turnL90')) && mB[mB.length - 1].startsWith('loco:') && Math.abs(face) < 0.2, `  let go: heavyRecover2, then the quarter turn back to his facing (the end facing kept as drawn; ${deg(face).toFixed(0)} deg left)`);
-    assert(pop < (12 * Math.PI) / 180, `  no pop in the facing through it (the largest step of the hips' yaw ${deg(pop).toFixed(1)} deg, under 12)`);
+    assert(pop < (12 * Math.PI) / 180, `  no pop in the facing through the hand-backs (the largest step of the hips' yaw ${deg(pop).toFixed(1)} deg, under 12)`);
     // the charge: held, released (the release goes on from the frame the coil reached); a second charge
     // straight after the first's swing plays charge2
     home();

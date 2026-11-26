@@ -330,6 +330,10 @@ export function createAdapter(game, player, old, { lib, body }) {
    */
   function keepFacing(d) {
     if (!(Math.abs(d) >= FACE.min)) return false;
+    // the blend from the drawn pose: that pose is already turned by d, and what follows is drawn turned
+    // by d on top of the blend (turnAll in onPose): the pose it fades from is taken back by d first
+    turnAll(hero.pose, -d);
+    hero.transition(0.25);
     if (intentLen() < 0.1 && S.vs < 0.6) {
       const c = turns[d < 0 ? 'L90' : 'R90'];
       if (c) {
