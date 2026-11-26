@@ -1,8 +1,6 @@
 import { TELL } from '../../../combat/rules.js';
 import { DIM } from '../../player/model.js';
 import { makeRealise } from '../duelist/realise.js';
-import { lookOf } from '../duelist/lookSwitch.js';
-import { REF_BLOWS } from './refBlows.js';
 import { FORM_POSES, FIST_UP, FIST_FLAT } from './poses.js';
 import { TUNING } from './tuning.js';
 import { meleeMoves } from './moves/melee.js';
@@ -175,26 +173,6 @@ const pickFeet = (p) => {
   return o;
 };
 
-// ---------------------------------------------------------------- the reference animation (?fists=ref)
-// Every blow kind may also carry keys MEASURED from the owner's reference footage (refBlows.js, written by
-// scripts/mocap/duelist/fit.mjs from the map scripts/mocap/duelist/tianlei.json): the same blow, its
-// tell, zone, damage and timing, posed as the footage moves. They ride on the beat as `refKeys`; the
-// realiser plays them while the look switch `fists` is 'ref' (the Lab's LOOKS row, `?fists=ref`), the keys
-// authored here otherwise. The footage's windup is laid on the beat's own clock: its chamber at the
-// beat's cock, its contact at the impact (u 1), its follow-through over u 1 - 2.
-/** The measured keys of blow `kind` for this beat (null when none were captured): mirrored for the
- *  other limb, their cock moved onto the beat's. */
-function refKeys(kind, left, cock) {
-  const R = REF_BLOWS[kind];
-  if (!R?.keys?.length) return null;
-  const m = R.mirror !== !!left ? mirror : (p) => p;
-  const c0 = R.cock ?? 0.7;
-  const u = (x) => (x <= c0 ? (x / c0) * cock : x <= 1 ? cock + ((x - c0) / (1 - c0)) * (1 - cock) : x);
-  return R.keys.map(([x, pose]) => [u(x), F(m(pose))]);
-}
-/** The realiser's hook (duelist/realise.js keysOf): the measured keys while `fists` is 'ref'. */
-export const fistKeys = (beat) => (beat.refKeys && lookOf('fists', '0') === 'ref' ? beat.refKeys : null);
-
 // ---------------------------------------------------------------- the punches
 /** The key poses of each punch (right-side authoring; `left` mirrors). `z`: its zone. */
 const PUNCH = {
@@ -268,7 +246,7 @@ export function punch(kind, tell, windup, damage, o = {}) {
   const part = left ? PART_MIRROR[P.part] ?? P.part : P.part;
   return {
     tell, windup, active: kind === 'hammer' ? 0.12 : 0.08, damage, knockback: tell === N ? 0.7 : 1.5,
-    zone: P.z(), part, keys: strikeKeys({ coil, hit, cock, left }), refKeys: refKeys(kind, left, cock), ...extra, cock,
+    zone: P.z(), part, keys: strikeKeys({ coil, hit, cock, left }), ...extra, cock,
   };
 }
 
@@ -370,7 +348,7 @@ export function kick(kind, tell, windup, damage, o = {}) {
   const cock = c0 ?? (kind === 'flying' ? 0.58 : 0.68);
   const beat = {
     tell, windup, active: 0.1, damage, knockback: tell === N ? 1.0 : 2.0, zone: P.z(), part: left ? PART_MIRROR[P.part] : P.part,
-    track: 0.7, keys: strikeKeys({ coil: P.coil, hit: P.hit, pre: P.pre ?? null, cock, left }), refKeys: refKeys(kind, left, cock),
+    track: 0.7, keys: strikeKeys({ coil: P.coil, hit: P.hit, pre: P.pre ?? null, cock, left }),
   };
   if (kind === 'flying') Object.assign(beat, { air: true, lift: FLY_LIFT(cock), track: 0.55 });
   return { ...beat, ...extra, cock };
@@ -386,7 +364,7 @@ export function elbow(tell, windup, damage, o = {}) {
   const { left = false, cock = 0.72, ...extra } = o;
   return {
     tell, windup, active: 0.1, damage, knockback: tell === N ? 1.0 : 2.0, zone: { kind: 'line', r: RE.line, w: RE.lineW }, part: left ? 'elbowL' : 'elbowR',
-    keys: strikeKeys({ coil: ELBOW.coil, hit: ELBOW.hit, cock, left }), refKeys: refKeys('elbow', left, cock), ...extra, cock,
+    keys: strikeKeys({ coil: ELBOW.coil, hit: ELBOW.hit, cock, left }), ...extra, cock,
   };
 }
 const SHOULDER = {
@@ -398,7 +376,7 @@ export function shoulder(tell, windup, damage, o = {}) {
   const { left = false, cock = 0.72, ...extra } = o;
   return {
     tell, windup, active: 0.1, damage, knockback: tell === N ? 1.2 : 2.4, zone: { kind: 'line', r: RE.line, w: 1.0 }, part: 'shoulder',
-    keys: strikeKeys({ coil: SHOULDER.coil, hit: SHOULDER.hit, cock, left }), refKeys: refKeys('shoulder', left, cock), ...extra, cock,
+    keys: strikeKeys({ coil: SHOULDER.coil, hit: SHOULDER.hit, cock, left }), ...extra, cock,
   };
 }
 
@@ -603,7 +581,7 @@ export const CLIP = CLIPS_BY_FORM[0];
 // ---------------------------------------------------------------- realising a move
 // (ADR-126, as the other two bosses: a beat's keys made whole (completeBeat); every strike key here
 // carries NEUTRAL, so it only writes `two` / `arm` / `larm` back to his guard's 0)
-const REALISERS = FORM_POSES.map((P) => makeRealise({ TUNING, MOVES, compileClip: (keys, dur) => P.compileClip(keys, dur), completeBeat: P.completeBeat, keysOf: fistKeys }));
+const REALISERS = FORM_POSES.map((P) => makeRealise({ TUNING, MOVES, compileClip: (keys, dur) => P.compileClip(keys, dur), completeBeat: P.completeBeat }));
 /**
  * A move as it will play this time (duelist/realise.js), compiled round the stance of the form it is
  * used in; a transformation is compiled round the NEW form's stance, so it ends in that guard.

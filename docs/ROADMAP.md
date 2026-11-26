@@ -189,12 +189,10 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
-## M1.92 — Boss blows measured from reference footage (2026-11-26, `enemies/fists-ref`, ADR-208)
-- [x] `scripts/mocap` on `main` as a tool; `scripts/mocap/duelist/fit.mjs` fits a clip onto a duelist's blows (`--check` through the real animator)
-- [x] Tian Lei: jab, cross, hook, uppercut, backfist, hammer from the bare-handed film behind `?fists=ref` (Lab LOOKS, pending the owner's pick)
-- [ ] The owner judges `?fists=ref` in the ring; keep, redo blows, or drop
-- [ ] Kicks for Tian Lei from a kick reference (the film has hand strikes only)
-- [ ] Wen Yao and the other duelists from their own references (the same map + fit)
+## M1.92 — The melee animation engine: boss blows from reference footage (2026-11-26, `enemies/fists-ref`, ADR-208)
+- [x] `scripts/mocap` on `main` as a tool; `scripts/mocap/duelist/fit.mjs` fits a clip onto a duelist's blows (`--check` through the real animator); the guide
+- [x] Tian Lei from the bare-handed film, shown behind `?fists=ref`: turned down by the owner (stiff arms; the lunges and feet); not merged
+- [ ] A reference of clean technique that tracks (boxing / kung-fu sets, fixed cameras), rendered for the owner before any wiring
 
 ## M1.91 — The hero's idles and guard after the owner's reference footage (2026-11-25, `claude/idles-reference`, ADR-207)
 - [x] At ease the reference's one-handed stand; in the fight its two-handed hold; ADR-186's habits, tricks and spells from the new stand (`?idles=new|old`: the looks before)

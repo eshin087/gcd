@@ -6293,7 +6293,7 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   passes (`chain`) is checked against the widest its complete search finds from where he dodged (the new stance
   moved the seeded fight before it: from that dodge spot the search's best is 14°, from the old one 21°; seeds 1338-
   1340 pass the 17° bar either way).
-## ADR-208 — Boss blows measured from reference footage: the mocap clip fitted onto the duelist rig (`?fists=ref`, 2026-11-26)
+## ADR-208 — Boss blows measured from reference footage: the mocap clip fitted onto the duelist rig; Tian Lei's try turned down (2026-11-26)
 
 - **Context:** the owner gave a reference film of bare-handed melee attacks and asked for the bare-handed
   bosses' attacks to move like it, starting with one boss to preview, and for what was learned to stay in
@@ -6325,5 +6325,11 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   The uppercut and the hook are the most hand-made; the jab is very low (the reference's). The reference
   is a wild brawler (same-side lunges, spin-throughs), so with the switch on he fights in that style.
   `asc.mjs . fists` proves timings identical on and off and fights every measured move on the real rig.
+- **Outcome (the owner, the same day):** "the new animations look worse than the old ones"; worse were the
+  stiff, unnatural arms and the lunges and feet. Tian Lei's wiring (`refKeys`, the `fists` switch, the
+  generated keys, the `fists` scenario) was taken out before merging; his blows are as authored. What lands
+  is the engine: `scripts/mocap`, `scripts/mocap/duelist` (fit, guide, the map as an example), the recorder
+  and the optional `keysOf` hook in `realise.js` (unused until a boss uses it). Next time: a reference of
+  clean technique that tracks, the boss's own footwork, and a render for the owner before wiring.
   If the hero remake's branch later lands, its copies of `scripts/mocap` and `src/entities/hero2/*` should
   be taken over these (check `check.mjs`'s film list keeps `fist`).

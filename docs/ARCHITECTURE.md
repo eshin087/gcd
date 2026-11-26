@@ -5061,9 +5061,8 @@ data and a subclass with a few hooks.
   where the hero will be x `miss`. Not a counter, a flurry, a stance, a draw or a transformation.
 - `realise.js`: `makeRealise({ TUNING, MOVES, compileClip, completeBeat, keysOf })` → `realise(name, phase, rnd, opts)` (`opts.count`:
   a `streak` move, his flurry, plays that many beats); `perPhase`. `keysOf(beat)` (optional) gives the pose keys a beat
-  plays this time (null: `beat.keys`): a second animation behind a live switch, e.g. Tian Lei's `?fists=ref`, the keys
-  measured from the owner's reference footage (`beat.refKeys`, ascendant/refBlows.js, written by
-  `scripts/mocap/duelist/fit.mjs`; ADR-208). Timings never depend on it. The POSE keys of a beat past its
+  plays this time (null: `beat.keys`): a second animation behind a live switch, e.g. keys measured from the owner's reference
+  footage (`scripts/mocap/duelist/fit.mjs`; ADR-208; no boss uses it today). Timings never depend on it. The POSE keys of a beat past its
   impact (u 1..2) run on the beat's follow, `b.F` s (ADR-126: 72 % of the time to the next beat's
   first pose, 0.24 s at most, 0.3 s for a ring zone, `def.follow` to set it), not on the active
   frames; gameplay (`uAt`, `travel`, `lift`, the zone) keeps the active frames' clock. A key marked

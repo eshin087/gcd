@@ -18,14 +18,6 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
-        date: '2026-11-26',
-        title: 'Tian Lei can fight with blows measured from real footage (preview)',
-        notes: [
-          'A preview for now: with the switch on, Tian Lei throws his jab, cross, hook, uppercut, backfist and hammer the way a filmed fighter does, with wide wind-ups and deep lunges.',
-          'His tells, timings and damage are the same, so you parry and dodge him as before. His kicks are unchanged.',
-        ],
-      },
-      {
         date: '2026-11-25',
         title: 'The hero stands, holds and guards like the reference',
         notes: [
