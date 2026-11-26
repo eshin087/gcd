@@ -19,9 +19,10 @@ import * as FX_DEBUG from './fxDebug.js';
 //          VIOLET (`void`'s colours without its tongues: VIOLET below) while the Null is merged, lit or
 //          its trench glows, and while the realm's sign, wall or break draws. A Draw knot cuts a trench's
 //          glow short (the knot is blue). The merged ball over his fingers IS the swap.
-//   fire   CRIMSON (`crimson`) while the fight is live (he is on foot / acting / reacting / broken) and
-//          for 2 s after any Cast drawn outside it (the Lab); the engine's `fire` before the fight, on a
-//          reset, from his death on. Its rim keeps the fire's red: the red cues read as everywhere.
+//   fire   CRIMSON (`crimson`) only while a red thing of his lives (round 2: a Cast point, burst or mark,
+//          the red of the Null's charge and line, Dark Spark, a fall mark, the realm's red stretch) and a
+//          moment after; the engine's `fire` otherwise (the bonfire is on screen from the ring's south
+//          edge). Its rim keeps the fire's red: the red cues read as everywhere.
 //   steel  steel: the barrier, its cracks and ripples, the strokes, the noise of the catch.
 // Every slot comes back on reset() (the fight's reset, the hero's retry). A level is its own page load
 // (the boss rush too: rush.js reloads), so leaving the level needs nothing more.
@@ -89,7 +90,6 @@ const STONE = [0.44, 0.43, 0.42], STONE_END = [0.16, 0.15, 0.15];
 const SHOVE = Object.freeze({ skidLife: [2.6, 3.4], fan: 2, burst: 16, y: 0.34 }); // (y: above the floor's own relief, GROUND_Y 0.3: lower, the ground hides them)
 const AZURE_G = [0.9, 1.7, 3.4], AZURE_G_END = [0.1, 0.3, 1.0];
 export const L_AZURE = [0.45, 0.68, 1.0], L_CRIMSON = [1.0, 0.14, 0.12], L_VIOLET = [0.74, 0.4, 1.0], L_PALE = [0.86, 0.9, 1.0];
-const LIVE = new Set(['foot', 'act', 'react', 'broken']);
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
 const clamp01 = (v) => Math.min(1, Math.max(0, v));
 /** A steady hash 0..1 of a number. */
@@ -219,8 +219,10 @@ export class WjFx extends AscFx {
     this._violetSoftT = Math.max(0, this._violetSoftT - fdt);
     this._crimsonT = Math.max(0, this._crimsonT - fdt);
     this._setSlot('void', this._violetT > 0 || this._violetSoftT > 0 ? 'violet' : 'azure');
-    const live = d && LIVE.has(d.mode);
-    this._setSlot('fire', live || this._crimsonT > 0 ? 'crimson' : 'fire');
+    // (round 2) crimson only while a red thing of his lives (a Cast point / burst / mark, the red of the
+    // Null's charge, Dark Spark, the realm's red stretch): the bonfire at (0, 25) is on screen from the
+    // ring's south edge, and it burned crimson the whole fight
+    this._setSlot('fire', this._crimsonT > 0 ? 'crimson' : 'fire');
   }
 
   /** A light: the inherited draws' violet is azure while the void slot is (violet under the Null), the

@@ -1275,7 +1275,13 @@ async function scenarioFx() {
   assert(holds('void', FIRE_PALETTES.azure) && holds('fire', FIRE_PALETTES.fire), `built: void azure, fire the engine's (${F.slots.void}, ${F.slots.fire})`);
   duel(G, { dist: 4 });
   p.debug.god = true;
-  assert(holds('fire', FIRE_PALETTES.crimson) && F.slots.fire === 'crimson', `in the fight: the fire slot crimson (${F.slots.fire})`);
+  // (round 2) the fire slot is crimson only while a red thing of his lives: at rest in the fight the bonfire burns as fire
+  assert(holds('fire', FIRE_PALETTES.fire) && F.slots.fire === 'fire', `in the fight at rest: the fire slot the engine's (${F.slots.fire})`);
+  F.castMark(d.position.x, d.position.z + 3, 4.5, 0.5);
+  run(G, 0.05);
+  assert(holds('fire', FIRE_PALETTES.crimson) && F.slots.fire === 'crimson', `a red cue of his on: the fire slot crimson (${F.slots.fire})`);
+  run(G, 1.0);
+  assert(F.slots.fire === 'fire', `the red cue gone: the fire slot the engine's again (${F.slots.fire})`);
   const x0 = d.position.x, z0 = d.position.z;
   const knot = { on: true, x: x0, z: z0 + 3, r: 7, strength: 3, falloff: 1, life: 2, t: 0, k: 0, id: 77 };
   const seg = { ax: x0, az: z0 + 0.8, bx: x0, bz: z0 + 40, w: 5 };
@@ -1328,6 +1334,17 @@ async function scenarioFx() {
       F.shove(0, 0, 0, 0, 3);
       F.crash(NaN, 0, 1, 0, 1);
       F.barrierStop(null, null, false);
+      F.nullLine(null, k);
+      F.nullLine({ ax: 0, az: 0, bx: NaN, bz: 0 }, k);
+      F.unveil(null, k);
+      F.sparkCharge(null, k);
+      F.sparkHit(NaN, 1, 0, 1, 0, true);
+      F.sparkHit(0, 1, 0, 0, 0, true);
+      F.ghostStrike(NaN, 0, 0, k);
+      F.castMark(NaN, 0, 4, k);
+      F.drawPath(null, k);
+      F.liftGlow(0, NaN, 0, 1, k);
+      F.fallMark(0, NaN, 2, k);
       G.tick(DT);
     } catch (e) {
       threw = e;
@@ -1340,6 +1357,35 @@ async function scenarioFx() {
   assert(violet, 'the void slot turns violet under the Null');
   out(`     fire blobs alive at the peak, everything at once: ${peak} of ${fire.max}`);
   assert(peak < fire.max, `the pool never fills with everything at once (${peak} < ${fire.max})`);
+  // (round 2) the new per-frame methods, 120 frames together (their own pool count: headless, a line on
+  // the letter grid falls back to a blob every 0.1 m, so the counts here are far over the game's)
+  let peak2 = 0, threw2 = null;
+  run(G, 1.2);
+  for (let i = 0; i < 120; i++) {
+    const k = i / 119;
+    try {
+      F.nullLine(seg, k);
+      F.unveil(d, k);
+      F.sparkCharge(d, k, i % 2 ? 'L' : 'R');
+      F.ghostStrike(x0 + 2, z0 + 2, 0.5, k);
+      F.castMark(x0, z0 + 3, 4.5, k);
+      F.drawPath({ ax: x0 - 6, az: z0, bx: x0 + 6, bz: z0 + 4 }, k);
+      F.liftGlow(x0 - 3, 3, z0, 1.2, k);
+      F.fallMark(x0 + 3, z0 + 3, 2, k);
+      if (i === 60) {
+        F.sparkHit(x0, 1.3, z0 + 1, 0, 1, true);
+        F.sparkHit(x0, 1.3, z0 + 1, 0, 1, false);
+      }
+      G.tick(DT);
+    } catch (e) {
+      threw2 = e;
+      break;
+    }
+    peak2 = Math.max(peak2, fire.count);
+  }
+  assert(!threw2, `120 frames of the round-2 methods: no throw, no NaN (${threw2?.stack?.split('\n').slice(0, 2).join(' | ') ?? ''})`);
+  out(`     fire blobs alive at the peak, the round-2 methods at once (headless): ${peak2} of ${fire.max}`);
+  assert(peak2 < fire.max, `the pool never fills with the round-2 methods at once (${peak2} < ${fire.max})`);
   // the drivers (dragon.debug.fx): each plays through
   let bad = [];
   for (const n of FXD.NAMES) {
@@ -1362,6 +1408,7 @@ async function scenarioFx() {
   assert(holds('void', FIRE_PALETTES.azure) && holds('fire', FIRE_PALETTES.fire), `reset: void azure, fire the engine's again (${F.slots.void}, ${F.slots.fire})`);
   duel(G, { dist: 4 });
   F.nullBeam(seg, 0.5);
+  F.castPoint(pt, DT);
   run(G, 0.1);
   assert(F.slots.fire === 'crimson' && F.slots.void === 'violet', `back in the fight: crimson, violet under a Null (${F.slots.fire}, ${F.slots.void})`);
   run(G, 0.6);
@@ -1376,11 +1423,11 @@ async function scenarioFx() {
   G2.watch = (n, e) => { if (n === 'dragon:spell' && String(e?.name).startsWith('wj')) said.add(e.name); };
   duel(G2, { dist: 4 });
   G2.game.player.debug.god = true;
-  for (const n of ['stop', 'barrier', 'blink', 'draw', 'cast', 'null', 'sign', 'wall', 'shove']) {
+  for (const n of ['stop', 'barrier', 'blink', 'draw', 'cast', 'null', 'sign', 'wall', 'shove', 'unveil', 'spark']) {
     G2.game.dragon.debug.fx(n, {});
     run(G2, (G2.game.dragon.fx._drive?.T ?? 0.2) + 0.3);
   }
   const missing = [...said].filter((n) => !SFX[n]);
-  assert(said.size >= 9 && !missing.length, `every effect's sound has a recipe (${[...said].join(' ')}; missing ${JSON.stringify(missing)})`);
+  assert(said.size >= 12 && !missing.length, `every effect's sound has a recipe (${[...said].join(' ')}; missing ${JSON.stringify(missing)})`);
   return G;
 }

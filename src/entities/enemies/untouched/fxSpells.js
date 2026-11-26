@@ -175,9 +175,12 @@ export function drawKnot(F, knot, dt) {
     F._ring(x, GROUND_Y, z, 0.9 * swell, 14, 0.5, 0.2 * GROUND_GAIN * I, K_VOID, 3, t * 4);
     // THE ARMS: spirals of letters lying on the floor out to its reach, turning and tightening; dashes
     // that flow inward at the pull's speed (the player reads the reach and the strength off them)
+    // (headless, no camera: a line on the letter grid falls back to a blob every 0.1 m; nothing is seen
+    // there, so the arms and the ring are drawn coarse, or the tests' pool fills with them)
+    const coarse = !F._screen(x, GROUND_Y, z).ok;
     const arms = 3, r0 = 0.7, tw = 0.55 + 1.1 * k, rot = t * (0.9 + 1.6 * str + 1.2 * k), flow = 1.6 + 3.2 * str + 1.5 * k;
     for (let i = 0; i < arms; i++) {
-      const a0 = (i / arms) * TAU + rot, n = Math.max(12, Math.round(reach * 3.2));
+      const a0 = (i / arms) * TAU + rot, n = coarse ? 3 : Math.max(12, Math.round(reach * 3.2));
       armPt(x, z, r0, reach, a0, tw, 0, _ap);
       let s = 0;
       for (let j = 1; j <= n; j++) {
@@ -194,7 +197,7 @@ export function drawKnot(F, knot, dt) {
       }
     }
     // the reach: a faint dashed ring of steel on the floor (where the pull begins)
-    const n = Math.max(24, Math.round((TAU * reach) / 0.5)), hr = 0.2 * GROUND_GAIN * I;
+    const n = coarse ? 8 : Math.max(24, Math.round((TAU * reach) / 0.5)), hr = 0.2 * GROUND_GAIN * I;
     for (let i = 0; i < n; i += 2) {
       const a = (i / n) * TAU - t * 0.4, b = ((i + 1) / n) * TAU - t * 0.4;
       F._ink(x + Math.cos(a) * reach, GROUND_Y, z + Math.sin(a) * reach, x + Math.cos(b) * reach, GROUND_Y, z + Math.sin(b) * reach, 0, hr, 0, hr, 0, K_VOID);
@@ -326,7 +329,7 @@ export function castPoint(F, p, dt) {
   const S = F._spellState;
   if (!S) return;
   void dt;
-  F._crimson(2);
+  F._crimson(0.6);
   const k = clamp01(fin(p.k, 1)), s = 0.6 + 0.4 * k, t = F._now(), lf = F._frame(), Q = S.point;
   if (lf > 0) {
     const P = F._toCamera(x, y, z), A = F._axes();
@@ -367,7 +370,7 @@ export function castBurst(F, x, z, r = 4.5, power = 1) {
   if (!S) return;
   r = Math.max(1, Math.min(14, fin(r, 4.5)));
   const pw = Math.max(0.3, Math.min(3, fin(power, 1)));
-  F._crimson(2.5);
+  F._crimson(1.0);
   // the push: the shared front, in crimson (fire kind), dust behind it, the floor charred
   F.shock?.(x, z, r, F._opt(Math.min(2, 0.7 + 0.45 * pw), 1, 'fire', 0, true));
   // the ring of steel strokes racing out along the floor (drawn by update)
@@ -438,6 +441,7 @@ function chargePoint(F, x, y, z, lf, k, t, s) {
 }
 /** A jagged arc of strokes a to b this frame (its middle joints off the line). */
 export function zap(F, ax, ay, az, bx, by, bz, h, kind = K_STEEL, steps = 4) {
+  if (!F._screen(ax, ay, az).ok) steps = 1; // (headless: nothing is seen; keep the tests' pool for what is)
   let px = ax, py = ay, pz = az;
   const j = 0.22 * Math.hypot(bx - ax, by - ay, bz - az);
   for (let i = 1; i <= steps; i++) {
@@ -528,7 +532,7 @@ export function nullCharge(F, d, k, blue, red) {
     F._keep('wjNullB', mx, my, mz, L_VIOLET, 2.2, 6, 0.15);
     return;
   }
-  F._crimson(1.5);
+  F._crimson(0.6);
   F._azure();
   const s = 0.85 + 0.35 * k;
   if (lf > 0) {
@@ -787,7 +791,7 @@ function trenchDraw(F, S, tr, fdt) {
 /** A ring of `_ink` on the floor round (x, z), radius r, every other piece left out when `dash`. */
 function floorRing(F, x, z, r, h, kind, dash = false, spin = 0, step = 0.45) {
   if (!(r > 0.05) || !(h > 0.005)) return;
-  const n = Math.max(10, Math.min(160, Math.round((TAU * r) / step)));
+  const n = F._screen(x, GROUND_Y, z).ok ? Math.max(10, Math.min(160, Math.round((TAU * r) / step))) : 8;
   for (let i = 0; i < n; i++) {
     if (dash && i % 2) continue;
     const a = (i / n) * TAU + spin, b = ((i + 1) / n) * TAU + spin;

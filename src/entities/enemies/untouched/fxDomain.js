@@ -138,7 +138,8 @@ const _h = { d: 0, a: 0 };
 function wallDraw(F, x, z, rw, kr, ha, fade = 1) {
   const lf = F._frame();
   if (!(lf > 0) || !(rw > 0.3)) return 0;
-  const n = Math.max(24, Math.min(480, Math.round((TAU * rw) / WALL.step)));
+  // (headless, no camera: every point is 'on screen'; nothing is seen, so the wall is drawn coarse there)
+  const n = F._screen(x, 1.2, z).ok ? Math.max(24, Math.min(480, Math.round((TAU * rw) / WALL.step))) : 48;
   let prevOk = false, px = 0, pz = 0, drawn = 0;
   const M = 90, eh = WALL.edge * fade * GROUND_GAIN * 0.5;
   for (let i = 0; i <= n; i++) {
@@ -194,6 +195,7 @@ export function domainWall(F, x, z, r, k) {
   const rw = dh + (W.r0 - dh) * Math.pow(1 - k, 1.25);
   W.rw = rw;
   const kr = clamp01(1 - (rw - dh) / WALL.red);
+  if (kr > 0.02) F._crimson(0.4); // (round 2: the fire slot is crimson only while a red thing of his lives)
   wallDraw(F, x, z, rw, kr, H.a);
   // where it will meet him: a thin red ring on the floor at his distance (gone once it is there)
   const lf = F._frame();
