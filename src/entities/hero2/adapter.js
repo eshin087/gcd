@@ -264,7 +264,7 @@ export function createAdapter(game, player, old, { lib, body }) {
     // a held coil (the charge, the draw stance): its clip and the frame it stands at
     chargeClip: null, cu: 0, cu0: 0,
     // the end facing kept as drawn (moves.js FACE): fading over the steps; a turn's root yaw scale
-    faceOff: 0, turnK: 1, yawBase: 0, blockBeat: false, blockBeatT: 0, tailHips: false,
+    faceOff: 0, turnK: 1, yawBase: 0, blockBeat: false, blockBeatT: 0, turnUpper: false, tailHips: false,
   };
   // the guard's own facing (rad, the hips' yaw in its first frame): what a clip's end facing is read against
   const hipsYaw = (q) => {
@@ -345,6 +345,13 @@ export function createAdapter(game, player, old, { lib, body }) {
           S.turnK = -d / span;
           S.yawBase = rootYaw(c, from);
           S.settled = fin(player.yaw);
+          // (the turns on the spot are filmed unarmed, arms hanging: the sword's guard stays on the upper
+          // body while the legs step round)
+          const up = fightC ?? idleC;
+          if (up && up.loop) {
+            hero.layer(up.name, { mask: 'upper', weight: 1, fade: 0.12, loop: true });
+            S.turnUpper = true;
+          }
           return true;
         }
       }
@@ -358,6 +365,10 @@ export function createAdapter(game, player, old, { lib, body }) {
     S.prevKey = S.key;
     S.key = key;
     const wasMode = S.mode, wasAtk = S.mode === 'attack' ? S.atkClip : null;
+    if (S.turnUpper) {
+      S.turnUpper = false;
+      hero.layer(null, { fade: 0.15 });
+    }
     if (key !== 'loco' && key !== 'heal') S.faceOff = 0; // (the state's own blend takes it from the drawn pose)
     if (S.blockBeat) {
       S.blockBeat = false;
@@ -802,6 +813,10 @@ export function createAdapter(game, player, old, { lib, body }) {
         if (hero.time * c.fps >= end - 0.5 || cancel) {
           // a turn cut short (he moves off): what is left of it fades out over his steps
           const left = S.mode === 'turn' && cancel ? S.yawOff : 0;
+          if (S.turnUpper) {
+            S.turnUpper = false;
+            hero.layer(null, { fade: 0.25 });
+          }
           toLoco(0.25, S.mode === 'pivot');
           S.faceOff = left;
           S.settled = fin(player.yaw);
