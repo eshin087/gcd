@@ -65,6 +65,8 @@ Other tools (all light):
 | `"$PY" -I keysheet.py specs/<set>.json <clip> [take] [--from t] [--to t] [--every 3] [--box x,y,side]` | a labelled ruler sheet of one take's frames for 2D hand keys (see the roll example) |
 | `"$PY" -I armsheet.py specs/<set>.json <clip> [take] --from t --to t [--every 3] [--cell 440] [--cols 4] [--box x,y,side] [--emit]` | the KEY sheet for `limb_keys`: big tiles with a full-frame pixel GRID (20 px; 100s labelled), the tracker's arms thin, its blade, the current keys thick (right arm orange, left lime, blade white; circled + named on a key frame, the spline between). `--emit` writes `<clip>_armkeys_take<k>.json`: one key per tile, pre-filled with the tracker's points and the detected blade, to paste and correct |
 | `bash "$H2/lock.sh" <you> "$PY" -I track.py <film> <t0> <t1> --forget` | HEAVY: drop and re-track a span (after a tracking fix, or when a crop latched onto a phantom); if it runs out of budget, run it again WITHOUT `--forget` |
+| `"$PY" -I phantoms.py <film> <t0> <t1> [--below Y] [--exclude x0 y0 x1 y1]` | per second of the cache: frames tracked, frames a `below` / `exclude` rule refuses, the median pelvis (px) and torso (px): finds a span fitted to a PHANTOM (MOVE 15:22-17:34: the giant statue behind him, pelvis near y 150-250 px while his is near 480-530) |
+| `bash "$H2/lock.sh" <you> "$PY" -I track.py <film> <t0> <t1> --forget --box x y w h --below Y [--exclude x0 y0 x1 y1]` | HEAVY: re-track a phantom span. `--box` seeds him (0-1 fractions), `--below` refuses any detection whose pelvis is higher in the picture than y = Y px, `--exclude` a picture region (px) his pelvis is never in. With any of them the tracker NEVER falls back to the whole frame: a lost frame is retried round his last place at five sizes, else recorded as a miss (interpolated later). Spec takes may carry `"box"`, `"below"`, `"exclude"` for `track.py specs/<set>.json` |
 
 Look at a span's raw tracking before you trust it: a sheet of the tool's own landmarks over the frames
 shows phantoms (a skeleton drawn on a statue or the building), cut-off feet and swapped arms at once. The
@@ -97,9 +99,13 @@ Clip keys:
 | `takes` | list of `{t0, t1, view}`; `view` is a HINT of where the camera sees him from: `front`, `back`, `right` (he faces picture-right: the camera sees his left side), `left`, or the diagonals `front-right` ... The tool measures the real yaw and uses it when it is within 50 degrees of the hint. Optional per take: `film`, `flip: true` (the tool mirrored him: swap sides and depth), `yaw`, `pitch` (degrees, force), `name` |
 | `period`, `period_lo`, `period_hi` | loops: force the cycle (s) or the search range (the default 0.4-2.5 s can lock onto one step instead of two: give a range round the true cycle) |
 | `symmetric` | loops: 0..1, average the cycle with its mirror half a cycle on (unarmed gaits; it fixes a side take's leg mix-ups; never for a move with a held sword) |
+| `sym_parts` | loops with `symmetric`: only these landmark groups are symmetrized: `["legs", "torso"]` keeps each arm's own swing (the far arm of a side take is noise that `symmetric` averaged 50/50 into the near one). Groups: `armL armR arms legL legR legs torso head`. Measured (moveGround, no pose keys, elbow bend min-max): run 32-50 both arms -> L 29-65 / R 25-45; sprint 29-49 -> L 41-70 / R 6-47 |
+| `sym_vis` | loops with `symmetric`: each landmark and its mirror count by the tool's visibility (folded over the takes) instead of 50/50. On moveGround it changed little (the side takes see both arms at similar visibility) |
+| take `limb_weight` | `{"armL": 0.1, "armR": 1, "legs": 0.5}`: those landmark groups of THIS take count that much in the fusion (one-shots and loops; groups as `sym_parts`): an arm's bend from the take that sees that arm side-on, not from a back view that reads a forward forearm's wrist low |
 | `travel` | loops: `forward` keeps only the forward part of the root's travel; `free` keeps the measured direction (strafes) |
 | `search` | one-shots: how far (s) the other takes' alignment may move them (default 0.5) |
 | `ground` | `feet` (default) or `body` (tumbles: a shoulder or the back may be the lowest point) |
+| `speed` | loops: `1.45` (m/s) or `"picture"`: the loop travels at that speed (in the measured direction, or the `travel` angle when nothing was measured: a walk backward seen from behind); the contact (strike to push-off along the travel) and the root are rebuilt from it and the planted feet pinned to it (the stride follows the IK). `"picture"` = the stance measure from the picture: per stance of every take that sees at least 35 % of the travel across its picture, d(pelvis x - planted ankle x)/dt in pixels, metres from his torso's picture length (0.576 m), divided by that share; the median. Every loop's log prints it (`speed from the picture: ...`) whether or not the key is given. Measured on moveGround: walk 1.39 / 1.28, run 4.29, sprint 5.3 m/s, against 0.90 / 3.05 / 3.89 from the planted feet. A speed far above what the legs show (a back view does not see a stride along its axis) makes the pinned foot slide: the checker says so; then give the legs from a side take or `pose_keys` |
 | `contact_h` | loops: how far above its own floor a foot still counts as planted (m, default 0.04) |
 | `phases`, `events` | one-shots: VIDEO times in the FIRST take: `"phases": {"windup": "0:24.35", "active": "0:24.52", "recover": "0:25.10"}`, `"events": [{"t": "0:24.45", "name": "hit"}]` |
 | `sword` | true: find the blade in the picture and put it on the right hand (`weaponR`) |
@@ -133,7 +139,8 @@ Clip keys:
 | `root_keys` | one-shots: `[["10:58.20", x, z], [frame, x, z], ...]`: the root's ground position (m, his start frame: +x his left, +z his front) at those moments, eased between (the start is 0, 0). Replaces the measured travel |
 | `root` | one-shots: `{"smooth": 0.1, "max_off": 0.15}`: the root is the ground point under his hips smoothed over `smooth` s (default 0.25) and never more than `max_off` m from it, so the hips stay over the root (the engine needs it; a lunge left them 0.5-0.9 m off) |
 | `foot_ease` | degrees a frame (e.g. 14 at 60 fps): the feet and toes turn no faster (the sole-levelling at a plant or a lost foot snapped them 79-138 degrees in one frame) |
-| take `facing` | `"away"` / `"toward"`: a HARD prior that he faces away from (toward) this camera through the whole take (a lock-on camera behind him). Every frame the tool read the other way round is mirrored back (7-frame majority); the log prints how many |
+| take `facing` | `"away"` / `"toward"`: a HARD prior that he faces away from (toward) this camera through the whole take (a lock-on camera behind him). Every frame the tool read the other way round is mirrored back (a 3-frame majority of the tool's own frames, BEFORE the left / right swap fix, which is then told that his left hip and shoulder are on the picture's left (away) or right (toward)); the log prints how many |
+| take `below`, `exclude` | phantoms: `"below": 300` = a cached frame whose pelvis is higher in the picture than y 300 px is not him (dropped as a miss); `"exclude": [[x0, y0, x1, y1]]` = nor one whose pelvis is in that region (px). The log's note says how many. The same keys steer `track.py specs/<set>.json` |
 | `free_hand` | true or `{"sigma": 2.0, "flex": 12}`: the free hand from the tool's hand points where they look like a hand, a relaxed hand along the forearm where not |
 | `vis_weight` | true: in the fusion each landmark also counts by the tool's VISIBILITY in that take (a far arm hidden behind the body in a side take hardly counts; one-shots and loops) |
 | take `limb_keys` (alias `arm_keys`) | KEY-FIRST (attacks, jumps, anything the tracker loses): `{"blend": 3, "keys": [{"t": "1:15.34", "pts": {"shoulderR": [x, y], "elbowR": .., "wristR": .., "hilt": .., "tip": .., "kneeL": .., ...}, "near": ["elbowR"], "far": ["tip"]}, ...]}`. Each given point REPLACES the tracker (in 3D, not only the picture) from its first key to its last, on a smooth spline between keys, easing back over `blend` frames. Depth from ONE take: roots (shoulders, hips, nose, ears) keep the tracker's depth; every other point hangs off its parent at the bone's length (shoulder>elbow>wrist, hip>knee>ankle>heel/toe, hilt>tip); `near` / `far`: that point is nearer / farther from the camera than its parent (else the tracker's sign). The keyed blade wins over the detector; a keyed free hand relaxes along the forearm; despike leaves keyed arm joints alone. Points: nose, earL/R, shoulder/elbow/wrist L/R, hip/knee/ankle/heel/toe L/R, hilt, tip. Keys in two takes at one moment are triangulated |
@@ -163,7 +170,11 @@ Clip keys:
 - **Cinematic cameras in attacks, jumps and rolls**: the camera often cuts, swings or zooms during the
   move itself. Cut a take at the cut (or `drop` the span) and let another take cover it.
 - **Phantoms**: the tool sometimes finds a "person" in a statue or a dome when he blurs; the tracker
-  refuses a detection that jumps away AND changes size, and searches round his last place.
+  refuses a detection that jumps away AND changes size, and searches round his last place. A span that is
+  phantom from its start (MOVE 15:22-17:34: the giant statue; also check 29:51-30:27 and SWORD 1:06-1:08)
+  is found by `phantoms.py ... --below Y` and re-tracked with `--box ... --below Y` (example: strafes,
+  `track.py move 15:56.2 15:58.5 --forget --box 0.53 0.55 0.12 0.3 --below 300`, then `"below": 300` on
+  the take so a frame the re-track still missed is not taken from the old cache).
 
 ## Contact spans and the wrap
 
@@ -273,8 +284,13 @@ hand points where they look like a hand and relaxes along the forearm where they
 **Clavicles and toes**: automatic (`clavicles`: 0.3 of the upper arm's lift and reach; toes bend at
 push-off on planted feet).
 
-**Loop speed from the picture**: mark a fixed-camera take `"fixed": true`; the build prints both speeds
-(the planted-foot one, which the clip uses, and the picture's).
+**Loop speed (speed)**: the planted-foot speed comes out about 1.5x too low (the fold and the fusion
+lose travel). Read the log's `speed from the picture: <take> X m/s (N stances: ...)` lines (side takes) and
+give `"speed": "picture"` (or the number you trust, e.g. `"speed": 1.45` for `walk`). For a gait seen only
+from behind (`strafeWalkB`, `strafeRunB`: speed 0 because a back view cannot see travel along its axis)
+give the number: `"travel": 180, "speed": 1.0` builds a 1.0 m/s backward walk with its contact rebuilt
+(L 0-10 + 27-40, R 6-30); its slide (4.6 cm) says the back view's stride is too short for that speed.
+A fixed-camera take with `"fixed": true` also prints the older whole-take picture speed.
 
 ## How to pick takes
 
