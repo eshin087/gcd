@@ -23,6 +23,7 @@ import { Rush } from './game/rush.js';
 import { Records } from './game/records.js';
 import { Eligibility } from './game/eligibility.js';
 import { HERO_LOOKS, LOOK_IDS, heroLookFromSearch, heroLookUrl } from './entities/player/gear/looks.js';
+import { hero2Wanted, mountHero2 } from './entities/hero2/index.js';
 import { Hud } from './ui/hud.js';
 import { TouchControls } from './ui/touch.js';
 import { GamepadControls } from './ui/gamepad.js';
@@ -176,6 +177,8 @@ async function boot() {
   game.fx.streak = new StreakFx(game); // the streak on the hero and in the world (player/streakFx.js)
   game.fx.rip = new TimeRip(game); // the flurry's cuts rip the picture (player/timeRip.js, ?rip=)
   pipeline.setSeenThrough(game.player.object3d); // he prints through what covers him (ADR-106)
+  // the remade hero (an experiment, src/entities/hero2/README.md): only with ?hero=new or ?hero2=<dev mode>
+  if (hero2Wanted(location.search)) await mountHero2(game);
   await step('boss');
   // the boss slot (ARCHITECTURE.md → Levels): the wyrm or the level's own boss; game.boss is the same
   game.dragon = level.createBoss(game);
@@ -403,6 +406,7 @@ async function boot() {
     safe('lab', () => game.lab.update(stepDt));
     safe('flow', () => game.flow.update(dt, stepDt));
     safe('player', () => game.player.update(dt));
+    if (game.hero2) safe('hero2', () => game.hero2.update(dt)); // after the player: it may follow or replace him
     safe('dragon', () => game.dragon.update(dt));
   };
 
