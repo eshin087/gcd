@@ -21,7 +21,7 @@ const { LightPool } = await imp('src/render/lights.js');
 const { GlyphParticles } = await imp('src/render/particles.js');
 const { FireField } = await imp('src/render/fireField.js');
 const { Colliders } = await imp('src/world/colliders.js');
-const { TELL, RESULT, POSTURE } = await imp('src/combat/rules.js');
+const { TELL, RESULT, POSTURE, DEFENSE: DEF } = await imp('src/combat/rules.js');
 const { LEVELS, getLevel, levelFromSearch, applyLevel } = await imp('src/levels/index.js');
 const { createSkybreakRing, RING } = await imp('src/world/skybreakRing.js');
 const { Destructibles } = await imp('src/world/destructibles.js');
@@ -53,6 +53,9 @@ const assert = (c, m) => { if (!c) { fails++; out('FAIL', m); } else out('ok  ',
 const mulberry32 = (a) => () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 const SEED = Number(process.env.GCD_SEED ?? 4242);
 const DT = 1 / 60;
+// a PLAIN parry's press (ADR-227): the perfect window is 0.20 s of the parry's 0.22, so a test that means
+// a plain parry presses in that sliver (a `left <= lead` check lands the press one step inside it: 13 / 60 s)
+const PLAIN_LEAD = (DEF.perfectParryWindow + DEF.parryWindow) / 2 + DT / 2;
 const FORMS = TUNING.forms;
 const weightIn = (def, f) => (Array.isArray(def.weight) ? def.weight[f - 1] ?? 0 : def.weight ?? 0);
 /** The forms a move is used in (its weight; a counter: its own form; a transition: the form before it). */
@@ -588,7 +591,7 @@ async function scenarioFlare() {
   // a parry moment: Hundred Hands parried blow for blow; its palm thrust (a blue flare) ends his string
   // and the hero counters
   p.debug.god = true;
-  G.defend = makeDefender(G);
+  G.defend = makeDefender(G, { early: PLAIN_LEAD }); // plain parries: a perfect one of the palm locks first
   const hun = play('hundred', 2.2, () => G.defend.act(), 9, 1, 5);
   G.defend = null;
   const pal = hun.all('combat:flash').filter((x) => x.attack === 'hundred' && x.flare);
@@ -656,7 +659,9 @@ async function scenarioBare() {
   assert(parried >= 2 && par.has('dragon:parried') && (par.has('combat:deflectChain') || parried >= 2) && !G.payload.size, `Iron Mountain parried blow for blow: ${parried} parried (the shoulder deflected, the palm recoils him)`);
   // a full deflect of a long string (Hundred Hands: eight blows)
   const fd = parryRun('hundred', 2.2);
-  assert(fd.has('dragon:deflected') || fd.has('player:flareCounter'), `Hundred Hands parried whole: ${fd.hits.filter((h) => h.r === RESULT.PARRIED).length} parried → ${fd.has('dragon:deflected') ? 'the full deflect' : 'the moment\'s counter'}`);
+  // (a perfect parry of the palm, a `lock` blow, locks the blades instead: since ADR-227 the bot's
+  // 0.12 s press is perfect)
+  assert(fd.has('dragon:deflected') || fd.has('player:flareCounter') || fd.has('player:lock'), `Hundred Hands parried whole: ${fd.hits.filter((h) => h.r === RESULT.PARRIED).length} parried → ${fd.has('dragon:deflected') ? 'the full deflect' : fd.has('player:lock') ? 'the blade lock' : 'the moment\'s counter'}`);
   // the guard clash on his forearm: the hero cuts into his raised guard
   settle(G);
   d.position.set(0, 0, -2);
@@ -1129,7 +1134,7 @@ async function scenarioShots() {
   {
     const G = shotStage(1, 9);
     Math.random = () => 0.9;
-    G.defend = makeDefender(G);
+    G.defend = makeDefender(G, { early: PLAIN_LEAD }); // a plain parry (a perfect one sends it back)
     const d = G.game.dragon, hp0 = d.hp, php = G.game.player.hp;
     const r = shotCast(G, 'spiritShot', { step: () => G.defend.act() });
     const h = hitBy(r, 'spiritShot');
@@ -1391,7 +1396,7 @@ async function scenarioLantern() {
   const bl = lanternPlay(G, { answer: 'block' });
   assert(bl.hits[0]?.r === RESULT.BLOCKED && bl.lost === 0 && bl.d.lanternBlocked === 1 && !bl.lock, `a held guard: ${bl.hits[0]?.r}, ${bl.lost} HP lost; it bursts on the guard`);
   // 3. a plain parry: safe, no push
-  const pp = lanternPlay(G, { answer: 'parry', early: 0.13 });
+  const pp = lanternPlay(G, { answer: 'parry', early: PLAIN_LEAD + DT }); // (this helper's press lands a step later than a `left <= lead` check)
   assert(pp.hits[0]?.r === RESULT.PARRIED && pp.lost === 0 && !pp.lock && pp.d.pushes === 0, `a plain parry: ${pp.hits[0]?.r}, ${pp.lost} HP lost, no push`);
   // 4. a roll: it passes and bursts on the floor beyond
   const rl = lanternPlay(G, { answer: 'roll' });
@@ -1654,7 +1659,7 @@ async function scenarioClash() {
   assert(edge > 10 && across < 0 && ed.flashes.length === 1, `he vanished to the ring's far edge first (${edge.toFixed(1)} m from the middle, the hero on the other side)`);
   // 2. a plain parry of the head: held as a block (guard paid, no health)
   // (then held as a guard: the ticks pay guard too, until it gives)
-  const pl = greatPlay(G, { dist: 6, parry: 0.2, block: false });
+  const pl = greatPlay(G, { dist: 6, parry: PLAIN_LEAD + DT, block: false }); // (this helper's press lands a step later than a `left <= lead` check)
   const plHead = pl.hits.find((h) => h.r !== RESULT.IGNORED);
   assert(plHead?.r === RESULT.PARRIED && !pl.lock && pl.headHp === 0 && pl.headGuard > 0, `a plain parry of the head (${plHead?.r}): no clash, the head cost ${pl.headGuard?.toFixed(0)} guard and ${pl.headHp} HP`);
   // 3. THE CLASH won: a perfect parry, the hero mashes

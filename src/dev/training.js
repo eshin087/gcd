@@ -110,7 +110,7 @@ add('HERO ARTS', [
 
 add('PARRY & RIPOSTE', [
   { id: 'parry', name: 'Parry a single blow', boss: 'any', streak: 0, role: 'single', answer: 'parry', desc: 'A single blow parried: the clash, then the riposte (one flash cut) and back where you stood.', expect: ['player:parry', 'player:flurryEnd'] },
-  { id: 'perfectParry', name: 'Perfect parry', boss: 'any', streak: 0, role: 'single', answer: 'perfect', desc: 'Pressed within 0.08 s of the impact: the gold clash and a beat of slow motion.', expect: ['player:parry'] },
+  { id: 'perfectParry', name: 'Perfect parry', boss: 'any', streak: 0, role: 'single', answer: 'perfect', desc: `Pressed within ${DEFENSE.perfectParryWindow} s of the impact: the gold clash and a beat of slow motion.`, expect: ['player:parry'] },
   ...[3, 7].map((n) => ({ id: `riposte${n}`, name: `Riposte ${N(n)}`, boss: 'any', streak: n - 1, role: 'single', answer: 'parry', desc: `A parry at a streak of ${n}: ${n} flash cuts.`, expect: ['player:flurryEnd'] })),
   { id: 'deflect', name: 'Deflect a string', boss: 'any', streak: 0, role: 'string', answer: 'parry', desc: 'Every blow of a string parried in rhythm: each counts in the streak, the last is answered by the riposte.', expect: ['player:parry'] },
   { id: 'deflectLong', name: 'Deflect a long string', boss: 'any', streak: 0, role: 'long', answer: 'parry', desc: 'A long string parried blow for blow: watch the streak climb and the riposte at the end.', expect: ['player:parry'] },

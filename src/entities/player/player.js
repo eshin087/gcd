@@ -513,7 +513,7 @@ export class Player {
       }
     }
     // (d) parry: RMB pressed shortly before impact, attacker in the front arc; pressed within
-    // perfectParryWindow it is a perfect parry (computed for every parry; only bullets consume it)
+    // perfectParryWindow it is a perfect parry (deflect.perfect: the attacker and its bullets read it)
     if (
       parryable &&
       this._canGuard() &&
