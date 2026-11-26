@@ -51,7 +51,11 @@ Frames, caches and sheets stay in this session's scratchpad (never committed).
   c) spark cloud, d) heavy finish. Built by Sonnet subagents from the lead's briefs; filmed side by side.
 - **Tests:** duel `dodgefx` (every variant x streaks 2 / 5 / 7: blows, damage = off, feet down at the end, the aerial
   cut's height, the thrust's pick), duel `chain` / `tempo`, integ `chain` / `storm`, cost, glyphcheck.
-- **Next / open:** the owner's pick; aerial cuts only on the chain's paths (`?chain=0` has none).
+- **The pick (2026-11-26):** the owner chose **a**, the Thunder Thrust, as the default. Fallout: the aerial cut's
+  hanging line was drawn through the foe's chest; it now runs along his own path (the chain's rule), and the chain
+  test measures from his real height. The pace sims (duel / lord `pace`, city's win window, duel `pressure`) measure
+  the boss with the looks off: the held lunge holds the world longer, a gap in his cues that is not his pace.
+- **Next / open:** played on the iPhone; aerial cuts only on the chain's paths (`?chain=0` has none).
 
 ## 2026-11-25 — A roadmap to Steam and the app stores (docs only; branch `docs/ship-roadmap`)
 

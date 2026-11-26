@@ -6,7 +6,7 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 ## [Unreleased]
 One hundred and seven pieces of work since 0.4.0:
 - **Four looks for the perfect dodge flurry** (2026-11-25, ADR-210). *Added, behind `?dodgefx=a|b|c|d` (the Lab's
-  `dodgefx` button; off by default until the owner picks):* against a man the flurry keeps its vanish and all three
+  `dodgefx` button; the owner picked a, the Thunder Thrust, as the default; `?dodgefx=off` is the flurry before):* against a man the flurry keeps its vanish and all three
   finishers, and adds faint smeared copies of him along each cut, tiny sparks kicked off the floor, and an aerial cut
   from above in a streak of 5 or more. Each look adds one lesson from the owner's reference footage: a) the Thunder
   Thrust, a fourth finisher (a low set, one smeared lunge, the lunge held, letter tendrils over the floor); b) a bloom

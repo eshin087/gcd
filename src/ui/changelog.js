@@ -21,9 +21,9 @@ export const RELEASES = [
         date: '2026-11-25',
         title: 'Four looks for the perfect dodge flurry',
         notes: [
-          'To try: add ?dodgefx=a, b, c or d to the address (or the dodgefx button in the Lab).',
+          'The Thunder Thrust look is on: the other looks are ?dodgefx=b, c or d, and ?dodgefx=off is the flurry before.',
           'Every look: a smear of the hero along each cut, sparks off the floor, and in a long streak a cut from above.',
-          'a: a fourth finisher, the Thunder Thrust. b: a bloom at the blade point. c: a cloud of falling sparks. d: heavier finishers.',
+          'A fourth finisher, the Thunder Thrust: a low set, one smeared lunge, the lunge held, letter trails over the floor.',
         ],
       },
       {

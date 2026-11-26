@@ -6347,5 +6347,5 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   (`FlurryFx.kick`) and aerial cuts (`Flurry._isAerial`: from 2.2 m down through him), and a) a fourth art, the
   Thunder Thrust; b) `FlurryFx.bloom` + `tendrils` at every contact; c) `FlurryFx.sparks`, a lingering cloud;
   d) a longer coil, a held finish / landing and a camera push. Numbers: `DEFENSE.flurry.dodgefx`. Blows and damage
-  unchanged (duel `dodgefx`). `?dash` is gone (git history keeps it). Default off until the owner picks.
+  unchanged (duel `dodgefx`). `?dash` is gone (git history keeps it). The owner watched the four side by side and picked **a** (the Thunder Thrust) as the default (2026-11-26); `?dodgefx=off` gives the flurry before. The pace sims (duel / lord `pace`, city's win window, duel `pressure`) measure the boss with the dodge looks off: the thrust's held lunge holds the world longer, a gap in his cues that is not his pace.
 - **Consequences:** aerial cuts exist only on the chain's paths; d delays the art (its blows' frames move).

@@ -1297,15 +1297,16 @@ async function scenarioChain() {
     const hp0 = d.hp, fl = p.flurry;
     const tr = { passes: [], art: null, hits: [], f: 0, glyphs: new Set(), lineErr: 0, near: Infinity, ok: false, end: null };
     const o0 = { cs: fl._cutStarts, va: fl._vanish, ba: fl._beginArt };
-    fl._cutStarts = function () { tr.passes.push({ ax: p.position.x, az: p.position.z, i: fl.i, L: fl.nLines - 1, tx: fl.T.x, tz: fl.T.z }); return o0.cs.call(this); };
+    fl._cutStarts = function () { tr.passes.push({ ax: p.position.x, ay: p.position.y, az: p.position.z, i: fl.i, L: fl.nLines - 1, tx: fl.T.x, tz: fl.T.z }); return o0.cs.call(this); };
     fl._vanish = function (b) {
       const ps = tr.passes[tr.passes.length - 1];
       if (ps && ps.bx === undefined && fl.i < fl.cuts) {
         ps.bx = p.position.x;
+        ps.by = p.position.y;
         ps.bz = p.position.z;
         const L = fl.lines[ps.L];
         // the hanging line's ends against where his chest was as the pass began / ended
-        if (L) tr.lineErr = Math.max(tr.lineErr, Math.hypot(L.ax - ps.ax, L.ay - CH, L.az - ps.az), Math.hypot(L.bx - ps.bx, L.by - CH, L.bz - ps.bz));
+        if (L) tr.lineErr = Math.max(tr.lineErr, Math.hypot(L.ax - ps.ax, L.ay - ps.ay - CH, L.az - ps.az), Math.hypot(L.bx - ps.bx, L.by - ps.by - CH, L.bz - ps.bz));
       }
       return o0.va.call(this, b);
     };
@@ -4963,7 +4964,18 @@ const SCENARIOS = {
   telemetry: scenarioTelemetry,
   heavy: scenarioHeavy,
   moments: scenarioMoments,
-  pressure: scenarioPressure,
+  // (a boss-AI check, measured with the flurry before the dodge looks: the Thunder Thrust's held lunge
+  // keeps the hero by him longer, and the seeded fight runs another way)
+  pressure: async () => {
+    const { STREAK_FX } = await imp('src/combat/streak.js');
+    const fx0 = STREAK_FX.dodgefx;
+    STREAK_FX.dodgefx = '';
+    try {
+      return await scenarioPressure();
+    } finally {
+      STREAK_FX.dodgefx = fx0;
+    }
+  },
   impact: scenarioImpact,
   levels: scenarioLevels,
   floor: scenarioFloor,
@@ -4987,7 +4999,18 @@ const SCENARIOS = {
   phase: scenarioPhase,
   flow: scenarioFlow,
   win: scenarioWin,
-  pace: scenarioPace,
+  // (the boss's pace is measured with the flurry before the dodge looks (STREAK_FX.dodgefx, 2026-11-25): the
+  // Thunder Thrust's held lunge holds the world longer, a gap in HIS cues that is not his pace)
+  pace: async () => {
+    const { STREAK_FX } = await imp('src/combat/streak.js');
+    const fx0 = STREAK_FX.dodgefx;
+    STREAK_FX.dodgefx = '';
+    try {
+      return await scenarioPace();
+    } finally {
+      STREAK_FX.dodgefx = fx0;
+    }
+  },
   cutfx: scenarioCutFx,
   sfx: scenarioSfx,
 };

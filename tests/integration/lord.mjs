@@ -2268,7 +2268,18 @@ const S = {
   flow: scenarioFlow,
   terrain: scenarioTerrain,
   win: scenarioWin,
-  pace: scenarioPace,
+  // (the boss's pace is measured with the flurry before the dodge looks (STREAK_FX.dodgefx, 2026-11-25): the
+  // Thunder Thrust's held lunge holds the world longer, a gap in HIS cues that is not his pace)
+  pace: async () => {
+    const { STREAK_FX } = await imp('src/combat/streak.js');
+    const fx0 = STREAK_FX.dodgefx;
+    STREAK_FX.dodgefx = '';
+    try {
+      return await scenarioPace();
+    } finally {
+      STREAK_FX.dodgefx = fx0;
+    }
+  },
   training: scenarioTraining,
   flare: scenarioFlare,
   fxlooks: scenarioFxlooks,

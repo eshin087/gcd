@@ -278,7 +278,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Five figures, one a flurry, never twice running (`?figure=`)
 - [x] The time rip: four looks filmed side by side; the owner picked the torn strip (`?rip=`)
 - [x] Four dodge looks: smear, floor sparks, aerial cuts, and a / b / c / d (`?dodgefx=`, ADR-210)
-- [ ] The owner's pick for the dash (default off until then)
+- [x] The owner's pick: a, the Thunder Thrust, is the default (`?dodgefx=off` the flurry before)
+- [ ] Played, and seen on the iPhone (the dodge looks)
 - [ ] Played, and seen on the iPhone
 - [ ] Judged in play: the step into the storm round the head, the riposte's last freeze (0.198 s), the figures' size at the duel camera
 - [ ] The wyrm's `pounce` past its share of a gap in the tree wall (integ `breach` replays at the old pace until then)

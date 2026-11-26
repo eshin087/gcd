@@ -861,12 +861,8 @@ export class Flurry {
     p.copy(A);
     P.yaw = Math.atan2(this.d.x, this.d.z);
     // (the slash he leaves: exactly the path his chest runs, A to B, CHEST m over his root)
-    const L = this._line(A, B, CHEST);
-    // (an aerial cut hangs where it crosses him: a slash down through his chest, not the height he falls from)
-    if (L && this._aer) {
-      L.ay = T.y + 0.8;
-      L.by = Math.max(0.3, T.y - 0.8);
-    }
+    // (an aerial cut too: the slash falls from where he leapt to where he lands, the owner's rule)
+    this._line(A, B, CHEST);
     return true;
   }
 

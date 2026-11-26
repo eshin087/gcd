@@ -653,7 +653,7 @@ same 258 damage in the same time as a streak of 7 (integ `storm`).
   down into a drift that thins out in 0.6 - 0.9 s) instead of the slam's big 'A' shards; round the
   head the art's shards are dust too. Damage, the blows and their frames, the world's hold and the
   crit window are as before (duel / integ `chain`).
-- **The dodge looks** (2026-11-25; `?dodgefx=a|b|c|d`, the Lab's `dodgefx`; default off: as above). Owner: the
+- **The dodge looks** (2026-11-25; `?dodgefx=a|b|c|d`, the Lab's `dodgefx`; **default a**, the owner's pick of 2026-11-26; `?dodgefx=off`: as above). Owner: the
   flurry's blinks and arts stay, but it should read as a dash, after their reference footage. Against a man on
   the ground (not a riposte; the wyrm's flurry, the plunge, the riposte and the counter are unchanged) every
   variant adds three shared pieces, and the blows, the frames they land on and the damage stay the flurry's
