@@ -15,7 +15,7 @@
 //      pause(on), step(dt), status(), title(), stop(), hero (the animator), lib }
 import { loadLibrary } from './clips/index.js';
 import { createHero2 } from './engine.js';
-import { buildBody } from './body.js';
+import * as bodyModule from './body.js';
 import { buildDebugBody } from './debugBody.js';
 import { JI } from './skeleton.js';
 import { HDIM } from './dims.js';
@@ -41,8 +41,9 @@ export async function mount(game, params) {
   let body = null, bodyKind = 'body';
   if (P.get('body') !== 'debug') {
     try {
-      body = buildBody(game, {});
-      const empty = body?.drawn === false || (body?.drawn !== true && !(body?.object3d?.children?.length > 0));
+      body = bodyModule.buildBody(game, {});
+      // the stub draws nothing: the real body says so (BODY_READY), else an empty group gives it away
+      const empty = !bodyModule.BODY_READY && !(body?.object3d?.children?.length > 0);
       if (empty) {
         body.dispose?.();
         body = null;
@@ -55,7 +56,8 @@ export async function mount(game, params) {
   if (!body) {
     body = buildDebugBody(game, { scale });
     bodyKind = 'debug';
-  } else if (body.object3d.scale.x === 1) body.object3d.scale.setScalar(scale);
+  }
+  // (object3d.scale stays 1: gameplay metres; each body draws its own scale, as today's hero does)
   game.scene.add(body.object3d);
   const hero = createHero2(game, { body, library: lib });
   const obj = body.object3d;

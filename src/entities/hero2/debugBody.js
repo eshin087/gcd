@@ -1,7 +1,7 @@
 // A DEV AID (not the shipped look): a body with body.js's interface that draws a plain box per bone,
 // a box head, and a thin blade on the weapon sockets, so the clip engine can be seen and filmed before
 // the real body exists. The left side is tinted cool, the right warm (which hand is which, in a film).
-// Plain materials on purpose; the showcase takes it with `?body=debug`, or when body.js draws nothing.
+// Plain unlit materials on purpose (the game lights through its own light pool, not three.js lights); the showcase takes it with `?body=debug`, or when body.js draws nothing.
 import * as THREE from 'three';
 import { J, JI, restOffsets } from './skeleton.js';
 import { HDIM } from './dims.js';
@@ -21,21 +21,25 @@ const sideOf = (name) => (/L$/.test(name) ? 'L' : /R$/.test(name) ? 'R' : 'C');
 export function buildDebugBody(game, { dims = HDIM, scale = 1 } = {}) {
   const object3d = new THREE.Group();
   object3d.name = 'hero2:debug';
-  object3d.scale.setScalar(scale);
+  // drawn at `scale` inside (object3d.scale stays 1: the engine and the owner work in gameplay metres,
+  // as today's hero is drawn 1.08x by its matrix, not its scale)
+  const inner = new THREE.Group();
+  inner.scale.setScalar(scale);
+  object3d.add(inner);
   const rest = restOffsets(dims);
   const mats = {
-    C: new THREE.MeshLambertMaterial({ color: 0xb8b2a6 }),
-    L: new THREE.MeshLambertMaterial({ color: 0x6f9fd8 }),
-    R: new THREE.MeshLambertMaterial({ color: 0xd88a5a }),
-    blade: new THREE.MeshLambertMaterial({ color: 0xe8f0ff, emissive: 0x334455 }),
-    flask: new THREE.MeshLambertMaterial({ color: 0xd8b040 }),
+    C: new THREE.MeshBasicMaterial({ color: 0xb8b2a6 }),
+    L: new THREE.MeshBasicMaterial({ color: 0x6f9fd8 }),
+    R: new THREE.MeshBasicMaterial({ color: 0xd88a5a }),
+    blade: new THREE.MeshBasicMaterial({ color: 0xe8f0ff }),
+    flask: new THREE.MeshBasicMaterial({ color: 0xd8b040 }),
   };
   const joints = [];
   for (let j = 0; j < J; j++) {
     const g = new THREE.Group();
     g.name = 'h2j' + j;
     g.matrixAutoUpdate = true;
-    object3d.add(g);
+    inner.add(g);
     joints.push(g);
   }
   const up = new THREE.Vector3(0, 1, 0), dir = new THREE.Vector3();

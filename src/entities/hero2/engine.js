@@ -508,6 +508,13 @@ export function createHero2(game, { body, library, dims = HDIM, applyRoot = true
         }
         pinFeet(feet, player.pose, world, rest, player, wA, wB, place, dt, dims);
         for (let i = 0; i < player.eventCount; i++) emit(player.events[i]);
+        // the blade lights while it cuts (body.hot, optional): 1 from the coil to the cut's end, eased
+        if (body && 'hot' in body) {
+          const c = player.clip, f = c?.phases ? player.time * c.fps : -1;
+          const want = c?.phases && f >= c.phases.windup && f <= c.phases.active ? 1 : 0;
+          const h = fin(body.hot, 0);
+          body.hot = want > h ? Math.min(1, h + dt * 30) : Math.max(0, h - dt * 4);
+        }
         body?.update?.(world, dt);
       } catch (err) {
         warn(`[hero2] update failed: ${err?.message ?? err}`);
