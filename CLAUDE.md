@@ -41,6 +41,8 @@ npm test         # headless integration sims (real game modules, mocked DOM/WebG
                  # (one suite: node tests/integration/lord.mjs . <scenario>, also integ.mjs / duel.mjs / world.mjs / asc.mjs / fox.mjs / city.mjs;
                  #  `duel.mjs . pace` / `lord.mjs . pace`: the duelists' pressure meter, GCD_PSEEDS / GCD_PSECS;
                  #  woke.mjs: Xin Yi, `woke.mjs . strategy` opt-in)
+                 # --only integ,life: only those tasks (names from --list). Locally every run
+                 # shares 8 slots machine-wide (ABYSS_JOBS) at low priority; CI is unchanged (ADR-204)
 npm run build    # single-file dist/index.html (what Vercel serves)
 npm run hero-parts  # regenerate src/entities/player/heroParts.js (needs Blender 4.2+; ADR-037)
 ```
@@ -145,6 +147,15 @@ In Claude Code the preview config is `.claude/launch.json` (`gcd-dev`).
   guard optional references and avoid NaN. No heavy per-frame allocations.
 - **Verify visually.** Rendering/feel changes need a browser check (dev server + screenshots, the
   Lab, `__tick`). Logic changes need `npm test` green. Add/extend tests in `tests/` for new systems.
+- **Go easy on the owner's PC (ADR-204).** Many agents share one machine, and the owner games on it.
+  - While working, test only what you changed: one suite (`node tests/integration/<suite>.mjs . <scenario>`)
+    or `npm test -- --only <names>`. Run the full `npm test` once, before opening the PR; CI runs
+    everything anyway.
+  - Never start a second `npm test` while one of yours is still running. If a test command times out,
+    check whether it is still running (and wait for it or stop it) before running it again.
+  - Run long test commands in the background and wait for them; do not start another meanwhile.
+  - Before you finish, stop every dev server, preview (`preview_stop`) and background process you
+    started. Leave nothing running that no one will read.
 - **Keep history.** Every working session ends by:
   1. adding a dated entry to `docs/DEVLOG.md` (what changed, why, what's next, open issues),
   2. updating `CHANGELOG.md` `[Unreleased]` (Added / Changed / Fixed / Removed), and giving each new

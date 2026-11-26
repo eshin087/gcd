@@ -6086,3 +6086,20 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   differently, so the bullet cues shift a frame). The owner played c with the flurry fix and picked it: "Ship c" (2026-11-25); b and 0 stay behind `?neck=` for comparison. Open: the rear attacks (tail
   lash, rakes, cataclysm) still curl the neck back over the spine, where 'upright against the body' is ill
   defined and the head can sit rolled; the leap's and pounce's neck strikes stay fast.
+
+## ADR-204 — Local test runs go easy on the owner's PC: one shared pool of slots, low priority, `--only` (2026-11-25)
+
+- **Context:** the owner's PC (i9-14900KF, 32 threads, 128 GB) sat at 100% CPU: two agents' `npm test`
+  ran at once, each starting all 24 tasks side by side (~40 node processes, ~75 GB), and eight preview
+  servers from finished worktrees were still running. The owner games on the same machine and asked
+  that agents stop straining it, without slowing what it takes to get a PR merged.
+- **Decision:** with no `CI` env, `tests/run.mjs` runs every worker at below-normal priority and takes a
+  slot from one machine-wide pool (`<tmp>/abyss-test-slots`, `ABYSS_JOBS`, default 8) before starting a
+  task; a slot names its run's pid and a dead run's slot is taken over. A stopped run kills its workers.
+  `--only <names>` runs a subset of the tasks. CLAUDE.md asks agents to test only what they changed
+  while working, never to start a second `npm test`, and to stop their servers before finishing.
+- **Why this way:** a per-run cap still lets several agents pile up; a shared pool caps the machine.
+  Low priority is what keeps a game smooth beside them: Windows serves the game's threads first.
+- **Consequences:** CI is unchanged (it sets `CI`), so a PR's check takes as long as before. A full
+  local run alone takes longer (8 at a time, not 24); runs from several agents queue instead of
+  slowing each other. `ABYSS_JOBS=2` while gaming lowers it further.
