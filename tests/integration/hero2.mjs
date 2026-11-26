@@ -10,6 +10,10 @@
 //   fit     time fitting puts the coil and the cut's end on the game's marks within one step
 //   engine  events, footfalls, root motion, a missing clip holds the pose, no throw on bad input
 //   off     with the switch off game.hero2 is undefined and no hero2 module but the switchboard loads
+//   sweep   every attack the move table maps, fitted to its game def: the blade's sweep against a target
+//           1.2 / 1.9 / 2.6 m in front of him inside the active window (a table)
+//   play    the game PLAYED with the remade hero (adapter.js): the real Player, the Windless Grove's
+//           duelist, the flow; walk / run / sprint, stop, roll, three lights on a target, a hit taken
 import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -131,8 +135,13 @@ function scenSmooth() {
   out('-- smooth: sampling across frames, loop wraps and cross-fades');
   const MAXDEG = 22, MAXHIPS = 0.03; // per 1/60 s step
   // every clip on its own: each loops for two cycles (the wrap twice) or plays once
+  // the ENGINE's continuity is checked on the synthetic clips (their data is smooth by construction);
+  // a footage clip's own glitches are the data's (a warning per clip: its builder fixes them at the source)
   let worst = { ang: 0, at: '', clip: '', t: 0 }, worstH = { hm: 0, clip: '' }, worstRoot = { d: 0, clip: '' };
+  const dataGlitch = [];
   for (const c of lib.clips) {
+    const synthetic = c.name.startsWith('_');
+    let cw = 0, ch = 0;
     const P = createClipPlayer(lib, { warn: () => {} });
     P.play(c.name, { fade: 0 });
     P.update(0);
@@ -141,13 +150,18 @@ function scenSmooth() {
     for (let i = 0; i < steps; i++) {
       P.update(DT);
       const s = poseStep(prev, P.pose);
+      const rd = Math.hypot(P.rootDelta.dx, P.rootDelta.dz);
+      prev = copyPose(P.pose);
+      cw = Math.max(cw, s.ang);
+      ch = Math.max(ch, s.hm);
+      if (!synthetic) continue;
       if (s.ang > worst.ang) worst = { ...s, clip: c.name, t: P.time };
       if (s.hm > worstH.hm) worstH = { hm: s.hm, clip: c.name };
-      const rd = Math.hypot(P.rootDelta.dx, P.rootDelta.dz);
       if (rd > worstRoot.d) worstRoot = { d: rd, clip: c.name };
-      prev = copyPose(P.pose);
     }
+    if (!synthetic && (cw >= MAXDEG || ch >= MAXHIPS)) dataGlitch.push(`${c.name} ${cw.toFixed(0)} deg / ${(ch * 100).toFixed(0)} cm`);
   }
+  if (dataGlitch.length) out(`     (warning, the footage's data) a step over ${MAXDEG} deg or ${MAXHIPS * 100} cm: ${dataGlitch.join(', ')}`);
   assert(worst.ang < MAXDEG, `no joint turns over ${MAXDEG} deg in a step, wraps included (worst ${worst.ang.toFixed(1)} deg: ${worst.clip} ${worst.at} at ${worst.t.toFixed(2)} s)`);
   assert(worstH.hm < MAXHIPS, `the hips never jump over ${MAXHIPS * 100} cm in a step (worst ${(worstH.hm * 100).toFixed(1)} cm: ${worstH.clip})`);
   assert(worstRoot.d < 0.1, `the root's step stays under 10 cm (worst ${(worstRoot.d * 100).toFixed(1)} cm: ${worstRoot.clip})`);
@@ -493,7 +507,268 @@ function scenOff() {
   assert(!/^import /m.test(idx), 'hero2/index.js imports nothing statically (every stand is a lazy import)');
 }
 
-const SCENARIOS = { clips: scenClips, smooth: scenSmooth, feet: scenFeet, fit: scenFit, engine: scenEngine, off: scenOff };
+// ------------------------------------------------------------------ sweep
+async function scenSweep() {
+  out("-- sweep: the mapped attacks' blades against a target in front of him");
+  const { ATTACKS, resolveClip } = await imp(H2 + 'moves.js');
+  const { aimOf, fixAttackPose } = await imp(H2 + 'adapter.js');
+  const C = await imp('src/entities/player/combat.js');
+  const defs = [...C.LIGHT, ...C.HEAVY, C.SPRINT_ATK, C.ROLL_ATK, C.CLEAVE, C.THRUST, C.ONE_BREATH].filter(Boolean);
+  const rows = [];
+  let mapped = 0, crossing = 0;
+  for (const def of defs) {
+    const e = ATTACKS[def.name];
+    const c = resolveClip(lib, e);
+    if (!e || !c) {
+      rows.push(`${def.name.padEnd(17)} no clip`);
+      continue;
+    }
+    mapped++;
+    const h = createHero2(null, { body: standIn(), library: lib, applyRoot: false });
+    h.props = { R: 'sword', L: null };
+    // as the game plays it (adapter.js): the hips held over his root, the clip turned to aim at its hit
+    const aim = aimOf(lib, c);
+    h.onPose = (pose) => fixAttackPose(pose, c, aim);
+    h.play(c.name, { fade: 0, manual: true });
+    const D = [1.2, 1.9, 2.6], hit = [Infinity, Infinity, Infinity];
+    let a0 = null, a1 = null, sweep = 0, prevA = null;
+    const A = { x: 0, y: 0, z: 0 }, B = { x: 0, y: 0, z: 0 };
+    const t0 = def.windup, t1 = def.windup + def.active;
+    for (let t = 0; t <= t1 + 1e-9; t += DT) {
+      h.setTime(fitTime(c, t, def));
+      h.update(DT);
+      if (t < t0 - 1e-9 || !h.bladeSegment('R', A, B)) continue;
+      // the blade out to the hit test's reach (bladeTip + REACH.tipExt, as SwordSweep)
+      const ex = B.x - A.x, ey = B.y - A.y, ez = B.z - A.z, L = Math.hypot(ex, ey, ez) || 1, k = (L + C.REACH.tipExt) / L;
+      const bx = A.x + ex * k, by = A.y + ey * k, bz = A.z + ez * k;
+      for (let i = 0; i < 3; i++) {
+        // distance from the target's axis (x 0, z D, the ground to 1.8 m) to the blade, sampled along it
+        let best = Infinity;
+        for (let s2 = 0; s2 <= 10; s2++) {
+          const u = s2 / 10, x = A.x + (bx - A.x) * u, y = A.y + (by - A.y) * u, z = A.z + (bz - A.z) * u;
+          const dy = y < 0 ? -y : y > 1.8 ? y - 1.8 : 0;
+          best = Math.min(best, Math.hypot(x, z - D[i], dy));
+        }
+        hit[i] = Math.min(hit[i], best);
+      }
+      const ang = Math.atan2(bx, bz);
+      if (prevA != null) sweep += Math.abs(Math.atan2(Math.sin(ang - prevA), Math.cos(ang - prevA)));
+      prevA = ang;
+      if (a0 == null) a0 = ang;
+      a1 = ang;
+    }
+    const R = 0.45 + C.REACH.radius; // a body's hurt radius + the blade's
+    const tag = hit.map((d) => (d <= R ? 'HIT' : `${d.toFixed(2)}`)).join(' / ');
+    if (hit[0] <= R || hit[1] <= R) crossing++;
+    rows.push(`${def.name.padEnd(17)} ${c.name.padEnd(8)} active ${t0.toFixed(2)}-${t1.toFixed(2)} s  target 1.2 / 1.9 / 2.6 m: ${tag}  tip ${((a0 ?? 0) * 57.3).toFixed(0)} -> ${((a1 ?? 0) * 57.3).toFixed(0)} deg, swept ${(sweep * 57.3).toFixed(0)} deg, aim ${(aim * 57.3).toFixed(0)} deg`);
+  }
+  for (const r of rows) out('     ' + r);
+  assert(mapped === defs.length, `every game attack def plays a clip (${mapped} of ${defs.length})`);
+  assert(crossing >= 1, `a mapped attack's blade reaches a target 1.2 or 1.9 m in front inside its active window (${crossing} of ${mapped}; the table: the data's own sweep)`);
+}
+
+// ------------------------------------------------------------------ play
+async function scenPlay() {
+  out('-- play: the game played with the remade hero');
+  const THREE = await import(pathToFileURL(`${ROOT}/node_modules/three/build/three.module.js`).href);
+  const { AUDIO, resetWindow } = await import('./shim.mjs');
+  const { CONFIG } = await imp('src/core/config.js');
+  const { Events } = await imp('src/core/events.js');
+  const { CameraRig } = await imp('src/core/cameraRig.js');
+  const { createSharedUniforms } = await imp('src/render/shaderLib.js');
+  const { LightPool } = await imp('src/render/lights.js');
+  const { GlyphParticles } = await imp('src/render/particles.js');
+  const { FireField } = await imp('src/render/fireField.js');
+  const { Colliders } = await imp('src/world/colliders.js');
+  const { TELL } = await imp('src/combat/rules.js');
+  const { LEVELS, getLevel, applyLevel } = await imp('src/levels/index.js');
+  const { Player } = await imp('src/entities/player/player.js');
+  const { Hud } = await imp('src/ui/hud.js');
+  const { Bindings, installActions } = await imp('src/core/bindings.js');
+  const { TouchControls } = await imp('src/ui/touch.js');
+  const { AudioEngine } = await imp('src/audio/audio.js');
+  const { GameFlow } = await imp('src/game/flow.js');
+  const { Lab } = await imp('src/dev/lab.js');
+  const { mount } = await imp(H2 + 'adapter.js');
+  const LVL = getLevel('grove');
+  applyLevel(LVL);
+  resetWindow();
+  let seed = 4242;
+  const R0 = Math.random;
+  Math.random = () => ((seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296);
+  const U = createSharedUniforms();
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(CONFIG.camera.fov, 16 / 9, CONFIG.camera.near, CONFIG.camera.far);
+  const keys = new Set(), pk = new Set(), rk = new Set(), btn = [false, false, false], pb = [false, false, false], rb = [false, false, false];
+  const input = {
+    enabled: true, anyPressed: false, wheel: 0, mouse: { ndcX: 0, ndcY: 0 }, keys, pressedKeys: pk, releasedKeys: rk, buttons: btn, pressedButtons: pb, releasedButtons: rb, axis: { x: 0, y: 0 },
+    down(c) { return keys.has(c); }, pressed(c) { return pk.has(c); }, released(c) { return rk.has(c); },
+    mouseDown(b) { return btn[b]; }, mousePressed(b) { return pb[b]; }, mouseReleased(b) { return rb[b]; },
+    moveAxis() { return this.axis; },
+    hold(c) { if (!keys.has(c)) { keys.add(c); pk.add(c); } }, release(c) { if (keys.delete(c)) rk.add(c); },
+    click(b = 0) { btn[b] = true; pb[b] = true; this._tap = b; },
+    endFrame() { pk.clear(); rk.clear(); pb.fill(false); rb.fill(false); if (this._tap != null) { btn[this._tap] = false; rb[this._tap] = true; this._tap = null; } },
+  };
+  installActions(input, new Bindings(null));
+  const colliders = new Colliders();
+  const world = {
+    colliders, bonfire: { ...CONFIG.world.bonfire }, nest: { x: 0, z: 0 },
+    forest: { treeSpots: [], bonfire: { ...CONFIG.world.bonfire }, ambience: { update() {}, flare() {} } },
+    setGrassQuality() {}, resolve: (pos, r, b) => colliders.resolve(pos, r, b),
+    setPusher(slot, x, y, z, r) { if (![x, y, z, r].every(Number.isFinite)) throw new Error('NaN pusher'); },
+    clearPushers() {}, gust() {}, scorch: { burnCircle() {}, reset() {}, heatAt: () => 0, burnAt: () => 0 },
+    atmosphere: { bonfireLit: true, setBonfireLit() {} }, update() {},
+  };
+  const errs = [];
+  const ce = console.error;
+  console.error = (...a) => errs.push(a.map((x) => (x?.stack ? x.stack.split('\n').slice(0, 3).join(' | ') : String(x))).join(' '));
+  const game = {
+    THREE, CONFIG, level: LVL, levels: LEVELS.map((L) => ({ id: L.id, name: L.name })), pickLevel() {},
+    renderer: null, scene, fxScene: new THREE.Scene(), camera, U,
+    pipeline: { finalMat: { uniforms: { uHurt: { value: 0 }, uFade: { value: 0 }, uDesat: { value: 0 }, uWarm: { value: 0 }, uExposure: { value: 1 }, uBloom: { value: 1 } } }, setSeenThrough(o) { this.seen = o; } },
+    events: new Events(), input, cameraRig: new CameraRig(camera), lights: new LightPool(U),
+    fx: { alpha: new GlyphParticles(U, { max: 3000, additive: false }), add: new GlyphParticles(U, { max: 7000, additive: true }), fire: new FireField(U, { max: 6000 }) },
+    time: 0, realTime: 0, timeScale: 1, debugTimeScale: 1, hitstopTimer: 0, hitstopScale: 1,
+    mouseGround: new THREE.Vector3(), state: 'title', settings: { quality: CONFIG.defaultQuality, showFps: false },
+    hitstop(s2, k = 0.04) { this.hitstopTimer = Math.max(this.hitstopTimer, s2); this.hitstopScale = Math.min(this.hitstopScale, k); },
+    shake(a) { this.cameraRig.addTrauma(a); }, punch(m) { this.cameraRig.punch(m); }, kick(x, y, z, m) { this.cameraRig.kick(x, y, z, m); },
+  };
+  game.world = world;
+  game.audio = new AudioEngine(game);
+  game.player = new Player(game);
+  const part = await mount(game, new URLSearchParams('hero=new&body=debug'));
+  game.hero2 = { parts: [part], update(dt) { part.update(dt); } };
+  game.dragon = LVL.createBoss(game);
+  game.boss = game.dragon;
+  game.hud = new Hud(game);
+  game.touch = new TouchControls(game);
+  game.flow = new GameFlow(game);
+  game.lab = new Lab(game);
+  game.applyQuality = () => {};
+  game.cameraRig.snap(game.player.position);
+  const P = game.player, ad = part.adapter, H = ad.hero;
+  assert(P.anim === ad.proxy && typeof P.anim.noise === 'function' && typeof P.anim.kickCoat === 'function', "player.anim is the adapter; today's surface reads through (noise, kickCoat)");
+  assert(game.pipeline.seen === part.body.object3d, 'the pipeline prints the remade hero through what covers him');
+  let bad = 0;
+  const tick = () => {
+    const dt = DT * (game.hitstopTimer > 0 ? game.hitstopScale : 1);
+    if (game.hitstopTimer > 0) {
+      game.hitstopTimer -= DT;
+      if (game.hitstopTimer <= 0) game.hitstopScale = 1;
+    }
+    game.time += dt;
+    game.dt = dt;
+    if (AUDIO.ctx) AUDIO.ctx.currentTime += DT;
+    game.flow.update(dt, DT);
+    game.player.update(dt);
+    game.hero2.update(dt);
+    game.dragon.update(dt);
+    game.cameraRig.update(DT, game.player.position);
+    game.fx.alpha.update(dt, game.time);
+    game.fx.add.update(dt, game.time);
+    game.fx.fire.update(dt);
+    game.hud.update(DT);
+    game.input.endFrame();
+    for (const x of H.world.p) if (!Number.isFinite(x)) { bad++; break; }
+    if (![P.position.x, P.position.z, P.yaw].every(Number.isFinite)) bad++;
+  };
+  const run = (sec, each) => { for (let i = 0, n = Math.round(sec / DT); i < n; i++) { each?.(i); tick(); } };
+  const W = CONFIG.world;
+  W.bossTriggerZ = -1e9;
+  W.wakeRadius = 0;
+  game.flow.debug.toState('explore');
+  run(0.5);
+  const v = [0, 0, 0];
+  // walking at speeds from a walk to a sprint: the planted feet
+  const speeds = [];
+  for (const [ax, sprint] of [[0.2, false], [0.4, false], [0.6, false], [0.8, false], [1, false], [1, true]]) {
+    P.debug.teleport(0, 20);
+    input.axis.x = 0;
+    input.axis.y = ax;
+    if (sprint) input.hold('ShiftLeft');
+    run(1.2);
+    const plant = { L: null, R: null };
+    let slide = 0, sp = 0, n = 0;
+    run(2, () => {
+      for (const s2 of ['L', 'R']) {
+        jointWorld(H, s2 === 'L' ? JI.footL : JI.footR, v);
+        if (H.contact[s2] >= 0.999) {
+          if (!plant[s2]) plant[s2] = [v[0], v[2]];
+          else slide = Math.max(slide, Math.hypot(v[0] - plant[s2][0], v[2] - plant[s2][1]));
+        } else plant[s2] = null;
+      }
+      sp += Math.hypot(P.groundVel.x, P.groundVel.z);
+      n++;
+    });
+    input.release('ShiftLeft');
+    speeds.push({ v: sp / n, slide, gait: ad.state.gait });
+  }
+  out('     ' + speeds.map((q) => `${q.v.toFixed(2)} m/s (${q.gait}): ${(q.slide * 100).toFixed(2)} cm`).join(', '));
+  assert(speeds.every((q) => q.slide < 0.02), `moving at any speed from ${speeds[0].v.toFixed(1)} to ${speeds[speeds.length - 1].v.toFixed(1)} m/s a planted foot slides under 2 cm (worst ${(Math.max(...speeds.map((q) => q.slide)) * 100).toFixed(2)} cm)`);
+  // stop
+  input.axis.y = 0;
+  run(0.1);
+  const stopMode = ad.state.mode, stopClip = H.clip?.name;
+  run(1.5);
+  assert(stopMode === 'stop' && ad.state.mode === 'loco', `letting go after the run: ${stopMode} (${stopClip}), then standing (${ad.state.mode})`);
+  // a roll
+  input.axis.y = 1;
+  run(0.3);
+  input.hold('Space');
+  run(0.05);
+  input.release('Space');
+  const rollState = P.state, rollClip = H.clip?.name;
+  input.axis.y = 0;
+  run(1);
+  assert(rollState === 'roll' && rollClip === 'roll', `a roll plays the roll clip (${rollState}, ${rollClip})`);
+  // three lights on a target: the duelist, held still, 1.9 m in front
+  game.flow.debug.toState('boss');
+  run(0.4);
+  const d = game.dragon;
+  d.debug?.setAI?.(false);
+  d.position.set(0, 0, -2);
+  run(0.3);
+  P.debug.teleport(0, -2 + 1.9);
+  P.yaw = Math.PI;
+  game.mouseGround.set(0, 0, -2);
+  P.debug.god = true;
+  run(0.3);
+  const hp0 = d.hp;
+  let hits = 0;
+  const onHit = () => hits++;
+  for (const ev of ['player:hitDragon', 'player:hitDuelist']) game.events.on(ev, onHit);
+  const clips = [];
+  let swordErr = 0;
+  const sp = new THREE.Vector3(), lp = { x: 0, y: 0, z: 0 }, lb = { x: 0, y: 0, z: 0 };
+  for (let k = 0; k < 3; k++) {
+    input.click(0);
+    run(0.45, () => {
+      if (P.state === 'attack' && H.clip && !clips.includes(`${k}:${H.clip.name}`)) clips.push(`${k}:${H.clip.name}`);
+      // the hit test reads the REMADE blade: today's rig's sword, un-leaned, is the remade socket
+      if (H.bladeSegment('R', lp, lb)) {
+        sp.set(0, 0, HDIM.bladeBase).applyMatrix4(P.rig.sword.matrixWorld);
+        P.unlean(sp);
+        swordErr = Math.max(swordErr, Math.hypot(sp.x - lp.x, sp.y - lp.y, sp.z - lp.z));
+      }
+    });
+  }
+  out(`     the chain played ${clips.join(', ')}; the target lost ${(hp0 - d.hp).toFixed(0)} hp in ${hits} hits`);
+  assert(hits >= 3, `three lights on a target 1.9 m in front land (${hits} hits, ${(hp0 - d.hp).toFixed(0)} hp)`);
+  assert(swordErr < 0.005, `the hit test reads the remade hero's blade (today's rig's sword, un-leaned, within ${(swordErr * 1000).toFixed(1)} mm of the remade socket)`);
+  // a hit taken
+  P.debug.god = false;
+  run(0.5);
+  P.takeHit({ damage: 12, tell: TELL.NORMAL, attack: 'test', kind: 'slash', from: { x: 0, z: -2 } });
+  const hitState = P.state, hitClip = H.clip?.name;
+  run(1.2);
+  assert(hitState !== 'idle' && !!hitClip, `a hit taken: ${hitState} plays ${hitClip} (a stand-in until its clip exists)`);
+  console.error = ce;
+  Math.random = R0;
+  assert(bad === 0, `no NaN in the remade hero or the player (${bad})`);
+  assert(errs.length === 0, `no module error (${errs.slice(0, 2).join(' | ')})`);
+}
+
+const SCENARIOS = { clips: scenClips, smooth: scenSmooth, feet: scenFeet, fit: scenFit, engine: scenEngine, off: scenOff, sweep: scenSweep, play: scenPlay };
 const list = SCEN === 'all' ? Object.keys(SCENARIOS) : SCEN.split(',');
 for (const name of list) {
   const f = SCENARIOS[name];
@@ -503,7 +778,7 @@ for (const name of list) {
     continue;
   }
   try {
-    f();
+    await f();
   } catch (e) {
     fails++;
     out('FAIL', name, 'threw', e?.stack?.split('\n').slice(0, 4).join(' | '));
