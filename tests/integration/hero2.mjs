@@ -510,32 +510,47 @@ function scenOff() {
 // ------------------------------------------------------------------ sweep
 async function scenSweep() {
   out("-- sweep: the mapped attacks' blades against a target in front of him");
-  const { ATTACKS, resolveClip } = await imp(H2 + 'moves.js');
-  const { aimOf, fixAttackPose } = await imp(H2 + 'adapter.js');
+  const { ATTACKS, STATES, resolveClip } = await imp(H2 + 'moves.js');
+  const { aimOf, fixAttackPose, attackTime, eventFrame, holdFrames } = await imp(H2 + 'adapter.js');
   const C = await imp('src/entities/player/combat.js');
   const defs = [...C.LIGHT, ...C.HEAVY, C.SPRINT_ATK, C.ROLL_ATK, C.CLEAVE, C.THRUST, C.ONE_BREATH].filter(Boolean);
+  // every def with the clip it plays on its own, then the clips it plays by context (adapter.js): the
+  // lone heavy straight after a heavy (heavy2) and out of a sprint (runHeavy), the charge's release from
+  // the held coil of charge1 / charge2 (its holdEnd), One Breath out of the draw stance
+  const cases = defs.map((def) => ({ def, e: ATTACKS[def.name], c: resolveClip(lib, ATTACKS[def.name]), u0: 0, tag: '' }));
+  const ctx = (def, name, u0, tag) => lib.has(name) && cases.push({ def, e: ATTACKS[def.name], c: lib.get(name), u0, tag });
+  ctx(C.HEAVY[0], ATTACKS.piercingGale.after?.heavy1, 0, 'after heavy1');
+  ctx(C.HEAVY[0], ATTACKS.piercingGale.sprint, 0, 'from a sprint');
+  if (lib.has('charge2')) ctx(C.CLEAVE, 'charge2', holdFrames(lib.get('charge2'), STATES.charge)[1], 'the second charge');
+  for (const k of cases) {
+    // (as the game plays them: the release from the held coil's last frame, the cut from the stance)
+    if (k.def === C.CLEAVE && !k.tag && k.c) k.u0 = holdFrames(k.c, STATES.charge)[1];
+    if (k.def === C.ONE_BREATH && k.c?.name === ATTACKS.oneBreath.want) k.u0 = STATES.iai.holdAt;
+  }
   const rows = [];
-  let mapped = 0, crossing = 0;
-  for (const def of defs) {
-    const e = ATTACKS[def.name];
-    const c = resolveClip(lib, e);
+  const IDLE = lib.get('swordIdle');
+  const _ip = createPose(), h2Pose = (c) => sampleClip(c, 0, _ip);
+  let mapped = 0, crossing = 0, ctxHit = 0, ctxN = 0;
+  for (const { def, e, c: c0, u0, tag } of cases) {
+    const c = c0;
     if (!e || !c) {
       rows.push(`${def.name.padEnd(17)} no clip`);
       continue;
     }
-    mapped++;
+    if (!tag) mapped++;
+    const recF = e.recoverAt ? eventFrame(c, e.recoverAt) : null;
     const h = createHero2(null, { body: standIn(), library: lib, applyRoot: false });
     h.props = { R: 'sword', L: null };
     // as the game plays it (adapter.js): the hips held over his root, the clip turned to aim at its hit
     const aim = e?.aim ?? (c.face != null ? -c.face : aimOf(lib, c)); // as the adapter plays it
     h.onPose = (pose) => fixAttackPose(pose, c, aim);
-    h.play(c.name, { fade: 0, manual: true });
+    h.play(c.name, { fade: 0, manual: true, at: u0 / c.fps });
     const D = [1.2, 1.9, 2.6], hit = [Infinity, Infinity, Infinity];
     let a0 = null, a1 = null, sweep = 0, prevA = null;
     const A = { x: 0, y: 0, z: 0 }, B = { x: 0, y: 0, z: 0 };
     const t0 = def.windup, t1 = def.windup + def.active;
     for (let t = 0; t <= t1 + 1e-9; t += DT) {
-      h.setTime(fitTime(c, t, def));
+      h.setTime(attackTime(c, t, def, u0, recF));
       h.update(DT);
       if (t < t0 - 1e-9 || !h.bladeSegment('R', A, B)) continue;
       // the blade out to the hit test's reach (bladeTip + REACH.tipExt, as SwordSweep)
@@ -557,14 +572,31 @@ async function scenSweep() {
       if (a0 == null) a0 = ang;
       a1 = ang;
     }
+    // the free moment (the game hands him back): the clip frame there, and how far his hips are turned
+    // off the guard's facing (the end facing the adapter keeps as drawn)
+    const tFree = def.windup + def.active + def.recovery;
+    const uFree = attackTime(c, tFree, def, u0, recF) * c.fps;
+    h.setTime(uFree / c.fps);
+    h.update(0);
+    const hy = (q, i) => {
+      const x = 2 * (q[i] * q[i + 2] + q[i + 3] * q[i + 1]), z = 1 - 2 * (q[i] * q[i] + q[i + 1] * q[i + 1]);
+      return Math.atan2(x, z);
+    };
+    const idleY = IDLE ? (h2Pose(IDLE), hy(_ip.q, JI.hips * 4)) : 0;
+    const endFace = Math.atan2(Math.sin(hy(h.world.r, JI.hips * 4) - idleY), Math.cos(hy(h.world.r, JI.hips * 4) - idleY));
     const R = 0.45 + C.REACH.radius; // a body's hurt radius + the blade's
-    const tag = hit.map((d) => (d <= R ? 'HIT' : `${d.toFixed(2)}`)).join(' / ');
-    if (hit[0] <= R || hit[1] <= R) crossing++;
-    rows.push(`${def.name.padEnd(17)} ${c.name.padEnd(8)} active ${t0.toFixed(2)}-${t1.toFixed(2)} s  target 1.2 / 1.9 / 2.6 m: ${tag}  tip ${((a0 ?? 0) * 57.3).toFixed(0)} -> ${((a1 ?? 0) * 57.3).toFixed(0)} deg, swept ${(sweep * 57.3).toFixed(0)} deg, aim ${(aim * 57.3).toFixed(0)} deg`);
+    const htag = hit.map((d) => (d <= R ? 'HIT' : `${d.toFixed(2)}`)).join(' / ');
+    if (!tag && (hit[0] <= R || hit[1] <= R)) crossing++;
+    if (tag) {
+      ctxN++;
+      if (hit[0] <= R || hit[1] <= R) ctxHit++;
+    }
+    rows.push(`${def.name.padEnd(17)} ${c.name.padEnd(12)}${tag ? ` (${tag})` : ''}${u0 ? ` from f${u0.toFixed(0)}` : ''} active ${t0.toFixed(2)}-${t1.toFixed(2)} s  target 1.2 / 1.9 / 2.6 m: ${htag}  tip ${((a0 ?? 0) * 57.3).toFixed(0)} -> ${((a1 ?? 0) * 57.3).toFixed(0)} deg, swept ${(sweep * 57.3).toFixed(0)} deg, aim ${(aim * 57.3).toFixed(0)} deg; free at f${uFree.toFixed(0)}, turned ${(endFace * 57.3).toFixed(0)} deg off the guard`);
   }
   for (const r of rows) out('     ' + r);
   assert(mapped === defs.length, `every game attack def plays a clip (${mapped} of ${defs.length})`);
   assert(crossing >= 1, `a mapped attack's blade reaches a target 1.2 or 1.9 m in front inside its active window (${crossing} of ${mapped}; the table: the data's own sweep)`);
+  assert(ctxN === 0 || ctxHit === ctxN, `the clips played by context (after a heavy, out of a sprint, the second charge) reach 1.2 or 1.9 m too (${ctxHit} of ${ctxN})`);
 }
 
 // ------------------------------------------------------------------ play
@@ -589,7 +621,7 @@ async function scenPlay() {
   const { AudioEngine } = await imp('src/audio/audio.js');
   const { GameFlow } = await imp('src/game/flow.js');
   const { Lab } = await imp('src/dev/lab.js');
-  const { mount } = await imp(H2 + 'adapter.js');
+  const { mount, holdFrames } = await imp(H2 + 'adapter.js');
   const { TUNE } = await imp('src/entities/player/player.js');
   const TUNE_KD = TUNE.knockdownDur;
   const LVL = getLevel('grove');
@@ -951,6 +983,153 @@ async function scenPlay() {
       if (ad.state.mode === 'tail' && !tail) tail = H.clip?.name;
     });
     assert(/^lightRecover\d$/.test(tail ?? ''), `a light that ends the chain: its recovery back to the guard (${tail})`);
+  }
+  // ---- the sword moves by context (moves.js): the heavies, the charge, the sprint and roll attacks,
+  // the guard, a parry, One Breath. `watch` lists mode:clip as they change; the drawn hips' yaw is
+  // watched for a pop (the largest change in one step, the end facing's turn back included)
+  {
+    const hipsYawW = () => {
+      const q = H.world.r, i = JI.hips * 4;
+      return Math.atan2(2 * (q[i] * q[i + 2] + q[i + 3] * q[i + 1]), 1 - 2 * (q[i] * q[i] + q[i + 1] * q[i + 1]));
+    };
+    let pop = 0, popAt = '', lastY = null;
+    const watch = (sec, each) => {
+      const m = [];
+      run(sec, (i) => {
+        each?.(i);
+        const k = `${ad.state.mode}:${H.clip?.name}`;
+        if (m[m.length - 1] !== k) m.push(k);
+      });
+      return m;
+    };
+    const popStep = () => {
+      const y = hipsYawW() + P.yaw;
+      if (lastY != null) {
+        const s = Math.abs(Math.atan2(Math.sin(y - lastY), Math.cos(y - lastY)));
+        if (s > pop) {
+          pop = s;
+          popAt = `${ad.state.mode}:${H.clip?.name}@${(H.time * (H.clip?.fps ?? 30)).toFixed(0)}`;
+        }
+      }
+      lastY = y;
+    };
+    const holdB = (b) => { btn[b] = true; pb[b] = true; };
+    const letB = (b) => { btn[b] = false; rb[b] = true; };
+    const home = () => {
+      P.debug.teleport(0, -2 + 1.9);
+      P.yaw = Math.PI;
+      game.mouseGround.set(0, 0, -2);
+      input.axis.x = input.axis.y = 0;
+      run(1.2);
+    };
+    // the lone heavy, again straight after it (the footage's second heavy), then let go: the second's
+    // recovery, and the quarter turn it ends in turned back on the spot
+    home();
+    input.click(2);
+    const mA = watch(0.6);
+    input.click(2);
+    lastY = null;
+    const mB = watch(3.2, popStep);
+    const face = hipsYawW() - (lib.get('swordIdle') ? (() => { const p = createPose(); sampleClip(lib.get('swordIdle'), 0, p); const q = p.q, i = JI.hips * 4; return Math.atan2(2 * (q[i] * q[i + 2] + q[i + 3] * q[i + 1]), 1 - 2 * (q[i] * q[i] + q[i + 1] * q[i + 1])); })() : 0);
+    out(`     heavies: ${[...mA, ...mB].join(' > ')}; ends ${deg(face).toFixed(0)} deg off the guard; the largest hips-yaw step ${deg(pop).toFixed(1)} deg (${popAt})`);
+    assert(mA.includes('attack:heavy1') && mB.includes('attack:heavy2'), `a heavy, then a heavy straight after it: heavy1 > heavy2`);
+    assert(mB.includes('tail:heavyRecover2') && mB.some((k) => k.startsWith('turn:turnL90')) && mB[mB.length - 1].startsWith('loco:') && Math.abs(face) < 0.2, `  let go: heavyRecover2, then the quarter turn back to his facing (the end facing kept as drawn; ${deg(face).toFixed(0)} deg left)`);
+    assert(pop < (12 * Math.PI) / 180, `  no pop in the facing through it (the largest step of the hips' yaw ${deg(pop).toFixed(1)} deg, under 12)`);
+    // the charge: held, released (the release goes on from the frame the coil reached); a second charge
+    // straight after the first's swing plays charge2
+    home();
+    holdB(2);
+    let cu = -1;
+    const mC = watch(1.0, () => {
+      if (P.state === 'charge') cu = H.time * H.clip.fps;
+    });
+    letB(2);
+    let u1 = -1;
+    const mD = watch(0.45, () => {
+      if (u1 < 0 && P.state === 'heavy') u1 = H.time * H.clip.fps;
+    });
+    holdB(2);
+    const mE = watch(0.9);
+    letB(2);
+    const mF = watch(2.6);
+    out(`     charge: ${[...mC, ...mD].join(' > ')} (coil at f${cu.toFixed(0)}, the release's first frame f${u1.toFixed(0)}); again: ${[...mE, ...mF].join(' > ')}`);
+    assert(mC.includes('charge:charge1') && mD.includes('attack:charge1') && u1 >= cu - 1 && cu >= holdFrames(lib.get('charge1'), {})[0] - 1, `the charge held at charge1's coil (f${cu.toFixed(0)}), released from there (f${u1.toFixed(0)}: no restart)`);
+    assert(mE.includes('charge:charge2') && mF.includes('attack:charge2'), `  charged again straight after: charge2 (${[...mE, ...mF].filter((k) => /charge/.test(k)).join(', ')})`);
+    // out of a sprint: the running light, the running heavy
+    const sprintThen = (b) => {
+      from(fwd[0], fwd[1]);
+      aimDir = fwd;
+      input.axis.y = 1;
+      input.hold('ShiftLeft');
+      runA(1.3);
+      input.click(b);
+      const m = seen(0.6);
+      input.release('ShiftLeft');
+      input.axis.y = 0;
+      runA(1.8);
+      aimDir = null;
+      return m;
+    };
+    const mS = sprintThen(0), mSH = sprintThen(2);
+    assert(mS.includes('attack:runLight') && mSH.includes('attack:runHeavy'), `out of a sprint: a light plays runLight (${mS.join(' > ')}), a heavy runHeavy (${mSH.join(' > ')})`);
+    // out of a forward roll: the rolling attack
+    home();
+    [input.axis.x, input.axis.y] = stickFor(Math.sin(P.yaw), Math.cos(P.yaw));
+    input.hold('Space');
+    run(0.05);
+    input.release('Space');
+    run(0.2);
+    input.click(0);
+    const mR = watch(0.8);
+    input.axis.x = input.axis.y = 0;
+    run(1.5);
+    assert(mR.includes('attack:rollAtk'), `out of a roll: rollAtk (${mR.join(' > ')})`);
+    // the guard: held (the one-handed guard), a blow taken on it (the guard counter's block beat over the
+    // upper body); a blow at the press: the parry (the same beat)
+    home();
+    const front = () => ({ x: P.position.x + Math.sin(P.yaw) * 2, z: P.position.z + Math.cos(P.yaw) * 2 });
+    holdB(1);
+    run(0.6);
+    const blockClip = H.clip?.name;
+    P.takeHit({ damage: 8, tell: TELL.NORMAL, attack: 'test', kind: 'slash', from: front() });
+    let beat = null, beatOff = -1, tb = 0;
+    run(1.0, () => {
+      tb += DT;
+      if (H.overlayClip) beat = H.overlayClip.name;
+      else if (beat && beatOff < 0) beatOff = tb;
+    });
+    const blockState = P.state;
+    letB(1);
+    run(0.8);
+    assert(blockClip === 'guard' && blockState === 'block' && beat === 'guardCounter' && beatOff > 0 && beatOff < 0.8, `the guard: ${blockClip}; a blow on it: the ${beat} block beat over the upper body, gone after ${beatOff.toFixed(2)} s (${blockState})`);
+    holdB(1);
+    run(0.02);
+    P.takeHit({ damage: 8, tell: TELL.NORMAL, attack: 'test', kind: 'slash', from: front() });
+    const pState = P.state, pClip = H.clip?.name;
+    run(0.5);
+    letB(1);
+    run(0.8);
+    assert(pState !== 'parry' || pClip === 'guardCounter', `a blow at the guard's press: ${pState} plays ${pClip}`);
+    // One Breath (unlocked): guard up, hold heavy: the draw stance (the guard counter's coil), release: the cut
+    const un0 = game.unlocks;
+    game.unlocks = { has: (k) => k === 'oneBreath' };
+    home();
+    holdB(1);
+    run(0.3);
+    holdB(2);
+    let su = -1;
+    const mI = watch(0.9, () => {
+      if (P.state === 'iai') su = H.time * H.clip.fps;
+    });
+    letB(2);
+    letB(1);
+    let ou = -1;
+    const mO = watch(1.2, () => {
+      if (ou < 0 && P.state === 'heavy') ou = H.time * H.clip.fps;
+    });
+    game.unlocks = un0;
+    run(1.5);
+    assert(mI.includes('charge:guardCounter') && mO.includes('attack:guardCounter') && ou >= su - 1, `One Breath: the stance holds the guard counter's coil (f${su.toFixed(0)}), the cut goes on from it (f${ou.toFixed(0)}) (${[...mI, ...mO].join(' > ')})`);
   }
   // ---- equip / unequip: the sword shows from the draw, hides from the sheathe (the review film's)
   if (lib.has('equip') && lib.has('unequip')) {
