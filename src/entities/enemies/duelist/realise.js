@@ -36,7 +36,10 @@ export function perPhase(v, phase) {
 const FOLLOW_MAX = 0.24; // s: the longest follow-through of a blow
 const FOLLOW_RING = 0.3; // … of a spin (a ring zone): its whole turn runs on this clock, 0.18 s was a blur
 const FOLLOW_PART = 0.72; // of the time to the next beat's first pose: the rest is his way into it
-export function makeRealise({ TUNING, MOVES, compileClip, completeBeat = null }) {
+// `keysOf(beat)` (optional): the pose keys a beat plays THIS time, read as each move is realised (a boss
+// whose blows have a second animation behind a live switch, e.g. Tian Lei's `?fists=ref`: the keys
+// measured from the owner's reference footage, scripts/mocap/duelist); null or undefined = `beat.keys`.
+export function makeRealise({ TUNING, MOVES, compileClip, completeBeat = null, keysOf = null }) {
   return function realise(name, phase = 1, rnd = Math.random, opts = null) {
     const def = MOVES[name];
     if (!def) return null;
@@ -76,7 +79,7 @@ export function makeRealise({ TUNING, MOVES, compileClip, completeBeat = null })
     const recovery = def.recovery * rs;
     const end = t + recovery;
     // the pose keys, beat by beat (see the header: the follow-through's own clock)
-    const own = (b, chained, followed = false) => (b.def.keys ?? []).filter(([, pose]) => !(chained && pose.gather) && !(followed && pose.settle));
+    const own = (b, chained, followed = false) => ((keysOf ? keysOf(b.def) : null) ?? b.def.keys ?? []).filter(([, pose]) => !(chained && pose.gather) && !(followed && pose.settle));
     beats.forEach((b, i) => {
       const nb = beats[i + 1];
       const mine = own(b, i > 0, !!nb);

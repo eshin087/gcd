@@ -3659,6 +3659,88 @@ const ends = (r) => r.breaks.map((b) => `F${b.form}:${b.bar ? 'bar' : `posture@$
 
 /** PROBE: mortal bots that answer 95 / 85 / 70 % of his cues (GCD_PSKILLS), seeds GCD_PRSEEDS,
  *  whole fights (10 minutes at most). Reported, not asserted. */
+// ================================================================== scenario: fists
+/**
+ * His blows measured from the owner's reference footage (`?fists=ref`, ADR-208; scripts/mocap/duelist):
+ * the generated keys are whole and sane; the switch off changes nothing; on, every move that throws a
+ * measured blow plays the measured keys with the SAME timings (tells, impacts, ends); a fight through
+ * every such move runs on the real rig with no error and nothing off his body.
+ */
+async function scenarioFists() {
+  out('\n== scenario FISTS (his blows measured from the reference footage behind ?fists=ref) ==');
+  const LS = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const { REF_BLOWS } = await imp('src/entities/enemies/ascendant/refBlows.js');
+  const { fistKeys } = await imp('src/entities/enemies/ascendant/moves.js');
+  const kinds = Object.keys(REF_BLOWS);
+  assert(kinds.length > 0, `measured blows: ${kinds.join(', ') || 'none'}`);
+  // 1. the data: u climbing 0 .. 2 through the impact, every number finite, hands within reach
+  const bad = [];
+  for (const [k, B] of Object.entries(REF_BLOWS)) {
+    const us = B.keys.map(([u]) => u);
+    if (!(us[0] === 0 && us.at(-1) === 2 && us.includes(1) && us.every((u, i) => i === 0 || u > us[i - 1]))) bad.push(`${k}: u ${us.join(' ')}`);
+    if (!(B.cock > 0.2 && B.cock < 0.95)) bad.push(`${k}: cock ${B.cock}`);
+    for (const [u, p] of B.keys) {
+      for (const [f, v] of Object.entries(p)) {
+        const vals = Array.isArray(v) ? v : typeof v === 'number' ? [v] : [];
+        if (!vals.every(Number.isFinite)) bad.push(`${k} u${u}: ${f}`);
+      }
+      for (const h of ['rH', 'lH']) if (Math.hypot(...p[h]) > 0.62) bad.push(`${k} u${u}: ${h} ${Math.hypot(...p[h]).toFixed(2)} m out`);
+      for (const f of ['rF', 'lF']) if (!(p[f].length === 2 || p[f].length === 3)) bad.push(`${k} u${u}: ${f}`);
+    }
+  }
+  assert(!bad.length, `every measured blow's keys are whole: u 0 .. 2 through the impact, finite, hands within reach ${JSON.stringify(bad.slice(0, 6))}`);
+  // 2. which moves throw a measured blow
+  const beatsOf = (def) => def.beats.flatMap((b) => (Array.isArray(b.pick) ? b.pick : [b]));
+  const measured = MOVE_NAMES.filter((n) => beatsOf(MOVES[n]).some((b) => b.refKeys));
+  assert(measured.length > 0, `${measured.length} of his ${MOVE_NAMES.length} moves throw a measured blow`);
+  // 3. off: the realiser's hook gives nothing (today's keys play); on: the measured keys, same timings
+  LS.setLook('fists', '0');
+  const anyB = beatsOf(MOVES[measured[0]]).find((b) => b.refKeys);
+  assert(fistKeys(anyB) === null, 'with ?fists=0 (the default) the hook gives no keys: his blows play as authored');
+  const timing = [];
+  const poses = { same: [], differ: 0 };
+  for (const n of measured) {
+    const ph = formsOf(n)[0] ?? 1;
+    LS.setLook('fists', '0');
+    const a = realise(n, ph, mulberry32(11));
+    LS.setLook('fists', 'ref');
+    const b = realise(n, ph, mulberry32(11));
+    const same = a.beats.length === b.beats.length && a.beats.every((x, i) => Math.abs(x.start - b.beats[i].start) < 1e-9 && Math.abs(x.impact - b.beats[i].impact) < 1e-9 && Math.abs(x.end - b.beats[i].end) < 1e-9) && Math.abs(a.end - b.end) < 1e-9;
+    if (!same) timing.push(n);
+    if (JSON.stringify(a.clip) === JSON.stringify(b.clip)) poses.same.push(n);
+    else poses.differ++;
+  }
+  LS.setLook('fists', null);
+  assert(!timing.length, `?fists=ref keeps every timing of the ${measured.length} moves (beats' starts, impacts, ends; the move's end) ${JSON.stringify(timing)}`);
+  assert(!poses.same.length, `?fists=ref changes the pose clip of all ${poses.differ} of them ${JSON.stringify(poses.same)}`);
+  // 4. a fight through every measured move on the real rig: no error, no NaN, his hands and feet on his body
+  LS.setLook('fists', 'ref');
+  const G = build();
+  duel(G, { dist: 2.2 });
+  const d = G.game.dragon, p = G.game.player;
+  p.debug.god = true;
+  const e0 = errors.length;
+  let nan = 0, far = 0, played = 0;
+  const v = new THREE.Vector3();
+  for (const n of measured) {
+    const f = formsOf(n)[0] ?? 1;
+    if (f !== d.phase) { try { d.debug.setForm(f); } catch { /* a form the Lab cannot reach */ } }
+    settle(G);
+    place(G, 2.2);
+    d.debug.trigger(n);
+    played++;
+    run(G, 6, () => {
+      for (const part of ['fistR', 'fistL', 'footR', 'footL']) {
+        d.tellPoint(part, v);
+        if (!Number.isFinite(v.x + v.y + v.z)) nan++;
+        else if (Math.hypot(v.x - d.position.x, v.z - d.position.z) > 2.2) far++;
+      }
+    }, () => quiet(d) && d.mode === 'foot');
+  }
+  LS.setLook('fists', null);
+  assert(played === measured.length && nan === 0 && far === 0 && errors.length === e0, `?fists=ref: ${played} measured moves fought through on the real rig, no NaN (${nan}), no hand or foot off his body (${far}), no console error (${errors.length - e0})`);
+}
+
 async function scenarioProbe() {
   out('\n== scenario PROBE (mortal bots, whole fights: answer a share of his cues, cut in his openings, drink below 60 HP) ==');
   const skills = (process.env.GCD_PSKILLS ?? '0.95,0.85,0.7').split(',').map(Number);
@@ -3753,6 +3835,8 @@ const S = {
   integ: scenarioInteg,
   // --- pursuit
   pursuit: scenarioPursuit,
+  // --- fists
+  fists: scenarioFists,
 };
 // --- tune (opt-in: run only when named)
 const OPT_IN = { picks: scenarioPicks, probe: scenarioProbe, defend: scenarioDefend, audit: scenarioAudit, auditfight: scenarioAuditFight, whiff: scenarioWhiff };

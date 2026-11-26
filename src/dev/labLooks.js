@@ -44,6 +44,9 @@ export const LOOK_SWITCHES = Object.freeze([
   ['ascOrb', ['a', 'b', 'c'], 'a', 'a', false, ['ring'], 'Heaven\'s Lantern, the great orb: a a sun, b a lantern, c the pale gathered sphere (its arms-up gather on a reload)'],
   ['ascBeamPose', ['0', 'cup'], '0', '0', true, ['ring'], 'Tian Lei\'s beams: 0 the palm thrust, cup both hands cupped at the hip (a reload)'],
   //
+  // --- ring: Tian Lei's motion
+  ['fists', ['0', 'ref'], '0', '0', false, ['ring'], 'Tian Lei\'s blows: 0 as authored, ref measured from the owner\'s reference footage (scripts/mocap/duelist; from his next move)', 'awaiting'],
+  //
   //
   // --- fox: Wen Yao (ADR-147; every one read when his rigs or his effects are built: a reload)
   ['foxLook', ['a', 'b', 'c', 'd', 'h1', 'h2', 'h3'], 'h1', 'h1', true, ['fox'], 'Wen Yao\'s body: ink-line like the hero, h1 the wild fox (the default: amber jacket, vermilion scarf), h2 vermilion jacket and black scarf, h3 a long pale coat; through the art path a shrine fox, b wild fox, c pelt brawler; d = a in ink-line (a reload)'],
