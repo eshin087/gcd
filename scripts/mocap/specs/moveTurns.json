@@ -39,6 +39,117 @@
    ],
    "from": "walk",
    "to": "walk"
+  },
+  {
+   "name": "runTurnL90",
+   "title": "Run to turning (90 degree turn), left",
+   "src": "move 4:48-5:37",
+   "kind": "oneshot",
+   "fps": 30,
+   "turn": 90,
+   "search": 0.3,
+   "takes": [
+    {
+     "t0": "5:16.10",
+     "t1": "5:17.25",
+     "view": "back"
+    }
+   ],
+   "from": "runT",
+   "to": "runT"
+  },
+  {
+   "name": "runTurnR90",
+   "title": "Run to turning (90 degree turn), right",
+   "src": "move 4:48-5:37",
+   "kind": "oneshot",
+   "fps": 30,
+   "turn": -90,
+   "search": 0.15,
+   "takes": [
+    {
+     "t0": "5:20.00",
+     "t1": "5:21.40",
+     "view": "back"
+    }
+   ],
+   "from": "runT",
+   "to": "runT"
+  },
+  {
+   "name": "sprintTurnL90",
+   "title": "Sprint to turning (90 degree turn), left",
+   "src": "move 5:37-6:17",
+   "kind": "oneshot",
+   "fps": 30,
+   "turn": 90,
+   "search": 0.15,
+   "takes": [
+    {
+     "t0": "5:50.30",
+     "t1": "5:51.20",
+     "view": "back"
+    }
+   ],
+   "from": "sprintT",
+   "to": "sprintT",
+   "draft": true
+  },
+  {
+   "name": "sprintTurnR90",
+   "title": "Sprint to turning (90 degree turn), right",
+   "src": "move 5:37-6:17",
+   "kind": "oneshot",
+   "fps": 30,
+   "turn": -90,
+   "search": 0.15,
+   "takes": [
+    {
+     "t0": "6:00.20",
+     "t1": "6:01.35",
+     "view": "back"
+    }
+   ],
+   "from": "sprintT",
+   "to": "sprintT"
+  },
+  {
+   "name": "rotateL",
+   "title": "Rotating in place, left",
+   "src": "move 6:17-6:40",
+   "kind": "oneshot",
+   "fps": 30,
+   "turn": 360,
+   "takes": [
+    {
+     "t0": "6:21.25",
+     "t1": "6:21.88",
+     "view": "front"
+    }
+   ],
+   "from": "idle",
+   "to": "idle",
+   "search": 0.2,
+   "draft": true
+  },
+  {
+   "name": "rotateR",
+   "title": "Rotating in place, right",
+   "src": "move 6:17-6:40",
+   "kind": "oneshot",
+   "fps": 30,
+   "turn": -360,
+   "takes": [
+    {
+     "t0": "6:27.00",
+     "t1": "6:27.68",
+     "view": "front"
+    }
+   ],
+   "from": "idle",
+   "to": "idle",
+   "search": 0.2,
+   "draft": true
   }
  ]
 }
