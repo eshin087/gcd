@@ -80,9 +80,11 @@ export const TELL_STYLE = Object.freeze({
 export const DEFENSE = Object.freeze({
   // --- parry: tap RMB shortly before impact
   parryWindow: 0.22, // s between the RMB press and the impact
-  // a parry pressed this close before the impact is PERFECT (player:parry.perfect). Today only
-  // bullets use it: a perfectly parried ember flies back as a damaging shot (ADR-051)
-  perfectParryWindow: 0.08,
+  // a parry pressed this close before the impact is PERFECT (player:parry.perfect): a bullet flies
+  // back as a shot (ADR-051), a blow pays x POSTURE.perfect and the counter cut (ADR-102), a `lock`
+  // blow locks the blades. The owner's number (ADR-227): the perfect dodge's window, so a parry is as
+  // forgiving as a dodge (it was 0.08 s). A press 0.20 - 0.22 s early is still a plain parry
+  perfectParryWindow: 0.2,
   parryRearm: 0.25, // s RMB must be released before a new press can parry again (anti-mash)
   parryArc: (110 * Math.PI) / 180, // the attacker must be within this cone in front of the defender
   // --- the trade clash: a blade's blow (hit.steel, not red) that arrives while the defender's own
