@@ -78,7 +78,7 @@ function mix(A, B, w) {
 const T_STAND = {
   T: 1, v: 0, beta: 1, ph: { HL: 0, FL: 0.25, HR: 0.5, FR: 0.75 },
   cy: 1.165, bob: [[0, 1, 0]], pitch: [[0, 1, 0]], pitch0: 0, roll: [[0, 1, 0]], surge: [[0, 1, 0]], spine: 0,
-  neck: 38 * deg, neckA: [[0, 1, 0]], neck2: -8 * deg, neck3: -14 * deg, head: -66 * deg, headA: [[0, 1, 0]],
+  neck: 52 * deg, neckA: [[0, 1, 0]], neck2: -10 * deg, neck3: -16 * deg, head: -74 * deg, headA: [[0, 1, 0]],
   tail: [-62 * deg, -14 * deg, -8 * deg, -4 * deg], tailA: [[0, 1, 0]], tailYaw: [[0, 1, 0]],
   ears: 8 * deg, jaw: 0,
   lift: { F: 0.1, H: 0.09 }, knee: 1.0, past: { F: 1.0, H: 0.8 }, pastern: 35 * deg, load: 6 * deg,
@@ -91,7 +91,7 @@ const GAITS = {
   walk: {
     ...T_STAND, T: 1.1, v: 1.31, beta: 0.62, ph: { HL: 0, FL: 0.26, HR: 0.5, FR: 0.76 },
     cy: 1.16, bob: [[0.012, 2, 0.2]], pitch: [[0.012, 2, 0.05]], roll: [[0.018, 1, 0.3]], surge: [[0.01, 2, 0.1]],
-    neck: 30 * deg, neckA: [[3.5 * deg, 2, 0.18]], head: -66 * deg, headA: [[-2 * deg, 2, 0.18]],
+    neck: 46 * deg, neckA: [[3.5 * deg, 2, 0.18]], head: -72 * deg, headA: [[-2 * deg, 2, 0.18]],
     tail: [-58 * deg, -16 * deg, -8 * deg, -4 * deg], tailA: [[2 * deg, 2, 0]], tailYaw: [[4 * deg, 1, 0.3]],
     lift: { F: 0.12, H: 0.08 }, knee: 1.1, past: { F: 0.7, H: 0.5 }, load: 8 * deg,
     hc: [10 * deg, -22 * deg, -30 * deg, 16 * deg], zF: 0.58, zH: -0.54,
@@ -99,12 +99,12 @@ const GAITS = {
   // the run is a CANTER on the right lead: HL, then HR with FL together, then FR, then a gathered
   // moment in the air; the body rocks (forehand up as the hinds land, down onto the leading fore)
   run: {
-    ...T_STAND, T: 0.6, v: 5.8, beta: 0.3, ph: { HL: 0, HR: 0.2, FL: 0.26, FR: 0.44 },
-    cy: 1.125, bob: [[0.045, 1, 0.9]], pitch: [[0.14, 1, 0.14]], pitch0: 0.03, roll: [[0.01, 1, 0.2]], surge: [[0.05, 1, 0.2]], spine: 0.03,
-    neck: 40 * deg, neckA: [[8 * deg, 1, 0.2]], head: -60 * deg, headA: [[-4 * deg, 1, 0.25]],
+    ...T_STAND, T: 0.6, v: 5.8, beta: 0.26, ph: { HL: 0, HR: 0.18, FL: 0.24, FR: 0.42 },
+    cy: 1.13, bob: [[0.05, 1, 0.9]], pitch: [[0.17, 1, 0.14]], pitch0: 0.05, roll: [[0.01, 1, 0.2]], surge: [[0.05, 1, 0.2]], spine: 0.03,
+    neck: 52 * deg, neckA: [[6 * deg, 1, 0.2]], neck2: -10 * deg, neck3: -16 * deg, head: -74 * deg, headA: [[-4 * deg, 1, 0.25]],
     tail: [-40 * deg, -10 * deg, -6 * deg, -4 * deg], tailA: [[8 * deg, 1, 0.6]], tailYaw: [[3 * deg, 1, 0.2]],
     lift: { F: 0.3, H: 0.24 }, knee: 1.9, past: { F: 1.6, H: 1.3 }, load: 12 * deg,
-    hc: [22 * deg, -42 * deg, -80 * deg, 30 * deg], zF: 0.6, zH: -0.42, bias: { F: 0.04, H: 0.06 },
+    hc: [24 * deg, -36 * deg, -85 * deg, 32 * deg], zF: 0.5, zH: -0.22, bias: { F: 0.0, H: 0.04 },
   },
   // the sprint is a GALLOP (transverse, right lead): HL, HR, FL, FR, then a long gathered suspension;
   // lower and longer, the neck reaching forward
@@ -112,7 +112,7 @@ const GAITS = {
     ...T_STAND, T: 0.4667, v: 10.5, beta: 0.27, ph: { HL: 0, HR: 0.11, FL: 0.36, FR: 0.47 },
     cy: 1.1, bob: [[0.05, 1, 0.85]], pitch: [[0.085, 1, 0.12]], pitch0: -0.01, roll: [[0.008, 1, 0.2]], surge: [[0.06, 1, 0.2]], spine: 0.06,
     neck: 20 * deg, neckA: [[9 * deg, 1, 0.15]], neck2: -4 * deg, neck3: -8 * deg, head: -38 * deg, headA: [[-5 * deg, 1, 0.2]],
-    tail: [-25 * deg, -6 * deg, -4 * deg, -2 * deg], tailA: [[6 * deg, 1, 0.6]], tailYaw: [[2 * deg, 1, 0.2]],
+    tail: [8 * deg, -18 * deg, -16 * deg, -12 * deg], tailA: [[6 * deg, 1, 0.6]], tailYaw: [[2 * deg, 1, 0.2]],
     lift: { F: 0.42, H: 0.34 }, knee: 2.2, past: { F: 1.9, H: 1.5 }, load: 14 * deg,
     hc: [28 * deg, -50 * deg, -95 * deg, 40 * deg], zF: 0.66, zH: -0.3, bias: { F: 0.06, H: 0.1 }, lane: { F: 0.14, H: 0.16 },
   },
@@ -258,9 +258,11 @@ function bodyAt(sim, t) {
 const ROOT_SHIFT = { x: 0 };
 
 /** Pose at clip time t into `pose` / `W`; returns per-hoof { contact, miss }. */
+let DROP = 0; // m the body is lowered this frame (build()'s reach pass)
 function frame(sim, spec, t) {
   const b = bodyAt(sim, t);
   spec.body?.(t, b.g, b);
+  b.cy -= DROP;
   const r = sim.rootAt(t);
   const q = pose.q;
   for (let k = 0; k < HJ; k++) {
@@ -421,8 +423,34 @@ function build(spec) {
   const contact = Object.fromEntries(KEYS.map((k) => [k, new Uint8Array(n)]));
   const report = { maxMiss: 0, missAt: '', slide: 0, sink: 0, swingMiss: 0 };
   const planted = {};
+  // the reach pass: where a planted hoof is out of the leg's reach, the body comes down (the knees and
+  // hocks bend) by what it misses, smoothed over the neighbouring frames so the dip never pops
+  const need = new Float64Array(n);
+  for (let f = 0; f < n; f++) {
+    let d = 0;
+    for (let it = 0; it < 6; it++) {
+      DROP = d;
+      const res = frame(sim, spec, f / fps);
+      let m = 0;
+      for (const k of KEYS) if (res[k].contact) m = Math.max(m, res[k].miss);
+      if (m < 0.008) break;
+      d += m * 1.15 + 0.004;
+    }
+    need[f] = Math.min(0.3, d);
+  }
+  const drop = new Float64Array(n), W2 = Math.round(fps * 0.12);
+  for (let f = 0; f < n; f++) {
+    // the largest need near f, eased by its distance (a raised cosine), so a dip arrives and leaves softly
+    let v = 0;
+    for (let k = -W2; k <= W2; k++) {
+      const g = spec.loop ? (f + k + n) % n : Math.max(0, Math.min(n - 1, f + k));
+      v = Math.max(v, need[g] * (0.5 + 0.5 * Math.cos((Math.PI * k) / (W2 + 1))));
+    }
+    drop[f] = v;
+  }
   for (let f = 0; f < n; f++) {
     const t = f / fps;
+    DROP = drop[f];
     const res = frame(sim, spec, t);
     qs.set(pose.q, f * HJ * 4);
     // (sign continuity)
@@ -483,6 +511,8 @@ function build(spec) {
   const last = (n - 1) * 3;
   const travel = Math.hypot(root[last], root[last + 1]);
   report.travel = travel;
+  report.drop = Math.max(...drop);
+  DROP = 0;
   report.mps = spec.loop ? travel / ((n - 1) / fps) : null;
   return { clip: out, report };
 }
@@ -723,14 +753,29 @@ const jDouble = {
 
 // --- under the rider's attacks (SWORD film): the horse stands, braces and leans off the cut; his head
 // turns away from the blade. The rider's cut lands at `hit`.
-function attackSpec(name, title, src, dur, hit, k) {
+function attackSpec(name, title, src, dur, hits, k) {
+  // hits: the times the rider's cuts land (s); each one: a wind-up before it, the cut, a settle after
+  const one = (t, hit, prev) => {
+    const w0 = Math.max(prev + 0.1, hit - 0.55);
+    return {
+      wind: smooth((t - w0) / Math.max(0.1, hit - 0.05 - w0)) * (1 - smooth((t - hit) / 0.15)),
+      cut: Math.exp(-(((t - hit - 0.05) / 0.12) ** 2)),
+    };
+  };
+  const last = hits[hits.length - 1];
   return {
     name, title, src, dur, fps: 30, from: 'stand', to: 'stand', gaitName: 'stand', gait: () => G.stand,
-    events: [{ t: hit, name: 'hit' }], phases: { windup: Math.round((hit - 0.2) * 30), active: Math.round(hit * 30), recover: Math.round((dur - 0.15) * 30) },
+    events: hits.map((h) => ({ t: h, name: 'hit' })),
+    phases: { windup: Math.round((hits[0] - 0.2) * 30), active: Math.round(last * 30), recover: Math.round((dur - 0.15) * 30) },
     body(t, g, b) {
-      const wind = smooth(t / (hit - 0.05)) * (1 - smooth((t - hit) / 0.15));
-      const cut = Math.exp(-(((t - hit - 0.05) / 0.12) ** 2));
-      const settle = Math.sin(Math.PI * clamp01((t - hit) / (dur - hit)));
+      let wind = 0, cut = 0, prev = -1;
+      for (const h of hits) {
+        const o = one(t, h, prev);
+        wind = Math.max(wind, o.wind);
+        cut = Math.max(cut, o.cut);
+        prev = h;
+      }
+      const settle = Math.sin(Math.PI * clamp01((t - hits[0]) / (dur - hits[0])));
       // winding up to his left the rider's weight shifts that way: the horse leans right; on the cut the
       // weight swings across: a lean left, a dip, the head thrown away from the blade
       b.roll += k * (0.025 * wind - 0.05 * cut - 0.012 * settle);
@@ -742,11 +787,13 @@ function attackSpec(name, title, src, dur, hit, k) {
       b.earR = b.earL;
       b.tailYaw += k * 18 * deg * cut;
     },
-    plantShift: (key, t) => (key === 'FR' && t > hit + 0.08 ? 0.1 * k : 0),
+    plantShift: (key, t) => (key === 'FR' && t > hits[0] + 0.08 ? 0.1 * k : 0),
   };
 }
-SWORD.push(attackSpec('horseRiderLight', 'Horse: the rider\'s light attack', 'sword 7:02-7:48', 1.2, 0.5, 1));
-SWORD.push(attackSpec('horseRiderHeavy', 'Horse: the rider\'s heavy attack', 'sword 7:48-8:40', 1.9, 1.0, 1.6));
+// the light cut lands 0.5 s in (SWORD 7:16.6-7:18.0); the heavy is two big swings (SWORD 8:08.5-8:12.5):
+// the first lands 1.0 s in, the second, wound up again from 2.9 s, at 3.4 s; still at 4.0 s
+SWORD.push(attackSpec('horseRiderLight', "Horse: the rider's light attack", 'sword 7:02-7:48', 1.2, [0.5], 1));
+SWORD.push(attackSpec('horseRiderHeavy', "Horse: the rider's heavy attack", 'sword 7:48-8:40', 4.0, [1.0, 3.4], 1.6));
 
 // ------------------------------------------------------------------ write
 function writeSet(file, set, title, specs) {
@@ -755,7 +802,7 @@ function writeSet(file, set, title, specs) {
   for (const s of specs) {
     const { clip, report } = build(s);
     clips.push(clip);
-    lines.push(`${clip.name.padEnd(18)} n ${String(clip.n).padStart(3)} @${clip.fps}  miss ${(report.maxMiss * 100).toFixed(1)} cm (${report.missAt}) air ${(report.swingMiss * 100).toFixed(0)}  slide ${(report.slide * 100).toFixed(1)} cm  sink ${(report.sink * 100).toFixed(1)} cm  travel ${report.travel.toFixed(2)} m${report.mps != null ? `  ${report.mps.toFixed(2)} m/s` : ''}  contacts ${KEYS.map((k) => `${k}:${clip.contact[k].map((c) => c.join('-')).join(',')}`).join(' ')}`);
+    lines.push(`${clip.name.padEnd(18)} n ${String(clip.n).padStart(3)} @${clip.fps}  miss ${(report.maxMiss * 100).toFixed(1)} cm (${report.missAt}) air ${(report.swingMiss * 100).toFixed(0)}  slide ${(report.slide * 100).toFixed(1)} cm  drop ${(report.drop * 100).toFixed(0)}  sink ${(report.sink * 100).toFixed(1)} cm  travel ${report.travel.toFixed(2)} m${report.mps != null ? `  ${report.mps.toFixed(2)} m/s` : ''}  contacts ${KEYS.map((k) => `${k}:${clip.contact[k].map((c) => c.join('-')).join(',')}`).join(' ')}`);
   }
   const body = `// GENERATED by scripts/mocap/horse/gen.mjs: do not edit by hand (rebuild instead).
 // ${title}: the horse's clips in the hero's clip format (README.md), on the horse's skeleton (horse/hskeleton.js).
