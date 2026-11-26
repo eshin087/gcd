@@ -37,6 +37,9 @@ const num = (v, d) => {
   return v != null && v !== '' && Number.isFinite(x) ? x : d;
 };
 
+/** The review's home: metres ahead of the level's spawn (open ground, away from the spawn's bonfire). */
+export const AHEAD = 8;
+
 /** The hold (s) on a one-shot's first frame before it plays and on its last after. */
 export const HOLD = 0.5;
 
@@ -182,8 +185,10 @@ export async function mount(game, params) {
   // where he stands: the hero's spawn (or &homeX= / &homeZ= / &homeYaw=), facing as he does
   const sp = game.player?.position ?? { x: 0, z: 0 };
   const home = { x: num(P.get('homeX'), num(sp.x, 0)), z: num(P.get('homeZ'), num(sp.z, 0)), yaw: num(P.get('homeYaw'), num(game.player?.yaw, Math.PI)) };
-  // &ahead=m: the home moved m metres along his facing (off the spawn's bonfire, into open ground)
-  const ahead = num(P.get('ahead'), 0);
+  // the home: AHEAD m along his facing from the spawn (&ahead=m; 0 = the spawn itself): off the spawn's
+  // bonfire (its logs and flame drew through a lying body) into open ground. In Cinderwood 8 m puts him
+  // on the open path, the bonfire at the game frame's lower edge and no tree over him.
+  const ahead = num(P.get('ahead'), P.has('homeX') || P.has('homeZ') ? 0 : AHEAD);
   home.x += Math.sin(home.yaw) * ahead;
   home.z += Math.cos(home.yaw) * ahead;
   const place = (x, z, yaw) => {
@@ -195,7 +200,9 @@ export async function mount(game, params) {
 
   // ---- the review list
   const withTest = P.get('test') === '1';
-  const clipEntry = (c) => ({ kind: 'clip', name: c.name, clip: c, set: c.set, setTitle: c.setTitle, title: c.title, src: c.src, loop: !!c.loop, dur: c.dur, yaw: c.loop ? 0 : (c.cyc?.[2] ?? 0) });
+  // a clip beside an as-filmed twin (`<name>Right`: the footage's hand) is the game's own version
+  const titleOf = (c) => (lib.has(c.name + 'Right') ? `${c.title}, as the game plays it (left hand)` : c.title);
+  const clipEntry = (c) => ({ kind: 'clip', name: c.name, clip: c, set: c.set, setTitle: c.setTitle, title: titleOf(c), src: c.src, loop: !!c.loop, dur: c.dur, yaw: c.loop ? 0 : (c.cyc?.[2] ?? 0) });
   const rideByName = new Map(RIDES.map((r) => [r.name, r]));
   const rideEntry = (r, set) => ({
     kind: 'ride', name: r.name, ride: r, set: set.id, setTitle: set.title, title: RIDE_TITLES[r.name]?.[0] ?? r.hclip.title, src: RIDE_TITLES[r.name]?.[1] ?? r.hclip.src, loop: !!r.hclip.loop, dur: r.hclip.dur,
@@ -540,7 +547,9 @@ export async function mount(game, params) {
       // `panel` of the render's width), whatever the clip does: fitted to its bounds round his hips
       const cam = game.camera, tv = Math.tan(((cam?.fov ?? 32) * Math.PI) / 360);
       const th = tv * Math.min(cam?.aspect ?? 16 / 9, 16 / 9) * v.panel;
-      const half = ((F.ymax - F.ymin) * 0.5 + 0.15) * drawK, rad = (F.r + 0.1) * drawK;
+      // (a body lying or reaching out spreads toward and away from the camera too: its near end drops
+      // down the frame, so the height kept is at least a share of the reach)
+      const rad = (F.r + 0.1) * drawK, half = Math.max(((F.ymax - F.ymin) * 0.5 + 0.15) * drawK, rad * 0.6);
       dist = Math.max(half / tv, rad / th) + rad * 0.6;
       ty = (F.ymin + F.ymax) * 0.5 * drawK;
       up = dist * 0.08;
