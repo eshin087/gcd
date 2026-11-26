@@ -1,4 +1,5 @@
 import { CONFIG } from '../core/config.js';
+import { fpsCapOn, qualityLabel } from '../render/autoQuality.js';
 import { GAME_VERSION } from './changelog.js';
 import { button, controlsGrid, el, fillKeyText, tellLegend, touchGrid } from './dom.js';
 import { dressStageButton, gradeHead, recLookNow, sharedLine } from './recordLooks.js';
@@ -296,6 +297,10 @@ export class PauseMenu {
     this.btnMute = button(panel, '', () => game.flow?.toggleMute?.());
     fillKeyText(el('span', '', null, this.btnMute), 'SOUND [@mute]', 'kb');
     this.muteVal = el('span', 'v', '', this.btnMute);
+    // the frame-rate cap (ADR-200: on by default on a touch device; heat and battery)
+    this.btnCap = button(panel, '', () => game.flow?.toggleFpsCap?.());
+    el('span', '', `${CONFIG.fpsCap.fps} FPS CAP`, this.btnCap);
+    this.capVal = el('span', 'v', '', this.btnCap);
     // remap keys, mouse buttons and pad buttons (ui/remap.js; the HUD builds the panel)
     this.btnControls = button(panel, 'ab-nontouch', () => game.hud?.remapUi?.open?.()); // no keys on a phone (unless a pad is in use)
     el('span', '', 'CONTROLS', this.btnControls);
@@ -342,7 +347,7 @@ export class PauseMenu {
     this.quitVal = el('span', 'v', '›', this.btnQuit);
     this.quitArmed = 0;
     // the buttons in order, for the gamepad's menu focus (ui/gamepad.js)
-    this.buttons = [resume, this.btnQuality, this.btnMute, this.btnControls, this.btnFull, this.btnPadPos, this.btnPadSize, this.btnPadLayout, this.btnPadHold, this.btnNews, this.btnQuit].filter(Boolean);
+    this.buttons = [resume, this.btnQuality, this.btnMute, this.btnCap, this.btnControls, this.btnFull, this.btnPadPos, this.btnPadSize, this.btnPadLayout, this.btnPadHold, this.btnNews, this.btnQuit].filter(Boolean);
     el('div', 'ab-sep', null, panel);
     controlsGrid(panel, 'kb').classList.add('kb-only');
     touchGrid(panel).classList.add('tp-only');
@@ -383,10 +388,15 @@ export class PauseMenu {
   refresh() {
     if (!this.on) return;
     if (this.quitArmed > 0 && Number(globalThis.performance?.now?.() ?? Date.now()) / 1000 - this.quitArmed > QUIT_CONFIRM) this._disarm();
-    const q = this.game.settings?.quality;
+    const q = qualityLabel(this.game.settings, this.game.autoQ, CONFIG.quality);
     if (q !== this._q) {
       this._q = q;
-      this.qualityVal.textContent = CONFIG.quality[q]?.name ?? '—';
+      this.qualityVal.textContent = q;
+    }
+    const cap = fpsCapOn(this.game);
+    if (cap !== this._cap) {
+      this._cap = cap;
+      this.capVal.textContent = cap ? 'ON' : 'OFF';
     }
     const m = !!this.game.audio?.muted;
     if (m !== this._m) {

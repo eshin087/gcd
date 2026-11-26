@@ -214,8 +214,9 @@ export class TouchControls {
     this.game.hud?.root?.classList?.toggle('ab-touch', on);
     if (this.ui) this.ui.root.style.display = on ? '' : 'none';
     const s = this.game.settings;
-    if (on && s && !this._qualitySet && s.quality === CONFIG.defaultQuality) {
-      // touch devices start on the light preset (unless the player already picked one)
+    if (on && s && !s.autoQuality && !this._qualitySet && s.quality === CONFIG.defaultQuality) {
+      // touch devices start on the light preset (unless the player already picked one; with AUTO on
+      // the frame time picks the resolution: render/autoQuality.js)
       s.quality = CONFIG.defaultQualityTouch;
       this._qualitySet = true;
       this._try(() => this.game.applyQuality?.(), 'applyQuality');

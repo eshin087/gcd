@@ -41,11 +41,18 @@ npm test         # headless integration sims (real game modules, mocked DOM/WebG
                  # (one suite: node tests/integration/lord.mjs . <scenario>, also integ.mjs / duel.mjs / world.mjs / asc.mjs / fox.mjs / city.mjs;
                  #  `duel.mjs . pace` / `lord.mjs . pace`: the duelists' pressure meter, GCD_PSEEDS / GCD_PSECS;
                  #  woke.mjs: Xin Yi, `woke.mjs . strategy` opt-in)
+                 # --only integ,life: only those tasks (names from --list). Locally every run
+                 # shares 8 slots machine-wide (ABYSS_JOBS) at low priority; CI is unchanged (ADR-205)
+npm run perf     # what a frame costs on THIS machine's GPU: draw calls / triangles by pass, GPU ms at 1080p and the phone's size,
+                 # script ms by module (--all, --levels ash,city, --4k, --save a baseline, --check; ADR-206)
 npm run build    # single-file dist/index.html (what Vercel serves)
 npm run hero-parts  # regenerate src/entities/player/heroParts.js (needs Blender 4.2+; ADR-037)
 ```
 Levels: `?level=ash` loads the Ashfall Courtyard, `?level=starless` the Obsidian Throne, `?level=ring` the Skybreak Ring, `?level=fox` the Foxfire Terrace, `?level=grove` the Windless Grove (`?tech=draw`: One Breath without the kill), `?level=code` the Hall of Falling Script (`?tech=lean`: the Long Second without the kill), `?level=city` Halcyon Plaza (default:
-Cinderwood); the title screen and the Lab pick one too. Kept for later use (ADR-089; today's look is the default): `?heroLook=robe|swallow|warden`
+Cinderwood); the title screen and the Lab pick one too. The hero's idles and guard after the owner's reference footage (ADR-207): `?idles=new|old`
+(ADR-186's rests, habits and tricks / the hand on the belt; default `ref`: the one-handed stand, the two-handed fight hold, the put-away
+and draw) and `?guard=ward` (the cross ward; default `ref`: the braced guard, the blade across his face) (Lab: `idles`, `guard`, `idle ▸`).
+Kept for later use (ADR-089; today's look is the default): `?heroLook=robe|swallow|warden`
 (`-shade`: the face in shadow) and `?sword=sheet|ribbon|crescent` dress the hero (Lab: OUTFIT, sword);
 `?wyrmTop=0|a|b` the drake head from above before the owner's pick `c` (ADR-189); `?wyrmFace=old` gives the wyrm the face it had before the drake (ADR-124), `skull|loong|demon` (ADR-120)
 and `tyrant|viper|revenant` (ADR-124) the heads the owner passed on. The owner's picks with the options turned down behind them: `?wyrmLook=0|a|b` (c: the
@@ -145,6 +152,24 @@ In Claude Code the preview config is `.claude/launch.json` (`gcd-dev`).
   guard optional references and avoid NaN. No heavy per-frame allocations.
 - **Verify visually.** Rendering/feel changes need a browser check (dev server + screenshots, the
   Lab, `__tick`). Logic changes need `npm test` green. Add/extend tests in `tests/` for new systems.
+- **Performance is a budget (ADR-206): the owner wants 60 fps on every device.** `npm test` holds a cost
+  budget per level (`tests/integration/cost.mjs`, `tests/cost-baseline.json`: triangles, shadow triangles,
+  meshes, bones, breakables, colliders, geometry memory, counted from the real build, never timed). A
+  change that makes a level heavier by more than 3 % fails it. Lighten the change first; raise the
+  budget (`node tests/integration/cost.mjs . update`, commit the file) only on purpose, and say in the PR
+  what it buys and what it costs. A change that draws something new (a look, an effect, a level, a boss)
+  also runs `npm run perf` before and after (`--save` before, then compare) and reports the GPU ms and
+  script ms it adds in the PR; the target is a frame under 16.7 ms of GPU and of script on a weak device,
+  and AUTO quality (ADR-200) is the safety net, not a licence to spend. A new level gets a baseline row.
+- **Go easy on the owner's PC (ADR-205).** Many agents share one machine, and the owner games on it.
+  - While working, test only what you changed: one suite (`node tests/integration/<suite>.mjs . <scenario>`)
+    or `npm test -- --only <names>`. Run the full `npm test` once, before opening the PR; CI runs
+    everything anyway.
+  - Never start a second `npm test` while one of yours is still running. If a test command times out,
+    check whether it is still running (and wait for it or stop it) before running it again.
+  - Run long test commands in the background and wait for them; do not start another meanwhile.
+  - Before you finish, stop every dev server, preview (`preview_stop`) and background process you
+    started. Leave nothing running that no one will read.
 - **Keep history.** Every working session ends by:
   1. adding a dated entry to `docs/DEVLOG.md` (what changed, why, what's next, open issues),
   2. updating `CHANGELOG.md` `[Unreleased]` (Added / Changed / Fixed / Removed), and giving each new

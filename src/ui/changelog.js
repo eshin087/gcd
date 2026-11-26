@@ -18,6 +18,40 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-26',
+        title: 'A performance readout on your phone, and smoother first breaks',
+        notes: [
+          'Add ?perf to the address to see the frame rate and what each frame costs at the foot of the screen. REPORT shares or copies a summary you can send.',
+          'The cracked floors and cut bamboo are now prepared while the level loads, so the first break in a fight no longer causes a hitch.',
+        ],
+      },
+      {
+        date: '2026-11-25',
+        title: 'The hero stands, holds and guards like the reference',
+        notes: [
+          'At ease the hero stands tall with his sword in one hand, its point forward and down by his right foot.',
+          'In a fight he takes the sword in both hands before him, the point raised above his head.',
+          'Now and then he puts the sword away at his hip, where it burns out in its green flame, and draws it back out of the flame.',
+          'His guard is a braced crouch, both hands up before his chin and the blade across his face. Blocking and parrying work exactly as before.',
+        ],
+      },
+      {
+        date: '2026-11-25',
+        title: 'The resolution follows the frame rate',
+        notes: [
+          'A new quality setting, AUTO, is on by default: when your device cannot hold 60 frames a second the game draws at a lower resolution, and climbs back when there is room (never in the middle of a fight).',
+          'F2 or the pause menu cycles AUTO, LOW, MEDIUM and HIGH. A new 60 FPS CAP in the pause menu is on by default on phones and tablets, to keep them cooler.',
+        ],
+      },
+      {
+        date: '2026-11-25',
+        title: 'The hero runs like a swordsman: the blade carried forward at his hip',
+        notes: [
+          'On the run the hero now carries his sword forward, low at his hip, its point rocking with his arm, instead of trailing it behind him on a bent wrist.',
+          "His free arm pumps like a runner's, and his free hand is a closed fist instead of a small knob.",
+        ],
+      },
+      {
         date: '2026-11-25',
         title: "The dragon's neck and head move naturally: no upside-down head, no flips",
         notes: [

@@ -32,8 +32,10 @@ import { GameFlow } from './game/flow.js';
 import { Lab } from './dev/lab.js';
 import { Unlocks } from './game/unlocks.js';
 import { lookOf } from './entities/enemies/duelist/lookSwitch.js';
+import { PerfReadout, perfFromSearch } from './dev/perfReadout.js';
 import { bootStep, bootDone, bootFail, fontSheetReady, travelNote } from './ui/bootLoader.js';
-import { precompile } from './render/precompile.js';
+import { precompile, warmDraw } from './render/precompile.js';
+import { AutoQuality, FramePacer, gpuTimer, fpsCapOn, autoFromSearch, capFromSearch, floorFromSearch } from './render/autoQuality.js';
 
 // Boot + main loop. Builds the shared `game` context every module receives (see ARCHITECTURE.md).
 
@@ -135,7 +137,7 @@ async function boot() {
     hitstopScale: 1,
     mouseGround: new THREE.Vector3(),
     state: 'title',
-    settings: { quality: CONFIG.defaultQuality, showFps: false },
+    settings: { quality: CONFIG.defaultQuality, showFps: false, autoQuality: autoFromSearch(location.search), fpsCap: capFromSearch(location.search) },
     /** Freeze-frame on impacts: time runs at `scale` for `seconds` of real time. The fighters hold
      *  the impact's pose; sparks and lights run on at CONFIG.render.fxLive of real time (fxDt). */
     hitstop(seconds, scale = 0.04) {
@@ -190,11 +192,16 @@ async function boot() {
   game.flow = new GameFlow(game);
   game.lab = new Lab(game);
 
+  // AUTO quality (render/autoQuality.js, ADR-200): the render scale follows the frame time
+  const screenRatio = () => Math.min(devicePixelRatio || 1, CONFIG.render.maxPixelRatio);
+  game.autoQ = new AutoQuality(CONFIG.autoQuality, { cap: screenRatio(), floor: floorFromSearch(location.search) });
   const applyQuality = () => {
-    const q = CONFIG.quality[game.settings.quality];
+    const auto = game.settings.autoQuality ? game.autoQ : null;
+    auto?.setCap(screenRatio());
+    const q = auto ? auto.step : CONFIG.quality[game.settings.quality];
     game.world.setGrassQuality?.(q.grass);
     pipeline.setShadowSize(q.shadow ?? CONFIG.render.shadowSize);
-    const dpr = Math.min(q.dpr, devicePixelRatio || 1, CONFIG.render.maxPixelRatio);
+    const dpr = auto ? auto.scale : Math.min(q.dpr, devicePixelRatio || 1, CONFIG.render.maxPixelRatio);
     pipeline.setSize(innerWidth, innerHeight, dpr);
     // an upscaled canvas (LOW on a phone: a 1x render on a 3x screen) stays crisp: the hero's
     // 3x5 pixel letters blur into grey under the browser's smooth upscale
@@ -219,6 +226,8 @@ async function boot() {
     ]);
     game.precompiled = { programs: n + nf, ms: Math.round(performance.now() - pc0) };
   }
+  // the remains a break shows (a cracked floor, cut bamboo): on the GPU now, not in the fight (ADR-209)
+  if (lookOf('warm', 'a') !== '0') game.warmed = warmDraw(game.renderer, game.scene, game.camera);
 
   // --- per-frame helpers
   const ray = new THREE.Raycaster();
@@ -344,9 +353,53 @@ async function boot() {
   let fpsAcc = 0, fpsFrames = 0;
   let shown = false; // the first frame is drawn: the loading screen goes
   game.fps = 0;
+  // AUTO's inputs: the script's time per frame, the GPU's where a timer exists, and a first guess
+  // timed over the title's first frames (each waits for the GPU: `warm` untimed while the first
+  // frames settle, then the median of `frames`)
+  const gl = game.renderer.getContext();
+  const gpuT = gpuTimer(gl);
+  const syncPx = new Uint8Array(4);
+  const syncGpu = () => gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, syncPx);
+  let bench = game.settings.autoQuality ? { n: 0, ms: [] } : null;
+  const CALM = new Set(['title', 'explore', 'paused', 'dead', 'victory']); // no fight on screen
+  const autoStep = (rawDt, t0) => {
+    const aq = game.autoQ;
+    if (!game.settings.autoQuality) {
+      bench = null;
+      return;
+    }
+    if (bench) {
+      if (pipeline.width * pipeline.height < 4096) return; // a hidden pane (0 x 0): no reading
+      syncGpu();
+      const B = CONFIG.autoQuality.bench;
+      if (bench.n++ >= B.warm) bench.ms.push(performance.now() - t0);
+      if (bench.n >= B.warm + B.frames) {
+        const ms = bench.ms.sort((a, b) => a - b)[bench.ms.length >> 1], at = aq.index; // the median
+        game.autoBench = { ms: +ms.toFixed(2), at: aq.scale };
+        bench = null;
+        if (aq.pick(ms, at) !== at) applyQuality();
+        aq.reset();
+      }
+      return;
+    }
+    const gpu = gpuT ? gpuT.poll() : null;
+    const i0 = aq.index;
+    if (aq.sample(rawDt, performance.now() - t0, gpu, CALM.has(game.state)) && aq.index !== i0) applyQuality();
+  };
+  // the frame-rate cap (touch by default): every n-th refresh is drawn (an even pace)
+  const pacer = new FramePacer(CONFIG.fpsCap.fps);
+  game.pacer = pacer;
+  // the performance readout (`?perf`, dev/perfReadout.js, ADR-209): every part of each drawn frame timed;
+  // null (and nothing timed) without it
+  const perf = perfFromSearch(location.search) ? new PerfReadout(game) : null;
+  game.perf = perf;
+  window.__perfReport = () => perf?.report() ?? 'add ?perf to the address';
   const frame = (now) => {
     requestAnimationFrame(frame);
-    const realDt = Math.min(FRAME_MAX, (now - last) / 1000);
+    pacer.on = fpsCapOn(game);
+    if (!pacer.tick(now)) return;
+    const rawDt = (now - last) / 1000;
+    const realDt = Math.min(FRAME_MAX, rawDt);
     last = now;
     fpsAcc += realDt;
     fpsFrames++;
@@ -355,7 +408,13 @@ async function boot() {
       fpsAcc = 0;
       fpsFrames = 0;
     }
+    const t0 = performance.now();
+    perf?.beginFrame();
+    gpuT?.begin();
     tick(realDt);
+    gpuT?.end();
+    if (shown) safe('autoQuality', () => autoStep(rawDt, t0));
+    perf?.endFrame(rawDt, performance.now() - t0);
     if (!shown) {
       shown = true;
       bootDone();
@@ -365,6 +424,7 @@ async function boot() {
   // A failing module must not freeze the whole frame: log its first few errors and carry on.
   const errorCounts = new Map();
   const safe = (name, fn) => {
+    const t = perf ? performance.now() : 0;
     try {
       fn();
     } catch (err) {
@@ -372,6 +432,7 @@ async function boot() {
       errorCounts.set(name, n);
       if (n <= 3) console.error(`[${name}] update failed`, err);
     }
+    if (perf) perf.add(name, performance.now() - t);
   };
 
   // One simulation step of `stepDt` real seconds: the clocks, then what the fight's timing hangs on
@@ -421,6 +482,7 @@ async function boot() {
     game.fxDt = fxDt;
     game.realDt = stepDt;
     safe('world', () => game.world.update(dt));
+    const tf = perf ? performance.now() : 0;
     // (the time rip: before the pools and the fire field age, so what it draws shows this frame;
     // its marks step in real time)
     game.fx.rip?.update(fxDt, stepDt);
@@ -432,6 +494,7 @@ async function boot() {
     game.fx.ripple.update(fxDt);
     game.fx.streak?.update(fxDt);
     stampUpdate(game, fxDt);
+    if (perf) perf.add('fx', performance.now() - tf);
   };
 
   const steps = { n: 1, dt: 0 };
@@ -454,12 +517,16 @@ async function boot() {
     let viewAt = null;
     safe('view', () => (viewAt = applyViewOverride()));
     lightsAt = viewAt;
+    const tu = perf ? performance.now() : 0;
     updateSharedUniforms(viewAt);
+    if (perf) perf.add('uniforms', performance.now() - tu);
     safe('hud', () => game.hud.update(realDt));
     safe('audio', () => game.audio.update(realDt));
 
+    const tr = perf ? performance.now() : 0;
     pipeline.updateShadowCamera(viewAt ?? game.cameraRig.focus);
     pipeline.render();
+    if (perf) perf.add('render', performance.now() - tr);
     safe('lab', () => game.lab.postRender?.()); // the model viewer's sheet reads the frame back
     if (inspect.rect) inspect.draw();
   };

@@ -4,7 +4,33 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and four pieces of work since 0.4.0:
+One hundred and eight pieces of work since 0.4.0:
+- **A performance readout on your phone, and smoother first breaks** (2026-11-26, ADR-209). *Added:* `?perf` in the
+  address shows the frame rate and the frame's cost at the foot of the screen, with a REPORT button that shares
+  or copies what each part of the game spent and the slowest frames. *Changed:* the cracked and broken floors
+  and the cut bamboo are prepared while the level loads, so the first break in a fight no longer stalls a
+  frame; two smaller costs in the shadows and the hero's see-through outline are gone.
+- **The hero stands, holds and guards like the reference** (2026-11-25, ADR-207). *Changed:* after the owner's
+  reference footage, at ease the hero now stands tall with the sword in one hand, its point forward and down by his
+  right foot, the free arm hanging; in a fight (locked on, a boss) he takes the sword in both hands before him, the
+  point up above his head. Now and then at ease he puts the sword away at his left hip, where it burns out in its
+  green flame, stands empty-handed for a breath and draws it back out of the flame. His habits, tricks and spells
+  start from and come back to the new stand. His guard is a braced crouch, both hands up before his chin and the
+  blade across his face; the block and the parry work exactly as before (`?idles=new|old`, `?guard=ward`: the
+  looks before).
+- **The resolution follows the frame rate** (2026-11-25, ADR-200). *Added:* a new quality setting, AUTO, on by
+  default: the game times its frames and, when the graphics chip cannot hold 60 fps, draws the picture at a lower
+  resolution (2x, 1.5x, 1.25x, down to 1x of the window's pixels; never lower, so the letters stay as many as today), and climbs back when there is room, only outside a
+  fight. A first guess is timed on the title screen. A slow processor is told apart and left alone (a lower
+  resolution would not help it). F2 and the pause menu cycle AUTO, LOW, MEDIUM, HIGH; a preset turns AUTO off.
+  *Added:* a 60 FPS CAP in the pause menu, on by default on touch devices (heat, battery): a 120 Hz screen draws every
+  second refresh. `?autoq=0` starts with AUTO off, `?autoqFloor=` sets its lowest step, `?fpscap=0|1` the cap.
+- **The hero runs like a swordsman: the blade carried forward at his hip** (2026-11-25, ADR-204). *Changed:*
+  on the run and the sprint the hero now carries his sword forward, low at his right hip, its point rocking down
+  as the arm swings back and up as it swings forward, the steel moving with his forearm; before, the blade trailed
+  behind him on a wrist bent nearly at a right angle and hardly moved. His free arm pumps like a runner's: the fist
+  up before his belly, the elbow high behind his back. His free hand is now a closed fist as wide as his forearm,
+  no longer a small knob with spiky fingers. `?runSword=old`, `?runArm=a` and `?handLook=a` give the run before.
 - **The dragon's neck and head move naturally: no upside-down head, no flips** (2026-11-25, ADR-203). *Fixed:* every one of the
   Cinder Wyrm's 50 moves was measured frame by frame (how fast each neck joint and the head turn, how far the
   head rolls off level, where it looks). Its head no longer rolls upside down in flight (the sky dive's climb,
@@ -1239,6 +1265,8 @@ One hundred and four pieces of work since 0.4.0:
   thuds onto its side, the head slaps down last and the wings crumple).
 
 ### Changed
+- **Local test runs go easy on the PC** (2026-11-25, ADR-205): off CI, `npm test` runs its workers at
+  low priority and every run on the machine shares 8 slots (`ABYSS_JOBS`); `--only <names>` runs a subset.
 - **CI's long checks split; every PR auto-merges when green** (2026-11-24, ADR-185): the Starless Lord's
   look check and the living world's suite each run in parallel processes (`GCD_FX`, `GCD_SKIP` in
   life.mjs) and the shares are re-dealt on measured times: a PR's check should take ~5-6 minutes (was 8-10).
