@@ -1307,6 +1307,7 @@ async function scenarioRebuild() {
   }
   LS.setLook('oneBody', null);
   // ---- the moves
+  assert(LS.PICKED?.oneMoves === 'a' && !LS.PENDING.includes('oneMoves'), '?oneMoves= is the owner\'s pick, a, the rebuilt moves (PICKED, not PENDING; 2026-11-26)');
   LS.setLook('oneMoves', 'a');
   try {
     let same = 0, held = 0, diff = [];

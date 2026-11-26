@@ -220,7 +220,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] His moves (`?oneMoves=a`): the side-on aim, held blue / red windups, two fast strings; before / after films; the `rebuild` test
 - [x] The owner's pick of the figure: b, the open coat (PICKED); one coat, not the hero's cloak
 - [x] Straight kicks and long punches on the rebuild (the owner's ask); the coat held to 30 degrees through flips
-- [ ] The owner's word on the moves (`?oneMoves=a` as the default)
+- [x] The owner's pick of the moves: the rebuild (`oneMoves` a in PICKED)
 - [ ] Phase 1's left hand behind his back reads one-armed from some sides; the sweep's tuck pops at the knee (Tian Lei's builder)
 
 ## M1.89 — 60 fps on every device: the frame's cost (2026-11-25, `render/perf-ground-steps`, ADR-199)

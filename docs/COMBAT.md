@@ -2558,7 +2558,7 @@ fencing bot (god mode) wins through both bars in 84 s (seed 4242: phase 2 at 27 
 STRATEGY (opt-in, god mode, seeds 4242 and 7): mixed 75 – 84 s, parry 95 – 96 s, block-only 89 – 122 s (mortal: alive, it wins), the Long Second bot (every cue answered with the lean) 138 s, dodge-only 142 – 164 s: neither dodging nor leaning is the fastest way through. On the Sheathed with the Long Second learned (sheath.mjs `lean`): mixed 33, parry 42, dodge 64, lean 82 s.
 
 
-### The rebuild (`?oneMoves=a`, 2026-11-26, ADR-221; awaiting the owner's pick)
+### The rebuild (`?oneMoves=a`, 2026-11-26, ADR-221; the owner's pick, the default; `?oneMoves=0` as before)
 - **Held windups.** Every blue, red and black blow reaches its coil in 0.75 of the time its draw had and HOLDS it
   (the realiser's bait-hold rule: the cocked pose keyed again) until 0.84 of the windup at most, the strike keeping
   0.7 of its time (`TUNING.held`). The windup, the cue and the impact are where they were; only the shape inside
@@ -2567,7 +2567,7 @@ STRATEGY (opt-in, god mode, seeds 4242 and 7): mixed 75 – 84 s, parry 95 – 9
   shoulder; the sweep: dropped low, the leg tucked). A beat with its own bait hold (the Dive Within) keeps it.
 - **The aim.** One gun is aimed side-on, the right shoulder toward you and the arm straight down the line (the
   old aim pointed it 36 degrees off you, across his face). Two guns stay as they were (within 4 - 13).
-- **Two fast strings** (white, picked only on the rebuild): **Snapping Hands** (backfist 0.42, cross 0.28,
+- **Two fast strings** (white, never picked on `?oneMoves=0`): **Snapping Hands** (backfist 0.42, cross 0.28,
   backfist 0.28; 7 each) and **Quick Foot** (a low front kick 0.42, 8, then the cross 0.28, 7). Unscaled by the
   phase (`fixed`): 0.42 is his first-windup floor, 0.28 the shortest windup whose glint still comes after its
   tell (flashLead 0.26); impacts 0.36 s apart (>= minHitGap). Each blow's coil is reached early and held, the

@@ -6495,5 +6495,5 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   - **Long punches**: `armSoftA` [0.95, 0.996] and the straight blows' (jab, cross, palm, double, backfist) hit key
     1.16 x further from the shoulder (`longArm`): elbows at contact ~150 -> ~169 degrees.
   - The cost: the legs travel further back from a straight kick: the spin kick that follows one jolts ~40 - 60 %
-    more (lesson 336 -> 530 mm/f2), within the audit's range (the sweep's 870, pre-existing). The moves stay
-    behind `?oneMoves=a` until the owner says.
+    more (lesson 336 -> 530 mm/f2), within the audit's range (the sweep's 870, pre-existing).
+  - The owner, after the film: "Yes, make default": `oneMoves: 'a'` in PICKED (`?oneMoves=0` the moves he shipped with).

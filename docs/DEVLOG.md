@@ -35,7 +35,9 @@ most), straight kicks (anim.js `kickStretch`, `legSoftA`, `longLeg`: knees 166 -
 the spin kick after a straight kick jolts ~40 - 60 % more (the leg comes back further). Tests: REBUILD grew the
 kicks' reach, the punches' reach, the animator switch, a front kick's knee (173), the coat's swing in a flip.
 
-**Open:** the owner's picks (figure a / b / c, moves a); phase 1's hand behind the back; the sweep's tuck (Tian
+**Then:** "Yes, make default": the rebuilt moves are his default (`oneMoves` a in PICKED).
+
+**Open:** phase 1's hand behind the back; the sweep's tuck (Tian
 Lei's builder: the motion-tian-halcyon session owns it).
 ## 2026-11-26 — The reference-footage tools removed (ADR-236; branch `build/remove-mocap`)
 
