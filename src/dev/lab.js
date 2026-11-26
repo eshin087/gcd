@@ -1409,7 +1409,7 @@ export class Lab {
     // the light chain's look (ADR-188: the weighted chain; ?lights=old the chain before it), live: the next
     // swing plays it. Only the looks change, never a hit's timing, damage or reach (combat.js setLights)
     const lir = el('div', 'lab-row', null, body);
-    el('span', 'lab-lbl', 'lights', lir).title = "the light chain's motion: weighted (the default), before (?lights=old) or brand new (?lights=fresh)";
+    el('span', 'lab-lbl', 'lights', lir).title = "the attacks' motion: weighted (the default), before (?lights=old), brand new (?lights=fresh), instant cuts (?lights=blink) or steel (?lights=steel: the stance and every attack after the reference footage)";
     const liGrid = el('div', 'lab-grid', null, lir);
     liGrid.style.flex = '1';
     this.ui.lightsBtns = LIGHTS_IDS.map((m) => {
