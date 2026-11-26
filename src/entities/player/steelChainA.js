@@ -1,4 +1,4 @@
-// The steel look set (`?lights=steel`, combat.js setLights; ADR-207): the light chain's hits 1-3.
+// The steel look set (`?lights=steel`, combat.js setLights; ADR-210): the light chain's hits 1-3.
 // Every clip here follows the owner's reference footage pose for pose (both arms, the body, the feet),
 // fitted to this game's own clock: no number of any attack changes. Clip format: swings.js.
 //

@@ -5,7 +5,7 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
-## 2026-11-25 — The steel look set: every attack and the stance after the owner's reference (ADR-207; branch `claude/hero-light-chain-12a97a`, PR #118, held)
+## 2026-11-25 — The steel look set: every attack and the stance after the owner's reference (ADR-210; branch `claude/hero-light-chain-12a97a`, PR #118, held)
 
 **Owner**, on the instant cuts after three rounds: "this all still looks bad to me", with reference footage
 of a one-handed straight sword moveset: "both arm angles, placement, animation etc is exactly what i want
@@ -20,7 +20,7 @@ the footage for moves the first part lacks; the standing pose too.
 - A clip's `settle` (player.js `_tickAttack`): the blend out of a finished attack, so a lone hit holds its
   finish and rises slowly; its feet step home (anim.js `_settleStep`).
 - Scenarios `steelstance`, `steela` … `steele`; `herolife`'s upward-thrust rule skips the steel clips.
-- The instant cuts' record is ADR-206 now (ADR-200 was taken on main).
+- The instant cuts' record is ADR-209 now (ADR-200 was taken on main).
 
 **How:** the footage saved as 30 fps stills in scratch (a headless browser playing the page; never in the
 repo, the source never named). The look set pre-wired with empty slots, then five authors, one part each,
@@ -31,7 +31,7 @@ one at a time behind a lock (one shared browser for films; films, tests and the 
 
 **Verification:** pair sheets for every move in four views; the steel scenarios; `npm test`.
 
-**Open / next:** the owner's verdict on the films and the preview. Known gaps are in ADR-207. If steel
+**Open / next:** the owner's verdict on the films and the preview. Known gaps are in ADR-210. If steel
 becomes the default: remove `blink`, `fresh`, `?arcs=`; the flurry and the plunge are still today's.
 
 ## 2026-11-25 — AUTO quality: the resolution follows the frame time; a 60 fps cap on touch (ADR-200; branch `render/auto-quality`)
@@ -201,7 +201,7 @@ time on the 4090 does not change (its shadow pass was under 0.1 ms).
 (2 - 7 % of frames in a fight) costs what every frame cost before. Lighter trees on LOW, the floors'
 shader, the uniforms' upload and the hitches are still open (M1.89).
 
-## 2026-11-25 — The instant cuts: arms, weight, every attack (ADR-206; branch `claude/hero-light-chain-12a97a`, PR #118, held)
+## 2026-11-25 — The instant cuts: arms, weight, every attack (ADR-209; branch `claude/hero-light-chain-12a97a`, PR #118, held)
 
 **Owner** (after the second instant-slash films): "the right arm angle and motion is stiff and doesn't look
 like how an arm should look when doing that sword motion. the left hand needs to stop holding the hip and

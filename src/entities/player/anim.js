@@ -347,7 +347,7 @@ const SCR_FIGHT = new Float32Array(N);
 export function stand(p, A) {
   guard(p, A);
   if (!A.freeHand) return;
-  // (?lights=steel, ADR-207: one standing pose after the owner's reference, steelStance.js)
+  // (?lights=steel, ADR-210: one standing pose after the owner's reference, steelStance.js)
   if (STEEL.on && steelStand(p, P, A)) return;
   const f = clamp(fin(A.fightW), 0, 1);
   // (ADR-186, idles.js: the arms in one of several rests over each stance; `?idles=old` the belt)
@@ -1608,7 +1608,7 @@ const CHARGE_SW = [-82, 80, 74]; // the blade: azimuth, elevation at no charge â
 function chargePose(p, A) {
   const k = clamp(A.chargeK, 0, 1), s = smoothstep(0, 0.25, A.t), w = s * k;
   stance(p, A, 0);
-  // (?lights=steel, ADR-207: the hold after the owner's reference, steelStance.js)
+  // (?lights=steel, ADR-210: the hold after the owner's reference, steelStance.js)
   if (STEEL.on && steelCharge(p, P, A, k, s, walkLegs)) return;
   v3(p, P.rF, -0.18, ANK, -0.47);
   v3(p, P.lF, 0.17, ANK, 0.44);
@@ -3516,7 +3516,7 @@ export class HeroAnimator {
     // which actions may play now (F.pool): the old ones at ease; ADR-186's at ease, or in the fight
     // (also locked on: the small habits of the guard), never while the stance is changing
     let pool = old ? (still && !pl.lockOn && !(this.fightW > 0.05) ? 0 : -1) : still && this.fightW > 0.95 ? 2 : still && !pl.lockOn && this.fightW < 0.05 ? 1 : -1;
-    // (?lights=steel, ADR-207: the reference's idle is one pose with its breath; the habits and their
+    // (?lights=steel, ADR-210: the reference's idle is one pose with its breath; the habits and their
     // arm rests are written over today's stances, so none plays from the steel stance)
     if (STEEL.on) pool = -1;
     const calm = pool >= 0;
