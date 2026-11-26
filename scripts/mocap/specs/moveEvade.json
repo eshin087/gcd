@@ -655,6 +655,34 @@
    "to": "crouchSprint",
    "period": 0.72,
    "draft": true
+  },
+  {
+   "name": "crouchStop",
+   "title": "Crouch sprint to stop",
+   "src": "move 13:56-14:12",
+   "kind": "oneshot",
+   "fps": 30,
+   "search": 0.5,
+   "takes": [
+    {
+     "t0": "13:56.30",
+     "t1": "13:57.60",
+     "view": "right"
+    },
+    {
+     "t0": "14:00.70",
+     "t1": "14:02.00",
+     "view": "left"
+    },
+    {
+     "t0": "13:58.50",
+     "t1": "13:59.80",
+     "view": "right"
+    }
+   ],
+   "from": "crouchSprint",
+   "to": "crouchIdle",
+   "draft": true
   }
  ]
 }
