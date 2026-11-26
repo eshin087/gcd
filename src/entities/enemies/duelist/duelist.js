@@ -985,6 +985,10 @@ export class Duelist {
         // (a parry moment ends the string: the hero's parry holds it as a last blow)
         last: o.beat ? !!o.beat.last || (!!o.beat.def?.flare && tell === TELL.BLUE) : true,
         flare: !!o.beat?.def?.flare || !!o.flare,
+        // (a beat's own block: `blockPush` m of slide, `guardCost` points of the meter; absent: the
+        // engine's DEFENSE.blockPushback / GUARD.cost, as before)
+        ...(Number.isFinite(o.beat?.def?.blockPush) ? { blockPush: o.beat.def.blockPush } : null),
+        ...(Number.isFinite(o.beat?.def?.guardCost) ? { guardCost: o.beat.def.guardCost } : null),
         ...(o.extra ?? null),
       });
     } catch (err) {
