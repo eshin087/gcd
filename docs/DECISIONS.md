@@ -6518,4 +6518,31 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   default (lookSwitch PICKED), so the snap blows are in both bosses' pools. Not changed (for the owner to choose): the sweep's jolt, the dash thrusts'
   skating, the cross's sideways line, Fly-By's pass height. The holds are short in a string's quick beats
   (0.12 - 0.24 s): `HELD_AT` is the lever.
+## ADR-220 — The bosses drawn in the hero's style: his shading and his outline, their own colours (2026-11-26)
 
+**Context.** The owner: everything but the Cinder Wyrm and Wen Yao still does not look like the hero's ASCII.
+Beside the hero at the game camera, ADR-194's lift prints a boss's cloth as one even, bright field of dense letters,
+inside a 1 px line; the hero runs from a near-black core through grey shoulders to a lit edge and the pale hem,
+inside a line two pixels wide at 1440p. A first round (the hero's letter size, his dark cloak values in each boss's
+hue, the pale hem up to the thigh, skirts flared and torn) was turned down: "i didnt mean make it the same color or
+cloth texture as the main character. i meant the style and engine look ... shen hui i like that his original hat
+has its own color and detailed ascii look". Asked which part, the owner picked his shading and his outlines and
+rim (not his letter size).
+
+**Decision.** One live switch per boss, duelist/heroPrint.js (`HERO_PRINT` level -> switch, `HERO_STYLE`), read every
+frame by main.js: `?ashHero=` `?lordHero=` `?ascHero=` `?sheathHero=` `?halHero=` = `0` as shipped, `a` his shading,
+`b` his outline, `c` both.
+- **Shading** (`U.uBossHero.x`, materials.js, inside the bosses' print, `#ifndef SG_HERO_SELF`): the boss's cloth /
+  hair / plate light (`fillC`, never `artFill`: his colours) is scaled by `mix(0.15, 1, k)`, `k` = the key light's
+  cel step x a rise toward his shoulders (0.45 at 0.55 m above his feet to 1 at 1.55 m), never below 1 on the hem
+  or from 1.45 m up (his head and hat as they are).
+- **Outline** (`uBossLike.z`, pipeline.js `cellMain`): a boss's ink-line step `gLine` = max(his, the hero's
+  `uSelfPx`): his silhouette, dotted rim and inner lines at the hero's width, his letters on his own cell. On a
+  boss whose letters follow his size (Tian Lei, Halcyon) it already is: b changes nothing there.
+- **Picks:** c for Shen Hui, Varr Nihil and Lu Wusheng; a for Tian Lei and Halcyon (lookSwitch PICKED; Lab LOOKS
+  rows, live). `?looks=old` draws `0`.
+
+**Not changed.** Colours, outfits, letter cells, the hem, the face: ADR-194's print. The wyrm, Wen Yao and Xin Yi
+have no switch. Turned down and removed: the dark cloak values, the tall hem, the flared and torn skirts.
+
+**Cost.** A few ALU per boss fragment and a wider tap step for his lines; no texture, pass, draw call or geometry.

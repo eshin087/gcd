@@ -4,7 +4,13 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and fourteen pieces of work since 0.4.0:
+One hundred and fifteen pieces of work since 0.4.0:
+- **The bosses shaded and outlined like the hero** (2026-11-26, ADR-220). *Changed:* Shen Hui, Varr Nihil, Tian Lei,
+  Lu Wusheng and Halcyon keep their own colours, clothes and letters, but are now lit the way the hero is: bright
+  where the light catches them and on their shoulders, falling off into dark letters on the shadow side and down
+  the body. Shen Hui, Varr Nihil and Lu Wusheng also get the hero's thicker, blockier outline on large screens.
+  Each boss's switch (`?ashHero=`, `?lordHero=`, `?ascHero=`, `?sheathHero=`, `?halHero=`: 0 as before, a the
+  shading, b the outline, c both) is in the Lab's LOOKS.
 - **Tian Lei and Halcyon: held windups, quick jabs, and Halcyon fights like a flier** (2026-11-26, ADR-225; the owner's pick: `?ascMotion=0` / `?halMotion=0` play them as before). *Added:* every
   blue (parry) and red (perfect-dodge) blow of Tian Lei's and Halcyon's now winds up into a pose of its own, held
   while it tightens, so you can read which blow is coming and how to answer it; red ones sink deeper. Two quick
