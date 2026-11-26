@@ -4,6 +4,7 @@ import { registerItem } from '../../player/gear/index.js';
 import { shellGeometry, skirtSheet, sheetOffset, tatterStrip, bandGeometry, boxGeometry, mergeGeometries, sub, foldLines, ribbonCrease, lerp, limb, gripFist, looseHand, partGeometry } from '../../player/heroGeo.js';
 import { toDragonLook, ART_CLOTH, ART_SKIN, ART_KEEP } from '../ashDisciple/bodyArt.js';
 import { ROBE_PANELS } from '../ashDisciple/gear.js'; // (the robe skirt's cut: Shen Hui's panels)
+import { clothPanels } from '../duelist/heroPrint.js';
 import { sheathArtNow, sheathMarkNow, sheathLookNow, sheathDigits, sheathTuned, wandererDigits } from './look.js';
 
 export { sheathArtNow, sheathLookNow };
@@ -354,7 +355,8 @@ function buildRobeSkirt({ pelvis, M, DIM, mesh, joint }) {
   const short = sheathLookNow() === 'b' ? 0.7 : 1;
   // (d: the pleated skirt is his wide trousers: their charcoal, not the robe's indigo)
   const skirtM = sheathLookNow() === 'd' ? M.pants : M.coat;
-  ROBE_PANELS.forEach((P, i) => {
+  // (drawn like the hero, ADR-220: `?sheathHero=b` cuts the skirt the hero's way, flared and torn)
+  clothPanels('grove', ROBE_PANELS).forEach((P, i) => {
     const sa = Math.sin(P.az), ca = Math.cos(P.az);
     const R0 = 1 / Math.hypot(sa / DIM.coatR, ca / (DIM.coatR * 0.69)) + P.out * 0.5;
     const anchor = joint(pelvis, sa * R0, DIM.coatY + 0.02, ca * R0);

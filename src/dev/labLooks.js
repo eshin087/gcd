@@ -77,6 +77,13 @@ export const LOOK_SWITCHES = Object.freeze([
   ['city', ['a', 'b', 'c'], 'a', 'a', true, ['city'], 'the city: a neon rain, b golden hour, c lockdown (a reload)'],
   // --- every human boss (ADR-194)
   ['bossPrint', ['0', 'a', 'b'], '0', 'b', false, ['ash', 'starless', 'ring', 'fox', 'grove', 'code', 'city'], 'the bosses printed the hero\'s way: b in their own colours (the default), a in the hero\'s greys, 0 as before (lit letter bodies, his strokes and dotted rims, the pale hem below the knee)'],
+  // --- drawn like the hero (ADR-220): per boss, 0 today, a the hero's print (his letter size, a dark body lit at one
+  // side, the pale hem up to the thigh), b a + the hero's cut (the skirt flared and torn; a reload)
+  ['ashHero', ['0', 'a', 'b'], '0', 'a', true, ['ash'], 'Shen Hui drawn like the hero: a the hero\'s print, b + the hero\'s cut (a reload)', 'awaiting'],
+  ['lordHero', ['0', 'a', 'b'], '0', 'a', true, ['starless'], 'Varr Nihil drawn like the hero: a the hero\'s print, b + the hero\'s cut (a reload)', 'awaiting'],
+  ['ascHero', ['0', 'a', 'b'], '0', 'a', true, ['ring'], 'Tian Lei drawn like the hero: a the hero\'s print, b + a long gi skirt cut the hero\'s way (a reload)', 'awaiting'],
+  ['sheathHero', ['0', 'a', 'b'], '0', 'a', true, ['grove'], 'Lu Wusheng drawn like the hero: a the hero\'s print, b + the hero\'s cut (a reload)', 'awaiting'],
+  ['halHero', ['0', 'a'], '0', 'a', true, ['city'], 'Halcyon drawn like the hero: a the hero\'s print (a reload)', 'awaiting'],
   // --- the title (ADR-196)
   ['menu', ['0', 'a', 'b', 'c'], '0', 'c', true, ['cinderwood', 'ash', 'starless', 'ring', 'fox', 'grove', 'code', 'city'], 'the title: c the sword\'s path (the default), a the world list, b the campfire grid, 0 the title before (a reload)'],
 ]);

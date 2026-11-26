@@ -6,6 +6,7 @@ import {
 } from '../../player/heroGeo.js';
 import { ASH_ART, toDragonLook } from './bodyArt.js';
 import { ashLookNow, dressHat, dressSleeves, dressSkirt } from './look.js';
+import { clothPanels } from '../duelist/heroPrint.js';
 
 // The Ash Disciple's outfit (docs/specs/ash-disciple.md §3): gear items on the hero's skeleton, so
 // he is built by the same buildHero(U, loadout) and driven by the same animator. A small straw douli
@@ -169,7 +170,8 @@ export const ROBE_PANELS = [
 
 function buildRobeSkirt({ pelvis, M, DIM, mesh, joint }) {
   const coat = [];
-  ROBE_PANELS.forEach((P, i) => {
+  // (drawn like the hero, ADR-220: `?ashHero=b` cuts the skirt the hero's way, flared and torn)
+  clothPanels('ash', ROBE_PANELS).forEach((P, i) => {
     const sa = Math.sin(P.az), ca = Math.cos(P.az);
     const R0 = 1 / Math.hypot(sa / DIM.coatR, ca / (DIM.coatR * 0.69)) + P.out * 0.5;
     const anchor = joint(pelvis, sa * R0, DIM.coatY + 0.02, ca * R0);

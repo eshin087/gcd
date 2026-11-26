@@ -7,6 +7,7 @@ import {
 } from '../../player/heroGeo.js';
 import { toDragonLook } from '../ashDisciple/bodyArt.js';
 import { LORD_ART } from './bodyArt.js';
+import { clothPanels } from '../duelist/heroPrint.js';
 import { lordLookNow, dressHood, dressPlate, dressCape } from './look.js';
 
 // The Starless Lord's outfit: gear items on the hero's skeleton, so he is built by the same
@@ -367,7 +368,8 @@ function buildSkirt({ pelvis, M, DIM, REST, mesh, joint }) {
   mesh(pelvis, mergeGeometries(plates), M.armor);
   mesh(pelvis, mergeGeometries(edges), M.bevel);
   const coat = [];
-  LORD_PANELS.forEach((P, i) => {
+  // (drawn like the hero, ADR-220: `?lordHero=b` cuts the war-skirt the hero's way, flared and torn)
+  clothPanels('starless', LORD_PANELS).forEach((P, i) => {
     const sa = Math.sin(P.az), ca = Math.cos(P.az);
     const R0 = 1 / Math.hypot(sa / DIM.coatR, ca / (DIM.coatR * 0.69)) + P.out * 0.5;
     const anchor = joint(pelvis, sa * R0, DIM.coatY, ca * R0);

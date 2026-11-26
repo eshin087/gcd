@@ -285,7 +285,7 @@ const SHARED = [
 // shared by surface-glyph materials only (declared in their own shader, not COMMON_GLSL)
 const SURFACE_SHARED = ['uArtSolid', 'uArtHeroEdge', 'uArtHeroKey'];
 // ... and by the hero's ink-line art source only (`heroArt`)
-const HERO_ART_SHARED = ['uCamRight', 'uCamUp', 'uArtHeroLight', 'uArtHeroRim', 'uArtHeroCel', 'uHeroSolid', 'uBossPrint'];
+const HERO_ART_SHARED = ['uCamRight', 'uCamUp', 'uArtHeroLight', 'uArtHeroRim', 'uArtHeroCel', 'uHeroSolid', 'uBossPrint', 'uBossHero'];
 
 /**
  * Geometry attributes required: position, normal, aCol (vec3 albedo, linear), aFlag (float),
@@ -597,6 +597,7 @@ export function createSurfaceGlyphMaterial(U, o = {}) {
       uniform float uArtSub;
       uniform float uArtPart;
       uniform vec4 uBossPrint;
+      uniform vec4 uBossHero;
       uniform vec3 uCamRight;
       uniform vec3 uCamUp;
       uniform vec4 uArtHeroLight;
@@ -1007,10 +1008,19 @@ export function createSurfaceGlyphMaterial(U, o = {}) {
             vec3 fGrey = (vec3(tl * 0.65) + hueB * (tl * 0.4375)) * 1.8;
             vec3 fOwn = (vec3(tl * 0.425) + hueB * (tl * 1.6575)) * 1.5;
             artFill = mix(fGrey, fOwn, uBossPrint.y);
+            // drawn like the hero (ADR-220, uBossHero.x): his cloth at the hero's cloak values, a dark body
+            // of sparse letters in his own hue that the key light and the rim pick out (the hero's coat
+            // 0.115, his lining 0.05, his facing 0.15)
+            float tlH = 0.05 + 0.1 * min(dot(uArtFill, vec3(0.2126, 0.7152, 0.0722)) / 0.6, 1.0);
+            vec3 fHero = vec3(tlH * 0.4) + hueB * (tlH * mix(0.5, 1.2, uBossPrint.y));
+            artFill = mix(artFill, fHero, uBossHero.x);
             // the hem: every part but the trousers, the hair, the plate and the crest (5, 11, 12, 15)
             if (abs(pidB - 5.0) > 0.5 && abs(pidB - 11.0) > 0.5 && abs(pidB - 12.0) > 0.5 && abs(pidB - 15.0) > 0.5) {
               float rag = sin(vW.x * 17.0 + vW.z * 5.0) * 0.6 + sin(vW.z * 23.0 - vW.x * 7.0) * 0.4;
-              hemK = step(vW.y, uBossPrint.z + uBossPrint.w + 0.08 * rag);
+              // (uBossHero.y: the hero's tall tails, fading in over uBossHero.z along the ragged line)
+              float hemTop = uBossHero.y > 0.0 ? uBossHero.y : uBossPrint.w;
+              float hemH = uBossPrint.z + hemTop + 0.08 * rag - vW.y;
+              hemK = uBossHero.z > 0.0 ? clamp(hemH / uBossHero.z + 0.5, 0.0, 1.0) : step(0.0, hemH);
               vec3 lav = vec3(0.486, 0.459, 0.675);
               artFill = mix(artFill, mix(lav, lav * 0.55 + hueB * 0.189, uBossPrint.y), hemK);
             }
@@ -1036,7 +1046,12 @@ export function createSurfaceGlyphMaterial(U, o = {}) {
         vec3 gd = normalize(V * 0.3 - uCamRight * 0.7 + uCamUp * 0.65);
         float curv = length(fwidth(vN)) / max(length(fwidth(vW)), 1e-5);
         fillC += vec3(pow(max(dot(n, normalize(gd + V)), 0.0), uArtSpec.y) * uArtSpec.x * uArtHeroLight.w * smoothstep(2.0, 7.0, curv));
+#ifndef SG_HERO_SELF
+        // (a boss drawn like the hero, ADR-220: his screen-left rim x uBossHero.w on top of the hero's)
+        fillC += uArtHeroRim * (pow(1.0 - facing, 2.0) * smoothstep(0.05, 0.75, dot(n, -uCamRight)) * uArtRim) * (1.0 + uBossHero.w * uBossPrint.x);
+#else
         fillC += uArtHeroRim * (pow(1.0 - facing, 2.0) * smoothstep(0.05, 0.75, dot(n, -uCamRight)) * uArtRim);
+#endif
         fillC = fillC * uTint + inkC * uInkGlow * uArtGlowK;
         col = mix(col, fillC, heroArt);
         if (uHeroSolid > 0.5) {
