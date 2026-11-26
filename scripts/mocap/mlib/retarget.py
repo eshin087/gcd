@@ -151,7 +151,14 @@ def world_rotations(b, blade=None, tumble=False, clip=None, bladeL=None, relax=N
         fo = b[:, wr] - b[:, el]
         rest_dir = k * X
         rest_h = np.cross(rest_dir, Z)
-        h = _held_hinge(_n(np.cross(up, fo)), _bend(up, fo), _n(np.cross(up, Z)))
+        if clip is not None and clip.get('hinge', 'held') == 'transport':
+            # spec "hinge": "transport" (default "held"): through a near-straight elbow the hinge is
+            # carried along the upper arm's turn from both sides and the roll spread over the straight frames
+            # (the held hinge's two directions averaged to a 70-degree roll of the arm in one frame: charge2)
+            from .bonekeys import hinge_path
+            h = hinge_path(_n(np.cross(up, fo)), _bend(up, fo), _n(up), _n(np.cross(up, Z)))
+        else:
+            h = _held_hinge(_n(np.cross(up, fo)), _bend(up, fo), _n(np.cross(up, Z)))
         R[:, JI['upperArm' + s]] = skel.frame_q(rest_dir, rest_h, up, h)
         R[:, JI['foreArm' + s]] = skel.frame_q(rest_dir, rest_h, fo, h)
         fing = _mid(b, pk, ix) - b[:, wr]
@@ -173,6 +180,11 @@ def world_rotations(b, blade=None, tumble=False, clip=None, bladeL=None, relax=N
                         q_ = sec[i - 1] - blade[i] * (blade[i] @ sec[i - 1])
                         sec[i] = q_ / max(np.linalg.norm(q_), 1e-9)
             R[:, JI['hand' + s]] = skel.frame_q(Z, rest_dir, blade, sec)
+            if clip is not None and clip.get('roll_dps', 1000.0):
+                # the hand's roll about the blade continuous (a blade that crosses the forearm's line flipped
+                # the hand 60-178 degrees in one frame); only steps over the limit are touched
+                from .bonekeys import roll_continuity
+                R[:, JI['hand' + s]] = roll_continuity(R[:, JI['hand' + s]], float(clip.get('roll_dps', 1000.0)) / clip.get('fps', 30))
         elif clip is not None and clip.get('free_hand'):
             R[:, JI['hand' + s]] = free_hand(b, s, R[:, JI['foreArm' + s]], clip['free_hand'])
         else:

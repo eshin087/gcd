@@ -241,30 +241,23 @@ def apply(q, clip, B, fps, loop, log=print):
             # the hinge: from the pair where both are keyed and bent, else the tracked joint's own
             sec_rest = np.cross(prim, Z) if arm else X
             hinge = skel.qrot(R[:, JI[j]], np.broadcast_to(sec_rest, (n, 3)))
-            if a in ch and b in ch:
-                va, _ = want(a)
-                vb, _ = want(b)
-                hc = np.cross(va, vb)
-                bend = np.linalg.norm(hc, axis=1)
-                hc = _n(hc)  # as retarget: an arm's hinge is upper x fore, a leg's thigh x shin
-                k_ = np.clip((np.degrees(np.arcsin(np.clip(bend, 0, 1))) - 10) / 15, 0, 1)[:, None]
-                hinge = _n(k_ * hc + (1 - k_) * hinge)
-            # continuity: where the pair does not set it, the hinge follows the last frame's (projected off
-            # the bone), so a straight keyed limb does not inherit a tracked hinge that flips
+            # continuity first: the tracked hinge carried frame to frame (projected off the bone), so a keyed
+            # limb never inherits a tracked hinge that flips
             hk = hinge.copy()
-            setk = k_[:, 0] if a in ch and b in ch else np.zeros(n)
-            bd = np.degrees(np.arcsin(np.clip(bend, 0, 1))) if a in ch and b in ch else np.zeros(n)
-
-            def bend_deg(a_, b_, i):
-                return bd[i]
             for i in range(1, n):
-                if w[i] > 0 and hk[i] @ hk[i - 1] < 0 and setk[i] < 1.0 + 1e-9 and bend_deg(a, b, i) < 45:
-                    hk[i] = -hk[i]  # a near-straight pair read bent the impossible way: keep the side
-                if w[i] > 0 and setk[i] < 0.99:
+                if w[i] > 0:
                     pv = hk[i - 1] - v[i] * (v[i] @ hk[i - 1])
                     if np.linalg.norm(pv) > 0.2:
-                        hk[i] = _n(setk[i] * hk[i] + (1 - setk[i]) * _n(pv))
+                        hk[i] = _n(pv)
             hinge = hk
+            if a in ch and b in ch:
+                # both bones keyed: the hinge is upper x fore (thigh x shin) where the pair is bent, and where
+                # it is near straight the nearest bent frame's, held from both sides (retarget's rule: the
+                # elbow / knee then never rolls 180 degrees as the keys pass through straight)
+                va, _ = want(a)
+                vb, _ = want(b)
+                bend = np.arccos(np.clip((va * vb).sum(1), -1, 1))
+                hinge = hinge_path(_n(np.cross(va, vb)), bend, v, hinge)
             Rn = skel.frame_q(prim, sec_rest, v, hinge)
             put(JI[j], Rn, w)
     for bone in ('footL', 'footR', 'handL', 'handR'):
@@ -297,6 +290,10 @@ def apply(q, clip, B, fps, loop, log=print):
             Rn = skel.frame_q(Z, -X, v, sec)
         put(JI['handR'], Rn, w)
         q[:, JI['weaponR']] = skel.qident((n,))
+        # the hand's roll about the blade, continuous through the keys AND the ease back to the tracked hand
+        R = world()
+        H = roll_continuity(R[:, JI['handR']], float(bk.get('roll_dps', 1000.0)) / fps)
+        q[:, JI['handR']] = skel.qnorm(skel.qmul(skel.qconj(R[:, JI['foreArmR']]), H))
         blade = skel.qrot(world()[:, JI['weaponR']], np.broadcast_to(Z, (n, 3)))
     off = None
     if any(c in ch for c in ('hips.dx', 'hips.dy', 'hips.dz')):
@@ -330,3 +327,83 @@ def keyed_mask(clip, B, fps, loop, n):
         for j in js:
             m[:, JI[j]] |= on
     return m
+
+
+def roll_continuity(H, lim_deg):
+    """world hand rotations (n, 4) whose +Z is the blade: each frame's ROLL about the blade is kept within
+    lim_deg of the last frame's (carried along the blade's own turn); the offset this needs decays back at
+    half that rate (a hand solved from a keyed blade flipped 174-178 degrees about the forearm in one frame
+    where the blade crossed the forearm's line, and again where the keys ended)"""
+    n = len(H)
+    H = skel.continuous(H.copy())
+    out = H.copy()
+    lim = np.radians(lim_deg)
+    o = 0.0
+    for i in range(1, n):
+        b0 = skel.qrot(out[i - 1], Z)
+        b1 = skel.qrot(H[i], Z)
+        ax = np.cross(b0, b1)
+        ang = np.arctan2(np.linalg.norm(ax), b0 @ b1)
+        tr = skel.qaxis(_n(ax) if np.linalg.norm(ax) > 1e-9 else X, ang)
+        xp = skel.qrot(tr, skel.qrot(out[i - 1], X))  # last frame's X carried along the blade's turn
+        xc = skel.qrot(H[i], X)
+        r0 = np.arctan2(np.cross(xp, xc) @ b1, xp @ xc)  # the raw roll step about the blade
+        od = np.sign(o) * max(abs(o) - lim / 2, 0.0)
+        o = float(np.clip(od, -lim - r0, lim - r0))
+        out[i] = skel.qmul(skel.qaxis(b1, o), H[i])
+    return skel.continuous(out)
+
+
+def _transport(h, v0, v1):
+    """h carried by the minimal rotation that takes v0 onto v1 (no twist about the bone)"""
+    ax = np.cross(v0, v1)
+    s_ = np.linalg.norm(ax)
+    if s_ < 1e-9:
+        return h
+    ang = np.arctan2(s_, v0 @ v1)
+    return skel.qrot(skel.qaxis(ax / s_, ang), h)
+
+
+def hinge_path(hc, bend, v, default, lo=12.0, hi=30.0):
+    """an elbow's / knee's hinge through a keyed span: where the pair is bent (over `hi` degrees) the measured
+    upper x fore; through near-straight frames the hinge is CARRIED along the bone's own turn (minimal twist)
+    from the bent frames on both sides, and where the two carried hinges disagree the roll between them is
+    spread evenly over the straight frames by its angle about the bone (never a 180-degree flip in a frame)"""
+    n = len(hc)
+    k = np.clip((np.degrees(bend) - lo) / (hi - lo), 0, 1)
+    hc = hc.copy()
+    hf = np.zeros_like(hc)
+    hb = np.zeros_like(hc)
+    cur = None
+    for i in range(n):  # forward
+        t = default[i] if cur is None else _n(_transport(cur, v[i - 1], v[i]))
+        if np.degrees(bend[i]) < 45 and hc[i] @ t < 0:
+            hc[i] = -hc[i]  # a near-straight pair read bent the impossible way: keep the side
+        cur = _n(k[i] * hc[i] + (1 - k[i]) * t)
+        hf[i] = cur
+    cur = None
+    for i in range(n - 1, -1, -1):  # backward
+        t = hf[i] if cur is None else _n(_transport(cur, v[i + 1], v[i]))
+        cur = _n(k[i] * hc[i] + (1 - k[i]) * t)
+        hb[i] = cur
+    out = hf.copy()
+    i = 0
+    while i < n:
+        if k[i] >= 1:
+            i += 1
+            continue
+        j = i
+        while j < n and k[j] < 1:
+            j += 1
+        if i > 0 and j < n:  # a straight gap between bent frames: spread the roll by angle
+            for m in range(i, j):
+                u = (m - i + 1) / (j - i + 1)
+                a, b = hf[m], hb[m]
+                phi = np.arctan2(np.cross(a, b) @ v[m], a @ b)
+                out[m] = skel.qrot(skel.qaxis(v[m], u * phi), a)
+        elif j >= n and i > 0:
+            pass  # a straight end: carried forward
+        else:
+            out[i:j] = hb[i:j]  # a straight start: carried back from the first bent frame
+        i = j
+    return _n(out)

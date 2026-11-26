@@ -265,6 +265,7 @@ def build_clip(spec, clip, log=print):
     # clip: "start" = his facing over the first 0.2 s (hips, shoulders, feet, nose), "hit" = the blade's
     # horizontal direction at the first `hit` event (attacks: the way the cut is aimed), or a number (deg)
     face = clip.get('face')
+    face_q = None
     if face is not None and face != 'travel':
         if face == 'hit' and blade is not None and clip.get('events'):
             t0r = B.t_ref[0] if hasattr(B, 't_ref') else 0
@@ -280,13 +281,11 @@ def build_clip(spec, clip, log=print):
             a0 = float(np.arctan2(np.sin(ya[:k]).mean(), np.cos(ya[:k]).mean()))
         rot = np.full(len(b), a0)
         B.face_rot = a0  # the sheets turn our skeleton back into the takes' cameras
-        b = post.rotate_y(b, rot)
-        B.b = b
-        if blade is not None:
-            blade = post.rotate_y(blade[:, None], rot)[:, 0]
-            B.blade = blade
-        if getattr(B, 'bladeL', None) is not None:
-            B.bladeL = post.rotate_y(B.bladeL[:, None], rot)[:, 0]
+        B.b = post.rotate_y(b, rot)
+        # the body is retargeted in HIS frame (the retarget's rules assume he faces +Z: the hip / shoulder
+        # line clamps, the default hinges) and the result turned after it, a pure rotation (turning the
+        # points first changed charge2's worst step by 6-12 degrees)
+        face_q = a0
         log('  face %s: turned %.0f degrees so the clip starts facing +Z' % (face, np.degrees(a0)))
     # his facing: the root's yaw when he turns (pivots, turns, turning in place); the body is then
     # retargeted in the frame that faces with him and his hips / spine keep their own twist on top
@@ -309,6 +308,15 @@ def build_clip(spec, clip, log=print):
         log('  ! he ends facing %.0f degrees from his start: set "turn": true if this is a turn' % np.degrees(yaw_all[-1]))
     Rw = retarget.world_rotations(b, blade, tumble=clip.get('ground') == 'body', clip=clip, bladeL=getattr(B, 'bladeL', None),
                                   relax=getattr(B, 'key_relax', None))
+    if face_q is not None:
+        fq = skel.qaxis([0, 1.0, 0], np.full(len(b), -face_q))
+        Rw[:, 1:] = skel.qmul(fq[:, None], Rw[:, 1:])
+        rot = np.full(len(b), face_q)
+        if blade is not None:
+            blade = post.rotate_y(blade[:, None], rot)[:, 0]
+            B.blade = blade
+        if getattr(B, 'bladeL', None) is not None:
+            B.bladeL = post.rotate_y(B.bladeL[:, None], rot)[:, 0]
     q = skel.world_to_local(Rw)
     q = skel.continuous(q)
     # light quaternion smoothing (positions were smoothed already)
