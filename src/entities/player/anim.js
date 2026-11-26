@@ -2893,6 +2893,10 @@ export class HeroAnimator {
     this.armSoft = Array.isArray(opts?.armSoft) ? opts.armSoft : null;
     /** ... and the legs' (null: a leg reaches straight, as always; ADR-162). */
     this.legSoft = Array.isArray(opts?.legSoft) ? opts.legSoft : null;
+    /** [from, to, add, lift0, lift1] or null: a boss whose kicks land with the leg straight (Xin Yi,
+     *  ADR-221; _leg). A lifted foot asked for past `from` of the leg's length is carried out, by up to
+     *  `add` of it at `to`, so the leg reaches its full length at a kick's extension. */
+    this.kickStretch = null;
     this.wristL = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, tx: 0, ty: 0, tz: 0, ok: false, clamped: false };
     this.handFX = { fingers: false, fist: false };
     this.lkState = { prev: new THREE.Vector3(), ok: false, k: 1 };
@@ -4349,8 +4353,22 @@ export class HeroAnimator {
     r.pelvis.worldToLocal(_T);
     // a knee never closes past LEG_FOLD (the roll's tuck asked for a heel against the hip, 10°)
     _v.subVectors(_T, _S);
-    const dl = _v.length();
+    let dl = _v.length();
     if (dl < LEG_NEAR && dl > 1e-4) _T.copy(_S).addScaledVector(_v, LEG_NEAR / dl);
+    // (`kickStretch`, a boss whose kicks land straight: a foot off the ground (from lift0 to lift1 m)
+    // asked for far from the hip is carried further out along the same line, smoothly with the
+    // distance, so at a kick's extension the leg is a straight line, not a triangle at the knee; a
+    // planted foot, a chamber and a tuck are never touched)
+    const KS = this.kickStretch;
+    if (KS && dl > 1e-4) {
+      const L = DIM.thigh + DIM.shin, w = smoothstep(KS[3], KS[4], p[fi + 1]);
+      if (w > 0 && dl > KS[0] * L) {
+        const k = smoothstep(KS[0] * L, KS[1] * L, dl) * w * KS[2] * L;
+        _T.copy(_S).addScaledVector(_v, (dl + k) / dl);
+        _v.subVectors(_T, _S);
+        dl = _v.length();
+      }
+    }
     // (`legSoft`, a boss who kicks: the last of the leg's reach is compressed as the arm's is, so a kick
     // at full stretch keeps a little bend: at a straight leg the knee's side is undefined and it flipped
     // from frame to frame, ADR-162)

@@ -335,23 +335,24 @@ const COAT_B = [
   { az: -2.55, w: [0.17, 0.2, 0.24], len: [0.49, 0.51], skew: 1.1, out: 0.008, tail: true },
 ];
 
-/** The redraws' skirts (`?oneBody=`): it hangs near straight from a belted waist (cone 0.1: the hem about
- *  the shoulders' width, where the old cone flared it past them: the bottle), narrower panels, so the
- *  split between them shows the legs as he moves. a and b to the ankle; c, the Duster, to mid-shin with the
- *  hero's pale hem along its last stretch (`hemFrom`: the hem material below that share of the lower
- *  segment). b / c stand open in every phase (look.js). */
+/** The redraws' skirts (`?oneBody=`): ONE coat (the owner, 2026-11-26: "the trenchcoat should not have
+ *  different layers and should be one big coat put together", and not the hero's cloak): five panels that
+ *  overlap all round (no gaps, no back vent: one back panel), the side panels a few mm outside their
+ *  neighbours (no flicker where they overlap), a clean straight hem (`jag` 0) and no pale hem (look.js
+ *  keeps the bosses' print's hem off his coat). It hangs near straight from the belted waist (cone 0.1:
+ *  the hem about the shoulders' width). a and b to the ankle; c, the Duster, to mid-shin. b and c stand
+ *  open in every phase (look.js): the legs walk in the opening. */
 const COAT_MAN = {
   a: [
-    { az: 0.36, open: 0.86, w: [0.15, 0.17, 0.2], len: [0.47, 0.48], skew: 1, out: 0.006, front: true, cone: 0.1 },
-    { az: -0.36, open: -0.86, w: [0.15, 0.17, 0.2], len: [0.47, 0.48], skew: -1, out: 0.0, front: true, cone: 0.1 },
-    { az: 1.62, w: [0.14, 0.16, 0.19], len: [0.47, 0.48], out: 0.003, cone: 0.1 },
-    { az: -1.62, w: [0.14, 0.16, 0.19], len: [0.47, 0.48], out: 0.003, cone: 0.1 },
-    { az: 2.55, w: [0.15, 0.19, 0.24], len: [0.47, 0.5], skew: -1.2, slant: 0.04, out: 0.008, tail: true, cone: 0.12 },
-    { az: -2.55, w: [0.15, 0.19, 0.24], len: [0.47, 0.5], skew: 1.2, slant: 0.04, out: 0.008, tail: true, cone: 0.12 },
+    { az: 0.36, open: 0.86, w: [0.12, 0.15, 0.18], len: [0.47, 0.48], skew: 1, out: 0.0, front: true, cone: 0.1, jag: 0 },
+    { az: -0.36, open: -0.86, w: [0.12, 0.15, 0.18], len: [0.47, 0.48], skew: -1, out: 0.0, front: true, cone: 0.1, jag: 0 },
+    { az: 1.62, w: [0.14, 0.19, 0.24], len: [0.47, 0.48], out: 0.012, cone: 0.1, jag: 0 },
+    { az: -1.62, w: [0.14, 0.19, 0.24], len: [0.47, 0.48], out: 0.012, cone: 0.1, jag: 0 },
+    { az: Math.PI, w: [0.3, 0.4, 0.5], len: [0.47, 0.49], out: 0.0, tail: true, cone: 0.11, jag: 0 },
   ],
 };
 COAT_MAN.b = COAT_MAN.a;
-COAT_MAN.c = COAT_MAN.a.map((p) => ({ ...p, len: [0.42, p.tail ? 0.32 : 0.28], hemFrom: 0.55 }));
+COAT_MAN.c = COAT_MAN.a.map((p) => ({ ...p, len: [0.42, p.tail ? 0.29 : 0.28] }));
 
 function buildCoat(ctx) {
   const look = oneLookNow(), body = oneBodyNow();

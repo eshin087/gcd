@@ -200,7 +200,7 @@ function bodyTable(look, phase) {
   return {
     6: { ink: ln(0.5), rim, fill: [1, 8, 0, 0.5] },
     4: { ink: ln(0.6), rim, fill: [1, 8, 0, 0.4] },
-    5: { ink: ln(0.45), rim, fill: [1, 8, 0, 0.3] },
+    5: { ink: ln(0.3), rim, fill: [1, 8, 0, 0.5] }, // (his coat and its inside too: one cloth, no hem; faint inner lines: no seams)
     12: { ink: ln(0.6), rim, fill: [1, 8, 0.2, 0.5] },
     3: { ink: ln(0.45), rim, fill: [1, 8, 0, 0.28] },
     8: { ink: [0.75, 0.95, 0.86, 0.75], rim: [0.68, 0.95, 0.84, 0.95], fill: [1, 9, 0, 1.1] },
@@ -238,7 +238,14 @@ export function tintOne(M) {
     if (u) u.value *= RIM[k];
   }
   // the redraws' hem (the Duster's pale ragged edge: part 8) in his jade-grey
-  if (oneBodyNow() !== '0') setFill(M.hem, 0.3, 0.36, 0.33);
+  // (one coat: its inside the same cloth, and the coat and its inside printed as part 5, which the bosses'
+  // print never breaks into the hero's pale hem: his coat is not the hero's cloak; BODY_INK's 5 = 6)
+  if (oneBodyNow() !== '0') {
+    setFill(M.hem, 0.3, 0.36, 0.33);
+    const c = M.coat?.uniforms?.uArtFill?.value;
+    if (c) setFill(M.lining, c.r, c.g, c.b);
+    for (const k of ['coat', 'lining']) if (M[k]?.uniforms?.uArtPart) M[k].uniforms.uArtPart.value = 10;
+  }
   const quiet = onePrintNow() !== '0';
   // (the quiet print: the face and hands held down as Tian Lei's were, ADR-155: lit, they printed as a
   // shaded 3D face; they stay the palest thing on him)

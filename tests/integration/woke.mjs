@@ -1258,7 +1258,7 @@ async function scenarioRebuild() {
   const LS = await imp('src/entities/enemies/duelist/lookSwitch.js');
   const MM = await imp('src/entities/enemies/wokenOne/moves.js');
   const LK = await imp('src/entities/enemies/wokenOne/look.js');
-  assert(!('oneBody' in (LS.PICKED ?? {})) || LS.PICKED.oneBody !== undefined, 'his figure switch reads (PICKED or its default)');
+  assert(LS.PICKED?.oneBody === 'b' && !LS.PENDING.includes('oneBody'), '?oneBody= is the owner\'s pick, b, the open coat (PICKED, not PENDING; 2026-11-26)');
   // ---- the figure
   for (const v of ['a', 'b', 'c']) {
     LS.setLook('oneBody', v);
@@ -1282,6 +1282,15 @@ async function scenarioRebuild() {
         return [3, 4, 5, 6, 12].every((k) => T[k].ink[3] <= 1.5 && T[k].rim[3] <= 1.5 && (T[k].fill[1] & 8) && T[k].fill[3] <= 0.6);
       });
       assert(ok, `?oneBody=${v}: printed the hero's way (no ink gain over 1.5, the cloth's dotted rim, far fills at or under 0.6)`);
+      // ONE coat: its panels overlap all round at the hem (no gap, no vent), no ragged edge, no pale hem
+      {
+        const C = d.rig.coat;
+        const tw = (C2) => C2.def.w[2], az = C.map((c) => c.def.az);
+        const ok1 = C.length === 5 && C.every((c) => c.def.jag === 0 && !c.def.hemFrom) && az.includes(Math.PI);
+        const M = d.rig.materials;
+        assert(ok1 && M.coat.uniforms.uArtPart.value === 10 && M.lining.uniforms.uArtPart.value === 10 && M.lining.uniforms.uArtFill.value.equals(M.coat.uniforms.uArtFill.value),
+          `?oneBody=${v}: one coat: five overlapping panels and one back (no vent), a straight hem, its inside the same cloth, printed as part 5 (no hero's hem)`);
+      }
       const low = Math.min(...d.rig.coat.map((C) => { C.segs[1].updateWorldMatrix(true, true); const b = new THREE.Box3().setFromObject(C.segs[1]); return b.min.y; }));
       assert(v !== 'c' ? low < 0.35 : low > 0.25 && low < 0.6, `?oneBody=${v}: the coat's hem ${low.toFixed(2)} m over the floor (${v === 'c' ? 'mid-shin' : 'to the ankle'})`);
     } catch (e) { assert(false, `?oneBody=${v}: ${e.message}`); }
@@ -1369,6 +1378,7 @@ async function scenarioLooks() {
   LS.setLook('ascLook', 'h');
   const asc = countMeshes(buildHero(createSharedUniforms(), ASC_LOADOUT).root);
   LS.setLook('ascLook', null);
+  LS.setLook('oneBody', '0'); // (the outfits of ADR-156 on the figure they were built on; the rebuild: scenario REBUILD)
   for (const v of ['a', 'b', 'c']) {
     LS.setLook('oneLook', v);
     let ok = true, meshes = 0, rigMeshes = 0, D = null, row = '';
@@ -1406,6 +1416,7 @@ async function scenarioLooks() {
     if (row) out(`     ${v}: ${row}`);
   }
   LS.setLook('oneLook', null);
+  LS.setLook('oneBody', null);
 }
 
 // ================================================================== scenario: scenes (the set's helper)

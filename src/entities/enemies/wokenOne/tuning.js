@@ -39,6 +39,15 @@ export const TUNING = {
   // bend at full stretch (`legSoft`)
   armSoft: [0.93, 0.99],
   legSoft: [0.9, 0.985],
+  // the rebuild (?oneMoves=a): his kicks land with the leg straight (the owner: "a straight line when his kick
+  // is out", not a triangle): the legs open to `legSoftA` and a lifted foot far from the hip is carried out
+  // (anim.js kickStretch [from, to, add, lift0, lift1]); his straight punches land with the arm long
+  // (`armSoftA`, and the hit key's hand `reach` x further from the shoulder: moves.js beatA)
+  legSoftA: [0.95, 0.998],
+  armSoftA: [0.95, 0.996],
+  kickStretch: [0.62, 0.86, 0.4, 0.28, 0.5],
+  reach: 1.16,
+  legReach: 1.12, // (a kick's contact key: the striking foot this x the leg's length from its hip: moves.js longLeg)
 
   // ---- posture (the Sekiro rule, as Tian Lei's: hard to move while the bar is full)
   posture: {

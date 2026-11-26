@@ -4,7 +4,8 @@ import { X as ASC, CLIPS as ASC_CLIPS } from '../ascendant/moves.js';
 import { PHASE_POSES, GEAR2_POSES, BEHIND } from './poses.js';
 import { TUNING, GEARED } from './tuning.js';
 import { oneMovesNow } from './look.js';
-import { spinBack, spinFist, tornado, butterfly, flash, aerial, bicycle, dropHeel, flyKnee, burstKeys, BURST_PART } from './strikes.js';
+import * as SK from './strikes.js';
+import { DIM } from '../../player/model.js';
 
 // Xin Yi's moves and reaction clips, as data (ADR-156; COMBAT.md → "The One Who Woke"). He fights
 // BARE-HANDED (phase 2: a gun in each hand, which strikes as a fist and fires): his blows are built with
@@ -35,7 +36,15 @@ import { spinBack, spinFist, tornado, butterfly, flash, aerial, bicycle, dropHee
 // cue at least pressure.guard.sep + margin after a white / blue one inside a move.
 
 const N = TELL.NORMAL, B = TELL.BLUE, R = TELL.RED, K = TELL.BLACK;
-const { punch, kick, elbow, strikeKeys, F, feet: FT } = ASC;
+const { elbow, strikeKeys, F, feet: FT } = ASC;
+/** Tian Lei's punch and kick, the blow's kind kept on the beat (`blow`: the rebuild reads it, MOVES_A). */
+const punch = (kind, ...a) => ({ ...ASC.punch(kind, ...a), blow: kind });
+const kick = (kind, ...a) => ({ ...ASC.kick(kind, ...a), blow: kind });
+// ... and his own strikes (strikes.js), tagged the same way (`kick`: the foot strikes at full length)
+const tag = (fn, blow) => (...a) => ({ ...fn(...a), blow });
+const spinBack = tag(SK.spinBack, 'spinBack'), tornado = tag(SK.tornado, 'tornado'), butterfly = tag(SK.butterfly, 'butterfly');
+const flash = tag(SK.flash, 'flash'), aerial = tag(SK.aerial, 'aerial'), bicycle = tag(SK.bicycle, 'bicycle'), dropHeel = tag(SK.dropHeel, 'dropHeel');
+const { spinFist, flyKnee, burstKeys, BURST_PART } = SK;
 
 /** A dash on a beat: from `from` of the windup to the impact, stopping `stop` m short, `max` m at most. */
 // (a palm thrust on a dash stops 1.35 m short: its lunge reaches that far, ADR-162's rule)
@@ -527,10 +536,61 @@ function heldTell(b) {
   keys.sort((x, y) => x[0] - y[0]);
   return { ...b, keys, cock: to };
 }
+/** The straight blows (the rebuild): at the hit key the striking hand's target `T.reach` x further from
+ *  its shoulder, along the same line (with armSoftA the arm lands long, ~165 degrees at the elbow, where it
+ *  stopped at ~150: a punch that never reached). Hooks, uppercuts and hammers keep their bend. */
+const STRAIGHT = new Set(['jab', 'cross', 'palm', 'double', 'backfist']);
+function longArm(b) {
+  if (!STRAIGHT.has(b.blow) || !b.keys) return b;
+  const k = T.reach, side = b.part === 'fistL' ? ['lH'] : b.part === 'palms' || b.blow === 'double' ? ['rH', 'lH'] : ['rH'];
+  const keys = b.keys.map(([u, p]) => {
+    if (Math.abs(u - 1) > 1e-6) return [u, p];
+    const q = { ...p };
+    for (const h of side) if (Array.isArray(q[h])) q[h] = q[h].map((x) => x * k);
+    return [u, q];
+  });
+  return { ...b, keys };
+}
+/** The kicks whose leg lands straight (the rebuild: the owner, "a straight line when his kick is out"). */
+const KICKS = new Set(['front', 'side', 'round', 'axe', 'flying', 'sweep', 'spinBack', 'tornado', 'butterfly', 'flash', 'aerial', 'bicycle', 'dropHeel']);
+/** The hip joint of pose p in model space (strikes.js toModel's turn: roll, pitch, yaw round the waist pivot). */
+function hipOf(p, s) {
+  const x0 = s * 0.09, y0 = -0.08, ya = p.yaw ?? 0, pi = p.pitch ?? 0, ro = p.roll ?? 0;
+  let x = x0 * Math.cos(ro) - y0 * Math.sin(ro), y = x0 * Math.sin(ro) + y0 * Math.cos(ro), z = 0;
+  const y1 = y * Math.cos(pi) - z * Math.sin(pi), z1 = y * Math.sin(pi) + z * Math.cos(pi);
+  return [x * Math.cos(ya) + z1 * Math.sin(ya) + (p.bX ?? 0), y1 + 1.04 + (p.bY ?? 0), -x * Math.sin(ya) + z1 * Math.cos(ya) + (p.bZ ?? 0)];
+}
+/** At a kick's contact key the striking foot's target is put `T.legReach` x the leg's length from its hip
+ *  along the same line (never under the ankle's height): the animator's soft reach then lands the leg
+ *  straight (kickStretch carries the frames round it). A foot the key left near the hip (a tuck) is left. */
+function longLeg(b) {
+  if (!KICKS.has(b.blow) || !b.keys) return b;
+  const f = b.part === 'footL' ? 'lF' : b.part === 'footR' ? 'rF' : null;
+  if (!f) return b;
+  const L = DIM.thigh + DIM.shin, want = T.legReach * L;
+  const keys = b.keys.map(([u, p]) => {
+    const v = p[f];
+    // (the contact key; the sweep's whole turn along the floor)
+    const at = b.blow === 'sweep' ? u >= 1 - 1e-6 && u <= 2 + 1e-6 : Math.abs(u - 1) < 1e-6;
+    if (!at || !Array.isArray(v) || v.length !== 3) return [u, p];
+    const h = hipOf(p, f === 'lF' ? 1 : -1), d = [v[0] - h[0], v[1] - h[1], v[2] - h[2]], l = Math.hypot(...d);
+    if (!(l > 0.45 * L) || l >= want) return [u, p];
+    const k = want / l;
+    let y = h[1] + d[1] * k, hz = k;
+    if (y < DIM.ankle) {
+      // (on the floor: the length goes out along it instead)
+      y = DIM.ankle;
+      const dy = y - h[1], hd = Math.hypot(d[0], d[2]);
+      hz = hd > 1e-3 ? Math.sqrt(Math.max(0, want * want - dy * dy)) / hd : k;
+    }
+    return [u, { ...p, [f]: [h[0] + d[0] * hz, y, h[2] + d[2] * hz] }];
+  });
+  return { ...b, keys };
+}
 function beatA(b) {
   let o = b;
   if (o.aim === 1) o = { ...o, keys: aimSideKeys(o.cock ?? 0.7) };
-  return heldTell(o);
+  return heldTell(longLeg(longArm(o)));
 }
 /** The moves as the rebuild plays them (transitions as authored: their kneel is their windup). */
 export const MOVES_A = Object.fromEntries(Object.entries(MOVES).map(([k, d]) => [k, d.transition ? d : { ...d, beats: d.beats.map((b) => (b.pick ? { ...b, pick: b.pick.map(beatA) } : beatA(b))) }]));

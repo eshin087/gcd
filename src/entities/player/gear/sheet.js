@@ -88,13 +88,13 @@ export function panelSkirt({ pelvis, M, DIM, mesh, joint }, PANELS, { seed = 0 }
       const ph = Math.PI * 2 * nF * (s + 0.04 * Math.sin(d * 8 + i * 1.3)) + fph + Math.PI;
       return 0.5 + 0.6 * Math.sin(ph) - 0.9 * Math.max(0, 1 - d / 0.1);
     };
-    const cone = Pn.cone ?? 0.25; // (how fast the skirt widens down its length: m out per m down)
+    const cone = Pn.cone ?? 0.25; // (how fast the skirt widens down its length: m out per m down; `jag`: the hem's raggedness, m)
     const g0 = foldLines(skirtSheet(L0, Pn.w[0], Pn.w[1], R0, cone, 0, 81 + seed + i, [0.002, 0.008, nF, fph], 0, 1, sk, w0), pleat(0));
     mesh(s0, g0, M.coat);
     mesh(s0, g0, M.lining);
     const s1 = joint(s0, 0, -L0, 0);
     const R1 = R0 + cone * L0, hf = Pn.hemFrom ?? 1;
-    const lower = (t0, t1) => foldLines(skirtSheet(L1, Pn.w[1], Pn.w[2], R1, cone, 0.006, 91 + seed + i, [0.008, 0.016, nF, fph], t0, t1, sk, w0, sl), pleat(L0));
+    const lower = (t0, t1) => foldLines(skirtSheet(L1, Pn.w[1], Pn.w[2], R1, cone, Pn.jag ?? 0.006, 91 + seed + i, [0.008, 0.016, nF, fph], t0, t1, sk, w0, sl), pleat(L0));
     if (hf > 0) {
       const g1 = lower(0, Math.min(1, hf));
       mesh(s1, g1, M.coat);

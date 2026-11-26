@@ -920,6 +920,13 @@ export class WokenOne extends Duelist {
   }
 
   _animate(dt) {
+    // (the rebuild's limbs, ?oneMoves=a: straight kicks and long punches; read live, three numbers)
+    if (this.anim) {
+      const reb = oneMovesNow() === 'a';
+      this.anim.legSoft = reb ? TUNING.legSoftA : TUNING.legSoft;
+      this.anim.armSoft = reb ? TUNING.armSoftA : TUNING.armSoft;
+      this.anim.kickStretch = reb ? TUNING.kickStretch : null;
+    }
     this.pilot.form = this.phase;
     this.pilot.pset = this.phase === 1 && this.gear >= 2 ? 4 : this.phase;
     planFeet(this, dt);
