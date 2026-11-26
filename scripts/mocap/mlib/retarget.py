@@ -378,6 +378,9 @@ def ground_and_contact(q, fps, loop=False, ground='feet', travel='free', log=pri
     else:
         # a one-shot: start from "the lower foot is planted", then planted = low and still over the ground
         contact = (g - g.min(1, keepdims=True)) < 0.03
+        # spec "lift_h" (m): the lower foot counts as a contact candidate only within this of its own floor
+        # (a keyed leap lifts both feet 0.02-0.25 m: the lower one stayed "planted"); default: no limit
+        lift = float(clip_opts.get('lift_h', 1e9))
         for it in range(3):
             vel = np.zeros((n, 2))
             for i in range(n):
@@ -387,7 +390,7 @@ def ground_and_contact(q, fps, loop=False, ground='feet', travel='free', log=pri
             vg = np.linalg.norm(vF + vroot[:, None], axis=2)
             sp = np.linalg.norm(vroot, axis=1)
             tol = 0.25 + 0.3 * sp
-            newc = (((g - lowf) < 0.05) | ((g - g.min(1, keepdims=True)) < 0.02)) & (vg < tol[:, None])
+            newc = (((g - lowf) < 0.05) | (((g - g.min(1, keepdims=True)) < 0.02) & ((g - lowf) < lift))) & (vg < tol[:, None])
             if ground != 'body':
                 none = ~newc.any(1)
                 k = np.argmin(g[none], 1)
