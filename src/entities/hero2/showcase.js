@@ -272,8 +272,11 @@ export async function mount(game, params) {
     if (Number.isFinite(S.view.az)) return S.view.az;
     const base = isRide(e) ? AZ.ride : AZ.base;
     const turn = ((e?.yaw ?? 0) * 180) / Math.PI;
-    // (a full turn on the spot shows every side anyway)
-    return Math.abs(turn) >= 300 ? base : base - turn / 2;
+    // (a full turn on the spot shows every side anyway; a half turn is seen from the side he turns
+    // FROM to the side he turns TO through his front, never from behind: -90 -> 90 for a left turn)
+    if (Math.abs(turn) >= 300) return base;
+    if (Math.abs(turn) >= 150) return -Math.sign(turn) * 90;
+    return base - turn / 2;
   }
   const isRide = (e) => e?.kind === 'ride' || (e?.kind === 'chain' && e.steps.some((s) => s.ride));
 
