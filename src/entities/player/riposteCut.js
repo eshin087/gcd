@@ -20,7 +20,7 @@ const q = (name) => {
   }
 };
 /** The riposte a perfect parry gets when nothing asks for another (the lead flips it once the owner approves). */
-export const RIPOSTE_DEFAULT = 'old';
+export const RIPOSTE_DEFAULT = 'deathblow'; // the owner's pick (2026-11-26)
 /** The switch: read at the moment the riposte starts (the Lab sets it). */
 export const RIPOSTE_CUT = { opts: OPTS, mode: OPTS.includes(q('parryRiposte')) ? q('parryRiposte') : RIPOSTE_DEFAULT };
 export const riposteMode = () => RIPOSTE_CUT.mode;

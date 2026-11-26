@@ -86,7 +86,7 @@ export const PARRY_SPARKS = Object.freeze({
 // time). Tier 0 throws today's spit to the draw (the same seeded numbers); only the flash is added to it.
 const GROW_OPTS = ['0', 'a'];
 /** The look a perfect parry's chain gets when nothing asks for another (the owner has not seen it yet). */
-export const PARRY_GROW_DEFAULT = '0';
+export const PARRY_GROW_DEFAULT = 'a'; // the owner's pick (2026-11-26)
 /** The switch: read at the moment of each perfect parry (the Lab sets it). '0' = today's spit. */
 export const PARRY_GROW_FX = { opts: GROW_OPTS, mode: GROW_OPTS.includes(q('parryGrow')) ? q('parryGrow') : PARRY_GROW_DEFAULT };
 export const parryGrowMode = () => PARRY_GROW_FX.mode;
