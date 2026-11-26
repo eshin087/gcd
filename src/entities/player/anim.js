@@ -3,7 +3,8 @@ import { clamp, lerp, smoothstep, damp, easeOutCubic, wrapAngle, TAU } from '../
 import { DIM, BODY, HAIR_CLUSTERS, HERO_SCALE, sheetOffset } from './model.js';
 import { SWINGS, FH } from './swings.js';
 import { atEase, fencerGuard } from './stances.js';
-import { idlesOld, easeArms, guardArms, newRests, tickRests, pickEase, actStart, lowRest, toLowRest, trailing, EASE_HABITS, EASE_TRICKS, FIGHT_ACTS, EASE_RESTS, FIGHT_RESTS, IDLES } from './idles.js';
+import { idlesOld, idlesRef, idlesMode, easeArms, guardArms, newRests, tickRests, pickEase, actStart, lowRest, toLowRest, trailing, easeRests, fightRests, stowHidden, EASE_HABITS, EASE_TRICKS, FIGHT_ACTS, FIGHT_ACTS_REF, EASE_REF_EXTRA, IDLES } from './idles.js';
+import { refStand, refReady, refGuard, guardMode, REF_GUARD } from './refStance.js';
 
 // Procedural animation for the Wanderer, keyed to the owner's concept sheets ("Movement" / "Combat
 // key poses"). Every frame a target POSE (a flat Float32Array) is built for the current clip as a
@@ -343,6 +344,29 @@ export function stand(p, A) {
   guard(p, A);
   if (!A.freeHand) return;
   const f = clamp(fin(A.fightW), 0, 1);
+  if (idlesRef()) {
+    // (ADR-207, refStance.js: the reference's stand at ease, its two-handed hold in the fight)
+    if (f >= 0.999) refReady(p, P, A);
+    else {
+      refStand(p, P, A);
+      if (f > 0.001) {
+        for (let i = 0; i < N; i++) SCR_FIGHT[i] = p[i];
+        refReady(SCR_FIGHT, P, A);
+        blend(p, p, SCR_FIGHT, f * f * (3 - 2 * f));
+        // the free hand is drawn up before him first and takes the grip late in the change (with the
+        // stance's own blend its straight way from the thigh to the grip ran through the coat at the hip)
+        p[P.twoHand] = smoothstep(0.35, 0.95, f);
+      }
+    }
+    // on the move the free hand lets go of the grip: it swings with the stride (loco, runArms.js)
+    const mv = smoothstep(0.02, 0.3, A.moveW);
+    if (mv > 0) {
+      p[P.twoHand] *= 1 - mv;
+      to3(p, P.lD, REST_LD[0], REST_LD[1], REST_LD[2], mv);
+      to3(p, P.lN, REST_LN[0], REST_LN[1], REST_LN[2], mv);
+    }
+    return;
+  }
   // (ADR-186, idles.js: the arms in one of several rests over each stance; `?idles=old` the belt)
   const rests = !idlesOld();
   if (f >= 0.999) {
@@ -460,11 +484,15 @@ function gaitParams(G, sp, sprintW) {
  *  stride with the move direction while the chest stays on the aim. A grounded run: the body sinks
  *  and leans into the speed and harder into acceleration (sits back when braking), compresses on
  *  each contact, the hips swing with the stride and the shoulders counter-rotate, the head stays
- *  level. The sword arm trails the blade back and down beside the right leg (run) → nearly level
- *  behind (sprint); the free fist swings / pumps against the legs. Planted feet are held in the
+ *  level. The sword arm carries the blade ahead, low at the right hip, rocking with the forearm
+ *  (runSword.js, ADR-204; `old` trailed it back beside the right leg (run) → nearly level
+ *  behind (sprint)); the free fist swings / pumps against the legs. Planted feet are held in the
  *  world by the foot planner (HeroAnimator._feet). */
 // (imported here, beside its one caller: the hero's free arm on the run, ADR-187)
 import { runArm } from './runArms.js';
+// … and his sword arm on the run (ADR-204)
+import { runSword } from './runSword.js';
+const RSW = { h: [0, 0, 0], p: [0, 0, 0], d: [0, 0, -1], f: [0, 1, 0] };
 export function loco(p, A) {
   stand(p, A);
   const w = A.moveW;
@@ -551,15 +579,21 @@ export function loco(p, A) {
   const fw = hero ? clamp(fin(A.fightW), 0, 1) * (1 - s) : 0, FR = FIGHT_RUN;
   // (backing away the grip was one constant: the sword elbow stood at 123° for the whole backpedal
   // beside a free arm that pumps; it rides the stride now)
-  to3(p, P.rH, lerp(lerp(lerp(-0.13, -0.15, s), -0.02, bw), FR.h[0], fw), lerp(lerp(lerp(-0.44, -0.37, s) + 0.02 * st, -0.38 + 0.025 * st, bw), FR.h[1] + 0.022 * st, fw),
-    lerp(lerp(lerp(-0.08 + amp, -0.28 + amp * 0.6, s), 0.3 + amp * 0.6, bw), FR.h[2] + amp * 0.5, fw), ws);
+  // the carry at ease (run → sprint): runSword.js's (ADR-204, `?runSword=`), or the one before ('old'); its
+  // arm angles are against the torso's line, so it takes the lean set above
+  const rs = hero && runSword(RSW, ph, armF, s, p[P.spX] + p[P.pelvX]), RH = RSW.h, RP = RSW.p, RD = RSW.d;
+  const h0 = rs ? RH[0] : lerp(-0.13, -0.15, s), h1 = rs ? RH[1] : lerp(-0.44, -0.37, s) + 0.02 * st, h2 = rs ? RH[2] : lerp(-0.08 + amp, -0.28 + amp * 0.6, s);
+  to3(p, P.rH, lerp(lerp(h0, -0.02, bw), FR.h[0], fw), lerp(lerp(h1, -0.38 + 0.025 * st, bw), FR.h[1] + 0.022 * st, fw),
+    lerp(lerp(h2, 0.3 + amp * 0.6, bw), FR.h[2] + amp * 0.5, fw), ws);
   // (Session 30: both elbows pointed 0.5-0.7 out to the side through the run, arms akimbo from the
   // front: they point back beside the ribs now)
-  to3(p, P.rP, lerp(lerp(lerp(-0.4, -0.5, s), -0.85, bw), FR.p[0], fw), lerp(lerp(lerp(-0.3, 0.2, s), -0.3, bw), FR.p[1], fw), lerp(lerp(-0.95, -0.5, bw), FR.p[2], fw), ws);
-  dirLerp(SW_T, 0, lerp(-0.42, -0.36, s), lerp(-0.56, -0.2, s) - 0.03 * st * (1 - s), lerp(-0.71, -0.91, s), -0.15, -0.22, 1, bw);
+  const p0 = rs ? RP[0] : lerp(-0.4, -0.5, s), p1 = rs ? RP[1] : lerp(-0.3, 0.2, s), p2 = rs ? RP[2] : -0.95;
+  to3(p, P.rP, lerp(lerp(p0, -0.85, bw), FR.p[0], fw), lerp(lerp(p1, -0.3, bw), FR.p[1], fw), lerp(lerp(p2, -0.5, bw), FR.p[2], fw), ws);
+  if (rs) dirLerp(SW_T, 0, RD[0], RD[1], RD[2], -0.15, -0.22, 1, bw);
+  else dirLerp(SW_T, 0, lerp(-0.42, -0.36, s), lerp(-0.56, -0.2, s) - 0.03 * st * (1 - s), lerp(-0.71, -0.91, s), -0.15, -0.22, 1, bw);
   if (fw > 0.001) dirLerp(SW_T, 0, SW_T[0], SW_T[1], SW_T[2], FR.d[0], FR.d[1] + 0.035 * st, FR.d[2], fw);
   dirTo(p, P.swD, SW_T[0], SW_T[1], SW_T[2], ws);
-  to3(p, P.swF, lerp(lerp(-0.3, 0, bw), 0.25, fw), 1, lerp(lerp(0, 0.2, bw), 0, fw), ws);
+  to3(p, P.swF, lerp(lerp(rs ? RSW.f[0] : -0.3, 0, bw), 0.25, fw), rs ? lerp(lerp(RSW.f[1], 1, bw), 1, fw) : 1, lerp(lerp(rs ? RSW.f[2] : 0, 0.2, bw), 0, fw), ws);
   // free arm swings opposite the legs: ahead of the belt (run) → a pumping fist chin ↔ hip (sprint)
   const k = 0.5 - 0.5 * cs * armF; // 1 = fist forward
   // (ADR-187: the hero's free arm is runArms.js's, one of three carries, `?runArm=`; 'old' is this)
@@ -1531,24 +1565,30 @@ function chargePose(p, A) {
 const BLOCK_FEET = [-0.22, -0.33, 0.14, 0.34]; // the stance it settles into: right x, z; left x, z
 function blockPose(p, A) {
   guard(p, A);
-  p[P.bodyY] = -0.17;
-  p[P.bodyX] = 0;
-  p[P.bodyZ] = -0.02;
-  p[P.pelvY] = -0.36;
-  p[P.pelvZ] = 0;
-  p[P.spX] = 0.2;
-  p[P.spY] = -0.12;
-  p[P.spZ] = 0;
-  p[P.hdX] = -0.03;
-  p[P.hdY] = 0.42; // the eyes stay on the enemy over the left shoulder
-  v3(p, P.rH, -0.02, -0.13, 0.31);
-  v3(p, P.rP, -0.75, -0.65, -0.2);
-  v3(p, P.swD, 0.72, 0.62, 0.31);
-  v3(p, P.swF, -0.35, -0.1, 1);
-  v3(p, P.lH, -0.24, -0.2, 0.3);
-  v3(p, P.lP, 0.5, -0.85, 0.0);
-  p[P.twoHand] = 1;
-  p[P.hs] = 0; // the fist on the grip (ADR-073's cross ward), open on the way there
+  // (ADR-207: the hero's guard after the owner's reference footage, refStance.js; `?guard=ward` the cross
+  // ward below. A duelist's animator keeps the ward)
+  const ref = A.freeHand === true && guardMode() === 'ref';
+  if (ref) refGuard(p, P, A);
+  else {
+    p[P.bodyY] = -0.17;
+    p[P.bodyX] = 0;
+    p[P.bodyZ] = -0.02;
+    p[P.pelvY] = -0.36;
+    p[P.pelvZ] = 0;
+    p[P.spX] = 0.2;
+    p[P.spY] = -0.12;
+    p[P.spZ] = 0;
+    p[P.hdX] = -0.03;
+    p[P.hdY] = 0.42; // the eyes stay on the enemy over the left shoulder
+    v3(p, P.rH, -0.02, -0.13, 0.31);
+    v3(p, P.rP, -0.75, -0.65, -0.2);
+    v3(p, P.swD, 0.72, 0.62, 0.31);
+    v3(p, P.swF, -0.35, -0.1, 1);
+    v3(p, P.lH, -0.24, -0.2, 0.3);
+    v3(p, P.lP, 0.5, -0.85, 0.0);
+    p[P.twoHand] = 1;
+    p[P.hs] = 0; // the fist on the grip (ADR-073's cross ward), open on the way there
+  }
   // the guard breathes, and rides the stride when he walks in it: every channel above the hips was
   // a constant, so standing or walking the whole figure above the feet moved as one rigid piece
   // (0.0 cm of anything, measured). The elbows stay within 2°: still a firm guard
@@ -1564,11 +1604,11 @@ function blockPose(p, A) {
   }
   // a tap of the guard (a parry attempt) keeps the feet where they are; held, the stance settles
   // into the block's after ~0.2 s (each tap used to cost two settle steps in and two out again)
-  const E = A.entry, fw = smoothstep(0.16, 0.4, A.t), BF = BLOCK_FEET;
+  const E = A.entry, fw = smoothstep(0.16, 0.4, A.t), BF = ref ? REF_GUARD.feet : BLOCK_FEET;
   v3(p, P.rF, lerp(E[0], BF[0], fw), ANK, lerp(E[2], BF[1], fw));
   v3(p, P.lF, lerp(E[3], BF[2], fw), ANK, lerp(E[5], BF[3], fw));
-  p[P.rFy] = lerp(E[6], -0.75, fw);
-  p[P.lFy] = lerp(E[7], 0.1, fw);
+  p[P.rFy] = lerp(E[6], ref ? -0.7 : -0.75, fw);
+  p[P.lFy] = lerp(E[7], ref ? 0.15 : 0.1, fw);
   p[P.footFlat] = 0.92;
   const r = A.recoil;
   if (r > 0.001) {
@@ -2234,11 +2274,19 @@ function plungePose(p, A) {
  *  touch. The chest rocks back with the pushback. Later deflects of a chain snap harder.
  *  (Until 2026-11-14 the blade snapped out over the clip's first 0.045 s: frozen at 2 % speed by the
  *  parry's own hit-stop, the freeze-frame showed the guard it started from and no contact.) */
+// the cross ward's body (blockPose's `?guard=ward`): a deflect's snap is posed from it (below)
+const WARD_BODY = [P.bodyX, 0, P.bodyY, -0.17, P.bodyZ, -0.02, P.pelvX, 0, P.pelvY, -0.36, P.pelvZ, 0, P.spX, 0.2, P.spY, -0.12, P.spZ, 0, P.hdX, -0.03, P.hdY, 0.42];
 function deflectPose(p, A) {
   blockPose(p, A);
   const t = A.t, D = A.player?.deflect;
   const n = fin(D?.n, 1), side = D?.side < 0 ? -1 : 1;
   const f = 1 - smoothstep(0.07, 0.2, t);
+  if (A.freeHand === true && guardMode() === 'ref' && f > 0) {
+    // (ADR-207: the snap onto the blow is the cross ward's, body and all, and eases back into the reference's
+    // guard with it: its blade and hand below are aimed from that body, and posed from the braced guard's
+    // turned chest they missed the blow's steel: half the parried blows ended with the blades 0.2 m apart)
+    for (let i = 0; i < WARD_BODY.length; i += 2) p[WARD_BODY[i]] += (WARD_BODY[i + 1] - p[WARD_BODY[i]]) * f;
+  }
   const s = clamp(0.85 + 0.06 * (n - 1), 0.85, 1.15);
   if (side > 0) {
     // the blow from the front-right: the edge flicks out to the right and up (the classic parry)
@@ -2559,8 +2607,13 @@ const withP = (D) => ({ ...D, fn: (p, A, u, e) => D.fn(p, P, A, u, e) });
 const EASE_LIST = [...EASE_HABITS.map(withP), FIDGETS[0], { ...FIDGETS[2], blade: true }, ...EASE_TRICKS.map(withP)];
 const CUT_SLOW = new Set(['block', 'parry', 'heal', 'charge']); // (_idleLife: clips whose entry may take longer out of a trick)
 const FIGHT_LIST = FIGHT_ACTS.map(withP);
-/** The list an idle action's index refers to (A.fidget.pool: 0 the old ones, 1 at ease, 2 the fight). */
-const actList = (pool) => (pool === 1 ? EASE_LIST : pool === 2 ? FIGHT_LIST : FIDGETS);
+// `?idles=ref` (the default, ADR-207): the same at ease with the put-away and the draw; in the fight the
+// habits that keep both hands on the grip
+const EASE_LIST_REF = [...EASE_LIST, ...EASE_REF_EXTRA.map(withP)];
+const FIGHT_LIST_REF = FIGHT_ACTS_REF.map(withP);
+/** The list an idle action's index refers to (A.fidget.pool: 0 the old ones, 1 at ease, 2 the fight; of
+ *  the mode drawn now: _idleLife cuts an action when the mode changes under it). */
+const actList = (pool) => (pool === 1 ? (idlesRef() ? EASE_LIST_REF : EASE_LIST) : pool === 2 ? (idlesRef() ? FIGHT_LIST_REF : FIGHT_LIST) : FIDGETS);
 /** The current idle action's layer (A.fidget, timed in HeroAnimator._idleLife). */
 function idleLife(p, A) {
   const F = A.fidget;
@@ -2881,6 +2934,10 @@ export class HeroAnimator {
     // idle life: the action playing (k = FIDGETS index, -1 none), its time, weight, whether it was
     // cut, calm time since the last one ended, the wait before the next, and how many have played
     this.fidget = { k: -1, t: 0, w: 0, cut: false, still: 0, wait: IDLE_LIFE.after, last: -1, count: 0, name: '' };
+    // the put-away (idles.js STOW, ADR-207): 0 the sword whole … 1 gone (_idleLife; _stowSword shows it)
+    this.stow = 0;
+    this._stowK = 0;
+    this._stowScale = null;
     // the attack's look (combat.js `variants`): which def it was picked for, the anim block, its index
     this.atkDef = null;
     this.atkAnim = null;
@@ -3071,6 +3128,7 @@ export class HeroAnimator {
     this.hop.set = false;
     this.toeK = 0;
     Object.assign(this.fidget, { k: -1, t: 0, w: 0, cut: false, still: 0, wait: IDLE_LIFE.after, name: '' });
+    this.stow = 0;
     this.visYaw = fin(this.player.yaw);
     this.cycOn = false;
     this._pv.init = false;
@@ -3348,8 +3406,22 @@ export class HeroAnimator {
     // the spell playing (idles.js SPELLS; swordMystic.js draws it from this): its name, 0..1, weight
     const SP = (this.spell ??= { kind: '', u: 0, w: 0 });
     SP.w = 0;
+    // the put-away (idles.js STOW): how far the sword is gone, written below only while it plays and nothing
+    // else does; every other frame the sword is whole (the swept blade is the hit test)
+    this.stow = 0;
     const still = this.key === 'loco' && pl.state === 'idle' && sp < 0.1 && this.moveW < 0.05 && !(fin(pl.guardHold) > 0.001);
     const old = idlesOld();
+    if (this.idlesWas !== idlesMode()) {
+      // (the idles switched under an action: its index means another list now)
+      if (this.idlesWas !== undefined && F.k >= 0) {
+        F.k = -1;
+        F.w = 0;
+        F.name = '';
+      }
+      F.last = -1;
+      F.queued = '';
+      this.idlesWas = idlesMode();
+    }
     // which actions may play now (F.pool): the old ones at ease; ADR-186's at ease, or in the fight
     // (also locked on: the small habits of the guard), never while the stance is changing
     const pool = old ? (still && !pl.lockOn && !(this.fightW > 0.05) ? 0 : -1) : still && this.fightW > 0.95 ? 2 : still && !pl.lockOn && this.fightW < 0.05 ? 1 : -1;
@@ -3385,6 +3457,8 @@ export class HeroAnimator {
         SP.u = clamp(F.t / D.dur, 0, 1);
         SP.w = F.w;
       }
+      // (cut, it is whole at once: he moves, guards or strikes with the sword in his hand)
+      if (D.stow && !F.cut && this.key === 'loco') this.stow = stowHidden(clamp(F.t / D.dur, 0, 1));
       if (F.t >= D.dur || (F.cut && F.w <= 0)) {
         F.k = -1;
         F.w = 0;
@@ -3473,7 +3547,7 @@ export class HeroAnimator {
   setRest(name, atOnce = false, hold = IDLES.restHold[1]) {
     if (!this.rests) this.rests = newRests();
     const fight = this.fightW > 0.5, S = fight ? this.rests.fight : this.rests.ease;
-    const k = (fight ? FIGHT_RESTS : EASE_RESTS).findIndex((R) => R.name === name);
+    const k = (fight ? fightRests() : easeRests()).findIndex((R) => R.name === name);
     if (k < 0) return false;
     if (atOnce) Object.assign(S, { a: k, b: k, u: 1 });
     else Object.assign(S, { b: k, u: S.a === k ? 1 : 0 });
@@ -3483,8 +3557,8 @@ export class HeroAnimator {
   }
   /** Lab / tests: the names of the idle actions and rests of a stance (fight: the guard's). */
   idleNames(fight = false) {
-    const list = idlesOld() ? FIDGETS : fight ? FIGHT_LIST : EASE_LIST;
-    return { acts: list.map((D) => D.name), tricks: list.filter((D) => D.trick).map((D) => D.name), rests: idlesOld() ? [] : (fight ? FIGHT_RESTS : EASE_RESTS).map((R) => R.name) };
+    const list = idlesOld() ? FIDGETS : actList(fight ? 2 : 1);
+    return { acts: list.map((D) => D.name), tricks: list.filter((D) => D.trick).map((D) => D.name), rests: idlesOld() ? [] : (fight ? fightRests() : easeRests()).map((R) => R.name) };
   }
 
   /** The root travel recorded the first frame this clip reached time t0 (slot 0/1); before that,
@@ -3860,6 +3934,35 @@ export class HeroAnimator {
     const f = clamp(p[P.flask], 0, 1);
     r.flask.visible = f > 0.03;
     r.flask.scale.setScalar(Math.max(0.01, f));
+    if (this.freeHand) this._stowSword(this.stow);
+  }
+
+  /** The put-away (idles.js STOW, ADR-207; the hero only): the weapon's own meshes (rig.slots.weapon: the
+   *  blade, the hilt; never the fists on the grip, which are the arms') draw into the hilt as k goes 0 → 1, the
+   *  steel first, and hide at 1; at 0 they are exactly as built. Nothing is added to the rig (a new object
+   *  draws a uuid off the seeded Math.random). The hit test is the swept joint, never these meshes. */
+  _stowSword(k) {
+    const W = this.rig.slots?.weapon;
+    k = clamp(fin(k), 0, 1);
+    if (!W || !W.length || (k <= 0.001 && this._stowK <= 0.001)) return;
+    // (the scales as built, kept the first time it is used)
+    if (!this._stowScale) {
+      this._stowScale = W.map((o) => o.scale.clone());
+      this._stowVis = W.map((o) => o.visible);
+    }
+    const zk = Math.max(1e-3, 1 - k), xk = Math.max(1e-3, 1 - smoothstep(0.55, 1, k));
+    for (let i = 0; i < W.length; i++) {
+      const o = W[i], s0 = this._stowScale[i];
+      if (!o || !s0) continue;
+      if (k <= 0.001) {
+        o.scale.copy(s0);
+        o.visible = this._stowVis[i];
+      } else {
+        o.scale.set(s0.x * xk, s0.y * xk, s0.z * zk);
+        o.visible = this._stowVis[i] && k < 0.995;
+      }
+    }
+    this._stowK = k <= 0.001 ? 0 : k;
   }
 
   /** The sword wrist's limit (ADR-078): the blade (_bz, body space) never folds back along the

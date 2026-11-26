@@ -1,0 +1,1583 @@
+{
+ "set": "fistA",
+ "title": "Bare hands: cross, uppercut, hammer",
+ "film": "fist",
+ "out": "src/entities/hero2/clips/fistA.js",
+ "clips": [
+  {
+   "name": "cross",
+   "title": "Lunging cross (right)",
+   "src": "fist film, two-handed heavy",
+   "kind": "oneshot",
+   "fps": 60,
+   "takes": [
+    {
+     "t0": "11:04.65",
+     "t1": "11:06.45",
+     "view": "right",
+     "flip": true,
+     "drop": [
+      [
+       "11:05.06",
+       "11:05.24"
+      ],
+      [
+       "11:06.20",
+       "11:06.32"
+      ]
+     ],
+     "keys": [
+      {
+       "t": "11:05.081",
+       "pts": {
+        "nose": [
+         857,
+         453
+        ],
+        "wristR": [
+         737,
+         420
+        ],
+        "elbowR": [
+         767,
+         443
+        ],
+        "shoulderR": [
+         793,
+         480
+        ],
+        "shoulderL": [
+         800,
+         497
+        ],
+        "elbowL": [
+         780,
+         540
+        ],
+        "wristL": [
+         820,
+         507
+        ]
+       }
+      },
+      {
+       "t": "11:05.131",
+       "pts": {
+        "nose": [
+         897,
+         457
+        ],
+        "wristR": [
+         760,
+         427
+        ],
+        "elbowR": [
+         820,
+         447
+        ],
+        "shoulderR": [
+         853,
+         487
+        ],
+        "shoulderL": [
+         840,
+         500
+        ],
+        "elbowL": [
+         833,
+         547
+        ],
+        "wristL": [
+         860,
+         513
+        ],
+        "kneeR": [
+         820,
+         567
+        ],
+        "ankleR": [
+         840,
+         627
+        ],
+        "kneeL": [
+         753,
+         620
+        ],
+        "ankleL": [
+         707,
+         680
+        ]
+       }
+      },
+      {
+       "t": "11:05.198",
+       "pts": {
+        "nose": [
+         962,
+         455
+        ],
+        "wristR": [
+         993,
+         493
+        ],
+        "elbowR": [
+         933,
+         480
+        ],
+        "shoulderR": [
+         887,
+         500
+        ],
+        "kneeR": [
+         880,
+         553
+        ],
+        "ankleR": [
+         853,
+         627
+        ],
+        "kneeL": [
+         753,
+         633
+        ],
+        "ankleL": [
+         673,
+         673
+        ]
+       }
+      }
+     ]
+    }
+   ],
+   "phases": {
+    "windup": "11:05.15",
+    "active": "11:05.25",
+    "recover": "11:05.40"
+   },
+   "events": [
+    {
+     "t": "11:05.32",
+     "name": "hit"
+    }
+   ],
+   "pose_keys": [
+    {
+     "t": "11:05.081",
+     "joint": "upperArmR",
+     "dir": [
+      0,
+      0.82,
+      -0.57
+     ],
+     "blend": 8
+    },
+    {
+     "t": "11:05.081",
+     "joint": "foreArmR",
+     "dir": [
+      0,
+      0.6,
+      -0.8
+     ],
+     "blend": 8
+    },
+    {
+     "t": "11:05.131",
+     "joint": "upperArmR",
+     "dir": [
+      0,
+      0.77,
+      -0.64
+     ],
+     "blend": 3
+    },
+    {
+     "t": "11:05.131",
+     "joint": "foreArmR",
+     "dir": [
+      0,
+      0.32,
+      -0.95
+     ],
+     "blend": 3
+    },
+    {
+     "t": "11:05.198",
+     "joint": "upperArmR",
+     "dir": [
+      0,
+      0.4,
+      0.92
+     ],
+     "blend": 3
+    },
+    {
+     "t": "11:05.198",
+     "joint": "foreArmR",
+     "dir": [
+      0,
+      -0.2,
+      0.98
+     ],
+     "blend": 3
+    }
+   ],
+   "qa": {
+    "maxStepDeg": 34,
+    "reason": "the right arm whips from the cock high behind the head to the straight in ~0.12 s (11:05.08-11:05.20, seen frame by frame)"
+   },
+   "search": 0.08,
+   "sheet_frames": [
+    10,
+    20,
+    26,
+    30,
+    34,
+    38,
+    42,
+    60
+   ],
+   "face": 0,
+   "root": {
+    "smooth": 0.1,
+    "max_off": 0.15
+   },
+   "free_hand": true,
+   "vis_weight": true,
+   "from": "idle",
+   "to": "idle"
+  },
+  {
+   "name": "uppercut",
+   "title": "Rising uppercut from a crouch (right)",
+   "src": "fist film, two-handed crouch attack",
+   "kind": "oneshot",
+   "fps": 60,
+   "takes": [
+    {
+     "t0": "13:27.633",
+     "t1": "13:28.02",
+     "view": "back",
+     "yaw": 180
+    },
+    {
+     "t0": "13:30.903",
+     "t1": "13:31.29",
+     "view": "back",
+     "yaw": 180
+    }
+   ],
+   "phases": {
+    "windup": "13:27.69",
+    "active": "13:27.71",
+    "recover": "13:27.84"
+   },
+   "events": [
+    {
+     "t": "13:27.75",
+     "name": "hit"
+    }
+   ],
+   "search": 0.1,
+   "face": 0,
+   "root": {
+    "smooth": 0.1,
+    "max_off": 0.15
+   },
+   "free_hand": true,
+   "vis_weight": true,
+   "from": "idle",
+   "to": "idle",
+   "sheet_frames": [
+    0,
+    3,
+    5,
+    7,
+    9,
+    11,
+    15,
+    23
+   ],
+   "pose_keys": [
+    {
+     "f": 0,
+     "joint": "upperArmR",
+     "dir": [
+      -0.3,
+      -0.8,
+      0.5
+     ],
+     "blend": 1
+    },
+    {
+     "f": 0,
+     "joint": "foreArmR",
+     "dir": [
+      -0.1,
+      -0.9,
+      0.4
+     ],
+     "blend": 1
+    },
+    {
+     "f": 1,
+     "joint": "upperArmR",
+     "dir": [
+      -0.253,
+      -0.825,
+      0.505
+     ],
+     "blend": 1
+    },
+    {
+     "f": 1,
+     "joint": "foreArmR",
+     "dir": [
+      -0.068,
+      -0.855,
+      0.513
+     ],
+     "blend": 1
+    },
+    {
+     "f": 2,
+     "joint": "upperArmR",
+     "dir": [
+      -0.202,
+      -0.84,
+      0.504
+     ],
+     "blend": 1
+    },
+    {
+     "f": 2,
+     "joint": "foreArmR",
+     "dir": [
+      -0.034,
+      -0.787,
+      0.616
+     ],
+     "blend": 1
+    },
+    {
+     "f": 3,
+     "joint": "upperArmR",
+     "dir": [
+      -0.15,
+      -0.852,
+      0.501
+     ],
+     "blend": 1
+    },
+    {
+     "f": 3,
+     "joint": "foreArmR",
+     "dir": [
+      0.0,
+      -0.707,
+      0.707
+     ],
+     "blend": 1
+    },
+    {
+     "f": 4,
+     "joint": "upperArmR",
+     "dir": [
+      -0.139,
+      -0.707,
+      0.693
+     ],
+     "blend": 1
+    },
+    {
+     "f": 4,
+     "joint": "foreArmR",
+     "dir": [
+      0.036,
+      -0.432,
+      0.901
+     ],
+     "blend": 1
+    },
+    {
+     "f": 5,
+     "joint": "upperArmR",
+     "dir": [
+      -0.115,
+      -0.49,
+      0.864
+     ],
+     "blend": 1
+    },
+    {
+     "f": 5,
+     "joint": "foreArmR",
+     "dir": [
+      0.089,
+      0.178,
+      0.98
+     ],
+     "blend": 1
+    },
+    {
+     "f": 6,
+     "joint": "upperArmR",
+     "dir": [
+      -0.083,
+      -0.235,
+      0.968
+     ],
+     "blend": 1
+    },
+    {
+     "f": 6,
+     "joint": "foreArmR",
+     "dir": [
+      0.108,
+      0.721,
+      0.685
+     ],
+     "blend": 1
+    },
+    {
+     "f": 7,
+     "joint": "upperArmR",
+     "dir": [
+      -0.05,
+      0.0,
+      0.999
+     ],
+     "blend": 1
+    },
+    {
+     "f": 7,
+     "joint": "foreArmR",
+     "dir": [
+      0.101,
+      0.909,
+      0.404
+     ],
+     "blend": 1
+    },
+    {
+     "f": 8,
+     "joint": "upperArmR",
+     "dir": [
+      -0.055,
+      0.236,
+      0.97
+     ],
+     "blend": 1
+    },
+    {
+     "f": 8,
+     "joint": "foreArmR",
+     "dir": [
+      0.076,
+      0.941,
+      0.331
+     ],
+     "blend": 1
+    },
+    {
+     "f": 9,
+     "joint": "upperArmR",
+     "dir": [
+      -0.058,
+      0.492,
+      0.869
+     ],
+     "blend": 1
+    },
+    {
+     "f": 9,
+     "joint": "foreArmR",
+     "dir": [
+      0.051,
+      0.966,
+      0.254
+     ],
+     "blend": 1
+    },
+    {
+     "f": 10,
+     "joint": "upperArmR",
+     "dir": [
+      -0.056,
+      0.713,
+      0.699
+     ],
+     "blend": 1
+    },
+    {
+     "f": 10,
+     "joint": "foreArmR",
+     "dir": [
+      0.025,
+      0.984,
+      0.177
+     ],
+     "blend": 1
+    },
+    {
+     "f": 11,
+     "joint": "upperArmR",
+     "dir": [
+      -0.051,
+      0.861,
+      0.506
+     ],
+     "blend": 1
+    },
+    {
+     "f": 11,
+     "joint": "foreArmR",
+     "dir": [
+      0.0,
+      0.995,
+      0.1
+     ],
+     "blend": 1
+    },
+    {
+     "f": 12,
+     "joint": "upperArmR",
+     "dir": [
+      -0.064,
+      0.909,
+      0.412
+     ],
+     "blend": 1
+    },
+    {
+     "f": 12,
+     "joint": "foreArmR",
+     "dir": [
+      -0.005,
+      0.997,
+      0.075
+     ],
+     "blend": 1
+    },
+    {
+     "f": 13,
+     "joint": "upperArmR",
+     "dir": [
+      -0.078,
+      0.947,
+      0.311
+     ],
+     "blend": 1
+    },
+    {
+     "f": 13,
+     "joint": "foreArmR",
+     "dir": [
+      -0.01,
+      0.999,
+      0.05
+     ],
+     "blend": 1
+    },
+    {
+     "f": 14,
+     "joint": "upperArmR",
+     "dir": [
+      -0.09,
+      0.974,
+      0.206
+     ],
+     "blend": 1
+    },
+    {
+     "f": 14,
+     "joint": "foreArmR",
+     "dir": [
+      -0.015,
+      1.0,
+      0.025
+     ],
+     "blend": 1
+    },
+    {
+     "f": 15,
+     "joint": "upperArmR",
+     "dir": [
+      -0.101,
+      0.99,
+      0.101
+     ],
+     "blend": 1
+    },
+    {
+     "f": 15,
+     "joint": "foreArmR",
+     "dir": [
+      -0.02,
+      1.0,
+      0.0
+     ],
+     "blend": 1
+    },
+    {
+     "f": 16,
+     "joint": "upperArmR",
+     "dir": [
+      -0.101,
+      0.99,
+      0.095
+     ],
+     "blend": 1
+    },
+    {
+     "f": 16,
+     "joint": "foreArmR",
+     "dir": [
+      -0.02,
+      1.0,
+      0.0
+     ],
+     "blend": 1
+    },
+    {
+     "f": 17,
+     "joint": "upperArmR",
+     "dir": [
+      -0.101,
+      0.991,
+      0.088
+     ],
+     "blend": 1
+    },
+    {
+     "f": 17,
+     "joint": "foreArmR",
+     "dir": [
+      -0.02,
+      1.0,
+      0.0
+     ],
+     "blend": 1
+    },
+    {
+     "f": 18,
+     "joint": "upperArmR",
+     "dir": [
+      -0.101,
+      0.991,
+      0.082
+     ],
+     "blend": 1
+    },
+    {
+     "f": 18,
+     "joint": "foreArmR",
+     "dir": [
+      -0.02,
+      1.0,
+      0.0
+     ],
+     "blend": 1
+    },
+    {
+     "f": 19,
+     "joint": "upperArmR",
+     "dir": [
+      -0.101,
+      0.992,
+      0.076
+     ],
+     "blend": 1
+    },
+    {
+     "f": 19,
+     "joint": "foreArmR",
+     "dir": [
+      -0.02,
+      1.0,
+      0.0
+     ],
+     "blend": 1
+    },
+    {
+     "f": 20,
+     "joint": "upperArmR",
+     "dir": [
+      -0.101,
+      0.992,
+      0.07
+     ],
+     "blend": 1
+    },
+    {
+     "f": 20,
+     "joint": "foreArmR",
+     "dir": [
+      -0.02,
+      1.0,
+      0.0
+     ],
+     "blend": 1
+    },
+    {
+     "f": 21,
+     "joint": "upperArmR",
+     "dir": [
+      -0.101,
+      0.993,
+      0.063
+     ],
+     "blend": 1
+    },
+    {
+     "f": 21,
+     "joint": "foreArmR",
+     "dir": [
+      -0.02,
+      1.0,
+      0.0
+     ],
+     "blend": 1
+    },
+    {
+     "f": 22,
+     "joint": "upperArmR",
+     "dir": [
+      -0.101,
+      0.993,
+      0.057
+     ],
+     "blend": 1
+    },
+    {
+     "f": 22,
+     "joint": "foreArmR",
+     "dir": [
+      -0.02,
+      1.0,
+      0.0
+     ],
+     "blend": 1
+    },
+    {
+     "f": 23,
+     "joint": "upperArmR",
+     "dir": [
+      -0.101,
+      0.994,
+      0.051
+     ],
+     "blend": 1
+    },
+    {
+     "f": 23,
+     "joint": "foreArmR",
+     "dir": [
+      -0.02,
+      1.0,
+      0.0
+     ],
+     "blend": 1
+    },
+    {
+     "f": 3,
+     "joint": "upperArmL",
+     "dir": [
+      0.3,
+      -0.9,
+      0.1
+     ],
+     "blend": 1
+    },
+    {
+     "f": 3,
+     "joint": "foreArmL",
+     "dir": [
+      0.2,
+      -0.9,
+      0.3
+     ],
+     "blend": 1
+    },
+    {
+     "f": 4,
+     "joint": "upperArmL",
+     "dir": [
+      0.314,
+      -0.943,
+      0.105
+     ],
+     "blend": 1
+    },
+    {
+     "f": 4,
+     "joint": "foreArmL",
+     "dir": [
+      0.206,
+      -0.928,
+      0.309
+     ],
+     "blend": 1
+    },
+    {
+     "f": 5,
+     "joint": "upperArmL",
+     "dir": [
+      0.314,
+      -0.943,
+      0.105
+     ],
+     "blend": 1
+    },
+    {
+     "f": 5,
+     "joint": "foreArmL",
+     "dir": [
+      0.206,
+      -0.928,
+      0.309
+     ],
+     "blend": 1
+    },
+    {
+     "f": 6,
+     "joint": "upperArmL",
+     "dir": [
+      0.314,
+      -0.943,
+      0.105
+     ],
+     "blend": 1
+    },
+    {
+     "f": 6,
+     "joint": "foreArmL",
+     "dir": [
+      0.206,
+      -0.928,
+      0.309
+     ],
+     "blend": 1
+    },
+    {
+     "f": 7,
+     "joint": "upperArmL",
+     "dir": [
+      0.314,
+      -0.943,
+      0.105
+     ],
+     "blend": 1
+    },
+    {
+     "f": 7,
+     "joint": "foreArmL",
+     "dir": [
+      0.206,
+      -0.928,
+      0.309
+     ],
+     "blend": 1
+    },
+    {
+     "f": 8,
+     "joint": "upperArmL",
+     "dir": [
+      0.314,
+      -0.943,
+      0.105
+     ],
+     "blend": 1
+    },
+    {
+     "f": 8,
+     "joint": "foreArmL",
+     "dir": [
+      0.206,
+      -0.928,
+      0.309
+     ],
+     "blend": 1
+    },
+    {
+     "f": 9,
+     "joint": "upperArmL",
+     "dir": [
+      0.314,
+      -0.943,
+      0.105
+     ],
+     "blend": 1
+    },
+    {
+     "f": 9,
+     "joint": "foreArmL",
+     "dir": [
+      0.206,
+      -0.928,
+      0.309
+     ],
+     "blend": 1
+    },
+    {
+     "f": 10,
+     "joint": "upperArmL",
+     "dir": [
+      0.314,
+      -0.943,
+      0.105
+     ],
+     "blend": 1
+    },
+    {
+     "f": 10,
+     "joint": "foreArmL",
+     "dir": [
+      0.206,
+      -0.928,
+      0.309
+     ],
+     "blend": 1
+    },
+    {
+     "f": 11,
+     "joint": "upperArmL",
+     "dir": [
+      0.314,
+      -0.943,
+      0.105
+     ],
+     "blend": 1
+    },
+    {
+     "f": 11,
+     "joint": "foreArmL",
+     "dir": [
+      0.206,
+      -0.928,
+      0.309
+     ],
+     "blend": 1
+    },
+    {
+     "f": 12,
+     "joint": "upperArmL",
+     "dir": [
+      0.314,
+      -0.943,
+      0.105
+     ],
+     "blend": 1
+    },
+    {
+     "f": 12,
+     "joint": "foreArmL",
+     "dir": [
+      0.206,
+      -0.928,
+      0.309
+     ],
+     "blend": 1
+    },
+    {
+     "f": 13,
+     "joint": "upperArmL",
+     "dir": [
+      0.314,
+      -0.943,
+      0.105
+     ],
+     "blend": 1
+    },
+    {
+     "f": 13,
+     "joint": "foreArmL",
+     "dir": [
+      0.206,
+      -0.928,
+      0.309
+     ],
+     "blend": 1
+    },
+    {
+     "f": 14,
+     "joint": "upperArmL",
+     "dir": [
+      0.314,
+      -0.943,
+      0.105
+     ],
+     "blend": 1
+    },
+    {
+     "f": 14,
+     "joint": "foreArmL",
+     "dir": [
+      0.206,
+      -0.928,
+      0.309
+     ],
+     "blend": 1
+    },
+    {
+     "f": 15,
+     "joint": "upperArmL",
+     "dir": [
+      0.314,
+      -0.943,
+      0.105
+     ],
+     "blend": 1
+    },
+    {
+     "f": 15,
+     "joint": "foreArmL",
+     "dir": [
+      0.206,
+      -0.928,
+      0.309
+     ],
+     "blend": 1
+    },
+    {
+     "f": 16,
+     "joint": "upperArmL",
+     "dir": [
+      0.314,
+      -0.943,
+      0.105
+     ],
+     "blend": 1
+    },
+    {
+     "f": 16,
+     "joint": "foreArmL",
+     "dir": [
+      0.206,
+      -0.928,
+      0.309
+     ],
+     "blend": 1
+    },
+    {
+     "f": 17,
+     "joint": "upperArmL",
+     "dir": [
+      0.314,
+      -0.943,
+      0.105
+     ],
+     "blend": 1
+    },
+    {
+     "f": 17,
+     "joint": "foreArmL",
+     "dir": [
+      0.206,
+      -0.928,
+      0.309
+     ],
+     "blend": 1
+    },
+    {
+     "f": 18,
+     "joint": "upperArmL",
+     "dir": [
+      0.314,
+      -0.943,
+      0.105
+     ],
+     "blend": 1
+    },
+    {
+     "f": 18,
+     "joint": "foreArmL",
+     "dir": [
+      0.206,
+      -0.928,
+      0.309
+     ],
+     "blend": 1
+    },
+    {
+     "f": 19,
+     "joint": "upperArmL",
+     "dir": [
+      0.314,
+      -0.943,
+      0.105
+     ],
+     "blend": 1
+    },
+    {
+     "f": 19,
+     "joint": "foreArmL",
+     "dir": [
+      0.206,
+      -0.928,
+      0.309
+     ],
+     "blend": 1
+    },
+    {
+     "f": 20,
+     "joint": "upperArmL",
+     "dir": [
+      0.314,
+      -0.943,
+      0.105
+     ],
+     "blend": 1
+    },
+    {
+     "f": 20,
+     "joint": "foreArmL",
+     "dir": [
+      0.206,
+      -0.928,
+      0.309
+     ],
+     "blend": 1
+    },
+    {
+     "f": 21,
+     "joint": "upperArmL",
+     "dir": [
+      0.314,
+      -0.943,
+      0.105
+     ],
+     "blend": 1
+    },
+    {
+     "f": 21,
+     "joint": "foreArmL",
+     "dir": [
+      0.206,
+      -0.928,
+      0.309
+     ],
+     "blend": 1
+    },
+    {
+     "f": 22,
+     "joint": "upperArmL",
+     "dir": [
+      0.314,
+      -0.943,
+      0.105
+     ],
+     "blend": 1
+    },
+    {
+     "f": 22,
+     "joint": "foreArmL",
+     "dir": [
+      0.206,
+      -0.928,
+      0.309
+     ],
+     "blend": 1
+    },
+    {
+     "f": 23,
+     "joint": "upperArmL",
+     "dir": [
+      0.314,
+      -0.943,
+      0.105
+     ],
+     "blend": 1
+    },
+    {
+     "f": 23,
+     "joint": "foreArmL",
+     "dir": [
+      0.206,
+      -0.928,
+      0.309
+     ],
+     "blend": 1
+    }
+   ],
+   "qa": {
+    "maxStepDeg": 34,
+    "reason": "the right fist rises from below the waist to overhead in ~0.18 s (13:27.69-13:27.87, seen frame by frame)"
+   },
+   "foot_ease": 14
+  },
+  {
+   "name": "hammer",
+   "title": "Leaping two-fist hammer",
+   "src": "fist film, two-handed heavy",
+   "kind": "oneshot",
+   "fps": 60,
+   "takes": [
+    {
+     "t0": "11:01.55",
+     "t1": "11:03.10",
+     "view": "back-right",
+     "drop": [
+      [
+       "11:02.05",
+       "11:02.50"
+      ]
+     ],
+     "keys": [
+      {
+       "t": "11:02.128",
+       "pts": {
+        "nose": [
+         877,
+         463
+        ],
+        "shoulderL": [
+         827,
+         483
+        ],
+        "shoulderR": [
+         827,
+         483
+        ],
+        "elbowL": [
+         827,
+         530
+        ],
+        "elbowR": [
+         827,
+         530
+        ],
+        "wristL": [
+         833,
+         587
+        ],
+        "wristR": [
+         833,
+         587
+        ],
+        "hipL": [
+         760,
+         530
+        ],
+        "hipR": [
+         760,
+         530
+        ],
+        "kneeR": [
+         907,
+         550
+        ],
+        "ankleR": [
+         860,
+         643
+        ],
+        "kneeL": [
+         720,
+         563
+        ],
+        "ankleL": [
+         640,
+         610
+        ]
+       }
+      },
+      {
+       "t": "11:02.195",
+       "pts": {
+        "nose": [
+         827,
+         463
+        ],
+        "shoulderL": [
+         820,
+         490
+        ],
+        "shoulderR": [
+         820,
+         490
+        ],
+        "elbowL": [
+         800,
+         543
+        ],
+        "elbowR": [
+         800,
+         543
+        ],
+        "wristL": [
+         770,
+         583
+        ],
+        "wristR": [
+         770,
+         583
+        ],
+        "hipL": [
+         727,
+         530
+        ],
+        "hipR": [
+         727,
+         530
+        ],
+        "kneeR": [
+         887,
+         543
+        ],
+        "ankleR": [
+         833,
+         643
+        ],
+        "kneeL": [
+         693,
+         563
+        ],
+        "ankleL": [
+         620,
+         613
+        ]
+       }
+      },
+      {
+       "t": "11:02.278",
+       "pts": {
+        "nose": [
+         800,
+         457
+        ],
+        "shoulderL": [
+         787,
+         490
+        ],
+        "shoulderR": [
+         787,
+         490
+        ],
+        "elbowL": [
+         807,
+         530
+        ],
+        "elbowR": [
+         807,
+         530
+        ],
+        "wristL": [
+         800,
+         557
+        ],
+        "wristR": [
+         800,
+         557
+        ],
+        "hipL": [
+         727,
+         530
+        ],
+        "hipR": [
+         727,
+         530
+        ],
+        "kneeR": [
+         853,
+         550
+        ],
+        "ankleR": [
+         813,
+         643
+        ],
+        "kneeL": [
+         673,
+         563
+        ],
+        "ankleL": [
+         587,
+         613
+        ]
+       }
+      },
+      {
+       "t": "11:02.361",
+       "pts": {
+        "nose": [
+         795,
+         455
+        ],
+        "shoulderL": [
+         793,
+         497
+        ],
+        "shoulderR": [
+         793,
+         497
+        ],
+        "elbowL": [
+         803,
+         543
+        ],
+        "elbowR": [
+         803,
+         543
+        ],
+        "wristL": [
+         797,
+         583
+        ],
+        "wristR": [
+         797,
+         583
+        ],
+        "hipL": [
+         727,
+         530
+        ],
+        "hipR": [
+         727,
+         530
+        ],
+        "kneeR": [
+         847,
+         550
+        ],
+        "ankleR": [
+         800,
+         643
+        ],
+        "kneeL": [
+         653,
+         563
+        ],
+        "ankleL": [
+         567,
+         617
+        ]
+       }
+      },
+      {
+       "t": "11:02.461",
+       "pts": {
+        "nose": [
+         795,
+         405
+        ],
+        "shoulderL": [
+         773,
+         457
+        ],
+        "shoulderR": [
+         773,
+         457
+        ],
+        "elbowL": [
+         780,
+         497
+        ],
+        "elbowR": [
+         780,
+         497
+        ],
+        "wristL": [
+         800,
+         510
+        ],
+        "wristR": [
+         800,
+         510
+        ],
+        "hipL": [
+         693,
+         530
+        ],
+        "hipR": [
+         693,
+         530
+        ],
+        "kneeR": [
+         820,
+         550
+        ],
+        "ankleR": [
+         780,
+         643
+        ],
+        "kneeL": [
+         640,
+         565
+        ],
+        "ankleL": [
+         573,
+         610
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "t0": "11:08.10",
+     "t1": "11:09.70",
+     "view": "front-left",
+     "drop": [
+      [
+       "11:08.50",
+       "11:09.00"
+      ]
+     ],
+     "yaw": -110
+    },
+    {
+     "t0": "11:14.15",
+     "t1": "11:15.75",
+     "view": "back",
+     "drop": [
+      [
+       "11:14.75",
+       "11:15.02"
+      ]
+     ]
+    },
+    {
+     "t0": "11:20.15",
+     "t1": "11:21.70",
+     "view": "front",
+     "drop": [
+      [
+       "11:20.70",
+       "11:21.20"
+      ]
+     ]
+    }
+   ],
+   "phases": {
+    "windup": "11:01.85",
+    "active": "11:01.95",
+    "recover": "11:02.20"
+   },
+   "events": [
+    {
+     "t": "11:02.08",
+     "name": "hit"
+    }
+   ],
+   "search": 0.15,
+   "face": "hit",
+   "root": {
+    "smooth": 0.1,
+    "max_off": 0.15
+   },
+   "free_hand": true,
+   "vis_weight": true,
+   "from": "idle",
+   "to": "idle",
+   "foot_ease": 14,
+   "sheet_frames": [
+    10,
+    20,
+    27,
+    31,
+    35,
+    40,
+    50,
+    70
+   ]
+  }
+ ]
+}

@@ -6006,6 +6006,56 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
     dragon print), the shared uniforms' upload (about 0.5 ms of script a frame), the worst frames'
     hitches. The floors' shader is as it was: its relief is most of its cost.
 
+## ADR-200 — AUTO quality: the render resolution follows the measured frame time; a 60 fps cap on touch (2026-11-25)
+
+- **Context:** the owner wants "at least 60 fps on every device"; ADR-199's review found nothing lowers the load
+  when a device falls behind (a desktop starts on HIGH at up to 2x device pixels, a phone on LOW at 1x), and the
+  GPU's frame is linear in the pixel count (0.22 - 0.39 ms per megapixel on the RTX 4090, the scene pass 75 - 80 %).
+  The owner's slow machine is GPU-bound (Intel Core Ultra 7 255U, integrated graphics).
+- **Decision:** a controller (`render/autoQuality.js` `AutoQuality`, numbers in `CONFIG.autoQuality`) that steps the
+  render scale through 2, 1.5, 1.25, 1, 0.75 (and 0.5 for reviews) device pixels per CSS pixel, capped by the
+  screen's ratio and `maxPixelRatio`, floored at `floor`: 1, the owner's pick (2026-11-25), so AUTO never draws fewer letters than 1x.
+  - It judges frames in 1.5 s windows. Two slow windows in a row (under ~54.5 fps) while the GPU is the limit step
+    one down, at any moment. The GPU is the limit by its timer (`EXT_disjoint_timer_query_webgl2`: longer than the
+    script and at least 60 % of the frame) or, without one, when the script takes under 80 % of the frame.
+  - Each step down is checked in the next window. On the GPU's time where it is read; without it two steps in a
+    row that did not help are needed, because on a vsynced 60 Hz screen 33 ms and 23 ms of GPU both show as 30 fps
+    (the trace tests found the first rule undoing a good step). A step that did not help is undone and nothing
+    below it is tried again this page load (a slow CPU, a battery saver holding 30 fps).
+  - Up only in a calm state (title, explore, paused, dead, victory): with a timer when the step above is predicted
+    to fit 72 % of the frame for two windows; without one a probe after 8 s of holding 60, watched for 5 s and on
+    failure held back 20, 60, 180 s, then for good.
+  - The first guess: the median of 11 frames on the title (each waits for the GPU) after 20 untimed ones (the
+    first frames after the load ran ~3x slow), predicted to the other steps with 25 % of the frame fixed.
+  - Settings: AUTO is a fourth place in the F2 / pause-menu cycle (AUTO → LOW → MEDIUM → HIGH), on by default; a
+    preset turns it off; `?autoq=0|1`, `?autoqFloor=`. Touch keeps its LOW default only with AUTO off.
+  - The frame-rate cap (`FramePacer`): every n-th refresh, n from the median refresh interval (120 Hz: 2, 144: 2,
+    240: 4; under 105 Hz none, since 90 Hz cannot be cut to 60 evenly). On by default on touch; the pause menu's
+    60 FPS CAP and `?fpscap=0|1` set it.
+- **Alternatives:** dynamic resolution every frame (a viewport inside fixed render targets: no rebuild, but the
+  letter cells and atlases follow the frame height, so the letters would change size continuously; and the
+  coarse steps are what the owner reviews); stepping the presets (grass and shadow counts barely matter under the
+  dragon print, ADR-199); the renderer string (`WEBGL_debug_renderer_info`) to guess a start (a table to keep, and
+  wrong for every unknown chip); a cap by skipping frames by time (uneven on 90 / 144 Hz).
+- **Consequences:**
+  - A step is a `pipeline.setSize`: render targets reallocated and the letter atlases rebuilt. Measured on the
+    RTX 4090 / i9 at a 1280 x 800 window: 2 - 9 ms in `setSize` (about 3 ms of it the atlases) and 5 - 19 ms more on
+    the first frame after it, about one dropped frame; not measured on a weak device. What was done about it:
+    steps are rare (2 windows to go down, hysteresis, back-off), never UP during a fight, and the 0.6 s after a
+    step is not judged.
+  - Below a frame height of 810 px the letter cells stay 9 px (`Pipeline.setSize`), so on a 1280 x 800 window 2x to
+    1x keep ~89 rows of letters with finer or coarser strokes, 0.75x has 67 rows and 0.5x 44; on a phone 1x
+    (today's default) has 44 and 0.75x 33. The owner picked the 1x floor from those sheets (`.claude/autoq-review/`): AUTO trades crispness, never the letter count; a device too slow for 60 fps at 1x stays under 60.
+  - A phone may now draw above today's 1x when its GPU has room (more letters, more heat): the cap is on there.
+  - Live checks in headless Edge on the 4090 with a GPU load in proportion to the pixels: 30 fps at 2x stepped to
+    1.5x then 1.25x (68 - 77 fps) in 7 s and held; with the load gone it climbed back on the title; in a boss fight
+    it stepped down but not up. With the CPU throttled 8x (10 fps, GPU idle) it made no step. Headless Edge has no
+    back-pressure (a GPU-saturated loop still ran at 100 fps until the GPU was fully saturated): device frame rates
+    are not claimed.
+  - Tests: the `autoq` suite (device models in, steps out: GPU-bound with and without a timer, probes and back-off,
+    CPU-bound, a frame rate held from outside, spikes, calm, a noisy GPU at a step's edge for 20 minutes, the cap's
+    pacing at 60 - 240 Hz, the switches, the F2 cycle).
+
 ## ADR-201 — The still shadow map: only what moves is drawn into it each frame (2026-11-25)
 
 - **Context:** the owner wants 60 fps on every device, starting from a laptop on integrated graphics (Intel
@@ -6086,3 +6136,234 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   differently, so the bullet cues shift a frame). The owner played c with the flurry fix and picked it: "Ship c" (2026-11-25); b and 0 stay behind `?neck=` for comparison. Open: the rear attacks (tail
   lash, rakes, cataclysm) still curl the neck back over the spine, where 'upright against the body' is ill
   defined and the head can sit rolled; the leap's and pounce's neck strikes stay fast.
+
+## ADR-204 — The run carried like the owner's reference: the blade forward at the hip, a full pump, a closed fist (2026-11-25)
+
+- **Context:** the owner, after the run's free arm (ADR-187): "make the right angle hold the sword at a proper
+  natural angle ... make the left hand fist look like a hand ... right now it looks like a weird stump". Two option
+  rounds were turned down (sword: a relaxed trail, a low sweep, both still pointing back; hand: an open hand and a
+  loose fist with jointed fingers). They gave a reference film (a knight sprinting with a straight sword; its name
+  stays out of the game) and asked for its arms mirrored. Measured on the carry before: the blade pointed behind
+  him (azimuth -144 … -161°) on a wrist bent 62 - 87° off the forearm, and barely moved over a stride (3° of
+  elevation on the run, none at a sprint).
+- **Decision:**
+  1. **The sword carry `hip`** (`player/runSword.js`, `?runSword=hip|old`, the Lab's `run sword` row, default):
+     the blade forward, low at the right hip, rocking with the forearm. Joint angles posed by forward kinematics
+     against the torso's own line, then turned by its lean (`runSword(OUT, ph, armF, s, tilt)`); the blade is the
+     forearm's line plus a grip angle on the thumb side (a hammer grip), floored 34° below level. `RUN_SWORDS.hip`:
+     run `{ phi: [-9, 17], ab: 11, el: [108, 134], grip: [56, 64], out: 6 }`, sprint `{ phi: [-10, 27], ab: 13,
+     el: [98, 126], grip: [58, 77], out: 5 }`. The blade's flat is rolled 40° toward the game camera: edge-down (as
+     in the reference) printed as a one-cell line at 720p. `loco()` keeps its blends over it (backpedal, the fight
+     carry FIGHT_RUN, the sprint). The relaxed trail and the low sweep are removed.
+  2. **The free-arm carry `d`, the full pump** (`player/runArms.js` `RUN_ARMS.pump`, default): the fist forward
+     before the belly (upper arm +21°, elbow 85° at a sprint), the elbow high behind the back (upper arm -57°,
+     elbow 100°), turned by the lean; the walk as `a`. `a`, `b`, `c` and `old` stay.
+  3. **The free hand as a closed fist** (`gear/handShape.js` `fistHand`, `?handLook=g`, default): the back of the
+     hand and the knuckle line as wide as the bracer, the curled fingers a roll under the palm, the thumb a bump over
+     the front; no finger detail (the owner: "we don't need to worry about the detail like fingers"). `h` is the
+     same as a dark glove with a flared cuff. The sword fingers and the fist on the grip keep their shapes. The fist is
+     built from as many geometries as the hand before it (12): each draws a uuid from the seeded Math.random, and a
+     hand of 6 pieces shifted the seeded fights (the sheath's pace check fell from x1.05 to x1.01).
+- **Consequences:** at a sprint the blade rocks -21 … +23° (reference -20 … +25), the wrist 57 - 76°, the point
+  at least 63 cm off the ground, its worst jump 2.2 cm a frame²; the run is the same shape at about 60 % of the
+  swing. Seen from the game camera running away (north) the blade is mostly hidden under the cape, as the
+  reference's is from behind; the larger `out` yaw is the knob if steel should show there. Still open: the run
+  start from standing still jumps the point ~26 cm on loco's first frame (the idle rest's hand-over, any carry);
+  the torso leans 24 - 25° at a sprint against the reference's 20°. `?runSword=old`, `?runArm=a` and
+  `?handLook=a` give the run before. The owner played the new run and picked hand g of g / h (2026-11-25).
+
+## ADR-205 — Local test runs go easy on the owner's PC: one shared pool of slots, low priority, `--only` (2026-11-25)
+
+- **Context:** the owner's PC (i9-14900KF, 32 threads, 128 GB) sat at 100% CPU: two agents' `npm test`
+  ran at once, each starting all 24 tasks side by side (~40 node processes, ~75 GB), and eight preview
+  servers from finished worktrees were still running. The owner games on the same machine and asked
+  that agents stop straining it, without slowing what it takes to get a PR merged.
+- **Decision:** with no `CI` env, `tests/run.mjs` runs every worker at below-normal priority and takes a
+  slot from one machine-wide pool (`<tmp>/abyss-test-slots`, `ABYSS_JOBS`, default 8) before starting a
+  task; a slot names its run's pid and a dead run's slot is taken over. A stopped run kills its workers.
+  `--only <names>` runs a subset of the tasks. CLAUDE.md asks agents to test only what they changed
+  while working, never to start a second `npm test`, and to stop their servers before finishing.
+- **Why this way:** a per-run cap still lets several agents pile up; a shared pool caps the machine.
+  Low priority is what keeps a game smooth beside them: Windows serves the game's threads first.
+- **Consequences:** CI is unchanged (it sets `CI`), so a PR's check takes as long as before. A full
+  local run alone takes longer (8 at a time, not 24); runs from several agents queue instead of
+  slowing each other. `ABYSS_JOBS=2` while gaming lowers it further.
+
+## ADR-206 — Performance is guarded before it ships: a cost budget in `npm test`, `npm run perf` on a real GPU (2026-11-26)
+
+- **Context:** the owner wants 60 fps on every device. ADR-199 found its savings by a review after the cost had
+  crept in (a 570 000-triangle shadow pass, a per-pixel ground), and ADR-200's AUTO quality only lowers the
+  resolution once a device is already slow. Nothing stopped the next change from making a level heavier.
+- **Decision:** two guards, one that runs in CI and one that runs on a machine with a GPU.
+  - **The cost budget** (`tests/integration/cost.mjs`, in `npm test`; its numbers in `tests/cost-baseline.json`):
+    every level's set is built with the real modules, wired like the world (Destructibles, so the rigid batch
+    exists), and counted: visible meshes, main-pass triangles (an instanced mesh by its instances), the moon's
+    shadow-caster triangles, rigid-batch bones, breakables, colliders, geometry MB; each for the level whole
+    and for the phone's share (`setQuality(0)`). Nothing is timed, so the numbers are the same on every
+    machine and a CI runner can hold them: a number over its budget by 3 % + a small slack fails; one under
+    by 10 % prints a note to lock the gain in. A new level has no row and fails until `... cost.mjs . update`
+    writes one; a level that is gone fails the same way.
+  - **`npm run perf`** (`scripts/perf.mjs`, `scripts/perf-probe.js`): starts the dev server and a headless
+    Chrome / Edge on this PC's GPU, stages one fixed fight per level, and prints draw calls and triangles by
+    pass, the GPU ms by pass and per frame at 1080p and the phone's 2556 x 1179 (`--4k` adds 3840 x 2160), and
+    the script ms by module. `--save` keeps a baseline in `.perf/` (a machine's own, not committed: the ms
+    depend on the GPU), later runs print the change. Counts repeat exactly between runs, so `--check` exits 1
+    on them (over +10 % calls or triangles); milliseconds do not (two runs of one tree differed by up to 30 %
+    on the RTX 4090, whose frame is 1 - 2 ms), so they print from 25 % and gate nothing. The scene is
+    rendered frozen after 40 settling frames (the still shadow map and the GPU clock).
+  - **A rule** in CLAUDE.md: a change that makes a level heavier raises the budget on purpose and says so in
+    its PR; a change that draws something runs `npm run perf` before and after and reports the cost.
+- **Alternatives:** timing frames in CI (a shared runner's CPU has no GPU and its noise already moved a test's
+  p99.9 from 0.3 to 2.5 ms: ADR-153's `world budget` runs alone for that reason); a hard fps gate (the number
+  belongs to a device, and the owner's laptop is not in CI); counting triangles in the pipeline's render
+  info (needs WebGL: the headless suites mock it).
+- **Consequences:** a deliberate increase costs one command and a line in the PR. The static counts cannot see
+  a shader's cost (the floors' relief: ADR-199) or a particle count that grows at run time; `npm run perf`
+  sees those, on a machine that has a GPU. Counts are of the set's own meshes: the hero, the boss and the
+  effects are not in them (their cost shows in `perf`'s script and GPU ms). Not measured: a weak GPU or a
+  phone; `perf` runs on whatever PC runs it.
+
+## ADR-207 — The hero's idles and guard after the owner's reference footage (2026-11-25)
+
+- **Context:** the owner gave three sections of their reference footage, "for all the idle animation and poses for
+  you to mirror to this game", and one for "the guarding stance and animation". Asked, they answered: the
+  two-handed hold is the FIGHT stance (locked on, a boss fight) and at ease he stands one-handed; the put-away and
+  draw is an occasional idle moment, and as the hero has no scabbard the sword fades out in its own green flame at
+  his left hip and is drawn back out of it; ADR-186's habits, tricks and spells are kept, from the new stand.
+- **Decision** (`refStance.js`, `idles.js`, `anim.js`; `?idles=ref|new|old`, default `ref`; `?guard=ref|ward`,
+  default `ref`):
+  - At ease `REF_STAND` (the numbers start from the steel look set's stand, `?lights=steel` on a branch not yet merged, so the two
+    agree): tall, the feet a little over shoulder width with the left a short step ahead, the sword hand at the
+    hip, the blade forward, down and out to his right (point ~0.6 m up ahead of the right foot), the free arm
+    hanging, the hand open. In the fight `REF_READY`: both hands on the grip before his belly, the blade ~47° up
+    and 25° out to his right, the point ~1.9 m up. The free hand takes the grip late in the stance's change
+    (`twoHand` = smoothstep(0.35, 0.95, fightW)) and lets go on the move.
+  - One rest each; ADR-186's at-ease actions all kept, their forearm-led moves starting from this stand's arm
+    (`syncStandArm`: the elbow and forearm aim solved from `REF_STAND`, the blade's own aim); in the fight only the
+    habits that keep both hands on the grip (`grip`, `shift`, `loosen`, about the hold's blade).
+  - The put-away (`stow`, a trick, 3.6 s): a dip, the hand to the left hip with the blade forward-left and down,
+    the sword gone ~1.55 s (both arms hanging, the empty fist on the wrist's line), the same dip, the blade drawn
+    up and over forward into the stand. The sword's own meshes (`rig.slots.weapon`) draw into the hilt and hide
+    (`HeroAnimator._stowSword`): nothing is added to the rig (a new object draws a three.js uuid off the seeded
+    Math.random), and the swept joint, the hit test, never changes. `anim.stow` is 0 every frame but those of an
+    uncut put-away in the loco clip, so the sword is whole the very frame any other clip starts, when a move cuts
+    it, when the idles switch and on a reset. `swordMystic.js` burns the going / coming steel in its flame
+    (`SPELL.stow`); the halo and the gem's glow rest while it is gone.
+  - The guard `REF_GUARD`. The plan read it as the blade held upright; the footage's front and back views show
+    the side view's upright blade is a slant across his face: both hands raised before his right shoulder, the
+    elbows out, the blade rising ~32° across his face to his left, its point past his left shoulder above his head,
+    the flat to the foe, in a braced crouch (sunk ~25 cm, the feet ~0.8 m apart, leaning in). It was built from the
+    four views: it stands 13° off upright from his side. The hands come up with the block's own 0.08 s
+    cross-fade, the body sinks over 0.3 s (`REF_GUARD.sink`); the block's timings, windows and costs are untouched.
+    A duelist's animator (no free hand) keeps the cross ward. A parry's snap onto the blow (`deflectPose`) is
+    posed from the cross ward's body and eases back into this guard with it (`WARD_BODY`): its blade and hand are
+    aimed from that body, and from the braced guard's turned chest half the parried blows ended with the two
+    blades 0.2 m apart (duel `clash`).
+- **Departures from the footage, and why:** the blade's flat is rolled 40° up off his sides (`FLAT_ROLL`): held
+  flat to the sides, edge down, as the footage holds it, it is edge-on to the game camera above and behind him (a
+  line one letter wide). The hold's grip sits ~13 cm higher than the footage's belt and the blade ~8° flatter
+  (47° up, 30° out to his right): at the belt the sword wrist bent 70-90° off the forearm, past the 60° at which
+  the fist (built on the sword's frame) turns off the wrist (ADR-186's last amendment).
+  - **The hold's feet** (found by the full `npm test` after the merge with main): the footage stands the LEFT foot
+    a short step ahead. The light chain steps the foot further back (anim.js `play`: `stepL`) and comes home to
+    the stance, so from the left-ahead hold every light stepped the other foot: the way home lifted the wrong one
+    (after hit 2 the left 6.9 cm, the right 0.0; heroweight W7c) and a bearing foot slid 10.6 cm through the rising
+    thrust (W7a, ≤ 6). The hold now stands the right foot 18 cm ahead and the left 18 cm back (the feet the chain
+    steps from and comes home to, as the fencer's guard did), the hips square: slides ≤ 4.5 cm, the way home lifts
+    the foot that stepped (6.9 cm, the other 0.0).
+  - **The arms off the ribs** (the kept-for-later looks): the stand's sword elbow points back and a little out
+    (`rP`; pulled in, the warden cuirass's belt cut 3.5 cm into the hanging upper arm, now -1.0) and the hold's
+    free elbow out (`lP`; across his front the robe's sleeve wing on that arm swung through his chest on 10.5 % of
+    the route's frames, now 2.2 %). The moves that swing the blade take the elbow's old pole over their envelope
+    (`REF_STAND.leadP`, idles.js `leadArm` / `syncStandArm`): faded in from the elbow out, the salute's and the
+    spells' raised fist turned 63-77° off the forearm (≤ 60), now 55° at most.
+- **Consequences** (scenario `heroref`, measured in his own frame): the stand's sword wrist 44° max, elbows R 131°
+  L 126°; the hold 60° (R 88°), the free hand 0.0 cm off its place on the grip; through the stance's change the free
+  hand stays ≥ 8.8 cm out of him; every action within the bars ADR-186 set (wrist ≤ 57° in every action, the
+  blade ≥ 20 cm off his body); the put-away hides the sword 224 frames over two plays and never outside it, and in
+  every cut of it the sword is whole the frame the move begins; every move from the stand, the hold and inside
+  every action within ×1.5 + 10 cm of the bare stance before; the guard's entry jumps ≤ 31.8 cm at the point (the
+  cross ward from the stance before: 57 cm). From the game camera the hold's and the guard's blades stand over
+  his right shoulder and across his head; the owner has not seen them yet. Every suite written against ADR-186's
+  poses and the cross ward runs with them (`heroidles` and, through `pinAdr186`, `herolife`, `heroarms`, `herohand`:
+  `setIdles('new')`, `setGuard('ward')`; `herostance` as before `'old'`) rather than loosening its bars. Two more
+  measures are tied to the old stances and say so: the moon ribbon sword's swing through a falling cut is
+  measured from the fencer's guard (`hero`: from the hold's raised blade the hilt travels less into the coil, 30°
+  where the bar is 35; with only the hold's blade lowered to the fencer's 13°, 51°), and the air star of seven
+  passes (`chain`) is checked against the widest its complete search finds from where he dodged (the new stance
+  moved the seeded fight before it: from that dodge spot the search's best is 14°, from the old one 21°; seeds 1338-
+  1340 pass the 17° bar either way).
+## ADR-208 — Boss blows measured from reference footage: the mocap clip fitted onto the duelist rig; Tian Lei's try turned down (2026-11-26)
+
+- **Context:** the owner gave a reference film of bare-handed melee attacks and asked for the bare-handed
+  bosses' attacks to move like it, starting with one boss to preview, and for what was learned to stay in
+  the repo as a melee attack animation engine for future agents. The measuring tool existed on the hero
+  remake's branch (`scripts/mocap`: pose tracking on footage, fused into clips on a 24-joint skeleton), but
+  the duelist bosses are animated by keyframes on today's hero rig (hand / foot targets, poles, body,
+  spine), not joint clips. The owner's answers: Tian Lei first; remap his existing blows (names, tells,
+  damage, AI unchanged); the reference motion at OUR windups; behind a switch, held for review.
+- **Decision:**
+  1. `scripts/mocap` (and the hero2 skeleton / clip contract it writes to) comes onto `main` as a tool.
+  2. `scripts/mocap/duelist/fit.mjs` retargets a clip onto the duelist rig by DIRECTION for the arms (our
+     shoulder + the reference's upper-arm and forearm directions at our bone lengths: arm angles kept
+     exactly), by orientation for the pelvis, spine and head (YXZ Euler, the rig's order), by scaled
+     position for the feet; travel taken out (a duelist's root motion is its beat's). The windup is laid
+     piecewise on the beat's clock: start → u 0, chamber → the beat's cock, contact → u 1, follow-through
+     → u 2. `--check` poses the real animator with every key and prints the error.
+  3. `realise.js` takes an optional `keysOf(beat)`: the keys a beat plays this time. Tian Lei's builders
+     put the measured keys on each beat as `refKeys` (refBlows.js, generated from `tianlei.json`), played
+     while the look switch `fists` is `ref` (Lab LOOKS, PENDING: the owner has not picked).
+  4. Six blows are measured: jab (mirrored), cross, hook, uppercut, backfist, hammer. The film has hand
+     strikes only, so his kicks, knee, elbow, shoulder and sweep keep their keys.
+- **Why this way:** fitting the clip onto the rig the bosses already share keeps every gameplay number and
+  every test of theirs; a joint-clip player for bosses would mean a second animator and a second body.
+  Keeping arm directions rather than positions is what the owner judges (arm angles, placement).
+- **Consequences:** through the real animator the fists land within ~5 cm of the retargeted reference,
+  elbows ~11, knees ~6, ankles ~1. The film did not fuse across camera angles (follow cameras, passes that
+  differ, 30 - 60 captured frames a second, gaps at impacts): each blow is one take with the striking arm
+  hand-keyed through the strike, so the arm paths are the footage as read frame by frame, not tracked.
+  The uppercut and the hook are the most hand-made; the jab is very low (the reference's). The reference
+  is a wild brawler (same-side lunges, spin-throughs), so with the switch on he fights in that style.
+  `asc.mjs . fists` proves timings identical on and off and fights every measured move on the real rig.
+- **Outcome (the owner, the same day):** "the new animations look worse than the old ones"; worse were the
+  stiff, unnatural arms and the lunges and feet. Tian Lei's wiring (`refKeys`, the `fists` switch, the
+  generated keys, the `fists` scenario) was taken out before merging; his blows are as authored. What lands
+  is the engine: `scripts/mocap`, `scripts/mocap/duelist` (fit, guide, the map as an example), the recorder
+  and the optional `keysOf` hook in `realise.js` (unused until a boss uses it). Next time: a reference of
+  clean technique that tracks, the boss's own footwork, and a render for the owner before wiring.
+  If the hero remake's branch later lands, its copies of `scripts/mocap` and `src/entities/hero2/*` should
+  be taken over these (check `check.mjs`'s film list keeps `fist`).
+
+
+## ADR-209 — The phone's frame: a readout on the device, and three of its spikes taken out (2026-11-26)
+
+- **Context:** the owner saw the frame rate dip in fights on their iPhone ("pretty powerful"), on the fox,
+  bamboo (grove) and code-hall levels; they chose "the on-phone readout plus the spike fixes". Recorded on
+  the RTX 4090 / i9 at the phone setup (`?touch`, 1468 x 686), a fight frame is 4 - 5 ms of script and
+  2 - 3 ms of GPU, with 0.1 - 0.4 % of frames over 9 ms of script (worst 13 - 16 ms; one 260 ms stall once,
+  not reproduced). The spikes come when a blow lands: a trade (4 - 7 ms), a blade clash (3 - 4.6 ms), the
+  boss's parry contact (2 - 2.5 ms), a perfect dodge (2.3 - 2.9 ms), each mostly sound voices built, the
+  hero's pose evaluated, HUD call-outs, the boss's reaction. The same fight a second time spikes as much
+  as the first (not a load). Two spikes were the game's own making: the first break of a floor or of the
+  grove's bamboo drew a 38 000 - 130 000-vertex hidden mesh for the first time (its bounds, 1 - 2.5 ms, and
+  its buffers' upload), and the still shadow map (ADR-201) copied a big mesh's whole position array on the
+  frame it started to move (bamboo: 1.1 ms). None of it is measured on the phone: no profiler reaches it.
+- **Decision:**
+  1. `?perf`, a readout on the device (`dev/perfReadout.js`): every part of each drawn frame timed, a line
+     on screen, a report to share or copy: what the phone spends, from the phone.
+  2. The hidden remains (`foldAway` / `autoHide` meshes) are drawn once at load into a 1 x 1 target
+     (`warmDraw`): bounds and buffers ready before the fight.
+  3. The still shadow map keeps a big mesh's position copy current on every change (only the changed
+     ranges), so starting to move costs no whole copy.
+  4. The seen-through pass does not walk the hero's ~200 nodes again (his matrices are the frame's).
+- **Not taken:** a scan of the contact rings in slices (0.4 ms a frame by an instrumented count; 5 - 15 us
+  by a clean one: the count was the instrumentation's); the V8 allocation profile's top items (17.7 MB/s in
+  a fight, most of it decimal numbers boxed by V8: Safari's engine does not box them, so it is not the
+  iPhone's pause); the hit-time work (sounds, the hero's pose, call-outs, the boss's reaction): each is a
+  look or a sound and wants its own measured change, best chosen from the iPhone's report.
+- **Consequences:** a break no longer uploads anything in the fight (0 first draws in a fight on the fox,
+  grove and code levels, against 2 - 3 before); a big mesh that starts moving costs the still map 0.36 ms
+  instead of 1.1 (grove). Whole-fight timings could not tell the builds apart: the machine was 75 - 81 %
+  loaded by other sessions and runs varied +-25 %. The load step takes ~1 frame more for the warm draw.
+  Next: the owner's `?perf` report from the iPhone in a fight on each of the three levels, then the parts
+  it names. Not measured: any phone.
