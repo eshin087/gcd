@@ -179,12 +179,21 @@ export function buildBody(game, { dims = HDIM, look = {} } = {}) {
     },
     /** the lean, the letter size, the blade's and the gem's light (player.js _updateLean / _updateMaterials at rest) */
     _view(dt) {
-      const cam = game.camera;
+      body.prepareView(game.camera, body.view);
+      body._light(dt);
+    },
+    /** (engine builder) The per-VIEW state, set before each render from the camera that renders it: the
+     *  lean toward that camera (`lean`: false = upright, true anatomy: a close review camera) and the
+     *  letters sized from its distance. The showcase / film rig call it before every render; the frame's
+     *  own update calls it once with game.camera and body.view ({ lean }, default on). */
+    view: { lean: true },
+    prepareView(cam, opts = null) {
+      const on = (opts ?? body.view)?.lean !== false;
       lean.k = 0;
       if (cam?.matrixWorld) {
         const e = cam.matrixWorld.elements;
         const fx = -e[8], fy = -e[9], fz = -e[10], hh = Math.hypot(fx, fz);
-        if (hh > 1e-3 && Number.isFinite(fy)) {
+        if (on && hh > 1e-3 && Number.isFinite(fy)) {
           const a = Math.min(LEAN.max, Math.max(0, LEAN.frac * Math.atan2(-fy, hh)));
           lean.k = Math.tan(a);
           lean.dx = fx / hh;
@@ -197,6 +206,10 @@ export function buildBody(game, { dims = HDIM, look = {} } = {}) {
           setHeroGlyphScale(mats, d);
         }
       }
+      object3d.matrixWorldNeedsUpdate = true;
+      object3d.updateMatrix();
+    },
+    _light(dt) {
       const far = smooth(10, 28, viewDist);
       const restInk = 0.6 + 1.0 * far;
       const hot = Math.min(1, Math.max(0, Number.isFinite(body.hot) ? body.hot : 0));

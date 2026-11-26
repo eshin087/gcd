@@ -881,6 +881,9 @@ export class Player {
     this.anim.update(this.state === 'flurry' ? this.flurry.animDt : dt);
     this.lean.on = true;
     this.object3d.updateMatrixWorld(true);
+    // (the remade hero, ?hero=new only: its adapter puts the drawn hero's blade and joints on this rig,
+    // so the hit test and the effects read them; today's animator has no such method)
+    this.anim.afterWorld?.(dt);
     this._combat();
     this._updateFx(dt);
     this._updateMaterials(dt);
@@ -1482,6 +1485,7 @@ export class Player {
     this.anim.update(0); // (no time passes: the cross-fade is none, the elbows are not rate-limited)
     this.lean.on = true;
     this.object3d.updateMatrixWorld(true);
+    this.anim.afterWorld?.(0); // (?hero=new only, as in update())
     this.sweep.sample();
   }
 
