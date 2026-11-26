@@ -65,7 +65,9 @@ const TRANSITION_MOVES = {
    *  a perfect dodge through it, or be caught: held and struck once, never lethal). Either way the last
    *  phase is fought inside the void. */
   measureless: {
-    label: 'The Measureless (phase 3)', phase: 3, weight: [0, 0, 0], transition: true, cooldown: 0, band: [0, 99], recovery: 0.6,
+    // (its recovery outlasts the hold of a caught hero, whatever the phase's recoveryScale: the blow inside
+    // it is the domain's, and he starts nothing before it is over)
+    label: 'The Measureless (phase 3)', phase: 3, weight: [0, 0, 0], transition: true, cooldown: 0, band: [0, 99], recovery: (DOM.hold + 0.25) / Math.min(1, TUNING.recoveryScale?.[2] ?? 1),
     beats: [
       { feint: true, windup: DOM.sign, fixed: true, active: 0.05, close: 0, track: 0.6, wjDomain: 'sign', keys: TK.measurelessSign },
       {

@@ -134,7 +134,7 @@ export const TUNING = {
     sign: 1.5, // s of the hand sign (the transition's first beat)
     close: 1.0, // s of the closing sphere's red cue (its windup)
     r: 40, // the sphere's reach (the whole arena)
-    hold: 1.0, // s the caught hero is held (max 1.2: the owner's lock cap), the blow inside it
+    hold: 0.95, // (the integration pass: 1.0 measured 1.22 s out of his hands with the blow's own stagger) s the caught hero is held (max 1.2: the owner's lock cap), the blow inside it
     blow: 0.3, // of the hero's max health: never lethal (at least 1 HP left)
     knockback: 6,
     escapeOpen: 2, // the escape opens the barrier for open[2] x this

@@ -3,7 +3,7 @@ import { Duelist, HERO_SCALE } from '../duelist/duelist.js';
 import { GUARD_KINDS } from '../duelist/guard.js';
 import { DIM } from '../../player/model.js';
 import { DuelBrain } from '../duelist/brain.js';
-import { TELL, GUARD } from '../../../combat/rules.js';
+import { TELL, GUARD, RESULT } from '../../../combat/rules.js';
 import { wrapAngle } from '../../../core/math.js';
 import { WJ_LOADOUT, WJ_FIST } from './gear.js';
 import { WJ_POSES } from './poses.js';
@@ -262,6 +262,8 @@ export class Untouched extends Duelist {
   }
 
   onActStart(A) {
+    // (the domain's hold: its one blow is the only one; he starts nothing while the hero is held)
+    if (this.domain?.holding && !A?.def?.transition) return false;
     for (const h of this._handlersOfMove(A.def)) if (h.onActStart?.(A) === false) return false;
     return true;
   }
@@ -430,6 +432,8 @@ export class Untouched extends Duelist {
    */
   hitPlayer(o) {
     const D = o?.beat?.def, H = this._handlerOf(D);
+    // (nothing but the domain's own blow reaches a hero the domain holds)
+    if (this.domain?.holding && !D?.wjDomain) return RESULT.IGNORED;
     if (H?.hitPlayer) o = H.hitPlayer(o) ?? o;
     if (D?.wjDomain) o = this.domain.hitPlayer(o);
     else o = this._weighted(o, D);
