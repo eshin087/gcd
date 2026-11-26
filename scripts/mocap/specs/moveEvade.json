@@ -1430,7 +1430,9 @@
    "travel_span": [
     "10:57.72",
     "10:58.00"
-   ]
+   ],
+   "air_marks": true,
+   "air_peak_m": 0.1
   },
   {
    "name": "roll",
