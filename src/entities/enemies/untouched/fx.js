@@ -622,7 +622,7 @@ export class WjFx extends AscFx {
     }
     const S = this._shell(d);
     if (!S.ok || !(this._frame() > 0)) return;
-    const f = K.t / SHELL.knit, h = f < 0.25 ? 0.62 * (f / 0.25) : 0.62 * (1 - (f - 0.25) / 0.75);
+    const f = K.t / SHELL.knit, h = f < 0.25 ? 0.42 * (f / 0.25) : 0.42 * (1 - (f - 0.25) / 0.75);
     this._rim(0, TAU, h, h);
   }
 
