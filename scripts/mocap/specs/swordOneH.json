@@ -710,6 +710,244 @@
     "1:42.85"
    ],
    "sync": "1:42.72"
+  },
+  {
+   "name": "heavyRecover1",
+   "title": "Heavy attack 1: back to the stance",
+   "src": "sword 1:40-2:10",
+   "kind": "oneshot",
+   "fps": 60,
+   "sword": true,
+   "takes": [
+    {
+     "t0": "1:43.40",
+     "t1": "1:44.50",
+     "view": "front-right",
+     "yaw": 90,
+     "limb_keys": {
+      "blend": 4,
+      "keys": [
+       {
+        "t": "1:43.47",
+        "pts": {
+         "shoulderL": [
+          691,
+          410
+         ],
+         "shoulderR": [
+          694,
+          404
+         ],
+         "elbowL": [
+          708,
+          463
+         ],
+         "elbowR": [
+          670,
+          431
+         ],
+         "wristL": [
+          748,
+          488
+         ],
+         "wristR": [
+          706,
+          417
+         ],
+         "hilt": [
+          690,
+          410
+         ],
+         "tip": [
+          940,
+          430
+         ]
+        }
+       },
+       {
+        "t": "1:43.60",
+        "pts": {
+         "shoulderL": [
+          697,
+          382
+         ],
+         "shoulderR": [
+          659,
+          365
+         ],
+         "elbowL": [
+          696,
+          434
+         ],
+         "elbowR": [
+          602,
+          385
+         ],
+         "wristL": [
+          733,
+          458
+         ],
+         "wristR": [
+          633,
+          399
+         ],
+         "hilt": [
+          645,
+          400
+         ],
+         "tip": [
+          860,
+          372
+         ]
+        }
+       },
+       {
+        "t": "1:43.67",
+        "pts": {
+         "shoulderL": [
+          696,
+          387
+         ],
+         "shoulderR": [
+          654,
+          368
+         ],
+         "elbowL": [
+          703,
+          436
+         ],
+         "elbowR": [
+          604,
+          401
+         ],
+         "wristL": [
+          743,
+          463
+         ],
+         "wristR": [
+          642,
+          414
+         ],
+         "hilt": [
+          645,
+          402
+         ],
+         "tip": [
+          840,
+          330
+         ]
+        }
+       },
+       {
+        "t": "1:43.73",
+        "pts": {
+         "shoulderL": [
+          690,
+          385
+         ],
+         "shoulderR": [
+          647,
+          384
+         ],
+         "elbowL": [
+          704,
+          433
+         ],
+         "elbowR": [
+          619,
+          423
+         ],
+         "wristL": [
+          739,
+          464
+         ],
+         "wristR": [
+          640,
+          430
+         ],
+         "hilt": [
+          640,
+          432
+         ],
+         "tip": [
+          835,
+          335
+         ]
+        }
+       },
+       {
+        "t": "1:43.80",
+        "pts": {
+         "shoulderL": [
+          678,
+          382
+         ],
+         "shoulderR": [
+          641,
+          380
+         ],
+         "elbowL": [
+          685,
+          428
+         ],
+         "elbowR": [
+          614,
+          430
+         ],
+         "wristL": [
+          722,
+          451
+         ],
+         "wristR": [
+          647,
+          456
+         ],
+         "hilt": [
+          650,
+          437
+         ],
+         "tip": [
+          820,
+          345
+         ]
+        }
+       }
+      ]
+     },
+     "lose": [
+      {
+       "t0": "1:43.50",
+       "t1": "1:43.62",
+       "limbs": [
+        "armL",
+        "armR"
+       ]
+      }
+     ]
+    },
+    {
+     "t0": "1:50.45",
+     "t1": "1:51.55",
+     "view": "left",
+     "check": true,
+     "sync": "1:50.55"
+    }
+   ],
+   "sync": "1:43.40",
+   "face": 29,
+   "free_hand": true,
+   "swing": true,
+   "root": {
+    "smooth": 0.1,
+    "max_off": 0.15
+   },
+   "foot_ease": 14,
+   "props": {
+    "R": "sword",
+    "L": null
+   },
+   "from": "heavy1",
+   "to": "swordIdle"
   }
  ]
 }
