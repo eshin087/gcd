@@ -6189,7 +6189,41 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   local run alone takes longer (8 at a time, not 24); runs from several agents queue instead of
   slowing each other. `ABYSS_JOBS=2` while gaming lowers it further.
 
-## ADR-206 — The hero's idles and guard after the owner's reference footage (2026-11-25)
+## ADR-206 — Performance is guarded before it ships: a cost budget in `npm test`, `npm run perf` on a real GPU (2026-11-26)
+
+- **Context:** the owner wants 60 fps on every device. ADR-199 found its savings by a review after the cost had
+  crept in (a 570 000-triangle shadow pass, a per-pixel ground), and ADR-200's AUTO quality only lowers the
+  resolution once a device is already slow. Nothing stopped the next change from making a level heavier.
+- **Decision:** two guards, one that runs in CI and one that runs on a machine with a GPU.
+  - **The cost budget** (`tests/integration/cost.mjs`, in `npm test`; its numbers in `tests/cost-baseline.json`):
+    every level's set is built with the real modules, wired like the world (Destructibles, so the rigid batch
+    exists), and counted: visible meshes, main-pass triangles (an instanced mesh by its instances), the moon's
+    shadow-caster triangles, rigid-batch bones, breakables, colliders, geometry MB; each for the level whole
+    and for the phone's share (`setQuality(0)`). Nothing is timed, so the numbers are the same on every
+    machine and a CI runner can hold them: a number over its budget by 3 % + a small slack fails; one under
+    by 10 % prints a note to lock the gain in. A new level has no row and fails until `... cost.mjs . update`
+    writes one; a level that is gone fails the same way.
+  - **`npm run perf`** (`scripts/perf.mjs`, `scripts/perf-probe.js`): starts the dev server and a headless
+    Chrome / Edge on this PC's GPU, stages one fixed fight per level, and prints draw calls and triangles by
+    pass, the GPU ms by pass and per frame at 1080p and the phone's 2556 x 1179 (`--4k` adds 3840 x 2160), and
+    the script ms by module. `--save` keeps a baseline in `.perf/` (a machine's own, not committed: the ms
+    depend on the GPU), later runs print the change. Counts repeat exactly between runs, so `--check` exits 1
+    on them (over +10 % calls or triangles); milliseconds do not (two runs of one tree differed by up to 30 %
+    on the RTX 4090, whose frame is 1 - 2 ms), so they print from 25 % and gate nothing. The scene is
+    rendered frozen after 40 settling frames (the still shadow map and the GPU clock).
+  - **A rule** in CLAUDE.md: a change that makes a level heavier raises the budget on purpose and says so in
+    its PR; a change that draws something runs `npm run perf` before and after and reports the cost.
+- **Alternatives:** timing frames in CI (a shared runner's CPU has no GPU and its noise already moved a test's
+  p99.9 from 0.3 to 2.5 ms: ADR-153's `world budget` runs alone for that reason); a hard fps gate (the number
+  belongs to a device, and the owner's laptop is not in CI); counting triangles in the pipeline's render
+  info (needs WebGL: the headless suites mock it).
+- **Consequences:** a deliberate increase costs one command and a line in the PR. The static counts cannot see
+  a shader's cost (the floors' relief: ADR-199) or a particle count that grows at run time; `npm run perf`
+  sees those, on a machine that has a GPU. Counts are of the set's own meshes: the hero, the boss and the
+  effects are not in them (their cost shows in `perf`'s script and GPU ms). Not measured: a weak GPU or a
+  phone; `perf` runs on whatever PC runs it.
+
+## ADR-207 — The hero's idles and guard after the owner's reference footage (2026-11-25)
 
 - **Context:** the owner gave three sections of their reference footage, "for all the idle animation and poses for
   you to mirror to this game", and one for "the guarding stance and animation". Asked, they answered: the

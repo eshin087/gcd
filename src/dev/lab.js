@@ -1183,7 +1183,7 @@ export class Lab {
       b.title = `?idles=${m}: ${IDLES_NAMES[m]}`;
       return { m, el: b };
     });
-    // the hero's guard (player/refStance.js, ADR-206; ?guard=ward): the reference's braced guard, the blade
+    // the hero's guard (player/refStance.js, ADR-207; ?guard=ward): the reference's braced guard, the blade
     // upright, or the cross ward before it
     const gdr = el('div', 'lab-row', null, body);
     el('span', 'lab-lbl', 'guard', gdr).title = "the hero's block: the braced guard with the blade upright (ref, the default) or the cross ward before it (?guard=ward)";

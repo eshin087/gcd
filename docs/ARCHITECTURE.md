@@ -1239,7 +1239,7 @@ the pick (tests). The blade is still the hit test, so each look is swung at the 
 **One hand, two hands** (ADR-071; it was two hands on every swing, ADR-046): the chain, the sprint
 slash and the roll cut are one-handed, the free hand keyed against the sword hand; the slam, the
 charge and the cleave hold the grip with both (`twoHand` 1, the off hand IK'd to the grip point;
-the cleave lets go in its follow-through). The block is two-handed. The hero's (ADR-206, `refStance.js` `refGuard`,
+the cleave lets go in its follow-through). The block is two-handed. The hero's (ADR-207, `refStance.js` `refGuard`,
 `guardMode()` / `setGuard(id)`, `?guard=ward`): a braced crouch (`REF_GUARD.sink` 0.3 s into it on `A.t`), the feet
 settling to `REF_GUARD.feet`, both hands on the grip before the right shoulder with the elbows out, the blade rising
 ~32° across his face to his left (upright seen from his side), the flat to the enemy. `?guard=ward` and every
@@ -1308,7 +1308,7 @@ otherwise); `swordMystic.js` reads it: the flame swells toward the top tier (`SP
 longer tongues), the rite's flame waits above the fingers' front, and each writes the flame's marks through the same
 batch (`SPELL`: the rite's embers, the sigil's ring at knee height, the breath's thread). The idles draw on
 `anim.idleNoise`, never `anim.noise` (which picks an attack's look).
-**The reference's idles** (ADR-206, `refStance.js`, the default: `idlesMode()` `'ref'`; `?idles=new` is the paragraph
+**The reference's idles** (ADR-207, `refStance.js`, the default: `idlesMode()` `'ref'`; `?idles=new` is the paragraph
 above, `?idles=old` the belt; `setIdles` takes the three): `stand()` writes `refStand` (the one-handed stand,
 `REF_STAND`) at ease and `refReady` (the two-handed hold, `REF_READY`: `twoHand` 1) in the fight, blended by `fightW`
 (the free hand takes the grip late: `twoHand` = smoothstep(0.35, 0.95, fightW); on the move it lets go by
@@ -4646,6 +4646,20 @@ flask, lockOn, interact. `front` (`delay` s in): a QUIET `wind.front` across the
 not alarm the birds; nothing in the grove). Numbers: Cinderwood looks at (0.8, 11.8) → (0.7, 14.8), zoom
 +26 m, hold 3 s; the others alike north of their spawn; the Grove +17 m, 3.4 s, no front; the phone (`cameraRig.mobile`)
 zoom 3, weight 1.
+
+### Tests — the cost budget, and `npm run perf` (ADR-206)
+
+`tests/integration/cost.mjs` builds every level's set (`LEVELS[i].buildSet`, wired like `world.js`: colliders,
+`Destructibles`, so the rigid batch exists) and counts what the renderer would draw, never a time: visible meshes,
+main-pass triangles (`rigidShadow` excluded; an instanced mesh by its instances), shadow-caster triangles (meshes on
+`LAYER_CASTER` / `LAYER_CASTER_RIGID`), rigid bones, breakables, colliders and geometry MB, for the level whole and
+for `setQuality(0)` (`<id>@phone`). `tests/cost-baseline.json` is the budget: a metric over it by 3 % + its slack
+fails; `node tests/integration/cost.mjs . update` rewrites the file (the budget moves on purpose, said in the PR).
+A level with no row fails (a new level adds one). The hero, the boss and the effects are not in these counts.
+`scripts/perf.mjs` + `scripts/perf-probe.js` (`npm run perf`) measure the rest on a PC with a GPU: the probe stages a
+fixed fight in the page (`__game`, `__tick`) and returns draw calls / triangles by pass, GPU ms by pass and frame
+(`EXT_disjoint_timer_query_webgl2`) per size, and script ms by module; `.perf/baseline.json` (git-ignored) is the
+machine's own.
 
 ### Tests — the `life` suite (`tests/integration/life.mjs` + `tests/integration/life/<piece>.mjs`)
 `node tests/integration/life.mjs . <scenario>` (`all`, a file name, or `<file>.<name>`; in `npm test` as

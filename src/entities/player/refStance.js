@@ -1,4 +1,4 @@
-// The hero's stand, fight hold and guard after the owner's reference footage (ADR-206; the owner,
+// The hero's stand, fight hold and guard after the owner's reference footage (ADR-207; the owner,
 // 2026-11-25: "review these sections on the videos for all the idle animation and poses for you to mirror
 // to this game ... i also want you to adjust the guarding stance and animation from the reference video").
 // Their answers: the two-handed hold is the FIGHT stance (locked on, a boss fight), at ease he stands
@@ -13,7 +13,7 @@
 //   REF_READY   the fight: both hands on the grip before the right of his belly, the left below the right,
 //               the blade up and forward (~47°) and out to his right, the point above his head; upright,
 //               relaxed. The footage stands the left foot ahead; this hold keeps the feet the light chain
-//               steps from and comes home to (the right a short step ahead, the hips square; ADR-206).
+//               steps from and comes home to (the right a short step ahead, the hips square; ADR-207).
 //   REF_GUARD   the block (`?guard=ward` keeps the cross ward before it, anim.js blockPose): a braced
 //               crouch, the knees bent and out, the feet wide, leaning in; both hands on the grip raised
 //               before his right shoulder, the elbows out, the blade rising across his face to his left
@@ -62,7 +62,7 @@ export function setGuard(id) {
 export const REF_STAND = {
   rH: [-0.08, -0.49, 0.12], // the sword hand at the hip, a fist outside the thigh, a little ahead
   // its elbow soft, a little back and out: the upper arm off the ribs (pulled in, it hung 3.5 cm into the
-  // warden cuirass's belt, ADR-206)
+  // warden cuirass's belt, ADR-207)
   rP: [-0.15, -0.3, -0.94],
   // the elbow the forearm-led tricks and spells start from (idles.js syncStandArm): the arm's pole as it was
   // before the elbow went out; from the elbow out, the salute's and the spells' raised fist turned 65-77° off the
@@ -84,11 +84,11 @@ export const REF_READY = {
   sw: [-30, 47], // up and forward, a little out to his right: the point above his head
   lH: [-0.05 + LEFT_FROM_RIGHT, -0.33, 0.28],
   // (the free elbow out: across his front, the robe's sleeve wing on that upper arm swung through his chest
-  // in the chain, 8.9 % of the route's frames; ADR-206)
+  // in the chain, 8.9 % of the route's frames; ADR-207)
   lP: [1, -0.2, -0.2],
   // (the feet the light chain steps from and comes home to: the right a short step ahead, the left back.
   // The footage stands the left ahead; from there every light stepped the other foot, the holding foot
-  // settled 8-12 cm sideways and the way home drew back the wrong one: ADR-206)
+  // settled 8-12 cm sideways and the way home drew back the wrong one: ADR-207)
   rF: [-0.12, 0.18],
   lF: [0.12, -0.18],
   hip: 0, // the hips' turn (pelvY: + the right hip ahead, with the right foot)

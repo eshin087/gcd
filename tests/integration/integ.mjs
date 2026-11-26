@@ -3450,7 +3450,7 @@ async function scenarioChain() {
       assert(t.figure === name || n !== 5, `${name} N=${n}: the figure laid is ${t.figure} (its cost ${t.fit.toFixed(2)})`);
       // (a star's spread is what its search (flurry.js _planChain) can find from where he dodged, round the
       // head where it stood: seven lines from one dodge spot reached 14° where another reached 21°, the search
-      // complete both times (ADR-206: the hero's new stance moved the seeded fight before it). The star he
+      // complete both times (ADR-207: the hero's new stance moved the seeded fight before it). The star he
       // runs must be the widest the search found, its whole search run, and never under 12°)
       let starOk = false, starWhy = '';
       if (t.figure === 'star' && !sh.ok) {
@@ -5648,7 +5648,7 @@ async function scenarioHero() {
       // of a knockdown within 10 cm (the hero's longer reach, anim.js HERO_SOFT, carries the hilt ~1 cm lower there): the cloak's own sheets go 16 cm under there, the springs lag the
       // fall); it swings out through a cut and hangs again at rest. Its angle is measured on the
       // upright body (unleaned): drawn, the whole figure leans ~29° toward the camera
-      // (ADR-206: the swing measured here is the falling cut's windup lifting a LEVEL blade, the fencer's guard
+      // (ADR-207: the swing measured here is the falling cut's windup lifting a LEVEL blade, the fencer's guard
       // (ADR-186's fight stance, `?idles=new`): from the reference's two-handed hold, the blade already up at
       // 47°, the hilt travels less into the coil and the ribbon swings 30° (51° with only the hold's blade
       // lowered to the fencer's 13°). The ribbon sword is a look kept for later: measured from the stance it
@@ -11446,7 +11446,7 @@ async function scenarioHeroIdles() {
   out('\n== scenario HEROIDLES (rests, habits and tricks; the guard hand off the belt; anatomy, the blade out of the body, pops, transitions) ==');
   const { DIM: HD, BODY, sheetOffset } = await imp('src/entities/player/model.js');
   const I = await imp('src/entities/player/idles.js');
-  // (ADR-206: the reference's idles are the default now, HEROREF checks them; these are ADR-186's, `?idles=new`)
+  // (ADR-207: the reference's idles are the default now, HEROREF checks them; these are ADR-186's, `?idles=new`)
   const idles0 = I.idlesMode();
   I.setIdles('new');
   const RSG = await imp('src/entities/player/refStance.js');
@@ -11810,7 +11810,7 @@ async function scenarioHeroIdles() {
 }
 
 // Scenarios written against ADR-186's idles and the cross ward (ADR-073): they measure those poses, so they run
-// with them (`?idles=new&guard=ward`) since the reference's are the default (ADR-206, HEROREF checks those)
+// with them (`?idles=new&guard=ward`) since the reference's are the default (ADR-207, HEROREF checks those)
 const pinAdr186 = (fn) => async () => {
   const I = await imp('src/entities/player/idles.js'), RS = await imp('src/entities/player/refStance.js');
   const m = I.idlesMode(), g = RS.guardMode();
@@ -11824,7 +11824,7 @@ const pinAdr186 = (fn) => async () => {
   }
 };
 
-// ================================================================== scenario: the reference's idles and guard (ADR-206)
+// ================================================================== scenario: the reference's idles and guard (ADR-207)
 // The owner, 2026-11-25, on their reference footage: "mirror" its idle poses and its guard. idles.js `ref` (the
 // default) and refStance.js: at ease the one-handed stand, in the fight the two-handed hold, the put-away and the
 // draw (`stow`), ADR-186's habits, tricks and spells from the new stand; the block's braced guard (`?guard=ward`:

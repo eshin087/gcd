@@ -345,7 +345,7 @@ export function stand(p, A) {
   if (!A.freeHand) return;
   const f = clamp(fin(A.fightW), 0, 1);
   if (idlesRef()) {
-    // (ADR-206, refStance.js: the reference's stand at ease, its two-handed hold in the fight)
+    // (ADR-207, refStance.js: the reference's stand at ease, its two-handed hold in the fight)
     if (f >= 0.999) refReady(p, P, A);
     else {
       refStand(p, P, A);
@@ -1565,7 +1565,7 @@ function chargePose(p, A) {
 const BLOCK_FEET = [-0.22, -0.33, 0.14, 0.34]; // the stance it settles into: right x, z; left x, z
 function blockPose(p, A) {
   guard(p, A);
-  // (ADR-206: the hero's guard after the owner's reference footage, refStance.js; `?guard=ward` the cross
+  // (ADR-207: the hero's guard after the owner's reference footage, refStance.js; `?guard=ward` the cross
   // ward below. A duelist's animator keeps the ward)
   const ref = A.freeHand === true && guardMode() === 'ref';
   if (ref) refGuard(p, P, A);
@@ -2282,7 +2282,7 @@ function deflectPose(p, A) {
   const n = fin(D?.n, 1), side = D?.side < 0 ? -1 : 1;
   const f = 1 - smoothstep(0.07, 0.2, t);
   if (A.freeHand === true && guardMode() === 'ref' && f > 0) {
-    // (ADR-206: the snap onto the blow is the cross ward's, body and all, and eases back into the reference's
+    // (ADR-207: the snap onto the blow is the cross ward's, body and all, and eases back into the reference's
     // guard with it: its blade and hand below are aimed from that body, and posed from the braced guard's
     // turned chest they missed the blow's steel: half the parried blows ended with the blades 0.2 m apart)
     for (let i = 0; i < WARD_BODY.length; i += 2) p[WARD_BODY[i]] += (WARD_BODY[i + 1] - p[WARD_BODY[i]]) * f;
@@ -2607,7 +2607,7 @@ const withP = (D) => ({ ...D, fn: (p, A, u, e) => D.fn(p, P, A, u, e) });
 const EASE_LIST = [...EASE_HABITS.map(withP), FIDGETS[0], { ...FIDGETS[2], blade: true }, ...EASE_TRICKS.map(withP)];
 const CUT_SLOW = new Set(['block', 'parry', 'heal', 'charge']); // (_idleLife: clips whose entry may take longer out of a trick)
 const FIGHT_LIST = FIGHT_ACTS.map(withP);
-// `?idles=ref` (the default, ADR-206): the same at ease with the put-away and the draw; in the fight the
+// `?idles=ref` (the default, ADR-207): the same at ease with the put-away and the draw; in the fight the
 // habits that keep both hands on the grip
 const EASE_LIST_REF = [...EASE_LIST, ...EASE_REF_EXTRA.map(withP)];
 const FIGHT_LIST_REF = FIGHT_ACTS_REF.map(withP);
@@ -2934,7 +2934,7 @@ export class HeroAnimator {
     // idle life: the action playing (k = FIDGETS index, -1 none), its time, weight, whether it was
     // cut, calm time since the last one ended, the wait before the next, and how many have played
     this.fidget = { k: -1, t: 0, w: 0, cut: false, still: 0, wait: IDLE_LIFE.after, last: -1, count: 0, name: '' };
-    // the put-away (idles.js STOW, ADR-206): 0 the sword whole … 1 gone (_idleLife; _stowSword shows it)
+    // the put-away (idles.js STOW, ADR-207): 0 the sword whole … 1 gone (_idleLife; _stowSword shows it)
     this.stow = 0;
     this._stowK = 0;
     this._stowScale = null;
@@ -3937,7 +3937,7 @@ export class HeroAnimator {
     if (this.freeHand) this._stowSword(this.stow);
   }
 
-  /** The put-away (idles.js STOW, ADR-206; the hero only): the weapon's own meshes (rig.slots.weapon: the
+  /** The put-away (idles.js STOW, ADR-207; the hero only): the weapon's own meshes (rig.slots.weapon: the
    *  blade, the hilt; never the fists on the grip, which are the arms') draw into the hilt as k goes 0 → 1, the
    *  steel first, and hide at 1; at 0 they are exactly as built. Nothing is added to the rig (a new object
    *  draws a uuid off the seeded Math.random). The hit test is the swept joint, never these meshes. */

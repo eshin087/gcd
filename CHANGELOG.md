@@ -5,7 +5,7 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 
 ## [Unreleased]
 One hundred and seven pieces of work since 0.4.0:
-- **The hero stands, holds and guards like the reference** (2026-11-25, ADR-206). *Changed:* after the owner's
+- **The hero stands, holds and guards like the reference** (2026-11-25, ADR-207). *Changed:* after the owner's
   reference footage, at ease the hero now stands tall with the sword in one hand, its point forward and down by his
   right foot, the free arm hanging; in a fight (locked on, a boss) he takes the sword in both hands before him, the
   point up above his head. Now and then at ease he puts the sword away at his left hip, where it burns out in its

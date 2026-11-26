@@ -189,7 +189,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
-## M1.91 — The hero's idles and guard after the owner's reference footage (2026-11-25, `claude/idles-reference`, ADR-206)
+## M1.91 — The hero's idles and guard after the owner's reference footage (2026-11-25, `claude/idles-reference`, ADR-207)
 - [x] At ease the reference's one-handed stand; in the fight its two-handed hold; ADR-186's habits, tricks and spells from the new stand (`?idles=new|old`: the looks before)
 - [x] The put-away and the draw (`stow`): the sword burns out in its green flame at his left hip and is drawn back out of it; whole the frame anything else starts
 - [x] The guard: the braced crouch, the hands before the chin, the blade across his face (`?guard=ward`: the cross ward); the block's timings untouched
@@ -214,7 +214,10 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [ ] Lighter trees on LOW (the presets' grass counts do nothing now)
 - [ ] The floors' shader (its relief is most of its cost; not bakeable as it is drawn)
 - [ ] Script: the shared uniforms' upload (about 0.5 ms a frame), the worst frames' hitches
-- [ ] Measured on the owner's laptop (Intel Core Ultra 7 255U, integrated graphics) and on a phone
+- [x] Guards so the cost cannot creep back: a cost budget per level in `npm test` (`cost.mjs`) and `npm run perf` on a real GPU (ADR-206, `perf/cost-budget`)
+- [ ] Measured on the owner's laptop (Intel Core Ultra 7 255U, integrated graphics) and on a phone (`npm run perf --save` there gives the first baseline)
+- [ ] An in-game readout of AUTO's step, the GPU and script ms and its step log (F2), for the owner's devices
+- [ ] A starting step per level for a heavy level (so AUTO does not find it by a slow stretch)
 
 ## M1.88 — The dragon print: the world printed in the wyrm's digits (2026-11-25, `render/ground-looks`, ADR-198)
 - [x] Four ground looks rendered; the owner picked b, the dragon ground (a lit relief in the wyrm's digits on a world-anchored lattice)
