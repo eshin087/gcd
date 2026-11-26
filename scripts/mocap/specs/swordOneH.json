@@ -1,0 +1,715 @@
+{
+ "set": "swordOneH",
+ "title": "One-handed sword: heavy, charged and running attacks",
+ "film": "sword",
+ "out": "src/entities/hero2/clips/swordOneH.js",
+ "clips": [
+  {
+   "name": "heavy1",
+   "title": "Heavy attack 1 (the lunging thrust)",
+   "src": "sword 1:40-2:10",
+   "kind": "oneshot",
+   "fps": 60,
+   "sword": true,
+   "search": 0.3,
+   "takes": [
+    {
+     "t0": "1:41.95",
+     "t1": "1:43.45",
+     "view": "front-right",
+     "yaw": 90,
+     "limb_keys": {
+      "blend": 3,
+      "keys": [
+       {
+        "t": "1:42.30",
+        "pts": {
+         "shoulderL": [
+          689,
+          432
+         ],
+         "shoulderR": [
+          607,
+          417
+         ],
+         "elbowL": [
+          751,
+          446
+         ],
+         "elbowR": [
+          571,
+          439
+         ],
+         "wristL": [
+          777,
+          492
+         ],
+         "wristR": [
+          541,
+          474
+         ],
+         "hilt": [
+          535,
+          479
+         ],
+         "tip": [
+          544,
+          662
+         ]
+        },
+        "far": [
+         "elbowR",
+         "wristR"
+        ]
+       },
+       {
+        "t": "1:42.40",
+        "pts": {
+         "shoulderL": [
+          696,
+          429
+         ],
+         "shoulderR": [
+          617,
+          412
+         ],
+         "elbowL": [
+          757,
+          442
+         ],
+         "elbowR": [
+          580,
+          439
+         ],
+         "wristL": [
+          784,
+          485
+         ],
+         "wristR": [
+          551,
+          470
+         ],
+         "hilt": [
+          545,
+          475
+         ],
+         "tip": [
+          518,
+          656
+         ]
+        },
+        "far": [
+         "elbowR",
+         "wristR"
+        ]
+       },
+       {
+        "t": "1:42.45",
+        "pts": {
+         "shoulderL": [
+          714,
+          416
+         ],
+         "shoulderR": [
+          634,
+          402
+         ],
+         "elbowL": [
+          767,
+          425
+         ],
+         "elbowR": [
+          593,
+          430
+         ],
+         "wristL": [
+          800,
+          451
+         ],
+         "wristR": [
+          560,
+          465
+         ],
+         "hilt": [
+          554,
+          469
+         ],
+         "tip": [
+          631,
+          635
+         ]
+        },
+        "far": [
+         "elbowR",
+         "wristR"
+        ]
+       },
+       {
+        "t": "1:42.50",
+        "pts": {
+         "shoulderL": [
+          726,
+          408
+         ],
+         "shoulderR": [
+          659,
+          406
+         ],
+         "elbowL": [
+          773,
+          417
+         ],
+         "elbowR": [
+          606,
+          439
+         ],
+         "wristL": [
+          823,
+          424
+         ],
+         "wristR": [
+          561,
+          475
+         ],
+         "hilt": [
+          555,
+          480
+         ],
+         "tip": [
+          700,
+          592
+         ]
+        },
+        "far": [
+         "elbowR",
+         "wristR"
+        ]
+       },
+       {
+        "t": "1:42.55",
+        "pts": {
+         "shoulderL": [
+          777,
+          402
+         ],
+         "shoulderR": [
+          728,
+          402
+         ],
+         "elbowL": [
+          795,
+          420
+         ],
+         "elbowR": [
+          660,
+          445
+         ],
+         "wristL": [
+          817,
+          415
+         ],
+         "wristR": [
+          600,
+          482
+         ],
+         "hilt": [
+          600,
+          482
+         ],
+         "tip": [
+          800,
+          515
+         ]
+        },
+        "far": [
+         "wristR"
+        ]
+       },
+       {
+        "t": "1:42.60",
+        "pts": {
+         "shoulderL": [
+          850,
+          419
+         ],
+         "shoulderR": [
+          809,
+          403
+         ],
+         "elbowL": [
+          877,
+          457
+         ],
+         "elbowR": [
+          777,
+          434
+         ],
+         "wristL": [
+          928,
+          444
+         ],
+         "wristR": [
+          865,
+          455
+         ],
+         "hilt": [
+          865,
+          455
+         ],
+         "tip": [
+          1060,
+          462
+         ]
+        }
+       },
+       {
+        "t": "1:42.65",
+        "pts": {
+         "shoulderL": [
+          865,
+          432
+         ],
+         "shoulderR": [
+          902,
+          429
+         ],
+         "elbowL": [
+          886,
+          471
+         ],
+         "elbowR": [
+          965,
+          440
+         ],
+         "wristL": [
+          930,
+          478
+         ],
+         "wristR": [
+          1021,
+          446
+         ],
+         "hilt": [
+          1030,
+          447
+         ],
+         "tip": [
+          1243,
+          474
+         ]
+        }
+       },
+       {
+        "t": "1:42.70",
+        "pts": {
+         "shoulderL": [
+          871,
+          436
+         ],
+         "shoulderR": [
+          911,
+          454
+         ],
+         "elbowL": [
+          869,
+          476
+         ],
+         "elbowR": [
+          960,
+          447
+         ],
+         "wristL": [
+          897,
+          499
+         ],
+         "wristR": [
+          1010,
+          441
+         ],
+         "hilt": [
+          1019,
+          441
+         ],
+         "tip": [
+          1198,
+          479
+         ]
+        }
+       },
+       {
+        "t": "1:42.75",
+        "pts": {
+         "shoulderL": [
+          864,
+          439
+         ],
+         "shoulderR": [
+          902,
+          459
+         ],
+         "elbowL": [
+          843,
+          478
+         ],
+         "elbowR": [
+          961,
+          453
+         ],
+         "wristL": [
+          863,
+          514
+         ],
+         "wristR": [
+          1015,
+          448
+         ],
+         "hilt": [
+          1025,
+          448
+         ],
+         "tip": [
+          1206,
+          477
+         ]
+        }
+       },
+       {
+        "t": "1:42.80",
+        "pts": {
+         "shoulderL": [
+          841,
+          443
+         ],
+         "shoulderR": [
+          871,
+          465
+         ],
+         "elbowL": [
+          826,
+          465
+         ],
+         "elbowR": [
+          929,
+          455
+         ],
+         "wristL": [
+          834,
+          486
+         ],
+         "wristR": [
+          980,
+          449
+         ],
+         "hilt": [
+          985,
+          449
+         ],
+         "tip": [
+          1167,
+          430
+         ]
+        }
+       },
+       {
+        "t": "1:42.90",
+        "pts": {
+         "shoulderL": [
+          800,
+          434
+         ],
+         "shoulderR": [
+          837,
+          461
+         ],
+         "elbowL": [
+          795,
+          452
+         ],
+         "elbowR": [
+          887,
+          451
+         ],
+         "wristL": [
+          811,
+          456
+         ],
+         "wristR": [
+          926,
+          445
+         ],
+         "hilt": [
+          933,
+          444
+         ],
+         "tip": [
+          1114,
+          415
+         ]
+        }
+       },
+       {
+        "t": "1:43.00",
+        "pts": {
+         "shoulderL": [
+          762,
+          426
+         ],
+         "shoulderR": [
+          809,
+          453
+         ],
+         "elbowL": [
+          740,
+          442
+         ],
+         "elbowR": [
+          864,
+          446
+         ],
+         "wristL": [
+          759,
+          416
+         ],
+         "wristR": [
+          912,
+          435
+         ],
+         "hilt": [
+          922,
+          436
+         ],
+         "tip": [
+          1104,
+          417
+         ]
+        }
+       },
+       {
+        "t": "1:43.10",
+        "pts": {
+         "shoulderL": [
+          734,
+          424
+         ],
+         "shoulderR": [
+          784,
+          448
+         ],
+         "elbowL": [
+          705,
+          449
+         ],
+         "elbowR": [
+          837,
+          445
+         ],
+         "wristL": [
+          730,
+          414
+         ],
+         "wristR": [
+          880,
+          435
+         ],
+         "hilt": [
+          888,
+          433
+         ],
+         "tip": [
+          1070,
+          414
+         ]
+        }
+       },
+       {
+        "t": "1:43.20",
+        "pts": {
+         "shoulderL": [
+          715,
+          417
+         ],
+         "shoulderR": [
+          761,
+          443
+         ],
+         "elbowL": [
+          698,
+          448
+         ],
+         "elbowR": [
+          819,
+          448
+         ],
+         "wristL": [
+          724,
+          466
+         ],
+         "wristR": [
+          861,
+          439
+         ],
+         "hilt": [
+          869,
+          438
+         ],
+         "tip": [
+          1051,
+          420
+         ]
+        }
+       },
+       {
+        "t": "1:43.30",
+        "pts": {
+         "shoulderL": [
+          704,
+          416
+         ],
+         "shoulderR": [
+          733,
+          432
+         ],
+         "elbowL": [
+          707,
+          468
+         ],
+         "elbowR": [
+          791,
+          436
+         ],
+         "wristL": [
+          733,
+          502
+         ],
+         "wristR": [
+          848,
+          439
+         ],
+         "hilt": [
+          858,
+          438
+         ],
+         "tip": [
+          1041,
+          438
+         ]
+        }
+       },
+       {
+        "t": "1:43.40",
+        "pts": {
+         "shoulderL": [
+          689,
+          417
+         ],
+         "shoulderR": [
+          713,
+          417
+         ],
+         "elbowL": [
+          710,
+          467
+         ],
+         "elbowR": [
+          759,
+          428
+         ],
+         "wristL": [
+          748,
+          499
+         ],
+         "wristR": [
+          800,
+          437
+         ],
+         "hilt": [
+          807,
+          437
+         ],
+         "tip": [
+          990,
+          438
+         ]
+        }
+       }
+      ]
+     },
+     "lose": [
+      {
+       "t0": "1:42.42",
+       "t1": "1:42.82",
+       "limbs": [
+        "armL",
+        "armR"
+       ]
+      }
+     ]
+    },
+    {
+     "t0": "1:49.10",
+     "t1": "1:50.60",
+     "view": "left",
+     "check": true,
+     "sync": "1:49.76"
+    },
+    {
+     "t0": "1:56.70",
+     "t1": "1:58.20",
+     "view": "back",
+     "yaw": 180,
+     "check": true,
+     "sync": "1:57.51"
+    }
+   ],
+   "phases": {
+    "windup": "1:42.40",
+    "active": "1:42.80",
+    "recover": "1:43.40"
+   },
+   "events": [
+    {
+     "t": "1:42.72",
+     "name": "hit"
+    }
+   ],
+   "face": "hit",
+   "blade_blur": true,
+   "free_hand": true,
+   "swing": true,
+   "root": {
+    "smooth": 0.1,
+    "max_off": 0.15
+   },
+   "foot_ease": 14,
+   "props": {
+    "R": "sword",
+    "L": null
+   },
+   "from": "swordIdle",
+   "to": "heavy1",
+   "qa": {
+    "maxStepDeg": 48,
+    "reason": "keyed cut: the sword arm comes from behind the hip to the full thrust in about 0.1 s (video 1:42.55-1:42.65), a blur in every view"
+   },
+   "sheet_frames": [
+    0,
+    20,
+    27,
+    33,
+    36,
+    39,
+    42,
+    46,
+    60,
+    90
+   ],
+   "travel_m": 0.55,
+   "travel_dir": 0,
+   "travel_span": [
+    "1:42.42",
+    "1:42.85"
+   ],
+   "sync": "1:42.72"
+  }
+ ]
+}
