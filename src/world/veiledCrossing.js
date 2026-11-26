@@ -457,11 +457,12 @@ function buildFallenSection(L, x, z, w, h, d, seed, end) {
   lumpy(g, 0.12, 0.5, seed);
   if (end) jag(g, h * 0.45, h * 0.5, seed * 1.7); // the broken end
   carve(g, { col: facadeCol(L, L.concrete, seed, true), ao: (px, py) => 0.5 + 0.5 * Math.min(1, py / h), edge: EDGE });
-  const ruin = box(w * 0.96, 1.6, d * 0.9, x, 0, z);
+  // (felled, it reads as a GAP in the wall, the Null's bore: a low spill of rubble, no stub standing)
+  const ruin = box(w * 0.9, 0.42, d * 0.8, x, 0, z);
   noBottom(ruin);
-  refine(ruin, 1.0);
-  jag(ruin, 0.7, 1.0, seed);
-  carve(ruin, { col: mul(L.concrete, 0.6), ao: 0.7 });
+  refine(ruin, 0.6);
+  jag(ruin, 0.3, 0.8, seed);
+  carve(ruin, { col: mul(L.concrete, 0.55), ao: 0.6 });
   return { geos: [g], ruin: [ruin] };
 }
 
@@ -869,9 +870,10 @@ function build(U, colliders) {
       const cs = [colliders.add(x - w / 4, FT.z + 0.7, 2.6, 'stone'), colliders.add(x + w / 4, FT.z + 0.7, 2.6, 'stone')];
       breakables.push({
         // (its footprint: half a section wide, toward its south face where blows meet it; a 5 m line
-        // through one section's middle does not reach the next: CROSSING's Null bores one hole)
+        // through one section's middle does not reach the next: CROSSING's Null bores one hole.
+        // lift 2: only he can tear one up, Bring It Down's fallback once no tower top stands)
         kind: 'fallenTower', scene: 'crossing', mat: 'stone', look: 'range', x, z: FT.z + 0.7, r: w * 0.5, h: FT.h, range: fallenRuns.add(s.geos), colliders: cs,
-        hp: FT.hp, weight: 3, topples: false, cover: true, lift: 0, broken: { range: fallenRuin.add(s.ruin), r: 0 }, wreck: false, shed,
+        hp: FT.hp, weight: 3, topples: false, cover: true, lift: 2, broken: { range: fallenRuin.add(s.ruin), r: 0 }, wreck: false, shed,
       });
     }
   }

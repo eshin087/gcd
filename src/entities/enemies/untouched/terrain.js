@@ -50,6 +50,8 @@ import { perPhase } from './tuning.js';
 //       Reused record. A beat can then aim its knock-back with `from` = hero - (dx, dz).
 // No per-frame allocation: fixed records, reused. Look jitter from the effects' own stream (fx.lrand).
 
+const GROUND = Object.freeze({ ground: true });
+const CHIP = Object.freeze({ chip: true }); // (held: bitten by the hero's blade, never broken while carried) // (a raised piece let go comes down to the floor: destructibles.drop)
 const INTACT = 0, HELD = 3, FLYING = 4;
 const TAU = Math.PI * 2;
 const ease = (u) => u * u * (3 - 2 * u);
@@ -130,7 +132,7 @@ export class WjTerrain {
     for (const D of this.drops) {
       if (!D.live) continue;
       if (!D.released) {
-        if (D.piece?.state === HELD) this.W?.drop?.(D.piece);
+        if (D.piece?.state === HELD) this.W?.drop?.(D.piece, GROUND);
         this.stats.letGo++;
         this._endDrop(D);
       }
@@ -160,7 +162,7 @@ export class WjTerrain {
   _letGo() {
     for (const h of this.hold) {
       if (!h.piece) continue;
-      if (h.piece.state === HELD) this.W?.drop?.(h.piece);
+      if (h.piece.state === HELD) this.W?.drop?.(h.piece, GROUND);
       this.stats.letGo++;
       h.piece = null;
       h.act = null;
@@ -328,10 +330,11 @@ export class WjTerrain {
   /** Lift a piece into a hold slot (it rises from where it lies). */
   _take(pc, A, mode, slot) {
     const W = this.W;
-    if (!pc || pc.state !== INTACT || pc.absent || !W?.take?.(pc)) return false;
+    // (what he holds turning round him is a wall the hero's blade chips: destructibles take o.chip)
+    if (!pc || pc.state !== INTACT || pc.absent || !W?.take?.(pc, CHIP)) return false;
     const h = this.hold.find((x) => !x.piece);
     if (!h) {
-      W.drop?.(pc);
+      W.drop?.(pc, GROUND);
       return false;
     }
     h.piece = pc;
@@ -422,7 +425,7 @@ export class WjTerrain {
     if (!W?.throwTo) return null;
     const R = this.fly.find((f) => !f.live);
     if (!R) {
-      W.drop?.(pc);
+      W.drop?.(pc, GROUND);
       return null;
     }
     const H = this._hero(), s = d.brain?._sense?.();
@@ -452,7 +455,7 @@ export class WjTerrain {
     tw.by = 'boss';
     tw.onLand = this._onLand;
     if (!W.throwTo(pc, tx, tz, tw)) {
-      W.drop?.(pc);
+      W.drop?.(pc, GROUND);
       return null;
     }
     R.live = true;
@@ -558,7 +561,7 @@ export class WjTerrain {
     if (!pc || pc.state !== INTACT || pc.absent || !W?.take?.(pc)) return false;
     const D = this.drops.find((x) => !x.live);
     if (!D) {
-      W.drop?.(pc);
+      W.drop?.(pc, GROUND);
       return false;
     }
     const nb = A?.beats?.find((x) => x !== b && (x.def.wjDown === 'drop' || x.def.wjFloat === 'drop'));
@@ -829,7 +832,7 @@ export class WjTerrain {
         continue;
       }
       if (h.act !== act) {
-        W?.drop?.(pc);
+        W?.drop?.(pc, GROUND);
         this.stats.letGo++;
         h.piece = null;
         h.act = null;
@@ -845,7 +848,7 @@ export class WjTerrain {
       if (!D.live) continue;
       if (!D.released && D.act !== act) {
         // (his move cut short before the fall: it drops where it hangs, harmless)
-        if (D.piece?.state === HELD) W?.drop?.(D.piece);
+        if (D.piece?.state === HELD) W?.drop?.(D.piece, GROUND);
         this.stats.letGo++;
         this._endDrop(D);
         continue;

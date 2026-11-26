@@ -541,6 +541,23 @@ async function scenarioBarrier() {
     void p;
   }
   {
+    // the first cut that lands while it is open surprises him (once a fight; the body's `surprised`)
+    const G = build();
+    const d = G.game.dragon;
+    duel(G, { dist: 2 });
+    d.barrier.open('debug');
+    const seen = [];
+    for (let i = 0; i < 2; i++) {
+      d.brain.startReact('flinch');
+      const hp0 = d.hp;
+      d.takeHit({ damage: 30, part: 'body' });
+      seen.push(`${hp0 > d.hp ? 'cut' : 'none'} ${d.brain.react?.kind}`);
+      run(G, 1.2);
+      d.barrier.open('debug');
+    }
+    assert(seen[0] === 'cut surprised' && seen[1] !== 'cut surprised' && seen[1].startsWith('cut'), `the first cut through the open barrier: surprised, once (${seen.join(' · ')})`);
+  }
+  {
     const G = build();
     const d = G.game.dragon;
     duel(G, { dist: 3 });
@@ -817,9 +834,12 @@ async function scenarioPhases() {
   assert(d.hp === gate && d.brain.pendingPhase === 2, `damage stops at the 66 % gate (${d.hp} = ${gate})`);
   let p2 = 0, p3 = 0;
   G.watch = (n) => { if (n === 'dragon:phase2') p2++; if (n === 'dragon:phase3') p3++; };
+  const unv = { n: 0, k: 0, flareU: NaN };
+  { const f0 = d.fx.unveil?.bind(d.fx); d.fx.unveil = (dd, k) => { unv.n++; unv.k = Math.max(unv.k, k); const a = d.brain.act, b = a?.beats[0]; if (k >= 0.98 && !Number.isFinite(unv.flareU) && b) unv.flareU = (a.t - b.start) / b.W; return f0?.(dd, k); }; }
   run(G, 1.5, null, () => d.brain.act?.name === 'unveil');
   assert(d.brain.act?.name === 'unveil' && d.phase === 2 && p2 === 1, 'The Blindfold Comes Off: phase 2, dragon:phase2');
   run(G, 5, null, () => d.mode !== 'act');
+  assert(unv.n > 30 && unv.k >= 0.98 && unv.flareU >= 0.88 && unv.flareU < 0.95, `the band's light and the eyes' flare through its windup, the flare just before the impact (${unv.n} frames, flare at u ${unv.flareU.toFixed(3)})`);
   assert(d.dressPhase === 2 && d.eyesK >= 1, `the blindfold off at its impact (dressPhase ${d.dressPhase}, eyes ${d.eyesK})`);
   assert(game.flow._text('phase2') === 'THE BLINDFOLD COMES OFF', 'the level\'s phase-2 banner');
   const gate3 = d.maxHp * TUNING.phaseAt[2];
@@ -1840,7 +1860,7 @@ async function scenarioDown() {
     const tops0 = trStanding(G, ['towerTop']).length;
     let fix = null, landed = null;
     const tl = t._dropLanded.bind(t);
-    t._dropLanded = (D, x, z) => { landed = { x, z, t: G.game.time }; return tl(D, x, z); };
+    t._dropLanded = (D, x, z) => { landed = { x, z, t: G.game.time, y: D.piece ? D.piece.y0 + D.piece.pivot.position.y : NaN, y0: D.piece?.y0 }; return tl(D, x, z); };
     const f0 = t.frame.bind(t);
     t.frame = (dt) => { f0(dt); const D = t.drops.find((x) => x.live && x.fixed); if (D && !fix) fix = { x: D.tx, z: D.tz, t: G.game.time }; };
     const r = trRun(G, 'bringDown', [how], { dist: 6, max: 12 });
@@ -1854,6 +1874,7 @@ async function scenarioDown() {
   assert(rows.every((x) => x.r.flashes.length === 1 && x.r.flashes[0].tell === TELL.RED && x.r.flashes[0].hazard), 'one cue, red, on the place it lands');
   assert(rows.every((x) => x.fix && x.landed && Math.hypot(x.fix.x - x.landed.x, x.fix.z - x.landed.z) < 0.05 && x.r.tells.length >= 1 && x.r.tells[0].impactIn >= 0.6), 'it lands where the place was fixed, told >= 0.6 s before');
   assert(rows.every((x) => x.crater), 'a crater mark where it lands');
+  assert(rows.every((x) => x.landed && x.landed.y0 > 1 && Math.abs(x.landed.y) < 0.05), `the top (raised ${rows[0].landed?.y0} m) comes down to the floor and lands there (at ${rows.map((x) => x.landed?.y?.toFixed(2)).join(' / ')} m: throwTo ground)`);
   assert(none.r.hits.length === 1 && none.r.hits[0].r === RESULT.HIT && none.r.dhp > 0, `standing on the place: struck once (-${none.r.dhp})`);
   assert(walk.r.hits.length === 0 && walk.r.dhp === 0, 'walked off the fixed place: it misses');
   assert(dodge.r.dhp === 0, `rolled out: no health lost (${dodge.r.hits.map((h) => h.r).join(',') || 'not reached'})`);
@@ -1862,9 +1883,22 @@ async function scenarioDown() {
     const d = G.game.dragon, t = trOf(G);
     duel(G, { dist: 6, form: 2 });
     trSpend(G, ['towerTop']);
+    const W = G.game.world.destructibles, take = W.take.bind(W);
+    let took = null;
+    W.take = (b, o) => { const r = take(b, o); if (r && !took) took = b.kind; return r; };
+    const ok0 = d.brain.trigger('bringDown');
+    run(G, 4);
+    W.take = take;
+    assert(ok0 && took === 'fallenTower', `no top left: Bring It Down tears up a section of the fallen tower instead (${took})`);
+  }
+  {
+    const G = build();
+    const d = G.game.dragon, t = trOf(G);
+    duel(G, { dist: 6, form: 2 });
+    trSpend(G, ['towerTop', 'fallenTower']);
     const ok = d.brain.trigger('bringDown');
     run(G, 0.5);
-    assert(!ok && t.weigh('bringDown', MOVES.bringDown, 1, 6) === 0 && d.mode === 'foot', 'no top left (the fallen tower sections cannot be lifted): refused');
+    assert(!ok && t.weigh('bringDown', MOVES.bringDown, 1, 6) === 0 && d.mode === 'foot', 'no top and no fallen tower section left: refused');
   }
 }
 
@@ -1881,7 +1915,14 @@ async function scenarioOrbit() {
     const H = t.hold.filter((h) => h.piece && h.mode === 'orbit' && h.t > TUNING.terrain.orbit.liftT);
     held = Math.max(held, H.length);
     for (const h of H) { const e = Math.hypot(h.piece.px - d.position.x, h.piece.pz - d.position.z); rMin = Math.min(rMin, e); rMax = Math.max(rMax, e); }
+    // the hero's blade through one of them (once): it is bitten where it passes, and stays in his hold
+    if (H.length && !chip) {
+      const W = G.game.world.destructibles, pc = H[0].piece, b0 = W.bitten, y = pc.y0 + pc.py + pc.h * 0.5;
+      const n = W.sweep(pc.px - 1.2, pc.pz, pc.px + 1.2, pc.pz, 0.3, 0.9, { kind: 'blunt', by: 'player', dx: 1, dz: 0, y, ya: y, yb: y, src: W.swing(), tx: 1, tz: 0 });
+      chip = { n, bit: W.bitten - b0, piece: pc, state0: pc.state, hp: pc.hp };
+    }
   };
+  let chip = null;
   const kinds = TUNING.terrain.orbit.kinds;
   const n0 = trStanding(G, kinds).length;
   const r = trRun(G, 'theOrbit', ['parry', 'parry', 'dodge'], { dist: 7, max: 12 });
@@ -1892,6 +1933,7 @@ async function scenarioOrbit() {
   assert(gaps.length === 2 && gaps[0] >= 0.34 && gaps[1] >= 0.36, `the gaps are fair (${gaps.map((g) => g.toFixed(2)).join(' / ')} s: >= 0.34, a red after a guard >= 0.36)`);
   assert(r.dhp === 0, `parried, parried, rolled: no health lost (${r.hits.map((h) => h.r).join(',')})`);
   assert(trStanding(G, kinds).length <= n0 - 3 && !t.busy, `the three pieces are spent (and what they broke landing: ${n0} -> ${trStanding(G, kinds).length})`);
+  assert(chip && chip.n === 1 && chip.bit > 0 && chip.state0 === 3 && chip.hp >= 1, `the hero's blade chips a piece he holds, the carry goes on (struck ${chip?.n}, ${chip?.bit} letters off, state ${chip?.state0}, hp ${chip?.hp?.toFixed(2)})`);
 }
 
 async function scenarioRoad() {
