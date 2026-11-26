@@ -8,7 +8,7 @@ export const TUNING_SPELLS = {
   // ---- the choice (WjSpells.weigh): a spell is weighed up when the hero stands far or keeps blocking;
   // never two spells back to back; none while one of his spells still lives on the floor
   choice: {
-    far: 6, farK: 1.8, // the hero beyond `far` m: x farK
+    far: 6, farK: 1.5, // the hero beyond `far` m: x farK
     near: 2.6, nearK: 1, // ... inside `near` m: x nearK (1: a spell is weighed UP far, never down near)
     blockAt: 1.2, blockK: 2.2, // the hero's guard held this many s of the last few: x blockK
     blockMax: 4, blockFall: 0.5, // (the count's cap; it falls at this rate a second while he does not guard)

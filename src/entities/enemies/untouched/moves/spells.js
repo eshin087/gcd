@@ -61,13 +61,13 @@ export function moves(X) {
     /** Azure Draw: one finger lifted; a blue knot opens beyond the hero and drags him (and the loose
      *  wreckage) toward it for its life, then collapses (red: be out of it, or roll). */
     azureDraw: {
-      label: 'Azure Draw', phase: 1, weight: [2.4, 1.6, 1.8], cooldown: 7, band: [0, 40], recovery: 0.75, cat: 'spell',
+      label: 'Azure Draw', phase: 1, weight: [1.5, 1.0, 1.0], cooldown: 7, band: [0, 40], recovery: 0.75, cat: 'spell',
       beats: [spell(R, D.windup, D.damage, D.knockback, { wjDraw: 'knot' }, [[0.08, FINGER], [0.3, FINGER_UP], [0.75, FINGER_IN], [0.86, FINGER_IN], [1.0, { ...FINGER_DOWN, e: 'i' }], [2.0, FINGER_DOWN]])],
     },
     /** The Yank: Draw on the hero himself: a short blue cue, the pull (always `travel` s), the fist he is
      *  pulled onto (blue: parry it as you arrive). */
     azureYank: {
-      label: 'The Yank', phase: 1, weight: [2.4, 1.8, 2.0], cooldown: 6, band: [2.8, Y.max], recovery: 0.7, cat: 'spell',
+      label: 'The Yank', phase: 1, weight: [1.5, 1.1, 1.1], cooldown: 6, band: [2.8, Y.max], recovery: 0.7, cat: 'spell',
       beats: [{
         ...yankFist, knockback: Y.knockback, close: 0, track: 1, wjYank: true,
         keys: [[0.12, REACH], [0.4, REACH], [0.62, REACH_IN], ...yankFist.keys.filter(([u]) => u >= 0.8)],
@@ -77,24 +77,24 @@ export function moves(X) {
     /** Crimson Cast: the point flicked from his fingers to the hero's place (fixed at `fix`), a burst:
      *  9 m from the point and through whatever is behind, a crater, the loose pieces thrown outward. */
     crimsonCast: {
-      label: 'Crimson Cast', phase: 2, weight: [0, 2.6, 2.8], cooldown: 6, band: [0, 40], recovery: 0.7, cat: 'spell',
+      label: 'Crimson Cast', phase: 2, weight: [0, 1.6, 1.6], cooldown: 6, band: [0, 40], recovery: 0.7, cat: 'spell',
       beats: [spell(R, C.windup, C.damage, C.knockback, { wjCast: 'point', wjCrash: C.crash }, [[0.1, FLICK_COCK], [0.62, FLICK_COCK], [0.8, { ...FLICK, e: 'i' }], [2.0, FLICK]], { fixed: false })],
     },
     /** Point Blank: he is gone, behind the hero, Cast held at his palm: released point blank (a short red). */
     crimsonPalm: {
-      label: 'Point Blank', phase: 2, weight: [0, 1.6, 2.0], cooldown: 8, band: [0, 9], recovery: 0.7, cat: 'spell', gapCloser: true,
+      label: 'Point Blank', phase: 2, weight: [0, 1.0, 1.2], cooldown: 8, band: [0, 9], recovery: 0.7, cat: 'spell', gapCloser: true,
       beats: [spell(R, P.windup, P.damage, P.knockback, { wjCast: 'palm', wjCrash: P.crash, wjBlink: { behind: P.behind } }, holdKeys(PALM_COCK, PALM, 0.78), { fixed: false, track: 0.85 })],
     },
     /** The Wrecking Knot: the knot dragged across the crossing along a line shown before it moves (16 m
      *  in 1.4 s), chewing a trench and every piece on its way, dragging the hero toward its path. */
     wreckingKnot: {
-      label: 'The Wrecking Knot', phase: 2, weight: [0, 2.0, 2.2], cooldown: 10, band: [2, 40], recovery: 0.8, cat: 'spell',
+      label: 'The Wrecking Knot', phase: 2, weight: [0, 1.2, 1.2], cooldown: 10, band: [2, 40], recovery: 0.8, cat: 'spell',
       beats: [spell(R, Wk.windup, Wk.damage, Wk.knockback, { wjDraw: 'wreck', wjCrash: Wk.crash, sustain: { dur: Wk.time / 2, tick: 0.2 } }, [[0.1, FINGER], [0.28, FINGER_UP], [0.8, FINGER_UP], [1.0, { ...FINGER_DOWN, e: 'i' }], [2.0, FINGER_DOWN]], { track: Wk.fix })],
     },
     /** THE VIOLET NULL: blue and red over his fingers, merged (the long, loud cue; he does not move); the
      *  line fixed and shown on the road; then a 5 m line across the whole arena that erases what is on it. */
     violetNull: {
-      label: 'Violet Null', phase: 2, weight: [0, 1.4, 1.6], cooldown: 24, band: [0, 46], recovery: 1.0, cat: 'spell',
+      label: 'Violet Null', phase: 2, weight: [0, 1.0, 1.0], cooldown: 24, band: [0, 46], recovery: 1.0, cat: 'spell',
       beats: [spell(R, Nl.windup, Nl.damage, Nl.knockback, { wjNull: 'line', sustain: { dur: Nl.contact, tick: 0.1 } }, [[0.1, GATHER], [0.5, GATHER], [0.82, MERGED], [0.92, MERGED], [1.0, { ...LINE, e: 'i' }], [2.0, LINE]], { track: Nl.fix })],
     },
     // ================================================================ phase 3, below 12 %
