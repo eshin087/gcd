@@ -169,6 +169,19 @@ def build_clip(spec, clip, log=print):
             b = fuse.symmetrize(b, float(clip.get('symmetric')), clip.get('sym_parts'), sv)
         sig = 1.0
         b = retarget.smooth_time(b, sig, loop=True)
+        if clip.get('cycle') is not None or clip.get('time_scale') is not None:
+            # spec "cycle" (s) / "time_scale": the cycle plays in another time (crouchSprint from the crouch
+            # run's takes at 0.72 s instead of 0.83): the fused cycle is resampled round the loop; the
+            # travel per cycle stays, so the speed follows
+            P2 = float(clip['cycle']) if clip.get('cycle') is not None else P * float(clip['time_scale'])
+            n2 = max(4, int(round(P2 * fps)))
+            x = np.arange(n2) * n / n2
+            i0 = np.floor(x).astype(int) % n
+            a_ = (x - np.floor(x))[:, None, None]
+            b = b[i0] * (1 - a_) + b[(i0 + 1) % n] * a_
+            B.shift = [int(round(s_ * n2 / n)) % n2 for s_ in B.shift]
+            log('  cycle: %.3f s (%d frames) from the footage cycle of %.3f s (%d frames)' % (P2, n2, P, n))
+            n = n2
     else:
         search = float(clip.get('search', 0.5))
         Ts = [_take(spec, clip, clip['takes'][0], log=log)]
@@ -426,6 +439,9 @@ def build_clip(spec, clip, log=print):
     B.qa = dict(maxStepDeg=round(ws, 1), at='%s@%d' % (wj, wf), limit=round(lim, 1), reason=clip.get('qa', {}).get('reason'))
     log('  step check: worst %.1f deg (%s frame %d), limit %.1f%s' % (ws, wj, wf, lim, '' if ws <= lim else '  ** OVER **'))
     B.q, B.hips, B.root, B.contact, B.speed, B.cmask = q, hips, root, g['contact'], g['speed'], g['cmask']
+    if loop and clip.get('start') is not None:
+        loop_start(B, clip['start'], log)
+        q, hips = B.q, B.hips
     if blade is not None and not loop:
         # a hint for the marks: the blade tip's speed (our skeleton, root travel removed)
         P, R = skel.fk(q, hips, np.zeros_like(root))
@@ -472,6 +488,49 @@ def build_clip(spec, clip, log=print):
         for ev in clip.get('events', []):
             B.events.append({'f': int(round((cfg.parse_time(ev['t']) - t0) * fps)), 'name': ev['name']})
     return B, Ts
+
+
+def loop_start(B, st, log):
+    """spec "start" (loops): which frame is frame 0: "plantR" / "plantL" (the first frame of that foot's
+    plant) or a phase 0..1 of the cycle as built. The cycle is rolled (pose, hips, contact); the root's
+    travel keeps starting at 0; the sheets follow"""
+    n = len(B.q)
+    if isinstance(st, str):
+        f = 0 if st.endswith('L') else 1
+        m = B.cmask[:, f]
+        if not m.any():
+            log('  ! start %s: that foot is never planted; the loop keeps its frame 0' % st)
+            return
+        starts = [i for i in range(n) if m[i] and not m[i - 1]]
+        r = starts[0] if starts else 0
+    else:
+        r = int(round(float(st) * n)) % n
+    if not r:
+        return
+    B.q = np.roll(B.q, -r, 0)
+    B.hips = np.roll(B.hips, -r, 0)
+    B.cmask = np.roll(B.cmask, -r, 0)
+    B.b = np.roll(B.b, -r, 0)
+    for nm in ('blade', 'bladeL'):
+        if getattr(B, nm, None) is not None and len(getattr(B, nm)) == n:
+            setattr(B, nm, np.roll(getattr(B, nm), -r, 0))
+    cs = {}
+    for f, s_ in enumerate(('L', 'R')):
+        m = B.cmask[:, f]
+        sp, i = [], 0
+        while i < n:
+            if m[i]:
+                j = i
+                while j < n and m[j]:
+                    j += 1
+                sp.append([i, j - 1])
+                i = j
+            else:
+                i += 1
+        cs[s_] = sp
+    B.contact = cs
+    B.shift = [(s_ + r) % n for s_ in B.shift]
+    log('  start %s: frame 0 is the built frame %d; contact L %s R %s' % (st, r, cs['L'], cs['R']))
 
 
 def limb_w(T, V, n):
