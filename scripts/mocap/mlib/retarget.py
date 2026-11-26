@@ -116,9 +116,11 @@ def _line_tumble(v):
     return _n(smooth_time(v, 1.5))
 
 
-def world_rotations(b, blade=None, tumble=False, clip=None, bladeL=None):
+def world_rotations(b, blade=None, tumble=False, clip=None, bladeL=None, relax=None):
     """b (n,33,3) body-frame landmarks -> world rotations (n,J,4) in the root's frame.
-    blade (n,3) optional: the sword's direction (unit) in the body frame; sets the right hand's roll."""
+    blade (n,3) optional: the sword's direction (unit) in the body frame; sets the right hand's roll.
+    relax (n,2) optional (spec "arm_keys"): how much each hand (L, R) is in a keyed span, where its tracked
+    hand points mean nothing: a free hand there relaxes along the forearm."""
     n = len(b)
     R = np.zeros((n, J, 4))
     R[:, 0] = skel.qident((n,))
@@ -167,6 +169,12 @@ def world_rotations(b, blade=None, tumble=False, clip=None, bladeL=None):
             # the tool's hand points are rough: lean the hand's axis toward the forearm
             fing = _n(_n(fing) + 0.6 * _n(fo))
             R[:, JI['hand' + s]] = skel.frame_q(rest_dir, Z, fing, thumb)
+        held = (s == 'L' and bladeL is not None) or (s == 'R' and blade is not None)
+        if relax is not None and not held and (relax[:, 0 if s == 'L' else 1] > 0).any():
+            rw = relax[:, 0 if s == 'L' else 1]
+            flex = skel.qaxis(Z, np.full(n, -k * np.radians(12.0)))
+            relaxed = skel.qmul(R[:, JI['foreArm' + s]], flex)
+            R[:, JI['hand' + s]] = skel.qslerp(skel.continuous(R[:, JI['hand' + s]]), relaxed, rw)
         R[:, JI['weapon' + s]] = R[:, JI['hand' + s]]
     for s in ('L', 'R'):
         hp, kn, an, he, to = (23, 25, 27, 29, 31) if s == 'L' else (24, 26, 28, 30, 32)
