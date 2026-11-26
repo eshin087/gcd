@@ -88,12 +88,13 @@ export function panelSkirt({ pelvis, M, DIM, mesh, joint }, PANELS, { seed = 0 }
       const ph = Math.PI * 2 * nF * (s + 0.04 * Math.sin(d * 8 + i * 1.3)) + fph + Math.PI;
       return 0.5 + 0.6 * Math.sin(ph) - 0.9 * Math.max(0, 1 - d / 0.1);
     };
-    const g0 = foldLines(skirtSheet(L0, Pn.w[0], Pn.w[1], R0, 0.25, 0, 81 + seed + i, [0.002, 0.008, nF, fph], 0, 1, sk, w0), pleat(0));
+    const cone = Pn.cone ?? 0.25; // (how fast the skirt widens down its length: m out per m down; `jag`: the hem's raggedness, m)
+    const g0 = foldLines(skirtSheet(L0, Pn.w[0], Pn.w[1], R0, cone, 0, 81 + seed + i, [0.002, 0.008, nF, fph], 0, 1, sk, w0), pleat(0));
     mesh(s0, g0, M.coat);
     mesh(s0, g0, M.lining);
     const s1 = joint(s0, 0, -L0, 0);
-    const R1 = R0 + 0.25 * L0, hf = Pn.hemFrom ?? 1;
-    const lower = (t0, t1) => foldLines(skirtSheet(L1, Pn.w[1], Pn.w[2], R1, 0.25, 0.006, 91 + seed + i, [0.008, 0.016, nF, fph], t0, t1, sk, w0, sl), pleat(L0));
+    const R1 = R0 + cone * L0, hf = Pn.hemFrom ?? 1;
+    const lower = (t0, t1) => foldLines(skirtSheet(L1, Pn.w[1], Pn.w[2], R1, cone, Pn.jag ?? 0.006, 91 + seed + i, [0.008, 0.016, nF, fph], t0, t1, sk, w0, sl), pleat(L0));
     if (hf > 0) {
       const g1 = lower(0, Math.min(1, hf));
       mesh(s1, g1, M.coat);
@@ -105,11 +106,11 @@ export function panelSkirt({ pelvis, M, DIM, mesh, joint }, PANELS, { seed = 0 }
       mesh(s1, g2, M.lining);
     }
     if (Pn.edge) {
-      mesh(s0, sheetEdge(L0, Pn.w[0], Pn.w[1], R0, Pn.edge, 1, 0.25, sk, w0), M.piping);
-      mesh(s1, sheetEdge(L1, Pn.w[1], Pn.w[2], R1, Pn.edge, 1, 0.25, sk, w0), M.piping);
+      mesh(s0, sheetEdge(L0, Pn.w[0], Pn.w[1], R0, Pn.edge, 1, cone, sk, w0), M.piping);
+      mesh(s1, sheetEdge(L1, Pn.w[1], Pn.w[2], R1, Pn.edge, 1, cone, sk, w0), M.piping);
     }
     const strips = [];
-    const n = Pn.strips.length, R2 = R1 + 0.25 * L1, wr = Pn.w[2] / Math.max(1, n);
+    const n = Pn.strips.length, R2 = R1 + cone * L1, wr = Pn.w[2] / Math.max(1, n);
     for (let k = 0; k < n; k++) {
       const sk01 = (k + 0.5) / n;
       const u = (sk01 - 0.5) * Pn.w[2] + sheetOffset(Pn.w[2], w0, sk);

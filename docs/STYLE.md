@@ -1815,6 +1815,18 @@ down"), and none of it touches the hero, the boss or the HUD.
   one bright cell. At ~40 px the homage is the silhouette: the long coat to the ankles with split tails that
   stream behind him when he runs (from phase 2), the high collar. `?oneLook=a` the Long Coat, `b` the Cassock,
   `c` the Grey Coat.
+- **His figure rebuilt** (2026-11-26, ADR-221; `?oneBody=a|b|c`, the owner picked **b**, the open coat; '0' as above). Filmed
+  beside the hero at the game camera he read as a hollow bottle: a bright jade outline round a near-black fill, a
+  skirt flaring from the chest past narrow shoulders, a three-letter head. The redraws print him the hero's way
+  (look.js `BODY_INK`: HERO_INK's cloth rules in his jade-grey, the dim dotted rim, no ink gain over 1.5, far fills
+  at ~0.6 of the hero's because the bosses' print lifts his near-grey fill to ~3x the hero's coat) on a man's
+  build (gear.js `SHELL_MAN`: broader square shoulders, a deeper chest, a belt at the waist; fuller swept-back
+  hair; the collar lower) with a skirt that hangs near straight (`COAT_MAN`, panelSkirt's per-panel `cone` 0.1:
+  the hem about the shoulders' width). a the long coat, closed in phase 1; b open in every phase, the legs
+  walking in the split; c a duster to mid-shin, the boots below it. **One coat, not the hero's cloak** (the owner:
+  "one big coat put together"): five panels overlapping all round with one back panel (no vent, no gaps), a straight
+  hem, the inside the same cloth; the coat prints as part 5, so the bosses' print never gives it the hero's pale
+  ragged hem; it swings 30 degrees out at most, so it stays one coat through his flips.
 ### The Training Room (2026-11-15, ADR-099; `world/trainingRoom.js`, `?stage=lab`)
 A lab stage for any boss: a dark dojo of light (the owner's pick of three looks: "Holo", over a
 pale "Grid" and a starry "Void"). Great 2 m tiles of near-black glass in a two-shade checker (carved

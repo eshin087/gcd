@@ -19,6 +19,11 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-26',
+        title: 'Xin Yi rebuilt: a man in a coat, readable windups, faster hands',
+        notes: ['Xin Yi now looks like a man in one long open coat, drawn like the hero.', 'His kicks land with the leg straight and his punches with the arm long, every blue or red blow has a windup pose you can read, his gun is aimed down his arm, and he has two new quick strings.'],
+      },
+      {
+        date: '2026-11-26',
         title: 'Shen Hui and Varr Nihil hold their swords like swordsmen',
         notes: [
           'Shen Hui and Varr Nihil hold their blades in line with the hand and arm, and their arms open at the end of a blow.',

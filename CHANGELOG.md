@@ -4,7 +4,13 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and sixteen pieces of work since 0.4.0:
+One hundred and seventeen pieces of work since 0.4.0:
+- **Xin Yi rebuilt: a man in a coat, readable windups, faster hands** (2026-11-26, ADR-221). *Changed:* Xin Yi is
+  drawn like the hero on a man's build: square shoulders, a belted waist, fuller hair, and one long open coat that
+  hangs instead of flaring, with a straight hem (the owner's pick; `?oneBody=0` as before, `a` closed, `c` a duster).
+  His kicks land with the leg straight and his punches with the arm long, his single gun is aimed down a straight
+  arm, every blue and red blow is held in a windup pose you can read before the snap (the same timing). *Added:* two
+  fast strings, Snapping Hands and Quick Foot (`?oneMoves=0`: his moves as before).
 - **Shen Hui and Varr Nihil hold their swords like swordsmen** (2026-11-26, ADR-226). *Changed (the owner's pick; `?ashMotion=0` /
   `?lordMotion=0` give back the motion before):* the second and third
   bosses hold their blades in line with the forearm (it bent up to 128° off it) and their arms open at the end of a
