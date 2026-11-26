@@ -9,6 +9,7 @@ import { HERO_LOOKS, DEFAULT_LOOK, LOOK_IDS, getLook } from './gear/looks.js';
 import { HeroAnimator, ROLL_SLIDE } from './anim.js';
 import { LIGHT, HEAVY, heavyAfter, SPRINT_ATK, ROLL_ATK, THRUST, CLEAVE, ONE_BREATH, CHARGE, REACH, HIT_FEEL, feel, chargeStats, bandHit, SwordSweep } from './combat.js';
 import { PlayerFx, EDGE_GLINT } from './fx.js';
+import { SlashFx, slashMode } from './slashFx.js';
 import { DEFAULT_LOADOUT, swordFromUrl } from './gear/index.js';
 import { CLASH, clashBurst, clashGrind, closestOnSegments } from '../../combat/clashFx.js';
 import { CUT_LOOK } from '../../combat/cutFx.js';
@@ -340,6 +341,7 @@ export class Player {
     this.anim = new HeroAnimator(this.rig, this, null, { freeHand: true });
     this.anim.onFootstep = (side, dust) => this._footstep(side, dust);
     this.fx = new PlayerFx(game, this.rig);
+    this.slashFx = new SlashFx(this); // every swing's instant slash line (slashFx.js; ?slash=arc: the crescent)
     this.mystic = new SwordMystic(this); // the sword's green flame (on by default; ?mystic=0 = nothing drawn)
     this.flurry = new Flurry(this, TUNE);
     // camera lean (model.js LEAN): visual only; hits and the dragon's aim use unleaned positions
@@ -3206,6 +3208,7 @@ export class Player {
   _combat() {
     const sw = this.sweep;
     if (!sw.sample()) return;
+    this.slashFx?.update(); // (the straight line where the blade passed: slashFx.js)
     const a = this.atk;
     if (a && !a.pending && (this.state === 'attack' || this.state === 'heavy')) {
       const d = a.def, t = a.t;
@@ -3221,7 +3224,8 @@ export class Player {
         // the blade meets the world too (ADR-107): what it sweeps through is chipped, cut down, felled
         if (prevT <= end) this._cutWorld(a, sw, prevT);
         // (the arc bites as a cut lands: white-hot for 0.06 s of the attack clock after the contact)
-        this.fx.trail(sw.pa, sw.pb, sw.a, sw.b, d.kind, crit, true, a.hit && a.hitAt >= 0 && a.t - a.hitAt < 0.06);
+        // (the instant slash draws one straight line instead of the crescent: slashFx.js; ?slash=arc the crescent)
+        if (!this.slashFx?.owns(a)) this.fx.trail(sw.pa, sw.pb, sw.a, sw.b, d.kind, crit, true, a.hit && a.hitAt >= 0 && a.t - a.hitAt < 0.06);
         // a glint on the arc's edge as the cut comes through (the cleave cuts late in its dash). The
         // edge runs just past the steel's point (fx.arcAt), not at the end of the reach. A landed
         // cut's core is the beat's one star: a whiff keeps the glint
@@ -3300,7 +3304,8 @@ export class Player {
     const pl = this.pl, ph = pl.phase;
     sw.point(1, this._tip);
     if (ph === PL.DIVE || (ph === PL.RIDE && pl.streak)) {
-      this.fx.trail(sw.pa, sw.pb, sw.a, sw.b, 'slam', pl.exec, false); // (the dive carries the blade: no turn to gate on)
+      // (the dive carries the blade: no turn to gate on. The instant slash look keeps only the straight streak)
+      if (slashMode() === 'arc') this.fx.trail(sw.pa, sw.pb, sw.a, sw.b, 'slam', pl.exec, false);
       this.fx.thrustStreak(this._tipPrev, this._tip, 1, pl.exec);
       pl.streak = ph === PL.DIVE;
     } else pl.streak = false;

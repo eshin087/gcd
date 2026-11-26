@@ -22,6 +22,8 @@ import { sfxMode, setSfxMode, chainMode, setChainMode, CHAIN_MODES } from '../au
 import { PARRY_CHAIN } from '../audio/parryChain.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { MYSTIC_IDS, MYSTIC_NAMES, mysticMode, setMystic } from '../entities/player/swordMystic.js';
+import { SLASH_IDS, slashMode, setSlash } from '../entities/player/slashFx.js';
+import { OFFHAND_IDS, offHandMode, setOffHand } from '../entities/player/offHand.js';
 import { IDLES_IDS, IDLES_NAMES, idlesMode, setIdles, EASE_RESTS, FIGHT_RESTS, EASE_HABITS, EASE_TRICKS, EASE_REF_EXTRA, FIGHT_ACTS } from '../entities/player/idles.js';
 import { GUARD_IDS, GUARD_NAMES, guardMode, setGuard } from '../entities/player/refStance.js';
 import { RUN_ARM_IDS, RUN_ARM_NAMES, runArmMode, setRunArm } from '../entities/player/runArms.js';
@@ -1426,6 +1428,25 @@ export class Lab {
       b.title = `?mystic=${m}: ${MYSTIC_NAMES[m]}`;
       return { m, el: b };
     });
+    // every swing's mark (slashFx.js, ?slash=arc) and the free hand in a one-handed swing (offHand.js,
+    // ?offhand=side|back|quiet), live
+    for (const [lbl, ids, set, key, tip, name] of [
+      ['slash', SLASH_IDS, setSlash, 'slashBtns', "every swing's mark: line = the instant straight slash, arc = the curved crescent as before (?slash=arc)", (m) => m],
+      ['offhand', OFFHAND_IDS, setOffHand, 'offHandBtns', 'the free hand in a one-handed swing: prod = as it ships, side = loose at his side, back = behind his back, quiet = its gestures pulled in (?offhand=)', (m) => (m === '0' ? 'prod' : m)],
+    ]) {
+      const r = el('div', 'lab-row', null, body);
+      el('span', 'lab-lbl', lbl, r).title = tip;
+      const g = el('div', 'lab-grid', null, r);
+      g.style.flex = '1';
+      this.ui[key] = ids.map((m) => {
+        const b = button(g, name(m), () => {
+          set(m);
+          this._syncCutBtns();
+        });
+        b.title = `?${lbl}=${m}`;
+        return { m, el: b };
+      });
+    }
     // the wyrm's heads (entities/dragon/heads.js, ?wyrmFace=): a build-time choice, so a page reload
     const wfr = el('div', 'lab-row', null, body);
     el('span', 'lab-lbl', 'head', wfr).title = "the Cinder Wyrm's heads (?wyrmFace=; reloads the page): drake as it ships, old = the head before, the rest shown and passed on";
@@ -1536,6 +1557,8 @@ export class Lab {
       setClass(this.ui.ripBtn, 'on', ripMode() !== 'off');
     }
     for (const { m, el: b } of this.ui.mysticBtns ?? []) setClass(b, 'on', mysticMode() === m);
+    for (const { m, el: b } of this.ui.slashBtns ?? []) setClass(b, 'on', slashMode() === m);
+    for (const { m, el: b } of this.ui.offHandBtns ?? []) setClass(b, 'on', offHandMode() === m);
     if (this.ui.perfectBtn) this.ui.perfectBtn.textContent = `perfect: ${perfectMode()}`;
     if (this.ui.parryFxBtn) this.ui.parryFxBtn.textContent = `parryFx ${parryFxMode()}`;
     if (this.ui.burstBtn) this.ui.burstBtn.textContent = `burst ${burstLevel()}`;

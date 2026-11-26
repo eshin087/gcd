@@ -19,6 +19,14 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-26',
+        title: 'Instant slashes, and a quieter left hand to choose',
+        notes: [
+          'Every sword attack now leaves one straight slash line where the blade passed, instead of the curved arc: a turning cut leaves three straight cuts around you, a thrust a short streak, a heavy blow a thicker violet line. Add ?slash=arc to the address for the arc as before.',
+          'Being tried out: add ?offhand=side, ?offhand=back or ?offhand=quiet and your free hand hangs loose at your side, rests behind your back, or keeps its moves close to your body during one-handed attacks.',
+        ],
+      },
+      {
+        date: '2026-11-26',
         title: 'Shen Hui and Varr Nihil hold their swords like swordsmen',
         notes: [
           'Shen Hui and Varr Nihil hold their blades in line with the hand and arm, and their arms open at the end of a blow.',
