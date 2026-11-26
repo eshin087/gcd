@@ -43,7 +43,9 @@ export const LOOK_SWITCHES = Object.freeze([
   ['ascBeam', ['a', 'b'], 'a', 'a', false, ['ring'], 'Tian Lei\'s beam'],
   ['ascOrb', ['a', 'b', 'c'], 'a', 'a', false, ['ring'], 'Heaven\'s Lantern, the great orb: a a sun, b a lantern, c the pale gathered sphere (its arms-up gather on a reload)'],
   ['ascBeamPose', ['0', 'cup'], '0', '0', true, ['ring'], 'Tian Lei\'s beams: 0 the palm thrust, cup both hands cupped at the hip (a reload)'],
-  ['ascMotion', ['0', 'a'], '0', 'a', false, ['ring'], 'Tian Lei\'s motion (ADR-225): a every blue and red blow out of a held windup pose of its own, and his snap blows (Snap Jab, Snap Hook; the default); 0 as before (live, from his next move)'],
+  // --- the sword motion pass (ADR-226; live from his next move; waits for the owner)
+  ['ashMotion', ['0', 'a'], '0', 'a', false, ['ash'], 'Shen Hui\'s sword motion: 0 as before; a the jian held in line with his forearm, his arms opening, blue / red blows held in their tell poses, two quick blows', 'awaiting'],
+  ['lordMotion', ['0', 'a'], '0', 'a', false, ['starless'], 'Varr Nihil\'s sword motion: 0 as before; a the blades held in line with his forearms, his arms opening, blue / red blows held in their tell poses, a shake of the steel for the end twirl, two quick blows', 'awaiting'],
   //
   //
   // --- fox: Wen Yao (ADR-147; every one read when his rigs or his effects are built: a reload)

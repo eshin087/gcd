@@ -4,6 +4,8 @@ import { compileClip, completeBeat, GUARD } from './poses.js';
 import { TUNING } from './tuning.js';
 import { makeRealise } from '../duelist/realise.js';
 import { GUARD_CLIPS } from '../duelist/guard.js';
+import { lookOf } from '../duelist/lookSwitch.js';
+import { motionize } from '../duelist/tellPose.js';
 
 // The Ash Disciple's moves and reaction clips, as data (docs/specs/ash-disciple.md §3; COMBAT.md →
 // "The Ash Disciple"). Nothing mirrors the hero's moveset.
@@ -985,6 +987,43 @@ export const MOVES = {
     recoveryKeys: [[0.4, { ...CROUCH, bY: -0.36, yaw: 0.7, arm: 1, ext: 0.8, sw: [-0.9, -0.3] }]],
   },
 };
+
+// ---------------------------------------------------------------- the sword motion pass (ADR-226)
+// Behind `?ashMotion=a` (duelist/lookSwitch.js, PENDING until the owner picks; '0' = as before): his
+// sword held in line with his forearm and his arms opening at the end of a blow (TUNING.motion, his
+// animator), every blue and red blade blow wound into its held tell pose (duelist/tellPose.js:
+// `motionKeys`, the same windups), and two QUICK blows thrown straight out of his guard (`quick` beats:
+// a normal tell, a windup of TUNING.minQuickWindup, fixed; `motionOnly`: his AI picks them only while
+// the switch is on).
+export const motionOn = () => lookOf('ashMotion', '0') !== '0';
+Object.assign(MOVES, {
+  /** Darting Needle: the jian, already pointed at you from his guard, drawn a hand's width back and
+   *  driven straight in on a short step. A normal blow: block or parry it. */
+  needleDart: {
+    label: 'Darting Needle', phase: 1, weight: [1.6, 1.5, 1.3], cooldown: 3.2, band: [0, 3.6], recovery: 0.42, motionOnly: true,
+    beats: [{
+      tell: N, quick: true, fixed: true, windup: TUNING.minQuickWindup, active: 0.08, damage: 12, knockback: 0.6,
+      zone: { kind: 'line', r: 2.0, w: 0.6 }, track: 0.85,
+      keys: [
+        [0.55, { yaw: 0.66, bY: -0.2, bZ: -0.04, pitch: 0.02, rH: [0.0, -0.13, 0.32], sw: [-0.5, 0.1], ...SET }],
+        [1.0, { e: 'i', yaw: 0.5, bY: -0.24, bZ: 0.14, pitch: 0.08, spX: 0.1, rH: [0.03, -0.08, 0.56], rP: [-0.7, -0.3, -0.2], sw: [-0.5, 0.04], lH: [0.18, -0.06, -0.26], lP: [0.7, -0.3, -0.6], ...STEP_IN }],
+        [1.6, { e: 'o', yaw: 0.5, bY: -0.24, bZ: 0.16, rH: [0.04, -0.07, 0.58], sw: [-0.5, 0.03], ...STEP_IN }],
+        [2.0, { settle: true, yaw: 0.56, bY: -0.2, bZ: 0.08, rH: [0.03, -0.1, 0.5], sw: [-0.5, 0.08], ...STEP_IN }],
+      ],
+    }],
+  },
+  /** Flicking Willow: from his guard the point flicks up and cuts down across you, on the same step.
+   *  A normal blow. */
+  wristFlick: {
+    label: 'Flicking Willow', phase: 1, weight: [1.4, 1.4, 1.2], cooldown: 3.6, band: [0, 3.4], recovery: 0.45, motionOnly: true,
+    beats: [{
+      tell: N, quick: true, fixed: true, windup: TUNING.minQuickWindup, active: 0.08, damage: 12, knockback: 0.6,
+      zone: { kind: 'sector', r: 2.1, ang: 0.8 }, track: 0.85,
+      keys: slashKeys({ from: [0.2, 0.7], through: [0.0, 0.05], to: [-0.85, -0.5], yaw: [0.6, 0.5, 0.36], cock: 0.6 }),
+    }],
+  },
+});
+motionize(MOVES);
 export const MOVE_NAMES = Object.keys(MOVES);
 
 // ---------------------------------------------------------------- reaction clips (no hits)
@@ -1104,7 +1143,7 @@ for (const [k, c] of Object.entries(CLIP)) c.name = k;
  * holds, absolute times per beat ({ start, impact, end, flash, tellAt }) and the compiled clip. `rnd`
  * = a 0..1 source (the game's Math.random, so the seeded sims replay).
  */
-export const realise = makeRealise({ TUNING, MOVES, compileClip: (keys, dur) => compileClip(keys, dur), completeBeat });
+export const realise = makeRealise({ TUNING, MOVES, compileClip: (keys, dur) => compileClip(keys, dur), completeBeat, keysOf: (b) => (motionOn() ? (b.motionKeys ?? null) : null) });
 
 /** The guard pose (for tools). */
 export { GUARD };

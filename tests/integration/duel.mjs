@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { ui, AUDIO, resetWindow } from './shim.mjs';
 import { attachMarks, marksCheck } from './marks.mjs';
+import { swordAudit, printAudit, heldTip } from './swordAudit.mjs';
 
 const ROOT = process.argv[2];
 const SCEN = process.argv[3] || 'all';
@@ -37,6 +38,8 @@ const { TouchControls } = await imp('src/ui/touch.js');
 const { AudioEngine } = await imp('src/audio/audio.js');
 const { GameFlow } = await imp('src/game/flow.js');
 const { Lab } = await imp('src/dev/lab.js');
+// GCD_LOOKS=ashMotion=a,lordMotion=a: look switches set for the whole run (duelist/lookSwitch.js setLook; ADR-226)
+for (const kv of (process.env.GCD_LOOKS ?? '').split(',').filter(Boolean)) (await imp('src/entities/enemies/duelist/lookSwitch.js')).setLook(...kv.split('='));
 
 const ASH = getLevel('ash');
 const errors = [];
@@ -710,7 +713,10 @@ async function scenarioData() {
         if (!real.every((b) => [TELL.NORMAL, TELL.BLUE, TELL.RED, TELL.BLACK].includes(b.def.tell))) assert(false, `${tag}: a tell on every real hit`);
         if (!real.every((b) => !b.def.flare || (b.def.tell === TELL.BLUE && b.def.zone))) assert(false, `${tag}: a flare mark only on a blue blow of the blade`);
         const first = real[0];
-        if (!(first && first.impact - first.tellAt >= TUNING.minFirstWindup - 1e-6)) assert(false, `${tag}: first real windup ${first ? (first.impact - first.tellAt).toFixed(2) : '-'} >= ${TUNING.minFirstWindup}`);
+        // (a QUICK blow, ADR-226: a normal tell, its windup >= minQuickWindup and its glint inside it)
+        const floor = first?.def.quick ? TUNING.minQuickWindup : TUNING.minFirstWindup;
+        if (first?.def.quick && !(first.def.tell === TELL.NORMAL && TUNING.flashLead <= first.impact - first.tellAt + 1e-6)) assert(false, `${tag}: a quick blow is a normal one, its glint inside its windup`);
+        if (!(first && first.impact - first.tellAt >= floor - 1e-6)) assert(false, `${tag}: first real windup ${first ? (first.impact - first.tellAt).toFixed(2) : '-'} >= ${floor}`);
         for (let i = 1; i < real.length; i++) if (!(real[i].impact - real[i - 1].impact >= TUNING.minHitGap - 1e-6)) assert(false, `${tag}: hits ${i - 1}→${i} ${(real[i].impact - real[i - 1].impact).toFixed(2)} s apart >= ${TUNING.minHitGap}`);
         for (const b of real) if (!(b.flash > b.tellAt)) assert(false, `${tag}: hit ${b.hit} flashes after its tell`);
         if (!A.beats.every((b) => b.feint ? !b.def.tell : true)) assert(false, `${tag}: feints carry no tell`);
@@ -4954,6 +4960,75 @@ async function scenarioSfx() {
   return G;
 }
 
+/**
+ * SWORDMOTION (ADR-226): the sword motion pass behind `?ashMotion=a`. On: his sword held in line with his
+ * forearm (the audit's wrist ≤ 62° in every frame of the moves below, the hero's bar 60), the blade
+ * clear of his head and body, the arms opening at the end of a blow (an elbow past 148°); each blue / red
+ * blade blow holds its tell pose (the point still within 8 cm through the hold); the windups, impacts and
+ * ends of every move exactly as with the switch off (only poses change); the quick blows' windup
+ * TUNING.minQuickWindup and picked only while it is on. Off: as before.
+ */
+async function scenarioSwordMotion() {
+  out('\n== scenario SWORDMOTION (the sword motion pass, ADR-226: the grip, the held tell poses, the quick blows; on and off) ==');
+  const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  setLook('ashMotion', 'a');
+  let last = null;
+  const H = { THREE, build: (...a) => (last = build(...a)), duel: (G, o) => duel(G, o), run, DT, MOVES, names: ['plumThrust', 'fallingAsh', 'piercingAsh', 'swallow', 'crane', 'lotus', 'needleDart', 'wristFlick'], formOf: () => 1, setForm: null };
+  const rows = swordAudit(H);
+  printAudit(rows, out);
+  const ok = rows.filter((r) => !r.fail);
+  assert(ok.length === H.names.length, `${ok.length} of ${H.names.length} moves audited`);
+  const wr = Math.max(...ok.map((r) => r.wrist.max)), gh = Math.min(...ok.map((r) => r.gap.head)), gb = Math.min(...ok.map((r) => r.gap.body)), el = Math.min(...ok.map((r) => r.elbow[1]));
+  assert(wr <= 62, `the sword in line with the forearm: the wrist at most ${wr}° (≤ 62; the hero ≤ 60; before the pass 85 - 128)`);
+  assert(gh >= 0.08 && gb >= 0.08, `the blade clear of him: ${gh.toFixed(2)} m from his head, ${gb.toFixed(2)} m from his body at the closest (≥ 0.08)`);
+  assert(el >= 148, `every move opens the arm: the widest elbow at least ${el}° (≥ 148; before 131 - 145)`);
+  const held = [['fallingAsh', 1], ['piercingAsh', 1]].map(([n, f]) => [n, heldTip(H, n, { form: f })]);
+  assert(held.every(([, h]) => !h.fail && h.n >= 6 && h.far < 0.08), `the tell pose is held: the point wanders ${held.map(([n, h]) => `${n} (${h.tell}) ${h.far?.toFixed(3)} m over ${h.n} frames`).join(', ')} (< 0.08)`);
+  // the timings: only poses change
+  let same = 0, diff = [];
+  for (const name of MOVE_NAMES) {
+    const def = MOVES[name];
+    if (def.motionOnly) continue;
+    for (const ph of [1, 2, 3]) {
+      if ((def.phase ?? 1) > ph) continue;
+      setLook('ashMotion', 'a');
+      const a = realise(name, ph, () => 0.37);
+      setLook('ashMotion', '0');
+      const b = realise(name, ph, () => 0.37);
+      if (!a || !b) continue;
+      const k = (A) => A.beats.map((x) => `${x.start.toFixed(4)}/${x.impact.toFixed(4)}/${x.end.toFixed(4)}`).join(' ') + ` ${A.end.toFixed(4)}`;
+      if (k(a) === k(b)) same++;
+      else diff.push(`${name} P${ph}`);
+    }
+  }
+  assert(!diff.length && same > 40, `${same} realisations time every beat the same on and off (${diff.join(', ') || 'none differ'})`);
+  // the quick blows
+  const quick = MOVE_NAMES.filter((n) => MOVES[n].motionOnly);
+  const G = last ?? build();
+  const d = G.game.dragon;
+  setLook('ashMotion', '0');
+  const off = quick.map((n) => d.weigh(n, MOVES[n], 1, 2));
+  setLook('ashMotion', 'a');
+  const on = quick.map((n) => d.weigh(n, MOVES[n], 1, 2));
+  const fast = quick.every((n) => MOVES[n].beats.every((b) => b.quick && b.fixed && b.tell === TELL.NORMAL && b.windup === TUNING.minQuickWindup));
+  assert(quick.length >= 2 && fast && off.every((w) => w === 0) && on.every((w) => w > 0), `${quick.length} quick blows (${quick.join(', ')}): normal, ${TUNING.minQuickWindup} s windups; weighed 0 with the switch off, ${on.join(' / ')} on`);
+  setLook('ashMotion', null);
+  return last;
+}
+/** AUDIT (opt-in, ADR-226): every move's sword motion (tests/integration/swordAudit.mjs). */
+async function scenarioAudit() {
+  out('\n== scenario AUDIT (every move: the sword wrist, the blade off his body, facing, elbows, the free hand, feet, pops) ==');
+  const only = (process.env.GCD_AUDIT ?? '').split(',').filter(Boolean);
+  const names = MOVE_NAMES.filter((n) => !only.length || only.includes(n));
+  let last = null;
+  const rows = swordAudit({ THREE, build: (...a) => (last = build(...a)), duel: (G, o) => duel(G, o), run, DT, MOVES, names,
+    formOf: (n) => Math.min(3, Math.max(1, MOVES[n].phase ?? 1)),
+    setForm: (G, f) => { const d = G.game.dragon; if (f >= 2) d.debug.phase2(); if (f >= 3) { settle(G, 8); d.debug.phase3(); } settle(G, 8); d.debug.setAI(false); } });
+  printAudit(rows, out);
+  if (process.env.GCD_AUDIT_JSON) fs.writeFileSync(process.env.GCD_AUDIT_JSON, JSON.stringify(rows, null, 1));
+  return last;
+}
+
 const SCENARIOS = {
   motion: scenarioMotion,
   react: scenarioReact,
@@ -5019,9 +5094,11 @@ const SCENARIOS = {
   },
   cutfx: scenarioCutFx,
   sfx: scenarioSfx,
+  audit: scenarioAudit,
+  swordmotion: scenarioSwordMotion,
 };
 const runs = [];
-const OPT_IN = new Set(['probe', 'strategy', 'bots', 'ranged', 'answer']); // run only when named
+const OPT_IN = new Set(['probe', 'strategy', 'bots', 'ranged', 'answer', 'audit']); // run only when named
 // `all`, one scenario or a comma list; GCD_SKIP (a comma list) leaves scenarios out of `all`
 // (tests/run.mjs runs the long ones as processes of their own, so a new scenario lands in `all`)
 const SKIP = new Set((process.env.GCD_SKIP ?? '').split(',').map((s) => s.trim()).filter(Boolean));
