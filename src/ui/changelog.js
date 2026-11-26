@@ -23,9 +23,10 @@ export const RELEASES = [
         notes: [
           'A new level, the Veiled Crossing: a city crossing levelled before you came, at night under a black veil. Pick it on the title screen.',
           'Its boss is Bai Wuji, the Untouched: a tall man in a white coat, his eyes covered, his hands in his pockets. Your blade stops short of him. A perfect parry or a perfect dodge opens his barrier for a few seconds.',
-          'Every blow of his throws you, through whatever stands behind you. A block costs no health but slides you back and costs half your guard, and his spells cannot be blocked at all.',
-          'At two thirds the blindfold comes off. At one third he makes a hand sign and a dark sphere closes on the arena: dodge through its wall at the last moment, or be caught. The last phase is fought inside the void.',
-          "Halcyon's thrown pieces now land on the road instead of bursting in mid-air.",
+          'Every blow of his throws you, through whatever stands behind you. A block costs no health but slides you back and takes a big share of your guard: the third in a row knocks it open. His spells cannot be blocked at all.',
+          'He waits for you to come to him: if your blade has not reached him for 30 seconds, his eyes burn and every block costs your whole guard until it does.',
+          'At two thirds the blindfold comes off. At one third he makes a hand sign and a dark sphere closes on the arena: dodge through its wall at the last moment, or be caught. The last phase is fought inside the void, and the bonfire goes out until the city comes back.',
+          "Halcyon's thrown pieces now land on the road instead of bursting in mid-air, and the metal rubble in his city lies grey instead of glowing orange.",
         ],
       },
       {
