@@ -579,24 +579,13 @@ def soft_reach(hip, target, lo=0.9, span=0.07):
 
 def _edge_blend(P, s, idx0, step, tgt, opt, n, loop, wrap0, cyc):
     """spec "pin_blend": the frames one span edge blends over. opt = {"frames": b or "s": sec (the base),
-    "dist": m, "max": frames or "max_s": sec}: with "dist", the edge widens until the foot's distance from its
-    plant at the blend's outer frame, spread over the blend, is at most `dist` metres a frame"""
+    "dist": m, "max": frames or "max_s": sec}: with "dist", the edge widens until the foot's OFFSET from its
+    plant at the edge frame (what the pin corrects), spread over the blend, is at most `dist` metres a frame"""
     b = int(opt['b'])
     if not opt.get('dist'):
         return b
-    while b < opt['bmax']:
-        k = idx0 + step * (b + 1)
-        w = wrap0
-        if loop:
-            w = w + (1 if k >= n else 0) - (1 if k < 0 else 0)
-            k = k % n
-        elif k < 0 or k >= n:
-            break
-        d = np.linalg.norm((P[k, JI['foot' + s]] - (tgt - w * cyc))[[0, 2]])
-        if d / (b + 1) <= opt['dist']:
-            break
-        b += 1
-    return b
+    d = np.linalg.norm((P[idx0, JI['foot' + s]] + wrap0 * cyc - tgt)[[0, 2]])
+    return int(np.clip(np.ceil(d / opt['dist']) - 1, b, opt['bmax']))
 
 
 def pin_opts(spec, fps):
@@ -616,7 +605,8 @@ def pin_feet(q, hips, root, cmask, blend=3, loop=False, flat=None, soft=False, o
     position (each frame keeps its own height: a heel may rise) by re-solving thigh + shin; the edges blend
     over `blend` frames. A loop's span that runs over the end is one span (the next cycle is one cycle's
     travel further on). `opt` (pin_opts, spec "pin_blend"): each edge's own blend (frames or seconds, widened
-    by the foot's distance from its plant) with smoothstep weights. Returns new q and the worst slide
+    by the foot's offset from its plant at the edge) that fades that OFFSET in and out with smoothstep weights
+    (the foot is moved by the plant's correction, not pulled toward the plant). Returns new q and the worst slide
     before / after (cm)."""
     n = len(q)
     q = q.copy()
@@ -642,14 +632,17 @@ def pin_feet(q, hips, root, cmask, blend=3, loop=False, flat=None, soft=False, o
             else:
                 for k0, w0, st in ((idx[0], wrap[0], -1), (idx[-1], wrap[-1], 1)):
                     bb = _edge_blend(P, s, k0, st, tgt, opt, n, loop, w0, cyc)
+                    # the edge frame's own offset from the plant, faded out over the blend (not a pull of
+                    # the swinging foot toward the plant: at sprint speed that is 0.8 m and snapped the shins)
+                    off = (tgt - w0 * cyc) - (P[k0, JI['foot' + s]] + 0 * cyc)
                     for e in range(1, bb + 1):
                         u = 1 - e / (bb + 1)
-                        ext.append((k0 + st * e, w0, u * u * (3 - 2 * u) if opt['ease'] else u))
-            frames = [(k, w, 1.0) for k, w in zip(idx, wrap)] + ext
+                        ext.append((k0 + st * e, w0, (u * u * (3 - 2 * u) if opt['ease'] else u), off))
+            frames = [(k, w, 1.0, None) for k, w in zip(idx, wrap)] + [e if len(e) == 4 else e + (None,) for e in ext]
             jobs.append((s, tgt, frames))
     done = {}
     for s, tgt, frames in jobs:
-        for k, w, wgt in frames:
+        for k, w, wgt, off in frames:
             if loop:
                 w = w + (1 if k >= n else 0) - (1 if k < 0 else 0)
                 k = k % n
@@ -662,7 +655,10 @@ def pin_feet(q, hips, root, cmask, blend=3, loop=False, flat=None, soft=False, o
             cur = P[k, JI['foot' + s]]
             t_here = tgt - w * cyc  # the target in this frame's cycle
             target = cur.copy()
-            target[[0, 2]] = cur[[0, 2]] * (1 - wgt) + t_here[[0, 2]] * wgt
+            if off is None:
+                target[[0, 2]] = cur[[0, 2]] * (1 - wgt) + t_here[[0, 2]] * wgt
+            else:  # "pin_blend": the edge's offset, faded
+                target[[0, 2]] = cur[[0, 2]] + off[[0, 2]] * wgt
             if flat is not None:
                 # a flat planted foot: its ankle exactly HDIM.ankle above the ground
                 fw = flat[k, 0 if s == 'L' else 1] * wgt
