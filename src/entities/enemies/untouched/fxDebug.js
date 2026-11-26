@@ -126,14 +126,15 @@ const DRIVERS = {
   null: { T: 3.6, step(d, D, t, dt) {
     void dt;
     const F = d.fx;
-    if (t < 1.9) F.nullCharge(d, clamp01(t / 1.6), null, null);
-    if (t >= 1.9 && t < 3.2) {
-      if (!D.seg) {
-        const f = frame(d), L = fin(D.opts.len, 44), w = fin(D.opts.w, 5);
-        D.seg = { ax: d.position.x + f.hx * 0.8, az: d.position.z + f.hz * 0.8, bx: d.position.x + f.hx * L, bz: d.position.z + f.hz * L, w };
-      }
-      F.nullBeam(D.seg, clamp01((t - 1.9) / 1.3));
+    if (!D.seg) {
+      const f = frame(d), L = fin(D.opts.len, 44), w = fin(D.opts.w, 5);
+      D.seg = { ax: d.position.x + f.hx * 0.8, az: d.position.z + f.hz * 0.8, bx: d.position.x + f.hx * L, bz: d.position.z + f.hz * L, w };
     }
+    if (t < 1.9) {
+      F.nullCharge(d, clamp01(t / 1.6), null, null);
+      if (t > 0.5) F.nullLine(D.seg, clamp01((t - 0.5) / 1.4)); // (the line fixed 1.4 s before it fires)
+    }
+    if (t >= 1.9 && t < 3.2) F.nullBeam(D.seg, clamp01((t - 1.9) / 1.3));
     if (t >= 3.2 && !D.done) {
       D.done = true;
       if (D.seg) F.nullEnd(D.seg);

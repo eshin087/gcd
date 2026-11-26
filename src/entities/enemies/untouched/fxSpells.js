@@ -36,7 +36,7 @@ import { lookOf } from '../duelist/lookSwitch.js';
 
 const TAU = Math.PI * 2;
 const KNOT = Object.freeze({ y: 1.15, reach: 9, air: 46, letters: 60, grit: 55, bricks: 7 });
-const NUL = Object.freeze({ w: 5, y: 1.0, yBore: 1.3, step: 110, strip: 240 });
+const NUL = Object.freeze({ w: 5, y: 1.0, yBore: 1.3, step: 110, strip: 240, over: 0.95, apart: 0.75 });
 const AZ = [0.9, 1.7, 3.4], AZ_END = [0.1, 0.3, 1.0];
 const RED = [3.2, 0.28, 0.24], RED_END = [0.6, 0.02, 0.03];
 const WHITE = [3.4, 3.4, 3.6];
@@ -59,11 +59,13 @@ export function createState() {
   return {
     knots: Array.from({ length: 4 }, () => ({ id: -1, seen: -9, t: 0, acc: 0, accG: 0, accF: 0, accB: 0, fresh: false })),
     seg: { ax: 0, az: 0, bx: 0, bz: 0, L: 1, w: 5, y: NaN },
+    seg2: { ax: 0, az: 0, bx: 0, bz: 0, L: 1, w: 5, y: NaN },
+    c: new THREE.Vector3(),
     collapses: Array.from({ length: 3 }, () => ({ alive: false, t: 0, x: 0, y: 0, z: 0, r: 4, burst: false })),
     bursts: Array.from({ length: 3 }, () => ({ alive: false, t: 0, T: 0.4, x: 0, z: 0, r: 4, ph: 0 })),
     trenches: Array.from({ length: 2 }, () => ({ alive: false, t: 0, T: 3.2, ax: 0, az: 0, bx: 0, bz: 0, w: 5, acc: 0 })),
     point: { seen: -9, x: 0, y: 0, z: 0 },
-    nul: { seen: -9, start: 0, merged: false, beamSeen: -9, acc: 0, stripAcc: 0 },
+    nul: { seen: -9, start: 0, merged: false, mergedAt: 0, beamSeen: -9, acc: 0, accG: 0, stripAcc: 0 },
     v: new THREE.Vector3(),
     w: new THREE.Vector3(),
     vis: [0, 1],
@@ -410,34 +412,50 @@ function burstDraw(F, b) {
 }
 
 // ======================================================================= THE VIOLET NULL
-function point(F, v, d, side, P) {
-  if (P && Number.isFinite(Number(P.x) + Number(P.y) + Number(P.z))) return v.set(Number(P.x), Number(P.y), Number(P.z));
-  if (d?.handPoint) {
-    d.handPoint(side, v);
-    if (Number.isFinite(v.x + v.y + v.z)) return v.set(v.x, v.y + 0.16, v.z);
+/** The blue knot of the charge: a body ~0.5 m across (a disc of blue, a white core, blue turning round it). */
+function chargeKnot(F, x, y, z, lf, k, t, s) {
+  const R = 0.25 * s;
+  F._disc(x, y, z, R, 18, 0.2, 0.55 + 0.2 * k, K_VOID);
+  const P = F._toCamera(x, y, z);
+  F._blob(P.x, P.y, P.z, 0, 0, 0, lf, 0.11, 0.11, 0.95, 0.95, K_STEEL);
+  for (let i = 0; i < 5; i++) {
+    const a = t * 13 + (i / 5) * TAU;
+    F._blob(x + Math.cos(a) * R * 1.15, y + Math.sin(a * 2) * 0.07, z + Math.sin(a) * R * 1.15, 0, 0, 0, lf, 0.22, 0.22, 0.45, 0.45, K_VOID);
   }
-  const p = d?.position ?? { x: 0, y: 0, z: 0 }, s = side === 'L' ? 1 : -1, yaw = fin(d?.yaw);
-  return v.set(p.x + Math.cos(yaw) * 0.3 * s, 1.5, p.z - Math.sin(yaw) * 0.3 * s);
+}
+/** The red point of the charge: a hard body ~0.5 m across (crimson, a white core, four short spikes turning). */
+function chargePoint(F, x, y, z, lf, k, t, s) {
+  const R = 0.22 * s, A = F._axes();
+  F._disc(x, y, z, R, 16, 0.2, 0.62 + 0.2 * k, K_FIRE);
+  const P = F._toCamera(x, y, z);
+  F._blob(P.x, P.y, P.z, 0, 0, 0, lf, 0.1, 0.1, 0.95, 0.95, K_STEEL);
+  for (let i = 0; i < 4; i++) {
+    const a = -t * 7 + (i / 4) * TAU, ca = Math.cos(a), sa = Math.sin(a), r0 = R * 1.1, r1 = R * 2.1;
+    F._ink(P.x + (A.rx * ca + A.ux * sa) * r0, P.y + (A.ry * ca + A.uy * sa) * r0, P.z + (A.rz * ca + A.uz * sa) * r0, P.x + (A.rx * ca + A.ux * sa) * r1, P.y + (A.ry * ca + A.uy * sa) * r1, P.z + (A.rz * ca + A.uz * sa) * r1, 0, 0.5, 0, 0.25, 0, K_FIRE);
+  }
+}
+/** A jagged arc of strokes a to b this frame (its middle joints off the line). */
+export function zap(F, ax, ay, az, bx, by, bz, h, kind = K_STEEL, steps = 4) {
+  let px = ax, py = ay, pz = az;
+  const j = 0.22 * Math.hypot(bx - ax, by - ay, bz - az);
+  for (let i = 1; i <= steps; i++) {
+    const u = i / steps, e = i < steps ? j : 0;
+    const qx = ax + (bx - ax) * u + F.lrand(-e, e), qy = ay + (by - ay) * u + F.lrand(-e, e), qz = az + (bz - az) * u + F.lrand(-e, e);
+    F._ink(px, py, pz, qx, qy, qz, 0, h, 0, h, i > 1 ? 1 : 0, kind);
+    px = qx;
+    py = qy;
+    pz = qz;
+  }
 }
 
-function miniKnot(F, x, y, z, lf, k, t) {
-  const P = F._toCamera(x, y, z);
-  F._blob(P.x, P.y, P.z, 0, 0, 0, lf, 0.12, 0.12, 1.25, 1.25, K_STEEL);
-  F._blob(P.x, P.y, P.z, 0, 0, 0, lf, 0.38, 0.38, 0.6 + 0.35 * k, 0.6 + 0.35 * k, K_VOID);
-  for (let i = 0; i < 4; i++) {
-    const a = t * 13 + (i / 4) * TAU;
-    F._blob(x + Math.cos(a) * 0.2, y + Math.sin(a * 2) * 0.06, z + Math.sin(a) * 0.2, 0, 0, 0, lf, 0.24, 0.24, 0.48, 0.48, K_VOID);
-  }
+/** Where the charge is held: over his head (round 2). */
+function overHead(F, d, out) {
+  const e = d?.eyePoint ? d.eyePoint(out) : null;
+  if (e && Number.isFinite(e.x + e.y + e.z)) return out.set(e.x, e.y + NUL.over, e.z);
+  const p = d?.position ?? { x: 0, y: 0, z: 0 };
+  return out.set(fin(p.x), fin(p.y) + 2.0 + NUL.over, fin(p.z));
 }
-function miniPoint(F, x, y, z, lf, k, t) {
-  const P = F._toCamera(x, y, z), A = F._axes();
-  F._blob(P.x, P.y, P.z, 0, 0, 0, lf, 0.1, 0.1, 1.35, 1.35, K_STEEL);
-  F._blob(P.x, P.y, P.z, 0, 0, 0, lf, 0.3, 0.3, 0.95 + 0.25 * k, 0.95 + 0.25 * k, K_FIRE);
-  for (let i = 0; i < 6; i++) {
-    const a = (i / 6) * TAU - t * 2, ca = Math.cos(a) * 0.26, sa = Math.sin(a) * 0.26;
-    F._blob(P.x + A.rx * ca + A.ux * sa, P.y + A.ry * ca + A.uy * sa, P.z + A.rz * ca + A.uz * sa, 0, 0, 0, lf, 0.2, 0.2, 0.4, 0.4, K_FIRE);
-  }
-}
+const isPt = (P) => !!P && Number.isFinite(Number(P.x) + Number(P.y) + Number(P.z));
 
 export function nullCharge(F, d, k, blue, red) {
   if (!F.fire) return;
@@ -449,67 +467,83 @@ export function nullCharge(F, d, k, blue, red) {
     N.start = now;
     N.merged = false;
     N.acc = 0;
+    N.accG = 0;
     const p = d?.position;
     F._say('wjNullCharge', p?.x, p?.z, 1.8);
   }
   N.seen = now;
-  const B = point(F, S.v, d, 'R', blue), R = point(F, S.w, d, 'L', red);
+  // (round 2) the two bodies are held apart OVER HIS HEAD, turning round each other and closing as k
+  // rises; a caller's own points (`blue` / `red`) still win
+  const C = overHead(F, d, S.c), sep = NUL.apart * (1 - Math.pow(k, 1.6)) + 0.04, th = (now - N.start) * (1.6 + 7 * k * k);
+  const ox = Math.cos(th) * sep, oz = Math.sin(th) * sep;
+  const B = isPt(blue) ? S.v.set(Number(blue.x), Number(blue.y), Number(blue.z)) : S.v.set(C.x + ox, C.y, C.z + oz);
+  const R = isPt(red) ? S.w.set(Number(red.x), Number(red.y), Number(red.z)) : S.w.set(C.x - ox, C.y, C.z - oz);
   const bx = B.x, by = B.y, bz = B.z, rx = R.x, ry = R.y, rz = R.z;
-  const mx = (bx + rx) / 2, my = (by + ry) / 2, mz = (bz + rz) / 2, t = now - N.start, lf = F._frame();
+  const mx = (bx + rx) / 2, my = (by + ry) / 2, mz = (bz + rz) / 2, lf = F._frame();
   const fdt = Math.max(0, Math.min(0.1, fin(F.game.fxDt, 0.016)));
+  const p = d?.position, px = fin(p?.x, mx), pz = fin(p?.z, mz);
   if (!N.merged && k >= 0.999) {
     // THEY MEET: a white flash, the slot turns violet, the merged ball
     N.merged = true;
+    N.mergedAt = now;
     const P = F._toCamera(mx, my, mz);
-    F._blob(P.x, P.y, P.z, 0, 0, 0, 0.1, 0.36, 0.2, 1.6, 0, K_STEEL);
-    F._shock(mx, my, mz, 1.3, 18, 0.2, 0.3, 0.5, 0.5, K_STEEL, 0.15, 3);
-    for (let i = 0; i < 16; i++) {
-      const a = F.lr() * TAU, e = F.lrand(-1, 1), sp = F.lrand(2.5, 6);
-      const o = F._rec(mx, my, mz, F.lrand(0.18, 0.34), 0.14, 0.04, "*'+", WHITE, VIO_END);
+    F._blob(P.x, P.y, P.z, 0, 0, 0, 0.1, 0.5, 0.24, 1.6, 0, K_STEEL);
+    F._shock(mx, my, mz, 2.2, 24, 0.24, 0.32, 0.55, 0.55, K_STEEL, 0.2, 3);
+    F._shock(px, GROUND_Y, pz, 4.5, 30, 0.35, 0.6, 1.0, 0.24 * GROUND_GAIN, K_VOID, 0.6, 2);
+    for (let i = 0; i < 26; i++) {
+      const a = F.lr() * TAU, e = F.lrand(-1, 1), sp = F.lrand(3, 8);
+      const o = F._rec(mx, my, mz, F.lrand(0.2, 0.4), 0.15, 0.04, "*'+", WHITE, VIO_END);
       o.vx = Math.cos(a) * sp;
       o.vy = e * sp * 0.7;
       o.vz = Math.sin(a) * sp;
       o.drag = 4;
       F._spawn(F.add, o);
     }
-    F._light({ x: mx, y: my, z: mz, color: L_WHITE, intensity: 2.4, radius: 4, life: 0.16, fade: 0.14 });
+    F._light({ x: mx, y: my, z: mz, color: L_WHITE, intensity: 3.2, radius: 6, life: 0.18, fade: 0.16 });
     F._say('wjNullMerge', mx, mz);
   }
   if (N.merged) {
+    // the merged ball: violet, ~1 m, held and crackling; the road under him lit violet
     F._violet(0.4);
     if (lf > 0) {
+      const t = now - (N.mergedAt ?? now), sw = 0.5 * Math.min(1, 0.6 + t * 3);
+      F._disc(mx, my, mz, sw, 40, 0.26, 0.5, K_VOID);
       const P = F._toCamera(mx, my, mz);
-      F._blob(P.x, P.y, P.z, 0, 0, 0, lf, 0.12, 0.12, 1.35, 1.35, K_STEEL);
-      F._blob(P.x, P.y, P.z, 0, 0, 0, lf, 0.32, 0.32, 0.75, 0.75, K_VOID);
-      for (let i = 0; i < 7; i++) {
-        const a = now * 12 + (i / 7) * TAU, rr = 0.2 + 0.05 * Math.sin(now * 9 + i);
-        F._blob(mx + Math.cos(a) * rr, my + Math.sin(a * 2) * 0.08, mz + Math.sin(a) * rr, 0, 0, 0, lf, 0.22, 0.22, 0.42, 0.42, K_VOID);
+      F._blob(P.x, P.y, P.z, 0, 0, 0, lf, 0.16, 0.16, 1.0, 1.0, K_STEEL);
+      for (let i = 0; i < 9; i++) {
+        const a = now * 12 + (i / 9) * TAU, rr = sw * (1.05 + 0.12 * Math.sin(now * 9 + i));
+        F._blob(mx + Math.cos(a) * rr, my + Math.sin(a * 2) * 0.12, mz + Math.sin(a) * rr, 0, 0, 0, lf, 0.24, 0.24, 0.42, 0.42, K_VOID);
       }
-      F._ring(mx, my, mz, 0.42, 12, 0.24, 0.32, K_VOID, 2, now * 9);
+      // crackling: short arcs off its rim, new every frame
+      const A = F._axes();
+      for (let i = 0; i < 3; i++) {
+        const a = F.lr() * TAU, ca = Math.cos(a), sa = Math.sin(a), r0 = sw * 0.9, r1 = sw * F.lrand(1.5, 2.1);
+        zap(F, mx + (A.rx * ca + A.ux * sa) * r0, my + (A.ry * ca + A.uy * sa) * r0, mz + (A.rz * ca + A.uz * sa) * r0, mx + (A.rx * ca + A.ux * sa) * r1, my + (A.ry * ca + A.uy * sa) * r1, mz + (A.rz * ca + A.uz * sa) * r1, 0.65, K_STEEL, 3);
+      }
+      F._ring(px, GROUND_Y, pz, 1.4, 18, 0.55, 0.24 * GROUND_GAIN, K_VOID, 3, now * 3);
+      F._ring(px, GROUND_Y, pz, 2.6, 26, 0.5, 0.12 * GROUND_GAIN, K_VOID, 4, -now * 2);
     }
-    F._keep('wjNullB', mx, my, mz, L_VIOLET, 3, 6, 0.15);
+    F._keep('wjNullB', mx, my, mz, L_VIOLET, 2.2, 6, 0.15);
     return;
   }
   F._crimson(1.5);
+  F._azure();
+  const s = 0.85 + 0.35 * k;
   if (lf > 0) {
-    miniKnot(F, bx, by, bz, lf, k, now);
-    miniPoint(F, rx, ry, rz, lf, k, now);
-    // crackling to each other as they close
-    if (k > 0.35) {
-      const h = 0.3 + 0.7 * (k - 0.35);
-      let px = bx, py = by, pz = bz;
-      for (let i = 1; i <= 3; i++) {
-        const u = i / 3, j = i < 3 ? 0.12 : 0;
-        const qx = bx + (rx - bx) * u + F.lrand(-j, j), qy = by + (ry - by) * u + F.lrand(-j, j), qz = bz + (rz - bz) * u + F.lrand(-j, j);
-        F._ink(px, py, pz, qx, qy, qz, 0, h, 0, h, i > 1 ? 1 : 0);
-        px = qx;
-        py = qy;
-        pz = qz;
-      }
+    chargeKnot(F, bx, by, bz, lf, k, now, s);
+    chargePoint(F, rx, ry, rz, lf, k, now, s);
+    // arcs between them as they close (more, brighter as k rises)
+    if (k > 0.2) {
+      const n = k > 0.6 ? 2 : 1;
+      for (let i = 0; i < n; i++) zap(F, bx, by, bz, rx, ry, rz, 0.4 + 0.3 * k, K_STEEL, 4);
     }
+    // the road under him: blue on one side, red on the other, turning with them
+    const ux = Math.cos(th), uz = Math.sin(th);
+    F._ring(px + ux * 0.9, GROUND_Y, pz + uz * 0.9, 0.8, 10, 0.5, (0.1 + 0.14 * k) * GROUND_GAIN, K_VOID, 2, now * 4);
+    F._ring(px - ux * 0.9, GROUND_Y, pz - uz * 0.9, 0.8, 10, 0.5, (0.1 + 0.14 * k) * GROUND_GAIN, K_FIRE, 2, -now * 4);
   }
-  // the air gathered into his two hands
-  N.acc += fdt * (20 + 50 * k);
+  // the air gathered into the two bodies
+  N.acc += fdt * (24 + 60 * k);
   while (N.acc >= 1) {
     N.acc -= 1;
     const right = F.lr() < 0.5, x = right ? bx : rx, y = right ? by : ry, z = right ? bz : rz;
@@ -523,9 +557,56 @@ export function nullCharge(F, d, k, blue, red) {
     o.alphaEnd = 1;
     F._spawn(F.add, o);
   }
-  F._keep('wjNullB', bx, by, bz, L_AZURE, 0.8 + 1.4 * k, 3.5, 0.1);
-  F._keep('wjNullR', rx, ry, rz, L_CRIMSON, 0.8 + 1.4 * k, 3.5, 0.1);
-  void t;
+  // grit and litter rising off the road toward them
+  N.accG = (N.accG ?? 0) + fdt * (14 + 46 * k);
+  while (N.accG >= 1) {
+    N.accG -= 1;
+    const a = F.lr() * TAU, r = F.lrand(0.8, 3.5), T = F.lrand(0.6, 1.0);
+    const sx = px + Math.cos(a) * r, sz = pz + Math.sin(a) * r, ty = my - F.lrand(0.3, 0.8);
+    const o = F._rec(sx, 0.08, sz, T, F.lrand(0.17, 0.24), 0.1, '.,:#%', GRIT, STONE);
+    o.vx = ((mx - sx) / T) * 0.8;
+    o.vy = (ty - 0.08) / T;
+    o.vz = ((mz - sz) / T) * 0.8;
+    o.spin = F.lrand(-5, 5);
+    o.alpha = 0.95;
+    o.alphaEnd = 0.2;
+    F._spawn(F.alpha, o);
+  }
+  F._keep('wjNullB', bx, by, bz, L_AZURE, 0.5 + 0.9 * k, 3.5, 0.1);
+  F._keep('wjNullR', rx, ry, rz, L_CRIMSON, 0.5 + 0.9 * k, 3.5, 0.1);
+}
+
+/** (round 2) The line of the Null shown ON THE ROAD while it charges: its two edges w m apart as thin
+ *  violet strokes, red-violet and blinking as k nears 1; ticks across the band running toward its end. */
+export function nullLine(F, seg, k) {
+  const S = F._spellState, G = segOf(seg, S?.seg2);
+  if (!G || !S || !F.fire) return;
+  k = clamp01(fin(k, 0));
+  const lf = F._frame();
+  if (!(lf > 0)) return;
+  const { ax, az, bx, bz, L, w } = G, ux = (bx - ax) / L, uz = (bz - az) / L, cx = -uz, cz = ux, hw = w * 0.5;
+  const V = visible(F, ax, GROUND_Y, az, bx, GROUND_Y, bz, S.vis);
+  if (!V) return;
+  const s0 = V[0] * L, s1 = V[1] * L, t = F._now();
+  const blink = k > 0.85 ? (Math.floor(t * 12) % 2 ? 0.55 : 1) : 1;
+  const hv = (0.22 + 0.4 * k) * GROUND_GAIN * blink, hr = k > 0.45 ? (k - 0.45) / 0.55 : 0;
+  if (hr > 0) F._crimson(0.4);
+  for (const sd of [-1, 1]) {
+    const ex = cx * sd * hw, ez = cz * sd * hw;
+    F._ink(ax + ux * s0 + ex, GROUND_Y, az + uz * s0 + ez, ax + ux * s1 + ex, GROUND_Y, az + uz * s1 + ez, 0, hv, 0, hv, 0, K_VOID);
+    // the red in it as it comes: a second stroke just inside, crimson
+    if (hr > 0) {
+      const ix = cx * sd * (hw - 0.3), iz = cz * sd * (hw - 0.3), h = hr * 0.42 * GROUND_GAIN * blink;
+      F._ink(ax + ux * s0 + ix, GROUND_Y, az + uz * s0 + iz, ax + ux * s1 + ix, GROUND_Y, az + uz * s1 + iz, 0, h, 0, h, 0, K_FIRE);
+    }
+  }
+  // chevrons across the band, running along it toward its end (which way it will fire)
+  const step = 2.4, off = (t * 6) % step, ht = (0.08 + 0.16 * k) * GROUND_GAIN * blink;
+  for (let s = s0 + off; s < s1; s += step) {
+    const x0 = ax + ux * s, z0 = az + uz * s;
+    F._ink(x0 - cx * hw * 0.85, GROUND_Y, z0 - cz * hw * 0.85, x0 + ux * 0.6, GROUND_Y, z0 + uz * 0.6, 0, ht, 0, ht, 0, K_VOID);
+    F._ink(x0 + cx * hw * 0.85, GROUND_Y, z0 + cz * hw * 0.85, x0 + ux * 0.6, GROUND_Y, z0 + uz * 0.6, 0, ht, 0, ht, 0, K_VOID);
+  }
 }
 
 /** The segment and its width, checked: null when it is not one. */

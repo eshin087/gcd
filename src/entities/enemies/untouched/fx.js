@@ -103,7 +103,7 @@ const orange = (c) => Array.isArray(c) && c[0] > 0.85 && c[1] > 0.3 && c[1] < 0.
 // every drawing method of this class runs on LordFx's drawing stream (see ascendant/fx.js ASC_DRAW)
 const WJ_DRAW = [
   'barrierIdle', 'barrierStop', 'barrierCrack', 'barrierOpen', 'barrierClose', 'blinkOut', 'blinkIn', 'eyes', 'afterimage', 'vanish',
-  'drawKnot', 'drawCollapse', 'castPoint', 'castBurst', 'nullCharge', 'nullBeam', 'nullEnd', 'domainSign', 'domainWall', 'domainCaught',
+  'drawKnot', 'drawCollapse', 'castPoint', 'castBurst', 'nullCharge', 'nullLine', 'nullBeam', 'nullEnd', 'domainSign', 'domainWall', 'domainCaught',
   'domainBreak', 'shove', 'crash', '_wjUpdate',
 ];
 
@@ -714,6 +714,9 @@ export class WjFx extends AscFx {
   }
   nullCharge(d, k, blue, red) {
     this.spellFx.nullCharge?.(this, d, k, blue, red);
+  }
+  nullLine(seg, k) {
+    this.spellFx.nullLine?.(this, seg, k);
   }
   nullBeam(seg, k) {
     this.spellFx.nullBeam?.(this, seg, k);
