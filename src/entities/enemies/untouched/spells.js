@@ -26,7 +26,8 @@ import { TUNE as HERO_TUNE } from '../../player/player.js';
 //   wreck  the Wrecking Knot: the path (`len` m, across the hero's line from Wuji, through his place) is
 //          fixed at `fix` and shown (fx.drawPath); the knot runs it in `time` s, crossing the hero's fixed
 //          place AT the impact: it drags him toward its path, sweeps every piece on its way, furrows the
-//          road; red on its strip (`half` m), from the glint on.
+//          road; red on its strip (`half` m), AT the impact (from it to `contact` s after: a knot that met
+//          the hero before its cue's impact or after a perfect roll's i-frames was a hit no answer could meet).
 //   line   THE VIOLET NULL: the charge over his fingers (fx.nullCharge, merged at `merge`), the line fixed
 //          at `fix` and shown on the road (fx.nullLine); at the impact a line `w` m wide and `len` long:
 //          `contact` s it can touch the hero (one red hit, the heaviest of the fight, never lethal from
@@ -478,9 +479,10 @@ export class WjSpells {
     }
     R.lastX = x;
     R.lastZ = z;
-    // the hero on its strip: one red hit, from the glint on
+    // the hero on its strip: one red hit, at the impact its cue promised (the tuning pass: from the glint on
+    // before, the knot dragged onto the hero met him before a roll timed to the cue, or after its i-frames)
     const p = this._hero();
-    if (p && !R.hit && now >= b.flash - 1e-6 && Math.hypot(p.position.x - x, p.position.z - z) <= T.half + (p.radius ?? 0.45)) {
+    if (p && !R.hit && now >= b.impact - 1e-6 && now <= b.impact + (T.contact ?? 0.15) && Math.hypot(p.position.x - x, p.position.z - z) <= T.half + (p.radius ?? 0.45)) {
       const r = this._strike(b, a, 'wreck', T.damage, T.knockback, x - R.px * 1.2, z - R.pz * 1.2);
       if (r !== RESULT.IGNORED) R.hit = true;
     }

@@ -77,6 +77,7 @@ export const TUNING_SPELLS = {
     windup: 1.9, fix: 0.28, // u: the path is fixed (through the hero's place, across his line from Wuji): shown 0.7 s before it moves
     len: 16, time: 1.4, // m in s (it crosses the hero's fixed place at the impact)
     half: 1.5, // m: the strip's half-width (the hero inside it is hit once, red)
+    contact: 0.15, // s after the impact it can still meet him (the tuning pass: a roll timed to the cue covers it)
     strength: 4.2, r: 7, // its drag while it moves
     damage: 30, knockback: 8, crash: 3.2,
     chew: 1.5, power: 3.2, // the sweep along its way (m either side, POWER)

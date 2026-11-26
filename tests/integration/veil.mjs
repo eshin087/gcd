@@ -2497,6 +2497,23 @@ async function scenarioWreck() {
   assert(path && movedAt - fixedAt >= 0.5 && !moved, `the path is fixed and shown ${(movedAt - fixedAt).toFixed(2)} s before it moves, and never moves`);
   assert(flash === TELL.RED && h.length === 1 && h[0].r === RESULT.HIT && p.hp > 0, `red on its strip: one hit on a hero who stood (${h.map((x) => x.r).join(',')})`);
   assert(M.made.dash - dash0 >= 3, `it furrows the road along its way (${M.made.dash - dash0})`);
+  // (the tuning pass) a roll timed to its cue (a perfect dodge, either way along the path) is never met by the
+  // knot after: it strikes only at the impact (the perfect bot was hit 46 by a knot dragged onto it, seed 4242)
+  const res = [];
+  for (let k = 0; k < 2; k++) {
+    p.debug.heal();
+    d.debug.tidy();
+    run(G, 1);
+    p.debug.teleport(d.position.x, d.position.z + 7);
+    const t0 = game.time;
+    const step = answer(G, 'dodge', 'wreckingKnot');
+    d.brain.trigger('wreckingKnot');
+    untilFoot(G, 5, step); // (the knot's path flips side every cast: one roll toward it, one away)
+    G.watch = null;
+    res.push(hitsOf(G, 'wreckingKnot', t0).map((x) => x.r).join(',') || 'none');
+  }
+  out(`     answered with a perfect dodge (the path one way, then the other): ${res.join(' / ')}`);
+  assert(res.every((r) => !r.split(',').includes(RESULT.HIT)), `a perfect dodge of the knot is never hit after it (${res.join(' / ')})`);
 }
 
 async function scenarioNull() {
