@@ -38,8 +38,8 @@ import { DIM } from './heroDims.js';
 const IDS = ['a', 'b', 'c', 'd', 'old'];
 export const RUN_ARM_IDS = Object.freeze(IDS.slice());
 export const RUN_ARM_NAMES = Object.freeze({ a: 'natural', b: 'dash', c: 'by speed', d: 'full pump', old: 'before' });
-// (the owner's pick on main is 'a', 2026-11-25: they approved A on the preview; C shipped first and was
-// reverted. On this draft branch 'd', beside the sword carry `hip`, for the owner's look)
+// (the owner's pick: 'a' on 2026-11-25 (they approved A on the preview; C shipped first and was reverted),
+// then 'd' the same day, beside the sword carry `hip`, after their reference run: ADR-204)
 const DEFAULT = 'd';
 
 const q = (name) => {

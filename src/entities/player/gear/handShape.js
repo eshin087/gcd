@@ -56,30 +56,35 @@ export function shapedHand(len, side, k = 1, curl = 0.25) {
 // fingers and just focus on the overall hand and arm shape"). The reference runner's free hand is a
 // compact closed fist, as wide as the forearm at the wrist, a little deeper than the wrist is thick,
 // its knuckles rolled toward the palm, the thumb a bump over the front; the forearm runs into it with
-// no neck. Built of a few overlapping masses, no fingers:
+// no neck. Built of a few overlapping masses, no finger detail:
 //   - the back of the hand: one flattened mass from the wrist to the knuckles, as wide as the bracer
-//   - the curled fingers: a roll along the palm side, below it, as wide again
+//   - the curled fingers: four short rolls side by side below it (the knuckle row), and four more folded in
+//     under the palm: together one block, a little wider than the bracer
 //   - the thumb: a bump over the front edge
 //   - `cuff` > 0: a flared cuff over the wrist (a gauntlet's), so the arm widens into the hand
 // In fore space as looseHand / shapedHand (arm down −Y, the wrist at y = −len, the palm toward the
-// body: −side·X, the thumb +Z). Returns { palm, fingers, tips, thumb } (fingers / tips may be empty
-// stand-ins so the caller's merge stays as it is).
+// body: −side·X, the thumb +Z). Returns { palm, fingers, tips, thumb }.
+// (Built from as many geometries as looseHand, the hand before it: every BufferGeometry draws a uuid from
+// Math.random, which the tests seed, so a hand with fewer pieces shifted every seeded fight after it, the
+// sheath's pace among them. Keep the count at 12 when this changes: 1 + 4 + 1 + 4 + 1 + 1.)
 export function fistHand(len, side, k = 1, cuff = 0) {
   const inX = -side;
   const y0 = -len;
-  const parts = [
-    // the back of the hand, wrist → knuckles
-    ellipsoidGeometry(0.03 * k, 0.05 * k, 0.05 * k, { widthSegs: 12, heightSegs: 7 }).translate(-inX * 0.002 * k, y0 - 0.042 * k, 0.002),
-    // the knuckle line, a little wider and lower
-    ellipsoidGeometry(0.031 * k, 0.026 * k, 0.053 * k, { widthSegs: 12, heightSegs: 5 }).translate(inX * 0.004 * k, y0 - 0.074 * k, 0.0),
-  ];
-  // the curled fingers rolled in under the palm
-  const fingers = sub(ellipsoidGeometry(0.023 * k, 0.03 * k, 0.05 * k, { widthSegs: 10, heightSegs: 5 }).translate(inX * 0.022 * k, y0 - 0.068 * k, -0.002), 1);
-  // the thumb over the front edge, laid along the curled fingers
-  const thumb = sub(place(ellipsoidGeometry(0.016 * k, 0.03 * k, 0.017 * k, { widthSegs: 7, heightSegs: 5 }), inX * 0.016 * k, y0 - 0.052 * k, 0.04 * k, 0.25, 0, inX * 0.35), 1);
+  // the back of the hand, wrist → knuckles
+  let palm = ellipsoidGeometry(0.03 * k, 0.056 * k, 0.05 * k, { widthSegs: 12, heightSegs: 7 }).translate(-inX * 0.002 * k, y0 - 0.048 * k, 0.002);
   if (cuff > 0) {
     // a flared cuff over the wrist: the forearm widens into the fist
-    parts.push(limb({ length: 0.05 * cuff, r0: 0.05 * k, r1: 0.058 * k, radial: 10, rings: 2, capSegs: 1 }).translate(0, y0 + 0.022 * cuff, 0));
+    palm = mergeGeometries([palm, limb({ length: 0.05 * cuff, r0: 0.05 * k, r1: 0.058 * k, radial: 10, rings: 2, capSegs: 1 }).translate(0, y0 + 0.022 * cuff, 0)]);
   }
-  return { palm: mergeGeometries(parts), fingers, tips: thumb.clone().scale(0.001, 0.001, 0.001), thumb };
+  const Z = [0.034, 0.012, -0.011, -0.032]; // index (front, +Z) → little finger
+  const rows = [], folds = [];
+  Z.forEach((z, i) => {
+    // the knuckle row: each finger's first joint, short and thick, side by side
+    rows.push(sub(ellipsoidGeometry(0.024 * k, 0.022 * k, 0.0135 * k, { widthSegs: 8, heightSegs: 5 }).translate(inX * 0.006 * k, y0 - 0.088 * k, z * k), i & 1));
+    // … and the rest of the finger folded in under the palm
+    folds.push(ellipsoidGeometry(0.014 * k, 0.026 * k, 0.0125 * k, { widthSegs: 7, heightSegs: 5 }).translate(inX * 0.026 * k, y0 - 0.07 * k, z * k));
+  });
+  // the thumb over the front edge, laid along the curled fingers
+  const thumb = sub(place(ellipsoidGeometry(0.016 * k, 0.03 * k, 0.017 * k, { widthSegs: 7, heightSegs: 5 }), inX * 0.016 * k, y0 - 0.052 * k, 0.04 * k, 0.25, 0, inX * 0.35), 1);
+  return { palm, fingers: mergeGeometries(rows), tips: mergeGeometries(folds), thumb };
 }

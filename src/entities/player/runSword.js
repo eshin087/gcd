@@ -25,7 +25,7 @@ import { DIM } from './heroDims.js';
 const IDS = ['hip', 'old'];
 export const RUN_SWORD_IDS = Object.freeze(IDS.slice());
 export const RUN_SWORD_NAMES = Object.freeze({ hip: 'forward at the hip', old: 'before' });
-const DEFAULT = 'hip'; // on the draft branch, for the owner's look (the plain preview link)
+const DEFAULT = 'hip'; // the owner's pick (2026-11-25, ADR-204)
 
 const q = (name) => {
   try {

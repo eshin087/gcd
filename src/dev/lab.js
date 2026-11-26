@@ -1371,16 +1371,16 @@ export class Lab {
       b.title = `?runSword=${m}: ${RUN_SWORD_NAMES[m]}`;
       return { m, el: b };
     });
-    // the free hand's look (player/gear/handLook.js, ?handLook=0|a|b|c|d): built with the rig, so a reload
+    // the free hand's look (player/gear/handLook.js, ?handLook=0|a-h): built with the rig, so a reload
     const hlr = el('div', 'lab-row', null, body);
-    el('span', 'lab-lbl', 'hand', hlr).title = "the free (left) hand's size and ink (?handLook=; reloads the page): before, a smaller (the default, the owner's pick), b smaller and shaded, c smaller and dark, d a leather glove";
+    el('span', 'lab-lbl', 'hand', hlr).title = "the free (left) hand's size and ink (?handLook=; reloads the page): before, a smaller, b smaller and shaded, c smaller and dark, d a leather glove, e an open hand, f a loose fist, g a fist (the default, the owner's pick), h a gauntlet fist";
     const hlGrid = el('div', 'lab-grid', null, hlr);
     hlGrid.style.flex = '1';
     for (const id of HAND_LOOK_IDS) {
       const b = button(hlGrid, `${id === '0' ? 'before' : id}`, () => {
         try {
           const u = new URL(globalThis.location.href);
-          if (id === 'a') u.searchParams.delete('handLook');
+          if (id === 'g') u.searchParams.delete('handLook');
           else u.searchParams.set('handLook', id);
           globalThis.location.href = u.toString();
         } catch (err) {
