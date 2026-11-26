@@ -359,6 +359,15 @@ export const SCAR = Object.freeze({
   object: Object.freeze({ glyphs: 'x/\\+', size: [0.22, 0.5] }),
   /** a crater: a blow of `min` power or more leaves a rim of thrown-up earth and a charred disc */
   crater: Object.freeze({ min: 1.2, glyphs: '.:o,', ring: [10, 26], char: 0.85 }),
+  /**
+   * A level whose floor reads every pale letter (the Veiled Crossing's black asphalt at night: a whole fight
+   * of grit read as snow) keeps only a share of the GRIT (a slam's and a crater's thrown-up ring, a blast's
+   * dots), the RUBBLE (what lands where a piece came down, each bitten letter that falls) and today's crack
+   * SPOKES; the strokes that give a mark its shape stay. `cool`: rubble of a material whose end colour
+   * is a spark's ember (metal: the cars, the lamps, the bus) lies cold grey instead of as orange embers
+   * glowing on the floor till the reset. Per level id; absent: all (1), as before.
+   */
+  thin: Object.freeze({ veil: Object.freeze({ grit: 0.35, rubble: 0.25, ground: 0.4, cool: true }) }),
   /** at the cap this share of the oldest marks goes, fading out over `fade` s (never a pop in view) */
   evict: 0.15,
   fade: 1.4,

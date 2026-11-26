@@ -93,7 +93,7 @@ export function benchRun(H, seed, bot, { secs = 600, skill = 0.9 } = {}) {
   let curAtk = null;
   const th = p.takeHit.bind(p);
   p.takeHit = (h) => { curAtk = h?.attack ?? null; const r = th(h); curAtk = null; return r; };
-  const n = { parries: 0, perfect: 0, dodges: 0, heals: 0, blocks: 0, guardBreaks: 0 };
+  const n = { parries: 0, perfect: 0, dodges: 0, heals: 0, blocks: 0, guardBreaks: 0, guardOpens: 0 };
   const phAt = [game.time];
   const w0 = G.watch;
   G.watch = (ev, e) => {
@@ -104,6 +104,7 @@ export function benchRun(H, seed, bot, { secs = 600, skill = 0.9 } = {}) {
     if (ev === 'player:heal') n.heals++;
     if (ev === 'player:block') n.blocks++;
     if (ev === 'player:guardBreak') n.guardBreaks++;
+    if (ev === 'player:guardOpen') n.guardOpens++;
     if (/^dragon:phase[234]$/.test(ev)) phAt.push(game.time);
   };
   const t0 = game.time;
@@ -149,7 +150,7 @@ export function benchRun(H, seed, bot, { secs = 600, skill = 0.9 } = {}) {
   return {
     seed, bot, outcome, T, phase: d.phase, bar: Math.max(0, d.hp) / (d.maxHp ?? TUNING.hp), hp: p.hp,
     flasks: p.maxFlasks - p.flasks, hits: hurt.length, dmg: hurt.reduce((s, h) => s + h[1], 0), killer,
-    worst: worst[1], worstBy: worst[2], perPh, missed, byMove, barrier: d.barrier?.stats ? { ...d.barrier.stats } : null, ...n,
+    worst: worst[1], worstBy: worst[2], perPh, missed, spared: d.parts?.melee?.stats?.spared ?? null, byMove, barrier: d.barrier?.stats ? { ...d.barrier.stats } : null, ...n,
   };
 }
 
@@ -168,7 +169,7 @@ export async function benchScenario(H, who) {
     for (const seed of seeds) {
       const r = benchRun(H, seed, bot, { secs, skill });
       all.push(r);
-      out(`   ${bot.padEnd(8)} seed ${String(seed).padEnd(5)} ${r.outcome.padEnd(5)} ${r.T.toFixed(0).padStart(4)} s · phase ${r.phase} bar ${(r.bar * 100).toFixed(0)} % · phases ${r.perPh.map((x) => x.toFixed(0)).join(' / ')} s · hits ${r.hits} for ${r.dmg.toFixed(0)} · flasks ${r.flasks} · worst ${r.worst.toFixed(0)} (${r.worstBy}) · parries ${r.parries} (perfect ${r.perfect}) · dodges ${r.dodges} · blocks ${r.blocks} · guard breaks ${r.guardBreaks}${r.missed ? ` · cues missed ${r.missed}` : ''}${r.killer ? ` · KILLED BY ${r.killer}` : ''}${r.barrier ? ` · barrier ${JSON.stringify(r.barrier)}` : ''}`);
+      out(`   ${bot.padEnd(8)} seed ${String(seed).padEnd(5)} ${r.outcome.padEnd(5)} ${r.T.toFixed(0).padStart(4)} s · phase ${r.phase} bar ${(r.bar * 100).toFixed(0)} % · phases ${r.perPh.map((x) => x.toFixed(0)).join(' / ')} s · hits ${r.hits} for ${r.dmg.toFixed(0)} · flasks ${r.flasks} · worst ${r.worst.toFixed(0)} (${r.worstBy}) · parries ${r.parries} (perfect ${r.perfect}) · dodges ${r.dodges} · blocks ${r.blocks} · guard opened ${r.guardOpens} · guard broken (red) ${r.guardBreaks}${r.missed ? ` · cues missed ${r.missed}` : ''}${r.spared !== null ? ` · spared ${r.spared}` : ''}${r.killer ? ` · KILLED BY ${r.killer}` : ''}${r.barrier ? ` · barrier ${JSON.stringify(r.barrier)}` : ''}`);
       if (process.env.GCD_BMOVES) out(`        damage by move: ${Object.entries(r.byMove).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v.toFixed(0)}`).join(' · ')}`);
     }
   }
