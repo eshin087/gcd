@@ -140,7 +140,8 @@ def fit_weak(X2, l2, vis_min=0.3):
 
 def reproject(b, take):
     """b (n,33,3) in his body frame, on take's time grid -> image points (n,33,2) and the error (% torso)"""
-    cam = b @ take.R.T
+    Rs = getattr(take, 'Rs', None)
+    cam = np.einsum('nkj,nij->nki', b, Rs) if Rs is not None and len(Rs) == len(b) else b @ take.R.T  # R_t v
     S, T = fit_weak(cam[:, :, :2], take.l2)
     img = cam[:, :, :2] * np.array([1, -1.0]) * S[:, None, None] + T[:, None]
     torso = np.linalg.norm((take.l2[:, 11, :2] + take.l2[:, 12, :2]) / 2 - (take.l2[:, 23, :2] + take.l2[:, 24, :2]) / 2, axis=1)

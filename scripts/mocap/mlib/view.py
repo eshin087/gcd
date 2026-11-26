@@ -25,6 +25,12 @@ def our_points(B, blade_len=None):
     P, R = skel.fk(B.q, B.hips, root)
     tip = P[:, JI['weaponR']] + skel.qrot(R[:, JI['weaponR']], np.array([0, 0, blade_len or HDIM['blade']]))
     tipL = P[:, JI['weaponL']] + skel.qrot(R[:, JI['weaponL']], np.array([0, 0, blade_len or HDIM['blade']]))
+    fr = float(getattr(B, 'face_rot', 0.0) or 0.0)
+    if fr:  # spec "face" turned the clip: turn it back into the takes' body frame
+        from .post import rotate_y
+        P = rotate_y(P, np.full(len(P), -fr))
+        tip = rotate_y(tip[:, None], np.full(len(P), -fr))[:, 0]
+        tipL = rotate_y(tipL[:, None], np.full(len(P), -fr))[:, 0]
     return P, R, tip, tipL
 
 
@@ -108,11 +114,12 @@ def pair_sheet(B, Ts, out, frames=None, k=8, cell=200, overlay=True, tool=True, 
             im = Image.open(path).convert('RGB')
             gi = int(np.clip(np.round((tt - T.t[0]) * 60), 0, len(T.t) - 1))
             l2 = T.l2[gi]
-            pts = project(P[f], T.R)
+            Rc = T.Rs[gi] if getattr(T, 'Rs', None) is not None else T.R  # that frame's camera
+            pts = project(P[f], Rc)
             s, sh = fit_to(pts, l2)
             pts = pts * s + sh
-            tp = project(tip[f][None], T.R)[0] * s + sh if has_blade else None
-            tpL = project(tipLs[f][None], T.R)[0] * s + sh if has_bL else None
+            tp = project(tip[f][None], Rc)[0] * s + sh if has_blade else None
+            tpL = project(tipLs[f][None], Rc)[0] * s + sh if has_bL else None
             # crop round both
             allp = np.concatenate([pts, l2[:, :2]] + ([tp[None]] if tp is not None else []))
             x0, y0 = allp.min(0)
