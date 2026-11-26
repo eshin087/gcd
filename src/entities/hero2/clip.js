@@ -278,7 +278,7 @@ export function decodeClip(raw, set = null) {
     hands = { R: r.hands.R ?? null, L: r.hands.L ?? null };
     for (const s of ['R', 'L']) if (!HAND_KINDS.has(hands[s])) problems.push(`hands.${s}: unknown shape ${hands[s]}`);
   }
-  if (!/^_?[a-z][A-Za-z0-9]*$/.test(name)) problems.push(`name '${name}' must be camelCase`);
+  if (!/^_?([a-z]|2h[A-Z])[A-Za-z0-9]*$/.test(name)) problems.push(`name '${name}' must be camelCase (a leading 2h for the two-handed set)`);
   if (!(fps === 30 || fps === 60)) warnings.push(`fps ${fps} (the format says 30 or 60)`);
   if (typeof r.title !== 'string' || !r.title) problems.push('title missing');
   if (typeof r.src !== 'string') warnings.push('src missing');
