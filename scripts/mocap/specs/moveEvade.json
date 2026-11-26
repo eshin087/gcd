@@ -184,7 +184,17 @@
     }
    ],
    "from": "idle",
-   "to": "idle"
+   "to": "idle",
+   "events": [
+    {
+     "t": "10:57.70",
+     "name": "air"
+    },
+    {
+     "t": "10:58.05",
+     "name": "land"
+    }
+   ]
   },
   {
    "name": "roll",
@@ -468,7 +478,17 @@
    "qa": {
     "maxStepDeg": 30,
     "reason": "the take-off: the right knee snaps straight as he dives (about 1700 deg/s); seen in the footage at 11:19.25"
-   }
+   },
+   "events": [
+    {
+     "t": "11:19.20",
+     "name": "air"
+    },
+    {
+     "t": "11:19.87",
+     "name": "land"
+    }
+   ]
   },
   {
    "name": "crouchDown",
@@ -574,15 +594,12 @@
      "t0": "12:40.30",
      "t1": "12:42.70",
      "view": "back"
-    },
-    {
-     "t0": "12:47.10",
-     "t1": "12:52.80",
-     "view": "front"
     }
    ],
    "from": "crouchWalk",
-   "to": "crouchWalk"
+   "to": "crouchWalk",
+   "period_lo": 1.1,
+   "period_hi": 1.6
   },
   {
    "name": "crouchRun",
