@@ -36,8 +36,10 @@ export function perPhase(v, phase) {
 const FOLLOW_MAX = 0.24; // s: the longest follow-through of a blow
 const FOLLOW_RING = 0.3; // … of a spin (a ring zone): its whole turn runs on this clock, 0.18 s was a blur
 const FOLLOW_PART = 0.72; // of the time to the next beat's first pose: the rest is his way into it
-// `keysOf(beat)` (optional): the pose keys a beat plays THIS time, read as each move is realised (ADR-226:
-// Shen Hui's and Varr Nihil's held tell poses, `motionKeys`, behind their switches); null or undefined = `beat.keys`.
+// `keysOf(beat)` (optional, ADR-225): the pose keys a beat plays THIS time, read as each move is realised: a
+// boss whose blows have a second set of keys behind a live look switch (Tian Lei's and Halcyon's motion,
+// ascendant/motion.js, halcyon/motion.js; Shen Hui's and Varr Nihil's held tell poses, `motionKeys`, ADR-226);
+// null or undefined = `beat.keys`. Poses only: timings never move.
 // `recoveryKeysOf(move)` (optional, the same for a move's `recoveryKeys`: the Starless Lord's end-of-string
 // shake); null or undefined = `move.recoveryKeys`. Timings never depend on either.
 export function makeRealise({ TUNING, MOVES, compileClip, completeBeat = null, keysOf = null, recoveryKeysOf = null }) {
