@@ -5,6 +5,38 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-26 — The melee animation engine; Tian Lei's blows from a bare-handed film, turned down (ADR-208; branch `enemies/fists-ref`)
+
+**Task** (the owner): review a bare-handed melee reference film with the "0 - Game Engine" session's tool, learn the
+animations, put them on a bare-handed boss to preview, and save what was learned in the repo for future agents.
+Owner's answers: Tian Lei first; remap his existing blows; reference motion at our windups; behind a switch, held PR.
+
+**What changed.**
+- `scripts/mocap/` (the hero remake branch's pose-tracking tool) and the hero2 skeleton / clip contract it needs.
+- `scripts/mocap/duelist/`: `fit.mjs` (clip → duelist keys, `--check` through the real animator), `examples/tianlei.json`
+  (the map), `README.md` (the engine's guide and lessons). `scripts/mocap/armkeys.py` (arm hand keys).
+- `scripts/mocap/specs/fistA.json`, `fistB.json` → `src/entities/hero2/clips/fistA.js`, `fistB.js` (six clips).
+- `duelist/realise.js`: optional `keysOf`. `ascendant/moves.js`: `refKeys` on every punch / kick / elbow / shoulder
+  beat, `fistKeys`; `ascendant/refBlows.js` (generated). Lab LOOKS `fists`; PENDING. `asc.mjs . fists`. (All of this
+  Tian Lei wiring was removed again after the owner's verdict, below; only `keysOf` stays.)
+
+**How it went.** The film (15:15) was recorded frame by frame in a headless Edge, catalogued by a subagent (41
+strikes, hand strikes only: a wild brawler), and two author subagents built six clips. Nothing fused across camera
+angles (follow cameras, differing passes, a capture of 30 - 60 frames a second with gaps at impacts): every blow is
+one take with the striking arm hand-keyed frame by frame. YouTube autoplayed the next video after the capture and a
+still-attached recorder wrote ~18 000 of its frames under 0 - 389 s; they were found by write time, deleted, and the
+light chapter re-tracked. The fit lands fists within ~5 cm of the reference, elbows ~11.
+
+**Verified.** `asc.mjs . fists` (timings identical on and off, the clips change, a fight through every measured move:
+no NaN, no error); film strips in the browser (today vs `?fists=ref`: the lunging straight, the overhead hammer).
+
+**The owner's verdict.** "the new animations look worse than the old ones": the stiff, unnatural arms and the
+lunges and feet. Tian Lei's wiring was removed from the branch before merging (his blows are as authored);
+the engine, its guide (with why this try failed), the recorder and the realiser's `keysOf` hook land.
+Frames, caches and sheets stay in this session's scratchpad (never committed).
+
+---
+
 ## 2026-11-25 — A roadmap to Steam and the app stores (docs only; branch `docs/ship-roadmap`)
 
 **Owner:** plans to sell the game on Steam (Windows / Mac) and the iOS / Android stores; asked whether the
