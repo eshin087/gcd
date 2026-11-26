@@ -283,7 +283,17 @@ def build_clip(spec, clip, log=print):
     for pk in clip.get('pose_keys', []):
         q = keys.apply_pose_key(q, pk, fps, B)
     q = skel.continuous(q)
-    g = retarget.ground_and_contact(q, fps, loop, clip.get('ground', 'feet'), clip.get('travel', 'free'), log, clip, yaw)
+    airm = None
+    if clip.get('air_marks') and not loop:
+        ev = {e['name']: e['t'] for e in clip.get('events', [])}
+        if 'air' in ev and 'land' in ev:
+            t0r = B.t_ref[0]
+            airm = (int(np.clip(round((cfg.parse_time(ev['air']) - t0r) * fps), 0, len(q) - 1)),
+                    int(np.clip(round((cfg.parse_time(ev['land']) - t0r) * fps), 1, len(q))))
+            log('  air marks: no planted foot in frames %d-%d%s' % (airm[0], airm[1] - 1, ', peak %.2f m' % clip['air_peak_m'] if clip.get('air_peak_m') is not None else ''))
+        else:
+            log('  ! air_marks: the clip needs an `air` and a `land` event')
+    g = retarget.ground_and_contact(q, fps, loop, clip.get('ground', 'feet'), clip.get('travel', 'free'), log, clip, yaw, air=airm)
     hips = np.zeros((len(q), 3))
     hips[:, 0] = g['hips_xz'][:, 0]
     hips[:, 1] = g['hipsY']
