@@ -5,6 +5,20 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-26 — The reference-footage tools removed (ADR-236; branch `build/remove-mocap`)
+
+**Owner**, after reviewing the hero remade from two reference films (`?hero=new`, PR 162, closed): "It looks all
+meh. Scrap everything. Lets not use any of the reference video stuff ... we will just go back to how we made
+animations on our own", then to remove the tool on main and the motion guide too.
+
+**What.** Deleted `scripts/mocap/` (the footage tracker, the duelist fitter, the recorder, the specs) and
+`src/entities/hero2/` (the skeleton / clip contract and the two bare-hand clip sets it carried); the
+duelist realiser's unused `keysOf` hook (no boss used it: behaviour unchanged); the `.gitignore` lines for
+footage frames. PR 162 (the remade hero) and PR 148 (the refstudy kit and `docs/MOTION.md`) closed. The
+game's animation stays hand-authored (`player/anim.js`, `swings.js`, the bosses' move data).
+
+**Verification.** `npm run build`; the duel suite (the realiser's main user) all passed; the rest on CI.
+
 ## 2026-11-26 — The perfect parry widened to the perfect dodge's window (ADR-227; branch `claude/combat-perfect-parry-window-d6503b`)
 
 **Owner:** parrying is very hard, the timing too tight; make it like the perfect dodge's window. They picked
