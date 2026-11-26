@@ -11,7 +11,6 @@ import { toDragonLook } from '../ashDisciple/bodyArt.js';
 import { ASC_ART } from './bodyArt.js';
 import { ascLookNow, dressOf, at } from './look.js';
 import { lookOf } from '../duelist/lookSwitch.js';
-import { heroCloth, flared } from '../duelist/heroPrint.js';
 
 // Tian Lei's gear: a bare-handed fighter on the hero's skeleton (built by the same buildHero(U,
 // loadout), driven by the same animator), no weapon. Three outfits for the owner to pick from
@@ -885,20 +884,10 @@ const SKIRT_GI = [
   { az: 1.5, w: [0.1, 0.11, 0.12], len: [0.06, 0.05], strips: [], fork: [], out: 0.004, flare: 0.14 },
   { az: -1.5, w: [0.1, 0.11, 0.12], len: [0.06, 0.05], strips: [], fork: [], out: 0.004, flare: 0.14 },
 ];
-/** Drawn like the hero (ADR-220, `?ascHero=b`): the gi's skirt long, to mid-calf, then flared and torn as
- *  the hero's coat tails are (duelist/heroPrint.js flared): split at the sides, the front and back wide. */
-const SKIRT_GI_LONG = [
-  { az: 0.35, w: [0.14, 0.17, 0.2], len: [0.27, 0.27], strips: [], fork: [], out: 0.012, flare: 0.08, skew: 0.5 },
-  { az: -0.35, w: [0.14, 0.17, 0.2], len: [0.27, 0.27], strips: [], fork: [], out: 0.012, flare: 0.08, skew: -0.5 },
-  { az: 1.55, w: [0.1, 0.13, 0.15], len: [0.25, 0.25], strips: [], fork: [], out: 0.004, flare: 0.2 },
-  { az: -1.55, w: [0.1, 0.13, 0.15], len: [0.25, 0.25], strips: [], fork: [], out: 0.004, flare: 0.2 },
-  { az: 2.6, w: [0.15, 0.19, 0.22], len: [0.29, 0.29], strips: [], fork: [], out: 0.012, flare: 0.12, skew: -0.4 },
-  { az: -2.6, w: [0.15, 0.19, 0.22], len: [0.29, 0.29], strips: [], fork: [], out: 0.012, flare: 0.12, skew: 0.4 },
-];
 /** h / g: the skirt and the sash, its tails flying; v: nothing at the waist (the band is the plate's). */
 function waistHomage(ctx, look) {
   if (look === 'v') return {};
-  const { coat } = panelSkirt(ctx, heroCloth('ring') === 'flare' ? flared(SKIRT_GI_LONG) : SKIRT_GI, { seed: 500 });
+  const { coat } = panelSkirt(ctx, SKIRT_GI, { seed: 500 });
   // (k: the sash's tails longer, the knot's ends to mid-thigh)
   return { coat, streamers: sash(ctx, { tails: look === 'k' ? [0.27, 0.3] : [0.17, 0.19], w: 0.07 }), keep: [] };
 }

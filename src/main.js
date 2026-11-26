@@ -329,9 +329,7 @@ async function boot() {
     } else U.uBossScreen.value.w = 0;
     // a boss in ink-line art whose kit asks for it (`kit.letters`: Wen Yao) has his letters follow his
     // size as the hero's do (render/pipeline.js _updateBossLetters); ?foxLetters=a keeps the fixed cell
-    // ... and so do the bosses drawn like the hero (ADR-220, duelist/heroPrint.js: the level's `?<boss>Hero=`)
-    const hp = heroPrint(level.id);
-    pipeline.bossLetters = (!!game.dragon?.kit?.letters && lookOf('foxLetters', 'b') === 'b') || hp.letters;
+    pipeline.bossLetters = !!game.dragon?.kit?.letters && lookOf('foxLetters', 'b') === 'b';
     // ... and a kit may ask for them a cell or two bolder on a small frame (`kit.letterBias`: Xin Yi's
     // ?onePrint=b; undefined = 0)
     pipeline.bossLetterBias = game.dragon?.kit?.letterBias | 0;
@@ -344,9 +342,11 @@ async function boot() {
       const on = bpk === 'a' || bpk === 'b' ? 1 : 0;
       const fy = game.dragon?.position?.y;
       U.uBossPrint.value.set(on, bpk === 'a' ? 0 : 1, Number.isFinite(fy) ? fy : 0, 0.62);
-      pipeline.asciiMat?.uniforms?.uBossLike?.value.set(on, on, 0, 0);
-      // drawn like the hero (ADR-220): his cloth's dark body, the tall hem, the rim
-      U.uBossHero.value.set(on ? hp.body : 0, on ? hp.hem : 0, on ? hp.fade : 0, on ? hp.rim : 0);
+      // drawn like the hero (ADR-220, duelist/heroPrint.js, the level's `?<boss>Hero=`): shaded as he is
+      // (U.uBossHero.x), outlined at his line width (uBossLike.z)
+      const hp = heroPrint(level.id);
+      pipeline.asciiMat?.uniforms?.uBossLike?.value.set(on, on, on && hp.lines ? 1 : 0, 0);
+      U.uBossHero.value.set(on ? hp.shade : 0, 0, 0, 0);
     }
   };
 

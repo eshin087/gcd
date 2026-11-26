@@ -998,6 +998,7 @@ export function createSurfaceGlyphMaterial(U, o = {}) {
         // dotted hem along a ragged line. The face, the eyes and what glows keep their own fill.
         vec3 artFill = uArtFill;
         float hemK = 0.0;
+        float bossCloth = 0.0;
 #ifndef SG_HERO_SELF
         if (uBossPrint.x > 0.5) {
           float pidB = floor(uArtPart * 0.5 + 0.25);
@@ -1008,26 +1009,32 @@ export function createSurfaceGlyphMaterial(U, o = {}) {
             vec3 fGrey = (vec3(tl * 0.65) + hueB * (tl * 0.4375)) * 1.8;
             vec3 fOwn = (vec3(tl * 0.425) + hueB * (tl * 1.6575)) * 1.5;
             artFill = mix(fGrey, fOwn, uBossPrint.y);
-            // drawn like the hero (ADR-220, uBossHero.x): his cloth at the hero's cloak values, a dark body
-            // of sparse letters in his own hue that the key light and the rim pick out (the hero's coat
-            // 0.115, his lining 0.05, his facing 0.15)
-            float tlH = 0.05 + 0.1 * min(dot(uArtFill, vec3(0.2126, 0.7152, 0.0722)) / 0.6, 1.0);
-            vec3 fHero = vec3(tlH * 0.4) + hueB * (tlH * mix(0.5, 1.2, uBossPrint.y));
-            artFill = mix(artFill, fHero, uBossHero.x);
             // the hem: every part but the trousers, the hair, the plate and the crest (5, 11, 12, 15)
             if (abs(pidB - 5.0) > 0.5 && abs(pidB - 11.0) > 0.5 && abs(pidB - 12.0) > 0.5 && abs(pidB - 15.0) > 0.5) {
               float rag = sin(vW.x * 17.0 + vW.z * 5.0) * 0.6 + sin(vW.z * 23.0 - vW.x * 7.0) * 0.4;
-              // (uBossHero.y: the hero's tall tails, fading in over uBossHero.z along the ragged line)
-              float hemTop = uBossHero.y > 0.0 ? uBossHero.y : uBossPrint.w;
-              float hemH = uBossPrint.z + hemTop + 0.08 * rag - vW.y;
-              hemK = uBossHero.z > 0.0 ? clamp(hemH / uBossHero.z + 0.5, 0.0, 1.0) : step(0.0, hemH);
+              hemK = step(vW.y, uBossPrint.z + uBossPrint.w + 0.08 * rag);
               vec3 lav = vec3(0.486, 0.459, 0.675);
               artFill = mix(artFill, mix(lav, lav * 0.55 + hueB * 0.189, uBossPrint.y), hemK);
             }
+            bossCloth = 1.0;
           }
         }
 #endif
         vec3 fillC = artFill * (uArtHeroLight.x + uArtHeroLight.y * kn + L * uArtHeroLight.z);
+#ifndef SG_HERO_SELF
+        // shaded like the hero (ADR-220, uBossHero.x; a boss's cloth / hair / plate only): his own colours
+        // and brightness where the key light (upper left) catches him and on his shoulders, falling off
+        // toward dark marks on the shadow side and down his body, as the hero's cloak does (a grey upper
+        // top over a dark body). The hem keeps its pale letters; his head and hat, the face, the eyes and
+        // what glows: untouched.
+        if (bossCloth > 0.5 && uBossHero.x > 0.0) {
+          float shLit = smoothstep(0.12, 0.62, kn);
+          float shUp = clamp((vW.y - uBossPrint.z - 0.55) / 1.0, 0.0, 1.0);
+          float shHead = smoothstep(1.45, 1.6, vW.y - uBossPrint.z); // (his head and what he wears on it: as they are)
+          float shK = max(max(shLit * mix(0.45, 1.0, shUp), hemK), shHead);
+          fillC *= mix(1.0 - 0.85 * uBossHero.x, 1.0, shK);
+        }
+#endif
 #ifdef SG_HERO_FOLDS
         // cloth folds (the reference's coat: dark fold streaks running down it between lit ridges):
         // bands across aGUV x that wander down y. The art pass prints a dark band as sparse letters
@@ -1046,12 +1053,7 @@ export function createSurfaceGlyphMaterial(U, o = {}) {
         vec3 gd = normalize(V * 0.3 - uCamRight * 0.7 + uCamUp * 0.65);
         float curv = length(fwidth(vN)) / max(length(fwidth(vW)), 1e-5);
         fillC += vec3(pow(max(dot(n, normalize(gd + V)), 0.0), uArtSpec.y) * uArtSpec.x * uArtHeroLight.w * smoothstep(2.0, 7.0, curv));
-#ifndef SG_HERO_SELF
-        // (a boss drawn like the hero, ADR-220: his screen-left rim x uBossHero.w on top of the hero's)
-        fillC += uArtHeroRim * (pow(1.0 - facing, 2.0) * smoothstep(0.05, 0.75, dot(n, -uCamRight)) * uArtRim) * (1.0 + uBossHero.w * uBossPrint.x);
-#else
         fillC += uArtHeroRim * (pow(1.0 - facing, 2.0) * smoothstep(0.05, 0.75, dot(n, -uCamRight)) * uArtRim);
-#endif
         fillC = fillC * uTint + inkC * uInkGlow * uArtGlowK;
         col = mix(col, fillC, heroArt);
         if (uHeroSolid > 0.5) {
