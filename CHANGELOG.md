@@ -4,7 +4,20 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and six pieces of work since 0.4.0:
+One hundred and eight pieces of work since 0.4.0:
+- **A performance readout on your phone, and smoother first breaks** (2026-11-26, ADR-209). *Added:* `?perf` in the
+  address shows the frame rate and the frame's cost at the foot of the screen, with a REPORT button that shares
+  or copies what each part of the game spent and the slowest frames. *Changed:* the cracked and broken floors
+  and the cut bamboo are prepared while the level loads, so the first break in a fight no longer stalls a
+  frame; two smaller costs in the shadows and the hero's see-through outline are gone.
+- **The hero stands, holds and guards like the reference** (2026-11-25, ADR-207). *Changed:* after the owner's
+  reference footage, at ease the hero now stands tall with the sword in one hand, its point forward and down by his
+  right foot, the free arm hanging; in a fight (locked on, a boss) he takes the sword in both hands before him, the
+  point up above his head. Now and then at ease he puts the sword away at his left hip, where it burns out in its
+  green flame, stands empty-handed for a breath and draws it back out of the flame. His habits, tricks and spells
+  start from and come back to the new stand. His guard is a braced crouch, both hands up before his chin and the
+  blade across his face; the block and the parry work exactly as before (`?idles=new|old`, `?guard=ward`: the
+  looks before).
 - **The resolution follows the frame rate** (2026-11-25, ADR-200). *Added:* a new quality setting, AUTO, on by
   default: the game times its frames and, when the graphics chip cannot hold 60 fps, draws the picture at a lower
   resolution (2x, 1.5x, 1.25x, down to 1x of the window's pixels; never lower, so the letters stay as many as today), and climbs back when there is room, only outside a

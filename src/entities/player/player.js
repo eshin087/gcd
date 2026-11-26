@@ -3765,6 +3765,8 @@ export class Player {
       if (x && this.stateT > 0.12) clashGrind(this.game, x.x, x.y, x.z, 0.4 + 0.6 * this.recoil);
     }
     const armed = !!this.rig.loadout?.weapon; // no weapon equipped: no blade halo, no gem glow
+    // (the sword put away for a moment, anim.js stow: no halo round it, no glow at its gem)
+    const stowed = this.anim?.stow > 0.5;
     // the roll's sliding kneel (the root still carries 4-6 m/s through it): dust and torn grass
     // off the shin and the planted foot, cold sparks off the point dragging behind
     if (this.state === 'roll' && !this.rollBack && dt > 0) {
@@ -3800,7 +3802,7 @@ export class Player {
       if (this.state === 'charge') this.fx.chargeTick(dt, sw.a, sw.b, this.chargeK);
       else if (this.critTimer > 0 && this.alive) this.fx.critTick(dt, sw.a, sw.b);
       // the blade's dot halo: dim at idle, brighter while it glows (strikes, charge, crit)
-      if (this.alive && this.object3d.visible !== false && !hidden && armed) {
+      if (this.alive && this.object3d.visible !== false && !hidden && armed && !stowed) {
         const bu = this.rig.materials.blade.uniforms;
         const hk = TUNE.bladeLook.halo;
         if (hk > 0) this.fx.bladeHalo(dt * Math.min(1, hk), clamp((bu.uInkGlow.value - 0.16) * 0.8 + TUNE.bladeFlare.halo * this.bladeFlare, 0.25, 2) * hk, this.bladeFar);
@@ -3819,13 +3821,14 @@ export class Player {
     gp.copy(this._gem);
     if (this.state !== 'dead' && this.object3d.visible !== false && !hidden && armed) {
       const charging = this.state === 'charge';
-      this.fx.gemTick(dt, this._gem.x, this._gem.y, this._gem.z, charging ? 0.5 + this.chargeK : 0.35, gv.x, gv.z, gv.y);
+      // (put away: the timer runs on, as it draws on the animator's noise, but nothing is drawn)
+      if (!stowed) this.fx.gemTick(dt, this._gem.x, this._gem.y, this._gem.z, charging ? 0.5 + this.chargeK : 0.35, gv.x, gv.z, gv.y);
       this.gemT -= dt;
       if (this.gemT <= 0) {
         // (the animator's own noise: a cosmetic timer must not move the AI's seeded Math.random)
         this.gemT = charging ? 0.22 : TUNE.gemGlintEvery * (0.6 + 0.8 * this.anim.noise());
         // only while the hilt is steady: a glint left behind by a fast swing floats off the gem
-        if (charging || LOCO.has(this.state)) this.fx.gemGlint(this._gem.x, this._gem.y, this._gem.z, charging ? 0.5 + 0.5 * this.chargeK : 0.45, gv.x, gv.z, gv.y);
+        if (!stowed && (charging || LOCO.has(this.state))) this.fx.gemGlint(this._gem.x, this._gem.y, this._gem.z, charging ? 0.5 + 0.5 * this.chargeK : 0.45, gv.x, gv.z, gv.y);
       }
     }
     this.mystic?.update(dt); // (swordMystic.js; returns at once with ?mystic=0)

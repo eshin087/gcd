@@ -5,6 +5,159 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-26 — The phone's frame: `?perf` on the device; the first break's upload and two spikes out (ADR-209; branch `perf/phone-spikes`)
+
+**Owner:** "i tried playing a few levels like the neo, bamboo, and fox level and the fps does dip during the
+fight. what else can [we do] to ensure performance is good?", then "this was on my iphone ... pretty powerful",
+then "Yes, both" (the on-phone readout and the spike fixes).
+
+**Measured** (headless Edge on the RTX 4090 / i9, the phone setup `?touch` at 1468 x 686, real-time fights with
+a bot, the rig's `timeline.js` / `j_methods.js` / `prof2.mjs` / `prof4.mjs` / `heap.mjs`): a fight frame is 4 - 5
+ms of script, 2 - 3 ms GPU; 0.1 - 0.4 % of frames over 9 ms of script, worst 13 - 16 ms; the second fight in a
+page as spiky as the first. Spikes ride on a blow landing (trade 4 - 7 ms, clash 3 - 4.6, parry contact 2 - 2.5,
+perfect dodge 2.3 - 2.9; inside: sound voices, the hero's pose, call-outs, the boss's reaction), plus the first
+draw of a floor's or the bamboo's hidden remains (bounds 1 - 2.5 ms + buffers) and the still shadow map's
+whole copy of a big mesh (bamboo 1.1 ms). Allocation 17.7 MB/s, mostly V8's boxed numbers (not Safari's).
+
+**What.** `dev/perfReadout.js` + main.js hooks (`?perf`, `__perfReport()`); `render/precompile.js` `warmDraw`
+(main.js after the precompile; `?warm=0`); `render/shadowCache.js` `_bigSync` (the copy kept on every change);
+`pipeline.js` `_renderSeen` leaves the hero's matrices alone. Tests: world `perfreadout`.
+
+**Dropped:** slicing the contact rings' scan (its cost was my instrumentation's, 5 - 15 us really).
+
+**Open.** The owner's `?perf` report from the iPhone in a fight on fox, grove and code; then the parts it
+names (the hit-time work, draw calls, the hero's animation). A shader / pipeline warm-up for effects first
+drawn mid-fight on iOS, if the report shows first-time stalls.
+
+## 2026-11-26 — The melee animation engine; Tian Lei's blows from a bare-handed film, turned down (ADR-208; branch `enemies/fists-ref`)
+
+**Task** (the owner): review a bare-handed melee reference film with the "0 - Game Engine" session's tool, learn the
+animations, put them on a bare-handed boss to preview, and save what was learned in the repo for future agents.
+Owner's answers: Tian Lei first; remap his existing blows; reference motion at our windups; behind a switch, held PR.
+
+**What changed.**
+- `scripts/mocap/` (the hero remake branch's pose-tracking tool) and the hero2 skeleton / clip contract it needs.
+- `scripts/mocap/duelist/`: `fit.mjs` (clip → duelist keys, `--check` through the real animator), `examples/tianlei.json`
+  (the map), `README.md` (the engine's guide and lessons). `scripts/mocap/armkeys.py` (arm hand keys).
+- `scripts/mocap/specs/fistA.json`, `fistB.json` → `src/entities/hero2/clips/fistA.js`, `fistB.js` (six clips).
+- `duelist/realise.js`: optional `keysOf`. `ascendant/moves.js`: `refKeys` on every punch / kick / elbow / shoulder
+  beat, `fistKeys`; `ascendant/refBlows.js` (generated). Lab LOOKS `fists`; PENDING. `asc.mjs . fists`. (All of this
+  Tian Lei wiring was removed again after the owner's verdict, below; only `keysOf` stays.)
+
+**How it went.** The film (15:15) was recorded frame by frame in a headless Edge, catalogued by a subagent (41
+strikes, hand strikes only: a wild brawler), and two author subagents built six clips. Nothing fused across camera
+angles (follow cameras, differing passes, a capture of 30 - 60 frames a second with gaps at impacts): every blow is
+one take with the striking arm hand-keyed frame by frame. YouTube autoplayed the next video after the capture and a
+still-attached recorder wrote ~18 000 of its frames under 0 - 389 s; they were found by write time, deleted, and the
+light chapter re-tracked. The fit lands fists within ~5 cm of the reference, elbows ~11.
+
+**Verified.** `asc.mjs . fists` (timings identical on and off, the clips change, a fight through every measured move:
+no NaN, no error); film strips in the browser (today vs `?fists=ref`: the lunging straight, the overhead hammer).
+
+**The owner's verdict.** "the new animations look worse than the old ones": the stiff, unnatural arms and the
+lunges and feet. Tian Lei's wiring was removed from the branch before merging (his blows are as authored);
+the engine, its guide (with why this try failed), the recorder and the realiser's `keysOf` hook land.
+Frames, caches and sheets stay in this session's scratchpad (never committed).
+
+---
+
+## 2026-11-25 — A roadmap to Steam and the app stores (docs only; branch `docs/ship-roadmap`)
+
+**Owner:** plans to sell the game on Steam (Windows / Mac) and the iOS / Android stores; asked whether the
+engine is good enough, then for a roadmap with performance first and a separate legal review of the homages.
+
+**What changed.** `docs/ROADMAP.md`: a new section "Ship" (S1 performance on the target devices, S2 the legal
+review, S3 saves, S4 Steam, S5 mobile, S6 localisation / accessibility / release). And a section "Polish" from the
+owner's asks: P1 every boss in the house ASCII look (some still are not), P2 every boss's swings and motion
+polished from the reference footage, P3 arenas that are part of the fight, better backgrounds, cooler destruction. The engine stays: the web
+build ships inside a wrapper (Electron or Tauri on desktop, Capacitor on mobile). Measured sizes: 1.35 MB of
+code gzipped, ~15 MB of music fetched per level.
+
+**Not redone.** The frame's cost is the performance session's (M1.89: AUTO quality, the still shadow map, the
+cost budget). S1 lists only what shipping adds: named target devices and a floor, a mid-range Android baseline,
+heat and memory on a phone, a lost WebGL context (`webglcontextlost` is not handled), 120 Hz, the WebKit path.
+Those items were sent to that session.
+
+**Next.** The legal review runs in its own session (report in `.claude/legal-review/REPORT.md`, untracked); the
+owner's picks per boss follow it. The wrapper trials wait for the content.
+
+---
+
+## 2026-11-25 — The hero's idles and guard after the owner's reference footage (ADR-207; branch `claude/idles-reference`)
+
+**Owner:** "review these sections on the videos for all the idle animation and poses for you to mirror to this
+game ... i also want you to adjust the guarding stance and animation from the reference video". Their three
+answers: the two-handed hold is the fight stance, at ease one-handed; the put-away / draw is an occasional idle
+moment, the sword fading out in its green flame at his left hip (no scabbard); ADR-186's habits, tricks and spells
+stay, from the new stand. Planned by the idle session, built by an agent from the plan.
+
+**What changed.** `refStance.js` (new): `REF_STAND` (at ease), `REF_READY` (the fight's two-handed hold),
+`REF_GUARD` (the block) and their writers; `?guard=ward` keeps the cross ward. `idles.js`: a third mode `ref`, the
+default (`?idles=new|old` the looks before): one rest per stance, the standing arm the forearm-led moves start from
+follows the mode (`syncStandArm`), the fight's habits about the hold's blade (`grip`, `shift`, `loosen`), and the
+put-away `stow` (a trick: dip, the hand to the left hip, the sword gone ~1.5 s, drawn up and over into the stand).
+`anim.js`: `stand()` writes the reference's stand / hold under `ref` (the free hand takes the grip late in the
+stance's change, lets go on the move); `blockPose` writes `refGuard` for the hero under `guard=ref`;
+`_idleLife` publishes `anim.stow` only while an uncut put-away plays in the loco clip; `_stowSword` draws the
+weapon slot's own meshes into the hilt and hides them (no object added to the rig). `swordMystic.js` burns the
+going / coming steel in the flame; player.js rests the halo and the gem's glow while it is gone. Lab: `idles`
+ref / new / old, a `guard` row, `stow` in `idle ▸`.
+
+**The guard, read again from the frames.** The plan read it as the blade held upright (the right-side view). The
+front and back views show the upright blade is a slant across his face seen edge-on from the side: the hands
+before his right shoulder, the elbows out, the blade rising ~32° to his left over his head. Built that way: 13°
+off upright from his side, 32° up across from the front.
+
+**Verified** (by running): scenario `heroref` (new; ALL PASSED, 100 checks): the stand (wrist ≤ 44°, elbows R 131°
+L 126°), the hold (wrist ≤ 60°, the free hand on its place on the grip), the stance's change (the free hand ≥ 8.8
+cm out of him), every action (wrist ≤ 57°, the blade ≥ 20 cm off him, pops ≤ 7 cm), the put-away (the sword gone
+224 frames over two plays, never outside it, whole the frame any of six moves cuts it, and when the idles switch),
+every move from the stand, the hold and inside every action against the bare stance before, the guard (sunk
+~24 cm, feet 0.8 m apart, the hands 23 cm over the chest joint, the entry ≤ 31.8 cm a frame at the point; the cross ward's from the stance before: 57).
+Pair sheets against the footage and films at the game camera (scratch, not the repo). `heroidles`, `herolife`,
+`heroarms` and `herohand` run with `?idles=new&guard=ward` (their bars measure ADR-186's poses and the cross ward).
+
+**Departures from the footage** (ADR-207): the blade's flat rolled 40° up off his sides (edge-on from the game
+camera otherwise); the hold's grip ~13 cm higher and its blade flatter than the footage's (the 60° sword-wrist bar);
+the guard's crouch less deep than the footage's; the coat hides the stand's blade from straight behind.
+
+**After the merge with main** (the full `npm test`: six FAILs, all ours, each green with `?idles=new&guard=ward`).
+The hold stood the footage's left foot ahead, but the light chain steps the rear foot and comes home to the
+stance: every light stepped the other foot and the way home drew back the wrong one (heroweight). The hold now
+keeps the feet the chain comes home to (the right 18 cm ahead), the hips square, the blade 30° out. The robe's
+sleeve wing and the warden's belt cut into the arms (looks): the stand's sword elbow and the hold's free elbow
+stand off the ribs; the blade-swinging moves take the old elbow pole over their envelope so the raised fist stays
+within 60°. The ribbon sword's swing (hero) and the air star of seven (chain, seeded drift: the plan's own best
+was 14° from the new dodge spot, the search complete) are measured as ADR-207 says. Films re-taken.
+
+**Next / open.** The owner's look at the films (the hold's and the guard's blades from the game camera). The
+steel look set (`?lights=steel`, unmerged) has its own stand: when it lands it keeps it (its own hook in `stand()`).
+
+---
+
+## 2026-11-26 — Performance guards: a cost budget in `npm test`, `npm run perf` (ADR-206; branch `perf/cost-budget`)
+
+**Task** (the owner, after AUTO quality merged): "is there anything else we can do to ensure performance is good no
+matter what we change moving forward?" Two guards, the first two of five the answer listed.
+
+- `tests/integration/cost.mjs` (in `npm test`, ~8 s): every level's set built with the real modules and the world's
+  wiring, counted: meshes, main-pass triangles, shadow-caster triangles, rigid-batch bones, breakables, colliders,
+  geometry MB, each for the whole level and the phone's share. Budgets in `tests/cost-baseline.json`: over by 3 % +
+  slack fails; under by 10 % prints a note; a new level without a row fails. Nothing is timed (the numbers are the
+  same on every machine; two runs wrote the same file). Checked it bites: a budget cut by 20 % failed with the
+  metric named.
+- `npm run perf` (`scripts/perf.mjs`, `scripts/perf-probe.js`): the dev server and a headless Chrome / Edge on the
+  PC's GPU, one fixed fight per level (a seed, the hero 5 m from the boss); draw calls and triangles by pass, GPU
+  ms by pass and per frame at 1080p and 2556 x 1179 (`--4k`), script ms by module; `--save` a machine's baseline
+  (`.perf/`, git-ignored), later runs print the change, `--check` exits 1 over +10 %. On the RTX 4090 / i9:
+  Cinderwood 1.5 - 1.7 ms GPU at 1080p, 1.5 - 1.6 ms at the phone's size, script 4.7 - 5.1 ms; Ashfall 1.5 - 2.0 / 1.6 ms, script 4.5 ms; the ms moved up to 30 % between two runs, the counts not at all (so `--check` gates only the counts)
+  (a 24 s run for two levels).
+- CLAUDE.md: a rule that a heavier level raises its budget on purpose and says why in the PR, and a change that
+  draws something runs `npm run perf` before and after; the command listed.
+- Not done (the other three of the five): an in-game readout of AUTO's step and times, a starting step per
+  level, and the owner's devices' own baselines. Not measured: any weak GPU or phone.
+
+---
 ## 2026-11-25 — AUTO quality: the resolution follows the frame time; a 60 fps cap on touch (ADR-200; branch `render/auto-quality`)
 
 **Task** (the next item of M1.89, from the perf review's session): automatic quality so "60 fps on every device" is

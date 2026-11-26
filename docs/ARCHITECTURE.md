@@ -609,6 +609,22 @@ Render helpers for creature modules:
   the object and its descendants. Works before or after rigid batching (below); `LAYER_CASTER` and
   `LAYER_CASTER_RIGID` (2, reserved for the batch meshes: never set it yourself) are exported from
   `pipeline.js` (defined in `shaderLib.js`).
+- **The performance readout** (`dev/perfReadout.js`, ADR-209; `?perf`): `game.perf` (null without it). main.js
+  times every `safe(name, …)` call, the effects' block (`fx`), the shared uniforms (`uniforms`) and the
+  render (`render`) into `perf.add(part, ms)`, between `perf.beginFrame()` and `perf.endFrame(interval s,
+  script ms)` for each drawn frame; without `?perf` nothing is timed. It keeps the last 1800 frames
+  (typed rings), shows one line at the foot of the screen (fps, frame ms, script ms, missed frames, AUTO's
+  scale) with REPORT (the phone's share sheet, else the clipboard, else a text box to copy) and RESET.
+  `perf.report()` / `window.__perfReport()`: the device (user agent, GPU string, DPR, screen, window,
+  canvas), the level, AUTO's step and the cap, the frame intervals' percentiles, the missed frames (over
+  20 / 34 / 100 ms), the script's, each part's mean / p95 / max, and the 16 longest frames with their parts,
+  the hero's state and the boss's move. A new per-frame module run through `safe` is timed with no change;
+  one outside it should add its own `perf?.add`.
+- **The warm draw** (`render/precompile.js` `warmDraw`, ADR-209): after the shaders' precompile, every mesh
+  of the scene that is hidden with `userData.foldAway` or `userData.autoHide` (a set's remains:
+  destructibles.js shows them when a piece first cracks or breaks) gets its bounding sphere and is drawn
+  once into a 1 x 1 target, then hidden again: its buffers are on the GPU before the fight. `?warm=0` off.
+  A new hidden-until-broken mesh needs one of those two flags to be warmed.
 - **The still shadow map** (`render/shadowCache.js`, ADR-201; `CONFIG.render.shadowCache`, `?shadowCache=0`
   off). Every caster the shadow passes would draw (visible, on `LAYER_CASTER` or `LAYER_CASTER_RIGID`, not
   a rigid source) is STILL once its state has not changed for `settle` frames (20; `settleBig` 3 for one
@@ -618,7 +634,8 @@ Render helpers for creature modules:
   `shadowRT`, which keeps last frame's picture: first the texels the casters that changed since covered
   are copied back from `stillRT` (a depth blit): a batched actor's moved bones at their OLD matrices
   (`rigidBatch.js` sync: the set's `vacated` spheres), a plain mesh's last bounding sphere, a big mesh's
-  edited ranges at their old positions (its position copy and the attribute's `updateRanges`), the whole
+  edited ranges at their old positions (its position copy, made once at its first sight and kept up to
+  date with the attribute's `updateRanges` on every change, still or moving, ADR-209), the whole
   map after a redraw or when a moving caster leaves. The map is the one a whole draw gives, texel for
   texel. A caster's STATE: `matrixWorld`, `material.visible`, the geometry's id, position and index
   versions, draw range and groups, an instanced mesh's count and matrices, a rigid shadow mesh's
@@ -1239,9 +1256,13 @@ the pick (tests). The blade is still the hit test, so each look is swung at the 
 **One hand, two hands** (ADR-071; it was two hands on every swing, ADR-046): the chain, the sprint
 slash and the roll cut are one-handed, the free hand keyed against the sword hand; the slam, the
 charge and the cleave hold the grip with both (`twoHand` 1, the off hand IK'd to the grip point;
-the cleave lets go in its follow-through). The block (ADR-073, the cross ward) is two-handed: sunk
-and side-on, the grip low outside the right hip, the blade slanting ~38° up across the body to past
-the left shoulder, the flat to the enemy; `locoGuard` carries `twoHand` and `offAt` in `GUARD_CH`.
+the cleave lets go in its follow-through). The block is two-handed. The hero's (ADR-207, `refStance.js` `refGuard`,
+`guardMode()` / `setGuard(id)`, `?guard=ward`): a braced crouch (`REF_GUARD.sink` 0.3 s into it on `A.t`), the feet
+settling to `REF_GUARD.feet`, both hands on the grip before the right shoulder with the elbows out, the blade rising
+~32° across his face to his left (upright seen from his side), the flat to the enemy. `?guard=ward` and every
+duelist (no `freeHand`): the cross ward (ADR-073), sunk and side-on, the grip low outside the right hip, the blade
+slanting ~38° up across the body to past the left shoulder. `deflectPose`, `lockPose` and `locoGuard` build on
+`blockPose` either way (a deflect's snap takes the ward's body, `WARD_BODY`, easing back with it); `locoGuard` carries `twoHand` and `offAt` in `GUARD_CH`.
 Pose channel `offAt` (m): with `twoHand`, how far up the blade from the grip the off hand sits (0 =
 on the grip; above 0.04 the hand stays open: a palm braced on the flat; no clip uses it yet). At
 rest and on the move he carries the sword in one hand. The free-hand channels (`P.lD` 53, `P.lN` 56:
@@ -1304,6 +1325,23 @@ otherwise); `swordMystic.js` reads it: the flame swells toward the top tier (`SP
 longer tongues), the rite's flame waits above the fingers' front, and each writes the flame's marks through the same
 batch (`SPELL`: the rite's embers, the sigil's ring at knee height, the breath's thread). The idles draw on
 `anim.idleNoise`, never `anim.noise` (which picks an attack's look).
+**The reference's idles** (ADR-207, `refStance.js`, the default: `idlesMode()` `'ref'`; `?idles=new` is the paragraph
+above, `?idles=old` the belt; `setIdles` takes the three): `stand()` writes `refStand` (the one-handed stand,
+`REF_STAND`) at ease and `refReady` (the two-handed hold, `REF_READY`: `twoHand` 1) in the fight, blended by `fightW`
+(the free hand takes the grip late: `twoHand` = smoothstep(0.35, 0.95, fightW); on the move it lets go by
+`moveW`). One rest each (`easeRests()` / `fightRests()`: `stand`, `hold`; `tickRests` keeps a one-entry list).
+`actList` is the mode's: `EASE_LIST_REF` = `EASE_LIST` + `EASE_REF_EXTRA` (`stow`), `FIGHT_LIST_REF` =
+`FIGHT_ACTS_REF` (`grip`, `shift`, `loosen`, about the hold's blade); an action under way is cut when the mode
+changes. The forearm-led moves start from the mode's standing arm (`syncStandArm`: `EASE_ELBOW`, `EASE_AIM`, the
+blade's `EASE_BLADE`; the fight's `FIGHT_AIM` / `FIGHT_FLAT`; the blade-swinging moves take
+`REF_STAND.leadP`'s elbow pole over their envelope, `leadArm`). **The put-away** (`stow`, `STOW`, a trick): the hand
+to the left hip, the sword gone (~1.5 s), drawn and swung up into the stand. `_idleLife` publishes `anim.stow`
+(0..1, `stowHidden(u)`) only while it plays uncut in the loco clip: 0 every other frame, so the sword is whole the
+frame any other clip starts. `HeroAnimator._stowSword` (in `apply`, the hero only) draws the weapon slot's own
+meshes (`rig.slots.weapon`) into the hilt by it and hides them at 1, restoring them exactly at 0 (no object is
+added to the rig; the hit test is the swept joint). `swordMystic.js` reads `anim.stow`: the flame envelopes the
+steel still there and bursts along the part that goes or comes (`SPELL.stow`); player.js skips the blade halo and
+the gem's glow while it is > 0.5 (the gem's timer runs on: it draws on `anim.noise`).
 **Idle** (`guard`, ADR-041; ADR-040 put the blade out to his side, where the game camera sees it):
 weight on the left leg, the right foot a shoulder's width out and forward with the knee soft, the
 upper arm hanging by the ribs with the elbow a little back, the grip beside the right hip and
@@ -4626,6 +4664,20 @@ not alarm the birds; nothing in the grove). Numbers: Cinderwood looks at (0.8, 1
 +26 m, hold 3 s; the others alike north of their spawn; the Grove +17 m, 3.4 s, no front; the phone (`cameraRig.mobile`)
 zoom 3, weight 1.
 
+### Tests — the cost budget, and `npm run perf` (ADR-206)
+
+`tests/integration/cost.mjs` builds every level's set (`LEVELS[i].buildSet`, wired like `world.js`: colliders,
+`Destructibles`, so the rigid batch exists) and counts what the renderer would draw, never a time: visible meshes,
+main-pass triangles (`rigidShadow` excluded; an instanced mesh by its instances), shadow-caster triangles (meshes on
+`LAYER_CASTER` / `LAYER_CASTER_RIGID`), rigid bones, breakables, colliders and geometry MB, for the level whole and
+for `setQuality(0)` (`<id>@phone`). `tests/cost-baseline.json` is the budget: a metric over it by 3 % + its slack
+fails; `node tests/integration/cost.mjs . update` rewrites the file (the budget moves on purpose, said in the PR).
+A level with no row fails (a new level adds one). The hero, the boss and the effects are not in these counts.
+`scripts/perf.mjs` + `scripts/perf-probe.js` (`npm run perf`) measure the rest on a PC with a GPU: the probe stages a
+fixed fight in the page (`__game`, `__tick`) and returns draw calls / triangles by pass, GPU ms by pass and frame
+(`EXT_disjoint_timer_query_webgl2`) per size, and script ms by module; `.perf/baseline.json` (git-ignored) is the
+machine's own.
+
 ### Tests — the `life` suite (`tests/integration/life.mjs` + `tests/integration/life/<piece>.mjs`)
 `node tests/integration/life.mjs . <scenario>` (`all`, a file name, or `<file>.<name>`; in `npm test` as
 `life`). The REAL LivingWorld and Atmosphere on every level's REAL set, with the real particle pools,
@@ -5024,8 +5076,10 @@ data and a subclass with a few hooks.
   (per phase); a leap lands `leapLead` s and an actor's blink `blinkLead` s ahead of where the hero is
   going (`blinkKeep`: never in front of him); director.js weighs a move whose first blow cannot reach
   where the hero will be x `miss`. Not a counter, a flurry, a stance, a draw or a transformation.
-- `realise.js`: `makeRealise({ TUNING, MOVES, compileClip, completeBeat })` → `realise(name, phase, rnd, opts)` (`opts.count`:
-  a `streak` move, his flurry, plays that many beats); `perPhase`. The POSE keys of a beat past its
+- `realise.js`: `makeRealise({ TUNING, MOVES, compileClip, completeBeat, keysOf })` → `realise(name, phase, rnd, opts)` (`opts.count`:
+  a `streak` move, his flurry, plays that many beats); `perPhase`. `keysOf(beat)` (optional) gives the pose keys a beat
+  plays this time (null: `beat.keys`): a second animation behind a live switch, e.g. keys measured from the owner's reference
+  footage (`scripts/mocap/duelist/fit.mjs`; ADR-208; no boss uses it today). Timings never depend on it. The POSE keys of a beat past its
   impact (u 1..2) run on the beat's follow, `b.F` s (ADR-126: 72 % of the time to the next beat's
   first pose, 0.24 s at most, 0.3 s for a ring zone, `def.follow` to set it), not on the active
   frames; gameplay (`uAt`, `travel`, `lift`, the zone) keeps the active frames' clock. A key marked

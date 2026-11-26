@@ -3,3 +3,9 @@ dist/
 .vercel/
 .env*
 __pycache__/
+.perf/
+
+# reference footage frames (never committed; scripts/mocap/duelist/README.md)
+scripts/mocap/record/*/
+scripts/mocap/record/*.COMPLETE
+scripts/mocap/duelist/_out/
