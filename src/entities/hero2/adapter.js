@@ -230,7 +230,7 @@ export function createAdapter(game, player, old, { lib, body }) {
   // ---- state
   const S = {
     mode: 'loco', key: 'loco', prevKey: '', entry: null, clip: null,
-    phi: 0, vs: 0, loop: '', legYaw: 0, aim: 0, idleU: 0, gait: 'walk', sector: 'F', cs: 1, csWant: 1,
+    phi: 0, vs: 0, loop: '', locoT: 0, legYaw: 0, aim: 0, idleU: 0, gait: 'walk', sector: 'F', cs: 1, csWant: 1,
     u: 0, dist: 0, Y0: 0, settled: fin(player.yaw), rollTurn: 0, heal: false, yawOff: 0,
     K: new Float64Array(16), k: 0, tail: 1,
   };
@@ -302,6 +302,18 @@ export function createAdapter(game, player, old, { lib, body }) {
       return;
     }
     if (key === 'loco') {
+      // the chain stops at this swing: its recovery back to the guard, while he stands
+      const rc = S.mode === 'attack' && S.entry?.recover && intentLen() < 0.1 ? resolveClip(lib, { want: S.entry.recover }) : null;
+      if (rc) {
+        S.mode = 'tail';
+        S.clip = rc;
+        S.entry = { settle: 1 };
+        S.yawOff = 0;
+        hero.transition(0.12);
+        hero.cut(rc.name, { loop: false });
+        setContact(1);
+        return;
+      }
       // a state's clip that plays on to its end while he stands (a get-up, a flinch's recovery)
       if (S.mode === 'track' && S.entry?.settle && intentLen() < 0.1 && S.clip && !hero.done) {
         S.mode = 'tail';
@@ -325,7 +337,8 @@ export function createAdapter(game, player, old, { lib, body }) {
         S.mode = 'attack';
         S.entry = e;
         S.clip = c;
-        S.aim = e.aim ?? aimOf(lib, c);
+        // the clip's own facing when it says so (`face`: +Z is the aim at 0), else measured
+        S.aim = e.aim ?? (c.face != null ? -c.face : aimOf(lib, c));
         hero.cut(c.name, { manual: true });
         setContact(e.contact ?? 1);
         return;
@@ -389,6 +402,7 @@ export function createAdapter(game, player, old, { lib, body }) {
       }
     }
     S.mode = 'loco';
+    S.locoT = 0;
     S.clip = null;
     S.entry = null;
     S.yawOff = 0;
@@ -414,6 +428,7 @@ export function createAdapter(game, player, old, { lib, body }) {
     const yaw = fin(player.yaw), I = player.intent, il = intentLen();
     const moveYaw = il > 0.1 ? Math.atan2(fin(I.x), fin(I.z)) : yaw;
     const sprinting = player.state === 'sprint';
+    S.locoT += dt;
     // ---- the one-shots
     if (il < 0.1 && S.vs < 0.3) {
       // standing: the turn on the spot when the aim swings far from where he settled
@@ -454,7 +469,8 @@ export function createAdapter(game, player, old, { lib, body }) {
           return;
         }
       }
-    } else if (S.vs > 1.0 && S.sector === 'F') {
+    } else if (S.vs > 1.0 && S.sector === 'F' && S.locoT > 0.25) {
+      // (not straight out of a roll or a swing: the game's slide after them is no run to stop)
       // the input ends while running forward: the stop whose legs match his now
       const list = stops[S.gait]?.length ? stops[S.gait] : stops.run;
       if (list?.length) {
@@ -645,7 +661,8 @@ export function createAdapter(game, player, old, { lib, body }) {
         break;
       }
       case 'charge': {
-        const c = S.clip, coil = c.phases ? c.phases.windup / c.fps : c.dur * 0.4;
+        const c = S.clip, hs = c.events.find((e) => e.name === 'holdStart');
+        const coil = hs ? hs.f / c.fps : c.phases ? c.phases.windup / c.fps : c.dur * 0.4;
         hero.setTime(Math.min(coil, (fin(player.stateT) / Math.max(0.05, S.entry.coil ?? 0.3)) * coil));
         break;
       }

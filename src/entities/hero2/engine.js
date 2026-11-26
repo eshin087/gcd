@@ -541,6 +541,7 @@ export function createHero2(game, { body, library, dims = HDIM, applyRoot = true
   const listeners = new Map();
   const place = { x: 0, z: 0, yaw: 0, s: 1 };
   const obj = body?.object3d ?? null;
+  const sheathed = { R: false, L: false };
   let lastProps = { R: undefined, L: undefined }, lastHands = { R: undefined, L: undefined };
   solveFK(player.pose, rest, world);
 
@@ -591,7 +592,13 @@ export function createHero2(game, { body, library, dims = HDIM, applyRoot = true
     applyRoot,
     play(name, opts) {
       const ok = player.play(name, opts);
-      if (ok) syncProps();
+      if (ok) {
+        // a clip that draws the sword (a `draw` event) starts with it sheathed; one without draw or
+        // sheathe events shows what its props say
+        const ev = player.clip?.events ?? [];
+        sheathed.R = ev.some((e) => e.name === 'draw');
+        syncProps();
+      }
       return ok;
     },
     cut(name, opts) {
@@ -691,7 +698,13 @@ export function createHero2(game, { body, library, dims = HDIM, applyRoot = true
           player.contact.R *= cs;
         }
         pinFeet(feet, player.pose, world, rest, player, wA, wB, place, dt, dims);
-        for (let i = 0; i < player.eventCount; i++) emit(player.events[i]);
+        for (let i = 0; i < player.eventCount; i++) {
+          const e = player.events[i];
+          // `draw` shows the right hand's prop, `sheathe` hides it (equip / unequip)
+          if (e.name === 'draw') sheathed.R = false;
+          else if (e.name === 'sheathe') sheathed.R = true;
+          emit(e);
+        }
         // the blade lights while it cuts (body.hot, optional): 1 from the coil to the cut's end, eased
         if (body && 'hot' in body) {
           const c = player.clip, f = c?.phases ? player.time * c.fps : -1;
@@ -760,6 +773,7 @@ export function createHero2(game, { body, library, dims = HDIM, applyRoot = true
       const s = i ? 'L' : 'R';
       const fixed = H.props ? H.props[s] : undefined;
       let p = fixed !== undefined ? fixed : oc && clipSide(oc, 'props', s) != null ? clipSide(oc, 'props', s) : clipSide(cc, 'props', s);
+      if (sheathed[s]) p = null;
       let h = oc && clipSide(oc, 'hands', s) != null ? clipSide(oc, 'hands', s) : clipSide(cc, 'hands', s);
       if (lastProps[s] !== p && body?.setProp) {
         lastProps[s] = p;

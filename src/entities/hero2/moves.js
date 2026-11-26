@@ -79,24 +79,26 @@ export const LOCO = {
 /** Attacks, by the game def's `name` (player/combat.js). */
 export const ATTACKS = {
   // LIGHT[0..4]: the light chain
-  fallingCut: { want: 'light1', how: 'attack', ch: 'SWORD Light attacks (5-hit combo) #1' },
-  risingCut: { want: 'light2', use: ['light1'], how: 'attack', ch: 'SWORD Light attacks #2' },
-  whirl: { want: 'light3', use: ['light1'], how: 'attack', ch: 'SWORD Light attacks #3' },
-  stab: { want: 'light4', use: ['light2', 'light1'], how: 'attack', ch: 'SWORD Light attacks #4' },
-  slam: { want: 'light5', use: ['light1'], how: 'attack', ch: 'SWORD Light attacks #5' },
+  // (built facing their target: `aim: 0`, no measured turn; `recover`: the return to the guard when the
+  // chain stops at that swing and he stands)
+  fallingCut: { want: 'light1', how: 'attack', aim: 0, recover: 'lightRecover1', ch: 'SWORD Light attacks (5-hit combo) #1' },
+  risingCut: { want: 'light2', use: ['light1'], how: 'attack', aim: 0, recover: 'lightRecover2', ch: 'SWORD Light attacks #2' },
+  whirl: { want: 'light3', use: ['light1'], how: 'attack', aim: 0, recover: 'lightRecover3', ch: 'SWORD Light attacks #3' },
+  stab: { want: 'light4', use: ['light2', 'light1'], how: 'attack', aim: 0, recover: 'lightRecover4', ch: 'SWORD Light attacks #4' },
+  slam: { want: 'light5', use: ['light1'], how: 'attack', aim: 0, recover: 'lightRecover5', ch: 'SWORD Light attacks #5' },
   // HEAVY[0..4]: the heavy chain (the footage has two heavies; the game's last three repeat them)
-  piercingGale: { want: 'heavy1', use: ['light2', 'light1'], how: 'attack', contact: 0.3, ch: 'SWORD Heavy attack (2-hit combo) #1' },
-  risingCrescent: { want: 'heavy2', use: ['light2', 'light1'], how: 'attack', ch: 'SWORD Heavy attack #2' },
-  whirlingTempest: { want: 'heavy1', use: ['light1'], how: 'attack', ch: 'SWORD Heavy attack #1 (again)' },
-  mountainSplitter: { want: 'heavy2', use: ['light1'], how: 'attack', ch: 'SWORD Heavy attack #2 (again)' },
+  piercingGale: { want: 'heavy1', use: ['light2', 'light1'], how: 'attack', contact: 0.3, recover: 'heavyRecover1', ch: 'SWORD Heavy attack (2-hit combo) #1' },
+  risingCrescent: { want: 'heavy2', use: ['light2', 'light1'], how: 'attack', recover: 'heavyRecover2', ch: 'SWORD Heavy attack #2' },
+  whirlingTempest: { want: 'heavy1', use: ['light1'], how: 'attack', recover: 'heavyRecover1', ch: 'SWORD Heavy attack #1 (again)' },
+  mountainSplitter: { want: 'heavy2', use: ['light1'], how: 'attack', recover: 'heavyRecover2', ch: 'SWORD Heavy attack #2 (again)' },
   earthbreaker: { want: 'jumpHeavy', use: ['heavy2', 'light1'], how: 'attack', ch: 'SWORD Jump heavy attack' },
   // out of a sprint, out of a roll
-  sprintSlash: { want: 'runLight', use: ['light1'], how: 'attack', contact: 0.3, ch: 'SWORD Running light attack' },
-  rollCut: { want: 'rollAtk', use: ['light2', 'light1'], how: 'attack', ch: 'SWORD Crouch attack / rolling attack' },
+  sprintSlash: { want: 'runLight', use: ['light1'], how: 'attack', aim: 0, contact: 0.3, ch: 'SWORD Running light attack' },
+  rollCut: { want: 'rollAtk', use: ['light2', 'light1'], how: 'attack', aim: 0, ch: 'SWORD Crouch attack / rolling attack' },
   // the charge's release, the execution, One Breath
   cleave: { want: 'charge1', use: ['light1'], how: 'attack', contact: 0.3, ch: 'SWORD Charge attack (2-hit combo) #1' },
-  thrust: { want: 'riposte', use: ['light2', 'light1'], how: 'attack', ch: 'SWORD Critical hit / riposte, standing' },
-  oneBreath: { want: 'guardCounter', use: ['light1'], how: 'attack', ch: 'SWORD One-handed guard counter' },
+  thrust: { want: 'riposte', use: ['light2', 'light1'], how: 'attack', aim: 0, ch: 'SWORD Critical hit / riposte, standing' },
+  oneBreath: { want: 'guardCounter', use: ['light1'], how: 'attack', aim: 0, ch: 'SWORD One-handed guard counter' },
 };
 /** An attack def the table does not name: the light chain's first. */
 export const ATTACK_DEFAULT = { want: 'light1', how: 'attack' };
@@ -129,6 +131,7 @@ export const STATES = {
   roll: { want: 'roll', how: 'roll', dir: true, contact: 0, ch: 'MOVE Dodge roll' },
   backstep: { want: 'backstep', how: 'roll', contact: 0, ch: 'MOVE Backstep' },
   lean: { want: 'backstep', how: 'roll', contact: 0, ch: 'MOVE Backstep (the Long Second)' },
+  // (the coil: its `holdStart` event, when it has one)
   charge: { want: 'charge1', use: ['light1'], how: 'charge', coil: 0.3, ch: 'SWORD Charge attack #1 (held at the coil)' },
   heal: { how: 'heal', ch: 'MOVE Using flasks (HEAL above)' },
   block: { want: '2hGuard', use: ['swordIdle', 'idle'], how: 'loop', ch: 'SWORD Guarding stance (two-handed: the only guard filmed)' },

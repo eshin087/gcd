@@ -527,7 +527,7 @@ async function scenSweep() {
     const h = createHero2(null, { body: standIn(), library: lib, applyRoot: false });
     h.props = { R: 'sword', L: null };
     // as the game plays it (adapter.js): the hips held over his root, the clip turned to aim at its hit
-    const aim = aimOf(lib, c);
+    const aim = e?.aim ?? (c.face != null ? -c.face : aimOf(lib, c)); // as the adapter plays it
     h.onPose = (pose) => fixAttackPose(pose, c, aim);
     h.play(c.name, { fade: 0, manual: true });
     const D = [1.2, 1.9, 2.6], hit = [Infinity, Infinity, Infinity];
@@ -942,6 +942,28 @@ async function scenPlay() {
   assert(hits >= 3, `three lights on a target 1.9 m in front land (${hits} hits; with his AI off his guard is up and a cut into his front is deflected: ${(hp0 - hp1).toFixed(0)} hp)`);
   assert(lost > 0, `  with his guard down the same chain deals damage (${lost.toFixed(0)} hp)`);
   assert(swordErr < 0.005, `the hit test reads the remade hero's blade (today's rig's sword, un-leaned, within ${(swordErr * 1000).toFixed(1)} mm of the remade socket)`);
+  // ---- the chain stopped: the swing's recovery plays back to the guard while he stands
+  {
+    run(0.2);
+    input.click(0);
+    let tail = null;
+    run(1.6, () => {
+      if (ad.state.mode === 'tail' && !tail) tail = H.clip?.name;
+    });
+    assert(/^lightRecover\d$/.test(tail ?? ''), `a light that ends the chain: its recovery back to the guard (${tail})`);
+  }
+  // ---- equip / unequip: the sword shows from the draw, hides from the sheathe (the review film's)
+  if (lib.has('equip') && lib.has('unequip')) {
+    const b = standIn(), h = createHero2(null, { body: b, library: lib, applyRoot: false });
+    h.play('equip', { fade: 0 });
+    h.update(1 / 60);
+    const before = b.props.R;
+    for (let i = 0; i < 30; i++) h.update(1 / 60);
+    const after = b.props.R;
+    h.play('unequip', { fade: 0 });
+    for (let i = 0; i < 30; i++) h.update(1 / 60);
+    assert(before == null && after === 'sword' && b.props.R == null, `equip: the sword hidden before its draw (${before}), shown after (${after}); unequip: hidden after the sheathe (${b.props.R})`);
+  }
   // ---- the flask: the left hand holds it, the sword stays in the right; he walks while drinking
   {
     run(1.5);

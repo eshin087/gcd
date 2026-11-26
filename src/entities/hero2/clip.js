@@ -288,6 +288,8 @@ export function decodeClip(raw, set = null) {
     set: set?.set ?? set?.id ?? '', setTitle: set?.title ?? '', joints: r.joints == null ? null : joints,
     q, hips, root, cyc,
     speed: Number.isFinite(r.speed) ? r.speed : null, contact, phases, events, props, hands,
+    // optional: the yaw (rad) at which the clip's blade points at its target (0: +Z is the aim)
+    face: Number.isFinite(r.face) ? r.face : null,
     from: r.from ?? null, to: r.to ?? null, problems, warnings,
   };
 }
