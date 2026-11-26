@@ -4,7 +4,12 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and ten pieces of work since 0.4.0:
+One hundred and eleven pieces of work since 0.4.0:
+- **Xin Yi rebuilt: a man in a coat, readable windups, faster hands** (2026-11-26, ADR-221). *Added, behind switches until the owner picks:* `?oneBody=a|b|c`
+  prints Xin Yi like the hero on a man's build (square shoulders, a belted waist, fuller hair, a coat that hangs
+  instead of flaring; a closed, b open, c a duster to mid-shin); `?oneMoves=a` aims his single gun down a straight
+  arm, holds every blue and red blow in a windup pose you can read before the snap (the same timing), and adds two
+  fast strings, Snapping Hands and Quick Foot.
 - **A lighter world on phones that need it** (2026-11-26, ADR-216). *Changed:* on a phone that still drops frames at the
   lowest resolution, the ground's extras (ridge strokes, drifting cloud shadows, contact shadows, the floor ripple)
   turn off and the stone floors' relief is drawn more simply, for the rest of the visit. `?lite=0` keeps the full

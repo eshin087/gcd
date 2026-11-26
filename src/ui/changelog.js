@@ -19,6 +19,11 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-26',
+        title: 'Xin Yi rebuilt: a man in a coat, readable windups, faster hands',
+        notes: ['Xin Yi can now be tried as a man in a long coat drawn like the hero, with windups you can read before every blue or red blow, a gun aimed down his arm and two quick strings. Add ?oneBody=b&oneMoves=a to the address on the Hall of Falling Script to try it.'],
+      },
+      {
+        date: '2026-11-26',
         title: 'A lighter world on phones that need it',
         notes: ['On a phone that still drops frames at the lowest resolution, the ground\'s extra details turn off and the stone floors are drawn more simply, so fights stay smooth. Add ?lite=0 to the address to keep the full look.'],
       },

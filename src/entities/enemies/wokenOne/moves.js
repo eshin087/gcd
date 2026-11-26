@@ -505,12 +505,12 @@ const aimSideKeys = (cock = 0.7) => strikeKeys({
   hit: { ...AIM_SIDE, ...FT.OR },
   after: { ...AIM_SIDE, rH: [-0.48, 0.2, 0.32], bZ: -0.05, pitch: -0.06, ...FT.OR },
 });
-/** The held windup of a blue / red / black blow: he reaches the blow's coil by `T.held.drift` of the
- *  time it took him (the coil's own place in the windup) and HOLDS it (the realiser's bait-hold rule: the cocked pose keyed again) until `T.held.to`, or
- *  earlier where the strike would get under `T.held.keep` of the time it had; the strike runs in the rest. The windup is no longer (cue, flash and impact stay where they
- *  were): the time comes out of the slow drift into the coil, so the pose that says blue or red stands
- *  still long enough to read, and the strike out of it is a snap. A beat with a bait hold of its own
- *  (the Dive Within) or no keys is left alone. */
+/** The held windup of a blue / red / black blow: he reaches the blow's coil in `T.held.drift` of the time
+ *  his draw into it had, and HOLDS it (the realiser's bait-hold rule: the cocked pose keyed again) until
+ *  `T.held.to` of the windup at most, or earlier where the strike would get under `T.held.keep` of the
+ *  time it had; the strike runs in the rest. The windup is no longer (the cue, the flash and the impact
+ *  stay where they were): the pose that says blue or red stands still long enough to read, and the blow
+ *  out of it is a snap. A beat with a bait hold of its own (the Dive Within) or no keys is left alone. */
 function heldTell(b) {
   if (!b?.keys || b.feint || b.hold || !(b.tell === B || b.tell === R || b.tell === K)) return b;
   const cock = b.cock ?? 0.8;

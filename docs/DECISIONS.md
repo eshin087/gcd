@@ -6399,3 +6399,34 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   sheet's C in the same page (474 of 580 000 pixels differ, from the relief alone). The look changes once, when
   it turns on, mid-page (one frame). Not measured on the phone; the next `?perf` BENCH there says how much.
 
+## ADR-221 — Xin Yi rebuilt: printed like the hero on a man's build; held windups, a true aim, fast strings (2026-11-26)
+
+- **Context:** the owner: "the neo boss anatomy and attacks are all weird too ... fix the neo character details
+  because right now its a mess and can't tell if its a human". Filmed at the game camera (x4 crops beside the hero,
+  three sides, every phase) and without letters from four sides, and measured with his motion audit and an aim
+  probe: (1) his print was a bright jade OUTLINE round a near-black fill, the bosses' print (ADR-194) lifting his
+  near-grey fill to ~3x the hero's coat, so at 36 m he read as a hollow, high-contrast bottle; (2) the build was a
+  bottle: narrow shoulders and a skirt flaring from the chest to a hem wider than them (cone 0.25), the waist and
+  legs gone; (3) a head of about three letters with nothing of a face from above; (4) the one-gun aim (yaw -0.9,
+  the hand ahead of the chest) pointed the arm 36 degrees off the hero, the forearm across his face; bolts 19 and
+  the point-blank shot 25 off; (5) no blue / red blow had a pose of its own: every windup drifted into its coil;
+  (6) his fastest normal blows sat at 0.32 - 0.34 s inside strings, nothing quick out of his guard.
+- **Decision:** two switches, each awaiting the owner's pick (PENDING; default '0' = as shipped):
+  - `?oneBody=a|b|c` (gear.js CUT / look.js BODY_INK): printed the hero's way (HERO_INK's cloth rules in his
+    jade-grey: the dim DOTTED rim, no ink over 1.5, far fills at ~0.6 of the hero's so the lift lands near the
+    hero's brightness) on a man's build (broader, squarer shoulders and a deeper chest under the coat, a belt at the
+    waist, fuller swept-back hair, a lower collar) and a coat that hangs near straight (panelSkirt's new per-panel
+    `cone`, 0.1 for his panels; the hero's 0.25 unchanged). a the long coat closed in phase 1, b open in every
+    phase (the legs walk in the split), c a duster to mid-shin with the hero's pale hem.
+  - `?oneMoves=a` (moves.js MOVES_A, read live per realise): the one-gun aim side-on (AIM_SIDE: the right shoulder
+    toward the hero, the arm straight down the line, 2 - 11 degrees off); every blue / red / black blow HOLDS its coil
+    (heldTell: the coil reached in 0.75 of its draw, held to 0.84 of the windup at most, the strike keeping 0.7 of
+    its time) with the windup, the cue and the impact where they were; two fast white strings, Snapping Hands and
+    Quick Foot (0.42 s, then 0.28 s, unscaled by the phase: the floors of his own rules, a glint after its tell and
+    impacts 0.36 s apart), never picked on '0' (wokenOne.weigh).
+- **Consequences:** the timing of every move is unchanged on the rebuild (the `rebuild` test compares 98
+  realisations). The motion audit: the worst jolt 1035 -> 985 mm/f2 (the sweep 872 -> 499 - 819, its tuck's knee
+  pop is Tian Lei's builder and pre-existing); the spin kicks' windups jolt ~25 % more (the turn into the held coil
+  is quicker). His blows are Tian Lei's builders (ascendant/moves.js X): a change there changes him on both switches.
+  Not done: the left hand behind his back in phase 1 (the homage's) still reads one-armed at the game camera from
+  some sides; the sweep's tuck. When the owner picks, the picks move into PICKED and the docs' defaults change.
