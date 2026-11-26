@@ -6171,6 +6171,134 @@ async function scenarioStreakFx() {
   }
 }
 
+// INSTANTSLASH (ADR-240; the owner, 2026-11-26: "remove the curvy slashes with the instant slashes", every
+// attack and the flurry): with the default `slash` look every swing draws its straight line (slashFx.js) and
+// no crescent (fx.trail is never called through an attack); the light combo's five hits (their first looks)
+// draw one line each, the whirl three; the slam and the heavies the heavy look with a camera kick; the hits
+// still land on the wyrm 2 m ahead (the hit test is the swept blade, not the line); `?slash=arc` draws the
+// crescent and no line.
+async function scenarioInstantSlash() {
+  out('\n== scenario INSTANTSLASH (every swing a straight slash line, no crescent: slashFx.js) ==');
+  const SL = await imp('src/entities/player/slashFx.js');
+  const slash0 = SL.slashMode();
+  let last = null;
+  const play = (mode, plan, aim = false) => {
+    SL.setSlash(mode);
+    const G = (last = build());
+    fightSetup(G);
+    const { game, input } = G, p = game.player, d = game.dragon;
+    p.debug.god = true;
+    if (!aim) p.debug.teleport(d.position.x + 14, d.position.z + 14);
+    else {
+      const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
+      const c = d.hurtSpheres.filter((h) => h.part === 'body').reduce((a, h) => ((h.x - d.position.x) * fx + (h.z - d.position.z) * fz > (a.x - d.position.x) * fx + (a.z - d.position.z) * fz ? h : a));
+      p.debug.teleport(c.x + fx * (c.r + 2), c.z + fz * (c.r + 2));
+    }
+    p.yaw = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z);
+    aimAt(G);
+    for (let i = 0; i < 40; i++) G.tick(DT);
+    p.anim.forceVariant = 0;
+    let trails = 0;
+    const tr = p.fx.trail.bind(p.fx);
+    p.fx.trail = (...a) => { if (p.state === 'attack' || p.state === 'heavy') trails++; return tr(...a); };
+    const lines = [];
+    p.slashFx.onLine = (ax, ay, az, bx, by, bz, look, kind) => lines.push({ combo: p.atk?.def?.combo, name: p.atk?.def?.name, look, kind, len: Math.hypot(bx - ax, by - ay, bz - az), ok: Number.isFinite(ax + ay + az + bx + by + bz) });
+    const hits = [];
+    G.watch = (nn) => { if (nn === 'player:hitDragon') hits.push(p.atk?.def?.name); };
+    const kicks0 = p.slashFx.kicks;
+    for (let i = 0, N = Math.round(3.2 / DT); i < N; i++) {
+      for (const [at, b] of plan) if (i === Math.round(at / DT)) { aimAt(G); if (b === 'L') input.click(0); else p._buffer('heavy'); }
+      G.tick(DT);
+    }
+    G.watch = null;
+    p.anim.forceVariant = null;
+    return { lines, trails, hits, kicks: p.slashFx.kicks - kicks0 };
+  };
+  try {
+    const C5 = [[0, 'L'], [0.42, 'L'], [0.84, 'L'], [1.26, 'L'], [1.68, 'L']];
+    {
+      const r = play('line', C5);
+      const per = [1, 2, 3, 4, 5].map((c) => r.lines.filter((l) => l.combo === c));
+      const ok = per[0].length === 1 && per[1].length === 1 && per[2].length === 3 && per[2].every((l) => l.kind === 1) && per[3].length === 1 && per[3][0].kind === 2 && per[4].length === 1 && per[4][0].look === 'heavy'
+        && r.lines.every((l) => l.ok && l.len > 0.2 && l.len <= 7.01) && r.trails === 0 && r.kicks >= 1;
+      assert(ok, `the combo draws straight lines, no crescent: hits 1-5 ${per.map((x) => x.length).join(', ')} line(s) (the whirl 3, the stab a streak, the slam heavy), ${r.trails} crescent calls, ${r.kicks} camera kick(s), lengths ${r.lines.map((l) => l.len.toFixed(1)).join(' ')}`);
+    }
+    {
+      const r = play('line', [[0, 'L'], [0.42, 'L'], [0.84, 'H']]);
+      const hv = r.lines.filter((l) => l.look === 'heavy');
+      assert(hv.length >= 1 && r.trails === 0 && r.kicks >= 1, `a heavy branch draws the heavy line with a kick, no crescent (${hv.length} heavy line(s): ${hv.map((l) => l.name).join(', ')}; ${r.trails} crescent calls)`);
+    }
+    {
+      const r = play('line', [[0, 'L']], true);
+      assert(r.hits.includes('fallingCut') && r.lines.length === 1, `hit 1 still lands on the wyrm 2 m ahead under the line (${r.hits.join(', ') || 'MISS'}; ${r.lines.length} line)`);
+    }
+    {
+      const r = play('arc', [[0, 'L'], [0.42, 'L']]);
+      assert(r.lines.length === 0 && r.trails > 4, `?slash=arc: the crescent and no line (${r.trails} crescent calls, ${r.lines.length} lines)`);
+    }
+  } finally {
+    SL.setSlash(slash0);
+  }
+  return last;
+}
+
+// OFFHAND (ADR-240; the owner, 2026-11-26: "make the left hand look more natural and not stand out so much"):
+// `?offhand=side|back|quiet` (offHand.js). Under each, through the light combo's one-handed hits the free hand
+// hangs at its look's rest (p[sd] 1 in the swing, the free wrist within the arm's reach of its shoulder, no
+// frame of hits 1-4 where it moves more than 0.7 of production's free hand's most, no NaN), and it is home on the pose's own hand by 1.2 s after; a
+// two-handed blow keeps it on the grip (the slam: p[sd] 0, the second hand at the grip); '0' (the default)
+// never hangs it.
+async function scenarioOffHand() {
+  out('\n== scenario OFFHAND (the free hand in a one-handed swing: offHand.js) ==');
+  const OH = await imp('src/entities/player/offHand.js');
+  const { P } = await imp('src/entities/player/anim.js');
+  const { DIM: HD } = await imp('src/entities/player/model.js');
+  const off0 = OH.offHandMode();
+  let last = null, prodStep = 0;
+  try {
+    for (const mode of ['0', 'side', 'back', 'quiet']) {
+      OH.setOffHand(mode);
+      const G = (last = build());
+      fightSetup(G);
+      const { game, input } = G, p = game.player, d = game.dragon, r = p.rig, A = p.anim;
+      p.debug.god = true;
+      p.debug.teleport(d.position.x + 14, d.position.z + 14);
+      p.yaw = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z);
+      aimAt(G);
+      for (let i = 0; i < 40; i++) G.tick(DT);
+      A.forceVariant = 0;
+      const W = new THREE.Vector3(), S = new THREE.Vector3(), Wp = new THREE.Vector3(), inv = new THREE.Matrix4();
+      let sdIn = 0, sdSlam = 0, twoSlam = 0, far = 0, step = 0, nan = false, have = false, sdAfter = 0;
+      const plan = [0, 0.42, 0.84, 1.26, 1.68];
+      for (let i = 0, N = Math.round(3.6 / DT); i < N; i++) {
+        if (plan.some((t) => i === Math.round(t / DT))) { aimAt(G); input.click(0); }
+        G.tick(DT);
+        inv.copy(r.root.matrixWorld).invert();
+        W.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.L.fore.matrixWorld).applyMatrix4(inv).multiplyScalar(1 / (p.drawScale || 1));
+        S.setFromMatrixPosition(r.arms.L.upper.matrixWorld).applyMatrix4(inv).multiplyScalar(1 / (p.drawScale || 1));
+        if (!Number.isFinite(W.x + W.y + W.z)) nan = true;
+        const sd = A.cur[P.sd], combo = p.state === 'attack' ? p.atk?.def?.combo : 0;
+        // (hits 1-4 and their way home: the slam is two-handed, both hands ride the blade there)
+        if (have && !(combo >= 5)) step = Math.max(step, W.distanceTo(Wp));
+        Wp.copy(W);
+        have = true;
+        if (combo >= 1 && combo <= 4 && p.atk.t > p.atk.def.windup) sdIn = Math.max(sdIn, sd);
+        if (combo === 5 && p.atk.t > p.atk.def.windup) { sdSlam = Math.max(sdSlam, sd * (1 - Math.min(1, A.cur[P.twoHand]))); twoSlam = Math.max(twoSlam, A.cur[P.twoHand]); }
+        if (combo >= 1 && combo <= 4) far = Math.max(far, W.distanceTo(S));
+        if (i * DT > 3.5) sdAfter = sd;
+      }
+      A.forceVariant = null;
+      if (mode === '0') prodStep = step;
+      if (mode === '0') assert(sdIn === 0 && sdSlam === 0 && !nan, `offhand 0 (production) never hangs the free hand (sd ${sdIn}; its free wrist at most ${(step * 100).toFixed(1)} cm a frame through hits 1-4)`);
+      else assert(!nan && sdIn > 0.95 && sdSlam < 0.05 && twoSlam > 0.9 && far <= 0.6 && step <= 0.7 * prodStep && sdAfter < 0.02,
+        `offhand ${mode}: at its rest through hits 1-4 (sd ${sdIn.toFixed(2)}), the slam two-handed (sd ${sdSlam.toFixed(2)}, two ${twoSlam.toFixed(2)}), the wrist at most ${far.toFixed(2)} m from its shoulder, at most ${(step * 100).toFixed(1)} cm a frame through hits 1-4 (production ${(prodStep * 100).toFixed(1)}), home after (sd ${sdAfter.toFixed(2)})${nan ? ', NaN' : ''}`);
+    }
+  } finally {
+    OH.setOffHand(off0);
+  }
+  return last;
+}
+
 async function scenarioHeroLife() {
   out('\n== scenario HEROLIFE (one hand through the chain, two on the heavy blows, the cross ward, the cloak vs the charged blade, idle actions) ==');
   // the blade's flare as it was before the calm (combat/impactCalm.js level 0): these bounds measure
@@ -7495,7 +7623,7 @@ async function scenarioHeroHand() {
   // (H1) the contract
   assert(W?.parent === r.arms.L.fore && Math.abs(W.position.y + (HD.foreArm - 0.03)) < 1e-6 && Math.hypot(W.position.x, W.position.z) < 1e-9 && r.arms.L.point?.parent === W
     && !!H?.fingers && H.fingers.parent === W && H.open.parent === W && H.grip.parent === r.sword
-    && P.lD === 53 && P.lN === 56 && P.hs === 59 && P.lk === 60 && N === 61 && N <= 64 && A.freeHand === true && OFF_SNAP[0] < OFF_SNAP[1],
+    && P.lD === 53 && P.lN === 56 && P.hs === 59 && P.lk === 60 && P.sd === 61 && N === 62 && N <= 64 && A.freeHand === true && OFF_SNAP[0] < OFF_SNAP[1],
     `the free hand's contract: arms.L.wrist on the forearm ${(HD.foreArm - 0.03).toFixed(2)} m down and arms.L.point on it; offHand { open, grip, fingers }, open and fingers on the wrist; channels lD 53, lN 56, hs 59, lk 60 (N ${N} ≤ 64); the hero's animator has the free hand`);
 
   // every frame of the set: chest-local points (model metres: the drawn hero is lean-sheared and scaled)
@@ -14847,6 +14975,8 @@ const SCENARIOS = {
   wyrmface: scenarioWyrmFace,
   wyrmlook: scenarioWyrmLook,
   herolife: pinAdr186(scenarioHeroLife),
+  instantslash: scenarioInstantSlash,
+  offhand: scenarioOffHand,
   streakfx: scenarioStreakFx,
   timerip: scenarioTimeRip,
   swordmystic: scenarioSwordMystic,
