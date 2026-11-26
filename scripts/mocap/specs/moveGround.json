@@ -10,7 +10,7 @@
    "src": "move 0:00-0:13",
    "kind": "hold",
    "fps": 30,
-   "n": 30,
+   "n": 108,
    "takes": [
     {
      "t0": "0:00.10",
@@ -29,7 +29,10 @@
     }
    ],
    "from": "idle",
-   "to": "idle"
+   "to": "idle",
+   "breath": {
+    "period": 3.6
+   }
   },
   {
    "name": "turnL180",
@@ -570,7 +573,9 @@
     }
    ],
    "from": "sprint",
-   "to": "sprint"
+   "to": "sprint",
+   "draft": true,
+   "note": "draft: the chapter is filmed with cinematic follow cameras and a far fixed camera; the tracker loses him through the turn (a cut to a far shot at 3:52.12, a close-up at 3:52.92); re-track or hand-key before use"
   }
  ]
 }
