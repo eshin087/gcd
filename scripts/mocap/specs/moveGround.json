@@ -4421,7 +4421,21 @@
       0
      ],
      "blend": 3
-    }
+    },
+    {"f": 19, "joint": "upperArmL", "euler": [21.68, -21.51, -39.84], "blend": 0, "fx": 1},
+    {"f": 20, "joint": "upperArmL", "euler": [11.58, -10.1, -41.55], "blend": 0, "fx": 1},
+    {"f": 21, "joint": "upperArmL", "euler": [-2.38, 6.54, -40.45], "blend": 0, "fx": 1},
+    {"f": 22, "joint": "upperArmL", "euler": [-20.96, 25.1, -33.44], "blend": 0, "fx": 1},
+    {"f": 23, "joint": "upperArmL", "euler": [-47.68, 40.48, -16.71], "blend": 0, "fx": 1},
+    {"f": 24, "joint": "upperArmL", "euler": [-82.44, 46.23, 9.41], "blend": 0, "fx": 1},
+    {"f": 25, "joint": "upperArmL", "euler": [-112.06, 41.66, 31.76], "blend": 0, "fx": 1},
+    {"f": 26, "joint": "upperArmL", "euler": [-128.75, 34.4, 43.17], "blend": 0, "fx": 1},
+    {"f": 20, "joint": "foreArmL", "euler": [-0.21, -50.25, -0.34], "blend": 0, "fx": 1},
+    {"f": 21, "joint": "foreArmL", "euler": [-0.52, -39.27, -1.02], "blend": 0, "fx": 1},
+    {"f": 22, "joint": "foreArmL", "euler": [-0.67, -24.25, -1.73], "blend": 0, "fx": 1},
+    {"f": 23, "joint": "foreArmL", "euler": [-0.61, -7.89, -2.4], "blend": 0, "fx": 1},
+    {"f": 24, "joint": "foreArmL", "euler": [-0.39, 7.13, -3.02], "blend": 0, "fx": 1},
+    {"f": 25, "joint": "foreArmL", "euler": [-0.12, 18.11, -3.54], "blend": 0, "fx": 1}
    ]
   },
   {
