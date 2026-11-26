@@ -1195,6 +1195,17 @@ he mixes the blade, his feet, the qi and the courtyard.
   one; 6.5–16 m), and the courtyard's flagstones thrown in a fan. Footwork 0.03–0.12 s, flow 0.82, 7
   in a row. More blows from more places, not faster ones (the 0.42 s / 0.32 s floors hold).
 
+**The sword motion pass** (ADR-226, behind `?ashMotion=a`; the owner has not picked yet): the jian held in line
+with his forearm (≤ ~40°, the hand moved, never the blade's path) and his arm open at the end of a blow; every blue
+blade blow wound into a HELD pose from 0.36 to 0.8 of its windup (a cut: the blade raised high over his sword
+shoulder, the point to the sky; a thrust: drawn back level by his cheek, the point on you), every red one into the
+COIL (sunk low and turned away, the blade trailing near the floor behind his hip, the free hand reaching for you), so
+the body says which answer before the flare does; the windups, impacts and ends are those of the move as written.
+And two **quick blows**, normal tells, a fixed 0.34 s windup (`minQuickWindup`; the glint 0.04 s in), thrown straight
+out of his guard: **Darting Needle** (the pointed jian drawn a hand's width back and driven in on a step; a 2.0 m line)
+and **Flicking Willow** (the point flicks up and cuts down across you; a 2.1 m sector). Block or parry them; each runs
+into a string.
+
 **Every phase asks for dodges** (the tuning pass): a red blow sits inside eight strings (Drifting
 Cloud's kick, Chasing Rain's glide, Whirling Step's second spin, Brand and Kick's kick, Cinder Cross's
 burning cut, Falling Embers' second leap, the 4th blow of Scattered Petals and of Ten Thousand
@@ -1591,6 +1602,15 @@ between the cuts, four blade forms. He runs on the duelist engine (the Ash Disci
 deflect chain, the blade lock, the mikiri, the full deflect, the Ghostep behind him, pressure and
 hit stun are all as written above; his pressure and its fairness guard: *The duelists' pressure and
 the fairness guard*, below), with these differences.
+
+**The sword motion pass** (ADR-226, behind `?lordMotion=a`; the owner has not picked yet): as Shen Hui's (above:
+the blades in line with his forearms, his arms opening, every blue / red blade blow held in its tell pose from 0.36
+to 0.8 of its windup with the same timings; the spells keep their own raised hands), and each string's end is a
+shake of the steel, held a beat (both blades in form 2, the staff swept level in form 3), where it was a roll of
+the blade round the wrist. Two **quick blows**, normal tells, a fixed 0.30 s windup (`minQuickWindup`; the glint
+0.04 s in), with no draw: **Rising Ember** (forms 1 - 3: the blade hung low at his side cuts straight up through
+you; a 2.3 m sector) and **Vigil's Fall** (form 4: the blade standing upright before his face falls on you, both
+hands; 2.6 m). Block or parry them; each runs into a string.
 
 **Four forms, four bars, a deathblow each** (the owner's pick):
 | Form | Blades | Reach | A string's follow-up windup | Recovery × |

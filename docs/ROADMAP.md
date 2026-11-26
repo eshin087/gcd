@@ -676,7 +676,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] A missed blow in a long string costing most of the string; two guard cues from different sources 0.1 - 0.25 s apart
   - [ ] The guard stepping in 1 - 4 times a minute in the Lord's fourth form (world pieces his own blows fell)
   - [ ] Music for Shen Hui's third phase (picked by ear); sounds for the new moves and spells
-  - [ ] A joint-by-joint audit of the new poses; a palm strike for Shen Hui's free hand
+  - [ ] A joint-by-joint audit of the new poses (done for the sword: ADR-226, `audit`); a palm strike for Shen Hui's free hand
   - [ ] On the iPhone: frame rate in the Lord's fourth form with the weather and Starless Night
   - [ ] Remove the looks that were turned down and their switches, once the picks have been played
 
@@ -1152,6 +1152,11 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
 - [ ] Tells kept readable: a move's windup and its blue / red timing do not change unless the owner
       asks (COMBAT.md); the pace meters and the duel suites stay green
 - [ ] Each boss's polish as its own PR, the before / after strips shown to the owner
+- [x] Shen Hui and Varr Nihil (ADR-226): the sword audit (`audit`), the blade in line with the forearm, the arms
+      opening, held blue / red tell poses, the Lord's end-of-string shake, two quick blows each, behind
+      `?ashMotion` / `?lordMotion`, films sent
+  - [ ] The owner's pick from the films; then the switch's default
+  - [ ] Their feet (a planted foot handed to a clip slides; legs cross in spins), the Starless Night cast's wrist
 
 ### P3 — Arenas that are part of the fight, better backgrounds, cooler destruction
 - [ ] Arenas the fight uses: cover a boss's shot breaks, pillars a blow brings down, ledges and

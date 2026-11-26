@@ -5,6 +5,33 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-26 — Shen Hui and Varr Nihil: the sword in the hand, held tell poses, quick blows (ADR-226; branch `claude/enemies-ash-lord-motion-0f152b`)
+
+**Task** (from the owner via the lead session): their positioning angles look weird and the weapons are held
+awkwardly; every blue / red blow its own readable held windup; some much faster normal blows; audit first, fix,
+film before / after, the owner picks, behind a switch.
+
+**Measured** (new `tests/integration/swordAudit.mjs`, opt-in `audit` in duel.mjs / lord.mjs): the forearm-to-blade
+angle 45° / 64° on average, up to the animator's 128° limit (the hero ≤ 60); the blade through their heads in nine
+overheads; elbows never past 145°; Varr Nihil's end-of-string twirl jolting the point 1.0 - 2.5 m a frame². The
+chest is square to the hero at every impact (≤ ~20°), so "angles" at the blow itself measured fine: the angle
+that reads wrong is the steel against the arm (sent to the owner as five clips and a findings note).
+
+**What.** `anim.js` `gripMax` / `_gripAlign` (opt-in: the forearm turned toward the blade round the elbow);
+`duelist.js` applies `kit.motion()` (gripMax, armSoft) each frame; `duelist/tellPose.js` (held tell families: blue high
+/ aim, red coil; `motionize`); `realise.js` `recoveryKeysOf`; per-boss `motionKeys`, `motionRecovery` (the Lord's
+shake), `quick` / `motionOnly` moves (Darting Needle, Flicking Willow; Rising Ember, Vigil's Fall) and
+`TUNING.motion` / `minQuickWindup`; `?ashMotion` / `?lordMotion` (PENDING, Lab LOOKS rows); links out of the quick
+blows; tests `swordmotion` (both suites), the data rule for quick blows, `GCD_LOOKS` env for any scenario.
+
+**Verification.** Audit on: Shen Hui's wrist ≤ 60° in every move, the blade ≥ 18 cm off his head; the Lord ≤ 60° bar
+one spell pose, the worst jolt per move 776 → 449 mm/f² on average. The pace meters pass with the switches on.
+Before / after films (game camera + a close side view, half speed) rendered with the scratch rig.
+
+**Open.** The owner's pick (draft PR). Feet: a planted foot still slides where a clip takes it over (the grove session's
+`liftEase` may serve); legs cross inside the spins. Varr Nihil's Starless Night cast keeps a 91° wrist.
+
+---
 ## 2026-11-26 — The bosses drawn in the hero's style: his shading and his outline (ADR-220; branch `claude/render-boss-hero-look-631f37`)
 
 **Ask.** Make Shen Hui, Varr Nihil, Tian Lei, Lu Wusheng and Halcyon look like the hero's ASCII art (the Cinder
