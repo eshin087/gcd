@@ -87,7 +87,13 @@ export function moves(X) {
     /** Behind You: he is gone, and behind the hero, the heel already coming (blue; a guard holds from any side). */
     behindYou: {
       label: 'Behind You', phase: 1, weight: [1.4, 1.1, 0.9], cooldown: 5, band: [0, 10], recovery: 0.6, cat: 'closer', gapCloser: true,
-      beats: [pocket({ ...kick('side', B, 0.72, 22, { flare: true }), knockback: 4.5, close: 0.6, track: 0.8, wjBlink: { behind: 1.8 }, wjWeight: 'heavy' })],
+      beats: [{
+        pick: [
+          pocket({ ...kick('side', B, 0.72, 22, { flare: true }), knockback: 4.5, close: 0.6, track: 0.8, wjBlink: { behind: 1.8 }, wjWeight: 'heavy' }),
+          // (or the heel from behind: red; read the cue, not the blink)
+          pocket({ ...kick('axe', R, 0.8, 26), knockback: 6, ring: 2.6, close: 0.6, track: 0.8, wjBlink: { behind: 1.9 }, groundMark: { kind: 'slam' }, wjQuake: 'axe', wjWeight: 'heavy' }),
+        ],
+      }],
     },
     /** Three Count: a front kick, a round kick that follows the hero's slide, and from his flank a side
      *  kick (normal, normal, blue). */
@@ -96,13 +102,18 @@ export function moves(X) {
       beats: [
         pocket({ ...kick('front', N, 0.55, 14), knockback: 2.5, wjWeight: 'light' }),
         pocket(follows({ ...kick('round', N, 0.42, 15), knockback: 3, wjWeight: 'light' })),
-        pocket(blinked({ ...kick('side', B, 0.52, 22, { flare: true }), knockback: 5, wjWeight: 'heavy' }, side(1))),
+        {
+          pick: [
+            pocket(blinked({ ...kick('side', B, 0.52, 22, { flare: true }), knockback: 5, wjWeight: 'heavy' }, side(1))),
+            pocket(blinked({ ...kick('axe', R, 0.62, 26), knockback: 6, ring: 2.6, groundMark: { kind: 'slam' }, wjQuake: 'axe', wjWeight: 'heavy' }, side(-1))),
+          ],
+        },
       ],
     },
     /** The Axe Heel: the leg up over his head and the heel down through the road (red: dodge). A crater;
      *  the pieces within 3 m shudder or topple. */
     axeHeel: {
-      label: 'Axe Heel', phase: 1, weight: [1.2, 1.0, 0.8], cooldown: 6, band: [0, 3.4], recovery: 0.8, cat: 'area',
+      label: 'Axe Heel', phase: 1, weight: [1.7, 1.1, 0.8], cooldown: 6, band: [0, 3.4], recovery: 0.8, cat: 'area',
       beats: [pocket({ ...kick('axe', R, 0.8, 30), knockback: 6, ring: 2.6, groundMark: { kind: 'slam' }, wjQuake: 'axe', wjWeight: 'heavy' })],
     },
     /** The Lazy Step: no blow; he is simply at the hero's flank, hands in his pockets (his footwork). */
@@ -112,7 +123,7 @@ export function moves(X) {
     },
     /** Long Step: one step that is ten, a side kick through the hero (red: roll). */
     longStep: {
-      label: 'Long Step', phase: 1, weight: [0.8, 0.8, 0.6], cooldown: 7, band: [2.4, 8], recovery: 0.8, cat: 'closer', gapCloser: true,
+      label: 'Long Step', phase: 1, weight: [1.0, 0.8, 0.6], cooldown: 7, band: [2.4, 8], recovery: 0.8, cat: 'closer', gapCloser: true,
       beats: [pocket({ ...kick('side', R, 0.7, 30), knockback: 8, knockdown: true, close: 4.2, track: 0.6, wjCrash: true, wjWeight: 'heavy' })],
     },
     /** Open Palm (phase 2 on; the Lab and the suites call it in any phase): one palm to the chest that
@@ -142,7 +153,7 @@ export function moves(X) {
     /** DARK SPARK: a long charged straight punch (red; sparks gather on the fist). 10 m, and the hero goes
      *  through the first piece behind him; a miss buries the fist in whatever stands on its line. */
     darkSpark: {
-      label: 'Dark Spark', phase: 2, weight: [0, 1.0, 0.8], cooldown: 9, band: [0, 6], recovery: 0.9, cat: 'single',
+      label: 'Dark Spark', phase: 2, weight: [0, 1.25, 0.8], cooldown: 9, band: [0, 6], recovery: 0.9, cat: 'single',
       beats: [spark(SP.windup)],
     },
     /** Four Sides: a jab, then from his flank, from behind, from the other flank (normal, normal, blue,
@@ -181,7 +192,7 @@ export function moves(X) {
     /** The Stomp: the knee up, the foot down through the road; a ring that throws everything loose out of
      *  it and cracks the crossing's bars (red). */
     stomp: {
-      label: 'The Stomp', phase: 2, weight: [0, 1.0, 0.8], cooldown: 8, band: [0, 3.2], recovery: 0.85, cat: 'area',
+      label: 'The Stomp', phase: 2, weight: [0, 1.25, 0.8], cooldown: 8, band: [0, 3.2], recovery: 0.85, cat: 'area',
       beats: [{
         tell: R, windup: 0.8, active: 0.14, damage: 26, knockback: 7, zone: { kind: 'ring', r: TM.stomp.ring }, ring: TM.stomp.ring, part: 'feet',
         close: 1.2, track: 0.5, cock: 0.82, groundMark: { kind: 'blast' }, wjQuake: 'stomp', keys: stompKeys, wjWeight: 'huge',

@@ -1182,6 +1182,8 @@ const S = {
   strings: scenarioStrings,
   sides: scenarioSides,
   spark: scenarioSpark,
+  mix: scenarioMix,
+  chase: scenarioChase,
   // spells: scenarios
   // terrain: scenarios
   // world: scenarios
@@ -1491,8 +1493,14 @@ async function scenarioSides() {
     const d = G.game.dragon, p = G.game.player;
     duel(G, { dist: 3 });
     // the hero guards facing AWAY from him: the blink behind him is still met
-    const r = meleeRun(G, 'behindYou', 'block', { dist: 3 });
-    assert(r.res.length === 1 && r.res[0] === RESULT.BLOCKED && G.hits.at(-1).around, `Behind You, guarded: ${r.res.join(',')} (around: ${G.hits.at(-1)?.around})`);
+    // (Behind You draws a blue back kick or a red heel: the blue one is met by the guard, both come around)
+    const got = [];
+    for (let i = 0; i < 6 && !got.some((x) => x.tell === TELL.BLUE); i++) {
+      const r = meleeRun(G, 'behindYou', 'block', { dist: 3 });
+      got.push({ tell: r.A?.beats[0]?.def.tell, res: r.res[0], around: !!G.hits.at(-1)?.around });
+    }
+    out(`   Behind You, guarded: ${got.map((x) => `(${x.tell}: ${x.res}${x.around ? ', around' : ''})`).join(' ')}`);
+    assert(got.every((x) => x.around) && got.some((x) => x.tell === TELL.BLUE) && got.every((x) => (x.tell === TELL.BLUE ? x.res === RESULT.BLOCKED : x.res === RESULT.HIT)), 'Behind You, guarded: out of the blink it comes around; the blue kick is blocked from behind, the red heel is not blockable');
     void d, p;
   }
   const G = build();
@@ -1571,5 +1579,84 @@ async function scenarioSpark() {
     out(`   dodged: sparks ${JSON.stringify(S)}; the car on his line ${car.state === 0 ? `hp ${car0.toFixed(2)} -> ${car.hp.toFixed(2)}` : 'broke'}; barrier ${d.barrier.up ? 'up' : `open (${d.barrier.why})`}`);
     assert(S.missed === 1 && S.buried === 1 && (car.state !== 0 || car.hp < car0), 'a miss buries the fist in the car on its line');
     assert(!d.barrier.up && d.barrier.why === 'dodge', 'the perfect dodge opened his barrier');
+  }
+}
+
+/** MIX (the melee agent's item 7): the tells his AI throws per phase against the pace defender (god mode,
+ *  roaming as PACE does), GCD_MSECS s a phase (default 90), seed GCD_SEED: the share of normal / blue / red
+ *  cues and the cues a minute of each; no one answer (a guard, a roll) holds a phase alone. */
+async function scenarioMix() {
+  out('\n== scenario MIX (his tell mix per phase: normal / blue / red, cues a minute) ==');
+  const SECS = Number(process.env.GCD_MSECS ?? 90);
+  for (let ph = 1; ph <= 3; ph++) {
+    const G = build(SEED + ph, true);
+    const { game } = G;
+    const d = game.dragon, p = game.player;
+    duel(G, { dist: 3, ai: true, form: ph });
+    p.debug.god = true;
+    p.debug.noRiposte = true;
+    G.defend = paceDefender(G);
+    const tells = { [TELL.NORMAL]: 0, [TELL.BLUE]: 0, [TELL.RED]: 0, [TELL.BLACK]: 0 };
+    const seq = [];
+    G.watch = (n, e) => { if (n === 'combat:flash' && e?.source === 'dragon' && !MOVES[e.attack]?.transition) { tells[e.tell] = (tells[e.tell] ?? 0) + 1; seq.push(e.tell === TELL.RED || e.tell === TELL.BLACK ? 'dodge' : 'guard'); } };
+    const roam = mulberry32(SEED * 13 + ph), goal = { r: 2.5, a: 0, until: -1 };
+    const t0 = game.time;
+    for (let i = 0; i < Math.round(SECS / DT); i++) {
+      const rolled = G.defend.act();
+      if (game.time > goal.until) {
+        goal.r = [2.5, 5, 9][Math.floor(roam() * 3)];
+        goal.a = Math.atan2(p.position.x - d.position.x, p.position.z - d.position.z) + (roam() - 0.5) * 1.6;
+        goal.until = game.time + 4;
+      }
+      if (!rolled && p.state !== 'roll') {
+        const gx = d.position.x + Math.sin(goal.a) * goal.r, gz = d.position.z + Math.cos(goal.a) * goal.r;
+        const k = Math.hypot(gx, gz) > 12 ? 12 / Math.hypot(gx, gz) : 1;
+        const dx = gx * k - p.position.x, dz = gz * k - p.position.z, l = Math.hypot(dx, dz);
+        G.input.axis = l > 0.6 ? { x: dx / l, y: -dz / l } : { x: 0, y: 0 };
+      }
+      game.mouseGround.set(d.position.x, 0, d.position.z);
+      G.tick(DT);
+      if (d.brain.pendingPhase > ph) d.brain.pendingPhase = 0;
+    }
+    G.watch = null;
+    G.defend = null;
+    const T = (game.time - t0) / 60, all = Object.values(tells).reduce((a, b) => a + b, 0) || 1;
+    let run1 = 0, runMax = 0;
+    for (let i = 0; i < seq.length; i++) { run1 = i && seq[i] === seq[i - 1] ? run1 + 1 : 1; runMax = Math.max(runMax, run1); }
+    const sh = (t) => tells[t] / all;
+    out(`   P${ph}: ${(all / T).toFixed(1)} cues/min · normal ${(sh(TELL.NORMAL) * 100).toFixed(0)} % (${(tells[TELL.NORMAL] / T).toFixed(1)}/min) · blue ${(sh(TELL.BLUE) * 100).toFixed(0)} % (${(tells[TELL.BLUE] / T).toFixed(1)}/min) · red ${(sh(TELL.RED) * 100).toFixed(0)} % (${(tells[TELL.RED] / T).toFixed(1)}/min) · longest run of one answer ${runMax}; melee stats ${JSON.stringify(d.parts.melee?.stats ?? {})}`);
+    assert(sh(TELL.NORMAL) >= 0.12 && sh(TELL.BLUE) >= 0.12 && sh(TELL.RED) >= 0.12, `P${ph}: every tell is at least 12 % of his cues (neither holding the guard, nor parrying, nor rolling answers the phase alone)`);
+  }
+}
+
+/** CHASE: in phase 3 a hero thrown 5 m or more finds him standing where he stops (a reposition: no blow),
+ *  once per cooldown; never in phases 1 - 2. */
+async function scenarioChase() {
+  out('\n== scenario CHASE (phase 3: thrown, the hero finds him where he stops; once per cooldown) ==');
+  const C = TUNING.melee.chase, ch0 = C.chance;
+  C.chance = 1;
+  try {
+    for (const ph of [2, 3]) {
+      const G = build();
+      const d = G.game.dragon, p = G.game.player;
+      duel(G, { dist: 3, form: ph });
+      const blinks = [];
+      G.watch = (n) => { if (n === 'dragon:windup') blinks.push(n); };
+      const r = meleeRun(G, 'twoHands', 'hit');
+      run(G, 1.2);
+      const gap = Math.hypot(d.position.x - p.position.x, d.position.z - p.position.z);
+      const S = d.parts.melee.stats;
+      out(`   P${ph}: ${r.res.join(',')}; chases ${S.chases}; he stands ${gap.toFixed(2)} m from the hero after; next chase in ${d.parts.melee.chaseT.toFixed(1)} s`);
+      if (ph === 2) assert(S.chases === 0, 'phase 2: no chase');
+      else {
+        assert(S.chases === 1 && gap < C.off + 1.2, `phase 3: thrown 8 m, the hero finds him there (${gap.toFixed(2)} m)`);
+        const r2 = meleeRun(G, 'twoHands', 'hit');
+        run(G, 1.2);
+        assert(d.parts.melee.stats.chases === 1, `once per cooldown (${C.cooldown} s): the next throw is not chased (${r2.res.join(',')})`);
+      }
+      G.watch = null;
+    }
+  } finally {
+    C.chance = ch0;
   }
 }
