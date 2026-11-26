@@ -24,6 +24,21 @@ export const RELEASES = [
       },
       {
         date: '2026-11-26',
+        title: 'The drakelings never dive on top of the wyrm\'s blows',
+        notes: ['In a long flurry of the Cinder Wyrm\'s, a drakeling could dive in the same instant as a blow that needed the other answer. It now waits for a clear moment, or burns out harmlessly, and the wyrm\'s embers never come due beside its dive.'],
+      },
+      {
+        date: '2026-11-26',
+        title: "Parrying is easier: the perfect parry's timing widened",
+        notes: ['A parry pressed up to 0.2 s before the blow lands is now perfect, the same window as the perfect dodge (it was 0.08 s). Its extra posture damage, the fast critical counter cut, the blade lock and returned shots come far more easily.'],
+      },
+      {
+        date: '2026-11-26',
+        title: 'A lighter world on phones that need it',
+        notes: ['On a phone that still drops frames at the lowest resolution, the ground\'s extra details turn off and the stone floors are drawn more simply, so fights stay smooth. Add ?lite=0 to the address to keep the full look.'],
+      },
+      {
+        date: '2026-11-26',
         title: 'BENCH in the performance readout',
         notes: ['With ?perf in the address, BENCH holds the game still for a few seconds and measures what each drawing step costs your device. REPORT then includes it.'],
       },
@@ -33,6 +48,15 @@ export const RELEASES = [
         notes: [
           'Add ?perf to the address to see the frame rate and what each frame costs at the foot of the screen. REPORT shares or copies a summary you can send.',
           'The cracked floors and cut bamboo are now prepared while the level loads, so the first break in a fight no longer causes a hitch.',
+        ],
+      },
+      {
+        date: '2026-11-25',
+        title: 'Four looks for the perfect dodge flurry',
+        notes: [
+          'The Thunder Thrust look is on: the other looks are ?dodgefx=b, c or d, and ?dodgefx=off is the flurry before.',
+          'Every look: a smear of the hero along each cut, sparks off the floor, and in a long streak a cut from above.',
+          'A fourth finisher, the Thunder Thrust: a low set, one smeared lunge, the lunge held, letter trails over the floor.',
         ],
       },
       {

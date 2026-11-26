@@ -44,6 +44,10 @@ export class AutoQuality {
     this.t = 0; // the controller's own clock (s of frames sampled)
     this.log = []; // [{ t, from, to, why }] every step, for the Lab / tests
     this.last = null;
+    // a slow window came while no step down was left (at the floor, or the resolution found not to be
+    // what holds the device back): the frame needs less than a resolution step can give. Kept for the page
+    // load; main.js then turns on the lite world on a touch device (ADR-216)
+    this.wantsLess = false;
     this._failures = []; // per step index: failed step-ups into it
     this._blocked = []; // per step index: clock time before which no step up into it (Infinity = never)
     this.setCap(cap);
@@ -180,6 +184,7 @@ export class AutoQuality {
       // the frame (a frame held down from outside shows a short GPU time); without one, when the
       // script takes under `gpuShare` of the frame
       const gpuBound = gpu != null ? gpu >= cpu && gpu >= mean * C.gpuShare * 0.75 : cpu < mean * C.gpuShare;
+      if (this._slow >= C.downWindows && gpuBound && this.index >= this.lowest) this.wantsLess = true;
       if (this._slow >= C.downWindows && gpuBound && this.index < this.lowest) {
         this._slow = 0;
         const from = this.index;

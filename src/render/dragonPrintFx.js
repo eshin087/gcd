@@ -50,6 +50,8 @@ const v4s = (n) => Array.from({ length: n }, () => new THREE.Vector4(0, 0, 0, 0)
 
 export const DP_FX_U = {
   uDpFxOn: { value: [0, 0, 0, 0] }, // cloud, contact, ripple, ridge: 0 off, 1 'a', 2 'b'
+  // the lite world (ADR-216, the owner's pick C): 1 = the floors' relief in one octave a layer (dragonFloor.js);
+  // world/groundFx.js writes it from game.liteWorld, with the four upgrades off
   // cloud: (the drift's offset x, z (m), scale (1/m), cover); (soft, depth, warp, 0)
   uDpCloud: { value: new THREE.Vector4(0, 0, 0.03, 0.5) },
   uDpCloudK: { value: new THREE.Vector4(0.1, 0, 1, 0) },
@@ -69,6 +71,7 @@ export const DP_FX_U = {
   uDpRidge: { value: new THREE.Vector4(-0.02, 0.08, 0.03, 0) },
   uDpRidgeK: { value: new THREE.Vector4(0.9, 1.4, 0, 0) },
   uDpRidgeGlyphs: { value: gis(DP_RIDGE_CHARS) },
+  uDpLite: { value: 0 },
 };
 
 export const DRAGON_PRINT_FX_GLSL = /* glsl */ `

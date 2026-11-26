@@ -40,10 +40,14 @@ each actor's `tuning`.
    plunge" needs an attacker with a head to stab (the wyrm) within range; otherwise a perfect dodge
    gives the slow-mo and the crit window where you dodged (rule 5).
 4. **Parry** = RMB pressed ≤ `parryWindow` (0.22 s) before impact, attacker within the front arc.
-   Pressed ≤ `perfectParryWindow` (0.08 s) before impact it is a **perfect parry**
+   Pressed ≤ `perfectParryWindow` (0.20 s, the perfect dodge's window; 0.08 s until ADR-227) before
+   impact it is a **perfect parry**
    (`player:parry.perfect`): a perfectly parried bullet comes back as a damaging shot (ADR-051,
    *Bullets* below); a perfectly parried blow of the body or the blade deals × 1.5 posture and readies
    the **counter cut** (the first light started within 0.9 s winds up twice as fast and crits; ADR-102).
+   Since ADR-227 (the owner: parrying felt too tight) nearly every parry is perfect: a plain parry is
+   only a press 0.20 – 0.22 s early. The plain parry's own answers (a string's riposte, the counter
+   of a blue flare blow) are unchanged and come with a perfect parry too.
    Mashing is prevented: RMB must be released `parryRearm` (0.25 s) before a new press counts —
    **except right after a successful parry**: a deflect re-arms at once, so the next press counts as
    soon as RMB was released, even when the guard was held between blows (ADR-032). A press that
@@ -123,7 +127,7 @@ The riskier the answer, the more it pays. From safest to riskiest:
 | Parry | white, heavy | posture (26 / 48), guard back, a streak pip; the last blow: his recoil and the riposte |
 | Parry | a blue flare blow (a parry moment) | the same, wherever in his string it came: his string ends, and the counter: the streak's flash cuts, the last one the counter blow (64 damage, 30 posture) |
 | Perfect dodge | red, black | the flurry (the plunge on the wyrm): as many blows as the streak counts, the crit window |
-| Perfect parry (≤ 0.08 s) | white, heavy | posture × 1.5, the counter cut; a blade lock on a `lock` blow; a bullet returned |
+| Perfect parry (≤ 0.20 s; ADR-227) | white, heavy | posture × 1.5, the counter cut; a blade lock on a `lock` blow; a bullet returned |
 | Flash counter (attack ≤ ~0.14 s before his blow) | a blade's white or heavy blow | 70 damage and 60 posture at once, he reels, the crit window; too late and his blow lands |
 | Held guard (ADR-144) | the Sheathed's draw | no health; the whole guard meter, the guard knocked open 0.8 s, thrown back; he re-sheathes unpunished |
 | Parry (ADR-144) | the Sheathed's draw | as any blue flare blow (the counter), and he is caught with the blade out for 1.5 s |
@@ -653,6 +657,32 @@ same 258 damage in the same time as a streak of 7 (integ `storm`).
   down into a drift that thins out in 0.6 - 0.9 s) instead of the slam's big 'A' shards; round the
   head the art's shards are dust too. Damage, the blows and their frames, the world's hold and the
   crit window are as before (duel / integ `chain`).
+- **The dodge looks** (2026-11-25; `?dodgefx=a|b|c|d`, the Lab's `dodgefx`; **default a**, the owner's pick of 2026-11-26; `?dodgefx=off`: as above). Owner: the
+  flurry's blinks and arts stay, but it should read as a dash, after their reference footage. Against a man on
+  the ground (not a riposte; the wyrm's flurry, the plunge, the riposte and the counter are unchanged) every
+  variant adds three shared pieces, and the blows, the frames they land on and the damage stay the flurry's
+  (duel `dodgefx`). Everything new is tiny steel-white letters under the bloom threshold, like the dust; no
+  screen tint, nothing on the background. **The smear**: along each dash and each art's strike one or two
+  short-lived, faint copies of him are printed behind him as he runs, before the contact (a storm cut one; the
+  Thunder Thrust three). **Floor kicks**: ten tiny letters kicked low off the floor behind him as a pass
+  starts, a smaller puff ahead as he slows into the held finish. **Aerial cuts** (the chain's paths): in a
+  flurry of 4 flash cuts or more (a streak of 5) flash cut 1 starts 2.2 m up on the near end of its path and
+  falls through the foe to the floor on the far end (the Falling Cut's clip, a slash down through his chest
+  hangs where it crosses him); with 6 or more (a streak of 7) cut 0 does too; a storm cut stays on the ground,
+  and he ends every flurry on the floor.
+  **a, Thunder Thrust**: a fourth ground art, picked among the others with a only. A visible low set (the draw
+  stance, 0.25 s), then the strike in one step (0.06 s, three smear copies) passing his side as the Passing
+  Cut does, the lunge held 0.5 s. The cut lands as he passes the foe, not after the held finish; a bloom
+  at the blade's point and six tendrils crawl out over the floor from under it.
+  **b, Point bloom**: every flash cut's contact and every art's landing: about 25 tiny letters puff out of the
+  blade's point and are gone in 0.1 - 0.15 s, then 3 - 5 thin tendrils (6 - 8 letters each, a letter every
+  0.03 s along a jagged line, so they crawl) spread over the floor round his feet, gone by about 0.4 s.
+  **c, Spark cloud**: every contact throws about 18 tiny sparks (twice that on the last blow) that fall slowly
+  (low gravity, high drag) for 1.2 - 2 s, so a string of cuts builds a cloud of falling sparks round the foe
+  (thinned when the particle pool is over 70 % full).
+  **d, Heavy finish**: every ground art's wind-up is 1.6 times longer, the Passing Cut's finish is held 0.5 s,
+  the Falling Leaf's and the Rising Moon's landing 0.35 s, and the art's landing adds a little camera push and
+  shake. Only d changes the art's timing (the blows and damage are the same).
 - **Past seven** (`tiers`): at tier 4 every hanging cut has a fine echo line beside it, at tier 5 two;
   on the last blow they split away and rings open where they cross. The banner names the full flurry
   of a tier-4 / 5 streak HUNDREDFOLD FLASH / THOUSANDFOLD FLASH (SEVENFOLD below), a rule more, never
@@ -980,7 +1010,10 @@ of this one's to run).
   while a cue of the other answer, the wyrm's own (its running move's blows, told or still to come,
   a string's later hits included), a hazard's or a bullet's, is due within 0.5 s of it; a red one also
   waits while bullets are in the air. No lunge or dive starts while the wyrm is in the air or its
-  running move still has a blow to come (at most 2.5 s). While any of its brood lives, the wyrm picks
+  running move still has a blow to come (at most 2.5 s). A cue that has waited its 1.8 s still never
+  lands within 0.3 s of a cue of the other answer: it goes at the first moment none is due within
+  0.36 s of it, or, after 4.5 s of waiting, the creature gutters out without its blow; and a bullet of
+  the other answer due beside a brood cue that has flashed comes as a dud (ADR-237). While any of its brood lives, the wyrm picks
   no other spell, no flight and no heavy blow, and live wisps keep it from moves that ask for a guard
   (as meteors in the sky do). Measured by the brood's author (PRESSURE): cues a minute by phase
   ~35 – 41 / 58 – 60 / 77 – 83, no clash between two answers.

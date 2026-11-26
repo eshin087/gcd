@@ -6334,7 +6334,6 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   If the hero remake's branch later lands, its copies of `scripts/mocap` and `src/entities/hero2/*` should
   be taken over these (check `check.mjs`'s film list keeps `fist`).
 
-
 ## ADR-209 — The phone's frame: a readout on the device, and three of its spikes taken out (2026-11-26)
 
 - **Context:** the owner saw the frame rate dip in fights on their iPhone ("pretty powerful"), on the fox,
@@ -6368,6 +6367,23 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   Next: the owner's `?perf` report from the iPhone in a fight on each of the three levels, then the parts
   it names. Not measured: any phone.
 
+## ADR-210 — The perfect dodge's flurry: smear, floor sparks, aerial cuts and four looks behind `?dodgefx` (2026-11-25)
+
+- **Context:** the owner: the perfect dodge should not have "random like hops over the character and should be
+  more epic cooler looking". A first round (`?dash=1`: no blinks, every pass from where he stands, always the Passing
+  Cut) was filmed; the owner preferred the old vanish and all three finishers, kept the new smear and floor sparks,
+  asked for aerial cuts in a streak, and for four variations that use what the reference footage taught (a dash
+  thrust: a low set, one smeared frame, a bloom at the point breaking into floor tendrils, the lunge held; close
+  strings: a small bloom per contact, sparks that fall and gather).
+- **Decision:** `STREAK_FX.dodgefx` (`?dodgefx=a|b|c|d`, the Lab's `dodgefx`; '' = today), only against a ground foe
+  and not a riposte / counter: today's flurry plus smear copies (`_afterimage`'s `smear`), floor kicks
+  (`FlurryFx.kick`) and aerial cuts (`Flurry._isAerial`: from 2.2 m down through him), and a) a fourth art, the
+  Thunder Thrust; b) `FlurryFx.bloom` + `tendrils` at every contact; c) `FlurryFx.sparks`, a lingering cloud;
+  d) a longer coil, a held finish / landing and a camera push. Numbers: `DEFENSE.flurry.dodgefx`. Blows and damage
+  unchanged (duel `dodgefx`). `?dash` is gone (git history keeps it). The owner watched the four side by side and picked **a** (the Thunder Thrust) as the default (2026-11-26); `?dodgefx=off` gives the flurry before. The pace sims (duel / lord `pace`, city's win window, duel `pressure`) measure the boss with the dodge looks off: the thrust's held lunge holds the world longer, a gap in his cues that is not his pace.
+- **Consequences:** aerial cuts exist only on the chain's paths; d delays the art (its blows' frames move).
+
+
 ## ADR-215 — BENCH: each pipeline step's GPU cost, measured on the owner's phone (2026-11-26)
 
 - **Context:** the owner's `?perf` reports from their iPhone (ADR-209): the script is 3.5 ms of a frame (p99
@@ -6383,6 +6399,79 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   overlap on the GPU can share time, so the shares need not add up to the frame (the rest line shows the gap).
   On the RTX 4090 the whole frame at the phone's size is ~2 ms; the numbers mean something on the phone only.
 
+## ADR-216 — The lite world: a phone with no resolution step left draws a cheaper world (2026-11-26)
+
+- **Context:** the owner's BENCH on their iPhone (ADR-215), fox in a fight at 669 x 867 and AUTO's 1x floor:
+  a frame 13.3 ms, the world pass 11.8 ms of it; ~0.7x the pixels gave only 32 % less. The world's per-pixel
+  print is what costs. Three options rendered at the phone's size on fox and grove: A as today, B the four
+  upgrades off (ridge strokes, cloud shadows, contact rings, the ripple), C B plus the floors' relief in one
+  octave; on the desktop GPU the world pass was 69 - 80 % (B) and 66 - 69 % (C) of A's. The owner picked C.
+- **Decision:** `game.liteWorld`: on a touch device, once AUTO is slow with no step down left
+  (`autoQ.wantsLess`), for the rest of the page load; `?lite=1|0` to force. groundFx holds the four upgrades
+  off and `uDpLite` turns the floors' cheap relief on (a uniform branch: no second program).
+- **Consequences:** a phone that holds 60 fps at its floor never sees it; the owner's iPhone on fox and grove
+  will. The world pass in one page, lite against full, 4K desktop GPU: fox 2.48 -> 2.16 ms, grove 1.99 -> 1.56
+  (the sheets' runs gave 31 - 34 % less; this machine was shared and noisy). The picture with it on matches the
+  sheet's C in the same page (474 of 580 000 pixels differ, from the relief alone). The look changes once, when
+  it turns on, mid-page (one frame). Not measured on the phone; the next `?perf` BENCH there says how much.
+
+## ADR-227 — The perfect parry gets the perfect dodge's window: 0.20 s (2026-11-26)
+
+- **Context:** the owner: parrying is very hard and the timing feels too tight; make the parry window like
+  the perfect dodge's. Asked which window, they picked the PERFECT parry, 0.08 s → 0.20 s
+  (`DEFENSE.perfectDodgeWindow`); the plain parry window (`parryWindow`, 0.22 s) stays.
+- **Decision:** `DEFENSE.perfectParryWindow` 0.20. It is the one number every perfect parry reads
+  (`player.js` sets `deflect.perfect` from it; the duelists' blade lock, the returned bullets, embers, ki
+  bolts, the beam clash, the lantern push, Halcyon's glare and the streak's double pip all read
+  `deflect.perfect`), so nothing else changes. The Lab's training card reads the number instead of
+  spelling 0.08.
+- **What a plain parry is now:** a press 0.20 – 0.22 s before the blow, about one frame at 60 fps. In
+  practice every parry is perfect: x 1.5 posture, the counter cut, the gold clash and its short slow
+  motion, a `lock` blow locks, a bullet comes back. The plain parry stays in the rules (its window, its
+  sound and look, the riposte and the blue flare's counter, which any parry earns) rather than being
+  removed: if the owner wants a gap between the two again, it is this one number. A held guard (block)
+  is now the only defensive answer short of perfect besides the 0.02 s sliver.
+- **Consequences:** parrying is easier by 2.5x of window for every perfect reward; the fights get more
+  slow-motion beats (one per parried blow of a string in the default `sharp` look) and more blade locks.
+  Tests that check a plain parry press on the one plain frame (13/60 s); bots that play like a player keep
+  their 0.12 s press (now perfect) and their expectations moved (posture x 1.5, a lock, Halcyon's fight
+  137 - 142 s). The wyrm's PRESSURE measurement keeps the old 0.08 s for its guard bot's stray parries: the
+  new path met a brood gap that exists on main (`BROOD.busyWait`), a separate task. Not played by a human yet.
+
+## ADR-237 — A brood cue whose wait ran out still keeps the cue spacing (2026-11-26)
+- **Context:** the brood's cues wait for a free slot (`BROOD.hold`: while a cue of the other answer is due
+  within 0.5 s, or a red one while bullets fly), but at most `hold.max` 1.8 s, and a drakeling dives anyway
+  after `busyWait` 2.5 s on a busy wyrm. On a long busy spell the two ran out together and the cue flashed
+  wherever it stood: integ PRESSURE seed 4242 with the 0.20 s perfect parry (ADR-227) met it twice, a dive
+  beside a fanVolley ember (P2) and beside the breath (P3), both held 1.82 s. Main had it too; the seeds
+  just missed it. Bullets, cueing only `flashLead` ahead, could also flash beside a brood cue after it.
+- **Decision:** past `hold.max` the cue goes at the first free slot instead of at once: it holds on while
+  a cue of the other answer is due within `BROOD.late.clear` 0.36 s of its impact (the spacing rule's
+  0.3 s and a frame; the ledger and the running move's beats; bullets in the air no longer hold it), and
+  after `late.drop` 4.5 s held in all it gutters out without its blow rather than cue onto one. Every brood
+  flash calls `bullets.bar(tell, flashLead)`, a new track the bullets' `cue()` reads for `CLASH`: a bullet
+  of the other answer due within `clashSep` comes as a dud, as an ember beside an orb does. The dive still
+  starts after `busyWait` (it is the valve that keeps the brood from waiting out a whole flight); only its
+  cue moves. Chosen over routing the dive through the brain's own `_hold`: the brood already reads the
+  same ledger, and the brain's hold is for the running move's beats.
+- **Consequences:** a brood cue never lands within 0.3 s of a wyrm cue of the other answer, whichever is
+  first (scenario BROODBUSY: a 4.3 s busy spell of furnace maws, fan volleys and a breath with three
+  drakelings out of time; an endless guard stream that makes one gutter out; a dive going 0.38 s after a
+  stream ends; a red flash barring an ember). PRESSURE runs the steady bot with the real parry window again
+  (its 0.08 s wrapper from ADR-227 is gone) and passes on all three seeds. A drakeling may now hang above
+  the hero up to 4.5 s, or burst harmlessly. Not played by a human yet.
+
+## ADR-236 — No reference-footage animation: the mocap tools removed (2026-11-26)
+- **Context:** four tries at animating from the owner's reference films (the `?lights=steel` attacks, Tian
+  Lei's blows fitted from a bare-handed film (ADR-208), the refstudy kit, and the hero remade on a
+  recorded-clip engine behind `?hero=new`) ended with the owner's verdict on the last: "It looks all meh.
+  Scrap everything. Lets not use any of the reference video stuff ... we will just go back to how we made
+  animations on our own".
+- **Decision:** remove the tooling from `main`: `scripts/mocap/` and `src/entities/hero2/`, the realiser's
+  `keysOf` hook (unused), the footage `.gitignore` lines. The remade hero (PR 162) and the refstudy kit with
+  `docs/MOTION.md` (PR 148) are closed unmerged. Animation is authored by hand as before.
+- **Consequences:** ADR-208's engine is gone (its decision record stays as history). No game behaviour
+  changes: nothing in the game read these files.
 ## ADR-220 — The bosses drawn in the hero's style: his shading and his outline, their own colours (2026-11-26)
 
 **Context.** The owner: everything but the Cinder Wyrm and Wen Yao still does not look like the hero's ASCII.
