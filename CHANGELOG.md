@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and seventeen pieces of work since 0.4.0:
+One hundred and eighteen pieces of work since 0.4.0:
 - **Blue and red blows you can read, and quick blows** (2026-11-26, ADR-223). *Changed:* Lu Wusheng, Wen Yao and the
   Cinder Wyrm stop and hold their pose for a moment before every blue or red blow, standing tall for blue and sinking
   low for red (the wyrm rears its head for blue, crouches with its tail up for red); the blow lands that moment later,
@@ -12,6 +12,12 @@ One hundred and seventeen pieces of work since 0.4.0:
   blow each, straight from the stance with no wind-up: Lu Wusheng's Before the Word, Wen Yao's Fox Snap and Fox Knee,
   the wyrm's Snap swipe; block it or parry it on the glint. `?sheathMotion=0`, `?foxMotion=0`, `?wyrmMotion=0` and
   `?sheathQuick=0`, `?foxQuick=0`, `?wyrmQuick=0` give the fights before.
+- **Xin Yi rebuilt: a man in a coat, readable windups, faster hands** (2026-11-26, ADR-221). *Changed:* Xin Yi is
+  drawn like the hero on a man's build: square shoulders, a belted waist, fuller hair, and one long open coat that
+  hangs instead of flaring, with a straight hem (the owner's pick; `?oneBody=0` as before, `a` closed, `c` a duster).
+  His kicks land with the leg straight and his punches with the arm long, his single gun is aimed down a straight
+  arm, every blue and red blow is held in a windup pose you can read before the snap (the same timing). *Added:* two
+  fast strings, Snapping Hands and Quick Foot (`?oneMoves=0`: his moves as before).
 - **Shen Hui and Varr Nihil hold their swords like swordsmen** (2026-11-26, ADR-226). *Changed (the owner's pick; `?ashMotion=0` /
   `?lordMotion=0` give back the motion before):* the second and third
   bosses hold their blades in line with the forearm (it bent up to 128° off it) and their arms open at the end of a
