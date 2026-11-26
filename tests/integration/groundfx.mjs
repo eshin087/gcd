@@ -175,6 +175,22 @@ const SCENARIOS = {
   },
 
   // ---------------------------------------------------------------- contact shadows
+  lite() {
+    // the lite world (ADR-216): game.liteWorld turns the four upgrades off and the floors' relief cheaper
+    looks({ dpCloud: 'a', dpContact: 'a', dpRipple: 'a', dpRidge: 'a' });
+    const { fx, game, step } = build();
+    step(1 / 60);
+    const F = DP_FX_U.uDpFxOn.value;
+    assert(F.every((v) => v === 1) && DP_FX_U.uDpLite.value === 0, `the world as it is: the four upgrades on (${F.join(' ')}), uDpLite 0`);
+    game.liteWorld = true;
+    fx.blow(0, 0, 1);
+    step(1 / 60);
+    assert(F.every((v) => v === 0) && DP_FX_U.uDpLite.value === 1 && fx.rings === 0, `lite: the four off (${F.join(' ')}), no ripple ring from a blow, uDpLite 1`);
+    game.liteWorld = false;
+    step(1 / 60);
+    assert(F.every((v) => v === 1) && DP_FX_U.uDpLite.value === 0, 'back: as it was');
+  },
+
   contact() {
     looks({ dpContact: 'a' });
     const { fx, D, game, colliders, step } = build();
