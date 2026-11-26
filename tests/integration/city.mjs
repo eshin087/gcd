@@ -1135,8 +1135,9 @@ async function scenarioWin() {
   // and seeds 7 / 99 finished in 134 / 136 s, under the 140 s floor, with the same damage a flurry. The
   // window measures his fight, not where the hero's flurry ends; it already sat on its floor at 140 - 145 s)
   const { STREAK_FX } = await imp('src/combat/streak.js');
-  const chain0 = STREAK_FX.chain;
+  const chain0 = STREAK_FX.chain, dodge0 = STREAK_FX.dodgefx;
   STREAK_FX.chain = false;
+  STREAK_FX.dodgefx = ''; // (likewise the dodge looks, 2026-11-25: the window measures his fight)
   try {
   for (const seed of SEEDS) {
     const G = build(seed, true);
@@ -1161,6 +1162,7 @@ async function scenarioWin() {
   }
   } finally {
     STREAK_FX.chain = chain0;
+    STREAK_FX.dodgefx = dodge0;
   }
 }
 

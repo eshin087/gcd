@@ -42,6 +42,15 @@ export const RELEASES = [
       },
       {
         date: '2026-11-25',
+        title: 'Four looks for the perfect dodge flurry',
+        notes: [
+          'The Thunder Thrust look is on: the other looks are ?dodgefx=b, c or d, and ?dodgefx=off is the flurry before.',
+          'Every look: a smear of the hero along each cut, sparks off the floor, and in a long streak a cut from above.',
+          'A fourth finisher, the Thunder Thrust: a low set, one smeared lunge, the lunge held, letter trails over the floor.',
+        ],
+      },
+      {
+        date: '2026-11-25',
         title: 'The hero stands, holds and guards like the reference',
         notes: [
           'At ease the hero stands tall with his sword in one hand, its point forward and down by his right foot.',
