@@ -41,7 +41,7 @@ import { TUNE as HERO_TUNE } from '../../player/player.js';
 //          wjCrashDamage 0 here).
 // Every spell that lands: fx.weight(kind, dx, dz) ('spell' / 'null' / 'huge') and fx.shove along the throw.
 // The fx agent's newer methods are called through `?.`: nullLine(seg, k), castMark(x, z, r, k),
-// drawPath(seg, k), unveil(d, k) (every frame while shown).
+// drawPath(seg, k) (every frame while shown); fx.unveil is core's to call (untouched.js afterPose).
 // Lab / film: d.parts.spells.stats; the spells are triggered by name (d.brain.trigger).
 
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
@@ -800,10 +800,7 @@ export class WjSpells {
   // ---------------------------------------------------------------- THE UNVEILING BURST (core's wjMoment)
   _unveilMotion(b, u) {
     const d = this.d, T = this.T.unveil;
-    if (u < 1) {
-      d.fx?.unveil?.(d, u);
-      return;
-    }
+    if (u < 1) return; // (the band's light and the eyes' flare: fx.unveil, called from core's afterPose)
     if (b._wjUnveiled) return;
     b._wjUnveiled = true;
     this.stats.unveils++;

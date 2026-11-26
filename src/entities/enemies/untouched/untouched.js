@@ -198,6 +198,7 @@ export class Untouched extends Duelist {
       }
       this.eyesK = 0;
       this.dressPhase = 1;
+      this._wjSurprised = false;
       this._ptsOk = false;
       this._partPrev = '';
     }
@@ -358,6 +359,15 @@ export class Untouched extends Duelist {
   afterPose(dt, a) {
     const fx = this.fx;
     if (this.mode !== 'dead' && this.eyesK > 0.02) fx.eyes?.(this, this.eyesK);
+    // THE BLINDFOLD COMES OFF: the band's light and the eyes' flare through the unveiling's windup (the
+    // flare lands at u 0.9, just before the impact that sets eyesK; fx.unveil's only caller)
+    if (a?.def?.transition && this.mode === 'act') {
+      const b = a.beats[0];
+      if (b?.def?.wjMoment === 'unveil' && a.t < b.impact) {
+        const u = Math.min(1, Math.max(0, (a.t - b.start) / Math.max(1e-4, b.W)));
+        fx.unveil?.(this, Math.min(1, Math.max(0, (u - 0.6) / 0.3)));
+      }
+    }
     if (a && this._tipOk && !this.shuddering && !a.def.transition) {
       for (const b of a.beats) {
         if (b.feint || a.t < b.impact - 0.32 * b.W - 0.02 || a.t > b.impact + 1.6 * b.A + 0.05) continue;
@@ -374,7 +384,22 @@ export class Untouched extends Duelist {
   /** The hero's cut: the barrier first (it stops short, deals nothing), then the engine's. */
   takeHit(o = {}) {
     if (this.barrier?.stops(o)) return 0;
-    return super.takeHit(o);
+    const first = this.barrier && !this.barrier.up && !this._wjSurprised && this._surpriseOk(o);
+    const dmg = super.takeHit(o);
+    // the first cut that lands while the barrier is open (once a fight): he is surprised (the body's
+    // `surprised` clip, an open reaction, in place of the flinch the engine gave him)
+    if (first && dmg > 0 && !this.broken && this.mode !== 'dying' && this.mode !== 'dead' && this.brain.startReact('surprised')) this._wjSurprised = true;
+    return dmg;
+  }
+
+  /** Where a surprise may play: his footwork, a guard's or a flinch's reaction, a move's recovery (never
+   *  a windup, a transition, a break, the hero's flurry or the execution: those keep theirs). */
+  _surpriseOk(o) {
+    if (o?.exact || fin(o?.reel, 0) > 0 || this.broken) return false;
+    const br = this.brain, a = br.act, k = br.react?.kind;
+    if (this.mode === 'foot') return true;
+    if (this.mode === 'react') return k === 'flinch' || GUARD_KINDS.has(k);
+    return this.mode === 'act' && !!a && !a.def.transition && Number.isFinite(a.recoveryStart) && a.t >= a.recoveryStart;
   }
 
   /** The flash counter (a perfect trade; One Breath's counter): it passes (exact) and opens the barrier. */
