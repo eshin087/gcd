@@ -93,6 +93,40 @@ domain filmed in the real renderer.
 - No reward yet. Not playtested by a human; not checked on the owner's iPhone.
 
 ---
+## 2026-11-26 — Xin Yi rebuilt: a man in a coat, readable windups, faster hands (ADR-221; branch `claude/enemies-xinyi-rebuild-1bbc62`)
+
+**Owner:** "the neo boss anatomy and attacks are all weird too ... fix the neo character details because right now
+its a mess and can't tell if its a human". (A side session of the bosses' motion round.)
+
+**Diagnosis** (headless Edge + CDP rig, x4 game-camera crops beside the hero from three sides in every phase, solid
+views from four sides, film strips of 11 moves, `woke.mjs . audit`, an aim probe at each shot's impact): a bright jade
+outline round a near-black fill (the bosses' print lifts his near-grey fill to ~3x the hero's coat); a bottle build
+(narrow shoulders, the skirt flaring from the chest past them); a head of three letters; one-armed in phase 1 (the
+left hand behind his back); the one-gun aim 36 degrees off the hero, the forearm across his face; no windup pose of
+its own for any blue / red blow; nothing quick out of his guard. Sent to the owner as a sheet.
+
+**What:** `?oneBody=a|b|c` (gear.js `SHELL_MAN`, `COAT_MAN`, belt, hair; look.js `BODY_INK`; sheet.js panelSkirt's
+optional `cone`), `?oneMoves=a` (moves.js `MOVES_A`: `AIM_SIDE`, `heldTell`, `fast`; `snapHands`, `quickFoot`;
+tuning.js `held`, `fast`; wokenOne.weigh), Lab LOOKS rows (awaiting), PENDING. Tests: woke `rebuild` (each figure
+builds, prints the hero's way, the coat's hem height; the rebuild keeps every move's timing; 37 blows hold their
+coil; the fast strings' floors and weights; the aim within 12 degrees), env `GCD_LOOKS` for any suite run.
+
+**Numbers:** aim 36 -> 2 - 11 degrees; audit worst jolt 1035 -> 985 mm/f2, the sweep 872 -> 499 - 819 (its tuck is
+pre-existing); the held spin kicks' windups ~25 % more jolt (first try held from 0.46 of the windup: up to +75 %;
+the draw now keeps 0.75 of its time).
+
+**The owner's answer:** "lets do open coat" (`oneBody` b in PICKED), the kicks straight ("a straight line when his
+kick is out"), the coat one piece and not like the hero's cloak, the punches and acrobatics natural. Done: one coat
+(five overlapping panels, one back panel, a straight hem, no pale hem: printed as part 5; 30 degrees of swing at
+most), straight kicks (anim.js `kickStretch`, `legSoftA`, `longLeg`: knees 166 - 173 at contact), long punches
+(`armSoftA`, `longArm`: elbows ~169), the butterflies' travel cut (feet no longer inside the hero). The audit:
+the spin kick after a straight kick jolts ~40 - 60 % more (the leg comes back further). Tests: REBUILD grew the
+kicks' reach, the punches' reach, the animator switch, a front kick's knee (173), the coat's swing in a flip.
+
+**Then:** "Yes, make default": the rebuilt moves are his default (`oneMoves` a in PICKED).
+
+**Open:** phase 1's hand behind the back; the sweep's tuck (Tian
+Lei's builder: the motion-tian-halcyon session owns it).
 ## 2026-11-26 — Shen Hui and Varr Nihil: the sword in the hand, held tell poses, quick blows (ADR-226; branch `claude/enemies-ash-lord-motion-0f152b`)
 
 **Task** (from the owner via the lead session): their positioning angles look weird and the weapons are held

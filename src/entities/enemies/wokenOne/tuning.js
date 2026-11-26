@@ -24,6 +24,13 @@ export const TUNING = {
   flashLead: 0.26,
   minFirstWindup: 0.42,
   minHitGap: 0.32,
+  // the rebuild (?oneMoves=a, moves.js): a blue / red / black blow reaches its coil in `drift` of the time it
+  // had and holds it to `to` at most, the strike keeping `keep` of its time at least (heldTell); the fast strings' windups (the first at minFirstWindup, the next at
+  // `next`, both unscaled by the phase (`fixed`): next is the floor of flashLead + a frame, and next + a
+  // blow's 0.08 active clears minHitGap) and their damage
+  shotCue: 0.26, // s: a cued shot takes at least this long from the gun to the hero (iron.js _fire; the cue needs 0.2)
+  held: { drift: 0.75, to: 0.84, keep: 0.7 },
+  fast: { first: 0.42, next: 0.28, damage: 7 },
   windupScale: [1, 0.96, 0.92], // (the first windups are authored >= 0.46 s: x 0.92 keeps them over minFirstWindup)
   recoveryScale: [0.8, 0.82, 0.76],
   close: { first: 3.0, next: 1.5, speed: 13 },
@@ -33,6 +40,16 @@ export const TUNING = {
   // bend at full stretch (`legSoft`)
   armSoft: [0.93, 0.99],
   legSoft: [0.9, 0.985],
+  // the rebuild (?oneMoves=a): his kicks land with the leg straight (the owner: "a straight line when his kick
+  // is out", not a triangle): the legs open to `legSoftA` and a lifted foot far from the hip is carried out
+  // (anim.js kickStretch [from, to, add, lift0, lift1]); his straight punches land with the arm long
+  // (`armSoftA`, and the hit key's hand `reach` x further from the shoulder: moves.js beatA)
+  legSoftA: [0.95, 0.998],
+  armSoftA: [0.95, 0.996],
+  kickStretch: [0.62, 0.86, 0.3, 0.28, 0.5],
+  reach: 1.16,
+  travelCut: 0.7, // (the butterflies carry him this much less: moves.js shortTravel)
+  legReach: 1.05, // (a kick's contact key: the striking foot this x the leg's length from its hip: moves.js longLeg)
 
   // ---- posture (the Sekiro rule, as Tian Lei's: hard to move while the bar is full)
   posture: {

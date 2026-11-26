@@ -245,6 +245,15 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] `gear/handShape.js` `fistHand`: the free hand a closed fist (`?handLook=g`, the default; `h` a dark glove)
 - [x] `herorun` checks the carry: the blade always ahead, its elevation in range, the point off the grass, no pops
 
+## M1.90 — Xin Yi rebuilt: a man in a coat, readable windups, faster hands (2026-11-26, `claude/enemies-xinyi-rebuild-1bbc62`, ADR-221)
+- [x] Diagnosis: filmed at the game camera beside the hero and from four sides, measured (the audit, an aim probe); report to the owner
+- [x] His figure printed the hero's way on a man's build, three cuts (`?oneBody=a|b|c`): option sheets to the owner
+- [x] His moves (`?oneMoves=a`): the side-on aim, held blue / red windups, two fast strings; before / after films; the `rebuild` test
+- [x] The owner's pick of the figure: b, the open coat (PICKED); one coat, not the hero's cloak
+- [x] Straight kicks and long punches on the rebuild (the owner's ask); the coat held to 30 degrees through flips
+- [x] The owner's pick of the moves: the rebuild (`oneMoves` a in PICKED)
+- [ ] Phase 1's left hand behind his back reads one-armed from some sides; the sweep's tuck pops at the knee (Tian Lei's builder)
+
 ## M1.89 — 60 fps on every device: the frame's cost (2026-11-25, `render/perf-ground-steps`, ADR-199)
 - [x] A measured review: every level and the phone preset, GPU by pass and by object, script by function, the loop under a throttled CPU
 - [x] The ground drawn last; its relief baked once per cell (the same picture: at most 9 pixels of 2 million differ)

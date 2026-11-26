@@ -2592,6 +2592,28 @@ blobs (of 6000) in phase 3. Phase 2 reads the busiest because each of Iron Rain'
 fencing bot (god mode) wins through both bars in 84 s (seed 4242: phase 2 at 27 s, the rising at 53 s).
 STRATEGY (opt-in, god mode, seeds 4242 and 7): mixed 75 – 84 s, parry 95 – 96 s, block-only 89 – 122 s (mortal: alive, it wins), the Long Second bot (every cue answered with the lean) 138 s, dodge-only 142 – 164 s: neither dodging nor leaning is the fastest way through. On the Sheathed with the Long Second learned (sheath.mjs `lean`): mixed 33, parry 42, dodge 64, lean 82 s.
 
+
+### The rebuild (`?oneMoves=a`, 2026-11-26, ADR-221; the owner's pick, the default; `?oneMoves=0` as before)
+- **Held windups.** Every blue, red and black blow reaches its coil in 0.75 of the time its draw had and HOLDS it
+  (the realiser's bait-hold rule: the cocked pose keyed again) until 0.84 of the windup at most, the strike keeping
+  0.7 of its time (`TUNING.held`). The windup, the cue and the impact are where they were; only the shape inside
+  changes: the pose that means blue or red stands still long enough to read, and the blow out of it is a snap
+  (the blue palm: crouched, the palm drawn back to the hip; the spin kick: his back to you, his head over his
+  shoulder; the sweep: dropped low, the leg tucked). A beat with its own bait hold (the Dive Within) keeps it.
+- **The aim.** One gun is aimed side-on, the right shoulder toward you and the arm straight down the line (the
+  old aim pointed it 36 degrees off you, across his face). Two guns stay as they were (within 4 - 13).
+- **Two fast strings** (white, never picked on `?oneMoves=0`): **Snapping Hands** (backfist 0.42, cross 0.28,
+  backfist 0.28; 7 each) and **Quick Foot** (a low front kick 0.42, 8, then the cross 0.28, 7). Unscaled by the
+  phase (`fixed`): 0.42 is his first-windup floor, 0.28 the shortest windup whose glint still comes after its
+  tell (flashLead 0.26); impacts 0.36 s apart (>= minHitGap). Each blow's coil is reached early and held, the
+  blow a snap out of a still chamber. Band 0 - 2.6 / 2.8 m, cooldown 5.
+- **Straight kicks, long punches** (the owner: "a straight line when his kick is out"). Every kick lands with the
+  leg straight (knee 166 - 173 degrees at contact; the sweep 118 - 156 along the floor) and every straight punch with
+  the arm long (elbow ~169); hooks, uppercuts, elbows and knee strikes keep their bend. The zones are unchanged;
+  the butterfly kicks carry him 0.7 m less, since the longer leg reaches what the travel did.
+- **A cued shot is never too fast to answer:** it takes at least `shotCue` 0.26 s from the gun to you (fired close,
+  it flies a little slower), so its cue always counts (a shot cued under 0.2 s fizzles, the shots' own rule).
+
 ## Halcyon (2026-11-22, ADR-160; `?level=city`)
 
 Halcyon, the Last Saviour: a flying strongman from a future that has not happened yet, BARE-HANDED
