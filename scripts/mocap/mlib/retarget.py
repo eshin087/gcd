@@ -533,7 +533,18 @@ def _span_lists(m, loop):
     return out
 
 
-def pin_feet(q, hips, root, cmask, blend=3, loop=False, flat=None):
+def soft_reach(hip, target, lo=0.9, span=0.07):
+    """the target pulled in softly past lo of the leg's length (at most lo + span): no knee snapping straight"""
+    Lmax = HDIM['thigh'] + HDIM['shin']
+    dv = target - hip
+    L = np.linalg.norm(dv)
+    u = L / Lmax
+    if u <= lo:
+        return target
+    return hip + dv / L * Lmax * (lo + span * np.tanh((u - lo) / span))
+
+
+def pin_feet(q, hips, root, cmask, blend=3, loop=False, flat=None, soft=False):
     """Make planted feet stand still: within each contact span the ankle is held at its mean ground
     position (each frame keeps its own height: a heel may rise) by re-solving thigh + shin; the edges blend
     over `blend` frames. A loop's span that runs over the end is one span (the next cycle is one cycle's
@@ -582,6 +593,8 @@ def pin_feet(q, hips, root, cmask, blend=3, loop=False, flat=None):
                 target[1] = cur[1] * (1 - fw) + HDIM['ankle'] * fw
             hip = P[k, JI['thigh' + s]]
             hinge = skel.qrot(R[k, JI['thigh' + s]], X)
+            if soft and wgt < 1:  # spec "speed" with a scaled stride: the blend into a plant reaches softly
+                target = soft_reach(hip, target)
             thigh, shin = _two_bone(hip, HDIM['thigh'], HDIM['shin'], target, hinge)
             Rt = skel.frame_q(-Y, X, thigh[None], hinge[None])[0]
             Rs = skel.frame_q(-Y, X, shin[None], hinge[None])[0]
@@ -597,6 +610,38 @@ def pin_feet(q, hips, root, cmask, blend=3, loop=False, flat=None):
             an = P2[idx, JI['foot' + s]] + wrap[:, None] * cyc
             after.append(np.linalg.norm(an[:, [0, 2]] - an[:, [0, 2]].mean(0), axis=1).max() * 100)
     return q, (max(before) if before else 0), (max(after) if after else 0)
+
+
+def scale_stride(q, k, d):
+    """a loop's stride scaled by k (spec "speed" / "stride"): each ankle's excursion along the travel d (his
+    frame x, z; unit) about its own cycle mean is multiplied by k, its height and sideways place kept, and
+    thigh + shin re-solved by two-bone IK on the knee's own hinge (the foot keeps its world rotation). A
+    target out of the leg's reach is clamped to it. Returns new q and the reach shortfall (cm, worst)"""
+    n = len(q)
+    q = q.copy()
+    zero = np.zeros((n, 3))
+    P, R = skel.fk(q, zero, zero)
+    d3 = np.array([d[0], 0.0, d[1]])
+    short = 0.0
+    for s in ('L', 'R'):
+        an = P[:, JI['foot' + s]]
+        a = an @ d3
+        tgt = an + np.outer((k - 1) * (a - a.mean()), d3)
+        Lmax = HDIM['thigh'] + HDIM['shin']
+        for i in range(n):
+            hip = P[i, JI['thigh' + s]]
+            dv = tgt[i] - hip
+            L = np.linalg.norm(dv)
+            short = max(short, (L - Lmax) * 100)
+            tgt[i] = soft_reach(hip, tgt[i])  # at most 0.97 of the leg: no knee snapping straight
+            hinge = skel.qrot(R[i, JI['thigh' + s]], X)
+            thigh, shin = _two_bone(hip, HDIM['thigh'], HDIM['shin'], tgt[i], hinge)
+            Rt = skel.frame_q(-Y, X, thigh[None], hinge[None])[0]
+            Rs = skel.frame_q(-Y, X, shin[None], hinge[None])[0]
+            q[i, JI['thigh' + s]] = skel.qmul(skel.qconj(R[i, JI['hips']]), Rt)
+            q[i, JI['shin' + s]] = skel.qmul(skel.qconj(Rt), Rs)
+            q[i, JI['foot' + s]] = skel.qmul(skel.qconj(Rs), R[i, JI['foot' + s]])
+    return skel.continuous(q), max(short, 0.0)
 
 
 def limit_joint(q, j, max_deg, sig=0.0, loop=False):
