@@ -447,7 +447,7 @@ export function createAdapter(game, player, old, { lib, body }) {
       }
       // the input reverses at speed (and he will face the new way): the pivot
       const P = LOCO.pivot;
-      if (S.vs > P.minSpeed && facing && v > 0.3 && Math.abs(wrap(moveYaw - Math.atan2(gv.x, gv.z))) > P.minAngle) {
+      if (S.vs > P.minSpeed && facing && S.sector === 'F' && v > 0.3 && Math.abs(wrap(moveYaw - Math.atan2(gv.x, gv.z))) > P.minAngle) {
         const c = pivots[S.gait] ?? pivots.run;
         if (c) {
           startOne('pivot', c, P.from, { speed: P.rate, loop: false });
