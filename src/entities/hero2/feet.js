@@ -116,7 +116,7 @@ export function legIK(pose, world, side, tx, ty, tz, keepFoot = true, d = HDIM) 
 export function createFeet() {
   const slot = () => ({ pinned: false, x: 0, y: 0, z: 0 });
   const foot = () => ({ A: slot(), B: slot(), k: 0, pinned: false, ox: 0, oy: 0, oz: 0, tx: 0, ty: 0, tz: 0, landed: false });
-  return { L: foot(), R: foot(), enabled: true, maxCorrect: 0, carry: CARRY_S, serial: -1 };
+  return { L: foot(), R: foot(), enabled: true, maxCorrect: 0, carry: CARRY_S, serial: -1, drop: 0 };
 }
 
 /** s: the time constant a released foot's correction fades over, in the air (so it never slides back
@@ -131,6 +131,7 @@ export function resetFeet(feet) {
     F.k = 0;
     F.ox = F.oy = F.oz = 0;
   }
+  feet.drop = 0;
 }
 
 const _own = new Float64Array(3);
@@ -157,7 +158,7 @@ export function pinFeet(feet, pose, world, rest, pl, wA, wB, place, dt = 1 / 60,
   // they were drawn), the new clip's plants anchor when they begin
   const newFade = feet.serial !== pl.fadeSerial;
   feet.serial = pl.fadeSerial;
-  let changed = false;
+  let changed = false, need = 0;
   feet.maxCorrect = 0;
   for (let side = 0; side < 2; side++) {
     const S = side === 0 ? 'L' : 'R', F = feet[S], L = LEG[S];
@@ -214,9 +215,29 @@ export function pinFeet(feet, pose, world, rest, pl, wA, wB, place, dt = 1 / 60,
     F.tx = tx;
     F.ty = ty;
     F.tz = tz;
-    const moved = Math.hypot(tx - lx, ty - ly, tz - lz);
+    // how far the hips must come down for this foot's leg to reach a planted target
+    if (k > 0) {
+      const h = L.thigh * 3, dx = tx - P[h], dz = tz - P[h + 2], R = (d.thigh + d.shin) * REACH;
+      const xz = dx * dx + dz * dz;
+      if (xz < R * R) need = Math.max(need, P[h + 1] - ty - Math.sqrt(R * R - xz));
+    }
+  }
+  // the hips drop (eased back up; never more than HIP_DROP_MAX): a planted foot the clip's hips stand
+  // too high for is reached by bending the knees, not by sliding the foot
+  need = Math.min(HIP_DROP_MAX, Math.max(0, need));
+  const rise = dt > 0 ? Math.exp(-dt / 0.12) : 1;
+  feet.drop = Math.max(need, feet.drop * rise);
+  if (feet.drop < 1e-5) feet.drop = 0;
+  if (feet.drop > 0) {
+    pose.hips[1] -= feet.drop;
+    solveFK(pose, rest, world);
+    changed = true;
+  }
+  for (let side = 0; side < 2; side++) {
+    const S = side === 0 ? 'L' : 'R', F = feet[S], a = LEG[S].foot * 3, P = world.p;
+    const moved = Math.hypot(F.tx - P[a], F.ty - P[a + 1], F.tz - P[a + 2]);
     if (moved > 1e-5) {
-      legIK(pose, world, S, tx, ty, tz, true, d);
+      legIK(pose, world, S, F.tx, F.ty, F.tz, true, d);
       changed = true;
       if (moved > feet.maxCorrect) feet.maxCorrect = moved;
     }
@@ -224,6 +245,11 @@ export function pinFeet(feet, pose, world, rest, pl, wA, wB, place, dt = 1 / 60,
   if (changed) solveFK(pose, rest, world);
   return changed;
 }
+
+/** The share of the leg's full length a planted leg may stretch to (the IK's own limit is 0.9995). */
+const REACH = 0.998;
+/** m: the most the pin lowers the hips to reach a planted foot. */
+export const HIP_DROP_MAX = 0.12;
 
 const _sum = new Float64Array(3);
 function addAnchor(A, k, place, c, s, sc) {
