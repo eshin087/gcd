@@ -294,6 +294,18 @@ def build_clip(spec, clip, log=print):
         else:
             log('  ! air_marks: the clip needs an `air` and a `land` event')
     g = retarget.ground_and_contact(q, fps, loop, clip.get('ground', 'feet'), clip.get('travel', 'free'), log, clip, yaw, air=airm)
+    if loop and g['speed'] is not None:
+        sp2 = stance_speed_picture(clip, Ts, g['root'], fps, log)
+        if clip.get('speed') is not None:
+            # spec "speed": a number (m/s) or "picture" (the stance measure from the picture): the loop's
+            # root travels at that speed; the planted feet are then pinned to it (the stride follows)
+            want = sp2 if clip['speed'] == 'picture' else float(clip['speed'])
+            if want is None:
+                log('  ! speed "picture": no take sees the travel across its picture; the measured speed is kept')
+            else:
+                vg = loop_speed_vec(clip, g['root'], float(want), fps, log, g['speed'])
+                g = retarget.ground_and_contact(q, fps, loop, clip.get('ground', 'feet'), clip.get('travel', 'free'), log,
+                                                clip, yaw, air=airm, v_given=vg)
     hips = np.zeros((len(q), 3))
     hips[:, 0] = g['hips_xz'][:, 0]
     hips[:, 1] = g['hipsY']
@@ -483,6 +495,72 @@ def air_hips(clip, B, Ts, hips, cmask, log):
         log('  air: frames %d-%d from the picture, peak %.2f m above take-off' % (i, j - 1, out[i:j, 1].max() - hips[a0, 1]))
         i = j
     return out
+
+
+def loop_speed_vec(clip, root, want, fps, log, measured):
+    """spec "speed" (loops): the travel velocity (his frame x, z; m/s) at `want` m/s in the measured direction
+    (or, when nothing was measured, the spec's `travel` angle; "forward" / "free" then mean forward). The
+    contact (strike to push-off along it) and the root are then rebuilt from it"""
+    n = len(root)
+    v = (root[-1, :2] - root[0, :2]) / max(n - 1, 1) * fps
+    sp = float(np.linalg.norm(v))
+    if sp > 1e-3:
+        d = v / sp
+    else:
+        tr = clip.get('travel', 'free')
+        a = np.radians(float(tr)) if isinstance(tr, (int, float)) and not isinstance(tr, bool) else 0.0
+        d = np.array([np.sin(a), np.cos(a)])
+    log('  speed %.2f m/s GIVEN in the spec (measured %.2f), toward %.0f degrees' % (want, measured, np.degrees(np.arctan2(d[0], d[1]))))
+    return d * want
+
+
+def stance_speed_picture(clip, Ts, root, fps, log):
+    """a loop's ground speed from the PICTURE, per stance, robust to a panning camera: while a foot is
+    planted it is fixed on the ground, so d(pelvis x - planted ankle x)/dt in the picture is his speed
+    across the picture; metres from his torso's picture length (shoulders' middle to hips' middle = the
+    build's 0.576 m), divided by how much of the travel lies across that camera. Planted = the lower ankle,
+    within 6 px of its lowest, at least 4 real frames. Takes whose camera sees the travel at under 0.35
+    of its length are skipped. Returns the median over the takes' stances (m/s) or None; logs each take."""
+    torso_m = HDIM['spine'] + HDIM['chest'] + HDIM['clavUp'] + HDIM['hipDrop']
+    n = len(root)
+    v = (root[-1, :2] - root[0, :2]) / max(n - 1, 1)
+    if np.linalg.norm(v) > 1e-6:
+        d3 = np.array([v[0], 0, v[1]]) / np.linalg.norm(v)
+    else:
+        tr = clip.get('travel', 'free')
+        a = np.radians(float(tr)) if isinstance(tr, (int, float)) and not isinstance(tr, bool) else 0.0
+        d3 = np.array([np.sin(a), 0, np.cos(a)])
+    allv = []
+    for T in Ts:
+        real = T.gap < 0.045  # frames near a real one (the capture is 30-60 fps)
+        if real.sum() < 8:
+            continue
+        Rm = np.median(np.asarray(T.Rs), 0) if getattr(T, 'Rs', None) is not None else T.R
+        f = abs(Rm[0] @ d3)
+        if f < 0.35:
+            log('  speed from the picture: %s sees %.0f%% of the travel across it: skipped' % (T.name, 100 * f))
+            continue
+        t, L = T.t[real], T.l2[real]
+        hip = (L[:, 23, :2] + L[:, 24, :2]) / 2
+        tor = np.linalg.norm((L[:, 11, :2] + L[:, 12, :2]) / 2 - hip, axis=1)
+        low = np.where(L[:, 27, 1] > L[:, 28, 1], 27, 28)
+        vs = []
+        st = 0
+        for i in range(1, len(t) + 1):
+            if i == len(t) or low[i] != low[st] or t[i] - t[i - 1] > 0.06:
+                if i - st >= 4:
+                    k = low[st]
+                    y = L[st:i, k, 1]
+                    m = y >= y.max() - 6
+                    if m.sum() >= 4:
+                        sl = np.polyfit(t[st:i][m], (hip[st:i, 0] - L[st:i, k, 0])[m], 1)[0]
+                        vs.append(abs(sl) / np.median(tor[st:i]) * torso_m / f)
+                st = i
+        if vs:
+            log('  speed from the picture: %s %.2f m/s (%d stances: %s; %.0f%% of the travel across its picture)'
+                % (T.name, np.median(vs), len(vs), ' '.join('%.1f' % x for x in vs), 100 * f))
+            allv += vs
+    return float(np.median(allv)) if allv else None
 
 
 def speed_from_picture(clip, Ts, B):
