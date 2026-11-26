@@ -1,7 +1,7 @@
 {
   "boss": "Tian Lei, the Last Ascendant (ascendant/moves.js punch / kick / elbow / shoulder kinds)",
   "film": "fist: a bare-handed attack reference (scripts/mocap/specs/fistA.json, fistB.json)",
-  "out": "src/entities/enemies/ascendant/refBlows.js",
+  "out": "scripts/mocap/duelist/_out/tianlei.js",
   "blows": {
     "jab": {
       "set": "fistB",

@@ -4,21 +4,29 @@ The bosses built on the duelist engine (`src/entities/enemies/duelist/`: Tian Le
 Disciple, the Starless Lord, ...) are animated by KEYFRAMES on today's hero rig (`player/anim.js` P
 channels; the key format is in the header of `duelist/poses.js`). This folder turns motion MEASURED from
 the owner's reference footage into those keys, so a boss's punch, kick or cut moves the way the footage
-moves while its gameplay (tell, windup, zone, damage, AI) stays exactly as tuned. First used for Tian Lei,
-the Last Ascendant (ADR-208, `?fists=ref`), from a bare-handed attack reference film.
+moves while its gameplay (tell, windup, zone, damage, AI) stays exactly as tuned. First tried on Tian Lei,
+the Last Ascendant (ADR-208), from a bare-handed attack reference film, and turned down (below).
 
 Never name the reference's game, character or studio anywhere (code, data, commits, docs). Never commit a
 reference frame or a picture made from one.
 
 ## What exists today
 
-| boss | map | film | blows | switch |
+| boss | map | film | blows | verdict |
 |---|---|---|---|---|
-| Tian Lei | `tianlei.json` | `fist` (bare-handed attacks, 15:15; specs `fistA.json`, `fistB.json`) | jab, cross, hook, uppercut, backfist, hammer | `?fists=ref` (Lab LOOKS: `fists`) |
+| Tian Lei | `examples/tianlei.json` (writes `_out/`, not the game) | `fist` (bare-handed attacks, 15:15; specs `fistA.json`, `fistB.json`) | jab, cross, hook, uppercut, backfist, hammer | **turned down by the owner** (2026-11-26): "the new animations look worse than the old ones"; what read as worse: **stiff, unnatural arms** and **the lunges and feet**. Nothing of it plays in the game |
 
-The `fist` film has hand strikes only (a wild brawler: wide wind-ups, same-side lunges off the right foot,
-spin-throughs), so his kicks, knee, elbow, shoulder check and sweep keep their authored keys. The quality of
-each blow (which parts are measured, which hand-keyed) is in its map `note` and in ADR-208.
+Why it failed, for the next try: (1) the film is a deliberately clumsy brawler (wide wind-ups, off-balance
+same-side lunges, spin-throughs): faithful to it reads as sloppier than his authored martial-arts blows;
+(2) the footage did not track, so every striking arm was hand-keyed frame by frame from blurred frames:
+paths built from a few readings look stiff. Before another boss: pick a reference of CLEAN technique,
+filmed steady and slow enough to track (boxing / kung-fu animation sets, fixed side and front cameras), keep
+the boss's own stance and footwork unless the reference's is better, and render the result for the owner
+before wiring anything (CLAUDE.md "Any change to how something looks").
+
+To play fitted keys on a boss: `realise.js` already takes `keysOf(beat)`; give the boss's blow builders a
+`refKeys` from the fitted module and the realiser `keysOf: (b) => switchOn ? b.refKeys : null` behind a look
+switch (PR 147's first version did this for Tian Lei: `git show` its commits for the code).
 
 ## Setup (once per machine; nothing of it is in the repo)
 
@@ -40,7 +48,7 @@ each blow (which parts are measured, which hand-keyed) is in its map `note` and 
 ```
 footage ──(1 record)──▶ frames on disk ──(2 catalogue)──▶ takes and strike times
         ──(3 track + build, scripts/mocap)──▶ a hero2 clip (24-joint skeleton, src/entities/hero2/clips/<set>.js)
-        ──(4 fit, this folder)──▶ the boss's blow keys (e.g. src/entities/enemies/ascendant/refBlows.js)
+        ──(4 fit, this folder)──▶ the boss's blow keys (a generated module the boss imports)
         ──(5 the boss's builders)──▶ beat.refKeys, played behind a look switch through realise.js `keysOf`
 ```
 
@@ -92,7 +100,7 @@ another: the last blow's follow-through is then the draw, realise.js).
 
 ```json
 {
-  "out": "src/entities/enemies/ascendant/refBlows.js",
+  "out": "src/entities/enemies/<boss>/refBlows.js",
   "blows": {
     "jab": { "set": "fistOne", "clip": "light1", "start": 0, "cock": 21, "impact": 30, "end": 48,
              "mirror": false, "u_cock": 0.7, "every": [6, 3, 5], "turn": 0, "note": "..." }

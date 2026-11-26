@@ -37,8 +37,8 @@ const FOLLOW_MAX = 0.24; // s: the longest follow-through of a blow
 const FOLLOW_RING = 0.3; // … of a spin (a ring zone): its whole turn runs on this clock, 0.18 s was a blur
 const FOLLOW_PART = 0.72; // of the time to the next beat's first pose: the rest is his way into it
 // `keysOf(beat)` (optional): the pose keys a beat plays THIS time, read as each move is realised (a boss
-// whose blows have a second animation behind a live switch, e.g. Tian Lei's `?fists=ref`: the keys
-// measured from the owner's reference footage, scripts/mocap/duelist); null or undefined = `beat.keys`.
+// whose blows have a second animation behind a live switch, e.g. keys measured from the owner's
+// reference footage, scripts/mocap/duelist; no boss uses it today, ADR-208); null or undefined = `beat.keys`.
 export function makeRealise({ TUNING, MOVES, compileClip, completeBeat = null, keysOf = null }) {
   return function realise(name, phase = 1, rnd = Math.random, opts = null) {
     const def = MOVES[name];
