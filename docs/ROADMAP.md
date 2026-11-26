@@ -1155,7 +1155,7 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
 - [x] Shen Hui and Varr Nihil (ADR-226): the sword audit (`audit`), the blade in line with the forearm, the arms
       opening, held blue / red tell poses, the Lord's end-of-string shake, two quick blows each, behind
       `?ashMotion` / `?lordMotion`, films sent
-  - [ ] The owner's pick from the films; then the switch's default
+  - [x] The owner's pick from the films: both, as the default (Piercing Ash keeps its old thrust)
   - [ ] Their feet (a planted foot handed to a clip slides; legs cross in spins), the Starless Night cast's wrist
 
 ### P3 — Arenas that are part of the fight, better backgrounds, cooler destruction

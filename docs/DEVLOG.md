@@ -28,7 +28,10 @@ blows; tests `swordmotion` (both suites), the data rule for quick blows, `GCD_LO
 one spell pose, the worst jolt per move 776 → 449 mm/f² on average. The pace meters pass with the switches on.
 Before / after films (game camera + a close side view, half speed) rendered with the scratch rig.
 
-**Open.** The owner's pick (draft PR). Feet: a planted foot still slides where a clip takes it over (the grove session's
+**The owner's pick** (from the films): "i like the new timings and changes", Piercing Ash keeping its old
+thrust; both switches are the default (`?ashMotion=0` / `?lordMotion=0` give back the motion before).
+
+**Open.** Feet: a planted foot still slides where a clip takes it over (the grove session's
 `liftEase` may serve); legs cross inside the spins. Varr Nihil's Starless Night cast keeps a 91° wrist.
 
 ---

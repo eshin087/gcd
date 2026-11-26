@@ -1024,6 +1024,8 @@ Object.assign(MOVES, {
   },
 });
 motionize(MOVES);
+// (the owner, 2026-11-26: Piercing Ash keeps its old windup, the blade drawn back and thrust, not the coil)
+delete MOVES.piercingAsh.beats[0].motionKeys;
 export const MOVE_NAMES = Object.keys(MOVES);
 
 // ---------------------------------------------------------------- reaction clips (no hits)

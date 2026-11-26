@@ -6562,14 +6562,16 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   Wheel, Thunder Verse); the elbows never opened past 131 - 145° (the bosses' soft reach); Varr Nihil's end-of-string
   roll of the blade round the wrist stopped with a jolt of 1.0 - 2.5 m a frame² at the point, the largest in either
   boss. At the blow itself his chest was square to the hero (within ~20°), so the facing at an impact is not the fault.
-- **Decision** (behind `?ashMotion=a` / `?lordMotion=a`, `duelist/lookSwitch.js` PENDING, Lab LOOKS rows; '0' as before):
+- **Decision** (`?ashMotion` / `?lordMotion`, `duelist/lookSwitch.js`, Lab LOOKS rows; 'a' the owner's pick and the
+  default since 2026-11-26, from the before / after films: "i like the new timings and changes"; '0' as before):
   - **The grip**: `HeroAnimator.gripMax` (rad; 0 = off, the hero and every other boss): after the sword arm's solve, a
     forearm more than gripMax off the blade's line turns toward it round the elbow (`_gripAlign`), the hand going with
     it, the elbow where the arm put it, folded no tighter than 38°. The blade's direction, its path and every zone are
     untouched: only where the hand holds it. `TUNING.motion.gripMax` 0.7 (~40°) and `armSoft` [0.9, 0.985] (the arms
     open at the end of a blow, as the hero's), read every frame through `kit.motion()` (duelist.js).
   - **The held tell poses** (`duelist/tellPose.js`): every blue or red BLADE blow (not a feint, a cast, a thrown or
-    released thing, a somersault or a cartwheel) gets `motionKeys`, its keys with a family pose reached at 0.36 of the
+    released thing, a somersault or a cartwheel; and Piercing Ash, which the owner kept as it was: "the old animation of
+    thrusting the sword instead of bending it") gets `motionKeys`, its keys with a family pose reached at 0.36 of the
     windup (before the flare) and held to 0.8, the strike from there. Two silhouettes to learn, one per answer: blue
     **high** (the blade raised over the sword shoulder, point to the sky, tall on the legs, the free hand out at the
     foe) or **aim** for a thrust (drawn back level by the cheek, the point on the foe); red **coil** (sunk low and
@@ -6594,4 +6596,4 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   moves), the worst jolt in a move 776 → 449 mm a frame² on average, the roll's jolts gone. The pace meters (`duel.mjs`
   / `lord.mjs . pace`) pass on and off. Test `swordmotion` in both suites (on and off). Open: the feet still slide a
   little where a planted foot is handed to the clip (another session's `kit.animOpts.liftEase` may serve), the
-  crossing legs inside spins and sweeps, and the owner's pick of the films.
+  crossing legs inside spins and sweeps.

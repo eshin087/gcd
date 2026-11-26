@@ -19,9 +19,9 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-26',
-        title: "Shen Hui and Varr Nihil hold their swords like swordsmen (to try)",
+        title: 'Shen Hui and Varr Nihil hold their swords like swordsmen',
         notes: [
-          'To try with ?ashMotion=a or ?lordMotion=a in the address (or the Lab): Shen Hui and Varr Nihil hold their blades in line with the hand and arm, and their arms open at the end of a blow.',
+          'Shen Hui and Varr Nihil hold their blades in line with the hand and arm, and their arms open at the end of a blow.',
           'A blow to parry is wound up with the blade raised high and held; a blow to dodge, sunk low with the blade trailing near the floor. The timings are the same.',
           'Varr Nihil ends a string with a shake of the steel instead of a twirl. Each has two quick blows thrown straight out of the guard: block or parry them.',
         ],

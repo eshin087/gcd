@@ -4982,7 +4982,7 @@ async function scenarioSwordMotion() {
   assert(wr <= 62, `the sword in line with the forearm: the wrist at most ${wr}° (≤ 62; the hero ≤ 60; before the pass 85 - 128)`);
   assert(gh >= 0.08 && gb >= 0.08, `the blade clear of him: ${gh.toFixed(2)} m from his head, ${gb.toFixed(2)} m from his body at the closest (≥ 0.08)`);
   assert(el >= 148, `every move opens the arm: the widest elbow at least ${el}° (≥ 148; before 131 - 145)`);
-  const held = [['fallingAsh', 1], ['piercingAsh', 1]].map(([n, f]) => [n, heldTip(H, n, { form: f })]);
+  const held = [['fallingAsh', 1], ['lotus', 1]].map(([n, f]) => [n, heldTip(H, n, { form: f })]);
   assert(held.every(([, h]) => !h.fail && h.n >= 6 && h.far < 0.08), `the tell pose is held: the point wanders ${held.map(([n, h]) => `${n} (${h.tell}) ${h.far?.toFixed(3)} m over ${h.n} frames`).join(', ')} (< 0.08)`);
   // the timings: only poses change
   let same = 0, diff = [];

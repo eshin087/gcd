@@ -5,11 +5,13 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 
 ## [Unreleased]
 One hundred and sixteen pieces of work since 0.4.0:
+- **Shen Hui and Varr Nihil hold their swords like swordsmen** (2026-11-26, ADR-226). *Changed (the owner's pick; `?ashMotion=0` /
+  `?lordMotion=0` give back the motion before):* the second and third
 - **Shen Hui and Varr Nihil hold their swords like swordsmen (to try)** (2026-11-26, ADR-226). *Added, behind `?ashMotion=a` and
   `?lordMotion=a` (the Lab's LOOKS rows; nothing changes without them until the owner picks):* the second and third
   bosses hold their blades in line with the forearm (it bent up to 128° off it) and their arms open at the end of a
   blow; every blue blow is wound up in a held pose with the blade raised high (or drawn back level for a thrust), every
-  red one sunk low with the blade trailing near the floor, the timings unchanged; Varr Nihil ends his strings with a
+  red one sunk low with the blade trailing near the floor (Piercing Ash keeps its drawn-back thrust), the timings unchanged; Varr Nihil ends his strings with a
   shake of the steel instead of a twirl that snapped; two quick blows each, thrown straight out of the guard
   (Darting Needle, Flicking Willow; Rising Ember, Vigil's Fall). A sword motion audit for both (`audit`).
 - **The bosses shaded and outlined like the hero** (2026-11-26, ADR-220). *Changed:* Shen Hui, Varr Nihil, Tian Lei,

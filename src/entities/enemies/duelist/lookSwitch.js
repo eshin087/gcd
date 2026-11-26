@@ -67,6 +67,9 @@ export const PICKED = Object.freeze({
   // the Hall of Falling Script and Xin Yi, the One Who Woke
   oneLetters: 'a', // his letters: the hero's size (the owner's pick, 2026-11-23, "Print a", ADR-170; 0 the bosses' fine cell)
   onePrint: 'a', // his print: the hero's quiet print and the simpler shapes (the owner's pick, 2026-11-23, "Print a", ADR-170; b one cell bolder on a phone, 0 as he shipped)
+  // the sword motion pass (ADR-226; the owner's pick, 2026-11-26, from the before / after films)
+  ashMotion: 'a', // Shen Hui: the jian in line with the arm, held blue / red windups (Piercing Ash keeps its thrust), quick blows
+  lordMotion: 'a', // Varr Nihil: the same, and the end-of-string shake for the twirl
   // every human boss
   bossPrint: 'b', // printed the hero's way, in his own colours (the owner's pick, 2026-11-24, of three: 0 as before, a the hero's greys; ADR-194)
   // drawn in the hero's style (the owner's picks, 2026-11-26, ADR-220; 0 each as he shipped)
@@ -82,7 +85,7 @@ export const PICKED = Object.freeze({
 /** Switches the owner has not picked yet (their rendered options wait for the owner): in the Lab's LOOKS
  *  rows, deliberately NOT in PICKED; each draws its call site's default until picked. When the
  *  owner picks, the switch moves from here into PICKED. */
-export const PENDING = Object.freeze(['foxLook', 'foxfire', 'clones', 'foxLetters', 'foxFire3', 'foxSpirit', 'oneLook', 'hall', 'script', 'ashMotion', 'lordMotion']); // Wen Yao (ADR-147, ADR-154); Xin Yi and his hall (ADR-156, ADR-157); Halcyon and his city: all picked (ADR-161, ADR-164, ADR-166)
+export const PENDING = Object.freeze(['foxLook', 'foxfire', 'clones', 'foxLetters', 'foxFire3', 'foxSpirit', 'oneLook', 'hall', 'script']); // Wen Yao (ADR-147, ADR-154); Xin Yi and his hall (ADR-156, ADR-157); Halcyon and his city: all picked (ADR-161, ADR-164, ADR-166)
 
 const fromUrl = new Map();
 const forced = new Map();
