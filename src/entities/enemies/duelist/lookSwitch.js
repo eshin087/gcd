@@ -67,6 +67,13 @@ export const PICKED = Object.freeze({
   onePrint: 'a', // his print: the hero's quiet print and the simpler shapes (the owner's pick, 2026-11-23, "Print a", ADR-170; b one cell bolder on a phone, 0 as he shipped)
   // every human boss
   bossPrint: 'b', // printed the hero's way, in his own colours (the owner's pick, 2026-11-24, of three: 0 as before, a the hero's greys; ADR-194)
+  // the motion pass (ADR-223; the owner's picks, 2026-11-26, from the films: A for all three, every quick blow)
+  sheathMotion: 'a', // Lu Wusheng's blue / red blows held at the cock, blue tall, red sunk
+  foxMotion: 'a', // Wen Yao's, the same, and his lifted feet eased off their spot
+  wyrmMotion: 'a', // the wyrm's string hits held, blue rearing its head, red sunk with the tail up
+  sheathQuick: 'a', // Before the Word
+  foxQuick: 'a', // Fox Snap, Fox Knee
+  wyrmQuick: 'a', // Snap swipe
   // the title
   menu: 'c', // the sword's path: the worlds as fires along one line (the owner's pick, 2026-11-25, of three; 0 the title before; ADR-196)
 });

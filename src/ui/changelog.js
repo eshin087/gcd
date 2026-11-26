@@ -19,8 +19,8 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-26',
-        title: 'Blue and red blows you can read, and quick blows (to try)',
-        notes: ['To try (the game is unchanged without them): add ?sheathMotion=a, ?foxMotion=a or ?wyrmMotion=a to the address and Lu Wusheng, Wen Yao or the Cinder Wyrm holds still for a moment before each blue or red blow, standing tall for blue and sinking low for red. ?sheathQuick=a, ?foxQuick=a and ?wyrmQuick=a add a quick white blow straight from the stance: block it or parry it on the glint.'],
+        title: 'Blue and red blows you can read, and quick blows',
+        notes: ['Lu Wusheng, Wen Yao and the Cinder Wyrm now hold still for a moment before every blue or red blow: tall for blue, low for red. The blow lands that moment later; its cue and timing are as before.', 'Each of them has a new quick white blow, straight from the stance with no wind-up: block it or parry it on the glint.', "Wen Yao's feet no longer jump as he steps into a blow."],
       },
       {
         date: '2026-11-26',

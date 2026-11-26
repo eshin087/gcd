@@ -4685,7 +4685,9 @@ async function scenarioAblaze() {
   // the lead's timing fix for its mirrored side; ADR-120 alone left 47e0a683. Nothing of ablaze changes it)
   // (c08725a9 since ADR-197: the table gained the roar-cast spells and the brood's moves, fireSerpent,
   // firestorm, drakelings, wisps; no existing attack changed: without them it still hashes to 103cbc42)
-  const BASE_ATTACKS = 'c08725a9';
+  // (3c37e8c0 since ADR-223: the table gained the quick Snap swipe (its weight read through its switch, the
+  // owner's pick a); no existing attack changed: without it it still hashes to c08725a9)
+  const BASE_ATTACKS = '3c37e8c0';
   const table0 = JSON.stringify(TUNING.attacks);
   M.setAblazeLook('b');
   const G = build();
@@ -14720,11 +14722,11 @@ async function scenarioWyrmHeld() {
   // the quick blow: picked only with its switch
   {
     const spec = TUNING.attacks.snapSwipe, s = { dist: 2.5 * SCALE, absAng: 0.1 };
+    setLook('wyrmQuick', '0');
     const off = bandWeight(spec, d, s);
-    setLook('wyrmQuick', 'a');
-    const on = bandWeight(spec, d, s);
     setLook('wyrmQuick', null);
-    assert(off === 0 && on > 0 && !!ATTACKS.snapSwipe?.string, `the snap swipe: weight ${off} as it shipped, ${on} with ?wyrmQuick=a`);
+    const on = bandWeight(spec, d, s);
+    assert(off === 0 && on > 0 && !!ATTACKS.snapSwipe?.string, `the snap swipe: weight ${off} with ?wyrmQuick=0, ${on} by default (the owner's pick)`);
   }
   return G;
 }

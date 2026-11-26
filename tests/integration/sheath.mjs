@@ -369,9 +369,10 @@ async function scenarioRules() {
     // the quick blows (ADR-223): one white hit each, fixed, never under flashLead (the glint as it starts), light; off by default
     const quick = MOVE_NAMES.filter((n) => MOVES[n].quick);
     const ok = quick.every((n) => { const a = realise(n, 3, () => 0.5); const r = a.beats.filter((b) => !b.feint); return r.length === 1 && r[0].def.tell === TELL.NORMAL && r[0].def.fixed && r[0].impact - r[0].tellAt >= TUNING.flashLead - 1e-6 && r[0].impact - r[0].tellAt < TUNING.minFirstWindup && r[0].def.damage <= 12; });
-    setQuick('sheathQuick', null);
+    setQuick('sheathQuick', '0');
     const off = quick.every((n) => [1, 2, 3].every((f) => !((Array.isArray(MOVES[n].weight) ? MOVES[n].weight[f - 1] : MOVES[n].weight) > 0)));
-    assert(quick.length > 0 && ok && off, `the quick blows (${quick.join(', ')}): one white hit, fixed, windup in [flashLead, minFirstWindup), light; weight 0 with ?sheathQuick off`);
+    assert(quick.length > 0 && ok && off, `the quick blows (${quick.join(', ')}): one white hit, fixed, windup in [flashLead, minFirstWindup), light; weight 0 with ?sheathQuick=0`);
+    setQuick('sheathQuick', null);
   }
   const blacks = MOVE_NAMES.filter((n) => flat(n).some((b) => b.tell === TELL.BLACK));
   assert(blacks.length === 1 && blacks[0] === 'lightless', `exactly one black move (${blacks.join(', ')})`);
