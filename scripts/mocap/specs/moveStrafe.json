@@ -1,0 +1,7 @@
+{
+ "set": "moveStrafe",
+ "title": "Movement: strafing and the strafe dodge",
+ "film": "move",
+ "out": "src/entities/hero2/clips/moveStrafe.js",
+ "clips": []
+}
