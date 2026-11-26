@@ -69,6 +69,9 @@ export const PICKED = Object.freeze({
   bossPrint: 'b', // printed the hero's way, in his own colours (the owner's pick, 2026-11-24, of three: 0 as before, a the hero's greys; ADR-194)
   // the title
   menu: 'c', // the sword's path: the worlds as fires along one line (the owner's pick, 2026-11-25, of three; 0 the title before; ADR-196)
+  // Bai Wuji, the Untouched (the owner's picks, 2026-11-25, from the body sheets)
+  wjLook: 'c', // the bone-white coat
+  wjHair: 'b', // the short spiky burst, the choppy mop once it falls
 });
 
 /** Switches the owner has not picked yet (their rendered options wait for the owner): in the Lab's LOOKS
@@ -78,7 +81,6 @@ export const PENDING = Object.freeze([
   'foxLook', 'foxfire', 'clones', 'foxLetters', 'foxFire3', 'foxSpirit', 'oneLook', 'hall', 'script', // Wen Yao (ADR-147, ADR-154); Xin Yi and his hall (ADR-156, ADR-157); Halcyon and his city: all picked (ADR-161, ADR-164, ADR-166)
   // Bai Wuji and the Veiled Crossing: each `?wj...=` switch waits for the owner (read with lookOf(name, def))
   // Bai Wuji: body rows
-  'wjLook', 'wjHair', // his outfit (a the black coat, b the indigo robe and a white band, c the bone-white coat) and his hair's shape (a a tall swept crown, b a shorter spikier one; each with its fallen version)
 
   // Bai Wuji: fx rows
   'wjShell', 'wjNull', // his barrier's look (a / b / c) and the Violet Null's body (a / b): untouched/fx.js, fxSpells.js

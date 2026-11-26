@@ -28,7 +28,7 @@ import { DIM } from '../../player/model.js';
 // a rig built later writes the hero's into them), the eyes' glow and, through the hand sign, the left
 // hand's sword fingers. No allocation after the first call.
 
-export const WJ_LOOKS = Object.freeze({ wjLetters: 'a', wjLook: 'a', wjHair: 'a' });
+export const WJ_LOOKS = Object.freeze({ wjLetters: 'a', wjLook: 'c', wjHair: 'b' });
 export const wjLook = (name) => lookOf(name, WJ_LOOKS[name] ?? 'a');
 
 /** His letters follow his size on screen by the hero's rule (`?wjLetters=a`; live). */
