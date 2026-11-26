@@ -4376,7 +4376,72 @@
     }
    ],
    "from": "walk",
-   "to": "walk"
+   "to": "walk",
+   "pose_keys": [
+    {
+     "f": 43,
+     "joint": "upperArmR",
+     "dir": [-0.046, -0.2902, -0.0107],
+     "blend": 0,
+     "hx": 1
+    },
+    {
+     "f": 44,
+     "joint": "upperArmR",
+     "dir": [-0.0259, -0.2924, -0.0164],
+     "blend": 0,
+     "hx": 1
+    },
+    {
+     "f": 45,
+     "joint": "upperArmR",
+     "dir": [-0.0127, -0.2932, -0.0178],
+     "blend": 0,
+     "hx": 1
+    },
+    {
+     "f": 46,
+     "joint": "upperArmR",
+     "dir": [-0.008, -0.2934, -0.0166],
+     "blend": 0,
+     "hx": 1
+    },
+    {
+     "f": 47,
+     "joint": "upperArmR",
+     "dir": [-0.0047, -0.2936, -0.0146],
+     "blend": 0,
+     "hx": 1
+    },
+    {
+     "f": 48,
+     "joint": "upperArmR",
+     "dir": [-0.0051, -0.2939, -0.0026],
+     "blend": 0,
+     "hx": 1
+    },
+    {
+     "f": 49,
+     "joint": "upperArmR",
+     "dir": [-0.0109, -0.2938, 0.0032],
+     "blend": 0,
+     "hx": 1
+    },
+    {
+     "f": 50,
+     "joint": "upperArmR",
+     "dir": [-0.0235, -0.2927, -0.0143],
+     "blend": 0,
+     "hx": 1
+    },
+    {
+     "f": 51,
+     "joint": "upperArmR",
+     "dir": [-0.0132, -0.2928, -0.0233],
+     "blend": 0,
+     "hx": 1
+    }
+   ]
   },
   {
    "name": "runStart",
