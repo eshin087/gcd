@@ -48,11 +48,14 @@ export const STEEL_SPECIALS_E = {
     line: 'point', home: 1.0, settle: 0.5,
     rF: [-0.17, -0.5], lF: [0.15, 0.5], fy: [0.1, -0.8], drag: 0.12,
     keys: [
-      { u: 0.55, h: [-0.12, -0.3, -0.05], a: [-4, 2], rp: [-0.6, -0.6, -0.5], l: [0.16, -0.38, 0.2], lp: [0.6, -0.7, -0.2], hs: 0, two: 0, by: -0.15, bz: -0.06, hip: -0.36, sy: -0.4, sx: 0.15 },
-      { u: 1.0, h: [-0.02, -0.2, 0.5], a: [2, 0], rp: [-0.6, -0.75, -0.2], l: [0.2, -0.2, 0.3], lp: [0.7, -0.6, -0.3], by: -0.26, bz: 0.12, hip: 0.16, sy: 0.2, sx: 0.36 },
+      // (no free-hand key before u 1.8: from at ease the hand by the thigh goes straight up onto the foe; from the
+      // fight's two-handed hold it rides the grip through the thrust (a two-handed drive) and lets go onto the foe.
+      // Keyed earlier, it was torn off the fast grip: 22-40 cm in a tick)
+      { u: 0.55, h: [-0.12, -0.3, -0.05], a: [-6, -15], rp: [-0.6, -0.6, -0.5], by: -0.15, bz: -0.06, hip: -0.12, sy: -0.14, sx: 0.15 },
+      { u: 1.0, h: [-0.02, -0.2, 0.5], a: [2, 0], rp: [-0.6, -0.75, -0.2], by: -0.26, bz: 0.12, hip: 0.16, sy: 0.2, sx: 0.36 },
       // pressed in close behind the point: the hand back to his waist, the blade through, level
-      { u: 1.35, h: [-0.04, -0.27, 0.34], a: [4, -2], rp: [-0.55, -0.8, -0.25], l: [0.06, -0.04, 0.42], lp: [0.6, -0.75, -0.2], by: -0.32, bz: 0.18, hip: 0.24, sy: 0.3, sx: 0.5 },
-      { u: 1.8, h: [-0.04, -0.28, 0.33], a: [4, -3], l: [0.06, -0.05, 0.42], by: -0.33, bz: 0.18, hip: 0.24, sy: 0.3, sx: 0.52 },
+      { u: 1.35, h: [-0.04, -0.27, 0.34], a: [4, -2], rp: [-0.55, -0.8, -0.25], by: -0.32, bz: 0.18, hip: 0.24, sy: 0.3, sx: 0.5 },
+      { u: 1.8, h: [-0.04, -0.28, 0.33], a: [4, -3], l: [0.08, -0.16, 0.4], lp: [0.6, -0.75, -0.2], hs: 0, two: 0, by: -0.33, bz: 0.18, hip: 0.24, sy: 0.3, sx: 0.52 },
       // the pull-out: back along the blade's line, past the right hip; the free hand pushes him off
       { u: 2.05, h: [-0.1, -0.29, 0.18], a: [-6, -6], by: -0.31, bz: 0.15, hip: 0.14, sy: 0.18, sx: 0.46 },
       { u: 2.3, h: [-0.18, -0.32, -0.02], a: [-35, -22], rp: [-0.5, -0.6, -0.6], l: [0.08, -0.12, 0.47], by: -0.26, bz: 0.1, hip: -0.06, sy: -0.06, sx: 0.34 },

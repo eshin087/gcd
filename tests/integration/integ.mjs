@@ -13637,7 +13637,9 @@ async function scenarioBlinkSpecials() {
 // ================================================================== `steelstance`: the steel look set, how he stands (steelStance.js)
 // ?lights=steel (ADR-210). Filled by the part's author.
 async function scenarioSteelStance() {
-  out('\n== scenario STEELSTANCE (?lights=steel: how he stands (steelStance.js)) ==');
+  out('\n== scenario STEELSTANCE (?lights=steel: how he stands, the charge hold (steelStance.js)) ==');
+  // (ADR-210: how he STANDS is every look's, ADR-207 refStance.js: under steel he stands exactly as under
+  // the default look; the look set's own is the charge hold, steelCharge)
   const CB = await imp('src/entities/player/combat.js');
   const { STEEL } = await imp('src/entities/player/steelStance.js');
   const { DIM: HD } = await imp('src/entities/player/model.js');
@@ -13648,7 +13650,7 @@ async function scenarioSteelStance() {
     CB.setLights('steel');
     const onS = STEEL.on;
     CB.setLights('new');
-    assert(onS === true && STEEL.on === false, `the look set flips the steel stance on (${onS}) and today's look off (${STEEL.on})`);
+    assert(onS === true && STEEL.on === false, `the look set flips the steel charge hold on (${onS}) and today's look off (${STEEL.on})`);
     const v = new THREE.Vector3(), w = new THREE.Vector3(), qa = new THREE.Quaternion();
     // one take: standing at ease, held in the fight stance, then the heavy held (the charge)
     const take = (look) => {
@@ -13670,34 +13672,37 @@ async function scenarioSteelStance() {
         w.set(0, 0, 1).applyQuaternion(r.sword.getWorldQuaternion(qa));
         return Math.acos(clamp(v.normalize().dot(w.normalize()), -1, 1)) * DEG;
       };
-      const elbow = (s) => 180 - Math.abs(r.arms[s].fore.rotation.x) * DEG;
-      const hand = (s) => loc(v.set(0, -HD.foreArm, 0).applyMatrix4(r.arms[s].fore.matrixWorld));
-      const fin = (v) => (Number.isFinite(v) ? v : -1);
-      const S = { nan: 0, low: 9, st: { snap: 0, kink: 0 }, ch: { snap: 0, kink: 0 }, phase: 'ease', count0: A.fidget.count };
-      let pr = null;
+      const fin = (x) => (Number.isFinite(x) ? x : -1);
+      const elbow = (sd) => 180 - Math.abs(r.arms[sd].fore.rotation.x) * DEG;
+      const hand = (sd) => loc(v.set(0, -HD.foreArm, 0).applyMatrix4(r.arms[sd].fore.matrixWorld));
+      // the standing poses, tick by tick (the pose channels, and the drawn point and hands)
+      const S = { nan: 0, low: 9, ch: { snap: 0, kink: 0, snapAt: '', kinkAt: '' }, poses: [], drawn: [], count0: A.fidget.count };
+      let pr = null, charging = false;
       const watch = () => {
-        const t = tip(), hR = hand('R'), hL = hand('L'), ch = S.phase === 'charge', K = ch ? S.ch : S.st;
-        if (![...t, ...hR, ...hL].every(Number.isFinite)) S.nan++;
+        const t = tip(), hR = hand('R'), hL = hand('L');
+        if (![...t, ...hR, ...hL].every(Number.isFinite) || ![...A.cur].every(Number.isFinite)) S.nan++;
+        if (!charging) {
+          S.poses.push(Float32Array.from(A.cur));
+          S.drawn.push([...t, ...hR, ...hL]);
+          return;
+        }
         S.low = Math.min(S.low, t[1]);
-        // (the press first plays the heavy's windup for CHARGE.hold s: another author's clip, not read here)
-        const own = !ch || p.state === 'charge';
+        const K = S.ch, own = p.state === 'charge';
         const kk = kink();
         if (own && kk > K.kink) { K.kink = kk; K.kinkAt = `${p.state} t ${fin(A.t).toFixed(2)}`; }
         if (pr) { const sn = Math.max(Math.hypot(hR[0] - pr[0][0], hR[1] - pr[0][1], hR[2] - pr[0][2]), Math.hypot(hL[0] - pr[1][0], hL[1] - pr[1][1], hL[2] - pr[1][2])); if (sn > K.snap) { K.snap = sn; K.snapAt = `${p.state} t ${fin(A.t).toFixed(2)}`; } }
         pr = [hR, hL];
       };
       go(1.0);
-      go(8.0, watch); // at ease, long enough for an idle habit to start (IDLES.afterEase 2 s)
-      S.ease = { tip: tip(), kink: kink(), R: elbow('R'), L: elbow('L'), hL: hand('L'), hR: hand('R'), acts: A.fidget.count - S.count0 };
+      go(8.0, watch); // at ease, long enough for the idle habits (ADR-186) to play
+      S.easeActs = A.fidget.count - S.count0;
       p.debug.fightStance = true;
-      S.phase = 'fight';
       go(3.0, watch);
-      S.fight = { tip: tip(), kink: kink(), R: elbow('R'), L: elbow('L'), acts: A.fidget.count - S.count0 };
+      S.acts = A.fidget.count - S.count0;
       p.debug.fightStance = null;
       go(1.5);
       // the charge: the heavy held 1.0 s
-      pr = null;
-      S.phase = 'charge';
+      charging = true;
       input.press(2);
       let charged = false;
       go(1.0, () => { watch(); if (p.state === 'charge') charged = true; });
@@ -13708,22 +13713,23 @@ async function scenarioSteelStance() {
     };
     const St = take('steel'), Nw = take('new');
     const f = (a) => a.map((x) => x.toFixed(2)).join(', ');
-    out(`   steel at ease: point [${f(St.ease.tip)}] (x his left, y up, z ahead), wrist ${St.ease.kink.toFixed(0)}°, elbows R ${St.ease.R.toFixed(0)}° L ${St.ease.L.toFixed(0)}°, the free hand [${f(St.ease.hL)}], ${St.ease.acts} idle habits`);
-    out(`   steel in the fight: point [${f(St.fight.tip)}], wrist ${St.fight.kink.toFixed(0)}°, elbows R ${St.fight.R.toFixed(0)}° L ${St.fight.L.toFixed(0)}°, ${St.fight.acts} idle habits`);
-    out(`   steel charge: ${St.charge.on ? 'held' : 'NOT held'}, point [${f(St.charge.tip)}], sword hand [${f(St.charge.hR)}], free hand [${f(St.charge.hL)}], wrist ${St.charge.kink.toFixed(0)}°, elbow ${St.charge.R.toFixed(0)}°`);
-    out(`   through it all: ${St.nan} NaN frames, the point at least ${St.low.toFixed(2)} m up; standing the hands at most ${(St.st.snap * 100).toFixed(1)} cm a tick, the wrist at most ${St.st.kink.toFixed(0)}°; the charge's entry and hold: the hands at most ${(St.ch.snap * 100).toFixed(1)} cm a tick (${St.ch.snapAt}; today's ${(Nw.ch.snap * 100).toFixed(1)}), the wrist at most ${St.ch.kink.toFixed(0)}° (${St.ch.kinkAt}; today's ${Nw.ch.kink.toFixed(0)}°); today's point at ease [${f(Nw.ease.tip)}]`);
-    const E = St.ease, Fg = St.fight;
-    assert(St.nan === 0, `nothing goes NaN (${St.nan} frames)`);
-    assert(E.tip[0] < -0.25 && E.tip[2] > 0.45 && E.tip[1] >= 0.1 && E.tip[1] <= 0.85, `at ease the sword hangs low at his right, the point forward and down (the point [${f(E.tip)}]: right of him, ≥ 0.45 m ahead, 0.1-0.85 m up: about his knee)`);
-    assert(E.R >= 140 && E.L >= 140 && E.kink <= 50, `both arms hang with soft elbows (R ${E.R.toFixed(0)}° L ${E.L.toFixed(0)}° ≥ 140), the sword wrist in human range (${E.kink.toFixed(0)}° ≤ 50)`);
-    assert(E.hL[0] > 0.2 && E.hL[1] > 0.5 && E.hL[1] < 1.05, `the free hand hangs relaxed by his left thigh ([${f(E.hL)}])`);
-    const dTip = Math.hypot(E.tip[0] - Fg.tip[0], E.tip[1] - Fg.tip[1], E.tip[2] - Fg.tip[2]);
-    assert(dTip < 0.08, `ONE pose at ease and in the fight (the point ${(dTip * 100).toFixed(1)} cm apart, < 8)`);
-    assert(E.acts === 0 && Fg.acts === 0, `no idle habit plays over the steel stance (${E.acts} at ease, ${Fg.acts} in the fight)`);
+    // ---- he stands exactly as under the default look (ADR-207's stances and their habits)
+    let dPose = 0, dDrawn = 0;
+    const n = Math.min(St.poses.length, Nw.poses.length);
+    for (let i = 0; i < n; i++) {
+      for (let c = 0; c < St.poses[i].length; c++) dPose = Math.max(dPose, Math.abs(St.poses[i][c] - Nw.poses[i][c]));
+      for (let c = 0; c < St.drawn[i].length; c++) dDrawn = Math.max(dDrawn, Math.abs(St.drawn[i][c] - Nw.drawn[i][c]));
+    }
+    out(`   standing 8 s at ease and 3 s in the fight: ${n} ticks; steel vs today's at most ${dPose.toExponential(1)} on any pose channel, ${(dDrawn * 1000).toFixed(2)} mm on the drawn point and hands; idle habits ${St.acts} (today's ${Nw.acts}), ${St.easeActs} of them at ease`);
+    assert(St.nan === 0 && Nw.nan === 0, `nothing goes NaN (${St.nan} / ${Nw.nan} frames)`);
+    assert(n === Nw.poses.length && n > 600 && dPose < 1e-6 && dDrawn < 1e-4, `under steel he stands exactly as under the default look, at ease and in the fight (every pose channel within 1e-6: ${dPose.toExponential(1)}; the drawn point and hands within 0.1 mm: ${(dDrawn * 1000).toFixed(2)} mm)`);
+    assert(St.acts === Nw.acts && St.acts > 0, `the idle habits play under steel as they do by default (${St.acts} / ${Nw.acts})`);
+    // ---- the charge hold: the look set's own
+    out(`   steel charge: ${St.charge.on ? 'held' : 'NOT held'}, point [${f(St.charge.tip)}] (x his left, y up, z ahead), sword hand [${f(St.charge.hR)}], free hand [${f(St.charge.hL)}], wrist ${St.charge.kink.toFixed(0)}°, elbow ${St.charge.R.toFixed(0)}°; today's point [${f(Nw.charge.tip)}]`);
+    out(`   the charge's entry and hold: the point at least ${St.low.toFixed(2)} m up; the hands at most ${(St.ch.snap * 100).toFixed(1)} cm a tick (${St.ch.snapAt}; today's ${(Nw.ch.snap * 100).toFixed(1)}), the wrist at most ${St.ch.kink.toFixed(0)}° (${St.ch.kinkAt}; today's ${Nw.ch.kink.toFixed(0)}°)`);
     assert(St.charge.on && St.charge.tip[2] < -0.2 && St.charge.tip[0] < 0 && St.charge.hR[2] < 0.15 && St.charge.hL[2] > 0.15 && St.charge.kink <= 60, `the charge holds the sword drawn back behind his right hip, the point back (z ${St.charge.tip[2].toFixed(2)} < -0.2), the sword hand by his hip (z ${St.charge.hR[2].toFixed(2)} < 0.15), the free hand out ahead (z ${St.charge.hL[2].toFixed(2)}), the wrist ${St.charge.kink.toFixed(0)}° ≤ 60`);
-    assert(St.low >= 0.01 && St.st.snap < 0.03 && St.st.kink <= 50 && St.ch.kink <= Math.max(60, Nw.ch.kink + 10) && St.ch.snap <= Math.max(0.06, Nw.ch.snap + 0.02), `the steel stays off the ground (${St.low.toFixed(2)} m); standing no hand moves over 3 cm a tick (${(St.st.snap * 100).toFixed(1)}) and the wrist stays ≤ 50° (${St.st.kink.toFixed(0)}°); into the charge the hands move no faster than today's (+2 cm a tick, or 6: ${(St.ch.snap * 100).toFixed(1)} cm) and the wrist stays ≤ 60° or today's (${St.ch.kink.toFixed(0)}°)`);
-    const dNew = Math.hypot(E.tip[0] - Nw.ease.tip[0], E.tip[1] - Nw.ease.tip[1], E.tip[2] - Nw.ease.tip[2]);
-    assert(dNew > 0.1 && Nw.charge.on && Nw.charge.tip[1] > 1.0, `today's look keeps today's stance (its point ${(dNew * 100).toFixed(0)} cm from the steel one) and today's raised charge (point ${Nw.charge.tip[1].toFixed(2)} m up)`);
+    assert(St.low >= 0.01 && St.ch.kink <= Math.max(60, Nw.ch.kink + 10) && St.ch.snap <= Math.max(0.06, Nw.ch.snap + 0.02), `the steel stays off the ground (${St.low.toFixed(2)} m); into the charge the hands move no faster than today's (+2 cm a tick, or 6: ${(St.ch.snap * 100).toFixed(1)} cm) and the wrist stays ≤ 60° or today's (${St.ch.kink.toFixed(0)}°)`);
+    assert(Nw.charge.on && Nw.charge.tip[1] > 1.0, `today's look keeps today's raised charge (point ${Nw.charge.tip[1].toFixed(2)} m up)`);
   } finally {
     CB.setLights(look0);
   }
@@ -14422,7 +14428,7 @@ async function scenarioSteelE() {
   const CB = await imp('src/entities/player/combat.js');
   const { SWINGS } = await imp('src/entities/player/swings.js');
   const { SPECIAL_STEEL_E } = await imp('src/entities/player/steelSpecialsE.js');
-  const { swingPhase } = await imp('src/entities/player/anim.js');
+  const { swingPhase, P: AP } = await imp('src/entities/player/anim.js');
   const { DIM: HD } = await imp('src/entities/player/model.js');
   const look0 = CB.lightsMode(), DEG = 180 / Math.PI;
   const KEYS = ['exec', 'draw'];
@@ -14456,7 +14462,7 @@ async function scenarioSteelE() {
     // ---- open air, the real presses: the arm, the blade, the kill frame
     const S = new THREE.Vector3(), E = new THREE.Vector3(), W = new THREE.Vector3(), T = new THREE.Vector3(), Hh = new THREE.Vector3(), L = new THREE.Vector3(), a1 = new THREE.Vector3(), a2 = new THREE.Vector3();
     const ang = (u, v) => Math.acos(clamp(u.normalize().dot(v.normalize()), -1, 1)) * DEG;
-    const air = (look, k) => {
+    const air = (look, k, ease = false) => {
       CB.setLights(look);
       const G = (last = build());
       fightSetup(G);
@@ -14465,7 +14471,9 @@ async function scenarioSteelE() {
       p.debug.teleport(d0.position.x + 14, d0.position.z + 14);
       p.yaw = Math.atan2(d0.position.x - p.position.x, d0.position.z - p.position.z);
       aimAt(G);
-      for (let i = 0; i < 40; i++) G.tick(DT);
+      // (`ease`: from the one-handed stand at ease, ADR-207; else from the fight's two-handed hold)
+      if (ease) p.debug.fightStance = false;
+      for (let i = 0; i < (ease ? 110 : 40); i++) G.tick(DT);
       const def = DEFS[k], F = [];
       let killF = -1, kills = 0;
       const acts = auditPresses(G, [[0, PRESS[k]]]);
@@ -14487,7 +14495,7 @@ async function scenarioSteelE() {
         // (the free hand from its own shoulder, in world axes: the dash moves the root under him)
         a1.setFromMatrixPosition(r.arms.L.upper.matrixWorld);
         const lsh = [L.x - a1.x, L.y - a1.y, L.z - a1.z];
-        F.push({ u: swingPhase(a.t, def.windup, def.active, def.recovery), elbow: ang(a1.subVectors(S, E), a2.subVectors(W, E)), ext: S.distanceTo(W) / (HD.upperArm + HD.foreArm), wrist: ang(a1.subVectors(W, E), a2.subVectors(T, Hh)), w: loc(W), l: lsh, tip: loc(T), y0: pos.y, tipY: T.y });
+        F.push({ u: swingPhase(a.t, def.windup, def.active, def.recovery), elbow: ang(a1.subVectors(S, E), a2.subVectors(W, E)), ext: S.distanceTo(W) / (HD.upperArm + HD.foreArm), wrist: ang(a1.subVectors(W, E), a2.subVectors(T, Hh)), w: loc(W), l: lsh, two: p.anim.cur[AP.twoHand], tip: loc(T), y0: pos.y, tipY: T.y });
         if (G.execs > prevEx) { prevEx = G.execs; killF = F.length - 1; }
       }
       kills = G.execs - ex0;
@@ -14496,7 +14504,7 @@ async function scenarioSteelE() {
     const rows = [];
     const bad = [];
     const takes = {};
-    for (const k of KEYS) takes[k] = { steel: air('steel', k), new: air('new', k) };
+    for (const k of KEYS) takes[k] = { steel: air('steel', k), new: air('new', k), ease: air('steel', k, true), easeNew: air('new', k, true) };
     for (const k of KEYS) {
       const R = takes[k].steel, F = R.F;
       const fin = F.every((q) => [...q.w, ...q.l, ...q.tip, q.elbow, q.wrist].every(Number.isFinite));
@@ -14504,9 +14512,10 @@ async function scenarioSteelE() {
       const wrMax = Math.max(...past.map((q) => q.wrist)), elMin = Math.min(...past.map((q) => q.elbow));
       const wrU = past.find((q) => q.wrist === wrMax)?.u ?? 0, elU = past.find((q) => q.elbow === elMin)?.u ?? 0;
       let snap = 0, snU = 0;
-      for (let i = 1; i < F.length; i++) { const d = Math.hypot(F[i].l[0] - F[i - 1].l[0], F[i].l[1] - F[i - 1].l[1], F[i].l[2] - F[i - 1].l[2]); if (d > snap) { snap = d; snU = F[i].u; } }
+      // (a free hand ON the grip (the fight's two-handed hold, ADR-207) goes where the sword hand drives it: measured only off it)
+      for (let i = 1; i < F.length; i++) { if (F[i].two > 0.3 || F[i - 1].two > 0.3) continue; const d = Math.hypot(F[i].l[0] - F[i - 1].l[0], F[i].l[1] - F[i - 1].l[1], F[i].l[2] - F[i - 1].l[2]); if (d > snap) { snap = d; snU = F[i].u; } }
       const low = Math.min(...F.map((q) => q.tipY));
-      let txt = `${F.length} frames, wrist at most ${wrMax.toFixed(0)}° past u 0.5 (u ${wrU.toFixed(2)}), elbow at least ${elMin.toFixed(0)}° (u ${elU.toFixed(2)}), the free hand at most ${(snap * 100).toFixed(1)} cm a tick from its shoulder (u ${snU.toFixed(2)}), the point at least ${low.toFixed(2)} m up`;
+      let txt = `${F.length} frames, wrist at most ${wrMax.toFixed(0)}° past u 0.5 (u ${wrU.toFixed(2)}), elbow at least ${elMin.toFixed(0)}° (u ${elU.toFixed(2)}), the free hand off the grip at most ${(snap * 100).toFixed(1)} cm a tick from its shoulder (u ${snU.toFixed(2)}), the point at least ${low.toFixed(2)} m up`;
       if (!fin) bad.push(`${k}: NaN`);
       // (the sword wrist: within 65°, or today's own for the same press)
       const wrN0 = Math.max(...takes[k].new.F.filter((q) => q.u >= 0.5).map((q) => q.wrist));
@@ -14515,10 +14524,24 @@ async function scenarioSteelE() {
       // (today's look for the same press, the same measure: the windups are 2-4 ticks long)
       const N = takes[k].new.F;
       let snapN = 0;
-      for (let i = 1; i < N.length; i++) snapN = Math.max(snapN, Math.hypot(N[i].l[0] - N[i - 1].l[0], N[i].l[1] - N[i - 1].l[1], N[i].l[2] - N[i - 1].l[2]));
+      for (let i = 1; i < N.length; i++) if (!(N[i].two > 0.3 || N[i - 1].two > 0.3)) snapN = Math.max(snapN, Math.hypot(N[i].l[0] - N[i - 1].l[0], N[i].l[1] - N[i - 1].l[1], N[i].l[2] - N[i - 1].l[2]));
       const wrN = Math.max(...N.filter((q) => q.u >= 0.5).map((q) => q.wrist));
       txt += ` (today's ${(snapN * 100).toFixed(1)}; today's wrist at most ${wrN.toFixed(0)}°)`;
       if (!(snap < Math.max(0.12, snapN + 0.03))) bad.push(`${k}: the free hand snaps ${(snap * 100).toFixed(1)} cm`);
+      {
+        // ... and from the one-handed stand at ease (ADR-207): the same rules for the free hand and the wrist
+        const Fe = takes[k].ease.F;
+        let snE = 0, snEu = 0;
+        for (let i = 1; i < Fe.length; i++) { if (Fe[i].two > 0.3 || Fe[i - 1].two > 0.3) continue; const d = Math.hypot(Fe[i].l[0] - Fe[i - 1].l[0], Fe[i].l[1] - Fe[i - 1].l[1], Fe[i].l[2] - Fe[i - 1].l[2]); if (d > snE) { snE = d; snEu = Fe[i].u; } }
+        const wrE = Math.max(...Fe.filter((q) => q.u >= 0.5).map((q) => q.wrist)), wrEu = Fe.find((q) => q.u >= 0.5 && q.wrist === wrE)?.u ?? 0;
+        if (process.env.GCD_SETTLE_TRACE) for (const q of Fe.slice(0, 8)) out(`     ${k} ease u ${q.u.toFixed(2)} two ${q.two.toFixed(2)} l ${q.l.map((v) => v.toFixed(3)).join(',')} w ${q.w.map((v) => v.toFixed(2)).join(',')}`);
+        const Fn = takes[k].easeNew.F;
+        let snEN = 0;
+        for (let i = 1; i < Fn.length; i++) if (!(Fn[i].two > 0.3 || Fn[i - 1].two > 0.3)) snEN = Math.max(snEN, Math.hypot(Fn[i].l[0] - Fn[i - 1].l[0], Fn[i].l[1] - Fn[i - 1].l[1], Fn[i].l[2] - Fn[i - 1].l[2]));
+        txt += ` | from at ease: the free hand at most ${(snE * 100).toFixed(1)} cm a tick (u ${snEu.toFixed(2)}; today's ${(snEN * 100).toFixed(1)}), the wrist at most ${wrE.toFixed(0)}° (u ${wrEu.toFixed(2)})`;
+        if (!(snE < Math.max(0.12, snEN + 0.03))) bad.push(`${k} from at ease: the free hand snaps ${(snE * 100).toFixed(1)} cm`);
+        if (!(wrE <= Math.max(65, wrN0))) bad.push(`${k} from at ease: the wrist ${wrE.toFixed(0)}°`);
+      }
       if (!(low >= -0.01)) bad.push(`${k}: the point in the ground`);
       if (k === 'exec') {
         const q = F[R.killF] ?? F[0];
