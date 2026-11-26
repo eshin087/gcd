@@ -192,7 +192,7 @@ export const GRASS = Object.freeze({
     thrust: Object.freeze({ w: 0.34, r: 0.45, k: [0.9, 1] }),
     dash: Object.freeze({ w: 0.62, k: [0.95, 1] }),
     blast: Object.freeze({ r: 0.95, k: [0.95, 1] }),
-    beam: Object.freeze({ w: 0.8, k: [1, 1] }),
+    beam: Object.freeze({ w: 0.8, k: [1, 1], pad: 0.6 }), // (a wide trench, scars' `o.w`: twice its half-width + pad)
     step: Object.freeze({ r: 0.5, k: [0.6, 0.85] }),
     lift: 0.08,
   }),

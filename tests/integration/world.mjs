@@ -44,6 +44,7 @@ const { createSkybreakRing, BUTTE, RING } = await imp('src/world/skybreakRing.js
 const { createWindlessGrove } = await imp('src/world/windlessGrove.js');
 const { createScriptHall } = await imp('src/world/scriptHall.js');
 const { createHalcyonPlaza, PLAZA, CITY } = await imp('src/world/halcyonPlaza.js');
+const { createVeiledCrossing, CROSSING, VEIL, THROWABLE } = await imp('src/world/veiledCrossing.js');
 // (every level the game can load, and the training room: the bite scenario walks them all, so a new
 // level is checked without being named here)
 const { LEVELS } = await imp('src/levels/index.js');
@@ -397,14 +398,14 @@ const S = {
 
   // ---------------------------------------------------------------- the sets list their breakables
   sets() {
-    for (const [name, make, kinds] of [['forest', createForest, ['tree', 'deadTree', 'stone', 'boulder', 'flagstone', 'bone']], ['courtyard', createCourtyard, ['pillar', 'lantern']], ['throne', createThroneHall, ['shard', 'slab', 'hover', 'swords', 'banner', 'cairn', 'cart']], ['ring a', ringSet('a'), ['tile', 'post', 'butte', 'butteTop', 'banner', 'mud', 'hoodoo']], ['ring b', ringSet('b'), ['tile', 'post', 'butte', 'butteTop', 'terrace', 'banner']], ['ring c', ringSet('c'), ['tile', 'post', 'butte', 'butteTop', 'spire', 'cairn']], ['grove', createWindlessGrove, ['bamboo', 'graveSword', 'paving', 'flagstone', 'stele', 'lantern', 'boulder', 'post']], ['script hall', createScriptHall, ['tile', 'step', 'flagstone', 'pillar', 'wall', 'liftDoor', 'gate', 'bench', 'planter', 'watcher', 'post', 'screen', 'rack', 'dais', 'codePillar']], ['city', createHalcyonPlaza, ['car', 'lamp', 'sign', 'shopSign', 'screen', 'statue', 'statueHead', 'statueArm', 'towerBase', 'towerTop', 'blockFront', 'kiosk', 'barrier', 'bench', 'hydrant', 'trafficLight', 'bin', 'shelter', 'asphalt', 'sidewalk']]]) {
+    for (const [name, make, kinds] of [['forest', createForest, ['tree', 'deadTree', 'stone', 'boulder', 'flagstone', 'bone']], ['courtyard', createCourtyard, ['pillar', 'lantern']], ['throne', createThroneHall, ['shard', 'slab', 'hover', 'swords', 'banner', 'cairn', 'cart']], ['ring a', ringSet('a'), ['tile', 'post', 'butte', 'butteTop', 'banner', 'mud', 'hoodoo']], ['ring b', ringSet('b'), ['tile', 'post', 'butte', 'butteTop', 'terrace', 'banner']], ['ring c', ringSet('c'), ['tile', 'post', 'butte', 'butteTop', 'spire', 'cairn']], ['grove', createWindlessGrove, ['bamboo', 'graveSword', 'paving', 'flagstone', 'stele', 'lantern', 'boulder', 'post']], ['script hall', createScriptHall, ['tile', 'step', 'flagstone', 'pillar', 'wall', 'liftDoor', 'gate', 'bench', 'planter', 'watcher', 'post', 'screen', 'rack', 'dais', 'codePillar']], ['city', createHalcyonPlaza, ['car', 'lamp', 'sign', 'shopSign', 'screen', 'statue', 'statueHead', 'statueArm', 'towerBase', 'towerTop', 'blockFront', 'kiosk', 'barrier', 'bench', 'hydrant', 'trafficLight', 'bin', 'shelter', 'asphalt', 'sidewalk']], ['crossing', createVeiledCrossing, ['car', 'slab', 'towerTop', 'towerBase', 'ruin', 'fallenTower', 'bridgeDeck', 'bridgePier', 'bridgeSpan', 'gantry', 'gantryBeam', 'bus', 'tank', 'heap', 'lamp', 'signal', 'floatSlab', 'floatCar', 'floatCorner', 'asphalt', 'sidewalk', 'scramble']]]) {
       const { D, set, colliders, U } = build(make);
       const L = D.list;
       // (Cinderwood: 664 since every tree of the wall and the landmarks break, 2026-11-16; 183 on 2026-11-15,
       // 80 before. The duelists' arenas break everything but their landmarks since 2026-11-16: the
       // courtyard 78 → 456 (293 of them its floor's slabs), the crater 36 → 222 (105 of its floor's plates); 255 on 2026-11-22, its felled trunks
       // swapped for the challengers' graves, banners and carts round it)
-      const [lo, hi] = { forest: [20, 1900], courtyard: [380, 520], throne: [180, 280], 'ring a': [1, 5000], 'ring b': [1, 5000], 'ring c': [1, 5000], terrace: [300, 520], grove: [420, 900], 'script hall': [300, 520], city: [300, 460] }[name]; // (the grove: 788 since ADR-151's clumps, 2026-11-22; 536 before)
+      const [lo, hi] = { forest: [20, 1900], courtyard: [380, 520], throne: [180, 280], 'ring a': [1, 5000], 'ring b': [1, 5000], 'ring c': [1, 5000], terrace: [300, 520], grove: [420, 900], 'script hall': [300, 520], city: [300, 460], crossing: [280, 520] }[name]; // (the grove: 788 since ADR-151's clumps, 2026-11-22; 536 before)
       assert(L.length >= lo && L.length <= hi, `${name}: ${L.length} breakables (${lo}..${hi})`);
       for (const k of kinds) assert(L.some((b) => b.kind === k), `${name}: has a breakable ${k}`);
       if (name === 'forest') {
@@ -2299,6 +2300,116 @@ const S = {
     { const per = {}; set.group.traverse((o) => { if (o.isMesh) per[o.name] = Math.round((o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3); }); out(`     triangles by mesh: ${JSON.stringify(per)}`); }
     out(`     the city: ${L.length} pieces (${batch} in the rigid batch, ${D.floor.length} floor), ${bones} bones, ${meshes.length} draw meshes (${meshes.join(', ')}), ${Math.round(tris)} triangles, ${colliders.circles.length} colliders`);
     assert(batch <= 110 && bones <= 340 && tris <= 160000, `the phone budget: ${batch} batch pieces (<= 110), ${bones} bones (<= 340), ${Math.round(tris)} triangles (<= 160k)`);
+  },
+
+  // ---------------------------------------------------------------- the Veiled Crossing: its pieces, its throwables, its two scenes, its budget
+  crossing() {
+    const W = build(createVeiledCrossing);
+    const { D, set, colliders, step, U, game } = W;
+    const L = D.list, by = (k) => L.filter((b) => b.kind === k);
+    const cars = by('car'), slabs = by('slab'), tops = by('towerTop'), bases = by('towerBase'), fallen = by('fallenTower');
+    const floats = L.filter((b) => b.scene === 'void');
+    assert(cars.length === 8 && cars.every((b) => b.mat === 'metal' && b.lift === 1 && b.cover && b.stub && !(b.stubR > 0)), `8 cars: metal, lifted by him, cover, a flat wreck left with no collider (a thrown hero goes over it) (${cars.length})`);
+    assert(slabs.length === 6 && slabs.every((b) => b.lift === 1), `6 road slabs torn up, lifted by him (${slabs.length})`);
+    assert(tops.length === 4 && bases.length === 4 && tops.every((t) => t.y0 === VEIL.tower.baseH && t.lift === 2) && bases.every((b) => b.top && tops.includes(b.top)), 'four two-stage tower stumps: a base holds its raised top (lift 2: only his pull)');
+    const secW = (VEIL.fallen.x1 - VEIL.fallen.x0) / VEIL.fallen.sections;
+    assert(fallen.length === VEIL.fallen.sections && secW >= 5 && fallen.every((b) => b.ranged && b.stub && !(b.stubR > 0) && b.cover), `the fallen tower: ${fallen.length} sections of ${secW.toFixed(1)} m (a 5 m line bores one), each leaving low rubble`);
+    assert(floats.length >= 6 && floats.every((b) => b.absent && b.y0 > 1 && THROWABLE.includes(b.kind) && b.lift === 1), `${floats.length} floating pieces of the void, out of the world until it comes, raised (y0 > 1 m)`);
+    assert(L.every((b) => b.floor || b.scene === 'crossing' || b.scene === 'void'), 'every piece but the floor belongs to a scene');
+    assert(by('lamp').filter((b) => b.def.lamp).length === 3, 'three lamp posts still burn (`lamp`: the lamps layer lights them)');
+    // nothing that stops a blade in the innermost metres; nothing tall south of the fight
+    const inner = L.filter((b) => !b.floor && !b.absent && Math.hypot(b.x, b.z) < CROSSING.clear + b.r && b.y0 < 2);
+    assert(inner.length === 0, `the innermost ${CROSSING.clear} m are clear (${inner.map((b) => b.kind).join(', ')})`);
+    const tall = L.filter((b) => !b.floor && !b.absent && b.z > 8 && b.y0 + b.h > 4.6 && Math.abs(b.x) < 14);
+    assert(tall.length === 0, `nothing over 4.6 m stands south of the fight in the frame (${tall.map((b) => `${b.kind} ${b.x.toFixed(0)},${b.z.toFixed(0)}`).join(' ')})`);
+    // a throwable is always within 12 m of the fight (every point inside the fight's ring)
+    const thr = L.filter((b) => !b.absent && ['car', 'slab', 'towerTop'].includes(b.kind));
+    let worst = 0, wx = 0, wz = 0;
+    for (let x = -CROSSING.r; x <= CROSSING.r; x += 1) for (let z = -CROSSING.r; z <= CROSSING.r; z += 1) {
+      if (Math.hypot(x, z) > CROSSING.r - 3) continue;
+      const d = Math.min(...thr.map((b) => Math.hypot(b.x - x, b.z - z)));
+      if (d > worst) { worst = d; wx = x; wz = z; }
+    }
+    assert(worst <= 12, `a throwable within 12 m of every point of the fight (the farthest: ${worst.toFixed(1)} m at ${wx}, ${wz})`);
+    // no gap between two circles the hero can be wedged in (a gap is wide enough to pass or closed)
+    const cs = colliders.circles.filter((c) => c.on !== false && c.tag !== 'bonfire');
+    const narrow = [];
+    for (let i = 0; i < cs.length; i++) for (let j = i + 1; j < cs.length; j++) {
+      const g = Math.hypot(cs[i].x - cs[j].x, cs[i].z - cs[j].z) - cs[i].r - cs[j].r;
+      // (a gap a third circle closes is no gap; under 0.35 m it is a wall the hero cannot enter)
+      const mx = (cs[i].x * cs[j].r + cs[j].x * cs[i].r) / (cs[i].r + cs[j].r), mz = (cs[i].z * cs[j].r + cs[j].z * cs[i].r) / (cs[i].r + cs[j].r);
+      if (cs.some((c, k) => k !== i && k !== j && Math.hypot(c.x - mx, c.z - mz) < c.r)) continue;
+      if (g > 0.35 && g < 0.95 && Math.hypot(cs[i].x, cs[i].z) < CROSSING.bound) narrow.push(`${cs[i].x.toFixed(1)},${cs[i].z.toFixed(1)}|${cs[j].x.toFixed(1)},${cs[j].z.toFixed(1)} ${g.toFixed(2)}`);
+    }
+    assert(narrow.length === 0, `no gap between two colliders narrower than the hero and not closed (${narrow.slice(0, 6).join('; ')})`);
+    // a blow on a tower's base goes to its top while the top stands; blows on the ground bring the top down
+    {
+      const b3 = bases[0], t3 = b3.top, th = t3.hp;
+      D.strike(b3.x + b3.r, b3.z, 0.6, 0.5, { kind: BLOW.BLUNT, by: 'boss', y: 1.0, src: D.swing() });
+      assert(t3.hp < th, `a ground blow on a tower's base wears its top (${th.toFixed(2)} -> ${t3.hp.toFixed(2)})`);
+      for (let i = 0; i < 40 && t3.state === STATE.INTACT; i++) {
+        D.strike(b3.x + b3.r, b3.z, 0.6, 1.5, { kind: BLOW.BLAST, by: 'boss', y: 1.0, src: D.swing() });
+        step(0.05);
+      }
+      step(3);
+      assert(t3.state !== STATE.INTACT, `blows at a tower's base bring its top down (${t3.state})`);
+    }
+    // a 5 m line across the fallen tower bores one hole through it (a section felled, its neighbours stand)
+    {
+      const mid = fallen[2], hp0 = fallen.map((b) => b.state);
+      for (let i = 0; i < 6; i++) D.sweep(mid.x, VEIL.fallen.z + 8, mid.x, VEIL.fallen.z - 8, 2.4, 3, { kind: BLOW.BLAST, by: 'boss', y: 1.5, src: D.swing() });
+      step(1);
+      const now = fallen.map((b) => b.state);
+      assert(mid.state !== STATE.INTACT && now.filter((s, i) => s !== hp0[i]).length <= 2, `a 5 m line bores the fallen tower (sections ${now.join(' ')})`);
+    }
+    D.reset();
+    // THE SCENES: to the void and back. Before it: a car broken to its wreck, a slab taken (gone), a heap chipped
+    set.ambience.setup(game);
+    const amb = (sec) => { for (let k = 0; k < Math.round(sec * 60); k++) { step(1 / 60); set.ambience.update(1 / 60, game); } };
+    const car = cars[1], slab = slabs[0], heap = by('heap')[0], lamp = by('lamp')[0];
+    for (let i = 0; i < 8 && car.state === STATE.INTACT; i++) D.strike(car.x, car.z, 0.6, 2, { kind: BLOW.BLUNT, by: 'boss', y: 0.8, src: D.swing() });
+    D.take(slab);
+    D.strike(heap.x + heap.r, heap.z, 0.3, 0.4, { kind: BLOW.BLUNT, by: 'boss', y: 0.5, src: D.swing() });
+    amb(0.3);
+    assert(car.state === STATE.BROKEN && slab.state === STATE.HELD && heap.state === STATE.INTACT && heap.hp < heap.hpMax, `before the void: the car broken (${car.state}), the slab held (${slab.state}), the heap chipped (${heap.hp.toFixed(2)})`);
+    const scenes = [];
+    game.events.on('world:scene', (e) => scenes.push(e.id));
+    assert(set.scenes.to('void', { x: 2, z: -1 }) && set.scenes.morphing && set.scenes.now === 'void', 'scenes.to(void): a front runs from his point');
+    amb(VEIL.morph.max + 0.3);
+    const cityIn = L.filter((b) => b.scene === 'crossing' && !b.absent).length, voidIn = floats.filter((b) => !b.absent).length;
+    assert(!set.scenes.morphing && cityIn === 0 && voidIn === floats.length && floats.every((b) => b.state === STATE.INTACT), `in the void: no city piece stands (${cityIn}), every floating piece does (${voidIn})`);
+    assert(colliders.circles.every((c) => !L.some((b) => b.scene === 'crossing' && b.colliders.includes(c))), 'the city\'s colliders are out of the world in the void');
+    // ... and they bob (their pivots move a little, whole steps)
+    const f0 = floats.map((b) => b.pivot.position.y);
+    amb(1.5);
+    assert(floats.some((b, i) => Math.abs(b.pivot.position.y - f0[i]) > 0.01) && floats.every((b) => Math.abs(b.pivot.position.y) <= VEIL.float.bob + 1e-6), 'the floating pieces bob slowly');
+    // a light by the scene: the void's fog close round the fight
+    assert(U.uFogFar.value < 20 && U.uMoonColor.value.r < 0.1, `the void's light: fog to ${U.uFogFar.value.toFixed(1)} m, the moon ${U.uMoonColor.value.r.toFixed(3)}`);
+    // back: as it was LEFT
+    assert(set.scenes.to('crossing', { x: 0, z: 0 }), 'scenes.to(crossing)');
+    amb(VEIL.morph.max + 0.3);
+    assert(floats.every((b) => b.absent), 'back in the crossing: the floating pieces are gone');
+    assert(car.state === STATE.BROKEN && !car.absent && car.stub.visible && !car.body.visible, `the car broken when the void came is back as its wreck (${car.state})`);
+    assert(slab.absent, 'the slab he held when the void came stays gone');
+    assert(heap.state === STATE.INTACT && !heap.absent && lamp.state === STATE.INTACT && !lamp.absent, 'the heap (chipped) and the lamp (whole) are back whole');
+    assert(L.filter((b) => b.scene === 'crossing' && !b.absent).length === L.filter((b) => b.scene === 'crossing').length - 1, 'every other city piece is back');
+    assert(scenes.join(',') === 'void,crossing', `world:scene as each morph starts (${scenes.join(', ')})`);
+    // setPhase: 1 → 2 → 3 → 1
+    assert(set.setPhase(2) === 2 && set.setPhase(3) === 3 && set.setPhase(1) === 1, 'setPhase: the light by his phase, and back');
+    // the reset: everything of the crossing stands, the void's are out
+    D.reset();
+    set.scenes.reset();
+    assert(L.every((b) => (b.scene === 'void') === b.absent) && L.filter((b) => !b.absent).every((b) => b.state === STATE.INTACT), 'the reset: the crossing whole again, the void\'s pieces out');
+    // the budget (against the plaza's)
+    const bones = rigidBones(U).count;
+    let tris = 0;
+    set.group.traverse((o) => { if (o.isMesh && o.visible && o.name !== 'rigidShadow') tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; });
+    const meshes = [];
+    set.group.traverse((o) => { if (o.isMesh && o.visible) meshes.push(o.name); });
+    const batch = L.filter((b) => !b.ranged).length;
+    { const per = {}; set.group.traverse((o) => { if (o.isMesh) per[o.name] = Math.round((o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3); }); out(`     triangles by mesh: ${JSON.stringify(per)}`); }
+    out(`     the crossing: ${L.length} pieces (${batch} in the rigid batch, ${D.floor.length} floor, ${floats.length} of the void), ${bones} bones, ${meshes.length} draw meshes (${meshes.join(', ')}), ${Math.round(tris)} triangles, ${colliders.circles.length} colliders`);
+    assert(batch <= 110 && bones <= 340 && tris <= 160000, `the phone budget (the plaza's): ${batch} batch pieces (<= 110), ${bones} bones (<= 340), ${Math.round(tris)} triangles (<= 160k)`);
   },
 
   // ---------------------------------------------------------------- grass the sword cuts (the scorch map's A)

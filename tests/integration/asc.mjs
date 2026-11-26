@@ -3880,7 +3880,9 @@ const S = {
   pursuit: scenarioPursuit,
 };
 // --- tune (opt-in: run only when named)
-const OPT_IN = { picks: scenarioPicks, probe: scenarioProbe, defend: scenarioDefend, audit: scenarioAudit, auditfight: scenarioAuditFight, whiff: scenarioWhiff };
+const OPT_IN = { picks: scenarioPicks, probe: scenarioProbe, defend: scenarioDefend, audit: scenarioAudit, auditfight: scenarioAuditFight, whiff: scenarioWhiff,
+  // (the bench, tests/integration/bench.mjs: the same mortal bots as veil.mjs)
+  bench: async () => { const { benchScenario } = await import('./bench.mjs'); return benchScenario({ build, duel, run, TUNING, TELL, DT, THREE, out, mulberry32 }, 'asc'); } };
 // GCD_SKIP (a comma list) leaves scenarios out of `all` (tests/run.mjs runs the long ones as
 // processes of their own, so a new scenario lands in `all`)
 const SKIP = new Set((process.env.GCD_SKIP ?? '').split(',').map((s) => s.trim()).filter(Boolean));

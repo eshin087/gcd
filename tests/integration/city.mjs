@@ -1158,8 +1158,10 @@ async function scenarioWin() {
     marksCheck(MK, 'city', out, assert);
     assert(won && d.phase === 3, `seed ${seed}: the fencing bot wins through all three phases`);
     // (130 since ADR-227: the bot's parries, pressed 0.12 s early, are perfect now (x 1.5 posture, the
-    // counter cut, his glare returned): the three seeds won in 140 / 137 / 142 s instead of 140 - 145)
-    const [lo, hi] = (process.env.GCD_WRANGE ?? '130,250').split(',').map(Number);
+    // counter cut, his glare returned): the three seeds won in 140 / 137 / 142 s instead of 140 - 145;
+    // 120 since ADR-242: his thrown pieces land on the road, and from phase 2 the seeds part: 145 / 125 / 149 s,
+    // the same mean as main's 149 / 137 / 141)
+    const [lo, hi] = (process.env.GCD_WRANGE ?? '120,250').split(',').map(Number);
     assert(T > lo && T < hi, `seed ${seed}: the fight takes ${T.toFixed(0)} s (${lo} - ${hi})`);
   }
   } finally {
@@ -1601,7 +1603,9 @@ const S = {
   looks: scenarioLooks,
   herolike: scenarioHeroLike,
 };
-const OPT_IN = new Set(['smoke', 'audit']);
+// (the bench, tests/integration/bench.mjs: the same mortal bots as veil.mjs, opt-in)
+S.bench = async () => { const { benchScenario } = await import('./bench.mjs'); return benchScenario({ build, duel, run, TUNING, TELL, DT, THREE, out, mulberry32 }, 'city'); };
+const OPT_IN = new Set(['smoke', 'audit', 'bench']);
 // GCD_SKIP (a comma list) leaves scenarios out of `all` (tests/run.mjs runs pace and win as processes of their own)
 const SKIP = new Set((process.env.GCD_SKIP ?? '').split(',').map((x) => x.trim()).filter(Boolean));
 const list = SCEN === 'all' ? Object.keys(S).filter((k) => !OPT_IN.has(k) && !SKIP.has(k)) : SCEN.split(',');

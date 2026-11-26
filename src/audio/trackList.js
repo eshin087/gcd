@@ -95,6 +95,16 @@ export const SCORE = {
         T('starless-p4'),
       ],
     },
+    // The Veiled Crossing borrows the Obsidian Throne's and the Skybreak Ring's scores until the owner
+    // picks its own by ear (core's stand-in, wave 0)
+    veil: {
+      explore: T('starless-explore', { xfade: 3 }),
+      phases: [
+        T('starless-p2', { xfade: 1.5 }),
+        T('starless-p3', { xfade: 0.5 }),
+        T('starless-p4'),
+      ],
+    },
   },
   victory: T('victory', { loop: false }), // Victory Fanfare Short, cynicmusic
   death: T('death', { loop: false }), // Death of a Ninja (Game Over), Joth

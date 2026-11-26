@@ -70,7 +70,9 @@ import { HANG } from './hangTuning.js';
 //   floorNear(x, z, r, out, o)            the intact floor slabs within r of (x, z), nearest first, into `out`
 //                                          (o: { kind, whole: true (not cracked), max }) → how many
 //   floor                                 the floor's slabs (pieces with `floor`)
-//   take(obj) / carry(obj, x, y, z, tilt, yaw) / throwTo(obj, tx, tz, o) / drop(obj)   lift and throw
+//   take(obj, o) / carry(obj, x, y, z, tilt, yaw) / throwTo(obj, tx, tz, o) / drop(obj, o)   lift and throw
+//                                         (take o.chip: the hero's blade bites it while it is held, under 1 hp it breaks; throwTo /
+//                                         drop o.ground: a raised piece (y0 > 0) comes down to the floor)
 //   topple(obj, dx, dz, by)               fell it that way
 //   reserve(obj, sec)                     incidental blows (o.incidental: a body walking) leave it alone
 //   setQuality(k)                         the phone budget (0.3 .. 1): debris, flames, wreckage, fires
@@ -126,6 +128,8 @@ const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 /** Eased 0..1 (smoothstep of a 0..1 argument). */
 const smooth01 = (t) => t * t * (3 - 2 * t);
 const NONE = Object.freeze({});
+/** (a held piece broken by a blow: let go to the floor) */
+const HELD_BREAK = Object.freeze({ ground: true });
 const NO_PIECES = Object.freeze([]);
 const LEAVES = 'o0O8@&';
 // (under ?dpTrees a crown is printed in digits, render/dragonProps.js: it bursts into the digits it is drawn in, the
@@ -973,6 +977,7 @@ export class Destructibles {
     // bites (BREAK.chip): the bricks a blow took (x, y, z, part each), the radius of the blow being dealt,
     // and counts since the reset (the tests' report)
     this._bits = new Float32Array(PICK_MAX * 4);
+    this._heldChips = []; // (held pieces the hero's blade bites: take o.chip)
     this._hangV = { x: 0, y: 0, z: 0 };
     this._hr = 0.6;
     this._hc = false; // the blow is over a disc: its centre
@@ -1529,7 +1534,103 @@ export class Destructibles {
         }
       }
     }
+    // (the hero's blade: what a boss holds with take(b, { chip: true }) is bitten where it passes)
+    if (o.by === 'player' && this._heldChips.length > 0) n += this._sweepHeld(ax, az, bx, bz, r, power, o, ya, yb, tilted);
     return n;
+  }
+
+  /** The held pieces (take o.chip) on the segment: bitten; one bitten under 1 hp breaks (let go, bursts). */
+  _sweepHeld(ax, az, bx, bz, r, power, o, ya, yb, tilted) {
+    const H = this._heldChips, s = this._seg2;
+    let n = 0;
+    for (let i = H.length - 1; i >= 0; i--) {
+      const b = H[i];
+      if (b.state !== HELD) {
+        b.heldChip = false;
+        H.splice(i, 1);
+        continue;
+      }
+      const cx = (Number.isFinite(b.px) ? b.px : b.x), cz = (Number.isFinite(b.pz) ? b.pz : b.z);
+      if (segDist(cx, cz, ax, az, bx, bz, s) > r + b.r) continue;
+      const lo = b.y0 + (Number.isFinite(b.py) ? b.py : 0), hi = lo + b.h, py = tilted ? ya + (yb - ya) * s.t : (o.y ?? 1);
+      if (py + r < lo || py - r > hi) continue;
+      let dx = o.dx, dz = o.dz;
+      if (!Number.isFinite(dx + dz) || dx * dx + dz * dz < 1e-6) {
+        dx = bx - ax;
+        dz = bz - az;
+      }
+      if (this._heldHit(b, power, o, ax + (bx - ax) * s.t, clamp(py, lo + 0.1, hi), az + (bz - az) * s.t, dx, dz)) n++;
+    }
+    return n;
+  }
+
+  /** A blow on a held piece: its bite where it struck (taken back to its rest frame through the carry's
+   *  pivot), the chips, the sound. A blow that would leave it under 1 hp BREAKS it: it is let go where it
+   *  hangs and bursts where it lands (drop; the carry's owner sees it is no longer held). */
+  _heldHit(b, power, o, px, py, pz, dx, dz) {
+    const now = this.game.time ?? 0, src = o.src ?? -1;
+    if (src >= 0 ? b.src === src : now - b.srcT < BREAK.rehit) return false;
+    b.src = src;
+    b.srcT = now;
+    const l = Math.hypot(dx, dz) || 1;
+    dx /= l;
+    dz /= l;
+    const kind = o.kind ?? BLOW.BLUNT, dmg = power * (b.M.take[kind] ?? 1);
+    const took = b.hpMax === Infinity || dmg < BREAK.scratch ? 0 : Math.min(dmg, Math.max(0, b.hp - 1));
+    const breaks = b.hpMax !== Infinity && dmg >= BREAK.scratch && b.hp - dmg < 1;
+    const tx = o.tx, along = tx !== undefined && Number.isFinite(tx + o.tz) && tx * tx + o.tz * o.tz > 0.25;
+    this._tx = along ? tx : 0;
+    this._tz = along ? o.tz : 0;
+    let bit = 0;
+    if (took > 0 && chipLook() !== '0' && !b.ranged && b.bricks) {
+      b.hp -= took;
+      // the point in the piece's own space (its node at x, y0, z; the carry moves and turns its pivot)
+      const P = b.pivot.position, q = this._q.copy(b.pivot.quaternion).invert();
+      const v = this._v.set(px - b.x - P.x, py - b.y0 - P.y, pz - b.z - P.z).applyQuaternion(q);
+      const C = BREAK.chip, share = Math.min(1, (took / b.hpMax) * C.k), out = this._bits;
+      bit = b.bricks.bite(v.x, v.y, v.z, clamp(this._hr + C.pad, C.reach[0], C.reach[1]), share, C.max, out);
+      if (bit === 0) bit = b.bricks.bite(v.x, v.y, v.z, Infinity, share, C.max, out);
+      if (bit > 0) {
+        // (each brick back into the world where it is drawn now, then falling as its letter)
+        const Q = b.pivot.quaternion;
+        for (let i = 0; i < bit; i++) {
+          const w = this._v.set(out[i * 4], out[i * 4 + 1], out[i * 4 + 2]).applyQuaternion(Q);
+          out[i * 4] = w.x + P.x;
+          out[i * 4 + 1] = w.y + P.y;
+          out[i * 4 + 2] = w.z + P.z;
+        }
+        this.bitten += bit;
+        const sx = b.x, sz = b.z;
+        b.x += P.x; // (its face is where it is carried: the letters fly out of it there)
+        b.z += P.z;
+        this._drop(b, out, bit, sx, b.y0, sz, dx, dz, took / b.hpMax);
+        b.x = sx;
+        b.z = sz;
+      }
+    }
+    const sx = b.x, sz = b.z;
+    b.x = (Number.isFinite(b.px) ? b.px : b.x);
+    b.z = (Number.isFinite(b.pz) ? b.pz : b.z);
+    this._chips(b, px, py, pz, dx, dz, power, bit > 0);
+    b.x = sx;
+    b.z = sz;
+    if (this._loud(b)) this._emit('chip', b, px, py, pz, power, o.by ?? 'world');
+    const S0 = this.struck;
+    if (S0.n < PASS_MAX) {
+      const e = S0.list[S0.n++];
+      e.b = b;
+      e.x = px;
+      e.y = py;
+      e.z = pz;
+      e.broke = breaks;
+    }
+    this._tx = this._tz = 0;
+    if (breaks) {
+      b.hp = 0;
+      this._emit('break', b, px, py, pz, power, o.by ?? 'world');
+      this.drop(b, HELD_BREAK);
+    }
+    return true;
   }
 
   /** A projectile's step a → b: the first cover in its way takes `power` and is returned; else null. */
@@ -2577,9 +2678,13 @@ export class Destructibles {
   }
 
   // ------------------------------------------------------------------ lifting and throwing
-  /** A boss lifts a piece: it leaves the ground (no collider, no nicks). The caller moves it with carry(). */
-  take(b) {
+  /** A boss lifts a piece: it leaves the ground (no collider, no nicks). The caller moves it with carry().
+   *  `o.chip`: while it is held the hero's blade bites it where it passes (letters off; a cut that would
+   *  leave it under 1 hp breaks it: let go, it bursts where it lands; sweepRec's held pass); absent, a held piece is out of every blow's reach. */
+  take(b, o = NONE) {
     if (!b || b.state !== INTACT || !(b.lift > 0)) return false;
+    b.heldChip = o.chip === true;
+    if (b.heldChip && !this._heldChips.includes(b)) this._heldChips.push(b);
     this._free(b);
     this._stopBurn(b);
     if (b.floor) {
@@ -2631,7 +2736,9 @@ export class Destructibles {
    * Throw a held piece at (tx, tz): it flies there in `time` s (default by distance), turning end over
    * end, smashing what stands in its way while it flies low, and bursts where it lands: a blast of
    * `power` over `radius` on the other pieces, a scar, its wreckage, and `onLand(b, x, z, radius)` for
-   * the thrower's own blow at the hero (the move's tell is the thrower's).
+   * the thrower's own blow at the hero (the move's tell is the thrower's). `o.ground`: a raised piece
+   * (y0 > 0: a tower's top, a sign, a floating slab) travels down to the floor and lands THERE (its pivot
+   * y0 down), not at its own base height; absent, as before.
    */
   throwTo(b, tx, tz, o = NONE) {
     if (!b || b.state !== HELD || !Number.isFinite(tx + tz)) return false;
@@ -2645,7 +2752,9 @@ export class Destructibles {
     b.tz = tz;
     b.vx = (tx - b.px) / T;
     b.vz = (tz - b.pz) / T;
-    b.vy = (0 - b.py + 0.5 * g * T * T) / T;
+    // (o.ground: a raised piece lands on the FLOOR, its pivot y0 down; else at its own base height)
+    b.landY = o.ground === true && b.y0 > 0 ? -b.y0 : 0;
+    b.vy = (b.landY - b.py + 0.5 * g * T * T) / T;
     b.ang = 0;
     const l = dist > 1e-3 ? dist : 1;
     b.dx = (tx - b.px) / l;
@@ -2658,10 +2767,11 @@ export class Destructibles {
     return true;
   }
 
-  /** Let a held piece go: it falls where it is and bursts. */
-  drop(b) {
+  /** Let a held piece go: it falls where it is and bursts (`o.ground`: a raised piece to the floor). */
+  drop(b, o = NONE) {
     if (!b || b.state !== HELD) return false;
-    return this.throwTo(b, b.px, b.pz, { time: Math.max(0.25, Math.sqrt((2 * Math.max(0, b.py)) / BREAK.thrown.gravity)), power: 0.3 });
+    const ground = o.ground === true && b.y0 > 0, fall = Math.max(0, b.py + (ground ? b.y0 : 0));
+    return this.throwTo(b, b.px, b.pz, { time: Math.max(0.25, Math.sqrt((2 * fall) / BREAK.thrown.gravity)), power: 0.3, ground });
   }
 
   _fly(b, dt) {
@@ -2673,26 +2783,27 @@ export class Destructibles {
     b.vy -= g * dt;
     b.py += b.vy * dt;
     b.ang += BREAK.thrown.spin * dt;
-    b.pivot.position.set(b.px - b.x, Math.max(0, b.py), b.pz - b.z);
+    const floorY = b.landY || 0, hy = b.py - floorY; // (its height over where it lands)
+    b.pivot.position.set(b.px - b.x, Math.max(floorY, b.py), b.pz - b.z);
     b.pivot.quaternion.setFromAxisAngle(this._axis.set(b.dz, 0, -b.dx), b.ang);
     this._place(b);
     this._pose(b);
     // low enough, it smashes what stands in its way (once each per throw)
     const F = BREAK.flight;
-    if (b.py < F.y && b.t < b.T) {
+    if (hy < F.y && b.t < b.T) {
       const o = this._flyBlow;
       o.by = b.by;
       o.dx = b.dx;
       o.dz = b.dz;
-      o.y = Math.max(0.5, b.py);
+      o.y = Math.max(0.5, floorY ? b.y0 + b.py : b.py);
       o.src = b.flySrc;
       o.spare = b;
       this.sweep(x0, z0, b.px, b.pz, b.r + 0.3, F.power * b.weight, o);
     }
-    if (b.t < b.T && b.py > -0.2) return;
+    if (b.t < b.T && hy > -0.2) return;
     // it lands
     const x = b.tx, z = b.tz;
-    b.pivot.position.set(x - b.x, 0, z - b.z);
+    b.pivot.position.set(x - b.x, floorY, z - b.z);
     this._place(b);
     this._crumble(b, b.dx, b.dz, false);
     b.state = GONE;
@@ -3297,8 +3408,10 @@ export class Destructibles {
   reset() {
     for (const b of this.list) {
       b.absent = false;
+      b.heldChip = false;
       this._restore(b);
     }
+    this._heldChips.length = 0;
     this.sceneNow = this.sceneHome;
     if (this.sceneHome !== null) for (const b of this.list) if (b.scene !== null && b.scene !== this.sceneHome) this._absent(b);
     this._rShake = 0;

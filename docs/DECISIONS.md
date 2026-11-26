@@ -6653,3 +6653,117 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
     at most so fast that it takes `TUNING.shotCue` 0.26 s from the gun (iron.js `_fire`; 23 m/s at 6 m, the old 24
     from ~6.6 m out; a burst's quiet slug unchanged). MOTIONFIX keeps the shipped moves at 480 mm/f2 and holds the
     rebuild to 700 (its spin kick after a straight kick: 657).
+## ADR-241 — Bai Wuji, the Untouched: a barrier opened by perfect answers, weight on every blow, the domain broken or caught, moves routed to three handlers (2026-11-26)
+
+- **Context:** the owner asked for a white-haired, blindfolded sorcerer after a famous character (the reference;
+  ADR-160's line holds: his names, the series' and its techniques' appear nowhere), "very hard in terms of skill
+  level", blows that throw the hero, "pretty much forcing the player to parry/dodge everything", the terrain part
+  of the fight. Their four answers: a ruined city crossing; the blade stops short of him and a perfect parry or a
+  perfect dodge opens him; a block holds, costs no health, throws the hero back and takes a big share of the guard,
+  and his spells cannot be blocked; at the last phase a closing sphere to perfect-dodge through, or be held and
+  struck once, then the last phase inside the void. One boss with melee, spells and terrain was too much for one
+  agent: it was to be built by six side by side.
+- **Decision:** a duelist on the shared engine (`entities/enemies/untouched/`, kit `untouched`, every new field
+  `wj*`), one bar, three phases (66 % THE BLINDFOLD COMES OFF, 30 % THE MEASURELESS).
+  1. THE ROUTING CONTRACT (the head of `untouched.js`): the rules are objects on the actor (`d.barrier`,
+     `d.pull`, `d.domain`, `d.fx`) and the moves live in three files (`moves/melee.js`, `moves/spells.js`,
+     `moves/terrain.js`) merged by `moves.js`. Each file exports `FIELDS` (the beat fields it owns) and
+     `create(d)` (its handler); a beat goes to the handler whose `FIELDS` name one of its fields, a move to every
+     handler one of its beats goes to; the hooks (`beatMotion`, `onImpact`, `hitPlayer`, `onHit`, `onParried`,
+     `reach`, `weigh`, `onActStart`, `frame`, `afterPose`, `stop`, `reset`) are called through `?.`. Poses the
+     same way (`ml` / `sp` / `tr` clip prefixes). No agent edited another's file.
+  2. THE BARRIER (`barrier.js`): while up his hurt spheres grow by 0.14 m and the hero's blade stops there (no
+     health, no posture; a short bounce he may cancel); `exact` hits pass. It opens on a perfect parry or a perfect
+     dodge of any blow (4.0 / 3.2 / 2.6 s by phase), on a flash counter, on a posture break, and by cracks (the
+     lead's addition: `cracks` ordinary parries open it for 2.4 / 2.0 / 1.6 s; 0 turns it off). Two strikes on
+     the shell in a row bring his counter.
+  3. WEIGHT: every landed blow throws (2.5 - 12 m); a blocked one slides the hero (`blockPush`, 3.4 m by
+     default) and costs a share of the guard (`guardCost`: the third block in a row opens it); a throw of 3 m or
+     more goes through the pieces behind him (`wjCrash`: a `world.impact` each, a little damage, never the last
+     HP). His spells are never blocked: red ones are rolled, the thrown pieces and the Yank's fist are blue; a held guard is opened (`breaksGuard`), never
+     paid in health.
+  4. THE DOMAIN (`domain.js`): the hand sign (a feint), then a red ring over the arena; the engine's own answer
+     decides: a perfect dodge ESCAPES (inside unharmed, the barrier open twice phase 3's time), anything else is
+     CAUGHT (`Player.hold` 0.95 s, one blow of 30 % of max health inside it, never lethal). Either way the scene is
+     the void; his death breaks it and the crossing comes back as it was left.
+  5. MERCY: no blow, spell or falling piece on a hero who is down; a beat that would keep him out of his own hands
+     past 1.2 s in a row becomes a silent feint (`TUNING.melee.mercy.lockCap`); `Player.hold` is capped at 1.2 s.
+     Tells no lower than Tian Lei's (`flashLead` 0.26, `minFirstWindup` 0.40, `minHitGap` 0.34; the suite's DATA
+     asserts it); the engine's fairness guard, cue ledger and pursuit stay on.
+- **Consequences:** a hero who only blocks loses, and so does one who never attacks (his patience, ADR-243). Six agents built it with
+  no conflict inside his folder; the merges met only in shared files (`player.js`, `destructibles.js`, `scars.js`).
+  Looks behind `?wjLook`, `?wjHair`, `?wjCity`, `?wjVoid`, `?wjShell`, `?wjNull`, the owner's picks in `PICKED`
+  (sheets in `docs/looks/veil/`). Events `dragon:barrier`, `dragon:domain`; his sounds ride `dragon:spell
+  { name: 'wj...' }`. No reward yet (the owner has not chosen one). The hero's own knockdown (1.3 s, the
+  engine's) is longer than the cap his blows keep.
+
+## ADR-242 — Pieces a boss throws can land on the floor; a held piece can be cut; Halcyon's throws land on the road (2026-11-26)
+
+- **Context:** Bai Wuji throws raised pieces (a tower's top, the void's floating slabs). `throwTo` landed a piece
+  at its own base height, so a tower top burst about 6 m up in the air (Halcyon's Falling Sky did the same, 6.5
+  m). A held piece was out of every blow's reach, so a car hanging over the hero could not be cut.
+- **Decision:** `destructibles.throwTo(b, tx, tz, { ground: true })` and `drop(b, { ground: true })`: a raised
+  piece (`y0 > 0`) travels down and lands on the floor (its pivot `y0` down); absent, as before.
+  `take(b, { chip: true })`: while held, the hero's blade bites it where it passes (the bite taken back to its rest
+  frame through the carry's pivot); a cut that would leave it under 1 hp breaks it: let go where it hangs, it
+  bursts where it lands. Halcyon's `_throw` (`halcyon/terrain.js`) passes `ground: true`: the owner's word,
+  2026-11-25 ("yes, Halcyon too").
+- **Consequences:** every option is opt-in: the other bosses' throws and holds are as they were. On the Crossing
+  the fallen tower's sections are liftable (`lift` 2) and a felled section leaves a 0.42 m spill, so the Null's
+  bore reads as a gap. Tests: veil `down` (a raised tower top comes down to the floor and lands there), `heldbreak`, `orbit` (a held
+  piece chipped by a cut it can take).
+
+## ADR-243 — Bai Wuji tuned on a bench of mortal bots, the third block opens the guard, his patience; floor marks thinned per level and hidden in the void; the bonfire out in the void (2026-11-26)
+
+- **Context:** "very hard", fairly: the god-mode fencing bot of the other suites says nothing about how hard a
+  fight is. Before the pass a bot that rolled every red and blocked the rest beat him 6 of 6 and the perfect
+  answerer won in 176 - 186 s. On the Crossing's black asphalt a whole fight of grit and rubble read as snow
+  (3577 of 3600 mark glyphs), the metal wrecks' rubble lay as orange embers, the city's marks showed in the
+  void, and the bonfire burned inside it. After round one the owner answered five questions: "3 blocks" (the
+  third block in a row opens the guard, not the second); a defender who never attacks must NOT outlast him
+  (round one's pace bot lived in every seed); the roller lasting ten minutes was "hard enough"; Halcyon Plaza's
+  metal rubble grey "if it looks better grey then yes"; the bonfire goes out in the void: yes.
+- **Decision:**
+  1. THE BENCH (`tests/integration/bench.mjs`; opt-in scenario `bench` in `veil.mjs`, `city.mjs`, `asc.mjs`):
+     five mortal bots (god mode off), whole fights, any duelist: `perfect` (the ceiling), `fencing` (answers 90 %
+     of his cues), `roller` (perfect-dodges reds, guards the rest), `blocker`, `pace` (never attacks). Env
+     `GCD_BSEEDS`, `GCD_BBOTS`, `GCD_BSECS`, `GCD_BSKILL`, `GCD_BMOVES`, `GCD_BFORM=n` (start and stay in phase
+     n), `GCD_BHIT=1` (each hit and the cues before it), `GCD_BTOUCH=1` (what reached him). Reported, not
+     asserted. Round two's fix: a bot stays busy until 0.25 s after each answered impact (the perfect bot had cut
+     0.07 s after a roll, which turned it into the roll attack and dropped its i-frames: the bot's error).
+  2. TARGETS AND NUMBERS: the perfect bot wins in about four minutes untouched; the fencing bot wins some; the
+     blocker and the pure defender die. `hp` 20000 -> 26000; `wjBarrier.cracks` 3 -> 4 (the fencing bot opened
+     him mostly by cracks); `wjWeight.guardCost` 0.4 -> 0.45 (two blocks in a row leave 10 of the meter, the third
+     opens it; it holds for blocks up to about 1 s apart, at 1.3 s the regen puts back 27 between); a block still
+     costs no health. The Wrecking Knot strikes only from its impact to +0.15 s (it met the hero before its cue or
+     after a perfect roll's i-frames: 46 damage to the perfect bot on one seed). `blockPush` 3.4 -> 2.4 would
+     give the roller 4 of 6: measured, not shipped.
+  3. PATIENCE (`untouched/patience.js`, `TUNING.wjPatience { after: 30, cue: 1.2, guardCost: 1 }`): if no cut has
+     reached him for 30 s (landed, stopped on the shell, or the flurry: `takeHit` calls `patience.touch()`), while
+     the fight is on and he is himself, he stops waiting: one cue (his eyes burn 1.2 s through `fx.eyes`, through
+     the band in phase 1 too, and the unveiling's sound `dragon:spell` 'wjUnveil'; no new event); until a cut
+     reaches him again every blocked blow costs the whole meter (`_weighted`): one block opens the guard. Every
+     blow still told, the 1.2 s lock cap and nothing on a downed hero hold. Why the pace bot lived: it never
+     damaged him (phase 1 forever); the guard opened ~100 times in 9 minutes, but the blow that emptied it was
+     itself blocked and his next came after the 0.55 s opening, mercy spared 1 - 11, and its early rolls
+     i-framed every red. Tried: no patience, alive 6 of 6; a one-block cost after 20 s, dead in 102 - 383 s; after
+     30 s (chosen) 201 - 525 s; after 40 s 83 - 518 s; a two-block cost (0.7) alive.
+  4. FLOOR MARKS: `SCAR.thin[levelId] = { grit, rubble, ground, cool }` (breakTuning): a level keeps that share
+     of the grit, the rubble and the crack spokes (the veil 0.35 / 0.25 / 0.4); `cool`: a material whose rubble
+     ends in an ember's colour (metal) lies cold grey. Halcyon Plaza: `city { 1, 1, 1, cool: true }` (the lead
+     judged from a side-by-side sheet that grey looks better: the orange read as embers that never go out and
+     clashed with the plaza's blue). `?coolRubble=0|1` overrides `cool` on any level. `scars.layer` (the tag new
+     marks carry: the set's scene) and `scars.shade(x, z, r, hide, except)` (marks hidden or shown in place, no
+     rebuild): the city's marks hide as the front to the void passes and come back on the return.
+  5. THE BONFIRE: `atmosphere.bonfireLit` / `setBonfireLit(lit)`: the Crossing's scenes put it out as the front
+     into the void passes it and light it as the front back passes; a reset relights it. Its flame, embers,
+     light and sound (`audio/ambience.js`) follow the flag; the living world's creatures read it too.
+- **Consequences** (round two's bench: 6 seeds, 600 s cap; wins of 6): perfect 6, 229 - 241 s, no hit taken;
+  fencing 2 (264 - 290 s), 4 dead (since ADR-227 its 0.12 s parries are all perfect); roller 6, 374 - 427 s
+  (easier through the third-block rule, not through patience: at 0.5 it won none); blocker dead at 89 s mean;
+  pace dead in all six, 203 - 488 s (mean 302). Round one's bench, Halcyon: perfect 133 - 155 s, fencing 6,
+  roller 3, blocker dead at 309 s, pace dead at 422 s; Tian Lei: perfect 42 - 60 s, fencing 6, roller 6, blocker
+  dead at 78 s, pace alive. A hero who fights never meets his patience. The fencing bot's 2 of 6 moves with the
+  seeds; the real renderer lays ~30 % more marks than headless. Tests: veil `patience`, `bonfire`; the suite's
+  ordinary parry is pressed 0.25 s ahead (registering 0.20 - 0.22 s before the impact: ADR-227's 0.20 s perfect
+  window).

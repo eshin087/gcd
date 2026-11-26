@@ -59,6 +59,8 @@ export const AFTERMATH_TUNING = Object.freeze({
   fox: level({ dust: { ...DEFAULT.dust, color: [0.44, 0.42, 0.39] } }),
   // the grove: no wind; smoke rises straight and the haze hangs where it is
   grove: level({ dust: { ...DEFAULT.dust, color: [0.4, 0.42, 0.37] } }),
+  // the Veiled Crossing: concrete dust, ash-grey; the smoke of burning wrecks a little bluer
+  veil: level({ dust: { ...DEFAULT.dust, color: [0.44, 0.44, 0.46] }, smoke: { ...DEFAULT.smoke, color: [0.4, 0.41, 0.45] } }),
   // (code, city: the defaults; no living-world tuning of their own yet)
 });
 
