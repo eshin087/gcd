@@ -1096,6 +1096,128 @@ Spec: `docs/specs/ash-disciple.md`.
   - [ ] Look at `slamBurst`, the Storm flurry and the frame cost of a phase-3 storm on a low-end device
   - [ ] The drawn steel is 0.44 m shorter than the hit segment: decide whether to shorten the reach
 
+## Polish — the bosses, their moves and the arenas, before ship (planned 2026-11-26)
+The owner's three asks for the game as it will be sold. Each look is the owner's pick from rendered
+options (the project rule); each pass is shown as zoomed sheets and film strips, not stills alone.
+
+### P1 — Every boss in the house ASCII look
+- [ ] An audit sheet: every boss beside the hero at the game camera, at 720p and on the phone preset,
+      each scored against STYLE.md "The house style" (small fine digits, a dark body lit only where
+      light catches, a stroke outline, no blank cell inside a shape); the ones that do not match named
+- [ ] The human bosses printed the hero's way (ADR-194) checked boss by boss; the ones it missed or
+      only recoloured brought over in their own colours
+- [ ] The non-human bosses and the summons (the wyrm, the fox's paper copies, spells and bolts in the
+      fire field) checked the same way
+- [ ] The fixes in order of how far each is from the look; options rendered per boss for the owner
+- [ ] A test or sheet script so a new boss is checked against the look before it ships
+- [ ] Done alongside S2: a boss whose look changes for the legal review is redrawn once, not twice
+
+### P2 — Every boss's swings and motion, natural and polished from the reference footage
+- [ ] An audit per boss and per move: windup, swing, follow-through, recovery and footwork, measured
+      (arm snaps, hand speed, pops) and filmed at the game camera from four sides
+- [ ] The reference footage the hero was built from (ADR-202, ADR-204, ADR-207) applied to the
+      bosses that fight with a blade or bare hands: weight, stance, steps, the blade's path
+- [ ] Hit reactions, staggers, phase changes and deaths audited the same way
+- [ ] Tells kept readable: a move's windup and its blue / red timing do not change unless the owner
+      asks (COMBAT.md); the pace meters and the duel suites stay green
+- [ ] Each boss's polish as its own PR, the before / after strips shown to the owner
+
+### P3 — Arenas that are part of the fight, better backgrounds, cooler destruction
+- [ ] Arenas the fight uses: cover a boss's shot breaks, pillars a blow brings down, ledges and
+      height, hazards that change by phase, a boss that throws or cuts through the set
+- [ ] Each arena changes with the fight: phase by phase it breaks further, so the last phase is
+      fought in what the first left (an arena's states, not only scattered chips)
+- [ ] Better backgrounds: far sets and skylines per level (big ASCII landmarks, through the prop
+      art path), depth and silhouettes behind the arena, each level its own read at a glance
+- [ ] Cooler destruction: bigger falls (a tower, a statue, a wall coming down in pieces), debris
+      that lands and stays, dust and fire that follow (the fire field, LetterBatch), the hit's weight
+      in sound and camera; all through the destruction path (ADR-107, ADR-132, ADR-177)
+- [ ] Every new piece measured against the cost budget (ADR-206) and on the phone preset: the
+      destruction must hold 60 fps on the S1 target devices
+- [ ] Options rendered per level for the owner before anything is built
+
+## Ship — Steam (Windows / Mac) and the app stores (iOS / Android) (planned 2026-11-25)
+The owner's goal: sell gcd on Steam and in the App Store / Google Play. The game stays a web game
+(Three.js, WebGL2) and ships inside a wrapper; no engine rewrite. Order: performance first (it shapes
+how every later effect is built), the legal review before any store page, the polish above (bosses,
+their moves, the arenas), the wrappers when the content is closer to done. Sizes today: ~1.35 MB of code gzipped, ~15 MB of music fetched per level.
+
+### S1 — Performance on the devices we sell to
+The frame's cost is M1.89's work (ADR-199, ADR-200, ADR-201, ADR-206: AUTO quality, the still shadow
+map, the cost budget, `npm run perf`); its open items stay there. This list is only what shipping adds.
+- [ ] Name the target devices and the floor: 60 fps on an iPhone of the last ~4 years, a mid-range
+      Android (a Snapdragon 7 / Galaxy A class phone), the Steam Deck, an integrated-graphics laptop,
+      an M1 MacBook Air; a stated minimum below which the store page says "not supported"
+- [ ] A first baseline on a real mid-range Android phone (`npm run perf --save`); today only an
+      RTX 4090 and the owner's iPhone Pro have been measured
+- [ ] Heat and battery on a phone: frame time after 15 minutes of play (phones throttle when hot);
+      AUTO must settle, not hunt; a 30 fps battery mode if the floor device needs one
+- [ ] Memory on a phone: the page's peak GPU and JS memory per level, and through a boss rush (levels
+      are page loads today; a wrapper keeps one process alive); iOS kills a web view that grows too far
+- [ ] A lost WebGL context is restored (`webglcontextlost` is not handled today): phones drop the
+      context when the app goes to the background
+- [ ] 120 Hz screens (iPad / iPhone ProMotion, gaming monitors, the Deck's 90 Hz): the sim's step and
+      the touch cap behave at every refresh rate
+- [ ] First-load time on a phone inside the wrapper (shader compile is ~5 s on desktop, ADR-196's
+      loading screen); a shader warm-up or cache if the phone is much slower
+- [ ] Each level's code as its own chunk once the bundle passes ~5 MB gzipped (one file today)
+- [ ] The Safari / WebKit path kept green: iOS and a Tauri Mac build both run on it; a WebKit pass
+      in the release checklist
+
+### S2 — Legal review before a paid release
+- [x] A review of every boss, move, name, sound and track that nods at an existing work: what carries
+      the reference, the risk, the smallest changes that keep the nod readable (report in
+      `.claude/legal-review/REPORT.md`, untracked, 2026-11-25)
+- [ ] Rework the four high-risk bosses from one character's signature marks to the archetype (keep the
+      fighting style, mood and colour temperature; drop the silhouette, costume and signature technique
+      shapes): Halcyon, Xin Yi (and his hall), Tian Lei, Wen Yao; the owner picks per boss from the
+      report's three options, rendered
+- [ ] Varr Nihil: blades that do not read as light blades, no ribbed breather (medium risk)
+- [ ] The owner decides: all eight levels at launch, or launch with the low-risk ones first
+- [ ] The homage looks stripped from the release build (a build flag; the dev build may keep them)
+- [ ] The GitHub repo made private before a store page goes live (its docs record the intent)
+- [ ] Third-party notices shipped: Three.js's MIT text (stripped today by `legalComments: 'none'`), the
+      fonts' OFL text with the font files bundled in the store builds
+- [ ] The few move names that translate a source's technique renamed with each reworked boss
+- [ ] A trademark search for "gcd" (classes 9 / 41) before buying a store page
+- [ ] Sound files from a second-hand uploader replaced or traced (see the report)
+- [ ] A games / IP lawyer reads the result before the paid release
+- [ ] Licences on file for every shipped asset (music, sounds, font, libraries) and a credits screen
+
+### S3 — Saves and settings that survive a wrapper
+- [ ] One save module in front of `localStorage` (records, unlocks, bindings, settings read it today
+      from several files); a versioned save format with migration
+- [ ] Saves written to real files in the wrappers; Steam Cloud; iCloud / Google Play saves decided
+- [ ] Settings menu complete: volume, quality, keybinds, touch layout, language (M2's item)
+
+### S4 — Desktop: Steam
+- [ ] The wrapper chosen (Electron: the same Chromium everywhere, ~150 MB; Tauri: small, WebKit on
+      Mac) from a measured trial of both on Windows and Mac
+- [ ] Steamworks: achievements, cloud saves, the overlay, rich presence; controller glyphs
+- [ ] Steam Deck verified: 1280x800, the controller only, text sizes, suspend / resume
+- [ ] Fullscreen / windowed / resolution options; Alt-Tab and focus loss pause the game
+- [ ] Signed and notarised builds (Windows code signing, Apple notarisation); an auto-built release in CI
+- [ ] Store page: capsule art, trailer, screenshots, a demo (the web build can stay the free demo)
+
+### S5 — Mobile: App Store and Google Play
+- [ ] A Capacitor wrapper; the app behaves as an app, not a page (no page zoom, no pull-to-refresh,
+      no text selection, safe areas for the notch and the home bar, landscape lock or both
+      orientations decided); Apple rejects apps that feel like a wrapped website
+- [ ] Pause and audio stop when the app goes to the background; resume without a reload
+- [ ] Bluetooth controllers on iOS / Android; haptics on hits, parries and perfect dodges
+- [ ] Touch controls reviewed on small phones and tablets; the tutorial teaches touch
+- [ ] Icons, splash screens, store listings, age ratings, privacy labels (telemetry declared or off)
+- [ ] The business model decided (paid once, or free with the full game as one purchase); the stores'
+      purchase APIs only if the second
+
+### S6 — For everyone
+- [ ] Text out of the code into a string table; Simplified Chinese first (the genre's audience),
+      then Japanese / Korean; a font and atlas check for the HUD in each
+- [ ] Accessibility: colour-blind safe tells (blue / red carry a shape or sound too), a hold-to-guard
+      toggle, screen shake and flash strength, subtitles for spoken lines
+- [ ] Crash and error reporting from the wrappers (opt-in), so a frozen frame on a player's device is seen
+- [ ] A release checklist: every level on every target device, the cost budget, the WebKit pass
+
 ## M2 — The boss rush's foundations (revised 2026-11-12, ADR-059)
 - [ ] Techniques: a slot system, a meter filled by parries and perfect dodges, an equip screen; the
       Ash Disciple's technique first (the next PR). The store it can read exists: `game/unlocks.js` (ADR-146)
