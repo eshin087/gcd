@@ -4,7 +4,10 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and eight pieces of work since 0.4.0:
+One hundred and nine pieces of work since 0.4.0:
+- **BENCH in the performance readout** (2026-11-26, ADR-215). *Added:* with `?perf`, BENCH holds the game still for a
+  few seconds and measures what each drawing step (shadows, world, letters, fire, glow, effects) costs your
+  device's graphics chip; REPORT then includes it.
 - **A performance readout on your phone, and smoother first breaks** (2026-11-26, ADR-209). *Added:* `?perf` in the
   address shows the frame rate and the frame's cost at the foot of the screen, with a REPORT button that shares
   or copies what each part of the game spent and the slowest frames. *Changed:* the cracked and broken floors
