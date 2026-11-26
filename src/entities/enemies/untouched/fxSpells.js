@@ -42,6 +42,7 @@ const RED = [3.2, 0.28, 0.24], RED_END = [0.6, 0.02, 0.03];
 const WHITE = [3.4, 3.4, 3.6];
 const VIO = [1.4, 0.5, 2.4], VIO_END = [0.2, 0.05, 0.45];
 const DUSTC = [0.3, 0.28, 0.26], DUST_END = [0.12, 0.11, 0.1];
+const GRIT = [0.62, 0.66, 0.78], GRIT_END = [0.3, 0.36, 0.55]; // (the floor is dark: pale grit, or it is not seen)
 const STONE = [0.44, 0.43, 0.42];
 const L_AZURE = [0.45, 0.68, 1.0], L_CRIMSON = [1.0, 0.14, 0.12], L_VIOLET = [0.74, 0.4, 1.0], L_WHITE = [0.9, 0.9, 1.0];
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
@@ -146,13 +147,13 @@ export function drawKnot(F, knot, dt) {
   if (lf > 0 && I > 0.01) {
     // the knot: a white heart, blue turning tight round it, a whirl
     const P = F._toCamera(x, y, z);
-    F._blob(P.x, P.y, P.z, 0, 0, 0, lf, 0.15, 0.15, 1.3 * I, 1.3 * I, K_STEEL);
-    F._blob(P.x, P.y, P.z, 0, 0, 0, lf, 0.34, 0.34, 0.62 * I, 0.62 * I, K_VOID);
+    F._blob(P.x, P.y, P.z, 0, 0, 0, lf, 0.18, 0.18, 1.3 * I, 1.3 * I, K_STEEL);
+    F._blob(P.x, P.y, P.z, 0, 0, 0, lf, 0.5, 0.5, 0.85 * I, 0.85 * I, K_VOID);
     for (let i = 0; i < 7; i++) {
-      const a = t * 11 + (i / 7) * TAU, rr = (0.17 + 0.08 * Math.sin(t * 7 + i * 1.7)) * grow;
-      F._blob(x + Math.cos(a) * rr, y + Math.sin(a * 2 + i) * 0.09, z + Math.sin(a) * rr, 0, 0, 0, lf, 0.24, 0.24, 0.44 * I, 0.44 * I, K_VOID);
+      const a = t * 11 + (i / 7) * TAU, rr = (0.24 + 0.1 * Math.sin(t * 7 + i * 1.7)) * grow;
+      F._blob(x + Math.cos(a) * rr, y + Math.sin(a * 2 + i) * 0.09, z + Math.sin(a) * rr, 0, 0, 0, lf, 0.3, 0.3, 0.55 * I, 0.55 * I, K_VOID);
     }
-    F._ring(x, y, z, 0.44 * grow, 12, 0.26, 0.34 * I, K_VOID, 3, -t * 7);
+    F._ring(x, y, z, 0.62 * grow, 14, 0.3, 0.42 * I, K_VOID, 3, -t * 7);
     // its place on the floor: a faint blue whirl turning in
     F._ring(x, GROUND_Y, z, 1.0, 16, 0.34, 0.15 * GROUND_GAIN * I, K_VOID, 4, t * 3);
     F._ring(x, GROUND_Y, z, Math.min(4, reach * 0.45), 24, 0.32, 0.08 * GROUND_GAIN * I, K_VOID, 5, t * 2);
@@ -187,12 +188,12 @@ export function drawKnot(F, knot, dt) {
       st.accF -= 1;
       const a = F.lr() * TAU, rr = F.lrand(1.2, reach), sp = 1.2 + 3.4 * (1 - rr / reach) + 1.4 * str;
       const sx = x + Math.cos(a) * rr, sz = z + Math.sin(a) * rr, T = Math.min(1.6, Math.max(0.2, (rr - 0.5) / sp));
-      const o = F._rec(sx, 0.05, sz, T, F.lrand(0.22, 0.3), 0.18, ".,:~=", DUSTC, DUST_END);
+      const o = F._rec(sx, 0.05, sz, T, F.lrand(0.22, 0.3), 0.18, ".,:~=", GRIT, GRIT_END);
       o.vx = (-Math.cos(a) * sp);
       o.vz = (-Math.sin(a) * sp);
       o.rot = F._screenRot(o.vx, 0, o.vz) + Math.PI / 2;
-      o.alpha = 0.85;
-      o.alphaEnd = 0.25;
+      o.alpha = 0.9;
+      o.alphaEnd = 0.5;
       F._spawn(F.alpha, o);
     }
     // bricks torn up and flying in
@@ -379,20 +380,20 @@ function point(F, v, d, side, P) {
 
 function miniKnot(F, x, y, z, lf, k, t) {
   const P = F._toCamera(x, y, z);
-  F._blob(P.x, P.y, P.z, 0, 0, 0, lf, 0.1, 0.1, 1.2, 1.2, K_STEEL);
-  F._blob(P.x, P.y, P.z, 0, 0, 0, lf, 0.24, 0.24, 0.5 + 0.3 * k, 0.5 + 0.3 * k, K_VOID);
+  F._blob(P.x, P.y, P.z, 0, 0, 0, lf, 0.12, 0.12, 1.25, 1.25, K_STEEL);
+  F._blob(P.x, P.y, P.z, 0, 0, 0, lf, 0.38, 0.38, 0.6 + 0.35 * k, 0.6 + 0.35 * k, K_VOID);
   for (let i = 0; i < 4; i++) {
     const a = t * 13 + (i / 4) * TAU;
-    F._blob(x + Math.cos(a) * 0.13, y + Math.sin(a * 2) * 0.05, z + Math.sin(a) * 0.13, 0, 0, 0, lf, 0.18, 0.18, 0.38, 0.38, K_VOID);
+    F._blob(x + Math.cos(a) * 0.2, y + Math.sin(a * 2) * 0.06, z + Math.sin(a) * 0.2, 0, 0, 0, lf, 0.24, 0.24, 0.48, 0.48, K_VOID);
   }
 }
 function miniPoint(F, x, y, z, lf, k, t) {
   const P = F._toCamera(x, y, z), A = F._axes();
-  F._blob(P.x, P.y, P.z, 0, 0, 0, lf, 0.08, 0.08, 1.35, 1.35, K_STEEL);
-  F._blob(P.x, P.y, P.z, 0, 0, 0, lf, 0.18, 0.18, 0.9 + 0.2 * k, 0.9 + 0.2 * k, K_FIRE);
+  F._blob(P.x, P.y, P.z, 0, 0, 0, lf, 0.1, 0.1, 1.35, 1.35, K_STEEL);
+  F._blob(P.x, P.y, P.z, 0, 0, 0, lf, 0.3, 0.3, 0.95 + 0.25 * k, 0.95 + 0.25 * k, K_FIRE);
   for (let i = 0; i < 6; i++) {
-    const a = (i / 6) * TAU - t * 2, ca = Math.cos(a) * 0.17, sa = Math.sin(a) * 0.17;
-    F._blob(P.x + A.rx * ca + A.ux * sa, P.y + A.ry * ca + A.uy * sa, P.z + A.rz * ca + A.uz * sa, 0, 0, 0, lf, 0.14, 0.14, 0.34, 0.34, K_FIRE);
+    const a = (i / 6) * TAU - t * 2, ca = Math.cos(a) * 0.26, sa = Math.sin(a) * 0.26;
+    F._blob(P.x + A.rx * ca + A.ux * sa, P.y + A.ry * ca + A.uy * sa, P.z + A.rz * ca + A.uz * sa, 0, 0, 0, lf, 0.2, 0.2, 0.4, 0.4, K_FIRE);
   }
 }
 
@@ -429,7 +430,7 @@ export function nullCharge(F, d, k, blue, red) {
       o.drag = 4;
       F._spawn(F.add, o);
     }
-    F._light({ x: mx, y: my, z: mz, color: L_WHITE, intensity: 5, radius: 7, life: 0.18, fade: 0.15 });
+    F._light({ x: mx, y: my, z: mz, color: L_WHITE, intensity: 2.4, radius: 4, life: 0.16, fade: 0.14 });
     F._say('wjNullMerge', mx, mz);
   }
   if (N.merged) {
@@ -528,7 +529,7 @@ export function nullBeam(F, seg, k) {
       const row = Sc.ok ? Sc.mpp * Sc.ch : 0.2;
       const half = bore ? 2 : 1;
       for (let j = -half; j <= half; j++) {
-        const aj = Math.abs(j), h = (aj === 0 ? 1.25 : aj === 1 ? 0.95 : 0.6) * Math.min(1, I * 1.4), off = j * row * 0.98;
+        const aj = Math.abs(j), h = (aj === 0 ? 1.15 : aj === 1 ? 0.72 : 0.5) * Math.min(1, I * 1.4), off = j * row * 0.98;
         const x0 = ax + ux * s0 + C.x * off, y0 = y + C.y * off, z0 = az + uz * s0 + C.z * off;
         F._ink(x0, y0, z0, ax + ux * s1 + C.x * off, y + C.y * off, az + uz * s1 + C.z * off, 0, h, 0, h, 0, aj === 0 ? K_STEEL : K_VOID);
       }
@@ -543,10 +544,10 @@ export function nullBeam(F, seg, k) {
           const off = b * 2 * hw + jit;
           if (bore) {
             // (round: the camera-plane cross-section, brightest at its middle)
-            const h = (0.24 - 0.12 * Math.abs(b) * 2 + 0.04 * flow) * I * ov;
+            const h = (0.2 - 0.1 * Math.abs(b) * 2 + 0.04 * flow) * I * ov;
             F._blob(x0 + C.x * off, y + C.y * off, z0 + C.z * off, 0, 0, 0, lf, size, size, h, h, K_VOID);
           } else {
-            const h = (0.2 + 0.04 * flow) * I * ov;
+            const h = (0.16 + 0.04 * flow) * I * ov;
             F._blob(x0 + cx * off, y, z0 + cz * off, 0, 0, 0, lf, size, size, h, h, K_VOID);
           }
         }

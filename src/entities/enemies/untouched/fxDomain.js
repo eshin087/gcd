@@ -82,21 +82,24 @@ export function domainSign(F, d, k) {
   if (lf > 0) {
     // the point of dark: near-black letters of one cell (it drinks the light)
     for (let i = 0; i < 3; i++) {
-      const o = F._rec(P.x + A.rx * (i - 1) * 0.05, P.y + A.ry * (i - 1) * 0.05, P.z + A.rz * (i - 1) * 0.05, lf * 1.2, 0.15 + 0.05 * k, 0.15 + 0.05 * k, '@#8', DARK, DARK);
+      const o = F._rec(P.x + A.rx * (i - 1) * 0.05, P.y + A.ry * (i - 1) * 0.05, P.z + A.rz * (i - 1) * 0.05, lf * 1.2, 0.2 + 0.1 * k, 0.2 + 0.1 * k, '@#8', DARK, DARK);
       o.alphaEnd = 1;
       F._spawn(F.alpha, o);
     }
     // its pale rim, widening
-    const rr = 0.12 + 0.14 * k, n = 10;
+    const rr = 0.2 + 0.3 * k, n = 14;
     for (let i = 0; i < n; i++) {
       const a = (i / n) * TAU + now * 2, ca = Math.cos(a) * rr, sa = Math.sin(a) * rr;
-      F._blob(P.x + A.rx * ca + A.ux * sa, P.y + A.ry * ca + A.uy * sa, P.z + A.rz * ca + A.uz * sa, 0, 0, 0, lf, 0.1, 0.1, 0.55 + 0.55 * k, 0.55 + 0.55 * k, K_STEEL);
+      F._blob(P.x + A.rx * ca + A.ux * sa, P.y + A.ry * ca + A.uy * sa, P.z + A.rz * ca + A.uz * sa, 0, 0, 0, lf, 0.14, 0.14, 0.6 + 0.5 * k, 0.6 + 0.5 * k, K_STEEL);
     }
     // violet round it
     for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * TAU - now * 3, ca = Math.cos(a) * (rr + 0.16), sa = Math.sin(a) * (rr + 0.16);
-      F._blob(P.x + A.rx * ca + A.ux * sa, P.y + A.ry * ca + A.uy * sa, P.z + A.rz * ca + A.uz * sa, 0, 0, 0, lf, 0.22, 0.22, 0.3 * k + 0.08, 0.3 * k + 0.08, K_VOID);
+      const a = (i / 6) * TAU - now * 3, ca = Math.cos(a) * (rr + 0.2), sa = Math.sin(a) * (rr + 0.2);
+      F._blob(P.x + A.rx * ca + A.ux * sa, P.y + A.ry * ca + A.uy * sa, P.z + A.rz * ca + A.uz * sa, 0, 0, 0, lf, 0.3, 0.3, 0.36 * k + 0.1, 0.36 * k + 0.1, K_VOID);
     }
+    // the realm's first breath: a faint violet ring on the floor round him, widening
+    const p = d.position;
+    if (p && k > 0.05) F._ring(p.x, GROUND_Y, p.z, 1.2 + 2.6 * k, 40, 0.34, 0.14 * GROUND_GAIN * k, K_VOID, 6, now * 1.5);
   }
   // motes drawn into it from all round
   const fdt = Math.max(0, Math.min(0.1, fin(F.game.fxDt, 0.016)));
@@ -156,9 +159,10 @@ function wallDraw(F, x, z, rw, kr, ha, fade = 1) {
       if (kr > 0.02) {
         const da = Math.abs(wrap(a - ha));
         if (da < 0.7) {
-          const hr = (0.26 + 0.12 * kr) * kr * (1 - da / 0.7);
-          F._blob(bx, 0.75, bz, 0, 0, 0, lf, 0.42, 0.42, hr, hr, K_FIRE);
-          F._blob(bx, 1.35, bz, 0, 0, 0, lf, 0.36, 0.36, hr * 0.8, hr * 0.8, K_FIRE);
+          const hr = (0.4 + 0.3 * kr) * kr * (1 - (da / 0.7) * (da / 0.7));
+          F._blob(bx, 0.75, bz, 0, 0, 0, lf, 0.5, 0.5, hr, hr, K_FIRE);
+          F._blob(bx, 1.35, bz, 0, 0, 0, lf, 0.46, 0.46, hr * 0.85, hr * 0.85, K_FIRE);
+          F._blob(bx, 2.0, bz, 0, 0, 0, lf, 0.4, 0.4, hr * 0.6, hr * 0.6, K_FIRE);
         }
       }
       drawn++;
@@ -194,7 +198,7 @@ export function domainWall(F, x, z, r, k) {
   // where it will meet him: a thin red ring on the floor at his distance (gone once it is there)
   const lf = F._frame();
   if (kr > 0.05 && rw > dh + 0.25 && lf > 0 && dh > 0.6) {
-    const hr = 0.34 * GROUND_GAIN * kr, n = 14;
+    const hr = 0.48 * GROUND_GAIN * kr, n = 14;
     for (let i = 0; i < n; i++) {
       if (i % 2) continue;
       const a0 = H.a - 0.55 + (1.1 * i) / n, a1 = H.a - 0.55 + (1.1 * (i + 1)) / n;
@@ -262,8 +266,8 @@ export function domainBreak(F, x, z) {
     }
   }
   F._violet(1.4);
-  F._blob(x, 1.6, z, 0, 0, 0, 0.1, 0.4, 0.2, 1.6, 0, K_STEEL);
-  F._light({ x, y: 1.8, z, color: L_WHITE, intensity: 6, radius: 16, life: 0.35, fade: 0.3 });
+  F._blob(x, 1.6, z, 0, 0, 0, 0.08, 0.3, 0.16, 1.4, 0, K_STEEL);
+  F._light({ x, y: 1.8, z, color: L_WHITE, intensity: 3, radius: 9, life: 0.3, fade: 0.26 });
 }
 
 function breakDraw(F, B, fdt) {
@@ -273,7 +277,7 @@ function breakDraw(F, B, fdt) {
   const A = F._axes(), P0 = F._toCamera(B.x, B.y, B.z), cx = P0.x, cy = P0.y, cz = P0.z;
   if (t < 0.55 && F._frame() > 0) {
     // the cracks run out fast and fade
-    const g = clamp01(t / 0.12), h = 1.15 * Math.pow(1 - t / 0.55, 0.5), R = B.rays;
+    const g = clamp01(t / 0.2), h = 0.95 * Math.pow(1 - t / 0.55, 0.5), R = B.rays;
     for (let i = 0; i < RAYS; i++) {
       for (let j = 0; j < KINKS; j++) {
         if (j / KINKS > g) break;

@@ -83,6 +83,7 @@ const TAU = Math.PI * 2;
 const PALE = [1.5, 1.6, 1.85], PALE_END = [0.25, 0.28, 0.36];
 const SHARD = [1.3, 1.45, 1.8], SHARD_END = [0.18, 0.2, 0.3];
 const DUSTC = [0.3, 0.28, 0.26], DUST_END = [0.12, 0.11, 0.1];
+const SKID = [0.6, 0.6, 0.64], SKID_END = [0.28, 0.28, 0.32]; // (pale: dark grit on the night asphalt is not seen)
 const STONE = [0.44, 0.43, 0.42], STONE_END = [0.16, 0.15, 0.15];
 const AZURE_G = [0.9, 1.7, 3.4], AZURE_G_END = [0.1, 0.3, 1.0];
 export const L_AZURE = [0.45, 0.68, 1.0], L_CRIMSON = [1.0, 0.14, 0.12], L_VIOLET = [0.74, 0.4, 1.0], L_PALE = [0.86, 0.9, 1.0];
@@ -111,7 +112,7 @@ const SHELL = Object.freeze({
   pad: 0.16, // the drawn shell this far outside his hurt spheres (the blade stops 0.14 off: TUNING.wjBarrier.shell)
   near: 2.6, // the hero's blade within this of the shell lights it (look a; b and c too)
   ripple: { T: 0.34, r: 0.95, heavy: 1.3, rings: 2, lag: 0.08, seg: 12, heat: 1.05 },
-  crack: { heat: 0.78, fresh: 1.15, freshT: 0.3, steps: 4, len: 0.27 },
+  crack: { heat: 0.72, fresh: 1.0, freshT: 0.3, steps: 4, len: 0.27 },
   sign: { r: 0.55, heat: 0.44, blink: 0.5 }, // the open sign: a ring on the floor this far outside the shell
   knit: 0.45, // s the knit-back lasts
 });
@@ -588,7 +589,7 @@ export class WjFx extends AscFx {
     }
     const S = this._shell(d);
     if (!S.ok || !(this._frame() > 0)) return;
-    const h = 1.1 * (1 - F.t / 0.16);
+    const h = 0.85 * (1 - F.t / 0.16);
     this._rim(0, TAU, h, h);
   }
 
@@ -621,7 +622,7 @@ export class WjFx extends AscFx {
     }
     const S = this._shell(d);
     if (!S.ok || !(this._frame() > 0)) return;
-    const f = K.t / SHELL.knit, h = f < 0.25 ? 0.95 * (f / 0.25) : 0.95 * (1 - (f - 0.25) / 0.75);
+    const f = K.t / SHELL.knit, h = f < 0.25 ? 0.62 * (f / 0.25) : 0.62 * (1 - (f - 0.25) / 0.75);
     this._rim(0, TAU, h, h);
   }
 
@@ -695,7 +696,7 @@ export class WjFx extends AscFx {
   /** A figure of steel left where he was (DuelFx.ghost), drifting the way he went. */
   afterimage(d, dx = 0, dz = 0, life = 0.4) {
     if (!d) return 0;
-    return this.ghost(d, this._ghostOpt(fin(dx), fin(dz), fin(life, 0.4), 0, 0, 0, 0, 0, 0));
+    return this.ghost(d, this._ghostOpt(fin(dx), fin(dz), fin(life, 0.4), 1, 0, 0, 0, 0, 0));
   }
 
   // ---------------------------------------------------------------- the spells
@@ -777,16 +778,16 @@ export class WjFx extends AscFx {
         const x = s.x + s.dx * s.done, z = s.z + s.dz * s.done, slow = 1 - s.done / Math.max(0.5, s.dist);
         // the heels' two lines, lying on the floor
         for (const side of [-1, 1]) {
-          const o = this._rec(x + px * 0.13 * side, 0.04, z + pz * 0.13 * side, this.lrand(1.0, 1.6), 0.2, 0.2, '-=_', DUSTC, DUST_END);
+          const o = this._rec(x + px * 0.13 * side, 0.04, z + pz * 0.13 * side, this.lrand(1.0, 1.6), 0.26, 0.24, '-=_', SKID, SKID_END);
           o.rot = rot;
-          o.alpha = 0.75;
+          o.alpha = 0.85;
           o.alphaEnd = 0;
           this._spawn(this.alpha, o);
         }
         s.acc += 1;
         if (s.acc % 3 === 0) {
           this._blob(x, 0.75, z, s.dx * 1.4 * slow + this.lrand(-0.3, 0.3), this.lrand(0.3, 0.8), s.dz * 1.4 * slow + this.lrand(-0.3, 0.3), this.lrand(0.5, 0.8), 0.55, 1.4, 0.5, 0, K_SMOKE, 1.5, 0.5);
-          const g = this._rec(x, 0.15, z, this.lrand(0.4, 0.7), 0.17, 0.06, ".,'`", DUSTC, DUST_END);
+          const g = this._rec(x, 0.15, z, this.lrand(0.4, 0.7), 0.2, 0.08, ".,'`", SKID, SKID_END);
           g.vx = s.dx * this.lrand(2, 5) * slow + px * this.lrand(-1.5, 1.5);
           g.vy = this.lrand(1, 3);
           g.vz = s.dz * this.lrand(2, 5) * slow + pz * this.lrand(-1.5, 1.5);
