@@ -550,6 +550,72 @@
    ],
    "from": "crouchIdle",
    "to": "idle"
+  },
+  {
+   "name": "crouchWalk",
+   "title": "Crouch walk",
+   "src": "move 12:11-12:53",
+   "kind": "loop",
+   "fps": 30,
+   "travel": "forward",
+   "symmetric": 1,
+   "takes": [
+    {
+     "t0": "12:19.50",
+     "t1": "12:23.80",
+     "view": "right"
+    },
+    {
+     "t0": "12:31.20",
+     "t1": "12:33.40",
+     "view": "left"
+    },
+    {
+     "t0": "12:40.30",
+     "t1": "12:42.70",
+     "view": "back"
+    },
+    {
+     "t0": "12:47.10",
+     "t1": "12:52.80",
+     "view": "front"
+    }
+   ],
+   "from": "crouchWalk",
+   "to": "crouchWalk"
+  },
+  {
+   "name": "crouchRun",
+   "title": "Crouch run",
+   "src": "move 12:53-13:23",
+   "kind": "loop",
+   "fps": 30,
+   "travel": "forward",
+   "symmetric": 1,
+   "takes": [
+    {
+     "t0": "12:57.00",
+     "t1": "13:00.70",
+     "view": "right"
+    },
+    {
+     "t0": "13:11.20",
+     "t1": "13:16.40",
+     "view": "back"
+    },
+    {
+     "t0": "13:02.70",
+     "t1": "13:05.50",
+     "view": "front"
+    },
+    {
+     "t0": "13:05.70",
+     "t1": "13:07.10",
+     "view": "left"
+    }
+   ],
+   "from": "crouchRun",
+   "to": "crouchRun"
   }
  ]
 }
