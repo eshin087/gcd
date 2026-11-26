@@ -1375,7 +1375,9 @@ const S = {
   looks: scenarioLooks,
   herolike: scenarioHeroLike,
 };
-const OPT_IN = new Set(['smoke']);
+// (the bench, tests/integration/bench.mjs: the same mortal bots as veil.mjs, opt-in)
+S.bench = async () => { const { benchScenario } = await import('./bench.mjs'); return benchScenario({ build, duel, run, TUNING, TELL, DT, THREE, out, mulberry32 }, 'city'); };
+const OPT_IN = new Set(['smoke', 'bench']);
 // GCD_SKIP (a comma list) leaves scenarios out of `all` (tests/run.mjs runs pace and win as processes of their own)
 const SKIP = new Set((process.env.GCD_SKIP ?? '').split(',').map((x) => x.trim()).filter(Boolean));
 const list = SCEN === 'all' ? Object.keys(S).filter((k) => !OPT_IN.has(k) && !SKIP.has(k)) : SCEN.split(',');
