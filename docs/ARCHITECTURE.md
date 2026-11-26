@@ -1194,7 +1194,8 @@ of the two stances; the idle habits are held off while it is on) and `steelCharg
 A clip's `settle` (seconds; any clip may give one) is the blend player.js `_tickAttack` passes to
 `_toLoco` when the attack ends on its own, in place of 0.16 s; while such a blend runs and he stands
 still, `HeroAnimator._feet` brings the feet home by stepping (`_settleStep`, `SETTLE_STEP`: one at a time,
-the furthest first, an 8 cm lift, onto the standing pose's spots).
+the furthest first, an 8 cm lift, onto the standing pose's spots). A dash clip's `dashPlant` makes
+`dashFeet` step a foot the root's travel left behind onto the grass (`DASH_PLANT`, `plantFoot`).
 **The instant look set** (ADR-206; `?lights=blink`, the Lab's `lights` row; to compare, not the default):
 `setLights` wears a LOOK on every attack def through `wear` (`LOOK_KEYS`: `anim`, `variants`, `contact`,
 `glint`; never a number of the hit): hits 1-4 from `lightsBlink.js`, hit 5 from `lastHits.js`

@@ -6349,7 +6349,9 @@ arm, the body and the free hand through any swing.
      home gets the last tick or two. Use 1.0, or 0.75 and under.) The first version dragged the feet home
      flat under the fade; the planner now steps them (anim.js `_settleStep`: one foot at a time, the
      furthest first, each on an 8 cm lift onto the standing spot; a foot a dash left in the air comes down
-     in a stepping arc).
+     in a stepping arc). And `dashPlant` (anim.js `dashFeet`): a long dash carried the root past its
+     landed front foot, which then hung in the air behind him through the held lunge; with the option a
+     foot left behind steps onto the grass (the lone heavy, the charged release).
   4. **The moves.** The standing pose (`steelStance.js` `steelStand`: one pose at ease and in the fight;
      standing tall, both arms hanging off the body with soft elbows, the sword low at his right pointing
      forward and down; the idle habits are held off under steel) and the charge hold (`steelCharge`).
