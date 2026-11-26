@@ -6293,3 +6293,20 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   passes (`chain`) is checked against the widest its complete search finds from where he dodged (the new stance
   moved the seeded fight before it: from that dodge spot the search's best is 14°, from the old one 21°; seeds 1338-
   1340 pass the 17° bar either way).
+
+---
+
+## ADR-209 — A shared kit and knowledge base for learning motion from reference footage (2026-11-26)
+
+**Context.** Giving agents real game footage (the owner's reference videos) made animation and effects far
+better than invention (hero attacks failed four rounds by hand; the parry's streak and the hero's idles came
+out right from footage). The tools lived in scratch folders and the lessons in one agent's memory.
+
+**Decision.** `tools/refstudy/` holds the frame grabber (headless Edge over CDP), contact sheets and the game-camera
+film rig (frozen page, `__tick`, POST to ffmpeg, review clips). `docs/MOTION.md` holds the method, the owner's standing
+taste for motion and effects, and an index of timing cards in `docs/motion/` (first: the perfect deflect).
+Bodies come from the pose-tracking pipeline owned by the Game Engine session (`scripts/mocap/`); effects from timing
+cards. CLAUDE.md's checklist sends animation work to MOTION.md first. The source game is never named and no reference
+frame is ever committed (outputs go to a scratch folder via `OUT`).
+
+**Consequences.** Docs and tools only: no game code, no cost budget change. Every new move or effect adds a card.

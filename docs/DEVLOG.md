@@ -5,6 +5,18 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-26 — The reference-footage kit and `docs/MOTION.md` (docs and tools only; branch `claude/ref-kit-33c37a`)
+
+**Goal:** make "learn from the owner's reference footage" reusable for every future character and effect.
+**Changed:** `tools/refstudy/` (grab.mjs, edge.sh, sheet.py, serve.mjs, nav.mjs, run.mjs, take.js, review.sh, README:
+ports and output folders are arguments / env, nothing hard-coded); `docs/MOTION.md` (method, owner's taste rules,
+card index, how bodies via mocap and effects via cards fit); `docs/motion/` (README, first card: the perfect deflect);
+CLAUDE.md checklist item 4; ADR-209. **Verification:** scripts syntax-checked; the rig was not re-run end to end here
+(its sources ran in the parry-streak work, PR 145). **Next:** each study adds a card; when the mocap pipeline merges,
+link its README from MOTION.md section 5.
+
+---
+
 ## 2026-11-25 — A roadmap to Steam and the app stores (docs only; branch `docs/ship-roadmap`)
 
 **Owner:** plans to sell the game on Steam (Windows / Mac) and the iOS / Android stores; asked whether the

@@ -31,6 +31,8 @@ Read this file first, every session.
    - `docs/ROADMAP.md` — where the project is going; pick work from here when unsure.
    - `docs/DECISIONS.md` — architecture decision records (why things are the way they are).
 3. `npm install` if `node_modules/` is missing.
+4. Animation or effect work (a move, a pose, a spark, a trail) reads `docs/MOTION.md` first: reference footage, timing
+   cards in `docs/motion/`, the owner's taste rules, the film rig in `tools/refstudy/` (never name the source game, never commit frames).
 
 ## Commands
 ```bash
