@@ -621,7 +621,9 @@
      ],
      "blend": 4
     }
-   ]
+   ],
+   "speed": 1.45,
+   "stride": true
   },
   {
    "name": "walkStop",
@@ -1694,7 +1696,9 @@
      ],
      "blend": 2
     }
-   ]
+   ],
+   "speed": 4.4,
+   "stride": true
   },
   {
    "name": "runStop",
@@ -3044,7 +3048,9 @@
      ],
      "blend": 2
     }
-   ]
+   ],
+   "speed": 6.4,
+   "stride": true
   },
   {
    "name": "sprintStop",
