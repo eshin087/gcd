@@ -3813,6 +3813,95 @@ async function scenarioPerfect() {
   return G;
 }
 
+// ================================================================== scenario: riposteplanted (?parryRiposte=)
+// A perfect parry of a duelist's last blow at a streak of 3 and of 7: with `planted` the hero stays where
+// he parried (at most DEFENSE.riposteCut.step m in), no flurry, ONE heavy cut for n flash cuts' damage,
+// the duelist reels; with `old` today's riposte flurry still runs.
+async function scenarioRipostePlanted() {
+  out('\n== scenario RIPOSTEPLANTED (?parryRiposte=planted: the hero stays planted, one heavy cut; old: the flurry) ==');
+  const RC = await imp('src/entities/player/riposteCut.js');
+  const G = build();
+  duel(G, { dist: 2.0 });
+  const { game, input } = G;
+  const d = game.dragon, p = game.player, R = DEFENSE.riposteCut, C = DEFENSE.flurry.cut;
+  run(G, 0.4);
+  const take = (mode, n) => {
+    RC.setRiposteMode(mode);
+    settle(G, 8);
+    home(G);
+    place(G, 2.0);
+    run(G, 0.3);
+    d.posture = 0;
+    d.hp = d.maxHp;
+    p.hp = p.maxHp;
+    p.streak = n - 1;
+    p.streakT = 0;
+    const t = { parry: null, ev: null, hits: [], end: null, flurry: false, ox: 0, oz: 0, far: 0, maxOut: 0, hurt: 0, reel: false, hp0: d.hp, f: 0, stateSeen: new Set(), t0: -1, tEnd: -1 };
+    let flashT = null, pressed = false;
+    G.watch = (nm, e) => {
+      if (nm === 'combat:flash' && e?.attack === 'plumThrust' && flashT === null) flashT = game.time;
+      if (nm === 'player:parry' && !t.parry) { t.parry = { ...e }; t.ox = p.position.x; t.oz = p.position.z; }
+      if (nm === 'player:flurry') t.ev = { ...e };
+      if (nm === 'player:flurryHit') t.hits.push({ ...e });
+      if (nm === 'player:flurryEnd') t.end = { ...e };
+      if (nm === 'player:hurt') t.hurt++;
+    };
+    d.debug.trigger('plumThrust');
+    run(G, 4, () => {
+      game.mouseGround.set(d.position.x, 0, d.position.z);
+      if (flashT !== null && !pressed && game.time >= flashT + TUNING.flashLead - 0.04 - DT) { pressed = true; input.up(1); input.click(1); }
+      if (t.parry) {
+        t.f++;
+        t.far = Math.max(t.far, Math.hypot(p.position.x - t.ox, p.position.z - t.oz));
+        t.stateSeen.add(p.state);
+        if (p.flurry?.on) t.flurry = true;
+        if (d.brain.react?.kind === 'stagger') t.reel = true;
+        if (t.ev && t.t0 < 0) t.t0 = game.time;
+        if (t.end) t.tEnd = t.tEnd < 0 ? game.time : t.tEnd;
+        if (!isFinite(p.position.x + p.position.z)) t.nan = true;
+      }
+    }, () => !!t.end && game.time > t.tEnd + 1.2 && p.state !== 'attack');
+    G.watch = null;
+    t.hpLost = t.hp0 - d.hp;
+    t.state = p.state;
+    return t;
+  };
+  for (const n of [3, 7]) {
+    const t = take('planted', n);
+    const exp = C.damage * n;
+    out(`   planted n=${n}: parry ${!!t.parry?.perfect} · event ${JSON.stringify(t.ev)} · hits ${JSON.stringify(t.hits)} · hp lost ${t.hpLost} · far ${t.far.toFixed(2)} m · states ${[...t.stateSeen].join(',')} · reel ${t.reel}`);
+    assert(t.parry?.perfect === true && t.ev?.planted === true && t.ev.strikes === n && t.ev.art === 'riposte' && t.ev.air === false, `planted n=${n}: a perfect parry answers with player:flurry strikes ${t.ev?.strikes} (art ${t.ev?.art})`);
+    assert(!t.flurry && !t.stateSeen.has('flurry') && !t.stateSeen.has('ghostep'), `planted n=${n}: the flurry never runs (states ${[...t.stateSeen].join(', ')})`);
+    assert(t.far <= R.step + 0.1 && !t.nan, `planted n=${n}: he never ends a frame more than ${(R.step + 0.1).toFixed(1)} m from where he parried (${t.far.toFixed(2)} m)`);
+    assert(t.hits.length === 1 && t.hits[0].last === true && t.hits[0].n === n && t.hits[0].of === n, `planted n=${n}: exactly one blow (player:flurryHit n ${t.hits[0]?.n} of ${t.hits[0]?.of})`);
+    assert(Math.abs(t.hpLost - exp) < 0.51 && Math.abs(t.hits[0]?.damage - exp) < 0.51, `planted n=${n}: the duelist took ${t.hpLost} (expected ${exp}: ${n} x ${C.damage})`);
+    assert(t.reel, `planted n=${n}: he reels (stagger)`);
+    assert(t.hurt === 0 && t.state !== 'attack' && t.end?.strikes === n, `planted n=${n}: the hero was not hurt, and is free again (${t.state})`);
+  }
+  // the step: a foe 2.5 m off (the parry's own contact leaves him about 1 m): at most `step` m in, never nearer than minGap
+  {
+    settle(G, 8);
+    home(G);
+    place(G, 2.5);
+    run(G, 0.3);
+    d.hp = d.maxHp;
+    const x0 = p.position.x, z0 = p.position.z, hp0 = d.hp;
+    let far = 0, hits = 0, near = Infinity;
+    G.watch = (nm) => { if (nm === 'player:flurryHit') hits++; };
+    const ok = RC.startRiposteCut(p, d, 3, null, false);
+    run(G, 1.5, () => { far = Math.max(far, Math.hypot(p.position.x - x0, p.position.z - z0)); near = Math.min(near, Math.hypot(d.position.x - p.position.x, d.position.z - p.position.z)); }, () => p.state !== 'attack');
+    G.watch = null;
+    out(`   step: started ${ok} · moved ${far.toFixed(2)} m · nearest ${near.toFixed(2)} m · hits ${hits} · hp lost ${hp0 - d.hp}`);
+    assert(ok && far > 0.3 && far <= R.step + 0.1 && near >= R.minGap - 0.15 && hits === 1 && Math.abs(hp0 - d.hp - C.damage * 3) < 0.51, `a foe 2.5 m off: he steps in ${far.toFixed(2)} m (at most ${R.step}), one blow, ${hp0 - d.hp} damage`);
+  }
+  const o = take('old', 3);
+  out(`   old n=3: flurry ${o.flurry} · states ${[...o.stateSeen].join(',')} · hits ${o.hits.length}`);
+  assert(o.flurry && o.stateSeen.has('flurry') && o.hits.length === 3 && !o.ev?.planted, `old: today's riposte flurry still runs (${o.hits.length} flash cuts)`);
+  RC.setRiposteMode(RC.RIPOSTE_DEFAULT);
+  assert(RC.RIPOSTE_DEFAULT === 'old', 'the default is old');
+  return G;
+}
+
 // ================================================================== scenario: flare (ADR-118)
 // The flare is the only sign of a moment (no glow through the windup, no ring on the floor); a parry
 // of a blue flare blow is answered by the hero's counter; the black (charged) blow.
@@ -4854,6 +4943,7 @@ const SCENARIOS = {
   ranged: scenarioRanged,
   answer: scenarioAnswer,
   perfect: scenarioPerfect,
+  riposteplanted: scenarioRipostePlanted,
   flare: scenarioFlare,
   fxlooks: scenarioFxLooks,
   telemetry: scenarioTelemetry,

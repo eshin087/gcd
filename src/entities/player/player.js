@@ -13,6 +13,7 @@ import { DEFAULT_LOADOUT, swordFromUrl } from './gear/index.js';
 import { CLASH, clashBurst, clashGrind, closestOnSegments } from '../../combat/clashFx.js';
 import { CUT_LOOK } from '../../combat/cutFx.js';
 import { Flurry } from './flurry.js';
+import { riposteMode, startRiposteCut, riposteTakeHit, riposteCutLanded, riposteContact } from './riposteCut.js';
 import { SwordMystic } from './swordMystic.js';
 import { BREAK, SCAR } from '../../world/breakTuning.js';
 import { chipLook, cutStops } from '../../world/destructibles.js';
@@ -1363,6 +1364,8 @@ export class Player {
     const T = this.flurry._v, p = this.position;
     const tp = kind === 'air' ? (this._plungePoint(att, T) ? T : null) : att.position;
     if (!tp || !(Math.hypot(tp.x - p.x, tp.z - p.z) <= DEFENSE.flurry.riposteRange[kind])) return;
+    // (?parryRiposte=planted: against a duelist he stays where he parried and cuts once: riposteCut.js)
+    if (kind === 'ground' && riposteMode() === 'planted' && startRiposteCut(this, att, this.streak, R.attack, R.counter)) return;
     this.flurry.start(att, kind === 'air', this.streak, R.attack, R.tell, { riposte: true, counter: R.counter });
   }
 
@@ -3468,7 +3471,10 @@ export class Player {
     const spheres = dr.hurtSpheres;
     if (!Array.isArray(spheres) || !spheres.length) return;
     const h = this._hit;
-    if (!this.sweep.test(spheres, h, fin(a.def.up, REACH.up))) return;
+    if (!this.sweep.test(spheres, h, fin(a.def.up, REACH.up))) {
+      if (!a.rip) return;
+      riposteContact(dr, h); // the planted riposte lands whatever the sweep found (its one blow)
+    }
     this._applyHit(a, h);
   }
 
@@ -3485,7 +3491,7 @@ export class Player {
     const d = a.def, heavy = !!d.heavy;
     const part = typeof h.sphere.part === 'string' ? h.sphere.part : 'body';
     const crit = this.critTimer > 0 || !!a.crit;
-    const damage = a.damage * (crit ? DEFENSE.ghostep.critMult : 1); // raw: the dragon applies part multipliers
+    const damage = a.rip ? a.rip.damage : a.damage * (crit ? DEFENSE.ghostep.critMult : 1); // raw: the dragon applies part multipliers
     const dir = { x: Math.sin(this.yaw), z: Math.cos(this.yaw) }; // the facing: the shove
     const C = !viaShards && this._contactPoint(dr, d.kind, this._cut) ? this._cut : null;
     const point = C ? { x: C.x, y: C.y, z: C.z } : { x: h.x, y: h.y, z: h.z };
@@ -3494,7 +3500,7 @@ export class Player {
     let dealt = damage;
     try {
       // (`reel` 2: a blow that throws a duelist out of what he is doing, the Rising Crescent)
-      const r = dr.takeHit({ damage, part, point, dir, cut, poise: a.poise, heavy, crit, swing: true, ...(d.reel ? { reel: d.reel } : null) });
+      const r = dr.takeHit(a.rip ? riposteTakeHit(this, point, { cut }) : { damage, part, point, dir, cut, poise: a.poise, heavy, crit, swing: true, ...(d.reel ? { reel: d.reel } : null) });
       if (Number.isFinite(r)) dealt = r;
     } catch (err) {
       console.error('[player] dragon.takeHit failed', err);
@@ -3534,7 +3540,7 @@ export class Player {
     if (km > 0 && C) this.game.kick?.(C.cx, C.cy, C.cz, km);
     if (!viaShards) this.fx.contact(point, d.contact ?? 'light', C, crit || dr.broken === true, k);
     if (C) this._edgeFlash(C, heavy, crit, d.glint === 'ridge');
-    if (d.kind === 'cleave') this.fx.cleaveImpact(point.x, point.y, point.z, C ? C.gx : dir.x, C ? C.gz : dir.z, k, crit, true);
+    if (d.kind === 'cleave') this.fx.cleaveImpact(point.x, point.y, point.z, C ? C.gx : dir.x, C ? C.gz : dir.z, k, crit, true);    if (a.rip) riposteCutLanded(this, dealt);
   }
 
   /** The unit world travel of the blade at contact C (into `out`, reused), or null without one. */

@@ -16,6 +16,7 @@ import { IMPACT } from '../combat/impact.js';
 import { STREAK_FX, setPerfectMode, perfectMode } from '../combat/streak.js';
 import { RIP_MODES, ripMode, setRipMode } from '../entities/player/timeRip.js';
 import { PARRY_FX, parryFxMode, setParryFx } from '../combat/parrySparks.js';
+import { RIPOSTE_CUT, riposteMode, setRiposteMode } from '../entities/player/riposteCut.js';
 import { BURST_LOOK, setBurst, burstLevel } from '../entities/player/flurryBurst.js';
 import { CALM_LOOK, setCalm, calmLevel } from '../combat/impactCalm.js';
 import { sfxMode, setSfxMode, chainMode, setChainMode, CHAIN_MODES } from '../audio/samples.js';
@@ -1286,6 +1287,12 @@ export class Lab {
       this._syncCutBtns();
     });
     this.ui.parryFxBtn.title = "the perfect parry's spit of sparks (?parryFx=): a (the default) a few fast orange sparks off the crossed steel, 0 the parry as before";
+    this.ui.riposteBtn = button(stkGrid, `riposte ${riposteMode()}`, () => {
+      const M = RIPOSTE_CUT.opts;
+      setRiposteMode(M[(M.indexOf(riposteMode()) + 1) % M.length]);
+      this._syncCutBtns();
+    });
+    this.ui.riposteBtn.title = "the answer to a parried last blow against a duelist (?parryRiposte=): old (the default) the flurry's flash cuts, planted: he stays where he parried and cuts once, the foe reels. Read as the riposte starts";
     this.ui.burstBtn = button(stkGrid, `burst ${burstLevel()}`, () => {
       setBurst((Math.max(0, burstLevel()) + 1) % BURST_LOOK.levels.length);
       this._syncCutBtns();
@@ -1512,6 +1519,7 @@ export class Lab {
     for (const { m, el: b } of this.ui.mysticBtns ?? []) setClass(b, 'on', mysticMode() === m);
     if (this.ui.perfectBtn) this.ui.perfectBtn.textContent = `perfect: ${perfectMode()}`;
     if (this.ui.parryFxBtn) this.ui.parryFxBtn.textContent = `parryFx ${parryFxMode()}`;
+    if (this.ui.riposteBtn) this.ui.riposteBtn.textContent = `riposte ${riposteMode()}`;
     if (this.ui.burstBtn) this.ui.burstBtn.textContent = `burst ${burstLevel()}`;
     if (this.ui.calmBtn) {
       this.ui.calmBtn.textContent = `calm ${calmLevel()}`;

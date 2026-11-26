@@ -277,6 +277,15 @@ export const DEFENSE = Object.freeze({
   // of them the COUNTER BLOW: `damage` (final) and `posture`, he reels. Only within the riposte's
   // range. `posture`: on top of the parry's own (POSTURE.parry.blue)
   flareCounter: { damage: 64, posture: 30 },
+  // --- THE PLANTED RIPOSTE (?parryRiposte=planted; src/entities/player/riposteCut.js): a parried last blow
+  // against a duelist is answered where the hero stands, with his own heavy cut. `step`: the most he
+  // steps in (m; never nearer than `minGap` m to the foe's centre). `wind` / `active` / `recover`: the
+  // cut's timeline (s); the contact is at the end of the wind. The one blow deals what the flurry's n
+  // flash cuts would (n x DEFENSE.flurry.cut; the counter's last replaced by flareCounter), reels the
+  // foe, `flash` its hurt flash. The weight: the flurry's last blow (the freeze `stopK` x
+  // plunge.impactStop, the shake plunge.impactShake + `shakePerN` n, the punch `punch` + `punchPerN` n),
+  // scaled by flurry.ground. He cannot be hurt from the start to `iframePad` s after the end.
+  riposteCut: Object.freeze({ step: 0.6, minGap: 1.0, wind: 0.14, active: 0.1, recover: 0.32, iframePad: 0.05, stopK: 1.25, shakePerN: 0.06, punch: 2.2, punchPerN: 0.25, flash: 0.7 }),
 });
 
 /**
