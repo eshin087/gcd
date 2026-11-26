@@ -1935,6 +1935,49 @@ export const SFX = {
       s.connect(sg).connect(v.out);
     },
   },
+  /** (round 2) The band comes off: a glassy rising ring and a breath of cold air, a low knock under it. */
+  wjUnveil: {
+    prio: 6, rev: 0.45, gap: 0.5, falloff: 0.4,
+    play(v, t) {
+      ping(v, t, 'sine', 1320, 0.06, 0.9);
+      ping(v, t + 0.04, 'sine', 1980, 0.04, 0.7);
+      const f = swish(v, t, 'white', 'bandpass', 2600, 1.6, [[0, 0], [0.05, 0.16], [0.6, 0]]);
+      glide(f.frequency, t, 1800, 4200, 0.5);
+      thump(v, t, 90, 40, 0.3, 0.45, 0.5);
+    },
+  },
+  /** (round 2) Dark Spark held (o.dur s): a dry crackle that thickens, a low hum. */
+  wjSparkCharge: {
+    prio: 5, rev: 0.25, gap: 0.3, falloff: 0.6,
+    play(v, t, o) {
+      const D = clamp(num(o.dur, 0.8), 0.2, 2);
+      const c = v.noise('white', t, t + D + 0.05);
+      const bp = v.filter('bandpass', 2400, 1.2);
+      const g = v.gain(0);
+      spikes(g.gain, t, D, Math.round(18 * D), 0.16, 0.002, 0.015, 0.6);
+      c.connect(bp).connect(g).connect(v.out);
+      const lp = v.filter('lowpass', 180, 0.8);
+      const h = v.gain(0);
+      env(h.gain, t, [[0, 0], [D * 0.8, 0.12], [D + 0.05, 0]]);
+      lp.connect(h).connect(v.out);
+      v.osc('sawtooth', 48, t, t + D + 0.1, 0).connect(lp);
+    },
+  },
+  /** (round 2) Dark Spark lands (o.dur 1 landed, 0 a miss): a black crack of thunder, a deep blow. */
+  wjSpark: {
+    prio: 7, rev: 0.4, gap: 0.15, falloff: 0.45,
+    play(v, t, o) {
+      const k = num(o.dur, 1) > 0.5 ? 1 : 0.75;
+      burst(v, t, 'white', 'highpass', 2600, 0.7, 0.55 * k, 0.05, 0.0005);
+      thump(v, t, 120, 30, 0.45, 1.1 * k, 0.5);
+      burst(v, t + 0.01, 'brown', 'lowpass', 300, 0.8, 0.8 * k, 0.45, 0.003);
+      const c = v.noise('pink', t + 0.03, t + 0.5);
+      const bp = v.filter('bandpass', 1900, 0.9);
+      const g = v.gain(0);
+      spikes(g.gain, t + 0.03, 0.4, 9, 0.22 * k, 0.002, 0.02, 0.7);
+      c.connect(bp).connect(g).connect(v.out);
+    },
+  },
   /** The hero slid back by a blow (o.dur m): a heavy knock, his heels scraping over the asphalt. */
   wjShove: {
     prio: 5, rev: 0.18, gap: 0.12, falloff: 0.8,
