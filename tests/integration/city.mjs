@@ -1571,6 +1571,7 @@ async function scenarioHalMotion() {
   const G = build();
   duel(G, { dist: 1.8 });
   const d = G.game.dragon;
+  LS.setLook('halMotion', '0');
   const w0 = snaps.map((k) => d.weigh(k, MOVES[k], 1));
   LS.setLook('halMotion', 'a');
   const w1 = snaps.map((k) => d.weigh(k, MOVES[k], 1));

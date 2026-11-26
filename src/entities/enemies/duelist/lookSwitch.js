@@ -46,6 +46,7 @@ export const PICKED = Object.freeze({
   ascBeam: 'a', // his beam: the column (the owner's pick)
   ascLift: 'b', // his print: the hero's quieter one (the owner's pick, 2026-11-23, ADR-155; was a, lifted: a lighter fill, a stronger edge of light)
   ascOrb: 'a', // Heaven's Lantern, the great orb: a sun (b a lantern, c the pale gathered sphere; the owner has not chosen yet, 2026-11-22)
+  ascMotion: 'a', // his motion: held blue / red windups, the snap blows (the owner's pick, 2026-11-26, of two; ADR-225; 0 as before)
   ascBeamPose: '0', // his beams: the palm thrust (cup: both hands cupped at the hip; the owner has not chosen yet, 2026-11-22)
   // the Windless Grove and Lu Wusheng, the Sheathed (the owner, 2026-11-22: "keep the recommended")
   grove: 'a', // the grove's light: a moonlit mist (the owner's pick)
@@ -61,6 +62,7 @@ export const PICKED = Object.freeze({
   halCape: '3', // his cape and colours: the wide red cape that billows (the owner's pick, 2026-11-23, of four steps; ADR-164)
   halLetters: 'a', // his letters follow his size, the hero's cell (the owner's pick, 2026-11-23, of two; ADR-166)
   halPrint: 'a', // the hero's quieter print (the owner's pick, 2026-11-23, of three; ADR-166)
+  halMotion: 'a', // his motion: a flier's legs, blows aimed at the hero, the held windups, the snap blows (the owner's pick, 2026-11-26, of two; ADR-225)
   halCapeSize: 'b', // the cape at about 65 %, past his knees (the owner's pick, 2026-11-23, of four; ADR-166)
   // the Hall of Falling Script and Xin Yi, the One Who Woke
   oneLetters: 'a', // his letters: the hero's size (the owner's pick, 2026-11-23, "Print a", ADR-170; 0 the bosses' fine cell)
@@ -74,7 +76,7 @@ export const PICKED = Object.freeze({
 /** Switches the owner has not picked yet (their rendered options wait for the owner): in the Lab's LOOKS
  *  rows, deliberately NOT in PICKED; each draws its call site's default until picked. When the
  *  owner picks, the switch moves from here into PICKED. */
-export const PENDING = Object.freeze(['foxLook', 'foxfire', 'clones', 'foxLetters', 'foxFire3', 'foxSpirit', 'oneLook', 'hall', 'script', 'ascMotion', 'halMotion']); // Wen Yao (ADR-147, ADR-154); Xin Yi and his hall (ADR-156, ADR-157); Halcyon and his city: all picked (ADR-161, ADR-164, ADR-166); Tian Lei's and Halcyon's motion (ADR-225)
+export const PENDING = Object.freeze(['foxLook', 'foxfire', 'clones', 'foxLetters', 'foxFire3', 'foxSpirit', 'oneLook', 'hall', 'script']); // Wen Yao (ADR-147, ADR-154); Xin Yi and his hall (ADR-156, ADR-157); Halcyon and his city: all picked (ADR-161, ADR-164, ADR-166)
 
 const fromUrl = new Map();
 const forced = new Map();
