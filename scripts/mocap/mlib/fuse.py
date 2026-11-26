@@ -111,6 +111,10 @@ def fuse(parts):
         w = np.asarray(wax, float)[None, None, :]
         if len(p) > 2 and p[2] is not None:
             w = w * p[2][:, None, None]
+        if len(p) > 3 and p[3] is not None:
+            # spec "vis_weight": each landmark weighted by the tool's visibility in that take (a far arm
+            # hidden behind the body in a side take then hardly counts)
+            w = w * np.clip(p[3], 0.03, 1)[:, :, None]
         num = num + b * w
         den = den + w
     return num / np.maximum(den, 1e-9)

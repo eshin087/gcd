@@ -92,16 +92,19 @@ def build_clip(spec, clip, log=print):
         n = int(round(P * fps))
         B.period = P
         folded = []
+        vw = bool(clip.get('vis_weight'))
+        fvis = []
         for T in Ts:
             sig = retarget.adaptive_sigma(T.b, fps=takes.FPS)
             bs = retarget.smooth_time(T.b, sig * 0.5)
             folded.append(fuse.fold(bs, P, 0.0, n, takes.FPS))
+            fvis.append(fuse.fold(T.l2[:, :, 3:4], P, 0.0, n, takes.FPS)[:, :, 0] if vw else None)
         # align every fold to the first (circular), then fuse
-        parts = [(folded[0], Ts[0].wax)]
+        parts = [(folded[0], Ts[0].wax, None, fvis[0])]
         B.shift = [0]
-        for T, F in zip(Ts[1:], folded[1:]):
+        for T, F, V in zip(Ts[1:], folded[1:], fvis[1:]):
             s = fuse.circ_align(folded[0], Ts[0].wax, F, T.wax)
-            parts.append((np.roll(F, -s, 0), T.wax))
+            parts.append((np.roll(F, -s, 0), T.wax, None, None if V is None else np.roll(V, -s, 0)))
             B.shift.append(s)
         fused = fuse.fuse(parts)
         # where each clip frame sits in each take: the phase origin of take i is shift_i frames
@@ -130,7 +133,8 @@ def build_clip(spec, clip, log=print):
         search = float(clip.get('search', 0.5))
         Ts = [_take(spec, clip, clip['takes'][0], log=log)]
         ref = Ts[0]
-        parts = [(ref.b, ref.wax, fuse.validity(ref.gap))]
+        vw = bool(clip.get('vis_weight'))
+        parts = [(ref.b, ref.wax, fuse.validity(ref.gap), ref.l2[:, :, 3] if vw else None)]
         B.offsets = [0]
         for tk in clip['takes'][1:]:
             T = _take(spec, clip, tk, pad=search + 0.05, log=log)
@@ -146,7 +150,7 @@ def build_clip(spec, clip, log=print):
             seg = T.b[ic]
             val = fuse.validity(T.gap[ic]) * inside
             Ts.append(T)
-            parts.append((seg, T.wax, val))
+            parts.append((seg, T.wax, val, T.l2[ic, :, 3] if vw else None))
             B.offsets.append(s)
             log('  %s: aligned %+.3f s from its given start (cost %.4f)' % (T.name, T.t[s] - cfg.parse_time(tk['t0']), cost))
 

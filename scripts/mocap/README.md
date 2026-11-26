@@ -132,6 +132,7 @@ Clip keys:
 | `foot_ease` | degrees a frame (e.g. 14 at 60 fps): the feet and toes turn no faster (the sole-levelling at a plant or a lost foot snapped them 79-138 degrees in one frame) |
 | take `facing` | `"away"` / `"toward"`: a HARD prior that he faces away from (toward) this camera through the whole take (a lock-on camera behind him). Every frame the tool read the other way round is mirrored back (7-frame majority); the log prints how many |
 | `free_hand` | true or `{"sigma": 2.0, "flex": 12}`: the free hand from the tool's hand points where they look like a hand, a relaxed hand along the forearm where not |
+| `vis_weight` | true: in the fusion each landmark also counts by the tool's VISIBILITY in that take (a far arm hidden behind the body in a side take hardly counts; one-shots and loops) |
 | `blade_color`, `blade_color_L` | `"rust"` (default) or `"steel"` (a bright grey blade: the paired set's left sword) |
 
 ## Author's checklist (every clip)
@@ -205,11 +206,13 @@ already had right).
 
 **Breathing holds**: `"breath": {"period": 3.6}` with `"n": 108` at 30 fps. SYNTHESIZED, logged as such.
 
-**Two hands on one grip (swordTwo)**: `"sword": true, "grip": {"gap": 0.11, "free": [["9:30.10",
-"9:30.40"]]}`: the left fist closes on the grip below the right; `free` where the footage shows it off.
-
-**Paired swords (swordPair)**: `"sword": true, "swordL": true`: the right and the left blade, each found
-from its own fist (both rust-red in the footage), `blade_keys` / `blade_keys_L` for keys.
+**Two hands on one grip, paired swords (`specs/_examples.json`, not a set)**: `twoLight1` is the first
+two-handed light attack (SWORD 9:27, two takes): `"sword": true, "grip": {"gap": 0.11}` closes the left
+fist on the grip below the right (`"free": [["t0", "t1"]]` where the footage shows it off). Built as a
+DRAFT to prove it: the hands hold together through the cut, the blade's direction is still rough in about
+a third of the frames (key it). `pairIdleExample` is the paired idle: `"swordL": true` finds the left
+blade from the left fist (`blade_color_L`: `"rust"` or `"steel"`), `blade_keys_L` keys it. Build them
+with `build.py specs/_examples.json <clip> --no-export` (sheets under `sheets/toolExamples/`).
 
 **Flask, bell (moveMisc)**: `props: {"L": "flask"}`; nothing is detected; give the left hand's roll with
 `pose_keys` on `handL` where the picture shows the flask's angle.
