@@ -557,7 +557,7 @@ export class Scars {
   }
 
   /** _beam's wide trench: both edges `w` m out (a broken lip: strokes and rubble), the glass in rows
-   *  `T.rows` m apart across the floor between (every other cell), charred across its width. */
+   *  `T.rows` m apart across the floor between (`glassK` of the cells), charred across its width. */
   _wideBeam(x, z, dx, dz, L, w, rot, hot) {
     const T = SCAR.mark.beam, K = SCAR.mark, y = K.y, px = -dz, pz = dx;
     const rows = Math.max(1, Math.floor((w * 2) / T.rows));
@@ -569,9 +569,9 @@ export class Scars {
         // the broken lip: rubble thrown up just outside the edge, now and then
         if (rnd() < T.rubble) this._add(x + dx * s + px * (d + side * (0.2 + 0.35 * rnd())), y + 0.02, z + dz * s + pz * (d + side * (0.2 + 0.35 * rnd())), pick('.,:o'), 0.2 + 0.12 * rnd(), this.lip, K.alpha * this.lipA, rnd() * TAU, -1);
       }
-      // the glass across the floor between: rows, every other cell
+      // the glass across the floor between: rows, glassK of their cells
       for (let i = 0; i < rows; i++) {
-        if (rnd() > 0.5) continue;
+        if (rnd() > T.glassK) continue;
         const d = -w + ((i + 0.5) / rows) * w * 2 + (rnd() - 0.5) * T.rows * 0.4;
         this._add(x + dx * s + px * d, y + 0.01, z + dz * s + pz * d, rnd() < 0.7 ? '=' : '~', 0.3, T.glass, T.glassAlpha, rot, -1);
       }
