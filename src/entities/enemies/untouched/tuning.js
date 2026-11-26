@@ -1,6 +1,7 @@
 import { PLAYER_SCALE } from '../../player/model.js';
 import { DUEL_WORLD } from '../duelist/worldTuning.js';
 import { BEAM_TUNING } from '../ascendant/tuningBeam.js';
+import { TUNING_MELEE } from './tuningMelee.js';
 import { TUNING_SPELLS } from './tuningSpells.js';
 import { TUNING_TERRAIN } from './tuningTerrain.js';
 
@@ -8,8 +9,8 @@ import { TUNING_TERRAIN } from './tuningTerrain.js';
 // closest relative on the engine: a bare-handed duelist on Tian Lei's strike builders, one bar, three
 // phases) with no flight; changed where he is someone else: the barrier (wjBarrier), the weight of every
 // blow (wjWeight), the throw through the world (wjCrash), the pull (wjPull), the domain (wjDomain).
-// The moves agents add their own numbers in tuningSpells.js / tuningTerrain.js (merged below: one
-// object, `TUNING.spells` / `TUNING.terrain`), never here.
+// The moves agents add their own numbers in tuningMelee.js / tuningSpells.js / tuningTerrain.js (merged
+// below: one object, `TUNING.melee` / `TUNING.spells` / `TUNING.terrain`), never here.
 // Per-phase values are [P1, P2, P3]. Times in seconds, distances in metres.
 
 export const TUNING = {
@@ -138,6 +139,7 @@ export const TUNING = {
   // ---- the beam's drawing borrows Tian Lei's (fxBeam.js reads d.T.beam.look)
   beam: { ...BEAM_TUNING },
   // ---- the moves agents' numbers
+  melee: TUNING_MELEE,
   spells: TUNING_SPELLS,
   terrain: TUNING_TERRAIN,
   // ---- what his blows do to the world (POWER: 1 fells a tree)
