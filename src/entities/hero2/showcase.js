@@ -77,6 +77,12 @@ export const RIDE_ORDER = {
   ],
   swordHorse: ['horseRiderLight', 'horseRiderHeavy'],
 };
+/** The riding chapters whose horse clip is another chapter's (the mount and dismount while moving ride
+ *  the canter): their own chapter's title and footage time. */
+export const RIDE_TITLES = {
+  rideMountRun: ['Mount while moving (the horse cantering)', 'move 25:55-26:27'],
+  rideDismountRun: ['Dismount while moving (the horse halting)', 'move 25:55-26:27'],
+};
 
 /** The close camera's side (deg from his front toward his right) when the entry gives none: a
  *  three-quarter view from his right-front (both arms and the blade in view); a turn is seen from a side
@@ -176,6 +182,10 @@ export async function mount(game, params) {
   // where he stands: the hero's spawn (or &homeX= / &homeZ= / &homeYaw=), facing as he does
   const sp = game.player?.position ?? { x: 0, z: 0 };
   const home = { x: num(P.get('homeX'), num(sp.x, 0)), z: num(P.get('homeZ'), num(sp.z, 0)), yaw: num(P.get('homeYaw'), num(game.player?.yaw, Math.PI)) };
+  // &ahead=m: the home moved m metres along his facing (off the spawn's bonfire, into open ground)
+  const ahead = num(P.get('ahead'), 0);
+  home.x += Math.sin(home.yaw) * ahead;
+  home.z += Math.cos(home.yaw) * ahead;
   const place = (x, z, yaw) => {
     obj.position.set(x, 0, z);
     obj.rotation.set(0, yaw, 0);
@@ -188,7 +198,7 @@ export async function mount(game, params) {
   const clipEntry = (c) => ({ kind: 'clip', name: c.name, clip: c, set: c.set, setTitle: c.setTitle, title: c.title, src: c.src, loop: !!c.loop, dur: c.dur, yaw: c.loop ? 0 : (c.cyc?.[2] ?? 0) });
   const rideByName = new Map(RIDES.map((r) => [r.name, r]));
   const rideEntry = (r, set) => ({
-    kind: 'ride', name: r.name, ride: r, set: set.id, setTitle: set.title, title: r.hclip.title, src: r.hclip.src, loop: !!r.hclip.loop, dur: r.hclip.dur,
+    kind: 'ride', name: r.name, ride: r, set: set.id, setTitle: set.title, title: RIDE_TITLES[r.name]?.[0] ?? r.hclip.title, src: RIDE_TITLES[r.name]?.[1] ?? r.hclip.src, loop: !!r.hclip.loop, dur: r.hclip.dur,
     yaw: r.hclip.loop ? 0 : (r.hclip.cyc?.[2] ?? 0),
     state: lib.has(r.rider) ? '' : 'the rider: seated placeholder (his riding clips are not built yet)',
   });
