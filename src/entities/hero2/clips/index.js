@@ -33,7 +33,7 @@ export async function loadLibrary(sets = SETS) {
   const mods = [], failed = [];
   for (const [id, load] of sets) {
     try {
-      mods.push(await load());
+      mods.push(await fetchRemote(await load()));
     } catch (e) {
       failed.push({ clip: '', text: `set ${id} failed to load: ${e?.message ?? e}` });
     }
@@ -41,4 +41,16 @@ export async function loadLibrary(sets = SETS) {
   const lib = createLibrary(mods);
   lib.problems.unshift(...failed);
   return lib;
+}
+
+/** The release bundle (scripts/build.mjs) does not inline the clip data (megabytes of it, for a switch
+ *  that is off by default): each set file is replaced there by a stub `{ remote: 'assets/hero2/<id>.json' }`
+ *  and the data is fetched next to the page when the remade hero is switched on. The dev server and the
+ *  tests load the set files as they are. */
+async function fetchRemote(mod) {
+  const remote = mod?.default?.remote;
+  if (!remote) return mod;
+  const res = await fetch(new URL(remote, document.baseURI));
+  if (!res.ok) throw new Error(`${remote}: ${res.status}`);
+  return { default: await res.json() };
 }
