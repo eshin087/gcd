@@ -5,6 +5,30 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-26 — The phone's frame: `?perf` on the device; the first break's upload and two spikes out (ADR-209; branch `perf/phone-spikes`)
+
+**Owner:** "i tried playing a few levels like the neo, bamboo, and fox level and the fps does dip during the
+fight. what else can [we do] to ensure performance is good?", then "this was on my iphone ... pretty powerful",
+then "Yes, both" (the on-phone readout and the spike fixes).
+
+**Measured** (headless Edge on the RTX 4090 / i9, the phone setup `?touch` at 1468 x 686, real-time fights with
+a bot, the rig's `timeline.js` / `j_methods.js` / `prof2.mjs` / `prof4.mjs` / `heap.mjs`): a fight frame is 4 - 5
+ms of script, 2 - 3 ms GPU; 0.1 - 0.4 % of frames over 9 ms of script, worst 13 - 16 ms; the second fight in a
+page as spiky as the first. Spikes ride on a blow landing (trade 4 - 7 ms, clash 3 - 4.6, parry contact 2 - 2.5,
+perfect dodge 2.3 - 2.9; inside: sound voices, the hero's pose, call-outs, the boss's reaction), plus the first
+draw of a floor's or the bamboo's hidden remains (bounds 1 - 2.5 ms + buffers) and the still shadow map's
+whole copy of a big mesh (bamboo 1.1 ms). Allocation 17.7 MB/s, mostly V8's boxed numbers (not Safari's).
+
+**What.** `dev/perfReadout.js` + main.js hooks (`?perf`, `__perfReport()`); `render/precompile.js` `warmDraw`
+(main.js after the precompile; `?warm=0`); `render/shadowCache.js` `_bigSync` (the copy kept on every change);
+`pipeline.js` `_renderSeen` leaves the hero's matrices alone. Tests: world `perfreadout`.
+
+**Dropped:** slicing the contact rings' scan (its cost was my instrumentation's, 5 - 15 us really).
+
+**Open.** The owner's `?perf` report from the iPhone in a fight on fox, grove and code; then the parts it
+names (the hit-time work, draw calls, the hero's animation). A shader / pipeline warm-up for effects first
+drawn mid-fight on iOS, if the report shows first-time stalls.
+
 ## 2026-11-26 — The melee animation engine; Tian Lei's blows from a bare-handed film, turned down (ADR-208; branch `enemies/fists-ref`)
 
 **Task** (the owner): review a bare-handed melee reference film with the "0 - Game Engine" session's tool, learn the

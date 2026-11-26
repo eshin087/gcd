@@ -218,9 +218,13 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [ ] Lighter trees on LOW (the presets' grass counts do nothing now)
 - [ ] The floors' shader (its relief is most of its cost; not bakeable as it is drawn)
 - [ ] Script: the shared uniforms' upload (about 0.5 ms a frame), the worst frames' hitches
+  - [x] The fight's spikes found (ADR-209): a blow landing (sounds, the hero's pose, call-outs, the boss's reaction), the first break's remains, the still map's big copy
+  - [x] The first break's remains drawn at load; the still map's big copy kept current; the seen pass's matrix walk gone (ADR-209)
+  - [ ] The hit-time work (sound voices, the hero's pose, call-outs), chosen from the iPhone's report
 - [x] Guards so the cost cannot creep back: a cost budget per level in `npm test` (`cost.mjs`) and `npm run perf` on a real GPU (ADR-206, `perf/cost-budget`)
 - [ ] Measured on the owner's laptop (Intel Core Ultra 7 255U, integrated graphics) and on a phone (`npm run perf --save` there gives the first baseline)
-- [ ] An in-game readout of AUTO's step, the GPU and script ms and its step log (F2), for the owner's devices
+- [x] An in-game readout for the owner's devices: `?perf` (ADR-209: frame and script ms by part, missed frames, AUTO's step, a report to share)
+- [ ] The owner's `?perf` reports from the iPhone: a fight on fox, grove and code
 - [ ] A starting step per level for a heavy level (so AUTO does not find it by a slow stretch)
 
 ## M1.88 — The dragon print: the world printed in the wyrm's digits (2026-11-25, `render/ground-looks`, ADR-198)
@@ -1158,12 +1162,16 @@ map, the cost budget, `npm run perf`); its open items stay there. This list is o
       AUTO must settle, not hunt; a 30 fps battery mode if the floor device needs one
 - [ ] Memory on a phone: the page's peak GPU and JS memory per level, and through a boss rush (levels
       are page loads today; a wrapper keeps one process alive); iOS kills a web view that grows too far
-- [ ] A lost WebGL context is restored (`webglcontextlost` is not handled today): phones drop the
-      context when the app goes to the background
+- [ ] A lost WebGL context, tested in the wrappers and on phones sent to the background: three.js handles
+      the loss and the restore, and the pipeline's own GPU state is made again on `webglcontextrestored`
+      (the seen-through probe, the still shadow map, the ground's baked relief); a loss and restore checked
+      on the desktop (ADR-199 session), not yet on a phone or in a wrapper
 - [ ] 120 Hz screens (iPad / iPhone ProMotion, gaming monitors, the Deck's 90 Hz): the sim's step and
       the touch cap behave at every refresh rate
 - [ ] First-load time on a phone inside the wrapper (shader compile is ~5 s on desktop, ADR-196's
-      loading screen); a shader warm-up or cache if the phone is much slower
+      loading screen); a shader warm-up or cache if the phone is much slower (the set's hidden remains are
+      drawn once at load since ADR-209; effects first drawn mid-fight are not yet)
+- [ ] Each target device's `?perf` report (ADR-209) in a fight on three levels, kept with the release notes
 - [ ] Each level's code as its own chunk once the bundle passes ~5 MB gzipped (one file today)
 - [ ] The Safari / WebKit path kept green: iOS and a Tauri Mac build both run on it; a WebKit pass
       in the release checklist

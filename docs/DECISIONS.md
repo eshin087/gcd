@@ -6333,3 +6333,37 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   clean technique that tracks, the boss's own footwork, and a render for the owner before wiring.
   If the hero remake's branch later lands, its copies of `scripts/mocap` and `src/entities/hero2/*` should
   be taken over these (check `check.mjs`'s film list keeps `fist`).
+
+
+## ADR-209 — The phone's frame: a readout on the device, and three of its spikes taken out (2026-11-26)
+
+- **Context:** the owner saw the frame rate dip in fights on their iPhone ("pretty powerful"), on the fox,
+  bamboo (grove) and code-hall levels; they chose "the on-phone readout plus the spike fixes". Recorded on
+  the RTX 4090 / i9 at the phone setup (`?touch`, 1468 x 686), a fight frame is 4 - 5 ms of script and
+  2 - 3 ms of GPU, with 0.1 - 0.4 % of frames over 9 ms of script (worst 13 - 16 ms; one 260 ms stall once,
+  not reproduced). The spikes come when a blow lands: a trade (4 - 7 ms), a blade clash (3 - 4.6 ms), the
+  boss's parry contact (2 - 2.5 ms), a perfect dodge (2.3 - 2.9 ms), each mostly sound voices built, the
+  hero's pose evaluated, HUD call-outs, the boss's reaction. The same fight a second time spikes as much
+  as the first (not a load). Two spikes were the game's own making: the first break of a floor or of the
+  grove's bamboo drew a 38 000 - 130 000-vertex hidden mesh for the first time (its bounds, 1 - 2.5 ms, and
+  its buffers' upload), and the still shadow map (ADR-201) copied a big mesh's whole position array on the
+  frame it started to move (bamboo: 1.1 ms). None of it is measured on the phone: no profiler reaches it.
+- **Decision:**
+  1. `?perf`, a readout on the device (`dev/perfReadout.js`): every part of each drawn frame timed, a line
+     on screen, a report to share or copy: what the phone spends, from the phone.
+  2. The hidden remains (`foldAway` / `autoHide` meshes) are drawn once at load into a 1 x 1 target
+     (`warmDraw`): bounds and buffers ready before the fight.
+  3. The still shadow map keeps a big mesh's position copy current on every change (only the changed
+     ranges), so starting to move costs no whole copy.
+  4. The seen-through pass does not walk the hero's ~200 nodes again (his matrices are the frame's).
+- **Not taken:** a scan of the contact rings in slices (0.4 ms a frame by an instrumented count; 5 - 15 us
+  by a clean one: the count was the instrumentation's); the V8 allocation profile's top items (17.7 MB/s in
+  a fight, most of it decimal numbers boxed by V8: Safari's engine does not box them, so it is not the
+  iPhone's pause); the hit-time work (sounds, the hero's pose, call-outs, the boss's reaction): each is a
+  look or a sound and wants its own measured change, best chosen from the iPhone's report.
+- **Consequences:** a break no longer uploads anything in the fight (0 first draws in a fight on the fox,
+  grove and code levels, against 2 - 3 before); a big mesh that starts moving costs the still map 0.36 ms
+  instead of 1.1 (grove). Whole-fight timings could not tell the builds apart: the machine was 75 - 81 %
+  loaded by other sessions and runs varied +-25 %. The load step takes ~1 frame more for the warm draw.
+  Next: the owner's `?perf` report from the iPhone in a fight on each of the three levels, then the parts
+  it names. Not measured: any phone.
