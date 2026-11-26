@@ -189,6 +189,14 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.90 — The hero's idles and guard after the owner's reference footage (2026-11-25, `claude/idles-reference`, ADR-204)
+- [x] At ease the reference's one-handed stand; in the fight its two-handed hold; ADR-186's habits, tricks and spells from the new stand (`?idles=new|old`: the looks before)
+- [x] The put-away and the draw (`stow`): the sword burns out in its green flame at his left hip and is drawn back out of it; whole the frame anything else starts
+- [x] The guard: the braced crouch, the hands before the chin, the blade across his face (`?guard=ward`: the cross ward); the block's timings untouched
+- [x] Scenario `heroref`; the Lab's `idles` (ref / new / old), `guard` and `idle ▸` (`stow`) rows; pair sheets against the footage
+- [ ] The owner's look at the films (the hold's hands sit higher than the footage's, the guard from the game camera)
+- [ ] Played on the iPhone
+
 ## M1.89 — 60 fps on every device: the frame's cost (2026-11-25, `render/perf-ground-steps`, ADR-199)
 - [x] A measured review: every level and the phone preset, GPU by pass and by object, script by function, the loop under a throttled CPU
 - [x] The ground drawn last; its relief baked once per cell (the same picture: at most 9 pixels of 2 million differ)

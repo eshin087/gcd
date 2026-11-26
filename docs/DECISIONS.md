@@ -6086,3 +6086,55 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   differently, so the bullet cues shift a frame). The owner played c with the flurry fix and picked it: "Ship c" (2026-11-25); b and 0 stay behind `?neck=` for comparison. Open: the rear attacks (tail
   lash, rakes, cataclysm) still curl the neck back over the spine, where 'upright against the body' is ill
   defined and the head can sit rolled; the leap's and pounce's neck strikes stay fast.
+
+## ADR-204 — The hero's idles and guard after the owner's reference footage (2026-11-25)
+
+- **Context:** the owner gave three sections of their reference footage, "for all the idle animation and poses for
+  you to mirror to this game", and one for "the guarding stance and animation". Asked, they answered: the
+  two-handed hold is the FIGHT stance (locked on, a boss fight) and at ease he stands one-handed; the put-away and
+  draw is an occasional idle moment, and as the hero has no scabbard the sword fades out in its own green flame at
+  his left hip and is drawn back out of it; ADR-186's habits, tricks and spells are kept, from the new stand.
+- **Decision** (`refStance.js`, `idles.js`, `anim.js`; `?idles=ref|new|old`, default `ref`; `?guard=ref|ward`,
+  default `ref`):
+  - At ease `REF_STAND` (the numbers start from the steel look set's stand, `?lights=steel` on a branch not yet merged, so the two
+    agree): tall, the feet a little over shoulder width with the left a short step ahead, the sword hand at the
+    hip, the blade forward, down and out to his right (point ~0.6 m up ahead of the right foot), the free arm
+    hanging, the hand open. In the fight `REF_READY`: both hands on the grip before his belly, the blade ~47° up
+    and 25° out to his right, the point ~1.9 m up. The free hand takes the grip late in the stance's change
+    (`twoHand` = smoothstep(0.35, 0.95, fightW)) and lets go on the move.
+  - One rest each; ADR-186's at-ease actions all kept, their forearm-led moves starting from this stand's arm
+    (`syncStandArm`: the elbow and forearm aim solved from `REF_STAND`, the blade's own aim); in the fight only the
+    habits that keep both hands on the grip (`grip`, `shift`, `loosen`, about the hold's blade).
+  - The put-away (`stow`, a trick, 3.6 s): a dip, the hand to the left hip with the blade forward-left and down,
+    the sword gone ~1.55 s (both arms hanging, the empty fist on the wrist's line), the same dip, the blade drawn
+    up and over forward into the stand. The sword's own meshes (`rig.slots.weapon`) draw into the hilt and hide
+    (`HeroAnimator._stowSword`): nothing is added to the rig (a new object draws a three.js uuid off the seeded
+    Math.random), and the swept joint, the hit test, never changes. `anim.stow` is 0 every frame but those of an
+    uncut put-away in the loco clip, so the sword is whole the very frame any other clip starts, when a move cuts
+    it, when the idles switch and on a reset. `swordMystic.js` burns the going / coming steel in its flame
+    (`SPELL.stow`); the halo and the gem's glow rest while it is gone.
+  - The guard `REF_GUARD`. The plan read it as the blade held upright; the footage's front and back views show
+    the side view's upright blade is a slant across his face: both hands raised before his right shoulder, the
+    elbows out, the blade rising ~32° across his face to his left, its point past his left shoulder above his head,
+    the flat to the foe, in a braced crouch (sunk ~25 cm, the feet ~0.8 m apart, leaning in). It was built from the
+    four views: it stands 13° off upright from his side. The hands come up with the block's own 0.08 s
+    cross-fade, the body sinks over 0.3 s (`REF_GUARD.sink`); the block's timings, windows and costs are untouched.
+    A duelist's animator (no free hand) keeps the cross ward. A parry's snap onto the blow (`deflectPose`) is
+    posed from the cross ward's body and eases back into this guard with it (`WARD_BODY`): its blade and hand are
+    aimed from that body, and from the braced guard's turned chest half the parried blows ended with the two
+    blades 0.2 m apart (duel `clash`).
+- **Departures from the footage, and why:** the blade's flat is rolled 40° up off his sides (`FLAT_ROLL`): held
+  flat to the sides, edge down, as the footage holds it, it is edge-on to the game camera above and behind him (a
+  line one letter wide). The hold's grip sits ~13 cm higher than the footage's belt and the blade ~8° flatter:
+  at the belt the sword wrist bent 70-90° off the forearm, past the 60° at which the fist (built on the sword's
+  frame) turns off the wrist (ADR-186's last amendment).
+- **Consequences** (scenario `heroref`, measured in his own frame): the stand's sword wrist 44° max, elbows R 131°
+  L 126°; the hold 60° (R 88°), the free hand 0.0 cm off its place on the grip; through the stance's change the free
+  hand stays ≥ 8.8 cm out of him; every action within the bars ADR-186 set (wrist ≤ 57° in every action, the
+  blade ≥ 20 cm off his body); the put-away hides the sword 224 frames over two plays and never outside it, and in
+  every cut of it the sword is whole the frame the move begins; every move from the stand, the hold and inside
+  every action within ×1.5 + 10 cm of the bare stance before; the guard's entry jumps ≤ 31.8 cm at the point (the
+  cross ward from the stance before: 57 cm). From the game camera the hold's and the guard's blades stand over
+  his right shoulder and across his head; the owner has not seen them yet. Every suite written against ADR-186's
+  poses and the cross ward runs with them (`heroidles` and, through `pinAdr186`, `herolife`, `heroarms`, `herohand`:
+  `setIdles('new')`, `setGuard('ward')`; `herostance` as before `'old'`) rather than loosening its bars.

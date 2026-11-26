@@ -28,6 +28,12 @@ each actor's `tuning`.
    | `red` — **the red flare** | **fails** (full dmg, knockdown) | **fails** | **only answer**; perfect → the flurry / the plunge (a fire hazard: in place) |
    | `black` — darkness gathers through a long windup, then **the black flare** | stopped, no damage, but **the whole guard meter is gone** and the guard is knocked open (0.8 s) | the same as a block | **only clean answer**; perfect → the flurry / the plunge |
 
+   The guard's pose (ADR-204, the owner's reference footage; `?guard=ward` keeps the cross ward, ADR-073): a
+   braced crouch, the feet wide, leaning in, both hands on the grip raised before his right shoulder with the
+   elbows out, the blade rising ~32° across his face to his left, the flat to the foe; it reads as upright from
+   his side. The hands come up with the clip's 0.08 s cross-fade, the body sinks into the crouch over ~0.3 s.
+   Only the look changed: the block, the parry and their windows and costs are as above.
+
    A blocked contact stream (the fire breath's ticks, burning ground, a bullet) is no blow: it
    chips HP as before (−80 % / −50 %) and costs no guard.
    Attacks may override parry/block (a fire stream is blockable but not parryable). "Perfect →

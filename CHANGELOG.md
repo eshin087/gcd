@@ -4,7 +4,15 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and four pieces of work since 0.4.0:
+One hundred and five pieces of work since 0.4.0:
+- **The hero stands, holds and guards like the reference** (2026-11-25, ADR-204). *Changed:* after the owner's
+  reference footage, at ease the hero now stands tall with the sword in one hand, its point forward and down by his
+  right foot, the free arm hanging; in a fight (locked on, a boss) he takes the sword in both hands before him, the
+  point up above his head. Now and then at ease he puts the sword away at his left hip, where it burns out in its
+  green flame, stands empty-handed for a breath and draws it back out of the flame. His habits, tricks and spells
+  start from and come back to the new stand. His guard is a braced crouch, both hands up before his chin and the
+  blade across his face; the block and the parry work exactly as before (`?idles=new|old`, `?guard=ward`: the
+  looks before).
 - **The dragon's neck and head move naturally: no upside-down head, no flips** (2026-11-25, ADR-203). *Fixed:* every one of the
   Cinder Wyrm's 50 moves was measured frame by frame (how fast each neck joint and the head turn, how far the
   head rolls off level, where it looks). Its head no longer rolls upside down in flight (the sky dive's climb,
