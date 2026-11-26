@@ -6399,3 +6399,92 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   sheet's C in the same page (474 of 580 000 pixels differ, from the relief alone). The look changes once, when
   it turns on, mid-page (one frame). Not measured on the phone; the next `?perf` BENCH there says how much.
 
+## ADR-230 — Bai Wuji, the Untouched: a barrier opened by perfect answers, weight on every blow, the domain broken or caught, moves routed to three handlers (2026-11-26)
+
+- **Context:** the owner asked for a white-haired, blindfolded sorcerer after a famous character (the reference;
+  ADR-160's line holds: his names, the series' and its techniques' appear nowhere), "very hard in terms of skill
+  level", blows that throw the hero, "pretty much forcing the player to parry/dodge everything", the terrain part
+  of the fight. Their four answers: a ruined city crossing; the blade stops short of him and a perfect parry or a
+  perfect dodge opens him; a block holds, costs no health, throws the hero back and takes a big share of the guard,
+  and his spells cannot be blocked; at the last phase a closing sphere to perfect-dodge through, or be held and
+  struck once, then the last phase inside the void. One boss with melee, spells and terrain was too much for one
+  agent: it was to be built by six side by side.
+- **Decision:** a duelist on the shared engine (`entities/enemies/untouched/`, kit `untouched`, every new field
+  `wj*`), one bar, three phases (66 % THE BLINDFOLD COMES OFF, 30 % THE MEASURELESS).
+  1. THE ROUTING CONTRACT (the head of `untouched.js`): the rules are objects on the actor (`d.barrier`,
+     `d.pull`, `d.domain`, `d.fx`) and the moves live in three files (`moves/melee.js`, `moves/spells.js`,
+     `moves/terrain.js`) merged by `moves.js`. Each file exports `FIELDS` (the beat fields it owns) and
+     `create(d)` (its handler); a beat goes to the handler whose `FIELDS` name one of its fields, a move to every
+     handler one of its beats goes to; the hooks (`beatMotion`, `onImpact`, `hitPlayer`, `onHit`, `onParried`,
+     `reach`, `weigh`, `onActStart`, `frame`, `afterPose`, `stop`, `reset`) are called through `?.`. Poses the
+     same way (`ml` / `sp` / `tr` clip prefixes). No agent edited another's file.
+  2. THE BARRIER (`barrier.js`): while up his hurt spheres grow by 0.14 m and the hero's blade stops there (no
+     health, no posture; a short bounce he may cancel); `exact` hits pass. It opens on a perfect parry or a perfect
+     dodge of any blow (4.0 / 3.2 / 2.6 s by phase), on a flash counter, on a posture break, and by cracks (the
+     lead's addition: `cracks` ordinary parries open it for 2.4 / 2.0 / 1.6 s; 0 turns it off). Two strikes on
+     the shell in a row bring his counter.
+  3. WEIGHT: every landed blow throws (2.5 - 12 m); a blocked one slides the hero (`blockPush`, 3.4 m by
+     default) and costs a share of the guard (`guardCost`); a throw of 3 m or more goes through the pieces behind
+     him (`wjCrash`: a `world.impact` each, a little damage, never the last HP). His spells are never blocked: red
+     ones are rolled, the thrown pieces and the Yank's fist are blue; a held guard is opened (`breaksGuard`), never
+     paid in health.
+  4. THE DOMAIN (`domain.js`): the hand sign (a feint), then a red ring over the arena; the engine's own answer
+     decides: a perfect dodge ESCAPES (inside unharmed, the barrier open twice phase 3's time), anything else is
+     CAUGHT (`Player.hold` 0.95 s, one blow of 30 % of max health inside it, never lethal). Either way the scene is
+     the void; his death breaks it and the crossing comes back as it was left.
+  5. MERCY: no blow, spell or falling piece on a hero who is down; a beat that would keep him out of his own hands
+     past 1.2 s in a row becomes a silent feint (`TUNING.melee.mercy.lockCap`); `Player.hold` is capped at 1.2 s.
+     Tells no lower than Tian Lei's (`flashLead` 0.26, `minFirstWindup` 0.40, `minHitGap` 0.34; the suite's DATA
+     asserts it); the engine's fairness guard, cue ledger and pursuit stay on.
+- **Consequences:** a hero who only blocks loses; one who never attacks lives (ADR-232). Six agents built it with
+  no conflict inside his folder; the merges met only in shared files (`player.js`, `destructibles.js`, `scars.js`).
+  Looks behind `?wjLook`, `?wjHair`, `?wjCity`, `?wjVoid`, `?wjShell`, `?wjNull`, the owner's picks in `PICKED`
+  (sheets in `docs/looks/veil/`). Events `dragon:barrier`, `dragon:domain`; his sounds ride `dragon:spell
+  { name: 'wj...' }`. No reward yet (the owner has not chosen one). The hero's own knockdown (1.3 s, the
+  engine's) is longer than the cap his blows keep.
+
+## ADR-231 — Pieces a boss throws can land on the floor; a held piece can be cut; Halcyon's throws land on the road (2026-11-26)
+
+- **Context:** Bai Wuji throws raised pieces (a tower's top, the void's floating slabs). `throwTo` landed a piece
+  at its own base height, so a tower top burst about 6 m up in the air (Halcyon's Falling Sky did the same, 6.5
+  m). A held piece was out of every blow's reach, so a car hanging over the hero could not be cut.
+- **Decision:** `destructibles.throwTo(b, tx, tz, { ground: true })` and `drop(b, { ground: true })`: a raised
+  piece (`y0 > 0`) travels down and lands on the floor (its pivot `y0` down); absent, as before.
+  `take(b, { chip: true })`: while held, the hero's blade bites it where it passes (the bite taken back to its rest
+  frame through the carry's pivot); a cut that would leave it under 1 hp breaks it: let go where it hangs, it
+  bursts where it lands. Halcyon's `_throw` (`halcyon/terrain.js`) passes `ground: true`: the owner's word,
+  2026-11-25 ("yes, Halcyon too").
+- **Consequences:** every option is opt-in: the other bosses' throws and holds are as they were. On the Crossing
+  the fallen tower's sections are liftable (`lift` 2) and a felled section leaves a 0.42 m spill, so the Null's
+  bore reads as a gap. Tests: veil `down` (a raised tower top comes down to the floor and lands there), `heldbreak`, `orbit` (a held
+  piece chipped by a cut it can take).
+
+## ADR-232 — Bai Wuji tuned on a bench of mortal bots; floor marks thinned per level and hidden in the void (2026-11-26)
+
+- **Context:** "very hard", fairly: the god-mode fencing bot of the other suites says nothing about how hard a
+  fight is. Before the pass a bot that rolled every red and blocked the rest beat him 6 of 6 and the perfect
+  answerer won in 176 - 186 s. On the Crossing's black asphalt a whole fight of grit and rubble read as snow
+  (3577 of 3600 mark glyphs), the metal wrecks' rubble lay as orange embers, and the city's marks showed in the
+  void.
+- **Decision:**
+  1. THE BENCH (`tests/integration/bench.mjs`; opt-in scenario `bench` in `veil.mjs`, `city.mjs`, `asc.mjs`):
+     five mortal bots (god mode off), whole fights, any duelist: `perfect` (the ceiling), `fencing` (answers 90 %
+     of his cues), `roller` (perfect-dodges reds, guards the rest), `blocker`, `pace` (never attacks). Env
+     `GCD_BSEEDS`, `GCD_BBOTS`, `GCD_BSECS`, `GCD_BSKILL`, `GCD_BMOVES`. Reported, not asserted.
+  2. TARGETS: the perfect bot wins in about four minutes untouched; the fencing bot wins some; the blocker dies;
+     the roller is held off. Set: `hp` 20000 -> 26000, `wjWeight.guardCost` 0.4 -> 0.5 (the second block in a row
+     knocks the guard open; a block still costs no health), `wjBarrier.cracks` 3 -> 4 (the fencing bot opened him
+     mostly by cracks). The Wrecking Knot strikes only from its impact to +0.15 s (it met the hero before its cue
+     or after a perfect roll's i-frames: 46 damage to the perfect bot on one seed).
+  3. FLOOR MARKS: `SCAR.thin[levelId] = { grit, rubble, ground, cool }` (breakTuning): a level keeps that share
+     of the grit, the rubble and the crack spokes (the veil 0.35 / 0.25 / 0.4); `cool`: a material whose rubble
+     ends in an ember's colour (metal) lies cold grey. `scars.layer` (the tag new marks carry: the set's scene)
+     and `scars.shade(x, z, r, hide, except)` (marks hidden or shown in place, no rebuild): the city's marks hide
+     as the front to the void passes and come back on the return.
+- **Consequences** (6 seeds, 600 s cap; wins of 6): perfect 6, 235 - 241 s, no hit taken; fencing 2 (260 - 272
+  s), 4 dead; roller 1 won, 1 dead, 4 alive at 600 s with 1 - 7 % of his bar left; blocker dead at 83 s mean;
+  pace alive, his bar at 92 %. Halcyon on the same bench: perfect 133 - 155 s, fencing 6, roller 3, blocker dead
+  at 309 s, pace dead at 422 s; Tian Lei: perfect 42 - 60 s, fencing 6, roller 6, blocker dead at 78 s, pace
+  alive. He is the hardest boss on the bench, and a pure defender still outlasts him. The fencing bot's 2 of 6
+  moves with the seeds. Halcyon Plaza keeps its orange rubble (`thin` is the veil's only); the real renderer lays
+  ~30 % more marks than headless.

@@ -5,6 +5,80 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-26 — A ninth level: the Veiled Crossing and Bai Wuji, the Untouched (ADR-230 – ADR-232; branch `enemies/untouched`; planned by the lead, built by Opus agents)
+
+**Owner:** a boss after a famous white-haired, blindfolded sorcerer (named as the reference; nowhere in the game):
+"his iconic white hair with eyes covered. during the phases he will reveal his eyes and his hair will go down";
+"utilize the terrain and background to be part of the fight and be epic"; "one of those ultimate beings, we need
+to make this fight very hard in terms of skill level ... make his blows feel powerful and knocks the players back
+a bit if they get hit ... pretty much forcing the player to parry/dodge everything". Their four answers: the arena
+a ruined city crossing at night; his barrier stops the blade and opens on a perfect parry or a perfect dodge; a
+block holds and costs no health but throws the hero back and takes a big share of the guard, and his spells
+cannot be blocked; at the last phase the hand sign and a closing sphere: perfect-dodge through it or be held and
+struck once, and either way the last phase is fought inside the void. Picks from the rendered sheets
+(2026-11-25, `docs/looks/veil/`): coat c (bone-white), hair b (short spiky burst, then a choppy mop), the
+crossing a (ash moon), the void b (the ring), the barrier a (all but invisible until a blade nears), the Null a
+(a hard-edged slab). Halcyon's thrown pieces landing on the road: "yes, Halcyon too".
+
+**How it was built.** A brief and a core first (the level on a stand-in set, the boss folder with its rules and
+a routing contract, `veil.mjs`), then three waves of Opus agents each in its own worktree on the core: body, fx
+and world; melee, spells and terrain (each its own move file and handler); an integration pass; a tuning pass
+with a bench of five mortal bots. The lead merged and wrote the docs.
+
+**What.**
+- `?level=veil` (`levels/veil.js`, aliases `crossing`, `veiled`, `wuji`, `untouched`), the set
+  `world/veiledCrossing.js`: a rubble plain where two 21 m roads cross, the scramble's bars in the slabs, a
+  crater field, an old wide trench, a fallen tower in six sections across the north, four tower stumps whose tops
+  can come down, a broken footbridge and gantry, eight cars, a bus, six loose road slabs; 299 breakables, 67 rigid
+  pieces, 268 bones, 129k triangles (under Halcyon Plaza's budget). Two scenes, `crossing` and `void` (the
+  Hall's contract), the void's stars a `LetterBatch`, floating pieces he can drop and cast. Its blocks in every
+  living-world tuning file.
+- `entities/enemies/untouched/`: the duelist engine plus the barrier (`barrier.js`), the pull (`pull.js`), the
+  domain (`domain.js`) and three move files routed by `moves.js` (melee, spells, terrain; 33 moves and two
+  transitions). His body in the hero's ink-line art, printed the bossPrint way; his effects in the fire field
+  (`azure` and `crimson` palettes); 18 sounds of his own.
+- Player: three generic hit fields (`blockPush`, `wjCrash`, `Player.hold`, capped 1.2 s).
+- Destruction: `throwTo` / `drop` `{ ground }`, `take` `{ chip }`, a held piece cut under 1 hp breaks; scars:
+  `SCAR.thin` per level (veil: grit 0.35, rubble 0.25, ground 0.4, `cool`), `scars.layer`, `scars.shade`, a wide
+  `beam` trench. Halcyon's `_throw` lands on the floor.
+- The bench: `tests/integration/bench.mjs`, opt-in scenario `bench` in `veil.mjs`, `city.mjs`, `asc.mjs`.
+
+**Decisions.** ADR-230 (the boss and his rules), ADR-231 (what changed in the destruction), ADR-232 (the tuning
+and the bench). The lead's one addition to the owner's barrier rule: cracks (ordinary parries; four open it for
+less time). The guard: the tuning pass set a block's cost to half the meter, so the SECOND block in a row knocks
+the guard open (the brief said the third): a bot that rolled every red and blocked the rest won 6 of 6 at 0.4.
+
+**Verified.** `veil.mjs` all (levels, data, barrier, weight, crash, pull, domain, phases, fight, pace, events,
+downtime, strings, sides, spark, mix, chase, the spells', the terrain moves', letgo, into, heldbreak, floor, body,
+fx); `world.mjs`, `city.mjs`, groundfx quick runs green after the tuning; `npm test` by the lead. The bench (6
+seeds, god mode off, 600 s cap; wins of 6):
+
+| Bot | before the tuning | after | Halcyon | Tian Lei |
+|---|---|---|---|---|
+| perfect | 6, 176 – 186 s | 6, 235 – 241 s, 0 hits | 6, 133 – 155 s | 6, 42 – 60 s |
+| fencing (90 %) | 3 | 2 (260 – 272 s), 4 dead | 6 | 6 |
+| roller | 6 | 1 won, 1 dead, 4 alive at 600 s with 1 – 7 % of his bar | 3 | 6 |
+| blocker | 0 | 0, dead at 83 s mean | 0, dead at 309 s | 0, dead at 78 s |
+| pace (never attacks) | alive | alive, his bar at 92 % | dead at 422 s | alive |
+
+Set: `hp` 20000 → 26000, `wjWeight.guardCost` 0.4 → 0.5, `wjBarrier.cracks` 3 → 4; the Wrecking Knot strikes
+only from its impact to +0.15 s (a perfect roll covers it: the perfect bot took 46 from it on seed 4242 before).
+A filmed god-mode fight before the tuning: won in 187 s, phases at 64.5 / 131.8 s, 80 parries, 30 dodges, no
+error; after it, the perfect bot's fight and the domain filmed in the real renderer.
+
+**Open.**
+- The roller (perfect dodges every red, holds the guard through the rest) mostly survives to 10 minutes; a pure
+  defender who never attacks survives him indefinitely (his bar at 92 %). The fencing bot's 2 of 6 depends on the
+  seeds.
+- Halcyon Plaza's metal rubble still lies ember-orange (`cool` is the Crossing's only). The bonfire burns inside
+  the void. The real renderer lays ~30 % more floor marks than headless. On the phone his two eyes merge into
+  one point. The hero's knockdown (1.3 s) is the engine's, over the 1.2 s cap his own blows keep.
+- No reward yet. Not playtested by a human; not checked on the owner's iPhone.
+- For the owner: the second block opening the guard (the brief said the third)? Halcyon Plaza's rubble cold too?
+  The bonfire put out inside the void?
+
+---
+
 ## 2026-11-26 — The lite world on a phone at AUTO's floor (ADR-216; branch `render/phone-lite`)
 
 **Owner:** the BENCH from their iPhone (fox: the world pass 11.8 of 13.3 ms; half the pixels only 32 % less);

@@ -4,7 +4,32 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and ten pieces of work since 0.4.0:
+One hundred and eleven pieces of work since 0.4.0:
+- **A ninth level: the Veiled Crossing and Bai Wuji, the Untouched** (2026-11-26, ADR-230 – ADR-232). *Added:* a ninth
+  level, `?level=veil` (the title screen lists it). **The Veiled Crossing**: a city crossing at night after the fight
+  has already levelled it, under a black veil: cracked asphalt with a great diagonal crossing's white bars, craters,
+  an old wide trench, tower stumps with their tops still standing, a fallen tower lying across the north, a broken
+  overpass, wrecked cars and a bus, bent lamps; everything in it breaks. **Bai Wuji, the Untouched**: a tall, relaxed
+  man in a bone-white high-collared coat, white hair standing up over a band across his eyes, hands in his pockets.
+  Your blade stops short of him on a barrier you cannot see until it nears him: a perfect parry or a perfect dodge
+  of any of his blows opens it for a few seconds (four ordinary parries close together crack it open for less; a posture
+  break opens it too). Every blow of his that lands throws you, through whatever stands behind you; a block costs
+  no health but slides you back and costs half your guard (two in a row knock it open); his spells cannot be
+  blocked at all. Azure Draw (a blue knot that drags you, then collapses), the Yank (pulled onto his fist), Crimson
+  Cast (a red point flicked to your place, a burst), the Wrecking Knot, the Violet Null (a line across the whole
+  crossing that erases what it crosses and leaves a wide trench), wreckage lifted and thrown, a tower's top brought
+  down on you, the road itself burst up in a line. At 66 % THE BLINDFOLD COMES OFF: his hair falls and his eyes
+  burn blue. At 30 % THE MEASURELESS: the hand sign, and a dark sphere closes on the arena: perfectly dodge through
+  its wall and you are inside unharmed with his barrier open, or you are caught, held a moment and struck once
+  (never lethally). The last phase is fought inside the void: the city gone, its pieces floating past, his blows
+  out of nowhere, the Last Null below 12 %. He never strikes a hero who is down and never holds you longer than
+  1.2 s. No reward yet. His look is the owner's picks: the bone-white coat, the short spiky hair, an ash moon over
+  the crossing, the void's ring, the barrier all but invisible until a blade nears, the Null a hard-edged slab
+  (`?wjLook=a|b`, `?wjHair=a`, `?wjCity=b|c`, `?wjVoid=a|c`, `?wjShell=b|c`, `?wjNull=b` the others). *Changed:* a
+  thrown or dropped raised piece can land on the floor (`ground`), a held piece can be chipped by the hero's blade
+  and breaks when cut under 1 hp; floor marks are thinner on the crossing and its metal rubble lies grey, not
+  ember-orange; the crossing's marks hide inside the void and come back with the city. *Fixed:* Halcyon's thrown
+  pieces land on the road (the Falling Sky's tower top burst about 6.5 m up in the air), the owner's call.
 - **A lighter world on phones that need it** (2026-11-26, ADR-216). *Changed:* on a phone that still drops frames at the
   lowest resolution, the ground's extras (ridge strokes, drifting cloud shadows, contact shadows, the floor ripple)
   turn off and the stone floors' relief is drawn more simply, for the rest of the visit. `?lite=0` keeps the full

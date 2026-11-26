@@ -189,6 +189,29 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.93 — A ninth level: the Veiled Crossing and Bai Wuji, the Untouched (2026-11-26, `enemies/untouched`, ADR-230 – ADR-232)
+- [x] `?level=veil`: a levelled city crossing at night, every piece breakable, tower tops that come down, the
+      fallen tower in sections, two scenes (`crossing`, `void`: the city's pieces let go, the void's float),
+      `setPhase`, the living world's blocks; `?wjCity=a|b|c`, `?wjVoid=a|b|c`
+- [x] Bai Wuji on the duelist engine: the barrier (perfect parry / perfect dodge / cracks / a break open it), weight
+      on every blow (`blockPush`, `wjCrash`), the pull, the domain (escape or caught, `Player.hold`), the mercy
+      rules; his moves in three handlers routed by `moves.js` (melee, spells, terrain)
+- [x] His body in the hero's ink-line art, the blindfold off and the hair down at phase 2; his effects in the fire
+      field (`azure`, `crimson`), his sounds; `?wjLook`, `?wjHair`, `?wjShell`, `?wjNull`
+- [x] The owner's picks: `wjLook` c, `wjHair` b, `wjCity` a, `wjVoid` b, `wjShell` a, `wjNull` a (2026-11-25;
+      sheets in `docs/looks/veil/`)
+- [x] Lab, Training, `tests/integration/veil.mjs`, the cost budget; the bench (`bench.mjs`) and the tuning:
+      `hp` 26000, a block half the guard, four cracks
+- [x] `throwTo` / `drop` `{ ground }`, `take` `{ chip }`, a held piece breaks under 1 hp; Halcyon's throws land on
+      the road; `SCAR.thin`, `scars.layer` / `shade`
+- [ ] The owner's playtest, on the iPhone too (the phone's eyes merge into one point)
+- [ ] His reward: the owner has not chosen one
+- [ ] A defender who never attacks outlasts him; the roller mostly survives to 10 minutes; the fencing bot's 2 of
+      6 rides on the seeds
+- [ ] The owner's answers: the second block opening the guard (the brief said the third); Halcyon Plaza's metal
+      rubble cold too; the bonfire out inside the void
+- [ ] The real renderer lays ~30 % more floor marks than headless
+
 ## M1.92 — The melee animation engine: boss blows from reference footage (2026-11-26, `enemies/fists-ref`, ADR-208)
 - [x] `scripts/mocap` on `main` as a tool; `scripts/mocap/duelist/fit.mjs` fits a clip onto a duelist's blows (`--check` through the real animator); the guide
 - [x] Tian Lei from the bare-handed film, shown behind `?fists=ref`: turned down by the owner (stiff arms; the lunges and feet); not merged
@@ -1239,6 +1262,7 @@ map, the cost budget, `npm run perf`); its open items stay there. This list is o
       Ash Disciple's technique first (the next PR). The store it can read exists: `game/unlocks.js` (ADR-146)
 - [~] Fixed rewards per boss: the first, One Breath (the Sheathed's draw-slash, ADR-146), and the second, the Long Second (Xin Yi's lean, ADR-158), ship; the rest (techniques, weapons, abilities, elements); weapons of other lengths
   - [ ] Halcyon's reward: the owner has not chosen one yet (ADR-161)
+  - [ ] Bai Wuji's reward: the owner has not chosen one yet (ADR-230)
   - [ ] The Thousand-Body Fox's Paper Double (a decoy the foe strikes instead of the hero): recorded on the level, not usable (ADR-148); needs the technique slot, a button on every input, a target indirection in every boss's AI
       (the animator, the hit segment and the blade FX read `DIM`)
 - [ ] A hub that links the levels (the bonfire)
