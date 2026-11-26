@@ -82,6 +82,7 @@ export const PENDING = Object.freeze([
   // Bai Wuji: fx rows
 
   // Bai Wuji: world rows
+  'wjCity', 'wjVoid', // the crossing's reading (a ash moon, b last lamps, c black wet) and the void's (a drifts, b the ring, c the fall): world/veiledCrossing.js
 
 ]);
 

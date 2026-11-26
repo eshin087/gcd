@@ -81,6 +81,8 @@ export const LOOK_SWITCHES = Object.freeze([
   // Bai Wuji: fx rows
 
   // Bai Wuji: world rows
+  ['wjCity', ['a', 'b', 'c'], 'a', 'a', true, ['veil'], 'the crossing: a ash moon (cold moonlit ash-grey), b last lamps (sodium amber, dead screens), c black wet (wet black asphalt, pale bars) (a reload)', 'awaiting'],
+  ['wjVoid', ['a', 'b', 'c'], 'a', 'a', true, ['veil'], 'the void: a drifts (star clumps only), b the ring (a great pale ring on the floor round the fight), c the fall (stars falling as streaks, a line of light where the floor ends) (a reload)', 'awaiting'],
 
   // --- every human boss (ADR-194)
   ['bossPrint', ['0', 'a', 'b'], '0', 'b', false, ['ash', 'starless', 'ring', 'fox', 'grove', 'code', 'city', 'veil'], 'the bosses printed the hero\'s way: b in their own colours (the default), a in the hero\'s greys, 0 as before (lit letter bodies, his strokes and dotted rims, the pale hem below the knee)'],

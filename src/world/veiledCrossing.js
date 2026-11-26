@@ -132,11 +132,11 @@ const LOOKS = Object.freeze({
   a: Object.freeze({ // ASH MOON: cold moonlit ash-grey, pale bars
     light: Object.freeze({
       1: Object.freeze({ moon: [0.3, 0.31, 0.37], ambient: [0.038, 0.04, 0.048], fog: [0.005, 0.005, 0.007], near: 24, far: 46 }),
-      2: Object.freeze({ moon: [0.2, 0.27, 0.46], ambient: [0.026, 0.042, 0.08], fog: [0.003, 0.007, 0.016], near: 22, far: 44 }),
+      2: Object.freeze({ moon: [0.17, 0.22, 0.38], ambient: [0.024, 0.036, 0.07], fog: [0.003, 0.007, 0.016], near: 22, far: 44 }),
       3: Object.freeze({ moon: [0.08, 0.08, 0.12], ambient: [0.01, 0.01, 0.016], fog: [0.001, 0.001, 0.003], near: 12, far: 26 }),
     }),
     moonDir: [-0.35, 0.86, 0.38],
-    asphalt: [0.055, 0.055, 0.06], walk: [0.1, 0.1, 0.104], paint: [0.42, 0.42, 0.43], line: [0.3, 0.29, 0.25], wet: 0,
+    asphalt: [0.06, 0.06, 0.064], walk: [0.1, 0.1, 0.104], paint: [0.95, 0.95, 0.97], line: [0.3, 0.29, 0.25], wet: 0,
     concrete: [0.12, 0.12, 0.126], glass: [0.035, 0.038, 0.048], lit: null, metal: [0.12, 0.125, 0.135], scorch: [0.018, 0.018, 0.02],
     floorLook: { gain: 1.15, lumScale: 1.6, edge: 0.2, inkFloor: 0.02 }, warm: null, screens: false,
   }),
@@ -147,7 +147,7 @@ const LOOKS = Object.freeze({
       3: Object.freeze({ moon: [0.07, 0.06, 0.07], ambient: [0.012, 0.009, 0.01], fog: [0.002, 0.001, 0.002], near: 12, far: 26 }),
     }),
     moonDir: [0.3, 0.8, 0.5],
-    asphalt: [0.07, 0.062, 0.058], walk: [0.12, 0.11, 0.1], paint: [0.42, 0.38, 0.3], line: [0.36, 0.28, 0.14], wet: 0.2,
+    asphalt: [0.07, 0.062, 0.058], walk: [0.12, 0.11, 0.1], paint: [0.9, 0.8, 0.62], line: [0.36, 0.28, 0.14], wet: 0.2,
     concrete: [0.13, 0.118, 0.11], glass: [0.05, 0.045, 0.04], lit: [0.3, 0.22, 0.1], metal: [0.13, 0.12, 0.115], scorch: [0.022, 0.018, 0.016],
     floorLook: { gain: 1.25, lumScale: 1.75, edge: 0.22, inkFloor: 0.025 }, warm: [1.0, 0.58, 0.22], screens: true,
   }),
@@ -158,7 +158,7 @@ const LOOKS = Object.freeze({
       3: Object.freeze({ moon: [0.06, 0.07, 0.11], ambient: [0.008, 0.009, 0.015], fog: [0.001, 0.001, 0.003], near: 12, far: 26 }),
     }),
     moonDir: [-0.2, 0.82, 0.54],
-    asphalt: [0.026, 0.027, 0.032], walk: [0.075, 0.078, 0.086], paint: [0.52, 0.53, 0.55], line: [0.34, 0.33, 0.3], wet: 1.4,
+    asphalt: [0.026, 0.027, 0.032], walk: [0.075, 0.078, 0.086], paint: [1.1, 1.1, 1.14], line: [0.34, 0.33, 0.3], wet: 1.4,
     concrete: [0.09, 0.093, 0.1], glass: [0.03, 0.035, 0.05], lit: null, metal: [0.1, 0.105, 0.12], scorch: [0.012, 0.012, 0.015],
     floorLook: { gain: 1.1, lumScale: 1.55, edge: 0.2, inkFloor: 0.018 }, warm: null, screens: false,
   }),
@@ -166,9 +166,9 @@ const LOOKS = Object.freeze({
 
 /** Per void look: its light, and the air (stars; b's ring; c's falling streaks and the floor's edge). */
 const VOIDS = Object.freeze({
-  a: Object.freeze({ light: Object.freeze({ moon: [0.055, 0.055, 0.09], ambient: [0.007, 0.007, 0.012], fog: [0, 0, 0.002], near: 7, far: 17 }), ring: false, fall: false }),
-  b: Object.freeze({ light: Object.freeze({ moon: [0.06, 0.06, 0.09], ambient: [0.008, 0.008, 0.012], fog: [0, 0, 0.002], near: 7, far: 17 }), ring: true, fall: false }),
-  c: Object.freeze({ light: Object.freeze({ moon: [0.055, 0.05, 0.085], ambient: [0.007, 0.006, 0.012], fog: [0.002, 0.001, 0.005], near: 7, far: 16 }), ring: false, fall: true }),
+  a: Object.freeze({ light: Object.freeze({ moon: [0.036, 0.036, 0.06], ambient: [0.004, 0.004, 0.008], fog: [0, 0, 0.002], near: 5, far: 14 }), ring: false, fall: false }),
+  b: Object.freeze({ light: Object.freeze({ moon: [0.036, 0.036, 0.055], ambient: [0.004, 0.004, 0.007], fog: [0, 0, 0.002], near: 5, far: 14 }), ring: true, fall: false }),
+  c: Object.freeze({ light: Object.freeze({ moon: [0.034, 0.032, 0.055], ambient: [0.004, 0.004, 0.008], fog: [0.001, 0, 0.003], near: 5, far: 13 }), ring: false, fall: true }),
 });
 
 /** The light of each phase / scene (look a; the others: LOOKS / VOIDS): kept for the callers of the stand-in. */
@@ -176,11 +176,12 @@ export const VEIL_LIGHT = Object.freeze({ 1: LOOKS.a.light[1], 2: LOOKS.a.light[
 
 /** The void's air: letters at once (desktop, LOW), how many clumps and drifts, where they float. */
 export const AIR = Object.freeze({
-  max: 900, low: 420, clumps: 34, drifts: 10, per: [10, 22], driftPer: [26, 40],
-  r: [9, 30], y: [0.3, 9], spin: [0.012, 0.035], keep: 6.5, // keep: m round the focus kept clear near the floor
-  color: [0.62, 0.66, 0.82], alpha: [0.22, 0.62], twinkle: 0.35, glyphs: ".'`,:.+*.'", chars: ".'`,:+*-~|",
-  ring: Object.freeze({ r: 12.5, n: 300, color: [0.55, 0.58, 0.7], alpha: 0.55, fade: [9, 17] }),
-  fall: Object.freeze({ rate: 26, speed: [0.5, 1.1], life: [7, 11], alpha: 0.4, edge: 1.5, edgeN: 120, edgeColor: [0.6, 0.55, 0.85] }),
+  max: 1600, low: 700, clumps: 56, drifts: 14, per: [10, 22], driftPer: [26, 40],
+  r: [6, 21], y: [0.4, 7], spin: [0.012, 0.035], keep: 6.5, // keep: m round the focus kept clear near the floor
+  color: [0.7, 0.74, 0.92], alpha: [0.3, 0.75], twinkle: 0.35, glyphs: ".'`,:.+*.'", chars: ".'`,:+*-~|",
+  ring: Object.freeze({ r: 11, n: 560, y: 0.22, color: [0.8, 0.82, 0.92], alpha: 0.85, fade: [11, 19] }),
+  grit: Object.freeze({ rate: 2.5, life: [1.8, 2.8], speed: [0.5, 0.9], alpha: 0.35, color: [0.5, 0.5, 0.58] }), // what trickles off a floating piece
+  fall: Object.freeze({ rate: 60, speed: [0.6, 1.2], life: [6, 9], alpha: 0.6, edge: 0.55, edgeN: 260, edgeColor: [0.75, 0.68, 1.0] }),
 });
 
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
@@ -383,7 +384,7 @@ function buildRoadSlab(L, x, z, ry, rng, painted) {
   const under = box(w * 0.96, 0.3, d * 0.96, 0, 0, 0);
   lumpy(under, 0.06, 2, rng() * 99);
   const tilt = range(rng, 0.06, 0.16);
-  carve(top, { col: (px, py, pz, nx, ny) => (painted && ny > 0.5 && ((px + 9) % 1.05) < 0.52 ? L.paint : mul(L.asphalt, 0.8 + 0.4 * fbm2(px * 1.5, pz * 1.5, 2))), ao: 0.9, edge: EDGE });
+  carve(top, { col: (px, py, pz, nx, ny) => (painted && ny > 0.5 && ((px + 9) % 1.05) < 0.52 ? mul(L.paint, 0.4) : mul(L.asphalt, 0.8 + 0.4 * fbm2(px * 1.5, pz * 1.5, 2))), ao: 0.9, edge: EDGE });
   carve(under, { col: mul(L.concrete, 0.8), ao: 0.7, edge: EDGE });
   const geos = [top, under];
   for (const g of geos) g.rotateX(tilt);
@@ -610,16 +611,21 @@ function asphaltCol(L) {
     let col = mul(L.asphalt, n * (1 + L.wet * 0.25 * fbm2(px * 0.25 + 9, pz * 0.25, 2)));
     // the old trench: charred black glass with a pale fused lip
     const td = Math.abs(trenchD(px, pz));
-    if (td < Tw) return mul(L.scorch, 0.7 + 0.8 * fbm2(px * 1.4, pz * 1.4, 2));
-    if (td < Tw + 0.55) return mul(L.asphalt, 1.9);
+    if (td < Tw) {
+      // (glints of fused glass in the black, along the line it was cut)
+      const gl = hash2(Math.floor(px * 2.2), Math.floor(pz * 2.2));
+      return gl > 0.93 ? mul(L.paint, 0.22) : mul(L.scorch, 0.6 + 0.8 * fbm2(px * 1.4, pz * 1.4, 2));
+    }
+    if (td < Tw + 0.6) return mul(L.asphalt, 2.6 + 0.8 * hash2(px * 4, pz * 4));
     // the craters: a black bowl, a pale torn rim
     for (const [cx, cz, cr] of VEIL.craters) {
       const d = Math.hypot(px - cx, pz - cz);
       if (d < cr * 0.75) return mul(L.scorch, 0.8 + 0.6 * (d / cr));
-      if (d < cr) return mul(L.asphalt, 1.7 + 0.5 * hash2(px * 3, pz * 3));
+      if (d < cr) return mul(L.asphalt, 2.4 + 0.8 * hash2(px * 3, pz * 3));
     }
     // the lane paint along the roads past the crossing: a centre double line, dashed lanes (worn)
-    const ax = Math.abs(px), az = Math.abs(pz), wear = fbm2(px * 0.8 + 3, pz * 0.8, 2) > 0.42 ? 1 : 0.35;
+    const ax = Math.abs(px), az = Math.abs(pz), wear = fbm2(px * 0.8 + 3, pz * 0.8, 2) > 0.42 ? 0.45 : 0.15;
+    if (ax > CROSSING.half || az > CROSSING.half) return col;
     if (az > R + 4.2 && ax < R) {
       if (Math.abs(ax - 0.22) < 0.1) return mul(L.line, wear);
       if (Math.abs(ax - 5.2) < 0.09 && ((pz + 40) % 3.2) < 1.6) return mul(L.paint, 0.8 * wear);
@@ -638,7 +644,7 @@ function painted(poly) {
     if (Math.abs(trenchD(x, z)) < VEIL.trench.w + 1.2) return true;
     for (const [cx, cz, cr] of VEIL.craters) if (Math.hypot(x - cx, z - cz) < cr + 2.5) return true;
     const ax = Math.abs(x), az = Math.abs(z);
-    if ((az > R + 3 && ax < 7) || (ax > R + 3 && az < 7)) return true;
+    if (((az > R + 3 && ax < 7) || (ax > R + 3 && az < 7)) && ax < CROSSING.half && az < CROSSING.half) return true;
   }
   return false;
 }
@@ -951,6 +957,14 @@ function build(U, colliders) {
     piece({ kind: 'heap', mat: 'stone', look: 'prop', x, z, r: r * 1.1, h: h.h, geos: h.geos, colliders: [colliders.add(x, z, r * 0.8, 'stone')], hp: VEIL.heap.hp, weight: 1.6, topples: false, cover: true, lift: 0, broken: { geos: buildRubble(br, x, z, r * 0.6, { col: mul(L.concrete, 0.7), h: 0.3 }), r: 0 }, wreck: false });
   });
 
+  // ---- low debris across the plain (the rubble the fight left before he came): small, walked round
+  const DEBRIS = [[-3.2, -18.4], [14.6, -9.4], [-15.8, 4.4], [16.4, 2.2], [-9.4, 16.6], [10.8, 15.4], [-17.2, -8.6], [2.6, 19.6], [-1.8, 13.2], [19.4, 9.8]];
+  DEBRIS.forEach(([x, z], k) => {
+    const r = 0.55 + 0.35 * hash2(k * 3.1, 7.7);
+    const geos = buildRubble(rng, x, z, r, { col: mul(L.concrete, 0.85), h: 0.35 + 0.2 * hash2(k, 1.3) });
+    piece({ kind: 'debris', mat: 'stone', look: 'prop', x, z, r: r * 1.4, h: geosHeight(geos), geos, colliders: [colliders.add(x, z, r * 0.7, 'stone')], hp: 1.2, topples: false, cover: false, lift: 0, wreck: false }, 16);
+  });
+
   // ---- lamp posts (three still burn: straight, their heads lit; the rest bent over, dark) and signal poles
   const LAMPS = [[-11.3, -11.4, true], [11.4, -11.6, true], [21, -11.2, true], [-21.5, -11.2, false, 0.5, 2.2, 0.6, 0.8], [11.6, 11.8, false, 1.1, 1.6, -0.7, 0.7], [-11.4, 11.6, false, 1.25, 1.4, 0.6, 0.8]];
   for (const [x, z, lit, bend = 0, by = 0, bx = 0, bz = 1] of LAMPS) {
@@ -988,7 +1002,7 @@ function build(U, colliders) {
   };
   add(propGeos, stoneMat, 'props');
   meshes.push(fallenRuns.finish(stoneMat, 'fallenTower'), fallenRuin.finish(stoneMat, 'fallenTowerRuin'));
-  const slabMat = createCarvedGlyphMaterial(U, { ...SLAB_LOOK, ...L.floorLook, viewPitch: CONFIG.camera.pitch, dp: { k: 0.6, sat: 0.7, top: 0.04, rimW: 0, wet: (L.wet ?? 0) * 1.6 } });
+  const slabMat = createCarvedGlyphMaterial(U, { ...SLAB_LOOK, ...L.floorLook, viewPitch: CONFIG.camera.pitch, dp: { k: 0.9, sat: 0.7, top: 0.04, rimW: 0, wet: (L.wet ?? 0) * 1.6 } });
   const slabMesh = add(slabGeos, slabMat, 'asphalt');
   group.add(...meshes);
   markCaster(group);
@@ -1000,7 +1014,7 @@ function build(U, colliders) {
 
   const light = makeLight(U, L, VOIDS[vopt]);
   const scenes = makeScenes(light);
-  const air = makeAir(scenes, VOIDS[vopt]);
+  const air = makeAir(scenes, VOIDS[vopt], floats);
   const ambience = makeAmbience({ scenes, light, air, floats, screens, L, opt });
   const S = CONFIG.world.dragonSleep ?? C.wait, L1 = L.light[1];
   return {
@@ -1367,7 +1381,8 @@ function makeScenes(light) {
  * floor ends. Its own seeded stream (never Math.random). Drawn only while the void stands (and through the
  * front: its strength follows the morph).
  */
-function makeAir(scenes, V) {
+const NONE_C = Object.freeze([]);
+function makeAir(scenes, V, floats = []) {
   let seed = 0x5b1d3e77;
   const rnd = () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296;
   let batch = null, game = null;
@@ -1391,7 +1406,7 @@ function makeAir(scenes, V) {
   const edge = [];
   for (let i = 0; i < A.fall.edgeN; i++) edge.push({ j: (rnd() - 0.5) * 0.3, k: 0.5 + rnd() * 0.5, g: 0 });
   const col = [0, 0, 0];
-  const st = { on: false, count: 0, budget: A.max, k: 0, cx: 0, cz: 0, t: 0, fall: 0, ms: 0 };
+  const st = { on: false, count: 0, budget: A.max, k: 0, cx: 0, cz: 0, t: 0, fall: 0, grit: 0, ms: 0, fp: null };
   const sp = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 8, col: 0, color: [0, 0, 0], colorEnd: [0, 0, 0], alpha: 0.4, alphaEnd: 0, drag: 0, gravity: 0, flicker: 0 };
   return {
     get state() {
@@ -1406,7 +1421,7 @@ function makeAir(scenes, V) {
       const quiet = () => (qs = (Math.imul(qs, 1664525) + 1013904223) >>> 0) / 4294967296;
       Math.random = quiet;
       try {
-        batch = new LetterBatch(g, A.max, A.chars, { additive: true, spawned: 260, rand: quiet });
+        batch = new LetterBatch(g, A.max, A.chars, { additive: true, spawned: 600, rand: quiet });
       } finally {
         Math.random = mr;
       }
@@ -1444,13 +1459,40 @@ function makeAir(scenes, V) {
       }
       st.t += dt;
       const low = game?.settings?.quality === 0;
-      st.budget = low ? A.low : A.max;
+      st.budget = (low ? A.low : A.max) - 320; // (the rest: what falls and trickles, spawned)
       const f = game?.U?.uFocus?.value ?? { x: st.cx, z: st.cz };
       const fx = f.x, fz = f.z, t = st.t;
       batch.begin();
       let used = 0;
-      // the stars: clumps and drifts turning round where the void opened
-      for (const c of clumps) {
+      // b: the great pale ring on the floor round where it opened, its far side lost in the black
+      if (V.ring) {
+        const R = A.ring;
+        for (let i = 0; i < ringPh.length && used < st.budget; i++) {
+          const r = ringPh[i], a = (i / ringPh.length) * TAU + t * 0.01;
+          const x = st.cx + Math.sin(a) * (R.r + r.j), z = st.cz + Math.cos(a) * (R.r + r.j);
+          const d = Math.hypot(x - fx, z - fz), fade = 1 - clamp((d - R.fade[0]) / (R.fade[1] - R.fade[0]), 0, 1);
+          const k = want * fade * r.k * (0.8 + 0.2 * Math.sin(t * 0.7 + r.ph));
+          if (!(k > 0.01)) continue;
+          col[0] = R.color[0] * k; col[1] = R.color[1] * k; col[2] = R.color[2] * k;
+          batch.put(x, R.y, z, 0, r.g, 0, col, R.alpha * k);
+          used++;
+        }
+      }
+      // c: the line of light where the floor goes black
+      if (V.fall) {
+        // (where the floor goes black: between the fog's near and far, round the focus)
+        const F = A.fall, fn = game?.U?.uFogNear?.value ?? 5, ff = game?.U?.uFogFar?.value ?? 13, er = fn + (ff - fn) * F.edge;
+        for (let i = 0; i < edge.length && used < st.budget; i++) {
+          const e = edge[i], a = (i / edge.length) * TAU;
+          const x = fx + Math.sin(a) * (er + e.j), z = fz + Math.cos(a) * (er + e.j);
+          const k = want * e.k;
+          col[0] = F.edgeColor[0] * k; col[1] = F.edgeColor[1] * k; col[2] = F.edgeColor[2] * k;
+          batch.put(x, 0.22, z, 0, e.g, 0, col, 0.85 * k);
+          used++;
+        }
+      }
+      // the stars: clumps and drifts turning round where the void opened (c: they fall instead, below)
+      for (const c of V.fall ? NONE_C : clumps) {
         const a = c.a + c.s * t, cxp = st.cx + Math.sin(a) * c.r, czp = st.cz + Math.cos(a) * c.r, cy = c.y + 0.35 * Math.sin(t * 0.21 + c.bob);
         const tx = Math.cos(a), tz = -Math.sin(a); // its way round
         for (const l of c.L) {
@@ -1467,31 +1509,9 @@ function makeAir(scenes, V) {
           used++;
         }
       }
-      // b: the great pale ring on the floor round where it opened, its far side lost in the black
-      if (V.ring) {
-        const R = A.ring;
-        for (let i = 0; i < ringPh.length && used < st.budget; i++) {
-          const r = ringPh[i], a = (i / ringPh.length) * TAU + t * 0.01;
-          const x = st.cx + Math.sin(a) * (R.r + r.j), z = st.cz + Math.cos(a) * (R.r + r.j);
-          const d = Math.hypot(x - fx, z - fz), fade = 1 - clamp((d - R.fade[0]) / (R.fade[1] - R.fade[0]), 0, 1);
-          const k = want * fade * r.k * (0.8 + 0.2 * Math.sin(t * 0.7 + r.ph));
-          if (!(k > 0.01)) continue;
-          col[0] = R.color[0] * k; col[1] = R.color[1] * k; col[2] = R.color[2] * k;
-          batch.put(x, 0.06, z, 0, r.g, 0, col, R.alpha * k);
-          used++;
-        }
-      }
       // c: the line of light where the floor ends (round the focus, past the fog), the stars falling as streaks
       if (V.fall) {
-        const F = A.fall, er = (game?.U?.uFogFar?.value ?? 17) + F.edge;
-        for (let i = 0; i < edge.length && used < st.budget; i++) {
-          const e = edge[i], a = (i / edge.length) * TAU;
-          const x = fx + Math.sin(a) * (er + e.j), z = fz + Math.cos(a) * (er + e.j);
-          const k = want * e.k;
-          col[0] = F.edgeColor[0] * k; col[1] = F.edgeColor[1] * k; col[2] = F.edgeColor[2] * k;
-          batch.put(x, 0.05, z, 0, e.g, 0, col, 0.6 * k);
-          used++;
-        }
+        const F = A.fall;
         st.fall += dt * F.rate * want * (low ? 0.5 : 1);
         while (st.fall >= 1) {
           st.fall -= 1;
@@ -1509,6 +1529,32 @@ function makeAir(scenes, V) {
           sp.alpha = F.alpha * k;
           sp.alphaEnd = 0;
           batch.spawn(sp);
+        }
+      }
+      // grit trickling off the floating pieces' undersides (what tells they float, seen from above)
+      const D = game?.world?.destructibles, G = A.grit;
+      if (D?.list && inVoid) {
+        st.grit += dt * G.rate * floats.length * want * (low ? 0.5 : 1);
+        while (st.grit >= 1) {
+          st.grit -= 1;
+          const def = floats[Math.floor(rnd() * floats.length)];
+          const b = def ? (st.fp ?? (st.fp = new Map(D.list.filter((o) => o.def?.float).map((o) => [o.def, o])))).get(def) : null;
+          if (!b || b.absent || b.state !== INTACT) continue;
+          const a = rnd() * TAU, r = rnd() * b.r * 0.8;
+          sp.x = b.x + Math.cos(a) * r;
+          sp.z = b.z + Math.sin(a) * r;
+          sp.y = b.y0 + (b.pivot?.position?.y ?? 0) - 0.05;
+          sp.vx = sp.vz = 0;
+          sp.vy = -(G.speed[0] + rnd() * (G.speed[1] - G.speed[0]));
+          sp.life = G.life[0] + rnd() * (G.life[1] - G.life[0]);
+          sp.col = batch.col(rnd() < 0.5 ? '.' : rnd() < 0.5 ? ',' : "'") || batch.col('.');
+          sp.color[0] = G.color[0]; sp.color[1] = G.color[1]; sp.color[2] = G.color[2];
+          sp.colorEnd[0] = G.color[0] * 0.3; sp.colorEnd[1] = G.color[1] * 0.3; sp.colorEnd[2] = G.color[2] * 0.3;
+          sp.alpha = G.alpha;
+          sp.alphaEnd = 0;
+          sp.gravity = -0.6;
+          batch.spawn(sp);
+          sp.gravity = 0;
         }
       }
       batch.flow(dt, t);
