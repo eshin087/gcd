@@ -1,0 +1,94 @@
+{
+ "set": "toolExamples",
+ "title": "Worked examples of the tool's rarer features (NOT a clip set: build with --no-export)",
+ "film": "sword",
+ "out": "scripts/mocap/specs/_examples.out.js",
+ "clips": [
+  {
+   "name": "twoLight1",
+   "title": "Two-handed light attack 1 (grip example)",
+   "src": "sword 9:26-10:48",
+   "kind": "oneshot",
+   "fps": 60,
+   "sword": true,
+   "grip": {
+    "gap": 0.11
+   },
+   "search": 0.4,
+   "swing": true,
+   "face": "travel",
+   "root": {
+    "smooth": 0.1,
+    "max_off": 0.15
+   },
+   "takes": [
+    {
+     "t0": "9:27.25",
+     "t1": "9:28.45",
+     "view": "right"
+    },
+    {
+     "t0": "9:29.65",
+     "t1": "9:30.85",
+     "view": "right"
+    }
+   ],
+   "phases": {
+    "windup": "9:27.55",
+    "active": "9:27.85",
+    "recover": "9:28.40"
+   },
+   "events": [
+    {
+     "t": "9:27.72",
+     "name": "hit"
+    }
+   ],
+   "props": {
+    "R": "sword",
+    "L": null
+   },
+   "from": "twoIdle",
+   "to": "twoIdle",
+   "draft": true, "foot_ease": 14
+  },
+  {
+   "name": "pairIdleExample",
+   "title": "Idle (paired swords)",
+   "src": "sword 15:22-15:31",
+   "kind": "hold",
+   "fps": 30,
+   "n": 108,
+   "sword": true,
+   "swordL": true,
+   "breath": {
+    "period": 3.6
+   },
+   "takes": [
+    {
+     "t0": "15:22.45",
+     "t1": "15:24.60",
+     "view": "right"
+    },
+    {
+     "t0": "15:24.70",
+     "t1": "15:26.85",
+     "view": "front"
+    },
+    {
+     "t0": "15:26.95",
+     "t1": "15:29.10",
+     "view": "left"
+    }
+   ],
+   "props": {
+    "R": "sword",
+    "L": "sword"
+   },
+   "from": "pairIdle",
+   "to": "pairIdle",
+   "draft": true, "foot_ease": 14,
+   "blade_color_L": "rust"
+  }
+ ]
+}

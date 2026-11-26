@@ -1,0 +1,67 @@
+{
+  "boss": "Tian Lei, the Last Ascendant (ascendant/moves.js punch / kick / elbow / shoulder kinds)",
+  "film": "fist: a bare-handed attack reference (scripts/mocap/specs/fistA.json, fistB.json)",
+  "out": "scripts/mocap/duelist/_out/tianlei.js",
+  "blows": {
+    "jab": {
+      "set": "fistB",
+      "clip": "jab",
+      "start": 10,
+      "cock": 12,
+      "impact": 14,
+      "end": 18,
+      "mirror": true,
+      "note": "a low lunging right straight out of a spin, mirrored for his lead hand; the arm hand-keyed through the strike"
+    },
+    "cross": {
+      "set": "fistA",
+      "clip": "cross",
+      "start": 9,
+      "cock": 26,
+      "impact": 40,
+      "end": 93,
+      "mirror": false,
+      "note": "a lunging right straight, the fist cocked high behind the head (single side take)"
+    },
+    "hook": {
+      "set": "fistB",
+      "clip": "hook",
+      "start": 6,
+      "cock": 19,
+      "impact": 24,
+      "end": 28,
+      "mirror": false,
+      "note": "the right overhand from the ear; the impact pose read by eye (the footage blurs there)"
+    },
+    "uppercut": {
+      "set": "fistA",
+      "clip": "uppercut",
+      "start": 0,
+      "cock": 3,
+      "impact": 7,
+      "end": 23,
+      "mirror": false,
+      "note": "the crouch's rising uppercut to overhead; the arm path hand-keyed from the footage"
+    },
+    "backfist": {
+      "set": "fistB",
+      "clip": "backfist",
+      "start": 12,
+      "cock": 15,
+      "impact": 19,
+      "end": 22,
+      "mirror": false,
+      "note": "the fist wound to the left shoulder, whipped out to his right side; cut before the spin"
+    },
+    "hammer": {
+      "set": "fistA",
+      "clip": "hammer",
+      "start": 9,
+      "cock": 22,
+      "impact": 40,
+      "end": 75,
+      "mirror": false,
+      "note": "the leaping two-fist overhead smash into a deep lunge"
+    }
+  }
+}

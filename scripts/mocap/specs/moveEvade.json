@@ -1,0 +1,744 @@
+{
+ "set": "moveEvade",
+ "title": "Movement: backstep, roll, crouch",
+ "film": "move",
+ "out": "src/entities/hero2/clips/moveEvade.js",
+ "clips": [
+  {
+   "name": "backstep",
+   "title": "Backstep",
+   "src": "move 10:48-11:17",
+   "kind": "oneshot",
+   "fps": 30,
+   "search": 0.1,
+   "takes": [
+    {
+     "t0": "10:57.40",
+     "t1": "10:59.00",
+     "view": "left",
+     "drop": [
+      [
+       "10:57.95",
+       "10:58.48"
+      ]
+     ],
+     "keys": [
+      {
+       "t": "10:58.12",
+       "pts": {
+        "nose": [
+         712,
+         422
+        ],
+        "shoulderL": [
+         749,
+         458
+        ],
+        "shoulderR": [
+         749,
+         458
+        ],
+        "hipL": [
+         796,
+         529
+        ],
+        "hipR": [
+         796,
+         529
+        ],
+        "kneeL": [
+         720,
+         594
+        ],
+        "ankleL": [
+         773,
+         664
+        ],
+        "kneeR": [
+         832,
+         617
+        ],
+        "ankleR": [
+         840,
+         640
+        ],
+        "wristL": [
+         755,
+         564
+        ],
+        "wristR": [
+         755,
+         564
+        ]
+       }
+      },
+      {
+       "t": "10:58.29",
+       "pts": {
+        "nose": [
+         660,
+         420
+        ],
+        "shoulderL": [
+         696,
+         452
+        ],
+        "shoulderR": [
+         696,
+         452
+        ],
+        "hipL": [
+         749,
+         523
+        ],
+        "hipR": [
+         749,
+         523
+        ],
+        "kneeL": [
+         655,
+         570
+        ],
+        "ankleL": [
+         720,
+         658
+        ],
+        "kneeR": [
+         777,
+         605
+        ],
+        "ankleR": [
+         790,
+         628
+        ],
+        "wristL": [
+         726,
+         564
+        ],
+        "wristR": [
+         726,
+         564
+        ]
+       }
+      },
+      {
+       "t": "10:58.44",
+       "pts": {
+        "nose": [
+         640,
+         395
+        ],
+        "shoulderL": [
+         673,
+         435
+        ],
+        "shoulderR": [
+         673,
+         435
+        ],
+        "hipL": [
+         708,
+         517
+        ],
+        "hipR": [
+         708,
+         517
+        ],
+        "kneeL": [
+         655,
+         576
+        ],
+        "ankleL": [
+         708,
+         664
+        ],
+        "kneeR": [
+         738,
+         617
+        ],
+        "ankleR": [
+         750,
+         640
+        ],
+        "wristL": [
+         679,
+         558
+        ],
+        "wristR": [
+         679,
+         558
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "t0": "11:12.40",
+     "t1": "11:14.00",
+     "view": "front"
+    },
+    {
+     "t0": "11:00.80",
+     "t1": "11:02.40",
+     "view": "left"
+    }
+   ],
+   "from": "idle",
+   "to": "idle",
+   "events": [
+    {
+     "t": "10:57.70",
+     "name": "air"
+    },
+    {
+     "t": "10:58.05",
+     "name": "land"
+    }
+   ]
+  },
+  {
+   "name": "roll",
+   "title": "Dodge roll",
+   "src": "move 11:17-11:37",
+   "kind": "oneshot",
+   "fps": 60,
+   "search": 0.4,
+   "ground": "body",
+   "takes": [
+    {
+     "t0": "11:18.95",
+     "t1": "11:20.65",
+     "view": "right",
+     "drop": [
+      [
+       "11:19.24",
+       "11:19.84"
+      ]
+     ],
+     "keys": [
+      {
+       "t": "11:19.28",
+       "pts": {
+        "nose": [
+         956,
+         390
+        ],
+        "shoulderL": [
+         890,
+         407
+        ],
+        "shoulderR": [
+         890,
+         407
+        ],
+        "hipL": [
+         780,
+         440
+        ],
+        "hipR": [
+         780,
+         440
+        ],
+        "kneeL": [
+         703,
+         445
+        ],
+        "kneeR": [
+         703,
+         445
+        ],
+        "ankleL": [
+         637,
+         467
+        ],
+        "ankleR": [
+         637,
+         467
+        ],
+        "wristR": [
+         934,
+         588
+        ],
+        "wristL": [
+         934,
+         588
+        ]
+       }
+      },
+      {
+       "t": "11:19.35",
+       "pts": {
+        "nose": [
+         940,
+         550
+        ],
+        "shoulderL": [
+         934,
+         517
+        ],
+        "shoulderR": [
+         934,
+         517
+        ],
+        "hipL": [
+         917,
+         434
+        ],
+        "hipR": [
+         917,
+         434
+        ],
+        "kneeR": [
+         917,
+         374
+        ],
+        "ankleR": [
+         923,
+         335
+        ],
+        "kneeL": [
+         780,
+         423
+        ],
+        "ankleL": [
+         670,
+         440
+        ],
+        "wristL": [
+         885,
+         627
+        ],
+        "wristR": [
+         885,
+         627
+        ]
+       }
+      },
+      {
+       "t": "11:19.43",
+       "pts": {
+        "nose": [
+         907,
+         643
+        ],
+        "shoulderL": [
+         890,
+         605
+        ],
+        "shoulderR": [
+         890,
+         605
+        ],
+        "hipL": [
+         835,
+         522
+        ],
+        "hipR": [
+         835,
+         522
+        ],
+        "kneeL": [
+         791,
+         440
+        ],
+        "kneeR": [
+         791,
+         440
+        ],
+        "ankleL": [
+         769,
+         396
+        ],
+        "ankleR": [
+         769,
+         396
+        ]
+       }
+      },
+      {
+       "t": "11:19.58",
+       "pts": {
+        "nose": [
+         830,
+         462
+        ],
+        "shoulderL": [
+         852,
+         506
+        ],
+        "shoulderR": [
+         852,
+         506
+        ],
+        "hipL": [
+         890,
+         594
+        ],
+        "hipR": [
+         890,
+         594
+        ],
+        "kneeL": [
+         923,
+         550
+        ],
+        "kneeR": [
+         923,
+         550
+        ],
+        "ankleL": [
+         940,
+         627
+        ],
+        "ankleR": [
+         940,
+         627
+        ]
+       }
+      },
+      {
+       "t": "11:19.64",
+       "pts": {
+        "nose": [
+         868,
+         462
+        ],
+        "shoulderL": [
+         868,
+         506
+        ],
+        "shoulderR": [
+         868,
+         506
+        ],
+        "hipL": [
+         879,
+         594
+        ],
+        "hipR": [
+         879,
+         594
+        ],
+        "kneeL": [
+         912,
+         539
+        ],
+        "kneeR": [
+         912,
+         539
+        ],
+        "ankleL": [
+         890,
+         638
+        ],
+        "ankleR": [
+         890,
+         638
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "t0": "11:25.65",
+     "t1": "11:27.35",
+     "view": "left",
+     "drop": [
+      [
+       "11:25.95",
+       "11:26.55"
+      ]
+     ]
+    },
+    {
+     "t0": "11:31.75",
+     "t1": "11:33.45",
+     "view": "back",
+     "drop": [
+      [
+       "11:32.00",
+       "11:32.60"
+      ]
+     ]
+    },
+    {
+     "t0": "11:34.05",
+     "t1": "11:35.75",
+     "view": "back",
+     "drop": [
+      [
+       "11:34.30",
+       "11:34.90"
+      ]
+     ]
+    }
+   ],
+   "from": "idle",
+   "to": "idle",
+   "qa": {
+    "maxStepDeg": 30,
+    "reason": "the take-off: the right knee snaps straight as he dives (about 1700 deg/s); seen in the footage at 11:19.25"
+   },
+   "events": [
+    {
+     "t": "11:19.20",
+     "name": "air"
+    },
+    {
+     "t": "11:19.87",
+     "name": "land"
+    }
+   ]
+  },
+  {
+   "name": "crouchDown",
+   "title": "Crouch idle / get up",
+   "src": "move 11:37-12:11",
+   "kind": "oneshot",
+   "fps": 30,
+   "search": 0.3,
+   "takes": [
+    {
+     "t0": "11:47.55",
+     "t1": "11:48.35",
+     "view": "left"
+    },
+    {
+     "t0": "11:55.45",
+     "t1": "11:56.25",
+     "view": "back"
+    },
+    {
+     "t0": "12:03.65",
+     "t1": "12:04.45",
+     "view": "front"
+    }
+   ],
+   "from": "idle",
+   "to": "crouchIdle"
+  },
+  {
+   "name": "crouchIdle",
+   "title": "Crouch idle / get up",
+   "src": "move 11:37-12:11",
+   "kind": "hold",
+   "fps": 30,
+   "n": 30,
+   "takes": [
+    {
+     "t0": "11:48.60",
+     "t1": "11:49.50",
+     "view": "left"
+    },
+    {
+     "t0": "11:56.40",
+     "t1": "11:57.20",
+     "view": "back"
+    },
+    {
+     "t0": "12:04.60",
+     "t1": "12:05.60",
+     "view": "front"
+    }
+   ],
+   "from": "crouchIdle",
+   "to": "crouchIdle"
+  },
+  {
+   "name": "crouchUp",
+   "title": "Crouch idle / get up",
+   "src": "move 11:37-12:11",
+   "kind": "oneshot",
+   "fps": 30,
+   "search": 0.15,
+   "takes": [
+    {
+     "t0": "11:49.30",
+     "t1": "11:50.30",
+     "view": "left"
+    },
+    {
+     "t0": "11:57.15",
+     "t1": "11:58.15",
+     "view": "back"
+    },
+    {
+     "t0": "12:05.30",
+     "t1": "12:06.30",
+     "view": "front"
+    }
+   ],
+   "from": "crouchIdle",
+   "to": "idle"
+  },
+  {
+   "name": "crouchWalk",
+   "title": "Crouch walk",
+   "src": "move 12:11-12:53",
+   "kind": "loop",
+   "fps": 30,
+   "travel": "forward",
+   "symmetric": 1,
+   "takes": [
+    {
+     "t0": "12:19.50",
+     "t1": "12:23.80",
+     "view": "right"
+    },
+    {
+     "t0": "12:31.20",
+     "t1": "12:33.40",
+     "view": "left"
+    },
+    {
+     "t0": "12:40.30",
+     "t1": "12:42.70",
+     "view": "back"
+    }
+   ],
+   "from": "crouchWalk",
+   "to": "crouchWalk",
+   "period_lo": 1.1,
+   "period_hi": 1.6
+  },
+  {
+   "name": "crouchRun",
+   "title": "Crouch run",
+   "src": "move 12:53-13:23",
+   "kind": "loop",
+   "fps": 30,
+   "travel": "forward",
+   "symmetric": 1,
+   "takes": [
+    {
+     "t0": "12:57.00",
+     "t1": "13:00.70",
+     "view": "right"
+    },
+    {
+     "t0": "13:11.20",
+     "t1": "13:16.40",
+     "view": "back"
+    }
+   ],
+   "from": "crouchRun",
+   "to": "crouchRun"
+  },
+  {
+   "name": "crouchSprint",
+   "title": "Crouch sprint",
+   "src": "move 13:23-13:56",
+   "kind": "loop",
+   "fps": 30,
+   "travel": "forward",
+   "symmetric": 1,
+   "period_lo": 0.5,
+   "period_hi": 1.2,
+   "takes": [
+    {
+     "t0": "13:23.50",
+     "t1": "13:24.40",
+     "view": "right"
+    },
+    {
+     "t0": "13:43.50",
+     "t1": "13:47.00",
+     "view": "back"
+    },
+    {
+     "t0": "13:31.75",
+     "t1": "13:32.65",
+     "view": "right"
+    }
+   ],
+   "from": "crouchSprint",
+   "to": "crouchSprint",
+   "period": 0.72,
+   "draft": true
+  },
+  {
+   "name": "crouchStop",
+   "title": "Crouch sprint to stop",
+   "src": "move 13:56-14:12",
+   "kind": "oneshot",
+   "fps": 30,
+   "search": 0.5,
+   "takes": [
+    {
+     "t0": "13:56.30",
+     "t1": "13:57.60",
+     "view": "right"
+    },
+    {
+     "t0": "14:00.70",
+     "t1": "14:02.00",
+     "view": "left"
+    },
+    {
+     "t0": "13:58.50",
+     "t1": "13:59.80",
+     "view": "right"
+    }
+   ],
+   "from": "crouchSprint",
+   "to": "crouchIdle",
+   "draft": true
+  },
+  {
+   "name": "walkToCrouch",
+   "title": "Walk / run / sprint to crouch",
+   "src": "move 14:12-14:28",
+   "kind": "oneshot",
+   "fps": 30,
+   "search": 0.3,
+   "takes": [
+    {
+     "t0": "14:13.95",
+     "t1": "14:14.95",
+     "view": "right"
+    },
+    {
+     "t0": "14:15.15",
+     "t1": "14:16.15",
+     "view": "right"
+    }
+   ],
+   "from": "walk",
+   "to": "crouchWalk"
+  },
+  {
+   "name": "runToCrouch",
+   "title": "Walk / run / sprint to crouch",
+   "src": "move 14:12-14:28",
+   "kind": "oneshot",
+   "fps": 30,
+   "search": 0.3,
+   "takes": [
+    {
+     "t0": "14:18.50",
+     "t1": "14:19.50",
+     "view": "right"
+    }
+   ],
+   "from": "run",
+   "to": "crouchRun"
+  },
+  {
+   "name": "sprintToCrouch",
+   "title": "Walk / run / sprint to crouch",
+   "src": "move 14:12-14:28",
+   "kind": "oneshot",
+   "fps": 30,
+   "search": 0.4,
+   "takes": [
+    {
+     "t0": "14:25.90",
+     "t1": "14:26.90",
+     "view": "right"
+    }
+   ],
+   "from": "sprint",
+   "to": "crouchRun"
+  }
+ ]
+}

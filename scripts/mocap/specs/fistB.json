@@ -1,0 +1,1198 @@
+{
+ "set": "fistB",
+ "title": "Bare hands: backfist, hook, low straight",
+ "film": "fist",
+ "out": "src/entities/hero2/clips/fistB.js",
+ "clips": [
+  {
+   "name": "backfist",
+   "title": "Spinning backfist (cut before the spin-through)",
+   "src": "fist 1:28.7-1:29.5",
+   "kind": "oneshot",
+   "fps": 60,
+   "takes": [
+    {
+     "t0": "1:28.68",
+     "t1": "1:29.45",
+     "view": "front-left",
+     "swing": true,
+     "keys": [
+      {
+       "t": "1:28.99",
+       "pts": {
+        "hipR": [
+         522,
+         540
+        ],
+        "hipL": [
+         565,
+         545
+        ],
+        "kneeR": [
+         462,
+         568
+        ],
+        "ankleR": [
+         475,
+         622
+        ],
+        "heelR": [
+         480,
+         630
+        ],
+        "toeR": [
+         450,
+         640
+        ],
+        "kneeL": [
+         588,
+         600
+        ],
+        "ankleL": [
+         638,
+         652
+        ],
+        "heelL": [
+         630,
+         655
+        ],
+        "toeL": [
+         655,
+         660
+        ],
+        "nose": [
+         525,
+         425
+        ],
+        "shoulderR": [
+         505,
+         452
+        ],
+        "shoulderL": [
+         575,
+         445
+        ],
+        "elbowR": [
+         480,
+         466
+        ],
+        "wristR": [
+         440,
+         472
+        ],
+        "elbowL": [
+         598,
+         475
+        ],
+        "wristL": [
+         615,
+         500
+        ]
+       }
+      },
+      {
+       "t": "1:29.00",
+       "pts": {
+        "hipR": [
+         522,
+         540
+        ],
+        "hipL": [
+         565,
+         545
+        ],
+        "kneeR": [
+         462,
+         568
+        ],
+        "ankleR": [
+         475,
+         622
+        ],
+        "heelR": [
+         480,
+         630
+        ],
+        "toeR": [
+         450,
+         640
+        ],
+        "kneeL": [
+         588,
+         600
+        ],
+        "ankleL": [
+         638,
+         652
+        ],
+        "heelL": [
+         630,
+         655
+        ],
+        "toeL": [
+         655,
+         660
+        ],
+        "nose": [
+         520,
+         420
+        ],
+        "shoulderR": [
+         470,
+         450
+        ],
+        "shoulderL": [
+         560,
+         442
+        ],
+        "elbowR": [
+         425,
+         463
+        ],
+        "wristR": [
+         390,
+         478
+        ],
+        "elbowL": [
+         585,
+         478
+        ],
+        "wristL": [
+         600,
+         505
+        ]
+       }
+      },
+      {
+       "t": "1:29.06",
+       "pts": {
+        "hipR": [
+         505,
+         545
+        ],
+        "hipL": [
+         530,
+         560
+        ],
+        "kneeR": [
+         455,
+         595
+        ],
+        "ankleR": [
+         465,
+         640
+        ],
+        "heelR": [
+         470,
+         645
+        ],
+        "toeR": [
+         445,
+         648
+        ],
+        "kneeL": [
+         565,
+         620
+        ],
+        "ankleL": [
+         600,
+         668
+        ],
+        "heelL": [
+         595,
+         670
+        ],
+        "toeL": [
+         615,
+         675
+        ],
+        "nose": [
+         505,
+         425
+        ],
+        "shoulderR": [
+         505,
+         452
+        ],
+        "shoulderL": [
+         530,
+         456
+        ],
+        "elbowR": [
+         545,
+         440
+        ],
+        "wristR": [
+         580,
+         428
+        ],
+        "elbowL": [
+         510,
+         490
+        ],
+        "wristL": [
+         495,
+         515
+        ]
+       }
+      }
+     ],
+     "drop": [
+      [
+       "1:28.97",
+       "1:29.10"
+      ]
+     ]
+    }
+   ],
+   "phases": {
+    "windup": "1:28.92",
+    "active": "1:29.00",
+    "recover": "1:29.20"
+   },
+   "events": [
+    {
+     "t": "1:29.02",
+     "name": "hit"
+    }
+   ],
+   "face": -65,
+   "root": {
+    "smooth": 0.1,
+    "max_off": 0.15
+   },
+   "free_hand": true,
+   "vis_weight": true,
+   "props": {
+    "R": null,
+    "L": null
+   },
+   "from": "fistIdle",
+   "to": "fistIdle",
+   "search": 0.2,
+   "sheet_frames": [
+    12,
+    14,
+    16,
+    18,
+    19,
+    20,
+    22,
+    24
+   ],
+   "takes_alt": [
+    {
+     "t0": "0:50.37",
+     "t1": "0:51.23",
+     "view": "back-right",
+     "swing": true
+    },
+    {
+     "t0": "1:47.73",
+     "t1": "1:48.59",
+     "view": "left",
+     "swing": true
+    }
+   ],
+   "foot_ease": 14,
+   "pose_keys": [
+    {
+     "f": 16,
+     "joint": "upperArmR",
+     "dir": [
+      0.849,
+      -0.338,
+      0.406
+     ],
+     "blend": 1
+    },
+    {
+     "f": 16,
+     "joint": "foreArmR",
+     "dir": [
+      0.964,
+      0.183,
+      0.193
+     ],
+     "blend": 1
+    },
+    {
+     "f": 17,
+     "joint": "upperArmR",
+     "dir": [
+      0.755,
+      -0.231,
+      0.614
+     ],
+     "blend": 1
+    },
+    {
+     "f": 17,
+     "joint": "foreArmR",
+     "dir": [
+      0.826,
+      0.103,
+      0.554
+     ],
+     "blend": 1
+    },
+    {
+     "f": 18,
+     "joint": "upperArmR",
+     "dir": [
+      0.594,
+      -0.118,
+      0.796
+     ],
+     "blend": 1
+    },
+    {
+     "f": 18,
+     "joint": "foreArmR",
+     "dir": [
+      0.571,
+      -0.03,
+      0.82
+     ],
+     "blend": 1
+    },
+    {
+     "f": 19,
+     "joint": "upperArmR",
+     "dir": [
+      0.212,
+      -0.119,
+      0.97
+     ],
+     "blend": 1
+    },
+    {
+     "f": 19,
+     "joint": "foreArmR",
+     "dir": [
+      0.167,
+      -0.071,
+      0.983
+     ],
+     "blend": 1
+    },
+    {
+     "f": 20,
+     "joint": "upperArmR",
+     "dir": [
+      -0.166,
+      -0.145,
+      0.975
+     ],
+     "blend": 1
+    },
+    {
+     "f": 20,
+     "joint": "foreArmR",
+     "dir": [
+      -0.207,
+      -0.085,
+      0.975
+     ],
+     "blend": 1
+    },
+    {
+     "f": 21,
+     "joint": "upperArmR",
+     "dir": [
+      -0.457,
+      -0.164,
+      0.874
+     ],
+     "blend": 1
+    },
+    {
+     "f": 21,
+     "joint": "foreArmR",
+     "dir": [
+      -0.498,
+      -0.105,
+      0.861
+     ],
+     "blend": 1
+    },
+    {
+     "f": 22,
+     "joint": "upperArmR",
+     "dir": [
+      -0.832,
+      -0.178,
+      0.526
+     ],
+     "blend": 1
+    },
+    {
+     "f": 22,
+     "joint": "foreArmR",
+     "dir": [
+      -0.863,
+      -0.121,
+      0.49
+     ],
+     "blend": 1
+    }
+   ],
+   "qa": {
+    "maxStepDeg": 34,
+    "reason": "the backfist whip: the right forearm sweeps out from across the chest to his right side in about 0.07 s (footage frames 88.95-89.00)"
+   }
+  },
+  {
+   "name": "hook",
+   "title": "Looping overhand hook (cut before the spin-through)",
+   "src": "fist 2:10.1-2:10.8",
+   "kind": "oneshot",
+   "fps": 60,
+   "takes": [
+    {
+     "t0": "2:10.10",
+     "t1": "2:10.75",
+     "view": "front"
+    }
+   ],
+   "phases": {
+    "windup": "2:10.36",
+    "active": "2:10.46",
+    "recover": "2:10.56"
+   },
+   "events": [
+    {
+     "t": "2:10.50",
+     "name": "hit"
+    }
+   ],
+   "face": -18,
+   "root": {
+    "smooth": 0.1,
+    "max_off": 0.15
+   },
+   "free_hand": true,
+   "vis_weight": true,
+   "props": {
+    "R": null,
+    "L": null
+   },
+   "from": "fistIdle",
+   "to": "fistIdle",
+   "takes_alt": [
+    {
+     "t0": "1:06.18",
+     "t1": "1:07.00",
+     "view": "back-right",
+     "swing": true
+    },
+    {
+     "t0": "1:48.98",
+     "t1": "1:49.80",
+     "view": "left",
+     "swing": true
+    },
+    {
+     "t0": "2:10.08",
+     "t1": "2:10.90",
+     "view": "front-right"
+    }
+   ],
+   "foot_ease": 14,
+   "sheet_frames": [
+    6,
+    12,
+    16,
+    19,
+    22,
+    24,
+    27,
+    30
+   ],
+   "pose_keys": [
+    {
+     "f": 16,
+     "joint": "upperArmR",
+     "dir": [
+      0.516,
+      -0.182,
+      0.837
+     ],
+     "blend": 1
+    },
+    {
+     "f": 16,
+     "joint": "foreArmR",
+     "dir": [
+      0.464,
+      0.826,
+      0.32
+     ],
+     "blend": 1
+    },
+    {
+     "f": 17,
+     "joint": "upperArmR",
+     "dir": [
+      0.174,
+      -0.173,
+      0.969
+     ],
+     "blend": 1
+    },
+    {
+     "f": 17,
+     "joint": "foreArmR",
+     "dir": [
+      0.445,
+      0.86,
+      0.25
+     ],
+     "blend": 1
+    },
+    {
+     "f": 18,
+     "joint": "upperArmR",
+     "dir": [
+      -0.288,
+      -0.162,
+      0.944
+     ],
+     "blend": 1
+    },
+    {
+     "f": 18,
+     "joint": "foreArmR",
+     "dir": [
+      0.432,
+      0.886,
+      0.169
+     ],
+     "blend": 1
+    },
+    {
+     "f": 19,
+     "joint": "upperArmR",
+     "dir": [
+      -0.674,
+      -0.141,
+      0.725
+     ],
+     "blend": 1
+    },
+    {
+     "f": 19,
+     "joint": "foreArmR",
+     "dir": [
+      0.431,
+      0.898,
+      0.086
+     ],
+     "blend": 1
+    },
+    {
+     "f": 20,
+     "joint": "upperArmR",
+     "dir": [
+      -0.694,
+      -0.131,
+      0.708
+     ],
+     "blend": 1
+    },
+    {
+     "f": 20,
+     "joint": "foreArmR",
+     "dir": [
+      0.407,
+      0.901,
+      0.148
+     ],
+     "blend": 1
+    },
+    {
+     "f": 21,
+     "joint": "upperArmR",
+     "dir": [
+      -0.711,
+      -0.12,
+      0.693
+     ],
+     "blend": 1
+    },
+    {
+     "f": 21,
+     "joint": "foreArmR",
+     "dir": [
+      0.384,
+      0.899,
+      0.212
+     ],
+     "blend": 1
+    },
+    {
+     "f": 22,
+     "joint": "upperArmR",
+     "dir": [
+      -0.727,
+      -0.109,
+      0.677
+     ],
+     "blend": 1
+    },
+    {
+     "f": 22,
+     "joint": "foreArmR",
+     "dir": [
+      0.361,
+      0.889,
+      0.28
+     ],
+     "blend": 1
+    },
+    {
+     "f": 23,
+     "joint": "upperArmR",
+     "dir": [
+      -0.291,
+      -0.141,
+      0.946
+     ],
+     "blend": 1
+    },
+    {
+     "f": 23,
+     "joint": "foreArmR",
+     "dir": [
+      0.576,
+      0.528,
+      0.624
+     ],
+     "blend": 1
+    },
+    {
+     "f": 24,
+     "joint": "upperArmR",
+     "dir": [
+      0.14,
+      -0.155,
+      0.978
+     ],
+     "blend": 1
+    },
+    {
+     "f": 24,
+     "joint": "foreArmR",
+     "dir": [
+      0.605,
+      0.046,
+      0.795
+     ],
+     "blend": 1
+    },
+    {
+     "f": 25,
+     "joint": "upperArmR",
+     "dir": [
+      0.18,
+      -0.317,
+      0.931
+     ],
+     "blend": 1
+    },
+    {
+     "f": 25,
+     "joint": "foreArmR",
+     "dir": [
+      0.572,
+      -0.145,
+      0.807
+     ],
+     "blend": 1
+    },
+    {
+     "f": 26,
+     "joint": "upperArmR",
+     "dir": [
+      0.209,
+      -0.471,
+      0.857
+     ],
+     "blend": 1
+    },
+    {
+     "f": 26,
+     "joint": "foreArmR",
+     "dir": [
+      0.515,
+      -0.336,
+      0.789
+     ],
+     "blend": 1
+    },
+    {
+     "f": 27,
+     "joint": "upperArmR",
+     "dir": [
+      0.25,
+      -0.62,
+      0.743
+     ],
+     "blend": 1
+    },
+    {
+     "f": 27,
+     "joint": "foreArmR",
+     "dir": [
+      0.552,
+      -0.411,
+      0.725
+     ],
+     "blend": 1
+    },
+    {
+     "f": 28,
+     "joint": "upperArmR",
+     "dir": [
+      0.304,
+      -0.733,
+      0.609
+     ],
+     "blend": 1
+    },
+    {
+     "f": 28,
+     "joint": "foreArmR",
+     "dir": [
+      0.592,
+      -0.467,
+      0.657
+     ],
+     "blend": 1
+    }
+   ],
+   "qa": {
+    "maxStepDeg": 40,
+    "reason": "the overhand: the right arm drops from the ear to across the face in about 0.05 s (footage 130.46-130.51)"
+   }
+  },
+  {
+   "name": "jab",
+   "title": "Low lunging straight",
+   "src": "fist 1:29.45-1:30.00",
+   "kind": "oneshot",
+   "fps": 60,
+   "takes": [
+    {
+     "t0": "1:29.45",
+     "t1": "1:30.00",
+     "view": "front-left",
+     "swing": true,
+     "drop": [
+      [
+       "1:29.63",
+       "1:29.77"
+      ]
+     ],
+     "keys": [
+      {
+       "t": "1:29.64",
+       "pts": {
+        "kneeR": [
+         400,
+         568
+        ],
+        "ankleR": [
+         440,
+         645
+        ],
+        "heelR": [
+         445,
+         650
+        ],
+        "toeR": [
+         415,
+         655
+        ],
+        "kneeL": [
+         570,
+         590
+        ],
+        "ankleL": [
+         636,
+         612
+        ],
+        "heelL": [
+         640,
+         615
+        ],
+        "toeL": [
+         655,
+         630
+        ]
+       }
+      },
+      {
+       "t": "1:29.67",
+       "pts": {
+        "kneeR": [
+         400,
+         568
+        ],
+        "ankleR": [
+         440,
+         645
+        ],
+        "heelR": [
+         445,
+         650
+        ],
+        "toeR": [
+         415,
+         655
+        ],
+        "kneeL": [
+         570,
+         590
+        ],
+        "ankleL": [
+         636,
+         612
+        ],
+        "heelL": [
+         640,
+         615
+        ],
+        "toeL": [
+         655,
+         630
+        ],
+        "shoulderR": [
+         344,
+         451
+        ],
+        "elbowR": [
+         286,
+         517
+        ],
+        "wristR": [
+         231,
+         585
+        ]
+       }
+      },
+      {
+       "t": "1:29.69",
+       "pts": {
+        "kneeR": [
+         400,
+         568
+        ],
+        "ankleR": [
+         440,
+         645
+        ],
+        "heelR": [
+         445,
+         650
+        ],
+        "toeR": [
+         415,
+         655
+        ],
+        "kneeL": [
+         570,
+         590
+        ],
+        "ankleL": [
+         636,
+         612
+        ],
+        "heelL": [
+         640,
+         615
+        ],
+        "toeL": [
+         655,
+         630
+        ],
+        "shoulderR": [
+         344,
+         451
+        ],
+        "elbowR": [
+         308,
+         527
+        ],
+        "wristR": [
+         279,
+         596
+        ]
+       }
+      }
+     ]
+    }
+   ],
+   "phases": {
+    "windup": "1:29.62",
+    "active": "1:29.65",
+    "recover": "1:29.80"
+   },
+   "events": [
+    {
+     "t": "1:29.68",
+     "name": "hit"
+    }
+   ],
+   "face": 46,
+   "root": {
+    "smooth": 0.1,
+    "max_off": 0.15
+   },
+   "free_hand": true,
+   "vis_weight": true,
+   "props": {
+    "R": null,
+    "L": null
+   },
+   "from": "fistIdle",
+   "to": "fistIdle",
+   "takes_alt": [
+    {
+     "t0": "0:53.90",
+     "t1": "0:54.75",
+     "view": "back-right",
+     "swing": true
+    },
+    {
+     "t0": "1:40.90",
+     "t1": "1:41.75",
+     "view": "left",
+     "swing": true
+    },
+    {
+     "t0": "2:09.60",
+     "t1": "2:10.45",
+     "view": "front-right"
+    }
+   ],
+   "foot_ease": 14,
+   "sheet_frames": [
+    8,
+    12,
+    14,
+    16,
+    18,
+    20,
+    24,
+    30
+   ],
+   "qa": {
+    "maxStepDeg": 34,
+    "reason": "the low straight: the right arm drives from the hip to full reach in about 0.05 s (footage 89.64-89.69)"
+   },
+   "pose_keys": [
+    {
+     "f": 10,
+     "joint": "upperArmR",
+     "dir": [
+      0.27,
+      -0.156,
+      -0.95
+     ],
+     "blend": 1
+    },
+    {
+     "f": 10,
+     "joint": "foreArmR",
+     "dir": [
+      -0.72,
+      -0.52,
+      -0.459
+     ],
+     "blend": 1
+    },
+    {
+     "f": 11,
+     "joint": "upperArmR",
+     "dir": [
+      -0.45,
+      -0.313,
+      -0.836
+     ],
+     "blend": 1
+    },
+    {
+     "f": 11,
+     "joint": "foreArmR",
+     "dir": [
+      -0.711,
+      -0.698,
+      -0.087
+     ],
+     "blend": 1
+    },
+    {
+     "f": 12,
+     "joint": "upperArmR",
+     "dir": [
+      -0.764,
+      -0.617,
+      -0.19
+     ],
+     "blend": 1
+    },
+    {
+     "f": 12,
+     "joint": "foreArmR",
+     "dir": [
+      -0.503,
+      -0.812,
+      0.295
+     ],
+     "blend": 1
+    },
+    {
+     "f": 13,
+     "joint": "upperArmR",
+     "dir": [
+      -0.484,
+      -0.792,
+      0.374
+     ],
+     "blend": 1
+    },
+    {
+     "f": 13,
+     "joint": "foreArmR",
+     "dir": [
+      -0.196,
+      -0.791,
+      0.579
+     ],
+     "blend": 1
+    },
+    {
+     "f": 14,
+     "joint": "upperArmR",
+     "dir": [
+      -0.112,
+      -0.79,
+      0.602
+     ],
+     "blend": 1
+    },
+    {
+     "f": 14,
+     "joint": "foreArmR",
+     "dir": [
+      0.007,
+      -0.777,
+      0.629
+     ],
+     "blend": 1
+    },
+    {
+     "f": 15,
+     "joint": "upperArmR",
+     "dir": [
+      -0.059,
+      -0.826,
+      0.561
+     ],
+     "blend": 1
+    },
+    {
+     "f": 15,
+     "joint": "foreArmR",
+     "dir": [
+      0.053,
+      -0.817,
+      0.574
+     ],
+     "blend": 1
+    },
+    {
+     "f": 16,
+     "joint": "upperArmR",
+     "dir": [
+      0.005,
+      -0.86,
+      0.511
+     ],
+     "blend": 1
+    },
+    {
+     "f": 16,
+     "joint": "foreArmR",
+     "dir": [
+      0.11,
+      -0.852,
+      0.512
+     ],
+     "blend": 1
+    },
+    {
+     "f": 17,
+     "joint": "upperArmR",
+     "dir": [
+      0.008,
+      -0.924,
+      0.381
+     ],
+     "blend": 1
+    },
+    {
+     "f": 17,
+     "joint": "foreArmR",
+     "dir": [
+      0.298,
+      -0.661,
+      0.688
+     ],
+     "blend": 1
+    },
+    {
+     "f": 18,
+     "joint": "upperArmR",
+     "dir": [
+      0.045,
+      -0.972,
+      0.228
+     ],
+     "blend": 1
+    },
+    {
+     "f": 18,
+     "joint": "foreArmR",
+     "dir": [
+      0.407,
+      -0.355,
+      0.842
+     ],
+     "blend": 1
+    },
+    {
+     "f": 19,
+     "joint": "upperArmR",
+     "dir": [
+      0.105,
+      -0.993,
+      0.057
+     ],
+     "blend": 1
+    },
+    {
+     "f": 19,
+     "joint": "foreArmR",
+     "dir": [
+      0.372,
+      -0.047,
+      0.927
+     ],
+     "blend": 1
+    }
+   ]
+  }
+ ]
+}
