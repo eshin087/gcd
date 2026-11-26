@@ -38,10 +38,12 @@ const FOLLOW_RING = 0.3; // … of a spin (a ring zone): its whole turn runs on 
 const FOLLOW_PART = 0.72; // of the time to the next beat's first pose: the rest is his way into it
 // `keysOf(beat)` (optional): what a beat plays THIS time, read as each move is realised: its pose keys (a
 // boss whose blows have a second set behind a live look switch: Tian Lei's and Halcyon's motion, ADR-225,
-// ascendant/motion.js, halcyon/motion.js), or { keys, hold }: `hold` s more of the cocked pose, added to
-// the beat's bait hold (the held tells, ADR-223, duelist/heldTells.js: Lu Wusheng and Wen Yao); null or
-// undefined = `beat.keys` and no more hold.
-export function makeRealise({ TUNING, MOVES, compileClip, completeBeat = null, keysOf = null }) {
+// ascendant/motion.js, halcyon/motion.js; Shen Hui's and Varr Nihil's held tell poses, `motionKeys`,
+// ADR-226), or { keys, hold }: `hold` s more of the cocked pose, added to the beat's bait hold (the held
+// tells, ADR-223, duelist/heldTells.js: Lu Wusheng and Wen Yao); null or undefined = `beat.keys`, no more hold.
+// `recoveryKeysOf(move)` (optional, the same for a move's `recoveryKeys`: the Starless Lord's end-of-string
+// shake); null or undefined = `move.recoveryKeys`. Timings never depend on it.
+export function makeRealise({ TUNING, MOVES, compileClip, completeBeat = null, keysOf = null, recoveryKeysOf = null }) {
   return function realise(name, phase = 1, rnd = Math.random, opts = null) {
     const def = MOVES[name];
     if (!def) return null;
@@ -80,6 +82,7 @@ export function makeRealise({ TUNING, MOVES, compileClip, completeBeat = null, k
     const hits = n;
     for (const b of beats) b.last = !b.feint && b.hit === hits - 1;
     const recovery = def.recovery * rs;
+    const recKeys = (recoveryKeysOf ? recoveryKeysOf(def) : null) ?? def.recoveryKeys;
     const end = t + recovery;
     // the pose keys, beat by beat (see the header: the follow-through's own clock)
     const keysNow = (def) => { const k = keysOf ? keysOf(def) : null; return (Array.isArray(k) ? k : k?.keys) ?? def.keys ?? []; };
@@ -92,7 +95,7 @@ export function makeRealise({ TUNING, MOVES, compileClip, completeBeat = null, k
       if (nb) {
         const nk = own(nb, true);
         next = nk.length ? nb.at(Math.min(...nk.map(([u]) => u))) : nb.impact;
-      } else if (def.recoveryKeys?.length) next = t + Math.min(...def.recoveryKeys.map(([r]) => r)) * recovery;
+      } else if (recKeys?.length) next = t + Math.min(...recKeys.map(([r]) => r)) * recovery;
       else next = t + recovery * 0.75;
       // a sustained beat (a beam held lit): its keys past the impact span the whole lit time
       b.F = b.S > 0 ? b.A + b.S
@@ -110,7 +113,7 @@ export function makeRealise({ TUNING, MOVES, compileClip, completeBeat = null, k
       list.sort((x, y) => x.t - y.t);
       keys.push(...(completeBeat ? completeBeat(list) : list));
     });
-    for (const [r, pose] of def.recoveryKeys ?? []) keys.push({ t: t + r * recovery, ...pose });
+    for (const [r, pose] of recKeys ?? []) keys.push({ t: t + r * recovery, ...pose });
     const clip = compileClip(keys, end, phase);
     clip.name = name;
     clip.steps = true; // (anim.js _feetClip: the feet hold their ground and step under the root motion)

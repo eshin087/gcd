@@ -31,6 +31,8 @@ export const ASH_KIT = Object.freeze({
   poses: DUEL_POSES,
   blade: JIAN,
   dress: dressFrame,
+  // the sword motion pass behind `?ashMotion=` (ADR-226): its numbers while on, null ('0') as before
+  motion: () => (lookOf('ashMotion', '0') === '0' ? null : TUNING.motion),
 });
 
 export class AshDisciple extends Duelist {
@@ -83,6 +85,7 @@ export class AshDisciple extends Duelist {
   }
   /** His AI weighs a move: one that needs a piece of the courtyard weighs nothing while none is in reach. */
   weigh(name, def, w) {
+    if (def.motionOnly && lookOf('ashMotion', '0') === '0') return 0; // (ADR-226: only behind its switch)
     return def.terrain ? this.terrain.weigh(def, w) : w;
   }
   /** A move starts: one of the courtyard's picks its piece (false: there is none, it does not start). */

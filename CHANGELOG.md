@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and sixteen pieces of work since 0.4.0:
+One hundred and seventeen pieces of work since 0.4.0:
 - **Blue and red blows you can read, and quick blows** (2026-11-26, ADR-223). *Changed:* Lu Wusheng, Wen Yao and the
   Cinder Wyrm stop and hold their pose for a moment before every blue or red blow, standing tall for blue and sinking
   low for red (the wyrm rears its head for blue, crouches with its tail up for red); the blow lands that moment later,
@@ -12,6 +12,13 @@ One hundred and sixteen pieces of work since 0.4.0:
   blow each, straight from the stance with no wind-up: Lu Wusheng's Before the Word, Wen Yao's Fox Snap and Fox Knee,
   the wyrm's Snap swipe; block it or parry it on the glint. `?sheathMotion=0`, `?foxMotion=0`, `?wyrmMotion=0` and
   `?sheathQuick=0`, `?foxQuick=0`, `?wyrmQuick=0` give the fights before.
+- **Shen Hui and Varr Nihil hold their swords like swordsmen** (2026-11-26, ADR-226). *Changed (the owner's pick; `?ashMotion=0` /
+  `?lordMotion=0` give back the motion before):* the second and third
+  bosses hold their blades in line with the forearm (it bent up to 128° off it) and their arms open at the end of a
+  blow; every blue blow is wound up in a held pose with the blade raised high (or drawn back level for a thrust), every
+  red one sunk low with the blade trailing near the floor (Piercing Ash keeps its drawn-back thrust), the timings unchanged; Varr Nihil ends his strings with a
+  shake of the steel instead of a twirl that snapped; two quick blows each, thrown straight out of the guard
+  (Darting Needle, Flicking Willow; Rising Ember, Vigil's Fall). A sword motion audit for both (`audit`).
 - **The bosses shaded and outlined like the hero** (2026-11-26, ADR-220). *Changed:* Shen Hui, Varr Nihil, Tian Lei,
   Lu Wusheng and Halcyon keep their own colours, clothes and letters, but are now lit the way the hero is: bright
   where the light catches them and on their shoulders, falling off into dark letters on the shadow side and down

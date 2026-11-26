@@ -1021,6 +1021,13 @@ export class Duelist {
     this._updateLean();
     // the animator poses the plain upright body (as the hero's): gameplay points come from it
     this.lean.on = false;
+    // the sword motion pass (ADR-226; kit.motion: the boss's numbers while its switch is on, else null):
+    // the forearm turned toward the steel, the arms opening at the end of a blow
+    if (this.kit.motion) {
+      const M = this.kit.motion();
+      this.anim.gripMax = M?.gripMax ?? 0;
+      this.anim.armSoft = M?.armSoft ?? undefined;
+    }
     this.anim.update(dt);
     this._gameplayPoints();
     // the body answering a hit (react.js): over the upright pose, after every gameplay point

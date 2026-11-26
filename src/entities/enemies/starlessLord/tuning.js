@@ -21,6 +21,13 @@ export const TUNING = {
   // (levels/starless.js; lord.js clampTarget), which the lab stage does not have
   bound: 13.6,
 
+  // ---- the sword motion pass (ADR-226; on behind `?lordMotion=a`, ashDisciple/disciple.js / starlessLord/lord.js
+  // kit.motion): his sword held as the hero's reference-built swings hold one
+  motion: {
+    gripMax: 0.7, // rad (~40°): the most the blade turns off his sword forearm (anim.js gripMax; the hero ≤ 60°)
+    armSoft: [0.9, 0.985], // his arms' soft reach (anim.js armSoft): a cut and a thrust end on an open arm
+  },
+
   // ---- tells (rules: COMBAT.md; checked by tests/integration/lord.mjs). Faster than Shen Hui and
   // ramping (the owner's pick): a string's follow-up windups 0.34 s in form 1 (Shen Hui's) down to
   // 0.28 s in form 4 (windupScale), so its blows land 0.42 → 0.36 s apart; every hit still cued by
@@ -28,6 +35,7 @@ export const TUNING = {
   weapon: 'sword', // what his blows sound like through the air (duelist/attackSound.js: dragon:attack)
   flashLead: 0.26, // the glint this long before every impact (<= the tightest gap: each flash after the hit before it)
   minFirstWindup: 0.4, // a move's first real hit, every form
+  minQuickWindup: 0.3, // … but a QUICK blow's (a `quick` beat: a normal tell only; its glint 0.04 s into it; ADR-226)
   minHitGap: 0.34, // impact to impact inside a move
   windupScale: [1, 0.94, 0.89, 0.83],
   recoveryScale: [0.9, 0.85, 0.8, 0.72],
