@@ -2105,11 +2105,11 @@ weights per form [1 / 2 / 3] (- = not in that form); `cat` is the director's cat
 | **Golden Ascension** `ascend2` | R 2.3 (12) [ring 6.5 m, thrown 7 m, fixed] |
 | **Thunder Ascension** `ascend3` | R 2.3 (12) [ring 6.5 m, thrown 7 m, fixed] |
 
-**The motion pass (2026-11-26, ADR-225; behind `?ascMotion=a` until the owner picks).** Poses only: every
+**The motion pass (2026-11-26, ADR-225; the owner's pick, `?ascMotion=0` plays it as before).** Poses only: every
 timing above is unchanged. Every blue and red blow of his builders is in a held windup pose of its own by
 0.36 of its windup (the uppercut sunk low with the fist by the hip, the palm drawn to the hip with the lead
 hand aimed, the hammer arched overhead, the roundhouse's crane, the axe kick's leg held at the top), held and
-tightening to the cock; red holds sink deeper and wider. Two **snap** blows join his pool with the switch:
+tightening to the cock; red holds sink deeper and wider. Two **snap** blows join his pool:
 **Snap Jab** `snapJab` and **Snap Hook** `snapHook` (forms 1 - 3, [1.4, 1.2, 1.1] / [1.0, 1.1, 1.1], 0 - 2.2 m,
 cooldown 5 / 6, single): N 0.30 (8) / N 0.30 (9), fixed (no form scaling), at most 0.5 m of step-in, thrown
 from his guard (only the arm and the hips move: the stance is the read). The rule they add (tests DATA): a
@@ -2587,7 +2587,7 @@ at most 2.6 / 2.2 / 2.2 s by phase (tests FLIGHT: measured 0 / 0 / 1.9 s over a 
 footwork). Struck out of the air he drops; a posture break, a crash or a returned Stare put him on the
 floor: the only times his feet touch it are the ones the hero earned.
 
-**His motion (2026-11-26, ADR-225; behind `?halMotion=a` until the owner picks).** In a punch or a kick his
+**His motion (2026-11-26, ADR-225; the owner's pick, `?halMotion=0` plays it as before).** In a punch or a kick his
 root dips from the hover to `motion.dip` (0.2 m) through the strike and back up after its follow-through, and
 the blow is aimed down at the hero (his fists met the air over the hero's head at 1.9 - 2.0 m; now 1.3 - 1.7 m),
 his legs a flier's (trailing behind him, never a planted stance in the air), his arm opening at the end;
@@ -2615,8 +2615,8 @@ lit window and burns).
 | Fly-By | 1 | he backs off 14 – 18 m (0.55 s), then a pass at chest height, 40 m/s, through the hero's spot: B+flare 0.70, 22. Parried: the crash. Phase 2: two passes; phase 3: three, the last R 26 (a perfect dodge: the crash) | 0 – 12 · 6 / 7 / 8 · 1.6 / 1.6 / 1.4 (one move per phase) |
 | Curbside | 1 | he lands by the nearest car (a barrier, a lamp post, a slab of the road), lifts it one-handed (1.0 s), throws it: B, 22, cued on the car flashLead before it lands. Parried: cut in two, its halves go up behind the hero (the hero's: they hurt him if he stands there). Rolled: it lands and goes up | 3 – 16 · 9 · [1.2, 1.0, 0.8] |
 | Saviour's Answer | counter | B 0.53, 18, a palm | |
-| Flick (`?halMotion=a`, ADR-225) | 1 | a snap: N 0.30 (fixed), 8, the back of his hand out of his guard | 0 – 2.4 · 5 · [1.3, 1.0, 0.9] |
-| Tap (`?halMotion=a`, ADR-225) | 1 | a snap: N 0.30 (fixed), 8, the lead hand straight out | 0 – 2.4 · 5 · [1.0, 1.2, 1.2] |
+| Flick (ADR-225) | 1 | a snap: N 0.30 (fixed), 8, the back of his hand out of his guard | 0 – 2.4 · 5 · [1.3, 1.0, 0.9] |
+| Tap (ADR-225) | 1 | a snap: N 0.30 (fixed), 8, the lead hand straight out | 0 – 2.4 · 5 · [1.0, 1.2, 1.2] |
 | Faster Than Sound | counter | his flurry: a cross, then a roundhouse, a hook, an uppercut, each from another side | |
 | Through the Tower | 2 | out behind a standing tower top (0.5 s, out of reach), its windows flare on his line, then R 1.25 (fixed), 26, knockdown, ring 1.8: he bursts through the top at the hero; the top topples across the plaza along his line (its own red tell). He lands in a skid (recovery 1.1) | 0 – 30 · 14 · [0, 1.2, 0.9] |
 | Blink of an Eye | 2 | N 0.62 jab (the slow vanish), N 0.42 hook, B+flare 0.44 cross (parried: the crash), each from another side; then R 0.56 side kick, 24, knockdown | 0 – 8 · 7 · [0, 1.6, 1.4] |

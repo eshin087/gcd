@@ -5,7 +5,7 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 
 ## [Unreleased]
 One hundred and fourteen pieces of work since 0.4.0:
-- **Tian Lei and Halcyon: held windups, quick jabs, and Halcyon fights like a flier** (2026-11-26, ADR-225; behind `?ascMotion=a` / `?halMotion=a` until the owner picks). *Added:* every
+- **Tian Lei and Halcyon: held windups, quick jabs, and Halcyon fights like a flier** (2026-11-26, ADR-225; the owner's pick: `?ascMotion=0` / `?halMotion=0` play them as before). *Added:* every
   blue (parry) and red (perfect-dodge) blow of Tian Lei's and Halcyon's now winds up into a pose of its own, held
   while it tightens, so you can read which blow is coming and how to answer it; red ones sink deeper. Two quick
   white blows each, thrown straight out of the guard with a short windup: Snap Jab and Snap Hook (Tian Lei), Flick

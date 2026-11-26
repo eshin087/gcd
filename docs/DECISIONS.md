@@ -6490,7 +6490,7 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   kick, a planted fighting stance at his 0.5 m hover: he stood on air; (2) every punch landed at 1.9 - 2.0 m,
   over the hero's head (Fly-By's fist at 2.55 m); (3) his elbow was ~130° at every contact (the arm fix
   ADR-162 gave Tian Lei never reached him); (4) the Backhand and the slap land beside the hero.
-- **Decision** (behind two live look switches, PENDING until the owner picks; the default is as before):
+- **Decision** (behind two live look switches; `0` plays each as before):
   1. `?ascMotion=a` (`ascendant/motion.js`, through the realiser's `keysOf`): every blue and red builder blow
      is in a pose of its own by u 0.36 (`HELD_AT`) and holds it to the cock, tightening a few cm (the striking
      limb drawn further, the weight lower); red holds sink deeper and wider than blue ones. The strike from the
@@ -6512,7 +6512,10 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
 - **Consequences:** `asc.mjs . heldmotion`: 495 realisations identical on and off; the striking end moves 0 - 7 cm
   through the hold (8 - 50 cm before); 35 blue and red blows reworked. `city.mjs . halmotion`: 216 realisations
   identical; fists at 1.29 - 1.67 m (1.74 - 2.10 before), elbows 148 - 160° (~130°), feet 0.35 - 0.48 m behind his
-  hips (a planted stance before). Not changed (for the owner to choose): the sweep's jolt, the dash thrusts'
+  hips (a planted stance before). The realiser's `keysOf` hook, removed as unused by ADR-236 while this was
+  in review, is back for this use (poses only, no footage).
+- **Outcome (the owner, 2026-11-26):** "Ship both (a)" from the before / after films: both switches are the
+  default (lookSwitch PICKED), so the snap blows are in both bosses' pools. Not changed (for the owner to choose): the sweep's jolt, the dash thrusts'
   skating, the cross's sideways line, Fly-By's pass height. The holds are short in a string's quick beats
   (0.12 - 0.24 s): `HELD_AT` is the lever.
 

@@ -67,8 +67,10 @@ dip in `flight.js`, `armSoft`), `mo` descriptors on the builders' beats, the sna
 city.mjs `halmotion`, DATA's snap rule, GCD_LOOK in both audits. Films: before | after at the game camera and a
 close side view (scratchpad rig, not committed).
 
-**Open.** The owner's pick of both switches (then into PICKED, and the snaps into the default weighting). Not
-fixed yet: the sweep's jolt, the dash thrusts' skating, the cross's sideways line, Fly-By's pass height.
+**The owner's pick:** "Ship both (a)": both switches are the default (PICKED). Main had dropped the realiser's
+`keysOf` hook meanwhile (ADR-236, unused then): restored for this use.
+
+**Open.** Not fixed yet: the sweep's jolt, the dash thrusts' skating, the cross's sideways line, Fly-By's pass height.
 
 ---
 

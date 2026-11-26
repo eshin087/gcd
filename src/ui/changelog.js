@@ -20,7 +20,7 @@ export const RELEASES = [
       {
         date: '2026-11-26',
         title: 'Tian Lei and Halcyon: held windups, quick jabs, and Halcyon fights like a flier',
-        notes: ['Every parry or perfect-dodge blow of Tian Lei and Halcyon now winds up into a held pose of its own, so you can read it before the flash. Each has two quick jabs thrown straight from his guard. Halcyon flies into his blows instead of standing on air, and his fists meet you, not the air over your head. To try it: add ?ascMotion=a or ?halMotion=a to the address.'],
+        notes: ['Every parry or perfect-dodge blow of Tian Lei and Halcyon now winds up into a held pose of its own, so you can read it before the flash. Each has two quick jabs thrown straight from his guard. Halcyon flies into his blows instead of standing on air, and his fists meet you, not the air over your head.'],
       },
       {
         date: '2026-11-26',
