@@ -189,6 +189,14 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.90 — The run carried like the owner's reference (2026-11-25, `claude/run-sword-hand`, ADR-204)
+- [x] `player/runSword.js`: the sword carried forward at the hip, rocking with the forearm (`?runSword=hip|old`, the Lab's `run sword` row)
+- [x] `player/runArms.js` `d`: the full pump (the default)
+- [x] `gear/handShape.js` `fistHand`: the free hand a closed fist (`?handLook=g`, the default; `h` a dark glove)
+- [x] `herorun` checks the carry: the blade always ahead, its elevation in range, the point off the grass, no pops
+- [ ] The run start from standing still: the point jumps ~26 cm on loco's first frame (the idle rest's hand-over)
+- [ ] The forward blade hidden under the cape running away from the camera (the owner's call)
+
 ## M1.89 — 60 fps on every device: the frame's cost (2026-11-25, `render/perf-ground-steps`, ADR-199)
 - [x] A measured review: every level and the phone preset, GPU by pass and by object, script by function, the loop under a throttled CPU
 - [x] The ground drawn last; its relief baked once per cell (the same picture: at most 9 pixels of 2 million differ)
