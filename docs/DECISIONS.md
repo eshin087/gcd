@@ -6438,6 +6438,29 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   137 - 142 s). The wyrm's PRESSURE measurement keeps the old 0.08 s for its guard bot's stray parries: the
   new path met a brood gap that exists on main (`BROOD.busyWait`), a separate task. Not played by a human yet.
 
+## ADR-237 — A brood cue whose wait ran out still keeps the cue spacing (2026-11-26)
+- **Context:** the brood's cues wait for a free slot (`BROOD.hold`: while a cue of the other answer is due
+  within 0.5 s, or a red one while bullets fly), but at most `hold.max` 1.8 s, and a drakeling dives anyway
+  after `busyWait` 2.5 s on a busy wyrm. On a long busy spell the two ran out together and the cue flashed
+  wherever it stood: integ PRESSURE seed 4242 with the 0.20 s perfect parry (ADR-227) met it twice, a dive
+  beside a fanVolley ember (P2) and beside the breath (P3), both held 1.82 s. Main had it too; the seeds
+  just missed it. Bullets, cueing only `flashLead` ahead, could also flash beside a brood cue after it.
+- **Decision:** past `hold.max` the cue goes at the first free slot instead of at once: it holds on while
+  a cue of the other answer is due within `BROOD.late.clear` 0.36 s of its impact (the spacing rule's
+  0.3 s and a frame; the ledger and the running move's beats; bullets in the air no longer hold it), and
+  after `late.drop` 4.5 s held in all it gutters out without its blow rather than cue onto one. Every brood
+  flash calls `bullets.bar(tell, flashLead)`, a new track the bullets' `cue()` reads for `CLASH`: a bullet
+  of the other answer due within `clashSep` comes as a dud, as an ember beside an orb does. The dive still
+  starts after `busyWait` (it is the valve that keeps the brood from waiting out a whole flight); only its
+  cue moves. Chosen over routing the dive through the brain's own `_hold`: the brood already reads the
+  same ledger, and the brain's hold is for the running move's beats.
+- **Consequences:** a brood cue never lands within 0.3 s of a wyrm cue of the other answer, whichever is
+  first (scenario BROODBUSY: a 4.3 s busy spell of furnace maws, fan volleys and a breath with three
+  drakelings out of time; an endless guard stream that makes one gutter out; a dive going 0.38 s after a
+  stream ends; a red flash barring an ember). PRESSURE runs the steady bot with the real parry window again
+  (its 0.08 s wrapper from ADR-227 is gone) and passes on all three seeds. A drakeling may now hang above
+  the hero up to 4.5 s, or burst harmlessly. Not played by a human yet.
+
 ## ADR-236 — No reference-footage animation: the mocap tools removed (2026-11-26)
 - **Context:** four tries at animating from the owner's reference films (the `?lights=steel` attacks, Tian
   Lei's blows fitted from a bare-handed film (ADR-208), the refstudy kit, and the hero remade on a

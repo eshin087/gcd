@@ -5,6 +5,19 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-26 — A brood cue whose wait ran out keeps the cue spacing (ADR-237; branch `claude/vigorous-wilbur-3c128e`)
+
+**Task** (the follow-up from ADR-227): the brood's dive after `busyWait` landed within 0.3 s of a wyrm cue of
+the other answer. **Reproduced** on main: PRESSURE seed 4242 with the steady bot's stray parries perfect (the
+ADR-227 wrapper off): fanVolley / drakelings P2, breath / drakelings P3, 2 FAILED. A trace of each brood flash
+showed both were dives held the full `hold.max` 1.8 s (fanVolley's bullets in the air, then the breath's tell
+in the ledger 0.27 s from it), flashing at the cap. **What:** past `hold.max` a brood cue holds on only while a
+cue of the other answer is due within `BROOD.late.clear` 0.36 s, and gutters out after `late.drop` 4.5 s held;
+its flash bars the bullets of the other answer (`bullets.bar`: duds). **Tests:** new integ scenario BROODBUSY
+(fails on main with drakelings / furnaceMaw at 0.02 s, passes now); PRESSURE without the 0.08 s wrapper passes on
+1337, 7 and 4242. **Open:** how often a drakeling now gutters out in a real fight (none in the scenario's busy spell;
+PRESSURE does not print it yet); played by the owner.
+
 ## 2026-11-26 — The reference-footage tools removed (ADR-236; branch `build/remove-mocap`)
 
 **Owner**, after reviewing the hero remade from two reference films (`?hero=new`, PR 162, closed): "It looks all

@@ -193,7 +193,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] `DEFENSE.perfectParryWindow` 0.08 → 0.20 s (the owner's pick); the plain parry window 0.22 s unchanged
 - [x] Every perfect reward (posture, counter cut, blade lock, returned bullets, clashes) follows the one number; tests timed for a plain parry moved to 0.21 s
 - [ ] Played by the owner; their call on the slow-motion beat now that most parries are perfect
-- [ ] The brood's busyWait dive (`BROOD.busyWait` 2.5 s) never cues within 0.3 s of a wyrm cue needing another answer (integ PRESSURE seed 4242: fanVolley / drakelings P2, breath / drakelings P3; on main too)
+- [x] The brood's busyWait dive (`BROOD.busyWait` 2.5 s) never cues within 0.3 s of a wyrm cue needing another answer (integ PRESSURE seed 4242: fanVolley / drakelings P2, breath / drakelings P3; on main too): `BROOD.late`, `bullets.bar`, scenario BROODBUSY (ADR-237); PRESSURE's steady bot back on the real parry window
 
 ## M1.92 — The melee animation engine: boss blows from reference footage (2026-11-26, `enemies/fists-ref`, ADR-208)
 - [x] `scripts/mocap` on `main` as a tool; `scripts/mocap/duelist/fit.mjs` fits a clip onto a duelist's blows (`--check` through the real animator); the guide

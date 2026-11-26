@@ -1010,7 +1010,10 @@ of this one's to run).
   while a cue of the other answer, the wyrm's own (its running move's blows, told or still to come,
   a string's later hits included), a hazard's or a bullet's, is due within 0.5 s of it; a red one also
   waits while bullets are in the air. No lunge or dive starts while the wyrm is in the air or its
-  running move still has a blow to come (at most 2.5 s). While any of its brood lives, the wyrm picks
+  running move still has a blow to come (at most 2.5 s). A cue that has waited its 1.8 s still never
+  lands within 0.3 s of a cue of the other answer: it goes at the first moment none is due within
+  0.36 s of it, or, after 4.5 s of waiting, the creature gutters out without its blow; and a bullet of
+  the other answer due beside a brood cue that has flashed comes as a dud (ADR-237). While any of its brood lives, the wyrm picks
   no other spell, no flight and no heavy blow, and live wisps keep it from moves that ask for a guard
   (as meteors in the sky do). Measured by the brood's author (PRESSURE): cues a minute by phase
   ~35 – 41 / 58 – 60 / 77 – 83, no clash between two answers.
