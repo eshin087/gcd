@@ -76,6 +76,7 @@ const TASKS = [
   ['sheath', ['tests/integration/sheath.mjs', '.', 'all'], {}, 102],
   ['lord fxlooks', [LORD, '.', 'fxlooks'], { GCD_FX: FX_TERRAIN.map((k) => `!${k}`).join(',') }, 80],
   ['city win', [CITY, '.', 'win'], {}, 69],
+  ['dbfx', ['tests/integration/dbfx.mjs', '.', 'all'], {}, 8],
   ['groundfx', ['tests/integration/groundfx.mjs', '.', 'all'], {}, 15],
   ['dragonProps', ['tests/integration/dragonProps.mjs', '.', 'all'], {}, 15],
   ['dggrass', ['tests/integration/dgGrass.mjs', '.'], {}, 15],
