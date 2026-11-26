@@ -6252,6 +6252,12 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   Lei's beam does. The set, Halcyon Plaza (ADR-159), emits `world:blast {x, z, r, by}` (a car goes up: its fuse
   ran out, or a thrown car landed; by = who broke it) and cues each fuse as a falling piece is cued
   (`combat:tell` / `combat:flash`, source world, attack carBomb, hazard: true).
+- Bai Wuji, the Veiled Crossing's boss, added these names: `dragon:barrier {state, why, cracks, dur}` (his
+  barrier, untouched/barrier.js: state stop = the hero's blade stopped on it, crack = an ordinary parry cracked
+  it, open = it opened (why parry / dodge / cracks / break / counter / domain / debug; dur its seconds), close
+  = it stands again) and `dragon:domain {state, x, z}` (the phase-3 transition, untouched/domain.js: state sign
+  = the hand sign, escape = the hero dodged through the closing wall, caught = he is held, void = the scene is
+  the void, break = his death broke it). His set's scenes emit `world:scene` as the Hall's do.
 Flow → hud/audio:
 - `state {from, to}`, `bonfire:rest`, `game:retry`, `game:victory`, `area {name}`,
   `game:record {kind, record, newBestTime, newBestGrade}` (a run record was stored: an eligible won fight, or a finished boss rush, ADR-179; record = the run record of "Records" below; HUD: the title's bests; the seam a future uploader subscribes to),
