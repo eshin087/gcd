@@ -30,7 +30,11 @@ wheel zoom → mouse ray (mouseGround) → gamepad.update(realDt) → touch.upda
 → lab.postUpdate() → camera (rig, realDt) → view override → shared uniforms
 → hud.update(realDt) → audio.update(realDt) → render
 → lab.postRender()   (same task: the Lab model viewer's sheet reads the drawn frame back)
+→ AUTO quality (main.js autoStep, ADR-200: the frame's interval, script ms and GPU ms into
+  game.autoQ; a step changes the size through applyQuality, for the next frame)
 ```
+Before all of it the frame-rate cap (`game.pacer.tick(now)`, a touch device by default) may skip a
+refresh; a skipped refresh runs nothing and its time joins the next drawn frame's `realDt`.
 **Simulation steps** (ADR-103, `core/timestep.js`): a frame of `realDt` s (at most `FRAME_MAX` 0.1 s) is
 simulated in `simSteps(realDt)` equal steps, none longer than `STEP.max` 1 / 60 s × (1 + `slack` 0.25)
 = 20.8 ms: one step at 50 Hz and above (as before), two steps of 1 / 60 s at 30 fps, three at 20 fps,
@@ -73,7 +77,8 @@ gamepad, touch, flow, lab — constructors must not dereference modules built la
 scene.updateMatrixWorld()            once for both scene passes (scene.matrixWorldAutoUpdate is off while they draw)
 → rigid bone sync                    every batched mesh's matrixWorld → U.uBoneTex (render/rigidBatch.js)
 → moon shadow map                    LAYER_CASTER with the depth material, then LAYER_CASTER_RIGID (one shadow
-                                     mesh per batched actor) with the bone-reading depth material, same map
+                                     mesh per batched actor) with the bone-reading depth material, same map;
+                                     through the still shadow map (below) only what moves is drawn each frame
 → world → sceneRT
 → the hero where something covers him   a probe, then (only while it finds cover) the hero alone → seenRT,
                                      minus what the scene shows of him, the rest back into sceneRT (ADR-106)
@@ -123,7 +128,7 @@ ADR-120).
 | `state` | owned by flow: `'title' | 'explore' | 'bossIntro' | 'boss' | 'dead' | 'victory' | 'paused'` |
 | `time`, `realTime`, `dt`, `realDt`, `timeScale`, `fps` | clocks (`dt` / `realDt` / `fxDt`: of the running simulation step) |
 | `frameDt`, `simSteps` | the rendered frame's real time and the number of simulation steps it was cut into (Frame order) |
-| `settings` | `{ quality: 0..2, showFps: bool }`; `applyQuality()` re-applies. A preset (`CONFIG.quality[i]`) is `{ name, grass, dpr, shadow }`: grass blades drawn, max device pixel ratio, moon shadow map size in texels (LOW 1024, MEDIUM / HIGH 2048; `CONFIG.render.shadowSize` 2048 is only the size before the first `applyQuality`). Touch devices start on `CONFIG.defaultQualityTouch` (LOW) unless the player picked one. |
+| `settings` | `{ quality: 0..2, showFps: bool, autoQuality: bool, fpsCap: true / false / null }`; `applyQuality()` re-applies. With `autoQuality` (default `CONFIG.autoQuality.on`; `?autoq=0|1`) the render scale, shadow map and grass are `game.autoQ.step` (`render/autoQuality.js`, ADR-200: `AutoQuality` decides from each drawn frame's interval, script ms and GPU ms where `EXT_disjoint_timer_query_webgl2` exists; steps up only in a calm state: title, explore, paused, dead, victory) instead of a preset; F2 cycles AUTO → LOW → MEDIUM → HIGH → AUTO (`flow.cycleQuality`). `fpsCap` null = capped on a touch device (`CONFIG.fpsCap`; `game.pacer`, a `FramePacer`: every n-th refresh). `game.autoBench` = the title's first-guess reading. A preset (`CONFIG.quality[i]`) is `{ name, grass, dpr, shadow }`: grass blades drawn, max device pixel ratio, moon shadow map size in texels (LOW 1024, MEDIUM / HIGH 2048; `CONFIG.render.shadowSize` 2048 is only the size before the first `applyQuality`). Touch devices start on `CONFIG.defaultQualityTouch` (LOW) unless the player picked one. |
 
 Shared combat rules: `src/combat/rules.js` — `TELL`, `RESULT`, `TELL_STYLE`, `DEFENSE`, `POSTURE`,
 `tellDefaults(tell)`, `facingDelta(...)`. Never hard-code these windows in actor code. `DEFENSE.plunge`
@@ -604,6 +609,26 @@ Render helpers for creature modules:
   the object and its descendants. Works before or after rigid batching (below); `LAYER_CASTER` and
   `LAYER_CASTER_RIGID` (2, reserved for the batch meshes: never set it yourself) are exported from
   `pipeline.js` (defined in `shaderLib.js`).
+- **The still shadow map** (`render/shadowCache.js`, ADR-201; `CONFIG.render.shadowCache`, `?shadowCache=0`
+  off). Every caster the shadow passes would draw (visible, on `LAYER_CASTER` or `LAYER_CASTER_RIGID`, not
+  a rigid source) is STILL once its state has not changed for `settle` frames (20; `settleBig` 3 for one
+  of more than `big` triangles) and is then drawn into `stillRT` only when that map must change: a still
+  caster changes or leaves, one settles, the view's key changes (the camera's place, the moon's way, the
+  map's size), or a reset (a restored context, a resize). Each frame the moving casters are drawn into
+  `shadowRT`, which keeps last frame's picture: first the texels the casters that changed since covered
+  are copied back from `stillRT` (a depth blit): a batched actor's moved bones at their OLD matrices
+  (`rigidBatch.js` sync: the set's `vacated` spheres), a plain mesh's last bounding sphere, a big mesh's
+  edited ranges at their old positions (its position copy and the attribute's `updateRanges`), the whole
+  map after a redraw or when a moving caster leaves. The map is the one a whole draw gives, texel for
+  texel. A caster's STATE: `matrixWorld`, `material.visible`, the geometry's id, position and index
+  versions, draw range and groups, an instanced mesh's count and matrices, a rigid shadow mesh's
+  `userData.rigidStamp` (sync bumps it when a bone moves or is shown / hidden, or the actor starts or stops
+  casting). So: something that changes a caster's shape without any of these (a vertex shader's sway: the
+  depth pass draws with an override material and never sees one) is not supported, as before. With the
+  cache on, `updateShadowCamera` moves the shadow camera only in its own plane, in steps of `snap` (32)
+  of its own texels: every texel keeps its place and depth in the world, so a step changes nothing in the
+  picture (the world-axis snap before moved every texel at each 8 cm of a walk: the shadows' edges
+  crawled). `pipeline.shadowCache.stats`: frames, redraws, why, moving / still counts, texels copied.
 - **Rigid batching** (`render/rigidBatch.js`) — an actor made of many small rigid meshes is drawn
   with one draw call per material in the world pass and ONE in the shadow pass, instead of one per
   mesh in each (the hero: 138 meshes → 23 + 1 draws, the wyrm: 181 → 14 + 1, plus its 2 wing
@@ -1264,12 +1289,17 @@ of the pose they began in (`swordFromEntry`, `SWORD_ENTRY` 0.16 s) and the loco 
 blade into the stance over `LOCO_SETTLE` (0.24 s).
 **The run's free arm** (ADR-187, `runArms.js`): in the hero's `loco()` the free (left) arm is
 `runArm(p, P, A, phase, armF, sprint, runK, moveW, mz)`'s: one of three carries (`?runArm=a|b|c|old`,
-`runArmMode()` / `setRunArm(id)`, default `a`, the owner's pick), written as joint angles (`RUN_ARMS`: the shoulder's swing, how
+`runArmMode()` / `setRunArm(id)`, default `d`, the owner's pick, ADR-204; `d` the full pump), written as joint angles (`RUN_ARMS`: the shoulder's swing, how
 far the arm stands off his side, the elbow, the forearm's cross) and posed by forward kinematics into `lH`, `lP`,
 `lD`, `lN` and `hs`, with weight `moveW`. `a` swings like a runner (a pump at a sprint), `b` holds the dash (swept
 back behind him; forward only: a strafe or a backpedal swings as `a`), `c` is `a` on the run blending into `b` as
 the sprint builds. The dash's weight eases on `A.time` (`A.runArmS`), so `loco()` may run more than once a frame.
 `old` returns false and `loco()` writes the swing before ADR-187. A duelist's footwork never calls it.
+**The run's sword arm** (ADR-204, `runSword.js`): `runSword(OUT, phase, armF, sprint, tilt)` fills the sword
+hand's targets on the run (`OUT.h` → `rH`, `OUT.p` → `rP`, `OUT.d` the blade, `OUT.f` its flat → `swF`) from joint
+angles (`RUN_SWORDS`) posed by forward kinematics against the torso's line, turned by its lean `tilt`; `?runSword=hip|old`,
+`runSwordMode()` / `setRunSword(id)`, default `hip` (the blade forward at the hip). `old` returns false and `loco()`
+keeps the carry before. `loco()` blends the backpedal, the fight carry and the sprint over it.
 **Idle life** (ADR-047): in the loco clip, standing still in the `idle` state, at ease (not locked
 on, not in the fight stance: `fightW` ≤ 0.05), with no guard held, for `IDLE_LIFE.after` (2.5 s), `HeroAnimator._idleLife` starts an action from `FIDGETS`
 every `IDLE_LIFE.gap` (2–4.5 s after the last one ends), picked with the animator's own noise (never
@@ -2027,7 +2057,8 @@ brain writes them):
   prelude) sets it, because its hit spheres and swept arc ride on the chain; otherwise the
   round-2 limits apply (rest shape at most `TAIL_SINK` 0.55 segments under the ground, segments at
   most `TAIL_DEV` [0.6 soft, 1.2] rad from their rest direction), easing back in after a sweep.
-- `headExact` (bool): the head aims exactly, with no `HEAD_AIM_RATE` (11 rad/s) turn limit. Set on
+- `headExact` (bool): the head aims without the `HEAD_AIM_RATE` (11 rad/s) turn limit, at most
+  `HEAD_EXACT_RATE` (45 rad/s: a bite's first frame turned the head alone 75°; ADR-203). Set on
   the frames whose hit spheres ride on the snout / mouth: bite and combo-lunge active, charge
   active, breath active, fireball.
 - `headLead` (Vector3, world): an offset of the SHOWN head only. `strikeLead` (attacks.js) sets it
@@ -2058,7 +2089,28 @@ spheres), blended toward the resting S by `s.rest`. While an attack drives the h
 0.03) the shown chain swings toward the measured head (the head's step spread down its length,
 `NECK_FOLLOW` 0.45 toward the measured shape) and the head joint is pinned to the measured solve
 (`Chain.endQuat`), so the snout / head / mouth points are the measured ones (≤ 9 mm, float noise).
-The pin is released only while `headLead` is non-zero.
+The pin is released only while `headLead` is non-zero. A shown chain that misses the measured head by more
+than `SWING_MISS[0]` × scale takes the measured shape, all of it from `SWING_MISS[1]` (a strike's
+first frame moves the head metres: FABRIK under the bend limits buckled the shown neck 2 m to one side
+and left the pinned head 3 m from its end; ADR-203).
+
+Where the head looks and how it is held (ADR-203, `_updateNeck`; `?neck=c|b|0`, default c):
+- c: it looks where its move points it, over a shoulder at most `HEAD_YAW_MAX` (2.35 rad, in the
+  chest's frame); a foe straight behind is watched over the shoulder it was on until he is
+  `HEAD_SIDE_SWAP` past straight back on the other side; a look point nearly straight overhead
+  (`HEAD_STEEP`) takes the chest's heading. Nose-up it stops at 0.6 rad unless the look point itself is
+  set high (`HEAD_LOOK_UP`: the meteors' roar to the sky).
+- c: it is held upright about its own snout against its own body (the chest's up; the sky's at rest)
+  in every move while awake. The correction is unwrapped against the last frame, moves at most
+  `HEAD_LEVEL_RATE`, and holds where 'up' lines up with the snout (`HEAD_LEVEL_CONF`). Driven, the
+  shown neck takes the same roll spread down its joints (`Chain.apply(parentQ, out, twist)`: each joint
+  turns about its own bone, no point moves); resting, only what passes `HEAD_ROLL_REST`.
+- b (the first pass): upright against the sky, the heading held while the look point is under or
+  over it. 0: as before ADR-203 (level at rest only, against the sky).
+- c and b: while the hero's flurry runs (`player.state === 'flurry'`: the perfect dodge's answer and
+  the riposte) the wyrm loses him: `Dragon._sensePlayer` keeps `sense.pos / chest` where it last saw
+  him (`vel` 0; `dist / yawTo / ang` from that point), so neither its head nor its body chases each
+  blink; once he stops it finds him at its own turn rates. 0: it tracked every blink.
 
 `REST_POSE` (exported from rig/anim.js, tunable live from the console): `neck` (the resting S:
 head low and forward), `lookDown` 0.45 / `headDip` 0.22, `stance` (`frontOut`, `frontFwd`,
@@ -2086,6 +2138,7 @@ Rig helpers (internal to the dragon module):
   Infinity = off), `buildRest({ ..., dipAmp, dipAt, dipWidth, sinkMax })` (a dip that bends a
   stretch of segments down, and a cap on how deep the rest shape may dive under the ground),
   `endQuat(parentQ, out)` (the last joint's world rotation without touching the joints).
+  `apply(parentQ, out, twist = 0)`: `twist` rad of roll spread evenly down the chain (ADR-203).
   `aimJointStable` keeps a joint's twist continuous near the −Z singularity (no 180° wing flips).
 - `solveTwoBone(A, T, l1, l2, pole, outMid, outEnd, bend = null, soft = 0)` (rig/ik.js): `bend`
   (per limb, persistent) keeps last frame's bend direction when the pole runs along the limb; `soft`

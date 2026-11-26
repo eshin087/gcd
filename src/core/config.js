@@ -19,6 +19,16 @@ const NO_SEEN = (() => {
   }
 })();
 
+// `?shadowCache=0` in the URL (read once): draw the moon's shadow map whole every frame, as before the still
+// map (render/shadowCache.js, ADR-201). An A/B switch for frame-rate and image checks.
+const NO_SHADOW_CACHE = (() => {
+  try {
+    return typeof location !== 'undefined' && new URLSearchParams(location.search).get('shadowCache') === '0';
+  } catch {
+    return false;
+  }
+})();
+
 export const CONFIG = {
   seed: 1337,
 
@@ -156,6 +166,14 @@ export const CONFIG = {
     maxPixelRatio: 2,
     shadowSize: 2048, // default moon shadow map size (texels); the quality presets set their own
     shadowExtent: 80, // half-size in meters of the moon's orthographic shadow frustum
+    // The still shadow map (render/shadowCache.js, ADR-201; `on` false with ?shadowCache=0): what has not
+    // moved for `settle` frames is drawn into a map of its own only when it changes, and each frame starts
+    // from a copy of it. `snap`: while it is on, the shadow camera follows the view in steps of this many
+    // of its own texels, in its own plane (32: 2.5 m at 2048, 5 m at 1024; pipeline.js updateShadowCamera),
+    // so walking redraws it a few times a second, not every frame, and a texel never moves on the world. A caster of more than `big` triangles (a level's merged tree run, cut by a
+    // blow) rejoins the still map after `settleBig` quiet frames: drawing it moving costs about what drawing
+    // the still map again does.
+    shadowCache: { on: !NO_SHADOW_CACHE, settle: 20, settleBig: 3, big: 60000, snap: 32 },
     batch: !NO_BATCH, // rigid batching of the hero and the wyrm (false with ?nobatch)
     // The hero printed through whatever covers him on screen (pipeline.js, ADR-106; `on` false with
     // ?noseen). `reach`: half-size (m) of the box round him that is drawn a second time (his figure
@@ -188,5 +206,46 @@ export const CONFIG = {
     { name: 'HIGH', grass: 260000, dpr: 2, shadow: 2048 },
   ],
   defaultQuality: 2,
-  defaultQualityTouch: 0, // touch devices start on LOW (phones with DPR 3 + 260k blades crawl)
+  defaultQualityTouch: 0, // touch devices start on LOW when AUTO is off (phones with DPR 3 + 260k blades crawl)
+
+  // AUTO quality (render/autoQuality.js, ADR-200): the render resolution follows the measured frame
+  // time, so the game holds `target` fps where the device can. On by default; F2 / the pause menu
+  // pick a preset instead (AUTO off), ?autoq=0 starts with it off (A/B), ?autoq=1 on.
+  autoQuality: {
+    on: true,
+    // render scale steps (device pixels per CSS pixel), high to low, each with its shadow map and
+    // grass; a step above the screen's own pixel ratio (or maxPixelRatio) is drawn at that ratio
+    steps: [
+      { scale: 2, shadow: 2048, grass: 260000 },
+      { scale: 1.5, shadow: 2048, grass: 260000 },
+      { scale: 1.25, shadow: 2048, grass: 170000 },
+      { scale: 1, shadow: 2048, grass: 170000 },
+      { scale: 0.75, shadow: 1024, grass: 90000 },
+      { scale: 0.5, shadow: 1024, grass: 90000 },
+    ],
+    floor: 1, // the lowest scale AUTO may use: below 1x the letters get fewer and bigger (the owner picked 1x; ?autoqFloor=)
+    target: 60, // fps
+    window: 1.5, // s of frames per decision
+    downAt: 1.1, // a window whose mean frame is over target frame × this is slow (under ~54.5 fps)
+    downWindows: 2, // slow windows in a row before a step down
+    gpuShare: 0.8, // without a GPU timer: script time under this share of the frame = the GPU is the limit
+    minGain: 0.06, // a step down that took less than this share off the frame did not help: undone
+    upAt: 1.03, // a window whose mean frame is at most target frame × this holds the target
+    upWait: 8, // s of holding the target (no GPU timer) before a step up is tried
+    upGpuAt: 0.72, // with a GPU timer: step up when the step's predicted GPU time ≤ target frame × this
+    upGpuWindows: 2, // ... for this many windows in a row
+    fixedShare: 0.25, // share of the GPU frame that does not follow the pixel count (ADR-199: ~20 - 25 %)
+    probeWatch: 5, // s after a step up in which a slow window means it failed (back down)
+    backoff: [20, 60, 180], // s before a failed step up is tried again; after the last, not this page load
+    settle: 0.6, // s of frames ignored after a step (its own rebuild hitch)
+    spike: 0.25, // a frame longer than this (s) is no sample (a hidden tab, a load): the window restarts
+    // the first guess (main.js, the title's first frames): the median of `frames` frames timed at
+    // the top step (each waits for the GPU) after `warm` untimed ones (the first frames after the
+    // load run ~3x slow); the highest step whose predicted frame fits target × `fit`
+    bench: { warm: 20, frames: 11, fit: 0.7 },
+  },
+  // A frame-rate cap on touch devices (heat, battery): on a 120 Hz screen every second refresh is
+  // drawn, so the pace stays even; a screen under 105 Hz is not capped (90 Hz would pace unevenly).
+  // ?fpscap=0|1 forces it; the pause menu toggles it.
+  fpsCap: { touch: true, fps: 60 },
 };

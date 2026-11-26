@@ -4,7 +4,37 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and two pieces of work since 0.4.0:
+One hundred and seven pieces of work since 0.4.0:
+- **The resolution follows the frame rate** (2026-11-25, ADR-200). *Added:* a new quality setting, AUTO, on by
+  default: the game times its frames and, when the graphics chip cannot hold 60 fps, draws the picture at a lower
+  resolution (2x, 1.5x, 1.25x, down to 1x of the window's pixels; never lower, so the letters stay as many as today), and climbs back when there is room, only outside a
+  fight. A first guess is timed on the title screen. A slow processor is told apart and left alone (a lower
+  resolution would not help it). F2 and the pause menu cycle AUTO, LOW, MEDIUM, HIGH; a preset turns AUTO off.
+  *Added:* a 60 FPS CAP in the pause menu, on by default on touch devices (heat, battery): a 120 Hz screen draws every
+  second refresh. `?autoq=0` starts with AUTO off, `?autoqFloor=` sets its lowest step, `?fpscap=0|1` the cap.
+- **The hero runs like a swordsman: the blade carried forward at his hip** (2026-11-25, ADR-204). *Changed:*
+  on the run and the sprint the hero now carries his sword forward, low at his right hip, its point rocking down
+  as the arm swings back and up as it swings forward, the steel moving with his forearm; before, the blade trailed
+  behind him on a wrist bent nearly at a right angle and hardly moved. His free arm pumps like a runner's: the fist
+  up before his belly, the elbow high behind his back. His free hand is now a closed fist as wide as his forearm,
+  no longer a small knob with spiky fingers. `?runSword=old`, `?runArm=a` and `?handLook=a` give the run before.
+- **The dragon's neck and head move naturally: no upside-down head, no flips** (2026-11-25, ADR-203). *Fixed:* every one of the
+  Cinder Wyrm's 50 moves was measured frame by frame (how fast each neck joint and the head turn, how far the
+  head rolls off level, where it looks). Its head no longer rolls upside down in flight (the sky dive's climb,
+  the hunting flights' wheels, the hover barrage's rise), it no longer looks straight back over its own spine
+  (the meteors' roar now goes up at the sky facing forward), its neck no longer snaps 60 - 150° in a frame as a
+  foe crosses behind it (the tail lash, the tail sweep, the rakes), the last bite of the storm flurry no longer
+  buckles the neck sideways and draws the head apart from it, and a bite's first frame no longer flicks the
+  head 75° in one go. The head stays upright against its own body in every move, the neck twisting with it, and through the hero's flurry it no longer chases his blinks (`?neck=c|b|0`).
+- **The sword hand looks natural in the idle tricks** (2026-11-25, ADR-186). *Fixed:* in the wrist spin, the
+  figure-eight, the salute and the rite and breath spells, the hero's sword fist no longer twists off his wrist:
+  his forearm now leads the blade, which stays close to its line, as it does in his stances; in the salute and the
+  spells the fist rises before his chest, so the raised forearm no longer shows as a jagged stick from the game camera.
+- **Shadows cost less, and their edges stop crawling** (2026-11-25, ADR-201). *Changed:* the moon's shadows are the
+  same, but what does not move (trees, rocks, walls, the broken pieces at rest) is no longer drawn into them
+  again every frame, only when something in it changes: the shadow pass draws 15 - 79 % fewer triangles a
+  frame, depending on the level. The shadows' edges, and the letters along them, no longer shimmer as you
+  walk. `?shadowCache=0` as before.
 - **The game runs faster on weaker machines** (2026-11-25, ADR-199). *Changed:* the picture is the same and costs
   less to draw: the ground is drawn after everything that covers it, and its relief is worked out once when the
   level loads instead of for every pixel of every frame (a frame at 4K costs a fifth to two fifths less on the
@@ -1236,6 +1266,8 @@ One hundred and two pieces of work since 0.4.0:
   thuds onto its side, the head slaps down last and the wings crumple).
 
 ### Changed
+- **Local test runs go easy on the PC** (2026-11-25, ADR-205): off CI, `npm test` runs its workers at
+  low priority and every run on the machine shares 8 slots (`ABYSS_JOBS`); `--only <names>` runs a subset.
 - **CI's long checks split; every PR auto-merges when green** (2026-11-24, ADR-185): the Starless Lord's
   look check and the living world's suite each run in parallel processes (`GCD_FX`, `GCD_SKIP` in
   life.mjs) and the shares are re-dealt on measured times: a PR's check should take ~5-6 minutes (was 8-10).

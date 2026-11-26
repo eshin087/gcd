@@ -86,6 +86,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Wyrm motion: flip-free rig, planted feet, the painting's resting display, idle life, strike
       lead, parry arc, weighted death (ADR-025)
 - [x] Wyrm wakes without the neck twist; the drake head drawn for the view from above (ADR-189)
+- [x] The wyrm's neck and head reviewed move by move: level head, no flips, no detached head (ADR-203)
 - [x] Every wyrm fire travels from it; roar-cast spells and a brood of fire; a walk-out forest (ADR-197)
 - [x] The owner's picks for ADR-197's looks (incant, drakeling, serpent, vortex, forestEnd, meteorSource, wallSource): the defaults kept (2026-11-25)
 - [ ] The wyrm presses in when the hero stands out among the trees (it fights at range there)
@@ -195,12 +196,23 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] The instant look set to compare, `?lights=blink` (ADR-206): every attack's cut in 2-3 frames under one straight line; the sword arm written by hand (it opens through the cut, then follows through), the free hand loose at his side, heavies that land their weight (the lone heavy a dash into a slash, no turn), five last-hit strokes picked at random, and the sprint slash / roll cut / charged cleave / One Breath / execution; scenarios `blinkslash`, `blinklights`, `blinkhand`, `blinkheavies`, `blinkspecials`, `blinklast`, the opt-in `armaudit`
 - [ ] The owner's pick: the instant cuts as the default? Then the comparisons (`?lights=fresh`, `?arcs=`) go, and the weighted chain stays behind a switch or goes
 - [ ] If the instant cuts become the default: the flurry and the plunge in the same style? New sounds for a cut that has no swing (the owner picks by ear)
+## M1.90 — The run carried like the owner's reference (2026-11-25, `claude/run-sword-hand`, ADR-204)
+- [x] `player/runSword.js`: the sword carried forward at the hip, rocking with the forearm (`?runSword=hip|old`, the Lab's `run sword` row)
+- [x] `player/runArms.js` `d`: the full pump (the default)
+- [x] `gear/handShape.js` `fistHand`: the free hand a closed fist (`?handLook=g`, the default; `h` a dark glove)
+- [x] `herorun` checks the carry: the blade always ahead, its elevation in range, the point off the grass, no pops
+- [ ] The run start from standing still: the point jumps ~26 cm on loco's first frame (the idle rest's hand-over)
+- [ ] The forward blade hidden under the cape running away from the camera (the owner's call)
+
 ## M1.89 — 60 fps on every device: the frame's cost (2026-11-25, `render/perf-ground-steps`, ADR-199)
 - [x] A measured review: every level and the phone preset, GPU by pass and by object, script by function, the loop under a throttled CPU
 - [x] The ground drawn last; its relief baked once per cell (the same picture: at most 9 pixels of 2 million differ)
 - [x] The world, the lights and the particles on their own step: a catch-up step runs the fighters only
-- [ ] Automatic quality: the render resolution follows the measured frame time (the owner picks its floor from rendered options); a 60 fps cap on touch
-- [ ] The shadow map: the static world redrawn only when it moves or something breaks; lighter trees on LOW (the presets' grass counts do nothing now)
+- [x] Automatic quality: the render resolution follows the measured frame time (`render/autoQuality.js`, ADR-200, `render/auto-quality`); AUTO in the F2 cycle and the pause menu; a 60 fps cap on touch
+- [x] The owner picks AUTO's floor from the rendered steps (`.claude/autoq-review/`): 1x (2026-11-25)
+- [ ] AUTO on a real weak GPU and a phone: how often it steps, whether a step's hitch is felt
+- [x] The shadow map: what does not move is drawn only when it changes; the shadows' edges no longer crawl as the hero walks (ADR-201)
+- [ ] Lighter trees on LOW (the presets' grass counts do nothing now)
 - [ ] The floors' shader (its relief is most of its cost; not bakeable as it is drawn)
 - [ ] Script: the shared uniforms' upload (about 0.5 ms a frame), the worst frames' hitches
 - [ ] Measured on the owner's laptop (Intel Core Ultra 7 255U, integrated graphics) and on a phone
@@ -243,6 +255,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Measured in his own frame (joints, the blade's gaps, the coat, pops) and every move from every rest and every action against the stance before; scenario `heroidles`; the Lab's `idles` / `idle ▸` rows
 - [x] Films before | after sent to the owner (exploring, the fight, the cuts; and the in-game view)
 - [x] Round 2 at the owner's call: the sword arm as picked in every rest (hilt, trail and the flip dropped); three sword spells in the green flame (rite, sigil, breath)
+- [x] The sword hand in the tricks and spells: the forearm leads the blade (≤ 60° off it, was up to 129°)
 - [ ] The owner's picks (which rests / tricks to keep, their pace); played on the iPhone
 - [ ] The pass behind his back into the left hand (the sword must be able to change hands: a rig change)
 - [ ] The block's / roll's / charge's own short entries out of a far blade (the whips left are theirs)

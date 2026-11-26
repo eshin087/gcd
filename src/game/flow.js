@@ -10,6 +10,7 @@ import { Arrival } from './arrival.js';
 import { Recorder } from './recorder.js';
 import { formatTime } from './records.js';
 import { burstScreen } from '../entities/player/flurryBurst.js';
+import { fpsCapOn } from '../render/autoQuality.js';
 
 // Game flow: owns game.state and every transition
 //   title → explore → bossIntro → boss → dead | victory   (+ paused from explore/bossIntro/boss)
@@ -319,14 +320,32 @@ export class GameFlow {
     g.hud?.showTitle?.();
   }
 
+  /** F2 / the pause menu: AUTO → LOW → MEDIUM → HIGH → AUTO (ADR-200). A preset turns AUTO off.
+   *  Without an AUTO controller (game.autoQ) the presets cycle as before. */
   cycleQuality() {
     const g = this.game;
     const n = CONFIG.quality.length;
-    if (!g.settings || !n) return;
-    const q = ((Math.round(finite(g.settings.quality)) % n) + n + 1) % n;
-    g.settings.quality = q;
+    const s = g.settings;
+    if (!s || !n) return;
+    if (s.autoQuality) {
+      s.autoQuality = false;
+      s.quality = 0;
+    } else if (g.autoQ && Math.round(finite(s.quality)) >= n - 1) {
+      s.autoQuality = true;
+      this._try(() => g.autoQ.reset(), 'autoQ.reset');
+    } else {
+      s.quality = ((Math.round(finite(s.quality)) % n) + n + 1) % n;
+    }
     this._try(() => g.applyQuality?.(), 'applyQuality');
-    this._log(`Quality: ${CONFIG.quality[q].name}`, 'system');
+    this._log(`Quality: ${s.autoQuality ? 'AUTO' : CONFIG.quality[s.quality].name}`, 'system');
+  }
+
+  /** The pause menu: the 60 fps cap on or off (CONFIG.fpsCap; by default on a touch device only). */
+  toggleFpsCap() {
+    const g = this.game;
+    if (!g.settings) return;
+    g.settings.fpsCap = !fpsCapOn(g);
+    this._log(`${CONFIG.fpsCap.fps} fps cap: ${g.settings.fpsCap ? 'on' : 'off'}`, 'system');
   }
 
   /**

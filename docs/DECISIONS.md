@@ -5701,6 +5701,15 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   `anim.spell`): the rite, the sigil, the breath. They stay in the flame's own tiny letters and green; a line of
   them needs a mark every ~3.5 cm to read at the game camera, and anything written near the ground hides in the grass.
 
+- **Amended (2026-11-25, the sword hand):** the owner: "something about the idle animations on the right hand looks
+  weird in terms of angle and unnatural feel". The sword fist is on the sword's frame, the back of the hand on the
+  forearm's: the spin, the figure-eight, the salute, the rite and the breath turned the blade 66-129° off the forearm
+  and the fist off the wrist. They now lead with the forearm (`armAlong`: the elbow placed, the forearm aimed where the
+  blade goes, the blade a little off it): 31-52° at worst, and `heroidles` holds every idle action to 60°.
+  Then, at the game camera, "the right hand ... looks very jagged": the forearm stood upright beside his head showed
+  as a ragged column of vambrace letters. The raised moves (salute, rite, breath) bring the fist before his chest
+  instead (`RAISE`), the forearm at ~32° and the wrist cocked 40-54°, his head and shoulder covering the forearm.
+
 ## ADR-187 — The run's free arm: three carries for the owner to compare, by speed the default (2026-11-24)
 
 - **Context:** the owner, in a three-part hero motion pass (idle, the run's free arm, the light chain, each its own
@@ -6053,6 +6062,188 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
     dragon print), the shared uniforms' upload (about 0.5 ms of script a frame), the worst frames'
     hitches. The floors' shader is as it was: its relief is most of its cost.
 
+## ADR-200 — AUTO quality: the render resolution follows the measured frame time; a 60 fps cap on touch (2026-11-25)
+
+- **Context:** the owner wants "at least 60 fps on every device"; ADR-199's review found nothing lowers the load
+  when a device falls behind (a desktop starts on HIGH at up to 2x device pixels, a phone on LOW at 1x), and the
+  GPU's frame is linear in the pixel count (0.22 - 0.39 ms per megapixel on the RTX 4090, the scene pass 75 - 80 %).
+  The owner's slow machine is GPU-bound (Intel Core Ultra 7 255U, integrated graphics).
+- **Decision:** a controller (`render/autoQuality.js` `AutoQuality`, numbers in `CONFIG.autoQuality`) that steps the
+  render scale through 2, 1.5, 1.25, 1, 0.75 (and 0.5 for reviews) device pixels per CSS pixel, capped by the
+  screen's ratio and `maxPixelRatio`, floored at `floor`: 1, the owner's pick (2026-11-25), so AUTO never draws fewer letters than 1x.
+  - It judges frames in 1.5 s windows. Two slow windows in a row (under ~54.5 fps) while the GPU is the limit step
+    one down, at any moment. The GPU is the limit by its timer (`EXT_disjoint_timer_query_webgl2`: longer than the
+    script and at least 60 % of the frame) or, without one, when the script takes under 80 % of the frame.
+  - Each step down is checked in the next window. On the GPU's time where it is read; without it two steps in a
+    row that did not help are needed, because on a vsynced 60 Hz screen 33 ms and 23 ms of GPU both show as 30 fps
+    (the trace tests found the first rule undoing a good step). A step that did not help is undone and nothing
+    below it is tried again this page load (a slow CPU, a battery saver holding 30 fps).
+  - Up only in a calm state (title, explore, paused, dead, victory): with a timer when the step above is predicted
+    to fit 72 % of the frame for two windows; without one a probe after 8 s of holding 60, watched for 5 s and on
+    failure held back 20, 60, 180 s, then for good.
+  - The first guess: the median of 11 frames on the title (each waits for the GPU) after 20 untimed ones (the
+    first frames after the load ran ~3x slow), predicted to the other steps with 25 % of the frame fixed.
+  - Settings: AUTO is a fourth place in the F2 / pause-menu cycle (AUTO → LOW → MEDIUM → HIGH), on by default; a
+    preset turns it off; `?autoq=0|1`, `?autoqFloor=`. Touch keeps its LOW default only with AUTO off.
+  - The frame-rate cap (`FramePacer`): every n-th refresh, n from the median refresh interval (120 Hz: 2, 144: 2,
+    240: 4; under 105 Hz none, since 90 Hz cannot be cut to 60 evenly). On by default on touch; the pause menu's
+    60 FPS CAP and `?fpscap=0|1` set it.
+- **Alternatives:** dynamic resolution every frame (a viewport inside fixed render targets: no rebuild, but the
+  letter cells and atlases follow the frame height, so the letters would change size continuously; and the
+  coarse steps are what the owner reviews); stepping the presets (grass and shadow counts barely matter under the
+  dragon print, ADR-199); the renderer string (`WEBGL_debug_renderer_info`) to guess a start (a table to keep, and
+  wrong for every unknown chip); a cap by skipping frames by time (uneven on 90 / 144 Hz).
+- **Consequences:**
+  - A step is a `pipeline.setSize`: render targets reallocated and the letter atlases rebuilt. Measured on the
+    RTX 4090 / i9 at a 1280 x 800 window: 2 - 9 ms in `setSize` (about 3 ms of it the atlases) and 5 - 19 ms more on
+    the first frame after it, about one dropped frame; not measured on a weak device. What was done about it:
+    steps are rare (2 windows to go down, hysteresis, back-off), never UP during a fight, and the 0.6 s after a
+    step is not judged.
+  - Below a frame height of 810 px the letter cells stay 9 px (`Pipeline.setSize`), so on a 1280 x 800 window 2x to
+    1x keep ~89 rows of letters with finer or coarser strokes, 0.75x has 67 rows and 0.5x 44; on a phone 1x
+    (today's default) has 44 and 0.75x 33. The owner picked the 1x floor from those sheets (`.claude/autoq-review/`): AUTO trades crispness, never the letter count; a device too slow for 60 fps at 1x stays under 60.
+  - A phone may now draw above today's 1x when its GPU has room (more letters, more heat): the cap is on there.
+  - Live checks in headless Edge on the 4090 with a GPU load in proportion to the pixels: 30 fps at 2x stepped to
+    1.5x then 1.25x (68 - 77 fps) in 7 s and held; with the load gone it climbed back on the title; in a boss fight
+    it stepped down but not up. With the CPU throttled 8x (10 fps, GPU idle) it made no step. Headless Edge has no
+    back-pressure (a GPU-saturated loop still ran at 100 fps until the GPU was fully saturated): device frame rates
+    are not claimed.
+  - Tests: the `autoq` suite (device models in, steps out: GPU-bound with and without a timer, probes and back-off,
+    CPU-bound, a frame rate held from outside, spikes, calm, a noisy GPU at a step's edge for 20 minutes, the cap's
+    pacing at 60 - 240 Hz, the switches, the F2 cycle).
+
+## ADR-201 — The still shadow map: only what moves is drawn into it each frame (2026-11-25)
+
+- **Context:** the owner wants 60 fps on every device, starting from a laptop on integrated graphics (Intel
+  Core Ultra 7 255U). ADR-199's review found the moon's shadow map drawn whole every frame: 110 000 - 570 000
+  triangles a frame (Cinderwood: its trees, stumps and rocks, half a million triangles that never move), and
+  the shadow camera following the view on a grid of the world's x and z, so it moved at each 8 cm of a walk.
+  The owner chose this as the next step after ADR-199 ("lets do #2").
+- **Decision:** a still map (`render/shadowCache.js`). A caster unchanged for 20 frames (3 for one of more
+  than 60 000 triangles) is drawn into a map of its own only when that map must change; the frame's map
+  keeps last frame's picture, the texels the changed moving casters covered are copied back from the still
+  map (depth blits: a batched actor's moved bones at their old place, a plain mesh's last sphere, a big
+  mesh's edited ranges at their old positions), and only the moving casters are drawn. With the cache on the
+  shadow camera moves only in its own plane, in steps of 32 of its own texels.
+- **Why this way:** the map is unchanged (0 of 4.2 million texels differ from a whole draw in 480 samples
+  over the eight levels), the work left is what actually moves, and nothing outside the pipeline must tell
+  it what moved: the state each caster already has (its matrix, its geometry's versions, the bones' texture)
+  says it. Sampling two maps in every receiver would have cost every pixel of every surface instead.
+  Copying the whole still map each frame (the first version) moved 32 MB of memory a frame, which an
+  integrated GPU pays for; three's `copyTextureToTexture` reads the GL state back (about 0.7 ms of CPU a
+  frame in Chrome), so the blit is made directly.
+- **Alternatives:** two maps sampled by every receiver (per-pixel cost on every surface); the old world-axis
+  snap with a coarser step (a visible jump of the shadows' edges at each step, measured: most of the frame's
+  pixels changed); excluding by hand what the levels know to be static (a list to keep up in every level).
+- **Consequences:**
+  - Shadow triangles a frame, a scripted fight on each level at 1080p (HIGH, a 2048 map): Cinderwood
+    571 633 -> 122 369 (-79 %), the grove 328 389 -> 99 181 (-70 %), the terrace -64 %, the hall -54 %,
+    Ashfall -48 %, the Ring -46 %, the city -40 %, the throne -15 % (the Lord's own body is most of it);
+    draws in the shadow pass about halved. Copied texels: 4 - 8 % of the map a frame on average, mostly on
+    the 2 - 7 % of frames that redraw the still map. CPU: 70 - 115 us a frame for the bookkeeping.
+  - A frame that redraws the still map costs what a frame cost before, plus one copy of the map.
+  - The shadows' edges no longer crawl while the hero walks: a step of the camera changes at most a few
+    pixels by a few levels, where one texel's step of the old camera changed about 93 % of the frame's
+    pixels (the letters along every shadow's edge). `?shadowCache=0` gives back the camera and the pass as
+    they were.
+  - The frame time on the RTX 4090 does not move (its shadow pass was 0.05 - 0.1 ms); what it buys on an
+    integrated GPU is not measured (none here). Memory: one more depth map (16 MB at 2048, 4 MB at 1024);
+    a big mesh that has moved keeps a copy of its positions on the CPU (Cinderwood's tree run: 11 MB).
+
+## ADR-203 — The wyrm's head held level and kept where a neck can look; the shown neck never leaves its head (2026-11-25)
+
+- **Context:** the owner: "the dragon does weird neck movements when hes flying as well. in general review all the
+  dragon neck movements and make sure it looks natural and accurate and not buggy". An audit stepped every one of
+  the wyrm's 50 moves (plus the stagger and both phase roars) frame by frame from the same start, logging each
+  neck joint's and the head's turn per frame, the head's roll off level, its up vector, where it looks in the
+  chest's frame and its twist on the neck's end. Main showed four faults: (1) the head was leveled only at rest,
+  so it carried the roll the curved neck adds up to: 57 - 79° in flights and upside down (up vector to -0.9) in
+  the sky dive's climb, the wheels, the hover rise and the meteors' cast; (2) look points under, behind or over
+  the head swung it round: ~180° back over the spine (tail attacks, rakes, the wheels; the meteors' look 40 m up
+  but behind the snout turned the head backward), 60 - 156° in one frame; (3) the driven shown neck (ADR-025's
+  swing) could not follow a strike's first step under its bend limits: FABRIK buckled it 2 m to one side while
+  the head, pinned to the measured neck, was drawn 3 m from its end (the storm flurry's lunging bite); (4)
+  `headExact` had no turn limit: a bite's first frame turned the head alone ~75°.
+- **Decision** (rig/anim.js `_updateNeck`, rig/chain.js `apply`; `?neck=c|b|0`, default c): the head is held
+  upright about its snout in every move against its own body (the chest's up; the sky's at rest), by a
+  correction unwrapped against the last frame, at most 14 rad/s, holding where 'up' lines up with the snout; the
+  driven neck takes the same roll spread down its joints (no point moves; resting, only what passes 0.6 rad). It
+  looks where its move points it, over a shoulder at most 135° (a foe straight behind watched over the shoulder
+  it was on until he is 0.6 rad round the other side); a look point nearly straight overhead takes the chest's
+  heading, and a look point set high on purpose lifts the 0.6 rad nose-up limit to 1.2 (the meteors' roar, now
+  facing forward). A shown neck missing the measured head by more than 0.35 x scale m blends to the measured
+  shape (all of it from 1.0 x scale). `headExact` turns at most 45 rad/s.
+  - The first pass (`?neck=b`) held the head upright against the SKY and kept its last heading while the look
+    point was under or over it. The owner played it: "the head got worse when flying and when it does a ground
+    perfect parry attack" (it rolled oddly and looked the wrong way): a banking body with a head held flat to
+    the horizon reads as a twisted neck, and a flight's head held its old heading while the hero was under it.
+    `?neck=0` is the wyrm before ADR-203. Also tried and dropped: fading the leveling out near vertical (it
+    flipped the dives again); a 24 rad/s leveling rate (the wheels' head spun 25 - 30° a frame).
+- **Consequences:** (c against main, the audit) no head flipped upside down by the neck's curl in flight (the
+  sky dive's climb roll 72 -> 35°, the wheels 57 - 60 -> 18 - 25°, the hover rise 67 -> 13°); the flips of the
+  tail lash, tail sweep, rakes and cataclysm 63 - 150 -> 21 - 29° a frame; bite snaps 68 - 80 -> 43°; the storm
+  flurry's neck 128 -> 85° on the strike's first frame (the measured solve's own step, kept: it carries the hit
+  spheres) with no sideways buckle; the plunge and the parry recoil as before. The resting stance and the side
+  view the owner chose are unchanged. Hit spheres: the neck's joints do not move; the snout rolls about itself
+  and turns at most 45 rad/s on an exact strike's first frame. While the hero's flurry runs (a perfect dodge's
+  answer, the riposte) the wyrm keeps where it last saw him (`_sensePlayer`, c and b): the owner played c and saw
+  its head "home into the players teleporting movement"; its look point travelled 12 - 28 m chasing his blinks,
+  now none. Seeded fights drift (the mouth sits a little
+  differently, so the bullet cues shift a frame). The owner played c with the flurry fix and picked it: "Ship c" (2026-11-25); b and 0 stay behind `?neck=` for comparison. Open: the rear attacks (tail
+  lash, rakes, cataclysm) still curl the neck back over the spine, where 'upright against the body' is ill
+  defined and the head can sit rolled; the leap's and pounce's neck strikes stay fast.
+
+## ADR-204 — The run carried like the owner's reference: the blade forward at the hip, a full pump, a closed fist (2026-11-25)
+
+- **Context:** the owner, after the run's free arm (ADR-187): "make the right angle hold the sword at a proper
+  natural angle ... make the left hand fist look like a hand ... right now it looks like a weird stump". Two option
+  rounds were turned down (sword: a relaxed trail, a low sweep, both still pointing back; hand: an open hand and a
+  loose fist with jointed fingers). They gave a reference film (a knight sprinting with a straight sword; its name
+  stays out of the game) and asked for its arms mirrored. Measured on the carry before: the blade pointed behind
+  him (azimuth -144 … -161°) on a wrist bent 62 - 87° off the forearm, and barely moved over a stride (3° of
+  elevation on the run, none at a sprint).
+- **Decision:**
+  1. **The sword carry `hip`** (`player/runSword.js`, `?runSword=hip|old`, the Lab's `run sword` row, default):
+     the blade forward, low at the right hip, rocking with the forearm. Joint angles posed by forward kinematics
+     against the torso's own line, then turned by its lean (`runSword(OUT, ph, armF, s, tilt)`); the blade is the
+     forearm's line plus a grip angle on the thumb side (a hammer grip), floored 34° below level. `RUN_SWORDS.hip`:
+     run `{ phi: [-9, 17], ab: 11, el: [108, 134], grip: [56, 64], out: 6 }`, sprint `{ phi: [-10, 27], ab: 13,
+     el: [98, 126], grip: [58, 77], out: 5 }`. The blade's flat is rolled 40° toward the game camera: edge-down (as
+     in the reference) printed as a one-cell line at 720p. `loco()` keeps its blends over it (backpedal, the fight
+     carry FIGHT_RUN, the sprint). The relaxed trail and the low sweep are removed.
+  2. **The free-arm carry `d`, the full pump** (`player/runArms.js` `RUN_ARMS.pump`, default): the fist forward
+     before the belly (upper arm +21°, elbow 85° at a sprint), the elbow high behind the back (upper arm -57°,
+     elbow 100°), turned by the lean; the walk as `a`. `a`, `b`, `c` and `old` stay.
+  3. **The free hand as a closed fist** (`gear/handShape.js` `fistHand`, `?handLook=g`, default): the back of the
+     hand and the knuckle line as wide as the bracer, the curled fingers a roll under the palm, the thumb a bump over
+     the front; no finger detail (the owner: "we don't need to worry about the detail like fingers"). `h` is the
+     same as a dark glove with a flared cuff. The sword fingers and the fist on the grip keep their shapes. The fist is
+     built from as many geometries as the hand before it (12): each draws a uuid from the seeded Math.random, and a
+     hand of 6 pieces shifted the seeded fights (the sheath's pace check fell from x1.05 to x1.01).
+- **Consequences:** at a sprint the blade rocks -21 … +23° (reference -20 … +25), the wrist 57 - 76°, the point
+  at least 63 cm off the ground, its worst jump 2.2 cm a frame²; the run is the same shape at about 60 % of the
+  swing. Seen from the game camera running away (north) the blade is mostly hidden under the cape, as the
+  reference's is from behind; the larger `out` yaw is the knob if steel should show there. Still open: the run
+  start from standing still jumps the point ~26 cm on loco's first frame (the idle rest's hand-over, any carry);
+  the torso leans 24 - 25° at a sprint against the reference's 20°. `?runSword=old`, `?runArm=a` and
+  `?handLook=a` give the run before. The owner played the new run and picked hand g of g / h (2026-11-25).
+
+## ADR-205 — Local test runs go easy on the owner's PC: one shared pool of slots, low priority, `--only` (2026-11-25)
+
+- **Context:** the owner's PC (i9-14900KF, 32 threads, 128 GB) sat at 100% CPU: two agents' `npm test`
+  ran at once, each starting all 24 tasks side by side (~40 node processes, ~75 GB), and eight preview
+  servers from finished worktrees were still running. The owner games on the same machine and asked
+  that agents stop straining it, without slowing what it takes to get a PR merged.
+- **Decision:** with no `CI` env, `tests/run.mjs` runs every worker at below-normal priority and takes a
+  slot from one machine-wide pool (`<tmp>/abyss-test-slots`, `ABYSS_JOBS`, default 8) before starting a
+  task; a slot names its run's pid and a dead run's slot is taken over. A stopped run kills its workers.
+  `--only <names>` runs a subset of the tasks. CLAUDE.md asks agents to test only what they changed
+  while working, never to start a second `npm test`, and to stop their servers before finishing.
+- **Why this way:** a per-run cap still lets several agents pile up; a shared pool caps the machine.
+  Low priority is what keeps a game smooth beside them: Windows serves the game's threads first.
+- **Consequences:** CI is unchanged (it sets `CI`), so a PR's check takes as long as before. A full
+  local run alone takes longer (8 at a time, not 24); runs from several agents queue instead of
+  slowing each other. `ABYSS_JOBS=2` while gaming lowers it further.
 ## ADR-206 — The instant cuts: every attack crosses in two or three frames; behind `?lights=blink` until the owner's call (2026-11-25)
 
 **Context.** ADR-188 gave the light chain weight in the body and left the sword's path alone. The owner

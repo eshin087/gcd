@@ -3,23 +3,34 @@
 // hand size and color is standing out too much". The hand was drawn in the face's skin ink (the
 // brightest fill on him, gain 2.2) at the gauntlet's size (BODY.hand 1.12) against a near-black sleeve.
 //   0  the hand before: the skin ink, full size
-//   a  smaller (× 0.8), the skin ink: THE DEFAULT, the owner's pick
+//   a  smaller (× 0.8), the skin ink: the owner's pick until ADR-204
 //   b  smaller, the skin's letters with a fill at about half (HERO_INK.handShade)
 //   c  smaller, a fill at about a third (HERO_INK.handDark)
 //   d  a leather glove (× 0.85): the brown of his arm wraps (HERO_INK.leather)
+//   e  a hand reshaped (gear/handShape.js), open and relaxed;  f  the same, a loose fist
+//   g  a closed fist by its overall shape (no fingers), the skin ink: THE DEFAULT, the owner's pick (ADR-204);  h  the same as a dark glove, a cuff
 // Every outfit's free hand (gear/hands.js) follows it: the open hand, the sword fingers, the fist on
 // the grip and the skin of the wrist. The sword hand is not changed.
-const IDS = ['0', 'a', 'b', 'c', 'd'];
+const IDS = ['0', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 export const HAND_LOOK_IDS = Object.freeze(IDS.slice());
-export const HAND_LOOK_NAMES = Object.freeze({ 0: 'before', a: 'smaller (default)', b: 'smaller, shaded', c: 'smaller, dark', d: 'leather glove' });
+export const HAND_LOOK_NAMES = Object.freeze({ 0: 'before', a: 'smaller', b: 'smaller, shaded', c: 'smaller, dark', d: 'leather glove', e: 'a hand, open', f: 'a hand, loose fist', g: 'a fist (default)', h: 'a gauntlet fist' });
 const LOOKS = {
   0: { k: 1, mat: 'skin' },
   a: { k: 0.8, mat: 'skin' },
   b: { k: 0.8, mat: 'handShade' },
   c: { k: 0.8, mat: 'handDark' },
   d: { k: 0.85, mat: 'leather' },
+  // (2026-11-25, the owner: "make the left hand ... look like a hand ... right now it looks like a weird
+  // stump": the hand reshaped, gear/handShape.js: a palm as wide as the bracer, jointed fingers, a thumb)
+  // (k sizes the reshaped open hand; the sword fingers and the fist on the grip keep the size before: kRest)
+  e: { k: 1.1, kRest: 1, mat: 'skin', shape: 0.22 },
+  f: { k: 1.1, kRest: 1, mat: 'skin', shape: 0.75 },
+  // (the owner, after e / f: the reference runner's hand by its overall shape, no fingers: gear/handShape.js
+  // fistHand. g in the skin ink; h a dark glove with a flared cuff, as the reference's armoured fist)
+  g: { k: 1, kRest: 1, mat: 'skin', fist: 0 },
+  h: { k: 1, kRest: 1, mat: 'leather', fist: 1 },
 };
-const DEFAULT = 'a';
+const DEFAULT = IDS[7]; // 'g', the owner's pick (2026-11-25, ADR-204; by index: a lone letter in quotes reads to the glyph check as a glyph)
 const read = () => {
   try {
     const v = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('handLook') : null;

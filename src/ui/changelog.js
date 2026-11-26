@@ -19,6 +19,48 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-25',
+        title: 'The resolution follows the frame rate',
+        notes: [
+          'A new quality setting, AUTO, is on by default: when your device cannot hold 60 frames a second the game draws at a lower resolution, and climbs back when there is room (never in the middle of a fight).',
+          'F2 or the pause menu cycles AUTO, LOW, MEDIUM and HIGH. A new 60 FPS CAP in the pause menu is on by default on phones and tablets, to keep them cooler.',
+        ],
+      },
+      {
+        date: '2026-11-25',
+        title: 'The hero runs like a swordsman: the blade carried forward at his hip',
+        notes: [
+          'On the run the hero now carries his sword forward, low at his hip, its point rocking with his arm, instead of trailing it behind him on a bent wrist.',
+          "His free arm pumps like a runner's, and his free hand is a closed fist instead of a small knob.",
+        ],
+      },
+      {
+        date: '2026-11-25',
+        title: "The dragon's neck and head move naturally: no upside-down head, no flips",
+        notes: [
+          'The Cinder Wyrm no longer turns its head upside down when it flies, climbs or wheels round, and no longer looks straight back over its own spine.',
+          'Its neck no longer snaps round in a single frame as you get behind it, its last bite in the storm flurry no longer bends its neck sideways away from its head, and its bites no longer flick the head round at the start.',
+          'Its head stays upright with its body in every move, with the neck twisting naturally to keep it there.',
+          'Through your flurry it loses you: its head no longer chases each blink.',
+        ],
+      },
+      {
+        date: '2026-11-25',
+        title: 'The sword hand looks natural in the idle tricks',
+        notes: [
+          "In the wrist spin, the figure-eight, the salute and the sword spells, the hero's forearm now leads the blade, so his sword fist no longer twists off his wrist.",
+          'In the salute and the spells the fist rises before his chest, so his raised arm no longer looks jagged from the game camera.',
+        ],
+      },
+      {
+        date: '2026-11-25',
+        title: 'Shadows cost less, and their edges stop crawling',
+        notes: [
+          'The moon\'s shadows look the same, but the trees, rocks and walls that do not move are no longer drawn into them again every frame: the game does far less work for them.',
+          'The edges of the shadows, and the letters along them, no longer shimmer while you walk.',
+        ],
+      },
+      {
+        date: '2026-11-25',
         title: 'The game runs faster on weaker machines',
         notes: [
           'The picture is the same, and it costs less to draw: the ground is drawn after the things that cover it, and its relief is worked out once when a level loads instead of for every pixel of every frame.',
