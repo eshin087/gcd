@@ -44,7 +44,7 @@ export function moves(X) {
      *  hangs a moment turning in a blue knot, and comes at the hero (blue: a parry cuts it in two and its
      *  halves burst behind him; rolled, it bursts where it lands). */
     curbPull: {
-      label: 'Curb Pull', phase: 1, weight: [0.5, 0.8, 0], cooldown: 10, band: [3.5, 20], recovery: 0.7, cat: 'terrain',
+      label: 'Curb Pull', phase: 1, weight: [0.25, 0.6, 0], cooldown: 10, band: [3.5, 20], recovery: 0.5, cat: 'terrain',
       beats: [
         lift(T.curb.liftT + 0.45, { wjLift: 'take' }, to(S, GAZE, GAZE, 0.5)),
         cast(B, 0.62, 22, 6, { wjLift: 'throw' }, to(GAZE, NOD, S)),
@@ -55,7 +55,7 @@ export function moves(X) {
      *  crossing and falls on the hero's place (red: the place follows him, then is fixed and marked; a
      *  crater). No top left: refused. */
     bringDown: {
-      label: 'Bring It Down', phase: 2, weight: [0, 0.9, 0], cooldown: 18, band: [0, 40], recovery: 0.9, cat: 'terrain',
+      label: 'Bring It Down', phase: 2, weight: [0, 0.55, 0], cooldown: 18, band: [0, 40], recovery: 0.6, cat: 'terrain',
       beats: [
         lift(T.down.carryT + 0.2, { wjDown: 'take' }, to(S, RAISE, RAISE, 0.5)),
         cast(R, 1.4, 36, 9, { wjDown: 'drop' }, [[0.3, RAISE], [0.55, RAISE], [0.7, { ...PULL, e: 'o' }], [2.0, PULL]], { knockdown: true }),
@@ -83,7 +83,7 @@ export function moves(X) {
     // ================================================================ phase 3: IN THE VOID
     /** Overhead: a floating piece of the crossing drifts over the hero and is dropped (red). */
     overhead: {
-      label: 'Overhead', phase: 3, weight: [0, 0, 1.1], cooldown: 8, band: [0, 40], recovery: 0.6, cat: 'terrain',
+      label: 'Overhead', phase: 3, weight: [0, 0, 0.7], cooldown: 8, band: [0, 40], recovery: 0.6, cat: 'terrain',
       beats: [
         lift(T.float.carryT + 0.1, { wjFloat: 'take' }, to(S, RAISE, RAISE, 0.5)),
         cast(R, 1.1, 30, 8, { wjFloat: 'drop' }, [[0.3, RAISE], [0.5, RAISE], [0.62, { ...PULL, e: 'o' }], [2.0, S]], { knockdown: true }),
@@ -101,4 +101,11 @@ export function moves(X) {
   };
 }
 // (no links: a terrain move is chosen by his AI when the arena has the piece for it, never chained into)
-export const LINKS = {};
+// (the integration pass: out of a throw's recovery a blink opener, as after his spells: veil.mjs PACE)
+const L = (to, when, chance) => ({ to, when, chance });
+const AFTER = [
+  L('everywhere', 'far', [0, 0, 0.5]), L('passThrough', 'far', [0, 0.55, 0.45]), L('behindYou', 'far', [0.55, 0.4, 0.4]),
+  L('passThrough', 'mid', [0, 0.45, 0.4]), L('behindYou', 'mid', [0.5, 0.4, 0.4]),
+  L('fiveSides', 'near', [0, 0, 0.45]), L('fourSides', 'near', [0, 0.45, 0.4]), L('threeCount', 'near', [0.5, 0.35, 0.3]),
+];
+export const LINKS = { curbPull: AFTER, bringDown: AFTER, theOrbit: AFTER, roadItself: AFTER, overhead: AFTER, castOff: AFTER };

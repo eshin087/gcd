@@ -1,7 +1,7 @@
 import { TELL } from '../../../combat/rules.js';
 import { makeRealise } from '../duelist/realise.js';
 import { X as ASC } from '../ascendant/moves.js';
-import { compileClip, completeBeat, GUARD, FRAGS, CLIPS as POSE_CLIPS, REACT as POSE_REACT, OPEN as POSE_OPEN } from './poses.js';
+import { compileClip, completeBeat, GUARD, FRAGS, CLIPS as POSE_CLIPS, REACT as POSE_REACT, OPEN as POSE_OPEN, TRANSITION_KEYS as TK } from './poses.js';
 import { TUNING, perPhase } from './tuning.js';
 import * as MELEE from './moves/melee.js';
 import * as SPELLS from './moves/spells.js';
@@ -49,7 +49,6 @@ const FILES = [['melee', MELEE], ['spells', SPELLS], ['terrain', TERRAIN]];
 
 // ---------------------------------------------------------------- the transitions (core's)
 const TR = TUNING.transition, DOM = TUNING.wjDomain;
-const F = FRAGS;
 const TRANSITION_MOVES = {
   /** THE BLINDFOLD COMES OFF (the phase-2 transition): a finger hooked in the blindfold, pulled down; the
    *  hair falls, the eyes burn; a burst from where he stands throws the hero back (a push: no damage,
@@ -59,19 +58,21 @@ const TRANSITION_MOVES = {
     beats: [{
       tell: N, windup: 1.8, fixed: true, active: 0.2, damage: TR.damage, knockback: TR.knockback, blockPush: TR.blockPush,
       zone: { kind: 'ring', r: TR.ringRadius }, part: 'feet', track: 0, close: 0, cock: 0.85, air: true, wjMoment: 'unveil',
-      keys: [[0.2, F.STAND], [0.6, F.UNVEIL], [0.85, F.UNVEIL], [1.0, { ...F.STAND, e: 'o' }], [2.0, F.STAND]],
+      keys: TK.unveil, // (the body's: the finger hooks the band, pulls it down to his neck, the hair shaken out)
     }],
   },
   /** THE MEASURELESS (the phase-3 transition, domain.js): the hand sign, then the sphere closes (red:
    *  a perfect dodge through it, or be caught: held and struck once, never lethal). Either way the last
    *  phase is fought inside the void. */
   measureless: {
-    label: 'The Measureless (phase 3)', phase: 3, weight: [0, 0, 0], transition: true, cooldown: 0, band: [0, 99], recovery: 0.6,
+    // (its recovery outlasts the hold of a caught hero, whatever the phase's recoveryScale: the blow inside
+    // it is the domain's, and he starts nothing before it is over)
+    label: 'The Measureless (phase 3)', phase: 3, weight: [0, 0, 0], transition: true, cooldown: 0, band: [0, 99], recovery: (DOM.hold + 0.25) / Math.min(1, TUNING.recoveryScale?.[2] ?? 1),
     beats: [
-      { feint: true, windup: DOM.sign, fixed: true, active: 0.05, close: 0, track: 0.6, wjDomain: 'sign', keys: holdKeys(F.STAND, F.SIGN, 0.4) },
+      { feint: true, windup: DOM.sign, fixed: true, active: 0.05, close: 0, track: 0.6, wjDomain: 'sign', keys: TK.measurelessSign },
       {
         tell: R, windup: DOM.close, fixed: true, active: 0.12, damage: 0, knockback: 0, zone: { kind: 'ring', r: DOM.r }, ring: DOM.r,
-        part: 'palms', track: 0, close: 0, cock: 0.8, air: true, wjDomain: 'close', keys: holdKeys(F.SIGN, F.SIGN, 0.8),
+        part: 'palms', track: 0, close: 0, cock: 0.8, air: true, wjDomain: 'close', keys: TK.measurelessClose,
       },
     ],
   },

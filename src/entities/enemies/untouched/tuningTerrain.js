@@ -6,7 +6,7 @@
 export const TUNING_TERRAIN = {
   /** Every terrain move: no more than `max` of them start inside `window` s (BRIEF R6: never a rain of
    *  wreckage), none while something of his is still in the air, and none while the scene is morphing. */
-  pace: { window: 12, max: 2 },
+  pace: { window: 12, max: 1 }, // (the integration pass: 2 per 12 s before; veil.mjs PACE)
   /** The red cue of a piece that lands AWAY from him (a drop, a burst): combat:tell `tellAt` s before it
    *  lands at the latest (it goes out as the place is fixed), the flash flashLead before. */
   maxDelay: 0.6, // s the fairness guard may hold a called landing; past it the piece lands uncued and harmless

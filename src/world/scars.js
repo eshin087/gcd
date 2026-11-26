@@ -561,19 +561,21 @@ export class Scars {
   _wideBeam(x, z, dx, dz, L, w, rot, hot) {
     const T = SCAR.mark.beam, K = SCAR.mark, y = K.y, px = -dz, pz = dx;
     const rows = Math.max(1, Math.floor((w * 2) / T.rows));
+    const E = T.edge, EL = (this._wideLit ??= E ? E.map((c) => Math.min(1, c * (T.lit ?? 1))) : null);
     for (let s = 0; s < L; s += T.wideStep) {
       for (const side of [-1, 1]) {
         const d = side * w * (0.94 + 0.1 * rnd());
         const lit = pz * side < 0; // (the far edge's lip catches the light)
-        this._add(x + dx * s + px * d, y, z + dz * s + pz * d, '-', 0.36 + 0.08 * rnd(), lit ? this.lip : this.lineInk, K.alpha * (lit ? this.lipA : 1), rot + (rnd() - 0.5) * 0.16, -1);
+        if (E) this._add(x + dx * s + px * d, y, z + dz * s + pz * d, rnd() < 0.8 ? '-' : '=', T.edgeSize + 0.08 * rnd(), lit ? EL : E, T.edgeA, rot + (rnd() - 0.5) * 0.16, -1);
+        else this._add(x + dx * s + px * d, y, z + dz * s + pz * d, '-', 0.36 + 0.08 * rnd(), lit ? this.lip : this.lineInk, K.alpha * (lit ? this.lipA : 1), rot + (rnd() - 0.5) * 0.16, -1);
         // the broken lip: rubble thrown up just outside the edge, now and then
         if (rnd() < T.rubble) this._add(x + dx * s + px * (d + side * (0.2 + 0.35 * rnd())), y + 0.02, z + dz * s + pz * (d + side * (0.2 + 0.35 * rnd())), pick('.,:o'), 0.2 + 0.12 * rnd(), this.lip, K.alpha * this.lipA, rnd() * TAU, -1);
       }
       // the glass across the floor between: rows, glassK of their cells
       for (let i = 0; i < rows; i++) {
-        if (rnd() > T.glassK) continue;
+        if (rnd() > (T.wideGlassK ?? T.glassK)) continue;
         const d = -w + ((i + 0.5) / rows) * w * 2 + (rnd() - 0.5) * T.rows * 0.4;
-        this._add(x + dx * s + px * d, y + 0.01, z + dz * s + pz * d, rnd() < 0.7 ? '=' : '~', 0.3, T.glass, T.glassAlpha, rot, -1);
+        this._add(x + dx * s + px * d, y + 0.01, z + dz * s + pz * d, rnd() < 0.7 ? '=' : '~', 0.32, T.wideGlass ?? T.glass, T.wideGlassA ?? T.glassAlpha, rot, -1);
       }
     }
     if (hot) for (let s = 0; s < L; s += 0.9) for (let i = 0; i < rows; i += 2) this._char(x + dx * s + px * (-w + ((i + 1) / rows) * w * 2), z + dz * s + pz * (-w + ((i + 1) / rows) * w * 2), T.rows * 1.4, K.char.beam);

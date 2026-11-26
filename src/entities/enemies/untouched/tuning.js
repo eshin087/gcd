@@ -31,7 +31,7 @@ export const TUNING = {
   // (phase 3, inside the void: everything faster; realise scales every unfixed windup, the minimums
   // still hold: tests/integration/veil.mjs DATA)
   windupScale: [1, 0.92, 0.84],
-  recoveryScale: [0.95, 0.85, 0.74],
+  recoveryScale: [0.8, 0.7, 0.64], // (the integration pass: 0.95 / 0.85 / 0.74 before; veil.mjs PACE)
   close: { first: 3.2, next: 1.6, speed: 14 },
   reach: { fist: 1.7, kick: 2.1, line: 2.2, lineW: 0.8 },
 
@@ -69,8 +69,8 @@ export const TUNING = {
   openingGap: [[0.14, 0.4], [0.08, 0.26], [0.06, 0.2]],
   chain: [0.5, 0.66, 0.78],
   pressure: {
-    chainDepth: [3, 5, 7],
-    chainRest: [[0.45, 0.75], [0.25, 0.45], [0.12, 0.28]],
+    chainDepth: [4, 5, 7], // (the integration pass: 3 in phase 1 before; veil.mjs PACE)
+    chainRest: [[0.28, 0.5], [0.2, 0.38], [0.12, 0.28]], // (phase 1 0.45 - 0.75, phase 2 0.25 - 0.45 before)
     linkCut: 0.5, chainCut: 0.5,
     near: 3.3, far: 6, front: 0.9, behind: 2.2, away: 1.2,
     maxRun: [2, 3, 3], overRun: 0.1, sameCat: 0.7,
@@ -78,11 +78,15 @@ export const TUNING = {
     seek: { max: 2.5, every: 9 },
     farDist: 6, closerBoost: 1.8,
     maxLive: [1, 2, 2],
-    bias: { string: [1.5, 1.6, 1.6] },
-    density: [1, 1.4, 1.9],
+    bias: { string: [2.2, 1.8, 1.8] }, // (the integration pass: 1.5 / 1.6 / 1.6 before)
+    density: [1.6, 1.8, 2.0], // (the integration pass: 1 / 1.4 / 1.9 before the spells and the terrain joined; veil.mjs PACE)
     mixed: 0.1,
     holdGap: 5,
     guard: { sep: 0.3, margin: 0.06, maxHold: 0.5, maxDelay: 0.9, horizon: 1.4, pad: 0.12 },
+    // THE PURSUIT (duelist/brain.js header; Tian Lei's numbers): a blow whose reach the hero has left
+    // breaks off before its glint and he chases (a far link, a blink opener); a hero backing away is
+    // stepped in on harder. (His blows out of a blink and his spells reach anywhere: never broken off.)
+    pursue: { margin: 0.5, after: 0.06, gap: 0.06, closeK: [1.0, 1.6, 1.6], dashK: [1.0, 1.5, 1.5], away: 1.2, leapLead: 0.35, blinkLead: 0.4, blinkKeep: 0.6, miss: 0, lead: 0.6, habit: 0.6, habitMax: 3, habitDecay: 0.1 },
     // what tests/integration/veil.mjs PACE asserts: none yet (the tuning agent sets `meter` from the
     // bots: { ramp, rampMean, minRate, maxGap }); without it the suite measures only
   },
@@ -130,7 +134,7 @@ export const TUNING = {
     sign: 1.5, // s of the hand sign (the transition's first beat)
     close: 1.0, // s of the closing sphere's red cue (its windup)
     r: 40, // the sphere's reach (the whole arena)
-    hold: 1.0, // s the caught hero is held (max 1.2: the owner's lock cap), the blow inside it
+    hold: 0.95, // (the integration pass: 1.0 measured 1.22 s out of his hands with the blow's own stagger) s the caught hero is held (max 1.2: the owner's lock cap), the blow inside it
     blow: 0.3, // of the hero's max health: never lethal (at least 1 HP left)
     knockback: 6,
     escapeOpen: 2, // the escape opens the barrier for open[2] x this

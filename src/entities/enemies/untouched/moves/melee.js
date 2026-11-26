@@ -118,7 +118,7 @@ export function moves(X) {
     },
     /** The Lazy Step: no blow; he is simply at the hero's flank, hands in his pockets (his footwork). */
     lazyStep: {
-      label: 'Lazy Step', phase: 1, weight: [1.3, 0.8, 0.5], cooldown: 4, band: [3.6, 14], recovery: 0.2, cat: 'closer', gapCloser: true,
+      label: 'Lazy Step', phase: 1, weight: [1.3, 0.6, 0], cooldown: 4, band: [3.6, 14], recovery: 0.2, cat: 'closer', gapCloser: true,
       beats: [{ pick: [lazy(1), lazy(-1)] }],
     },
     /** Long Step: one step that is ten, a side kick through the hero (red: roll). */

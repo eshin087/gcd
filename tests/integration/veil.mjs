@@ -541,6 +541,23 @@ async function scenarioBarrier() {
     void p;
   }
   {
+    // the first cut that lands while it is open surprises him (once a fight; the body's `surprised`)
+    const G = build();
+    const d = G.game.dragon;
+    duel(G, { dist: 2 });
+    d.barrier.open('debug');
+    const seen = [];
+    for (let i = 0; i < 2; i++) {
+      d.brain.startReact('flinch');
+      const hp0 = d.hp;
+      d.takeHit({ damage: 30, part: 'body' });
+      seen.push(`${hp0 > d.hp ? 'cut' : 'none'} ${d.brain.react?.kind}`);
+      run(G, 1.2);
+      d.barrier.open('debug');
+    }
+    assert(seen[0] === 'cut surprised' && seen[1] !== 'cut surprised' && seen[1].startsWith('cut'), `the first cut through the open barrier: surprised, once (${seen.join(' · ')})`);
+  }
+  {
     const G = build();
     const d = G.game.dragon;
     duel(G, { dist: 3 });
@@ -817,9 +834,12 @@ async function scenarioPhases() {
   assert(d.hp === gate && d.brain.pendingPhase === 2, `damage stops at the 66 % gate (${d.hp} = ${gate})`);
   let p2 = 0, p3 = 0;
   G.watch = (n) => { if (n === 'dragon:phase2') p2++; if (n === 'dragon:phase3') p3++; };
+  const unv = { n: 0, k: 0, flareU: NaN };
+  { const f0 = d.fx.unveil?.bind(d.fx); d.fx.unveil = (dd, k) => { unv.n++; unv.k = Math.max(unv.k, k); const a = d.brain.act, b = a?.beats[0]; if (k >= 0.98 && !Number.isFinite(unv.flareU) && b) unv.flareU = (a.t - b.start) / b.W; return f0?.(dd, k); }; }
   run(G, 1.5, null, () => d.brain.act?.name === 'unveil');
   assert(d.brain.act?.name === 'unveil' && d.phase === 2 && p2 === 1, 'The Blindfold Comes Off: phase 2, dragon:phase2');
   run(G, 5, null, () => d.mode !== 'act');
+  assert(unv.n > 30 && unv.k >= 0.98 && unv.flareU >= 0.88 && unv.flareU < 0.95, `the band's light and the eyes' flare through its windup, the flare just before the impact (${unv.n} frames, flare at u ${unv.flareU.toFixed(3)})`);
   assert(d.dressPhase === 2 && d.eyesK >= 1, `the blindfold off at its impact (dressPhase ${d.dressPhase}, eyes ${d.eyesK})`);
   assert(game.flow._text('phase2') === 'THE BLINDFOLD COMES OFF', 'the level\'s phase-2 banner');
   const gate3 = d.maxHp * TUNING.phaseAt[2];
@@ -946,6 +966,48 @@ async function scenarioFight() {
   } finally {
     STREAK_FX.chain = chain0;
   }
+}
+
+// ================================================================== scenario: downtime (integration, item 5)
+/** A half-skilled defender (answers half his cues) in god mode, a whole fight per seed: every knockdown
+ *  of the hero; nothing lands while he is down; the stretch out of his own hands; down -> his next cue. */
+async function scenarioDowntime() {
+  out('\n== scenario DOWNTIME (the hero knocked down: nothing lands on him down, no lock chained on a knockdown past the cap, the time to his next cue) ==');
+  const SEEDS = (process.env.GCD_WSEEDS ?? '4242,7').split(',').map(Number);
+  const OUTS = new Set(['stagger', 'knockdown', 'guardBreak', 'held']);
+  const rows = [];
+  for (const seed of SEEDS) {
+    const G = build(seed, true);
+    const { game } = G;
+    const d = game.dragon, p = game.player;
+    duel(G, { dist: 3, ai: true });
+    G.defend = makeDefender(G, { world: true, skill: 0.5, rng: mulberry32(seed * 13) });
+    const flashes = [];
+    G.watch = (n, e) => { if (n === 'combat:flash' && e?.source === 'dragon') flashes.push(game.time); };
+    const downs = [], onDown = [];
+    let cur = null, outRun = 0, freeRun = 9, outMax = 0, outMaxAt = 0, multi = 0;
+    run(G, Number(process.env.GCD_FSECS ?? 420), () => {
+      fencer(G);
+      const st = p.state;
+      if (st === 'knockdown' && !cur) cur = { t0: game.time, h0: G.hits.length };
+      if (st !== 'knockdown' && cur) { cur.t1 = game.time; downs.push(cur); cur = null; }
+      if (OUTS.has(st)) { outRun = (freeRun < 0.2 ? outRun + freeRun : 0) + DT; freeRun = 0; if (outRun > outMax) { outMax = outRun; outMaxAt = game.time; } }
+      else freeRun += DT;
+    }, () => d.mode === 'dead' || game.state === 'victory');
+    for (const k of downs) {
+      for (const h of G.hits.slice(k.h0)) if (h.t > k.t0 + 0.02 && h.t < k.t1 - 1e-3 && h.r === RESULT.HIT) onDown.push(`${h.attack} at ${(h.t - k.t0).toFixed(2)} s down`);
+      k.next = (flashes.find((t) => t > k.t1) ?? NaN) - k.t1;
+      k.nextFromDown = k.next + (k.t1 - k.t0);
+    }
+    const nx = downs.map((k) => k.next).filter(Number.isFinite).sort((a, b) => a - b);
+    const q = (v, f) => (v.length ? v[Math.min(v.length - 1, Math.floor(v.length * f))] : NaN);
+    rows.push({ seed, n: downs.length, onDown, outMax, outMaxAt, nx, len: downs.map((k) => k.t1 - k.t0) });
+    out(`   seed ${seed}: ${downs.length} knockdowns (each ${q(downs.map((k) => k.t1 - k.t0).sort(), 0.5)?.toFixed(2)} s); up -> his next cue: min ${nx[0]?.toFixed(2)} / median ${q(nx, 0.5)?.toFixed(2)} / max ${nx[nx.length - 1]?.toFixed(2)} s (down -> next cue median ${(q(nx, 0.5) + 1.3).toFixed(2)} s); longest stretch out of his own hands ${outMax.toFixed(2)} s; hits on him down: ${onDown.length}`);
+  }
+  assert(rows.every((r) => r.n >= 3), `the half-skilled defender is knocked down in every fight (${rows.map((r) => r.n).join(', ')})`);
+  assert(rows.every((r) => r.onDown.length === 0), `nothing of his lands on the hero while he is down (${rows.flatMap((r) => r.onDown).slice(0, 4).join(' · ') || 'none'})`);
+  // (the knockdown is the engine's 1.3 s; what must not happen is a lock chained onto it)
+  assert(rows.every((r) => r.outMax <= 1.3 + 0.2 + 1e-6), `no lock is chained on a knockdown: the longest stretch out of his own hands is the knockdown itself (${rows.map((r) => r.outMax.toFixed(2)).join(', ')} s <= 1.5)`);
 }
 
 // ================================================================== scenario: events
@@ -1178,6 +1240,7 @@ const S = {
   fight: scenarioFight,
   pace: scenarioPace,
   events: scenarioEvents,
+  downtime: scenarioDowntime, // (the integration pass)
   // melee: scenarios
   strings: scenarioStrings,
   sides: scenarioSides,
@@ -1840,7 +1903,7 @@ async function scenarioDown() {
     const tops0 = trStanding(G, ['towerTop']).length;
     let fix = null, landed = null;
     const tl = t._dropLanded.bind(t);
-    t._dropLanded = (D, x, z) => { landed = { x, z, t: G.game.time }; return tl(D, x, z); };
+    t._dropLanded = (D, x, z) => { landed = { x, z, t: G.game.time, y: D.piece ? D.piece.y0 + D.piece.pivot.position.y : NaN, y0: D.piece?.y0 }; return tl(D, x, z); };
     const f0 = t.frame.bind(t);
     t.frame = (dt) => { f0(dt); const D = t.drops.find((x) => x.live && x.fixed); if (D && !fix) fix = { x: D.tx, z: D.tz, t: G.game.time }; };
     const r = trRun(G, 'bringDown', [how], { dist: 6, max: 12 });
@@ -1854,6 +1917,7 @@ async function scenarioDown() {
   assert(rows.every((x) => x.r.flashes.length === 1 && x.r.flashes[0].tell === TELL.RED && x.r.flashes[0].hazard), 'one cue, red, on the place it lands');
   assert(rows.every((x) => x.fix && x.landed && Math.hypot(x.fix.x - x.landed.x, x.fix.z - x.landed.z) < 0.05 && x.r.tells.length >= 1 && x.r.tells[0].impactIn >= 0.6), 'it lands where the place was fixed, told >= 0.6 s before');
   assert(rows.every((x) => x.crater), 'a crater mark where it lands');
+  assert(rows.every((x) => x.landed && x.landed.y0 > 1 && Math.abs(x.landed.y) < 0.05), `the top (raised ${rows[0].landed?.y0} m) comes down to the floor and lands there (at ${rows.map((x) => x.landed?.y?.toFixed(2)).join(' / ')} m: throwTo ground)`);
   assert(none.r.hits.length === 1 && none.r.hits[0].r === RESULT.HIT && none.r.dhp > 0, `standing on the place: struck once (-${none.r.dhp})`);
   assert(walk.r.hits.length === 0 && walk.r.dhp === 0, 'walked off the fixed place: it misses');
   assert(dodge.r.dhp === 0, `rolled out: no health lost (${dodge.r.hits.map((h) => h.r).join(',') || 'not reached'})`);
@@ -1862,9 +1926,22 @@ async function scenarioDown() {
     const d = G.game.dragon, t = trOf(G);
     duel(G, { dist: 6, form: 2 });
     trSpend(G, ['towerTop']);
+    const W = G.game.world.destructibles, take = W.take.bind(W);
+    let took = null;
+    W.take = (b, o) => { const r = take(b, o); if (r && !took) took = b.kind; return r; };
+    const ok0 = d.brain.trigger('bringDown');
+    run(G, 4);
+    W.take = take;
+    assert(ok0 && took === 'fallenTower', `no top left: Bring It Down tears up a section of the fallen tower instead (${took})`);
+  }
+  {
+    const G = build();
+    const d = G.game.dragon, t = trOf(G);
+    duel(G, { dist: 6, form: 2 });
+    trSpend(G, ['towerTop', 'fallenTower']);
     const ok = d.brain.trigger('bringDown');
     run(G, 0.5);
-    assert(!ok && t.weigh('bringDown', MOVES.bringDown, 1, 6) === 0 && d.mode === 'foot', 'no top left (the fallen tower sections cannot be lifted): refused');
+    assert(!ok && t.weigh('bringDown', MOVES.bringDown, 1, 6) === 0 && d.mode === 'foot', 'no top and no fallen tower section left: refused');
   }
 }
 
@@ -1881,7 +1958,14 @@ async function scenarioOrbit() {
     const H = t.hold.filter((h) => h.piece && h.mode === 'orbit' && h.t > TUNING.terrain.orbit.liftT);
     held = Math.max(held, H.length);
     for (const h of H) { const e = Math.hypot(h.piece.px - d.position.x, h.piece.pz - d.position.z); rMin = Math.min(rMin, e); rMax = Math.max(rMax, e); }
+    // the hero's blade through one of them (once): it is bitten where it passes, and stays in his hold
+    if (H.length && !chip) {
+      const W = G.game.world.destructibles, pc = H[0].piece, b0 = W.bitten, y = pc.y0 + pc.py + pc.h * 0.5;
+      const n = W.sweep(pc.px - 1.2, pc.pz, pc.px + 1.2, pc.pz, 0.3, 0.9, { kind: 'blunt', by: 'player', dx: 1, dz: 0, y, ya: y, yb: y, src: W.swing(), tx: 1, tz: 0 });
+      chip = { n, bit: W.bitten - b0, piece: pc, state0: pc.state, hp: pc.hp };
+    }
   };
+  let chip = null;
   const kinds = TUNING.terrain.orbit.kinds;
   const n0 = trStanding(G, kinds).length;
   const r = trRun(G, 'theOrbit', ['parry', 'parry', 'dodge'], { dist: 7, max: 12 });
@@ -1892,6 +1976,7 @@ async function scenarioOrbit() {
   assert(gaps.length === 2 && gaps[0] >= 0.34 && gaps[1] >= 0.36, `the gaps are fair (${gaps.map((g) => g.toFixed(2)).join(' / ')} s: >= 0.34, a red after a guard >= 0.36)`);
   assert(r.dhp === 0, `parried, parried, rolled: no health lost (${r.hits.map((h) => h.r).join(',')})`);
   assert(trStanding(G, kinds).length <= n0 - 3 && !t.busy, `the three pieces are spent (and what they broke landing: ${n0} -> ${trStanding(G, kinds).length})`);
+  assert(chip && chip.n === 1 && chip.bit > 0 && chip.state0 === 3 && chip.hp >= 1, `the hero's blade chips a piece he holds, the carry goes on (struck ${chip?.n}, ${chip?.bit} letters off, state ${chip?.state0}, hp ${chip?.hp?.toFixed(2)})`);
 }
 
 async function scenarioRoad() {
@@ -2368,7 +2453,7 @@ async function scenarioNull() {
     d.brain.trigger('violetNull');
     untilFoot(G, 5);
     const t0 = S.lastNullT;
-    const w = (name) => { S.lastWasSpell = false; return S.weigh(name, MOVES[name], 1, 9); };
+    const w = (name) => { S.lastWasSpell = false; S.since = 9; return S.weigh(name, MOVES[name], 1, 9); };
     const soon = w('violetNull');
     run(G, T.gap - (game.time - t0) - 0.5);
     const before = w('violetNull');
@@ -2419,7 +2504,8 @@ async function scenarioSpellFight() {
     duel(G, { dist: 3, ai: true });
     G.defend = makeDefender(G, { world: true });
     const used = {}, nulls = [];
-    G.watch = (n, e) => { if (n === 'dragon:windup' && LIST.includes(e?.name)) { used[e.name] = (used[e.name] || 0) + 1; if (e.name === 'violetNull' || e.name === 'lastNull') nulls.push(game.time); } };
+    const p2 = [];
+    G.watch = (n, e) => { if (n === 'dragon:windup' && LIST.includes(e?.name)) { used[e.name] = (used[e.name] || 0) + 1; if (e.name === 'violetNull' || e.name === 'lastNull') nulls.push(game.time); if (e.name === 'violetNull' && d.phase === 2) p2.push(game.time); } };
     const t0 = game.time;
     const won = run(G, Number(process.env.GCD_FSECS ?? 600), () => fencer(G), () => d.mode === 'dead' || game.state === 'victory');
     G.watch = null;
@@ -2429,7 +2515,7 @@ async function scenarioSpellFight() {
     // (a fencer stays inside 2.6 m and is answered mostly by counters: of his free picks the spells take their share)
     const kinds = Object.keys(used).length, picks = d.brain.stats.picks ?? 0, spells = Object.values(used).reduce((a, n) => a + n, 0);
     assert(kinds >= 3 && spells >= 0.1 * picks, `his spells come up in a close fight: ${kinds} kinds, ${spells} of his ${picks} free picks`);
-    assert((used.violetNull ?? 0) >= 1, 'the Violet Null is seen');
+    assert(p2.length >= 1, `the Violet Null is seen in phase 2 (${p2.length}; seed ${process.env.GCD_SEED ?? 4242})`);
     assert(gaps.every((g) => g >= TUNING.spells.null.gap - 1e-6), `the Nulls are never inside ${TUNING.spells.null.gap} s of each other (${gaps.map((g) => g.toFixed(1)).join(', ')})`);
     marksCheck(M, 'veil', out, assert);
     assert(G.payload.size === 0, `no NaN in any event (${[...G.payload].join(', ')})`);

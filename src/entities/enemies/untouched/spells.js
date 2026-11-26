@@ -41,7 +41,7 @@ import { TUNE as HERO_TUNE } from '../../player/player.js';
 //          wjCrashDamage 0 here).
 // Every spell that lands: fx.weight(kind, dx, dz) ('spell' / 'null' / 'huge') and fx.shove along the throw.
 // The fx agent's newer methods are called through `?.`: nullLine(seg, k), castMark(x, z, r, k),
-// drawPath(seg, k), unveil(d, k) (every frame while shown).
+// drawPath(seg, k) (every frame while shown); fx.unveil is core's to call (untouched.js afterPose).
 // Lab / film: d.parts.spells.stats; the spells are triggered by name (d.brain.trigger).
 
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
@@ -83,6 +83,7 @@ export class WjSpells {
     this.after = null;
     this.blockT = 0;
     this.lastWasSpell = false;
+    this.since = 9; // (moves of his since his last spell: choice.between)
     this._seen = null;
     this.lastNullT = -Infinity;
     this.lastDone = false;
@@ -122,6 +123,9 @@ export class WjSpells {
     if (!SPELL_MOVES.has(name)) return w;
     const d = this.d, C = this.T.choice, now = this.game.time ?? 0;
     if (this.lastWasSpell || this.busy) return 0;
+    // (the first Null of phase 2 owes nothing to the spacing: it is the fight's signature)
+    const owed = name === 'violetNull' && this._nullOwed(now, this.T.null.first);
+    if (!owed && this.since < (C.between ?? 1)) return 0;
     if (NULL_MOVES.has(name)) {
       if (now - this.lastNullT < this.T.null.gap) return 0;
       if (name === 'lastNull') {
@@ -129,12 +133,30 @@ export class WjSpells {
         return d.phase >= 3 && !this.lastDone && k <= this.T.lastNull.below ? this.T.lastNull.weight : 0;
       }
       // (the first one early in phase 2, so the player sees it)
-      if (d.phase === 2 && this.stats.nulls === 0 && Number.isFinite(this.p2T) && now - this.p2T >= this.T.null.first) w *= this.T.null.firstK;
+      if (owed) return w * this.T.null.firstK * (dist >= C.far ? C.farK : 1);
     }
     if (dist >= C.far) w *= C.farK;
     else if (dist <= C.near) w *= C.nearK;
+    else w *= C.midK ?? 1; // (between: the pace's share, the integration pass)
     if (this.blockT >= C.blockAt) w *= C.blockK;
     return w;
+  }
+
+  /** Phase 2, no Null seen yet, `after` s or more into the phase. */
+  _nullOwed(now, after) {
+    const d = this.d;
+    return d.phase === 2 && this.stats.nulls === 0 && Number.isFinite(this.p2T) && now - this.p2T >= after;
+  }
+
+  /** THE SIGNATURE, made sure of: phase 2 `null.due` s old with no Null yet (his links and strings can
+   *  leave few free picks), the next time he stands on his feet with nothing of his alive, he fires it
+   *  (the move is the data's: its tell, its windup, its fixed line; the fairness guard as for any pick). */
+  _nullDue(now) {
+    const d = this.d, br = d.brain, p = this.game.player;
+    if (d.mode !== 'foot' || !br?.aiEnabled || this.busy || this.lastWasSpell || d.domain?.state !== 'off') return;
+    if (!this._nullOwed(now, this.T.null.due ?? Infinity) || !p?.alive || STUCK.has(p.state)) return;
+    if ((br.cooldowns?.violetNull ?? 0) > 0 || now - this.lastNullT < this.T.null.gap) return;
+    br.startAct('violetNull');
   }
 
   /** A move with a beat of this handler's starts: false refuses it (nothing has changed yet). */
@@ -164,10 +186,14 @@ export class WjSpells {
       const a = d.brain?.act;
       if (a && a !== this._seen && d.mode === 'act') {
         this._seen = a;
-        if (!a.def.transition && !a.def.counter) this.lastWasSpell = SPELL_MOVES.has(a.name);
+        if (!a.def.transition && !a.def.counter) {
+          this.lastWasSpell = SPELL_MOVES.has(a.name);
+          this.since = this.lastWasSpell ? 0 : this.since + 1;
+        }
       }
       if (d.phase >= 2 && !Number.isFinite(this.p2T)) this.p2T = this.game.time ?? 0;
       if (d.phase < 2) this.p2T = NaN;
+      this._nullDue(this.game.time ?? 0);
       // the move in hand gone (a reaction, a break, a link out): what it held lets go
       const R = this.rec;
       if (R && (d.brain?.act !== R.act || d.mode !== 'act' || R.beat.feint)) this._cancel();
@@ -244,6 +270,9 @@ export class WjSpells {
   _strike(b, a, spell, damage, knockback, fx, fz, o = {}) {
     const d = this.d, p = this._hero();
     if (!p) return RESULT.IGNORED;
+    // (the owner's rule: nothing of his hits a hero who is down; the melee's mercy spares its beats, this
+    // the spells' blows: a knot collapsing, a burst, a line on a hero lying in it pass over him)
+    if (p.state === 'knockdown') return RESULT.IGNORED;
     const scale = d.T.damageScale ?? 1;
     const cap = (fin(this.T.null.lethalCap, 0.78) * (p.maxHp ?? 160)) / scale;
     const r = d.hitPlayer({
@@ -763,7 +792,9 @@ export class WjSpells {
     const W = this.game.world;
     if (!W?.groundBlow) return;
     const T = L.T, N = this.T.null.trench, g = this._gb;
-    const angs = [L.last && L.turn ? L.a0 + L.turn * 0.5 : L.ang]; // (the Last Null: one trench down the middle of its turn)
+    // (the Last Null: a trench along each side of the fan it turned through, the wedge between them erased;
+    // two, not three: the floor marks' glyph cap)
+    const angs = L.last && L.turn ? [L.a0, L.a0 + L.turn] : [L.ang];
     for (const ang of angs) {
       const dx = Math.sin(ang), dz = Math.cos(ang);
       for (let s = 0.8; s < T.len - 0.5; s += N.seg) {
@@ -800,10 +831,7 @@ export class WjSpells {
   // ---------------------------------------------------------------- THE UNVEILING BURST (core's wjMoment)
   _unveilMotion(b, u) {
     const d = this.d, T = this.T.unveil;
-    if (u < 1) {
-      d.fx?.unveil?.(d, u);
-      return;
-    }
+    if (u < 1) return; // (the band's light and the eyes' flare: fx.unveil, called from core's afterPose)
     if (b._wjUnveiled) return;
     b._wjUnveiled = true;
     this.stats.unveils++;
