@@ -22,7 +22,7 @@ import { sfxMode, setSfxMode, chainMode, setChainMode, CHAIN_MODES } from '../au
 import { PARRY_CHAIN } from '../audio/parryChain.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { MYSTIC_IDS, MYSTIC_NAMES, mysticMode, setMystic } from '../entities/player/swordMystic.js';
-import { LIGHTS_IDS, LIGHTS_NAMES, lightsMode, setLights, CUTS_IDS, CUTS_NAMES, cutsMode, setCuts, FIN_IDS, finMode, setFin, HV_IDS, hvMode, setHv } from '../entities/player/combat.js';
+import { LIGHTS_IDS, LIGHTS_NAMES, lightsMode, setLights, CUTS_IDS, CUTS_NAMES, cutsMode, setCuts, FIN_IDS, finMode, setFin, HV_IDS, hvMode, setHv, ARM_IDS, armMode, setArm } from '../entities/player/combat.js';
 import { ARC_IDS, ARC_K, arcsMode, setArcs } from '../entities/player/swings.js';
 import { IDLES_IDS, IDLES_NAMES, idlesMode, setIdles, EASE_RESTS, FIGHT_RESTS, EASE_HABITS, EASE_TRICKS, EASE_REF_EXTRA, FIGHT_ACTS } from '../entities/player/idles.js';
 import { GUARD_IDS, GUARD_NAMES, guardMode, setGuard } from '../entities/player/refStance.js';
@@ -1460,6 +1460,7 @@ export class Lab {
     for (const [lbl, ids, set, key, tip] of [
       ['fin', FIN_IDS, setFin, 'finBtns', "hit 5 of the instant chain: blink (its five strokes at random) or one finisher a / b / c (?fin=)"],
       ['heavy', HV_IDS, setHv, 'hvBtns', "the instant heavies: blink's, or option a / b / c (?hv=)"],
+      ['arm', ARM_IDS, setArm, 'armBtns', 'the natural swings: the sword arm by its joints (armFK.js; the prototype: hit 1) (?arm=fk)'],
     ]) {
       const r = el('div', 'lab-row', null, body);
       el('span', 'lab-lbl', lbl, r).title = tip;
@@ -1471,7 +1472,7 @@ export class Lab {
           if (lightsMode() !== 'blink') setLights('blink');
           this._syncCutBtns();
         });
-        b.title = `?lights=blink&${lbl === 'fin' ? 'fin' : 'hv'}=${m}`;
+        b.title = `?lights=blink&${lbl === 'heavy' ? 'hv' : lbl}=${m}`;
         return { m, el: b };
       });
     }
@@ -1602,6 +1603,7 @@ export class Lab {
     for (const { m, el: b } of this.ui.cutsBtns ?? []) setClass(b, 'on', cutsMode() === m);
     for (const { m, el: b } of this.ui.finBtns ?? []) setClass(b, 'on', finMode() === m);
     for (const { m, el: b } of this.ui.hvBtns ?? []) setClass(b, 'on', hvMode() === m);
+    for (const { m, el: b } of this.ui.armBtns ?? []) setClass(b, 'on', armMode() === m);
     for (const { m, el: b } of this.ui.arcsBtns ?? []) setClass(b, 'on', arcsMode() === m);
     if (this.ui.perfectBtn) this.ui.perfectBtn.textContent = `perfect: ${perfectMode()}`;
     if (this.ui.parryFxBtn) this.ui.parryFxBtn.textContent = `parryFx ${parryFxMode()}`;

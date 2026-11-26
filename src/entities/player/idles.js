@@ -347,7 +347,7 @@ export function restName(A, fight) {
 }
 
 // ---------------------------------------------------------------- writing a rest
-const SCR = new Float32Array(64);
+const SCR = new Float32Array(96); // (a pose: anim.js N, 65 since ADR-240; room to spare: a pose read past its end is NaN and resets the rig)
 const SW = { d: 0, ok: false }; // (dirLerp's memory is a fade's: a rest change keeps the way it took)
 function restBlend(p, P, A, S, list) {
   const m = standLife(A.time, A.fightW > 0.5 ? 1 : 0);

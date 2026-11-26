@@ -244,9 +244,24 @@ export function setHv(m) {
   if (lightsNow === 'blink') setLights('blink');
   return true;
 }
+/** `?arm=fk` under `?lights=blink` (ADR-240): the natural swings, the sword arm keyed by its joints
+ *  (armFK.js, lightsNatural.js). The prototype is hit 1 only; '0' = the blink set's own. */
+export const ARM_IDS = ['0', 'fk'];
+const ARM_LOOKS = { fk: [{ anim: { kind: 'clip', clip: 'natFall' }, variants: [] }] };
+let armNow = '0';
+export const armMode = () => armNow;
+/** Pick the natural swings (shown while the look set is 'blink'); false for an unknown id. */
+export function setArm(m) {
+  const id = String(m);
+  if (!ARM_IDS.includes(id)) return false;
+  armNow = id;
+  if (lightsNow === 'blink') setLights('blink');
+  return true;
+}
 const blinkLights = () => {
   const L = cutsNow === '0' ? LIGHT_BLINK.slice() : LIGHT_BLINK.map((x, i) => CUT_SETS[cutsNow][i] ?? x);
   if (finNow !== '0' && FIN_LOOKS[finNow]) L[4] = FIN_LOOKS[finNow];
+  if (armNow !== '0') ARM_LOOKS[armNow].forEach((x, i) => { if (x) L[i] = x; });
   return L;
 };
 const blinkHeavies = () => (hvNow === '0' ? HEAVY_BLINK : HEAVY_BLINK.map((x, i) => HV_SETS[hvNow][i] ?? x));
@@ -434,6 +449,8 @@ const SPECIAL_NEW = Object.fromEntries(Object.keys(SPECIAL_DEFS).map((k) => [k, 
   if (f && FIN_IDS.includes(f)) finNow = f;
   const h = sp ? sp.get('hv') : null;
   if (h && HV_IDS.includes(h)) hvNow = h;
+  const ar = sp ? sp.get('arm') : null;
+  if (ar && ARM_IDS.includes(ar)) armNow = ar;
   if (q === 'old' || q === 'fresh' || q === 'blink' || q === 'steel') setLights(q);
 }
 

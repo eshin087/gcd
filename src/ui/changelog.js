@@ -217,6 +217,7 @@ export const RELEASES = [
           'The finisher slams down deeper. Prefer the old motion? Add ?lights=old to the address.',
           'Being tried out: add ?lights=blink and every attack is an instant cut that leaves one straight slash line.',
           'And four new takes on the instant cuts: add ?lights=blink&cuts=a (or b, c, d) to try each light combo.',
+          'New, the first swing only: add ?lights=blink&arm=fk and the first light cut is swung by a real arm: the shoulder, elbow, forearm and wrist each turn within their natural range, the body carries the arm, and the slash line is drawn where the blade passes.',
           'Also being tried out: add ?lights=steel for a whole new set of sword attacks, with both arms and the body moving the way a swordsman would.',
         ],
       },

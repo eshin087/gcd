@@ -120,6 +120,7 @@ import { FINISH_BLINK } from './blinkFinish.js';
 import { HEAVY_OPT_A } from './heavyOptA.js';
 import { HEAVY_OPT_B } from './heavyOptB.js';
 import { HEAVY_OPT_C } from './heavyOptC.js';
+import { LIGHTS_NATURAL } from './lightsNatural.js';
 
 /** The free hand's places (a key's `fh`; the key's own fields win): where it is (`l`), its elbow
  *  (`lp`), where the sword fingers point (`ld`), the palm (`pn`) and the sword wrist (`lk`). */
@@ -678,4 +679,6 @@ export const SWINGS = {
   ...HEAVY_OPT_A,
   ...HEAVY_OPT_B,
   ...HEAVY_OPT_C,
+  // ---- the natural swings: the sword arm keyed by its joints (?arm=fk, armFK.js, ADR-240) ----
+  ...LIGHTS_NATURAL,
 };

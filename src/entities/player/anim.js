@@ -6,6 +6,7 @@ import { atEase, fencerGuard } from './stances.js';
 import { STEEL, steelCharge } from './steelStance.js';
 import { idlesOld, idlesRef, idlesMode, easeArms, guardArms, newRests, tickRests, pickEase, actStart, lowRest, toLowRest, trailing, easeRests, fightRests, stowHidden, EASE_HABITS, EASE_TRICKS, FIGHT_ACTS, FIGHT_ACTS_REF, EASE_REF_EXTRA, IDLES } from './idles.js';
 import { refStand, refReady, refGuard, guardMode, REF_GUARD } from './refStance.js';
+import { armChest, armOut, armToPose, poseToArm } from './armFK.js';
 
 // Procedural animation for the Wanderer, keyed to the owner's concept sheets ("Movement" / "Combat
 // key poses"). Every frame a target POSE (a flat Float32Array) is built for the current clip as a
@@ -45,9 +46,13 @@ export const P = {
   // … and how much it hangs loose at his side on its own pendulum (0..1: HeroAnimator._sideHand; a
   // clip's `side`). 0 in every pose but those clips' (update() clears it before each pose)
   sd: 61,
+  // the sword shoulder's girdle: how far its joint has moved on the chest (chest axes, m; armFK.js GIRDLE:
+  // up as the arm rises, forward and in as it reaches). 0 in every pose but a joint-keyed clip's (`j`
+  // keys, armFK.js; update() clears it before each pose)
+  clR: 62,
 };
 /** The pose's channel count (a duelist's scratch poses are sized from it). */
-export const N = 62;
+export const N = 65;
 const ENTRY_EASE = 0.85; // an easeOut cross-fade (attack entries) arrives at this fraction of its time
 const TURN_LAG_MAX = 1.4; // rad: how far the drawn heading may trail the gameplay yaw in a fast turn
 const TURN_K = 650; // stiffness (1/s²) of the critically damped spring the drawn heading follows
@@ -750,6 +755,11 @@ const SW_CACHE = new Map();
 const SW_V = new Float32Array(6);
 const SW_UP = [0, 1, 0];
 const SW_PICK = new Uint8Array(8); // _pickVariant: the looks it may choose from
+// a joint-keyed clip (`j`, armFK.js): how far AHEAD of the clip's clock (s) the upper arm, the elbow and the
+// forearm with the wrist are played (a clip's `fkLag`): the shoulder leads, the forearm's twist and the
+// wrist's uncock come last, the whip a real cut has
+const FK_LAG = [0.008, 0, -0.008];
+const FK_J = new Float32Array(7), FK_R = armOut(), FK_E = [0, 0, 0, 0, 0, 0, 0], FK_K1 = [0, 0, 0, 0, 0, 0, 0];
 
 /** Compile a swings.js clip into tracks (slot 0 of each = the entry pose, filled at play time). */
 function swingClip(name) {
@@ -809,13 +819,20 @@ function swingClip(name) {
       return null;
     });
     if (dir) ch.push(P.swD, P.swD + 1, P.swD + 2, P.swF, P.swF + 1, P.swF + 2);
+    // the sword arm by its joints (`j` keys: armFK.js): three tracks, played proximal to distal (FK_LAG)
+    let fk = null;
+    if (keys.some((k) => Array.isArray(k.j))) {
+      const jt = (a, b) => track(0, b - a, (k) => (Array.isArray(k.j) ? (b - a === 1 ? k.j[a] : k.j.slice(a, b)) : null));
+      fk = { sh: jt(0, 3), el: jt(3, 4), wr: jt(4, 7), lag: Array.isArray(def.fkLag) ? def.fkLag : FK_LAG };
+      ch.push(P.rH, P.rH + 1, P.rH + 2, P.rP, P.rP + 1, P.rP + 2, P.swD, P.swD + 1, P.swD + 2, P.swF, P.swF + 1, P.swF + 2, P.clR, P.clR + 1, P.clR + 2);
+    }
     const has = (f) => keys.some((k) => k[f] != null);
     if (has('h') && !has('rp')) ch.push(P.rP, P.rP + 1, P.rP + 2);
     if (has('l') && !has('lp')) ch.push(P.lP, P.lP + 1, P.lP + 2);
     if (!has('hy')) ch.push(P.hdY);
     if (!has('hx')) ch.push(P.hdX);
     C = {
-      tracks, dir, hand: tracks.find((T) => T.ch === P.rH) ?? null, ch: [...new Set(ch)],
+      tracks, dir, fk, hand: tracks.find((T) => T.ch === P.rH) ?? null, ch: [...new Set(ch)],
       autoR: has('h') && !has('rp'), autoL: has('l') && !has('lp'), autoHy: !has('hy'), autoHx: !has('hx'), keyedF: has('f'),
       flat: Array.isArray(def.flat) ? def.flat : SW_UP,
       rF: def.rF ?? null, lF: def.lF ?? null, step: def.step ?? null, drag: def.drag ?? 0.22, home: def.home ?? SW_HOME,
@@ -1022,6 +1039,39 @@ function swingPose(p, A, k, t, W, Ac, R) {
   A.pathCh = C.ch;
 }
 
+/** A joint-keyed clip's sword arm (armFK.js) at attack time t into the pose: the three joint tracks at
+ *  their own lead (FK_LAG), the chain solved in the chest the pose's hips and chest put it at, and handed
+ *  over as the sword hand, the elbow's way, the blade, its flat and the girdle. Until the first key it is
+ *  eased in from the pose he was in (F), the way the windup leaves it in every clip. */
+function fkArm(p, C, F, t, u, W, Ac, R) {
+  const K = C.fk, L = K.lag;
+  // slot 0 of the tracks: the joints of the arm he came in with (armFK.js poseToArm, the azimuth unwrapped
+  // toward the first key's), so the way to the first key turns at the joints too (a blend of the grip's
+  // place ran it through the shoulder: the arm folded to 39° on the way from the fight hold to the coil)
+  const k1 = FK_K1;
+  for (let i = 0; i < 3; i++) k1[i] = K.sh ? K.sh.V[3 + i] : 0;
+  k1[3] = K.el ? K.el.V[1] : 60;
+  for (let i = 0; i < 3; i++) k1[4 + i] = K.wr ? K.wr.V[3 + i] : 0;
+  const ok = poseToArm(F, P, FK_E, k1);
+  if (ok) FK_E[0] = k1[0] + wrapAngle((FK_E[0] - k1[0]) * SW_DEG) / SW_DEG;
+  const at = (T, lag, o) => {
+    for (let c = 0; c < T.n; c++) T.V[c] = ok ? FK_E[o + c] : T.V[T.n + c];
+    swingTrack(T, lag ? swingPhase(Math.max(0, t + lag), W, Ac, R) : u, FK_J, o, C.gather ? C.gather[0] : SW_ENTRY);
+  };
+  if (K.sh) at(K.sh, L[0], 0);
+  if (K.el) at(K.el, L[1], 3);
+  if (K.wr) at(K.wr, L[2], 4);
+  armToPose(p, P, armChest(FK_J, FK_R));
+  // the first frames: from the very pose he was in (the joints' ranges may have clamped its inverse)
+  const U1 = K.sh ? K.sh.U[1] : 0, e = smoothstep(0, 0.3 * U1, u);
+  if (e < 1) {
+    const bx = p[P.swD], by = p[P.swD + 1], bz = p[P.swD + 2];
+    for (const i of FK_IN) p[i] = F[i] + (p[i] - F[i]) * e;
+    dirLerp(p, P.swD, F[P.swD], F[P.swD + 1], F[P.swD + 2], bx, by, bz, e);
+  }
+}
+const FK_IN = [P.rH, P.rH + 1, P.rH + 2, P.rP, P.rP + 1, P.rP + 2, P.swF, P.swF + 1, P.swF + 2, P.clR, P.clR + 1, P.clR + 2];
+
 /** The attack clip: a swings.js clip (the light chain and its finisher, the sprint and roll cuts,
  *  the charged cleave) or the execution's thrust, then the footwork and the way home. A light attack
  *  whose button is still held freezes at the coil (A.t is held at the windup end). */
@@ -1063,6 +1113,13 @@ function attackPose(p, A) {
     p[P.lF + 1] += h * tuck * (tuck > 1 ? 0.8 : 1);
     p[P.footFlat] = lerp(p[P.footFlat], 0.4, clamp(h / k.hop, 0, 1));
   }
+  // a joint-keyed clip's sword arm (armFK.js) hangs from the chest as the hips, the chest and the step's
+  // lean (the inertia below, taken first here) leave it; the way home then blends that arm out
+  const fkC = k.kind === 'clip' ? swingClip(k.clip) : null, lean = k.feet !== 'dash' && k.kind !== 'thrust';
+  if (fkC?.fk) {
+    if (lean) p[P.spX] -= ATK_INERTIA * fin(A.leanF, 0);
+    fkArm(p, fkC, A.from, t, swingPhase(t, W, Ac, R), W, Ac, R);
+  }
   const rec = (t - W - Ac) / R;
   // the fraction of the recovery after which he starts home. A clip's last keys are still moving
   // then, so the follow-through runs into the way home without a stop (it was held to 0.5 of the
@@ -1099,7 +1156,7 @@ function attackPose(p, A) {
   // inertia: the root's push-off leaves the chest behind the hips; its brake pitches it on over the
   // planted foot (A.leanF: the smoothed root acceleration, the loco's lean spring, set in update()
   // before the pose). Not on a dash: the cleave and the sprint slash key their own lean into it
-  if (k.feet !== 'dash' && k.kind !== 'thrust') p[P.spX] -= ATK_INERTIA * fin(A.leanF, 0);
+  if (lean && !fkC?.fk) p[P.spX] -= ATK_INERTIA * fin(A.leanF, 0);
   // the BITE (atk.hitAt, set by player.js _applyHit on a landed, unguarded blow): the edge catches in
   // what it cut. The hips drop, the chest folds into the blow, the head nods, the grip pulls in along
   // the blade, and the blade holds where it bit. It is full through the hit-pause (the frozen clock
@@ -3040,6 +3097,9 @@ export class HeroAnimator {
     this.lkEff = 0;
     this.gripGap = 1;
     this.rig = rig;
+    // the sword shoulder's joint and its armour where the model put them (the girdle moves them: P.clR)
+    this.shR0 = rig.arms?.R?.upper?.position?.clone?.() ?? null;
+    this.paul0 = rig.pauldron?.position?.clone?.() ?? null;
     this.player = player;
     this.poses = poses ? { ...POSES, ...poses } : POSES;
     this.cur = new Float32Array(N);
@@ -3482,6 +3542,7 @@ export class HeroAnimator {
     }
     this._idleLife(dt, sp);
     this.target[P.sd] = 0; // (only a `side` clip's pose hangs the free hand: attackPose)
+    this.target[P.clR] = this.target[P.clR + 1] = this.target[P.clR + 2] = 0; // (only a joint-keyed clip moves the girdle)
     this.poses[this.key](this.target, this);
     if (this.blendT < this.blendDur) {
       this.blendT += dt;
@@ -4028,6 +4089,12 @@ export class HeroAnimator {
     _qBC.copy(_qChest).invert().multiply(_qBody); // body axes → chest local
     _qBP.copy(_qPelvis).invert().multiply(_qBody); // body axes → pelvis local
 
+    if (this.shR0) {
+      // the girdle (P.clR: a joint-keyed clip's; 0 in every other pose)
+      const gx = fin(p[P.clR]), gy = fin(p[P.clR + 1]), gz = fin(p[P.clR + 2]);
+      r.arms.R.upper.position.set(this.shR0.x + gx, this.shR0.y + gy, this.shR0.z + gz);
+      if (this.paul0) r.pauldron.position.set(this.paul0.x + gx, this.paul0.y + gy, this.paul0.z + gz);
+    }
     this._arm(r.arms.R, this._handTarget(r.arms.R, p, P.rH), p, P.rP, true);
     // off hand: its own target, or (twoHand) down the grip below the sword hand
     this._handTarget(r.arms.L, p, P.lH);
@@ -4646,6 +4713,9 @@ export class HeroAnimator {
    *  clip starts, flipped the elbow 50-135° in a single frame: "arms snapping between positions".) */
   _elbow(arm, S, T, pole) {
     const st = arm === this.rig.arms.R ? this.elbowR : this.elbowL, dt = this.frameDt;
+    // (a joint-keyed swing's elbow (armFK.js) turns as its joints do: the rate limit would lag it off the
+    // forearm the joints put the blade on)
+    const free = arm === this.rig.arms.R && this.key === 'attack' && this.atkAnim?.kind === 'clip' && !!swingClip(this.atkAnim.clip)?.fk;
     _eA.subVectors(T, S);
     const al = _eA.length();
     if (!(al > 1e-5)) return;
@@ -4654,7 +4724,7 @@ export class HeroAnimator {
     const wl = _eW.length();
     if (!(wl > 1e-5) || !Number.isFinite(wl)) return;
     _eW.multiplyScalar(1 / wl);
-    if (st.ok && dt > 0) {
+    if (st.ok && dt > 0 && !free) {
       _eP.copy(st.v).addScaledVector(_eA, -st.v.dot(_eA)); // where it was, off this frame's line
       const pl = _eP.length();
       if (pl > 1e-3) {
