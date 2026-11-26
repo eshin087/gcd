@@ -1153,6 +1153,11 @@ function makeScenes(light) {
     /** The floor's marks follow the scene: those not made in the void hidden in it (out to r from the front's
      *  centre; Infinity: all), shown again in the city (scars.shade / scars.layer). */
     _marks(r) {
+      // (the tuning pass, the owner: the bonfire goes out in the void, flame, light, embers and sound, and
+      // burns again on the way back: when the front passes it, as it does the city's pieces)
+      const A = game?.world?.atmosphere, bf = game?.world?.bonfire ?? CROSSING.bonfire;
+      const lit = this.now === home;
+      if (A?.setBonfireLit && A.bonfireLit !== lit && Math.hypot(bf.x - fin(this.m.x), bf.z - fin(this.m.z)) <= r) A.setBonfireLit(lit);
       const SC = game?.world?.scars;
       if (!SC?.shade) return;
       SC.layer = this.now;

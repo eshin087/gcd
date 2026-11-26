@@ -1275,6 +1275,7 @@ const S = {
   into: scenarioInto,
   heldbreak: scenarioHeldBreak, // (the tuning pass)
   floor: scenarioFloor, // (the tuning pass)
+  bonfire: scenarioBonfire, // (the tuning pass, round 2)
   // world: scenarios
   // (the crossing never traps a thrown hero: thrown 10 m from 24 places, four ways each, through whatever
   // stands there; he ends outside every collider, inside his bound, and walks away)
@@ -2074,6 +2075,35 @@ async function scenarioFloor() {
   assert(inVoid && inVoid.shown === 0, `in the void none of the crossing's marks show (${inVoid?.shown} of ${inVoid?.n0})`);
   assert(back.scene === 'crossing' && back.shown >= Math.min(inVoid?.n0 ?? 0, SC.marks.length) * 0.5, `back in the crossing its marks show again (${back.shown})`);
   assert(fires[0] === 0, `no fire burns after his fight (${fires[0]} 'fire' blobs alive)`);
+}
+
+// (the tuning pass, round 2: the owner) The bonfire goes out while the scene is the void (no flame, light,
+// embers or sound: atmosphere.bonfireLit, which all four read) and burns again on the way back; a reset
+// lights it too.
+async function scenarioBonfire() {
+  out('\n== scenario BONFIRE (out in the void, lit again in the crossing) ==');
+  const G = build();
+  const { game } = G;
+  duel(G, { dist: 4 });
+  const A = game.world.atmosphere, sc = game.world.forest.scenes;
+  const lit0 = A.bonfireLit;
+  sc.to('void', { x: 0, z: -2 });
+  run(G, 0.1);
+  const early = A.bonfireLit;
+  run(G, 3);
+  const inVoid = A.bonfireLit;
+  sc.to('crossing', { x: 0, z: -2 });
+  run(G, 3);
+  const back = A.bonfireLit;
+  sc.to('void', { x: 0, z: -2 });
+  run(G, 3);
+  game.world.restore();
+  const reset = A.bonfireLit;
+  out(`   lit: at the start ${lit0}, as the front leaves him ${early}, in the void ${inVoid}, back in the crossing ${back}, after a reset from the void ${reset}`);
+  assert(lit0 && early, 'the bonfire burns until the front reaches it');
+  assert(inVoid === false, 'in the void the bonfire is out (no flame, light, embers or sound)');
+  assert(back === true, 'back in the crossing it burns again');
+  assert(reset === true, 'a reset from the void lights it');
 }
 
 // (the tuning pass) A piece he holds, cut by the hero's blade: bitten while it has hp to spare; the cut that
