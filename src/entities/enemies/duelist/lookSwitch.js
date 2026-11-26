@@ -78,6 +78,7 @@ export const PENDING = Object.freeze([
   'foxLook', 'foxfire', 'clones', 'foxLetters', 'foxFire3', 'foxSpirit', 'oneLook', 'hall', 'script', // Wen Yao (ADR-147, ADR-154); Xin Yi and his hall (ADR-156, ADR-157); Halcyon and his city: all picked (ADR-161, ADR-164, ADR-166)
   // Bai Wuji and the Veiled Crossing: each `?wj...=` switch waits for the owner (read with lookOf(name, def))
   // Bai Wuji: body rows
+  'wjLook', 'wjHair', // his outfit (a the black coat, b the indigo robe and a white band, c the bone-white coat) and his hair's shape (a a tall swept crown, b a shorter spikier one; each with its fallen version)
 
   // Bai Wuji: fx rows
 

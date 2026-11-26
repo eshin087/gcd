@@ -839,6 +839,85 @@ async function scenarioPhases() {
   assert(set.scenes.now === 'crossing' && d.phase === 1, 'his reset: phase 1, the crossing');
 }
 
+// ================================================================== scenario: body (the body agent)
+async function scenarioBody() {
+  out('\n== scenario BODY (his dress by phase: which pieces show; the eye and hand points; every base clip finite) ==');
+  const { BODY_CLIP_NAMES, GUARD, evalClip, POCKETS } = await imp('src/entities/enemies/untouched/poses.js');
+  const { WJ_LOADOUT } = await imp('src/entities/enemies/untouched/gear.js');
+  const { P: PCH, N: NCH } = await imp('src/entities/player/anim.js');
+  const G = build();
+  const { game } = G;
+  const d = game.dragon;
+  duel(G, { dist: 4, ai: false });
+  const D = d.rig?.root?.userData?.dress;
+  assert(D?.kind === 'wj' && D.eyes.length === 2 && WJ_LOADOUT.weapon === null, `his dress record (${D?.at?.length} switched pieces, ${D?.eyes?.length} eyes, bare-handed)`);
+  const vis = (name) => (D?.at ?? []).filter((e) => e.m.name === name).map((e) => e.m.visible);
+  const all = (name) => vis(name).length > 0 && vis(name).every(Boolean), none = (name) => vis(name).length > 0 && !vis(name).some(Boolean);
+  const want = { 1: ['wj.hairUp', 'wj.bandEyes'], 2: ['wj.hairDown', 'wj.bandNeck', 'wj.eye'], 3: ['wj.hairDown', 'wj.bandNeck', 'wj.eye'] };
+  const names = ['wj.hairUp', 'wj.hairDown', 'wj.bandEyes', 'wj.bandNeck', 'wj.eye'];
+  const v = new THREE.Vector3();
+  for (const n of [1, 2, 3]) {
+    d.dressPhase = n;
+    d.eyesK = n >= 2 ? 1 : 0;
+    run(G, 0.1);
+    const ok = names.every((k) => (want[n].includes(k) ? all(k) : none(k)));
+    const glow = d.rig.materials.flask?.uniforms?.uGlow?.value ?? 0;
+    assert(ok && (n === 1 ? glow === 0 : glow > 0.4), `phase ${n}: ${names.filter((k) => all(k)).join(', ')} shown; the eyes' glow ${glow.toFixed(2)}`);
+    // (as drawn: the camera lean shears his drawn body, so the points are measured from his drawn head)
+    d.eyePoint(v);
+    const hd = new THREE.Vector3().setFromMatrixPosition(d.rig.head.matrixWorld);
+    const dh = v.distanceTo(hd);
+    assert(Number.isFinite(v.x + v.y + v.z) && v.y > 1.7 && v.y < 2.8 && dh < 0.35, `phase ${n}: the eye point is at his eyes (${v.y.toFixed(2)} m up, ${dh.toFixed(2)} m from his drawn head)`);
+  }
+  // the coat's front parts in phase 3 and closes again in phase 1
+  const fr = D.fronts.map((F) => F.C.anchor.rotation.y.toFixed(2)).join(' / ');
+  d.dressPhase = 1;
+  run(G, 0.1);
+  const fr1 = D.fronts.map((F) => F.C.anchor.rotation.y.toFixed(2)).join(' / ');
+  assert(fr !== fr1 && D.fronts.every((F) => Math.abs(F.C.anchor.rotation.y - F.closed) < 1e-6), `the coat's front: ${fr1} closed, ${fr} parted in phase 3`);
+  // phase 1: the hands in his pockets (by his hips, in front), standing
+  d.debug.tidy();
+  d.pilot.armsK = 1;
+  run(G, 1.0);
+  const hands = ['R', 'L'].map((s) => d.handPoint(s, new THREE.Vector3()));
+  const pv = new THREE.Vector3().setFromMatrixPosition(d.rig.pelvis.matrixWorld);
+  const gap = hands.map((h) => h.distanceTo(pv));
+  const hipOk = hands.every((h, i) => Number.isFinite(h.x + h.y + h.z) && gap[i] < 0.36);
+  assert(hipOk, `phase 1: both hands at his hips (${gap.map((x) => x.toFixed(2)).join(' / ')} m from his drawn pelvis)`);
+  // every base clip, sampled: finite every channel
+  const p = new Float32Array(NCH), A = { time: 0, recoil: 0, off: null, player: {} };
+  let bad = [], total = 0;
+  for (const name of BODY_CLIP_NAMES) {
+    const c = CLIP[name];
+    if (!c) { bad.push(name + ' (missing)'); continue; }
+    for (let t = 0; t <= c.dur + 1e-6; t += c.dur / 24) {
+      evalClip(p, c, t, A);
+      total++;
+      if (!p.every(Number.isFinite)) { bad.push(name); break; }
+    }
+  }
+  assert(!bad.length, `${BODY_CLIP_NAMES.length} base clips, ${total} samples: every channel finite (${bad.join(', ') || 'none bad'})`);
+  // ... and played on him: every reaction he can be put in, the rig finite through it
+  const reacts = ['ward', 'wardR', 'wardHigh', 'clash', 'deflect', 'flinch', 'backstep', 'sidestep', 'stagger', 'surprised', 'recoil', 'reeling', 'trampled'];
+  const badR = [];
+  for (const k of reacts) {
+    d.debug.tidy();
+    run(G, 0.3);
+    d.brain.startReact(k);
+    let fin = true;
+    run(G, 1.2, () => {
+      for (const j of [d.rig.head, d.rig.arms.R.fore, d.rig.arms.L.fore, d.rig.legs.R.foot, d.rig.legs.L.foot]) {
+        v.setFromMatrixPosition(j.matrixWorld);
+        if (!Number.isFinite(v.x + v.y + v.z)) fin = false;
+      }
+    });
+    if (!fin) badR.push(k);
+  }
+  assert(!badR.length, `${reacts.length} reactions played on him: the rig finite (${badR.join(', ') || 'none bad'})`);
+  assert(GUARD.rH === POCKETS.rH && GUARD.lH === POCKETS.lH, 'his stance: the hands in the pockets');
+  void PCH;
+}
+
 // ================================================================== scenario: fight
 async function scenarioFight() {
   out('\n== scenario FIGHT (a seeded fencing bot in god mode, start to death: no throw, no NaN) ==');
@@ -1104,6 +1183,7 @@ const S = {
   // terrain: scenarios
   // world: scenarios
   // body: scenarios
+  body: scenarioBody,
   // fx: scenarios
 };
 // (run by tests/run.mjs as processes of their own; `all` leaves them out: GCD_SKIP)
