@@ -2084,6 +2084,9 @@ async function scenarioParryGrow() {
 // with, his own streak of guards and the flurry it brings.
 async function scenarioStreak() {
   out('\n== scenario STREAK (parries feed the streak; the riposte; his streak of guards and his flurry: answer every blow and he breaks) ==');
+  // (the old riposte pinned: the parry feeding the dodge streak and the flurry answer; the default is the deathblow, ADR-211)
+  const RC = await imp('src/entities/player/riposteCut.js');
+  RC.setRiposteMode('old');
   const G = build();
   duel(G, { dist: 2.4 });
   const { game, input } = G;
@@ -2198,6 +2201,7 @@ async function scenarioStreak() {
   G.defend = null;
   p.debug.noRiposte = false;
   assert(since(c6, 'player:parry') === 1 && since(c6, 'player:flurry') === 0, 'player.debug.noRiposte: a parry is only a parry');
+  RC.setRiposteMode(RC.RIPOSTE_DEFAULT);
   return G;
 }
 
@@ -3899,6 +3903,9 @@ async function scenarioProbe() {
 // it winds up twice as fast and crits).
 async function scenarioPerfect() {
   out('\n== scenario PERFECT (a perfect parry: posture x POSTURE.perfect, and the counter cut) ==');
+  // (the old riposte pinned: the default opens the counter cut on a plain parry of a last blow too, ADR-211)
+  const RC = await imp('src/entities/player/riposteCut.js');
+  RC.setRiposteMode('old');
   const G = build();
   duel(G, { dist: 2.0 });
   const { game, input } = G;
@@ -3948,6 +3955,7 @@ async function scenarioPerfect() {
   assert(fast.t <= slow.t * 0.7 && fast.t >= slow.t / PP.cutSpeed - 2 * DT, `it winds up in ${fast.t.toFixed(3)} s against ${slow.t.toFixed(3)} s (x ${PP.cutSpeed})`);
   assert(!(p.quickUntil > game.time), 'one cut only: the next light is a plain one again');
   p.debug.noRiposte = false;
+  RC.setRiposteMode(RC.RIPOSTE_DEFAULT);
   return G;
 }
 
@@ -4412,12 +4420,16 @@ async function scenarioFxLooks() {
     return `${G.hits.map((h) => `${h.attack}:${h.r}@${h.t.toFixed(2)}`).join(',')}|${cues.join(',')}|${d.position.x.toFixed(3)},${d.position.z.toFixed(3)},${d.hp.toFixed(1)}|${G.game.player.position.x.toFixed(3)}`;
   };
   // (the reference is the fight as shipped; BEFORE (his body '0' too: a build-time look) must play the same)
+  // (the old riposte pinned for these fights: they compare one fight under many looks, not the parry's answer; ADR-211)
+  const RC = await imp('src/entities/player/riposteCut.js');
+  RC.setRiposteMode('old');
   const ref = fight({});
   for (const looks of [{ kindle: 'b', qi: 'a', flit: 'a', ashp3: 'b' }, { kindle: 'c', qi: 'c', flit: 'a', ashp3: 'c' }, { qi: 'b', ashp3: 'a' }, BEFORE, { ashLook: 'c', qi: '0' }]) {
     const got = fight(looks);
     if (got !== ref) { let i = 0; while (got[i] === ref[i]) i++; out(`     differs at ${i}: ...${ref.slice(Math.max(0, i - 80), i + 60)} vs ...${got.slice(Math.max(0, i - 80), i + 60)}`); }
     assert(got === ref, `the looks ${JSON.stringify(looks)} do not move the fight (same hits, cues, positions as shipped)`);
   }
+  RC.setRiposteMode(RC.RIPOSTE_DEFAULT);
   clear();
   return build();
 }

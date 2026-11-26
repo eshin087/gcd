@@ -1,5 +1,5 @@
 import { CONFIG } from '../core/config.js';
-import { DEFENSE, POSTURE } from '../combat/rules.js';
+import { DEFENSE } from '../combat/rules.js';
 import { riposteMode, setRiposteMode } from '../entities/player/riposteCut.js';
 import { ARTS } from '../entities/player/flurry.js';
 import { TUNING as WYRM, SCALE as WYRM_SCALE } from '../entities/dragon/tuning.js';
@@ -636,9 +636,9 @@ export class Training {
       d.posture = 0;
       d.emitPosture?.(true);
     }
-    // one perfect parry of his next blow (a white one is the smaller) breaks it
+    // one parry of his next blow breaks it (a boss that scales the posture a parry costs, Xin Yi at full health, needs the bar nearly full)
     if (s.postureNear && Number.isFinite(d.posture) && !d.broken) {
-      d.posture = Math.max(0, d.maxPosture - POSTURE.parry.normal * POSTURE.perfect + 1);
+      d.posture = Math.max(0, d.maxPosture - 2);
       d.postureTimer = 0;
       d.emitPosture?.(true);
     }
