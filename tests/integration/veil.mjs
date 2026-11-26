@@ -1185,6 +1185,13 @@ const S = {
   mix: scenarioMix,
   chase: scenarioChase,
   // spells: scenarios
+  draw: scenarioDraw,
+  yank: scenarioYank,
+  cast: scenarioCast,
+  wreck: scenarioWreck,
+  null: scenarioNull,
+  unveil: scenarioUnveil,
+  spellfight: scenarioSpellFight,
   // terrain: scenarios
   curb: scenarioCurb,
   down: scenarioDown,
@@ -2056,4 +2063,391 @@ async function scenarioInto() {
   p.takeHit({ damage: 1, knockback: 8, from: { x: p.position.x - a.dx, z: p.position.z - a.dz }, tell: TELL.NORMAL, parryable: false, blockable: false, attack: 'test', attacker: d, wjCrash: TUNING.wjCrash.power, wjCrashDamage: TUNING.wjCrash.damage });
   run(G, 1.6);
   assert(p.crash.hits.length >= 1, `thrown along it he crashes through ${p.crash.hits.length} piece(s)`);
+}
+
+// ================================================================== spells: the spells agent's scenarios
+// (function declarations: hoisted, so they live down here, out of the others' way)
+/** A fresh duel in phase `form`, Wuji at (wx, wz) facing the hero at (hx, hz), god mode as asked. */
+function spellDuel({ form = 1, wx = 0, wz = 0, hx = 0, hz = 6, god = true } = {}) {
+  const G = build();
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  duel(G, { dist: 4, form });
+  d.position.set(wx, 0, wz);
+  d.yaw = Math.atan2(hx - wx, hz - wz);
+  p.debug.teleport(hx, hz);
+  p.yaw = Math.atan2(wx - hx, wz - hz);
+  p.debug.heal();
+  p.debug.god = god;
+  game.mouseGround.set(wx, 0, wz);
+  run(G, 0.1);
+  return G;
+}
+function sp(G) { return G.game.dragon.parts.spells; }
+function hitsOf(G, attack, t0 = 0) { return G.hits.filter((h) => h.attack === attack && h.t >= t0); }
+/** Run until his move is over (back out of it) or `max` s. */
+function untilFoot(G, max = 6, step = null) {
+  let acted = false;
+  return run(G, max, step, () => {
+    const d = G.game.dragon;
+    if (d.mode === 'act') acted = true;
+    return acted && d.mode !== 'act';
+  });
+}
+function segDist2(px, pz, ax, az, bx, bz) {
+  const dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz || 1;
+  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / l2));
+  return Math.hypot(px - ax - dx * t, pz - az - dz * t);
+}
+
+async function scenarioDraw() {
+  out('\n== scenario DRAW (Azure Draw: the knot opens beyond the hero, drags him, collapses red; a held guard is opened, no health; a hero at its edge walks out) ==');
+  const T = TUNING.spells.draw;
+  // (1) the knot's place, the drag on a hero who stands, the collapse on him
+  {
+    const G = spellDuel({ hz: 6, god: false });
+    const { game } = G;
+    const d = game.dragon, p = game.player, S = sp(G);
+    let flash = null;
+    G.watch = (n, e) => { if (n === 'combat:flash' && e.attack === 'azureDraw') flash = e.tell; };
+    const hp0 = p.hp;
+    d.brain.trigger('azureDraw');
+    run(G, 1, null, () => !!S.rec?.knot);
+    const K = S.rec?.knot, kx = K?.x, kz = K?.z;
+    const beyond = K ? Math.hypot(kx - d.position.x, kz - d.position.z) - Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z) : NaN;
+    const z0 = p.position.z;
+    run(G, 0.5);
+    const drag = (p.position.z - z0) / 0.5;
+    out(`     knot at (${kx?.toFixed(2)}, ${kz?.toFixed(2)}): ${beyond.toFixed(2)} m beyond the hero; it drags a hero who stands at ${drag.toFixed(2)} m/s toward it; ${S.stats.carried} loose piece(s) taken in`);
+    assert(K && beyond > T.beyond - 0.3, `the knot opens beyond the hero (${beyond.toFixed(2)} m)`);
+    assert(drag > 1.2, `it drags him toward it (${drag.toFixed(2)} m/s)`);
+    let moved = 0;
+    untilFoot(G, 6, () => { if (K?.on) moved = Math.max(moved, Math.hypot(K.x - kx, K.z - kz)); });
+    assert(moved < 1e-9, `the knot never moved after it opened (${moved})`);
+    const h = hitsOf(G, 'azureDraw');
+    assert(flash === TELL.RED && h.some((x) => x.r === RESULT.HIT) && p.hp < hp0 && p.hp > 0, `the collapse is red and lands on a hero who stood (${flash}, ${hp0 - p.hp} HP, ${h.map((x) => x.r).join(',')})`);
+    G.watch = null;
+  }
+  // (2) a held guard in its heart: opened, no health
+  {
+    const G = spellDuel({ hz: 6, god: false });
+    const { game } = G;
+    const d = game.dragon, p = game.player;
+    let opened = 0;
+    G.watch = (n) => { if (n === 'player:guardOpen') opened++; };
+    const hp0 = p.hp;
+    d.brain.trigger('azureDraw');
+    untilFoot(G, 6, (GG) => { GG.input.press(1); });
+    G.input.up(1);
+    const h = hitsOf(G, 'azureDraw');
+    assert(h.length && h.every((x) => x.r === RESULT.BLOCKED) && p.hp === hp0 && opened >= 1, `it cannot be blocked: a held guard is opened (${opened}), no health (${hp0} -> ${p.hp}; ${h.map((x) => x.r).join(',')})`);
+    G.watch = null;
+  }
+  // (3) a hero at its edge walks out against the drag; one in its heart rolls out
+  for (const how of ['walk', 'roll']) {
+    const G = spellDuel({ hz: 6, god: false });
+    const { game, input } = G;
+    const d = game.dragon, p = game.player, S = sp(G);
+    d.brain.trigger('azureDraw');
+    run(G, 1, null, () => !!S.rec?.knot);
+    const K = S.rec.knot;
+    if (how === 'walk') p.debug.teleport(K.x, K.z - T.crush - 0.3); // (at its edge, on Wuji's side)
+    else p.debug.teleport(K.x + 0.3, K.z);
+    const t0 = game.time;
+    let rolled = false, minD = Infinity;
+    untilFoot(G, 6, () => {
+      const dx = p.position.x - K.x, dz = p.position.z - K.z, l = Math.hypot(dx, dz) || 1;
+      if (K.on) minD = Math.min(minD, l);
+      game.mouseGround.set(d.position.x, 0, d.position.z);
+      if (how === 'walk') input.axis = { x: dx / l, y: -dz / l };
+      else if (!rolled && d.brain.act && d.brain.act.beats[0].impact - d.brain.act.t < 0.5) { rolled = true; input.axis = { x: dx / l, y: -dz / l }; input.tap('Space'); }
+    });
+    input.axis = { x: 0, y: 0 };
+    const h = hitsOf(G, 'azureDraw', t0);
+    assert(!h.some((x) => x.r === RESULT.HIT), `${how === 'walk' ? 'a hero at its edge walks out against the drag' : 'one in its heart rolls out'} (${h.map((x) => x.r).join(',') || 'not touched'}; closest ${minD.toFixed(2)} m)`);
+  }
+}
+
+async function scenarioYank() {
+  out('\n== scenario YANK (the pull takes a fixed time from any distance; set down before his fist; a parry on arrival is a parry; a held guard is opened) ==');
+  const T = TUNING.spells.yank;
+  const rows = [];
+  for (const dist of [4, 8, 12]) {
+    const G = spellDuel({ hz: dist });
+    const { game } = G;
+    const d = game.dragon, p = game.player, S = sp(G);
+    let t0 = NaN, t1 = NaN, at = NaN, impact = NaN;
+    d.brain.trigger('azureYank');
+    untilFoot(G, 4, () => {
+      if (S.yank && !Number.isFinite(t0)) t0 = game.time;
+      if (!S.yank && Number.isFinite(t0) && !Number.isFinite(t1)) { t1 = game.time; at = Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z); }
+      const a = d.brain.act;
+      if (a && !Number.isFinite(impact)) impact = game.time + (a.beats[0].impact - a.t);
+    });
+    rows.push({ dist, travel: t1 - t0, at, lead: impact - t1 });
+  }
+  out(`     ${rows.map((r) => `from ${r.dist} m: pulled ${r.travel.toFixed(3)} s, set down ${r.at.toFixed(2)} m from him, ${r.lead.toFixed(3)} s before the fist`).join(' · ')}`);
+  assert(rows.every((r) => Math.abs(r.travel - T.travel) <= 2 * DT + 1e-6), `the pull lasts ${T.travel} s from every distance (${rows.map((r) => r.travel.toFixed(3)).join(', ')})`);
+  assert(rows.every((r) => Math.abs(r.at - T.stop) < 0.45), `he is set down ${T.stop} m in front of him (${rows.map((r) => r.at.toFixed(2)).join(', ')})`);
+  for (const how of ['parry', 'guard']) {
+    const G = spellDuel({ hz: 9, god: false });
+    const d = G.game.dragon, p = G.game.player;
+    let opened = 0;
+    const step = answer(G, how, 'azureYank');
+    const w0 = G.watch;
+    G.watch = (n, e) => { if (n === 'player:guardOpen') opened++; w0?.(n, e); };
+    const hp0 = p.hp;
+    d.brain.trigger('azureYank');
+    untilFoot(G, 4, step);
+    G.watch = null;
+    G.input.up(1);
+    const h = hitsOf(G, 'azureYank');
+    if (how === 'parry') assert(h.length === 1 && h[0].r === RESULT.PARRIED && p.hp === hp0, `a parry as he arrives is a parry (${h.map((x) => x.r).join(',')})`);
+    else assert(h.length === 1 && h[0].r === RESULT.BLOCKED && opened >= 1 && p.hp === hp0, `a held guard is opened, no health (${h.map((x) => x.r).join(',')}, opened ${opened}, ${hp0} -> ${p.hp})`);
+  }
+}
+
+async function scenarioCast() {
+  out('\n== scenario CAST (Crimson Cast: the place fixed at its cue; 9 m of throw; the crater mark; the loose pieces thrown outward; the point-blank form) ==');
+  const T = TUNING.spells.cast;
+  // (1) the hero who stays: hit and thrown; the place was fixed; a crater mark
+  {
+    const G = spellDuel({ form: 2, hz: 7, god: false });
+    const { game } = G;
+    const d = game.dragon, p = game.player, S = sp(G);
+    const M = attachMarks(game);
+    const b0 = M.made.blast;
+    d.brain.trigger('crimsonCast');
+    let fx = NaN, fz = NaN, px = NaN, pz = NaN, burst = null;
+    untilFoot(G, 5, () => {
+      if (S.rec?.kind === 'point' && !Number.isFinite(fx)) { fx = S.rec.x; fz = S.rec.z; px = p.position.x; pz = p.position.z; }
+      if (S.rec?.kind === 'point') burst = { x: S.rec.x, z: S.rec.z };
+    });
+    run(G, 1.5);
+    const thrown = Math.hypot(p.position.x - fx, p.position.z - fz);
+    const h = hitsOf(G, 'crimsonCast');
+    out(`     the place fixed at (${fx.toFixed(2)}, ${fz.toFixed(2)}), the hero was at (${px.toFixed(2)}, ${pz.toFixed(2)}); thrown ${thrown.toFixed(2)} m; marks blast ${b0} -> ${M.made.blast}`);
+    assert(Math.hypot(fx - px, fz - pz) < 0.05 && burst && Math.hypot(burst.x - fx, burst.z - fz) < 1e-9, 'the place is the hero’s at the cue, and it does not move after');
+    assert(h.some((x) => x.r === RESULT.HIT && x.tell === TELL.RED) && thrown >= 6.5, `the burst lands (red) and throws him ${thrown.toFixed(2)} m (9 m of knockback, less what he crashed through)`);
+    assert(M.made.blast > b0, 'the burst leaves its crater mark (a blast)');
+  }
+  // (2) a hero who steps out after the place is fixed is not touched
+  {
+    const G = spellDuel({ form: 2, hz: 7, god: false });
+    const { game, input } = G;
+    const d = game.dragon, S = sp(G);
+    d.brain.trigger('crimsonCast');
+    untilFoot(G, 5, () => { input.axis = S.rec?.kind === 'point' ? { x: 1, y: 0 } : { x: 0, y: 0 }; game.mouseGround.set(d.position.x, 0, d.position.z); });
+    input.axis = { x: 0, y: 0 };
+    const h = hitsOf(G, 'crimsonCast');
+    assert(!h.some((x) => x.r === RESULT.HIT), `stepping out after the place is fixed works (${h.map((x) => x.r).join(',') || 'not touched'})`);
+  }
+  // (3) the loose pieces round it are thrown outward (a car 2.4 m from the hero)
+  {
+    const G0 = build();
+    const car = pieces(G0, 'car').sort((a, b) => Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z))[0];
+    const sx = car.x > 0 ? -1 : 1, hx = car.x + sx * 2.4, hz = car.z;
+    const G = spellDuel({ form: 2, wx: hx + sx * 7, wz: hz, hx, hz });
+    const d = G.game.dragon, S = sp(G);
+    const c = pieces(G, 'car').find((b) => b.id === car.id);
+    const d0 = Math.hypot(c.x - hx, c.z - hz);
+    d.brain.trigger('crimsonCast');
+    untilFoot(G, 5);
+    const d1 = Math.hypot(c.tx - hx, c.tz - hz);
+    out(`     a car ${d0.toFixed(2)} m from the point: thrown to ${d1.toFixed(2)} m (state ${c.state}); thrown pieces ${S.stats.thrown}`);
+    assert(S.stats.thrown >= 1 && d1 > d0 + 3, `the loose pieces within ${T.throwR} m are thrown outward (${d0.toFixed(1)} -> ${d1.toFixed(1)} m)`);
+  }
+  // (4) Point Blank: out of a blink behind the hero, red; a perfect dodge answers it
+  for (const how of ['none', 'dodge']) {
+    const G = spellDuel({ form: 2, hz: 6, god: false });
+    const d = G.game.dragon, p = G.game.player;
+    const step = answer(G, how, 'crimsonPalm');
+    let flash = null;
+    const w0 = G.watch;
+    G.watch = (n, e) => { if (n === 'combat:flash' && e.attack === 'crimsonPalm') flash = e.tell; w0?.(n, e); };
+    d.brain.trigger('crimsonPalm');
+    untilFoot(G, 4, step);
+    G.watch = null;
+    G.input.axis = { x: 0, y: 0 };
+    const h = hitsOf(G, 'crimsonPalm');
+    if (how === 'none') assert(flash === TELL.RED && h.some((x) => x.r === RESULT.HIT), `Point Blank: red, out of a blink, it lands on a hero who stands (${h.map((x) => x.r).join(',')}, ${p.maxHp - p.hp} HP)`);
+    else assert(h.length && h.every((x) => x.r === RESULT.PERFECT || x.r === RESULT.DODGED), `... a perfect dodge answers it (${h.map((x) => x.r).join(',')})`);
+  }
+}
+
+async function scenarioWreck() {
+  out('\n== scenario WRECK (the Wrecking Knot: the path fixed and shown before it moves, red on its strip, every piece on its way swept) ==');
+  const G = spellDuel({ form: 2, hz: 7, god: false });
+  const { game } = G;
+  const d = game.dragon, p = game.player, S = sp(G);
+  const M = attachMarks(game);
+  const dash0 = M.made.dash;
+  let flash = null, fixedAt = NaN, movedAt = NaN, path = null, moved = false;
+  G.watch = (n, e) => { if (n === 'combat:flash' && e.attack === 'wreckingKnot') flash = e.tell; };
+  d.brain.trigger('wreckingKnot');
+  untilFoot(G, 5, () => {
+    const R = S.rec;
+    if (R?.kind === 'wreck' && !path) { path = { ax: R.ax, az: R.az, bx: R.bx, bz: R.bz }; fixedAt = game.time; }
+    if (R?.kind === 'wreck' && R.knot && !Number.isFinite(movedAt)) movedAt = game.time;
+    if (R?.kind === 'wreck' && path && (R.ax !== path.ax || R.bz !== path.bz)) moved = true;
+  });
+  G.watch = null;
+  const h = hitsOf(G, 'wreckingKnot');
+  out(`     path fixed ${(movedAt - fixedAt).toFixed(2)} s before the knot moved; ${S.stats.swept} piece blows on its way; furrows ${M.made.dash - dash0}; ${h.map((x) => x.r).join(',')}`);
+  assert(path && movedAt - fixedAt >= 0.5 && !moved, `the path is fixed and shown ${(movedAt - fixedAt).toFixed(2)} s before it moves, and never moves`);
+  assert(flash === TELL.RED && h.length === 1 && h[0].r === RESULT.HIT && p.hp > 0, `red on its strip: one hit on a hero who stood (${h.map((x) => x.r).join(',')})`);
+  assert(M.made.dash - dash0 >= 3, `it furrows the road along its way (${M.made.dash - dash0})`);
+}
+
+async function scenarioNull() {
+  out('\n== scenario NULL (the line fixed at its cue; never lethal from full health; a held guard costs no health; every piece on the strip felled; a wide trench; not twice inside 20 s) ==');
+  const T = TUNING.spells.null, LN = TUNING.spells.lastNull;
+  // (1) the line toward the fallen tower: fixed at `fix`, the hero who stays is hit hard and lives; the strip
+  {
+    const G = spellDuel({ form: 2, wx: 0, wz: 2, hx: 0, hz: -7, god: false });
+    const { game } = G;
+    const d = game.dragon, p = game.player, S = sp(G), Dl = game.world.destructibles;
+    const M = attachMarks(game);
+    const beam0 = M.made.beam, glyph0 = M.count;
+    let fixedAng = NaN, litAng = NaN, flash = null;
+    const angs = new Set();
+    G.watch = (n, e) => { if (n === 'combat:flash' && e.attack === 'violetNull') flash = e.tell; };
+    d.brain.trigger('violetNull');
+    let strip = null;
+    untilFoot(G, 5, () => {
+      if (S.rec?.fixed && !Number.isFinite(fixedAng)) {
+        fixedAng = S.rec.ang;
+        const ax = S.rec.ox + Math.sin(fixedAng) * 0.8, az = S.rec.oz + Math.cos(fixedAng) * 0.8, bx = S.rec.ox + Math.sin(fixedAng) * T.len, bz = S.rec.oz + Math.cos(fixedAng) * T.len;
+        strip = { ax, az, bx, bz, list: Dl.list.filter((b) => b.state === 0 && !b.absent && b.hpMax < Infinity && segDist2(b.x, b.z, ax, az, bx, bz) <= T.w / 2 + b.r) };
+      }
+      if (S.rec?.fixed) angs.add(S.rec.ang);
+      if (S.lit && !Number.isFinite(litAng)) litAng = S.lit.ang;
+    });
+    run(G, T.after + 0.5);
+    G.watch = null;
+    const h = hitsOf(G, 'violetNull');
+    const left = strip.list.filter((b) => b.state === 0 && !b.absent);
+    const towers = strip.list.filter((b) => b.kind === 'fallenTower');
+    // the trench's width: its glyphs' distance across the line
+    const ux = Math.sin(fixedAng), uz = Math.cos(fixedAng);
+    let across = 0, edges = 0;
+    for (const m of M.marks.slice(glyph0)) { const a = Math.abs(-(m.x - strip.ax) * uz + (m.z - strip.az) * ux), al = (m.x - strip.ax) * ux + (m.z - strip.az) * uz; if (a <= T.w / 2 + 0.8 && al > 0) { across = Math.max(across, a); if (a >= T.w / 2 - 0.3) edges++; } }
+    out(`     the line fixed at ${(fixedAng / Math.PI * 180).toFixed(1)} deg, lit at ${(litAng / Math.PI * 180).toFixed(1)}; the hero ${p.maxHp} -> ${p.hp} HP; ${strip.list.length} pieces on the strip (${towers.length} of the fallen tower), ${left.length} left standing (${left.map((b) => b.kind).join(', ')}); trench marks ${M.made.beam - beam0}, ${M.count - glyph0} glyphs, ${across.toFixed(2)} m across, ${edges} glyphs on its edges`);
+    assert(flash === TELL.RED && angs.size === 1 && Math.abs(litAng - fixedAng) < 1e-9, 'the line is fixed at its cue and does not track after (red)');
+    assert(h.length === 1 && h[0].r === RESULT.HIT && p.alive && p.hp > 0 && p.maxHp - p.hp >= 80, `a hero in it is hit hard and lives from full health (${p.maxHp - p.hp} HP)`);
+    assert(strip.list.length >= 3 && left.length === 0, `every piece on the strip is felled (${strip.list.length - left.length} of ${strip.list.length})`);
+    assert(towers.length >= 1 && towers.length <= 2, `the fallen tower is bored through: ${towers.length} section(s) of it on the line`);
+    assert(M.made.beam - beam0 >= 1 && across >= T.w / 2 - 0.3 && edges >= 40, `the trench mark stays and is wide (${across.toFixed(2)} m from its middle)`);
+  }
+  // (2) a hero who steps out after the line is fixed is not touched; a held guard is opened, no health
+  for (const how of ['step', 'guard']) {
+    const G = spellDuel({ form: 2, hz: 8, god: false });
+    const { game, input } = G;
+    const d = game.dragon, p = game.player, S = sp(G);
+    let opened = 0;
+    G.watch = (n) => { if (n === 'player:guardOpen') opened++; };
+    const hp0 = p.hp;
+    d.brain.trigger('violetNull');
+    untilFoot(G, 5, () => {
+      game.mouseGround.set(d.position.x, 0, d.position.z);
+      if (how === 'guard') input.press(1);
+      else input.axis = S.rec?.fixed ? { x: 1, y: 0 } : { x: 0, y: 0 };
+    });
+    input.up(1);
+    input.axis = { x: 0, y: 0 };
+    G.watch = null;
+    const h = hitsOf(G, 'violetNull');
+    if (how === 'step') assert(!h.some((x) => x.r === RESULT.HIT), `stepping out of the shown line works (${h.map((x) => x.r).join(',') || 'not touched'})`);
+    else assert(h.length === 1 && h[0].r === RESULT.BLOCKED && opened >= 1 && p.hp === hp0, `a held guard is opened and costs no health (${h.map((x) => x.r).join(',')}, ${hp0} -> ${p.hp})`);
+  }
+  // (3) not twice inside 20 s (his choice); never two spells back to back
+  {
+    const G = spellDuel({ form: 2, hz: 9 });
+    const { game } = G;
+    const d = game.dragon, S = sp(G);
+    d.brain.trigger('violetNull');
+    untilFoot(G, 5);
+    const t0 = S.lastNullT;
+    const w = (name) => { S.lastWasSpell = false; return S.weigh(name, MOVES[name], 1, 9); };
+    const soon = w('violetNull');
+    run(G, T.gap - (game.time - t0) - 0.5);
+    const before = w('violetNull');
+    run(G, 1);
+    const after = w('violetNull');
+    assert(soon === 0 && before === 0 && after > 0, `his choice: no Null inside ${T.gap} s of the last (${soon}, ${before}, then ${after.toFixed(2)})`);
+    S.lastWasSpell = true;
+    assert(S.weigh('crimsonCast', MOVES.crimsonCast, 1, 9) === 0, 'never two spells back to back');
+  }
+  // (4) the Last Null: once, below 12 % in phase 3, turning; never lethal from full health
+  {
+    const G = spellDuel({ form: 3, hz: 8, god: false });
+    const { game } = G;
+    const d = game.dragon, p = game.player, S = sp(G);
+    const w = () => { S.lastWasSpell = false; return S.weigh('lastNull', MOVES.lastNull, 0.01, 8); };
+    S.lastNullT = -Infinity;
+    const hi = w();
+    d.hp = d.maxHp * (LN.below - 0.01);
+    const lo = w();
+    const angs = [];
+    d.brain.trigger('lastNull');
+    untilFoot(G, 6, () => { if (S.lit) angs.push(S.lit.ang); });
+    S.lastNullT = -Infinity;
+    const again = w();
+    const turned = angs.length ? Math.abs(angs[angs.length - 1] - angs[0]) / Math.PI * 180 : 0;
+    const h = hitsOf(G, 'lastNull');
+    out(`     the Last Null: weight above 12 % ${hi}, below ${lo}; it turned ${turned.toFixed(1)} deg; the hero ${h.map((x) => x.r).join(',')}, ${p.hp} HP left; again ${again}`);
+    assert(hi === 0 && lo > 1 && again === 0, 'the Last Null comes once, below 12 % in phase 3');
+    assert(Math.abs(turned - LN.turn) < 1.5, `it turns ${LN.turn} deg over its life (${turned.toFixed(1)})`);
+    assert(p.alive && p.hp > 0, 'never lethal from full health');
+  }
+}
+
+/** A seeded fencing fight (god mode, AI on), start to death, the floor's marks attached: his spells are
+ *  all used, the Null never twice inside 20 s, and the marks a whole fight leaves are in the suite's range
+ *  (marks.mjs RANGE.veil). */
+async function scenarioSpellFight() {
+  out('\n== scenario SPELLFIGHT (a fencing fight with the marks attached: every spell used, the Nulls 20 s apart, the floor marks in range) ==');
+  const LIST = ['azureDraw', 'azureYank', 'crimsonCast', 'crimsonPalm', 'wreckingKnot', 'violetNull', 'lastNull'];
+  const { STREAK_FX } = await imp('src/combat/streak.js');
+  const chain0 = STREAK_FX.chain;
+  STREAK_FX.chain = false;
+  try {
+    const G = build(Number(process.env.GCD_SEED ?? 4242), true);
+    const { game } = G;
+    const d = game.dragon;
+    const M = attachMarks(game);
+    duel(G, { dist: 3, ai: true });
+    G.defend = makeDefender(G, { world: true });
+    const used = {}, nulls = [];
+    G.watch = (n, e) => { if (n === 'dragon:windup' && LIST.includes(e?.name)) { used[e.name] = (used[e.name] || 0) + 1; if (e.name === 'violetNull' || e.name === 'lastNull') nulls.push(game.time); } };
+    const t0 = game.time;
+    const won = run(G, Number(process.env.GCD_FSECS ?? 600), () => fencer(G), () => d.mode === 'dead' || game.state === 'victory');
+    G.watch = null;
+    const gaps = nulls.slice(1).map((t, i) => t - nulls[i]);
+    out(`     ${won ? 'won' : 'NOT won'} in ${(game.time - t0).toFixed(0)} s; spells ${JSON.stringify(used)}; Nulls at ${nulls.map((t) => (t - t0).toFixed(0)).join(' / ')} s; stats ${JSON.stringify(sp(G).stats)}`);
+    assert(won, 'the fencing bot wins');
+    // (a fencer stays inside 2.6 m and is answered mostly by counters: of his free picks the spells take their share)
+    const kinds = Object.keys(used).length, picks = d.brain.stats.picks ?? 0, spells = Object.values(used).reduce((a, n) => a + n, 0);
+    assert(kinds >= 3 && spells >= 0.1 * picks, `his spells come up in a close fight: ${kinds} kinds, ${spells} of his ${picks} free picks`);
+    assert((used.violetNull ?? 0) >= 1, 'the Violet Null is seen');
+    assert(gaps.every((g) => g >= TUNING.spells.null.gap - 1e-6), `the Nulls are never inside ${TUNING.spells.null.gap} s of each other (${gaps.map((g) => g.toFixed(1)).join(', ')})`);
+    marksCheck(M, 'veil', out, assert);
+    assert(G.payload.size === 0, `no NaN in any event (${[...G.payload].join(', ')})`);
+  } finally {
+    STREAK_FX.chain = chain0;
+  }
+}
+
+async function scenarioUnveil() {
+  out('\n== scenario UNVEIL (the transition burst: a push with no damage, the loose pieces near him thrown outward, the ruins near toppled) ==');
+  const G = spellDuel({ hz: 4, god: false });
+  const { game } = G;
+  const d = game.dragon, p = game.player, S = sp(G);
+  const hp0 = p.hp, x0 = p.position.x, z0 = p.position.z;
+  d.brain.forcePhase(2);
+  run(G, 5, null, () => d.phase === 2 && d.mode !== 'act');
+  const pushed = Math.hypot(p.position.x - x0, p.position.z - z0);
+  out(`     unveils ${S.stats.unveils}, pieces flattened ${S.stats.flattened}; the hero pushed ${pushed.toFixed(2)} m, ${hp0} -> ${p.hp} HP`);
+  assert(S.stats.unveils === 1 && d.dressPhase === 2, 'the unveiling burst goes off once, at the transition impact');
+  assert(p.hp === hp0 && pushed >= 3, `it pushes the hero (${pushed.toFixed(2)} m) and costs no health`);
 }

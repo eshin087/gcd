@@ -206,7 +206,7 @@ export class Scars {
         this._liftDens = dens;
         this._sc = sc;
         // (a cut tears inside _cut: its bow and its claws' lengths are drawn there)
-        if (kind !== 'cut') this._tearKind(kind, x, z, dx, dz, power, size, len, o.arc ? r : 0, r);
+        if (kind !== 'cut') this._tearKind(kind, x, z, dx, dz, power, size, len, o.arc ? r : 0, r, this._beamW(kind, o.w));
       }
       switch (kind) {
         case 'slam': this._slam(x, z, power, size, keep, r); break;
@@ -214,7 +214,7 @@ export class Scars {
         case 'thrust': this._thrust(x, z, dx, dz, power, keep); break;
         case 'dash': this._dash(x, z, dx, dz, power, len, keep, o.arc ? r : 0); break;
         case 'blast': this._blast(x, z, power, size, keep, !!o.hot); break;
-        case 'beam': this._beam(x, z, dx, dz, power, len, !!o.hot || o.hot === undefined); break;
+        case 'beam': this._beam(x, z, dx, dz, power, len, !!o.hot || o.hot === undefined, this._beamW(kind, o.w)); break;
         case 'step': this._step(x, z, dx, dz, power); break;
       }
     } finally {
@@ -228,6 +228,14 @@ export class Scars {
       this.kinds++;
     }
     return Math.max(0, n);
+  }
+
+  /** A beam's trench half-width from its caller (`o.w`, m; SCAR.mark.beam.w .. wMax), or NaN: the
+   *  beam's own (every beam before Bai Wuji's Null passes none: its marks are as they were). */
+  _beamW(kind, w) {
+    if (kind !== 'beam' || !(Number(w) > 0)) return NaN;
+    const T = SCAR.mark.beam;
+    return Math.min(T.wMax, Math.max(T.w, Number(w)));
   }
 
   /** How high a kind mark's glyph at (x, z) lies with the mow on: on the stubble where the grass is
@@ -262,7 +270,7 @@ export class Scars {
    * kind's own method takes them; a cut's is torn in _cut). Draws no random number: the marks' stream
    * is the same with the mow on or off.
    */
-  _tearKind(kind, x, z, dx, dz, power, size, len, arc, rBlow) {
+  _tearKind(kind, x, z, dx, dz, power, size, len, arc, rBlow, wide = NaN) {
     const G = GRASS.mark, T = SCAR.mark, sc = this._sc, k = this._tearK(kind, power);
     switch (kind) {
       case 'slam': {
@@ -286,7 +294,8 @@ export class Scars {
       }
       case 'beam': {
         const L = Math.min(T.beam.len[1], Math.max(T.beam.len[0], Number.isFinite(len) ? len : 1.4));
-        sc.tearLine(x, z, x + dx * L, z + dz * L, G.beam.w, k);
+        // (a wide trench, the caller's half-width: the strip as wide as the trench, GRASS.mark.beam.pad over)
+        sc.tearLine(x, z, x + dx * L, z + dz * L, wide > 0 ? wide * 2 + G.beam.pad : G.beam.w, k);
         break;
       }
       case 'step':
@@ -525,12 +534,16 @@ export class Scars {
     if (hot) this._char(x, z, R * 0.8, K.char.blast);
   }
 
-  /** A beam's trench `len` m along (dx, dz) from (x, z): charred edges and a glassy middle. */
-  _beam(x, z, dx, dz, power, len, hot) {
+  /** A beam's trench `len` m along (dx, dz) from (x, z): charred edges and a glassy middle. `wide` (m,
+   *  the caller's half-width; NaN: the beam's own): the edges that far out, rubble along them and the
+   *  glass in rows across the floor between (a wide trench: Bai Wuji's Null). */
+  _beam(x, z, dx, dz, power, len, hot, wide = NaN) {
     const T = SCAR.mark.beam, K = SCAR.mark, y = K.y;
     const k = clamp01((power - 0.3) / 1.2);
     const L = Math.min(T.len[1], Math.max(T.len[0], Number.isFinite(len) ? len : 1.4));
-    const rot = groundRot(dx, dz), px = -dz, pz = dx, w = T.w * (0.85 + 0.4 * k);
+    const rot = groundRot(dx, dz), px = -dz, pz = dx;
+    if (wide > 0) return this._wideBeam(x, z, dx, dz, L, wide, rot, hot);
+    const w = T.w * (0.85 + 0.4 * k);
     for (let s = 0; s < L; s += T.step) {
       for (const side of [-1, 1]) {
         const d = side * w * (0.9 + 0.25 * rnd());
@@ -541,6 +554,29 @@ export class Scars {
       if (rnd() < 0.55) this._add(x + dx * s + px * (rnd() - 0.5) * w * 0.5, y + 0.01, z + dz * s + pz * (rnd() - 0.5) * w * 0.5, rnd() < 0.7 ? '=' : '~', 0.3, T.glass, T.glassAlpha, rot, -1);
     }
     if (hot) for (let s = 0; s < L; s += 0.9) this._char(x + dx * s, z + dz * s, w * 1.6, K.char.beam);
+  }
+
+  /** _beam's wide trench: both edges `w` m out (a broken lip: strokes and rubble), the glass in rows
+   *  `T.rows` m apart across the floor between (`glassK` of the cells), charred across its width. */
+  _wideBeam(x, z, dx, dz, L, w, rot, hot) {
+    const T = SCAR.mark.beam, K = SCAR.mark, y = K.y, px = -dz, pz = dx;
+    const rows = Math.max(1, Math.floor((w * 2) / T.rows));
+    for (let s = 0; s < L; s += T.wideStep) {
+      for (const side of [-1, 1]) {
+        const d = side * w * (0.94 + 0.1 * rnd());
+        const lit = pz * side < 0; // (the far edge's lip catches the light)
+        this._add(x + dx * s + px * d, y, z + dz * s + pz * d, '-', 0.36 + 0.08 * rnd(), lit ? this.lip : this.lineInk, K.alpha * (lit ? this.lipA : 1), rot + (rnd() - 0.5) * 0.16, -1);
+        // the broken lip: rubble thrown up just outside the edge, now and then
+        if (rnd() < T.rubble) this._add(x + dx * s + px * (d + side * (0.2 + 0.35 * rnd())), y + 0.02, z + dz * s + pz * (d + side * (0.2 + 0.35 * rnd())), pick('.,:o'), 0.2 + 0.12 * rnd(), this.lip, K.alpha * this.lipA, rnd() * TAU, -1);
+      }
+      // the glass across the floor between: rows, glassK of their cells
+      for (let i = 0; i < rows; i++) {
+        if (rnd() > T.glassK) continue;
+        const d = -w + ((i + 0.5) / rows) * w * 2 + (rnd() - 0.5) * T.rows * 0.4;
+        this._add(x + dx * s + px * d, y + 0.01, z + dz * s + pz * d, rnd() < 0.7 ? '=' : '~', 0.3, T.glass, T.glassAlpha, rot, -1);
+      }
+    }
+    if (hot) for (let s = 0; s < L; s += 0.9) for (let i = 0; i < rows; i += 2) this._char(x + dx * s + px * (-w + ((i + 1) / rows) * w * 2), z + dz * s + pz * (-w + ((i + 1) / rows) * w * 2), T.rows * 1.4, K.char.beam);
   }
 
   /** A heavy foot at (x, z): a faint print, toes toward (dx, dz); none within SCAR.mark.step.gap of the last. */
