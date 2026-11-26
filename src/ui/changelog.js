@@ -18,6 +18,14 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-26',
+        title: 'A performance readout on your phone, and smoother first breaks',
+        notes: [
+          'Add ?perf to the address to see the frame rate and what each frame costs at the foot of the screen. REPORT shares or copies a summary you can send.',
+          'The cracked floors and cut bamboo are now prepared while the level loads, so the first break in a fight no longer causes a hitch.',
+        ],
+      },
+      {
         date: '2026-11-25',
         title: 'The hero stands, holds and guards like the reference',
         notes: [

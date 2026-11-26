@@ -31,8 +31,9 @@ import { GameFlow } from './game/flow.js';
 import { Lab } from './dev/lab.js';
 import { Unlocks } from './game/unlocks.js';
 import { lookOf } from './entities/enemies/duelist/lookSwitch.js';
+import { PerfReadout, perfFromSearch } from './dev/perfReadout.js';
 import { bootStep, bootDone, bootFail, fontSheetReady, travelNote } from './ui/bootLoader.js';
-import { precompile } from './render/precompile.js';
+import { precompile, warmDraw } from './render/precompile.js';
 import { AutoQuality, FramePacer, gpuTimer, fpsCapOn, autoFromSearch, capFromSearch, floorFromSearch } from './render/autoQuality.js';
 
 // Boot + main loop. Builds the shared `game` context every module receives (see ARCHITECTURE.md).
@@ -222,6 +223,8 @@ async function boot() {
     ]);
     game.precompiled = { programs: n + nf, ms: Math.round(performance.now() - pc0) };
   }
+  // the remains a break shows (a cracked floor, cut bamboo): on the GPU now, not in the fight (ADR-209)
+  if (lookOf('warm', 'a') !== '0') game.warmed = warmDraw(game.renderer, game.scene, game.camera);
 
   // --- per-frame helpers
   const ray = new THREE.Raycaster();
@@ -383,6 +386,11 @@ async function boot() {
   // the frame-rate cap (touch by default): every n-th refresh is drawn (an even pace)
   const pacer = new FramePacer(CONFIG.fpsCap.fps);
   game.pacer = pacer;
+  // the performance readout (`?perf`, dev/perfReadout.js, ADR-209): every part of each drawn frame timed;
+  // null (and nothing timed) without it
+  const perf = perfFromSearch(location.search) ? new PerfReadout(game) : null;
+  game.perf = perf;
+  window.__perfReport = () => perf?.report() ?? 'add ?perf to the address';
   const frame = (now) => {
     requestAnimationFrame(frame);
     pacer.on = fpsCapOn(game);
@@ -398,10 +406,12 @@ async function boot() {
       fpsFrames = 0;
     }
     const t0 = performance.now();
+    perf?.beginFrame();
     gpuT?.begin();
     tick(realDt);
     gpuT?.end();
     if (shown) safe('autoQuality', () => autoStep(rawDt, t0));
+    perf?.endFrame(rawDt, performance.now() - t0);
     if (!shown) {
       shown = true;
       bootDone();
@@ -411,6 +421,7 @@ async function boot() {
   // A failing module must not freeze the whole frame: log its first few errors and carry on.
   const errorCounts = new Map();
   const safe = (name, fn) => {
+    const t = perf ? performance.now() : 0;
     try {
       fn();
     } catch (err) {
@@ -418,6 +429,7 @@ async function boot() {
       errorCounts.set(name, n);
       if (n <= 3) console.error(`[${name}] update failed`, err);
     }
+    if (perf) perf.add(name, performance.now() - t);
   };
 
   // One simulation step of `stepDt` real seconds: the clocks, then what the fight's timing hangs on
@@ -466,6 +478,7 @@ async function boot() {
     game.fxDt = fxDt;
     game.realDt = stepDt;
     safe('world', () => game.world.update(dt));
+    const tf = perf ? performance.now() : 0;
     // (the time rip: before the pools and the fire field age, so what it draws shows this frame;
     // its marks step in real time)
     game.fx.rip?.update(fxDt, stepDt);
@@ -477,6 +490,7 @@ async function boot() {
     game.fx.ripple.update(fxDt);
     game.fx.streak?.update(fxDt);
     stampUpdate(game, fxDt);
+    if (perf) perf.add('fx', performance.now() - tf);
   };
 
   const steps = { n: 1, dt: 0 };
@@ -499,12 +513,16 @@ async function boot() {
     let viewAt = null;
     safe('view', () => (viewAt = applyViewOverride()));
     lightsAt = viewAt;
+    const tu = perf ? performance.now() : 0;
     updateSharedUniforms(viewAt);
+    if (perf) perf.add('uniforms', performance.now() - tu);
     safe('hud', () => game.hud.update(realDt));
     safe('audio', () => game.audio.update(realDt));
 
+    const tr = perf ? performance.now() : 0;
     pipeline.updateShadowCamera(viewAt ?? game.cameraRig.focus);
     pipeline.render();
+    if (perf) perf.add('render', performance.now() - tr);
     safe('lab', () => game.lab.postRender?.()); // the model viewer's sheet reads the frame back
     if (inspect.rect) inspect.draw();
   };

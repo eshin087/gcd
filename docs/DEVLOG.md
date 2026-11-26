@@ -34,6 +34,61 @@ one at a time behind a lock (one shared browser for films; films, tests and the 
 
 **Open / next:** the owner's verdict on the films and the preview. Known gaps are in ADR-214. If steel
 becomes the default: remove `blink`, `fresh`, `?arcs=`; the flurry and the plunge are still today's.
+## 2026-11-26 — The phone's frame: `?perf` on the device; the first break's upload and two spikes out (ADR-209; branch `perf/phone-spikes`)
+
+**Owner:** "i tried playing a few levels like the neo, bamboo, and fox level and the fps does dip during the
+fight. what else can [we do] to ensure performance is good?", then "this was on my iphone ... pretty powerful",
+then "Yes, both" (the on-phone readout and the spike fixes).
+
+**Measured** (headless Edge on the RTX 4090 / i9, the phone setup `?touch` at 1468 x 686, real-time fights with
+a bot, the rig's `timeline.js` / `j_methods.js` / `prof2.mjs` / `prof4.mjs` / `heap.mjs`): a fight frame is 4 - 5
+ms of script, 2 - 3 ms GPU; 0.1 - 0.4 % of frames over 9 ms of script, worst 13 - 16 ms; the second fight in a
+page as spiky as the first. Spikes ride on a blow landing (trade 4 - 7 ms, clash 3 - 4.6, parry contact 2 - 2.5,
+perfect dodge 2.3 - 2.9; inside: sound voices, the hero's pose, call-outs, the boss's reaction), plus the first
+draw of a floor's or the bamboo's hidden remains (bounds 1 - 2.5 ms + buffers) and the still shadow map's
+whole copy of a big mesh (bamboo 1.1 ms). Allocation 17.7 MB/s, mostly V8's boxed numbers (not Safari's).
+
+**What.** `dev/perfReadout.js` + main.js hooks (`?perf`, `__perfReport()`); `render/precompile.js` `warmDraw`
+(main.js after the precompile; `?warm=0`); `render/shadowCache.js` `_bigSync` (the copy kept on every change);
+`pipeline.js` `_renderSeen` leaves the hero's matrices alone. Tests: world `perfreadout`.
+
+**Dropped:** slicing the contact rings' scan (its cost was my instrumentation's, 5 - 15 us really).
+
+**Open.** The owner's `?perf` report from the iPhone in a fight on fox, grove and code; then the parts it
+names (the hit-time work, draw calls, the hero's animation). A shader / pipeline warm-up for effects first
+drawn mid-fight on iOS, if the report shows first-time stalls.
+
+## 2026-11-26 — The melee animation engine; Tian Lei's blows from a bare-handed film, turned down (ADR-208; branch `enemies/fists-ref`)
+
+**Task** (the owner): review a bare-handed melee reference film with the "0 - Game Engine" session's tool, learn the
+animations, put them on a bare-handed boss to preview, and save what was learned in the repo for future agents.
+Owner's answers: Tian Lei first; remap his existing blows; reference motion at our windups; behind a switch, held PR.
+
+**What changed.**
+- `scripts/mocap/` (the hero remake branch's pose-tracking tool) and the hero2 skeleton / clip contract it needs.
+- `scripts/mocap/duelist/`: `fit.mjs` (clip → duelist keys, `--check` through the real animator), `examples/tianlei.json`
+  (the map), `README.md` (the engine's guide and lessons). `scripts/mocap/armkeys.py` (arm hand keys).
+- `scripts/mocap/specs/fistA.json`, `fistB.json` → `src/entities/hero2/clips/fistA.js`, `fistB.js` (six clips).
+- `duelist/realise.js`: optional `keysOf`. `ascendant/moves.js`: `refKeys` on every punch / kick / elbow / shoulder
+  beat, `fistKeys`; `ascendant/refBlows.js` (generated). Lab LOOKS `fists`; PENDING. `asc.mjs . fists`. (All of this
+  Tian Lei wiring was removed again after the owner's verdict, below; only `keysOf` stays.)
+
+**How it went.** The film (15:15) was recorded frame by frame in a headless Edge, catalogued by a subagent (41
+strikes, hand strikes only: a wild brawler), and two author subagents built six clips. Nothing fused across camera
+angles (follow cameras, differing passes, a capture of 30 - 60 frames a second with gaps at impacts): every blow is
+one take with the striking arm hand-keyed frame by frame. YouTube autoplayed the next video after the capture and a
+still-attached recorder wrote ~18 000 of its frames under 0 - 389 s; they were found by write time, deleted, and the
+light chapter re-tracked. The fit lands fists within ~5 cm of the reference, elbows ~11.
+
+**Verified.** `asc.mjs . fists` (timings identical on and off, the clips change, a fight through every measured move:
+no NaN, no error); film strips in the browser (today vs `?fists=ref`: the lunging straight, the overhead hammer).
+
+**The owner's verdict.** "the new animations look worse than the old ones": the stiff, unnatural arms and the
+lunges and feet. Tian Lei's wiring was removed from the branch before merging (his blows are as authored);
+the engine, its guide (with why this try failed), the recorder and the realiser's `keysOf` hook land.
+Frames, caches and sheets stay in this session's scratchpad (never committed).
+
+---
 
 ## 2026-11-25 — A roadmap to Steam and the app stores (docs only; branch `docs/ship-roadmap`)
 
