@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { RESULT } from '../../../../combat/rules.js';
 import { TUNING_MELEE } from '../tuningMelee.js';
 
@@ -171,7 +172,7 @@ export function moves(X) {
       beats: [
         { ...kick('knee', N, 0.55, 14), knockback: 2.5, blockPush: 2.4, wjWeight: 'light' },
         follows({
-          tell: R, windup: 0.52, active: 0.12, damage: 30, knockback: 3, knockdown: true, zone: { kind: 'ring', r: 2.4, fwd: 0.5 }, ring: 2.4, part: 'palms',
+          tell: R, windup: 0.66, active: 0.12, damage: 30, knockback: 3, knockdown: true, zone: { kind: 'ring', r: 2.4, fwd: 0.5 }, ring: 2.4, part: 'palms',
           groundMark: { kind: 'slam' }, wjQuake: 'plant', track: 0.8, cock: 0.7, wjWeight: 'huge',
           keys: [[0.35, FRAGS.mlPlantHigh], [0.7, FRAGS.mlPlantHigh], [1.0, { ...FRAGS.mlPlant, e: 'i' }], [2.0, FRAGS.mlPlant]],
         }, { close: 3.4 }),
@@ -260,6 +261,9 @@ export const LINKS = {
 
 // ================================================================== THE HANDLER
 /** The moves that answer a held guard (the throw, the crusher: BRIEF "guarding"). */
+/** The hero's states that hold him (he cannot answer a blow in them). */
+const OUT = new Set(['stagger', 'knockdown', 'guardBreak']);
+const KD = 1.3; // s of the hero's knockdown (player.js TUNE.knockdownDur)
 const VS_GUARD = new Set(['twoHands', 'risePlant', 'kneeShove', 'axeHeel']);
 
 /**
@@ -273,7 +277,7 @@ export class WjMelee {
     this.game = d.game;
     this.T = d.T?.melee ?? TM;
     this._o = { kind: 'blunt', by: 'boss', dx: NaN, dz: NaN, y: 1, src: -1, scar: true, falloff: 0 };
-    this._v = { x: 0, y: 0, z: 0 };
+    this._v = new THREE.Vector3();
     this.reset();
   }
 
@@ -282,6 +286,8 @@ export class WjMelee {
     this.spark = null;
     this.chase = null;
     this.chaseT = 0;
+    this.outT = 0;
+    this.freeT = 9;
   }
 
   stop() {
@@ -291,6 +297,13 @@ export class WjMelee {
 
   // ---------------------------------------------------------------- every frame
   frame(dt) {
+    try {
+      this._frame(dt);
+    } catch (err) {
+      console.error('[untouched] melee frame', err);
+    }
+  }
+  _frame(dt) {
     const d = this.d;
     this.chaseT = Math.max(0, this.chaseT - fin(dt));
     // Dark Spark: over without landing: the fist is buried in whatever stands on its line
@@ -304,6 +317,42 @@ export class WjMelee {
       }
     }
     if (this.chase) this._chaseFrame(dt);
+    // the hero out of his own hands (staggered, guard broken, down): how long in a row (a gap under
+    // `free` s does not end it)
+    const p = this.game.player, M = this.T.mercy ?? TM.mercy;
+    if (p && OUT.has(p.state)) {
+      this.outT += fin(dt) + (this.freeT < M.free ? this.freeT : 0);
+      if (this.freeT >= M.free) this.outT = fin(dt);
+      this.freeT = 0;
+    } else {
+      this.freeT += fin(dt);
+      if (this.freeT >= M.free) this.outT = 0;
+    }
+  }
+
+  /** s the hero has left in the state that holds him now (0: he is his own). */
+  _outLeft(p) {
+    const t = fin(p.stateT, 0);
+    if (p.state === 'stagger') return Math.max(0, fin(p.staggerLen, 0.4) - t);
+    if (p.state === 'knockdown') return Math.max(0, KD - t);
+    if (p.state === 'guardBreak') return Math.max(0, 0.45 + KD - t);
+    return 0;
+  }
+
+  /** Should beat b (at u of its windup) be spared? (see beatMotion's MERCY) */
+  _spare(b, u, D, p) {
+    const M = this.T.mercy ?? TM.mercy;
+    // s to its impact
+    const cock = D.cock ?? 0.8;
+    const left = u >= 1 ? 0 : u <= cock ? (1 - u) * fin(b.W, 0.5) + fin(b.H, 0) : (1 - u) * fin(b.W, 0.5);
+    const outLeft = this._outLeft(p);
+    if ((this.T.spareDown ?? true) && (p.state === 'knockdown' || p.state === 'guardBreak') && outLeft > left - 0.05) return true;
+    if (!(M.lockCap > 0)) return false;
+    // the stretch he would be out of his own hands at the impact, and what this blow adds to it
+    let stretch = 0;
+    if (OUT.has(p.state)) stretch = left - outLeft < M.free ? this.outT + left : 0;
+    else if (this.outT > 0 && this.freeT + left < M.free) stretch = this.outT + this.freeT + left;
+    return stretch > 0 && stretch + (D.knockdown ? KD : 0.4) > M.lockCap + 1e-3;
   }
 
   /** The missed Dark Spark's fist: a sweep of the line ahead of where it was thrown. */
@@ -327,18 +376,24 @@ export class WjMelee {
 
   // ---------------------------------------------------------------- a beat's motion (its windup and impact)
   beatMotion(b, u, s, dt) {
+    try {
+      this._beatMotion(b, u, s, dt);
+    } catch (err) {
+      console.error('[untouched] melee beatMotion', err);
+    }
+  }
+  _beatMotion(b, u, s, dt) {
     const d = this.d, D = b.def, p = this.game.player;
     if (b.feint) return;
-    // MERCY: the hero is down and will still be down at this beat's impact: it is not thrown
-    if ((this.T.spareDown ?? true) && p?.state === 'knockdown' && !b.struck) {
-      const left = Math.max(0, (1 - Math.min(1, u)) * fin(b.W, 0.5) + (u < (D.cock ?? 0.8) ? fin(b.H, 0) : 0));
-      const down = 1.3 - fin(p.stateT, 0);
-      if (down > left - 0.05) {
-        b.feint = true;
-        b.done = true;
-        this.stats.spared++;
-        return;
-      }
+    // MERCY (the owner's rules): a beat is not thrown (it becomes a feint: no cue if it had none yet, no
+    // blow) when at its impact the hero would still be DOWN, or when it would keep him out of his own
+    // hands (staggered, down) for longer than `lockCap` s in a row (a string that lands blow after blow
+    // leaves him a moment, `free` s, to answer the next)
+    if (p && !b.struck && this._spare(b, u, D, p)) {
+      b.feint = true;
+      b.done = true;
+      this.stats.spared++;
+      return;
     }
     // Dark Spark: the charge gathers on his fist through the windup
     if (D.wjSpark && u < 1) d.fx?.sparkCharge?.(d, Math.max(0, Math.min(1, u)), 'R');
@@ -363,6 +418,13 @@ export class WjMelee {
 
   /** The impact's own world blow (wjQuake); Dark Spark's hit flash. */
   onImpact(b, s, a) {
+    try {
+      this._onImpact(b, s, a);
+    } catch (err) {
+      console.error('[untouched] melee onImpact', err);
+    }
+  }
+  _onImpact(b, s, a) {
     const d = this.d, D = b.def, W = this.game.world;
     if (D.wjSpark) this.spark = { b, a, landed: false, x: d.position.x, z: d.position.z, yaw: d.yaw };
     const Q = D.wjQuake;
@@ -402,6 +464,13 @@ export class WjMelee {
 
   /** After the blow: the camera's weight, the slide's dust, Dark Spark's flash, the blink chase. */
   onHit(o, r) {
+    try {
+      this._onHit(o, r);
+    } catch (err) {
+      console.error('[untouched] melee onHit', err);
+    }
+  }
+  _onHit(o, r) {
     const d = this.d, p = this.game.player, D = o?.beat?.def;
     if (!p?.position || !D) return;
     const fx = d.fx;

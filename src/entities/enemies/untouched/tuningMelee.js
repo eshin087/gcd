@@ -39,4 +39,7 @@ export const TUNING_MELEE = {
   // ---- MERCY: a beat of his whose impact comes while the hero is DOWN (knocked down) is not thrown (it
   // becomes a feint: no cue if it had none yet, no blow) — the owner's rule "never while he is down"
   spareDown: true,
+  // ... and a beat that would keep him out of his own hands (staggered, down) longer than `lockCap` s in a
+  // row is not thrown either (a gap of `free` s he is his own ends the row: time to answer the next)
+  mercy: { lockCap: 1.2, free: 0.2 },
 };
