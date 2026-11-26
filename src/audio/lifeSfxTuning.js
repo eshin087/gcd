@@ -135,6 +135,8 @@ export const LIFE_SFX_TUNE = Object.freeze({
     grove: lv({ off: ['flockBurst', 'animalBolt', 'treeCreak', 'dustSift', 'pebbles', 'leafSkitter'], tree: 'cane', gain: { lampCatch: 0.6, lampGutter: 0.6, lampOut: 0.6 } }),
     // Halcyon Plaza: pigeons, stone
     city: lv({ birds: 'pigeon', ground: 'stone', tree: 'dead' }),
+    // the Veiled Crossing: no birds, no animals, no leaves, no trees; stone, metal and grit
+    veil: lv({ off: ['flockBurst', 'animalBolt', 'leafSkitter', 'treeCreak', 'treeShudder'], ground: 'stone', tree: 'dead' }),
     // the Hall of Falling Script: indoors, nothing alive
     code: lv({ off: ['flockBurst', 'animalBolt', 'leafSkitter'], ground: 'stone', tree: 'dead' }),
   }),

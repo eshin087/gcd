@@ -272,5 +272,32 @@ export const LITTER = deepFreeze({
         },
       ],
     },
+
+    // the Veiled Crossing: fine grey ash and grit sifting down from the veil, lying in the lee of the
+    // wreckage, and a few pale scraps of paper (the city's) skittering down the streets; tiny, sparse
+    veil: {
+      takes: ['ash'],
+      rate: 7,
+      lying: 150,
+      last: [30, 60],
+      grass: 0.9,
+      shelter: 0.4,
+      kinds: [
+        {
+          share: 0.86, glyphs: ".,'`", color: [0.4, 0.4, 0.41], color2: [0.31, 0.31, 0.33],
+          size: [0.12, 0.2], ground: { glyphs: '.,:~', size: [0.3, 0.38] }, fall: [0.5, 0.85], slip: 0.3, flutter: [1.0, 2.0], spin: 0, tau: 0.45,
+          lift: [1.9, 3.4], carry: 0.9, hop: 0.9, lie: 1.0, alpha: 0.7, from: [4, 9], flat: 0.22,
+          where: { at: 'ash', base: 0.08, pile: 2.5, reach: 1.6, gap: 0.35, lee: [[-1, 0], [0, -1], [-0.7, -0.7]], within: 30, maxR: 3.5, tags: ['stone'] },
+          source: 'sky',
+        },
+        {
+          share: 0.14, glyphs: '=[]', color: [0.5, 0.49, 0.45], color2: [0.4, 0.39, 0.36],
+          size: [0.26, 0.32], ground: { glyphs: '=[]', size: [0.34, 0.42] }, fall: [0.4, 0.6], slip: 0.9, flutter: [1.3, 2.2], spin: 3.2, tau: 0.6,
+          lift: [1.4, 2.6], carry: 1, hop: 1.5, lie: 0.75, alpha: 0.62, from: [1.5, 3.5],
+          where: { at: 'flat', r: 18, out: 0.6 }, source: 'sky',
+          print: { shape: 'slip', len: [0.1, 0.16], color: [0.15, 0.148, 0.135], color2: [0.12, 0.118, 0.108], curl: [0, 0.3] },
+        },
+      ],
+    },
   },
 });
