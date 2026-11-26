@@ -101,6 +101,43 @@
    },
    "from": "light1",
    "to": "swordIdle"
+  },
+  {
+   "name": "pairIdle",
+   "title": "Idle (paired swords)",
+   "src": "sword 15:22-15:31",
+   "kind": "hold",
+   "fps": 30,
+   "n": 108,
+   "sword": true,
+   "swordL": true,
+   "breath": {
+    "period": 3.6
+   },
+   "takes": [
+    {
+     "t0": "15:22.45",
+     "t1": "15:24.60",
+     "view": "right"
+    },
+    {
+     "t0": "15:24.70",
+     "t1": "15:26.85",
+     "view": "front"
+    },
+    {
+     "t0": "15:26.95",
+     "t1": "15:29.10",
+     "view": "left"
+    }
+   ],
+   "props": {
+    "R": "sword",
+    "L": "sword"
+   },
+   "from": "pairIdle",
+   "to": "pairIdle",
+   "draft": true
   }
  ]
 }

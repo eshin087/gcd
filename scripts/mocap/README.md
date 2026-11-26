@@ -58,6 +58,7 @@ Other tools (all light):
 |---|---|
 | `"$PY" -I bladesheet.py specs/<set>.json <clip> [take] [--every 2] [--from t] [--to t]` | the blade as detected in one take's frames (cyan = found, grey = unknown, filled later), with a full-frame pixel ruler for hand keys |
 | `"$PY" -I proportions.py [config.json]` | his build from standing takes; writes `$H2/mocap/proportions.json` and an HDIM proposal |
+| `"$PY" -I keysheet.py specs/<set>.json <clip> [take] [--from t] [--to t] [--every 3] [--box x,y,side]` | a labelled ruler sheet of one take's frames for 2D hand keys (see the roll example) |
 | `bash "$H2/lock.sh" <you> "$PY" -I track.py <film> <t0> <t1> --forget` | HEAVY: drop and re-track a span (after a tracking fix, or when a crop latched onto a phantom); if it runs out of budget, run it again WITHOUT `--forget` |
 
 Look at a span's raw tracking before you trust it: a sheet of the tool's own landmarks over the frames
@@ -69,8 +70,8 @@ phantom must be re-tracked or dropped.
 
 ```json
 {
- "set": "moveBasic", "title": "Movement: the basics", "film": "move",
- "out": "src/entities/hero2/clips/moveBasic.js",
+ "set": "moveGround", "title": "Movement: the basics", "film": "move",
+ "out": "src/entities/hero2/clips/moveGround.js",
  "clips": [
   {"name": "walk", "title": "Walk", "src": "move 0:32-0:54", "kind": "loop", "fps": 30,
    "travel": "forward", "symmetric": 1,
@@ -99,6 +100,99 @@ Clip keys:
 | `sword` | true: find the blade in the picture and put it on the right hand (`weaponR`) |
 | `blade_keys` | hand keys for the blade where detection fails: `[{"take": 0, "keys": [["0:24.50", x, y], ...]}]`, the tip's pixel in that take's frame |
 | `sheet_frames`, `sheet_k` | which clip frames the pair sheet shows (default 8 spread evenly) |
+| `turn` | true: he turns during the clip (pivots, 90 degree turns, turning in place, turnaround). The root's yaw follows his facing (hips, shoulders, feet, nose; smoothed) so the clip ENDS facing the new way; the body is retargeted in the frame that turns with him, his hips' and spine's own twist on top. Without it a one-shot that ends turned more than 45 degrees prints a hint |
+| `travel` (loops) | `forward`, `free` (the measured direction) or a NUMBER: the travel direction in degrees in his frame (0 forward, 90 his left, -90 his right, 180 backward): strafes face their aim while travelling sideways |
+| `air` | jumps and falls: `{"take": 0, "stand": ["6:40.10", "6:40.40"]}`: frames with no planted foot take the pelvis' height from that take's PICTURE (a FIXED side camera: his pelvis above the ground line, metres per pixel from his standing pelvis height in the `stand` span, which must be in that take), joined to the contact heights at take-off and landing |
+| `qa` | `{"maxStepDeg": 30, "reason": "..."}`: raises the one-frame joint step limit (default 1500 deg/s: 50 at 30 fps, 25 at 60 fps) for this clip; the checker FAILS a clip over its limit, and an override without a reason |
+| `despike` | default true: a joint that jumps beyond the step limit for a frame or two and comes back (the tool losing a limb) is bridged by slerp; false keeps the raw data |
+| `clavicles` | default 0.3: each clavicle takes this share of its upper arm's lift (a shrug when the arm goes up) and forward swing (a reach); 0 = clavicles at rest |
+| `breath` | holds: `true` or `{"period": 3.6, "chest_deg": 1.2, "shoulder_deg": 1.0}`: a SYNTHESIZED slow breath (the tool's noise hides the real one): chest and shoulders rise. Give the hold `n` = a whole number of periods at its fps (3.6 s at 30 fps = 108). The build log says "SYNTHESIZED" |
+| `pose_keys` | `[{"t": "11:19.55" or "f": 12, "joint": "thighL", "euler": [x, y, z] or "dir": [x, y, z], "blend": 4}]`: a joint's local rotation (degrees, XYZ, rest = 0) or a bone's direction in his root frame (+X his left, +Y up, +Z front), reached at that frame and eased over `blend` frames each side. For what 2D keys cannot settle (a hand's roll, a flask's angle, a foot behind the body) |
+| take `drop` | `[["t0", "t1"], ...]`: spans of THAT take the tracker lost (tumbles, lying down, blur, a cut). Inside, every point is interpolated from the frames round the span (through the take's `keys`), and the span hardly counts in the fusion |
+| take `keys` | `[{"t": "11:19.43", "pts": {"hipL": [835, 522], "kneeL": [791, 440], ...}}]`: 2D hand keys, full-frame pixels read off `keysheet.py`. The point's depth comes from the tracked frames round the span; frames near a key count fully in the fusion. Names: nose, earL/R, shoulderL/R, elbowL/R, wristL/R, pinkyL/R, indexL/R, thumbL/R, hipL/R, kneeL/R, ankleL/R, heelL/R, toeL/R. When a side is hidden, give both sides the same point (the body's middle) |
+| take `fixed` | true: this take's camera does not move; a loop then also reports its speed from the picture |
+| take `no_arm_check` | sword clips: skip the "blade in the tool's left fist" arm swap for this take |
+| `grip` | two hands on one grip: `{"gap": 0.11, "free": [["t0", "t1"]]}`: the left fist closes on the grip `gap` m below the right (toward the pommel); the left arm is re-solved to it (elbow on its measured side). `free`: video times (first take) where the footage shows the left hand off the grip; it eases out and back |
+| `swordL` | true: a second sword in the LEFT hand (paired swords): found and solved like the right one; `blade_keys_L` keys it |
+| `blade_keys` | `[{"take": 0, "keys": [["0:24.50", x_tip, y_tip] or ["0:24.50", x_hilt, y_hilt, x_tip, y_tip], ...]}]`: the blade in the picture. Use the hilt + tip form when the tool's fist is wrong. Keys in TWO takes (both seeing that moment) give the blade's 3D direction from both; one take uses a prior |
+| `blade_max_dps` | default 1500: the blade's turning speed limit in the forearm's frame (deg/s), against wrong rays |
+
+## Author's checklist (every clip)
+
+1. Find the chapter's time in `H2/CATALOG.md`; track it (locked, repeat until `0 frames left`).
+2. `shots.py` on it: read the sheet; pick 2-4 takes from DIFFERENT sides, each one view, no cut inside
+   (a take may end at a cut: the next take covers the rest, see "Stitching").
+3. Write the clip in the spec (copy the nearest worked example below); `build.py specs/<set>.json <clip>`.
+4. Read the pair sheet in AT LEAST TWO views (a side view for lean and stride, a front or back view for
+   width and sway). Look at the legs first (phase), then the arms, then the head. Fix the spec, rebuild.
+5. The checker must be green (`all rules pass`). A step-limit override needs a reason you saw in the footage.
+6. Commit the spec and the set module. Note in the commit what is keyed or synthesized.
+
+## The footage's traps
+
+- **Capture freezes**: the recorder sometimes repeated one picture for a second while the video stalled.
+  In a moving take such runs are dropped (they would freeze him); an idle can be this still, so in a still
+  take they stay (harmless).
+- **Glitched frames**: single frames zoomed far in, or a cut to a close-up for a few frames. A one-frame
+  size spike is dropped; a sustained zoom is kept (he is the same size a few frames on).
+- **Cinematic cameras in attacks, jumps and rolls**: the camera often cuts, swings or zooms during the
+  move itself. Cut a take at the cut (or `drop` the span) and let another take cover it.
+- **Phantoms**: the tool sometimes finds a "person" in a statue or a dome when he blurs; the tracker
+  refuses a detection that jumps away AND changes size, and searches round his last place.
+
+## Contact spans and the wrap
+
+A loop's planted span that runs over the end is written as two spans: with `n = 40`, `L: [[0, 6], [21, 39]]`
+means ONE plant from frame 21 through 39, 0 ... 6 (it wraps). The engine should join a span ending at
+`n - 1` with one starting at 0. A planted, FLAT foot has its ankle exactly `HDIM.ankle` above the ground
+(the build levels the sole during the first 70 % of the span and bends the toes at push-off).
+
+## Worked examples (in `specs/moveGround.json`, `specs/swordOne.json`)
+
+**Turning (runPivot)**: `"turn": 180` makes the root's yaw follow his facing and scales the measured turn
+to exactly 180 (a 90-degree turn: `90` or `-90`, his left is positive; `true` keeps the measured angle).
+The clip ends facing the new way, so the engine can chain it. The take's camera yaw is measured on the
+take's first 0.35 s (`calm`), so start the take while he still faces the old way.
+
+**Strafes**: a loop with `"travel": 90` (his left), `-90`, `180` (backward), `45` ...: the root keeps
+facing his aim, the travel goes that way. Fold, symmetric (careful: a strafe is not left-right symmetric
+when he steps sideways; use `symmetric` only for straight forward / backward gaits).
+
+**Airborne (jumpIdle)**: with no planted foot the hips follow a ballistic arc between the take-off and
+landing heights (default). Where a FIXED side camera sees the jump (the reference's jump cameras tilt and
+zoom with him, so check the background does not move), `"air": {"take": 0, "stand": ["6:41.95", "6:42.05"]}`
+takes the pelvis' height from that take's picture instead (the stand span: both feet down, in that take).
+
+**Hand keys (roll)**: the tracker loses the tumble. 1) `keysheet.py specs/moveGround.json roll 0 --from
+11:19.10 --to 11:20.10 --every 4 --box 560,330,440` (the box: x, y, side in full-frame pixels round him;
+without it the tool guesses one) 2) read the pixel positions of what you can see (the ruler is in
+full-frame pixels; the tool's own points are drawn thin and labelled, so you see which are wrong) 3) add
+to that take `"drop": [["11:19.24", "11:19.84"]]` and `"keys": [{"t": "11:19.35", "pts": {"hipL": [917,
+434], ...}}, ...]` (5 keyed frames over 0.6 s were enough), and `drop` the same moment in the other takes
+(no keys there: they then hardly count) 4) build and read the sheet. When one side is hidden, key both
+sides at the body's middle. A pose the picture cannot settle (a hand's roll, a foot behind him): a
+`pose_keys` entry.
+
+**Step limit**: the checker fails a clip where a joint turns more than 1500 deg/s in one frame (50 deg at 30
+fps, 25 at 60). Most such jumps are the tool losing a limb; `despike` (on by default) bridges them. A real
+fast motion: `"qa": {"maxStepDeg": 30, "reason": "the take-off: the right knee snaps straight ..."}`.
+
+**Breathing holds**: `"breath": {"period": 3.6}` with `"n": 108` at 30 fps. SYNTHESIZED, logged as such.
+
+**Two hands on one grip (swordTwo)**: `"sword": true, "grip": {"gap": 0.11, "free": [["9:30.10",
+"9:30.40"]]}`: the left fist closes on the grip below the right; `free` where the footage shows it off.
+
+**Paired swords (swordPair)**: `"sword": true, "swordL": true`: the right and the left blade, each found
+from its own fist (both rust-red in the footage), `blade_keys` / `blade_keys_L` for keys.
+
+**Flask, bell (moveMisc)**: `props: {"L": "flask"}`; nothing is detected; give the left hand's roll with
+`pose_keys` on `handL` where the picture shows the flask's angle.
+
+**Clavicles and toes**: automatic (`clavicles`: 0.3 of the upper arm's lift and reach; toes bend at
+push-off on planted feet).
+
+**Loop speed from the picture**: mark a fixed-camera take `"fixed": true`; the build prints both speeds
+(the planted-foot one, which the clip uses, and the picture's).
 
 ## How to pick takes
 

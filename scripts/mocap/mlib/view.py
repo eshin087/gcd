@@ -21,9 +21,11 @@ def our_points(B, blade_len=None):
     """FK of the built clip in its root frame with the root's travel removed (n, J, 3), plus the blade
     tip (n, 3) when the clip holds a sword"""
     root = np.zeros_like(B.root)
+    root[:, 2] = B.root[:, 2]  # his turn, without the travel
     P, R = skel.fk(B.q, B.hips, root)
     tip = P[:, JI['weaponR']] + skel.qrot(R[:, JI['weaponR']], np.array([0, 0, blade_len or HDIM['blade']]))
-    return P, R, tip
+    tipL = P[:, JI['weaponL']] + skel.qrot(R[:, JI['weaponL']], np.array([0, 0, blade_len or HDIM['blade']]))
+    return P, R, tip, tipL
 
 
 def _side(i):
@@ -45,7 +47,7 @@ def fit_to(img_pts, l2):
     return s, bm - s * am
 
 
-def draw_ours(dr, pts, tip=None, planted=(False, False), width=3, off=(0, 0), sc=1.0):
+def draw_ours(dr, pts, tip=None, planted=(False, False), width=3, off=(0, 0), sc=1.0, tipL=None):
     def xy(p):
         return ((p[0] - off[0]) * sc, (p[1] - off[1]) * sc)
     for i in range(1, J):
@@ -55,6 +57,8 @@ def draw_ours(dr, pts, tip=None, planted=(False, False), width=3, off=(0, 0), sc
         dr.line([xy(pts[p]), xy(pts[i])], fill=_side(i), width=width)
     if tip is not None:
         dr.line([xy(pts[JI['weaponR']]), xy(tip)], fill=draw.CYAN, width=max(2, width - 1))
+    if tipL is not None:
+        dr.line([xy(pts[JI['weaponL']]), xy(tipL)], fill=(255, 140, 255), width=max(2, width - 1))
     for f, s in enumerate(('L', 'R')):
         if planted[f]:
             x, y = xy(pts[JI['foot' + s]])
@@ -87,8 +91,9 @@ def pair_sheet(B, Ts, out, frames=None, k=8, cell=200, overlay=True, tool=True, 
     n = len(B.q)
     if frames is None:
         frames = [int(round(i * (n - 1) / (k - 1))) for i in range(k)] if not B.loop else [int(i * n / k) for i in range(k)]
-    P, R, tip = our_points(B)
+    P, R, tip, tipLs = our_points(B)
     has_blade = getattr(B, 'blade', None) is not None
+    has_bL = getattr(B, 'bladeL', None) is not None
     rows = []
     hdr = Image.new('RGB', (cell * len(frames), 22), (12, 12, 16))
     draw.label(hdr, title or B.name, (4, 3), sz=13, fill=draw.WHITE)
@@ -107,6 +112,7 @@ def pair_sheet(B, Ts, out, frames=None, k=8, cell=200, overlay=True, tool=True, 
             s, sh = fit_to(pts, l2)
             pts = pts * s + sh
             tp = project(tip[f][None], T.R)[0] * s + sh if has_blade else None
+            tpL = project(tipLs[f][None], T.R)[0] * s + sh if has_bL else None
             # crop round both
             allp = np.concatenate([pts, l2[:, :2]] + ([tp[None]] if tp is not None else []))
             x0, y0 = allp.min(0)
@@ -122,11 +128,11 @@ def pair_sheet(B, Ts, out, frames=None, k=8, cell=200, overlay=True, tool=True, 
             top.append(ref)
             ours = Image.new('RGB', (cell, cell), (18, 18, 24))
             planted = (bool(B.cmask[f, 0]), bool(B.cmask[f, 1])) if hasattr(B, 'cmask') else (False, False)
-            draw_ours(ImageDraw.Draw(ours), pts, tp, planted, 3, box[:2], sc)
+            draw_ours(ImageDraw.Draw(ours), pts, tp, planted, 3, box[:2], sc, tpL)
             mid.append(ours)
             if overlay:
                 ov = im.crop(box).resize((cell, cell), Image.BILINEAR)
-                draw_ours(ImageDraw.Draw(ov), pts, tp, planted, 2, box[:2], sc)
+                draw_ours(ImageDraw.Draw(ov), pts, tp, planted, 2, box[:2], sc, tpL)
                 bot.append(ov)
         rows += [draw.grid(top, len(top)), draw.grid(mid, len(mid))] + ([draw.grid(bot, len(bot))] if bot else [])
     sheet = draw.stack(rows)

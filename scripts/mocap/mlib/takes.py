@@ -72,7 +72,7 @@ def load(film, t0, t1, log=print):
     # length in pixels far from the take's running median
     L2 = np.array([c[round(t, 3)][1] for t in ts])
     tor = np.linalg.norm((L2[:, 11, :2] + L2[:, 12, :2]) / 2 - (L2[:, 23, :2] + L2[:, 24, :2]) / 2, axis=1)
-    med = np.array([np.median(tor[max(0, k - 30):k + 31]) for k in range(len(tor))])
+    med = np.array([np.median(tor[max(0, k - 3):k + 4]) for k in range(len(tor))])  # a spike, not a zoom
     odd = np.abs(tor / np.maximum(med, 1) - 1) > 0.3
     # his feet or hands out of the picture: the tool guesses them
     Hpx, Wpx = 720, 1280
@@ -242,8 +242,7 @@ class Take:
         if calm:
             k = int(calm * FPS)
             self.calm[:] = False
-            self.calm[:k] = True
-            self.calm[-k:] = True
+            self.calm[:k] = True  # the start only: a pivot or a turn ends facing another way
         self.solve_camera(pitch, yaw, log)
 
     def solve_camera(self, pitch=None, yaw=None, log=print):
