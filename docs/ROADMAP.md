@@ -211,11 +211,16 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [ ] The owner's answers: the second block opening the guard (the brief said the third); Halcyon Plaza's metal
       rubble cold too; the bonfire out inside the void
 - [ ] The real renderer lays ~30 % more floor marks than headless
+## M1.93 — Tian Lei's and Halcyon's motion (2026-11-26, `claude/enemies-tian-halcyon-motion-efe595`, ADR-225)
+- [x] Audited (asc.mjs / city.mjs AUDIT); held blue / red windups, the snap blows, Halcyon's flier's legs, aim and dip,
+  behind `?ascMotion=a` / `?halMotion=a`
+- [x] The owner's pick of both switches: a, the default (2026-11-26)
+- [ ] Tian Lei: the sweep's knee jolt and sliding feet, the dash thrusts' skating, the cross's sideways line
 ## M1.93 — The perfect parry gets the perfect dodge's window (2026-11-26, `claude/combat-perfect-parry-window-d6503b`, ADR-227)
 - [x] `DEFENSE.perfectParryWindow` 0.08 → 0.20 s (the owner's pick); the plain parry window 0.22 s unchanged
 - [x] Every perfect reward (posture, counter cut, blade lock, returned bullets, clashes) follows the one number; tests timed for a plain parry moved to 0.21 s
 - [ ] Played by the owner; their call on the slow-motion beat now that most parries are perfect
-- [ ] The brood's busyWait dive (`BROOD.busyWait` 2.5 s) never cues within 0.3 s of a wyrm cue needing another answer (integ PRESSURE seed 4242: fanVolley / drakelings P2, breath / drakelings P3; on main too)
+- [x] The brood's busyWait dive (`BROOD.busyWait` 2.5 s) never cues within 0.3 s of a wyrm cue needing another answer (integ PRESSURE seed 4242: fanVolley / drakelings P2, breath / drakelings P3; on main too): `BROOD.late`, `bullets.bar`, scenario BROODBUSY (ADR-237); PRESSURE's steady bot back on the real parry window
 
 ## M1.92 — The melee animation engine: boss blows from reference footage (2026-11-26, `enemies/fists-ref`, ADR-208)
 - [x] `scripts/mocap` on `main` as a tool; `scripts/mocap/duelist/fit.mjs` fits a clip onto a duelist's blows (`--check` through the real animator); the guide
@@ -268,6 +273,12 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] A cut that shows in the printed grass (dgCut b); fallen leaves as lit lenses (leafLook a)
 - [x] The owner kept grass a (the depth steps stay behind `?dgGrass=a3d1..3`); the cut's chips made smaller
 - [ ] The phone's frame cost; remove the first round's looks a / c / d
+
+## M1.88 — The bosses drawn in the hero's style (2026-11-26, `claude/render-boss-hero-look-631f37`, ADR-220)
+- [x] The audit: the five human bosses beside the hero at 720p, 1440p and the phone (a report and sheets)
+- [x] Round 1 turned down (his letter size, his dark cloak values, the tall hem, flared torn skirts): not his colours or cloth
+- [x] `?<boss>Hero=0|a|b|c` (his shading, his outline, both); picks c Shen Hui / Varr Nihil / Lu Wusheng, a Tian Lei / Halcyon
+- [ ] Seen by the owner in play and on the iPhone
 
 ## M1.87 — The front: the sword's path and a loading screen (2026-11-25, `ui/gcd-front`, ADR-196)
 - [x] A loading screen from the first paint, an honest bar of the boot's steps (`?loader=a|b`; b the owner's pick)
@@ -687,7 +698,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] A missed blow in a long string costing most of the string; two guard cues from different sources 0.1 - 0.25 s apart
   - [ ] The guard stepping in 1 - 4 times a minute in the Lord's fourth form (world pieces his own blows fell)
   - [ ] Music for Shen Hui's third phase (picked by ear); sounds for the new moves and spells
-  - [ ] A joint-by-joint audit of the new poses; a palm strike for Shen Hui's free hand
+  - [ ] A joint-by-joint audit of the new poses (done for the sword: ADR-226, `audit`); a palm strike for Shen Hui's free hand
   - [ ] On the iPhone: frame rate in the Lord's fourth form with the weather and Starless Night
   - [ ] Remove the looks that were turned down and their switches, once the picks have been played
 
@@ -1148,8 +1159,8 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
 - [ ] An audit sheet: every boss beside the hero at the game camera, at 720p and on the phone preset,
       each scored against STYLE.md "The house style" (small fine digits, a dark body lit only where
       light catches, a stroke outline, no blank cell inside a shape); the ones that do not match named
-- [ ] The human bosses printed the hero's way (ADR-194) checked boss by boss; the ones it missed or
-      only recoloured brought over in their own colours
+- [x] The human bosses printed the hero's way (ADR-194) checked boss by boss; the ones it missed or
+      only recoloured brought over in their own colours (ADR-220: his shading and outline, their colours)
 - [ ] The non-human bosses and the summons (the wyrm, the fox's paper copies, spells and bolts in the
       fire field) checked the same way
 - [ ] The fixes in order of how far each is from the look; options rendered per boss for the owner
@@ -1163,6 +1174,11 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
 - [ ] Tells kept readable: a move's windup and its blue / red timing do not change unless the owner
       asks (COMBAT.md); the pace meters and the duel suites stay green
 - [ ] Each boss's polish as its own PR, the before / after strips shown to the owner
+- [x] Shen Hui and Varr Nihil (ADR-226): the sword audit (`audit`), the blade in line with the forearm, the arms
+      opening, held blue / red tell poses, the Lord's end-of-string shake, two quick blows each, behind
+      `?ashMotion` / `?lordMotion`, films sent
+  - [x] The owner's pick from the films: both, as the default (Piercing Ash keeps its old thrust)
+  - [ ] Their feet (a planted foot handed to a clip slides; legs cross in spins), the Starless Night cast's wrist
 
 ### P3 — Arenas that are part of the fight, better backgrounds, cooler destruction
 - [ ] Arenas the fight uses: cover a boss's shot breaks, pillars a blow brings down, ledges and

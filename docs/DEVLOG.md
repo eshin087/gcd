@@ -78,6 +78,80 @@ error; after it, the perfect bot's fight and the domain filmed in the real rende
   The bonfire put out inside the void?
 
 ---
+## 2026-11-26 — Shen Hui and Varr Nihil: the sword in the hand, held tell poses, quick blows (ADR-226; branch `claude/enemies-ash-lord-motion-0f152b`)
+
+**Task** (from the owner via the lead session): their positioning angles look weird and the weapons are held
+awkwardly; every blue / red blow its own readable held windup; some much faster normal blows; audit first, fix,
+film before / after, the owner picks, behind a switch.
+
+**Measured** (new `tests/integration/swordAudit.mjs`, opt-in `audit` in duel.mjs / lord.mjs): the forearm-to-blade
+angle 45° / 64° on average, up to the animator's 128° limit (the hero ≤ 60); the blade through their heads in nine
+overheads; elbows never past 145°; Varr Nihil's end-of-string twirl jolting the point 1.0 - 2.5 m a frame². The
+chest is square to the hero at every impact (≤ ~20°), so "angles" at the blow itself measured fine: the angle
+that reads wrong is the steel against the arm (sent to the owner as five clips and a findings note).
+
+**What.** `anim.js` `gripMax` / `_gripAlign` (opt-in: the forearm turned toward the blade round the elbow);
+`duelist.js` applies `kit.motion()` (gripMax, armSoft) each frame; `duelist/tellPose.js` (held tell families: blue high
+/ aim, red coil; `motionize`); `realise.js` `recoveryKeysOf`; per-boss `motionKeys`, `motionRecovery` (the Lord's
+shake), `quick` / `motionOnly` moves (Darting Needle, Flicking Willow; Rising Ember, Vigil's Fall) and
+`TUNING.motion` / `minQuickWindup`; `?ashMotion` / `?lordMotion` (PENDING, Lab LOOKS rows); links out of the quick
+blows; tests `swordmotion` (both suites), the data rule for quick blows, `GCD_LOOKS` env for any scenario.
+
+**Verification.** Audit on: Shen Hui's wrist ≤ 60° in every move, the blade ≥ 18 cm off his head; the Lord ≤ 60° bar
+one spell pose, the worst jolt per move 776 → 449 mm/f² on average. The pace meters pass with the switches on.
+Before / after films (game camera + a close side view, half speed) rendered with the scratch rig.
+
+**The owner's pick** (from the films): "i like the new timings and changes", Piercing Ash keeping its old
+thrust; both switches are the default (`?ashMotion=0` / `?lordMotion=0` give back the motion before).
+
+**Open.** Feet: a planted foot still slides where a clip takes it over (the grove session's
+`liftEase` may serve); legs cross inside the spins. Varr Nihil's Starless Night cast keeps a 91° wrist.
+
+---
+## 2026-11-26 — The bosses drawn in the hero's style: his shading and his outline (ADR-220; branch `claude/render-boss-hero-look-631f37`)
+
+**Ask.** Make Shen Hui, Varr Nihil, Tian Lei, Lu Wusheng and Halcyon look like the hero's ASCII art (the Cinder
+Wyrm, Wen Yao and Xin Yi out of scope).
+
+**Analysis** (the hero beside each boss at the game camera, 720p / 1440p / the phone, x4 crops): the bosses
+printed almost every cell as an equally bright dense letter (ADR-194's lift saturates the ramp), inside a 1 px
+line; the hero runs from a near-black core through grey shoulders to a lit lavender edge and the pale hem,
+inside a 2 px (1440p) chunky dotted line. Three bosses also use letters half his size from 1080p up; their
+skirts are slim.
+
+**Round 1, turned down.** Options a (his letter size, his dark cloak values in each boss's hue, the pale hem to
+the thigh) and b (a + skirts flared and torn): "i dont like any of these new bosses. i didnt mean make it the
+same color or cloth texture as the main character. i meant the style and engine look. for example, shen hui i
+like that his original hat has its own color and detailed ascii look". Asked which part of his look, they
+picked **his shading** and **his outlines and rim** (not his letter size).
+
+**Round 2, picked.** `?ashHero= / lordHero / ascHero / sheathHero / halHero = 0 | a | b | c`: a his shading
+(`U.uBossHero.x`: a boss's cloth light falls off away from the key light and down his body; colours, head and
+hat, face, hem kept), b his outline (`uBossLike.z`: the boss's ink lines at the hero's line width `uSelfPx`, the
+letters his own), c both. **Picks:** c for Shen Hui, Varr Nihil and Lu Wusheng; a for Tian Lei and Halcyon
+(their letters follow their size already, so their lines are the hero's width: b does nothing on them).
+
+**Tests.** `bosshero` (new, in run.mjs): the table, the Lab rows, the picks as defaults, no allocation per
+frame, the shader levers only on a boss and only on his light (never `artFill`, never his head), every boss's rig
+builds sharing the uniform. duel `fxlooks` (PICKED against the Lab) green.
+
+**Cost.** A few ALU per boss fragment; the outline taps the same pixels at a wider step. No new texture, pass or
+draw call; no geometry (the cost budget is unchanged).
+
+**Next.** The owner sees them in play and on the iPhone (the outline only shows from 1080p up; the phone and 720p
+get the shading alone).
+## 2026-11-26 — A brood cue whose wait ran out keeps the cue spacing (ADR-237; branch `claude/vigorous-wilbur-3c128e`)
+
+**Task** (the follow-up from ADR-227): the brood's dive after `busyWait` landed within 0.3 s of a wyrm cue of
+the other answer. **Reproduced** on main: PRESSURE seed 4242 with the steady bot's stray parries perfect (the
+ADR-227 wrapper off): fanVolley / drakelings P2, breath / drakelings P3, 2 FAILED. A trace of each brood flash
+showed both were dives held the full `hold.max` 1.8 s (fanVolley's bullets in the air, then the breath's tell
+in the ledger 0.27 s from it), flashing at the cap. **What:** past `hold.max` a brood cue holds on only while a
+cue of the other answer is due within `BROOD.late.clear` 0.36 s, and gutters out after `late.drop` 4.5 s held;
+its flash bars the bullets of the other answer (`bullets.bar`: duds). **Tests:** new integ scenario BROODBUSY
+(fails on main with drakelings / furnaceMaw at 0.02 s, passes now); PRESSURE without the 0.08 s wrapper passes on
+1337, 7 and 4242. **Open:** how often a drakeling now gutters out in a real fight (none in the scenario's busy spell;
+PRESSURE does not print it yet); played by the owner.
 
 ## 2026-11-26 — The reference-footage tools removed (ADR-236; branch `build/remove-mocap`)
 
@@ -112,6 +186,29 @@ with 4242 run alone, breath / drakelings in P3 (63.5 s). It exists on main (the 
 scenario keeps the old 0.08 s perfect window for the steady bot's stray parries, so it measures the director
 on its old path. **Open:** played by the owner; whether the slow-motion beat on every parried blow of a string
 is too much now (the `short` beat, `combat/perfectFx.js`); the brood fix.
+## 2026-11-26 — Tian Lei's and Halcyon's motion: held windups, snap blows, Halcyon a flier (ADR-225; branch `claude/enemies-tian-halcyon-motion-efe595`)
+
+**Task** (the motion pass the owner asked for: every boss audited; readable held blue / red windups; a few much
+faster normal blows; options rendered and picked). This session: Tian Lei and Halcyon.
+
+**Measured.** `asc.mjs . audit` and a new opt-in `city.mjs . audit` (the same measure for a flier). Findings in
+ADR-225: no held pose on blue / red blows (the coil at u 0.7 - 0.78); Halcyon stood on air in every blow and
+punched over the hero's head with a crooked arm; the sweep's knee jolt and sliding feet; the dash thrusts skate;
+the cross lands to the side.
+
+**What.** `ascendant/motion.js` (held windups, `SNAP_KEYS`), `halcyon/motion.js` (the flier's legs, the aim, the
+dip in `flight.js`, `armSoft`), `mo` descriptors on the builders' beats, the snap moves (`snapJab`, `snapHook`,
+`flick`, `tap`), `TUNING.snap`, Lab LOOKS `ascMotion` / `halMotion` (PENDING). Tests: asc.mjs `heldmotion`,
+city.mjs `halmotion`, DATA's snap rule, GCD_LOOK in both audits. Films: before | after at the game camera and a
+close side view (scratchpad rig, not committed).
+
+**The owner's pick:** "Ship both (a)": both switches are the default (PICKED). Main had dropped the realiser's
+`keysOf` hook meanwhile (ADR-236, unused then): restored for this use.
+
+**Open.** Not fixed yet: the sweep's jolt, the dash thrusts' skating, the cross's sideways line, Fly-By's pass height.
+
+---
+
 ## 2026-11-26 — The lite world on a phone at AUTO's floor (ADR-216; branch `render/phone-lite`)
 
 **Owner:** the BENCH from their iPhone (fox: the world pass 11.8 of 13.3 ms; half the pixels only 32 % less);

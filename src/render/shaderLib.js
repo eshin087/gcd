@@ -124,6 +124,10 @@ export function createSharedUniforms() {
     // x on (1) / off (0), y his own colours (1) or the hero's greys (0), z the boss's feet (world y),
     // w the hem's height above them (m). Read by the bosses' ink-line materials (materials.js), never the player's
     uBossPrint: { value: new THREE.Vector4(0, 1, 0, 0.62) },
+    // ... and drawn like the hero (ADR-220, a boss's `?<boss>Hero=` switch, duelist/heroPrint.js; main.js writes
+    // it every frame): x shaded as the hero is (0 = ADR-194's even body, 1 = his cloth falls off toward dark
+    // marks away from the key light and down his body; his colours, head and hem kept); y z w unused (0)
+    uBossHero: { value: new THREE.Vector4(0, 0, 0, 0) },
     // the living world's wind (world/life/wind.js writes both once a frame while the piece is on):
     // dirX, dirZ (unit), speed (m/s), level (0..1). (0, 0, 0, 0) = the wind piece off: the grass and the
     // trees then move exactly as they always did (WIND_GLSL, windOn())

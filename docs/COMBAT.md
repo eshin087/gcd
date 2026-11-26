@@ -1010,7 +1010,10 @@ of this one's to run).
   while a cue of the other answer, the wyrm's own (its running move's blows, told or still to come,
   a string's later hits included), a hazard's or a bullet's, is due within 0.5 s of it; a red one also
   waits while bullets are in the air. No lunge or dive starts while the wyrm is in the air or its
-  running move still has a blow to come (at most 2.5 s). While any of its brood lives, the wyrm picks
+  running move still has a blow to come (at most 2.5 s). A cue that has waited its 1.8 s still never
+  lands within 0.3 s of a cue of the other answer: it goes at the first moment none is due within
+  0.36 s of it, or, after 4.5 s of waiting, the creature gutters out without its blow; and a bullet of
+  the other answer due beside a brood cue that has flashed comes as a dud (ADR-237). While any of its brood lives, the wyrm picks
   no other spell, no flight and no heavy blow, and live wisps keep it from moves that ask for a guard
   (as meteors in the sky do). Measured by the brood's author (PRESSURE): cues a minute by phase
   ~35 – 41 / 58 – 60 / 77 – 83, no clash between two answers.
@@ -1191,6 +1194,18 @@ he mixes the blade, his feet, the qi and the courtyard.
   Ashes, 11 hits), the **storm of qi** (Storm of Ash: three waves of crescents, 3, 2, 3, then one blue
   one; 6.5–16 m), and the courtyard's flagstones thrown in a fan. Footwork 0.03–0.12 s, flow 0.82, 7
   in a row. More blows from more places, not faster ones (the 0.42 s / 0.32 s floors hold).
+
+**The sword motion pass** (ADR-226, the owner's pick; `?ashMotion=0` as before): the jian held in line
+with his forearm (≤ ~40°, the hand moved, never the blade's path) and his arm open at the end of a blow; every blue
+blade blow wound into a HELD pose from 0.36 to 0.8 of its windup (a cut: the blade raised high over his sword
+shoulder, the point to the sky; a thrust: drawn back level by his cheek, the point on you), every red one into the
+COIL (sunk low and turned away, the blade trailing near the floor behind his hip, the free hand reaching for you;
+Piercing Ash keeps its drawn-back thrust, the owner's call), so
+the body says which answer before the flare does; the windups, impacts and ends are those of the move as written.
+And two **quick blows**, normal tells, a fixed 0.34 s windup (`minQuickWindup`; the glint 0.04 s in), thrown straight
+out of his guard: **Darting Needle** (the pointed jian drawn a hand's width back and driven in on a step; a 2.0 m line)
+and **Flicking Willow** (the point flicks up and cuts down across you; a 2.1 m sector). Block or parry them; each runs
+into a string.
 
 **Every phase asks for dodges** (the tuning pass): a red blow sits inside eight strings (Drifting
 Cloud's kick, Chasing Rain's glide, Whirling Step's second spin, Brand and Kick's kick, Cinder Cross's
@@ -1588,6 +1603,15 @@ between the cuts, four blade forms. He runs on the duelist engine (the Ash Disci
 deflect chain, the blade lock, the mikiri, the full deflect, the Ghostep behind him, pressure and
 hit stun are all as written above; his pressure and its fairness guard: *The duelists' pressure and
 the fairness guard*, below), with these differences.
+
+**The sword motion pass** (ADR-226, the owner's pick; `?lordMotion=0` as before): as Shen Hui's (above:
+the blades in line with his forearms, his arms opening, every blue / red blade blow held in its tell pose from 0.36
+to 0.8 of its windup with the same timings; the spells keep their own raised hands), and each string's end is a
+shake of the steel, held a beat (both blades in form 2, the staff swept level in form 3), where it was a roll of
+the blade round the wrist. Two **quick blows**, normal tells, a fixed 0.30 s windup (`minQuickWindup`; the glint
+0.04 s in), with no draw: **Rising Ember** (forms 1 - 3: the blade hung low at his side cuts straight up through
+you; a 2.3 m sector) and **Vigil's Fall** (form 4: the blade standing upright before his face falls on you, both
+hands; 2.6 m). Block or parry them; each runs into a string.
 
 **Four forms, four bars, a deathblow each** (the owner's pick):
 | Form | Blades | Reach | A string's follow-up windup | Recovery × |
@@ -2102,6 +2126,17 @@ weights per form [1 / 2 / 3] (- = not in that form); `cat` is the director's cat
 | **Golden Ascension** `ascend2` | R 2.3 (12) [ring 6.5 m, thrown 7 m, fixed] |
 | **Thunder Ascension** `ascend3` | R 2.3 (12) [ring 6.5 m, thrown 7 m, fixed] |
 
+**The motion pass (2026-11-26, ADR-225; the owner's pick, `?ascMotion=0` plays it as before).** Poses only: every
+timing above is unchanged. Every blue and red blow of his builders is in a held windup pose of its own by
+0.36 of its windup (the uppercut sunk low with the fist by the hip, the palm drawn to the hip with the lead
+hand aimed, the hammer arched overhead, the roundhouse's crane, the axe kick's leg held at the top), held and
+tightening to the cock; red holds sink deeper and wider. Two **snap** blows join his pool:
+**Snap Jab** `snapJab` and **Snap Hook** `snapHook` (forms 1 - 3, [1.4, 1.2, 1.1] / [1.0, 1.1, 1.1], 0 - 2.2 m,
+cooldown 5 / 6, single): N 0.30 (8) / N 0.30 (9), fixed (no form scaling), at most 0.5 m of step-in, thrown
+from his guard (only the arm and the hips move: the stance is the read). The rule they add (tests DATA): a
+snap's first windup may sit under `minFirstWindup` when it is white, at least `snap.min` (0.28 s), deals at
+most `snap.maxDamage` and flashes after its tell.
+
 The form's pool (weights summed, share by category; generated): form 1 13 moves, 32 % string, 31 % closer, 11 % ranged, 9 % area, 7 % terrain, 7 % hazard, 3 % single; form 2 25 moves, 36 % string, 17 % ranged, 13 % terrain, 12 % closer, 10 % hazard, 9 % area, 3 % single; form 3 29 moves, 47 % string, 17 % hazard, 8 % area, 8 % terrain, 7 % ranged, 6 % closer, 4 % single, 4 % spell.
 (Generated by `docs-gen-moves.mjs` from `ascendant/moves.js` MOVES; damage before `damageScale` 1.1; windups × 1 / 0.93 / 0.86 by form for beats that are not `fixed`.)
 <!-- asc:moves:end -->
@@ -2573,6 +2608,12 @@ at most 2.6 / 2.2 / 2.2 s by phase (tests FLIGHT: measured 0 / 0 / 1.9 s over a 
 footwork). Struck out of the air he drops; a posture break, a crash or a returned Stare put him on the
 floor: the only times his feet touch it are the ones the hero earned.
 
+**His motion (2026-11-26, ADR-225; the owner's pick, `?halMotion=0` plays it as before).** In a punch or a kick his
+root dips from the hover to `motion.dip` (0.2 m) through the strike and back up after its follow-through, and
+the blow is aimed down at the hero (his fists met the air over the hero's head at 1.9 - 2.0 m; now 1.3 - 1.7 m),
+his legs a flier's (trailing behind him, never a planted stance in the air), his arm opening at the end;
+Tian Lei's held windups for his blue and red blows; the snap blows Flick and Tap (below). Timings unchanged.
+
 **The crash.** A parry of a flying blow (a Fly-By pass, Blink of an Eye's flying cross) or a perfect dodge
 of a red flying blow (Through the Tower, See the World, the last pass of phase 3) throws him off his line
 (0.45 rad away from the hero) into the first standing cover on it within 12 m: he slides in 0.25 s, breaks
@@ -2595,6 +2636,8 @@ lit window and burns).
 | Fly-By | 1 | he backs off 14 – 18 m (0.55 s), then a pass at chest height, 40 m/s, through the hero's spot: B+flare 0.70, 22. Parried: the crash. Phase 2: two passes; phase 3: three, the last R 26 (a perfect dodge: the crash) | 0 – 12 · 6 / 7 / 8 · 1.6 / 1.6 / 1.4 (one move per phase) |
 | Curbside | 1 | he lands by the nearest car (a barrier, a lamp post, a slab of the road), lifts it one-handed (1.0 s), throws it: B, 22, cued on the car flashLead before it lands. Parried: cut in two, its halves go up behind the hero (the hero's: they hurt him if he stands there). Rolled: it lands and goes up | 3 – 16 · 9 · [1.2, 1.0, 0.8] |
 | Saviour's Answer | counter | B 0.53, 18, a palm | |
+| Flick (ADR-225) | 1 | a snap: N 0.30 (fixed), 8, the back of his hand out of his guard | 0 – 2.4 · 5 · [1.3, 1.0, 0.9] |
+| Tap (ADR-225) | 1 | a snap: N 0.30 (fixed), 8, the lead hand straight out | 0 – 2.4 · 5 · [1.0, 1.2, 1.2] |
 | Faster Than Sound | counter | his flurry: a cross, then a roundhouse, a hook, an uppercut, each from another side | |
 | Through the Tower | 2 | out behind a standing tower top (0.5 s, out of reach), its windows flare on his line, then R 1.25 (fixed), 26, knockdown, ring 1.8: he bursts through the top at the hero; the top topples across the plaza along his line (its own red tell). He lands in a skid (recovery 1.1) | 0 – 30 · 14 · [0, 1.2, 0.9] |
 | Blink of an Eye | 2 | N 0.62 jab (the slow vanish), N 0.42 hook, B+flare 0.44 cross (parried: the crash), each from another side; then R 0.56 side kick, 24, knockdown | 0 – 8 · 7 · [0, 1.6, 1.4] |

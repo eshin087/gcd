@@ -6438,6 +6438,29 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   137 - 142 s). The wyrm's PRESSURE measurement keeps the old 0.08 s for its guard bot's stray parries: the
   new path met a brood gap that exists on main (`BROOD.busyWait`), a separate task. Not played by a human yet.
 
+## ADR-237 — A brood cue whose wait ran out still keeps the cue spacing (2026-11-26)
+- **Context:** the brood's cues wait for a free slot (`BROOD.hold`: while a cue of the other answer is due
+  within 0.5 s, or a red one while bullets fly), but at most `hold.max` 1.8 s, and a drakeling dives anyway
+  after `busyWait` 2.5 s on a busy wyrm. On a long busy spell the two ran out together and the cue flashed
+  wherever it stood: integ PRESSURE seed 4242 with the 0.20 s perfect parry (ADR-227) met it twice, a dive
+  beside a fanVolley ember (P2) and beside the breath (P3), both held 1.82 s. Main had it too; the seeds
+  just missed it. Bullets, cueing only `flashLead` ahead, could also flash beside a brood cue after it.
+- **Decision:** past `hold.max` the cue goes at the first free slot instead of at once: it holds on while
+  a cue of the other answer is due within `BROOD.late.clear` 0.36 s of its impact (the spacing rule's
+  0.3 s and a frame; the ledger and the running move's beats; bullets in the air no longer hold it), and
+  after `late.drop` 4.5 s held in all it gutters out without its blow rather than cue onto one. Every brood
+  flash calls `bullets.bar(tell, flashLead)`, a new track the bullets' `cue()` reads for `CLASH`: a bullet
+  of the other answer due within `clashSep` comes as a dud, as an ember beside an orb does. The dive still
+  starts after `busyWait` (it is the valve that keeps the brood from waiting out a whole flight); only its
+  cue moves. Chosen over routing the dive through the brain's own `_hold`: the brood already reads the
+  same ledger, and the brain's hold is for the running move's beats.
+- **Consequences:** a brood cue never lands within 0.3 s of a wyrm cue of the other answer, whichever is
+  first (scenario BROODBUSY: a 4.3 s busy spell of furnace maws, fan volleys and a breath with three
+  drakelings out of time; an endless guard stream that makes one gutter out; a dive going 0.38 s after a
+  stream ends; a red flash barring an ember). PRESSURE runs the steady bot with the real parry window again
+  (its 0.08 s wrapper from ADR-227 is gone) and passes on all three seeds. A drakeling may now hang above
+  the hero up to 4.5 s, or burst harmlessly. Not played by a human yet.
+
 ## ADR-236 — No reference-footage animation: the mocap tools removed (2026-11-26)
 - **Context:** four tries at animating from the owner's reference films (the `?lights=steel` attacks, Tian
   Lei's blows fitted from a bare-handed film (ADR-208), the refstudy kit, and the hero remade on a
@@ -6449,6 +6472,134 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   `docs/MOTION.md` (PR 148) are closed unmerged. Animation is authored by hand as before.
 - **Consequences:** ADR-208's engine is gone (its decision record stays as history). No game behaviour
   changes: nothing in the game read these files.
+
+## ADR-225 — Tian Lei's and Halcyon's motion: held blue / red windups, snap blows, Halcyon a flier (2026-11-26)
+
+- **Context:** the owner asked for every boss's poses, animations and motion to be audited and to look
+  accurate, for each blue (parry) and red (perfect-dodge) blow to have a readable held windup pose, and for
+  some much faster normal blows that are still fair. This pass covers Tian Lei (`?level=ring`) and Halcyon
+  (`?level=city`); other sessions did the other bosses. Measured with `asc.mjs . audit` (ADR-162's) and a new
+  `city.mjs . audit` (the same measure for a flier: no frame is left out for being off the ground).
+- **What the audit found.** Tian Lei: (1) a blue or red blow had no held pose: its coil was keyed at u 0.7 -
+  0.78 of the windup, so through most of the windup he stood in his guard and the striking limb was still
+  drifting 8 - 50 cm into the coil when the strike began; (2) Eight Gates' low sweep jolts the knee hardest of
+  all his moves (709 mm/frame²) and its planted feet slide ~2 m; (3) a palm thrust on a dash (Piercing Palm,
+  Hundred Hands' last) skates across 2 - 3 m in its stance; (4) the cross lands ~1 m to his left of the line
+  to the hero and the jab ~0.4 m (the body turns past the target; at the game camera the miss is in depth and
+  reads as a blow to the head). Halcyon: (1) his feet sat exactly at his root's height in every punch and
+  kick, a planted fighting stance at his 0.5 m hover: he stood on air; (2) every punch landed at 1.9 - 2.0 m,
+  over the hero's head (Fly-By's fist at 2.55 m); (3) his elbow was ~130° at every contact (the arm fix
+  ADR-162 gave Tian Lei never reached him); (4) the Backhand and the slap land beside the hero.
+- **Decision** (behind two live look switches; `0` plays each as before):
+  1. `?ascMotion=a` (`ascendant/motion.js`, through the realiser's `keysOf`): every blue and red builder blow
+     is in a pose of its own by u 0.36 (`HELD_AT`) and holds it to the cock, tightening a few cm (the striking
+     limb drawn further, the weight lower); red holds sink deeper and wider than blue ones. The strike from the
+     cock is the beat's own. A normal blow keeps its keys. The shared builders are unchanged (the Fox and Xin
+     Yi build with them): their beats only carry a `mo` descriptor (what they were built from).
+  2. `?halMotion=a` (`halcyon/motion.js`): those held windups, plus the flier's legs on every builder blow
+     (his hover's legs into the coil, both trailing back through the strike; a kick's other leg hangs), the
+     blow aimed down (the hand `motion.aim.hand` lower, the body pitched over it) while his root dips from the
+     hover to `motion.dip` (0.2 m) through the strike (`flight.js _dip`), and `armSoft` as Tian Lei's.
+  3. The snap blows: a white blow from the guard, ~0.3 s windup (`TUNING.snap`, unscaled by form or phase),
+     8 - 9 damage, at most a short step in: Snap Jab and Snap Hook (Tian Lei), Flick and Tap (Halcyon). Their
+     keys move only the striking arm and the hips (`SNAP_KEYS`), so the rest is the stance he stands in: the
+     blow reads from the stance itself. Weighed only with the switch (`weigh`). Tests DATA let a snap's first
+     windup sit under `minFirstWindup` when it is white, deals at most `snap.maxDamage` and flashes after its tell.
+- **Why this way:** poses only, through the hook ADR-208 left (`keysOf`), keep every timing, tell, zone and test
+  of the fight; the switch flips live from the next move, so the owner can compare in one fight. Holding the coil
+  instead of lengthening the windup keeps the pace the owner set while making the read earlier. Halcyon's dip
+  is the one root change: in reach (the flight rule) and only through a strike.
+- **Consequences:** `asc.mjs . heldmotion`: 495 realisations identical on and off; the striking end moves 0 - 7 cm
+  through the hold (8 - 50 cm before); 35 blue and red blows reworked. `city.mjs . halmotion`: 216 realisations
+  identical; fists at 1.29 - 1.67 m (1.74 - 2.10 before), elbows 148 - 160° (~130°), feet 0.35 - 0.48 m behind his
+  hips (a planted stance before). The realiser's `keysOf` hook, removed as unused by ADR-236 while this was
+  in review, is back for this use (poses only, no footage).
+- **Outcome (the owner, 2026-11-26):** "Ship both (a)" from the before / after films: both switches are the
+  default (lookSwitch PICKED), so the snap blows are in both bosses' pools. Not changed (for the owner to choose): the sweep's jolt, the dash thrusts'
+  skating, the cross's sideways line, Fly-By's pass height. The holds are short in a string's quick beats
+  (0.12 - 0.24 s): `HELD_AT` is the lever.
+## ADR-220 — The bosses drawn in the hero's style: his shading and his outline, their own colours (2026-11-26)
+
+**Context.** The owner: everything but the Cinder Wyrm and Wen Yao still does not look like the hero's ASCII.
+Beside the hero at the game camera, ADR-194's lift prints a boss's cloth as one even, bright field of dense letters,
+inside a 1 px line; the hero runs from a near-black core through grey shoulders to a lit edge and the pale hem,
+inside a line two pixels wide at 1440p. A first round (the hero's letter size, his dark cloak values in each boss's
+hue, the pale hem up to the thigh, skirts flared and torn) was turned down: "i didnt mean make it the same color or
+cloth texture as the main character. i meant the style and engine look ... shen hui i like that his original hat
+has its own color and detailed ascii look". Asked which part, the owner picked his shading and his outlines and
+rim (not his letter size).
+
+**Decision.** One live switch per boss, duelist/heroPrint.js (`HERO_PRINT` level -> switch, `HERO_STYLE`), read every
+frame by main.js: `?ashHero=` `?lordHero=` `?ascHero=` `?sheathHero=` `?halHero=` = `0` as shipped, `a` his shading,
+`b` his outline, `c` both.
+- **Shading** (`U.uBossHero.x`, materials.js, inside the bosses' print, `#ifndef SG_HERO_SELF`): the boss's cloth /
+  hair / plate light (`fillC`, never `artFill`: his colours) is scaled by `mix(0.15, 1, k)`, `k` = the key light's
+  cel step x a rise toward his shoulders (0.45 at 0.55 m above his feet to 1 at 1.55 m), never below 1 on the hem
+  or from 1.45 m up (his head and hat as they are).
+- **Outline** (`uBossLike.z`, pipeline.js `cellMain`): a boss's ink-line step `gLine` = max(his, the hero's
+  `uSelfPx`): his silhouette, dotted rim and inner lines at the hero's width, his letters on his own cell. On a
+  boss whose letters follow his size (Tian Lei, Halcyon) it already is: b changes nothing there.
+- **Picks:** c for Shen Hui, Varr Nihil and Lu Wusheng; a for Tian Lei and Halcyon (lookSwitch PICKED; Lab LOOKS
+  rows, live). `?looks=old` draws `0`.
+
+**Not changed.** Colours, outfits, letter cells, the hem, the face: ADR-194's print. The wyrm, Wen Yao and Xin Yi
+have no switch. Turned down and removed: the dark cloak values, the tall hem, the flared and torn skirts.
+
+**Cost.** A few ALU per boss fragment and a wider tap step for his lines; no texture, pass, draw call or geometry.
+
+## ADR-226 — The sword duelists' motion pass: the sword in the hand, held tell poses, quick blows (2026-11-26)
+
+- **Context:** the owner: Shen Hui's and Varr Nihil's positioning angles look weird and their weapons are held
+  awkwardly; every blue and red blow should have its own readable held windup pose; and some much faster normal
+  blows ("instant attacks": short windups, read from the stance). The hero's stance and swings were rebuilt from the
+  owner's reference footage (ADR-207, ADR-214): the bar a straight sword is held to. Measured first (a new audit,
+  `tests/integration/swordAudit.mjs`, opt-in `audit` in `duel.mjs` / `lord.mjs`: every move once, joints in his own
+  frame): the blade is keyed on its own and the hand follows a circle round the shoulder, so the angle between the
+  forearm and the blade averaged 45° (Shen Hui) / 64° (Varr Nihil) and reached the animator's fold limit, 128°
+  (`WRIST_BACK`): the fist turned off the wrist (the hero holds his ≤ 60°). Varr Nihil's form-1 guard sat at 75 - 110°
+  all the time, his staff and form 4 at 90 - 128°. The blade passed through their heads in overheads (Shen Hui: Crane,
+  Heaven-Splitting Fall, the leaping string, Kick Brand; Varr Nihil: Falling Star, Lightning Verse, Cyclone, Grinding
+  Wheel, Thunder Verse); the elbows never opened past 131 - 145° (the bosses' soft reach); Varr Nihil's end-of-string
+  roll of the blade round the wrist stopped with a jolt of 1.0 - 2.5 m a frame² at the point, the largest in either
+  boss. At the blow itself his chest was square to the hero (within ~20°), so the facing at an impact is not the fault.
+- **Decision** (`?ashMotion` / `?lordMotion`, `duelist/lookSwitch.js`, Lab LOOKS rows; 'a' the owner's pick and the
+  default since 2026-11-26, from the before / after films: "i like the new timings and changes"; '0' as before):
+  - **The grip**: `HeroAnimator.gripMax` (rad; 0 = off, the hero and every other boss): after the sword arm's solve, a
+    forearm more than gripMax off the blade's line turns toward it round the elbow (`_gripAlign`), the hand going with
+    it, the elbow where the arm put it, folded no tighter than 38°. The blade's direction, its path and every zone are
+    untouched: only where the hand holds it. `TUNING.motion.gripMax` 0.7 (~40°) and `armSoft` [0.9, 0.985] (the arms
+    open at the end of a blow, as the hero's), read every frame through `kit.motion()` (duelist.js).
+  - **The held tell poses** (`duelist/tellPose.js`): every blue or red BLADE blow (not a feint, a cast, a thrown or
+    released thing, a somersault or a cartwheel; and Piercing Ash, which the owner kept as it was: "the old animation of
+    thrusting the sword instead of bending it") gets `motionKeys`, its keys with a family pose reached at 0.36 of the
+    windup (before the flare) and held to 0.8, the strike from there. Two silhouettes to learn, one per answer: blue
+    **high** (the blade raised over the sword shoulder, point to the sky, tall on the legs, the free hand out at the
+    foe) or **aim** for a thrust (drawn back level by the cheek, the point on the foe); red **coil** (sunk low and
+    coiled away, the blade trailing low behind the hip near the floor, the free hand reaching). Played through the
+    realiser's `keysOf`: the windups, impacts and ends are the same to the frame on and off.
+  - **Varr Nihil's string ends**: `motionRecovery` (the realiser's new `recoveryKeysOf`): the steel shaken off down and
+    out and held a beat (both blades in form 2, the staff swept level in form 3; form 4's was already a shake)
+    instead of the roll round the wrist.
+  - **Quick blows** (`quick` beats, `motionOnly` moves: his `weigh` gives them 0 with the switch off): a normal tell,
+    a fixed windup of `TUNING.minQuickWindup` (Shen Hui 0.34 s, Varr Nihil 0.30 s; their openers today 0.42 - 0.6 s),
+    each glint 0.04 s into it, thrown from the guard with no draw: Shen Hui's Darting Needle (the jian already
+    pointed at the foe, a hand's width back and in) and Flicking Willow (the point flicks up and cuts down across);
+    Varr Nihil's Rising Ember (forms 1 - 3, up from the blade hung low at his side) and Vigil's Fall (form 4, down from
+    the blade upright before his face). The data rule: a quick blow is a normal one and its windup ≥ minQuickWindup
+    (the 0.42 / 0.40 s floor stays for every other first blow). Each links into a string.
+- **Why a solver and families, not hand keys**: hand-invented arm choreography failed with this owner again and
+  again (stiff sword arms, flailing hands); here the arm is measured into line with the steel the moves already
+  swing, and the tell is one learnable silhouette per answer rather than forty separate poses.
+- **Consequences** (the audit, switch on): Shen Hui, all 38 moves: the wrist at most 60° (before 58 - 128), the blade
+  ≥ 18 cm from his head and 21 cm from his body (before 0), elbows open to 150 - 167°. Varr Nihil, 62 moves: wrist
+  ≤ 60° in all but one spell pose (91°, Starless Night's cast), blade ≥ 7 cm from his head (before through it in five
+  moves), the worst jolt in a move 776 → 449 mm a frame² on average, the roll's jolts gone. The pace meters (`duel.mjs`
+  / `lord.mjs . pace`) pass on and off. Test `swordmotion` in both suites (on and off). Open: the feet still slide a
+  little where a planted foot is handed to the clip (another session's `kit.animOpts.liftEase` may serve), the
+  crossing legs inside spins and sweeps; a heavy thrust landed on Shen Hui inside Falling Ash's held raised blade
+  makes the hit reaction jump 0.077 m in a frame (0.055 over the old pose; `duel.mjs . react` measures the layer
+  with the switch off). A held pose's strike keeps the hand as the strike holds it (keyed or blade-driven), and a
+  counter out of his guard gets no held pose.
 ## ADR-241 — Bai Wuji, the Untouched: a barrier opened by perfect answers, weight on every blow, the domain broken or caught, moves routed to three handlers (2026-11-26)
 
 - **Context:** the owner asked for a white-haired, blindfolded sorcerer after a famous character (the reference;

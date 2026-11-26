@@ -305,6 +305,13 @@ Render helpers for creature modules:
     to give, the most it opens]` as fractions of the limb's length; null = as always: `ARM_SOFT`, an elbow of
     ~130° at a full stretch, and a leg that reaches straight). Tian Lei sets both in `_setup` from
     `TUNING.armSoft` (the hero's `HERO_SOFT`) and `TUNING.legSoft`.
+  - **A sword boss's grip** (ADR-226): `HeroAnimator.gripMax` (rad; 0 / unset = off, the hero and every other boss):
+    after the sword arm's solve, a forearm more than gripMax off the blade turns toward it round the elbow
+    (`_gripAlign`; the hand and `rig.sword.position` move, the blade's direction never). A duelist kit's optional
+    `motion()` → `{ gripMax, armSoft } | null` is read every frame by `duelist.js` `_animate` (Shen Hui and Varr
+    Nihil: their `TUNING.motion` while `?ashMotion` / `?lordMotion` is on, else null: the animator as before).
+    Their moves marked `motionOnly` are weighed 0 by the actor's `weigh` while the switch is off; a beat marked
+    `quick` (a normal tell) may wind up `TUNING.minQuickWindup` instead of `minFirstWindup` (the data rule).
   - **The bosses' letters** (ADR-154, ADR-155, ADR-170): a boss whose kit sets `letters` (today Wen Yao's `FOX_KIT`, behind
     `?foxLetters=b`, Tian Lei's `ASC_KIT`, a getter behind `?ascLetters=a`, the owner's pick; `0` the fixed cell; Halcyon's
     `HALCYON_KIT`, a getter behind `?halLetters=a`, the owner's pick, ADR-166; and Xin Yi's `WOKEN_KIT`, the same getter
@@ -325,6 +332,11 @@ Render helpers for creature modules:
     `lookOf('bossPrint', '0', 'b')`. Every ink-line material reads `uBossPrint` (`HERO_ART_SHARED`) except the
     player's (`heroSelf` compiles `SG_HERO_SELF`): the fill is lifted in the shader, so whoever writes `uArtFill`
     needs no change.
+    **The bosses drawn in the hero's style** (ADR-220): main.js also writes `U.uBossHero.x` (his shading: the boss's
+    cloth light falls off away from the key light and down his body; `HERO_ART_SHARED`, read inside the print's
+    `#ifndef SG_HERO_SELF`, scaling `fillC` only) and `uBossLike.z` (his ink lines at the hero's line width:
+    `gLine = max(uHeroPx.x, uSelfPx)` in `cellMain`) from `heroPrint(level.id)` (`duelist/heroPrint.js`: `HERO_PRINT`
+    level -> switch, `HERO_STYLE` a / b / c, frozen records, no allocation), both 0 with `?bossPrint=0`.
     Ink lines are drawn per pixel by the pass, not from glyphs. `U.uArtHeroCel` (vec3: step from
     shadow to lit between x and y, z = share of the step) cel-shades the art source;
     `U.uHeroPartRim[20]` (vec4: tint × gain) is each part's silhouette ink; fill style + 8 = a
@@ -2408,6 +2420,8 @@ posture break. No per-frame allocations. `bullets.js` must not import `attacks.j
   `LATE` (too late to react to: the caller makes it a dud or lets it hit) or **`CLASH`** (an announced
   impact of the other answer, an ember beside an orb, is within `clashSep` 0.35 s: not announced, the
   caller makes the bullet a dud). `cover(kind, tti)` registers an impact something else announces.
+  `bar(tell, tti)` registers an impact announced outside the field (the brood's cues): a bullet of the
+  other answer due within `clashSep` of it is a `CLASH` (a dud); it covers nothing (ADR-237).
   A bullet cue stands for one predicted impact (`cueAt`, in the bullet's own time).
 - **The ground tongues** (2026-11-15; they replaced the fire wheel's `startWheel` / `stopWheel` /
   `aimWheel` / `wheel`): `scour({ attack, x, z, times, angs, r0, r1, speed, hold, width, damage,
@@ -2559,7 +2573,7 @@ its death and the phase roar.
   jitter from a hash, never `Math.random`; nothing drawn while no seal burns.
 
 **The brood** (`brood.js` `class Brood`, `dragon.brood`; numbers `BROOD.drakeling`, `BROOD.wisp`,
-`BROOD.hold`, `BROOD.busyWait`): pooled fire creatures (6 drakelings, 8 wisps) that fight beside the
+`BROOD.hold`, `BROOD.late`, `BROOD.busyWait`): pooled fire creatures (6 drakelings, 8 wisps) that fight beside the
 wyrm on their own, like the hazards.
 - `spawn(kind, o)` → an id (0 when the pool is full): kind `'drakeling'` (`o`: `x, y, z` where it
   bursts out, `slot` its place on the ring round the hero, `hp`, `life`) or `'wisp'` (`o.src` the body
@@ -2567,7 +2581,7 @@ wyrm on their own, like the hazards.
   `count(kind?)` live ones (no kind: both); `update(dt)` (every frame, never throws: an error drops that
   creature); `clear()` (all burst harmlessly: the phase roar; also when the wyrm is dying, dead or
   asleep); `reset()` (nothing left: the wyrm's reset and death). `stats` {spawned, cut, burst, hits,
-  lunges, dives}; `nextLunge` (the drakelings' move sets the first lunge `firstLunge` 1.4 s after it ends).
+  lunges, dives, late (cues that waited past `hold.max`), dropped (creatures that guttered out holding)}; `nextLunge` (the drakelings' move sets the first lunge `firstLunge` 1.4 s after it ends).
 - **Their blows** go through `dragon.hitPlayer(o, null)` with a tell and the move's name as `attack`
   (`'drakelings'`, `'wisps'`): a drakeling's lunge normal or blue (block / parry; a parry kills it and,
   as any parried non-bullet blow, calls `dragon.onParried`), its dive and every wisp's burst red. Each
@@ -2581,7 +2595,13 @@ wyrm on their own, like the hazards.
   (`_hold`), while a cue of the other answer is due within `hold.sep` 0.5 s of it (the ledger, the
   wyrm's running move's beats told or not, `_beatNear`; for a red one also any bullet in the air), at
   most `hold.max` 1.8 s per cue. No lunge or dive starts while the wyrm is airborne or its running move
-  has a beat not yet flashed (`_wyrmBusy`), for at most `busyWait` 2.5 s.
+  has a beat not yet flashed (`_wyrmBusy`), for at most `busyWait` 2.5 s. **Past `hold.max`** (a long
+  busy spell: a dive that went after `busyWait`; ADR-237) the cue goes at the first free slot: it holds
+  on only while a cue of the other answer is due within `late.clear` 0.36 s of its impact (the ledger,
+  `_beatNear`; the bullets in the air no longer hold it), and after `late.drop` 4.5 s held in all it
+  gutters out without its blow (`_die`, no cue). Every brood flash calls `bullets.bar(tell, flashLead)`,
+  so a bullet of the other answer due beside it is a dud (`CUE.CLASH`): a brood cue never shares 0.3 s
+  with a cue that asks for the other answer, whichever comes first.
 - **The blade seam.** The brood reads the hero's swing as `bullets.js` does: while
   `player.isSwinging()` and `player.sweep.valid`, the blade's swept quad (`sweep.a`, `b` this frame,
   `pa`, `pb` the last) is tested against each creature (its radius + `cut`), **once per swing**
@@ -5124,8 +5144,11 @@ data and a subclass with a few hooks.
   (per phase); a leap lands `leapLead` s and an actor's blink `blinkLead` s ahead of where the hero is
   going (`blinkKeep`: never in front of him); director.js weighs a move whose first blow cannot reach
   where the hero will be x `miss`. Not a counter, a flurry, a stance, a draw or a transformation.
-- `realise.js`: `makeRealise({ TUNING, MOVES, compileClip, completeBeat })` → `realise(name, phase, rnd, opts)` (`opts.count`:
-  a `streak` move, his flurry, plays that many beats); `perPhase`. The POSE keys of a beat past its
+- `realise.js`: `makeRealise({ TUNING, MOVES, compileClip, completeBeat, keysOf, recoveryKeysOf })` → `realise(name, phase, rnd, opts)` (`opts.count`:
+  a `streak` move, his flurry, plays that many beats); `perPhase`. `keysOf(beat)` (optional; ADR-225, ADR-226) gives the pose keys a beat plays this time (null: `beat.keys`): a beat's `motionKeys` (its held
+  tell pose, `duelist/tellPose.js` `tellKeys` / `motionize`: Shen Hui and Varr Nihil, `?ashMotion` / `?lordMotion`, on by
+  default). `recoveryKeysOf(move)` (optional) does the same for a move's `recoveryKeys` (the Lord's `motionRecovery`).
+  Timings never depend on either. The POSE keys of a beat past its
   impact (u 1..2) run on the beat's follow, `b.F` s (ADR-126: 72 % of the time to the next beat's
   first pose, 0.24 s at most, 0.3 s for a ring zone, `def.follow` to set it), not on the active
   frames; gameplay (`uAt`, `travel`, `lift`, the zone) keeps the active frames' clock. A key marked

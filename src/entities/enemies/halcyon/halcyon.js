@@ -8,6 +8,7 @@ import { wrapAngle } from '../../../core/math.js';
 import { HAL_LOADOUT, HAL_FIST } from './gear.js';
 import { HAL_POSES } from './poses.js';
 import { MOVES, MOVE_NAMES, CLIP, TRANSITIONS, AFTER, REACT, OPEN, realise } from './moves.js';
+import { halMotionOn } from './motion.js';
 import { TUNING } from './tuning.js';
 import { LINKS } from './links.js';
 import { tintHalcyon, dressHalcyon, halLettersOn } from './look.js';
@@ -208,6 +209,8 @@ export class Halcyon extends Duelist {
   /** His AI weighs a move: the tower moves need a standing top, the grab a hero on his feet, the eyes no
    *  beam lit, Curbside and Monument a piece in reach. */
   weigh(name, def, w) {
+    // (the snap blows come with his reworked motion: ADR-225, `?halMotion=a`)
+    if (def.snap && !halMotionOn()) return 0;
     if (def.once || def.beats.some((b) => b.halCurb || b.halArm)) w = this.terrain.weigh(def, w);
     if (!(w > 0)) return 0;
     const pl = this.game.player;
@@ -366,6 +369,12 @@ export class Halcyon extends Duelist {
 
   /** Every frame after the brain: his eyes, his city, then his flight (the hover last). */
   brainFrame(dt) {
+    // (ADR-225, `?halMotion=a`: his arms open at the end of a blow, his kicks keep a little bend; live)
+    if (this.anim) {
+      const on = halMotionOn();
+      this.anim.armSoft = on ? this.T.motion.armSoft : null;
+      this.anim.legSoft = on ? this.T.motion.legSoft : null;
+    }
     this.glare.frame(dt);
     this.terrain.frame(dt);
     this.flight.frame(dt);
