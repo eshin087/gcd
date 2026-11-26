@@ -968,6 +968,48 @@ async function scenarioFight() {
   }
 }
 
+// ================================================================== scenario: downtime (integration, item 5)
+/** A half-skilled defender (answers half his cues) in god mode, a whole fight per seed: every knockdown
+ *  of the hero; nothing lands while he is down; the stretch out of his own hands; down -> his next cue. */
+async function scenarioDowntime() {
+  out('\n== scenario DOWNTIME (the hero knocked down: nothing lands on him down, no lock chained on a knockdown past the cap, the time to his next cue) ==');
+  const SEEDS = (process.env.GCD_WSEEDS ?? '4242,7').split(',').map(Number);
+  const OUTS = new Set(['stagger', 'knockdown', 'guardBreak', 'held']);
+  const rows = [];
+  for (const seed of SEEDS) {
+    const G = build(seed, true);
+    const { game } = G;
+    const d = game.dragon, p = game.player;
+    duel(G, { dist: 3, ai: true });
+    G.defend = makeDefender(G, { world: true, skill: 0.5, rng: mulberry32(seed * 13) });
+    const flashes = [];
+    G.watch = (n, e) => { if (n === 'combat:flash' && e?.source === 'dragon') flashes.push(game.time); };
+    const downs = [], onDown = [];
+    let cur = null, outRun = 0, freeRun = 9, outMax = 0, outMaxAt = 0, multi = 0;
+    run(G, Number(process.env.GCD_FSECS ?? 420), () => {
+      fencer(G);
+      const st = p.state;
+      if (st === 'knockdown' && !cur) cur = { t0: game.time, h0: G.hits.length };
+      if (st !== 'knockdown' && cur) { cur.t1 = game.time; downs.push(cur); cur = null; }
+      if (OUTS.has(st)) { outRun = (freeRun < 0.2 ? outRun + freeRun : 0) + DT; freeRun = 0; if (outRun > outMax) { outMax = outRun; outMaxAt = game.time; } }
+      else freeRun += DT;
+    }, () => d.mode === 'dead' || game.state === 'victory');
+    for (const k of downs) {
+      for (const h of G.hits.slice(k.h0)) if (h.t > k.t0 + 0.02 && h.t < k.t1 - 1e-3 && h.r === RESULT.HIT) onDown.push(`${h.attack} at ${(h.t - k.t0).toFixed(2)} s down`);
+      k.next = (flashes.find((t) => t > k.t1) ?? NaN) - k.t1;
+      k.nextFromDown = k.next + (k.t1 - k.t0);
+    }
+    const nx = downs.map((k) => k.next).filter(Number.isFinite).sort((a, b) => a - b);
+    const q = (v, f) => (v.length ? v[Math.min(v.length - 1, Math.floor(v.length * f))] : NaN);
+    rows.push({ seed, n: downs.length, onDown, outMax, outMaxAt, nx, len: downs.map((k) => k.t1 - k.t0) });
+    out(`   seed ${seed}: ${downs.length} knockdowns (each ${q(downs.map((k) => k.t1 - k.t0).sort(), 0.5)?.toFixed(2)} s); up -> his next cue: min ${nx[0]?.toFixed(2)} / median ${q(nx, 0.5)?.toFixed(2)} / max ${nx[nx.length - 1]?.toFixed(2)} s (down -> next cue median ${(q(nx, 0.5) + 1.3).toFixed(2)} s); longest stretch out of his own hands ${outMax.toFixed(2)} s; hits on him down: ${onDown.length}`);
+  }
+  assert(rows.every((r) => r.n >= 3), `the half-skilled defender is knocked down in every fight (${rows.map((r) => r.n).join(', ')})`);
+  assert(rows.every((r) => r.onDown.length === 0), `nothing of his lands on the hero while he is down (${rows.flatMap((r) => r.onDown).slice(0, 4).join(' · ') || 'none'})`);
+  // (the knockdown is the engine's 1.3 s; what must not happen is a lock chained onto it)
+  assert(rows.every((r) => r.outMax <= 1.3 + 0.2 + 1e-6), `no lock is chained on a knockdown: the longest stretch out of his own hands is the knockdown itself (${rows.map((r) => r.outMax.toFixed(2)).join(', ')} s <= 1.5)`);
+}
+
 // ================================================================== scenario: events
 async function scenarioEvents() {
   out('\n== scenario EVENTS (his own events are in the catalogue) ==');
@@ -1198,6 +1240,7 @@ const S = {
   fight: scenarioFight,
   pace: scenarioPace,
   events: scenarioEvents,
+  downtime: scenarioDowntime, // (the integration pass)
   // melee: scenarios
   strings: scenarioStrings,
   sides: scenarioSides,
