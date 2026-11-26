@@ -293,6 +293,9 @@ by keying pixels in one blurred view. `bone_keys` makes that the attack path:
   hold), eased from / to the tracked motion over `blend` frames before its first and after its last key
   (a loop's channel with two or more keys wraps the cycle: "pose keys for both arms through a loop" is
   `"bone_keys": {"keys": [{"phase": 0, "upperArmR": .., "foreArmR": .., ..}, {"phase": 0.5, ..}]}`).
+- Two keys of a bone more than 45 degrees apart are joined on the GREAT CIRCLE (not the chord). A swing of
+  more than about 120 degrees can take either way round: add a key in between (a loop's arm swing wants
+  four keys a cycle: back, down, front, down).
 - An arm or leg keyed with both bones at a frame takes its elbow / knee hinge from them; otherwise the
   hinge stays continuous with the frame before (no flip). Keyed bones are kept from `despike`.
 - Legs: key the STEPPING leg; leave a planted leg to the foot pinning (it is re-solved as the hips move:

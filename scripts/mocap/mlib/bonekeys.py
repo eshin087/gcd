@@ -120,6 +120,30 @@ def _euler(lean, side, twist):
     return skel.qmul(skel.qaxis(Y, np.radians(twist)), skel.qmul(skel.qaxis(X, np.radians(lean)), skel.qaxis(-Z, np.radians(side))))
 
 
+def _densify(ks, n, loop):
+    """direction keys more than 45 degrees apart get points in between on the GREAT CIRCLE (a spline of the
+    components alone cuts the chord: a forearm swinging back to front would point up half way)"""
+    out = []
+    pairs = list(zip(ks, ks[1:] + ([(ks[0][0] + n, ks[0][1])] if loop else [])))
+    for (fa, a), (fb, b) in pairs:
+        out.append((fa, a))
+        a_, b_ = np.asarray(a), np.asarray(b)
+        ang = np.degrees(np.arccos(np.clip(a_ @ b_, -1, 1)))
+        m = int(ang // 45)
+        if m and fb - fa > m + 1:
+            om = np.radians(ang)
+            for i in range(1, m + 1):
+                u = i / (m + 1)
+                v = (np.sin((1 - u) * om) * a_ + np.sin(u * om) * b_) / max(np.sin(om), 1e-6)
+                if np.sin(om) < 1e-3:  # opposite: any great circle; through his up
+                    v = _n((1 - u) * a_ + u * b_ + np.sin(np.pi * u) * Y)
+                f = fa + u * (fb - fa)
+                out.append((f % n if loop else f, list(_n(v))))
+    if not loop:
+        out.append(ks[-1])
+    return out
+
+
 def channels(spec_bk, n, fps, B, loop):
     """{channel: (values (n, ...), weight (n,), space)}"""
     keys = spec_bk.get('keys', [])
@@ -148,6 +172,9 @@ def channels(spec_bk, n, fps, B, loop):
             else:
                 raise ValueError('bone_keys: unknown bone %r (bones: %s, blade, flat, %s)' % (nm, ', '.join(BONES), ', '.join(ROTS)))
     out = {}
+    for (nm, sp), ks in list(raw.items()):
+        if nm in BONES or nm in ('blade', 'flat'):
+            raw[(nm, sp)] = _densify(sorted(ks, key=lambda k_: k_[0]), n, loop and len(ks) > 1)
     for (nm, sp), ks in raw.items():
         val, inside = spline([a for a, _ in ks], [b for _, b in ks], n, loop and len(ks) > 1)
         if nm in BONES or nm in ('blade', 'flat'):
