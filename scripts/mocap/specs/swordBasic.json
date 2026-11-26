@@ -1,0 +1,106 @@
+{
+ "set": "swordBasic",
+ "title": "One-handed sword: the basics",
+ "film": "sword",
+ "out": "src/entities/hero2/clips/swordBasic.js",
+ "clips": [
+  {
+   "name": "swordIdle",
+   "title": "Idle (sword)",
+   "src": "sword 0:00-0:10",
+   "kind": "hold",
+   "fps": 30,
+   "n": 30,
+   "sword": true,
+   "takes": [
+    {
+     "t0": "0:00.10",
+     "t1": "0:02.90",
+     "view": "right"
+    },
+    {
+     "t0": "0:03.10",
+     "t1": "0:05.90",
+     "view": "front"
+    },
+    {
+     "t0": "0:06.10",
+     "t1": "0:07.90",
+     "view": "left"
+    }
+   ],
+   "props": {
+    "R": "sword",
+    "L": null
+   },
+   "from": "swordIdle",
+   "to": "swordIdle"
+  },
+  {
+   "name": "light1",
+   "title": "Light attack 1",
+   "src": "sword 0:23-1:40",
+   "kind": "oneshot",
+   "fps": 60,
+   "sword": true,
+   "search": 0.45,
+   "takes": [
+    {
+     "t0": "0:26.05",
+     "t1": "0:27.25",
+     "view": "right"
+    }
+   ],
+   "phases": {
+    "windup": "0:26.55",
+    "active": "0:26.85",
+    "recover": "0:27.20"
+   },
+   "events": [
+    {
+     "t": "0:26.75",
+     "name": "hit"
+    }
+   ],
+   "props": {
+    "R": "sword",
+    "L": null
+   },
+   "from": "swordIdle",
+   "to": "swordIdle"
+  },
+  {
+   "name": "light2",
+   "title": "Light attack 2",
+   "src": "sword 0:23-1:40",
+   "kind": "oneshot",
+   "fps": 60,
+   "sword": true,
+   "search": 0.4,
+   "takes": [
+    {
+     "t0": "0:27.20",
+     "t1": "0:28.80",
+     "view": "right"
+    }
+   ],
+   "phases": {
+    "windup": "0:27.55",
+    "active": "0:27.80",
+    "recover": "0:28.40"
+   },
+   "events": [
+    {
+     "t": "0:27.70",
+     "name": "hit"
+    }
+   ],
+   "props": {
+    "R": "sword",
+    "L": null
+   },
+   "from": "light1",
+   "to": "swordIdle"
+  }
+ ]
+}
