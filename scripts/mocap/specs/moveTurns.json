@@ -1,0 +1,610 @@
+{
+ "set": "moveTurns",
+ "title": "Movement: turning",
+ "film": "move",
+ "out": "src/entities/hero2/clips/moveTurns.js",
+ "clips": [
+  {
+   "name": "walkTurnL90",
+   "title": "Walk to turning (90 degree turn), left",
+   "src": "move 3:56-4:48",
+   "kind": "oneshot",
+   "fps": 30,
+   "turn": 90,
+   "search": 0.15,
+   "takes": [
+    {
+     "t0": "4:01.57",
+     "t1": "4:03.05",
+     "view": "right"
+    }
+   ],
+   "from": "walk",
+   "to": "walk"
+  },
+  {
+   "name": "walkTurnR90",
+   "title": "Walk to turning (90 degree turn), right",
+   "src": "move 3:56-4:48",
+   "kind": "oneshot",
+   "fps": 30,
+   "turn": -90,
+   "search": 0.15,
+   "takes": [
+    {
+     "t0": "4:14.80",
+     "t1": "4:16.30",
+     "view": "left"
+    }
+   ],
+   "from": "walk",
+   "to": "walk"
+  },
+  {
+   "name": "runTurnL90",
+   "title": "Run to turning (90 degree turn), left",
+   "src": "move 4:48-5:37",
+   "kind": "oneshot",
+   "fps": 30,
+   "turn": 90,
+   "search": 0.3,
+   "takes": [
+    {
+     "t0": "5:16.10",
+     "t1": "5:17.25",
+     "view": "back"
+    }
+   ],
+   "from": "runT",
+   "to": "runT"
+  },
+  {
+   "name": "runTurnR90",
+   "title": "Run to turning (90 degree turn), right",
+   "src": "move 4:48-5:37",
+   "kind": "oneshot",
+   "fps": 30,
+   "turn": -90,
+   "search": 0.15,
+   "takes": [
+    {
+     "t0": "5:20.00",
+     "t1": "5:21.40",
+     "view": "back"
+    }
+   ],
+   "from": "runT",
+   "to": "runT"
+  },
+  {
+   "name": "sprintTurnL90",
+   "title": "Sprint to turning (90 degree turn), left",
+   "src": "move 5:37-6:17",
+   "kind": "oneshot",
+   "fps": 30,
+   "turn": 90,
+   "search": 0.15,
+   "takes": [
+    {
+     "t0": "6:00.45",
+     "t1": "6:01.35",
+     "view": "front",
+     "flip": true
+    }
+   ],
+   "from": "sprintT",
+   "to": "sprintT",
+   "note": "the MIRROR of sprintTurnR90: the footage's left and right sprint turns are mirror images (6:04.1-6:04.7 left: the left leg trails while the right plants; 6:00.9-6:01.3 right: the right trails). The right turn's take with flip + a front hint mirrors him exactly (sides swapped, x negated). The left takes tried directly (5:50.30, 6:03.60 back, 5:39.00 side) mirrored, lost a foot or swung the yaw both ways"
+  },
+  {
+   "name": "sprintTurnR90",
+   "title": "Sprint to turning (90 degree turn), right",
+   "src": "move 5:37-6:17",
+   "kind": "oneshot",
+   "fps": 30,
+   "turn": -90,
+   "search": 0.15,
+   "takes": [
+    {
+     "t0": "6:00.45",
+     "t1": "6:01.35",
+     "view": "back"
+    }
+   ],
+   "from": "sprintT",
+   "to": "sprintT",
+   "note": "starts at 6:00.45: from 6:00.20 the back view's facing swung 39 degrees the wrong way first. No swing (with it the mirrored twin floated). Travel is under-measured (a back view does not see the stride's depth)"
+  },
+  {
+   "name": "rotateL",
+   "title": "Rotating in place, left",
+   "src": "move 6:17-6:40",
+   "kind": "oneshot",
+   "fps": 30,
+   "turn": 360,
+   "takes": [
+    {
+     "t0": "6:23.12",
+     "t1": "6:23.82",
+     "view": "front",
+     "yaw": 0
+    }
+   ],
+   "from": "idle",
+   "to": "idle",
+   "search": 0.2,
+   "ground": "body",
+   "travel_m": 0.0,
+   "sheet_k": 10,
+   "pose_keys": [
+    {
+     "f": 0,
+     "joint": "hips",
+     "euler": [
+      0,
+      0.0,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 1,
+     "joint": "hips",
+     "euler": [
+      0,
+      7.7,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 2,
+     "joint": "hips",
+     "euler": [
+      0,
+      12.3,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 3,
+     "joint": "hips",
+     "euler": [
+      0,
+      15.0,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 4,
+     "joint": "hips",
+     "euler": [
+      0,
+      12.7,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 5,
+     "joint": "hips",
+     "euler": [
+      0,
+      6.3,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 6,
+     "joint": "hips",
+     "euler": [
+      0,
+      0.0,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 7,
+     "joint": "hips",
+     "euler": [
+      0,
+      -6.0,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 8,
+     "joint": "hips",
+     "euler": [
+      0,
+      -12.0,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 9,
+     "joint": "hips",
+     "euler": [
+      0,
+      -18.0,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 10,
+     "joint": "hips",
+     "euler": [
+      0,
+      -23.5,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 11,
+     "joint": "hips",
+     "euler": [
+      0,
+      -31.5,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 12,
+     "joint": "hips",
+     "euler": [
+      0,
+      -37.5,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 13,
+     "joint": "hips",
+     "euler": [
+      0,
+      -41.5,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 14,
+     "joint": "hips",
+     "euler": [
+      0,
+      -43.5,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 15,
+     "joint": "hips",
+     "euler": [
+      0,
+      -42.5,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 16,
+     "joint": "hips",
+     "euler": [
+      0,
+      -41.2,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 17,
+     "joint": "hips",
+     "euler": [
+      0,
+      -35.6,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 18,
+     "joint": "hips",
+     "euler": [
+      0,
+      -27.9,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 19,
+     "joint": "hips",
+     "euler": [
+      0,
+      -20.3,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 20,
+     "joint": "hips",
+     "euler": [
+      0,
+      -10.6,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 21,
+     "joint": "hips",
+     "euler": [
+      0,
+      0.0,
+      0
+     ],
+     "blend": 0
+    }
+   ],
+   "note": "one full turn of the steady spin (front 6:23.12 to front 6:23.82, 0.70 s; the spin speeds up from 0.89 s a turn to about 0.65). The root's yaw is the tool's measured turn scaled to 360; the hips' yaw is keyed every frame (pose_keys, blend 0) so root + hips = the facing read off the footage at each quarter: front 6:23.12, his left side 6:23.30, back 6:23.45, his right side 6:23.65, front 6:23.82. ground body (no foot is found planted in the spin: without it the hips floated 0.25 m), travel 0 (he circles on the spot)"
+  },
+  {
+   "name": "rotateR",
+   "title": "Rotating in place, right",
+   "src": "move 6:17-6:40",
+   "kind": "oneshot",
+   "fps": 30,
+   "turn": -360,
+   "takes": [
+    {
+     "t0": "6:23.12",
+     "t1": "6:23.82",
+     "view": "back",
+     "yaw": 180,
+     "flip": true
+    }
+   ],
+   "from": "idle",
+   "to": "idle",
+   "search": 0.2,
+   "ground": "body",
+   "travel_m": 0.0,
+   "pose_keys": [
+    {
+     "f": 0,
+     "joint": "hips",
+     "euler": [
+      0,
+      -0.0,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 1,
+     "joint": "hips",
+     "euler": [
+      0,
+      -7.7,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 2,
+     "joint": "hips",
+     "euler": [
+      0,
+      -12.3,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 3,
+     "joint": "hips",
+     "euler": [
+      0,
+      -15.0,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 4,
+     "joint": "hips",
+     "euler": [
+      0,
+      -12.7,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 5,
+     "joint": "hips",
+     "euler": [
+      0,
+      -6.3,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 6,
+     "joint": "hips",
+     "euler": [
+      0,
+      -0.0,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 7,
+     "joint": "hips",
+     "euler": [
+      0,
+      6.0,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 8,
+     "joint": "hips",
+     "euler": [
+      0,
+      12.0,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 9,
+     "joint": "hips",
+     "euler": [
+      0,
+      18.0,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 10,
+     "joint": "hips",
+     "euler": [
+      0,
+      23.5,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 11,
+     "joint": "hips",
+     "euler": [
+      0,
+      31.5,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 12,
+     "joint": "hips",
+     "euler": [
+      0,
+      37.5,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 13,
+     "joint": "hips",
+     "euler": [
+      0,
+      41.5,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 14,
+     "joint": "hips",
+     "euler": [
+      0,
+      43.5,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 15,
+     "joint": "hips",
+     "euler": [
+      0,
+      42.5,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 16,
+     "joint": "hips",
+     "euler": [
+      0,
+      41.2,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 17,
+     "joint": "hips",
+     "euler": [
+      0,
+      35.6,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 18,
+     "joint": "hips",
+     "euler": [
+      0,
+      27.9,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 19,
+     "joint": "hips",
+     "euler": [
+      0,
+      20.3,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 20,
+     "joint": "hips",
+     "euler": [
+      0,
+      10.6,
+      0
+     ],
+     "blend": 0
+    },
+    {
+     "f": 21,
+     "joint": "hips",
+     "euler": [
+      0,
+      -0.0,
+      0
+     ],
+     "blend": 0
+    }
+   ],
+   "sheet_k": 10,
+   "note": "the MIRROR of rotateL (its take with flip and a back hint, its hips keys negated): the right spin's own takes (6:26.43, 6:27.10: front to front, 0.69 s a turn, the same speed) start with the tracker reading the front view as a back view, which twists his chest 180 degrees against his hips"
+  }
+ ]
+}

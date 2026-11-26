@@ -21,18 +21,19 @@ import { createSurfaceGlyphMaterial, FLAG } from '../../../render/materials.js';
 import { limbGeometry, ellipsoidGeometry, hornGeometry, cylindricalGUV } from '../../../render/glyphGeometry.js';
 import { batchRigid } from '../../../render/rigidBatch.js';
 import { markCaster } from '../../../render/pipeline.js';
+import { installLean, LEAN } from '../../player/model.js';
 import { HJ, HJI } from './hskeleton.js';
 import { HORSE } from './hdims.js';
 
 // ------------------------------------------------------------------ the art sources (materials.js wyrmFeatures)
 const LIT = { key: [-0.5, 0.9, 1.0], envSat: 0.3 };
 export const HORSE_ART = {
-  hide: { ...LIT, ink: [0.11, 0.09, 0.08], light: [1.0, 0.8, 1.0, 0.025], strokes: 'axis', strokeEdge: 0.35, vary: 0.5 },
+  hide: { ...LIT, ink: [0.13, 0.105, 0.09], light: [1.0, 0.8, 1.0, 0.035], strokes: 'axis', strokeEdge: 0.35, vary: 0.5 },
   // the mane and tail: strands, so strokes along the hair everywhere
   hair: { ...LIT, ink: [0.1, 0.09, 0.085], light: [1.0, 0.8, 0.9, 0.04], strokes: 'axis', strokeEdge: 0, vary: 0.4 },
   hoof: { ...LIT, ink: [0.22, 0.21, 0.2], light: [1.0, 0.8, 1.0, 0.03], strokes: 'axis', strokeEdge: 0.3 },
   leather: { ...LIT, ink: [0.2, 0.1, 0.065], light: [1.0, 0.8, 0.9, 0.03], strokes: 'axis', strokeEdge: 0.35 },
-  cloth: { ...LIT, ink: [0.14, 0.055, 0.045], light: [1.0, 0.75, 0.7, 0.03], strokes: 'axis', strokeEdge: 0.4 },
+  cloth: { ...LIT, ink: [0.2, 0.065, 0.05], light: [1.0, 0.75, 0.7, 0.03], strokes: 'axis', strokeEdge: 0.4 },
   steel: { ...LIT, ink: [0.36, 0.36, 0.37], light: [1.0, 1.0, 1.4, 0.03], strokes: 'axis', strokeEdge: 0.3 },
   eye: { ...LIT, ink: [0.03, 0.03, 0.03], light: [0.6, 0.4, 0.4, 0.0], strokes: 'none' },
 };
@@ -65,6 +66,9 @@ export function buildHorseBody(game, { castShadow = true } = {}) {
   const U = game?.U;
   const object3d = new THREE.Group();
   object3d.name = 'hero2:horse';
+  // leaned toward the camera that draws it (today's hero's lean, player/model.js installLean, drawn at
+  // scale 1, pivoting on the ground): from the game camera the legs show under the body, as his do
+  const lean = installLean(object3d, 1);
   const joints = [];
   for (let j = 0; j < HJ; j++) {
     const g = new THREE.Group();
@@ -89,17 +93,19 @@ export function buildHorseBody(game, { castShadow = true } = {}) {
   };
 
   // ---- the trunk: haunches, loins, barrel, chest, withers
-  add(J('pelvis'), ellipsoidGeometry(0.27, 0.3, 0.4, { widthSegs: 14, heightSegs: 10 }), 'hide', 0, 0.06, -0.1); // the quarters
+  add(J('pelvis'), ellipsoidGeometry(0.32, 0.3, 0.4, { widthSegs: 14, heightSegs: 10 }), 'hide', 0, 0.06, -0.1); // the quarters (broad: they read from behind)
   add(J('pelvis'), ellipsoidGeometry(0.2, 0.16, 0.22, { widthSegs: 10, heightSegs: 6 }), 'hide', 0, 0.2, -0.05); // the croup
-  add(J('spine1'), ellipsoidGeometry(0.27, 0.3, 0.36, { widthSegs: 14, heightSegs: 10 }), 'hide', 0, -0.08, 0.02); // the loins / flank
-  add(J('spine2'), ellipsoidGeometry(0.31, 0.37, 0.5, { widthSegs: 16, heightSegs: 12 }), 'hide', 0, -0.13, 0.02); // the barrel
-  add(J('withers'), ellipsoidGeometry(0.28, 0.37, 0.36, { widthSegs: 14, heightSegs: 10 }), 'hide', 0, -0.1, 0.1); // the chest
+  add(J('spine1'), ellipsoidGeometry(0.31, 0.3, 0.36, { widthSegs: 14, heightSegs: 10 }), 'hide', 0, -0.08, 0.02); // the loins / flank
+  add(J('spine2'), ellipsoidGeometry(0.35, 0.37, 0.5, { widthSegs: 16, heightSegs: 12 }), 'hide', 0, -0.13, 0.02); // the barrel (the widest)
+  add(J('withers'), ellipsoidGeometry(0.26, 0.37, 0.36, { widthSegs: 14, heightSegs: 10 }), 'hide', 0, -0.1, 0.1); // the chest (narrower than the barrel)
   add(J('withers'), ellipsoidGeometry(0.13, 0.17, 0.32, { widthSegs: 10, heightSegs: 6 }), 'hide', 0, 0.15, -0.04); // the withers' ridge
   add(J('withers'), ellipsoidGeometry(0.22, 0.24, 0.16, { widthSegs: 10, heightSegs: 8 }), 'hide', 0, -0.08, 0.36); // the breast
   // ---- the neck (deep and narrow, thick at its root) and the head
   add(J('neck1'), limbGeometry({ length: 0.36, r0: 0.29, r1: 0.19, radial: 12, rings: 3, capSegs: 2, sx: 0.62 }), 'hide', 0, -0.02, -0.12);
   add(J('neck2'), limbGeometry({ length: 0.34, r0: 0.18, r1: 0.15, radial: 12, rings: 3, capSegs: 2, sx: 0.6 }), 'hide', 0, 0, -0.03);
   add(J('neck3'), limbGeometry({ length: 0.34, r0: 0.15, r1: 0.12, radial: 12, rings: 3, capSegs: 2, sx: 0.65 }), 'hide', 0, 0, -0.03);
+  for (const [n, y, L] of [['neck1', 0.2, 0.38], ['neck2', 0.15, 0.34], ['neck3', 0.12, 0.34]])
+    add(J(n), limbGeometry({ length: L, r0: 0.05, r1: 0.045, radial: 6, rings: 2, capSegs: 1, sx: 0.9, sy: 1.1 }), 'hair', 0, y, -0.05); // the mane's crest
   add(J('head'), ellipsoidGeometry(0.1, 0.12, 0.15, { widthSegs: 12, heightSegs: 8 }), 'hide', 0, 0.0, 0.08); // the skull
   add(J('head'), limbGeometry({ length: 0.42, r0: 0.105, r1: 0.075, radial: 12, rings: 3, capSegs: 2, sx: 0.78, sy: 1.15 }), 'hide', 0, -0.02, 0.12, 0.08); // the face to the muzzle
   add(J('head'), ellipsoidGeometry(0.075, 0.07, 0.08, { widthSegs: 10, heightSegs: 6 }), 'hide', 0, -0.075, 0.52); // the muzzle
@@ -139,7 +145,7 @@ export function buildHorseBody(game, { castShadow = true } = {}) {
   }
   // ---- the tack: the saddle cloth, the saddle, the girth, the stirrup leathers and irons; the bridle
   {
-    const cloth = new THREE.CylinderGeometry(0.34, 0.34, 0.66, 18, 1, true, -1.25, 2.5);
+    const cloth = new THREE.CylinderGeometry(0.38, 0.38, 0.72, 18, 1, true, -1.25, 2.5);
     cloth.rotateX(Math.PI / 2); // its axis along Z, the arc over the top
     cloth.rotateZ(Math.PI / 2);
     cylindricalGUV(cloth);
@@ -201,7 +207,7 @@ export function buildHorseBody(game, { castShadow = true } = {}) {
   {
     const segs = [];
     for (let i = 0; i < TAIL_SEGS; i++) {
-      const w = 0.07 + 0.05 * Math.sin((Math.PI * (i + 0.5)) / TAIL_SEGS);
+      const w = 0.09 + 0.06 * Math.sin((Math.PI * (i + 0.5)) / TAIL_SEGS);
       const m = new THREE.Mesh(limbGeometry({ length: TAIL_SEG, r0: w, r1: w * 0.95, radial: 8, rings: 2, capSegs: 1, sx: 1, sy: 0.45 }), mats.hair);
       object3d.add(m);
       segs.push(m);
@@ -342,7 +348,25 @@ export function buildHorseBody(game, { castShadow = true } = {}) {
   }
 
   const body = {
-    object3d, mats, batch, chains, drawn: true,
+    object3d, mats, batch, chains, lean, drawn: true,
+    view: { lean: true },
+    /** The per-VIEW state before a render (body.js's rule): the lean toward camera `cam` ({ lean: false }:
+     *  upright, a close review camera). */
+    prepareView(cam, opts = null) {
+      const on = (opts ?? body.view)?.lean !== false;
+      lean.k = 0;
+      if (on && cam?.matrixWorld) {
+        const e = cam.matrixWorld.elements;
+        const fx = -e[8], fy = -e[9], fz = -e[10], hh = Math.hypot(fx, fz);
+        if (hh > 1e-3 && Number.isFinite(fy)) {
+          lean.k = Math.tan(Math.min(LEAN.max, Math.max(0, LEAN.frac * Math.atan2(-fy, hh))));
+          lean.dx = fx / hh;
+          lean.dz = fz / hh;
+        }
+      }
+      object3d.updateMatrix();
+      object3d.updateMatrixWorld(true);
+    },
     update(world, dt = 1 / 60) {
       const P = world.p, R = world.r;
       for (let j = 0; j < HJ; j++) {

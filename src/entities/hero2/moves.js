@@ -70,9 +70,9 @@ export const ATTACK_DEFAULT = { want: 'light1', how: 'attack' };
 
 /** The other states, by the animator key player.js plays (`_enter(state, key)`). */
 export const STATES = {
-  roll: { want: 'roll', how: 'roll', land: 61, contact: 0, ch: 'MOVE Dodge roll' },
-  backstep: { want: 'backstep', how: 'roll', land: 23, contact: 0, ch: 'MOVE Backstep' },
-  lean: { want: 'backstep', how: 'roll', land: 23, contact: 0, ch: 'MOVE Backstep (the Long Second)' },
+  roll: { want: 'roll', how: 'roll', land: 44, contact: 0, ch: 'MOVE Dodge roll' },
+  backstep: { want: 'backstep', how: 'roll', land: 17, contact: 0, ch: 'MOVE Backstep' },
+  lean: { want: 'backstep', how: 'roll', land: 17, contact: 0, ch: 'MOVE Backstep (the Long Second)' },
   charge: { want: 'charge1', use: ['light1'], how: 'charge', coil: 0.3, ch: 'SWORD Charge attack #1 (held at the coil)' },
   heal: { want: 'flask', use: ['swordIdle', 'idle'], how: 'loop', ch: 'MOVE Using flasks' },
   block: { want: '2hGuard', use: ['swordIdle', 'idle'], how: 'loop', ch: 'SWORD Guarding stance (two-handed: the only guard filmed)' },
@@ -84,7 +84,7 @@ export const STATES = {
   knockdown: { want: 'hitStrong', use: ['roll'], how: 'once', from: 20, rate: 0.8, contact: 0, ch: 'MOVE Getting hit by a strong attack' },
   dead: { want: 'deathHit', use: ['roll'], how: 'hold', at: 40, contact: 0, ch: 'MOVE Death by an enemy' },
   deadDown: { want: 'deathHit', use: ['roll'], how: 'hold', at: 40, contact: 0, ch: 'MOVE Death by an enemy (on the ground)' },
-  ghostep: { want: 'roll', how: 'roll', land: 61, contact: 0, ch: 'MOVE Dodge roll (a stand-in: not in the footage)' },
+  ghostep: { want: 'roll', how: 'roll', land: 44, contact: 0, ch: 'MOVE Dodge roll (a stand-in: not in the footage)' },
   plunge: { want: 'jumpHeavy', use: ['light1'], how: 'once', from: 0, rate: 1, contact: 0, ch: 'SWORD Jump heavy attack (a stand-in)' },
   flurry: { want: 'light1', use: ['light2'], how: 'once', from: 20, rate: 1.6, contact: 0, ch: 'SWORD Light attacks (a stand-in: not in the footage)' },
 };
