@@ -2576,6 +2576,8 @@ STRATEGY (opt-in, god mode, seeds 4242 and 7): mixed 75 – 84 s, parry 95 – 9
   leg straight (knee 166 - 173 degrees at contact; the sweep 118 - 156 along the floor) and every straight punch with
   the arm long (elbow ~169); hooks, uppercuts, elbows and knee strikes keep their bend. The zones are unchanged;
   the butterfly kicks carry him 0.7 m less, since the longer leg reaches what the travel did.
+- **A cued shot is never too fast to answer:** it takes at least `shotCue` 0.26 s from the gun to you (fired close,
+  it flies a little slower), so its cue always counts (a shot cued under 0.2 s fizzles, the shots' own rule).
 
 ## Halcyon (2026-11-22, ADR-160; `?level=city`)
 

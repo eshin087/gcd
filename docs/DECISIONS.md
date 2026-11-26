@@ -6497,3 +6497,8 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   - The cost: the legs travel further back from a straight kick: the spin kick that follows one jolts ~40 - 60 %
     more (lesson 336 -> 530 mm/f2), within the audit's range (the sweep's 870, pre-existing).
   - The owner, after the film: "Yes, make default": `oneMoves: 'a'` in PICKED (`?oneMoves=0` the moves he shipped with).
+  - Found by the Training catalogue (Two Thunders, send one back): from the side-on aim's forward hand a heavy shot at
+    6 m flew 0.216 s and was cued a frame short of the 0.2 s its own rule asks, so it fizzled. A cued shot now flies
+    at most so fast that it takes `TUNING.shotCue` 0.26 s from the gun (iron.js `_fire`; 23 m/s at 6 m, the old 24
+    from ~6.6 m out; a burst's quiet slug unchanged). MOTIONFIX keeps the shipped moves at 480 mm/f2 and holds the
+    rebuild to 700 (its spin kick after a straight kick: 657).

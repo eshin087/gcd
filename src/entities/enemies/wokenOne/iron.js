@@ -247,14 +247,19 @@ export class IronMoves {
     }
     const v = this.game.player?.vel;
     const C = heavy ? this.T.heavyShot : this.T.shot;
-    const dist = Math.hypot(p.x - x, p.z - z), lead = Math.min(0.3, dist / C.speed) * 0.5;
+    const dist = Math.hypot(p.x - x, p.z - z);
+    // (a cued shot is never on the hero before its cue can count, the shot's own rule: >= 0.2 s cued, or it
+    // fizzles: fired close, from the side-on aim's forward hand, it flies just slow enough to take
+    // TUNING.shotCue s; a burst's quiet slug was cued by its burst's glint)
+    const speed = o?.quiet ? C.speed : Math.min(C.speed, Math.max(6, (dist - C.radius - 0.45) / this.T.shotCue));
+    const lead = Math.min(0.3, dist / speed) * 0.5;
     const aim = o?.aim;
     const tx = aim ? aim.x : p.x + fin(v?.x) * lead, tz = aim ? aim.z : p.z + fin(v?.z) * lead;
     const dx = tx - x, dz = tz - z, l = Math.hypot(dx, dz) || 1;
     // (the fairness guard: it hangs a moment at the muzzle, or goes uncued and harmless)
-    const w = d.fairThrow(Math.max(0, dist - C.radius - 0.45) / C.speed, tell, a?.name ?? 'shot');
+    const w = d.fairThrow(Math.max(0, dist - C.radius - 0.45) / speed, tell, a?.name ?? 'shot');
     const s = d.fx.throwShot?.({ delay: w > 0 ? w : 0,
-      kind: 'blast', x, y: Math.max(0.9, Math.min(1.4, y)), z, dx: dx / l, dz: dz / l, speed: C.speed, radius: C.radius, size: C.size, range: C.range,
+      kind: 'blast', x, y: Math.max(0.9, Math.min(1.4, y)), z, dx: dx / l, dz: dz / l, speed, radius: C.radius, size: C.size, range: C.range,
       tell, damage, knockback: heavy ? 1.6 : 0.3, attack: a?.name ?? (heavy ? 'twoThunders' : 'ironRain'), returnable: heavy, hitKind: 'shot',
     });
     if (s) {

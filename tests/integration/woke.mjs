@@ -1966,6 +1966,8 @@ async function scenarioHeroLike() {
   const LOOK = await imp('src/entities/enemies/wokenOne/look.js');
   const { Pipeline, HERO_CELLS, BOSS_BIAS_H } = await imp('src/render/pipeline.js');
   const { HERO_INK, heroPartValues } = await imp('src/entities/player/model.js');
+  // (the print of ADR-170 on the figure it was made for; the rebuild's figure: scenario REBUILD)
+  setLook('oneBody', '0');
   assert(['oneLetters', 'onePrint'].every((n) => !PENDING.includes(n) && pickedOf(n) === 'a') && LOOK.oneLettersOn() && LOOK.onePrintNow() === 'a',
     'oneLetters and onePrint are the owner pick, a (PICKED, not PENDING; 2026-11-23: "Print a"); they draw a by default');
   const G = build();
@@ -2087,6 +2089,7 @@ async function scenarioHeroLike() {
   const w0 = swing('0'), wa = swing('a'), CS = LOOK.COAT_SWING;
   assert(wa.out <= CS.out + 1e-6 && wa.inw <= CS.in + 1e-6 && (w0.out > CS.out || w0.inw > CS.in),
     `the cartwheel: every panel inside its swing (out ${(wa.out * 57.3).toFixed(0)} deg <= ${(CS.out * 57.3).toFixed(0)}, in ${(wa.inw * 57.3).toFixed(0)} deg <= ${(CS.in * 57.3).toFixed(0)}; as shipped out ${(w0.out * 57.3).toFixed(0)}, in ${(w0.inw * 57.3).toFixed(0)})`);
+  setLook('oneBody', null);
 }
 
 // ================================================================== the motion audit (ADR-162's, for him: ADR-168)
@@ -2427,17 +2430,29 @@ async function scenarioAudit() {
  */
 async function scenarioMotionFix() {
   out('\n== scenario MOTIONFIX (his strings with the hero circling: punches with an open arm, feet that stay planted, no pops) ==');
+  const LS = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  // (the moves of ADR-168 as shipped; then the rebuild, ADR-221, its own bounds: straight limbs travel
+  // further, the spin kick after a straight kick jolts more)
+  for (const mv of ['0', 'a']) {
+    LS.setLook('oneMoves', mv);
+    out(`   -- ?oneMoves=${mv}`);
+    await motionFixRun(mv);
+  }
+  LS.setLook('oneMoves', null);
+}
+async function motionFixRun(mv) {
+  const JOLT = mv === 'a' ? 700 : 480, ELBOW = mv === 'a' ? 145 : 140;
   const names = MOVE_NAMES.filter((n) => MOVES[n].cat === 'string' && !MOVES[n].mirrorOf && !MOVES[n].transition && phasesOf(n).length);
   const { rows } = auditMoves(names.map((name) => ({ name, ph: phasesOf(name)[0] })), [true]);
   const ok = rows.filter((r) => !r.fail);
   assert(ok.length === names.length && names.length >= 4, `${ok.length} of ${names.length} strings run (${names.join(', ')})`);
   const fists = ok.flatMap((r) => r.contact.filter((c) => c.part === 'fistR' || c.part === 'fistL').map((c) => ({ ...c, name: r.name })));
-  const low = fists.filter((c) => c.elbow < 140);
-  assert(fists.length >= 8 && !low.length, `${fists.length} punches land with the arm open: elbows ${Math.min(...fists.map((c) => c.elbow))} - ${Math.max(...fists.map((c) => c.elbow))}° (main: 126 - 131°)${low.length ? `; under 140: ${low.map((c) => `${c.name}#${c.i} ${c.elbow}`).join(', ')}` : ''}`);
+  const low = fists.filter((c) => c.elbow < ELBOW);
+  assert(fists.length >= 8 && !low.length, `${fists.length} punches land with the arm open (>= ${ELBOW}): elbows ${Math.min(...fists.map((c) => c.elbow))} - ${Math.max(...fists.map((c) => c.elbow))}° (main: 126 - 131°)${low.length ? `; under 140: ${low.map((c) => `${c.name}#${c.i} ${c.elbow}`).join(', ')}` : ''}`);
   const feet = ok.map((r) => `${r.name} ${r.slide.toFixed(2)} m / ${r.slideMax}`).join(', ');
   assert(ok.every((r) => r.slideMax < 300 && r.slide < 2.5), `planted feet hold through his tracking turn: under 2.5 m of sliding a string and 300 mm in a frame (${feet}; main: 1.8 - 11.3 m, up to 711 mm)`);
   const jolt = (r) => Math.round(Math.max(r.pb.v, r.pw.v));
-  assert(ok.every((r) => jolt(r) < 480), `no joint jolts past 480 mm/f² in a string: ${ok.map((r) => `${r.name} ${jolt(r)}`).join(', ')} (main: 353 - 653)`);
+  assert(ok.every((r) => jolt(r) < JOLT), `no joint jolts past ${JOLT} mm/f² in a string: ${ok.map((r) => `${r.name} ${jolt(r)}`).join(', ')} (main: 353 - 653)`);
 }
 
 // ================================================================== the pursuit (pressure.pursue)

@@ -28,6 +28,7 @@ export const TUNING = {
   // had and holds it to `to` at most, the strike keeping `keep` of its time at least (heldTell); the fast strings' windups (the first at minFirstWindup, the next at
   // `next`, both unscaled by the phase (`fixed`): next is the floor of flashLead + a frame, and next + a
   // blow's 0.08 active clears minHitGap) and their damage
+  shotCue: 0.26, // s: a cued shot takes at least this long from the gun to the hero (iron.js _fire; the cue needs 0.2)
   held: { drift: 0.75, to: 0.84, keep: 0.7 },
   fast: { first: 0.42, next: 0.28, damage: 7 },
   windupScale: [1, 0.96, 0.92], // (the first windups are authored >= 0.46 s: x 0.92 keeps them over minFirstWindup)
