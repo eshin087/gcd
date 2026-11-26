@@ -6389,6 +6389,7 @@ async function scenarioHeroLife() {
       // (the instant cuts, ?lights=blink: the blade is at the coil, then across, then at the finish; it does not
       // whip through a diagonal, and its line is measured on the blade's own path by `blinkslash`)
       if (/^(blink|last|steel|cut[A-D]|fin|hv[A-C])[A-Z0-9]/.test(name)) continue; // (lastHits.js: the last hit's strokes; the steel set follows a reference, its own scenarios: steel*)
+      if (C.keys.some((k) => Array.isArray(k.j))) continue; // (a joint-keyed clip, armFK.js: no `a` keys; its own scenario: armfk)
       const ks = C.keys.filter((k) => Array.isArray(k.a) && k.u > 1.001 && k.u <= 2.001);
       const steep = Math.max(...ks.map((k) => Math.abs(k.a[1])));
       // the key where the blade is nearest to pointing ahead: its elevation is the cut's height there
@@ -7507,7 +7508,7 @@ async function scenarioHeroHand() {
   // (H1) the contract
   assert(W?.parent === r.arms.L.fore && Math.abs(W.position.y + (HD.foreArm - 0.03)) < 1e-6 && Math.hypot(W.position.x, W.position.z) < 1e-9 && r.arms.L.point?.parent === W
     && !!H?.fingers && H.fingers.parent === W && H.open.parent === W && H.grip.parent === r.sword
-    && P.lD === 53 && P.lN === 56 && P.hs === 59 && P.lk === 60 && P.sd === 61 && N === 62 && N <= 64 && A.freeHand === true && OFF_SNAP[0] < OFF_SNAP[1],
+    && P.lD === 53 && P.lN === 56 && P.hs === 59 && P.lk === 60 && P.sd === 61 && P.clR === 62 && N === 65 && A.freeHand === true && OFF_SNAP[0] < OFF_SNAP[1],
     `the free hand's contract: arms.L.wrist on the forearm ${(HD.foreArm - 0.03).toFixed(2)} m down and arms.L.point on it; offHand { open, grip, fingers }, open and fingers on the wrist; channels lD 53, lN 56, hs 59, lk 60, sd 61 (N ${N} ≤ 64); the hero's animator has the free hand`);
 
   // every frame of the set: chest-local points (model metres: the drawn hero is lean-sheared and scaled)
@@ -16278,6 +16279,109 @@ function auditPresses(G, plan) {
 }
 
 // ================================================================== opt-in: the arm audit (the instant cuts)
+// ARMFK (ADR-240): the sword arm posed by its joints (armFK.js), light hit 1 as the prototype (`natFall`,
+// `?lights=blink&arm=fk`). The joints → the pose → the joints round trip is exact (every joint within 0.5°)
+// at three chest turns; `arm=fk` wears natFall on hit 1 only and changes no number of any def, and '0' gives
+// the blink chain back; played from the fight hold (a lone press) the drawn arm stays a human one: the blade
+// never nearer the forearm's line than 25° (the joints allow 31°; the soft reach takes a little) nor further than
+// 100°, the elbow never over 165° nor folded under 35°, the point never jumps 2.4 m in a frame (a pop: the cut
+// itself moves it up to ~2 m, as the blink cut does), no NaN, and the
+// girdle is back to 0 once he stands; and the hit lands on the wyrm 2 m ahead inside its active frames.
+async function scenarioArmFK() {
+  out('\n== scenario ARMFK (the sword arm by its joints: armFK.js, ?lights=blink&arm=fk, hit 1) ==');
+  const CB = await imp('src/entities/player/combat.js');
+  const { armChest, armOut, armToPose, poseToArm } = await imp('src/entities/player/armFK.js');
+  const { P, N } = await imp('src/entities/player/anim.js');
+  const { DIM: HD } = await imp('src/entities/player/model.js');
+  const DEG = 180 / Math.PI;
+  const lights0 = CB.lightsMode(), arm0 = CB.armMode();
+  let last = null;
+  try {
+    {
+      const R = armOut(), q = new Float32Array(N), j = [0, 0, 0, 0, 0, 0, 0];
+      let worst = 0;
+      for (const [hip, sy, sx] of [[0, 0, 0], [-0.4, -0.45, 0.1], [0.43, 0.42, 0.43]]) for (const s of [[-19, 1, -18, 114, -65, -32, -36], [-3, -29, -27, 37, 15, -35, -5], [-14, -28, 24, 34, 70, -28, 15], [30, -20, 10, 60, 30, 10, 20]]) {
+        q.fill(0); q[P.pelvY] = hip; q[P.spY] = sy; q[P.spX] = sx;
+        armToPose(q, P, armChest(s, R));
+        poseToArm(q, P, j, s);
+        worst = Math.max(worst, ...s.map((v, i) => Math.abs(v - j[i])));
+      }
+      assert(worst < 0.5, `joints → pose → joints is exact (worst ${worst.toFixed(3)}°)`);
+    }
+    const NUMS = ['damage', 'poise', 'windup', 'active', 'recovery', 'chain', 'reach', 'lunge'];
+    {
+      CB.setLights('blink'); CB.setArm('0');
+      const base = CB.LIGHT.map((d) => ({ clip: d.anim.clip, n: NUMS.map((k) => JSON.stringify(d[k])) }));
+      CB.setArm('fk');
+      const L = CB.LIGHT;
+      assert(L[0].anim.clip === 'natFall' && L.slice(1).every((d, i) => d.anim.clip === base[i + 1].clip) && L.every((d, i) => NUMS.every((k, m) => JSON.stringify(d[k]) === base[i].n[m])),
+        `arm=fk wears natFall on hit 1 only, every number unchanged (${L.map((d) => d.anim.clip).join(', ')})`);
+      CB.setArm('0');
+      assert(CB.LIGHT[0].anim.clip === base[0].clip, `arm 0 gives the blink chain back (${CB.LIGHT[0].anim.clip})`);
+    }
+    CB.setLights('blink'); CB.setArm('fk');
+    // a lone press from the fight hold, in open air: the drawn arm
+    {
+      const G = (last = build());
+      fightSetup(G);
+      const { game, input } = G, p = game.player, d = game.dragon, r = p.rig, A = p.anim;
+      p.debug.god = true;
+      p.debug.teleport(d.position.x + 14, d.position.z + 14);
+      p.yaw = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z);
+      aimAt(G);
+      for (let i = 0; i < 40; i++) G.tick(DT);
+      const S = new THREE.Vector3(), E = new THREE.Vector3(), W = new THREE.Vector3(), T = new THREE.Vector3(), T0 = new THREE.Vector3();
+      const ang = (a, b) => Math.acos(clamp(a.clone().normalize().dot(b.clone().normalize()), -1, 1)) * DEG;
+      let wMin = 180, wMax = 0, eMin = 180, eMax = 0, jump = 0, nan = false, seen = 0, first = true;
+      aimAt(G);
+      input.click(0);
+      for (let i = 0; i < 60; i++) {
+        G.tick(DT);
+        S.setFromMatrixPosition(r.arms.R.upper.matrixWorld);
+        E.setFromMatrixPosition(r.arms.R.fore.matrixWorld);
+        W.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.R.fore.matrixWorld);
+        T.set(0, 0, HD.drawnTip).applyMatrix4(r.sword.matrixWorld);
+        if (!Number.isFinite(S.x + E.x + W.x + T.x + T.y + T.z)) nan = true;
+        if (!first) jump = Math.max(jump, T.distanceTo(T0) / (p.drawScale || 1));
+        first = false;
+        T0.copy(T);
+        if (!(p.state === 'attack' && A.atkAnim?.clip === 'natFall')) continue;
+        seen++;
+        const w = ang(W.clone().sub(E), T.clone().sub(W)), e = 180 - ang(E.clone().sub(S), W.clone().sub(E));
+        wMin = Math.min(wMin, w); wMax = Math.max(wMax, w); eMin = Math.min(eMin, e); eMax = Math.max(eMax, e);
+      }
+      const g = A.cur;
+      const gir = Math.hypot(g[P.clR], g[P.clR + 1], g[P.clR + 2]);
+      assert(seen > 10 && !nan && wMin >= 25 && wMax <= 100 && eMin >= 35 && eMax <= 165 && jump < 2.4 && gir < 1e-3,
+        `natFall's drawn arm: wrist ${wMin.toFixed(0)}-${wMax.toFixed(0)}° off the forearm, elbow ${eMin.toFixed(0)}-${eMax.toFixed(0)}°, the point's largest jump ${(jump * 100).toFixed(0)} cm, girdle after ${gir.toFixed(4)} (${seen} frames${nan ? ', NaN' : ''})`);
+    }
+    // the hit lands on the wyrm 2 m ahead inside its active frames
+    {
+      const G = (last = build());
+      fightSetup(G);
+      settle(G);
+      const { game, input } = G, d = game.dragon, p = game.player;
+      const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
+      const c = d.hurtSpheres.filter((h) => h.part === 'body').reduce((a, h) => ((h.x - d.position.x) * fx + (h.z - d.position.z) * fz > (a.x - d.position.x) * fx + (a.z - d.position.z) * fz ? h : a));
+      p.debug.god = true;
+      p.debug.teleport(c.x + fx * (c.r + 2), c.z + fz * (c.r + 2));
+      p.yaw = Math.atan2(c.x - p.position.x, c.z - p.position.z);
+      let hit = null;
+      G.watch = (nn, e) => { if (nn === 'player:hitDragon' && !hit) hit = { t: p.atk?.t ?? NaN, def: p.atk?.def, clip: p.anim.atkAnim?.clip, guarded: e.guarded }; };
+      aimAt(G);
+      input.click(0);
+      run(G, 1.0, { passive: true });
+      G.watch = null;
+      const ok = hit && hit.clip === 'natFall' && !hit.guarded && hit.t >= hit.def.windup - 1e-6 && hit.t <= hit.def.windup + hit.def.active + 1e-6;
+      assert(ok, `natFall lands on the wyrm 2 m ahead inside its active frames (${hit ? `${hit.clip} @${((hit.t - hit.def.windup) / hit.def.active).toFixed(2)} of the active` : 'MISS'})`);
+    }
+  } finally {
+    CB.setArm(arm0);
+    CB.setLights(lights0);
+  }
+  return last;
+}
+
 // `node tests/integration/integ.mjs . armaudit` (not part of `all`): the yardstick the instant cuts' arms
 // are written against (the owner, 2026-11-25: "the right arm angle and motion is stiff and doesn't look
 // like how an arm should look when doing that sword motion", "the light auto attack arm/body animation
@@ -16311,6 +16415,7 @@ async function scenarioArmAudit() {
   let G = null;
   try {
     CB.setLights(process.env.GCD_AUDIT_LOOK || 'blink');
+    if (process.env.GCD_AUDIT_ARM) CB.setArm(process.env.GCD_AUDIT_ARM);
     G = build();
     fightSetup(G);
     const { game, input } = G, p = game.player, d0 = game.dragon, r = p.rig, A = p.anim;
@@ -19101,6 +19206,7 @@ const SCENARIOS = {
   blinkhvc: scenarioBlinkHvC,
   blinksolve: scenarioBlinkSolve,
   armaudit: scenarioArmAudit,
+  armfk: scenarioArmFK,
   herohand: pinAdr186(scenarioHeroHand),
   heroweight: scenarioHeroWeight,
   herolights: scenarioHeroLights,
