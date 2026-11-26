@@ -195,7 +195,7 @@ const LIGHT_BLINK = [
  *  exactly what i want so mirror this"): every attack's poses and arm paths follow that footage, on
  *  this game's clock, with today's curved trail. Hits 1-5 (steelChainA.js, steelChainB.js), the five
  *  heavy branches (steelHeaviesC.js, steelHeaviesD.js), the sprint slash, the roll cut, the charged
- *  heavy, the execution and One Breath (SPECIAL_STEEL), and how he stands (steelStance.js). */
+ *  heavy, the execution and One Breath (SPECIAL_STEEL), and the charge hold (steelStance.js). He stands as every look does (ADR-207). */
 const LIGHT_STEEL = [...LIGHT_STEEL_A, ...LIGHT_STEEL_B];
 const HEAVY_STEEL = [...HEAVY_STEEL_C, ...HEAVY_STEEL_D];
 const SPECIAL_STEEL = { ...SPECIAL_STEEL_B, ...SPECIAL_STEEL_C, ...SPECIAL_STEEL_E };
@@ -229,7 +229,7 @@ export function setLights(mode) {
   // (the sprint slash, the roll cut, the charged cleave, One Breath, the execution: specialsBlink.js,
   // the steel set's SPECIAL_STEEL)
   for (const k in SPECIAL_DEFS) wear(SPECIAL_DEFS[k], SPECIAL_NEW[k], sp ? sp[k] : null);
-  STEEL.on = steel; // (how he stands: steelStance.js, read by anim.js stand())
+  STEEL.on = steel; // (the charge hold: steelStance.js, read by anim.js chargePose)
   lightsNow = mode;
   return true;
 }

@@ -1188,9 +1188,8 @@ the same `wear` over every attack def, from `steelChainA.js` (`LIGHT_STEEL_A`: h
 (`HEAVY_STEEL_C`: the lone heavy, the heavy after one light; `SPECIAL_STEEL_C`: the charged release),
 `steelHeaviesD.js` (`HEAVY_STEEL_D`: the heavies after two, three and four lights) and `steelSpecialsE.js`
 (`SPECIAL_STEEL_E`: the execution, One Breath); a `null` slot keeps today's look. `steelStance.js` holds
-how he stands: `STEEL.on` (flipped by `setLights`), `steelStand` (called by `anim.js` `stand()` in place
-of the two stances; the idle habits are held off while it is on) and `steelCharge` (called by
-`chargePose`). Every clip follows the owner's reference footage (one look, both arms keyed, `hs: 0`).
+the charge hold: `STEEL.on` (flipped by `setLights`) and `steelCharge` (called by `anim.js` `chargePose`
+while it is on); how he stands is ADR-207's for every look. Every clip follows the owner's reference footage (one look, both arms keyed, `hs: 0`).
 A clip's `settle` (seconds; any clip may give one) is the blend player.js `_tickAttack` passes to
 `_toLoco` when the attack ends on its own, in place of 0.16 s; while such a blend runs and he stands
 still, `HeroAnimator._feet` brings the feet home by stepping (`_settleStep`, `SETTLE_STEP`: one at a time,

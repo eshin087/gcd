@@ -74,9 +74,9 @@ One hundred and eight pieces of work since 0.4.0:
   lights is one wide cut, no turn), the fifth hit is one of five stronger strokes, a different one each
   time, and the sprint slash, the roll cut, the charged cleave, One Breath and the execution follow the
   same style. Every number of every attack is the same.
-  *Added, to compare (not the default; ADR-210):* `?lights=steel` (the same row, 'steel') plays the hero's
-  standing pose and every attack after the owner's reference footage, pose for pose: he stands tall with
-  the sword low at his right and the free arm hanging loose; the five lights, the five heavies, the
+  *Added, to compare (not the default; ADR-210):* `?lights=steel` (the same row, 'steel') plays every
+  attack after the owner's reference footage, pose for pose, out of the stances that footage also gave
+  him (ADR-207): the five lights, the five heavies, the
   charged heavy, the sprint and roll attacks, the execution and One Breath each follow one move of the
   footage with both arms, the body and the feet, on today's timings and with today's curved trail. A hit
   that is not followed by another holds its finish and rises out of it slowly. Every number of every

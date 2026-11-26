@@ -13,8 +13,9 @@ so mirror this." Their answers: the reference's motion on our timings; today's c
 the footage for moves the first part lacks; the standing pose too.
 
 **What changed**
-- `?lights=steel` (`combat.js` setLights, the Lab's `lights` row): the standing pose and charge hold
-  (`steelStance.js`), light hits 1-5 (`steelChainA.js`, `steelChainB.js`), the five heavy branches
+- `?lights=steel` (`combat.js` setLights, the Lab's `lights` row): the charge hold
+  (`steelStance.js`; he stands as every look does, ADR-207: a steel stance was written and dropped when
+  that landed on main), light hits 1-5 (`steelChainA.js`, `steelChainB.js`), the five heavy branches
   (`steelHeaviesC.js`, `steelHeaviesD.js`), the charged release, the sprint slash, the roll cut, the
   execution and One Breath (`steelSpecialsE.js`). One look per move, both arms keyed, no number changed.
 - A clip's `settle` (player.js `_tickAttack`): the blend out of a finished attack, so a lone hit holds its

@@ -6421,7 +6421,7 @@ removed with the owner's pick. Tests: one scenario per part (`blinklights`, `bli
 `blinkspecials`, `blinklast`), `blinkslash` for the lines, and the opt-in `armaudit` that prints the sword
 arm, the body and the free hand through any swing.
 
-## ADR-210 — The steel look set: the stance and every attack follow the owner's reference footage, pose for pose; behind `?lights=steel` until the owner's call (2026-11-25)
+## ADR-210 — The steel look set: every attack follows the owner's reference footage, pose for pose; behind `?lights=steel` until the owner's call (2026-11-25)
 
 - **Context:** the instant cuts (ADR-209) went through three rounds of the owner's notes and were turned
   down whole: "this all still looks bad to me". Every round had failed on the same things, all of them
@@ -6457,9 +6457,13 @@ arm, the body and the free hand through any swing.
      in a stepping arc). And `dashPlant` (anim.js `dashFeet`): a long dash carried the root past its
      landed front foot, which then hung in the air behind him through the held lunge; with the option a
      foot left behind steps onto the grass (the lone heavy, the charged release).
-  4. **The moves.** The standing pose (`steelStance.js` `steelStand`: one pose at ease and in the fight;
-     standing tall, both arms hanging off the body with soft elbows, the sword low at his right pointing
-     forward and down; the idle habits are held off under steel) and the charge hold (`steelCharge`).
+  4. **The moves.** How he STANDS is not the look set's. A steel standing pose was written first (one
+     pose after the footage's idle, the idle habits held off) and paired in four views; while this work
+     ran, ADR-207 landed on main with the owner's approval: the same footage's one-handed stand at
+     ease, its two-handed hold in the fight and its guard, for every look. A second stance behind a
+     switch would only compete with the approved one, so the steel stance was dropped and every steel
+     move starts from and settles into ADR-207's. The look set keeps the charge hold (`steelStance.js`
+     `steelCharge`: a low coiled hold with the sword drawn back, after the footage's charged heavy).
      Light hits 1-5 (`steelChainA.js`, `steelChainB.js`): an overhead falling diagonal into a lunge with
      the free arm thrown back; a level backhand ending arms spread, then a turn and crouch; the diagonal
      again; a falling backhand from over the left shoulder; an overhead chop into a bow (a plain blade

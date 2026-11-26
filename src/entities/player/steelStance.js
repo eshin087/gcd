@@ -1,17 +1,10 @@
-// The steel look set's standing pose (`?lights=steel`, ADR-210): how the hero stands with the sword,
-// after the owner's reference footage. anim.js stand() calls steelStand in place of the two stances
-// (stances.js) while the look set is on (STEEL.on: combat.js setLights flips it).
-//
-// The reference's idle, read from four views (right side, front, left side, back): ONE pose, at ease
-// and in a fight alike. He stands tall, the feet about shoulder width and toes a little out, the left
-// foot a short step ahead of the right; hips and chest square to the front. The sword arm hangs with a
-// soft elbow, the hand at the hip a fist outside the thigh and a little ahead of it; the blade runs on
-// from the hand forward, down and out to his right (about 16 deg out, 26 deg down: the point at shin
-// height a blade's length ahead of his right foot), its flat to the sides. The free arm hangs relaxed a little off the
-// body, the elbow soft, the hand by the left thigh. Pose space: body axes (x = his left, y up, z
-// ahead); hand targets are offsets from each shoulder (anim.js).
+// The steel look set's charge hold (`?lights=steel`, ADR-210): what the hero stands in while the heavy
+// button is held, after the owner's reference footage. anim.js chargePose calls steelCharge while the look
+// set is on (STEEL.on: combat.js setLights flips it). How he STANDS is not the look set's: the standing
+// pose, the two-handed hold of the fight and the guard follow the same footage for every look (ADR-207,
+// refStance.js); a first steel stance was written beside it and dropped when that landed on main.
+// Pose space: body axes (x = his left, y up, z ahead); hand targets are offsets from each shoulder (anim.js).
 import { DIM } from './heroDims.js';
-import { standLife } from './stances.js';
 
 /** on: the steel look set is the one worn. */
 export const STEEL = { on: false };
@@ -28,69 +21,6 @@ function set3(p, i, x, y, z) {
   p[i] = x;
   p[i + 1] = y;
   p[i + 2] = z;
-}
-
-/** The standing pose's numbers (body axes, m / degrees), the reference's idle. */
-export const STEEL_STAND = {
-  rH: [-0.06, -0.535, 0.09], // the sword hand: at the hip, a fist outside the thigh, a little ahead
-  rP: [0.45, -0.25, -0.85], // its elbow soft, a little back
-  sw: [-16, -26], // the blade: [azimuth (+ his left), elevation], forward, down and out to his right
-  lH: [0.18, -0.5, 0.09], // the free hand: hanging by the left thigh, a fist off it
-  lP: [0.3, -0.15, -0.95], // its elbow soft, back
-  rF: [-0.23, -0.13], // the feet [x, z]: a little over shoulder width, the left a short step ahead
-  lF: [0.23, 0.14],
-};
-
-/** Write the standing pose over guard()'s (p: the pose, P: anim.js's channel map, A: the animator).
- *  Returns false while it is not written: stand() then uses today's stances. */
-export function steelStand(p, P, A) {
-  const m = standLife(Number.isFinite(A.time) ? A.time : 0, false), S = STEEL_STAND;
-  // the weight: a slow shift from foot to foot, the chest rising with the breath
-  p[P.bodyX] = 0.012 * m.sw;
-  p[P.bodyY] = -0.012 + 0.006 * m.br;
-  p[P.bodyZ] = 0.005;
-  p[P.pitch] = 0;
-  p[P.yaw] = 0;
-  p[P.roll] = 0;
-  p[P.pelvX] = 0;
-  p[P.pelvY] = -0.06; // the left hip a touch ahead, with the left foot
-  p[P.pelvZ] = -0.015 * m.sw; // the weight hip rides higher
-  p[P.spX] = 0.04 + 0.018 * m.br; // tall, the chest a little over the hips
-  p[P.spY] = 0.05;
-  p[P.spZ] = 0.012 * m.sw;
-  p[P.hdX] = 0.07 - 0.015 * m.br; // looking ahead, a little down
-  p[P.hdY] = 0.04 + 0.06 * m.look;
-  p[P.hdZ] = 0;
-  // the sword arm: it trails the breath (STAND_LIFE.arms) and the point drifts a little
-  set3(p, P.rH, S.rH[0] + 0.004 * m.tipB, S.rH[1] + 0.008 * m.brL, S.rH[2] + 0.006 * m.tipA);
-  set3(p, P.rP, S.rP[0], S.rP[1], S.rP[2]);
-  dir(p, P.swD, S.sw[0] + 1.6 * m.tipA, S.sw[1] + 1.4 * m.tipB + 0.8 * m.brL);
-  // the flat to the sides (broad to the side views, as the reference's), square to the blade
-  const a = (S.sw[0] + 1.6 * m.tipA) * DEG;
-  set3(p, P.swF, Math.cos(a), 0, -Math.sin(a));
-  // the free arm: hanging, a little off the body; the hand open and relaxed, the fingers down, the
-  // palm in toward the thigh
-  set3(p, P.lH, S.lH[0] + 0.004 * m.sw, S.lH[1] + 0.008 * m.brL, S.lH[2] + 0.004 * m.brL);
-  set3(p, P.lP, S.lP[0], S.lP[1], S.lP[2]);
-  set3(p, P.lD, 0.06, -0.97, 0.22);
-  set3(p, P.lN, -0.97, -0.02, 0.18);
-  p[P.hs] = 0;
-  p[P.lk] = 0;
-  p[P.sd] = 0;
-  p[P.twoHand] = 0;
-  p[P.offAt] = 0;
-  p[P.flask] = 0;
-  // the feet: shoulder width, the toes a little out, the knees all but straight
-  set3(p, P.rF, S.rF[0], ANK, S.rF[1]);
-  set3(p, P.lF, S.lF[0], ANK, S.lF[1]);
-  set3(p, P.rK, -0.25, 0, 1);
-  set3(p, P.lK, 0.25, 0, 1);
-  p[P.rFy] = -0.3;
-  p[P.lFy] = 0.25;
-  p[P.rFf] = 1;
-  p[P.lFf] = 1;
-  p[P.footFlat] = 0.95;
-  return true;
 }
 
 /** The charge's hold numbers (body axes), the reference's charged heavy held back (its HOLD): the

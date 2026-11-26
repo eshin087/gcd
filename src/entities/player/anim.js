@@ -3,7 +3,7 @@ import { clamp, lerp, smoothstep, damp, easeOutCubic, wrapAngle, TAU } from '../
 import { DIM, BODY, HAIR_CLUSTERS, HERO_SCALE, sheetOffset } from './model.js';
 import { SWINGS, FH, ARCS, widenArcs } from './swings.js';
 import { atEase, fencerGuard } from './stances.js';
-import { STEEL, steelStand, steelCharge } from './steelStance.js';
+import { STEEL, steelCharge } from './steelStance.js';
 import { idlesOld, idlesRef, idlesMode, easeArms, guardArms, newRests, tickRests, pickEase, actStart, lowRest, toLowRest, trailing, easeRests, fightRests, stowHidden, EASE_HABITS, EASE_TRICKS, FIGHT_ACTS, FIGHT_ACTS_REF, EASE_REF_EXTRA, IDLES } from './idles.js';
 import { refStand, refReady, refGuard, guardMode, REF_GUARD } from './refStance.js';
 
@@ -348,8 +348,6 @@ const SCR_FIGHT = new Float32Array(N);
 export function stand(p, A) {
   guard(p, A);
   if (!A.freeHand) return;
-  // (?lights=steel, ADR-210: one standing pose after the owner's reference, steelStance.js)
-  if (STEEL.on && steelStand(p, P, A)) return;
   const f = clamp(fin(A.fightW), 0, 1);
   if (idlesRef()) {
     // (ADR-207, refStance.js: the reference's stand at ease, its two-handed hold in the fight)
@@ -3577,10 +3575,7 @@ export class HeroAnimator {
     }
     // which actions may play now (F.pool): the old ones at ease; ADR-186's at ease, or in the fight
     // (also locked on: the small habits of the guard), never while the stance is changing
-    let pool = old ? (still && !pl.lockOn && !(this.fightW > 0.05) ? 0 : -1) : still && this.fightW > 0.95 ? 2 : still && !pl.lockOn && this.fightW < 0.05 ? 1 : -1;
-    // (?lights=steel, ADR-210: the reference's idle is one pose with its breath; the habits and their
-    // arm rests are written over today's stances, so none plays from the steel stance)
-    if (STEEL.on) pool = -1;
+    const pool = old ? (still && !pl.lockOn && !(this.fightW > 0.05) ? 0 : -1) : still && this.fightW > 0.95 ? 2 : still && !pl.lockOn && this.fightW < 0.05 ? 1 : -1;
     const calm = pool >= 0;
     if (!old) {
       if (!this.rests) this.rests = newRests();
