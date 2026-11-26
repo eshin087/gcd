@@ -5,6 +5,29 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-26 — Performance guards: a cost budget in `npm test`, `npm run perf` (ADR-206; branch `perf/cost-budget`)
+
+**Task** (the owner, after AUTO quality merged): "is there anything else we can do to ensure performance is good no
+matter what we change moving forward?" Two guards, the first two of five the answer listed.
+
+- `tests/integration/cost.mjs` (in `npm test`, ~8 s): every level's set built with the real modules and the world's
+  wiring, counted: meshes, main-pass triangles, shadow-caster triangles, rigid-batch bones, breakables, colliders,
+  geometry MB, each for the whole level and the phone's share. Budgets in `tests/cost-baseline.json`: over by 3 % +
+  slack fails; under by 10 % prints a note; a new level without a row fails. Nothing is timed (the numbers are the
+  same on every machine; two runs wrote the same file). Checked it bites: a budget cut by 20 % failed with the
+  metric named.
+- `npm run perf` (`scripts/perf.mjs`, `scripts/perf-probe.js`): the dev server and a headless Chrome / Edge on the
+  PC's GPU, one fixed fight per level (a seed, the hero 5 m from the boss); draw calls and triangles by pass, GPU
+  ms by pass and per frame at 1080p and 2556 x 1179 (`--4k`), script ms by module; `--save` a machine's baseline
+  (`.perf/`, git-ignored), later runs print the change, `--check` exits 1 over +10 %. On the RTX 4090 / i9:
+  Cinderwood 1.5 - 1.7 ms GPU at 1080p, 1.5 - 1.6 ms at the phone's size, script 4.7 - 5.1 ms; Ashfall 1.5 - 2.0 / 1.6 ms, script 4.5 ms; the ms moved up to 30 % between two runs, the counts not at all (so `--check` gates only the counts)
+  (a 24 s run for two levels).
+- CLAUDE.md: a rule that a heavier level raises its budget on purpose and says why in the PR, and a change that
+  draws something runs `npm run perf` before and after; the command listed.
+- Not done (the other three of the five): an in-game readout of AUTO's step and times, a starting step per
+  level, and the owner's devices' own baselines. Not measured: any weak GPU or phone.
+
+---
 ## 2026-11-25 — AUTO quality: the resolution follows the frame time; a 60 fps cap on touch (ADR-200; branch `render/auto-quality`)
 
 **Task** (the next item of M1.89, from the perf review's session): automatic quality so "60 fps on every device" is

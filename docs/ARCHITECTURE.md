@@ -4626,6 +4626,20 @@ not alarm the birds; nothing in the grove). Numbers: Cinderwood looks at (0.8, 1
 +26 m, hold 3 s; the others alike north of their spawn; the Grove +17 m, 3.4 s, no front; the phone (`cameraRig.mobile`)
 zoom 3, weight 1.
 
+### Tests — the cost budget, and `npm run perf` (ADR-206)
+
+`tests/integration/cost.mjs` builds every level's set (`LEVELS[i].buildSet`, wired like `world.js`: colliders,
+`Destructibles`, so the rigid batch exists) and counts what the renderer would draw, never a time: visible meshes,
+main-pass triangles (`rigidShadow` excluded; an instanced mesh by its instances), shadow-caster triangles (meshes on
+`LAYER_CASTER` / `LAYER_CASTER_RIGID`), rigid bones, breakables, colliders and geometry MB, for the level whole and
+for `setQuality(0)` (`<id>@phone`). `tests/cost-baseline.json` is the budget: a metric over it by 3 % + its slack
+fails; `node tests/integration/cost.mjs . update` rewrites the file (the budget moves on purpose, said in the PR).
+A level with no row fails (a new level adds one). The hero, the boss and the effects are not in these counts.
+`scripts/perf.mjs` + `scripts/perf-probe.js` (`npm run perf`) measure the rest on a PC with a GPU: the probe stages a
+fixed fight in the page (`__game`, `__tick`) and returns draw calls / triangles by pass, GPU ms by pass and frame
+(`EXT_disjoint_timer_query_webgl2`) per size, and script ms by module; `.perf/baseline.json` (git-ignored) is the
+machine's own.
+
 ### Tests — the `life` suite (`tests/integration/life.mjs` + `tests/integration/life/<piece>.mjs`)
 `node tests/integration/life.mjs . <scenario>` (`all`, a file name, or `<file>.<name>`; in `npm test` as
 `life`). The REAL LivingWorld and Atmosphere on every level's REAL set, with the real particle pools,
