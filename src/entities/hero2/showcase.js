@@ -346,7 +346,9 @@ export async function mount(game, params) {
   function azOf(e) {
     if (Number.isFinite(e?.az)) return e.az;
     if (Number.isFinite(S.view.az)) return S.view.az;
-    const base = isRide(e) ? AZ.ride : AZ.base;
+    // (the riding chapters that travel, from his LEFT: on the riding line the spawn's bonfire stands off his right,
+    // and from that side its flame drew over the horse; the mounted attacks from his right, the blade's)
+    const base = isRide(e) ? (e.set !== 'swordHorse' && rideTravel(e) > 5 ? -AZ.ride : AZ.ride) : AZ.base;
     const turn = ((e?.yaw ?? 0) * 180) / Math.PI;
     // (a full turn on the spot shows every side anyway; a half turn is seen from the side he turns
     // FROM to the side he turns TO through his front, never from behind: -90 -> 90 for a left turn)
