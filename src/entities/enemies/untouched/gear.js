@@ -218,8 +218,9 @@ function buildHead(ctx) {
   const look = wjLookNow(), hair = wjHairNow();
   const D = dressOf(ctx.root, look);
   const keep = [];
-  const put = (parent, g, m, from, to) => {
+  const put = (parent, g, m, from, to, name) => {
     const x = mesh(parent, g, m);
+    x.name = name;
     at(D, x, from, to);
     keep.push(x);
     return x;
@@ -228,21 +229,21 @@ function buildHead(ctx) {
   mesh(head, partGeometry('hair.cap'), M.hair);
   // the hair up (phase 1), the hair fallen (phases 2 - 3)
   const up = lockGeometry(HAIR_UP[hair]()), down = lockGeometry(HAIR_DOWN[hair]());
-  put(head, up.mass, M.hair, 1, 1);
-  put(head, up.tips, M.hairTip, 1, 1);
-  put(head, down.mass, M.hair, 2, 3);
-  put(head, down.tips, M.hairTip, 2, 3);
+  put(head, up.mass, M.hair, 1, 1, 'wj.hairUp');
+  put(head, up.tips, M.hairTip, 1, 1, 'wj.hairUp');
+  put(head, down.mass, M.hair, 2, 3, 'wj.hairDown');
+  put(head, down.tips, M.hairTip, 2, 3, 'wj.hairDown');
   // the band: over the eyes (phase 1), down round his neck on the collar (phases 2 - 3); a dark band
   // (the `eye` part: it keeps its own dark fill under the boss print) or b's white cloth (`facing`)
   const bandMat = look === 'b' ? M.facing : M.eye;
-  put(head, sub(headBand(), 0), bandMat, 1, 1);
-  put(chest, sub(neckBand(look === 'b' ? 1.6 : 1.625), 1), bandMat, 2, 3);
+  put(head, sub(headBand(), 0), bandMat, 1, 1, 'wj.bandEyes');
+  put(chest, sub(neckBand(look === 'b' ? 1.6 : 1.625), 1), bandMat, 2, 3, 'wj.bandNeck');
   // the eyes: two points of ice-blue light (the `flask` part glows; look.js dressUntouched), shown when
   // the band comes off
   // (one mesh each, centred on its eye: look.js grows them with the camera's distance, so at the game
   // camera each still fills a letter cell)
   for (const ex of [0.033, -0.033]) {
-    const e = put(head, ellipsoidGeometry(0.025, 0.013, 0.007, { widthSegs: 8, heightSegs: 4 }), M.flask, 2, 3);
+    const e = put(head, ellipsoidGeometry(0.025, 0.013, 0.007, { widthSegs: 8, heightSegs: 4 }), M.flask, 2, 3, 'wj.eye');
     e.position.set(ex, 0.128, 0.104);
     D.eyes.push(e);
   }
