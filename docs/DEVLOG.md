@@ -32,6 +32,87 @@ vsync trap (33 and 23 ms of GPU both read 30 fps) that undid good steps: fixed (
 **Open.** Not measured: any weak GPU or phone, a step's
 hitch there, the GPU timer's presence on the owner's laptop and on iOS (Safari has none: the probe path).
 
+## 2026-11-25 — Local test runs go easy on the PC (ADR-205; branch `test/local-load-cap`)
+
+**Owner:** the PC ran at 100% CPU from agents' test runs; make future gcdAbyss agents close what they no
+longer need and stop straining the machine, so it can game beside them.
+
+- `tests/run.mjs`, locally only (no `CI` env): workers at below-normal priority; one machine-wide pool of
+  8 slots (`ABYSS_JOBS`) shared by every run, so two agents' `npm test` queue instead of doubling the load;
+  a stopped run kills its workers; `--only <names>` runs a subset. CI unchanged.
+- CLAUDE.md: a "Go easy on the owner's PC" rule (test only what changed, one `npm test` at a time, check a
+  timed-out run before rerunning, stop servers before finishing).
+- Found: two full runs at once (~40 processes, ~75 GB) and eight idle preview servers from finished
+  worktrees (stopped by hand).
+- Next: re-measure a full local run's wall time at 8 slots; raise the default if it hurts.
+
+---
+## 2026-11-25 — The run carried like the owner's reference: the blade forward at the hip, a full pump, a fist (ADR-204; PR 138)
+
+**Owner:** "make the right angle hold the sword at a proper natural angle. make the left hand fist look like a hand";
+two rounds of options (a relaxed trail, a low sweep; an open hand, a loose fist) were turned down: "the running and
+sword placement still looks off. use this video ... as reference from 2:48 - 3:51". The reference: a knight sprinting
+with a straight sword.
+
+**What the reference showed.** Frames grabbed from the video in the user's Chrome (a canvas sheet of seeked frames,
+side and back views). The blade is carried FORWARD, low at the right hip, rocking -20° (arm back) to +25° (arm
+forward) with the forearm, the wrist quiet (a hammer grip, 60 - 70° between forearm and blade); every carry we had,
+`old` included, pointed it back (azimuth -150°) on a wrist cocked 62 - 87°. The free arm pumps fully (fist before the
+belly; elbow high behind the back); the free hand is a compact closed fist as wide as the forearm.
+
+**Changed.** `runSword.js`: the carry `hip` (planned by Fable, built and measured by an Opus subagent): forward
+kinematics against the torso's line turned by its lean, the blade the forearm's line plus a grip angle; at a sprint
+it rocks -21 … +23°, never behind him, its flat rolled 40° toward the game camera (edge-down printed as a one-cell
+line). `runArms.js`: the carry `d`, the full pump. `gear/handShape.js` `fistHand`: the free hand as a closed fist by
+its overall shape (`?handLook=g`, skin; `h` a dark glove with a cuff). The owner played the new run ("the new run
+looks great but the hand still needs work"), then picked hand g. Defaults: `hip`, `d`, `g`; the sword carries `a` /
+`b` removed.
+
+**Verified.** `herorun` checks `hip` (blade ahead, elevation -30 … +32°, point off the grass, grip on his right, no
+pops) and `d`; a side-by-side sheet against the reference stride, films at the game camera from four sides; `npm test`.
+
+**Open.** Running away from the camera the forward blade is mostly hidden under the cape (so is the reference's); a
+larger `out` yaw is the knob. The run start from standing still jumps the point ~26 cm in one frame (the idle rest's
+hand-over to `loco()`'s base, any carry). The torso leans 24 - 25° at a sprint against the reference's 20°.
+
+## 2026-11-25 — The wyrm's neck and head reviewed move by move (ADR-203; branch `dragon/neck-motion`)
+
+**Owner:** "the dragon does weird neck movements when hes flying as well. in general review all the dragon neck
+movements and make sure it looks natural and accurate and not buggy".
+
+**How.** An audit in headless Edge (a scratch module stepping each of the 50 moves, the stagger and both phase
+roars from a fresh page, frame by frame) against an untouched main checkout served side by side; the numbers
+first, then films of the flagged moves (the wings hidden for a clean view of the neck, then the real look). Four
+faults (ADR-203): the head leveled only at rest (upside down in flight), look points under / behind / over it
+swinging it round, the driven shown neck buckling away from its pinned head on a strike's first frame, and
+`headExact` with no turn limit. Fixed in `_updateNeck` and `Chain.apply` (a twist spread down the chain).
+
+**Owner, round 2** (played the first pass, now `?neck=b`): "the head got worse when flying and when it does a
+ground perfect parry attack": it rolled oddly and looked the wrong way. The default (`?neck=c`) holds the head
+upright against its own body, not the sky, and lets it look where its move points it (a shoulder limit, the side
+swapped once a foe is clearly round the other side); `?neck=0` is the wyrm before.
+
+**Owner, round 3** (played c): "c is almost all good but ... during a perfect dodge/parry slow time effect the
+dragon seems to home into the players teleporting movement and makes it do a bad angle". Its sense of the hero
+read his chest every frame, so through his flurry its look point chased each blink round and over its head
+(12 - 28 m of travel, its body turning up to 46° after him). Now it keeps where it last saw him until the flurry
+ends (`Dragon._sensePlayer`, c and b; 0 as before): 0 m, 0°. The head still flinches at each cut, as on main. The owner: "Ship c": c is the default, b and 0 stay behind `?neck=`.
+
+**Lessons.** Leveling needs an unwrapped, rate-limited correction: the plain shortest angle swapped between +180
+and -180 and spun the neck 50° a frame; fading it out near vertical brought the flips back. 'Up' for a head
+pointing down must lean along the heading the head holds, not the chest's forward (that leaned a head glancing
+back against the sky) nor the snout's own heading (it spins as a wheeling flight's snout points past its foe).
+Runs must start from a fresh page: one move after another left each starting where the last ended.
+
+**Verified.** The audit before / after (every move), films before / after, `npm test`. The pressure scenario's
+seeded fights drift (the mouth sits a little differently); a 20-seed sweep on main and the branch compared the
+gaps between cues.
+
+**Open.** The tail lash's windup level lags up to ~60° for a few frames as the head swings over the top; the
+leap's and pounce's neck strikes stay fast (the measured solve's own steps).
+
+---
+
 ## 2026-11-25 — The idles' sword hand: the forearm leads the blade (ADR-186 amended)
 
 **Owner:** "something about the idle animations on the right hand looks weird in terms of angle and unnatural feel.

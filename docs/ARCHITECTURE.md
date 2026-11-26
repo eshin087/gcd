@@ -1266,12 +1266,17 @@ of the pose they began in (`swordFromEntry`, `SWORD_ENTRY` 0.16 s) and the loco 
 blade into the stance over `LOCO_SETTLE` (0.24 s).
 **The run's free arm** (ADR-187, `runArms.js`): in the hero's `loco()` the free (left) arm is
 `runArm(p, P, A, phase, armF, sprint, runK, moveW, mz)`'s: one of three carries (`?runArm=a|b|c|old`,
-`runArmMode()` / `setRunArm(id)`, default `a`, the owner's pick), written as joint angles (`RUN_ARMS`: the shoulder's swing, how
+`runArmMode()` / `setRunArm(id)`, default `d`, the owner's pick, ADR-204; `d` the full pump), written as joint angles (`RUN_ARMS`: the shoulder's swing, how
 far the arm stands off his side, the elbow, the forearm's cross) and posed by forward kinematics into `lH`, `lP`,
 `lD`, `lN` and `hs`, with weight `moveW`. `a` swings like a runner (a pump at a sprint), `b` holds the dash (swept
 back behind him; forward only: a strafe or a backpedal swings as `a`), `c` is `a` on the run blending into `b` as
 the sprint builds. The dash's weight eases on `A.time` (`A.runArmS`), so `loco()` may run more than once a frame.
 `old` returns false and `loco()` writes the swing before ADR-187. A duelist's footwork never calls it.
+**The run's sword arm** (ADR-204, `runSword.js`): `runSword(OUT, phase, armF, sprint, tilt)` fills the sword
+hand's targets on the run (`OUT.h` → `rH`, `OUT.p` → `rP`, `OUT.d` the blade, `OUT.f` its flat → `swF`) from joint
+angles (`RUN_SWORDS`) posed by forward kinematics against the torso's line, turned by its lean `tilt`; `?runSword=hip|old`,
+`runSwordMode()` / `setRunSword(id)`, default `hip` (the blade forward at the hip). `old` returns false and `loco()`
+keeps the carry before. `loco()` blends the backpedal, the fight carry and the sprint over it.
 **Idle life** (ADR-047): in the loco clip, standing still in the `idle` state, at ease (not locked
 on, not in the fight stance: `fightW` ≤ 0.05), with no guard held, for `IDLE_LIFE.after` (2.5 s), `HeroAnimator._idleLife` starts an action from `FIDGETS`
 every `IDLE_LIFE.gap` (2–4.5 s after the last one ends), picked with the animator's own noise (never
@@ -2029,7 +2034,8 @@ brain writes them):
   prelude) sets it, because its hit spheres and swept arc ride on the chain; otherwise the
   round-2 limits apply (rest shape at most `TAIL_SINK` 0.55 segments under the ground, segments at
   most `TAIL_DEV` [0.6 soft, 1.2] rad from their rest direction), easing back in after a sweep.
-- `headExact` (bool): the head aims exactly, with no `HEAD_AIM_RATE` (11 rad/s) turn limit. Set on
+- `headExact` (bool): the head aims without the `HEAD_AIM_RATE` (11 rad/s) turn limit, at most
+  `HEAD_EXACT_RATE` (45 rad/s: a bite's first frame turned the head alone 75°; ADR-203). Set on
   the frames whose hit spheres ride on the snout / mouth: bite and combo-lunge active, charge
   active, breath active, fireball.
 - `headLead` (Vector3, world): an offset of the SHOWN head only. `strikeLead` (attacks.js) sets it
@@ -2060,7 +2066,28 @@ spheres), blended toward the resting S by `s.rest`. While an attack drives the h
 0.03) the shown chain swings toward the measured head (the head's step spread down its length,
 `NECK_FOLLOW` 0.45 toward the measured shape) and the head joint is pinned to the measured solve
 (`Chain.endQuat`), so the snout / head / mouth points are the measured ones (≤ 9 mm, float noise).
-The pin is released only while `headLead` is non-zero.
+The pin is released only while `headLead` is non-zero. A shown chain that misses the measured head by more
+than `SWING_MISS[0]` × scale takes the measured shape, all of it from `SWING_MISS[1]` (a strike's
+first frame moves the head metres: FABRIK under the bend limits buckled the shown neck 2 m to one side
+and left the pinned head 3 m from its end; ADR-203).
+
+Where the head looks and how it is held (ADR-203, `_updateNeck`; `?neck=c|b|0`, default c):
+- c: it looks where its move points it, over a shoulder at most `HEAD_YAW_MAX` (2.35 rad, in the
+  chest's frame); a foe straight behind is watched over the shoulder it was on until he is
+  `HEAD_SIDE_SWAP` past straight back on the other side; a look point nearly straight overhead
+  (`HEAD_STEEP`) takes the chest's heading. Nose-up it stops at 0.6 rad unless the look point itself is
+  set high (`HEAD_LOOK_UP`: the meteors' roar to the sky).
+- c: it is held upright about its own snout against its own body (the chest's up; the sky's at rest)
+  in every move while awake. The correction is unwrapped against the last frame, moves at most
+  `HEAD_LEVEL_RATE`, and holds where 'up' lines up with the snout (`HEAD_LEVEL_CONF`). Driven, the
+  shown neck takes the same roll spread down its joints (`Chain.apply(parentQ, out, twist)`: each joint
+  turns about its own bone, no point moves); resting, only what passes `HEAD_ROLL_REST`.
+- b (the first pass): upright against the sky, the heading held while the look point is under or
+  over it. 0: as before ADR-203 (level at rest only, against the sky).
+- c and b: while the hero's flurry runs (`player.state === 'flurry'`: the perfect dodge's answer and
+  the riposte) the wyrm loses him: `Dragon._sensePlayer` keeps `sense.pos / chest` where it last saw
+  him (`vel` 0; `dist / yawTo / ang` from that point), so neither its head nor its body chases each
+  blink; once he stops it finds him at its own turn rates. 0: it tracked every blink.
 
 `REST_POSE` (exported from rig/anim.js, tunable live from the console): `neck` (the resting S:
 head low and forward), `lookDown` 0.45 / `headDip` 0.22, `stance` (`frontOut`, `frontFwd`,
@@ -2088,6 +2115,7 @@ Rig helpers (internal to the dragon module):
   Infinity = off), `buildRest({ ..., dipAmp, dipAt, dipWidth, sinkMax })` (a dip that bends a
   stretch of segments down, and a cap on how deep the rest shape may dive under the ground),
   `endQuat(parentQ, out)` (the last joint's world rotation without touching the joints).
+  `apply(parentQ, out, twist = 0)`: `twist` rad of roll spread evenly down the chain (ADR-203).
   `aimJointStable` keeps a joint's twist continuous near the −Z singularity (no 180° wing flips).
 - `solveTwoBone(A, T, l1, l2, pole, outMid, outEnd, bend = null, soft = 0)` (rig/ik.js): `bend`
   (per limb, persistent) keeps last frame's bend direction when the pole runs along the limb; `soft`

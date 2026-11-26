@@ -1,5 +1,6 @@
 import { mergeGeometries, limb, looseHand, gripFist, swordFingers } from '../heroGeo.js';
 import { handLook } from './handLook.js';
+import { shapedHand, fistHand } from './handShape.js';
 
 // The free (left) hand, one builder for every `arms` item (gear/README.md): every outfit's sleeves
 // end in the same bare hand, so a change to the hand (its pose, the sword fingers) reaches them all.
@@ -19,14 +20,16 @@ export function buildFreeHand({ arms, sword, M, DIM, BODY, mesh }, mat = null) {
   // the owner's pick of size and ink (`?handLook=`, gear/handLook.js; today's by default)
   const look = handLook();
   if (!mat) mat = M[look.mat] ?? M.skin;
-  const fore = arms.L.fore, HK = BODY.hand * look.k, fa1 = BODY.foreArm[1];
+  const fore = arms.L.fore, HK = BODY.hand * (look.kRest ?? look.k), fa1 = BODY.foreArm[1];
   // the skin wrist stays on the forearm
   mesh(fore, limb({ length: 0.05, r0: fa1 - 0.006, r1: fa1 - 0.004, radial: 8, rings: 2, capSegs: 1 }).translate(0, -DIM.foreArm + 0.075, 0), mat);
   // the free hand open (hanging, reaching, bracing): on the wrist joint when the rig has one (the
   // hand turns on it), else on the forearm. looseHand is built in forearm space: shift it into the
   // wrist's (a wrist joint hangs on the forearm, unturned at build time)
   const wj = arms.L.wrist ?? fore, wp = arms.L.wrist?.position;
-  const H = looseHand(DIM.foreArm - 0.03, 1, HK);
+  // (a reshaped hand when the look asks for one: `shape` is its curl, 0 open … 1 a fist; `fist`: a closed
+  // fist by its overall shape, its number the cuff's flare)
+  const H = look.fist != null ? fistHand(DIM.foreArm - 0.03, 1, look.k, look.fist) : look.shape != null ? shapedHand(DIM.foreArm - 0.03, 1, look.k, look.shape) : looseHand(DIM.foreArm - 0.03, 1, HK);
   const hand = mergeGeometries([H.palm, H.fingers, H.tips, H.thumb]);
   if (wp) hand.translate(-wp.x, -wp.y, -wp.z);
   const open = mesh(wj, hand, mat);
