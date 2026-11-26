@@ -109,6 +109,7 @@ const wrapPi = (a) => {
 
 // ------------------------------------------------------------------ decode
 const PROP_KINDS = new Set(['sword', 'flask', null]);
+const HAND_KINDS = new Set(['fist', 'open', null]);
 
 /** Decode one raw clip (the set file's object) into typed arrays. Never throws: a broken field is
  *  replaced by a still pose and noted in `problems`. */
@@ -271,6 +272,12 @@ export function decodeClip(raw, set = null) {
   }
   const props = { R: r.props?.R ?? null, L: r.props?.L ?? null };
   for (const s of ['R', 'L']) if (!PROP_KINDS.has(props[s])) problems.push(`props.${s}: unknown kind ${props[s]}`);
+  // optional hand shapes (body.setHand): 'fist' | 'open'; a side left out: the body's own choice
+  let hands = null;
+  if (r.hands != null) {
+    hands = { R: r.hands.R ?? null, L: r.hands.L ?? null };
+    for (const s of ['R', 'L']) if (!HAND_KINDS.has(hands[s])) problems.push(`hands.${s}: unknown shape ${hands[s]}`);
+  }
   if (!/^_?[a-z][A-Za-z0-9]*$/.test(name)) problems.push(`name '${name}' must be camelCase`);
   if (!(fps === 30 || fps === 60)) warnings.push(`fps ${fps} (the format says 30 or 60)`);
   if (typeof r.title !== 'string' || !r.title) problems.push('title missing');
@@ -280,7 +287,9 @@ export function decodeClip(raw, set = null) {
     name, title: String(r.title ?? name), src: String(r.src ?? ''), fps, n, loop, dur,
     set: set?.set ?? set?.id ?? '', setTitle: set?.title ?? '', joints: r.joints == null ? null : joints,
     q, hips, root, cyc,
-    speed: Number.isFinite(r.speed) ? r.speed : null, contact, phases, events, props,
+    speed: Number.isFinite(r.speed) ? r.speed : null, contact, phases, events, props, hands,
+    // optional: the yaw (rad) at which the clip's blade points at its target (0: +Z is the aim)
+    face: Number.isFinite(r.face) ? r.face : null,
     from: r.from ?? null, to: r.to ?? null, problems, warnings,
   };
 }

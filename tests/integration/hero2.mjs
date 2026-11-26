@@ -527,7 +527,7 @@ async function scenSweep() {
     const h = createHero2(null, { body: standIn(), library: lib, applyRoot: false });
     h.props = { R: 'sword', L: null };
     // as the game plays it (adapter.js): the hips held over his root, the clip turned to aim at its hit
-    const aim = aimOf(lib, c);
+    const aim = e?.aim ?? (c.face != null ? -c.face : aimOf(lib, c)); // as the adapter plays it
     h.onPose = (pose) => fixAttackPose(pose, c, aim);
     h.play(c.name, { fade: 0, manual: true });
     const D = [1.2, 1.9, 2.6], hit = [Infinity, Infinity, Infinity];
@@ -590,6 +590,8 @@ async function scenPlay() {
   const { GameFlow } = await imp('src/game/flow.js');
   const { Lab } = await imp('src/dev/lab.js');
   const { mount } = await imp(H2 + 'adapter.js');
+  const { TUNE } = await imp('src/entities/player/player.js');
+  const TUNE_KD = TUNE.knockdownDur;
   const LVL = getLevel('grove');
   applyLevel(LVL);
   resetWindow();
@@ -679,57 +681,221 @@ async function scenPlay() {
   game.flow.debug.toState('explore');
   run(0.5);
   const v = [0, 0, 0];
-  // walking at speeds from a walk to a sprint: the planted feet
-  const speeds = [];
-  for (const [ax, sprint] of [[0.2, false], [0.4, false], [0.6, false], [0.8, false], [1, false], [1, true]]) {
+  // the mouse (his aim, when not locked on) a few metres along `aimDir` from him every step (null: left)
+  let aimDir = null;
+  const tickA = () => {
+    if (aimDir) game.mouseGround.set(P.position.x + aimDir[0] * 6, 0, P.position.z + aimDir[1] * 6);
+    tick();
+  };
+  const runA = (sec, each) => { for (let i = 0, n = Math.round(sec / DT); i < n; i++) { each?.(i); tickA(); } };
+  // which way the stick moves him (camera-relative): measured, forward (axis.y) and across (axis.x)
+  const dirOf = (ax, ay) => {
     P.debug.teleport(0, 20);
-    input.axis.x = 0;
-    input.axis.y = ax;
-    if (sprint) input.hold('ShiftLeft');
-    run(1.2);
+    input.axis.x = ax;
+    input.axis.y = ay;
+    run(0.6);
+    const l = Math.hypot(P.groundVel.x, P.groundVel.z) || 1, r = [P.groundVel.x / l, P.groundVel.z / l];
+    input.axis.x = input.axis.y = 0;
+    run(1);
+    return r;
+  };
+  const fwd = dirOf(0, 1), acr = dirOf(1, 0);
+  const sx = acr[0], sz = acr[1];
+  /** The stick for a world direction (dx, dz). */
+  const stickFor = (dx, dz) => [dx * sx + dz * sz, dx * fwd[0] + dz * fwd[1]];
+  // what the body was last told each hand holds
+  const held = { R: 'sword', L: null }; // (as the adapter set them when it was built)
+  const sp0 = part.body.setProp?.bind(part.body);
+  part.body.setProp = (s2, k) => {
+    held[s2] = k;
+    sp0?.(s2, k);
+  };
+  const bodyProp = (s2) => held[s2] ?? null;
+  // (the grove's arena is 15 m round, the duelist stands in its middle: each run starts behind the
+  // centre the way it goes, in a lane 5 m to the side of him)
+  const from = (dx, dz, m = 9) => P.debug.teleport(-dx * m + dz * 5, -dz * m - dx * 5);
+  const plantSlide = () => {
     const plant = { L: null, R: null };
-    let slide = 0, sp = 0, n = 0;
-    run(2, () => {
+    const o = { slide: 0 };
+    o.step = () => {
       for (const s2 of ['L', 'R']) {
         jointWorld(H, s2 === 'L' ? JI.footL : JI.footR, v);
         if (H.contact[s2] >= 0.999) {
           if (!plant[s2]) plant[s2] = [v[0], v[2]];
-          else slide = Math.max(slide, Math.hypot(v[0] - plant[s2][0], v[2] - plant[s2][1]));
+          else {
+            const sl = Math.hypot(v[0] - plant[s2][0], v[2] - plant[s2][1]);
+            if (sl > o.slide) {
+              o.slide = sl;
+              o.at = `${s2} in ${ad.state.mode}:${H.clip?.name}@${(H.time * (H.clip?.fps ?? 30)).toFixed(0)}`;
+            }
+          }
         } else plant[s2] = null;
       }
+    };
+    return o;
+  };
+  // walking at speeds from a walk to a sprint, facing the way he goes: the planted feet
+  aimDir = fwd;
+  const speeds = [];
+  for (const [ax, sprint] of [[0.2, false], [0.4, false], [0.6, false], [0.8, false], [1, false], [1, true]]) {
+    from(fwd[0], fwd[1], 11);
+    input.axis.x = 0;
+    input.axis.y = ax;
+    if (sprint) input.hold('ShiftLeft');
+    runA(0.8);
+    const ps = plantSlide();
+    let sp = 0, n = 0;
+    runA(1.4, () => {
+      ps.step();
       sp += Math.hypot(P.groundVel.x, P.groundVel.z);
       n++;
     });
+    speeds.push({ v: sp / n, slide: ps.slide, clip: ad.state.loop, sector: ad.state.sector });
     input.release('ShiftLeft');
-    speeds.push({ v: sp / n, slide, gait: ad.state.gait });
   }
-  out('     ' + speeds.map((q) => `${q.v.toFixed(2)} m/s (${q.gait}): ${(q.slide * 100).toFixed(2)} cm`).join(', '));
+  input.axis.y = 0;
+  runA(1.5);
+  out('     ' + speeds.map((q) => `${q.v.toFixed(2)} m/s (${q.sector} ${q.clip}): ${(q.slide * 100).toFixed(2)} cm`).join(', '));
   assert(speeds.every((q) => q.slide < 0.02), `moving at any speed from ${speeds[0].v.toFixed(1)} to ${speeds[speeds.length - 1].v.toFixed(1)} m/s a planted foot slides under 2 cm (worst ${(Math.max(...speeds.map((q) => q.slide)) * 100).toFixed(2)} cm)`);
-  // stop
-  input.axis.y = 0;
-  run(0.1);
-  const stopMode = ad.state.mode, stopClip = H.clip?.name;
-  run(1.5);
-  assert(stopMode === 'stop' && ad.state.mode === 'loco', `letting go after the run: ${stopMode} (${stopClip}), then standing (${ad.state.mode})`);
-  // a roll
-  input.axis.y = 1;
-  run(0.3);
-  input.hold('Space');
-  run(0.05);
-  input.release('Space');
-  const rollState = P.state, rollClip = H.clip?.name;
-  input.axis.y = 0;
-  run(1);
-  assert(rollState === 'roll' && rollClip === 'roll', `a roll plays the roll clip (${rollState}, ${rollClip})`);
-  // three lights on a target: the duelist, held still, 1.9 m in front
+  assert(speeds[speeds.length - 1].clip === 'sprint' && speeds[speeds.length - 2].clip === 'run' && speeds.every((q) => q.sector === 'F'), `facing the travel he plays the plain gaits (the main loop at each speed: ${speeds.map((q) => q.clip).join(' / ')})`);
+  const seen = (sec, each) => {
+    const modes = [];
+    runA(sec, (i) => {
+      each?.(i);
+      const k = `${ad.state.mode}:${H.clip?.name}`;
+      if (modes[modes.length - 1] !== k) modes.push(k);
+    });
+    return modes;
+  };
+  // ---- a start from standing
+  for (const [ax, sprint, want] of [[0.4, false, 'walkStart'], [1, false, 'runStart'], [1, true, 'sprintStart']]) {
+    from(fwd[0], fwd[1]);
+    input.axis.y = 0;
+    runA(1.5);
+    input.axis.y = ax;
+    if (sprint) input.hold('ShiftLeft');
+    const ps = plantSlide();
+    const m = seen(1, () => ps.step());
+    input.release('ShiftLeft');
+    input.axis.y = 0;
+    runA(1.5);
+    assert(m.includes(`start:${want}`) && m[m.length - 1].startsWith('loco:'), `setting off ${sprint ? 'to a sprint' : ax < 1 ? 'to a walk' : 'to a run'} plays ${want}, then the loop (${m.join(' > ')})`);
+    // (a known limit, measured: the game is at full speed in a fifth of a second, the footage's start
+    // takes over a second; where the clip's stance cannot keep up the pinned leg runs out of reach)
+    assert(ps.slide < 0.25, `  its planted feet: worst slide ${(ps.slide * 100).toFixed(2)} cm${ps.at ? ` (${ps.at})` : ''} (under 25 cm; 0 at a run)`);
+  }
+  // ---- stops: let go at different points of the walk's cycle: both feet's stops play
+  const stopsSeen = new Set();
+  let stopOk = true;
+  for (let k = 0; k < 6; k++) {
+    from(fwd[0], fwd[1]);
+    input.axis.y = 0.3;
+    runA(1.5 + k * 0.13);
+    input.axis.y = 0;
+    const m = seen(2.2);
+    const st = m.find((x) => x.startsWith('stop:'));
+    if (st) stopsSeen.add(st.slice(5));
+    if (!st || !m[m.length - 1].startsWith('loco:')) stopOk = false;
+  }
+  assert(stopOk && stopsSeen.has('walkStop') && stopsSeen.has('walkStopL'), `letting go of a walk plays the stop on the planted foot: both played (${[...stopsSeen].join(', ')}), then he stands`);
+  {
+    from(fwd[0], fwd[1]);
+    input.axis.y = 1;
+    runA(1.2);
+    input.axis.y = 0;
+    const m = seen(2.2);
+    assert(m.some((x) => x === 'stop:runStop') && m[m.length - 1].startsWith('loco:'), `letting go of a run: ${m.join(' > ')}`);
+  }
+  // ---- a pivot: running, the stick reversed (he faces the new way)
+  {
+    from(fwd[0], fwd[1]);
+    input.axis.y = 1;
+    runA(1.2);
+    input.axis.y = -1;
+    aimDir = [-fwd[0], -fwd[1]];
+    const m = seen(1.2);
+    assert(m.some((x) => x.startsWith('pivot:runPivot')) && m[m.length - 1].startsWith('loco:'), `the stick reversed at a run: ${m.join(' > ')}`);
+    input.axis.y = 0;
+    aimDir = fwd;
+    runA(1.5);
+  }
+  // ---- turns on the spot: the aim swung a quarter and a half turn each way
+  for (const [deg2, want] of [[90, 'turnL90'], [-90, 'turnR90'], [170, 'turnL180'], [-170, 'turnR180']]) {
+    P.debug.teleport(0, 20);
+    input.axis.x = input.axis.y = 0;
+    aimDir = fwd;
+    runA(1.2);
+    const a = Math.atan2(fwd[0], fwd[1]) + (deg2 * Math.PI) / 180;
+    aimDir = [Math.sin(a), Math.cos(a)];
+    const ps = plantSlide();
+    const m = seen(1.4, () => ps.step());
+    const tc = lib.get(want);
+    let own = 0;
+    for (let f = 0; tc && f < tc.n; f++) own = Math.max(own, Math.hypot(tc.root[f * 3], tc.root[f * 3 + 1]));
+    assert(m.includes(`turn:${want}`) && m[m.length - 1].startsWith('loco:') && Math.abs(ad.state.yawOff) < 1e-6, `the aim swung ${deg2} deg standing: ${want} (${m.join(' > ')})`);
+    assert(ps.slide < Math.max(own, 0.12) + 0.03, `  a foot planted through it slides ${(ps.slide * 100).toFixed(1)} cm (${ps.at}): under the clip's own root excursion (the game keeps him on the spot) or 12 cm (${(own * 100).toFixed(0)} cm)`);
+  }
+  aimDir = fwd;
+  // ---- strafing: facing a fixed point ahead, moving each way: the sector's loops, the feet planted
+  {
+    const res = [];
+    for (const [dx, dz] of [[fwd[0], fwd[1]], [-fwd[0], -fwd[1]], [sx, sz], [-sx, -sz]]) {
+      from(dx, dz, 8);
+      aimDir = null;
+      const [ax, ay] = stickFor(dx, dz);
+      input.axis.x = ax;
+      input.axis.y = ay;
+      const ps = plantSlide();
+      const clips = new Set();
+      runA(2.2, (i) => {
+        game.mouseGround.set(fwd[0] * 60, 0, fwd[1] * 60);
+        if (i < 45) return;
+        ps.step();
+        clips.add(ad.state.loop);
+      });
+      res.push({ sector: ad.state.sector, clips: [...clips].join('/'), slide: ps.slide });
+      input.axis.x = input.axis.y = 0;
+      runA(1);
+    }
+    out('     strafing: ' + res.map((r) => `${r.sector}: ${r.clips} ${(r.slide * 100).toFixed(2)} cm`).join(', '));
+    const secs = res.map((r) => r.sector).join('');
+    assert(res[0].clips === 'run' && res[1].clips === 'strafeRunB' && (secs === 'FBLR' || secs === 'FBRL') && res.slice(2).every((r) => r.clips === `strafeRun${r.sector}`), `strafing facing a point ahead: forward, back, left and right play run / strafeRunB / strafeRunL / strafeRunR (${secs})`);
+    assert(res.every((r) => r.slide < 0.02), `  a planted foot slides under 2 cm strafing (worst ${(Math.max(...res.map((r) => r.slide)) * 100).toFixed(2)} cm)`);
+  }
+  // ---- rolls: locked on the duelist, each way, and the backstep
   game.flow.debug.toState('boss');
   run(0.4);
   const d = game.dragon;
   d.debug?.setAI?.(false);
+  {
+    const res = [];
+    for (const [dx, dz] of [[fwd[0], fwd[1]], [-fwd[0], -fwd[1]], [sx, sz], [-sx, -sz], [0, 0]]) {
+      P.debug.teleport(0, 6);
+      d.position.set(fwd[0] * 30, 0, 6 + fwd[1] * 30);
+      P.lockOn = true;
+      run(0.6);
+      const [ax, ay] = stickFor(dx, dz);
+      input.axis.x = ax;
+      input.axis.y = ay;
+      run(0.05);
+      input.hold('Space');
+      run(0.05);
+      input.release('Space');
+      const clip = H.clip?.name, turn = ad.state.rollTurn;
+      input.axis.x = input.axis.y = 0;
+      run(1.2);
+      res.push(`${clip}${Math.abs(turn) > 0.01 ? ` (turned ${deg(turn).toFixed(0)})` : ''}`);
+    }
+    P.lockOn = false;
+    out('     rolls: ' + res.join(', '));
+    assert(res[0] === 'roll' && res[1].startsWith('rollB') && res.slice(2, 4).some((r) => r.startsWith('rollL')) && res.slice(2, 4).some((r) => r.startsWith('rollR')) && res[4] === 'backstep', `locked on, the rolls by direction: forward, back, the two sides, no input the backstep (${res.join(', ')})`);
+  }
+  // ---- three lights on a target: the duelist, held still, 1.9 m in front
   d.position.set(0, 0, -2);
   run(0.3);
   P.debug.teleport(0, -2 + 1.9);
   P.yaw = Math.PI;
+  aimDir = null;
   game.mouseGround.set(0, 0, -2);
   P.debug.god = true;
   run(0.3);
@@ -737,6 +903,16 @@ async function scenPlay() {
   let hits = 0;
   const onHit = () => hits++;
   for (const ev of ['player:hitDragon', 'player:hitDuelist']) game.events.on(ev, onHit);
+  // what his takeHit says to each cut, and the state he is in (a landed cut that deals nothing)
+  const why = [];
+  const th0 = d.takeHit;
+  d.takeHit = function (o) {
+    const b = { mode: this.mode, guard: !!this.guarding, catching: !!this.brain?.catching?.() };
+    const r = th0.call(this, o);
+    why.push(`${r} (${b.mode}${b.guard ? ', guard up' : ''}${b.catching ? ', catching' : ''})`);
+    return r;
+  };
+  const gu0 = d.brain.guardUp;
   const clips = [];
   let swordErr = 0;
   const sp = new THREE.Vector3(), lp = { x: 0, y: 0, z: 0 }, lb = { x: 0, y: 0, z: 0 };
@@ -752,16 +928,104 @@ async function scenPlay() {
       }
     });
   }
-  out(`     the chain played ${clips.join(', ')}; the target lost ${(hp0 - d.hp).toFixed(0)} hp in ${hits} hits`);
-  assert(hits >= 3, `three lights on a target 1.9 m in front land (${hits} hits, ${(hp0 - d.hp).toFixed(0)} hp)`);
+  // then the same chain with his guard down: the cuts deal their damage
+  const hp1 = d.hp;
+  d.brain.guardUp = () => false;
+  for (let k = 0; k < 3; k++) {
+    input.click(0);
+    run(0.45);
+  }
+  d.brain.guardUp = gu0;
+  d.takeHit = th0;
+  const lost = hp1 - d.hp;
+  out(`     the chain played ${clips.join(', ')}; the target lost ${(hp0 - d.hp).toFixed(0)} hp in ${hits} hits; his takeHit said: ${why.join(' | ')}`);
+  assert(hits >= 3, `three lights on a target 1.9 m in front land (${hits} hits; with his AI off his guard is up and a cut into his front is deflected: ${(hp0 - hp1).toFixed(0)} hp)`);
+  assert(lost > 0, `  with his guard down the same chain deals damage (${lost.toFixed(0)} hp)`);
   assert(swordErr < 0.005, `the hit test reads the remade hero's blade (today's rig's sword, un-leaned, within ${(swordErr * 1000).toFixed(1)} mm of the remade socket)`);
-  // a hit taken
+  // ---- the chain stopped: the swing's recovery plays back to the guard while he stands
+  {
+    run(0.2);
+    input.click(0);
+    let tail = null;
+    run(1.6, () => {
+      if (ad.state.mode === 'tail' && !tail) tail = H.clip?.name;
+    });
+    assert(/^lightRecover\d$/.test(tail ?? ''), `a light that ends the chain: its recovery back to the guard (${tail})`);
+  }
+  // ---- equip / unequip: the sword shows from the draw, hides from the sheathe (the review film's)
+  if (lib.has('equip') && lib.has('unequip')) {
+    const b = standIn(), h = createHero2(null, { body: b, library: lib, applyRoot: false });
+    h.play('equip', { fade: 0 });
+    h.update(1 / 60);
+    const before = b.props.R;
+    for (let i = 0; i < 30; i++) h.update(1 / 60);
+    const after = b.props.R;
+    h.play('unequip', { fade: 0 });
+    for (let i = 0; i < 30; i++) h.update(1 / 60);
+    assert(before == null && after === 'sword' && b.props.R == null, `equip: the sword hidden before its draw (${before}), shown after (${after}); unequip: hidden after the sheathe (${b.props.R})`);
+  }
+  // ---- the flask: the left hand holds it, the sword stays in the right; he walks while drinking
+  {
+    run(1.5);
+    P.flasks = 3;
+    input.axis.y = 0.5;
+    run(0.3);
+    input.hold('KeyF');
+    run(0.05);
+    input.release('KeyF');
+    let flaskL = false, swordR = true, ov = null, legs = null;
+    run(0.7, () => {
+      if (bodyProp('L') === 'flask') flaskL = true;
+      if (bodyProp('R') !== 'sword') swordR = false;
+      ov = H.overlayClip?.name ?? ov;
+      if (P.state === 'heal' && !legs) legs = H.clip?.name;
+    });
+    input.axis.y = 0;
+    run(2.5);
+    const after = bodyProp('L');
+    assert(ov === 'flask' && flaskL && swordR && after == null, `the flask: the upper body plays ${ov} over the legs' ${legs}, the flask in the LEFT hand (${flaskL}), the sword kept in the right (${swordR}), the hand empty after (${after})`);
+    P.flasks = 0;
+    input.hold('KeyF');
+    run(0.05);
+    input.release('KeyF');
+    let ov2 = null;
+    run(0.5, () => (ov2 = H.overlayClip?.name ?? ov2));
+    assert(ov2 === 'flaskEmpty', `no flask left: the empty flask is shaken (${ov2})`);
+    run(3);
+    P.flasks = 3;
+  }
+  // ---- hits taken: a stagger, a knockdown and the get-up, a death that ends lying
   P.debug.god = false;
+  P.hp = P.maxHp;
   run(0.5);
+  const hipsY = () => H.world.p[JI.hips * 3 + 1];
   P.takeHit({ damage: 12, tell: TELL.NORMAL, attack: 'test', kind: 'slash', from: { x: 0, z: -2 } });
   const hitState = P.state, hitClip = H.clip?.name;
-  run(1.2);
-  assert(hitState !== 'idle' && !!hitClip, `a hit taken: ${hitState} plays ${hitClip} (a stand-in until its clip exists)`);
+  run(1.5);
+  assert(hitState === 'stagger' && hitClip === 'hitLight', `a light hit: ${hitState} plays ${hitClip}`);
+  P.hp = P.maxHp;
+  run(0.5);
+  P.takeHit({ damage: 12, tell: TELL.NORMAL, attack: 'test', kind: 'slash', knockdown: true, knockback: 2, from: { x: 0, z: -2 } });
+  const kdState = P.state, kdClip = H.clip?.name;
+  let low = 9, lowT = 0, t = 0, upAt = -1;
+  const kdm = seen(3.5, () => {
+    t += DT;
+    const y = hipsY();
+    if (y < low) {
+      low = y;
+      lowT = t;
+    }
+    if (low < 0.3 && upAt < 0 && y > 0.9) upAt = t;
+  });
+  assert(kdState === 'knockdown' && kdClip === 'hitStrong' && low < 0.3 && lowT < 1.1 && upAt > 0.8 && kdm[kdm.length - 1].startsWith('loco:'), `knocked down: ${kdClip} (${kdm.join(' > ')}), on the ground (hips ${low.toFixed(2)} m) by ${lowT.toFixed(2)} s, up again at ${upAt.toFixed(2)} s (the game lets him up at ${TUNE_KD} s)`);
+  P.hp = 5;
+  run(0.3);
+  P.takeHit({ damage: 50, tell: TELL.NORMAL, attack: 'test', kind: 'slash', from: { x: 0, z: -2 } });
+  const dState = P.state, dClip = H.clip?.name;
+  run(2.5);
+  const y1 = hipsY();
+  run(1);
+  assert(dState === 'dead' && dClip === 'deathHit' && y1 < 0.3 && Math.abs(hipsY() - y1) < 1e-3, `killed: ${dClip}, lying (hips ${y1.toFixed(2)} m) and held`);
   console.error = ce;
   Math.random = R0;
   assert(bad === 0, `no NaN in the remade hero or the player (${bad})`);

@@ -115,7 +115,7 @@ export function legIK(pose, world, side, tx, ty, tz, keepFoot = true, d = HDIM) 
  */
 export function createFeet() {
   const slot = () => ({ pinned: false, x: 0, y: 0, z: 0 });
-  const foot = () => ({ A: slot(), B: slot(), k: 0, pinned: false, ox: 0, oy: 0, oz: 0, tx: 0, ty: 0, tz: 0, landed: false });
+  const foot = () => ({ A: slot(), B: slot(), k: 0, pinned: false, hold: false, ox: 0, oy: 0, oz: 0, tx: 0, ty: 0, tz: 0, landed: false });
   return { L: foot(), R: foot(), enabled: true, maxCorrect: 0, carry: CARRY_S, serial: -1, drop: 0 };
 }
 
@@ -127,7 +127,7 @@ export const CARRY_S = 0.07;
 export function resetFeet(feet) {
   for (const s of ['L', 'R']) {
     const F = feet[s];
-    F.A.pinned = F.B.pinned = F.pinned = false;
+    F.A.pinned = F.B.pinned = F.pinned = F.hold = false;
     F.k = 0;
     F.ox = F.oy = F.oz = 0;
   }
@@ -173,8 +173,19 @@ export function pinFeet(feet, pose, world, rest, pl, wA, wB, place, dt = 1 / 60,
         F.B.y = F.ty * sc;
       }
       F.A.pinned = false;
+      // a foot planted when the fade begins stays where it is drawn: the new clip's plant of it, if
+      // that is down too, takes that spot (held there until it lifts) instead of its own ankle's, so a
+      // change of clip never slides a planted foot across to the new clip's stance
+      F.hold = F.k > 0 && F.B.pinned;
     }
     const cA = pl.cA[S], cB = pl.cB[S];
+    if (cA <= 0) F.hold = false;
+    if (F.hold && !F.A.pinned && cA > 0) {
+      F.A.pinned = true;
+      F.A.x = F.B.x;
+      F.A.y = F.B.y;
+      F.A.z = F.B.z;
+    }
     // land each slot's plant where that clip's own ankle is (the playing clip carries the correction
     // a foot still has from its last plant, so a landing never jumps)
     land(F.A, cA, wA ?? world, a, F, true, place, c, s, sc);
