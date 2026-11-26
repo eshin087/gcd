@@ -21,6 +21,13 @@
 //
 // `?idles=old` keeps the idles before this pass (the belt, anim.js FIDGETS): setIdles() / the Lab.
 //
+// The default since ADR-207 is `ref` (refStance.js: the stand and the two-handed hold after the owner's
+// reference footage): ONE rest at ease (the reference's stand) and one in the fight (the hold), the same
+// habits, tricks and spells starting from and coming back to that stand (the forearm-led ones start from
+// its arm: STAND_ARM), the put-away and the draw (`stow`: the sword fades out in its green flame at his
+// left hip and is drawn back out of it), and in the fight the habits that keep both hands on the grip.
+// `?idles=new` is ADR-186's as it was (the rests, the guard hands).
+//
 // Pose space as stances.js: body axes (x his left, y up, z ahead); hand targets are offsets from each
 // shoulder. Every function here writes a pose (anim.js P) and never allocates or throws. Its randomness
 // is the idles' own stream on the animator (A.idleNoise), never Math.random, never the animator's `noise` (which picks
@@ -30,15 +37,16 @@ import { TAU, clamp, lerp, smoothstep } from '../../core/math.js';
 import { dirLerp, kf } from './anim.js';
 import { onTheBelt, standLife } from './stances.js';
 import { DIM } from './heroDims.js';
+import { REF_STAND, REF_READY, FLAT_ROLL } from './refStance.js';
 
 const DEG = Math.PI / 180;
 // a sword-hand offset → the same point as a free-hand offset (x): the two shoulders' spacing (anim.js's own)
 const LEFT_FROM_RIGHT = -(DIM.shoulder[0] + DIM.gripShoulder[0]);
 
 // ---------------------------------------------------------------- the switch
-const IDS = ['new', 'old'];
+const IDS = ['ref', 'new', 'old'];
 export const IDLES_IDS = Object.freeze(IDS.slice());
-export const IDLES_NAMES = Object.freeze({ new: 'rests, habits and tricks (ADR-186)', old: 'the hand on the belt (before)' });
+export const IDLES_NAMES = Object.freeze({ ref: 'the stand and the two-handed hold of the reference (ADR-207)', new: 'rests, habits and tricks (ADR-186)', old: 'the hand on the belt (before)' });
 const q = (name) => {
   try {
     return typeof location !== 'undefined' ? new URLSearchParams(location.search).get(name) : null;
@@ -46,13 +54,16 @@ const q = (name) => {
     return null;
   }
 };
-const PICK = { mode: q('idles') === 'old' ? 'old' : 'new' };
-/** The idles drawn now: 'new' (this file) or 'old' (the belt and the idle actions before). */
+const pickId = (v) => (IDS.includes(String(v)) ? String(v) : 'ref');
+const PICK = { mode: pickId(q('idles')) };
+/** The idles drawn now: 'ref' (the default: refStance.js), 'new' (ADR-186's rests) or 'old' (the belt and the idle actions before). */
 export const idlesMode = () => PICK.mode;
 export const idlesOld = () => PICK.mode === 'old';
+export const idlesRef = () => PICK.mode === 'ref';
 /** Lab / tests: switch live. Returns the id now set. */
 export function setIdles(id) {
-  PICK.mode = String(id) === 'old' ? 'old' : 'new';
+  PICK.mode = pickId(id);
+  syncStandArm();
   return PICK.mode;
 }
 
@@ -267,6 +278,14 @@ export const FIGHT_RESTS = [
   { name: 'low', fn: guardLow, w: 2 },
 ];
 
+// `?idles=ref` (the default, ADR-207): one rest each, the pose refStance.js already wrote (anim.js stand())
+const restNone = () => {};
+export const EASE_RESTS_REF = [{ name: 'stand', fn: restNone, w: 1, low: true }];
+export const FIGHT_RESTS_REF = [{ name: 'hold', fn: restNone, w: 1 }];
+/** The rests of the mode drawn now (at ease / in the fight). */
+export const easeRests = () => (PICK.mode === 'ref' ? EASE_RESTS_REF : EASE_RESTS);
+export const fightRests = () => (PICK.mode === 'ref' ? FIGHT_RESTS_REF : FIGHT_RESTS);
+
 // ---------------------------------------------------------------- the rest state
 /** A rest state on the animator (A.rests): at ease and in the fight, each { a, b, u, hold } (from rest
  *  a toward b, u 0..1 of the change; hold: s left in it). */
@@ -287,6 +306,16 @@ function pickRest(list, not, noise) {
 /** Advance a rest state. `still`: standing still in this stance (the hold runs down); `free`: and no
  *  action playing (a change starts only then); a change under way always finishes (slow and small). */
 function tickRest(S, list, dt, still, free, hold, move, noise) {
+  if (list.length < 2) {
+    // (one rest: nothing to change to; an index left from another mode's list goes home)
+    S.a = S.b = 0;
+    S.u = 1;
+    return;
+  }
+  if (S.a >= list.length || S.b >= list.length) {
+    S.a = S.b = 0;
+    S.u = 1;
+  }
   if (S.u < 1) {
     S.u = Math.min(1, S.u + dt / move);
     if (S.u >= 1) S.a = S.b;
@@ -306,14 +335,15 @@ export function tickRests(A, dt, pool, free) {
   const R = A.rests;
   if (!R) return;
   const n = A.idleNoise;
-  tickRest(R.ease, EASE_RESTS, dt, pool === 1, free, IDLES.restHold, IDLES.restMove, n);
-  tickRest(R.fight, FIGHT_RESTS, dt, pool === 2, free, IDLES.guardHold, IDLES.guardMove, n);
+  tickRest(R.ease, easeRests(), dt, pool === 1, free, IDLES.restHold, IDLES.restMove, n);
+  tickRest(R.fight, fightRests(), dt, pool === 2, free, IDLES.guardHold, IDLES.guardMove, n);
 }
 /** The rest's name now (the one he is moving to during a change). */
 export function restName(A, fight) {
   const S = fight ? A.rests?.fight : A.rests?.ease;
   if (!S) return '';
-  return (fight ? FIGHT_RESTS : EASE_RESTS)[S.u < 1 ? S.b : S.a]?.name ?? '';
+  const L = fight ? fightRests() : easeRests();
+  return L[S.u < 1 ? S.b : S.a]?.name ?? L[0].name;
 }
 
 // ---------------------------------------------------------------- writing a rest
@@ -365,8 +395,71 @@ function unitAzEl(az, el, o) {
   o[2] = c * Math.cos(a);
   return o;
 }
-/** The at-ease sword arm (stances.js atEase) as an elbow and a forearm's aim: where a led move starts. */
-const EASE_ELBOW = [-0.044, -0.257, -0.047], EASE_AIM = [-56, -55];
+/** The at-ease sword arm as an elbow and a forearm's aim: where a led move starts (EASE_ELBOW, EASE_AIM),
+ *  and where the blade points then (EASE_BLADE). The arm of the mode drawn now (syncStandArm): ADR-186's
+ *  (stances.js atEase: the blade on the forearm's line) or the reference's stand (refStance.js REF_STAND:
+ *  the wrist cocked, the blade forward). FIGHT_AIM / FIGHT_FLAT: the fight's blade [az, el] and its flat's
+ *  angle from the blade's up side (idles.js flatAt), which the fight's habits move about. */
+const EASE_ELBOW = [0, 0, 0], EASE_AIM = [0, 0], EASE_BLADE = [0, 0], FIGHT_AIM = [0, 0], FIGHT_FLAT = [0];
+const ARM_NEW = { el: [-0.044, -0.257, -0.047], aim: [-56, -55], blade: [-56, -55], fight: [-9, 13], flat: 0.25 };
+/** The two-bone arm's elbow for a hand target h and pole p (offsets from the shoulder, body axes): where the
+ *  animator's own solve puts it (anim.js _arm, inside the arm's reach). */
+function elbowOf(h, pole, out) {
+  const U = DIM.upperArm, F = DIM.foreArm;
+  let d = Math.hypot(h[0], h[1], h[2]) || 1e-6;
+  const hx = h[0] / d, hy = h[1] / d, hz = h[2] / d;
+  d = Math.min(d, (U + F) * 0.999);
+  const a = (U * U - F * F + d * d) / (2 * d), r = Math.sqrt(Math.max(0, U * U - a * a));
+  const k = pole[0] * hx + pole[1] * hy + pole[2] * hz;
+  let px = pole[0] - hx * k, py = pole[1] - hy * k, pz = pole[2] - hz * k;
+  const pl = Math.hypot(px, py, pz) || 1;
+  px /= pl;
+  py /= pl;
+  pz /= pl;
+  out[0] = hx * a + px * r;
+  out[1] = hy * a + py * r;
+  out[2] = hz * a + pz * r;
+  return out;
+}
+const ARM_REF = { el: [0, 0, 0], aim: [0, 0], blade: [0, 0], fight: [0, 0], flat: 0 };
+/** ARM_REF from refStance.js's poses as they are now (the Lab / a tuning pass may change them live). */
+function refArm() {
+  const S = REF_STAND, el = elbowOf(S.rH, S.leadP ?? S.rP, ARM_REF.el);
+  const fx = S.rH[0] - el[0], fy = S.rH[1] - el[1], fz = S.rH[2] - el[2];
+  // (the hand a forearm's length from the elbow along the aim: armAlong puts it there)
+  ARM_REF.aim[0] = Math.atan2(fx, fz) / DEG;
+  ARM_REF.aim[1] = Math.atan2(fy, Math.hypot(fx, fz)) / DEG;
+  ARM_REF.blade[0] = S.sw[0];
+  ARM_REF.blade[1] = S.sw[1];
+  ARM_REF.fight[0] = REF_READY.sw[0];
+  ARM_REF.fight[1] = REF_READY.sw[1];
+  ARM_REF.flat = (90 - FLAT_ROLL) * DEG;
+  return ARM_REF;
+}
+// the sword elbow's pole the moves that swing the blade take over their envelope (`?idles=ref`: refStance.js
+// REF_STAND.leadP; the stand's own elbow stands out off the ribs, and fading into a raise from that side the
+// sword wrist turned past 60°, ADR-207). Off with ADR-186's (the stand's own is theirs)
+const LEAD = { on: false, p: [0, 0, 0] };
+function leadArm(p, P, e) {
+  if (LEAD.on && e > 0) to3(p, P.rP, LEAD.p[0], LEAD.p[1], LEAD.p[2], Math.min(1, e));
+}
+/** idles.js / anim.js: the standing arm of the mode drawn now (called by setIdles and at load). */
+export function syncStandArm() {
+  const lp = PICK.mode === 'ref' ? REF_STAND.leadP : null;
+  LEAD.on = !!lp;
+  if (lp) for (let i = 0; i < 3; i++) LEAD.p[i] = lp[i];
+  const S = PICK.mode === 'ref' ? refArm() : ARM_NEW;
+  for (let i = 0; i < 3; i++) EASE_ELBOW[i] = S.el[i];
+  for (let i = 0; i < 2; i++) {
+    EASE_AIM[i] = S.aim[i];
+    EASE_BLADE[i] = S.blade[i];
+    FIGHT_AIM[i] = S.fight[i];
+  }
+  FIGHT_FLAT[0] = S.flat;
+}
+syncStandArm();
+/** Tests: the standing arm now (copies). */
+export const standArm = () => ({ elbow: EASE_ELBOW.slice(), aim: EASE_AIM.slice(), blade: EASE_BLADE.slice(), fight: FIGHT_AIM.slice() });
 /** Toward by t: the elbow at (ex, ey, ez) (an offset from the sword shoulder, body axes), the forearm aimed
  *  at az / el (degrees), the hand a forearm's length on along it, the elbow bending toward where it is. */
 function armAlong(p, P, ex, ey, ez, az, el, t) {
@@ -503,11 +596,12 @@ export const EASE_HABITS = [
 /** The wrist spin: the forearm points out and down at his right, and the point swirls twice round it in a
  *  quick cone (the blade never more than ~45° off the forearm's line), fast in the middle, and settles. */
 function trickSpin(p, P, A, u, e) {
+  leadArm(p, P, e);
   const s = smoothstep(0.14, 0.86, u), ph = 2 * TAU * s;
   const w = e * bump(s, 0, 0.08, 0.92, 1); // (into the cone and out of it without a corner)
   const lead = bump(u, 0.04, 0.16, 0.86, 0.97) * e;
   armPath(p, P, smoothstep(0.04, 0.16, u), [[0, ...EASE_ELBOW, ...EASE_AIM], [1, -0.07, -0.26, 0.07, -32, -30]], lead);
-  aimTo(p, P.swD, lerp(-56, -32, smoothstep(0.04, 0.16, u)) + 28 * Math.sin(ph) * w, lerp(-55, -30, smoothstep(0.04, 0.16, u)) + 24 * Math.cos(ph) * w, lead);
+  aimTo(p, P.swD, lerp(EASE_BLADE[0], -32, smoothstep(0.04, 0.16, u)) + 28 * Math.sin(ph) * w, lerp(EASE_BLADE[1], -30, smoothstep(0.04, 0.16, u)) + 24 * Math.cos(ph) * w, lead);
   flatAt(p, P, 1.57 + ph, w);
   const lf = bump(u, 0.05, 0.2, 0.8, 0.95) * e;
   const yaw = p[P.pelvY] + p[P.spY];
@@ -521,11 +615,12 @@ function trickSpin(p, P, A, u, e) {
 /** The figure-eight: the forearm out before him to his right, and the point draws an 8 lying on its side
  *  round its line twice (±26° across, ±19° up and down), the wrist rolling the flat through each loop. */
 function trickEight(p, P, A, u, e) {
+  leadArm(p, P, e);
   const s = smoothstep(0.14, 0.86, u), ph = TAU * 2 * s;
   const w = e * bump(s, 0, 0.08, 0.92, 1);
   const g = smoothstep(0.04, 0.16, u), lead = bump(u, 0.04, 0.16, 0.86, 0.97) * e;
   armPath(p, P, g, [[0, ...EASE_ELBOW, ...EASE_AIM], [1, -0.05, -0.21, 0.18, -30, 2]], lead);
-  aimTo(p, P.swD, lerp(-56, -30, g) + 26 * Math.sin(ph) * w, lerp(-55, 4, g) + 19 * Math.sin(2 * ph) * w, lead);
+  aimTo(p, P.swD, lerp(EASE_BLADE[0], -30, g) + 26 * Math.sin(ph) * w, lerp(EASE_BLADE[1], 4, g) + 19 * Math.sin(2 * ph) * w, lead);
   flatAt(p, P, 1.57 + 1.3 * Math.cos(ph), w);
   const yaw = p[P.pelvY] + p[P.spY];
   const lf = bump(u, 0.05, 0.2, 0.8, 0.95) * e;
@@ -541,6 +636,7 @@ function trickEight(p, P, A, u, e) {
  *  blade a little past plumb), the free palm laid over the sword fist, a short bow of the head; then the blade
  *  opens down and out to his right in one quick arc, the forearm leading it, and he lets it back to rest. */
 function trickSalute(p, P, A, u, e) {
+  leadArm(p, P, e);
   const up = smoothstep(0.06, 0.3, u), open = smoothstep(0.62, 0.74, u), home = smoothstep(0.76, 0.95, u);
   const k = up * (1 - open);
   // the forearm: down at rest → upright before the shoulder → down and out at his right with the arc
@@ -551,7 +647,9 @@ function trickSalute(p, P, A, u, e) {
   const aaz = lerp(lerp(EASE_AIM[0], R.aim[0], up), -68, open), ael = lerp(lerp(EASE_AIM[1], R.aim[1], up), -42, open);
   armAlong(p, P, ex, ey, ez, aaz, ael, tt);
   // the blade: upright over the raised fist (the wrist cocked), with the forearm on the arc out
-  aimTo(p, P.swD, lerp(aaz, R.blade[0], k), lerp(ael, R.blade[1], k), tt);
+  // (from the stand's blade: on ADR-186's it lies on the forearm's line, on the reference's the wrist is cocked)
+  const bo = 1 - up;
+  aimTo(p, P.swD, lerp(aaz + (EASE_BLADE[0] - EASE_AIM[0]) * bo, R.blade[0], k), lerp(ael + (EASE_BLADE[1] - EASE_AIM[1]) * bo, R.blade[1], k), tt);
   flatAt(p, P, lerp(1.57, 0.3, open), tt);
   // the free palm over the fist (anim.js lays the open hand on the sword wrist: lk)
   const on = bump(u, 0.18, 0.3, 0.58, 0.66) * e;
@@ -570,6 +668,7 @@ function trickSalute(p, P, A, u, e) {
 /** The flick (chiburi): the blade comes up before him, snaps down and out to his right to throw the
  *  blood off it, holds, then the free hand comes to the hilt and he sets it back to rest. */
 function trickFlick(p, P, A, u, e) {
+  leadArm(p, P, e);
   const up = smoothstep(0.08, 0.34, u), snap = smoothstep(0.38, 0.45, u), back = smoothstep(0.62, 0.86, u);
   const hx = lerp(lerp(-0.12, -0.05, up), -0.3, snap), hy = lerp(lerp(-0.42, -0.12, up), -0.4, snap), hz = lerp(lerp(0.1, 0.3, up), 0.18, snap);
   to3(p, P.rH, hx, hy, hz, e);
@@ -597,9 +696,10 @@ function trickFlick(p, P, A, u, e) {
  *  laid on the flat at the guard and drawn slowly up it toward the point; the flame swells behind them, and at
  *  the point a few marks lift off like embers. His eyes follow the fingers. */
 function spellRite(p, P, A, u, e) {
+  leadArm(p, P, e);
   const up = smoothstep(0.04, 0.22, u), dn = smoothstep(0.82, 0.97, u), w = e * (1 - dn);
   armRaise(p, P, RAISE.rite, up, w);
-  aimTo(p, P.swD, lerp(EASE_AIM[0], RAISE.rite.blade[0], up), lerp(EASE_AIM[1], RAISE.rite.blade[1], up), w);
+  aimTo(p, P.swD, lerp(EASE_BLADE[0], RAISE.rite.blade[0], up), lerp(EASE_BLADE[1], RAISE.rite.blade[1], up), w);
   flatAt(p, P, 1.57, w * up);
   // the sword fingers from the guard (0.14 m up the blade) to two thirds of it, then off
   const on = bump(u, 0.24, 0.34, 0.72, 0.8) * e;
@@ -623,6 +723,7 @@ function spellRite(p, P, A, u, e) {
  *  the point in a small slow circle, and round him a ring of faint marks writes itself on the ground,
  *  holds, and lifts away. */
 function spellSigil(p, P, A, u, e) {
+  leadArm(p, P, e);
   const dn = bump(u, 0.04, 0.2, 0.8, 0.96);
   const w = e * dn;
   const c = smoothstep(0.22, 0.62, u) * TAU;
@@ -648,9 +749,10 @@ function spellSigil(p, P, A, u, e) {
  *  free hand open beside it; he breathes in slow and deep, the flame swells, a thread of marks circles him at
  *  the height of his chest and comes back into the steel, and he lets the blade down. */
 function spellBreath(p, P, A, u, e) {
+  leadArm(p, P, e);
   const up = smoothstep(0.04, 0.2, u), dn = smoothstep(0.84, 0.97, u), w = e * (1 - dn);
   armRaise(p, P, RAISE.breath, up, w);
-  aimTo(p, P.swD, lerp(EASE_AIM[0], RAISE.breath.blade[0], up), lerp(EASE_AIM[1], RAISE.breath.blade[1], up), w);
+  aimTo(p, P.swD, lerp(EASE_BLADE[0], RAISE.breath.blade[0], up), lerp(EASE_BLADE[1], RAISE.breath.blade[1], up), w);
   flatAt(p, P, 1.57, w * up);
   const yaw = p[P.pelvY] + p[P.spY];
   const on = bump(u, 0.16, 0.28, 0.74, 0.84) * e;
@@ -682,8 +784,8 @@ export const EASE_TRICKS = [
 /** Grip: the blade turns a little in the hand and back, the point dipping; the free hand closes and opens. */
 function fightGrip(p, P, A, u, e) {
   const k = kf(u, [0.15, 0, 0.35, 1, 0.55, -0.6, 0.75, 0]);
-  flatAt(p, P, 0.25 + 0.5 * k, e);
-  aimTo(p, P.swD, -9 - 4 * k, 13 - 5 * Math.abs(k), 0.8 * e);
+  flatAt(p, P, FIGHT_FLAT[0] + 0.5 * k, e);
+  aimTo(p, P.swD, FIGHT_AIM[0] - 4 * k, FIGHT_AIM[1] - 5 * Math.abs(k), 0.8 * e);
   p[P.rH + 1] -= 0.015 * Math.abs(k) * e;
   const sh = kf(u, [0.2, 1, 0.32, 0, 0.5, 0, 0.62, 1]);
   p[P.hs] += (sh - p[P.hs]) * e;
@@ -696,7 +798,7 @@ function fightShift(p, P, A, u, e) {
   p[P.bodyY] -= 0.015 * k * e;
   p[P.rH] += 0.02 * Math.cos(a) * k * e;
   p[P.rH + 1] += 0.02 * Math.sin(a) * k * e;
-  aimTo(p, P.swD, -9 + 7 * Math.cos(a), 13 + 6 * Math.sin(a), k * e);
+  aimTo(p, P.swD, FIGHT_AIM[0] + 7 * Math.cos(a), FIGHT_AIM[1] + 6 * Math.sin(a), k * e);
   p[P.lH + 2] += 0.04 * Math.sin(a) * e;
   p[P.lH + 1] += 0.02 * Math.cos(a) * e;
 }
@@ -708,7 +810,7 @@ function fightLoosen(p, P, A, u, e) {
   p[P.lH + 1] += 0.04 * (1 - Math.cos(a)) * e;
   p[P.lH + 2] -= 0.03 * Math.sin(a) * e;
   p[P.spZ] -= 0.03 * Math.sin(a) * e;
-  aimTo(p, P.swD, -9, 13 - 9 * Math.sin(Math.PI * clamp((u - 0.2) / 0.5, 0, 1)), 0.8 * e);
+  aimTo(p, P.swD, FIGHT_AIM[0], FIGHT_AIM[1] - 9 * Math.sin(Math.PI * clamp((u - 0.2) / 0.5, 0, 1)), 0.8 * e);
 }
 /** Beckon: the free hand turns palm up toward the foe and the fingers curl twice: come on. */
 function fightBeckon(p, P, A, u, e) {
@@ -724,8 +826,8 @@ function fightBeckon(p, P, A, u, e) {
 /** The point flicks: two quick small circles of the point from the wrist, the free hand still. */
 function fightFlick(p, P, A, u, e) {
   const s = smoothstep(0.15, 0.85, u), a = 2 * TAU * s, k = Math.sin(Math.PI * s);
-  aimTo(p, P.swD, -9 + 9 * Math.cos(a) * k, 13 + 9 * Math.sin(a) * k, e);
-  flatAt(p, P, 0.25 + 0.4 * Math.sin(a) * k, e);
+  aimTo(p, P.swD, FIGHT_AIM[0] + 9 * Math.cos(a) * k, FIGHT_AIM[1] + 9 * Math.sin(a) * k, e);
+  flatAt(p, P, FIGHT_FLAT[0] + 0.4 * Math.sin(a) * k, e);
 }
 export const FIGHT_ACTS = [
   { name: 'grip', dur: 1.8, fn: fightGrip },
@@ -734,19 +836,120 @@ export const FIGHT_ACTS = [
   { name: 'beckon', dur: 2.2, fn: fightBeckon },
   { name: 'pointFlick', dur: 1.5, fn: fightFlick },
 ];
+/** `?idles=ref`: both hands are on the grip in the fight, so only the habits that keep them there (the grip
+ *  squeezed, the weight shifted, the shoulders loosened: written about the hold's blade, FIGHT_AIM). */
+export const FIGHT_ACTS_REF = FIGHT_ACTS.filter((D) => D.name === 'grip' || D.name === 'shift' || D.name === 'loosen');
+
+// ---------------------------------------------------------------- THE PUT-AWAY AND THE DRAW (`?idles=ref`)
+// From the reference (the owner: the hero has no scabbard, "the sword fades out in its own green flame at
+// his left hip and is drawn back out of the flame"): a quick dip of the body, the sword hand sweeps across to
+// the left hip and the sword is gone (~0.35 s); he stands empty-handed, both arms hanging (~1.5 s); the same
+// dip, the hand comes away from the left hip with the sword, the blade swings up and over forward and
+// settles into the stand (~0.35 s). The motion is here; the sword's fade is anim.js's (HeroAnimator.stow,
+// published by _idleLife from STOW.hidden: the weapon's own meshes shrink into the hilt and hide), its flame
+// swordMystic.js's. The sword is whole again the very frame anything else starts (anim.js _idleLife).
+export const STOW = {
+  dur: 3.6,
+  // u (0..1 of dur) where the sword is gone: fading out over hide[0..1], back over show[0..1]
+  hide: [0.2, 0.25],
+  show: [0.68, 0.72],
+  // the sword arm as [u, elbow x, y, z, forearm az, el] keys (the stand's at both ends; STAND marks them)
+  hip: [0.27, -0.25, 0.08, 64, -32], // the hand at the left hip, the forearm across his front
+  up: [-0.06, -0.21, 0.1, -8, 38], // the draw's top: the forearm up before the right breast
+  // the blade [az, el] at the hip (forward, left and down, as it goes in and comes out) and at the draw's top
+  bladeHip: [36, -40],
+  bladeUp: [-10, 62],
+};
+/** 0..1: how far the sword is gone at u of the stow (anim.js reads it through the action's name). */
+export const stowHidden = (u) => smoothstep(STOW.hide[0], STOW.hide[1], u) * (1 - smoothstep(STOW.show[0], STOW.show[1], u));
+// the keys (u, then elbow x y z, az el): rebuilt from the standing arm as it is now (no allocation per frame)
+const STOW_U = [0.0, 0.13, 0.23, 0.27, 0.37, 0.6, 0.67, 0.71, 0.79, 0.87];
+const STOW_K = new Float32Array(STOW_U.length * 5);
+const _kn = new Float32Array(2 * STOW_U.length);
+function stowKeys() {
+  const S = STOW;
+  // 0 stand, 1 stand, 2 hip, 3 hip, 4 hanging (the stand), 5 hanging, 6 hip, 7 hip, 8 up, 9 stand
+  const at = [0, 0, 1, 1, 0, 0, 1, 1, 2, 0];
+  for (let i = 0; i < STOW_U.length; i++) {
+    const o = i * 5;
+    if (at[i] === 0) {
+      STOW_K[o] = EASE_ELBOW[0];
+      STOW_K[o + 1] = EASE_ELBOW[1];
+      STOW_K[o + 2] = EASE_ELBOW[2];
+      STOW_K[o + 3] = EASE_AIM[0];
+      STOW_K[o + 4] = EASE_AIM[1];
+    } else {
+      const K = at[i] === 1 ? S.hip : S.up;
+      for (let j = 0; j < 5; j++) STOW_K[o + j] = K[j];
+    }
+  }
+}
+const stowCh = (u, j) => {
+  for (let i = 0; i < STOW_U.length; i++) {
+    _kn[2 * i] = STOW_U[i];
+    _kn[2 * i + 1] = STOW_K[i * 5 + j];
+  }
+  return kf(u, _kn);
+};
+// the blade's keys (az, el): the stand's, at the hip (in and out), the draw's top, the stand's. While the sword
+// is gone it lies along the forearm (actStow); cut there, it is the stand's at once
+const BLADE_U = [0.13, 0.23, 0.27, 0.37, 0.6, 0.67, 0.71, 0.79, 0.87];
+const BLADE_AT = [0, 1, 1, 0, 0, 1, 1, 2, 0];
+const _kb = new Float32Array(2 * BLADE_U.length);
+function bladeCh(u, j) {
+  const S = STOW;
+  for (let i = 0; i < BLADE_U.length; i++) {
+    _kb[2 * i] = BLADE_U[i];
+    _kb[2 * i + 1] = BLADE_AT[i] === 0 ? EASE_BLADE[j] : BLADE_AT[i] === 2 ? S.bladeUp[j] : S.bladeHip[j];
+  }
+  return kf(u, _kb);
+}
+const BLADE_V = [0, 0];
+/** The stow: put away, empty-handed, drawn (see STOW). */
+function actStow(p, P, A, u, e) {
+  leadArm(p, P, e);
+  if (!(e > 0)) return;
+  stowKeys();
+  const ex = stowCh(u, 0), ey = stowCh(u, 1), ez = stowCh(u, 2), az = stowCh(u, 3), el = stowCh(u, 4);
+  armAlong(p, P, ex, ey, ez, az, el, e);
+  // the blade: keyed, and along the forearm while the sword is gone (the empty fist hangs on the wrist's line)
+  // (the animator's: 0 the frame the moment is cut, though its weight still fades)
+  const h = Number.isFinite(A.stow) ? A.stow : 0;
+  BLADE_V[0] = lerp(bladeCh(u, 0), az, h);
+  BLADE_V[1] = lerp(bladeCh(u, 1), el, h);
+  aimTo(p, P.swD, BLADE_V[0], BLADE_V[1], e);
+  // the dip: forward and round to his left as the hand goes to the hip, both ways
+  const dip = bump(u, 0.12, 0.21, 0.25, 0.34) + bump(u, 0.58, 0.66, 0.71, 0.8);
+  p[P.spX] += 0.13 * dip * e;
+  p[P.spY] += 0.22 * dip * e;
+  p[P.pelvY] += 0.07 * dip * e;
+  p[P.bodyY] -= 0.03 * dip * e;
+  p[P.hdX] += 0.16 * dip * e;
+  p[P.hdY] += 0.12 * dip * e;
+  // empty-handed he looks ahead, a breath deeper
+  p[P.spX] -= 0.02 * h * e;
+  p[P.lk] *= 1 - e;
+  p[P.twoHand] *= 1 - e;
+  p[P.offAt] *= 1 - e;
+}
+/** `?idles=ref`'s own moments at ease (with ADR-186's habits, tricks and spells). */
+export const EASE_REF_EXTRA = [{ name: 'stow', dur: STOW.dur, fn: actStow, trick: true, blade: true, stow: true }];
 
 /** Is the at-ease rest he stands in now (and not changing) one an action that swings the blade may start from? */
 export function lowRest(A) {
+  if (PICK.mode === 'ref') return true; // (one rest: the stand, a low one)
   const S = A.rests?.ease;
   return !!S && S.u >= 1 && !!EASE_RESTS[S.a]?.low;
 }
 /** Is he in (or moving to or from) the trailing rest, its blade low behind him? (anim.js: a block's entry) */
 export function trailing(A) {
+  if (PICK.mode === 'ref') return false;
   const S = A.rests?.ease;
   return !!S && (EASE_RESTS[S.a]?.name === 'trail' || (S.u < 1 && EASE_RESTS[S.b]?.name === 'trail'));
 }
 /** Move the at-ease rest to the loose one (a low rest) now: an action that swings the blade waits for it. */
 export function toLowRest(A) {
+  if (PICK.mode === 'ref') return;
   const S = A.rests?.ease;
   if (!S || (S.u >= 1 && EASE_RESTS[S.a]?.low) || (S.u < 1 && EASE_RESTS[S.b]?.low)) return;
   if (S.u < 1) S.a = S.b; // (a change under way: from where it is going)

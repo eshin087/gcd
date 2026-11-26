@@ -5,7 +5,8 @@
     "dev": "node scripts/serve.mjs",
     "build": "node scripts/build.mjs",
     "hero-parts": "node scripts/blender/build-hero-parts.mjs",
-    "test": "node tests/run.mjs ."
+    "test": "node tests/run.mjs .",
+    "perf": "node scripts/perf.mjs"
   },
   "description": "gcd: an ASCII wuxia boss rush in the browser",
   "dependencies": {

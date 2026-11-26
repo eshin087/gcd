@@ -19,6 +19,16 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-25',
+        title: 'The hero stands, holds and guards like the reference',
+        notes: [
+          'At ease the hero stands tall with his sword in one hand, its point forward and down by his right foot.',
+          'In a fight he takes the sword in both hands before him, the point raised above his head.',
+          'Now and then he puts the sword away at his hip, where it burns out in its green flame, and draws it back out of the flame.',
+          'His guard is a braced crouch, both hands up before his chin and the blade across his face. Blocking and parrying work exactly as before.',
+        ],
+      },
+      {
+        date: '2026-11-25',
         title: 'The resolution follows the frame rate',
         notes: [
           'A new quality setting, AUTO, is on by default: when your device cannot hold 60 frames a second the game draws at a lower resolution, and climbs back when there is room (never in the middle of a fight).',

@@ -3340,7 +3340,7 @@ async function scenarioChain() {
   out('\n== scenario CHAIN (round the head: each pass from where the last ended; its figures; the slashes on his path; no shards) ==');
   const { STREAK_FX } = await imp('src/combat/streak.js');
   const FIG = await imp('src/entities/player/flurryFigures.js');
-  const { shapeOf, dumpFigure } = await import(pathToFileURL(`${ROOT}/tests/integration/figures.mjs`).href);
+  const { shapeOf, dumpFigure, measure: measureFig } = await import(pathToFileURL(`${ROOT}/tests/integration/figures.mjs`).href);
   const figure0 = STREAK_FX.figure;
   const G = build();
   fightSetup(G);
@@ -3452,7 +3452,20 @@ async function scenarioChain() {
       const sh = shapeOf(t.figure, t.passes, true);
       if (n === 5) out(`   ${name} N=${n}: ${t.seq}`);
       assert(t.figure === name || n !== 5, `${name} N=${n}: the figure laid is ${t.figure} (its cost ${t.fit.toFixed(2)})`);
-      assert(sh.ok && t.jumps.every((j) => j < 0.3) && t.near >= 1.5 && t.lineErr < 0.35 && t.ev?.figure === t.figure, `${name} N=${n}: a ${t.figure} (${sh.why}), chained, clear of the dodge spot, its lines on his path`);
+      // (a star's spread is what its search (flurry.js _planChain) can find from where he dodged, round the
+      // head where it stood: seven lines from one dodge spot reached 14° where another reached 21°, the search
+      // complete both times (ADR-207: the hero's new stance moved the seeded fight before it). The star he
+      // runs must be the widest the search found, its whole search run, and never under 12°)
+      let starOk = false, starWhy = '';
+      if (t.figure === 'star' && !sh.ok) {
+        const M = measureFig(t.passes);
+        let gg = 1;
+        for (let i = 0; i < M.length; i++) for (let j = i + 1; j < M.length; j++) gg = Math.min(gg, Math.abs(Math.sin(M[i].a - M[j].a)));
+        const plan = p.flurry.planGap, whole = p.flurry.planNodes <= F.chain.nodes;
+        starOk = gg >= plan - 0.02 && whole && gg >= 0.2;
+        starWhy = `; the widest its whole search found from his dodge spot: ${(Math.asin(Math.min(1, plan)) * 57.3).toFixed(0)}° planned, ${(Math.asin(Math.min(1, gg)) * 57.3).toFixed(0)}° run, ${p.flurry.planNodes} of ${F.chain.nodes} nodes`;
+      }
+      assert((sh.ok || starOk) && t.jumps.every((j) => j < 0.3) && t.near >= 1.5 && t.lineErr < 0.35 && t.ev?.figure === t.figure, `${name} N=${n}: a ${t.figure} (${sh.why}${starWhy}), chained, clear of the dodge spot, its lines on his path`);
       if (n === 5) {
         const T = { x: t.passes[0].tx, z: t.passes[0].tz };
         dumpFigure({ name, N: n, air: true, R: F.reach.air, O: [t.ox - T.x, t.oz - T.z], neck: t.neck, passes: t.passes.map((q) => [q.ax - T.x, q.az - T.z, q.bx - T.x, q.bz - T.z]), art: t.art && t.art.state !== 'plunge' ? [t.art.sx - T.x, t.art.sz - T.z, t.art.bx - T.x, t.art.bz - T.z] : null, label: sh.why });
@@ -5639,6 +5652,13 @@ async function scenarioHero() {
       // of a knockdown within 10 cm (the hero's longer reach, anim.js HERO_SOFT, carries the hilt ~1 cm lower there): the cloak's own sheets go 16 cm under there, the springs lag the
       // fall); it swings out through a cut and hangs again at rest. Its angle is measured on the
       // upright body (unleaned): drawn, the whole figure leans ~29° toward the camera
+      // (ADR-207: the swing measured here is the falling cut's windup lifting a LEVEL blade, the fencer's guard
+      // (ADR-186's fight stance, `?idles=new`): from the reference's two-handed hold, the blade already up at
+      // 47°, the hilt travels less into the coil and the ribbon swings 30° (51° with only the hold's blade
+      // lowered to the fencer's 13°). The ribbon sword is a look kept for later: measured from the stance it
+      // was tuned against)
+      const RIB = await imp('src/entities/player/idles.js'), ribIdles = RIB.idlesMode();
+      RIB.setIdles('new');
       p.setLoadout({ ...DEFAULT_LOADOUT, weapon: 'moon.ribbon' });
       p.debug.teleport(d.position.x + 14, d.position.z + 14);
       const S = p.rig.streamers.find((s) => s.weapon), w0 = new THREE.Vector3(), w1 = new THREE.Vector3();
@@ -5685,6 +5705,7 @@ async function scenarioHero() {
       // higher than it did out of the old low stance, and the ribbon's springs lag that much more)
       assert(lowest >= 0 && lowestDown >= -0.1, `the ribbon never sinks into the grass through a run, a sprint, a roll, the chain and the cleave (lowest ${lowest.toFixed(3)} m), nor more than 10 cm landing in a knockdown (${lowestDown.toFixed(3)} m)`);
       assert(swing >= 35 && rest <= 25, `the ribbon swings out through a cut (${swing.toFixed(0)}° ≥ 35°) and hangs again at rest (${rest.toFixed(0)}° ≤ 25°)`);
+      RIB.setIdles(ribIdles);
       p.setLoadout(DEFAULT_LOADOUT);
       drive();
       assert(meshes() === n0 && finite() && p.rig.streamers.every((s) => !s.weapon), `back to the longsword (${meshes()} meshes)`);
@@ -11668,6 +11689,12 @@ async function scenarioHeroIdles() {
   out('\n== scenario HEROIDLES (rests, habits and tricks; the guard hand off the belt; anatomy, the blade out of the body, pops, transitions) ==');
   const { DIM: HD, BODY, sheetOffset } = await imp('src/entities/player/model.js');
   const I = await imp('src/entities/player/idles.js');
+  // (ADR-207: the reference's idles are the default now, HEROREF checks them; these are ADR-186's, `?idles=new`)
+  const idles0 = I.idlesMode();
+  I.setIdles('new');
+  const RSG = await imp('src/entities/player/refStance.js');
+  const guard0 = RSG.guardMode();
+  RSG.setGuard('ward'); // (its block transitions were measured into the cross ward)
   const G = build();
   const { game, input } = G;
   run(G, 0.3);
@@ -11764,7 +11791,7 @@ async function scenarioHeroIdles() {
   const N1 = A.idleNames(true);
   out(`   at ease: rests ${N0.rests.join(', ')}; actions ${N0.acts.join(', ')} (tricks ${N0.tricks.join(', ')}); the fight: rests ${N1.rests.join(', ')}; actions ${N1.acts.join(', ')}`);
   assert(I.idlesMode() === 'new' && N0.rests.length >= 4 && N1.rests.length >= 3 && N0.tricks.length >= 4 && N1.tricks.length === 0 && N0.acts.length - N0.tricks.length >= 5 && N1.acts.length >= 4,
-    `the new idles are the default: ${N0.rests.length} rests at ease, ${N1.rests.length} guard hands, ${N0.acts.length - N0.tricks.length} habits and ${N0.tricks.length} tricks at ease, ${N1.acts.length} habits and no trick in the fight`);
+    `ADR-186's idles (?idles=new): ${N0.rests.length} rests at ease, ${N1.rests.length} guard hands, ${N0.acts.length - N0.tricks.length} habits and ${N0.tricks.length} tricks at ease, ${N1.acts.length} habits and no trick in the fight`);
 
   const ONLY = process.env.IDLE_ONLY ? new Set(process.env.IDLE_ONLY.split(',')) : null;
   // (1) every rest, held: the joints, the blade's gap, the point, the free hand, the flat to the camera
@@ -12020,8 +12047,398 @@ async function scenarioHeroIdles() {
   }
   globalThis.__IDLE_ROWS = { restRow, actRow, transRow };
   p.debug.fightStance = null;
+  I.setIdles(idles0);
+  RSG.setGuard(guard0);
   return G;
 }
+
+// Scenarios written against ADR-186's idles and the cross ward (ADR-073): they measure those poses, so they run
+// with them (`?idles=new&guard=ward`) since the reference's are the default (ADR-207, HEROREF checks those)
+const pinAdr186 = (fn) => async () => {
+  const I = await imp('src/entities/player/idles.js'), RS = await imp('src/entities/player/refStance.js');
+  const m = I.idlesMode(), g = RS.guardMode();
+  I.setIdles('new');
+  RS.setGuard('ward');
+  try {
+    return await fn();
+  } finally {
+    I.setIdles(m);
+    RS.setGuard(g);
+  }
+};
+
+// ================================================================== scenario: the reference's idles and guard (ADR-207)
+// The owner, 2026-11-25, on their reference footage: "mirror" its idle poses and its guard. idles.js `ref` (the
+// default) and refStance.js: at ease the one-handed stand, in the fight the two-handed hold, the put-away and the
+// draw (`stow`), ADR-186's habits, tricks and spells from the new stand; the block's braced guard (`?guard=ward`:
+// the cross ward). Checked: the defaults and the lists; the stand and the hold held (the sword wrist, the elbows,
+// the blade out of his body, the point, the free hand on the grip); the free hand joining the grip as the fight
+// stance comes in (never through him); every action (anatomy, the blade's gap, pops); the put-away (the sword gone
+// only inside it, whole the very frame anything else starts); the moves out of every rest and every action; the
+// guard (its slant across his face, upright from his side, the hands up, the crouch, the feet) from both stances.
+async function scenarioHeroRef() {
+  out('\n== scenario HEROREF (the reference\'s stand, two-handed hold, put-away and guard: anatomy, the blade out of the body, the sword whole outside the put-away, pops, transitions, the guard) ==');
+  const { DIM: HD, BODY, sheetOffset } = await imp('src/entities/player/model.js');
+  const I = await imp('src/entities/player/idles.js');
+  const RS = await imp('src/entities/player/refStance.js');
+  const { OFF_SNAP } = await imp('src/entities/player/anim.js');
+  const mode0 = I.idlesMode(), guard0 = RS.guardMode();
+  assert(mode0 === 'ref' && guard0 === 'ref' && I.IDLES_IDS.join() === 'ref,new,old' && RS.GUARD_IDS.join() === 'ref,ward', `the reference's idles and guard are the defaults (idles ${mode0}, guard ${guard0}); ?idles=new|old and ?guard=ward keep the looks before`);
+  const G = build();
+  const { game, input } = G;
+  run(G, 0.3);
+  assert(game.flow.debug.toState('explore') === true, 'flow.debug.toState(explore) from title');
+  const p = game.player, r = p.rig, A = p.anim, F = A.fidget;
+  p.debug.god = true;
+  p.debug.infiniteFlasks = true;
+  const LANE = [-10, 13];
+  p.debug.teleport(LANE[0], LANE[1]);
+  p.lean.on = false;
+  const DEG = 180 / Math.PI;
+  const v = new THREE.Vector3(), w = new THREE.Vector3(), qa = new THREE.Quaternion(), M = new THREE.Matrix4();
+  const aim = { x: 0, z: -60 };
+  const go = (sec, each) => { for (let i = 0, n = Math.round(sec / DT); i < n; i++) { game.mouseGround.set(p.position.x + aim.x, 0, p.position.z + aim.z); G.tick(DT); each?.(); } };
+  const kink = () => {
+    v.set(0, -1, 0).applyQuaternion(r.arms.R.fore.getWorldQuaternion(qa));
+    w.set(0, 0, 1).applyQuaternion(r.sword.getWorldQuaternion(qa));
+    return Math.acos(clamp(v.normalize().dot(w.normalize()), -1, 1)) * DEG;
+  };
+  const elbow = (s) => 180 - Math.abs(r.arms[s].fore.rotation.x) * DEG;
+  const { ell, cap, shell } = heroShapes(BODY, HD);
+  const parts = [
+    ['torso', r.spine, shell, 1],
+    ['hips', r.pelvis, (q) => ell(q, BODY.hips.c, BODY.hips.r), 1],
+    ['head', r.head, (q) => ell(q, BODY.head.c, BODY.head.r), 1],
+    ['right upper arm', r.arms.R.upper, (q) => cap(q, 0, HD.upperArm, BODY.upperArm[0], BODY.upperArm[1]), 0],
+    ['left upper arm', r.arms.L.upper, (q) => cap(q, 0, HD.upperArm, BODY.upperArm[0], BODY.upperArm[1]), 0],
+    ['left forearm', r.arms.L.fore, (q) => cap(q, 0, HD.foreArm - 0.06, BODY.foreArm[0], BODY.foreArm[1]), 0],
+    ...['R', 'L'].flatMap((s) => [
+      [`thigh ${s}`, r.legs[s].thigh, (q) => cap(q, 0, HD.thigh, BODY.thigh[0], BODY.thigh[1]), 1],
+      [`shin ${s}`, r.legs[s].shin, (q) => cap(q, -0.02, HD.shin - 0.04, BODY.shin[0], BODY.shin[1]), 1],
+    ]),
+  ];
+  const tipZ = HD.drawnTip ?? HD.steelTip;
+  const near = () => {
+    let core = -9, arm = -9, at = '', armAt = '';
+    for (let z = 0.2; z <= tipZ + 1e-6; z += 0.05) {
+      v.set(0, 0, z).applyMatrix4(r.sword.matrixWorld);
+      for (const [name, J, f, c] of parts) {
+        if (!c && name !== 'right upper arm' && A.cur[45] > 0.05) continue; // (two-handed the free arm holds the hilt)
+        const pen = f(J.worldToLocal(w.copy(v)));
+        if (c && pen > core) { core = pen; at = name; }
+        if (!c && pen > arm) { arm = pen; armAt = name; }
+      }
+    }
+    return { core, arm, at, armAt };
+  };
+  const tipY = () => v.set(0, 0, HD.drawnTip).applyMatrix4(r.sword.matrixWorld).y;
+  const handIn = () => {
+    let worst = -9;
+    for (const o of [r.arms.L.point, r.arms.L.wrist]) {
+      if (!o) continue;
+      v.setFromMatrixPosition(o.matrixWorld);
+      worst = Math.max(worst, shell(r.spine.worldToLocal(w.copy(v))), ell(r.pelvis.worldToLocal(w.copy(v)), BODY.hips.c, BODY.hips.r));
+    }
+    return worst;
+  };
+  // the sword's own meshes: whole (as built) or not
+  const W = r.slots.weapon, W0 = W.map((o) => [o.visible, o.scale.x, o.scale.y, o.scale.z]);
+  const whole = () => W.every((o, i) => o.visible === W0[i][0] && o.scale.x === W0[i][1] && o.scale.y === W0[i][2] && o.scale.z === W0[i][3]);
+  const hidden = () => W.some((o, i) => !o.visible || o.scale.z !== W0[i][3]);
+  // the pop audit (HEROIDLES's): points in his own frame, the largest second difference; the blade point
+  // only while the sword is drawn (gone, its joint is no steel)
+  const PTS = [['sword hand', () => v.setFromMatrixPosition(r.sword.matrixWorld)], ['blade point', () => v.set(0, 0, HD.drawnTip).applyMatrix4(r.sword.matrixWorld)],
+    ['free hand', () => v.setFromMatrixPosition((r.arms.L.wrist ?? r.arms.L.fore).matrixWorld)], ['right elbow', () => v.setFromMatrixPosition(r.arms.R.fore.matrixWorld)],
+    ['left elbow', () => v.setFromMatrixPosition(r.arms.L.fore.matrixWorld)], ['head', () => v.setFromMatrixPosition(r.head.matrixWorld)]];
+  const hist = PTS.map(() => [new THREE.Vector3(), new THREE.Vector3(), 0]);
+  const popReset = () => { for (const h of hist) h[2] = 0; };
+  const popStep = (rec) => {
+    M.copy(p.object3d.matrixWorld).invert();
+    const gone = A.stow > 0.02;
+    PTS.forEach(([name, f], i) => {
+      const h = hist[i];
+      f().applyMatrix4(M);
+      if (name === 'blade point' && gone) { h[2] = 0; return; }
+      if (h[2] >= 2) {
+        const a = Math.hypot(v.x - 2 * h[0].x + h[1].x, v.y - 2 * h[0].y + h[1].y, v.z - 2 * h[0].z + h[1].z);
+        if (a > rec.pop) { rec.pop = a; rec.popAt = name; }
+      }
+      if (h[2] >= 1 && name === 'blade point') rec.tip = Math.max(rec.tip ?? 0, v.distanceTo(h[0]));
+      h[1].copy(h[0]);
+      h[0].copy(v);
+      h[2]++;
+    });
+  };
+  const settleStill = (fight) => {
+    input.axis = { x: 0, y: 0 };
+    p.debug.fightStance = fight;
+    F.wait = 1e9;
+    for (let i = 0; i < 600 && (F.k >= 0 || p.state !== 'idle'); i++) go(DT);
+    go(1.5);
+  };
+  // (REF_PART: a comma list of the parts to run, for work on one: held, blend, acts, trans, guard)
+  const PART = process.env.REF_PART ?? 'held,blend,acts,trans,guard';
+  const durOf = (name, fight) => (fight ? I.FIGHT_ACTS_REF : [...I.EASE_HABITS, ...I.EASE_TRICKS, ...I.EASE_REF_EXTRA]).find((D) => D.name === name)?.dur ?? (name === 'look' ? 3.4 : 3.8);
+
+  // (1) the lists
+  const N0 = A.idleNames(false);
+  p.debug.fightStance = true;
+  go(1.0);
+  const N1 = A.idleNames(true);
+  out(`   at ease: rests ${N0.rests.join(', ')}; actions ${N0.acts.join(', ')} (tricks ${N0.tricks.join(', ')}); the fight: rests ${N1.rests.join(', ')}; actions ${N1.acts.join(', ')}`);
+  assert(N0.rests.join() === 'stand' && N1.rests.join() === 'hold' && N0.acts.includes('stow') && N0.tricks.includes('stow') && ['regrip', 'spin', 'salute', 'rite', 'sigil', 'breath'].every((n) => N0.acts.includes(n)) && N1.acts.join() === 'grip,shift,loosen' && N1.tricks.length === 0,
+    `one rest each (${N0.rests} / ${N1.rests}); ADR-186's habits, tricks and spells at ease with the put-away (${N0.acts.length} actions); in the fight the three that keep both hands on the grip (${N1.acts.join(', ')})`);
+
+  // (2) the stand and the hold, held: four facings each
+  const held = {};
+  for (const fight of PART.includes('held') ? [false, true] : []) {
+    settleStill(fight);
+    let kMax = 0, eR = 180, eL = 180, core = -9, arm = -9, at = '', armAt = '', tipLow = 9, hand = -9, gap = 0;
+    for (const [ax, az] of [[0, -60], [0, 60], [60, 0], [-60, 0]]) {
+      aim.x = ax;
+      aim.z = az;
+      F.wait = 1e9;
+      go(0.9);
+      F.wait = 1e9;
+      go(1.2, () => {
+        kMax = Math.max(kMax, kink());
+        eR = Math.min(eR, elbow('R'));
+        eL = Math.min(eL, elbow('L'));
+        const n = near();
+        if (n.core > core) { core = n.core; at = n.at; }
+        if (n.arm > arm) { arm = n.arm; armAt = n.armAt; }
+        tipLow = Math.min(tipLow, tipY());
+        hand = Math.max(hand, handIn());
+        gap = Math.max(gap, fight ? A.gripGap : 0);
+      });
+    }
+    aim.x = 0;
+    aim.z = -60;
+    F.wait = 1e9;
+    go(1.0);
+    F.wait = 1e9;
+    const rec = { pop: 0, popAt: '' };
+    popReset();
+    go(1.5, () => popStep(rec));
+    held[fight ? 'hold' : 'stand'] = { kMax, eR, eL, core, arm, at, armAt, tipLow, hand, gap, pop: rec.pop };
+    out(`   ${fight ? 'the hold ' : 'the stand'}: wrist ≤ ${kMax.toFixed(0)}°, elbows ≥ R ${eR.toFixed(0)}° L ${eL.toFixed(0)}°, the blade ${(-core * 100).toFixed(1)} cm off the ${at} / ${(-arm * 100).toFixed(1)} off the ${armAt || '-'}, the point ≥ ${tipLow.toFixed(2)} m, the free hand ${(hand * 100).toFixed(1)} cm in${fight ? `, ${(gap * 100).toFixed(1)} cm off its place on the grip` : ''}, still ${(rec.pop * 100).toFixed(2)} cm`);
+  }
+  if (held.hold) assert(held.hold.gap <= OFF_SNAP[1], `the hold: the free hand is ON the grip (${(held.hold.gap * 100).toFixed(1)} cm off its place ≤ ${(OFF_SNAP[1] * 100).toFixed(0)})`);
+  for (const [name, R] of Object.entries(held)) {
+    assert(R.kMax <= 60 && R.eR >= 60 && R.eL >= 40 && R.core <= -0.08 && R.arm <= -0.08 && R.tipLow >= 0.1 && R.hand <= 0.01 && R.pop <= 0.01,
+      `${name}: the sword wrist ${R.kMax.toFixed(0)}° off the forearm (≤ 60), elbows R ${R.eR.toFixed(0)}° (≥ 60) L ${R.eL.toFixed(0)}° (≥ 40), the blade ${(-R.core * 100).toFixed(1)} cm off his body / ${(-R.arm * 100).toFixed(1)} off his arms (≥ 8), the point ${R.tipLow.toFixed(2)} m up (≥ 0.10), the free hand out of him, still`);
+  }
+
+  // (3) the free hand joins the grip as the fight stance comes in, and lets go as it goes: never through him
+  if (PART.includes('blend')) {
+    settleStill(false);
+    let hand = -9, at = 0, pop = { pop: 0, popAt: '' };
+    const each = () => {
+      const h = handIn();
+      if (h > hand) { hand = h; at = A.fightW; }
+      popStep(pop);
+    };
+    popReset();
+    p.debug.fightStance = true;
+    go(1.2, each);
+    p.debug.fightStance = false;
+    go(2.0, each);
+    out(`   the fight stance in and out: the free hand at most ${(hand * 100).toFixed(1)} cm into him (at fightW ${at.toFixed(2)}), pop ${(pop.pop * 100).toFixed(1)} cm (${pop.popAt})`);
+    assert(hand <= 0.01 && pop.pop <= 0.05, `taking the hold and letting it down the free hand never passes through him (${(hand * 100).toFixed(1)} cm ≤ 1, at fightW ${at.toFixed(2)}) and nothing jumps (${(pop.pop * 100).toFixed(1)} cm ≤ 5)`);
+  }
+
+  // (4) every action, two facings: anatomy, the blade's gap (while drawn), the point, pops; the put-away's sword
+  const actRow = [];
+  for (const fight of PART.includes('acts') ? [false, true] : []) {
+    settleStill(fight);
+    for (const name of A.idleNames(fight).acts) {
+      let kMax = 0, eR = 180, eL = 180, core = -9, arm = -9, at = '', armAt = '', tipLow = 9, hand = -9, played = 0, cross = 0, frames = 0, gone = 0, goneOut = 0;
+      const rec = { pop: 0, popAt: '', tip: 0 };
+      const dur = durOf(name, fight);
+      for (const [ax, az] of [[0, -60], [60, 0]]) {
+        aim.x = ax;
+        aim.z = az;
+        F.wait = 1e9;
+        go(0.8);
+        if (!A.playIdle(name)) continue;
+        popReset();
+        go(dur + 0.3, () => {
+          if (F.k >= 0) played++;
+          frames++;
+          const drawn = A.stow <= 0.02;
+          if (hidden()) gone++;
+          if (hidden() && F.name !== 'stow') goneOut++;
+          eR = Math.min(eR, elbow('R'));
+          eL = Math.min(eL, elbow('L'));
+          if (drawn) {
+            kMax = Math.max(kMax, kink());
+            const n = near();
+            if (n.core > core) { core = n.core; at = `${n.at} (u ${(F.t / dur).toFixed(2)})`; }
+            if (n.arm > arm) { arm = n.arm; armAt = n.armAt; }
+            tipLow = Math.min(tipLow, tipY());
+            if (coatCrossOf(r, tipZ, sheetOffset, v, w)) cross++;
+          }
+          hand = Math.max(hand, handIn());
+          popStep(rec);
+        });
+      }
+      actRow.push({ fight, name, kMax, eR, eL, core, arm, at, armAt, tipLow, hand, pop: rec.pop, popAt: rec.popAt, tip: rec.tip, played, cross, frames, gone, goneOut });
+      out(`   act ${fight ? 'hold ' : 'stand'} ${name.padEnd(9)} wrist ≤ ${kMax.toFixed(0)}°, elbows ≥ R ${eR.toFixed(0)}° L ${eL.toFixed(0)}°, blade ${(-core * 100).toFixed(1)} cm off the ${at} / ${(-arm * 100).toFixed(1)} off the ${armAt || '-'}, coat ${cross}/${frames}, point ≥ ${tipLow.toFixed(2)} m, hand ${(hand * 100).toFixed(1)} cm in, pop ${(rec.pop * 100).toFixed(2)} cm (${rec.popAt}), point ≤ ${(rec.tip * 100).toFixed(1)} cm/frame${gone ? `, the sword gone ${gone} frames` : ''}`);
+    }
+  }
+  for (const R of actRow) {
+    const where = `${R.fight ? 'the hold' : 'the stand'}, ${R.name}`;
+    assert(R.played > 30 && R.eR >= 60 && R.eL >= 40 && R.kMax <= 60, `${where}: plays (${R.played} frames); the elbows ≥ R ${R.eR.toFixed(0)}° (60) L ${R.eL.toFixed(0)}° (40), the sword wrist ≤ ${R.kMax.toFixed(0)}° off the forearm (60)`);
+    assert(R.core <= -0.08 && (R.arm <= -0.08 || ((R.name === 'inspect' || R.name === 'rite') && R.arm <= 0)) && R.cross <= R.frames * 0.02,
+      `${where}: the drawn blade stays ${(-R.core * 100).toFixed(1)} cm off his body (≥ 8: the ${R.at}), ${(-R.arm * 100).toFixed(1)} cm off his arms, through the coat in ${R.cross} of ${R.frames} frames (≤ 2 %)`);
+    assert(R.tipLow >= 0.1 && R.hand <= 0.04 && R.pop <= 0.1, `${where}: the point ≥ ${R.tipLow.toFixed(2)} m over the grass, the free hand ≤ ${(R.hand * 100).toFixed(1)} cm into the coat (≤ 4), no pop (${(R.pop * 100).toFixed(1)} cm, ${R.popAt}; ≤ 10)`);
+    assert(R.name === 'stow' ? R.gone > 60 && R.goneOut === 0 : R.gone === 0, R.name === 'stow' ? `the put-away: the sword is gone for ${R.gone} frames (> 60: ~1.5 s each time), never outside it (${R.goneOut})` : `${where}: the sword stays whole`);
+  }
+
+  // (5) the moves out of the stand / the hold and from inside every action (a third and two thirds through it;
+  // the put-away also while the sword is gone); the worst pop and the point's fastest frame in the first 0.45 s,
+  // against the bare stance before (?idles=old, as HEROIDLES's bar). The put-away: the frame the move's clip
+  // starts the sword is whole
+  const MOVES = {
+    run: { on: () => { input.axis = { x: 0, y: 1 }; }, off: () => { input.axis = { x: 0, y: 0 }; } },
+    light: { on: () => input.click(0), off: () => {} },
+    roll: { on: () => { input.axis = { x: 0, y: 1 }; input.tap('Space'); }, off: () => { input.axis = { x: 0, y: 0 }; } },
+    block: { on: () => input.press(1), off: () => input.up(1) },
+    heal: { on: () => input.tap('KeyF'), off: () => {} },
+    charge: { on: () => input.press(2), off: () => input.up(2) },
+  };
+  let notWhole = 0, cutChecks = 0;
+  const trans = (key, watch) => {
+    const rec = { pop: 0, popAt: '', tip: 0 };
+    popReset();
+    popStep(rec);
+    MOVES[key].on();
+    let first = true;
+    go(0.45, () => {
+      popStep(rec);
+      if (watch && first && (A.key !== 'loco' || p.state !== 'idle')) {
+        first = false;
+        cutChecks++;
+        if (!(A.stow === 0 && whole())) notWhole++;
+      }
+    });
+    MOVES[key].off();
+    go(0.2);
+    for (let i = 0; i < 300 && p.state !== 'idle'; i++) go(DT);
+    p.debug.teleport(LANE[0], LANE[1]);
+    p.hp = p.maxHp ?? p.hp;
+    return rec;
+  };
+  const base = {};
+  const TR = PART.includes('trans') ? [false, true] : [];
+  I.setIdles('old');
+  for (const fight of TR) {
+    settleStill(fight);
+    for (const key of Object.keys(MOVES)) {
+      let pop = 0;
+      for (let k = 0; k < 2; k++) {
+        aim.x = 0;
+        aim.z = -60;
+        F.wait = 1e9;
+        go(1.4);
+        pop = Math.max(pop, trans(key).pop);
+      }
+      base[(fight ? 'f' : 'e') + key] = pop;
+    }
+  }
+  I.setIdles('ref');
+  const transRow = [];
+  for (const fight of TR) {
+    settleStill(fight);
+    const names = A.idleNames(fight);
+    const from = [['rest'], ...names.acts.flatMap((n) => [['act', n, 0.33], ['act', n, 0.66], ...(n === 'stow' ? [['act', n, 0.45], ['act', n, 0.22]] : [])])];
+    for (const key of Object.keys(MOVES)) {
+      let pop = 0, tip = 0, at = '';
+      for (const [kind, name, u] of from) {
+        aim.x = 0;
+        aim.z = -60;
+        F.wait = 1e9;
+        go(1.2);
+        if (kind === 'act') {
+          if (!A.playIdle(name)) continue;
+          go(durOf(name, fight) * u);
+        }
+        const rr = trans(key, name === 'stow');
+        if (rr.pop > pop) { pop = rr.pop; at = `${kind === 'rest' ? 'the ' + (fight ? 'hold' : 'stand') : name + ' ' + u} (${rr.popAt})`; }
+        tip = Math.max(tip, rr.tip);
+      }
+      const b = base[(fight ? 'f' : 'e') + key];
+      transRow.push({ fight, key, pop, tip, at, b });
+      out(`   into ${key.padEnd(6)} (${fight ? 'hold ' : 'stand'}): worst pop ${(pop * 100).toFixed(1)} cm (${at}), the point ≤ ${(tip * 100).toFixed(1)} cm/frame; the bare stance before ${(b * 100).toFixed(1)} cm`);
+    }
+  }
+  for (const T of transRow) {
+    const bar = T.b * 1.5 + 0.1;
+    assert(T.pop <= bar + 1e-6, `into a ${T.key} from ${T.fight ? 'the hold' : 'the stand'} or any moment of any action: the worst pop ${(T.pop * 100).toFixed(1)} cm (${T.at}) ≤ ${(bar * 100).toFixed(1)} (the bare stance before ${(T.b * 100).toFixed(1)} × 1.5 + 10)`);
+  }
+  if (TR.length) assert(cutChecks >= 12 && notWhole === 0, `the put-away cut by a move: the sword whole the very frame the move starts (${cutChecks - notWhole} of ${cutChecks})`);
+  // switching the idles mid-put-away (the Lab) brings it back at once
+  if (PART.includes('acts')) {
+    settleStill(false);
+    A.playIdle('stow');
+    go(STOW_MID);
+    const was = hidden();
+    I.setIdles('new');
+    go(DT);
+    const back = whole() && A.stow === 0;
+    I.setIdles('ref');
+    go(1.0);
+    assert(was && back, `the idles switched while the sword is gone: it is whole the next frame (${was} → ${back})`);
+  }
+
+  // (6) the guard, from the stand and from the hold: the blade across his face to his left (upright from his side),
+  // the hands up, the crouch, the feet; ?guard=ward the cross ward before
+  const guardRow = {};
+  for (const fight of PART.includes('guard') ? [false, true] : []) {
+    settleStill(fight);
+    const pelv0 = v.setFromMatrixPosition(r.pelvis.matrixWorld).y;
+    let hand = -9, rec = { pop: 0, popAt: '', tip: 0 };
+    popReset();
+    input.press(1);
+    go(0.6, () => { hand = Math.max(hand, handIn()); popStep(rec); });
+    // (the blade in his own frame: the sword joint is posed in the body's axes)
+    const d = new THREE.Vector3(0, 0, 1).applyQuaternion(r.sword.quaternion).normalize();
+    const side = Math.atan2(Math.abs(d.z), d.y) * DEG; // seen from his side: off upright
+    const rise = Math.asin(clamp(d.y, -1, 1)) * DEG;
+    const handY = v.setFromMatrixPosition(r.sword.matrixWorld).y, chestY = w.setFromMatrixPosition(r.chest.matrixWorld).y;
+    const sink = pelv0 - v.setFromMatrixPosition(r.pelvis.matrixWorld).y;
+    const fR = v.setFromMatrixPosition(r.legs.R.foot.matrixWorld).clone(), fL = w.setFromMatrixPosition(r.legs.L.foot.matrixWorld);
+    const spread = fR.distanceTo(fL);
+    const n = near();
+    input.up(1);
+    go(0.6);
+    guardRow[fight ? 'hold' : 'stand'] = { side, rise, x: d.x, handUp: handY - chestY, sink, spread, hand, pop: rec.pop, popAt: rec.popAt, tip: rec.tip, core: n.core };
+    out(`   the guard from the ${fight ? 'hold ' : 'stand'}: the blade ${rise.toFixed(0)}° up across to his left (x ${d.x.toFixed(2)}), ${side.toFixed(0)}° off upright seen from his side; the sword hand ${(guardRow[fight ? 'hold' : 'stand'].handUp * 100).toFixed(0)} cm over the chest joint; sunk ${(sink * 100).toFixed(0)} cm; feet ${spread.toFixed(2)} m apart; the free hand ≤ ${(hand * 100).toFixed(1)} cm in; entry pop ${(rec.pop * 100).toFixed(1)} cm (${rec.popAt}), the point ≤ ${(rec.tip * 100).toFixed(1)} cm/frame; the blade ${(-n.core * 100).toFixed(1)} cm off his body`);
+  }
+  for (const [name, R] of Object.entries(guardRow)) {
+    assert(R.x >= 0.7 && R.rise >= 20 && R.rise <= 45 && R.side <= 15, `the guard from the ${name}: the blade rises ${R.rise.toFixed(0)}° (20-45) across his face to his left (x ${R.x.toFixed(2)} ≥ 0.7) and seen from his side stands ${R.side.toFixed(0)}° off upright (≤ 15), as the footage's four views have it`);
+    assert(R.handUp >= 0.0 && R.sink >= 0.12 && R.spread >= 0.6 && R.hand <= 0.02 && R.core <= -0.05, `the guard from the ${name}: the hands up before the chin (${(R.handUp * 100).toFixed(0)} cm over the chest joint ≥ 0), sunk ${(R.sink * 100).toFixed(0)} cm (≥ 12), the feet ${R.spread.toFixed(2)} m apart (≥ 0.6), the free hand never through him on its way (${(R.hand * 100).toFixed(1)} cm), the blade out of him`);
+    // (the block's cross-fade is 0.08 s, its timing untouched: the cross ward entered from the stance before at 58 cm)
+    assert(R.pop <= 0.45, `into the guard from the ${name}: the worst jump ${(R.pop * 100).toFixed(1)} cm (${R.popAt}; ≤ 45: the 0.08 s cross-fade into the cross ward from the stance before reached 58)`);
+  }
+  if (PART.includes('guard')) {
+    RS.setGuard('ward');
+    settleStill(true);
+    input.press(1);
+    go(0.6);
+    const d = new THREE.Vector3(0, 0, 1).applyQuaternion(r.sword.quaternion).normalize();
+    input.up(1);
+    go(0.6);
+    RS.setGuard('ref');
+    assert(Math.abs(d.x - 0.72) < 0.12 && Math.abs(d.y - 0.62) < 0.12, `?guard=ward: the cross ward as before (the blade (${d.x.toFixed(2)}, ${d.y.toFixed(2)}, ${d.z.toFixed(2)}) ≈ (0.72, 0.62, 0.31))`);
+  }
+  I.setIdles(mode0);
+  RS.setGuard(guard0);
+  p.debug.fightStance = null;
+  p.lean.on = true;
+  return G;
+}
+const STOW_MID = 1.6; // s into the put-away: the sword gone (idles.js STOW)
 
 // ================================================================== scenario: the sword's green flame
 // ================================================================== scenario: the blink look set's slash lines
@@ -17339,7 +17756,7 @@ const SCENARIOS = {
   herolook: scenarioHeroLook,
   wyrmface: scenarioWyrmFace,
   wyrmlook: scenarioWyrmLook,
-  herolife: scenarioHeroLife,
+  herolife: pinAdr186(scenarioHeroLife),
   streakfx: scenarioStreakFx,
   timerip: scenarioTimeRip,
   swordmystic: scenarioSwordMystic,
@@ -17357,13 +17774,14 @@ const SCENARIOS = {
   steele: scenarioSteelE,
   blinksolve: scenarioBlinkSolve,
   armaudit: scenarioArmAudit,
-  herohand: scenarioHeroHand,
+  herohand: pinAdr186(scenarioHeroHand),
   heroweight: scenarioHeroWeight,
   herolights: scenarioHeroLights,
-  heroarms: scenarioHeroArms,
+  heroarms: pinAdr186(scenarioHeroArms),
   herorun: scenarioHeroRun,
   herostance: scenarioHeroStance,
   heroidles: scenarioHeroIdles,
+  heroref: scenarioHeroRef,
   looks: scenarioLooks,
   music: scenarioMusic,
   thump: scenarioThump,
