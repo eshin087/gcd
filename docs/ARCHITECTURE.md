@@ -609,6 +609,35 @@ Render helpers for creature modules:
   the object and its descendants. Works before or after rigid batching (below); `LAYER_CASTER` and
   `LAYER_CASTER_RIGID` (2, reserved for the batch meshes: never set it yourself) are exported from
   `pipeline.js` (defined in `shaderLib.js`).
+- **The performance readout** (`dev/perfReadout.js`, ADR-209; `?perf`): `game.perf` (null without it). main.js
+  times every `safe(name, …)` call, the effects' block (`fx`), the shared uniforms (`uniforms`) and the
+  render (`render`) into `perf.add(part, ms)`, between `perf.beginFrame()` and `perf.endFrame(interval s,
+  script ms)` for each drawn frame; without `?perf` nothing is timed. It keeps the last 1800 frames
+  (typed rings), shows one line at the foot of the screen (fps, frame ms, script ms, missed frames, AUTO's
+  scale) with REPORT (the phone's share sheet, else the clipboard, else a text box to copy) and RESET.
+  `perf.report()` / `window.__perfReport()`: the device (user agent, GPU string, DPR, screen, window,
+  canvas), the level, AUTO's step and the cap, the frame intervals' percentiles, the missed frames (over
+  20 / 34 / 100 ms), the script's, each part's mean / p95 / max, and the 16 longest frames with their parts,
+  the hero's state and the boss's move. A new per-frame module run through `safe` is timed with no change;
+  one outside it should add its own `perf?.add`. BENCH (`perf.bench()`, ADR-215): the frame on screen drawn
+  again and again in one task, each reading ended by a 1-pixel `readPixels` (it waits for the GPU), whole and
+  with each pipeline step left out (shadows, world, hero see-through, fire field, letters, effects, glow: the
+  step's draws skipped by wrapping `renderer.render`), the still shadow map redrawn every frame, then at ~0.7x
+  the device pixels and back through `applyQuality`; the results go in the report. A new pipeline pass gets a
+  line in its `is` table.
+- **The lite world** (ADR-216, the owner's pick C of three rendered options): `game.liteWorld` (main.js, each
+  frame) is true on a touch device with AUTO on once `game.autoQ.wantsLess` (render/autoQuality.js: a slow
+  window came while AUTO had no step down left; kept for the page load, so the look does not flicker), or
+  always with `?lite=1` (never with `?lite=0`). world/groundFx.js then holds the dragon print's four upgrades
+  off (cloud, contact, ripple, ridge: `uDpFxOn` all 0) and sets `DP_FX_U.uDpLite` = 1, which makes the floors'
+  relief (render/dragonFloor.js `floorRelief`) one value-noise octave a layer instead of a three-octave fbm.
+  Desktop never turns it on by itself. A new per-pixel extra of the world should read `game.liteWorld` /
+  `uDpLite` the same way.
+- **The warm draw** (`render/precompile.js` `warmDraw`, ADR-209): after the shaders' precompile, every mesh
+  of the scene that is hidden with `userData.foldAway` or `userData.autoHide` (a set's remains:
+  destructibles.js shows them when a piece first cracks or breaks) gets its bounding sphere and is drawn
+  once into a 1 x 1 target, then hidden again: its buffers are on the GPU before the fight. `?warm=0` off.
+  A new hidden-until-broken mesh needs one of those two flags to be warmed.
 - **The still shadow map** (`render/shadowCache.js`, ADR-201; `CONFIG.render.shadowCache`, `?shadowCache=0`
   off). Every caster the shadow passes would draw (visible, on `LAYER_CASTER` or `LAYER_CASTER_RIGID`, not
   a rigid source) is STILL once its state has not changed for `settle` frames (20; `settleBig` 3 for one
@@ -618,7 +647,8 @@ Render helpers for creature modules:
   `shadowRT`, which keeps last frame's picture: first the texels the casters that changed since covered
   are copied back from `stillRT` (a depth blit): a batched actor's moved bones at their OLD matrices
   (`rigidBatch.js` sync: the set's `vacated` spheres), a plain mesh's last bounding sphere, a big mesh's
-  edited ranges at their old positions (its position copy and the attribute's `updateRanges`), the whole
+  edited ranges at their old positions (its position copy, made once at its first sight and kept up to
+  date with the attribute's `updateRanges` on every change, still or moving, ADR-209), the whole
   map after a redraw or when a moving caster leaves. The map is the one a whole draw gives, texel for
   texel. A caster's STATE: `matrixWorld`, `material.visible`, the geometry's id, position and index
   versions, draw range and groups, an instanced mesh's count and matrices, a rigid shadow mesh's

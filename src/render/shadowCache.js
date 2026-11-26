@@ -45,6 +45,8 @@ const SIG = 28;
 const RECTS = 12;
 /** A plain moving mesh with more vertices than this: its bounds are not worked out each change (the whole map is wiped). */
 const BIG = 20000;
+/** A position attribute whose changed ranges can be followed in a copy (a plain float array, more than BIG vertices). */
+const bigCopyable = (p) => !!p && p.count > BIG && !p.isInterleavedBufferAttribute && p.array instanceof Float32Array;
 
 export class ShadowCache {
   /**
@@ -109,8 +111,8 @@ export class ShadowCache {
     // sig: the state last seen; n: frames unchanged; still: in the still map; mask: a saved layer mask;
     // seen: the frame it was last gathered; rect: the texels it covered when last drawn moving (x0 x1 y0 y1;
     // x0 > x1 none, `big` unknown); sphereOf: the geometry state its own bounding sphere was made for
-    // copy, copyOk: a big mesh's positions as last drawn, and whether this frame's _bigWipe brought it up to date
-    const R = { sig: new Float64Array(SIG), n: 0, still: false, mask: 0, seen: 0, rect: new Int32Array([1, 0, 1, 0]), big: false, sphereOf: NaN, copy: null, copyOk: false, tris: 0, trisOf: NaN };
+    // copy: a big mesh's positions as last seen (kept up to date on every change, still or moving: _bigSync)
+    const R = { sig: new Float64Array(SIG), n: 0, still: false, mask: 0, seen: 0, rect: new Int32Array([1, 0, 1, 0]), big: false, sphereOf: NaN, copy: null, tris: 0, trisOf: NaN };
     R.sig.set(s);
     return R;
   }
@@ -216,20 +218,17 @@ export class ShadowCache {
   /**
    * The rect a plain mesh covers now into R.rect. A big one (more than BIG vertices) whose geometry changed
    * is not measured (R.big): a copy of its positions as last drawn (R.copy) tells where the parts that
-   * change next were (_bigWipe), so only they are wiped.
+   * change next were (_bigSync), so only they are wiped.
    */
   _cover(o, R) {
     const g = o.geometry, p = g?.attributes?.position;
     this._empty(R.rect);
     R.big = false;
     if (!p) return;
-    if (p.count > BIG && !p.isInterleavedBufferAttribute && p.array instanceof Float32Array) {
+    if (bigCopyable(p)) {
       R.big = true;
-      if (!R.copyOk) {
-        if (R.copy?.length === p.array.length) R.copy.set(p.array);
-        else R.copy = new Float32Array(p.array);
-      }
-      R.copyOk = false;
+      // (made once; from then on _bigSync keeps it as the mesh changes, so starting to move costs no copy)
+      if (R.copy?.length !== p.array.length) R.copy = new Float32Array(p.array);
       return;
     }
     // its own bounding sphere, made again when its geometry changed (three never remakes it after an edit)
@@ -252,12 +251,13 @@ export class ShadowCache {
   }
 
   /**
-   * A big mesh changed: wipe where its changed vertices were last drawn. Only for an edit of some of its
+   * A big mesh changed: its copy takes the new positions of the ranges that changed, and (`wipe`: it is
+   * moving, so the frame's map holds it) the place they had is wiped back. Only for an edit of some of its
    * positions in place (the position's `updateRanges`: destructibles.js queueRange; three empties them when
-   * it uploads, after this), the rest of it as it was (matrix, index, draw range, the same geometry). Its
-   * copy then takes the new positions of those ranges. False: the whole map is wiped instead.
+   * it uploads, after this), the rest of it as it was (matrix, index, draw range, the same geometry).
+   * False: the caller copies it whole (and wipes the whole map when it is moving).
    */
-  _bigWipe(o, R, s) {
+  _bigSync(o, R, s, wipe) {
     const old = R.sig, C = R.copy;
     if (!C) return false;
     for (let k = 0; k < SIG; k++) if (k !== 17 && old[k] !== s[k]) return false;
@@ -278,7 +278,7 @@ export class ShadowCache {
         if (z < z0) z0 = z;
         if (z > z1) z1 = z;
       }
-      if (x1 >= x0) {
+      if (wipe && x1 >= x0) {
         const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, cz = (z0 + z1) / 2;
         const r = 0.5 * Math.hypot(x1 - x0, y1 - y0, z1 - z0) * sc;
         const wx = e[0] * cx + e[4] * cy + e[8] * cz + e[12], wy = e[1] * cx + e[5] * cy + e[9] * cz + e[13], wz = e[2] * cx + e[6] * cy + e[10] * cz + e[14];
@@ -288,7 +288,6 @@ export class ShadowCache {
       }
       C.set(A.subarray(a, b), a);
     }
-    R.copyOk = true;
     return true;
   }
 
@@ -341,6 +340,8 @@ export class ShadowCache {
       if (!R) {
         R = this._record(s);
         rec.set(o, R);
+        const p = o.geometry?.attributes?.position;
+        if (bigCopyable(p)) R.copy = new Float32Array(p.array); // (once, at its first sight: the level's build)
         changed = true; // (new: nothing of it to wipe; its cover is made below)
       } else {
         let same = !(o.isSkinnedMesh || (o.morphTargetInfluences && o.morphTargetInfluences.length));
@@ -349,6 +350,16 @@ export class ShadowCache {
         else {
           changed = true;
           R.n = 0;
+          // a big mesh: its copy follows every change (only where it changed), still or moving
+          let bigOk = true;
+          if (R.copy) {
+            bigOk = this._bigSync(o, R, s, !R.still);
+            if (!bigOk) {
+              const A = o.geometry?.attributes?.position?.array;
+              if (A && A.length === R.copy.length) R.copy.set(A);
+              else R.copy = null;
+            }
+          }
           if (R.still) {
             R.still = false; // it moved: out of the still map, which must be drawn again without it
             why ||= 'moved';
@@ -358,7 +369,7 @@ export class ShadowCache {
           } else {
             // a plain mesh: where it was (a big one: where its changed parts were)
             if (R.big) {
-              if (!this._bigWipe(o, R, s)) all = this._full('big', o);
+              if (!bigOk || !R.copy) all = this._full('big', o);
             } else this._wipe(R.rect);
           }
           R.sig.set(s);
@@ -366,7 +377,6 @@ export class ShadowCache {
         if (!R.still && R.n >= (this._tris(o, R) > this.bigTris ? this.settleBig : settle)) {
           R.still = true; // at rest long enough: into the still map
           why ||= 'settled';
-          R.copyOk = false; // (its copy is out of date from here; kept, not freed: a cut tree run moves again)
         }
       }
       R.seen = this.frame;

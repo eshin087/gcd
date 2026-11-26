@@ -261,7 +261,9 @@ uniform vec4 uDpStroke; // dash, slash, bar, backslash (a crack's seam)
 varying float vRim;     // 1 + the distance to the slab's edge (m; addSlabRim), 0 unknown; a cracked piece's from ${CRACK_RIM}
 float dpAshAt(int i) { float r = uDpAsh[0]; for (int k = 0; k < 5; k++) if (k == i) r = uDpAsh[k]; return r; }
 // the floor's relief (height, m-ish): broad worn hollows and the stone's grain; d (0..1) roughens it (moss, a rim)
+uniform float uDpLite; // the lite world (ADR-216): one octave a layer instead of three
 float floorRelief(vec2 p, float d) {
+  if (uDpLite > 0.5) return (dpVnoise(p * 0.85 + 3.1) - 0.5) * 0.16 * uDpRelief.x + (dpVnoise(p * 2.4 - 1.7) - 0.5) * 0.07 * uDpRelief.y * (0.7 + d);
   return (dpFbm(p * 0.85 + 3.1) - 0.5) * 0.16 * uDpRelief.x + (dpFbm(p * 2.4 - 1.7) - 0.5) * 0.07 * uDpRelief.y * (0.7 + d);
 }
 #define DP_RELIEF floorRelief

@@ -16,6 +16,8 @@ const imp = (p) => import(pathToFileURL(`${ROOT}/${p}`).href);
 const THREE = await import(pathToFileURL(`${ROOT}/node_modules/three/build/three.module.js`).href);
 const { CONFIG } = await imp('src/core/config.js');
 const { ShadowCache } = await imp('src/render/shadowCache.js');
+const { PerfReadout, perfFromSearch, PERF_PARTS } = await imp('src/dev/perfReadout.js');
+const { warmDraw } = await imp('src/render/precompile.js');
 const { LAYER_CASTER } = await imp('src/render/shaderLib.js');
 const { Events } = await imp('src/core/events.js');
 const { createSharedUniforms } = await imp('src/render/shaderLib.js');
@@ -182,6 +184,59 @@ function wyrm() {
 }
 
 const S = {
+  // ---------------------------------------------------------------- the phone's readout and the warm draw (ADR-209)
+  // dev/perfReadout.js (?perf): what it keeps of each frame, its numbers and its report; with no document
+  // it shows nothing. render/precompile.js warmDraw: the set's hidden remains drawn once at load, left
+  // hidden after, nothing else drawn.
+  perfreadout() {
+    assert(perfFromSearch('?perf') && perfFromSearch('?level=fox&perf=1') && !perfFromSearch('?perf=0') && !perfFromSearch('?level=fox'), '?perf turns the readout on; ?perf=0 or no ?perf leaves it off');
+    const game = { level: { id: 'fox' }, state: 'boss', player: { state: 'attack' }, dragon: { brain: { action: { name: 'brushstrokes' } } }, simSteps: 1 };
+    const P = new PerfReadout(game, { frames: 120, doc: null });
+    assert(P.el === null, 'no document: nothing is shown');
+    for (let i = 0; i < 300; i++) {
+      P.beginFrame();
+      P.add('player', 1);
+      P.add('render', 2);
+      P.add('nonsense', 0.5); // (a name it does not know: `other`)
+      const slow = i % 60 === 59;
+      P.endFrame(slow ? 0.05 : 1 / 60, slow ? 30 : 4);
+    }
+    const S = P.stats();
+    assert(S.frames === 120 && Math.abs(S.fps - 120 / ((118 * (1000 / 60) + 2 * 50) / 1000)) < 0.5, `it keeps the last ${P.N} frames (${S.frames}, ${S.fps} fps)`);
+    assert(S.parts.player.mean === 1 && S.parts.render.mean === 2 && S.parts.other.mean === 0.5 && PERF_PARTS.includes('other'), "each part's mean (player 1, render 2, an unknown name under other)");
+    assert(S.missed.over20 === 2 && S.missed.over34 === 2 && S.missed.over100 === 0, `the frames that missed: ${JSON.stringify(S.missed)}`);
+    assert(S.longest.length >= 2 && S.longest[0].interval === 50 && S.longest[0].hero === 'attack' && S.longest[0].boss === 'brushstrokes', 'the longest frames, with what the hero and the boss were doing');
+    const rep = P.report();
+    assert(/frame interval ms/.test(rep) && /level fox/.test(rep) && /player/.test(rep) && /longest frames/.test(rep), 'the report: the device, the level, the parts, the longest frames');
+    assert(P.bench() === null, 'BENCH with no GL: nothing, no throw');
+    P.benches.push({ t: 1, canvas: '669x867', state: 'boss', hero: 'attack', boss: 'knock', frame: 20.5, steps: { world: 9.1, glow: 3.2 }, half: { canvas: '468x606', frame: 12, share: '41 % less' } });
+    assert(/bench at 1s \(669x867/.test(P.report()) && /world\s+9\.1 ms/.test(P.report()) && /41 % less/.test(P.report()), 'a BENCH is in the report: the whole frame, each step\'s share, the half-pixel frame');
+    P.reset();
+    assert(P.stats().frames === 0 && P.longest.length === 0, 'RESET forgets what was recorded');
+    // the warm draw
+    const scene = new THREE.Scene();
+    const mk = (name, ud, visible) => {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]), 3));
+      const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial());
+      m.name = name;
+      Object.assign(m.userData, ud);
+      m.visible = visible;
+      scene.add(m);
+      return m;
+    };
+    const cracked = mk('pavingCracked', { foldAway: true }, false), stumps = mk('bambooStumps', { autoHide: true }, false);
+    const shown = mk('paving', {}, true), grass = mk('grass', {}, false);
+    const drawn = [];
+    let target = 'screen';
+    const renderer = { render(o) { drawn.push(`${o.name}${o.visible ? '' : '(hidden!)'}${o.frustumCulled ? '' : ''}`); }, setRenderTarget(t) { target = t; }, getRenderTarget: () => target };
+    const n = warmDraw(renderer, scene, new THREE.PerspectiveCamera());
+    assert(n === 2 && drawn.join(',') === 'pavingCracked,bambooStumps', `the hidden remains are drawn once, nothing else (${drawn.join(', ')})`);
+    assert(!cracked.visible && !stumps.visible && shown.visible && !grass.visible && cracked.frustumCulled && cracked.geometry.boundingSphere, 'they are hidden again after, their bounds known; the hidden grass is not drawn');
+    assert(target === 'screen', 'the render target is put back');
+    assert(warmDraw({}, scene, null) === 0 && warmDraw(renderer, new THREE.Scene(), null) === 0, 'a renderer that cannot draw, or nothing to warm: 0, no throw');
+  },
+
   // ---------------------------------------------------------------- the still shadow map (ADR-201)
   // render/shadowCache.js with a stand-in renderer that records what each pass draws and every depth blit:
   // what is drawn where (the still map only when it changes, the moving casters every frame), why the still

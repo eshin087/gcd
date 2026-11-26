@@ -6334,6 +6334,39 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   If the hero remake's branch later lands, its copies of `scripts/mocap` and `src/entities/hero2/*` should
   be taken over these (check `check.mjs`'s film list keeps `fist`).
 
+## ADR-209 — The phone's frame: a readout on the device, and three of its spikes taken out (2026-11-26)
+
+- **Context:** the owner saw the frame rate dip in fights on their iPhone ("pretty powerful"), on the fox,
+  bamboo (grove) and code-hall levels; they chose "the on-phone readout plus the spike fixes". Recorded on
+  the RTX 4090 / i9 at the phone setup (`?touch`, 1468 x 686), a fight frame is 4 - 5 ms of script and
+  2 - 3 ms of GPU, with 0.1 - 0.4 % of frames over 9 ms of script (worst 13 - 16 ms; one 260 ms stall once,
+  not reproduced). The spikes come when a blow lands: a trade (4 - 7 ms), a blade clash (3 - 4.6 ms), the
+  boss's parry contact (2 - 2.5 ms), a perfect dodge (2.3 - 2.9 ms), each mostly sound voices built, the
+  hero's pose evaluated, HUD call-outs, the boss's reaction. The same fight a second time spikes as much
+  as the first (not a load). Two spikes were the game's own making: the first break of a floor or of the
+  grove's bamboo drew a 38 000 - 130 000-vertex hidden mesh for the first time (its bounds, 1 - 2.5 ms, and
+  its buffers' upload), and the still shadow map (ADR-201) copied a big mesh's whole position array on the
+  frame it started to move (bamboo: 1.1 ms). None of it is measured on the phone: no profiler reaches it.
+- **Decision:**
+  1. `?perf`, a readout on the device (`dev/perfReadout.js`): every part of each drawn frame timed, a line
+     on screen, a report to share or copy: what the phone spends, from the phone.
+  2. The hidden remains (`foldAway` / `autoHide` meshes) are drawn once at load into a 1 x 1 target
+     (`warmDraw`): bounds and buffers ready before the fight.
+  3. The still shadow map keeps a big mesh's position copy current on every change (only the changed
+     ranges), so starting to move costs no whole copy.
+  4. The seen-through pass does not walk the hero's ~200 nodes again (his matrices are the frame's).
+- **Not taken:** a scan of the contact rings in slices (0.4 ms a frame by an instrumented count; 5 - 15 us
+  by a clean one: the count was the instrumentation's); the V8 allocation profile's top items (17.7 MB/s in
+  a fight, most of it decimal numbers boxed by V8: Safari's engine does not box them, so it is not the
+  iPhone's pause); the hit-time work (sounds, the hero's pose, call-outs, the boss's reaction): each is a
+  look or a sound and wants its own measured change, best chosen from the iPhone's report.
+- **Consequences:** a break no longer uploads anything in the fight (0 first draws in a fight on the fox,
+  grove and code levels, against 2 - 3 before); a big mesh that starts moving costs the still map 0.36 ms
+  instead of 1.1 (grove). Whole-fight timings could not tell the builds apart: the machine was 75 - 81 %
+  loaded by other sessions and runs varied +-25 %. The load step takes ~1 frame more for the warm draw.
+  Next: the owner's `?perf` report from the iPhone in a fight on each of the three levels, then the parts
+  it names. Not measured: any phone.
+
 ## ADR-210 — The perfect dodge's flurry: smear, floor sparks, aerial cuts and four looks behind `?dodgefx` (2026-11-25)
 
 - **Context:** the owner: the perfect dodge should not have "random like hops over the character and should be
@@ -6349,3 +6382,58 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   d) a longer coil, a held finish / landing and a camera push. Numbers: `DEFENSE.flurry.dodgefx`. Blows and damage
   unchanged (duel `dodgefx`). `?dash` is gone (git history keeps it). The owner watched the four side by side and picked **a** (the Thunder Thrust) as the default (2026-11-26); `?dodgefx=off` gives the flurry before. The pace sims (duel / lord `pace`, city's win window, duel `pressure`) measure the boss with the dodge looks off: the thrust's held lunge holds the world longer, a gap in his cues that is not his pace.
 - **Consequences:** aerial cuts exist only on the chain's paths; d delays the art (its blows' frames move).
+
+
+## ADR-215 — BENCH: each pipeline step's GPU cost, measured on the owner's phone (2026-11-26)
+
+- **Context:** the owner's `?perf` reports from their iPhone (ADR-209): the script is 3.5 ms of a frame (p99
+  7 - 12 ms), yet 6 % (fox, code hall) to 20 % (grove) of fight frames run over 20 ms, the long ones 46 - 69 ms
+  with 3 - 4 catch-up steps, and AUTO already sat at the owner's 1x floor on fox and grove. The GPU is the limit,
+  and Safari has no GPU timer, so which step costs is unknown. The owner said yes to a BENCH button.
+- **Decision:** BENCH in the readout: the frame on screen drawn whole and with each step left out in turn, each
+  reading ended by a 1-pixel read (it waits for the GPU); a step's share is the difference. Also the still
+  shadow map redrawn every frame, and the frame at ~0.7x the pixels (how much a resolution step gives). ~4 s
+  on a phone, the game holding still; everything is put back.
+- **Consequences:** the report names the step to cut at AUTO's floor (a smaller shadow map, a cheaper glow,
+  fewer effect letters), to be shown to the owner as before / after options. A difference method: steps that
+  overlap on the GPU can share time, so the shares need not add up to the frame (the rest line shows the gap).
+  On the RTX 4090 the whole frame at the phone's size is ~2 ms; the numbers mean something on the phone only.
+
+## ADR-216 — The lite world: a phone with no resolution step left draws a cheaper world (2026-11-26)
+
+- **Context:** the owner's BENCH on their iPhone (ADR-215), fox in a fight at 669 x 867 and AUTO's 1x floor:
+  a frame 13.3 ms, the world pass 11.8 ms of it; ~0.7x the pixels gave only 32 % less. The world's per-pixel
+  print is what costs. Three options rendered at the phone's size on fox and grove: A as today, B the four
+  upgrades off (ridge strokes, cloud shadows, contact rings, the ripple), C B plus the floors' relief in one
+  octave; on the desktop GPU the world pass was 69 - 80 % (B) and 66 - 69 % (C) of A's. The owner picked C.
+- **Decision:** `game.liteWorld`: on a touch device, once AUTO is slow with no step down left
+  (`autoQ.wantsLess`), for the rest of the page load; `?lite=1|0` to force. groundFx holds the four upgrades
+  off and `uDpLite` turns the floors' cheap relief on (a uniform branch: no second program).
+- **Consequences:** a phone that holds 60 fps at its floor never sees it; the owner's iPhone on fox and grove
+  will. The world pass in one page, lite against full, 4K desktop GPU: fox 2.48 -> 2.16 ms, grove 1.99 -> 1.56
+  (the sheets' runs gave 31 - 34 % less; this machine was shared and noisy). The picture with it on matches the
+  sheet's C in the same page (474 of 580 000 pixels differ, from the relief alone). The look changes once, when
+  it turns on, mid-page (one frame). Not measured on the phone; the next `?perf` BENCH there says how much.
+
+## ADR-227 — The perfect parry gets the perfect dodge's window: 0.20 s (2026-11-26)
+
+- **Context:** the owner: parrying is very hard and the timing feels too tight; make the parry window like
+  the perfect dodge's. Asked which window, they picked the PERFECT parry, 0.08 s → 0.20 s
+  (`DEFENSE.perfectDodgeWindow`); the plain parry window (`parryWindow`, 0.22 s) stays.
+- **Decision:** `DEFENSE.perfectParryWindow` 0.20. It is the one number every perfect parry reads
+  (`player.js` sets `deflect.perfect` from it; the duelists' blade lock, the returned bullets, embers, ki
+  bolts, the beam clash, the lantern push, Halcyon's glare and the streak's double pip all read
+  `deflect.perfect`), so nothing else changes. The Lab's training card reads the number instead of
+  spelling 0.08.
+- **What a plain parry is now:** a press 0.20 – 0.22 s before the blow, about one frame at 60 fps. In
+  practice every parry is perfect: x 1.5 posture, the counter cut, the gold clash and its short slow
+  motion, a `lock` blow locks, a bullet comes back. The plain parry stays in the rules (its window, its
+  sound and look, the riposte and the blue flare's counter, which any parry earns) rather than being
+  removed: if the owner wants a gap between the two again, it is this one number. A held guard (block)
+  is now the only defensive answer short of perfect besides the 0.02 s sliver.
+- **Consequences:** parrying is easier by 2.5x of window for every perfect reward; the fights get more
+  slow-motion beats (one per parried blow of a string in the default `sharp` look) and more blade locks.
+  Tests that check a plain parry press on the one plain frame (13/60 s); bots that play like a player keep
+  their 0.12 s press (now perfect) and their expectations moved (posture x 1.5, a lock, Halcyon's fight
+  137 - 142 s). The wyrm's PRESSURE measurement keeps the old 0.08 s for its guard bot's stray parries: the
+  new path met a brood gap that exists on main (`BROOD.busyWait`), a separate task. Not played by a human yet.

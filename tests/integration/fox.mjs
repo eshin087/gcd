@@ -22,7 +22,7 @@ const { LightPool } = await imp('src/render/lights.js');
 const { GlyphParticles } = await imp('src/render/particles.js');
 const { FireField } = await imp('src/render/fireField.js');
 const { Colliders } = await imp('src/world/colliders.js');
-const { TELL, RESULT, POSTURE } = await imp('src/combat/rules.js');
+const { TELL, RESULT, POSTURE, DEFENSE: DEF } = await imp('src/combat/rules.js');
 const { LEVELS, getLevel, levelFromSearch, applyLevel } = await imp('src/levels/index.js');
 const { createFoxTerrace, TERRACE } = await imp('src/world/foxTerrace.js');
 const { Destructibles } = await imp('src/world/destructibles.js');
@@ -54,6 +54,9 @@ const assert = (c, m) => { if (!c) { fails++; out('FAIL', m); } else out('ok  ',
 const mulberry32 = (a) => () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 const SEED = Number(process.env.GCD_SEED ?? 4242);
 const DT = 1 / 60;
+// a PLAIN parry's press (ADR-227): the perfect window is 0.20 s of the parry's 0.22, so a test that means
+// a plain parry presses in that sliver (a `left <= lead` check lands the press one step inside it: 13 / 60 s)
+const PLAIN_LEAD = (DEF.perfectParryWindow + DEF.parryWindow) / 2 + DT / 2;
 const PHASES = TUNING.phaseAt.length;
 const weightIn = (def, f) => (Array.isArray(def.weight) ? def.weight[f - 1] ?? 0 : def.weight ?? 0);
 /** The phases a move is used in (its weight; a counter or a hidden move: every phase; a transition: its own). */
@@ -704,7 +707,7 @@ async function scenarioClones() {
     duel(G4, { dist: 3, form: 3 });
     const d4 = G4.game.dragon, g4 = G4.game;
     g4.player.debug.god = true;
-    G4.defend = makeDefender(G4, { style: 'parry' });
+    G4.defend = makeDefender(G4, { style: 'parry', early: PLAIN_LEAD }); // plain parries: perfect ones break him first
     let deflected = 0;
     G4.watch = (n) => { if (n === 'dragon:deflected') deflected++; };
     d4.debug.trigger('foxRing');

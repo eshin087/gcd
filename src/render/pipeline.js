@@ -1778,7 +1778,14 @@ export class Pipeline {
       r.autoClear = true;
       r.setRenderTarget(seen);
       r.setClearColor(0x000000, 0);
-      r.render(root, cam);
+      // (his matrices were made this frame with the scene's, step 0: three would walk his ~200 nodes again)
+      const auto = root.matrixWorldAutoUpdate;
+      root.matrixWorldAutoUpdate = false;
+      try {
+        r.render(root, cam);
+      } finally {
+        root.matrixWorldAutoUpdate = auto;
+      }
       // ... minus what the scene shows of it
       r.autoClear = false;
       const m = this.seenMaskMat.uniforms;

@@ -5,6 +5,70 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-26 — The perfect parry widened to the perfect dodge's window (ADR-227; branch `claude/combat-perfect-parry-window-d6503b`)
+
+**Owner:** parrying is very hard, the timing too tight; make it like the perfect dodge's window. They picked
+the PERFECT parry 0.08 → 0.20 s; the plain parry (0.22 s) stays. **What:** `DEFENSE.perfectParryWindow` 0.20
+(`combat/rules.js`); every perfect reward reads `deflect.perfect`, set from that one number, so nothing else in
+the rules moved; the Lab training card reads the number. A plain parry is now a 0.20 - 0.22 s press only:
+one frame at 60 fps (13/60 s). A blow that is both a blue flare and a `lock`
+(Severance, Hundred Hands' palm, Rain of Ashes' last) now nearly always locks the blades instead of the flare
+counter (the rule as it was; a perfect parry is simply the norm now). **Tests:** a `PLAIN_LEAD` per suite for
+the checks of a plain parry (that one frame; checked with a per-parry gap print), duel's `makeDefender` a
+`lead`; bots that play like a player keep 0.12 s (now perfect): integ STRINGS posture x 1.5, asc Hundred Hands
+may end in the lock, city WIN floor 140 → 130 s (137 - 142 s now). **Finding (a separate task):** integ
+PRESSURE seed 4242 met a director gap once the steady bot's stray parries turned perfect: the brood's
+busyWait dive (`brood.js`, `BROOD.busyWait` 2.5 s: a drakeling dives anyway after waiting that long on a busy
+wyrm) landed within 0.3 s of a wyrm cue needing another answer: fanVolley / drakelings in P2 (at 60.6 s) and,
+with 4242 run alone, breath / drakelings in P3 (63.5 s). It exists on main (the seeds just miss it); the
+scenario keeps the old 0.08 s perfect window for the steady bot's stray parries, so it measures the director
+on its old path. **Open:** played by the owner; whether the slow-motion beat on every parried blow of a string
+is too much now (the `short` beat, `combat/perfectFx.js`); the brood fix.
+## 2026-11-26 — The lite world on a phone at AUTO's floor (ADR-216; branch `render/phone-lite`)
+
+**Owner:** the BENCH from their iPhone (fox: the world pass 11.8 of 13.3 ms; half the pixels only 32 % less);
+of three rendered options (A today, B the four upgrades off, C B plus a one-octave floor relief) they picked "C".
+**What:** `autoQ.wantsLess` (slow with no step down left, kept for the page), `game.liteWorld` (touch + AUTO +
+wantsLess, `?lite=1|0`), groundFx holds the upgrades off and writes `uDpLite`, the floors' relief branches on it.
+Tests: autoq `wantsless`, groundfx `lite`. **Checked:** lite equals the sheet's C in one page (474 px differ:
+the relief); the world pass 13 - 22 % cheaper in this run on the desktop GPU (31 - 34 % in the sheets' run).
+The sheets' grove A / C differed in the bamboo too: that was the frame, not the option (one page shows the
+same bamboo). **Next:** the owner's BENCH on fox and grove with it on.
+
+## 2026-11-26 — BENCH in `?perf`: each pipeline step's GPU cost on the phone (ADR-215; branch `perf/phone-bench`)
+
+**Owner's iPhone reports** (fox, grove, code; Safari 27.3, iOS 18.7, screen 414 x 896 at 3x, the page at 669 x
+867): 52 - 59 fps; script mean 3.5 ms, p99 7 - 12 ms; 6 - 20 % of frames over 20 ms, the long ones 46 - 69 ms in
+the fight's busiest moments (the flurry on a staggered boss, the fox's twin fall, perfect dodges); AUTO at its
+1x floor on fox and grove (1.25x on code); an AUTO step's own hitch 17 - 32 ms. So the GPU is the limit, not the
+script. **What:** BENCH (`perf.bench()`, a button): each step's share of the frame, the still map redrawn, the
+frame at ~0.7x pixels. Test: world `perfreadout`. **Next:** the owner's BENCH from a busy moment on fox and grove;
+then the step it names, cut at AUTO's floor, shown as options; AUTO's step hitch (the letter atlases rebuilt).
+
+## 2026-11-26 — The phone's frame: `?perf` on the device; the first break's upload and two spikes out (ADR-209; branch `perf/phone-spikes`)
+
+**Owner:** "i tried playing a few levels like the neo, bamboo, and fox level and the fps does dip during the
+fight. what else can [we do] to ensure performance is good?", then "this was on my iphone ... pretty powerful",
+then "Yes, both" (the on-phone readout and the spike fixes).
+
+**Measured** (headless Edge on the RTX 4090 / i9, the phone setup `?touch` at 1468 x 686, real-time fights with
+a bot, the rig's `timeline.js` / `j_methods.js` / `prof2.mjs` / `prof4.mjs` / `heap.mjs`): a fight frame is 4 - 5
+ms of script, 2 - 3 ms GPU; 0.1 - 0.4 % of frames over 9 ms of script, worst 13 - 16 ms; the second fight in a
+page as spiky as the first. Spikes ride on a blow landing (trade 4 - 7 ms, clash 3 - 4.6, parry contact 2 - 2.5,
+perfect dodge 2.3 - 2.9; inside: sound voices, the hero's pose, call-outs, the boss's reaction), plus the first
+draw of a floor's or the bamboo's hidden remains (bounds 1 - 2.5 ms + buffers) and the still shadow map's
+whole copy of a big mesh (bamboo 1.1 ms). Allocation 17.7 MB/s, mostly V8's boxed numbers (not Safari's).
+
+**What.** `dev/perfReadout.js` + main.js hooks (`?perf`, `__perfReport()`); `render/precompile.js` `warmDraw`
+(main.js after the precompile; `?warm=0`); `render/shadowCache.js` `_bigSync` (the copy kept on every change);
+`pipeline.js` `_renderSeen` leaves the hero's matrices alone. Tests: world `perfreadout`.
+
+**Dropped:** slicing the contact rings' scan (its cost was my instrumentation's, 5 - 15 us really).
+
+**Open.** The owner's `?perf` report from the iPhone in a fight on fox, grove and code; then the parts it
+names (the hit-time work, draw calls, the hero's animation). A shader / pipeline warm-up for effects first
+drawn mid-fight on iOS, if the report shows first-time stalls.
+
 ## 2026-11-26 — The melee animation engine; Tian Lei's blows from a bare-handed film, turned down (ADR-208; branch `enemies/fists-ref`)
 
 **Task** (the owner): review a bare-handed melee reference film with the "0 - Game Engine" session's tool, learn the
