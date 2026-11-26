@@ -219,7 +219,409 @@
     }
    ],
    "from": "walk",
-   "to": "walk"
+   "to": "walk",
+   "pose_keys": [
+    {
+     "f": 0,
+     "joint": "upperArmR",
+     "dir": [
+      -0.1,
+      -0.956,
+      -0.274
+     ],
+     "blend": 4
+    },
+    {
+     "f": 0,
+     "joint": "foreArmR",
+     "dir": [
+      -0.0,
+      -0.998,
+      -0.07
+     ],
+     "blend": 4
+    },
+    {
+     "f": 0,
+     "joint": "upperArmL",
+     "dir": [
+      0.1,
+      -0.956,
+      0.274
+     ],
+     "blend": 4
+    },
+    {
+     "f": 0,
+     "joint": "foreArmL",
+     "dir": [
+      0.0,
+      -0.829,
+      0.559
+     ],
+     "blend": 4
+    },
+    {
+     "f": 4,
+     "joint": "upperArmR",
+     "dir": [
+      -0.1,
+      -0.97,
+      -0.223
+     ],
+     "blend": 4
+    },
+    {
+     "f": 4,
+     "joint": "foreArmR",
+     "dir": [
+      -0.0,
+      -1.0,
+      -0.006
+     ],
+     "blend": 4
+    },
+    {
+     "f": 4,
+     "joint": "upperArmL",
+     "dir": [
+      0.1,
+      -0.97,
+      0.223
+     ],
+     "blend": 4
+    },
+    {
+     "f": 4,
+     "joint": "foreArmL",
+     "dir": [
+      0.0,
+      -0.863,
+      0.506
+     ],
+     "blend": 4
+    },
+    {
+     "f": 8,
+     "joint": "upperArmR",
+     "dir": [
+      -0.1,
+      -0.991,
+      -0.086
+     ],
+     "blend": 4
+    },
+    {
+     "f": 8,
+     "joint": "foreArmR",
+     "dir": [
+      -0.0,
+      -0.987,
+      0.159
+     ],
+     "blend": 4
+    },
+    {
+     "f": 8,
+     "joint": "upperArmL",
+     "dir": [
+      0.1,
+      -0.991,
+      0.086
+     ],
+     "blend": 4
+    },
+    {
+     "f": 8,
+     "joint": "foreArmL",
+     "dir": [
+      0.0,
+      -0.934,
+      0.356
+     ],
+     "blend": 4
+    },
+    {
+     "f": 12,
+     "joint": "upperArmR",
+     "dir": [
+      -0.1,
+      -0.991,
+      0.086
+     ],
+     "blend": 4
+    },
+    {
+     "f": 12,
+     "joint": "foreArmR",
+     "dir": [
+      -0.0,
+      -0.934,
+      0.356
+     ],
+     "blend": 4
+    },
+    {
+     "f": 12,
+     "joint": "upperArmL",
+     "dir": [
+      0.1,
+      -0.991,
+      -0.086
+     ],
+     "blend": 4
+    },
+    {
+     "f": 12,
+     "joint": "foreArmL",
+     "dir": [
+      0.0,
+      -0.987,
+      0.159
+     ],
+     "blend": 4
+    },
+    {
+     "f": 16,
+     "joint": "upperArmR",
+     "dir": [
+      -0.1,
+      -0.97,
+      0.223
+     ],
+     "blend": 4
+    },
+    {
+     "f": 16,
+     "joint": "foreArmR",
+     "dir": [
+      -0.0,
+      -0.863,
+      0.506
+     ],
+     "blend": 4
+    },
+    {
+     "f": 16,
+     "joint": "upperArmL",
+     "dir": [
+      0.1,
+      -0.97,
+      -0.223
+     ],
+     "blend": 4
+    },
+    {
+     "f": 16,
+     "joint": "foreArmL",
+     "dir": [
+      0.0,
+      -1.0,
+      -0.006
+     ],
+     "blend": 4
+    },
+    {
+     "f": 20,
+     "joint": "upperArmR",
+     "dir": [
+      -0.1,
+      -0.956,
+      0.274
+     ],
+     "blend": 4
+    },
+    {
+     "f": 20,
+     "joint": "foreArmR",
+     "dir": [
+      -0.0,
+      -0.829,
+      0.559
+     ],
+     "blend": 4
+    },
+    {
+     "f": 20,
+     "joint": "upperArmL",
+     "dir": [
+      0.1,
+      -0.956,
+      -0.274
+     ],
+     "blend": 4
+    },
+    {
+     "f": 20,
+     "joint": "foreArmL",
+     "dir": [
+      0.0,
+      -0.998,
+      -0.07
+     ],
+     "blend": 4
+    },
+    {
+     "f": 24,
+     "joint": "upperArmR",
+     "dir": [
+      -0.1,
+      -0.97,
+      0.223
+     ],
+     "blend": 4
+    },
+    {
+     "f": 24,
+     "joint": "foreArmR",
+     "dir": [
+      -0.0,
+      -0.863,
+      0.506
+     ],
+     "blend": 4
+    },
+    {
+     "f": 24,
+     "joint": "upperArmL",
+     "dir": [
+      0.1,
+      -0.97,
+      -0.223
+     ],
+     "blend": 4
+    },
+    {
+     "f": 24,
+     "joint": "foreArmL",
+     "dir": [
+      0.0,
+      -1.0,
+      -0.006
+     ],
+     "blend": 4
+    },
+    {
+     "f": 28,
+     "joint": "upperArmR",
+     "dir": [
+      -0.1,
+      -0.991,
+      0.086
+     ],
+     "blend": 4
+    },
+    {
+     "f": 28,
+     "joint": "foreArmR",
+     "dir": [
+      -0.0,
+      -0.934,
+      0.356
+     ],
+     "blend": 4
+    },
+    {
+     "f": 28,
+     "joint": "upperArmL",
+     "dir": [
+      0.1,
+      -0.991,
+      -0.086
+     ],
+     "blend": 4
+    },
+    {
+     "f": 28,
+     "joint": "foreArmL",
+     "dir": [
+      0.0,
+      -0.987,
+      0.159
+     ],
+     "blend": 4
+    },
+    {
+     "f": 32,
+     "joint": "upperArmR",
+     "dir": [
+      -0.1,
+      -0.991,
+      -0.086
+     ],
+     "blend": 4
+    },
+    {
+     "f": 32,
+     "joint": "foreArmR",
+     "dir": [
+      -0.0,
+      -0.987,
+      0.159
+     ],
+     "blend": 4
+    },
+    {
+     "f": 32,
+     "joint": "upperArmL",
+     "dir": [
+      0.1,
+      -0.991,
+      0.086
+     ],
+     "blend": 4
+    },
+    {
+     "f": 32,
+     "joint": "foreArmL",
+     "dir": [
+      0.0,
+      -0.934,
+      0.356
+     ],
+     "blend": 4
+    },
+    {
+     "f": 36,
+     "joint": "upperArmR",
+     "dir": [
+      -0.1,
+      -0.97,
+      -0.223
+     ],
+     "blend": 4
+    },
+    {
+     "f": 36,
+     "joint": "foreArmR",
+     "dir": [
+      -0.0,
+      -1.0,
+      -0.006
+     ],
+     "blend": 4
+    },
+    {
+     "f": 36,
+     "joint": "upperArmL",
+     "dir": [
+      0.1,
+      -0.97,
+      0.223
+     ],
+     "blend": 4
+    },
+    {
+     "f": 36,
+     "joint": "foreArmL",
+     "dir": [
+      0.0,
+      -0.863,
+      0.506
+     ],
+     "blend": 4
+    }
+   ]
   },
   {
    "name": "walkStop",
