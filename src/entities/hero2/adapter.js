@@ -34,7 +34,7 @@ import { fitTime } from './fit.js';
 import { J, JI, createPose, createWorld, restOffsets, solveFK } from './skeleton.js';
 import { qmul, qconjmul, qaxis, qrot, smooth01, fin } from './qmath.js';
 import { sampleClip } from './clip.js';
-import { LOCO, ATTACKS, ATTACK_DEFAULT, STATES, STATE_DEFAULT, ROLLS, HEAL, resolveClip, resolveAll } from './moves.js';
+import { LOCO, ATTACKS, ATTACK_DEFAULT, STATES, STATE_DEFAULT, ROLLS, HEAL, RECOVER, FACE, resolveClip, resolveAll } from './moves.js';
 import { TUNE } from '../player/player.js';
 
 const TAU = Math.PI * 2;
@@ -175,6 +175,32 @@ export function fixAttackPose(pose, c, aim) {
   if (Math.abs(aim) > 1e-3) turnAll(pose, aim);
 }
 
+/** An attack clip's time (s) at game time t of the attack def `win` (fit.js), optionally begun at frame
+ *  `u0` (the release of a held coil: the game's windup runs from there to the clip's coil) and with the
+ *  game's free moment on frame `recF` (moves.js recoverAt) instead of the clip's `recover`. */
+const _ps = { fps: 60, dur: 1, phases: { windup: 1, active: 2, recover: 3 } };
+export function attackTime(c, t, win, u0 = 0, recF = null) {
+  const ph = c?.phases;
+  if (!ph || (!(u0 > 0) && recF == null)) return fitTime(c, t, win);
+  const W = ph.windup, A = ph.active;
+  u0 = clamp(fin(u0, 0), 0, Math.max(0, W - 2));
+  const Rf = recF != null ? clamp(recF, A + 1, c.n - 1) : ph.recover;
+  _ps.fps = c.fps;
+  _ps.dur = c.dur - u0 / c.fps;
+  _ps.phases.windup = W - u0;
+  _ps.phases.active = A - u0;
+  _ps.phases.recover = Rf - u0;
+  return u0 / c.fps + fitTime(_ps, t, win);
+}
+/** A clip's event frame by name (or null). */
+export const eventFrame = (c, name) => c?.events?.find((e) => e.name === name)?.f ?? null;
+/** The frames a held coil plays to and holds (`holdAt`, else the clip's holdStart / holdEnd events). */
+export function holdFrames(c, e) {
+  if (e?.holdAt != null) return [e.holdAt, e.holdAt];
+  const hs = eventFrame(c, 'holdStart') ?? (c.phases ? c.phases.windup : c.n * 0.4);
+  return [hs, Math.max(hs, eventFrame(c, 'holdEnd') ?? hs)];
+}
+
 /** Piecewise-straight game time -> frame through knots (flat [t0, f0, t1, f1, ...], k pairs); after the
  *  last, `tail` x real speed. */
 function knotFrame(K, k, t, tail, fps) {
@@ -233,6 +259,24 @@ export function createAdapter(game, player, old, { lib, body }) {
     phi: 0, vs: 0, loop: '', locoT: 0, legYaw: 0, aim: 0, idleU: 0, gait: 'walk', sector: 'F', cs: 1, csWant: 1,
     u: 0, dist: 0, Y0: 0, settled: fin(player.yaw), rollTurn: 0, heal: false, yawOff: 0,
     K: new Float64Array(16), k: 0, tail: 1,
+    // attacks: the clip now and the one it chained from, a coil's start frame, the free frame
+    atkClip: null, atkPrev: null, u0: 0, recF: null, tailAim: 0,
+    // a held coil (the charge, the draw stance): its clip and the frame it stands at
+    chargeClip: null, cu: 0, cu0: 0,
+    // the end facing kept as drawn (moves.js FACE): fading over the steps; a turn's root yaw scale
+    faceOff: 0, turnK: 1, yawBase: 0, blockBeat: false, blockBeatT: 0, turnUpper: false, tailHips: false,
+  };
+  // the guard's own facing (rad, the hips' yaw in its first frame): what a clip's end facing is read against
+  const hipsYaw = (q) => {
+    qrot(_fv, 0, q, JI.hips * 4, 0, 0, 1);
+    return Math.atan2(_fv[0], _fv[2]);
+  };
+  const _fv = new Float64Array(3);
+  const idleFace = { fight: fightC ? hipsYaw(clipQ(fightC, 0)) : 0, plain: idleC ? hipsYaw(clipQ(idleC, 0)) : 0 };
+  /** How far the body is drawn turned off the guard's facing now (rad, + = to his left). */
+  const faceNow = () => {
+    const fight = player.lockOn || game?.state === 'boss' || player.debug?.fightStance === true;
+    return wrap(hipsYaw(hero.world.r) - (fight ? idleFace.fight : idleFace.plain));
   };
   let A = null; // the proxy (set below)
   let oldAnim = old;
@@ -262,6 +306,10 @@ export function createAdapter(game, player, old, { lib, body }) {
         return TUNE.knockdownDur - TUNE.getUpIframes;
       case 'heal':
         return TUNE.heal.dur;
+      case 'parry':
+        return fin(TUNE.parryDur, 0.3);
+      case 'bounce':
+        return fin(TUNE.bounceDur, 0.42);
       default:
         return 0;
     }
@@ -275,10 +323,57 @@ export function createAdapter(game, player, old, { lib, body }) {
     else hero.layer(null, { fade: 0.1 });
   }
 
+  /**
+   * A clip hands back to the game (an attack, its recovery): the turn his body ends in (moves.js FACE)
+   * is kept as drawn. Standing: the quarter turn on the spot back to his facing (true: it started);
+   * moving: the turn fades out over his steps (S.faceOff). Call after toLoco.
+   */
+  function keepFacing(d) {
+    if (!(Math.abs(d) >= FACE.min)) return false;
+    // the blend from the drawn pose: that pose is already turned by d, and what follows is drawn turned
+    // by d on top of the blend (turnAll in onPose): the pose it fades from is taken back by d first
+    turnAll(hero.pose, -d);
+    hero.transition(0.25);
+    if (intentLen() < 0.1 && S.vs < 0.6) {
+      const c = turns[d < 0 ? 'L90' : 'R90'];
+      if (c) {
+        const from = Math.min(c.n - 2, fin(FACE.from, 0));
+        const span = rootYaw(c, c.n - 1) - rootYaw(c, from);
+        if (Math.abs(span) > 0.3) {
+          startOne('turn', c, from, { speed: fin(FACE.speed, 1), loop: false });
+          S.Y0 = fin(player.yaw) + d;
+          S.turnK = -d / span;
+          S.yawBase = rootYaw(c, from);
+          S.settled = fin(player.yaw);
+          // (the turns on the spot are filmed unarmed, arms hanging: the sword's guard stays on the upper
+          // body while the legs step round)
+          const up = fightC ?? idleC;
+          if (up && up.loop) {
+            hero.layer(up.name, { mask: 'upper', weight: 1, fade: 0.12, loop: true });
+            S.turnUpper = true;
+          }
+          return true;
+        }
+      }
+    }
+    S.faceOff = d;
+    return false;
+  }
+
   /** Enter what the player's state asks for (from play(key)). */
   function enter(key, blend) {
     S.prevKey = S.key;
     S.key = key;
+    const wasMode = S.mode, wasAtk = S.mode === 'attack' ? S.atkClip : null;
+    if (S.turnUpper) {
+      S.turnUpper = false;
+      hero.layer(null, { fade: 0.15 });
+    }
+    if (key !== 'loco' && key !== 'heal') S.faceOff = 0; // (the state's own blend takes it from the drawn pose)
+    if (S.blockBeat) {
+      S.blockBeat = false;
+      hero.layer(null, { fade: 0.1 });
+    }
     const tr = () => hero.transition(Math.max(0.04, Math.min(0.25, fin(blend, 0.15))));
     if (key !== 'heal') healOff(key === 'loco');
     else {
@@ -303,26 +398,45 @@ export function createAdapter(game, player, old, { lib, body }) {
     }
     if (key === 'loco') {
       // the chain stops at this swing: its recovery back to the guard, while he stands
-      const rc = S.mode === 'attack' && S.entry?.recover && intentLen() < 0.1 ? resolveClip(lib, { want: S.entry.recover }) : null;
-      if (rc) {
-        S.mode = 'tail';
-        S.clip = rc;
-        S.entry = { settle: 1 };
-        S.yawOff = 0;
-        hero.transition(0.12);
-        hero.cut(rc.name, { loop: false });
-        setContact(1);
-        return;
+      if (S.mode === 'attack' && intentLen() < 0.1 && S.clip) {
+        if (S.entry?.recover === 'self' && hero.clip === S.clip && !hero.done) {
+          // the same clip plays on at real speed to its end (the riposte's pull and settle)
+          S.mode = 'tail';
+          S.entry = { settle: 1 };
+          S.tailAim = S.aim;
+          S.tailHips = true;
+          hero.play(S.clip.name, { fade: 0, at: hero.time, loop: false });
+          setContact(1);
+          return;
+        }
+        const rn = S.entry?.recover ?? RECOVER[S.clip.name];
+        const rc = rn && rn !== 'self' ? resolveClip(lib, { want: rn }) : null;
+        if (rc) {
+          S.mode = 'tail';
+          S.clip = rc;
+          S.entry = { settle: 1 };
+          S.yawOff = 0;
+          S.tailAim = S.aim; // the swing's aim carried on through its recovery
+          S.tailHips = false;
+          hero.transition(0.12);
+          hero.cut(rc.name, { loop: false });
+          setContact(1);
+          return;
+        }
       }
       // a state's clip that plays on to its end while he stands (a get-up, a flinch's recovery)
       if (S.mode === 'track' && S.entry?.settle && intentLen() < 0.1 && S.clip && !hero.done) {
         S.mode = 'tail';
+        S.tailAim = 0;
+        S.tailHips = false;
         hero.play(S.clip.name, { fade: 0, at: hero.time, speed: S.entry.settle, loop: false });
         setContact(1);
         return;
       }
+      const d = wasMode === 'attack' || wasMode === 'tail' ? faceNow() : 0;
       tr();
       toLoco(0, false);
+      keepFacing(d);
       return;
     }
     S.entry = null;
@@ -331,20 +445,35 @@ export function createAdapter(game, player, old, { lib, body }) {
     if (key === 'attack') {
       const def = player.atk?.def;
       const e = ATTACKS[def?.name] ?? ATTACK_DEFAULT;
-      const c = resolveClip(lib, e) ?? resolveClip(lib, ATTACK_DEFAULT);
+      // which clip: a held coil's release goes on with the coil's clip; a swing straight after the one
+      // the footage chains it from plays the footage's next; out of a sprint, the running one
+      let c = null, u0 = 0;
+      if (e.from === 'charge' && wasMode === 'charge' && S.chargeClip) {
+        c = S.chargeClip;
+        u0 = S.cu;
+      } else if (e.after && wasAtk && e.after[wasAtk] && lib.has(e.after[wasAtk])) c = lib.get(e.after[wasAtk]);
+      else if (e.sprint && S.prevKey === 'loco' && S.vs > TUNE.runSpeed * 1.05 && lib.has(e.sprint)) c = lib.get(e.sprint);
+      c = c ?? resolveClip(lib, e) ?? resolveClip(lib, ATTACK_DEFAULT);
       if (c) {
         tr();
+        S.atkPrev = wasAtk;
+        S.atkClip = c.name;
+        S.u0 = u0;
+        const rf = e.recoverAt ? eventFrame(c, e.recoverAt) : null;
+        S.recF = rf;
         S.mode = 'attack';
         S.entry = e;
         S.clip = c;
         // the clip's own facing when it says so (`face`: +Z is the aim at 0), else measured
         S.aim = e.aim ?? (c.face != null ? -c.face : aimOf(lib, c));
-        hero.cut(c.name, { manual: true });
+        hero.cut(c.name, { manual: true, at: u0 / c.fps });
         setContact(e.contact ?? 1);
         return;
       }
     }
     let e = STATES[key] ?? STATE_DEFAULT;
+    // One Breath's draw stance plays on the flurry's key
+    if (key === 'flurry' && player.state === 'iai' && STATES.iai) e = STATES.iai;
     if (key === 'dead' && (S.prevKey === 'plunge' || fin(player.position?.y, 0) > 0.4)) e = STATES.deadAir;
     let c = null;
     S.rollTurn = 0;
@@ -355,6 +484,12 @@ export function createAdapter(game, player, old, { lib, body }) {
       const side = Math.abs(rel) < Math.PI / 4 ? 'F' : Math.abs(rel) > (3 * Math.PI) / 4 ? 'B' : rel > 0 ? 'L' : 'R';
       c = resolveClip(lib, ROLLS[side]);
       if (c) S.rollTurn = -travelDir(c);
+    }
+    if (e.how === 'charge' && e.after) {
+      // the coil straight after the clip the footage chains it from (a held heavy press waits at its
+      // swing's coil first: the swing before THAT one is what it follows)
+      const ref = wasMode === 'attack' ? S.atkPrev : null;
+      if (ref && e.after[ref] && lib.has(e.after[ref])) c = lib.get(e.after[ref]);
     }
     c = c ?? resolveClip(lib, e) ?? resolveClip(lib, STATE_DEFAULT);
     if (!c) {
@@ -385,6 +520,15 @@ export function createAdapter(game, player, old, { lib, body }) {
     }
     S.clip = c;
     tr();
+    if (S.mode === 'charge') {
+      // out of a swing waiting at its coil (a held heavy press): from partway into the coil
+      S.chargeClip = c;
+      S.cu0 = wasMode === 'attack' ? holdFrames(c, e)[0] * 0.6 : 0;
+      S.cu = S.cu0;
+      S.atkClip = c.name;
+      hero.cut(c.name, { manual: true, at: S.cu / c.fps });
+      return;
+    }
     if (S.mode === 'once') hero.cut(c.name, { at: fin(e.from, 0) / c.fps, speed: fin(e.rate, 1), loop: false });
     else if (S.mode === 'loop') hero.cut(c.name, { loop: true });
     else hero.cut(c.name, { manual: true }); // roll, charge, hold: on the game's clock
@@ -416,6 +560,8 @@ export function createAdapter(game, player, old, { lib, body }) {
     S.u = at;
     S.dist = 0;
     S.Y0 = fin(player.yaw);
+    S.turnK = 1;
+    S.yawBase = 0;
     hero.transition(0.16);
     hero.cut(c.name, { at: at / c.fps, ...opts });
     setContact(1);
@@ -568,12 +714,24 @@ export function createAdapter(game, player, old, { lib, body }) {
       if (m === 'roll' && Math.abs(S.rollTurn) > 1e-3) turnAll(pose, S.rollTurn);
       return;
     }
+    if (m === 'tail') {
+      // a swing's recovery (or the swing itself playing on): turned by the swing's aim as it was
+      const c = S.clip;
+      if (S.tailHips && c) {
+        pose.hips[0] = c.hips[0];
+        pose.hips[2] = c.hips[2];
+      }
+      if (Math.abs(S.tailAim) > 1e-3) turnAll(pose, S.tailAim);
+      return;
+    }
     if ((m === 'pivot' || m === 'turn') && S.clip) {
-      // the body at the yaw it had when the clip began plus the clip's root yaw; the game's yaw under it
-      S.yawOff = wrap(S.Y0 + rootYaw(S.clip, hero.time * S.clip.fps) - fin(player.yaw));
+      // the body at the yaw it had when the clip began plus the clip's root yaw (scaled by turnK from
+      // yawBase: a turn back from an end facing); the game's yaw under it
+      S.yawOff = wrap(S.Y0 + S.turnK * (rootYaw(S.clip, hero.time * S.clip.fps) - S.yawBase) - fin(player.yaw));
       turnAll(pose, S.yawOff);
       return;
     }
+    if (Math.abs(S.faceOff) > 1e-3) turnAll(pose, S.faceOff);
     const a = m === 'loco' ? S.legYaw : 0;
     if (Math.abs(a) < 1e-3) return;
     const q = pose.q, hi = JI.hips * 4, si = JI.spine * 4;
@@ -599,6 +757,16 @@ export function createAdapter(game, player, old, { lib, body }) {
     if (emptyC && (S.mode === 'loco' || S.mode === 'stop' || S.mode === 'start')) {
       hero.layer(emptyC.name, { mask: 'upper', weight: 1, fade: 0.15, at: fin(HEAL.empty.from, 0) / emptyC.fps, speed: fin(HEAL.empty.rate, 1), loop: false, out: 0.25 });
     }
+  });
+
+  // a blow taken on the guard: the guard counter's block beat over the upper body (moves.js block)
+  game.events?.on?.('player:block', () => {
+    const bb = S.mode === 'loop' && S.key === 'block' ? S.entry?.blocked : null;
+    const c = bb ? resolveClip(lib, bb) : null;
+    if (!c) return;
+    S.blockBeat = true;
+    S.blockBeatT = 0;
+    hero.layer(c.name, { mask: 'upper', weight: 1, fade: 0.05, at: fin(bb.from, 0) / c.fps, speed: 1, loop: false, out: 0.15 });
   });
 
   /** One step of the remade hero (after today's animator's). */
@@ -643,7 +811,14 @@ export function createAdapter(game, player, old, { lib, body }) {
         const c = S.clip, end = S.mode === 'pivot' ? Math.min(c.n - 1, LOCO.pivot.out) : c.n - 1;
         const cancel = S.mode === 'pivot' ? il < 0.1 : il > 0.1;
         if (hero.time * c.fps >= end - 0.5 || cancel) {
+          // a turn cut short (he moves off): what is left of it fades out over his steps
+          const left = S.mode === 'turn' && cancel ? S.yawOff : 0;
+          if (S.turnUpper) {
+            S.turnUpper = false;
+            hero.layer(null, { fade: 0.25 });
+          }
           toLoco(0.25, S.mode === 'pivot');
+          S.faceOff = left;
           S.settled = fin(player.yaw);
           loco(dt);
         }
@@ -651,19 +826,22 @@ export function createAdapter(game, player, old, { lib, body }) {
       }
       case 'tail':
         if (hero.done || il > 0.1) {
+          const d = faceNow();
           toLoco(0.3, false);
-          loco(dt);
+          if (!keepFacing(d)) loco(dt);
         }
         break;
       case 'attack': {
         const a = player.atk;
-        if (a?.def && S.clip) hero.setTime(fitTime(S.clip, fin(a.t), a.def));
+        if (a?.def && S.clip) hero.setTime(attackTime(S.clip, fin(a.t), a.def, S.u0, S.recF));
         break;
       }
       case 'charge': {
-        const c = S.clip, hs = c.events.find((e) => e.name === 'holdStart');
-        const coil = hs ? hs.f / c.fps : c.phases ? c.phases.windup / c.fps : c.dur * 0.4;
-        hero.setTime(Math.min(coil, (fin(player.stateT) / Math.max(0.05, S.entry.coil ?? 0.3)) * coil));
+        // the coil reached in `coil` s, then on through the held frames as the charge fills; never back
+        const c = S.clip, e = S.entry, [hs, he] = holdFrames(c, e), t = fin(player.stateT), coil = Math.max(0.05, fin(e.coil, 0.3));
+        const u = t < coil ? S.cu0 + (Math.max(S.cu0, hs) - S.cu0) * smooth01(t / coil) : hs + (he - hs) * clamp(fin(player.chargeK, 0), 0, 1);
+        S.cu = clamp(Math.max(S.cu, u), 0, c.n - 1);
+        hero.setTime(S.cu / c.fps);
         break;
       }
       case 'roll': {
@@ -695,6 +873,20 @@ export function createAdapter(game, player, old, { lib, body }) {
     if (S.heal && drinkC) {
       if (player.state === 'heal') hero.layerTime(knotFrame(S.K, S.k, fin(player.stateT), 1, drinkC.fps) / drinkC.fps);
       else healOff(true);
+    }
+    // an end facing kept as drawn fades out over his steps
+    if (S.faceOff !== 0) {
+      S.faceOff = damp(S.faceOff, 0, fin(FACE.rate, 5), dt);
+      if (Math.abs(S.faceOff) < 1e-3) S.faceOff = 0;
+    }
+    // the guard's block beat ends where the counter would begin
+    if (S.blockBeat) {
+      const bb = S.entry?.blocked;
+      S.blockBeatT += dt;
+      if (!bb || (S.blockBeatT > 0.1 && !hero.overlayClip) || (hero.overlayClip && hero.overlayTime * hero.overlayClip.fps >= fin(bb.to, 30))) {
+        S.blockBeat = false;
+        hero.layer(null, { fade: 0.15 });
+      }
     }
     S.cs = damp(S.cs, S.csWant, 12, dt);
     hero.contactScale = S.cs;

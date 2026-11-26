@@ -29,7 +29,7 @@ import { createHero2, createClipPlayer } from './engine.js';
 import * as bodyModule from './body.js';
 import { buildDebugBody } from './debugBody.js';
 import { JI, createWorld, restOffsets, solveFK } from './skeleton.js';
-import { qrot } from './qmath.js';
+import { qrot, fin } from './qmath.js';
 import { HDIM } from './dims.js';
 
 const num = (v, d) => {
@@ -64,11 +64,16 @@ export const CHAINS = [
   ['light1', 'light2', 'light3', 'light4', 'light5'],
   ['heavy1', 'heavy2'],
   ['charge1', 'charge2'],
+  ['2hLight1', '2hLight2', '2hLight3', '2hLight4', '2hLight5'],
+  ['pairLight1', 'pairLight2', 'pairLight3', 'pairLight4', 'pairLight5'],
   ['horseWalkStart', 'horseWalk', 'horseWalkStop'],
   ['horseRunStart', 'horseRun', 'horseRunStop'],
   ['horseSprintStart', 'horseSprint', 'horseSprintStop'],
 ];
 const LOOP_IN_CHAIN = 1.5;
+/** Clips the footage plays ON an enemy (a blow taken, a blade put in and pulled out): the review plays
+ *  them on none, and its title says so. */
+export const ON_ENEMY = new Set(['guardCounter', 'backstab', 'riposte', 'riposteDown', '2hGuardCounter']);
 
 /** The horse's chapters in the footage's order, per riding set (RIDES entry names, horse/rider.js). */
 export const RIDE_ORDER = {
@@ -201,7 +206,7 @@ export async function mount(game, params) {
   // ---- the review list
   const withTest = P.get('test') === '1';
   // a clip beside an as-filmed twin (`<name>Right`: the footage's hand) is the game's own version
-  const titleOf = (c) => (lib.has(c.name + 'Right') ? `${c.title}, as the game plays it (left hand)` : c.title);
+  const titleOf = (c) => (lib.has(c.name + 'Right') ? `${c.title}, as the game plays it (left hand)` : ON_ENEMY.has(c.name) ? `${c.title} (on an enemy in the footage; played here on none)` : c.title);
   const clipEntry = (c) => ({ kind: 'clip', name: c.name, clip: c, set: c.set, setTitle: c.setTitle, title: titleOf(c), src: c.src, loop: !!c.loop, dur: c.dur, yaw: c.loop ? 0 : (c.cyc?.[2] ?? 0) });
   const rideByName = new Map(RIDES.map((r) => [r.name, r]));
   const rideEntry = (r, set) => ({
@@ -290,11 +295,28 @@ export async function mount(game, params) {
     hero.applyRoot = true;
     if (hero.feet) hero.feet.enabled = true;
   }
-  function rideOn() {
+  /** m the horse travels through a riding entry (its clips' root travel over the time shown). */
+  function rideTravel(e) {
+    const one = (h, len) => {
+      if (!h?.root || !(h.n > 1)) return 0;
+      if (h.loop) return (Math.hypot(h.cyc?.[0] ?? 0, h.cyc?.[1] ?? 0) / Math.max(1e-3, h.dur)) * len;
+      const k = (h.n - 1) * 3;
+      return Math.hypot(h.root[k], h.root[k + 1]);
+    };
+    if (e?.kind === 'ride') return one(e.ride?.hclip, showLength(e));
+    if (e?.kind === 'chain') return e.steps.reduce((a, st) => a + (st.ride ? one(st.ride.hclip, st.len) : 0), 0);
+    return 0;
+  }
+  /** m back along his facing a riding entry starts, so its run is centred on home (the open ground:
+   *  a long canter from home reached the courtyard's set about 14 m out) */
+  const RIDE_BACK_MAX = 14;
+  let rideBack = 0;
+  function rideOn(e) {
     if (!ride || !horse) return false;
     const ho = horseBody.object3d;
     ho.visible = true;
-    ho.position.set(home.x, 0, home.z);
+    rideBack = Math.min(RIDE_BACK_MAX, rideTravel(e) * 0.5);
+    ho.position.set(home.x - Math.sin(home.yaw) * rideBack, 0, home.z - Math.cos(home.yaw) * rideBack);
     ho.rotation.set(0, home.yaw, 0);
     horse.teleported?.();
     if (hero.feet) hero.feet.enabled = false;
@@ -317,9 +339,10 @@ export async function mount(game, params) {
     S.stepT = 0;
     S.len = showLength(e);
     S.pre = e.kind === 'chain' || ((e.kind === 'clip' || e.kind === 'ride') && !e.loop) ? HOLD : 0;
-    const riding = isRide(e) && rideOn();
+    const riding = isRide(e) && rideOn(e);
     if (!riding) rideOff();
-    place(home.x, home.z, home.yaw);
+    const back = riding ? rideBack : 0;
+    place(home.x - Math.sin(home.yaw) * back, home.z - Math.cos(home.yaw) * back, home.yaw);
     if (e.kind === 'card') hero.play(lib.has(e.idle) ? e.idle : 'idle', { fade: 0 });
     else if (e.kind === 'chain') startStep(e.steps[0].name, !!e.steps[0].ride && riding, 0);
     else startStep(e.name, e.kind === 'ride' && riding, 0);
@@ -543,7 +566,9 @@ export async function mount(game, params) {
       up = 0.8;
       // the horse's middle, not his hips: the horse leads the frame
       const ho = horseBody?.object3d;
-      if (ho) {
+      // (only while he is on it and it is drawn: leaping off a moving horse he lands running on his
+      // own root while it vanishes; the camera follows him)
+      if (ho && ho.visible && fin(ride.w, 1) > 0.5) {
         S.follow.x = (S.follow.x + ho.position.x) * 0.5;
         S.follow.z = (S.follow.z + ho.position.z) * 0.5;
       }
@@ -578,7 +603,7 @@ export async function mount(game, params) {
     p.control = false; // his next step reads no input (player.js update: _readInput(control && this.control))
     // where the remade hero stands: the camera rig, the lights, the fog and the grass follow it; on the
     // horse, the horse's middle (the camera keeps both in)
-    const ho = ride?.active ? horseBody?.object3d : null;
+    const ho = ride?.active && horseBody?.object3d?.visible && fin(ride.w, 1) > 0.5 ? horseBody.object3d : null;
     p.position.x = ho ? (obj.position.x + ho.position.x) * 0.5 : obj.position.x;
     p.position.z = ho ? (obj.position.z + ho.position.z) * 0.5 : obj.position.z;
   }

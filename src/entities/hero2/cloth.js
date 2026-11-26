@@ -67,6 +67,16 @@ const CAPS = [
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _x = new THREE.Vector3(), _y = new THREE.Vector3(), _z = new THREE.Vector3(), _up = new THREE.Vector3();
 /** m: a stretch whose top is this near the floor lies flat on it (its width turned level). */
 const FLAT = 0.16;
+/** A sheet's rest hang on a body lying down (cloth.js _read): along the ref bone's down when that bone
+ *  is within `tilt` (|its down's y|) of level and the anchor within `low` m of the floor (fading out over
+ *  `fade` m above), sinking `sink` (the tan of the slope down to the floor) as it goes. */
+export const LIE = { on: true, tilt: 0.6, low: 0.35, fade: 0.35, sink: 0.35 };
+try {
+  // `?lie=0`: the hang as it was (straight down whatever the body does; for before / after stills)
+  if (new URLSearchParams(globalThis.location?.search ?? '').get('lie') === '0') LIE.on = false;
+} catch {
+  /* no location (tests) */
+}
 
 /** Rotate (x, y, z) by the quaternion at q[o..o+3] into out[k..k+2]. */
 function rot(q, o, x, y, z, out, k) {
@@ -168,6 +178,20 @@ export class Cloth {
       // back's face to the ground, and its little horizontal part must not pick a direction at random)
       const h = Math.hypot(t[0], t[2]), fl = h > 1e-4 ? (s.out * Math.min(1, h / 0.7)) / h : 0;
       let dx = t[0] * fl, dy = -1, dz = t[2] * fl;
+      // a body lying near the floor (on his back, his side, his front): the sheet lies along the body
+      // from its anchor (the ref bone's own down: toward his feet), over the floor. Straight down there
+      // was the floor a hand's breadth under the anchor: each sheet's first stretch stood up off it as
+      // a short upright shard round his hips and belt. Upright, or upside down in a roll's tumble, or
+      // high in the air: straight down as before
+      rot(q, 0, 0, -1, 0, t, 0);
+      const flat = 1 - Math.abs(t[1]) / LIE.tilt, low = 1 - (s.a1[1] - this.ground - LIE.low) / LIE.fade;
+      const k = !LIE.on ? 0 : (flat > 0 ? Math.min(1, flat) : 0) * (low > 0 ? Math.min(1, low) : 0);
+      if (k > 0) {
+        const bh = Math.hypot(t[0], t[2]) || 1;
+        dx += (t[0] / bh - dx) * k;
+        dy += (-LIE.sink - dy) * k;
+        dz += (t[2] / bh - dz) * k;
+      }
       const l = Math.hypot(dx, dy, dz);
       s.dir[0] = dx / l;
       s.dir[1] = dy / l;
