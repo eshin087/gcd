@@ -5,6 +5,21 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-25 — Local test runs go easy on the PC (ADR-205; branch `test/local-load-cap`)
+
+**Owner:** the PC ran at 100% CPU from agents' test runs; make future gcdAbyss agents close what they no
+longer need and stop straining the machine, so it can game beside them.
+
+- `tests/run.mjs`, locally only (no `CI` env): workers at below-normal priority; one machine-wide pool of
+  8 slots (`ABYSS_JOBS`) shared by every run, so two agents' `npm test` queue instead of doubling the load;
+  a stopped run kills its workers; `--only <names>` runs a subset. CI unchanged.
+- CLAUDE.md: a "Go easy on the owner's PC" rule (test only what changed, one `npm test` at a time, check a
+  timed-out run before rerunning, stop servers before finishing).
+- Found: two full runs at once (~40 processes, ~75 GB) and eight idle preview servers from finished
+  worktrees (stopped by hand).
+- Next: re-measure a full local run's wall time at 8 slots; raise the default if it hurts.
+
+---
 ## 2026-11-25 — The run carried like the owner's reference: the blade forward at the hip, a full pump, a fist (ADR-204; PR 138)
 
 **Owner:** "make the right angle hold the sword at a proper natural angle. make the left hand fist look like a hand";

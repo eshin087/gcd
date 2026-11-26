@@ -1245,6 +1245,8 @@ One hundred and five pieces of work since 0.4.0:
   thuds onto its side, the head slaps down last and the wings crumple).
 
 ### Changed
+- **Local test runs go easy on the PC** (2026-11-25, ADR-205): off CI, `npm test` runs its workers at
+  low priority and every run on the machine shares 8 slots (`ABYSS_JOBS`); `--only <names>` runs a subset.
 - **CI's long checks split; every PR auto-merges when green** (2026-11-24, ADR-185): the Starless Lord's
   look check and the living world's suite each run in parallel processes (`GCD_FX`, `GCD_SKIP` in
   life.mjs) and the shares are re-dealt on measured times: a PR's check should take ~5-6 minutes (was 8-10).
