@@ -190,7 +190,7 @@ const LIGHT_BLINK = [
   { anim: { kind: 'clip', clip: 'blinkThrust' }, variants: [] },
   LAST_HIT_BLINK, // (lastHits.js: one of five strokes, never the same one twice running)
 ];
-/** `?lights=steel` (ADR-202; the owner, 2026-11-25, on the instant cuts: "this all still looks bad",
+/** `?lights=steel` (ADR-207; the owner, 2026-11-25, on the instant cuts: "this all still looks bad",
  *  and a reference film of a one-handed straight sword: "both arm angles, placement, animation etc is
  *  exactly what i want so mirror this"): every attack's poses and arm paths follow that footage, on
  *  this game's clock, with today's curved trail. Hits 1-5 (steelChainA.js, steelChainB.js), the five
