@@ -69,6 +69,9 @@ export const CHAINS = [
   ['horseSprintStart', 'horseSprint', 'horseSprintStop'],
 ];
 const LOOP_IN_CHAIN = 1.5;
+/** Clips the footage plays ON an enemy (a blow taken, a blade put in and pulled out): the review plays
+ *  them on none, and its title says so. */
+export const ON_ENEMY = new Set(['guardCounter', 'backstab', 'riposte', 'riposteDown']);
 
 /** The horse's chapters in the footage's order, per riding set (RIDES entry names, horse/rider.js). */
 export const RIDE_ORDER = {
@@ -201,7 +204,7 @@ export async function mount(game, params) {
   // ---- the review list
   const withTest = P.get('test') === '1';
   // a clip beside an as-filmed twin (`<name>Right`: the footage's hand) is the game's own version
-  const titleOf = (c) => (lib.has(c.name + 'Right') ? `${c.title}, as the game plays it (left hand)` : c.title);
+  const titleOf = (c) => (lib.has(c.name + 'Right') ? `${c.title}, as the game plays it (left hand)` : ON_ENEMY.has(c.name) ? `${c.title} (on an enemy in the footage; played here on none)` : c.title);
   const clipEntry = (c) => ({ kind: 'clip', name: c.name, clip: c, set: c.set, setTitle: c.setTitle, title: titleOf(c), src: c.src, loop: !!c.loop, dur: c.dur, yaw: c.loop ? 0 : (c.cyc?.[2] ?? 0) });
   const rideByName = new Map(RIDES.map((r) => [r.name, r]));
   const rideEntry = (r, set) => ({

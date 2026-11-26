@@ -66,7 +66,7 @@ export const LOCO = {
   // the input reverses at speed (the new travel more than `minAngle` rad off the old, and he will face
   // it): the pivot (the footage has none for the sprint: the run's). Its root yaw carries the turn: the
   // body is drawn at (yaw at the start + the clip's root yaw), the game's yaw catches up meanwhile
-  pivot: { walk: { want: 'walkPivot' }, run: { want: 'runPivot' }, sprint: { want: 'runPivot' }, minAngle: 2.4, minSpeed: 1.2, from: 8, rate: 1.6, out: 36, ch: 'MOVE Walk / Run pivot' },
+  pivot: { walk: { want: 'walkPivot' }, run: { want: 'runPivot' }, sprint: { want: 'sprintPivot', use: ['runPivot'] }, minAngle: 2.4, minSpeed: 1.2, from: 8, rate: 1.6, out: 36, ch: 'MOVE Walk / Run pivot' },
   // standing, the aim turns more than `minAngle` rad: the turn on the spot (90 or 180 by the size), its
   // root yaw drawn as the pivot's
   turn: {

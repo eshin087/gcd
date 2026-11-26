@@ -836,7 +836,16 @@ async function scenPlay() {
     runA(1.2);
     input.axis.y = 0;
     const m = seen(2.2);
-    assert(m.some((x) => x === 'stop:runStop') && m[m.length - 1].startsWith('loco:'), `letting go of a run: ${m.join(' > ')}`);
+    assert(m.some((x) => /^stop:runStopL?$/.test(x)) && m[m.length - 1].startsWith('loco:'), `letting go of a run: runStop / runStopL (${m.join(' > ')})`);
+    // (and of a sprint: its own stops; the loco shows the blend's faster clip, so 'loco:sprint' at a run)
+    from(fwd[0], fwd[1]);
+    input.axis.y = 1;
+    input.hold('ShiftLeft');
+    runA(1.4);
+    input.release('ShiftLeft');
+    input.axis.y = 0;
+    const ms = seen(2.4);
+    assert(ms.some((x) => /^stop:sprintStopL?$/.test(x)) && ms[ms.length - 1].startsWith('loco:'), `letting go of a sprint: sprintStop / sprintStopL (${ms.join(' > ')})`);
   }
   // ---- a pivot: running, the stick reversed (he faces the new way)
   {
@@ -850,6 +859,20 @@ async function scenPlay() {
     input.axis.y = 0;
     aimDir = fwd;
     runA(1.5);
+    if (lib.has('sprintPivot')) {
+      from(fwd[0], fwd[1]);
+      input.axis.y = 1;
+      input.hold('ShiftLeft');
+      runA(1.4);
+      input.axis.y = -1;
+      aimDir = [-fwd[0], -fwd[1]];
+      const m2 = seen(1.2);
+      input.release('ShiftLeft');
+      assert(m2.some((x) => x.startsWith('pivot:sprintPivot')), `the stick reversed at a sprint: ${m2.join(' > ')}`);
+      input.axis.y = 0;
+      aimDir = fwd;
+      runA(1.5);
+    }
   }
   // ---- turns on the spot: the aim swung a quarter and a half turn each way
   for (const [deg2, want] of [[90, 'turnL90'], [-90, 'turnR90'], [170, 'turnL180'], [-170, 'turnR180']]) {
@@ -860,7 +883,14 @@ async function scenPlay() {
     const a = Math.atan2(fwd[0], fwd[1]) + (deg2 * Math.PI) / 180;
     aimDir = [Math.sin(a), Math.cos(a)];
     const ps = plantSlide();
-    const m = seen(1.4, () => ps.step());
+    const TR = process.env.H2_TRACE === want;
+    const m = seen(1.4, () => {
+      ps.step();
+      if (TR) {
+        const fl = jointWorld(H, JI.footL, [0, 0, 0]), fr = jointWorld(H, JI.footR, [0, 0, 0]);
+        out(`       ${ad.state.mode}:${H.clip?.name}@${(H.time * (H.clip?.fps ?? 30)).toFixed(1)} yawOff ${deg(ad.state.yawOff).toFixed(1)} yaw ${deg(P.yaw).toFixed(1)} cL ${H.contact.L.toFixed(2)} L ${fl[0].toFixed(3)},${fl[2].toFixed(3)} cR ${H.contact.R.toFixed(2)} R ${fr[0].toFixed(3)},${fr[2].toFixed(3)}`);
+      }
+    });
     const tc = lib.get(want);
     let own = 0;
     for (let f = 0; tc && f < tc.n; f++) own = Math.max(own, Math.hypot(tc.root[f * 3], tc.root[f * 3 + 1]));
@@ -1002,9 +1032,14 @@ async function scenPlay() {
       });
       return m;
     };
+    let lastPY = null;
     const popStep = () => {
       const y = hipsYawW() + P.yaw;
-      if (lastY != null) {
+      // (a step where the GAME snaps his yaw, a swing committing to its aim, is the game's, not the drawing's)
+      const snap = lastPY != null && Math.abs(Math.atan2(Math.sin(P.yaw - lastPY), Math.cos(P.yaw - lastPY))) > 0.3;
+      lastPY = P.yaw;
+      if (process.env.H2_TRACE === 'heavy') out(`       ${ad.state.mode}:${H.clip?.name}@${(H.time * (H.clip?.fps ?? 30)).toFixed(1)} hips ${deg(hipsYawW()).toFixed(1)} yaw ${deg(P.yaw).toFixed(1)} yawOff ${deg(ad.state.yawOff).toFixed(1)} faceOff ${deg(ad.state.faceOff).toFixed(1)} aim ${deg(ad.state.tailAim).toFixed(1)}`);
+      if (lastY != null && !snap) {
         const s = Math.abs(Math.atan2(Math.sin(y - lastY), Math.cos(y - lastY)));
         if (s > pop) {
           pop = s;

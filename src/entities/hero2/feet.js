@@ -115,7 +115,7 @@ export function legIK(pose, world, side, tx, ty, tz, keepFoot = true, d = HDIM) 
  */
 export function createFeet() {
   const slot = () => ({ pinned: false, x: 0, y: 0, z: 0 });
-  const foot = () => ({ A: slot(), B: slot(), k: 0, pinned: false, hold: false, ox: 0, oy: 0, oz: 0, tx: 0, ty: 0, tz: 0, landed: false });
+  const foot = () => ({ A: slot(), B: slot(), k: 0, pinned: false, hold: false, ox: 0, oy: 0, oz: 0, tx: 0, ty: 0, tz: 0, wx: 0, wz: 0, landed: false });
   return { L: foot(), R: foot(), enabled: true, maxCorrect: 0, carry: CARRY_S, serial: -1, drop: 0 };
 }
 
@@ -168,8 +168,8 @@ export function pinFeet(feet, pose, world, rest, pl, wA, wB, place, dt = 1 / 60,
       if (pl.fadeLive) Object.assign(F.B, F.A);
       else {
         F.B.pinned = F.k > 0;
-        F.B.x = place.x + (c * F.tx + s * F.tz) * sc;
-        F.B.z = place.z + (-s * F.tx + c * F.tz) * sc;
+        F.B.x = F.wx;
+        F.B.z = F.wz;
         F.B.y = F.ty * sc;
       }
       F.A.pinned = false;
@@ -226,6 +226,10 @@ export function pinFeet(feet, pose, world, rest, pl, wA, wB, place, dt = 1 / 60,
     F.tx = tx;
     F.ty = ty;
     F.tz = tz;
+    // (and where that is in the world: a fade that begins next step keeps the foot there even if the
+    // owner turns object3d meanwhile, as the game's yaw does under a turn drawn against it)
+    F.wx = place.x + (c * tx + s * tz) * sc;
+    F.wz = place.z + (-s * tx + c * tz) * sc;
     // how far the hips must come down for this foot's leg to reach a planted target
     if (k > 0) {
       const h = L.thigh * 3, dx = tx - P[h], dz = tz - P[h + 2], R = (d.thigh + d.shin) * REACH;

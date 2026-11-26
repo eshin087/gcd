@@ -629,6 +629,13 @@ export function createHero2(game, { body, library, dims = HDIM, applyRoot = true
     get overlayClip() {
       return player.overlayClip;
     },
+    /** The overlay's time (s) and weight (0..1). */
+    get overlayTime() {
+      return player.overlayTime;
+    },
+    get overlayWeight() {
+      return player.overlayWeight;
+    },
     /** fitTime for the current clip: H.setTime(H.fit(gameT, { windup, active, recovery })) */
     fit(t, win, out) {
       return player.clip ? fitTime(player.clip, t, win, out) : 0;
