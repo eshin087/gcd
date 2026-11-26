@@ -432,6 +432,14 @@ window). A red or black blow lands on him in the stance. Not learned, the same i
   a little further round in the same time, brakes and holds the finish (`home` 0.3, a hold key), and the
   next windup gathers out of it (`gather`: the arms leave slowly while the hips lead) instead of
   snapping away. The hit frames are the ones they were (at most one frame off; scenario `herolights`).
+- **The steel look set** (ADR-207, `?lights=steel`; to compare, not the default): every attack keeps its
+  numbers and its job and plays one move of the owner's reference footage. Lights: an overhead diagonal
+  into a lunge, a level backhand, the diagonal again, a falling backhand, an overhead chop. Heavies:
+  alone a lunging thrust (the dash kept); after one light a rising wheel; after two a two-handed flat
+  sweep (no spin: it covers his front and sides); after three a two-handed rising diagonal (its posture
+  still crushes a guard); after four the leap and the drop, shards kept. The charged release is the
+  thrust out of a low coiled hold. A hit that is not followed by another holds its finish and rises
+  slowly (`settle`); the player may move, guard or attack at any point of it.
 - **The instant cuts** (ADR-206, `?lights=blink`; to compare, not the default): every attack keeps its
   numbers and its job, and its cut crosses in two or three frames and leaves one straight line where the
   blade passed. A light: a short still coil, the cut, a follow-through that slows over about ten frames.

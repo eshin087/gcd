@@ -6315,3 +6315,71 @@ want its own (the owner picks sounds by ear). `?lights=fresh` and `?arcs=` are s
 removed with the owner's pick. Tests: one scenario per part (`blinklights`, `blinkhand`, `blinkheavies`,
 `blinkspecials`, `blinklast`), `blinkslash` for the lines, and the opt-in `armaudit` that prints the sword
 arm, the body and the free hand through any swing.
+
+## ADR-207 — The steel look set: the stance and every attack follow the owner's reference footage, pose for pose; behind `?lights=steel` until the owner's call (2026-11-25)
+
+- **Context:** the instant cuts (ADR-206) went through three rounds of the owner's notes and were turned
+  down whole: "this all still looks bad to me". Every round had failed on the same things, all of them
+  invented by hand: the sword arm's angles ("doesn't look like how an arm should look when doing that
+  sword motion"), the free arm (flailing, then rigid, then parked on the hip), motion "too short and
+  stiff". The owner then gave reference footage of a one-handed straight sword moveset (a standing pose,
+  a five-hit light chain, a two-hit heavy, its charged form, running attacks, and more) and said "both
+  arm angles, placement, animation etc is exactly what i want so mirror this". Asked, they chose: the
+  reference's motion on this game's own attack timings (no number changes); a curved trail along the
+  swing (today's arc, not the straight line); moves the first part of the footage lacks taken from the
+  rest of it; the standing pose matched too.
+- **Decision:** a fourth look set, `?lights=steel` (the Lab's `lights` row: 'steel'), beside the default.
+  It is not invention: each move reproduces one move of the footage, with both arms, the torso, the hips
+  and the feet keyed from it, and was accepted on PAIR SHEETS (reference frames over our renders from the
+  same four camera views: right side, front, left side, back), not on taste.
+  1. **How it was made.** The footage was saved as stills (30 fps, outside the repo; the source is never
+     named in the tree and none of its frames is committed). Five authors took one part each, each with
+     its own file and test scenario, the look set pre-wired first with every slot empty (`null` = today's
+     look) so the five could work in one checkout. Each: find the move in every camera view; write a pose
+     table before any key; key it; film our hero from the same views; pair; list the differences; repeat.
+  2. **The clock.** Every number stays (`wear` / `LOOK_KEYS`, as ADR-206). The reference's wind-up to its
+     deepest point is our windup (the key at u = 1), its swing our active frames, its follow-through and
+     settle our recovery. Its swings take about three times as long as ours.
+  3. **`settle`.** At our clock a lone hit had a quarter of a second to hold its finish AND stand up, which
+     is what read as "too short". A clip may now give `settle` (seconds): the blend from its last pose to
+     the standing pose once the attack is over (player.js `_tickAttack`; 0.16 s without it). With
+     `home: 1.0` the finish is held, drifting, to the end of the recovery and he rises out of it slowly,
+     as the footage does; he is free to move or attack the whole time, so nothing about the timing changes
+     and a mashed chain never reaches it. (`home` between about 0.9 and 1 snaps: the animator's own way
+     home gets the last tick or two. Use 1.0, or 0.75 and under.) The first version dragged the feet home
+     flat under the fade; the planner now steps them (anim.js `_settleStep`: one foot at a time, the
+     furthest first, each on an 8 cm lift onto the standing spot; a foot a dash left in the air comes down
+     in a stepping arc).
+  4. **The moves.** The standing pose (`steelStance.js` `steelStand`: one pose at ease and in the fight;
+     standing tall, both arms hanging off the body with soft elbows, the sword low at his right pointing
+     forward and down; the idle habits are held off under steel) and the charge hold (`steelCharge`).
+     Light hits 1-5 (`steelChainA.js`, `steelChainB.js`): an overhead falling diagonal into a lunge with
+     the free arm thrown back; a level backhand ending arms spread, then a turn and crouch; the diagonal
+     again; a falling backhand from over the left shoulder; an overhead chop into a bow (a plain blade
+     hit, no shards). The heavy branches: alone, a lunging one-handed thrust; after one light, a big
+     rising wheel up his right side (`steelHeaviesC.js`); after two, a two-handed flat sweep round his
+     front and both sides, no spin; after three, a two-handed rising diagonal across his front; after
+     four, a leap and a straight drop into the ground, its shard ring kept (`steelHeaviesD.js`). The
+     charged release is the same thrust out of the hold. The sprint slash is the running attack's leaping
+     rising backhand, the roll cut a low lunging thrust (`steelChainB.js`); One Breath's cut is the running
+     heavy's falling diagonal into a deep lunge, the execution a one-handed thrust at the waist, a hold
+     with the free hand on the foe, and a pull-out past the right hip (`steelSpecialsE.js`).
+  5. **Where the game outranked the footage.** A dash stays a dash (the lone heavy, the charged release,
+     One Breath, the execution keep `feet: 'dash'`: their legs are the dash's, not the footage's single
+     stride); a leap's size is the def's; the blade must cross his front inside the active frames; a held
+     heavy freezes at u = 1.
+- **Known gaps** (from the authors' own lists): the lunges are shorter than the footage's (the legs' reach
+  without a dragged toe); hit 3 into hit 4 rises quickly; hit 5 and the heavy after one light are upright
+  cuts in the footage, so from the game camera each draws as a bar up the screen (kept faithful: the
+  owner's "more diagonals" of session 25 against their "mirror this" of today, theirs to call); the
+  execution follows the footage's idea more than its poses (the riposte is filmed from behind and partly
+  with a shield); wrists peak at 74-89 degrees for a tick or two where the blade whips round from behind;
+  the heavy after three lights no longer looks like its name (a rising diagonal; its job and numbers are
+  unchanged).
+- **Consequences:** `?lights=steel` is a comparison until the owner has played it; the default is still the
+  weighted chain (ADR-188). `?lights=blink`, `?lights=fresh` and `?arcs=` stay in the tree until that
+  call, then go. One existing rule was narrowed: `herolife`'s "the thrusts drive upward" skips the steel
+  clips (the footage's thrusts are level). Tests: `steelstance`, `steela` … `steele` (the look set wears
+  its clips and the default gets its own back; every number unchanged; the blade crosses his front and
+  the hit lands at today's distances; no NaN; wrist, elbow and hand-snap bounds; the steel out of the
+  ground and the body; settling feet lift and do not slide).

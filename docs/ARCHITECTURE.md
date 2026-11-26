@@ -1182,6 +1182,19 @@ the coil along a cubic that leaves at `gather[0]` and arrives at `gather[1]` (wi
 `variants` and nothing else between the weighted clips (`swings.js`: `fallingCut` … `risingThrust`,
 `drawSlash`, `groundSlam`) and the ones before them (`lightsOld.js` `LIGHTS_OLD`, spread into `SWINGS` as
 `<name>Old`, plus the `drawCut` and `slam` the flurry, One Breath and Earthbreaker still play).
+**The steel look set** (ADR-207; `?lights=steel`, the Lab's `lights` row; to compare, not the default):
+the same `wear` over every attack def, from `steelChainA.js` (`LIGHT_STEEL_A`: hits 1-3), `steelChainB.js`
+(`LIGHT_STEEL_B`: hits 4-5; `SPECIAL_STEEL_B`: the sprint slash, the roll cut), `steelHeaviesC.js`
+(`HEAVY_STEEL_C`: the lone heavy, the heavy after one light; `SPECIAL_STEEL_C`: the charged release),
+`steelHeaviesD.js` (`HEAVY_STEEL_D`: the heavies after two, three and four lights) and `steelSpecialsE.js`
+(`SPECIAL_STEEL_E`: the execution, One Breath); a `null` slot keeps today's look. `steelStance.js` holds
+how he stands: `STEEL.on` (flipped by `setLights`), `steelStand` (called by `anim.js` `stand()` in place
+of the two stances; the idle habits are held off while it is on) and `steelCharge` (called by
+`chargePose`). Every clip follows the owner's reference footage (one look, both arms keyed, `hs: 0`).
+A clip's `settle` (seconds; any clip may give one) is the blend player.js `_tickAttack` passes to
+`_toLoco` when the attack ends on its own, in place of 0.16 s; while such a blend runs and he stands
+still, `HeroAnimator._feet` brings the feet home by stepping (`_settleStep`, `SETTLE_STEP`: one at a time,
+the furthest first, an 8 cm lift, onto the standing pose's spots).
 **The instant look set** (ADR-206; `?lights=blink`, the Lab's `lights` row; to compare, not the default):
 `setLights` wears a LOOK on every attack def through `wear` (`LOOK_KEYS`: `anim`, `variants`, `contact`,
 `glint`; never a number of the hit): hits 1-4 from `lightsBlink.js`, hit 5 from `lastHits.js`

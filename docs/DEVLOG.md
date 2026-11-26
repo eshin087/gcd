@@ -5,6 +5,35 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-25 — The steel look set: every attack and the stance after the owner's reference (ADR-207; branch `claude/hero-light-chain-12a97a`, PR #118, held)
+
+**Owner**, on the instant cuts after three rounds: "this all still looks bad to me", with reference footage
+of a one-handed straight sword moveset: "both arm angles, placement, animation etc is exactly what i want
+so mirror this." Their answers: the reference's motion on our timings; today's curved trail; the rest of
+the footage for moves the first part lacks; the standing pose too.
+
+**What changed**
+- `?lights=steel` (`combat.js` setLights, the Lab's `lights` row): the standing pose and charge hold
+  (`steelStance.js`), light hits 1-5 (`steelChainA.js`, `steelChainB.js`), the five heavy branches
+  (`steelHeaviesC.js`, `steelHeaviesD.js`), the charged release, the sprint slash, the roll cut, the
+  execution and One Breath (`steelSpecialsE.js`). One look per move, both arms keyed, no number changed.
+- A clip's `settle` (player.js `_tickAttack`): the blend out of a finished attack, so a lone hit holds its
+  finish and rises slowly; its feet step home (anim.js `_settleStep`).
+- Scenarios `steelstance`, `steela` … `steele`; `herolife`'s upward-thrust rule skips the steel clips.
+- The instant cuts' record is ADR-206 now (ADR-200 was taken on main).
+
+**How:** the footage saved as 30 fps stills in scratch (a headless browser playing the page; never in the
+repo, the source never named). The look set pre-wired with empty slots, then five authors, one part each,
+on one checkout: pose tables, keys, films of our hero from the footage's four camera views, pair sheets,
+two to four rounds each against their own difference lists. The first run of five at once (each with its
+own headless browser, plus the frame grab) froze the owner's PC; after the restart everything heavy ran
+one at a time behind a lock (one shared browser for films; films, tests and the grab taking turns).
+
+**Verification:** pair sheets for every move in four views; the steel scenarios; `npm test`.
+
+**Open / next:** the owner's verdict on the films and the preview. Known gaps are in ADR-207. If steel
+becomes the default: remove `blink`, `fresh`, `?arcs=`; the flurry and the plunge are still today's.
+
 ## 2026-11-25 — AUTO quality: the resolution follows the frame time; a 60 fps cap on touch (ADR-200; branch `render/auto-quality`)
 
 **Task** (the next item of M1.89, from the perf review's session): automatic quality so "60 fps on every device" is
