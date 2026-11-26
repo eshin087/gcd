@@ -188,13 +188,15 @@ def step_limit(fps):
     return 1500.0 / fps
 
 
-def despike(q, fps, limit=None, loop=False):
+def despike(q, fps, limit=None, loop=False, skip=()):
     """joints whose rotation jumps beyond the limit for a frame or two and comes back (the tool losing a
     limb) are bridged by slerp over the spike"""
     limit = limit or step_limit(fps)
     q = q.copy()
     n = len(q)
     for j in range(1, J):
+        if skel.JOINTS[j] in skip:
+            continue
         for it in range(3):
             d = np.abs(np.sum(q[1:, j] * q[:-1, j], -1))
             a = np.degrees(2 * np.arccos(np.clip(d, 0, 1)))

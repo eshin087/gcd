@@ -262,6 +262,9 @@ def build_clip(spec, clip, log=print):
         br = clip['breath'] if isinstance(clip['breath'], dict) else {}
         q = post.breathe(q, fps, br.get('period', 3.6), br.get('chest_deg', 1.2), br.get('shoulder_deg', 1.0))
         log('  breath: SYNTHESIZED (period %.1f s), not measured' % br.get('period', 3.6))
+    if clip.get('despike', True):  # again after the feet were pinned (not the legs: they hold the plants)
+        q = post.despike(q, fps, clip.get('qa', {}).get('maxStepDeg'), loop,
+                         skip=('thighL', 'shinL', 'footL', 'toeL', 'thighR', 'shinR', 'footR', 'toeR'))
     ws, wj, wf = post.worst_step(q, fps)
     lim = clip.get('qa', {}).get('maxStepDeg', post.step_limit(fps))
     B.qa = dict(maxStepDeg=round(ws, 1), at='%s@%d' % (wj, wf), limit=round(lim, 1), reason=clip.get('qa', {}).get('reason'))
