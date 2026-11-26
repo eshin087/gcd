@@ -97,6 +97,7 @@ def pair_sheet(B, Ts, out, frames=None, k=8, cell=200, overlay=True, tool=True, 
     n = len(B.q)
     if frames is None:
         frames = [int(round(i * (n - 1) / (k - 1))) for i in range(k)] if not B.loop else [int(i * n / k) for i in range(k)]
+    frames = [f for f in frames if 0 <= f < n] or [0]  # a sheet_frames list longer than the clip
     P, R, tip, tipLs = our_points(B)
     has_blade = getattr(B, 'blade', None) is not None
     has_bL = getattr(B, 'bladeL', None) is not None
