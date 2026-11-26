@@ -8,6 +8,8 @@ import { TERRAIN, TERRAIN_ATTACKS } from './tuningTerrain.js';
 import { LINKS } from './tuningLinks.js';
 import { SPELLS } from './tuningSpells.js';
 import { BROOD } from './tuningBrood.js';
+import { WYRM_QUICK } from './tuningMotion.js';
+import { lookOf } from '../enemies/duelist/lookSwitch.js';
 
 const DEG = Math.PI / 180;
 
@@ -548,6 +550,15 @@ export const TUNING = {
           burst: { phase: 2, n: 6, wait: 0.5, stagger: 0.26, speed: 12 } },
       ],
       recovery: 1.3, cooldown: 12, weight: [0, 0, 3.0], range: [3.0, 5.4], maxAng: 0.9,
+    },
+    // THE QUICK BLOW (`?wyrmQuick=a`, ADR-223; tuningMotion.js WYRM_QUICK): a paw snapped out of the
+    // stance with no rear-back (the stance is the tell); white, 0.5 s at phase 1 (0.35 = flashLead at
+    // phase 3: its glint shows as it starts), close and ahead only, light
+    snapSwipe: {
+      label: 'Snap swipe', tell: TELL.NORMAL, phase: 1, quick: true,
+      hits: [{ kind: 'claw', side: 1, tell: TELL.NORMAL, windup: 0.5, active: 0.22, impact: 0.12, damage: 11, knockback: 1.2, turn: 1.0 }],
+      recovery: 0.6, cooldown: 6, range: [0, 4.4], maxAng: 0.7,
+      get weight() { return lookOf('wyrmQuick', '0') === 'a' ? WYRM_QUICK.weight : 0; },
     },
     tail: {
       label: 'Tail sweep', tell: TELL.RED,

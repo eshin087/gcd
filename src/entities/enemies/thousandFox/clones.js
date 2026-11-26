@@ -93,7 +93,7 @@ export class FoxClones {
       position: root.position, yaw: 0, state: 'duel', stateT: 0, animT: 0, atk: { def: null },
       groundVel: { x: 0, z: 0 }, kb: { x: 0, z: 0 }, chargeK: 0, releaseK: 0, recoil: 0, lockOn: false, guardHold: 0, ward: 0, wardClip: null,
     };
-    const anim = new HeroAnimator(rig, pilot, K.poses);
+    const anim = new HeroAnimator(rig, pilot, K.poses, K.animOpts);
     const scale = d.drawScale;
     pilot.drawScale = scale;
     const lean = installLean(root, scale);

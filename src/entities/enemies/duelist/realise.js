@@ -38,7 +38,9 @@ const FOLLOW_RING = 0.3; // … of a spin (a ring zone): its whole turn runs on 
 const FOLLOW_PART = 0.72; // of the time to the next beat's first pose: the rest is his way into it
 // `keysOf(beat)` (optional): the pose keys a beat plays THIS time, read as each move is realised (a boss
 // whose blows have a second animation behind a live switch, e.g. keys measured from the owner's
-// reference footage, scripts/mocap/duelist; no boss uses it today, ADR-208); null or undefined = `beat.keys`.
+// reference footage, scripts/mocap/duelist, ADR-208); null or undefined = `beat.keys`. It may also return
+// { keys, hold }: `hold` s more of the cocked pose, added to the beat's bait hold (the held tells,
+// ADR-223, duelist/heldTells.js: Lu Wusheng and Wen Yao behind their motion switches).
 export function makeRealise({ TUNING, MOVES, compileClip, completeBeat = null, keysOf = null }) {
   return function realise(name, phase = 1, rnd = Math.random, opts = null) {
     const def = MOVES[name];
@@ -56,7 +58,8 @@ export function makeRealise({ TUNING, MOVES, compileClip, completeBeat = null, k
       const b = Array.isArray(raw.pick) ? raw.pick[Math.min(raw.pick.length - 1, Math.floor(rnd() * raw.pick.length))] : raw;
       if (b.chance !== undefined && b.chance < 1 && !(rnd() < b.chance)) return;
       const W = b.windup * (b.fixed ? 1 : ws);
-      const H = Array.isArray(b.hold) ? b.hold[0] + (b.hold[1] - b.hold[0]) * rnd() : 0;
+      const alt = keysOf ? keysOf(b) : null;
+      const H = (Array.isArray(b.hold) ? b.hold[0] + (b.hold[1] - b.hold[0]) * rnd() : 0) + Math.max(0, Number(alt?.hold) || 0);
       const A = b.active;
       const S = Math.max(0, Number(b.sustain?.dur) || 0);
       const cock = b.cock ?? 0.8;
@@ -79,7 +82,8 @@ export function makeRealise({ TUNING, MOVES, compileClip, completeBeat = null, k
     const recovery = def.recovery * rs;
     const end = t + recovery;
     // the pose keys, beat by beat (see the header: the follow-through's own clock)
-    const own = (b, chained, followed = false) => ((keysOf ? keysOf(b.def) : null) ?? b.def.keys ?? []).filter(([, pose]) => !(chained && pose.gather) && !(followed && pose.settle));
+    const keysNow = (def) => { const k = keysOf ? keysOf(def) : null; return (Array.isArray(k) ? k : k?.keys) ?? def.keys ?? []; };
+    const own = (b, chained, followed = false) => keysNow(b.def).filter(([, pose]) => !(chained && pose.gather) && !(followed && pose.settle));
     beats.forEach((b, i) => {
       const nb = beats[i + 1];
       const mine = own(b, i > 0, !!nb);

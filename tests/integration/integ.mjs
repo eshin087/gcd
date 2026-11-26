@@ -10568,7 +10568,10 @@ async function scenarioStrings() {
   const problems = [];
   for (const name of strings) {
     const H = TUNING.attacks[name].hits;
-    if (!(H[0].windup >= 0.7)) problems.push(`${name} first windup ${H[0].windup} < 0.7`);
+    // (a quick blow, ADR-223 `?wyrmQuick=a`: one white hit whose windup at phase 3 is still >= flashLead; the 0.7 s floor is the others')
+    if (TUNING.attacks[name].quick) {
+      if (!(H.length === 1 && H[0].tell === TELL.NORMAL && H[0].windup * TUNING.phaseTimeScale[2] >= lead - 1e-9)) problems.push(`${name}: a quick blow is one white hit, >= flashLead at phase 3`);
+    } else if (!(H[0].windup >= 0.7)) problems.push(`${name} first windup ${H[0].windup} < 0.7`);
     for (let ph = 1; ph <= 3; ph++) {
       const ts = TUNING.phaseTimeScale[ph - 1];
       H.forEach((h, i) => {
@@ -14655,7 +14658,105 @@ async function scenarioSpells() {
   }  return G;
 }
 
+// ================================================================== scenario: wyrmheld (ADR-223)
+/** `?wyrmMotion=a|b`: a blue / red hit of a string winds up WYRM_HELD.hold s longer (its cue still
+ *  flashLead before its impact), and in 'a' its body says the colour as it holds (blue: the head higher
+ *  than as it shipped; red: the chest lower); white hits and '0' as they shipped. `?wyrmQuick=a`: the snap swipe
+ *  is picked only with the switch on. */
+async function scenarioWyrmHeld() {
+  out('\n== scenario WYRMHELD (ADR-223: the wyrm\'s held blue / red windups, its body per colour, the quick blow) ==');
+  const { ATTACKS, bandWeight } = await imp('src/entities/dragon/attacks.js');
+  const { WYRM_HELD } = await imp('src/entities/dragon/tuningMotion.js');
+  const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const G = build();
+  fightSetup(G);
+  G.game.player.debug.noRiposte = true;
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  /** One string from the same start: per hit its tell, its windup's length and the chest's height in the last 0.1 s of it. */
+  const play = (name, mode, ang = 0) => {
+    setLook('wyrmMotion', mode);
+    settle(G);
+    d.hazards?.clear?.();
+    place(G, 5.5, ang);
+    p.debug.god = true;
+    const a = d.brain.startAction(ATTACKS[name]);
+    const list = a.list.filter((e) => e[0].startsWith('windup')).map((e) => ({ tell: e[2].spec.tell, len: e[1], chest: [], head: [] }));
+    let idx = -1;
+    for (let i = 0; i < Math.round(12 / DT) && d.brain.action === a; i++) {
+      aimAt(G);
+      G.tick(DT);
+      p.debug.heal();
+      if (a.phase.startsWith('windup')) {
+        const k = a.phase === 'windup' ? 0 : Number(a.phase.slice(6)) - 1;
+        idx = k;
+        if (list[k] && a.dur - a.t < 0.1) { list[k].chest.push(d.rig.pt.chest.y); list[k].head.push(d.rig.pt.head.y); }
+      }
+    }
+    setLook('wyrmMotion', null);
+    const mean = (v) => (v.length ? v.reduce((x, y) => x + y, 0) / v.length : NaN);
+    return list.map((h) => ({ ...h, chestY: mean(h.chest), headY: mean(h.head) }));
+  };
+  for (const [name, ang] of [['stormFlurry', 0], ['wingBuffet', 0], ['pivotLash', Math.PI * 0.9]]) {
+    const r0 = play(name, '0', ang), ra = play(name, 'a', ang), rb = play(name, 'b', ang);
+    const n = Math.min(r0.length, ra.length, rb.length);
+    let longer = 0, same = 0, coloured = 0, colouredAll = 0;
+    const bad = [];
+    for (let i = 0; i < n; i++) {
+      const h0 = r0[i], ha = ra[i], hb = rb[i];
+      if (h0.tell !== ha.tell) { bad.push(`hit ${i}: tells differ (a string's chance rolls)`); continue; }
+      const held = (h0.tell === TELL.BLUE || h0.tell === TELL.RED) && TUNING.attacks[name].hits.find((x) => x.tell === h0.tell)?.windup < WYRM_HELD.longer;
+      const dA = ha.len - h0.len, dB = hb.len - h0.len;
+      if (held) { if (Math.abs(dA - WYRM_HELD.hold) < 1e-6 && Math.abs(dB - WYRM_HELD.hold) < 1e-6) longer++; else bad.push(`hit ${i} (${h0.tell}): +${dA.toFixed(3)} / +${dB.toFixed(3)} s`); }
+      else if (Math.abs(dA) < 1e-6 && Math.abs(dB) < 1e-6) same++; else bad.push(`hit ${i} (${h0.tell}): changed`);
+      if (process.env.GCD_DEBUG) out(`   ${name} hit ${i} ${h0.tell} chest ${h0.chestY?.toFixed(2)} -> a ${ha.chestY?.toFixed(2)} b ${hb.chestY?.toFixed(2)}`);
+      if (held && Number.isFinite(ha.chestY + h0.chestY)) {
+        colouredAll++;
+        if (h0.tell === TELL.BLUE ? ha.headY > h0.headY + 0.2 : ha.chestY < h0.chestY - 0.05) coloured++;
+      }
+    }
+    assert(longer > 0 && !bad.length && coloured === colouredAll && colouredAll > 0, `${name}: ${longer} blue / red hits wind up ${WYRM_HELD.hold} s longer ('a' and 'b'), ${same} white hits as before; in 'a' its body says the colour at the cock (blue: the head higher, red: the chest lower) on ${coloured} / ${colouredAll} (${bad.slice(0, 3).join(' | ')})`);
+  }
+  // the quick blow: picked only with its switch
+  {
+    const spec = TUNING.attacks.snapSwipe, s = { dist: 2.5 * SCALE, absAng: 0.1 };
+    const off = bandWeight(spec, d, s);
+    setLook('wyrmQuick', 'a');
+    const on = bandWeight(spec, d, s);
+    setLook('wyrmQuick', null);
+    assert(off === 0 && on > 0 && !!ATTACKS.snapSwipe?.string, `the snap swipe: weight ${off} as it shipped, ${on} with ?wyrmQuick=a`);
+  }
+  return G;
+}
+
+// ================================================================== scenario: wyrmaudit (opt-in: every melee string's windups, printed)
+async function scenarioWyrmAudit() {
+  out('\n== scenario WYRMAUDIT (each blow of each melee string: the held windup of the striking part and the body, by tell) ==');
+  const { makeWyrmAudit } = await import(pathToFileURL(`${ROOT}/tests/integration/motionAudit.mjs`).href);
+  // (GCD_LOOKS='sheathMotion=a,...': switches set for the run)
+  { const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js'); for (const kv of (process.env.GCD_LOOKS || '').split(',').filter(Boolean)) { const [k, v] = kv.split('='); setLook(k, v); } }
+  const { ATTACKS } = await imp('src/entities/dragon/attacks.js');
+  const G = build();
+  fightSetup(G);
+  G.game.player.debug.noRiposte = true;
+  const A = makeWyrmAudit({ THREE, G, DT, SCALE, place, settle, ATTACKS, kindOf: (n, b, a) => a.list?.filter((e) => e[0].startsWith('windup'))[b.hit ?? 0]?.[2]?.spec?.kind ?? n });
+  const names = process.env.GCD_MOVES ? process.env.GCD_MOVES.split(',') : ['bite', 'swipe', 'clawCombo', 'rendingFlurry', 'hesitantMaw', 'wingBuffet', 'tailLash', 'pounce', 'frenzy', 'stormFlurry', 'cinderFlurry', 'blackMaw', 'wingRend', 'pivotLash', 'rearGuard', 'skyHammer', 'furnaceMaw', 'cinderRake', 'cataclysm', 'tail', 'stomp'];
+  const rows = [];
+  for (const name of names) {
+    if (!ATTACKS[name]) { out(`  ${name}: no such attack`); continue; }
+    const ph = Math.max(1, TUNING.attacks[name]?.phase ?? 1);
+    const back = ['tail', 'tailLash', 'pivotLash', 'rearGuard'].includes(name);
+    const r = A.measure(name, { units: back ? 5 : 5.5, ang: back ? Math.PI * 0.9 : 0, phase: ph });
+    rows.push(r);
+    A.print(out, r);
+  }
+  if (process.env.GCD_AUDIT_OUT) fs.writeFileSync(process.env.GCD_AUDIT_OUT, JSON.stringify(rows, null, 1));
+  return G;
+}
+
 const SCENARIOS = {
+  wyrmaudit: scenarioWyrmAudit,
+  wyrmheld: scenarioWyrmHeld,
   timestep: scenarioTimestep,
   strategy: scenarioStrategy,
   gate: scenarioGate,
@@ -14733,7 +14834,7 @@ const SCENARIOS = {
   probe: scenarioProbe,
 };
 const runs = [];
-const OPT_IN = new Set(['probe', 'strategy']); // run only when named
+const OPT_IN = new Set(['probe', 'strategy', 'wyrmaudit']); // run only when named
 // GCD_SKIP: scenarios left out of `all` because the caller runs them beside this process
 const SKIP = new Set((process.env.GCD_SKIP || '').split(',').filter(Boolean));
 for (const name of SKIP) if (!SCENARIOS[name]) { out(`GCD_SKIP: unknown scenario '${name}'`); process.exit(2); }

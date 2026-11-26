@@ -9,6 +9,8 @@ import { BROOD_MOVES } from './broodAttacks.js';
 import { FIRE_SPELLS } from './spellsFire.js';
 import { snapFire, snapSmoke, rakeSparks, wingSlamBurst, tailSlamLine } from './meleeFx.js';
 import { wallWind } from './wallReach.js';
+import { heldMode, tellPose } from './tellPose.js';
+import { WYRM_HELD } from './tuningMotion.js';
 
 /** Wing spread the actions return to (the mantled HALF sails, TUNING.rest). */
 const REST_SPREAD = TUNING.rest.spread;
@@ -2647,9 +2649,11 @@ export function makeString(name) {
         if (!K) continue;
         const base = wind(d, hs.windup);
         const hold = Array.isArray(hs.hold) ? hs.hold[0] + Math.random() * (hs.hold[1] - hs.hold[0]) : 0;
-        const h = { idx: n, spec: hs, K, base, hold, holdK: 0, wi: 0 };
+        // (a held tell, ADR-223: a blue / red hit holds its cock `held` s more; its windup is that much longer)
+        const mode = heldMode(hs), held = mode ? WYRM_HELD.hold : 0;
+        const h = { idx: n, spec: hs, K, base, hold, held, mode, holdK: 0, wi: 0 };
         const sfx = n === 0 ? '' : String(n + 1);
-        list.push([`windup${sfx}`, base + hold, h], [`active${sfx}`, hs.active, h]);
+        list.push([`windup${sfx}`, base + hold + held, h], [`active${sfx}`, hs.active, h]);
         n++;
       }
       list.push(['recovery', wind(d, spec.recovery ?? 1), null]);
@@ -2709,6 +2713,7 @@ export function makeString(name) {
         const prev = h.idx > 0 ? a.hits[h.idx - 1] : null;
         if (prev) prev.K.recover?.(d, a, prev, Math.min(1, k * 2), dt);
         h.K.windup(d, a, h, k, dt);
+        if (h.mode === 'a') tellPose(d, h.spec.tell, k, h.K.part);
       } else {
         h.K.active(d, a, h, a.k, dt);
         // a hit that scatters hanging embers where it lands (spec.burst, bullets.js): each one
@@ -2756,12 +2761,13 @@ const skyHammer = makeString('skyHammer');
 const furnaceMaw = makeString('furnaceMaw');
 const cinderRake = makeString('cinderRake');
 const cataclysm = makeString('cataclysm');
+const snapSwipe = makeString('snapSwipe');
 
 /** Every ability (AI-selectable and Lab-triggerable). Order = Lab list order (keys 1-9 = the first nine). */
 export const ATTACKS = {
   bite, swipe, clawCombo, rendingFlurry, hesitantMaw, wingBuffet, tailLash, pounce, frenzy,
   tail, stomp, breath, fireball, charge, leap, roar, stormFlurry, cinderFlurry, blackMaw,
-  wingRend, pivotLash, rearGuard, skyHammer, furnaceMaw, cinderRake, cataclysm,
+  wingRend, pivotLash, rearGuard, skyHammer, furnaceMaw, cinderRake, cataclysm, snapSwipe,
   ...FIRE, // fireAttacks.js: the short flights and the fire spells (contract 3)
   ...BULLET_HELL, // bulletAttacks.js: the bullet-hell patterns (ADR-039)
   ...TERRAIN_MOVES, // terrainAttacks.js: it takes a tree or a boulder and uses it (ADR-110)
