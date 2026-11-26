@@ -83,8 +83,10 @@ const TAU = Math.PI * 2;
 const PALE = [1.5, 1.6, 1.85], PALE_END = [0.25, 0.28, 0.36];
 const SHARD = [1.3, 1.45, 1.8], SHARD_END = [0.18, 0.2, 0.3];
 const DUSTC = [0.3, 0.28, 0.26], DUST_END = [0.12, 0.11, 0.1];
-const SKID = [0.6, 0.6, 0.64], SKID_END = [0.28, 0.28, 0.32]; // (pale: dark grit on the night asphalt is not seen)
+const SKID = [0.78, 0.78, 0.82], SKID_END = [0.34, 0.34, 0.38]; // (pale: dark grit on the night asphalt is not seen)
 const STONE = [0.44, 0.43, 0.42], STONE_END = [0.16, 0.15, 0.15];
+// the shove (round 2): the skid lines' life (s), the grit thrown forward each 0.14 m, the burst at its start
+const SHOVE = Object.freeze({ skidLife: [2.6, 3.4], fan: 2, burst: 16, y: 0.34 }); // (y: above the floor's own relief, GROUND_Y 0.3: lower, the ground hides them)
 const AZURE_G = [0.9, 1.7, 3.4], AZURE_G_END = [0.1, 0.3, 1.0];
 export const L_AZURE = [0.45, 0.68, 1.0], L_CRIMSON = [1.0, 0.14, 0.12], L_VIOLET = [0.74, 0.4, 1.0], L_PALE = [0.86, 0.9, 1.0];
 const LIVE = new Set(['foot', 'act', 'react', 'broken']);
@@ -1011,6 +1013,19 @@ export class WjFx extends AscFx {
     s.done = 0;
     s.acc = 0;
     this.dust(x, z, 0.6 + 0.08 * Math.min(10, dist));
+    // (round 2) the blow's weight at his feet: grit and dust thrown forward in a low fan
+    const ux = dx / l, uz = dz / l;
+    for (let i = 0; i < SHOVE.burst; i++) {
+      const a = Math.atan2(uz, ux) + this.lrand(-0.7, 0.7), sp = this.lrand(4, 9);
+      const g = this._rec(x, SHOVE.y + 0.05, z, this.lrand(0.4, 0.7), this.lrand(0.17, 0.24), 0.08, ".,'#%", SKID, SKID_END);
+      g.vx = Math.cos(a) * sp;
+      g.vy = this.lrand(0.8, 2.5);
+      g.vz = Math.sin(a) * sp;
+      g.gravity = -10;
+      g.drag = 1.5;
+      this._spawn(this.alpha, g);
+    }
+    for (let i = 0; i < 4; i++) this._blob(x + ux * 0.4, 0.75, z + uz * 0.4, ux * this.lrand(2, 4) + this.lrand(-0.6, 0.6), this.lrand(0.2, 0.6), uz * this.lrand(2, 4) + this.lrand(-0.6, 0.6), this.lrand(0.5, 0.8), 0.5, 1.2, 0.32, 0, K_SMOKE, 1.3, 0.3);
     this._say('wjShove', x, z, dist);
   }
 
@@ -1023,25 +1038,28 @@ export class WjFx extends AscFx {
       while (s.done < to) {
         s.done += 0.14;
         const x = s.x + s.dx * s.done, z = s.z + s.dz * s.done, slow = 1 - s.done / Math.max(0.5, s.dist);
-        // the heels' two lines, lying on the floor
+        // (round 2) the heels' two pale lines, lying on the floor, kept a few seconds
         for (const side of [-1, 1]) {
-          const o = this._rec(x + px * 0.13 * side, 0.04, z + pz * 0.13 * side, this.lrand(1.0, 1.6), 0.26, 0.24, '-=_', SKID, SKID_END);
+          const o = this._rec(x + px * 0.14 * side, SHOVE.y, z + pz * 0.14 * side, this.lrand(SHOVE.skidLife[0], SHOVE.skidLife[1]), 0.3, 0.28, '=-_', SKID, SKID_END);
           o.rot = rot;
-          o.alpha = 0.85;
+          o.alpha = 0.95;
           o.alphaEnd = 0;
           this._spawn(this.alpha, o);
         }
         s.acc += 1;
-        if (s.acc % 3 === 0) {
-          this._blob(x, 0.75, z, s.dx * 1.4 * slow + this.lrand(-0.3, 0.3), this.lrand(0.3, 0.8), s.dz * 1.4 * slow + this.lrand(-0.3, 0.3), this.lrand(0.5, 0.8), 0.55, 1.4, 0.5, 0, K_SMOKE, 1.5, 0.5);
-          const g = this._rec(x, 0.15, z, this.lrand(0.4, 0.7), 0.2, 0.08, ".,'`", SKID, SKID_END);
-          g.vx = s.dx * this.lrand(2, 5) * slow + px * this.lrand(-1.5, 1.5);
-          g.vy = this.lrand(1, 3);
-          g.vz = s.dz * this.lrand(2, 5) * slow + pz * this.lrand(-1.5, 1.5);
+        // a low fan of grit thrown forward along the slide
+        for (let q = 0; q < SHOVE.fan; q++) {
+          const a = Math.atan2(s.dz, s.dx) + this.lrand(-0.6, 0.6), sp = this.lrand(3, 7) * (0.35 + 0.65 * slow);
+          const g = this._rec(x, SHOVE.y + 0.05, z, this.lrand(0.35, 0.65), this.lrand(0.16, 0.22), 0.08, ".,'`:", SKID, SKID_END);
+          g.vx = Math.cos(a) * sp;
+          g.vy = this.lrand(0.4, 1.8);
+          g.vz = Math.sin(a) * sp;
           g.gravity = -9;
-          g.drag = 1.5;
+          g.drag = 1.6;
           this._spawn(this.alpha, g);
         }
+        // dust rolling forward, low
+        if (s.acc % 2 === 0) this._blob(x + s.dx * 0.3, 0.7, z + s.dz * 0.3, s.dx * 2.2 * slow + this.lrand(-0.3, 0.3), this.lrand(0.1, 0.5), s.dz * 2.2 * slow + this.lrand(-0.3, 0.3), this.lrand(0.5, 0.8), 0.5, 1.1, 0.28, 0, K_SMOKE, 1.4, 0.3);
       }
       if (f >= 1) s.alive = false;
     }
