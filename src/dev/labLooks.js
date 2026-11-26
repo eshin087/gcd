@@ -43,6 +43,7 @@ export const LOOK_SWITCHES = Object.freeze([
   ['ascBeam', ['a', 'b'], 'a', 'a', false, ['ring'], 'Tian Lei\'s beam'],
   ['ascOrb', ['a', 'b', 'c'], 'a', 'a', false, ['ring'], 'Heaven\'s Lantern, the great orb: a a sun, b a lantern, c the pale gathered sphere (its arms-up gather on a reload)'],
   ['ascBeamPose', ['0', 'cup'], '0', '0', true, ['ring'], 'Tian Lei\'s beams: 0 the palm thrust, cup both hands cupped at the hip (a reload)'],
+  ['ascMotion', ['0', 'a'], '0', 'a', false, ['ring'], 'Tian Lei\'s motion (ADR-225): a every blue and red blow out of a held windup pose of its own, and his snap blows (Snap Jab, Snap Hook; the default); 0 as before (live, from his next move)'],
   //
   //
   // --- fox: Wen Yao (ADR-147; every one read when his rigs or his effects are built: a reload)
@@ -75,6 +76,7 @@ export const LOOK_SWITCHES = Object.freeze([
   ['halCapeSize', ['0', 'a', 'b', 'c'], 'b', 'b', true, ['city'], 'his cape\'s size: 0 as picked, a ~80 %, b ~65 %, c ~50 % (to the back of his knees) (a reload)'],
   ['glare', ['a', 'b', 'c'], 'a', 'a', true, ['city'], 'his eyes\' heat: a crimson, white core; b crimson alone; c orange fire (a reload)'],
   ['city', ['a', 'b', 'c'], 'a', 'a', true, ['city'], 'the city: a neon rain, b golden hour, c lockdown (a reload)'],
+  ['halMotion', ['0', 'a'], '0', 'a', false, ['city'], 'Halcyon\'s motion (ADR-225): a a flier\'s legs in his blows, each blow aimed down at the hero (he dips into it), his arms open at the end, the held windups, his snap blows (Flick, Tap; the default); 0 as before (live, from his next move)'],
   // --- every human boss (ADR-194)
   ['bossPrint', ['0', 'a', 'b'], '0', 'b', false, ['ash', 'starless', 'ring', 'fox', 'grove', 'code', 'city'], 'the bosses printed the hero\'s way: b in their own colours (the default), a in the hero\'s greys, 0 as before (lit letter bodies, his strokes and dotted rims, the pale hem below the knee)'],
   // --- drawn in the hero's style (ADR-220): per boss, 0 as he shipped, a shaded as the hero is, b outlined as the

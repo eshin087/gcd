@@ -3,6 +3,8 @@ import { compileClip, completeBeat, GUARD, FOLDED } from './poses.js';
 import { TUNING } from './tuning.js';
 import { makeRealise } from '../duelist/realise.js';
 import { X as ASC, CLIPS as ASC_CLIPS } from '../ascendant/moves.js';
+import { halKeys } from './motion.js';
+import { SNAP_KEYS } from '../ascendant/motion.js';
 
 // Halcyon's moves and reaction clips, as data (ADR-160; COMBAT.md → "Halcyon"). Every name is his own
 // (the line on the homage). He fights BARE-HANDED: his blows are Tian Lei's exported strike builders
@@ -31,6 +33,7 @@ import { X as ASC, CLIPS as ASC_CLIPS } from '../ascendant/moves.js';
 const N = TELL.NORMAL, B = TELL.BLUE, R = TELL.RED, K = TELL.BLACK;
 const { punch, kick, strikeKeys, F, feet: FT } = ASC;
 const G = TUNING.glare;
+const SN = TUNING.snap;
 
 // ---------------------------------------------------------------- pose fragments
 /** Flying: the body pitched forward along the line, one fist ahead, the other arm along his side, the legs trailing. */
@@ -141,6 +144,17 @@ export const MOVES = {
       { feint: true, windup: TUNING.curb.lift, active: 0.05, close: 0, track: 1, halCurb: 'lift', keys: [[0.35, OVERHEAD], [0.8, ONE_HAND], [2.0, ONE_HAND]] },
       { tell: B, windup: 0.55, active: 0.1, damage: 22, knockback: 3, cast: { kind: 'car', selfCue: true }, part: 'fistR', close: 0, track: 0.9, cock: 0.7, halCurb: 'throw', keys: holdKeys(ONE_HAND, THROW, 0.7) },
     ],
+  },
+  /** Flick (ADR-225, a snap: `?halMotion=a`): the back of his hand, out of nothing: a white blow from
+   *  his guard with a short windup (TUNING.snap). */
+  flick: {
+    label: 'Flick', phase: 1, weight: [1.3, 1.0, 0.9], cooldown: SN.cooldown, band: [0, SN.band], recovery: SN.recovery, cat: 'single', snap: true,
+    beats: [{ ...punch('backfist', N, SN.windup, SN.damage, { cock: 0.5 }), fixed: true, snap: true, close: SN.close, track: 0.8, keys: SNAP_KEYS.flick }],
+  },
+  /** Tap (a snap): the lead hand straight out of his guard. */
+  tap: {
+    label: 'Tap', phase: 1, weight: [1.0, 1.2, 1.2], cooldown: SN.cooldown, band: [0, SN.band], recovery: SN.recovery, cat: 'single', snap: true,
+    beats: [{ ...punch('jab', N, SN.windup, SN.damage, { cock: 0.5 }), fixed: true, snap: true, close: SN.close, track: 0.8, keys: SNAP_KEYS.jab }],
   },
   /** His counter out of his guard: a palm. */
   riposte: {
@@ -305,7 +319,8 @@ export const CLIP = Object.fromEntries(Object.entries(CLIPS).map(([k, c]) => [k,
 for (const [k, c] of Object.entries(CLIP)) c.name = k;
 
 // ---------------------------------------------------------------- realising a move
-export const realise = makeRealise({ TUNING, MOVES, compileClip: (keys, dur) => compileClip(keys, dur), completeBeat });
+// (ADR-225: `?halMotion=a` plays his reworked motion through `keysOf`: motion.js)
+export const realise = makeRealise({ TUNING, MOVES, compileClip: (keys, dur) => compileClip(keys, dur), completeBeat, keysOf: (b) => halKeys(b) });
 
 /** The guard pose (for tools). */
 export { GUARD };

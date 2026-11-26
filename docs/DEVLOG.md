@@ -83,6 +83,29 @@ with 4242 run alone, breath / drakelings in P3 (63.5 s). It exists on main (the 
 scenario keeps the old 0.08 s perfect window for the steady bot's stray parries, so it measures the director
 on its old path. **Open:** played by the owner; whether the slow-motion beat on every parried blow of a string
 is too much now (the `short` beat, `combat/perfectFx.js`); the brood fix.
+## 2026-11-26 — Tian Lei's and Halcyon's motion: held windups, snap blows, Halcyon a flier (ADR-225; branch `claude/enemies-tian-halcyon-motion-efe595`)
+
+**Task** (the motion pass the owner asked for: every boss audited; readable held blue / red windups; a few much
+faster normal blows; options rendered and picked). This session: Tian Lei and Halcyon.
+
+**Measured.** `asc.mjs . audit` and a new opt-in `city.mjs . audit` (the same measure for a flier). Findings in
+ADR-225: no held pose on blue / red blows (the coil at u 0.7 - 0.78); Halcyon stood on air in every blow and
+punched over the hero's head with a crooked arm; the sweep's knee jolt and sliding feet; the dash thrusts skate;
+the cross lands to the side.
+
+**What.** `ascendant/motion.js` (held windups, `SNAP_KEYS`), `halcyon/motion.js` (the flier's legs, the aim, the
+dip in `flight.js`, `armSoft`), `mo` descriptors on the builders' beats, the snap moves (`snapJab`, `snapHook`,
+`flick`, `tap`), `TUNING.snap`, Lab LOOKS `ascMotion` / `halMotion` (PENDING). Tests: asc.mjs `heldmotion`,
+city.mjs `halmotion`, DATA's snap rule, GCD_LOOK in both audits. Films: before | after at the game camera and a
+close side view (scratchpad rig, not committed).
+
+**The owner's pick:** "Ship both (a)": both switches are the default (PICKED). Main had dropped the realiser's
+`keysOf` hook meanwhile (ADR-236, unused then): restored for this use.
+
+**Open.** Not fixed yet: the sweep's jolt, the dash thrusts' skating, the cross's sideways line, Fly-By's pass height.
+
+---
+
 ## 2026-11-26 — The lite world on a phone at AUTO's floor (ADR-216; branch `render/phone-lite`)
 
 **Owner:** the BENCH from their iPhone (fox: the world pass 11.8 of 13.3 ms; half the pixels only 32 % less);

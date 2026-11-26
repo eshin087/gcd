@@ -397,7 +397,9 @@ async function scenarioData() {
         const tag = `${name} form ${f} r${r}`;
         if (!real.every((b) => [TELL.NORMAL, TELL.BLUE, TELL.RED, TELL.BLACK].includes(b.def.tell))) assert(false, `${tag}: a tell on every real hit`);
         const first = real[0];
-        if (!def.transition && !(first && first.impact - first.tellAt >= TUNING.minFirstWindup - 1e-6)) assert(false, `${tag}: first real windup ${first ? (first.impact - first.tellAt).toFixed(3) : '-'} >= ${TUNING.minFirstWindup}`);
+        // (a snap, ADR-225: a white blow from the guard may wind up shorter: >= snap.min, little damage, its flash after its tell)
+        const snapOk = (b) => b?.def.snap && b.def.tell === TELL.NORMAL && b.impact - b.tellAt >= TUNING.snap.min - 1e-6 && b.def.damage <= TUNING.snap.maxDamage && b.flash > b.tellAt;
+        if (!def.transition && !(first && (first.impact - first.tellAt >= TUNING.minFirstWindup - 1e-6 || snapOk(first)))) assert(false, `${tag}: first real windup ${first ? (first.impact - first.tellAt).toFixed(3) : '-'} >= ${TUNING.minFirstWindup}`);
         for (let i = 1; i < real.length; i++) if (!(real[i].impact - real[i - 1].impact >= TUNING.minHitGap - 1e-6)) assert(false, `${tag}: hits ${i - 1}→${i} ${(real[i].impact - real[i - 1].impact).toFixed(3)} s apart >= ${TUNING.minHitGap}`);
         for (const b of real) if (!(b.flash >= b.tellAt - 1e-6)) assert(false, `${tag}: hit ${b.hit} flashes after its tell`);
         for (let i = 1; i < real.length; i++) if (!(real[i].flash >= real[i - 1].impact - 1e-6)) assert(false, `${tag}: hit ${i}'s flash comes after hit ${i - 1} lands`);
@@ -2606,11 +2608,12 @@ function auditMoves(names, orbits = [false, true], TOP = 0) {
         if (inAct) for (const b of A.beats) {
           if (b.feint || b._aud || A.t < b.impact || !b.def.zone || (b.def.release && !b.cut) || b.def.cast) continue;
           b._aud = true;
+          if (process.env.GCD_SIDEDBG) out(`      ${name} b${b.index} ${b.def.part} tip ${d._tip.x.toFixed(2)},${d._tip.y.toFixed(2)},${d._tip.z.toFixed(2)} hero ${p.position.x.toFixed(2)},${p.position.z.toFixed(2)} root ${d.position.x.toFixed(2)},${d.position.z.toFixed(2)} yaw ${d.yaw.toFixed(2)}`);
           const tp = d._tip, pp = p.position, pr = p.radius ?? 0.45;
           const flat = orbit ? Math.hypot(tp.x - pp.x, tp.z - pp.z) - pr : Math.abs(pp.x - tp.x) - pr, up = tp.y < 0 ? -tp.y : tp.y > 1.85 ? tp.y - 1.85 : 0;
           const sm = sample(d), arm = b.def.part === 'fistL' ? ['shL', 'elbowL', 'fistL'] : ['shR', 'elbowR', 'fistR'];
           contact.push({ i: b.index ?? A.beats.indexOf(b), gap: Math.max(flat, up), flat, y: tp.y, zone: b.def.zone.kind, part: b.def.part,
-            sep: +Math.hypot(pp.x - d.position.x, pp.z - d.position.z).toFixed(2), elbow: Math.round(ang3(sm.B[arm[0]], sm.B[arm[1]], sm.B[arm[2]])) });
+            sep: +Math.hypot(pp.x - d.position.x, pp.z - d.position.z).toFixed(2), side: +(((tp.x - d.position.x) * (pp.z - d.position.z) - (tp.z - d.position.z) * (pp.x - d.position.x)) / Math.max(0.01, Math.hypot(pp.x - d.position.x, pp.z - d.position.z))).toFixed(2), elbow: Math.round(ang3(sm.B[arm[0]], sm.B[arm[1]], sm.B[arm[2]])) });
         }
         if (process.env.GCD_SLIDE === name && !orbit && F.length > 1) {
           const q = F[F.length - 2], fo = d.pilot?.feetOff;
@@ -2682,6 +2685,9 @@ function auditMoves(names, orbits = [false, true], TOP = 0) {
 
 async function scenarioAudit() {
   out('\n== scenario AUDIT (every move: jolts, turns, sliding feet, joints, the blow against the hero) ==');
+  // (GCD_LOOK='ascMotion=a,halMotion=a': the looks the audit plays, live)
+  const LS = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  for (const kv of (process.env.GCD_LOOK ?? '').split(',').filter(Boolean)) LS.setLook(...kv.split('='));
   const only = (process.env.GCD_AUDIT ?? '').split(',').filter(Boolean);
   const TOP = Number(process.env.GCD_AUDIT_TOP ?? 0);
   const { rows, worst } = auditMoves(MOVE_NAMES.filter((n) => !only.length || only.includes(n)), [false, true], TOP);
@@ -3713,6 +3719,119 @@ async function scenarioDefend() {
   }
 }
 //
+/**
+ * HELDMOTION (ADR-225, `?ascMotion=a`): the switch moves poses only: every move realises with the same
+ * beats, windups, impacts and flashes on and off. On, every blue and red blow of the builders has its
+ * reworked keys and on his real body is IN its held pose from HELD_AT of the windup to the cock: the
+ * striking limb's end within a few cm of where it is held (it tightens, it does not drift), drawn back
+ * from where it strikes; a normal blow keeps its keys. The snap blows: weighed only with the switch, a
+ * short white windup, and a fight with the switch on raises nothing.
+ */
+async function scenarioHeldMotion() {
+  out('\n== scenario HELDMOTION (?ascMotion=a: the same timings, a held windup pose on every blue and red blow, the snap blows) ==');
+  const LS = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const { MOTION } = await imp('src/entities/enemies/ascendant/moves.js');
+  const { HELD_AT } = await imp('src/entities/enemies/ascendant/motion.js');
+  // 1. timings identical on and off
+  let n = 0, diff = [];
+  for (const name of MOVE_NAMES) for (let ph = 1; ph <= 3; ph++) for (const r of [0.001, 0.5, 0.999]) {
+    LS.setLook('ascMotion', '0');
+    const a = realise(name, ph, () => r);
+    LS.setLook('ascMotion', 'a');
+    const b = realise(name, ph, () => r);
+    if (!a || !b) continue;
+    n++;
+    const sig = (m) => m.beats.map((x) => [x.start, x.impact, x.end, x.flash, x.W, x.H].map((v) => v.toFixed(5)).join(',')).join(';') + `|${m.end.toFixed(5)}`;
+    if (sig(a) !== sig(b)) diff.push(`${name}/${ph}`);
+  }
+  LS.setLook('ascMotion', null);
+  assert(n > 300 && !diff.length, `${n} realisations: the same beats, windups, impacts, flashes and ends with the switch on and off (${diff.slice(0, 6).join(', ') || 'all'})`);
+  // 2. which beats are reworked: every blue / red builder blow (not a stepped one), no normal one
+  const beats = [];
+  for (const [name, def] of Object.entries(MOVES)) for (const b0 of def.beats) for (const b of b0.pick ?? [b0]) beats.push([name, b]);
+  const want = beats.filter(([, b]) => b.mo && (b.tell === TELL.BLUE || b.tell === TELL.RED) && !b.mo.step && !(b.mo.fam === 'kick' && b.mo.kind === 'sweep'));
+  const missing = want.filter(([, b]) => !MOTION.keysFor(b)).map(([n]) => n);
+  const normal = beats.filter(([, b]) => b.tell === TELL.NORMAL && MOTION.keysFor(b)).map(([n]) => n);
+  assert(want.length >= 30 && !missing.length && !normal.length, `${want.length} blue and red builder blows have held keys (${missing.join(', ') || 'all'}), no normal blow is reworked (${normal.join(', ') || 'none'})`);
+  // 3. on his body: in the held pose from HELD_AT to the cock
+  const rows = [];
+  for (const [name, f] of [['piercingPalm', 1], ['tiger', 1], ['skyHammer', 2], ['heavenEarth', 3], ['hundred', 1]]) {
+    for (const opt of ['0', 'a']) {
+      LS.setLook('ascMotion', opt);
+      const G = build();
+      duel(G, { dist: 3, form: f });
+      const d = G.game.dragon, p = G.game.player;
+      p.debug.god = true;
+      settle(G, 2);
+      d.position.set(0, 0, -2);
+      d.yaw = 0;
+      place(G, 2.6);
+      run(G, 0.3);
+      if (!d.debug.trigger(name)) { rows.push({ name, opt, fail: true }); continue; }
+      const A = d.brain.act;
+      const hb = A.beats.find((b) => b.def.tell === TELL.BLUE || b.def.tell === TELL.RED);
+      const cockT = hb.start + (hb.def.cock ?? 0.7) * hb.W, heldT = hb.start + Math.min(HELD_AT, (hb.def.cock ?? 0.7) - 0.2) * hb.W;
+      const inv = new THREE.Matrix4(), pts = [];
+      let atHit = null;
+      for (let i = 0; i < 600 && d.brain.act === A; i++) {
+        G.tick(DT);
+        p.hp = p.maxHp;
+        if (A.t >= heldT && A.t <= cockT) {
+          d.rig.root.updateMatrixWorld(true);
+          inv.copy(d.rig.root.matrixWorld).invert();
+          pts.push(d._tip.clone().applyMatrix4(inv));
+        }
+        if (!atHit && A.t >= hb.impact) {
+          d.rig.root.updateMatrixWorld(true);
+          inv.copy(d.rig.root.matrixWorld).invert();
+          atHit = d._tip.clone().applyMatrix4(inv);
+        }
+      }
+      let drift = 0;
+      for (const q of pts) drift = Math.max(drift, q.distanceTo(pts[0]));
+      rows.push({ name, opt, hold: +(cockT - heldT).toFixed(2), drift: +drift.toFixed(2), drawn: pts.length && atHit ? +pts[0].distanceTo(atHit).toFixed(2) : 0 });
+    }
+  }
+  LS.setLook('ascMotion', null);
+  for (const r of rows) out(`   ${r.name.padEnd(13)} ${r.opt}: ${r.fail ? 'no trigger' : `held ${r.hold} s: the striking end moves ${r.drift} m, ${r.drawn} m back from its strike`}`);
+  const on = rows.filter((r) => r.opt === 'a' && !r.fail), off = rows.filter((r) => r.opt === '0' && !r.fail);
+  assert(on.length === 5 && on.every((r) => r.drift <= 0.16 && r.drawn >= 0.3), `with the switch every blow sits in its held pose from u ${HELD_AT} to the cock: the striking end moves <= 0.16 m (${on.map((r) => r.drift).join(', ')}) and is drawn >= 0.3 m back (${on.map((r) => r.drawn).join(', ')})`);
+  assert(on.reduce((s, r) => s + r.drift, 0) < off.reduce((s, r) => s + r.drift, 0), `... where before it was still drifting into its coil (${off.map((r) => r.drift).join(', ')} m)`);
+  // 4. the snap blows: weighed only with the switch, short and white, and a fight with them raises nothing
+  const snaps = MOVE_NAMES.filter((k) => MOVES[k].snap);
+  const G = build();
+  duel(G, { dist: 1.8 });
+  const d = G.game.dragon;
+  LS.setLook('ascMotion', '0');
+  const w0 = snaps.map((k) => d.weigh(k, MOVES[k], 1, 1.5));
+  LS.setLook('ascMotion', 'a');
+  const w1 = snaps.map((k) => d.weigh(k, MOVES[k], 1, 1.5));
+  assert(snaps.length === 2 && w0.every((w) => w === 0) && w1.every((w) => w > 0), `the snap blows (${snaps.join(', ')}) weigh 0 without the switch, ${w1.join(', ')} with it`);
+  const S = TUNING.snap;
+  const bad = [];
+  for (const k of snaps) for (let ph = 1; ph <= 3; ph++) {
+    const b = realise(k, ph, () => 0.5).beats[0];
+    if (!(b.def.tell === TELL.NORMAL && b.W >= S.min && b.W <= 0.34 && b.def.damage <= S.maxDamage && b.flash > b.tellAt + 0.02)) bad.push(`${k}/${ph} W ${b.W.toFixed(2)}`);
+  }
+  assert(!bad.length, `a snap is white, winds up ${S.min} - 0.34 s in every form (unscaled), deals <= ${S.maxDamage} and flashes after its tell (${bad.join(', ') || 'all'})`);
+  const G2 = build(SEED + 7);
+  duel(G2, { dist: 2.4, ai: true });
+  G2.game.player.debug.god = true;
+  G2.defend = makeDefender(G2, { style: 'mixed' });
+  const used = new Set();
+  let nan = 0;
+  for (let i = 0; i < 60 * 40; i++) {
+    G2.defend.act();
+    G2.tick(DT);
+    const a = G2.game.dragon.brain.act;
+    if (a) used.add(a.name);
+    const t = G2.game.dragon._tip;
+    if (!Number.isFinite(t.x + t.y + t.z)) nan++;
+  }
+  LS.setLook('ascMotion', null);
+  assert(!nan && used.size >= 5, `40 s of his AI with the switch on: ${used.size} moves (${[...used].filter((k) => MOVES[k]?.snap).join(', ') || 'no snap drawn'} among them), no NaN`);
+}
+
 const S = {
   level: scenarioLevel,
   data: scenarioData,
@@ -3748,6 +3867,7 @@ const S = {
   body: scenarioBody,
   herolike: scenarioHeroLike,
   motionfix: scenarioMotionFix,
+  heldmotion: scenarioHeldMotion,
   //
   //
   // --- terrain

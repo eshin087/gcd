@@ -6472,6 +6472,52 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   `docs/MOTION.md` (PR 148) are closed unmerged. Animation is authored by hand as before.
 - **Consequences:** ADR-208's engine is gone (its decision record stays as history). No game behaviour
   changes: nothing in the game read these files.
+
+## ADR-225 — Tian Lei's and Halcyon's motion: held blue / red windups, snap blows, Halcyon a flier (2026-11-26)
+
+- **Context:** the owner asked for every boss's poses, animations and motion to be audited and to look
+  accurate, for each blue (parry) and red (perfect-dodge) blow to have a readable held windup pose, and for
+  some much faster normal blows that are still fair. This pass covers Tian Lei (`?level=ring`) and Halcyon
+  (`?level=city`); other sessions did the other bosses. Measured with `asc.mjs . audit` (ADR-162's) and a new
+  `city.mjs . audit` (the same measure for a flier: no frame is left out for being off the ground).
+- **What the audit found.** Tian Lei: (1) a blue or red blow had no held pose: its coil was keyed at u 0.7 -
+  0.78 of the windup, so through most of the windup he stood in his guard and the striking limb was still
+  drifting 8 - 50 cm into the coil when the strike began; (2) Eight Gates' low sweep jolts the knee hardest of
+  all his moves (709 mm/frame²) and its planted feet slide ~2 m; (3) a palm thrust on a dash (Piercing Palm,
+  Hundred Hands' last) skates across 2 - 3 m in its stance; (4) the cross lands ~1 m to his left of the line
+  to the hero and the jab ~0.4 m (the body turns past the target; at the game camera the miss is in depth and
+  reads as a blow to the head). Halcyon: (1) his feet sat exactly at his root's height in every punch and
+  kick, a planted fighting stance at his 0.5 m hover: he stood on air; (2) every punch landed at 1.9 - 2.0 m,
+  over the hero's head (Fly-By's fist at 2.55 m); (3) his elbow was ~130° at every contact (the arm fix
+  ADR-162 gave Tian Lei never reached him); (4) the Backhand and the slap land beside the hero.
+- **Decision** (behind two live look switches; `0` plays each as before):
+  1. `?ascMotion=a` (`ascendant/motion.js`, through the realiser's `keysOf`): every blue and red builder blow
+     is in a pose of its own by u 0.36 (`HELD_AT`) and holds it to the cock, tightening a few cm (the striking
+     limb drawn further, the weight lower); red holds sink deeper and wider than blue ones. The strike from the
+     cock is the beat's own. A normal blow keeps its keys. The shared builders are unchanged (the Fox and Xin
+     Yi build with them): their beats only carry a `mo` descriptor (what they were built from).
+  2. `?halMotion=a` (`halcyon/motion.js`): those held windups, plus the flier's legs on every builder blow
+     (his hover's legs into the coil, both trailing back through the strike; a kick's other leg hangs), the
+     blow aimed down (the hand `motion.aim.hand` lower, the body pitched over it) while his root dips from the
+     hover to `motion.dip` (0.2 m) through the strike (`flight.js _dip`), and `armSoft` as Tian Lei's.
+  3. The snap blows: a white blow from the guard, ~0.3 s windup (`TUNING.snap`, unscaled by form or phase),
+     8 - 9 damage, at most a short step in: Snap Jab and Snap Hook (Tian Lei), Flick and Tap (Halcyon). Their
+     keys move only the striking arm and the hips (`SNAP_KEYS`), so the rest is the stance he stands in: the
+     blow reads from the stance itself. Weighed only with the switch (`weigh`). Tests DATA let a snap's first
+     windup sit under `minFirstWindup` when it is white, deals at most `snap.maxDamage` and flashes after its tell.
+- **Why this way:** poses only, through the hook ADR-208 left (`keysOf`), keep every timing, tell, zone and test
+  of the fight; the switch flips live from the next move, so the owner can compare in one fight. Holding the coil
+  instead of lengthening the windup keeps the pace the owner set while making the read earlier. Halcyon's dip
+  is the one root change: in reach (the flight rule) and only through a strike.
+- **Consequences:** `asc.mjs . heldmotion`: 495 realisations identical on and off; the striking end moves 0 - 7 cm
+  through the hold (8 - 50 cm before); 35 blue and red blows reworked. `city.mjs . halmotion`: 216 realisations
+  identical; fists at 1.29 - 1.67 m (1.74 - 2.10 before), elbows 148 - 160° (~130°), feet 0.35 - 0.48 m behind his
+  hips (a planted stance before). The realiser's `keysOf` hook, removed as unused by ADR-236 while this was
+  in review, is back for this use (poses only, no footage).
+- **Outcome (the owner, 2026-11-26):** "Ship both (a)" from the before / after films: both switches are the
+  default (lookSwitch PICKED), so the snap blows are in both bosses' pools. Not changed (for the owner to choose): the sweep's jolt, the dash thrusts'
+  skating, the cross's sideways line, Fly-By's pass height. The holds are short in a string's quick beats
+  (0.12 - 0.24 s): `HELD_AT` is the lever.
 ## ADR-220 — The bosses drawn in the hero's style: his shading and his outline, their own colours (2026-11-26)
 
 **Context.** The owner: everything but the Cinder Wyrm and Wen Yao still does not look like the hero's ASCII.
