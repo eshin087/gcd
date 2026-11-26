@@ -112,7 +112,9 @@ export const TUNING = {
     // suite the same seed's fight went another way and marked 29 %, as `endShare` above had found for
     // the pieces: the lower bound sits under that. Seen when the sims began to reseed at each model's
     // build, tests/integration/integ.mjs onModelBuilt)
-    meter: { endShare: [0.2, 0.7], liftP3: 8, burnt: 9, wall: [0.25, 0.75], wallP1: 0.03 },
+    // (2026-11-26, ADR-223: `burnt` from 9: with the held windups and the quick swipe the same seed's fight
+    // rolls other moves and burnt 11 of 184 pieces through; nothing of the fire changed)
+    meter: { endShare: [0.2, 0.7], liftP3: 8, burnt: 12, wall: [0.25, 0.75], wallP1: 0.03 },
   },
   // the root stays inside min(CONFIG.world.dragonBound, bound) (m). CONFIG's 26 was sized for the
   // v0.2 wyrm; at x1.875 the chest / neck-base body circles (~5.8 m ahead of the root) would cross
