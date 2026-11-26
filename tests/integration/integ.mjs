@@ -6373,7 +6373,7 @@ async function scenarioHeroLife() {
       if (C.line === 'point') continue; // a thrust has no plane
       // (the instant cuts, ?lights=blink: the blade is at the coil, then across, then at the finish; it does not
       // whip through a diagonal, and its line is measured on the blade's own path by `blinkslash`)
-      if (/^(blink|last|steel)[A-Z]/.test(name)) continue; // (lastHits.js: the last hit's strokes; the steel set follows a reference, its own scenarios: steel*)
+      if (/^(blink|last|steel|cut[A-D])[A-Z0-9]/.test(name)) continue; // (lastHits.js: the last hit's strokes; the steel set follows a reference, its own scenarios: steel*)
       const ks = C.keys.filter((k) => Array.isArray(k.a) && k.u > 1.001 && k.u <= 2.001);
       const steep = Math.max(...ks.map((k) => Math.abs(k.a[1])));
       // the key where the blade is nearest to pointing ahead: its elevation is the cut's height there
@@ -14662,6 +14662,46 @@ async function scenarioSteelE() {
   return last;
 }
 
+// ================================================================== `cutsa`: the instant chain's variant a, the reference's own five strokes, instant
+// ?lights=blink&cuts=a (cutsA.js; ADR-215). Filled by the variant's author.
+async function scenarioCutsA() {
+  out('\n== scenario CUTSA (?lights=blink&cuts=a: the reference strokes, instant) ==');
+  const CB = await imp('src/entities/player/combat.js');
+  const G = build();
+  assert(CB.CUTS_IDS.includes('a'), 'the variant is registered');
+  return G;
+}
+
+// ================================================================== `cutsb`: the instant chain's variant b, lunging draws
+// ?lights=blink&cuts=b (cutsB.js; ADR-215). Filled by the variant's author.
+async function scenarioCutsB() {
+  out('\n== scenario CUTSB (?lights=blink&cuts=b: lunging draws) ==');
+  const CB = await imp('src/entities/player/combat.js');
+  const G = build();
+  assert(CB.CUTS_IDS.includes('b'), 'the variant is registered');
+  return G;
+}
+
+// ================================================================== `cutsc`: the instant chain's variant c, wide committed arcs
+// ?lights=blink&cuts=c (cutsC.js; ADR-215). Filled by the variant's author.
+async function scenarioCutsC() {
+  out('\n== scenario CUTSC (?lights=blink&cuts=c: wide committed arcs) ==');
+  const CB = await imp('src/entities/player/combat.js');
+  const G = build();
+  assert(CB.CUTS_IDS.includes('c'), 'the variant is registered');
+  return G;
+}
+
+// ================================================================== `cutsd`: the instant chain's variant d, a relentless flurry
+// ?lights=blink&cuts=d (cutsD.js; ADR-215). Filled by the variant's author.
+async function scenarioCutsD() {
+  out('\n== scenario CUTSD (?lights=blink&cuts=d: a relentless flurry) ==');
+  const CB = await imp('src/entities/player/combat.js');
+  const G = build();
+  assert(CB.CUTS_IDS.includes('d'), 'the variant is registered');
+  return G;
+}
+
 // ================================================================== `blinklast`: the instant chain's last hit: a stronger light stroke, a different one each time (lastHits.js)
 // The owner (2026-11-25): "make the last 5th attack just be a more stronger light attack but have it always be
 // a different stroke to make it look dynamic and random". Five one-handed strokes on five lines; the animator
@@ -17796,6 +17836,10 @@ const SCENARIOS = {
   steelc: scenarioSteelC,
   steeld: scenarioSteelD,
   steele: scenarioSteelE,
+  cutsa: scenarioCutsA,
+  cutsb: scenarioCutsB,
+  cutsc: scenarioCutsC,
+  cutsd: scenarioCutsD,
   blinksolve: scenarioBlinkSolve,
   armaudit: scenarioArmAudit,
   herohand: pinAdr186(scenarioHeroHand),

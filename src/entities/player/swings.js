@@ -112,6 +112,10 @@ import { STEEL_CHAIN_B } from './steelChainB.js';
 import { STEEL_HEAVIES_C } from './steelHeaviesC.js';
 import { STEEL_HEAVIES_D } from './steelHeaviesD.js';
 import { STEEL_SPECIALS_E } from './steelSpecialsE.js';
+import { CUTS_A } from './cutsA.js';
+import { CUTS_B } from './cutsB.js';
+import { CUTS_C } from './cutsC.js';
+import { CUTS_D } from './cutsD.js';
 
 /** The free hand's places (a key's `fh`; the key's own fields win): where it is (`l`), its elbow
  *  (`lp`), where the sword fingers point (`ld`), the palm (`pn`) and the sword wrist (`lk`). */
@@ -660,4 +664,9 @@ export const SWINGS = {
   ...STEEL_HEAVIES_C,
   ...STEEL_HEAVIES_D,
   ...STEEL_SPECIALS_E,
+  // ---- the instant chain's four variants (?lights=blink&cuts=a|b|c|d, ADR-215) ----
+  ...CUTS_A,
+  ...CUTS_B,
+  ...CUTS_C,
+  ...CUTS_D,
 };

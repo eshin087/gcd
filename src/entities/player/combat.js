@@ -10,6 +10,10 @@ import { HEAVY_STEEL_C, SPECIAL_STEEL_C } from './steelHeaviesC.js';
 import { HEAVY_STEEL_D } from './steelHeaviesD.js';
 import { SPECIAL_STEEL_E } from './steelSpecialsE.js';
 import { STEEL } from './steelStance.js';
+import { LIGHT_CUTS_A } from './cutsA.js';
+import { LIGHT_CUTS_B } from './cutsB.js';
+import { LIGHT_CUTS_C } from './cutsC.js';
+import { LIGHT_CUTS_D } from './cutsD.js';
 
 // Attack data + the blade sweep used for hit detection. No stamina: pacing comes from windup /
 // recovery only (docs/COMBAT.md). Moveset (ADR-041; owner concept sheet "Combat key poses"):
@@ -190,6 +194,28 @@ const LIGHT_BLINK = [
   { anim: { kind: 'clip', clip: 'blinkThrust' }, variants: [] },
   LAST_HIT_BLINK, // (lastHits.js: one of five strokes, never the same one twice running)
 ];
+/** `?cuts=a|b|c|d` under `?lights=blink` (ADR-215; the owner, 2026-11-26: "lets go back on iterating on
+ *  the instant cut ... the attacks feel short and animation motion look bad. using your new learned
+ *  knowledge from the reference video give me 4 different variations for the light attack combo"): four
+ *  light chains in the instant style, written with what the reference footage taught (a deep coil, the
+ *  body committed, the free arm against the blade, a finish held and a slow way home), each a different
+ *  idea: a the footage's own five strokes; b lunging draws; c wide committed arcs; d a relentless flurry
+ *  (cutsA.js … cutsD.js). Hits 1-5 only; '0' = the blink set's own chain. A null slot falls back to it. */
+export const CUTS_IDS = ['0', 'a', 'b', 'c', 'd'];
+export const CUTS_NAMES = { 0: 'blink', a: 'a ref', b: 'b lunge', c: 'c arcs', d: 'd flurry' };
+const CUT_SETS = { a: LIGHT_CUTS_A, b: LIGHT_CUTS_B, c: LIGHT_CUTS_C, d: LIGHT_CUTS_D };
+let cutsNow = '0';
+/** The instant chain's variant now ('0' the blink set's own). */
+export const cutsMode = () => cutsNow;
+/** Pick the instant chain's variant; it shows while the look set is 'blink'. False for an unknown id. */
+export function setCuts(m) {
+  const id = String(m);
+  if (!CUTS_IDS.includes(id)) return false;
+  cutsNow = id;
+  if (lightsNow === 'blink') setLights('blink');
+  return true;
+}
+const blinkLights = () => (cutsNow === '0' ? LIGHT_BLINK : LIGHT_BLINK.map((L, i) => CUT_SETS[cutsNow][i] ?? L));
 /** `?lights=steel` (ADR-214; the owner, 2026-11-25, on the instant cuts: "this all still looks bad",
  *  and a reference film of a one-handed straight sword: "both arm angles, placement, animation etc is
  *  exactly what i want so mirror this"): every attack's poses and arm paths follow that footage, on
@@ -221,7 +247,7 @@ export const lightsMode = () => lightsNow;
 export function setLights(mode) {
   if (!LIGHTS_IDS.includes(mode)) return false;
   const blink = mode === 'blink', steel = mode === 'steel';
-  const src = mode === 'old' ? LIGHT_OLD : mode === 'fresh' ? LIGHT_FRESH : blink ? LIGHT_BLINK : steel ? LIGHT_STEEL : null;
+  const src = mode === 'old' ? LIGHT_OLD : mode === 'fresh' ? LIGHT_FRESH : blink ? blinkLights() : steel ? LIGHT_STEEL : null;
   const hv = blink ? HEAVY_BLINK : steel ? HEAVY_STEEL : null;
   const sp = blink ? SPECIAL_BLINK : steel ? SPECIAL_STEEL : null;
   LIGHT.forEach((L, i) => wear(L, LIGHT_NEW[i], src ? src[i] : null));
@@ -366,7 +392,10 @@ const SPECIAL_DEFS = { sprint: SPRINT_ATK, roll: ROLL_ATK, cleave: CLEAVE, draw:
 const SPECIAL_NEW = Object.fromEntries(Object.keys(SPECIAL_DEFS).map((k) => [k, lookOf(SPECIAL_DEFS[k])]));
 {
   // (after every def a look set touches)
-  const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('lights') : null;
+  const sp = typeof location !== 'undefined' ? new URLSearchParams(location.search) : null;
+  const q = sp ? sp.get('lights') : null;
+  const c = sp ? sp.get('cuts') : null;
+  if (c && CUTS_IDS.includes(c)) cutsNow = c;
   if (q === 'old' || q === 'fresh' || q === 'blink' || q === 'steel') setLights(q);
 }
 
