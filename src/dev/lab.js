@@ -15,7 +15,7 @@ import { setCutStyle, cutStyle } from '../combat/cutFx.js';
 import { IMPACT } from '../combat/impact.js';
 import { STREAK_FX, setPerfectMode, perfectMode } from '../combat/streak.js';
 import { RIP_MODES, ripMode, setRipMode } from '../entities/player/timeRip.js';
-import { PARRY_FX, parryFxMode, setParryFx } from '../combat/parrySparks.js';
+import { PARRY_FX, parryFxMode, setParryFx, parryGrowMode, setParryGrow } from '../combat/parrySparks.js';
 import { RIPOSTE_CUT, riposteMode, setRiposteMode } from '../entities/player/riposteCut.js';
 import { BURST_LOOK, setBurst, burstLevel } from '../entities/player/flurryBurst.js';
 import { CALM_LOOK, setCalm, calmLevel } from '../combat/impactCalm.js';
@@ -1287,6 +1287,11 @@ export class Lab {
       this._syncCutBtns();
     });
     this.ui.parryFxBtn.title = "the perfect parry's spit of sparks (?parryFx=): a (the default) a few fast orange sparks off the crossed steel, 0 the parry as before";
+    this.ui.parryGrowBtn = button(stkGrid, `parryGrow ${parryGrowMode()}`, () => {
+      setParryGrow(parryGrowMode() === 'a' ? '0' : 'a');
+      this._syncCutBtns();
+    });
+    this.ui.parryGrowBtn.title = "a parry chain grows (?parryGrow=): a = more sparks each streak tier, embers that linger, a short heat flash at the blades; 0 = as before";
     this.ui.riposteBtn = button(stkGrid, `riposte ${riposteMode()}`, () => {
       const M = RIPOSTE_CUT.opts;
       setRiposteMode(M[(M.indexOf(riposteMode()) + 1) % M.length]);
@@ -1519,6 +1524,7 @@ export class Lab {
     for (const { m, el: b } of this.ui.mysticBtns ?? []) setClass(b, 'on', mysticMode() === m);
     if (this.ui.perfectBtn) this.ui.perfectBtn.textContent = `perfect: ${perfectMode()}`;
     if (this.ui.parryFxBtn) this.ui.parryFxBtn.textContent = `parryFx ${parryFxMode()}`;
+    if (this.ui.parryGrowBtn) this.ui.parryGrowBtn.textContent = `parryGrow ${parryGrowMode()}`;
     if (this.ui.riposteBtn) this.ui.riposteBtn.textContent = `riposte ${riposteMode()}`;
     if (this.ui.burstBtn) this.ui.burstBtn.textContent = `burst ${burstLevel()}`;
     if (this.ui.calmBtn) {

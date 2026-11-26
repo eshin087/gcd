@@ -1306,7 +1306,7 @@ export class Player {
     // today | sharp | cinema); `PM.T` null = today's numbers below. Nothing of the rules moves
     // (a parry moment ends his string: it counts as its last blow for cinema's full beat)
     const PM = perfect && !light ? this.fx.perfectMoment?.('parry', last || moment, fin(this.streak) + 1) : null, PT = PM?.T ?? null;
-    this.fx.parry(cv.x, cv.y, cv.z, big, D.n, -nx, -nz, { e1, e2, spray, perfect: !!perfect && !light, light, ring: light ? 0 : perfect || big ? 2 : last ? 1 : 0, met, feel: PM });
+    this.fx.parry(cv.x, cv.y, cv.z, big, D.n, -nx, -nz, { e1, e2, spray, perfect: !!perfect && !light, light, ring: light ? 0 : perfect || big ? 2 : last ? 1 : 0, met, feel: PM, last: !!last });
     if (moment) this.fx.flareParry?.(cv.x, cv.y, cv.z, -nx, -nz);
     if (ret) this.fx.perfectParry?.(cv.x, cv.y, cv.z, -nx, -nz);
     if (light) {
