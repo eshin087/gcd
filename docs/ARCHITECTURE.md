@@ -305,6 +305,13 @@ Render helpers for creature modules:
     to give, the most it opens]` as fractions of the limb's length; null = as always: `ARM_SOFT`, an elbow of
     ~130° at a full stretch, and a leg that reaches straight). Tian Lei sets both in `_setup` from
     `TUNING.armSoft` (the hero's `HERO_SOFT`) and `TUNING.legSoft`.
+  - **A sword boss's grip** (ADR-226): `HeroAnimator.gripMax` (rad; 0 / unset = off, the hero and every other boss):
+    after the sword arm's solve, a forearm more than gripMax off the blade turns toward it round the elbow
+    (`_gripAlign`; the hand and `rig.sword.position` move, the blade's direction never). A duelist kit's optional
+    `motion()` → `{ gripMax, armSoft } | null` is read every frame by `duelist.js` `_animate` (Shen Hui and Varr
+    Nihil: their `TUNING.motion` while `?ashMotion` / `?lordMotion` is on, else null: the animator as before).
+    Their moves marked `motionOnly` are weighed 0 by the actor's `weigh` while the switch is off; a beat marked
+    `quick` (a normal tell) may wind up `TUNING.minQuickWindup` instead of `minFirstWindup` (the data rule).
   - **The bosses' letters** (ADR-154, ADR-155, ADR-170): a boss whose kit sets `letters` (today Wen Yao's `FOX_KIT`, behind
     `?foxLetters=b`, Tian Lei's `ASC_KIT`, a getter behind `?ascLetters=a`, the owner's pick; `0` the fixed cell; Halcyon's
     `HALCYON_KIT`, a getter behind `?halLetters=a`, the owner's pick, ADR-166; and Xin Yi's `WOKEN_KIT`, the same getter
@@ -5102,9 +5109,11 @@ data and a subclass with a few hooks.
   (per phase); a leap lands `leapLead` s and an actor's blink `blinkLead` s ahead of where the hero is
   going (`blinkKeep`: never in front of him); director.js weighs a move whose first blow cannot reach
   where the hero will be x `miss`. Not a counter, a flurry, a stance, a draw or a transformation.
-- `realise.js`: `makeRealise({ TUNING, MOVES, compileClip, completeBeat, keysOf })` (`keysOf(beat)`, optional: the keys a
-  beat plays this time, null = its own; Tian Lei's and Halcyon's motion, ADR-225) → `realise(name, phase, rnd, opts)` (`opts.count`:
-  a `streak` move, his flurry, plays that many beats); `perPhase`. The POSE keys of a beat past its
+- `realise.js`: `makeRealise({ TUNING, MOVES, compileClip, completeBeat, keysOf, recoveryKeysOf })` → `realise(name, phase, rnd, opts)` (`opts.count`:
+  a `streak` move, his flurry, plays that many beats); `perPhase`. `keysOf(beat)` (optional; ADR-225, ADR-226) gives the pose keys a beat plays this time (null: `beat.keys`): a beat's `motionKeys` (its held
+  tell pose, `duelist/tellPose.js` `tellKeys` / `motionize`: Shen Hui and Varr Nihil, `?ashMotion` / `?lordMotion`, on by
+  default). `recoveryKeysOf(move)` (optional) does the same for a move's `recoveryKeys` (the Lord's `motionRecovery`).
+  Timings never depend on either. The POSE keys of a beat past its
   impact (u 1..2) run on the beat's follow, `b.F` s (ADR-126: 72 % of the time to the next beat's
   first pose, 0.24 s at most, 0.3 s for a ring zone, `def.follow` to set it), not on the active
   frames; gameplay (`uAt`, `travel`, `lift`, the zone) keeps the active frames' clock. A key marked

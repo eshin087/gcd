@@ -10,11 +10,19 @@ export const TUNING = {
   radius: 0.42, // body circle (the hero is pushed out of it)
   bound: 12.5, // he stays this close to the courtyard's centre (min with CONFIG.world.dragonBound)
 
+  // ---- the sword motion pass (ADR-226; on behind `?ashMotion=a`, ashDisciple/disciple.js / starlessLord/lord.js
+  // kit.motion): his sword held as the hero's reference-built swings hold one
+  motion: {
+    gripMax: 0.7, // rad (~40°): the most the blade turns off his sword forearm (anim.js gripMax; the hero ≤ 60°)
+    armSoft: [0.9, 0.985], // his arms' soft reach (anim.js armSoft): a cut and a thrust end on an open arm
+  },
+
   // ---- tells (rules: COMBAT.md; checked by the duel tests). PBZ-boss speed (owner, 2026-11-12):
   // openers ~0.46–0.6 s, a string's hits ~0.34 s apart, the flash the timing cue
   weapon: 'sword', // what his blows sound like through the air (duelist/attackSound.js: dragon:attack)
   flashLead: 0.3, // the glint this long before every impact
   minFirstWindup: 0.42, // a move's first real hit, every phase
+  minQuickWindup: 0.34, // … but a QUICK blow's (a `quick` beat: a normal tell only; its glint 0.04 s into it; ADR-226)
   minHitGap: 0.32, // impact to impact inside a move (>= flashLead: each flash after the hit before it)
   // (phase 3 is no faster than phase 2: the 0.42 s floor holds; its ramp is in what he does)
   windupScale: [1, 0.92, 0.92], // the windups of later phases (moves are authored with first windups >= 0.46)
