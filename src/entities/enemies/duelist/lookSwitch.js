@@ -73,6 +73,8 @@ export const PICKED = Object.freeze({
   wjLook: 'c', // the bone-white coat
   wjHair: 'b', // the short spiky burst, the choppy mop once it falls
   wjCity: 'a', // the crossing: cold moonlit ash-grey
+  wjShell: 'a', // the barrier: all but invisible until a blade nears it
+  wjNull: 'a', // the Violet Null: a hard-edged slab
   wjVoid: 'b', // the void: the stars and one great pale ring on the floor
 });
 
@@ -85,7 +87,6 @@ export const PENDING = Object.freeze([
   // Bai Wuji: body rows
 
   // Bai Wuji: fx rows
-  'wjShell', 'wjNull', // his barrier's look (a / b / c) and the Violet Null's body (a / b): untouched/fx.js, fxSpells.js
 
   // Bai Wuji: world rows
 
