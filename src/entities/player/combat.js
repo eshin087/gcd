@@ -14,6 +14,10 @@ import { LIGHT_CUTS_A } from './cutsA.js';
 import { LIGHT_CUTS_B } from './cutsB.js';
 import { LIGHT_CUTS_C } from './cutsC.js';
 import { LIGHT_CUTS_D } from './cutsD.js';
+import { FIN_LOOKS } from './blinkFinish.js';
+import { HEAVY_LOOKS_A } from './heavyOptA.js';
+import { HEAVY_LOOKS_B } from './heavyOptB.js';
+import { HEAVY_LOOKS_C } from './heavyOptC.js';
 
 // Attack data + the blade sweep used for hit detection. No stamina: pacing comes from windup /
 // recovery only (docs/COMBAT.md). Moveset (ADR-041; owner concept sheet "Combat key poses"):
@@ -215,7 +219,37 @@ export function setCuts(m) {
   if (lightsNow === 'blink') setLights('blink');
   return true;
 }
-const blinkLights = () => (cutsNow === '0' ? LIGHT_BLINK : LIGHT_BLINK.map((L, i) => CUT_SETS[cutsNow][i] ?? L));
+/** `?fin=a|b|c` under `?lights=blink` (ADR-237): hit 5 as one fixed finisher stroke, three options; '0'
+ *  the blink set's own last hit (one of five strokes at random). `?hv=a|b|c` (ADR-238): the five heavy
+ *  branches as two-handed blows with arcs that read from behind, three options; '0' the blink set's. */
+export const FIN_IDS = ['0', 'a', 'b', 'c'];
+export const HV_IDS = ['0', 'a', 'b', 'c'];
+const HV_SETS = { a: HEAVY_LOOKS_A, b: HEAVY_LOOKS_B, c: HEAVY_LOOKS_C };
+let finNow = '0', hvNow = '0';
+export const finMode = () => finNow;
+export const hvMode = () => hvNow;
+/** Pick hit 5's finisher option (shown while the look set is 'blink'); false for an unknown id. */
+export function setFin(m) {
+  const id = String(m);
+  if (!FIN_IDS.includes(id)) return false;
+  finNow = id;
+  if (lightsNow === 'blink') setLights('blink');
+  return true;
+}
+/** Pick the heavies' option (shown while the look set is 'blink'); false for an unknown id. */
+export function setHv(m) {
+  const id = String(m);
+  if (!HV_IDS.includes(id)) return false;
+  hvNow = id;
+  if (lightsNow === 'blink') setLights('blink');
+  return true;
+}
+const blinkLights = () => {
+  const L = cutsNow === '0' ? LIGHT_BLINK.slice() : LIGHT_BLINK.map((x, i) => CUT_SETS[cutsNow][i] ?? x);
+  if (finNow !== '0' && FIN_LOOKS[finNow]) L[4] = FIN_LOOKS[finNow];
+  return L;
+};
+const blinkHeavies = () => (hvNow === '0' ? HEAVY_BLINK : HEAVY_BLINK.map((x, i) => HV_SETS[hvNow][i] ?? x));
 /** `?lights=steel` (ADR-234; the owner, 2026-11-25, on the instant cuts: "this all still looks bad",
  *  and a reference film of a one-handed straight sword: "both arm angles, placement, animation etc is
  *  exactly what i want so mirror this"): every attack's poses and arm paths follow that footage, on
@@ -248,7 +282,7 @@ export function setLights(mode) {
   if (!LIGHTS_IDS.includes(mode)) return false;
   const blink = mode === 'blink', steel = mode === 'steel';
   const src = mode === 'old' ? LIGHT_OLD : mode === 'fresh' ? LIGHT_FRESH : blink ? blinkLights() : steel ? LIGHT_STEEL : null;
-  const hv = blink ? HEAVY_BLINK : steel ? HEAVY_STEEL : null;
+  const hv = blink ? blinkHeavies() : steel ? HEAVY_STEEL : null;
   const sp = blink ? SPECIAL_BLINK : steel ? SPECIAL_STEEL : null;
   LIGHT.forEach((L, i) => wear(L, LIGHT_NEW[i], src ? src[i] : null));
   HEAVY.forEach((H, i) => wear(H, HEAVY_NEW[i], hv ? hv[i] : null));
@@ -396,6 +430,10 @@ const SPECIAL_NEW = Object.fromEntries(Object.keys(SPECIAL_DEFS).map((k) => [k, 
   const q = sp ? sp.get('lights') : null;
   const c = sp ? sp.get('cuts') : null;
   if (c && CUTS_IDS.includes(c)) cutsNow = c;
+  const f = sp ? sp.get('fin') : null;
+  if (f && FIN_IDS.includes(f)) finNow = f;
+  const h = sp ? sp.get('hv') : null;
+  if (h && HV_IDS.includes(h)) hvNow = h;
   if (q === 'old' || q === 'fresh' || q === 'blink' || q === 'steel') setLights(q);
 }
 

@@ -6388,7 +6388,7 @@ async function scenarioHeroLife() {
       if (C.line === 'point') continue; // a thrust has no plane
       // (the instant cuts, ?lights=blink: the blade is at the coil, then across, then at the finish; it does not
       // whip through a diagonal, and its line is measured on the blade's own path by `blinkslash`)
-      if (/^(blink|last|steel|cut[A-D])[A-Z0-9]/.test(name)) continue; // (lastHits.js: the last hit's strokes; the steel set follows a reference, its own scenarios: steel*)
+      if (/^(blink|last|steel|cut[A-D]|fin|hv[A-C])[A-Z0-9]/.test(name)) continue; // (lastHits.js: the last hit's strokes; the steel set follows a reference, its own scenarios: steel*)
       const ks = C.keys.filter((k) => Array.isArray(k.a) && k.u > 1.001 && k.u <= 2.001);
       const steep = Math.max(...ks.map((k) => Math.abs(k.a[1])));
       // the key where the blade is nearest to pointing ahead: its elevation is the cut's height there
@@ -15917,6 +15917,46 @@ async function scenarioCutsD() {
   return G;
 }
 
+// ================================================================== `blinkfin`: hit 5 as one finisher, options a-c (blinkFinish.js)
+// ?lights=blink (ADR-237 / ADR-238). Filled by its author.
+async function scenarioBlinkFin() {
+  out('\n== scenario BLINKFIN (hit 5 as one finisher, options a-c (blinkFinish.js)) ==');
+  const CB = await imp('src/entities/player/combat.js');
+  const G = build();
+  assert(CB.FIN_IDS.length === 4 && CB.HV_IDS.length === 4, 'the options are registered');
+  return G;
+}
+
+// ================================================================== `blinkhva`: the heavies, option a (heavyOptA.js)
+// ?lights=blink (ADR-237 / ADR-238). Filled by its author.
+async function scenarioBlinkHvA() {
+  out('\n== scenario BLINKHVA (the heavies, option a (heavyOptA.js)) ==');
+  const CB = await imp('src/entities/player/combat.js');
+  const G = build();
+  assert(CB.FIN_IDS.length === 4 && CB.HV_IDS.length === 4, 'the options are registered');
+  return G;
+}
+
+// ================================================================== `blinkhvb`: the heavies, option b (heavyOptB.js)
+// ?lights=blink (ADR-237 / ADR-238). Filled by its author.
+async function scenarioBlinkHvB() {
+  out('\n== scenario BLINKHVB (the heavies, option b (heavyOptB.js)) ==');
+  const CB = await imp('src/entities/player/combat.js');
+  const G = build();
+  assert(CB.FIN_IDS.length === 4 && CB.HV_IDS.length === 4, 'the options are registered');
+  return G;
+}
+
+// ================================================================== `blinkhvc`: the heavies, option c (heavyOptC.js)
+// ?lights=blink (ADR-237 / ADR-238). Filled by its author.
+async function scenarioBlinkHvC() {
+  out('\n== scenario BLINKHVC (the heavies, option c (heavyOptC.js)) ==');
+  const CB = await imp('src/entities/player/combat.js');
+  const G = build();
+  assert(CB.FIN_IDS.length === 4 && CB.HV_IDS.length === 4, 'the options are registered');
+  return G;
+}
+
 // ================================================================== `blinklast`: the instant chain's last hit: a stronger light stroke, a different one each time (lastHits.js)
 // The owner (2026-11-25): "make the last 5th attack just be a more stronger light attack but have it always be
 // a different stroke to make it look dynamic and random". Five one-handed strokes on five lines; the animator
@@ -19055,6 +19095,10 @@ const SCENARIOS = {
   cutsb: scenarioCutsB,
   cutsc: scenarioCutsC,
   cutsd: scenarioCutsD,
+  blinkfin: scenarioBlinkFin,
+  blinkhva: scenarioBlinkHvA,
+  blinkhvb: scenarioBlinkHvB,
+  blinkhvc: scenarioBlinkHvC,
   blinksolve: scenarioBlinkSolve,
   armaudit: scenarioArmAudit,
   herohand: pinAdr186(scenarioHeroHand),

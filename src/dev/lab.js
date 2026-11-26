@@ -22,7 +22,7 @@ import { sfxMode, setSfxMode, chainMode, setChainMode, CHAIN_MODES } from '../au
 import { PARRY_CHAIN } from '../audio/parryChain.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { MYSTIC_IDS, MYSTIC_NAMES, mysticMode, setMystic } from '../entities/player/swordMystic.js';
-import { LIGHTS_IDS, LIGHTS_NAMES, lightsMode, setLights, CUTS_IDS, CUTS_NAMES, cutsMode, setCuts } from '../entities/player/combat.js';
+import { LIGHTS_IDS, LIGHTS_NAMES, lightsMode, setLights, CUTS_IDS, CUTS_NAMES, cutsMode, setCuts, FIN_IDS, finMode, setFin, HV_IDS, hvMode, setHv } from '../entities/player/combat.js';
 import { ARC_IDS, ARC_K, arcsMode, setArcs } from '../entities/player/swings.js';
 import { IDLES_IDS, IDLES_NAMES, idlesMode, setIdles, EASE_RESTS, FIGHT_RESTS, EASE_HABITS, EASE_TRICKS, EASE_REF_EXTRA, FIGHT_ACTS } from '../entities/player/idles.js';
 import { GUARD_IDS, GUARD_NAMES, guardMode, setGuard } from '../entities/player/refStance.js';
@@ -1456,6 +1456,25 @@ export class Lab {
       b.title = `?lights=blink&cuts=${m}`;
       return { m, el: b };
     });
+    // hit 5's finisher options and the heavies' options under the instant look (combat.js setFin / setHv), live
+    for (const [lbl, ids, set, key, tip] of [
+      ['fin', FIN_IDS, setFin, 'finBtns', "hit 5 of the instant chain: blink (its five strokes at random) or one finisher a / b / c (?fin=)"],
+      ['heavy', HV_IDS, setHv, 'hvBtns', "the instant heavies: blink's, or option a / b / c (?hv=)"],
+    ]) {
+      const r = el('div', 'lab-row', null, body);
+      el('span', 'lab-lbl', lbl, r).title = tip;
+      const g = el('div', 'lab-grid', null, r);
+      g.style.flex = '1';
+      this.ui[key] = ids.map((m) => {
+        const b = button(g, m === '0' ? 'blink' : m, () => {
+          set(m);
+          if (lightsMode() !== 'blink') setLights('blink');
+          this._syncCutBtns();
+        });
+        b.title = `?lights=blink&${lbl === 'fin' ? 'fin' : 'hv'}=${m}`;
+        return { m, el: b };
+      });
+    }
     // the bigger-arc strengths (swings.js ARCS, ?arcs=a|b|c: a prototype for the owner to pick from), live
     const arr = el('div', 'lab-row', null, body);
     el('span', 'lab-lbl', 'arcs', arr).title = 'the chain cuts swing further round him: off (today), a x1.2, b x1.4, c x1.6 (?arcs=)';
@@ -1581,6 +1600,8 @@ export class Lab {
     for (const { m, el: b } of this.ui.mysticBtns ?? []) setClass(b, 'on', mysticMode() === m);
     for (const { m, el: b } of this.ui.lightsBtns ?? []) setClass(b, 'on', lightsMode() === m);
     for (const { m, el: b } of this.ui.cutsBtns ?? []) setClass(b, 'on', cutsMode() === m);
+    for (const { m, el: b } of this.ui.finBtns ?? []) setClass(b, 'on', finMode() === m);
+    for (const { m, el: b } of this.ui.hvBtns ?? []) setClass(b, 'on', hvMode() === m);
     for (const { m, el: b } of this.ui.arcsBtns ?? []) setClass(b, 'on', arcsMode() === m);
     if (this.ui.perfectBtn) this.ui.perfectBtn.textContent = `perfect: ${perfectMode()}`;
     if (this.ui.parryFxBtn) this.ui.parryFxBtn.textContent = `parryFx ${parryFxMode()}`;

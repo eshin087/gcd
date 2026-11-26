@@ -116,6 +116,10 @@ import { CUTS_A } from './cutsA.js';
 import { CUTS_B } from './cutsB.js';
 import { CUTS_C } from './cutsC.js';
 import { CUTS_D } from './cutsD.js';
+import { FINISH_BLINK } from './blinkFinish.js';
+import { HEAVY_OPT_A } from './heavyOptA.js';
+import { HEAVY_OPT_B } from './heavyOptB.js';
+import { HEAVY_OPT_C } from './heavyOptC.js';
 
 /** The free hand's places (a key's `fh`; the key's own fields win): where it is (`l`), its elbow
  *  (`lp`), where the sword fingers point (`ld`), the palm (`pn`) and the sword wrist (`lk`). */
@@ -669,4 +673,9 @@ export const SWINGS = {
   ...CUTS_B,
   ...CUTS_C,
   ...CUTS_D,
+  // ---- hit 5's finisher options and the heavies' options (?fin=, ?hv=; ADR-237, ADR-238) ----
+  ...FINISH_BLINK,
+  ...HEAVY_OPT_A,
+  ...HEAVY_OPT_B,
+  ...HEAVY_OPT_C,
 };
