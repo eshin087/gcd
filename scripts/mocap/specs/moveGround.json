@@ -4430,507 +4430,696 @@
    "src": "move 3:09-3:39",
    "kind": "oneshot",
    "fps": 30,
-   "search": 0.4,
    "takes": [
     {
-     "t0": "3:10.70",
-     "t1": "3:12.10",
-     "view": "right"
-    },
-    {
-     "t0": "3:27.90",
-     "t1": "3:29.30",
-     "view": "back"
-    },
-    {
-     "t0": "3:35.00",
-     "t1": "3:36.40",
-     "view": "front"
+     "t0": "3:11.00",
+     "t1": "3:11.80",
+     "view": "right",
+     "name": "side"
     }
    ],
    "from": "idle",
    "to": "sprint",
+   "despike": false,
+   "foot_ease": 20,
+   "root": {
+    "smooth": 0.001
+   },
+   "lift_h": 0.04,
+   "note": "typed in 3D from the footage: the weight thrown forward, three driving steps, joining the sprint loop at its right plant",
    "pose_keys": [
-    {
-     "f": 9,
-     "joint": "upperArmR",
-     "dir": [
-      -0.287,
-      -0.928,
-      0.239
-     ],
-     "blend": 3
-    },
-    {
-     "f": 9,
-     "joint": "foreArmR",
-     "dir": [
-      0.243,
-      -0.489,
-      0.838
-     ],
-     "blend": 3
-    },
-    {
-     "f": 9,
-     "joint": "upperArmL",
-     "dir": [
-      0.287,
-      -0.337,
-      -0.897
-     ],
-     "blend": 3
-    },
-    {
-     "f": 9,
-     "joint": "foreArmL",
-     "dir": [
-      -0.243,
-      -0.91,
-      0.336
-     ],
-     "blend": 3
-    },
-    {
-     "f": 12,
-     "joint": "upperArmR",
-     "dir": [
-      -0.287,
-      -0.942,
-      -0.173
-     ],
-     "blend": 3
-    },
-    {
-     "f": 12,
-     "joint": "foreArmR",
-     "dir": [
-      0.243,
-      -0.649,
-      0.721
-     ],
-     "blend": 3
-    },
-    {
-     "f": 12,
-     "joint": "upperArmL",
-     "dir": [
-      0.287,
-      -0.682,
-      -0.672
-     ],
-     "blend": 3
-    },
-    {
-     "f": 12,
-     "joint": "foreArmL",
-     "dir": [
-      -0.243,
-      -0.823,
-      0.514
-     ],
-     "blend": 3
-    },
-    {
-     "f": 15,
-     "joint": "upperArmR",
-     "dir": [
-      -0.287,
-      -0.606,
-      -0.742
-     ],
-     "blend": 3
-    },
-    {
-     "f": 15,
-     "joint": "foreArmR",
-     "dir": [
-      0.243,
-      -0.848,
-      0.471
-     ],
-     "blend": 3
-    },
-    {
-     "f": 15,
-     "joint": "upperArmL",
-     "dir": [
-      0.287,
-      -0.955,
-      -0.071
-     ],
-     "blend": 3
-    },
-    {
-     "f": 15,
-     "joint": "foreArmL",
-     "dir": [
-      -0.243,
-      -0.611,
-      0.753
-     ],
-     "blend": 3
-    },
-    {
-     "f": 18,
-     "joint": "upperArmR",
-     "dir": [
-      -0.287,
-      -0.328,
-      -0.9
-     ],
-     "blend": 3
-    },
-    {
-     "f": 18,
-     "joint": "foreArmR",
-     "dir": [
-      0.243,
-      -0.912,
-      0.332
-     ],
-     "blend": 3
-    },
-    {
-     "f": 18,
-     "joint": "upperArmL",
-     "dir": [
-      0.287,
-      -0.925,
-      0.248
-     ],
-     "blend": 3
-    },
-    {
-     "f": 18,
-     "joint": "foreArmL",
-     "dir": [
-      -0.243,
-      -0.485,
-      0.84
-     ],
-     "blend": 3
-    },
-    {
-     "f": 21,
-     "joint": "upperArmR",
-     "dir": [
-      -0.287,
-      -0.606,
-      -0.742
-     ],
-     "blend": 3
-    },
-    {
-     "f": 21,
-     "joint": "foreArmR",
-     "dir": [
-      0.243,
-      -0.848,
-      0.471
-     ],
-     "blend": 3
-    },
-    {
-     "f": 21,
-     "joint": "upperArmL",
-     "dir": [
-      0.287,
-      -0.955,
-      -0.071
-     ],
-     "blend": 3
-    },
-    {
-     "f": 21,
-     "joint": "foreArmL",
-     "dir": [
-      -0.243,
-      -0.611,
-      0.753
-     ],
-     "blend": 3
-    },
-    {
-     "f": 24,
-     "joint": "upperArmR",
-     "dir": [
-      -0.287,
-      -0.942,
-      -0.173
-     ],
-     "blend": 3
-    },
-    {
-     "f": 24,
-     "joint": "foreArmR",
-     "dir": [
-      0.243,
-      -0.649,
-      0.721
-     ],
-     "blend": 3
-    },
-    {
-     "f": 24,
-     "joint": "upperArmL",
-     "dir": [
-      0.287,
-      -0.682,
-      -0.672
-     ],
-     "blend": 3
-    },
-    {
-     "f": 24,
-     "joint": "foreArmL",
-     "dir": [
-      -0.243,
-      -0.823,
-      0.514
-     ],
-     "blend": 3
-    },
-    {
-     "f": 27,
-     "joint": "upperArmR",
-     "dir": [
-      -0.287,
-      -0.928,
-      0.239
-     ],
-     "blend": 3
-    },
-    {
-     "f": 27,
-     "joint": "foreArmR",
-     "dir": [
-      0.243,
-      -0.489,
-      0.838
-     ],
-     "blend": 3
-    },
-    {
-     "f": 27,
-     "joint": "upperArmL",
-     "dir": [
-      0.287,
-      -0.337,
-      -0.897
-     ],
-     "blend": 3
-    },
-    {
-     "f": 27,
-     "joint": "foreArmL",
-     "dir": [
-      -0.243,
-      -0.91,
-      0.336
-     ],
-     "blend": 3
-    },
-    {
-     "f": 30,
-     "joint": "upperArmR",
-     "dir": [
-      -0.287,
-      -0.958,
-      0.021
-     ],
-     "blend": 3
-    },
-    {
-     "f": 30,
-     "joint": "foreArmR",
-     "dir": [
-      0.243,
-      -0.576,
-      0.78
-     ],
-     "blend": 3
-    },
-    {
-     "f": 30,
-     "joint": "upperArmL",
-     "dir": [
-      0.287,
-      -0.532,
-      -0.797
-     ],
-     "blend": 3
-    },
-    {
-     "f": 30,
-     "joint": "foreArmL",
-     "dir": [
-      -0.243,
-      -0.869,
-      0.432
-     ],
-     "blend": 3
-    },
-    {
-     "f": 33,
-     "joint": "upperArmR",
-     "dir": [
-      -0.287,
-      -0.755,
-      -0.589
-     ],
-     "blend": 3
-    },
-    {
-     "f": 33,
-     "joint": "foreArmR",
-     "dir": [
-      0.243,
-      -0.794,
-      0.558
-     ],
-     "blend": 3
-    },
-    {
-     "f": 33,
-     "joint": "upperArmL",
-     "dir": [
-      0.287,
-      -0.916,
-      -0.281
-     ],
-     "blend": 3
-    },
-    {
-     "f": 33,
-     "joint": "foreArmL",
-     "dir": [
-      -0.243,
-      -0.687,
-      0.685
-     ],
-     "blend": 3
-    },
-    {
-     "f": 36,
-     "joint": "upperArmR",
-     "dir": [
-      -0.287,
-      -0.363,
-      -0.886
-     ],
-     "blend": 3
-    },
-    {
-     "f": 36,
-     "joint": "foreArmR",
-     "dir": [
-      0.243,
-      -0.905,
-      0.349
-     ],
-     "blend": 3
-    },
-    {
-     "f": 36,
-     "joint": "upperArmL",
-     "dir": [
-      0.287,
-      -0.934,
-      0.211
-     ],
-     "blend": 3
-    },
-    {
-     "f": 36,
-     "joint": "foreArmL",
-     "dir": [
-      -0.243,
-      -0.501,
-      0.831
-     ],
-     "blend": 3
-    },
-    {
-     "f": 39,
-     "joint": "upperArmR",
-     "dir": [
-      -0.287,
-      -0.464,
-      -0.838
-     ],
-     "blend": 3
-    },
-    {
-     "f": 39,
-     "joint": "foreArmR",
-     "dir": [
-      0.243,
-      -0.885,
-      0.398
-     ],
-     "blend": 3
-    },
-    {
-     "f": 39,
-     "joint": "upperArmL",
-     "dir": [
-      0.287,
-      -0.953,
-      0.101
-     ],
-     "blend": 3
-    },
-    {
-     "f": 39,
-     "joint": "foreArmL",
-     "dir": [
-      -0.243,
-      -0.546,
-      0.802
-     ],
-     "blend": 3
-    },
-    {
-     "f": 42,
-     "joint": "upperArmR",
-     "dir": [
-      -0.287,
-      -0.875,
-      -0.389
-     ],
-     "blend": 3
-    },
-    {
-     "f": 42,
-     "joint": "foreArmR",
-     "dir": [
-      0.243,
-      -0.725,
-      0.645
-     ],
-     "blend": 3
-    },
-    {
-     "f": 42,
-     "joint": "upperArmL",
-     "dir": [
-      0.287,
-      -0.821,
-      -0.493
-     ],
-     "blend": 3
-    },
-    {
-     "f": 42,
-     "joint": "foreArmL",
-     "dir": [
-      -0.243,
-      -0.761,
-      0.602
-     ],
-     "blend": 3
-    }
+    {"f": 0, "joint": "hips", "euler": [-3.71, -13.77, -6.28], "blend": 0, "l2": 1},
+    {"f": 0, "joint": "spine", "euler": [-0.01, -1.76, -2.07], "blend": 0, "l2": 1},
+    {"f": 0, "joint": "chest", "euler": [-0.01, -1.76, -2.07], "blend": 0, "l2": 1},
+    {"f": 0, "joint": "neck", "euler": [-2.03, 0.28, 11.74], "blend": 0, "l2": 1},
+    {"f": 0, "joint": "head", "euler": [-2.03, 0.28, 11.74], "blend": 0, "l2": 1},
+    {"f": 0, "joint": "clavL", "euler": [-0.0, 3.76, -0.0], "blend": 0, "l2": 1},
+    {"f": 0, "joint": "upperArmL", "euler": [22.81, -18.91, -60.04], "blend": 0, "l2": 1},
+    {"f": 0, "joint": "foreArmL", "euler": [-0.0, -16.19, -0.0], "blend": 0, "l2": 1},
+    {"f": 0, "joint": "handL", "euler": [0.0, -0.0, -12.0], "blend": 0, "l2": 1},
+    {"f": 0, "joint": "clavR", "euler": [0.0, -0.23, 0.0], "blend": 0, "l2": 1},
+    {"f": 0, "joint": "upperArmR", "euler": [0.16, -15.71, 87.83], "blend": 0, "l2": 1},
+    {"f": 0, "joint": "foreArmR", "euler": [0.0, 22.89, -0.0], "blend": 0, "l2": 1},
+    {"f": 0, "joint": "handR", "euler": [63.56, 37.63, 0.0], "blend": 0, "l2": 1},
+    {"f": 0, "joint": "thighL", "euler": [-10.72, 28.23, 24.47], "blend": 0, "l2": 1},
+    {"f": 0, "joint": "shinL", "euler": [21.14, -0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 0, "joint": "footL", "euler": [-12.81, -8.32, -12.73], "blend": 0, "l2": 1},
+    {"f": 0, "joint": "toeL", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 0, "joint": "thighR", "euler": [0.68, -20.16, -6.2], "blend": 0, "l2": 1},
+    {"f": 0, "joint": "shinR", "euler": [8.88, -0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 0, "joint": "footR", "euler": [-5.73, 8.39, 10.34], "blend": 0, "l2": 1},
+    {"f": 0, "joint": "toeR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 0, "joint": "weaponR", "euler": [0.0, -0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 1, "joint": "hips", "euler": [-3.71, -13.77, -6.28], "blend": 0, "l2": 1},
+    {"f": 1, "joint": "spine", "euler": [-0.01, -1.76, -2.07], "blend": 0, "l2": 1},
+    {"f": 1, "joint": "chest", "euler": [-0.01, -1.76, -2.07], "blend": 0, "l2": 1},
+    {"f": 1, "joint": "neck", "euler": [-2.03, 0.28, 11.74], "blend": 0, "l2": 1},
+    {"f": 1, "joint": "head", "euler": [-2.03, 0.28, 11.74], "blend": 0, "l2": 1},
+    {"f": 1, "joint": "clavL", "euler": [-0.0, 3.76, -0.0], "blend": 0, "l2": 1},
+    {"f": 1, "joint": "upperArmL", "euler": [22.81, -18.91, -60.04], "blend": 0, "l2": 1},
+    {"f": 1, "joint": "foreArmL", "euler": [-0.0, -16.19, -0.0], "blend": 0, "l2": 1},
+    {"f": 1, "joint": "handL", "euler": [0.0, -0.0, -12.0], "blend": 0, "l2": 1},
+    {"f": 1, "joint": "clavR", "euler": [0.0, -0.23, 0.0], "blend": 0, "l2": 1},
+    {"f": 1, "joint": "upperArmR", "euler": [0.16, -15.71, 87.83], "blend": 0, "l2": 1},
+    {"f": 1, "joint": "foreArmR", "euler": [0.0, 22.89, -0.0], "blend": 0, "l2": 1},
+    {"f": 1, "joint": "handR", "euler": [63.56, 37.63, 0.0], "blend": 0, "l2": 1},
+    {"f": 1, "joint": "thighL", "euler": [-10.72, 28.23, 24.47], "blend": 0, "l2": 1},
+    {"f": 1, "joint": "shinL", "euler": [21.14, -0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 1, "joint": "footL", "euler": [-12.81, -8.32, -12.73], "blend": 0, "l2": 1},
+    {"f": 1, "joint": "toeL", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 1, "joint": "thighR", "euler": [0.68, -20.16, -6.2], "blend": 0, "l2": 1},
+    {"f": 1, "joint": "shinR", "euler": [8.88, -0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 1, "joint": "footR", "euler": [-5.73, 8.39, 10.34], "blend": 0, "l2": 1},
+    {"f": 1, "joint": "toeR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 1, "joint": "weaponR", "euler": [0.0, -0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 2, "joint": "hips", "euler": [-3.71, -13.77, -6.28], "blend": 0, "l2": 1},
+    {"f": 2, "joint": "spine", "euler": [-0.01, -1.76, -2.07], "blend": 0, "l2": 1},
+    {"f": 2, "joint": "chest", "euler": [-0.01, -1.76, -2.07], "blend": 0, "l2": 1},
+    {"f": 2, "joint": "neck", "euler": [-2.03, 0.28, 11.74], "blend": 0, "l2": 1},
+    {"f": 2, "joint": "head", "euler": [-2.03, 0.28, 11.74], "blend": 0, "l2": 1},
+    {"f": 2, "joint": "clavL", "euler": [-0.0, 3.76, -0.0], "blend": 0, "l2": 1},
+    {"f": 2, "joint": "upperArmL", "euler": [22.81, -18.91, -60.04], "blend": 0, "l2": 1},
+    {"f": 2, "joint": "foreArmL", "euler": [-0.0, -16.19, -0.0], "blend": 0, "l2": 1},
+    {"f": 2, "joint": "handL", "euler": [0.0, -0.0, -12.0], "blend": 0, "l2": 1},
+    {"f": 2, "joint": "clavR", "euler": [0.0, -0.23, 0.0], "blend": 0, "l2": 1},
+    {"f": 2, "joint": "upperArmR", "euler": [0.16, -15.71, 87.83], "blend": 0, "l2": 1},
+    {"f": 2, "joint": "foreArmR", "euler": [0.0, 22.89, -0.0], "blend": 0, "l2": 1},
+    {"f": 2, "joint": "handR", "euler": [63.56, 37.63, 0.0], "blend": 0, "l2": 1},
+    {"f": 2, "joint": "thighL", "euler": [-10.72, 28.23, 24.47], "blend": 0, "l2": 1},
+    {"f": 2, "joint": "shinL", "euler": [21.14, -0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 2, "joint": "footL", "euler": [-12.81, -8.32, -12.73], "blend": 0, "l2": 1},
+    {"f": 2, "joint": "toeL", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 2, "joint": "thighR", "euler": [0.68, -20.16, -6.2], "blend": 0, "l2": 1},
+    {"f": 2, "joint": "shinR", "euler": [8.88, -0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 2, "joint": "footR", "euler": [-5.73, 8.39, 10.34], "blend": 0, "l2": 1},
+    {"f": 2, "joint": "toeR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 2, "joint": "weaponR", "euler": [0.0, -0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 3, "joint": "hips", "euler": [3.04, -8.89, -2.23], "blend": 0, "l2": 1},
+    {"f": 3, "joint": "spine", "euler": [2.13, -1.39, -0.82], "blend": 0, "l2": 1},
+    {"f": 3, "joint": "chest", "euler": [2.13, -1.39, -0.82], "blend": 0, "l2": 1},
+    {"f": 3, "joint": "neck", "euler": [-7.1, 1.22, 5.9], "blend": 0, "l2": 1},
+    {"f": 3, "joint": "head", "euler": [-7.1, 1.22, 5.9], "blend": 0, "l2": 1},
+    {"f": 3, "joint": "clavL", "euler": [0.0, -3.11, 0.0], "blend": 0, "l2": 1},
+    {"f": 3, "joint": "upperArmL", "euler": [-7.09, -5.97, -63.75], "blend": 0, "l2": 1},
+    {"f": 3, "joint": "foreArmL", "euler": [-0.0, -27.14, -0.0], "blend": 0, "l2": 1},
+    {"f": 3, "joint": "handL", "euler": [-0.0, 0.0, -12.0], "blend": 0, "l2": 1},
+    {"f": 3, "joint": "clavR", "euler": [-0.0, 0.44, -0.0], "blend": 0, "l2": 1},
+    {"f": 3, "joint": "upperArmR", "euler": [-1.72, -1.62, 78.95], "blend": 0, "l2": 1},
+    {"f": 3, "joint": "foreArmR", "euler": [0.0, 33.52, 3.77], "blend": 0, "l2": 1},
+    {"f": 3, "joint": "handR", "euler": [42.88, 28.57, -0.0], "blend": 0, "l2": 1},
+    {"f": 3, "joint": "thighL", "euler": [-17.74, 22.8, 20.78], "blend": 0, "l2": 1},
+    {"f": 3, "joint": "shinL", "euler": [26.54, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 3, "joint": "footL", "euler": [-15.59, -8.34, -12.27], "blend": 0, "l2": 1},
+    {"f": 3, "joint": "toeL", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 3, "joint": "thighR", "euler": [-15.55, -17.72, -12.88], "blend": 0, "l2": 1},
+    {"f": 3, "joint": "shinR", "euler": [30.16, 0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 3, "joint": "footR", "euler": [-8.87, 10.22, 9.85], "blend": 0, "l2": 1},
+    {"f": 3, "joint": "toeR", "euler": [0.0, -0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 3, "joint": "weaponR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 4, "joint": "hips", "euler": [12.03, -3.91, 0.83], "blend": 0, "l2": 1},
+    {"f": 4, "joint": "spine", "euler": [4.0, -0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 4, "joint": "chest", "euler": [4.0, -0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 4, "joint": "neck", "euler": [-13.0, 2.01, -0.02], "blend": 0, "l2": 1},
+    {"f": 4, "joint": "head", "euler": [-13.0, 2.01, -0.02], "blend": 0, "l2": 1},
+    {"f": 4, "joint": "clavL", "euler": [0.0, -12.59, 0.0], "blend": 0, "l2": 1},
+    {"f": 4, "joint": "upperArmL", "euler": [-39.16, -3.57, -62.03], "blend": 0, "l2": 1},
+    {"f": 4, "joint": "foreArmL", "euler": [-0.0, -39.04, -0.0], "blend": 0, "l2": 1},
+    {"f": 4, "joint": "handL", "euler": [0.0, 0.0, -12.0], "blend": 0, "l2": 1},
+    {"f": 4, "joint": "clavR", "euler": [0.0, -0.63, 0.0], "blend": 0, "l2": 1},
+    {"f": 4, "joint": "upperArmR", "euler": [5.11, 9.51, 71.89], "blend": 0, "l2": 1},
+    {"f": 4, "joint": "foreArmR", "euler": [-0.0, 55.47, 2.0], "blend": 0, "l2": 1},
+    {"f": 4, "joint": "handR", "euler": [26.03, 17.35, 0.0], "blend": 0, "l2": 1},
+    {"f": 4, "joint": "thighL", "euler": [-27.21, 18.24, 17.41], "blend": 0, "l2": 1},
+    {"f": 4, "joint": "shinL", "euler": [32.71, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 4, "joint": "footL", "euler": [-19.74, -8.34, -12.27], "blend": 0, "l2": 1},
+    {"f": 4, "joint": "toeL", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 4, "joint": "thighR", "euler": [-30.56, -11.63, -17.38], "blend": 0, "l2": 1},
+    {"f": 4, "joint": "shinR", "euler": [49.53, -0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 4, "joint": "footR", "euler": [-12.85, 12.23, 9.37], "blend": 0, "l2": 1},
+    {"f": 4, "joint": "toeR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 4, "joint": "weaponR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 5, "joint": "hips", "euler": [16.77, -4.2, 1.27], "blend": 0, "l2": 1},
+    {"f": 5, "joint": "spine", "euler": [3.23, 2.4, -0.95], "blend": 0, "l2": 1},
+    {"f": 5, "joint": "chest", "euler": [3.23, 2.4, -0.95], "blend": 0, "l2": 1},
+    {"f": 5, "joint": "neck", "euler": [-14.58, 1.17, 0.02], "blend": 0, "l2": 1},
+    {"f": 5, "joint": "head", "euler": [-14.58, 1.17, 0.02], "blend": 0, "l2": 1},
+    {"f": 5, "joint": "clavL", "euler": [0.0, -18.34, 0.0], "blend": 0, "l2": 1},
+    {"f": 5, "joint": "upperArmL", "euler": [-50.7, -17.04, -56.77], "blend": 0, "l2": 1},
+    {"f": 5, "joint": "foreArmL", "euler": [0.0, -40.45, 0.0], "blend": 0, "l2": 1},
+    {"f": 5, "joint": "handL", "euler": [0.0, 0.0, -12.0], "blend": 0, "l2": 1},
+    {"f": 5, "joint": "clavR", "euler": [0.0, -5.02, 0.0], "blend": 0, "l2": 1},
+    {"f": 5, "joint": "upperArmR", "euler": [21.01, 16.54, 72.8], "blend": 0, "l2": 1},
+    {"f": 5, "joint": "foreArmR", "euler": [0.0, 70.39, -0.0], "blend": 0, "l2": 1},
+    {"f": 5, "joint": "handR", "euler": [25.54, 15.66, 0.0], "blend": 0, "l2": 1},
+    {"f": 5, "joint": "thighL", "euler": [-30.16, 18.93, 17.84], "blend": 0, "l2": 1},
+    {"f": 5, "joint": "shinL", "euler": [36.81, 0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 5, "joint": "footL", "euler": [-25.71, -8.31, -13.22], "blend": 0, "l2": 1},
+    {"f": 5, "joint": "toeL", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 5, "joint": "thighR", "euler": [-63.14, -5.2, -11.83], "blend": 0, "l2": 1},
+    {"f": 5, "joint": "shinR", "euler": [80.86, -0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 5, "joint": "footR", "euler": [-25.08, 9.15, 2.92], "blend": 0, "l2": 1},
+    {"f": 5, "joint": "toeR", "euler": [0.0, -0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 5, "joint": "weaponR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 6, "joint": "hips", "euler": [20.55, -4.89, 1.83], "blend": 0, "l2": 1},
+    {"f": 6, "joint": "spine", "euler": [2.46, 4.58, -2.05], "blend": 0, "l2": 1},
+    {"f": 6, "joint": "chest", "euler": [2.46, 4.58, -2.05], "blend": 0, "l2": 1},
+    {"f": 6, "joint": "neck", "euler": [-15.66, 0.58, 0.14], "blend": 0, "l2": 1},
+    {"f": 6, "joint": "head", "euler": [-15.66, 0.58, 0.14], "blend": 0, "l2": 1},
+    {"f": 6, "joint": "clavL", "euler": [0.0, -22.11, 0.0], "blend": 0, "l2": 1},
+    {"f": 6, "joint": "upperArmL", "euler": [-55.14, -29.0, -52.46], "blend": 0, "l2": 1},
+    {"f": 6, "joint": "foreArmL", "euler": [0.0, -41.36, 0.0], "blend": 0, "l2": 1},
+    {"f": 6, "joint": "handL", "euler": [-0.0, -0.0, -12.0], "blend": 0, "l2": 1},
+    {"f": 6, "joint": "clavR", "euler": [0.0, -5.16, 0.0], "blend": 0, "l2": 1},
+    {"f": 6, "joint": "upperArmR", "euler": [30.1, 16.57, 76.43], "blend": 0, "l2": 1},
+    {"f": 6, "joint": "foreArmR", "euler": [0.0, 78.36, -0.0], "blend": 0, "l2": 1},
+    {"f": 6, "joint": "handR", "euler": [28.74, 17.36, 0.0], "blend": 0, "l2": 1},
+    {"f": 6, "joint": "thighL", "euler": [-27.41, 21.44, 17.14], "blend": 0, "l2": 1},
+    {"f": 6, "joint": "shinL", "euler": [35.94, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 6, "joint": "footL", "euler": [-31.42, -8.26, -14.66], "blend": 0, "l2": 1},
+    {"f": 6, "joint": "toeL", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 6, "joint": "thighR", "euler": [-65.75, -8.85, -4.32], "blend": 0, "l2": 1},
+    {"f": 6, "joint": "shinR", "euler": [47.25, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 6, "joint": "footR", "euler": [-7.14, 8.77, -2.49], "blend": 0, "l2": 1},
+    {"f": 6, "joint": "toeR", "euler": [0.0, -0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 6, "joint": "weaponR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 7, "joint": "hips", "euler": [22.11, -5.56, 2.25], "blend": 0, "l2": 1},
+    {"f": 7, "joint": "spine", "euler": [2.16, 6.34, -2.97], "blend": 0, "l2": 1},
+    {"f": 7, "joint": "chest", "euler": [2.16, 6.34, -2.97], "blend": 0, "l2": 1},
+    {"f": 7, "joint": "neck", "euler": [-16.09, 0.3, 0.32], "blend": 0, "l2": 1},
+    {"f": 7, "joint": "head", "euler": [-16.09, 0.3, 0.32], "blend": 0, "l2": 1},
+    {"f": 7, "joint": "clavL", "euler": [0.0, -21.01, 0.0], "blend": 0, "l2": 1},
+    {"f": 7, "joint": "upperArmL", "euler": [-47.36, -33.33, -51.76], "blend": 0, "l2": 1},
+    {"f": 7, "joint": "foreArmL", "euler": [-0.0, -44.22, -0.0], "blend": 0, "l2": 1},
+    {"f": 7, "joint": "handL", "euler": [0.0, -0.0, -12.0], "blend": 0, "l2": 1},
+    {"f": 7, "joint": "clavR", "euler": [0.0, -5.16, 0.0], "blend": 0, "l2": 1},
+    {"f": 7, "joint": "upperArmR", "euler": [23.69, 15.32, 76.82], "blend": 0, "l2": 1},
+    {"f": 7, "joint": "foreArmR", "euler": [-0.0, 78.99, 0.0], "blend": 0, "l2": 1},
+    {"f": 7, "joint": "handR", "euler": [23.17, 15.78, -0.0], "blend": 0, "l2": 1},
+    {"f": 7, "joint": "thighL", "euler": [-17.02, 25.26, 14.19], "blend": 0, "l2": 1},
+    {"f": 7, "joint": "shinL", "euler": [24.91, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 7, "joint": "footL", "euler": [-32.0, -8.19, -16.44], "blend": 0, "l2": 1},
+    {"f": 7, "joint": "toeL", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 7, "joint": "thighR", "euler": [-58.67, -9.11, -2.02], "blend": 0, "l2": 1},
+    {"f": 7, "joint": "shinR", "euler": [34.12, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 7, "joint": "footR", "euler": [-5.41, 8.96, -2.61], "blend": 0, "l2": 1},
+    {"f": 7, "joint": "toeR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 7, "joint": "weaponR", "euler": [0.0, -0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 8, "joint": "hips", "euler": [21.82, -6.16, 2.46], "blend": 0, "l2": 1},
+    {"f": 8, "joint": "spine", "euler": [2.28, 7.83, -3.64], "blend": 0, "l2": 1},
+    {"f": 8, "joint": "chest", "euler": [2.28, 7.83, -3.64], "blend": 0, "l2": 1},
+    {"f": 8, "joint": "neck", "euler": [-16.05, 0.19, 0.55], "blend": 0, "l2": 1},
+    {"f": 8, "joint": "head", "euler": [-16.05, 0.19, 0.55], "blend": 0, "l2": 1},
+    {"f": 8, "joint": "clavL", "euler": [-0.0, -14.14, -0.0], "blend": 0, "l2": 1},
+    {"f": 8, "joint": "upperArmL", "euler": [-23.95, -33.73, -52.98], "blend": 0, "l2": 1},
+    {"f": 8, "joint": "foreArmL", "euler": [-0.0, -56.45, -0.0], "blend": 0, "l2": 1},
+    {"f": 8, "joint": "handL", "euler": [0.0, 0.0, -12.0], "blend": 0, "l2": 1},
+    {"f": 8, "joint": "clavR", "euler": [0.0, 0.48, -0.0], "blend": 0, "l2": 1},
+    {"f": 8, "joint": "upperArmR", "euler": [2.24, 11.2, 71.2], "blend": 0, "l2": 1},
+    {"f": 8, "joint": "foreArmR", "euler": [0.0, 72.98, -0.0], "blend": 0, "l2": 1},
+    {"f": 8, "joint": "handR", "euler": [7.36, 6.12, 0.0], "blend": 0, "l2": 1},
+    {"f": 8, "joint": "thighL", "euler": [-10.43, 27.56, 13.41], "blend": 0, "l2": 1},
+    {"f": 8, "joint": "shinL", "euler": [22.62, -0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 8, "joint": "footL", "euler": [-6.25, -16.23, -12.19], "blend": 0, "l2": 1},
+    {"f": 8, "joint": "toeL", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 8, "joint": "thighR", "euler": [-57.12, -7.71, -2.77], "blend": 0, "l2": 1},
+    {"f": 8, "joint": "shinR", "euler": [43.71, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 8, "joint": "footR", "euler": [-8.29, 8.52, -2.22], "blend": 0, "l2": 1},
+    {"f": 8, "joint": "toeR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 8, "joint": "weaponR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 9, "joint": "hips", "euler": [21.16, -6.8, 2.62], "blend": 0, "l2": 1},
+    {"f": 9, "joint": "spine", "euler": [2.44, 9.23, -4.18], "blend": 0, "l2": 1},
+    {"f": 9, "joint": "chest", "euler": [2.44, 9.23, -4.18], "blend": 0, "l2": 1},
+    {"f": 9, "joint": "neck", "euler": [-15.88, 0.1, 0.81], "blend": 0, "l2": 1},
+    {"f": 9, "joint": "head", "euler": [-15.88, 0.1, 0.81], "blend": 0, "l2": 1},
+    {"f": 9, "joint": "clavL", "euler": [0.0, -2.43, 0.0], "blend": 0, "l2": 1},
+    {"f": 9, "joint": "upperArmL", "euler": [12.45, -31.56, -54.64], "blend": 0, "l2": 1},
+    {"f": 9, "joint": "foreArmL", "euler": [-0.0, -75.3, 0.0], "blend": 0, "l2": 1},
+    {"f": 9, "joint": "handL", "euler": [-0.0, -0.0, -12.0], "blend": 0, "l2": 1},
+    {"f": 9, "joint": "clavR", "euler": [-0.0, 11.45, -0.0], "blend": 0, "l2": 1},
+    {"f": 9, "joint": "upperArmR", "euler": [-30.69, 11.52, 54.59], "blend": 0, "l2": 1},
+    {"f": 9, "joint": "foreArmR", "euler": [0.0, 53.92, -0.0], "blend": 0, "l2": 1},
+    {"f": 9, "joint": "handR", "euler": [-11.61, -8.18, -0.0], "blend": 0, "l2": 1},
+    {"f": 9, "joint": "thighL", "euler": [-29.46, 20.45, 19.97], "blend": 0, "l2": 1},
+    {"f": 9, "joint": "shinL", "euler": [66.17, 0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 9, "joint": "footL", "euler": [-37.29, -14.2, -12.47], "blend": 0, "l2": 1},
+    {"f": 9, "joint": "toeL", "euler": [0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 9, "joint": "thighR", "euler": [-52.1, -6.52, -3.21], "blend": 0, "l2": 1},
+    {"f": 9, "joint": "shinR", "euler": [48.07, -0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 9, "joint": "footR", "euler": [-13.67, 8.48, -1.12], "blend": 0, "l2": 1},
+    {"f": 9, "joint": "toeR", "euler": [0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 9, "joint": "weaponR", "euler": [0.0, -0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 10, "joint": "hips", "euler": [20.49, -7.31, 2.72], "blend": 0, "l2": 1},
+    {"f": 10, "joint": "spine", "euler": [2.52, 10.36, -4.56], "blend": 0, "l2": 1},
+    {"f": 10, "joint": "chest", "euler": [2.52, 10.36, -4.56], "blend": 0, "l2": 1},
+    {"f": 10, "joint": "neck", "euler": [-15.68, 0.14, 1.08], "blend": 0, "l2": 1},
+    {"f": 10, "joint": "head", "euler": [-15.68, 0.14, 1.08], "blend": 0, "l2": 1},
+    {"f": 10, "joint": "clavL", "euler": [-0.0, 4.73, -0.0], "blend": 0, "l2": 1},
+    {"f": 10, "joint": "upperArmL", "euler": [36.7, -30.35, -52.67], "blend": 0, "l2": 1},
+    {"f": 10, "joint": "foreArmL", "euler": [0.0, -81.22, 0.0], "blend": 0, "l2": 1},
+    {"f": 10, "joint": "handL", "euler": [-0.0, -0.0, -12.0], "blend": 0, "l2": 1},
+    {"f": 10, "joint": "clavR", "euler": [-0.0, 16.9, -0.0], "blend": 0, "l2": 1},
+    {"f": 10, "joint": "upperArmR", "euler": [-50.24, 15.26, 45.0], "blend": 0, "l2": 1},
+    {"f": 10, "joint": "foreArmR", "euler": [-0.0, 42.91, 0.0], "blend": 0, "l2": 1},
+    {"f": 10, "joint": "handR", "euler": [-16.58, -18.85, -0.0], "blend": 0, "l2": 1},
+    {"f": 10, "joint": "thighL", "euler": [-46.63, 14.46, 19.19], "blend": 0, "l2": 1},
+    {"f": 10, "joint": "shinL", "euler": [94.39, -0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 10, "joint": "footL", "euler": [-55.1, -10.94, -8.54], "blend": 0, "l2": 1},
+    {"f": 10, "joint": "toeL", "euler": [0.0, -0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 10, "joint": "thighR", "euler": [-44.78, -5.73, -3.68], "blend": 0, "l2": 1},
+    {"f": 10, "joint": "shinR", "euler": [48.57, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 10, "joint": "footR", "euler": [-18.66, 8.59, 0.15], "blend": 0, "l2": 1},
+    {"f": 10, "joint": "toeR", "euler": [0.0, -0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 10, "joint": "weaponR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 11, "joint": "hips", "euler": [20.18, -7.51, 2.75], "blend": 0, "l2": 1},
+    {"f": 11, "joint": "spine", "euler": [2.44, 11.04, -4.75], "blend": 0, "l2": 1},
+    {"f": 11, "joint": "chest", "euler": [2.44, 11.04, -4.75], "blend": 0, "l2": 1},
+    {"f": 11, "joint": "neck", "euler": [-15.56, 0.38, 1.36], "blend": 0, "l2": 1},
+    {"f": 11, "joint": "head", "euler": [-15.56, 0.38, 1.36], "blend": 0, "l2": 1},
+    {"f": 11, "joint": "clavL", "euler": [-0.0, 5.16, -0.0], "blend": 0, "l2": 1},
+    {"f": 11, "joint": "upperArmL", "euler": [43.7, -28.38, -52.48], "blend": 0, "l2": 1},
+    {"f": 11, "joint": "foreArmL", "euler": [-0.0, -81.53, -0.0], "blend": 0, "l2": 1},
+    {"f": 11, "joint": "handL", "euler": [0.0, -0.0, -12.0], "blend": 0, "l2": 1},
+    {"f": 11, "joint": "clavR", "euler": [-0.0, 17.83, -0.0], "blend": 0, "l2": 1},
+    {"f": 11, "joint": "upperArmR", "euler": [-56.53, 15.41, 43.33], "blend": 0, "l2": 1},
+    {"f": 11, "joint": "foreArmR", "euler": [0.0, 40.67, 0.0], "blend": 0, "l2": 1},
+    {"f": 11, "joint": "handR", "euler": [-17.85, -21.39, 0.0], "blend": 0, "l2": 1},
+    {"f": 11, "joint": "thighL", "euler": [-58.9, 13.53, 17.79], "blend": 0, "l2": 1},
+    {"f": 11, "joint": "shinL", "euler": [98.67, -0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 11, "joint": "footL", "euler": [-49.48, -9.49, -3.76], "blend": 0, "l2": 1},
+    {"f": 11, "joint": "toeL", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 11, "joint": "thighR", "euler": [-35.68, -5.58, -4.31], "blend": 0, "l2": 1},
+    {"f": 11, "joint": "shinR", "euler": [45.25, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 11, "joint": "footR", "euler": [-19.91, 8.86, 1.15], "blend": 0, "l2": 1},
+    {"f": 11, "joint": "toeR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 11, "joint": "weaponR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 12, "joint": "hips", "euler": [20.22, -7.28, 2.63], "blend": 0, "l2": 1},
+    {"f": 12, "joint": "spine", "euler": [2.17, 11.3, -4.66], "blend": 0, "l2": 1},
+    {"f": 12, "joint": "chest", "euler": [2.17, 11.3, -4.66], "blend": 0, "l2": 1},
+    {"f": 12, "joint": "neck", "euler": [-15.49, 0.75, 1.56], "blend": 0, "l2": 1},
+    {"f": 12, "joint": "head", "euler": [-15.49, 0.75, 1.56], "blend": 0, "l2": 1},
+    {"f": 12, "joint": "clavL", "euler": [-0.0, 5.16, -0.0], "blend": 0, "l2": 1},
+    {"f": 12, "joint": "upperArmL", "euler": [44.99, -28.28, -51.89], "blend": 0, "l2": 1},
+    {"f": 12, "joint": "foreArmL", "euler": [0.0, -82.15, 0.0], "blend": 0, "l2": 1},
+    {"f": 12, "joint": "handL", "euler": [0.0, -0.0, -12.0], "blend": 0, "l2": 1},
+    {"f": 12, "joint": "clavR", "euler": [-0.0, 17.22, -0.0], "blend": 0, "l2": 1},
+    {"f": 12, "joint": "upperArmR", "euler": [-54.03, 13.99, 44.28], "blend": 0, "l2": 1},
+    {"f": 12, "joint": "foreArmR", "euler": [0.0, 41.48, -0.0], "blend": 0, "l2": 1},
+    {"f": 12, "joint": "handR", "euler": [-21.2, -17.37, -0.0], "blend": 0, "l2": 1},
+    {"f": 12, "joint": "thighL", "euler": [-71.5, 13.21, 16.82], "blend": 0, "l2": 1},
+    {"f": 12, "joint": "shinL", "euler": [98.11, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 12, "joint": "footL", "euler": [-38.43, -8.49, 1.01], "blend": 0, "l2": 1},
+    {"f": 12, "joint": "toeL", "euler": [-0.0, -0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 12, "joint": "thighR", "euler": [-30.98, -6.82, -5.82], "blend": 0, "l2": 1},
+    {"f": 12, "joint": "shinR", "euler": [48.9, -0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 12, "joint": "footR", "euler": [-8.31, 9.62, -0.38], "blend": 0, "l2": 1},
+    {"f": 12, "joint": "toeR", "euler": [-0.0, 0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 12, "joint": "weaponR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 13, "joint": "hips", "euler": [20.35, -6.64, 2.28], "blend": 0, "l2": 1},
+    {"f": 13, "joint": "spine", "euler": [1.81, 11.33, -4.29], "blend": 0, "l2": 1},
+    {"f": 13, "joint": "chest", "euler": [1.81, 11.33, -4.29], "blend": 0, "l2": 1},
+    {"f": 13, "joint": "neck", "euler": [-15.43, 1.1, 1.6], "blend": 0, "l2": 1},
+    {"f": 13, "joint": "head", "euler": [-15.43, 1.1, 1.6], "blend": 0, "l2": 1},
+    {"f": 13, "joint": "clavL", "euler": [0.0, 5.16, -0.0], "blend": 0, "l2": 1},
+    {"f": 13, "joint": "upperArmL", "euler": [46.04, -28.26, -51.72], "blend": 0, "l2": 1},
+    {"f": 13, "joint": "foreArmL", "euler": [-0.0, -82.75, -0.0], "blend": 0, "l2": 1},
+    {"f": 13, "joint": "handL", "euler": [0.0, 0.0, -12.0], "blend": 0, "l2": 1},
+    {"f": 13, "joint": "clavR", "euler": [0.0, 15.81, -0.0], "blend": 0, "l2": 1},
+    {"f": 13, "joint": "upperArmR", "euler": [-48.11, 11.59, 47.45], "blend": 0, "l2": 1},
+    {"f": 13, "joint": "foreArmR", "euler": [0.0, 43.63, -0.0], "blend": 0, "l2": 1},
+    {"f": 13, "joint": "handR", "euler": [-23.6, -10.34, -0.0], "blend": 0, "l2": 1},
+    {"f": 13, "joint": "thighL", "euler": [-80.55, 13.56, 15.94], "blend": 0, "l2": 1},
+    {"f": 13, "joint": "shinL", "euler": [92.83, -0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 13, "joint": "footL", "euler": [-26.48, -7.93, 4.79], "blend": 0, "l2": 1},
+    {"f": 13, "joint": "toeL", "euler": [0.0, -0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 13, "joint": "thighR", "euler": [-29.05, -8.48, -7.42], "blend": 0, "l2": 1},
+    {"f": 13, "joint": "shinR", "euler": [60.54, -0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 13, "joint": "footR", "euler": [-17.2, 10.53, 0.23], "blend": 0, "l2": 1},
+    {"f": 13, "joint": "toeR", "euler": [-0.0, 0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 13, "joint": "weaponR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 14, "joint": "hips", "euler": [20.55, -5.71, 1.75], "blend": 0, "l2": 1},
+    {"f": 14, "joint": "spine", "euler": [1.39, 11.16, -3.73], "blend": 0, "l2": 1},
+    {"f": 14, "joint": "chest", "euler": [1.39, 11.16, -3.73], "blend": 0, "l2": 1},
+    {"f": 14, "joint": "neck", "euler": [-15.4, 1.4, 1.55], "blend": 0, "l2": 1},
+    {"f": 14, "joint": "head", "euler": [-15.4, 1.4, 1.55], "blend": 0, "l2": 1},
+    {"f": 14, "joint": "clavL", "euler": [-0.0, 5.16, 0.0], "blend": 0, "l2": 1},
+    {"f": 14, "joint": "upperArmL", "euler": [46.77, -28.25, -51.92], "blend": 0, "l2": 1},
+    {"f": 14, "joint": "foreArmL", "euler": [-0.0, -83.31, -0.0], "blend": 0, "l2": 1},
+    {"f": 14, "joint": "handL", "euler": [-0.0, -0.0, -12.0], "blend": 0, "l2": 1},
+    {"f": 14, "joint": "clavR", "euler": [-0.0, 13.54, 0.0], "blend": 0, "l2": 1},
+    {"f": 14, "joint": "upperArmR", "euler": [-39.93, 9.24, 52.58], "blend": 0, "l2": 1},
+    {"f": 14, "joint": "foreArmR", "euler": [0.0, 46.62, -0.0], "blend": 0, "l2": 1},
+    {"f": 14, "joint": "handR", "euler": [-24.37, -1.37, 0.0], "blend": 0, "l2": 1},
+    {"f": 14, "joint": "thighL", "euler": [-84.59, 14.39, 14.59], "blend": 0, "l2": 1},
+    {"f": 14, "joint": "shinL", "euler": [82.82, -0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 14, "joint": "footL", "euler": [-14.8, -7.76, 7.37], "blend": 0, "l2": 1},
+    {"f": 14, "joint": "toeL", "euler": [0.0, -0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 14, "joint": "thighR", "euler": [-23.82, -10.07, -8.66], "blend": 0, "l2": 1},
+    {"f": 14, "joint": "shinR", "euler": [66.76, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 14, "joint": "footR", "euler": [-25.74, 11.88, 1.39], "blend": 0, "l2": 1},
+    {"f": 14, "joint": "toeR", "euler": [-0.0, -0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 14, "joint": "weaponR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 15, "joint": "hips", "euler": [20.81, -4.63, 1.09], "blend": 0, "l2": 1},
+    {"f": 15, "joint": "spine", "euler": [0.97, 10.85, -3.07], "blend": 0, "l2": 1},
+    {"f": 15, "joint": "chest", "euler": [0.97, 10.85, -3.07], "blend": 0, "l2": 1},
+    {"f": 15, "joint": "neck", "euler": [-15.46, 1.65, 1.43], "blend": 0, "l2": 1},
+    {"f": 15, "joint": "head", "euler": [-15.46, 1.65, 1.43], "blend": 0, "l2": 1},
+    {"f": 15, "joint": "clavL", "euler": [-0.0, 5.16, 0.0], "blend": 0, "l2": 1},
+    {"f": 15, "joint": "upperArmL", "euler": [47.13, -28.18, -52.42], "blend": 0, "l2": 1},
+    {"f": 15, "joint": "foreArmL", "euler": [0.0, -83.84, 0.0], "blend": 0, "l2": 1},
+    {"f": 15, "joint": "handL", "euler": [0.0, 0.0, -12.0], "blend": 0, "l2": 1},
+    {"f": 15, "joint": "clavR", "euler": [-0.0, 10.76, 0.0], "blend": 0, "l2": 1},
+    {"f": 15, "joint": "upperArmR", "euler": [-30.82, 7.83, 58.55], "blend": 0, "l2": 1},
+    {"f": 15, "joint": "foreArmR", "euler": [-0.0, 49.88, -0.0], "blend": 0, "l2": 1},
+    {"f": 15, "joint": "handR", "euler": [-23.64, 8.04, -0.0], "blend": 0, "l2": 1},
+    {"f": 15, "joint": "thighL", "euler": [-82.52, 15.68, 12.1], "blend": 0, "l2": 1},
+    {"f": 15, "joint": "shinL", "euler": [67.7, 0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 15, "joint": "footL", "euler": [-4.79, -7.99, 8.8], "blend": 0, "l2": 1},
+    {"f": 15, "joint": "toeL", "euler": [0.0, -0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 15, "joint": "thighR", "euler": [-15.0, -12.76, -9.15], "blend": 0, "l2": 1},
+    {"f": 15, "joint": "shinR", "euler": [65.12, -0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 15, "joint": "footR", "euler": [-31.86, 13.53, 3.09], "blend": 0, "l2": 1},
+    {"f": 15, "joint": "toeR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 15, "joint": "weaponR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 16, "joint": "hips", "euler": [21.14, -3.49, 0.34], "blend": 0, "l2": 1},
+    {"f": 16, "joint": "spine", "euler": [0.57, 10.43, -2.4], "blend": 0, "l2": 1},
+    {"f": 16, "joint": "chest", "euler": [0.57, 10.43, -2.4], "blend": 0, "l2": 1},
+    {"f": 16, "joint": "neck", "euler": [-15.63, 1.83, 1.28], "blend": 0, "l2": 1},
+    {"f": 16, "joint": "head", "euler": [-15.63, 1.83, 1.28], "blend": 0, "l2": 1},
+    {"f": 16, "joint": "clavL", "euler": [-0.0, 5.16, -0.0], "blend": 0, "l2": 1},
+    {"f": 16, "joint": "upperArmL", "euler": [47.05, -27.97, -53.19], "blend": 0, "l2": 1},
+    {"f": 16, "joint": "foreArmL", "euler": [0.0, -84.33, 0.0], "blend": 0, "l2": 1},
+    {"f": 16, "joint": "handL", "euler": [-0.0, 0.0, -12.0], "blend": 0, "l2": 1},
+    {"f": 16, "joint": "clavR", "euler": [-0.0, 8.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 16, "joint": "upperArmR", "euler": [-22.11, 7.55, 63.87], "blend": 0, "l2": 1},
+    {"f": 16, "joint": "foreArmR", "euler": [0.0, 53.22, -0.0], "blend": 0, "l2": 1},
+    {"f": 16, "joint": "handR", "euler": [-22.35, 16.25, 0.0], "blend": 0, "l2": 1},
+    {"f": 16, "joint": "thighL", "euler": [-68.99, 17.18, 7.04], "blend": 0, "l2": 1},
+    {"f": 16, "joint": "shinL", "euler": [39.97, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 16, "joint": "footL", "euler": [1.7, -9.16, 8.0], "blend": 0, "l2": 1},
+    {"f": 16, "joint": "toeL", "euler": [-0.0, 0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 16, "joint": "thighR", "euler": [-1.26, -16.5, -7.38], "blend": 0, "l2": 1},
+    {"f": 16, "joint": "shinR", "euler": [52.23, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 16, "joint": "footR", "euler": [-53.57, 12.41, 9.95], "blend": 0, "l2": 1},
+    {"f": 16, "joint": "toeR", "euler": [-0.0, 0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 16, "joint": "weaponR", "euler": [0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 17, "joint": "hips", "euler": [21.52, -2.42, -0.45], "blend": 0, "l2": 1},
+    {"f": 17, "joint": "spine", "euler": [0.24, 9.95, -1.81], "blend": 0, "l2": 1},
+    {"f": 17, "joint": "chest", "euler": [0.24, 9.95, -1.81], "blend": 0, "l2": 1},
+    {"f": 17, "joint": "neck", "euler": [-15.97, 1.95, 1.16], "blend": 0, "l2": 1},
+    {"f": 17, "joint": "head", "euler": [-15.97, 1.95, 1.16], "blend": 0, "l2": 1},
+    {"f": 17, "joint": "clavL", "euler": [0.0, 5.16, -0.0], "blend": 0, "l2": 1},
+    {"f": 17, "joint": "upperArmL", "euler": [46.47, -27.55, -54.17], "blend": 0, "l2": 1},
+    {"f": 17, "joint": "foreArmL", "euler": [-0.0, -84.78, -0.0], "blend": 0, "l2": 1},
+    {"f": 17, "joint": "handL", "euler": [0.0, 0.0, -12.0], "blend": 0, "l2": 1},
+    {"f": 17, "joint": "clavR", "euler": [0.0, 5.62, -0.0], "blend": 0, "l2": 1},
+    {"f": 17, "joint": "upperArmR", "euler": [-14.68, 8.01, 67.57], "blend": 0, "l2": 1},
+    {"f": 17, "joint": "foreArmR", "euler": [-0.0, 57.08, 0.0], "blend": 0, "l2": 1},
+    {"f": 17, "joint": "handR", "euler": [-21.51, 21.91, -0.0], "blend": 0, "l2": 1},
+    {"f": 17, "joint": "thighL", "euler": [-60.26, 16.53, 4.14], "blend": 0, "l2": 1},
+    {"f": 17, "joint": "shinL", "euler": [30.68, -0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 17, "joint": "footL", "euler": [7.4, -8.44, 8.31], "blend": 0, "l2": 1},
+    {"f": 17, "joint": "toeL", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 17, "joint": "thighR", "euler": [15.67, -19.98, -3.01], "blend": 0, "l2": 1},
+    {"f": 17, "joint": "shinR", "euler": [28.72, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 17, "joint": "footR", "euler": [-66.59, 8.21, 15.79], "blend": 0, "l2": 1},
+    {"f": 17, "joint": "toeR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 17, "joint": "weaponR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 18, "joint": "hips", "euler": [22.21, -1.3, -1.67], "blend": 0, "l2": 1},
+    {"f": 18, "joint": "spine", "euler": [-0.11, 7.65, -0.45], "blend": 0, "l2": 1},
+    {"f": 18, "joint": "chest", "euler": [-0.11, 7.65, -0.45], "blend": 0, "l2": 1},
+    {"f": 18, "joint": "neck", "euler": [-18.13, 0.83, 0.88], "blend": 0, "l2": 1},
+    {"f": 18, "joint": "head", "euler": [-18.13, 0.83, 0.88], "blend": 0, "l2": 1},
+    {"f": 18, "joint": "clavL", "euler": [0.0, 5.16, -0.0], "blend": 0, "l2": 1},
+    {"f": 18, "joint": "upperArmL", "euler": [36.66, -26.58, -61.61], "blend": 0, "l2": 1},
+    {"f": 18, "joint": "foreArmL", "euler": [0.0, -83.88, 0.0], "blend": 0, "l2": 1},
+    {"f": 18, "joint": "handL", "euler": [0.0, -0.0, -12.0], "blend": 0, "l2": 1},
+    {"f": 18, "joint": "clavR", "euler": [0.0, 3.76, -0.0], "blend": 0, "l2": 1},
+    {"f": 18, "joint": "upperArmR", "euler": [-7.28, 12.4, 69.08], "blend": 0, "l2": 1},
+    {"f": 18, "joint": "foreArmR", "euler": [0.0, 62.67, -0.0], "blend": 0, "l2": 1},
+    {"f": 18, "joint": "handR", "euler": [-22.88, 21.6, 0.0], "blend": 0, "l2": 1},
+    {"f": 18, "joint": "thighL", "euler": [-48.11, 13.7, 3.99], "blend": 0, "l2": 1},
+    {"f": 18, "joint": "shinL", "euler": [34.39, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 18, "joint": "footL", "euler": [-9.11, -8.51, 4.35], "blend": 0, "l2": 1},
+    {"f": 18, "joint": "toeL", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 18, "joint": "thighR", "euler": [-2.66, -17.74, -2.8], "blend": 0, "l2": 1},
+    {"f": 18, "joint": "shinR", "euler": [46.38, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 18, "joint": "footR", "euler": [-66.18, 8.39, 10.58], "blend": 0, "l2": 1},
+    {"f": 18, "joint": "toeR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 18, "joint": "weaponR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 19, "joint": "hips", "euler": [21.4, 0.56, -2.92], "blend": 0, "l2": 1},
+    {"f": 19, "joint": "spine", "euler": [-0.1, 2.51, 1.32], "blend": 0, "l2": 1},
+    {"f": 19, "joint": "chest", "euler": [-0.1, 2.51, 1.32], "blend": 0, "l2": 1},
+    {"f": 19, "joint": "neck", "euler": [-18.71, 0.15, 0.58], "blend": 0, "l2": 1},
+    {"f": 19, "joint": "head", "euler": [-18.71, 0.15, 0.58], "blend": 0, "l2": 1},
+    {"f": 19, "joint": "clavL", "euler": [-0.0, 4.28, -0.0], "blend": 0, "l2": 1},
+    {"f": 19, "joint": "upperArmL", "euler": [21.31, -22.11, -70.22], "blend": 0, "l2": 1},
+    {"f": 19, "joint": "foreArmL", "euler": [-0.0, -75.36, -0.0], "blend": 0, "l2": 1},
+    {"f": 19, "joint": "handL", "euler": [0.0, -0.0, -12.0], "blend": 0, "l2": 1},
+    {"f": 19, "joint": "clavR", "euler": [-0.0, 0.41, -0.0], "blend": 0, "l2": 1},
+    {"f": 19, "joint": "upperArmR", "euler": [6.82, 21.23, 68.51], "blend": 0, "l2": 1},
+    {"f": 19, "joint": "foreArmR", "euler": [-0.0, 67.31, 0.0], "blend": 0, "l2": 1},
+    {"f": 19, "joint": "handR", "euler": [-23.16, 19.33, 0.0], "blend": 0, "l2": 1},
+    {"f": 19, "joint": "thighL", "euler": [-33.15, 11.38, 4.02], "blend": 0, "l2": 1},
+    {"f": 19, "joint": "shinL", "euler": [34.66, 0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 19, "joint": "footL", "euler": [-23.56, -8.53, 0.83], "blend": 0, "l2": 1},
+    {"f": 19, "joint": "toeL", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 19, "joint": "thighR", "euler": [-29.65, -17.63, -4.5], "blend": 0, "l2": 1},
+    {"f": 19, "joint": "shinR", "euler": [73.09, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 19, "joint": "footR", "euler": [-65.11, 8.51, 4.41], "blend": 0, "l2": 1},
+    {"f": 19, "joint": "toeR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 19, "joint": "weaponR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 20, "joint": "hips", "euler": [19.34, 3.77, -3.72], "blend": 0, "l2": 1},
+    {"f": 20, "joint": "spine", "euler": [0.42, -4.7, 2.89], "blend": 0, "l2": 1},
+    {"f": 20, "joint": "chest", "euler": [0.42, -4.7, 2.89], "blend": 0, "l2": 1},
+    {"f": 20, "joint": "neck", "euler": [-17.95, -0.08, 0.43], "blend": 0, "l2": 1},
+    {"f": 20, "joint": "head", "euler": [-17.95, -0.08, 0.43], "blend": 0, "l2": 1},
+    {"f": 20, "joint": "clavL", "euler": [-0.0, 2.18, -0.0], "blend": 0, "l2": 1},
+    {"f": 20, "joint": "upperArmL", "euler": [10.75, -14.36, -75.0], "blend": 0, "l2": 1},
+    {"f": 20, "joint": "foreArmL", "euler": [0.0, -71.68, 0.0], "blend": 0, "l2": 1},
+    {"f": 20, "joint": "handL", "euler": [-0.0, -0.0, -12.0], "blend": 0, "l2": 1},
+    {"f": 20, "joint": "clavR", "euler": [0.0, -2.46, 0.0], "blend": 0, "l2": 1},
+    {"f": 20, "joint": "upperArmR", "euler": [20.79, 28.81, 64.51], "blend": 0, "l2": 1},
+    {"f": 20, "joint": "foreArmR", "euler": [0.0, 75.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 20, "joint": "handR", "euler": [-21.92, 16.55, -0.0], "blend": 0, "l2": 1},
+    {"f": 20, "joint": "thighL", "euler": [-16.88, 8.96, 4.66], "blend": 0, "l2": 1},
+    {"f": 20, "joint": "shinL", "euler": [35.83, -0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 20, "joint": "footL", "euler": [-39.0, -8.52, -2.83], "blend": 0, "l2": 1},
+    {"f": 20, "joint": "toeL", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 20, "joint": "thighR", "euler": [-51.13, -20.29, -7.79], "blend": 0, "l2": 1},
+    {"f": 20, "joint": "shinR", "euler": [83.02, 0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 20, "joint": "footR", "euler": [-52.23, 8.53, -1.69], "blend": 0, "l2": 1},
+    {"f": 20, "joint": "toeR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 20, "joint": "weaponR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 21, "joint": "hips", "euler": [17.14, 7.27, -3.93], "blend": 0, "l2": 1},
+    {"f": 21, "joint": "spine", "euler": [1.13, -10.78, 3.78], "blend": 0, "l2": 1},
+    {"f": 21, "joint": "chest", "euler": [1.13, -10.78, 3.78], "blend": 0, "l2": 1},
+    {"f": 21, "joint": "neck", "euler": [-16.15, -0.23, 0.36], "blend": 0, "l2": 1},
+    {"f": 21, "joint": "head", "euler": [-16.15, -0.23, 0.36], "blend": 0, "l2": 1},
+    {"f": 21, "joint": "clavL", "euler": [-0.0, -0.99, -0.0], "blend": 0, "l2": 1},
+    {"f": 21, "joint": "upperArmL", "euler": [-0.7, -8.24, -73.33], "blend": 0, "l2": 1},
+    {"f": 21, "joint": "foreArmL", "euler": [-0.0, -63.77, -0.0], "blend": 0, "l2": 1},
+    {"f": 21, "joint": "handL", "euler": [0.0, 0.0, -12.0], "blend": 0, "l2": 1},
+    {"f": 21, "joint": "clavR", "euler": [-0.0, -5.16, -0.0], "blend": 0, "l2": 1},
+    {"f": 21, "joint": "upperArmR", "euler": [37.64, 31.22, 55.0], "blend": 0, "l2": 1},
+    {"f": 21, "joint": "foreArmR", "euler": [-0.0, 79.15, 0.0], "blend": 0, "l2": 1},
+    {"f": 21, "joint": "handR", "euler": [-22.71, 13.81, 0.0], "blend": 0, "l2": 1},
+    {"f": 21, "joint": "thighL", "euler": [1.01, 7.91, 6.68], "blend": 0, "l2": 1},
+    {"f": 21, "joint": "shinL", "euler": [35.22, -0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 21, "joint": "footL", "euler": [-54.5, -8.46, -7.25], "blend": 0, "l2": 1},
+    {"f": 21, "joint": "toeL", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 21, "joint": "thighR", "euler": [-64.77, -23.31, -11.95], "blend": 0, "l2": 1},
+    {"f": 21, "joint": "shinR", "euler": [78.12, -0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 21, "joint": "footR", "euler": [-32.96, 8.47, -7.08], "blend": 0, "l2": 1},
+    {"f": 21, "joint": "toeR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 21, "joint": "weaponR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 22, "joint": "hips", "euler": [15.91, 9.24, -3.62], "blend": 0, "l2": 1},
+    {"f": 22, "joint": "spine", "euler": [1.49, -13.36, 3.91], "blend": 0, "l2": 1},
+    {"f": 22, "joint": "chest", "euler": [1.49, -13.36, 3.91], "blend": 0, "l2": 1},
+    {"f": 22, "joint": "neck", "euler": [-13.33, -0.78, 0.09], "blend": 0, "l2": 1},
+    {"f": 22, "joint": "head", "euler": [-13.33, -0.78, 0.09], "blend": 0, "l2": 1},
+    {"f": 22, "joint": "clavL", "euler": [0.0, -3.44, 0.0], "blend": 0, "l2": 1},
+    {"f": 22, "joint": "upperArmL", "euler": [-9.57, -4.16, -71.82], "blend": 0, "l2": 1},
+    {"f": 22, "joint": "foreArmL", "euler": [0.0, -60.66, 0.0], "blend": 0, "l2": 1},
+    {"f": 22, "joint": "handL", "euler": [0.0, 0.0, -12.0], "blend": 0, "l2": 1},
+    {"f": 22, "joint": "clavR", "euler": [0.0, -5.16, 0.0], "blend": 0, "l2": 1},
+    {"f": 22, "joint": "upperArmR", "euler": [49.91, 28.36, 51.22], "blend": 0, "l2": 1},
+    {"f": 22, "joint": "foreArmR", "euler": [0.0, 86.75, -0.0], "blend": 0, "l2": 1},
+    {"f": 22, "joint": "handR", "euler": [-24.8, 10.44, 0.0], "blend": 0, "l2": 1},
+    {"f": 22, "joint": "thighL", "euler": [16.16, 9.74, 8.66], "blend": 0, "l2": 1},
+    {"f": 22, "joint": "shinL", "euler": [31.06, -0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 22, "joint": "footL", "euler": [-65.03, -8.36, -11.65], "blend": 0, "l2": 1},
+    {"f": 22, "joint": "toeL", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 22, "joint": "thighR", "euler": [-69.43, -25.93, -13.22], "blend": 0, "l2": 1},
+    {"f": 22, "joint": "shinR", "euler": [60.43, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 22, "joint": "footR", "euler": [-10.5, 8.37, -11.26], "blend": 0, "l2": 1},
+    {"f": 22, "joint": "toeR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 22, "joint": "weaponR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 23, "joint": "hips", "euler": [16.07, 10.29, -3.85], "blend": 0, "l2": 1},
+    {"f": 23, "joint": "spine", "euler": [1.71, -14.29, 4.35], "blend": 0, "l2": 1},
+    {"f": 23, "joint": "chest", "euler": [1.71, -14.29, 4.35], "blend": 0, "l2": 1},
+    {"f": 23, "joint": "neck", "euler": [-10.71, -1.58, -0.34], "blend": 0, "l2": 1},
+    {"f": 23, "joint": "head", "euler": [-10.71, -1.58, -0.34], "blend": 0, "l2": 1},
+    {"f": 23, "joint": "clavL", "euler": [0.0, -5.76, 0.0], "blend": 0, "l2": 1},
+    {"f": 23, "joint": "upperArmL", "euler": [-16.34, -5.0, -67.53], "blend": 0, "l2": 1},
+    {"f": 23, "joint": "foreArmL", "euler": [0.0, -55.55, 0.0], "blend": 0, "l2": 1},
+    {"f": 23, "joint": "handL", "euler": [-0.0, 0.0, -12.0], "blend": 0, "l2": 1},
+    {"f": 23, "joint": "clavR", "euler": [0.0, -5.16, 0.0], "blend": 0, "l2": 1},
+    {"f": 23, "joint": "upperArmR", "euler": [55.44, 24.25, 49.03], "blend": 0, "l2": 1},
+    {"f": 23, "joint": "foreArmR", "euler": [-0.0, 87.08, 0.0], "blend": 0, "l2": 1},
+    {"f": 23, "joint": "handR", "euler": [-26.68, 6.04, 0.0], "blend": 0, "l2": 1},
+    {"f": 23, "joint": "thighL", "euler": [22.83, 11.96, 10.66], "blend": 0, "l2": 1},
+    {"f": 23, "joint": "shinL", "euler": [30.26, -0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 23, "joint": "footL", "euler": [-71.9, -8.24, -15.05], "blend": 0, "l2": 1},
+    {"f": 23, "joint": "toeL", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 23, "joint": "thighR", "euler": [-73.16, -30.33, -11.99], "blend": 0, "l2": 1},
+    {"f": 23, "joint": "shinR", "euler": [29.37, -0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 23, "joint": "footR", "euler": [23.27, 8.16, -17.1], "blend": 0, "l2": 1},
+    {"f": 23, "joint": "toeR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 23, "joint": "weaponR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 24, "joint": "hips", "euler": [17.02, 9.0, -3.34], "blend": 0, "l2": 1},
+    {"f": 24, "joint": "spine", "euler": [1.5, -13.76, 4.44], "blend": 0, "l2": 1},
+    {"f": 24, "joint": "chest", "euler": [1.5, -13.76, 4.44], "blend": 0, "l2": 1},
+    {"f": 24, "joint": "neck", "euler": [-9.79, -2.29, -0.83], "blend": 0, "l2": 1},
+    {"f": 24, "joint": "head", "euler": [-9.79, -2.29, -0.83], "blend": 0, "l2": 1},
+    {"f": 24, "joint": "clavL", "euler": [0.0, -6.93, 0.0], "blend": 0, "l2": 1},
+    {"f": 24, "joint": "upperArmL", "euler": [-20.43, -4.09, -66.4], "blend": 0, "l2": 1},
+    {"f": 24, "joint": "foreArmL", "euler": [0.0, -55.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 24, "joint": "handL", "euler": [0.0, 0.0, -12.0], "blend": 0, "l2": 1},
+    {"f": 24, "joint": "clavR", "euler": [0.0, -5.16, 0.0], "blend": 0, "l2": 1},
+    {"f": 24, "joint": "upperArmR", "euler": [60.3, 21.92, 48.96], "blend": 0, "l2": 1},
+    {"f": 24, "joint": "foreArmR", "euler": [180.0, 87.11, -180.0], "blend": 0, "l2": 1},
+    {"f": 24, "joint": "handR", "euler": [-27.37, 2.06, 0.0], "blend": 0, "l2": 1},
+    {"f": 24, "joint": "thighL", "euler": [24.6, 13.55, 9.3], "blend": 0, "l2": 1},
+    {"f": 24, "joint": "shinL", "euler": [28.01, -0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 24, "joint": "footL", "euler": [-72.27, -8.22, -15.5], "blend": 0, "l2": 1},
+    {"f": 24, "joint": "toeL", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 24, "joint": "thighR", "euler": [-78.3, -29.67, -12.27], "blend": 0, "l2": 1},
+    {"f": 24, "joint": "shinR", "euler": [28.28, -0.0, 0.0], "blend": 0, "l2": 1},
+    {"f": 24, "joint": "footR", "euler": [28.5, 8.09, -18.57], "blend": 0, "l2": 1},
+    {"f": 24, "joint": "toeR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1},
+    {"f": 24, "joint": "weaponR", "euler": [-0.0, 0.0, -0.0], "blend": 0, "l2": 1}
+   ],
+   "root_keys": [
+    [
+     1,
+     0.0,
+     0.0
+    ],
+    [
+     2,
+     0.0,
+     0.0
+    ],
+    [
+     3,
+     0.0006,
+     0.0154
+    ],
+    [
+     4,
+     0.002,
+     0.049
+    ],
+    [
+     5,
+     0.0079,
+     0.11
+    ],
+    [
+     6,
+     0.0172,
+     0.2022
+    ],
+    [
+     7,
+     0.022,
+     0.299
+    ],
+    [
+     8,
+     0.0213,
+     0.3901
+    ],
+    [
+     9,
+     0.0194,
+     0.484
+    ],
+    [
+     10,
+     0.017,
+     0.5823
+    ],
+    [
+     11,
+     0.0143,
+     0.6868
+    ],
+    [
+     12,
+     0.012,
+     0.799
+    ],
+    [
+     13,
+     0.0097,
+     0.9181
+    ],
+    [
+     14,
+     0.007,
+     1.0444
+    ],
+    [
+     15,
+     0.0046,
+     1.1811
+    ],
+    [
+     16,
+     0.0027,
+     1.3315
+    ],
+    [
+     17,
+     0.002,
+     1.499
+    ],
+    [
+     18,
+     0.002,
+     1.712
+    ],
+    [
+     19,
+     0.002,
+     1.9251
+    ],
+    [
+     20,
+     0.002,
+     2.139
+    ],
+    [
+     21,
+     0.002,
+     2.352
+    ],
+    [
+     22,
+     0.002,
+     2.5651
+    ],
+    [
+     23,
+     0.002,
+     2.779
+    ],
+    [
+     24,
+     0.002,
+     2.992
+    ]
    ]
   },
   {
