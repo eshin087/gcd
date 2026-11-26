@@ -1179,6 +1179,11 @@ const S = {
   pace: scenarioPace,
   events: scenarioEvents,
   // melee: scenarios
+  strings: scenarioStrings,
+  sides: scenarioSides,
+  spark: scenarioSpark,
+  mix: scenarioMix,
+  chase: scenarioChase,
   // spells: scenarios
   // terrain: scenarios
   // world: scenarios
@@ -1383,4 +1388,275 @@ async function scenarioFx() {
   const missing = [...said].filter((n) => !SFX[n]);
   assert(said.size >= 9 && !missing.length, `every effect's sound has a recipe (${[...said].join(' ')}; missing ${JSON.stringify(missing)})`);
   return G;
+}
+
+// melee: the melee agent's scenarios (function declarations: hoisted, out of the others' way)
+/** One move of his triggered with the hero `dist` m in front (god mode), answered `how`: 'block' (the guard
+ *  held all through, the meter kept full: pure reach), 'hit' (no answer), 'parry' (every guard cue parried,
+ *  a roll through every red one). Returns the realised hits, the results, the spared, the longest stretch
+ *  the hero was not his own (stagger / knockdown / guard break; gaps under 0.2 s merged). */
+function meleeRun(G, name, how, { dist = 2, ang = 0 } = {}) {
+  const { game, input } = G;
+  const d = game.dragon, p = game.player;
+  d.debug.tidy();
+  d.brain.act = null;
+  d.mode = 'foot';
+  d.position.set(0, 0, -2);
+  d.yaw = 0;
+  run(G, 0.3);
+  // (the hero on his feet first: a run before may have left him down)
+  run(G, 3, null, () => ['idle', 'run'].includes(p.state));
+  place(G, dist, ang);
+  p.debug.god = true;
+  p.guard = 100;
+  input.axis = { x: 0, y: 0 };
+  const h0 = G.hits.length, sp0 = d.parts.melee?.stats.spared ?? 0;
+  const ok = d.brain.trigger(name);
+  const A = d.brain.act;
+  const hits = A?.hits ?? 0;
+  const flashes = [];
+  const w0 = G.watch;
+  const pend = [];
+  G.watch = (n, e) => {
+    if (n === 'combat:flash' && e?.source === 'dragon' && e.attack === name) {
+      flashes.push({ t: game.time, tell: e.tell, bx: d.position.x, bz: d.position.z, px: p.position.x, pz: p.position.z, yaw: p.yaw });
+      pend.push({ at: game.time + TUNING.flashLead, tell: e.tell, done: false });
+    }
+  };
+  let acted = false, stunT = 0, stunMax = 0, gap = 0;
+  run(G, 9, () => {
+    game.mouseGround.set(d.position.x, 0, d.position.z);
+    if (how === 'block') { input.press(1); p.guard = 100; }
+    if (how === 'parry') {
+      for (const e of pend) {
+        if (e.done) continue;
+        const left = e.at - game.time - DT;
+        if (e.tell === TELL.RED && left <= 0.08) {
+          e.done = true;
+          const dx = p.position.x - d.position.x, dz = p.position.z - d.position.z, l = Math.hypot(dx, dz) || 1;
+          input.axis = { x: -dz / l, y: -dx / l };
+          input.tap('Space');
+        } else if (e.tell !== TELL.RED && left <= 0.12) {
+          e.done = true;
+          input.up(1);
+          input.click(1);
+        }
+      }
+    }
+    const stun = ['stagger', 'knockdown', 'guardBreak'].includes(p.state);
+    if (stun) { stunT += DT + gap; gap = 0; stunMax = Math.max(stunMax, stunT); } else if (stunT > 0) { gap += DT; if (gap >= 0.2) { stunT = 0; gap = 0; } }
+  }, () => { if (d.mode === 'act') acted = true; return acted && d.mode !== 'act' && p.state !== 'roll'; });
+  G.watch = w0;
+  input.up(1);
+  input.axis = { x: 0, y: 0 };
+  const res = G.hits.slice(h0).filter((h) => h.attack === name && h.r !== RESULT.IGNORED);
+  return { ok, hits, reached: res.length, res: res.map((h) => h.r), spared: (d.parts.melee?.stats.spared ?? 0) - sp0, stopped: A?.stopped ?? null, stunMax, flashes, A };
+}
+
+/** STRINGS (the melee agent's item 4): every string of his reaches a hero who blocks every beat (slid
+ *  3 - 5 m each time) and one who is hit by every beat (thrown 2.5 - 7 m): no later beat swings at air;
+ *  the hero is never his own for longer than a knockdown. */
+async function scenarioStrings() {
+  out('\n== scenario STRINGS (his strings follow the slide: beats that reach a hero who blocks every one, and one hit by every one) ==');
+  const { MOVE_OWNERS } = await imp('src/entities/enemies/untouched/moves.js');
+  const names = MOVE_NAMES.filter((n) => MOVE_OWNERS[n] === 'melee' && !MOVES[n].counter && !MOVES[n].transition && MOVES[n].beats.filter((b) => !b.feint && !b.pick?.every((x) => x.feint)).length >= 2);
+  const rows = [];
+  for (const ph of [1, 2, 3]) {
+    const G = build();
+    duel(G, { dist: 3, form: ph });
+    for (const name of names) {
+      const def = MOVES[name];
+      if (def.phase > ph || !(weightIn(def, ph) > 0)) continue;
+      for (const how of ['block', 'hit']) {
+        const r = meleeRun(G, name, how);
+        rows.push({ ph, name, how, ...r });
+      }
+    }
+  }
+  out('   phase  move          answer  beats  reached  spared  stopped  results                         longest not-his-own');
+  for (const r of rows) out(`   P${r.ph}     ${r.name.padEnd(13)} ${r.how.padEnd(7)} ${String(r.hits).padStart(5)} ${String(r.reached).padStart(8)} ${String(r.spared).padStart(7)}  ${String(r.stopped ?? '-').padEnd(7)}  ${r.res.join(',').padEnd(30)}  ${r.stunMax.toFixed(2)} s`);
+  for (const r of rows) {
+    // (a beat the hero's knockdown spared, and the doubled Dark Spark's second after a first that landed, are no miss)
+    const want = r.stopped ? r.res.length : r.hits - r.spared;
+    assert(r.ok && r.reached === want && want >= (r.how === 'hit' || r.stopped ? 1 : r.hits), `P${r.ph} ${r.name} (${r.how}): ${r.reached} of ${r.hits} beats reach him (${r.spared} spared, stopped ${r.stopped ?? 'no'})`);
+  }
+  const worst = rows.reduce((m, r) => Math.max(m, r.stunMax), 0);
+  assert(worst <= TUNING.melee.mercy.lockCap + 0.1 + 1e-6 || worst <= 1.3 + 0.05, `the hero hit by every beat of every string is never out of his own hands longer than ${worst.toFixed(2)} s in a row (gaps under 0.2 s do not end it; the cap ${TUNING.melee.mercy.lockCap} s, a knockdown alone 1.3 s)`);
+}
+
+/** SIDES: a blow out of a blink holds from any side (a guard held facing away blocks it); Everywhere's three
+ *  cues come one at a time, >= minHitGap apart, each from another side, each after he stands there. */
+async function scenarioSides() {
+  out('\n== scenario SIDES (a blow out of a blink holds from any side; Everywhere: three cues apart, three sides) ==');
+  {
+    const G = build();
+    const d = G.game.dragon, p = G.game.player;
+    duel(G, { dist: 3 });
+    // the hero guards facing AWAY from him: the blink behind him is still met
+    // (Behind You draws a blue back kick or a red heel: the blue one is met by the guard, both come around)
+    const got = [];
+    for (let i = 0; i < 6 && !got.some((x) => x.tell === TELL.BLUE); i++) {
+      const r = meleeRun(G, 'behindYou', 'block', { dist: 3 });
+      got.push({ tell: r.A?.beats[0]?.def.tell, res: r.res[0], around: !!G.hits.at(-1)?.around });
+    }
+    out(`   Behind You, guarded: ${got.map((x) => `(${x.tell}: ${x.res}${x.around ? ', around' : ''})`).join(' ')}`);
+    assert(got.every((x) => x.around) && got.some((x) => x.tell === TELL.BLUE) && got.every((x) => (x.tell === TELL.BLUE ? x.res === RESULT.BLOCKED : x.res === RESULT.HIT)), 'Behind You, guarded: out of the blink it comes around; the blue kick is blocked from behind, the red heel is not blockable');
+    void d, p;
+  }
+  const G = build();
+  const d = G.game.dragon, p = G.game.player;
+  duel(G, { dist: 3, form: 3 });
+  let ghosts = 0;
+  const g0 = d.fx.ghostStrike;
+  d.fx.ghostStrike = (...a) => { ghosts++; return g0?.apply(d.fx, a); };
+  for (const how of ['block', 'parry']) {
+    const r = meleeRun(G, 'everywhere', how, { dist: 3 });
+    const F = r.flashes;
+    const gaps = F.slice(1).map((f, i) => f.t - F[i].t);
+    // the side each cue came from: his bearing round the hero (world: the hero turns to face each blow)
+    const sides = F.map((f) => Math.atan2(f.bx - f.px, f.bz - f.pz));
+    const apart = sides.every((a, i) => sides.every((b, j) => i === j || Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b))) > 0.9));
+    out(`   Everywhere (${how}): cues ${F.map((f) => f.tell).join(', ')}; ${gaps.map((g) => g.toFixed(2)).join(' / ')} s apart; from ${sides.map((a) => ((a * 180) / Math.PI).toFixed(0)).join(' / ')} deg; results ${r.res.join(',')}`);
+    assert(F.length === 3 && F.map((f) => f.tell).join() === [TELL.BLUE, TELL.BLUE, TELL.RED].join(), `Everywhere (${how}): three cues, blue, blue, red`);
+    assert(gaps.every((g) => g >= TUNING.minHitGap - 1e-6), `Everywhere (${how}): the cues ${gaps.map((g) => g.toFixed(2)).join(' / ')} s apart (>= ${TUNING.minHitGap})`);
+    assert(apart, `Everywhere (${how}): each cue from another side`);
+    if (how === 'block') assert(r.res.slice(0, 2).every((x) => x === RESULT.BLOCKED), `Everywhere: the two blue blows met by a guard from any side (${r.res.join(',')})`);
+    if (how === 'parry') assert(r.res.length === 3 && r.res[2] === RESULT.PERFECT, `Everywhere: answered, the red one is a perfect dodge (${r.res.join(',')})`);
+  }
+  out(`   (fx.ghostStrike called ${ghosts} times${g0 ? '' : ': not built yet, the call is guarded'})`);
+  void p;
+}
+
+/** SPARK: Dark Spark is red; landed it throws 10 m and through the first piece behind the hero; a miss
+ *  buries the fist in the piece on its line. */
+async function scenarioSpark() {
+  out('\n== scenario SPARK (Dark Spark: red; landed: 10 m through the scenery; a miss breaks the piece on its line) ==');
+  const def = MOVES.darkSpark;
+  assert(def.beats.every((b) => b.tell === TELL.RED) && def.beats[0].knockback >= 9 && def.beats[0].wjCrash > 3, `red, ${def.beats[0].knockback} m, crash power ${def.beats[0].wjCrash}`);
+  {
+    // landed: a car 3 m behind the hero
+    const G = build();
+    const d = G.game.dragon, p = G.game.player;
+    duel(G, { dist: 3, form: 2 });
+    const car = pieces(G, 'car')[0];
+    d.debug.tidy();
+    d.position.set(car.x, 0, car.z - 5);
+    d.yaw = 0;
+    p.debug.teleport(car.x, car.z - 3);
+    p.yaw = Math.PI;
+    p.debug.heal();
+    p.debug.god = false;
+    run(G, 0.1);
+    const hp0 = p.hp, car0 = car.hp, x0 = p.position.x, z0 = p.position.z;
+    d.brain.trigger('darkSpark');
+    let acted = false;
+    run(G, 4, () => G.game.mouseGround.set(d.position.x, 0, d.position.z), () => { if (d.mode === 'act') acted = true; return acted && d.mode !== 'act'; });
+    const thrown = Math.hypot(p.position.x - x0, p.position.z - z0);
+    out(`   landed: ${(hp0 - p.hp).toFixed(0)} damage, thrown ${thrown.toFixed(2)} m, ${p.crash.hits.length} piece(s) gone through; the car ${car.state === 0 ? `hp ${car0.toFixed(2)} -> ${car.hp.toFixed(2)}` : 'broke'}; sparks ${JSON.stringify(d.parts.melee.stats.sparks)}`);
+    assert(hp0 - p.hp > 0 && d.parts.melee.stats.sparks.landed === 1, 'it lands');
+    assert(p.crash.hits.length >= 1 && (car.state !== 0 || car.hp < car0), 'the hero goes through the car behind him');
+  }
+  {
+    // a miss: the hero rolls out; the fist is buried in the car on its line
+    const G = build();
+    const d = G.game.dragon, p = G.game.player;
+    duel(G, { dist: 3, form: 2 });
+    const car = pieces(G, 'car')[0];
+    d.debug.tidy();
+    d.position.set(car.x, 0, car.z - 6);
+    d.yaw = 0;
+    p.debug.teleport(car.x, car.z - 3.8);
+    p.debug.heal();
+    p.debug.god = true;
+    run(G, 0.1);
+    const car0 = car.hp;
+    const step = answer(G, 'dodge', 'darkSpark');
+    d.brain.trigger('darkSpark');
+    let acted = false;
+    run(G, 4, step, () => { if (d.mode === 'act') acted = true; return acted && d.mode !== 'act' && p.state !== 'roll'; });
+    G.watch = null;
+    const S = d.parts.melee.stats.sparks;
+    out(`   dodged: sparks ${JSON.stringify(S)}; the car on his line ${car.state === 0 ? `hp ${car0.toFixed(2)} -> ${car.hp.toFixed(2)}` : 'broke'}; barrier ${d.barrier.up ? 'up' : `open (${d.barrier.why})`}`);
+    assert(S.missed === 1 && S.buried === 1 && (car.state !== 0 || car.hp < car0), 'a miss buries the fist in the car on its line');
+    assert(!d.barrier.up && d.barrier.why === 'dodge', 'the perfect dodge opened his barrier');
+  }
+}
+
+/** MIX (the melee agent's item 7): the tells his AI throws per phase against the pace defender (god mode,
+ *  roaming as PACE does), GCD_MSECS s a phase (default 90), seed GCD_SEED: the share of normal / blue / red
+ *  cues and the cues a minute of each; no one answer (a guard, a roll) holds a phase alone. */
+async function scenarioMix() {
+  out('\n== scenario MIX (his tell mix per phase: normal / blue / red, cues a minute) ==');
+  const SECS = Number(process.env.GCD_MSECS ?? 90);
+  for (let ph = 1; ph <= 3; ph++) {
+    const G = build(SEED + ph, true);
+    const { game } = G;
+    const d = game.dragon, p = game.player;
+    duel(G, { dist: 3, ai: true, form: ph });
+    p.debug.god = true;
+    p.debug.noRiposte = true;
+    G.defend = paceDefender(G);
+    const tells = { [TELL.NORMAL]: 0, [TELL.BLUE]: 0, [TELL.RED]: 0, [TELL.BLACK]: 0 };
+    const seq = [];
+    G.watch = (n, e) => { if (n === 'combat:flash' && e?.source === 'dragon' && !MOVES[e.attack]?.transition) { tells[e.tell] = (tells[e.tell] ?? 0) + 1; seq.push(e.tell === TELL.RED || e.tell === TELL.BLACK ? 'dodge' : 'guard'); } };
+    const roam = mulberry32(SEED * 13 + ph), goal = { r: 2.5, a: 0, until: -1 };
+    const t0 = game.time;
+    for (let i = 0; i < Math.round(SECS / DT); i++) {
+      const rolled = G.defend.act();
+      if (game.time > goal.until) {
+        goal.r = [2.5, 5, 9][Math.floor(roam() * 3)];
+        goal.a = Math.atan2(p.position.x - d.position.x, p.position.z - d.position.z) + (roam() - 0.5) * 1.6;
+        goal.until = game.time + 4;
+      }
+      if (!rolled && p.state !== 'roll') {
+        const gx = d.position.x + Math.sin(goal.a) * goal.r, gz = d.position.z + Math.cos(goal.a) * goal.r;
+        const k = Math.hypot(gx, gz) > 12 ? 12 / Math.hypot(gx, gz) : 1;
+        const dx = gx * k - p.position.x, dz = gz * k - p.position.z, l = Math.hypot(dx, dz);
+        G.input.axis = l > 0.6 ? { x: dx / l, y: -dz / l } : { x: 0, y: 0 };
+      }
+      game.mouseGround.set(d.position.x, 0, d.position.z);
+      G.tick(DT);
+      if (d.brain.pendingPhase > ph) d.brain.pendingPhase = 0;
+    }
+    G.watch = null;
+    G.defend = null;
+    const T = (game.time - t0) / 60, all = Object.values(tells).reduce((a, b) => a + b, 0) || 1;
+    let run1 = 0, runMax = 0;
+    for (let i = 0; i < seq.length; i++) { run1 = i && seq[i] === seq[i - 1] ? run1 + 1 : 1; runMax = Math.max(runMax, run1); }
+    const sh = (t) => tells[t] / all;
+    out(`   P${ph}: ${(all / T).toFixed(1)} cues/min · normal ${(sh(TELL.NORMAL) * 100).toFixed(0)} % (${(tells[TELL.NORMAL] / T).toFixed(1)}/min) · blue ${(sh(TELL.BLUE) * 100).toFixed(0)} % (${(tells[TELL.BLUE] / T).toFixed(1)}/min) · red ${(sh(TELL.RED) * 100).toFixed(0)} % (${(tells[TELL.RED] / T).toFixed(1)}/min) · longest run of one answer ${runMax}; melee stats ${JSON.stringify(d.parts.melee?.stats ?? {})}`);
+    assert(sh(TELL.NORMAL) >= 0.12 && sh(TELL.BLUE) >= 0.12 && sh(TELL.RED) >= 0.12, `P${ph}: every tell is at least 12 % of his cues (neither holding the guard, nor parrying, nor rolling answers the phase alone)`);
+  }
+}
+
+/** CHASE: in phase 3 a hero thrown 5 m or more finds him standing where he stops (a reposition: no blow),
+ *  once per cooldown; never in phases 1 - 2. */
+async function scenarioChase() {
+  out('\n== scenario CHASE (phase 3: thrown, the hero finds him where he stops; once per cooldown) ==');
+  const C = TUNING.melee.chase, ch0 = C.chance;
+  C.chance = 1;
+  try {
+    for (const ph of [2, 3]) {
+      const G = build();
+      const d = G.game.dragon, p = G.game.player;
+      duel(G, { dist: 3, form: ph });
+      const blinks = [];
+      G.watch = (n) => { if (n === 'dragon:windup') blinks.push(n); };
+      const r = meleeRun(G, 'twoHands', 'hit');
+      run(G, 1.2);
+      const gap = Math.hypot(d.position.x - p.position.x, d.position.z - p.position.z);
+      const S = d.parts.melee.stats;
+      out(`   P${ph}: ${r.res.join(',')}; chases ${S.chases}; he stands ${gap.toFixed(2)} m from the hero after; next chase in ${d.parts.melee.chaseT.toFixed(1)} s`);
+      if (ph === 2) assert(S.chases === 0, 'phase 2: no chase');
+      else {
+        assert(S.chases === 1 && gap < C.off + 1.2, `phase 3: thrown 8 m, the hero finds him there (${gap.toFixed(2)} m)`);
+        const r2 = meleeRun(G, 'twoHands', 'hit');
+        run(G, 1.2);
+        assert(d.parts.melee.stats.chases === 1, `once per cooldown (${C.cooldown} s): the next throw is not chased (${r2.res.join(',')})`);
+      }
+      G.watch = null;
+    }
+  } finally {
+    C.chance = ch0;
+  }
 }
