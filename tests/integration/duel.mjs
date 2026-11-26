@@ -4203,7 +4203,7 @@ async function scenarioDeathblow() {
       if (nm === 'game:cinematic' && e?.kind === 'deathblow') t.cine = { ...e };
     };
     d.debug.trigger('plumThrust');
-    const lead = o.perfect === false ? TUNING.flashLead - 0.2 : TUNING.flashLead - 0.04 - DT;
+    const lead = o.perfect === false ? TUNING.flashLead - PLAIN_LEAD - DT : TUNING.flashLead - 0.04 - DT;
     run(G, o.secs ?? 4, () => {
       game.mouseGround.set(d.position.x, 0, d.position.z);
       if (!o.hurt && flashT !== null && !pressed && game.time >= flashT + lead) { pressed = true; input.up(1); input.click(1); }
