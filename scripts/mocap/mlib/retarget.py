@@ -62,6 +62,12 @@ def _held_hinge(h_raw, bend, default, lo=12.0, hi=30.0):
     """a hinge axis that is only trusted while the joint is bent: straight frames take the nearest bent
     frame's axis (forward and backward passes averaged), or the default"""
     n = len(h_raw)
+    h_raw = h_raw.copy()
+    # a hinge flips over when the tool reads a near-straight joint as bent the impossible way: while the
+    # bend is small, keep the axis on the side of the last frame's
+    for i in range(1, n):
+        if h_raw[i] @ h_raw[i - 1] < 0 and np.degrees(bend[i]) < 45:
+            h_raw[i] = -h_raw[i]
     w = np.clip((np.degrees(bend) - lo) / (hi - lo), 0, 1)[:, None]
     fw = np.zeros_like(h_raw)
     bw = np.zeros_like(h_raw)
@@ -88,6 +94,10 @@ def _line(v, max_yaw):
     n = len(yaw)
     med = np.array([np.median(yaw[max(0, i - 2):i + 3]) for i in range(n)])
     med = np.clip(med, -max_yaw, max_yaw)
+    # a turn of more than 40 degrees in one frame is the tool losing the line's depth: hold, then ease
+    for i in range(1, n):
+        if abs(med[i] - med[i - 1]) > 40:
+            med[i] = med[i - 1] + np.sign(med[i] - med[i - 1]) * 40
     h = np.hypot(v[:, 0], v[:, 2])
     out = np.stack([np.cos(np.radians(med)) * h, v[:, 1], -np.sin(np.radians(med)) * h], 1)
     return _n(out)
@@ -358,6 +368,8 @@ def ground_and_contact(q, fps, loop=False, ground='feet', travel='free', log=pri
             else:
                 i += 1
     hy = smooth_time(hy[:, None], 1.5, loop)[:, 0]
+    # never a foot (or, for tumbles, the body) below the ground
+    hy = np.maximum(hy, -lowest)
     # root travel
     if loop:
         T = n / fps

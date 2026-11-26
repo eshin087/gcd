@@ -201,6 +201,21 @@ def circ_median_deg(a):
     return np.degrees(m)
 
 
+def hampel(b, half=4, k=3.0, floor=0.06):
+    """replace single-frame outliers (a limb that jumps away and back: the tool losing it behind the
+    body) by the running median; a point more than k MADs (and `floor` m) from the median of its 2*half+1
+    frames is an outlier"""
+    n = len(b)
+    out = b.copy()
+    for i in range(n):
+        w = b[max(0, i - half):i + half + 1]
+        med = np.median(w, 0)
+        mad = np.median(np.abs(w - med), 0) * 1.4826
+        bad = np.abs(b[i] - med) > np.maximum(k * mad, floor)
+        out[i][bad] = med[bad]
+    return out
+
+
 class Take:
     """A prepared take. Attributes:
       t (n,) video times on a 60 fps grid; l2 (n,33,4) image landmarks; c (n,33,3) camera-frame 3D;
@@ -276,7 +291,7 @@ class Take:
         # body -> camera: R = Rp * Ry(yaw); a body vector v is v_cam = R v
         self.R = Rp @ rot_y(np.radians(y))
         pel = _mid(c, 23, 24)
-        self.b = (c - pel[:, None]) @ self.R  # rows: R^T v
+        self.b = hampel((c - pel[:, None]) @ self.R)  # rows: R^T v
         depth = self.R.T @ np.array([0, 0, 1.0])  # the camera ray in his frame
         self.wax = np.clip(1 - depth ** 2, 0.02, 1)
 

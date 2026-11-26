@@ -138,6 +138,35 @@ def track_span(film, t0, t1, box0=None, budget=420.0, log=print):
         else:
             box = None
         res = _detect(im, box) if box is not None else None
+        # a follow crop can latch onto a phantom (a statue, the building) when he moves fast: a size jump
+        # or a jump away from his last place sends it back to the whole frame, keeping the nearer answer
+        if res is not None and prev is not None:
+            def tor(l):
+                return np.linalg.norm((l[11, :2] + l[12, :2]) / 2 - (l[23, :2] + l[24, :2]) / 2) + 1e-3
+            ratio = tor(res[0]) / tor(prev)
+            jump = np.linalg.norm(res[0][[11, 12, 23, 24], :2].mean(0) - prev[[11, 12, 23, 24], :2].mean(0)) / tor(prev)
+            if ratio > 1.6 or ratio < 0.6 or jump > 1.5:
+                # search round where he was (a wide square, not the whole frame: a statue or a dome far
+                # from him can look more like a person than he does mid-blur)
+                pb = _box_round(prev, W, H)
+                side = min(pb[2] * 2.2, W)
+                cx, cy = pb[0] + pb[2] / 2, pb[1] + pb[2] / 2
+                wide = np.array([cx - side / 2, cy - side / 2, side], np.float32)
+                alt = _detect(im, wide)
+                if alt is not None:
+                    b2 = _box_round(alt[0], W, H)
+                    alt = _detect(im, b2) or alt
+                    r2 = tor(alt[0]) / tor(prev)
+                    if abs(np.log(r2)) < abs(np.log(ratio)):
+                        res, box = alt, b2
+                # still a phantom: record a miss (it is interpolated later) and keep following his last place
+                r3 = tor(res[0]) / tor(prev)
+                if r3 > 1.8 or r3 < 0.5:
+                    rows[round(t, 3)] = (np.array([0, 0, 0, 0], np.float32), np.zeros((33, 4), np.float32),
+                                         np.zeros((33, 3), np.float32), False)
+                    last_t = t
+                    done += 1
+                    continue
         if res is None:
             # whole frame (padded square), then a crop round that result
             full = np.array([0, (H - W) / 2, W], np.float32)

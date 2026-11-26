@@ -6,7 +6,7 @@
 // the root on frame 0, the speed (loops: measured from the root vs the declared one).
 import path from 'node:path';
 import url from 'node:url';
-import { J, JI, restOffsets, createPose, createWorld, solveFK } from '../../src/entities/hero2/skeleton.js';
+import { J, JI, JOINTS, restOffsets, createPose, createWorld, solveFK } from '../../src/entities/hero2/skeleton.js';
 import { HDIM } from '../../src/entities/hero2/dims.js';
 
 const file = process.argv[2];
@@ -37,7 +37,7 @@ for (const c of set.clips) {
   if (root.length !== c.n * 3) bad(`root has ${root.length} values`);
   if (/\d/.test(c.src) && !/^(move|sword) /.test(c.src)) bad(`src must start with the film id: ${c.src}`);
   // quaternions: unit and continuous
-  let normErr = 0, flips = 0, maxStep = 0, wrap = 0;
+  let normErr = 0, flips = 0, maxStep = 0, wrap = 0, stepAt = '';
   const ang = (f0, f1, j) => {
     let d = 0;
     for (let k = 0; k < 4; k++) d += q[(f0 * nj + j) * 4 + k] * q[(f1 * nj + j) * 4 + k];
@@ -52,7 +52,7 @@ for (const c of set.clips) {
       if (f > 0) {
         const { d, a } = ang(f - 1, f, j);
         if (d < 0) flips++;
-        maxStep = Math.max(maxStep, a);
+        if (a > maxStep) { maxStep = a; stepAt = `${JOINTS[joints[j]]}@${f}`; }
       }
     }
   }
@@ -105,7 +105,7 @@ for (const c of set.clips) {
   for (const e of c.events || []) if (!(e.f >= 0 && e.f < c.n)) bad(`event ${e.name} at frame ${e.f} out of range`);
   report.push({
     name: c.name, n: c.n, fps: c.fps, loop: !!c.loop,
-    normErr: +normErr.toFixed(4), flips, maxStepDeg: +(maxStep * 57.3).toFixed(1), wrapDeg: c.loop ? +(wrap * 57.3).toFixed(1) : null,
+    normErr: +normErr.toFixed(4), flips, maxStepDeg: +(maxStep * 57.3).toFixed(1), stepAt, wrapDeg: c.loop ? +(wrap * 57.3).toFixed(1) : null,
     contactSpans: spans, slideCm: +slide.toFixed(2), lowestCm: +(lowest * 100).toFixed(1),
     speed: speed === null ? null : +speed.toFixed(3),
   });
@@ -114,7 +114,7 @@ if (asJson) console.log(JSON.stringify({ report, fails }, null, 1));
 else {
   console.log(`check ${set.set}: ${set.clips.length} clips`);
   for (const r of report) {
-    console.log(`  ${r.name.padEnd(14)} ${String(r.n).padStart(4)} f @${r.fps}${r.loop ? ' loop' : '     '}  |q|err ${r.normErr}  flips ${r.flips}  max step ${r.maxStepDeg} deg` +
+    console.log(`  ${r.name.padEnd(14)} ${String(r.n).padStart(4)} f @${r.fps}${r.loop ? ' loop' : '     '}  |q|err ${r.normErr}  flips ${r.flips}  max step ${r.maxStepDeg} deg (${r.stepAt})` +
       (r.loop ? `  wrap ${r.wrapDeg} deg` : '') + `  contact L${r.contactSpans.L}/R${r.contactSpans.R}  slide ${r.slideCm} cm  lowest ${r.lowestCm} cm` +
       (r.speed !== null ? `  speed ${r.speed} m/s` : ''));
   }

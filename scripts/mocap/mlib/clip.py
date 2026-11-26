@@ -125,18 +125,23 @@ def build_clip(spec, clip, log=print):
         search = float(clip.get('search', 0.5))
         Ts = [_take(spec, clip, clip['takes'][0], log=log)]
         ref = Ts[0]
-        parts = [(ref.b, ref.wax)]
+        parts = [(ref.b, ref.wax, fuse.validity(ref.gap))]
         B.offsets = [0]
         for tk in clip['takes'][1:]:
             T = _take(spec, clip, tk, pad=search + 0.05, log=log)
             s, cost = fuse.align(ref, T, search)
             n = len(ref.b)
-            seg = T.b[s:s + n] if s >= 0 else None
-            if seg is None or len(seg) < n:
-                log('  ! take %s: aligned offset %d leaves it short; dropped' % (T.name, s))
+            # a take may cover only part of the move (a camera cut ends it): the rest gets no weight
+            idx = np.arange(n) + s
+            inside = (idx >= 0) & (idx < len(T.b))
+            if inside.sum() < 0.25 * n:
+                log('  ! take %s: aligned offset %d leaves it too short; dropped' % (T.name, s))
                 continue
+            ic = np.clip(idx, 0, len(T.b) - 1)
+            seg = T.b[ic]
+            val = fuse.validity(T.gap[ic]) * inside
             Ts.append(T)
-            parts.append((seg, T.wax))
+            parts.append((seg, T.wax, val))
             B.offsets.append(s)
             log('  %s: aligned %+.3f s from its given start (cost %.4f)' % (T.name, T.t[s] - cfg.parse_time(tk['t0']), cost))
 

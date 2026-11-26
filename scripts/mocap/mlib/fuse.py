@@ -102,13 +102,23 @@ def circ_align(A, wa, B, wb):
 
 
 def fuse(parts):
-    """parts: list of (b (n,33,3), wax (3,)) already aligned. Weighted mean per body axis."""
+    """parts: list of (b (n,33,3), wax (3,)[, valid (n,)]) already aligned. Weighted mean per body axis;
+    `valid` (0..1 per frame) lowers a take where its frames were missing (interpolated over a gap)."""
     num = 0
     den = 0
-    for b, wax in parts:
-        num = num + b * wax
-        den = den + wax
-    return num / den
+    for p in parts:
+        b, wax = p[0], p[1]
+        w = np.asarray(wax, float)[None, None, :]
+        if len(p) > 2 and p[2] is not None:
+            w = w * p[2][:, None, None]
+        num = num + b * w
+        den = den + w
+    return num / np.maximum(den, 1e-9)
+
+
+def validity(gap):
+    """per frame: 1 where a real frame is near, falling to 0.02 over a gap"""
+    return np.clip(1.0 - (gap - 0.04) / 0.08, 0.02, 1.0)
 
 
 def fit_weak(X2, l2, vis_min=0.3):

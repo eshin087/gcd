@@ -248,12 +248,22 @@ def blade_dirs(spec, clip, B, Ts, log=print):
     Fm = forearm_frames(B.b)  # (nb, 3, 3) columns = forearm axes in the body frame
     loc = np.full((nb, 3), np.nan)
     loc[ok] = np.einsum('nji,nj->ni', Fm[ok], out[ok])
+    # outliers: a measured direction far (> 50 deg) from the median of its measured neighbours (in the
+    # forearm's frame, where the blade barely moves) is a wrong ray; drop it
+    ki = np.where(ok)[0]
+    for j, k in enumerate(ki):
+        nb_ = ki[max(0, j - 4):j + 5]
+        med = np.median(loc[nb_], 0)
+        med /= np.linalg.norm(med) + 1e-9
+        if loc[k] @ med < np.cos(np.radians(50)):
+            ok[k] = False
+    loc[~ok] = np.nan
     for c in range(3):
         loc[:, c] = np.interp(idx, idx[ok], loc[ok, c])
     out = np.einsum('nij,nj->ni', Fm, loc)
     out /= np.linalg.norm(out, axis=1, keepdims=True)
     from .retarget import smooth_time
-    out = smooth_time(out, 1.0)
+    out = smooth_time(out, 1.0 if B.fps <= 30 else 2.0)
     out /= np.linalg.norm(out, axis=1, keepdims=True)
     log('  sword: %d of %d clip frames measured, the rest interpolated' % (ok.sum(), nb))
     return out

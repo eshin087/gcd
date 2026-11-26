@@ -1,7 +1,7 @@
 """Track the takes of a spec (or one span) into the landmark cache. HEAVY: run it under the lock.
 
   python -I track.py specs/<set>.json [clip ...] [--budget 420]
-  python -I track.py <film> <t0> <t1> [--box x y w h] [--budget 420]
+  python -I track.py <film> <t0> <t1> [--box x y w h] [--budget 420] [--forget]
 
 It tracks only frames not yet in the cache and stops after --budget seconds (default 7 min, under the
 lock's 8-minute rule); run it again until it prints `0 frames left`."""
@@ -16,6 +16,8 @@ def main(a):
         i = a.index('--budget')
         budget = float(a[i + 1])
         del a[i:i + 2]
+    forget = '--forget' in a
+    a = [x for x in a if x != '--forget']
     box = None
     if '--box' in a:
         i = a.index('--box')
@@ -35,6 +37,8 @@ def main(a):
             jobs.append((tk['film'], cfg.parse_time(tk['t0']), cfg.parse_time(tk['t1']), tk.get('box')))
     else:
         jobs = [(a[0], cfg.parse_time(a[1]), cfg.parse_time(a[2]), box)]
+        if forget:  # drop the span's cached frames first (after a tracking fix, or a bad crop)
+            track.forget(*jobs[0][:3])
     import time
     t_start = time.time()
     left = 0

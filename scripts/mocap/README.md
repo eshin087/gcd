@@ -52,6 +52,19 @@ picking takes and reading sheets: 15-30 minutes a clip for a new kind, 5-10 for 
 The checker alone: `node check.mjs ../../src/entities/hero2/clips/<set>.js` (pure JS, uses the game's own
 `skeleton.js`; `--json` for numbers).
 
+Other tools (all light):
+
+| command | does |
+|---|---|
+| `"$PY" -I bladesheet.py specs/<set>.json <clip> [take] [--every 2] [--from t] [--to t]` | the blade as detected in one take's frames (cyan = found, grey = unknown, filled later), with a full-frame pixel ruler for hand keys |
+| `"$PY" -I proportions.py [config.json]` | his build from standing takes; writes `$H2/mocap/proportions.json` and an HDIM proposal |
+| `bash "$H2/lock.sh" <you> "$PY" -I track.py <film> <t0> <t1> --forget` | HEAVY: drop and re-track a span (after a tracking fix, or when a crop latched onto a phantom); if it runs out of budget, run it again WITHOUT `--forget` |
+
+Look at a span's raw tracking before you trust it: a sheet of the tool's own landmarks over the frames
+shows phantoms (a skeleton drawn on a statue or the building), cut-off feet and swapped arms at once. The
+build drops most such frames by itself (size jumps, out-of-picture points), but a take that is mostly
+phantom must be re-tracked or dropped.
+
 ## The spec
 
 ```json
@@ -110,7 +123,7 @@ Clip keys:
 | `takes.py` | a take: drop misses, freezes, glitched or out-of-picture frames; resample to 60 fps by TIME (the capture drops frames); fix left / right swaps per limb pair (a constant-velocity Viterbi over kept / swapped); the camera's pitch (from his standing axis) and yaw (feet, nose, hips and shoulders pooled; a back view read as a front view is detected against the hint and un-mirrored); his body frame (+X his left, +Y up, +Z front) |
 | `fuse.py` | one-shots: time offsets by matching what both cameras see; loops: period (autocorrelation, refined by fold agreement) and folding; fusion per body axis weighted by how well each camera sees that axis; re-projection error |
 | `retarget.py` | bone directions -> joint rotations (hinges held through straight elbows / knees, spine and neck split between their ends, the head from ears / eyes / nose); contact (loops: the strike-to-push-off half of each foot's swing, while low; one-shots: low and still over the ground); the hips' height from the planted foot; root travel; two-bone IK that holds planted feet still; joint limits on the ankles, free hands and head |
-| `sword.py` | the blade in the picture (rays from the fist scored by the blade's rust colour, a smooth DP over frames), 3D from two takes' planes or one take plus a prior; hand keys |
+| `sword.py` | the blade in the picture: rays from the right fist scored by the blade's colour (dark rust red: red well above green and blue, little green, which rejects the gold leaves and the warm stone), a smooth DP over frames; frames with no good ray are UNKNOWN. 3D from two takes' planes (time-aligned), or one take + a prior (across the forearm on the thumb side). Unknown frames are filled in the FOREARM's frame (the blade is rigid in the fist), so a blurred cut follows the arm. Also: where the blade leaves the tool's LEFT fist, the tool swapped his arms; they are swapped back. Hand keys override |
 | `clip.py` | one clip from its spec entry; saved per clip under `built/` |
 | `view.py` | FK of the built clip drawn from each take's camera: the pair sheets |
 | `export.py` | the set module |
