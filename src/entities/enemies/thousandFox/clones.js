@@ -67,7 +67,7 @@ export class FoxClones {
     this._gs = 0x1f83d9ab;
     this.clock = 0;
     this._flash = { source: 'dragon', attack: 'pack', tell: TELL.NORMAL, x: 0, y: 0, z: 0, perilous: false, flare: false };
-    this._tell = { source: 'dragon', attack: 'pack', tell: TELL.NORMAL, impactIn: 0.5, x: 0, z: 0, flare: false };
+    this._tell = { source: 'dragon', attack: 'pack', tell: TELL.NORMAL, impactIn: 0.5, x: 0, z: 0, flare: false, clone: true };
     this._ev = { kind: 'spawn', x: 0, z: 0, by: '' };
     /** the dragon:attack payload of a pack body's blow (reused: listeners read it at once) */
     this._atk = { name: 'pack', weapon: 'fist', weight: 'light', shape: 'cut', tell: TELL.NORMAL, impactIn: 0, x: 0, z: 0, clone: true };

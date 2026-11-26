@@ -19,6 +19,11 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-26',
+        title: 'A mark over the boss before a blow you must parry or dodge',
+        notes: ["From the start of a boss's blue or red windup, a short mark stands over his head: one mark means parry, two mean dodge. It is gone before the blow's own flash, which still tells you when."],
+      },
+      {
+        date: '2026-11-26',
         title: 'A lighter world on phones that need it',
         notes: ['On a phone that still drops frames at the lowest resolution, the ground\'s extra details turn off and the stone floors are drawn more simply, so fights stay smooth. Add ?lite=0 to the address to keep the full look.'],
       },

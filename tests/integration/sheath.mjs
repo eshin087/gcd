@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { ui, AUDIO, resetWindow } from './shim.mjs';
 import { attachMarks, marksCheck } from './marks.mjs';
+import { attachTellMark, tellMarkCheck } from './tellmark.mjs';
 
 const ROOT = process.argv[2];
 const SCEN = process.argv[3] || 'all';
@@ -877,6 +878,7 @@ function fencer(G, mortal = false) {
 function fight(seed, style, { mortal = false, skill = 1, max = 420, lean = null, marks = true } = {}) {
   const G = build(seed);
   G.marks = marks ? attachMarks(G.game) : null; // (the floor marks the fight leaves: they change nothing in it)
+  G.tmark = marks ? attachTellMark(G.game) : null; // (the tell mark: it only reads the cues)
   const { game } = G;
   // (the Long Second learned: ADR-158's balance check, scenario LEAN)
   if (lean) game.unlocks = new lean.Unlocks(null, '?tech=lean');
@@ -894,7 +896,7 @@ function fight(seed, style, { mortal = false, skill = 1, max = 420, lean = null,
   G.watch = null;
   G.defend = null;
   const drawHits = G.hits.filter((h) => h.r === RESULT.HIT && MOVES[h.attack] && flat(h.attack).some((b) => b.draw) && h.damage > 100);
-  return { marks: G.marks, won: d.state === 'dead' || game.state === 'victory', died: !p.alive, secs: game.time - t0, phase: d.phase, hp: d.hp, hits: G.hits.filter((h) => h.r === RESULT.HIT).length, drawHits: drawHits.length, killer: !p.alive ? G.hits.filter((h) => h.r === RESULT.HIT).pop()?.attack : null, ...n };
+  return { marks: G.marks, tmark: G.tmark, won: d.state === 'dead' || game.state === 'victory', died: !p.alive, secs: game.time - t0, phase: d.phase, hp: d.hp, hits: G.hits.filter((h) => h.r === RESULT.HIT).length, drawHits: drawHits.length, killer: !p.alive ? G.hits.filter((h) => h.r === RESULT.HIT).pop()?.attack : null, ...n };
 }
 
 // ================================================================== scenario: win
@@ -903,6 +905,7 @@ async function scenarioWin() {
   const r = fight(SEED, 'mixed');
   out(`     ${r.won ? 'won' : 'not won'} in ${r.secs.toFixed(0)} s: ${r.parries} parries, ${r.perfect} perfect dodges, ${r.breaks} breaks, ${r.hits} hits taken; phase ${r.phase}`);
   marksCheck(r.marks, 'sheath', out, assert);
+  tellMarkCheck(r.tmark, 'sheath', out, assert);
   assert(r.won && r.phase === 3, `the fencing bot defeats the Sheathed within 7 minutes, through all three phases (${r.secs.toFixed(0)} s)`);
 }
 

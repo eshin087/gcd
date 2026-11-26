@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { ui, AUDIO, resetWindow } from './shim.mjs';
 import { attachMarks, marksCheck } from './marks.mjs';
+import { attachTellMark, tellMarkCheck } from './tellmark.mjs';
 
 const ROOT = process.argv[2];
 const SCEN = process.argv[3] || 'all';
@@ -1141,6 +1142,7 @@ async function scenarioWin() {
   for (const seed of SEEDS) {
     const G = build(seed, true);
     const MK = attachMarks(G.game); // (the floor marks the fight leaves: they change nothing in it)
+    const TMK = attachTellMark(G.game); // (the mark over his head through a blue / red windup: it only reads the cues)
     const { game } = G;
     const d = game.dragon;
     duel(G, { dist: 3, ai: true });
@@ -1153,6 +1155,7 @@ async function scenarioWin() {
     const taken = G.hits.filter((h) => h.r === RESULT.HIT).length;
     out(`     seed ${seed}: ${won ? 'won' : 'NOT won'} in ${T.toFixed(0)} s: phases at ${phAt.map((t) => (t - t0 > 0 ? (t - t0).toFixed(0) : '0')).join(' / ')} s, ${taken} hits taken (god mode), crashes ${d.flight.stats.crashes} + skids ${d.flight.stats.skids}, returned ${d.glare.stats.returned}; phase ${d.phase}, hp ${Math.round(d.hp)}`);
     marksCheck(MK, 'city', out, assert);
+    tellMarkCheck(TMK, 'city', out, assert);
     assert(won && d.phase === 3, `seed ${seed}: the fencing bot wins through all three phases`);
     const [lo, hi] = (process.env.GCD_WRANGE ?? '140,250').split(',').map(Number);
     assert(T > lo && T < hi, `seed ${seed}: the fight takes ${T.toFixed(0)} s (${lo} - ${hi})`);

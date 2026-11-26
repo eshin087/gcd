@@ -16,6 +16,7 @@ import { IMPACT } from '../combat/impact.js';
 import { STREAK_FX, setPerfectMode, perfectMode } from '../combat/streak.js';
 import { RIP_MODES, ripMode, setRipMode } from '../entities/player/timeRip.js';
 import { PARRY_FX, parryFxMode, setParryFx } from '../combat/parrySparks.js';
+import { TELL_MARK_LOOKS, tellMarkLook, setTellMarkLook } from '../combat/tellMark.js';
 import { BURST_LOOK, setBurst, burstLevel } from '../entities/player/flurryBurst.js';
 import { CALM_LOOK, setCalm, calmLevel } from '../combat/impactCalm.js';
 import { sfxMode, setSfxMode, chainMode, setChainMode, CHAIN_MODES } from '../audio/samples.js';
@@ -1302,6 +1303,12 @@ export class Lab {
       this._syncCutBtns();
     });
     this.ui.parryFxBtn.title = "the perfect parry's spit of sparks (?parryFx=): a (the default) a few fast orange sparks off the crossed steel, 0 the parry as before";
+    // the tell mark (combat/tellMark.js; ?tellMark=): cycles bang / chevron / diamond / off, read as a mark is raised
+    this.ui.tellMarkBtn = button(stkGrid, `tellMark ${tellMarkLook()}`, () => {
+      setTellMarkLook(TELL_MARK_LOOKS[(TELL_MARK_LOOKS.indexOf(tellMarkLook()) + 1) % TELL_MARK_LOOKS.length]);
+      this._syncCutBtns();
+    });
+    this.ui.tellMarkBtn.title = "the mark over a boss's head through a blue / red windup (?tellMark=): bang ('!' parry, '!!' dodge), chevron (one / two V), diamond (one / two rings), off";
     this.ui.burstBtn = button(stkGrid, `burst ${burstLevel()}`, () => {
       setBurst((Math.max(0, burstLevel()) + 1) % BURST_LOOK.levels.length);
       this._syncCutBtns();
@@ -1528,6 +1535,7 @@ export class Lab {
     for (const { m, el: b } of this.ui.mysticBtns ?? []) setClass(b, 'on', mysticMode() === m);
     if (this.ui.perfectBtn) this.ui.perfectBtn.textContent = `perfect: ${perfectMode()}`;
     if (this.ui.parryFxBtn) this.ui.parryFxBtn.textContent = `parryFx ${parryFxMode()}`;
+    if (this.ui.tellMarkBtn) this.ui.tellMarkBtn.textContent = `tellMark ${tellMarkLook()}`;
     if (this.ui.burstBtn) this.ui.burstBtn.textContent = `burst ${burstLevel()}`;
     if (this.ui.calmBtn) {
       this.ui.calmBtn.textContent = `calm ${calmLevel()}`;

@@ -85,6 +85,7 @@ const TASKS = [
   ['cost', ['tests/integration/cost.mjs', '.', 'all'], {}, 12],
   ['glyphcheck', ['tests/glyphcheck.mjs', '.'], {}, 1],
   ['changelogcheck', ['tests/changelogcheck.mjs', '.'], {}, 1],
+  ['tellmark', ['tests/integration/tellmark.mjs', '.'], {}, 1],
 ];
 // Run on their own once the tasks above are done, one at a time: checks that read wall-clock time.
 // world's `budget` times 3600 frames of the forest's destruction and reads the 99.9th percentile (the

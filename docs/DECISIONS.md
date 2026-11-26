@@ -6398,6 +6398,7 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   (the sheets' runs gave 31 - 34 % less; this machine was shared and noisy). The picture with it on matches the
   sheet's C in the same page (474 of 580 000 pixels differ, from the relief alone). The look changes once, when
   it turns on, mid-page (one frame). Not measured on the phone; the next `?perf` BENCH there says how much.
+
 ## ADR-224 — The tell mark: a mark over a boss's head through a blue / red windup (2026-11-26)
 
 - **Context:** the owner wants every boss's blue (parry) and red (dodge) blows clearly announced. Until now a

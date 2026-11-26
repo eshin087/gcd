@@ -16,6 +16,7 @@ import { ImpactRipple } from './render/impactRipple.js';
 import { StreakFx } from './entities/player/streakFx.js';
 import { TimeRip } from './entities/player/timeRip.js';
 import { stampUpdate, stampClear } from './combat/impactStamp.js';
+import { tellMarkInit, tellMarkUpdate } from './combat/tellMark.js';
 import { World } from './world/world.js';
 import { Player } from './entities/player/player.js';
 import { LEVELS, getLevel, levelFromSearch, applyLevel, levelUrl, withStage } from './levels/index.js';
@@ -162,6 +163,7 @@ async function boot() {
   game.fx.shed = new ShedDigits(game); // a struck or dissolving body sheds its letters (shedDigits.js)
   game.fx.ripple = new ImpactRipple(game); // a struck body's letters take the blow (impactRipple.js)
   game.fx.stamp = { clear: () => stampClear(game) }; // the hit printed at the contact (impactStamp.js)
+  tellMarkInit(game); // the mark over a boss's head through a blue / red windup (combat/tellMark.js)
 
   await step('world');
   try {
@@ -498,6 +500,7 @@ async function boot() {
     game.fx.ripple.update(fxDt);
     game.fx.streak?.update(fxDt);
     stampUpdate(game, fxDt);
+    tellMarkUpdate(game, dt, fxDt);
     if (perf) perf.add('fx', performance.now() - tf);
   };
 
