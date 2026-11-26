@@ -105,7 +105,8 @@ Clip keys:
 | `travel` | loops: `forward` keeps only the forward part of the root's travel; `free` keeps the measured direction (strafes) |
 | `search` | one-shots: how far (s) the other takes' alignment may move them (default 0.5) |
 | `ground` | `feet` (default) or `body` (tumbles: a shoulder or the back may be the lowest point) |
-| `speed` | loops: `1.45` (m/s) or `"picture"`: the loop travels at that speed (in the measured direction, or the `travel` angle when nothing was measured: a walk backward seen from behind); the contact (strike to push-off along the travel) and the root are rebuilt from it and the planted feet pinned to it (the stride follows the IK). `"picture"` = the stance measure from the picture: per stance of every take that sees at least 35 % of the travel across its picture, d(pelvis x - planted ankle x)/dt in pixels, metres from his torso's picture length (0.576 m), divided by that share; the median. Every loop's log prints it (`speed from the picture: ...`) whether or not the key is given. Measured on moveGround: walk 1.39 / 1.28, run 4.29, sprint 5.3 m/s, against 0.90 / 3.05 / 3.89 from the planted feet. A speed far above what the legs show (a back view does not see a stride along its axis) makes the pinned foot slide: the checker says so; then give the legs from a side take or `pose_keys` |
+| `speed` | loops: `1.45` (m/s) or `"picture"`: the loop travels at that speed (in the measured direction, or the `travel` angle when nothing was measured: a walk backward seen from behind); the contact (strike to push-off along the travel) and the root are rebuilt from it and the planted feet pinned to it (the stride follows the IK). `"picture"` = the stance measure from the picture: per stance of every take that sees at least 35 % of the travel across its picture, d(pelvis x - planted ankle x)/dt in pixels, metres from his torso's picture length (0.576 m), divided by that share; the median. Every loop's log prints it (`speed from the picture: ...`) whether or not the key is given. Measured on moveGround: walk 1.39 / 1.28, run 4.29, sprint 5.3 m/s, against 0.90 / 3.05 / 3.89 from the planted feet. The STRIDE follows: the legs' swing is scaled by given / measured speed (below, `stride`) |
+| `stride` | loops with `speed`: default true = each ankle's excursion along the travel about its cycle mean is scaled by (given speed / planted-foot speed), height and sideways place kept, thigh and shin re-solved by IK on the knee's own hinge, reach softly limited to 0.97 of the leg (the blend into a plant too); the log prints `stride: ... scaled 1.61x`. A number forces the scale (a gait seen from behind, whose measured speed is 0, needs one); `false` keeps the measured legs (the feet then slide) |
 | `contact_h` | loops: how far above its own floor a foot still counts as planted (m, default 0.04) |
 | `phases`, `events` | one-shots: VIDEO times in the FIRST take: `"phases": {"windup": "0:24.35", "active": "0:24.52", "recover": "0:25.10"}`, `"events": [{"t": "0:24.45", "name": "hit"}]` |
 | `sword` | true: find the blade in the picture and put it on the right hand (`weaponR`) |
@@ -286,7 +287,10 @@ push-off on planted feet).
 
 **Loop speed (speed)**: the planted-foot speed comes out about 1.5x too low (the fold and the fusion
 lose travel). Read the log's `speed from the picture: <take> X m/s (N stances: ...)` lines (side takes) and
-give `"speed": "picture"` (or the number you trust, e.g. `"speed": 1.45` for `walk`). For a gait seen only
+give `"speed": "picture"` (or the number you trust, e.g. `"speed": 1.45` for `walk`). The legs under-swing
+like the arms (the stride in the data is about 2/3 of the footage's), so the stride is scaled with it:
+moveGround `walk` / `run` / `sprint` at 1.45 / 4.4 / 6.4 m/s scale 1.61 / 1.44 / 1.64x, slide 0.01 cm,
+worst step 17 / 20 / 32 deg, and the sprint's side-take rows now show the footage's wide split. For a gait seen only
 from behind (`strafeWalkB`, `strafeRunB`: speed 0 because a back view cannot see travel along its axis)
 give the number: `"travel": 180, "speed": 1.0` builds a 1.0 m/s backward walk with its contact rebuilt
 (L 0-10 + 27-40, R 6-30); its slide (4.6 cm) says the back view's stride is too short for that speed.

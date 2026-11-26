@@ -301,6 +301,7 @@ def build_clip(spec, clip, log=print):
         else:
             log('  ! air_marks: the clip needs an `air` and a `land` event')
     g = retarget.ground_and_contact(q, fps, loop, clip.get('ground', 'feet'), clip.get('travel', 'free'), log, clip, yaw, air=airm)
+    strided = False
     if loop and g['speed'] is not None:
         sp2 = stance_speed_picture(clip, Ts, g['root'], fps, log)
         if clip.get('speed') is not None:
@@ -311,6 +312,20 @@ def build_clip(spec, clip, log=print):
                 log('  ! speed "picture": no take sees the travel across its picture; the measured speed is kept')
             else:
                 vg = loop_speed_vec(clip, g['root'], float(want), fps, log, g['speed'])
+                st = clip.get('stride', True)
+                k = None
+                if isinstance(st, (int, float)) and not isinstance(st, bool):
+                    k = float(st)
+                elif st and g['speed'] > 0.3:
+                    k = float(want) / g['speed']
+                if k is not None and abs(k - 1) > 1e-3:
+                    # the legs under-swing like the arms: the stride follows the given speed
+                    q, short = retarget.scale_stride(q, k, vg / max(np.linalg.norm(vg), 1e-9))
+                    strided = True
+                    log('  stride: the swing of the legs along the travel scaled %.2fx%s' % (
+                        k, '' if short < 0.5 else ' (a target %.0f cm out of reach of the leg: clamped)' % short))
+                elif st and g['speed'] <= 0.3:
+                    log('  stride: nothing measured to scale (speed %.2f): the stride stays; give "stride": <k>' % g['speed'])
                 g = retarget.ground_and_contact(q, fps, loop, clip.get('ground', 'feet'), clip.get('travel', 'free'), log,
                                                 clip, yaw, air=airm, v_given=vg)
     hips = np.zeros((len(q), 3))
@@ -337,7 +352,7 @@ def build_clip(spec, clip, log=print):
     # in the air: the hips' height from a fixed side camera's picture (jumps, falls)
     if clip.get('air') and not loop:
         hips = air_hips(clip, B, Ts, hips, g['cmask'], log)
-    q, before, after = retarget.pin_feet(q, hips, root, g['cmask'], loop=loop, flat=Wflat)
+    q, before, after = retarget.pin_feet(q, hips, root, g['cmask'], loop=loop, flat=Wflat, soft=strided)
     q = skel.continuous(q)
     # last guard: nothing through the ground after the feet were pinned
     h0 = hips.copy()
