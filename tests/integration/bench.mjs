@@ -42,7 +42,9 @@ export function benchRun(H, seed, bot, { secs = 600, skill = 0.9 } = {}) {
   const G = build(seed, true);
   const { game, input } = G;
   const d = game.dragon, p = game.player;
-  duel(G, { dist: 3, ai: false });
+  // (GCD_BFORM=n: the fight starts in phase n, through its real transitions, and stays in it: a probe)
+  const form = Number(process.env.GCD_BFORM ?? 1);
+  duel(G, { dist: 3, ai: false, form });
   d.debug.setAI(true);
   p.debug.god = false;
   const lead = (src) => (src === 'world' ? 0.3 : Array.isArray(TUNING.flashLead) ? TUNING.flashLead[Math.max(0, d.phase - 1)] : TUNING.flashLead);
@@ -82,7 +84,9 @@ export function benchRun(H, seed, bot, { secs = 600, skill = 0.9 } = {}) {
         }
       }
       if (P.alwaysGuard) guardUntil = Infinity;
-      return busy || pend.some((e) => !e.done && e.at - t < 0.7);
+      // (busy until each answered cue's impact is past: a cut started inside a roll turns it into the roll's
+      // attack and gives up its i-frames: the perfect bot was hit so, seed 99, a red 0.08 s after it rolled)
+      return busy || pend.some((e) => (!e.done && e.at - t < 0.7) || (e.done && e.at + 0.25 > t));
     },
     dueWithin(s) { const t = game.time; return pend.some((e) => !e.done && e.at - t < s); },
   };
@@ -93,24 +97,39 @@ export function benchRun(H, seed, bot, { secs = 600, skill = 0.9 } = {}) {
   let curAtk = null;
   const th = p.takeHit.bind(p);
   p.takeHit = (h) => { curAtk = h?.attack ?? null; const r = th(h); curAtk = null; return r; };
-  const n = { parries: 0, perfect: 0, dodges: 0, heals: 0, blocks: 0, guardBreaks: 0, guardOpens: 0 };
+  const n = { parries: 0, perfect: 0, dodges: 0, heals: 0, blocks: 0, guardBreaks: 0, guardOpens: 0, openThenCue: 0, openThenHit: 0 };
+  const flog = [];
+  const diag = { openAt: -9, openFlash: false, openHit: false, touchAt: 0, untouched: 0 };
   const phAt = [game.time];
   const w0 = G.watch;
   G.watch = (ev, e) => {
     w0?.(ev, e);
     if (ev === 'player:hurt' && e?.damage > 0) hurt.push([game.time, e.damage, curAtk || e.kind || d.brain.act?.name || d.mode, d.phase]);
+    // (GCD_BHIT=1: each hit and the cues before it)
+    if (process.env.GCD_BHIT) { if (ev === 'combat:flash') flog.push([game.time, e?.attack, e?.tell, e?.source]); if (ev === 'combat:tell') flog.push([game.time, 'tell:' + e?.attack, e?.tell, e?.impactIn?.toFixed?.(2)]); if (ev === 'player:hurt' && e?.damage > 0) H.out(`      HIT @${(game.time - t0).toFixed(2)} ${curAtk} ${e.damage.toFixed(0)} hero ${p.state} stateT ${p.stateT?.toFixed(2)} dist ${Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z).toFixed(2)} | ${flog.filter((x) => x[0] > game.time - 2).map((x) => `${(x[0] - t0).toFixed(2)} ${x[1]} ${x[2]} ${x[3] ?? ''}`).join(' · ')}`); }
     if (ev === 'player:parry') { n.parries++; if (e?.perfect) n.perfect++; }
     if (ev === 'player:perfectDodge') n.dodges++;
     if (ev === 'player:heal') n.heals++;
     if (ev === 'player:block') n.blocks++;
     if (ev === 'player:guardBreak') n.guardBreaks++;
-    if (ev === 'player:guardOpen') n.guardOpens++;
+    if (ev === 'player:guardOpen') { n.guardOpens++; diag.openAt = game.time; diag.openFlash = diag.openHit = false; }
+    // (what follows a guard knocked open within 1.2 s: a cue of his, a blow that lands)
+    if (game.time - diag.openAt < 1.2) {
+      if (ev === 'combat:flash' && e?.source === 'dragon' && !diag.openFlash) { diag.openFlash = true; n.openThenCue++; }
+      if (ev === 'player:hurt' && e?.damage > 0 && !diag.openHit) { diag.openHit = true; n.openThenHit++; }
+    }
+    // (the hero's blade on him: a cut that lands or stops on the barrier)
+    if (ev === 'player:hitDragon' || (ev === 'dragon:barrier' && e?.state === 'stop')) { diag.untouched = Math.max(diag.untouched, game.time - diag.touchAt); diag.touchAt = game.time; }
     if (/^dragon:phase[234]$/.test(ev)) phAt.push(game.time);
   };
   const t0 = game.time;
+  diag.touchAt = t0;
+  // (GCD_BTOUCH=1: what reached him, each time: the hero's state and the hit's kind)
+  if (process.env.GCD_BTOUCH) { const th0 = d.takeHit.bind(d); d.takeHit = (o = {}) => { H.out(`      touch @${(game.time - t0).toFixed(1)} hero ${p.state} kind ${o.kind ?? '-'} attack ${o.attack ?? o.move ?? '-'} exact ${!!o.exact} dmg ${o.damage}`); return th0(o); }; }
   let outcome = 'time';
   const tgt = new THREE.Vector3();
   run(G, secs, () => {
+    if (form > 1 && d.brain.pendingPhase > form) d.brain.pendingPhase = 0;
     input.axis = { x: 0, y: 0 };
     if (!p.alive || game.state !== 'boss') return;
     d.lockPoint(tgt);
@@ -150,7 +169,7 @@ export function benchRun(H, seed, bot, { secs = 600, skill = 0.9 } = {}) {
   return {
     seed, bot, outcome, T, phase: d.phase, bar: Math.max(0, d.hp) / (d.maxHp ?? TUNING.hp), hp: p.hp,
     flasks: p.maxFlasks - p.flasks, hits: hurt.length, dmg: hurt.reduce((s, h) => s + h[1], 0), killer,
-    worst: worst[1], worstBy: worst[2], perPh, missed, spared: d.parts?.melee?.stats?.spared ?? null, byMove, barrier: d.barrier?.stats ? { ...d.barrier.stats } : null, ...n,
+    worst: worst[1], worstBy: worst[2], perPh, missed, spared: d.parts?.melee?.stats?.spared ?? null, untouched: Math.max(diag.untouched, game.time - diag.touchAt), turns: d.patience?.stats?.turns ?? null, byMove, barrier: d.barrier?.stats ? { ...d.barrier.stats } : null, ...n,
   };
 }
 
@@ -169,7 +188,7 @@ export async function benchScenario(H, who) {
     for (const seed of seeds) {
       const r = benchRun(H, seed, bot, { secs, skill });
       all.push(r);
-      out(`   ${bot.padEnd(8)} seed ${String(seed).padEnd(5)} ${r.outcome.padEnd(5)} ${r.T.toFixed(0).padStart(4)} s · phase ${r.phase} bar ${(r.bar * 100).toFixed(0)} % · phases ${r.perPh.map((x) => x.toFixed(0)).join(' / ')} s · hits ${r.hits} for ${r.dmg.toFixed(0)} · flasks ${r.flasks} · worst ${r.worst.toFixed(0)} (${r.worstBy}) · parries ${r.parries} (perfect ${r.perfect}) · dodges ${r.dodges} · blocks ${r.blocks} · guard opened ${r.guardOpens} · guard broken (red) ${r.guardBreaks}${r.missed ? ` · cues missed ${r.missed}` : ''}${r.spared !== null ? ` · spared ${r.spared}` : ''}${r.killer ? ` · KILLED BY ${r.killer}` : ''}${r.barrier ? ` · barrier ${JSON.stringify(r.barrier)}` : ''}`);
+      out(`   ${bot.padEnd(8)} seed ${String(seed).padEnd(5)} ${r.outcome.padEnd(5)} ${r.T.toFixed(0).padStart(4)} s · phase ${r.phase} bar ${(r.bar * 100).toFixed(0)} % · phases ${r.perPh.map((x) => x.toFixed(0)).join(' / ')} s · hits ${r.hits} for ${r.dmg.toFixed(0)} · flasks ${r.flasks} · worst ${r.worst.toFixed(0)} (${r.worstBy}) · parries ${r.parries} (perfect ${r.perfect}) · dodges ${r.dodges} · blocks ${r.blocks} · guard opened ${r.guardOpens} (then a cue ${r.openThenCue}, a landed blow ${r.openThenHit}) · longest untouched ${r.untouched.toFixed(0)} s${r.turns !== null ? ` (he stopped waiting ${r.turns}x)` : ''} · guard broken (red) ${r.guardBreaks}${r.missed ? ` · cues missed ${r.missed}` : ''}${r.spared !== null ? ` · spared ${r.spared}` : ''}${r.killer ? ` · KILLED BY ${r.killer}` : ''}${r.barrier ? ` · barrier ${JSON.stringify(r.barrier)}` : ''}`);
       if (process.env.GCD_BMOVES) out(`        damage by move: ${Object.entries(r.byMove).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v.toFixed(0)}`).join(' · ')}`);
     }
   }

@@ -119,10 +119,11 @@ export const TUNING = {
   wjWeight: {
     knockback: { hand: 3, big: 7 }, // the floor of a landed blow's throw (a beat's own knockback wins when larger)
     blockPush: 3.4, // m a blocked blow slides the hero (a beat's `blockPush` wins)
-    // of the hero's guard meter per blocked blow (a beat's `guardCost` wins: absolute points). The tuning
-    // pass: 0.5 (0.4 before: a bot that rolled every red and blocked the rest won 6 of 6; at 0.5 the second
-    // block in a row knocks the guard open, and it wins 1 of 6). A block still costs no health.
-    guardCost: 0.5,
+    // of the hero's guard meter per blocked blow (a beat's `guardCost` wins: absolute points). The owner
+    // (round 2): the THIRD block in a row knocks the guard open, never the second: 0.45 (two leave 10; the
+    // third opens it up to 1 s after the second: the meter refills 60 a second from 0.8 s after a block, and
+    // no cost breaks a third 1.3 s on without breaking a second 0.34 s on; veil.mjs WEIGHT). (0.4 at first; 0.5 in the first tuning pass opened it on the second.) A block costs no health.
+    guardCost: 0.45,
   },
   // ---- R3 THROWN THROUGH THE WORLD (player.js reads the hit fields; these are his)
   wjCrash: { power: 3.2, damage: 6, minKb: 3 }, // (power: Halcyon's crash's 3.2, BLUNT: a car (2.4, metal) and a wall break behind him)
@@ -144,6 +145,16 @@ export const TUNING = {
     knockback: 6,
     escapeOpen: 2, // the escape opens the barrier for open[2] x this
   },
+
+  // ---- HIS PATIENCE (patience.js; the tuning pass, round 2: the owner, a defender who never attacks must
+  // not outlast him): `after` s without the hero's blade reaching him (a cut that lands or stops on the
+  // barrier; a flurry) he stops waiting (the cue: his eyes burn for `cue` s, the unveiling's sound) and until
+  // it does every blocked blow costs at least `guardCost` of the meter: one block knocks the guard open and
+  // the next blow of the string lands in it. Measured (bench.mjs, the pace defender, six seeds, 600 s): without
+  // it alive in every seed; after 20: dead in 102 - 383 s; after 30: 201 - 525 s (mean 363); after 40: 83 -
+  // 518 s. guardCost 0.7 (two blocks): alive in every seed. (His later phases' moves picked early were tried as
+  // the press: they made him easier to wait out.) No other bot goes 20 s without reaching him.
+  wjPatience: { after: 30, cue: 1.2, guardCost: 1 },
 
   // ---- the beam's drawing borrows Tian Lei's (fxBeam.js reads d.T.beam.look)
   beam: { ...BEAM_TUNING },

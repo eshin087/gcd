@@ -356,7 +356,7 @@ function answer(G, how, name = null) {
   G.ans = { at: 0, done: false };
   G.watch = (n, e) => {
     if (n !== 'combat:flash' || e?.source !== 'dragon' || (name && e.attack !== name) || G.ans.done || G.ans.at) return;
-    const lead = { parry: 0.15, perfect: 0.04, dodge: 0.08, early: 0.45 }[how];
+    const lead = { parry: 0.25, perfect: 0.04, dodge: 0.08, early: 0.45 }[how]; // (ADR-227: an ordinary parry is pressed 0.20 - 0.22 s before the impact; the press registers a frame later, the impact ~0.25 s after the flash)
     if (lead !== undefined) G.ans.at = game.time + TUNING.flashLead - lead;
   };
   return () => {
@@ -573,7 +573,7 @@ async function scenarioBarrier() {
       blowAnd(G, 'flick', 'parry');
       seen.push(d.barrier.up ? d.barrier.cracks : 'open');
     }
-    assert(seen.join(',') === [...Array.from({ length: B.cracks - 1 }, (_, i) => i + 1), 'open'].join(',') && d.barrier.why === 'cracks' && Math.abs(d.barrier.openDur - B.openCracked[0]) < 1e-9, `ordinary parries crack it: ${seen.join(', ')}; open for ${d.barrier.openDur} s`);
+    assert(seen.join(',') === [...Array.from({ length: B.cracks - 1 }, (_, i) => i + 1), 'open'].join(',') && d.barrier.why === 'cracks' && Math.abs(d.barrier.openDur - B.openCracked[0]) < 1e-9, `ordinary parries crack it: ${seen.join(', ')}; open for ${d.barrier.openDur} s (${d.barrier.why}; ${JSON.stringify(d.barrier.stats.opens)})`);
     run(G, B.openCracked[0] + 0.5);
     d.barrier.crack();
     run(G, B.crackFade + 0.5);
@@ -610,7 +610,7 @@ async function scenarioBarrier() {
 
 // ================================================================== scenario: weight (R2)
 async function scenarioWeight() {
-  out('\n== scenario WEIGHT (every landed blow throws; a block slides >= 3 m and costs no health; two blocks in a row break the guard) ==');
+  out('\n== scenario WEIGHT (every landed blow throws; a block slides >= 3 m and costs no health; two hold, the third in a row breaks the guard) ==');
   const G = build();
   const d = G.game.dragon, p = G.game.player;
   duel(G, { dist: 2 });
@@ -641,22 +641,31 @@ async function scenarioWeight() {
   assert(blocks.every((b) => b.dhp === 0), 'a block never costs health');
   assert(blocks.slice(0, 2).every((b) => b.slid >= 3 - 0.05), `a blocked blow slides him >= 3 m (${blocks.map((b) => b.slid.toFixed(2)).join(', ')})`);
   assert(blocks.every((b) => b.cost >= TUNING.wjWeight.guardCost * 100 - 2), `each block takes ${TUNING.wjWeight.guardCost * 100} % of the meter (${blocks.map((b) => b.cost.toFixed(0)).join(', ')})`);
-  // two in a row (a string: inside the meter's regen delay) break the guard (the tuning pass: guardCost 0.5; three at 0.4)
-  p.guard = 100;
-  broke = false;
-  G.watch = (n, e) => w(n, e);
-  const gs = [];
-  place(G, 2);
-  run(G, 0.3, (GG) => GG.input.press(1));
-  for (let i = 0; i < 3; i++) {
-    p.yaw = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z);
-    d.hitPlayer({ damage: 18, knockback: 3, tell: TELL.NORMAL, attack: 'flick', from: { x: d.position.x, z: d.position.z } });
-    gs.push(Math.round(p.guard));
-    run(G, 0.2, (GG) => GG.input.press(1));
+  // a string's blocks (the owner, round 2: the THIRD block in a row knocks the guard open, never the second),
+  // with the gap between them up to 1 s (a string's; the meter refills 60 a second from 0.8 s after a block, so
+  // blows 1.3 s apart leave 19: no cost can break the third there and spare the second at 0.34 s): 0.45
+  const rows = [];
+  for (const gap of [0.34, 0.7, 1.0]) {
+    p.debug.heal();
+    p.guard = 100;
+    run(G, 1.2);
+    let opened = -1, k = 0;
+    G.watch = (n) => { if ((n === 'player:guardOpen' || n === 'player:guardBreak') && opened < 0) opened = k; };
+    const gs = [];
+    place(G, 2);
+    run(G, 0.3, (GG) => GG.input.press(1));
+    for (k = 0; k < 3; k++) {
+      p.yaw = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z);
+      d.hitPlayer({ damage: 18, knockback: 3, tell: TELL.NORMAL, attack: 'flick', from: { x: d.position.x, z: d.position.z } });
+      gs.push(Math.round(p.guard));
+      run(G, gap, (GG) => GG.input.press(1));
+    }
+    G.watch = null;
+    G.input.up(1);
+    rows.push({ gap, opened, gs });
   }
-  G.watch = null;
-  G.input.up(1);
-  assert(broke && gs[1] === 0, `two blocked blows in a row break the guard (meter ${gs.join(' -> ')})`);
+  out(`   three blocks in a row: ${rows.map((r) => `${r.gap} s apart: meter ${r.gs.join(' -> ')}, open at block ${r.opened + 1}`).join(' · ')}`);
+  assert(rows.every((r) => r.opened === 2), `two blocks in a row hold, the third knocks the guard open (${rows.map((r) => `${r.gap} s: block ${r.opened + 1}`).join(', ')})`);
 }
 
 // ================================================================== scenario: crash (R3)
@@ -1266,6 +1275,8 @@ const S = {
   into: scenarioInto,
   heldbreak: scenarioHeldBreak, // (the tuning pass)
   floor: scenarioFloor, // (the tuning pass)
+  bonfire: scenarioBonfire, // (the tuning pass, round 2)
+  patience: scenarioPatience, // (the tuning pass, round 2)
   // world: scenarios
   // (the crossing never traps a thrown hero: thrown 10 m from 24 places, four ways each, through whatever
   // stands there; he ends outside every collider, inside his bound, and walks away)
@@ -1823,7 +1834,7 @@ function trRun(G, name, hows, { dist = 8, max = 10, god = false, ang = 0 } = {})
     if (n !== 'combat:flash') return;
     const i = flashes.length, how = hows[Math.min(i, hows.length - 1)];
     flashes.push({ t: game.time, tell: e.tell, hazard: !!e.hazard, x: e.x, z: e.z });
-    const lead = { parry: 0.15, perfect: 0.04, dodge: 0.1 }[how];
+    const lead = { parry: 0.25, perfect: 0.04, dodge: 0.1 }[how]; // (ADR-227: an ordinary parry 0.20 - 0.22 s before the impact; the press lands a frame later)
     if (lead !== undefined) due.push({ at: game.time + TUNING.flashLead - lead, how, x: e.x, z: e.z, hazard: !!e.hazard });
   };
   const hp0 = p.hp, h0 = G.hits.length, g0 = G.counts['player:guardOpen'] ?? 0;
@@ -2065,6 +2076,81 @@ async function scenarioFloor() {
   assert(inVoid && inVoid.shown === 0, `in the void none of the crossing's marks show (${inVoid?.shown} of ${inVoid?.n0})`);
   assert(back.scene === 'crossing' && back.shown >= Math.min(inVoid?.n0 ?? 0, SC.marks.length) * 0.5, `back in the crossing its marks show again (${back.shown})`);
   assert(fires[0] === 0, `no fire burns after his fight (${fires[0]} 'fire' blobs alive)`);
+}
+
+// (the tuning pass, round 2: the owner) HIS PATIENCE (patience.js): a hero whose blade has not reached him for
+// wjPatience.after s makes him stop waiting (a cue he sees and hears, once); then a single block knocks the
+// guard open; a cut that reaches him (on the shell) ends it. A block still costs no health.
+async function scenarioPatience() {
+  out('\n== scenario PATIENCE (untouched for 20 s he stops waiting: the cue; one block opens the guard; a cut ends it) ==');
+  const P = TUNING.wjPatience;
+  const G = build();
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  duel(G, { dist: 6 });
+  p.debug.god = false;
+  const cues = [];
+  G.watch = (n, e) => { if (n === 'dragon:spell' && e?.name === 'wjUnveil') cues.push(game.time); };
+  const t0 = game.time;
+  d.patience.reset();
+  let eyes = 0;
+  const look = () => { eyes = Math.max(eyes, d.patience.cueK); };
+  run(G, P.after - 0.5, look);
+  const before = d.patience.impatient;
+  run(G, 2, look);
+  const after = d.patience.impatient, cueAt = cues.map((t) => +(t - t0).toFixed(1));
+  // one block while he is impatient knocks the guard open, no health
+  p.debug.heal();
+  p.guard = 100;
+  place(G, 2);
+  run(G, 0.3, (GG) => GG.input.press(1));
+  let opened = false;
+  G.watch = (n) => { if (n === 'player:guardOpen') opened = true; };
+  p.yaw = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z);
+  const hp0 = p.hp;
+  d.hitPlayer({ damage: 18, knockback: 3, tell: TELL.NORMAL, attack: 'flick', from: { x: d.position.x, z: d.position.z } });
+  run(G, 0.1, (GG) => GG.input.press(1));
+  G.input.up(1);
+  const oneBlock = { opened, dhp: hp0 - p.hp };
+  // a cut on the shell (the barrier is up) reaches him: he waits again
+  run(G, 1);
+  swing(G, 1.6);
+  const reset = !d.patience.impatient && d.patience.idle < 1;
+  G.watch = null;
+  out(`   impatient at ${P.after - 0.5} s: ${before}, at ${P.after + 1.5} s: ${after} (cue at ${cueAt.join(', ')} s, his eyes ${eyes.toFixed(2)}); one block: guard opened ${oneBlock.opened}, hp -${oneBlock.dhp}; after a cut on the shell: impatient ${d.patience.impatient}`);
+  assert(!before && after, `untouched for ${P.after} s he stops waiting`);
+  assert(cueAt.length === 1 && eyes > 0.9, 'once, with a cue the player sees (his eyes burn) and hears (the unveiling sound)');
+  assert(oneBlock.opened && oneBlock.dhp === 0, 'while he presses one block knocks the guard open, and costs no health');
+  assert(reset, 'a cut that reaches him (on the shell) ends it');
+}
+
+// (the tuning pass, round 2: the owner) The bonfire goes out while the scene is the void (no flame, light,
+// embers or sound: atmosphere.bonfireLit, which all four read) and burns again on the way back; a reset
+// lights it too.
+async function scenarioBonfire() {
+  out('\n== scenario BONFIRE (out in the void, lit again in the crossing) ==');
+  const G = build();
+  const { game } = G;
+  duel(G, { dist: 4 });
+  const A = game.world.atmosphere, sc = game.world.forest.scenes;
+  const lit0 = A.bonfireLit;
+  sc.to('void', { x: 0, z: -2 });
+  run(G, 0.1);
+  const early = A.bonfireLit;
+  run(G, 3);
+  const inVoid = A.bonfireLit;
+  sc.to('crossing', { x: 0, z: -2 });
+  run(G, 3);
+  const back = A.bonfireLit;
+  sc.to('void', { x: 0, z: -2 });
+  run(G, 3);
+  game.world.restore();
+  const reset = A.bonfireLit;
+  out(`   lit: at the start ${lit0}, as the front leaves him ${early}, in the void ${inVoid}, back in the crossing ${back}, after a reset from the void ${reset}`);
+  assert(lit0 && early, 'the bonfire burns until the front reaches it');
+  assert(inVoid === false, 'in the void the bonfire is out (no flame, light, embers or sound)');
+  assert(back === true, 'back in the crossing it burns again');
+  assert(reset === true, 'a reset from the void lights it');
 }
 
 // (the tuning pass) A piece he holds, cut by the hero's blade: bitten while it has hp to spare; the cut that

@@ -365,9 +365,14 @@ export const SCAR = Object.freeze({
    * dots), the RUBBLE (what lands where a piece came down, each bitten letter that falls) and today's crack
    * SPOKES; the strokes that give a mark its shape stay. `cool`: rubble of a material whose end colour
    * is a spark's ember (metal: the cars, the lamps, the bus) lies cold grey instead of as orange embers
-   * glowing on the floor till the reset. Per level id; absent: all (1), as before.
+   * glowing on the floor till the reset (`?coolRubble=1` / `0` overrides it on any level). Per level id; absent: all (1), as before.
    */
-  thin: Object.freeze({ veil: Object.freeze({ grit: 0.35, rubble: 0.25, ground: 0.4, cool: true }) }),
+  thin: Object.freeze({
+    veil: Object.freeze({ grit: 0.35, rubble: 0.25, ground: 0.4, cool: true }),
+    // Halcyon Plaza: no thinning; `cool` waits on the owner (the sheet of round 2: orange today vs grey;
+    // `?coolRubble=1` shows it grey in the game): true to ship it
+    city: Object.freeze({ grit: 1, rubble: 1, ground: 1, cool: false }),
+  }),
   /** at the cap this share of the oldest marks goes, fading out over `fade` s (never a pop in view) */
   evict: 0.15,
   fade: 1.4,

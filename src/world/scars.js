@@ -67,7 +67,9 @@ export class Scars {
     this.lipA = lip.alpha;
     // the level's thinning (SCAR.thin): the share of grit, rubble and today's crack spokes it keeps (1: all)
     const th = SCAR.thin?.[game?.level?.id] ?? null;
-    this.thin = { grit: th?.grit ?? 1, rubble: th?.rubble ?? 1, ground: th?.ground ?? 1, cool: !!th?.cool };
+    // (`?coolRubble=1` / `=0`: the cold rubble on or off on any level, over the table: the owner's films)
+    const cu = lookOf('coolRubble', '');
+    this.thin = { grit: th?.grit ?? 1, rubble: th?.rubble ?? 1, ground: th?.ground ?? 1, cool: cu === '1' ? true : cu === '0' ? false : !!th?.cool };
     this.max = SCAR.max;
     this.cap = SCAR.max;
     /** the marks, oldest first: { x, y, z, glyph, size, color: [r, g, b], alpha, rot, owner } (records are reused) */
