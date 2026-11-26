@@ -1312,7 +1312,8 @@ above, `?idles=old` the belt; `setIdles` takes the three): `stand()` writes `ref
 `actList` is the mode's: `EASE_LIST_REF` = `EASE_LIST` + `EASE_REF_EXTRA` (`stow`), `FIGHT_LIST_REF` =
 `FIGHT_ACTS_REF` (`grip`, `shift`, `loosen`, about the hold's blade); an action under way is cut when the mode
 changes. The forearm-led moves start from the mode's standing arm (`syncStandArm`: `EASE_ELBOW`, `EASE_AIM`, the
-blade's `EASE_BLADE`; the fight's `FIGHT_AIM` / `FIGHT_FLAT`). **The put-away** (`stow`, `STOW`, a trick): the hand
+blade's `EASE_BLADE`; the fight's `FIGHT_AIM` / `FIGHT_FLAT`; the blade-swinging moves take
+`REF_STAND.leadP`'s elbow pole over their envelope, `leadArm`). **The put-away** (`stow`, `STOW`, a trick): the hand
 to the left hip, the sword gone (~1.5 s), drawn and swung up into the stand. `_idleLife` publishes `anim.stow`
 (0..1, `stowHidden(u)`) only while it plays uncut in the loco clip: 0 every other frame, so the sword is whole the
 frame any other clip starts. `HeroAnimator._stowSword` (in `apply`, the hero only) draws the weapon slot's own

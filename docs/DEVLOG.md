@@ -43,6 +43,15 @@ Pair sheets against the footage and films at the game camera (scratch, not the r
 camera otherwise); the hold's grip ~13 cm higher and its blade flatter than the footage's (the 60° sword-wrist bar);
 the guard's crouch less deep than the footage's; the coat hides the stand's blade from straight behind.
 
+**After the merge with main** (the full `npm test`: six FAILs, all ours, each green with `?idles=new&guard=ward`).
+The hold stood the footage's left foot ahead, but the light chain steps the rear foot and comes home to the
+stance: every light stepped the other foot and the way home drew back the wrong one (heroweight). The hold now
+keeps the feet the chain comes home to (the right 18 cm ahead), the hips square, the blade 30° out. The robe's
+sleeve wing and the warden's belt cut into the arms (looks): the stand's sword elbow and the hold's free elbow
+stand off the ribs; the blade-swinging moves take the old elbow pole over their envelope so the raised fist stays
+within 60°. The ribbon sword's swing (hero) and the air star of seven (chain, seeded drift: the plan's own best
+was 14° from the new dodge spot, the search complete) are measured as ADR-206 says. Films re-taken.
+
 **Next / open.** The owner's look at the films (the hold's and the guard's blades from the game camera). The
 steel look set (`?lights=steel`, unmerged) has its own stand: when it lands it keeps it (its own hook in `stand()`).
 

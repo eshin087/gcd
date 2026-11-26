@@ -6177,9 +6177,22 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
     blades 0.2 m apart (duel `clash`).
 - **Departures from the footage, and why:** the blade's flat is rolled 40° up off his sides (`FLAT_ROLL`): held
   flat to the sides, edge down, as the footage holds it, it is edge-on to the game camera above and behind him (a
-  line one letter wide). The hold's grip sits ~13 cm higher than the footage's belt and the blade ~8° flatter:
-  at the belt the sword wrist bent 70-90° off the forearm, past the 60° at which the fist (built on the sword's
-  frame) turns off the wrist (ADR-186's last amendment).
+  line one letter wide). The hold's grip sits ~13 cm higher than the footage's belt and the blade ~8° flatter
+  (47° up, 30° out to his right): at the belt the sword wrist bent 70-90° off the forearm, past the 60° at which
+  the fist (built on the sword's frame) turns off the wrist (ADR-186's last amendment).
+  - **The hold's feet** (found by the full `npm test` after the merge with main): the footage stands the LEFT foot
+    a short step ahead. The light chain steps the foot further back (anim.js `play`: `stepL`) and comes home to
+    the stance, so from the left-ahead hold every light stepped the other foot: the way home lifted the wrong one
+    (after hit 2 the left 6.9 cm, the right 0.0; heroweight W7c) and a bearing foot slid 10.6 cm through the rising
+    thrust (W7a, ≤ 6). The hold now stands the right foot 18 cm ahead and the left 18 cm back (the feet the chain
+    steps from and comes home to, as the fencer's guard did), the hips square: slides ≤ 4.5 cm, the way home lifts
+    the foot that stepped (6.9 cm, the other 0.0).
+  - **The arms off the ribs** (the kept-for-later looks): the stand's sword elbow points back and a little out
+    (`rP`; pulled in, the warden cuirass's belt cut 3.5 cm into the hanging upper arm, now -1.0) and the hold's
+    free elbow out (`lP`; across his front the robe's sleeve wing on that arm swung through his chest on 10.5 % of
+    the route's frames, now 2.2 %). The moves that swing the blade take the elbow's old pole over their envelope
+    (`REF_STAND.leadP`, idles.js `leadArm` / `syncStandArm`): faded in from the elbow out, the salute's and the
+    spells' raised fist turned 63-77° off the forearm (≤ 60), now 55° at most.
 - **Consequences** (scenario `heroref`, measured in his own frame): the stand's sword wrist 44° max, elbows R 131°
   L 126°; the hold 60° (R 88°), the free hand 0.0 cm off its place on the grip; through the stance's change the free
   hand stays ≥ 8.8 cm out of him; every action within the bars ADR-186 set (wrist ≤ 57° in every action, the
@@ -6189,4 +6202,10 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   cross ward from the stance before: 57 cm). From the game camera the hold's and the guard's blades stand over
   his right shoulder and across his head; the owner has not seen them yet. Every suite written against ADR-186's
   poses and the cross ward runs with them (`heroidles` and, through `pinAdr186`, `herolife`, `heroarms`, `herohand`:
-  `setIdles('new')`, `setGuard('ward')`; `herostance` as before `'old'`) rather than loosening its bars.
+  `setIdles('new')`, `setGuard('ward')`; `herostance` as before `'old'`) rather than loosening its bars. Two more
+  measures are tied to the old stances and say so: the moon ribbon sword's swing through a falling cut is
+  measured from the fencer's guard (`hero`: from the hold's raised blade the hilt travels less into the coil, 30°
+  where the bar is 35; with only the hold's blade lowered to the fencer's 13°, 51°), and the air star of seven
+  passes (`chain`) is checked against the widest its complete search finds from where he dodged (the new stance
+  moved the seeded fight before it: from that dodge spot the search's best is 14°, from the old one 21°; seeds 1338-
+  1340 pass the 17° bar either way).
