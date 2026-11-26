@@ -2572,6 +2572,10 @@ STRATEGY (opt-in, god mode, seeds 4242 and 7): mixed 75 – 84 s, parry 95 – 9
   phase (`fixed`): 0.42 is his first-windup floor, 0.28 the shortest windup whose glint still comes after its
   tell (flashLead 0.26); impacts 0.36 s apart (>= minHitGap). Each blow's coil is reached early and held, the
   blow a snap out of a still chamber. Band 0 - 2.6 / 2.8 m, cooldown 5.
+- **Straight kicks, long punches** (the owner: "a straight line when his kick is out"). Every kick lands with the
+  leg straight (knee 166 - 173 degrees at contact; the sweep 118 - 156 along the floor) and every straight punch with
+  the arm long (elbow ~169); hooks, uppercuts, elbows and knee strikes keep their bend. The zones are unchanged;
+  the butterfly kicks carry him 0.7 m less, since the longer leg reaches what the travel did.
 
 ## Halcyon (2026-11-22, ADR-160; `?level=city`)
 

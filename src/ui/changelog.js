@@ -20,7 +20,7 @@ export const RELEASES = [
       {
         date: '2026-11-26',
         title: 'Xin Yi rebuilt: a man in a coat, readable windups, faster hands',
-        notes: ['Xin Yi can now be tried as a man in a long coat drawn like the hero, with windups you can read before every blue or red blow, a gun aimed down his arm and two quick strings. Add ?oneBody=b&oneMoves=a to the address on the Hall of Falling Script to try it.'],
+        notes: ['Xin Yi now looks like a man in one long open coat, drawn like the hero.', 'His new moves can be tried with ?oneMoves=a in the address on the Hall of Falling Script: straight kicks, long punches, windups you can read before every blue or red blow, a gun aimed down his arm and two quick strings.'],
       },
       {
         date: '2026-11-26',

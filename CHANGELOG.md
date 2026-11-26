@@ -5,11 +5,12 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 
 ## [Unreleased]
 One hundred and twelve pieces of work since 0.4.0:
-- **Xin Yi rebuilt: a man in a coat, readable windups, faster hands** (2026-11-26, ADR-221). *Added, behind switches until the owner picks:* `?oneBody=a|b|c`
-  prints Xin Yi like the hero on a man's build (square shoulders, a belted waist, fuller hair, a coat that hangs
-  instead of flaring; a closed, b open, c a duster to mid-shin); `?oneMoves=a` aims his single gun down a straight
-  arm, holds every blue and red blow in a windup pose you can read before the snap (the same timing), and adds two
-  fast strings, Snapping Hands and Quick Foot.
+- **Xin Yi rebuilt: a man in a coat, readable windups, faster hands** (2026-11-26, ADR-221). *Changed:* Xin Yi is
+  drawn like the hero on a man's build: square shoulders, a belted waist, fuller hair, and one long open coat that
+  hangs instead of flaring, with a straight hem (the owner's pick; `?oneBody=0` as before, `a` closed, `c` a duster).
+  *Added, behind `?oneMoves=a` until the owner says:* his kicks land with the leg straight and his punches with the
+  arm long, his single gun is aimed down a straight arm, every blue and red blow is held in a windup pose you can
+  read before the snap (the same timing), and two fast strings, Snapping Hands and Quick Foot.
 - **Four looks for the perfect dodge flurry** (2026-11-25, ADR-210). *Added, behind `?dodgefx=a|b|c|d` (the Lab's
   `dodgefx` button; the owner picked a, the Thunder Thrust, as the default; `?dodgefx=off` is the flurry before):* against a man the flurry keeps its vanish and all three
   finishers, and adds faint smeared copies of him along each cut, tiny sparks kicked off the floor, and an aerial cut

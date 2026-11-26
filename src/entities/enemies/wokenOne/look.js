@@ -301,17 +301,20 @@ function turnFront(F, az) {
  *  it they would stand out straight. (The springs move the cloth smoothly, so a hard stop at the limit
  *  does not pop.) */
 export const COAT_SWING = Object.freeze({ out: 0.87, in: 0.35 }); // (50 deg out: at 75 the flips read as a crown of planks)
+/** ... the one coat's (`?oneBody=`): it swings out 30 degrees at most, so through his flips and kicks its
+ *  overlapping panels stay one coat instead of fanning into boards. */
+export const COAT_SWING_ONE = Object.freeze({ out: 0.52, in: 0.3 });
 
 /** After the animator (dress runs after _animate in the same frame): hold each panel inside COAT_SWING,
  *  the spring's state too (so it does not wind up against the limit). */
-function clampCoat(d) {
+function clampCoat(d, S = COAT_SWING) {
   const st = d.anim?.coatState, coat = d.rig?.coat;
   if (!st || !coat) return;
   for (let i = 0; i < coat.length; i++) {
     const s = st[i], C = coat[i];
     if (!s || !C?.segs) continue;
     const a = s[0], b = s[1], tot = a.x + b.x;
-    const want = tot < -COAT_SWING.out ? -COAT_SWING.out : tot > COAT_SWING.in ? COAT_SWING.in : tot;
+    const want = tot < -S.out ? -S.out : tot > S.in ? S.in : tot;
     if (want === tot || !Number.isFinite(tot) || Math.abs(tot) < 1e-6) continue;
     // both segments scaled alike (the panel keeps its curve), their swing toward the limit stopped
     const k = want / tot;
@@ -356,7 +359,7 @@ export function dressOne(d, dt) {
     }
     D.reload = !D.reload; // (re-read the guns below)
   }
-  if (D.print !== '0' || D.body !== '0') clampCoat(d);
+  if (D.print !== '0' || D.body !== '0') clampCoat(d, D.body !== '0' ? COAT_SWING_ONE : COAT_SWING);
   // the guns: phase 2 only; gone from the start of his reload until he draws the next pair
   const empty = !!d.iron?.reloading && fin(d.brain?.act?.t, 1) < RELOAD_EMPTY;
   if (empty !== D.reload) {

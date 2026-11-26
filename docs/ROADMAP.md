@@ -218,7 +218,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Diagnosis: filmed at the game camera beside the hero and from four sides, measured (the audit, an aim probe); report to the owner
 - [x] His figure printed the hero's way on a man's build, three cuts (`?oneBody=a|b|c`): option sheets to the owner
 - [x] His moves (`?oneMoves=a`): the side-on aim, held blue / red windups, two fast strings; before / after films; the `rebuild` test
-- [ ] The owner's picks into PICKED (then the docs' defaults)
+- [x] The owner's pick of the figure: b, the open coat (PICKED); one coat, not the hero's cloak
+- [x] Straight kicks and long punches on the rebuild (the owner's ask); the coat held to 30 degrees through flips
+- [ ] The owner's word on the moves (`?oneMoves=a` as the default)
 - [ ] Phase 1's left hand behind his back reads one-armed from some sides; the sweep's tuck pops at the knee (Tian Lei's builder)
 
 ## M1.89 — 60 fps on every device: the frame's cost (2026-11-25, `render/perf-ground-steps`, ADR-199)

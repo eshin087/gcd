@@ -6479,4 +6479,21 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   pop is Tian Lei's builder and pre-existing); the spin kicks' windups jolt ~25 % more (the turn into the held coil
   is quicker). His blows are Tian Lei's builders (ascendant/moves.js X): a change there changes him on both switches.
   Not done: the left hand behind his back in phase 1 (the homage's) still reads one-armed at the game camera from
-  some sides; the sweep's tuck. When the owner picks, the picks move into PICKED and the docs' defaults change.
+  some sides; the sweep's tuck.
+- **The owner's answer (2026-11-26):** "lets do open coat" (`oneBody: 'b'` in PICKED), and: the kicks "too stiff
+  ... should be a straight line when his kick is out" (not a triangle at the knee); the coat's bottom not like the
+  hero's cloak, "one big coat put together", no layers; the punches and acrobatics natural. So:
+  - **One coat** (gear.js `COAT_MAN`, look.js): five panels overlapping all round, one back panel (no vent), the
+    side panels a few mm outside (no flicker), a straight hem (panelSkirt's per-panel `jag` 0), its inside the same
+    cloth, and the coat printed as part 5, which the bosses' print never breaks into the hero's pale hem; it swings
+    30 degrees out at most (`COAT_SWING_ONE`), so in his flips it no longer fans into boards.
+  - **Straight kicks**: anim.js `kickStretch` (a lifted foot asked for far from the hip is carried out along its
+    line, continuous in the distance), `legSoftA` [0.95, 0.998], and each kick's contact key (moves.js `longLeg`,
+    `T.legReach` 1.05 x the leg from its hip, along the floor for the sweep's whole turn). Knees at contact
+    100 - 157 -> 166 - 173 degrees (the sweep 78 -> 118 - 156). The butterflies carry him 0.7 m less (`travelCut`: their
+    feet ended 0.3 m inside the hero).
+  - **Long punches**: `armSoftA` [0.95, 0.996] and the straight blows' (jab, cross, palm, double, backfist) hit key
+    1.16 x further from the shoulder (`longArm`): elbows at contact ~150 -> ~169 degrees.
+  - The cost: the legs travel further back from a straight kick: the spin kick that follows one jolts ~40 - 60 %
+    more (lesson 336 -> 530 mm/f2), within the audit's range (the sweep's 870, pre-existing). The moves stay
+    behind `?oneMoves=a` until the owner says.

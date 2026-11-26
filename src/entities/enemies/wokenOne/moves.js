@@ -214,7 +214,8 @@ const burst = (kind, tell, windup, damage, n = 7, dur = 0.7, o = {}) => {
  *  coil reached early and held, so the blow itself is a snap out of a still chamber. */
 const fast = (b) => {
   const cock = b.cock ?? 0.7;
-  const keys = b.keys.map(([u, k]) => [u <= cock + 1e-6 ? (u * 0.5) / cock : u <= 1 ? 0.82 + ((u - cock) * 0.18) / (1 - cock) : u, k]);
+  // (the draw keeps 0.64 of the windup: out of a kick into a punch in 0.14 s jolted the knee)
+  const keys = b.keys.map(([u, k]) => [u <= cock + 1e-6 ? (u * 0.64) / cock : u <= 1 ? 0.82 + ((u - cock) * 0.18) / (1 - cock) : u, k]);
   const coil = b.keys.filter(([u]) => u <= cock + 1e-6).reduce((a, k) => (k[0] > a[0] ? k : a), [-1, null]);
   if (coil[1]) {
     const { e, gather, settle, ...pose } = coil[1];
@@ -587,8 +588,17 @@ function longLeg(b) {
   });
   return { ...b, keys };
 }
+/** A kick that carries him in (`travel`, the butterflies) carries him `T.travelCut` m less: the longer
+ *  leg reaches what the travel used to (a foot ended 0.2 - 0.4 m inside the hero). */
+function shortTravel(b) {
+  if (!Array.isArray(b.travel) || !KICKS.has(b.blow)) return b;
+  const cut = T.travelCut;
+  return { ...b, travel: b.travel.map(([u, m]) => [u, m > 0 ? Math.max(0, m - cut * Math.min(1, m / 1.1)) : m]) };
+}
+/** The rebuild's limb rules (tests: woke REBUILD). */
+export const REBUILD = Object.freeze({ KICKS, STRAIGHT, hipOf });
 function beatA(b) {
-  let o = b;
+  let o = shortTravel(b);
   if (o.aim === 1) o = { ...o, keys: aimSideKeys(o.cock ?? 0.7) };
   return heldTell(longLeg(longArm(o)));
 }

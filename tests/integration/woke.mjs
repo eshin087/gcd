@@ -1293,6 +1293,16 @@ async function scenarioRebuild() {
       }
       const low = Math.min(...d.rig.coat.map((C) => { C.segs[1].updateWorldMatrix(true, true); const b = new THREE.Box3().setFromObject(C.segs[1]); return b.min.y; }));
       assert(v !== 'c' ? low < 0.35 : low > 0.25 && low < 0.6, `?oneBody=${v}: the coat's hem ${low.toFixed(2)} m over the floor (${v === 'c' ? 'mid-shin' : 'to the ankle'})`);
+      {
+        // it swings 30 degrees at most (one coat through his flips, not a crown of boards)
+        const LKm = await imp('src/entities/enemies/wokenOne/look.js');
+        d.debug.setPhase(1);
+        run(G, 0.1);
+        d.debug.trigger('moonOver');
+        let worst = 0;
+        run(G, 2.4, () => { for (const s of d.anim.coatState ?? []) if (s?.[0] && s?.[1]) worst = Math.min(worst, s[0].x + s[1].x); });
+        assert(worst >= -LKm.COAT_SWING_ONE.out - 1e-3, `?oneBody=${v}: through the flash kick's flip the coat swings ${(-worst * 57.3).toFixed(0)} deg out at most (<= ${(LKm.COAT_SWING_ONE.out * 57.3).toFixed(0)})`);
+      }
     } catch (e) { assert(false, `?oneBody=${v}: ${e.message}`); }
   }
   LS.setLook('oneBody', null);
@@ -1337,6 +1347,64 @@ async function scenarioRebuild() {
       const gaps = (A) => A.beats.slice(1).map((b, i) => b.impact - A.beats[i].impact);
       assert(w1 > 0 && w0 === 0 && Math.abs(S.beats[0].impact - TUNING.fast.first) < 1e-6 && gaps(S).every((g) => g >= TUNING.minHitGap) && gaps(Q).every((g) => g >= TUNING.minHitGap) && S.beats.every((b) => b.flash >= b.tellAt),
         `the fast strings: only on the rebuild (weight ${w0} → ${w1.toFixed(2)}), ${TUNING.fast.first} s then ${TUNING.fast.next} s in phase 3 too, impacts ${gaps(S).map((g) => g.toFixed(2)).join(' / ')} s apart, the glint after the tell`);
+    }
+    // straight kicks and long punches (the owner, 2026-11-26: "a straight line when his kick is out")
+    {
+      const { KICKS, STRAIGHT, hipOf } = MM.REBUILD;
+      const { DIM } = await imp('src/entities/player/model.js');
+      const L = DIM.thigh + DIM.shin;
+      let kicks = 0, punches = 0;
+      const shortK = [], shortP = [];
+      for (const [name, def] of Object.entries(MM.MOVES_A)) {
+        if (def.transition) continue;
+        for (const raw of def.beats) for (const b of raw.pick ?? [raw]) {
+          const hit = b.keys?.find(([u]) => Math.abs(u - 1) < 1e-6)?.[1];
+          const b0 = (MOVES[name]?.beats ?? []).flatMap((x) => x.pick ?? [x]).find((x) => x.blow === b.blow && x.part === b.part);
+          const hit0 = b0?.keys?.find(([u]) => Math.abs(u - 1) < 1e-6)?.[1];
+          if (!hit) continue;
+          if (KICKS.has(b.blow) && (b.part === 'footR' || b.part === 'footL')) {
+            const f = b.part === 'footL' ? 'lF' : 'rF', v = hit[f];
+            if (!Array.isArray(v) || v.length !== 3) continue;
+            const h = hipOf(hit, f === 'lF' ? 1 : -1), l = Math.hypot(v[0] - h[0], v[1] - h[1], v[2] - h[2]);
+            kicks++;
+            if (!(l >= TUNING.legReach * L * 0.97 || v[1] <= DIM.ankle + 1e-6)) shortK.push(`${name}:${b.blow} ${l.toFixed(2)}`);
+          }
+          if (STRAIGHT.has(b.blow) && hit0) {
+            const h = b.part === 'fistL' ? 'lH' : 'rH';
+            punches++;
+            if (!(Math.hypot(...hit[h]) >= Math.hypot(...hit0[h]) * TUNING.reach * 0.999)) shortP.push(`${name}:${b.blow}`);
+          }
+        }
+      }
+      assert(kicks > 25 && !shortK.length, `every kick's contact key puts the foot ${TUNING.legReach} x the leg from its hip (or along the floor): ${kicks} kicks${shortK.length ? ' short: ' + shortK.slice(0, 6).join(', ') : ''}`);
+      assert(punches > 20 && !shortP.length, `every straight punch's hand reaches ${TUNING.reach} x as far at contact: ${punches} blows${shortP.length ? ' short: ' + shortP.slice(0, 6).join(', ') : ''}`);
+      // the animator: straight legs and long arms on the rebuild only (read live)
+      const G = build();
+      const d = G.game.dragon;
+      duel(G, { dist: 3 });
+      run(G, 0.1);
+      const on = d.anim.kickStretch === TUNING.kickStretch && d.anim.legSoft === TUNING.legSoftA && d.anim.armSoft === TUNING.armSoftA;
+      LS.setLook('oneMoves', '0');
+      run(G, 0.1);
+      const off = d.anim.kickStretch === null && d.anim.legSoft === TUNING.legSoft && d.anim.armSoft === TUNING.armSoft;
+      LS.setLook('oneMoves', 'a');
+      assert(on && off, 'his legs reach straight and his arms long on the rebuild, as shipped on 0 (anim kickStretch / legSoft / armSoft, live)');
+      // a kick lands straight: the knee at Climbing the Stair's front kick, in the animator
+      d.debug.trigger('stairKick');
+      const A = d.brain.act;
+      let knee = null;
+      const V = () => new THREE.Vector3();
+      run(G, 1.2, null, () => {
+        if (knee == null && A && d.brain.act === A && A.t >= A.beats[0].impact) {
+          const leg = d.rig.legs.R;
+          const a = leg.thigh.getWorldPosition(V()), k = leg.shin.getWorldPosition(V()), f = leg.foot.getWorldPosition(V());
+          const u = a.sub(k).normalize(), w = f.sub(k).normalize();
+          knee = Math.acos(Math.max(-1, Math.min(1, u.dot(w)))) * 57.3;
+          return true;
+        }
+        return false;
+      });
+      assert(knee != null && knee > 165, `the front kick lands with the leg straight (knee ${knee?.toFixed(0)} deg; it was ~130)`);
     }
     // the aim: Two Thunders' first shot down the arm at the hero
     {

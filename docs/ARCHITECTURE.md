@@ -304,7 +304,10 @@ Render helpers for creature modules:
   - **A boss's arms and legs** (ADR-162): `HeroAnimator.armSoft` / `legSoft` (`[where the reach starts
     to give, the most it opens]` as fractions of the limb's length; null = as always: `ARM_SOFT`, an elbow of
     ~130° at a full stretch, and a leg that reaches straight). Tian Lei sets both in `_setup` from
-    `TUNING.armSoft` (the hero's `HERO_SOFT`) and `TUNING.legSoft`.
+    `TUNING.armSoft` (the hero's `HERO_SOFT`) and `TUNING.legSoft`. `HeroAnimator.kickStretch` (ADR-221; null by
+    default): `[from, to, add, lift0, lift1]`: a foot off the ground (lift0 .. lift1 m) asked for past `from` of
+    the leg's length is carried out along its line by up to `add` of it at `to`, so a kick lands with the leg
+    straight; Xin Yi sets it, `legSoft` and `armSoft` every frame from his `?oneMoves=` switch.
   - **The bosses' letters** (ADR-154, ADR-155, ADR-170): a boss whose kit sets `letters` (today Wen Yao's `FOX_KIT`, behind
     `?foxLetters=b`, Tian Lei's `ASC_KIT`, a getter behind `?ascLetters=a`, the owner's pick; `0` the fixed cell; Halcyon's
     `HALCYON_KIT`, a getter behind `?halLetters=a`, the owner's pick, ADR-166; and Xin Yi's `WOKEN_KIT`, the same getter
@@ -1112,7 +1115,8 @@ arms.L.fore`, the grip hand on the `sword` joint; returns `{ offHand, keep }`: e
 sword fingers); `sheet.js` `hangSheet(ctx, parent, d, mats)`
 builds one streamer sheet (or a ribbon) from data and returns its record, `panelSkirt(ctx, PANELS,
 { seed })` a skirt of coat panels (returns `{ coat }`; a panel's `hemFrom` puts the pale `hem` over
-the end of its lower sheet). `heroGeo.js` `shellGeometry(rings, { arc: [a0, a1] })` builds one arc
+the end of its lower sheet; `cone` (default 0.25) how fast it widens down its length, `jag` (default
+0.006) its hem's raggedness). `heroGeo.js` `shellGeometry(rings, { arc: [a0, a1] })` builds one arc
 of a shell (rad: 0 = his front, + = his left). `model.js` `tintHero(M, tint)` recolours ONE rig's
 material instances (`{ <HERO_INK name>: { fill?, ink?, emissive?, spec?, rim?, sub?, inkGlow?,
 glowK? } }`), never the shared `U.*`. `player.setLoadout` puts the shared per-part ink

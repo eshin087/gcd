@@ -27,6 +27,14 @@ coil; the fast strings' floors and weights; the aim within 12 degrees), env `GCD
 pre-existing); the held spin kicks' windups ~25 % more jolt (first try held from 0.46 of the windup: up to +75 %;
 the draw now keeps 0.75 of its time).
 
+**The owner's answer:** "lets do open coat" (`oneBody` b in PICKED), the kicks straight ("a straight line when his
+kick is out"), the coat one piece and not like the hero's cloak, the punches and acrobatics natural. Done: one coat
+(five overlapping panels, one back panel, a straight hem, no pale hem: printed as part 5; 30 degrees of swing at
+most), straight kicks (anim.js `kickStretch`, `legSoftA`, `longLeg`: knees 166 - 173 at contact), long punches
+(`armSoftA`, `longArm`: elbows ~169), the butterflies' travel cut (feet no longer inside the hero). The audit:
+the spin kick after a straight kick jolts ~40 - 60 % more (the leg comes back further). Tests: REBUILD grew the
+kicks' reach, the punches' reach, the animator switch, a front kick's knee (173), the coat's swing in a flip.
+
 **Open:** the owner's picks (figure a / b / c, moves a); phase 1's hand behind the back; the sweep's tuck (Tian
 Lei's builder: the motion-tian-halcyon session owns it).
 ## 2026-11-26 — The reference-footage tools removed (ADR-236; branch `build/remove-mocap`)

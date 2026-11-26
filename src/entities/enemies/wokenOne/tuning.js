@@ -45,9 +45,10 @@ export const TUNING = {
   // (`armSoftA`, and the hit key's hand `reach` x further from the shoulder: moves.js beatA)
   legSoftA: [0.95, 0.998],
   armSoftA: [0.95, 0.996],
-  kickStretch: [0.62, 0.86, 0.4, 0.28, 0.5],
+  kickStretch: [0.62, 0.86, 0.3, 0.28, 0.5],
   reach: 1.16,
-  legReach: 1.12, // (a kick's contact key: the striking foot this x the leg's length from its hip: moves.js longLeg)
+  travelCut: 0.7, // (the butterflies carry him this much less: moves.js shortTravel)
+  legReach: 1.05, // (a kick's contact key: the striking foot this x the leg's length from its hip: moves.js longLeg)
 
   // ---- posture (the Sekiro rule, as Tian Lei's: hard to move while the bar is full)
   posture: {
