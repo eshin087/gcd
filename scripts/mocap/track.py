@@ -1,7 +1,13 @@
 """Track the takes of a spec (or one span) into the landmark cache. HEAVY: run it under the lock.
 
   python -I track.py specs/<set>.json [clip ...] [--budget 360]
-  python -I track.py <film> <t0> <t1> [--box x y w h] [--budget 360] [--forget]
+  python -I track.py <film> <t0> <t1> [--box x y w h] [--below Y] [--exclude x0 y0 x1 y1]... [--budget 360] [--forget]
+
+--box: where he is at t0 (0-1 fractions of the frame); --below: his pelvis is always lower in the picture
+than y = Y px (a detection above it is a phantom: a statue, a building); --exclude: a picture region (px)
+his pelvis is never in (repeatable). With any of the three the tracker never falls back to the whole frame:
+a lost frame is retried round his last place and else recorded as a miss. Spec takes may carry the same as
+`"box": [x, y, w, h]`, `"below": Y`, `"exclude": [[x0, y0, x1, y1], ...]`.
 
 It tracks only frames not yet in the cache and stops after --budget seconds counted from the process'
 start, model load included (default 360 s = 6 min, well under the lock's 8-minute rule; the lock counts
@@ -20,6 +26,16 @@ def main(a):
         del a[i:i + 2]
     forget = '--forget' in a
     a = [x for x in a if x != '--forget']
+    below = None
+    if '--below' in a:
+        i = a.index('--below')
+        below = float(a[i + 1])
+        del a[i:i + 2]
+    exclude = []
+    while '--exclude' in a:
+        i = a.index('--exclude')
+        exclude.append([float(v) for v in a[i + 1:i + 5]])
+        del a[i:i + 5]
     box = None
     if '--box' in a:
         i = a.index('--box')
@@ -34,21 +50,21 @@ def main(a):
                 continue
             for tk in c['takes']:
                 jobs.append((tk.get('film', c.get('film', spec.get('film'))), cfg.parse_time(tk['t0']) - 0.3,
-                             cfg.parse_time(tk['t1']) + 0.3, tk.get('box')))
+                             cfg.parse_time(tk['t1']) + 0.3, tk.get('box'), tk.get('below'), tk.get('exclude')))
         for tk in spec.get('extra_tracks', []):
-            jobs.append((tk['film'], cfg.parse_time(tk['t0']), cfg.parse_time(tk['t1']), tk.get('box')))
+            jobs.append((tk['film'], cfg.parse_time(tk['t0']), cfg.parse_time(tk['t1']), tk.get('box'), tk.get('below'), tk.get('exclude')))
     else:
-        jobs = [(a[0], cfg.parse_time(a[1]), cfg.parse_time(a[2]), box)]
+        jobs = [(a[0], cfg.parse_time(a[1]), cfg.parse_time(a[2]), box, below, exclude or None)]
         if forget:  # drop the span's cached frames first (after a tracking fix, or a bad crop)
             track.forget(*jobs[0][:3])
     t_start = T_PROCESS
     left = 0
-    for film, t0, t1, bx in jobs:
+    for film, t0, t1, bx, bl, ex in jobs:
         rem = budget - (time.time() - t_start)
         if rem < 15:
             left += len(cfg.frames_in(film, t0, t1)[0]) - len(track.load_cache(film, t0, t1))
             continue
-        left += track.track_span(film, t0, t1, bx, budget=rem)
+        left += track.track_span(film, t0, t1, bx, budget=rem, below=bl, exclude=ex)
     print('%d frames left' % left)
 
 
