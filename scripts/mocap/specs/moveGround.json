@@ -1161,7 +1161,20 @@
     }
    ],
    "from": "walk",
-   "to": "idle"
+   "to": "idle",
+   "pose_keys": [
+    {"f": 23, "joint": "upperArmR", "euler": [-169.88, 84.81, -89.84], "blend": 0, "fx": 1},
+    {"f": 24, "joint": "upperArmR", "euler": [-173.52, 72.45, -86.93], "blend": 0, "fx": 1},
+    {"f": 25, "joint": "upperArmR", "euler": [-174.68, 56.37, -86.76], "blend": 0, "fx": 1},
+    {"f": 26, "joint": "upperArmR", "euler": [-175.46, 40.29, -87.06], "blend": 0, "fx": 1},
+    {"f": 27, "joint": "upperArmR", "euler": [-176.02, 27.92, -87.41], "blend": 0, "fx": 1},
+    {"f": 14, "joint": "handR", "euler": [-72.81, 10.81, -25.64], "blend": 0, "fx": 1},
+    {"f": 15, "joint": "handR", "euler": [-73.03, 10.46, -25.58], "blend": 0, "fx": 1},
+    {"f": 16, "joint": "handR", "euler": [-73.34, 9.97, -25.51], "blend": 0, "fx": 1},
+    {"f": 17, "joint": "handR", "euler": [-73.66, 9.44, -25.43], "blend": 0, "fx": 1},
+    {"f": 18, "joint": "handR", "euler": [-73.96, 8.95, -25.36], "blend": 0, "fx": 1},
+    {"f": 19, "joint": "handR", "euler": [-74.18, 8.59, -25.31], "blend": 0, "fx": 1}
+   ]
   },
   {
    "name": "walkStopL",
@@ -1193,7 +1206,17 @@
     }
    ],
    "from": "walk",
-   "to": "idle"
+   "to": "idle",
+   "pose_keys": [
+    {"f": 10, "joint": "handR", "euler": [7.18, -18.36, -20.81], "blend": 0, "fx": 1},
+    {"f": 11, "joint": "handR", "euler": [9.69, -15.95, -20.09], "blend": 0, "fx": 1},
+    {"f": 12, "joint": "handR", "euler": [13.22, -12.42, -19.26], "blend": 0, "fx": 1},
+    {"f": 13, "joint": "handR", "euler": [17.29, -8.18, -18.57], "blend": 0, "fx": 1},
+    {"f": 14, "joint": "handR", "euler": [21.49, -3.68, -18.18], "blend": 0, "fx": 1},
+    {"f": 15, "joint": "handR", "euler": [25.43, 0.61, -18.12], "blend": 0, "fx": 1},
+    {"f": 16, "joint": "handR", "euler": [28.77, 4.23, -18.3], "blend": 0, "fx": 1},
+    {"f": 17, "joint": "handR", "euler": [31.09, 6.72, -18.54], "blend": 0, "fx": 1}
+   ]
   },
   {
    "name": "walkPivot",
