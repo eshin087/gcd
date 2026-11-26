@@ -505,17 +505,19 @@ const aimSideKeys = (cock = 0.7) => strikeKeys({
   hit: { ...AIM_SIDE, ...FT.OR },
   after: { ...AIM_SIDE, rH: [-0.48, 0.2, 0.32], bZ: -0.05, pitch: -0.06, ...FT.OR },
 });
-/** The held windup of a blue / red / black blow: he reaches the blow's coil by `T.held.from` of the
- *  windup and HOLDS it (the realiser's bait-hold rule: the cocked pose keyed again) until `T.held.to`;
- *  the strike runs in what is left. The windup is no longer (cue, flash and impact stay where they
+/** The held windup of a blue / red / black blow: he reaches the blow's coil by `T.held.drift` of the
+ *  time it took him (the coil's own place in the windup) and HOLDS it (the realiser's bait-hold rule: the cocked pose keyed again) until `T.held.to`, or
+ *  earlier where the strike would get under `T.held.keep` of the time it had; the strike runs in the rest. The windup is no longer (cue, flash and impact stay where they
  *  were): the time comes out of the slow drift into the coil, so the pose that says blue or red stands
  *  still long enough to read, and the strike out of it is a snap. A beat with a bait hold of its own
  *  (the Dive Within) or no keys is left alone. */
 function heldTell(b) {
   if (!b?.keys || b.feint || b.hold || !(b.tell === B || b.tell === R || b.tell === K)) return b;
   const cock = b.cock ?? 0.8;
-  const { from, to } = T.held;
-  if (!(cock > from + 0.02 && cock < 1)) return b;
+  // (the strike keeps `keep` of the time it had: a snap, not a pop; the spins need their turn)
+  // (... and the draw into the coil keeps `drift` of its time: a spin's coil is half a turn away)
+  const from = cock * T.held.drift, to = Math.min(T.held.to, 1 - (1 - cock) * T.held.keep);
+  if (!(cock > from + 0.02 && cock < 1 && to > from + 0.12)) return b;
   const pre = b.keys.filter(([u]) => u <= cock + 1e-6);
   if (!pre.length) return b;
   const coil = pre.reduce((a, k) => (k[0] > a[0] ? k : a));

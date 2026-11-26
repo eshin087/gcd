@@ -1309,12 +1309,12 @@ async function scenarioRebuild() {
       for (const raw of def.beats) for (const b of raw.pick ?? [raw]) {
         if (!b.keys || b.feint || b.hold || ![TELL.BLUE, TELL.RED, TELL.BLACK].includes(b.tell)) continue;
         // (the coil: the key the hold repeats, at `from` when the blow's coil sits on its cock, earlier when it is authored before it)
-        const i1 = b.keys.findIndex(([u]) => Math.abs(u - H.to) < 1e-6), k1 = b.keys[i1], k0 = i1 > 0 && b.keys[i1 - 1][0] <= H.from + 1e-6 ? b.keys[i1 - 1] : null;
+        const to = b.cock, i1 = b.keys.findIndex(([u]) => Math.abs(u - to) < 1e-6), k1 = b.keys[i1], k0 = i1 > 0 && b.keys[i1 - 1][0] < to - 0.08 ? b.keys[i1 - 1] : null;
         const strip = (k) => JSON.stringify(Object.fromEntries(Object.entries(k ?? {}).filter(([f]) => !['e', 'gather', 'settle'].includes(f))));
-        if (k0 && k1 && strip(k0[1]) === strip(k1[1]) && b.cock === H.to) held++; else bad.push(name);
+        if (k0 && k1 && strip(k0[1]) === strip(k1[1]) && to <= H.to + 1e-9) held++; else bad.push(name);
       }
     }
-    assert(held > 30 && !bad.length, `every blue / red / black blow holds its coil from ${H.from} (or before) to ${H.to} of its windup (${held} blows)${bad.length ? ' not: ' + [...new Set(bad)].join(', ') : ''}`);
+    assert(held > 30 && !bad.length, `every blue / red / black blow holds its coil (reached in ${H.drift} of its draw) to ${H.to} of its windup at most (the strike keeping ${H.keep} of its time) (${held} blows)${bad.length ? ' not: ' + [...new Set(bad)].join(', ') : ''}`);
     // the fast strings: picked only on the rebuild; their windups on the floors
     {
       const G = build();
