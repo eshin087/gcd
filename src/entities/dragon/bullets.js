@@ -412,6 +412,13 @@ export class Bullets {
     for (let i = 0; i < 8; i++) if (at >= tr[i] - pre && at <= tr[i] + K.cueGap) return CUE.COVERED;
     const ot = orb ? this._cueSmall : this._cueOrb, sep = K.clashSep ?? 0.35;
     for (let i = 0; i < 8; i++) if (Math.abs(at - ot[i]) < sep) return CUE.CLASH;
+    // ... or of another source (the brain's cue ledger: a drakeling's dive, the wyrm's own blows, a hazard)
+    // asking for the other answer (ADR-223: a slam's embers fell 0.09 s after a drakeling's red dive)
+    const L = this.d.brain?._ledger;
+    if (L) {
+      const now = this.d.game?.time ?? 0, ans = tell === TELL.RED || tell === TELL.BLACK ? 'dodge' : 'guard';
+      for (const r of L) if (r.t >= now - 0.1 && r.attack !== attack && r.ans && r.ans !== ans && Math.abs(r.t - (now + tti)) < sep) return CUE.CLASH;
+    }
     if (tti < K.cueMin + (orb ? 0.03 : 0)) return CUE.LATE;
     tr[this._ci++ & 7] = at;
     const d = this.d;

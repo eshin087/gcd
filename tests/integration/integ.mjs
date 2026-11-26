@@ -19,6 +19,8 @@ import { attachMarks, marksCheck } from './marks.mjs';
 const ROOT = process.argv[2];
 const SCEN = process.argv[3] || 'all';
 const imp = (p) => import(pathToFileURL(`${ROOT}/${p}`).href);
+// (GCD_LOOKS='wyrmMotion=0,wyrmQuick=0': look switches forced for the whole run, e.g. to bisect a seeded drift)
+if (process.env.GCD_LOOKS) { const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js'); for (const kv of process.env.GCD_LOOKS.split(',').filter(Boolean)) { const [k, v] = kv.split('='); setLook(k, v); } }
 const THREE = await import(pathToFileURL(`${ROOT}/node_modules/three/build/three.module.js`).href);
 const { CONFIG } = await imp('src/core/config.js');
 const { Events } = await imp('src/core/events.js');

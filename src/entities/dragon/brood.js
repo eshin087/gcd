@@ -95,7 +95,7 @@ export class Brood {
     this._pt = { x: 0, y: 0, z: 0 };
     this._hit = { damage: 0, from: this._from, point: this._pt, knockback: 0, knockdown: false, kind: 'fire', burn: 0, tell: TELL.NORMAL, parryable: true, blockable: true, attack: 'drakelings', plunge: false };
     this._b = { x: 0, y: 0, z: 0 };
-    this.stats = { spawned: 0, cut: 0, burst: 0, hits: 0, lunges: 0, dives: 0 };
+    this.stats = { spawned: 0, cut: 0, burst: 0, hits: 0, lunges: 0, dives: 0, burnedOut: 0 };
   }
 
   /** look jitter 0..1 */
@@ -400,12 +400,14 @@ export class Brood {
         this._move(c, dt);
         const fall = Math.hypot(DV.rise, Math.hypot(hx, hz)) / DV.speed;
         if (!c.flashed && DV.windup - c.st + fall <= lead + 0.1 && this._hold(c, dt, DV.windup - c.st + fall, 'dodge', 'drakelings')) break;
+        if (!c.flashed && DV.windup - c.st + fall <= lead + 0.1 && this._burnsOut(c, DV.windup - c.st + fall)) return;
         if (!c.flashed && DV.windup - c.st + fall <= lead) {
           c.flashed = true;
           this._flash(c, TELL.RED, p.x, 0.6, p.z);
         }
         // (a dive whose flash is still to come waits here too: its first frame flashes)
         if (c.st >= DV.windup && !c.flashed && this._hold(c, dt, fall, 'dodge', 'drakelings')) break;
+        if (c.st >= DV.windup && !c.flashed && this._burnsOut(c, fall)) return;
         if (c.st >= DV.windup) {
           c.tx = p.x;
           c.tz = p.z;
@@ -591,6 +593,24 @@ export class Brood {
     if (!shots && !this._beatNear(tti, ans) && !this.d.brain?._clash?.(now + tti, ans, HOLD.sep, attack)) return false;
     c.held += dt;
     c.st -= dt;
+    // (its record in the brain's cue ledger moves with it: what cues itself later, a slam's embers, sees
+    // where it will really land; ADR-223's seeds found an ember on a held dive)
+    const L = this.d.brain?._ledger;
+    if (L) for (const r of L) if (r.attack === attack && Math.abs(r.t - (now + tti)) < 0.15) r.t += dt;
+    return true;
+  }
+
+  /** A dive held its longest (HOLD.max) and a cue of the other answer is still due where it would land:
+   *  it burns out in the air instead (no red flash, no dive; its ledger record dropped). ADR-223's seeds
+   *  found a held dive released onto a string's white blow. True when it burned out. */
+  _burnsOut(c, tti) {
+    if (c.held < HOLD.max) return false;
+    const now = this.game.time ?? this.time;
+    if (!this.d.brain?._clash?.(now + tti, 'dodge', HOLD.sep, 'drakelings')) return false;
+    const L = this.d.brain?._ledger;
+    if (L) for (const r of L) if (r.attack === 'drakelings' && Math.abs(r.t - (now + tti)) < 0.15) r.t = -1;
+    this.stats.burnedOut++;
+    this._die(c, false);
     return true;
   }
 

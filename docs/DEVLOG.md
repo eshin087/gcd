@@ -24,6 +24,9 @@ moves / tuning; Lab LOOKS rows (awaiting). Tests: sheath / fox `motion`, integ `
 | a | b for four blows a boss, the quick blows, sent to the owner.
 
 **The owner's picks** (from the films): `a` for all three bosses, every quick blow: the defaults (PICKED).
+With them on, `npm test` found three latent wyrm faults through the seeded fights' drift (a held drakeling
+dive's ledger time, a dive released onto a white blow, a slam's embers on a red dive) and the sky hunt landing
+up to its radius off its ground: fixed (ADR-223 consequences). The attack table's hash re-pinned (the Snap swipe).
 
 **Open.** Lu Wusheng's free hand in the scabbard cuts; the same foot ease for Shen Hui and Varr Nihil (their
 session).

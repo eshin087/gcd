@@ -2681,6 +2681,11 @@ starts; read from the stance, no gather; close range; light; exempt from the fir
 | Wen Yao | **Fox Knee**: the rear knee driven up from the guard | 0.32 s | 8 | 0 - 1.7 m |
 | the wyrm | **Snap swipe**: a paw snapped out of its stance | 0.50 s (0.35 at phase 3) | 11 | 0 - 4.4 units, ahead |
 
+**Fairness found on the way** (the wyrm's seeded fights with the picks on): a drakeling's dive that has waited
+its longest (1.8 s) while a cue of the other answer is still due **burns out in the air** (no red flash, no
+dive); a held brood cue keeps its place in the wyrm's cue ledger; a slam's embers that would land within 0.35 s
+of a cue of the other answer fizzle as duds.
+
 ## The duelists' pressure and the fairness guard (2026-11-16, ADR-122)
 The human bosses run one engine (`enemies/duelist/`: `brain.js`, `director.js`, `ledger.js`;
 ARCHITECTURE.md "Duelists"), so the same rules keep them attacking and keep them fair. The owner's

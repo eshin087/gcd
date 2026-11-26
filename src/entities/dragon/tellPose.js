@@ -14,6 +14,8 @@ export function heldMode(spec) {
   if (m !== 'a' && m !== 'b') return null;
   if (spec?.tell !== TELL.BLUE && spec?.tell !== TELL.RED) return null;
   if (!(spec.windup < WYRM_HELD.longer)) return null;
+  // (a hit with its own bait hold already hesitates, its head weaving: the Hesitant Maw's rear bite)
+  if (Array.isArray(spec.hold) && spec.hold[1] > 0) return null;
   return m;
 }
 

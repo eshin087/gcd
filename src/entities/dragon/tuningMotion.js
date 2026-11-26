@@ -11,7 +11,7 @@
  *  createPose); `w` eases the colour in over the windup's u (0..1 of its own windup, before the hold). */
 export const WYRM_HELD = Object.freeze({
   hold: 0.18, // s more of the cock
-  longer: 0.95, // s: a hit wound up this long already reads (the bait-holding maws, the slams): left alone
+  longer: 0.95, // s: a hit wound up this long already reads (the slams): left alone; so is a hit with its own bait `hold`
   w: Object.freeze([0.25, 0.85]),
   // BLUE: it rears up, head high and drawn back over the withers, the jaw open, the chest swelled, the
   // sails lifted: "here it comes, meet it". `rear` lifts the forepaws (rig: a rise past the forelegs'
