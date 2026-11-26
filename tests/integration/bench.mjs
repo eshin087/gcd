@@ -84,7 +84,9 @@ export function benchRun(H, seed, bot, { secs = 600, skill = 0.9 } = {}) {
         }
       }
       if (P.alwaysGuard) guardUntil = Infinity;
-      return busy || pend.some((e) => !e.done && e.at - t < 0.7);
+      // (busy until each answered cue's impact is past: a cut started inside a roll turns it into the roll's
+      // attack and gives up its i-frames: the perfect bot was hit so, seed 99, a red 0.08 s after it rolled)
+      return busy || pend.some((e) => (!e.done && e.at - t < 0.7) || (e.done && e.at + 0.25 > t));
     },
     dueWithin(s) { const t = game.time; return pend.some((e) => !e.done && e.at - t < s); },
   };
@@ -96,12 +98,15 @@ export function benchRun(H, seed, bot, { secs = 600, skill = 0.9 } = {}) {
   const th = p.takeHit.bind(p);
   p.takeHit = (h) => { curAtk = h?.attack ?? null; const r = th(h); curAtk = null; return r; };
   const n = { parries: 0, perfect: 0, dodges: 0, heals: 0, blocks: 0, guardBreaks: 0, guardOpens: 0, openThenCue: 0, openThenHit: 0 };
+  const flog = [];
   const diag = { openAt: -9, openFlash: false, openHit: false, touchAt: 0, untouched: 0 };
   const phAt = [game.time];
   const w0 = G.watch;
   G.watch = (ev, e) => {
     w0?.(ev, e);
     if (ev === 'player:hurt' && e?.damage > 0) hurt.push([game.time, e.damage, curAtk || e.kind || d.brain.act?.name || d.mode, d.phase]);
+    // (GCD_BHIT=1: each hit and the cues before it)
+    if (process.env.GCD_BHIT) { if (ev === 'combat:flash') flog.push([game.time, e?.attack, e?.tell, e?.source]); if (ev === 'combat:tell') flog.push([game.time, 'tell:' + e?.attack, e?.tell, e?.impactIn?.toFixed?.(2)]); if (ev === 'player:hurt' && e?.damage > 0) H.out(`      HIT @${(game.time - t0).toFixed(2)} ${curAtk} ${e.damage.toFixed(0)} hero ${p.state} stateT ${p.stateT?.toFixed(2)} dist ${Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z).toFixed(2)} | ${flog.filter((x) => x[0] > game.time - 2).map((x) => `${(x[0] - t0).toFixed(2)} ${x[1]} ${x[2]} ${x[3] ?? ''}`).join(' · ')}`); }
     if (ev === 'player:parry') { n.parries++; if (e?.perfect) n.perfect++; }
     if (ev === 'player:perfectDodge') n.dodges++;
     if (ev === 'player:heal') n.heals++;
