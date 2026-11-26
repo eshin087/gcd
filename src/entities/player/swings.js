@@ -51,7 +51,10 @@
 //   swing, on a pendulum the body carries: anim.js sideHand / HeroAnimator._sideHand; its keys'
 //   free-hand fields are ignored), `slash` / `slashLook` (the slash
 //   lines blinkFx.js draws on the blade's path), `plain` (a slam-kind hit that bursts no shards:
-//   player.js _slamImpact).
+//   player.js _slamImpact). The steel look set's: `settle` (seconds, default 0.16: how long he takes from
+//   the clip's last pose to the standing pose once the attack is over, player.js _tickAttack; he is free
+//   to act the whole time, so it changes no timing: with a late `home` the finish is held to the end of
+//   the recovery and he rises out of it slowly, as the owner's reference footage does).
 //
 // Authoring notes: a cut reads as powered by the body when the hips lead (their turn is ahead of the
 // chest's at mid-cut), the hand is furthest from the shoulder as the blade crosses his front, and the

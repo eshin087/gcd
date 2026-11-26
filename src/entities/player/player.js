@@ -2922,7 +2922,9 @@ export class Player {
     }
     if (t >= W + A + R) {
       if (this.rmb.held) this._startBlock(0.14);
-      else this._toLoco(0.16);
+      // (a clip with `settle`, swings.js: he comes out of its finish to the standing pose over that many
+      // seconds instead of 0.16, free to act the whole time: the steel look set's long ways home)
+      else this._toLoco(fin(this.anim?.atkDef === a.def ? SWINGS[this.anim.atkAnim?.clip]?.settle : NaN, 0.16));
     }
   }
 

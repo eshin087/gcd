@@ -3,7 +3,7 @@ import { clamp, lerp, smoothstep, damp, easeOutCubic, wrapAngle, TAU } from '../
 import { DIM, BODY, HAIR_CLUSTERS, HERO_SCALE, sheetOffset } from './model.js';
 import { SWINGS, FH, ARCS, widenArcs } from './swings.js';
 import { atEase, fencerGuard } from './stances.js';
-import { STEEL, steelStand } from './steelStance.js';
+import { STEEL, steelStand, steelCharge } from './steelStance.js';
 import { idlesOld, easeArms, guardArms, newRests, tickRests, pickEase, actStart, lowRest, toLowRest, trailing, EASE_HABITS, EASE_TRICKS, FIGHT_ACTS, EASE_RESTS, FIGHT_RESTS, IDLES } from './idles.js';
 
 // Procedural animation for the Wanderer, keyed to the owner's concept sheets ("Movement" / "Combat
@@ -1554,6 +1554,8 @@ const CHARGE_SW = [-82, 80, 74]; // the blade: azimuth, elevation at no charge â
 function chargePose(p, A) {
   const k = clamp(A.chargeK, 0, 1), s = smoothstep(0, 0.25, A.t), w = s * k;
   stance(p, A, 0);
+  // (?lights=steel, ADR-202: the hold after the owner's reference, steelStance.js)
+  if (STEEL.on && steelCharge(p, P, A, k, s, walkLegs)) return;
   v3(p, P.rF, -0.18, ANK, -0.47);
   v3(p, P.lF, 0.17, ANK, 0.44);
   v3(p, P.rK, -0.5, 0, 1);
@@ -2674,6 +2676,12 @@ const LYING_KEYS = new Set(['knockdown', 'dead', 'deadDown']);
 const CLIP_STEP = { at: 0.14, drag: 0.5, dur: [0.07, 0.14, 0.15], lift: [0.03, 0.09], cool: 0.02, air: 0.035, free: 9 };
 // clips whose feet the foot planner holds on the ground (and whose touchdowns are footsteps)
 const WALK_KEYS = new Set(['loco', 'heal', 'block', 'charge', 'parry']);
+// a clip's `settle` (play(): `settling`): the blend into 'loco' longer than `min` s is one; each foot
+// steps home over `dur` s on an arc `lift` (Ã— 0.25, + 5 cm: about the 7 cm the recovery's own way home
+// lifts), one at a time, the other planted
+const SETTLE_STEP = { min: 0.2, dur: 0.2, lift: 0.08 };
+const FOOT_NOW = new Float32Array(3);
+const _fn = new THREE.Vector3();
 
 
 // ---------------------------------------------------------------- IK
@@ -3117,6 +3125,10 @@ export class HeroAnimator {
       F[P.lF + 2] = W[6];
       F[P.lFy] = W[7];
     }
+    // (a clip's `settle`, swings.js / player.js _tickAttack: a slow blend out of an attack into the
+    // standing pose. Its feet STEP home (_feet), they are not cross-faded across the grass. Only the
+    // hero's own long ways home: every other blend into 'loco' is 0.16 s or less)
+    this.settling = !!this.freeHand && key === 'loco' && WALK_KEYS.has(key) && this.key !== 'loco' && blend > SETTLE_STEP.min;
     this.key = key;
     if (key === 'attack') this._pickVariant();
     this.fadeMem.ok = false; // the new fade picks its own way round
@@ -3448,7 +3460,10 @@ export class HeroAnimator {
     const old = idlesOld();
     // which actions may play now (F.pool): the old ones at ease; ADR-186's at ease, or in the fight
     // (also locked on: the small habits of the guard), never while the stance is changing
-    const pool = old ? (still && !pl.lockOn && !(this.fightW > 0.05) ? 0 : -1) : still && this.fightW > 0.95 ? 2 : still && !pl.lockOn && this.fightW < 0.05 ? 1 : -1;
+    let pool = old ? (still && !pl.lockOn && !(this.fightW > 0.05) ? 0 : -1) : still && this.fightW > 0.95 ? 2 : still && !pl.lockOn && this.fightW < 0.05 ? 1 : -1;
+    // (?lights=steel, ADR-202: the reference's idle is one pose with its breath; the habits and their
+    // arm rests are written over today's stances, so none plays from the steel stance)
+    if (STEEL.on) pool = -1;
     const calm = pool >= 0;
     if (!old) {
       if (!this.rests) this.rests = newRests();
@@ -3622,6 +3637,8 @@ export class HeroAnimator {
     // knocked back (a blocked blow, a shove): the feet skid with the body instead of stepping
     const kb = pl.kb ? Math.hypot(fin(pl.kb.x), fin(pl.kb.z)) : 0;
     const skid = kb > 0.8;
+    // (a settle out of an attack, play(): its feet step home; only while standing still)
+    const stl = this.settling && !cyc && this.blendT < this.blendDur;
     // where the clip wants each foot (read before either is overwritten)
     const W = FEET_WANT;
     for (let fi = 0; fi < 2; fi++) {
@@ -3643,7 +3660,15 @@ export class HeroAnimator {
         F.init = true;
         F.prevU = u;
         F.hold = false;
-        if (dy < ANK + 0.04) this._plant(F, dx, dz, dyaw, px, pz, c, s, yaw);
+        if (stl && this._footNow(fi, px, pz, c, s, HS)) {
+          // out of an attack's held finish: a foot the clip left off the ground, or stretched past the
+          // leg's reach behind a dash (drawn off the ground), steps home from there
+          // (only its height is read off the rig: the drawn figure is sheared toward the camera, so a
+          // grounded foot is planted where the clip put it, as before)
+          const N = FOOT_NOW;
+          if (N[1] < ANK + 0.04 && dy < ANK + 0.04) this._plant(F, dx, dz, dyaw, px, pz, c, s, yaw);
+          else this._settleStep(F, dx, Math.max(dy, N[1]), dz, dyaw, SETTLE_STEP.dur);
+        } else if (dy < ANK + 0.04) this._plant(F, dx, dz, dyaw, px, pz, c, s, yaw);
         else this._lift(F, 1, dx, dy, dz, dyaw, 0.18);
       }
       if (skid && F.lock) this._plant(F, dx, dz, dyaw, px, pz, c, s, yaw); // slides with the root
@@ -3684,7 +3709,10 @@ export class HeroAnimator {
           const oo = (1 - fi) * 4;
           const owx = (O.wx - px) / HS, owz = (O.wz - pz) / HS;
           const od = Math.hypot(owx * c - owz * s - W[oo], owx * s + owz * c - W[oo + 2]) + 0.22 * Math.abs(wrapAngle(O.wyaw - yaw - W[oo + 3]));
-          if (drift > 0.1 && drift >= od) this._lift(F, 1, mx, ANK, mz, wrapAngle(F.wyaw - yaw), lerp(0.24, 0.17, clamp((drift - 0.1) / 0.3, 0, 1)));
+          if (drift > 0.1 && drift >= od) {
+            if (stl) this._settleStep(F, mx, ANK, mz, wrapAngle(F.wyaw - yaw), SETTLE_STEP.dur);
+            else this._lift(F, 1, mx, ANK, mz, wrapAngle(F.wyaw - yaw), lerp(0.24, 0.17, clamp((drift - 0.1) / 0.3, 0, 1)));
+          }
         }
       }
       F.prevU = u;
@@ -3705,10 +3733,13 @@ export class HeroAnimator {
         // a step: lift, carry, set down on the spot the clip wants (the stance or the cycle's)
         F.s = Math.min(1, F.s + dt / F.dur);
         const e = smoothstep(0, 1, F.s);
-        cur[i] = lerp(F.lx, dx, e);
+        // (a settle's step lands on the spot the pose he is settling INTO wants, not on the cross-fade's
+        // moving one: one step home, then the fade has nothing left to drag)
+        const tx = F.home ? fin(this.target[i], dx) : dx, tz = F.home ? fin(this.target[i + 2], dz) : dz, tyaw = F.home ? fin(this.target[iy], dyaw) : dyaw;
+        cur[i] = lerp(F.lx, tx, e);
         cur[i + 1] = lerp(F.ly, Math.max(ANK, Math.min(dy, ANK + 0.02)), e) + Math.sin(Math.PI * F.s) * (0.05 + 0.25 * F.lift);
-        cur[i + 2] = lerp(F.lz, dz, e);
-        cur[iy] = F.lyaw + wrapAngle(dyaw - F.lyaw) * e;
+        cur[i + 2] = lerp(F.lz, tz, e);
+        cur[iy] = F.lyaw + wrapAngle(tyaw - F.lyaw) * e;
         if (F.s >= 1) {
           this._plant(F, cur[i], cur[i + 2], cur[iy], px, pz, c, s, yaw);
           this.stepCool = 0.06;
@@ -3832,6 +3863,28 @@ export class HeroAnimator {
     F.lz = z;
     F.lyaw = fin(fy);
     F.lift = 0;
+    F.home = false;
+  }
+
+  /** A settle's step for foot F (play(): `settling`): a step home from model-space (x, y, z) / yaw,
+   *  lifted on SETTLE_STEP's arc, landing on the spot the standing pose wants (the write in _feet). */
+  _settleStep(F, x, y, z, fy, dur) {
+    this._lift(F, 1, x, y, z, fy, dur);
+    F.lift = SETTLE_STEP.lift;
+    F.home = true;
+  }
+
+  /** Where foot fi is DRAWN now (the rig, from the last frame), in the planner's model space
+   *  (FOOT_NOW: x, y, z). False when that is not a finite point. */
+  _footNow(fi, px, pz, c, s, HS) {
+    const f = this.rig?.legs?.[fi ? 'L' : 'R']?.foot;
+    if (!f?.matrixWorld) return false;
+    _fn.setFromMatrixPosition(f.matrixWorld);
+    const wx = (_fn.x - px) / HS, wz = (_fn.z - pz) / HS;
+    FOOT_NOW[0] = wx * c - wz * s;
+    FOOT_NOW[1] = (_fn.y - fin(this.player?.position?.y)) / HS;
+    FOOT_NOW[2] = wx * s + wz * c;
+    return Number.isFinite(FOOT_NOW[0]) && Number.isFinite(FOOT_NOW[1]) && Number.isFinite(FOOT_NOW[2]);
   }
 
   apply(p) {
