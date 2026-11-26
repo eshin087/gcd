@@ -42,35 +42,78 @@ def fist_of(l2, side='R'):
     return (l2[16, :2] * 0.4 + l2[20, :2] * 0.35 + l2[18, :2] * 0.25)
 
 
-def fix_sword_arm(T, log=print, margin=0.12):
+def fix_sword_arm(T, log=print, margin=0.12, whole=False, switch=2.5):
     """The sword is in his RIGHT hand: where the blade leaves the tool's LEFT fist clearly better than its
-    right one, the tool swapped his arms in that frame; swap them back (5-frame majority)."""
+    right one, the tool swapped his arms in that frame; swap them back (5-frame majority).
+    whole=True (spec "arm_fix": "whole"): decided over the WHOLE take at once: a two-state path (labels kept
+    / swapped) that pays per frame for the blade evidence against it and `switch` for every change of
+    state, so a lunge where the blurred blade is not found keeps the side its neighbours prove, and a
+    swap holds until the blade proves it ends."""
     from .takes import ARM_L, ARM_R
     n = len(T.t)
     vote = np.zeros(n)
+    ev = np.zeros(n)
     for i in range(n):
         _, path = cfg.frame_at(T.film, T.t[i])
         img = np.asarray(Image.open(path).convert('RGB'), np.int16)
         sr = ray_scores(img, T.l2[i], 'R')[0].max()
         sl = ray_scores(img, T.l2[i], 'L')[0].max()
         vote[i] = 1 if sl > sr + margin else 0
-    sw = np.array([np.median(vote[max(0, i - 2):i + 3]) > 0.5 for i in range(n)])
+        ev[i] = (sr - sl) if max(sr, sl) > 0.15 else 0.0
+    if whole:
+        cost = np.array([0.0, switch])
+        back = np.zeros((n, 2), int)
+        for i in range(n):
+            e = np.array([max(0.0, -ev[i]), max(0.0, ev[i])]) * 10
+            if i:
+                stay = cost
+                move = cost[::-1] + switch
+                back[i] = np.where(stay <= move, [0, 1], [1, 0])
+                cost = np.minimum(stay, move)
+            cost = cost + e
+        sw = np.zeros(n, bool)
+        s_ = int(np.argmin(cost))
+        for i in range(n - 1, -1, -1):
+            sw[i] = s_ == 1
+            s_ = back[i, s_]
+    else:
+        sw = np.array([np.median(vote[max(0, i - 2):i + 3]) > 0.5 for i in range(n)])
     if sw.any():
         for a, b in zip(ARM_L, ARM_R):
             T.l2[sw, a], T.l2[sw, b] = T.l2[sw, b].copy(), T.l2[sw, a].copy()
             T.c[sw, a], T.c[sw, b] = T.c[sw, b].copy(), T.c[sw, a].copy()
         T.solve_camera(None, T.spec_yaw, lambda s: None)
-    log('  sword %s: arms swapped back in %d frames (the blade was in the tool-labelled left fist)' % (T.name, int(sw.sum())))
+    log('  sword %s: arms swapped back in %d frames (the blade was in the tool-labelled left fist%s)'
+        % (T.name, int(sw.sum()), ', decided over the whole take' if whole else ''))
     return int(sw.sum())
 
 
-def ray_scores(img, l2, side='R'):
+def steel_mask(rgb):
+    """a steel-grey blade (spec "blade_color": "steel"): bright, unsaturated, lighter than the dark armour"""
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    mx = np.maximum(np.maximum(r, g), b)
+    mn = np.minimum(np.minimum(r, g), b)
+    return (mx > 150) & (mx - mn < 28)
+
+
+MASKS = {'rust': rust_mask, 'steel': steel_mask}
+
+
+def blur_mask(img, prev, nxt, thr=70):
+    """what MOVED in this frame against both neighbours (a blurred blade is a faint fan the colour test
+    misses; the camera is nearly still from frame to frame, so the fan stands out)"""
+    d1 = np.abs(img - prev).sum(-1)
+    d2 = np.abs(img - nxt).sum(-1)
+    return (np.minimum(d1, d2) > thr)
+
+
+def ray_scores(img, l2, side='R', mask=None, color='rust'):
     """scores (NA,) and the visible length (px) per direction, from his right fist"""
     H = np.linalg.norm((l2[11, :2] + l2[12, :2]) / 2 - (l2[27, :2] + l2[28, :2]) / 2) * 1.25
     H = max(H, 40)
     f = fist_of(l2, side)
     rr = np.linspace(0.06 * H, 0.42 * H, 26)
-    m = rust_mask(img)
+    m = MASKS[color](img) if mask is None else mask
     h, w = m.shape
     sc = np.zeros(NA)
     ln = np.zeros(NA)
@@ -92,14 +135,43 @@ def ray_scores(img, l2, side='R'):
     return sc, ln
 
 
-def track_2d(T, idx, max_step_deg=30.0, min_score=0.2, side='R'):
+def track_2d(T, idx, max_step_deg=30.0, min_score=0.2, side='R', blur=False, color='rust'):
     """2D blade angles for take T's frames `idx` (indices into T.t): angle (rad, image axes: x right,
-    y down), confidence (0 = unknown), and the raw best score"""
+    y down), confidence (0 = unknown), and the raw best score. blur=True (spec "blade_blur"): where the
+    colour finds nothing, the rays score what moved against the neighbouring frames instead (the fan of a
+    blurred cut; rays back along his forearm are left out: the arm moves too), and a fan's direction is
+    the middle of its run of good rays, not one ray"""
     S = []
     for i in idx:
         _, path = cfg.frame_at(T.film, T.t[i])
         img = np.asarray(Image.open(path).convert('RGB'), np.int16)
-        S.append(ray_scores(img, T.l2[i], side)[0])
+        sc = ray_scores(img, T.l2[i], side, color=color)[0]
+        if blur and sc.max() < min_score:
+            ts, fs = cfg.frames(T.film)
+            import bisect
+            k = bisect.bisect_left(ts, T.t[i] - 1e-3)
+            if 2 <= k < len(fs) - 2:
+                pv = np.asarray(Image.open(fs[k - 2]).convert('RGB'), np.int16)
+                nx = np.asarray(Image.open(fs[k + 2]).convert('RGB'), np.int16)
+                sb = ray_scores(img, T.l2[i], side, mask=blur_mask(img, pv, nx))[0]
+                el, wr = (14, 16) if side == 'R' else (13, 15)
+                back = np.arctan2(*(T.l2[i, el, :2] - T.l2[i, wr, :2])[::-1])
+                da = np.abs((ANG - back + np.pi) % (2 * np.pi) - np.pi)
+                sb[da < np.radians(40)] = 0
+                if sb.max() > 0.45:
+                    # the fan: centre of the contiguous run above half its peak
+                    k0 = int(np.argmax(sb))
+                    run = [k0]
+                    for dk in (1, -1):
+                        j = k0 + dk
+                        while sb[j % NA] > 0.5 * sb[k0] and len(run) < NA // 3:
+                            run.append(j)
+                            j += dk
+                    mid = int(round(np.mean(run))) % NA
+                    fan = np.zeros(NA)
+                    fan[mid] = 0.2 + 0.2 * min(1, sb[k0])
+                    sc = np.maximum(sc, fan)
+        S.append(sc)
     S = np.array(S)
     n = len(S)
     best = S.max(1)
@@ -189,7 +261,8 @@ def blade_dirs(spec, clip, B, Ts, log=print, side='R'):
             idx = np.clip(np.arange(nb) * step + s, 0, len(T.t) - 1)
         else:
             idx = np.arange(len(T.t))
-        ang, conf, best = track_2d(T, idx, side=side)
+        ang, conf, best = track_2d(T, idx, side=side, blur=bool(clip.get('blade_blur')),
+                                   color=clip.get('blade_color' if side == 'R' else 'blade_color_L', 'rust'))
         for kk in clip.get('blade_keys' if side == 'R' else 'blade_keys_L', []):
             if kk.get('take', 0) == ti:
                 ka = keyed_2d(T, idx, kk['keys'], side)
@@ -225,7 +298,7 @@ def blade_dirs(spec, clip, B, Ts, log=print, side='R'):
             log('  sword: held blade from two takes (planes intersected)')
         elif planes:
             p0 = max(planes, key=lambda p: p[1])
-            d = _in_plane(p0[2], p0[3], prior_dir(B.b, 0, side))
+            d = _in_plane(p0[2].R, p0[3], prior_dir(B.b, 0, side))
             log('  sword: held blade from one take + the prior')
         if d is not None:
             out[:] = d
@@ -239,7 +312,8 @@ def blade_dirs(spec, clip, B, Ts, log=print, side='R'):
                     continue
                 u = np.array([np.cos(ang[k]), -np.sin(ang[k]), 0.0])  # image dir -> camera (y up)
                 n_cam = np.cross(u, [0, 0, 1.0])
-                planes.append((T.R.T @ n_cam, conf[k], T, u))
+                Rk = T.Rs[idx[k]]  # that frame's camera (a swinging camera turns it)
+                planes.append((Rk.T @ n_cam, conf[k], T, u, Rk))
             if not planes:
                 continue
             planes.sort(key=lambda p: -p[1])
@@ -250,12 +324,12 @@ def blade_dirs(spec, clip, B, Ts, log=print, side='R'):
                 if np.linalg.norm(c) > 0.3:
                     d = c / np.linalg.norm(c)
                     # the sign: its picture in the best take points along u
-                    T0, u0 = planes[0][2], planes[0][3]
-                    if (T0.R @ d)[:2] @ u0[:2] < 0:
+                    R0, u0 = planes[0][4], planes[0][3]
+                    if (R0 @ d)[:2] @ u0[:2] < 0:
                         d = -d
             if d is None:
-                T0, u0 = planes[0][2], planes[0][3]
-                d = _in_plane(T0, u0, prior_dir(B.b, k, side))
+                R0, u0 = planes[0][4], planes[0][3]
+                d = _in_plane(R0, u0, prior_dir(B.b, k, side))
             out[k] = d
             bconf[k] = planes[0][1]
         B.blade_conf = bconf
@@ -319,10 +393,11 @@ def forearm_frames(b, side='R'):
     return np.stack([x, y, z], 2)
 
 
-def _in_plane(T, u, prior):
-    """the unit body-frame direction whose picture in take T points along u, nearest the prior"""
-    a = T.R.T @ u  # in the image plane, along u
-    c = T.R.T @ np.array([0, 0, 1.0])  # the camera ray (depth)
+def _in_plane(R, u, prior):
+    """the unit body-frame direction whose picture through camera R (body -> camera) points along u,
+    nearest the prior"""
+    a = R.T @ u  # in the image plane, along u
+    c = R.T @ np.array([0, 0, 1.0])  # the camera ray (depth)
     # directions cos(t) a + sin(t) c with cos(t) > 0 (it must point along u in the picture)
     t = np.arctan2(prior @ c, prior @ a)
     t = np.clip(t, -1.2, 1.2)
@@ -333,4 +408,4 @@ def _in_plane(T, u, prior):
 def _one_view(T, i, ang, b0):
     u = np.array([np.cos(ang), -np.sin(ang), 0.0])
     bb = T.b[i:i + 1]
-    return _in_plane(T, u, prior_dir(bb, 0))
+    return _in_plane(T.Rs[i], u, prior_dir(bb, 0))

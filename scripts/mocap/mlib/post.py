@@ -13,7 +13,7 @@ Z = np.array([0, 0, 1.0])
 
 # ---------- 1. facing -> root yaw ----------
 
-def facing_yaw(b, fps, sigma_s=0.12):
+def facing_yaw(b, fps, sigma_s=0.12, absolute=False):
     """his facing per frame (rad, about +Y, 0 = the clip's +Z) from the fused landmarks: the hip and
     shoulder lines, the feet (heel -> toe) and the nose, unwrapped and smoothed"""
     from .takes import facing
@@ -25,7 +25,7 @@ def facing_yaw(b, fps, sigma_s=0.12):
     v = v / np.maximum(np.linalg.norm(v, axis=1, keepdims=True), 1e-9)
     v = smooth_time(v, sigma_s * fps)
     yaw = np.unwrap(np.arctan2(v[:, 0], v[:, 2]))
-    return yaw - yaw[0]
+    return yaw if absolute else yaw - yaw[0]
 
 
 def rotate_y(b, yaw):

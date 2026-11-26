@@ -57,6 +57,8 @@ Other tools (all light):
 | command | does |
 |---|---|
 | `"$PY" -I bladesheet.py specs/<set>.json <clip> [take] [--every 2] [--from t] [--to t]` | the blade as detected in one take's frames (cyan = found, grey = unknown, filled later), with a full-frame pixel ruler for hand keys |
+| `"$PY" -I find.py <film> <t0> <t1> <s0> <s1> [--top 12] [--min-gap 0.6]` | every other performance of the move you found at s0-s1, in the chapter t0-t1, whatever the camera |
+| `"$PY" -I camcal.py <film> <t0> <t1> [...]` | calibrates the focal length of `swing` on spans where he stands while the camera orbits |
 | `"$PY" -I proportions.py [config.json]` | his build from standing takes; writes `$H2/mocap/proportions.json` and an HDIM proposal |
 | `"$PY" -I keysheet.py specs/<set>.json <clip> [take] [--from t] [--to t] [--every 3] [--box x,y,side]` | a labelled ruler sheet of one take's frames for 2D hand keys (see the roll example) |
 | `bash "$H2/lock.sh" <you> "$PY" -I track.py <film> <t0> <t1> --forget` | HEAVY: drop and re-track a span (after a tracking fix, or when a crop latched onto a phantom); if it runs out of budget, run it again WITHOUT `--forget` |
@@ -116,6 +118,12 @@ Clip keys:
 | `swordL` | true: a second sword in the LEFT hand (paired swords): found and solved like the right one; `blade_keys_L` keys it |
 | `blade_keys` | `[{"take": 0, "keys": [["0:24.50", x_tip, y_tip] or ["0:24.50", x_hilt, y_hilt, x_tip, y_tip], ...]}]`: the blade in the picture. Use the hilt + tip form when the tool's fist is wrong. Keys in TWO takes (both seeing that moment) give the blade's 3D direction from both; one take uses a prior |
 | `blade_max_dps` | default 1500: the blade's turning speed limit in the forearm's frame (deg/s), against wrong rays |
+| `swing` | clip or take: true = the camera's own swing is measured per frame from the picture's BACKGROUND (`mlib/camflow.py`) and every frame gets its own camera direction (fusion, re-projection, the blade's planes, the sheets). Use it on follow-camera takes; a take without it whose camera swings more than 10 degrees prints a hint |
+| `yaw2d` | clip or take: true = the take's camera yaw is taken from how WIDE his shoulder and hip lines look in the picture (the tool's 3D depth only picks the branch: front / back, his left / right). Only when the take's first 0.35 s is calm (he stands); the build log prints both values |
+| `face` | one-shots: `"start"` (his facing over the first 0.2 s), `"hit"` (the blade's direction at the first `hit` event: attacks) or a number (deg): the clip is turned so that this is its +Z, the way the game aims it. EVERY attack needs it (the game aims a clip by its +Z) |
+| `arm_fix` | sword clips: `"whole"` = the blade decides which arm is his right over the WHOLE take (a two-state path; a lunge where the blurred blade is lost keeps the side its neighbours prove) instead of a 5-frame vote |
+| `blade_blur` | sword clips: true = where the colour finds no blade, rays score what MOVED against the neighbouring frames (the fan of a blurred cut; the middle of the fan is its direction). Check it on `bladesheet.py` (magenta = weak / fan) |
+| `blade_color`, `blade_color_L` | `"rust"` (default) or `"steel"` (a bright grey blade: the paired set's left sword) |
 
 ## Author's checklist (every clip)
 
@@ -187,6 +195,32 @@ from its own fist (both rust-red in the footage), `blade_keys` / `blade_keys_L` 
 
 **Flask, bell (moveMisc)**: `props: {"L": "flask"}`; nothing is detected; give the left hand's roll with
 `pose_keys` on `handL` where the picture shows the flask's angle.
+
+**Finding every take of a move (find.py)**: a combo chapter plays the combo growing hit by hit, and the
+camera (or his facing) differs between rounds. Find one performance by eye, then
+`"$PY" -I find.py sword 41 100 0:29.45 0:30.15 --top 14 --min-gap 1.5` lists the moments his joints do the
+same (camera-free: distances between joints in the tool's 3D). Costs are rough (lunges are noisy): check
+the candidates on a strip and give each take's `t0` the same moment to within `search`. A take that
+aligns at exactly +-`search` did NOT align: fix its time or drop it.
+
+**The camera (swing, yaw, face; light1)**: `"swing": true` measures the camera's own turn per frame from
+the background (`camcal.py sword 2.2 4.4 5.3 7.4 ...` calibrated it: f = 760 px). Measured in the SWORD
+film's light chapter: the follow camera turns only 6-10 degrees per take (0:23-1:01), the second shot
+(1:01.8-1:40) is FIXED and he faces a new way each round, which is where the other views come from. The
+bigger error is the take's YAW: it is measured on the take's first 0.35 s (the first take is not padded,
+so start it while he still stands) and a hint more than 50 degrees off replaces it. When the log's
+`yaw .. (hips .. feet .. nose ..)` parts disagree by more than ~30 degrees, give `"yaw"` yourself: e.g.
+light1's first take measured -5 on a view that the other three performances measure at 69-76, so it has
+`"yaw": 70`. Then `"face": "hit"` turns the finished clip so the cut is aimed along +Z (the engine aims a
+clip by its +Z; without it light1 was built 171 degrees off).
+
+**Blurred cuts and arm swaps (light1)**: `"blade_blur": true, "arm_fix": "whole"`; check with
+`bladesheet.py specs/swordOne.json light1 0 --every 1 --from 0:26.80 --to 0:27.05 --cell 400 --cols 4`;
+key what is still wrong with `blade_keys` (hilt + tip form when the fist is wrong).
+
+**A free hand (light1)**: `"free_hand": true` (or `{"sigma": 2.0, "flex": 12}`): the hand follows the tool's
+hand points where they look like a hand and relaxes along the forearm where they do not. To key it:
+`pose_keys` on `handL` (`"euler"`, or `"dir"` = where the fingers point in his root frame).
 
 **Clavicles and toes**: automatic (`clavicles`: 0.3 of the upper arm's lift and reach; toes bend at
 push-off on planted feet).

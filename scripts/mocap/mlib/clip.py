@@ -16,7 +16,8 @@ def _take(spec, clip, tk, pad=0.0, log=print):
     t1 = cfg.parse_time(tk['t1']) + pad
     T = takes.Take(film, t0, t1, tk.get('view'), tk.get('name', '%s@%.2f' % (tk.get('view'), t0 + pad)),
                    flip=tk.get('flip'), pitch=tk.get('pitch'), yaw=tk.get('yaw'), log=log,
-                   calm=tk.get('calm', clip.get('calm', 0.35 if clip.get('kind', 'oneshot') == 'oneshot' else None)))
+                   calm=tk.get('calm', clip.get('calm', 0.35 if clip.get('kind', 'oneshot') == 'oneshot' else None)),
+                   swing=tk.get('swing', clip.get('swing', False)), yaw2d=tk.get('yaw2d', clip.get('yaw2d', False)))
     T.spec = tk
     T.spec_yaw = tk.get('yaw')
     if tk.get('drop') or tk.get('keys'):
@@ -24,7 +25,7 @@ def _take(spec, clip, tk, pad=0.0, log=print):
         T.solve_camera(tk.get('pitch'), tk.get('yaw'), lambda s: None)
     if clip.get('sword') and not clip.get('swordL') and not clip.get('grip') and not tk.get('no_arm_check'):
         from . import sword
-        sword.fix_sword_arm(T, log)
+        sword.fix_sword_arm(T, log, whole=tk.get('arm_fix', clip.get('arm_fix')) == 'whole')
     log('  take ' + T.summary())
     return T
 
@@ -181,6 +182,33 @@ def build_clip(spec, clip, log=print):
     if clip.get('swordL'):
         from . import sword
         B.bladeL = sword.blade_dirs(spec, clip, B, Ts, log=log, side='L')
+    # spec "face": put the way he faces (or aims) on the clip's +Z at its start, so the game can aim the
+    # clip: "start" = his facing over the first 0.2 s (hips, shoulders, feet, nose), "hit" = the blade's
+    # horizontal direction at the first `hit` event (attacks: the way the cut is aimed), or a number (deg)
+    face = clip.get('face')
+    if face is not None:
+        if face == 'hit' and blade is not None and clip.get('events'):
+            t0r = B.t_ref[0] if hasattr(B, 't_ref') else 0
+            ev = [e for e in clip['events'] if e['name'] == 'hit'] or clip['events']
+            fh = int(np.clip(round((cfg.parse_time(ev[0]['t']) - t0r) * fps), 0, len(b) - 1))
+            d = blade[max(0, fh - 2):fh + 3].mean(0)
+            a0 = float(np.arctan2(d[0], d[2]))
+        elif isinstance(face, (int, float)) and not isinstance(face, bool):
+            a0 = float(np.radians(face))
+        else:
+            ya = post.facing_yaw(b, fps, absolute=True)
+            k = max(1, int(0.2 * fps))
+            a0 = float(np.arctan2(np.sin(ya[:k]).mean(), np.cos(ya[:k]).mean()))
+        rot = np.full(len(b), a0)
+        B.face_rot = a0  # the sheets turn our skeleton back into the takes' cameras
+        b = post.rotate_y(b, rot)
+        B.b = b
+        if blade is not None:
+            blade = post.rotate_y(blade[:, None], rot)[:, 0]
+            B.blade = blade
+        if getattr(B, 'bladeL', None) is not None:
+            B.bladeL = post.rotate_y(B.bladeL[:, None], rot)[:, 0]
+        log('  face %s: turned %.0f degrees so the clip starts facing +Z' % (face, np.degrees(a0)))
     # his facing: the root's yaw when he turns (pivots, turns, turning in place); the body is then
     # retargeted in the frame that faces with him and his hips / spine keep their own twist on top
     yaw = None
@@ -213,7 +241,7 @@ def build_clip(spec, clip, log=print):
     for nm in ('handL', 'handR'):
         held = (nm == 'handR' and blade is not None) or (nm == 'handL' and getattr(B, 'bladeL', None) is not None)
         if not held:
-            q = retarget.limit_joint(q, JI[nm], 80, 1.0 * k, loop)
+            q = retarget.limit_joint(q, JI[nm], 80, (0.0 if clip.get('free_hand') else 1.0) * k, loop)
     q = retarget.limit_joint(q, JI['head'], 60, 1.0 * k, loop)
     q = retarget.limit_joint(q, JI['neck'], 45, 1.0 * k, loop)
     if clip.get('clavicles', 0.3):
@@ -301,7 +329,7 @@ def save(B, set_id):
     meta = dict(name=B.name, loop=B.loop, fps=B.fps, contact=B.contact, speed=B.speed, events=B.events,
                 phases=B.phases, takes=B.takes, loo=B.loo, period=getattr(B, 'period', None),
                 shift=getattr(B, 'shift', None), offsets=getattr(B, 'offsets', None),
-                t_ref0=float(B.t_ref[0]) if hasattr(B, 't_ref') else None)
+                t_ref0=float(B.t_ref[0]) if hasattr(B, 't_ref') else None, face_rot=getattr(B, 'face_rot', 0.0))
     meta['qa'] = getattr(B, 'qa', None)
     extra = {}
     if getattr(B, 'bladeL', None) is not None:
