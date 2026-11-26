@@ -2638,7 +2638,7 @@ rests of 0.12 - 0.28 s; idle gaps 0.03 - 0.1 s.
 WIN (the fencing bot in god mode): 157 - 164 s on three seeds (the plan asked 150 - 210; 156 - 183 s before the review fixes). The bar was sized
 for it: 3400 hp gave 40 - 46 s (a crash is a long opening), 7000 / 700 posture 81 s.
 
-## Bai Wuji (2026-11-26, ADR-237; `?level=veil`)
+## Bai Wuji (2026-11-26, ADR-241; `?level=veil`)
 
 Bai Wuji, the Untouched: a tall, relaxed man in a bone-white coat, his eyes covered, his hands in his pockets,
 BARE-HANDED (untouched/; Tian Lei's strike builders). One health bar (26000), three phases at 66 % (THE

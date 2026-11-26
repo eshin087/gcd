@@ -5,7 +5,7 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
-## 2026-11-26 — A ninth level: the Veiled Crossing and Bai Wuji, the Untouched (ADR-237 – ADR-239; branch `enemies/untouched`; planned by the lead, built by Opus agents)
+## 2026-11-26 — A ninth level: the Veiled Crossing and Bai Wuji, the Untouched (ADR-241 – ADR-243; branch `enemies/untouched`; planned by the lead, built by Opus agents)
 
 **Owner:** a boss after a famous white-haired, blindfolded sorcerer (named as the reference; nowhere in the game):
 "his iconic white hair with eyes covered. during the phases he will reveal his eyes and his hair will go down";
@@ -43,7 +43,7 @@ with a bench of five mortal bots. The lead merged and wrote the docs.
   `beam` trench. Halcyon's `_throw` lands on the floor.
 - The bench: `tests/integration/bench.mjs`, opt-in scenario `bench` in `veil.mjs`, `city.mjs`, `asc.mjs`.
 
-**Decisions.** ADR-237 (the boss and his rules), ADR-238 (what changed in the destruction), ADR-239 (the tuning
+**Decisions.** ADR-241 (the boss and his rules), ADR-242 (what changed in the destruction), ADR-243 (the tuning
 and the bench). The lead's one addition to the owner's barrier rule: cracks (ordinary parries; four open it for
 less time). The guard: the tuning pass set a block's cost to half the meter, so the SECOND block in a row knocks
 the guard open (the brief said the third): a bot that rolled every red and blocked the rest won 6 of 6 at 0.4.

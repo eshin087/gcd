@@ -3467,7 +3467,7 @@ stones is a breakable 'vent' and the vent flares as it breaks.
   first, written into `out` (cleared first; kind 'flagstone' | 'plate'; whole: not cracked): what a floor move
   can tear up there.
 - Lifting and throwing (a boss's move): `take(piece, { chip })` → true: it is HELD (no collider; `chip`
-  (ADR-238): the hero's blade bites it where it passes while held, and a cut that would leave it under 1 hp
+  (ADR-242): the hero's blade bites it where it passes while held, and a cut that would leave it under 1 hp
   breaks it: let go where it hangs, it bursts where it lands; without it a held piece is out of every blow's reach);
   `carry(piece, x, y, z, tilt, yaw)` every frame while held (the wyrm flies its thrown pieces this way);
   `throwTo(piece, tx, tz, { time, power, radius, by, onLand(piece, x, z, radius) })` → it flies there
@@ -3475,7 +3475,7 @@ stones is a breakable 'vent' and the vent flares as it breaks.
   `BREAK.flight.power` x its weight), and bursts: a blast on the other pieces, a scar, its wreckage,
   and `onLand` for the thrower's own blow at the hero (the move's tell is the thrower's: the world
   deals nothing to the hero for a thrown piece); `drop(piece, { ground })`. `throwTo` / `drop` `{ ground: true }`
-  (ADR-238): a raised piece (`y0` > 0) comes down and lands on the FLOOR (its pivot `y0` down), not at its own base
+  (ADR-242): a raised piece (`y0` > 0) comes down and lands on the FLOOR (its pivot `y0` down), not at its own base
   height (Bai Wuji's throws and drops; Halcyon's `_throw`). `topple(piece, dx, dz, by)`: fell it
   that way.
 - `setQuality(k)`, `reset()`, `update(dt)` (world.js calls it).
@@ -3733,7 +3733,7 @@ was 520 before ADR-177), `reset()`, `count` (glyphs), `on` (the kinds on: `marks
 marks laid by kind since the reset), `kinds` (their sum), `layer` (a tag the marks made from now on carry: a
 set's scene; null by default) and `shade(x, z, r, hide, except)` (the marks within r not tagged `except` hidden
 or shown again, their alpha in place, no rebuild; → how many changed: the Veiled Crossing's void hides the
-city's marks as its front passes; ADR-239). `SCAR.thin[levelId] = { grit, rubble, ground, cool }` (ADR-239):
+city's marks as its front passes; ADR-243). `SCAR.thin[levelId] = { grit, rubble, ground, cool }` (ADR-243):
 a level keeps that share of the grit, the rubble and the crack spokes (the strokes that shape a mark stay);
 `cool`: rubble whose material ends in an ember's colour (metal) lies cold grey; absent, all (the veil only:
 0.35 / 0.25 / 0.4, cool). At the cap the oldest `SCAR.evict` 0.15 of the
@@ -4816,7 +4816,7 @@ breath is let go the next flock is heard).
   rectangle with his head and shoulders left dark. `setPhase(1 | 2 | 3)`: neon and his face; static then
   crimson (`void`, which his fx re-palettes); dead. A piece's neon goes out when the piece breaks.
 
-### The Veiled Crossing: two scenes, throwables, the light (2026-11-26, ADR-237)
+### The Veiled Crossing: two scenes, throwables, the light (2026-11-26, ADR-241)
 `world/veiledCrossing.js` (its head is the set's contract): `CROSSING { r 20, bound 28, dragonBound 17, bonfire,
 wait, entryZ 17, road, clear, half, cell, outer, outerCell }` (levels/veil.js copies it into `CONFIG.world`),
 `createVeiledCrossing(U, colliders)` → createForest's shape + `breakables`, `sky`, `ambience`, `grass`, `scarInk`,
@@ -6101,7 +6101,7 @@ cover on his deflected line (`destructibles.coverAt`), the react 'crashed' held 
 30, `dragon:crash`. The carry: `grab()` (See the World's hit), the hero held in his own knockdown and
 carried by `position.y`; the slam ends it, the get-up timed so control is gone at most `grab.cap` s.
 
-### Bai Wuji, the Untouched — `src/entities/enemies/untouched/untouched.js` exports `class Untouched` (ADR-237)
+### Bai Wuji, the Untouched — `src/entities/enemies/untouched/untouched.js` exports `class Untouched` (ADR-241)
 A `Duelist` with `UNTOUCHED_KIT` and his own `UntouchedBrain` (`_reach` unbounded for a blow out of a blink, and a
 routed beat's own reach; `startReact('surprised')` once a fight); COMBAT.md → "Bai Wuji" has the fight. The kit:
 `{ id: 'untouched', TUNING, MOVES, MOVE_NAMES, CLIP, realise, transitions { 2: 'unveil', 3: 'measureless' },
