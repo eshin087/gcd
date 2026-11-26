@@ -162,8 +162,10 @@ export class Cloth {
       // the rest hang: straight down, flared out along the anchor's outer face as the ref bone holds it
       qmul(this.objQ, 0, Wr, s.ref * 4, q, 0);
       rot(q, 0, s.outL[0], s.outL[1], s.outL[2], t, 0);
-      const h = Math.hypot(t[0], t[2]) || 1;
-      let dx = (t[0] / h) * s.out, dy = -1, dz = (t[2] / h) * s.out;
+      // (the flare goes with how much the outer face looks sideways: a body lying on its back turns the
+      // back's face to the ground, and its little horizontal part must not pick a direction at random)
+      const h = Math.hypot(t[0], t[2]), fl = h > 1e-4 ? (s.out * Math.min(1, h / 0.7)) / h : 0;
+      let dx = t[0] * fl, dy = -1, dz = t[2] * fl;
       const l = Math.hypot(dx, dy, dz);
       s.dir[0] = dx / l;
       s.dir[1] = dy / l;
@@ -219,6 +221,25 @@ export class Cloth {
         dz = s.az[2];
         d = 1;
       }
+      // under the capsule's axis, near the ground (a body lying down, the cloth under it): out sideways
+      // along the ground, not down into it (the ground would throw it back up into the body, then out
+      // over the top: the sheets stood up round him)
+      if (dy < 0 && p[k + 1] - this.ground < R * 2) {
+        const hd = Math.hypot(dx, dz), r2 = R * R - dy * dy;
+        let hx = dx, hz = dz;
+        if (hd < 1e-5) {
+          const ah = Math.hypot(s.az[0], s.az[2]) || 1;
+          hx = s.az[0] / ah;
+          hz = s.az[2] / ah;
+        } else {
+          hx /= hd;
+          hz /= hd;
+        }
+        const hr = r2 > 0 ? Math.sqrt(r2) : 0;
+        p[k] = cx + hx * hr;
+        p[k + 2] = cz + hz * hr;
+        continue;
+      }
       const f = R / d;
       p[k] = cx + dx * f;
       p[k + 1] = cy + dy * f;
@@ -230,7 +251,7 @@ export class Cloth {
 
   /** One pass of the constraints over strand s (anchor at a). */
   _constrain(s, a, hangK) {
-    const p = s.p, n = s.n, K = s.K, cmax = Math.cos(K.max);
+    const p = s.p, n = s.n, K = s.K, gy = this.ground + K.clear;
     p[0] = a[0];
     p[1] = a[1];
     p[2] = a[2];
@@ -256,9 +277,14 @@ export class Cloth {
       dx /= d;
       dy /= d;
       dz /= d;
+      // the swing limit off straight down; a link whose root is near the ground may lie flat on it (the
+      // ground holds it there: a sheet on a body lying down lies on the floor, it is not stood up off it)
+      const near = 1 - (p[j + 1] - gy) / (1.5 * L);
+      const lim = near > 0 ? K.max + (Math.PI / 2 + 0.02 - K.max) * Math.min(1, near) : K.max;
+      const cmax = Math.cos(lim);
       if (-dy < cmax) {
         // past the limit: tilt toward straight down until it is at the limit
-        const h = Math.hypot(dx, dz) || 1, sm = Math.sin(K.max);
+        const h = Math.hypot(dx, dz) || 1, sm = Math.sin(lim);
         dx = (dx / h) * sm;
         dz = (dz / h) * sm;
         dy = -cmax;

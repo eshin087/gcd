@@ -12,17 +12,30 @@
 //     the sword (and the gem, its child), the chest, the pelvis, the head, both upper arms, both legs'
 //     thigh / shin / foot.
 //
-// Locomotion is a speed-matched blend space over idle / walk / run / sprint driven by groundVel: the
-// gaits are phase-synced (each clip's right plant starts its cycle), the pair round the speed is mixed,
-// and the cycle runs at the rate that makes the feet match the real ground speed. Direction is the
-// second axis: until the strafe clips exist (moves.js STRAFE) the forward gait plays with the legs
-// turned to the travel at the hips (the chest keeps his aim) and backward travel runs it in reverse.
+// LOCOMOTION (moves.js LOCO). The travel direction relative to his facing picks a SECTOR (F the plain
+// gaits, L / R the side steps, B the backpedal; 50 / 130 degree edges with a little hysteresis, the legs
+// turned at the hips the rest of the way); inside it a speed-matched blend over idle and the sector's
+// loops, phase-synced (each loop's right plant starts its cycle), run at the rate that makes the feet
+// match the ground speed (a strafe loop at most LOCO.rateMax x its own; the pin stretches the rest).
+// One-shots on top, each handing back to the blend at the matching phase:
+//   start   from standing, setting off the way he faces: the clip played by DISTANCE (its own travel
+//           matched to the game's, 1..start.rateMax x real speed)
+//   stop    the input ends while moving forward: the stop (the foot variant whose legs match his pose),
+//           entered where its remaining travel is the game's remaining slide, by distance, then the settle
+//   pivot   the input reverses at speed: the pivot; its ROOT YAW is drawn (the body at the yaw he had
+//           when it began plus the clip's root yaw), the game's own yaw (which turns him in a quarter of
+//           a second) catches up under it, and the difference fades out when it hands back
+//   turn    standing, the aim swings past LOCO.turn.minAngle: the turn on the spot, drawn the same way
+// The game's yaw is never changed: the body is drawn turned against it (turnAll) while a clip's root
+// yaw leads, so the gameplay facing (attacks commit to it) stays the game's.
 import * as THREE from 'three';
 import { createHero2, createClipPlayer } from './engine.js';
 import { fitTime } from './fit.js';
-import { JI, createWorld, restOffsets, solveFK } from './skeleton.js';
+import { J, JI, createPose, createWorld, restOffsets, solveFK } from './skeleton.js';
 import { qmul, qconjmul, qaxis, qrot, smooth01, fin } from './qmath.js';
-import { LOCO, ATTACKS, ATTACK_DEFAULT, STATES, STATE_DEFAULT, resolveClip } from './moves.js';
+import { sampleClip } from './clip.js';
+import { LOCO, ATTACKS, ATTACK_DEFAULT, STATES, STATE_DEFAULT, ROLLS, HEAL, resolveClip, resolveAll } from './moves.js';
+import { TUNE } from '../player/player.js';
 
 const TAU = Math.PI * 2;
 const wrap = (a) => {
@@ -31,15 +44,82 @@ const wrap = (a) => {
   return a - Math.PI;
 };
 const damp = (a, b, k, dt) => b + (a - b) * Math.exp(-k * dt);
+const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const plantStart = (c, side) => (c.contact[side]?.[0]?.[0] ?? 0) / c.n;
 
-/** The frame from which a stop clip's own travel is (nearly) over: the settle, without the slide. */
-function settleFrame(c, left = 0.1) {
-  const R = c.root, ex = c.cyc[0], ez = c.cyc[1];
-  for (let f = 0; f < c.n; f++) if (Math.hypot(ex - R[f * 3], ez - R[f * 3 + 1]) < left) return f;
-  return 0;
+// ------------------------------------------------------------------ clip measures (once per clip)
+const _travel = new WeakMap();
+/** A one-shot's ground travel up to each frame (m, the root's path). */
+export function travelOf(c) {
+  let T = _travel.get(c);
+  if (T) return T;
+  T = new Float32Array(c.n);
+  const R = c.root;
+  for (let f = 1; f < c.n; f++) T[f] = T[f - 1] + Math.hypot(R[f * 3] - R[f * 3 - 3], R[f * 3 + 1] - R[f * 3 - 2]);
+  _travel.set(c, T);
+  return T;
 }
+/** The (fractional) frame where the clip's travel reaches d. */
+export function frameAtTravel(c, d) {
+  const T = travelOf(c), n = c.n;
+  if (d <= 0) return 0;
+  if (d >= T[n - 1]) return n - 1;
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) {
+    const m = (lo + hi) >> 1;
+    if (T[m] < d) lo = m;
+    else hi = m;
+  }
+  const s = T[hi] - T[lo];
+  return lo + (s > 1e-6 ? (d - T[lo]) / s : 0);
+}
+/** The clip's travel at frame position u (m). */
+export function travelAt(c, u) {
+  const T = travelOf(c), n = c.n;
+  u = clamp(u, 0, n - 1);
+  const i = Math.min(n - 2, Math.floor(u));
+  return n < 2 ? 0 : T[i] + (T[i + 1] - T[i]) * (u - i);
+}
+/** The root's yaw at frame position u (unwrapped as stored). */
+export function rootYaw(c, u) {
+  const n = c.n, R = c.root;
+  u = clamp(u, 0, n - 1);
+  const i = Math.min(n - 2, Math.floor(u)), t = u - i;
+  if (n < 2) return 0;
+  return R[i * 3 + 2] + (R[i * 3 + 5] - R[i * 3 + 2]) * t;
+}
+/** A one-shot's net forward travel (m, along his facing at frame 0). */
+export const forwardTravel = (c) => c.root[(c.n - 1) * 3 + 1];
+/** The direction a one-shot travels, in his own frame (rad, + = to his left). */
+export const travelDir = (c) => Math.atan2(c.root[(c.n - 1) * 3], c.root[(c.n - 1) * 3 + 1]);
+/** A clip's landing frame (its `land` event), else `fallback`. */
+export const landFrame = (c, fallback) => c.events.find((e) => e.name === 'land')?.f ?? fallback;
 
+// the legs' pose distance (pose matching: a hand-off to a loop at its matching phase, a stop's foot)
+const LEGJ = [JI.thighL, JI.shinL, JI.footL, JI.thighR, JI.shinR, JI.footR];
+const _pa = createPose(), _pb = createPose();
+function legDist(qa, qb) {
+  let d = 0;
+  for (let k = 0; k < LEGJ.length; k++) {
+    const i = LEGJ[k] * 4;
+    d += 1 - Math.abs(qa[i] * qb[i] + qa[i + 1] * qb[i + 1] + qa[i + 2] * qb[i + 2] + qa[i + 3] * qb[i + 3]);
+  }
+  return d;
+}
+/** The frame of loop `cyc` whose legs best match clip `c` at frame u (or a given pose's q). */
+export function matchFrame(cyc, q) {
+  let best = 0, bd = Infinity;
+  for (let f = 0; f < cyc.n; f++) {
+    sampleClip(cyc, f, _pb);
+    const d = legDist(q, _pb.q);
+    if (d < bd) {
+      bd = d;
+      best = f;
+    }
+  }
+  return { f: best, d: bd };
+}
+const clipQ = (c, u) => (sampleClip(c, u, _pa), _pa.q);
 
 const _T = new Float64Array(8);
 /** The whole figure turned by a about his root (the hips, and with them everything). */
@@ -95,55 +175,153 @@ export function fixAttackPose(pose, c, aim) {
   if (Math.abs(aim) > 1e-3) turnAll(pose, aim);
 }
 
+/** Piecewise-straight game time -> frame through knots (flat [t0, f0, t1, f1, ...], k pairs); after the
+ *  last, `tail` x real speed. */
+function knotFrame(K, k, t, tail, fps) {
+  if (k <= 0) return 0;
+  if (t <= K[0]) return K[1];
+  for (let i = 1; i < k; i++) {
+    const t1 = K[i * 2];
+    if (t <= t1) {
+      const t0 = K[i * 2 - 2], f0 = K[i * 2 - 1], f1 = K[i * 2 + 1];
+      return t1 - t0 > 1e-6 ? f0 + ((f1 - f0) * (t - t0)) / (t1 - t0) : f1;
+    }
+  }
+  return K[k * 2 - 1] + (t - K[k * 2 - 2]) * fps * tail;
+}
+
+const CENTER = { F: 0, L: Math.PI / 2, R: -Math.PI / 2, B: Math.PI };
+
 /**
  * The adapter. `old`: today's animator (it keeps running); `body`: the remade hero's body (body.js or
  * debugBody.js), already in the scene. Returns { proxy (what player.anim becomes), hero, rewrap(old) }.
  */
 export function createAdapter(game, player, old, { lib, body }) {
   const hero = createHero2(game, { body, library: lib, applyRoot: false });
-  hero.props = { R: 'sword', L: null }; // the game's hero never lets go of his sword
+  // the game's hero never lets go of his sword (R); the left hand holds what the clips give it (the flask)
+  hero.props = { R: 'sword', L: undefined };
   hero.syncProps();
   const obj = body.object3d;
 
   // ---- the clips (resolved once)
   const idleC = resolveClip(lib, LOCO.idle), fightC = resolveClip(lib, LOCO.fightIdle) ?? idleC;
-  const gaits = LOCO.gaits
-    .map((g) => resolveClip(lib, g))
-    .filter(Boolean)
-    .map((c) => ({ c, v: c.speed ?? Math.hypot(c.cyc[0], c.cyc[1]) / c.dur, off: plantStart(c, 'R') }))
-    .filter((g) => g.v > 0.1)
-    .sort((a, b) => a.v - b.v);
-  const stops = {};
-  for (const k of ['walk', 'run', 'sprint']) {
-    const c = resolveClip(lib, LOCO.stop[k]);
-    if (c) stops[k] = { c, from: settleFrame(c) };
+  const loopOf = (c) => ({ c, v: c.speed ?? Math.hypot(c.cyc[0], c.cyc[1]) / c.dur, off: plantStart(c, 'R') });
+  const sectors = {};
+  for (const k of ['F', 'L', 'R', 'B']) {
+    sectors[k] = (LOCO.sectors[k] ?? [])
+      .map((e) => resolveClip(lib, e))
+      .filter((c) => c && c.loop)
+      .map(loopOf)
+      .filter((g) => g.v > 0.1)
+      .sort((a, b) => a.v - b.v);
   }
+  if (!sectors.F.length) for (const k of ['L', 'R', 'B']) sectors[k] = [];
+  const GAITS = ['walk', 'run', 'sprint'];
+  const loopFor = (name) => sectors.F.find((g) => g.c.name === name) ?? sectors.F[sectors.F.length > 1 ? 1 : 0] ?? null;
+  const starts = {}, stops = {}, pivots = {}, turns = {};
+  for (const k of GAITS) {
+    starts[k] = resolveClip(lib, LOCO.start[k]);
+    stops[k] = resolveAll(lib, LOCO.stop[k], (c) => !c.loop && forwardTravel(c) >= LOCO.stop.minTravel);
+    pivots[k] = resolveClip(lib, LOCO.pivot[k]);
+  }
+  for (const k of ['L90', 'R90', 'L180', 'R180']) turns[k] = resolveClip(lib, LOCO.turn[k]);
+  const drinkC = resolveClip(lib, HEAL.drink), emptyC = resolveClip(lib, HEAL.empty);
 
   // ---- state
   const S = {
-    mode: 'loco', key: 'loco', entry: null, clip: null,
-    phi: 0, vs: 0, legYaw: 0, aim: 0, idleU: 0, peak: 0, gait: 'walk', cs: 1, csWant: 1,
+    mode: 'loco', key: 'loco', prevKey: '', entry: null, clip: null,
+    phi: 0, vs: 0, loop: '', legYaw: 0, aim: 0, idleU: 0, gait: 'walk', sector: 'F', cs: 1, csWant: 1,
+    u: 0, dist: 0, Y0: 0, settled: fin(player.yaw), rollTurn: 0, heal: false, yawOff: 0,
+    K: new Float64Array(16), k: 0, tail: 1,
   };
   let A = null; // the proxy (set below)
   let oldAnim = old;
 
   const setContact = (v) => (S.csWant = Math.max(0, Math.min(1, fin(v, 1))));
+  const intentLen = () => fin(player.intent?.len, 0);
+  /** Where the game will face him for a travel direction (the sprint faces the travel, else his aim). */
+  const faceFor = (moveYaw) => {
+    if (player.state === 'sprint' || player.intent?.sprint) return moveYaw;
+    try {
+      return fin(player._aimYaw?.(moveYaw), moveYaw);
+    } catch {
+      return moveYaw;
+    }
+  };
+  /** A game duration by name (moves.js knots). */
+  const mark = (v) => {
+    if (typeof v === 'number') return v;
+    switch (v) {
+      case 'stagger':
+        return fin(player.staggerLen, TUNE.staggerDur);
+      case 'guardBreak':
+        return player.state === 'guardBreak' ? TUNE.guardBreakDur : fin(player.staggerLen, TUNE.staggerDur);
+      case 'knockdown':
+        return TUNE.knockdownDur;
+      case 'getUp':
+        return TUNE.knockdownDur - TUNE.getUpIframes;
+      case 'heal':
+        return TUNE.heal.dur;
+      default:
+        return 0;
+    }
+  };
+
+  /** The heal's layer off (a state that is not standing / walking takes the arms). */
+  function healOff(keepTail) {
+    if (!S.heal) return;
+    S.heal = false;
+    if (keepTail) hero.layerTime(null); // it runs on at its own speed and fades itself at its end
+    else hero.layer(null, { fade: 0.1 });
+  }
 
   /** Enter what the player's state asks for (from play(key)). */
-  function enter(key) {
+  function enter(key, blend) {
+    S.prevKey = S.key;
     S.key = key;
-    S.entry = null;
-    S.clip = null;
-    if (key === 'loco') {
-      S.mode = 'loco';
-      setContact(1);
+    const tr = () => hero.transition(Math.max(0.04, Math.min(0.25, fin(blend, 0.15))));
+    if (key !== 'heal') healOff(key === 'loco');
+    else {
+      // the flask: an upper-body layer, the legs go on walking / standing
+      S.entry = STATES.heal;
+      if (S.mode !== 'loco') {
+        tr();
+        toLoco(0, false);
+      }
+      if (drinkC) {
+        S.heal = true;
+        const K = HEAL.drink.knots;
+        S.k = Math.min(8, K.length);
+        for (let i = 0; i < S.k; i++) {
+          S.K[i * 2] = mark(K[i][0]);
+          S.K[i * 2 + 1] = K[i][1];
+        }
+        hero.layer(drinkC.name, { mask: 'upper', weight: 1, fade: 0.12, speed: fin(HEAL.drink.tail, 1), loop: false, out: 0.25 });
+        hero.layerTime(S.K[1] / drinkC.fps);
+      }
       return;
     }
+    if (key === 'loco') {
+      // a state's clip that plays on to its end while he stands (a get-up, a flinch's recovery)
+      if (S.mode === 'track' && S.entry?.settle && intentLen() < 0.1 && S.clip && !hero.done) {
+        S.mode = 'tail';
+        hero.play(S.clip.name, { fade: 0, at: hero.time, speed: S.entry.settle, loop: false });
+        setContact(1);
+        return;
+      }
+      tr();
+      toLoco(0, false);
+      return;
+    }
+    S.entry = null;
+    S.clip = null;
+    S.yawOff = 0;
     if (key === 'attack') {
       const def = player.atk?.def;
       const e = ATTACKS[def?.name] ?? ATTACK_DEFAULT;
       const c = resolveClip(lib, e) ?? resolveClip(lib, ATTACK_DEFAULT);
       if (c) {
+        tr();
         S.mode = 'attack';
         S.entry = e;
         S.clip = c;
@@ -153,108 +331,234 @@ export function createAdapter(game, player, old, { lib, body }) {
         return;
       }
     }
-    const e = STATES[key] ?? STATE_DEFAULT;
-    const c = resolveClip(lib, e) ?? resolveClip(lib, STATE_DEFAULT);
+    let e = STATES[key] ?? STATE_DEFAULT;
+    if (key === 'dead' && (S.prevKey === 'plunge' || fin(player.position?.y, 0) > 0.4)) e = STATES.deadAir;
+    let c = null;
+    S.rollTurn = 0;
+    if (e.how === 'roll' && e.dir && player.lockOn) {
+      // locked on: he keeps facing the target and rolls the way the input points
+      const aim = faceFor(NaN);
+      const rel = Number.isFinite(aim) ? wrap(fin(player.yaw) - aim) : 0;
+      const side = Math.abs(rel) < Math.PI / 4 ? 'F' : Math.abs(rel) > (3 * Math.PI) / 4 ? 'B' : rel > 0 ? 'L' : 'R';
+      c = resolveClip(lib, ROLLS[side]);
+      if (c) S.rollTurn = -travelDir(c);
+    }
+    c = c ?? resolveClip(lib, e) ?? resolveClip(lib, STATE_DEFAULT);
     if (!c) {
-      S.mode = 'loco';
+      toLoco(0, false);
       return;
     }
     S.entry = e;
-    S.clip = c;
     S.mode = e.how ?? 'loop';
     setContact(e.contact ?? 1);
+    if (S.mode === 'track') {
+      // a state carrying on the clip already playing (the guard break's stumble into the knockdown) is
+      // not restarted
+      const K = e.knots ?? [[0, 0]];
+      const same = hero.clip === c && K[0][1] === 'cur';
+      const cur = hero.clip === c ? hero.time * c.fps : 0;
+      S.k = Math.min(8, K.length);
+      for (let i = 0; i < S.k; i++) {
+        S.K[i * 2] = mark(K[i][0]);
+        S.K[i * 2 + 1] = K[i][1] === 'cur' ? cur : fin(K[i][1], 0);
+      }
+      // frames only go forward
+      for (let i = 1; i < S.k; i++) S.K[i * 2 + 1] = Math.max(S.K[i * 2 + 1], S.K[i * 2 - 1]);
+      S.tail = fin(e.tail, 1);
+      if (!same) tr();
+      S.clip = c;
+      hero.cut(c.name, { manual: true, at: S.K[1] / c.fps });
+      return;
+    }
+    S.clip = c;
+    tr();
     if (S.mode === 'once') hero.cut(c.name, { at: fin(e.from, 0) / c.fps, speed: fin(e.rate, 1), loop: false });
     else if (S.mode === 'loop') hero.cut(c.name, { loop: true });
     else hero.cut(c.name, { manual: true }); // roll, charge, hold: on the game's clock
   }
 
   // ---- locomotion
-  function loco(dt) {
-    const gv = player.groundVel ?? { x: 0, z: 0 };
-    const v = Math.hypot(fin(gv.x), fin(gv.z));
-    S.vs = damp(S.vs, v, 14, dt);
-    const yaw = fin(player.yaw);
-    // the direction axis: the legs turned to the travel (up to 90 degrees), backward = in reverse
-    let legWant = 0, sign = 1;
-    if (v > 0.3) {
-      const rel = wrap(Math.atan2(gv.x, gv.z) - yaw);
-      if (Math.abs(rel) > 1.75) {
-        sign = -1;
-        legWant = wrap(rel + Math.PI);
-      } else legWant = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, rel));
+  /** Back to the blend (from a one-shot: `fadeS` s of fade from the drawn pose; at the loop's phase that
+   *  matches the legs now when `match`). */
+  function toLoco(fadeS, match = true) {
+    if (match && S.clip && S.mode !== 'loco') {
+      const g = sectors.F.find((x) => x.c.name === S.clip.to) ?? loopFor(S.gait === 'walk' ? sectors.F[0]?.c.name : 'run');
+      if (g) {
+        const m = matchFrame(g.c, hero.pose.q);
+        S.phi = (((m.f / g.c.n - g.off) % 1) + 1) % 1;
+      }
     }
-    S.legYaw = damp(S.legYaw, legWant, 10, dt);
-    S.sign = sign;
-    const fight = player.lockOn || game.state === 'boss' || player.debug?.fightStance === true;
-    const idle = (fight ? fightC : idleC) ?? gaits[0]?.c;
-    if (!idle) return;
-    S.idleU = (S.idleU + dt * idle.fps) % idle.n;
-    const vs = S.vs;
-    if (vs > S.peak) S.peak = vs;
-    else S.peak = damp(S.peak, vs, 2.5, dt);
-    // a stop: the player lets go after a run (the settle of the stop clip)
-    const letGo = (player.intent?.len ?? 0) < 0.1 && S.peak > 1.5;
-    if (letGo) {
-      const st = stops[S.gait] ?? stops.run;
-      if (st) {
-        S.mode = 'stop';
-        S.clip = st.c;
-        S.peak = 0;
-        hero.transition(0.22);
-        hero.cut(st.c.name, { at: st.from / st.c.fps, loop: false });
-        setContact(1);
+    S.mode = 'loco';
+    S.clip = null;
+    S.entry = null;
+    S.yawOff = 0;
+    setContact(1);
+    if (fadeS > 0) hero.transition(fadeS);
+  }
+
+  function startOne(mode, c, at, opts) {
+    S.mode = mode;
+    S.clip = c;
+    S.u = at;
+    S.dist = 0;
+    S.Y0 = fin(player.yaw);
+    hero.transition(0.16);
+    hero.cut(c.name, { at: at / c.fps, ...opts });
+    setContact(1);
+  }
+
+  const _vel = { x: 0, z: 0 };
+  function loco(dt) {
+    const gv = player.groundVel ?? _vel;
+    const v = Math.hypot(fin(gv.x), fin(gv.z));
+    const yaw = fin(player.yaw), I = player.intent, il = intentLen();
+    const moveYaw = il > 0.1 ? Math.atan2(fin(I.x), fin(I.z)) : yaw;
+    const sprinting = player.state === 'sprint';
+    // ---- the one-shots
+    if (il < 0.1 && S.vs < 0.3) {
+      // standing: the turn on the spot when the aim swings far from where he settled
+      const aim = faceFor(yaw);
+      const d = wrap(aim - S.settled), T = LOCO.turn;
+      if (Math.abs(d) > T.minAngle) {
+        const c = turns[(d > 0 ? 'L' : 'R') + (Math.abs(d) > T.big ? '180' : '90')];
+        if (c) {
+          startOne('turn', c, T.from, { speed: T.rate, loop: false });
+          S.Y0 = S.settled;
+          S.settled = aim;
+          return;
+        }
+      }
+      if (Math.abs(wrap(aim - yaw)) < 0.2) S.settled = yaw;
+    } else S.settled = yaw;
+    if (il >= 0.1) {
+      const face = faceFor(moveYaw), facing = Math.abs(wrap(face - moveYaw)) < 0.6;
+      // set off from standing, the way he will face: the start
+      if (S.vs < 0.4 && facing && Math.abs(wrap(moveYaw - yaw)) < 1.2) {
+        const kind = sprinting || I.sprint ? 'sprint' : il * TUNE.runSpeed > 2.6 ? 'run' : 'walk';
+        const c = starts[kind];
+        if (c) {
+          S.gait = kind;
+          // (its first steps of weight shift in place skipped: the game is at speed in a fifth of a second)
+          const at = frameAtTravel(c, fin(LOCO.start.skip, 0));
+          startOne('start', c, at, { manual: true });
+          S.dist = travelAt(c, at);
+          return;
+        }
+      }
+      // the input reverses at speed (and he will face the new way): the pivot
+      const P = LOCO.pivot;
+      if (S.vs > P.minSpeed && facing && v > 0.3 && Math.abs(wrap(moveYaw - Math.atan2(gv.x, gv.z))) > P.minAngle) {
+        const c = pivots[S.gait] ?? pivots.run;
+        if (c) {
+          startOne('pivot', c, P.from, { speed: P.rate, loop: false });
+          return;
+        }
+      }
+    } else if (S.vs > 1.0 && S.sector === 'F') {
+      // the input ends while running forward: the stop whose legs match his now
+      const list = stops[S.gait]?.length ? stops[S.gait] : stops.run;
+      if (list?.length) {
+        // (at least the last step: the game's own slide is a few centimetres at a walk)
+        const left = Math.max(S.vs / TUNE.decel, fin(LOCO.stop.minLeft, 0));
+        let best = null, bd = Infinity, bf = 0;
+        for (const c of list) {
+          const T = travelOf(c), f = frameAtTravel(c, Math.max(0, T[c.n - 1] - left));
+          const d = legDist(hero.pose.q, clipQ(c, f));
+          if (d < bd) {
+            bd = d;
+            best = c;
+            bf = f;
+          }
+        }
+        startOne('stop', best, bf, { manual: true });
+        S.dist = travelAt(best, bf); // where the clip's own travel stands
         return;
       }
     }
-    if (!gaits.length) {
+    // ---- the sectors (the travel's direction off his facing)
+    let rel = 0;
+    if (v > 0.3) rel = wrap(Math.atan2(gv.x, gv.z) - yaw);
+    let want = S.sector;
+    if (sprinting || !sectors.L.length) want = 'F';
+    else if (v > 0.3) {
+      const off = Math.abs(wrap(rel - CENTER[S.sector]));
+      if (off > Math.PI / 4 + 0.17) {
+        const a = Math.abs(rel);
+        want = a < (5 * Math.PI) / 18 ? 'F' : a > (13 * Math.PI) / 18 ? 'B' : rel > 0 ? 'L' : 'R';
+      }
+    }
+    if (!sectors[want]?.length) want = 'F';
+    if (want !== S.sector) {
+      S.sector = want;
+      hero.transition(0.2);
+    }
+    const legWant = v > 0.3 ? clamp(wrap(rel - CENTER[S.sector]), -LOCO.legMax, LOCO.legMax) : 0;
+    S.legYaw = damp(S.legYaw, legWant, 10, dt);
+    const fight = player.lockOn || game.state === 'boss' || player.debug?.fightStance === true;
+    const idle = (fight ? fightC : idleC) ?? sectors.F[0]?.c;
+    if (!idle) return;
+    S.idleU = (S.idleU + dt * idle.fps) % idle.n;
+    const list = sectors[S.sector];
+    if (!list.length) {
       hero.drive(idle.name, S.idleU, idle.name, S.idleU, 1);
       return;
     }
-    const g0 = gaits[0];
+    const vs = S.vs, capped = S.sector !== 'F', g0 = list[0];
     let a, b, w, rate;
     if (vs <= g0.v) {
-      // idle -> the slowest gait (the gait slowed with the speed, weighted in over its first 60 %)
+      // idle -> the slowest loop (slowed with the speed, weighted in over its first 60 %)
       a = null;
       b = g0;
       w = smooth01(vs / (g0.v * 0.6));
       rate = vs / g0.v / g0.c.dur;
-      S.gait = 'walk';
+      if (S.sector === 'F') S.gait = GAITS[0];
+      S.loop = w > 0.5 ? g0.c.name : idle.name;
     } else {
       let i = 0;
-      while (i < gaits.length - 1 && vs > gaits[i + 1].v) i++;
-      if (i >= gaits.length - 1) {
-        a = b = gaits[gaits.length - 1];
+      while (i < list.length - 1 && vs > list[i + 1].v) i++;
+      if (i >= list.length - 1) {
+        a = b = list[list.length - 1];
         w = 1;
         rate = vs / b.v / b.c.dur;
+        if (capped) rate = Math.min(rate, LOCO.rateMax / b.c.dur);
       } else {
-        a = gaits[i];
-        b = gaits[i + 1];
+        a = list[i];
+        b = list[i + 1];
         w = (vs - a.v) / (b.v - a.v);
         const T = a.c.dur + (b.c.dur - a.c.dur) * w, vb = a.v + (b.v - a.v) * w;
         rate = vs / vb / T;
       }
-      S.gait = ['walk', 'run', 'sprint'][Math.min(2, gaits.indexOf(w > 0.5 ? b : a))] ?? 'run';
+      if (S.sector === 'F') S.gait = GAITS[Math.min(2, sectors.F.indexOf(w > 0.5 ? b : a))] ?? 'run';
     }
-    S.phi = (((S.phi + sign * rate * dt) % 1) + 1) % 1;
+    S.phi = (((S.phi + rate * dt) % 1) + 1) % 1;
     const u = (g) => ((((S.phi + g.off) % 1) + 1) % 1) * g.c.n;
+    if (a) S.loop = (w > 0.5 ? b : a).c.name;
     if (a) hero.drive(a.c.name, u(a), b.c.name, u(b), w);
     else hero.drive(idle.name, S.idleU, b.c.name, u(b), w);
   }
 
-  // ---- the legs turned to the travel (onPose): the hips turn, the spine turns back
+  // ---- the pose's last word (onPose): the legs turned to the travel, a clip's root yaw drawn
   const T = new Float64Array(12);
   hero.onPose = (pose) => {
-    if (S.mode === 'attack' || S.mode === 'roll' || S.mode === 'stop') {
+    const m = S.mode;
+    if (m === 'attack' || m === 'roll') {
       // the clip's own travel (in its hips) is the game's to make: the hips stay over his root
       const c = S.clip;
       if (c) {
         pose.hips[0] = c.hips[0];
         pose.hips[2] = c.hips[2];
       }
-      if (S.mode === 'attack' && Math.abs(S.aim) > 1e-3) turnAll(pose, S.aim);
+      if (m === 'attack' && Math.abs(S.aim) > 1e-3) turnAll(pose, S.aim);
+      if (m === 'roll' && Math.abs(S.rollTurn) > 1e-3) turnAll(pose, S.rollTurn);
       return;
     }
-    const a = S.mode === 'loco' ? S.legYaw : 0;
+    if ((m === 'pivot' || m === 'turn') && S.clip) {
+      // the body at the yaw it had when the clip began plus the clip's root yaw; the game's yaw under it
+      S.yawOff = wrap(S.Y0 + rootYaw(S.clip, hero.time * S.clip.fps) - fin(player.yaw));
+      turnAll(pose, S.yawOff);
+      return;
+    }
+    const a = m === 'loco' ? S.legYaw : 0;
     if (Math.abs(a) < 1e-3) return;
     const q = pose.q, hi = JI.hips * 4, si = JI.spine * 4;
     qaxis(T, 0, 0, 1, 0, a);
@@ -272,7 +576,13 @@ export function createAdapter(game, player, old, { lib, body }) {
 
   // ---- footsteps: the clips' footfalls are the game's (dust, the living world's steps, sound)
   hero.on('footfall', (n, e) => {
-    if ((S.mode === 'loco' || S.mode === 'stop') && S.vs > 0.4) A?.onFootstep?.(e.side === 'R' ? -1 : 1, 0);
+    if (S.mode !== 'attack' && S.mode !== 'roll' && S.mode !== 'track' && S.vs > 0.4) A?.onFootstep?.(e.side === 'R' ? -1 : 1, 0);
+  });
+  // no flask left: the empty flask shaken over whatever he does (the game does not stop him)
+  game.events?.on?.('player:noFlask', () => {
+    if (emptyC && (S.mode === 'loco' || S.mode === 'stop' || S.mode === 'start')) {
+      hero.layer(emptyC.name, { mask: 'upper', weight: 1, fade: 0.15, at: fin(HEAL.empty.from, 0) / emptyC.fps, speed: fin(HEAL.empty.rate, 1), loop: false, out: 0.25 });
+    }
   });
 
   /** One step of the remade hero (after today's animator's). */
@@ -281,14 +591,51 @@ export function createAdapter(game, player, old, { lib, body }) {
     const p = player.position;
     obj.position.set(fin(p.x), fin(p.y), fin(p.z));
     obj.rotation.y = fin(player.yaw);
+    const gv = player.groundVel ?? _vel, v = Math.hypot(fin(gv.x), fin(gv.z)), il = intentLen();
+    S.vs = damp(S.vs, v, 14, dt);
     switch (S.mode) {
       case 'loco':
         loco(dt);
         break;
-      case 'stop':
-        if (hero.done || (player.intent?.len ?? 0) > 0.1) {
-          S.mode = 'loco';
-          hero.transition(0.25);
+      case 'start': {
+        // by distance: the clip's travel follows the game's, between 1 and rateMax x real speed
+        const c = S.clip, f = c.fps * dt;
+        S.dist += v * dt;
+        S.u = clamp(frameAtTravel(c, S.dist), S.u + f, S.u + f * LOCO.start.rateMax);
+        hero.setTime(S.u / c.fps);
+        if (S.u >= c.n - 2 || il < 0.1 || Math.abs(wrap(Math.atan2(fin(player.intent.x), fin(player.intent.z)) - fin(player.yaw))) > 1.4) {
+          toLoco(0.22);
+          loco(dt);
+        }
+        break;
+      }
+      case 'stop': {
+        const c = S.clip, f = c.fps * dt;
+        if (v > 0.05) {
+          S.dist += v * dt;
+          S.u = clamp(frameAtTravel(c, S.dist), S.u + f * 0.6, S.u + f * 3);
+        } else S.u += f;
+        hero.setTime(Math.min(c.n - 1, S.u) / c.fps);
+        if (il > 0.1 || S.u >= c.n - 1) {
+          toLoco(il > 0.1 ? 0.2 : 0.3, il > 0.1);
+          loco(dt);
+        }
+        break;
+      }
+      case 'pivot':
+      case 'turn': {
+        const c = S.clip, end = S.mode === 'pivot' ? Math.min(c.n - 1, LOCO.pivot.out) : c.n - 1;
+        const cancel = S.mode === 'pivot' ? il < 0.1 : il > 0.1;
+        if (hero.time * c.fps >= end - 0.5 || cancel) {
+          toLoco(0.25, S.mode === 'pivot');
+          S.settled = fin(player.yaw);
+          loco(dt);
+        }
+        break;
+      }
+      case 'tail':
+        if (hero.done || il > 0.1) {
+          toLoco(0.3, false);
           loco(dt);
         }
         break;
@@ -303,7 +650,8 @@ export function createAdapter(game, player, old, { lib, body }) {
         break;
       }
       case 'roll': {
-        const c = S.clip, R = player._rollTune?.() ?? { dur: 0.6, landAt: 0.48 }, land = Math.min(c.n - 2, S.entry.land ?? c.n * 0.6);
+        // the clip's flight fitted to the roll's: its landing (the `land` event) on the game's landAt
+        const c = S.clip, R = player._rollTune?.() ?? { dur: 0.6, landAt: 0.48 }, land = Math.min(c.n - 2, landFrame(c, c.n * 0.45));
         _pseudo.fps = c.fps;
         _pseudo.dur = c.dur;
         _pseudo.phases.windup = land * 0.5;
@@ -315,11 +663,21 @@ export function createAdapter(game, player, old, { lib, body }) {
         hero.setTime(fitTime(_pseudo, fin(player.stateT), _win));
         break;
       }
+      case 'track': {
+        const c = S.clip;
+        hero.setTime(Math.min(c.n - 1, knotFrame(S.K, S.k, fin(player.stateT), S.tail, c.fps)) / c.fps);
+        break;
+      }
       case 'hold':
         hero.setTime(fin(S.entry.at, 0) / S.clip.fps);
         break;
       default:
         break;
+    }
+    // the flask on the drink's clock
+    if (S.heal && drinkC) {
+      if (player.state === 'heal') hero.layerTime(knotFrame(S.K, S.k, fin(player.stateT), 1, drinkC.fps) / drinkC.fps);
+      else healOff(true);
     }
     S.cs = damp(S.cs, S.csWant, 12, dt);
     hero.contactScale = S.cs;
@@ -327,6 +685,7 @@ export function createAdapter(game, player, old, { lib, body }) {
   }
   const _pseudo = { fps: 30, dur: 1, phases: { windup: 1, active: 2, recover: 3 } };
   const _win = { windup: 0.1, active: 0.1, recovery: 0.1 };
+
 
   // ---- today's rig: hidden, and fed the remade hero's joints
   let hidden = [];
@@ -378,8 +737,7 @@ export function createAdapter(game, player, old, { lib, body }) {
     onFootstep: null,
     play(key, blend = 0.15, easeOut = false) {
       oldAnim.play(key, blend, easeOut);
-      hero.transition(Math.max(0.04, Math.min(0.25, fin(blend, 0.15))));
-      enter(key);
+      enter(key, blend);
     },
     update(dt) {
       oldAnim.update(dt);
@@ -417,7 +775,7 @@ export function createAdapter(game, player, old, { lib, body }) {
       return true;
     },
   });
-  enter('loco');
+  enter('loco', 0);
   return {
     proxy: A,
     hero,
