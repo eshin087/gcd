@@ -77,6 +77,8 @@ export const LOOK_SWITCHES = Object.freeze([
   ['city', ['a', 'b', 'c'], 'a', 'a', true, ['city'], 'the city: a neon rain, b golden hour, c lockdown (a reload)'],
   // --- veil: the Veiled Crossing and Bai Wuji (every one waits for the owner: PENDING)
   // Bai Wuji: body rows
+  ['wjLook', ['a', 'b', 'c'], 'a', 'a', true, ['veil'], 'Bai Wuji\'s body: a the black high-collared coat and a black band, b a long indigo-black robe and a white cloth band, c a bone-white coat with a dark collar and band (a reload)'],
+  ['wjHair', ['a', 'b'], 'a', 'a', true, ['veil'], 'his white hair: a a tall swept crown over the band (phase 1), long soft locks once it falls; b a shorter spikier burst, a choppier fringe (a reload)'],
 
   // Bai Wuji: fx rows
 
