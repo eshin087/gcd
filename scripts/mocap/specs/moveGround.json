@@ -481,7 +481,12 @@
     }
    ],
    "from": "idle",
-   "to": "idle"
+   "to": "idle",
+   "qa": {
+    "maxStepDeg": 60,
+    "reason": "the take-off: both legs extend at once (6:42.35)"
+   },
+   "draft": true
   },
   {
    "name": "hitStrong",
