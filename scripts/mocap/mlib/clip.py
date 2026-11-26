@@ -290,6 +290,16 @@ def build_clip(spec, clip, log=print):
     for pk in clip.get('pose_keys', []):
         q = keys.apply_pose_key(q, pk, fps, B)
     q = skel.continuous(q)
+    hips_off = None
+    if clip.get('bone_keys'):
+        # spec "bone_keys": the author's 3D bone directions, splined, replace the keyed bones (mlib/bonekeys.py)
+        from . import bonekeys
+        q, hips_off, kb = bonekeys.apply(q, clip, B, fps, loop, log)
+        if kb is not None and blade is not None:
+            blade = kb
+            B.blade = kb
+        km = bonekeys.keyed_mask(clip, B, fps, loop, len(q))
+        prot = km if prot is None else (prot | km)  # despike (after the feet) leaves the keyed bones alone
     airm = None
     if clip.get('air_marks') and not loop:
         ev = {e['name']: e['t'] for e in clip.get('events', [])}
@@ -352,6 +362,8 @@ def build_clip(spec, clip, log=print):
     # in the air: the hips' height from a fixed side camera's picture (jumps, falls)
     if clip.get('air') and not loop:
         hips = air_hips(clip, B, Ts, hips, g['cmask'], log)
+    if hips_off is not None:
+        hips = hips + hips_off  # spec "bone_keys" hips dx / dy / dz
     q, before, after = retarget.pin_feet(q, hips, root, g['cmask'], loop=loop, flat=Wflat, soft=strided)
     q = skel.continuous(q)
     # last guard: nothing through the ground after the feet were pinned

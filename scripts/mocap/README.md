@@ -59,6 +59,7 @@ Other tools (all light):
 | command | does |
 |---|---|
 | `"$PY" -I bladesheet.py specs/<set>.json <clip> [take] [--every 2] [--from t] [--to t]` | the blade as detected in one take's frames (cyan = found, grey = unknown, filled later), with a full-frame pixel ruler for hand keys |
+| `"$PY" -I reach.py specs/<set>.json [clip ...] [--aim d y]` | attacks: the hips' offset from the root, whether the blade's gameplay segment passes points 1.2 / 1.9 / 2.6 m ahead at chest height between windup and active, and where the sweep passes the aim point (default 1.9 m ahead, 1.3 m up): how far it misses and on which side |
 | `"$PY" -I find.py <film> <t0> <t1> <s0> <s1> [--top 12] [--min-gap 0.6]` | every other performance of the move you found at s0-s1, in the chapter t0-t1, whatever the camera |
 | `"$PY" -I camcal.py <film> <t0> <t1> [...]` | calibrates the focal length of `swing` on spans where he stands while the camera orbits |
 | `"$PY" -I proportions.py [config.json]` | his build from standing takes; writes `$H2/mocap/proportions.json` and an HDIM proposal |
@@ -121,6 +122,7 @@ Clip keys:
 | `despike` | default true: a joint that jumps beyond the step limit for a frame or two and comes back (the tool losing a limb) is bridged by slerp; false keeps the raw data |
 | `clavicles` | default 0.3: each clavicle takes this share of its upper arm's lift (a shrug when the arm goes up) and forward swing (a reach); 0 = clavicles at rest |
 | `breath` | holds: `true` or `{"period": 3.6, "chest_deg": 1.2, "shoulder_deg": 1.0}`: a SYNTHESIZED slow breath (the tool's noise hides the real one): chest and shoulders rise. Give the hold `n` = a whole number of periods at its fps (3.6 s at 30 fps = 108). The build log says "SYNTHESIZED" |
+| `bone_keys` | 3D KEYS (attacks first; any clip): `{"blend": 4, "space": "root", "keys": [{"t": "1:15.34" or "f": 30 (loops: "f" or "phase"), "upperArmR": [x, y, z], "foreArmR": .., "blade": .., "flat": .., "chest": {"lean": 30, "side": 0, "twist": -5}, "hips": {"lean": 10, "dy": -0.15}, "thighR": .., "upperArmL": {"dir": [..], "space": "chest"}, ...}]}`: bone directions typed in the ROOT's frame (or the chest's), splined through the keys, REPLACING the tracked bones; bones not keyed stay tracked. Full rules: "Attacks, 3D keys" below and `mlib/bonekeys.py` |
 | `pose_keys` | `[{"t": "11:19.55" or "f": 12, "joint": "thighL", "euler": [x, y, z] or "dir": [x, y, z], "blend": 4}]`: a joint's local rotation (degrees, XYZ, rest = 0) or a bone's direction in his root frame (+X his left, +Y up, +Z front), reached at that frame and eased over `blend` frames each side. For what 2D keys cannot settle (a hand's roll, a flask's angle, a foot behind the body) |
 | take `drop` | `[["t0", "t1"], ...]`: spans of THAT take the tracker lost (tumbles, lying down, blur, a cut). Inside, every point is interpolated from the frames round the span (through the take's `keys`), and the span hardly counts in the fusion |
 | take `keys` | `[{"t": "11:19.43", "pts": {"hipL": [835, 522], "kneeL": [791, 440], ...}}]`: 2D hand keys, full-frame pixels read off `keysheet.py`. The point's depth comes from the tracked frames round the span; frames near a key count fully in the fusion. Names: nose, earL/R, shoulderL/R, elbowL/R, wristL/R, pinkyL/R, indexL/R, thumbL/R, hipL/R, kneeL/R, ankleL/R, heelL/R, toeL/R. When a side is hidden, give both sides the same point (the body's middle) |
@@ -273,6 +275,44 @@ cut, so build the attack from ONE clean take (the fixed back rounds) and key it:
    the one take cannot see it (a back view does not see travel along its axis); `reach.py` must say YES
    at 1.9 m; `"qa": {"maxStepDeg": .., "reason": "keyed cut ..."}` for the real speed of the cut.
 Rebuild after each pass (20-40 s); the sheet's thin lines on the reference rows are now YOUR keys.
+
+**Attacks, 3D keys (`bone_keys`; `specs/_examples.json` `light1Bone`)**: the authors who got the hard moves
+right (the roll, the run's arms, the crouches, the jump) did it by TYPING BONE DIRECTIONS in his own frame, not
+by keying pixels in one blurred view. `bone_keys` makes that the attack path:
+- A key gives, at one frame, any of: `upperArmL/R`, `foreArmL/R`, `handL/R` (wrist -> fingers), `thighL/R`,
+  `shinL/R`, `footL/R` as a direction `[x, y, z]` (any length; +X his LEFT, +Y up, +Z his FRONT, in the clip's
+  frame: with `"face": "travel"` the clip is turned AFTER the keys, by the angle the log prints (a few degrees
+  for a straight lunge); with `"face": "hit"` / a number, before); `blade` (the sword's +Z) and `flat` (the
+  normal of its flats; without it the hand's long axis stays near the forearm); `chest`, `hips`, `head` as
+  `{"lean": deg forward, "side": deg to his left, "twist": deg toward his left}` (absolute in the root frame;
+  a given dict's missing angles are 0; the spine / neck take half of the chest's / head's turn); `hips` also
+  `dx / dy / dz` (m): offsets of the hips (a lunge's drop: `"dy": -0.15`). `"space": "chest"` (whole set, or
+  per bone as `{"dir": [..], "space": "chest"}`) reads a bone in the chest's frame (an arm that turns with
+  the shoulders).
+- Each channel is a cubic spline through the keys that give it: no stop at a key (two EQUAL keys in a row
+  hold), eased from / to the tracked motion over `blend` frames before its first and after its last key
+  (a loop's channel with two or more keys wraps the cycle: "pose keys for both arms through a loop" is
+  `"bone_keys": {"keys": [{"phase": 0, "upperArmR": .., "foreArmR": .., ..}, {"phase": 0.5, ..}]}`).
+- An arm or leg keyed with both bones at a frame takes its elbow / knee hinge from them; otherwise the
+  hinge stays continuous with the frame before (no flip). Keyed bones are kept from `despike`.
+- Legs: key the STEPPING leg; leave a planted leg to the foot pinning (it is re-solved as the hips move:
+  keying a planted leg against a given `travel_m` makes it slide). Give the lunge's travel with `travel_m`
+  / `travel_span` ending when the front foot lands.
+Workflow (light1Bone, the back take + two `check` takes, 7 keys, about 30 minutes):
+1. the clip as for KEY-FIRST above (one fused take, the others `"check": true` + `"sync"`); `lose` the arms
+   over the cut so nothing tracked fights the keys.
+2. read the frames of the coil, the cut and the follow-through on the pair sheet's rows (a key every 3-6
+   frames: the spline carries between); type the directions: e.g. frame 29 (the deepest coil) `"upperArmR":
+   [-0.9, 0.3, 0.2], "foreArmR": [-0.8, 0.2, -0.5], "blade": [-0.8, 0.5, -0.3], "chest": {"twist": -35, "lean": 15}`
+   (arm out to his right, forearm and blade cocked back), frame 33 (mid-cut) `"upperArmR": [-0.4, 0.1, 0.9],
+   "blade": [0.3, 0, 0.95], "chest": {"twist": -5, "lean": 30}, "hips": {"lean": 10, "dy": -0.15},
+   "thighR": [0, -0.55, 0.84], "shinR": [0, -1, 0.05]` (the lunge).
+3. build (20-40 s) and read the sheet: OUR skeleton is drawn from EVERY take's camera (the check takes
+   too), so a wrong direction shows at once in the view that sees it side-on.
+4. `"$PY" -I reach.py specs/<set>.json <clip>` prints `blade reaches ... 1.9 m frames 33-34` and `aim at 1.9 m
+   ahead, 1.3 m up: nearest 0.10 m at frame 34 (0.09 m below)`: turn the `blade` keys round the hit toward
+   the side it names (light1Bone's first pass was 0.12 m below and 0.08 m to his right: the blade at frames
+   33 / 37 went from y -0.1 / -0.4 to 0 / -0.3) and rebuild. `--aim d y` aims elsewhere.
 
 **Blurred cuts and arm swaps (light1)**: `"blade_blur": true, "arm_fix": "whole"`; check with
 `bladesheet.py specs/swordOne.json light1 0 --every 1 --from 0:26.80 --to 0:27.05 --cell 400 --cols 4`;
