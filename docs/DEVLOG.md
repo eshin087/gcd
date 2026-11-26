@@ -5,6 +5,27 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-26 — Instant slashes on every attack, and four left-hand looks to pick from (ADR-240; branch `claude/hero-instant-slash`, held)
+
+**Owner:** "lets just do this. use the current production auto attack combo and remove the curvy slashes with the
+instant slashes and make the left hand look more natural and not stand out so much as it looks unnatural and off.
+scrap all the new stuff." Asked: the slash on everything incl. the flurry; film 2-3 left-hand options; close
+PRs #118 and #166; a held PR with a preview first.
+
+**What changed:** PRs #118 (instant cuts, steel, four combos) and #166 (the joint-posed arm) closed unmerged.
+`slashFx.js`: the straight line of the closed instant cuts' `blinkFx.js`, driven by every attack's active
+window (a chord; a turn's three chords; a thrust's streak; the heavy look with a kick); `player.js` draws no
+crescent behind it (`?slash=arc` does); the plunge keeps only its straight streak; the flurry's split / vault
+finisher draws its swept path's chord. `offHand.js` + anim.js `_sideHand` / `_sideLinger` / `sideHand` (ported from
+#118's `side` hand): `?offhand=side|back|quiet`, a rest the body carries with a pendulum on it, worn by every
+clip that never keys `two`; '0' (production) stays the default until the owner picks. The pose gains `P.sd`
+(N 62). Lab rows `slash`, `offhand`. Scenarios `instantslash`, `offhand`.
+
+**Verification:** the scenarios; `herolife`, `herohand`; films: crescent vs line (the combo; light-light-heavy)
+from the game camera, and the four left hands close and from the game camera.
+
+**Open / next:** the owner's pick of the left hand (then it becomes the default and the others go).
+
 ## 2026-11-26 — Shen Hui and Varr Nihil: the sword in the hand, held tell poses, quick blows (ADR-226; branch `claude/enemies-ash-lord-motion-0f152b`)
 
 **Task** (from the owner via the lead session): their positioning angles look weird and the weapons are held

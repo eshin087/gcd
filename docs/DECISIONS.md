@@ -6600,3 +6600,27 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   makes the hit reaction jump 0.077 m in a frame (0.055 over the old pose; `duel.mjs . react` measures the layer
   with the switch off). A held pose's strike keeps the hand as the strike holds it (keyed or blade-driven), and a
   counter out of his guard gets no held pose.
+
+## ADR-240 — Instant slash lines on every attack; the free hand's look to pick, behind `?offhand=` (2026-11-26)
+
+- **Context:** after five rounds of new light combos (ADR-188's weight pass, the instant cuts ADR-233, the steel
+  set ADR-234, four instant-cut combos ADR-235) and a joint-posed arm (PR #166), the owner: "lets just do this.
+  use the current production auto attack combo and remove the curvy slashes with the instant slashes and make
+  the left hand look more natural and not stand out so much as it looks unnatural and off. scrap all the new
+  stuff." Asked, they chose: the straight slash on every attack and the flurry; two or three left-hand options
+  filmed to pick from; PRs #118 and #166 closed; a held PR with a preview first.
+- **Decision:** production's attacks and their motion stay. (1) `slashFx.js`: the instant cuts' straight line
+  (their `blinkFx.js` drawing), driven by what every attack is instead of per-clip data: the chord of the
+  blade's drawn point over the active window (from the frame before it opens to its last frame), carried on
+  past both ends, kept off the floor and under a ceiling; a turning look (`spin`) three chords round him; a
+  thrust a streak off the point; a heavy def the thicker violet look with a small camera kick. The crescent
+  (`fx.trail`) is not drawn behind it, the plunge's dive keeps only its straight streak, the flurry's swept
+  finisher draws its chord. `?slash=arc` gives the crescent back. (2) `offHand.js`: three looks for the free
+  hand in a one-handed swing (any clip that never keys `two`), each a rest the body carries with a damped
+  pendulum on it (the instant cuts' `side` hand, ported): `side` loose beside the left thigh (what the owner
+  described on 2026-11-25), `back` on the small of his back, `quiet` production's gestures pulled to a third of
+  their reach from a rest at his side. The default stays production's hand until the owner picks.
+- **Consequences:** the glint on the arc's edge stays. Hit test, timing, damage and reach are untouched (the
+  line is drawn from the drawn blade, the hit is the swept blade). The pose has one more channel (`P.sd`, `N`
+  62). After the pick: the picked hand becomes the default and the other looks go; PRs #118 / #166 stay closed
+  (their branches remain on GitHub for reference).

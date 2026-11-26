@@ -1186,6 +1186,19 @@ free hand can follow the grip. `loco()` swings the hero's arms by `armF` = `anim
 0.65): `armSign` is the fore-aft direction he last moved in (`anim.armDir`, latched while |mz| >
 0.15) eased at 12/s in `update()`, so they swing in a pure strafe and do not jump as the direction
 flips; it opens the free hand on the move (`hs` → 0). `loco()` and `guard()` also feed the
+**The instant slash** (ADR-240, `player/slashFx.js` `SlashFx`, `player.slashFx`; `setSlash` / `slashMode`,
+`?slash=arc`, the Lab's `slash` row): updated from `player._combat` once the sweep is sampled; per attack record it
+keeps the blade's drawn point on the frame before the active window and on its last frame and draws one straight
+line through both (a picked look with `spin`: the chords between the point at a third of the window apart; a
+`thrust` def or a clip whose `line` is 'point': a streak off the point), in the arc's strokes (fx.js `add`), the
+heavy look (`def.heavy`) with `game.kick` / `game.shake`. `owns(at)` tells `_combat` to draw no crescent
+(`fx.trail`); flurryFx's swept finisher draws its chord under it. Tests: `onLine`, `lines`, `kicks`.
+**The free hand's look** (ADR-240, `player/offHand.js`: `OFFHAND`, `setOffHand` / `offHandMode` / `offHandLook`,
+`?offhand=side|back|quiet`, the Lab's `offhand` row): `attackPose` hangs it for a clip that never keys `two`
+(`swingClip().two`) through `sideHand(p, b, D, L)`, which sets the pose channel `P.sd` (61; `N` 62; cleared before
+each pose) and the hand's elbow, fingers, palm and shape where the look gives them; `HeroAnimator._sideHand`
+(in `apply`, after the free hand's target) moves the free wrist's target onto the look's rest with a damped
+pendulum on it, `_sideLinger` keeps it there a moment after the attack. '0' leaves production's free hand.
 duelists' footwork: the hero's free-arm numbers in them are gated on `A.freeHand`. **Swing clips** (ADR-071, `player/swings.js`): every light swing (the chain's hits 1–4 and
 their looks, the sprint slash, the roll cut) and the charged cleave is a keyframed clip. An attack's
 `anim: { kind: 'clip', clip: '<name>' }` names a `SWINGS` entry: a list of keys over the attack's own

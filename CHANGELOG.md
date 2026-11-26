@@ -4,7 +4,15 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and sixteen pieces of work since 0.4.0:
+One hundred and seventeen pieces of work since 0.4.0:
+- **Instant slashes, and a quieter left hand to choose** (2026-11-26, ADR-240). *Changed:* every sword attack, the
+  perfect-dodge flurry's finishers included, leaves one straight slash line where the blade passed instead of the
+  curved crescent: thin, sharp at both ends, white-hot in the middle; a turning cut leaves three straight cuts round
+  him, a thrust a short streak off the point, a heavy blow a thicker violet line with a small kick of the camera.
+  `?slash=arc` (the Lab's `slash` row) draws the crescent as before. The light combo's motion is production's.
+  *Added, to compare (not the default):* `?offhand=side`, `back` or `quiet` (the Lab's `offhand` row) for the free
+  hand in a one-handed swing: loose at his side, behind his back, or today's gestures pulled in close to the body;
+  two-handed blows keep it on the grip. Every number of every attack is the same.
 - **Shen Hui and Varr Nihil hold their swords like swordsmen** (2026-11-26, ADR-226). *Changed (the owner's pick; `?ashMotion=0` /
   `?lordMotion=0` give back the motion before):* the second and third
   bosses hold their blades in line with the forearm (it bent up to 128° off it) and their arms open at the end of a

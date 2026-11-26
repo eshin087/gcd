@@ -189,6 +189,12 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.94 — Instant slashes, the left hand to pick (2026-11-26, `claude/hero-instant-slash`, ADR-240)
+- [x] PRs #118 and #166 closed on the owner's call: production's combo stays
+- [x] Every attack and the flurry's finishers: one straight slash line instead of the crescent (`slashFx.js`, `?slash=arc` the crescent)
+- [x] Three left-hand looks to compare, `?offhand=side|back|quiet` (`offHand.js`); scenarios `instantslash`, `offhand`
+- [ ] The owner's pick of the left hand; it becomes the default, the others go
+
 ## M1.93 — Tian Lei's and Halcyon's motion (2026-11-26, `claude/enemies-tian-halcyon-motion-efe595`, ADR-225)
 - [x] Audited (asc.mjs / city.mjs AUDIT); held blue / red windups, the snap blows, Halcyon's flier's legs, aim and dip,
   behind `?ascMotion=a` / `?halMotion=a`
