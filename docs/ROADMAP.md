@@ -189,11 +189,16 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.93 — Tian Lei's and Halcyon's motion (2026-11-26, `claude/enemies-tian-halcyon-motion-efe595`, ADR-225)
+- [x] Audited (asc.mjs / city.mjs AUDIT); held blue / red windups, the snap blows, Halcyon's flier's legs, aim and dip,
+  behind `?ascMotion=a` / `?halMotion=a`
+- [x] The owner's pick of both switches: a, the default (2026-11-26)
+- [ ] Tian Lei: the sweep's knee jolt and sliding feet, the dash thrusts' skating, the cross's sideways line
 ## M1.93 — The perfect parry gets the perfect dodge's window (2026-11-26, `claude/combat-perfect-parry-window-d6503b`, ADR-227)
 - [x] `DEFENSE.perfectParryWindow` 0.08 → 0.20 s (the owner's pick); the plain parry window 0.22 s unchanged
 - [x] Every perfect reward (posture, counter cut, blade lock, returned bullets, clashes) follows the one number; tests timed for a plain parry moved to 0.21 s
 - [ ] Played by the owner; their call on the slow-motion beat now that most parries are perfect
-- [ ] The brood's busyWait dive (`BROOD.busyWait` 2.5 s) never cues within 0.3 s of a wyrm cue needing another answer (integ PRESSURE seed 4242: fanVolley / drakelings P2, breath / drakelings P3; on main too)
+- [x] The brood's busyWait dive (`BROOD.busyWait` 2.5 s) never cues within 0.3 s of a wyrm cue needing another answer (integ PRESSURE seed 4242: fanVolley / drakelings P2, breath / drakelings P3; on main too): `BROOD.late`, `bullets.bar`, scenario BROODBUSY (ADR-237); PRESSURE's steady bot back on the real parry window
 
 ## M1.92 — The melee animation engine: boss blows from reference footage (2026-11-26, `enemies/fists-ref`, ADR-208)
 - [x] `scripts/mocap` on `main` as a tool; `scripts/mocap/duelist/fit.mjs` fits a clip onto a duelist's blows (`--check` through the real animator); the guide

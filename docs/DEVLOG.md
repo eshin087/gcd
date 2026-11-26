@@ -39,6 +39,19 @@ kicks' reach, the punches' reach, the animator switch, a front kick's knee (173)
 
 **Open:** phase 1's hand behind the back; the sweep's tuck (Tian
 Lei's builder: the motion-tian-halcyon session owns it).
+## 2026-11-26 — A brood cue whose wait ran out keeps the cue spacing (ADR-237; branch `claude/vigorous-wilbur-3c128e`)
+
+**Task** (the follow-up from ADR-227): the brood's dive after `busyWait` landed within 0.3 s of a wyrm cue of
+the other answer. **Reproduced** on main: PRESSURE seed 4242 with the steady bot's stray parries perfect (the
+ADR-227 wrapper off): fanVolley / drakelings P2, breath / drakelings P3, 2 FAILED. A trace of each brood flash
+showed both were dives held the full `hold.max` 1.8 s (fanVolley's bullets in the air, then the breath's tell
+in the ledger 0.27 s from it), flashing at the cap. **What:** past `hold.max` a brood cue holds on only while a
+cue of the other answer is due within `BROOD.late.clear` 0.36 s, and gutters out after `late.drop` 4.5 s held;
+its flash bars the bullets of the other answer (`bullets.bar`: duds). **Tests:** new integ scenario BROODBUSY
+(fails on main with drakelings / furnaceMaw at 0.02 s, passes now); PRESSURE without the 0.08 s wrapper passes on
+1337, 7 and 4242. **Open:** how often a drakeling now gutters out in a real fight (none in the scenario's busy spell;
+PRESSURE does not print it yet); played by the owner.
+
 ## 2026-11-26 — The reference-footage tools removed (ADR-236; branch `build/remove-mocap`)
 
 **Owner**, after reviewing the hero remade from two reference films (`?hero=new`, PR 162, closed): "It looks all
@@ -72,6 +85,29 @@ with 4242 run alone, breath / drakelings in P3 (63.5 s). It exists on main (the 
 scenario keeps the old 0.08 s perfect window for the steady bot's stray parries, so it measures the director
 on its old path. **Open:** played by the owner; whether the slow-motion beat on every parried blow of a string
 is too much now (the `short` beat, `combat/perfectFx.js`); the brood fix.
+## 2026-11-26 — Tian Lei's and Halcyon's motion: held windups, snap blows, Halcyon a flier (ADR-225; branch `claude/enemies-tian-halcyon-motion-efe595`)
+
+**Task** (the motion pass the owner asked for: every boss audited; readable held blue / red windups; a few much
+faster normal blows; options rendered and picked). This session: Tian Lei and Halcyon.
+
+**Measured.** `asc.mjs . audit` and a new opt-in `city.mjs . audit` (the same measure for a flier). Findings in
+ADR-225: no held pose on blue / red blows (the coil at u 0.7 - 0.78); Halcyon stood on air in every blow and
+punched over the hero's head with a crooked arm; the sweep's knee jolt and sliding feet; the dash thrusts skate;
+the cross lands to the side.
+
+**What.** `ascendant/motion.js` (held windups, `SNAP_KEYS`), `halcyon/motion.js` (the flier's legs, the aim, the
+dip in `flight.js`, `armSoft`), `mo` descriptors on the builders' beats, the snap moves (`snapJab`, `snapHook`,
+`flick`, `tap`), `TUNING.snap`, Lab LOOKS `ascMotion` / `halMotion` (PENDING). Tests: asc.mjs `heldmotion`,
+city.mjs `halmotion`, DATA's snap rule, GCD_LOOK in both audits. Films: before | after at the game camera and a
+close side view (scratchpad rig, not committed).
+
+**The owner's pick:** "Ship both (a)": both switches are the default (PICKED). Main had dropped the realiser's
+`keysOf` hook meanwhile (ADR-236, unused then): restored for this use.
+
+**Open.** Not fixed yet: the sweep's jolt, the dash thrusts' skating, the cross's sideways line, Fly-By's pass height.
+
+---
+
 ## 2026-11-26 — The lite world on a phone at AUTO's floor (ADR-216; branch `render/phone-lite`)
 
 **Owner:** the BENCH from their iPhone (fox: the world pass 11.8 of 13.3 ms; half the pixels only 32 % less);

@@ -24,6 +24,16 @@ export const RELEASES = [
       },
       {
         date: '2026-11-26',
+        title: 'Tian Lei and Halcyon: held windups, quick jabs, and Halcyon fights like a flier',
+        notes: ['Every parry or perfect-dodge blow of Tian Lei and Halcyon now winds up into a held pose of its own, so you can read it before the flash. Each has two quick jabs thrown straight from his guard. Halcyon flies into his blows instead of standing on air, and his fists meet you, not the air over your head.'],
+      },
+      {
+        date: '2026-11-26',
+        title: 'The drakelings never dive on top of the wyrm\'s blows',
+        notes: ['In a long flurry of the Cinder Wyrm\'s, a drakeling could dive in the same instant as a blow that needed the other answer. It now waits for a clear moment, or burns out harmlessly, and the wyrm\'s embers never come due beside its dive.'],
+      },
+      {
+        date: '2026-11-26',
         title: "Parrying is easier: the perfect parry's timing widened",
         notes: ['A parry pressed up to 0.2 s before the blow lands is now perfect, the same window as the perfect dodge (it was 0.08 s). Its extra posture damage, the fast critical counter cut, the blade lock and returned shots come far more easily.'],
       },

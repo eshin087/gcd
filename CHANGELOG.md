@@ -4,13 +4,24 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and twelve pieces of work since 0.4.0:
+One hundred and fifteen pieces of work since 0.4.0:
 - **Xin Yi rebuilt: a man in a coat, readable windups, faster hands** (2026-11-26, ADR-221). *Changed:* Xin Yi is
   drawn like the hero on a man's build: square shoulders, a belted waist, fuller hair, and one long open coat that
   hangs instead of flaring, with a straight hem (the owner's pick; `?oneBody=0` as before, `a` closed, `c` a duster).
   His kicks land with the leg straight and his punches with the arm long, his single gun is aimed down a straight
   arm, every blue and red blow is held in a windup pose you can read before the snap (the same timing). *Added:* two
   fast strings, Snapping Hands and Quick Foot (`?oneMoves=0`: his moves as before).
+- **Tian Lei and Halcyon: held windups, quick jabs, and Halcyon fights like a flier** (2026-11-26, ADR-225; the owner's pick: `?ascMotion=0` / `?halMotion=0` play them as before). *Added:* every
+  blue (parry) and red (perfect-dodge) blow of Tian Lei's and Halcyon's now winds up into a pose of its own, held
+  while it tightens, so you can read which blow is coming and how to answer it; red ones sink deeper. Two quick
+  white blows each, thrown straight out of the guard with a short windup: Snap Jab and Snap Hook (Tian Lei), Flick
+  and Tap (Halcyon). *Fixed:* Halcyon no longer stands on air in a fighting stance when he strikes: his legs trail
+  like a flier's, he dips into each blow and his fists meet your chest and head instead of passing over it, with
+  his arm opening at the end. The timings of every blow are unchanged.
+- **The drakelings never dive on top of the wyrm's blows** (2026-11-26, ADR-237). *Fixed:* in a long flurry of the
+  Cinder Wyrm's, a drakeling that had waited out its turn could dive in the same instant as one of the wyrm's
+  blows that needed the other answer (a roll against a parry). Now it waits for a clear moment however long the
+  flurry runs, or burns out harmlessly, and the wyrm's embers never come due beside a drakeling's dive.
 - **Four looks for the perfect dodge flurry** (2026-11-25, ADR-210). *Added, behind `?dodgefx=a|b|c|d` (the Lab's
   `dodgefx` button; the owner picked a, the Thunder Thrust, as the default; `?dodgefx=off` is the flurry before):* against a man the flurry keeps its vanish and all three
   finishers, and adds faint smeared copies of him along each cut, tiny sparks kicked off the floor, and an aerial cut

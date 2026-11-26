@@ -13,6 +13,7 @@ import * as GEAR from './gear.js';
 import * as LOOK from './look.js';
 import { AscFx } from './fx.js';
 import { formPoses } from './poses.js';
+import { lookOf } from '../duelist/lookSwitch.js';
 import { MOVES, MOVE_NAMES, CLIP, CLIPS_BY_FORM, TRANSITIONS, COUNTERS, COUNTER_LISTS, STREAKS, realise } from './moves.js';
 import { TUNING } from './tuning.js';
 import { LINKS } from './links.js';
@@ -514,6 +515,8 @@ export class Ascendant extends Duelist {
   }
 
   weigh(name, def, w, dist) {
+    // (the snap blows come with his reworked motion: ADR-225, `?ascMotion=a`)
+    if (def.snap && lookOf('ascMotion', '0') === '0') return 0;
     if (this._beamBars(def)) return 0;
     // (while Storm Cage's orbs close in, or Heaven's Lantern's orb is out, that is his attack: nothing
     // else starts on top of it)

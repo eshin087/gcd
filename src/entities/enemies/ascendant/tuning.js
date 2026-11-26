@@ -45,6 +45,11 @@ export const TUNING = {
   // ---- reach (MOVES.md "The frame"): a fist 1.7 m, a kick 2.1 m, a palm thrust or a dash blow a
   // line 2.2 m (moves.js builders read them)
   reach: { fist: 1.7, kick: 2.1, line: 2.2, lineW: 0.8 },
+  // ---- the snap blows (ADR-225, with `?ascMotion=a`: ascendant/motion.js SNAP_KEYS): white blows thrown
+  // from his guard with a short windup, never scaled by the form (`fixed`); `close` m of step-in at most
+  // (he does not lunge for them), `band` m from the hero at most. A snap's windup may sit under
+  // minFirstWindup (tests DATA: >= `min`, white, damage <= `maxDamage`, the flash after the tell)
+  snap: { windup: 0.3, damage: 8, hook: 9, close: 0.5, band: 2.2, cooldown: 5, recovery: 0.45, min: 0.28, maxDamage: 10 },
 
   // ---- posture (the Sekiro rule, as the Lord's)
   posture: {
