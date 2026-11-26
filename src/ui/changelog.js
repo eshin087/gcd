@@ -19,6 +19,17 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-26',
+        title: 'A ninth level: the Veiled Crossing and Bai Wuji, the Untouched',
+        notes: [
+          'A new level, the Veiled Crossing: a city crossing levelled before you came, at night under a black veil. Pick it on the title screen.',
+          'Its boss is Bai Wuji, the Untouched: a tall man in a white coat, his eyes covered, his hands in his pockets. Your blade stops short of him. A perfect parry or a perfect dodge opens his barrier for a few seconds.',
+          'Every blow of his throws you, through whatever stands behind you. A block costs no health but slides you back and costs half your guard, and his spells cannot be blocked at all.',
+          'At two thirds the blindfold comes off. At one third he makes a hand sign and a dark sphere closes on the arena: dodge through its wall at the last moment, or be caught. The last phase is fought inside the void.',
+          "Halcyon's thrown pieces now land on the road instead of bursting in mid-air.",
+        ],
+      },
+      {
+        date: '2026-11-26',
         title: 'A lighter world on phones that need it',
         notes: ['On a phone that still drops frames at the lowest resolution, the ground\'s extra details turn off and the stone floors are drawn more simply, so fights stay smooth. Add ?lite=0 to the address to keep the full look.'],
       },
