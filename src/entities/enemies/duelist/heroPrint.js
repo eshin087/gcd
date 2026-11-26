@@ -1,4 +1,5 @@
 import { lookOf } from './lookSwitch.js';
+import { tatterStrip, sheetOffset } from '../../player/heroGeo.js';
 
 // The bosses drawn like the hero's ASCII (ADR-220): per boss, one look switch whose options step from
 // today's print toward the hero's own figure at the game camera. The levers (docs/STYLE.md "The bosses
@@ -75,6 +76,28 @@ export function flared(panels, { w = 1.55, len = 1.25, flare = 0.14 } = {}) {
     const fork = Array.from({ length: n }, (_, k) => (i + k) & 1);
     return { ...P, w: [P.w[0], P.w[1] * (1 + (w - 1) * 0.4), w2], len: [P.len[0], P.len[1] * len], flare: (P.flare ?? 0) + flare, strips, fork };
   });
+}
+
+/**
+ * A flared panel's torn strips along its hem (as Shen Hui's robe skirt and the Wanderer's coat build
+ * them), for a skirt builder that has none of its own: on the lower segment `s1` (length L1, radius R1 at
+ * its top), panel `P` (number `i`), in material `mat`. Returns the strip records the animator swings
+ * (anim.js _coat) and the length they add below the hem (for the panel's `len`).
+ */
+export function tornHem({ joint, mesh }, s1, P, i, L1, R1, mat, seed = 3000) {
+  const strips = [];
+  const n = P.strips?.length ?? 0;
+  if (!n) return { strips, extra: 0 };
+  const R2 = R1 + 0.25 * L1, sk = P.skew ?? 0, wr = P.w[2] / n;
+  for (let k = 0; k < n; k++) {
+    const u = ((k + 0.5) / n - 0.5) * P.w[2] + sheetOffset(P.w[2], P.w[0], sk);
+    const a = u / R2;
+    const sj = joint(s1, Math.sin(a) * R2, -L1, (Math.cos(a) - 1) * R2);
+    sj.rotation.y = a;
+    mesh(sj, tatterStrip(P.strips[k], Math.max(0.05, wr), { fork: !!P.fork?.[k], curl: 0.2, seed: seed + i * 31 + k * 7 }), mat);
+    strips.push({ joint: sj, len: P.strips[k], rest: a, phase: (i * 1.9 + k * 2.1) % (Math.PI * 2) });
+  }
+  return { strips, extra: Math.max(...P.strips) * 0.8 };
 }
 
 /** The panels the boss of level `id` wears: `panels` flared when his option asks for it (read at build). */

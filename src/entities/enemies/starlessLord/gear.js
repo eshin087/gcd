@@ -7,7 +7,7 @@ import {
 } from '../../player/heroGeo.js';
 import { toDragonLook } from '../ashDisciple/bodyArt.js';
 import { LORD_ART } from './bodyArt.js';
-import { clothPanels } from '../duelist/heroPrint.js';
+import { clothPanels, tornHem } from '../duelist/heroPrint.js';
 import { lordLookNow, dressHood, dressPlate, dressCape } from './look.js';
 
 // The Starless Lord's outfit: gear items on the hero's skeleton, so he is built by the same
@@ -403,7 +403,9 @@ function buildSkirt({ pelvis, M, DIM, REST, mesh, joint }) {
       mesh(s0, sheetEdge(L0, P.w[0], P.w[1], R0, e, 1, 0.25, sk, w0), M.piping);
       mesh(s1, sheetEdge(L1, P.w[1], P.w[2], R1, e, 1, 0.25, sk, w0), M.piping);
     }
-    coat.push({ anchor, segs: [s0, s1], def: P, strips: [], len: [L0, L1], r0: R0 });
+    // (drawn like the hero, ADR-220: a flared panel tears into strips along the ember hem; none today)
+    const T = tornHem({ joint, mesh }, s1, P, i, L1, R1, M.hem, 3100);
+    coat.push({ anchor, segs: [s0, s1], def: P, strips: T.strips, len: [L0, L1 + T.extra], r0: R0 });
   });
   return { coat };
 }
