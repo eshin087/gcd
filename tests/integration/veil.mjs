@@ -1187,6 +1187,8 @@ const S = {
   road: scenarioRoad,
   voidcast: scenarioVoidcast,
   spent: scenarioSpent,
+  letgo: scenarioLetgo,
+  into: scenarioInto,
   // world: scenarios
   // (the crossing never traps a thrown hero: thrown 10 m from 24 places, four ways each, through whatever
   // stands there; he ends outside every collider, inside his bound, and walks away)
@@ -1637,4 +1639,98 @@ async function scenarioSpent() {
   out(`   the fight: ${won ? 'won' : 'NOT won'} at phase ${d.phase}; terrain started ${t.stats.started}, refused ${t.stats.refused}`);
   assert(won, 'the fight still ends');
   assert(!t.busy && G.payload.size === 0, `nothing of his left in the air, no NaN in any event (${[...G.payload].join(', ')})`);
+}
+
+async function scenarioLetgo() {
+  out('\n== scenario LETGO (what hangs or flies when he dies or the fight resets; nothing lands on a hero who is down) ==');
+  {
+    // his death while a car hangs in the knot: it falls where it is, and nothing strikes the hero
+    const G = build();
+    const d = G.game.dragon, p = G.game.player, t = trOf(G);
+    duel(G, { dist: 8 });
+    place(G, 8);
+    p.debug.god = false;
+    const h0 = G.hits.length;
+    d.brain.trigger('curbPull');
+    run(G, 2, null, () => t.hold.some((h) => h.piece));
+    const held = t.hold.find((h) => h.piece)?.piece;
+    d.debug.kill();
+    run(G, 3);
+    assert(held && held.state !== 3 && !t.busy && G.hits.length === h0, `his death: the held ${held?.kind} falls where it hangs (state ${held?.state}), no blow (${G.hits.length - h0})`);
+  }
+  {
+    // his death with a piece in the air: it lands harmless
+    const G = build();
+    const d = G.game.dragon, t = trOf(G);
+    duel(G, { dist: 8 });
+    place(G, 8);
+    const h0 = G.hits.length;
+    d.brain.trigger('curbPull');
+    run(G, 4, null, () => t.fly.some((f) => f.live));
+    const flying = t.fly.some((f) => f.live);
+    d.debug.kill();
+    run(G, 3);
+    assert(flying && !t.busy && G.hits.filter((h, i) => i >= h0 && h.attack === 'curbPull').length === 0, 'his death: what flies lands harmless');
+  }
+  {
+    // the fight's reset while a tower top is carried: forgotten, the top stands again
+    const G = build();
+    const d = G.game.dragon, t = trOf(G);
+    duel(G, { dist: 6, form: 2 });
+    d.brain.trigger('bringDown');
+    run(G, 3, null, () => t.drops.some((D) => D.live));
+    const top = t.drops.find((D) => D.live)?.piece;
+    G.game.world.restore();
+    d.reset();
+    run(G, 1);
+    assert(top && !t.busy && top.state === 0, `a reset: nothing of his in the air, the top back on its base (state ${top?.state})`);
+  }
+  {
+    // the hero is down when the drop's cue comes: no cue, no blow
+    const G = build();
+    const d = G.game.dragon, p = G.game.player, t = trOf(G);
+    duel(G, { dist: 6, form: 2 });
+    place(G, 6);
+    p.debug.god = false;
+    let flashes = 0;
+    G.watch = (n, e) => { if (n === 'combat:flash' && e?.attack === 'bringDown') flashes++; };
+    const h0 = G.hits.length;
+    d.brain.trigger('bringDown');
+    let downed = false;
+    run(G, 6, () => {
+      const D = t.drops.find((x) => x.live);
+      if (D && !downed && D.landAt - G.game.time < 0.5) {
+        downed = true;
+        p.takeHit({ damage: 0, knockback: 1, knockdown: true, from: { x: p.position.x + 1, z: p.position.z }, tell: TELL.NORMAL, parryable: false, blockable: false, attack: 'test', attacker: d });
+      }
+    }, () => downed && !t.busy);
+    G.watch = null;
+    const struck = G.hits.slice(h0).filter((h) => h.attack === 'bringDown').length;
+    assert(downed && flashes === 0 && struck === 0, `a hero who is down: the drop lands uncued and harmless (cues ${flashes}, blows ${struck})`);
+  }
+}
+
+async function scenarioInto() {
+  out('\n== scenario INTO (terrain.behind / aimThrow: the first piece on a line, the way that puts a thrown hero through one) ==');
+  const G = build();
+  const d = G.game.dragon, p = G.game.player, t = trOf(G);
+  duel(G, { dist: 4 });
+  const car = trStanding(G, ['car'])[0];
+  // the hero 4 m from the car, the boss beside him a little off the line to it
+  p.debug.teleport(car.x - 4, car.z);
+  d.position.set(car.x - 6, 0, car.z + 1.2);
+  run(G, 0.1);
+  const b = t.behind(p, 1, 0, 8);
+  assert(b?.piece === car && b.t > 1.5 && b.t < 4, `behind: the car on the line (${b?.piece?.kind}, ${b?.t?.toFixed(2)} m)`);
+  const short = t.behind(p, 1, 0, b ? b.t - 0.3 : 1);
+  assert(!short || short.t <= b.t - 0.3, 'behind: nothing past its reach (the car is out of a shorter one)');
+  const a = t.aimThrow(p);
+  const plain = Math.atan2(p.position.x - d.position.x, p.position.z - d.position.z), got = Math.atan2(a.dx, a.dz);
+  assert(a.piece && Number.isFinite(a.dx + a.dz) && Math.abs(Math.hypot(a.dx, a.dz) - 1) < 1e-6 && Math.abs(got - plain) <= TUNING.terrain.into.spread + 1e-6, `aimThrow: turned ${(got - plain).toFixed(2)} rad onto a ${a.piece?.kind}`);
+  // thrown that way he goes through it
+  const crash = d.parts.terrain;
+  void crash;
+  p.takeHit({ damage: 1, knockback: 8, from: { x: p.position.x - a.dx, z: p.position.z - a.dz }, tell: TELL.NORMAL, parryable: false, blockable: false, attack: 'test', attacker: d, wjCrash: TUNING.wjCrash.power, wjCrashDamage: TUNING.wjCrash.damage });
+  run(G, 1.6);
+  assert(p.crash.hits.length >= 1, `thrown along it he crashes through ${p.crash.hits.length} piece(s)`);
 }
