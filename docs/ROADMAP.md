@@ -189,6 +189,14 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.91 — The hero's idles and guard after the owner's reference footage (2026-11-25, `claude/idles-reference`, ADR-207)
+- [x] At ease the reference's one-handed stand; in the fight its two-handed hold; ADR-186's habits, tricks and spells from the new stand (`?idles=new|old`: the looks before)
+- [x] The put-away and the draw (`stow`): the sword burns out in its green flame at his left hip and is drawn back out of it; whole the frame anything else starts
+- [x] The guard: the braced crouch, the hands before the chin, the blade across his face (`?guard=ward`: the cross ward); the block's timings untouched
+- [x] Scenario `heroref`; the Lab's `idles` (ref / new / old), `guard` and `idle ▸` (`stow`) rows; pair sheets against the footage
+- [ ] The owner's look at the films (the hold's hands sit higher than the footage's, the guard from the game camera)
+- [ ] Played on the iPhone
+
 ## M1.90 — The run carried like the owner's reference (2026-11-25, `claude/run-sword-hand`, ADR-204)
 - [x] `player/runSword.js`: the sword carried forward at the hip, rocking with the forearm (`?runSword=hip|old`, the Lab's `run sword` row)
 - [x] `player/runArms.js` `d`: the full pump (the default)

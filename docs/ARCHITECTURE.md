@@ -1239,9 +1239,13 @@ the pick (tests). The blade is still the hit test, so each look is swung at the 
 **One hand, two hands** (ADR-071; it was two hands on every swing, ADR-046): the chain, the sprint
 slash and the roll cut are one-handed, the free hand keyed against the sword hand; the slam, the
 charge and the cleave hold the grip with both (`twoHand` 1, the off hand IK'd to the grip point;
-the cleave lets go in its follow-through). The block (ADR-073, the cross ward) is two-handed: sunk
-and side-on, the grip low outside the right hip, the blade slanting ~38° up across the body to past
-the left shoulder, the flat to the enemy; `locoGuard` carries `twoHand` and `offAt` in `GUARD_CH`.
+the cleave lets go in its follow-through). The block is two-handed. The hero's (ADR-207, `refStance.js` `refGuard`,
+`guardMode()` / `setGuard(id)`, `?guard=ward`): a braced crouch (`REF_GUARD.sink` 0.3 s into it on `A.t`), the feet
+settling to `REF_GUARD.feet`, both hands on the grip before the right shoulder with the elbows out, the blade rising
+~32° across his face to his left (upright seen from his side), the flat to the enemy. `?guard=ward` and every
+duelist (no `freeHand`): the cross ward (ADR-073), sunk and side-on, the grip low outside the right hip, the blade
+slanting ~38° up across the body to past the left shoulder. `deflectPose`, `lockPose` and `locoGuard` build on
+`blockPose` either way (a deflect's snap takes the ward's body, `WARD_BODY`, easing back with it); `locoGuard` carries `twoHand` and `offAt` in `GUARD_CH`.
 Pose channel `offAt` (m): with `twoHand`, how far up the blade from the grip the off hand sits (0 =
 on the grip; above 0.04 the hand stays open: a palm braced on the flat; no clip uses it yet). At
 rest and on the move he carries the sword in one hand. The free-hand channels (`P.lD` 53, `P.lN` 56:
@@ -1304,6 +1308,23 @@ otherwise); `swordMystic.js` reads it: the flame swells toward the top tier (`SP
 longer tongues), the rite's flame waits above the fingers' front, and each writes the flame's marks through the same
 batch (`SPELL`: the rite's embers, the sigil's ring at knee height, the breath's thread). The idles draw on
 `anim.idleNoise`, never `anim.noise` (which picks an attack's look).
+**The reference's idles** (ADR-207, `refStance.js`, the default: `idlesMode()` `'ref'`; `?idles=new` is the paragraph
+above, `?idles=old` the belt; `setIdles` takes the three): `stand()` writes `refStand` (the one-handed stand,
+`REF_STAND`) at ease and `refReady` (the two-handed hold, `REF_READY`: `twoHand` 1) in the fight, blended by `fightW`
+(the free hand takes the grip late: `twoHand` = smoothstep(0.35, 0.95, fightW); on the move it lets go by
+`moveW`). One rest each (`easeRests()` / `fightRests()`: `stand`, `hold`; `tickRests` keeps a one-entry list).
+`actList` is the mode's: `EASE_LIST_REF` = `EASE_LIST` + `EASE_REF_EXTRA` (`stow`), `FIGHT_LIST_REF` =
+`FIGHT_ACTS_REF` (`grip`, `shift`, `loosen`, about the hold's blade); an action under way is cut when the mode
+changes. The forearm-led moves start from the mode's standing arm (`syncStandArm`: `EASE_ELBOW`, `EASE_AIM`, the
+blade's `EASE_BLADE`; the fight's `FIGHT_AIM` / `FIGHT_FLAT`; the blade-swinging moves take
+`REF_STAND.leadP`'s elbow pole over their envelope, `leadArm`). **The put-away** (`stow`, `STOW`, a trick): the hand
+to the left hip, the sword gone (~1.5 s), drawn and swung up into the stand. `_idleLife` publishes `anim.stow`
+(0..1, `stowHidden(u)`) only while it plays uncut in the loco clip: 0 every other frame, so the sword is whole the
+frame any other clip starts. `HeroAnimator._stowSword` (in `apply`, the hero only) draws the weapon slot's own
+meshes (`rig.slots.weapon`) into the hilt by it and hides them at 1, restoring them exactly at 0 (no object is
+added to the rig; the hit test is the swept joint). `swordMystic.js` reads `anim.stow`: the flame envelopes the
+steel still there and bursts along the part that goes or comes (`SPELL.stow`); player.js skips the blade halo and
+the gem's glow while it is > 0.5 (the gem's timer runs on: it draws on `anim.noise`).
 **Idle** (`guard`, ADR-041; ADR-040 put the blade out to his side, where the game camera sees it):
 weight on the left leg, the right foot a shoulder's width out and forward with the knee soft, the
 upper arm hanging by the ribs with the elbow a little back, the grip beside the right hip and

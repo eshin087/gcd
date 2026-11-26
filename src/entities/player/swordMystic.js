@@ -128,6 +128,10 @@ export const SPELL = {
   // reads as a line of his tiny letters at the game camera, 52 of them read as specks)
   sigil: { at: [0.22, 0.6], r: 0.85, n: 150, life: [1.9, 2.6], y: 0.55 },
   breath: { at: [0.28, 0.8], r: 0.75, turns: 1.5, y: 1.2, rate: 150, life: 0.7 },
+  // the put-away and the draw (idles.js STOW; the animator's `stow` 0..1: how far the sword is gone): the
+  // steel burns away in its flame as it goes and burns back out of it, `n` marks over a whole fade, along the
+  // steel that is going (or coming), rising; their life and rise
+  stow: { n: 90, life: [0.35, 0.75], rise: [0.25, 0.6] },
   // the flame through a spell: every cell lit, hotter by `heat`, tongues `tongue` cells longer; the rite's
   // flame burns only below the fingers' front (above it dim by `dim`)
   heat: 0.16,
@@ -202,6 +206,8 @@ export class SwordMystic {
     this.sp = { k: '', n: 0, acc: 0, a0: 0 }; // the spell being written (its marks so far)
     this.surge = 0; // 0..1: how far a spell lifts the flame now (tests)
     this.front = -1; // the rite: the share of the blade below his fingers (-1: no rite)
+    this.stowWas = 0; // the sword's put-away last frame (the burst follows its change)
+    this.stowAcc = 0;
   }
 
   /** Back to its first frame (a level reset; the film rig stages every row alike). */
@@ -249,10 +255,13 @@ export class SwordMystic {
     // the rite's front: the share of the blade below the fingers (they climb it over u 0.34 .. 0.72)
     this.front = S && S.w > 0.01 && S.kind === 'rite' && S.u > 0.3 && S.u < 0.84 ? smoothstep(0.34, 0.72, S.u) : -1;
     const tt = Math.max(t, Math.min(5, Math.round(SPELL.surge * this.surge)));
+    // the put-away: the flame envelopes only the steel still there; the burst writes the steel going
+    const st = Number.isFinite(P.anim?.stow) ? Math.min(1, Math.max(0, P.anim.stow)) : 0;
     try {
-      this._flame(e, tt);
-      this._licks(e, tt, fdt);
+      if (st < 0.97) this._flame(e, tt, 1 - st);
+      if (st < 0.3) this._licks(e, tt, fdt);
       this._spell(e, fdt, S);
+      this._stow(e, st);
     } catch (err) {
       console.error('[swordMystic]', err);
     }
@@ -409,6 +418,25 @@ export class SwordMystic {
     }
   }
 
+  /** The put-away (idles.js STOW): as the sword goes (st rising) or comes back (falling), marks along the
+   *  steel between the hilt and where its point is now, born hot and rising: it burns away into its flame
+   *  and is drawn back out of it. A cut moment (st back to 0 at once) bursts the whole steel. */
+  _stow(e, st) {
+    const d = Math.abs(st - this.stowWas);
+    this.stowWas = st;
+    if (!(d > 1e-4) || !this.lb) return;
+    const K = SPELL.stow, zt = (DIM.drawnTip ?? DIM.steelTip) - 0.02, z0 = DIM.forte * 0.5;
+    this.stowAcc = Math.min(40, this.stowAcc + d * K.n);
+    while (this.stowAcc >= 1) {
+      this.stowAcc -= 1;
+      // where the steel ends now (going: the part that just went; coming: the part just drawn)
+      const z = z0 + (zt - z0) * Math.min(1, (1 - st) + rnd() * Math.max(0.15, d * 4));
+      const xx = R(-0.035, 0.035);
+      const x = e[0] * xx + e[8] * z + e[12], y = e[1] * xx + e[9] * z + e[13], zz = e[2] * xx + e[10] * z + e[14];
+      if (!this._mark(x, y, zz, R(-0.06, 0.06), R(K.rise[0], K.rise[1]), R(-0.06, 0.06), R(K.life[0], K.life[1]), 0.9, 0.4, 1)) break;
+    }
+  }
+
   /** One mark of a spell: the flame's green, a stroke or a tiny letter (hot = 1: a tiny letter shape). */
   _mark(x, y, z, vx, vy, vz, life, alpha, flicker, hot) {
     L.x = x + this._cx;
@@ -444,7 +472,7 @@ export class SwordMystic {
    * steel's depth drawn a little toward the camera; each cell breathes on its own beat and re-rolls its
    * mark (the fire boils); from the top cells tongues climb and break off.
    */
-  _flame(e, t) {
+  _flame(e, t, len = 1) {
     const S = FLAME, P = this.player, lb = this.lb;
     const g = this.game, cam = g.camera, pl = g.pipeline;
     const m = cam?.matrixWorldInverse?.elements, pe = cam?.projectionMatrix?.elements, cp = cam?.matrixWorld?.elements;
@@ -471,7 +499,7 @@ export class SwordMystic {
       if (proj(q.x, q.y + S.head, q.z)) byTop = PRJ.py;
     }
     // the steel's cells, forte → point (each once)
-    const z1 = DIM.drawnTip ?? DIM.steelTip, z0 = DIM.forte + (z1 - DIM.forte) * S.from;
+    const zt = DIM.drawnTip ?? DIM.steelTip, z1 = DIM.forte + (zt - DIM.forte) * len, z0 = DIM.forte + (z1 - DIM.forte) * S.from;
     let n = 0;
     for (let s = 0; s <= 24 && n < CI.length; s++) {
       const u = s / 24, zz = z0 + (z1 - z0) * u;

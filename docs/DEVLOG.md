@@ -5,6 +5,58 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-25 — The hero's idles and guard after the owner's reference footage (ADR-207; branch `claude/idles-reference`)
+
+**Owner:** "review these sections on the videos for all the idle animation and poses for you to mirror to this
+game ... i also want you to adjust the guarding stance and animation from the reference video". Their three
+answers: the two-handed hold is the fight stance, at ease one-handed; the put-away / draw is an occasional idle
+moment, the sword fading out in its green flame at his left hip (no scabbard); ADR-186's habits, tricks and spells
+stay, from the new stand. Planned by the idle session, built by an agent from the plan.
+
+**What changed.** `refStance.js` (new): `REF_STAND` (at ease), `REF_READY` (the fight's two-handed hold),
+`REF_GUARD` (the block) and their writers; `?guard=ward` keeps the cross ward. `idles.js`: a third mode `ref`, the
+default (`?idles=new|old` the looks before): one rest per stance, the standing arm the forearm-led moves start from
+follows the mode (`syncStandArm`), the fight's habits about the hold's blade (`grip`, `shift`, `loosen`), and the
+put-away `stow` (a trick: dip, the hand to the left hip, the sword gone ~1.5 s, drawn up and over into the stand).
+`anim.js`: `stand()` writes the reference's stand / hold under `ref` (the free hand takes the grip late in the
+stance's change, lets go on the move); `blockPose` writes `refGuard` for the hero under `guard=ref`;
+`_idleLife` publishes `anim.stow` only while an uncut put-away plays in the loco clip; `_stowSword` draws the
+weapon slot's own meshes into the hilt and hides them (no object added to the rig). `swordMystic.js` burns the
+going / coming steel in the flame; player.js rests the halo and the gem's glow while it is gone. Lab: `idles`
+ref / new / old, a `guard` row, `stow` in `idle ▸`.
+
+**The guard, read again from the frames.** The plan read it as the blade held upright (the right-side view). The
+front and back views show the upright blade is a slant across his face seen edge-on from the side: the hands
+before his right shoulder, the elbows out, the blade rising ~32° to his left over his head. Built that way: 13°
+off upright from his side, 32° up across from the front.
+
+**Verified** (by running): scenario `heroref` (new; ALL PASSED, 100 checks): the stand (wrist ≤ 44°, elbows R 131°
+L 126°), the hold (wrist ≤ 60°, the free hand on its place on the grip), the stance's change (the free hand ≥ 8.8
+cm out of him), every action (wrist ≤ 57°, the blade ≥ 20 cm off him, pops ≤ 7 cm), the put-away (the sword gone
+224 frames over two plays, never outside it, whole the frame any of six moves cuts it, and when the idles switch),
+every move from the stand, the hold and inside every action against the bare stance before, the guard (sunk
+~24 cm, feet 0.8 m apart, the hands 23 cm over the chest joint, the entry ≤ 31.8 cm a frame at the point; the cross ward's from the stance before: 57).
+Pair sheets against the footage and films at the game camera (scratch, not the repo). `heroidles`, `herolife`,
+`heroarms` and `herohand` run with `?idles=new&guard=ward` (their bars measure ADR-186's poses and the cross ward).
+
+**Departures from the footage** (ADR-207): the blade's flat rolled 40° up off his sides (edge-on from the game
+camera otherwise); the hold's grip ~13 cm higher and its blade flatter than the footage's (the 60° sword-wrist bar);
+the guard's crouch less deep than the footage's; the coat hides the stand's blade from straight behind.
+
+**After the merge with main** (the full `npm test`: six FAILs, all ours, each green with `?idles=new&guard=ward`).
+The hold stood the footage's left foot ahead, but the light chain steps the rear foot and comes home to the
+stance: every light stepped the other foot and the way home drew back the wrong one (heroweight). The hold now
+keeps the feet the chain comes home to (the right 18 cm ahead), the hips square, the blade 30° out. The robe's
+sleeve wing and the warden's belt cut into the arms (looks): the stand's sword elbow and the hold's free elbow
+stand off the ribs; the blade-swinging moves take the old elbow pole over their envelope so the raised fist stays
+within 60°. The ribbon sword's swing (hero) and the air star of seven (chain, seeded drift: the plan's own best
+was 14° from the new dodge spot, the search complete) are measured as ADR-207 says. Films re-taken.
+
+**Next / open.** The owner's look at the films (the hold's and the guard's blades from the game camera). The
+steel look set (`?lights=steel`, unmerged) has its own stand: when it lands it keeps it (its own hook in `stand()`).
+
+---
+
 ## 2026-11-26 — Performance guards: a cost budget in `npm test`, `npm run perf` (ADR-206; branch `perf/cost-budget`)
 
 **Task** (the owner, after AUTO quality merged): "is there anything else we can do to ensure performance is good no
