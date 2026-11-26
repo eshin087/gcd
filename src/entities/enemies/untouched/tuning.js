@@ -1,0 +1,152 @@
+import { PLAYER_SCALE } from '../../player/model.js';
+import { DUEL_WORLD } from '../duelist/worldTuning.js';
+import { BEAM_TUNING } from '../ascendant/tuningBeam.js';
+import { TUNING_SPELLS } from './tuningSpells.js';
+import { TUNING_TERRAIN } from './tuningTerrain.js';
+
+// Bai Wuji, the Untouched's numbers (the Veiled Crossing, `?level=veil`). Started from Halcyon's (the
+// closest relative on the engine: a bare-handed duelist on Tian Lei's strike builders, one bar, three
+// phases) with no flight; changed where he is someone else: the barrier (wjBarrier), the weight of every
+// blow (wjWeight), the throw through the world (wjCrash), the pull (wjPull), the domain (wjDomain).
+// The moves agents add their own numbers in tuningSpells.js / tuningTerrain.js (merged below: one
+// object, `TUNING.spells` / `TUNING.terrain`), never here.
+// Per-phase values are [P1, P2, P3]. Times in seconds, distances in metres.
+
+export const TUNING = {
+  name: 'BAI WUJI, THE UNTOUCHED',
+  // the bar: the tuning agent sizes it so the fencing bot wins in 180 - 260 s (tests/integration/veil.mjs)
+  hp: 20000,
+  // one bar, three phases: 66 % THE BLINDFOLD COMES OFF, 30 % THE MEASURELESS
+  phaseAt: [1, 0.66, 0.3],
+  radius: 0.45,
+  scale: PLAYER_SCALE * 1.12,
+  bound: 13.5,
+
+  // ---- tells: no lower than the hardest duelist's today (Tian Lei, ascendant/tuning.js: 0.26 / 0.40 /
+  // 0.34; the Starless Lord's are the same lead and first windup)
+  flashLead: 0.26,
+  minFirstWindup: 0.4,
+  minHitGap: 0.34,
+  // (phase 3, inside the void: everything faster; realise scales every unfixed windup, the minimums
+  // still hold: tests/integration/veil.mjs DATA)
+  windupScale: [1, 0.92, 0.84],
+  recoveryScale: [0.95, 0.85, 0.74],
+  close: { first: 3.2, next: 1.6, speed: 14 },
+  reach: { fist: 1.7, kick: 2.1, line: 2.2, lineW: 0.8 },
+
+  // ---- posture (as on every duelist)
+  posture: {
+    max: [1000, 1150, 1300],
+    hit: { light: 5, heavy: 16 },
+    guard: { light: 8, heavy: 20 },
+    regenDelay: 2.4,
+    regenRate: 20,
+    breakTime: 3.4,
+    breakCritMult: 1.5,
+  },
+  guard: {
+    arc: 1.31, raiseDelay: 0.16, windupOpen: 0.55, counterChance: [0, 0.35, 0.7, 1], countWindow: 2.5,
+    crushPoise: 48, clashStop: 0.07, deflectStop: 0.1, recoverOpen: 0.55, evade: 0.4, wardLinger: 0.6,
+  },
+  trade: { posture: 1.5, push: 0.5 },
+  camera: { within: 6.5, fade: 4, zoom: -6 },
+  flinch: { breakOff: 2, window: 1.6, hitStun: 0.22 },
+  hitStun: { light: { stop: 0.065, jolt: 0.65, push: 0.14, shudder: 0.045 }, heavy: { stop: 0.1, jolt: 1, push: 0.32, shudder: 0.07 }, critStop: 0.12, joltDecay: 5 },
+  parts: { head: 1.3, body: 1, leg: 0.9 },
+  execRange: 3.2,
+  ghostepBehind: 1.5,
+  execution: { damage: 260 },
+
+  // ---- footwork: he WALKS (no hover); he closes a gap by a blink (wjBlink), not a run
+  move: {
+    walk: 2.6, run: 6.5, sprint: 9,
+    turn: [9, 10, 11], trackTurn: [14, 16, 17],
+    band: [1.6, 3.0],
+    sprintAt: 5, near: 1.1, backChance: 0.25, backstep: { dist: 2.2, time: 0.32 }, strafeSwitch: [0.7, 1.6],
+  },
+  idleGap: [[0.12, 0.34], [0.06, 0.2], [0.03, 0.1]],
+  openingGap: [[0.14, 0.4], [0.08, 0.26], [0.06, 0.2]],
+  chain: [0.5, 0.66, 0.78],
+  pressure: {
+    chainDepth: [3, 5, 7],
+    chainRest: [[0.45, 0.75], [0.25, 0.45], [0.12, 0.28]],
+    linkCut: 0.5, chainCut: 0.5,
+    near: 3.3, far: 6, front: 0.9, behind: 2.2, away: 1.2,
+    maxRun: [2, 3, 3], overRun: 0.1, sameCat: 0.7,
+    floorAfter: [16, 13, 11], floorBoost: 1.8, floorForce: 2,
+    seek: { max: 2.5, every: 9 },
+    farDist: 6, closerBoost: 1.8,
+    maxLive: [1, 2, 2],
+    bias: { string: [1.5, 1.6, 1.6] },
+    density: [1, 1.4, 1.9],
+    mixed: 0.1,
+    holdGap: 5,
+    guard: { sep: 0.3, margin: 0.06, maxHold: 0.5, maxDelay: 0.9, horizon: 1.4, pad: 0.12 },
+    // what tests/integration/veil.mjs PACE asserts: none yet (the tuning agent sets `meter` from the
+    // bots: { ramp, rampMean, minRate, maxGap }); without it the suite measures only
+  },
+  punish: { weight: 4 },
+  fullDeflect: { minHits: 5, posture: 70 },
+  lock: { start: 0.5, push: 0.085, decay: [0.32, 0.38, 0.38], dur: 2.6, hold: 0.6, posture: 110, shove: { damage: 12, knockback: 2.6 }, camera: { zoom: -7, weight: 0.55 } },
+  mikiri: { posture: 130 },
+  cinematic: { zoom: -10, weight: 0.6, slowmo: 0.28, dur: 0.9 },
+  // (his blows 35 - 60 % above Halcyon's for the same kind: Halcyon's 1.1 x 1.4)
+  damageScale: 1.54,
+  transition: { ringRadius: 6, damage: 0, knockback: 7, blockPush: 4, power: 2.2 },
+  airFall: { g: 26 },
+
+  // ---- R1 THE UNREACHED (barrier.js)
+  wjBarrier: {
+    // the shell: this much off his body's hurt spheres (a hand's width): the blade stops there
+    shell: 0.14,
+    open: [4.0, 3.2, 2.6], // s open after a perfect parry / a perfect dodge of any blow of his
+    cracks: 3, // ordinary parries that open it (0: off)
+    openCracked: [2.4, 2.0, 1.6], // s open by cracks
+    crackFade: 9, // s without a new crack: the cracks are gone
+    // the stop on the hero's side: he is thrown back off the shell by this much (player.onGuarded push)
+    push: 0.9,
+    // two strikes in a row on the shell within `window` s: his counter (moves/melee.js `wjCounter`)
+    counterAfter: 2, counterWindow: 2.2,
+  },
+  // ---- R2 WEIGHT: what a blow of his that lands / is blocked does, unless the beat says otherwise
+  wjWeight: {
+    knockback: { hand: 3, big: 7 }, // the floor of a landed blow's throw (a beat's own knockback wins when larger)
+    blockPush: 3.4, // m a blocked blow slides the hero (a beat's `blockPush` wins)
+    guardCost: 0.4, // of the hero's guard meter per blocked blow (a beat's `guardCost` wins: absolute points)
+  },
+  // ---- R3 THROWN THROUGH THE WORLD (player.js reads the hit fields; these are his)
+  wjCrash: { power: 3.2, damage: 6, minKb: 3 }, // (power: Halcyon's crash's 3.2, BLUNT: a car (2.4, metal) and a wall break behind him)
+  // ---- R5 THE PULL (pull.js)
+  wjPull: {
+    max: 4, // knots at once
+    // the drag at the knot's rim (m/s added to the hero's knock-back velocity each frame) and inside
+    strength: 4.2, r: 9, falloff: 1, life: 1.6,
+    // a roll ignores the pull (its own travel carries him out)
+    rollK: 0,
+  },
+  // ---- the domain (domain.js; the P2 -> P3 transition)
+  wjDomain: {
+    sign: 1.5, // s of the hand sign (the transition's first beat)
+    close: 1.0, // s of the closing sphere's red cue (its windup)
+    r: 40, // the sphere's reach (the whole arena)
+    hold: 1.0, // s the caught hero is held (max 1.2: the owner's lock cap), the blow inside it
+    blow: 0.3, // of the hero's max health: never lethal (at least 1 HP left)
+    knockback: 6,
+    escapeOpen: 2, // the escape opens the barrier for open[2] x this
+  },
+
+  // ---- the beam's drawing borrows Tian Lei's (fxBeam.js reads d.T.beam.look)
+  beam: { ...BEAM_TUNING },
+  // ---- the moves agents' numbers
+  spells: TUNING_SPELLS,
+  terrain: TUNING_TERRAIN,
+  // ---- what his blows do to the world (POWER: 1 fells a tree)
+  world: { ...DUEL_WORLD },
+
+  wakeRadius: 9,
+};
+
+/** Value for the phase (1-based) from a per-phase array, or the value itself. */
+export function perPhase(v, phase) {
+  return Array.isArray(v) ? v[Math.min(v.length, Math.max(1, phase)) - 1] : v;
+}
