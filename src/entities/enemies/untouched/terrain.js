@@ -229,7 +229,7 @@ export class WjTerrain {
     const d = this.d, T = this.T, me = d.position, H = this._hero();
     const b0 = def?.beats?.[0];
     if (!b0) return 0;
-    if (b0.wjLift) return this._find(T.curb.kinds, me.x, me.z, T.curb.find) ? 1 : 0;
+    if (b0.wjLift) return this._find(T.curb.kinds, (me.x + H.x) / 2, (me.z + H.z) / 2, T.curb.find) ? 1 : 0;
     if (b0.wjDown) return this._find(T.down.kinds, H.x, H.z, 80) ? 1 : 0;
     if (b0.wjOrbit) return this._gather(T.orbit.kinds, me.x, me.z, T.orbit.near, T.orbit.count) >= T.orbit.min ? 1 : 0;
     if (b0.wjRoad) return this.W?.floor?.some((b) => b.state === INTACT) ? 1 : 0;
@@ -271,7 +271,8 @@ export class WjTerrain {
     const me = d.position, H = this._hero();
     const plan = (A._wj = { pieces: [], cast: 0 });
     if (b0.wjLift) {
-      const pc = this._find(T.curb.kinds, me.x, me.z, T.curb.find);
+      // (the one nearest the middle of the two of them: in the picture, in his reach)
+      const pc = this._find(T.curb.kinds, (me.x + H.x) / 2, (me.z + H.z) / 2, T.curb.find);
       if (!pc) return no();
       plan.pieces.push(pc);
     } else if (b0.wjDown) {
@@ -593,10 +594,13 @@ export class WjTerrain {
       D.tx = H.x;
       D.tz = H.z;
     }
-    const k = ease(clamp(D.t / K.carryT, 0, 1));
+    const k = ease(clamp(D.t / fin(K.carryT, 0.9), 0, 1));
     if (!D.released) {
-      const arc = Math.sin(Math.PI * k) * K.rise;
-      const x = D.sx + (D.tx - D.sx) * k, z = D.sz + (D.tz - D.sz) * k;
+      const arc = Math.sin(Math.PI * k) * fin(K.rise, 0);
+      // (held beyond the place, away from the camera (-z: the game camera looks from the south), so the
+      // hero is never under it on screen; it comes down on the place in its fall)
+      const hz = D.tz - fin(K.back, 0);
+      const x = D.sx + (D.tx - D.sx) * k, z = D.sz + (hz - D.sz) * k;
       const y = D.sy + (D.over - D.sy) * k + arc * (1 - k * 0.5);
       W?.carry?.(pc, x, y - pc.y0, z, 0.35 * k, D.t * 0.7);
       this._lift(pc, x, y, z, 0.6 + 0.4 * k);

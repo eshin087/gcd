@@ -10,7 +10,7 @@ export const TUNING_TERRAIN = {
   /** The red cue of a piece that lands AWAY from him (a drop, a burst): combat:tell `tellAt` s before it
    *  lands at the latest (it goes out as the place is fixed), the flash flashLead before. */
   maxDelay: 0.6, // s the fairness guard may hold a called landing; past it the piece lands uncued and harmless
-  /** CURB PULL: a car or a road slab within `find` m of him lifts (`liftT` s) to hang `hang` m over its
+  /** CURB PULL: a car or a road slab within `find` m of the middle of him and the hero (cars first) lifts (`liftT` s) to hang `hang` m over its
    *  place turning in a blue knot, and comes at the hero at `speed` m/s (a flight of `time`, at least
    *  `minFlight`, `lead` s of his motion led). Blue: a parry cuts it in two (its halves burst `halves` m
    *  behind him); a dodge: it bursts where it lands (power, radius; a slam's floor mark). */
@@ -24,13 +24,14 @@ export const TUNING_TERRAIN = {
     mark: 1.2, // power of its floor mark (a slam)
   },
   /** BRING IT DOWN: the standing tower top nearest the hero is torn off its base (`take` of the windup),
-   *  rises `rise` m, comes over the hero's place `over` m up, and falls: the place follows him until
+   *  rises `rise` m, comes `over` m up over a point `back` m beyond the hero's place (away from the camera: the
+   *  hero is never hidden under it), and falls onto the place: the place follows him until
    *  `fix` s before it lands, then it is fixed and shown (the mark, the red cue). A crater `crater` m
    *  wide (power), the blow `r` m round where it lands. No top left: the fallen tower's section (when the
    *  set makes its sections liftable: today none is), else the move is refused. */
   down: {
     kinds: ['towerTop', 'fallenTower'],
-    take: 0.2, rise: 3, over: 9, carryT: 0.9, fall: 0.5, fix: 0.85,
+    take: 0.2, rise: 3, over: 7, back: 5, carryT: 0.9, fall: 0.5, fix: 0.85,
     r: 3.2, crater: 3.6, power: 3.2, mark: 2.4,
   },
   /** THE ORBIT: `count` loose pieces within `near` m of him (`kinds`, the first kinds first) rise to turn
@@ -51,12 +52,12 @@ export const TUNING_TERRAIN = {
     first: 1.8, step: 1.6, past: 2.6, max: 10, delay: 0.25, gap: [0.16, 0.15, 0.13],
     radius: 1.3, cue: 2.0, w: 1.3, quiver: 0.35, take: 2.5, pop: 0.5, skid: 0.8, power: 1.25, mark: 1.0,
   },
-  /** IN THE VOID: a floating piece drifts over the hero (`glideT` s, `over` m up) and is dropped (red, the
+  /** IN THE VOID: a floating piece drifts over the hero (`carryT` s, `rise` m of arc, `over` m up) and is dropped (red, the
    *  blow `r` m round; the place fixed `fix` s before); or two are drawn to him and cast in turn (blue,
    *  as Curb Pull's throw). The void's pieces are spent as they go (the set has no way to make new ones). */
   float: {
     kinds: ['floatSlab', 'floatCar', 'floatCorner'], find: 30,
-    take: 0.12, glideT: 0.9, over: 4.2, fall: 0.42, fix: 0.8,
+    take: 0.12, carryT: 0.9, rise: 1, over: 4.2, back: 2.5, fall: 0.42, fix: 0.8,
     r: 2.4, crater: 2.4, power: 2.0, mark: 1.6,
     hang: 1.2, liftT: 0.5, speed: 20, time: [0.55, 1.0], minFlight: 0.55, lead: 0.15, hit: 1.6, parryPosture: 14, radius: 2.0, throwPower: 1.4,
   },

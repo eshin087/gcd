@@ -85,7 +85,7 @@ export function moves(X) {
     overhead: {
       label: 'Overhead', phase: 3, weight: [0, 0, 1.1], cooldown: 8, band: [0, 40], recovery: 0.6, cat: 'terrain',
       beats: [
-        lift(T.float.glideT + 0.1, { wjFloat: 'take' }, to(S, RAISE, RAISE, 0.5)),
+        lift(T.float.carryT + 0.1, { wjFloat: 'take' }, to(S, RAISE, RAISE, 0.5)),
         cast(R, 1.1, 30, 8, { wjFloat: 'drop' }, [[0.3, RAISE], [0.5, RAISE], [0.62, { ...PULL, e: 'o' }], [2.0, S]], { knockdown: true }),
       ],
     },
