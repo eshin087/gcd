@@ -73,7 +73,7 @@ export const CHAINS = [
 const LOOP_IN_CHAIN = 1.5;
 /** Clips the footage plays ON an enemy (a blow taken, a blade put in and pulled out): the review plays
  *  them on none, and its title says so. */
-export const ON_ENEMY = new Set(['guardCounter', 'backstab', 'riposte', 'riposteDown']);
+export const ON_ENEMY = new Set(['guardCounter', 'backstab', 'riposte', 'riposteDown', '2hGuardCounter']);
 
 /** The horse's chapters in the footage's order, per riding set (RIDES entry names, horse/rider.js). */
 export const RIDE_ORDER = {
