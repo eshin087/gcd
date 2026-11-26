@@ -76,6 +76,8 @@ const TASKS = [
   ['sheath', ['tests/integration/sheath.mjs', '.', 'all'], {}, 102],
   ['lord fxlooks', [LORD, '.', 'fxlooks'], { GCD_FX: FX_TERRAIN.map((k) => `!${k}`).join(',') }, 80],
   ['city win', [CITY, '.', 'win'], {}, 69],
+  // the remade hero (src/entities/hero2, ?hero=new): its clips, engine, play and the switch off
+  ['hero2', ['--expose-gc', 'tests/integration/hero2.mjs', '.', 'all'], {}, 90],
   ['groundfx', ['tests/integration/groundfx.mjs', '.', 'all'], {}, 15],
   ['dragonProps', ['tests/integration/dragonProps.mjs', '.', 'all'], {}, 15],
   ['dggrass', ['tests/integration/dgGrass.mjs', '.'], {}, 15],
