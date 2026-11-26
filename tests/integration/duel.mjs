@@ -48,6 +48,9 @@ const assert = (c, m) => { if (!c) { fails++; out('FAIL', m); } else out('ok  ',
 const mulberry32 = (a) => () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 const SEED = Number(process.env.GCD_SEED ?? 4242);
 const DT = 1 / 60;
+// a PLAIN parry's press (ADR-227): the perfect window is 0.20 s of the parry's 0.22, so a test that means
+// a plain parry presses in that sliver (a `left <= lead` check lands the press one step inside it: 13 / 60 s)
+const PLAIN_LEAD = (DEFENSE.perfectParryWindow + DEFENSE.parryWindow) / 2 + DT / 2;
 
 // the event catalogue (docs/ARCHITECTURE.md → "Event catalogue"): what this level emits must be in it
 const CATALOGUE = (() => {
@@ -262,7 +265,7 @@ function settle(G, max = 6) {
 // ---- the defender bot: answers his tells from the flash (parry normal / blue, roll through red)
 // style (the STRATEGY measurement): 'mixed' = the above; 'dodge' = a perfect dodge of EVERY tell and
 // never a parry; 'parry' = parries, and a red blow rolled EARLY (i-frames, outside the perfect window)
-function makeDefender(G, { skill = 1, style = 'mixed' } = {}) {
+function makeDefender(G, { skill = 1, style = 'mixed', lead = 0.12 } = {}) {
   const pend = [];
   const stats = { flashes: 0, parryTry: 0, dodgeTry: 0 };
   return {
@@ -288,7 +291,7 @@ function makeDefender(G, { skill = 1, style = 'mixed' } = {}) {
             input.tap('Space');
             stats.dodgeTry++;
           }
-        } else if (left <= 0.12) {
+        } else if (left <= lead) {
           e.done = true;
           input.up(1);
           input.click(1);
@@ -948,7 +951,7 @@ async function scenarioClash() {
     place(G, 2.2);
     run(G, 0.3);
     G.watch = (n) => { if (n === 'player:parry') { gaps.push(p.deflect.gap); backs.push(d.brain.back.off); stops.push(game.hitstopTimer); } };
-    G.defend = makeDefender(G);
+    G.defend = makeDefender(G, { lead: PLAIN_LEAD }); // plain parries: a perfect one ends the string (a lock, his posture)
     d.brain.trigger(mv);
     run(G, 5, (GG) => { GG.game.mouseGround.set(d.position.x, 0, d.position.z); GG.defend.act(); }, () => d.mode !== 'act');
     G.defend = null;
@@ -1297,15 +1300,16 @@ async function scenarioChain() {
     const hp0 = d.hp, fl = p.flurry;
     const tr = { passes: [], art: null, hits: [], f: 0, glyphs: new Set(), lineErr: 0, near: Infinity, ok: false, end: null };
     const o0 = { cs: fl._cutStarts, va: fl._vanish, ba: fl._beginArt };
-    fl._cutStarts = function () { tr.passes.push({ ax: p.position.x, az: p.position.z, i: fl.i, L: fl.nLines - 1, tx: fl.T.x, tz: fl.T.z }); return o0.cs.call(this); };
+    fl._cutStarts = function () { tr.passes.push({ ax: p.position.x, ay: p.position.y, az: p.position.z, i: fl.i, L: fl.nLines - 1, tx: fl.T.x, tz: fl.T.z }); return o0.cs.call(this); };
     fl._vanish = function (b) {
       const ps = tr.passes[tr.passes.length - 1];
       if (ps && ps.bx === undefined && fl.i < fl.cuts) {
         ps.bx = p.position.x;
+        ps.by = p.position.y;
         ps.bz = p.position.z;
         const L = fl.lines[ps.L];
         // the hanging line's ends against where his chest was as the pass began / ended
-        if (L) tr.lineErr = Math.max(tr.lineErr, Math.hypot(L.ax - ps.ax, L.ay - CH, L.az - ps.az), Math.hypot(L.bx - ps.bx, L.by - CH, L.bz - ps.bz));
+        if (L) tr.lineErr = Math.max(tr.lineErr, Math.hypot(L.ax - ps.ax, L.ay - ps.ay - CH, L.az - ps.az), Math.hypot(L.bx - ps.bx, L.by - ps.by - CH, L.bz - ps.bz));
       }
       return o0.va.call(this, b);
     };
@@ -1438,6 +1442,110 @@ async function scenarioChain() {
   }
   STREAK_FX.chain = chain0;
   STREAK_FX.figure = figure0;
+  return G;
+}
+
+// ================================================================== scenario: dodgefx (the dodge looks, on a man)
+// STREAK_FX.dodgefx (?dodgefx=a|b|c|d; DEFENSE.flurry.dodgefx): smeared copies, floor kicks, aerial cuts, and
+// a Thunder Thrust / blooms / a spark cloud / a heavier finish. The blows land, the damage is the flurry's
+// with it off, he is never somewhere that is not a number, and he ends every flurry on the floor.
+async function scenarioDodgefx() {
+  out('\n== scenario DODGEFX (the dodge looks: aerial cuts, smear, kicks; a thrust, blooms, a spark cloud, a heavy finish) ==');
+  const { STREAK_FX } = await imp('src/combat/streak.js');
+  const FL = await imp('src/entities/player/flurry.js');
+  const G = build();
+  duel(G, { dist: 4 });
+  const { game } = G;
+  const d = game.dragon, p = game.player, DF = DEFENSE.flurry.dodgefx;
+  const fx0 = STREAK_FX.dodgefx;
+  const take = (n, v, art = 'passing') => {
+    STREAK_FX.dodgefx = v;
+    FL.setFigureSeed(777);
+    settle(G);
+    place(G, 2.5);
+    run(G, 0.3);
+    d.hp = d.maxHp;
+    const hp0 = d.hp, fl = p.flurry;
+    const tr = { hits: [], bad: 0, maxY: 0, maxY1: 0, maxY0: 0, frames: 0, arts: new Set(), ok: false, landHold: 0 };
+    G.watch = (nm) => {
+      if (nm === 'player:flurryHit') tr.hits.push(tr.frames);
+    };
+    const st = fl.fx.dodgeStat;
+    const s0 = { ...st };
+    tr.ok = p.debug.flurry(n, art);
+    tr.fxv = fl.fxv;
+    run(G, 10, () => {
+      tr.frames++;
+      const q = p.position;
+      if (!Number.isFinite(q.x + q.y + q.z + p.yaw)) tr.bad++;
+      if (p.state !== 'flurry' || !fl.on) return;
+      tr.arts.add(fl.art);
+      tr.maxY = Math.max(tr.maxY, q.y);
+      if (fl.ph === FL.FP.LAND) tr.landHold++;
+      if (fl.i === 1 && fl.ph <= FL.FP.HOLD) tr.maxY1 = Math.max(tr.maxY1, q.y);
+      if (fl.i === 0 && fl.ph <= FL.FP.HOLD) tr.maxY0 = Math.max(tr.maxY0, q.y);
+    }, () => p.state !== 'flurry');
+    G.watch = null;
+    tr.endY = p.position.y;
+    tr.dmg = hp0 - d.hp;
+    tr.stat = { bloom: st.bloom - s0.bloom, tendrils: st.tendrils - s0.tendrils, sparks: st.sparks - s0.sparks, maxSize: st.maxSize, maxCol: st.maxCol };
+    return tr;
+  };
+  // the off pool is the three; with a, four
+  {
+    const fl = p.flurry;
+    fl.fxv = '';
+    assert(fl.artPool(false).join() === 'passing,falling,rising' && fl.artPool(true).length === 3, 'dodgefx off: the ground arts are exactly the three (' + fl.artPool(false) + ')');
+    fl.fxv = 'a';
+    assert(fl.artPool(false).includes('thrust') && fl.artPool(false).length === 4, 'dodgefx a: the Thunder Thrust joins the pool');
+    fl.fxv = '';
+  }
+  for (const v of ['a', 'b', 'c', 'd']) {
+    for (const n of [2, 5, 7]) {
+      const on = take(n, v), off = take(n, '');
+      out('   ' + v + ' N=' + n + ': blows on frames ' + on.hits + ' (off ' + off.hits + '), damage ' + on.dmg + ' / ' + off.dmg + ', highest ' + on.maxY.toFixed(2) + ' m, ends at y ' + on.endY.toFixed(3) + ', letters bloom ' + on.stat.bloom + ' tendrils ' + on.stat.tendrils + ' sparks ' + on.stat.sparks);
+      assert(on.ok && on.fxv === v && on.hits.length === n && off.hits.length === n && on.dmg === off.dmg && on.dmg > 0, v + ' N=' + n + ': the flurry ends, all ' + n + ' blows land (' + on.hits.length + '), ' + on.dmg + ' damage as with it off (' + off.dmg + ')');
+      assert(on.bad === 0, v + ' N=' + n + ': never a non-finite position or heading (' + on.bad + ' frames)');
+      assert(on.endY <= 0.02 && on.endY >= -0.02 && p.state !== 'flurry', v + ' N=' + n + ': he ends the flurry on the floor (y ' + on.endY.toFixed(3) + ')');
+      if (n >= 5) assert(on.maxY1 > 1.5, v + ' N=' + n + ': flash cut 1 is aerial (up to ' + on.maxY1.toFixed(2) + ' m)');
+      else assert(on.maxY <= 0.02, v + ' N=' + n + ': a short flurry stays on the floor (' + on.maxY.toFixed(3) + ' m)');
+      if (n >= 7) assert(on.maxY0 > 1.5, v + ' N=' + n + ': flash cut 0 is aerial too (up to ' + on.maxY0.toFixed(2) + ' m)');
+      else if (n >= 5) assert(on.maxY0 <= 0.02, v + ' N=' + n + ': cut 0 stays on the floor (' + on.maxY0.toFixed(3) + ' m)');
+      assert(off.maxY <= 0.02, v + ' N=' + n + ': off, no cut leaves the floor (' + off.maxY.toFixed(3) + ' m)');
+      if (v === 'b') assert(on.stat.bloom >= n && on.stat.tendrils >= 3 * n, 'b N=' + n + ': a bloom and tendrils on every blow (' + on.stat.bloom + ' blooms, ' + on.stat.tendrils + ' tendrils)');
+      if (v === 'c') assert(on.stat.sparks >= 18 * (n - 1), 'c N=' + n + ': a spray of sparks on every blow (' + on.stat.sparks + ')');
+      if (v === 'b' || v === 'c') assert(on.stat.maxSize <= 0.09 + 1e-9 && on.stat.maxCol <= 0.55 + 1e-9, v + ' N=' + n + ': tiny letters (' + on.stat.maxSize.toFixed(3) + ' m) under the bloom threshold (' + on.stat.maxCol.toFixed(2) + ')');
+      if (v === 'd' && n === 5) {
+        const fall = take(n, v, 'falling'), fall0 = take(n, '', 'falling');
+        assert(fall.landHold >= Math.floor(DF.heavy.land / DT) - 2 && fall.dmg === fall0.dmg && fall.hits.length === n && fall.endY <= 0.02, 'd: the Falling Leaf holds its landing (' + fall.landHold + ' frames), the same damage (' + fall.dmg + ' / ' + fall0.dmg + ')');
+      }
+    }
+  }
+  // the thrust itself (pinned): its blows, the same damage, a bloom and its tendrils, he ends on the floor
+  for (const n of [1, 3, 5]) {
+    const t = take(n, 'a', 'thrust'), o = take(n, '', 'passing');
+    out('   thrust N=' + n + ': blows on frames ' + t.hits + ', damage ' + t.dmg + ' / ' + o.dmg + ', art ' + [...t.arts] + ', bloom ' + t.stat.bloom + ', tendrils ' + t.stat.tendrils);
+    assert(t.ok && [...t.arts].join() === 'thrust' && t.hits.length === n && t.dmg === o.dmg && t.bad === 0 && t.endY <= 0.02, 'thrust N=' + n + ': the art is the Thunder Thrust, ' + n + ' blows (' + t.hits.length + '), ' + t.dmg + ' damage as the Passing Cut (' + o.dmg + '), he ends on the floor');
+    assert(t.stat.bloom >= 1 && t.stat.tendrils >= DF.thrust.tendrils && t.stat.maxSize <= 0.09 + 1e-9, 'thrust N=' + n + ': a bloom and ' + DF.thrust.tendrils + ' tendrils as it lands (' + t.stat.bloom + ', ' + t.stat.tendrils + ')');
+  }
+  // the pick: with a, the Thunder Thrust now and then; with it off, never
+  {
+    const fl = p.flurry;
+    const seen = (v) => {
+      const got = [];
+      fl.fxv = v;
+      fl.lastArt.ground = '';
+      p.debug.flurryArt = null;
+      for (let k = 0; k < 24; k++) got.push(fl._pickArt(false));
+      fl.fxv = '';
+      return got;
+    };
+    const on = seen('a'), off = seen('');
+    out('   24 picks with a: ' + on.join(' ') + ' | off: ' + [...new Set(off)]);
+    assert(on.includes('thrust') && new Set(on).size >= 3, 'with a the pick draws the Thunder Thrust (' + on.filter((x) => x === 'thrust').length + ' of 24) among the others');
+    assert(!off.includes('thrust') && new Set(off).size === 3, 'off the pick never draws it: ' + [...new Set(off)]);
+  }
+  STREAK_FX.dodgefx = fx0;
   return G;
 }
 
@@ -1832,7 +1940,7 @@ async function scenarioParryFx() {
     G.watch = (n, e) => {
       if (n === 'player:parry') perf = !!e?.perfect;
     };
-    answerMove(G, 'plumThrust', press(0.17), 3);
+    answerMove(G, 'plumThrust', press(PLAIN_LEAD), 3);
     G.watch = null;
     r.normal = { perfect: perf, sparks: L.n - n0 };
     // 2) a perfect parry
@@ -2131,7 +2239,7 @@ async function scenarioStreak() {
   p.debug.streak(0);
   d.debug.streak(4);
   const c2 = { ...G.counts };
-  G.defend = makeDefender(G);
+  G.defend = makeDefender(G, { lead: PLAIN_LEAD }); // plain parries: perfect ones break his posture before the fourth blow
   const ok2 = d.debug.flurry();
   const a2 = d.brain.act;
   const beats2 = a2?.beats.length, flit2 = a2?.beats.filter((b) => b.def.flit).length;
@@ -2789,7 +2897,7 @@ async function scenarioImpact() {
     const q0 = G.hits.length;
     G.watch = (n, e) => { if (n === 'game:cinematic') seen.push(e?.kind); };
     answerMove(G, 'swallow', (left) => {
-      if (left > (perfect ? 0.05 : 0.12)) return false;
+      if (left > (perfect ? 0.05 : PLAIN_LEAD)) return false;
       input.up(1);
       input.click(1);
       return true;
@@ -2972,7 +3080,7 @@ async function scenarioMoments() {
   G.watch = log;
   let reeled = false;
   const ok3 = answerMove(G, 'ashRain', (left) => {
-    if (left > 0.12) return false;
+    if (left > PLAIN_LEAD) return false; // plain parries: a perfect one of its last blow locks the blades
     input.up(1);
     input.click(1);
     return true;
@@ -3931,8 +4039,11 @@ async function scenarioPerfect() {
     G.watch = null;
     return { parry, posture: d.posture };
   };
-  const plain = parryAt(0.16);
-  assert(plain.parry && !plain.parry.perfect && Math.abs(plain.posture - POSTURE.parry.normal) < 0.5 && !(p.quickUntil > game.time), `a parry pressed 0.16 s early is a plain one: ${plain.posture.toFixed(0)} posture (${POSTURE.parry.normal}), no counter cut readied`);
+  // a plain parry: pressed between the perfect window (0.20 s since ADR-227) and the parry window (0.22 s),
+  // in the middle of that sliver (the press lands within one step after the lead)
+  const plainLead = PLAIN_LEAD;
+  const plain = parryAt(plainLead);
+  assert(plain.parry && !plain.parry.perfect && Math.abs(plain.posture - POSTURE.parry.normal) < 0.5 && !(p.quickUntil > game.time), `a parry pressed ${plainLead.toFixed(3)} s early is a plain one: ${plain.posture.toFixed(0)} posture (${POSTURE.parry.normal}), no counter cut readied`);
   const perf = parryAt(0.04);
   assert(perf.parry?.perfect === true && Math.abs(perf.posture - POSTURE.parry.normal * POSTURE.perfect) < 0.5, `pressed 0.04 s before the blow it is perfect: ${perf.posture.toFixed(0)} posture (${POSTURE.parry.normal} x ${POSTURE.perfect})`);
   assert(p.quickUntil > game.time && p.quickUntil <= game.time + PP.cutWindow + 1e-6, `... and the counter cut is ready for ${PP.cutWindow} s`);
@@ -4496,10 +4607,10 @@ async function scenarioFlare() {
 
   // --- a blue flare parried: the counter
   let pressed = false;
-  const blue = play('fallingAsh', 2.0, (fT) => { if (!pressed && at(fT, 0.14)) { pressed = true; input.up(1); input.click(1); } });
+  const blue = play('fallingAsh', 2.0, (fT) => { if (!pressed && at(fT, PLAIN_LEAD)) { pressed = true; input.up(1); input.click(1); } });
   const par = blue.get('player:parry'), dpar = blue.get('dragon:parried'), cnt = blue.get('player:flareCounter'), fend = blue.get('player:flurryEnd');
   assert(blue.get('combat:flash')?.flare === true && blue.get('combat:flash')?.tell === TELL.BLUE, 'Falling Ash is a parry moment: a blue cue marked flare');
-  assert(par?.flare === true && par.perfect === false && dpar?.flare === true && dpar.last === true, `a plain parry of it (0.14 s early) is the moment's: player:parry flare, dragon:parried last (${JSON.stringify(dpar)})`);
+  assert(par?.flare === true && par.perfect === false && dpar?.flare === true && dpar.last === true, `a plain parry of it (0.20 - 0.22 s early) is the moment's: player:parry flare, dragon:parried last (${JSON.stringify(dpar)})`);
   assert(!!cnt && cnt.damage >= DEFENSE.flareCounter.damage - 0.5 && fend?.art === 'counter', `... and the hero counters by himself: ${cnt?.strikes} blow(s), the last ${cnt?.damage?.toFixed(0)} (${DEFENSE.flareCounter.damage}), art ${fend?.art}`);
   assert(blue.lost === 0 && blue.has('player:flurry'), 'the parry cost no HP and the counter ran as flash cuts (player:flurry)');
   // (an ordinary heavy blow, not marked: the plain deflect, no counter)
@@ -5220,7 +5331,18 @@ const SCENARIOS = {
   telemetry: scenarioTelemetry,
   heavy: scenarioHeavy,
   moments: scenarioMoments,
-  pressure: scenarioPressure,
+  // (a boss-AI check, measured with the flurry before the dodge looks: the Thunder Thrust's held lunge
+  // keeps the hero by him longer, and the seeded fight runs another way)
+  pressure: async () => {
+    const { STREAK_FX } = await imp('src/combat/streak.js');
+    const fx0 = STREAK_FX.dodgefx;
+    STREAK_FX.dodgefx = '';
+    try {
+      return await scenarioPressure();
+    } finally {
+      STREAK_FX.dodgefx = fx0;
+    }
+  },
   impact: scenarioImpact,
   levels: scenarioLevels,
   floor: scenarioFloor,
@@ -5234,6 +5356,7 @@ const SCENARIOS = {
   ghostep: scenarioGhostep,
   tempo: scenarioTempo,
   chain: scenarioChain,
+  dodgefx: scenarioDodgefx,
   timerip: scenarioTimeRip,
   perfectfx: scenarioPerfectFx,
   parryfx: scenarioParryFx,
@@ -5244,7 +5367,18 @@ const SCENARIOS = {
   phase: scenarioPhase,
   flow: scenarioFlow,
   win: scenarioWin,
-  pace: scenarioPace,
+  // (the boss's pace is measured with the flurry before the dodge looks (STREAK_FX.dodgefx, 2026-11-25): the
+  // Thunder Thrust's held lunge holds the world longer, a gap in HIS cues that is not his pace)
+  pace: async () => {
+    const { STREAK_FX } = await imp('src/combat/streak.js');
+    const fx0 = STREAK_FX.dodgefx;
+    STREAK_FX.dodgefx = '';
+    try {
+      return await scenarioPace();
+    } finally {
+      STREAK_FX.dodgefx = fx0;
+    }
+  },
   cutfx: scenarioCutFx,
   sfx: scenarioSfx,
 };

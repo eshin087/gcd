@@ -1110,7 +1110,9 @@ export class PlayerFx {
    * `this.bodyN`: player.js _sampleBody, taken with the pose's `segs`); without them (no meshes: a
    * bare test rig) it is strokes along his bones, as it used to be.
    * `o`: { dx, dz } the way he left (unit, ground plane; 0, 0 = unknown), `light`: a lesser one (a
-   * clone left mid-pass: every other point, shorter-lived).
+   * clone left mid-pass: every other point, shorter-lived), `smear`: a copy of him left along a dash
+   * (the flurry's ?dodgefx): much shorter-lived (x 0.3), fainter (0.55), its cells drifting a little
+   * against the way he moves (o.dx, o.dz).
    * (Three looks were built; the owner picked this one, "Digits", over an "Echo" of fainter copies
    * stepping off the way he left and a "Shatter" that burst the figure into its characters.)
    */
@@ -1125,7 +1127,8 @@ export class PlayerFx {
     if (!Number.isFinite(dx + dz)) dx = dz = 0;
     let y0 = Infinity;
     for (let i = 0; i < n; i++) y0 = Math.min(y0, pts[i * 3 + 1]);
-    const lifeK = light ? 0.7 : 1;
+    const smear = o?.smear === true;
+    const lifeK = (light ? 0.7 : 1) * (smear ? 0.3 : 1), smearK = smear ? -1 : 1;
     const feel = o?.feel ?? null; // sharp / cinema: the cells go to perfectGhost (stand, then tear)
     let nG = 0;
     const GP = feel ? this._ghostPos ?? (this._ghostPos = new Float32Array(480 * 3)) : null;
@@ -1156,9 +1159,9 @@ export class PlayerFx {
       const h = Math.min(1, Math.max(0, (y - y0) / 1.8)); // 0 his feet … 1 his head
       // (it drifts a little the way he left, and rises)
       fx.spawn({
-        x, y, z, vx: dx * R(0.05, 0.3), vy: R(0.02, 0.16), vz: dz * R(0.05, 0.3),
+        x, y, z, vx: dx * smearK * R(0.05, 0.3), vy: R(0.02, 0.16), vz: dz * smearK * R(0.05, 0.3),
         life: (0.24 + 0.3 * h + R(0, 0.14)) * lifeK, size: GHOST_CELL * 1.25, sizeEnd: GHOST_CELL * 0.8, glyph: GHOST_DIGITS,
-        color: i % 11 === 0 ? COL.ghost : COL.ghostDim, colorEnd: COL.ghostEnd, alpha: 0.9, alphaEnd: 0, drag: 1.2, flicker: 0.3,
+        color: i % 11 === 0 ? COL.ghost : COL.ghostDim, colorEnd: COL.ghostEnd, alpha: smear ? 0.55 : 0.9, alphaEnd: 0, drag: 1.2, flicker: 0.3,
       });
     }
     if (GP && nG) perfectGhost(this.game, GP, nG, dx, 0, dz, feel.ghost, GHOST_STAND, COL.ghostDim, COL.ghostEnd, GHOST_CELL * 1.25);

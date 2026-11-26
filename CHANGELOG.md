@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and eleven pieces of work since 0.4.0:
+One hundred and fourteen pieces of work since 0.4.0:
 - **The perfect parry earns its own reward: the deathblow** (2026-11-26, ADR-211). *Changed:* a perfect parry no
   longer answers with the perfect dodge's flurry. Against the human bosses, parries fill the gold posture bar (blue
   blows most, a perfect parry x1.5) and no longer count in the dodge streak; a string's last blow parried makes him
@@ -14,6 +14,21 @@ One hundred and eleven pieces of work since 0.4.0:
   grows, after the owner's reference footage: more sparks each tier, embers that fall and drift on the wind, a
   short orange heat flash at the blades. Switches: `?parryRiposte=deathblow|planted|old`, `?parryGrow=a|0`; the
   Lab's streak row; TRAINING: Deathblow x3 / x7.
+- **The drakelings never dive on top of the wyrm's blows** (2026-11-26, ADR-237). *Fixed:* in a long flurry of the
+  Cinder Wyrm's, a drakeling that had waited out its turn could dive in the same instant as one of the wyrm's
+  blows that needed the other answer (a roll against a parry). Now it waits for a clear moment however long the
+  flurry runs, or burns out harmlessly, and the wyrm's embers never come due beside a drakeling's dive.
+- **Four looks for the perfect dodge flurry** (2026-11-25, ADR-210). *Added, behind `?dodgefx=a|b|c|d` (the Lab's
+  `dodgefx` button; the owner picked a, the Thunder Thrust, as the default; `?dodgefx=off` is the flurry before):* against a man the flurry keeps its vanish and all three
+  finishers, and adds faint smeared copies of him along each cut, tiny sparks kicked off the floor, and an aerial cut
+  from above in a streak of 5 or more. Each look adds one lesson from the owner's reference footage: a) the Thunder
+  Thrust, a fourth finisher (a low set, one smeared lunge, the lunge held, letter tendrils over the floor); b) a bloom
+  at the blade's point breaking into floor tendrils on every contact; c) a cloud of slow falling sparks that builds
+  through the streak; d) a heavier wind-up and a held landing for every finisher. Same blows and damage.
+- **Parrying is easier: the perfect parry's timing widened** (2026-11-26, ADR-227). *Changed:* a parry pressed up to
+  0.2 s before the blow lands is now perfect (it was 0.08 s), the same window as the perfect dodge: its extra posture,
+  the fast critical counter cut, the blade lock and the returned shots come far more easily. A parry pressed earlier
+  than that still works, as before, up to 0.22 s.
 - **A lighter world on phones that need it** (2026-11-26, ADR-216). *Changed:* on a phone that still drops frames at the
   lowest resolution, the ground's extras (ridge strokes, drifting cloud shadows, contact shadows, the floor ripple)
   turn off and the stone floors' relief is drawn more simply, for the rest of the visit. `?lite=0` keeps the full

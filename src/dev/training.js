@@ -110,7 +110,7 @@ add('HERO ARTS', [
 
 add('PARRY & RIPOSTE', [
   { id: 'parry', name: 'Parry a single blow', boss: 'any', streak: 0, role: 'single', answer: 'parry', riposte: 'old', desc: 'A single blow parried with the old riposte (?parryRiposte=old): the clash, then one flash cut and back where you stood. Today a duelist recoils instead and your own counter cut is open (see Parry a string).', expect: ['player:parry', 'player:flurryEnd'] },
-  { id: 'perfectParry', name: 'Perfect parry', boss: 'any', streak: 0, role: 'single', answer: 'perfect', desc: 'Pressed within 0.08 s of the impact: the gold clash and a beat of slow motion.', expect: ['player:parry'] },
+  { id: 'perfectParry', name: 'Perfect parry', boss: 'any', streak: 0, role: 'single', answer: 'perfect', desc: `Pressed within ${DEFENSE.perfectParryWindow} s of the impact: the gold clash and a beat of slow motion.`, expect: ['player:parry'] },
   ...[3, 7].map((n) => ({ id: `riposte${n}`, name: `Riposte ${N(n)} (old)`, boss: 'any', streak: n - 1, role: 'single', answer: 'parry', riposte: 'old', desc: `A parry at a streak of ${n}: ${n} flash cuts.`, expect: ['player:flurryEnd'] })),
   // the deathblow (?parryRiposte=deathblow): parries build his posture; the perfect one that breaks it is answered
   ...[3, 7].map((n) => ({ id: `deathblow${n}`, name: `Deathblow ${N(n)}`, boss: 'duel', streak: 0, role: 'single', answer: 'perfect', riposte: 'deathblow', parryRun: n - 1, postureNear: true, desc: `${n - 1} perfect parries behind him, his posture one parry from breaking: the perfect parry breaks it, a beat of slow motion, a heavy cut and a thrust through him (${100 + 20 * Math.min(n, 7)} damage).`, expect: ['player:parry', 'player:flurryEnd'] })),

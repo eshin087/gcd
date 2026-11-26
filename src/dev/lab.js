@@ -1278,6 +1278,12 @@ export class Lab {
       STREAK_FX.chain = !STREAK_FX.chain;
       this._syncCutBtns();
     });
+    this.ui.dodgeBtn = button(stkGrid, `dodgefx: ${STREAK_FX.dodgefx || 'off'}`, () => {
+      const L = ['', 'a', 'b', 'c', 'd'];
+      STREAK_FX.dodgefx = L[(L.indexOf(STREAK_FX.dodgefx || '') + 1) % L.length];
+      this._syncCutBtns();
+    });
+    this.ui.dodgeBtn.title = "the dodge looks (?dodgefx=): off; or a man's flurry gains smeared copies along each dash, floor kicks and aerial cuts (cut 1 from 4 cuts, cut 0 from 6), plus: a = Thunder Thrust, a fourth art (low set, one smeared step, the lunge held, a bloom at the point, tendrils over the floor); b = a bloom at the blade's point and tendrils on every contact; c = a cloud of falling sparks round the foe; d = a heavier finish (longer wind-up and held landing, a camera push). Read as a flurry starts";
     this.ui.figureBtn = button(stkGrid, `figure: ${STREAK_FX.figure}`, () => {
       const L = STREAK_FX.figures;
       STREAK_FX.figure = L[(L.indexOf(STREAK_FX.figure) + 1) % L.length];
@@ -1532,6 +1538,10 @@ export class Lab {
     for (const { m, el: b } of this.ui.runSwordBtns ?? []) setClass(b, 'on', runSwordMode() === m);
     if (this.ui.tempoBtn) setClass(this.ui.tempoBtn, 'on', STREAK_FX.tempo !== false);
     if (this.ui.chainBtn) setClass(this.ui.chainBtn, 'on', STREAK_FX.chain !== false);
+    if (this.ui.dodgeBtn) {
+      this.ui.dodgeBtn.textContent = `dodgefx: ${STREAK_FX.dodgefx || 'off'}`;
+      setClass(this.ui.dodgeBtn, 'on', !!STREAK_FX.dodgefx);
+    }
     if (this.ui.figureBtn) this.ui.figureBtn.textContent = `figure: ${STREAK_FX.figure}`;
     if (this.ui.ripBtn) {
       this.ui.ripBtn.textContent = `rip: ${ripMode()}`;
