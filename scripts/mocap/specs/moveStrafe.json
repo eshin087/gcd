@@ -266,7 +266,8 @@
      "t": "17:01.20",
      "name": "land"
     }
-   ]
+   ],
+   "draft": true
   },
   {
    "name": "rollR",
@@ -316,7 +317,8 @@
      "t": "17:06.06",
      "name": "land"
     }
-   ]
+   ],
+   "draft": true
   },
   {
    "name": "rollB",
@@ -326,31 +328,17 @@
    "fps": 60,
    "search": 0.4,
    "ground": "body",
-   "flight": "picture",
    "takes": [
     {
-     "t0": "16:55.70",
+     "t0": "16:55.60",
      "t1": "16:56.80",
      "view": "back",
      "facing": "away",
      "swing": true,
      "drop": [
       [
-       "16:55.84",
-       "16:56.40"
-      ]
-     ]
-    },
-    {
-     "t0": "16:47.50",
-     "t1": "16:48.60",
-     "view": "back",
-     "facing": "away",
-     "swing": true,
-     "drop": [
-      [
-       "16:47.68",
-       "16:48.24"
+       "16:55.86",
+       "16:56.36"
       ]
      ]
     }
@@ -366,7 +354,15 @@
      "t": "16:56.40",
      "name": "land"
     }
-   ]
+   ],
+   "foot_ease": 14,
+   "travel_m": 2.0,
+   "travel_dir": 180,
+   "travel_span": [
+    "16:55.82",
+    "16:56.40"
+   ],
+   "draft": true
   }
  ]
 }
