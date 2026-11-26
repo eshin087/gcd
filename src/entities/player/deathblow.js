@@ -194,7 +194,7 @@ function startThrust(P, att) {
   const S = P.db, D = DEFENSE.deathblow, p = P.position;
   const dist = aim(P, att, S);
   if (dist < 0) return finish(P);
-  const st = chargeStats(CHARGE.full, THRUST);
+  const st = chargeStats(CHARGE.hold, THRUST); // uncharged: a charged thrust's tip streak prints a white blot (the damage is the deathblow's own)
   P._startHeavy(def2(), st);
   P.yaw = Math.atan2(S.dx, S.dz);
   P.object3d.rotation.y = P.yaw;
