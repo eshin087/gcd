@@ -421,16 +421,34 @@ function elbowOf(h, pole, out) {
   out[2] = hz * a + pz * r;
   return out;
 }
-const ARM_REF = (() => {
-  const S = REF_STAND, el = elbowOf(S.rH, S.rP, [0, 0, 0]);
+const ARM_REF = { el: [0, 0, 0], aim: [0, 0], blade: [0, 0], fight: [0, 0], flat: 0 };
+/** ARM_REF from refStance.js's poses as they are now (the Lab / a tuning pass may change them live). */
+function refArm() {
+  const S = REF_STAND, el = elbowOf(S.rH, S.leadP ?? S.rP, ARM_REF.el);
   const fx = S.rH[0] - el[0], fy = S.rH[1] - el[1], fz = S.rH[2] - el[2];
-  const aim = [Math.atan2(fx, fz) / DEG, Math.atan2(fy, Math.hypot(fx, fz)) / DEG];
   // (the hand a forearm's length from the elbow along the aim: armAlong puts it there)
-  return { el, aim, blade: S.sw.slice(), fight: REF_READY.sw.slice(), flat: (90 - FLAT_ROLL) * DEG };
-})();
+  ARM_REF.aim[0] = Math.atan2(fx, fz) / DEG;
+  ARM_REF.aim[1] = Math.atan2(fy, Math.hypot(fx, fz)) / DEG;
+  ARM_REF.blade[0] = S.sw[0];
+  ARM_REF.blade[1] = S.sw[1];
+  ARM_REF.fight[0] = REF_READY.sw[0];
+  ARM_REF.fight[1] = REF_READY.sw[1];
+  ARM_REF.flat = (90 - FLAT_ROLL) * DEG;
+  return ARM_REF;
+}
+// the sword elbow's pole the moves that swing the blade take over their envelope (`?idles=ref`: refStance.js
+// REF_STAND.leadP; the stand's own elbow stands out off the ribs, and fading into a raise from that side the
+// sword wrist turned past 60°, ADR-206). Off with ADR-186's (the stand's own is theirs)
+const LEAD = { on: false, p: [0, 0, 0] };
+function leadArm(p, P, e) {
+  if (LEAD.on && e > 0) to3(p, P.rP, LEAD.p[0], LEAD.p[1], LEAD.p[2], Math.min(1, e));
+}
 /** idles.js / anim.js: the standing arm of the mode drawn now (called by setIdles and at load). */
 export function syncStandArm() {
-  const S = PICK.mode === 'ref' ? ARM_REF : ARM_NEW;
+  const lp = PICK.mode === 'ref' ? REF_STAND.leadP : null;
+  LEAD.on = !!lp;
+  if (lp) for (let i = 0; i < 3; i++) LEAD.p[i] = lp[i];
+  const S = PICK.mode === 'ref' ? refArm() : ARM_NEW;
   for (let i = 0; i < 3; i++) EASE_ELBOW[i] = S.el[i];
   for (let i = 0; i < 2; i++) {
     EASE_AIM[i] = S.aim[i];
@@ -578,6 +596,7 @@ export const EASE_HABITS = [
 /** The wrist spin: the forearm points out and down at his right, and the point swirls twice round it in a
  *  quick cone (the blade never more than ~45° off the forearm's line), fast in the middle, and settles. */
 function trickSpin(p, P, A, u, e) {
+  leadArm(p, P, e);
   const s = smoothstep(0.14, 0.86, u), ph = 2 * TAU * s;
   const w = e * bump(s, 0, 0.08, 0.92, 1); // (into the cone and out of it without a corner)
   const lead = bump(u, 0.04, 0.16, 0.86, 0.97) * e;
@@ -596,6 +615,7 @@ function trickSpin(p, P, A, u, e) {
 /** The figure-eight: the forearm out before him to his right, and the point draws an 8 lying on its side
  *  round its line twice (±26° across, ±19° up and down), the wrist rolling the flat through each loop. */
 function trickEight(p, P, A, u, e) {
+  leadArm(p, P, e);
   const s = smoothstep(0.14, 0.86, u), ph = TAU * 2 * s;
   const w = e * bump(s, 0, 0.08, 0.92, 1);
   const g = smoothstep(0.04, 0.16, u), lead = bump(u, 0.04, 0.16, 0.86, 0.97) * e;
@@ -616,6 +636,7 @@ function trickEight(p, P, A, u, e) {
  *  blade a little past plumb), the free palm laid over the sword fist, a short bow of the head; then the blade
  *  opens down and out to his right in one quick arc, the forearm leading it, and he lets it back to rest. */
 function trickSalute(p, P, A, u, e) {
+  leadArm(p, P, e);
   const up = smoothstep(0.06, 0.3, u), open = smoothstep(0.62, 0.74, u), home = smoothstep(0.76, 0.95, u);
   const k = up * (1 - open);
   // the forearm: down at rest → upright before the shoulder → down and out at his right with the arc
@@ -647,6 +668,7 @@ function trickSalute(p, P, A, u, e) {
 /** The flick (chiburi): the blade comes up before him, snaps down and out to his right to throw the
  *  blood off it, holds, then the free hand comes to the hilt and he sets it back to rest. */
 function trickFlick(p, P, A, u, e) {
+  leadArm(p, P, e);
   const up = smoothstep(0.08, 0.34, u), snap = smoothstep(0.38, 0.45, u), back = smoothstep(0.62, 0.86, u);
   const hx = lerp(lerp(-0.12, -0.05, up), -0.3, snap), hy = lerp(lerp(-0.42, -0.12, up), -0.4, snap), hz = lerp(lerp(0.1, 0.3, up), 0.18, snap);
   to3(p, P.rH, hx, hy, hz, e);
@@ -674,6 +696,7 @@ function trickFlick(p, P, A, u, e) {
  *  laid on the flat at the guard and drawn slowly up it toward the point; the flame swells behind them, and at
  *  the point a few marks lift off like embers. His eyes follow the fingers. */
 function spellRite(p, P, A, u, e) {
+  leadArm(p, P, e);
   const up = smoothstep(0.04, 0.22, u), dn = smoothstep(0.82, 0.97, u), w = e * (1 - dn);
   armRaise(p, P, RAISE.rite, up, w);
   aimTo(p, P.swD, lerp(EASE_BLADE[0], RAISE.rite.blade[0], up), lerp(EASE_BLADE[1], RAISE.rite.blade[1], up), w);
@@ -700,6 +723,7 @@ function spellRite(p, P, A, u, e) {
  *  the point in a small slow circle, and round him a ring of faint marks writes itself on the ground,
  *  holds, and lifts away. */
 function spellSigil(p, P, A, u, e) {
+  leadArm(p, P, e);
   const dn = bump(u, 0.04, 0.2, 0.8, 0.96);
   const w = e * dn;
   const c = smoothstep(0.22, 0.62, u) * TAU;
@@ -725,6 +749,7 @@ function spellSigil(p, P, A, u, e) {
  *  free hand open beside it; he breathes in slow and deep, the flame swells, a thread of marks circles him at
  *  the height of his chest and comes back into the steel, and he lets the blade down. */
 function spellBreath(p, P, A, u, e) {
+  leadArm(p, P, e);
   const up = smoothstep(0.04, 0.2, u), dn = smoothstep(0.84, 0.97, u), w = e * (1 - dn);
   armRaise(p, P, RAISE.breath, up, w);
   aimTo(p, P.swD, lerp(EASE_BLADE[0], RAISE.breath.blade[0], up), lerp(EASE_BLADE[1], RAISE.breath.blade[1], up), w);
@@ -882,6 +907,7 @@ function bladeCh(u, j) {
 const BLADE_V = [0, 0];
 /** The stow: put away, empty-handed, drawn (see STOW). */
 function actStow(p, P, A, u, e) {
+  leadArm(p, P, e);
   if (!(e > 0)) return;
   stowKeys();
   const ex = stowCh(u, 0), ey = stowCh(u, 1), ez = stowCh(u, 2), az = stowCh(u, 3), el = stowCh(u, 4);

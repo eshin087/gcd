@@ -10,9 +10,10 @@
 //               forward, down and out to his right, the point at shin height well ahead of the right foot.
 //               The free arm hangs relaxed a little off the body, the hand open by the left thigh. Only the
 //               breath moves him.
-//   REF_READY   the fight: both hands on the grip before the right hip, the left below the right, the
-//               blade up and forward (~55°) and a little out to his right, the point above his head; the
-//               left foot ahead, the hips turned a little; upright, relaxed.
+//   REF_READY   the fight: both hands on the grip before the right of his belly, the left below the right,
+//               the blade up and forward (~47°) and out to his right, the point above his head; upright,
+//               relaxed. The footage stands the left foot ahead; this hold keeps the feet the light chain
+//               steps from and comes home to (the right a short step ahead, the hips square; ADR-206).
 //   REF_GUARD   the block (`?guard=ward` keeps the cross ward before it, anim.js blockPose): a braced
 //               crouch, the knees bent and out, the feet wide, leaning in; both hands on the grip raised
 //               before his right shoulder, the elbows out, the blade rising across his face to his left
@@ -60,10 +61,16 @@ export function setGuard(id) {
 /** The stand at ease (body axes, m; blade [azimuth + his left, elevation] in degrees). */
 export const REF_STAND = {
   rH: [-0.08, -0.49, 0.12], // the sword hand at the hip, a fist outside the thigh, a little ahead
-  rP: [0.45, -0.25, -0.85], // its elbow soft, a little back
+  // its elbow soft, a little back and out: the upper arm off the ribs (pulled in, it hung 3.5 cm into the
+  // warden cuirass's belt, ADR-206)
+  rP: [-0.15, -0.3, -0.94],
+  // the elbow the forearm-led tricks and spells start from (idles.js syncStandArm): the arm's pole as it was
+  // before the elbow went out; from the elbow out, the salute's and the spells' raised fist turned 65-77° off the
+  // forearm (≤ 60, ADR-186). Their envelope carries the arm between the two
+  leadP: [0.45, -0.25, -0.85],
   sw: [-16, -19], // the blade: forward, down and out to his right
   lH: [0.14, -0.47, 0.08], // the free hand by the left thigh, a fist off it
-  lP: [0.3, -0.15, -0.95],
+  lP: [0.45, -0.2, -0.87],
   rF: [-0.23, -0.13], // the feet [x, z]: a little over shoulder width, the left a short step ahead
   lF: [0.23, 0.14],
 };
@@ -74,11 +81,17 @@ export const REF_READY = {
   // at which the fist, built on the sword's frame, turns off the wrist: a hand higher, the forearm rising)
   rH: [-0.05, -0.25, 0.3], // the grip before the right of his belly
   rP: [0.2, -0.95, -0.2], // the elbow down by the ribs
-  sw: [-25, 47], // up and forward, a little out to his right: the point above his head
+  sw: [-30, 47], // up and forward, a little out to his right: the point above his head
   lH: [-0.05 + LEFT_FROM_RIGHT, -0.33, 0.28],
-  lP: [0.55, -0.65, -0.5],
-  rF: [-0.19, -0.14],
-  lF: [0.19, 0.2],
+  // (the free elbow out: across his front, the robe's sleeve wing on that upper arm swung through his chest
+  // in the chain, 8.9 % of the route's frames; ADR-206)
+  lP: [1, -0.2, -0.2],
+  // (the feet the light chain steps from and comes home to: the right a short step ahead, the left back.
+  // The footage stands the left ahead; from there every light stepped the other foot, the holding foot
+  // settled 8-12 cm sideways and the way home drew back the wrong one: ADR-206)
+  rF: [-0.12, 0.18],
+  lF: [0.12, -0.18],
+  hip: 0, // the hips' turn (pelvY: + the right hip ahead, with the right foot)
 };
 /** The guard (the block). feet: where the stance settles once held [right x, z, left x, z]. */
 export const REF_GUARD = {
@@ -176,13 +189,13 @@ export function refReady(p, P, A) {
   p[P.bodyY] = -0.03 + 0.006 * m.br; // the knees soft
   p[P.bodyZ] = 0.008 * m.dr;
   p[P.pelvX] = 0;
-  p[P.pelvY] = -0.14; // turned a little, the left hip ahead with the left foot
+  p[P.pelvY] = S.hip; // turned a little, the right hip ahead with the right foot
   p[P.pelvZ] = -0.01 * m.sw;
   p[P.spX] = 0.05 + 0.016 * m.br;
   p[P.spY] = 0.02;
   p[P.spZ] = 0;
   p[P.hdX] = 0.04 - 0.012 * m.br;
-  p[P.hdY] = 0.11 + 0.03 * m.look; // the eyes ahead, on the foe
+  p[P.hdY] = -(S.hip + 0.02) + 0.03 * m.look; // the eyes ahead, on the foe
   p[P.hdZ] = 0;
   set3(p, P.rH, S.rH[0] + 0.004 * m.tipB, S.rH[1] + 0.01 * m.brL, S.rH[2] + 0.006 * m.tipA);
   set3(p, P.rP, S.rP[0], S.rP[1], S.rP[2]);
@@ -200,8 +213,8 @@ export function refReady(p, P, A) {
   set3(p, P.lF, S.lF[0], ANK, S.lF[1]);
   set3(p, P.rK, -0.3, 0, 1);
   set3(p, P.lK, 0.3, 0, 1);
-  p[P.rFy] = -0.45;
-  p[P.lFy] = 0.15;
+  p[P.rFy] = -0.35;
+  p[P.lFy] = 0.6;
   p[P.rFf] = 1;
   p[P.lFf] = 1;
   p[P.footFlat] = 0.95;

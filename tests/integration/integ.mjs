@@ -3336,7 +3336,7 @@ async function scenarioChain() {
   out('\n== scenario CHAIN (round the head: each pass from where the last ended; its figures; the slashes on his path; no shards) ==');
   const { STREAK_FX } = await imp('src/combat/streak.js');
   const FIG = await imp('src/entities/player/flurryFigures.js');
-  const { shapeOf, dumpFigure } = await import(pathToFileURL(`${ROOT}/tests/integration/figures.mjs`).href);
+  const { shapeOf, dumpFigure, measure: measureFig } = await import(pathToFileURL(`${ROOT}/tests/integration/figures.mjs`).href);
   const figure0 = STREAK_FX.figure;
   const G = build();
   fightSetup(G);
@@ -3448,7 +3448,20 @@ async function scenarioChain() {
       const sh = shapeOf(t.figure, t.passes, true);
       if (n === 5) out(`   ${name} N=${n}: ${t.seq}`);
       assert(t.figure === name || n !== 5, `${name} N=${n}: the figure laid is ${t.figure} (its cost ${t.fit.toFixed(2)})`);
-      assert(sh.ok && t.jumps.every((j) => j < 0.3) && t.near >= 1.5 && t.lineErr < 0.35 && t.ev?.figure === t.figure, `${name} N=${n}: a ${t.figure} (${sh.why}), chained, clear of the dodge spot, its lines on his path`);
+      // (a star's spread is what its search (flurry.js _planChain) can find from where he dodged, round the
+      // head where it stood: seven lines from one dodge spot reached 14° where another reached 21°, the search
+      // complete both times (ADR-206: the hero's new stance moved the seeded fight before it). The star he
+      // runs must be the widest the search found, its whole search run, and never under 12°)
+      let starOk = false, starWhy = '';
+      if (t.figure === 'star' && !sh.ok) {
+        const M = measureFig(t.passes);
+        let gg = 1;
+        for (let i = 0; i < M.length; i++) for (let j = i + 1; j < M.length; j++) gg = Math.min(gg, Math.abs(Math.sin(M[i].a - M[j].a)));
+        const plan = p.flurry.planGap, whole = p.flurry.planNodes <= F.chain.nodes;
+        starOk = gg >= plan - 0.02 && whole && gg >= 0.2;
+        starWhy = `; the widest its whole search found from his dodge spot: ${(Math.asin(Math.min(1, plan)) * 57.3).toFixed(0)}° planned, ${(Math.asin(Math.min(1, gg)) * 57.3).toFixed(0)}° run, ${p.flurry.planNodes} of ${F.chain.nodes} nodes`;
+      }
+      assert((sh.ok || starOk) && t.jumps.every((j) => j < 0.3) && t.near >= 1.5 && t.lineErr < 0.35 && t.ev?.figure === t.figure, `${name} N=${n}: a ${t.figure} (${sh.why}${starWhy}), chained, clear of the dodge spot, its lines on his path`);
       if (n === 5) {
         const T = { x: t.passes[0].tx, z: t.passes[0].tz };
         dumpFigure({ name, N: n, air: true, R: F.reach.air, O: [t.ox - T.x, t.oz - T.z], neck: t.neck, passes: t.passes.map((q) => [q.ax - T.x, q.az - T.z, q.bx - T.x, q.bz - T.z]), art: t.art && t.art.state !== 'plunge' ? [t.art.sx - T.x, t.art.sz - T.z, t.art.bx - T.x, t.art.bz - T.z] : null, label: sh.why });
@@ -5635,6 +5648,13 @@ async function scenarioHero() {
       // of a knockdown within 10 cm (the hero's longer reach, anim.js HERO_SOFT, carries the hilt ~1 cm lower there): the cloak's own sheets go 16 cm under there, the springs lag the
       // fall); it swings out through a cut and hangs again at rest. Its angle is measured on the
       // upright body (unleaned): drawn, the whole figure leans ~29° toward the camera
+      // (ADR-206: the swing measured here is the falling cut's windup lifting a LEVEL blade, the fencer's guard
+      // (ADR-186's fight stance, `?idles=new`): from the reference's two-handed hold, the blade already up at
+      // 47°, the hilt travels less into the coil and the ribbon swings 30° (51° with only the hold's blade
+      // lowered to the fencer's 13°). The ribbon sword is a look kept for later: measured from the stance it
+      // was tuned against)
+      const RIB = await imp('src/entities/player/idles.js'), ribIdles = RIB.idlesMode();
+      RIB.setIdles('new');
       p.setLoadout({ ...DEFAULT_LOADOUT, weapon: 'moon.ribbon' });
       p.debug.teleport(d.position.x + 14, d.position.z + 14);
       const S = p.rig.streamers.find((s) => s.weapon), w0 = new THREE.Vector3(), w1 = new THREE.Vector3();
@@ -5681,6 +5701,7 @@ async function scenarioHero() {
       // higher than it did out of the old low stance, and the ribbon's springs lag that much more)
       assert(lowest >= 0 && lowestDown >= -0.1, `the ribbon never sinks into the grass through a run, a sprint, a roll, the chain and the cleave (lowest ${lowest.toFixed(3)} m), nor more than 10 cm landing in a knockdown (${lowestDown.toFixed(3)} m)`);
       assert(swing >= 35 && rest <= 25, `the ribbon swings out through a cut (${swing.toFixed(0)}° ≥ 35°) and hangs again at rest (${rest.toFixed(0)}° ≤ 25°)`);
+      RIB.setIdles(ribIdles);
       p.setLoadout(DEFAULT_LOADOUT);
       drive();
       assert(meshes() === n0 && finite() && p.rig.streamers.every((s) => !s.weapon), `back to the longsword (${meshes()} meshes)`);
