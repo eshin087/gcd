@@ -42,21 +42,21 @@
      {
       "f": 0,
       "base": "seat",
-      "note": "7:16.75 (side camera at the horse's left, he faces picture right): the sword held low forward on the horse's right, the left hand on the reins",
+      "note": "7:16.75 (side camera at the horse's left, he faces picture right): the sword held low forward on the horse's right, the left hand on the reins (held out to his right, clear of the horse's neck and shoulder)",
       "uaR": [
-       -0.15,
-       -0.95,
-       0.25
+       -0.2,
+       -0.93,
+       0.3
       ],
       "faR": [
-       -0.1,
-       -0.85,
-       0.5
+       -0.2,
+       -0.8,
+       0.56
       ],
       "blade": [
-       -0.2,
-       -0.3,
-       0.93
+       -0.42,
+       -0.12,
+       0.9
       ]
      },
      {
@@ -273,21 +273,21 @@
      },
      {
       "f": 29,
-      "note": "7:17.8 brought back in front",
+      "note": "7:17.8 brought back up in front, the blade raised over the horse's neck",
       "uaR": [
-       0.2,
-       -0.6,
-       0.6
+       0.1,
+       -0.2,
+       0.95
       ],
       "faR": [
-       0.3,
-       -0.3,
-       0.9
+       0.0,
+       0.5,
+       0.85
       ],
       "blade": [
-       0.8,
-       -0.5,
-       0.2
+       0.2,
+       0.9,
+       0.35
       ],
       "chest": [
        20,
@@ -306,22 +306,41 @@
       ]
      },
      {
+      "f": 32,
+      "uaR": [
+       -0.45,
+       -0.6,
+       0.65
+      ],
+      "faR": [
+       -0.5,
+       0.1,
+       0.85
+      ],
+      "blade": [
+       -0.75,
+       0.45,
+       0.5
+      ],
+      "note": "the blade comes down on his right, outside the neck"
+     },
+     {
       "f": 35,
       "note": "7:18.0 the rest again",
       "uaR": [
-       -0.15,
-       -0.95,
-       0.25
+       -0.2,
+       -0.93,
+       0.3
       ],
       "faR": [
-       -0.1,
-       -0.85,
-       0.5
+       -0.2,
+       -0.8,
+       0.56
       ],
       "blade": [
-       -0.2,
-       -0.3,
-       0.93
+       -0.42,
+       -0.12,
+       0.9
       ],
       "chest": [
        2,
@@ -343,19 +362,19 @@
       "f": 40,
       "base": "seat",
       "uaR": [
-       -0.15,
-       -0.95,
-       0.25
+       -0.2,
+       -0.93,
+       0.3
       ],
       "faR": [
-       -0.1,
-       -0.85,
-       0.5
+       -0.2,
+       -0.8,
+       0.56
       ],
       "blade": [
-       -0.2,
-       -0.3,
-       0.93
+       -0.42,
+       -0.12,
+       0.9
       ]
      }
     ]
@@ -403,21 +422,21 @@
      {
       "f": 0,
       "base": "seat",
-      "note": "8:08.0 (front camera): the sword low forward on the horse's right",
+      "note": "8:08.0 (front camera): the sword low forward on the horse's right (held out to his right, clear of the horse's neck and shoulder)",
       "uaR": [
-       -0.15,
-       -0.95,
-       0.25
+       -0.2,
+       -0.93,
+       0.3
       ],
       "faR": [
-       -0.1,
-       -0.85,
-       0.5
+       -0.2,
+       -0.8,
+       0.56
       ],
       "blade": [
-       -0.2,
-       -0.3,
-       0.93
+       -0.42,
+       -0.12,
+       0.9
       ]
      },
      {
@@ -995,22 +1014,60 @@
       ]
      },
      {
-      "f": 118,
-      "note": "8:12.35 upright again",
+      "f": 115,
       "uaR": [
-       -0.15,
-       -0.9,
-       0.4
+       0.6,
+       -0.3,
+       0.6
       ],
       "faR": [
-       -0.1,
-       -0.8,
-       0.55
+       0.7,
+       0.05,
+       0.35
       ],
       "blade": [
+       0.4,
+       0.35,
+       -0.85
+      ],
+      "note": "coming up out of the lean: the blade lifted first, still on his left (clear of the horse's back)"
+     },
+     {
+      "f": 117,
+      "uaR": [
+       0.0,
+       -0.6,
+       0.8
+      ],
+      "faR": [
        -0.2,
-       -0.3,
+       0.3,
        0.93
+      ],
+      "blade": [
+       -0.3,
+       0.9,
+       0.3
+      ],
+      "note": "over the horse's neck, the blade up"
+     },
+     {
+      "f": 119,
+      "note": "8:12.35 upright again",
+      "uaR": [
+       -0.2,
+       -0.93,
+       0.3
+      ],
+      "faR": [
+       -0.2,
+       -0.8,
+       0.56
+      ],
+      "blade": [
+       -0.42,
+       -0.12,
+       0.9
       ],
       "chest": [
        3,
@@ -1037,19 +1094,19 @@
       "f": 120,
       "base": "seat",
       "uaR": [
-       -0.15,
-       -0.95,
-       0.25
+       -0.2,
+       -0.93,
+       0.3
       ],
       "faR": [
-       -0.1,
-       -0.85,
-       0.5
+       -0.2,
+       -0.8,
+       0.56
       ],
       "blade": [
-       -0.2,
-       -0.3,
-       0.93
+       -0.42,
+       -0.12,
+       0.9
       ]
      }
     ]
