@@ -153,10 +153,27 @@ def reproject(b, take):
     return img, float(np.median(e)), float(np.percentile(e, 90))
 
 
-def symmetrize(b, k=1.0):
+GROUPS = {'armL': [13, 15, 17, 19, 21], 'armR': [14, 16, 18, 20, 22], 'legL': [25, 27, 29, 31], 'legR': [26, 28, 30, 32],
+          'torso': [11, 12, 23, 24], 'head': list(range(11))}
+GROUPS['arms'] = GROUPS['armL'] + GROUPS['armR']
+GROUPS['legs'] = GROUPS['legL'] + GROUPS['legR']
+
+
+def group_mask(names):
+    """(33,) bool of the landmarks in the named groups (armL armR arms legL legR legs torso head)"""
+    m = np.zeros(33, bool)
+    for nm in names:
+        m[GROUPS[nm]] = True
+    return m
+
+
+def symmetrize(b, k=1.0, parts=None, vis=None):
     """a gait cycle made left-right symmetric: the average of the cycle and its mirror half a cycle on
     (his right side's motion is his left side's, half a cycle later, mirrored). k: how much (0..1).
-    For unarmed gaits only (spec "symmetric": true): it hides a real asymmetry such as a held sword."""
+    For unarmed gaits only (spec "symmetric": true): it hides a real asymmetry such as a held sword.
+    parts (spec "sym_parts"): only these groups (e.g. ["legs", "torso"]: the arms keep their own motion);
+    vis (n, 33) (spec "sym_vis": true): each side counts by its visibility against its mirror's (a far arm
+    seen at 0.05 hardly pulls the near one's mirror toward it)."""
     from .takes import MIRROR
     n = len(b)
     h = n / 2.0
@@ -164,4 +181,14 @@ def symmetrize(b, k=1.0):
     a = h - i0
     sh = np.roll(b, -i0, 0) * (1 - a) + np.roll(b, -i0 - 1, 0) * a
     m = sh[:, MIRROR] * np.array([-1, 1, 1.0])
-    return b * (1 - k / 2) + m * (k / 2)
+    if parts is None and vis is None:
+        return b * (1 - k / 2) + m * (k / 2)
+    wm = np.full((n, 33), k / 2)
+    if vis is not None:
+        vs = np.roll(vis, -i0, 0) * (1 - a) + np.roll(vis, -i0 - 1, 0) * a
+        vm = np.clip(vs[:, MIRROR], 0.02, 1)
+        vo = np.clip(vis, 0.02, 1)
+        wm = k * vm / (vm + vo)
+    if parts is not None:
+        wm = wm * group_mask(parts)[None]
+    return b * (1 - wm[:, :, None]) + m * wm[:, :, None]

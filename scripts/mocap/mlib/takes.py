@@ -39,10 +39,17 @@ def _thumb(path):
     return np.asarray(im.convert('L').resize((64, 36)), np.float32)
 
 
-def load(film, t0, t1, log=print):
-    """Raw cached frames of a span, missed frames and capture freezes removed.
+def load(film, t0, t1, log=print, below=None, exclude=None):
+    """Raw cached frames of a span, missed frames and capture freezes removed (and, with a take's `below` /
+    `exclude`, cached detections of a phantom: track.plausible).
     Returns times (k,), l2 (k,33,4), w (k,33,3) and a note."""
     c = track.load_cache(film, t0, t1)
+    nph = 0
+    if below is not None or exclude:
+        for t_, v in list(c.items()):
+            if v[3] and not track.plausible(v[1], below, exclude):
+                c[t_] = (v[0], v[1], v[2], False)
+                nph += 1
     ts_all, fs_all = cfg.frames_in(film, t0, t1)
     miss = [t for t in ts_all if round(t, 3) not in c]
     if miss:
@@ -84,6 +91,8 @@ def load(film, t0, t1, log=print):
     odd |= ((ends[..., 1] > Hpx - 2) | (ends[..., 0] < 1) | (ends[..., 0] > Wpx - 2)).any(1)
     keep = [k for k in range(len(ts)) if not frozen[k] and not odd[k]]
     note = 'frames %d, missed %d, frozen %d, odd size %d' % (len(ts_all), len(ts_all) - len(ts), int(frozen.sum()), int(odd.sum()))
+    if nph:
+        note += ' (%d of the missed: a phantom by below / exclude)' % nph
     tk = np.array([ts[k] for k in keep])
     l2 = np.array([c[round(ts[k], 3)][1] for k in keep])
     w = np.array([c[round(ts[k], 3)][2] for k in keep])
@@ -108,9 +117,13 @@ def to_cam(w):
     return w * np.array([1, -1, -1.0])
 
 
-def fix_swaps(l2, w, groups=((LEG_L, LEG_R), (ARM_L, ARM_R)), switch_cost=0.15):
+def fix_swaps(l2, w, groups=((LEG_L, LEG_R), (ARM_L, ARM_R)), switch_cost=0.15, order=None):
     """Per limb pair: choose kept / swapped labels per frame so the limbs move smoothly (constant velocity
     in the image, normalised by his torso size), with a small cost for disagreeing with the tool's own label.
+    `order` (a take's "facing" prior): +1 = he faces away, so his LEFT hip and shoulder are on the picture's
+    left (-1 toward: on its right); a state that puts the group's root point (hip / shoulder) on the wrong
+    side costs more the further it is (a torso cannot cross itself in a back or front view; without this
+    the smoothness test swapped a strafe's shoulders and the prior then mirrored the whole body there).
     Returns fixed copies and the number of frames swapped per pair."""
     l2 = l2.copy()
     w = w.copy()
@@ -129,12 +142,18 @@ def fix_swaps(l2, w, groups=((LEG_L, LEG_R), (ARM_L, ARM_R)), switch_cost=0.15):
             p[:, s, len(A):, :2] = l2[:, b, :2] / torso
             p[:, s, :len(A), 2:] = w[:, a] * 2
             p[:, s, len(A):, 2:] = w[:, b] * 2
+        # per frame and state: the cost of the side order (facing prior), else none
+        oc = np.zeros((n, 2))
+        if order:
+            dx = (l2[:, A[0], 0] - l2[:, B[0], 0]) / torso * order  # > 0: the tool's left on the picture's right side
+            oc[:, 0] = 4.0 * np.clip(dx / 0.15, 0, 1)
+            oc[:, 1] = 4.0 * np.clip(-dx / 0.15, 0, 1)
         # 2nd-order Viterbi: state = (s_prev, s_cur)
         INF = 1e18
         cost = np.full((2, 2), INF)
         for s0 in (0, 1):
             for s1 in (0, 1):
-                cost[s0, s1] = switch_cost * (s0 + s1) + np.abs(p[1, s1] - p[0, s0]).sum() * 0.2
+                cost[s0, s1] = switch_cost * (s0 + s1) + np.abs(p[1, s1] - p[0, s0]).sum() * 0.2 + oc[0, s0] + oc[1, s1]
         back = np.zeros((n, 2, 2), int)
         for t in range(2, n):
             new = np.full((2, 2), INF)
@@ -143,7 +162,7 @@ def fix_swaps(l2, w, groups=((LEG_L, LEG_R), (ARM_L, ARM_R)), switch_cost=0.15):
                     best, arg = INF, 0
                     for s0 in (0, 1):
                         pred = 2 * p[t - 1, s1] - p[t - 2, s0]
-                        c = cost[s0, s1] + np.abs(p[t, s2] - pred).sum() + switch_cost * s2
+                        c = cost[s0, s1] + np.abs(p[t, s2] - pred).sum() + switch_cost * s2 + oc[t, s2]
                         if c < best:
                             best, arg = c, s0
                     new[s1, s2] = best
@@ -223,23 +242,28 @@ class Take:
       wax (3,) how well this camera sees his X / Y / Z axes; gap (n,) seconds since a real frame."""
 
     def __init__(self, film, t0, t1, view, name='', flip=None, pitch=None, yaw=None, log=print, calm=None,
-                 swing=False, yaw2d=False, facing_prior=None):
+                 swing=False, yaw2d=False, facing_prior=None, below=None, exclude=None):
         self.film, self.t0, self.t1, self.view, self.name = film, t0, t1, view, name
         self.yaw2d = bool(yaw2d)
-        tk, l2, w, note = load(film, t0, t1)
+        tk, l2, w, note = load(film, t0, t1, below=below, exclude=exclude)
         self.note = note
         # mirror the whole body if the spec says the tool got this take's sides wrong
         if flip:
             l2 = l2[:, MIRROR]
             w = w[:, MIRROR] * np.array([1, 1, -1.0], np.float32)
-        l2, w, counts = fix_swaps(l2, w)
+        order = None
+        if facing_prior in ('away', 'toward'):
+            # the prior FIRST, on the tool's own frames, then the swap fix told which side is which: the
+            # other way round, the swap fix (smooth motion) put back labels the tool had flipped with its
+            # reading while the depth stayed flipped, and the prior then mirrored those frames again
+            l2, w = self._facing_prior(facing_prior, l2, w, log)
+            order = 1 if facing_prior == 'away' else -1
+        l2, w, counts = fix_swaps(l2, w, order=order)
         self.swaps = counts
         self.raw_t = tk
         self.t, self.l2, self.gap = resample(tk, l2, t0, t1)
         _, w, _ = resample(tk, w, t0, t1)
         self.c = to_cam(w)
-        if facing_prior in ('away', 'toward'):
-            self._facing_prior(facing_prior, log)
         # the frames the camera's yaw / pitch are measured on: all, or (one-shots: tumbles, lunges) only
         # the calm ends of the take, `calm` seconds at each end, where he stands
         self.calm = np.ones(len(self.t), bool)
@@ -312,7 +336,7 @@ class Take:
             self.l2 = self.l2[:, MIRROR]
             self.c = self.c[:, MIRROR] * np.array([1, 1, -1.0])
             return self.solve_camera(pitch, yaw, log)
-        self.mirrored = getattr(self, '_flipped', False)
+        self.mirrored = getattr(self, '_flipped', False) and not getattr(self, '_prior', False)
         if hint is not None and dd(y, hint) > 50:
             log('  ! take %s: measured yaw %.0f vs hint %s (%.0f): using the hint' % (self.name, y, self.view, hint))
             y = hint
@@ -362,27 +386,30 @@ class Take:
         self.yaw2d_note = 'yaw2d %.0f (pooled %.0f)' % (best, y)
         return float(best)
 
-    def _facing_prior(self, fp, log=print):
+    def _facing_prior(self, fp, l2, w, log=print):
         """spec take "facing": "away" (or "toward"): a HARD prior that he faces away from (toward) the camera
         through the whole take (a lock-on camera behind him). The tool sometimes reads a back view as a
         front view, frame by frame: every frame whose own facing (hips, shoulders, feet, nose) points the
-        other way is mirrored (sides swapped, depth reversed), decided with a 7-frame majority so a single
-        noisy frame does not flip"""
-        f1, feet, nose = facing(self.c)
+        other way is mirrored (sides swapped, depth reversed), decided with a 3-frame majority of the tool's
+        own (unresampled) frames so a single noisy frame does not flip. Returns the mirrored l2, w."""
+        c = to_cam(w)
+        f1, feet, nose = facing(c)
         v = f1 + feet + nose
         y = np.degrees(np.arctan2(v[:, 0], v[:, 2]))
         want = 180.0 if fp == 'away' else 0.0
         wrong = np.abs((y - want + 180) % 360 - 180) > 90
         n = len(wrong)
-        wrong = np.array([np.mean(wrong[max(0, i - 3):i + 4]) > 0.5 for i in range(n)])
+        wrong = np.array([np.mean(wrong[max(0, i - 1):i + 2]) > 0.5 for i in range(n)])
+        l2, w = l2.copy(), w.copy()
         if wrong.any():
-            self.l2[wrong] = self.l2[wrong][:, MIRROR]
-            self.c[wrong] = self.c[wrong][:, MIRROR] * np.array([1, 1, -1.0])
+            l2[wrong] = l2[wrong][:, MIRROR]
+            w[wrong] = w[wrong][:, MIRROR] * np.array([1, 1, -1.0], w.dtype)
         self._flipped = True  # the whole-take mirror test is settled by the prior
-        self.mirrored = False
+        self._prior = True
         if self.view is None or self.view in ('front', 'back'):
             self.view = 'back' if fp == 'away' else 'front'
-        log('  take %s: facing %s (a hard prior): %d of %d frames mirrored back' % (self.name, fp, int(wrong.sum()), n))
+        log('  take %s: facing %s (a hard prior): %d of the tool\'s %d frames mirrored back' % (self.name, fp, int(wrong.sum()), n))
+        return l2, w
 
     def summary(self):
         return ('%s %s %.2f-%.2f view %s: yaw %.0f (hips %.0f feet %.0f nose %.0f) pitch %.0f, sees X %.2f Y %.2f '
