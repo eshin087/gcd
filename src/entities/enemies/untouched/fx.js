@@ -104,7 +104,7 @@ const orange = (c) => Array.isArray(c) && c[0] > 0.85 && c[1] > 0.3 && c[1] < 0.
 const WJ_DRAW = [
   'barrierIdle', 'barrierStop', 'barrierCrack', 'barrierOpen', 'barrierClose', 'blinkOut', 'blinkIn', 'eyes', 'unveil', 'afterimage', 'vanish',
   'drawKnot', 'drawCollapse', 'castPoint', 'castBurst', 'nullCharge', 'nullLine', 'nullBeam', 'nullEnd', 'domainSign', 'domainWall', 'domainCaught',
-  'domainBreak', 'shove', 'crash', '_wjUpdate',
+  'domainBreak', 'shove', 'crash', 'sparkCharge', 'sparkHit', 'ghostStrike', '_wjUpdate',
 ];
 
 // the barrier's shell: how far its drawn edge sits off his body (m), the ripple, the open sign
@@ -123,6 +123,22 @@ const SHELL = Object.freeze({
 // right . the camera's right|) one point
 const EYE_C = [0.55, 1.25, 3.2];
 const EYES = Object.freeze({ glyph: 'O', core: 1.8, apart: 1.0, glow: 2.4, heat: 0.4, heart: 0.0, halo: 0.07, profile: 0.3, lift: 0.35, light: 0.25 });
+
+// Dark Spark's colours (round 2): near-black letters and crimson ones
+const SPARK_DARK = [0.03, 0.0, 0.01], SPARK_RED = [2.6, 0.2, 0.18];
+// Everywhere's ghost (round 2): a lunging figure in metres (f forward, r to his right, u up) before
+// `scale` (his TUNING.scale 1.21 on a ~1.8 m frame); the striking hand runs out with the lunge
+const TUNE_GHOST = Object.freeze({ scale: 1.12 });
+const GHOST_PTS_ = Object.freeze({
+  head: [0.15, 0, 1.95], neck: [0.1, 0, 1.7], chest: [0.08, 0, 1.45], hip: [-0.05, 0, 1.0],
+  kneeF: [0.4, 0.15, 0.55], footF: [0.68, 0.15, 0.02], kneeB: [-0.4, -0.15, 0.5], footB: [-0.78, -0.15, 0.02],
+  shoulderR: [0.1, 0.22, 1.55], hand: [0.6, 0.2, 1.45], shoulderL: [0.05, -0.22, 1.55], elbowL: [-0.15, -0.34, 1.25], handL: [-0.05, -0.26, 1.04],
+});
+const GHOST_SEGS = Object.freeze([
+  ['head', 'neck'], ['neck', 'chest'], ['chest', 'hip'], ['hip', 'kneeF'], ['kneeF', 'footF'], ['hip', 'kneeB'], ['kneeB', 'footB'],
+  ['neck', 'shoulderR'], ['shoulderR', 'hand'], ['neck', 'shoulderL'], ['shoulderL', 'elbowL'], ['elbowL', 'handL'],
+]);
+const GHOST_STRIKE = (l) => [0.55 + 0.5 * l, 0.2, 1.45];
 
 export class WjFx extends AscFx {
   constructor(d) {
@@ -779,6 +795,140 @@ export class WjFx extends AscFx {
   afterimage(d, dx = 0, dz = 0, life = 0.4) {
     if (!d) return 0;
     return this.ghost(d, this._ghostOpt(fin(dx), fin(dz), fin(life, 0.4), 1, 0, 0, 0, 0, 0));
+  }
+
+  // ---------------------------------------------------------------- the melee's (round 2)
+  /** DARK SPARK held (per frame, k 0..1 through its cue; side 'R' | 'L' the fist): crimson heat closing
+   *  on the fist, near-black letters gathering into it, small red-black lightning strokes round it, a
+   *  tight red ring that beats faster as k nears 1 (it reads RED: dodge). */
+  sparkCharge(d, k, side = 'R') {
+    if (!this.fire || !d) return;
+    k = clamp01(fin(k, 0));
+    const H = d.handPoint?.(side === 'L' ? 'L' : 'R', (this._sv ??= new THREE.Vector3()));
+    if (!H || !Number.isFinite(H.x + H.y + H.z)) return;
+    const Sp = (this._spk ??= { seen: -9, acc: 0 }), now = this._now();
+    if (now - Sp.seen > 0.3) {
+      Sp.acc = 0;
+      this._say('wjSparkCharge', d.position?.x, d.position?.z, 0.9);
+    }
+    Sp.seen = now;
+    this._crimson(0.6);
+    const life = this._frame(), A = this._axes(), fdt = Math.max(0, Math.min(0.1, fin(this.game.fxDt, 0.016)));
+    const P = this._toCamera(H.x, H.y, H.z), cx = P.x, cy = P.y, cz = P.z;
+    if (life > 0) {
+      // the fist's heat: crimson tight round it, a dark heart (smoke) inside
+      this._disc(H.x, H.y, H.z, 0.16 + 0.12 * k, 12, 0.18, 0.5 + 0.35 * k, K_FIRE);
+      this._blob(cx, cy, cz, 0, 0, 0, life, 0.16, 0.16, 0.9, 0.9, K_SMOKE);
+      // the ring: beats faster as it comes
+      const beat = 0.5 + 0.5 * Math.sin(now * (8 + 22 * k)), rr = 0.42 - 0.12 * k;
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * TAU + now * 3, ca = Math.cos(a) * rr, sa = Math.sin(a) * rr;
+        this._blob(cx + A.rx * ca + A.ux * sa, cy + A.ry * ca + A.uy * sa, cz + A.rz * ca + A.uz * sa, 0, 0, 0, life, 0.16, 0.16, (0.25 + 0.35 * beat) * (0.5 + 0.5 * k), 0, K_FIRE);
+      }
+      // the sparks: short jagged red strokes off the fist, a new set every frame
+      const n = 1 + Math.round(3 * k);
+      for (let i = 0; i < n; i++) {
+        const a = this.lr() * TAU, ca = Math.cos(a), sa = Math.sin(a), L = this.lrand(0.3, 0.55 + 0.35 * k);
+        SPELL_FX.zap?.(this, cx + (A.rx * ca + A.ux * sa) * 0.12, cy + (A.ry * ca + A.uy * sa) * 0.12, cz + (A.rz * ca + A.uz * sa) * 0.12, cx + (A.rx * ca + A.ux * sa) * L, cy + (A.ry * ca + A.uy * sa) * L, cz + (A.rz * ca + A.uz * sa) * L, 0.55 + 0.3 * k, K_FIRE, 3);
+      }
+    }
+    // near-black letters drawn into the fist
+    Sp.acc += fdt * (24 + 50 * k);
+    while (Sp.acc >= 1) {
+      Sp.acc -= 1;
+      const a = this.lr() * TAU, e = this.lrand(-0.7, 0.7), r = this.lrand(0.6, 1.3), T = this.lrand(0.18, 0.3);
+      const sx = H.x + Math.cos(a) * r, sy = Math.max(0.2, H.y + e * r), sz = H.z + Math.sin(a) * r;
+      const o = this._rec(sx, sy, sz, T, this.lrand(0.15, 0.2), 0.06, this.lr() < 0.7 ? '#%@8' : "'-", this.lr() < 0.7 ? SPARK_DARK : SPARK_RED, SPARK_RED);
+      o.vx = (H.x - sx) / T;
+      o.vy = (H.y - sy) / T;
+      o.vz = (H.z - sz) / T;
+      o.alphaEnd = 1;
+      this._spawn(this.alpha, o);
+    }
+    this._keep('wjSpark', H.x, H.y, H.z, L_CRIMSON, 0.6 + 1.4 * k, 3 + k, 0.25);
+  }
+
+  /** DARK SPARK lands (once): a black-red burst at (x, y, z) along the punch's way (dx, dz); `landed`
+   *  false (a miss): the line runs on 8 m into whatever is there. */
+  sparkHit(x, y, z, dx, dz, landed = true) {
+    const l = Math.hypot(fin(dx), fin(dz));
+    if (!this.fire || !Number.isFinite(x + y + z) || !(l > 1e-4)) return;
+    const ux = dx / l, uz = dz / l, L = landed ? 3.2 : 8, A = this._axes();
+    this._crimson(1.2);
+    // the line: black-red lightning along the punch, two strands
+    for (let s = 0; s < 2; s++) {
+      let px = x, py = y, pz = z;
+      const n = Math.max(4, Math.round(L / 0.6));
+      for (let i = 1; i <= n; i++) {
+        const u = i / n, j = i < n ? 0.28 : 0;
+        const qx = x + ux * L * u + this.lrand(-j, j), qy = y - 0.25 * u * u + this.lrand(-j, j) * 0.6, qz = z + uz * L * u + this.lrand(-j, j);
+        this._ink(px, py, pz, qx, qy, qz, this.lrand(0.14, 0.22), s ? 0.9 : 1.15, 0.2, s ? 0.6 : 0.9, i > 1 ? 1 : 0, s ? K_STEEL : K_FIRE);
+        px = qx;
+        py = qy;
+        pz = qz;
+      }
+    }
+    // the burst: crimson thrown along the line, smoke's black behind it, a front of air
+    for (let i = 0; i < 26; i++) {
+      const a = Math.atan2(uz, ux) + this.lrand(-0.55, 0.55), sp = this.lrand(4, 11);
+      this._blob(x, y + this.lrand(-0.25, 0.25), z, Math.cos(a) * sp, this.lrand(-0.5, 1.2), Math.sin(a) * sp, this.lrand(0.16, 0.3), 0.4, 0.9, 0.55, 0, i % 3 ? K_FIRE : K_SMOKE, 3.5);
+    }
+    this._blob(x, y, z, 0, 0, 0, 0.08, 0.45, 0.25, 0.6, 0, K_FIRE);
+    this._shock(x, y, z, 1.6, 16, 0.2, 0.3, 0.5, 0.5, K_FIRE, 0.2, 3);
+    for (let i = 0; i < 20; i++) {
+      const a = Math.atan2(uz, ux) + this.lrand(-0.8, 0.8), sp = this.lrand(3, 9);
+      const o = this._rec(x, y, z, this.lrand(0.3, 0.6), this.lrand(0.15, 0.22), 0.06, i % 2 ? '#%@' : "*'+", i % 2 ? SPARK_DARK : SPARK_RED, SPARK_RED);
+      o.vx = Math.cos(a) * sp;
+      o.vy = this.lrand(-1, 3);
+      o.vz = Math.sin(a) * sp;
+      o.drag = 2.5;
+      o.gravity = -6;
+      this._spawn(i % 2 ? this.alpha : this.add, o);
+    }
+    void A;
+    this._light({ x, y, z, color: L_CRIMSON, intensity: landed ? 3 : 2.4, radius: 7, life: 0.22, fade: 0.2 });
+    this._say('wjSpark', x, z, landed ? 1 : 0);
+  }
+
+  /** EVERYWHERE's afterimage (per frame while it is held, k 0..1 to its strike): a ghost of him in a
+   *  striking stance at (x, z) facing `yaw` (a place he is not): pale strokes of a lunging figure (his
+   *  white hair up, the striking arm out), its fist and a short arrow on the floor pointing where it will
+   *  strike; it fades in over the first 0.15 of k and lunges as k nears 1. */
+  ghostStrike(x, z, yaw, k) {
+    if (!this.fire || !Number.isFinite(x + z + yaw)) return;
+    k = clamp01(fin(k, 0));
+    const life = this._frame();
+    if (!(life > 0)) return;
+    const I = Math.min(1, k / 0.15), lunge = k > 0.75 ? (k - 0.75) / 0.25 : 0, s = TUNE_GHOST.scale;
+    const fx = Math.sin(yaw), fz = Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
+    const ox = x + fx * lunge * 0.5, oz = z + fz * lunge * 0.5;
+    const W = (f, r, u) => [ox + fx * f * s + rx * r * s, u * s, oz + fz * f * s + rz * r * s];
+    const h = (0.34 + 0.16 * k) * I, flick = 0.85 + 0.15 * Math.sin(this._now() * 40 + x);
+    for (const [a, b] of GHOST_SEGS) {
+      const P = W(...(GHOST_PTS_[a])), Q = W(...(GHOST_PTS_[b]));
+      if (a === 'hand' || b === 'hand') {
+        const R = W(...GHOST_STRIKE(lunge));
+        this._ink(P[0], P[1], P[2], R[0], R[1], R[2], 0, h * flick, 0, h * 1.2, 0, K_STEEL);
+      } else this._ink(P[0], P[1], P[2], Q[0], Q[1], Q[2], 0, h * flick, 0, h * flick, 0, K_STEEL);
+    }
+    // his hair standing up: a few short strokes off the head
+    const Hd = W(...GHOST_PTS_.head);
+    for (let i = 0; i < 4; i++) {
+      const a = -0.6 + i * 0.4;
+      this._ink(Hd[0], Hd[1] + 0.1, Hd[2], Hd[0] + rx * Math.sin(a) * 0.2, Hd[1] + 0.35, Hd[2] + rz * Math.sin(a) * 0.2, 0, h * 0.9, 0, h * 0.5, 0, K_STEEL);
+    }
+    // a pale body of heat inside the strokes (it reads as a figure, not a wire)
+    for (const key of ['chest', 'hip', 'head']) {
+      const Pp = W(...GHOST_PTS_[key]);
+      this._blob(Pp[0], Pp[1], Pp[2], 0, 0, 0, life, 0.36 * s, 0.36 * s, 0.05 * I, 0.05 * I, K_STEEL);
+    }
+    // the fist, and the way it will strike: an arrow on the floor
+    const R = W(...GHOST_STRIKE(lunge));
+    this._blob(R[0], R[1], R[2], 0, 0, 0, life, 0.2, 0.2, 0.4 * I + 0.4 * lunge, 0.4 * I + 0.4 * lunge, K_STEEL);
+    const a0 = 0.9, a1 = 2.6 + 0.6 * k, ha = (0.16 + 0.3 * k) * GROUND_GAIN * I;
+    const tx = x + fx * a1, tz = z + fz * a1;
+    this._ink(x + fx * a0, GROUND_Y, z + fz * a0, tx, GROUND_Y, tz, 0, ha * 0.6, 0, ha, 0, K_STEEL);
+    for (const sd of [-1, 1]) this._ink(tx, GROUND_Y, tz, tx - fx * 0.55 + rx * sd * 0.4, GROUND_Y, tz - fz * 0.55 + rz * sd * 0.4, 0, ha, 0, ha * 0.7, 1, K_STEEL);
   }
 
   // ---------------------------------------------------------------- the spells

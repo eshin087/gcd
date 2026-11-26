@@ -14,6 +14,8 @@
 //   'blink'     he blinks to the hero's side (the real blinkTo) (0.6)       -
 //   'eyes'      his eyes lit, his head turned fast left and right (2.0)     -
 //   'unveil'    the band's light leaking (0.6 s), the flare, then his eyes on  -
+//   'spark'     Dark Spark: held on his right fist (0.9), then the hit     landed (false: a miss)
+//   'ghosts'    Everywhere: three afterimages round the hero strike in turn a (the first one's angle)
 //   'draw'      a knot 3 m ahead of him for 2.4 s, then its collapse        x, z, r, life
 //   'cast'      a point flicked from his hand to the hero (0.5 s), the burst  x, z, r, power
 //   'null'      the merge (1.6 s), held 0.3 s, the line 1.3 s, its end       len, w
@@ -93,6 +95,25 @@ const DRIVERS = {
   unveil: { T: 1.4, step(d, D, t) {
     if (t < 0.62) d.fx.unveil(d, clamp01(t / 0.6));
     else d.eyesK = 1;
+  } },
+  spark: { T: 1.4, step(d, D, t) {
+    const F = d.fx;
+    if (t < 0.9) F.sparkCharge(d, clamp01(t / 0.9), 'R');
+    else if (!D.done) {
+      D.done = true;
+      const f = frame(d), v = d.handPoint?.('R', (D.v ??= new THREE.Vector3())) ?? { x: d.position.x, y: 1.3, z: d.position.z };
+      F.sparkHit(v.x + f.hx * 0.4, v.y, v.z + f.hz * 0.4, f.hx, f.hz, D.opts.landed !== false);
+    }
+  } },
+  ghosts: { T: 2.2, step(d, D, t) {
+    // three afterimages round the hero, each held 0.6 s, striking in turn (blue, blue, red in the move)
+    const p = d.game.player?.position ?? d.position;
+    for (let i = 0; i < 3; i++) {
+      const t0 = i * 0.6, u = (t - t0) / 0.7;
+      if (u < 0 || u > 1) continue;
+      const a = (D.opts.a ?? 0.4) + i * 2.1, r = 2.4, x = p.x + Math.cos(a) * r, z = p.z + Math.sin(a) * r;
+      d.fx.ghostStrike(x, z, Math.atan2(p.x - x, p.z - z), u);
+    }
   } },
   draw: { T: 2.7, step(d, D, t, dt) {
     const F = d.fx, life = fin(D.opts.life, 2.4);
