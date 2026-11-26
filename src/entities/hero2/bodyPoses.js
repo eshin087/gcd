@@ -200,7 +200,7 @@ export const POSES = {
       hips: [0, 0.42, 0], rot: { hips: [115, 0, 0], spine: [32, 0, 0], chest: [30, 0, 0], neck: [26, 0, 0], head: [22, 0, 0] },
       legL: { frame: 'hips', ankle: [0.11, -0.12, 0.2], knee: [0.12, 0.08, 0.6], foot: [-60, 0, 0] },
       legR: { frame: 'hips', ankle: [-0.11, -0.12, 0.2], knee: [-0.12, 0.08, 0.6], foot: [-60, 0, 0] },
-      armR: { frame: 'chest', grip: [-0.16, -0.25, 0.32], blade: [-0.1, -1, -0.15], flat: [1, 0, 0], elbow: [-0.4, 0.0, 0.0] },
+      armR: { frame: 'chest', grip: [-0.16, -0.25, 0.32], blade: [1, -0.25, 0.2], flat: [0, 0, 1], elbow: [-0.4, 0.0, 0.0] },
       armL: { frame: 'chest', wrist: [0.13, -0.3, 0.33], hand: [0, 0, 90], elbow: [0.4, 0.0, 0.0] },
     },
     props: { R: 'sword', L: null },
