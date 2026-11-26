@@ -12,6 +12,9 @@
 //   perf.add(part, ms)        time spent in a part this frame (main.js: every `safe` call, the effects, the render)
 //   perf.endFrame(interval, scriptMs)   the frame ends: `interval` s since the last drawn frame, `scriptMs` the
 //                             frame's own script time
+//   perf.bench()              BENCH (ADR-215): the frame on screen drawn again and again, each pipeline step left
+//                             out in turn, timed to the GPU's end (a 1-pixel read): what each step costs this
+//                             device's GPU, where no GPU timer exists (Safari). ~4 s; the game holds still
 //   perf.report()             the report, as text (also window.__perfReport())
 //   perf.stats()              the numbers behind it
 //
@@ -53,6 +56,7 @@ export class PerfReadout {
     this.t0 = typeof performance !== 'undefined' ? performance.now() : 0;
     this.el = null;
     this._shownAt = 0;
+    this.benches = []; // BENCH results, newest last (the report lists them)
     if (doc?.createElement) this._mount(doc);
   }
 
@@ -93,6 +97,108 @@ export class PerfReadout {
       }
     }
     if (this.el && performance.now() - this._shownAt > 500) this._show();
+  }
+
+  /**
+   * BENCH: the frame on screen drawn `k` times per reading, each reading ended by a 1-pixel read (it waits
+   * for the GPU), in turn with every pipeline step and with each one left out; a step's share is the whole
+   * frame less the frame without it. Then the whole frame once more at ~half the pixels (a pixel-count
+   * step: how much a lower resolution would give). Synchronous (~4 s on a phone): no game frame runs
+   * meanwhile, nothing advances, and every switch is put back. Null when there is no GL.
+   */
+  bench({ k = 4, reps = 3 } = {}) {
+    const g = this.game, P = g?.pipeline, r = g?.renderer, gl = r?.getContext?.();
+    if (!P || !gl || typeof P.render !== 'function') return null;
+    const px = new Uint8Array(4);
+    const orig = r.render, cached = P._renderShadowCached;
+    const fire = P.fire;
+    const is = {
+      shadows: (t) => t === P.shadowRT || t === P.shadowCache?.still,
+      world: (t, o) => t === P.sceneRT && o === g.scene,
+      'hero see-through': (t, o) => t === P.seenRT || (t === P.sceneRT && o !== g.scene),
+      'fire field': (t) => !!fire && (t === fire.heatRT || t === fire.flameRT),
+      'letters (ascii)': (t, o) => t === P.compRT && o !== g.fxScene,
+      'effects (fx)': (t, o) => t === P.compRT && o === g.fxScene,
+      glow: (t) => t === P.brightRT || (P.blur ?? []).includes(t),
+    };
+    let skip = null;
+    r.render = function (o, c) {
+      if (skip && skip(r.getRenderTarget(), o)) return undefined;
+      return orig.call(this, o, c);
+    };
+    const one = () => {
+      for (let i = 0; i < k; i++) P.render();
+      gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+    };
+    const time = () => {
+      one(); // (warm: the switch's first frame)
+      const a = [];
+      for (let i = 0; i < reps; i++) {
+        const t0 = performance.now();
+        one();
+        a.push((performance.now() - t0) / k);
+      }
+      a.sort((x, y) => x - y);
+      return a[a.length >> 1];
+    };
+    const c = r.domElement;
+    const out = {
+      t: +((performance.now() - this.t0) / 1000).toFixed(1),
+      canvas: c ? `${c.width}x${c.height}` : '?',
+      state: String(g.state ?? ''),
+      hero: String(g.player?.state ?? ''),
+      boss: String(g.dragon?.brain?.action?.name ?? g.dragon?.state ?? ''),
+      frame: 0,
+      steps: {},
+      half: null,
+    };
+    try {
+      skip = null;
+      const base = time();
+      out.frame = +base.toFixed(1);
+      for (const [name, pred] of Object.entries(is)) {
+        skip = pred;
+        // (the shadows: the still map's copy is skipped with them)
+        if (name === 'shadows') P._renderShadowCached = () => true;
+        const t = time();
+        P._renderShadowCached = cached;
+        out.steps[name] = +Math.max(0, base - t).toFixed(1);
+      }
+      skip = null;
+      // the still shadow map drawn again every frame (what a frame that moves the camera a step pays)
+      if (P.shadowCache) {
+        const C = P.shadowCache, rd = C.render.bind(C);
+        C.render = (...a) => {
+          C.dirty = true;
+          return rd(...a);
+        };
+        try {
+          out.steps['shadows, redrawn'] = +Math.max(0, time() - base).toFixed(1);
+        } finally {
+          delete C.render;
+        }
+      }
+      out.steps['rest (final, matrices)'] = +Math.max(0, base - Object.values(out.steps).reduce((x, y) => x + y, 0) + (out.steps['shadows, redrawn'] ?? 0)).toFixed(1);
+      // ~half the pixels: the render size down a step, then back as it was
+      const W = P.width, H = P.height, dpr = r.getPixelRatio?.() || 1;
+      if (W > 0 && H > 0 && typeof P.setSize === 'function') {
+        const cssW = W / dpr, cssH = H / dpr, d2 = dpr * 0.7;
+        try {
+          P.setSize(cssW, cssH, d2);
+          const t = time();
+          out.half = { canvas: `${P.width}x${P.height}`, frame: +t.toFixed(1), share: t < base ? `${Math.round((1 - t / base) * 100)} % less` : 'no less: the pixel count is not what costs' };
+        } finally {
+          if (typeof g.applyQuality === 'function') g.applyQuality();
+          else P.setSize(cssW, cssH, dpr);
+        }
+      }
+    } finally {
+      r.render = orig;
+      P._renderShadowCached = cached;
+    }
+    this.benches.push(out);
+    if (this.benches.length > 6) this.benches.shift();
+    return out;
   }
 
   /** Forget what was recorded (the RESET button; a new fight). */
@@ -174,6 +280,11 @@ export class PerfReadout {
     for (const [k, v] of Object.entries(S.parts).sort((a, b) => b[1].mean - a[1].mean)) L.push(`  ${k.padEnd(12)} ${f1(v.mean).padStart(5)} / ${f1(v.p95).padStart(5)} / ${f1(v.max).padStart(6)}`);
     L.push('longest frames (s into the recording: interval, script, the parts over 0.5 ms; hero / boss; steps):');
     for (const x of S.longest.slice(0, 16)) L.push(`  ${x.t}s  ${x.interval} ms  script ${x.script}  ${JSON.stringify(x.parts)}  ${x.hero} / ${x.boss}  x${x.steps}`);
+    for (const B of this.benches) {
+      L.push(`bench at ${B.t}s (${B.canvas}, ${B.state}, hero ${B.hero} / boss ${B.boss}): a whole frame ${B.frame} ms (GPU + its submit), each step's share:`);
+      for (const [k, v] of Object.entries(B.steps).sort((a, b) => b[1] - a[1])) L.push(`  ${k.padEnd(18)} ${f1(v).padStart(5)} ms`);
+      if (B.half) L.push(`  the frame at ${B.half.canvas}: ${B.half.frame} ms (a pixel-count step: ${B.half.share})`);
+    }
     return L.join('\n');
   }
 
@@ -206,6 +317,18 @@ export class PerfReadout {
       return b;
     };
     btn('REPORT', (b) => this._share(b, doc));
+    btn('BENCH', (b) => {
+      b.textContent = 'BENCHING…';
+      // (a frame later, so the label shows before the page holds still)
+      setTimeout(() => {
+        try {
+          const B = this.bench();
+          b.textContent = B ? `BENCH ${f1(B.frame)}ms` : 'NO BENCH';
+        } catch {
+          b.textContent = 'NO BENCH';
+        }
+      }, 50);
+    });
     btn('RESET', () => this.reset());
     doc.body?.appendChild(el);
     this.el = el;

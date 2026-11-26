@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and nine pieces of work since 0.4.0:
+One hundred and eleven pieces of work since 0.4.0:
 - **The perfect parry earns its own reward: the deathblow** (2026-11-26, ADR-211). *Changed:* a perfect parry no
   longer answers with the perfect dodge's flurry. Against the human bosses, parries fill the gold posture bar (blue
   blows most, a perfect parry x1.5) and no longer count in the dodge streak; a string's last blow parried makes him
@@ -14,6 +14,13 @@ One hundred and nine pieces of work since 0.4.0:
   grows, after the owner's reference footage: more sparks each tier, embers that fall and drift on the wind, a
   short orange heat flash at the blades. Switches: `?parryRiposte=deathblow|planted|old`, `?parryGrow=a|0`; the
   Lab's streak row; TRAINING: Deathblow x3 / x7.
+- **A lighter world on phones that need it** (2026-11-26, ADR-216). *Changed:* on a phone that still drops frames at the
+  lowest resolution, the ground's extras (ridge strokes, drifting cloud shadows, contact shadows, the floor ripple)
+  turn off and the stone floors' relief is drawn more simply, for the rest of the visit. `?lite=0` keeps the full
+  look, `?lite=1` forces the light one.
+- **BENCH in the performance readout** (2026-11-26, ADR-215). *Added:* with `?perf`, BENCH holds the game still for a
+  few seconds and measures what each drawing step (shadows, world, letters, fire, glow, effects) costs your
+  device's graphics chip; REPORT then includes it.
 - **A performance readout on your phone, and smoother first breaks** (2026-11-26, ADR-209). *Added:* `?perf` in the
   address shows the frame rate and the frame's cost at the foot of the screen, with a REPORT button that shares
   or copies what each part of the game spent and the slowest frames. *Changed:* the cracked and broken floors

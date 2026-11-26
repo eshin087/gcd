@@ -78,6 +78,25 @@ SCENARIOS.ladder = () => {
   assert(a.setCap(1) === false, 'the same ratio again changes nothing');
 };
 
+SCENARIOS.wantsless = () => {
+  out('\n== no step left: it asks for less (the lite world, ADR-216)');
+  const feed = (a, secs, ms, script = 2) => { for (let t = 0; t < secs; t += ms / 1000) a.sample(ms / 1000, script, null, false); };
+  const a = new AutoQuality(C, { cap: 2 });
+  feed(a, 4, 40);
+  assert(a.index > 0 && a.wantsLess === false, `slow with steps left: it steps down (to ${a.scale}x) and asks for nothing more`);
+  a.index = a.lowest;
+  a.reset();
+  feed(a, 5, 40);
+  assert(a.wantsLess === true && a.index === a.lowest, `slow at its floor (${a.scale}x): it asks for less`);
+  feed(a, 10, 16.7);
+  assert(a.wantsLess === true, 'it keeps asking once the frames hold (for the page load: the lite world does not flicker)');
+  const b = new AutoQuality(C, { cap: 2 });
+  b.index = b.lowest;
+  b.reset();
+  feed(b, 5, 16.7);
+  assert(b.wantsLess === false, 'at its floor and holding the target: nothing asked');
+};
+
 SCENARIOS.bench = () => {
   out('\n== the first guess');
   const a = new AutoQuality(C, { cap: 2 });

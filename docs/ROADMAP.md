@@ -224,7 +224,11 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Guards so the cost cannot creep back: a cost budget per level in `npm test` (`cost.mjs`) and `npm run perf` on a real GPU (ADR-206, `perf/cost-budget`)
 - [ ] Measured on the owner's laptop (Intel Core Ultra 7 255U, integrated graphics) and on a phone (`npm run perf --save` there gives the first baseline)
 - [x] An in-game readout for the owner's devices: `?perf` (ADR-209: frame and script ms by part, missed frames, AUTO's step, a report to share)
-- [ ] The owner's `?perf` reports from the iPhone: a fight on fox, grove and code
+- [x] The owner's `?perf` reports from the iPhone: a fight on fox, grove and code (GPU-bound: script 3.5 ms, 6 - 20 % of frames over 20 ms, AUTO at its floor)
+- [x] BENCH in `?perf`: each pipeline step's GPU cost on the device (ADR-215)
+- [x] The owner's BENCH from a busy moment on fox and grove; the step it names cut at AUTO's floor (options shown first): the world pass; the lite world, the owner's pick C (ADR-216)
+- [ ] BENCH on the iPhone with the lite world on: fox and grove
+- [ ] AUTO's own step hitch on the phone (17 - 32 ms: the letter atlases rebuilt)
 - [ ] A starting step per level for a heavy level (so AUTO does not find it by a slow stretch)
 
 ## M1.88 — The dragon print: the world printed in the wyrm's digits (2026-11-25, `render/ground-looks`, ADR-198)
