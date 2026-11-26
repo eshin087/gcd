@@ -59,7 +59,36 @@ def leave_one_out(parts, takes_, mapping):
     return out
 
 
+ROOT_DEFAULT = {'smooth': 0.1, 'max_off': 0.15}
+
+
+def defaults(clip, log=print):
+    """the defaults of a one-shot (a copy of the spec entry; the spec's own keys always win):
+      every one-shot that does not turn, fly (`flight`) or tumble (`ground` "body"): `root` {"smooth": 0.1,
+          "max_off": 0.15} (the hips stay over the root: moveGround's stops had them 0.2-0.8 m off, the
+          engine needs them near); `"root": false` keeps the plain smoothed root
+      an attack (`phases` given): `"face": "travel"` (a lunge's travel to its active frame is +Z; a cut that
+          travels under 0.15 m keeps its facing)"""
+    if clip.get('kind', 'oneshot') != 'oneshot':
+        return clip
+    c = dict(clip)
+    notes = []
+    if 'root' not in c and not c.get('turn') and not c.get('flight') and c.get('ground') != 'body':
+        c['root'] = dict(ROOT_DEFAULT)
+        notes.append('root %s' % ROOT_DEFAULT)
+    if c.get('root') is False:
+        c.pop('root')
+    if c.get('phases') and 'face' not in c and not c.get('turn'):
+        c['face'] = 'travel'
+        c['_face_default'] = True
+        notes.append('face travel')
+    if notes:
+        log('  defaults: ' + ', '.join(notes))
+    return c
+
+
 def build_clip(spec, clip, log=print):
+    clip = defaults(clip, log)
     kind = clip.get('kind', 'oneshot')
     checks = []
     fps = float(clip.get('fps', 30))
@@ -414,6 +443,8 @@ def build_clip(spec, clip, log=print):
         P0, _ = skel.fk(B.q[[0, fa]], B.hips[[0, fa]], B.root[[0, fa]])
         d = P0[1, JI['hips']] - P0[0, JI['hips']]
         a0 = float(np.arctan2(d[0], d[2]))
+        if clip.get('_face_default') and np.hypot(d[0], d[2]) < 0.15:
+            a0 = 0.0  # a default "travel" on a cut that hardly travels: keep its facing
         rq = skel.qaxis([0, 1, 0], np.full(len(q), -a0))
         B.q = q = q.copy()
         q[:, JI['hips']] = skel.qmul(rq, q[:, JI['hips']])
